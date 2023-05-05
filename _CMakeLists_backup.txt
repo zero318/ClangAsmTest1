@@ -1,0 +1,203 @@
+﻿# CMakeList.txt : CMake project for ClangAsmTest1, include source and define
+# project specific logic here.
+#
+cmake_minimum_required (VERSION 3.8)
+
+project ("ClangAsmTest1")
+
+add_executable(${PROJECT_NAME})
+
+enable_language(ASM-ATT)
+add_library(AsmTemp OBJECT
+	"asm_test.asm"
+)
+
+if(MSVC)
+	# Deal with MSVC warnings
+	target_compile_definitions(${PROJECT_NAME} PRIVATE
+		# SHUT UP ABOUT MEMCPY BEING UNSECURE I DON'T CARE
+		_CRT_SECURE_NO_DEPRECATE
+		# POSIX functions are nice
+		_CRT_NONSTDC_NO_DEPRECATE
+		# Allow POSIX functions without leading underscores everywhere
+		_CRT_DECLARE_NONSTDC_NAMES
+	)
+endif()
+
+# Library related defines
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+	# Omit some extraneous BS from Windows.h	
+	WIN32_LEAN_AND_MEAN
+	# Define PI and other constants in math.h
+	_USE_MATH_DEFINES
+	# Default CRT rand implementation sucks balls
+	_CRT_RAND_S
+)
+
+# Language Standards
+target_compile_options(${PROJECT_NAME} PRIVATE
+	# Enable C23 Features
+	"SHELL:-Xclang -std=c2x"
+	# Enable C++20 Features
+	"SHELL:-Xclang -std=c++20"
+
+	#"SHELL:-Xclang -fmodules"
+)
+
+# CPU Feature flags
+target_compile_options(${PROJECT_NAME} PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-tbm"
+)
+
+# Warning Suppression
+target_compile_options(${PROJECT_NAME} PRIVATE
+	-Wno-c++11-narrowing
+	-Wno-c++17-extensions
+	-Wno-unused-function
+	-Wno-unused-const-variable
+	-Wno-missing-braces
+)
+
+# Output Flags
+target_compile_options(${PROJECT_NAME} PRIVATE
+	# Emit extra info in generated assembly
+	/clang:-fverbose-asm
+)
+
+# Compatibility Flags
+target_compile_options(${PROJECT_NAME} PRIVATE
+	# Allow GNU keywords
+	"SHELL:-Xclang -fgnu-keywords"
+
+	# Processor Features to Allow
+	-march=bdver3
+
+	# Attempt at forcing x87 80-bit long doubles
+	#"SHELL:-Xclang -mlong-double-80"
+	/clang:-mlong-double-80
+
+	# Allow nested functions
+	#/clang:-fnested-functions
+
+	# Enable int128_t because why not
+	"SHELL:-Xclang -fforce-enable-int128"
+
+	# Inline assembly dialect
+	#/clang:-masm=intel
+)
+
+if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+	# Optimization Flags
+	target_compile_options(${PROJECT_NAME} PRIVATE
+		# Optimization level
+		"SHELL:-Xclang -O3"
+
+		#/clang:-fglobal-isel
+
+		# Treat signed integer overflow as two’s complement
+		#-fwrapv
+
+		# Omit frame pointers
+		#"SHELL:-Xclang -fomit-frame-pointer"
+		# Omit frame pointer setup for leaf functions
+		#-momit-leaf-frame-pointer
+
+		#"/clang:-fstack-reuse=all"
+
+		#"SHELL:-Xclang -fstack-reuse=all"
+		/clang:-foptimize-sibling-calls
+
+		# Try to skip constructors writing to memory
+		/clang:-felide-constructors
+
+		# Merge constant values
+		-fmerge-all-constants
+		# Merge globals
+		"SHELL:-Xclang -mglobal-merge"
+
+		# Enable loop vectorization
+		/Qvec
+		# Enable more vectorization
+		#"SHELL:-Xclang -fvectorize"
+
+		# Return small structs in registers
+		"SHELL:-Xclang -freg-struct-return"
+
+		#-fpcc-struct-return
+
+		# Only allocate as many bytes as an enum needs
+		#"SHELL:-Xclang -fshort-enums"
+
+		# Unroll loops
+		"SHELL:-Xclang -funroll-loops"
+		#"SHELL:-Xclang -freroll-loops"
+
+		#-falign-loops
+)
+endif()
+
+# Security Optimization Flags
+target_compile_options(${PROJECT_NAME} PRIVATE
+	#-fdelete-null-pointer-checks
+	#-fno-delete-null-pointer-checks
+
+	# Disable buffer checking
+	/GS-
+
+	# Disable stack cookies
+	/Gs-
+
+	# Disable more stack checking
+	#"SHELL:-Xclang -fno-stack-protector"
+
+	# Don't use TLS for function scope statics
+	/Zc:threadSafeInit-
+)
+
+target_compile_options(${PROJECT_NAME} PRIVATE
+	-flto=thin
+	#-flto=full
+)
+
+target_compile_options(${PROJECT_NAME} PRIVATE
+	#-menable-unsafe-fp-math
+	#-freciprocal-math
+	#-fslp-vectorize
+
+	"SHELL:-Xclang -fdata-sections"
+	"SHELL:-Xclang -ffunction-sections"
+	
+	"SHELL:-Xclang -ffp-contract=fast"
+	"SHELL:-Xclang -ffast-math"
+)
+
+target_compile_options(${PROJECT_NAME} PRIVATE
+	"SHELL:-fuse-ld=lld-link"
+)
+
+include_directories("F:\\Program Files (x86)\\LLVM\\lib\\clang\\12.0.0\\include")
+
+# Add source to this project's executable.
+target_sources(${PROJECT_NAME} PRIVATE
+	"ClangAsmTest1.cpp"
+	"ClangAsmTest1.h"
+	"util.h"
+	"NewEoSDECL.cpp"
+	"EoSD/util.h"
+	"EoSD/util.cpp"
+	"x87_math_helpers.h"
+	"x87_math_helpers.cpp"
+	"ExternalGlobal.h"
+	"RNG_helpers.h"
+	$<TARGET_OBJECTS:AsmTemp>
+)
+
+#add_dependencies(AsmTemp ${PROJECT_NAME})
+
+set_source_files_properties(x87_math_helpers.h PROPERTIES COMPILE_FLAGS "-mno-sse -mno-sse2")
+set_source_files_properties(x87_math_helpers.cpp PROPERTIES COMPILE_FLAGS "-mno-sse -mno-sse2")
+#set_source_files_properties(RNG_helpers.h PROPERTIES COMPILE_FLAGS "-mno-sse -mno-sse2")
+
+# TODO: Add tests and install targets if needed.

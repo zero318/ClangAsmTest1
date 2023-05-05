@@ -1,0 +1,97 @@
+Registers:
+
+
+Constraints:
+a	AX
+A	DX:AX
+b	BX
+c	CX
+C	SSE memory constant
+d	DX
+D	DI
+e	32-bit immediate (Sign extended)
+E	Floating point immediate
+f	Any x87 register (No = constraint)
+F	Floating point immediate
+g	Any general register, memory, or immediate
+G	x87 memory constant
+i	Immediate
+I	Immediate between 0 and 31
+J	Immediate between 0 and 63
+k	Any AVX512 mask register
+K	8-bit immediate (Sign extended)
+l	Any register usable as an SIB index
+L	-1 immediate
+m	Memory operand
+M	Immediate between 0 and 3
+n	Immediate with known value
+N	8-bit immediate (Zero extended)
+o	Offsetable memory operand
+O	8-bit positive immediate (Sign extended)
+p	Address
+q	Any register with readable low 8-bits
+Q	Any register with readable high 8-bits
+r	Any general register
+R	Any non-x64 general register
+s	Immediate
+S	SI
+t	ST(0)
+u	ST(1)
+v	Any XMM/YMM/ZMM register
+V	Non-offsetable memory operand
+x	Any XMM register
+X	Any
+y	Any MMX register
+Y2	Any SSE register (with SSE2)
+Yi	Any SSE register (with inter-unit moves and SSE2)
+Ym	Any MMX register (with inter-unit moves)
+Yt	Any SSE register (with SSE2)
+Yk	Any AVX512 mask register
+Yz	XMM0
+Z	32-bit immediate (Zero extended)
+<	Autodecrement memory operand
+>	Autoincrement memory operand
+0	Matches first arg
+1	Matches second arg
+2	Matches third arg
+3	Matches fourth arg
+4	Matches fifth arg
+5	Matches sixth arg
+6	Matches seventh arg
+7	Matches eighth arg
+8	Matches ninth arg
+9	Matches tenth arg
+
+Constraint Modifiers:
+=	Write only
++	Read-write (modified)
+&	Early Clobber
+%	Commutative
+#	Ignore
+?	Disparage slightly
+!	Disparage severely
+*	Ignore for register choices
+[	Matches symbolic arg
+
+Clobbers:
+Any register
+memory
+cc
+unwind
+
+Modifiers:
+%a[name]	Address ('i' and 'r' types)
+%A[name]	Absolute address
+%b[name]	Register as low byte
+%c[name]	Print undecorated constant
+%g[name]	Register as ZMM
+%h[name]	Register as high byte
+%H[name]	Adds 8 bytes in ModRM
+%k[name]	Register as dword
+%n[name]	Print a negative sign
+%P[name]	Call symbol or displacement-only value
+%q[name]	Register as qword in x64 or dword in x86
+%t[name]	Register as YMM
+%w[name]	Register as word
+%V[name]	Print undecorated GPR
+%x[name]	Register as XMM

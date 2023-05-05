@@ -1,0 +1,656 @@
+Microsoft (R) COFF/PE Dumper Version 14.29.30133.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+
+Dump of file C:\WinDDK\7600.16385.1\lib\wxp\i386\ntdll.lib
+
+File Type: LIBRARY
+
+COFF SYMBOL TABLE
+000 005D0FC3 ABS    notype       Static       | @comp.id
+001 00000000 SECT2  notype       External     | ntdll_NULL_THUNK_DATA
+
+String Table Size = 0x1B bytes
+
+COFF SYMBOL TABLE
+000 005D0FC3 ABS    notype       Static       | @comp.id
+001 00000000 SECT2  notype       External     | __NULL_IMPORT_DESCRIPTOR
+
+String Table Size = 0x1D bytes
+
+COFF SYMBOL TABLE
+000 005D0FC3 ABS    notype       Static       | @comp.id
+001 00000000 SECT2  notype       External     | __IMPORT_DESCRIPTOR_ntdll
+002 C0000040 SECT2  notype       Section      | .idata$2
+003 00000000 SECT3  notype       Static       | .idata$6
+004 C0000040 UNDEF  notype       Section      | .idata$4
+005 C0000040 UNDEF  notype       Section      | .idata$5
+006 00000000 UNDEF  notype       External     | __NULL_IMPORT_DESCRIPTOR
+007 00000000 UNDEF  notype       External     | ntdll_NULL_THUNK_DATA
+
+String Table Size = 0x4E bytes
+
+COFF SYMBOL TABLE
+000 0000001D DEBUG  notype       Filename     | .file
+    ..\i386\eh3valid_user.c
+003 005F0FC3 ABS    notype       Static       | @comp.id
+004 00000001 ABS    notype       Static       | @feat.00
+005 00000000 SECT1  notype       Static       | .debug$S
+    Section length  7F3, #relocs    6, #linenums    0, checksum        0
+007 00000000 SECT2  notype       Static       | .rdata
+    Section length    8, #relocs    1, #linenums    0, checksum D9B4456B, selection    2 (pick any)
+009 00000000 SECT2  notype       External     | _RtlAlternateDosPathSeperatorString
+00A 00000000 SECT3  notype       Static       | .rdata
+    Section length    4, #relocs    0, #linenums    0, checksum F851BF68, selection    2 (pick any)
+00C 00000000 SECT3  notype       External     | ??_C@_13CGOKJPIL@?$AA?1?$AA?$AA@ (`string')
+00D 00000000 SECT4  notype       Static       | .rdata
+    Section length    8, #relocs    1, #linenums    0, checksum 5213EDE7, selection    2 (pick any)
+00F 00000000 SECT4  notype       External     | _RtlDosPathSeperatorsString
+010 00000000 SECT5  notype       Static       | .rdata
+    Section length    6, #relocs    0, #linenums    0, checksum 831D77E4, selection    2 (pick any)
+012 00000000 SECT5  notype       External     | ??_C@_15MNCACJLI@?$AA?2?$AA?1?$AA?$AA@ (`string')
+013 00000000 SECT6  notype       Static       | .rdata
+    Section length    8, #relocs    1, #linenums    0, checksum D9B4456B, selection    2 (pick any)
+015 00000000 SECT6  notype       External     | _RtlNtPathSeperatorString
+016 00000000 SECT7  notype       Static       | .rdata
+    Section length    4, #relocs    0, #linenums    0, checksum 81DBB01A, selection    2 (pick any)
+018 00000000 SECT7  notype       External     | ??_C@_13FPGAJAPJ@?$AA?2?$AA?$AA@ (`string')
+019 00000000 SECT8  notype       Static       | .text
+    Section length   2A, #relocs    1, #linenums    7, checksum  496110C, selection    2 (pick any)
+01B 00000000 SECT9  notype       Static       | .debug$S
+    Section length   CC, #relocs    3, #linenums    0, checksum        0, selection    5 (pick associative Section 0x8)
+01D 00000000 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\eh3valid.c
+021 00000000 SECT8  notype ()    External     | _EH_VirtualQuery@12
+    tag index 00000024 size 0000002A lines 00000B3B next function 00000000
+023 00000000 UNDEF  notype ()    External     | _NtQueryVirtualMemory@24
+024 00000000 SECT8  notype       BeginFunction | .bf
+    line# 0024 end 00000000
+026 00000007 SECT8  notype       .bf or.ef    | .lf
+027 0000002A SECT8  notype       EndFunction  | .ef
+    line# 0033
+029 00000000 SECTA  notype       Static       | .text
+    Section length  222, #relocs    E, #linenums   49, checksum F84FFE31, selection    1 (pick no duplicates)
+02B 00000000 SECTB  notype       Static       | .debug$S
+    Section length  14C, #relocs    5, #linenums    0, checksum        0, selection    5 (pick associative Section 0xA)
+02D 00000000 SECTA  notype ()    External     | __ValidateEH3RN
+    tag index 00000035 size 00000222 lines 00000EFD next function 00000000
+02F 000001AD SECTA  notype       Static       | $exit_success$33868
+030 00000000 SECTC  notype       Static       | .bss
+    Section length   4C, #relocs    0, #linenums    0, checksum        0
+032 00000048 SECTC  notype       Static       | _lModifying
+033 00000008 SECTC  notype       Static       | _rgValidPages
+034 00000000 SECTC  notype       Static       | _nValidPages
+035 00000000 SECTA  notype       BeginFunction | .bf
+    line# 0086 end 00000000
+037 00000049 SECTA  notype       .bf or.ef    | .lf
+038 00000222 SECTA  notype       EndFunction  | .ef
+    line# 015b
+03A 00000000 SECTD  notype       Static       | .debug$T
+    Section length 1C44, #relocs    0, #linenums    0, checksum        0
+03C 00000000 SECTE  notype       Static       | .debug$S
+    Section length   33, #relocs    2, #linenums    0, checksum        0, selection    5 (pick associative Section 0x6)
+03E 00000000 SECTF  notype       Static       | .debug$S
+    Section length   35, #relocs    2, #linenums    0, checksum        0, selection    5 (pick associative Section 0x4)
+040 00000000 SECT10 notype       Static       | .debug$S
+    Section length   3D, #relocs    2, #linenums    0, checksum        0, selection    5 (pick associative Section 0x2)
+
+String Table Size = 0x13F bytes
+
+COFF SYMBOL TABLE
+000 00000019 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\exsup.asm
+004 000F0FC3 ABS    notype       Static       | @comp.id
+005 00000001 ABS    notype       Static       | @feat.00
+006 00000000 SECT1  notype       Static       | .text
+    Section length  115, #relocs    6, #linenums   67, checksum        0
+008 00000000 SECT2  notype       Static       | .data
+    Section length   10, #relocs    0, #linenums    0, checksum        0
+00A 00000000 SECT3  notype       Static       | .debug$S
+    Section length  4B4, #relocs   2E, #linenums    0, checksum        0
+00C 00000000 SECT4  notype       Static       | .debug$T
+    Section length  4D4, #relocs    0, #linenums    0, checksum        0
+00E 00000000 SECT5  notype       Static       | .debug$F
+    Section length   20, #relocs    2, #linenums    0, checksum        0
+010 00000000 SECT6  notype       Static       | .sxdata
+    Section length    4, #relocs    0, #linenums    0, checksum        0
+012 00000000 UNDEF  notype       External     | _RtlUnwind@16
+013 0000010D SECT1  notype       External     | __NLG_Dispatch2
+014 00000018 SECT1  notype       Label        | _gu_return
+015 0000010D SECT1  notype       External     | __NLG_Dispatch
+016 000000BB SECT1  notype       External     | __NLG_Return2
+017 00000000 SECT2  notype       External     | __NLG_Destination
+018 00000000 ABS    notype       External     | __except_list
+019 0000001D DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\pversion.inc
+01D 00000021 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\exsup.asm
+021 00000025 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\cmacros.inc
+025 00000029 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\exsup.asm
+029 0000002D DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\exsup.inc
+02D 00000000 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\exsup.asm
+031 00000000 SECT1  notype ()    Static       | $$$00001
+    tag index 00000033 size 00000000 lines 00000256 next function 00000038
+033 00000000 SECT1  notype       BeginFunction | .bf
+    line# 007c end 0000003A
+035 00000001 SECT1  notype       .bf or.ef    | .lf
+036 00000000 SECT1  notype       EndFunction  | .ef
+    line# 0000
+038 00000000 SECT1  notype ()    External     | __global_unwind2
+    tag index 0000003A size 00000020 lines 0000025C next function 0000003F
+03A 00000000 SECT1  notype       BeginFunction | .bf
+    line# 007e end 00000041
+03C 00000008 SECT1  notype       .bf or.ef    | .lf
+03D 00000020 SECT1  notype       EndFunction  | .ef
+    line# 0086
+03F 00000020 SECT1  notype ()    Static       | $$$00003
+    tag index 00000041 size 00000000 lines 0000028C next function 00000046
+041 00000020 SECT1  notype       BeginFunction | .bf
+    line# 0097 end 00000048
+043 00000001 SECT1  notype       .bf or.ef    | .lf
+044 00000020 SECT1  notype       EndFunction  | .ef
+    line# 0086
+046 00000020 SECT1  notype ()    Static       | __unwind_handler
+    tag index 00000048 size 0000003B lines 00000292 next function 0000004D
+048 00000020 SECT1  notype       BeginFunction | .bf
+    line# 0098 end 0000004F
+04A 00000014 SECT1  notype       .bf or.ef    | .lf
+04B 0000005B SECT1  notype       EndFunction  | .ef
+    line# 00b7
+04D 0000005B SECT1  notype ()    Static       | $$$00005
+    tag index 0000004F size 00000000 lines 0000030A next function 00000054
+04F 0000005B SECT1  notype       BeginFunction | .bf
+    line# 00cf end 00000056
+051 00000001 SECT1  notype       .bf or.ef    | .lf
+052 0000005B SECT1  notype       EndFunction  | .ef
+    line# 00b7
+054 0000005B SECT1  notype ()    External     | __local_unwind2
+    tag index 00000056 size 00000070 lines 00000310 next function 0000005B
+056 0000005B SECT1  notype       BeginFunction | .bf
+    line# 00d0 end 0000005D
+058 00000025 SECT1  notype       .bf or.ef    | .lf
+059 000000CB SECT1  notype       EndFunction  | .ef
+    line# 0106
+05B 000000CB SECT1  notype ()    Static       | $$$00007
+    tag index 0000005D size 00000000 lines 000003EE next function 00000062
+05D 000000CB SECT1  notype       BeginFunction | .bf
+    line# 010c end 00000064
+05F 00000001 SECT1  notype       .bf or.ef    | .lf
+060 000000CB SECT1  notype       EndFunction  | .ef
+    line# 0106
+062 000000CB SECT1  notype ()    External     | __abnormal_termination
+    tag index 00000064 size 00000023 lines 000003F4 next function 00000069
+064 000000CB SECT1  notype       BeginFunction | .bf
+    line# 010d end 0000006B
+066 0000000B SECT1  notype       .bf or.ef    | .lf
+067 000000EE SECT1  notype       EndFunction  | .ef
+    line# 011c
+069 000000EE SECT1  notype ()    External     | __NLG_Notify1
+    tag index 0000006B size 00000009 lines 00000436 next function 00000070
+06B 000000EE SECT1  notype       BeginFunction | .bf
+    line# 0129 end 00000072
+06D 00000005 SECT1  notype       .bf or.ef    | .lf
+06E 000000F7 SECT1  notype       EndFunction  | .ef
+    line# 012d
+070 000000F7 SECT1  notype ()    External     | __NLG_Notify
+    tag index 00000072 size 0000001E lines 00000454 next function 00000077
+072 000000F7 SECT1  notype       BeginFunction | .bf
+    line# 0130 end 00000079
+074 00000011 SECT1  notype       .bf or.ef    | .lf
+075 00000115 SECT1  notype       EndFunction  | .ef
+    line# 0144
+077 00000115 SECT1  notype ()    Static       | $$$00011
+    tag index 00000079 size 00000000 lines 000004BA next function 00000000
+079 00000115 SECT1  notype       BeginFunction | .bf
+    line# 0149 end 00000000
+07B 00000001 SECT1  notype       .bf or.ef    | .lf
+07C 00000115 SECT1  notype       EndFunction  | .ef
+    line# 0144
+07E 000000BD SECT1  notype       Label        | _lu_done
+07F 00000095 SECT1  notype       Label        | _continue_
+080 0000005A SECT1  notype       Label        | _uh_return
+081 00000101 SECT1  notype       Label        | __NLG_Go
+082 000000BB SECT1  notype       Label        | _lu_continue
+083 00000079 SECT1  notype       Label        | _lu_top
+084 000000ED SECT1  notype       Label        | _at_done
+
+String Table Size = 0xF1 bytes
+
+COFF SYMBOL TABLE
+000 00000010 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\exsup2.asm
+004 000F0FC3 ABS    notype       Static       | @comp.id
+005 00000001 ABS    notype       Static       | @feat.00
+006 00000000 SECT1  notype       Static       | .text
+    Section length   B6, #relocs    3, #linenums   3D, checksum        0
+008 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+00A 00000000 SECT3  notype       Static       | .debug$S
+    Section length  268, #relocs   12, #linenums    0, checksum        0
+00C 00000000 SECT4  notype       Static       | .debug$T
+    Section length  494, #relocs    0, #linenums    0, checksum        0
+00E 00000000 UNDEF  notype       External     | __global_unwind2
+00F 00000000 UNDEF  notype       External     | __local_unwind2
+010 00000014 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\pversion.inc
+014 00000018 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\exsup2.asm
+018 0000001C DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\cmacros.inc
+01C 00000020 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\exsup2.asm
+020 00000024 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\exsup.inc
+024 00000000 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\exsup2.asm
+028 00000008 SECT1  notype ()    Static       | $$$00001
+    tag index 0000002A size 00000000 lines 00000188 next function 0000002F
+02A 00000008 SECT1  notype       BeginFunction | .bf
+    line# 0095 end 00000031
+02C 00000001 SECT1  notype       .bf or.ef    | .lf
+02D 00000008 SECT1  notype       EndFunction  | .ef
+    line# 0000
+02F 00000008 SECT1  notype ()    External     | __except_handler2
+    tag index 00000031 size 000000AE lines 0000018E next function 00000036
+031 00000008 SECT1  notype       BeginFunction | .bf
+    line# 009b end 00000038
+033 0000003B SECT1  notype       .bf or.ef    | .lf
+034 000000B6 SECT1  notype       EndFunction  | .ef
+    line# 00ff
+036 000000B6 SECT1  notype ()    Static       | $$$00003
+    tag index 00000038 size 00000000 lines 000002F0 next function 00000000
+038 000000B6 SECT1  notype       BeginFunction | .bf
+    line# 0101 end 00000000
+03A 00000001 SECT1  notype       .bf or.ef    | .lf
+03B 000000B6 SECT1  notype       EndFunction  | .ef
+    line# 00ff
+03D 00000080 SECT1  notype       Label        | _lh_continue
+03E 0000008B SECT1  notype       Label        | _lh_dismiss
+03F 000000AE SECT1  notype       Label        | _lh_return
+040 00000037 SECT1  notype       Label        | _lh_top
+041 00000092 SECT1  notype       Label        | _lh_bagit
+042 00000099 SECT1  notype       Label        | _lh_unwinding
+
+String Table Size = 0x73 bytes
+
+COFF SYMBOL TABLE
+000 00000015 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\exsup3.asm
+004 000F0FC3 ABS    notype       Static       | @comp.id
+005 00000001 ABS    notype       Static       | @feat.00
+006 00000000 SECT1  notype       Static       | .text
+    Section length  109, #relocs    6, #linenums   6A, checksum        0
+008 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+00A 00000000 SECT3  notype       Static       | .debug$S
+    Section length  28A, #relocs   14, #linenums    0, checksum        0
+00C 00000000 SECT4  notype       Static       | .debug$T
+    Section length  49C, #relocs    0, #linenums    0, checksum        0
+00E 00000000 SECT5  notype       Static       | .debug$F
+    Section length   10, #relocs    1, #linenums    0, checksum        0
+010 00000000 UNDEF  notype       External     | __global_unwind2
+011 00000000 UNDEF  notype       External     | __local_unwind2
+012 00000000 UNDEF  notype       External     | __NLG_Notify
+013 00000000 UNDEF  notype       External     | __ValidateEH3RN
+014 00000000 UNDEF  notype       External     | __NLG_Destination
+015 00000019 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\pversion.inc
+019 0000001D DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\exsup3.asm
+01D 00000021 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\cmacros.inc
+021 00000025 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\exsup3.asm
+025 00000029 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\exsup.inc
+029 00000000 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\exsup3.asm
+02D 00000008 SECT1  notype ()    External     | __except_handler3
+    tag index 0000002F size 000000E6 lines 00000222 next function 00000034
+02F 00000008 SECT1  notype       BeginFunction | .bf
+    line# 00ae end 00000036
+031 0000005D SECT1  notype       .bf or.ef    | .lf
+032 000000EE SECT1  notype       EndFunction  | .ef
+    line# 0145
+034 000000EE SECT1  notype ()    External     | __seh_longjmp_unwind@4
+    tag index 00000036 size 0000001B lines 00000450 next function 0000003B
+036 000000EE SECT1  notype       BeginFunction | .bf
+    line# 0149 end 0000003D
+038 0000000C SECT1  notype       .bf or.ef    | .lf
+039 00000109 SECT1  notype       EndFunction  | .ef
+    line# 0154
+03B 00000109 SECT1  notype ()    Static       | $$$00003
+    tag index 0000003D size 00000000 lines 00000498 next function 00000000
+03D 00000109 SECT1  notype       BeginFunction | .bf
+    line# 0157 end 00000000
+03F 00000001 SECT1  notype       .bf or.ef    | .lf
+040 00000109 SECT1  notype       EndFunction  | .ef
+    line# 0154
+042 000000B1 SECT1  notype       Label        | _lh_continue
+043 000000BC SECT1  notype       Label        | _lh_dismiss
+044 000000E6 SECT1  notype       Label        | _lh_return
+045 00000048 SECT1  notype       Label        | _lh_top
+046 000000CA SECT1  notype       Label        | _lh_bagit
+047 000000D1 SECT1  notype       Label        | _lh_unwinding
+048 000000C3 SECT1  notype       Label        | _lh_abort
+
+String Table Size = 0xC3 bytes
+
+COFF SYMBOL TABLE
+000 0000000A DEBUG  notype       Filename     | .file
+    ..\i386\sehsupp.c
+002 005F0FC3 ABS    notype       Static       | @comp.id
+003 00000001 ABS    notype       Static       | @feat.00
+004 00000000 SECT1  notype       Static       | .debug$S
+    Section length  227, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT2  notype       Static       | .text
+    Section length   42, #relocs    3, #linenums    7, checksum 7E8B26B9, selection    1 (pick no duplicates)
+008 00000000 SECT3  notype       Static       | .debug$S
+    Section length  104, #relocs    B, #linenums    0, checksum        0, selection    5 (pick associative Section 0x2)
+00A 00000000 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\sehsupp.c
+00E 00000000 SECT2  notype ()    External     | __rt_probe_read4@4
+    tag index 0000001A size 00000042 lines 000003B3 next function 00000000
+010 00000031 SECT2  notype       Static       | $L21721
+011 00000030 SECT2  notype       Static       | $L21732
+012 0000001D SECT2  notype       Static       | $L21734
+013 0000001D SECT2  notype       Static       | $L21720
+014 00000000 UNDEF  notype ()    External     | __SEH_epilog
+015 00000000 UNDEF  notype ()    External     | __except_handler3
+016 00000000 UNDEF  notype ()    External     | __SEH_prolog
+017 00000000 SECT4  notype       Static       | .rdata
+    Section length    C, #relocs    2, #linenums    0, checksum 842A3990, selection    5 (pick associative Section 0x2)
+019 00000000 SECT4  notype       Static       | $T21727
+01A 00000000 SECT2  notype       BeginFunction | .bf
+    line# 002b end 00000000
+01C 00000007 SECT2  notype       .bf or.ef    | .lf
+01D 00000042 SECT2  notype       EndFunction  | .ef
+    line# 003b
+01F 00000000 SECT5  notype       Static       | .sxdata
+    Section length    4, #relocs    0, #linenums    0, checksum 67C7A7AD
+021 00000000 SECT6  notype       Static       | .debug$F
+    Section length   10, #relocs    1, #linenums    0, checksum        0, selection    5 (pick associative Section 0x2)
+023 00000000 SECT7  notype       Static       | .debug$T
+    Section length  310, #relocs    0, #linenums    0, checksum        0
+
+String Table Size = 0x43 bytes
+
+COFF SYMBOL TABLE
+000 0000000F DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\setjmp.asm
+004 000F0FC3 ABS    notype       Static       | @comp.id
+005 00000001 ABS    notype       Static       | @feat.00
+006 00000000 SECT1  notype       Static       | .text
+    Section length   38, #relocs    1, #linenums   14, checksum        0
+008 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+00A 00000000 SECT3  notype       Static       | .debug$S
+    Section length  15B, #relocs    8, #linenums    0, checksum        0
+00C 00000000 SECT4  notype       Static       | .debug$T
+    Section length  23C, #relocs    0, #linenums    0, checksum        0
+00E 00000000 UNDEF  notype       External     | __except_list
+00F 00000013 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\pversion.inc
+013 00000017 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\setjmp.asm
+017 0000001B DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\cmacros.inc
+01B 0000001F DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\setjmp.asm
+01F 00000023 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\exsup.inc
+023 00000000 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\setjmp.asm
+027 00000000 SECT1  notype ()    External     | __setjmp
+    tag index 00000029 size 00000038 lines 000000F6 next function 0000002E
+029 00000000 SECT1  notype       BeginFunction | .bf
+    line# 004e end 00000030
+02B 00000013 SECT1  notype       .bf or.ef    | .lf
+02C 00000038 SECT1  notype       EndFunction  | .ef
+    line# 0067
+02E 00000038 SECT1  notype ()    Static       | $$$00002
+    tag index 00000030 size 00000000 lines 00000168 next function 00000000
+030 00000038 SECT1  notype       BeginFunction | .bf
+    line# 006b end 00000000
+032 00000001 SECT1  notype       .bf or.ef    | .lf
+033 00000038 SECT1  notype       EndFunction  | .ef
+    line# 0067
+035 0000002F SECT1  notype       Label        | _sj_save_trylevel
+036 00000035 SECT1  notype       Label        | _sj_done
+
+String Table Size = 0x24 bytes
+
+COFF SYMBOL TABLE
+000 0000000F DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\setjmp3.asm
+004 000F0FC3 ABS    notype       Static       | @comp.id
+005 00000001 ABS    notype       Static       | @feat.00
+006 00000000 SECT1  notype       Static       | .text
+    Section length   7B, #relocs    1, #linenums   2C, checksum        0
+008 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+00A 00000000 SECT3  notype       Static       | .debug$S
+    Section length  1AF, #relocs    E, #linenums    0, checksum        0
+00C 00000000 SECT4  notype       Static       | .debug$T
+    Section length  23C, #relocs    0, #linenums    0, checksum        0
+00E 00000000 UNDEF  notype       External     | __except_list
+00F 00000013 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\pversion.inc
+013 00000017 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\setjmp3.asm
+017 0000001B DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\cmacros.inc
+01B 0000001F DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\setjmp3.asm
+01F 00000023 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\exsup.inc
+023 00000000 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\setjmp3.asm
+027 00000000 SECT1  notype ()    External     | __setjmp3
+    tag index 00000029 size 0000007B lines 0000013A next function 0000002E
+029 00000000 SECT1  notype       BeginFunction | .bf
+    line# 004e end 00000030
+02B 0000002B SECT1  notype       .bf or.ef    | .lf
+02C 0000007B SECT1  notype       EndFunction  | .ef
+    line# 008c
+02E 0000007B SECT1  notype ()    Static       | $$$00002
+    tag index 00000030 size 00000000 lines 0000023C next function 00000000
+030 0000007B SECT1  notype       BeginFunction | .bf
+    line# 008f end 00000000
+032 00000001 SECT1  notype       .bf or.ef    | .lf
+033 0000007B SECT1  notype       EndFunction  | .ef
+    line# 008c
+035 00000057 SECT1  notype       Label        | _s3_save_trylevel
+036 00000078 SECT1  notype       Label        | _s3_done
+037 0000004F SECT1  notype       Label        | _s3_default_trylevel
+038 0000003D SECT1  notype       Label        | _s3_get_count
+039 00000074 SECT1  notype       Label        | _s3_save_data
+
+String Table Size = 0x5F bytes
+
+COFF SYMBOL TABLE
+000 00000010 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\setjmpex.asm
+004 000F0FC3 ABS    notype       Static       | @comp.id
+005 00000001 ABS    notype       Static       | @feat.00
+006 00000000 SECT1  notype       Static       | .text
+    Section length    5, #relocs    1, #linenums    3, checksum        0
+008 00000000 SECT2  notype       Static       | .data
+    Section length    4, #relocs    0, #linenums    0, checksum        0
+00A 00000000 SECT3  notype       Static       | .debug$S
+    Section length  109, #relocs    6, #linenums    0, checksum        0
+00C 00000000 SECT4  notype       Static       | .debug$T
+    Section length   3C, #relocs    0, #linenums    0, checksum        0
+00E 00000000 UNDEF  notype       External     | _longjmp
+00F 00000000 SECT2  notype       External     | __setjmpexused
+010 00000014 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\pversion.inc
+014 00000018 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\setjmpex.asm
+018 0000001C DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\cmacros.inc
+01C 00000000 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\setjmpex.asm
+020 00000000 SECT1  notype ()    External     | __longjmpex
+    tag index 00000022 size 00000005 lines 000000C4 next function 00000027
+022 00000000 SECT1  notype       BeginFunction | .bf
+    line# 0030 end 00000029
+024 00000002 SECT1  notype       .bf or.ef    | .lf
+025 00000005 SECT1  notype       EndFunction  | .ef
+    line# 0031
+027 00000005 SECT1  notype ()    Static       | $$$00002
+    tag index 00000029 size 00000000 lines 000000D0 next function 00000000
+029 00000005 SECT1  notype       BeginFunction | .bf
+    line# 0034 end 00000000
+02B 00000001 SECT1  notype       .bf or.ef    | .lf
+02C 00000005 SECT1  notype       EndFunction  | .ef
+    line# 0031
+
+String Table Size = 0x1F bytes
+
+COFF SYMBOL TABLE
+000 00000015 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\longjmp.asm
+004 000F0FC3 ABS    notype       Static       | @comp.id
+005 00000001 ABS    notype       Static       | @feat.00
+006 00000000 SECT1  notype       Static       | .text
+    Section length   79, #relocs    5, #linenums   2E, checksum        0
+008 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+00A 00000000 SECT3  notype       Static       | .debug$S
+    Section length  1AE, #relocs    C, #linenums    0, checksum        0
+00C 00000000 SECT4  notype       Static       | .debug$T
+    Section length  254, #relocs    0, #linenums    0, checksum        0
+00E 00000000 UNDEF  notype       External     | __NLG_Destination
+00F 00000000 UNDEF  notype       External     | __except_list
+010 00000000 UNDEF  notype       External     | __global_unwind2
+011 00000000 UNDEF  notype       External     | __local_unwind2
+012 00000000 UNDEF  notype       External     | __rt_probe_read4@4
+013 00000000 UNDEF  notype       External     | __NLG_Notify
+014 00000004 UNDEF  notype       External     | __setjmpexused
+015 00000019 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\pversion.inc
+019 0000001D DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\longjmp.asm
+01D 00000021 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\cmacros.inc
+021 00000025 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\longjmp.asm
+025 00000029 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\h\exsup.inc
+029 00000000 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\longjmp.asm
+02D 00000000 SECT1  notype ()    Static       | $$$00001
+    tag index 0000002F size 00000000 lines 00000160 next function 00000034
+02F 00000000 SECT1  notype       BeginFunction | .bf
+    line# 0056 end 00000036
+031 00000001 SECT1  notype       .bf or.ef    | .lf
+032 00000000 SECT1  notype       EndFunction  | .ef
+    line# 0000
+034 00000000 SECT1  notype ()    External     | _longjmp
+    tag index 00000036 size 00000079 lines 00000166 next function 0000003B
+036 00000000 SECT1  notype       BeginFunction | .bf
+    line# 0057 end 0000003D
+038 0000002C SECT1  notype       .bf or.ef    | .lf
+039 00000079 SECT1  notype       EndFunction  | .ef
+    line# 009b
+03B 00000079 SECT1  notype ()    Static       | $$$00003
+    tag index 0000003D size 00000000 lines 0000026E next function 00000000
+03D 00000079 SECT1  notype       BeginFunction | .bf
+    line# 009d end 00000000
+03F 00000001 SECT1  notype       .bf or.ef    | .lf
+040 00000079 SECT1  notype       EndFunction  | .ef
+    line# 009b
+042 00000043 SECT1  notype       Label        | _lj_old_unwind
+043 0000001B SECT1  notype       Label        | _lj_local_unwind
+044 00000050 SECT1  notype       Label        | _lj_no_unwind
+
+String Table Size = 0xA2 bytes
+
+COFF SYMBOL TABLE
+000 00000000 DEBUG  notype       Filename     | .file
+    ..\i386\loadcfg.c
+002 005F0FC3 ABS    notype       Static       | @comp.id
+003 00000001 ABS    notype       Static       | @feat.00
+004 00000000 SECT1  notype       Static       | .debug$S
+    Section length  1EF, #relocs    8, #linenums    0, checksum        0
+006 00000000 SECT2  notype       Static       | .rdata
+    Section length   48, #relocs    3, #linenums    0, checksum 4683F8DD
+008 00000000 SECT2  notype       External     | __load_config_used
+009 00000000 UNDEF  notype       External     | ___safe_se_handler_count
+00A 00000000 UNDEF  notype       External     | ___safe_se_handler_table
+00B 00000000 UNDEF  notype       External     | ___security_cookie
+00C 00000000 SECT3  notype       Static       | .debug$T
+    Section length  5B4, #relocs    0, #linenums    0, checksum        0
+
+String Table Size = 0x5C bytes
+
+COFF SYMBOL TABLE
+000 00000010 DEBUG  notype       Filename     | .file
+    D:\xpsp\base\crts\crtw32\helper\nt\obj\i386\sehprolg.asm
+005 000F0FC3 ABS    notype       Static       | @comp.id
+006 00000001 ABS    notype       Static       | @feat.00
+007 00000000 SECT1  notype       Static       | .text
+    Section length   4C, #relocs    1, #linenums   1E, checksum        0
+009 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+00B 00000000 SECT3  notype       Static       | .debug$S
+    Section length   F3, #relocs    4, #linenums    0, checksum        0
+00D 00000000 SECT4  notype       Static       | .debug$T
+    Section length   34, #relocs    0, #linenums    0, checksum        0
+00F 00000000 UNDEF  notype       External     | __except_handler3
+010 00000000 DEBUG  notype       Filename     | .file
+    d:\xpsp\base\crts\crtw32\misc\i386\sehprolg.asm
+014 00000000 SECT1  notype ()    External     | __SEH_prolog
+    tag index 00000016 size 0000003B lines 0000010A next function 0000001B
+016 00000000 SECT1  notype       BeginFunction | .bf
+    line# 0020 end 0000001D
+018 00000014 SECT1  notype       .bf or.ef    | .lf
+019 0000003B SECT1  notype       EndFunction  | .ef
+    line# 0033
+01B 0000003B SECT1  notype ()    External     | __SEH_epilog
+    tag index 0000001D size 00000011 lines 00000182 next function 00000000
+01D 0000003B SECT1  notype       BeginFunction | .bf
+    line# 0037 end 00000000
+01F 0000000A SECT1  notype       .bf or.ef    | .lf
+020 0000004C SECT1  notype       EndFunction  | .ef
+    line# 0040
+
+String Table Size = 0x30 bytes
+
+COFF SYMBOL TABLE
+000 00000000 DEBUG  notype       Filename     | .file
+    ..\seccook.c
+002 005F0FC3 ABS    notype       Static       | @comp.id
+003 00000001 ABS    notype       Static       | @feat.00
+004 00000000 SECT1  notype       Static       | .debug$S
+    Section length  117, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT2  notype       Static       | .data
+    Section length    4, #relocs    0, #linenums    0, checksum 521F49CC, selection    2 (pick any)
+008 00000000 SECT2  notype       External     | ___security_cookie
+009 00000000 SECT3  notype       Static       | .debug$T
+    Section length  2F4, #relocs    0, #linenums    0, checksum        0
+00B 00000000 SECT4  notype       Static       | .debug$S
+    Section length   2C, #relocs    2, #linenums    0, checksum        0, selection    5 (pick associative Section 0x2)
+
+String Table Size = 0x17 bytes
+
+  Summary
+
+          4C .bss
+          18 .data
+          40 .debug$F
+        2227 .debug$S
+        3D3C .debug$T
+          14 .idata$2
+          14 .idata$3
+           4 .idata$4
+           4 .idata$5
+           A .idata$6
+          7A .rdata
+           8 .sxdata
+         6DF .text

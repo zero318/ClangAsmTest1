@@ -1,0 +1,10 @@
+__segname
+__compileMark
+#pragma winrt_leav_qi
+#pragma extern_absolute
+#pragma external_header
+#pragma file_hash
+#pragma bgi
+#pragma ident
+#pragma same_seg
+#pragma segment

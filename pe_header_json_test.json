@@ -1,0 +1,233 @@
+{
+	"dos_header": {
+		"magic": "MZ",
+		"cblp": 0,
+		"cp": 0,
+		"crlc": 0,
+		"cparhdr": 0,
+		"minalloc": 0,
+		"maxalloc": 0,
+		"ss": 0,
+		"sp": 0,
+		"csum": 0,
+		"ip": 0,
+		"cs": 0,
+		"lfarlc": 0,
+		"ovno": 0,
+		"res": [0,0,0,0],
+		"oemid": 0,
+		"oeminfo": 0,
+		"res2": [0,0,0,0,0,0,0,0,0,0],
+		"lfanew": 0,
+	},
+	"rich_header": {
+		"key": 0,
+		"entries": [
+			{
+				"type": 0,
+				"build": 0,
+				"count": 0
+			}
+		]
+	},
+	"nt_header": {
+		"type": "PE", // PE, NE, LE (LX is mentioned here: https://learn.microsoft.com/en-us/previous-versions/ms809762(v=msdn.10)?redirectedfrom=MSDN)
+		"pe_headers": {
+			"file_header": {
+				"machine_type": "",
+				"section_count": 0,
+				"timestamp": 0,
+				"coff_symbol_table_file_offset": 0,
+				"coff_symbol_count": 0,
+				"characteristics": {
+					"relocations_stripped": false,
+					"executable_image": true,
+					"coff_line_numbers_stripped": false,
+					"coff_local_symbols_stripped": false,
+					"aggressively_trim_working_set": false,
+					"large_address_aware": false,
+					"unknown_flag": false,
+					"little_endian": false,
+					"machine_is_32_bit": false,
+					"debug_info_stripped": false,
+					"removable_run_from_swap": false,
+					"network_run_from_swap": false,
+					"system_file": false,
+					"dll_file": false,
+					"prefer_single_core": false,
+					"big_endian": false
+				}
+			},
+			"optional_header": {
+				"magic": 0,
+				"linker_version_major": 0,
+				"linker_version_minor": 0,
+				"code_size": 0,
+				"initialized_data_size": 0,
+				"uninitialized_data_size": 0,
+				"entry_point_offset": 0,
+				"code_base": 0,
+				"data_base": 0,
+				"image_base": 0,
+				"section_alignment": 0,
+				"file_alignment": 0,
+				"os_major_version": 0,
+				"os_minor_version": 0,
+				"image_major_version": 0,
+				"image_minor_version": 0,
+				"subsystem_major_version": 0,
+				"subsystem_minor_version": 0,
+				"runtime_version_overrides": {
+					"os_major_version": 0,
+					"os_minor_version": 0,
+					"os_build_number": 0,
+					"os_platform_id": ""
+				},
+				"image_size": 0,
+				"headers_size": 0,
+				"checksum": 0,
+				"subsystem": "",
+				"characteristics": {
+					"library_process_init": false,
+					"library_process_term": false,
+					"library_thread_init": false,
+					"library_thread_term": false,
+					"unknown_flag": false,
+					"high_entropy_address_space": false,
+					"relocatable": false,
+					"code_integrity": false
+					"nx_compatible": false,
+					"no_isolation": false,
+					"no_seh": false,
+					"no_bind": false,
+					"require_appcontainer": false,
+					"wdm_driver": false,
+					"control_flow_guard": false,
+					"terminal_server_aware": false
+				},
+				"stack_reserve_size": 0,
+				"stack_commit_size": 0,
+				"heap_reserve_size": 0,
+				"heap_commit_size": 0,
+				"loader_flags": 0,
+				"number_of_data_directories": 16
+			},
+			"data_directories": [
+				{
+					"type": "export_table",
+					"offset": 0,
+					"size": 0
+				},
+				{
+					"type": "import_table",
+					"offset": 0,
+					"size": 0
+				},
+				{
+					"type": "resource_table",
+					"offset": 0,
+					"size": 0
+				},
+				{
+					"type": "exception_table",
+					"offset": 0,
+					"size": 0
+				},
+				{
+					"type": "certificate_table",
+					"offset": 0,
+					"size": 0
+				},
+				{
+					"type": "relocation_table",
+					"offset": 0,
+					"size": 0
+				},
+				{
+					"type": "debug_data",
+					"offset": 0,
+					"size": 0
+				},
+				{
+					"type": "architecture_data",
+					"offset": 0,
+					"size": 0
+				},
+				{
+					"type": "global_pointer",
+					"offset": 0,
+					"size": 0
+				},
+				{
+					"type": "tls_table",
+					"offset": 0,
+					"size": 0
+				},
+				{
+					"type": "bound_import_table",
+					"offset": 0,
+					"size": 0
+				},
+				{
+					"type": "import_address_table",
+					"offset": 0,
+					"size": 0
+				},
+				{
+					"type": "delayed_import_descriptor_table",
+					"offset": 0,
+					"size": 0
+				},
+				{
+					"type": "reserved",
+					"offset": 0,
+					"size": 0
+				}
+			],
+			"sections": [
+				{
+					"name": "",
+					"virtual_size": 0,
+					"virtual_address": 0,
+					"data_size": 0,
+					"data_offset": 0,
+					"relocations_offset": 0,
+					"line_numbers_offset": 0,
+					"relocations_count": 0,
+					"line_numbers_count": 0,
+					"characteristics": {
+						"type_desct": false,
+						"type_noload": false,
+						"type_group": false,
+						"link_no_padding": false,
+						"type_copy": false,
+						"contains_code": false,
+						"contains_initialized_data": false,
+						"contains_uninitialized_data": false,
+						"link_other": false,
+						"link_info": false,
+						"type_over": false,
+						"link_remove": false,
+						"link_comdat": false,
+						"unknown_flag": false,
+						"no_defer_spec_exec": false,
+						"mem_fardata": false,
+						"mem_sysheap": false,
+						"mem_purgeable": false,
+						"mem_locked": false,
+						"mem_preload": false,
+						"alignment": 0,
+						"link_extended_relocations": false,
+						"mem_discardable": false,
+						"mem_not_cached": false,
+						"mem_not_paged": false,
+						"mem_shared": false,
+						"execute": false,
+						"read": false,
+						"write": false
+					}
+				}
+			]
+		}
+	}
+}

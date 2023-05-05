@@ -1,0 +1,365 @@
+﻿{
+  "configurations": [
+    {
+      "name": "x64-Clang-Debug",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "buildRoot": "${projectDir}\\out\\build\\${name}",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "clang_cl_x64_x64" ],
+      "variables": [
+        {
+          "name": "CMAKE_C_COMPILER",
+          "value": "F:/Program Files (x86)/LLVM/bin/clang-cl.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_COMPILER_AR",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ar.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_COMPILER_RANLIB",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ranlib.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER",
+          "value": "F:/Program Files (x86)/LLVM/bin/clang-cl.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER_AR",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ar.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER_RANLIB",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ranlib.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_ASM-ATT_COMPILER",
+          "value": "F:/MyCodeLibs/gcc-11.1.0-no-debug/bin/as.exe",
+          "type": "FILEPATH"
+        }
+      ]
+    },
+    {
+      "name": "x64-Clang-Release",
+      "generator": "Ninja",
+      "configurationType": "Release",
+      "buildRoot": "${projectDir}\\out\\build\\${name}",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "clang_cl_x64_x64" ],
+      "variables": [
+        {
+          "name": "CMAKE_C_COMPILER",
+          "value": "F:/Program Files (x86)/LLVM/bin/clang-cl.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_COMPILER_AR",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ar.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_COMPILER_RANLIB",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ranlib.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER",
+          "value": "F:/Program Files (x86)/LLVM/bin/clang-cl.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER_AR",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ar.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER_RANLIB",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ranlib.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_ASM-ATT_COMPILER",
+          "value": "F:/MyCodeLibs/gcc-11.1.0-no-debug/bin/as.exe",
+          "type": "FILEPATH"
+        }
+      ]
+    },
+    {
+      "name": "x64-Clang-Release-Debug",
+      "generator": "Ninja",
+      "configurationType": "RelWithDebInfo",
+      "buildRoot": "${projectDir}\\out\\build\\${name}",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "clang_cl_x64_x64" ],
+      "variables": [
+        {
+          "name": "CMAKE_C_COMPILER",
+          "value": "F:/Program Files (x86)/LLVM/bin/clang-cl.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_COMPILER_AR",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ar.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_COMPILER_RANLIB",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ranlib.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_FLAGS_RELWITHDEBINFO",
+          "value": "/MD /Zi /O2 /Ob2 /DNDEBUG",
+          "type": "STRING"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER",
+          "value": "F:/Program Files (x86)/LLVM/bin/clang-cl.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER_AR",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ar.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER_RANLIB",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ranlib.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_FLAGS_RELWITHDEBINFO",
+          "value": "/MD /Zi /O2 /Ob2 /DNDEBUG",
+          "type": "STRING"
+        },
+        {
+          "name": "CMAKE_ASM-ATT_COMPILER",
+          "value": "F:/MyCodeLibs/gcc-11.1.0-no-debug/bin/as.exe",
+          "type": "FILEPATH"
+        }
+      ]
+    },
+    {
+      "name": "x86-Clang-Release",
+      "generator": "Ninja",
+      "configurationType": "Release",
+      "buildRoot": "${projectDir}\\out\\build\\${name}",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "clang_cl_x86" ],
+      "variables": [
+        {
+          "name": "CMAKE_C_COMPILER",
+          "value": "F:/Program Files (x86)/LLVM/bin/clang-cl.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_COMPILER_AR",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ar.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_COMPILER_RANLIB",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ranlib.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER",
+          "value": "F:/Program Files (x86)/LLVM/bin/clang-cl.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER_AR",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ar.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER_RANLIB",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ranlib.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_ASM-ATT_COMPILER",
+          "value": "F:/MyCodeLibs/binutils-2.32-1-mingw32-bin.tar/binutils-2.32-1-mingw32-bin/bin/as.exe",
+          "type": "FILEPATH"
+        }
+      ]
+    },
+    {
+      "name": "x86-Clang-Release-Debug",
+      "generator": "Ninja",
+      "configurationType": "RelWithDebInfo",
+      "buildRoot": "${projectDir}\\out\\build\\${name}",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "clang_cl_x86" ],
+      "variables": [
+        {
+          "name": "CMAKE_C_COMPILER",
+          "value": "F:/Program Files (x86)/LLVM/bin/clang-cl.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_COMPILER_AR",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ar.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_COMPILER_RANLIB",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ranlib.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_FLAGS_RELWITHDEBINFO",
+          "value": "/MD /Zi /O2 /Ob2 /DNDEBUG",
+          "type": "STRING"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER",
+          "value": "F:/Program Files (x86)/LLVM/bin/clang-cl.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER_AR",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ar.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER_RANLIB",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ranlib.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_FLAGS_RELWITHDEBINFO",
+          "value": "/MD /Zi /O2 /Ob2 /DNDEBUG",
+          "type": "STRING"
+        },
+        {
+          "name": "CMAKE_ASM-ATT_COMPILER",
+          "value": "F:/MyCodeLibs/binutils-2.32-1-mingw32-bin.tar/binutils-2.32-1-mingw32-bin/bin/as.exe",
+          "type": "FILEPATH"
+        }
+      ]
+    },
+    {
+      "name": "x86-Clang-Debug",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "buildRoot": "${projectDir}\\out\\build\\${name}",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "clang_cl_x86" ],
+      "variables": [
+        {
+          "name": "CMAKE_C_COMPILER",
+          "value": "F:/Program Files (x86)/LLVM/bin/clang-cl.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_COMPILER_AR",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ar.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_COMPILER_RANLIB",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ranlib.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER",
+          "value": "F:/Program Files (x86)/LLVM/bin/clang-cl.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER_AR",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ar.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER_RANLIB",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ranlib.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_ASM-ATT_COMPILER",
+          "value": "F:/MyCodeLibs/binutils-2.32-1-mingw32-bin.tar/binutils-2.32-1-mingw32-bin/bin/as.exe",
+          "type": "FILEPATH"
+        }
+      ]
+    },
+    {
+      "name": "x86-Clang-Release-Debug-NoCL",
+      "generator": "Ninja",
+      "configurationType": "RelWithDebInfo",
+      "buildRoot": "${projectDir}\\out\\build\\${name}",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "linux_clang_x64" ],
+      "variables": [
+        {
+          "name": "CMAKE_C_COMPILER",
+          "value": "F:/Program Files (x86)/LLVM/bin/clang.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_COMPILER_AR",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ar.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_COMPILER_RANLIB",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ranlib.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER",
+          "value": "F:/Program Files (x86)/LLVM/bin/clang.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER_AR",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ar.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER_RANLIB",
+          "value": "F:/Program Files (x86)/LLVM/bin/llvm-ranlib.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_LINKER",
+          "value": "F:/Program Files (x86)/LLVM/bin/ld.lld",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_ASM-ATT_COMPILER",
+          "value": "F:/MyCodeLibs/binutils-2.32-1-mingw32-bin.tar/binutils-2.32-1-mingw32-bin/bin/as.exe",
+          "type": "FILEPATH"
+        }
+      ]
+    }
+  ]
+}
