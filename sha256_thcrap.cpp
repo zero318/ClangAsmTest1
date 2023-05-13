@@ -23,7 +23,7 @@ typedef union {
 	};
 } SHA256_HASH;
 
-SHA256_HASH sha256_calc(const uint8_t data[], size_t length);
+dllexport SHA256_HASH sha256_calc(const uint8_t data[], size_t length);
 
 typedef struct {
     uint8_t data[64];

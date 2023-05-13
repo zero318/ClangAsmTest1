@@ -215,8 +215,12 @@ JsonOptionalString parse_json_key(const char16_t*& raw_json) {
     return std::unexpected{ JsonStringError::UnexpectedCharacter };
 }
 
+template<bool skip_initial_whitespace = true>
 JsonOptionalValue parse_json_value(const char16_t*& raw_json) {
-    const char16_t* raw_json_read = skip_whitespace(raw_json);
+    const char16_t* raw_json_read = raw_json;
+    if constexpr (skip_initial_whitespace) {
+        raw_json_read = skip_whitespace(raw_json_read);
+    }
     const char16_t* numeric_str_start;
     switch (*raw_json_read++) {
         case u't':
@@ -275,7 +279,7 @@ return_object:
             raw_json_read = skip_whitespace(raw_json_read);
             if (*raw_json_read != u']') {
                 for (;;) {
-                    if (auto arr_element = parse_json_value(raw_json_read)) [[likely]] {
+                    if (auto arr_element = parse_json_value<false>(raw_json_read)) [[likely]] {
                         arr.push_back(arr_element.value());
                         raw_json_read = skip_whitespace(raw_json_read);
                         switch (*raw_json_read++) {
@@ -284,6 +288,7 @@ return_object:
                             case u']':
                                 goto return_array;
                             case u',':
+                                raw_json_read = skip_whitespace(raw_json_read);
                                 continue;
                         }
                     } else [[unlikely]] {

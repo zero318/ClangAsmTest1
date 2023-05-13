@@ -1992,8 +1992,11 @@ dllexport void wasted_wtf_is_this();
 dllexport void wasted_wtf_is_this2();
 dllexport void wasted_wtf_is_this3();
 extern void test_json_parse(const char16_t* raw_json);
+extern void test_json5_parse(const wchar_t* raw_json);
 int main(int argc, char* argv[]) {
-	//test_json_parse(u"{ \"ye\\u0065tus\" : true, \"pingas\":{}, \"yeet\": [ 01, 0.1, -123.456e+78, \"\", null ] }");
+	test_json_parse(u"{ \"ye\\u0065tus\" : true, \"pingas\":{}, \"yeet\": [ 1, 0.1, -123.456e+78, \"\", null ] }");
+	puts("");
+	test_json5_parse(L"{ \"ye\\u0065tus\" : true, \"pingas\":{}, \"yeet\": [ 01, 0.1, -123.456e+78, \"\", null, ], /* multi comment \n*/ unquoted : \'n\\x65w\\\nline\', }");
 	/*
 	BaseClassC* temp = new BaseClassC();
 	printf("%d", temp->testA());
@@ -2007,7 +2010,7 @@ int main(int argc, char* argv[]) {
 	*/
 	//return 0;
 
-	bs_dll64();
+	//bs_dll64();
 	//run_ultimate_float_reduce_test();
 	return 0;
 	//goto print_seg_bases;
@@ -3236,7 +3239,7 @@ gnu_noinline void yeetus_memory() {
 		access.Trustee.MultipleTrusteeOperation = NO_MULTIPLE_TRUSTEE;
 		access.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
 		access.Trustee.TrusteeType = TRUSTEE_IS_USER;
-		access.Trustee.ptstrName = "CURRENT_USER";
+		access.Trustee.ptstrName = (char*)"CURRENT_USER";
 
 		PACL new_dacl = NULL;
 		SetEntriesInAcl(1, &access, old_dacl, &new_dacl);

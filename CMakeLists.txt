@@ -83,6 +83,7 @@ target_compile_definitions(${EXE} PRIVATE
 	__analysis_assume=__assume
 	_Analysis_assume_=__assume
 	_HAS_EXCEPTIONS=0
+	_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 )
 if(IS_X64)
 target_compile_definitions(${EXE} PRIVATE
@@ -518,7 +519,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 	"zero/city_hash.cpp"
 	"frame_pointer_test.cpp"
 	"json_test.cpp"
-	#"json5_test.cpp"
+	"json5_test.cpp"
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE
 	USE_AMD_FEATURES

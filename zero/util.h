@@ -622,6 +622,12 @@ static inline constexpr T garbage_value(void) {
 
 #define assume(condition) __builtin_assume(condition)
 
+template <typename T>
+struct ZUNEmbeddedList {
+	T* next;
+	T* prev;
+};
+
 #define ZUNListPlayNiceWithIntellisense
 
 #ifdef ZUNListIdkDefault

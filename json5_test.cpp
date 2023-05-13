@@ -16,7 +16,9 @@
 #include <variant>
 #include <vector>
 #include <map>
+#if !__INTELLISENSE__
 #include "zero/expected.h"
+#endif
 
 using namespace std::literals::string_view_literals;
 
@@ -58,10 +60,6 @@ T& operator<<(T& os, const JsonTrue& json_true) {
 template<typename T> requires(std::is_same_v<T, std::ostream> || std::is_same_v<T, std::wostream>)
 T& operator<<(T& os, const JsonFalse& json_false) {
     return os << "false";
-}
-template<typename T> requires(std::is_same_v<T, std::ostream> || std::is_same_v<T, std::wostream>)
-T& operator<<(T& os, const JsonString& json_string) {
-    return os << '"' << json_string << '"';
 }
 template<typename T> requires(std::is_same_v<T, std::ostream> || std::is_same_v<T, std::wostream>)
 T& operator<<(T& os, const JsonArray& json_array) {
@@ -108,30 +106,67 @@ using JsonOptionalObject = std::expected<JsonObject, JsonValueError>;
 static inline const wchar_t* skip_whitespace(const wchar_t* str) {
     for (;; ++str) {
         switch (*str) {
-            case L'/':
             // Explicitly mentioned in the spec
             case L' ': case L'\t': case L'\v': case L'\f': case L'\n': case L'\r':
-            [[unlikely]] case L'\N{NO-BREAK SPACE}':            // '\u00A0'
-            [[unlikely]] case L'\N{LINE SEPARATOR}':            // '\u2028'
-            [[unlikely]] case L'\N{PARAGRAPH SEPARATOR}':       // '\u2029'
-            [[unlikely]] case L'\N{ZERO WIDTH NO-BREAK SPACE}': // '\uFEFF' (Also byte order mark)
+            [[unlikely]] case L'\u00A0': // '\N{NO-BREAK SPACE}'
+            [[unlikely]] case L'\u2028': // '\N{LINE SEPARATOR}'
+            [[unlikely]] case L'\u2029': // '\N{PARAGRAPH SEPARATOR}'
+            [[unlikely]] case L'\uFEFF': // '\N{ZERO WIDTH NO-BREAK SPACE}' (Also byte order mark)
             // Unicode Zs Category
-            [[unlikely]] case L'\N{OGHAM SPACE MARK}':          // '\u1680'
-            [[unlikely]] case L'\N{EN QUAD}':                   // '\u2000'
-            [[unlikely]] case L'\N{EM QUAD}':                   // '\u2001'
-            [[unlikely]] case u'\N{EN SPACE}':                  // '\u2002'
-            [[unlikely]] case L'\N{EM SPACE}':                  // '\u2003'
-            [[unlikely]] case L'\N{THREE-PER-EM SPACE}':        // '\u2004'
-            [[unlikely]] case L'\N{FOUR-PER-EM SPACE}':         // '\u2005'
-            [[unlikely]] case L'\N{SIX-PER-EM SPACE}':          // '\u2006'
-            [[unlikely]] case L'\N{FIGURE SPACE}':              // '\u2007'
-            [[unlikely]] case L'\N{PUNCTUATION SPACE}':         // '\u2008'
-            [[unlikely]] case L'\N{THIN SPACE}':                // '\u2009'
-            [[unlikely]] case L'\N{HAIR SPACE}':                // '\u200A'
-            [[unlikely]] case L'\N{NARROW NO-BREAK SPACE}':     // '\u202F'
-            [[unlikely]] case L'\N{MEDIUM MATHEMATICAL SPACE}': // '\u205F'
-            [[unlikely]] case L'\N{IDEOGRAPHIC SPACE}':         // '\u3000'
+            [[unlikely]] case L'\u1680': // '\N{OGHAM SPACE MARK}'
+            [[unlikely]] case L'\u2000': // '\N{EN QUAD}'
+            [[unlikely]] case L'\u2001': // '\N{EM QUAD}'
+            [[unlikely]] case L'\u2002': // '\N{EN SPACE}'
+            [[unlikely]] case L'\u2003': // '\N{EM SPACE}'
+            [[unlikely]] case L'\u2004': // '\N{THREE-PER-EM SPACE}'
+            [[unlikely]] case L'\u2005': // '\N{FOUR-PER-EM SPACE}'
+            [[unlikely]] case L'\u2006': // '\N{SIX-PER-EM SPACE}'
+            [[unlikely]] case L'\u2007': // '\N{FIGURE SPACE}'
+            [[unlikely]] case L'\u2008': // '\N{PUNCTUATION SPACE}'
+            [[unlikely]] case L'\u2009': // '\N{THIN SPACE}'
+            [[unlikely]] case L'\u200A': // '\N{HAIR SPACE}'
+            [[unlikely]] case L'\u202F': // '\N{NARROW NO-BREAK SPACE}'
+            [[unlikely]] case L'\u205F': // '\N{MEDIUM MATHEMATICAL SPACE}'
+            [[unlikely]] case L'\u3000': // '\N{IDEOGRAPHIC SPACE}'
                 continue;
+            case L'/':
+                switch (str[1]) {
+                    [[likely]] case L'/': // Single line comment
+                        for (str += 2;; ++str) {
+                            switch (*str) {
+                                case L'\r':
+                                    if (str[1] == L'\n') {
+                                        str += 2;
+                                        goto single_line_comment_continue_outer_loop;
+                                    }
+                                case L'\n':
+                                [[unlikely]] case L'\u2028': // '\N{LINE SEPARATOR}'
+                                [[unlikely]] case L'\u2029': // '\N{PARAGRAPH SEPARATOR}'
+                                    str += 1;
+                                    goto single_line_comment_continue_outer_loop;
+                                default:
+                                    continue;
+                            }
+                        }
+single_line_comment_continue_outer_loop:
+                        continue;
+                    [[likely]] case L'*': // Multi line comment
+                        for (str += 2;; ++str) {
+                            switch (*str) {
+                                case L'*':
+                                    if (str[1] == L'/') {
+                                        str += 2;
+                                        goto multi_line_comment_continue_outer_loop;
+                                    }
+                                default:
+                                    continue;
+                            }
+                        }
+multi_line_comment_continue_outer_loop:
+                        continue;
+                    [[unlikely]] default:
+                        break;
+                }
             [[likely]] default:
                 return str;
         }
@@ -148,7 +183,7 @@ static inline const wchar_t* skip_numeric(const wchar_t* str) {
     }
 }
 
-static inline const wchar_t* skip_hexdecimal(const wchar_t* str) {
+static inline const wchar_t* skip_hexadecimal(const wchar_t* str) {
     for (;; ++str) {
         switch (*str) {
             case L'0': case L'1': case L'2': case L'3': case L'4': case L'5': case L'6': case L'7': case L'8': case L'9':
@@ -160,34 +195,23 @@ static inline const wchar_t* skip_hexdecimal(const wchar_t* str) {
     }
 }
 
-static inline const wchar_t* skip_line_terminator(const wchar_t* str) {
-    switch (*str) {
-        case L'\r':
-            if (str[1] == L'\n') {
-                return str + 2;
-            }
-        case L'\n':
-        [[unlikely]] case L'\N{LINE SEPARATOR}':        // '\u2028'
-        [[unlikely]] case L'\N{PARAGRAPH SEPARATOR}':   // '\u2029'
-            return str + 1;
-        default:
-            return str;
-    }
-}
-
 JsonOptionalString parse_json5_string(const wchar_t*& raw_json, wchar_t terminator) {
-    std::wstring str = u"";
+    std::wstring str = L"";
     const wchar_t* str_segment = raw_json;
     size_t str_segment_length = 0;
     for (;;) {
         switch (wchar_t c = str_segment[str_segment_length]) {
             default:
+                if (c == terminator) {
+                    raw_json = str_segment + str_segment_length + 1;
+                    return str.append(str_segment, str_segment_length);
+                }
                 if (c >= L'\0' && c <= L'\x1F') [[unlikely]] {
                     return std::unexpected{ JsonStringError::InvalidUnescapedCharacter };
                 }
                 ++str_segment_length;
                 continue;
-            case L'\\': {
+            case L'\\':
                 size_t escape_length = 2;
                 switch (c = str_segment[str_segment_length + 1]) {
                     case L'\r':
@@ -195,8 +219,8 @@ JsonOptionalString parse_json5_string(const wchar_t*& raw_json, wchar_t terminat
                             escape_length = 3;
                         }
                     case L'\n':
-                    [[unlikely]] case L'\N{LINE SEPARATOR}':        // '\u2028'
-                    [[unlikely]] case L'\N{PARAGRAPH SEPARATOR}':   // '\u2029'
+                    [[unlikely]] case L'\u2028': // '\N{LINE SEPARATOR}'
+                    [[unlikely]] case L'\u2029': // '\N{PARAGRAPH SEPARATOR}'
                         str.append(str_segment, str_segment_length);
                         str_segment += str_segment_length + escape_length;
                         str_segment_length = 0;
@@ -262,43 +286,78 @@ append_to_string:
                 str_segment += str_segment_length + escape_length;
                 str_segment_length = 0;
                 continue;
-            }
-            case L'"': case L'\'':
-                if (c == terminator) {
-                    raw_json = str_segment + str_segment_length + 1;
-                    return str.append(str_segment, str_segment_length);
-                }
-                ++str_segment_length;
-                continue;
         }
     }
 }
 
-template<bool skip_initial_whitespace = true>
-JsonOptionalString parse_json5_key(const wchar_t*& raw_json) {
-    const wchar_t* raw_json_read = raw_json;
-    if constexpr (skip_initial_whitespace) {
-        raw_json_read = skip_whitespace(raw_json_read);
+JsonOptionalString parse_json5_string(const wchar_t*& raw_json) {
+    std::wstring str = L"";
+    const wchar_t* str_segment = raw_json;
+    size_t str_segment_length = 0;
+    for (;;) {
+        switch (wchar_t c = str_segment[str_segment_length]) {
+            // Explicitly mentioned in the spec
+            case L' ': case L'\t': case L'\v': case L'\f': case L'\n': case L'\r': case ':':
+            [[unlikely]] case L'\u00A0': // '\N{NO-BREAK SPACE}'
+            [[unlikely]] case L'\u2028': // '\N{LINE SEPARATOR}'
+            [[unlikely]] case L'\u2029': // '\N{PARAGRAPH SEPARATOR}'
+            [[unlikely]] case L'\uFEFF': // '\N{ZERO WIDTH NO-BREAK SPACE}' (Also byte order mark)
+            // Unicode Zs Category
+            [[unlikely]] case L'\u1680': // '\N{OGHAM SPACE MARK}'
+            [[unlikely]] case L'\u2000': // '\N{EN QUAD}'
+            [[unlikely]] case L'\u2001': // '\N{EM QUAD}'
+            [[unlikely]] case L'\u2002': // '\N{EN SPACE}'
+            [[unlikely]] case L'\u2003': // '\N{EM SPACE}'
+            [[unlikely]] case L'\u2004': // '\N{THREE-PER-EM SPACE}'
+            [[unlikely]] case L'\u2005': // '\N{FOUR-PER-EM SPACE}'
+            [[unlikely]] case L'\u2006': // '\N{SIX-PER-EM SPACE}'
+            [[unlikely]] case L'\u2007': // '\N{FIGURE SPACE}'
+            [[unlikely]] case L'\u2008': // '\N{PUNCTUATION SPACE}'
+            [[unlikely]] case L'\u2009': // '\N{THIN SPACE}'
+            [[unlikely]] case L'\u200A': // '\N{HAIR SPACE}'
+            [[unlikely]] case L'\u202F': // '\N{NARROW NO-BREAK SPACE}'
+            [[unlikely]] case L'\u205F': // '\N{MEDIUM MATHEMATICAL SPACE}'
+            [[unlikely]] case L'\u3000': // '\N{IDEOGRAPHIC SPACE}'
+                raw_json = str_segment + str_segment_length;
+                return str.append(str_segment, str_segment_length);
+            [[likely]] default:
+                if (c >= L'\0' && c <= L'\x1F') [[unlikely]] {
+                    return std::unexpected{ JsonStringError::InvalidUnescapedCharacter };
+                }
+                ++str_segment_length;
+                continue;
+            case L'\\':
+                return std::unexpected{ JsonStringError::InvalidEscapeSequence };
+        }
     }
-    switch (wchar_t c = *raw_json_read++) {
+}
+
+JsonOptionalString parse_json5_key(const wchar_t*& raw_json, bool skip_initial_whitespace = true) {
+    const wchar_t* raw_json_read = skip_initial_whitespace ? skip_whitespace(raw_json) : raw_json;
+    JsonOptionalString str;
+    switch (wchar_t c = *raw_json_read) {
         case L'"': case L'\'':
+            ++raw_json_read;
+            str = parse_json5_string(raw_json_read, c);
+            break;
+        default:
+            str = parse_json5_string(raw_json_read);
+            break;
     }
-    if ( == L'"') [[likely]] {
-        if (auto str = parse_json5_string(raw_json_read)) [[likely]] {
-            raw_json_read = skip_whitespace(raw_json_read);
-            if (*raw_json_read == L':') [[likely]] {
-                raw_json = raw_json_read + 1;
-                return str;
-            }
-        } else [[unlikely]] {
+    if (str) [[likely]] {
+        raw_json_read = skip_whitespace(raw_json_read);
+        if (*raw_json_read == L':') [[likely]] {
+            raw_json = raw_json_read + 1;
             return str;
         }
+    } else [[unlikely]] {
+        return str;
     }
     return std::unexpected{ JsonStringError::UnexpectedCharacter };
 }
 
-JsonOptionalValue parse_json5_value(const wchar_t*& raw_json) {
-    const wchar_t* raw_json_read = skip_whitespace(raw_json);
+JsonOptionalValue parse_json5_value(const wchar_t*& raw_json, bool skip_initial_whitespace = true) {
+    const wchar_t* raw_json_read = skip_initial_whitespace ? skip_whitespace(raw_json) : raw_json;
     const wchar_t* numeric_str_start;
     switch (wchar_t c = *raw_json_read++) {
         case L't':
@@ -325,17 +384,20 @@ JsonOptionalValue parse_json5_value(const wchar_t*& raw_json) {
             raw_json_read = skip_whitespace(raw_json_read);
             if (*raw_json_read != L'}') {
                 for (;;) {
-                    if (auto key = parse_json5_key<false>(raw_json_read)) [[likely]] {
+                    if (auto key = parse_json5_key(raw_json_read, false)) [[likely]] {
                         if (auto obj_element = parse_json5_value(raw_json_read)) [[likely]] {
                             obj[key.value()] = obj_element.value();
                             raw_json_read = skip_whitespace(raw_json_read);
                             switch (*raw_json_read++) {
                                 [[unlikely]] default:
                                     return std::unexpected{ JsonValueError::UnexpectedCharacter };
-                                case L'}':
-                                    goto return_object;
                                 case L',':
                                     raw_json_read = skip_whitespace(raw_json_read);
+                                    if (*raw_json_read == L'}') {
+                                        ++raw_json_read;
+                                case L'}':
+                                        goto return_object;
+                                    }
                                     continue;
                             }
                         } else [[unlikely]] {
@@ -357,15 +419,19 @@ return_object:
             raw_json_read = skip_whitespace(raw_json_read);
             if (*raw_json_read != L']') {
                 for (;;) {
-                    if (auto arr_element = parse_json5_value(raw_json_read)) [[likely]] {
+                    if (auto arr_element = parse_json5_value(raw_json_read, false)) [[likely]] {
                         arr.push_back(arr_element.value());
                         raw_json_read = skip_whitespace(raw_json_read);
                         switch (*raw_json_read++) {
                             [[unlikely]] default:
                                 return std::unexpected{ JsonValueError::UnexpectedCharacter };
-                            case L']':
-                                goto return_array;
                             case L',':
+                                raw_json_read = skip_whitespace(raw_json_read);
+                                if (*raw_json_read == L']') {
+                                    ++raw_json_read;
+                            case L']':
+                                    goto return_array;
+                                }
                                 continue;
                         }
                     } else [[unlikely]] {
@@ -380,7 +446,7 @@ return_array:
             return arr;
         }
         case L'"': case L'\'':
-            if (auto str = parse_json5_string(raw_json_read)) [[likely]] {
+            if (auto str = parse_json5_string(raw_json_read, c)) [[likely]] {
                 raw_json = raw_json_read;
                 return str.value();
             } else [[unlikely]] {
@@ -390,7 +456,6 @@ return_array:
             numeric_str_start = raw_json_read - 1;
 nan_check:
             if (std::wstring_view(raw_json_read, 2) == L"aN"sv) [[likely]] {
-                //raw_json_read += 2;
                 break;
             }
             return std::unexpected{ JsonValueError::InvalidParsingCharacter };
@@ -398,7 +463,6 @@ nan_check:
             numeric_str_start = raw_json_read - 1;
 inf_check:
             if (std::wstring_view(raw_json_read, 7) == L"nfinity"sv) [[likely]] {
-                //raw_json_read += 7;
                 break;
             }
             return std::unexpected{ JsonValueError::InvalidParsingCharacter };
@@ -414,7 +478,7 @@ inf_check:
                 case L'I':
                     goto inf_check;
                 //case L'.':
-                    goto return_double;
+                    //goto return_double;
                 case L'1': case L'2': case L'3': case L'4': case L'5': case L'6': case L'7': case L'8': case L'9':
             }
             break;
@@ -423,7 +487,7 @@ inf_check:
 zero_check:
             switch (c = *raw_json_read) {
                 case L'x': case L'X':
-                    raw_json_read = skip_hexdecimal(raw_json_read + 1);
+                    raw_json_read = skip_hexadecimal(raw_json_read + 1);
                     switch (*raw_json_read) {
                         [[unlikely]] case L'p': [[unlikely]] case L'P':
                             return std::unexpected{ JsonValueError::InvalidParsingCharacter };

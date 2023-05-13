@@ -31,6 +31,9 @@ using ZUNLinkedList = ZUNLinkedListBase<T, true>;
 template <typename T>
 using ZUNLinkedListHeadDummy = ZUNLinkedListHeadDummyBase<T, true>;
 
+#define GAME_VERSION 19
+static inline constexpr size_t game_version = GAME_VERSION;
+
 #define ENGLISH_STRINGS
 
 #ifndef ENGLISH_STRINGS
@@ -1294,6 +1297,16 @@ decode_file:
     return NULL;
 }
 
+extern "C" {
+    // 0x570EA0
+    extern char PATH_BUFFER[MAX_PATH] asm("_PATH_BUFFER");
+}
+inline void* read_file_from_dat(const char* path) {
+    PATH_BUFFER[0] = '\0';
+    byteloop_strcat(PATH_BUFFER, path);
+    return read_file_to_buffer(PATH_BUFFER, NULL, false);
+}
+
 // 0x402220
 dllexport gnu_noinline BOOL fastcall zun_file_exists(const char* filename) asm_symbol_rel(0x402220);
 dllexport gnu_noinline BOOL fastcall zun_file_exists(const char* filename) {
@@ -1644,6 +1657,19 @@ struct UpdateFuncRegistry {
             }
         }
     }
+
+#if GAME_VERSION == 19
+    // 0x401650
+    dllexport gnu_noinline void thiscall delete_func_locked(UpdateFunc* update_func) asm_symbol_rel(0x401650) {
+        if (update_func) {
+            CRITICAL_SECTION_MANAGER.enter_section(UpdateFuncRegistry_CS);
+            {
+                this->delete_func(update_func);
+            }
+            CRITICAL_SECTION_MANAGER.leave_section(UpdateFuncRegistry_CS);
+        }
+    }
+#endif
 
     // 0x4012E0
     dllexport gnu_noinline int32_t thiscall run_all_on_tick() asm_symbol_rel(0x4012E0) {
@@ -2045,6 +2071,7 @@ struct Timer {
             uint32_t initialized : 1;
         };
     };
+    // 0x14
 
     inline Timer() : initialized(false) {};
 
@@ -2079,7 +2106,8 @@ public:
         this->current_f = (float)time;
         this->previous = time - 1;
     }
-    inline void set(int32_t time) {
+    // 0x405D10
+    dllexport inline void thiscall set(int32_t time) asm_symbol_rel(0x405D10) {
         this->initialize_important();
         this->set_raw(time);
     }
@@ -2091,6 +2119,8 @@ public:
         this->initialize();
         this->set_raw(0);
     }
+
+    
 
     // 0x418C40
     // Yes, this really does copy a whole timer to the stack
@@ -2740,41 +2770,6 @@ extern "C" {
     extern Supervisor SUPERVISOR asm("_SUPERVISOR");
 }
 
-// 0x453640
-dllexport gnu_noinline int32_t fastcall Supervisor::on_registration(void* self) {
-    if (UNKNOWN_A.__sub_46EB80()) {
-        char ver_file_name[64];
-        int32_t ver_file_size;
-        sprintf(ver_file_name, "th18_%.4x%c.ver", 100, 'a');
-        void* ver_file = read_file_to_buffer(ver_file_name, &ver_file_size, false);
-        SUPERVISOR.ver_file_buffer = ver_file;
-        if (!ver_file) {
-            LOG_BUFFER.write_error(JpEnStr("", "error : Wrong data version\r\n"));
-        }
-    }
-    else {
-        LOG_BUFFER.write_error(JpEnStr("", "error : data file does not exist\r\n"));
-    }
-    GAME_SPEED.value = 1.0f;
-    SUPERVISOR.background_color = PackD3DCOLOR(255, 0, 0, 0);
-    SUPERVISOR.__initialize_cameras();
-    SUPERVISOR.__camera2_sub_454F50();
-    DWORD time = timeGetTime();
-    SUPERVISOR.initial_rng_seed = time;
-    REPLAY_RNG.value = time;
-    RNG.value = time;
-    DWORD thread_id;
-    SOUND_MANAGER.__handle_571C = CreateThread(
-        NULL,
-        0,
-        &SoundManager::load_sound_effects,
-        &SOUND_MANAGER,
-        0,
-        &thread_id
-    );
-
-}
-
 // 0x453DB0
 dllexport gnu_noinline void Supervisor::initialize() {
     SUPERVISOR.gamemode_current = -2;
@@ -2866,6 +2861,10 @@ struct MotionData {
     dllexport gnu_noinline void set_position(Float3* coord) asm_symbol_rel(0x412F60) {
         this->position = *coord;
     }
+    // 0x43A290
+    dllexport gnu_noinline void set_position2(Float3* coord) asm_symbol_rel(0x43A290) {
+        this->position = *coord;
+    }
     
     // 0x412FD0
     dllexport gnu_noinline void vectorcall set_speed(float value) asm_symbol_rel(0x412FD0) {
@@ -2930,6 +2929,16 @@ struct MotionData {
     // 0x43A240
     dllexport gnu_noinline float get_position_x() asm_symbol_rel(0x43A240) {
         return this->position.x;
+    }
+
+    // 0x439ED0
+    dllexport gnu_noinline float vectorcall __get_angle_28() asm_symbol_rel(0x439ED0) {
+        return this->__angle_28;
+    }
+
+    // 0x439EE0
+    dllexport gnu_noinline float vectorcall __get_float_2C() asm_symbol_rel(0x439EE0) {
+        return this->__float_2C;
     }
 	
 	// 0x439EF0
@@ -3173,6 +3182,8 @@ struct ZUNInterp { //       0x58    0x44    0x30
 
     inline ZUNInterp<T, modes>() : end_time(0) {}
 
+    // float: 0x41F600
+    // Float2: 0x439600
     // Float3: 0x405A00
     // Float3Ex: 0x439940
     // ZUNAngle: 0x47CBF0
@@ -3192,18 +3203,24 @@ struct ZUNInterp { //       0x58    0x44    0x30
         this->end_time = 0;
     }
 
+    // float: 0x41F630
+    // Float2: 0x439690
     // Float3: 0x405A10
     // ZUNAngle: 0x47CC40
     dllexport gnu_noinline void set_mode(int32_t mode) {
         this->mode[0] = mode;
     }
 
+    // float: 0x41F620
+    // Float2: 0x439670
     // Float3: 0x405A20
     // ZUNAngle: 0x47CC30
     dllexport gnu_noinline void set_initial_value(const T& value) {
         this->initial_value = value;
     }
 
+    // float: 0x41F610
+    // Float2: 0x439650
     // Float3: 0x405A40
     // Float3Ex: 0x4399B0
     // ZUNAngle: 0x47CC20
@@ -3211,6 +3228,7 @@ struct ZUNInterp { //       0x58    0x44    0x30
         this->final_value = value;
     }
 
+    // float: 0x429A70
     // Float3: 0x405A60
     // Float3Ex: 0x439990
     // ZUNAngle: 0x47CC10
@@ -3218,6 +3236,7 @@ struct ZUNInterp { //       0x58    0x44    0x30
         this->bezier1 = value;
     }
 
+    // float: 0x429A60
     // Float3: 0x405A80
     // Float3Ex: 0x439970
     // ZUNAngle: 0x47CC00
@@ -3225,6 +3244,8 @@ struct ZUNInterp { //       0x58    0x44    0x30
         this->bezier2 = value;
     }
 
+    // float: 0x41F5D0
+    // Float2: 0x4395D0
     // Float3: 0x405AA0
     // Float3Ex: 0x439910
     // ZUNAngle: 0x47CBC0
@@ -3455,9 +3476,12 @@ struct EclStack {
     int32_t pointer; // 0x1000
     int32_t base; // 0x1004
 
-    inline EclStack() {
-        //memset(this, 0, sizeof(*this));
+    inline void zero_contents() {
         zero_this();
+    }
+
+    inline EclStack() {
+        this->zero_contents();
     }
 };
 #pragma region // EclStack Validation
@@ -3522,6 +3546,7 @@ struct BulletEffectArgs {
     BulletEffectType type; // 0x20
     int32_t async; // 0x24
     char* string; // 0x28
+    // 0x2C
 };
 #pragma region // BulletEffectArgs Validation
 ValidateFieldOffset32(0x0, BulletEffectArgs, float_values);
@@ -3536,7 +3561,7 @@ ValidateStructSize32(0x2C, BulletEffectArgs);
 struct ShooterData {
     int32_t type; // 0x0
     int32_t color; // 0x4
-    Float3 offset; // 0x8
+    Float3 position; // 0x8
     float angle1; // 0x14
     float angle2; // 0x18
     float speed1; // 0x1C
@@ -3552,22 +3577,32 @@ struct ShooterData {
     int16_t count1; // 0x46C
     int16_t count2; // 0x46E
     int32_t aim_mode; // 0x470
-    int32_t sound_flag; // 0x474
+    union {
+        uint32_t flags; // 0x474
+        struct {
+            uint32_t : 5;
+            uint32_t play_sound_on_spawn : 1;
+        };
+    };
     int32_t shoot_sound; // 0x478
     int32_t transform_sound; // 0x47C
     int32_t start_transform; // 0x480
     int __dword_484; // 0x484
+    // 0x488
+
+    inline void zero_contents() {
+        zero_this();
+    }
 
     inline ShooterData() {
-        //memset(this, 0, sizeof(*this));
-        zero_this();
+        this->zero_contents();
         this->transform_sound = -1;
     }
 };
 #pragma region // ShooterData Validation
 ValidateFieldOffset32(0x0, ShooterData, type);
 ValidateFieldOffset32(0x4, ShooterData, color);
-ValidateFieldOffset32(0x8, ShooterData, offset);
+ValidateFieldOffset32(0x8, ShooterData, position);
 ValidateFieldOffset32(0x14, ShooterData, angle1);
 ValidateFieldOffset32(0x18, ShooterData, angle2);
 ValidateFieldOffset32(0x1C, ShooterData, speed1);
@@ -3582,7 +3617,7 @@ ValidateFieldOffset32(0x468, ShooterData, stop_time);
 ValidateFieldOffset32(0x46C, ShooterData, count1);
 ValidateFieldOffset32(0x46E, ShooterData, count2);
 ValidateFieldOffset32(0x470, ShooterData, aim_mode);
-ValidateFieldOffset32(0x474, ShooterData, sound_flag);
+ValidateFieldOffset32(0x474, ShooterData, flags);
 ValidateFieldOffset32(0x478, ShooterData, shoot_sound);
 ValidateFieldOffset32(0x47C, ShooterData, transform_sound);
 ValidateFieldOffset32(0x480, ShooterData, start_transform);
@@ -3648,6 +3683,20 @@ ValidateStructSize32(0x4, AnmVMRef);
 #pragma endregion
 
 typedef struct EclVM EclVM;
+
+// size: 0x88
+struct EnemyCallback {
+    int32_t life; // 0x0
+    int32_t time; // 0x4
+    EclSubName __sub_A; // 0x8
+    EclSubName __sub_B; // 0x48
+
+    inline void initialize() {
+        this->life = -1;
+        this->time = -1;
+        this->__sub_A.name[0] = '\0';
+    }
+};
 
 // size: 0x5600
 struct EnemyData {
@@ -3765,19 +3814,6 @@ struct EnemyData {
             memset(this->extra_ids, 0, sizeof(this->extra_ids) + sizeof(this->limited_extra_ids));
             this->limited_end_time = 0;
             this->limited_timer.reset();
-        }
-    };
-    // size: 0x88
-    struct EnemyCallback {
-        int32_t life; // 0x0
-        int32_t time; // 0x4
-        EclSubName __sub_A; // 0x8
-        EclSubName __sub_B; // 0x48
-
-        inline void initialize() {
-            this->life = -1;
-            this->time = -1;
-            this->__sub_A.name[0] = '\0';
         }
     };
     // size: 0x1C
@@ -3901,10 +3937,9 @@ struct EnemyData {
     void* extra_hitbox_func; // 0x55F4
     int32_t chapter; // 0x55F8
     int32_t __ecl_570_bool; // 0x55FC
-
+    // 0x5600
 
     inline EnemyData() {
-        //memset(this, 0, sizeof(*this));
         zero_this();
     }
 
@@ -4083,23 +4118,63 @@ struct EclFileHeader {
     int __dword_18; // 0x18
     int __dword_1C; // 0x1C
     int __dword_20; // 0x20
-};
-struct EclFile {
-    EclFileHeader header;
+    // 0x24
 };
 
+struct EclFile {
+    EclFileHeader header; // 0x0
+    unsigned char data[]; // 0x24
+};
+#pragma endregion
+
+struct SptResource {
+    //void* vtable; // 0x0
+    int32_t file_count; // 0x4
+    int32_t sub_count; // 0x8
+    EclFile* files[32]; // 0xC
+    EclSubHeader(*subs)[]; // 0x8C
+
+    // 0x48D9D0
+    dllexport virtual gnu_noinline ZunResult __method_0(const char* file_buffer) asm_symbol_rel(0x48D9D0) {
+        this->files[this->file_count] = (EclFile*)file_buffer;
+        EclFile* ecl_file = this->files[this->file_count];
+        if (
+            ecl_file->header.magic.as_uint == PackUInt('S', 'C', 'P', 'T') &&
+            ecl_file->header.version == 1
+        ) {
+            char* includes = based_pointer<char>(ecl_file, ecl_file->header.include_length);
+            this->sub_count += ecl_file->header.sub_count;
+            EclSubHeader(*old_sub_array)[] = this->subs;
+            void* file_data = ecl_file->data;
+
+        }
+        else {
+            this->files[this->file_count] = NULL;
+            return ZUN_ERROR;
+        }
+    }
+};
+
+// size: 0x1098
 struct EnemyController {
     void* vtable; // 0x0
     int32_t file_count; // 0x4
     int32_t sub_count; // 0x8
     EclFile* files[32]; // 0xC
-    EclSubHeader (*subs)[]; // 0x8C
+    EclSubHeader(*subs)[]; // 0x8C
+    EclStack __wtf_stack_maybe; // 0x90
+    // 0x1098
 
-    // IDK what these were in my MoF data
-    //int __dword_1090; // 0x1090
-    //int __dword_1094; // 0x1094
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline EnemyController() {
+        this->zero_contents();
+    }
 };
-#pragma endregion
+
+
 
 typedef struct EclVM EclVM;
 
@@ -4112,7 +4187,12 @@ struct EclVM {
     EclContext context; // 0x10
     EnemyController* controller; // 0x1218
     ZUNLinkedListHeadDummy<EclContext> context_list; // 0x121C
-    //ZUNLinkedList<EclContext> context_list; // 0x121C
+    // 0x122C
+
+    // 0x42CDC0
+    dllexport gnu_noinline void vectorcall subtract_time_float(float amount) asm_symbol_rel(0x42CDC0) {
+        this->current_context->time -= amount;
+    }
 
     // 0x42CE10
     dllexport gnu_noinline EclVM() {
@@ -4208,7 +4288,7 @@ struct Enemy : EclVM {
     dllexport gnu_noinline ~Enemy() asm_symbol_rel(0x42D220);
 
     // 0x48D920
-    dllexport gnu_noinline void locate_sub(char* sub_name) asm_symbol_rel(0x48D920) {
+    dllexport gnu_noinline void thiscall locate_sub(char* sub_name) asm_symbol_rel(0x48D920) {
         EnemyController* enemy_controller = this->controller;
         int32_t left_index = 0;
         assume(sub_name[0] != '\0');
@@ -4234,6 +4314,40 @@ struct Enemy : EclVM {
             } while (left_index <= right_index);
         }
         this->current_context->location.sub_index = -1;
+    }
+
+    // 0x48DC20
+    dllexport gnu_noinline int32_t thiscall __set_context_to_sub(char* sub_name) asm_symbol_rel(0x48DC20) {
+        this->locate_sub(sub_name);
+        this->current_context->location.instruction_offset = 0;
+        this->current_context->time = 0.0f;
+        return 0;
+    }
+
+    // 0x4389F0
+    dllexport gnu_noinline void thiscall set_callback(int32_t index, int32_t life, int32_t time, const char* sub_name) asm_symbol_rel(0x4389F0) {
+        EnemyCallback& callback = this->data.callbacks[index];
+        callback.life = life;
+        if (life >= 0) {
+            callback.time = time;
+            if (sub_name) {
+                byteloop_strcpy(callback.__sub_A.name, sub_name);
+                byteloop_strcpy(callback.__sub_B.name, sub_name);
+            } else {
+                callback.__sub_A.name[0] = '\0';
+                callback.__sub_B.name[0] = '\0';
+            }
+        }
+    }
+
+    // 0x438A60
+    dllexport gnu_noinline void thiscall set_callback_subB_name(int32_t index, const char* sub_name) asm_symbol_rel(0x438A60) {
+        EnemyCallback& callback = this->data.callbacks[index];
+        if (sub_name) {
+            byteloop_strcpy(callback.__sub_B.name, sub_name);
+        } else {
+            callback.__sub_B.name[0] = '\0';
+        }
     }
 };
 #pragma region // Enemy Validation
@@ -4925,6 +5039,43 @@ extern "C" {
     extern SoundManager SOUND_MANAGER asm("_SOUND_MANAGER");
 }
 
+
+
+// 0x453640
+dllexport gnu_noinline int32_t fastcall Supervisor::on_registration(void* self) {
+    if (UNKNOWN_A.__sub_46EB80()) {
+        char ver_file_name[64];
+        int32_t ver_file_size;
+        sprintf(ver_file_name, "th18_%.4x%c.ver", 100, 'a');
+        void* ver_file = read_file_to_buffer(ver_file_name, &ver_file_size, false);
+        SUPERVISOR.ver_file_buffer = ver_file;
+        if (!ver_file) {
+            LOG_BUFFER.write_error(JpEnStr("", "error : Wrong data version\r\n"));
+        }
+    }
+    else {
+        LOG_BUFFER.write_error(JpEnStr("", "error : data file does not exist\r\n"));
+    }
+    GAME_SPEED.value = 1.0f;
+    SUPERVISOR.background_color = PackD3DCOLOR(255, 0, 0, 0);
+    SUPERVISOR.__initialize_cameras();
+    SUPERVISOR.__camera2_sub_454F50();
+    DWORD time = timeGetTime();
+    SUPERVISOR.initial_rng_seed = time;
+    REPLAY_RNG.value = time;
+    RNG.value = time;
+    DWORD thread_id;
+    SOUND_MANAGER.__handle_571C = CreateThread(
+        NULL,
+        0,
+        &SoundManager::load_sound_effects,
+        &SOUND_MANAGER,
+        0,
+        &thread_id
+    );
+
+}
+
 // 0x4767B0
 dllexport gnu_noinline DWORD WINAPI SoundManager::load_sound_effects(void* self) {
     int32_t i = 0;
@@ -5452,7 +5603,7 @@ struct AnmVM {
                 uint32_t origin_mode : 2; // 21-22
                 uint32_t resolution_mode : 3; // 23-25
                 uint32_t inherit_rotation : 1; // 26
-                uint32_t : 1; // 27
+                uint32_t __unknown_flag_U : 1; // 27
                 uint32_t colorize_children : 1; // 28
                 uint32_t __unknown_flag_F : 1; // 29
                 uint32_t : 1; // 30
@@ -5512,6 +5663,9 @@ struct AnmVM {
         this->data.current_instruction_offset = -1;
     }
 
+    // 0x4894D0
+    dllexport gnu_noinline AnmLoaded* thiscall get_anm_loaded() asm_symbol_rel(0x4894D0);
+
     template <typename L>
     inline AnmVM* search_roots(L&& lambda) {
         AnmVM* search = this;
@@ -5525,6 +5679,29 @@ struct AnmVM {
             return vm->data.__use_root_vm_custom_slowdown;
         })->controller.slowdown;
     }
+
+    // 0x405AD0
+    dllexport gnu_noinline void thiscall set_position_interp_bezier(int32_t end_time, Float3* initial_pos, Float3* bezier1, Float3* final_pos, Float3* bezier2) asm_symbol_rel(0x405AD0) {
+        this->data.position_interp.end_time = end_time;
+        this->data.position_interp.mode[0] = 8;
+        this->data.position_interp.initial_value = *initial_pos;
+        this->data.position_interp.final_value = *final_pos;
+        this->data.position_interp.bezier1 = *bezier1;
+        this->data.position_interp.bezier2 = *bezier2;
+        this->data.position_interp.time.reset();
+    }
+
+    // 0x406630
+    dllexport gnu_noinline void thiscall set_alpha_interp(int32_t end_time, int32_t mode, uint8_t initial_alpha, uint8_t final_alpha) asm_symbol_rel(0x406630) {
+        this->data.alpha_interp.end_time = end_time;
+        this->data.alpha_interp.mode[0] = mode;
+        this->data.alpha_interp.initial_value = initial_alpha;
+        this->data.alpha_interp.final_value = final_alpha;
+        this->data.alpha_interp.bezier1 = 0;
+        this->data.alpha_interp.bezier2 = 0;
+        this->data.alpha_interp.time.reset();
+    }
+
 
     inline float get_custom_slowdown() {
         if (AnmVM* root_vm = this->controller.__root_vm;
@@ -5653,6 +5830,20 @@ struct AnmVM {
     }
 
     inline AnmInstruction* get_current_instruction();
+
+    // 0x47D8B0
+    dllexport gnu_noinline void vectorcall set_scale_delta(float x, float y) asm_symbol_rel(0x47D8B0) {
+        this->data.__unknown_flag_U = true;
+        this->data.scale_delta.x = x;
+        this->data.scale_delta.y = y;
+    }
+    // 0x47D8D0
+    dllexport gnu_noinline void vectorcall set_angular_velocity(float x, float y, float z) asm_symbol_rel(0x47D8D0) {
+        this->data.__unknown_flag_U = true;
+        this->data.angular_velocity.x = x;
+        this->data.angular_velocity.y = y;
+        this->data.angular_velocity.z = z;
+    }
     
     // 0x43A250
     dllexport gnu_noinline float vectorcall get_scaled_sprite_x_size() asm_symbol_rel(0x43A250) {
@@ -5737,6 +5928,11 @@ struct AnmLoaded {
     unknown_fields(0x4); // 0x138
     // 0x13C
 
+    // 0x47D8F0
+    dllexport gnu_noinline AnmInstruction* thiscall get_script(int32_t index) asm_symbol_rel(0x47D8F0) {
+        return (*this->scripts)[index];
+    }
+
     // 0x477D60
     dllexport void __sub_477D60(AnmVM* vm, int32_t sprite_id) asm_symbol_rel(0x477D60);
 
@@ -5757,6 +5953,15 @@ struct AnmLoaded {
         vm->controller.parent = NULL;
         vm->controller.__root_vm = NULL;
         return vm->run_anm();
+    }
+
+    // 0x4894E0
+    dllexport gnu_noinline void thiscall __copy_data_to_vm_unknown_A(AnmVM* vm) asm_symbol_rel(0x4894E0) {
+        Float3 position = vm->data.position;
+        this->__copy_data_to_vm(vm, 7);
+        vm->data.position = position;
+        vm->controller.__timer_1C.reset();
+        vm->controller.script_time.reset();
     }
 
     // 0x405BF0
@@ -6601,6 +6806,11 @@ ValidateFieldOffset32(0x39724B0, AnmManager, __color_39724B0);
 ValidateStructSize32(0x39724B8, AnmManager);
 #pragma endregion
 
+// 0x4894D0
+dllexport gnu_noinline AnmLoaded* thiscall AnmVM::get_anm_loaded() {
+    return ANM_MANAGER_PTR->loaded_anm_files[this->data.slot];
+}
+
 inline void StageCamera::__copy_int2_FC_to_anm_manager() {
     if (AnmManager* anm_manager = ANM_MANAGER_PTR) {
         anm_manager->__int2_D0.x = this->__int2_FC.x;
@@ -7173,6 +7383,22 @@ struct EnemyAllocationData {
 	
 };
 
+typedef int32_t(fastcall UnknownSFunc)(int, int);
+
+// size: 0x20
+struct UnknownS {
+    int16_t __sshort_0; // 0x0
+    int16_t __sshort_2; // 0x2
+    UnknownSFunc* __func_4; // 0x4
+    uint32_t on_tick_index; // 0x8
+    uint32_t on_draw_index; // 0xC
+    uint32_t on_destroy_index; // 0x10
+    uint32_t on_interrupt_index; // 0x14
+    uint32_t on_copy_A_index; // 0x18
+    uint32_t on_copy_B_index; // 0x1C
+    // 0x20
+};
+
 typedef struct EnemyManager EnemyManager;
 extern "C" {
     // 0x4CF2D0
@@ -7199,15 +7425,17 @@ struct EnemyManager {
     int32_t enemy_limit; // 0x8C
     int32_t next_enemy_id; // 0x90
     int32_t prev_enemy_id; // 0x94
-    unknown_fields(0xD0); // 0x98
-    AnmLoaded* enemy_anms[1]; // 0x168
-    unknown_fields(0x1C); // 0x16C
+    unknown_fields(0xCC); // 0x98
+    int __dword_164; // 0x164
+    AnmLoaded* enemy_anms[4]; // 0x168
+    unknown_fields(0x10); // 0x178
     EnemyController* enemy_controller; // 0x188
     ZUNLinkedList<Enemy>* enemy_list_head; // 0x18C
     ZUNLinkedList<Enemy>* enemy_list_tail; // 0x190
     ZUNLinkedList<Enemy>* __unknown_enemy_list; // 0x194
     int32_t enemy_count; // 0x198
     unknown_fields(0x4); // 0x19C
+    // 0x1A0
 
     // 0x42D7D0
     dllexport void allocate_new_enemy(const char* sub_name, EnemyInitData* data, int32_t) asm_symbol_rel(0x42D7D0) {
@@ -7247,10 +7475,17 @@ struct EnemyManager {
             return ENEMY_MANAGER_PTR->enemy_list_head->find_if([=](Enemy* enemy) {
                 return enemy->id == enemy_id;
             });
-            /*return ZUNLinkedListIter::find_if(ENEMY_MANAGER_PTR->enemy_list_head, [=](Enemy* enemy) {
-                return enemy->id == enemy_id;
-            });*/
         }
+    }
+
+    // 0x409990
+    dllexport gnu_noinline BOOL enemy_exists_with_id(int32_t enemy_id) asm_symbol_rel(0x409990) {
+        if (enemy_id) {
+            return (bool)ENEMY_MANAGER_PTR->enemy_list_head->find_if([=](Enemy* enemy) {
+                return enemy->id == enemy_id;
+            });
+        }
+        return false;
     }
 
     // 0x42D540
@@ -7260,6 +7495,12 @@ struct EnemyManager {
 
     // 0x438D40
     dllexport AnmLoaded* anm_file_lookup(int32_t file_index) asm_symbol_rel(0x438D40);
+
+    inline EnemyManager() {
+        EnemyController* enemy_controller = new EnemyController();
+        this->enemy_controller = enemy_controller;
+
+    }
 };
 #pragma region // EnemyManager Validation
 ValidateFieldOffset32(0x0, EnemyManager, vtable);
@@ -7275,6 +7516,8 @@ ValidateFieldOffset32(0x88, EnemyManager, flags);
 ValidateFieldOffset32(0x8C, EnemyManager, enemy_limit);
 ValidateFieldOffset32(0x90, EnemyManager, next_enemy_id);
 ValidateFieldOffset32(0x94, EnemyManager, prev_enemy_id);
+ValidateFieldOffset32(0x164, EnemyManager, __dword_164);
+ValidateFieldOffset32(0x168, EnemyManager, enemy_anms);
 ValidateFieldOffset32(0x188, EnemyManager, enemy_controller);
 ValidateFieldOffset32(0x18C, EnemyManager, enemy_list_head);
 ValidateFieldOffset32(0x190, EnemyManager, enemy_list_tail);
@@ -7512,6 +7755,16 @@ extern "C" {
     extern int32_t BULLET_IDK_DATA[] asm("_BULLET_IDK_DATA");
 }
 
+
+typedef struct BulletManager BulletManager;
+typedef struct LaserManager LaserManager;
+extern "C" {
+    // 0x4CF2BC
+    extern BulletManager* BULLET_MANAGER_PTR asm("_BULLET_MANAGER_PTR");
+    // 0x4CF3F4
+    extern LaserManager* LASER_MANAGER_PTR asm("_LASER_MANAGER_PTR");
+}
+
 enum BulletEffectType : uint32_t {
     EX_NONE         = 0x00000000, // 0
     EX_DIST         = 0x00000001, // 1
@@ -7582,6 +7835,9 @@ struct BulletEffectData {
     };
     int32_t type; // 0x40
     int32_t __int_44; // 0x44
+    // 0x48
+
+    inline BulletEffectData() {}
 };
 
 // size: 0xFA0
@@ -7605,7 +7861,7 @@ struct Bullet {
     Float3 position; // 0x638
     Float3 velocity; // 0x644
     float speed; // 0x650
-    float angle; // 0x654
+    ZUNAngle angle; // 0x654
     float hitbox_radius; // 0x658
     float __hitbox_radius_copy; // 0x65C
     int32_t bullet_manager_index; // 0x660
@@ -7652,6 +7908,7 @@ struct Bullet {
     int16_t sprite; // 0xF98
     int16_t color; // 0xF9A
     unknown_fields(0x4); // 0xF9C
+    // 0xFA0
 
     // 0x428E90
     dllexport int32_t cancel(int) asm_symbol_rel(0x428E90) {
@@ -7671,11 +7928,375 @@ struct Bullet {
     dllexport void run_effects() asm_symbol_rel(0x425C60);
 };
 
-typedef struct BulletManager BulletManager;
-extern "C" {
-    // 0x4CF2BC
-    extern BulletManager* BULLET_MANAGER_PTR asm("_BULLET_MANAGER_PTR");
-}
+typedef struct LaserData LaserData;
+// size: 0x788
+struct LaserData {
+    // void* vtable; // 0x0
+    LaserData* next; // 0x4
+    LaserData* prev; // 0x8
+    union {
+        uint32_t __flags_C; // 0xC
+        struct {
+
+        };
+    };
+    int32_t state; // 0x10
+    int32_t type; // 0x14
+    Timer __timer_18; // 0x18
+    Timer __timer_2C; // 0x2C
+    Timer __timer_40; // 0x40
+    Float3 position; // 0x54
+    Float3 velocity; // 0x60
+    float angle; // 0x6C
+    float length; // 0x70
+    float width; // 0x74
+    float speed; // 0x78
+    float __float_7C; // 0x7C
+    int32_t id; // 0x80
+    BulletEffectData effect_speedup; // 0x84
+    BulletEffectData effect_accel; // 0xCC
+    BulletEffectData effect_angle_accel; // 0x114
+    BulletEffectData effect_angle; // 0x15C
+    BulletEffectData effect_bounce; // 0x1A4
+    BulletEffectData effect_wait; // 0x1EC
+    BulletEffectData effect_wrap; // 0x234
+    BulletEffectData effect_unused[17]; // 0x27C
+    int32_t effect_index; // 0x744
+    uint32_t active_effects; // 0x748
+    unknown_fields(0x8); // 0x74C
+    Timer __timer_754; // 0x754
+    Timer offscreen_timer; // 0x768
+    int32_t invulnerable_time; // 0x77C
+    int32_t sprite; // 0x780
+    int32_t color; // 0x784
+    // 0x788
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    // 0x448170
+    dllexport gnu_noinline LaserData() {
+        this->zero_contents();
+        this->__timer_18.reset();
+    }
+
+#pragma region // LaserData method stubs
+
+    // 0x447FC0
+    // Method 0x0
+    dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* arg2) asm_symbol_rel(0x447FC0) {}
+    // 0x447FD0
+    // Method 0x4
+    dllexport virtual gnu_noinline void thiscall run_effects() asm_symbol_rel(0x447FD0) {}
+    // 0x447FE0
+    // Method 0x8
+    dllexport virtual gnu_noinline void thiscall __method_8(int) asm_symbol_rel(0x447FE0) {}
+    // 0x447FF0
+    // Method 0xC
+    dllexport virtual gnu_noinline int thiscall initialize(int) asm_symbol_rel(0x447FF0) {
+        return 0;
+    }
+    // 0x448000
+    // Method 0x10
+    dllexport virtual gnu_noinline int thiscall on_tick() asm_symbol_rel(0x448000) {
+        return 0;
+    }
+    // 0x448010
+    // Method 0x14
+    dllexport virtual gnu_noinline int thiscall on_draw() asm_symbol_rel(0x448010) {
+        return 0;
+    }
+    // 0x448020
+    // Method 0x18
+    dllexport virtual gnu_noinline int thiscall __method_18() asm_symbol_rel(0x448020) {
+        this->next->prev = this->prev;
+        if (LaserData* laser = this->prev) {
+            laser->next = this->next;
+        }
+        return 0;
+    }
+    // 0x448040
+    // Method 0x1C
+    dllexport virtual gnu_noinline int thiscall __method_1C(int, int, int, int, int, int) asm_symbol_rel(0x448040) {
+        return 0;
+    }
+    // 0x448050
+    // Method 0x20
+    dllexport virtual gnu_noinline int thiscall cancel_as_bomb_rectangle(int, int, int, int, int) asm_symbol_rel(0x448050) {
+        return 0;
+    }
+    // 0x448060
+    // Method 0x24
+    dllexport virtual gnu_noinline int thiscall cancel_as_bomb_circle(int, int, int, int) asm_symbol_rel(0x448060) {
+        return 0;
+    }
+    // 0x448070
+    // Method 0x28
+    dllexport virtual gnu_noinline int thiscall cancel(int, int) asm_symbol_rel(0x448070) {
+        return 0;
+    }
+    // 0x448080
+    // Method 0x2C
+    dllexport virtual gnu_noinline int thiscall __method_2C(int, int, int, int) asm_symbol_rel(0x448080) {
+        return 0;
+    }
+    // 0x448090
+    // Method 0x30
+    dllexport virtual gnu_noinline int thiscall __method_30(int, int) asm_symbol_rel(0x448090) {
+        return 0;
+    }
+    // 0x4480A0
+    // Method 0x34
+    dllexport virtual gnu_noinline int thiscall check_graze_or_kill(int) asm_symbol_rel(0x4480A0) {
+        return 0;
+    }
+    // 0x4480B0
+    // Method 0x38
+    dllexport virtual gnu_noinline int thiscall __method_38() asm_symbol_rel(0x4480B0) {
+        return 0;
+    }
+    // 0x4480C0
+    // Method 0x3C
+    dllexport virtual gnu_noinline int thiscall __method_3C() asm_symbol_rel(0x4480C0) {
+        return 0;
+    }
+    // 0x4480D0
+    // Method 0x40
+    dllexport virtual gnu_noinline int thiscall __method_40() asm_symbol_rel(0x4480D0) {
+        return 0;
+    }
+    // 0x4480E0
+    // Method 0x44
+    dllexport virtual gnu_noinline int thiscall __method_44() asm_symbol_rel(0x4480E0) {
+        return 0;
+    }
+    // 0x4480F0
+    // Method 0x48
+    dllexport virtual gnu_noinline int thiscall __method_48() asm_symbol_rel(0x4480F0) {
+        return 0;
+    }
+    // 0x448100
+    // Method 0x4C
+    dllexport virtual gnu_noinline int thiscall __method_4C() asm_symbol_rel(0x448100) {
+        return 0;
+    }
+    // 0x448110
+    // Method 0x50
+    dllexport virtual gnu_noinline int thiscall __method_50() asm_symbol_rel(0x448110) {
+        return 0;
+    }
+    // 0x448120
+    // Method 0x54
+    dllexport virtual gnu_noinline int thiscall __method_54() asm_symbol_rel(0x448120) {
+        return 0;
+    }
+    // 0x448130
+    // Method 0x58
+    dllexport virtual gnu_noinline int thiscall __method_58() asm_symbol_rel(0x448130) {
+        return 0;
+    }
+    // 0x448140
+    // Method 0x5C
+    dllexport virtual gnu_noinline int thiscall __method_5C() asm_symbol_rel(0x448140) {
+        return 0;
+    }
+    // 0x448150
+    // Method 0x60
+    dllexport virtual gnu_noinline int thiscall __method_60() asm_symbol_rel(0x448150) {
+        return 0;
+    }
+    // 0x4481E0
+    virtual ~LaserData() {
+    }
+
+#pragma endregion // LaserData method stubs
+};
+
+// size: 0x460
+struct LaserLineParams {
+    Float3 position; // 0x0, 0x788
+    float __angle_C; // 0xC, 0x794
+    float __length_related; // 0x10, 0x798
+    float length; // 0x14, 0x79C
+    float __float_18; // 0x18, 0x7A0
+    float width; // 0x1C, 0x7A4
+    float __speed_1; // 0x20, 0x7A8
+    int32_t sprite; // 0x24, 0x7AC
+    int32_t color; // 0x28, 0x7B0
+    float distance; // 0x2C, 0x7B4
+    int32_t effect_index; // 0x30, 0x7B8
+    union {
+        uint32_t flags; // 0x34, 0x7BC
+        struct {
+
+        };
+    };
+    BulletEffectArgs effects[24]; // 0x38, 0x7C0
+    int32_t shot_sound; // 0x458, 0xBE0
+    int32_t transform_sound; // 0x45C, 0xBE4
+    // 0x460, 0xBE8
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline LaserLineParams() {
+        this->zero_contents();
+    }
+};
+
+// size: 0x1E0C
+struct LaserLine : LaserData {
+    LaserLineParams params; // 0x788
+    AnmVM __vm_BE8; // 0xBE8
+    AnmVM __vm_11F4; // 0x11F4
+    AnmVM __vm_1800; // 0x1800
+    // 0x1E0C
+
+    // 0x4482C0
+    dllexport gnu_noinline LaserLine() {
+    }
+
+    // 0x448220
+    // Method 0x0
+    dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* arg2) override asm_symbol_rel(0x448220) {
+        arg2->make_from_vector(this->angle, magnitude);
+        *arg2 += this->position;
+    }
+
+    // 0x4494F0
+    // Method 0x4
+    dllexport virtual gnu_noinline void thiscall run_effects() override asm_symbol_rel(0x4494F0);
+};
+
+// size: 0x480
+struct LaserInfiniteParams {
+    Float3 position; // 0x0
+    Float3 velocity; // 0xC
+    float __angle_18; // 0x18
+    float angular_velocity; // 0x1C
+    float length; // 0x20
+    float __float_24; // 0x24
+    float width; // 0x28
+    float __speed_1; // 0x2C
+    int32_t start_time; // 0x30
+    int32_t expand_time; // 0x34
+    int32_t duration; // 0x38
+    int32_t stop_time; // 0x3C
+    int32_t shot_sound; // 0x40
+    int32_t transform_sound; // 0x44
+    int32_t laser_id; // 0x48
+    float distance; // 0x4C
+    int32_t __start_ex; // 0x50
+    int32_t sprite; // 0x54
+    int32_t color; // 0x58
+    union {
+        uint32_t flags; // 0x5C
+        struct {
+
+        };
+    };
+    BulletEffectArgs effects[24]; // 0x60
+    // 0x480
+
+    inline void zero_contents() {
+        zero_this();
+    }
+};
+
+// size: 0x1824
+struct LaserInfinite : LaserData {
+    LaserInfiniteParams params; // 0x788
+    int __dword_C08; // 0xC08
+    AnmVM __vm_C0C; // 0xC0C
+    AnmVM __vm_1218; // 0x1218
+    // 0x1824
+};
+
+// size: 0x460
+struct LaserCurveParams {
+    Float3 position; // 0x0
+    float __angle_C; // 0xC
+    float width; // 0x10
+    float __speed_1; // 0x14
+    int32_t sprite; // 0x18
+    int32_t color; // 0x1C
+    int32_t curve_length; // 0x20
+    float distance; // 0x24
+    union {
+        uint32_t flags; // 0x28
+        struct {
+
+        };
+    };
+    BulletEffectArgs effects[24]; // 0x2C
+    int32_t shot_sound; // 0x44C
+    int32_t transform_sound; // 0x450
+    unknown_fields(0xC); // 0x454
+    // 0x460
+
+    inline void zero_contents() {
+        zero_this();
+    }
+};
+
+// size: 0x1844
+struct LaserCurve : LaserData {
+
+    // size: 0x20
+    struct LaserCurveNode {
+        Float3 position; // 0x0
+        Float3 velocity; // 0xC
+        float angle; // 0x18
+        float speed; // 0x1C
+        // 0x20
+    };
+
+    // size: 0x3C
+    struct LaserCurveNodeEx {
+        LaserCurveNodeEx* next; // 0x0
+        LaserCurveNodeEx* prev; // 0x4
+        float __float_8; // 0x8
+        float __float_C; // 0xC
+        int32_t move_type; // 0x10
+        Float3 __float3_14; // 0x14
+        Float3 __float3_20; // 0x20
+        float angle; // 0x2C
+        float speed; // 0x30
+        float __float_34; // 0x34
+        float __float_38; // 0x38
+        // 0x3C
+    };
+
+    LaserCurveParams params; // 0x788
+    AnmVM __vm_BE8; // 0xBE8
+    AnmVM __vm_11F4; // 0x11F4
+    LaserCurveNode* nodes; // 0x1800
+    SpriteVertex* vertices; // 0x1804
+    LaserCurveNodeEx node_ex; // 0x1808
+    // 0x1844
+};
+
+// size: 0x45C
+struct LaserBeamParams {
+    unknown_fields(0x45C); // 0x0
+    // 0x45C
+
+    inline void zero_contents() {
+        zero_this();
+    }
+};
+
+// size: 0x21F4
+struct LaserBeam : LaserData {
+
+    LaserBeamParams params; // 0x788
+    AnmVM __vm_BE4; // 0xBE4
+    unknown_fields(0x1004); // 0x11F0
+    // 0x21F4
+};
+
 // size: 0x7A41F8
 struct BulletManager {
     unknown_fields(0x4); // 0x0
@@ -7701,7 +8322,170 @@ struct BulletManager {
     AnmLoaded* bullet_anm; // 0x7A41EC
     int32_t __unknown_counter_flag; // 0x7A41F0
     int32_t __unknown_counter; // 0x7A41F4
+    // 0x7A41F8
+
+    // 0x42CCA0
+    dllexport gnu_noinline void vectorcall set_player_protect_radius(float radius) asm_symbol_rel(0x42CCA0) {
+        BULLET_MANAGER_PTR->player_protect_radius = radius;
+    }
+
+    // 0x4297A0
+    dllexport gnu_noinline void thiscall cancel_all(int32_t = UNUSED_DWORD) asm_symbol_rel(0x4297A0) {
+        for (int32_t i = countof(this->bullets); i; --i) {
+
+        }
+    }
+
+    // 0x424FE0
+    dllexport gnu_noinline int32_t thiscall shoot_one_bullet(ShooterData* shooter, int count1, int count2, float angle_to_player) asm_symbol_rel(0x424FE0) {
+
+    }
+    
+    // 0x427810
+    dllexport gnu_noinline int32_t thiscall shoot_bullets(ShooterData* shooter) asm_symbol_rel(0x427810) {
+        BulletManager* bullet_manager = BULLET_MANAGER_PTR;
+        float angle_to_player = Player::angle_to_player_from_point(&shooter->position);
+        for (int32_t i = 0; i < shooter->count2; ++i) {
+            for (int32_t j = 0; j < shooter->count1; ++j) {
+                int32_t result = bullet_manager->shoot_one_bullet(shooter, j, i, angle_to_player);
+                if (result != 0 && result == 1) goto break_outer;
+            }
+        }
+    break_outer:
+        if (shooter->play_sound_on_spawn) {
+            SOUND_MANAGER.__play_sound_positioned(shooter->shoot_sound, shooter->position.x);
+        }
+        return 0;
+    }
 };
+
+struct LaserManager {
+    unknown_fields(0x4); // 0x0
+    UpdateFunc* on_tick; // 0x4
+    UpdateFunc* on_draw; // 0x8
+};
+
+// 0x4494F0
+// Method 0x4
+dllexport gnu_noinline void thiscall LaserLine::run_effects() {
+    int32_t& effect_index = this->effect_index;
+    while (effect_index < countof(this->params.effects)) {
+        BulletEffectArgs& current_effect = this->params.effects[effect_index];
+        BulletEffectType current_type = current_effect.type;
+        if (
+            current_type == EX_NONE ||
+            !current_effect.async && this->active_effects != EX_NONE
+        ) {
+            return;
+        }
+#undef IntArg
+#undef ShortArg
+#undef WordArg
+#undef FloatArg
+#define IntArg(index) (current_effect.int_values[index])
+#define ShortArg(index) (*(int16_t*)&IntArg(index))
+#define WordArg(index) (*(uint16_t*)&IntArg(index))
+#define FloatArg(index) (current_effect.float_values[index])
+        switch (current_type) {
+            case EX_DIST: {
+                this->active_effects |= EX_DIST;
+                BulletEffectData& effect_data = this->effect_speedup;
+                effect_data.timer.reset();
+                ++effect_index;
+                continue;
+            }
+            case EX_ACCEL: {
+                this->active_effects |= EX_ACCEL;
+                BulletEffectData& effect_data = this->effect_accel;
+                effect_data.acceleration = FloatArg(0);
+                float angle_arg = FloatArg(1);
+                if (angle_arg <= -999.0f) {
+                    angle_arg = this->angle;
+                }
+                else if (angle_arg >= 990.0f) {
+                    angle_arg = Player::angle_to_player_from_point(&this->position);
+                }
+                effect_data.angle = angle_arg;
+                effect_data.timer.reset();
+                effect_data.duration = IntArg(0);
+                effect_data.acceleration_vec.make_from_vector(effect_data.angle, effect_data.acceleration);
+                if (this->effect_index != 0) {
+                    SoundManager::__play_sound(this->params.transform_sound);
+                }
+                break;
+            }
+            case EX_ANGLE_ACCEL: {
+                this->active_effects |= EX_ANGLE_ACCEL;
+                BulletEffectData& effect_data = this->effect_angle_accel;
+                effect_data.acceleration = FloatArg(0);
+                effect_data.angle = FloatArg(1);
+                effect_data.timer.reset();
+                effect_data.duration = IntArg(0);
+                if (this->effect_index != 0) {
+                    SoundManager::__play_sound(this->params.transform_sound);
+                }
+                break;
+            }
+            case EX_ANGLE: {
+                this->active_effects |= current_type;
+                BulletEffectData& effect_data = this->effect_angle;
+                effect_data.angle = FloatArg(0);
+                float speed_arg = FloatArg(1);
+                if (!(speed_arg > -999990.0f)) {
+                    speed_arg = this->speed;
+                }
+                effect_data.speed = speed_arg;
+                effect_data.timer.reset();
+                effect_data.duration = IntArg(0);
+                effect_data.max_count = IntArg(1);
+                effect_data.count = 0;
+                effect_data.type = IntArg(2);
+                ++effect_index;
+                continue;
+            }
+            case EX_BOUNCE: { // looks more like EX_LOOP...?
+                if (IntArg(0) > 0) {
+                    this->active_effects |= current_type;
+                    BulletEffectData& effect_data = this->effect_bounce;
+                    float speed_arg = FloatArg(0);
+                    if (!(speed_arg >= 0.0f)) {
+                        speed_arg = this->speed;
+                    }
+                    effect_data.speed = speed_arg;
+                    effect_data.max_count = --IntArg(0);
+                    effect_data.duration = 0;
+                    effect_data.count = IntArg(1);
+                    ++effect_index;
+                    continue;
+                }
+                break;
+            }
+            case EX_SETSPRITE: {
+                AnmVM* vm = &this->__vm_BE8;
+                int32_t sprite_id = BULLET_SPRITE_DATA[IntArg(0)].color_data[0].sprite_id + IntArg(1);
+                clang_always_inline BULLET_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, sprite_id);
+                ++effect_index;
+                continue;
+            }
+            case EX_OFFSCREEN: {
+                this->offscreen_timer.set(IntArg(0));
+                ++effect_index;
+                continue;
+            }
+            case EX_INVULN: {
+                this->invulnerable_time = IntArg(0);
+                ++effect_index;
+                continue;
+            }
+            case EX_DELETE: {
+                this->state = 3;
+                ++effect_index;
+                continue;
+            }
+        }
+        ++effect_index;
+    }
+}
 
 // 0x438D40
 dllexport AnmLoaded* EnemyManager::anm_file_lookup(int32_t file_index) {
@@ -7737,6 +8521,8 @@ dllexport void Bullet::run_effects() {
 #define ShortArg(index) (*(int16_t*)&IntArg(index))
 #define WordArg(index) (*(uint16_t*)&IntArg(index))
 #define FloatArg(index) (current_effect.float_values[index])
+#define IntArgEx(index) (((index < 4) + &current_effect)->int_values[index])
+#define FloatArgEx(index) (((index < 4) + &current_effect)->float_values[index])
         switch (current_type) {
             case EX_ANIM: {
                 int32_t interrupt_index = 7 + ShortArg(0);
@@ -7780,10 +8566,10 @@ dllexport void Bullet::run_effects() {
                 break;
             }
             case EX_ANGLE: {
-                this->active_effects |= EX_ANGLE;
+                this->active_effects |= current_type;
                 BulletEffectData& effect_data = this->effect_angle;
                 float speed_arg = FloatArg(1);
-                if (speed_arg <= -999990.0f) {
+                if (!(speed_arg > -999990.0f)) {
                     speed_arg = this->speed;
                 }
                 effect_data.speed = speed_arg;
@@ -7821,7 +8607,7 @@ dllexport void Bullet::run_effects() {
                 break;
             }
             case EX_BOUNCE: {
-                this->active_effects |= EX_BOUNCE;
+                this->active_effects |= current_type;
                 BulletEffectData& effect_data = this->effect_bounce;
                 effect_data.speed = FloatArg(0);
                 if (IntArg(1) & 0x20) {
@@ -7944,7 +8730,41 @@ dllexport void Bullet::run_effects() {
                 ++effect_index;
                 continue;
             case EX_SHOOT: {
-                // lol no, I'll deal with this later
+                ShooterData bullet_shooter;
+                bullet_shooter.position = this->position;
+                bullet_shooter.count1 = WordArg(2);
+                bullet_shooter.transform_sound = -1;
+                bullet_shooter.count2 = WordArg(3);
+                ZUNAngle angle;
+                float angle_arg = FloatArg(0);
+                if (angle_arg <= -999990.0f) {
+                    angle = this->angle;
+                }
+                else if (999990.0f < angle_arg && angle_arg < 1999990.0f) {
+                    // Somehow this can end up only running half of an angle reduce? WTF?
+                    angle = Player::angle_to_player_from_point(&this->position);
+                }
+                else {
+                    angle = angle_arg;
+                }
+                bullet_shooter.angle2 = FloatArg(1);
+                float speed_arg = FloatArg(2);
+                if (speed_arg <= -999990.0f) {
+                    speed_arg = this->speed;
+                }
+                bullet_shooter.speed1 = speed_arg;
+                BOOL cancel_current_bullet = IntArgEx(6);
+                bullet_shooter.type = IntArgEx(4);
+                bullet_shooter.color = IntArgEx(5);
+                bullet_shooter.speed2 = FloatArg(3);
+                bullet_shooter.flags = 0;
+                memcpy(bullet_shooter.effects, this->effects, sizeof(bullet_shooter.effects));
+                BULLET_MANAGER_PTR->shoot_bullets(&bullet_shooter);
+                ++effect_index;
+                if (cancel_current_bullet) {
+                    this->cancel(0);
+                }
+                continue;
             }
             case EX_LOOP: {
                 int32_t new_loop_index = IntArg(1);
@@ -7983,11 +8803,10 @@ dllexport void Bullet::run_effects() {
                 if (angle_arg >= 990.0f) {
                     angle_arg -= 999.0f;
                     angle_arg += Player::angle_to_player_from_point(&this->position);
-                    angle_arg = reduce_angle(angle_arg);
                     this->angle = reduce_angle(angle_arg);
                 }
                 else if (angle_arg >= -999.0f) {
-                    this->angle = reduce_angle(angle_arg);
+                    this->angle = angle_arg;
                 }
                 float speed_arg = FloatArg(1);
                 if (speed_arg >= -999.0) {
@@ -8089,6 +8908,20 @@ dllexport void Bullet::run_effects() {
             }
             case EX_LASER: {
                 // lol no, I'll deal with this later
+                switch (IntArg(0)) {
+                    case 1:
+                    case 0: {
+                        LaserLineParams laser_params;
+                        laser_params.flags = 0;
+                        laser_params.__angle_C = 0.0f;
+                        laser_params.__length_related = 0.0f;
+                        laser_params.length = 0.0f;
+                        laser_params.__float_18 = 0.0f;
+                        laser_params.width = 0.0f;
+                        laser_params.__speed_1 = 0.0f;
+                    }
+                }
+                continue;
             }
             case EX_DELAY:
                 if (IntArg(0) <= 0) {

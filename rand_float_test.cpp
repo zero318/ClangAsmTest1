@@ -179,7 +179,7 @@ struct Rng {
 					mask = ~mask;
 					uint32_t k = j * 8 + __builtin_ia32_tzcnt_u32(mask);
 					printf(
-						"Value match: A[%zu] == B[%zu] (%u == %u)\n"
+						"Value match: A[%u] == B[%zu] (%u == %u)\n"
 						, k, i, RNG_DWORDS_A.as_array[k], value
 					);
 					break;
