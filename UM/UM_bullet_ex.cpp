@@ -8747,6 +8747,7 @@ dllexport void Bullet::run_effects() {
                 else {
                     angle = angle_arg;
                 }
+                bullet_shooter.angle1 = angle;
                 bullet_shooter.angle2 = FloatArg(1);
                 float speed_arg = FloatArg(2);
                 if (speed_arg <= -999990.0f) {
