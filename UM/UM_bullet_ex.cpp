@@ -8732,6 +8732,8 @@ dllexport void Bullet::run_effects() {
             case EX_SHOOT: {
                 ShooterData bullet_shooter;
                 bullet_shooter.position = this->position;
+                bullet_shooter.aim_mode = WordArg(0);
+                bullet_shooter.start_transform = IntArg(1);
                 bullet_shooter.count1 = WordArg(2);
                 bullet_shooter.transform_sound = -1;
                 bullet_shooter.count2 = WordArg(3);
