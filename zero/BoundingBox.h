@@ -8,25 +8,7 @@
 #ifndef DECLARED_FLOAT_STUCTS
 #define DECLARED_FLOAT_STUCTS 1
 
-typedef union Float2 Float2;
-union Float2 {
-	struct {
-		float x;
-		float y;
-	};
-	float as_array[2];
-	vec<float, 2> as_vec gnu_attr(packed);
-};
-
-typedef union Float3 Float3;
-union Float3 {
-	struct {
-		float x;
-		float y;
-		float z;
-	};
-	float as_array[3];
-};
+#include "zun_types.h"
 
 #endif
 

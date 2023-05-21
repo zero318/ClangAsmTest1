@@ -10,538 +10,98 @@
 
 #include <stdint.h>
 
-#include "../x87_math_helpers.h"
 #include "../RNG_helpers.h"
 
 #include "../zero/LinkerCheeseValues.h"
 #include "../zero/FloatConstants.h"
 
-#include "../zero/BoundingBox.h"
+#undef WIN32_LEAN_AND_MEAN
+
 #include <Windows.h>
 
+//#include <process.h>
+//#include <WinUser.h>
+//#include <wbemidl.h>
+//#include <winnls32.h>
+#include <d3d8.h>
+#include <d3dx8.h>
+#include <dinput.h>
+#include <mmeapi.h>
+#include <dsound.h>
+#define UNICODE
+//#include <Core/DXUT.h>
+#include <Optional/SDKsound.h>
+#undef UNICODE
+
 #include "../zero/custom_intrin.h"
+
+#define GAME_VERSION EoSD_VER
+#include "../zero/zun.h"
+#include "../zero/BoundingBox.h"
+
 //#include <d3d.h>
 
 #define SqueezeStack
 
-//register int esp_reg asm("esp");
-
-inline float gnu_attr(target("no-sse")) cdecl sinf_helper(double angle) asm("{[0x45BCF4]}");
-inline float gnu_attr(target("no-sse")) cdecl sinf_helper(double angle) {
-#ifndef SqueezeStack
-    sinf_impl(angle);
-    float ret;
-    __asm__(
-        "fstps %0"
-        : "=m"(ret)
-        :
-        : clobber_list("eax", "ecx", "edx")
-    );
-    return ret;
-#else
-    __asm__ volatile (
-        "fstps (%%ESP)"
-        :
-        : "X"(sinf_impl(angle), NULL)
-        : clobber_list("eax", "ecx", "edx")
-    );
-    return *(float*)esp_reg;
-#endif
-}
-
-inline float gnu_attr(target("no-sse")) cdecl cosf_helper(double angle) asm("{[0x45BDA4]}");
-inline float gnu_attr(target("no-sse")) cdecl cosf_helper(double angle) {
-#ifndef SqueezeStack
-    cosf_impl(angle);
-    float ret;
-    __asm__(
-        "fstps %0"
-        : "=m"(ret)
-        :
-        : clobber_list("eax", "ecx", "edx")
-    );
-    return ret;
-#else
-    __asm__ volatile (
-        "fstps (%%ESP)"
-        :
-        : "X"(cosf_impl(angle), NULL)
-        : clobber_list("eax", "ecx", "edx")
-    );
-    return *(float*)esp_reg;
-#endif
-}
-
-inline float gnu_attr(target("no-sse")) cdecl atan2_helper(double Y, double X) asm("{[0x45BE40]}");
-inline float gnu_attr(target("no-sse")) cdecl atan2_helper(double Y, double X) {
-#ifndef SqueezeStack
-    atan2_impl(Y, X);
-    float ret;
-    __asm__(
-        "fstps %0"
-        : "=m"(ret)
-        :
-        : clobber_list("eax", "ecx", "edx")
-    );
-    return ret;
-#else
-    __asm__ volatile (
-        "fstps (%%ESP)"
-        :
-        : "X"(atan2_impl(Y, X), NULL)
-        : clobber_list("eax", "ecx", "edx")
-    );
-    return *(float*)esp_reg;
-#endif
-}
-
-inline float gnu_attr(target("no-sse")) cdecl fmod_helper(double X, double Y) asm("{[0x45BE60]}");
-inline float gnu_attr(target("no-sse")) cdecl fmod_helper(double X, double Y) {
-#ifndef SqueezeStack
-    fmod_impl(X, Y);
-    float ret;
-    __asm__(
-        "fstps %0"
-        : "=m"(ret)
-        :
-        : clobber_list("eax", "ecx", "edx")
-    );
-    return ret;
-#else
-    __asm__ volatile (
-        "fstps (%%ESP)"
-        :
-        : "X"(fmod_impl(X, Y), NULL)
-        : clobber_list("eax", "ecx", "edx")
-    );
-    return *(float*)esp_reg;
-#endif
-}
-
-dllexport gnu_noinline int32_t cdecl vsprintf_helper(char *restrict buffer, const char *restrict format, va_list va) asm("{[0x45B9E0]}");
-dllexport gnu_noinline int32_t cdecl vsprintf_helper(char *restrict buffer, const char *restrict format, va_list va) {
+dllexport gnu_noinline int32_t cdecl vsprintf_helper(char* buffer, const char* format, va_list va) asm_symbol_rel(0x45B9E0);
+dllexport gnu_noinline int32_t cdecl vsprintf_helper(char* buffer, const char* format, va_list va) {
     return vsprintf(buffer, format, va_use(va));
 }
 
-dllexport gnu_noinline const char* cdecl strings_vsprintf(const size_t slot, const char *format, va_list va) asm("{[strings_vsprintf]}");
-dllexport gnu_noinline const char* cdecl strings_vsprintf(const size_t slot, const char *format, va_list va) {
+dllexport gnu_noinline const char* cdecl strings_vsprintf(const size_t slot, const char* format, va_list va) asm_symbol_rel(strings_vsprintf);
+dllexport gnu_noinline const char* cdecl strings_vsprintf(const size_t slot, const char* format, va_list va) {
     gnu_used static volatile auto tempA = slot;
     gnu_used static volatile auto tempB = format;
     gnu_used static volatile auto tempC = va;
     return format;
 }
 
-dllexport gnu_noinline auto thcrap_malloc(size_t size) asm("{[th_malloc]}");
+dllexport gnu_noinline auto thcrap_malloc(size_t size) asm_symbol_rel(th_malloc);
 dllexport gnu_noinline auto thcrap_malloc(size_t size) {
     return malloc(size);
 }
 
-dllexport gnu_noinline auto thcrap_free(void* memory) asm("{[th_free]}");
+dllexport gnu_noinline auto thcrap_free(void* memory) asm_symbol_rel(th_free);
 dllexport gnu_noinline auto thcrap_free(void* memory) {
     return free(memory);
 }
 
-typedef int cdecl ascii_put_func_t(void* classptr, Float3 *restrict position, const char *const restrict text);
-dllexport gnu_noinline int stdcall ascii_vpatchf(ascii_put_func_t* putfunc, Float3 *restrict position, const char *const restrict fmt, va_list va) asm("{[ascii_vpatchf]}");
-dllexport gnu_noinline int stdcall ascii_vpatchf(ascii_put_func_t* putfunc, Float3 *restrict position, const char *const restrict fmt, va_list va) {
+typedef int cdecl ascii_put_func_t(void* classptr, Float3* position, const char* text);
+dllexport gnu_noinline int stdcall ascii_vpatchf(ascii_put_func_t* putfunc, Float3* position, const char* fmt, va_list va) asm_symbol_rel(ascii_vpatchf);
+dllexport gnu_noinline int stdcall ascii_vpatchf(ascii_put_func_t* putfunc, Float3* position, const char* fmt, va_list va) {
     return putfunc((void*)putfunc, position, fmt + (intptr_t)&va);
 }
 
-//typedef void* HINSTANCE;
-//typedef void* HWND;
-//typedef uint32_t DWORD;
-
-typedef enum _D3DFORMAT {
-    D3DFMT_UNKNOWN = 0,
-    D3DFMT_R8G8B8 = 20,
-    D3DFMT_A8R8G8B8 = 21,
-    D3DFMT_X8R8G8B8 = 22,
-    D3DFMT_R5G6B5 = 23,
-    D3DFMT_X1R5G5B5 = 24,
-    D3DFMT_A1R5G5B5 = 25,
-    D3DFMT_A4R4G4B4 = 26,
-    D3DFMT_R3G3B2 = 27,
-    D3DFMT_A8 = 28,
-    D3DFMT_A8R3G3B2 = 29,
-    D3DFMT_X4R4G4B4 = 30,
-    D3DFMT_A8P8 = 40,
-    D3DFMT_P8 = 41,
-    D3DFMT_L8 = 50,
-    D3DFMT_A8L8 = 51,
-    D3DFMT_A4L4 = 52,
-    D3DFMT_V8U8 = 60,
-    D3DFMT_L6V5U5 = 61,
-    D3DFMT_X8L8V8U8 = 62,
-    D3DFMT_Q8W8V8U8 = 63,
-    D3DFMT_V16U16 = 64,
-    D3DFMT_W11V11U10 = 65,
-    //D3DFMT_UYVY = MAKEFOURCC('U', 'Y', 'V', 'Y'),
-    //D3DFMT_YUY2 = MAKEFOURCC('Y', 'U', 'Y', '2'),
-    //D3DFMT_DXT1 = MAKEFOURCC('D', 'X', 'T', '1'),
-    //D3DFMT_DXT2 = MAKEFOURCC('D', 'X', 'T', '2'),
-    //D3DFMT_DXT3 = MAKEFOURCC('D', 'X', 'T', '3'),
-    //D3DFMT_DXT4 = MAKEFOURCC('D', 'X', 'T', '4'),
-    //D3DFMT_DXT5 = MAKEFOURCC('D', 'X', 'T', '5'),
-    D3DFMT_D16_LOCKABLE = 70,
-    D3DFMT_D32 = 71,
-    D3DFMT_D15S1 = 73,
-    D3DFMT_D24S8 = 75,
-    D3DFMT_D16 = 80,
-    D3DFMT_D24X8 = 77,
-    D3DFMT_D24X4S4 = 79,
-    D3DFMT_VERTEXDATA = 100,
-    D3DFMT_INDEX16 = 101,
-    D3DFMT_INDEX32 = 102,
-    D3DFMT_FORCE_DWORD = 0xFFFFFFFF
-} D3DFORMAT;
-
-typedef enum D3DRESOURCETYPE {
-    D3DRTYPE_SURFACE = 1,
-    D3DRTYPE_VOLUME = 2,
-    D3DRTYPE_TEXTURE = 3,
-    D3DRTYPE_VOLUMETEXTURE = 4,
-    D3DRTYPE_CUBETEXTURE = 5,
-    D3DRTYPE_VERTEXBUFFER = 6,
-    D3DRTYPE_INDEXBUFFER = 7,
-    D3DRTYPE_FORCE_DWORD = 0x7fffffff
-} D3DRESOURCETYPE, *LPD3DRESOURCETYPE;
-
-typedef enum _D3DMULTISAMPLE_TYPE {
-    D3DMULTISAMPLE_NONE = 0,
-    D3DMULTISAMPLE_2_SAMPLES = 2,
-    D3DMULTISAMPLE_3_SAMPLES = 3,
-    D3DMULTISAMPLE_4_SAMPLES = 4,
-    D3DMULTISAMPLE_5_SAMPLES = 5,
-    D3DMULTISAMPLE_6_SAMPLES = 6,
-    D3DMULTISAMPLE_7_SAMPLES = 7,
-    D3DMULTISAMPLE_8_SAMPLES = 8,
-    D3DMULTISAMPLE_9_SAMPLES = 9,
-    D3DMULTISAMPLE_10_SAMPLES = 10,
-    D3DMULTISAMPLE_11_SAMPLES = 11,
-    D3DMULTISAMPLE_12_SAMPLES = 12,
-    D3DMULTISAMPLE_13_SAMPLES = 13,
-    D3DMULTISAMPLE_14_SAMPLES = 14,
-    D3DMULTISAMPLE_15_SAMPLES = 15,
-    D3DMULTISAMPLE_16_SAMPLES = 16,
-    D3DMULTISAMPLE_FORCE_DWORD = 0xffffffff
-} D3DMULTISAMPLE_TYPE;
-
-typedef enum D3DPOOL {
-    D3DPOOL_DEFAULT = 0,
-    D3DPOOL_MANAGED = 1,
-    D3DPOOL_SYSTEMMEM = 2,
-    D3DPOOL_SCRATCH = 3,
-    D3DPOOL_FORCE_DWORD = 0x7fffffff
-} D3DPOOL, *LPD3DPOOL;
-
-typedef struct D3DMATRIX D3DMATRIX;
-struct D3DMATRIX {
-    float m00;  // 0x0
-    float m01;  // 0x4
-    float m02;  // 0x8
-    float m03;  // 0xc
-    float m10;  // 0x10
-    float m11;  // 0x14
-    float m12;  // 0x18
-    float m13;  // 0x1c
-    float m20;  // 0x20
-    float m21;  // 0x24
-    float m22;  // 0x28
-    float m23;  // 0x2c
-    float m30;  // 0x30
-    float m31;  // 0x34
-    float m32;  // 0x38
-    float m33;  // 0x3c
-
-    dllexport static D3DMATRIX* cdecl set_identity(D3DMATRIX *restrict matrix) asm("{[codecave:D3DMATRIX_set_identity]}") {
-        matrix->m00 = 1.0f;
-        matrix->m01 = 0.0f;
-        matrix->m02 = 0.0f;
-        matrix->m03 = 0.0f;
-        matrix->m10 = 0.0f;
-        matrix->m11 = 1.0f;
-        matrix->m12 = 0.0f;
-        matrix->m13 = 0.0f;
-        matrix->m20 = 0.0f;
-        matrix->m21 = 0.0f;
-        matrix->m22 = 1.0f;
-        matrix->m23 = 0.0f;
-        matrix->m30 = 0.0f;
-        matrix->m31 = 0.0f;
-        matrix->m32 = 0.0f;
-        matrix->m33 = 1.0f;
-        return matrix;
-    }
-};  // 0x40
-
-typedef struct D3DVIEWPORT8 D3DVIEWPORT8;
-struct D3DVIEWPORT8 {
-    uint32_t X;  // 0x0
-    uint32_t Y;  // 0x4
-    uint32_t Width;  // 0x8
-    uint32_t Height;  // 0xc
-    float MinZ;  // 0x10
-    float MaxZ;  // 0x14
-};  // 0x18
-
-typedef uint32_t D3DCOLOR;
-
-typedef struct IDirect3DSurface8 *LPDIRECT3DSURFACE8, *PDIRECT3DSURFACE8;
-typedef struct IDirect3DTexture8 *LPDIRECT3DTEXTURE8, *PDIRECT3DTEXTURE8;
-
-// Packs the bytes [b], [g], [r], and [a] together as a D3DCOLOR integer
-constexpr inline uint32_t PackD3DCOLOR(uint8_t a, uint8_t r, uint8_t g, uint8_t b) {
-    return PackUInt(b, g, r, a);
+// 0x403670
+dllexport gnu_noinline D3DMATRIX& cdecl matrix_set_identity(D3DMATRIX& matrix) asm_symbol_rel(codecave:D3DMATRIX_set_identity);
+dllexport gnu_noinline D3DMATRIX& cdecl matrix_set_identity(D3DMATRIX& matrix) {
+    matrix.m[3][2] = 0.0f;
+    matrix.m[3][1] = 0.0f;
+    matrix.m[3][0] = 0.0f;
+    matrix.m[2][3] = 0.0f;
+    matrix.m[2][1] = 0.0f;
+    matrix.m[2][0] = 0.0f;
+    matrix.m[1][3] = 0.0f;
+    matrix.m[1][2] = 0.0f;
+    matrix.m[1][0] = 0.0f;
+    matrix.m[0][3] = 0.0f;
+    matrix.m[0][2] = 0.0f;
+    matrix.m[0][1] = 0.0f;
+    matrix.m[3][3] = 1.0f;
+    matrix.m[2][2] = 1.0f;
+    matrix.m[1][1] = 1.0f;
+    matrix.m[0][0] = 1.0f;
+    return matrix;
 }
 
-//typedef struct BITMAPINFOHEADER BITMAPINFOHEADER;
-//struct BITMAPINFOHEADER {
-//	uint32_t biSize; // 0x0
-//	int32_t  biWidth; // 0x4
-//	int32_t  biHeight; // 0x8
-//	uint16_t  biPlanes; // 0xC
-//	uint16_t  biBitCount; // 0xE
-//	uint32_t biCompression; // 0x10
-//	uint32_t biSizeImage; // 0x14
-//	int32_t  biXPelsPerMeter; // 0x18
-//	int32_t  biYPelsPerMeter; // 0x1C
-//	uint32_t biClrUsed; // 0x20
-//	uint32_t biClrImportant; // 0x24
-//}; // 0x28
-
-typedef struct Custom_RGBAQUAD Custom_RGBAQUAD;
+// size: 0x10
 struct Custom_RGBAQUAD {
-	uint32_t red_mask;
-	uint32_t green_mask;
-	uint32_t blue_mask;
-	uint32_t alpha_mask;
-}; // 0x10
-
-typedef struct D3DSURFACE_DESC D3DSURFACE_DESC;
-struct D3DSURFACE_DESC {
-	D3DFORMAT Format; // 0x0
-	D3DRESOURCETYPE Type; // 0x4
-	uint32_t Usage; // 0x8
-	D3DPOOL Pool; // 0xC
-	uint32_t Size; // 0x10
-	D3DMULTISAMPLE_TYPE MultiSampleType; // 0x14
-	uint32_t Width; // 0x18
-	uint32_t Height; // 0x1C
-}; // 0x20
-
-typedef struct D3DXIMAGE_INFO D3DXIMAGE_INFO;
-struct D3DXIMAGE_INFO {
-    uint32_t Width;  // 0x0
-    uint32_t Height;  // 0x4
-    uint32_t Depth;  // 0x8
-    uint32_t MipLevels;  // 0xc
-    uint32_t Format;  // 0x10
-};  // 0x14
-
-typedef struct D3DCAPS8 D3DCAPS8;
-struct D3DCAPS8 {
-    uint32_t DeviceType;  // 0x0
-    uint32_t AdapterOrdinal;  // 0x4
-    uint32_t Caps;  // 0x8
-    uint32_t Caps2;  // 0xc
-    uint32_t Caps3;  // 0x10
-    uint32_t PresentationIntervals;  // 0x14
-    uint32_t CursorCaps;  // 0x18
-    uint32_t DevCaps;  // 0x1c
-    uint32_t PrimitiveMiscCaps;  // 0x20
-    uint32_t RasterCaps;  // 0x24
-    uint32_t ZCmpCaps;  // 0x28
-    uint32_t SrcBlendCaps;  // 0x2c
-    uint32_t DestBlendCaps;  // 0x30
-    uint32_t AlphaCmpCaps;  // 0x34
-    uint32_t ShadeCaps;  // 0x38
-    uint32_t TextureCaps;  // 0x3c
-    uint32_t TextureFilterCaps;  // 0x40
-    uint32_t CubeTextureFilterCaps;  // 0x44
-    uint32_t VolumeTextureFilterCaps;  // 0x48
-    uint32_t TextureAddressCaps;  // 0x4c
-    uint32_t VolumeTextureAddressCaps;  // 0x50
-    uint32_t LineCaps;  // 0x54
-    uint32_t MaxTextureWidth;  // 0x58
-    uint32_t MaxTextureHeight;  // 0x5c
-    uint32_t MaxVolumeExtent;  // 0x60
-    uint32_t MaxTextureRepeat;  // 0x64
-    uint32_t MaxTextureAspectRatio;  // 0x68
-    uint32_t MaxAnisotropy;  // 0x6c
-    float MaxVertexW;  // 0x70
-    float GuardBandLeft;  // 0x74
-    float GuardBandTop;  // 0x78
-    float GuardBandRight;  // 0x7c
-    float GuardBandBottom;  // 0x80
-    float ExtentsAdjust;  // 0x84
-    uint32_t StencilCaps;  // 0x88
-    uint32_t FVFCaps;  // 0x8c
-    uint32_t TextureOpCaps;  // 0x90
-    uint32_t MaxTextureBlendStages;  // 0x94
-    uint32_t MaxSimultaneousTextures;  // 0x98
-    uint32_t VertexProcessingCaps;  // 0x9c
-    uint32_t MaxActiveLights;  // 0xa0
-    uint32_t MaxUserClipPlanes;  // 0xa4
-    uint32_t MaxVertexBlendMatrices;  // 0xa8
-    uint32_t MaxVertexBlendMatrixIndex;  // 0xac
-    float MaxPointSize;  // 0xb0
-    uint32_t MaxPrimitiveCount;  // 0xb4
-    uint32_t MaxVertexIndex;  // 0xb8
-    uint32_t MaxStreams;  // 0xbc
-    uint32_t MaxStreamStride;  // 0xc0
-    uint32_t VertexShaderVersion;  // 0xc4
-    uint32_t MaxVertexShaderConst;  // 0xc8
-    uint32_t PixelShaderVersion;  // 0xcc
-    float MaxPixelShaderValue;  // 0xd0
-};  // 0xd4
-
-typedef struct D3DPRESENT_PARAMETERS D3DPRESENT_PARAMETERS;
-struct D3DPRESENT_PARAMETERS {
-    uint32_t BackBufferWidth;  // 0x0
-    uint32_t BackBufferHeight;  // 0x4
-    uint32_t BackBufferFormat;  // 0x8
-    uint32_t BackBufferCount;  // 0xc
-    uint32_t MultiSampleType;  // 0x10
-    uint32_t SwapEffect;  // 0x14
-    HWND hDeviceWindow;  // 0x18
-    int32_t Windowed;  // 0x1c
-    int32_t EnableAutoDepthStencil;  // 0x20
-    uint32_t AutoDepthStencilFormat;  // 0x24
-    uint32_t Flags;  // 0x28
-    uint32_t FullScreen_RefreshRateInHz;  // 0x2c
-    uint32_t PresentationInterval;  // 0x30
-};  // 0x34
-
-typedef enum _D3DRENDERSTATETYPE {
-    D3DRS_ZENABLE = 7,    /* D3DZBUFFERTYPE (or TRUE/FALSE for legacy) */
-    D3DRS_FILLMODE = 8,    /* D3DFILL_MODE        */
-    D3DRS_SHADEMODE = 9,    /* D3DSHADEMODE */
-    D3DRS_LINEPATTERN = 10,   /* D3DLINEPATTERN */
-    D3DRS_ZWRITEENABLE = 14,   /* TRUE to enable z writes */
-    D3DRS_ALPHATESTENABLE = 15,   /* TRUE to enable alpha tests */
-    D3DRS_LASTPIXEL = 16,   /* TRUE for last-pixel on lines */
-    D3DRS_SRCBLEND = 19,   /* D3DBLEND */
-    D3DRS_DESTBLEND = 20,   /* D3DBLEND */
-    D3DRS_CULLMODE = 22,   /* D3DCULL */
-    D3DRS_ZFUNC = 23,   /* D3DCMPFUNC */
-    D3DRS_ALPHAREF = 24,   /* D3DFIXED */
-    D3DRS_ALPHAFUNC = 25,   /* D3DCMPFUNC */
-    D3DRS_DITHERENABLE = 26,   /* TRUE to enable dithering */
-    D3DRS_ALPHABLENDENABLE = 27,   /* TRUE to enable alpha blending */
-    D3DRS_FOGENABLE = 28,   /* TRUE to enable fog blending */
-    D3DRS_SPECULARENABLE = 29,   /* TRUE to enable specular */
-    D3DRS_ZVISIBLE = 30,   /* TRUE to enable z checking */
-    D3DRS_FOGCOLOR = 34,   /* D3DCOLOR */
-    D3DRS_FOGTABLEMODE = 35,   /* D3DFOGMODE */
-    D3DRS_FOGSTART = 36,   /* Fog start (for both vertex and pixel fog) */
-    D3DRS_FOGEND = 37,   /* Fog end      */
-    D3DRS_FOGDENSITY = 38,   /* Fog density  */
-    D3DRS_EDGEANTIALIAS = 40,   /* TRUE to enable edge antialiasing */
-    D3DRS_ZBIAS = 47,   /* LONG Z bias */
-    D3DRS_RANGEFOGENABLE = 48,   /* Enables range-based fog */
-    D3DRS_STENCILENABLE = 52,   /* BOOL enable/disable stenciling */
-    D3DRS_STENCILFAIL = 53,   /* D3DSTENCILOP to do if stencil test fails */
-    D3DRS_STENCILZFAIL = 54,   /* D3DSTENCILOP to do if stencil test passes and Z test fails */
-    D3DRS_STENCILPASS = 55,   /* D3DSTENCILOP to do if both stencil and Z tests pass */
-    D3DRS_STENCILFUNC = 56,   /* D3DCMPFUNC fn.  Stencil Test passes if ((ref & mask) stencilfn (stencil & mask)) is true */
-    D3DRS_STENCILREF = 57,   /* Reference value used in stencil test */
-    D3DRS_STENCILMASK = 58,   /* Mask value used in stencil test */
-    D3DRS_STENCILWRITEMASK = 59,   /* Write mask applied to values written to stencil buffer */
-    D3DRS_TEXTUREFACTOR = 60,   /* D3DCOLOR used for multi-texture blend */
-    D3DRS_WRAP0 = 128,  /* wrap for 1st texture coord. set */
-    D3DRS_WRAP1 = 129,  /* wrap for 2nd texture coord. set */
-    D3DRS_WRAP2 = 130,  /* wrap for 3rd texture coord. set */
-    D3DRS_WRAP3 = 131,  /* wrap for 4th texture coord. set */
-    D3DRS_WRAP4 = 132,  /* wrap for 5th texture coord. set */
-    D3DRS_WRAP5 = 133,  /* wrap for 6th texture coord. set */
-    D3DRS_WRAP6 = 134,  /* wrap for 7th texture coord. set */
-    D3DRS_WRAP7 = 135,  /* wrap for 8th texture coord. set */
-    D3DRS_CLIPPING = 136,
-    D3DRS_LIGHTING = 137,
-    D3DRS_AMBIENT = 139,
-    D3DRS_FOGVERTEXMODE = 140,
-    D3DRS_COLORVERTEX = 141,
-    D3DRS_LOCALVIEWER = 142,
-    D3DRS_NORMALIZENORMALS = 143,
-    D3DRS_DIFFUSEMATERIALSOURCE = 145,
-    D3DRS_SPECULARMATERIALSOURCE = 146,
-    D3DRS_AMBIENTMATERIALSOURCE = 147,
-    D3DRS_EMISSIVEMATERIALSOURCE = 148,
-    D3DRS_VERTEXBLEND = 151,
-    D3DRS_CLIPPLANEENABLE = 152,
-    D3DRS_SOFTWAREVERTEXPROCESSING = 153,
-    D3DRS_POINTSIZE = 154,   /* float point size */
-    D3DRS_POINTSIZE_MIN = 155,   /* float point size min threshold */
-    D3DRS_POINTSPRITEENABLE = 156,   /* BOOL point texture coord control */
-    D3DRS_POINTSCALEENABLE = 157,   /* BOOL point size scale enable */
-    D3DRS_POINTSCALE_A = 158,   /* float point attenuation A value */
-    D3DRS_POINTSCALE_B = 159,   /* float point attenuation B value */
-    D3DRS_POINTSCALE_C = 160,   /* float point attenuation C value */
-    D3DRS_MULTISAMPLEANTIALIAS = 161,  // BOOL - set to do FSAA with multisample buffer
-    D3DRS_MULTISAMPLEMASK = 162,  // DWORD - per-sample enable/disable
-    D3DRS_PATCHEDGESTYLE = 163,  // Sets whether patch edges will use float style tessellation
-    D3DRS_PATCHSEGMENTS = 164,  // Number of segments per edge when drawing patches
-    D3DRS_DEBUGMONITORTOKEN = 165,  // DEBUG ONLY - token to debug monitor
-    D3DRS_POINTSIZE_MAX = 166,   /* float point size max threshold */
-    D3DRS_INDEXEDVERTEXBLENDENABLE = 167,
-    D3DRS_COLORWRITEENABLE = 168,  // per-channel write enable
-    D3DRS_TWEENFACTOR = 170,   // float tween factor
-    D3DRS_BLENDOP = 171,   // D3DBLENDOP setting
-
-    D3DRS_FORCE_DWORD = 0x7fffffff, /* force 32-bit size enum */
-} D3DRENDERSTATETYPE;
-
-// Look here for functions:
-// https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/host/x86_64-w64-mingw32-4.8/+/refs/heads/emu-2.4-release/x86_64-w64-mingw32/include/d3d8.h
-
-typedef struct IDirect3D8 IDirect3D8;
-struct IDirect3D8 {
-    void* vtable;  // 0x0
-};  // 0x8
-
-typedef struct IDirect3DDevice8 IDirect3DDevice8;
-typedef struct IDirect3DDevice8VTable IDirect3DDevice8VTable;
-struct IDirect3DDevice8VTable {
-    unknown_fields(0xC8);
-    void(stdcall *SetRenderState)(IDirect3DDevice8 *restrict this_device, D3DRENDERSTATETYPE State, DWORD Value);
+	uint32_t red_mask; // 0x0
+	uint32_t green_mask; // 0x4
+	uint32_t blue_mask; // 0x8
+	uint32_t alpha_mask; // 0xC
+    // 0x10
 };
-struct IDirect3DDevice8 {
-    IDirect3DDevice8VTable *restrict vtable;  // 0x0
-};  // 0x8
-struct IDirectInput8A {
-
-};
-struct IDirectInputDevice8A {
-
-};
-
-
-typedef struct IDirect3DTexture8 IDirect3DTexture8;
-typedef struct IDirect3DTexture8VTable IDirect3DTexture8VTable;
-struct IDirect3DTexture8VTable {
-    unknown_fields(0x4);
-    uint32_t(stdcall *AddRef)(IDirect3DTexture8 *restrict this_texture);
-    uint32_t(stdcall *Release)(IDirect3DTexture8 *restrict this_texture);
-};
-
-struct IDirect3DTexture8 {
-    IDirect3DTexture8VTable *restrict vtable;  // 0x0
-};  // 0x4
-
-typedef struct IDirect3DSurface8 IDirect3DSurface8;
-struct IDirect3DSurface8 {
-    void* vtable;  // 0x0
-};  // 0x4
-
-typedef struct IDirect3DVertexBuffer8 IDirect3DVertexBuffer8;
-struct IDirect3DVertexBuffer8 {
-    void* vtable;  // 0x0
-};  // 0x4
-
-typedef struct IDirectSound IDirectSound;
-struct IDirectSound {
-    void* vtable;  // 0x0
-};  // 0x4
 
 #define LogStub(...) __noop(__VA_ARGS__)
 #define DEBUG_FLAGS 1
@@ -551,7 +111,7 @@ typedef float __v2sf __attribute__((__vector_size__(8)));
 typedef float __v2sf_u __attribute__((__vector_size__(8), __aligned__(1)));
 typedef float __v4sf_u __attribute__((__vector_size__(16), __aligned__(1)));
 
-dllexport void float3_angle_reduce(Float3 *restrict angles) {
+dllexport void float3_angle_reduce(Float3* angles) {
     unaligned vec<float, 4>& angles_ref = *(unaligned vec<float, 4>*)angles;
     vec<double, 4> angles_temp = convertvec(angles_ref, vec<double, 4>);
     angles_temp *= ONE_OVER_TWO_PI_d;
@@ -568,72 +128,77 @@ dllexport void float3_angle_reduce(Float3 *restrict angles) {
 // Supervisor
 // ====================
 
-typedef struct Input Input;
+// size: 0x10
 struct Input {
-    alignas(DWORD) uint16_t __word_0;
-    alignas(DWORD) uint16_t __word_4;
-    alignas(DWORD) uint16_t __word_8;
-    alignas(DWORD) uint16_t __word_C;
+    alignas(DWORD) uint16_t __word_0; // 0x0
+    alignas(DWORD) uint16_t __word_4; // 0x4
+    alignas(DWORD) uint16_t __word_8; // 0x8
+    alignas(DWORD) uint16_t __word_C; // 0xC
+    // 0x10
 };
 
 extern "C" {
     extern Input INPUTS asm("_INPUT");
 }
 
-typedef struct Config Config;
+// size: 0x38
 struct Config {
-	int16_t __input_related_0;  // 0x0
-	int16_t __input_related_2;  // 0x2
-	int16_t __input_related_4;  // 0x4
-	int16_t __input_related_6;  // 0x6
-	int16_t __input_related_8;  // 0x8
-	int16_t __input_related_A;  // 0xA
-	int16_t __input_related_C;  // 0xC
-	int16_t __input_related_E;  // 0xE
-	int16_t __input_related_10;  // 0x10
+	int16_t __input_related_0; // 0x0
+	int16_t __input_related_2; // 0x2
+	int16_t __input_related_4; // 0x4
+	int16_t __input_related_6; // 0x6
+	int16_t __input_related_8; // 0x8
+	int16_t __input_related_A; // 0xA
+	int16_t __input_related_C; // 0xC
+	int16_t __input_related_E; // 0xE
+	int16_t __input_related_10; // 0x10
     probably_padding_bytes(0x2);
-    uint32_t version;  // 0x14
-    uint8_t starting_lives;  // 0x18
-    uint8_t starting_bombs;  // 0x19
-    uint8_t graphic_format;  // 0x1a
-    uint8_t bgm_format;  // 0x1b
-    uint8_t __byte_1c;  // 0x1c
-    uint8_t __byte_1d;  // 0x1d
-    uint8_t fullscreen;  // 0x1e
-    uint8_t __frameskip_setting;  // 0x1f
-    uint16_t deadzone_x;  // 0x20
-    uint16_t deadzone_y;  // 0x22
-    unknown_fields(0x10);  // 0x24
+    uint32_t version; // 0x14
+    uint8_t starting_lives; // 0x18
+    uint8_t starting_bombs; // 0x19
+    uint8_t graphic_format; // 0x1A
+    uint8_t bgm_format; // 0x1B
+    uint8_t __byte_1C; // 0x1C
+    uint8_t __byte_1D; // 0x1D
+    uint8_t fullscreen; // 0x1E
+    uint8_t __frameskip_setting; // 0x1F
+    uint16_t deadzone_x; // 0x20
+    uint16_t deadzone_y; // 0x22
+    unknown_fields(0x10); // 0x24
 	union {
-		uint32_t flags;  // 0x34
+		uint32_t flags; // 0x34
 		struct {
 			uint32_t __unknown_flag_A : 1;
-			unknown_bitfields(uint32_t, 0x7);
+            uint32_t __unknown_flag_C : 1;
+            uint32_t : 4;
+            uint32_t __unknown_flag_D : 1;
+            uint32_t : 1;
 			uint32_t __unknown_flag_B : 1;
 		};
 	};
-};  // 0x38
+    // 0x38
+};
 
-typedef struct MidiManager MidiManager;
 struct MidiManager {
 
-    unknown_fields(0x2C8);
-    int __dword_2C8;
-    unknown_fields(0x14);
-    int __dword_2DC;
-    int __dword_2E0;
-    int __dword_2E4;
-    int __dword_2E8;
+    unknown_fields(0x2C8); // 0x0
+    int __dword_2C8; // 0x2C8
+    unknown_fields(0x14); // 0x2CC
+    int __dword_2DC; // 0x2DC
+    int __dword_2E0; // 0x2E0
+    int __dword_2E4; // 0x2E4
+    int __dword_2E8; // 0x2E8
+    // 0x2EC
 
     // 0x4224E0
-    dllexport gnu_noinline int32_t thiscall __sub_4224E0() asm("{[0x4224E0]}") {
+    dllexport gnu_noinline int32_t thiscall __sub_4224E0() asm_symbol_rel(0x4224E0) {
         gnu_used static volatile auto tempA = this;
         assume_all_registers_volatile();
         return 0;
     }
 
     // 0x422140
-    dllexport gnu_noinline int32_t thiscall __sub_422140(int32_t music_index) asm("{[0x422140]}") {
+    dllexport gnu_noinline int32_t thiscall __sub_422140(int32_t music_index) asm_symbol_rel(0x422140) {
         gnu_used static volatile auto tempA = this;
         gnu_used static volatile auto tempB = music_index;
         assume_all_registers_volatile();
@@ -641,14 +206,14 @@ struct MidiManager {
     }
 
     // 0x422490
-    dllexport gnu_noinline int32_t thiscall __sub_422490() asm("{[0x422490]}") {
+    dllexport gnu_noinline int32_t thiscall __sub_422490() asm_symbol_rel(0x422490) {
         gnu_used static volatile auto tempA = this;
         assume_all_registers_volatile();
         return 0;
     }
 
     // 0x422630
-    dllexport int32_t thiscall __sub_422630(int32_t arg) asm("{[codecave:MIDI_MANAGER_sub_422630]}") {
+    dllexport int32_t thiscall __sub_422630(int32_t arg) asm_symbol_rel(codecave:MIDI_MANAGER_sub_422630) {
         this->__dword_2C8 = 0;
         this->__dword_2E4 = arg;
         this->__dword_2E8 = 0;
@@ -659,60 +224,66 @@ struct MidiManager {
 };
 
 typedef struct Supervisor Supervisor;
+// size: 0x4D8
 struct Supervisor {
-    HINSTANCE current_instance;  // 0x0
-    IDirect3D8 *restrict d3d;  // 0x4
-    IDirect3DDevice8 *restrict d3d_device;  // 0x8
-    IDirectInput8A *restrict __dinput8_ptr_C; // 0xC
-    IDirectInputDevice8A *restrict __dinput8_device_ptr_10;  // 0x10
-    void *restrict __dinput_related_ptr_1;  // 0x14
-    unknown_fields(0x2C);  // 0x18
-    HWND main_window;  // 0x44
-    D3DMATRIX view_matrix;  // 0x48
-    D3DMATRIX projection_matrix;  // 0x88
-    D3DVIEWPORT8 viewport;  // 0xc8
-    D3DPRESENT_PARAMETERS present_params;  // 0xe0
-    Config config;  // 0x118
-    Config default_config;  // 0x14c (One of these two is the default)
-    int __dword_184;  // 0x184
-    int __dword_188;  // 0x188
-    int __dword_18C;  // 0x18c
-    int __dword_190;  // 0x190
-    unknown_fields(0x4);  // 0x194
-    uint32_t __dword_198;  // 0x198
-    int __dword_19C;  // 0x19c
-    int __dword_1A0;  // 0x1a0
-    int __dword_1A4;  // 0x1a4
-    float game_speed;  // 0x1a8
-    float slowdown;  // 0x1ac
-    MidiManager *restrict midi_manager_ptr;  // 0x1b0
-    float __float_1B4;  // 0x1b4
-    float __float_1B8;  // 0x1b8
-    unknown_fields(0x244);  // 0x1bc
-    int __dword_400;  // 0x400
-    D3DCAPS8 device_caps;  // 0x404
+    HINSTANCE current_instance; // 0x0
+    LPDIRECT3D8 d3d; // 0x4
+    LPDIRECT3DDEVICE8 d3d_device; // 0x8
+    LPDIRECTINPUT8 dinput; // 0xC
+    LPDIRECTINPUTDEVICE8 dinput_device; // 0x10
+    void* __dinput_related_ptr_14; // 0x14
+    unknown_fields(0x2C); // 0x18
+    HWND main_window; // 0x44
+    D3DMATRIX view_matrix; // 0x48
+    D3DMATRIX projection_matrix; // 0x88
+    D3DVIEWPORT8 viewport; // 0xC8
+    D3DPRESENT_PARAMETERS present_params; // 0xE0
+    Config config; // 0x118
+    Config default_config; // 0x14C
+    int __dword_184; // 0x184
+    int __dword_188; // 0x188
+    int __dword_18C; // 0x18C
+    int __dword_190; // 0x190
+    unknown_fields(0x4); // 0x194
+    uint32_t __dword_198; // 0x198
+    int __dword_19C; // 0x19C
+    int __dword_1A0; // 0x1A0
+    int __dword_1A4; // 0x1A4
+    float game_speed; // 0x1A8
+    float slowdown; // 0x1AC
+    MidiManager* midi_manager_ptr; // 0x1B0
+    float __float_1B4; // 0x1B4
+    float __float_1B8; // 0x1B8
+    unknown_fields(0x244); // 0x1BC
+    int __dword_400; // 0x400
+    D3DCAPS8 device_caps; // 0x404
+    // 0x4D8
 
     // 0x424285
-    dllexport inline void thiscall tick_timer(int32_t* restrict current, float* restrict subframe) const asm("{[codecave:SUPERVISOR_tick_timer]}") {
+    dllexport gnu_noinline void thiscall tick_timer(int32_t* current, float* subframe) const asm_symbol_rel(codecave:SUPERVISOR_tick_timer) {
         if (this->slowdown <= 0.99f) {
-            if ((*subframe += this->game_speed) < 1.0f) return;
-            *subframe -= 1.0f;
+            *subframe += this->game_speed;
+            if (*subframe >= 1.0f) {
+                *current++;
+                *subframe -= 1.0f;
+            }
+        } else {
+            *current++;
         }
-        ++*current;
     }
 
     inline void set_fog_data(D3DCOLOR color, float near_plane, float far_plane) {
         IDirect3DDevice8 *restrict d3d_device = this->d3d_device;
-        const auto SetRenderStateFunc = d3d_device->vtable->SetRenderState;
-        SetRenderStateFunc(d3d_device, D3DRS_FOGCOLOR, color);
-        SetRenderStateFunc(d3d_device, D3DRS_FOGSTART, bitcast<DWORD>(near_plane));
-        SetRenderStateFunc(d3d_device, D3DRS_FOGEND, bitcast<DWORD>(far_plane));
+        d3d_device->SetRenderState(D3DRS_FOGCOLOR, color);
+        d3d_device->SetRenderState(D3DRS_FOGSTART, bitcast<DWORD>(near_plane));
+        d3d_device->SetRenderState(D3DRS_FOGEND, bitcast<DWORD>(far_plane));
     }
 
     // 0x424AE4
-    dllexport int32_t thiscall change_midi_music(int32_t music_index) asm("{[codecave:SUPERVISOR_change_midi_music]}") {
-        if (expect(this->config.bgm_format == 2, false)) {
-            if (MidiManager *restrict midi_manager = this->midi_manager_ptr) {
+    dllexport int32_t thiscall change_midi_music(int32_t music_index) asm_symbol_rel(codecave:SUPERVISOR_change_midi_music) {
+        if (this->config.bgm_format == 2) {
+            if (this->midi_manager_ptr) {
+                MidiManager* midi_manager = this->midi_manager_ptr;
                 midi_manager->__sub_4224E0();
                 midi_manager->__sub_422140(music_index);
                 midi_manager->__sub_422490();
@@ -723,7 +294,7 @@ struct Supervisor {
     }
 
     // 0x424B5D
-    dllexport gnu_noinline int32_t thiscall load_bgm_file(const char filename[0x80]) asm("{[0x424B5D]}") {
+    dllexport gnu_noinline int32_t thiscall load_bgm_file(const char filename[0x80]) asm_symbol_rel(0x424B5D) {
         gnu_used static volatile auto tempA = this;
         gnu_used static volatile auto tempB = filename;
         assume_all_registers_volatile();
@@ -731,24 +302,31 @@ struct Supervisor {
     }
 
     // 0x424D82
-    dllexport int32_t thiscall fade_music(float arg) asm("{[codecave:SUPERVISOR_fade_music]}");
+    dllexport int32_t thiscall fade_music(float arg) asm_symbol_rel(codecave:SUPERVISOR_fade_music);
 
-};  // 0x4d8
+};  
 
-//ExternalGlobal<Supervisor, 0x6C6D18> SUPERVISOR;
 extern "C" {
     // 0x6C6D18
     extern Supervisor SUPERVISOR asm("_SUPERVISOR");
 }
 
 typedef struct Timer Timer;
+// size: 0xC
 struct Timer {
-    int32_t previous;
-    float subframe;
-    int32_t current;
+    int32_t previous; // 0x0
+    float subframe; // 0x4
+    int32_t current; // 0x8
+    // 0xC
+
+    inline void default_values() {
+        this->current = 0;
+        this->previous = -1;
+        this->subframe = 0.0f;
+    }
 
     // 0x41B5AF
-    dllexport inline int32_t thiscall tick() asm("{[codecave:TIMER_tick]}") {
+    dllexport inline int32_t thiscall tick() asm_symbol_rel(codecave:TIMER_tick) {
         this->previous = this->current;
         SUPERVISOR.tick_timer(&this->current, &this->subframe);
         return this->current;
@@ -761,136 +339,74 @@ struct Timer {
     }
 
     // 0x424127
-    dllexport constexpr Timer* thiscall constructor() asm("{[codecave:TIMER_constructor]}");
+    dllexport Timer* thiscall initialize() asm_symbol_rel(codecave:TIMER_initialize) {
+        this->default_values();
+    }
 
     // 0x424154
-    dllexport forceinline void thiscall increment(int32_t count) asm("{[codecave:TIMER_increment]}");
-    dllexport forceinline void thiscall increment_simple(int32_t count) asm("{[codecave:TIMER_increment_simple]}");
+    dllexport gnu_noinline void thiscall increment(int32_t count) asm_symbol_rel(codecave:TIMER_increment);
     // 0x4241E5
-    dllexport forceinline void thiscall decrement(int32_t count) asm("{[codecave:TIMER_decrement]}");
-    dllexport forceinline void thiscall decrement_simple(int32_t count) asm("{[codecave:TIMER_decrement_simple]}");
+    dllexport gnu_noinline void thiscall decrement(int32_t count) asm_symbol_rel(codecave:TIMER_decrement);
 };
 
 template <int32_t current, int32_t prev = -999>
 static inline constexpr Timer static_default_timer = (Timer){ prev, 0.0f, current };
 
-dllexport constexpr Timer* thiscall Timer::constructor() {
-    //*this = static_default_timer<0, -1>;
-    /*this->previous = -1;
-    this->subframe = 0.0f;
-    this->current = 0;*/
-    this->set_default(0, -1);
-    return this;
-}
-
-dllexport forceinline void thiscall Timer::increment(int32_t count) {
+// 0x424145
+dllexport gnu_noinline void thiscall Timer::increment(int32_t count) {
     if (SUPERVISOR.slowdown > 0.99f) {
         this->current += count;
     } else if (count < 0) {
-        count = -count;
-        assume(count > 0);
-        this->decrement_simple(count);
+        this->decrement(-count);
     } else {
-        int32_t current_temp = this->current;
-        this->previous = current_temp;
-        float new_subframe = this->subframe + SUPERVISOR.game_speed * count;
-        float whole_subframes = __builtin_floorf(new_subframe);
-        new_subframe -= whole_subframes;
-        current_temp += (int32_t)whole_subframes;
-        /*while (new_subframe >= 1.0f) {
-            ++current_temp;
-            --new_subframe;
-        }*/
-        this->current = current_temp;
-        this->subframe = new_subframe;
+        this->previous = this->current;
+        this->subframe += (float)count * SUPERVISOR.game_speed;
+        while (this->subframe >= 1.0f) {
+            this->current++;
+            this->subframe -= 1.0f;
+        }
     }
 }
 
-dllexport forceinline void thiscall Timer::increment_simple(int32_t count) {
-    if (SUPERVISOR.slowdown > 0.99f) {
-        this->current += count;
-    } else {
-        int32_t current_temp = this->current;
-        this->previous = current_temp;
-        float new_subframe = this->subframe + SUPERVISOR.game_speed * count;
-        float whole_subframes = __builtin_floorf(new_subframe);
-        new_subframe -= whole_subframes;
-        current_temp += (int32_t)whole_subframes;
-        /*while (new_subframe >= 1.0f) {
-            ++current_temp;
-            --new_subframe;
-        }*/
-        this->current = current_temp;
-        this->subframe = new_subframe;
-    }
-}
-
-dllexport forceinline void thiscall Timer::decrement(int32_t count) {
+// 0x4241E5
+dllexport gnu_noinline void thiscall Timer::decrement(int32_t count) {
     if (SUPERVISOR.slowdown > 0.99f) {
         this->current -= count;
     } else if (count < 0) {
-        count = -count;
-        assume(count > 0);
-        this->increment_simple(count);
+        this->increment(-count);
     } else {
-        int32_t current_temp = this->current;
-        this->previous = current_temp;
-        float new_subframe = this->subframe - SUPERVISOR.game_speed * count;
-        float whole_subframes = __builtin_floorf(new_subframe);
-        new_subframe -= whole_subframes;
-        current_temp -= (int32_t)whole_subframes;
-        /*while (new_subframe < 0.0f) {
-            --current_temp;
-            ++new_subframe;
-        }*/
-        this->current = current_temp;
-        this->subframe = new_subframe;
+        this->previous = this->current;
+        this->subframe -= (float)count * SUPERVISOR.game_speed;
+        while (this->subframe <= 1.0f) {
+            this->current--;
+            this->subframe += 1.0f;
+        }
     }
 }
 
-dllexport forceinline void thiscall Timer::decrement_simple(int32_t count) {
-    if (SUPERVISOR.slowdown > 0.99f) {
-        this->current -= count;
-    } else {
-        int32_t current_temp = this->current;
-        this->previous = current_temp;
-        float new_subframe = this->subframe - SUPERVISOR.game_speed * count;
-        float whole_subframes = __builtin_floorf(new_subframe);
-        new_subframe -= whole_subframes;
-        current_temp -= (int32_t)whole_subframes;
-        /*while (new_subframe < 0.0f) {
-            --current_temp;
-            ++new_subframe;
-        }*/
-        this->current = current_temp;
-        this->subframe = new_subframe;
-    }
-}
-
-#ifndef DECLARED_FLOAT_STUCTS
-#define DECLARED_FLOAT_STUCTS 1
-
-typedef union Float2 Float2;
-union Float2 {
-    struct {
-        float x;
-        float y;
+forceinline void float3_make_from_vector(Float3* self, float angle, float magnitude) {
+#ifndef __x86_64__
+    __asm {
+        MOV EAX, self;
+        FLD angle;
+        FSINCOS;
+        FMUL magnitude;
+        FSTP DWORD PTR [EAX]
+        FMUL magnitude;
+        FSTP DWORD PTR [EAX+4]
     };
-    float as_array[2];
-    vec<float, 2> as_vec gnu_attr(packed);
-};
-
-typedef union Float3 Float3;
-union Float3 {
-    struct {
-        float x;
-        float y;
-        float z;
+#else
+    __asm {
+        MOV RAX, self;
+        FLD angle;
+        FSINCOS;
+        FMUL magnitude;
+        FSTP DWORD PTR [RAX]
+        FMUL magnitude;
+        FSTP DWORD PTR [RAX+4]
     };
-    float as_array[3];
-};
-
 #endif
+}
 
 #define read_float3_vec(float3) \
 *(vec<float, 4>*)&(float3)
@@ -998,13 +514,41 @@ dllexport inline float cdecl reduce_angle_new(float value, float initial_add) {
     return temp[0] * TWO_PI_d;
 };
 
+// size: 0x1C
+// D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1 (0x144)
+struct SpriteVertex {
+    Float4 position; // 0x0
+    D3DCOLOR diffuse; // 0x10
+    Float2 texture_uv; // 0x14
+    // 0x1C
+    static constexpr DWORD FVF_TYPE = D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1;
+};
+// size: 0x18
+// D3DFVF_XYZRHW | D3DFVF_TEX1 (0x104)
+struct SpriteVertexB {
+    Float4 position; // 0x0
+    Float2 texture_uv; // 0x10
+    // 0x18
+    static constexpr DWORD FVF_TYPE = D3DFVF_XYZRHW | D3DFVF_TEX1;
+};
+// size: 0x18
+// D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1 (0x142)
+struct SpriteVertexC {
+    Float3 position; // 0x0
+    D3DCOLOR diffuse; // 0xC
+    Float2 texture_uv; // 0x10
+    // 0x18
+    static constexpr DWORD FVF_TYPE = D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1;
+};
 
-typedef struct RenderVertex142 RenderVertex142;
-struct RenderVertex142 {
-    Float3 position;  // 0x0
-    D3DCOLOR diffuse_color;  // 0xc
-    Float2 texture_uv;  // 0x10
-};  // 0x18
+extern "C" {
+    // 0x6D4590
+    extern SpriteVertex SPRITE_VERTEX_BUFFER_A[4] asm("_SPRITE_VERTEX_BUFFER_A");
+    // 0x6D4600
+    extern SpriteVertexB SPRITE_VERTEX_BUFFER_B[4] asm("_SPRITE_VERTEX_BUFFER_B");
+    // 0x6D4660
+    extern SpriteVertexC SPRITE_VERTEX_BUFFER_C[4] asm("_SPRITE_VERTEX_BUFFER_C");
+};
 
 // ====================
 // UpdateFunc
@@ -1057,197 +601,212 @@ SetInstr((intptr_t)current_instruction + (offset))
 // ANM, SOUND
 // ====================
 
-typedef struct UnknownSoundData UnknownSoundData;
-struct UnknownSoundData {
-    int32_t __dword_0;
-    int16_t __short_4;
-    int16_t __short_6;
+// size: 0x8
+struct SoundEffectData {
+    int32_t id; // 0x0
+    int16_t sample_count; // 0x4
+    int16_t __short_6; // 0x6
+    // 0x8
 };
 
 extern "C" {
     // 0x478528
-    extern UnknownSoundData UnknownSoundData_Table[32] asm("_UnknownSoundData_Table");
+    extern SoundEffectData SOUND_EFFECT_DATA[32] asm("_UnknownSoundData_Table");
 }
 
-typedef struct CWaveFile CWaveFile;
-struct CWaveFile {
-    void* __ptr_0;
-    int __dword_4;
-    unknown_fields(0x28);
-    int __dword_30;
-    unknown_fields(0x48);
-    int __dword_7C;
-    int __dword_80;
-    unknown_fields(0xC);
-    int __dword_90;
-    int __dword_94;
+struct CWaveFileB {
+    void* __ptr_0; // 0x0
+    int __dword_4; // 0x4
+    unknown_fields(0x28); // 0x8
+    int __dword_30; // 0x30
+    unknown_fields(0x48); // 0x34
+    int __dword_7C; // 0x7C
+    int __dword_80; // 0x80
+    unknown_fields(0xC); // 0x84
+    int __dword_90; // 0x90
+    int __dword_94; // 0x94
+    // 0x98
 };
 
-typedef struct CSound CSound;
-struct CSound {
-    void* __ptr_0;
-    void* __ptr_4;
-    CWaveFile* m_pWaveFile;
-    unknown_fields(0x8);
-    int __dword_14;
-    int __dword_18;
-    int __dword_1C;
+struct CSoundB {
+    void* __ptr_0; // 0x0
+    void* __ptr_4; // 0x4
+    CWaveFile* m_pWaveFile; // 0x8
+    unknown_fields(0x8); // 0xC
+    int __dword_14; // 0x14
+    int __dword_18; // 0x18
+    int __dword_1C; // 0x1C
+    // 0x20
 };
-ValidateFieldOffset(0x0, CSound, __ptr_0);
-ValidateFieldOffset(0x4, CSound, __ptr_4);
-ValidateFieldOffset(0x8, CSound, m_pWaveFile);
-ValidateFieldOffset(0x14, CSound, __dword_14);
-ValidateFieldOffset(0x18, CSound, __dword_18);
-ValidateFieldOffset(0x1C, CSound, __dword_1C);
+ValidateFieldOffset(0x0, CSoundB, __ptr_0);
+ValidateFieldOffset(0x4, CSoundB, __ptr_4);
+ValidateFieldOffset(0x8, CSoundB, m_pWaveFile);
+ValidateFieldOffset(0x14, CSoundB, __dword_14);
+ValidateFieldOffset(0x18, CSoundB, __dword_18);
+ValidateFieldOffset(0x1C, CSoundB, __dword_1C);
 
-typedef struct SoundManager SoundManager;
+// size: 0x638
 struct SoundManager {
-    IDirectSound *restrict dsound_api;  // 0x0
-    unknown_fields(0x4);  // 0x4
-    void* __ptrs_8[128];  // 0x8
-    void* __ptrs_208[128];  // 0x208
-    int32_t __array_408[128];  // 0x408
-    void* __ptr_608;  // 0x608
-    HWND window;  // 0x60c
-    IDirectSound *restrict *restrict dsound;  // 0x610
-    int __dword_614;  // 0x614
-    int __dword_618;  // 0x618
-    unknown_fields(0x4);  // 0x614
-    int32_t __sound_index_array[3];  // 0x620
-    CSound *restrict c_sound_ptr;  // 0x62c
-    int __dword_630;  // 0x630
-    unknown_fields(0x4);  // 0x634
+    LPDIRECTSOUND dsound_api; // 0x0
+    unknown_fields(0x4); // 0x4
+    void* __ptrs_8[128]; // 0x8
+    void* __ptrs_208[128]; // 0x208
+    int32_t __array_408[128]; // 0x408
+    void* __ptr_608; // 0x608
+    HWND window; // 0x60C
+    LPDIRECTSOUND* dsound; // 0x610
+    int __dword_614; // 0x614
+    int __dword_618; // 0x618
+    unknown_fields(0x4); // 0x61C
+    int32_t __sound_index_array[3]; // 0x620
+    CSoundB* c_sound_ptr; // 0x62C
+    int __dword_630; // 0x630
+    unknown_fields(0x4); // 0x634
+    // 0x638
 
     // 0x4311E0
-    dllexport void thiscall play_sound_centered(int32_t SoundIndex, int32_t BS = GARBAGE_ARG(int32_t)) asm("{[codecave:SOUND_MANAGER_play_sound_centered]}") {
-        for (size_t ii = 0; ii < countof(this->__sound_index_array); ++ii) {
-            int32_t stored_sound_value = this->__sound_index_array[ii];
-            if (stored_sound_value < 0) {
-                this->__sound_index_array[ii] = SoundIndex;
-                this->__array_408[SoundIndex] = UnknownSoundData_Table[SoundIndex].__short_6;
+    dllexport gnu_noinline void thiscall play_sound_centered(int32_t sound_index, int32_t = 0) asm_symbol_rel(codecave:SOUND_MANAGER_play_sound_centered) {
+        int32_t intA = SOUND_EFFECT_DATA[sound_index].__short_6;
+        int32_t i = 0;
+        for (; i < countof(this->__sound_index_array); ++i) {
+            if (this->__sound_index_array[i] < 0) {
                 break;
             }
-            if (stored_sound_value == SoundIndex) break;
+            if (this->__sound_index_array[i] == sound_index) {
+                return;
+            }
         }
+        if (i >= countof(this->__sound_index_array)) {
+            return;
+        }
+        this->__sound_index_array[i] = sound_index;
+        this->__array_408[sound_index] = intA;
     }
 
     // 0x424E41
-    dllexport void thiscall __sub_424E41(float float_arg) asm("{[codecave:SOUND_MANAGER_sub_424E41]}") {
-        if (CSound *restrict c_sound = this->c_sound_ptr) {
+    dllexport gnu_noinline void thiscall __sub_424E41(float arg1) asm_symbol_rel(codecave:SOUND_MANAGER_sub_424E41) {
+        if (this->c_sound_ptr) {
+            CSoundB* c_sound = this->c_sound_ptr;
             c_sound->__dword_1C = 1;
-            float_arg *= 60.0f;
-            c_sound->__dword_14 = float_arg;
-            c_sound->__dword_18 = float_arg;
+            c_sound->__dword_14 = arg1 * 60.0f;
+            c_sound->__dword_18 = c_sound->__dword_14;
         }
     }
 
-};  // 0x638
+};
 
 extern "C" {
     // 0x6D3F50
     extern SoundManager SOUND_MANAGER asm("_SOUND_MANAGER");
 }
 
+// size: 0x38
 struct AnmLoadedSprite {
-    int32_t source_file_index;  // 0x0
-    Float2 start_pixel_inclusive;  // 0x4
-    Float2 end_pixel_inclusive;  // 0xc
+    int32_t source_file_index; // 0x0
+    Float2 start_pixel_inclusive; // 0x4
+    Float2 end_pixel_inclusive; // 0xC
     union {
         Float2 texture_size;
         struct {
-            float texture_height;  // 0x14
-            float texture_width;  // 0x18
+            float texture_height; // 0x14
+            float texture_width; // 0x18
         };
     };
-    Float2 uv_start;  // 0x1c
-    Float2 uv_end;  // 0x24
+    Float2 uv_start; // 0x1C
+    Float2 uv_end; // 0x24
     union {
         Float2 sprite_size;
         struct {
-            float height_px;  // 0x2c
-            float width_px;  // 0x30
+            float height_px; // 0x2C
+            float width_px; // 0x30
         };
     };
-    int32_t sprite_id;  // 0x34
-};  // 0x38
+    int32_t sprite_id; // 0x34
+    // 0x38
+};  
 
-typedef struct AnmInstruction AnmInstruction;
+// size: 0x2C
 struct AnmInstruction {
-    int16_t time;  // 0x0
-    uint8_t opcode;  // 0x2
-    uint8_t argsize;  // 0x3
-    unsigned char args[];  // 0x4
-};  // 0x2c
+    int16_t time; // 0x0
+    uint8_t opcode; // 0x2
+    uint8_t argsize; // 0x3
+    unsigned char args[]; // 0x4
+    // 0x2C
+}; 
 
-typedef struct AnmScript AnmScript;
+// size: 0x8
 struct AnmScript {
-    uint32_t id;  // 0x0
-    AnmInstruction *restrict first_instr;  // 0x4
-};  // 0x8
+    uint32_t id; // 0x0
+    AnmInstruction* first_instr; // 0x4
+    // 0x8
+};  
 
-typedef struct AnmSprite AnmSprite;
+// size: 0x14
 struct AnmSprite {
-    uint32_t id;  // 0x0
-    Float2 offset;  // 0x4
-    Float2 size;  // 0xc
-};  // 0x14
+    uint32_t id; // 0x0
+    Float2 offset; // 0x4
+    Float2 size; // 0xC
+    // 0x14
+};
 
-typedef struct AnmTexture AnmTexture;
+// size: 0x10
 struct AnmTexture {
-    char magic__THTX[0x4];  // 0x0
-    uint16_t __zero;  // 0x4
-    uint16_t format;  // 0x6
-    uint16_t width;  // 0x8
-    uint16_t height;  // 0xa
-    uint32_t num_bytes;  // 0xc
-    unsigned char data[];  // 0x10
-};  // 0x10
+    ZUNMagic magic; // 0x0 (THTX)
+    uint16_t __zero; // 0x4
+    uint16_t format; // 0x6
+    uint16_t width; // 0x8
+    uint16_t height; // 0xA
+    uint32_t num_bytes; // 0xC
+    unsigned char data[]; // 0x10
+};
 
-typedef struct AnmEntry AnmEntry;
+
 struct AnmEntry {
-    int32_t num_sprites;  // 0x0
-    int32_t num_scripts;  // 0x4
-    int32_t rt_texture_slot;  // 0x8
-    uint32_t width;  // 0xc
-    uint32_t height;  // 0x10
-    uint32_t format;  // 0x14
-    D3DCOLOR colorkey;  // 0x18
-    char *restrict path_1;  // 0x1c
-    uint32_t __unknown__used_at_runtime;  // 0x20
-    char *restrict path_2;  // 0x24
-    uint32_t version;  // 0x28
-    uint32_t memory_priority;  // 0x2c
-    AnmTexture *restrict texture;  // 0x30
-    uint16_t __has_data__unused_in_EoSD;  // 0x34
-    uint16_t __unused_2;  // 0x36
-    uint32_t offset_to_next;  // 0x38
-    uint32_t __unused_3;  // 0x3c
-    AnmSprite *restrict sprites[0xa];  // 0x40
-    AnmScript scripts[0xa];  // 0x68
-};  // 0xb8
+    int32_t num_sprites; // 0x0
+    int32_t num_scripts; // 0x4
+    int32_t rt_texture_slot; // 0x8
+    uint32_t width; // 0xC
+    uint32_t height; // 0x10
+    uint32_t format; // 0x14
+    D3DCOLOR colorkey; // 0x18
+    char* path_1; // 0x1C
+    uint32_t __unknown__used_at_runtime; // 0x20
+    char* path_2; // 0x24
+    uint32_t version; // 0x28
+    uint32_t memory_priority; // 0x2C
+    AnmTexture* texture; // 0x30
+    uint16_t __has_data__unused_in_EoSD; // 0x34
+    uint16_t __unused_2; // 0x36
+    uint32_t offset_to_next; // 0x38
+    uint32_t __unused_3; // 0x3C
+    AnmSprite* sprites[10]; // 0x40
+    AnmScript scripts[10]; // 0x68
+    // 0xB8
+};
 
+// size: 0x110
 struct AnmVM {
-    Float3 rotation;  // 0x0
-    Float3 angle_vel;  // 0xc
+    Float3 rotation; // 0x0
+    Float3 angular_velocity; // 0xC
     union {
-        Float2 scale;
+        Float2 scale; // 0x18
         struct {
-            float scale_y;  // 0x18
-            float scale_x;  // 0x1c
+            float scale_y; // 0x18
+            float scale_x; // 0x1C
         };
     };
     union {
-        Float2 scale_interp_final;
+        Float2 scale_interp_final; // 0x20
         struct {
-            float scale_interp_final_y;  // 0x20
-            float scale_interp_final_x;  // 0x24
+            float scale_interp_final_y; // 0x20
+            float scale_interp_final_x; // 0x24
         };
     };
-    Float2 uv_scroll_pos;  // 0x28
-    Timer script_time;  // 0x30
-    D3DMATRIX __matrix;  // 0x3c
+    Float2 uv_scroll_pos; // 0x28
+    Timer script_time; // 0x30
+    D3DMATRIX __matrix; // 0x3C
     union {
-        D3DCOLOR color;  // 0x7c
+        D3DCOLOR color; // 0x7C
         uint8_t color_non_aplha[3];
         uint8_t color_all[4];
         vec<uint8_t, 4> color_vec gnu_attr(packed);
@@ -1259,10 +818,10 @@ struct AnmVM {
         };
     };
     union {
-        uint16_t flags_as_word;
+        uint16_t flags; // 0x80
         struct {
             union {
-                uint8_t flags_80;
+                uint8_t flags_80; // 0x80
                 struct {
                     uint8_t visible : 1; // 0x0001
                     uint8_t __unknown_flag_B : 1; // 0x0002
@@ -1275,7 +834,7 @@ struct AnmVM {
                 };
             };
             union {
-                uint8_t flags_81;
+                uint8_t flags_81; // 0x81
                 struct {
                     uint8_t anchor_mode : 2; // 0x0100-0x0200
                     uint8_t move_mode : 2; // 0x0400-0x0800
@@ -1285,49 +844,31 @@ struct AnmVM {
             };
         };
     };
-    probably_padding_bytes(0x2);
-    //union {
-    //    uint32_t flags;  // 0x80
-    //    uint16_t flags_as_word;
-    //    struct {
-    //        uint32_t visible : 1; // 0x0001
-    //        uint32_t __unknown_flag_B : 1; // 0x0002
-    //        uint32_t additive_blending : 1; // 0x0004
-    //        uint32_t __unknown_flag_D : 1; // 0x0008
-    //        uint32_t __unknown_field_A : 1; // 0x0010
-    //        uint32_t position_mode : 1; // 0x0020
-    //        uint32_t flip_x : 1; // 0x0040
-    //        uint32_t flip_y : 1; // 0x0080
-    //        uint32_t anchor_mode : 2; // 0x0100-0x0200
-    //        uint32_t move_mode : 2; // 0x0400-0x0800
-    //        uint32_t z_write_disable : 1; // 0x1000
-    //        uint32_t stop_enable : 1; // 0x2000
-    //    };
-    //};
-    int16_t alpha_interp_end_time;  // 0x84
-    int16_t scale_interp_end_time;  // 0x86
-    uint16_t __auto_rotate;  // 0x88
-    int16_t pending_interrupt_label;  // 0x8a
-    int16_t position_interp_end_time;  // 0x8c
-    unknown_fields(0x2);  // 0x8e
-    Float3 position;  // 0x90
+    probably_padding_bytes(0x2); // 0x82
+    int16_t alpha_interp_end_time; // 0x84
+    int16_t scale_interp_end_time; // 0x86
+    uint16_t __auto_rotate; // 0x88
+    int16_t pending_interrupt_label; // 0x8A
+    int16_t position_interp_end_time; // 0x8C
+    unknown_fields(0x2); // 0x8E
+    Float3 position; // 0x90
     union {
-        Float2 scale_interp_initial;
+        Float2 scale_interp_initial; // 0x9C
         struct {
-            float scale_interp_initial_y;  // 0x9c
-            float scale_interp_initial_x;  // 0xa0
+            float scale_interp_initial_y; // 0x9C
+            float scale_interp_initial_x; // 0xA0
         };
     };
-    Timer scale_interp_timer;  // 0xa4
-    int16_t sprite_number;  // 0xb0
-    int16_t base_sprite_number;  // 0xb2
-    int16_t script_number;  // 0xb4
-    int16_t base_script_number;  // 0xb6
-    AnmInstruction *restrict beginning_of_script;  // 0xb8
-    AnmInstruction *restrict current_instr;  // 0xbc
-    AnmLoadedSprite *restrict sprite;  // 0xc0
+    Timer scale_interp_timer; // 0xA4
+    int16_t sprite_number; // 0xB0
+    int16_t base_sprite_number; // 0xB2
+    int16_t script_number; // 0xB4
+    int16_t base_script_number; // 0xB6
+    AnmInstruction* beginning_of_script; // 0xB8
+    AnmInstruction* current_instr; // 0xBC
+    AnmLoadedSprite* sprite; // 0xC0
     union {
-        D3DCOLOR alpha_interp_initial;  // 0xc4
+        D3DCOLOR alpha_interp_initial; // 0xC4
         uint8_t alpha_interp_initial_non_alpha[3];
         uint8_t alpha_interp_initial_all[4];
         vec<uint8_t, 4> alpha_interp_initial_vec gnu_attr(packed);
@@ -1339,7 +880,7 @@ struct AnmVM {
         };
     };
     union {
-        D3DCOLOR alpha_interp_final;  // 0xc8
+        D3DCOLOR alpha_interp_final; // 0xC8
         uint8_t alpha_interp_final_non_alpha[3];
         uint8_t alpha_interp_final_all[4];
         vec<uint8_t, 4> alpha_interp_final_vec gnu_attr(packed);
@@ -1350,43 +891,49 @@ struct AnmVM {
             uint8_t alpha_interp_final_alpha;
         };
     };
-    Float3 position_interp_initial;  // 0xcc
-    Float3 position_interp_final;  // 0xd8
-    Float3 __position_2;  // 0xe4
-    Timer position_interp_timer;  // 0xf0
-    int32_t time_of_last_sprite_set;  // 0xfc
-    Timer alpha_interp_timer;  // 0x100
-    uint8_t font_width;  // 0x10c
-    uint8_t font_height;  // 0x10d
-    probably_padding_bytes(0x2);  // 0x10e
+    Float3 position_interp_initial; // 0xCC
+    Float3 position_interp_final; // 0xD8
+    Float3 __position_2; // 0xE4
+    Timer position_interp_timer; // 0xF0
+    int32_t time_of_last_sprite_set; // 0xFC
+    Timer alpha_interp_timer; // 0x100
+    uint8_t font_width; // 0x10C
+    uint8_t font_height; // 0x10D
+    probably_padding_bytes(0x2); // 0x10E
+    // 0x110
 
-    //0x403580
+    // 0x403580
     dllexport void thiscall initialize() asm("{[codecave:ANM_VM_initialize]}") {
-        this->uv_scroll_pos = (Float2){ 0.0f, 0.0f };
-        this->scale_interp_final = (Float2){ 0.0f, 0.0f };
-        this->scale = (Float2){ 1.0f, 1.0f };
-        this->angle_vel = (Float3){ 0.0f, 0.0f, 0.0f };
-        this->rotation = (Float3){ 0.0f, 0.0f, 0.0f };
+        this->uv_scroll_pos = { 0.0f, 0.0f };
+        this->scale_interp_final = { 0.0f, 0.0f };
+        this->angular_velocity = { 0.0f, 0.0f, 0.0f };
+        this->rotation = { 0.0f, 0.0f, 0.0f };
+        this->scale = { 1.0f, 1.0f };
         this->scale_interp_end_time = 0;
         this->alpha_interp_end_time = 0;
         this->color = PackD3DCOLOR(255, 255, 255, 255);
-        D3DMATRIX::set_identity(&this->__matrix);
-        this->flags_as_word = 3;
+        matrix_set_identity(this->__matrix);
+        //this->flags = 3;
         this->visible = true;
         this->__unknown_flag_B = true;
         this->__auto_rotate = 0;
         this->pending_interrupt_label = 0;
         this->position_interp_end_time = 0;
-        this->script_time.constructor();
+        this->script_time.initialize();
     }
 
-};  // 0x110
+    inline void set_script(int32_t index) {
+        this->script_number = index;
+        AnmManager* anm_manager = ANM_MANAGER_PTR;
+        anm_manager->set_vm_script(this, anm_manager->scripts[index]);
+    }
+};
 
 dllexport gnu_noinline void cdecl __sub_41F050(
     int32_t x_pos, int32_t y_pos, int32_t width, int32_t height,
     int32_t font_width, int32_t font_height, D3DCOLOR colorA, D3DCOLOR colorB, const char *restrict text,
     IDirect3DTexture8 *restrict texture
-) asm("{[0x41F050]}");
+) asm_symbol_rel(0x41F050);
 dllexport gnu_noinline void cdecl __sub_41F050(
     int32_t x_pos, int32_t y_pos, int32_t width, int32_t height,
     int32_t font_width, int32_t font_height, D3DCOLOR colorA, D3DCOLOR colorB, const char *restrict text,
@@ -1417,11 +964,22 @@ struct RenderDataFormatLookupData {
 	uint32_t red_mask; // 0xC
 	uint32_t green_mask; // 0x10
 	uint32_t blue_mask; // 0x14
+    // 0x18
 };
 
 extern "C" {
     extern RenderDataFormatLookupData RenderDataFormatLookupDataTable[7] asm("_RenderDataFormatLookupDataTable");
 }
+
+// size: 0x6C
+struct Custom_BITMAPINFO {
+    BITMAPINFOHEADER bmiHeader; // 0x0
+    Custom_RGBAQUAD  bmiColors[1]; // 0x28
+    unknown_fields(0x34); // 0x38
+    // 0x6C
+};
+
+static constexpr auto wkrbwejkrb = offsetof(Custom_BITMAPINFO, bmiColors);
 
 struct BitmapRenderData {
 	D3DFORMAT format; // 0x0
@@ -1433,12 +991,12 @@ struct BitmapRenderData {
 	HGDIOBJ screen_bitmap_object; // 0x18
 	HBITMAP bitmap_handle; // 0x1C
 	void* raw_bitmap_bits; // 0x20
+    // 0x24
 	
 	inline void initialize() {
 		this->format = (D3DFORMAT)-1;
 		this->width = 0;
 		this->height = 0;
-		//this->screen_device_context = NULL;
 		this->bitmap_handle = NULL;
 		this->screen_bitmap_object = NULL;
 		this->raw_bitmap_bits = 0;
@@ -1448,23 +1006,26 @@ struct BitmapRenderData {
 		this->initialize();
 	}
 	
-	uint8_t reset() {
+    // 0x41E992
+	dllexport gnu_noinline bool thiscall reset() asm_symbol_rel(0x41E992) {
 		if (this->device_context) {
-			//SelectObject(this->screen_device_context, this->screen_bitmap_object);
-			//DeleteDC(this->screen_device_context);
+			SelectObject(this->device_context, this->screen_bitmap_object);
+			DeleteDC(this->device_context);
 			DeleteObject(this->bitmap_handle);
 			this->initialize();
-			return 1;
+			return true;
 		}
-		return 0;
+		return false;
 	}
 	
-	~BitmapRenderData() {
+    // 0x41E981
+	dllexport gnu_noinline ~BitmapRenderData() {
 		this->reset();
 	}
 	
-	RenderDataFormatLookupData* __sub_41EC22(D3DFORMAT format) {
-		int i = 0;
+    // 0x41EC22
+	dllexport gnu_noinline RenderDataFormatLookupData* thiscall __sub_41EC22(D3DFORMAT format) asm_symbol_rel(0x41EC22) {
+		int32_t i = 0;
 		for (;
 			RenderDataFormatLookupDataTable[i].format != (D3DFORMAT)-1 &&
 			RenderDataFormatLookupDataTable[i].format != format;
@@ -1476,17 +1037,14 @@ struct BitmapRenderData {
 		return &RenderDataFormatLookupDataTable[i];
 	}
 	
-	uint8_t __sub_41EA63(int32_t width, int32_t height, D3DFORMAT format) {
+    // 0x41EA63
+	dllexport gnu_noinline bool thiscall __sub_41EA63(int32_t width, int32_t height, D3DFORMAT format) asm_symbol_rel(0x41EA63) {
 		this->reset();
-		struct Custom_BITMAPINFO {
-			BITMAPINFOHEADER bmiHeader;
-			Custom_RGBAQUAD  bmiColors[17];
-		};
         Custom_BITMAPINFO bitmap_info;
 		memset(&bitmap_info, 0, sizeof(Custom_BITMAPINFO));
 		RenderDataFormatLookupData* render_data_ptr = this->__sub_41EC22(format);
 		if (!render_data_ptr) {
-			return 0;
+			return false;
 		}
 		int32_t bytes_per_row = dword_align(width * render_data_ptr->bits_per_pixel / CHAR_BIT) * sizeof(DWORD);
 		bitmap_info.bmiHeader.biSize = sizeof(Custom_BITMAPINFO);
@@ -1494,7 +1052,7 @@ struct BitmapRenderData {
 		bitmap_info.bmiHeader.biHeight = -(height + 1); // Some kind of crappy ~?
 		bitmap_info.bmiHeader.biPlanes = 1;
 		bitmap_info.bmiHeader.biBitCount = render_data_ptr->bits_per_pixel;
-		//bitmap_info.bmiHeader.biSizeImage = height * render_width_in_bytes;
+		bitmap_info.bmiHeader.biSizeImage = height * bytes_per_row;
 		if (format != D3DFMT_X1R5G5B5 && format != D3DFMT_X8R8G8B8) {
 			bitmap_info.bmiHeader.biCompression = BI_BITFIELDS;
 			bitmap_info.bmiColors[0].red_mask = render_data_ptr->red_mask;
@@ -1505,12 +1063,12 @@ struct BitmapRenderData {
 		void* raw_bitmap_bits;
 		HBITMAP bitmap_handle = CreateDIBSection(NULL, (const BITMAPINFO*)&bitmap_info, DIB_RGB_COLORS, &raw_bitmap_bits, NULL, 0);
 		if (!bitmap_handle) {
-			return 0;
+			return false;
 		}
 		memset(raw_bitmap_bits, 0, bitmap_info.bmiHeader.biSizeImage);
-		HDC screen_device_context = CreateCompatibleDC(NULL);
-		HGDIOBJ screen_bitmap_object = SelectObject(screen_device_context, bitmap_handle);
-		//this->screen_device_context = screen_device_context;
+		HDC device_context = CreateCompatibleDC(NULL);
+		HGDIOBJ screen_bitmap_object = SelectObject(device_context, bitmap_handle);
+		this->device_context = device_context;
 		this->bitmap_handle = bitmap_handle;
 		this->raw_bitmap_bits = raw_bitmap_bits;
 		this->raw_bitmap_size = bitmap_info.bmiHeader.biSizeImage;
@@ -1519,12 +1077,13 @@ struct BitmapRenderData {
 		this->height = height;
 		this->format = format;
 		this->bytes_per_row = bytes_per_row;
-		return 1;
+		return true;
 	}
 	
-	uint8_t __sub_41EA04(int32_t width, int32_t height, D3DFORMAT format) {
+    // 0x41EA04
+	dllexport gnu_noinline bool thiscall __sub_41EA04(int32_t width, int32_t height, D3DFORMAT format) asm_symbol_rel(0x41EA04) {
 		if (this->__sub_41EA63(width, height, format)) {
-			return 1;
+			return true;
 		}
 		if (format == D3DFMT_A1R5G5B5 || format == D3DFMT_A4R4G4B4) {
 			return this->__sub_41EA63(width, height, D3DFMT_A8R8G8B8);
@@ -1532,10 +1091,11 @@ struct BitmapRenderData {
 		if (format == D3DFMT_R5G6B5) {
 			return this->__sub_41EA63(width, height, D3DFMT_X8R8G8B8);
 		}
-		return 0;
+		return false;
 	}
 	
-	uint8_t __sub_41EC72(int32_t arg1, int32_t arg2, int32_t arg3, int32_t arg4) {
+    // 0x41EC72
+	dllexport gnu_noinline bool thiscall __sub_41EC72(int32_t arg1, int32_t arg2, int32_t arg3, int32_t arg4) asm_symbol_rel(0x41EC72) {
 		gnu_used static volatile auto tempA = arg1;
 		gnu_used static volatile auto tempB = arg2;
 		gnu_used static volatile auto tempC = arg3;
@@ -1543,31 +1103,63 @@ struct BitmapRenderData {
 		return 0;
 	}
 	
-	void __sub_41EF11(LPDIRECT3DSURFACE8 surface) {
-		gnu_used static volatile auto tempA = surface;
+    // 0x41EF11
+	dllexport gnu_noinline bool thiscall __sub_41EF11(LPDIRECT3DSURFACE8 surface) asm_symbol_rel(0x41EF11) {
+        if (!(bool)(this->bitmap_handle != NULL)) {
+            return false;
+        }
+        D3DSURFACE_DESC surface_desc; // EBP-40
+        surface->GetDesc(&surface_desc);
+
+        RECT rect; // EBP-18
+        rect.left = 0;
+        rect.top = 0;
+        int32_t width = this->width; // EBP-50
+        rect.right = width;
+        int32_t height = this->height; // EBP-54
+        rect.bottom = height;
+
+        D3DLOCKED_RECT locked_rect; // EBP-4C
+        if (surface->LockRect(&locked_rect, &rect, 0) != D3D_OK) {
+            return false;
+        }
+        int32_t pitch = locked_rect.Pitch; // EBP-8
+        int32_t bytes_per_row = this->bytes_per_row; // EBP-20
+        uint8_t* raw_bitmap_bits = (uint8_t*)this->raw_bitmap_bits; // EBP-44
+        uint8_t* locked_bits = (uint8_t*)locked_rect.pBits; // EBP-4
+        D3DFORMAT format = this->format; // EBP-58
+        if (surface_desc.Format == format) {
+            int32_t height; // EBP-5C
+            for (int32_t i = 0; i < (height = this->height); i++) {
+                memcpy(locked_bits, raw_bitmap_bits, bytes_per_row);
+                raw_bitmap_bits += bytes_per_row;
+                locked_bits += pitch;
+            }
+        }
+        surface->UnlockRect();
 	}
 };
 
-static LPDIRECT3DSURFACE8 surface_ptr;
+extern "C" {
+    // 0x69E230
+    extern LPDIRECT3DSURFACE8 UNKNOWN_SURFACE_A asm("_UNKNOWN_SURFACE_A");
+}
 
 // 0x41F008
-void create_global_surface() asm("{[codecave:create_global_surface]}");
-void create_global_surface() {
-	//SUPERVISOR.d3d_device->CreateImageSurface(640, 64, D3DFMT_A1R5G5B5, &surface_ptr);
+dllexport gnu_noinline void create_global_surface() asm_symbol_rel(codecave:create_global_surface);
+dllexport gnu_noinline void create_global_surface() {
+	SUPERVISOR.d3d_device->CreateImageSurface(640, 64, D3DFMT_A1R5G5B5, &UNKNOWN_SURFACE_A);
 }
 
 // 0x41F02B
-void release_global_surface() asm("{[codecave:release_global_surface]}");
-void release_global_surface() {
-	if (surface_ptr) {
-		//surface_ptr->Release();
-		surface_ptr = NULL;
-	}
+dllexport gnu_noinline void release_global_surface() asm_symbol_rel(codecave:release_global_surface);
+dllexport gnu_noinline void release_global_surface() {
+    SAFE_RELEASE(UNKNOWN_SURFACE_A);
 }
 
-/*
-void render_text(int32_t x_pos, int32_t y_pos, int32_t width, int32_t height, int32_t font_width, int32_t font_height, D3DCOLOR colorA, D3DCOLOR colorB, char* text, IDirect3DTexture8* texture) asm("{[0x41F050]}");
-void render_text(
+// 0x41F050
+dllexport gnu_noinline void cdecl render_text(int32_t x_pos, int32_t y_pos, int32_t width, int32_t height, int32_t font_width, int32_t font_height, D3DCOLOR colorA, D3DCOLOR colorB, char* text, IDirect3DTexture8* texture) asm_symbol_rel(0x41F050);
+dllexport gnu_noinline void cdecl render_text(
 	int32_t x_pos, // 0x8
 	int32_t y_pos, // 0xC
 	int32_t width, // 0x10
@@ -1579,66 +1171,180 @@ void render_text(
 	char* text, // 0x28
     LPDIRECT3DTEXTURE8 texture // 0x2C
 ) {
-	HFONT font_handle = CreateFontA(font_width * 2, 0, 0, FW_BOLD, false, false, false, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY, FIXED_PITCH | FF_ROMAN);
-	BitmapRenderData bitmap_data;
-	D3DSURFACE_DESC surface_desc;
-	surface_ptr->GetDesc(&surface_desc);
-	bitmap_data.__sub_41EA04(surface_desc.Width, surface_desc.Height, surface_desc.format);
-	HDC screen_context = bitmap_data.screen_device_context;
-	HGDIOBJ screen_font_object = SelectObject(screen_context, font_handle);
+    // EBP-14
+	HFONT font_handle = CreateFontA(font_width * 2, 0, 0, 0, FW_BOLD, false, false, false, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY, FIXED_PITCH | FF_ROMAN, "‚l‚r ƒSƒVƒbƒN");
+	BitmapRenderData bitmap_data; // EBP-5C
+    bitmap_data.initialize();
+	D3DSURFACE_DESC surface_desc; // EBP-34
+    UNKNOWN_SURFACE_A->GetDesc(&surface_desc);
+	bitmap_data.__sub_41EA04(surface_desc.Width, surface_desc.Height, surface_desc.Format);
+	HDC screen_context = bitmap_data.device_context; // EBP-10
+	HGDIOBJ screen_font_object = SelectObject(screen_context, font_handle); // EBP-38
 	bitmap_data.__sub_41EC72(0, 0, width * 2, font_width * 2 + 6);
 	SetBkMode(screen_context, TRANSPARENT);
-	if (colorB != (D3DCOLOR)-1) {
-		SetTextColor(screen_context, (COLORREF)colorB);
+	if (colorB != PackD3DCOLOR(255, 255, 255, 255)) {
+		SetTextColor(screen_context, colorB);
 		TextOutA(screen_context, x_pos * 2 + 6, 2, text, strlen(text));
 	}
-	SetTextColor(screen_context, (COLORREF)colorA);
+	SetTextColor(screen_context, colorA);
 	TextOutA(screen_context, x_pos * 2, 0, text, strlen(text));
-	(void)SelectObject(screen_context, screen_font_object); // WTF?
+	(void)SelectObject(screen_context, screen_font_object);
 	bitmap_data.__sub_41EC72(0, 0, width * 2, font_width * 2 + 6);
-	bitmap_data.__sub_41EF11(surface_ptr);
-	(void)SelectObject(screen_context, screen_font_object); // WTF?
+	bitmap_data.__sub_41EF11(UNKNOWN_SURFACE_A);
+	(void)SelectObject(screen_context, screen_font_object);
 	DeleteObject(font_handle);
-	RECT dest_rect = { .left = 0, .top = y_pos, .right = width, .bottom = y_pos + 10 };
-	RECT src_rect = { .left = 0, .top = 0, .right = width * 2 - 2, .bottom = font_width * 2 - 2 };
-	LPDIRECT3DSURFACE8 dest_surface;
+    RECT dest_rect; // EBP-7C
+    dest_rect.left = 0;
+    dest_rect.top = y_pos;
+    dest_rect.right = width;
+    dest_rect.bottom = y_pos + 10;
+    RECT src_rect; // EBP-6C
+    src_rect.left = 0;
+    src_rect.top = 0;
+    src_rect.right = width * 2 - 2;
+    src_rect.bottom = font_width * 2 - 2;
+	LPDIRECT3DSURFACE8 dest_surface; // EBP-80
 	texture->GetSurfaceLevel(0, &dest_surface);
-	D3DXLoadSurfaceFromSurface(dest_surface, NULL, &dest_rect, surface_ptr, NULL, D3DX_FILTER_TRIANGLE, 0);
-	if (dest_surface) {
-		dest_surface->Release();
-		dest_surface = NULL;
-	}
+	D3DXLoadSurfaceFromSurface(dest_surface, NULL, &dest_rect, UNKNOWN_SURFACE_A, NULL, &src_rect, D3DX_FILTER_TRIANGLE, 0);
+    SAFE_RELEASE(dest_surface);
+    int32_t wtf = -1;
 }
-*/
 
-typedef struct AnmManager AnmManager;
+
+// size: 0x2112C
 struct AnmManager {
-    AnmLoadedSprite sprites[0x800];  // 0x0
-    AnmVM __mystery_vm;  // 0x1c000
-    IDirect3DTexture8 *restrict textures[0x108];  // 0x1c110
-    void* image_data_array[0x100];  // 0x1c530
-    int32_t __maybe_loaded_sprite_count;  // 0x1c930
-    AnmInstruction *restrict scripts[0x800];  // 0x1c934
-    int32_t sprite_indices[0x800];  // 0x1e934
-    AnmEntry *restrict anm_files[0x80];  // 0x20934
-    uint32_t anm_file_sprite_index_offsets[0x80];  // 0x20b34
-    IDirect3DSurface8 *restrict surfaces_a[0x20];  // 0x20d34
-    IDirect3DSurface8 *restrict surfaces_b[0x20];  // 0x20db4
-    D3DXIMAGE_INFO surface_source_info[0x20];  // 0x20e34
-    D3DCOLOR current_texture_factor;  // 0x210b4
-    IDirect3DTexture8 *restrict current_texture;  // 0x210b8
-    uint8_t current_blend_mode;  // 0x210bc
-    uint8_t current_colorop;  // 0x210bd
-    uint8_t current___uhhhhh;  // 0x210be
-    uint8_t current_zwrite_disable;  // 0x210bf
-    AnmLoadedSprite *restrict current_sprite;  // 0x210c0
-    IDirect3DVertexBuffer8 *restrict stream_source;  // 0x210c4
-    RenderVertex142 __some_vertex_buffer[0x4];  // 0x210c8
-    int32_t __wierd_texture_height;  // 0x21128
+    AnmLoadedSprite sprites[0x800]; // 0x0
+    AnmVM __vm_1C000; // 0x1C000
+    LPDIRECT3DTEXTURE8 textures[0x108]; // 0x1C110
+    void* image_data_array[0x100]; // 0x1C530
+    int32_t __maybe_loaded_sprite_count; // 0x1C930
+    AnmInstruction* scripts[0x800]; // 0x1C934
+    int32_t sprite_indices[0x800]; // 0x1E934
+    AnmEntry* anm_files[0x80]; // 0x20934
+    uint32_t anm_file_sprite_index_offsets[0x80]; // 0x20B34
+    LPDIRECT3DSURFACE8 surfaces_a[0x20]; // 0x20D34
+    LPDIRECT3DSURFACE8 surfaces_b[0x20]; // 0x20DB4
+    D3DXIMAGE_INFO surface_source_info[0x20]; // 0x20E34
+    D3DCOLOR current_texture_factor; // 0x210B4
+    LPDIRECT3DTEXTURE8 current_texture; // 0x210B8
+    uint8_t current_blend_mode; // 0x210BC
+    uint8_t current_colorop; // 0x210BD
+    uint8_t current___uhhhhh; // 0x210BE
+    uint8_t current_zwrite_disable; // 0x210BF
+    AnmLoadedSprite* current_sprite; // 0x210C0
+    LPDIRECT3DVERTEXBUFFER8 stream_source; // 0x210C4
+    SpriteVertexC __some_vertex_buffer[0x4]; // 0x210C8
+    int32_t __weird_texture_height; // 0x21128
+    // 0x2112C
+
+    // 0x432730
+    dllexport gnu_noinline ZunResult thiscall __sub_432730(AnmVM* VM, bool round_inputs) asm_symbol_rel(0x432730) {
+        if (round_inputs) {
+            long double A = rint_asm(SPRITE_VERTEX_BUFFER_B[0].position.x) - 0.5f;
+            long double B = rint_asm(SPRITE_VERTEX_BUFFER_B[1].position.x) - 0.5f;
+            long double C = rint_asm(SPRITE_VERTEX_BUFFER_B[0].position.y) - 0.5f;
+            long double D = rint_asm(SPRITE_VERTEX_BUFFER_B[2].position.y) - 0.5f;
+            SPRITE_VERTEX_BUFFER_B[2].position.y = D;
+            SPRITE_VERTEX_BUFFER_B[3].position.y = D;
+            SPRITE_VERTEX_BUFFER_B[0].position.y = C;
+            SPRITE_VERTEX_BUFFER_B[1].position.y = C;
+            SPRITE_VERTEX_BUFFER_B[1].position.x = B;
+            SPRITE_VERTEX_BUFFER_B[3].position.x = B;
+            SPRITE_VERTEX_BUFFER_B[0].position.x = A;
+            SPRITE_VERTEX_BUFFER_B[2].position.x = A;
+        }
+        SPRITE_VERTEX_BUFFER_B[3].position.z = VM->position.z;
+        SPRITE_VERTEX_BUFFER_B[2].position.z = SPRITE_VERTEX_BUFFER_B[3].position.z;
+        SPRITE_VERTEX_BUFFER_B[1].position.z = SPRITE_VERTEX_BUFFER_B[2].position.z;
+        SPRITE_VERTEX_BUFFER_B[0].position.z = SPRITE_VERTEX_BUFFER_B[1].position.z;
+        if (this->current_sprite != VM->sprite) {
+            this->current_sprite = VM->sprite;
+            SPRITE_VERTEX_BUFFER_B[2].texture_uv.x = VM->sprite->uv_start.x + VM->uv_scroll_pos.x;
+            SPRITE_VERTEX_BUFFER_B[0].texture_uv.x = SPRITE_VERTEX_BUFFER_B[2].texture_uv.x;
+            SPRITE_VERTEX_BUFFER_B[3].texture_uv.x = VM->sprite->uv_end.x + VM->uv_scroll_pos.x;
+            SPRITE_VERTEX_BUFFER_B[1].texture_uv.x = SPRITE_VERTEX_BUFFER_B[3].texture_uv.x;
+            SPRITE_VERTEX_BUFFER_B[1].texture_uv.y = VM->sprite->uv_start.y + VM->uv_scroll_pos.y;
+            SPRITE_VERTEX_BUFFER_B[0].texture_uv.y = SPRITE_VERTEX_BUFFER_B[1].texture_uv.y;
+            SPRITE_VERTEX_BUFFER_B[3].texture_uv.y = VM->sprite->uv_end.y + VM->uv_scroll_pos.y;
+            SPRITE_VERTEX_BUFFER_B[2].texture_uv.y = SPRITE_VERTEX_BUFFER_B[3].texture_uv.y;
+            if (this->current_texture != this->textures[VM->sprite->source_file_index]) {
+                this->current_texture = this->textures[VM->sprite->source_file_index];
+                SUPERVISOR.d3d_device->SetTexture(0, this->current_texture);
+            }
+        }
+        if (this->current___uhhhhh != 2) {
+            if (!SUPERVISOR.config.__unknown_flag_C) {
+                SUPERVISOR.d3d_device->SetVertexShader(SpriteVertexB::FVF_TYPE);
+            } else {
+                SUPERVISOR.d3d_device->SetVertexShader(SpriteVertex::FVF_TYPE);
+            }
+            this->current___uhhhhh = 2;
+        }
+        this->set_render_state_for_vm(VM);
+        if (!SUPERVISOR.config.__unknown_flag_C) {
+            SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, SPRITE_VERTEX_BUFFER_B, sizeof(SpriteVertexB));
+        } else {
+            SPRITE_VERTEX_BUFFER_A[0].position.x = SPRITE_VERTEX_BUFFER_B[0].position.x;
+            SPRITE_VERTEX_BUFFER_A[0].position.y = SPRITE_VERTEX_BUFFER_B[0].position.y;
+            SPRITE_VERTEX_BUFFER_A[0].position.z = SPRITE_VERTEX_BUFFER_B[0].position.z;
+            SPRITE_VERTEX_BUFFER_A[1].position.x = SPRITE_VERTEX_BUFFER_B[1].position.x;
+            SPRITE_VERTEX_BUFFER_A[1].position.y = SPRITE_VERTEX_BUFFER_B[1].position.y;
+            SPRITE_VERTEX_BUFFER_A[1].position.z = SPRITE_VERTEX_BUFFER_B[1].position.z;
+            SPRITE_VERTEX_BUFFER_A[2].position.x = SPRITE_VERTEX_BUFFER_B[2].position.x;
+            SPRITE_VERTEX_BUFFER_A[2].position.y = SPRITE_VERTEX_BUFFER_B[2].position.y;
+            SPRITE_VERTEX_BUFFER_A[2].position.z = SPRITE_VERTEX_BUFFER_B[2].position.z;
+            SPRITE_VERTEX_BUFFER_A[3].position.x = SPRITE_VERTEX_BUFFER_B[3].position.x;
+            SPRITE_VERTEX_BUFFER_A[3].position.y = SPRITE_VERTEX_BUFFER_B[3].position.y;
+            SPRITE_VERTEX_BUFFER_A[3].position.z = SPRITE_VERTEX_BUFFER_B[3].position.z;
+            SPRITE_VERTEX_BUFFER_A[2].texture_uv.x = VM->sprite->uv_start.x + VM->uv_scroll_pos.x;
+            SPRITE_VERTEX_BUFFER_A[0].texture_uv.x = SPRITE_VERTEX_BUFFER_A[2].texture_uv.x;
+            SPRITE_VERTEX_BUFFER_A[3].texture_uv.x = VM->sprite->uv_end.x + VM->uv_scroll_pos.x;
+            SPRITE_VERTEX_BUFFER_A[1].texture_uv.x = SPRITE_VERTEX_BUFFER_A[3].texture_uv.x;
+            SPRITE_VERTEX_BUFFER_A[1].texture_uv.y = VM->sprite->uv_start.y + VM->uv_scroll_pos.y;
+            SPRITE_VERTEX_BUFFER_A[0].texture_uv.y = SPRITE_VERTEX_BUFFER_A[1].texture_uv.y;
+            SPRITE_VERTEX_BUFFER_A[3].texture_uv.y = VM->sprite->uv_end.y + VM->uv_scroll_pos.y;
+            SPRITE_VERTEX_BUFFER_A[2].texture_uv.y = SPRITE_VERTEX_BUFFER_A[3].texture_uv.y;
+            SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, SPRITE_VERTEX_BUFFER_A, sizeof(SpriteVertex));
+        }
+        return ZUN_SUCCESS;
+    }
 
     // 0x432AD0
-    dllexport gnu_noinline void __draw_vm_1(AnmVM* vm) asm_symbol_rel(0x432AD0) {
-        use_var(vm);
+    dllexport gnu_noinline ZunResult __draw_vm_1(AnmVM* vm) asm_symbol_rel(0x432AD0) {
+        if (!vm->visible) {
+            return ZUN_ERROR;
+        }
+        if (!vm->__unknown_flag_B) {
+            return ZUN_ERROR;
+        }
+        if (!vm->color) {
+            return ZUN_ERROR;
+        }
+        float scaled_half_width = vm->sprite->width_px * vm->scale_x / 2.0f;
+        float scaled_half_height = vm->sprite->height_px * vm->scale_y / 2.0f;
+        if (!(vm->anchor_mode & 0b01)) {
+            SPRITE_VERTEX_BUFFER_B[2].position.x = vm->position.x - scaled_half_width;
+            SPRITE_VERTEX_BUFFER_B[0].position.x = SPRITE_VERTEX_BUFFER_B[2].position.x;
+            SPRITE_VERTEX_BUFFER_B[3].position.x = vm->position.x + scaled_half_width;
+            SPRITE_VERTEX_BUFFER_B[1].position.x = SPRITE_VERTEX_BUFFER_B[3].position.x;
+        } else {
+            SPRITE_VERTEX_BUFFER_B[2].position.x = vm->position.x;
+            SPRITE_VERTEX_BUFFER_B[0].position.x = SPRITE_VERTEX_BUFFER_B[2].position.x;
+            SPRITE_VERTEX_BUFFER_B[3].position.x = vm->position.x + scaled_half_width + scaled_half_width;
+            SPRITE_VERTEX_BUFFER_B[1].position.x = SPRITE_VERTEX_BUFFER_B[3].position.x;
+        }
+        if (!(vm->anchor_mode & 0b10)) {
+            SPRITE_VERTEX_BUFFER_B[1].position.y = vm->position.y - scaled_half_height;
+            SPRITE_VERTEX_BUFFER_B[0].position.y = SPRITE_VERTEX_BUFFER_B[1].position.y;
+            SPRITE_VERTEX_BUFFER_B[3].position.y = vm->position.y + scaled_half_height;
+            SPRITE_VERTEX_BUFFER_B[2].position.y = SPRITE_VERTEX_BUFFER_B[3].position.y;
+        } else {
+            SPRITE_VERTEX_BUFFER_B[1].position.y = vm->position.y;
+            SPRITE_VERTEX_BUFFER_B[0].position.y = SPRITE_VERTEX_BUFFER_B[1].position.y;
+            SPRITE_VERTEX_BUFFER_B[3].position.y = vm->position.y + scaled_half_height + scaled_half_height;
+            SPRITE_VERTEX_BUFFER_B[2].position.y = SPRITE_VERTEX_BUFFER_B[3].position.y;
+        }
+        return this->__sub_432730(vm, true);
     }
 
     dllexport void string_test(AnmVM* vm, ...) {
@@ -1671,50 +1377,35 @@ struct AnmManager {
     }
 
     // 0x432430
-    dllexport void thiscall set_vm_script(AnmVM *restrict vm, AnmInstruction *restrict script_start) asm("{[codecave:ANM_MANAGER_set_vm_script]}");
+    dllexport void thiscall set_vm_script(AnmVM* vm, AnmInstruction* script_start) asm_symbol_rel(codecave:ANM_MANAGER_set_vm_script);
 
     // 0x4323A0
-    dllexport int32_t thiscall set_vm_sprite(AnmVM *restrict vm, int32_t sprite_number) asm("{[codecave:ANM_MANAGER_set_vm_sprite]}") {
-        vm->sprite_number = sprite_number;
-        AnmLoadedSprite *restrict sprite = &this->sprites[sprite_number];
-        vm->sprite = sprite;
-        D3DMATRIX::set_identity(&vm->__matrix);
-        vec<float, 2> matrix_data = sprite->sprite_size.as_vec / sprite->texture_size.as_vec;
-        vm->__matrix.m11 = matrix_data[0];
-        vm->__matrix.m00 = matrix_data[1];
-        //vm->__matrix.m00 = sprite->width_px / sprite->texture_width;
-        //vm->__matrix.m11 = sprite->height_px / sprite->texture_height;
-        return 0;
-        
-        /*if (!&this->sprites[sprite_number]) {
-            return -1;
+    dllexport gnu_noinline ZunResult thiscall set_vm_sprite(AnmVM* vm, int32_t sprite_number) asm_symbol_rel(codecave:ANM_MANAGER_set_vm_sprite) {
+        if (this->sprites[sprite_number].source_file_index < 0) {
+            return ZUN_ERROR;
         }
         vm->sprite_number = sprite_number;
-        AnmLoadedSprite *restrict sprite = &this->sprites[sprite_number];
-        vm->sprite = sprite;
-        D3DMATRIX::set_identity(&vm->__matrix);
-        vm->__matrix.m00 = sprite->width_px / sprite->texture_width;
-        vm->__matrix.m11 = sprite->height_px / sprite->texture_height;
-        return 0;*/
+        vm->sprite = &this->sprites[sprite_number];
+        matrix_set_identity(vm->__matrix);
+        vm->__matrix.m[0][0] = vm->sprite->width_px / vm->sprite->texture_width;
+        vm->__matrix.m[1][1] = vm->sprite->height_px / vm->sprite->texture_height;
+        return ZUN_SUCCESS;
     }
 
     // 0x4321E0
-    dllexport void thiscall free_texture(int32_t texture_index) asm("{[codecave:ANM_MANAGER_free_texture]}") {
-        if (IDirect3DTexture8 *restrict texture = this->textures[texture_index]) {
-            this->textures[texture_index] = NULL;
-            texture->vtable->Release(texture);
-        }
-        void *restrict image_data = this->image_data_array[texture_index];
+    dllexport gnu_noinline void thiscall free_texture(int32_t texture_index) asm_symbol_rel(codecave:ANM_MANAGER_free_texture) {
+        SAFE_RELEASE(this->textures[texture_index]);
+        free(this->image_data_array[texture_index]);
         this->image_data_array[texture_index] = NULL;
-        thcrap_free(image_data);
     }
 
     // 0x432030
-    dllexport void thiscall free_anm_file(int32_t file_index) asm("{[codecave:ANM_MANAGER_free_anm_file]}") {
-        if (AnmEntry *restrict anm_file = this->anm_files[file_index]) {
-            this->anm_files[file_index] = NULL;
+    dllexport gnu_noinline void thiscall free_anm_file(int32_t file_index) asm_symbol_rel(codecave:ANM_MANAGER_free_anm_file) {
+        if (this->anm_files[file_index]) {
             uint32_t sprite_index_offset = this->anm_file_sprite_index_offsets[file_index];
-            this->anm_file_sprite_index_offsets[file_index] = 0;
+            AnmSprite* current_sprite = this->anm_files[file_index]->sprites;
+
+
             uint32_t sprite_count = anm_file->num_sprites;
             uint32_t *restrict current_sprite_offset = (uint32_t*)&anm_file->sprites;
             for (size_t ii = 0; ii < sprite_count; ++ii) {
@@ -1738,7 +1429,7 @@ struct AnmManager {
     }
 
     // 0x431DC0
-    dllexport gnu_noinline int32_t thiscall load_anm_file(int32_t file_index, char *restrict filename, int32_t starting_sprite_index) asm("{[0x431DC0]}") {
+    dllexport gnu_noinline ZunResult thiscall load_anm_file(int32_t file_index, char *restrict filename, int32_t starting_sprite_index) asm_symbol_rel(0x431DC0) {
         gnu_used static volatile auto tempA = this;
         gnu_used static volatile auto tempB = file_index;
         gnu_used static volatile auto tempC = filename;
@@ -2318,7 +2009,57 @@ struct AnmManager {
         //SUPERVISOR.tick_timer(&vm->script_time.current, &vm->script_time.subframe);
         return 0;
     }
-};  // 0x2112c
+
+    // 0x4324D0
+    dllexport void thiscall set_render_state_for_vm(AnmVM* VM) asm_symbol_rel(codecave:ANM_MANAGER_set_render_state_for_vm) {
+        if (this->current_blend_mode != VM->additive_blending) {
+            this->current_blend_mode = VM->additive_blending;
+            if (!this->current_blend_mode) {
+                SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+            } else {
+                SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+            }
+        }
+        if (
+            !SUPERVISOR.config.__unknown_flag_A &&
+            !SUPERVISOR.config.__unknown_flag_B &&
+            this->current_colorop != VM->__unknown_flag_D
+        ) {
+            this->current_colorop = VM->__unknown_flag_D;
+            if (!this->current_colorop) {
+                SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+            } else {
+                SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_ADD);
+            }
+        }
+        if (!SUPERVISOR.config.__unknown_flag_B) {
+            if (this->current_texture_factor != VM->color) {
+                this->current_texture_factor = VM->color;
+                SUPERVISOR.d3d_device->SetRenderState(D3DRS_TEXTUREFACTOR, this->current_texture_factor);
+            }
+        } else {
+            SPRITE_VERTEX_BUFFER_A[0].diffuse = VM->color;
+            SPRITE_VERTEX_BUFFER_A[1].diffuse = VM->color;
+            SPRITE_VERTEX_BUFFER_A[2].diffuse = VM->color;
+            SPRITE_VERTEX_BUFFER_A[3].diffuse = VM->color;
+            SPRITE_VERTEX_BUFFER_C[0].diffuse = VM->color;
+            SPRITE_VERTEX_BUFFER_C[1].diffuse = VM->color;
+            SPRITE_VERTEX_BUFFER_C[2].diffuse = VM->color;
+            SPRITE_VERTEX_BUFFER_C[3].diffuse = VM->color;
+        }
+        if (
+            !SUPERVISOR.config.__unknown_flag_D &&
+            this->current_zwrite_disable != VM->z_write_disable
+        ) {
+            this->current_zwrite_disable = VM->z_write_disable;
+            if (!this->current_zwrite_disable) {
+                SUPERVISOR.d3d_device->SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
+            } else {
+                SUPERVISOR.d3d_device->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+            }
+        }
+    }
+};
 
 dllexport void thiscall AnmManager::set_vm_script(AnmVM *restrict vm, AnmInstruction *restrict script_start) {
     vm->flip_x = false;
@@ -2741,6 +2482,16 @@ struct Player {
     // 0x427770
     dllexport void die(void) asm("{[codecave:PLAYER_die]}");
 
+    // 0x427190
+    dllexport gnu_noinline int32_t thiscall check_laser_collision(Float3* arg1, Float3* arg2, Float3* coord, float angle, bool allow_graze) asm_symbol_rel(0x427190) {
+        // TODO
+        use_var(arg1);
+        use_var(arg2);
+        use_var(angle);
+        use_var(allow_graze);
+        return rand();
+    }
+
     // 0x4264B0
     dllexport forceinline int32_t check_bullet_collisions(Float3* restrict position, Float3* restrict size, int32_t *restrict idk) asm("{[codecave:PLAYER_check_bullet_collisions]}");
 
@@ -2969,7 +2720,7 @@ struct Player {
         vec<float, 2> temp = *(unaligned vec<float, 2>*)this->position.as_array - *(unaligned vec<float, 2>*)point;
         if ((temp[0] != 0.0f) & (temp[1] != 0.0f)) {
             vec<double, 2> temp2 = convertvec(temp, vec<double, 2>);
-            return atan2_helper(temp2[1], temp2[0]);
+            return zatan2f(temp2[1], temp2[0]);
         } else {
             return HALF_PI_f;
         }
@@ -3001,7 +2752,7 @@ struct Player {
         /*vec<float, 2> temp = *(unaligned vec<float, 2>*)this->position.as_array - *(unaligned vec<float, 2>*)point;
         if ((temp[0] != 0.0f) & (temp[1] != 0.0f)) {
             vec<double, 2> temp2 = convertvec(temp, vec<double, 2>);
-            return atan2_helper(temp2[1], temp2[0]);
+            return zatan2f(temp2[1], temp2[0]);
         } else {
             return HALF_PI_f;
         }*/
@@ -3170,6 +2921,11 @@ struct ItemManager {
         new_item->vm.color = PackD3DCOLOR(255, 255, 255, 255);
         new_item->__byte_142 = 1;
     }
+    
+    // 0x41F4A0
+    dllexport gnu_noinline void thiscall on_tick() {
+        
+    }
 
 };  // 0x2894c
 
@@ -3211,7 +2967,7 @@ struct EclContext {
     ins_call func;  // 0x10
 	int32_t int_vars[4];  // 0x14
 	float float_vars[4];  // 0x24
-	int32_t more_int_vars[4];  // 0x34
+	int32_t counter_vars[4];  // 0x34
 	int32_t compare_register;  // 0x44
 	uint16_t sub_id;  // 0x48
     probably_padding_bytes(0x2);  // 0x4A
@@ -3224,7 +2980,7 @@ ValidateFieldOffset(0xC, EclContext, time.current);
 ValidateFieldOffset(0x10, EclContext, func);
 ValidateFieldOffset(0x14, EclContext, int_vars);
 ValidateFieldOffset(0x24, EclContext, float_vars);
-ValidateFieldOffset(0x34, EclContext, more_int_vars);
+ValidateFieldOffset(0x34, EclContext, counter_vars);
 ValidateFieldOffset(0x44, EclContext, compare_register);
 ValidateFieldOffset(0x48, EclContext, sub_id);
 
@@ -4330,9 +4086,10 @@ BreakInsLoop:
     }
     stage->tick_std_objects();
     if (stage->__set_by_spellcard_ecl_80 >= 1) {
-        if (stage->__set_by_spellcard_ecl_84++ == 60) {
-            ++stage->__set_by_spellcard_ecl_80;
+        if (stage->__set_by_spellcard_ecl_84 == 60) {
+            stage->__set_by_spellcard_ecl_80++;
         }
+        stage->__set_by_spellcard_ecl_84++;
         ANM_MANAGER_PTR->run_anm(&stage->__vm_88);
     }
     return 1;
@@ -4379,10 +4136,9 @@ BreakInsLoop:
 //                    if (stage_arg->sky_fog_interp_duration) {
 //                        SUPERVISOR.set_fog_data(color, near_plane, far_plane);
 //                        //IDirect3DDevice8 *restrict d3d_device = SUPERVISOR.d3d_device;
-//                        //IDirect3DDevice8VTable *restrict d3d_vtable = d3d_device->vtable;
-//                        //d3d_vtable->SetRenderState(d3d_device, D3DRS_FOGCOLOR, color);
-//                        //d3d_vtable->SetRenderState(d3d_device, D3DRS_FOGSTART, bitcast(DWORD, near_plane));
-//                        //d3d_vtable->SetRenderState(d3d_device, D3DRS_FOGEND, bitcast(DWORD, far_plane));
+//                        //d3d_device->SetRenderState(D3DRS_FOGCOLOR, color);
+//                        //d3d_device->SetRenderState(D3DRS_FOGSTART, bitcast(DWORD, near_plane));
+//                        //d3d_device->SetRenderState(D3DRS_FOGEND, bitcast(DWORD, far_plane));
 //                    }
 //                    ++stage_arg->instr_index;
 //                    stage_arg->sky_fog_interp_final = stage_arg->sky_fog;
@@ -4475,37 +4231,65 @@ BreakInsLoop:
 //    return 1;
 //}
 
-typedef struct BulletTypeVMs BulletTypeVMs;
-struct BulletTypeVMs {
-    AnmVM __vm_0;  // 0x0
-    AnmVM spawn_effect_short;  // 0x110
-    AnmVM spawn_effect_medium;  // 0x220
-    AnmVM spawn_effect_long;  // 0x330
-    AnmVM __vm_5;  // 0x440
-    Float3 hitbox_size;  // 0x550
-    uint8_t bullet_width_pixels;  // 0x55c
-    uint8_t bullet_height_pixels;  // 0x55d
-    unknown_fields(0x2);  // 0x55e
-};  // 0x560
+enum BulletType {
+    Pellet = 0,
+    RingBall = 1,
+    Rice = 2,
+    Ball = 3,
+    Kunai = 4,
+    Shard = 5,
+    BigBall = 6,
+    Fireball = 7,
+    Dagger = 8,
+    Bubble = 9
+};
+
+static inline constexpr int32_t etama3_scripts_base_index = 512;
+static inline constexpr int32_t etama4_scripts_base_index = 666;
+
+// size: 0x560
+struct BulletTemplateData {
+    AnmVM vm; // 0x0
+    AnmVM spawn_effect_short_vm; // 0x110
+    AnmVM spawn_effect_medium_vm; // 0x220
+    AnmVM spawn_effect_long_vm; // 0x330
+    AnmVM despawn_effect_vm; // 0x440
+    Float3 hitbox_size; // 0x550
+    uint8_t bullet_width_pixels; // 0x55C
+    uint8_t bullet_height_pixels; // 0x55D
+    unknown_fields(0x2);  // 0x55E
+    // 0x560
+};  
 
 typedef struct Bullet Bullet;
 struct Bullet {
-    BulletTypeVMs vms;  // 0x0
+    BulletTemplateData data;  // 0x0
     Float3 position;  // 0x560
     Float3 velocity;  // 0x56C
-    Float3 ex_4_acceleration;  // 0x578
+    Float3 acceleration_vec;  // 0x578
     float speed;  // 0x584
-    float ex_5_float_0;  // 0x588
-    float dir_change__speed_arg;  // 0x58C
+    float velocity_scalar;  // 0x588
+    float ex_angle_speed;  // 0x58C
     float angle;  // 0x590
-    float ex_5_float_1;  // 0x594
-    float dir_change__rotation_arg;  // 0x598
-    Timer __timer;  // 0x59C
-    int32_t ex_5_int_0;  // 0x5A8
-    int32_t dir_change__interval;  // 0x5AC
-    int32_t dir_change__num_times;  // 0x5B0
-    int32_t dir_change__max_times;  // 0x5B4
-    uint16_t ex_flags;  // 0x5B8
+    float angular_velocity;  // 0x594
+    float ex_angle_offset;  // 0x598
+    Timer timer;  // 0x59C
+    int32_t acceleration_duration;  // 0x5A8
+    int32_t ex_angle_interval;  // 0x5AC
+    int32_t ex_angle_count;  // 0x5B0
+    int32_t ex_angle_max_count;  // 0x5B4
+    union {
+        uint16_t flags;  // 0x5B8
+        struct {
+            uint16_t __unknown_flag_A : 1; // 1
+            uint16_t has_spawn_effect_short : 1; // 2
+            uint16_t has_spawn_effect_medium : 1; // 3
+            uint16_t has_spawn_effect_long : 1; // 4
+            uint16_t __unknown_flag_B : 1; // 5
+            uint16_t __unknown_flag_C : 1; // 6
+            uint16_t __unknown_flag_D : 1; // 7
+        };
+    };
     uint16_t color;  // 0x5BA
     unknown_fields(0x2);  // 0x5BC
     uint16_t state;  // 0x5BE
@@ -4628,15 +4412,32 @@ struct Laser {
     probably_padding_bytes(0x3);  // 0x26d
 };  // 0x270
 
+// size: 0x14
+struct BulletTypeAnmData {
+    int32_t main_script; // 0x0
+    int32_t spawn_effect_short_script; // 0x4
+    int32_t spawn_effect_medium_script; // 0x8
+    int32_t spawn_effect_long_script; // 0xC
+    int32_t despawn_effect_script; // 0x10
+    // 0x14
+};
+
+extern "C" {
+    // 0x46A6E8
+    extern BulletTypeAnmData BULLET_TYPE_ANM_DATA[10] asm("_BULLET_TYPE_ANM_DATA");
+}
+
 typedef struct BulletManager BulletManager;
+// size: 0xF5C18
 struct BulletManager {
-    BulletTypeVMs bullet_type_templates[16];  // 0x0
-    Bullet bullets[640];  // 0x5600
-    Laser lasers[64];  // 0xEC000
-    int32_t next_bullet_index;  // 0xF5C00
-    int32_t bullet_count;  // 0xF5C04
-    Timer time;  // 0xF5C08
-    char* etama_anm_filename;  // 0xF5C14
+    BulletTemplateData bullet_templates[16]; // 0x0
+    Bullet bullets[640]; // 0x5600
+    Laser lasers[64]; // 0xEC000
+    int32_t next_bullet_index; // 0xF5C00
+    int32_t bullet_count; // 0xF5C04
+    Timer time; // 0xF5C08
+    char* etama_anm_filename; // 0xF5C14
+    // 0xF5C18
 
     // 0x4135B0
     dllexport int32_t thiscall shoot_one_bullet(const BulletShooter *restrict bullet_data, int32_t count_1, int32_t count_2, float angle_to_player) {
@@ -4651,7 +4452,7 @@ struct BulletManager {
         } while (new_bullet != starting_bullet);
         if (Bullet *restrict next_bullet = new_bullet + 1;
             expect(next_bullet != array_end_addr(this->bullets), true)
-        ) {
+            ) {
             this->next_bullet_index = next_bullet - this->bullets;
         } else {
             return 1;
@@ -4699,7 +4500,7 @@ struct BulletManager {
     //            current_laser->timer = static_default_timer<0>;
     //            if (spawn_star_items) {
     //                float laser_angle = current_laser->angle;
-    //                vec<float, 2> angles = { cosf_helper(laser_angle), sinf_helper(laser_angle) };
+    //                vec<float, 2> angles = { zcosf(laser_angle), zsinf(laser_angle) };
     //                vec<float, 2> laser_position = *(unaligned vec<float, 2>*)&current_laser->position;
     //                Float3 item_position;
     //                item_position.z = 0.0f;
@@ -4761,8 +4562,8 @@ struct BulletManager {
                 current_laser->timer.set_default();
 
                 /*float laser_angle = current_laser->angle;
-                float x_add = cosf_helper(laser_angle);
-                float y_add = sinf_helper(laser_angle);
+                float x_add = zcosf(laser_angle);
+                float y_add = zsinf(laser_angle);
                 Float3 item_position;
                 for (
                     float current_offset = current_laser->start_offset;
@@ -4781,8 +4582,8 @@ struct BulletManager {
 
                 float laser_angle = current_laser->angle;
 #ifndef SqueezeStack
-                float x_add = cosf_helper(laser_angle);
-                float y_add = sinf_helper(laser_angle);
+                float x_add = zcosf(laser_angle);
+                float y_add = zsinf(laser_angle);
 #else
                 //esp_reg -= sizeof(double);
                 __asm__ volatile (
@@ -4792,17 +4593,17 @@ struct BulletManager {
                 __asm__ volatile (
                     "fstps (%%ESP)"
                     :
-                    : "X"(cosf_impl_manual(), NULL)
+                : "X"(cosf_impl_manual(), NULL)
                     : clobber_list("eax", "ecx", "edx")
-                );
+                    );
                 float x_add = *(volatile float*)esp_reg;
                 *(double*)esp_reg = laser_angle;
                 __asm__ volatile (
                     "fstps (%%ESP)"
                     :
-                    : "X"(sinf_impl_manual(), NULL)
+                : "X"(sinf_impl_manual(), NULL)
                     : clobber_list("eax", "ecx", "edx")
-                );
+                    );
                 float y_add = *(volatile float*)esp_reg;
                 __asm__ volatile (
                     "ADD $8, %%ESP":
@@ -4819,7 +4620,7 @@ struct BulletManager {
                     ;
                     current_laser->end_offset > current_offset;
                     current_offset += 32.0f
-                ) {
+                    ) {
                     ITEM_MANAGER.spawn_item(&item_position, StarItem, 1);
                     item_position.x += x_add;
                     item_position.y += y_add;
@@ -4854,7 +4655,7 @@ struct BulletManager {
             Bullet *restrict current_bullet = this->bullets;
             current_bullet != array_end_addr(this->bullets);
             ++current_bullet
-        ) {
+            ) {
             if (!current_bullet->state) continue;
             ASCII_MANAGER.make_popup_A(
                 &current_bullet->position,
@@ -4872,7 +4673,7 @@ struct BulletManager {
             Laser *restrict current_laser = this->lasers;
             current_laser != array_end_addr(this->lasers);
             ++current_laser
-        ) {
+            ) {
             if (!current_laser->in_use) continue;
             if (current_laser->state < 2) {
                 current_laser->state = 2;
@@ -4896,7 +4697,7 @@ struct BulletManager {
             Bullet *restrict current_bullet = this->bullets;
             current_bullet != array_end_addr(this->bullets);
             ++current_bullet
-        ) {
+            ) {
             if (!current_bullet->state) continue;
             ITEM_MANAGER.spawn_item(&current_bullet->position, StarItem, 1);
             ASCII_MANAGER.make_popup_A(
@@ -4915,7 +4716,7 @@ struct BulletManager {
             Laser *restrict current_laser = this->lasers;
             current_laser != array_end_addr(this->lasers);
             ++current_laser
-        ) {
+            ) {
             if (!current_laser->in_use) continue;
             if (current_laser->state < 2) {
                 current_laser->state = 2;
@@ -4925,8 +4726,8 @@ struct BulletManager {
             float current_offset = current_laser->start_offset;
 
             float laser_angle = current_laser->angle;
-            float x_add = cosf_helper(laser_angle);
-            float y_add = sinf_helper(laser_angle);
+            float x_add = zcosf(laser_angle);
+            float y_add = zsinf(laser_angle);
             Float3 item_position;
             item_position.x = current_laser->position.x + x_add * current_offset;
             item_position.y = current_laser->position.y + y_add * current_offset;
@@ -4937,7 +4738,7 @@ struct BulletManager {
                 ;
                 current_laser->end_offset > current_offset;
                 current_offset += 32.0f
-            ) {
+                ) {
                 ITEM_MANAGER.spawn_item(&item_position, StarItem, 1);
                 item_position.x += x_add;
                 item_position.y += y_add;
@@ -4992,8 +4793,8 @@ struct BulletManager {
     //            float current_offset = current_laser->start_offset;
     //
     //            float laser_angle = current_laser->angle;
-    //            float x_add = cosf_helper(laser_angle);
-    //            float y_add = sinf_helper(laser_angle);
+    //            float x_add = zcosf(laser_angle);
+    //            float y_add = zsinf(laser_angle);
     //            Float3 item_position;
     //            item_position.x = current_laser->position.x + x_add * current_offset;
     //            item_position.y = current_laser->position.y + y_add * current_offset;
@@ -5017,11 +4818,328 @@ struct BulletManager {
     //        GUI.__sub_41735A(score_bonus);
     //    }
     //}
+
+
+    // 0x416D60
+    dllexport static gnu_noinline ZunResult cdecl bullet_manager_on_registration(BulletManager* self) asm_symbol_rel(codecave:BULLET_MANAGER_on_registration) {
+        if ((bool)(SUPERVISOR.__dword_18C != 3)) {
+            if (ZUN_FAILED(ANM_MANAGER_PTR->load_anm_file(6, "data/etama3.anm", etama3_scripts_base_index))) {
+                return ZUN_ERROR;
+            }
+            if (ZUN_FAILED(ANM_MANAGER_PTR->load_anm_file(7, "data/etama4.anm", etama4_scripts_base_index))) {
+                return ZUN_ERROR;
+            }
+        }
+        for (int32_t i = 0; i < countof(BULLET_TYPE_ANM_DATA); i++) {
+            self->bullet_templates[i].vm.set_script(BULLET_TYPE_ANM_DATA[i].main_script);
+            self->bullet_templates[i].spawn_effect_short_vm.set_script(BULLET_TYPE_ANM_DATA[i].spawn_effect_short_script);
+            self->bullet_templates[i].spawn_effect_medium_vm.set_script(BULLET_TYPE_ANM_DATA[i].spawn_effect_medium_script);
+            self->bullet_templates[i].spawn_effect_long_vm.set_script(BULLET_TYPE_ANM_DATA[i].spawn_effect_long_script);
+            self->bullet_templates[i].despawn_effect_vm.set_script(BULLET_TYPE_ANM_DATA[i].despawn_effect_script);
+            self->bullet_templates[i].vm.base_sprite_number = self->bullet_templates[i].vm.sprite_number;
+            self->bullet_templates[i].bullet_height_pixels = (int32_t)self->bullet_templates[i].vm.sprite->height_px;
+            if (self->bullet_templates[i].vm.sprite->height_px <= 8.0f) { // Pellet
+                self->bullet_templates[i].hitbox_size.x = 4.0f;
+                self->bullet_templates[i].hitbox_size.y = 4.0f;
+            }
+            else if (self->bullet_templates[i].vm.sprite->height_px <= 16.0f) { // RingBall, Rice, Ball, Kunai, Shard
+                switch (BULLET_TYPE_ANM_DATA[i].main_script) {
+                    case etama3_scripts_base_index + Rice:
+                        self->bullet_templates[i].hitbox_size.x = 4.0f;
+                        self->bullet_templates[i].hitbox_size.y = 4.0f;
+                        break;
+                    case etama3_scripts_base_index + Kunai:
+                        self->bullet_templates[i].hitbox_size.x = 5.0f;
+                        self->bullet_templates[i].hitbox_size.y = 5.0f;
+                        break;
+                    case etama3_scripts_base_index + Shard:
+                        self->bullet_templates[i].hitbox_size.x = 4.0f;
+                        self->bullet_templates[i].hitbox_size.y = 4.0f;
+                        break;
+                    default:
+                        self->bullet_templates[i].hitbox_size.x = 6.0f;
+                        self->bullet_templates[i].hitbox_size.y = 6.0f;
+                        break;
+                }
+            }
+            else if (self->bullet_templates[i].vm.sprite->height_px <= 32.0f) { // BigBall, Fireball, Dagger
+                switch (BULLET_TYPE_ANM_DATA[i].main_script) {
+                    case etama3_scripts_base_index + Fireball:
+                        self->bullet_templates[i].hitbox_size.x = 11.0f;
+                        self->bullet_templates[i].hitbox_size.y = 11.0f;
+                        break;
+                    case etama3_scripts_base_index + Dagger:
+                        self->bullet_templates[i].hitbox_size.x = 9.0f;
+                        self->bullet_templates[i].hitbox_size.y = 9.0f;
+                        break;
+                    default:
+                        self->bullet_templates[i].hitbox_size.x = 16.0f;
+                        self->bullet_templates[i].hitbox_size.y = 16.0f;
+                        break;
+                }
+            }
+            else { // Bubble
+                self->bullet_templates[i].hitbox_size.x = 32.0f;
+                self->bullet_templates[i].hitbox_size.y = 32.0f;
+            }
+        }
+        memset(&ITEM_MANAGER, 0, sizeof(ITEM_MANAGER));
+        return ZUN_SUCCESS;
+    }
 };
-ValidateFieldOffset(0x0, BulletManager, bullet_type_templates);
+ValidateFieldOffset(0x0, BulletManager, bullet_templates);
 ValidateFieldOffset(0x5600, BulletManager, bullets);
 ValidateFieldOffset(0xEC000, BulletManager, lasers);
 ValidateFieldOffset(0xF5C00, BulletManager, next_bullet_index);
+
+
+// 0x4149D0
+dllexport int32_t cdecl bullet_manager_on_tick(BulletManager* bullet_manager_arg) asm("{[codecave:BULLET_MANAGER_on_tick]}");
+dllexport int32_t cdecl bullet_manager_on_tick(BulletManager* bullet_manager_arg) {
+    Bullet* current_bullet = bullet_manager_arg->bullets;
+    if (GAME_MANAGER.__byte_2C) {
+        return 1;
+    }
+    ITEM_MANAGER.on_tick();
+    bullet_manager_arg->bullet_count = 0;
+    int i;
+    for (i = 0; i < countof(bullet_manager_arg->bullets); i++, current_bullet++) {
+        if (!current_bullet->state) continue;
+        bullet_manager_arg->bullet_count++;
+        switch (current_bullet->state) {
+            case 2: {
+                Float3* velocity = &current_bullet->velocity; // EBP-C4
+                float multiplierA = 1.0f / 2.0f; // EBP-B4
+                Float3 tempA; // EBP-C0
+                tempA.z = velocity->z * multiplierA;
+                tempA.y = velocity->y * multiplierA;
+                tempA.x = velocity->x * multiplierA;
+                Float3 tempB = tempA; // EBP-44
+                float multiplierB = SUPERVISOR.game_speed; // EBP-D4
+                Float3 tempC; // EBP-D0
+                tempC.z = tempB.z * multiplierB;
+                tempC.y = tempB.y * multiplierB;
+                tempC.x = tempB.x * multiplierB;
+                Float3 tempD = tempC; // EBP-50
+                Float3* position = &current_bullet->position; // EBP-D8
+                position->x += tempD.x;
+                position->y += tempD.y;
+                position->z += tempD.z;
+                if (!ANM_MANAGER_PTR->run_anm(&current_bullet->data.spawn_effect_short_vm)) {
+                    break;
+                }
+                goto bullet_state_jump;
+            }
+            case 3: {
+                Float3* velocity = &current_bullet->velocity; // EBP-EC
+                float multiplierA = 1.0f / 2.5f; // EBP-DC
+                Float3 tempA; // EBP-E8
+                tempA.z = velocity->z * multiplierA;
+                tempA.y = velocity->y * multiplierA;
+                tempA.x = velocity->x * multiplierA;
+                Float3 tempB = tempA; // EBP-5C
+                float multiplierB = SUPERVISOR.game_speed; // EBP-D4
+                Float3 tempC; // EBP-F8
+                tempC.z = tempB.z * multiplierB;
+                tempC.y = tempB.y * multiplierB;
+                tempC.x = tempB.x * multiplierB;
+                Float3 tempD = tempC; // EBP-68
+                Float3* position = &current_bullet->position; // EBP-100
+                position->x += tempD.x;
+                position->y += tempD.y;
+                position->z += tempD.z;
+                if (!ANM_MANAGER_PTR->run_anm(&current_bullet->data.spawn_effect_medium_vm)) {
+                    break;
+                }
+                goto bullet_state_jump;
+            }
+            case 4: {
+                Float3* velocity = &current_bullet->velocity; // EBP-114
+                float multiplierA = 1.0f / 3.0f; // EBP-104
+                Float3 tempA; // EBP-110
+                tempA.z = velocity->z * multiplierA;
+                tempA.y = velocity->y * multiplierA;
+                tempA.x = velocity->x * multiplierA;
+                Float3 tempB = tempA; // EBP-74
+                float multiplierB = SUPERVISOR.game_speed; // EBP-124
+                Float3 tempC; // EBP-120
+                tempC.z = tempB.z * multiplierB;
+                tempC.y = tempB.y * multiplierB;
+                tempC.x = tempB.x * multiplierB;
+                Float3 tempD = tempC; // EBP-80
+                Float3* position = &current_bullet->position; // EBP-128
+                position->x += tempD.x;
+                position->y += tempD.y;
+                position->z += tempD.z;
+                if (!ANM_MANAGER_PTR->run_anm(&current_bullet->data.spawn_effect_long_vm)) {
+                    break;
+                }
+            }
+        bullet_state_jump:
+                current_bullet->state = 1;
+                current_bullet->timer.set_default();
+            case 1: {
+                if (current_bullet->flags) {
+                    float floatA; // EBP-C
+                    if (current_bullet->__unknown_flag_A) {
+                        if ((bool)(current_bullet->timer.current <= 16)) {
+                            Timer* timer = &current_bullet->timer; // EBP-130
+                            floatA = 5.0f - ((float)timer->current + timer->subframe) * 5.0f / 16.0f; // EBP-C
+                            float magnitude = floatA + current_bullet->speed; // EBP-134
+                            float angle = current_bullet->angle; // EBP-138
+                            Float3* velocity = &current_bullet->velocity; // EBP-13C
+                            float3_make_from_vector(velocity, angle, magnitude);
+                        } else {
+                            current_bullet->__unknown_flag_A ^= true;
+                        }
+                    }
+                    else if (current_bullet->__unknown_flag_B) {
+                        if ((bool)(current_bullet->timer.current >= current_bullet->acceleration_duration)) {
+                            current_bullet->__unknown_flag_B = false;
+                        } else {
+                            float multiplierA = SUPERVISOR.game_speed; // EBP-14C
+                            Float3* acceleration_vec = &current_bullet->acceleration_vec; // EBP-150
+                            Float3 tempA; // EBP-148
+                            tempA.z = acceleration_vec->z * multiplierA;
+                            tempA.y = acceleration_vec->y * multiplierA;
+                            tempA.x = acceleration_vec->x * multiplierA;
+                            Float3 tempB = tempA; // EBP-8C
+                            Float3* velocity = &current_bullet->velocity; // EBP-154
+                            velocity->x += tempB.x;
+                            velocity->y += tempB.y;
+                            velocity->z += tempB.z;
+                            current_bullet->angle = zatan2f(velocity->y, velocity->x);
+                        }
+                    }
+                    else if (current_bullet->__unknown_flag_C) {
+                        if ((bool)(current_bullet->timer.current >= current_bullet->acceleration_duration)) {
+                            current_bullet->__unknown_flag_C = false;
+                        } else {
+                            current_bullet->angle = reduce_angle_new(current_bullet->angle, current_bullet->angular_velocity);
+                            current_bullet->speed += current_bullet->velocity_scalar;
+                            float magnitude = current_bullet->speed; // EBP-160
+                            float angle = current_bullet->angle; // EBP-164
+                            Float3* velocity = &current_bullet->velocity; // EBP-168
+                            float3_make_from_vector(velocity, angle, magnitude);
+                        }
+                    }
+                    if (current_bullet->__unknown_flag_D) {
+                        if ((bool)(current_bullet->timer.current >= current_bullet->ex_angle_interval * (current_bullet->ex_angle_count + 1))) {
+                            current_bullet->ex_angle_count++;
+                            if (current_bullet->ex_angle_count >= current_bullet->ex_angle_max_count) {
+                                current_bullet->__unknown_flag_D = false;
+                            }
+                            current_bullet->angle += current_bullet->ex_angle_offset;
+                            current_bullet->speed = current_bullet->ex_angle_speed;
+                            floatA = current_bullet->speed;
+                        } else {
+                            Timer* timer = &current_bullet->timer; // EBP-16C
+                            float floatB = (float)(current_bullet->ex_angle_interval * current_bullet->ex_angle_count); // EBP-224
+                            floatA = current_bullet->speed - (((float)current_bullet->timer.current + current_bullet->timer.subframe) - floatB) * current_bullet->speed / (float)current_bullet->ex_angle_interval;
+                        }
+                        
+                    }
+                }
+            }
+            case 5:
+        }
+        current_bullet->timer.tick();
+    }
+    // LASER_PINGAS
+    Laser* current_laser = bullet_manager_arg->lasers;
+    for (i = 0; i < countof(bullet_manager_arg->lasers); i++, current_laser++) {
+        if (!current_laser->in_use) continue;
+        current_laser->end_offset += current_laser->speed * SUPERVISOR.game_speed;
+        if (current_laser->end_offset - current_laser->start_offset > current_laser->start_length) {
+            current_laser->start_offset = current_laser->end_offset - current_laser->start_length;
+        }
+        if (current_laser->start_offset < 0.0f) {
+            current_laser->start_offset = 0.0f;
+        }
+        Float3 float3A;
+        float3A.y = current_laser->width / 2.0f; // EBP-18
+        float3A.x = current_laser->end_offset - current_laser->start_offset; // EBP-1C
+        Float3 float3B;
+        float3B.x = current_laser->position.x + current_laser->start_offset + (current_laser->end_offset - current_laser->start_offset) / 2.0f; // EBP-34
+        float3B.y = current_laser->position.y; // EBP-30
+        current_laser->vm_0.scale_x = current_laser->width / current_laser->vm_0.sprite->width_px;
+        float floatE = current_laser->end_offset - current_laser->start_offset; // EBP-10
+        current_laser->vm_0.scale_y = floatE / current_laser->vm_0.sprite->height_px;
+        current_laser->vm_0.rotation.z = TWO_PI_f - current_laser->angle;
+        switch (current_laser->state) {
+            case 0:
+                if (current_laser->__related_to_vm_0_alpha_color) {
+                    Timer* fade_timer = &current_laser->timer;
+                    int32_t alpha = ((float)fade_timer->current + fade_timer->subframe) * 255.0f / (float)current_laser->start_time;
+                    if (alpha > 255) {
+                        alpha = 255;
+                    }
+                    current_laser->vm_0.color = alpha << 24;
+                } else {
+                    int32_t start_timeB = __max(current_laser->start_time, 30);
+                    int32_t current_time = current_laser->timer.current;
+                    if (current_laser->start_time - start_timeB < current_time) {
+                        Timer* fade_timer = &current_laser->timer;
+                        floatE = ((float)fade_timer->current + fade_timer->subframe) * current_laser->width / (float)current_laser->start_time;
+                    } else {
+                        floatE = 1.2f;
+                    }
+                    current_laser->vm_0.scale_x = floatE / 16.0f;
+                    float3A.x = floatE / 2.0f;
+                }
+                if ((bool)(current_laser->timer.current >= current_laser->graze_delay)) {
+                    PLAYER.check_laser_collision(&float3B, &float3A, &current_laser->position, current_laser->angle, current_laser->timer.current % 12);
+                }
+                if ((bool)(current_laser->timer.current < current_laser->start_time)) {
+                    break;
+                }
+                current_laser->timer.set_default();
+                current_laser->state++;
+            case 1:
+                PLAYER.check_laser_collision(&float3B, &float3A, &current_laser->position, current_laser->angle, current_laser->timer.current % 12);
+                if ((bool)(current_laser->timer.current < current_laser->duration)) {
+                    break;
+                }
+                current_laser->timer.set_default();
+                current_laser->state++;
+                if (!current_laser->end_time) {
+                    current_laser->in_use = false;
+                    continue;
+                }
+            case 2:
+                if (current_laser->__related_to_vm_0_alpha_color) {
+                    Timer* fade_timer = &current_laser->timer;
+                    int32_t alpha = ((float)fade_timer->current + fade_timer->subframe) * 255.0f / (float)current_laser->start_time;
+                    if (alpha > 255) {
+                        alpha = 255;
+                    }
+                    current_laser->vm_0.color = alpha << 24;
+                } else {
+                    if (current_laser->end_time > 0) {
+                        Timer* fade_timer = &current_laser->timer;
+                        floatE = current_laser->width - (((float)fade_timer->current + fade_timer->subframe) * current_laser->width / (float)current_laser->end_time);
+                        current_laser->vm_0.scale_x = floatE / 16.0f;
+                        float3A.x = floatE / 2.0f;
+                    }
+                }
+                if ((bool)(current_laser->timer.current < current_laser->graze_interval)) {
+                    PLAYER.check_laser_collision(&float3B, &float3A, &current_laser->position, current_laser->angle, current_laser->timer.current % 12);
+                }
+                if ((bool)(current_laser->timer.current < current_laser->end_time)) {
+                    break;
+                }
+                current_laser->in_use = false;
+                continue;
+        }
+        if (current_laser->start_offset >= 640.0f) {
+            current_laser->in_use = false;
+        }
+        current_laser->timer.tick();
+        ANM_MANAGER_PTR->run_anm(&current_laser->vm_0);
+    }
+    bullet_manager_arg->time.tick();
+    return 1;
+}
 
 extern "C" {
     // 0x5A5FF8
@@ -5460,7 +5578,8 @@ struct Enemy {
 
     inline void set_main_anm(int32_t index) {
         this->primary_vm.script_number = index;
-        ANM_MANAGER_PTR->set_vm_script(&this->primary_vm, ANM_MANAGER_PTR->scripts[index]);
+        AnmManager* anm_manager = ANM_MANAGER_PTR;
+        anm_manager->set_vm_script(&this->primary_vm, anm_manager->scripts[index]);
     }
 
 };  // 0xec8
@@ -5672,6 +5791,24 @@ inline float __attribute__((target("no-sse"))) rand_float_helper(void) {
     return ret;
 }
 
+dllexport gnu_noinline void cdecl hardcoded_func_16_stageEx(Enemy* restrict enemy, EclInstruction* restrict current_instruction) {
+    int32_t intA = enemy->life;
+    if ((bool)(enemy->boss_timer.current >= 7200)) {
+        intA = 0;
+    }
+    if (IntArg(0) == 0) {
+        enemy->current_context.float_vars[3] = 2.0f - (float)intA * 1.0f / 6000.0f;
+        enemy->current_context.counter_vars[1] = 40 + intA * 240 / 6000;
+    } else {
+        float floatA = 320.0f - (float)intA * 160.0f / 6000.0f;
+        float floatB = 192.0f - floatA / 2.0f;
+        enemy->current_context.float_vars[2] = RNG.rand_float() * floatA + floatB;
+        floatA = 128.0f - (float)intA * 64.0f / 6000.0f;
+        float floatC = 96.0f - floatA / 2.0f;
+        enemy->current_context.float_vars[3] = RNG.rand_float() * floatA + floatC;
+    }
+}
+
 extern "C" {
     // 0x476220
     extern ins_call FuncCall_PtrTable[17] asm("_FuncCall_PtrTable");
@@ -5876,10 +6013,10 @@ enemy->write_to_var(IntArg(number), MakeArg(val))
                     enemy->write_to_var(IntArg(0), MakeArg(ParseFloatArg(1) / ParseFloatArg(2)));
                     break;
                 case 24: // math_float_mod
-                    enemy->write_to_var(IntArg(0), MakeArg(fmod_helper(ParseFloatArg(1), ParseFloatArg(2))));
+                    enemy->write_to_var(IntArg(0), MakeArg(zfmodf(ParseFloatArg(1), ParseFloatArg(2))));
                     break;
                 case 25: // math_atan2
-                    enemy->write_to_var(IntArg(0), MakeArg(atan2_helper(ParseFloatArg(3) - ParseFloatArg(1), ParseFloatArg(4) - ParseFloatArg(2))));
+                    enemy->write_to_var(IntArg(0), MakeArg(zatan2f(ParseFloatArg(3) - ParseFloatArg(1), ParseFloatArg(4) - ParseFloatArg(2))));
                     break;
                 case 26: { // math_reduce_angle
                     EclArg *restrict temp = enemy->get_var_ptr(&IntArg(0));
@@ -6085,8 +6222,8 @@ enemy->write_to_var(IntArg(number), MakeArg(val))
                     angle = parse_float_as_arg(enemy, MakeArg(angle)).real;
                     int32_t time = IntArg(0);
                     scale = scale * time / 2.0f;
-                    enemy->move_interp.x = cosf_helper(angle) * scale;
-                    enemy->move_interp.y = sinf_helper(angle) * scale;
+                    enemy->move_interp.x = zcosf(angle) * scale;
+                    enemy->move_interp.y = zsinf(angle) * scale;
                     enemy->move_interp.z = 0.0f;
                     enemy->finalize_interp_ecl(op_index, time);
                     break;
@@ -6178,7 +6315,7 @@ enemy->write_to_var(IntArg(number), MakeArg(val))
                 case 76: { // shoot_interval
                     int32_t temp_interval = IntArg(0);
                     int32_t temp_interval_2 = temp_interval / 5;
-                    temp_interval += -temp_interval_2 * GAME_MANAGER.rank.current / 16 + temp_interval_2;
+                    temp_interval += -temp_interval_2 * GAME_MANAGER.rank.current / 32 + temp_interval_2;
                     enemy->shoot_interval = temp_interval;
                     //enemy->shoot_interval_timer = (Timer){ -999, 0.0f, 0 };
                     //enemy->shoot_interval_timer = static_default_timer<0>;
@@ -6188,7 +6325,7 @@ enemy->write_to_var(IntArg(number), MakeArg(val))
                 case 77: { // shoot_interval_delay
                     int32_t temp_interval = IntArg(0);
                     int32_t temp_interval_2 = temp_interval / 5;
-                    temp_interval += -temp_interval_2 * GAME_MANAGER.rank.current / 16 + temp_interval_2;
+                    temp_interval += -temp_interval_2 * GAME_MANAGER.rank.current / 32 + temp_interval_2;
                     enemy->shoot_interval = temp_interval;
                     if (temp_interval) {
                         enemy->shoot_interval_timer = (Timer){ -999, 0.0f, (int32_t)(RNG.rand_uint() % temp_interval) };
@@ -6586,8 +6723,8 @@ enemy->write_to_var(IntArg(number), MakeArg(val))
                 enemy->direction = angle;
                 float velocity = enemy->acceleration * game_speed + enemy->speed;
                 enemy->speed = velocity;
-                enemy->axis_speed.x = cosf_helper(angle) * velocity;
-                enemy->axis_speed.y = sinf_helper(angle) * velocity;
+                enemy->axis_speed.x = zcosf(angle) * velocity;
+                enemy->axis_speed.y = zsinf(angle) * velocity;
                 enemy->axis_speed.z = 0.0f;
                 break;
             }
@@ -6625,7 +6762,7 @@ enemy->write_to_var(IntArg(number), MakeArg(val))
                 interp_temp3[0] = interp_temp2[0];
                 interp_temp3[1] = interp_temp2[1];
                 vec<double, 2> interp_temp4 = convertvec(interp_temp3, vec<double, 2>);
-                enemy->direction = atan2_helper(interp_temp4[1], interp_temp4[0]);
+                enemy->direction = zatan2f(interp_temp4[1], interp_temp4[0]);
                 if (enemy->move_interp_timer.current > 0) {
                     interp_start += interp_temp;
                     enemy->position.x = interp_start[0];
@@ -6640,7 +6777,7 @@ enemy->write_to_var(IntArg(number), MakeArg(val))
                 //__v4sf interp_start = *(__m128_u*)&enemy->move_interp_start_pos;
                 //__v4sf interp_temp2 = (interp_temp * interp_speed) + interp_start - interp_temp;
                 //*(__m128_u*)&enemy->axis_speed = interp_temp2;
-                //enemy->direction = atan2_helper(interp_temp2[1], interp_temp2[0]);
+                //enemy->direction = zatan2f(interp_temp2[1], interp_temp2[0]);
                 //if (enemy->move_interp_timer.current > 0) {
                 //    interp_start += interp_temp;
                 //    enemy->position.x = interp_start[0];
@@ -7829,7 +7966,7 @@ struct UpdateFuncRegistry {
                 func->prev = NULL;
                 func->next = NULL;
                 if (func->__flag_A == true) {
-                    // No idea what this ZUN jank was originally supposed to be. ¯\_(ツ)_/¯
+                    // No idea what this ZUN jank was originally supposed to be. �P\_(�c)_/�P
                     UpdateFunc* tempA = func;
                     UpdateFunc* tempB = tempA;
                     UpdateFunc* tempC;

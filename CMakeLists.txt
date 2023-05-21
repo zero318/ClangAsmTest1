@@ -84,6 +84,11 @@ target_compile_definitions(${EXE} PRIVATE
 	_Analysis_assume_=__assume
 	_HAS_EXCEPTIONS=0
 	_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+
+	# IDK why this started not getting defined, but this fixes it
+	POINTER_64=__ptr64
+	# For some reason cdecl keeps getting itself undef'ed and this prevents it
+	DOSWIN32=1
 )
 if(IS_X64)
 target_compile_definitions(${EXE} PRIVATE
@@ -395,6 +400,7 @@ include_directories(SYSTEM "F:\\Program Files\\LLVM\\lib\\clang\\16\\include")
 include_directories(SYSTEM "C:\\WinDDK\\7600.16385.1\\inc\\ddk")
 include_directories(SYSTEM "F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT")
 include_directories(SYSTEM "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Include")
+include_directories(SYSTEM "F:\\My Programs Expansion\\DirectX_SDKs\\8.0a\\include")
 include_directories(SYSTEM "C:\\Program Files (x86)\\Microsoft Speech SDK\\Include")
 if(NOT MSVC)
 include_directories(AFTER SYSTEM
@@ -412,6 +418,7 @@ endif()
 
 #target_link_libraries(${EXE} NT)
 #target_link_libraries(${EXE} "ntdll.lib" "msvcrt.lib")
+target_link_libraries(${EXE} "msvcrt.lib")
 #target_link_libraries(${EXE} "C:\\WinDDK\\7600.16385.1\\lib\\wxp\\i386\\ntdll.lib")
 target_link_libraries(${EXE} "C:\\WinDDK\\7600.16385.1\\lib\\wxp\\i386\\winmm.lib")
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\dsound.lib")
@@ -419,6 +426,7 @@ target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\dxguid.lib")
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\d3d9.lib")
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\d3dx9.lib")
+target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\8.0a\\lib\\d3d8.lib")
 #target_link_libraries(${EXE} DummyDLL)
 
 # Add source to this project's executable.
@@ -430,6 +438,9 @@ target_sources(${EXE} PRIVATE
 	"zero/force_macros.h"
 	"zero/util.h"
 	"zero/util.cpp"
+	"zero/zun.h"
+	"zero/zun_types.h"
+	"zero/zun_math.h"
 	#"zero/ExternalGlobal.h"
 	"zero/custom_intrin.h"
 	"zero/thcrap_util.h"

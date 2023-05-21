@@ -1151,6 +1151,9 @@ union FCW {
 		uint16_t infinity_control : 1; // 12
 		uint16_t : 3; // 13-15
 	};
+	struct {
+		uint16_t exception_masks : 6;
+	};
 };
 ValidateStructSize(0x2, FCW);
 union FCWW {
@@ -1173,6 +1176,9 @@ union FCWW {
 		uint32_t infinity_control : 1; // 12
 		uint32_t : 19; // 13-31
 	};
+	struct {
+		uint32_t exception_masks : 6;
+	};
 };
 ValidateStructSize(0x4, FCWW);
 
@@ -1193,6 +1199,9 @@ union FSW {
 		uint16_t stack_top : 3;
 		uint16_t c3 : 1;
 		uint16_t busy : 1;
+	};
+	struct {
+		uint16_t exceptions : 6;
 	};
 };
 ValidateStructSize(0x2, FSW);
@@ -1215,6 +1224,9 @@ union FSWW {
 		uint32_t c3 : 1;
 		uint32_t busy : 1;
 		uint32_t : 16;
+	};
+	struct {
+		uint32_t exceptions : 6;
 	};
 };
 ValidateStructSize(0x4, FSWW);
@@ -1244,8 +1256,19 @@ union MXCSR {
 		uint32_t disable_unmasked_exceptions : 1; // 21
 		uint32_t : 10; // 22-31
 	};
+	struct {
+		uint32_t exceptions : 6;
+		uint32_t : 1;
+		uint32_t exception_masks : 6;
+	};
 };
 ValidateStructSize(0x4, MXCSR);
+
+enum VexState {
+	SSE_Encoding,
+	VEX_Encoding,
+	EVEX_Encoding
+};
 
 template <bool wait = false>
 static inline void clear_x87_exceptions() {
@@ -1302,6 +1325,7 @@ static inline FCWW store_x87_cw(FCWW& cww) {
 	return cww;
 }
 #define store_fcw(...) (store_x87_cw(__VA_ARGS__))
+#define current_fcw() (store_fcw())
 
 template <bool wait = false>
 static inline FCWW store_x87_cww(FCWW& cww) {
@@ -1324,6 +1348,7 @@ static inline FCWW store_x87_cww() {
 	return store_x87_cww<wait>(cww);
 }
 #define store_fcww(...) (store_x87_cww(__VA_ARGS__))
+#define current_fcww() (store_fcww())
 
 static inline void load_x87_cw(const FCW& cw) {
 	__asm__ volatile (
@@ -1374,6 +1399,7 @@ static inline FSW store_x87_sw(FSW& sw) {
 	return sw;
 }
 #define store_fsw(...) (store_x87_sw(__VA_ARGS__))
+#define current_fsw() (store_fsw())
 
 template <bool wait = false>
 static inline FSWW store_x87_sww() {
@@ -1407,6 +1433,7 @@ static inline FSWW store_x87_sww(FSWW& sw) {
 	return sww;
 }
 #define store_fsww(...) (store_x87_sww(__VA_ARGS__))
+#define current_fsww() (store_fsww())
 
 template <bool wait = false>
 static inline void store_x87_env(void* env) {
@@ -1427,47 +1454,48 @@ static inline void store_x87_env(void* env) {
 	}
 }
 
-template <bool alt_vex_state = false>
-static inline MXCSR store_mxcsr(MXCSR& mxcsr) {
 #if __AVX__
-	constexpr bool has_avx = true;
+static inline constexpr VexState default_mxcsr_encoding = VEX_Encoding;
 #else
-	constexpr bool has_avx = false;
+static inline constexpr VexState default_mxcsr_encoding = SSE_Encoding;
 #endif
-	if constexpr (has_avx != alt_vex_state) {
+
+template <VexState encoding = default_mxcsr_encoding>
+static inline MXCSR store_mxcsr(MXCSR& mxcsr) {
+	if constexpr (encoding == SSE_Encoding) {
 		__asm__ volatile (
-			"vstmxcsr %[mxcsr]"
+			"stmxcsr %[mxcsr]"
 			: asm_arg("=m", mxcsr)
 		);
 	} else {
 		__asm__ volatile (
-			"stmxcsr %[mxcsr]"
+			"vstmxcsr %[mxcsr]"
 			: asm_arg("=m", mxcsr)
 		);
 	}
 	return mxcsr;
 }
-template <bool alt_vex_state = false>
+template <VexState encoding = default_mxcsr_encoding>
 static inline MXCSR store_mxcsr() {
 	MXCSR ret;
-	return store_mxcsr<alt_vex_state>(ret);
+	return store_mxcsr<encoding>(ret);
 }
-template <bool alt_vex_state = false>
+template <VexState encoding = default_mxcsr_encoding>
+static inline MXCSR current_mxcsr() {
+	return store_mxcsr<encoding>();
+}
+
+template <VexState encoding = default_mxcsr_encoding>
 static inline void load_mxcsr(const MXCSR& mxcsr) {
-#if __AVX__
-	constexpr bool has_avx = true;
-#else
-	constexpr bool has_avx = false;
-#endif
-	if constexpr (has_avx != alt_vex_state) {
+	if constexpr (encoding == SSE_Encoding) {
 		__asm__ volatile (
-			"vldmxcsr %[mxcsr]"
+			"ldmxcsr %[mxcsr]"
 			:
 			: asm_arg("m", mxcsr)
 		);
 	} else {
 		__asm__ volatile (
-			"ldmxcsr %[mxcsr]"
+			"vldmxcsr %[mxcsr]"
 			:
 			: asm_arg("m", mxcsr)
 		);

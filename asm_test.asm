@@ -19,6 +19,9 @@ _RNG = 0x69D8F8
 _INPUT = 0x69D904
 _ASCII_MANAGER = 0x47B900
 
+.global _BULLET_TYPE_ANM_DATA
+_BULLET_TYPE_ANM_DATA = 0x46A6E8
+
 .global _EffectColorTablePtr, _UnknownSoundData_Table, _RandomItemIDs_LookupTable, _SpellcardPointsTable, _FuncCall_PtrTable, _EffectData_Table
 _EffectColorTablePtr = 0x476438
 _UnknownSoundData_Table = 0x478528
@@ -36,6 +39,12 @@ _SomeGlobalStaticBufferThatMakesMeSad = 0x4D2D5C
 
 .global _LinkerCheeseA
 _LinkerCheeseA = 0x1CB4
+
+.global _UNKNOWN_SURFACE_A, _SPRITE_VERTEX_BUFFER_A, _SPRITE_VERTEX_BUFFER_B, _SPRITE_VERTEX_BUFFER_C
+_UNKNOWN_SURFACE_A = 0x69E230
+_SPRITE_VERTEX_BUFFER_A = 0x6D4590
+_SPRITE_VERTEX_BUFFER_B = 0x6D4600
+_SPRITE_VERTEX_BUFFER_C = 0x6D4660
 
 .global _LinkerZero, _LinkerOne, _LinkerTwo, _LinkerThree, _LinkerFour, _LinkerFive, _LinkerSix, _LinkerSeven
 _LinkerZero = 0

@@ -3,6 +3,9 @@
 #pragma clang diagnostic ignored "-Wshift-op-parentheses"
 #include "ClangAsmTest1.h"
 
+
+#define POINTER_64 __ptr64
+
 #if IS_X64
 #include <iostream>
 #endif
@@ -1993,7 +1996,9 @@ dllexport void wasted_wtf_is_this2();
 dllexport void wasted_wtf_is_this3();
 extern void test_json_parse(const char16_t* raw_json);
 extern void test_json5_parse(const wchar_t* raw_json);
+dllexport volatile float wjhrjwrv;
 int main(int argc, char* argv[]) {
+	clang_noinline wjhrjwrv = __builtin_sqrt(-32984.2349f);
 	test_json_parse(u"{ \"ye\\u0065tus\" : true, \"pingas\":{}, \"yeet\": [ 1, 0.1, -123.456e+78, \"\", null ] }");
 	puts("");
 	test_json5_parse(L"{ \"ye\\u0065tus\" : true, \"pingas\":{}, \"yeet\": [ 01, 0.1, -123.456e+78, \"\", null, ], /* multi comment \n*/ unquoted : \'n\\x65w\\\nline\', }");

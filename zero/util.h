@@ -3,6 +3,8 @@
 #pragma clang diagnostic ignored "-Wc++20-extensions"
 #include "force_macros.h"
 
+#define POINTER_64 __ptr64
+
 #define C95_VERSION 199409L
 #define C99_VERSION 199901L
 #define C11_VERSION 201112L
@@ -233,11 +235,11 @@ static inline constexpr SseTier_t SSE_TIER = IA32;
 
 #if __INTELLISENSE__
 #define INTELLISENSE_TYPENAME typename
-//#define requires(...) MACRO_EVAL(MACRO_VOID(__VA_ARGS__))
+#define requires(...) MACRO_EVAL(MACRO_VOID(__VA_ARGS__))
 #define static_lambda
 #else
 #define INTELLISENSE_TYPENAME
-//#define requires(...) requires (__VA_ARGS__)
+#define requires(...) requires (__VA_ARGS__)
 #define static_lambda static
 #endif
 #define typeof(type) std::remove_reference_t<decltype(type)>
@@ -326,7 +328,11 @@ inline constexpr bool is_invocable_v = _Select_invoke_traits<_Callable, _Args...
 MACRO_CATW(_,enum_name,_MAX_VALUE_DUMMY), \
 MACRO_CAT(enum_name,_MAX_VALUE) = MACRO_CATW(_,enum_name,_MAX_VALUE_DUMMY) - 1
 
+#define ENUM_VALUE_COUNT_DECLARE(enum_name) \
+MACRO_CAT(enum_name,_VALUE_COUNT)
+
 #define ENUM_MAX_VALUE(enum_name) MACRO_CAT(enum_name,_MAX_VALUE)
+#define ENUM_VALUE_COUNT(enum_name) MACRO_CAT(enum_name,_VALUE_COUNT)
 
 #define CACHE_LINE_SIZE 64
 #define cache_align alignas(CACHE_LINE_SIZE)
@@ -622,10 +628,89 @@ static inline constexpr T garbage_value(void) {
 
 #define assume(condition) __builtin_assume(condition)
 
+
+#undef IN
+
+#define EoSD_VER 60
+#define PCB_VER 70
+#define IN_VER 80
+#define PoFV_VER 90
+#define StB_VER 95
+#define MoF_VER 100
+#define UB_VER 103
+#define SA_VER 110
+#define UFO_VER 120
+#define DS_VER 125
+#define GFW_VER 128
+#define TD_VER 130
+#define DDC_VER 140
+#define ISC_VER 143
+#define LoLK_VER 150
+#define HSiFS_VER 160
+#define VS_VER 165
+#define WBaWC_VER 170
+#define UM_VER 180
+#define BM_VER 185
+#define UDaALG_VER 190
+enum GameVersion : size_t {
+	EoSD = EoSD_VER,
+	PCB = PCB_VER,
+	IN = IN_VER,
+	PoFV = PoFV_VER,
+	StB = StB_VER,
+	MoF = MoF_VER,
+	UB = UB_VER,
+	SA = SA_VER,
+	UFO = UFO_VER,
+	DS = DS_VER,
+	GFW = GFW_VER,
+	TD = TD_VER,
+	DDC = DDC_VER,
+	ISC = ISC_VER,
+	LoLK = LoLK_VER,
+	HSiFS = HSiFS_VER,
+	VD = VS_VER,
+	WBaWC = WBaWC_VER,
+	UM = UM_VER,
+	BM = BM_VER,
+	UDaALG = UDaALG_VER
+};
+
+#define IN
+
 template <typename T>
 struct ZUNEmbeddedList {
 	T* next;
 	T* prev;
+};
+
+#define EMBEDDED_NODE list_node
+
+template <typename T>
+struct ZUNEmbeddedList2 {
+	T* prev;
+	T* next;
+
+	inline void unlink_from_next() {
+		if (T* next_node = this->next) {
+			next_node->EMBEDDED_NODE.prev = this->prev;
+		}
+	}
+	inline void unlink_from_prev() {
+		if (T* prev_node = this->prev) {
+			prev_node->EMBEDDED_NODE.next = this->next;
+		}
+	}
+
+	inline void unlink() {
+		this->prev->EMBEDDED_NODE.next = this->next;
+		this->unlink_from_next();
+	}
+
+	inline void prepend(T* new_node) {
+		new_node->prev = ZUNListNCast(this);
+		this->prev = new_node;
+	}
 };
 
 #define ZUNListPlayNiceWithIntellisense
@@ -996,7 +1081,9 @@ static inline P* pointer_raw_offset(P* pointer, O offset) {
 #define gnu_noinline gnu_attr(noinline)
 #define forceinline __forceinline
 #define clang_always_inline [[clang::always_inline]]
+#define clang_forceinline clang_always_inline
 #define gnu_always_inline gnu_attr(always_inline)
+#define gnu_forceinline gnu_always_inline
 #define restrict __restrict
 
 #define naked __declspec(naked)
@@ -1005,6 +1092,12 @@ static inline P* pointer_raw_offset(P* pointer, O offset) {
 #define fastcall gnu_attr(fastcall)
 #ifdef cdecl
 #undef cdecl
+#endif
+#ifdef _cdecl
+#undef _cdecl
+#endif
+#ifdef __cdecl
+#undef __cdecl
 #endif
 #define cdecl __cdecl
 
@@ -1045,6 +1138,7 @@ static inline P* pointer_raw_offset(P* pointer, O offset) {
 #define unpredictable(condition) __builtin_unpredictable(condition)
 #define not_tail_called gnu_attr(not_tail_called)
 #define disable_tail_calls gnu_attr(disable_tail_calls)
+//#define no_caller_saved_registers [[gnu::no_caller_saved_registers]] 
 #define closed_enum gnu_attr(enum_extensibility(closed))
 #define gnu_used gnu_attr(used)
 #define gnu_retain gnu_attr(retain)
@@ -1066,6 +1160,18 @@ template <typename T>
 inline T confine_to_range(T min, T input, T max) {
 	T temp = __max(min, input);
 	return __min(max, temp);
+}
+
+// Efficiently tests if [value] is within the range [min, max)
+template <typename T> requires(std::is_integral_v<T>)
+static inline constexpr bool in_range_exclusive(T value, T min, T max) {
+	return (std::make_unsigned_t<T>)(value - min) < (std::make_unsigned_t<T>)(max - min);
+}
+// Efficiently tests if [value] is within the range [min, max]
+// Valid for both signed and unsigned integers
+template <typename T> requires(std::is_integral_v<T>)
+static inline constexpr bool in_range_inclusive(T value, T min, T max) {
+	return (std::make_unsigned_t<T>)(value - min) <= (std::make_unsigned_t<T>)(max - min);
 }
 
 // Packs the bytes [c1], [c2], [c3], and [c4] together as a little endian integer
@@ -1518,6 +1624,12 @@ inline int byteloop_strcmp(const char* restrict strA, const char* restrict strB)
 	char D;
 	for (uint8_t C; !(D = (C = *A++) - *B++);) if (!C) return 0;
 	return D;
+}
+
+inline bool byteloop_strmatch(const char *restrict strA, const char *restrict strB) {
+	bool ret;
+	for (char c; (ret = (c = *strA++) == *strB++) && c;);
+	return ret;
 }
 
 inline int byteloop_strcmp_fancy(const uint8_t* restrict strA, const uint8_t* restrict strB) {
