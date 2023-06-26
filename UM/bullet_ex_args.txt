@@ -1,0 +1,232 @@
+EX_ANIM:
+    runs interrupt 7 + a on the bullet vm
+
+EX_ACCEL:
+    duration = a
+    acceleration = r
+
+    s <= -999990.0                          : angle = current_angle
+    s > -999990.0 && s < 999990.0           : angle = s
+    s >= 999990.0 && s < 1999990.0          : angle = angle_to_player_from_current_position + m
+    s >= 1999990.0 && s < 2999990.0         : angle = s
+    s >= 2999990.0 && s < 3999990.0         : angle = angle_to_player_from_current_position + m * RANDF2
+    s >= 3999990.0 && s < 4999990.0         : angle = current_angle + m * RANDF2
+    s >= 4999990.0                          : angle = angle_from_boss0_to_current_position
+
+EX_ANGLE_ACCEL:
+    duration = a
+    acceleration = r
+    angle = s
+
+EX_ANGLE:
+    duration = a
+    max_count = b
+    type = c
+    __int_44 = d
+
+    s <= -999990.0  : speed = current_speed
+    s > -999990.0   : speed = s
+    c == 7          : speed = current_speed + s * RANDF2
+
+    r <= -999990.0                          : angle_arg = current_angle
+    r > -999990.0 && r < 999990.0           : angle_arg = r
+    r >= 999990.0 && r < 1999990.0          : angle_arg = angle_to_player_from_current_position + m
+    s >= 1999990.0 && s < 2999990.0         : angle_arg = r
+    r >= 2999990.0 && r < 3999990.0         : angle_arg = angle_to_player_from_current_position + m * RANDF2
+    r >= 3999990.0 && r < 4999990.0         : angle_arg = current_angle + m * RANDF2
+    r >= 4999990.0                          : angle_arg = angle_from_boss0_to_current_position
+
+    c == 0 || c == 1 || c == 4              : angle = angle_arg
+    c == 2                                  : angle = angle_to_player_from_saved_position + angle_arg
+    c == 3                                  : angle = saved_angle + angle_arg
+    c == 5 || c == 6                        : angle = r * RANDF2
+    c == 7 && r <= -999990.0                : angle = current_angle
+    c == 7 && r > -999990.0 && r < 990.0    : angle = r
+    c == 7 && r >= 999.0                    : angle = angle_to_player_from_current_position
+
+EX_BOUNCE:
+    max_count = a
+    type = b
+    speed = r
+    
+    b & 0x20    : size_x = s, size_y = m
+    !(b & 0x20) : size_x = 384.0, size_y = 448.0
+
+EX_INVULN:
+    duration = a
+
+EX_OFFSCREEN:
+    max_time = a
+    unknown = b
+
+EX_SETSPRITE:
+    sprite = a
+    color = b
+
+    c & 0x8000 : runs interrupt 2 on the bullet vm
+
+EX_DELETE:
+    a == 1 : cancel_script = -1
+
+EX_PLAYSOUND:
+    sound_id = a
+
+EX_WRAP:
+    max_count = a
+    walls = b
+
+EX_SHOOT:
+    aim_mode = a
+    effect_index = b
+    count1 = c
+    count2 = d
+    sprite = a2
+    color = b2
+
+    r <= -999990.0                          : angle = current_angle
+    r > -999990.0 && r <= 999990.0          : angle = r
+    r > 999990.0 && r < 1999990.0           : angle = angle_to_player_from_current_position
+    r >= 1999990.0                          : angle = r
+
+    angle2 = s
+
+    m <= -999990.0  : speed1 = current_speed
+    m > -999990.0   : speed1 = m
+    
+    speed2 = n
+
+EX_REACT:
+    __ex_func_a = a
+
+EX_LOOP:
+    index = a
+    count = b
+
+EX_MOVE:
+    duration = a
+    mode = b
+    target_x = r
+    target_y = s
+    
+    b & 0x100 : target_x += current_x, target_y += current_y
+    
+EX_VEL:
+    r >= 990.0                  : angle = angle_to_player_from_current_position + r - 999.0
+    r >= -990.0 && r < 990.0    : angle = r
+    r < -990.0                  : angle = current_angle
+    
+    s < -990.0  : speed = current_speed
+    s >= -990.0 : speed = s
+
+EX_VELADD:
+    duration = a
+    angle = r
+    speed = s
+
+EX_BRIGHT:
+    a == 1              : blend_mode = 1
+    a == 2              : blend_mode = 2
+    a != 1 && a != 2    : blend_mode = 0
+
+EX_VELTIME:
+    duration = a
+    speed = (r - current_speed) / a
+
+    s <= -999990.0                          : angle = current_angle
+    s > -999990.0 && s < 999990.0           : angle = s
+    s >= 999990.0 && s < 1999990.0          : angle = angle_to_player_from_current_position + m
+    s >= 1999990.0 && s < 2999990.0         : angle = s
+    s >= 2999990.0 && s < 3999990.0         : angle = angle_to_player_from_current_position + m * RANDF2
+    s >= 3999990.0 && s < 4999990.0         : angle = current_angle + m * RANDF2
+    s >= 4999990.0                          : angle = angle_from_boss0_to_current_position
+
+EX_SIZE:
+    end_time = a
+    mode = b
+    initial_size = r
+    final_size = s
+
+EX_SAVEANGLE:
+    this saves position, angle, and speed
+
+EX_ENEMY:
+    I0 = a
+    I1 = b
+    I2 = c
+    I3 = d
+    F0 = r
+    F1 = s
+    F2 = m
+    F3 = n
+
+EX_LAYER:
+    layer = a
+
+EX_DELAY:
+    duration = a
+
+EX_LASER:
+    a == 0 : line laser
+
+    sprite = b
+    color = c
+    delete_current_bullet = d
+    shot_sound = a2
+    transform_sound = b2
+    effect_index = c2
+    flags = 0
+
+    r <= -999990.0                          : angle = current_angle
+    r > -999990.0 && r <= 999990.0          : angle = r
+    r > 999990.0 && r < 1999990.0           : angle = angle_to_player_from_current_position
+    r >= 1999990.0                          : angle = r
+
+    s <= -999990.0  : speed = current_speed
+    s > -999990.0   : speed = s
+
+    length = m
+    __length_related = n
+    __float_18 = r2
+    width = s2
+    distance = m2
+
+
+    a == 1 : infinite laser
+
+    sprite = b
+    color = c
+    flags = (d & 0xFD) | 0x02
+    effect_index = (d & 0xFF00) >> 8
+    delete_current_bullet = (d & 0x10000) >> 16
+    start_time = a2
+    expand_time = b2
+    duration = c2
+    stop_time = d2
+    shot_sound = 18
+    transform_sound = -1
+
+    r <= -999990.0                          : angle = current_angle
+    r > -999990.0 && r <= 999990.0          : angle = r
+    r > 999990.0 && r < 1999990.0           : angle = angle_to_player_from_current_position
+    r >= 1999990.0                          : angle = r
+
+    s <= -999990.0  : speed = current_speed
+    s > -999990.0   : speed = s
+
+    __float_24 = m
+    length = n
+    width = r2
+    distance = s2
+
+EX_HITBOX:
+    r < 0.0f    : hitbox_radius = original_hitbox
+    r >= 0.0f   : hitbox_radius = r
+
+EX_HOMING:
+    duration = a
+    speed = r
+    angle = s
+    target_x = m
+
+EX_WAIT:
+    duration = a

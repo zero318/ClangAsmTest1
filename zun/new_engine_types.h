@@ -1,311 +1,51 @@
-#ifndef ZUN_TYPES_H
-#define ZUN_TYPES_H 1
+#ifndef ZUN_NEW_ENGINE_TYPES_H
+#define ZUN_NEW_ENGINE_TYPES_H 1
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <math.h>
 
-#include "util.h"
-
-#define DECLARED_FLOAT_STUCTS 1
-
-// size: 0x4
-struct Int1 {
-    int32_t x; // 0x0
-    // 0x4
-};
-
-// size: 0x8
-struct Int2 : Int1 {
-    int32_t y; // 0x4
-    // 0x8
-};
-
-// size: 0xC
-struct Int3 : Int2 {
-    int32_t z; // 0x8
-    // 0xC
-};
-
-// size: 0x10
-struct Int4 : Int3 {
-    int32_t w; // 0xC
-    // 0x10
-};
-
-#if GAME_VERSION == EoSD_VER
-#define zun_operator_inline forceinline
-#define zun_make_from_vector_inline forceinline
-#elif GAME_VERSION == PCB_VER || GAME_VERSION == IN_VER
-#define zun_operator_inline gnu_noinline
-#define zun_make_from_vector_inline forceinline
-#else
-#define zun_operator_inline inline
-#define zun_make_from_vector_inline gnu_noinline
-#endif
-
-// size: 0x4
-struct Float1 {
-    float x; // 0x0
-    // 0x4
-
-    inline constexpr Float1() {};
-    inline constexpr Float1(const float& X) : x(X) {}
-};
-
-// size: 0x8
-struct Float2 : Float1 {
-    float y; // 0x4
-
-    using Float1::Float1;
-    inline constexpr Float2() {};
-    inline constexpr Float2(const float& X, const float& Y) : Float1(X), y(Y) {}
-    
-    // th18 A: 0x404DD0
-    // th18 H: 0x429BC0
-    dllexport zun_make_from_vector_inline Float2& thiscall make_from_vector(float angle, float magnitude) {
-#ifndef __x86_64__
-        __asm {
-            MOV EAX, this;
-            FLD angle;
-            FSINCOS;
-            FMUL magnitude;
-            FSTP DWORD PTR [EAX]
-            FMUL magnitude;
-            FSTP DWORD PTR [EAX+4]
-        };
-#else
-        __asm {
-            MOV RAX, this;
-            FLD angle;
-            FSINCOS;
-            FMUL magnitude;
-            FSTP DWORD PTR [RAX]
-            FMUL magnitude;
-            FSTP DWORD PTR [RAX+4]
-        };
-#endif
-        return *this;
-    }
-    
-    inline float angle_to(const Float2& coord) {
-        clang_noinline return zatan2f(this->y - coord.y, this->x - coord.x);
-    }
-
-    // th14: 0x4143B0, 0x415410, 0x42E070, 0x454460
-    inline float angle_to(const Float2* coord) {
-        return zatan2f(this->y - coord->y, this->x - coord->x);
-    }
-
-    // th14: 0x407090, 0x415590, 0x42E270, 0x443FA0
-    inline float angle_to_self_pos() {
-        return zatan2f(this->y, this->x);
-    }
-    
-#pragma region // Float2 Operators
-
-#define Float2BinOp(op) \
-    zun_operator_inline Float2 operator op(const Float2& value) { \
-        return { \
-            this->x op value.x, \
-            this->y op value.y \
-        }; \
-    }
-    Float2BinOp(+);
-    Float2BinOp(-);
-    Float2BinOp(*);
-    Float2BinOp(/);
-#undef Float2BinOp
-#define Float2BinOpScalar(op) \
-    zun_operator_inline Float2 operator op(const float& value) { \
-        return { \
-            this->x op value, \
-            this->y op value \
-        }; \
-    }
-    Float2BinOpScalar(+);
-    Float2BinOpScalar(-);
-    Float2BinOpScalar(*);
-    Float2BinOpScalar(/);
-#undef Float2BinOpScalar
-#define Float2UnOp(op) \
-    zun_operator_inline Float2 operator op() { \
-        return { \
-            op this->x, \
-            op this->y \
-        }; \
-    }
-    Float2UnOp(+);
-    Float2UnOp(-);
-#undef Float2UnOp
-#define Float2AssignOp(op) \
-    zun_operator_inline Float2& operator op(const Float2& value) {\
-        this->x op value.x; \
-        this->y op value.y; \
-        return *this; \
-    }
-    Float2AssignOp(+=);
-    Float2AssignOp(-=);
-    Float2AssignOp(*=);
-    Float2AssignOp(/=);
-#undef Float2AssignOp
-#define Float2AssignOpScalar(op) \
-    zun_operator_inline Float2& operator op(const float& value) {\
-        this->x op value; \
-        this->y op value; \
-        return *this; \
-    }
-    Float2AssignOpScalar(+=);
-    Float2AssignOpScalar(-=);
-    Float2AssignOpScalar(*=);
-    Float2AssignOpScalar(/=);
-#undef Float2AssignOpScalar
-
-#pragma endregion
-};
-#pragma region // Float2 Validation
-ValidateFieldOffset32(0x0, Float2, x);
-ValidateFieldOffset32(0x4, Float2, y);
-ValidateStructSize32(0x8, Float2);
-#pragma endregion
-
-// size: 0xC
-struct Float3 : Float2 {
-    float z; // 0x8
-
-    using Float2::Float2;
-    inline constexpr Float3() {};
-    inline constexpr Float3(const float& X, const float& Y, const float& Z) : Float2(X, Y), z(Z) {}
-    
-    inline Float2& as2() {
-        return *(Float2*)this;
-    }
-    
-    // 0x425B40
-#if GAME_VERSION == UM_VER
-    dllexport gnu_noinline float vectorcall __bullet_effect_angle_jank(float angle, float arg2, float arg3);
-#endif
-
-    void safe_copy(Float3* src) {
-        if (!src) {
-            *this = { 0.0f, 0.0f, 0.0f };
-        } else {
-            *this = *src;
-        }
-    }
-
-#pragma region // Float3 Operators
-
-#define Float3BinOp(op) \
-    zun_operator_inline Float3 operator op(const Float3& value) { \
-        return { \
-            this->x op value.x, \
-            this->y op value.y, \
-            this->z op value.z \
-        }; \
-    } \
-    zun_operator_inline Float3 operator op(const Float2& value) { \
-        return { \
-            this->x op value.x, \
-            this->y op value.y, \
-            this->z op 0.0f \
-        }; \
-    }
-    Float3BinOp(+);
-    Float3BinOp(-);
-    Float3BinOp(*);
-    Float3BinOp(/);
-#undef Float3BinOp
-#define Float3BinOpScalar(op) \
-    zun_operator_inline Float3 operator op(const float& value) { \
-        return { \
-            this->x op value, \
-            this->y op value, \
-            this->z op value \
-        }; \
-    }
-    Float3BinOpScalar(+);
-    Float3BinOpScalar(-);
-    Float3BinOpScalar(*);
-    Float3BinOpScalar(/);
-#undef Float3BinOpScalar
-#define Float3UnOp(op) \
-    zun_operator_inline Float3 operator op() { \
-        return { \
-            op this->x, \
-            op this->y, \
-            op this->z \
-        }; \
-    }
-    Float3UnOp(+);
-    Float3UnOp(-);
-#undef Float3UnOp
-#define Float3AssignOp(op) \
-    zun_operator_inline Float3& operator op(const Float3& value) {\
-        this->x op value.x; \
-        this->y op value.y; \
-        this->z op value.z; \
-        return *this; \
-    } \
-    zun_operator_inline Float3& operator op(const Float2& value) {\
-        this->x op value.x; \
-        this->y op value.y; \
-        this->z op 0.0f; \
-        return *this; \
-    }
-    Float3AssignOp(+=);
-    Float3AssignOp(-=);
-    Float3AssignOp(*=);
-    Float3AssignOp(/=);
-#undef Float3AssignOp
-#define Float3AssignOpScalar(op) \
-    zun_operator_inline Float3& operator op(const float& value) {\
-        this->x op value; \
-        this->y op value; \
-        this->z op value; \
-        return *this; \
-    }
-    Float3AssignOpScalar(+=);
-    Float3AssignOpScalar(-=);
-    Float3AssignOpScalar(*=);
-    Float3AssignOpScalar(/=);
-#undef Float3AssignOpScalar
-
-#pragma endregion
-
-};
-#pragma region // Float3 Validation
-ValidateFieldOffset32(0x0, Float3, x);
-ValidateFieldOffset32(0x4, Float3, y);
-ValidateFieldOffset32(0x8, Float3, z);
-ValidateStructSize32(0xC, Float3);
-#pragma endregion
-
-#undef zun_operator_inline
-
-// size: 0x10
-struct Float4 {
-    float x; // 0x0
-    float y; // 0x4
-    float z; // 0x8
-    float w; // 0xC
-};
-#pragma region // Float4 Validation
-ValidateFieldOffset32(0x0, Float4, x);
-ValidateFieldOffset32(0x4, Float4, y);
-ValidateFieldOffset32(0x8, Float4, z);
-ValidateFieldOffset32(0xC, Float4, w);
-ValidateStructSize32(0x10, Float4);
-#pragma endregion
-
-#if 0 && GAME_VERSION >= MoF_VER
+#include "../zero/util.h"
+#include "zun.h"
+#include "funcs.h"
 
 // size: 0x8
 struct GameSpeed {
     float value = 1.0f; // 0x0
-    int __counter_4; // 0x4
+    int __counter_4 = 0; // 0x4
     // 0x8
 
+    // MoF: 0x44C620
+    // SA: 0x459B00
+    // UFO: 0x4653F0
+    // DS: 0x4652F0
+    // GFW: 0x46C250
+    GameSpeed() {}
+
+    // MoF: 0x44C5F0
+    // SA: 0x459AC0
+    // UFO: 0x4653B0
+    // DS: 0x4652B0
+    // GFW: 0x46C210
+    float thiscall scale(float value) const {
+        if constexpr (game_version < SA) {
+            return this->value * value;
+        } else if constexpr (game_version >= SA && game_version <= GFW) {
+            double temp = this->value;
+            temp *= value;
+            return temp;
+        }
+    }
+
+    // MoF: 0x44C600:
+    // SA: 0x459AE0
+    // UFO: 0x4653D0
+    // DS: 0x4652D0
+    // GFW: 0x46C230
+    void __decrement_counter_4() {
+        --this->__counter_4;
+    }
+
+    // UFO: 0x4066A0
     // UM: 0x43A200
     dllexport gnu_noinline void vectorcall set(float new_speed);
 };
@@ -315,7 +55,51 @@ ValidateFieldOffset32(0x4, GameSpeed, __counter_4);
 ValidateStructSize32(0x8, GameSpeed);
 #pragma endregion
 
+// size: 0x14
 struct Timer {
+    /* ==========
+    Notes
+    ========== */
+    /*
+    
+    MoF, UB:
+    -Uses game_speed directly as a pointer without null checking
+    -Includes default values when setting
+    -Returns void from most functions
+    -Compares with float values for the time scale
+
+    SA, UFO:
+    -Mostly like MoF, but casts to double for some things
+    -Returns int from most functions
+    
+    DS:
+    -Adds a few more functions
+    
+    */
+
+    /* ==========
+    Janky Type Garbage
+    ========== */
+
+private:
+    static inline constexpr bool skip_default_values_for_set = game_version >= UM;
+
+    using lower_time_bound_t = std::conditional_t<game_version >= SA && game_version <= GFW, float, double>;
+    using upper_time_bound_t = float;
+    using increment_time_t = std::conditional_t<game_version >= SA && game_version <= GFW, float, double>;
+    using decrement_time_t = float;
+    static inline constexpr const lower_time_bound_t lower_time_bound = 0.99;
+    static inline constexpr const upper_time_bound_t upper_time_bound = 1.01;
+    static inline constexpr const increment_time_t increment_amount = 1.0;
+    static inline constexpr const decrement_time_t decrement_amount = -1.0;
+
+    forceinline 
+
+public:
+
+    /* ==========
+    Fields/Members
+    ========== */
     int32_t prev; // 0x0
     int32_t current; // 0x4
     float current_f; // 0x8
@@ -326,11 +110,33 @@ struct Timer {
             uint32_t initialized : 1;
         };
     };
+    // 0x14
 
+    /* ==========
+    Default Constructor
+    ========== */
+
+    // MoF: 0x44BF20
+    // UB: 0x448290
+    // SA: 0x4591E0
+    // UFO: 0x4649F0
+    // DS: 0x463E30
+    // GFW: 0x46A9F0
     // DDC: 0x4038C0
+    
+    // UDoALGtr2: Rx125800
     inline Timer() : initialized(false) {};
 
+    /* ==========
+    Assignment Functions
+    ========== */
+
     // MoF: 0x401F40
+    // UB: 0x402220
+    // SA: 0x4022E0
+    // UFO: 0x402850
+    // DS: 0x402ED0
+    // GFW: 0x403220
     // DDC: 0x408A90
     inline void default_values() {
         this->current = 0;
@@ -345,6 +151,12 @@ struct Timer {
             this->initialized = true;
         }
     }
+    inline void initialize_without_defaults() {
+        if (!this->initialized) {
+            this->time_scale = 0;
+            this->initialized = true;
+        }
+    }
 
     inline void set_raw(int32_t time) {
         float float_time = time;
@@ -354,10 +166,20 @@ struct Timer {
     }
 
     inline void set_raw(float time) {
-        int32_t int_time = time;
+        int32_t int_time = zftol(time);
         this->current_f = time;
         this->current = int_time;
         this->previous = int_time - 1;
+    }
+
+    // UM: 0x405D10
+    void thiscall set(int32_t time) {
+        this->initialize();
+        this->set_raw(time);
+    }
+    void thiscall set(float time) {
+        this->initialize();
+        this->set_raw(time);
     }
 
     inline void reset() {
@@ -372,22 +194,20 @@ struct Timer {
         this->set_raw(time);
     }
 
-    // UM: 0x405D10
-    dllexport void thiscall set(int32_t time) {
-        this->initialize_important();
-        this->set_raw(time);
-    }
-
-    void thiscall set(float time) {
-        this->initialize_important();
-        this->set_raw(time);
-    }
+    /* ==========
+    Time scale crap
+    ========== */
 
     // MoF: 0x44BF30
+    // UB: 0x4482A0
+    // SA: 0x4591F0
+    // UFO: 0x464A00
+    // DS: 0x463E40
+    // GFW: 0x46AA00
     // DDC: 0x4038D0
-    dllexport void thiscall set_time_scale(GameSpeed* new_time_scale) {
+    void thiscall set_time_scale(GameSpeed* new_time_scale) {
         if (GameSpeed* time_scale = this->time_scale) {
-            --time_scale->__counter_4;
+            time_scale->__decrement_counter_4();
         }
         this->time_scale = new_time_scale;
     }
@@ -396,10 +216,20 @@ struct Timer {
         return this->time_scale;
     }
 
+    // MoF: 0x44BFF0
+    // UB: 0x448360
+    // SA: 0x4592D0
+    // UFO: 0x464AE0
+    // DS: 0x463F20
+    // GFW: 0x46AAF0
     // DDC: 0x4039C0
     float thiscall get_time_scale() const {
         return this->time_scale->value;
     }
+
+    /* ==========
+    Logical Functions
+    ========== */
 
     forceinline bool les(int32_t time) const {
         return this->current < time;
@@ -426,6 +256,10 @@ struct Timer {
         return this->neq(0);
     }
 
+    /* ==========
+    Arithmetic Functions
+    ========== */
+
     // DDC: 0x403940
     // UM: 0x402A60
     int32_t vectorcall add_raw(float amount) {
@@ -433,17 +267,16 @@ struct Timer {
         return this->set_current(this->current_f + amount);
     }
 
-    // MoF: 0x44BF40
-    int32_t stdcall add(float amount) {
+    int32_t thiscall add(float amount) {
         GameSpeed* time_scale = this->get_time_scale_ptr();
         int32_t current_time = this->current;
         this->prev = current_time;
-        if (time_scale->value > 0.99f && time_scale->value < 1.01f) {
+        if (time_scale->value > lower_time_bound && time_scale->value < upper_time_bound) {
             this->current_f += amount;
-            return this->current = CRT::ftol2(this->current_f);
+            return this->current = zftol(this->current_f);
         }
-        this->current_f += amount * time_scale->value;
-        return this->current = CRT::ftol2(this->current_f);
+        this->current_f += time_scale->scale(amount);
+        return this->current = zftol(this->current_f);
     }
 
     inline int32_t thiscall add(int32_t amount) {
@@ -454,33 +287,45 @@ struct Timer {
         GameSpeed* time_scale = this->get_time_scale_ptr();
         int32_t current_time = this->current;
         this->prev = current_time;
-        if (time_scale->value > 0.99f && time_scale->value < 1.01f) {
+        if (time_scale->value > lower_time_bound && time_scale->value < upper_time_bound) {
             this->current_f -= amount;
-            return this->current = CRT::ftol2(this->current_f);
+            return this->current = zftol(this->current_f);
         }
-        this->current_f -= amount * time_scale->value;
-        return this->current = CRT::ftol2(this->current_f);
+        this->current_f -= time_scale->scale(amount);
+        return this->current = zftol(this->current_f);
     }
 
     inline int32_t thiscall sub(int32_t amount) {
         return this->add((float)(-amount));
     }
+
+    /* ==========
+    Offset Functions
+    ========== */
     
     int32_t thiscall increment() {
         GameSpeed* time_scale = this->get_time_scale();
         int32_t current_time = this->current;
         this->prev = current_time;
-        if (time_scale->value > 0.99f && time_scale->value < 1.01f) {
-            this->current_f += 1.0f;
-            return this->current = CRT::ftol2(this->current_f);
+        if (time_scale->value > lower_time_bound && time_scale->value < upper_time_bound) {
+            this->current_f += increment_amount;
+            return this->current = zftol(this->current_f);
         }
         this->current_f += time_scale->value;
-        return this->current = CRT::ftol2(this->current_f);
+        return this->current = zftol(this->current_f);
     }
 
     int32_t thiscall decrement() {
-        return this->sub(1.0f);
+        if constexpr (game_version <= UFO) {
+            return this->add(decrement_amount);
+        } else {
+            return this->sub(increment_amount);
+        }
     }
+
+    /* ==========
+    Non-default Constructors
+    ========== */
 
     // DDC: 0x408AB0
     thiscall Timer(int32_t time) {
@@ -492,31 +337,66 @@ struct Timer {
         this->initialize_and_set(time);
     }
 
+    /* ==========
+    Assignment Operators
+    ========== */
+
+    // MoF: 0x405410, 0x405450
+    // UB: 0x405720, 0x405760
+    // SA: 0x4060C0, 0x406100
+    // UFO: 0x4067A0, 0x4067E0
+    // DS: 0x402CB0, 0x402CF0
+    // GFW: 0x403240, 0x403280
     // DDC: 0x408B00
     int32_t thiscall operator=(int32_t time) {
         return this->initialize_and_set(time);
     }
 
+    // DS: 0x428280, 0x4282C0
+    // GFW: 0x432C40, 0x432C80
     int32_t thiscall operator=(float time) {
         return this->initialize_and_set(time);
     }
 
+    // DS: 0x458640
+    // GFW: 0x45E5E0
     // UM: 0x418C40
     int32_t thiscall operator=(Timer timer) {
         return this->set(timer.current);
     }
 
-    // MoF: 0x413070
+    /* ==========
+    Arithmetic Operators
+    ========== */
+
+    // MoF: 0x4052D0, 0x413070
+    // UB: 0x405610, 0x413FC0
+    // SA: 0x405E20
+    // UFO: 0x4064F0
+    // DS: 0x406F90
+    // GFW: 0x407150
     // DDC: 0x4085B0
     int32_t thiscall operator+=(int32_t amount) {
         return this->add(amount);
     }
 
+    // MoF: 0x44BF40
+    // UB: 0x4482B0
+    // SA: 0x459210
+    // UFO: 0x464A20
+    // DS: 0x463E60
+    // GFW: 0x46AA20
     // DDC: 0x4038F0
     int32_t vectorcall operator+=(float amount) {
         return this->add(amount);
     }
 
+    // MoF: 0x4052B0, 0x428DD0 (screwy calling convention)
+    // UB: 0x4055F0, 0x428B40 (screwy calling convention)
+    // SA: 0x405E30, 0x4355C0 (screwy calling convention)
+    // UFO: 0x406500, 0x43ADB0 (screwy calling convention)
+    // DS: 0x406FA0, 0x428150 (screwy calling convention)
+    // GFW: 0x407170, 0x432B10 (screwy calling convention)
     // DDC: 0x411530, 0x414420
     int32_t thiscall operator-=(int32_t amount) {
         return this->sub(amount);
@@ -526,9 +406,20 @@ struct Timer {
         return this->sub(amount);
     }
 
-    // MoF: 0x404ED0
+    /* ==========
+    Offset Operators
+    ========== */
+
+    // MoF: 0x404ED0, 0x44BFA0
+    // UB: 0x405250, 0x448310
+    // SA: 0x405AD0, 0x459270
+    // UFO: 0x4061A0, 0x464A80
+    // DS: 0x402B40, 0x463EC0
+    // GFW: 0x402AC0, 0x46AA90
     // DDC: 0x403960
     // UM: 0x402A80
+    
+    // UDoALGtr2: Rx125810
     int32_t thiscall operator++() {
         return this->increment();
     }
@@ -539,6 +430,10 @@ struct Timer {
         return this->increment();
     }
 
+    // SA: 0x405E50
+    // UFO: 0x406520
+    // DS: 0x406FC0
+    // GFW: 0x407190
     int32_t thiscall operator--() {
         return this->decrement();
     }
@@ -548,36 +443,67 @@ struct Timer {
         return this->decrement();
     }
 
+    /* ==========
+    Logical Operators
+    ========== */
+
     // MoF: 0x413050
+    // UB: 0x4194F0
+    // SA: 0x407600
+    // UFO: 0x407B20
+    // DS: 0x402C60
+    // GFW: 0x402C40
     // DDC: 0x408A20
     bool thiscall operator<(int32_t time) const {
         return this->les(time);
     }
 
     // MoF: 0x405280
+    // UB: 0x4055C0
+    // SA: 0x405E10
+    // UFO: 0x4064E0
+    // DS: 0x406F80
+    // GFW: 0x407130
     // DDC: 0x411510
     bool thiscall operator<=(int32_t time) const {
         return this->leq(time);
     }
 
     // MoF: 0x413080
+    // UB: 0x406260
+    // SA: 0x407090
+    // UFO: 0x407720
+    // DS: 0x41A980
+    // GFW: 0x410CD0
     // DDC: 0x412E00
     bool thiscall operator>(int32_t time) const {
         return this->gre(time);
     }
 
     // MoF: 0x404E90
+    // UB: 0x405210
+    // SA: 0x405AB0
+    // UFO: 0x406740
+    // DS: 0x4071E0
+    // GFW: 0x4073B0
     // DDC: 0x409FA0
     bool thiscall operator>=(int32_t time) const {
         return this->geq(time);
     }
 
     // MoF: 0x418A50
+    // UB: 0x4195C0
+    // SA: 0x407A20
+    // UFO: 0x408940
+    // DS: 0x40C720
+    // GFW: 0x407E70
     // DDC: 0x413190
     bool thiscall operator==(int32_t time) const {
         return this->equ(time);
     }
 
+    // Not in anything but UB? Why?
+    // UB: 0x428BA0
     bool thiscall operator!=(int32_t time) const {
         return this->neq(time);
     }
@@ -586,10 +512,22 @@ struct Timer {
         return this->is_zero();
     }
 
+    // SA: 0x419B90
+    // UFO: 0x41C9B0
+    // DS: 0x43B230
+    // GFW: 0x432E10
     bool thiscall operator bool() const {
         return this->is_not_zero();
     }
 };
+#pragma region // Timer Validation
+ValidateFieldOffset32(0x0, Timer, prev);
+ValidateFieldOffset32(0x4, Timer, current_f);
+ValidateFieldOffset32(0x8, Timer, current);
+ValidateFieldOffset32(0xC, Timer, time_scale);
+ValidateFieldOffset32(0x10, Timer, flags);
+ValidateStructSize32(0x14, Timer);
+#pragma endregion
 
 template <typename T, size_t modes = 1>
 struct ZUNInterp { //       0x58    0x44    0x30
@@ -757,7 +695,5 @@ ValidateFieldOffset32(0x50, ZUNInterp<Float3>, end_time);
 ValidateFieldOffset32(0x54, ZUNInterp<Float3>, mode);
 ValidateStructSize32(0x58, ZUNInterp<Float3>);
 #pragma endregion
-
-#endif
 
 #endif

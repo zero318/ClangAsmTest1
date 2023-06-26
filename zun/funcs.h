@@ -1,13 +1,12 @@
-#ifndef ZUN_MATH_H
-#define ZUN_MATH_H 1
+#ifndef ZUN_FUNCS_H
+#define ZUN_FUNCS_H 1
 
 #include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
-#include <assert.h>
 
-#include "util.h"
-#include "custom_intrin.h"
+#include "../zero/util.h"
+#include "../zero/custom_intrin.h"
 
 #undef IN
 
@@ -345,6 +344,14 @@ static forceinline double tan(double value) {
     }
 }
 
+static forceinline int32_t ftol(float value) {
+    if constexpr (game_version < DDC) {
+        return CRT::ftol2(value);
+    } else {
+        return value;
+    }
+}
+
 #if GAME_VERSION == EoSD_VER
 #define float_inline_state ForceInline
 #define float_volatile /*volatile*/
@@ -593,6 +600,10 @@ static forceinline float ztanf(float value) {
 #undef float_inline_state
 #undef float_volatile
 #undef float_convention
+
+static forceinline int32_t zftol(float value) {
+    return ZCRT::ftol(value);
+}
 
 } // namespace ZUN
 

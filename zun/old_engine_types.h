@@ -1,0 +1,4 @@
+#ifndef ZUN_OLD_ENGINE_TYPES_H
+#define ZUN_OLD_ENGINE_TYPES_H 1
+
+#endif

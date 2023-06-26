@@ -16,7 +16,12 @@ add_executable(tts_test1)
 add_executable(print_copypasta)
 add_executable(ntoskrnl_tests)
 add_executable(winload_tests)
+add_executable(winhttp_test3)
+add_library(XInput1_4 SHARED)
+add_library(winhttp SHARED)
+add_library(winhttp_websocket SHARED)
 add_library(CSoundLib STATIC)
+add_library(wow64 SHARED)
 
 set(programs
 ${PROJECT_NAME}
@@ -31,6 +36,11 @@ tts_test1
 print_copypasta
 ntoskrnl_tests
 winload_tests
+XInput1_4
+winhttp
+winhttp_websocket
+winhttp_test3
+wow64
 )
 
 enable_language(ASM-ATT)
@@ -363,7 +373,8 @@ target_compile_options(${EXE} PRIVATE
 	${SLASH_CLANG_ARG}-fnew-infallible
 	#-fsized-deallocation
 
-	${SLASH_CLANG_ARG}-mstack-probe-size=93284238
+	#${SLASH_CLANG_ARG}-mstack-probe-size=93284238
+	${SLASH_CLANG_ARG}-mstack-probe-size=1024
 	${SLASH_CLANG_ARG}-ffinite-loops
 
 	#-fhonor-infinities
@@ -402,6 +413,7 @@ include_directories(SYSTEM "F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT")
 include_directories(SYSTEM "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Include")
 include_directories(SYSTEM "F:\\My Programs Expansion\\DirectX_SDKs\\8.0a\\include")
 include_directories(SYSTEM "C:\\Program Files (x86)\\Microsoft Speech SDK\\Include")
+include_directories(SYSTEM "F:\\MyCodeLibs\\boost\\install\\boost_1_82_0\\boost_1_82_0\\")
 if(NOT MSVC)
 include_directories(AFTER SYSTEM
 	"F:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.29.30133\\ATLMFC\\include"
@@ -418,9 +430,13 @@ endif()
 
 #target_link_libraries(${EXE} NT)
 #target_link_libraries(${EXE} "ntdll.lib" "msvcrt.lib")
-target_link_libraries(${EXE} "msvcrt.lib")
+#target_link_libraries(${EXE} "msvcrt.lib")
 #target_link_libraries(${EXE} "C:\\WinDDK\\7600.16385.1\\lib\\wxp\\i386\\ntdll.lib")
+if (IS_X64)
+target_link_libraries(${EXE} "C:\\WinDDK\\7600.16385.1\\lib\\win7\\amd64\\winmm.lib")
+else()
 target_link_libraries(${EXE} "C:\\WinDDK\\7600.16385.1\\lib\\wxp\\i386\\winmm.lib")
+endif()
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\dsound.lib")
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\dinput8.lib")
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\dxguid.lib")
@@ -449,6 +465,7 @@ target_sources(${EXE} PRIVATE
 	#"zero/trap_and_emulate.cpp"
 	"zero/func_traits.h"
 	"zero/compiler_support.h"
+	"zun/util.h"
 )
 if (STATIC_CSOUND)
 target_sources(${EXE} PRIVATE
@@ -731,6 +748,98 @@ target_compile_options(print_copypasta PRIVATE
 	"-mno-sse4a"
 	"-mno-fma4"
 	"-mno-sse3"
+)
+
+target_sources(XInput1_4 PRIVATE
+	"xinput_dummy/stop_complaining_about_xinput_1_4.cpp"
+	"stop_complaining_about_xinput_1_4.def"
+)
+target_compile_options(XInput1_4 PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(XInput1_4 PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+target_link_options(XInput1_4 PRIVATE
+	/DEF:stop_complaining_about_xinput_1_4.def
+	/DLL
+	/NOENTRY
+	-nodefaultlib
+)
+
+target_sources(winhttp PRIVATE
+	"winhttp_dummy/stop_breaking_websockets.cpp"
+	"stop_breaking_websockets.def"
+)
+target_compile_options(winhttp PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(winhttp PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+target_link_options(winhttp PRIVATE
+	/DEF:stop_breaking_websockets.def
+	/DLL
+	/NOENTRY
+	-nodefaultlib
+)
+
+target_sources(winhttp_websocket PRIVATE
+	"winhttp_websocket/websocket_impl.cpp"
+	#"winhttp_websocket/new_impl.cpp"
+	"winhttp_websocket.def"
+)
+target_compile_options(winhttp_websocket PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(winhttp_websocket PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+target_link_options(winhttp_websocket PRIVATE
+	/DEF:winhttp_websocket.def
+	/DLL
+)
+
+target_sources(winhttp_test3 PRIVATE
+	"winhttp_test3/test.cpp"
+)
+
+
+target_sources(wow64 PRIVATE
+	"wow64/wow64_test.cpp"
+)
+target_compile_options(wow64 PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(wow64 PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+target_link_options(wow64 PRIVATE
+	/DLL
 )
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")

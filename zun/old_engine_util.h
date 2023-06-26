@@ -1,0 +1,4 @@
+#ifndef ZUN_OLD_ENGINE_UTIL
+#define ZUN_OLD_ENGINE_UTIL 1
+
+#endif

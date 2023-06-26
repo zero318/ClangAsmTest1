@@ -1361,10 +1361,11 @@ static inline void load_x87_cw(const FCWW& cw) {
 	__asm__ volatile (
 		"FLDCW %[cw]"
 		:
-	: asm_arg("m", cw)
-		);
+		: asm_arg("m", cw)
+	);
 }
 #define load_fcw(cw) (load_x87_cw(cw))
+#define load_fcww(cww) (load_x87_cw(cww))
 
 
 template <bool wait = false>
@@ -1372,12 +1373,12 @@ static inline FSW store_x87_sw() {
 	FSW sw;
 	if constexpr (!wait) {
 		__asm__ volatile (
-			"FNSTSW ax"
+			"FNSTSW %[sw]"
 			: asm_arg("=a", sw)
 		);
 	} else {
 		__asm__ volatile (
-			"FSTSW ax"
+			"FSTSW %[sw]"
 			: asm_arg("=a", sw)
 		);
 	}
@@ -1406,19 +1407,19 @@ static inline FSWW store_x87_sww() {
 	FSWW sww;
 	if constexpr (!wait) {
 		__asm__ volatile (
-			"FNSTSW ax"
+			"FNSTSW %[sww]"
 			: asm_arg("=a", sww)
 		);
 	} else {
 		__asm__ volatile (
-			"FSTSW ax"
+			"FSTSW %[sww]"
 			: asm_arg("=a", sww)
 		);
 	}
 	return sww;
 }
 template <bool wait = false>
-static inline FSWW store_x87_sww(FSWW& sw) {
+static inline FSWW store_x87_sww(FSWW& sww) {
 	if constexpr (!wait) {
 		__asm__ volatile (
 			"FNSTSW %[sww]"

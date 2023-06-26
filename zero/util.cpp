@@ -18,8 +18,10 @@ gnu_noinline void assume_all_registers_volatile() {
 	static volatile double yeetus = 1.0f;
 	static volatile char deleetus[512];
 	static volatile int your_registers = 5;
+#ifndef STOP_LINKING_DEFAULT_LIB_PLZ
 	yeetus = sin(cos(tan(yeetus)));
 	your_registers = your_registers + snprintf((char*)deleetus, countof(deleetus), "%f", yeetus);
+#endif
 }
 
 gnu_noinline void assume_all_registers_volatile(void* use_arg) {
@@ -27,6 +29,8 @@ gnu_noinline void assume_all_registers_volatile(void* use_arg) {
 	static volatile double yeetus = 1.0f;
 	static volatile char deleetus[512];
 	static volatile int your_registers = 5;
+#ifndef STOP_LINKING_DEFAULT_LIB_PLZ
 	yeetus = sin(cos(tan(yeetus)));
 	your_registers = your_registers + snprintf((char*)deleetus, countof(deleetus), "%f%p", yeetus, use_arg);
+#endif
 }

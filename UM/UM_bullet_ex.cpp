@@ -131,6 +131,17 @@ dllexport float vectorcall reduce_angle(float angle) {
 	return angle;
 }
 
+template <InlineState inline_state = DefaultInline>
+static auto reduce_angle(float angle) {
+    if constexpr (inline_state == ForceInline) {
+        clang_forceinline return reduce_angle(angle);
+    } else if constexpr (inline_state == NoInline) {
+        clang_noinline return reduce_angle(angle);
+    } else {
+        return reduce_angle(angle);
+    }
+}
+
 // 0x402890
 // ZUN has always had this function... IDK why
 dllexport float vectorcall reduce_angle_add(float angle, float value) asm_symbol_rel(0x402890);
@@ -162,8 +173,8 @@ inline float vectorcall __angle_diffB(float angle, float value, float temp) {
 }
 
 // 0x439FE0
-dllexport float vectorcall __angle_diff(float angle, float value) asm_symbol_rel(0x439FE0);
-dllexport float vectorcall __angle_diff(float angle, float value) {
+dllexport float vectorcall reduced_angle_diff(float angle, float value) asm_symbol_rel(0x439FE0);
+dllexport float vectorcall reduced_angle_diff(float angle, float value) {
     float temp = angle - value;
     if (temp > PI_f) {
         return angle - (value + TWO_PI_f);
@@ -190,7 +201,7 @@ dllexport char* stdcall pbg_strdup(const char* str) {
 /*
 // 0x404C70
 dllexport float& vectorcall reduce_angle_diff_write(float& angle_ref, float& out, float& value_ref) asm_symbol_rel(0x404C70) {
-    return reduce_angle_write(out, __angle_diff(angle_ref, value_ref));
+    return reduce_angle_write(out, reduced_angle_diff(angle_ref, value_ref));
 }
 */
 
@@ -334,48 +345,86 @@ ValidateStructSize32(0x8, Float2);
 // Of course this exists...
 struct ZUNAngle {
     float value; // 0x0
-    
-    // ZUNAngle: 0x404BC0
-    template <typename T>
-    dllexport T& vectorcall add(const float& value, T& out) {
-        return out = reduce_angle_add(this->value, value);
+
+    inline constexpr ZUNAngle() {}
+
+    // 0x404C20
+    dllexport gnu_noinline vectorcall ZUNAngle(float value) asm_symbol_rel(0x404C20) {
+        this->value = reduce_angle(value);
     }
-    
-    // 0x404D10
-    dllexport gnu_noinline ZUNAngle& vectorcall operator+=(const float value) asm_symbol_rel(0x404D10) {
-        this->value = reduce_angle_add(this->value, value);
-        return *this;
-    }
-    
-    dllexport ZUNAngle vectorcall operator+(const float& value) {
-        ZUNAngle ret;
-        return this->add(value, ret);
-    }
-    
-    // A: 0x404C20
-    // B: 0x404D70
-    dllexport ZUNAngle& vectorcall operator=(const float& value) {
+
+    // 0x404D70
+    dllexport ZUNAngle& vectorcall operator=(float value) asm_symbol_rel(0x404D70) {
         this->value = reduce_angle(value);
         return *this;
     }
 
+    /*
     inline ZUNAngle& operator=(const ZUNAngle& value) {
         this->value = value.value;
         return *this;
     }
-    
-    // ZUNAngle: 0x404C70
-    dllexport gnu_noinline ZUNAngle& diff(ZUNAngle& out, const float& value) {
-        return out = __angle_diff(this->value, value);
-    }
-    
-    inline ZUNAngle& diff(const float& value) {
-        return this->diff(*this, value);
-    }
+    */
     
     // 0x404DC0
     dllexport vectorcall operator float() const asm_symbol_rel(0x404DC0) {
         return this->value;
+    }
+
+    // 0x404BC0
+    dllexport ZUNAngle vectorcall operator+(const float value) const asm_symbol_rel(0x404BC0) {
+        return this->value + value;
+    }
+
+    // 0x45E2A0
+    dllexport ZUNAngle thiscall operator+(const ZUNAngle& angle) const asm_symbol_rel(0x45E2A0) {
+        return this->value + angle.value;
+    }
+    
+    // 0x404D10
+    dllexport gnu_noinline ZUNAngle& vectorcall operator+=(const float value) asm_symbol_rel(0x404D10) {
+        clang_forceinline return *this = *this + value;
+    }
+
+    // th14: 0x443D60
+    ZUNAngle& thiscall operator+=(const ZUNAngle& angle) {
+        return *this = *this + angle;
+    }
+
+    inline ZUNAngle operator-(const float value) const {
+        return this->value - value;
+    }
+
+    // 0x404C70
+    dllexport ZUNAngle thiscall operator-(const ZUNAngle& angle) const asm_symbol_rel(0x404C70) {
+        return reduced_angle_diff(this->value, angle.value);
+    }
+    
+    /*
+    inline ZUNAngle& diff(float value) const {
+        ZUNAngle temp;
+        temp.value = value;
+        return *this - temp;
+    }
+    */
+
+    inline ZUNAngle& operator-=(const float value) {
+        return *this = *this - value;
+    }
+
+    // 0x461540
+    dllexport gnu_noinline ZUNAngle& thiscall mul_write(ZUNAngle& out, float value) asm_symbol_rel(0x404BC0) {
+        return out = reduce_angle(this->value * value);
+    }
+
+    inline ZUNAngle vectorcall operator*(const float& value) {
+        ZUNAngle ret;
+        clang_forceinline return this->mul_write(ret, value);
+    }
+
+    // th14: 0x443D00
+    ZUNAngle vectorcall operator/(const float value) const {
+        return this->value / value;
     }
 };
 
@@ -385,11 +434,11 @@ private:
     dllexport static gnu_noinline int32_t vectorcall __sub_403BC0(float* arg1, float* arg2, float, float, float arg3, float arg4, float, float, float arg5, float arg6, float arg7, float arg8) {
         float A = reduce_angle(arg5);
         float B = reduce_angle(arg8);
-        float C = __angle_diff(A, B);
+        float C = reduced_angle_diff(A, B);
         float D = reduce_angle(C);
         if (!(fabsf(D) < 0.001f)) {
             float E = reduce_angle(__angle_diffB(A, B, C));
-            float F = reduce_angle(__angle_diff(E, PI_f));
+            float F = reduce_angle(reduced_angle_diff(E, PI_f));
             if (!(fabsf(F) < 0.001f)) {
                 Float2 G;
                 G.make_from_vector(arg5, 10.0f);
@@ -1852,6 +1901,7 @@ ValidateStructSize32(0x58, UpdateFuncRegistry);
 struct Rng {
 	uint16_t value; // 0x0
 	uint32_t index; // 0x4
+    // 0x8
     
     // 0x4026D0
     dllexport gnu_noinline uint16_t thiscall rand_ushort() asm_symbol_rel(0x4026D0) {
@@ -2068,16 +2118,19 @@ ValidateStructSize32(0x10, Float4);
 #pragma endregion
 */
 
-// size: 0x4
+// size: 0x8
 struct GameSpeed {
     float value = 1.0f; // 0x0
+    int __counter_4; // 0x4
+    // 0x8
 
     // 0x43A200
     dllexport gnu_noinline void vectorcall set(float new_speed) asm_symbol_rel(0x43A200);
 };
 #pragma region // GameSpeed Validation
 ValidateFieldOffset32(0x0, GameSpeed, value);
-ValidateStructSize32(0x4, GameSpeed);
+ValidateFieldOffset32(0x4, GameSpeed, __counter_4);
+ValidateStructSize32(0x8, GameSpeed);
 #pragma endregion
 
 extern "C" {
@@ -2168,39 +2221,88 @@ public:
     // Just in case that is an assignment operator, check for warnings in current uses
     Timer& operator=(Timer timer) = delete;
 
-    // 0x402A60
-    dllexport void vectorcall add(float value) asm_symbol_rel(0x402A60) {
-        value += this->current_f;
-        this->previous = this->current;
-        this->current = this->current_f = value;
-    }
-    
-    inline void increment_inner() {
+    inline uint32_t get_scaling_index() {
         uint32_t time_scaling_index = this->scale_table_index;
         if (time_scaling_index >= countof(TIME_SCALING_TABLE)) {
             time_scaling_index = this->scale_table_index = 0;
         }
-        const float* time_scale_ptr = TIME_SCALING_TABLE[time_scaling_index];
+        return time_scaling_index;
+    }
+
+    inline float get_scale_unsafe() {
+        return *TIME_SCALING_TABLE[this->scale_table_index];
+    }
+
+    // 0x402A60
+    dllexport int32_t vectorcall add_raw(float value) asm_symbol_rel(0x402A60) {
+        this->previous = this->current;
+        return this->current = this->current_f += value;
+    }
+
+    inline int32_t vectorcall add_float(float amount) {
+        const float* time_scale_ptr = TIME_SCALING_TABLE[this->get_scaling_index()];
+        this->previous = this->current;
+        if (time_scale_ptr) {
+            float time_scale = *time_scale_ptr;
+            if (!(time_scale > 0.99f) || !(time_scale < 1.01f)) {
+                return this->current = this->current_f += time_scale * amount;
+            }
+        }
+        return this->current = this->current_f += amount;
+    }
+
+    inline int32_t vectorcall sub_float(float amount) {
+        const float* time_scale_ptr = TIME_SCALING_TABLE[this->get_scaling_index()];
+        this->previous = this->current;
+        if (time_scale_ptr) {
+            float time_scale = *time_scale_ptr;
+            if (!(time_scale > 0.99f) || !(time_scale < 1.01f)) {
+                return this->current = this->current_f -= time_scale * amount;
+            }
+        }
+        return this->current = this->current_f -= amount;
+    }
+
+    // 0x452BF0
+    dllexport int32_t thiscall sub_int(int32_t amount) asm_symbol_rel(0x452BF0) {
+        return this->add_float(-amount);
+    }
+    
+    inline int32_t increment() {
+        const float* time_scale_ptr = TIME_SCALING_TABLE[this->get_scaling_index()];
         int32_t current = this->current;
         this->previous = current;
-        if (time_scale_ptr) if (float time_scale = *time_scale_ptr;
-            time_scale > 0.99f && 1.01f >= time_scale
-        ) {
-            this->current = this->current_f += time_scale;
-            return;
+        if (time_scale_ptr) {
+            float time_scale = *time_scale_ptr;
+            if (!(time_scale > 0.99f) || !(time_scale < 1.01f)) {
+                return this->current = this->current_f += time_scale;
+            }
         }
         this->current_f += 1.0f;
-        this->current = current;
+        return this->current = ++current;
+    }
+
+    inline int32_t decrement() {
+        return this->sub_float(1.0f);
     }
     
     // 0x405990
-    dllexport void increment(int = UNUSED_DWORD) asm_symbol_rel(0x405990) {
-        this->increment_inner();
+    dllexport int32_t thiscall operator++(int) asm_symbol_rel(0x405990) {
+        clang_forceinline return this->increment();
     }
 
     // 0x402A80
-    dllexport gnu_noinline void increment_anm() asm_symbol_rel(0x402A80) {
-        this->increment_inner();
+    dllexport int32_t thiscall operator++() asm_symbol_rel(0x402A80) {
+        clang_forceinline return this->increment();
+    }
+
+    // 0x409750
+    dllexport int32_t thiscall operator--(int) asm_symbol_rel(0x409750) {
+        clang_forceinline this->decrement();
+    }
+
+    dllexport int32_t thiscall operator--() {
+        clang_forceinline this->decrement();
     }
 };
 #pragma region // Timer Validation
@@ -3055,8 +3157,9 @@ struct MotionData {
     dllexport gnu_noinline void update() asm_symbol_rel(0x402CC0) {
         Float3 float3B; // EBP-20, EBP-1C, EBP-18
         Float3 float3A; // EBP-14, EBP-10, EBP-C
-        ZUNAngle angleA; // EBP-8
-        ZUNAngle angleB; // EBP-4
+        float floatA; // EBP-8
+        float floatB; // EBP-4
+        float floatC;
         switch (this->mode) {
             case 0:
                 this->position += this->__float3_34;
@@ -3066,28 +3169,30 @@ struct MotionData {
                 this->position = this->__float3_34 + float3A.as2();
                 break;
             case 3: {
-                float& angle_temp = this->__angle_28.value;
-                float3A.make_from_vector(reduce_angle(this->angle.diff(angleA, angle_temp)), this->orbit_radius);
-                angleB.value = this->__float_2C * float3A.x;
-                angleA.value = zsinf(angle_temp);
-                float floatC = zcosf(angle_temp);
-                Float2 float2A = { angleB, float3A.y };
+                ZUNAngle angle_temp = this->__angle_28;
+                float3A.make_from_vector(reduce_angle<NoInline>(this->angle - angle_temp), this->orbit_radius);
+                floatB = this->__float_2C * float3A.x;
+                floatA = zsinf(angle_temp);
+                floatC = zcosf(angle_temp);
+                Float2 float2A = { floatB, float3A.y };
                 Float2 float2B = float2A;
-                float2B *= angleA;
+                float2B *= floatA;
                 float2A *= floatC;
                 float2A.x -= float2B.y;
                 float2A.y += float2B.x;
                 this->position = this->__float3_34 + float2A;
                 break;
             }
-            case 4:
+            case 4: {
                 float3A.as2() = this->position.as2();
                 this->position2 += this->__float3_34;
-                angleB = this->__angle_28 + HALF_PI_f;
-                float3B.make_from_vector(reduce_angle(angleB.value), this->orbit_radius * zsinf(this->__angle_30) * GAME_SPEED.value);
+                floatB = this->__angle_28 + HALF_PI_f;
+                float3B.make_from_vector(reduce_angle<NoInline>(floatB), this->orbit_radius * zsinf(this->__angle_30) * GAME_SPEED.value);
                 this->position = this->position2 + float3B.as2();
-                this->angle = this->position.angle_to(float3A.as2());
+                float angle_temp = this->position.angle_to(float3A.as2());
+                clang_noinline this->angle = angle_temp;
                 break;
+            }
         }
         this->position.x = zfloorf(this->position.x * 100.0f) / 100.0f;
         this->position.y = zfloorf(this->position.y * 100.0f) / 100.0f;
@@ -3108,8 +3213,8 @@ struct MotionData {
     }
     
     // 0x413280
-    dllexport gnu_noinline MotionData* self() asm_symbol_rel(0x413280) {
-        return this;
+    dllexport gnu_noinline Float3* thiscall get_position() asm_symbol_rel(0x413280) {
+        return &this->position;
     }
     
     // 0x422530
@@ -3191,6 +3296,16 @@ struct MotionData {
 	dllexport gnu_noinline void vectorcall __set_angle_28(float value) asm_symbol_rel(0x439F10) {
 		this->__angle_28 = value;
 	}
+
+    // 0x439FA0
+    dllexport gnu_noinline void vectorcall __set_float3_34_y(float value) asm_symbol_rel(0x439FA0) {
+        this->__float3_34.y = value;
+    }
+
+    // 0x439FB0
+    dllexport gnu_noinline void vectorcall __set_float3_34_x(float value) asm_symbol_rel(0x439FB0) {
+        this->__float3_34.x = value;
+    }
 	
 	// 0x439FC0
 	dllexport gnu_noinline float vectorcall get_orbit_radius() asm_symbol_rel(0x439FD0) {
@@ -3228,179 +3343,197 @@ struct ZUNAbsRel {
     T relative;
 };
 
+enum InterpMode {
+    Linear = 0,
+    AccelerateSlow = 1,
+    Accelerate = 2,
+    AccelerateFast = 3,
+    DecelerateSlow = 4,
+    Decelerate = 5,
+    DecelerateFast = 6,
+    ConstantVelocity = 7,
+    Bezier = 8,
+    AccelDecelSlow = 9,
+    AccelDecel = 10,
+    AccelDecelFast = 11,
+    DecelAccelSlow = 12,
+    DecelAccel = 13,
+    DecelAccelFast = 14,
+};
+
 // 0x402FB0
 dllexport gnu_noinline float vectorcall __interp_inner_thing(int32_t mode, float current_time, float end_time) asm_symbol_rel(0x402FB0);
 dllexport gnu_noinline float vectorcall __interp_inner_thing(int32_t mode, float current_time, float end_time) {
     float value = current_time;
-    if (current_time != end_time) {
-        switch (mode) {
-            case 1: // accelerate slow
-                value *= value;
-            default: // linear
-                return value;
-            case 4: // decelerate slow
+    if (end_time == 0.0f) {
+        goto interp_final;
+    }
+    value /= end_time;
+    switch (mode) {
+        case AccelerateSlow: // 1
+            value = value * value;
+        default: // linear
+            return value;
+        case DecelerateSlow: // 4
+            value = 1.0f - value;
+            value = value * value;
+            value = 1.0f - value;
+            return value;
+        case Accelerate: // 2
+            value = value * value * value;
+            return value;
+        case Decelerate: // 5
+            value = 1.0f - value;
+            value = value * value * value;
+            value = 1.0f - value;
+            return value;
+        case AccelerateFast: // 3
+            value = value * value * value * value;
+            return value;
+        case DecelerateFast: // 6
+            value = 1.0f - value;
+            value = value * value * value * value;
+            value = 1.0f - value;
+            return value;
+        case AccelDecelSlow: // 9
+            value += value;
+            if (value < 1.0f) {
+                value = value * value;
+                return value * 0.5f;
+            } else {
+                value = 2.0f - value;
+                value = value * value;
+                value = 2.0f - value;
+                return value * 0.5f;
+            }
+        case DecelAccelSlow: // 12
+            value += value;
+            if (value < 1.0f) {
                 value = 1.0f - value;
-                value *= value;
+                value = value * value;
+                return 0.5f - value * 0.5f;
+            } else {
+                value = value - 1.0f;
+                value = value * value;
+                return 0.5f + value * 0.5f;
+            }
+        case AccelDecel: // 10
+            value += value;
+            if (value < 1.0f) {
+                value = value * value * value;
+                return value * 0.5f;
+            } else {
+                value = 2.0f - value;
+                value = value * value * value;
+                value = 2.0f - value;
+                return value * 0.5f;
+            }
+        case DecelAccel: // 13
+            value += value;
+            if (value < 1.0f) {
                 value = 1.0f - value;
-                return value;
-            case 2: // accelerate
-                value *= value * value;
-                return value;
-            case 5: // decelerate
+                value = value * value * value;
+                return 0.5f - value * 0.5f;
+            } else {
+                value = value - 1.0f;
+                value = value * value * value;
+                return 0.5f + value * 0.5f;
+            }
+        case AccelDecelFast: // 11
+            value += value;
+            if (value < 1.0f) {
+                value = value * value * value * value;
+                return value * 0.5f;
+            } else {
+                value = 2.0f - value;
+                value = value * value * value * value;
+                value = 2.0f - value;
+                return value * 0.5f;
+            }
+        case DecelAccelFast: // 14
+            value += value;
+            if (value < 1.0f) {
                 value = 1.0f - value;
-                value *= value * value;
-                value = 1.0f - value;
-                return value;
-            case 3: // accelerate fast
-                value *= value * value * value;
-                return value;
-            case 6: // decelerate fast
-                value = 1.0f - value;
-                value *= value * value * value;
-                value = 1.0f - value;
-                return value;
-            case 9: // acceldecel slow
-                value += value;
-                if (1.0f > value) {
-                    value *= value;
-                    return value * 0.5f;
-                } else {
-                    value = 2.0f - value;
-                    value *= value;
-                    value = 2.0f - value;
-                    return value * 0.5f;
-                }
-            case 12: // decelaccel slow
-                value += value;
-                if (1.0f > value) {
-                    value = 1.0f - value;
-                    value *= value;
-                    return 0.5f - value;
-                } else {
-                    value = value - 1.0f;
-                    value *= value;
-                    return value * 0.5f + 0.5f;
-                }
-            case 10: // acceldecel
-                value += value;
-                if (1.0f > value) {
-                    value *= value * value;
-                    return value * 0.5f;
-                } else {
-                    value = 2.0f - value;
-                    value *= value * value;
-                    value = 2.0f - value;
-                    return value * 0.5f;
-                }
-            case 13: // decelaccel
-                value += value;
-                if (1.0f > value) {
-                    value = 1.0f - value;
-                    value *= value * value;
-                    return 0.5f - value;
-                } else {
-                    value = value - 1.0f;
-                    value *= value * value;
-                    return value * 0.5f + 0.5f;
-                }
-            case 11: // acceldecel fast
-                value += value;
-                if (1.0f > value) {
-                    value *= value * value * value;
-                    return value * 0.5f;
-                } else {
-                    value = 2.0f - value;
-                    value *= value * value * value;
-                    value = 2.0f - value;
-                    return value * 0.5f;
-                }
-            case 14: // decelaccel fast
-                value += value;
-                if (1.0f > value) {
-                    value = 1.0f - value;
-                    value *= value * value * value;
-                    return 0.5f - value;
-                } else {
-                    value = value - 1.0f;
-                    value *= value * value * value;
-                    return value * 0.5f + 0.5f;
-                }
-            case 18: // sine
-                return zsinf(value * PI_f * 0.5f);
-            case 19: // 
-                return 1.0f - zsinf(value * PI_f * 0.5f + HALF_PI_f);
-            case 20: // 
-                value += value;
-                if (1.0f > value) {
-                    return zsinf(value * PI_f * 0.5f) * 0.5f;
-                } else {
-                    return (1.0f - zsinf(value * PI_f * 0.5f)) * 0.5f + 0.5f;
-                }
-            case 21: // 
-                value += value;
-                if (1.0f > value) {
-                    return (1.0f - zsinf(value * PI_f * 0.5f + HALF_PI_f)) * 0.5f;
-                } else {
-                    value = value - 1.0f;
-                    return zsinf(value * PI_f * 0.5f) * 0.5f + 0.5f;
-                }
-            case 22: // 
-                value = value - 0.25f;
-                value = (value * value / (9.0f / 16.0f) - 1.0f / 9.0f) / (8.0f / 9.0f);
-                return value;
-            case 23: // 
-                value = value - 0.3f;
-                value = (value * value / 0.49f - 9.0f / 49.0f) / (40.0f / 49.0f);
-                return value;
-            case 24: // 
-                value = value - 0.35f;
-                value = (value * value / 0.4225f - 49.0f / 169.0f) / (120.0f / 169.0f);
-                return value;
-            case 25: // 
-                value = value - 0.38f;
-                value = (value * value / 0.3844f - 361.0f / 961.0f) / (600.0f / 961.0f);
-                return value;
-            case 26: // 
-                value = value - 0.4f;
-                value = (value * value / 0.36f - 4.0f / 9.0f) / (5.0f / 9.0f);
-                return value;
-            case 27: // 
-                value = 1.0f - value;
-                value = value - 0.25f;
-                value = (value * value / (9.0f / 16.0f) - 1.0f / 9.0f) / (8.0f / 9.0f);
-                value = 1.0f - value;
-                return value;
-            case 28: // 
-                value = 1.0f - value;
-                value = value - 0.3f;
-                value = (value * value / 0.49f - 9.0f / 49.0f) / (40.0f / 49.0f);
-                value = 1.0f - value;
-                return value;
-            case 29: // 
-                value = 1.0f - value;
-                value = value - 0.35f;
-                value = (value * value / 0.4225f - 49.0f / 169.0f) / (120.0f / 169.0f);
-                value = 1.0f - value;
-                return value;
-            case 30: // 
-                value = 1.0f - value;
-                value = value - 0.38f;
-                value = (value * value / 0.3844f - 361.0f / 961.0f) / (600.0f / 961.0f);
-                value = 1.0f - value;
-                return value;
-            case 31: // 
-                value = 1.0f - value;
-                value = value - 0.4f;
-                value = (value * value / 0.36f - 4.0f / 9.0f) / (5.0f / 9.0f);
-                value = 1.0f - value;
-                return value;
-            case 16: // Final
-                return 1.0f;
-            case 15: // Initial
-                return 0.0f;
-        }
-    } else {
-        return 1.0f;
+                value = value * value * value * value;
+                return 0.5f - value * 0.5f;
+            } else {
+                value = value - 1.0f;
+                value = value * value * value * value;
+                return 0.5f + value * 0.5f;
+            }
+        case 18: // sine
+            return zsinf(value * PI_f * 0.5f);
+        case 19: // 
+            return 1.0f - zsinf(value * PI_f * 0.5f + HALF_PI_f);
+        case 20: // 
+            value += value;
+            if (1.0f > value) {
+                return zsinf(value * PI_f * 0.5f) * 0.5f;
+            } else {
+                return (1.0f - zsinf(value * PI_f * 0.5f)) * 0.5f + 0.5f;
+            }
+        case 21: // 
+            value += value;
+            if (1.0f > value) {
+                return (1.0f - zsinf(value * PI_f * 0.5f + HALF_PI_f)) * 0.5f;
+            } else {
+                value = value - 1.0f;
+                return zsinf(value * PI_f * 0.5f) * 0.5f + 0.5f;
+            }
+        case 22: // 
+            value = value - 0.25f;
+            value = (value * value / (9.0f / 16.0f) - 1.0f / 9.0f) / (8.0f / 9.0f);
+            return value;
+        case 23: // 
+            value = value - 0.3f;
+            value = (value * value / 0.49f - 9.0f / 49.0f) / (40.0f / 49.0f);
+            return value;
+        case 24: // 
+            value = value - 0.35f;
+            value = (value * value / 0.4225f - 49.0f / 169.0f) / (120.0f / 169.0f);
+            return value;
+        case 25: // 
+            value = value - 0.38f;
+            value = (value * value / 0.3844f - 361.0f / 961.0f) / (600.0f / 961.0f);
+            return value;
+        case 26: // 
+            value = value - 0.4f;
+            value = (value * value / 0.36f - 4.0f / 9.0f) / (5.0f / 9.0f);
+            return value;
+        case 27: // 
+            value = 1.0f - value;
+            value = value - 0.25f;
+            value = (value * value / (9.0f / 16.0f) - 1.0f / 9.0f) / (8.0f / 9.0f);
+            value = 1.0f - value;
+            return value;
+        case 28: // 
+            value = 1.0f - value;
+            value = value - 0.3f;
+            value = (value * value / 0.49f - 9.0f / 49.0f) / (40.0f / 49.0f);
+            value = 1.0f - value;
+            return value;
+        case 29: // 
+            value = 1.0f - value;
+            value = value - 0.35f;
+            value = (value * value / 0.4225f - 49.0f / 169.0f) / (120.0f / 169.0f);
+            value = 1.0f - value;
+            return value;
+        case 30: // 
+            value = 1.0f - value;
+            value = value - 0.38f;
+            value = (value * value / 0.3844f - 361.0f / 961.0f) / (600.0f / 961.0f);
+            value = 1.0f - value;
+            return value;
+        case 31: // 
+            value = 1.0f - value;
+            value = value - 0.4f;
+            value = (value * value / 0.36f - 4.0f / 9.0f) / (5.0f / 9.0f);
+            value = 1.0f - value;
+            return value;
+        case ForceFinal: interp_final: // 16
+            return 1.0f;
+        case ForceInitial: // 15
+            return 0.0f;
     }
 }
 
@@ -3491,7 +3624,10 @@ struct ZUNInterp { //       0x58    0x44    0x30
     
     // int: 0x47CF40
     // float: 0x41F640
-    dllexport T step() {
+    // Float2: 0x4396A0
+    // Float3Ex: 0x439A10
+    // ZUNAngle: 0x47CC50
+    dllexport T vectorcall step() {
         int32_t end_time = this->end_time;
         if (end_time > 0) {
             this->time.increment();
@@ -3502,26 +3638,26 @@ struct ZUNInterp { //       0x58    0x44    0x30
             }
         } else if (end_time == 0) {
 TimeEnd:
-            int32_t mode = this->mode;
-            if (mode != 7 && mode != 17) {
+            int32_t mode = this->mode[0];
+            if (mode != ConstantVelocity && mode != 17) {
                 return this->final_value;
             } else {
                 return this->initial_value;
             }
         }
         T initial = this->initial_value;
-        int32_t mode = this->mode;
-        if (mode == 7) {
-            return this->current_value = this->initial_value = initial + this->final_value;
+        int32_t mode = this->mode[0];
+        if (mode == ConstantVelocity) { // 7
+            return this->current = this->initial_value = initial + this->final_value;
         }
         if (mode == 17) {
             T temp = this->bezier2;
             this->bezier2 = temp + this->final_value;
-            return this->current_value = this->initial_value = initial + temp;
+            return this->current = this->initial_value = initial + temp;
         }
         T current_time = this->time.current_f;
         float end_time_f = end_time;
-        if (mode == 8) {
+        if (mode == Bezier) { // 8
             current_time /= end_time_f;
             float XMM3 = 1.0f - current_time;
             float XMM2 = current_time + current_time;
@@ -3839,6 +3975,8 @@ struct ShooterData {
         this->zero_contents();
         this->transform_sound = -1;
     }
+
+    inline ShooterData(int) {}
 };
 #pragma region // ShooterData Validation
 ValidateFieldOffset32(0x0, ShooterData, type);
@@ -3865,6 +4003,8 @@ ValidateFieldOffset32(0x480, ShooterData, start_transform);
 ValidateFieldOffset32(0x484, ShooterData, __dword_484);
 ValidateStructSize32(0x488, ShooterData);
 #pragma endregion
+
+typedef struct AnmManager AnmManager;
 
 #define ANM_FULL_ID_BITS (32)
 #define ANM_FAST_ID_BITS (15)
@@ -3911,11 +4051,21 @@ union AnmVMRef {
     // 0x488E70
     dllexport void __unknown_tree_set_J() asm_symbol_rel(0x488E70);
 
+    inline void __unknown_tree_set_J(AnmManager* anm_manager);
+
     // 0x488EB0
     dllexport void __unknown_tree_clear_J() asm_symbol_rel(0x488EB0);
 
     // 0x488F50
-    dllexport void mark_tree_for_delete_and_clear() asm_symbol_rel(0x488F50);
+    dllexport void mark_tree_for_delete() asm_symbol_rel(0x488F50);
+
+    inline void mark_tree_for_delete(AnmManager* anm_manager);
+
+    // 0x488F70
+    dllexport void thiscall set_controller_position(Float3* position) asm_symbol_rel(0x488F70);
+
+    // 0x4892F0
+    dllexport void thiscall set_color1(D3DCOLOR color) asm_symbol_rel(0x4892F0);
 };
 #pragma region // AnmVMRef Validation
 ValidateFieldOffset32(0x0, AnmVMRef, id);
@@ -6135,7 +6285,7 @@ struct AnmVM {
 };
 ValidateStructSize32(0x60C, AnmVM);
 
-// size: 0x624AnmEntry
+// size: 0x624
 struct FastAnmVM : AnmVM {
     ZUNLinkedList<FastAnmVM> fast_node; // 0x60C
     bool alive; // 0x61C
@@ -6418,7 +6568,6 @@ struct SpriteVertex {
     static constexpr DWORD FVF_TYPE = D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1;
 };
 
-typedef struct AnmManager AnmManager;
 extern "C" {
     // 0x51F65C
     extern AnmManager* ANM_MANAGER_PTR asm("_ANM_MANAGER_PTR");
@@ -7626,14 +7775,18 @@ dllexport void AnmVMRef::interrupt_tree(int32_t interrupt_index) {
     AnmManager::interrupt_tree(*this->id, interrupt_index);
 }
 
-// 0x488E70
-dllexport void AnmVMRef::__unknown_tree_set_J() {
-    if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this->id)) {
+inline void AnmVMRef::__unknown_tree_set_J(AnmManager* anm_manager) {
+    if (AnmVM* vm = anm_manager->get_vm_with_id(*this->id)) {
         vm->data.__unknown_flag_J = true;
         vm->controller.child_list_head.for_each([](AnmVM* vm) static_lambda {
             vm->__unknown_tree_set_J();
         });
     }
+}
+
+// 0x488E70
+dllexport void AnmVMRef::__unknown_tree_set_J() {
+    this->__unknown_tree_set_J(ANM_MANAGER_PTR);
 }
 
 // 0x488EB0
@@ -7646,10 +7799,31 @@ dllexport void AnmVMRef::__unknown_tree_clear_J() {
     }
 }
 
-// 0x488F50
-dllexport void AnmVMRef::mark_tree_for_delete_and_clear() {
-    AnmManager::mark_tree_id_for_delete(*this->id);
+inline void AnmVMRef::mark_tree_for_delete(AnmManager* anm_manager) {
+    anm_manager->mark_tree_id_for_delete(*this->id);
     this->id = NULL;
+}
+
+// 0x488F50
+dllexport void AnmVMRef::mark_tree_for_delete() {
+    this->mark_tree_for_delete(ANM_MANAGER_PTR);
+}
+
+// 0x488F70
+dllexport void thiscall AnmVMRef::set_controller_position(Float3* position) {
+    if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this->id)) {
+        vm->controller.position = *position;
+    }
+}
+
+// 0x4892F0
+dllexport void thiscall AnmVMRef::set_color1(D3DCOLOR color) {
+    AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this->id);
+    if (!vm) {
+        this->vm = vm;
+        return;
+    }
+    vm->data.color1 = color;
 }
 
 dllexport void AnmLoaded::__sub_477D60(AnmVM* vm, int32_t script_id) {
@@ -7980,11 +8154,41 @@ struct CardText {
 // size: 0x63E0
 struct AbilityTextData {
     CardText description_text[card_count]; // 0x0
-    AnmVMRef __vm_ref_array_63C0[8]; // 0x63C0
+    AnmVMRef __vm_ref_array_63C0[7]; // 0x63C0
+    AnmVMRef __vm_ref_63DC; // 0x63DC
     // 0x63E0
 
     inline void zero_contents() {
         zero_this();
+    }
+
+    // 0x4132B0
+    dllexport static void delete_vms() asm_symbol_rel(0x4132B0) {
+        AnmManager* anm_manager = ANM_MANAGER_PTR;
+        AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
+        size_t i = countof(ability_text_data->__vm_ref_array_63C0);
+        AnmVMRef* current_vm_ref = ability_text_data->__vm_ref_array_63C0;
+        do {
+            current_vm_ref++->mark_tree_for_delete(anm_manager);
+        } while (--i);
+        ability_text_data->__vm_ref_63DC.mark_tree_for_delete(anm_manager);
+    }
+
+    // 0x416940
+    dllexport void thiscall __sub_416940(int arg1, int arg2) asm_symbol_rel(0x416940) {
+
+    }
+
+    // 0x416C10
+    dllexport static void stdcall __sub_416C10(int arg1) asm_symbol_rel(0x416C10) {
+        AnmManager* anm_manager = ANM_MANAGER_PTR;
+        AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
+        size_t i = countof(ability_text_data->__vm_ref_array_63C0);
+        AnmVMRef* current_vm_ref = ability_text_data->__vm_ref_array_63C0;
+        do {
+            current_vm_ref++->__unknown_tree_set_J(anm_manager);
+        } while (--i);
+        ability_text_data->__sub_416940(arg1, 0);
     }
 
     static forceinline char* ability_txt_skip_to_end_of_line(const char* str, int32_t& count) {
@@ -8084,6 +8288,12 @@ struct AbilityTextData {
         this->initialize();
     }
 };
+#pragma region // AbilityTextData Validation
+ValidateFieldOffset32(0x0, AbilityTextData, description_text);
+ValidateFieldOffset32(0x63C0, AbilityTextData, __vm_ref_array_63C0);
+ValidateFieldOffset32(0x63DC, AbilityTextData, __vm_ref_63DC);
+ValidateStructSize32(0x63E0, AbilityTextData);
+#pragma endregion
 
 // 0xD70
 struct AbilityManager {
@@ -8190,9 +8400,9 @@ struct AbilityManager {
         do {
             if (byteloop_strmatch(card_data_ptr->name, count_name)) {
                 CardId count_id = card_data_ptr->id;
-                return this->card_list.count_if([=](CardBase* card) {
+                return this->card_list.count_ifB([=](CardBase* card) {
                     return card->id == count_id;
-                                                });
+                });
             }
         } while (++card_data_ptr != array_end_addr(CARD_DATA_TABLE));
         return 0;
@@ -8217,20 +8427,22 @@ dllexport gnu_noinline void count_cards_of_type2(EnemyData* self) {
         : asm_arg("=r", current_instruction)
     );
     const char* count_name = StringArg(4);
-    const CardData *restrict card_data_ptr = CARD_DATA_TABLE;
+    
     int32_t count = 0;
-    do {
+    for (
+        const CardData *restrict card_data_ptr = CARD_DATA_TABLE;
+        card_data_ptr != array_end_addr(CARD_DATA_TABLE);
+        ++card_data_ptr
+    ) {
         if (byteloop_strmatch(card_data_ptr->name, count_name)) {
             CardId count_id = card_data_ptr->id;
-            count = ABILITY_MANAGER_PTR->card_list.count_if([=](CardBase* card) {
+            count = ABILITY_MANAGER_PTR->card_list.count_ifB([=](CardBase* card) {
                 return card->id == count_id;
             });
             break;
         }
-    } while (++card_data_ptr != array_end_addr(CARD_DATA_TABLE));
-    int32_t* out;
-    clang_forceinline out = self->get_int_ptr_arg();
-    *out = count;
+    }
+    clang_forceinline *self->get_int_ptr_arg() = count;
 }
 
 
@@ -8325,7 +8537,7 @@ struct Player {
         if (y_pos == 0.0f && x_pos == 0.0f) {
             return HALF_PI_f;
         } else {
-            return atan2(y_pos, x_pos);
+            clang_forceinline return zatan2f(y_pos, x_pos);
         }
     }
 
@@ -8421,19 +8633,18 @@ public:
 
 // 0x425B40
 dllexport gnu_noinline float vectorcall Float3::__bullet_effect_angle_jank(float angle, float arg2, float arg3) {
-    if (-999990.0f < arg2) {
-        if (arg2 >= 999990.0f && 1999990.0f > arg2) {
+    if (!(arg2 <= -999990.0f)) {
+        if (arg2 >= 999990.0f && arg2 < 1999990.0f) {
             return arg3 + Player::angle_to_player_from_point(this);
         }
-        if (arg2 >= 2999990.0f && 3999990.0f > arg2) {
+        if (arg2 >= 2999990.0f && arg2 < 3999990.0f) {
             return REPLAY_RNG.rand_float_signed_range(arg3) + Player::angle_to_player_from_point(this);
         }
-        if (arg2 >= 3999990.0f && 4999990.0f > arg2) {
+        if (arg2 >= 3999990.0f && arg2 < 4999990.0f) {
             return REPLAY_RNG.rand_float_signed_range(arg3) + angle;
         }
         if (arg2 >= 4999990.0f) {
-            Float3& boss_0_position = get_boss_by_index(0)->data.current_motion.position;
-            return atan2(boss_0_position.y - this->y, boss_0_position.x - this->x);
+            return get_boss_by_index(0)->data.current_motion.position.angle_to(this);
         }
         return arg2;
     }
@@ -8720,17 +8931,45 @@ struct Stage {
     AnmLoaded* stage_anm; // 0x3464
 };
 
+// size: 0x8
+struct ItemSpriteData {
+    int32_t __id_0; // 0x0
+    int32_t __id_4; // 0x4
+    // 0x8
+};
+
+enum ItemID : int32_t {
+
+};
+
 // size: 0xC94
 struct Item {
     unknown_fields(0x10); // 0x0
     AnmVM __vm_10; // 0x10
     AnmVM __vm_61C; // 0x61C
-    unknown_fields(0x6C); // 0xC28
+    unknown_fields(0x4); // 0xC28
+    Float3 __float3_C2C; // 0xC2C
+    Float2 __float2_C38; // 0xC38
+    int __dword_C40; // 0xC40
+    int __dword_C44; // 0xC44
+    unknown_fields(0x4); // 0xC48
+    Timer __timer_C4C; // 0xC4C
+    unknown_fields(0x18); // 0xC60
+    ItemID id; // 0xC78
+    unknown_fields(0x14); // 0xC7C
+    int32_t sound_id; // 0xC90
     // 0xC94
 };
 #pragma region // Item Validation
 ValidateFieldOffset32(0x10, Item, __vm_10);
 ValidateFieldOffset32(0x61C, Item, __vm_61C);
+ValidateFieldOffset32(0xC2C, Item, __float3_C2C);
+ValidateFieldOffset32(0xC38, Item, __float2_C38);
+ValidateFieldOffset32(0xC40, Item, __dword_C40);
+ValidateFieldOffset32(0xC44, Item, __dword_C44);
+ValidateFieldOffset32(0xC4C, Item, __timer_C4C);
+ValidateFieldOffset32(0xC78, Item, id);
+ValidateFieldOffset32(0xC90, Item, sound_id);
 ValidateStructSize32(0xC94, Item);
 #pragma endregion
 
@@ -8822,39 +9061,39 @@ extern "C" {
 }
 
 enum BulletEffectType : uint32_t {
-    EX_NONE         = 0x00000000, // 0
-    EX_DIST         = 0x00000001, // 1
-    EX_ANIM         = 0x00000002, // 2
-    EX_ACCEL        = 0x00000004, // 3
-    EX_ANGLE_ACCEL  = 0x00000008, // 4
-    EX_ANGLE        = 0x00000010, // 5
-    // EX_NOP_A     = 0x00000020, // 6
-    EX_BOUNCE       = 0x00000040, // 7
-    EX_INVULN       = 0x00000080, // 8
-    EX_OFFSCREEN    = 0x00000100, // 9
-    EX_SETSPRITE    = 0x00000200, // 10
-    EX_DELETE       = 0x00000400, // 11
-    EX_PLAYSOUND    = 0x00000800, // 12
-    EX_WRAP         = 0x00001000, // 13
-    EX_SHOOT        = 0x00002000, // 14
-    // EX_NOP_B     = 0x00004000, // 15
-    EX_REACT        = 0x00008000, // 16
-    EX_LOOP         = 0x00010000, // 17
-    EX_MOVE         = 0x00020000, // 18
-    EX_VEL          = 0x00040000, // 19
-    EX_VELADD       = 0x00080000, // 20
-    EX_BRIGHT       = 0x00100000, // 21
-    EX_VELTIME      = 0x00200000, // 22
-    EX_SIZE         = 0x00400000, // 23
-    EX_SAVEANGLE    = 0x00800000, // 24
-    EX_SPECIAL      = 0x01000000, // 25
-    EX_LAYER        = 0x02000000, // 26
-    EX_DELAY        = 0x04000000, // 27
-    EX_LASER        = 0x08000000, // 28
-    // EX_NOP_C     = 0x10000000, // 29
-    EX_HITBOX       = 0x20000000, // 30
-    EX_HOMING       = 0x40000000, // 31
-    EX_WAIT         = 0x80000000, // 32
+    EX_NONE         = 0x00000000, // 0      0
+    EX_DIST         = 0x00000001, // 1      1
+    EX_ANIM         = 0x00000002, // 2      2
+    EX_ACCEL        = 0x00000004, // 3      4
+    EX_ANGLE_ACCEL  = 0x00000008, // 4      8
+    EX_ANGLE        = 0x00000010, // 5      16
+    // EX_NOP_A     = 0x00000020, // 6      32
+    EX_BOUNCE       = 0x00000040, // 7      64
+    EX_INVULN       = 0x00000080, // 8      128
+    EX_OFFSCREEN    = 0x00000100, // 9      256
+    EX_SETSPRITE    = 0x00000200, // 10     512
+    EX_DELETE       = 0x00000400, // 11     1024
+    EX_PLAYSOUND    = 0x00000800, // 12     2048
+    EX_WRAP         = 0x00001000, // 13     4096
+    EX_SHOOT        = 0x00002000, // 14     8192
+    // EX_NOP_B     = 0x00004000, // 15     16384
+    EX_REACT        = 0x00008000, // 16     32768
+    EX_LOOP         = 0x00010000, // 17     65536
+    EX_MOVE         = 0x00020000, // 18     131072
+    EX_VEL          = 0x00040000, // 19     262144
+    EX_VELADD       = 0x00080000, // 20     524288
+    EX_BRIGHT       = 0x00100000, // 21     1048576
+    EX_VELTIME      = 0x00200000, // 22     2097152
+    EX_SIZE         = 0x00400000, // 23     4194304
+    EX_SAVEANGLE    = 0x00800000, // 24     8388608
+    EX_ENEMY        = 0x01000000, // 25     16777216
+    EX_LAYER        = 0x02000000, // 26     33554432
+    EX_DELAY        = 0x04000000, // 27     67108864
+    EX_LASER        = 0x08000000, // 28     134217728
+    // EX_NOP_C     = 0x10000000, // 29     268435456
+    EX_HITBOX       = 0x20000000, // 30     536870912
+    EX_HOMING       = 0x40000000, // 31     1073741824
+    EX_WAIT         = 0x80000000, // 32     -2147483648
 };
 
 // size: 0x48
@@ -9226,6 +9465,8 @@ struct LaserLineParams {
     inline LaserLineParams() {
         this->zero_contents();
     }
+
+    inline LaserLineParams(int) {}
 };
 
 // size: 0x1E0C
@@ -9433,7 +9674,8 @@ struct LaserInfiniteParams {
     union {
         uint32_t flags; // 0x5C
         struct {
-
+            uint32_t : 1; // 1
+            uint32_t __unknown_flag_A : 1; // 2
         };
     };
     BulletEffectArgs effects[24]; // 0x60
@@ -9446,6 +9688,8 @@ struct LaserInfiniteParams {
     inline LaserInfiniteParams() {
         this->zero_contents();
     }
+
+    inline LaserInfiniteParams(int) {}
 };
 
 // size: 0x1824
@@ -9913,7 +10157,8 @@ dllexport void Bullet::run_effects() {
                         effect_data.angle = REPLAY_RNG.rand_float_signed_range(FloatArg(0));
                         break;
                     case 7:
-                        if (-999990.0f >= FloatArg(0)) {
+                        angle_arg = FloatArg(0);
+                        if (angle_arg <= -999990.0f) {
                             angle_arg = this->angle;
                         }
                         if (angle_arg >= 990.0f) {
@@ -10047,7 +10292,7 @@ dllexport void Bullet::run_effects() {
                 BulletEffectData& effect_data = this->effect_wrap;
                 effect_data.max_count = IntArg(0);
                 effect_data.duration = 0;
-                effect_data.count = IntArg(1);
+                effect_data.flags = IntArg(1);
                 break;
             }
             case EX_REACT:
@@ -10055,7 +10300,7 @@ dllexport void Bullet::run_effects() {
                 ++effect_index;
                 continue;
             case EX_SHOOT: {
-                ShooterData bullet_shooter;
+                ShooterData bullet_shooter(0);
                 bullet_shooter.position = this->position;
                 bullet_shooter.aim_mode = WordArg(0);
                 bullet_shooter.start_transform = IntArg(1);
@@ -10133,11 +10378,11 @@ dllexport void Bullet::run_effects() {
                     angle_arg += Player::angle_to_player_from_point(&this->position);
                     this->angle = reduce_angle(angle_arg);
                 }
-                else if (angle_arg >= -999.0f) {
+                else if (angle_arg >= -990.0f) {
                     this->angle = angle_arg;
                 }
                 float speed_arg = FloatArg(1);
-                if (speed_arg >= -999.0) {
+                if (speed_arg >= -990.0) {
                     this->speed = speed_arg;
                 } else {
                     speed_arg = this->speed;
@@ -10210,7 +10455,7 @@ dllexport void Bullet::run_effects() {
                 }
                 break;
             }
-            case EX_SPECIAL: {
+            case EX_ENEMY: {
 				EnemyInitData enemy_data;
 				enemy_data.position = this->position;
 				enemy_data.int_vars[0] = IntArg(0); // I0 = etEx a
@@ -10235,11 +10480,68 @@ dllexport void Bullet::run_effects() {
 				break;
             }
             case EX_LASER: {
-                // lol no, I'll deal with this later
                 switch (IntArg(0)) {
-                    case 1:
+                    case 1: {
+                        LaserInfiniteParams laser_params(0); // 0xA8
+                        laser_params.__speed_1 = 8.0f;
+                        laser_params.velocity.x = 0.0f;
+                        laser_params.velocity.y = 0.0f;
+                        laser_params.velocity.z = 0.0f;
+                        laser_params.__angle_18 = 0.0f;
+                        laser_params.angular_velocity = 0.0f;
+                        laser_params.length = 0.0f;
+                        laser_params.__float_24 = 0.0f;
+                        laser_params.width = 0.0f;
+                        laser_params.start_time = 0;
+                        laser_params.expand_time = 0;
+                        laser_params.duration = 0;
+                        laser_params.stop_time = 0;
+                        laser_params.shot_sound = 0;
+                        laser_params.transform_sound = 0;
+                        laser_params.laser_id = 0;
+                        laser_params.distance = 0.0f;
+                        __builtin_memcpy(laser_params.effects, this->effects, sizeof(laser_params.effects));
+                        int32_t flags = IntArg(3);
+                        laser_params.position = this->position;
+                        laser_params.flags = (flags & 0xFD) | 0x2;
+                        laser_params.sprite = IntArg(1);
+                        laser_params.color = IntArg(2);
+                        laser_params.__start_ex = (uint8_t)(flags >> 8);
+                        ZUNAngle angle;
+                        float angle_arg = FloatArg(0);
+                        if (angle_arg <= -999990.0f) {
+                            angle = this->angle;
+                        } else if (999990.0f < angle_arg && angle_arg < 1999990.0f) {
+                            // Somehow this can end up only running half of an angle reduce? WTF?
+                            clang_forceinline angle = Player::angle_to_player_from_point(&this->position);
+                        } else {
+                            angle = angle_arg;
+                        }
+                        laser_params.__angle_18 = angle;
+                        float speed_arg = FloatArg(1);
+                        if (speed_arg <= -999990.0f) {
+                            speed_arg = this->speed;
+                        }
+                        ++effect_index;
+                        laser_params.__float_24 = FloatArg(2);
+                        laser_params.start_time = IntArgEx(4);
+                        laser_params.expand_time = IntArgEx(5);
+                        laser_params.duration = IntArgEx(6);
+                        laser_params.length = FloatArg(3);
+                        laser_params.stop_time = IntArgEx(7);
+                        laser_params.width = FloatArgEx(4);
+                        laser_params.shot_sound = 18;
+                        laser_params.transform_sound = -1;
+                        laser_params.distance = FloatArgEx(5);
+                        LASER_MANAGER_PTR->allocate_new_laser(1, &laser_params);
+                        ++effect_index;
+                        if (flags & 0x10000) {
+                            this->cancel(0);
+                        }
+                        continue;
+                    }
                     case 0: {
-                        LaserLineParams laser_params;
+                        LaserLineParams laser_params(0); // 0x528
                         laser_params.flags = 0;
                         laser_params.__angle_C = 0.0f;
                         laser_params.__length_related = 0.0f;
@@ -10251,7 +10553,7 @@ dllexport void Bullet::run_effects() {
                         laser_params.effect_index = 0;
                         laser_params.shot_sound = 0;
                         laser_params.transform_sound = 0;
-                        memcpy(laser_params.effects, this->effects, sizeof(laser_params.effects));
+                        __builtin_memcpy(laser_params.effects, this->effects, sizeof(laser_params.effects));
                         BOOL cancel_current_bullet = IntArg(3);
                         laser_params.position = this->position;
                         laser_params.sprite = IntArg(1);
@@ -10262,7 +10564,7 @@ dllexport void Bullet::run_effects() {
                             angle = this->angle;
                         } else if (999990.0f < angle_arg && angle_arg < 1999990.0f) {
                             // Somehow this can end up only running half of an angle reduce? WTF?
-                            angle = Player::angle_to_player_from_point(&this->position);
+                            clang_forceinline angle = Player::angle_to_player_from_point(&this->position);
                         } else {
                             angle = angle_arg;
                         }
@@ -10273,7 +10575,21 @@ dllexport void Bullet::run_effects() {
                         }
                         ++effect_index;
                         laser_params.__unknown_flag_A = true;
-
+                        laser_params.__speed_1 = speed_arg;
+                        laser_params.length = FloatArg(2);
+                        laser_params.__length_related = FloatArg(3);
+                        laser_params.__float_18 = FloatArgEx(4);
+                        laser_params.shot_sound = IntArgEx(4);
+                        laser_params.width = FloatArgEx(5);
+                        laser_params.transform_sound = IntArgEx(5);
+                        laser_params.distance = FloatArgEx(6);
+                        laser_params.effect_index = IntArgEx(6);
+                        LASER_MANAGER_PTR->allocate_new_laser(0, &laser_params);
+                        ++effect_index;
+                        if (cancel_current_bullet) {
+                            this->cancel(0);
+                        }
+                        continue;
                     }
                 }
                 continue;
@@ -10512,6 +10828,89 @@ ValidateFieldOffset32(0xC4, ReplayManager, stage_data);
 ValidateFieldOffset32(0x204, ReplayManager, file_buffer);
 ValidateFieldOffset32(0x21C, ReplayManager, file_path);
 ValidateStructSize32(0x31C, ReplayManager);
+#pragma endregion
+
+typedef struct UnknownN UnknownN;
+extern "C" {
+    // 0x4CF40C
+    extern UnknownN* UNKNOWN_N_PTR asm("_UNKNOWN_N_PTR");
+}
+
+// size: 0x3F8
+struct UnknownN {
+    union {
+        uint32_t __flags_0; // 0x0
+        struct {
+            uint32_t : 1; // 1
+            uint32_t __unknown_flag_A : 1; // 2
+        };
+    };
+    UpdateFunc* on_tick_registration; // 0x4
+    UpdateFunc* on_draw_registration; // 0x8
+    Timer __timer_C; // 0xC
+    Timer __timer_20; // 0x20
+    int __dword_34; // 0x34
+    unknown_fields(0xCC); // 0x38
+    int __dword_104; // 0x104
+    int __dword_108; // 0x108
+    int __dword_10C; // 0x10C
+    unknown_fields(0xD4); // 0x110
+    AnmVMRef __vm_ref_1E4; // 0x1E4
+    AnmVMRef __vm_ref_1E8; // 0x1E8
+    int __dword_1EC; // 0x1EC
+    int __dword_1F0; // 0x1F0
+    int __dword_1F4; // 0x1F4
+    int __dword_1F8; // 0x1F8
+    int __dword_1FC; // 0x1FC
+    unknown_fields(0x8); // 0x200
+    int __dword_208; // 0x208
+    ReplayManager* __replay_manager_array_20C[25]; // 0x20C
+    unknown_fields(0x70); // 0x270
+    float __float_2E0; // 0x2E0
+    unknown_fields(0x10C); // 0x2E4
+    union {
+        uint32_t __flags_3F0; // 0x3F0
+        struct {
+            uint32_t __unknown_bitfield_A : 2;
+            uint32_t __unknown_flag_B : 1;
+        };
+    };
+    AnmLoaded* __anm_loaded_3F4; // 0x3F4
+    // 0x3F8
+
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline UnknownN() {
+        this->zero_contents();
+        this->__unknown_flag_A = true;
+    }
+};
+#pragma region // UnknownN Verification
+ValidateFieldOffset32(0x0, UnknownN, __flags_0);
+ValidateFieldOffset32(0x4, UnknownN, on_tick_registration);
+ValidateFieldOffset32(0x8, UnknownN, on_draw_registration);
+ValidateFieldOffset32(0xC, UnknownN, __timer_C);
+ValidateFieldOffset32(0x20, UnknownN, __timer_20);
+ValidateFieldOffset32(0x34, UnknownN, __dword_34);
+ValidateFieldOffset32(0x104, UnknownN, __dword_104);
+ValidateFieldOffset32(0x108, UnknownN, __dword_108);
+ValidateFieldOffset32(0x10C, UnknownN, __dword_10C);
+ValidateFieldOffset32(0x1E4, UnknownN, __vm_ref_1E4);
+ValidateFieldOffset32(0x1E8, UnknownN, __vm_ref_1E8);
+ValidateFieldOffset32(0x1EC, UnknownN, __dword_1EC);
+ValidateFieldOffset32(0x1F0, UnknownN, __dword_1F0);
+ValidateFieldOffset32(0x1F4, UnknownN, __dword_1F4);
+ValidateFieldOffset32(0x1F8, UnknownN, __dword_1F8);
+ValidateFieldOffset32(0x1FC, UnknownN, __dword_1FC);
+ValidateFieldOffset32(0x208, UnknownN, __dword_208);
+ValidateFieldOffset32(0x20C, UnknownN, __replay_manager_array_20C);
+ValidateFieldOffset32(0x2E0, UnknownN, __float_2E0);
+ValidateFieldOffset32(0x3F0, UnknownN, __flags_3F0);
+ValidateFieldOffset32(0x3F4, UnknownN, __anm_loaded_3F4);
+ValidateStructSize32(0x3F8, UnknownN);
 #pragma endregion
 
 // size: 0x2108

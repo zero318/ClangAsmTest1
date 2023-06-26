@@ -514,3 +514,91 @@ struct GameManager {
 	}
 };
 ValidateStructSize(0x3DE3C, GameManager);
+
+// size: 0x44
+struct WindowData {
+    HWND window; // 0x0
+    int __dword_4; // 0x4
+    BOOL window_active; // 0x8
+    int __dword_C; // 0xC
+    int8_t __sbyte_10; // 0x10
+    probably_padding_bytes(0x3); // 0x11
+    LARGE_INTEGER performance_counter_frequency; // 0x14
+    bool __bool_1C; // 0x1C
+    probably_padding_bytes(0x3); // 0x1D
+    BOOL screen_saver_active; // 0x20
+    BOOL screen_saver_low_power_active; // 0x24
+    BOOL screen_saver_power_off_active; // 0x28
+    double __double_2C; // 0x2C
+    double __double_34; // 0x34
+    double __double_3C; // 0x3C
+    // 0x44
+    // LARGE_INTEGER startup_qpc_value; // 0x44
+    
+    // 0x442190
+    double thiscall get_runtime();
+    
+    // 0x441E70
+    int32_t thiscall do_frame() {
+        this->__double_2C = this->get_runtime();
+        if (this->__double_34 > this->__double_2C) {
+            this->__double_3C = this->__double_2C;
+        }
+        this->__double_34 = this->__double_2C;
+        if (this->__double_3C < this->__double_2C) {
+            while (this->__double_3C < this->__double_2C) {
+                this->__double_3C += 1.0 / 60.0;
+            }
+            ANM_MANAGER_PTR->flush_sprites();
+            SUPERVISOR.viewport.X = 0;
+            SUPERVISOR.viewport.Y = 0;
+            SUPERVISOR.viewport.Width = 640;
+            SUPERVISOR.viewport.Height = 480;
+            // some D3D crap
+            int32_t on_tick_ret = UPDATE_FUNC_REGISTRY.run_all_on_tick();
+            SOUND_MANAGER.update_sound_thread();
+            if (on_tick_ret == 0) {
+                SUPERVISOR.stop_and_cleanup_thread();
+                return 1;
+            }
+            if (on_tick_ret == -1) {
+                SUPERVISOR.stop_and_cleanup_thread();
+                return 2;
+            }
+            this->__sbyte_10++;
+            if (SUPERVISOR.config.frameskip <= this->__sbyte_10) {
+                // some D3D crap
+                ANM_MANAGER_PTR->reset_vertex_buffers();
+                SUPERVISOR.__dword_350 = 255;
+                SUPERVISOR.disable_d3d_fog();
+                UPDATE_FUNC_REGISTRY.run_all_on_draw();
+                ANM_MANAGER_PTR->flush_sprites();
+                // some D3D crap
+                // some D3D crap
+                this->__sbyte_10 = 0;
+            }
+            this->__double_2C = this->get_runtime();
+            // render(); // ???
+        } else {
+            Sleep(0);
+        }
+    }
+};
+
+// 0x17CE700
+static WindowData WINDOW_DATA;
+
+// 0x442190
+double thiscall WindowData::get_runtime() {
+    double current_time;
+    if (WINDOW_DATA.performance_counter_frequency.LowPart) {
+        LARGE_INTEGER current_qpc_value;
+        QueryPerformanceCounter(&current_qpc_value);
+        current_time = (double)current_qpc_value.LowPart / (double)WINDOW_DATA.performance_counter_frequency.LowPart;
+    } else {
+        timeBeginPeriod(1);
+        current_time = timeGetTime();
+        timeEndPeriod(1);
+    }
+    return current_time;
+}

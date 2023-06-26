@@ -234,13 +234,19 @@ static inline constexpr SseTier_t SSE_TIER = IA32;
 #define MACRO_VOID(...)
 
 #if __INTELLISENSE__
+// Attempt to make intellisense shut up about C++ features it doesn't understand...
 #define INTELLISENSE_TYPENAME typename
 #define requires(...) MACRO_EVAL(MACRO_VOID(__VA_ARGS__))
+#define concept static inline constexpr bool
 #define static_lambda
+#define constexpr_lambda
+#define consteval_lambda
 #else
 #define INTELLISENSE_TYPENAME
 #define requires(...) requires (__VA_ARGS__)
 #define static_lambda static
+#define constexpr_lambda constexpr
+#define consteval_lambda consteval
 #endif
 #define typeof(type) std::remove_reference_t<decltype(type)>
 
@@ -255,23 +261,88 @@ static inline constexpr SseTier_t SSE_TIER = IA32;
 #define MACRO_STR(arg) _MACRO_STR(arg)
 #define MACRO_EVAL(...) __VA_ARGS__
 
+// EoSD
 #define MACRO_FIRST(arg1, ...) arg1
 #define MACRO_FIRST_EVAL(...) MACRO_EVAL(MACRO_FIRST(__VA_ARGS__))
+// PCB
 #define MACRO_SECOND(arg1, arg2, ...) arg2
 #define MACRO_SECOND_EVAL(...) MACRO_EVAL(MACRO_SECOND(__VA_ARGS__))
+// IN
 #define MACRO_THIRD(arg1, arg2, arg3, ...) arg3
 #define MACRO_THIRD_EVAL(...) MACRO_EVAL(MACRO_THIRD(__VA_ARGS__))
+// PoFV
+#define MACRO_FOURTH(arg1, arg2, arg3, arg4, ...) arg4
+#define MACRO_FOURTH_EVAL(...) MACRO_EVAL(MACRO_FOURTH(__VA_ARGS__))
+// StB
+#define MACRO_FIFTH(arg1, arg2, arg3, arg4, arg5, ...) arg5
+#define MACRO_FIFTH_EVAL(...) MACRO_EVAL(MACRO_FIFTH(__VA_ARGS__))
+// MoF
+#define MACRO_SIXTH(arg1, arg2, arg3, arg4, arg5, arg6, ...) arg6
+#define MACRO_SIXTH_EVAL(...) MACRO_EVAL(MACRO_SIXTH(__VA_ARGS__))
+// UB
+#define MACRO_SEVENTH(arg1, arg2, arg3, arg4, arg5, arg6, arg7, ...) arg7
+#define MACRO_SEVENTH_EVAL(...) MACRO_EVAL(MACRO_SEVENTH(__VA_ARGS__))
+// SA
+#define MACRO_EIGTH(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, ...) arg8
+#define MACRO_EIGTH_EVAL(...) MACRO_EVAL(MACRO_EIGTH(__VA_ARGS__))
+// UFO
+#define MACRO_NINTH(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, ...) arg9
+#define MACRO_NINTH_EVAL(...) MACRO_EVAL(MACRO_NINTH(__VA_ARGS__))
+// DS
+#define MACRO_TENTH(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, ...) arg10
+#define MACRO_TENTH_EVAL(...) MACRO_EVAL(MACRO_TENTH(__VA_ARGS__))
+// GFW
+#define MACRO_ELEVENTH(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, ...) arg11
+#define MACRO_ELEVENTH_EVAL(...) MACRO_EVAL(MACRO_ELEVENTH(__VA_ARGS__))
+// TD
+#define MACRO_TWELFTH(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, ...) arg12
+#define MACRO_TWELFTH_EVAL(...) MACRO_EVAL(MACRO_TWELFTH(__VA_ARGS__))
+// DDC
+#define MACRO_THIRTEENTH(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, ...) arg13
+#define MACRO_THIRTEENTH_EVAL(...) MACRO_EVAL(MACRO_THIRTEENTH(__VA_ARGS__))
+// ISC
+#define MACRO_FOURTEENTH(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, ...) arg14
+#define MACRO_FOURTEENTH_EVAL(...) MACRO_EVAL(MACRO_FOURTEENTH(__VA_ARGS__))
+// LoLK
+#define MACRO_FIFTEENTH(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, ...) arg15
+#define MACRO_FIFTEENTH_EVAL(...) MACRO_EVAL(MACRO_FIFTEENTH(__VA_ARGS__))
+// HSiFS
+#define MACRO_SIXTEENTH(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16, ...) arg16
+#define MACRO_SIXTEENTH_EVAL(...) MACRO_EVAL(MACRO_SIXTEENTH(__VA_ARGS__))
+// VD
+#define MACRO_SEVENTEENTH(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17, ...) arg17
+#define MACRO_SEVENTEENTH_EVAL(...) MACRO_EVAL(MACRO_SEVENTEENTH(__VA_ARGS__))
+// WBaWC
+#define MACRO_EIGHTEENTH(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18, ...) arg18
+#define MACRO_EIGHTEENTH_EVAL(...) MACRO_EVAL(MACRO_EIGHTEENTH(__VA_ARGS__))
+// UM
+#define MACRO_NINETEENTH(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18, arg19, ...) arg19
+#define MACRO_NINETEENTH_EVAL(...) MACRO_EVAL(MACRO_NINETEENTH(__VA_ARGS__))
+// HBM
+#define MACRO_TWENTIETH(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18, arg19, arg20, ...) arg20
+#define MACRO_TWENTIETH_EVAL(...) MACRO_EVAL(MACRO_TWENTIETH(__VA_ARGS__))
+// UDoALG
+#define MACRO_TWENTY_FIRST(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18, arg19, arg20, arg21, ...) arg21
+#define MACRO_TWENTY_FIRST_EVAL(...) MACRO_EVAL(MACRO_TWENTY_FIRST(__VA_ARGS__))
+
 
 //#define MACRO_DEFAULT_ARG(default_arg, ...) MACRO_SECOND(__VA_OPT__(,) __VA_ARGS__, (default_arg))
 
+#define MACRO_COMMA ,
+
 #define MACRO_EMPTY
 #define _EMPTY(...) _EMPTY __VA_ARGS__
-#define _MACRO_DEPAREN(...) MACRO ## __VA_ARGS__
-#define MACRO_DEPAREN(...) _MACRO_DEPAREN(MACRO_EVAL(_EMPTY __VA_ARGS__))
+#define _MACRO_DEPAREN_OLD(...) MACRO ## __VA_ARGS__
+#define MACRO_DEPAREN_OLD(...) _MACRO_DEPAREN_OLD(MACRO_EVAL(_EMPTY __VA_ARGS__))
+
+#define __MACRO_DEPAREN(arg1, ...) arg1##__VA_ARGS__
+#define _MACRO_DEPAREN(...) __MACRO_DEPAREN(MACRO,__VA_ARGS__)
+#define MACRO_DEPAREN(...) MACRO_EVAL(_MACRO_DEPAREN(_EMPTY __VA_ARGS__))
 
 #define _VA_OPT_SUPPORTED(...) __VA_OPT__(,)
 #define VA_OPT_SUPPORTED MACRO_SECOND_EVAL(_VA_OPT_SUPPORTED(yeet) true,false)
 
+// This is broken
 #define _GCC_VA_OPT_SUPPORTED(...) ,__VA_ARGS__##__VA_ARGS__
 #define GCC_VA_OPT_SUPPORTED MACRO_SECOND(_GCC_VA_OPT_SUPPORTED() false,true)
 
@@ -302,9 +373,10 @@ static inline constexpr SseTier_t SSE_TIER = IA32;
 
 #else
 
+// This is broken
 // Black magic precessor voodoo
 
-#define MACRO_DEFAULT_ARG(default_arg, ...) MACRO_SECOND_EVAL(MACRO_EVAL(MACRO_COMMA MACRO_FIRST_EVAL(MACRO_DEPAREN(__VA_ARGS__))()) default_arg, __VA_ARGS__, 0)
+#define MACRO_DEFAULT_ARG(default_arg, ...) MACRO_SECOND_EVAL(MACRO_EVAL(MACRO_COMMA MACRO_FIRST_EVAL(MACRO_DEPAREN_OLD(__VA_ARGS__))()) default_arg, __VA_ARGS__, 0)
 
 #endif
 
@@ -570,6 +642,19 @@ struct MACRO_CAT(vfo,__COUNTER__) { \
 #define ValidateStructAlignment64(align, struct_type) ValidateStructAlignment(align, struct_type)
 #endif
 
+#define ValidateFieldOffsetX(offset32, offset64, struct_type, member_name) \
+ValidateFieldOffset(offset32, struct_type<32>, member_name); \
+ValidateFieldOffset(offset64, struct_type<64>, member_name)
+#define ValidateVirtualFieldOffsetX(offset32, offset64, struct_type, member_name) \
+ValidateVirtualFieldOffset(offset32, struct_type<32>, member_name); \
+ValidateVirtualFieldOffset(offset64, struct_type<64>, member_name)
+#define ValidateStructSizeX(size32, size64, struct_type) \
+ValidateStructSize(size32, struct_type<32>); \
+ValidateStructSize(size64, struct_type<64>)
+#define ValidateStructAlignmentX(align32, align64, struct_type) \
+ValidateStructAlignment(align32, struct_type<32>); \
+ValidateStructAlignment(align64, struct_type<64>)
+
 #define gnu_attr(...) __attribute__((__VA_ARGS__))
 
 #define shuffle_vec __builtin_shufflevector
@@ -595,20 +680,26 @@ using vec = std::conditional_t<is_aligned, \
 template<typename T, size_t count>
 using vec = T gnu_attr(__vector_size__(count * sizeof(T)), __aligned__(count * sizeof(T)));
 
+enum InlineState {
+	DefaultInline,
+	ForceInline,
+	NoInline
+};
+
 #if !CPP20 && !(defined(__cpp_consteval) && __cpp_consteval >= 201811L)
 #define consteval constexpr
 #pragma message("consteval not supported, using constexpr instead")
 #endif
 #if !CPP20 && !(defined(__cpp_constinit) && __cpp_constinit >= 201907L)
-#define constinit constexpr
-#pragma message("constinit not supported, using constexpr instead")
+#define constinit
+#pragma message("constinit not supported")
 #endif
 #if __INTELLISENSE__
 #ifndef consteval
 #define consteval constexpr
 #endif
 #ifndef constinit
-#define constinit constexpr
+#define constinit
 #endif
 #endif
 
@@ -650,8 +741,8 @@ static inline constexpr T garbage_value(void) {
 #define VS_VER 165
 #define WBaWC_VER 170
 #define UM_VER 180
-#define BM_VER 185
-#define UDaALG_VER 190
+#define HBM_VER 185
+#define UDoALG_VER 190
 enum GameVersion : size_t {
 	EoSD = EoSD_VER,
 	PCB = PCB_VER,
@@ -672,8 +763,8 @@ enum GameVersion : size_t {
 	VD = VS_VER,
 	WBaWC = WBaWC_VER,
 	UM = UM_VER,
-	BM = BM_VER,
-	UDaALG = UDaALG_VER
+	HBM = HBM_VER,
+	UDoALG = UDoALG_VER
 };
 
 #define IN
@@ -942,6 +1033,22 @@ struct ZUNLinkedListBase {
 	inline int32_t head_count_if_not(const L& lambda) {
 		return this->next->count_if_not(lambda);
 	}
+	template <typename L>
+	inline int32_t count_ifB(const L& lambda) {
+		int32_t ret = 0;
+		for (N* node = ZUNListNCast(this); node; node = node->next) {
+			if (T* data = node->data; lambda(data)) ++ret;
+		}
+		return ret;
+	}
+	template <typename L>
+	inline int32_t head_count_ifB(const L& lambda) {
+		int32_t ret = 0;
+		for (N* node = this->next; node; node = node->next) {
+			if (T* data = node->data; lambda(data)) ++ret;
+		}
+		return ret;
+	}
 };
 
 #ifdef ZUNListPlayNiceWithIntellisense
@@ -1003,6 +1110,10 @@ struct ZUNLinkedListHeadDummyBase : ZUNLinkedListBase<T, has_idk> {
 	template <typename L>
 	inline int32_t count_if_not(const L& lambda) {
 		return this->head_count_if_not(lambda);
+	}
+	template <typename L>
+	inline int32_t count_ifB(const L& lambda) {
+		return this->head_count_ifB(lambda);
 	}
 };
 
@@ -1194,6 +1305,35 @@ constexpr uint64_t PackUInt64(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_
 	return (uint64_t)c8 << 56 | (uint64_t)c7 << 48 | (uint64_t)c6 << 40 | (uint64_t)c5 << 32 | c4 << 24 | c3 << 16 | c2 << 8 | c1;
 }
 
+enum PointerType {
+	Near32Z			= 0b0001,
+	Near64Z			= 0b0010,
+	Near16Z			= 0b0011,
+	SegmentPointer	= 0b0100,
+	Far32Z			= 0b0101,
+	Far64Z			= 0b0110,
+	Far16Z			= 0b0111,
+	SignedPointer	= 0b1000,
+	Near32S			= 0b1001,
+	Near64S			= 0b1010,
+	Near16S			= 0b1011,
+	Far32S			= 0b1101,
+	Far64S			= 0b1110,
+	Far16S			= 0b1111,
+	Near32 = Near32Z,
+	Near64 = Near64Z,
+	Near16 = Near16Z,
+	Pointer32 = Near32,
+	Pointer64 = Near64,
+	Pointer16 = Near16
+};
+
+#if NATIVE_BITS == 32
+static inline constexpr PointerType native_bits = Near32;
+#elif NATIVE_BITS == 64
+static inline constexpr PointerType native_bits = Near64;
+#endif
+
 template<typename T = void>
 using PTR32 = T * __ptr32;
 template<typename T = void>
@@ -1308,6 +1448,27 @@ using PTRNS = std::conditional_t<pointer_size == 32, PTR32S<T>,
 			  std::conditional_t<pointer_size == 64, PTR64S<T>,
 			  void>>;
 
+template<size_t pointer_size>
+using uintptr_tx = std::conditional_t<pointer_size == 32, uint32_t,
+				   std::conditional_t<pointer_size == 64, uint64_t,
+				   void>>;
+
+template<size_t pointer_size>
+using intptr_tx = std::conditional_t<pointer_size == 32, int32_t,
+				  std::conditional_t<pointer_size == 64, int64_t,
+				  void>>;
+
+template<size_t pointer_size>
+using size_tx = std::conditional_t<pointer_size == 32, uint32_t,
+				std::conditional_t<pointer_size == 64, uint64_t,
+				void>>;
+
+template<size_t pointer_size, typename T = void>
+using PTRZX = PTRNZ<pointer_size, T>;
+
+template<size_t pointer_size, typename T = void>
+using PTRSX = PTRNS<pointer_size, T>;
+
 template<typename T>
 using PTRZ = PTRNZ<bitsof(void*), T>;
 template<typename T>
@@ -1350,7 +1511,7 @@ constexpr inline char* byteloop_strcpy(char *const restrict dest, const char *re
 
 constexpr inline const char *restrict byteloop_strchr(const char *const restrict str, char ch) {
 	const char *restrict temp = str;
-	unsigned char c;
+	unsigned char c = 0;
 	for (
 		;
 		(c = *temp) && c != ch;

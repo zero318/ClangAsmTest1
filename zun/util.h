@@ -1,14 +1,8 @@
-#ifndef ZUN_H
-#define ZUN_H 1
-
-#pragma clang diagnostic ignored "-Wc++20-extensions"
+#ifndef ZUN_UTIL_H
+#define ZUN_UTIL_H 1
 
 #include <stdint.h>
 #include <stdlib.h>
-
-#include "util.h"
-
-static inline constexpr size_t game_version = GAME_VERSION;
 
 #define NA_TO_GAME
 
@@ -110,29 +104,12 @@ static constexpr inline uint32_t PackD3DCOLOR(uint8_t a, uint8_t r, uint8_t g, u
     return PackUInt(b, g, r, a);
 }
 
-#if GAME_VERSION >= MoF_VER
-enum InterpMode : int32_t {
-    Linear = 0,
-    AccelerateSlow = 1,
-    Accelerate = 2,
-    AccelerateFast = 3,
-    DecelerateSlow = 4,
-    Decelerate = 5,
-    DecelerateFast = 6,
-    ConstantVelocity = 7,
-    Bezier = 8,
-    AccelDecelSlow = 9,
-    AccelDecel = 10,
-    AccelDecelFast = 11,
-    DecelAccelSlow = 12,
-    DecelAccel = 13,
-    DecelAccelFast = 14,
-    ForceInitial = 15,
-    ForceFinal = 16
-};
-#endif
+#include "funcs.h"
 
-#include "zun_math.h"
-#include "zun_types.h"
+#ifdef OLD_ENGINE
+#include "old_engine_util.h"
+#else
+#include "new_engine_util.h"
+#endif
 
 #endif

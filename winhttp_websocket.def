@@ -1,0 +1,13 @@
+LIBRARY WINHTTP
+EXPORTS
+    WinHttpCloseHandle
+    WinHttpConnect
+    WinHttpWebSocketClose
+    WinHttpWebSocketReceive
+    WinHttpWebSocketSend
+    WinHttpWebSocketCompleteUpgrade
+    WinHttpReceiveResponse
+    WinHttpSendRequest
+    WinHttpOpenRequest
+    WinHttpSetOption
+    WinHttpOpen

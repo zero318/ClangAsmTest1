@@ -20,6 +20,7 @@
 #include <Bits.h>
 
 #include <array>
+#include <thread>
 
 #include "zero/util.h"
 //#include "zero/BoundingBox.h"
@@ -1989,6 +1990,389 @@ dllexport gnu_noinline int force_vtable(BaseClassB* yeet) {
 	return printf("%d", yeet->testA());
 }
 */
+#include <inttypes.h>
+
+//dllexport int64_t old_float_int;
+dllexport float uint_max_float = bitcast<float>(0x4F800000u);
+dllexport float uint_max_floatB = bitcast<float>(0x2F800000u);
+dllexport double uint_max_doubleB = bitcast<double>(0x3DF0000000000000u);
+dllexport double uint_convert_double = bitcast<double>(0x41F0000000000000u);
+dllexport double uint_convert_array[2] = {
+	0.0,
+	bitcast<double>(0x41F0000000000000u)
+};
+static constexpr FCW single_precision_fcw = {
+	.invalid_operation_mask = 1,
+	.denormal_operand_mask = 1,
+	.divide_by_zero_mask = 1,
+	.overflow_mask = 1,
+	.underflow_mask = 1,
+	.precision_mask = 1,
+	.precision = SinglePrecision,
+	.rounding = RoundToNearest
+};
+static constexpr FCW double_precision_fcw = {
+	.invalid_operation_mask = 1,
+	.denormal_operand_mask = 1,
+	.divide_by_zero_mask = 1,
+	.overflow_mask = 1,
+	.underflow_mask = 1,
+	.precision_mask = 1,
+	.precision = DoublePrecision,
+	.rounding = RoundToNearest
+};
+static constexpr FCW extended_precision_fcw = {
+	.invalid_operation_mask = 1,
+	.denormal_operand_mask = 1,
+	.divide_by_zero_mask = 1,
+	.overflow_mask = 1,
+	.underflow_mask = 1,
+	.precision_mask = 1,
+	.precision = ExtendedPrecision,
+	.rounding = RoundToNearest
+};
+
+#include <complex.h>
+
+struct Rng {
+	uint16_t value; // 0x0
+	uint32_t index; // 0x4
+	// 0x8
+
+	static uint16_t calculate_step_1(uint16_t value) {
+		return (value ^ 0x9630) - 0x6553;
+	}
+	static uint16_t calculate_step_2(uint16_t value) {
+		return ((value & 0xC000) >> 14) + (value << 2) & 0xFFFF;
+	}
+
+	static long double regcall calculate_float_old(const int64_t* value) {
+#pragma float_control(precise, on)
+#pragma clang fp reassociate(off)
+		//long double temp = *value;
+		long double temp;
+		__asm__ volatile (
+			"fildll %[value]"
+			: asm_arg("=t", temp)
+			: [value] "m"(*value)
+		);
+		return temp / uint_max_float;
+	}
+	static forceinline long double regcall calculate_float_newA(const int32_t* value) {
+#pragma float_control(precise, on)
+#pragma clang fp reassociate(off)
+		//long double temp = *value;
+		long double temp;
+		__asm__ volatile (
+			"fildl %[value]"
+			: asm_arg("=t", temp)
+			: [value]"m"(*value)
+		);
+		if (*value < 0) {
+			//temp += uint_max_float;
+			__asm__ volatile (
+				"fadds %[uint_max_float]"
+				: asm_arg("+t", temp)
+				: asm_arg("m", uint_max_float)
+			);
+		}
+		return temp * uint_max_floatB;
+	}
+	static forceinline long double regcall calculate_float_newB(const int32_t* value) {
+#pragma float_control(precise, on)
+#pragma clang fp reassociate(off)
+		//long double temp = *value;
+		long double temp;
+		__asm__ volatile (
+			"fildl %[value]"
+			: asm_arg("=t", temp)
+			: [value] "m"(*value)
+			);
+		if (*value < 0) {
+			//temp += uint_max_float;
+			__asm__ volatile (
+				"fadds %[uint_max_float]"
+				: asm_arg("+t", temp)
+				: asm_arg("m", uint_max_float)
+			);
+		}
+		return temp * uint_max_doubleB;
+	}
+	static forceinline float vectorcall calculate_float_newC(uint32_t value) {
+		vec<int32_t, 2> temp_vecA = { value, 0 };
+		vec<double, 2> temp_vecB = convertvec(temp_vecA, vec<double, 2>);
+		temp_vecB[0] += uint_convert_array[value >> 31];
+		vec<float, 2> temp_vecC = convertvec(temp_vecB, vec<float, 2>);
+		return temp_vecC[0] * uint_max_floatB;
+	}
+	/*
+	static long double regcall calculate_double_float_oldA(const uint64_t& value) {
+#pragma float_control(precise, on)
+		long double double_precision = value;
+		return double_precision / uint_max_float;
+	}
+	static long double regcall calculate_extended_float_old(const uint64_t& value) {
+#pragma float_control(precise, on)
+		long double extended_precision = value;
+		return extended_precision / uint_max_float;
+	}
+	*/
+
+	void log_all_values(FILE* file) {
+		fputs(
+			"InternalIndex,NextU16,"
+			"NextU32_Old,NextU32_New,"
+			"NextPI32_Old,NextPI32_New,"
+			"NextFloat24_Old,NextFloat53_Old," // EoSD, PCB, IN, StB
+			"NextFloat24_NewA,NextFloat53_NewA," // PoFV, MoF, UB
+			"NextFloat24_NewB,NextFloat54_NewB,NextFloat64_NewB," // SA, UFO, DS, GFW, TD
+			"NextFloat_NewC\n" // Everything else
+			, file
+		);
+		this->value = 0;
+		this->index = 0;
+		FCW original_fcw = current_fcw();
+		do {
+			uint16_t high_halfA = this->calculate_step_1(this->value);
+			uint16_t high_halfB = this->calculate_step_2(high_halfA);
+			uint16_t low_halfA = this->calculate_step_1(high_halfB);
+			uint16_t low_halfB = this->calculate_step_2(low_halfA);
+
+			uint16_t next_ushort = high_halfB;
+			uint32_t next_uint_old = ((uint32_t)high_halfB << 16) | low_halfB;
+			uint32_t next_uint_new = ((uint32_t)high_halfA << 16) | low_halfA;
+
+
+			this->value = next_ushort;
+
+			int64_t old_float_int = next_uint_old;
+			int32_t new_float_int = next_uint_new;
+
+			float single_precision_newC = calculate_float_newC(new_float_int);
+
+			load_fcw(single_precision_fcw);
+			long double single_precision_old = calculate_float_old(&old_float_int);
+			long double single_precision_newA = calculate_float_newA((int32_t*)&old_float_int);
+			long double single_precision_newB = calculate_float_newB((int32_t*)&new_float_int);
+			load_fcw(double_precision_fcw);
+			long double double_precision_old = calculate_float_old(&old_float_int);
+			long double double_precision_newA = calculate_float_newA((int32_t*)&old_float_int);
+			long double double_precision_newB = calculate_float_newB((int32_t*)&new_float_int);
+			load_fcw(extended_precision_fcw);
+			long double extended_precision_newB = calculate_float_newB((int32_t*)&new_float_int);
+			load_fcw(original_fcw);
+
+			
+			fprintf(file, "%" PRIu32 ",%" PRIu16 ",%" PRIu32 ",%" PRIu32 ",%" PRIu32 ",%" PRIu32 ",%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f\n"
+					, this->index++, next_ushort
+					, next_uint_old, next_uint_new
+					, next_uint_old & 0x7FFFFFFF, next_uint_new & 0x7FFFFFFF
+					, (double)single_precision_old, (double)double_precision_old
+					, (double)single_precision_newA, (double)double_precision_newA
+					, (double)single_precision_newB, (double)double_precision_newB, (double)extended_precision_newB
+					, (double)single_precision_newC
+			);
+		} while (this->value);
+	}
+
+	uint16_t get_next_ushort() {
+		//uint16_t temp = (this->value ^ 0x9630) - 0x6553;
+		//return ((temp & 0xC000) >> 14) + (temp << 2) & 0xFFFF;
+		return this->calculate_step_2(this->calculate_step_1(this->value));
+	}
+
+	uint32_t get_next_uint_old() {
+		uint16_t high_half = this->get_next_ushort();
+		uint16_t temp = (high_half ^ 0x9630) - 0x6553;
+		uint16_t low_half = ((temp & 0xC000) >> 14) + (temp << 2) & 0xFFFF;
+		return ((uint32_t)high_half << 16) | low_half;
+	}
+
+	uint32_t get_next_uint_new() {
+		uint16_t high_half = (this->value ^ 0x9630) - 0x6553;
+		uint16_t tempA = ((high_half & 0xC000) >> 14) + (high_half << 2) & 0xFFFF;
+		uint16_t low_half = (tempA ^ 0x9630) - 0x6553;
+		uint16_t tempB = ((low_half & 0xC000) >> 14) + (low_half << 2) & 0xFFFF;
+		return ((uint32_t)high_half << 16) | low_half;
+	}
+
+	uint32_t rand_uint_half_old() {
+		uint16_t high_half = this->rand_ushort();
+		return ((uint32_t)high_half << 16) | this->get_next_ushort();
+	}
+	uint32_t rand_uint_half_new() {
+		++this->index;
+		uint16_t high_half = (this->value ^ 0x9630) - 0x6553;
+		uint16_t tempA = ((high_half & 0xC000) >> 14) + (high_half << 2) & 0xFFFF;
+		this->value = tempA;
+		uint16_t low_half = (tempA ^ 0x9630) - 0x6553;
+		uint16_t tempB = ((low_half & 0xC000) >> 14) + (low_half << 2) & 0xFFFF;
+		return ((uint32_t)high_half << 16) | low_half;
+	}
+
+	uint16_t rand_ushort() {
+		++this->index;
+		return this->value = this->get_next_ushort();
+	}
+	uint32_t rand_uint_old() {
+		uint16_t high_half = this->rand_ushort();
+		return ((uint32_t)high_half << 16) | this->rand_ushort();
+	}
+	uint32_t rand_uint_new() {
+		this->index += 2;
+		uint16_t high_half = (this->value ^ 0x9630) - 0x6553;
+		uint16_t temp = ((high_half & 0xC000) >> 14) + (high_half << 2) & 0xFFFF;
+		uint16_t low_half = (temp ^ 0x9630) - 0x6553;
+		this->value = ((low_half & 0xC000) >> 14) + (low_half << 2) & 0xFFFF;
+		return ((uint32_t)high_half << 16) | low_half;
+	}
+};
+
+//#include <timeapi.h>
+#pragma comment (lib, "Winmm.lib")
+
+dllexport gnu_noinline void test_zun_rng() {
+
+	Rng template_unseeded_rng;
+	template_unseeded_rng.value = 0;
+	template_unseeded_rng.index = 0;
+
+	FILE* rng_fileA = fopen("rng_sequence16.csv", "w");
+
+	fputs("InternalIndex,Value\n", rng_fileA);
+
+	Rng test_rng = template_unseeded_rng;
+	do {
+		uint16_t value = test_rng.rand_ushort();
+		fprintf(rng_fileA, "%" PRIu32 ",%" PRIu16 "\n"
+				, test_rng.index, value
+		);
+	} while (test_rng.value);
+	printf("Sequence length: %" PRIu32 "\n", test_rng.index);
+	fclose(rng_fileA);
+
+	
+	FILE* rng_fileB = fopen("rng_sequence32_old.csv", "w");
+	fputs("Index,Value\n", rng_fileB);
+
+	test_rng = template_unseeded_rng;
+	do {
+		uint32_t value = test_rng.rand_uint_half_old();
+		fprintf(rng_fileB, "%" PRIu32 ",%" PRIu32 "\n"
+				, test_rng.index, value
+		);
+	} while (test_rng.value);
+	fclose(rng_fileB);
+	
+}
+
+dllexport gnu_noinline void test_zun_rng2() {
+
+	FILE* rng_file = fopen("rng_sequence.csv", "w");
+	Rng rng;
+	rng.log_all_values(rng_file);
+	_fclose_nolock(rng_file);
+}
+
+/*
+
+template<bool locked = false, typename T>
+inline bool bts_mem32(T& data, size_t index) {
+	bool ret;
+	if constexpr (locked) {
+		__asm__ volatile (
+			"lock bts %[index], %[data]"
+			: asm_arg("+m", data), asm_flags(c, ret)
+			: asm_arg("ir", index)
+			: "memory"
+			);
+	} else {
+		__asm__ volatile (
+			"bts %[index], %[data]"
+			: asm_arg("+m", data), asm_flags(c, ret)
+			: asm_arg("ir", index)
+			: "memory"
+			);
+	}
+	return ret;
+}
+
+std::atomic_uint32_t write_count{ 0 };
+std::atomic_uint32_t write_success_count{ 0 };
+std::atomic_uint32_t read_count{ 0 };
+std::atomic_uint32_t read_success_count{ 0 };
+
+template<typename T, size_t max_index> requires(max_index <= 64)
+struct cache_align CrappyLockedQueue {
+
+	static inline constexpr size_t mask_bits = std::max(max_index, sizeof(uint32_t) * CHAR_BIT);
+	using MaskT = UBitIntType<mask_bits>;
+	static inline constexpr MaskT initial_mask = ~(MaskT)0 >> (bitsof(MaskT) - max_index);
+
+	MaskT written_mask = initial_mask;
+	std::atomic_uint32_t lock{};
+	uint8_t current_write_index = 0;
+	uint8_t current_read_index = 0;
+	T values[max_index];
+
+	inline void acquire_lock() {
+		while (__builtin_expect(bts_mem32<true>(this->lock, 0), false));
+	}
+	inline void release_lock() {
+		this->lock = 0;
+	}
+
+	gnu_noinline bool push_value(T value) {
+		this->acquire_lock();
+		//++write_count;
+		//compare_array[compare_array_index++] = value;
+		bool ret;
+		if (MaskT current_mask = this->written_mask) {
+			//++write_success_count;
+			size_t prev_write_index = this->current_write_index;
+			MaskT temp_mask = __rorq(current_mask, prev_write_index);
+			MaskT cleared_bit_mask = temp_mask & -temp_mask;
+			MaskT new_mask = temp_mask & temp_mask - 1;
+			this->written_mask = __rolq(new_mask, prev_write_index);
+			size_t current_write_index = std::countr_zero<MaskT>(cleared_bit_mask) + prev_write_index + 1;
+			if (current_write_index >= max_index) {
+				current_write_index -= max_index;
+			}
+			this->current_write_index = current_write_index;
+			this->values[current_write_index - 1] = value;
+			ret = true;
+		} else {
+			ret = false;
+		}
+		this->release_lock();
+		return ret;
+	}
+	gnu_noinline std::pair<T, bool> pop_value() {
+		this->acquire_lock();
+		//++read_count;
+		std::pair<T, bool> ret;
+		MaskT current_mask = this->written_mask;
+		if (current_mask != initial_mask) {
+			//++read_success_count;
+			size_t prev_read_index = this->current_read_index;
+			MaskT temp_mask = __rorq(this->written_mask, prev_read_index);
+			MaskT set_bit_mask = ~temp_mask & temp_mask + 1;
+			MaskT new_mask = temp_mask | temp_mask + 1;
+			this->written_mask = __rolq(new_mask, prev_read_index);
+			size_t current_read_index = std::countr_zero<MaskT>(set_bit_mask) + prev_read_index + 1;
+			if (current_read_index >= max_index) {
+				current_read_index -= max_index;
+			}
+			this->current_read_index = current_read_index;
+			ret.first = this->values[current_read_index - 1];
+			ret.second = true;
+		} else {
+			ret.second = false;
+		}
+		this->release_lock();
+		return ret;
+	}
+};
 
 extern bool bs_dll64();
 dllexport void wasted_wtf_is_this();
@@ -1997,7 +2381,52 @@ dllexport void wasted_wtf_is_this3();
 extern void test_json_parse(const char16_t* raw_json);
 extern void test_json5_parse(const wchar_t* raw_json);
 dllexport volatile float wjhrjwrv;
+
+std::atomic_uint32_t yeetus_value{ 0 };
+std::atomic_uint32_t compare_array_index{ 0 };
+
+static inline constexpr uint32_t thread_count = 1;
+static inline constexpr uint32_t thread_iters = 16;
+
+static inline uint32_t compare_array[thread_iters * thread_count];
+
+CrappyLockedQueue<uint32_t, 4> test_jank2{};
+
+*/
+
 int main(int argc, char* argv[]) {
+
+	//std::thread threads[thread_count];
+	//uint32_t local_compare_array_index = 0;
+	//nounroll for (size_t i = 0; i < thread_iters; ++i) {
+	//	for (auto& thread : threads) {
+	//		thread = std::thread([]() gnu_noinline {
+	//			uint32_t number_to_add = yeetus_value++;
+	//			//while (yeetus_value != thread_count);
+	//			test_jank2.push_value(number_to_add);
+	//		});
+	//	}
+	//	for (size_t i = 0; i < thread_count; ++i) {
+	//		auto&& [value, success] = test_jank2.pop_value();
+	//		if (success) {
+	//			printf("%u, %u\n", value, compare_array[local_compare_array_index++]);
+	//		}
+	//	}
+	//	for (auto& thread : threads) {
+	//		thread.join();
+	//	};
+	//	yeetus_value = 0;
+	//}
+	//printf("Writes: %u (%u)\n"
+	//	   "Reads:  %u (%u)\n"
+	//	   , write_count.load(), write_success_count.load()
+	//	   , read_count.load(), read_success_count.load()
+	//);
+	//__builtin_dump_struct(&test_jank2, printf);
+	
+	//test_zun_rng2();
+	return 0;
+
 	clang_noinline wjhrjwrv = __builtin_sqrt(-32984.2349f);
 	test_json_parse(u"{ \"ye\\u0065tus\" : true, \"pingas\":{}, \"yeet\": [ 1, 0.1, -123.456e+78, \"\", null ] }");
 	puts("");
@@ -3998,6 +4427,116 @@ dllexport gnu_noinline bool fastcall new_overwrite_warning(SaveManager* save_man
 	}
 	return expect(selection == 3, true);
 }
+
+/*
+#include <winhttp.h>
+
+typedef void cdecl PhotonAsyncFunc(void* arg);
+
+struct PhotonAsync {
+	PhotonAsyncFunc* func; // 0x0
+	void* arg; // 0x4
+	// 0x8
+
+	// Rx39ED0
+	dllexport static gnu_noinline DWORD WINAPI run(void* arg) {
+		PhotonAsync* async = (PhotonAsync*)arg;
+		async->func(async->arg);
+		free(async);
+		return 0;
+	}
+
+	// Rx39E50
+	dllexport static gnu_noinline void cdecl create(PhotonAsyncFunc* func, void* arg) {
+		if (void* func_ptr = func) {
+			PhotonAsync* new_async = (PhotonAsync*)malloc(sizeof(PhotonAsync));
+			new_async->func = func;
+			new_async->arg = arg;
+			CloseHandle(CreateThread(NULL, 0, &PhotonAsync::run, new_async, 0, NULL));
+		}
+	}
+};
+
+
+
+struct PhotonStruct {
+
+
+	struct PhotonString {
+		unknown_fields(0x4); // 0x0
+		LPWSTR data; // 0x4
+
+		// Rx29510
+		gnu_noinline LPWSTR get_pointer() {
+			return this->data;
+		}
+	};
+
+
+	
+	// void* vtable; // 0x0
+	unknown_fields(0x4); // 0x4
+	int __dword_8; // 0x8
+	unknown_fields(0x98); // 0xC
+	char __byte_A0; // 0xA0
+	unknown_fields(0x23); // 0xA1
+	PhotonString* __something_that_generates_the_websocket_header_and_ill_pretend_its_a_string; // 0xC8
+	HINTERNET http_open_handle; // 0xCC
+	HINTERNET http_connect_handle; // 0xD0
+	HINTERNET http_request_handle; // 0xD4
+	HINTERNET web_socket_handle; // 0xD8
+	PhotonString server_name; // 0xDC
+	unknown_fields(0x8); // 0xE4
+	INTERNET_PORT port; // 0xEC
+	probably_padding_bytes(0x2); // 0xEE
+	PhotonString __string_F0; // 0xF0
+	unknown_fields(0x8); // 0xF8
+	bool use_https; // 0x100
+	// 0x100
+
+	dllexport static gnu_noinline void cdecl __sub_EFFE0(void* self) {
+
+	}
+
+	dllexport void thiscall web_test() {
+		HINTERNET http_open_handle = WinHttpOpen(L"Photon", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+		this->http_open_handle = http_open_handle;
+		if (!http_open_handle) {
+connection_error:
+			printf("Connection error: %d", GetLastError());
+			return;
+		}
+		HINTERNET http_connect_handle = WinHttpConnect(this->http_open_handle, this->server_name.get_pointer(), this->port, 0);
+		this->http_connect_handle = http_connect_handle;
+		if (!http_open_handle) goto connection_error;
+		HINTERNET http_request_handle = WinHttpOpenRequest(this->http_connect_handle, L"GET", this->__string_F0.get_pointer(), NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, this->use_https ? WINHTTP_FLAG_SECURE : 0);
+		this->http_request_handle = http_request_handle;
+		if (!http_request_handle) goto connection_error;
+		if (!WinHttpSetOption(http_request_handle, WINHTTP_OPTION_UPGRADE_TO_WEB_SOCKET, NULL, 0)) goto connection_error;
+
+
+		if (!WinHttpSendRequest(
+				this->http_request_handle,
+				this->__something_that_generates_the_websocket_header_and_ill_pretend_its_a_string->get_pointer(),
+				0,
+				WINHTTP_NO_REQUEST_DATA,
+				0,
+				0,
+				NULL
+		)) goto connection_error;
+		if (!WinHttpReceiveResponse(this->http_request_handle, NULL)) goto connection_error;
+		HINTERNET web_socket_handle = WinHttpWebSocketCompleteUpgrade(this->http_request_handle, NULL);
+		if (!web_socket_handle) goto connection_error;
+		printf("Succesfully upgraded to websocket protocol"); // Nice typo ExitGames
+		this->__byte_A0 = 1;
+		this->__dword_8 = 5;
+		PhotonAsync::create(&PhotonStruct::__sub_EFFE0, this);
+
+	}
+};
+*/
+
+
 
 #if IS_X64
 
