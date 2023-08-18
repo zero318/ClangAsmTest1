@@ -82,6 +82,7 @@ static inline constexpr size_t game_version = GAME_VERSION;
 #endif
 
 enum ZunResult : int32_t {
+    ZUN_SUCCESS2 = 1,
     ZUN_SUCCESS = 0,
     ZUN_ERROR = -1,
     ZUN_ERROR2 = -2
@@ -104,6 +105,155 @@ enum ZunResult : int32_t {
 #ifndef SAFE_RELEASE
 #define SAFE_RELEASE(p)      { if (p) { (p)->Release(); (p)=NULL; } }
 #endif
+
+// size: 0x4
+union PixelA8R8G8B8 {
+    uint32_t raw; // 0x0
+    struct {
+        uint8_t b; // 0x0
+        uint8_t g; // 0x1
+        uint8_t r; // 0x2
+        uint8_t a; // 0x3
+        // 0x4
+    };
+
+    static inline constexpr D3DFORMAT format = D3DFMT_A8R8G8B8;
+    static inline constexpr bool has_a         = true,  has_r         = true,  has_g         = true,  has_b         = true;
+    static inline constexpr bool a_is_bitfield = false, r_is_bitfield = false, g_is_bitfield = false, b_is_bitfield = false;
+    static inline constexpr uint8_t a_bits = 8, r_bits = 8, g_bits = 8, b_bits = 8;
+    static inline constexpr uint32_t a_mask = 0xFF000000, r_mask = 0x00FF0000, g_mask = 0x0000FF00, b_mask = 0x000000FF;
+    static inline constexpr uint8_t a_mask_shifted = 0xFF, r_mask_shifted = 0xFF, g_mask_shifted = 0xFF, b_mask_shifted = 0xFF;
+    static inline constexpr uint8_t a_shift = 24, r_shift = 16, g_shift = 8, b_shift = 0;
+};
+
+// size: 0x2
+union PixelA1R5G5B5 {
+    uint16_t raw; // 0x0
+    struct {
+        uint16_t b : 5;
+        uint16_t g : 5;
+        uint16_t r : 5;
+        uint16_t a : 1;
+    };
+
+    static inline constexpr D3DFORMAT format = D3DFMT_A1R5G5B5;
+    static inline constexpr bool has_a         = true, has_r         = true, has_g         = true, has_b         = true;
+    static inline constexpr bool a_is_bitfield = true, r_is_bitfield = true, g_is_bitfield = true, b_is_bitfield = true;
+    static inline constexpr uint8_t a_bits = 1, r_bits = 5, g_bits = 5, b_bits = 5;
+    static inline constexpr uint16_t a_mask = 0x8000, r_mask = 0x7C00, g_mask = 0x03E0, b_mask = 0x001F;
+    static inline constexpr uint8_t a_mask_shifted = 0x1, r_mask_shifted = 0x1F, g_mask_shifted = 0x1F, b_mask_shifted = 0x1F;
+    static inline constexpr uint8_t a_shift = 11, r_shift = 10, g_shift = 5, b_shift = 0;
+};
+
+// size: 0x2
+union PixelR5G6B5 {
+    uint16_t raw; // 0x0
+    struct {
+        uint16_t b : 5;
+        uint16_t g : 6;
+        uint16_t r : 5;
+    };
+
+    static inline constexpr D3DFORMAT format = D3DFMT_R5G6B5;
+    static inline constexpr bool has_a         = false, has_r         = true, has_g         = true, has_b         = true;
+    static inline constexpr bool a_is_bitfield = false, r_is_bitfield = true, g_is_bitfield = true, b_is_bitfield = true;
+    static inline constexpr uint8_t a_bits = 0, r_bits = 5, g_bits = 6, b_bits = 5;
+    static inline constexpr uint16_t a_mask = 0, r_mask = 0xF800, g_mask = 0x07E0, b_mask = 0x001F;
+    static inline constexpr uint8_t a_mask_shifted = 0, r_mask_shifted = 0x1F, g_mask_shifted = 0x3F, b_mask_shifted = 0x1F;
+    static inline constexpr uint8_t a_shift = 0, r_shift = 11, g_shift = 5, b_shift = 0;
+};
+
+// size: 0x3
+union PixelR8G8B8 {
+    struct {
+        uint8_t raw[3];
+    };
+    struct {
+        uint8_t b; // 0x0
+        uint8_t g; // 0x1
+        uint8_t r; // 0x2
+    };
+
+    static inline constexpr D3DFORMAT format = D3DFMT_R8G8B8;
+    static inline constexpr bool has_a         = false, has_r         = true, has_g         = true, has_b         = true;
+    static inline constexpr bool a_is_bitfield = false, r_is_bitfield = true, g_is_bitfield = true, b_is_bitfield = true;
+    static inline constexpr uint8_t a_bits = 0, r_bits = 8, g_bits = 8, b_bits = 8;
+    static inline constexpr uint32_t a_mask = 0, r_mask = 0xFF0000, g_mask = 0x00FF00, b_mask = 0x0000FF;
+    static inline constexpr uint8_t a_mask_shifted = 0, r_mask_shifted = 0xFF, g_mask_shifted = 0xFF, b_mask_shifted = 0xFF;
+    static inline constexpr uint8_t a_shift = 0, r_shift = 16, g_shift = 8, b_shift = 0;
+};
+
+// size: 0x2
+union PixelA4R4G4B4 {
+    uint16_t raw; // 0x0
+    struct {
+        uint8_t b : 4;
+        uint8_t g : 4;
+        uint8_t r : 4;
+        uint8_t a : 4;
+    };
+
+    static inline constexpr D3DFORMAT format = D3DFMT_A4R4G4B4;
+    static inline constexpr bool has_a         = true, has_r         = true, has_g         = true, has_b         = true;
+    static inline constexpr bool a_is_bitfield = true, r_is_bitfield = true, g_is_bitfield = true, b_is_bitfield = true;
+    static inline constexpr uint8_t a_bits = 4, r_bits = 4, g_bits = 4, b_bits = 4;
+    static inline constexpr uint16_t a_mask = 0xF000, r_mask = 0x0F00, g_mask = 0x00F0, b_mask = 0x000F;
+    static inline constexpr uint8_t a_mask_shifted = 0xF, r_mask_shifted = 0xF, g_mask_shifted = 0xF, b_mask_shifted = 0xF;
+    static inline constexpr uint8_t a_shift = 12, r_shift = 8, g_shift = 4, b_shift = 0;
+};
+
+// size: 0x2
+union PixelA8R3G3B2 {
+    uint16_t raw; // 0x0
+    struct {
+        uint8_t b : 2;
+        uint8_t g : 3;
+        uint8_t r : 3;
+        uint8_t a;
+    };
+
+    static inline constexpr D3DFORMAT format = D3DFMT_A8R3G3B2;
+    static inline constexpr bool has_a         = true,  has_r         = true, has_g         = true, has_b         = true;
+    static inline constexpr bool a_is_bitfield = false, r_is_bitfield = true, g_is_bitfield = true, b_is_bitfield = true;
+    static inline constexpr uint8_t a_bits = 8, r_bits = 3, g_bits = 3, b_bits = 2;
+    static inline constexpr uint16_t a_mask = 0xFF00, r_mask = 0x00E0, g_mask = 0x001C, b_mask = 0x0003;
+    static inline constexpr uint8_t a_mask_shifted = 0xFF, r_mask_shifted = 0x7, g_mask_shifted = 0x7, b_mask_shifted = 0x3;
+    static inline constexpr uint8_t a_shift = 8, r_shift = 5, g_shift = 2, b_shift = 0;
+};
+
+// size: 0x1
+union PixelA8 {
+    uint8_t raw; // 0x0
+    struct {
+        uint8_t a;
+    };
+
+    static inline constexpr D3DFORMAT format = D3DFMT_A8;
+    static inline constexpr bool has_a         = true,  has_r         = false, has_g         = false, has_b         = false;
+    static inline constexpr bool a_is_bitfield = false, r_is_bitfield = false, g_is_bitfield = false, b_is_bitfield = false;
+    static inline constexpr uint8_t a_bits = 8, r_bits = 0, g_bits = 0, b_bits = 0;
+    static inline constexpr uint8_t a_mask = 0xFF, r_mask = 0, g_mask = 0, b_mask = 0;
+    static inline constexpr uint8_t a_mask_shifted = 0xFF, r_mask_shifted = 0, g_mask_shifted = 0, b_mask_shifted = 0;
+    static inline constexpr uint8_t a_shift = 0, r_shift = 0, g_shift = 0, b_shift = 0;
+};
+
+// size: 0x1
+union PixelR3G3B2 {
+    uint8_t raw; // 0x0
+    struct {
+        uint8_t b : 2;
+        uint8_t g : 3;
+        uint8_t r : 3;
+    };
+
+    static inline constexpr D3DFORMAT format = D3DFMT_R3G3B2;
+    static inline constexpr bool has_a         = false, has_r         = true, has_g         = true, has_b         = true;
+    static inline constexpr bool a_is_bitfield = false, r_is_bitfield = true, g_is_bitfield = true, b_is_bitfield = true;
+    static inline constexpr uint8_t a_bits = 0, r_bits = 3, g_bits = 3, b_bits = 2;
+    static inline constexpr uint8_t a_mask = 0, r_mask = 0xE0, g_mask = 0x1C, b_mask = 0x03;
+    static inline constexpr uint8_t a_mask_shifted = 0, r_mask_shifted = 0x7, g_mask_shifted = 0x7, b_mask_shifted = 0x3;
+    static inline constexpr uint8_t a_shift = 0, r_shift = 5, g_shift = 2, b_shift = 0;
+};
 
 // Packs the bytes [b], [g], [r], and [a] together as a D3DCOLOR integer
 static constexpr inline uint32_t PackD3DCOLOR(uint8_t a, uint8_t r, uint8_t g, uint8_t b) {

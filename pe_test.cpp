@@ -88,38 +88,38 @@ struct SectionEntry {
 	uint32_t offset_in_file; // 0x24
 	union {
 		struct SECTION_FLAGS {
-			uint32_t type_dsect : 1; // 0x00000001
+			uint32_t type_dsect : 1;					// 0x00000001
 			//uint32_t tls_scaled : 1;
-			uint32_t type_noload : 1;  // 0x00000002
-			uint32_t type_group : 1; // 0x00000004
-			uint32_t link_no_padding : 1; // 0x00000008
-			uint32_t type_copy : 1; // 0x00000010
-			uint32_t contains_code : 1; // 0x00000020
-			uint32_t contains_initialized_data : 1; // 0x00000040
-			uint32_t contains_uninitialized_data : 1; // 0x00000080
-			uint32_t link_other : 1; // 0x00000100
-			uint32_t link_info : 1; // 0x00000200
-			uint32_t type_over : 1; // 0x00000400 Possibly overlays like DOS crap?
-			uint32_t link_remove : 1; // 0x00000800
-			uint32_t link_comdat : 1; // 0x00001000
-			uint32_t __unknown_flag_A : 1; // 0x00002000 LOOK THIS UP
+			uint32_t type_noload : 1;					// 0x00000002
+			uint32_t type_group : 1;					// 0x00000004 Apparently related to 16-bit stuff?
+			uint32_t link_no_padding : 1;				// 0x00000008
+			uint32_t type_copy : 1;						// 0x00000010 Meaning unknown
+			uint32_t contains_code : 1;					// 0x00000020
+			uint32_t contains_initialized_data : 1;		// 0x00000040
+			uint32_t contains_uninitialized_data : 1;	// 0x00000080
+			uint32_t link_other : 1;					// 0x00000100 Meaning unknown
+			uint32_t link_info : 1;						// 0x00000200
+			uint32_t type_over : 1;						// 0x00000400 Related to DOS-like overlays
+			uint32_t link_remove : 1;					// 0x00000800
+			uint32_t link_comdat : 1;					// 0x00001000
+			uint32_t __unknown_flag_A : 1;				// 0x00002000 LOOK THIS UP
 			// uint32_t mem_protected : 1;
-			uint32_t no_defer_spec_exec : 1; // 0x00004000
-			uint32_t mem_fardata : 1; // 0x00008000
-			uint32_t mem_sysheap : 1; // 0x00010000
-			uint32_t mem_purgeable : 1; // 0x00020000
+			uint32_t no_defer_spec_exec : 1;			// 0x00004000
+			uint32_t mem_fardata : 1;					// 0x00008000
+			uint32_t mem_sysheap : 1;					// 0x00010000
+			uint32_t mem_purgeable : 1;					// 0x00020000
 			//uint32_t mem_16_bit : 1;
-			uint32_t mem_locked : 1; // 0x00040000
-			uint32_t mem_preload : 1; // 0x00080000
-			uint32_t alignment : 4; // 0x00F00000
-			uint32_t link_extended_relocations : 1; // 0x01000000
-			uint32_t mem_discardable : 1; // 0x02000000
-			uint32_t mem_not_cached : 1; // 0x04000000
-			uint32_t mem_not_paged : 1; // 0x08000000
-			uint32_t mem_shared : 1; // 0x10000000
-			uint32_t execute : 1; // 0x20000000
-			uint32_t read : 1; // 0x40000000
-			uint32_t write : 1; // 0x80000000
+			uint32_t mem_locked : 1;					// 0x00040000
+			uint32_t mem_preload : 1;					// 0x00080000
+			uint32_t alignment : 4;						// 0x00F00000
+			uint32_t link_extended_relocations : 1;		// 0x01000000
+			uint32_t mem_discardable : 1;				// 0x02000000
+			uint32_t mem_not_cached : 1;				// 0x04000000
+			uint32_t mem_not_paged : 1;					// 0x08000000
+			uint32_t mem_shared : 1;					// 0x10000000
+			uint32_t execute : 1;						// 0x20000000
+			uint32_t read : 1;							// 0x40000000
+			uint32_t write : 1;							// 0x80000000
 		} flags;
 		UByteIntType<sizeof(SECTION_FLAGS)> raw_flags; // 0x28
 	};
@@ -157,45 +157,45 @@ struct ExecutableFile {
 	union {
 		uint16_t file_header_flags; // 0x4
 		struct {
-			uint16_t relocs_stripped : 1; // 0x0001
-			uint16_t executable_image : 1; // 0x0002
-			uint16_t coff_line_numbers_stripped : 1; // 0x0004
-			uint16_t coff_local_symbols_stripped : 1; // 0x0008
-			uint16_t aggressively_trim_ws : 1; // 0x0010
-			uint16_t large_address_aware : 1; // 0x0020
-			uint16_t __unknown_flag_A : 1; // 0x0040 LOOK THIS UP
-			uint16_t little_endian : 1; // 0x0080
-			uint16_t machine_is_32_bit : 1; // 0x0100 What does this do?
-			uint16_t debug_info_stripped : 1; // 0x0200
-			uint16_t removable_run_from_swap : 1; // 0x0400
-			uint16_t network_run_from_swap : 1; // 0x0800
-			uint16_t system_file : 1; // 0x1000
-			uint16_t dll_file : 1; // 0x2000
-			uint16_t prefer_single_core : 1; // 0x4000
-			uint16_t big_endian : 1; // 0x8000
+			uint16_t relocs_stripped : 1;				// 0x0001
+			uint16_t executable_image : 1;				// 0x0002
+			uint16_t coff_line_numbers_stripped : 1;	// 0x0004
+			uint16_t coff_local_symbols_stripped : 1;	// 0x0008
+			uint16_t aggressively_trim_ws : 1;			// 0x0010
+			uint16_t large_address_aware : 1;			// 0x0020
+			uint16_t machine_is_16_bit : 1;				// 0x0040 LOOK THIS UP
+			uint16_t little_endian : 1;					// 0x0080
+			uint16_t machine_is_32_bit : 1;				// 0x0100 What does this do?
+			uint16_t debug_info_stripped : 1;			// 0x0200
+			uint16_t removable_run_from_swap : 1;		// 0x0400
+			uint16_t network_run_from_swap : 1;			// 0x0800
+			uint16_t system_file : 1;					// 0x1000
+			uint16_t dll_file : 1;						// 0x2000
+			uint16_t prefer_single_core : 1;			// 0x4000
+			uint16_t big_endian : 1;					// 0x8000
 		};
 	};
 	union {
 		uint16_t optional_header_flags; // 0x6
 		struct {
 			// Apparently these are set by the borland linker?
-			uint16_t library_process_init : 1; // 0x0001
-			uint16_t library_process_term : 1; // 0x0002
-			uint16_t library_thread_init : 1; // 0x0004
-			uint16_t library_thread_term : 1; // 0x0008
+			uint16_t library_process_init : 1;			// 0x0001
+			uint16_t library_process_term : 1;			// 0x0002
+			uint16_t library_thread_init : 1;			// 0x0004
+			uint16_t library_thread_term : 1;			// 0x0008
 			// Normal flags
-			uint16_t __unknown_flag_B : 1; // 0x0010
-			uint16_t high_entropy_address_space : 1; // 0x0020
-			uint16_t code_integrity : 1; // 0x0040
-			uint16_t relocatable : 1; // 0x0080
-			uint16_t nx_compatible : 1; // 0x0100
-			uint16_t no_isolation : 1; // 0x0200
-			uint16_t no_seh : 1; // 0x0400
-			uint16_t no_bind : 1; // 0x0800
-			uint16_t require_appcontainer : 1; // 0x1000
-			uint16_t wdm_driver : 1; // 0x2000
-			uint16_t control_flow_guard : 1; // 0x4000
-			uint16_t terminal_server_aware : 1; // 0x8000
+			uint16_t __unknown_flag_B : 1;				// 0x0010
+			uint16_t high_entropy_address_space : 1;	// 0x0020
+			uint16_t code_integrity : 1;				// 0x0040
+			uint16_t relocatable : 1;					// 0x0080
+			uint16_t nx_compatible : 1;					// 0x0100
+			uint16_t no_isolation : 1;					// 0x0200
+			uint16_t no_seh : 1;						// 0x0400
+			uint16_t no_bind : 1;						// 0x0800
+			uint16_t require_appcontainer : 1;			// 0x1000
+			uint16_t wdm_driver : 1;					// 0x2000
+			uint16_t control_flow_guard : 1;			// 0x4000
+			uint16_t terminal_server_aware : 1;			// 0x8000
 		};
 	};
 	uint16_t section_count; // 0x8
@@ -441,6 +441,7 @@ gnu_noinline void open_exe(const char* path) {
 						GOTO_ERROR(UNSUPPORTED_NT_SIGNATURE);
 					case IMAGE_NT_SIGNATURE: // PE
 						if (full_nt_header_signature != IMAGE_NT_SIGNATURE) { // ...then recheck the value actually has two 0 bytes when it's inevitably PE
+							// PEED is apparently also a thing? WTF is that
 					default:
 							GOTO_ERROR(UNRECOGNIZED_NT_SIGNATURE);
 						}

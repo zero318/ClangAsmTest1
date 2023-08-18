@@ -35,22 +35,22 @@ extern "C" {
     extern long double vectorcall CItan(long double value) asm("__CItan");
     extern long double vectorcall CItanh(long double value) asm("__CItanh");
 
-    extern double cdecl acos(double value) asm("_acos");
-    extern double cdecl asin(double value) asm("_asin");
-    extern double cdecl atan(double value) asm("_atan");
-    extern double cdecl atan2(double Y, double X) asm("_atan2");
-    extern double cdecl cos(double value) asm("_cos");
-    extern double cdecl cosh(double value) asm("_cosh");
-    extern double cdecl exp(double value) asm("_exp");
-    extern double cdecl fmod(double X, double Y) asm("_fmod");
-    extern double cdecl log(double value) asm("_log");
-    extern double cdecl log10(double value) asm("_log10");
-    extern double cdecl pow(double base, double exponent) asm("_pow");
-    extern double cdecl sin(double value) asm("_sin");
-    extern double cdecl sinh(double value) asm("_sinh");
-    extern double cdecl sqrt(double value) asm("_sqrt");
-    extern double cdecl tan(double value) asm("_tan");
-    extern double cdecl tanh(double value) asm("_tanh");
+    extern double cdecl acos(double value) asm64("_acos");
+    extern double cdecl asin(double value) asm64("_asin");
+    extern double cdecl atan(double value) asm64("_atan");
+    extern double cdecl atan2(double Y, double X) asm64("_atan2");
+    extern double cdecl cos(double value) asm64("_cos");
+    extern double cdecl cosh(double value) asm64("_cosh");
+    extern double cdecl exp(double value) asm64("_exp");
+    extern double cdecl fmod(double X, double Y) asm64("_fmod");
+    extern double cdecl log(double value) asm64("_log");
+    extern double cdecl log10(double value) asm64("_log10");
+    extern double cdecl pow(double base, double exponent) asm64("_pow");
+    extern double cdecl sin(double value) asm64("_sin");
+    extern double cdecl sinh(double value) asm64("_sinh");
+    extern double cdecl sqrt(double value) asm64("_sqrt");
+    extern double cdecl tan(double value) asm64("_tan");
+    extern double cdecl tanh(double value) asm64("_tanh");
 
     extern double vectorcall libm_sse2_acos(double value) asm("___libm_sse2_acos");
     extern float vectorcall libm_sse2_acosf(float value) asm("___libm_sse2_acosf");
@@ -75,8 +75,8 @@ extern "C" {
     extern double vectorcall libm_sse2_tan(double value) asm("___libm_sse2_tan");
     extern float vectorcall libm_sse2_tanf(float value) asm("___libm_sse2_tanf");
 
-    extern double cdecl fabs(double value) asm("_fabs");
-    extern double cdecl floor(double value) asm("_floor");
+    extern double cdecl fabs(double value) asm64("_fabs");
+    extern double cdecl floor(double value) asm64("_floor");
 }
 
 static forceinline long double acosl(long double value) {
@@ -628,12 +628,12 @@ namespace ZUN::impl {
 #define reduced_angle_diff_linkage      dllexport
 #define reduced_angle_diff_convention   stdcall
 #else
-#define reduce_angle_linkage        static
-#define reduce_angle_convention     
-#define reduce_angle_add_linkage    static
-#define reduce_angle_add_convention 
-#define angle_diff_linkage          static
-#define angle_diff_convention       
+#define reduce_angle_linkage            static
+#define reduce_angle_convention         
+#define reduce_angle_add_linkage        static
+#define reduce_angle_add_convention     
+#define reduced_angle_diff_linkage      static
+#define reduced_angle_diff_convention       
 #endif
 
 static inline constexpr int32_t reduce_angle_loop_count = game_version < StB ? 16 : 32;

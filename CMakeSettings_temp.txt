@@ -1,4 +1,4 @@
-﻿{
+{
   "configurations": [
     {
       "name": "x64-Clang-Debug",
@@ -42,24 +42,9 @@
           "type": "FILEPATH"
         },
         {
-          "name": "CMAKE_LINKER",
-          "value": "F:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64/link.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_ASM-ATT_COMPILER",
-          "value": "F:/MyCodeLibs/gcc-11.1.0-no-debug/bin/as.exe",
-          "type": "FILEPATH"
-        },
-        {
           "name": "CLANG_TYPE",
           "value": "CLANG-CL",
           "type": "STRING"
-        },
-        {
-          "name": "STATIC_CSOUND",
-          "value": "false",
-          "type": "BOOL"
         },
         {
           "name": "IS_X64",
@@ -115,24 +100,9 @@
           "type": "FILEPATH"
         },
         {
-          "name": "CMAKE_LINKER",
-          "value": "F:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64/link.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_ASM-ATT_COMPILER",
-          "value": "F:/MyCodeLibs/gcc-11.1.0-no-debug/bin/as.exe",
-          "type": "FILEPATH"
-        },
-        {
           "name": "CLANG_TYPE",
           "value": "CLANG-CL",
           "type": "STRING"
-        },
-        {
-          "name": "STATIC_CSOUND",
-          "value": "false",
-          "type": "BOOL"
         },
         {
           "name": "IS_X64",
@@ -198,112 +168,9 @@
           "type": "STRING"
         },
         {
-          "name": "CMAKE_LINKER",
-          "value": "F:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64/link.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_ASM-ATT_COMPILER",
-          "value": "F:/MyCodeLibs/gcc-11.1.0-no-debug/bin/as.exe",
-          "type": "FILEPATH"
-        },
-        {
           "name": "CLANG_TYPE",
           "value": "CLANG-CL",
           "type": "STRING"
-        },
-        {
-          "name": "STATIC_CSOUND",
-          "value": "false",
-          "type": "BOOL"
-        },
-        {
-          "name": "IS_X64",
-          "value": "true",
-          "type": "BOOL"
-        },
-        {
-          "name": "SIZE_OPTIMIZE",
-          "value": "false",
-          "type": "BOOL"
-        },
-        {
-          "name": "CMAKE_RC_COMPILER",
-          "value": "C:/Program Files (x86)/Windows Kits/10/bin/10.0.20262.0/x64/rc.exe",
-          "type": "FILEPATH"
-        }
-      ]
-    },
-    {
-      "name": "x64-Clang-Release-Debug3",
-      "generator": "Ninja",
-      "configurationType": "RelWithDebInfo",
-      "buildRoot": "${projectDir}\\out\\build\\${name}",
-      "installRoot": "${projectDir}\\out\\install\\${name}",
-      "cmakeCommandArgs": "",
-      "buildCommandArgs": "",
-      "ctestCommandArgs": "",
-      "inheritEnvironments": [ "clang_cl_x64_x64" ],
-      "variables": [
-        {
-          "name": "CMAKE_C_COMPILER",
-          "value": "F:/Program Files/LLVM/bin/clang-cl.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_C_COMPILER_AR",
-          "value": "F:/Program Files/LLVM/bin/llvm-ar.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_C_COMPILER_RANLIB",
-          "value": "F:/Program Files/LLVM/bin/llvm-ranlib.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_C_FLAGS_RELWITHDEBINFO",
-          "value": "/MD /Zi /O2 /Ob2 /DNDEBUG",
-          "type": "STRING"
-        },
-        {
-          "name": "CMAKE_CXX_COMPILER",
-          "value": "F:/Program Files/LLVM/bin/clang-cl.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_CXX_COMPILER_AR",
-          "value": "F:/Program Files/LLVM/bin/llvm-ar.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_CXX_COMPILER_RANLIB",
-          "value": "F:/Program Files/LLVM/bin/llvm-ranlib.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_CXX_FLAGS_RELWITHDEBINFO",
-          "value": "/MD /Zi /O2 /Ob2 /DNDEBUG",
-          "type": "STRING"
-        },
-        {
-          "name": "CMAKE_LINKER",
-          "value": "F:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64/link.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_ASM-ATT_COMPILER",
-          "value": "F:/MyCodeLibs/gcc-11.1.0-no-debug/bin/as.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CLANG_TYPE",
-          "value": "CLANG-CL",
-          "type": "STRING"
-        },
-        {
-          "name": "STATIC_CSOUND",
-          "value": "false",
-          "type": "BOOL"
         },
         {
           "name": "IS_X64",
@@ -369,24 +236,9 @@
           "type": "STRING"
         },
         {
-          "name": "CMAKE_LINKER",
-          "value": "F:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64/link.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_ASM-ATT_COMPILER",
-          "value": "F:/MyCodeLibs/gcc-11.1.0-no-debug/bin/as.exe",
-          "type": "FILEPATH"
-        },
-        {
           "name": "CLANG_TYPE",
           "value": "CLANG-CL",
           "type": "STRING"
-        },
-        {
-          "name": "STATIC_CSOUND",
-          "value": "false",
-          "type": "BOOL"
         },
         {
           "name": "IS_X64",
@@ -399,6 +251,65 @@
           "type": "BOOL"
         }
       ]
+    },
+    {
+      "name": "x86-Clang-Debug",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "buildRoot": "${projectDir}\\out\\build\\${name}",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "clang_cl_x86" ],
+      "variables": [
+        {
+          "name": "CMAKE_C_COMPILER",
+          "value": "F:/Program Files/LLVM/bin/clang-cl.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_COMPILER_AR",
+          "value": "F:/Program Files/LLVM/bin/llvm-ar.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_C_COMPILER_RANLIB",
+          "value": "F:/Program Files/LLVM/bin/llvm-ranlib.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER",
+          "value": "F:/Program Files/LLVM/bin/clang-cl.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER_AR",
+          "value": "F:/Program Files/LLVM/bin/llvm-ar.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER_RANLIB",
+          "value": "F:/Program Files/LLVM/bin/llvm-ranlib.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CLANG_TYPE",
+          "value": "CLANG-CL",
+          "type": "STRING"
+        },
+        {
+          "name": "IS_X64",
+          "value": "false",
+          "type": "BOOL"
+        },
+        {
+          "name": "SIZE_OPTIMIZE",
+          "value": "false",
+          "type": "BOOL"
+        }
+      ],
+      "intelliSenseMode": "windows-clang-x86"
     },
     {
       "name": "x86-Clang-Release",
@@ -442,24 +353,9 @@
           "type": "FILEPATH"
         },
         {
-          "name": "CMAKE_LINKER",
-          "value": "F:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x86/link.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_ASM-ATT_COMPILER",
-          "value": "F:/MyCodeLibs/binutils-2.32-1-mingw32-bin.tar/binutils-2.32-1-mingw32-bin/bin/as.exe",
-          "type": "FILEPATH"
-        },
-        {
           "name": "CLANG_TYPE",
           "value": "CLANG-CL",
           "type": "STRING"
-        },
-        {
-          "name": "STATIC_CSOUND",
-          "value": "false",
-          "type": "BOOL"
         },
         {
           "name": "IS_X64",
@@ -471,7 +367,8 @@
           "value": "false",
           "type": "BOOL"
         }
-      ]
+      ],
+      "intelliSenseMode": "windows-clang-x86"
     },
     {
       "name": "x86-Clang-Release-Debug",
@@ -525,24 +422,9 @@
           "type": "STRING"
         },
         {
-          "name": "CMAKE_LINKER",
-          "value": "F:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x86/link.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_ASM-ATT_COMPILER",
-          "value": "F:/MyCodeLibs/binutils-2.32-1-mingw32-bin.tar/binutils-2.32-1-mingw32-bin/bin/as.exe",
-          "type": "FILEPATH"
-        },
-        {
           "name": "CLANG_TYPE",
           "value": "CLANG-CL",
           "type": "STRING"
-        },
-        {
-          "name": "STATIC_CSOUND",
-          "value": "false",
-          "type": "BOOL"
         },
         {
           "name": "IS_X64",
@@ -558,7 +440,7 @@
       "intelliSenseMode": "windows-clang-x86"
     },
     {
-      "name": "x86-Clang-Release-Debug-Test",
+      "name": "x86-Clang-Release-Debug-SmallSize",
       "generator": "Ninja",
       "configurationType": "RelWithDebInfo",
       "buildRoot": "${projectDir}\\out\\build\\${name}",
@@ -570,17 +452,17 @@
       "variables": [
         {
           "name": "CMAKE_C_COMPILER",
-          "value": "F:/Users/zero318/Source/Repos/llvm-project/build/RelWithDebInfo/bin/clang-cl.exe",
+          "value": "F:/Program Files/LLVM/bin/clang-cl.exe",
           "type": "FILEPATH"
         },
         {
           "name": "CMAKE_C_COMPILER_AR",
-          "value": "F:/Users/zero318/Source/Repos/llvm-project/build/RelWithDebInfo/bin/llvm-ar.exe",
+          "value": "F:/Program Files/LLVM/bin/llvm-ar.exe",
           "type": "FILEPATH"
         },
         {
           "name": "CMAKE_C_COMPILER_RANLIB",
-          "value": "F:/Users/zero318/Source/Repos/llvm-project/build/RelWithDebInfo/bin/llvm-ranlib.exe",
+          "value": "F:/Program Files/LLVM/bin/llvm-ranlib.exe",
           "type": "FILEPATH"
         },
         {
@@ -590,17 +472,17 @@
         },
         {
           "name": "CMAKE_CXX_COMPILER",
-          "value": "F:/Users/zero318/Source/Repos/llvm-project/build/RelWithDebInfo/bin/clang-cl.exe",
+          "value": "F:/Program Files/LLVM/bin/clang-cl.exe",
           "type": "FILEPATH"
         },
         {
           "name": "CMAKE_CXX_COMPILER_AR",
-          "value": "F:/Users/zero318/Source/Repos/llvm-project/build/RelWithDebInfo/bin/llvm-ar.exe",
+          "value": "F:/Program Files/LLVM/bin/llvm-ar.exe",
           "type": "FILEPATH"
         },
         {
           "name": "CMAKE_CXX_COMPILER_RANLIB",
-          "value": "F:/Users/zero318/Source/Repos/llvm-project/build/RelWithDebInfo/bin/llvm-ranlib.exe",
+          "value": "F:/Program Files/LLVM/bin/llvm-ranlib.exe",
           "type": "FILEPATH"
         },
         {
@@ -609,182 +491,22 @@
           "type": "STRING"
         },
         {
-          "name": "CMAKE_ASM-ATT_COMPILER",
-          "value": "F:/MyCodeLibs/binutils-2.32-1-mingw32-bin.tar/binutils-2.32-1-mingw32-bin/bin/as.exe",
-          "type": "FILEPATH"
-        },
-        {
           "name": "CLANG_TYPE",
           "value": "CLANG-CL",
           "type": "STRING"
         },
         {
-          "name": "STATIC_CSOUND",
-          "value": "false",
-          "type": "BOOL"
-        },
-        {
           "name": "IS_X64",
-          "value": "false",
-          "type": "BOOL"
-        },
-        {
-          "name": "SIZE_OPTIMIZE",
-          "value": "false",
-          "type": "BOOL"
-        }
-      ]
-    },
-    {
-      "name": "x86-Clang-Debug",
-      "generator": "Ninja",
-      "configurationType": "Debug",
-      "buildRoot": "${projectDir}\\out\\build\\${name}",
-      "installRoot": "${projectDir}\\out\\install\\${name}",
-      "cmakeCommandArgs": "",
-      "buildCommandArgs": "",
-      "ctestCommandArgs": "",
-      "inheritEnvironments": [ "clang_cl_x86" ],
-      "variables": [
-        {
-          "name": "CMAKE_C_COMPILER",
-          "value": "F:/Program Files/LLVM/bin/clang-cl.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_C_COMPILER_AR",
-          "value": "F:/Program Files/LLVM/bin/llvm-ar.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_C_COMPILER_RANLIB",
-          "value": "F:/Program Files/LLVM/bin/llvm-ranlib.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_CXX_COMPILER",
-          "value": "F:/Program Files/LLVM/bin/clang-cl.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_CXX_COMPILER_AR",
-          "value": "F:/Program Files/LLVM/bin/llvm-ar.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_CXX_COMPILER_RANLIB",
-          "value": "F:/Program Files/LLVM/bin/llvm-ranlib.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_LINKER",
-          "value": "F:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x86/link.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_ASM-ATT_COMPILER",
-          "value": "F:/MyCodeLibs/binutils-2.32-1-mingw32-bin.tar/binutils-2.32-1-mingw32-bin/bin/as.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CLANG_TYPE",
-          "value": "CLANG-CL",
-          "type": "STRING"
-        },
-        {
-          "name": "STATIC_CSOUND",
-          "value": "false",
-          "type": "BOOL"
-        },
-        {
-          "name": "IS_X64",
-          "value": "false",
-          "type": "BOOL"
-        },
-        {
-          "name": "SIZE_OPTIMIZE",
-          "value": "false",
-          "type": "BOOL"
-        }
-      ]
-    },
-    {
-      "name": "x86-Clang-Release-Debug-NoCL",
-      "generator": "Ninja",
-      "configurationType": "RelWithDebInfo",
-      "buildRoot": "${projectDir}\\out\\build\\${name}",
-      "installRoot": "${projectDir}\\out\\install\\${name}",
-      "cmakeCommandArgs": "",
-      "buildCommandArgs": "",
-      "ctestCommandArgs": "",
-      "inheritEnvironments": [ "linux_clang_x86" ],
-      "variables": [
-        {
-          "name": "CMAKE_C_COMPILER",
-          "value": "F:/Program Files/LLVM/bin/clang.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_C_COMPILER_AR",
-          "value": "F:/Program Files/LLVM/bin/llvm-ar.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_C_COMPILER_RANLIB",
-          "value": "F:/Program Files/LLVM/bin/llvm-ranlib.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_C_FLAGS",
-          "value": "-m32",
-          "type": "STRING"
-        },
-        {
-          "name": "CMAKE_CXX_COMPILER",
-          "value": "F:/Program Files/LLVM/bin/clang.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_CXX_COMPILER_AR",
-          "value": "F:/Program Files/LLVM/bin/llvm-ar.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_CXX_COMPILER_RANLIB",
-          "value": "F:/Program Files/LLVM/bin/llvm-ranlib.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CMAKE_CXX_FLAGS",
-          "value": "-m32",
-          "type": "STRING"
-        },
-        {
-          "name": "CMAKE_ASM-ATT_COMPILER",
-          "value": "F:/MyCodeLibs/binutils-2.32-1-mingw32-bin.tar/binutils-2.32-1-mingw32-bin/bin/as.exe",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CLANG_TYPE",
-          "value": "CLANG",
-          "type": "STRING"
-        },
-        {
-          "name": "STATIC_CSOUND",
           "value": "true",
           "type": "BOOL"
         },
         {
-          "name": "IS_X64",
-          "value": "false",
-          "type": "BOOL"
-        },
-        {
           "name": "SIZE_OPTIMIZE",
-          "value": "false",
+          "value": "true",
           "type": "BOOL"
         }
-      ]
+      ],
+      "intelliSenseMode": "windows-clang-x86"
     }
   ]
 }

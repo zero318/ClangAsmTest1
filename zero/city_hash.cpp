@@ -212,9 +212,9 @@ dllexport CuckooHashMap<std::string_view, void*> test = CuckooHashMap<std::strin
 //static inline constexpr bool vec_width = validate_impl<test.hash_vec_width, 4>();
 //static_assert(vec_width, "Incorrect vector size! Size of vector is not 4");
 
-dllexport void* yeqjrwkrvb() {
-	return test.get_outer("yeetus");
-}
+//dllexport void* yeqjrwkrvb() {
+	//return test.get_outer("yeetus");
+//}
 
 dllexport uint128_t cdecl uint128_cdecl_test(uint128_t value) {
 	return value + 1;

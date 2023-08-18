@@ -115,7 +115,7 @@ inline void matrix_set_identity(D3DMATRIX& matrix) {
     matrix.m[3][2] = 0.0f;
     matrix.m[3][3] = 1.0f;
 }
-
+/*
 // 0x4028F0
 dllexport float vectorcall reduce_angle(float angle) asm_symbol_rel(0x4028F0);
 dllexport float vectorcall reduce_angle(float angle) {
@@ -148,13 +148,13 @@ dllexport float vectorcall reduce_angle_add(float angle, float value) asm_symbol
 dllexport float vectorcall reduce_angle_add(float angle, float value) {
     return reduce_angle(angle + value);
 }
+*/
 
 // 0x404BC0
 dllexport float& vectorcall reduce_angle_add_write(float& angle_ref, float& out, float value) asm_symbol_rel(0x404BC0);
 dllexport float& vectorcall reduce_angle_add_write(float& angle_ref, float& out, float value) {
     return out = reduce_angle_add(angle_ref, value);
 }
-
 /*
 // 0x404D10
 dllexport float& vectorcall reduce_angle_add_assign_write(float& angle_ref, float value) asm_symbol_rel(0x404D10) {
@@ -855,7 +855,7 @@ namespace Pbg {
 };
 
 // size: 0x10(?)
-struct UnknownAInner {
+struct ArcFileInner {
     char* __string_0; // 0x0
     int __dword_4; // 0x4
     int32_t file_size; // 0x8
@@ -863,10 +863,10 @@ struct UnknownAInner {
     // 0x10
 
     // 0x46F1C0
-    UnknownAInner() : __string_0(NULL) {}
+    ArcFileInner() : __string_0(NULL) {}
 
     // 0x46F1A0
-    ~UnknownAInner() {
+    ~ArcFileInner() {
         SAFE_FREE(this->__string_0);
     }
 };
@@ -1112,15 +1112,15 @@ dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32
 }
 
 // size: 0x10
-struct UnknownA {
-    UnknownAInner* __pointer_0; // 0x0
+struct ArcFile {
+    ArcFileInner* __pointer_0; // 0x0
     int32_t __int_4; // 0x4
     char* __string_8; // 0x8
     Pbg::File* file; // 0xC
     // 0x10
 
     // 0x46EC50
-    ~UnknownA() {
+    ~ArcFile() {
         if (char* str = this->__string_8) {
             DebugLogger::__debug_log_stub_2("info : %s close arcfile\r\n", str);
             free(this->__string_8);
@@ -1142,7 +1142,7 @@ struct UnknownA {
         if (!this->file) {
             return NULL;
         }
-        UnknownAInner* ptrA = this->__pointer_0;
+        ArcFileInner* ptrA = this->__pointer_0;
         if (ptrA) {
             for (int32_t i = this->__int_4; i > 0; --i, ++ptrA) {
                 if (!stricmp(filename, ptrA->__string_0)) {
@@ -1201,7 +1201,7 @@ error_free:
 };
 extern "C" {
     // 0x5217C0
-    extern UnknownA UNKNOWN_A asm("_UNKNOWN_A");
+    extern ArcFile THDAT_ARCFILE asm("_THDAT_ARCFILE");
 }
 
 // size: 0x10
@@ -1221,51 +1221,51 @@ ValidateStructSize32(0x10, DatFileHeader);
 #pragma endregion
 
 // 0x46EE90
-dllexport gnu_noinline bool stdcall UnknownA::__sub_46EE90(int32_t) {
-    if (Pbg::File* pbg_file = UNKNOWN_A.file) {
+dllexport gnu_noinline bool stdcall ArcFile::__sub_46EE90(int32_t) {
+    if (Pbg::File* pbg_file = THDAT_ARCFILE.file) {
         if (pbg_file->open_file("th18.dat", "r")) {
             DatFileHeader dat_header;
-            if (UNKNOWN_A.file->read_file_to_buffer(&dat_header, sizeof(DatFileHeader))) {
+            if (THDAT_ARCFILE.file->read_file_to_buffer(&dat_header, sizeof(DatFileHeader))) {
                 __decrypt_buffer(&dat_header, sizeof(DatFileHeader), 0x1B, 0x37, 0x10, 0x10);
                 if (dat_header.magic.as_uint == PackUInt('T', 'H', 'A', '1')) {
                     uint32_t uintA = dat_header.__dword_C + 0xF7E7F8AC; // IDK what this value is
                     dat_header.decompressed_size -= 123456789;
                     dat_header.compressed_size -= 987654321;
-                    UNKNOWN_A.__int_4 = uintA;
-                    int32_t data_offset = UNKNOWN_A.file->get_file_size() - dat_header.compressed_size;
-                    UNKNOWN_A.file->set_file_pointer(data_offset, FILE_BEGIN);
+                    THDAT_ARCFILE.__int_4 = uintA;
+                    int32_t data_offset = THDAT_ARCFILE.file->get_file_size() - dat_header.compressed_size;
+                    THDAT_ARCFILE.file->set_file_pointer(data_offset, FILE_BEGIN);
                     size_t compressed_size = dat_header.compressed_size;
                     if (void* compressed_buffer = malloc(compressed_size)) {
                         void* buffer = NULL;
-                        if (UNKNOWN_A.file->read_file_to_buffer(compressed_buffer, compressed_size)) {
+                        if (THDAT_ARCFILE.file->read_file_to_buffer(compressed_buffer, compressed_size)) {
                             __decrypt_buffer(compressed_buffer, compressed_size, 0x3E, 0x9B, 0x80, compressed_size);
                             buffer = __decompress_buffer(compressed_buffer, compressed_size, buffer, dat_header.decompressed_size);
                             if (buffer) {
-                                int32_t intA = UNKNOWN_A.__int_4;
-                                UnknownAInner* unknown_a_inner_array = new UnknownAInner[intA + 1];
-                                if (!unknown_a_inner_array) {
-                                    UNKNOWN_A.__pointer_0 = NULL;
+                                int32_t intA = THDAT_ARCFILE.__int_4;
+                                ArcFileInner* arcfile_inner_array = new ArcFileInner[intA + 1];
+                                if (!arcfile_inner_array) {
+                                    THDAT_ARCFILE.__pointer_0 = NULL;
                                     free(compressed_buffer);
                                     goto free_buffer;
                                 }
                                 char* buffer_read = (char*)buffer;
-                                UnknownAInner* unknown_a_inner_array_write = unknown_a_inner_array;
+                                ArcFileInner* arcfile_inner_array_write = arcfile_inner_array;
                                 for (int32_t i = intA; i > 0; --i) {
-                                    unknown_a_inner_array_write->__string_0 = pbg_strdup(buffer_read);
+                                    arcfile_inner_array_write->__string_0 = pbg_strdup(buffer_read);
                                     int32_t length = byteloop_strlen(buffer_read) + 1;
                                     if (int32_t temp = length % 4) {
                                         length += 4 - temp;
                                     }
                                     buffer_read += length;
-                                    unknown_a_inner_array_write->__dword_4 = ((uint32_t*)buffer_read)[0];
-                                    unknown_a_inner_array_write->file_size = ((uint32_t*)buffer_read)[1];
-                                    unknown_a_inner_array_write->__dword_C = ((uint32_t*)buffer_read)[2];
+                                    arcfile_inner_array_write->__dword_4 = ((uint32_t*)buffer_read)[0];
+                                    arcfile_inner_array_write->file_size = ((uint32_t*)buffer_read)[1];
+                                    arcfile_inner_array_write->__dword_C = ((uint32_t*)buffer_read)[2];
                                     buffer_read += sizeof(uint32_t[3]);
-                                    ++unknown_a_inner_array_write;
+                                    ++arcfile_inner_array_write;
                                 }
-                                unknown_a_inner_array[intA].__dword_4 = data_offset;
-                                unknown_a_inner_array[intA].file_size = 0;
-                                UNKNOWN_A.__pointer_0 = unknown_a_inner_array;
+                                arcfile_inner_array[intA].__dword_4 = data_offset;
+                                arcfile_inner_array[intA].file_size = 0;
+                                THDAT_ARCFILE.__pointer_0 = arcfile_inner_array;
                                 free(compressed_buffer);
                                 free(buffer);
                                 return true;
@@ -1280,42 +1280,49 @@ free_buffer:
                 }
             }
         }
-        SAFE_DELETE(UNKNOWN_A.file);
+        SAFE_DELETE(THDAT_ARCFILE.file);
     }
     return false;
 }
 
 // 0x46EB80
-dllexport gnu_noinline bool stdcall UnknownA::__sub_46EB80(int32_t) {
-    UNKNOWN_A.~UnknownA();
+dllexport gnu_noinline bool stdcall ArcFile::__sub_46EB80(int32_t) {
+    THDAT_ARCFILE.~ArcFile();
     char current_directory[512];
     GetCurrentDirectoryA(countof(current_directory), current_directory);
     DebugLogger::__debug_log_stub_2("info : CurrentDirectory %s \r\n", current_directory);
     Pbg::File* pbg_file = new Pbg::File();
-    UNKNOWN_A.file = pbg_file;
-    if (UnknownA::__sub_46EE90()) {
+    THDAT_ARCFILE.file = pbg_file;
+    if (ArcFile::__sub_46EE90()) {
         char* str;
         clang_noinline str = pbg_strdup("th18.dat");
-        UNKNOWN_A.__string_8 = str;
+        THDAT_ARCFILE.__string_8 = str;
         if (str) {
-            UNKNOWN_A.file->open_file(str, "r");
+            THDAT_ARCFILE.file->open_file(str, "r");
             return true;
         }
     }
-    UNKNOWN_A.~UnknownA();
+    THDAT_ARCFILE.~ArcFile();
     return false;
 }
 
 // size: 0x10
-struct UnknownG : UnknownA {
-    UnknownG() {
-
+struct ArcFileEx : ArcFile {
+    // 0x46EB50
+    dllexport gnu_noinline ArcFileEx() {
+        this->__pointer_0 = NULL;
+        this->__int_4 = 0;
+        this->__string_8 = NULL;
+        this->file = NULL;
     }
+
+    // 0x46EB70
+    dllexport gnu_noinline ~ArcFileEx() asm_symbol_rel(0x46EB70) {}
 };
 
 extern "C" {
     // 0x568AF0
-    extern UnknownG UNKNOWN_G[20] asm("_UNKNOWN_G");
+    extern ArcFileEx ARCFILE_ARRAY[20] asm("_ARCFILE_ARRAY");
 }
 
 // 0x402060
@@ -1327,8 +1334,8 @@ dllexport gnu_noinline void* fastcall read_file_to_buffer(const char* path, int3
         const char* filename = strrchr(path, '\\');
         filename = strrchr(filename ? ++filename : path, '/');
         filename = filename ? ++filename : path;
-        if (UnknownAInner* ptrA = UNKNOWN_A.__pointer_0) {
-            for (int32_t i = UNKNOWN_A.__int_4; i > 0; --i, ++ptrA) {
+        if (ArcFileInner* ptrA = THDAT_ARCFILE.__pointer_0) {
+            for (int32_t i = THDAT_ARCFILE.__int_4; i > 0; --i, ++ptrA) {
                 if (!stricmp(filename, ptrA->__string_0)) {
                     file_size = ptrA->file_size;
                     goto decode_file;
@@ -1343,7 +1350,7 @@ decode_file:
         if (file_size) {
             DebugLogger::__debug_log_stub_4("%s Decode ... \r\n", filename);
             if ((ret = malloc(file_size))) {
-                UNKNOWN_A.__sub_46ED10(filename, ret);
+                THDAT_ARCFILE.__sub_46ED10(filename, ret);
             }
         }
     } else {
@@ -1375,7 +1382,7 @@ decode_file:
         }
     }
     CRITICAL_SECTION_MANAGER.leave_section(FileIO_CS);
-    return NULL;
+    return ret;
 }
 
 extern "C" {
@@ -1689,7 +1696,7 @@ struct UpdateFuncRegistry {
         CRITICAL_SECTION_MANAGER.enter_section(UpdateFuncRegistry_CS);
         {
             update_tick->priority = new_func_priority;
-            auto* prev_priority_node = update_func_registry->on_tick_funcs.list_node.head_find_node_before([=](UpdateFunc* update_func) {
+            auto* prev_priority_node = update_func_registry->on_tick_funcs.list_node.next->find_node_before([=](UpdateFunc* update_func) {
                 return update_func->priority >= new_func_priority;
             });
             prev_priority_node->append(&update_tick->list_node);
@@ -1705,7 +1712,7 @@ struct UpdateFuncRegistry {
         CRITICAL_SECTION_MANAGER.enter_section(UpdateFuncRegistry_CS);
         {
             update_draw->priority = new_func_priority;
-            auto* prev_priority_node = update_func_registry->on_draw_funcs.list_node.head_find_node_before([=](UpdateFunc* update_func) {
+            auto* prev_priority_node = update_func_registry->on_draw_funcs.list_node.next->find_node_before([=](UpdateFunc* update_func) {
                 return update_func->priority >= new_func_priority;
             });
             prev_priority_node->append(&update_draw->list_node);
@@ -2298,11 +2305,11 @@ public:
 
     // 0x409750
     dllexport int32_t thiscall operator--(int) asm_symbol_rel(0x409750) {
-        clang_forceinline this->decrement();
+        clang_forceinline return this->decrement();
     }
 
     dllexport int32_t thiscall operator--() {
-        clang_forceinline this->decrement();
+        clang_forceinline return this->decrement();
     }
 };
 #pragma region // Timer Validation
@@ -2587,7 +2594,7 @@ typedef struct AnmLoaded AnmLoaded;
 
 // size: 0x1C
 struct ZUNThread {
-    void* vtable; // 0x0
+    //void* vtable; // 0x0
     HANDLE thread; // 0x4
     uint32_t tid; // 0x8
     BOOL __bool_C; // 0xC
@@ -2607,7 +2614,7 @@ struct ZUNThread {
                     this->__bool_C = true;
                     this->__bool_10 = false;
                     Sleep(1);
-                } while (WaitForSingleObject(thread_handle, 200) == WAIT_TIMEOUT);
+                } while (WaitForSingleObject(this->thread, 200) == WAIT_TIMEOUT);
             }
             CloseHandle(this->thread);
             this->thread = NULL;
@@ -2624,18 +2631,18 @@ struct ZUNThread {
         this->thread = (HANDLE)_beginthreadex(NULL, 0, func, arg_list, 0, &this->tid);
     }
 
-    ~ZUNThread() {
+    virtual ~ZUNThread() {
         this->stop_and_cleanup();
     }
 };
 #pragma region // ZUNThread Validation
-ValidateFieldOffset32(0x0, ZUNThread, vtable);
-ValidateFieldOffset32(0x4, ZUNThread, thread);
-ValidateFieldOffset32(0x8, ZUNThread, tid);
-ValidateFieldOffset32(0xC, ZUNThread, __bool_C);
-ValidateFieldOffset32(0x10, ZUNThread, __bool_10);
-ValidateFieldOffset32(0x14, ZUNThread, phModule);
-ValidateFieldOffset32(0x18, ZUNThread, start_func);
+//ValidateVirtualFieldOffset32(0x0, ZUNThread, vtable);
+ValidateVirtualFieldOffset32(0x4, ZUNThread, thread);
+ValidateVirtualFieldOffset32(0x8, ZUNThread, tid);
+ValidateVirtualFieldOffset32(0xC, ZUNThread, __bool_C);
+ValidateVirtualFieldOffset32(0x10, ZUNThread, __bool_10);
+ValidateVirtualFieldOffset32(0x14, ZUNThread, phModule);
+ValidateVirtualFieldOffset32(0x18, ZUNThread, start_func);
 ValidateStructSize32(0x1C, ZUNThread);
 #pragma endregion
 
@@ -2649,7 +2656,23 @@ struct ZUNThreadB : ZUNThread {
     }
 };
 
+// size: 0x58
+struct D3DThread : ZUNThread {
+    unknown_fields(0x3C); // 0x1C
+    // 0x58
+
+    // 0x46FDD0
+    virtual ~D3DThread() {
+
+    }
+};
+#pragma region // D3DThread Validation
+ValidateStructSize32(0x58, D3DThread);
+#pragma endregion
+
 extern "C" {
+    // 0x4CD950
+    extern D3DThread D3D_THREAD_A asm("_D3D_THREAD_A");
     // 0x4CDAE0
     extern ZUNThread UNKNOWN_THREAD_A asm("_UNKNOWN_THREAD_A");
 }
@@ -2800,9 +2823,19 @@ struct Supervisor {
     D3DCOLOR background_color; // 0xB58
     probably_padding_bytes(0x4); // 0xB5C
     // 0xB60
-    
+
     // 0x453460
     dllexport static gnu_noinline int32_t fastcall __unknown_on_tick_A(void* self) asm_symbol_rel(0x453460) {
+
+    }
+
+    // 0x4553B0
+    dllexport static gnu_noinline int32_t fastcall __unknown_on_draw_A(void* self) asm_symbol_rel(0x4553B0) {
+
+    }
+
+    // 0x455610
+    dllexport static gnu_noinline int32_t fastcall __unknown_on_draw_B(void* self) asm_symbol_rel(0x455610) {
 
     }
 
@@ -2936,11 +2969,11 @@ dllexport gnu_noinline void Supervisor::initialize() {
     SUPERVISOR.gamemode_current = -2;
     SUPERVISOR.gamemode_switch = 0;
     SUPERVISOR.__dword_800 = 0;
-    UpdateFunc* update_func = new UpdateFunc(&Supervisor::__unknown_on_tick_A);
-    update_func->initialized = true;
-    update_func->run_on_update = true;
-    update_func->func_arg = &SUPERVISOR;
+    UpdateFunc* update_func = new UpdateFunc(&Supervisor::__unknown_on_tick_A, true, &SUPERVISOR);
     update_func->on_init_func = &Supervisor::on_registration;
+    if (!UpdateFuncRegistry::register_on_tick(update_func, 1)) {
+        UpdateFuncRegistry::register_on_draw(new UpdateFunc(&Supervisor::__unknown_on_draw_A, true, &SUPERVISOR), 1);
+    }
 }
 
 // 0x454860
@@ -2955,32 +2988,32 @@ dllexport gnu_noinline int32_t Supervisor::__start_thread_A94(_beginthreadex_pro
 
 // size: 0xFC
 struct Globals {
-    int32_t __int_0; // 0x0
-    int32_t __int_4; // 0x4
+    int32_t current_stage; // 0x0
+    int32_t __stage_number_related_4; // 0x4
     int32_t chapter; // 0x8
-    int32_t __int_C; // 0xC
-    int32_t __int_10; // 0x10
-    int32_t __int_14; // 0x14
+    int32_t __counter_C; // 0xC (Sound related?)
+    int32_t __counter_10; // 0x10 (Sound related?)
+    int32_t __counter_14; // 0x14 (Sound related?)
     int32_t character; // 0x18
     int32_t shottype; // 0x1C
     int32_t score; // 0x20
     int32_t difficulty; // 0x24
-    int32_t __int_28; // 0x28
+    int32_t __counter_28; // 0x28
     int32_t rank; // 0x2C
-    int32_t __int_30; // 0x30
-    int32_t __int_34; // 0x34
-    int32_t __int_38; // 0x38
-    int32_t __int_3C; // 0x3C
-    int __dword_40; // 0x40
-    int32_t __int_44; // 0x44
-    int32_t __int_48; // 0x48
-    int32_t __int_4C; // 0x4C
-    int32_t __int_50; // 0x50
-    int32_t __int_54; // 0x54
-    int32_t __int_58; // 0x58
-    int32_t __int_5C; // 0x5C
-    int32_t __int_60; // 0x60
-    int32_t __int_64; // 0x64
+    int32_t graze_in_stage; // 0x30
+    int32_t graze; // 0x34
+    int32_t __ecl_var_9907; // 0x38
+    int32_t miss_count_in_game; // 0x3C
+    int __dword_40; // 0x40 (Maybe point_items_collected_in_stage?)
+    int32_t point_items_collected_in_game; // 0x44
+    int32_t point_item_value; // 0x48
+    int32_t min_point_item_value; // 0x4C
+    int32_t max_point_item_value; // 0x50
+    int32_t money_collected_in_game; // 0x54
+    int32_t current_money; // 0x58
+    int32_t __power_related_5C; // 0x5C (Current power?)
+    int32_t __power_related_60; // 0x60 (Max power?)
+    int32_t __power_related_64; // 0x64 (Power related)
     int __dword_68; // 0x68
     int32_t __int_6C; // 0x6C
     int32_t __int_70; // 0x70
@@ -3020,12 +3053,12 @@ struct Globals {
 
     // 0x412FA0
     dllexport gnu_noinline void thiscall __set_unknown_value_A(int32_t value) asm_symbol_rel(0x412FA0) {
-        this->__int_5C = value;
-        int32_t A = this->__int_60;
+        this->__power_related_5C = value;
+        int32_t A = this->__power_related_60;
         if (value <= A) {
-            A = value < this->__int_64 ? this->__int_64 : value;
+            A = value < this->__power_related_64 ? this->__power_related_64 : value;
         }
-        this->__int_5C = A;
+        this->__power_related_5C = A;
     }
 
     // 0x42A970
@@ -3053,8 +3086,8 @@ struct Globals {
 
     // 0x457480
     dllexport gnu_noinline BOOL thiscall __sub_457480(int32_t value) asm_symbol_rel(0x457480) {
-        int32_t& A = this->__int_5C;
-        int32_t B = this->__int_64;
+        int32_t& A = this->__power_related_5C;
+        int32_t B = this->__power_related_64;
         if (A <= B) {
             return false;
         }
@@ -3062,8 +3095,8 @@ struct Globals {
         if (A < B) {
             A = B;
         }
-        int32_t C = (A + value) / this->__int_64;
-        int32_t D = A / this->__int_64;
+        int32_t C = (A + value) / this->__power_related_64;
+        int32_t D = A / this->__power_related_64;
         return C != D;
     }
 
@@ -3076,16 +3109,20 @@ struct Globals {
 // 0x130
 struct GameManager {
     int32_t __int_0; // 0x0
-    int __dword_4; // 0x4
+    int32_t __int_4; // 0x4
     union {
         uint32_t flags; // 0x8
         struct {
-            uint32_t : 4; // 1-4
+            uint32_t __unknown_flag_A : 1; // 1
+            uint32_t __unknown_flag_B : 1; // 2
+            uint32_t __unknown_flag_C : 1; // 3
+            uint32_t __unknown_flag_D : 1; // 4
             uint32_t __unknown_field_A : 2; // 5-6
+            uint32_t __unknown_flag_E : 1; // 7
         };
     };
     int32_t __int_C; // 0xC
-    int32_t __int_10; // 0x10
+    int32_t continue_credits; // 0x10
     int32_t __int_14; // 0x14
     int32_t __int_18; // 0x18
     Globals globals; // 0x1C
@@ -3102,8 +3139,8 @@ struct GameManager {
     }
 
     // 0x418D60
-    dllexport gnu_noinline int32_t thiscall __get_global_int_0() asm_symbol_rel(0x418D60) {
-        return this->globals.__int_0;
+    dllexport gnu_noinline int32_t thiscall get_current_stage() asm_symbol_rel(0x418D60) {
+        return this->globals.current_stage;
     }
 
     // 0x42A990
@@ -3119,7 +3156,7 @@ struct GameManager {
     // 0x4630B0
     dllexport gnu_noinline void __set_unknown_field_A(int32_t value) asm_symbol_rel(0x4630B0) {
         if (this->__unknown_field_A != 2) {
-            this->globals.__int_38 = -1;
+            this->globals.__ecl_var_9907 = -1;
         }
         this->__unknown_field_A = value;
     }
@@ -3130,6 +3167,14 @@ extern "C" {
     extern GameManager GAME_MANAGER asm("_GAME_MANAGER");
 }
 
+enum MotionMode : int32_t {
+    AxisVelocityMovement = 0,
+    NoMovement = 1,
+    OrbitMovement = 2,
+    EllipseMovement = 3,
+    UnknownMovement = 4
+};
+
 // size: 0x44
 struct MotionData {
     Float3 position; // 0x0
@@ -3138,10 +3183,14 @@ struct MotionData {
     ZUNAngle angle; // 0x1C
     float orbit_radius; // 0x20
     float orbit_velocity; // 0x24
-    ZUNAngle __angle_28; // 0x28
-    float __float_2C; // 0x2C
+    ZUNAngle ellipse_angle; // 0x28
+    float ellipse_ratio; // 0x2C
     float __angle_30; // 0x30
-    Float3 __float3_34; // 0x34
+    union {
+        Float3 misc_float3; // 0x34
+        Float3 axis_velocity; // 0x34
+        Float3 orbit_origin; // 0x34
+    };
     union {
         uint32_t flags; // 0x40
         struct {
@@ -3161,17 +3210,17 @@ struct MotionData {
         float floatB; // EBP-4
         float floatC;
         switch (this->mode) {
-            case 0:
-                this->position += this->__float3_34;
+            case AxisVelocityMovement:
+                this->position += this->axis_velocity;
                 break;
-            case 2:
+            case OrbitMovement:
                 float3A.make_from_vector(this->angle, this->orbit_radius);
-                this->position = this->__float3_34 + float3A.as2();
+                this->position = this->orbit_origin + float3A.as2();
                 break;
-            case 3: {
-                ZUNAngle angle_temp = this->__angle_28;
+            case EllipseMovement: {
+                ZUNAngle angle_temp = this->ellipse_angle;
                 float3A.make_from_vector(reduce_angle<NoInline>(this->angle - angle_temp), this->orbit_radius);
-                floatB = this->__float_2C * float3A.x;
+                floatB = this->ellipse_ratio * float3A.x;
                 floatA = zsinf(angle_temp);
                 floatC = zcosf(angle_temp);
                 Float2 float2A = { floatB, float3A.y };
@@ -3180,13 +3229,13 @@ struct MotionData {
                 float2A *= floatC;
                 float2A.x -= float2B.y;
                 float2A.y += float2B.x;
-                this->position = this->__float3_34 + float2A;
+                this->position = this->orbit_origin + float2A;
                 break;
             }
-            case 4: {
+            case UnknownMovement: {
                 float3A.as2() = this->position.as2();
-                this->position2 += this->__float3_34;
-                floatB = this->__angle_28 + HALF_PI_f;
+                this->position2 += this->misc_float3;
+                floatB = this->ellipse_angle + HALF_PI_f;
                 float3B.make_from_vector(reduce_angle<NoInline>(floatB), this->orbit_radius * zsinf(this->__angle_30) * GAME_SPEED.value);
                 this->position = this->position2 + float3B.as2();
                 float angle_temp = this->position.angle_to(float3A.as2());
@@ -3196,6 +3245,14 @@ struct MotionData {
         }
         this->position.x = zfloorf(this->position.x * 100.0f) / 100.0f;
         this->position.y = zfloorf(this->position.y * 100.0f) / 100.0f;
+    }
+
+    // 0x402F90
+    dllexport gnu_noinline void update2() asm_symbol_rel(0x402F90) {
+        if (this->mode == UnknownMovement) {
+            this->position2 = this->position;
+        }
+        this->update();
     }
     
     // 0x412F60
@@ -3213,8 +3270,8 @@ struct MotionData {
     }
     
     // 0x413280
-    dllexport gnu_noinline Float3* thiscall get_position() asm_symbol_rel(0x413280) {
-        return &this->position;
+    dllexport gnu_noinline Float3& thiscall get_position() asm_symbol_rel(0x413280) {
+        return this->position;
     }
     
     // 0x422530
@@ -3228,13 +3285,26 @@ struct MotionData {
     }
     
     // 0x422550
-    dllexport gnu_noinline void set_mode_2() asm_symbol_rel(0x422550) {
-        this->mode = 2;
+    dllexport gnu_noinline void set_orbit_mode() asm_symbol_rel(0x422550) {
+        this->mode = OrbitMovement;
     }
     
     // 0x422560
-    dllexport gnu_noinline void __set_float3_34(Float3* value) asm_symbol_rel(0x422560) {
-        this->__float3_34 = *value;
+    dllexport gnu_noinline void set_misc_float3(const Float3& value) asm_symbol_rel(0x422560) {
+        this->misc_float3 = value;
+    }
+
+    forceinline void set_axis_velocity(const Float3& value) {
+        this->set_misc_float3(value);
+    }
+
+    forceinline void set_orbit_origin(const Float3& value) {
+        this->set_misc_float3(value);
+    }
+
+    // 0x422580
+    dllexport gnu_noinline float vectorcall get_speed() asm_symbol_rel(0x422580) {
+        return this->speed;
     }
     
 	// 0x422590
@@ -3248,8 +3318,8 @@ struct MotionData {
     }
     
     // 0x4225F0
-    dllexport gnu_noinline void set_mode_0() asm_symbol_rel(0x4225F0) {
-        this->mode = 0;
+    dllexport gnu_noinline void set_axis_velocity_mode() asm_symbol_rel(0x4225F0) {
+        this->mode = AxisVelocityMovement;
     }
     
     // 0x43A210
@@ -3263,48 +3333,64 @@ struct MotionData {
     }
     
     // 0x43A230
-    dllexport gnu_noinline float get_position_y() asm_symbol_rel(0x43A230) {
+    dllexport gnu_noinline float vectorcall get_position_y() asm_symbol_rel(0x43A230) {
         return this->position.y;
     }
     
     // 0x43A240
-    dllexport gnu_noinline float get_position_x() asm_symbol_rel(0x43A240) {
+    dllexport gnu_noinline float vectorcall get_position_x() asm_symbol_rel(0x43A240) {
         return this->position.x;
     }
 
     // 0x439ED0
-    dllexport gnu_noinline float vectorcall __get_angle_28() asm_symbol_rel(0x439ED0) {
-        return this->__angle_28;
+    dllexport gnu_noinline float vectorcall get_ellipse_angle() asm_symbol_rel(0x439ED0) {
+        return this->ellipse_angle;
     }
 
     // 0x439EE0
-    dllexport gnu_noinline float vectorcall __get_float_2C() asm_symbol_rel(0x439EE0) {
-        return this->__float_2C;
+    dllexport gnu_noinline float vectorcall get_ellipse_ratio() asm_symbol_rel(0x439EE0) {
+        return this->ellipse_ratio;
     }
 	
 	// 0x439EF0
-	dllexport gnu_noinline void set_mode_3() asm_symbol_rel(0x439EF0) {
-		this->mode = 3;
+	dllexport gnu_noinline void set_ellipse_mode() asm_symbol_rel(0x439EF0) {
+		this->mode = EllipseMovement;
 	}
 	
 	// 0x439F00
-	dllexport gnu_noinline void vectorcall __set_float_2C(float value) asm_symbol_rel(0x439F00) {
-		this->__float_2C = value;
+	dllexport gnu_noinline void vectorcall set_ellipse_ratio(float ratio) asm_symbol_rel(0x439F00) {
+		this->ellipse_ratio = ratio;
 	}
 	
 	// 0x439F10
-	dllexport gnu_noinline void vectorcall __set_angle_28(float value) asm_symbol_rel(0x439F10) {
-		this->__angle_28 = value;
+	dllexport gnu_noinline void vectorcall set_ellipse_angle(float angle) asm_symbol_rel(0x439F10) {
+		this->ellipse_angle = angle;
 	}
 
     // 0x439FA0
-    dllexport gnu_noinline void vectorcall __set_float3_34_y(float value) asm_symbol_rel(0x439FA0) {
-        this->__float3_34.y = value;
+    dllexport gnu_noinline void vectorcall set_misc_float3_y(float value) asm_symbol_rel(0x439FA0) {
+        this->misc_float3.y = value;
+    }
+
+    forceinline void vectorcall set_axis_velocity_y(float value) {
+        this->set_misc_float3_y(value);
+    }
+
+    forceinline void vectorcall set_orbit_origin_y(float value) {
+        this->set_misc_float3_y(value);
     }
 
     // 0x439FB0
-    dllexport gnu_noinline void vectorcall __set_float3_34_x(float value) asm_symbol_rel(0x439FB0) {
-        this->__float3_34.x = value;
+    dllexport gnu_noinline void vectorcall set_misc_float3_x(float value) asm_symbol_rel(0x439FB0) {
+        this->misc_float3.x = value;
+    }
+
+    forceinline void vectorcall set_axis_velocity_x(float value) {
+        this->set_misc_float3_x(value);
+    }
+
+    forceinline void vectorcall set_orbit_origin_x(float value) {
+        this->set_misc_float3_x(value);
     }
 	
 	// 0x439FC0
@@ -3318,9 +3404,11 @@ struct MotionData {
 	}
 	
 	// 0x43A270
-	dllexport gnu_noinline bool mode_is_2() asm_symbol_rel(0x43A270) {
-		return this->mode == 2;
+	dllexport gnu_noinline bool mode_is_orbit() asm_symbol_rel(0x43A270) {
+		return this->mode == OrbitMovement;
 	}
+
+    inline MotionData() {};
 };
 #pragma region // MotionData Validation
 ValidateFieldOffset32(0x0, MotionData, position);
@@ -3329,10 +3417,10 @@ ValidateFieldOffset32(0x18, MotionData, speed);
 ValidateFieldOffset32(0x1C, MotionData, angle);
 ValidateFieldOffset32(0x20, MotionData, orbit_radius);
 ValidateFieldOffset32(0x24, MotionData, orbit_velocity);
-ValidateFieldOffset32(0x28, MotionData, __angle_28);
-ValidateFieldOffset32(0x2C, MotionData, __float_2C);
+ValidateFieldOffset32(0x28, MotionData, ellipse_angle);
+ValidateFieldOffset32(0x2C, MotionData, ellipse_ratio);
 ValidateFieldOffset32(0x30, MotionData, __angle_30);
-ValidateFieldOffset32(0x34, MotionData, __float3_34);
+ValidateFieldOffset32(0x34, MotionData, misc_float3);
 ValidateFieldOffset32(0x40, MotionData, flags);
 ValidateStructSize32(0x44, MotionData);
 #pragma endregion
@@ -3342,7 +3430,7 @@ struct ZUNAbsRel {
     T absolute;
     T relative;
 };
-
+/*
 enum InterpMode {
     Linear = 0,
     AccelerateSlow = 1,
@@ -3360,6 +3448,7 @@ enum InterpMode {
     DecelAccel = 13,
     DecelAccelFast = 14,
 };
+*/
 
 // 0x402FB0
 dllexport gnu_noinline float vectorcall __interp_inner_thing(int32_t mode, float current_time, float end_time) asm_symbol_rel(0x402FB0);
@@ -3580,6 +3669,10 @@ struct ZUNInterp { //       0x58    0x44    0x30
         this->mode[0] = mode;
     }
 
+    inline void set_mode_0() {
+        this->mode[0] = 0;
+    }
+
     // float: 0x41F620
     // Float2: 0x439670
     // Float3: 0x405A20
@@ -3673,6 +3766,16 @@ TimeEnd:
             
         }
     }
+
+    forceinline void initialize(int32_t end_time, int32_t mode, const T& initial_value, const T& final_value) {
+        this->set_end_time(end_time);
+        this->set_mode(mode);
+        this->set_bezier1({});
+        this->set_bezier2({});
+        this->set_initial_value(initial_value);
+        this->set_final_value(final_value);
+        this->reset_timer();
+    }
 };
 #pragma region // ZUNInterp Validation
 ValidateFieldOffset32(0x0, ZUNInterp<float>, initial_value);
@@ -3761,6 +3864,47 @@ ValidateFieldOffset32(0x54, ZUNInterpEx<Float3>, mode[0]);
 ValidateFieldOffset32(0x64, ZUNInterpEx<Float3>, flags);
 #pragma endregion
 
+#define SetInstr(value) \
+current_instruction = (decltype(current_instruction))(value)
+
+#define IndexInstr(offset) \
+SetInstr((intptr_t)current_instruction + (offset))
+
+#define ByteArg(number) \
+(((uint8_t*)current_instruction->args)[(number)])
+
+#define OneBitArg(number) \
+(ByteArg(number) & 0b1)
+
+#define ShortArg(number) \
+(((int16_t*)current_instruction->args)[(number)])
+
+#define RawArg(number) \
+(((EclArg*)current_instruction->args)[(number)])
+
+#define IntArg(number) \
+(((int32_t*)current_instruction->args)[(number)])
+
+#define UIntArg(number) \
+(((uint32_t*)current_instruction->args)[(number)])
+
+#define FloatArg(number) \
+(((float*)current_instruction->args)[(number)])
+
+#define Float2Arg(number) \
+(((Float2*)current_instruction->args)[(number)])
+
+#define Float3Arg(number) \
+(((Float3*)current_instruction->args)[(number)])
+
+#define StringArg(offset) \
+((const char*)(current_instruction->args + (offset)))
+
+#define TypeArg(type, number) \
+(((type*)current_instruction->args)[(number)])
+
+typedef struct EclVM EclVM;
+
 // size: 0x54
 struct EnemyInitData {
     Float3 position; // 0x0
@@ -3789,7 +3933,7 @@ ValidateStructSize32(0x54, EnemyInitData);
 // size: 0x10
 struct EclInstruction {
     int32_t time; // 0x0
-    int16_t opcode; // 0x4
+    uint16_t opcode; // 0x4
     uint16_t offset_to_next; // 0x6
     uint16_t param_mask; // 0x8
     uint8_t difficulty_mask; // 0xA
@@ -3841,12 +3985,147 @@ struct EclStack {
         char character;
     };
 
+    struct EclStackValue {
+        char type;
+        EclStackItem value;
+
+        template<typename T>
+        static forceinline T cast_to(const int32_t& value, const char& type) {
+            if constexpr (std::is_same_v<T, int32_t>) {
+                if (type == 'f') {
+                    return bitcast<int32_t>((float)value);
+                } else {
+                    return value;
+                }
+            } else if constexpr (std::is_same_v<T, float>) {
+                if (type != 'f' && type == 'i') {
+                    return (float)value;
+                } else {
+                    return bitcast<float>(value);
+                }
+            }
+        }
+
+        template<typename T>
+        forceinline T read() {
+            return this->cast_to<T>(this->value.integer, this->type);
+        }
+    };
+
     union { // 0x0
         EclStackItem data[EclStackCount];
         uint8_t raw[EclStackSize];
     };
     int32_t pointer; // 0x1000
     int32_t base; // 0x1004
+
+    template<typename T>
+    forceinline T read_offset(int32_t offset) {
+        return *based_pointer<T>(this->raw, offset);
+    }
+    template<typename T>
+    forceinline T read_typed_offset(int32_t offset) {
+        return based_pointer<EclStackValue>(this->raw, offset)->read<T>();
+    }
+    template<typename T>
+    forceinline T read_local(int32_t offset, int32_t base_offset) {
+        return this->read_offset<T>(base_offset + offset);
+    }
+    template<typename T>
+    forceinline T read_local(T offset) {
+        return this->read_local<T>((int32_t)offset, this->base);
+    }
+    /*
+    template<typename T>
+    forceinline T read_temp(int32_t offset, int32_t top_offset) {
+        return this->read_offset<T>(top_offset - offset);
+    }
+    template<typename T>
+    forceinline T read_temp(int32_t offset) {
+        return this->read_temp<T>(offset, this->pointer);
+    }
+    */
+    template<typename T>
+    forceinline T read_temp(T index, int32_t top_offset);
+    template<>
+    forceinline int32_t read_temp<int32_t>(int32_t index, int32_t top_offset) {
+        return this->read_typed_offset<int32_t>(top_offset + index * sizeof(EclStackValue));
+    }
+    template<>
+    forceinline float read_temp<float>(float index, int32_t top_offset) {
+        index *= -(float)sizeof(EclStackValue);
+        return this->read_typed_offset<float>(top_offset - (int32_t)index);
+    }
+
+    template<typename T>
+    forceinline T read_temp(T index) {
+        return this->read_temp<T>(index, this->pointer);
+    }
+
+    template<typename T>
+    forceinline void write_offset(int32_t offset, const T& value) {
+        *based_pointer<T>(this->raw, offset) = value;
+    }
+    template<typename T>
+    forceinline void write_local(int32_t offset, int32_t base_offset, const T& value) {
+        this->write_offset<T>(base_offset + offset, value);
+    }
+    template<typename T>
+    forceinline void write_local(T offset, const T& value) {
+        this->write_local<T>((int32_t)offset, this->base, value);
+    }
+    /*
+    template<typename T>
+    forceinline void write_temp(int32_t offset, int32_t top_offset, const T& value) {
+        this->write_offset<T>(top_offset - offset, value);
+    }
+    template<typename T>
+    forceinline void write_temp(int32_t offset, const T& value) {
+        this->write_temp<T>(offset, this->pointer, value);
+    }
+    */
+
+    template<typename T>
+    forceinline T& ref_offset(int32_t offset) {
+        return *based_pointer<T>(this->raw, offset);
+    }
+    template<typename T>
+    forceinline T& ref_local(int32_t offset, int32_t base_offset) {
+        return this->ref_offset<T>(base_offset + offset);
+    }
+    template<typename T>
+    forceinline T& ref_local(T offset) {
+        return this->ref_local<T>((int32_t)offset, this->base);
+    }
+    /*
+    template<typename T>
+    forceinline T& ref_temp(int32_t offset, int32_t top_offset) {
+        return this->ref_offset<T>(top_offset - offset);
+    }
+    template<typename T>
+    forceinline T& ref_temp(int32_t offset) {
+        return this->ref_temp<T>(offset, this->pointer);
+    }
+    */
+
+    template<typename T>
+    forceinline T pop(int32_t& starting_offset) {
+        starting_offset -= 4;
+        return this->read_offset<T>(starting_offset);
+    }
+    template<typename T>
+    forceinline T pop() {
+        return this->pop<T>(this->pointer);
+    }
+
+    template<typename T>
+    forceinline T pop_cast(int32_t& starting_offset) {
+        return EclStackValue::cast_to<T>(this->pop<int32_t>(), this->pop<char>());
+    }
+    template<typename T>
+    forceinline T pop_cast() {
+        return this->pop_cast<T>(this->pointer);
+    }
 
     inline void zero_contents() {
         zero_this();
@@ -3869,7 +4148,7 @@ struct EclContext {
     EclLocation location; // 0x4
     EclStack stack; // 0xC
     int32_t async_id; // 0x1014
-    void* parent; // 0x1018
+    EclVM* parent; // 0x1018
     int32_t __int_101C; // 0x101C
     uint32_t difficulty_mask; // 0x1020
     ZUNInterp<float> float_interps[8]; // 0x1024
@@ -3893,10 +4172,33 @@ struct EclContext {
         this->float_interps[7].end_time = value;
     }
 
-    // 0x48D750
-    dllexport gnu_noinline int32_t* thiscall get_int_ptr_arg(int32_t index = UNUSED_DWORD) {
-        // TODO
+    // 0x48DBE0
+    dllexport EclInstruction* thiscall get_sub_instrs() asm_symbol_rel(0x48DBE0);
+
+    // 0x48D4F0
+    dllexport gnu_noinline int32_t thiscall get_int_arg(int32_t index) asm_symbol_rel(0x48D4F0);
+
+private:
+    // 0x48D5A0
+    dllexport gnu_noinline float vectorcall get_float_arg(int32_t, int32_t index) asm_symbol_rel(0x48D5A0);
+
+public:
+    forceinline float get_float_arg(int32_t index) {
+        return this->get_float_arg(UNUSED_DWORD, index);
     }
+
+    // 0x48D690
+    dllexport gnu_noinline int32_t thiscall parse_int_as_arg_pop(int32_t index, int32_t value) asm_symbol_rel(0x48D690);
+
+    // 0x48D750
+    dllexport gnu_noinline int32_t* thiscall get_int_ptr_arg(int32_t index = UNUSED_DWORD) asm_symbol_rel(0x48D750);
+
+    // 0x48D7C0
+    dllexport gnu_noinline float* thiscall get_float_ptr_arg(int32_t index) asm_symbol_rel(0x48D7C0);
+
+    forceinline int32_t thiscall parse_int_as_arg(int32_t index, int32_t value);
+
+    forceinline float parse_float_as_arg(int32_t index, float value);
 
     // 0x42CCC0
     dllexport gnu_noinline EclContext() {}
@@ -4018,6 +4320,11 @@ union AnmID {
         uint32_t fast_id : ANM_FAST_ID_BITS;
         uint32_t slow_id : ANM_SLOW_ID_BITS;
     };
+    struct {
+        uint32_t : 20;
+        uint32_t __unknown_bitfield_A : 2;
+        uint32_t __unknown_bitfield_B : 3;
+    };
 
     inline constexpr operator uint32_t() const {
         return this->full;
@@ -4072,8 +4379,6 @@ ValidateFieldOffset32(0x0, AnmVMRef, id);
 ValidateFieldOffset32(0x0, AnmVMRef, vm);
 ValidateStructSize32(0x4, AnmVMRef);
 #pragma endregion
-
-typedef struct EclVM EclVM;
 
 // size: 0x88
 struct EnemyCallback {
@@ -4130,7 +4435,7 @@ struct EnemyData {
         dllexport gnu_noinline void set_spell(bool value) asm_symbol_rel(0x42CFB0) {
             this->is_spell = value;
         }
-        
+
         // 0x42CFD0
         dllexport gnu_noinline int32_t get_maximum() asm_symbol_rel(0x42CFD0) {
             return this->maximum;
@@ -4322,7 +4627,7 @@ struct EnemyData {
     EclVM* vm; // 0x5588
     EnemyFog fog; // 0x558C
     EclSubName death_callback_sub; // 0x55A8
-    int32_t (thiscall *func_set_func)(EnemyData*); // 0x55E8
+    int32_t(thiscall *func_set_func)(EnemyData*); // 0x55E8
     uint32_t __is_func_set_2; // 0x55EC
     void* extra_damage_func; // 0x55F0
     void* extra_hitbox_func; // 0x55F4
@@ -4375,46 +4680,84 @@ struct EnemyData {
     dllexport gnu_noinline EnemyLife& get_life_data() asm_symbol_rel(0x42D1F0) {
         return this->life;
     }
-    
+
+    forceinline bool get_mirror_flag() {
+        return this->mirrored;
+    }
+
     inline void enforce_move_bounds() {
         if (this->move_bounds_enable) {
             float x_limit_size = this->move_bounds_size.x * 0.5f;
             float x_limit_pos = this->move_bounds_center.x;
             float x_pos = this->current_motion.position.x;
-            if (float temp = x_limit_pos - x_limit_size;
-                temp > x_pos
-            ) {
-                this->current_motion.position.x = temp;
-            } else if (temp = x_limit_pos + x_limit_size;
-                x_pos > temp
-            ) {
-                this->current_motion.position.x = temp;
+            {
+                float temp = x_limit_pos - x_limit_size;
+                if (temp > x_pos) {
+                    this->current_motion.position.x = temp;
+                } else {
+                    temp = x_limit_pos + x_limit_size;
+                    if (x_pos > temp) {
+                        this->current_motion.position.x = temp;
+                    }
+                }
             }
             float y_limit_size = this->move_bounds_size.y * 0.5f;
             float y_limit_pos = this->move_bounds_center.y;
             float y_pos = this->current_motion.position.y;
-            if (float temp = y_limit_pos - y_limit_size;
-                temp > y_pos
-            ) {
-                this->current_motion.position.y = temp;
-            } else if (temp = y_limit_pos + y_limit_size;
-                y_pos > temp
-            ) {
-                this->current_motion.position.y = temp;
+            {
+                float temp = y_limit_pos - y_limit_size;
+                if (temp > y_pos) {
+                    this->current_motion.position.y = temp;
+                } else {
+                    temp = y_limit_pos + y_limit_size;
+                    if (y_pos > temp) {
+                        this->current_motion.position.y = temp;
+                    }
+                }
             }
             this->motion.absolute.position = this->current_motion.position - this->motion.relative.position;
         }
     }
-    
+
     // 0x42EC00
     dllexport gnu_noinline void update_motion() asm_symbol_rel(0x42EC00) {
-        this->current_motion.__float3_34 = this->motion.relative.position + this->motion.absolute.position - this->current_motion.position;
+        this->current_motion.axis_velocity = this->motion.relative.position + this->motion.absolute.position - this->current_motion.position;
         this->current_motion.update();
         this->enforce_move_bounds();
     }
 
+    // 0x430D40
+    dllexport gnu_noinline int32_t thiscall high_ecl_run() asm_symbol_rel(0x430D40);
+
+    // 0x438AA0
+    dllexport gnu_noinline int32_t thiscall get_int_arg(int32_t index) asm_symbol_rel(0x438AA0);
+
     // 0x438AC0
-    dllexport gnu_noinline int32_t* thiscall get_int_ptr_arg(int32_t index = UNUSED_DWORD);
+    dllexport gnu_noinline int32_t* thiscall get_int_ptr_arg(int32_t index = UNUSED_DWORD) asm_symbol_rel(0x438AC0);
+
+private:
+    // 0x438AD0
+    dllexport gnu_noinline float vectorcall get_float_arg(int32_t, int32_t index) asm_symbol_rel(0x438AD0);
+
+public:
+    forceinline float get_float_arg(int32_t index) {
+        return this->get_float_arg(UNUSED_DWORD, index);
+    }
+
+    // 0x438AF0
+    dllexport gnu_noinline float* thiscall get_float_ptr_arg(int32_t index) asm_symbol_rel(0x438AF0);
+
+    // 0x438B10
+    dllexport gnu_noinline int32_t thiscall parse_int_as_arg(int32_t index, int32_t value) asm_symbol_rel(0x438B10);
+
+private:
+    // 0x438BC0
+    dllexport gnu_noinline float vectorcall parse_float_as_arg(int32_t, int32_t index, float, float, float value) asm_symbol_rel(0x438BC0);
+
+public:
+    forceinline float parse_float_as_arg(int32_t index, float value) {
+        return this->parse_float_as_arg(UNUSED_DWORD, index, UNUSED_FLOAT, UNUSED_FLOAT, value);
+    }
 };
 #pragma region // EnemyData Field Validation
 ValidateFieldOffset32(0x0, EnemyData, previous_motion);
@@ -4503,7 +4846,7 @@ struct EclSubHeader {
 struct EclFileHeader {
     ZUNMagic magic; // 0x0
     uint16_t version; // 0x4
-    uint16_t include_length; // 0x6 /* include_offset + ANIM+ECLI length */
+    uint16_t include_length; // 0x6 include_offset + ANIM+ECLI length
     uint32_t include_offset; // 0x8
     int __dword_C; // 0xC
     uint16_t sub_count; // 0x10
@@ -4568,10 +4911,6 @@ struct EnemyController {
     }
 };
 
-
-
-typedef struct EclVM EclVM;
-
 // size: 0x122C
 struct EclVM {
     //void* vtable; // 0x0
@@ -4620,7 +4959,7 @@ struct EclVM {
     }
 
     // 0x42CD90
-    dllexport gnu_noinline virtual int32_t* get_int_var_ptr(int32_t index) asm_symbol_rel(0x42CD90) {
+    dllexport gnu_noinline virtual int32_t* get_int_ptr(int32_t index) asm_symbol_rel(0x42CD90) {
         return NULL;
     }
 
@@ -4630,7 +4969,7 @@ struct EclVM {
     }
 
     // 0x42CDB0
-    dllexport gnu_noinline virtual float* get_float_var_ptr(int32_t index) asm_symbol_rel(0x42CDB0) {
+    dllexport gnu_noinline virtual float* get_float_ptr(int32_t index) asm_symbol_rel(0x42CDB0) {
         return NULL;
     }
 
@@ -4655,9 +4994,227 @@ ValidateVirtualFieldOffset32(0x121C, EclVM, context_list);
 ValidateStructSize32(0x122C, EclVM);
 #pragma endregion
 
+// 0x48DBE0
+dllexport EclInstruction* thiscall EclContext::get_sub_instrs() {
+    int32_t instr_offset = this->location.instruction_offset;
+    if (instr_offset != -1) {
+        int32_t sub_index = this->location.sub_index;
+        if (sub_index != -1) {
+            return pointer_raw_offset((*this->parent->controller->subs)[sub_index].data->instructions, instr_offset);
+        }
+    }
+    return NULL;
+}
+
+// 0x48D4F0
+dllexport gnu_noinline int32_t thiscall EclContext::get_int_arg(int32_t index) {
+    EclInstruction* current_instruction = this->get_sub_instrs();
+    if (current_instruction->param_mask & (1 << index)) {
+        int32_t value = IntArg(index);
+        if (value >= 0) {
+            return this->stack.read_local(value);
+        } else if (value <= -1 && value >= -100) {
+            return this->stack.read_temp(value);
+        } else {
+            return this->parent->get_int_var(value);
+        }
+    } else {
+        return IntArg(index);
+    }
+}
+
+// 0x48D5A0
+dllexport gnu_noinline float vectorcall EclContext::get_float_arg(int32_t, int32_t index) {
+    EclInstruction* current_instruction = this->get_sub_instrs();
+    float value = FloatArg(index);
+    if (current_instruction->param_mask & (1 << index)) {
+        if (value >= 0.0f) {
+            return this->stack.read_local(value);
+        } else if (value <= -1.0f && value >= -100.0f) {
+            return this->stack.read_temp(value);
+        } else {
+            return this->parent->get_float_var((int32_t)value);
+        }
+    } else {
+        return value;
+    }
+}
+
+// 0x48D690
+dllexport gnu_noinline int32_t thiscall EclContext::parse_int_as_arg_pop(int32_t index, int32_t value) {
+    EclInstruction* current_instruction = this->get_sub_instrs();
+    if (current_instruction->param_mask & (1 << index)) {
+        if (value >= 0) {
+            return this->stack.read_local(value);
+        } else if (value <= -1 && value >= -100) {
+            return this->stack.pop_cast<int32_t>();
+        } else {
+            return this->parent->get_int_var(value);
+        }
+    } else {
+        return value;
+    }
+}
+
+// 0x48D750
+dllexport gnu_noinline int32_t* thiscall EclContext::get_int_ptr_arg(int32_t index) {
+    EclInstruction* current_instruction = this->get_sub_instrs();
+    if (current_instruction->param_mask & (1 << index)) {
+        int32_t value = IntArg(index);
+        if (value >= 0) {
+            return &this->stack.ref_local(value);
+        } else {
+            return this->parent->get_int_ptr(value);
+        }
+    } else {
+        return NULL;
+    }
+}
+
+// 0x48D7C0
+dllexport gnu_noinline float* thiscall EclContext::get_float_ptr_arg(int32_t index) {
+    EclInstruction* current_instruction = this->get_sub_instrs();
+    if (current_instruction->param_mask & (1 << index)) {
+        float value = FloatArg(index);
+        if (value >= 0.0f) {
+            return &this->stack.ref_local(value);
+        } else {
+            return this->parent->get_float_ptr((int32_t)value);
+        }
+    } else {
+        return NULL;
+    }
+}
+
+forceinline int32_t thiscall EclContext::parse_int_as_arg(int32_t index, int32_t value) {
+    EclInstruction* current_instruction = this->get_sub_instrs();
+    if (current_instruction->param_mask & (1 << index)) {
+        if (value >= 0) {
+            return this->stack.read_local(value);
+        } else if (value <= -1 && value >= -100) {
+            return this->stack.read_temp(value);
+        } else {
+            return this->parent->get_int_var(value);
+        }
+    } else {
+        return IntArg(index);
+    }
+}
+
+forceinline float EclContext::parse_float_as_arg(int32_t index, float value) {
+    EclInstruction* current_instruction = this->get_sub_instrs();
+    if (current_instruction->param_mask & (1 << index)) {
+        if (value >= 0.0f) {
+            return this->stack.read_local(value);
+        } else if (value <= -1.0f && value >= -100.0f) {
+            return this->stack.read_temp(value);
+        } else {
+            return this->parent->get_float_var((int32_t)value);
+        }
+    } else {
+        return value;
+    }
+}
+
+// 0x438AA0
+dllexport gnu_noinline int32_t thiscall EnemyData::get_int_arg(int32_t index) {
+    return this->vm->current_context->get_int_arg(index);
+}
+
 // 0x438AC0
 dllexport gnu_noinline int32_t* thiscall EnemyData::get_int_ptr_arg(int32_t index) {
     return this->vm->current_context->get_int_ptr_arg(index);
+}
+
+// 0x438AD0
+dllexport gnu_noinline float vectorcall EnemyData::get_float_arg(int32_t, int32_t index) {
+    return this->vm->current_context->get_float_arg(index);
+}
+
+// 0x438AF0
+dllexport gnu_noinline float* thiscall EnemyData::get_float_ptr_arg(int32_t index) {
+    return this->vm->current_context->get_float_ptr_arg(index);
+}
+
+// 0x438B10
+dllexport gnu_noinline int32_t thiscall EnemyData::parse_int_as_arg(int32_t index, int32_t value) {
+    return this->vm->current_context->parse_int_as_arg(index, value);
+}
+
+// 0x438BC0
+dllexport gnu_noinline float vectorcall EnemyData::parse_float_as_arg(int32_t, int32_t index, float, float, float value) {
+    return this->vm->current_context->parse_float_as_arg(index, value);
+}
+
+namespace Ecl {
+enum Var : int32_t {
+    RAND_INT = -10000,
+    RAND_FLOAT = -9999,
+    RAND_ANGLE = -9998,
+    SELF_X = -9997,
+    SELF_Y = -9996,
+    SELF_X_ABS = -9995,
+    SELF_Y_ABS = -9994,
+    SELF_X_REL = -9993,
+    SELF_Y_REL = -9992,
+
+    SELF_X2 = -9977,
+    SELF_Y2 = -9976,
+    SELF_X2_ABS = -9975,
+    SELF_Y2_ABS = -9974,
+    SELF_X2_REL = -9973,
+    SELF_Y2_REL = -9972
+};
+enum Opcode : uint32_t {
+    MovePositionAbs = 400,
+    MovePositionAbsInterp,
+    MovePositionRel,
+    MovePositionRelInterp,
+    MoveVelocityAbs,
+    MoveVelocityAbsInterp,
+    MoveVelocityRel,
+    MoveVelocityRelInterp,
+    MoveOrbitAbs,
+    MoveOrbitAbsInterp,
+    MoveOrbitRel,
+    MoveOrbitRelInterp,
+    Ecl412,
+    Ecl413,
+    MoveToBoss0Abs,
+    MoveToBoss0Rel,
+    MovePositionAddAbs,
+    MovePositionAddRel,
+    MoveOriginAbs,
+    MoveOriginRel,
+    MoveEllipseAbs,
+    MoveEllipseAbsInterp,
+    MoveEllipseRel,
+    MoveEllipseRelInterp,
+    Ecl424,
+    MoveBezierAbs,
+    MoveBezierRel,
+    MoveStop,
+    MoveVelocityNoMirrorAbs,
+    MoveVelocityNoMirrorAbsInterp,
+    MoveVelocityNoMirrorRel,
+    MoveVelocityNoMirrorRelInterp,
+    MoveToEnemyIdAbs,
+    MoveToEnemyIdRel,
+    MoveCurveAbs,
+    MoveCurveRel,
+    Ecl436,
+    Ecl437,
+    MoveCurveAddAbs,
+    MoveCurveAddRel,
+    MoveAngleAbs,
+    MoveAngleAbsInterp,
+    MoveAngleRel,
+    MoveAngleRelInterp,
+    MoveSpeedAbs,
+    MoveSpeedAbsInterp,
+    MoveSpeedRel,
+    MoveSpeedRelInterp
+};
 }
 
 // PINGAS
@@ -4691,18 +5248,16 @@ struct Enemy : EclVM {
         EnemyController* enemy_controller = this->controller;
         int32_t left_index = 0;
         assume(sub_name[0] != '\0');
-        if (int32_t right_index = enemy_controller->sub_count - 1;
-            expect(right_index >= 0, true)
-        ) {
+        int32_t right_index = enemy_controller->sub_count - 1;
+        if (expect(right_index >= 0, true)) {
             EclSubHeader* subs = *enemy_controller->subs;
             do {
                 int32_t index = right_index - left_index;
                 const char* name = sub_name;
                 index /= 2;
                 index += left_index;
-                if (int32_t cmp_value = strcmp_asm(name, subs[index].name);
-                    !cmp_value
-                ) {
+                int32_t cmp_value = strcmp_asm(name, subs[index].name);
+                if (!cmp_value) {
                     this->current_context->location.sub_index = index;
                     return;
                 } else if (cmp_value < 0) {
@@ -4746,6 +5301,52 @@ struct Enemy : EclVM {
             byteloop_strcpy(callback.__sub_B.name, sub_name);
         } else {
             callback.__sub_B.name[0] = '\0';
+        }
+    }
+
+    // 0x409980
+    dllexport gnu_noinline MotionData* thiscall get_current_motion() {
+        return &this->data.current_motion;
+    }
+
+    // 0x430D30
+    dllexport gnu_noinline virtual int32_t high_ecl_run() asm_symbol_rel(0x430D30) {
+        return this->data.high_ecl_run();
+    }
+
+    // 0x437360
+    dllexport gnu_noinline virtual int32_t get_int_var(int32_t index) asm_symbol_rel(0x437360) {
+        switch (index) {
+
+            default:
+                return 0;
+        }
+    }
+
+    // 0x437B20
+    dllexport gnu_noinline virtual int32_t* get_int_ptr(int32_t index) asm_symbol_rel(0x437B20) {
+        switch (index) {
+
+            default:
+                return NULL;
+        }
+    }
+
+    // 0x437C90
+    dllexport gnu_noinline virtual float get_float_var(int32_t index) asm_symbol_rel(0x437C90) {
+        switch (index) {
+
+            default:
+                return 0.0f;
+        }
+    }
+
+    // 0x4387E0
+    dllexport gnu_noinline virtual float* get_float_ptr(int32_t index) asm_symbol_rel(0x4387E0) {
+        switch (index) {
+
+            default:
+                return NULL;
         }
     }
 };
@@ -5481,7 +6082,7 @@ extern "C" {
 
 // 0x453640
 dllexport gnu_noinline int32_t fastcall Supervisor::on_registration(void* self) {
-    if (UNKNOWN_A.__sub_46EB80()) {
+    if (THDAT_ARCFILE.__sub_46EB80()) {
         char ver_file_name[64];
         int32_t ver_file_size;
         sprintf(ver_file_name, "th18_%.4x%c.ver", 100, 'a');
@@ -5808,45 +6409,6 @@ extern "C" {
     extern AnmOnFunc ANM_ON_DRAW_FUNCS[] asm("_ANM_ON_DRAW_FUNCS");
 }
 
-#define SetInstr(value) \
-current_instruction = (decltype(current_instruction))(value)
-
-#define IndexInstr(offset) \
-SetInstr((intptr_t)current_instruction + (offset))
-
-#define ByteArg(number) \
-(((uint8_t*)current_instruction->args)[(number)])
-
-#define OneBitArg(number) \
-(ByteArg(number) & 0b1)
-
-#define ShortArg(number) \
-(((int16_t*)current_instruction->args)[(number)])
-
-#define RawArg(number) \
-(((EclArg*)current_instruction->args)[(number)])
-
-#define IntArg(number) \
-(((int32_t*)current_instruction->args)[(number)])
-
-#define UIntArg(number) \
-(((uint32_t*)current_instruction->args)[(number)])
-
-#define FloatArg(number) \
-(((float*)current_instruction->args)[(number)])
-
-#define Float2Arg(number) \
-(((Float2*)current_instruction->args)[(number)])
-
-#define Float3Arg(number) \
-(((Float3*)current_instruction->args)[(number)])
-
-#define StringArg(offset) \
-((const char*)(current_instruction->args + (offset)))
-
-#define TypeArg(type, number) \
-(((type*)current_instruction->args)[(number)])
-
 // size: 0x8
 struct AnmInstruction {
     int16_t opcode; // 0x0
@@ -6064,6 +6626,28 @@ struct AnmVM {
         while ((search = search->controller.__root_vm) && !lambda(search));
         return search;
     }
+    
+    // 0x4066B0
+    dllexport gnu_noinline void thiscall set_layer(int32_t layer) asm_symbol_rel(0x4066B0) {
+        // IDFK how this one was originally structured
+        this->data.layer = layer;
+        switch (layer) {
+            default:
+                this->controller.id.__unknown_bitfield_A = 0;
+                break;
+            case 3 ... 19:
+                this->controller.id.__unknown_bitfield_A = 1;
+                break;
+            case 20 ... 23:
+                this->controller.id.__unknown_bitfield_A = 2;
+                break;
+        }
+        switch (layer) {
+            case 20 ... 32: case 37 ... 45:
+                this->controller.id.__unknown_bitfield_B = 1;
+                break;
+        }
+    }
 
     // 0x405BB0
     dllexport gnu_noinline float vectorcall get_root_vm_custom_slowdown() asm_symbol_rel(0x405BB0) {
@@ -6101,9 +6685,8 @@ struct AnmVM {
 
 
     inline float get_custom_slowdown() {
-        if (AnmVM* root_vm = this->controller.__root_vm;
-            root_vm && this->data.__use_root_vm_custom_slowdown
-        ) {
+        AnmVM* root_vm = this->controller.__root_vm;
+        if (root_vm && this->data.__use_root_vm_custom_slowdown) {
             return this->get_root_vm_custom_slowdown();
         } else {
             return this->controller.slowdown;
@@ -6261,9 +6844,6 @@ struct AnmVM {
         this->controller.child_list_head.for_each([](AnmVM* vm) gnu_always_inline static_lambda {
             clang_noinline vm->__unknown_tree_set_J();
         });
-        /*ZUNLinkedListIter::for_each(this->controller.child_list_head, [=](AnmVM* vm) {
-            vm->__unknown_tree_set_J();
-        });*/
     }
 
     // 0x488F20
@@ -6272,9 +6852,6 @@ struct AnmVM {
         this->controller.child_list_head.for_each([](AnmVM* vm) gnu_always_inline static_lambda {
             clang_noinline vm->__unknown_tree_clear_J();
         });
-        /*ZUNLinkedListIter::for_each(this->controller.child_list_head, [=](AnmVM* vm) {
-            vm->__unknown_tree_clear_J();
-        });*/
     }
     
     // 0x4892E0
@@ -6293,25 +6870,54 @@ struct FastAnmVM : AnmVM {
     uint32_t fast_id; // 0x620
 };
 
+typedef struct AnmEntry AnmEntry;
+
 // size: 0x10
 struct AnmTexture {
     ZUNMagic magic; // 0x0 (THTX)
     uint16_t __zero; // 0x4
     uint16_t format; // 0x6
-    uint16_t width; // 0x8
-    uint16_t height; // 0xA
+    int16_t width; // 0x8
+    int16_t height; // 0xA
     uint32_t num_bytes; // 0xC
     unsigned char data[]; // 0x10
 };
+#pragma region // AnmTexture Validation
+ValidateFieldOffset32(0x0, AnmTexture, magic);
+ValidateFieldOffset32(0x4, AnmTexture, __zero);
+ValidateFieldOffset32(0x6, AnmTexture, format);
+ValidateFieldOffset32(0x8, AnmTexture, width);
+ValidateFieldOffset32(0xA, AnmTexture, height);
+ValidateFieldOffset32(0xC, AnmTexture, num_bytes);
+ValidateFieldOffset32(0x10, AnmTexture, data);
+ValidateStructSize32(0x10, AnmTexture);
+#pragma endregion
 
 // size: 0x18
-struct AnmIDK_A {
-    unknown_fields(0x4); // 0x0
-    void* image_file; // 0x4
-    int32_t image_file_size; // 0x8
-    unknown_fields(0xC); // 0xC
+struct AnmImage {
+    LPDIRECT3DTEXTURE9 d3d_texture; // 0x0
+    void* file; // 0x4
+    int32_t file_size; // 0x8
+    uint32_t bytes_per_pixel; // 0xC
+    AnmEntry* entry; // 0x10
+    union {
+        uint32_t flags; // 0x14
+        struct {
+            uint32_t __unknown_flag_A : 1;
+            uint32_t : 31;
+        };
+    };
     // 0x18
 };
+#pragma region // AnmImage Validation
+ValidateFieldOffset32(0x0, AnmImage, d3d_texture);
+ValidateFieldOffset32(0x4, AnmImage, file);
+ValidateFieldOffset32(0x8, AnmImage, file_size);
+ValidateFieldOffset32(0xC, AnmImage, bytes_per_pixel);
+ValidateFieldOffset32(0x10, AnmImage, entry);
+ValidateFieldOffset32(0x14, AnmImage, flags);
+ValidateStructSize32(0x18, AnmImage);
+#pragma endregion
 
 // size: 0x44
 struct AnmIDK_B {
@@ -6329,17 +6935,37 @@ struct AnmEntry {
     uint16_t height; // 0xC
     uint16_t format; // 0xE
     uint32_t image_path_offset; // 0x10
-    uint16_t offset_x; // 0x14
-    uint16_t offset_y; // 0x16
+    int16_t offset_x; // 0x14
+    int16_t offset_y; // 0x16
     uint32_t memory_priority; // 0x18
-    AnmTexture* texture; // 0x1C
+    uint32_t texture_data_offset; // 0x1C
     bool has_data; // 0x20
     unknown_fields(0x1); // 0x21
-    uint16_t low_res_scale; // 0x22
+    bool low_res_scale; // 0x22
+    unknown_fields(0x1); // 0x23
     uint32_t offset_to_next; // 0x24
     padding_bytes(0x18); // 0x28
     unsigned char data[]; // 0x40
 };
+#pragma region // AnmEntry Validation
+ValidateFieldOffset32(0x0, AnmEntry, version);
+ValidateFieldOffset32(0x4, AnmEntry, sprite_count);
+ValidateFieldOffset32(0x6, AnmEntry, script_count);
+ValidateFieldOffset32(0x8, AnmEntry, __word_8);
+ValidateFieldOffset32(0xA, AnmEntry, width);
+ValidateFieldOffset32(0xC, AnmEntry, height);
+ValidateFieldOffset32(0xE, AnmEntry, format);
+ValidateFieldOffset32(0x10, AnmEntry, image_path_offset);
+ValidateFieldOffset32(0x14, AnmEntry, offset_x);
+ValidateFieldOffset32(0x16, AnmEntry, offset_y);
+ValidateFieldOffset32(0x18, AnmEntry, memory_priority);
+ValidateFieldOffset32(0x1C, AnmEntry, texture_data_offset);
+ValidateFieldOffset32(0x20, AnmEntry, has_data);
+ValidateFieldOffset32(0x22, AnmEntry, low_res_scale);
+ValidateFieldOffset32(0x24, AnmEntry, offset_to_next);
+ValidateFieldOffset32(0x40, AnmEntry, data);
+ValidateStructSize32(0x40, AnmEntry);
+#pragma endregion
 
 inline const AnmOnFunc ANM_ON_WAIT_FUNCS[] = { NULL, NULL };
 //inline const AnmOnFunc ANM_ON_TICK_FUNCS[] = { NULL, NULL };
@@ -6366,9 +6992,10 @@ struct AnmLoaded {
     int32_t sprite_count; // 0x118
     AnmIDK_B* sprites; // 0x11C
     AnmInstruction* (*scripts)[]; // 0x120
-    AnmIDK_A* entries; // 0x124
-    BOOL __load_wait; // 0x128
-    unknown_fields(0x8); // 0x12C
+    AnmImage* images; // 0x124
+    int32_t __load_wait; // 0x128
+    unknown_fields(0x4); // 0x12C
+    int32_t total_image_sizes; // 0x130
     int32_t __counter_134; // 0x134
     unknown_fields(0x4); // 0x138
     // 0x13C
@@ -6385,6 +7012,10 @@ struct AnmLoaded {
     dllexport gnu_noinline AnmInstruction* thiscall get_script(int32_t index) asm_symbol_rel(0x47D8F0) {
         return (*this->scripts)[index];
     }
+
+    inline void __prepare_vm_data(AnmVM* vm, int32_t script_id);
+
+    inline void __prepare_vm(AnmVM* vm, int32_t script_id);
 
     // 0x477D60
     dllexport void __sub_477D60(AnmVM* vm, int32_t sprite_id) asm_symbol_rel(0x477D60);
@@ -6469,10 +7100,10 @@ struct AnmLoaded {
         }
         this->entry_count = entry_count;
 
-        size_t entry_array_size = sizeof(AnmIDK_A) * entry_count;
-        AnmIDK_A* entries = (AnmIDK_A*)malloc(entry_array_size);
-        this->entries = entries;
-        memset(entries, 0, entry_array_size);
+        size_t image_array_size = sizeof(AnmImage) * entry_count;
+        AnmImage* images = (AnmImage*)malloc(image_array_size);
+        this->images = images;
+        memset(images, 0, image_array_size);
 
         this->sprites = (AnmIDK_B*)malloc(sizeof(AnmIDK_B[total_sprite_count]));
         this->scripts = (AnmInstruction*(*)[])malloc(sizeof(AnmInstruction*[total_script_count]));
@@ -6501,8 +7132,8 @@ struct AnmLoaded {
                         LOG_BUFFER.write_error(JpEnStr("", "Unable to load texture %s. data is lost or corrupted\r\n"), image_filename);
                         break;
                     }
-                    this->entries[entry_index].image_file_size = image_file_size;
-                    this->entries[entry_index].image_file = image_file;
+                    this->images[entry_index].file_size = image_file_size;
+                    this->images[entry_index].file = image_file;
                 }
             }
             ++entry_index;
@@ -6580,13 +7211,21 @@ extern "C" {
 }
 
 enum AnmFileIndex {
+    TEXT_ANM_INDEX = 0,
+    SIG_ANM_INDEX = 1,
     ASCII_ANM_INDEX = 2,
     STAGE_ANM_INDEX_A = 3,
     STAGE_ANM_INDEX_B = 4,
-
+    FRONT_ANM_INDEX = 5,
     STAGE_LOGO_ANM_INDEX = 6,
     BULLET_ANM_INDEX = 7,
     EFFECT_ANM_INDEX = 8,
+    PLAYER_ANM_INDEX = 9,
+
+    TITLE_ANM_INDEX = 16,
+    TITLEV_ANM_INDEX = 17,
+
+    HELP_ANM_INDEX = 19,
 
     TROPHY_ANM_INDEX = 27,
 
@@ -6596,6 +7235,32 @@ enum AnmFileIndex {
 
 
     ENUM_MAX_VALUE_DECLARE(CmdType)
+};
+
+// 0x4B4920
+static inline constexpr int D3DFORMAT_SIZES_TABLE[] = {
+    4,
+    sizeof(PixelA8R8G8B8), // 4
+    sizeof(PixelA1R5G5B5), // 2
+    sizeof(PixelR5G6B5), // 2
+    sizeof(PixelR8G8B8), // 3
+    sizeof(PixelA4R4G4B4), // 2
+    sizeof(PixelA8R3G3B2), // 2
+    sizeof(PixelA8), // 1
+    sizeof(PixelR3G3B2) // 1
+};
+
+// 0x4B4944
+static inline constexpr D3DFORMAT D3DFORMAT_TABLE[] = {
+    D3DFMT_UNKNOWN,
+    D3DFMT_A8R8G8B8,
+    D3DFMT_A1R5G5B5,
+    D3DFMT_R5G6B5,
+    D3DFMT_R8G8B8,
+    D3DFMT_A4R4G4B4,
+    D3DFMT_A8R3G3B2,
+    D3DFMT_A8,
+    D3DFMT_R3G3B2
 };
 
 // size: 0x39724B8
@@ -7004,12 +7669,132 @@ struct AnmManager {
         }
         AnmLoaded* anm_loaded = anm_manager->create_anm_loaded(file_index, filename);
         if (expect(anm_loaded != NULL, false)) {
-            anm_loaded->__load_wait = true;
+            anm_loaded->__load_wait = 1;
             while (anm_loaded->__load_wait && !SUPERVISOR.__unknown_bitfield_A) {
                 Sleep(1);
             }
             DebugLogger::__debug_log_stub_6("::preloadAnimEnd : %s\n", filename);
         }
+    }
+
+    // 0x4858E0
+    dllexport gnu_noinline void thiscall __screw_with_texture_bits(LPDIRECT3DTEXTURE9 d3d_texture) asm_symbol_rel(0x4858E0) {
+        LPDIRECT3DSURFACE9 surface = NULL;
+        d3d_texture->GetSurfaceLevel(0, &surface);
+        D3DSURFACE_DESC surface_desc;
+        surface->GetDesc(&surface_desc);
+        D3DLOCKED_RECT rect;
+        surface->LockRect(&rect, NULL, 0);
+        // Syntax highlighting doesn't understand lambda templates. :/
+        auto process_pixels = [&](auto dummy_pixel) {
+            using PixelT = decltype(dummy_pixel);
+            for (uint32_t y = 0; y < surface_desc.Height; ++y) {
+                PixelT* pixel = based_pointer<PixelT>(rect.pBits, rect.Pitch * y);
+                for (uint32_t x = 0; x < surface_desc.Width; ++x) {
+                    if (!pixel[0].a) {
+                        uint32_t count = 0;
+                        uint32_t R = 0, G = 0, B = 0;
+                        if (x > 0 && pixel[-1].a) {
+                            R = pixel[-1].r; G = pixel[-1].g; B = pixel[-1].b;
+                            count = 1;
+                        }
+                        if (x < surface_desc.Width - 1 && pixel[1].a) {
+                            R += pixel[1].r; G += pixel[1].g; B += pixel[1].b;
+                            ++count;
+                        }
+                        if (y > 0) {
+                            PixelT* prev_row_pixel = pixel - rect.Pitch / sizeof(PixelT);
+                            if (prev_row_pixel->a) {
+                                R += prev_row_pixel->r; G += prev_row_pixel->g; B += prev_row_pixel->b;
+                                ++count;
+                            }
+                        }
+                        if (y < surface_desc.Height - 1) {
+                            PixelT* next_row_pixel = pixel - rect.Pitch / sizeof(PixelT);
+                            if (next_row_pixel->a) {
+                                R += next_row_pixel->r; G += next_row_pixel->g; B += next_row_pixel->b;
+                                ++count;
+                            }
+                        }
+                        if (count > 1) {
+                            R /= count; G /= count; B /= count;
+                        }
+                        if constexpr (PixelT::a_is_bitfield) {
+                            pixel[0] = (PixelT){
+                                .r = R, .g = G, .b = B, .a = 0
+                            };
+                        } else {
+                            PixelT temp = pixel[0];
+                            temp.r = R; temp.g = G; temp.b = B;
+                            pixel[0] = temp;
+                        }
+                    }
+                    ++pixel;
+                }
+            }
+        };
+        switch (surface_desc.Format) {
+            case D3DFMT_UNKNOWN: case D3DFMT_A8R8G8B8:
+                process_pixels((PixelA8R8G8B8){});
+                break;
+            case D3DFMT_A1R5G5B5:
+                process_pixels((PixelA1R5G5B5){});
+                break;
+            case D3DFMT_A4R4G4B4:
+                process_pixels((PixelA4R4G4B4){});
+                break;
+            case D3DFMT_A8R3G3B2:
+                process_pixels((PixelA8R3G3B2){});
+                break;
+        }
+        surface->UnlockRect();
+        surface->Release();
+    }
+
+    // 0x486140
+    dllexport gnu_noinline int32_t thiscall __sub_486140(AnmImage* image, uint32_t format_index, uint32_t entry_index, int32_t width, int32_t height, int32_t offset_x, int32_t offset_y) asm_symbol_rel(0x486140);
+
+    // 0x486BC0
+    dllexport gnu_noinline int32_t thiscall __sub_486BC0(AnmLoaded* anm_loaded, uint32_t entry_index, uint32_t sprite_count, uint32_t script_count, AnmEntry* anm_entry) asm_symbol_rel(0x486BC0);
+
+    // 0x486920
+    dllexport gnu_noinline AnmLoaded* thiscall __sub_486920(AnmLoaded* anm_loaded) asm_symbol_rel(0x486920) {
+        AnmEntry* anm_entry_ptr = (AnmEntry*)anm_loaded->anm_file;
+        int32_t wait_index = 0;
+        int32_t load_wait = anm_loaded->__load_wait;
+        uint32_t script_count = 0;
+        uint32_t sprite_count = 0;
+        uint32_t entry_index = 0;
+        BOOL idk = false;
+        do {
+            if (load_wait - 1 == wait_index) {
+                if (this->__sub_486BC0(anm_loaded, entry_index, sprite_count, script_count, anm_entry_ptr) < 0) {
+                    anm_loaded->__load_wait = 0;
+                    return NULL;
+                }
+                idk = true;
+            }
+            sprite_count += anm_entry_ptr->sprite_count;
+            script_count += anm_entry_ptr->script_count;
+            ++entry_index;
+            if (uint32_t offset_to_next = anm_entry_ptr->offset_to_next) {
+                load_wait = anm_loaded->__load_wait;
+                ++wait_index;
+                anm_entry_ptr = based_pointer(anm_entry_ptr, offset_to_next);
+            } else {
+                for (int32_t i = 0; i < anm_loaded->script_count; ++i) {
+                    (*anm_loaded->__vm_array)[i].reset();
+                    anm_loaded->__prepare_vm(&(*anm_loaded->__vm_array)[i], i);
+                    (*anm_loaded->__vm_array)[i].controller.script_time.set(-1);
+                    (*anm_loaded->__vm_array)[i].controller.__timer_1C.set(-1);
+                    (*anm_loaded->__vm_array)[i].run_anm();
+                }
+                anm_loaded->__load_wait = 0;
+                return anm_loaded;
+            }
+        } while (load_wait != wait_index && idk == false);
+        anm_loaded->__load_wait = load_wait + 1;
+        return anm_loaded;
     }
 
     inline void unlink_node_from_list_ends(ZUNLinkedList<AnmVM>* node) {
@@ -7029,10 +7814,11 @@ struct AnmManager {
                 if (AnmVM* ret = this->world_list_head->find_if(id_match)) return ret;
                 if (AnmVM* ret = this->ui_list_head->find_if(id_match)) return ret;
             }
-            else if (FastAnmVM& fast_vm = this->fast_array[vm_id];
-                fast_vm.alive && fast_vm.controller.id == vm_id
-            ) {
-                return &this->fast_array[vm_id];
+            else {
+                FastAnmVM& fast_vm = this->fast_array[vm_id];
+                if (fast_vm.alive && fast_vm.controller.id == vm_id) {
+                    return &this->fast_array[vm_id];
+                }
             }
         }
         return NULL;
@@ -7826,19 +8612,32 @@ dllexport void thiscall AnmVMRef::set_color1(D3DCOLOR color) {
     vm->data.color1 = color;
 }
 
+inline void AnmLoaded::__prepare_vm_data(AnmVM* vm, int32_t script_id) {
+    vm->data.script_id2 = script_id;
+    vm->data.slot = this->slot_index;
+    vm->data.slot2 = this->slot_index;
+    vm->data.mirror_x = false;
+    vm->data.mirror_y = false;
+    vm->data.__unknown_field_B = 2;
+    vm->data.script_id = script_id;
+    vm->data.current_instruction_offset = 0;
+    vm->controller.__timer_1C.reset();
+    vm->controller.script_time.reset();
+    vm->data.visible = false;
+}
+
+inline void AnmLoaded::__prepare_vm(AnmVM* vm, int32_t script_id) {
+    if ((*this->scripts)[script_id]) {
+        vm->reset();
+        this->__prepare_vm_data(vm, script_id);
+    } else {
+        vm->zero_contents();
+    }
+}
+
 dllexport void AnmLoaded::__sub_477D60(AnmVM* vm, int32_t script_id) {
     if ((*this->scripts)[script_id] && !this->__load_wait) {
-        vm->data.script_id2 = script_id;
-        vm->data.slot = this->slot_index;
-        vm->data.slot2 = this->slot_index;
-        vm->data.mirror_x = false;
-        vm->data.mirror_y = false;
-        vm->data.__unknown_field_B = 2;
-        vm->data.script_id = script_id;
-        vm->data.sprite_id = 0;
-        vm->controller.__timer_1C.reset();
-        vm->controller.script_time.reset();
-        vm->data.visible = false;
+        this->__prepare_vm_data(vm, script_id);
         vm->run_anm();
         ANM_MANAGER_PTR->__dword_C0++;
         if (vm->data.__unknown_field_B == 2) {
@@ -7932,8 +8731,8 @@ RunInterrupt:
 
 // 0x4573F0
 dllexport gnu_noinline BOOL thiscall Globals::__sub_4573F0(int32_t value) {
-    int32_t& A = this->__int_5C;
-    int32_t B = this->__int_60;
+    int32_t& A = this->__power_related_5C;
+    int32_t B = this->__power_related_60;
     if (A >= B) {
         return false;
     }
@@ -7946,8 +8745,8 @@ dllexport gnu_noinline BOOL thiscall Globals::__sub_4573F0(int32_t value) {
         AnmID new_id;
         gui->__anm_id_BC = gui->__anm_loaded_2C0->instantiate_vm_to_world_list_back(new_id, 33, -1, NULL);
     }
-    int32_t C = (A - value) / this->__int_64;
-    int32_t D = A / this->__int_64;
+    int32_t C = (A - value) / this->__power_related_64;
+    int32_t D = A / this->__power_related_64;
     return C != D;
 }
 
@@ -8395,6 +9194,11 @@ struct AbilityManager {
         ability_manager->on_tick_registration = on_draw;
     }
 
+    // 0x408BA0
+    dllexport static gnu_noinline int __sub_408BA0(int32_t* ptr) asm_symbol_rel(0x408BA0) {
+
+    }
+
     size_t vectorcall dont_worry_bravi_it_only_took_me_a_year(const char *restrict count_name) {
         const CardData *restrict card_data_ptr = CARD_DATA_TABLE;
         do {
@@ -8445,6 +9249,21 @@ dllexport gnu_noinline void count_cards_of_type2(EnemyData* self) {
     clang_forceinline *self->get_int_ptr_arg() = count;
 }
 
+typedef struct ShtFile ShtFile;
+extern "C" {
+    // 0x570920
+    extern ShtFile* CACHED_SHT_FILE_PTR asm("_CACHED_SHT_FILE_PTR");
+}
+
+// size: 
+struct ShtFile {
+    unknown_fields(0x2); // 0x0
+    uint16_t __word_2; // 0x2
+    unknown_fields(0xDC); // 0x4
+    void* __ptr_array_E0[]; // 0xE0
+
+
+};
 
 typedef struct Player Player;
 extern "C" {
@@ -8471,49 +9290,73 @@ struct Player {
         // 0x9C
     };
 
-    // 0x47304
+    // size: 0x47304
     struct PlayerData {
-        Float3 position; // 0x0
-        unknown_fields(0x44); // 0x10
-        PlayerOption options[4]; // 0x50
-        PlayerOption equipment[12]; // 0x410
-        PlayerBullet bullets[0x200]; // 0xF50
-        int32_t last_created_damage_source_index; // 0x1FF50
-        PlayerDamageSource damage_sources[0x401]; // 0x1FF54
-        unknown_fields(0x9C); // 0x46ff0
-        int32_t state; // 0x4708C
-        unknown_fields(0x1C); // 0x47090
-        BOOL __dword_470AC; // 0x470AC
-        Timer shoot_key_short_timer; // 0x470B0
-        Timer shoot_key_long_timer; // 0x470C4
-        unknown_fields(0x7C); // 0x470D8
-        Timer __timer_47154; // 0x47154
-        unknown_fields(0x4); // 0x47158
+        Float3 position; // 0x0, 0x620
+        int __dword_C; // 0xC, 0x62C
+        int __dword_10; // 0x10, 0x630
+        Timer __timer_14; // 0x14, 0x634
+        Timer __timer_28; // 0x28, 0x648
+        Timer __timer_3C; // 0x3C, 0x65C
+        PlayerOption options[4]; // 0x50, 0x670
+        PlayerOption equipment[12]; // 0x410, 0xA30
+        PlayerBullet bullets[0x200]; // 0xF50, 0x1570
+        int32_t last_created_damage_source_index; // 0x1FF50, 0x20570
+        PlayerDamageSource damage_sources[0x401]; // 0x1FF54, 0x20574
+        unknown_fields(0x9C); // 0x46FF0, 0x47610
+        int32_t state; // 0x4708C, 0x476AC
+        AnmVMRef __vm_ref_47090; // 0x47090, 0x476B0
+        AnmVMRef __vm_ref_47094; // 0x47094, 0x476B4
+        unknown_fields(0x14); // 0x47098, 0x476B8
+        BOOL __dword_470AC; // 0x470AC, 0x476CC
+        Timer shoot_key_short_timer; // 0x470B0, 0x476D0
+        Timer shoot_key_long_timer; // 0x470C4, 0x476E4
+        int __dword_470D8; // 0x470D8, 0x476F8
+        unknown_fields(0x78); // 0x470DC, 0x476FC
+        Timer __timer_47154; // 0x47154, 0x47774
+        unknown_fields(0x14); // 0x47168, 0x47788
         union {
-            uint32_t flags; // 0x4715C
+            uint32_t flags; // 0x4717C, 0x4779C
             struct {
-                uint32_t : 3; // 1-3
-                uint32_t __unknown_flag_A : 1; // 4
+                uint32_t __unknown_flag_A : 1;
+                uint32_t __unknown_flag_C : 1;
+                uint32_t : 1;
+                uint32_t __unknown_flag_B : 1;
+                uint32_t : 5;
+                uint32_t __unknown_flag_D : 1;
             };
         };
-        unknown_fields(0x188); // 0x47160
-        int32_t num_deathbomb_frames; // 0x472E8
-        unknown_fields(0x18); // 0x472EC
-        // 0x47304
+        unknown_fields(0xE0); // 0x47180, 0x477A0
+        int __dword_47260; // 0x47260, 0x47880
+        int __dword_47264; // 0x47264, 0x47884
+        unknown_fields(0x24); // 0x47268, 0x47888
+        int __dword_4728C; // 0x4728C, 0x478AC
+        unknown_fields(0x58); // 0x47290, 0x478B0
+        int32_t num_deathbomb_frames; // 0x472E8, 0x47908
+        float __float_472EC; // 0x472EC, 0x4790C
+        float __float_472F0; // 0x472F0, 0x47910
+        unknown_fields(0x10); // 0x472F4, 0x47914
+        // 0x47304, 0x47924
     };
 
-    unknown_fields(0x14); // 0x0
+    unknown_fields(0xC); // 0x0
+    AnmLoaded* player_anm; // 0xC
+    AnmLoaded* __player_anm_copy; // 0x10
     AnmVM __vm_14; // 0x14
     PlayerData data; // 0x620
-    unknown_fields(0x28); // 0x47924
+    unknown_fields(0x1C); // 0x47924
+    void* __ptr_47940; // 0x47940 (Sht file?)
+    int __dword_47944; // 0x47944
+    char __byte_47948; // 0x47948
+    unknown_fields(0x3); // 0x47949
     ZUNInterp<float> scale_interp; // 0x4794C
     float scale; // 0x4797C
     float damage_multiplier; // 0x47980
     unknown_fields(0x4); // 0x47984
     float __item_attract_speed; // 0x47988
     float item_collect_radius; // 0x4798C
-    float item_attract_radius_focuesed; // 0x47990
-    float item_attract_radius_unfocuesed; // 0x47994
+    float item_attract_radius_focused; // 0x47990
+    float item_attract_radius_unfocused; // 0x47994
     float poc_height; // 0x47998
     float __float_4799C; // 0x4799C
     float __float_479A0; // 0x479A0
@@ -8675,7 +9518,15 @@ typedef struct EnemyManager EnemyManager;
 extern "C" {
     // 0x4CF2D0
     extern EnemyManager* ENEMY_MANAGER_PTR asm("_ENEMY_MANAGER_PTR");
+
+    // 0x5217D0
+    extern Float3 UNKNOWN_FLOAT3_A asm("_UNKNOWN_FLOAT3_A");
+    // 0x5217DC
+    extern Float3 UNKNOWN_FLOAT3_B asm("_UNKNOWN_FLOAT3_B");
+    // 0x56AD78
+    extern Float2 UNKNOWN_FLOAT2_A asm("_UNKNOWN_FLOAT2_A");
 }
+
 // size: 0x1A0
 struct EnemyManager {
     void* vtable; // 0x0
@@ -8716,9 +9567,12 @@ struct EnemyManager {
 
     // 0x42D440
     dllexport static gnu_noinline int32_t count_killable_enemies() asm_symbol_rel(0x42D440) {
-        return ENEMY_MANAGER_PTR->enemy_list_head->count_if_not([](Enemy* enemy) {
-            return enemy->data.disable_hurtbox || enemy->data.invincible || enemy->data.intangible || enemy->data.invulnerable_timer.current > 0;
-        });
+        if (auto* enemy_list = ENEMY_MANAGER_PTR->enemy_list_head) {
+            return enemy_list->count_if_not([](Enemy* enemy) {
+                return enemy->data.disable_hurtbox || enemy->data.invincible || enemy->data.intangible || enemy->data.invulnerable_timer.current > 0;
+            });
+        }
+        return NULL;
     }
 
     // 0x42D490
@@ -8736,23 +9590,38 @@ struct EnemyManager {
         ENEMY_MANAGER_PTR->__unknown_flag_A = value;
     }
 
-    // 0x42D500
-    dllexport gnu_noinline Enemy* get_enemy_by_id(int32_t enemy_id) asm_symbol_rel(0x42D500) {
+    static forceinline Enemy* get_enemy_by_id(int32_t enemy_id, EnemyManager* enemy_manager) {
         if (!enemy_id) {
             return NULL;
         } else {
-            return ENEMY_MANAGER_PTR->enemy_list_head->find_if([=](Enemy* enemy) {
-                return enemy->id == enemy_id;
-            });
+            if (auto* enemy_list = enemy_manager->enemy_list_head) {
+                return enemy_list->find_if([=](Enemy* enemy) {
+                    return enemy->id == enemy_id;
+                });
+            }
+            return NULL;
         }
+    }
+
+    // 0x42D500
+    dllexport gnu_noinline Enemy* get_enemy_by_id(int32_t enemy_id) asm_symbol_rel(0x42D500) {
+        return get_enemy_by_id(enemy_id, ENEMY_MANAGER_PTR);
+    }
+
+    // 0x4237F0
+    dllexport gnu_noinline Enemy* get_boss_by_index(int32_t index) asm_symbol_rel(0x4237F0) {
+        EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
+        return get_enemy_by_id(enemy_manager->boss_ids[index], enemy_manager);
     }
 
     // 0x409990
     dllexport gnu_noinline BOOL enemy_exists_with_id(int32_t enemy_id) asm_symbol_rel(0x409990) {
         if (enemy_id) {
-            return (bool)ENEMY_MANAGER_PTR->enemy_list_head->find_if([=](Enemy* enemy) {
-                return enemy->id == enemy_id;
-            });
+            if (auto* enemy_list = ENEMY_MANAGER_PTR->enemy_list_head) {
+                return (bool)enemy_list->find_if([=](Enemy* enemy) {
+                    return enemy->id == enemy_id;
+                });
+            }
         }
         return false;
     }
@@ -8854,9 +9723,8 @@ dllexport gnu_noinline Enemy::Enemy(const char* sub_name) {
 // 0x4237F0
 dllexport gnu_noinline Enemy* get_boss_by_index(int32_t boss_index) {
     EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
-    if (int32_t boss_id = enemy_manager->boss_ids[boss_index];
-        !boss_id
-    ) {
+    int32_t boss_id = enemy_manager->boss_ids[boss_index];
+    if (!boss_id) {
         return NULL;
     } else {
         return enemy_manager->enemy_list_head->find_if([=](Enemy* enemy) {
@@ -8948,13 +9816,13 @@ struct Item {
     AnmVM __vm_10; // 0x10
     AnmVM __vm_61C; // 0x61C
     unknown_fields(0x4); // 0xC28
-    Float3 __float3_C2C; // 0xC2C
-    Float2 __float2_C38; // 0xC38
-    int __dword_C40; // 0xC40
+    Float3 position; // 0xC2C
+    Float3 velocity; // 0xC38
     int __dword_C44; // 0xC44
     unknown_fields(0x4); // 0xC48
     Timer __timer_C4C; // 0xC4C
-    unknown_fields(0x18); // 0xC60
+    unknown_fields(0x14); // 0xC60
+    uint32_t state; // 0xC74
     ItemID id; // 0xC78
     unknown_fields(0x14); // 0xC7C
     int32_t sound_id; // 0xC90
@@ -8963,11 +9831,11 @@ struct Item {
 #pragma region // Item Validation
 ValidateFieldOffset32(0x10, Item, __vm_10);
 ValidateFieldOffset32(0x61C, Item, __vm_61C);
-ValidateFieldOffset32(0xC2C, Item, __float3_C2C);
-ValidateFieldOffset32(0xC38, Item, __float2_C38);
-ValidateFieldOffset32(0xC40, Item, __dword_C40);
+ValidateFieldOffset32(0xC2C, Item, position);
+ValidateFieldOffset32(0xC38, Item, velocity);
 ValidateFieldOffset32(0xC44, Item, __dword_C44);
 ValidateFieldOffset32(0xC4C, Item, __timer_C4C);
+ValidateFieldOffset32(0xC74, Item, state);
 ValidateFieldOffset32(0xC78, Item, id);
 ValidateFieldOffset32(0xC90, Item, sound_id);
 ValidateStructSize32(0xC94, Item);
@@ -9015,15 +9883,6 @@ ValidateFieldOffset32(0xE6BB18, ItemManager, items_onscreen);
 ValidateFieldOffset32(0xE6BB1C, ItemManager, item_count);
 ValidateStructSize32(0xE6BB28, ItemManager);
 #pragma endregion
-
-extern "C" {
-    // 0x5217D0
-    extern Float3 UNKNOWN_FLOAT3_A asm("_UNKNOWN_FLOAT3_A");
-}
-extern "C" {
-    // 0x5217DC
-    extern Float3 UNKNOWN_FLOAT3_B asm("_UNKNOWN_FLOAT3_B");
-}
 
 // size: 0x10
 struct BulletSpriteColorData {
@@ -9437,7 +10296,7 @@ struct LaserData {
 struct LaserLineParams {
     Float3 position; // 0x0, 0x788
     float __angle_C; // 0xC, 0x794
-    float __length_related; // 0x10, 0x798
+    float __length_related; // 0x10, 0x798 (max length?)
     float length; // 0x14, 0x79C
     float __float_18; // 0x18, 0x7A0
     float width; // 0x1C, 0x7A4
@@ -9652,34 +10511,34 @@ struct LaserLine : LaserData {
 
 // size: 0x480
 struct LaserInfiniteParams {
-    Float3 position; // 0x0
-    Float3 velocity; // 0xC
-    float __angle_18; // 0x18
-    float angular_velocity; // 0x1C
-    float length; // 0x20
-    float __float_24; // 0x24
-    float width; // 0x28
-    float __speed_1; // 0x2C
-    int32_t start_time; // 0x30
-    int32_t expand_time; // 0x34
-    int32_t duration; // 0x38
-    int32_t stop_time; // 0x3C
-    int32_t shot_sound; // 0x40
-    int32_t transform_sound; // 0x44
-    int32_t laser_id; // 0x48
-    float distance; // 0x4C
-    int32_t __start_ex; // 0x50
-    int32_t sprite; // 0x54
-    int32_t color; // 0x58
+    Float3 position; // 0x0, 0x788
+    Float3 velocity; // 0xC, 0x794
+    float __angle_18; // 0x18, 0x7A0
+    float angular_velocity; // 0x1C, 0x7A4
+    float length; // 0x20, 0x7A8
+    float __float_24; // 0x24, 0x7AC
+    float width; // 0x28, 0x7B0
+    float __speed_1; // 0x2C, 0x7B4
+    int32_t start_time; // 0x30, 0x7B8
+    int32_t expand_time; // 0x34, 0x7BC
+    int32_t duration; // 0x38, 0x7C0
+    int32_t stop_time; // 0x3C, 0x7C4
+    int32_t shot_sound; // 0x40, 0x7C8
+    int32_t transform_sound; // 0x44, 0x7CC
+    int32_t laser_id; // 0x48, 0x7D0
+    float distance; // 0x4C, 0x7D4
+    int32_t __start_ex; // 0x50, 0x7D8
+    int32_t sprite; // 0x54, 0x7DC
+    int32_t color; // 0x58, 0x7E0
     union {
-        uint32_t flags; // 0x5C
+        uint32_t flags; // 0x5C, 0x7E4
         struct {
             uint32_t : 1; // 1
             uint32_t __unknown_flag_A : 1; // 2
         };
     };
-    BulletEffectArgs effects[24]; // 0x60
-    // 0x480
+    BulletEffectArgs effects[24]; // 0x60, 0x7E8
+    // 0x480, 0xC08
 
     inline void zero_contents() {
         zero_this();
@@ -9703,25 +10562,25 @@ struct LaserInfinite : LaserData {
 
 // size: 0x460
 struct LaserCurveParams {
-    Float3 position; // 0x0
-    float __angle_C; // 0xC
-    float width; // 0x10
-    float __speed_1; // 0x14
-    int32_t sprite; // 0x18
-    int32_t color; // 0x1C
-    int32_t curve_length; // 0x20
-    float distance; // 0x24
+    Float3 position; // 0x0, 0x788
+    float __angle_C; // 0xC, 0x794
+    float width; // 0x10, 0x798
+    float __speed_1; // 0x14, 0x79C
+    int32_t sprite; // 0x18, 0x7A0
+    int32_t color; // 0x1C, 0x7A4
+    int32_t curve_length; // 0x20, 0x7A8
+    float distance; // 0x24, 0x7AC
     union {
-        uint32_t flags; // 0x28
+        uint32_t flags; // 0x28, 0x7B0
         struct {
 
         };
     };
-    BulletEffectArgs effects[24]; // 0x2C
-    int32_t shot_sound; // 0x44C
-    int32_t transform_sound; // 0x450
-    unknown_fields(0xC); // 0x454
-    // 0x460
+    BulletEffectArgs effects[24]; // 0x2C, 0x7B4
+    int32_t shot_sound; // 0x44C, 0xBD4
+    int32_t transform_sound; // 0x450, 0xBD8
+    unknown_fields(0xC); // 0x454, 0xBDC
+    // 0x460, 0xBE8
 
     inline void zero_contents() {
         zero_this();
@@ -9789,7 +10648,8 @@ struct BulletManager {
     unknown_fields(0x4); // 0x0
     void* on_tick; // 0x4
     void* on_draw; // 0x8
-    unknown_fields(0x38); // 0xC
+    unknown_fields(0x34); // 0xC
+    int32_t __int_40; // 0x40 (ECL variable -9898)
     float player_protect_radius; // 0x44
     float __float_48; // 0x48
     float __float_4C; // 0x4C
@@ -10640,6 +11500,526 @@ dllexport void Bullet::run_effects() {
     }
 }
 
+
+// 0x430D40
+dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
+    using namespace Ecl;
+
+    // this // EBP-570, EDI
+    EclVM** vm_ptr = &this->vm; // EBP-578, ESI
+    EclInstruction* current_instruction = this->vm->current_context->get_sub_instrs(); // EBP-57C
+    int32_t opcode = current_instruction->opcode; // EBP-56C
+
+    switch (opcode) {
+        case MoveStop: {
+            MotionData& motion_rel = this->motion.relative;
+            MotionData& motion_abs = this->motion.absolute;
+            motion_abs.get_position() += motion_rel.get_position();
+            motion_rel.position = UNKNOWN_FLOAT3_B;
+            motion_rel.set_speed(0.0f);
+            motion_abs.set_speed(0.0f);
+            motion_rel.set_orbit_origin(UNKNOWN_FLOAT3_B);
+            motion_abs.set_orbit_origin(UNKNOWN_FLOAT3_B);
+            motion_rel.set_axis_velocity_mode();
+            motion_abs.set_axis_velocity_mode();
+            this->position_interp.absolute.reset_end_time();
+            this->position_interp.relative.reset_end_time();
+            this->angle_interp_absolute.reset_end_time();
+            this->angle_interp_relative.reset_end_time();
+            this->speed_interp_absolute.reset_end_time();
+            this->speed_interp_relative.reset_end_time();
+            this->orbit_radius_interp.absolute.reset_end_time();
+            this->orbit_radius_interp.relative.reset_end_time();
+            this->ellipse_interp.absolute.reset_end_time();
+            this->ellipse_interp.relative.reset_end_time();
+            break;
+        }
+        case MovePositionAbs: case MovePositionRel: {
+            // Screwy inline asm BS here...?
+            MotionData& motion = (opcode != MovePositionAbs) ? this->motion.relative : this->motion.absolute;
+            float X = this->get_float_arg(0);
+            float Y = this->get_float_arg(1);
+            if (X > -999999.0) {
+                motion.set_position_x(X);
+            }
+            if (Y > -999999.0) {
+                motion.set_position_y(Y);
+            }
+            motion.set_axis_velocity_mode();
+            this->current_motion.get_position() = this->motion.relative.get_position() + this->motion.absolute.get_position();
+            this->update_motion();
+            break;
+        }
+        case MovePositionAddAbs: case MovePositionAddRel: {
+            MotionData& motion = (opcode == MovePositionAbs) ? this->motion.absolute : this->motion.relative;
+            float X = this->get_float_arg(0);
+            motion.get_position().x = X;
+            float Y = this->get_float_arg(1);
+            motion.get_position().y = Y;
+            float Z = this->get_float_arg(2);
+            motion.get_position().z = Z;
+            this->update_motion();
+            break;
+        }
+        case MovePositionAbsInterp: case MovePositionRelInterp:
+        case Ecl436: case Ecl437:
+        {
+            MotionData& motion = (opcode != MovePositionAbsInterp && opcode != Ecl436) ? this->motion.relative : this->motion.absolute;
+            ZUNInterpEx<Float3>& position_interp = (opcode != MovePositionAbsInterp && opcode != Ecl436) ? this->position_interp.relative : this->position_interp.absolute;
+            float X = this->get_float_arg(2);
+            float Y = this->get_float_arg(3);
+            if (this->get_int_arg(0) <= 0) {
+                position_interp.reset_end_time();
+                break;
+            }
+            if (opcode == 436 || opcode == 437) {
+                if (!this->get_mirror_flag()) {
+                    X = motion.get_position_x() + X;
+                } else {
+                    X = motion.get_position_x() - X;
+                }
+                Y = motion.get_position_y() + Y;
+            }
+            position_interp.set_end_time(this->get_int_arg(0));
+            position_interp.set_bezier2(UNKNOWN_FLOAT3_B);
+            position_interp.set_bezier1(UNKNOWN_FLOAT3_B);
+            position_interp.set_mode_3(this->get_int_arg(1));
+            position_interp.set_final_value(motion.get_position());
+            if (!(Y > -999999.0f)) {
+                Y = motion.get_position_y();
+            }
+            if (!(X > -999999.0f)) {
+                X = motion.get_position_x();
+            }
+            position_interp.set_bezier1(Float3(X, Y, 0.0f));
+            position_interp.reset_timer();
+            position_interp.set_mode_0();
+            break;
+        }
+        case MoveCurveAbs: case MoveCurveRel:
+        case MoveCurveAddAbs: case MoveCurveAddRel:
+        {
+            MotionData& motion = (opcode != MoveCurveAbs && opcode != MoveCurveAddAbs) ? this->motion.relative : this->motion.absolute;
+            ZUNInterpEx<Float3>& position_interp = (opcode != MoveCurveAbs && opcode != MoveCurveAddAbs) ? this->position_interp.relative : this->position_interp.absolute;
+            float X = this->get_float_arg(3);
+            float Y = this->get_float_arg(4);
+            if (this->get_int_arg(0) <= 0) {
+                position_interp.reset_end_time();
+                break;
+            }
+            if (opcode == MoveCurveAddAbs || opcode == MoveCurveAddRel) {
+                if (!this->get_mirror_flag()) {
+                    X = motion.get_position_x() + X;
+                } else {
+                    X = motion.get_position_x() - X;
+                }
+                Y = motion.get_position_y() + Y;
+            }
+            position_interp.set_end_time(this->get_int_arg(0));
+            position_interp.set_bezier2(UNKNOWN_FLOAT3_B);
+            position_interp.set_bezier1(UNKNOWN_FLOAT3_B);
+            position_interp.set_indexed_mode(0, this->get_int_arg(1));
+            position_interp.set_indexed_mode(1, this->get_int_arg(2));
+            position_interp.set_final_value(motion.get_position());
+            if (!(Y > -999999.0f)) {
+                Y = motion.get_position_y();
+            }
+            if (!(X > -999999.0f)) {
+                X = motion.get_position_x();
+            }
+            position_interp.set_bezier1(Float3(X, Y, 0.0f));
+            position_interp.reset_timer();
+            motion.set_axis_velocity_mode();
+            break;
+        }
+        case MoveBezierAbs: case MoveBezierRel: {
+            MotionData& motion = (opcode == MoveBezierAbs) ? this->motion.absolute : this->motion.relative;
+            ZUNInterpEx<Float3>& position_interp = (opcode == MoveBezierAbs) ? this->position_interp.absolute : this->position_interp.relative;
+            float X = this->get_float_arg(3);
+            float Y = this->get_float_arg(4);
+            float Z = 0.0f;
+            Float3 bezier2 = {};
+            Float3 current = {};
+            bezier2.x = this->get_float_arg(1);
+            bezier2.y = this->get_float_arg(2);
+            bezier2.z = 0.0f;
+            current.x = this->get_float_arg(5);
+            current.y = this->get_float_arg(6);
+            current.z = 0.0f;
+            position_interp.set_end_time(this->get_int_arg(0));
+            position_interp.set_bezier2(bezier2);
+            position_interp.set_current(current);
+            position_interp.set_mode_3(Bezier);
+            position_interp.set_final_value(motion.get_position());
+            if (!(Y > -999999.0)) {
+                Y = motion.get_position_y();
+            }
+            if (!(X > -999999.0)) {
+                X = motion.get_position_x();
+            }
+            position_interp.set_bezier1(Float3(X, Y, Z));
+            position_interp.reset_timer();
+            motion.set_axis_velocity_mode();
+            break;
+        }
+        case MoveVelocityAbs: case MoveVelocityRel:
+        case MoveVelocityNoMirrorAbs: case MoveVelocityNoMirrorRel:
+        {
+            MotionData& motion = (opcode != MoveVelocityAbs && opcode != MoveVelocityNoMirrorAbs) ? this->motion.relative : this->motion.absolute;
+            float angle = this->get_float_arg(0);
+            float speed = this->get_float_arg(1);
+            if (angle > -999999.0) {
+                if (this->get_mirror_flag() && (opcode == MoveVelocityAbs || opcode == MoveVelocityRel)) {
+                    angle = reduce_angle(HALF_PI_f - reduce_angle(angle - HALF_PI_f));
+                }
+                motion.set_angle(angle);
+            }
+            if (speed > -999999.0) {
+                motion.set_speed(speed);
+            }
+            motion.set_axis_velocity_mode();
+            break;
+        }
+        case MoveVelocityAbsInterp: case MoveVelocityRelInterp:
+        case MoveVelocityNoMirrorAbsInterp: case MoveVelocityNoMirrorRelInterp:
+        {
+            MotionData& motion = (opcode != MoveVelocityAbsInterp && opcode != MoveVelocityNoMirrorAbsInterp) ? this->motion.relative : this->motion.absolute;
+            ZUNInterp<float>& angle_interp = (opcode != MoveVelocityAbsInterp && opcode != MoveVelocityNoMirrorAbsInterp) ? this->angle_interp_relative : this->angle_interp_absolute;
+            ZUNInterp<float>& speed_interp = (opcode != MoveVelocityAbsInterp && opcode != MoveVelocityNoMirrorAbsInterp) ? this->speed_interp_relative : this->speed_interp_absolute;
+            float angle = this->get_float_arg(2);
+            float speed = this->get_float_arg(3);
+            Float2 final_val = {};
+            if (this->get_int_arg(0) <= 0) {
+                angle_interp.reset_end_time();
+                speed_interp.reset_end_time();
+                break;
+            }
+            int32_t interp_mode = this->get_int_arg(1);
+            if (interp_mode != ConstantVelocity) {
+                if (angle > -999999.0) {
+                    if (this->get_mirror_flag() && (opcode == MoveVelocityAbsInterp || opcode == MoveVelocityRelInterp)) {
+                        final_val.x = reduce_angle(HALF_PI_f - reduce_angle(angle - HALF_PI_f));
+                    } else {
+                        final_val.x = angle;
+                    }
+                } else {
+                    final_val.x = motion.get_angle();
+                }
+                if (speed > -999999.0) {
+                    final_val.y = speed;
+                } else {
+                    final_val.y = motion.get_speed();
+                }
+            } else {
+                if (angle > -999999.0) {
+                    if (this->get_mirror_flag() && (opcode == MoveVelocityAbsInterp || opcode == MoveVelocityRelInterp)) {
+                        final_val.x = -angle;
+                    } else {
+                        final_val.x = angle;
+                    }
+                } else {
+                    final_val.x = 0.0f;
+                }
+                if (speed > -999999.0) {
+                    final_val.y = speed;
+                } else {
+                    final_val.y = 0.0f;
+                }
+            }
+            Float2 initial_val = Float2(motion.get_angle(), motion.get_speed());
+            if (fabsf(initial_val.x - final_val.x) >= PI_f) {
+                if (final_val.x > initial_val.x) {
+                    initial_val.x += TWO_PI_f;
+                } else {
+                    final_val.x += TWO_PI_f;
+                }
+            }
+            angle_interp.initialize(this->get_int_arg(0), interp_mode, initial_val.x, final_val.x);
+            speed_interp.initialize(this->get_int_arg(0), interp_mode, initial_val.y, final_val.y);
+            motion.set_axis_velocity_mode();
+            break;
+        }
+        case MoveAngleAbs: case MoveAngleRel:
+        {
+            MotionData& motion = (opcode == MoveAngleAbs) ? this->motion.absolute : this->motion.relative;
+            float angle = this->get_float_arg(0);
+            if (this->get_mirror_flag()) {
+                motion.set_angle(reduce_angle(HALF_PI_f - reduce_angle(angle - HALF_PI_f)));
+                motion.set_axis_velocity_mode();
+            } else {
+                motion.set_angle(angle);
+                motion.set_axis_velocity_mode();
+            }
+            break;
+        }
+        case MoveAngleAbsInterp: case MoveAngleRelInterp: {
+            MotionData& motion = (opcode == MoveAngleAbs) ? this->motion.absolute : this->motion.relative;
+            ZUNInterp<float>& angle_interp = (opcode == MoveAngleAbs) ? this->angle_interp_absolute : this->angle_interp_relative;
+            float angle = this->get_float_arg(2);
+            if (this->get_int_arg(0) <= 0) {
+                angle_interp.reset_end_time();
+                break;
+            }
+            int32_t interp_mode = this->get_int_arg(1);
+            if (interp_mode != ConstantVelocity) {
+                if (angle > -999999.0) {
+                    if (this->get_mirror_flag() && (opcode == MoveAngleAbsInterp || opcode == MoveAngleRelInterp)) {
+                        angle = reduce_angle(HALF_PI_f - reduce_angle(angle - HALF_PI_f));
+                    }
+                } else {
+                    angle = motion.get_angle();
+                }
+            } else {
+                if (angle > -999999.0) {
+                    if (this->get_mirror_flag() && (opcode == MoveAngleAbsInterp || opcode == MoveAngleRelInterp)) {
+                        angle = -angle;
+                    }
+                } else {
+                    angle = 0.0f;
+                }
+            }
+            float current_angle = motion.get_angle();
+            angle = reduced_angle_diff(current_angle, angle) + current_angle;
+            angle_interp.initialize(this->get_int_arg(0), interp_mode, current_angle, angle);
+            motion.set_axis_velocity_mode();
+            break;
+        }
+        case MoveSpeedAbs: case MoveSpeedRel: {
+            MotionData& motion = (opcode == MoveSpeedAbs) ? this->motion.absolute : this->motion.relative;
+            float speed = this->get_float_arg(0);
+            if (speed > -999999.0) {
+                motion.set_speed(speed);
+            }
+            motion.set_axis_velocity_mode();
+            break;
+        }
+        case MoveSpeedAbsInterp: case MoveSpeedRelInterp: {
+            MotionData& motion = (opcode == MoveSpeedAbs) ? this->motion.absolute : this->motion.relative;
+            ZUNInterp<float>& speed_interp = (opcode == MoveSpeedAbs) ? this->speed_interp_absolute : this->speed_interp_relative;
+            float speed = this->get_float_arg(2);
+            float current_speed = motion.get_speed();
+            if (this->get_int_arg(0) <= 0) {
+                speed_interp.reset_end_time();
+                break;
+            }
+            int32_t interp_mode = this->get_int_arg(1);
+            if (interp_mode != ConstantVelocity) {
+                if (!(speed > -999999.0)) {
+                    speed = motion.get_speed();
+                }
+            } else {
+                if (!(speed > -999999.0)) {
+                    speed = 0.0f;
+                }
+            }
+            speed_interp.initialize(this->get_int_arg(0), interp_mode, current_speed, speed);
+            motion.set_axis_velocity_mode();
+            break;
+        }
+        case MoveOrbitAbs: case MoveOrbitRel: {
+            MotionData& motion = (opcode == MoveOrbitAbs) ? this->motion.absolute : this->motion.relative;
+            float angle = this->get_float_arg(0);
+            float speed = this->get_float_arg(1);
+            float orbit_radius = this->get_float_arg(2);
+            float orbit_velocity = this->get_float_arg(3);
+            if (motion.mode_is_orbit()) {
+                motion.set_orbit_origin(motion.get_position());
+            }
+            if (angle > -999999.0) {
+                motion.set_angle(angle);
+            }
+            if (speed > -999999.0) {
+                motion.set_speed(speed);
+            }
+            if (orbit_radius > -999999.0) {
+                motion.set_orbit_radius(orbit_radius);
+            }
+            if (orbit_velocity > -999999.0) {
+                motion.set_orbit_velocity(orbit_velocity);
+            }
+            motion.set_orbit_mode();
+            motion.update2();
+            this->update_motion();
+            break;
+        }
+        case MoveOrbitAbsInterp: case MoveOrbitRelInterp: {
+            MotionData& motion = (opcode == MoveOrbitAbsInterp) ? this->motion.absolute : this->motion.relative;
+            ZUNInterp<float>& speed_interp = (opcode == MoveOrbitAbsInterp) ? this->speed_interp_absolute : this->speed_interp_relative;
+            ZUNInterp<Float2>& orbit_radius_interp = (opcode == MoveOrbitAbsInterp) ? this->orbit_radius_interp.absolute : this->orbit_radius_interp.relative;
+            float speed = this->get_float_arg(2);
+            float orbit_radius = this->get_float_arg(3);
+            float orbit_velocity = this->get_float_arg(4);
+            if (!(speed > -999999.0)) {
+                speed = motion.get_speed();
+            }
+            Float2 final_speed = Float2(0.0f, speed);
+            Float2 initial_speed = Float2(0.0f, motion.get_speed());
+            if (!(orbit_velocity > -999999.0)) {
+                orbit_velocity = motion.get_orbit_velocity();
+            }
+            if (!(orbit_radius > -999999.0)) {
+                orbit_radius = motion.get_orbit_radius();
+            }
+            Float2 final_orbit = Float2(orbit_radius, orbit_velocity);
+            Float2 initial_orbit = Float2(motion.get_orbit_radius(), motion.get_orbit_velocity());
+            int32_t end_time = this->get_int_arg(0);
+            int32_t interp_mode = this->get_int_arg(1);
+            if (end_time <= 0) {
+                speed_interp.reset_end_time();
+                orbit_radius_interp.reset_end_time();
+                break;
+            }
+            speed_interp.set_end_time(end_time);
+            speed_interp.set_bezier1(0.0f);
+            speed_interp.set_bezier2(0.0f);
+            speed_interp.set_mode(interp_mode);
+            speed_interp.set_initial_value(initial_speed.y);
+            speed_interp.set_final_value(final_speed.y);
+            speed_interp.reset_timer();
+            orbit_radius_interp.set_end_time(end_time);
+            orbit_radius_interp.set_bezier1(UNKNOWN_FLOAT2_A);
+            orbit_radius_interp.set_bezier2(UNKNOWN_FLOAT2_A);
+            orbit_radius_interp.set_mode(interp_mode);
+            orbit_radius_interp.set_initial_value(initial_orbit);
+            orbit_radius_interp.set_final_value(final_orbit);
+            orbit_radius_interp.reset_timer();
+            motion.set_orbit_mode();
+            motion.update2();
+            this->update_motion();
+            break;
+        }
+        case 418: case 419: {
+            MotionData& motion = (opcode == 418) ? this->motion.absolute : this->motion.relative;
+            float X = this->get_float_arg(0);
+            float Y = this->get_float_arg(1);
+            if (X > -999999.0) {
+                motion.set_orbit_origin_x(X);
+            }
+            if (Y > -999999.0) {
+                motion.set_orbit_origin_y(Y);
+            }
+            motion.update2();
+            this->update_motion();
+            // break; // Nice one ZUN
+        }
+        case MoveEllipseAbs: case MoveEllipseRel: {
+            MotionData& motion = (opcode == MoveEllipseAbs) ? this->motion.absolute : this->motion.relative;
+            float angle = this->get_float_arg(0);
+            float speed = this->get_float_arg(1);
+            float orbit_radius = this->get_float_arg(2);
+            float orbit_velocity = this->get_float_arg(3);
+            float ellipse_angle = this->get_float_arg(4);
+            float ellipse_ratio = this->get_float_arg(5);
+            if (motion.mode_is_orbit()) {
+                motion.set_orbit_origin(motion.get_position());
+            }
+            if (angle > -999999.0) {
+                motion.set_angle(angle);
+            }
+            if (speed > -999999.0) {
+                motion.set_speed(speed);
+            }
+            if (orbit_radius > -999999.0) {
+                motion.set_orbit_radius(orbit_radius);
+            }
+            if (orbit_velocity > -999999.0) {
+                motion.set_orbit_velocity(orbit_velocity);
+            }
+            if (ellipse_angle > -999999.0) {
+                motion.set_ellipse_angle(ellipse_angle);
+            }
+            if (ellipse_ratio > -999999.0) {
+                motion.set_ellipse_ratio(ellipse_ratio);
+            }
+            motion.set_orbit_mode();
+            motion.set_ellipse_mode();
+            motion.update2();
+            this->update_motion();
+            break;
+        }
+        case MoveEllipseAbsInterp: case MoveEllipseRelInterp: {
+            MotionData& motion = (opcode == MoveEllipseAbsInterp) ? this->motion.absolute : this->motion.relative;
+            ZUNInterp<float>& speed_interp = (opcode == MoveEllipseAbsInterp) ? this->speed_interp_absolute : this->speed_interp_relative;
+            ZUNInterp<Float2>& orbit_radius_interp = (opcode == MoveEllipseAbsInterp) ? this->orbit_radius_interp.absolute : this->orbit_radius_interp.relative;
+            ZUNInterp<Float2>& ellipse_interp = (opcode == MoveEllipseAbsInterp) ? this->ellipse_interp.absolute : this->ellipse_interp.relative;
+            float speed = this->get_float_arg(2);
+            float orbit_radius = this->get_float_arg(3);
+            float orbit_velocity = this->get_float_arg(4);
+            float ellipse_angle = this->get_float_arg(5);
+            float ellipse_ratio = this->get_float_arg(6);
+            if (!(speed > -999999.0)) {
+                speed = motion.get_speed();
+            }
+            Float2 final_speed = Float2(0.0f, speed);
+            Float2 initial_speed = Float2(0.0f, motion.get_speed());
+            if (!(orbit_velocity > -999999.0)) {
+                orbit_velocity = motion.get_orbit_velocity();
+            }
+            if (!(orbit_radius > -999999.0)) {
+                orbit_radius = motion.get_orbit_radius();
+            }
+            Float2 final_orbit = Float2(orbit_radius, orbit_velocity);
+            Float2 initial_orbit = Float2(motion.get_orbit_radius(), motion.get_orbit_velocity());
+            if (!(ellipse_ratio > -999999.0)) {
+                ellipse_ratio = motion.get_ellipse_ratio();
+            }
+            if (!(ellipse_angle > -999999.0)) {
+                ellipse_angle = motion.get_ellipse_angle();
+            }
+            Float2 final_ellipse = Float2(ellipse_angle, ellipse_ratio);
+            Float2 initial_ellipse = Float2(motion.get_ellipse_angle(), motion.get_ellipse_ratio());
+            int32_t end_time = this->get_int_arg(0);
+            int32_t interp_mode = this->get_int_arg(1);
+            if (end_time <= 0) {
+                speed_interp.reset_end_time();
+                orbit_radius_interp.reset_end_time();
+                ellipse_interp.reset_end_time();
+                break;
+            }
+            speed_interp.set_end_time(end_time);
+            speed_interp.set_bezier1(0.0f);
+            speed_interp.set_bezier2(0.0f);
+            speed_interp.set_mode(interp_mode);
+            speed_interp.set_initial_value(initial_speed.y);
+            speed_interp.set_final_value(final_speed.y);
+            speed_interp.reset_timer();
+            orbit_radius_interp.set_end_time(end_time);
+            orbit_radius_interp.set_bezier1(UNKNOWN_FLOAT2_A);
+            orbit_radius_interp.set_bezier2(UNKNOWN_FLOAT2_A);
+            orbit_radius_interp.set_mode(interp_mode);
+            orbit_radius_interp.set_initial_value(initial_orbit);
+            orbit_radius_interp.set_final_value(final_orbit);
+            orbit_radius_interp.reset_timer();
+            ellipse_interp.set_end_time(end_time);
+            ellipse_interp.set_bezier1(UNKNOWN_FLOAT2_A);
+            ellipse_interp.set_bezier2(UNKNOWN_FLOAT2_A);
+            ellipse_interp.set_mode(interp_mode);
+            ellipse_interp.set_initial_value(initial_ellipse);
+            ellipse_interp.set_final_value(final_ellipse);
+            ellipse_interp.reset_timer();
+            motion.set_orbit_origin(motion.get_position());
+            motion.set_orbit_mode();
+            motion.set_ellipse_mode();
+            motion.update2();
+            this->update_motion();
+            break;
+        }
+        case MoveToBoss0Abs:
+            this->motion.absolute.get_position() = ENEMY_MANAGER_PTR->get_boss_by_index(0)->get_current_motion()->position;
+            break;
+        case MoveToBoss0Rel:
+            this->motion.relative.get_position() = ENEMY_MANAGER_PTR->get_boss_by_index(0)->get_current_motion()->position;
+            break;
+        case MoveToEnemyIdAbs:
+            this->motion.absolute.get_position() = ENEMY_MANAGER_PTR->get_enemy_by_id(this->get_int_arg(0))->get_current_motion()->position;
+            break;
+        case MoveToEnemyIdRel:
+            this->motion.relative.get_position() = ENEMY_MANAGER_PTR->get_enemy_by_id(this->get_int_arg(1))->get_current_motion()->position;
+            break;
+
+    }
+}
+
 // size: 0x24
 struct ReplayHeader {
     ZUNMagic magic; // 0x0
@@ -10707,7 +12087,9 @@ struct ReplayInfo {
     int32_t character; // 0xAC
     int32_t shottype; // 0xB0
     int32_t difficulty; // 0xB4
-    unknown_fields(0x10); // 0xB8
+    unknown_fields(0x4); // 0xB8
+    int __dword_BC; // 0xBC (Related to globals counter 0x28)
+    unknown_fields(0x8); // 0xC0
     // 0xC8
 };
 #pragma region // ReplayFrameInput Verification
@@ -10717,6 +12099,7 @@ ValidateFieldOffset32(0xA8, ReplayInfo, stage_count);
 ValidateFieldOffset32(0xAC, ReplayInfo, character);
 ValidateFieldOffset32(0xB0, ReplayInfo, shottype);
 ValidateFieldOffset32(0xB4, ReplayInfo, difficulty);
+ValidateFieldOffset32(0xBC, ReplayInfo, __dword_BC);
 ValidateStructSize32(0xC8, ReplayInfo);
 #pragma endregion
 
@@ -11040,6 +12423,172 @@ ValidateFieldOffset32(0x20D4, WindowData, __dword_array_20D4);
 extern "C" {
     // 0x568C30
     extern WindowData WINDOW_DATA asm("_WINDOW_DATA");
+}
+
+// 0x486140
+dllexport gnu_noinline int32_t thiscall AnmManager::__sub_486140(AnmImage* image, uint32_t format_index, uint32_t entry_index, int32_t width, int32_t height, int32_t offset_x, int32_t offset_y) {
+    image->__unknown_flag_A = false;
+    LPDIRECT3DTEXTURE9 texture;
+    if (D3DXCreateTextureFromFileInMemoryEx(
+        SUPERVISOR.d3d_device,
+        image->file,
+        image->file_size,
+        0, 0, 0, 0,
+        D3DFORMAT_TABLE[format_index],
+        D3DPOOL_MANAGED,
+        D3DX_FILTER_NONE,
+        D3DX_DEFAULT,
+        0,
+        NULL,
+        NULL,
+        &texture
+    ) != D3D_OK) {
+        return ZUN_ERROR;
+    }
+    LPDIRECT3DSURFACE9 surface;
+    texture->GetSurfaceLevel(0, &surface);
+    D3DSURFACE_DESC surface_desc;
+    surface->GetDesc(&surface_desc);
+    this->__screw_with_texture_bits(texture);
+    float floatA = WINDOW_DATA.__float_2070;
+    if (
+        surface_desc.Width == width && surface_desc.Height == height &&
+        (!image->entry->low_res_scale || !(floatA < 2.0f))
+    ) {
+        image->d3d_texture = texture;
+        SAFE_RELEASE(surface);
+    } else {
+        uint32_t right = width;
+        uint32_t bottom = height;
+        if (width + offset_x > surface_desc.Width) {
+            right = surface_desc.Width - offset_x;
+        }
+        if (height + offset_y > surface_desc.Height) {
+            bottom = surface_desc.Height - offset_y;
+        }
+        if (image->entry->low_res_scale && floatA < 2.0f) {
+            width = (float)width * floatA * 0.5f;
+            height = (float)height * floatA * 0.5f;
+        }
+        D3DXCreateTexture(
+            SUPERVISOR.d3d_device,
+            width, height,
+            0, 0,
+            D3DFORMAT_TABLE[format_index], D3DPOOL_MANAGED,
+            &image->d3d_texture
+        );
+        LPDIRECT3DSURFACE9 surface2;
+        image->d3d_texture->GetSurfaceLevel(0, &surface2);
+        RECT src_rect;
+        src_rect.left = offset_x;
+        src_rect.right = offset_x + right;
+        src_rect.top = offset_y;
+        src_rect.bottom = offset_y + bottom;
+        DWORD filter = !image->entry->low_res_scale || !(WINDOW_DATA.__float_2070 < 2.0f) ? D3DX_FILTER_NONE : D3DX_FILTER_TRIANGLE | D3DX_FILTER_MIRROR_U | D3DX_FILTER_MIRROR_V;
+        D3DXLoadSurfaceFromSurface(
+            surface2, NULL, NULL,
+            surface, NULL, &src_rect, filter, 0
+        );
+        SAFE_RELEASE(surface);
+        SAFE_RELEASE(surface2);
+        SAFE_RELEASE(texture);
+    }
+    this->__screw_with_texture_bits(image->d3d_texture);
+    uint32_t bytes_per_pixel = D3DFORMAT_SIZES_TABLE[format_index];
+    image->bytes_per_pixel = bytes_per_pixel;
+    return bytes_per_pixel * width * height;
+}
+
+// 0x486390
+dllexport gnu_noinline int32_t stdcall __sub_486390(AnmImage* image, AnmTexture* texture, uint32_t format_index, uint32_t width, uint32_t height) asm_symbol_rel(0x486390);
+dllexport gnu_noinline int32_t stdcall __sub_486390(AnmImage* image, AnmTexture* texture, uint32_t format_index, uint32_t width, uint32_t height) {
+    image->__unknown_flag_A = false;
+    AnmEntry* entry = image->entry;
+    int32_t texture_width = texture->width;
+    int32_t texture_height = texture->height;
+    RECT rectA = {
+        .left = 0,
+        .top = 0,
+        .right = texture_width,
+        .bottom = texture_width
+    };
+    RECT rectB = {
+        .left = 0,
+        .top = 0,
+        .right = texture_width,
+        .bottom = texture_width
+    };
+    float floatA = WINDOW_DATA.__float_2070;
+    if (entry->low_res_scale && floatA < 2.0f) {
+        rectB.right = (float)texture_width * floatA * 0.5f;
+    }
+}
+
+// 0x486560
+dllexport gnu_noinline int32_t stdcall __create_render_target_texture(AnmImage* image, uint32_t width, uint32_t height) asm_symbol_rel(0x486560);
+dllexport gnu_noinline int32_t stdcall __create_render_target_texture(AnmImage* image, uint32_t width, uint32_t height) {
+    SUPERVISOR.d3d_device->CreateTexture(
+        width, height,
+        1, D3DUSAGE_RENDERTARGET,
+        D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT,
+        &image->d3d_texture, NULL
+    );
+    image->bytes_per_pixel = (SUPERVISOR.present_parameters.BackBufferFormat == D3DFMT_A8R8G8B8) * 2 + 2;
+    return 0;
+}
+
+static inline int32_t stdcall __create_normal_texture(AnmImage* image, uint32_t format_index, uint32_t width, uint32_t height) {
+    image->__unknown_flag_A = false;
+    D3DXCreateTexture(
+        SUPERVISOR.d3d_device,
+        width, height,
+        1, 0,
+        D3DFORMAT_TABLE[format_index], D3DPOOL_MANAGED,
+        &image->d3d_texture
+    );
+    uint32_t bytes_per_pixel = D3DFORMAT_SIZES_TABLE[format_index];
+    image->bytes_per_pixel = bytes_per_pixel;
+    return bytes_per_pixel * width * height;
+}
+
+// 0x486BC0
+dllexport gnu_noinline int32_t thiscall AnmManager::__sub_486BC0(AnmLoaded* anm_loaded, uint32_t entry_index, uint32_t sprite_count, uint32_t script_count, AnmEntry* entry) {
+    if (!entry) {
+        LOG_BUFFER.write_error(JpEnStr("", "Can't load animation. data is lost or corrupted\r\n"));
+        return -1;
+    }
+    if (entry->version != 8) {
+        LOG_BUFFER.write_error(JpEnStr("", "different version of animation\r\n"));
+        return -1;
+    }
+    anm_loaded->images[entry_index].entry = entry;
+    int32_t image_size;
+    if (!entry->has_data) {
+        const char* image_filename = based_pointer<const char>(entry, entry->image_path_offset);
+        if (image_filename[0] == '@') {
+            if (image_filename[1] == 'R') {
+                entry->width = WINDOW_DATA.__int_2050;
+                entry->height = WINDOW_DATA.__int_2054;
+                __create_render_target_texture(&anm_loaded->images[entry_index], WINDOW_DATA.__int_2050, WINDOW_DATA.__int_2054);
+                goto skip_adding_image_size;
+            }
+            image_size = __create_normal_texture(&anm_loaded->images[entry_index], entry->format, entry->width, entry->height);
+        } else {
+            image_size = this->__sub_486140(&anm_loaded->images[entry_index], entry->format, entry_index, entry->width, entry->height, entry->offset_x, entry->offset_y);
+            if (image_size < 0) {
+                LOG_BUFFER.write_error(JpEnStr("", "Unable to create texture %s. data is lost or corrupted\r\n"), image_filename);
+                return -1;
+            }
+        }
+    } else {
+        image_size = __sub_486390(&anm_loaded->images[entry_index], based_pointer<AnmTexture>(entry, entry->texture_data_offset), entry->format, entry->width, entry->height);
+        if (image_size < 0) {
+            LOG_BUFFER.write_error(JpEnStr("", "Unable to create texture. data is lost or corrupted\r\n"));
+            return -1;
+        }
+    }
+
+skip_adding_image_size:
 }
 
 // 0x454B20
@@ -11735,18 +13284,15 @@ struct StaticCtorsDtors {
 
 #define original_addr(addr) ((void*)((uintptr_t)original_game + ((uintptr_t)(addr) - 0x400000)))
 
+    template<typename T>
+    static inline void copy_from_original_game(T& value, HMODULE original_game) {
+        __builtin_memcpy(&value, original_addr(&value), sizeof(value));
+    }
+
     StaticCtorsDtors() {
         HMODULE original_game = LoadLibraryExA("F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18.exe.unvlv.exe", NULL, 0);
 
-        auto copy_from_original_game = [=]<typename T>(T& value) {
-            __builtin_memcpy(&value, original_addr(&value), sizeof(value));
-        };
-
-        auto copy_string_table_from_original_game = [=]<typename T>(T& value) {
-            //__builtin_memcpy(&value, original_addr(&value), sizeof(value));
-        };
-
-        copy_from_original_game(SOUND_DATA);
+        copy_from_original_game(SOUND_DATA, original_game);
 
         static_construct(LOG_BUFFER);
         static_construct(SOUND_MANAGER);

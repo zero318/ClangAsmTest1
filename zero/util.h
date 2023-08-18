@@ -109,6 +109,8 @@ typedef char* MS_va_list;
 #include <stdlib.h>
 #include <string.h>
 #include <type_traits>
+#include <new>
+#include <utility>
 
 #define USE_ALL_FEATURES
 //#define USE_AMD_FEATURES
@@ -489,7 +491,7 @@ static_assert((offset) == __builtin_offsetof(struct_type, member_name), "Incorre
 #define ValidateStructSize(size, struct_type) \
 static_assert((size) == sizeof(struct_type), "Incorrect struct size! Size of " MACRO_STR(struct_type) " is not "#size)
 #define ValidateStructAlignment(align, struct_type) \
-static_assert((align) == alignof(struct_type), "Incorrect struct alignment! Alignment of " MACRO_STR(struct_type) " is not"#align)
+static_assert((align) == alignof(struct_type), "Incorrect struct alignment! Alignment of " MACRO_STR(struct_type) " is not "#align)
 
 #if __INTELLISENSE__
 #define ValidateVirtualFieldOffset(offset, struct_type, member_name) \
@@ -540,7 +542,7 @@ struct { \
 struct { \
     template<size_t = 0> \
     static constexpr bool val() { \
-        constexpr size_t test_value = sizeof(struct_type); \
+        constexpr size_t test_value = alignof(struct_type); \
         constexpr size_t expected_value = (align); \
         if constexpr (expected_value != test_value) { \
             using expected_val = char; \
@@ -552,7 +554,7 @@ struct { \
         } \
         return expected_value == test_value; \
     } \
-    static_assert(val(), "Incorrect struct alignment! Alignment of " MACRO_STR(struct_type) " is not"#align); \
+    static_assert(val(), "Incorrect struct alignment! Alignment of " MACRO_STR(struct_type) " is not "#align); \
 }
 
 #if __INTELLISENSE__
@@ -605,7 +607,7 @@ struct MACRO_CAT(vss,__COUNTER__) { \
 #define ValidateStructAlignment(align, struct_type) \
 struct MACRO_CAT(val,__COUNTER__) { \
     static inline constexpr bool val = validate_impl<(align), alignof(struct_type)>(); \
-    static_assert(val, "Incorrect struct alignment! Alignment of " MACRO_STR(struct_type) " is not"#align); \
+    static_assert(val, "Incorrect struct alignment! Alignment of " MACRO_STR(struct_type) " is not "#align); \
 }
 
 #if __INTELLISENSE__
@@ -932,122 +934,122 @@ struct ZUNLinkedListBase {
 	}
 #endif
 
-	inline void delete_each() {
-		for (N *node = ZUNListNCast(this), *next_node; node; node = next_node) {
+protected:
+	static inline void delete_each_impl(N* node) {
+		for (N* next_node; node; node = next_node) {
 			next_node = node->next;
 			assume(node->data != NULL);
 			delete node->data;
 			delete node;
 		}
 	}
-	inline void head_delete_each() {
-		return this->next->delete_each();
-	}
 	template <typename L>
-	inline void for_each(const L& lambda) {
-		for (N* node = ZUNListNCast(this); node; node = node->next) {
+	static inline void for_each_impl(const L& lambda, N* node) {
+		for (; node; node = node->next) {
 			lambda(node->data);
 		}
 	}
 	template <typename L>
-	inline void head_for_each(const L& lambda) {
-		return this->next->for_each(lambda);
-	}
-	template <typename L>
-	inline void for_eachB(const L& lambda) {
-		for (N* node = ZUNListNCast(this), *next_node; node; node = next_node) {
+	static inline void for_eachB_impl(const L& lambda, N* node) {
+		for (N* next_node; node; node = next_node) {
 			T* data = node->data;
 			next_node = node->next;
 			lambda(data);
 		}
 	}
 	template <typename L>
-	inline T* find_if(const L& lambda) {
-		for (N* node = ZUNListNCast(this); node; node = node->next) {
+	static inline T* find_if_impl(const L& lambda, N* node) {
+		for (; node; node = node->next) {
 			if (T* data = node->data; lambda(data)) return data;
 		}
 		return NULL;
 	}
 	template <typename L>
-	inline T* head_find_if(const L& lambda) {
-		return this->next->find_if(lambda);
-	}
-	template <typename L>
-	inline T* find_if_not(const L& lambda) {
-		for (N* node = ZUNListNCast(this); node; node = node->next) {
+	static inline T* find_if_not_impl(const L& lambda, N* node) {
+		for (; node; node = node->next) {
 			if (T* data = node->data; !lambda(data)) return data;
 		}
 		return NULL;
 	}
 	template <typename L>
-	inline T* head_find_if_not(const L& lambda) {
-		return this->next->find_if_not(lambda);
-	}
-	template <typename L>
-	inline N* find_node_if(const L& lambda) {
-		N* node = ZUNListNCast(this);
+	static inline N* find_node_if_impl(const L& lambda, N* node) {
 		for (; node; node = node->next) {
 			if (T* data = node->data; lambda(data)) break;
 		}
 		return node;
 	}
 	template <typename L>
-	inline N* head_find_node_if(const L& lambda) {
-		return this->next->find_node_if(lambda);
-	}
-	template <typename L>
-	inline N* find_node_before(const L& lambda) {
-		N* node = ZUNListNCast(this);
+	static inline N* find_node_before_impl(const L& lambda, N* node) {
 		for (N* next_node; (next_node = node->next); node = next_node) {
 			if (T* data = next_node->data; lambda(data)) break;
 		}
 		return node;
 	}
 	template <typename L>
-	inline N* head_find_node_before(const L& lambda) {
-		return this->next->find_node_before(lambda);
-	}
-	template <typename L>
-	inline int32_t count_if(const L& lambda) {
+	static inline int32_t count_if_impl(const L& lambda, N* node) {
 		int32_t ret = 0;
-		for (N *node = ZUNListNCast(this), *next_node; node; node = next_node) {
+		for (N* next_node; node; node = next_node) {
 			next_node = node->next;
 			if (T* data = node->data; lambda(data)) ++ret;
 		}
 		return ret;
 	}
 	template <typename L>
-	inline int32_t head_count_if(const L& lambda) {
-		return this->next->count_if(lambda);
-	}
-	template <typename L>
-	inline int32_t count_if_not(const L& lambda) {
+	static inline int32_t count_if_not_impl(const L& lambda, N* node) {
 		int32_t ret = 0;
-		for (N *node = ZUNListNCast(this), *next_node; node; node = next_node) {
+		for (N* next_node; node; node = next_node) {
 			next_node = node->next;
 			if (T* data = node->data; !lambda(data)) ++ret;
 		}
 		return ret;
 	}
 	template <typename L>
-	inline int32_t head_count_if_not(const L& lambda) {
-		return this->next->count_if_not(lambda);
+	static inline int32_t count_ifB_impl(const L& lambda, N* node) {
+		int32_t ret = 0;
+		for (; node; node = node->next) {
+			if (T* data = node->data; lambda(data)) ++ret;
+		}
+		return ret;
+	}
+public:
+	inline void delete_each() {
+		return delete_each_impl((N*)this);
+	}
+	template <typename L>
+	inline void for_each(const L& lambda) {
+		return for_each_impl(lambda, (N*)this);
+	}
+	template <typename L>
+	inline void for_eachB(const L& lambda) {
+		return for_eachB_impl(lambda, (N*)this);
+	}
+	template <typename L>
+	inline T* find_if(const L& lambda) {
+		return find_if_impl(lambda, (N*)this);
+	}
+	template <typename L>
+	inline T* find_if_not(const L& lambda) {
+		return find_if_not_impl(lambda, (N*)this);
+	}
+	template <typename L>
+	inline N* find_node_if(const L& lambda) {
+		return find_node_if_impl(lambda, (N*)this);
+	}
+	template <typename L>
+	inline N* find_node_before(const L& lambda) {
+		return find_node_before_impl(lambda, (N*)this);
+	}
+	template <typename L>
+	inline int32_t count_if(const L& lambda) {
+		return count_if_impl(lambda, (N*)this);
+	}
+	template <typename L>
+	inline int32_t count_if_not(const L& lambda) {
+		return count_if_not_impl(lambda, (N*)this);
 	}
 	template <typename L>
 	inline int32_t count_ifB(const L& lambda) {
-		int32_t ret = 0;
-		for (N* node = ZUNListNCast(this); node; node = node->next) {
-			if (T* data = node->data; lambda(data)) ++ret;
-		}
-		return ret;
-	}
-	template <typename L>
-	inline int32_t head_count_ifB(const L& lambda) {
-		int32_t ret = 0;
-		for (N* node = this->next; node; node = node->next) {
-			if (T* data = node->data; lambda(data)) ++ret;
-		}
-		return ret;
+		return count_ifB_impl(lambda, (N*)this);
 	}
 };
 
@@ -1081,39 +1083,43 @@ struct ZUNLinkedListHeadDummyBase : ZUNLinkedListBase<T, has_idk> {
 	using N = ZUNLinkedListBase<T, has_idk>;
 
 	inline void delete_each() {
-		return this->head_delete_each();
+		return delete_each_impl(this->next);
 	}
 	template <typename L>
 	inline void for_each(const L& lambda) {
-		return this->head_for_each(lambda);
+		return for_each_impl(lambda, this->next);
+	}
+	template <typename L>
+	inline void for_eachB(const L& lambda) {
+		return for_eachB_impl(lambda, this->next);
 	}
 	template <typename L>
 	inline T* find_if(const L& lambda) {
-		return this->head_find_if(lambda);
+		return find_if_impl(lambda, this->next);
 	}
 	template <typename L>
 	inline T* find_if_not(const L& lambda) {
-		return this->head_find_if_not(lambda);
+		return find_if_not_impl(lambda, this->next);
 	}
 	template <typename L>
 	inline N* find_node_if(const L& lambda) {
-		return this->head_find_node_if(lambda);
+		return find_node_if_impl(lambda, this->next);
 	}
 	template <typename L>
 	inline N* find_node_before(const L& lambda) {
-		return this->head_find_node_before(lambda);
+		return find_node_before_impl(lambda, this->next);
 	}
 	template <typename L>
 	inline int32_t count_if(const L& lambda) {
-		return this->head_count_if(lambda);
+		return count_if_impl(lambda, this->next);
 	}
 	template <typename L>
 	inline int32_t count_if_not(const L& lambda) {
-		return this->head_count_if_not(lambda);
+		return count_if_not_impl(lambda, this->next);
 	}
 	template <typename L>
 	inline int32_t count_ifB(const L& lambda) {
-		return this->head_count_ifB(lambda);
+		return count_ifB_impl(lambda, this->next);
 	}
 };
 
@@ -1267,6 +1273,161 @@ gnu_noinline void assume_non_vector_registers_volatile();
 gnu_noinline void assume_all_registers_volatile();
 gnu_noinline void assume_all_registers_volatile(void* use_arg);
 
+template<typename T, uint8_t known_base = 0, bool enable_relative = false, bool skip_whitespace = true, bool check_sign = true>
+static gnu_noinline std::pair<T, const char*> regcall strtonum(const char* str, size_t base) {
+	const uint8_t* str_read = (const uint8_t*)str;
+	uint8_t number_base;
+	if constexpr (known_base == 0 || known_base == 10) {
+		number_base = 10;
+	} else if constexpr (known_base == 2 || known_base == 16) {
+		number_base = known_base;
+	}
+	uint8_t flags = 0;
+	const uint8_t is_negate = 0x01;
+	const uint8_t is_relative = 0x02;
+	const uint8_t is_max = 0x80;
+	uint32_t c;
+	if constexpr (skip_whitespace || check_sign) {
+	pre_number_loop:
+		switch (c = *str_read) {
+			case '\t': case '\n': case '\v': case '\f': case '\r': case ' ':
+				if constexpr (!skip_whitespace) {
+					++str_read;
+					goto pre_number_loop;
+				} else {
+					goto fail;
+				}
+			case '-':
+				if constexpr (check_sign) {
+					flags |= is_negate;
+					break;
+				} else {
+					goto fail;
+				}
+			case '+':
+				if constexpr (check_sign) {
+					break;
+				} else {
+					goto fail;
+				}
+			default: [[unlikely]];
+				goto fail;
+			case 'r': case 'R':
+				if constexpr (enable_relative) {
+					goto is_leading_r;
+				} else {
+					goto fail;
+				}
+			case '0':
+				goto is_leading_zero;
+			case '1' ... '9':
+				goto start_number;
+		}
+		++str_read;
+	}
+	switch (c = *str_read) {
+		default:
+			goto fail;
+		case 'r': case 'R': is_leading_r:
+			if constexpr (!enable_relative) {
+				goto fail;
+			} else {
+				flags |= is_relative;
+			}
+		case '0': is_leading_zero:
+			if constexpr (known_base == 16) {
+				switch (*++str_read) {
+					case 'x': case 'X':
+						c = *++str_read;
+						break;
+					default: [[unlikely]];
+						goto fail;
+				}
+				break;
+			} else if constexpr (known_base == 2) {
+				switch (*++str_read) {
+					case 'b': case 'B':
+						c = *++str_read;
+						break;
+					default: [[unlikely]];
+						goto fail;
+				}
+				break;
+			} else if constexpr (known_base == 10) {
+				switch (c = *++str_read) {
+					case '0' ... '9':
+						break;
+					default: [[unlikely]];
+						goto fail;
+				}
+				break;
+			} else {
+				switch (c = *++str_read) {
+					default: [[unlikely]];
+						goto fail;
+					case 'x': case 'X':
+						number_base = 16;
+						c = *++str_read;
+						break;
+					case 'b': case 'B':
+						number_base = 2;
+						c = *++str_read;
+						break;
+					case '0' ... '9':
+						break;
+				}
+				break;
+			}
+		case '1' ... '9':
+			break;
+	}
+start_number:
+	T ret = 0;
+	for (;; c = *++str_read) {
+		uint32_t digit = c;
+		switch (digit) {
+			case '0' ... '9':
+				digit -= '0';
+				break;
+			case 'a' ... 'f':
+				digit -= 'a' - 10;
+				break;
+			case 'A' ... 'F':
+				digit -= 'A' - 10;
+				break;
+			default:
+				goto end_parse;
+		}
+		if (digit >= number_base) {
+			break;
+		}
+		if (expect(!(flags & is_max), true)) {
+			if (expect(!__builtin_mul_overflow(ret, number_base, &ret), true)) {
+				if (expect(!__builtin_add_overflow(ret, digit, &ret), true)) {
+					continue;
+				}
+			}
+			flags |= is_max;
+		}
+	}
+end_parse:
+	if (!(flags & is_max)) {
+		if constexpr (check_sign) {
+			if (flags & is_negate) {
+				ret = -ret;
+			}
+		}
+		if constexpr (enable_relative) {
+			if (flags & is_relative) {
+				ret += base;
+			}
+		}
+		return std::make_pair(ret, (const char*)str_read);
+	}
+fail:
+	return std::make_pair(std::numeric_limits<T>::max(), str);
+}
+
 template <typename T>
 inline T confine_to_range(T min, T input, T max) {
 	T temp = __max(min, input);
@@ -1328,11 +1489,8 @@ enum PointerType {
 	Pointer16 = Near16
 };
 
-#if NATIVE_BITS == 32
-static inline constexpr PointerType native_bits = Near32;
-#elif NATIVE_BITS == 64
-static inline constexpr PointerType native_bits = Near64;
-#endif
+static inline constexpr size_t native_bits = NATIVE_BITS;
+static inline constexpr PointerType native_pointer = native_bits == 32 ? Near32 : Near64;
 
 template<typename T = void>
 using PTR32 = T * __ptr32;
@@ -1625,6 +1783,13 @@ __asm__ __volatile__ ("JMP %P[" MACRO_STR(func) "]"::asm_arg("i", func))
 #define asm_call(func) \
 __asm__ __volatile__ ("CALL %P[" MACRO_STR(func) "]"::asm_arg("i", func))
 
+#if __x86_64__
+#define asm64(symbol) asm(symbol)
+#define asm32(symbol)
+#else
+#define asm64(symbol)
+#define asm32(symbol) asm(symbol)
+#endif
 
 #ifndef NO_ASM_SYMBOLS
 #define asm_symbol_raw(symbol) asm(symbol)

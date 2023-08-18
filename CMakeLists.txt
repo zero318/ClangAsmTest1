@@ -22,6 +22,7 @@ add_library(winhttp SHARED)
 add_library(winhttp_websocket SHARED)
 add_library(CSoundLib STATIC)
 add_library(wow64 SHARED)
+add_library(parakit_inject SHARED)
 
 set(programs
 ${PROJECT_NAME}
@@ -41,6 +42,7 @@ winhttp
 winhttp_websocket
 winhttp_test3
 wow64
+parakit_inject
 )
 
 enable_language(ASM-ATT)
@@ -187,6 +189,7 @@ target_compile_options(${EXE} PRIVATE
 	-Wno-shift-op-parentheses
 	-Wno-gnu-alignof-expression
 	-Wno-microsoft-goto
+	-Wno-missing-declarations
 )
 
 # Output Flags
@@ -200,7 +203,7 @@ target_compile_options(${EXE} PRIVATE
 target_compile_options(${EXE} PRIVATE
 	# Allow GNU keywords
 	"SHELL:-Xclang -fgnu-keywords"
-
+	
 	# Processor Features to Allow
 	-march=bdver3
 	#"SHELL:-Xclang -mtune=bdver3"
@@ -397,6 +400,7 @@ target_link_options(${EXE} PRIVATE
 
 target_compile_options(${EXE} PRIVATE
 	#"SHELL:-fuse-ld=lld-link"
+	#"SHELL:-fuse-ld=link"
 	#"-fuse-ld=\"F:\\Program Files (x86)\\LLVM\\bin\\ld.lld.exe\""
 )
 
@@ -414,18 +418,18 @@ include_directories(SYSTEM "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_C
 include_directories(SYSTEM "F:\\My Programs Expansion\\DirectX_SDKs\\8.0a\\include")
 include_directories(SYSTEM "C:\\Program Files (x86)\\Microsoft Speech SDK\\Include")
 include_directories(SYSTEM "F:\\MyCodeLibs\\boost\\install\\boost_1_82_0\\boost_1_82_0\\")
-if(NOT MSVC)
+#if(NOT MSVC)
 include_directories(AFTER SYSTEM
 	"F:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.29.30133\\ATLMFC\\include"
 	"F:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.29.30133\\include"
 	"C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.8\\include\\um"
-	"C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20262.0\\ucrt"
-	"C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20262.0\\shared"
-	"C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20262.0\\um"
-	"C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20262.0\\winrt"
-	"C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20262.0\\cppwinrt"
+	"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.20262.0\\ucrt"
+	"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.20262.0\\shared"
+	"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.20262.0\\um"
+	"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.20262.0\\winrt"
+	"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.20262.0\\cppwinrt"
 )
-endif()
+#endif()
 #add_library(NT "C:\\Windows\\SysWOW64\\ntdll.dll")
 
 #target_link_libraries(${EXE} NT)
@@ -434,8 +438,12 @@ endif()
 #target_link_libraries(${EXE} "C:\\WinDDK\\7600.16385.1\\lib\\wxp\\i386\\ntdll.lib")
 if (IS_X64)
 target_link_libraries(${EXE} "C:\\WinDDK\\7600.16385.1\\lib\\win7\\amd64\\winmm.lib")
+target_link_directories(${EXE} PRIVATE "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.20262.0\\ucrt\\x64")
+target_link_directories(${EXE} PRIVATE "C:\\Program Files (x86)\\Microsoft SDKs\\Windows\\v7.1A\\Lib\\x64")
+#target_link_options(${EXE} PRIVATE "/libpath:\"C/Program Files (x86)/Windows Kits/10/Lib/10.0.20262.0/ucrt/x64/\"")
 else()
 target_link_libraries(${EXE} "C:\\WinDDK\\7600.16385.1\\lib\\wxp\\i386\\winmm.lib")
+target_link_directories(${EXE} PRIVATE "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.20262.0\\ucrt\\x86")
 endif()
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\dsound.lib")
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\dinput8.lib")
@@ -504,10 +512,17 @@ target_compile_definitions(CSoundLib PRIVATE
 )
 endif()
 
+add_library(windows_test_asm OBJECT
+	"windows_labels.asm"
+)
 target_compile_options(${PROJECT_NAME} PRIVATE
 	#-fforce-emit-vtables
 )
+target_include_directories(${PROJECT_NAME} PRIVATE 
+	"F:\\MyCodeLibs\\asmlib"
+)
 target_sources(${PROJECT_NAME} PRIVATE
+	$<TARGET_OBJECTS:windows_test_asm>
 	#"ClangAsmTest1.cpp"
 	#"ClangAsmTest1.h"
 	#"util.h"
@@ -548,6 +563,8 @@ target_sources(${PROJECT_NAME} PRIVATE
 	"frame_pointer_test.cpp"
 	"json_test.cpp"
 	"json5_test.cpp"
+	"decent_rng.h"
+	"rtti_label_gen.cpp"
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE
 	USE_AMD_FEATURES
@@ -682,8 +699,6 @@ target_sources(UMTest1 PRIVATE
 	#"dummy_main.cpp"
 	$<TARGET_OBJECTS:UMAsm>
 	"UM/UM_bullet_ex.cpp"
-	"zero/libm_test.h"
-	"zero/libm_test.cpp"
 )
 target_compile_definitions(UMTest1 PRIVATE
 	NO_ASM_SYMBOLS
@@ -797,7 +812,8 @@ target_link_options(winhttp PRIVATE
 )
 
 target_sources(winhttp_websocket PRIVATE
-	"winhttp_websocket/websocket_impl.cpp"
+	#"winhttp_websocket/websocket_impl.cpp"
+	"winhttp_websocket/websocket_impl_logging.cpp"
 	#"winhttp_websocket/new_impl.cpp"
 	"winhttp_websocket.def"
 )
@@ -839,6 +855,25 @@ target_compile_definitions(wow64 PRIVATE
 	STOP_LINKING_DEFAULT_LIB_PLZ
 )
 target_link_options(wow64 PRIVATE
+	/DLL
+)
+
+target_sources(parakit_inject PRIVATE
+	"parakit/test.cpp"
+)
+target_compile_options(parakit_inject PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(parakit_inject PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+target_link_options(parakit_inject PRIVATE
 	/DLL
 )
 

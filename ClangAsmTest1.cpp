@@ -27,6 +27,7 @@
 #undef _WIN64
 //#undef WIN32_LEAN_AND_MEAN
 #include "Windows.h"
+#include <wincrypt.h>
 #include <joystickapi.h>
 
 #include <stdnoreturn.h>
@@ -61,6 +62,7 @@ void TestFunc(void) {
 }
 
 #include <math.h>
+#include <new>
 
 static inline constexpr float PI_f = M_PI;
 static inline constexpr float HALF_PI_f = M_PI_2;
@@ -1789,11 +1791,11 @@ dllexport gnu_noinline void long_double_test() {
 		if (counter >> 63) {
 			ld_value += MAGIC_VALUE_A;
 		}
-		__asm volatile ("":"+t"(ld_value));
+		__asm__ volatile ("":"+t"(ld_value));
 		*/
 		long double ld_value;
 		uint64_t yeet = counter;
-		__asm volatile (
+		__asm__ volatile (
 			"fildq %[yeet] \n"
 			//"fldt st \n"
 			".byte 0xD9, 0xC0 \n"
@@ -1823,7 +1825,7 @@ dllexport gnu_noinline void long_double_test() {
 	do {
 		long double ld_value = (int64_t)counter;
 		//ld_value += MAGIC_VALUE_A_ARRAY[__bextri_u64(counter, 0x13F)];
-		__asm volatile ("":"+t"(ld_value));
+		__asm__ volatile ("":"+t"(ld_value));
 	} while (!add_overflow(counter, counter_add));
 	custom3_end_time = rdtsc();
 
@@ -1832,14 +1834,14 @@ dllexport gnu_noinline void long_double_test() {
 	do {
 		long double ld_value = (int64_t)counter;
 		int64_t yeet;
-		__asm volatile (
+		__asm__ volatile (
 			"BT $0x3F, %[counter] \n"
 			"SBB %[yeet], %[yeet] \n"
 			: asm_arg("=r", yeet)
 			: asm_arg("r", counter)
 		);
 		ld_value += MAGIC_VALUE_A_ARRAY2[1 + yeet];
-		__asm volatile ("":"+t"(ld_value));
+		__asm__ volatile ("":"+t"(ld_value));
 	} while (!add_overflow(counter, counter_add));
 	custom4_end_time = rdtsc();
 
@@ -1848,13 +1850,13 @@ dllexport gnu_noinline void long_double_test() {
 	do {
 		long double ld_value = (int64_t)counter;
 		int64_t yeet = counter;
-		__asm volatile (
+		__asm__ volatile (
 			"ADD %[yeet], %[yeet] \n"
 			"SBB %[yeet], %[yeet] \n"
 			: asm_arg("+r", yeet)
 		);
 		ld_value += MAGIC_VALUE_A_ARRAY2[1 + yeet];
-		__asm volatile ("":"+t"(ld_value));
+		__asm__ volatile ("":"+t"(ld_value));
 	} while (!add_overflow(counter, counter_add));
 	custom5_end_time = rdtsc();
 
@@ -1863,7 +1865,7 @@ dllexport gnu_noinline void long_double_test() {
 	do {
 		uint64_t yeet = counter;
 		long double ld_value;
-		__asm volatile (
+		__asm__ volatile (
 			"FILDQ %[yeet] \n"
 			"TEST %[counter], %[counter] \n"
 			"JNS 1f \n"
@@ -2032,7 +2034,7 @@ static constexpr FCW extended_precision_fcw = {
 	.rounding = RoundToNearest
 };
 
-#include <complex.h>
+//#include <complex.h>
 
 struct Rng {
 	uint16_t value; // 0x0
@@ -2394,8 +2396,137 @@ CrappyLockedQueue<uint32_t, 4> test_jank2{};
 
 */
 
-int main(int argc, char* argv[]) {
 
+inline vec<float, 4> vectorcall read_float3(void* addr) {
+	//vec<float, 4> ret = ;
+	//ret[3] = 0.0f;
+	//vec<float, 4> ret = { 0, 0, 0, 0 };
+	//return shufflevec((vec<float, 4>) * (unaligned vec<float, 4>*)addr, ret, 0, 1, 2, 7);
+	float* addr_read = (float*)addr;
+	return (vec<float, 4>) { addr_read[0], addr_read[1], addr_read[2], 0.0f };
+}
+
+inline void vectorcall write_float3(void* addr, vec<float, 4> value) {
+	//auto* write_addr = (unaligned vec<float, 4>*)addr;
+	//*write_addr = shufflevec(value, (vec<float, 4>)*write_addr, 0, 1, 2, 7);
+	float* addr_write = (float*)addr;
+	addr_write[0] = value[0];
+	addr_write[1] = value[1];
+	addr_write[2] = value[2];
+}
+
+inline float vectorcall horizontal_add(vec<float, 4> value) {
+	//__m128 t1 = _mm_movehl_ps(value, value);
+	//__m128 t2 = _mm_add_ps(value, t1);
+	//__m128 t3 = _mm_shuffle_ps(t2, t2, 1);
+	//__m128 t4 = _mm_add_ss(t2, t3);
+	//return _mm_cvtss_f32(t4);
+	return value[0] + value[1] + value[2] + value[3];
+}
+
+inline float vectorcall dot_product(vec<float, 4> A, vec<float, 4> B) {
+	return horizontal_add(A * B);
+}
+
+inline float vectorcall float3_length(vec<float, 4> value) {
+	return __builtin_sqrtf(dot_product(value, value));
+}
+
+dllexport gnu_noinline float* stdcall normalize_float3(float* in, float* out) {
+	vec<float, 4> value = read_float3(in);
+	value /= float3_length(value);
+	write_float3(out, value);
+	return out;
+}
+
+struct Float3A {
+	float x = 0.0f;
+	float y = 0.7867742f;
+	float z = 0.6172410f;
+};
+struct Float3B {
+	float x = 0.0f;
+	float y = 377.1200f;
+	float z = 296.1600f;
+};
+dllexport Float3A float3a;
+dllexport Float3B float3b;
+
+constexpr auto wjherwejrv = PROCESS_ALL_ACCESS;
+
+using PPS_CREATE_INFO = void*;
+using PPS_ATTRIBUTE_LIST = void*;
+
+NTSTATUS
+NTAPI
+NtCreateUserProcess(
+	_Out_ PHANDLE ProcessHandle,
+	_Out_ PHANDLE ThreadHandle,
+	_In_ ACCESS_MASK ProcessDesiredAccess,
+	_In_ ACCESS_MASK ThreadDesiredAccess,
+	_In_opt_ POBJECT_ATTRIBUTES ProcessObjectAttributes,
+	_In_opt_ POBJECT_ATTRIBUTES ThreadObjectAttributes,
+	_In_ ULONG ProcessFlags,
+	_In_ ULONG ThreadFlags,
+	_In_ PRTL_USER_PROCESS_PARAMETERS ProcessParameters,
+	_Inout_ PPS_CREATE_INFO CreateInfo,
+	_In_ PPS_ATTRIBUTE_LIST AttributeList
+);
+
+using NtCreateUserProcessPtr = decltype(&NtCreateUserProcess);
+
+#include "windows_structs.h"
+
+#include "decent_rng.h"
+
+static DecentRNG RNG;
+
+dllexport gnu_noinline void generate_rtti_labels32(const wchar_t* path, const char* output_path, const char* input_path);
+
+int stdcall main(int argc, char* argv[]) {
+
+	generate_rtti_labels32(L"F:\\Touhou_Stuff_2\\disassembly_stuff\\19\\th19\\th19.exe", ".\\yeetus_out.txt", ".\\yeetus_in.txt");
+	return 0;
+	//return RNG.rand<int>();
+
+	HMODULE ntdll_handle = GetModuleHandleA("ntdll.dll");
+	auto NtCreateUserProcess_func = (NtCreateUserProcessPtr)GetProcAddress(ntdll_handle, "NtCreateUserProcess");
+
+	HANDLE yeet = INVALID_HANDLE_VALUE;
+	NtCreateUserProcess_func(
+		&yeet,
+		&yeet,
+		PROCESS_ALL_ACCESS,
+		THREAD_ALL_ACCESS,
+		NULL,
+		NULL,
+		0x00020000UL,
+		0,
+		NULL,
+		NULL,
+		NULL
+	);
+
+	
+	
+	STARTUPINFOA si{
+		.cb = sizeof(si)
+	};
+	PROCESS_INFORMATION pi{};
+	CreateProcessA(
+		"F:\\Touhou_Stuff_2\\disassembly_stuff\\8\\eiya - Copy\\th08.exe",
+		NULL,
+		NULL,
+		NULL,
+		FALSE,
+		0,
+		NULL,
+		"F:\\Touhou_Stuff_2\\disassembly_stuff\\8\\eiya - Copy\\",
+		&si,
+		&pi
+	);
+
+	//normalize_float3(&float3a.x, &float3b.x);
 	//std::thread threads[thread_count];
 	//uint32_t local_compare_array_index = 0;
 	//nounroll for (size_t i = 0; i < thread_iters; ++i) {
@@ -2427,10 +2558,11 @@ int main(int argc, char* argv[]) {
 	//test_zun_rng2();
 	return 0;
 
-	clang_noinline wjhrjwrv = __builtin_sqrt(-32984.2349f);
-	test_json_parse(u"{ \"ye\\u0065tus\" : true, \"pingas\":{}, \"yeet\": [ 1, 0.1, -123.456e+78, \"\", null ] }");
-	puts("");
-	test_json5_parse(L"{ \"ye\\u0065tus\" : true, \"pingas\":{}, \"yeet\": [ 01, 0.1, -123.456e+78, \"\", null, ], /* multi comment \n*/ unquoted : \'n\\x65w\\\nline\', }");
+	//clang_noinline wjhrjwrv = __builtin_sqrt(-32984.2349f);
+	//test_json_parse(u"{ \"ye\\u0065tus\" : true, \"pingas\":{}, \"yeet\": [ 1, 0.1, -123.456e+78, \"\", null ] }");
+	//puts("");
+	//test_json5_parse(L"{ \"ye\\u0065tus\" : true, \"pingas\":{}, \"yeet\": [ 01, 0.1, -123.456e+78, \"\", null, ], /* multi comment \n*/ unquoted : \'n\\x65w\\\nline\', }");
+
 	/*
 	BaseClassC* temp = new BaseClassC();
 	printf("%d", temp->testA());
@@ -3868,7 +4000,7 @@ enum KGDTTYPE {
 };
 
 template<bool include_long_check = true>
-dllexport gnu_attr(target("no-sse")) void ArchSetGdtEntry(KGDTENTRY* gdt_base, uint32_t offset, uintptr_t base, size_t limit, KGDTTYPE type, uint32_t dpl, SetGetEntryFlags flags) {
+dllexport gnu_attr(target("no-sse")) void ArchSetGdtEntry(KGDTENTRY* gdt_base, uint32_t offset, uint64_t base, size_t limit, KGDTTYPE type, uint32_t dpl, SetGetEntryFlags flags) {
 	KGDTENTRY64* entry = based_pointer<KGDTENTRY64>(gdt_base, AlignDownToMultipleOf2(offset, alignof(KGDTENTRY)));
 	if ((entry->Granularity = limit > PAGE_SIZE << 12)) {
 		limit >>= 12;
@@ -3902,7 +4034,7 @@ dllexport gnu_attr(target("no-sse")) void ArchSetGdtEntry(KGDTENTRY* gdt_base, u
 #define USER_MODE 0x3
 
 template<bool include_long_check = false, bool force_single_reg = false>
-dllexport gnu_attr(target("no-sse")) void ArchSetGdtEntryNew(KGDTENTRY* gdt_base, uint32_t offset, uintptr_t base, size_t limit, KGDTTYPE type, uint32_t dpl, uint8_t flags) {
+dllexport gnu_attr(target("no-sse")) void ArchSetGdtEntryNew(KGDTENTRY* gdt_base, uint32_t offset, uint64_t base, size_t limit, KGDTTYPE type, uint32_t dpl, uint8_t flags) {
 	KGDTENTRY64* entry = based_pointer<KGDTENTRY64>(gdt_base, AlignDownToMultipleOf2(offset, alignof(KGDTENTRY)));
 	if constexpr (force_single_reg) {
 		__asm__ volatile ("" : asm_arg("+r", entry));
@@ -3943,7 +4075,7 @@ dllexport gnu_attr(target("no-sse")) void ArchSetGdtEntryNew(KGDTENTRY* gdt_base
 	entry->Flags2 = temp >> 8;
 }
 
-dllexport gnu_attr(target("no-sse")) void ArchSetGdtEntryNew2(KGDTENTRY* gdt_base, uint32_t offset, uintptr_t base, size_t limit, KGDTTYPE type, uint32_t dpl, uint8_t flags) {
+dllexport gnu_attr(target("no-sse")) void ArchSetGdtEntryNew2(KGDTENTRY* gdt_base, uint32_t offset, uint64_t base, size_t limit, KGDTTYPE type, uint32_t dpl, uint8_t flags) {
 	return ArchSetGdtEntryNew<true, true>(gdt_base, offset, base, limit, type, dpl, flags);
 }
 
@@ -4128,6 +4260,42 @@ dllexport void OslArchpKernelSetupPhase0(void* arg1) {
 	if (UnknownBootStruct* boot_struct = (UnknownBootStruct*)malloc(0x20000)) {
 		memset(boot_struct, 0, 0x1A000);
 		//boot_struct->tss.Rsp0
+	}
+}
+
+struct ServiceDescriptor {
+	uint32_t arg_count : 4;
+	uint32_t offset : 28;
+};
+
+dllexport void KeCompactServiceTable(uint64_t *restrict address_table, const uint8_t *restrict argument_table, uint32_t limit, bool is_win2k_table) {
+	ServiceDescriptor *restrict table_output = (ServiceDescriptor *restrict)address_table;
+	for (size_t i = 0; i < limit; ++i) {
+		table_output[i] = {
+			.arg_count = (uint32_t)(argument_table[i] >> 2),
+			.offset = (uint32_t)(address_table[i] - (uintptr_t)address_table)
+		};
+	}
+	if (is_win2k_table) {
+		for (size_t i = 0; i < limit; ++i) {
+			((uint8_t*)&table_output[limit])[i] = ((uint8_t*)&address_table[limit])[i];
+		}
+	}
+}
+
+dllexport void KeCompactServiceTable2(uint64_t *restrict address_table, const uint8_t *restrict argument_table, size_t limit, bool is_win2k_table) {
+	if ((uint32_t)limit) {
+		uint32_t *restrict table_output = (uint32_t * restrict)address_table;
+		novectorize for (size_t i = 0; i < limit; ++i) {
+			table_output[i] = ((address_table[i] - (uintptr_t)address_table) << 4) | (argument_table[i] >> 2);
+		}
+		if (is_win2k_table) {
+			uint8_t *restrict status_vec_out = (uint8_t *restrict)&table_output[limit];
+			uint8_t *restrict status_vec_in = (uint8_t *restrict)&address_table[limit];
+			novectorize do {
+				*status_vec_out++ = *status_vec_in++;
+			} while (--limit);
+		}
 	}
 }
 

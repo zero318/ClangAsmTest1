@@ -1,5 +1,6 @@
 #ifndef WINDOWS_STRUCTS_H
 #define WINDOWS_STRUCTS_H
+#pragma once
 
 #pragma clang diagnostic ignored "-Wc++17-extensions"
 #pragma clang diagnostic ignored "-Wc++20-extensions"
@@ -8,6 +9,9 @@
 // Something got undefined in my cmake file or some
 // crap and I'd rather just define it here than fix it
 #define POINTER_64 __ptr64
+
+#define PARAGRAPH_SIZE 16
+#define PAGE_SIZE 0x1000
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -24,8 +28,16 @@
 #define __x64_padding(bytes)
 #define __padding(bytes)
 
+#if __INTELLISENSE__
+#define ide_packed_field
+#define ide_gnu_packed
+#else
+#define ide_packed_field packed_field
+#define ide_gnu_packed gnu_packed
+#endif
+
 #define DUMMY_X_TYPE(type) \
-template<size_t bits = NATIVE_BITS> \
+template<size_t bits = native_bits> \
 using MACRO_CAT(type,X) = type
 
 #if NATIVE_BITS == 32
@@ -34,44 +46,222 @@ using MACRO_CAT(type,X) = type
 #define NTAPI
 #endif
 
+#define MakeWinVer(major, minor, build, revision) (UINT64_C(major) * 1000000000000ull + UINT64_C(minor) * 10000000000ull + UINT64_C(build) * 100000ull + UINT64_C(revision))
+
+enum WindowsVersion : uint64_t {
+	Win_NT_310		= MakeWinVer(3, 10, 511, 1),
+	Win_NT_310_SP3	= MakeWinVer(3, 10, 528, 1),
+	Win_NT_350		= MakeWinVer(3, 50, 800, 1),
+	Win_NT_350_SP3	= MakeWinVer(3, 50, 807, 1),
+	Win_NT_351		= MakeWinVer(3, 51, 1025, 1),
+	Win_NT_351_SP3	= MakeWinVer(3, 51, 1057, 3),
+	Win_NT_351_SP4	= MakeWinVer(3, 51, 1057, 5),
+	Win_NT_351_SP5	= MakeWinVer(3, 51, 1057, 6),
+	Win_NT_40		= MakeWinVer(4, 0, 1381, 1),
+	Win_NT_40_SP2	= MakeWinVer(4, 0, 1381, 3),
+	Win_NT_40_SP3	= MakeWinVer(4, 0, 1381, 4),
+	Win_NT_40_SP4	= MakeWinVer(4, 0, 1381, 133),
+	Win_NT_40_SP5	= MakeWinVer(4, 0, 1381, 204),
+	Win_NT_40_SP6	= MakeWinVer(4, 0, 1381, 335),
+	Win_2000		= MakeWinVer(5, 0, 2195, 1),
+	Win_2000_SP1	= MakeWinVer(5, 0, 2195, 1620),
+	Win_2000_SP3	= MakeWinVer(5, 0, 2195, 5438),
+	Win_2000_SP4	= MakeWinVer(5, 0, 2195, 6717),
+	Win_XP			= MakeWinVer(5, 1, 2600, 0),
+	Win_XP_SP1		= MakeWinVer(5, 1, 2600, 1106),
+	Win_XP_SP2		= MakeWinVer(5, 1, 2600, 2180),
+	Win_XP_SP3		= MakeWinVer(5, 1, 2600, 5512),
+	Win_Srv2003		= MakeWinVer(5, 2, 3790, 0),
+	Win_Srv2003_SP1	= MakeWinVer(5, 2, 3790, 1830),
+	Win_Srv2003_SP2	= MakeWinVer(5, 2, 3790, 3959),
+	Win_Vista		= MakeWinVer(6, 0, 6000, 16386),
+	Win_Vista_SP1	= MakeWinVer(6, 0, 6001, 18000),
+	Win_Vista_SP2	= MakeWinVer(6, 0, 6002, 18005),
+	Win_7			= MakeWinVer(6, 1, 7600, 16385),
+	Win_7_SP1		= MakeWinVer(6, 1, 7601, 17514),
+	Win_8			= MakeWinVer(6, 2, 9200, 16384),
+	Win_81			= MakeWinVer(6, 2, 9600, 16384),
+	Win_81_SP1		= MakeWinVer(6, 2, 9600, 17031),
+	Win_10			= MakeWinVer(10, 0, 10240, 16384),
+	Win_10_1507		= Win_10,
+	Win_10_1511		= MakeWinVer(10, 0, 10586, 0),
+	Win_10_1607		= MakeWinVer(10, 0, 14393, 0),
+	Win_10_1703		= MakeWinVer(10, 0, 15063, 0),
+	Win_10_1709		= MakeWinVer(10, 0, 16299, 15),
+	Win_10_1803		= MakeWinVer(10, 0, 17134, 1),
+	Win_10_1809		= MakeWinVer(10, 0, 17763, 107),
+	Win_10_1903		= MakeWinVer(10, 0, 18362, 1),
+	Win_10_1909		= MakeWinVer(10, 0, 18362, 418),
+	Win_10_2004		= MakeWinVer(10, 0, 19041, 208),
+	Win_10_20H2		= MakeWinVer(10, 0, 19042, 0),
+	Win_10_21H1		= MakeWinVer(10, 0, 19043, 0),
+	Win_10_21H2		= MakeWinVer(10, 0, 19044, 0),
+	Win_10_22H2		= MakeWinVer(10, 0, 19045, 0),
+	Win_11			= MakeWinVer(10, 0, 22000, 0),
+	Win_11_21H2		= Win_11,
+	Win_11_22H2		= MakeWinVer(10, 0, 22621, 1848)
+};
+
+#undef MakeWinVer
+
 using UNKNOWN_TYPE = void;
 using ANY_TYPE = void;
 
-using KPRIORITY = int32_t;
+//__if_not_exists(KPRIORITY) {
+	//using KPRIORITY = int32_t;
+//}
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using KAFFINITYX = size_tx<bits>;
 ValidateStructSize(0x4, KAFFINITYX<32>);
 ValidateStructAlignment(0x4, KAFFINITYX<32>);
 ValidateStructSize(0x8, KAFFINITYX<64>);
 ValidateStructAlignment(0x8, KAFFINITYX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using HANDLEX = PTRZX<bits>;
 ValidateStructSize(0x4, HANDLEX<32>);
 ValidateStructAlignment(0x4, HANDLEX<32>);
 ValidateStructSize(0x8, HANDLEX<64>);
 ValidateStructAlignment(0x8, HANDLEX<64>);
 
-template<size_t bits = NATIVE_BITS>
-using int64_tx gnu_aligned(bits != 64 ? alignof(uint32_t) : alignof(uint64_t)) = int64_t;
+struct LongDouble80_base {
+	uint16_t raw[5];
+
+	inline constexpr LongDouble80_base& operator=(long double value) {
+		*(long double*)this = value;
+		return *this;
+	}
+
+	inline constexpr operator long double() const {
+		return *(long double*)this;
+	}
+};
+struct PackedLongDouble80 : LongDouble80_base {};
+struct alignas(16) AlignedLongDouble80 : LongDouble80_base {};
+struct PaddedLongDouble80 : LongDouble80_base {
+	uint16_t padding[3];
+};
+
+using __m128_unaligned gnu_aligned(4) = __m128;
+ValidateStructAlignment(0x4, __m128_unaligned);
+
+template<size_t bits = native_bits>
+struct winstruct_alignment_impl;
+
+template<>
+struct winstruct_alignment_impl<32> {
+	using int64_tx gnu_aligned(alignof(int32_t)) = int64_t;
+	using uint64_tx gnu_aligned(alignof(uint32_t)) = uint64_t;
+	struct LongDouble80 : LongDouble80_base {};
+};
+template<>
+struct winstruct_alignment_impl<64> {
+	using int64_tx gnu_aligned(alignof(int64_t)) = int64_t;
+	using uint64_tx gnu_aligned(alignof(uint64_t)) = int64_t;
+	struct alignas(16) LongDouble80 : LongDouble80_base {};
+};
+
+template<size_t bits = native_bits>
+using int64_tx = winstruct_alignment_impl<bits>::int64_tx;
 ValidateStructSize(0x8, int64_tx<32>);
 ValidateStructAlignment(0x4, int64_tx<32>);
 ValidateStructSize(0x8, int64_tx<64>);
 ValidateStructAlignment(0x8, int64_tx<64>);
 
-template<size_t bits = NATIVE_BITS>
-using uint64_tx gnu_aligned(bits != 64 ? alignof(uint32_t) : alignof(uint64_t)) = uint64_t;
+
+template<size_t bits = native_bits>
+using uint64_tx = winstruct_alignment_impl<bits>::uint64_tx;
 ValidateStructSize(0x8, uint64_tx<32>);
 ValidateStructAlignment(0x4, uint64_tx<32>);
 ValidateStructSize(0x8, uint64_tx<64>);
 ValidateStructAlignment(0x8, uint64_tx<64>);
 
+template<size_t bits = native_bits>
+union LARGE_INTEGERX {
+	struct {
+		uint32_t LowPart; // 0x0, 0x0
+		int32_t HighPart; // 0x4, 0x4
+	};
+	struct {
+		uint32_t LowPart; // 0x0, 0x0
+		int32_t HighPart; // 0x4, 0x4
+	} u;
+	int64_tx<bits> QuadPart ide_packed_field; // 0x0, 0x0
+	// 0x8, 0x8
+};
+ValidateStructSize(0x8, LARGE_INTEGERX<32>);
+ValidateStructAlignment(0x4, LARGE_INTEGERX<32>);
+ValidateStructSize(0x8, LARGE_INTEGERX<64>);
+ValidateStructAlignment(0x8, LARGE_INTEGERX<64>);
+
+template<size_t bits = native_bits>
+union ULARGE_INTEGERX {
+	struct {
+		uint32_t LowPart; // 0x0, 0x0
+		uint32_t HighPart; // 0x4, 0x4
+	};
+	struct {
+		uint32_t LowPart; // 0x0, 0x0
+		uint32_t HighPart; // 0x4, 0x4
+	} u;
+	uint64_tx<bits> QuadPart ide_packed_field; // 0x0, 0x0
+	// 0x8, 0x8
+};
+ValidateStructSize(0x8, ULARGE_INTEGERX<32>);
+ValidateStructAlignment(0x4, ULARGE_INTEGERX<32>);
+ValidateStructSize(0x8, ULARGE_INTEGERX<64>);
+ValidateStructAlignment(0x8, ULARGE_INTEGERX<64>);
+
+template<size_t bits = native_bits>
+struct KSYSTEM_TIMEX {
+	union {
+		struct {
+			uint32_t LowPart; // 0x0, 0x0
+			int32_t High1Time; // 0x4, 0x4
+		};
+		int64_tx<32> QuadPart ide_packed_field; // 0x0, 0x0
+		_Atomic int64_tx<32> AtomicQuadPart ide_packed_field; // 0x0, 0x0
+	};
+	int32_t High2Time; // 0x8, 0x8
+	// 0xC, 0xC
+
+private:
+	template<typename T>
+	static inline int64_t read_impl(T self) {
+		if constexpr (bits == 64) {
+			return self->AtomicQuadPart;
+		} else {
+			LARGE_INTEGERX<32> ret;
+			do {
+				ret.QuadPart = this->QuadPart;
+			} while (ret.HighPart == this->High2Time);
+			return ret.QuadPart;
+		}
+	}
+public:
+
+	inline int64_t read() const {
+		return read_impl(this);
+	}
+
+	inline int64_t read() const volatile {
+		return read_impl(this);
+	}
+};
+ValidateStructSize(0xC, KSYSTEM_TIMEX<32>);
+ValidateStructAlignment(0x4, KSYSTEM_TIMEX<32>);
+ValidateStructSize(0xC, KSYSTEM_TIMEX<64>);
+ValidateStructAlignment(0x4, KSYSTEM_TIMEX<64>);
+
 #if !__INTELLISENSE__
-template<size_t bits = NATIVE_BITS>
-using LongDouble80 gnu_aligned(bits != 64 ? 2 : 16) = long double;
-using AlignedLongDouble gnu_aligned(16) = long double;
-using PackedLongDouble gnu_aligned(2) = long double;
+//template<size_t bits = native_bits>
+//using LongDouble80 gnu_aligned(bits != 64 ? 2 : 16) = long double;
+template<size_t bits = native_bits>
+using LongDouble80 = winstruct_alignment_impl<bits>::LongDouble80;
+using AlignedLongDouble = AlignedLongDouble80;
+using PackedLongDouble = PackedLongDouble80;
+using PaddedLongDouble = PaddedLongDouble80;
 #else
 template<size_t bits>
 union LongDouble80;
@@ -91,6 +281,7 @@ union gnu_packed gnu_aligned(2) PackedLongDouble {
 	long double value;
 	uint8_t dummy[10];
 };
+using PaddedLongDouble = PaddedLongDouble80;
 #endif
 ValidateStructSize(0xA, LongDouble80<32>);
 ValidateStructAlignment(0x2, LongDouble80<32>);
@@ -101,44 +292,7 @@ ValidateStructAlignment(0x10, AlignedLongDouble);
 ValidateStructSize(0xA, PackedLongDouble);
 ValidateStructAlignment(0x2, PackedLongDouble);
 
-template<size_t bits = NATIVE_BITS>
-union LARGE_INTEGERX {
-	struct {
-		uint32_t LowPart; // 0x0, 0x0
-		int32_t HighPart; // 0x4, 0x4
-	};
-	struct {
-		uint32_t LowPart; // 0x0, 0x0
-		int32_t HighPart; // 0x4, 0x4
-	} u;
-	int64_tx<bits> QuadPart; // 0x0, 0x0
-	// 0x8, 0x8
-};
-ValidateStructSize(0x8, LARGE_INTEGERX<32>);
-ValidateStructAlignment(0x4, LARGE_INTEGERX<32>);
-ValidateStructSize(0x8, LARGE_INTEGERX<64>);
-ValidateStructAlignment(0x8, LARGE_INTEGERX<64>);
-
-template<size_t bits = NATIVE_BITS>
-union ULARGE_INTEGERX {
-	struct {
-		uint32_t LowPart; // 0x0, 0x0
-		uint32_t HighPart; // 0x4, 0x4
-	};
-	struct {
-		uint32_t LowPart; // 0x0, 0x0
-		uint32_t HighPart; // 0x4, 0x4
-	} u;
-	uint64_tx<bits> QuadPart; // 0x0, 0x0
-	// 0x8, 0x8
-};
-ValidateStructSize(0x8, ULARGE_INTEGERX<32>);
-ValidateStructAlignment(0x4, ULARGE_INTEGERX<32>);
-ValidateStructSize(0x8, ULARGE_INTEGERX<64>);
-ValidateStructAlignment(0x8, ULARGE_INTEGERX<64>);
-
-
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct STRINGX {
 	uint16_t Length; // 0x0, 0x0
 	uint16_t MaximumLength; // 0x2, 0x2
@@ -151,7 +305,7 @@ ValidateStructAlignment(0x4, STRINGX<32>);
 ValidateStructSize(0x10, STRINGX<64>);
 ValidateStructAlignment(0x8, STRINGX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct UNICODE_STRINGX {
 	uint16_t Length; // 0x0, 0x0
 	uint16_t MaximumLength; // 0x2, 0x2
@@ -164,7 +318,7 @@ ValidateStructAlignment(0x4, UNICODE_STRINGX<32>);
 ValidateStructSize(0x10, UNICODE_STRINGX<64>);
 ValidateStructAlignment(0x8, UNICODE_STRINGX<64>);
 
-template<size_t bits = NATIVE_BITS, typename T = void>
+template<size_t bits = native_bits, typename T = void>
 struct LIST_ENTRYX {
 	PTRZX<bits, T> Flink; // 0x0, 0x0
 	PTRZX<bits, T> Blink; // 0x4, 0x8
@@ -175,7 +329,7 @@ ValidateStructAlignment(0x4, LIST_ENTRYX<32>);
 ValidateStructSize(0x10, LIST_ENTRYX<64>);
 ValidateStructAlignment(0x8, LIST_ENTRYX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct ASSEMBLY_STORAGE_MAP_ENTRYX {
 	union {
 		uint32_t Flags; // 0x0, 0x0
@@ -192,7 +346,7 @@ ValidateStructAlignment(0x4, ASSEMBLY_STORAGE_MAP_ENTRYX<32>);
 ValidateStructSize(0x20, ASSEMBLY_STORAGE_MAP_ENTRYX<64>);
 ValidateStructAlignment(0x8, ASSEMBLY_STORAGE_MAP_ENTRYX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct ASSEMBLY_STORAGE_MAPX {
 	union {
 		uint32_t Flags; // 0x0, 0x0
@@ -231,7 +385,7 @@ struct ACTIVATION_CONTEXT_DATA {
 ValidateStructSize(0x20, ACTIVATION_CONTEXT_DATA);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATAX = ACTIVATION_CONTEXT_DATA;
 
 struct ACTIVATION_CONTEXT_DATA_TOC_HEADER {
@@ -248,7 +402,7 @@ struct ACTIVATION_CONTEXT_DATA_TOC_HEADER {
 ValidateStructSize(0x10, ACTIVATION_CONTEXT_DATA_TOC_HEADER);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_TOC_HEADER);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_TOC_HEADERX = ACTIVATION_CONTEXT_DATA_TOC_HEADER;
 
 // No actual extensions?
@@ -266,7 +420,7 @@ struct ACTIVATION_CONTEXT_DATA_EXTENDED_TOC_HEADER {
 ValidateStructSize(0x10, ACTIVATION_CONTEXT_DATA_EXTENDED_TOC_HEADER);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_EXTENDED_TOC_HEADER);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_EXTENDED_TOC_HEADERX = ACTIVATION_CONTEXT_DATA_EXTENDED_TOC_HEADER;
 
 struct ACTIVATION_CONTEXT_DATA_TOC_ENTRY {
@@ -279,7 +433,7 @@ struct ACTIVATION_CONTEXT_DATA_TOC_ENTRY {
 ValidateStructSize(0x10, ACTIVATION_CONTEXT_DATA_TOC_ENTRY);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_TOC_ENTRY);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_TOC_ENTRYX = ACTIVATION_CONTEXT_DATA_TOC_ENTRY;
 
 struct ACTIVATION_CONTEXT_DATA_EXTENDED_TOC_ENTRY {
@@ -291,7 +445,7 @@ struct ACTIVATION_CONTEXT_DATA_EXTENDED_TOC_ENTRY {
 ValidateStructSize(0x18, ACTIVATION_CONTEXT_DATA_EXTENDED_TOC_ENTRY);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_EXTENDED_TOC_ENTRY);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_EXTENDED_TOC_ENTRYX = ACTIVATION_CONTEXT_DATA_EXTENDED_TOC_ENTRY;
 
 struct ACTIVATION_CONTEXT_DATA_ASSEMBLY_ROSTER_HEADER {
@@ -305,7 +459,7 @@ struct ACTIVATION_CONTEXT_DATA_ASSEMBLY_ROSTER_HEADER {
 ValidateStructSize(0x14, ACTIVATION_CONTEXT_DATA_ASSEMBLY_ROSTER_HEADER);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_ASSEMBLY_ROSTER_HEADER);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_ASSEMBLY_ROSTER_HEADERX = ACTIVATION_CONTEXT_DATA_ASSEMBLY_ROSTER_HEADER;
 
 struct ACTIVATION_CONTEXT_DATA_ASSEMBLY_ROSTER_ENTRY {
@@ -324,7 +478,7 @@ struct ACTIVATION_CONTEXT_DATA_ASSEMBLY_ROSTER_ENTRY {
 ValidateStructSize(0x18, ACTIVATION_CONTEXT_DATA_ASSEMBLY_ROSTER_ENTRY);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_ASSEMBLY_ROSTER_ENTRY);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_ASSEMBLY_ROSTER_ENTRYX = ACTIVATION_CONTEXT_DATA_ASSEMBLY_ROSTER_ENTRY;
 
 struct ACTIVATION_CONTEXT_STRING_SECTION_HEADER {
@@ -348,7 +502,7 @@ struct ACTIVATION_CONTEXT_STRING_SECTION_HEADER {
 ValidateStructSize(0x2C, ACTIVATION_CONTEXT_STRING_SECTION_HEADER);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_STRING_SECTION_HEADER);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_STRING_SECTION_HEADERX = ACTIVATION_CONTEXT_STRING_SECTION_HEADER;
 
 struct ACTIVATION_CONTEXT_GUID_SECTION_HEADER {
@@ -371,7 +525,7 @@ struct ACTIVATION_CONTEXT_GUID_SECTION_HEADER {
 ValidateStructSize(0x28, ACTIVATION_CONTEXT_GUID_SECTION_HEADER);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_GUID_SECTION_HEADER);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_GUID_SECTION_HEADERX = ACTIVATION_CONTEXT_GUID_SECTION_HEADER;
 
 struct ACTIVATION_CONTEXT_SECTION_HASH_TABLE {
@@ -382,15 +536,15 @@ struct ACTIVATION_CONTEXT_SECTION_HASH_TABLE {
 ValidateStructSize(0x8, ACTIVATION_CONTEXT_SECTION_HASH_TABLE);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_SECTION_HASH_TABLE);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_SECTION_HASH_TABLEX = ACTIVATION_CONTEXT_SECTION_HASH_TABLE;
 
 using ACTIVATION_CONTEXT_STRING_SECTION_HASH_TABLE = ACTIVATION_CONTEXT_SECTION_HASH_TABLE;
 using ACTIVATION_CONTEXT_GUID_SECTION_HASH_TABLE = ACTIVATION_CONTEXT_SECTION_HASH_TABLE;
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_STRING_SECTION_HASH_TABLEX = ACTIVATION_CONTEXT_SECTION_HASH_TABLEX<bits>;
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_GUID_SECTION_HASH_TABLEX = ACTIVATION_CONTEXT_SECTION_HASH_TABLEX<bits>;
 
 struct ACTIVATION_CONTEXT_SECTION_HASH_BUCKET {
@@ -401,15 +555,15 @@ struct ACTIVATION_CONTEXT_SECTION_HASH_BUCKET {
 ValidateStructSize(0x8, ACTIVATION_CONTEXT_SECTION_HASH_BUCKET);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_SECTION_HASH_BUCKET);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_SECTION_HASH_BUCKETX = ACTIVATION_CONTEXT_SECTION_HASH_BUCKET;
 
 using ACTIVATION_CONTEXT_STRING_SECTION_HASH_BUCKET = ACTIVATION_CONTEXT_SECTION_HASH_BUCKET;
 using ACTIVATION_CONTEXT_GUID_SECTION_HASH_BUCKET = ACTIVATION_CONTEXT_SECTION_HASH_BUCKET;
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_STRING_SECTION_HASH_BUCKETX = ACTIVATION_CONTEXT_SECTION_HASH_BUCKETX<bits>;
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_GUID_SECTION_HASH_BUCKETX = ACTIVATION_CONTEXT_SECTION_HASH_BUCKETX<bits>;
 
 struct ACTIVATION_CONTEXT_STRING_SECTION_ENTRY {
@@ -424,7 +578,7 @@ struct ACTIVATION_CONTEXT_STRING_SECTION_ENTRY {
 ValidateStructSize(0x18, ACTIVATION_CONTEXT_STRING_SECTION_ENTRY);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_STRING_SECTION_ENTRY);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_STRING_SECTION_ENTRYX = ACTIVATION_CONTEXT_STRING_SECTION_ENTRY;
 
 struct ACTIVATION_CONTEXT_GUID_SECTION_ENTRY {
@@ -437,7 +591,7 @@ struct ACTIVATION_CONTEXT_GUID_SECTION_ENTRY {
 ValidateStructSize(0x1C, ACTIVATION_CONTEXT_GUID_SECTION_ENTRY);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_GUID_SECTION_ENTRY);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_GUID_SECTION_ENTRYX = ACTIVATION_CONTEXT_GUID_SECTION_ENTRY;
 
 struct ACTIVATION_CONTEXT_DATA_ASSEMBLY_GLOBAL_INFORMATION {
@@ -457,7 +611,7 @@ struct ACTIVATION_CONTEXT_DATA_ASSEMBLY_GLOBAL_INFORMATION {
 ValidateStructSize(0x34, ACTIVATION_CONTEXT_DATA_ASSEMBLY_GLOBAL_INFORMATION);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_ASSEMBLY_GLOBAL_INFORMATION);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_ASSEMBLY_GLOBAL_INFORMATIONX = ACTIVATION_CONTEXT_DATA_ASSEMBLY_GLOBAL_INFORMATION;
 
 struct ACTIVATION_CONTEXT_DATA_ASSEMBLY_INFORMATION {
@@ -493,7 +647,7 @@ struct ACTIVATION_CONTEXT_DATA_ASSEMBLY_INFORMATION {
 ValidateStructSize(0x64, ACTIVATION_CONTEXT_DATA_ASSEMBLY_INFORMATION);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_ASSEMBLY_INFORMATION);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_ASSEMBLY_INFORMATIONX = ACTIVATION_CONTEXT_DATA_ASSEMBLY_INFORMATION;
 
 struct ACTIVATION_CONTEXT_DATA_DLL_REDIRECTION {
@@ -511,7 +665,7 @@ struct ACTIVATION_CONTEXT_DATA_DLL_REDIRECTION {
 ValidateStructSize(0x14, ACTIVATION_CONTEXT_DATA_DLL_REDIRECTION);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_DLL_REDIRECTION);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_DLL_REDIRECTIONX = ACTIVATION_CONTEXT_DATA_DLL_REDIRECTION;
 
 struct ACTIVATION_CONTEXT_DATA_DLL_REDIRECTION_PATH_SEGMENT {
@@ -522,7 +676,7 @@ struct ACTIVATION_CONTEXT_DATA_DLL_REDIRECTION_PATH_SEGMENT {
 ValidateStructSize(0x8, ACTIVATION_CONTEXT_DATA_DLL_REDIRECTION_PATH_SEGMENT);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_DLL_REDIRECTION_PATH_SEGMENT);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_DLL_REDIRECTION_PATH_SEGMENTX = ACTIVATION_CONTEXT_DATA_DLL_REDIRECTION_PATH_SEGMENT;
 
 struct ACTIVATION_CONTEXT_DATA_WINDOW_CLASS_REDIRECTION {
@@ -541,7 +695,7 @@ struct ACTIVATION_CONTEXT_DATA_WINDOW_CLASS_REDIRECTION {
 ValidateStructSize(0x18, ACTIVATION_CONTEXT_DATA_WINDOW_CLASS_REDIRECTION);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_WINDOW_CLASS_REDIRECTION);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_WINDOW_CLASS_REDIRECTIONX = ACTIVATION_CONTEXT_DATA_WINDOW_CLASS_REDIRECTION;
 
 struct ACTIVATION_CONTEXT_DATA_COM_SERVER_REDIRECTION {
@@ -567,7 +721,7 @@ struct ACTIVATION_CONTEXT_DATA_COM_SERVER_REDIRECTION {
 ValidateStructSize(0x64, ACTIVATION_CONTEXT_DATA_COM_SERVER_REDIRECTION);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_COM_SERVER_REDIRECTION);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_COM_SERVER_REDIRECTIONX = ACTIVATION_CONTEXT_DATA_COM_SERVER_REDIRECTION;
 
 struct ACTIVATION_CONTEXT_DATA_COM_SERVER_REDIRECTION_SHIM {
@@ -591,7 +745,7 @@ struct ACTIVATION_CONTEXT_DATA_COM_SERVER_REDIRECTION_SHIM {
 ValidateStructSize(0x2C, ACTIVATION_CONTEXT_DATA_COM_SERVER_REDIRECTION_SHIM);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_COM_SERVER_REDIRECTION_SHIM);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_COM_SERVER_REDIRECTION_SHIMX = ACTIVATION_CONTEXT_DATA_COM_SERVER_REDIRECTION_SHIM;
 
 struct ACTIVATION_CONTEXT_DATA_COM_INTERFACE_REDIRECTION {
@@ -612,7 +766,7 @@ struct ACTIVATION_CONTEXT_DATA_COM_INTERFACE_REDIRECTION {
 ValidateStructSize(0x44, ACTIVATION_CONTEXT_DATA_COM_INTERFACE_REDIRECTION);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_COM_INTERFACE_REDIRECTION);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_COM_INTERFACE_REDIRECTIONX = ACTIVATION_CONTEXT_DATA_COM_INTERFACE_REDIRECTION;
 
 struct ACTIVATION_CONTEXT_DATA_CLR_SURROGATE {
@@ -632,7 +786,7 @@ struct ACTIVATION_CONTEXT_DATA_CLR_SURROGATE {
 ValidateStructSize(0x28, ACTIVATION_CONTEXT_DATA_CLR_SURROGATE);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_CLR_SURROGATE);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_CLR_SURROGATEX = ACTIVATION_CONTEXT_DATA_CLR_SURROGATE;
 
 struct ACTIVATION_CONTEXT_DATA_TYPE_LIBRARY_VERSION {
@@ -643,7 +797,7 @@ struct ACTIVATION_CONTEXT_DATA_TYPE_LIBRARY_VERSION {
 ValidateStructSize(0x4, ACTIVATION_CONTEXT_DATA_TYPE_LIBRARY_VERSION);
 ValidateStructAlignment(0x2, ACTIVATION_CONTEXT_DATA_TYPE_LIBRARY_VERSION);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_TYPE_LIBRARY_VERSIONX = ACTIVATION_CONTEXT_DATA_TYPE_LIBRARY_VERSION;
 
 struct ACTIVATION_CONTEXT_DATA_COM_TYPE_LIBRARY_REDIRECTION_2600 {
@@ -668,7 +822,7 @@ struct ACTIVATION_CONTEXT_DATA_COM_TYPE_LIBRARY_REDIRECTION_2600 {
 ValidateStructSize(0x1C, ACTIVATION_CONTEXT_DATA_COM_TYPE_LIBRARY_REDIRECTION_2600);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_COM_TYPE_LIBRARY_REDIRECTION_2600);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_COM_TYPE_LIBRARY_REDIRECTION_2600X = ACTIVATION_CONTEXT_DATA_COM_TYPE_LIBRARY_REDIRECTION_2600;
 
 // TODO: inherit?
@@ -695,7 +849,7 @@ struct ACTIVATION_CONTEXT_DATA_COM_TYPE_LIBRARY_REDIRECTION {
 ValidateStructSize(0x20, ACTIVATION_CONTEXT_DATA_COM_TYPE_LIBRARY_REDIRECTION);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_COM_TYPE_LIBRARY_REDIRECTION);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_COM_TYPE_LIBRARY_REDIRECTIONX = ACTIVATION_CONTEXT_DATA_COM_TYPE_LIBRARY_REDIRECTION;
 
 struct ACTIVATION_CONTEXT_DATA_COM_PROGID_REDIRECTION {
@@ -711,13 +865,13 @@ struct ACTIVATION_CONTEXT_DATA_COM_PROGID_REDIRECTION {
 ValidateStructSize(0xC, ACTIVATION_CONTEXT_DATA_COM_PROGID_REDIRECTION);
 ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DATA_COM_PROGID_REDIRECTION);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_DATA_COM_PROGID_REDIRECTIONX = ACTIVATION_CONTEXT_DATA_COM_PROGID_REDIRECTION;
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct ACTIVATION_CONTEXTX;
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using ACTIVATION_CONTEXT_NOTIFY_ROUTINEX = void NTAPI (uint32_t NotificationType,
 											   PTRZX<bits, ACTIVATION_CONTEXTX<bits>> ActivationContext,
 											   PTRZX<bits, const void> ActivationContextData,
@@ -729,7 +883,7 @@ using ACTIVATION_CONTEXT_NOTIFY_ROUTINEX = void NTAPI (uint32_t NotificationType
 
 #define ACTCTX_RELEASE_STACK_DEPTH (4)
 #define ACTCTX_RELEASE_STACK_SLOTS (4)
-template<size_t bits = NATIVE_BITS>
+template<size_t bits /*= native_bits*/>
 struct ACTIVATION_CONTEXTX {
 	int32_t RefCount; // 0x0, 0x0
 	union {
@@ -755,10 +909,10 @@ ValidateStructAlignment(0x4, ACTIVATION_CONTEXTX<32>);
 ValidateStructSize(0x508, ACTIVATION_CONTEXTX<64>);
 ValidateStructAlignment(0x8, ACTIVATION_CONTEXTX<64>);
 
-//template<size_t bits = NATIVE_BITS>
+//template<size_t bits = native_bits>
 //static inline constexpr PTRSX<bits, ACTIVATION_CONTEXTX<bits>> INVALID_ACTIVATION_CONTEXTX = __builtin_bit_cast(PTRSX<bits, ACTIVATION_CONTEXTX<bits>>, -1);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct ACTIVATION_CONTEXT_WRAPPEDX {
 	PTRZX<bits, UNKNOWN_TYPE> MagicMarker; // 0x0, 0x0
 	ACTIVATION_CONTEXTX<bits> ActivationContext; // 0x4, 0x8
@@ -769,17 +923,7 @@ ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_WRAPPEDX<32>);
 ValidateStructSize(0x510, ACTIVATION_CONTEXT_WRAPPEDX<64>);
 ValidateStructAlignment(0x8, ACTIVATION_CONTEXT_WRAPPEDX<64>);
 
-struct ACTIVATION_CONTEXT_QUERY_INDEX {
-	uint32_t ulAssemblyIndex; // 0x0, 0x0
-	uint32_t ulFileIndexInAssembly; // 0x4, 0x4
-};
-ValidateStructSize(0x8, ACTIVATION_CONTEXT_QUERY_INDEX);
-ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_QUERY_INDEX);
-
-template<size_t bits = NATIVE_BITS>
-using ACTIVATION_CONTEXT_QUERY_INDEXX = ACTIVATION_CONTEXT_QUERY_INDEX;
-
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct ACTIVATION_CONTEXT_BASIC_INFORMATIONX {
 	union {
 		PTRZX<bits, ACTIVATION_CONTEXTX<bits>> ActivationContext; // 0x0, 0x0
@@ -799,7 +943,7 @@ ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_BASIC_INFORMATIONX<32>);
 ValidateStructSize(0x10, ACTIVATION_CONTEXT_BASIC_INFORMATIONX<64>);
 ValidateStructAlignment(0x8, ACTIVATION_CONTEXT_BASIC_INFORMATIONX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct ACTIVATION_CONTEXT_ASSEMBLY_DETAILED_INFORMATIONX {
 	union {
 		uint32_t ulFlags; // 0x0, 0x0
@@ -832,7 +976,7 @@ ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_ASSEMBLY_DETAILED_INFORMATIONX<3
 ValidateStructSize(0x68, ACTIVATION_CONTEXT_ASSEMBLY_DETAILED_INFORMATIONX<64>);
 ValidateStructAlignment(0x8, ACTIVATION_CONTEXT_ASSEMBLY_DETAILED_INFORMATIONX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct ACTIVATION_CONTEXT_DETAILED_INFORMATIONX {
 	union {
 		uint32_t dwFlags; // 0x0, 0x0
@@ -858,7 +1002,7 @@ ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_DETAILED_INFORMATIONX<32>);
 ValidateStructSize(0x40, ACTIVATION_CONTEXT_DETAILED_INFORMATIONX<64>);
 ValidateStructAlignment(0x8, ACTIVATION_CONTEXT_DETAILED_INFORMATIONX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct ACTIVATION_CONTEXT_SECTION_KEYED_DATA_2600X {
 	uint32_t Size; // 0x0, 0x0
 	uint32_t DataFormatVersion; // 0x4, 0x4
@@ -885,7 +1029,7 @@ ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_SECTION_KEYED_DATA_2600X<32>);
 ValidateStructSize(0x48, ACTIVATION_CONTEXT_SECTION_KEYED_DATA_2600X<64>);
 ValidateStructAlignment(0x8, ACTIVATION_CONTEXT_SECTION_KEYED_DATA_2600X<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct ACTIVATION_CONTEXT_SECTION_KEYED_DATA_ASSEMBLY_METADATAX {
 	PTRZX<bits, ACTIVATION_CONTEXT_DATA_ASSEMBLY_INFORMATION> Information; // 0x0, 0x0
 	PTRZX<bits, UNKNOWN_TYPE> SectionBase; // 0x4, 0x8
@@ -902,7 +1046,7 @@ ValidateStructSize(0x28, ACTIVATION_CONTEXT_SECTION_KEYED_DATA_ASSEMBLY_METADATA
 ValidateStructAlignment(0x8, ACTIVATION_CONTEXT_SECTION_KEYED_DATA_ASSEMBLY_METADATAX<64>);
 
 // TODO: Inherit from ACTIVATION_CONTEXT_SECTION_KEYED_DATA_2600X?
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct ACTIVATION_CONTEXT_SECTION_KEYED_DATAX {
 	uint32_t Size; // 0x0, 0x0
 	uint32_t DataFormatVersion; // 0x4, 0x4
@@ -930,7 +1074,7 @@ ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_SECTION_KEYED_DATAX<32>);
 ValidateStructSize(0x70, ACTIVATION_CONTEXT_SECTION_KEYED_DATAX<64>);
 ValidateStructAlignment(0x8, ACTIVATION_CONTEXT_SECTION_KEYED_DATAX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct ACTIVATION_CONTEXT_ASSEMBLY_DATAX {
 	uint32_t Size; // 0x0, 0x0
 	union {
@@ -950,7 +1094,7 @@ ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_ASSEMBLY_DATAX<32>);
 ValidateStructSize(0x20, ACTIVATION_CONTEXT_ASSEMBLY_DATAX<64>);
 ValidateStructAlignment(0x8, ACTIVATION_CONTEXT_ASSEMBLY_DATAX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct RTL_ACTIVATION_CONTEXT_STACK_FRAMEX {
 	PTRZX<bits, RTL_ACTIVATION_CONTEXT_STACK_FRAMEX<bits>> Previous; // 0x0, 0x0
 	PTRZX<bits, ACTIVATION_CONTEXTX<bits>> ActivationContext; // 0x4, 0x8
@@ -967,7 +1111,7 @@ ValidateStructAlignment(0x4, RTL_ACTIVATION_CONTEXT_STACK_FRAMEX<32>);
 ValidateStructSize(0x18, RTL_ACTIVATION_CONTEXT_STACK_FRAMEX<64>);
 ValidateStructAlignment(0x8, RTL_ACTIVATION_CONTEXT_STACK_FRAMEX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct RTL_HEAP_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAMEX {
 	RTL_ACTIVATION_CONTEXT_STACK_FRAMEX<bits> Frame; // 0x0, 0x0
 	uintptr_tx<bits> Cookie; // 0xC, 0x18
@@ -979,7 +1123,7 @@ ValidateStructAlignment(0x4, RTL_HEAP_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAMEX<
 ValidateStructSize(0x60, RTL_HEAP_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAMEX<64>);
 ValidateStructAlignment(0x8, RTL_HEAP_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAMEX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct ACTIVATION_CONTEXT_STACK_FRAMELISTX {
 	uint32_t Magic; // 0x0, 0x0
 	uint32_t FramesInUse; // 0x4, 0x4
@@ -998,7 +1142,7 @@ ValidateStructAlignment(0x4, ACTIVATION_CONTEXT_STACK_FRAMELISTX<32>);
 ValidateStructSize(0xC20, ACTIVATION_CONTEXT_STACK_FRAMELISTX<64>);
 ValidateStructAlignment(0x8, ACTIVATION_CONTEXT_STACK_FRAMELISTX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct RTL_CALLER_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAME_BASICX {
 	size_tx<bits> Size; // 0x0, 0x0
 	uint32_t Format; // 0x4, 0x8
@@ -1012,7 +1156,7 @@ ValidateStructSize(0x28, RTL_CALLER_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAME_BAS
 ValidateStructAlignment(0x8, RTL_CALLER_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAME_BASICX<64>);
 
 // TODO: inherit
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct RTL_CALLER_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAME_EXTENDEDX {
 	size_tx<bits> Size; // 0x0, 0x0
 	uint32_t Format; // 0x4, 0x8
@@ -1029,10 +1173,10 @@ ValidateStructAlignment(0x4, RTL_CALLER_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAME
 ValidateStructSize(0x48, RTL_CALLER_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAME_EXTENDEDX<64>);
 ValidateStructAlignment(0x8, RTL_CALLER_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAME_EXTENDEDX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using RTL_CALLER_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAMEX = RTL_CALLER_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAME_EXTENDEDX<bits>;
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct ACTIVATION_CONTEXT_STACKX {
 	union {
 		uint32_t Flags; // 0x0, 0x0
@@ -1051,7 +1195,7 @@ ValidateStructAlignment(0x8, ACTIVATION_CONTEXT_STACKX<64>);
 
 #pragma endregion
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct LDR_DATA_TABLE_ENTRYX {
 	LIST_ENTRYX<bits, LDR_DATA_TABLE_ENTRYX<bits>> InLoadOrderLinks; // 0x0, 0x0
 	LIST_ENTRYX<bits, LDR_DATA_TABLE_ENTRYX<bits>> InMemoryOrderLinks; // 0x8, 0x10
@@ -1099,7 +1243,7 @@ ValidateStructAlignment(0x4, LDR_DATA_TABLE_ENTRYX<32>);
 ValidateStructSize(0xE0, LDR_DATA_TABLE_ENTRYX<64>);
 ValidateStructAlignment(0x8, LDR_DATA_TABLE_ENTRYX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct PEB_LDR_DATAX {
 	uint32_t Length; // 0x0, 0x0
 	bool Initialized; // 0x4, 0x4
@@ -1120,7 +1264,7 @@ ValidateStructAlignment(0x4, PEB_LDR_DATAX<32>);
 ValidateStructSize(0x58, PEB_LDR_DATAX<64>);
 ValidateStructAlignment(0x8, PEB_LDR_DATAX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct CURDIRX {
 	UNICODE_STRINGX<bits> DosPath; // 0x0, 0x0
 	HANDLEX<bits> Handle; // 0x8, 0x10
@@ -1131,7 +1275,7 @@ ValidateStructAlignment(0x4, CURDIRX<32>);
 ValidateStructSize(0x18, CURDIRX<64>);
 ValidateStructAlignment(0x8, CURDIRX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct RTL_DRIVE_LETTER_CURDIRX {
 	uint16_t Flags; // 0x0, 0x0
 	uint16_t Length; // 0x2, 0x2
@@ -1144,7 +1288,7 @@ ValidateStructAlignment(0x4, RTL_DRIVE_LETTER_CURDIRX<32>);
 ValidateStructSize(0x18, RTL_DRIVE_LETTER_CURDIRX<64>);
 ValidateStructAlignment(0x8, RTL_DRIVE_LETTER_CURDIRX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct RTL_USER_PROCESS_PARAMETERSX {
 	uint32_t MaximumLength; // 0x0, 0x0
 	uint32_t Length; // 0x4, 0x4
@@ -1205,10 +1349,10 @@ ValidateStructAlignment(0x4, RTL_USER_PROCESS_PARAMETERSX<32>);
 ValidateStructSize(0x400, RTL_USER_PROCESS_PARAMETERSX<64>);
 ValidateStructAlignment(0x8, RTL_USER_PROCESS_PARAMETERSX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct RTL_CRITICAL_SECTIONX;
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct RTL_CRITICAL_SECTION_DEBUGX {
 	uint16_t Type; // 0x0, 0x0
 	uint16_t CreatorBackTraceIndex; // 0x2, 0x2
@@ -1231,7 +1375,7 @@ ValidateStructAlignment(0x4, RTL_CRITICAL_SECTION_DEBUGX<32>);
 ValidateStructSize(0x30, RTL_CRITICAL_SECTION_DEBUGX<64>);
 ValidateStructAlignment(0x8, RTL_CRITICAL_SECTION_DEBUGX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits /*= native_bits*/>
 struct RTL_CRITICAL_SECTIONX {
 	PTRZX<bits, RTL_CRITICAL_SECTION_DEBUGX<bits>> DebugInfo; // 0x0, 0x0
 	int32_t LockCount; // 0x4, 0x8
@@ -1288,10 +1432,10 @@ union NtGlobalFlag_t {
 ValidateStructSize(0x4, NtGlobalFlag_t);
 ValidateStructAlignment(0x4, NtGlobalFlag_t);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using NtGlobalFlag_tx = NtGlobalFlag_t;
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 union AppCompatFlags_tx {
 	ULARGE_INTEGERX<bits> raw; // 0x0, 0x0
 	struct {
@@ -1306,7 +1450,7 @@ union AppCompatFlags_tx {
 		uint64_tx<bits> disable_cicero : 1; // KACF_DISABLECICERO
 		uint64_tx<bits> ole32_enable_async_doc_file : 1; // KACF_OLE32ENABLEASYNCDOCFILE
 	};
-};
+} ide_gnu_packed;
 ValidateStructSize(0x8, AppCompatFlags_tx<32>);
 ValidateStructAlignment(0x4, AppCompatFlags_tx<32>);
 ValidateStructSize(0x8, AppCompatFlags_tx<64>);
@@ -1327,23 +1471,23 @@ struct GDI_HANDLE_BUFFERX_base<64> {
 	using type = uint32_t[buffer_size];
 };
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 using GDI_HANDLE_BUFFERX = GDI_HANDLE_BUFFERX_base<bits>::type;
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 static inline constexpr size_t GDI_HANDLE_BUFFERX_SIZE = GDI_HANDLE_BUFFERX_base<bits>::buffer_size;
 
-using PPS_POST_PROCESS_INIT_ROUTINE = void(void);
+//using PPS_POST_PROCESS_INIT_ROUTINE = void(void);
 
 /*========================================
 	PEB
 ========================================*/
 
-#define FLS_MAXIMUM_AVAILABLE 128
+//#define FLS_MAXIMUM_AVAILABLE 128
 #define TLS_MINIMUM_AVAILABLE 64
 #define TLS_EXPANSION_SLOTS   1024
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct PEBX {
 	bool InheritedAddressSpace; // 0x0
 	bool ReadImageFileExecOptions; // 0x1
@@ -1362,7 +1506,7 @@ struct PEBX {
 	__x64_padding(0x4);
 	HANDLEX<bits> Mutant; // 0x4, 0x8
 	PTRZX<bits> ImageBaseAddress; // 0x8, 0x10
-	PEB_LDR_DATAX<bits>* Ldr; // 0xC, 0x18
+	PTRZX<bits, PEB_LDR_DATAX<bits>> Ldr; // 0xC, 0x18 (Why did I have this as a normal pointer and not PTRZX...?)
 	PTRZX<bits, RTL_USER_PROCESS_PARAMETERSX<bits>> ProcessParameters; // 0x10, 0x20
 	PTRZX<bits> SubSystemData; // 0x14, 0x28
 	HANDLEX<bits> ProcessHeap; // 0x18, 0x30
@@ -1399,7 +1543,7 @@ struct PEBX {
 	PTRZX<bits, UNKNOWN_TYPE> OemCodePageData; // 0x5C, 0xA8
 	PTRZX<bits, UNKNOWN_TYPE> UnicodeCaseTableData; // 0x60, 0xB0
 	uint32_t NumberOfProcessors; // 0x64, 0xB8
-	NtGlobalFlag_t<bits> NtGlobalFlag; // 0x68, 0xBC
+	NtGlobalFlag_tx<bits> NtGlobalFlag; // 0x68, 0xBC
 	__x86_padding(0x4);
 	LARGE_INTEGERX<64> CriticalSectionTimeout; // 0x70, 0xC0
 	size_tx<bits> HeapSegmentReserve; // 0x78, 0xC8
@@ -1490,7 +1634,7 @@ struct FSAVE_AREA {
 ValidateStructSize(0x6C, FSAVE_AREA);
 ValidateStructAlignment(0x4, FSAVE_AREA);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct FLOATING_SAVE_AREAX : FSAVE_AREA {
 	uint32_t Cr0NpxState; // 0x6C, 0x6C
 	// 0x70, 0x70
@@ -1507,10 +1651,10 @@ struct FXSAVE_DEFAULT_PADDING {
 ValidateStructSize(0x30, FXSAVE_DEFAULT_PADDING);
 
 template<size_t bits, typename T = FXSAVE_DEFAULT_PADDING>
-struct alignas(16) FXSAVE_FORMATX_base;
+struct FXSAVE_FORMATX_base;
 
 template<typename T> requires(sizeof(T) <= 0x30)
-struct alignas(16) FXSAVE_FORMATX_base<32, T> {
+struct FXSAVE_FORMATX_base<32, T> {
 	FCW ControlWord; // 0x0
 	FSW StatusWord; // 0x2
 	uint8_t TagWord; // 0x4
@@ -1524,15 +1668,15 @@ struct alignas(16) FXSAVE_FORMATX_base<32, T> {
 	__x86_padding(0x2);
 	MXCSR MxCsr; // 0x18
 	MXCSR MxCsr_Mask; // 0x1C
-	AlignedLongDouble FloatRegisters[8]; // 0x20
-	__m128 XmmRegisters[16]; // 0xA0
+	PaddedLongDouble FloatRegisters[8]; // 0x20
+	__m128_unaligned XmmRegisters[16]; // 0xA0
 	reserved_bytes(0x30); // 0x1A0
 	T UserArea; // 0x1D0
 	unsigned char end_padding[(std::max)((size_t)0, 0x30 - sizeof(T))];
 	// 0x200
 };
 template<typename T> requires(sizeof(T) <= 0x30)
-struct alignas(16) FXSAVE_FORMATX_base<64, T> {
+struct FXSAVE_FORMATX_base<64, T> {
 	FCW ControlWord; // 0x0
 	FSW StatusWord; // 0x2
 	uint8_t TagWord; // 0x4
@@ -1542,23 +1686,29 @@ struct alignas(16) FXSAVE_FORMATX_base<64, T> {
 	uint64_t DataOffset; // 0x10
 	MXCSR MxCsr; // 0x18
 	MXCSR MxCsr_Mask; // 0x1C
-	AlignedLongDouble FloatRegisters[8]; // 0x20
-	__m128 XmmRegisters[16]; // 0xA0
+	PaddedLongDouble FloatRegisters[8]; // 0x20
+	__m128_unaligned XmmRegisters[16]; // 0xA0
 	reserved_bytes(0x30); // 0x1A0
 	T UserArea; // 0x1D0
 	unsigned char end_padding[(std::max)((size_t)0, 0x30 - sizeof(T))];
 	// 0x200
 };
 
-template<size_t bits = NATIVE_BITS, typename T = FXSAVE_DEFAULT_PADDING> requires(sizeof(T) <= 0x30)
-using FXSAVE_FORMATX = FXSAVE_FORMATX_base<bits, T>;
+template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING, bool align = true> requires(sizeof(T) <= 0x30)
+struct FXSAVE_FORMATX;
+
+template<size_t bits, typename T>
+struct FXSAVE_FORMATX<bits, T, false> : FXSAVE_FORMATX_base<bits, T> {};
+
+template<size_t bits, typename T>
+struct alignas(16) FXSAVE_FORMATX<bits, T, true> : FXSAVE_FORMATX_base<bits, T> {};
 
 ValidateStructSize(0x200, FXSAVE_FORMATX<32>);
 ValidateStructAlignment(0x10, FXSAVE_FORMATX<32>);
 ValidateStructSize(0x200, FXSAVE_FORMATX<64>);
 ValidateStructAlignment(0x10, FXSAVE_FORMATX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct XSAVE_AREA_HEADERX {
 	uint64_t Mask; // 0x0, 0x0
 	uint64_t CompactionMask; // 0x8, 0x8
@@ -1570,30 +1720,50 @@ ValidateStructAlignment(0x8, XSAVE_AREA_HEADERX<32>);
 ValidateStructSize(0x40, XSAVE_AREA_HEADERX<64>);
 ValidateStructAlignment(0x8, XSAVE_AREA_HEADERX<64>);
 
-template<size_t bits, typename T = FXSAVE_DEFAULT_PADDING>
-using XSAVE_FORMATX gnu_aligned(64) = FXSAVE_FORMATX<bits, T>;
+template<size_t bits, typename T = FXSAVE_DEFAULT_PADDING, bool align = true>
+struct XSAVE_FORMATX;
+
+template<size_t bits, typename T>
+struct XSAVE_FORMATX<bits, T, false> : FXSAVE_FORMATX<bits, T, false> {};
+
+template<size_t bits, typename T>
+struct alignas(64) XSAVE_FORMATX<bits, T, true> : FXSAVE_FORMATX<bits, T, true> {};
+
 ValidateStructSize(0x200, XSAVE_FORMATX<32>);
 ValidateStructAlignment(0x40, XSAVE_FORMATX<32>);
 ValidateStructSize(0x200, XSAVE_FORMATX<64>);
 ValidateStructAlignment(0x40, XSAVE_FORMATX<64>);
 
-template<size_t bits, typename T = FXSAVE_DEFAULT_PADDING>
-struct alignas(64) XSAVE_AREAX {
-	XSAVE_FORMATX<bits, T> LegacyState; // 0x0, 0x0
+template<size_t bits, typename T = FXSAVE_DEFAULT_PADDING, bool align = true>
+struct XSAVE_AREAX_base {
+	XSAVE_FORMATX<bits, T, align> LegacyState; // 0x0, 0x0
 	XSAVE_AREA_HEADERX<bits> Header; // 0x200, 0x200
+};
+
+template<size_t bits, typename T = FXSAVE_DEFAULT_PADDING, bool align = true>
+struct XSAVE_AREAX;
+
+template<size_t bits, typename T>
+struct XSAVE_AREAX<bits, T, false> : XSAVE_AREAX_base<bits, T, false> {
 	unsigned char extra[]; // 0x240, 0x240
 };
+
+template<size_t bits, typename T>
+struct alignas(64) XSAVE_AREAX<bits, T, true> : XSAVE_AREAX_base<bits, T, true> {
+	unsigned char extra[]; // 0x240, 0x240
+};
+
 ValidateStructSize(0x240, XSAVE_AREAX<32>);
 ValidateStructAlignment(0x40, XSAVE_AREAX<32>);
 ValidateStructSize(0x240, XSAVE_AREAX<64>);
 ValidateStructAlignment(0x40, XSAVE_AREAX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING, bool align = true>
 struct XSTATE_CONTEXTX {
 	uint64_t Mask; // 0x0, 0x0
 	uint32_t Length; // 0x8, 0x8
 	uint32_t Reserved1; // 0xC, 0xC
-	PTRZX<64, XSAVE_AREAX<bits>> Area; // 0x10, 0x10
+	PTRZX<64, XSAVE_AREAX<bits, T, align>> Area; // 0x10, 0x10
 	PTRZX<64, void> Buffer; // 0x18, 0x18
 	// 0x20, 0x20
 };
@@ -1631,7 +1801,7 @@ struct CONTEXTX<32, T> {
 	uint32_t EFlags; // 0xC0
 	uint32_t Esp; // 0xC4
 	uint32_t SegSs; // 0xC8
-	XSAVE_FORMATX<32, T> ExtendedRegisters packed_field; // 0xCC
+	XSAVE_FORMATX<32, T, false> ExtendedRegisters; // 0xCC
 	// 0x2CC
 };
 template<typename T>
@@ -1674,7 +1844,7 @@ struct alignas(16) CONTEXTX<64, T> {
 	uint64_t R14; // 0xE8
 	uint64_t R15; // 0xF0
 	uint64_t Rip; // 0xF8
-	XSAVE_FORMATX<64, T> FltSave packed_field; // 0x100
+	XSAVE_FORMATX<64, T, false> FltSave; // 0x100
 	__m128 VectorRegister[26]; // 0x300
 	uint64_t VectorControl; // 0x4A0
 	uint64_t DebugControl; // 0x4A8
@@ -1689,7 +1859,25 @@ ValidateStructAlignment(0x4, CONTEXTX<32>);
 ValidateStructSize(0x4D0, CONTEXTX<64>);
 ValidateStructAlignment(0x10, CONTEXTX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
+struct XSTATE_CONFIGURATIONX {
+	uint64_tx<bits> EnabledFeatures ide_packed_field; // 0x0
+	uint32_t Size; // 0x8
+	union {
+		uint32_t ControlFlags; // 0xC
+		struct {
+			uint32_t OptimizedSave : 1;
+		};
+	};
+	XSTATE_FEATURE Features[64]; // 0x10
+	// 0x210
+};
+ValidateStructSize(0x210, XSTATE_CONFIGURATIONX<32>);
+ValidateStructAlignment(0x4, XSTATE_CONFIGURATIONX<32>);
+ValidateStructSize(0x210, XSTATE_CONFIGURATIONX<64>);
+ValidateStructAlignment(0x8, XSTATE_CONFIGURATIONX<64>);
+
+template<size_t bits = native_bits>
 struct EXCEPTION_RECORDX {
 	int32_t ExceptionCode; // 0x0, 0x0
 	union {
@@ -1709,14 +1897,14 @@ ValidateStructAlignment(0x4, EXCEPTION_RECORDX<32>);
 ValidateStructSize(0x98, EXCEPTION_RECORDX<64>);
 ValidateStructAlignment(0x8, EXCEPTION_RECORDX<64>);
 
-template<size_t bits = NATIVE_BITS, typename T = FXSAVE_DEFAULT_PADDING>
+template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING>
 using EXCEPTION_HANDLER_FUNCX = EXCEPTION_DISPOSITION(EXCEPTION_RECORDX<bits>,
 													  PTRZX<bits>,
 													  PTRZX<bits, CONTEXTX<bits, T>>,
 													  PTRZX<bits>
 													  );
 
-template<size_t bits = NATIVE_BITS, typename T = FXSAVE_DEFAULT_PADDING>
+template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING>
 struct EXCEPTION_REGISTRATION_RECORDX {
 	PTRZX<bits, EXCEPTION_REGISTRATION_RECORDX<bits, T>> Next; // 0x0, 0x0
 	PTRZX<bits, EXCEPTION_HANDLER_FUNCX<bits, T>> Handler; // 0x4, 0x8
@@ -1727,7 +1915,7 @@ ValidateStructAlignment(0x4, EXCEPTION_REGISTRATION_RECORDX<32>);
 ValidateStructSize(0x10, EXCEPTION_REGISTRATION_RECORDX<64>);
 ValidateStructAlignment(0x8, EXCEPTION_REGISTRATION_RECORDX<64>);
 
-template<size_t bits = NATIVE_BITS, typename T = FXSAVE_DEFAULT_PADDING>
+template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING>
 struct NT_TIBX {
 	PTRZX<bits, EXCEPTION_REGISTRATION_RECORDX<bits, T>> ExceptionList; // 0x0, 0x0
 	PTRZX<bits> StackBase; // 0x4, 0x8
@@ -1749,7 +1937,7 @@ ValidateStructAlignment(0x4, NT_TIBX<32>);
 ValidateStructSize(0x38, NT_TIBX<64>);
 ValidateStructAlignment(0x8, NT_TIBX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct CLIENT_IDX {
 	HANDLEX<bits> UniqueProcess; // 0x0, 0x0
 	HANDLEX<bits> UniqueThread; // 0x4, 0x8
@@ -1761,7 +1949,7 @@ ValidateStructSize(0x10, CLIENT_IDX<64>);
 ValidateStructAlignment(0x8, CLIENT_IDX<64>);
 
 #define GDI_BATCH_BUFFER_SIZE 310
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct GDI_TEB_BATCHX {
 	uint32_t Offset; // 0x0, 0x0
 	__x64_padding(0x4);
@@ -1774,7 +1962,7 @@ ValidateStructAlignment(0x4, GDI_TEB_BATCHX<32>);
 ValidateStructSize(0x4E8, GDI_TEB_BATCHX<64>);
 ValidateStructAlignment(0x8, GDI_TEB_BATCHX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct TEB_ACTIVE_FRAME_CONTEXTX {
 	union {
 		uint32_t Flags; // 0x0, 0x0
@@ -1790,7 +1978,7 @@ ValidateStructAlignment(0x4, TEB_ACTIVE_FRAME_CONTEXTX<32>);
 ValidateStructSize(0x10, TEB_ACTIVE_FRAME_CONTEXTX<64>);
 ValidateStructAlignment(0x8, TEB_ACTIVE_FRAME_CONTEXTX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct TEB_ACTIVE_FRAME_CONTEXT_EXX {
 	TEB_ACTIVE_FRAME_CONTEXTX<bits> BasicContext; // 0x0, 0x0
 	PTRZX<bits, const char> SourceLocation; // 0x8, 0x10
@@ -1801,7 +1989,7 @@ ValidateStructAlignment(0x4, TEB_ACTIVE_FRAME_CONTEXT_EXX<32>);
 ValidateStructSize(0x18, TEB_ACTIVE_FRAME_CONTEXT_EXX<64>);
 ValidateStructAlignment(0x8, TEB_ACTIVE_FRAME_CONTEXT_EXX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct TEB_ACTIVE_FRAMEX {
 	union {
 		uint32_t Flags; // 0x0, 0x0
@@ -1818,7 +2006,7 @@ ValidateStructAlignment(0x4, TEB_ACTIVE_FRAMEX<32>);
 ValidateStructSize(0x18, TEB_ACTIVE_FRAMEX<64>);
 ValidateStructAlignment(0x8, TEB_ACTIVE_FRAMEX<64>);
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct TEB_ACTIVE_FRAME_EXX {
 	TEB_ACTIVE_FRAMEX<bits> BasicFrame; // 0x0, 0x0
 	PTRZX<bits> ExtensionIdentifier; // 0xC, 0x18
@@ -1863,7 +2051,7 @@ struct WX86TIB {
 ValidateStructSize(0x40, WX86TIB<>);
 ValidateStructAlignment(0x4, WX86TIB<>);
 
-template<size_t bits = NATIVE_BITS, typename T = FXSAVE_DEFAULT_PADDING>
+template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING>
 using WX86TIBX = WX86TIB<T>;
 
 /*========================================
@@ -1872,7 +2060,7 @@ using WX86TIBX = WX86TIB<T>;
 
 #define STATIC_UNICODE_BUFFER_LENGTH 261
 #define WIN32_CLIENT_INFO_LENGTH 62
-template<size_t bits = NATIVE_BITS, typename T = FXSAVE_DEFAULT_PADDING>
+template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING>
 struct TEBX;
 
 template<typename T>
@@ -2135,7 +2323,7 @@ ValidateStructAlignment(0x8, TEBX<64>);
 static inline constexpr auto teb32 = (TEBX<32> FS_RELATIVE*)0;
 static inline constexpr auto teb64 = (TEBX<64> GS_RELATIVE*)0;
 
-template<size_t bits = NATIVE_BITS>
+template<size_t bits = native_bits>
 struct PROCESS_BASIC_INFORMATIONX {
 	NTSTATUS ExitStatus; // 0x0, 0x0
 	__x64_padding(0x4);
@@ -2152,7 +2340,7 @@ ValidateStructAlignment(0x4, PROCESS_BASIC_INFORMATIONX<32>);
 ValidateStructSize(0x30, PROCESS_BASIC_INFORMATIONX<64>);
 ValidateStructAlignment(0x8, PROCESS_BASIC_INFORMATIONX<64>);
 
-template<size_t bits = NATIVE_BITS, typename T = FXSAVE_DEFAULT_PADDING>
+template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING>
 struct THREAD_BASIC_INFORMATIONX {
 	NTSTATUS ExitStatus; // 0x0, 0x0
 	__x64_padding(0x4);
@@ -2168,7 +2356,7 @@ ValidateStructAlignment(0x4, THREAD_BASIC_INFORMATIONX<32>);
 ValidateStructSize(0x30, THREAD_BASIC_INFORMATIONX<64>);
 ValidateStructAlignment(0x8, THREAD_BASIC_INFORMATIONX<64>);
 
-template<size_t bits = NATIVE_BITS, typename T = FXSAVE_DEFAULT_PADDING>
+template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING>
 struct FIBERX {
 	PTRZX<bits, EXCEPTION_REGISTRATION_RECORDX<bits, T>> ExceptionList; // 0x0, 0x0
 	PTRZX<bits> StackBase; // 0x4, 0x8
@@ -2179,9 +2367,340 @@ struct FIBERX {
 	PTRZX<bits, UNKNOWN_TYPE> FlsData; // 0x2E0, 0x4F8
 	// 0x2E4, 0x500
 };
+// TODO: Stop fixing asserts by commenting them out
 ValidateStructSize(0x2E4, FIBERX<32>);
 ValidateStructAlignment(0x4, FIBERX<32>);
 ValidateStructSize(0x500, FIBERX<64>);
 ValidateStructAlignment(0x10, FIBERX<64>);
+
+enum PS_CREATE_STATEX : int32_t {
+	PsCreateInitialState = 0,
+	PsCreateFailOnFileOpen = 1,
+	PsCreateFailOnSectionOpen = 2,
+	PsCreateFailExeFormat = 3,
+	PsCreateFailMachineMismatch = 4,
+	PsCreateFailExeName = 5,
+	PsCreateSuccess = 6,
+	PsCreateMaximumStates = 7
+};
+
+template<size_t bits = native_bits>
+struct PS_CREATE_INFOX {
+	uintptr_tx<bits> Size; // 0x0, 0x0
+	PS_CREATE_STATEX State; // 0x4, 0x8
+	__x64_padding(0x4);
+	union {
+		struct {
+			union {
+				uint32_t InitFlags; // 0x8, 0x10
+				struct {
+					uint8_t WriteOutputOnExit : 1;
+					uint8_t DetectManifest : 1;
+					uint8_t SpareBits1 : 6;
+					uint8_t IFEOKeyState : 2;
+					uint8_t SpareBits2 : 6;
+					uint16_t ProhibitedImageCharacteristics : 16;
+				};
+			};
+			ACCESS_MASK AdditionalFileAccess; // 0xC, 0x14
+			// 0x10, 0x18
+		} InitState;
+		struct {
+			HANDLEX<bits> FileHandle; // 0x8, 0x10
+			// 0xC, 0x18
+		} FailSection;
+		struct {
+			uint16_t DllCharacteristics; // 0x8, 0x10
+			// 0xA, 0x12
+		} ExeFormat;
+		struct {
+			HANDLEX<bits> IFEOKey; // 0x8, 0x10
+			__x86_padding(0x4);
+			// 0x10, 0x18
+		} ExeName;
+		struct {
+			union {
+				uint32_t OutputFlags; // 0x8, 0x10
+				struct {
+					uint8_t ProtectedProcess : 1;
+					uint8_t AddressSpaceOverride : 1;
+					uint8_t DevOverrideEnabled : 1;
+					uint8_t ManifestDetected : 1;
+					uint8_t SpareBits1 : 4;
+					uint8_t SpareBits2 : 8;
+					uint16_t SpareBits3 : 16;
+				};
+			};
+			__x64_padding(0x4);
+			HANDLEX<bits> FileHandle; // 0xC, 0x18
+			HANDLEX<bits> SectionHandle; // 0x10, 0x20
+			__x86_padding(0x4);
+			PTR64Z<RTL_USER_PROCESS_PARAMETERSX<bits>> UserProcessParametersNative; // 0x18, 0x28
+			PTR32Z<RTL_USER_PROCESS_PARAMETERSX<32>> UserProcessParametersWow64; // 0x20, 0x30
+			union {
+				uint32_t CurrentParameterFlags; // 0x24, 0x34
+				struct {
+				};
+			};
+			PTR64Z<PEBX<bits>> PebAddressNative; // 0x28, 0x38
+			PTR32Z<PEBX<32>> PebAddressWow64; // 0x30, 0x40
+			__padding(0x4);
+			PTR64Z<UNKNOWN_TYPE> ManifestAddress; // 0x38, 0x48
+			uint32_t ManifestSize; // 0x40, 0x50
+			__padding(0x4);
+			// 0x48, 0x58
+		} SuccessState;
+	};
+	// 0x48, 0x58
+};
+ValidateStructSize(0x48, PS_CREATE_INFOX<32>);
+ValidateStructAlignment(0x8, PS_CREATE_INFOX<32>);
+ValidateStructSize(0x58, PS_CREATE_INFOX<64>);
+ValidateStructAlignment(0x8, PS_CREATE_INFOX<64>);
+
+enum NT_PRODUCT_TYPE : int32_t {
+	NtProductWinNt = 1,
+	NtProductLanManNt = 2,
+	NtProductServer = 3
+};
+
+enum ALTERNATIVE_ARCHITECTURE_TYPE : int32_t {
+	StandardDesign = 0,
+	NEC98x86 = 1,
+	EndAlternatives = 2
+};
+
+struct ETW_UMGL_KEY {
+	uint8_t LoggerId; // 0x0
+	union {
+		uint8_t Flags; // 0x1
+		struct {
+		};
+	};
+	// 0x2
+};
+ValidateStructSize(0x2, ETW_UMGL_KEY);
+ValidateStructAlignment(0x1, ETW_UMGL_KEY);
+
+/*
+    KUSER_SHARED_DATA Padding list:
+    4 bytes at 0x0 (since Srv2003)
+    1 byte at 0x269
+    2 bytes at 0x2EE
+    4 bytes at 0x2F4
+    16 bytes at 0x310
+    4 bytes at 0x334
+    8 bytes at 0x3A8
+    4 bytes at 0x3DC
+*/
+
+template<size_t bits = native_bits>
+struct KUSER_SHARED_DATAX_base {
+	volatile uint32_t TickCountLowDeprecated; // 0x0
+	uint32_t TickCountMultiplier; // 0x4
+	volatile KSYSTEM_TIMEX<bits> InterruptTime; // 0x8
+	volatile KSYSTEM_TIMEX<bits> SystemTime; // 0x14
+	volatile KSYSTEM_TIMEX<bits> TimeZoneBias; // 0x20
+	uint16_t ImageNumberLow; // 0x2C
+	uint16_t ImageNumberHigh; // 0x2E
+	wchar_t NtSystemRoot[MAX_PATH]; // 0x30
+	uint32_t MaxStackTraceDepth; // 0x238
+	uint32_t CryptoExponent; // 0x23C
+	uint32_t TimeZoneId; // 0x240
+	uint32_t LargePageMinimum; // 0x244
+
+	// Begin Windows 8+
+	uint32_t AitSamplingValueNew; // 0x248
+	uint32_t AppCompatFlagNew; // 0x24C
+	uint64_t RNGSeedVersion; // 0x250
+	uint32_t GlobalValidationRunLevel; // 0x258
+	volatile int32_t TimeZoneBiasStamp; // 0x25C
+	// End Windows 8+
+
+	// Begin Windows 10+
+	uint32_t NtBuildNumber; // 0x260
+	// End Windows 10+
+	
+	NT_PRODUCT_TYPE NtProductType; // 0x264
+	bool ProductTypeIsValid; // 0x268
+
+	// Begin Windows 8+
+	bool Reserved0[1]; // 0x269
+	uint16_t NativeProcessorArchitecture; // 0x26A
+	// End Windows 8+
+	
+	uint32_t NtMajorVersion; // 0x26C
+	uint32_t NtMinorVersion; // 0x270
+	bool ProcessorFeatures[0x40]; // 0x274
+
+	// Begin Windows NT 4 specific (Still have values in later versions, but are almost useless with only 32 bits each)
+	uint32_t MmHighestUserAddress; // 0x2B4
+	uint32_t MmSystemRangeStart; // 0x2B8
+	// End Windows NT 4 specific
+
+	volatile uint32_t TimeSlip; // 0x2BC, 0x2BC
+	ALTERNATIVE_ARCHITECTURE_TYPE AlternativeArchitecture; // 0x2C0
+
+	// Begin Windows 10+
+	uint32_t BootId; // 0x2C4
+	// End Windows 10+
+
+	LARGE_INTEGERX<bits> SystemExpirationDate; // 0x2C8
+	uint32_t SuiteMask; // 0x2D0
+	uint8_t KdDebuggerEnabled; // 0x2D4 (Supposedly this is two bit flags?)
+	union {
+		uint8_t MitigationPolicies; // 0x2D5
+		struct {
+			uint8_t NXSupportPolicy : 2;
+			// Begin Windows 8+
+			uint8_t SEHValidationPolicy : 2;
+			uint8_t CurDirDevicesSkippedForDlls : 2;
+			uint8_t Reserved : 2;
+			// End Windows 8+
+		};
+	};
+
+	// Begin Windows 10+
+	uint16_t CyclesPerYield; // 0x2D6
+	// End Windows 10+
+
+	volatile uint32_t ActiveConsoleId; // 0x2D8
+	volatile uint32_t DismountCount; // 0x2DC
+	uint32_t ComPlusPackage; // 0x2E0
+	uint32_t LastSystemRITEventTickCount; // 0x2E4
+	uint32_t NumberOfPhysicalPages; // 0x2E8
+	bool SafeBootMode; // 0x2EC
+
+	union {
+		// Begin Windows 7 specific
+		uint8_t TscQpcData; // 0x2ED
+		struct {
+			uint8_t TscQpcEnabled : 1;
+			uint8_t TscQpcSpareFlag : 1;
+			uint8_t TscQpcShift : 6;
+		};
+		// End Windows 7
+		// Begin Windows 10+
+		uint8_t VirtualizationFlags; // 0x2ED
+		// End Windows 10+
+	};
+
+	uint8_t Reserved12[2]; // 0x2EE
+	union {
+		uint32_t SharedDataFlags; // 0x2F0
+		struct {
+			uint32_t DbgErrorPortPresent : 1;
+			uint32_t DbgElevationEnabled : 1;
+			uint32_t DbgVirtEnabled : 1;
+			uint32_t DbgInstallerDetectEnabled : 1;
+			uint32_t DbgSystemDllRelocated : 1; // (DbgLkgEnabled)
+			uint32_t DbgDynProcessorEnabled : 1;
+			uint32_t DbgSEHValidationEnabled : 1; // (DbgConsoleBrokerEnabled)
+			// Begin Windows 8+
+			uint32_t DbgSecureBootEnabled : 1;
+			// End Windows 8+
+			// Begin Windows 10+
+			uint32_t DbgMultiSessionSku : 1;
+			uint32_t DbgMultiUsersInSessionSku : 1;
+			uint32_t DbgStateSeparationEnabled : 1;
+			// End Windows 10+
+			uint32_t SpareBits : 21;
+		};
+	};
+	uint32_t DataFlagsPad[1]; // 0x2F4
+
+	uint64_tx<bits> TestRetInstruction; // 0x2F8
+	uint32_t SystemCall; // 0x300
+	uint32_t SystemCallReturn; // 0x304
+
+	// Begin Windows 10+
+	uint32_t SystemCallNew; // 0x308
+	union {
+		uint32_t AllFlags; // 0x30C
+		struct {
+			uint32_t Win32Process : 1;
+			uint32_t Sgx2Enclave : 1;
+			uint32_t VbsBasicEnclave : 1;
+			uint32_t SpareBits : 29;
+		};
+	} UserCetAvailableEnvironments;
+	// End Windows 10+
+
+	uint64_tx<bits> SystemCallPad[2]; // 0x310
+	union {
+		volatile KSYSTEM_TIMEX<bits> TickCount; // 0x320
+		volatile uint64_tx<bits> TickCountQuad; // 0x320
+		struct {
+			uint32_t ReservedTickCountOverlay[3]; // 0x320
+			uint32_t TickCountPad[1]; // 0x32C
+			// 0x330
+		};
+	};
+	uint32_t Cookie; // 0x330
+	uint32_t CookiePad[1]; // 0x334
+	int64_tx<bits> ConsoleSessionForegroundProcessId; // 0x338
+	uint32_t Wow64SharedInformation[16]; // 0x340
+	ETW_UMGL_KEY UserModeGlobalLogger[16]; // 0x380
+	uint32_t ImageFileExecutionOptions; // 0x3A0
+	uint32_t LangGenerationCount; // 0x3A4
+	uint64_tx<bits> Reserved5; // 0x3A8
+	volatile uint64_tx<bits> InterruptTimeBias; // 0x3B0
+	union {
+		volatile uint64_tx<bits> TscQpcBias; // 0x3B8
+		volatile uint64_tx<bits> QpcBias; // 0x3B8
+	};
+	volatile uint32_t ActiveProcessorCount; // 0x3C0
+	volatile uint16_t ActiveGroupCount; // 0x3C4
+	// Begin Windows 8+
+	union {
+		uint16_t TscQpcDataNew; // 0x3C6
+		uint16_t QpcData; // 0x3C6
+		struct {
+			union {
+				uint8_t TscQpcEnabledNew; // 0x3C6
+				uint8_t QpcFlags; // 0x3C6
+				struct {
+					uint8_t QpcBypassEnabled : 1;
+					uint8_t QpcBypassUseHVPage : 1;
+					uint8_t QpcBypassDisable32Bit : 1;
+					uint8_t : 1;
+					uint8_t QpcBypassUseMfence : 1;
+					uint8_t QpcBypassUseLfence : 1;
+					uint8_t QpcBypassA73Errata : 1;
+					uint8_t QpcBypassUseRdtscp : 1;
+				};
+			};
+			union {
+				uint8_t TscQpcShiftNew; // 0x3C7
+				uint8_t QpcShift; // 0x3C7
+			};
+		};
+	};
+	// End Windows 8+
+
+	volatile uint32_t AitSamplingValue; // 0x3C8
+	volatile uint32_t AppCompatFlag; // 0x3CC
+	uintptr_tx<64> SystemDllNativeRelocation; // 0x3D0
+	uintptr_tx<32> SystemDllWowRelocation; // 0x3D8
+	uint32_t XStatePad[1]; // 0x3DC
+	XSTATE_CONFIGURATIONX<bits> XState; // 0x3E0
+	// 0x5F0
+};
+ValidateStructSize(0x5F0, KUSER_SHARED_DATAX_base<32>);
+ValidateStructAlignment(0x8, KUSER_SHARED_DATAX_base<32>);
+ValidateStructSize(0x5F0, KUSER_SHARED_DATAX_base<64>);
+ValidateStructAlignment(0x8, KUSER_SHARED_DATAX_base<64>);
+
+template<size_t bits = native_bits>
+struct alignas(PAGE_SIZE) KUSER_SHARED_DATAX : KUSER_SHARED_DATAX_base<bits> {};
+
+
+extern "C" {
+	extern const KUSER_SHARED_DATAX<32> USER_SHARED_DATA32 asm("_USER_SHARED_DATA32");
+	extern const KUSER_SHARED_DATAX<64> USER_SHARED_DATA64 asm("_USER_SHARED_DATA64");
+	extern const KUSER_SHARED_DATAX<> USER_SHARED_DATA asm("_USER_SHARED_DATA");
+}
+
+//static inline const KUSER_SHARED_DATAX<>& USER_SHARED_DATAR = *(const KUSER_SHARED_DATAX<>*)0x7FFE0000;
 
 #endif

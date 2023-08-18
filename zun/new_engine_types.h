@@ -93,14 +93,14 @@ private:
     static inline constexpr const increment_time_t increment_amount = 1.0;
     static inline constexpr const decrement_time_t decrement_amount = -1.0;
 
-    forceinline 
+    //forceinline 
 
 public:
 
     /* ==========
     Fields/Members
     ========== */
-    int32_t prev; // 0x0
+    int32_t previous; // 0x0
     int32_t current; // 0x4
     float current_f; // 0x8
     GameSpeed* time_scale; // 0xC
@@ -270,7 +270,7 @@ public:
     int32_t thiscall add(float amount) {
         GameSpeed* time_scale = this->get_time_scale_ptr();
         int32_t current_time = this->current;
-        this->prev = current_time;
+        this->previous = current_time;
         if (time_scale->value > lower_time_bound && time_scale->value < upper_time_bound) {
             this->current_f += amount;
             return this->current = zftol(this->current_f);
@@ -286,7 +286,7 @@ public:
     int32_t vectorcall sub(float amount) {
         GameSpeed* time_scale = this->get_time_scale_ptr();
         int32_t current_time = this->current;
-        this->prev = current_time;
+        this->previous = current_time;
         if (time_scale->value > lower_time_bound && time_scale->value < upper_time_bound) {
             this->current_f -= amount;
             return this->current = zftol(this->current_f);
@@ -306,7 +306,7 @@ public:
     int32_t thiscall increment() {
         GameSpeed* time_scale = this->get_time_scale();
         int32_t current_time = this->current;
-        this->prev = current_time;
+        this->previous = current_time;
         if (time_scale->value > lower_time_bound && time_scale->value < upper_time_bound) {
             this->current_f += increment_amount;
             return this->current = zftol(this->current_f);
@@ -465,6 +465,7 @@ public:
     // DS: 0x406F80
     // GFW: 0x407130
     // DDC: 0x411510
+    // UDoALG: Rx2CF0
     bool thiscall operator<=(int32_t time) const {
         return this->leq(time);
     }
@@ -487,6 +488,7 @@ public:
     // DS: 0x4071E0
     // GFW: 0x4073B0
     // DDC: 0x409FA0
+    // UDoALG: Rx2DC0
     bool thiscall operator>=(int32_t time) const {
         return this->geq(time);
     }
@@ -516,7 +518,7 @@ public:
     // UFO: 0x41C9B0
     // DS: 0x43B230
     // GFW: 0x432E10
-    bool thiscall operator bool() const {
+    thiscall operator bool() const {
         return this->is_not_zero();
     }
 };

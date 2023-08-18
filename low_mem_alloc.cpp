@@ -398,7 +398,7 @@ struct alignas(8) ExtMem64 {
 
 
 template<typename T>
-static inline auto handle_to_base_ptr(T handle) {
+static forceinline auto handle_to_base_ptr(T handle) {
 	if constexpr (std::is_same_v<T, HMODULE>) {
 		return (T)((uintptr_t)handle & ~(uintptr_t)3);
 	}

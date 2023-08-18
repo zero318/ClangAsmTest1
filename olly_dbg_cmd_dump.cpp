@@ -2071,6 +2071,9 @@ dllexport void regcall EmulateSHL_old(uint32_t, uint32_t, uint32_t, Emu32 *restr
 	}
 }
 */
+
+#if !(NATIVE_BITS == 32 && !NDEBUG)
+
 dllexport void regcall EmulateSHL(uint32_t, uint32_t, uint32_t, Emu32 *restrict emu, RegData32 *restrict regs) {
 	union ShiftCrap {
 		uint32_t raw;
@@ -2525,6 +2528,7 @@ dllexport void regcall EmulateRCR(uint32_t, uint32_t, uint32_t, Emu32 *restrict 
 #endif
 	}
 }
+#endif
 dllexport void regcall EmulatePUSH(uint32_t, uint32_t, uint32_t, Emu32 *restrict emu, RegData32 *restrict regs) {
 	uint32_t opA = emu->operand[0];
 	uint32_t opsize = emu->memsize = emu->opsize;
