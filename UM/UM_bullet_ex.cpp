@@ -4174,7 +4174,8 @@ struct EclContext {
     int32_t async_id; // 0x1014
     EclVM* vm; // 0x1018
     int32_t __int_101C; // 0x101C
-    uint32_t difficulty_mask; // 0x1020
+    uint8_t difficulty_mask; // 0x1020
+    padding_bytes(3);
     ZUNInterp<float> float_interps[8]; // 0x1024
     int32_t float_interp_stack_offsets[8]; // 0x11A4
     EclLocation float_interp_locations[8]; // 0x11C4
@@ -4240,7 +4241,7 @@ public:
     forceinline float parse_float_as_arg(int32_t index, float value);
 
     // 0x42CCC0
-    dllexport gnu_noinline EclContext() {}
+    dllexport gnu_noinline EclContext() noexcept(true) {}
 
     // 0x48B030
     dllexport gnu_noinline ZunResult thiscall call(EclContext* new_context, int32_t va_index, int32_t = UNUSED_DWORD) asm_symbol_rel(0x48B030);
@@ -5083,7 +5084,7 @@ public:
     }
 
     // 0x48D850
-    dllexport gnu_noinline ZunResult thiscall new_async(int32_t async_id, bool use_id) asm_symbol_rel(0x48D850) {
+    dllexport gnu_noinline ZunResult thiscall new_async(int32_t async_id, int32_t args_index) asm_symbol_rel(0x48D850) {
         EclContext* context = new EclContext();
         ZUNLinkedList<EclContext>* list_node = new ZUNLinkedList<EclContext>();
         context->async_id = async_id;
@@ -5093,7 +5094,7 @@ public:
         context->difficulty_mask = this->current_context->difficulty_mask;
         list_node->initialize_with(context);
         this->context_list.append(list_node);
-        return this->current_context->call(context, use_id);
+        return this->current_context->call(context, args_index);
     }
 
     // 0x48D920
@@ -12113,12 +12114,11 @@ dllexport gnu_noinline ZunResult vectorcall EclContext::low_ecl_run(float, float
         return ZUN_ERROR;
     }
     float& current_time = this->time;
-    float instruction_time = (float)current_instruction->time;
-    while (current_time <= instruction_time) {
+    while (current_time <= (float)current_instruction->time) {
         if (current_instruction->difficulty_mask & this->difficulty_mask) {
             int32_t opcode = current_instruction->opcode;
             switch (opcode) {
-                case ret:
+                //case ret:
 
                 case enemy_delete:
                     this->location.reset();
@@ -12146,19 +12146,19 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
     int32_t opcode = current_instruction->opcode; // EBP-56C
 
     switch (opcode) {
-        case enemy_create_rel_stage: case enemy_create_abs_stage:
-        case enemy_create_rel_stage_mirror: case enemy_create_abs_stage_mirror:
+        case enemy_create_rel_stage: case enemy_create_abs_stage: // 309, 310
+        case enemy_create_rel_stage_mirror: case enemy_create_abs_stage_mirror: // 311, 312
         {
             clang_forceinline if (ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
-        case enemy_create_rel: case enemy_create_abs:
-        case enemy_create_rel_mirror: case enemy_create_abs_mirror:
-        case __enemy_create_rel_2:
+        case enemy_create_rel: case enemy_create_abs: // 300, 301
+        case enemy_create_rel_mirror: case enemy_create_abs_mirror: // 304, 305
+        case __enemy_create_rel_2: // 321
                 
             }
             break;
         }
 
-        case move_stop: {
+        case move_stop: { // 427
             MotionData& motion_rel = this->motion.relative;
             MotionData& motion_abs = this->motion.absolute;
             motion_abs.get_position() += motion_rel.get_position();
@@ -12181,7 +12181,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->ellipse_interp.relative.reset_end_time();
             break;
         }
-        case move_position_abs: case move_position_rel: {
+        case move_position_abs: case move_position_rel: { // 400, 402
             // Screwy inline asm BS here...?
             MotionData& motion = (opcode != move_position_abs) ? this->motion.relative : this->motion.absolute;
             float X = this->get_float_arg(0);
@@ -12197,7 +12197,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->update_motion();
             break;
         }
-        case move_position_add_abs: case move_position_add_rel: {
+        case move_position_add_abs: case move_position_add_rel: { // 416 417
             MotionData& motion = (opcode == move_position_abs) ? this->motion.absolute : this->motion.relative;
             float X = this->get_float_arg(0);
             motion.get_position().x = X;
@@ -12208,8 +12208,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->update_motion();
             break;
         }
-        case move_position_abs_interp: case move_position_rel_interp:
-        case __move_position_abs_interp_2: case __move_position_rel_interp_2:
+        case move_position_abs_interp: case move_position_rel_interp: // 401, 403
+        case __move_position_abs_interp_2: case __move_position_rel_interp_2: // 436, 437
         {
             MotionData& motion = (opcode != move_position_abs_interp && opcode != __move_position_abs_interp_2) ? this->motion.relative : this->motion.absolute;
             ZUNInterpEx<Float3>& position_interp = (opcode != move_position_abs_interp && opcode != __move_position_abs_interp_2) ? this->position_interp.relative : this->position_interp.absolute;
@@ -12219,7 +12219,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
                 position_interp.reset_end_time();
                 break;
             }
-            if (opcode == 436 || opcode == 437) {
+            if (opcode == __move_position_abs_interp_2 || opcode == __move_position_rel_interp_2) {
                 if (!this->get_mirror_flag()) {
                     X = motion.get_position_x() + X;
                 } else {
@@ -12243,8 +12243,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             position_interp.set_mode_0();
             break;
         }
-        case __move_curve_abs: case __move_curve_rel:
-        case __move_curve_add_abs: case __move_curve_add_rel:
+        case __move_curve_abs: case __move_curve_rel: // 434, 435
+        case __move_curve_add_abs: case __move_curve_add_rel: // 438, 439
         {
             MotionData& motion = (opcode != __move_curve_abs && opcode != __move_curve_add_abs) ? this->motion.relative : this->motion.absolute;
             ZUNInterpEx<Float3>& position_interp = (opcode != __move_curve_abs && opcode != __move_curve_add_abs) ? this->position_interp.relative : this->position_interp.absolute;
@@ -12279,7 +12279,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             motion.set_axis_velocity_mode();
             break;
         }
-        case move_bezier_abs: case move_bezier_rel: {
+        case move_bezier_abs: case move_bezier_rel: { // 425, 426
             MotionData& motion = (opcode == move_bezier_abs) ? this->motion.absolute : this->motion.relative;
             ZUNInterpEx<Float3>& position_interp = (opcode == move_bezier_abs) ? this->position_interp.absolute : this->position_interp.relative;
             float X = this->get_float_arg(3);
@@ -12309,8 +12309,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             motion.set_axis_velocity_mode();
             break;
         }
-        case move_velocity_abs: case move_velocity_rel:
-        case move_velocity_no_mirror_abs: case move_velocity_no_mirror_rel:
+        case move_velocity_abs: case move_velocity_rel: // 404, 406
+        case move_velocity_no_mirror_abs: case move_velocity_no_mirror_rel: // 428, 430
         {
             MotionData& motion = (opcode != move_velocity_abs && opcode != move_velocity_no_mirror_abs) ? this->motion.relative : this->motion.absolute;
             float angle = this->get_float_arg(0);
@@ -12327,8 +12327,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             motion.set_axis_velocity_mode();
             break;
         }
-        case move_velocity_abs_interp: case move_velocity_rel_interp:
-        case move_velocity_no_mirror_abs_interp: case move_velocity_no_mirror_rel_interp:
+        case move_velocity_abs_interp: case move_velocity_rel_interp: // 405, 407
+        case move_velocity_no_mirror_abs_interp: case move_velocity_no_mirror_rel_interp: // 429, 431
         {
             MotionData& motion = (opcode != move_velocity_abs_interp && opcode != move_velocity_no_mirror_abs_interp) ? this->motion.relative : this->motion.absolute;
             ZUNInterp<float>& angle_interp = (opcode != move_velocity_abs_interp && opcode != move_velocity_no_mirror_abs_interp) ? this->angle_interp_relative : this->angle_interp_absolute;
@@ -12386,7 +12386,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             motion.set_axis_velocity_mode();
             break;
         }
-        case move_angle_abs: case move_angle_rel:
+        case move_angle_abs: case move_angle_rel: // 440, 442
         {
             MotionData& motion = (opcode == move_angle_abs) ? this->motion.absolute : this->motion.relative;
             float angle = this->get_float_arg(0);
@@ -12399,7 +12399,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             }
             break;
         }
-        case move_angle_abs_interp: case move_angle_rel_interp: {
+        case move_angle_abs_interp: case move_angle_rel_interp: { // 441, 443
             MotionData& motion = (opcode == move_angle_abs) ? this->motion.absolute : this->motion.relative;
             ZUNInterp<float>& angle_interp = (opcode == move_angle_abs) ? this->angle_interp_absolute : this->angle_interp_relative;
             float angle = this->get_float_arg(2);
@@ -12431,7 +12431,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             motion.set_axis_velocity_mode();
             break;
         }
-        case move_speed_abs: case move_speed_rel: {
+        case move_speed_abs: case move_speed_rel: { // 444, 446
             MotionData& motion = (opcode == move_speed_abs) ? this->motion.absolute : this->motion.relative;
             float speed = this->get_float_arg(0);
             if (speed > -999999.0) {
@@ -12440,7 +12440,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             motion.set_axis_velocity_mode();
             break;
         }
-        case move_speed_abs_interp: case move_speed_rel_interp: {
+        case move_speed_abs_interp: case move_speed_rel_interp: { // 445, 447
             MotionData& motion = (opcode == move_speed_abs) ? this->motion.absolute : this->motion.relative;
             ZUNInterp<float>& speed_interp = (opcode == move_speed_abs) ? this->speed_interp_absolute : this->speed_interp_relative;
             float speed = this->get_float_arg(2);
@@ -12463,7 +12463,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             motion.set_axis_velocity_mode();
             break;
         }
-        case move_orbit_abs: case move_orbit_rel: {
+        case move_orbit_abs: case move_orbit_rel: { // 408, 410
             MotionData& motion = (opcode == move_orbit_abs) ? this->motion.absolute : this->motion.relative;
             float angle = this->get_float_arg(0);
             float speed = this->get_float_arg(1);
@@ -12489,7 +12489,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->update_motion();
             break;
         }
-        case move_orbit_abs_interp: case move_orbit_rel_interp: {
+        case move_orbit_abs_interp: case move_orbit_rel_interp: { // 409, 411
             MotionData& motion = (opcode == move_orbit_abs_interp) ? this->motion.absolute : this->motion.relative;
             ZUNInterp<float>& speed_interp = (opcode == move_orbit_abs_interp) ? this->speed_interp_absolute : this->speed_interp_relative;
             ZUNInterp<Float2>& orbit_radius_interp = (opcode == move_orbit_abs_interp) ? this->orbit_radius_interp.absolute : this->orbit_radius_interp.relative;
@@ -12535,8 +12535,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->update_motion();
             break;
         }
-        case 418: case 419: {
-            MotionData& motion = (opcode == 418) ? this->motion.absolute : this->motion.relative;
+        case move_origin_abs: case move_origin_rel: { // 418, 419
+            MotionData& motion = (opcode == move_origin_abs) ? this->motion.absolute : this->motion.relative;
             float X = this->get_float_arg(0);
             float Y = this->get_float_arg(1);
             if (X > -999999.0) {
@@ -12549,7 +12549,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->update_motion();
             // break; // Nice one ZUN
         }
-        case move_ellipse_abs: case move_ellipse_rel: {
+        case move_ellipse_abs: case move_ellipse_rel: { // 420, 422
             MotionData& motion = (opcode == move_ellipse_abs) ? this->motion.absolute : this->motion.relative;
             float angle = this->get_float_arg(0);
             float speed = this->get_float_arg(1);
@@ -12584,7 +12584,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->update_motion();
             break;
         }
-        case move_ellipse_abs_interp: case move_ellipse_rel_interp: {
+        case move_ellipse_abs_interp: case move_ellipse_rel_interp: { // 421, 423
             MotionData& motion = (opcode == move_ellipse_abs_interp) ? this->motion.absolute : this->motion.relative;
             ZUNInterp<float>& speed_interp = (opcode == move_ellipse_abs_interp) ? this->speed_interp_absolute : this->speed_interp_relative;
             ZUNInterp<Float2>& orbit_radius_interp = (opcode == move_ellipse_abs_interp) ? this->orbit_radius_interp.absolute : this->orbit_radius_interp.relative;
@@ -12651,16 +12651,16 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->update_motion();
             break;
         }
-        case move_to_boss0_abs:
+        case move_to_boss0_abs: // 414
             this->motion.absolute.get_position() = ENEMY_MANAGER_PTR->get_boss_by_index(0)->get_current_motion()->position;
             break;
-        case move_to_boss0_rel:
+        case move_to_boss0_rel: // 415
             this->motion.relative.get_position() = ENEMY_MANAGER_PTR->get_boss_by_index(0)->get_current_motion()->position;
             break;
-        case move_to_enemy_id_abs:
+        case move_to_enemy_id_abs: // 432
             this->motion.absolute.get_position() = ENEMY_MANAGER_PTR->get_enemy_by_id(this->get_int_arg(0))->get_current_motion()->position;
             break;
-        case move_to_enemy_id_rel:
+        case move_to_enemy_id_rel: // 433
             this->motion.relative.get_position() = ENEMY_MANAGER_PTR->get_enemy_by_id(this->get_int_arg(1))->get_current_motion()->position;
             break;
 
