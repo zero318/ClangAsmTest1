@@ -3287,15 +3287,13 @@ struct GuiMsgVM {
     AnmVM portraits[2];  // 0x1c, 0x2550
     AnmVM dialogue_lines[2];  // 0x23c, 0x2770
     AnmVM intro_lines[2];  // 0x45c, 0x2990
-    D3DCOLOR text_colors_A[2];  // 0x67c, 0x2BB0
-    unknown_fields(0x8);  // 0x684
-    D3DCOLOR text_colors_B[2];  // 0x68c, 0x2BC0
-    unknown_fields(0x8);  // 0x694
+    D3DCOLOR text_colors_A[4];  // 0x67c, 0x2BB0
+    D3DCOLOR text_colors_B[4];  // 0x68c, 0x2BC0
     uint32_t font_size;  // 0x69c, 0x2BD0
     uint32_t ignore_wait_counter;  // 0x6a0, 0x2BD4
     uint8_t dialog_skippable;  // 0x6a4, 0x2BD8
-    unknown_fields(0x3);  // 0x6a5
-};  // 0x67c
+    probably_padding_bytes(0x3);  // 0x6a5
+};  // 0x6A8
 ValidateFieldOffset(0x0, GuiMsgVM, msg_file);
 ValidateFieldOffset(0x4, GuiMsgVM, current_instr);
 ValidateFieldOffset(0x8, GuiMsgVM, current_msg_index);
@@ -3309,6 +3307,7 @@ ValidateFieldOffset(0x68C, GuiMsgVM, text_colors_B);
 ValidateFieldOffset(0x69C, GuiMsgVM, font_size);
 ValidateFieldOffset(0x6A0, GuiMsgVM, ignore_wait_counter);
 ValidateFieldOffset(0x6A4, GuiMsgVM, dialog_skippable);
+ValidateStructSize(0x6A8, GuiMsgVM);
 
 typedef struct GuiImplChildB GuiImplChildB;
 struct GuiImplChildB {
@@ -3338,17 +3337,6 @@ struct GuiImpl {
     AnmVM __vm_2424;  // 0x2424
 
     GuiMsgVM msg;  // 0x2534
-
-    //D3DCOLOR __bludish_white__maybe_enemy_text_color;  // 0x2bb0
-    //D3DCOLOR __reddish_white__maybe_player_text_color;  // 0x2bb4
-    //unknown_fields(0x8);  // 0x2bb8
-    //uint32_t __field_2bc0__init_0;  // 0x2bc0
-    //uint32_t __field_2bc4__init_0;  // 0x2bc4
-    //unknown_fields(0x8);  // 0x2bc8
-    //uint32_t __field_2bd0__init_15;  // 0x2bd0
-    //uint32_t ignore_wait_counter;  // 0x2bd4
-    //uint8_t dialog_skippable;  // 0x2bd8
-    //unknown_fields(0x3);  // 0x2bd9
 
     int __dword_2BDC;  // 0x2bdc
     int32_t stage_score;  // 0x2be0
