@@ -3748,7 +3748,7 @@ TimeEnd:
             this->bezier2 = temp + this->final_value;
             return this->current = this->initial_value = initial + temp;
         }
-        T current_time = this->time.current_f;
+        float current_time = this->time.current_f;
         float end_time_f = end_time;
         if (mode == Bezier) { // 8
             current_time /= end_time_f;
@@ -3763,7 +3763,8 @@ TimeEnd:
             return this->current = initial;
         }
         else {
-            
+            float interp_value = __interp_inner_thing(mode, current_time, end_time_f);
+            return this->current = lerp(initial, this->final_value, interp_value);
         }
     }
 
@@ -3933,7 +3934,7 @@ ValidateStructSize32(0x54, EnemyInitData);
 // size: 0x10
 struct EclInstruction {
     int32_t time; // 0x0
-    uint16_t opcode; // 0x4
+    int16_t opcode; // 0x4
     uint16_t offset_to_next; // 0x6
     uint16_t param_mask; // 0x8
     uint8_t difficulty_mask; // 0xA
@@ -3961,6 +3962,11 @@ ValidateStructSize32(0x10, EclInstruction);
 struct EclLocation {
     int32_t sub_index; // 0x0
     int32_t instruction_offset; // 0x4
+
+    inline void reset() {
+        this->instruction_offset = -1;
+        this->sub_index = -1;
+    }
 };
 #pragma region // EclLocation Validation
 ValidateFieldOffset32(0x0, EclLocation, sub_index);
@@ -3977,40 +3983,47 @@ ValidateFieldOffset32(0x0, EclSubName, name);
 ValidateStructSize32(0x40, EclSubName);
 #pragma endregion
 
-// size: 0x1008
-struct EclStack {
-    union EclStackItem {
-        int32_t integer;
-        float real;
-        char character;
-    };
-
-    struct EclStackValue {
+union EclRawValue {
+    int32_t integer;
+    float real;
+    struct {
         char type;
-        EclStackItem value;
+        char type2;
+    };
+};
 
-        template<typename T>
-        static forceinline T cast_to(const int32_t& value, const char& type) {
-            if constexpr (std::is_same_v<T, int32_t>) {
-                if (type == 'f') {
-                    return bitcast<int32_t>((float)value);
-                } else {
-                    return value;
-                }
-            } else if constexpr (std::is_same_v<T, float>) {
-                if (type != 'f' && type == 'i') {
-                    return (float)value;
-                } else {
-                    return bitcast<float>(value);
-                }
+struct EclValue {
+    char type;
+    char type2;
+    EclRawValue value;
+
+    template<typename T>
+    static forceinline T cast_to(const int32_t& value, const char& type) {
+        if constexpr (std::is_same_v<T, int32_t>) {
+            if (type == 'f') {
+                return bitcast<int32_t>((float)value);
+            } else {
+                return value;
+            }
+        } else if constexpr (std::is_same_v<T, float>) {
+            if (type != 'f' && type == 'i') {
+                return (float)value;
+            } else {
+                return bitcast<float>(value);
             }
         }
+    }
 
-        template<typename T>
-        forceinline T read() {
-            return this->cast_to<T>(this->value.integer, this->type);
-        }
-    };
+    template<typename T>
+    forceinline T read() {
+        return this->cast_to<T>(this->value.integer, this->type);
+    }
+};
+
+using EclStackItem = EclRawValue;
+
+// size: 0x1008
+struct EclStack {
 
     union { // 0x0
         EclStackItem data[EclStackCount];
@@ -4025,7 +4038,7 @@ struct EclStack {
     }
     template<typename T>
     forceinline T read_typed_offset(int32_t offset) {
-        return based_pointer<EclStackValue>(this->raw, offset)->read<T>();
+        return based_pointer<EclValue>(this->raw, offset)->read<T>();
     }
     template<typename T>
     forceinline T read_local(int32_t offset, int32_t base_offset) {
@@ -4049,11 +4062,11 @@ struct EclStack {
     forceinline T read_temp(T index, int32_t top_offset);
     template<>
     forceinline int32_t read_temp<int32_t>(int32_t index, int32_t top_offset) {
-        return this->read_typed_offset<int32_t>(top_offset + index * sizeof(EclStackValue));
+        return this->read_typed_offset<int32_t>(top_offset + index * sizeof(EclValue));
     }
     template<>
     forceinline float read_temp<float>(float index, int32_t top_offset) {
-        index *= -(float)sizeof(EclStackValue);
+        index *= -(float)sizeof(EclValue);
         return this->read_typed_offset<float>(top_offset - (int32_t)index);
     }
 
@@ -4067,23 +4080,23 @@ struct EclStack {
         *based_pointer<T>(this->raw, offset) = value;
     }
     template<typename T>
-    forceinline void write_local(int32_t offset, int32_t base_offset, const T& value) {
+    forceinline void write_local(int32_t offset, const T& value, int32_t base_offset) {
         this->write_offset<T>(base_offset + offset, value);
     }
     template<typename T>
     forceinline void write_local(T offset, const T& value) {
-        this->write_local<T>((int32_t)offset, this->base, value);
+        this->write_local<T>((int32_t)offset, value, this->base);
     }
-    /*
+    
     template<typename T>
-    forceinline void write_temp(int32_t offset, int32_t top_offset, const T& value) {
-        this->write_offset<T>(top_offset - offset, value);
+    forceinline void write_temp(int32_t index, const T& value, int32_t top_offset) {
+        this->write_offset<T>(top_offset - index * sizeof(int32_t), value);
     }
     template<typename T>
-    forceinline void write_temp(int32_t offset, const T& value) {
-        this->write_temp<T>(offset, this->pointer, value);
+    forceinline void write_temp(int32_t index, const T& value) {
+        this->write_temp<T>(index, value, this->pointer);
     }
-    */
+    
 
     template<typename T>
     forceinline T& ref_offset(int32_t offset) {
@@ -4097,20 +4110,31 @@ struct EclStack {
     forceinline T& ref_local(T offset) {
         return this->ref_local<T>((int32_t)offset, this->base);
     }
-    /*
+    
     template<typename T>
-    forceinline T& ref_temp(int32_t offset, int32_t top_offset) {
-        return this->ref_offset<T>(top_offset - offset);
+    forceinline T& ref_temp(int32_t index, int32_t top_offset) {
+        return this->ref_offset<T>(top_offset - index * sizeof(int32_t));
     }
     template<typename T>
-    forceinline T& ref_temp(int32_t offset) {
-        return this->ref_temp<T>(offset, this->pointer);
+    forceinline T& ref_temp(int32_t index) {
+        return this->ref_temp<T>(index, this->pointer);
     }
-    */
+    
+
+    template<typename T>
+    forceinline void push(int32_t& starting_offset, const T& value) {
+        this->write_offset(starting_offset, value);
+        starting_offset += sizeof(int32_t);
+    }
+
+    template<typename T>
+    forceinline void push(const T& value) {
+        this->push(this->pointer, value);
+    }
 
     template<typename T>
     forceinline T pop(int32_t& starting_offset) {
-        starting_offset -= 4;
+        starting_offset -= sizeof(int32_t);
         return this->read_offset<T>(starting_offset);
     }
     template<typename T>
@@ -4120,7 +4144,7 @@ struct EclStack {
 
     template<typename T>
     forceinline T pop_cast(int32_t& starting_offset) {
-        return EclStackValue::cast_to<T>(this->pop<int32_t>(), this->pop<char>());
+        return EclValue::cast_to<T>(this->pop<int32_t>(), this->pop<char>());
     }
     template<typename T>
     forceinline T pop_cast() {
@@ -4148,11 +4172,11 @@ struct EclContext {
     EclLocation location; // 0x4
     EclStack stack; // 0xC
     int32_t async_id; // 0x1014
-    EclVM* parent; // 0x1018
+    EclVM* vm; // 0x1018
     int32_t __int_101C; // 0x101C
     uint32_t difficulty_mask; // 0x1020
     ZUNInterp<float> float_interps[8]; // 0x1024
-    unknown_fields(0x20); // 0x11A4
+    int32_t float_interp_stack_offsets[8]; // 0x11A4
     EclLocation float_interp_locations[8]; // 0x11C4
     union {
         uint32_t flags; // 0x1204
@@ -4172,8 +4196,21 @@ struct EclContext {
         this->float_interps[7].end_time = value;
     }
 
+    inline EclInstruction* get_instruction(int32_t sub_index, int32_t instruction_offset);
+
     // 0x48DBE0
-    dllexport EclInstruction* thiscall get_sub_instrs() asm_symbol_rel(0x48DBE0);
+    dllexport EclInstruction* thiscall EclContext::get_current_instruction() asm_symbol_rel(0x48DBE0) {
+        int32_t instr_offset = this->location.instruction_offset;
+        if (instr_offset != -1) {
+            int32_t sub_index = this->location.sub_index;
+            if (sub_index != -1) {
+                return this->get_instruction(sub_index, instr_offset);
+            }
+        }
+        return NULL;
+    }
+
+    inline void step_float_interps();
 
     // 0x48D4F0
     dllexport gnu_noinline int32_t thiscall get_int_arg(int32_t index) asm_symbol_rel(0x48D4F0);
@@ -4190,6 +4227,8 @@ public:
     // 0x48D690
     dllexport gnu_noinline int32_t thiscall parse_int_as_arg_pop(int32_t index, int32_t value) asm_symbol_rel(0x48D690);
 
+    inline float vectorcall parse_float_as_arg_pop(int32_t index, float value);
+
     // 0x48D750
     dllexport gnu_noinline int32_t* thiscall get_int_ptr_arg(int32_t index = UNUSED_DWORD) asm_symbol_rel(0x48D750);
 
@@ -4202,15 +4241,28 @@ public:
 
     // 0x42CCC0
     dllexport gnu_noinline EclContext() {}
+
+    // 0x48B030
+    dllexport gnu_noinline ZunResult thiscall call(EclContext* new_context, int32_t va_index, int32_t = UNUSED_DWORD) asm_symbol_rel(0x48B030);
+
+private:
+    // 0x48B3A0
+    dllexport gnu_noinline ZunResult vectorcall low_ecl_run(float, float current_gamespeed) asm_symbol_rel(0x48B3A0);
+
+public:
+    forceinline ZunResult low_ecl_run(float current_gamespeed) {
+        return this->low_ecl_run(UNUSED_FLOAT, current_gamespeed);
+    }
 };
 #pragma region // EclContext Validation
 ValidateFieldOffset32(0x0, EclContext, time);
 ValidateFieldOffset32(0x4, EclContext, location);
 ValidateFieldOffset32(0xC, EclContext, stack);
 ValidateFieldOffset32(0x1014, EclContext, async_id);
-ValidateFieldOffset32(0x1018, EclContext, parent);
+ValidateFieldOffset32(0x1018, EclContext, vm);
 ValidateFieldOffset32(0x101C, EclContext, __int_101C);
 ValidateFieldOffset32(0x1024, EclContext, float_interps);
+ValidateFieldOffset32(0x11A4, EclContext, float_interp_stack_offsets);
 ValidateFieldOffset32(0x11C4, EclContext, float_interp_locations);
 ValidateFieldOffset32(0x1204, EclContext, flags);
 ValidateStructSize32(0x1208, EclContext);
@@ -4523,59 +4575,59 @@ struct EnemyData {
         float __angle_18; // 0x18
     };
 
-    MotionData previous_motion; // 0x0
-    MotionData current_motion; // 0x44
-    ZUNAbsRel<MotionData> motion; // 0x88
-    Float2 hurtbox_size; // 0x110
-    Float2 hitbox_size; // 0x118
-    float hurtbox_rotation; // 0x120
-    AnmVMRef anm_vms[16]; // 0x124
-    Float3 anm_positions[16]; // 0x164
-    int32_t anm_vm_indices[16]; // 0x224
-    int32_t anm_source_index; // 0x264
-    int32_t anm_slot_0_source_index; // 0x268
-    int32_t anm_slot_0_script; // 0x26C
-    int32_t current_anm_script; // 0x270
-    int32_t current_anm_pose; // 0x274
-    int32_t kill_id; // 0x278
-    int32_t anm_base_layer; // 0x27C
-    Float3 position_of_last_damage_source_to_hit; // 0x280
-    int32_t int_vars[4]; // 0x28C
-    float float_vars[8]; // 0x29C
-    Timer ecl_time; // 0x2BC
-    Timer boss_timer; // 0x2D0
-    float slowdown; // 0x2E4
-    ZUNLinkedList<Enemy> global_list_node; // 0x2E8
-    ZUNAbsRel<ZUNInterpEx<Float3>> position_interp; // 0x2F8
-    ZUNInterp<float> angle_interp_absolute; // 0x3C8
-    ZUNInterp<float> speed_interp_absolute; // 0x3F8
-    ZUNInterp<float> angle_interp_relative; // 0x428
-    ZUNInterp<float> speed_interp_relative; // 0x458
-    ZUNAbsRel<ZUNInterp<Float2>> orbit_radius_interp; // 0x488
-    ZUNAbsRel<ZUNInterp<Float2>> ellipse_interp; // 0x510
-    ShooterData shooters[16]; // 0x598
-    int32_t bullet_effect_indices[16]; // 0x4E18
-    Float3 shooter_offsets[16]; // 0x4E58
-    Float3 shooter_origins[16]; // 0x4F18
-    Float2 final_sprite_size; // 0x4FD8
-    Float2 move_bounds_center; // 0x4FE0
-    Float2 move_bounds_size; // 0x4FE8
-    int32_t score; // 0x4FF0
-    EnemyLife life; // 0x4FF4
-    EnemyDrops drops; // 0x5010
-    int32_t __int_50D4; // 0x50D4
-    int32_t death_sound; // 0x50D8
-    int32_t death_anm_script; // 0x50DC
-    int32_t death_anm_index; // 0x50E0
-    int32_t __int_50E4; // 0x50E4
-    int __dword_50E8; // 0x50E8
-    int32_t hit_sound; // 0x50EC
-    Timer invulnerable_timer; // 0x50F0
-    Timer no_hitbox_timer; // 0x5104
-    Timer __timer_5118; // 0x5118
-    float bomb_damage_multiplier; // 0x512C
+    MotionData previous_motion; // 0x0, 0x122C
+    MotionData current_motion; // 0x44, 0x1270
+    ZUNAbsRel<MotionData> motion; // 0x88, 0x12B4
+    Float2 hurtbox_size; // 0x110, 0x133C
+    Float2 hitbox_size; // 0x118, 0x1344
+    float hurtbox_rotation; // 0x120, 0x134C
+    AnmVMRef anm_vms[16]; // 0x124, 0x1350
+    Float3 anm_positions[16]; // 0x164, 0x1390
+    int32_t anm_vm_indices[16]; // 0x224, 0x1450
+    int32_t anm_source_index; // 0x264, 0x1490
+    int32_t anm_slot_0_source_index; // 0x268, 0x1494
+    int32_t anm_slot_0_script; // 0x26C, 0x1498
+    int32_t current_anm_script; // 0x270, 0x149C
+    int32_t current_anm_pose; // 0x274, 0x14A0
+    int32_t kill_id; // 0x278, 0x14A4
+    int32_t anm_base_layer; // 0x27C, 0x14A8
+    Float3 position_of_last_damage_source_to_hit; // 0x280, 0x14AC
+    int32_t int_vars[4]; // 0x28C, 0x14B8
+    float float_vars[8]; // 0x29C, 0x14C8
+    Timer ecl_time; // 0x2BC, 0x14E8
+    Timer boss_timer; // 0x2D0, 0x14FC
+    float slowdown; // 0x2E4, 0x1510
+    ZUNLinkedList<Enemy> global_list_node; // 0x2E8, 0x1514
+    ZUNAbsRel<ZUNInterpEx<Float3>> position_interp; // 0x2F8, 0x1524
+    ZUNInterp<float> angle_interp_absolute; // 0x3C8, 0x15F4
+    ZUNInterp<float> speed_interp_absolute; // 0x3F8, 0x1624
+    ZUNInterp<float> angle_interp_relative; // 0x428, 0x1654
+    ZUNInterp<float> speed_interp_relative; // 0x458, 0x1684
+    ZUNAbsRel<ZUNInterp<Float2>> orbit_radius_interp; // 0x488, 0x16B4
+    ZUNAbsRel<ZUNInterp<Float2>> ellipse_interp; // 0x510, 0x173C
+    ShooterData shooters[16]; // 0x598, 0x17C4
+    int32_t bullet_effect_indices[16]; // 0x4E18, 0x6044
+    Float3 shooter_offsets[16]; // 0x4E58, 0x6084
+    Float3 shooter_origins[16]; // 0x4F18, 0x6144
+    Float2 final_sprite_size; // 0x4FD8, 0x6204
+    Float2 move_bounds_center; // 0x4FE0, 0x620C
+    Float2 move_bounds_size; // 0x4FE8, 0x6214
+    int32_t score; // 0x4FF0, 0x621C
+    EnemyLife life; // 0x4FF4, 0x6220
+    EnemyDrops drops; // 0x5010, 0x623C
+    int32_t __int_50D4; // 0x50D4, 0x6300
+    int32_t death_sound; // 0x50D8, 0x6304
+    int32_t death_anm_script; // 0x50DC, 0x6308
+    int32_t death_anm_index; // 0x50E0, 0x630C
+    int32_t __int_50E4; // 0x50E4, 0x6310
+    int __dword_50E8; // 0x50E8, 0x6314
+    int32_t hit_sound; // 0x50EC, 0x6318
+    Timer invulnerable_timer; // 0x50F0, 0x631C
+    Timer no_hitbox_timer; // 0x5104, 0x6330
+    Timer __timer_5118; // 0x5118, 0x6344
+    float bomb_damage_multiplier; // 0x512C, 0x6358
     union {
-        uint32_t flags_low; // 0x5130
+        uint32_t flags_low; // 0x5130, 0x635C
         struct {
             uint32_t disable_hurtbox : 1; // 1
             uint32_t disable_hitbox : 1; // 2
@@ -4612,28 +4664,28 @@ struct EnemyData {
         };
     };
     union {
-        uint32_t flags_high; // 0x5134
+        uint32_t flags_high; // 0x5134, 0x6360
         struct {
-            uint32_t __unknown_flag_C : 1; // 1
+            uint32_t __anm_slowdown_immune : 1; // 1
             uint32_t : 1; // 2
             uint32_t __unknown_flag_P : 1; // 3
         };
     };
-    int32_t bombshield_on_anm; // 0x5138
-    int32_t bombshield_off_anm; // 0x513C
-    int32_t boss_id; // 0x5140
-    float player_protect_radius; // 0x5144
-    EnemyCallback callbacks[8]; // 0x5148
-    EclVM* vm; // 0x5588
-    EnemyFog fog; // 0x558C
-    EclSubName death_callback_sub; // 0x55A8
-    int32_t(thiscall *func_set_func)(EnemyData*); // 0x55E8
-    uint32_t __is_func_set_2; // 0x55EC
-    void* extra_damage_func; // 0x55F0
-    void* extra_hitbox_func; // 0x55F4
-    int32_t chapter; // 0x55F8
-    int32_t __ecl_570_bool; // 0x55FC
-    // 0x5600
+    int32_t bombshield_on_anm; // 0x5138, 0x6364
+    int32_t bombshield_off_anm; // 0x513C, 0x6368
+    int32_t boss_id; // 0x5140, 0x636C
+    float player_protect_radius; // 0x5144, 0x6370
+    EnemyCallback callbacks[8]; // 0x5148, 0x6374
+    EclVM* vm; // 0x5588, 0x67B4
+    EnemyFog fog; // 0x558C, 0x67B8
+    EclSubName death_callback_sub; // 0x55A8, 0x67D4
+    int32_t(thiscall *func_set_func)(EnemyData*); // 0x55E8, 0x6814
+    uint32_t __is_func_set_2; // 0x55EC, 0x6818
+    void* extra_damage_func; // 0x55F0, 0x681C
+    void* extra_hitbox_func; // 0x55F4, 0x6820
+    int32_t chapter; // 0x55F8, 0x6824
+    int32_t __ecl_570_bool; // 0x55FC, 0x6828
+    // 0x5600, 0x682C
 
     inline EnemyData() {
         zero_this();
@@ -4668,6 +4720,8 @@ struct EnemyData {
         this->anm_vm_indices[14] = -1;
         this->anm_vm_indices[15] = -1;
     }
+
+    inline void set_anm_vm_slowdowns(const float& slowdown_value);
 
     inline void initialize(Enemy* enemy);
 
@@ -4758,6 +4812,20 @@ public:
     forceinline float parse_float_as_arg(int32_t index, float value) {
         return this->parse_float_as_arg(UNUSED_DWORD, index, UNUSED_FLOAT, UNUSED_FLOAT, value);
     }
+
+    // 0x4369E0
+    dllexport gnu_noinline int32_t thiscall ecl_enm_create() asm_symbol_rel(0x4369E0);
+
+    // 0x42E5A0
+    dllexport gnu_noinline ZunResult thiscall step_interpolators() asm_symbol_rel(0x42E5A0) {
+        clang_noinline this->previous_motion = this->current_motion;
+        // TODO: Finish this function and all the giga-jank in it
+
+        return ZUN_SUCCESS;
+    }
+
+    // 0x42FF80
+    dllexport gnu_noinline ZunResult thiscall update() asm_symbol_rel(0x42FF80);
 };
 #pragma region // EnemyData Field Validation
 ValidateFieldOffset32(0x0, EnemyData, previous_motion);
@@ -4919,7 +4987,7 @@ struct EclVM {
     EclContext* current_context; // 0xC
     EclContext context; // 0x10
     EnemyController* controller; // 0x1218
-    ZUNLinkedListHeadDummy<EclContext> context_list; // 0x121C
+    ZUNLinkedList<EclContext> context_list; // 0x121C
     // 0x122C
 
     // 0x42CDC0
@@ -4936,10 +5004,9 @@ struct EclVM {
     dllexport gnu_noinline void initialize_vm() asm_symbol_rel(0x42CE80) {
         this->context.__unknown_flag_A = false;
         this->context.time = 0.0f;
-        this->context.location.instruction_offset = -1;
-        this->context.location.sub_index = -1;
+        this->context.location.reset();
         this->context.async_id = -1;
-        this->context.parent = this;
+        this->context.vm = this;
         this->context.__int_101C = 0;
         this->context.set_float_interp_times(0);
         this->current_context = &this->context;
@@ -4974,14 +5041,94 @@ struct EclVM {
     }
 
     // 0x42CDD0
-    dllexport gnu_noinline void delete_asyncs() asm_symbol_rel(0x42CDD0) {
+    dllexport gnu_noinline void cleanup() asm_symbol_rel(0x42CDD0) {
         this->context_list.delete_each();
-        //ZUNLinkedListIter::delete_each(this->context_list);
     }
 
     // 0x42CF50
     dllexport inline virtual ~EclVM() asm_symbol_rel(0x42CF50) {
-        this->delete_asyncs();
+        clang_forceinline this->cleanup();
+    }
+
+private:
+    // 0x48D420
+    dllexport gnu_noinline ZunResult vectorcall run_ecl(float, float current_gamespeed) asm_symbol_rel(0x48D420) {
+        BOOL is_primary_context = true;
+        if (this->context_list.do_whileB([=, &is_primary_context](EclContext* context, ZUNLinkedList<EclContext>* node) {
+            this->current_context = context;
+            if (is_primary_context) {
+                if (ZUN_FAILED(context->low_ecl_run(current_gamespeed))) {
+                    return false;
+                }
+                is_primary_context = false;
+            } else {
+                if (ZUN_FAILED(context->low_ecl_run(current_gamespeed))) {
+                    delete context;
+                    node->unlink();
+                    delete node;
+                }
+            }
+            return true;
+        })) {
+            this->current_context = &this->context;
+            return ZUN_SUCCESS;
+        } else {
+            return ZUN_ERROR;
+        }
+    }
+
+public:
+    forceinline ZunResult run_ecl(float time) {
+        return this->run_ecl(UNUSED_FLOAT, time);
+    }
+
+    // 0x48D850
+    dllexport gnu_noinline ZunResult thiscall new_async(int32_t async_id, bool use_id) asm_symbol_rel(0x48D850) {
+        EclContext* context = new EclContext();
+        ZUNLinkedList<EclContext>* list_node = new ZUNLinkedList<EclContext>();
+        context->async_id = async_id;
+        context->vm = this;
+        context->time = 0.0f;
+        context->location.reset();
+        context->difficulty_mask = this->current_context->difficulty_mask;
+        list_node->initialize_with(context);
+        this->context_list.append(list_node);
+        return this->current_context->call(context, use_id);
+    }
+
+    // 0x48D920
+    dllexport gnu_noinline void thiscall locate_sub(const char* sub_name) asm_symbol_rel(0x48D920) {
+        EnemyController* enemy_controller = this->controller;
+        int32_t left_index = 0;
+        assume(sub_name[0] != '\0');
+        int32_t right_index = enemy_controller->sub_count - 1;
+        if (expect(right_index >= 0, true)) {
+            EclSubHeader* subs = *enemy_controller->subs;
+            do {
+                int32_t index = right_index - left_index;
+                const char* name = sub_name;
+                index /= 2;
+                index += left_index;
+                int32_t cmp_value = strcmp_asm(name, subs[index].name);
+                if (!cmp_value) {
+                    this->current_context->location.sub_index = index;
+                    return;
+                } else if (cmp_value < 0) {
+                    right_index = index - 1;
+                } else {
+                    left_index = index + 1;
+                }
+            } while (left_index <= right_index);
+        }
+        this->current_context->location.sub_index = -1;
+    }
+
+    // 0x48DC20
+    dllexport gnu_noinline int32_t thiscall set_context_to_sub(const char* sub_name) asm_symbol_rel(0x48DC20) {
+        this->locate_sub(sub_name);
+        this->current_context->location.instruction_offset = 0;
+        this->current_context->time = 0.0f;
+        return 0;
     }
 };
 #pragma region // EclVM Validation
@@ -4994,21 +5141,13 @@ ValidateVirtualFieldOffset32(0x121C, EclVM, context_list);
 ValidateStructSize32(0x122C, EclVM);
 #pragma endregion
 
-// 0x48DBE0
-dllexport EclInstruction* thiscall EclContext::get_sub_instrs() {
-    int32_t instr_offset = this->location.instruction_offset;
-    if (instr_offset != -1) {
-        int32_t sub_index = this->location.sub_index;
-        if (sub_index != -1) {
-            return pointer_raw_offset((*this->parent->controller->subs)[sub_index].data->instructions, instr_offset);
-        }
-    }
-    return NULL;
+inline EclInstruction* EclContext::get_instruction(int32_t sub_index, int32_t instr_offset) {
+    return based_pointer((*this->vm->controller->subs)[sub_index].data->instructions, instr_offset);
 }
 
 // 0x48D4F0
 dllexport gnu_noinline int32_t thiscall EclContext::get_int_arg(int32_t index) {
-    EclInstruction* current_instruction = this->get_sub_instrs();
+    EclInstruction* current_instruction = this->get_current_instruction();
     if (current_instruction->param_mask & (1 << index)) {
         int32_t value = IntArg(index);
         if (value >= 0) {
@@ -5016,7 +5155,7 @@ dllexport gnu_noinline int32_t thiscall EclContext::get_int_arg(int32_t index) {
         } else if (value <= -1 && value >= -100) {
             return this->stack.read_temp(value);
         } else {
-            return this->parent->get_int_var(value);
+            return this->vm->get_int_var(value);
         }
     } else {
         return IntArg(index);
@@ -5025,7 +5164,7 @@ dllexport gnu_noinline int32_t thiscall EclContext::get_int_arg(int32_t index) {
 
 // 0x48D5A0
 dllexport gnu_noinline float vectorcall EclContext::get_float_arg(int32_t, int32_t index) {
-    EclInstruction* current_instruction = this->get_sub_instrs();
+    EclInstruction* current_instruction = this->get_current_instruction();
     float value = FloatArg(index);
     if (current_instruction->param_mask & (1 << index)) {
         if (value >= 0.0f) {
@@ -5033,7 +5172,7 @@ dllexport gnu_noinline float vectorcall EclContext::get_float_arg(int32_t, int32
         } else if (value <= -1.0f && value >= -100.0f) {
             return this->stack.read_temp(value);
         } else {
-            return this->parent->get_float_var((int32_t)value);
+            return this->vm->get_float_var((int32_t)value);
         }
     } else {
         return value;
@@ -5042,14 +5181,29 @@ dllexport gnu_noinline float vectorcall EclContext::get_float_arg(int32_t, int32
 
 // 0x48D690
 dllexport gnu_noinline int32_t thiscall EclContext::parse_int_as_arg_pop(int32_t index, int32_t value) {
-    EclInstruction* current_instruction = this->get_sub_instrs();
+    EclInstruction* current_instruction = this->get_current_instruction();
     if (current_instruction->param_mask & (1 << index)) {
         if (value >= 0) {
             return this->stack.read_local(value);
         } else if (value <= -1 && value >= -100) {
             return this->stack.pop_cast<int32_t>();
         } else {
-            return this->parent->get_int_var(value);
+            return this->vm->get_int_var(value);
+        }
+    } else {
+        return value;
+    }
+}
+
+inline float vectorcall EclContext::parse_float_as_arg_pop(int32_t index, float value) {
+    EclInstruction* current_instruction = this->get_current_instruction();
+    if (current_instruction->param_mask & (1 << index)) {
+        if (value >= 0.0f) {
+            return this->stack.read_local(value);
+        } else if (value <= -1.0f && value >= -100.0f) {
+            return this->stack.pop_cast<float>();
+        } else {
+            return this->vm->get_float_var(value);
         }
     } else {
         return value;
@@ -5058,13 +5212,13 @@ dllexport gnu_noinline int32_t thiscall EclContext::parse_int_as_arg_pop(int32_t
 
 // 0x48D750
 dllexport gnu_noinline int32_t* thiscall EclContext::get_int_ptr_arg(int32_t index) {
-    EclInstruction* current_instruction = this->get_sub_instrs();
+    EclInstruction* current_instruction = this->get_current_instruction();
     if (current_instruction->param_mask & (1 << index)) {
         int32_t value = IntArg(index);
         if (value >= 0) {
             return &this->stack.ref_local(value);
         } else {
-            return this->parent->get_int_ptr(value);
+            return this->vm->get_int_ptr(value);
         }
     } else {
         return NULL;
@@ -5073,13 +5227,13 @@ dllexport gnu_noinline int32_t* thiscall EclContext::get_int_ptr_arg(int32_t ind
 
 // 0x48D7C0
 dllexport gnu_noinline float* thiscall EclContext::get_float_ptr_arg(int32_t index) {
-    EclInstruction* current_instruction = this->get_sub_instrs();
+    EclInstruction* current_instruction = this->get_current_instruction();
     if (current_instruction->param_mask & (1 << index)) {
         float value = FloatArg(index);
         if (value >= 0.0f) {
             return &this->stack.ref_local(value);
         } else {
-            return this->parent->get_float_ptr((int32_t)value);
+            return this->vm->get_float_ptr((int32_t)value);
         }
     } else {
         return NULL;
@@ -5087,14 +5241,14 @@ dllexport gnu_noinline float* thiscall EclContext::get_float_ptr_arg(int32_t ind
 }
 
 forceinline int32_t thiscall EclContext::parse_int_as_arg(int32_t index, int32_t value) {
-    EclInstruction* current_instruction = this->get_sub_instrs();
+    EclInstruction* current_instruction = this->get_current_instruction();
     if (current_instruction->param_mask & (1 << index)) {
         if (value >= 0) {
             return this->stack.read_local(value);
         } else if (value <= -1 && value >= -100) {
             return this->stack.read_temp(value);
         } else {
-            return this->parent->get_int_var(value);
+            return this->vm->get_int_var(value);
         }
     } else {
         return IntArg(index);
@@ -5102,14 +5256,14 @@ forceinline int32_t thiscall EclContext::parse_int_as_arg(int32_t index, int32_t
 }
 
 forceinline float EclContext::parse_float_as_arg(int32_t index, float value) {
-    EclInstruction* current_instruction = this->get_sub_instrs();
+    EclInstruction* current_instruction = this->get_current_instruction();
     if (current_instruction->param_mask & (1 << index)) {
         if (value >= 0.0f) {
             return this->stack.read_local(value);
         } else if (value <= -1.0f && value >= -100.0f) {
             return this->stack.read_temp(value);
         } else {
-            return this->parent->get_float_var((int32_t)value);
+            return this->vm->get_float_var((int32_t)value);
         }
     } else {
         return value;
@@ -5165,59 +5319,326 @@ enum Var : int32_t {
     SELF_X2_REL = -9973,
     SELF_Y2_REL = -9972
 };
-enum Opcode : uint32_t {
-    MovePositionAbs = 400,
-    MovePositionAbsInterp,
-    MovePositionRel,
-    MovePositionRelInterp,
-    MoveVelocityAbs,
-    MoveVelocityAbsInterp,
-    MoveVelocityRel,
-    MoveVelocityRelInterp,
-    MoveOrbitAbs,
-    MoveOrbitAbsInterp,
-    MoveOrbitRel,
-    MoveOrbitRelInterp,
-    Ecl412,
-    Ecl413,
-    MoveToBoss0Abs,
-    MoveToBoss0Rel,
-    MovePositionAddAbs,
-    MovePositionAddRel,
-    MoveOriginAbs,
-    MoveOriginRel,
-    MoveEllipseAbs,
-    MoveEllipseAbsInterp,
-    MoveEllipseRel,
-    MoveEllipseRelInterp,
-    Ecl424,
-    MoveBezierAbs,
-    MoveBezierRel,
-    MoveStop,
-    MoveVelocityNoMirrorAbs,
-    MoveVelocityNoMirrorAbsInterp,
-    MoveVelocityNoMirrorRel,
-    MoveVelocityNoMirrorRelInterp,
-    MoveToEnemyIdAbs,
-    MoveToEnemyIdRel,
-    MoveCurveAbs,
-    MoveCurveRel,
-    Ecl436,
-    Ecl437,
-    MoveCurveAddAbs,
-    MoveCurveAddRel,
-    MoveAngleAbs,
-    MoveAngleAbsInterp,
-    MoveAngleRel,
-    MoveAngleRelInterp,
-    MoveSpeedAbs,
-    MoveSpeedAbsInterp,
-    MoveSpeedRel,
-    MoveSpeedRelInterp
+enum Opcode : uint16_t {
+    // Section A
+    nop = 0,
+    enemy_delete,
+    ret = 10,
+    call,
+    jump,
+    jump_equ,
+    jump_neq,
+    async_call,
+    async_call_id,
+    async_stop_id,
+    __async_unknown_flag_aet,
+    __async_unknown_flag_clear,
+    __async_unknown_value,
+    async_stop_all,
+    __debug_unknown_A,
+    ecl_time_sub,
+    ecl_time_sub_float,
+    debug_print = 30,
+    __debug_unknown_B,
+    frame_enter = 40,
+    frame_leave,
+    push_int,
+    pop_int,
+    push_float,
+    pop_float,
+    math_int_add = 50,
+    math_float_add,
+    math_int_sub,
+    math_float_sub,
+    math_int_mul,
+    math_float_mul,
+    math_int_div,
+    math_float_div,
+    math_int_mod,
+    cmp_int_equ,
+    cmp_float_equ,
+    cmp_int_neq,
+    cmp_float_neq,
+    cmp_int_les,
+    cmp_float_les,
+    cmp_int_leq,
+    cmp_float_leq,
+    cmp_int_gre,
+    cmp_float_gre,
+    cmp_int_geq,
+    cmp_float_geq,
+    cmp_int_not,
+    cmp_float_not,
+    cmp_or,
+    cmp_and,
+    math_bit_xor,
+    math_bit_or,
+    math_bit_and,
+    math_post_dec,
+    math_sin,
+    math_cos,
+    math_circle_pos,
+    math_reduce_angle,
+    math_int_neg,
+    math_float_neg,
+    math_hypot_squared,
+    math_hypot,
+    math_line_angle,
+    math_sqrt,
+    math_angle_diff,
+    __math_point_rotate,
+    math_float_interp,
+    math_float_interp_bezier,
+    math_circle_pos_rand,
+    math_ellipse_pos,
+    __math_angle_95,
+    __math_angle_96,
+    __math_angle_97,
+
+    // Section B
+    enemy_create_rel = 300,
+    enemy_create_abs,
+    anm_source,
+    anm_set_slot,
+    enemy_create_rel_mirror,
+    enemy_create_abs_mirror,
+    anm_set_slot_main,
+    anm_create_front,
+    anm_create_zero_front,
+    enemy_create_rel_stage,
+    enemy_create_abs_stage,
+    enemy_create_rel_stage_mirror,
+    enemy_create_abs_stage_mirror,
+    anm_play_attack,
+    anm_create_back,
+    anm_create_front_rotated,
+    anm_play_attack_ex,
+    anm_interrupt_slot,
+    anm_play_main,
+    anm_rotate_slot,
+    anm_move_position_slot,
+    __enemy_create_rel_2,
+    __anm_set_slot_indirect,
+    __anm_death_effects,
+    enemy_id_get_position,
+    anm_color_slot,
+    anm_color_slot_interp,
+    anm_alpha_slot,
+    anm_alpha_slot_interp,
+    anm_scale_slot,
+    anm_scale_slot_interp,
+    anm_alpha2_slot,
+    anm_alpha2_slot_interp,
+    anm_move_position_slot_interp,
+    __effect_create_special,
+    anm_scale2_slot,
+    __anm_layer_slot,
+    __anm_blend_mode_slot,
+    anm_create_rel_front_rotated,
+    effect_create,
+    __enemy_flag_unknown,
+
+    // Section C
+    move_position_abs = 400,
+    move_position_abs_interp,
+    move_position_rel,
+    move_position_rel_interp,
+    move_velocity_abs,
+    move_velocity_abs_interp,
+    move_velocity_rel,
+    move_velocity_rel_interp,
+    move_orbit_abs,
+    move_orbit_abs_interp,
+    move_orbit_rel,
+    move_orbit_rel_interp,
+    move_rand_interp_abs,
+    move_rand_interp_rel,
+    move_to_boss0_abs,
+    move_to_boss0_rel,
+    move_position_add_abs,
+    move_position_add_rel,
+    move_origin_abs,
+    move_origin_rel,
+    move_ellipse_abs,
+    move_ellipse_abs_interp,
+    move_ellipse_rel,
+    move_ellipse_rel_interp,
+    enemy_flag_mirror,
+    move_bezier_abs,
+    move_bezier_rel,
+    move_stop,
+    move_velocity_no_mirror_abs,
+    move_velocity_no_mirror_abs_interp,
+    move_velocity_no_mirror_rel,
+    move_velocity_no_mirror_rel_interp,
+    move_to_enemy_id_abs,
+    move_to_enemy_id_rel,
+    __move_curve_abs,
+    __move_curve_rel,
+    __move_position_abs_interp_2,
+    __move_position_rel_interp_2,
+    __move_curve_add_abs,
+    __move_curve_add_rel,
+    move_angle_abs,
+    move_angle_abs_interp,
+    move_angle_rel,
+    move_angle_rel_interp,
+    move_speed_abs,
+    move_speed_abs_interp,
+    move_speed_rel,
+    move_speed_rel_interp,
+
+    // Section D
+    enemy_set_hitbox = 500,
+    enemy_set_collision,
+    enemy_flags_set,
+    enemy_flags_clear,
+    move_bounds_set,
+    move_bounds_disable,
+    item_bonus_slots_reset,
+    item_bonus_slot_set,
+    item_drop_area,
+    drop_item_rewards,
+    item_reward_set,
+    enemy_life_set,
+    boss_set,
+    boss_timer_clear,
+    callback_ex,
+    enemy_invincible_timer,
+    effect_sound,
+    effect_screen_shake,
+    msg_read,
+    msg_wait,
+    boss_wait,
+    timer_callback_sub,
+    spellcard_start,
+    spellcard_end,
+    chapter_set,
+    enemy_kill_all,
+    player_protect_range,
+    enemy_lifebar_color,
+    spellcard_start_2,
+    set_float_rank_3,
+    set_float_rank_5,
+    math_float_rank_lerp,
+    set_int_rank_3,
+    set_int_rank_5,
+    math_int_rank_lerp,
+    set_int_difficulty,
+    set_float_difficulty,
+    spellcard_start_difficulty,
+    spellcard_start_difficulty_1,
+    spellcard_start_difficulty_2,
+    boss_set_life_count,
+    enemy_no_collision_timer,
+    spellcard_flag_timeout_set,
+    __spellcard_flag_anm_unknown,
+    enemy_flag_homing_disable,
+    laser_clear_all,
+    enemy_bomb_shield,
+    game_speed_set,
+    ecl_time_sub_difficulty,
+    __enemy_flag_unknown_A,
+    enemy_set_kill_id,
+    enemy_kill_all_id,
+    anm_layer_base,
+    __enemy_damage_sound,
+    __stage_logo,
+    __enemy_id_exists,
+    death_callback_sub,
+    std_fog_interp,
+    enemy_flag_mirror2,
+    enemy_limit_set,
+    __bullet_bounce_bounds_set,
+    __enemy_kill_effect_create,
+    drop_item_rewards_force,
+    enemy_flag_hitbox_shape,
+    enemy_set_hitbox_rotation,
+    __enemy_bomb_shield_amount,
+    enemy_kill,
+    __spellcard_flag_unknown_A,
+    __enemy_flag_armored,
+    __enemy_set_chapter_spawn_weight,
+    __enemy_add_spawn_weight_to_destroy,
+    enemy_kill_all_no_callbacks,
+    __enemy_life_set_current,
+    item_timed_bonus_slot_set,
+    item_timed_bonus_duration,
+
+    // Section E
+    shooter_reset = 600,
+    shoot_now,
+    bullet_sprite,
+    shoot_offset,
+    shoot_angle,
+    bullet_speed,
+    bullet_count,
+    shoot_aim_mode,
+    bullet_sound,
+    bullet_effects,
+    bullet_effects_ex,
+    bullet_effects_add,
+    bullet_effects_add_ex,
+    bullet_cancel,
+    shooter_copy,
+    bullet_cancel_radius,
+    bullet_clear_radius,
+    bullet_speed_rank_3,
+    bullet_speed_rank_5,
+    bullet_speed_rank_lerp,
+    bullet_count_rank_3,
+    bullet_count_rank_5,
+    bullet_count_rank_lerp,
+    set_float_angle_to_player_from_point,
+    bullet_speed_difficulty,
+    bullet_count_difficulty,
+    shoot_offset_circle,
+    shoot_spawn_distance,
+    __shoot_unknown_A,
+    enemy_fog_spawn,
+    std_interrupt,
+    __enemy_manager_flag_unknown_A,
+    ex_ins_repeat,
+    __enemy_damage_ex,
+    __enemy_hitbox_ex,
+    bullet_cancel_weak_radius,
+    bullet_clear_weak_radius,
+    ex_ins_call,
+    score_add,
+    __ex_ins_repeat2,
+    bullet_effects_set_string,
+    __bullet_effects_prev,
+
+    // Section F
+    laser_size_data = 700,
+    laser_timing_data,
+    laser_line_create,
+    laser_infinite_create,
+    laser_offset,
+    laser_target,
+    laser_speed,
+    laser_width,
+    laser_angle,
+    laser_rotate,
+    laser_clear,
+    laser_curve_create,
+    __bullet_cancel_weak_rectangle,
+    laser_beam_create,
+    __laser_unknown_A,
+
+    // Section G
+    enemy_id_change_sub = 800,
+    enemy_id_get_position_crash,
+    boss_callback,
+
+    // Section H
+    // IIRC there are debugging instructions here...?
+
+    // Section I
+    Ecl1001 = 1001
 };
 }
 
-// PINGAS
 // size: 0x683C
 struct Enemy : EclVM {
     //EclVM vm; // 0x0
@@ -5226,6 +5647,7 @@ struct Enemy : EclVM {
     int32_t id; // 0x6830
     int32_t parent_id; // 0x6834
     int __dword_6838; // 0x6838
+    // 0x683C
 
     // 0x42E100
     dllexport gnu_noinline Enemy(const char* sub_name);
@@ -5243,39 +5665,22 @@ struct Enemy : EclVM {
     // 0x42D220
     dllexport gnu_noinline ~Enemy() asm_symbol_rel(0x42D220);
 
-    // 0x48D920
-    dllexport gnu_noinline void thiscall locate_sub(char* sub_name) asm_symbol_rel(0x48D920) {
-        EnemyController* enemy_controller = this->controller;
-        int32_t left_index = 0;
-        assume(sub_name[0] != '\0');
-        int32_t right_index = enemy_controller->sub_count - 1;
-        if (expect(right_index >= 0, true)) {
-            EclSubHeader* subs = *enemy_controller->subs;
-            do {
-                int32_t index = right_index - left_index;
-                const char* name = sub_name;
-                index /= 2;
-                index += left_index;
-                int32_t cmp_value = strcmp_asm(name, subs[index].name);
-                if (!cmp_value) {
-                    this->current_context->location.sub_index = index;
-                    return;
-                } else if (cmp_value < 0) {
-                    right_index = index - 1;
-                } else {
-                    left_index = index + 1;
-                }
-            } while (left_index <= right_index);
+    // 0x42FE80
+    dllexport gnu_noinline void thiscall update() asm_symbol_rel(0x42FE80) {
+        float enemy_slowdown = this->data.slowdown;
+        if (enemy_slowdown <= 0.0f) {
+            if (this->data.__anm_slowdown_immune) {
+                this->data.set_anm_vm_slowdowns(0.0f);
+            }
+            this->data.update();
+        } else {
+            float previous_gamespeed = GAME_SPEED.value;
+            GAME_SPEED.value = confine_to_range(0.0f, previous_gamespeed - enemy_slowdown * previous_gamespeed, 1.0f);
+            this->data.set_anm_vm_slowdowns(this->data.slowdown);
+            this->data.update();
+            GAME_SPEED.value = previous_gamespeed;
+            this->data.__anm_slowdown_immune = true; // Why?
         }
-        this->current_context->location.sub_index = -1;
-    }
-
-    // 0x48DC20
-    dllexport gnu_noinline int32_t thiscall __set_context_to_sub(char* sub_name) asm_symbol_rel(0x48DC20) {
-        this->locate_sub(sub_name);
-        this->current_context->location.instruction_offset = 0;
-        this->current_context->time = 0.0f;
-        return 0;
     }
 
     // 0x4389F0
@@ -6693,6 +7098,10 @@ struct AnmVM {
         }
     }
 
+    inline void set_custom_slowdown(float slowdown_value) {
+        this->controller.slowdown = slowdown_value;
+    }
+
     inline void clear_all() {
         Float3 controller_position = this->controller.position;
         uint32_t vm_fast_id = this->controller.fast_id;
@@ -6804,7 +7213,8 @@ struct AnmVM {
 
 #undef declare_on_func
 
-    inline void thiscall interrupt(int32_t interrupt_index) {
+    // 0x412F20
+    dllexport inline void thiscall interrupt(int32_t interrupt_index) asm_symbol_rel(0x412F20) {
         this->run_on_interrupt(interrupt_index);
         this->data.run_interrupt = interrupt_index;
     }
@@ -9494,6 +9904,7 @@ dllexport gnu_noinline float vectorcall Float3::__bullet_effect_angle_jank(float
     return angle;
 }
 
+// I completely forget if this was going to be EnemyInitData or something else
 struct EnemyAllocationData {
 	
 };
@@ -9560,9 +9971,32 @@ struct EnemyManager {
     unknown_fields(0x4); // 0x19C
     // 0x1A0
 
+    forceinline bool is_below_enemy_limit() {
+        return this->enemy_count < this->enemy_limit;
+    }
+
     // 0x42D7D0
-    dllexport void allocate_new_enemy(const char* sub_name, EnemyInitData* data, int32_t) asm_symbol_rel(0x42D7D0) {
-        //Enemy* enemy = new Enemy;
+    dllexport void allocate_new_enemy(const char* sub_name, EnemyInitData* data, int32_t = UNUSED_DWORD) asm_symbol_rel(0x42D7D0) {
+        Enemy* enemy = new Enemy(sub_name);
+        enemy->data.motion.absolute.position = data->position;
+        enemy->data.score = data->score;
+        enemy->data.life.current = data->life;
+        enemy->data.life.maximum = data->life;
+        enemy->data.life.remaining_current_attack = data->life;
+        enemy->data.drops.main_id = data->item_drop;
+        enemy->data.mirrored = data->mirrored;
+        enemy->context.difficulty_mask = 1 << GAME_MANAGER.globals.difficulty;
+        __builtin_memcpy(enemy->data.int_vars, data->int_vars, sizeof(enemy->data.int_vars));
+        __builtin_memcpy(enemy->data.float_vars, data->float_vars, sizeof(enemy->data.float_vars));
+        enemy->data.invulnerable_timer.set(1);
+        enemy->data.__basic_anm_update = data->__basic_anm_update;
+        enemy->data.kill_id = 0;
+        enemy->parent_id = data->parent_id;
+        if (data->life >= 1000) {
+            enemy->data.__unknown_flag_O = true;
+        }
+        enemy->data.chapter = GAME_MANAGER.globals.chapter;
+
     }
 
     // 0x42D440
@@ -9663,6 +10097,12 @@ ValidateFieldOffset32(0x194, EnemyManager, __unknown_enemy_list);
 ValidateFieldOffset32(0x198, EnemyManager, enemy_count);
 ValidateStructSize32(0x1A0, EnemyManager);
 #pragma endregion
+
+inline void EnemyData::set_anm_vm_slowdowns(const float& slowdown_value) {
+    for (size_t i = 0; i < countof(this->anm_vms); ++i) {
+        this->anm_vms[i].get_vm_ptr()->set_custom_slowdown(slowdown_value);
+    }
+}
 
 inline void EnemyData::initialize(Enemy* enemy) {
     this->vm = enemy;
@@ -10794,6 +11234,22 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
     // TODO: FINISH THIS
 }
 
+#pragma push_macro("IntArg")
+#pragma push_macro("ShortArg")
+#pragma push_macro("WordArg")
+#pragma push_macro("FloatArg")
+
+#undef IntArg
+#undef ShortArg
+#undef WordArg
+#undef FloatArg
+#define IntArg(index) (current_effect.int_values[index])
+#define ShortArg(index) (*(int16_t*)&IntArg(index))
+#define WordArg(index) (*(uint16_t*)&IntArg(index))
+#define FloatArg(index) (current_effect.float_values[index])
+#define IntArgEx(index) (((index < 4) + &current_effect)->int_values[(index) % 4])
+#define FloatArgEx(index) (((index < 4) + &current_effect)->float_values[(index) % 4])
+
 // 0x4494F0
 // Method 0x4
 dllexport gnu_noinline void thiscall LaserLine::run_effects() {
@@ -10807,14 +11263,6 @@ dllexport gnu_noinline void thiscall LaserLine::run_effects() {
         ) {
             return;
         }
-#undef IntArg
-#undef ShortArg
-#undef WordArg
-#undef FloatArg
-#define IntArg(index) (current_effect.int_values[index])
-#define ShortArg(index) (*(int16_t*)&IntArg(index))
-#define WordArg(index) (*(uint16_t*)&IntArg(index))
-#define FloatArg(index) (current_effect.float_values[index])
         switch (current_type) {
             case EX_DIST: {
                 this->active_effects |= EX_DIST;
@@ -10942,16 +11390,7 @@ dllexport void Bullet::run_effects() {
         ) {
             return;
         }
-#undef IntArg
-#undef ShortArg
-#undef WordArg
-#undef FloatArg
-#define IntArg(index) (current_effect.int_values[index])
-#define ShortArg(index) (*(int16_t*)&IntArg(index))
-#define WordArg(index) (*(uint16_t*)&IntArg(index))
-#define FloatArg(index) (current_effect.float_values[index])
-#define IntArgEx(index) (((index < 4) + &current_effect)->int_values[(index) % 4])
-#define FloatArgEx(index) (((index < 4) + &current_effect)->float_values[(index) % 4])
+
         switch (current_type) {
             case EX_ANIM: {
                 int32_t interrupt_index = 7 + ShortArg(0);
@@ -11500,6 +11939,202 @@ dllexport void Bullet::run_effects() {
     }
 }
 
+#pragma pop_macro("IntArg")
+#pragma pop_macro("ShortArg")
+#pragma pop_macro("WordArg")
+#pragma pop_macro("FloatArg")
+
+// 0x42FF80
+dllexport gnu_noinline ZunResult thiscall EnemyData::update() {
+    if (!this->__unknown_flag_A) {
+        this->__unknown_flag_A = true;
+        if (ZUN_FAILED(this->step_interpolators())) {
+            return ZUN_ERROR;
+        }
+
+    }
+    return ZUN_SUCCESS;
+}
+
+inline void EclContext::step_float_interps() {
+    nounroll for (size_t i = 0; i < countof(this->float_interps); ++i) {
+        if (this->float_interps[i].end_time) {
+            EclInstruction* current_instruction = this->get_instruction(this->float_interp_locations[i].sub_index, this->float_interp_locations[i].instruction_offset);
+            float* value_write;
+            if (current_instruction->param_mask & 2) {
+                float value = FloatArg(1);
+                int32_t value_as_int = value;
+                if (value >= 0.0f) {
+                    value_write = &this->stack.ref_offset<float>(this->float_interp_stack_offsets[i]);
+                } else {
+                    value_write = this->vm->get_float_ptr(value_as_int);
+                }
+            } else {
+                value_write = NULL;
+            }
+            *value_write = this->float_interps[i].step();
+        }
+    }
+}
+
+// 0x4369E0
+dllexport gnu_noinline int32_t thiscall EnemyData::ecl_enm_create() {
+    using namespace Ecl;
+
+    if (ENEMY_MANAGER_PTR->is_below_enemy_limit()) {
+        EclInstruction* current_instruction = this->vm->current_context->get_current_instruction();
+        int32_t sub_name_length = IntArg(0) + sizeof(IntArg(0));
+        int32_t enm_args_offset = sub_name_length / sizeof(DWORD);
+
+        EnemyInitData init_data;
+        init_data.position = {};
+        init_data.mirrored = false;
+        init_data.__basic_anm_update = false;
+        
+        init_data.position.x = this->parse_float_as_arg(1, FloatArg(enm_args_offset));
+        init_data.position.y = this->parse_float_as_arg(2, FloatArg(enm_args_offset + 1));
+
+        // This section looks *really* weird...
+        uint32_t opcode = current_instruction->opcode;
+        if (
+            opcode == enemy_create_rel ||
+            opcode == enemy_create_rel_stage ||
+            opcode == __enemy_create_rel_2 ||
+            opcode == enemy_create_rel_stage_mirror ||
+            opcode == enemy_create_rel_mirror
+        ) {
+            init_data.position.x += this->current_motion.position.x;
+            init_data.position.y += this->current_motion.position.y;
+        }
+        if (
+            opcode == enemy_create_rel_stage_mirror ||
+            opcode == enemy_create_abs_stage_mirror ||
+            opcode == enemy_create_rel_mirror ||
+            opcode == enemy_create_abs_mirror
+        ) {
+            init_data.mirrored = true;
+        }
+        if (this->get_mirror_flag()) {
+            init_data.position.x *= -1.0f;
+            init_data.mirrored ^= 1;
+        }
+
+        init_data.life = this->parse_int_as_arg(3, IntArg(enm_args_offset + 2));
+        init_data.score = this->parse_int_as_arg(4, IntArg(enm_args_offset + 3));
+        init_data.item_drop = this->parse_int_as_arg(5, IntArg(enm_args_offset + 4));
+        __builtin_memcpy(init_data.int_vars, this->int_vars, sizeof(this->int_vars));
+        __builtin_memcpy(init_data.float_vars, this->float_vars, sizeof(this->float_vars));
+        init_data.parent_id = ((Enemy*)(this->vm))->id;
+        ENEMY_MANAGER_PTR->allocate_new_enemy(StringArg(4), &init_data);
+    }
+    return 0;
+}
+
+// 0x48B030
+dllexport gnu_noinline ZunResult thiscall EclContext::call(EclContext* new_context, int32_t va_index, int32_t) {
+    EclInstruction* current_instruction = this->get_current_instruction(); // EBP-8 (LOCAL.2)
+    int32_t va_offset = IntArg(0) + sizeof(int32_t[va_index]); // EBP-10 (LOCAL.4)
+    int32_t stack_pointer = new_context->stack.pointer; // EBP-14 (LOCAL.5)
+    int32_t new_stack_pointer; // EBP-C (LOCAL.3)
+    if (!stack_pointer) {
+        new_stack_pointer = sizeof(int32_t[5]);
+        new_context->stack.push(0);
+    } else {
+        new_stack_pointer = stack_pointer + sizeof(int32_t[4]);
+    }
+    if (++va_index < current_instruction->param_count) {
+        uint8_t* stack_write_ptr = &new_context->stack.raw[new_stack_pointer];
+        const EclRawValue* call_args_ptr = based_pointer<EclRawValue>(StringArg(4), va_offset);
+        // Yes, all this weird pointer arithmetic seems to be in the original code.
+        // There's too much BS for it to be simple.
+        do {
+            switch (call_args_ptr->type) {
+                default:
+                {
+                    int32_t value = this->parse_int_as_arg_pop(va_index, IntArg((&call_args_ptr->integer - &IntArg(0)) + 1));
+                    if (call_args_ptr->type2 == 'f') {
+                        *(float*)stack_write_ptr = value;
+                    } else {
+                        *(int32_t*)stack_write_ptr = value;
+                    }
+                    break;
+                }
+                case 'f': case 'g':
+                {
+                    float value = this->parse_float_as_arg_pop(va_index, FloatArg((&call_args_ptr->real - &FloatArg(0)) + 1));
+                    if (call_args_ptr->type2 == 'f') {
+                        *(float*)stack_write_ptr = value;
+                    } else {
+                        *(int32_t*)stack_write_ptr = value;
+                    }
+                    break;
+                }
+            }
+            call_args_ptr += 2;
+            stack_write_ptr += sizeof(int32_t);
+        } while (++va_index < current_instruction->param_count);
+    }
+    int32_t current_stack_pointer = new_context->stack.pointer; // EBP-14 (LOCAL.5)
+    if (stack_pointer) {
+        int32_t idk_what = new_context->stack.pop<int32_t>();
+        new_context->stack.pointer = stack_pointer;
+        new_context->stack.write_temp(-1, idk_what);
+        new_context->stack.write_temp(-2, current_stack_pointer);
+        new_context->stack.push(this->time);
+        new_context->stack.push(this->location.instruction_offset);
+        new_context->stack.push(this->location.sub_index);
+    } else {
+        new_context->stack.pointer = sizeof(int32_t);
+        new_context->stack.write_temp(0, current_stack_pointer);
+        new_context->stack.push(-1);
+        new_context->stack.push(-1);
+        new_context->stack.push(-1);
+    }
+    new_context->stack.pointer += sizeof(int32_t);
+    std::swap(new_context, this->vm->current_context);
+    const char* sub_name = StringArg(4);
+    clang_forceinline this->vm->set_context_to_sub(sub_name);
+    if (this->get_current_instruction()) {
+        this->vm->current_context = new_context;
+        return ZUN_SUCCESS;
+    } else {
+        DebugLogger::__debug_log_stub_5(JpEnStr("", " error : undefined function name %s\n"), sub_name);
+        this->location.reset();
+        return ZUN_ERROR;
+    }
+}
+
+// 0x48B3A0
+dllexport gnu_noinline ZunResult vectorcall EclContext::low_ecl_run(float, float current_gamespeed) {
+    using namespace Ecl;
+
+    EclInstruction* current_instruction = this->get_current_instruction(); // ESP+8
+    if (expect(current_instruction == NULL, false)) {
+        return ZUN_ERROR;
+    }
+    float& current_time = this->time;
+    float instruction_time = (float)current_instruction->time;
+    while (current_time <= instruction_time) {
+        if (current_instruction->difficulty_mask & this->difficulty_mask) {
+            int32_t opcode = current_instruction->opcode;
+            switch (opcode) {
+                case ret:
+
+                case enemy_delete:
+                    this->location.reset();
+                    return ZUN_ERROR;
+                case async_call:
+                    this->vm->new_async(-1, false);
+                    break;
+            }
+        }
+        this->location.instruction_offset += current_instruction->offset_to_next;
+        IndexInstr(current_instruction->offset_to_next);
+    }
+    current_time += current_gamespeed;
+    this->step_float_interps();
+    return ZUN_SUCCESS;
+}
 
 // 0x430D40
 dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
@@ -11507,11 +12142,23 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 
     // this // EBP-570, EDI
     EclVM** vm_ptr = &this->vm; // EBP-578, ESI
-    EclInstruction* current_instruction = this->vm->current_context->get_sub_instrs(); // EBP-57C
+    EclInstruction* current_instruction = this->vm->current_context->get_current_instruction(); // EBP-57C
     int32_t opcode = current_instruction->opcode; // EBP-56C
 
     switch (opcode) {
-        case MoveStop: {
+        case enemy_create_rel_stage: case enemy_create_abs_stage:
+        case enemy_create_rel_stage_mirror: case enemy_create_abs_stage_mirror:
+        {
+            clang_forceinline if (ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+        case enemy_create_rel: case enemy_create_abs:
+        case enemy_create_rel_mirror: case enemy_create_abs_mirror:
+        case __enemy_create_rel_2:
+                
+            }
+            break;
+        }
+
+        case move_stop: {
             MotionData& motion_rel = this->motion.relative;
             MotionData& motion_abs = this->motion.absolute;
             motion_abs.get_position() += motion_rel.get_position();
@@ -11534,9 +12181,9 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->ellipse_interp.relative.reset_end_time();
             break;
         }
-        case MovePositionAbs: case MovePositionRel: {
+        case move_position_abs: case move_position_rel: {
             // Screwy inline asm BS here...?
-            MotionData& motion = (opcode != MovePositionAbs) ? this->motion.relative : this->motion.absolute;
+            MotionData& motion = (opcode != move_position_abs) ? this->motion.relative : this->motion.absolute;
             float X = this->get_float_arg(0);
             float Y = this->get_float_arg(1);
             if (X > -999999.0) {
@@ -11550,8 +12197,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->update_motion();
             break;
         }
-        case MovePositionAddAbs: case MovePositionAddRel: {
-            MotionData& motion = (opcode == MovePositionAbs) ? this->motion.absolute : this->motion.relative;
+        case move_position_add_abs: case move_position_add_rel: {
+            MotionData& motion = (opcode == move_position_abs) ? this->motion.absolute : this->motion.relative;
             float X = this->get_float_arg(0);
             motion.get_position().x = X;
             float Y = this->get_float_arg(1);
@@ -11561,11 +12208,11 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->update_motion();
             break;
         }
-        case MovePositionAbsInterp: case MovePositionRelInterp:
-        case Ecl436: case Ecl437:
+        case move_position_abs_interp: case move_position_rel_interp:
+        case __move_position_abs_interp_2: case __move_position_rel_interp_2:
         {
-            MotionData& motion = (opcode != MovePositionAbsInterp && opcode != Ecl436) ? this->motion.relative : this->motion.absolute;
-            ZUNInterpEx<Float3>& position_interp = (opcode != MovePositionAbsInterp && opcode != Ecl436) ? this->position_interp.relative : this->position_interp.absolute;
+            MotionData& motion = (opcode != move_position_abs_interp && opcode != __move_position_abs_interp_2) ? this->motion.relative : this->motion.absolute;
+            ZUNInterpEx<Float3>& position_interp = (opcode != move_position_abs_interp && opcode != __move_position_abs_interp_2) ? this->position_interp.relative : this->position_interp.absolute;
             float X = this->get_float_arg(2);
             float Y = this->get_float_arg(3);
             if (this->get_int_arg(0) <= 0) {
@@ -11596,18 +12243,18 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             position_interp.set_mode_0();
             break;
         }
-        case MoveCurveAbs: case MoveCurveRel:
-        case MoveCurveAddAbs: case MoveCurveAddRel:
+        case __move_curve_abs: case __move_curve_rel:
+        case __move_curve_add_abs: case __move_curve_add_rel:
         {
-            MotionData& motion = (opcode != MoveCurveAbs && opcode != MoveCurveAddAbs) ? this->motion.relative : this->motion.absolute;
-            ZUNInterpEx<Float3>& position_interp = (opcode != MoveCurveAbs && opcode != MoveCurveAddAbs) ? this->position_interp.relative : this->position_interp.absolute;
+            MotionData& motion = (opcode != __move_curve_abs && opcode != __move_curve_add_abs) ? this->motion.relative : this->motion.absolute;
+            ZUNInterpEx<Float3>& position_interp = (opcode != __move_curve_abs && opcode != __move_curve_add_abs) ? this->position_interp.relative : this->position_interp.absolute;
             float X = this->get_float_arg(3);
             float Y = this->get_float_arg(4);
             if (this->get_int_arg(0) <= 0) {
                 position_interp.reset_end_time();
                 break;
             }
-            if (opcode == MoveCurveAddAbs || opcode == MoveCurveAddRel) {
+            if (opcode == __move_curve_add_abs || opcode == __move_curve_add_rel) {
                 if (!this->get_mirror_flag()) {
                     X = motion.get_position_x() + X;
                 } else {
@@ -11632,9 +12279,9 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             motion.set_axis_velocity_mode();
             break;
         }
-        case MoveBezierAbs: case MoveBezierRel: {
-            MotionData& motion = (opcode == MoveBezierAbs) ? this->motion.absolute : this->motion.relative;
-            ZUNInterpEx<Float3>& position_interp = (opcode == MoveBezierAbs) ? this->position_interp.absolute : this->position_interp.relative;
+        case move_bezier_abs: case move_bezier_rel: {
+            MotionData& motion = (opcode == move_bezier_abs) ? this->motion.absolute : this->motion.relative;
+            ZUNInterpEx<Float3>& position_interp = (opcode == move_bezier_abs) ? this->position_interp.absolute : this->position_interp.relative;
             float X = this->get_float_arg(3);
             float Y = this->get_float_arg(4);
             float Z = 0.0f;
@@ -11662,14 +12309,14 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             motion.set_axis_velocity_mode();
             break;
         }
-        case MoveVelocityAbs: case MoveVelocityRel:
-        case MoveVelocityNoMirrorAbs: case MoveVelocityNoMirrorRel:
+        case move_velocity_abs: case move_velocity_rel:
+        case move_velocity_no_mirror_abs: case move_velocity_no_mirror_rel:
         {
-            MotionData& motion = (opcode != MoveVelocityAbs && opcode != MoveVelocityNoMirrorAbs) ? this->motion.relative : this->motion.absolute;
+            MotionData& motion = (opcode != move_velocity_abs && opcode != move_velocity_no_mirror_abs) ? this->motion.relative : this->motion.absolute;
             float angle = this->get_float_arg(0);
             float speed = this->get_float_arg(1);
             if (angle > -999999.0) {
-                if (this->get_mirror_flag() && (opcode == MoveVelocityAbs || opcode == MoveVelocityRel)) {
+                if (this->get_mirror_flag() && (opcode == move_velocity_abs || opcode == move_velocity_rel)) {
                     angle = reduce_angle(HALF_PI_f - reduce_angle(angle - HALF_PI_f));
                 }
                 motion.set_angle(angle);
@@ -11680,12 +12327,12 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             motion.set_axis_velocity_mode();
             break;
         }
-        case MoveVelocityAbsInterp: case MoveVelocityRelInterp:
-        case MoveVelocityNoMirrorAbsInterp: case MoveVelocityNoMirrorRelInterp:
+        case move_velocity_abs_interp: case move_velocity_rel_interp:
+        case move_velocity_no_mirror_abs_interp: case move_velocity_no_mirror_rel_interp:
         {
-            MotionData& motion = (opcode != MoveVelocityAbsInterp && opcode != MoveVelocityNoMirrorAbsInterp) ? this->motion.relative : this->motion.absolute;
-            ZUNInterp<float>& angle_interp = (opcode != MoveVelocityAbsInterp && opcode != MoveVelocityNoMirrorAbsInterp) ? this->angle_interp_relative : this->angle_interp_absolute;
-            ZUNInterp<float>& speed_interp = (opcode != MoveVelocityAbsInterp && opcode != MoveVelocityNoMirrorAbsInterp) ? this->speed_interp_relative : this->speed_interp_absolute;
+            MotionData& motion = (opcode != move_velocity_abs_interp && opcode != move_velocity_no_mirror_abs_interp) ? this->motion.relative : this->motion.absolute;
+            ZUNInterp<float>& angle_interp = (opcode != move_velocity_abs_interp && opcode != move_velocity_no_mirror_abs_interp) ? this->angle_interp_relative : this->angle_interp_absolute;
+            ZUNInterp<float>& speed_interp = (opcode != move_velocity_abs_interp && opcode != move_velocity_no_mirror_abs_interp) ? this->speed_interp_relative : this->speed_interp_absolute;
             float angle = this->get_float_arg(2);
             float speed = this->get_float_arg(3);
             Float2 final_val = {};
@@ -11697,7 +12344,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             int32_t interp_mode = this->get_int_arg(1);
             if (interp_mode != ConstantVelocity) {
                 if (angle > -999999.0) {
-                    if (this->get_mirror_flag() && (opcode == MoveVelocityAbsInterp || opcode == MoveVelocityRelInterp)) {
+                    if (this->get_mirror_flag() && (opcode == move_velocity_abs_interp || opcode == move_velocity_rel_interp)) {
                         final_val.x = reduce_angle(HALF_PI_f - reduce_angle(angle - HALF_PI_f));
                     } else {
                         final_val.x = angle;
@@ -11712,7 +12359,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
                 }
             } else {
                 if (angle > -999999.0) {
-                    if (this->get_mirror_flag() && (opcode == MoveVelocityAbsInterp || opcode == MoveVelocityRelInterp)) {
+                    if (this->get_mirror_flag() && (opcode == move_velocity_abs_interp || opcode == move_velocity_rel_interp)) {
                         final_val.x = -angle;
                     } else {
                         final_val.x = angle;
@@ -11739,9 +12386,9 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             motion.set_axis_velocity_mode();
             break;
         }
-        case MoveAngleAbs: case MoveAngleRel:
+        case move_angle_abs: case move_angle_rel:
         {
-            MotionData& motion = (opcode == MoveAngleAbs) ? this->motion.absolute : this->motion.relative;
+            MotionData& motion = (opcode == move_angle_abs) ? this->motion.absolute : this->motion.relative;
             float angle = this->get_float_arg(0);
             if (this->get_mirror_flag()) {
                 motion.set_angle(reduce_angle(HALF_PI_f - reduce_angle(angle - HALF_PI_f)));
@@ -11752,9 +12399,9 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             }
             break;
         }
-        case MoveAngleAbsInterp: case MoveAngleRelInterp: {
-            MotionData& motion = (opcode == MoveAngleAbs) ? this->motion.absolute : this->motion.relative;
-            ZUNInterp<float>& angle_interp = (opcode == MoveAngleAbs) ? this->angle_interp_absolute : this->angle_interp_relative;
+        case move_angle_abs_interp: case move_angle_rel_interp: {
+            MotionData& motion = (opcode == move_angle_abs) ? this->motion.absolute : this->motion.relative;
+            ZUNInterp<float>& angle_interp = (opcode == move_angle_abs) ? this->angle_interp_absolute : this->angle_interp_relative;
             float angle = this->get_float_arg(2);
             if (this->get_int_arg(0) <= 0) {
                 angle_interp.reset_end_time();
@@ -11763,7 +12410,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             int32_t interp_mode = this->get_int_arg(1);
             if (interp_mode != ConstantVelocity) {
                 if (angle > -999999.0) {
-                    if (this->get_mirror_flag() && (opcode == MoveAngleAbsInterp || opcode == MoveAngleRelInterp)) {
+                    if (this->get_mirror_flag() && (opcode == move_angle_abs_interp || opcode == move_angle_rel_interp)) {
                         angle = reduce_angle(HALF_PI_f - reduce_angle(angle - HALF_PI_f));
                     }
                 } else {
@@ -11771,7 +12418,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
                 }
             } else {
                 if (angle > -999999.0) {
-                    if (this->get_mirror_flag() && (opcode == MoveAngleAbsInterp || opcode == MoveAngleRelInterp)) {
+                    if (this->get_mirror_flag() && (opcode == move_angle_abs_interp || opcode == move_angle_rel_interp)) {
                         angle = -angle;
                     }
                 } else {
@@ -11784,8 +12431,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             motion.set_axis_velocity_mode();
             break;
         }
-        case MoveSpeedAbs: case MoveSpeedRel: {
-            MotionData& motion = (opcode == MoveSpeedAbs) ? this->motion.absolute : this->motion.relative;
+        case move_speed_abs: case move_speed_rel: {
+            MotionData& motion = (opcode == move_speed_abs) ? this->motion.absolute : this->motion.relative;
             float speed = this->get_float_arg(0);
             if (speed > -999999.0) {
                 motion.set_speed(speed);
@@ -11793,9 +12440,9 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             motion.set_axis_velocity_mode();
             break;
         }
-        case MoveSpeedAbsInterp: case MoveSpeedRelInterp: {
-            MotionData& motion = (opcode == MoveSpeedAbs) ? this->motion.absolute : this->motion.relative;
-            ZUNInterp<float>& speed_interp = (opcode == MoveSpeedAbs) ? this->speed_interp_absolute : this->speed_interp_relative;
+        case move_speed_abs_interp: case move_speed_rel_interp: {
+            MotionData& motion = (opcode == move_speed_abs) ? this->motion.absolute : this->motion.relative;
+            ZUNInterp<float>& speed_interp = (opcode == move_speed_abs) ? this->speed_interp_absolute : this->speed_interp_relative;
             float speed = this->get_float_arg(2);
             float current_speed = motion.get_speed();
             if (this->get_int_arg(0) <= 0) {
@@ -11816,8 +12463,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             motion.set_axis_velocity_mode();
             break;
         }
-        case MoveOrbitAbs: case MoveOrbitRel: {
-            MotionData& motion = (opcode == MoveOrbitAbs) ? this->motion.absolute : this->motion.relative;
+        case move_orbit_abs: case move_orbit_rel: {
+            MotionData& motion = (opcode == move_orbit_abs) ? this->motion.absolute : this->motion.relative;
             float angle = this->get_float_arg(0);
             float speed = this->get_float_arg(1);
             float orbit_radius = this->get_float_arg(2);
@@ -11842,10 +12489,10 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->update_motion();
             break;
         }
-        case MoveOrbitAbsInterp: case MoveOrbitRelInterp: {
-            MotionData& motion = (opcode == MoveOrbitAbsInterp) ? this->motion.absolute : this->motion.relative;
-            ZUNInterp<float>& speed_interp = (opcode == MoveOrbitAbsInterp) ? this->speed_interp_absolute : this->speed_interp_relative;
-            ZUNInterp<Float2>& orbit_radius_interp = (opcode == MoveOrbitAbsInterp) ? this->orbit_radius_interp.absolute : this->orbit_radius_interp.relative;
+        case move_orbit_abs_interp: case move_orbit_rel_interp: {
+            MotionData& motion = (opcode == move_orbit_abs_interp) ? this->motion.absolute : this->motion.relative;
+            ZUNInterp<float>& speed_interp = (opcode == move_orbit_abs_interp) ? this->speed_interp_absolute : this->speed_interp_relative;
+            ZUNInterp<Float2>& orbit_radius_interp = (opcode == move_orbit_abs_interp) ? this->orbit_radius_interp.absolute : this->orbit_radius_interp.relative;
             float speed = this->get_float_arg(2);
             float orbit_radius = this->get_float_arg(3);
             float orbit_velocity = this->get_float_arg(4);
@@ -11902,8 +12549,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->update_motion();
             // break; // Nice one ZUN
         }
-        case MoveEllipseAbs: case MoveEllipseRel: {
-            MotionData& motion = (opcode == MoveEllipseAbs) ? this->motion.absolute : this->motion.relative;
+        case move_ellipse_abs: case move_ellipse_rel: {
+            MotionData& motion = (opcode == move_ellipse_abs) ? this->motion.absolute : this->motion.relative;
             float angle = this->get_float_arg(0);
             float speed = this->get_float_arg(1);
             float orbit_radius = this->get_float_arg(2);
@@ -11937,11 +12584,11 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->update_motion();
             break;
         }
-        case MoveEllipseAbsInterp: case MoveEllipseRelInterp: {
-            MotionData& motion = (opcode == MoveEllipseAbsInterp) ? this->motion.absolute : this->motion.relative;
-            ZUNInterp<float>& speed_interp = (opcode == MoveEllipseAbsInterp) ? this->speed_interp_absolute : this->speed_interp_relative;
-            ZUNInterp<Float2>& orbit_radius_interp = (opcode == MoveEllipseAbsInterp) ? this->orbit_radius_interp.absolute : this->orbit_radius_interp.relative;
-            ZUNInterp<Float2>& ellipse_interp = (opcode == MoveEllipseAbsInterp) ? this->ellipse_interp.absolute : this->ellipse_interp.relative;
+        case move_ellipse_abs_interp: case move_ellipse_rel_interp: {
+            MotionData& motion = (opcode == move_ellipse_abs_interp) ? this->motion.absolute : this->motion.relative;
+            ZUNInterp<float>& speed_interp = (opcode == move_ellipse_abs_interp) ? this->speed_interp_absolute : this->speed_interp_relative;
+            ZUNInterp<Float2>& orbit_radius_interp = (opcode == move_ellipse_abs_interp) ? this->orbit_radius_interp.absolute : this->orbit_radius_interp.relative;
+            ZUNInterp<Float2>& ellipse_interp = (opcode == move_ellipse_abs_interp) ? this->ellipse_interp.absolute : this->ellipse_interp.relative;
             float speed = this->get_float_arg(2);
             float orbit_radius = this->get_float_arg(3);
             float orbit_velocity = this->get_float_arg(4);
@@ -12004,16 +12651,16 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->update_motion();
             break;
         }
-        case MoveToBoss0Abs:
+        case move_to_boss0_abs:
             this->motion.absolute.get_position() = ENEMY_MANAGER_PTR->get_boss_by_index(0)->get_current_motion()->position;
             break;
-        case MoveToBoss0Rel:
+        case move_to_boss0_rel:
             this->motion.relative.get_position() = ENEMY_MANAGER_PTR->get_boss_by_index(0)->get_current_motion()->position;
             break;
-        case MoveToEnemyIdAbs:
+        case move_to_enemy_id_abs:
             this->motion.absolute.get_position() = ENEMY_MANAGER_PTR->get_enemy_by_id(this->get_int_arg(0))->get_current_motion()->position;
             break;
-        case MoveToEnemyIdRel:
+        case move_to_enemy_id_rel:
             this->motion.relative.get_position() = ENEMY_MANAGER_PTR->get_enemy_by_id(this->get_int_arg(1))->get_current_motion()->position;
             break;
 

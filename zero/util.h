@@ -954,8 +954,32 @@ protected:
 		for (N* next_node; node; node = next_node) {
 			T* data = node->data;
 			next_node = node->next;
-			lambda(data);
+			if constexpr (std::is_invocable_v<L, T*, N*>) {
+				lambda(data, node);
+			} else {
+				lambda(data);
+			}
 		}
+	}
+	template <typename L>
+	static inline bool do_while_impl(const L& lambda, N* node) {
+		for (; node; node = node->next) {
+			if (!lambda(node->data)) return false;
+		}
+		return true;
+	}
+	template <typename L>
+	static inline bool do_whileB_impl(const L& lambda, N* node) {
+		for (N* next_node; node; node = next_node) {
+			next_node = node->next;
+			T* data = node->data;
+			if constexpr (std::is_invocable_v<L, T*, N*>) {
+				if (!lambda(data, node)) return false;
+			} else {
+				if (!lambda(data)) return false;
+			}
+		}
+		return true;
 	}
 	template <typename L>
 	static inline T* find_if_impl(const L& lambda, N* node) {
@@ -1022,6 +1046,14 @@ public:
 	template <typename L>
 	inline void for_eachB(const L& lambda) {
 		return for_eachB_impl(lambda, (N*)this);
+	}
+	template <typename L>
+	inline bool do_while(const L& lambda) {
+		return do_while_impl(lambda, (N*)this);
+	}
+	template <typename L>
+	inline bool do_whileB(const L& lambda) {
+		return do_whileB_impl(lambda, (N*)this);
 	}
 	template <typename L>
 	inline T* find_if(const L& lambda) {
@@ -1092,6 +1124,14 @@ struct ZUNLinkedListHeadDummyBase : ZUNLinkedListBase<T, has_idk> {
 	template <typename L>
 	inline void for_eachB(const L& lambda) {
 		return for_eachB_impl(lambda, this->next);
+	}
+	template <typename L>
+	inline bool do_while(const L& lambda) {
+		return do_while_impl(lambda, this->next);
+	}
+	template <typename L>
+	inline bool do_whileB(const L& lambda) {
+		return do_whileB_impl(lambda, this->next);
 	}
 	template <typename L>
 	inline T* find_if(const L& lambda) {
@@ -1444,6 +1484,15 @@ static inline constexpr bool in_range_exclusive(T value, T min, T max) {
 template <typename T> requires(std::is_integral_v<T>)
 static inline constexpr bool in_range_inclusive(T value, T min, T max) {
 	return (std::make_unsigned_t<T>)(value - min) <= (std::make_unsigned_t<T>)(max - min);
+}
+
+template <typename T1, typename T2>
+static inline constexpr T1 lerp(const T1& initial_val, const T1& final_val, const T2& time) {
+	if constexpr (std::is_integral_v<T1>) {
+		return (float)initial_val + time * (final_val - initial_val);
+	} else {
+		return initial_val + time * (final_val - initial_val);
+	}
 }
 
 // Packs the bytes [c1], [c2], [c3], and [c4] together as a little endian integer
