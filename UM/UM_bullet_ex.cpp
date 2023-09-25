@@ -4373,11 +4373,35 @@ union AnmID {
         uint32_t fast_id : ANM_FAST_ID_BITS;
         uint32_t slow_id : ANM_SLOW_ID_BITS;
     };
-    struct {
-        uint32_t : 20;
-        uint32_t __unknown_bitfield_A : 2;
-        uint32_t __unknown_bitfield_B : 3;
-    };
+
+    inline AnmID() : full(0) {}
+
+    inline AnmID(AnmID& id) : full(id.full) {}
+
+    // 0x488E30
+    dllexport AnmVM* get_vm_ptr() asm_symbol_rel(0x488E30);
+
+    // 0x488E50
+    dllexport void interrupt_tree(int32_t interrupt_index) asm_symbol_rel(0x488E50);
+
+    // 0x488E70
+    dllexport void __unknown_tree_set_J() asm_symbol_rel(0x488E70);
+
+    inline void __unknown_tree_set_J(AnmManager* anm_manager);
+
+    // 0x488EB0
+    dllexport void __unknown_tree_clear_J() asm_symbol_rel(0x488EB0);
+
+    // 0x488F50
+    dllexport void mark_tree_for_delete() asm_symbol_rel(0x488F50);
+
+    inline void mark_tree_for_delete(AnmManager* anm_manager);
+
+    // 0x488F70
+    dllexport void thiscall set_controller_position(Float3* position) asm_symbol_rel(0x488F70);
+
+    // 0x4892F0
+    dllexport void thiscall set_color1(D3DCOLOR color) asm_symbol_rel(0x4892F0);
 
     inline constexpr operator uint32_t() const {
         return this->full;
@@ -4392,7 +4416,7 @@ union AnmID {
 ValidateFieldOffset32(0x0, AnmID, full);
 ValidateStructSize32(0x4, AnmID);
 #pragma endregion
-
+/*
 // size: 0x4
 union AnmVMRef {
     AnmID* id; // 0x0
@@ -4432,6 +4456,7 @@ ValidateFieldOffset32(0x0, AnmVMRef, id);
 ValidateFieldOffset32(0x0, AnmVMRef, vm);
 ValidateStructSize32(0x4, AnmVMRef);
 #pragma endregion
+*/
 
 // size: 0x88
 struct EnemyCallback {
@@ -4582,7 +4607,7 @@ struct EnemyData {
     Float2 hurtbox_size; // 0x110, 0x133C
     Float2 hitbox_size; // 0x118, 0x1344
     float hurtbox_rotation; // 0x120, 0x134C
-    AnmVMRef anm_vms[16]; // 0x124, 0x1350
+    AnmID anm_vms[16]; // 0x124, 0x1350
     Float3 anm_positions[16]; // 0x164, 0x1390
     int32_t anm_vm_indices[16]; // 0x224, 0x1450
     int32_t anm_source_index; // 0x264, 0x1490
@@ -4685,7 +4710,7 @@ struct EnemyData {
     void* extra_damage_func; // 0x55F0, 0x681C
     void* extra_hitbox_func; // 0x55F4, 0x6820
     int32_t chapter; // 0x55F8, 0x6824
-    int32_t __ecl_570_bool; // 0x55FC, 0x6828
+    int32_t chapter_spawn_weight; // 0x55FC, 0x6828
     // 0x5600, 0x682C
 
     inline EnemyData() {
@@ -4891,7 +4916,7 @@ ValidateFieldOffset32(0x55EC, EnemyData, __is_func_set_2);
 ValidateFieldOffset32(0x55F0, EnemyData, extra_damage_func);
 ValidateFieldOffset32(0x55F4, EnemyData, extra_hitbox_func);
 ValidateFieldOffset32(0x55F8, EnemyData, chapter);
-ValidateFieldOffset32(0x55FC, EnemyData, __ecl_570_bool);
+ValidateFieldOffset32(0x55FC, EnemyData, chapter_spawn_weight);
 ValidateStructSize32(0x5600, EnemyData);
 #pragma endregion
 
@@ -5809,16 +5834,16 @@ struct Gui {
         Timer __timer_4; // 0x4
         Timer script_time; // 0x18
         Timer pause_timer; // 0x2C
-        AnmVMRef player_portraits[2]; // 0x40
-        AnmVMRef enemy_portraits[4]; // 0x48
-        AnmVMRef __vm_ref_58; // 0x58
+        AnmID player_portraits[2]; // 0x40
+        AnmID enemy_portraits[4]; // 0x48
+        AnmID __vm_id_58; // 0x58
         int __dword_5C; // 0x5C
         unknown_fields(0x4); // 0x60
-        AnmVMRef dialogue_lines[2]; // 0x64
-        AnmVMRef furigana_lines[2]; // 0x6C
-        AnmVMRef intro; // 0x74
-        AnmVMRef __textbox_related; // 0x78
-        AnmVMRef __vm_ref_7C; // 0x7C
+        AnmID dialogue_lines[2]; // 0x64
+        AnmID furigana_lines[2]; // 0x6C
+        AnmID intro; // 0x74
+        AnmID __textbox_related; // 0x78
+        AnmID __vm_ref_7C; // 0x7C
         int32_t menu_time; // 0x80
         int32_t menu_state; // 0x84
         MenuHelper menu_controller; // 0x88
@@ -5862,18 +5887,20 @@ struct Gui {
         int32_t current_life; // 0x8
         unknown_fields(0x4); // 0xC
         LifebarMarker markers[4]; // 0x10
-        AnmVMRef main_vm; // 0x30
-        AnmVMRef glowA_vm; // 0x34
-        AnmVMRef glowB_vm; // 0x38
-        AnmVMRef marker_vms[4]; // 0x3C
+        AnmID main_vm; // 0x30
+        AnmID glowA_vm; // 0x34
+        AnmID glowB_vm; // 0x38
+        AnmID marker_vms[4]; // 0x3C
         int32_t vms_initialized; // 0x4C
         int __dword_50; // 0x50
     };
 #pragma endregion
 
     unknown_fields(0x68); // 0x0
-    AnmVMRef __anm_vm_ref_array_68[7]; // 0x68
-    unknown_fields(0x38); // 0x84
+    AnmVM* __anm_vm_ptr_array_68[7]; // 0x68
+    AnmVM* __anm_vm_84; // 0x84
+    AnmVM* __anm_vm_88; // 0x88
+    unknown_fields(0x30); // 0x8C
     AnmID __anm_id_BC; // 0xBC
     unknown_fields(0x7C); // 0xC0
     int32_t __int_13C; // 0x13C
@@ -5884,7 +5911,15 @@ struct Gui {
     AnmLoaded* stage_logo_anm; // 0x160
     unknown_fields(0xC); // 0x164
     int __dword_170; // 0x170
-    unknown_fields(0x3C); // 0x174
+    unknown_fields(0x20); // 0x174
+    union {
+        uint32_t flags; // 0x194
+        struct {
+
+        };
+    };
+    Timer __timer_198; // 0x198
+    unknown_fields(0x4); // 0x1AC
     MsgVM* msg_vm; // 0x1B0
     void* msg_file; // 0x1B4
     int32_t spell_timer_seconds; // 0x1B8
@@ -5903,7 +5938,7 @@ struct Gui {
     }
 
     // 0x42D570
-    dllexport gnu_noinline void vectorcall set_lifebar_marker(int32_t bar_index, int32_t marker_index, float position, D3DCOLOR color) asm_symbol_rel(0x42D570) {
+    dllexport gnu_noinline void vectorcall set_lifebar_marker(int32_t bar_index, int32_t marker_index, D3DCOLOR color, float position) asm_symbol_rel(0x42D570) {
         Gui* gui = GUI_PTR;
         gui->lifebars[bar_index].markers[marker_index].bar_position = position;
         gui->lifebars[bar_index].markers[marker_index].section_color = color;
@@ -5925,12 +5960,16 @@ struct Gui {
     }
 };
 #pragma region // Gui Validation
-ValidateFieldOffset32(0x68, Gui, __anm_vm_ref_array_68);
+ValidateFieldOffset32(0x68, Gui, __anm_vm_ptr_array_68);
+ValidateFieldOffset32(0x84, Gui, __anm_vm_84);
+ValidateFieldOffset32(0x88, Gui, __anm_vm_88);
 ValidateFieldOffset32(0xBC, Gui, __anm_id_BC);
 ValidateFieldOffset32(0x13C, Gui, __int_13C);
 ValidateFieldOffset32(0x140, Gui, __timer_140);
 ValidateFieldOffset32(0x158, Gui, __score);
 ValidateFieldOffset32(0x170, Gui, __dword_170);
+ValidateFieldOffset32(0x194, Gui, flags);
+ValidateFieldOffset32(0x198, Gui, __timer_198);
 ValidateFieldOffset32(0x1B0, Gui, msg_vm);
 ValidateFieldOffset32(0x1B4, Gui, msg_file);
 ValidateFieldOffset32(0x1B8, Gui, spell_timer_seconds);
@@ -6314,7 +6353,7 @@ struct SoundManager {
         void* bgm_format_file; // 0x1980
         ThBgmFormat* bgm_formats;
     };
-    unknown_fields(0x100); // 0x1984
+    char __text_buffer_1984[0x100]; // 0x1984
     SoundManagerUnknownB __unknown_smb_array_1A84[SOUND_EFFECT_COUNT]; // 0x1A84
     void* sound_effect_files[countof(SOUND_EFFECT_FILENAMES)]; // 0x2264
     char __text_buffer_2384[0x100]; // 0x2384
@@ -7039,18 +7078,18 @@ struct AnmVM {
         this->data.layer = layer;
         switch (layer) {
             default:
-                this->controller.id.__unknown_bitfield_A = 0;
+                this->data.origin_mode = 0;
                 break;
             case 3 ... 19:
-                this->controller.id.__unknown_bitfield_A = 1;
+                this->data.origin_mode = 1;
                 break;
             case 20 ... 23:
-                this->controller.id.__unknown_bitfield_A = 2;
+                this->data.origin_mode = 2;
                 break;
         }
         switch (layer) {
             case 20 ... 32: case 37 ... 45:
-                this->controller.id.__unknown_bitfield_B = 1;
+                this->data.resolution_mode = 1;
                 break;
         }
     }
@@ -7079,7 +7118,7 @@ struct AnmVM {
     }
 
     // 0x406630
-    dllexport gnu_noinline void thiscall set_alpha_interp(int32_t end_time, int32_t mode, uint8_t initial_alpha, uint8_t final_alpha) asm_symbol_rel(0x406630) {
+    dllexport gnu_noinline void thiscall initialize_alpha_interp(int32_t end_time, int32_t mode, uint8_t initial_alpha, uint8_t final_alpha) asm_symbol_rel(0x406630) {
         this->data.alpha_interp.end_time = end_time;
         this->data.alpha_interp.mode[0] = mode;
         this->data.alpha_interp.initial_value = initial_alpha;
@@ -7609,6 +7648,15 @@ struct SpriteVertex {
 
     static constexpr DWORD FVF_TYPE = D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1;
 };
+// size: 0x10
+// D3DFVF_XYZ | D3DFVF_DIFFUSE (0x42)
+struct UnknownVertexB {
+    Float3 position; // 0x0
+    D3DCOLOR diffuse; // 0xC
+    // 0x10
+
+    static constexpr DWORD FVF_TYPE = D3DFVF_XYZ | D3DFVF_DIFFUSE;
+};
 
 extern "C" {
     // 0x51F65C
@@ -7730,7 +7778,7 @@ struct AnmManager {
     AnmUVMode current_v_sample_mode; // 0x3120E11
     probably_padding_bytes(0x2); // 0x3120E12
     int __current_dword_3120E14; // 0x3120E14
-    IDirect3DVertexBuffer9* __d3d_vertex_buffer_3120E18; // 0x3120E18
+    LPDIRECT3DVERTEXBUFFER9 __d3d_vertex_buffer_3120E18; // 0x3120E18
     UnknownVertexA __vertex_array_3120E1C[4]; // 0x3120E1C
     int32_t unrendered_sprite_count; // 0x3120E6C
     SpriteVertex sprite_vertex_data[0x40000]; // 0x3120E70
@@ -8959,21 +9007,21 @@ inline AnmInstruction* AnmVM::get_current_instruction() {
 }
 
 // 0x488E30
-dllexport AnmVM* AnmVMRef::get_vm_ptr() {
-    AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this->id);
-    if (vm) {
-        this->vm = vm;
+dllexport AnmVM* AnmID::get_vm_ptr() {
+    AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this);
+    if (!vm) {
+        this->full = 0;
     }
     return vm;
 }
 
 // 0x488E50
-dllexport void AnmVMRef::interrupt_tree(int32_t interrupt_index) {
-    AnmManager::interrupt_tree(*this->id, interrupt_index);
+dllexport void AnmID::interrupt_tree(int32_t interrupt_index) {
+    AnmManager::interrupt_tree(*this, interrupt_index);
 }
 
-inline void AnmVMRef::__unknown_tree_set_J(AnmManager* anm_manager) {
-    if (AnmVM* vm = anm_manager->get_vm_with_id(*this->id)) {
+inline void AnmID::__unknown_tree_set_J(AnmManager* anm_manager) {
+    if (AnmVM* vm = anm_manager->get_vm_with_id(*this)) {
         vm->data.__unknown_flag_J = true;
         vm->controller.child_list_head.for_each([](AnmVM* vm) static_lambda {
             vm->__unknown_tree_set_J();
@@ -8982,13 +9030,13 @@ inline void AnmVMRef::__unknown_tree_set_J(AnmManager* anm_manager) {
 }
 
 // 0x488E70
-dllexport void AnmVMRef::__unknown_tree_set_J() {
+dllexport void AnmID::__unknown_tree_set_J() {
     this->__unknown_tree_set_J(ANM_MANAGER_PTR);
 }
 
 // 0x488EB0
-dllexport void AnmVMRef::__unknown_tree_clear_J() {
-    if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this->id)) {
+dllexport void AnmID::__unknown_tree_clear_J() {
+    if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this)) {
         vm->data.__unknown_flag_J = false;
         vm->controller.child_list_head.for_each([](AnmVM* vm) static_lambda {
             vm->__unknown_tree_clear_J();
@@ -8996,28 +9044,28 @@ dllexport void AnmVMRef::__unknown_tree_clear_J() {
     }
 }
 
-inline void AnmVMRef::mark_tree_for_delete(AnmManager* anm_manager) {
-    anm_manager->mark_tree_id_for_delete(*this->id);
-    this->id = NULL;
+inline void AnmID::mark_tree_for_delete(AnmManager* anm_manager) {
+    anm_manager->mark_tree_id_for_delete(*this);
+    this->full = NULL;
 }
 
 // 0x488F50
-dllexport void AnmVMRef::mark_tree_for_delete() {
+dllexport void AnmID::mark_tree_for_delete() {
     this->mark_tree_for_delete(ANM_MANAGER_PTR);
 }
 
 // 0x488F70
-dllexport void thiscall AnmVMRef::set_controller_position(Float3* position) {
-    if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this->id)) {
+dllexport void thiscall AnmID::set_controller_position(Float3* position) {
+    if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this)) {
         vm->controller.position = *position;
     }
 }
 
 // 0x4892F0
-dllexport void thiscall AnmVMRef::set_color1(D3DCOLOR color) {
-    AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this->id);
+dllexport void thiscall AnmID::set_color1(D3DCOLOR color) {
+    AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this);
     if (!vm) {
-        this->vm = vm;
+        this->full = 0;
         return;
     }
     vm->data.color1 = color;
@@ -9163,40 +9211,42 @@ dllexport gnu_noinline BOOL thiscall Globals::__sub_4573F0(int32_t value) {
 
 // 0x4420E0
 dllexport gnu_noinline void thiscall Gui::__sub_4420E0(int32_t count, int32_t arg2, int32_t arg3) {
-    AnmVM* vm = this->__anm_vm_ref_array_68[0].vm;
-    AnmVMRef* vm_refs = &this->__anm_vm_ref_array_68[0];
+    AnmVM* vm = this->__anm_vm_ptr_array_68[0];
     if (vm) {
         float A = (7 - arg3) * 28.0f;
         Float3 B(A, A, 0.0f);
         int32_t C = 0;
         vm->controller.position = B;
-        this->__anm_vm_ref_array_68[1].vm->controller.position = B;
-        this->__anm_vm_ref_array_68[2].vm->controller.position = B;
-        this->__anm_vm_ref_array_68[3].vm->controller.position = B;
-        this->__anm_vm_ref_array_68[4].vm->controller.position = B;
-        this->__anm_vm_ref_array_68[5].vm->controller.position = B;
-        this->__anm_vm_ref_array_68[6].vm->controller.position = B;
+        this->__anm_vm_ptr_array_68[1]->controller.position = B;
+        this->__anm_vm_ptr_array_68[2]->controller.position = B;
+        this->__anm_vm_ptr_array_68[3]->controller.position = B;
+        this->__anm_vm_ptr_array_68[4]->controller.position = B;
+        this->__anm_vm_ptr_array_68[5]->controller.position = B;
+        this->__anm_vm_ptr_array_68[6]->controller.position = B;
         if (count > 0) {
             C = count;
+            AnmVM** vm_ptrs = &this->__anm_vm_ptr_array_68[0];
             do {
-                vm_refs[count].vm->interrupt(2);
+                vm_ptrs[count]->interrupt(2);
             } while (--count);
         }
         if (C < arg3) {
             // 0x4B6600
             static constexpr int32_t UnknownAnmInterruptTableA[] = { 0, 1, 2 };
-            this->__anm_vm_ref_array_68[0].vm->interrupt(UnknownAnmInterruptTableA[arg2]);
+            this->__anm_vm_ptr_array_68[0]->interrupt(UnknownAnmInterruptTableA[arg2]);
             if (++C < arg3) {
                 count = arg3 - C;
+                AnmVM** vm_ptrs = &this->__anm_vm_ptr_array_68[0];
                 do {
-                    vm_refs[count].vm->interrupt(3);
+                    vm_ptrs[count]->interrupt(3);
                 } while (--count);
             }
         }
-        if (C < countof(this->__anm_vm_ref_array_68)) {
-            count = countof(this->__anm_vm_ref_array_68) - C;
+        if (C < countof(this->__anm_vm_ptr_array_68)) {
+            count = countof(this->__anm_vm_ptr_array_68) - C;
+            AnmVM** vm_ptrs = &this->__anm_vm_ptr_array_68[0];
             do {
-                vm_refs[count].vm->interrupt(5);
+                vm_ptrs[count]->interrupt(5);
             } while (--count);
         }
     }
@@ -9364,8 +9414,8 @@ struct CardText {
 // size: 0x63E0
 struct AbilityTextData {
     CardText description_text[card_count]; // 0x0
-    AnmVMRef __vm_ref_array_63C0[7]; // 0x63C0
-    AnmVMRef __vm_ref_63DC; // 0x63DC
+    AnmID __vm_id_array_63C0[7]; // 0x63C0
+    AnmID __vm_id_63DC; // 0x63DC
     // 0x63E0
 
     inline void zero_contents() {
@@ -9376,12 +9426,12 @@ struct AbilityTextData {
     dllexport static void delete_vms() asm_symbol_rel(0x4132B0) {
         AnmManager* anm_manager = ANM_MANAGER_PTR;
         AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
-        size_t i = countof(ability_text_data->__vm_ref_array_63C0);
-        AnmVMRef* current_vm_ref = ability_text_data->__vm_ref_array_63C0;
+        size_t i = countof(ability_text_data->__vm_id_array_63C0);
+        AnmID* current_vm_id = ability_text_data->__vm_id_array_63C0;
         do {
-            current_vm_ref++->mark_tree_for_delete(anm_manager);
+            current_vm_id++->mark_tree_for_delete(anm_manager);
         } while (--i);
-        ability_text_data->__vm_ref_63DC.mark_tree_for_delete(anm_manager);
+        ability_text_data->__vm_id_63DC.mark_tree_for_delete(anm_manager);
     }
 
     // 0x416940
@@ -9393,10 +9443,10 @@ struct AbilityTextData {
     dllexport static void stdcall __sub_416C10(int arg1) asm_symbol_rel(0x416C10) {
         AnmManager* anm_manager = ANM_MANAGER_PTR;
         AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
-        size_t i = countof(ability_text_data->__vm_ref_array_63C0);
-        AnmVMRef* current_vm_ref = ability_text_data->__vm_ref_array_63C0;
+        size_t i = countof(ability_text_data->__vm_id_array_63C0);
+        AnmID* current_vm_id = ability_text_data->__vm_id_array_63C0;
         do {
-            current_vm_ref++->__unknown_tree_set_J(anm_manager);
+            current_vm_id++->__unknown_tree_set_J(anm_manager);
         } while (--i);
         ability_text_data->__sub_416940(arg1, 0);
     }
@@ -9500,8 +9550,8 @@ struct AbilityTextData {
 };
 #pragma region // AbilityTextData Validation
 ValidateFieldOffset32(0x0, AbilityTextData, description_text);
-ValidateFieldOffset32(0x63C0, AbilityTextData, __vm_ref_array_63C0);
-ValidateFieldOffset32(0x63DC, AbilityTextData, __vm_ref_63DC);
+ValidateFieldOffset32(0x63C0, AbilityTextData, __vm_id_array_63C0);
+ValidateFieldOffset32(0x63DC, AbilityTextData, __vm_id_63DC);
 ValidateStructSize32(0x63E0, AbilityTextData);
 #pragma endregion
 
@@ -9525,7 +9575,7 @@ struct AbilityManager {
     int32_t equipment_card_count; // 0x30
     int32_t passive_card_count; // 0x34
     CardBase* selected_active_card; // 0x38
-    AnmVMRef __anm_ref_3C; // 0x3C
+    AnmID __anm_id_3C; // 0x3C
     unknown_fields(0xC); // 0x40
     AnmID __anm_id_4C; // 0x4C
     unknown_fields(0x4); // 0x50
@@ -9716,8 +9766,8 @@ struct Player {
         PlayerDamageSource damage_sources[0x401]; // 0x1FF54, 0x20574
         unknown_fields(0x9C); // 0x46FF0, 0x47610
         int32_t state; // 0x4708C, 0x476AC
-        AnmVMRef __vm_ref_47090; // 0x47090, 0x476B0
-        AnmVMRef __vm_ref_47094; // 0x47094, 0x476B4
+        AnmID __vm_id_47090; // 0x47090, 0x476B0
+        AnmID __vm_id_47094; // 0x47094, 0x476B4
         unknown_fields(0x14); // 0x47098, 0x476B8
         BOOL __dword_470AC; // 0x470AC, 0x476CC
         Timer shoot_key_short_timer; // 0x470B0, 0x476D0
@@ -10158,7 +10208,7 @@ dllexport gnu_noinline Enemy::Enemy(const char* sub_name) {
     this->data.initialize_callbacks();
     this->data.initialize_anm_vm_ids();
     this->data.bomb_damage_multiplier = 1.0f;
-    this->data.__ecl_570_bool = 0;
+    this->data.chapter_spawn_weight = 0;
 }
 
 // 0x4237F0
@@ -10190,8 +10240,8 @@ dllexport gnu_noinline Enemy::~Enemy() {
             }
             AnmManager* anm_manager = ANM_MANAGER_PTR;
             for (size_t i = 0; i < countof(this->data.anm_vms); ++i) {
-                anm_manager->mark_tree_id_for_delete(*this->data.anm_vms[i].id);
-                this->data.anm_vms[i].id = NULL;
+                anm_manager->mark_tree_id_for_delete(this->data.anm_vms[i]);
+                this->data.anm_vms[i] = 0;
             }
         }
     }
@@ -11067,7 +11117,8 @@ struct LaserCurve : LaserData {
 
 // size: 0x45C
 struct LaserBeamParams {
-    unknown_fields(0x45C); // 0x0
+    unknown_fields(0x3C); // 0x0
+    BulletEffectArgs effects[24]; // 0x3C
     // 0x45C
 
     inline void zero_contents() {
@@ -11089,7 +11140,9 @@ struct BulletManager {
     unknown_fields(0x4); // 0x0
     void* on_tick; // 0x4
     void* on_draw; // 0x8
-    unknown_fields(0x34); // 0xC
+    unknown_fields(0x4); // 0xC
+    Bullet* __bullet_cache_pointers[10]; // 0x10
+    unknown_fields(0x4); // 0x38
     int32_t __int_40; // 0x40 (ECL variable -9898)
     float player_protect_radius; // 0x44
     float __float_48; // 0x48
@@ -12885,8 +12938,8 @@ struct UnknownN {
     int __dword_108; // 0x108
     int __dword_10C; // 0x10C
     unknown_fields(0xD4); // 0x110
-    AnmVMRef __vm_ref_1E4; // 0x1E4
-    AnmVMRef __vm_ref_1E8; // 0x1E8
+    AnmID __vm_id_1E4; // 0x1E4
+    AnmID __vm_id_1E8; // 0x1E8
     int __dword_1EC; // 0x1EC
     int __dword_1F0; // 0x1F0
     int __dword_1F4; // 0x1F4
@@ -12928,8 +12981,8 @@ ValidateFieldOffset32(0x34, UnknownN, __dword_34);
 ValidateFieldOffset32(0x104, UnknownN, __dword_104);
 ValidateFieldOffset32(0x108, UnknownN, __dword_108);
 ValidateFieldOffset32(0x10C, UnknownN, __dword_10C);
-ValidateFieldOffset32(0x1E4, UnknownN, __vm_ref_1E4);
-ValidateFieldOffset32(0x1E8, UnknownN, __vm_ref_1E8);
+ValidateFieldOffset32(0x1E4, UnknownN, __vm_id_1E4);
+ValidateFieldOffset32(0x1E8, UnknownN, __vm_id_1E8);
 ValidateFieldOffset32(0x1EC, UnknownN, __dword_1EC);
 ValidateFieldOffset32(0x1F0, UnknownN, __dword_1F0);
 ValidateFieldOffset32(0x1F4, UnknownN, __dword_1F4);

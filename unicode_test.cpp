@@ -336,6 +336,7 @@ bool temp = (value); ((value) = false), expect(temp, (expect_val))
 }
 
 //#undef _BIT_
+/*
 #include <bit>
 dllexport char8_t* fastcall utf32_to_utf8(const char32_t* input_string, char8_t* out) {
 	
@@ -347,28 +348,6 @@ dllexport char8_t* fastcall utf32_to_utf8(const char32_t* input_string, char8_t*
 		uint32_t byte_count = 0;
 		switch (uint32_t count = __lzcnt32(temp)) {
 			default: unreachable;
-			/*case 1 ... 5:
-				out[5] = UTF8_CONT | UTF8_CONT_MASK & temp;
-				temp >>= 6;
-				++byte_count;
-			case 6 ... 10:
-				out[4] = UTF8_CONT | UTF8_CONT_MASK & temp;
-				temp >>= 6;
-				++byte_count;
-			case 11 ... 15:
-				out[3] = UTF8_CONT | UTF8_CONT_MASK & temp;
-				temp >>= 6;
-				++byte_count;
-			case 16 ... 20:
-				out[2] = UTF8_CONT | UTF8_CONT_MASK & temp;
-				temp >>= 6;
-				++byte_count;
-			case 21 ... 24:
-				out[1] = UTF8_CONT | UTF8_CONT_MASK & temp;
-				temp >>= 6;
-				++byte_count;
-				byte_mask = -128;
-				byte_mask >>= byte_count;*/
 			case 1 ... 24: {
 				byte_count = count = (count + 4) / 5;
 				int8_t byte_mask = -128;
@@ -386,3 +365,4 @@ dllexport char8_t* fastcall utf32_to_utf8(const char32_t* input_string, char8_t*
 	} while (temp2);
 	return out;
 }
+*/

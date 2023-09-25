@@ -1,0 +1,77 @@
+{
+  "codecaves": {
+    // There's no easy way to allocate a buffers for all possible
+    // menus of each patch, so you have to bring your own buffer
+    "NAME_OF_MENU_state_buffer": {
+      "access": "rw",
+      // Yes, this would use options
+      // for *abstraction*. :D
+      "size": "<option:menu_buffer_size>"
+    }
+  },
+  "breakpoints": {
+    "codecave:menu#NAME_OF_MENU": {
+      // Address of the state buffer for this menu
+      "state_buffer": "<codecave:NAME_OF_MENU_state_buffer>",
+      "title": "Awesome Menu", // This gets drawn above all the other text (Optional)
+      "x_pos": 420.0, // X position to start drawing (Optional. Defaults to 0.0)
+      "y_pos": 69.0, // Y position to start drawing (Optional. Defaults to 0.0)
+      "y_spacing": 1.0, // How much to increment Y position between labels. (Optional. Defaults to 1.0)
+
+      // Common item properties:
+      // "style" indicates how the menu item should behave
+      // "label" is the text to use
+      // "val_addr" is the address to modify
+      // "hidden" is an optional boolean that causes the menu item to be skipped over
+      "items": [
+        {
+          // Checkboxes are toggled with the shoot button or left/right
+          // Rendering:
+          // Label: [X] (true)
+          // Label: [ ] (false)
+          "style": "<option:menu_item_checkbox>",
+          "label": "Example Checkbox",
+          "val_addr": "<codecave:custom_menu_data>" // bool*
+        },
+        {
+          // Number spinners cycle through numbers with left/right
+          // Rendering:
+          // Label: <  1> (when selected)
+          // Label:    1  (when not selected)
+          // The space around the number is asjusted based on the value type
+          "style": "<option:menu_item_number_spinner>",
+          "label": "How many bugs are in this menu code?",
+          "type": "u32",
+          "min": 5, // Lower bound value (Optional)
+          "max": 400, // Upper bound value (Optional)
+          "val_addr": "<codecave:custom_menu_data>+4" // type*
+        },
+        {
+          // Text spinners cycle through a list of possible text options with left/right
+          // Rendering:
+          // Label: <Example Text> (when selected)
+          // Label:  Example Text  (when not selected)
+          "style": "<option:menu_item_text_spinner>",
+          "label": "Should Exp add for loops to truth?",
+          "val_addr": "<codecave:custom_menu_data>+8", // size_t*
+          "text": [
+            "Yes",
+            "Definitely",
+            "Of Course",
+            "Duh"
+          ]
+        },
+        {
+          // Write value is a bit of a hack in order to support
+          // closing the menu. I'll probably change hits, but
+          // for now it's funny to have a button that just
+          // yeets a value into memory
+          "style": "<option:menu_item_write_value>",
+          "label": "Quit",
+          "val_addr": "<codecave:custom_menu_data>+0xC", // size_t*
+          "val": 5 // Value that gets
+        }
+      ]
+    }
+  }
+}

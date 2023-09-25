@@ -297,9 +297,9 @@ dllexport char8_t option_name[] asm_symbol_abs(option:option_name) = text
 dllexport type var_name asm_symbol_abs(option:option_name)
 
 #define thcrap_expr(expr_name, value) \
-dllexport gnu_used struct { \
+dllexport gnu_used struct dummy_name { \
 	inline operator usreg_t() { \
-		return (usreg_t)this; \
+		return bitcast<usreg_t>(this); \
 	} \
 } expr_name asm_symbol_expr(value)
 

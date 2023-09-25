@@ -139,7 +139,7 @@ dllexport bool parse_vtable_inputs(std::vector<uint32_t>& values, const char* in
 			fread(file, file_size, 1, input_file);
 			const char* file_read = file;
 			for (;;) {
-				auto [number, end_str] = strtonum<uint32_t, 16, true, false, false>(file_read, base);
+				auto [number, end_str] = decltype(strtonum<uint32_t, 16, true, false, false>(file_read, base))();
 				values.emplace_back(number);
 				if (file_read != end_str) {
 					file_read = end_str;

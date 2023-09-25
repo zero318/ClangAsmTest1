@@ -496,7 +496,7 @@ dllexport gnu_noinline void run_ultimate_float_reduce_test() {
 		},
 		[](double dividend, double divisor) -> uint32_t {
 			double value = dividend / (divisor * 2.0);
-			value -= _mm_round_sd((__m128d){value}, (__m128d){ value }, _MM_FROUND_NO_EXC | _MM_FROUND_TO_NEAREST_INT)[0];
+			//value -= _mm_round_sd((__m128d){value}, (__m128d){ value }, _MM_FROUND_NO_EXC | _MM_FROUND_TO_NEAREST_INT)[0];
 			float ret = value * (divisor * 2.0);
 			return bitcast<uint32_t>(ret);
 		}
@@ -864,9 +864,9 @@ dllexport wchar_t option_name[] asm_symbol_abs(option:option_name) = text
 dllexport char8_t option_name[] asm_symbol_abs(option:option_name) = text
 
 #define thcrap_expr(expr_name, value) \
-dllexport gnu_used struct { \
+dllexport gnu_used struct dummy_name { \
 	inline operator usreg_t() { \
-		return (usreg_t)this; \
+		return bitcast<usreg_t>(this); \
 	} \
 } expr_name asm_symbol_expr(value)
 
@@ -2483,9 +2483,699 @@ static DecentRNG RNG;
 
 dllexport gnu_noinline void generate_rtti_labels32(const wchar_t* path, const char* output_path, const char* input_path);
 
+dllexport forceinline uint64_t query_performance_counter_fast() {
+	uint64_t tick = rdtsc_serialize();
+	//tick += USER_SHARED_DATAR().TscQpcBias;
+	tick >>= USER_SHARED_DATAR().TscQpcShift;
+	return tick;
+}
+
+#include <bit>
+
+inline uint32_t __fastcall ilog2(uint32_t value) {
+	__assume(value != 0);
+	return std::bit_width(value) - 1;
+}
+
+dllexport gnu_noinline int32_t __fastcall old_isqrt(int32_t s) {
+	auto error = s;
+	uint32_t acc = 1;
+	while (error >= 0) {
+		error -= acc;
+		acc += 2;
+	}
+	auto root_plus_1 = acc >> 1;
+	if (root_plus_1 * root_plus_1 - root_plus_1 + 1 > 2) {
+		return root_plus_1 - 1;
+	}
+	return root_plus_1;
+}
+
+dllexport gnu_noinline uint16_t __fastcall old_isqrt2(int32_t s) {
+	int32_t error = s;
+	uint32_t acc = 1;
+	while (error >= 0) {
+		error -= acc;
+		acc += 2;
+	}
+	uint32_t root_plus_1 = acc >> 1;
+	return root_plus_1 - (root_plus_1 * root_plus_1 - root_plus_1 + 1 > 2);
+}
+
+dllexport gnu_noinline uint16_t __fastcall old_isqrt3(int32_t s) {
+	if (s > 0) {
+		int32_t error = s;
+		uint32_t acc = 1;
+		while (error >= 0) {
+			error -= acc;
+			acc += 2;
+		}
+		uint32_t root_plus_1 = acc >> 1;
+		return root_plus_1 - (root_plus_1 * root_plus_1 - root_plus_1 + 1 > 2);
+	} else {
+		return 0;
+	}
+}
+
+dllexport gnu_noinline int32_t __fastcall isqrt(int32_t s) {
+	if (s <= 0) {
+		return 0;
+	}
+	auto error = s;
+	decltype(s) root = 0;
+
+	std::make_unsigned<decltype(s)>::type d = (1 << ((sizeof(s) * 8) - 2));
+	while (d > s) {
+		d >>= 2;
+	}
+
+	while (d != 0) {
+		if (error >= (root + d)) {
+			error -= (root + d);
+			root = ((root >> 1) + d);
+		} else {
+			root >>= 1;
+		}
+		d >>= 2;
+	}
+
+	if (error > root) {
+		return root + 1;
+	}
+	return root;
+}
+
+dllexport gnu_noinline uint16_t __fastcall isqrt2(uint32_t s) {
+
+	uint32_t root = 0;
+	if (s) {
+		uint32_t error = s;
+
+		uint32_t shift_count = ilog2(s) & ~1;
+		uint32_t d = 1 << shift_count;
+
+		while (d) {
+			uint32_t root_pd = root + d;
+			root >>= 1;
+			if (error >= root_pd) {
+				error -= root_pd;
+				root += d;
+			}
+			d >>= 2;
+		}
+		root += error > root;
+	}
+	return root;
+}
+
+// Based on https://math.stackexchange.com/questions/2469446/what-is-a-fast-algorithm-for-finding-the-integer-square-root
+dllexport gnu_noinline uint16_t __fastcall fast_sqrt(uint32_t x) {
+	if (x > 0) {
+		uint8_t y_log2 = ilog2(x) >> 1;
+		uint32_t y = 1 << y_log2;
+		uint32_t diff = x - y * y;
+		// Perform lerp between powers of four
+		y += diff / 3 >> y_log2;
+		// The estimate is probably too low, refine it upward
+		y += (x / y - y) >> 1;
+		if (x < y * y) {
+			y += (x / y - y) >> 1;
+			// The estimate may still be 1 too high
+			y -= x < y * y;
+		}
+		return y;
+	}
+	return 0;
+}
+
+dllexport gnu_noinline uint16_t __fastcall fast_sqrt_prev(uint32_t x) {
+	if (x > 1) {
+		uint8_t y_log2 = ilog2(x) >> 1;
+		uint_fast16_t y = 1 << y_log2;
+		uint32_t diff = x - y * y;
+		// Perform lerp between powers of four
+		y += diff / 3 >> y_log2;
+		// The estimate is probably too low, refine it upward
+		y += (x / y - y) >> 1;
+		if (x < y * y) {
+			y += (x / y - y) >> 1;
+			// The estimate may still be 1 too high
+			y -= x < y * y;
+		}
+		return y;
+	}
+	return x;
+}
+
+dllexport gnu_noinline uint16_t __fastcall fast_sqrt2(uint32_t x) {
+	
+	if (x >= 64) {
+		uint8_t y_log2 = ilog2(x) >> 1;
+		uint_fast16_t y = 1 << y_log2;
+		uint32_t diff = x - y * y;
+
+		// Perform lerp between powers of four
+		y += diff / 3 >> y_log2;
+		// The estimate is probably too low, refine it upward
+		y += (x / y - y) >> 1;
+		// The estimate may be too high. If so, refine it downward
+		if (x < y * y) {
+			y += (x / y - y) >> 1;
+			// The estimate may still be 1 too high
+			y -= x < y * y;
+		}
+		return y;
+	} else {
+		cache_align static constexpr uint8_t low_value_lookup[] = {
+			0, 1, 1, 1, 2, 2, 2, 2,
+			2, 3, 3, 3, 3, 3, 3, 3,
+			4, 4, 4, 4, 4, 4, 4, 4,
+			4, 5, 5, 5, 5, 5, 5, 5,
+			5, 5, 5, 5, 6, 6, 6, 6,
+			6, 6, 6, 6, 6, 6, 6, 6,
+			6, 7, 7, 7, 7, 7, 7, 7,
+			7, 7, 7, 7, 7, 7, 7, 7
+		};
+		return low_value_lookup[x];
+	}
+}
+
+dllexport gnu_noinline uint16_t __fastcall fast_sqrt3(int32_t value) {
+	
+	if (value > 120) {
+		uint32_t x = value;
+		uint8_t y_log2 = ilog2(x) >> 1;
+		uint_fast16_t y = 1 << y_log2;
+		uint32_t diff = x - y * y;
+
+		// Perform lerp between powers of four
+		y += diff / 3 >> y_log2;
+		// The estimate is probably too low, refine it upward
+		y += (x / y - y) >> 1;
+		// The estimate may be too high. If so, refine it downward
+		if (x < y * y) {
+			y += (x / y - y) >> 1;
+			// The estimate may still be 1 too high
+			y -= x < y * y;
+		}
+		return y;
+	} else if (value > 0) {
+		uint32_t acc = 1;
+		do {
+			value -= acc;
+			acc += 2;
+		} while (value >= 0);
+		uint32_t y = acc >> 1;
+		return y - (y * y - y + 1 > 2);
+	} else {
+		return 0;
+	}
+}
+
+dllexport gnu_noinline uint16_t __fastcall fast_sqrt4(uint32_t x) {
+	if (x > 1) {
+		uint8_t y_log2 = ilog2(x) >> 1;
+		uint32_t y = 1 << y_log2;
+		uint32_t diff = x - y * y;
+		// Perform lerp between powers of four
+		y += diff / 3 >> y_log2;
+		// The estimate is probably too low, refine it upward
+		y += (x / y - y) >> 1;
+		if (x < y * y) {
+			y += (x / y - y) >> 1;
+			// The estimate may still be 1 too high
+			y -= x < y * y;
+		}
+		return y;
+	}
+	return x;
+}
+
+cache_align static constexpr uint8_t java_sqrt_table[] = {
+	 0,    16,  22,  27,  32,  35,  39,  42,  45,  48,  50,  53,  55,  57,
+	 59,   61,  64,  65,  67,  69,  71,  73,  75,  76,  78,  80,  81,  83,
+	 84,   86,  87,  89,  90,  91,  93,  94,  96,  97,  98,  99, 101, 102,
+	 103, 104, 106, 107, 108, 109, 110, 112, 113, 114, 115, 116, 117, 118,
+	 119, 120, 121, 122, 123, 124, 125, 126, 128, 128, 129, 130, 131, 132,
+	 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 144, 145,
+	 146, 147, 148, 149, 150, 150, 151, 152, 153, 154, 155, 155, 156, 157,
+	 158, 159, 160, 160, 161, 162, 163, 163, 164, 165, 166, 167, 167, 168,
+	 169, 170, 170, 171, 172, 173, 173, 174, 175, 176, 176, 177, 178, 178,
+	 179, 180, 181, 181, 182, 183, 183, 184, 185, 185, 186, 187, 187, 188,
+	 189, 189, 190, 191, 192, 192, 193, 193, 194, 195, 195, 196, 197, 197,
+	 198, 199, 199, 200, 201, 201, 202, 203, 203, 204, 204, 205, 206, 206,
+	 207, 208, 208, 209, 209, 210, 211, 211, 212, 212, 213, 214, 214, 215,
+	 215, 216, 217, 217, 218, 218, 219, 219, 220, 221, 221, 222, 222, 223,
+	 224, 224, 225, 225, 226, 226, 227, 227, 228, 229, 229, 230, 230, 231,
+	 231, 232, 232, 233, 234, 234, 235, 235, 236, 236, 237, 237, 238, 238,
+	 239, 240, 240, 241, 241, 242, 242, 243, 243, 244, 244, 245, 245, 246,
+	 246, 247, 247, 248, 248, 249, 249, 250, 250, 251, 251, 252, 252, 253,
+	 253, 254, 254, 255
+};
+
+dllexport gnu_noinline uint16_t __fastcall java_sqrt_test(uint32_t x) {
+
+	
+
+	uint32_t xn;
+
+	switch (x) {
+		default:
+			unreachable;
+		case 0x00000000 ... 0x000000FF: // 32, 31, 30, 29, 28, 27, 26, 25, 24
+			xn = java_sqrt_table[x] >> 4; // 0, 0
+			goto no_adjust;
+		case 0x00000100 ... 0x000003FF: // 23, 22
+			xn = (java_sqrt_table[x >> 2] >> 3) + 1; // 2, 1
+			goto single_adjust;
+		case 0x00000400 ... 0x00000FFF: // 21, 20
+			xn = (java_sqrt_table[x >> 4] >> 2) + 1; // 4, 2
+			goto single_adjust;
+		case 0x00001000 ... 0x00003FFF: // 19, 18
+			xn = (java_sqrt_table[x >> 6] >> 1) + 1; // 6, 3
+			goto single_adjust;
+		case 0x00004000 ... 0x0000FFFF: // 17, 16
+			xn = java_sqrt_table[x >> 8] + 1; // 8, 4
+			goto single_adjust;
+		case 0x00010000 ... 0x0003FFFF: // 15, 14
+			xn = java_sqrt_table[x >> 10] << 1; // 10, 5
+			goto double_adjust;
+		case 0x00040000 ... 0x000FFFFF: // 13, 12
+			xn = java_sqrt_table[x >> 12] << 2; // 12, 6
+			goto double_adjust;
+		case 0x00100000 ... 0x003FFFFF: // 11, 10
+			xn = java_sqrt_table[x >> 14] << 3; // 14, 7
+			goto double_adjust;
+		case 0x00400000 ... 0x00FFFFFF: // 9, 8
+			xn = java_sqrt_table[x >> 16] << 4; // 16, 8
+			goto double_adjust;
+		case 0x01000000 ... 0x03FFFFFF: // 7, 6
+			xn = java_sqrt_table[x >> 18] << 5; // 18, 9
+			goto triple_adjust;
+		case 0x04000000 ... 0x0FFFFFFF: // 5, 4
+			xn = java_sqrt_table[x >> 20] << 6; // 20, 10
+			goto triple_adjust;
+		case 0x10000000 ... 0x3FFFFFFF: // 3, 2
+			xn = java_sqrt_table[x >> 22] << 7; // 22, 11
+			goto triple_adjust;
+		case 0x40000000 ... 0xFFFFFFFF: // 1, 0
+			xn = java_sqrt_table[x >> 24] << 8; // 24, 12
+			goto triple_adjust;
+	}
+
+triple_adjust:
+	xn = (xn + 1 + (x / xn)) >> 1;
+double_adjust:
+	xn = (xn + 1 + (x / xn)) >> 1;
+single_adjust:
+	xn -= x < xn * xn;
+no_adjust:
+	return xn;
+}
+
+
+
+dllexport gnu_noinline uint16_t __fastcall new_fast_sqrt(uint32_t x) {
+
+	uint8_t shift_count = std::bit_width(x >> 7) >> 1;
+
+	uint32_t y = java_sqrt_table[x >> shift_count * 2];
+	y = (y << shift_count) >> 4;
+	y += 0b11110 >> shift_count & 1;
+
+	switch (shift_count) {
+		default:
+			unreachable;
+			//__asm int3
+		case 9: case 10: case 11: case 12:
+			y = y + x / y >> 1;
+		case 5: case 6: case 7: case 8:
+			y = y + x / y >> 1;
+		case 1: case 2: case 3: case 4:
+			y -= x < y * y;
+		case 0:
+			return y;
+	}
+}
+
+dllexport gnu_noinline uint16_t __fastcall new_fast_sqrt2(uint32_t x) {
+
+	uint8_t shift_count = std::bit_width(x >> 7) >> 1;
+
+	uint32_t y = java_sqrt_table[x >> shift_count * 2];
+	y = (y << shift_count) >> 4;
+	y += 0b11110 >> shift_count & 1;
+
+	if (shift_count > 0) {
+		if (shift_count > 4) {
+			if (shift_count > 8) {
+				y = y + x / y >> 1;
+			}
+			y = y + x / y >> 1;
+		}
+		y -= x < y * y;
+	}
+	return y;
+}
+
+dllexport gnu_noinline uint16_t __fastcall new_fast_sqrt3(uint32_t x) {
+
+	uint8_t shift_count = std::bit_width(x >> 7) >> 1;
+
+	uint32_t y = java_sqrt_table[x >> shift_count * 2];
+	y = (uint16_t)__rold(y, shift_count - 4);
+	y += 0b11110 >> shift_count & 1;
+
+	if (x > 0xFF) {
+		if (x > 0xFFFF) {
+			if (x > 0xFFFFFF) {
+				y = y + x / y >> 1;
+			}
+			y = y + x / y >> 1;
+		}
+		y -= x < y * y;
+	}
+	return y;
+}
+
+dllexport gnu_noinline uint16_t __fastcall float_sqrt(int32_t x) {
+	if (x > 0) {
+		return __builtin_sqrt(x);
+	} else {
+		return 0;
+	}
+}
+
+dllexport gnu_noinline void wwhrvwjhrvjwhr() {
+	__asm__ volatile (
+		".byte 0x66, 0x66, 0x0F, 0x1F, 0x00"
+	);
+}
+
+dllexport gnu_noinline void kjwbkwjrbwkjr() {
+	__asm__ volatile (
+		".byte 0x66, 0x2E, 0x83, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00"
+	);
+}
+
+
+dllexport gnu_noinline void time_fix_test(const char* str, char* buffer) {
+	uint8_t str_chars[8];
+	__builtin_memcpy(str_chars, str, 8);
+	for (size_t i = 0; i < countof(str_chars); ++i) {
+		str_chars[i] -= '0';
+	}
+	tm time = {};
+	time.tm_mon = str_chars[1] + str_chars[0] * 10;
+	time.tm_mday = str_chars[4] + str_chars[3] * 10;
+	time.tm_year = str_chars[7] + str_chars[6] * 10 + 2000;
+	strftime(buffer, 9, "", &time);
+}
+
+dllexport gnu_noinline void __fastcall time_fix_test2(uint8_t* str) {
+	vec<uint16_t, 8> str_chars = { str[0], str[1], str[2], str[3], str[4], str[5], str[6], str[7] };
+	str_chars[5] = str[3];
+	//str_chars = shufflevec(str_chars, str_chars, 0, 1, -1, -1, 3, 4, 6, 7);
+	str_chars += (vec<uint16_t, 8>){ -'0', -'0', -'0', -'0', -'0', -'0', -'0', -'0' };
+	const vec<uint16_t, 8> multipliers = { 1, 10, 0, 0, 10, 1, 1, 10 };
+	vec<uint32_t, 4> time_out = (vec<uint32_t, 4>)_mm_madd_epi16((__m128i)str_chars, (__m128i)multipliers);
+	tm time = {};
+	time.tm_mon = time_out[0];
+	time.tm_mday = time_out[2];
+	time.tm_year = time_out[3];
+	strftime((char*)str, 9, "", &time);
+}
+
+dllexport gnu_noinline void __fastcall time_fix_test3(uint8_t* str) {
+	tm time = {};
+	time.tm_mon = aad_math(PackUInt16(str[1], str[0]) - PackUInt16('0', '0'));
+	time.tm_mday = aad_math(PackUInt16(str[4], str[3]) - PackUInt16('0', '0'));
+	time.tm_year = aad_math(PackUInt16(str[7], str[6]) - PackUInt16('0', '0')) + 2000;
+	strftime((char*)str, 9, "", &time);
+}
+
+dllexport int64_t stdcall alldiv_fast(int64_t divisor, int64_t dividend) {
+	return dividend / divisor;
+}
+dllexport int64_t stdcall allrem_fast(int64_t divisor, int64_t dividend) {
+	return dividend % divisor;
+}
+dllexport uint64_t stdcall aulldiv_fast(uint64_t divisor, uint64_t dividend) {
+	return dividend / divisor;
+}
+dllexport uint64_t stdcall aullrem_fast(uint64_t divisor, uint64_t dividend) {
+	return dividend % divisor;
+}
+dllexport auto regparm(3) alldvrm_fast(int, int, int, int64_t divisor, int64_t dividend) {
+	int64_t quotient = dividend / divisor;
+	int64_t remainder = dividend % divisor;
+	vec<int64_t, 2> temp = { quotient , remainder };
+	return temp;
+}
+dllexport auto regparm(3) aulldvrm_fast(int, int, int, uint64_t divisor, uint64_t dividend) {
+	uint64_t quotient = dividend / divisor;
+	uint64_t remainder = dividend % divisor;
+	vec<uint64_t, 2> temp = { quotient , remainder };
+	return temp;
+}
+dllexport int64_t stdcall allmul_fast(int64_t lhs, int64_t rhs) {
+	return lhs * rhs;
+}
+dllexport uint64_t stdcall aullmul_fast(uint64_t lhs, uint64_t rhs) {
+	return lhs * rhs;
+}
+dllexport int64_t regparm(3) allshl_fast(int64_t value, uint8_t shift) {
+	if (expect_chance(value < 64, true, 1.0)) {
+		return value << shift;
+	} else {
+		return 0;
+	}
+}
+dllexport int64_t regparm(3) allshr_fast(int64_t value, uint8_t shift) {
+	if (expect_chance(value < 64, true, 1.0)) {
+		return value >> shift;
+	} else {
+		return value < 0 ? -1ll : 0ll;
+	}
+}
+dllexport uint64_t regparm(3) aullshr_fast(uint64_t value, uint8_t shift) {
+	if (expect_chance(value < 64, true, 1.0)) {
+		return value >> shift;
+	} else {
+		return 0;
+	}
+}
+
+gnu_noinline void test_sqrt_thing() {
+
+#define include_old_sqrt 0
+
+#define include_crap_roots 1
+
+#define include_known_worse 0
+
+#define test_single_value 0
+
+#if test_single_value
+#define test_val_declare volatile int yeet = test_sqrt_value
+#define test_val yeet
+#else
+#define test_val_declare
+#define test_val i
+#endif
+
+#define test_sqrt_value 121
+
+#if include_crap_roots
+	uint64_t start_time_A = rdtsc_serialize();
+	{
+		int32_t i = 1;
+		do {
+			test_val_declare;
+			__asm__(
+				""
+				:
+				: "X"(float_sqrt(test_val))
+			);
+		} while (++i > 0);
+	}
+	uint64_t end_time_A = rdtsc_serialize();
+
+#if include_old_sqrt
+	uint64_t start_time_B = rdtsc_serialize();
+	{
+		int32_t i = 1;
+		do {
+			test_val_declare;
+			__asm__(
+				""
+				:
+				: "X"(old_isqrt3(test_val))
+			);
+		} while (++i > 0);
+	}
+	uint64_t end_time_B = rdtsc_serialize();
+#endif
+
+#if include_known_worse
+	uint64_t start_time_C = rdtsc_serialize();
+	{
+		int32_t i = 1;
+		do {
+			test_val_declare;
+			__asm__(
+				""
+				:
+				: "X"(isqrt(test_val))
+			);
+		} while (++i > 0);
+	}
+	uint64_t end_time_C = rdtsc_serialize();
+#endif
+
+	uint64_t start_time_D = rdtsc_serialize();
+	{
+		int32_t i = 1;
+		do {
+			test_val_declare;
+			__asm__(
+				""
+				:
+				: "X"(isqrt2(test_val))
+			);
+		} while (++i > 0);
+	}
+	uint64_t end_time_D = rdtsc_serialize();
+#endif
+
+	uint64_t start_time_E = rdtsc_serialize();
+	{
+		int32_t i = 1;
+		do {
+			test_val_declare;
+			__asm__(
+				""
+				:
+				: "X"(fast_sqrt(test_val))
+			);
+		} while (++i > 0);
+	}
+	uint64_t end_time_E = rdtsc_serialize();
+
+#if include_crap_roots
+	uint64_t start_time_F = rdtsc_serialize();
+	{
+		int32_t i = 1;
+		do {
+			test_val_declare;
+			__asm__(
+				""
+				:
+				: "X"(fast_sqrt2(test_val))
+			);
+		} while (++i > 0);
+	}
+	uint64_t end_time_F = rdtsc_serialize();
+#endif
+	
+	
+	uint64_t start_time_G = rdtsc_serialize();
+	{
+		int32_t i = 1;
+		do {
+			test_val_declare;
+			__asm__(
+				""
+				:
+				: "X"(fast_sqrt_prev(test_val))
+			);
+		} while (++i > 0);
+	}
+	uint64_t end_time_G = rdtsc_serialize();
+	
+	
+
+	printf(
+#if include_crap_roots
+		"Double Precision sqrt:  %llu\n"
+#if include_old_sqrt
+		"Old isqrt:              %llu\n"
+#else
+		"Old isqrt:              lol no\n"
+#endif
+#if include_known_worse
+		"ReC98 isqrt:            %llu\n"
+#endif
+		"ReC98 isqrt Optimized:  %llu\n"
+#endif
+		"Test isqrt:             %llu\n"
+#if include_crap_roots
+		"Test isqrt + lookup:    %llu\n"
+#endif
+		"Test isqrt old:         %llu\n"
+#if include_crap_roots
+		, end_time_A - start_time_A
+#if include_old_sqrt
+		, end_time_B - start_time_B
+#endif
+#if include_known_worse
+		, end_time_C - start_time_C
+#endif
+		, end_time_D - start_time_D
+#endif
+		, end_time_E - start_time_E
+#if include_crap_roots
+		, end_time_F - start_time_F
+#endif
+		, end_time_G - start_time_G
+	);
+}
+
+#define _HAS_CXX17 1
+#include <filesystem>
+#include <string>
+#include <string_view>
+
+static inline constexpr size_t kjwebkwrb = sizeof_template_impl<std::wstring>();
+
 int stdcall main(int argc, char* argv[]) {
 
-	generate_rtti_labels32(L"F:\\Touhou_Stuff_2\\disassembly_stuff\\19\\th19\\th19.exe", ".\\yeetus_out.txt", ".\\yeetus_in.txt");
+	char* yeet = "pingas";
+	//std::filesystem::path test = std::filesystem::path(yeet);
+
+	std::string piss;
+	
+
+	//volatile int yeet78 = new_fast_sqrt(0x00000001);
+
+	SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
+
+	Sleep(5000);
+
+	std::wstring_view yeetu;
+	std::wstring bjkjbq = std::wstring(yeetu);
+
+	/*
+	for (int32_t i = 1; i >= 0; ++i) {
+		//uint32_t test = fast_sqrt4(i);
+		uint32_t test = fast_sqrt(i);
+		//uint32_t rec98 = isqrt3(i);
+		uint32_t rec98 = old_isqrt(i);
+		if (test != rec98) {
+			volatile int piss = fast_sqrt(i);
+			__asm int3
+		}
+	}
+	return 0;
+	*/
+	
+
+	//LARGE_INTEGER freq;
+	//QueryPerformanceFrequency(&freq);
+
+	test_sqrt_thing();
+
+	//generate_rtti_labels32(L"F:\\Touhou_Stuff_2\\disassembly_stuff\\19\\th19\\th19.exe", ".\\yeetus_out.txt", ".\\yeetus_in.txt");
 	return 0;
 	//return RNG.rand<int>();
 
@@ -3110,16 +3800,11 @@ EarlyRet:
 #endif
 */
 
-typedef void json_t;
+//typedef void json_t;
 
-dllexport gnu_noinline json_t* cdecl json_object_get(const json_t *object, const char *key) {
-	use_variable(object);
-	use_variable(key);
-	assume_all_registers_volatile();
-	return NULL;
-}
+#include "jansson.h"
 
-struct x86_reg_t {
+struct _x86_reg_t {
 	uint32_t eflags;
 	uint32_t edi;
 	uint32_t esi;
@@ -3132,7 +3817,7 @@ struct x86_reg_t {
 	uint32_t retaddr;
 };
 
-typedef int(__cdecl *BreakpointFunc_t)(x86_reg_t *regs, void *bp_info);
+typedef int(__cdecl *BreakpointFunc_t)(_x86_reg_t *regs, void *bp_info);
 
 struct ModuleData {
 	void* base_addr;
@@ -3160,8 +3845,8 @@ dllexport gnu_noinline auto thcrap_strdup(const char* str) {
 
 extern "C" {
 
-	dllexport int cdecl breakpoint_load_test(x86_reg_t *regs, void *bp_info) asm("breakpoint_load_test");
-	dllexport int cdecl breakpoint_load_test(x86_reg_t *regs, void *bp_info) {
+	dllexport int cdecl breakpoint_load_test(_x86_reg_t *regs, json_t *bp_info) asm("breakpoint_load_test");
+	dllexport int cdecl breakpoint_load_test(_x86_reg_t *regs, json_t *bp_info) {
 		size_t next_index;
 		size_t byte_offset = MODULE_DATA.array_size;
 		ModuleData* new_module = MODULE_DATA.data_array = (ModuleData*)thcrap_realloc(
@@ -3553,7 +4238,7 @@ dllexport void calculate_save_format() {
 }
 
 #ifdef _M_IX86
-struct x86_reg_t2 {
+struct _x86_reg_t2 {
 	uint32_t eflags;
 	uint32_t edi;
 	uint32_t esi;
@@ -3566,7 +4251,7 @@ struct x86_reg_t2 {
 	uint32_t ret_addr;
 };
 #else
-struct x86_reg_t2 {
+struct _x86_reg_t2 {
 	uint64_t rflags;
 	uint64_t r15;
 	uint64_t r14;
@@ -3689,7 +4374,7 @@ static_assert(sizeof(fxsave_area_t) <= 512);
 
 //#define AlignUpToMultipleOf2(val, mul) (((val) + (mul) - 1) & -(mul))
 
-dllexport gnu_noinline gnu_attr(noduplicate) size_t cdecl breakpoint_process(void* bp, size_t addr_index, x86_reg_t* regs) {
+dllexport gnu_noinline gnu_attr(noduplicate) size_t cdecl breakpoint_process(void* bp, size_t addr_index, _x86_reg_t* regs) {
 	use_var(bp);
 	use_var(addr_index);
 	use_var(regs);
@@ -3703,7 +4388,7 @@ dllexport void bp_entry() {
 		"pushf \n"
 	);
 	clear_dir_flag();
-	x86_reg_t* regs = (x86_reg_t*)rsp_reg;
+	_x86_reg_t* regs = (_x86_reg_t*)rsp_reg;
 
 }
 
@@ -4596,6 +5281,27 @@ dllexport gnu_noinline bool fastcall new_overwrite_warning(SaveManager* save_man
 	return expect(selection == 3, true);
 }
 
+//#define thcrap_value2(type, name, value) \
+struct { \
+	inline operator type() { \
+		static const unsigned char dummy[1] = {}; \
+		return bitcast<float>(&dummy[0]);\
+	} \
+} name asm(value)
+
+#define thcrap_value2(type, name, value) \
+dllexport gnu_used struct dummy_name { \
+	inline operator type() { \
+		return bitcast<type>(this); \
+	} \
+} name asm(value)
+
+thcrap_expr(test_val, <option:value_test> * 7);
+
+dllexport uint32_t get_option_test_A() {
+	return test_val;
+}
+
 /*
 #include <winhttp.h>
 
@@ -4704,7 +5410,452 @@ connection_error:
 };
 */
 
+struct DllImportT {
+	const char* dll_name;
+	size_t max_import_index;
+};
 
+dllexport DllImportT dll_array[69];
+
+dllexport void* iat_array[69];
+
+dllexport const char* func_strings[69];
+
+dllexport void __cdecl make_iat_test() {
+	using LoadLibraryA_t = decltype(LoadLibraryA);
+	LoadLibraryA_t* load_library_a = (LoadLibraryA_t*)th_GetProcAddress(th_GetModuleHandleA("kernel32.dll"), "LoadLibraryA");
+	size_t iat_index = 0;
+	for (
+		DllImportT* dll_iter = dll_array;
+		const char* dll_name = dll_iter->dll_name;
+		++dll_iter
+	) {
+		HMODULE dll_handle = th_GetModuleHandleA(dll_name);
+		if (!dll_handle) {
+			dll_handle = load_library_a(dll_name);
+		}
+		size_t max_iat_index = dll_iter->max_import_index;
+		do {
+			iat_array[iat_index] = (void*)th_GetProcAddress(dll_handle, func_strings[iat_index]);
+		} while (++iat_index != max_iat_index);
+	}
+}
+
+dllexport void __cdecl make_iat_test3() {
+	using LoadLibraryA_t = decltype(LoadLibraryA);
+	LoadLibraryA_t* load_library_a = (LoadLibraryA_t*)th_GetProcAddress(th_GetModuleHandleA("kernel32.dll"), "LoadLibraryA");
+	size_t iat_index = 0;
+	DllImportT* dll_iter = dll_array;
+	const char* dll_name = dll_iter->dll_name;
+	do {
+		HMODULE dll_handle = th_GetModuleHandleA(dll_name);
+		if (!dll_handle) {
+			dll_handle = load_library_a(dll_name);
+		}
+		for (
+			size_t max_iat_index = dll_iter->max_import_index;
+			iat_index != max_iat_index;
+			++iat_index
+		) {
+			iat_array[iat_index] = (void*)th_GetProcAddress(dll_handle, func_strings[iat_index]);
+		}
+	} while (dll_name = (++dll_iter)->dll_name);
+}
+
+struct DllImportT2 {
+	const char *const dll_name;
+	const size_t import_count;
+	const char *const func_strings[];
+};
+
+dllexport void __cdecl make_iat_test2() {
+	using LoadLibraryA_t = decltype(LoadLibraryA);
+	LoadLibraryA_t* load_library_a = (LoadLibraryA_t*)th_GetProcAddress(th_GetModuleHandleA("kernel32.dll"), "LoadLibraryA");
+	size_t iat_index = 0;
+	for (
+		const DllImportT2* dll_iter = (const DllImportT2*)dll_array;
+		const char* dll_name = dll_iter->dll_name;
+
+	) {
+		HMODULE dll_handle = th_GetModuleHandleA(dll_name);
+		if (!dll_handle) {
+			dll_handle = load_library_a(dll_name);
+		}
+		for (size_t i = dll_iter->import_count; i; --i) {
+			iat_array[iat_index] = (void*)th_GetProcAddress(dll_handle, dll_iter->func_strings[iat_index]);
+			++iat_index;
+		}
+	}
+}
+
+dllexport std::pair<uint8_t*, size_t> wkjbrwkrjb() {
+	return { nullptr, 0 };
+}
+
+dllexport size_t regcall str_to_num_test(const char* str, size_t base) {
+	//auto [num, _] = strtonum<size_t, 0, true, true, true>(str, base);
+
+	return 0;
+}
+
+static constexpr const char checkbox_str[] = "checkbox";
+
+
+/*
+{
+	"state_buffer": "expression",
+	"ascii_manager": "expression",
+	"x_pos": "expression",
+	"y_pos": "expression",
+	"title": "text",
+}
+*/
+#define THCRAP_API __declspec(dllimport)
+#include <assert.h>
+#include <string>
+#include <string_view>
+
+#pragma push_macro("dllexport")
+#pragma push_macro("ms_abi")
+#pragma push_macro("cdecl")
+#pragma push_macro("stdcall")
+#pragma push_macro("fastcall")
+#pragma push_macro("regcall")
+#pragma push_macro("regparm")
+#pragma push_macro("vectorcall")
+#pragma push_macro("thiscall")
+#pragma push_macro("naked")
+#undef dllexport
+#undef ms_abi
+#undef cdecl
+#undef stdcall
+#undef fastcall
+#undef regcall
+#undef regparm
+#undef vectorcall
+#undef thiscall
+#undef naked
+
+
+#include "F:\\Users\\zero318\\Source\\Repos\\thcrap\\thcrap\\src\\compiler_support.h"
+
+extern "C" {
+
+#undef TH_NODISCARD_REASON
+#define TH_NODISCARD_REASON(...)
+
+#undef TH_VECTORCALL
+#define TH_VECTORCALL __vectorcall
+#undef TH_FASTCALL
+#define TH_FASTCALL __fastcall
+
+#define _PEB _TH_PEB
+#define PEB TH_PEB
+#define PPEB TH_PPEB
+#define _CLIENT_ID _TH_CLIENT_ID
+#define CLIENT_ID TH_CLIENT_ID
+#define _UNICODE_STRING _TH_UNICODE_STRING
+#define UNICODE_STRING TH_UNICODE_STRING
+#define PUNICODE_STRING TH_PUNICODE_STRING
+#define _TEB _TH_TEB
+#define TEB TH_TEB
+#define PTEB TH_PTEB
+#include "F:\\Users\\zero318\\Source\\Repos\\thcrap\\thcrap\\src\\util.h"
+#undef _PEB
+#undef PEB
+#undef PPEB
+#undef _CLIENT_ID
+#undef CLIENT_ID
+#undef _UNICODE_STRING
+#undef UNICODE_STRING
+#undef PUNICODE_STRING
+#undef _TEB
+#undef TEB
+#undef PTEB
+#include "F:\\Users\\zero318\\Source\\Repos\\thcrap\\thcrap\\src\\jansson_ex.h"
+#define LongDouble80 long double
+#include "F:\\Users\\zero318\\Source\\Repos\\thcrap\\thcrap\\src\\expression.h"
+#include "F:\\Users\\zero318\\Source\\Repos\\thcrap\\thcrap\\src\\patchfile.h"
+
+}
+#pragma pop_macro("naked")
+#pragma pop_macro("thiscall")
+#pragma pop_macro("vectorcall")
+#pragma pop_macro("regparm")
+#pragma pop_macro("regcall")
+#pragma pop_macro("fastcall")
+#pragma pop_macro("stdcall")
+#pragma pop_macro("cdecl")
+#pragma pop_macro("ms_abi")
+#pragma pop_macro("dllexport")
+
+
+struct MenuState {
+	size_t selection;
+};
+
+struct AsciiManager19 {
+	unknown_fields(0x1977C);
+	DWORD text_color;
+};
+
+dllexport gnu_noinline void cdecl ascii_draw_text(AsciiManager19* ascii_manager, float* position, const char* format, ...) {
+	use_var(ascii_manager);
+	use_var(position);
+	va_list va;
+	va_start(va, format);
+	vprintf(format, va);
+	va_end(va);
+}
+
+struct Input {
+	uint8_t select : 1;
+	uint8_t back : 1;
+	uint8_t : 3;
+	uint8_t up : 1;
+	uint8_t down : 1;
+	uint8_t left : 1;
+	uint8_t right : 1;
+};
+
+enum MenuItemStyle : size_t {
+					// Menu Title
+	PrintText,		// -Label
+	Checkbox,		// *Label: [X]
+	HSpinnerNumber,	// *Label: <  1>
+	HSpinnerText,	// *Label: <Yeet>
+	WriteValue,		// *Quit
+	InvalidStyle,
+};
+
+// Tells thcrap to execute the original
+// bytes overwritten by the breakpoint
+// call after returning
+#define BREAKPOINT_EXEC_CAVE 1
+
+// These would be defined as per-game
+// options of some sort in the codecave
+#define INPUT_ADDR 0xDEADBEEF
+#define ASCII_MANAGER_PTR_ADDR 0xDEADBEEF
+
+dllexport int cdecl menu_on_tick(x86_reg_t* regs, json_t* bp_info) {
+	MenuState* menu_state = (MenuState*)json_object_get_eval_addr_default(bp_info, "state_buffer", 0, JEVAL_DEFAULT);
+	if (!menu_state) {
+		return BREAKPOINT_EXEC_CAVE;
+	}
+	json_t* menu_items = json_object_get(bp_info, "items");
+	if (!json_is_array(menu_items)) {
+		return BREAKPOINT_EXEC_CAVE;
+	}
+	Input input = *(Input*)INPUT_ADDR;
+
+	size_t array_max = json_array_size(menu_items) - 1;
+	size_t starting_index = menu_state->selection;
+	size_t selected_index = starting_index;
+
+	MenuItemStyle style;
+	json_t* menu_item;
+	if (input.up && !input.down) {
+		do {
+			if (--selected_index == SIZE_MAX) {
+				selected_index = array_max;
+			}
+			menu_item = json_array_get(menu_items, selected_index);
+		} while (
+			selected_index != starting_index &&
+			(json_object_get_eval_bool_default(menu_item, "hidden", false, JEVAL_DEFAULT) ||
+			 PrintText == (style = (MenuItemStyle)json_object_get_eval_int_default(menu_item, "style", PrintText, JEVAL_DEFAULT)))
+		);
+	} else if (input.down) {
+		do {
+			if (++selected_index > array_max) {
+				selected_index = 0;
+			}
+		} while (
+			selected_index != starting_index &&
+			(json_object_get_eval_bool_default(menu_item, "hidden", false, JEVAL_DEFAULT) ||
+			 PrintText == (style = (MenuItemStyle)json_object_get_eval_int_default(menu_item, "style", PrintText, JEVAL_DEFAULT)))
+		);
+	}
+	menu_state->selection = selected_index;
+
+	switch (style) {
+		case WriteValue:
+			if (input.select) {
+				size_t* val_ptr = (size_t*)json_object_get_eval_addr_default(menu_item, "val_addr", NULL, JEVAL_DEFAULT);
+				if (!val_ptr) goto is_bad;
+				*val_ptr = json_object_get_eval_addr_default(menu_item, "val", 0, JEVAL_DEFAULT);
+			}
+			break;
+		case Checkbox: 
+			if (input.select || (input.left != input.right)) {
+				bool* val_ptr = (bool*)json_object_get_eval_addr_default(menu_item, "val_addr", NULL, JEVAL_DEFAULT);
+				if (!val_ptr) goto is_bad;
+				*val_ptr ^= true;
+			}
+			break;
+		case HSpinnerNumber:
+			if (input.left != input.right) {
+				int32_t change = input.left ? 1 : -1;
+				const char* type_str = json_object_get_string(menu_item, "type");
+				if (!type_str) goto is_bad;
+				patch_value_type_t value_type = patch_parse_type(type_str);
+				switch (value_type) {
+					case PVT_BYTE ... PVT_SDWORD:
+						break;
+					default:
+						goto is_bad;
+				}
+				void* val_ptr = (void*)json_object_get_eval_addr_default(menu_item, "val_addr", NULL, JEVAL_DEFAULT);
+				if (!val_ptr) goto is_bad;
+				size_t value;
+				switch (value_type--) {
+					default:
+						unreachable;
+					case PVT_BYTE: case PVT_SBYTE:
+						*(int8_t*)val_ptr += change;
+						break;
+					case PVT_WORD: case PVT_SWORD:
+						*(int16_t*)val_ptr += change;
+						break;
+					case PVT_DWORD: case PVT_SDWORD:
+						*(int32_t*)val_ptr += change;
+						break;
+				}
+			}
+			break;
+		case HSpinnerText:
+			if (input.left != input.right) {
+				json_t* text_array = json_object_get(menu_item, "text");
+				if (!json_is_array(text_array)) goto is_bad;
+				size_t text_array_max = json_array_size(text_array) - 1;
+				size_t* val_ptr = (size_t*)json_object_get_eval_addr_default(menu_item, "val_addr", NULL, JEVAL_DEFAULT);
+				if (!val_ptr) goto is_bad;
+				if (input.left) {
+					if (++*val_ptr > text_array_max) {
+						*val_ptr = 0;
+					}
+				} else {
+					if (--*val_ptr == SIZE_MAX) {
+						*val_ptr = text_array_max;
+					}
+				}
+			}
+			break;
+		default:
+			break;
+		is_bad:
+			json_object_set_new_nocheck(menu_item, "hidden", json_true());
+			break;
+	}
+	return BREAKPOINT_EXEC_CAVE;
+}
+
+dllexport int cdecl menu_on_draw(x86_reg_t* regs, json_t* bp_info) {
+	MenuState* menu_state = (MenuState*)json_object_get_eval_addr_default(bp_info, "state_buffer", NULL, JEVAL_DEFAULT);
+	if (!menu_state) {
+		return BREAKPOINT_EXEC_CAVE;
+	}
+	AsciiManager19* ascii_manager = *(AsciiManager19**)ASCII_MANAGER_PTR_ADDR;
+	float position[4];
+	position[0] = (float)(long double)json_object_get_eval_real_default(bp_info, "x_pos", 0.0, JEVAL_DEFAULT);
+	position[1] = (float)(long double)json_object_get_eval_real_default(bp_info, "y_pos", 0.0, JEVAL_DEFAULT);
+	position[2] = 0.0f;
+	position[3] = (float)json_object_get_eval_real_default(bp_info, "y_spacing", 1.0, JEVAL_DEFAULT);
+
+	auto draw_text = [ascii_manager, &position]<typename ... Args>(const char* format, Args... args) gnu_always_inline {
+		ascii_draw_text(ascii_manager, position, format, args...);
+		position[1] += position[3];
+	};
+
+	if (const char* title_str = json_object_get_string(bp_info, "title")) {
+		draw_text("%s", title_str);
+	}
+	json_t* menu_items = json_object_get(bp_info, "items");
+	if (!json_is_array(menu_items)) {
+		return BREAKPOINT_EXEC_CAVE;
+	}
+
+	json_t* menu_item;
+	json_array_foreach_scoped(size_t, i, menu_items, menu_item) {
+		if (json_object_get_eval_bool_default(menu_item, "hidden", false, JEVAL_DEFAULT)) {
+			continue;
+		}
+		const char* label_str = json_object_get_string(menu_item, "label");
+		if (!label_str) {
+			label_str = "";
+		}
+		MenuItemStyle action = (MenuItemStyle)json_object_get_eval_int_default(menu_item, "style", PrintText, JEVAL_DEFAULT);
+
+		uint32_t selection_characters = menu_state->selection == i ? PackInt('*', '<', '>') : PackInt(' ', ' ', ' ');
+		switch (action) {
+			case PrintText: {
+				draw_text("-%s", label_str);
+				break;
+			}
+			case WriteValue: {
+				draw_text("%c%s", selection_characters, label_str);
+				break;
+			}
+			case Checkbox: {
+				bool* val_ptr = (bool*)json_object_get_eval_addr_default(menu_item, "val_addr", NULL, JEVAL_DEFAULT);
+				if (!val_ptr) goto is_bad;
+				draw_text("%c%s: [%c]", selection_characters, label_str, *val_ptr ? 'X' : ' ');
+				break;
+			}
+			case HSpinnerNumber: {
+				const char* type_str = json_object_get_string(menu_item, "type");
+				if (!type_str) goto is_bad;
+				patch_value_type_t value_type = patch_parse_type(type_str);
+				switch (value_type) {
+					case PVT_BYTE ... PVT_SDWORD:
+						break;
+					default:
+						goto is_bad;
+				}
+				void* val_ptr = (void*)json_object_get_eval_addr_default(menu_item, "val_addr", NULL, JEVAL_DEFAULT);
+				if (!val_ptr) goto is_bad;
+				size_t value;
+				switch (value_type--) {
+					default:
+						unreachable;
+					case PVT_BYTE: case PVT_SBYTE:
+						value = *(uint8_t*)val_ptr;
+						break;
+					case PVT_WORD: case PVT_SWORD:
+						value = *(uint16_t*)val_ptr;
+						break;
+					case PVT_DWORD: case PVT_SDWORD:
+						value = *(uint32_t*)val_ptr;
+						break;
+				}
+				static constexpr const char* format_table[] = {
+					"%c%s: %c%3" PRIu8 "%c", "%c%s: %c%4" PRIi8 "%c",
+					"%c%s: %c%5" PRIu16 "%c", "%c%s: %c%6" PRIi16 "%c",
+					"%c%s: %c%10" PRIu32 "%c", "%c%s: %c%11" PRIi32 "%c"
+				};
+				draw_text(format_table[value_type], selection_characters, label_str, selection_characters >> 8, value, selection_characters >> 16);
+				break;
+			}
+			case HSpinnerText: {
+				json_t* text_array = json_object_get(menu_item, "text");
+				if (!json_is_array(text_array)) goto is_bad;
+				size_t* val_ptr = (size_t*)json_object_get_eval_addr_default(menu_item, "val_addr", NULL, JEVAL_DEFAULT);
+				if (!val_ptr) goto is_bad;
+				json_t* text_value = json_array_get(text_array, *val_ptr);
+				if (!json_is_string(text_value)) goto is_bad;
+				draw_text("%c%s: %c%s%c", selection_characters, label_str, selection_characters >> 8, json_string_value(text_value), selection_characters >> 16);
+				break;
+			}
+			default:
+				unreachable;
+			is_bad:
+				json_object_set_new_nocheck(menu_item, "hidden", json_true());
+				break;
+		}
+	}
+	return BREAKPOINT_EXEC_CAVE;
+}
 
 #if IS_X64
 

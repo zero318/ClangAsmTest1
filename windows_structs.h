@@ -2701,6 +2701,8 @@ extern "C" {
 	extern const KUSER_SHARED_DATAX<> USER_SHARED_DATA asm("_USER_SHARED_DATA");
 }
 
+#define USER_SHARED_DATAR(bits) (*(const KUSER_SHARED_DATAX<bits>*)0x7FFE0000)
+
 //static inline const KUSER_SHARED_DATAX<>& USER_SHARED_DATAR = *(const KUSER_SHARED_DATAX<>*)0x7FFE0000;
 
 #endif

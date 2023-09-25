@@ -229,7 +229,7 @@ Arg Order:      Right to Left
 Decoration:     
 
 Clang __regcall Win64:
-Int Args:       RAX, RCX, RDX, RDI, RSI, R8, R9, R10, R11, R12, R14, R15, Stack
+Int Args:       RAX, RCX, RDX, RDI, RSI, R8, R9, R12, R14, R15, Stack
 Float Args:     XMM0-XMM15, Stack
 LongDoubleArgs: ST(0), Stack
 MMX Args:       
@@ -241,7 +241,7 @@ MMX Ret:        RAX
 Vector Ret:     ZMM0
 IVec Fback Ret: 
 FVec Fback Ret: 
-Preserved:      RBX, RBP
+Preserved:      RBX, RBP, R10, R11
 Cleanup:        
 Arg Order:      
 Decoration:     

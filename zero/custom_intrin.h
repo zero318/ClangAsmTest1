@@ -335,17 +335,56 @@ static forceinline int32_t sign_extend_eax_mask(int32_t eax_value) {
 }
 
 static forceinline uint64_t rdtsc(void) {
-
+#ifdef _M_IX86
+	uint64_t tick;
+	__asm__ volatile (
+		"RDTSC"
+		: asm_arg("=A", tick)
+	);
+	return tick;
+#else
 	return __builtin_ia32_rdtsc();
 
 	/*
 	uintptr_t tickl, tickh;
 	__asm__ volatile (
-		"RDTSC \n"
+		"RDTSC"
 		: asm_arg("=a", tickl), asm_arg("=d", tickh)
 	);
 	return (uint64_t)tickl + ((uint64_t)tickh << 32);
 	*/
+#endif
+}
+
+static forceinline uint64_t rdtscp(uint32_t& tsc_aux) {
+#ifdef _M_IX86
+	uint64_t tick;
+	__asm__ volatile (
+		"RDTSCP"
+		: asm_arg("=A", tick), asm_arg("=c", tsc_aux)
+	);
+	return tick;
+#else
+	return __builtin_ia32_rdtscp(&tsc_aux);
+
+	/*
+	uintptr_t tickl, tickh;
+	__asm__ volatile (
+		"RDTSCP"
+		: asm_arg("=a", tickl), asm_arg("=d", tickh), asm_arg("=c", tsc_aux)
+	);
+	return (uint64_t)tickl + ((uint64_t)tickh << 32);
+	*/
+#endif
+}
+
+static forceinline uint64_t rdtsc_serialize() {
+	uint32_t idgaf;
+	return rdtscp(idgaf);
+}
+
+static forceinline void serialize_instructions() {
+	rdtsc_serialize(); // Surely there's a better way...
 }
 
 #ifdef _M_IX86
@@ -1066,33 +1105,41 @@ static inline T tzmskz(const T& value) {
 #endif
 }
 
-static inline int8_t& aad_math(int8_t& out, const int8_t mul, int8_t add) {
-	uint16_t temp = out | add << 8;
+static inline uint16_t aad_math(uint16_t in, const uint8_t mul = 10u) {
 	__asm__(
+#ifndef __x86_64__
 		"AAD %[mul]"
-		: asm_arg("=a", out)
-		: asm_arg("a", temp), asm_arg("K", mul)
+#else
+
+#endif
+		: asm_arg("+a", in)
+		: asm_arg("N", mul)
+		: "cc"
 	);
-	return out;
+	return in;
+}
+static inline uint16_t aad_math(uint8_t low, uint8_t high, const uint8_t mul = 10u) {
+	return aad_math(PackUInt16(low, high), mul);
 }
 
-static inline void aam_math(int8_t in, const int8_t div, int8_t& div_out, int8_t& mod_out) {
-	union {
-		int16_t word;
-		struct {
-			int8_t low;
-			int8_t high;
-		};
-	} temp;
-	temp.low = in;
-	temp.high = temp.high;
+struct aam_ret {
+	uint8_t remainder;
+	uint8_t quotient;
+};
+static inline aam_ret aam_math(uint8_t dividend, const uint8_t divisor = 10u) {
+	register uint8_t remainder asm("al");
+	register uint8_t quotient asm("ah");
 	__asm__(
-		"AAM %[div]"
-		: "+A" (temp.word)
-		: asm_arg("K", div)
+#ifndef __x86_64__
+		"AAM %[divisor]"
+#else
+
+#endif
+		: asm_arg("=a", remainder), asm_arg("=a", quotient)
+		: asm_arg("a", dividend), asm_arg("N", divisor)
+		: "cc"
 	);
-	div_out = temp.low;
-	mod_out = temp.high;
+	return { remainder, quotient };
 }
 
 static inline bool complement_carry(void) {

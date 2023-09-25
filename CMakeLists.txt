@@ -17,6 +17,9 @@ add_executable(print_copypasta)
 add_executable(ntoskrnl_tests)
 add_executable(winload_tests)
 add_executable(winhttp_test3)
+add_executable(smallest_pe_file)
+add_executable(ghidra_launch)
+add_executable(crappy_launcher)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
 add_library(winhttp_websocket SHARED)
@@ -43,6 +46,9 @@ winhttp_websocket
 winhttp_test3
 wow64
 parakit_inject
+smallest_pe_file
+ghidra_launch
+crappy_launcher
 )
 
 enable_language(ASM-ATT)
@@ -430,6 +436,9 @@ include_directories(AFTER SYSTEM
 	"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.20262.0\\cppwinrt"
 )
 #endif()
+include_directories(AFTER SYSTEM
+	"F:\\Users\\zero318\\Source\\Repos\\thcrap\\libs\\external_deps\\include"
+)
 #add_library(NT "C:\\Windows\\SysWOW64\\ntdll.dll")
 
 #target_link_libraries(${EXE} NT)
@@ -515,8 +524,18 @@ endif()
 add_library(windows_test_asm OBJECT
 	"windows_labels.asm"
 )
+target_link_libraries(${PROJECT_NAME} "F:\\Users\\zero318\\Source\\Repos\\thcrap\\bin\\bin\\jansson.lib")
+target_link_libraries(${PROJECT_NAME} "F:\\Users\\zero318\\Source\\Repos\\thcrap\\bin\\bin\\thcrap.lib")
 target_compile_options(${PROJECT_NAME} PRIVATE
 	#-fforce-emit-vtables
+	"-mno-sse3"
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-lzcnt"
 )
 target_include_directories(${PROJECT_NAME} PRIVATE 
 	"F:\\MyCodeLibs\\asmlib"
@@ -765,6 +784,18 @@ target_compile_options(print_copypasta PRIVATE
 	"-mno-sse3"
 )
 
+target_sources(smallest_pe_file PRIVATE
+	"why.cpp"
+)
+target_compile_definitions(smallest_pe_file PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+target_link_options(smallest_pe_file PRIVATE
+	/ENTRY:yeet
+	"LINKER:/fixed"
+	-nodefaultlib
+)
+
 target_sources(XInput1_4 PRIVATE
 	"xinput_dummy/stop_complaining_about_xinput_1_4.cpp"
 	"stop_complaining_about_xinput_1_4.def"
@@ -876,6 +907,16 @@ target_compile_definitions(parakit_inject PRIVATE
 target_link_options(parakit_inject PRIVATE
 	/DLL
 )
+
+target_sources(ghidra_launch PRIVATE
+	"ghidra_launch/ghidra_launch.cpp"
+	"ghidra_launch/ghidra_launch.rc"
+)
+
+target_sources(crappy_launcher PRIVATE
+	"thcrap_load_test.cpp"
+)
+
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")
 
