@@ -1307,11 +1307,13 @@ gnu_used static volatile auto used_name = var
 
 #define unreachable __builtin_unreachable()
 
+#ifndef DONT_COMPILE_REGISTER_ASSUME_JANK
 // These functions are useful to make the compiler
 // not optimize out calls to stub functions.
 gnu_noinline void assume_non_vector_registers_volatile();
 gnu_noinline void assume_all_registers_volatile();
 gnu_noinline void assume_all_registers_volatile(void* use_arg);
+#endif
 
 template<typename T, uint8_t known_base = 0, bool enable_relative = false, bool skip_whitespace = true, bool check_sign = true>
 static gnu_noinline std::pair<T, const char*> regcall strtonum(const char* str, size_t base) {

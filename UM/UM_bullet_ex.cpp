@@ -19,6 +19,7 @@
 
 #include "../zero/util.h"
 //#include "../zero/custom_intrin.h"
+#include "../zero/func_traits_basic.h"
 
 //#define USE_FAST_REDUCE_ANGLE
 #include "../reduce_angle_fast.h"
@@ -4150,6 +4151,22 @@ struct EclStack {
     forceinline T pop_cast() {
         return this->pop_cast<T>(this->pointer);
     }
+    
+    template<typename L> requires(FunctionTraitsType<L>::arg_count == 1)
+    void unary_op(const L& func) {
+        using T = typename FunctionTraitsType<L>::template nth_arg_type<0>;
+        using P = typename FunctionTraitsType<L>::ret_type;
+        this->push<P>(func(this->pop_cast<T>()));
+    }
+
+    template<typename L> requires(FunctionTraitsType<L>::arg_count == 2 && std::is_same_v<typename FunctionTraitsType<L>::template nth_arg_type<0>, typename FunctionTraitsType<L>::template nth_arg_type<1>>)
+    void binary_op(const L& func) {
+        using T = typename FunctionTraitsType<L>::template nth_arg_type<0>;
+        using P = typename FunctionTraitsType<L>::ret_type;
+        T right = this->pop_cast<T>();
+        T left = this->pop_cast<T>();
+        this->push<P>(func(left, right));
+    }
 
     inline void zero_contents() {
         zero_this();
@@ -4213,8 +4230,12 @@ struct EclContext {
 
     inline void step_float_interps();
 
+    forceinline int32_t thiscall get_int_arg(int32_t index, EclInstruction* current_instruction);
+
     // 0x48D4F0
     dllexport gnu_noinline int32_t thiscall get_int_arg(int32_t index) asm_symbol_rel(0x48D4F0);
+
+    forceinline float vectorcall get_float_arg(int32_t index, EclInstruction* current_instruction);
 
 private:
     // 0x48D5A0
@@ -4225,18 +4246,30 @@ public:
         return this->get_float_arg(UNUSED_DWORD, index);
     }
 
+    forceinline int32_t thiscall parse_int_as_arg_pop(int32_t index, int32_t value, EclInstruction* current_instruction);
+
     // 0x48D690
     dllexport gnu_noinline int32_t thiscall parse_int_as_arg_pop(int32_t index, int32_t value) asm_symbol_rel(0x48D690);
 
+    forceinline float vectorcall parse_float_as_arg_pop(int32_t index, float value, EclInstruction* current_instruction);
+
     inline float vectorcall parse_float_as_arg_pop(int32_t index, float value);
+
+    forceinline int32_t* thiscall get_int_ptr_arg(int32_t index, EclInstruction* current_instruction);
 
     // 0x48D750
     dllexport gnu_noinline int32_t* thiscall get_int_ptr_arg(int32_t index = UNUSED_DWORD) asm_symbol_rel(0x48D750);
 
+    forceinline float* thiscall get_float_ptr_arg(int32_t index, EclInstruction* current_instruction);
+
     // 0x48D7C0
     dllexport gnu_noinline float* thiscall get_float_ptr_arg(int32_t index) asm_symbol_rel(0x48D7C0);
 
+    forceinline int32_t thiscall parse_int_as_arg(int32_t index, int32_t value, EclInstruction* current_instruction);
+
     forceinline int32_t thiscall parse_int_as_arg(int32_t index, int32_t value);
+
+    forceinline float parse_float_as_arg(int32_t index, float value, EclInstruction* current_instruction);
 
     forceinline float parse_float_as_arg(int32_t index, float value);
 
@@ -4374,9 +4407,12 @@ union AnmID {
         uint32_t slow_id : ANM_SLOW_ID_BITS;
     };
 
-    inline AnmID() : full(0) {}
+    inline constexpr AnmID() : full(0) {}
 
-    inline AnmID(AnmID& id) : full(id.full) {}
+    inline constexpr AnmID(const AnmID& id) : full(id.full) {}
+
+    template<typename T> requires(std::is_integral_v<T>)
+    inline constexpr AnmID(const T& raw) : full(raw) {}
 
     // 0x488E30
     dllexport AnmVM* get_vm_ptr() asm_symbol_rel(0x488E30);
@@ -5171,9 +5207,7 @@ inline EclInstruction* EclContext::get_instruction(int32_t sub_index, int32_t in
     return based_pointer((*this->vm->controller->subs)[sub_index].data->instructions, instr_offset);
 }
 
-// 0x48D4F0
-dllexport gnu_noinline int32_t thiscall EclContext::get_int_arg(int32_t index) {
-    EclInstruction* current_instruction = this->get_current_instruction();
+forceinline int32_t thiscall EclContext::get_int_arg(int32_t index, EclInstruction* current_instruction) {
     if (current_instruction->param_mask & (1 << index)) {
         int32_t value = IntArg(index);
         if (value >= 0) {
@@ -5188,9 +5222,12 @@ dllexport gnu_noinline int32_t thiscall EclContext::get_int_arg(int32_t index) {
     }
 }
 
-// 0x48D5A0
-dllexport gnu_noinline float vectorcall EclContext::get_float_arg(int32_t, int32_t index) {
-    EclInstruction* current_instruction = this->get_current_instruction();
+// 0x48D4F0
+dllexport gnu_noinline int32_t thiscall EclContext::get_int_arg(int32_t index) {
+    return this->get_int_arg(index, this->get_current_instruction());
+}
+
+forceinline float vectorcall EclContext::get_float_arg(int32_t index, EclInstruction* current_instruction) {
     float value = FloatArg(index);
     if (current_instruction->param_mask & (1 << index)) {
         if (value >= 0.0f) {
@@ -5205,9 +5242,12 @@ dllexport gnu_noinline float vectorcall EclContext::get_float_arg(int32_t, int32
     }
 }
 
-// 0x48D690
-dllexport gnu_noinline int32_t thiscall EclContext::parse_int_as_arg_pop(int32_t index, int32_t value) {
-    EclInstruction* current_instruction = this->get_current_instruction();
+// 0x48D5A0
+dllexport gnu_noinline float vectorcall EclContext::get_float_arg(int32_t, int32_t index) {
+    return this->get_float_arg(index, this->get_current_instruction());
+}
+
+forceinline int32_t thiscall EclContext::parse_int_as_arg_pop(int32_t index, int32_t value, EclInstruction* current_instruction) {
     if (current_instruction->param_mask & (1 << index)) {
         if (value >= 0) {
             return this->stack.read_local(value);
@@ -5221,8 +5261,12 @@ dllexport gnu_noinline int32_t thiscall EclContext::parse_int_as_arg_pop(int32_t
     }
 }
 
-inline float vectorcall EclContext::parse_float_as_arg_pop(int32_t index, float value) {
-    EclInstruction* current_instruction = this->get_current_instruction();
+// 0x48D690
+dllexport gnu_noinline int32_t thiscall EclContext::parse_int_as_arg_pop(int32_t index, int32_t value) {
+    return this->parse_int_as_arg_pop(index, value, this->get_current_instruction());
+}
+
+forceinline float vectorcall EclContext::parse_float_as_arg_pop(int32_t index, float value, EclInstruction* current_instruction) {
     if (current_instruction->param_mask & (1 << index)) {
         if (value >= 0.0f) {
             return this->stack.read_local(value);
@@ -5236,9 +5280,11 @@ inline float vectorcall EclContext::parse_float_as_arg_pop(int32_t index, float 
     }
 }
 
-// 0x48D750
-dllexport gnu_noinline int32_t* thiscall EclContext::get_int_ptr_arg(int32_t index) {
-    EclInstruction* current_instruction = this->get_current_instruction();
+inline float vectorcall EclContext::parse_float_as_arg_pop(int32_t index, float value) {
+    return this->parse_float_as_arg_pop(index, value, this->get_current_instruction());
+}
+
+forceinline int32_t* thiscall EclContext::get_int_ptr_arg(int32_t index, EclInstruction* current_instruction) {
     if (current_instruction->param_mask & (1 << index)) {
         int32_t value = IntArg(index);
         if (value >= 0) {
@@ -5251,9 +5297,12 @@ dllexport gnu_noinline int32_t* thiscall EclContext::get_int_ptr_arg(int32_t ind
     }
 }
 
-// 0x48D7C0
-dllexport gnu_noinline float* thiscall EclContext::get_float_ptr_arg(int32_t index) {
-    EclInstruction* current_instruction = this->get_current_instruction();
+// 0x48D750
+dllexport gnu_noinline int32_t* thiscall EclContext::get_int_ptr_arg(int32_t index) {
+    return this->get_int_ptr_arg(index, this->get_current_instruction());
+}
+
+forceinline float* thiscall EclContext::get_float_ptr_arg(int32_t index, EclInstruction* current_instruction) {
     if (current_instruction->param_mask & (1 << index)) {
         float value = FloatArg(index);
         if (value >= 0.0f) {
@@ -5266,8 +5315,12 @@ dllexport gnu_noinline float* thiscall EclContext::get_float_ptr_arg(int32_t ind
     }
 }
 
-forceinline int32_t thiscall EclContext::parse_int_as_arg(int32_t index, int32_t value) {
-    EclInstruction* current_instruction = this->get_current_instruction();
+// 0x48D7C0
+dllexport gnu_noinline float* thiscall EclContext::get_float_ptr_arg(int32_t index) {
+    return this->get_float_ptr_arg(index, this->get_current_instruction());
+}
+
+forceinline int32_t thiscall EclContext::parse_int_as_arg(int32_t index, int32_t value, EclInstruction* current_instruction) {
     if (current_instruction->param_mask & (1 << index)) {
         if (value >= 0) {
             return this->stack.read_local(value);
@@ -5281,8 +5334,11 @@ forceinline int32_t thiscall EclContext::parse_int_as_arg(int32_t index, int32_t
     }
 }
 
-forceinline float EclContext::parse_float_as_arg(int32_t index, float value) {
-    EclInstruction* current_instruction = this->get_current_instruction();
+forceinline int32_t thiscall EclContext::parse_int_as_arg(int32_t index, int32_t value) {
+    return this->parse_int_as_arg(index, value, this->get_current_instruction());
+}
+
+forceinline float EclContext::parse_float_as_arg(int32_t index, float value, EclInstruction* current_instruction) {
     if (current_instruction->param_mask & (1 << index)) {
         if (value >= 0.0f) {
             return this->stack.read_local(value);
@@ -5294,6 +5350,10 @@ forceinline float EclContext::parse_float_as_arg(int32_t index, float value) {
     } else {
         return value;
     }
+}
+
+forceinline float EclContext::parse_float_as_arg(int32_t index, float value) {
+    return this->parse_float_as_arg(index, value, this->get_current_instruction());
 }
 
 // 0x438AA0
@@ -7014,7 +7074,7 @@ struct AnmVM {
     };
     static_assert(sizeof(AnmVMData) == 0x544);
     struct AnmVMController {
-        AnmID id = { 0 }; // 0x0 (0x544)
+        AnmID id; // 0x0 (0x544)
         uint32_t fast_id; // 0x4 (0x548)
         Timer script_time; // 0x8 (0x54C)
         Timer __timer_1C; // 0x1C (0x560)
@@ -7969,18 +8029,22 @@ struct AnmManager {
         SPRITE_VERTEX_BUFFER_B[2].position.w = 1.0f;
         SPRITE_VERTEX_BUFFER_B[1].position.w = 1.0f;
         SPRITE_VERTEX_BUFFER_B[0].position.w = 1.0f;
+        
         SPRITE_VERTEX_BUFFER_B[0].texture_uv = { 0.0f, 0.0f };
         SPRITE_VERTEX_BUFFER_B[1].texture_uv = { 1.0f, 0.0f };
         SPRITE_VERTEX_BUFFER_B[2].texture_uv = { 0.0f, 1.0f };
         SPRITE_VERTEX_BUFFER_B[3].texture_uv = { 1.0f, 1.0f };
+        
         SPRITE_VERTEX_BUFFER_A[3].position.w = 1.0f;
         SPRITE_VERTEX_BUFFER_A[2].position.w = 1.0f;
         SPRITE_VERTEX_BUFFER_A[1].position.w = 1.0f;
         SPRITE_VERTEX_BUFFER_A[0].position.w = 1.0f;
+        
         SPRITE_VERTEX_BUFFER_A[0].texture_uv = { 0.0f, 0.0f };
         SPRITE_VERTEX_BUFFER_A[1].texture_uv = { 1.0f, 0.0f };
         SPRITE_VERTEX_BUFFER_A[2].texture_uv = { 0.0f, 1.0f };
         SPRITE_VERTEX_BUFFER_A[3].texture_uv = { 1.0f, 1.0f };
+        
         this->__d3d_vertex_buffer_3120E18 = NULL;
         this->__index_3120E04 = -1;
         this->current_blend_mode = (AnmBlendMode)0;
@@ -8462,10 +8526,10 @@ struct AnmManager {
         if (!slow_id) {
             this->prev_slow_id = ++slow_id;
         }
-        out = vm->controller.id = {
-            .fast_id = vm->controller.fast_id,
-            .slow_id = slow_id
-        };
+        AnmID new_id;
+        new_id.fast_id = vm->controller.fast_id;
+        new_id.slow_id = slow_id;
+        out = vm->controller.id = new_id;
     }
 
     // 0x488350
@@ -8904,7 +8968,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm(AnmID& out, int32_t script_i
             }
         }
         if (!position && !flags.__unknown_flag_B) {
-            vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
+            vm->controller.position = { 0.0f, 0.0f, 0.0f };
         }
         else if (position) {
             if (flags.__unknown_flag_A) {
@@ -9708,6 +9772,45 @@ dllexport gnu_noinline void count_cards_of_type2(EnemyData* self) {
         }
     }
     clang_forceinline *self->get_int_ptr_arg() = count;
+}
+
+dllexport gnu_noinline void stdcall log_vprintf(const char* format, va_list va) {
+    vprintf(format, va);
+}
+
+dllexport gnu_noinline void fastcall thcrap_print(EclContext* self_in, int, const EclInstruction* current_instruction) {
+    EclContext* self;
+    __asm__(
+        ""
+        : "=D"(self)
+        : "0"(self_in)
+    );
+    
+    const EclValue* call_arg_formats = based_pointer<EclValue>(StringArg(4), IntArg(0));
+    size_t param_count = current_instruction->param_count;
+    //uint8_t* print_args = (uint8_t*)__builtin_alloca(sizeof(double[param_count - 1]));
+    //uint8_t* print_args_write = print_args;
+    double print_args_mem[bitsof(current_instruction->param_mask)];
+    uint8_t* print_args = (uint8_t*)print_args_mem;
+    for (size_t i = 1; i < param_count; ++i) {
+        const EclValue& call_arg = call_arg_formats[i - 1];
+        switch (call_arg.type) {
+            case 'f': case 'g':
+                *(double*)print_args = (long double)self->parse_float_as_arg_pop(i, call_arg.value.real, (EclInstruction*)current_instruction);
+                print_args += sizeof(double);
+                //*(double*)print_args_write = (long double)context->parse_float_as_arg_pop(i, call_arg.value.real, (EclInstruction*)current_instruction);
+                //print_args_write += sizeof(double);
+                break;
+            default:
+                *(int32_t*)print_args = self->parse_int_as_arg_pop(i, call_arg.value.integer, (EclInstruction*)current_instruction);
+                print_args += sizeof(int32_t);
+                //*(int32_t*)print_args_write = context->parse_int_as_arg_pop(i, call_arg.value.integer, (EclInstruction*)current_instruction);
+                //print_args_write += sizeof(int32_t);
+                break;
+        }
+    }
+    log_vprintf(StringArg(4), (va_list)print_args_mem);
+    //free(print_args);
 }
 
 typedef struct ShtFile ShtFile;

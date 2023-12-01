@@ -20,12 +20,18 @@ add_executable(winhttp_test3)
 add_executable(smallest_pe_file)
 add_executable(ghidra_launch)
 add_executable(crappy_launcher)
+add_executable(udoalg_test)
+add_executable(3d_flying_objects)
+add_executable(discord_test)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
 add_library(winhttp_websocket SHARED)
 add_library(CSoundLib STATIC)
 add_library(wow64 SHARED)
 add_library(parakit_inject SHARED)
+add_library(python_test SHARED)
+add_library(glaux STATIC)
+add_library(glcommon STATIC)
 
 set(programs
 ${PROJECT_NAME}
@@ -49,6 +55,12 @@ parakit_inject
 smallest_pe_file
 ghidra_launch
 crappy_launcher
+udoalg_test
+python_test
+glaux
+glcommon
+3d_flying_objects
+discord_test
 )
 
 enable_language(ASM-ATT)
@@ -97,7 +109,7 @@ target_compile_definitions(${EXE} PRIVATE
 	# Allow POSIX functions without leading underscores everywhere
 	_CRT_DECLARE_NONSTDC_NAMES
 	_ENABLE_EXTENDED_ALIGNED_STORAGE
-	__clang_major__=16
+	#__clang_major__=17
 	__analysis_assume=__assume
 	_Analysis_assume_=__assume
 	_HAS_EXCEPTIONS=0
@@ -196,6 +208,7 @@ target_compile_options(${EXE} PRIVATE
 	-Wno-gnu-alignof-expression
 	-Wno-microsoft-goto
 	-Wno-missing-declarations
+	-Wno-initializer-overrides
 )
 
 # Output Flags
@@ -241,6 +254,9 @@ if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
 		${SLASH_CLANG_ARG}-falign-functions=16
 		${SLASH_CLANG_ARG}-finline-functions
 	)
+	target_compile_definitions(${EXE} PRIVATE
+		SIZE_OPTIMIZE
+	)
 	else()
 	target_compile_options(${EXE} PRIVATE
 		# Optimization level
@@ -248,7 +264,7 @@ if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
 	)
 	endif()
 	target_compile_options(${EXE} PRIVATE
-		${SLASH_CLANG_ARG}-fglobal-isel
+		#${SLASH_CLANG_ARG}-fglobal-isel
 
 		# Treat signed integer overflow as two’s complement
 		${SLASH_CLANG_ARG}-fwrapv
@@ -325,7 +341,7 @@ endif()
 
 target_compile_options(${EXE} PRIVATE
 	#-flto=thin
-	-flto=full
+	#-flto=full
 )
 
 target_compile_options(${EXE} PRIVATE
@@ -333,32 +349,97 @@ target_compile_options(${EXE} PRIVATE
 	${SLASH_CLANG_ARG}-ftree-slp-vectorize
 
 	${SLASH_CLANG_ARG}-fno-fine-grained-bitfield-accesses
+	#"SHELL:-Xclang -fslp-vectorize"
 
 	#"SHELL:-mllvm -slp-vectorize-hor-store=true"
 	#"SHELL:-mllvm -slp-threshold=-1"
 
+	# Recognize more loop things I guess?
+	"SHELL:-mllvm -lv-strided-pointer-ivs=true"
+
+	# Prefer padding instructions instead
+	# of emitting NOPs? Maybe?
+	"SHELL:-mllvm -x86-pad-for-align=true"
+	"SHELL:-mllvm -x86-pad-for-branch-align=true"
+
 	#"SHELL:-mllvm -enable-interleaved-mem-accesses=true"
 	#"SHELL:-mllvm -enable-masked-interleaved-mem-accesses=true"
-	#"SHELL:-mllvm -enable-loop-distribution"
-
-	#"SHELL:-mllvm -disable-licm-promotion=true"
-
-	# Enable screwy register allocations
-	#"SHELL:-mllvm -enable-ipra=true"
-	# ???
-	#"SHELL:-mllvm -disable-ssc=true"
+	#"SHELL:-mllvm -enable-loop-distribute"
 	#"SHELL:-mllvm -optimize-regalloc=true"
 	#"SHELL:-mllvm -enable-merge-functions=true"
 	#"SHELL:-mllvm -force-hardware-loops=true"
 	"SHELL:-mllvm -extra-vectorizer-passes=true"
+	"SHELL:-mllvm -aggressive-ext-opt"
+
+	# Screw with these at some point to fix that stupid
+	# "move tons of LEA above a switch" nonsense
+	#"SHELL:-mllvm -disable-licm-promotion=true"
+	#"SHELL:-mllvm -disable-machine-licm=true"
+	#"SHELL:-mllvm -disable-postra-machine-licm=true"
+	#"SHELL:-mllvm -disable-constant-hoisting=true"
+
+	# Enable screwy register allocations
+	#"SHELL:-mllvm -enable-ipra=true"
+	
+	# Disable Stack Slot Coloring
+	#"SHELL:-mllvm -disable-ssc=true"
+
+	# Enable splitting cold blocks into independent things
 	#"SHELL:-mllvm -enable-split-machine-functions=true"
 
-
+	# Require memory CMOVs be converted to branches
 	"SHELL:-mllvm -x86-cmov-converter-force-mem-operand=false"
-	#"SHELL:-mllvm -x86-use-fsrm-for-memcpy=true"
-	#"SHELL:-mllvm -x86-use-vzeroupper=false"
+	
+	# Convert all CMOVs to branches
+	#"SHELL:-mllvm -x86-cmov-converter-force-all=true"
+
+	# Disable SSE domain reassignment
+	#"SHELL:-mllvm -disable-x86-domain-reassignment=true"
+
+	# Disable converting byte/word instructions to dword
+	#"SHELL:-mllvm -fixup-byte-word-insts=false"
+
+	# Something about relaxing atomic loads/stores
+	#"SHELL:-mllvm -x86-experimental-unordered-atomic-isel=true"
+
+	# Screw hardening nonsense
+	"SHELL:-mllvm -x86-lvi-load-no-cbranch=true"
+
+	# Disable removing some LEA patterns
 	#"SHELL:-mllvm -disable-x86-lea-opt=true"
-	#"SHELL:-Xclang -fslp-vectorize"
+
+	# Generate REP MOV for memcpy when fast
+	#"SHELL:-mllvm -x86-use-fsrm-for-memcpy=true"
+
+	# Enable early if conversion
+	#"SHELL:-mllvm -x86-early-ifcvt=true"
+
+	# Disable generating VZEROUPPER for AVX/SSE transitions
+	#"SHELL:-mllvm -x86-use-vzeroupper=false"
+
+	# Not sure, but it sounds good
+	#"SHELL:-mllvm -mergefunc-use-aliases=true"
+
+	# Assume that nested loops won't
+	# overflow their index if merged
+	"SHELL:-mllvm -loop-flatten-assume-no-overflow=true"
+
+	# Allow converting switches
+	# to lookup tables
+	"SHELL:-mllvm -switch-to-lookup=true"
+
+	# Allow converting switches
+	# to integer ranges
+	#"SHELL:-mllvm -switch-range-to-icmp=true"
+
+	# ???
+	#"SHELL:-mllvm -keep-loops=false"
+
+	# Why wouldn't this be on?
+	"SHELL:-mllvm -enable-knowledge-retention=true"
+
+	# Funky icache things
+	#"SHELL:-mllvm -enable-ext-tsp-block-placement=true"
 )
 
 target_compile_options(${EXE} PRIVATE
@@ -377,6 +458,7 @@ target_compile_options(${EXE} PRIVATE
 	
 	"SHELL:-Xclang -ffp-contract=fast"
 	"SHELL:-Xclang -ffast-math"
+	${SLASH_CLANG_ARG}-fno-math-errno
 
 	#"SHELL:-Xclang -fassume-sane-operator-new"
 	${SLASH_CLANG_ARG}-fnew-infallible
@@ -528,14 +610,14 @@ target_link_libraries(${PROJECT_NAME} "F:\\Users\\zero318\\Source\\Repos\\thcrap
 target_link_libraries(${PROJECT_NAME} "F:\\Users\\zero318\\Source\\Repos\\thcrap\\bin\\bin\\thcrap.lib")
 target_compile_options(${PROJECT_NAME} PRIVATE
 	#-fforce-emit-vtables
-	"-mno-sse3"
-	"-mno-avx"
-	"-mno-bmi"
+	#"-mno-sse3"
+	#"-mno-avx"
+	#"-mno-bmi"
+	#"-mno-lzcnt"
 	"-mno-xop"
 	"-mno-tbm"
 	"-mno-sse4a"
 	"-mno-fma4"
-	"-mno-lzcnt"
 )
 target_include_directories(${PROJECT_NAME} PRIVATE 
 	"F:\\MyCodeLibs\\asmlib"
@@ -573,17 +655,18 @@ target_sources(${PROJECT_NAME} PRIVATE
 	"pe_test.cpp"
 	#"inject_test.cpp"
 	"olly_dbg_cmd_dump.cpp"
-	"sha256_thcrap.cpp"
-	"sha256_new.cpp"
-	"bson_test.cpp"
-	"zson_test.cpp"
-	"zero/city_hash.h"
-	"zero/city_hash.cpp"
+	#"sha256_thcrap.cpp"
+	#"sha256_new.cpp"
+	#"bson_test.cpp"
+	#"zson_test.cpp"
+	#"zero/city_hash.h"
+	#"zero/city_hash.cpp"
 	"frame_pointer_test.cpp"
-	"json_test.cpp"
-	"json5_test.cpp"
-	"decent_rng.h"
+	#"json_test.cpp"
+	#"json5_test.cpp"
+	#"decent_rng.h"
 	"rtti_label_gen.cpp"
+	"zero/vec_lib.cpp"
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE
 	USE_AMD_FEATURES
@@ -752,6 +835,22 @@ if(NOT STATIC_CSOUND)
 target_link_libraries(UMTest1 CSoundLib)
 endif()
 
+target_sources(udoalg_test PRIVATE
+	#"dummy_main.cpp"
+	"UDoaLG/udoalg_test.cpp"
+)
+target_compile_options(udoalg_test PRIVATE
+	#"-mno-avx"
+	#"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	-Rpass=.*vectorize.*
+	-Rpass-missed=.*vectorize.*
+	-Rpass-analysis=.*vectorize.*
+)
+
 
 add_library(FourOfAKindAsm OBJECT
 	"FoaK/asm_defs.asm"
@@ -917,6 +1016,181 @@ target_sources(crappy_launcher PRIVATE
 	"thcrap_load_test.cpp"
 )
 
+target_link_directories(python_test PRIVATE 
+"C:\\Users\\zero318\\AppData\\Local\\Programs\\Python\\Python37-32\\libs\\"
+)
+target_sources(python_test PRIVATE
+	"python_test/test.cpp"
+)
+target_compile_options(python_test PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_link_options(python_test PRIVATE
+	/DLL
+)
+
+target_sources(glaux PRIVATE
+	"screensavers\\GLAUX\\FONT.C"
+	"screensavers\\GLAUX\\GLAUX.C"
+	"screensavers\\GLAUX\\IMAGE.C"
+	"screensavers\\GLAUX\\SHAPES.C"
+	"screensavers\\GLAUX\\TEAPOT.C"
+	"screensavers\\GLAUX\\TK.C"
+	"screensavers\\GLAUX\\TKDIB.C"
+	"screensavers\\GLAUX\\TKFONT.C"
+	"screensavers\\GLAUX\\TKIMAGE.C"
+	"screensavers\\GLAUX\\VECT3D.C"
+	"screensavers\\GLAUX\\XFORM.C"
+)
+target_compile_options(glaux PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(glaux PRIVATE
+	_WINSVC_=1
+	#_M_IX86=1
+	DONT_COMPILE_REGISTER_ASSUME_JANK=1
+)
+target_include_directories(glaux PRIVATE
+	"F:\\My Programming Stuff Expansion\\nt40_win95_sdk1996\\MSTOOLS\\INCLUDE"
+)
+
+target_sources(glcommon PRIVATE
+	$<TARGET_OBJECTS:glaux>
+	"screensavers\\COMMON\\UTIL.CXX"
+	"screensavers\\COMMON\\COLOR.C"
+	"screensavers\\COMMON\\DIALOG.C"
+	"screensavers\\COMMON\\FASTDIB.C"
+	"screensavers\\COMMON\\MATERIAL.C"
+	"screensavers\\COMMON\\MATH.C"
+	"screensavers\\COMMON\\SSA8.C"
+	"screensavers\\COMMON\\SSDIB.C"
+	"screensavers\\COMMON\\SSIMAGE.C"
+	"screensavers\\COMMON\\TEXTURE.C"
+	"screensavers\\COMMON\\CLEAR.CXX"
+	"screensavers\\COMMON\\DLGDRAW.CXX"
+	"screensavers\\COMMON\\GLSCRNSV.CXX"
+	"screensavers\\COMMON\\PALETTE.CXX"
+	"screensavers\\COMMON\\SCRNSAVE.CXX"
+	"screensavers\\COMMON\\SSINIT.CXX"
+	"screensavers\\COMMON\\SSUTIL.CXX"
+	"screensavers\\COMMON\\SSWINDOW.CXX"
+	"screensavers\\COMMON\\SSWPROC.CXX"
+	"screensavers\\COMMON\\SSCOMMON.RC"
+)
+target_compile_options(glcommon PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(glcommon PRIVATE
+	_WINSVC_=1
+	#_M_IX86=1
+	DONT_COMPILE_REGISTER_ASSUME_JANK=1
+)
+target_include_directories(glcommon PRIVATE
+	"F:\\My Programming Stuff Expansion\\nt40_win95_sdk1996\\MSTOOLS\\INCLUDE"
+)
+
+
+target_sources(3d_flying_objects PRIVATE
+	#$<TARGET_OBJECTS:glaux>
+	#$<TARGET_OBJECTS:glcommon>
+	"screensavers\\GLAUX\\FONT.C"
+	"screensavers\\GLAUX\\GLAUX.C"
+	"screensavers\\GLAUX\\IMAGE.C"
+	"screensavers\\GLAUX\\SHAPES.C"
+	"screensavers\\GLAUX\\TEAPOT.C"
+	"screensavers\\GLAUX\\TK.C"
+	"screensavers\\GLAUX\\TKDIB.C"
+	"screensavers\\GLAUX\\TKFONT.C"
+	"screensavers\\GLAUX\\TKIMAGE.C"
+	"screensavers\\GLAUX\\VECT3D.C"
+	"screensavers\\GLAUX\\XFORM.C"
+	"screensavers\\COMMON\\UTIL.CXX"
+	"screensavers\\COMMON\\COLOR.C"
+	"screensavers\\COMMON\\DIALOG.C"
+	"screensavers\\COMMON\\FASTDIB.C"
+	"screensavers\\COMMON\\MATERIAL.C"
+	"screensavers\\COMMON\\MATH.C"
+	"screensavers\\COMMON\\SSA8.C"
+	"screensavers\\COMMON\\SSDIB.C"
+	"screensavers\\COMMON\\SSIMAGE.C"
+	"screensavers\\COMMON\\TEXTURE.C"
+	"screensavers\\COMMON\\CLEAR.CXX"
+	"screensavers\\COMMON\\DLGDRAW.CXX"
+	"screensavers\\COMMON\\GLSCRNSV.CXX"
+	"screensavers\\COMMON\\PALETTE.CXX"
+	"screensavers\\COMMON\\SCRNSAVE.CXX"
+	"screensavers\\COMMON\\SSINIT.CXX"
+	"screensavers\\COMMON\\SSUTIL.CXX"
+	"screensavers\\COMMON\\SSWINDOW.CXX"
+	"screensavers\\COMMON\\SSWPROC.CXX"
+	"screensavers\\COMMON\\SSCOMMON.RC"
+	"screensavers/3DFO/GENDROP.CXX"
+	"screensavers\\3DFO\\GENEXPLD.CXX"
+	"screensavers/3DFO/GENLEM.CXX"
+	"screensavers/3DFO/GENSTRIP.CXX"
+	"screensavers/3DFO/GENTEX.CXX"
+	"screensavers/3DFO/GENWIN.CXX"
+	"screensavers/3DFO/MESH.CXX"
+	"screensavers\\3DFO\\SS3DFO.CXX"
+	"screensavers\\3DFO\\SS3DFO.RC"
+	"screensavers\\3DFO\\GLSAVER.DEF"
+)
+target_compile_options(3d_flying_objects PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(3d_flying_objects PRIVATE
+	_WINSVC_=1
+	#_M_IX86=1
+	#UNICODE=1
+	#_UNICODE=1
+	#_INC_SCRNSAVE=1
+	#IDS_DESCRIPTION=1
+)
+target_include_directories(3d_flying_objects AFTER PRIVATE
+	"screensavers\\COMMON"
+	"F:\\My Programming Stuff Expansion\\nt40_win95_sdk1996\\MSTOOLS\\INCLUDE"
+)
+target_link_libraries(3d_flying_objects 
+	opengl32.lib
+	glu32.lib
+	#"F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\screensavers\\GLAUX.LIB"
+	comdlg32.lib
+	comctl32.lib
+	scrnsave.lib
+)
+
+target_sources(discord_test PRIVATE
+	"winhttp_websocket/websocket_impl.cpp"
+	"discord_test/discord_test.cpp"
+	#"json_test.cpp"
+)
+target_compile_definitions(discord_test PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")
 

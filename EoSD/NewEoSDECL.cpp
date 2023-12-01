@@ -41,7 +41,7 @@
 
 //#include <d3d.h>
 
-#define SqueezeStack
+//#define SqueezeStack
 
 dllexport gnu_noinline int32_t cdecl vsprintf_helper(char* buffer, const char* format, va_list va) asm_symbol_rel(0x45B9E0);
 dllexport gnu_noinline int32_t cdecl vsprintf_helper(char* buffer, const char* format, va_list va) {
@@ -341,6 +341,7 @@ struct Timer {
     // 0x424127
     dllexport Timer* thiscall initialize() asm_symbol_rel(codecave:TIMER_initialize) {
         this->default_values();
+        return this;
     }
 
     // 0x424154
@@ -587,6 +588,9 @@ SetInstr((intptr_t)current_instruction + (offset))
 
 #define Float2Arg(number) \
 (((Float2*)current_instruction->args)[(number)])
+
+#define Float2ArgVec(number) \
+(((vec<float, 2>*)current_instruction->args)[(number)])
 
 #define Float3Arg(number) \
 (((Float3*)current_instruction->args)[(number)])
@@ -922,18 +926,14 @@ struct AnmVM {
         this->script_time.initialize();
     }
 
-    inline void set_script(int32_t index) {
-        this->script_number = index;
-        AnmManager* anm_manager = ANM_MANAGER_PTR;
-        anm_manager->set_vm_script(this, anm_manager->scripts[index]);
-    }
+    inline void set_script(int32_t index);
 };
 
 dllexport gnu_noinline void cdecl __sub_41F050(
     int32_t x_pos, int32_t y_pos, int32_t width, int32_t height,
     int32_t font_width, int32_t font_height, D3DCOLOR colorA, D3DCOLOR colorB, const char *restrict text,
     IDirect3DTexture8 *restrict texture
-) asm_symbol_rel(0x41F050);
+) asm_symbol_rel(0x41F050_old);
 dllexport gnu_noinline void cdecl __sub_41F050(
     int32_t x_pos, int32_t y_pos, int32_t width, int32_t height,
     int32_t font_width, int32_t font_height, D3DCOLOR colorA, D3DCOLOR colorB, const char *restrict text,
@@ -1240,10 +1240,10 @@ struct AnmManager {
     // 0x432730
     dllexport gnu_noinline ZunResult thiscall __sub_432730(AnmVM* VM, bool round_inputs) asm_symbol_rel(0x432730) {
         if (round_inputs) {
-            long double A = rint_asm(SPRITE_VERTEX_BUFFER_B[0].position.x) - 0.5f;
-            long double B = rint_asm(SPRITE_VERTEX_BUFFER_B[1].position.x) - 0.5f;
-            long double C = rint_asm(SPRITE_VERTEX_BUFFER_B[0].position.y) - 0.5f;
-            long double D = rint_asm(SPRITE_VERTEX_BUFFER_B[2].position.y) - 0.5f;
+            long double A = CRT::rint_asm(SPRITE_VERTEX_BUFFER_B[0].position.x) - 0.5f;
+            long double B = CRT::rint_asm(SPRITE_VERTEX_BUFFER_B[1].position.x) - 0.5f;
+            long double C = CRT::rint_asm(SPRITE_VERTEX_BUFFER_B[0].position.y) - 0.5f;
+            long double D = CRT::rint_asm(SPRITE_VERTEX_BUFFER_B[2].position.y) - 0.5f;
             SPRITE_VERTEX_BUFFER_B[2].position.y = D;
             SPRITE_VERTEX_BUFFER_B[3].position.y = D;
             SPRITE_VERTEX_BUFFER_B[0].position.y = C;
@@ -1403,8 +1403,9 @@ struct AnmManager {
     dllexport gnu_noinline void thiscall free_anm_file(int32_t file_index) asm_symbol_rel(codecave:ANM_MANAGER_free_anm_file) {
         if (this->anm_files[file_index]) {
             uint32_t sprite_index_offset = this->anm_file_sprite_index_offsets[file_index];
-            AnmSprite* current_sprite = this->anm_files[file_index]->sprites;
+            AnmSprite* current_sprite = *this->anm_files[file_index]->sprites;
 
+            AnmEntry* anm_file = this->anm_files[file_index]; // TODO: fix
 
             uint32_t sprite_count = anm_file->num_sprites;
             uint32_t *restrict current_sprite_offset = (uint32_t*)&anm_file->sprites;
@@ -1435,7 +1436,7 @@ struct AnmManager {
         gnu_used static volatile auto tempC = filename;
         gnu_used static volatile auto tempD = starting_sprite_index;
         assume_all_registers_volatile();
-        return file_index;
+        return (ZunResult)file_index;
     }
 
     // 0x434AF0
@@ -1659,9 +1660,10 @@ struct AnmManager {
                     break;
                 case 2: // scale
                 {
-                    vec<float, 2> temp = Float2Arg(0).as_vec;
-                    vm->scale.as_vec[1] = temp[0];
-                    vm->scale.as_vec[0] = temp[1];
+                    vec<float, 2> temp = Float2ArgVec(0);
+                    vec<float, 2>& scale_vec = *(vec<float, 2>*)&vm->scale;
+                    scale_vec[1] = temp[0];
+                    scale_vec[0] = temp[1];
                 }
                     //vm->scale_x = FloatArg(0);
                     //vm->scale_y = FloatArg(1);
@@ -1696,13 +1698,14 @@ struct AnmManager {
                     vm->rotation = Float3Arg(0);
                     break;
                 case 10: // angular_velocity
-                    vm->angle_vel = Float3Arg(0);
+                    vm->angular_velocity = Float3Arg(0);
                     break;
                 case 11: // scale_growth
                 {
-                    vec<float, 2> temp = Float2Arg(0).as_vec;
-                    vm->scale_interp_final.as_vec[1] = temp[0];
-                    vm->scale_interp_final.as_vec[0] = temp[1];
+                    vec<float, 2> temp = Float2ArgVec(0);
+                    vec<float, 2>& scale_interp_final_vec = *(vec<float, 2>*)&vm->scale_interp_final;
+                    scale_interp_final_vec[1] = temp[0];
+                    scale_interp_final_vec[0] = temp[1];
                 }
                     //vm->scale_interp_final_x = FloatArg(0);
                     //vm->scale_interp_final_y = FloatArg(1);
@@ -1710,16 +1713,17 @@ struct AnmManager {
                     break;
                 case 30: // scale_time_linear
                 {
-                    vec<float, 2> temp = Float2Arg(0).as_vec;
-                    vm->scale_interp_final.as_vec[1] = temp[0];
-                    vm->scale_interp_final.as_vec[0] = temp[1];
+                    vec<float, 2> temp = Float2ArgVec(0);
+                    vec<float, 2>& scale_interp_final_vec = *(vec<float, 2>*) & vm->scale_interp_final;
+                    scale_interp_final_vec[1] = temp[0];
+                    scale_interp_final_vec[0] = temp[1];
                 }
                     //vm->scale_interp_final_x = FloatArg(0);
                     //vm->scale_interp_final_y = FloatArg(1);
                     vm->scale_interp_end_time = ShortArg(4);
                     //vm->scale_interp_timer = static_default_timer<0>;
                     vm->scale_interp_timer.set_default();
-                    vm->scale_interp_initial.as_vec = vm->scale.as_vec;
+                    vm->scale_interp_initial = vm->scale;
                     break;
                 case 12: { // alpha_time_linear
                     D3DCOLOR color = vm->color;
@@ -1887,13 +1891,13 @@ struct AnmManager {
         //    [Z_ROT_VEL]"m"(vm->angle_vel.z), [Y_ROT_VEL]"m"(vm->angle_vel.y), [X_ROT_VEL]"m"(vm->angle_vel.x)
         //);
         {
-            vec<double, 4> angles_temp = convertvec(*(unaligned vec<float, 4>*)vm->angle_vel.as_array, vec<double, 4>);
+            vec<double, 4> angles_temp = convertvec(*(unaligned vec<float, 4>*)&vm->angular_velocity, vec<double, 4>);
             angles_temp *= ONE_OVER_TWO_PI_d;
             vec<double, 4> angles_temp2 = _mm256_round_pd(angles_temp, 0x8);
             angles_temp -= angles_temp2;
             angles_temp *= TWO_PI_d;
             vec<float, 4> angles_temp3 = convertvec(angles_temp, vec<float, 4>);
-            unaligned vec<float, 4>& rotation_ref = *(unaligned vec<float, 4>*)vm->rotation.as_array;
+            unaligned vec<float, 4>& rotation_ref = *(unaligned vec<float, 4>*)&vm->rotation;
             angles_temp3 *= SUPERVISOR.game_speed;
             angles_temp3 += rotation_ref;
             rotation_ref[0] = angles_temp3[0];
@@ -1909,15 +1913,15 @@ struct AnmManager {
             vec<float, 2> scale;
             if (vm->scale_interp_timer.current >= scale_end_time) {
                 //vm->scale = vm->scale_interp_final;
-                scale = vm->scale_interp_final.as_vec;
+                scale = *(vec<float, 2>*)&vm->scale_interp_final;
                 vm->scale_interp_end_time = 0;
                 vm->scale_interp_final_y = 0.0f;
                 vm->scale_interp_final_x = 0.0f;
             } else {
                 float interp = ((float)vm->scale_interp_timer.current + vm->scale_interp_timer.subframe) / (float)scale_end_time;
                 //vec<float, 2> interp_mul = (vec<float, 2>){ interp, interp };
-                vec<float, 2> scale_initial = vm->scale_interp_initial.as_vec;
-                vec<float, 2> scale_final = vm->scale_interp_final.as_vec;
+                vec<float, 2> scale_initial = *(vec<float, 2>*)&vm->scale_interp_initial;
+                vec<float, 2> scale_final = *(vec<float, 2>*)&vm->scale_interp_final;
                 scale = scale_initial + (scale_final - scale_initial) * interp;
                 //vm->scale.as_vec = scale_initial + (scale_final - scale_initial) * interp;
                 //*(vec<float, 2, 1>*)&vm->scale = scale_initial + (scale_final - scale_initial) * interp_mul;
@@ -1927,12 +1931,14 @@ struct AnmManager {
                 vm->scale_x = (!vm->flip_x ? scale_x : -scale_x);
                 vm->scale_y = (!vm->flip_y ? scale_y : -scale_y);*/
             }
-            vm->scale.as_vec[0] = (!vm->flip_y ? scale[0] : -scale[0]);
-            vm->scale.as_vec[1] = (!vm->flip_x ? scale[1] : -scale[1]);
+            vec<float, 2>& scale_vec = *(vec<float, 2>*)&vm->scale;
+            scale_vec[0] = (!vm->flip_y ? scale[0] : -scale[0]);
+            scale_vec[1] = (!vm->flip_x ? scale[1] : -scale[1]);
         } else {
+            vec<float, 2>& scale_vec = *(vec<float, 2>*)&vm->scale;
             //vm->scale_y += vm->scale_interp_final_y * SUPERVISOR.game_speed;
             //vm->scale_x += vm->scale_interp_final_x * SUPERVISOR.game_speed;
-            vm->scale.as_vec += vm->scale_interp_final.as_vec * SUPERVISOR.game_speed;
+            scale_vec += *(vec<float, 2>*)&vm->scale_interp_final * SUPERVISOR.game_speed;
         }
         if (int32_t alpha_end_time = vm->alpha_interp_end_time;
             alpha_end_time > 0
@@ -2079,6 +2085,12 @@ dllexport void thiscall AnmManager::set_vm_script(AnmVM *restrict vm, AnmInstruc
 extern "C" {
     // 0x6D4588
     extern AnmManager *restrict ANM_MANAGER_PTR asm("_ANM_MANAGER_PTR");
+}
+
+void AnmVM::set_script(int32_t index) {
+    this->script_number = index;
+    AnmManager* anm_manager = ANM_MANAGER_PTR;
+    anm_manager->set_vm_script(this, anm_manager->scripts[index]);
 }
 
 typedef struct AsciiManagerString AsciiManagerString;
@@ -2717,7 +2729,7 @@ struct Player {
     //}
 
     dllexport float angle_to_player_from_point(const Float3 *const restrict point) asm("{[codecave:PLAYER_angle_to_player_from_point]}") {
-        vec<float, 2> temp = *(unaligned vec<float, 2>*)this->position.as_array - *(unaligned vec<float, 2>*)point;
+        vec<float, 2> temp = *(unaligned vec<float, 2>*)&this->position - *(unaligned vec<float, 2>*)point;
         if ((temp[0] != 0.0f) & (temp[1] != 0.0f)) {
             vec<double, 2> temp2 = convertvec(temp, vec<double, 2>);
             return zatan2f(temp2[1], temp2[0]);
@@ -2736,6 +2748,7 @@ struct Player {
             __asm__ volatile ("SUB $0x10, %%ESP":);
             vec<double, 2> temp2 = _mm_cvtps_pd(temp);
             temp2 = { temp2[1], temp2[0] };
+            /*
             *(unaligned vec<double, 2>*)esp_reg = temp2;
             __asm__ volatile (
                 "fstps (%%ESP)"
@@ -2746,6 +2759,8 @@ struct Player {
             float ret = *(volatile float*)esp_reg;
             __asm__ volatile ("ADD $0x10, %%ESP":);
             return ret;
+            */
+            return zatan2f(temp2[1], temp2[0]);
         } else {
             return HALF_PI_f;
         }
@@ -2760,7 +2775,7 @@ struct Player {
 
     dllexport float distance_to_player_from_point(Float3 *restrict point_in) asm("{[codecave:PLAYER_distance_to_player_from_point]}") {
         
-        unaligned vec<float, 4>& position = *(unaligned vec<float, 4>*)this->position.as_array;
+        unaligned vec<float, 4>& position = *(unaligned vec<float, 4>*)&this->position;
         unaligned vec<float, 4>& point = *(unaligned vec<float, 4>*)point_in;
         vec<float, 4> temp;
         /*temp[0] = position[0] - point[0];
@@ -3421,7 +3436,7 @@ struct Gui {
     // 0x41735A
     dllexport void thiscall __sub_41735A(int32_t arg1) asm("{[codecave:GUI_sub_41735A]}") {
         GuiImpl *restrict impl = this->impl;
-        impl->__child_b_2BE4.__float3_0 = (Float3){ .x = 416.0f, .y = 32.0f, .z = 0.0f };
+        impl->__child_b_2BE4.__float3_0 = (Float3){ 416.0f, 32.0f, 0.0f };
         impl->__child_b_2BE4.__dword_10 = 1;
         //impl->__child_b_2BE4.__timer_14 = static_default_timer<0>;
         impl->__child_b_2BE4.__timer_14.set_default();
@@ -4581,17 +4596,17 @@ struct BulletManager {
                 __asm__ volatile (
                     "fstps (%%ESP)"
                     :
-                : "X"(cosf_impl_manual(), NULL)
+                    : "X"(cosf_impl_manual(), NULL)
                     : clobber_list("eax", "ecx", "edx")
-                    );
+                );
                 float x_add = *(volatile float*)esp_reg;
                 *(double*)esp_reg = laser_angle;
                 __asm__ volatile (
                     "fstps (%%ESP)"
                     :
-                : "X"(sinf_impl_manual(), NULL)
+                    : "X"(sinf_impl_manual(), NULL)
                     : clobber_list("eax", "ecx", "edx")
-                    );
+                );
                 float y_add = *(volatile float*)esp_reg;
                 __asm__ volatile (
                     "ADD $8, %%ESP":
@@ -5435,7 +5450,7 @@ struct Enemy {
                 this->current_context.int_vars[-index] = val.integer;
                 break;
             case -14: case -15: case -16:
-                this->position.as_array[-index - 14] = val.real;
+                ((float*)&this->position)[-index - 14] = val.real;
                 break;
             /*case 14:
                 this->position.x = val.real;
@@ -5503,7 +5518,7 @@ struct Enemy {
             case 0: case -1: case -2: case -3: case -4: case -5: case -6: case -7: case -8: case -9: case -10: case -11:
                 return (EclArg*)&this->current_context.int_vars[-index];
             case -14: case -15: case -16:
-                return (EclArg*)&this->position.as_array[-index - 14];
+                return (EclArg*)&((float*)&this->position)[-index - 14];
             /*case 14:
                 return (EclArg*)&this->position.x;
             case 15:
@@ -5525,7 +5540,7 @@ struct Enemy {
             //float y_position = this->position.y;
             //this->position.y = __max(__min(y_position, this->move_limits.y_upper), this->move_limits.y_lower);
             unaligned vec<float, 2>& position = *(unaligned vec<float, 2>*)&this->position;
-            position = __max(this->move_limits.lower.as_vec, __min(this->move_limits.upper.as_vec, position));
+            position = __max(*(vec<float, 2>*)&this->move_limits.lower, __min(*(vec<float, 2>*)&this->move_limits.upper, position));
             
             //__v2sf position = *(__v2sf_u*)&this->position;
             //__v2sf lower_limit = *(__v2sf_u*)&this->move_limits.x_lower;
@@ -5669,7 +5684,7 @@ dllexport EclArg gnu_noinline no_stack_protector regparm(2) parse_int_as_arg(int
         case -13:
             return (EclArg) { .integer = GAME_MANAGER.rank.current };
         case -14: case -15: case -16:
-            return (EclArg) { .real = enemy->position.as_array[-index - 14] };
+            return (EclArg) { .real = ((float*)&enemy->position)[-index - 14] };
         /*case 14:
             return (EclArg){ .real = enemy->position.x };
         case 15:
@@ -5677,7 +5692,7 @@ dllexport EclArg gnu_noinline no_stack_protector regparm(2) parse_int_as_arg(int
         case 16:
             return (EclArg){ .real = enemy->position.z };*/
         case -17: case -18: case -19:
-            return (EclArg) { .real = PLAYER.position.as_array[-index - 17] };
+            return (EclArg) { .real = ((float*)&PLAYER.position)[-index - 17] };
         /*case 17:
             return (EclArg){ .real = PLAYER.position.x };
         case 18:
@@ -5925,7 +5940,7 @@ enemy->write_to_var(IntArg(number), MakeArg(val))
                 case 10: // set_var_self_x
                 case 11: // set_var_self_y
                 case 12: // set_var_self_z
-                    enemy->write_to_var(IntArg(0), MakeArg(enemy->position.as_array[op_index - 10]));
+                    enemy->write_to_var(IntArg(0), MakeArg(((float*)&enemy->position)[op_index - 10]));
                     break;
                 //{
                 //case 13: // math_int_add
@@ -6185,7 +6200,7 @@ enemy->write_to_var(IntArg(number), MakeArg(val))
                     enemy->move_interp.x = ParseFloatArg(1) - enemy->position.x;
                     enemy->move_interp.y = ParseFloatArg(2) - enemy->position.y;
                     enemy->move_interp.z = ParseFloatArg(3) - enemy->position.z;
-                    memset(enemy->axis_speed.as_array, 0, sizeof(enemy->axis_speed.as_array));
+                    memset(&enemy->axis_speed, 0, sizeof(enemy->axis_speed));
                     //enemy->axis_speed = (Float3){ 0.0f, 0.0f, 0.0f };
                     enemy->finalize_interp_ecl(op_index - 5, IntArg(0));
                     break;
@@ -6256,7 +6271,7 @@ enemy->write_to_var(IntArg(number), MakeArg(val))
                     // Yes, this overwrites the angle1 field after
                     // the position Float3 with meaningless garbage.
                     // However, that field is going to get overwritten in a moment anyway.
-                    *(__m128_u*)bullet_properties->position.as_array = *(__m128_u*)enemy->position.as_array + *(__m128_u*)enemy->shoot_offset.as_array;
+                    *(__m128_u*)&bullet_properties->position = *(__m128_u*)&enemy->position + *(__m128_u*)&enemy->shoot_offset;
 
                     //bullet_properties->angle1 = reduce_angle(ParseFloatArg(5));
                     /*float temp = ParseFloatArg(5);
@@ -6361,7 +6376,7 @@ enemy->write_to_var(IntArg(number), MakeArg(val))
 
                     laser_properties->type = op_index == 86;
                     
-                    *(__m128_u*)laser_properties->position.as_array = *(__m128_u*)enemy->position.as_array + *(__m128_u*)enemy->shoot_offset.as_array;
+                    *(__m128_u*)&laser_properties->position = *(__m128_u*)&enemy->position + *(__m128_u*)&enemy->shoot_offset;
 
                     memcpy(&laser_properties->sprite, &ShortArg(0), sizeof(int32_t));
                     //laser_properties->sprite = ShortArg(0);
@@ -6742,10 +6757,10 @@ enemy->write_to_var(IntArg(number), MakeArg(val))
                         interp_speed *= interp_speed;
                         break;
                 }
-                vec<float, 4> interp_temp = *(unaligned vec<float, 4>*)enemy->move_interp.as_array;
-                vec<float, 4> interp_start = *(unaligned vec<float, 4>*)enemy->move_interp_start_pos.as_array;
+                vec<float, 4> interp_temp = *(unaligned vec<float, 4>*)&enemy->move_interp;
+                vec<float, 4> interp_start = *(unaligned vec<float, 4>*)&enemy->move_interp_start_pos;
                 vec<float, 4> interp_temp2 = (interp_temp * interp_speed) + interp_start - interp_temp;
-                *(unaligned vec<float, 4>*)enemy->axis_speed.as_array = interp_temp2;
+                *(unaligned vec<float, 4>*)&enemy->axis_speed = interp_temp2;
                 vec<float, 2> interp_temp3;
                 interp_temp3[0] = interp_temp2[0];
                 interp_temp3[1] = interp_temp2[1];
@@ -6756,7 +6771,7 @@ enemy->write_to_var(IntArg(number), MakeArg(val))
                     enemy->position.x = interp_start[0];
                     enemy->position.y = interp_start[1];
                     enemy->position.z = interp_start[2];
-                    __builtin_memset(enemy->axis_speed.as_array, 0, sizeof(enemy->axis_speed.as_array));
+                    __builtin_memset(&enemy->axis_speed, 0, sizeof(enemy->axis_speed));
                     //enemy->axis_speed = (Float3){ 0.0f, 0.0f, 0.0f };
                 }
                 break;
@@ -6785,9 +6800,9 @@ enemy->write_to_var(IntArg(number), MakeArg(val))
                 //SUPERVISOR.tick_timer(&enemy->shoot_interval_timer.current, &enemy->shoot_interval_timer.subframe);
                 //if (enemy->shoot_interval_timer.current >= enemy->shoot_interval) {
                 if (enemy->shoot_interval_timer.tick() >= enemy->shoot_interval) {
-                    vec<float, 4> position = *(unaligned vec<float, 4>*)enemy->position.as_array;
-                    position += *(unaligned vec<float, 4>*)enemy->shoot_offset.as_array;
-                    unaligned vec<float, 4>& bullet_position = *(unaligned vec<float, 4>*)enemy->bullet_properties.position.as_array;
+                    vec<float, 4> position = *(unaligned vec<float, 4>*)&enemy->position;
+                    position += *(unaligned vec<float, 4>*)&enemy->shoot_offset;
+                    unaligned vec<float, 4>& bullet_position = *(unaligned vec<float, 4>*)&enemy->bullet_properties.position;
                     bullet_position[0] = position[0];
                     bullet_position[1] = position[1];
                     bullet_position[2] = position[2];
@@ -7414,9 +7429,9 @@ forceinline int32_t Player::check_bullet_collisions(Float3* restrict position, F
                     case 3:
                         if (++this->__byte_9E4 % 8 == 0) {
                             Float3 temp_position = {
-                                .x = player_bullet->position.x,
-                                .y = position->y,
-                                .z = position->z
+                                player_bullet->position.x,
+                                position->y,
+                                position->z
                             };
                             EFFECT_MANAGER.spawn_effect(5, &temp_position, 1, PackD3DCOLOR(255, 255, 255, 255));
                         }
@@ -7783,7 +7798,7 @@ dllexport int32_t thiscall Supervisor::fade_music(float arg) {
     return 0;
 }
 
-Enemy& deleeto = *new Enemy;
+Enemy& deleeto = *(Enemy*)malloc(sizeof(Enemy));
 
 dllexport void force_export_funcs() {
     gnu_used static volatile auto tempA = ENEMY_CONTROLLER.run_ecl(&deleeto);

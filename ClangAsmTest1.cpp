@@ -2089,7 +2089,7 @@ struct Rng {
 			"fildl %[value]"
 			: asm_arg("=t", temp)
 			: [value] "m"(*value)
-			);
+		);
 		if (*value < 0) {
 			//temp += uint_max_float;
 			__asm__ volatile (
@@ -2122,7 +2122,8 @@ struct Rng {
 
 	void log_all_values(FILE* file) {
 		fputs(
-			"InternalIndex,NextU16,"
+			"InternalIndex,"
+			"NextU16,NextU16_UDoALG,"
 			"NextU32_Old,NextU32_New,"
 			"NextPI32_Old,NextPI32_New,"
 			"NextFloat24_Old,NextFloat53_Old," // EoSD, PCB, IN, StB
@@ -2140,12 +2141,13 @@ struct Rng {
 			uint16_t low_halfA = this->calculate_step_1(high_halfB);
 			uint16_t low_halfB = this->calculate_step_2(low_halfA);
 
-			uint16_t next_ushort = high_halfB;
+			uint16_t next_ushort_new = high_halfA;
+			uint16_t next_ushort_old = high_halfB;
 			uint32_t next_uint_old = ((uint32_t)high_halfB << 16) | low_halfB;
 			uint32_t next_uint_new = ((uint32_t)high_halfA << 16) | low_halfA;
 
 
-			this->value = next_ushort;
+			this->value = next_ushort_old;
 
 			int64_t old_float_int = next_uint_old;
 			int32_t new_float_int = next_uint_new;
@@ -2165,8 +2167,9 @@ struct Rng {
 			load_fcw(original_fcw);
 
 			
-			fprintf(file, "%" PRIu32 ",%" PRIu16 ",%" PRIu32 ",%" PRIu32 ",%" PRIu32 ",%" PRIu32 ",%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f\n"
-					, this->index++, next_ushort
+			fprintf(file, "%" PRIu32 ",%" PRIu16 ",%" PRIu16 ",%" PRIu32 ",%" PRIu32 ",%" PRIu32 ",%" PRIu32 ",%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f,%." MACRO_STR(__DBL_DECIMAL_DIG__) "f\n"
+					, this->index++
+					, next_ushort_old, next_ushort_new
 					, next_uint_old, next_uint_new
 					, next_uint_old & 0x7FFFFFFF, next_uint_new & 0x7FFFFFFF
 					, (double)single_precision_old, (double)double_precision_old
@@ -3132,18 +3135,44 @@ gnu_noinline void test_sqrt_thing() {
 }
 
 #define _HAS_CXX17 1
-#include <filesystem>
+//#include <filesystem>
 #include <string>
-#include <string_view>
+//#include <string_view>
 
-static inline constexpr size_t kjwebkwrb = sizeof_template_impl<std::wstring>();
+//static inline constexpr size_t kjwebkwrb = sizeof_template_impl<std::wstring>();
+
+bool dumb_x64_hack() {
+	//std::string
+}
+
+#pragma comment (lib, "onecore.lib")
 
 int stdcall main(int argc, char* argv[]) {
 
-	char* yeet = "pingas";
+	printf("Available: %s\n", bool_str(IsApiSetImplemented("api-ms-win-eventing-classicprovider-l1-1-0")));
+
+	HMODULE module = LoadLibraryA("api-ms-win-eventing-classicprovider-l1-1-0.dll");
+
+	if (module) {
+		for (size_t i = 64;; i += 64) {
+			wchar_t buf[i];
+			size_t buf_written = GetModuleFileNameW(module, buf, i);
+			if (buf_written < i) {
+				wprintf(L"Path: %s\n", buf);
+				break;
+			}
+		}
+	} else {
+		printf("Path: Invalid handle\n");
+	}
+
+	return 0;
+
+	test_zun_rng2();
+	return 0;
 	//std::filesystem::path test = std::filesystem::path(yeet);
 
-	std::string piss;
+	//std::string piss;
 	
 
 	//volatile int yeet78 = new_fast_sqrt(0x00000001);
@@ -3152,8 +3181,8 @@ int stdcall main(int argc, char* argv[]) {
 
 	Sleep(5000);
 
-	std::wstring_view yeetu;
-	std::wstring bjkjbq = std::wstring(yeetu);
+	//std::wstring_view yeetu;
+	//std::wstring bjkjbq = std::wstring(yeetu);
 
 	/*
 	for (int32_t i = 1; i >= 0; ++i) {
@@ -3908,11 +3937,15 @@ extern "C" {
 
 //#include <stdatomic.h>
 //#include "zero/custom_intrin.h"
-#define atomic_signal_fence ____atomic_signal_fence
-#define atomic_thread_fence ____atomic_thread_fence
-#include <stdatomic.h>
-#undef atomic_signal_fence
-#undef atomic_thread_fence
+//#define atomic_signal_fence ____atomic_signal_fence
+//#define atomic_thread_fence ____atomic_thread_fence
+//#include <stdatomic.h>
+//#undef atomic_signal_fence
+//#undef atomic_thread_fence
+
+// Just compile already
+#define atomic_compare_exchange_strong(...) (__VA_ARGS__)
+#define atomic_fetch_add(...) (__VA_ARGS__)
 
 #define SRWLockSpinCount 1024
 
@@ -4686,7 +4719,8 @@ enum KGDTTYPE {
 
 template<bool include_long_check = true>
 dllexport gnu_attr(target("no-sse")) void ArchSetGdtEntry(KGDTENTRY* gdt_base, uint32_t offset, uint64_t base, size_t limit, KGDTTYPE type, uint32_t dpl, SetGetEntryFlags flags) {
-	KGDTENTRY64* entry = based_pointer<KGDTENTRY64>(gdt_base, AlignDownToMultipleOf2(offset, alignof(KGDTENTRY)));
+	//KGDTENTRY64* entry = based_pointer<KGDTENTRY64>(gdt_base, AlignDownToMultipleOf2(offset, alignof(KGDTENTRY)));
+	KGDTENTRY64* entry = (KGDTENTRY64*)(uintptr_t(gdt_base) + AlignDownToMultipleOf2(offset, alignof(KGDTENTRY)));
 	if ((entry->Granularity = limit > PAGE_SIZE << 12)) {
 		limit >>= 12;
 	}
@@ -4720,7 +4754,8 @@ dllexport gnu_attr(target("no-sse")) void ArchSetGdtEntry(KGDTENTRY* gdt_base, u
 
 template<bool include_long_check = false, bool force_single_reg = false>
 dllexport gnu_attr(target("no-sse")) void ArchSetGdtEntryNew(KGDTENTRY* gdt_base, uint32_t offset, uint64_t base, size_t limit, KGDTTYPE type, uint32_t dpl, uint8_t flags) {
-	KGDTENTRY64* entry = based_pointer<KGDTENTRY64>(gdt_base, AlignDownToMultipleOf2(offset, alignof(KGDTENTRY)));
+	//KGDTENTRY64* entry = based_pointer<KGDTENTRY64>(gdt_base, AlignDownToMultipleOf2(offset, alignof(KGDTENTRY)));
+	KGDTENTRY64* entry = (KGDTENTRY64*)(uintptr_t(gdt_base) + AlignDownToMultipleOf2(offset, alignof(KGDTENTRY)));
 	if constexpr (force_single_reg) {
 		__asm__ volatile ("" : asm_arg("+r", entry));
 	}
@@ -5511,6 +5546,7 @@ static constexpr const char checkbox_str[] = "checkbox";
 }
 */
 #define THCRAP_API __declspec(dllimport)
+#define THCRAP_EXPORT_API
 #include <assert.h>
 #include <string>
 #include <string_view>
@@ -5560,6 +5596,23 @@ extern "C" {
 #define _TEB _TH_TEB
 #define TEB TH_TEB
 #define PTEB TH_PTEB
+#define _PROCESS_BASIC_INFORMATION _TH_PROCESS_BASIC_INFORMATION
+#define PROCESS_BASIC_INFORMATION TH_PROCESS_BASIC_INFORMATION
+#define PROCESSINFOCLASS TH_PROCESSINFOCLASS
+#define ProcessBasicInformation TH_ProcessBasicInformation
+#define ProcessWow64Information TH_ProcessWow64Information
+#define ProcessImageFileName TH_ProcessImageFileName
+#define NTAPI __stdcall
+#define NtQueryInformationProcess TH_NtQueryInformationProcess
+#define NtProductWinNt TH_NtProductWinNt
+#define NtProductLanManNt TH_NtProductLanManNt
+#define NtProductServer TH_NtProductServer
+#define NT_PRODUCT_TYPE TH_NT_PRODUCT_TYPE
+#define StandardDesign TH_StandardDesign
+#define NEC98x86 TH_NEC98x86
+#define EndAlternatives TH_EndAlternatives
+#define ALTERNATIVE_ARCHITECTURE_TYPE TH_ALTERNATIVE_ARCHITECTURE_TYPE
+#define TH_FORCEINLINE
 #include "F:\\Users\\zero318\\Source\\Repos\\thcrap\\thcrap\\src\\util.h"
 #undef _PEB
 #undef PEB
@@ -5572,6 +5625,21 @@ extern "C" {
 #undef _TEB
 #undef TEB
 #undef PTEB
+#undef _PROCESS_BASIC_INFORMATION
+#undef PROCESS_BASIC_INFORMATION
+#undef PROCESSINFOCLASS
+#undef ProcessBasicInformation
+#undef ProcessWow64Information
+#undef ProcessImageFileName
+#undef NtQueryInformationProcess
+#undef NtProductWinNt
+#undef NtProductLanManNt
+#undef NtProductServer
+#undef NT_PRODUCT_TYPE
+#undef StandardDesign
+#undef NEC98x86
+#undef EndAlternatives
+#undef ALTERNATIVE_ARCHITECTURE_TYPE
 #include "F:\\Users\\zero318\\Source\\Repos\\thcrap\\thcrap\\src\\jansson_ex.h"
 #define LongDouble80 long double
 #include "F:\\Users\\zero318\\Source\\Repos\\thcrap\\thcrap\\src\\expression.h"

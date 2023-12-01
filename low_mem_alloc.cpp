@@ -667,42 +667,43 @@ regcall GetModuleHandleW64Adapter(
 	PTR64<const wchar_t> name	// EDX:EAX
 ) {
 	__asm__ volatile (
-		BIG_SHL_RDX(0x20)
-		"movl %eax, %eax \n"
-		REX_W "orl %edx, %eax \n" // "orq %rdx, %rax \n"
-		"jz 3f \n"
-		GS_OVERRIDE REX_W ".byte 0x8B, 0x0C, 0x25, 0x60, 0x00, 0x00, 0x00 \n" // "movq %gs:0x60, %rcx \n"
-		REX_WR "movl 0x18(%ecx), %eax \n" // "movq 0x18(%rcx), %r8 \n"
-		REX_WB "movl 0x10(%eax), %edi \n" // "movq 0x10(%r8), %rdi \n"
-		REX_WB "addl $0x10, %eax \n" // "addq $0x10, %r8 \n"
+		INTEL_64_DIRECTIVE
+		"SHL RDX, 32 \n"
+		"MOV EAX, EAX \n"
+		"OR RAX, RDX \n"
+		"JZ 3f \n"
+		"MOV RCX, QWORD PTR GS:[0x60] \n"
+		"MOV R8, QWORD PTR [RCX+0x18] \n"
+		"MOV RDI, QWORD PTR [R8+0x10] \n"
+		"ADD R8, 0x10 \n"
 	"1: \n"
-		"movzwl 0x58(%edi), %esi \n" // "movzwl 0x58(%rdi), %esi \n"
-		"testl %esi, %esi \n"
-		"jnz 1f \n"
+		"MOVZX ESI, WORD PTR [RDI+0x58] \n"
+		"TEST ESI, ESI \n"
+		"JNZ 1f \n"
 	"2: \n"
-		REX_W "movl (%edi), %edi \n" // "movq (%rdi), %rdi \n"
-		REX_WR "cmpl %eax, %edi \n" // "cmpq %r8, %rdi \n"
-		"jne 1b \n"
-		"xorl %eax, %eax \n"
+		"MOV RDI, QWORD PTR [RDI] \n"
+		"CMP RDI, R8 \n"
+		"JNE 1b \n"
+		"XOR EAX, EAX \n"
 	"3: \n"
-		"xorps %xmm0, %xmm0 \n"
-		"lret \n"
+		"XORPS XMM0, XMM0 \n"
+		"RETF \n"
 	"1: \n"
-		REX_WR "movl 0x60(%edi), %ecx \n" // "movq 0x60(%rdi), %r9 \n"
-		REX_W "movl %eax, %ebx \n" // "movq %rax, %rbx \n"
-		REX_WB "subl %eax, %ecx \n" // "subq %rax, %rcx \n"
+		"MOV R9, QWORD PTR [RDI+0x60] \n"
+		"MOV RBX, RAX \n"
+		"SUB RCX, RAX \n"
 	"1: \n"
-		"movzbl (%ebx), %ecx \n" // "movzbl (%rbx), %ecx \n"
-		REX_B "cmpb (%ecx,%ebx), %cl \n" // "cmpb (%r9,%rbx), %cl \n"
-		"jne 2b \n"
-		REX_W INC_EBX()
-		DEC_ESI()
-		"jnz 1b \n"
-		"movq 0x30(%edi), %xmm0 \n" // "movq 0x30(%rdi), %xmm0 \n"
-		REX_W "movl 0x30(%edi), %eax \n" // "movq 0x30(%rdi), %rax \n"
-		REX_W "movl %eax, %edx \n" // "movq %rax, %rdx \n"
-		BIG_SHR_RDX(0x20)
-		"lret"
+		"MOVZX ECX, BYTE PTR [RBX] \n"
+		"CMP CL, BYTE PTR [RBX*1+R9] \n"
+		"JNE 2b \n"
+		"INC RBX \n"
+		"DEC ESI \n"
+		"JNZ 1b \n"
+		"MOVQ XMM0, QWORD PTR [RDI+0x30] \n"
+		"MOV RAX, QWORD PTR [RDI+0x30] \n"
+		"MOV RDX, RAX \n"
+		"SHR RDX, 32 \n"
+		"RETF"
 	);
 }
 
@@ -738,18 +739,19 @@ regcall memset64Adapter(
 	uint64_t size	// ESI:ECX
 ) {
 	__asm__ volatile (
-		BIG_SHL_RSI(0x20)
-		"movl %ecx, %ecx \n"
-		REX_W "orl %esi, %ecx \n" // "orq %rsi, %rcx \n"
-		"movl %edi, %edi \n"
-		"movl %edx, %esi \n"
-		BIG_SHL_RSI(0x20)
-		REX_W "orl %esi, %edi \n" // "orq %rsi, %rdi \n"
-		DATASIZE REX_W "movd %edi, %mm0 \n" // "movq %rdi, %xmm0 \n"
-		"movl %edi, %esi \n"
-		"rep stosb \n"
-		"movl %esi, %eax \n"
-		"lret"
+		INTEL_64_DIRECTIVE
+		"SHL RSI, 32 \n"
+		"MOV ECX, ECX \n"
+		"OR RCX, RSI \n"
+		"MOV EDI, EDI \n"
+		"MOV ESI, EDX \n"
+		"SHL RSI, 32 \n"
+		"OR RDI, RSI \n"
+		"MOVQ XMM0, RDI \n"
+		"MOV ESI, EDI \n"
+		"REP stosb \n"
+		"MOV EAX, ESI \n"
+		"RETF"
 	);
 }
 
@@ -785,19 +787,20 @@ regcall memcpy64Adapter(
 	uint64_t size	// EBX:ECX
 ) {
 	__asm__ volatile (
-		"movl %esi, %esi \n"
-		BIG_SHL_RDI(0x20)
-		REX_W "orl %edi, %esi \n" // "orq %rdi, %rsi \n"
-		BIG_SHL_RBX(0x20)
-		"movl %ecx, %ecx \n"
-		REX_W "orl %ebx, %ecx \n" // "orq %rbx, %rcx \n
-		"movl %eax, %edi \n"
-		"movl %edx, %ebx \n"
-		BIG_SHL_RBX(0x20)
-		REX_W "orl %ebx, %edi \n" // "orq %rbx, %rdi \n"
-		DATASIZE REX_W "movd %edi, %mm0 \n" // "movq %rdi, %xmm0 \n"
-		"rep movsb \n"
-		"lret"
+		INTEL_64_DIRECTIVE
+		"MOV ESI, ESI \n"
+		"SHL RDI, 32 \n"
+		"OR RSI, RDI \n"
+		"SHL RBX, 32 \n"
+		"MOV ECX, ECX \n"
+		"OR RCX, RBX \n"
+		"MOV EDI, EAX \n"
+		"MOV EBX, EDX \n"
+		"SHL RBX, 32 \n"
+		"OR RDI, RBX \n"
+		"MOVQ XMM0, RDI \n"
+		"REP movsb \n"
+		"RETF"
 	);
 }
 
@@ -842,6 +845,78 @@ inline PTR64<> regcall memcpy64(T1 dst, T2 src, uint64_t size) {
 }
 
 dllexport gnu_noinline naked
+	PTR64<>			// EDX:EAX, XMM0
+regcall memmove64Adapter(
+	PTR64<> dst,	// EDX:EAX
+	PTR64<> src,	// EDI:ESI
+	uint64_t size	// EBX:ECX
+) {
+	__asm__ volatile (
+		INTEL_64_DIRECTIVE
+		"MOV ESI, ESI \n"
+		"SHL RDI, 32 \n"
+		"OR RSI, RDI \n"
+		"SHL RBX, 32 \n"
+		"MOV ECX, ECX \n"
+		"OR RCX, RBX \n"
+		"MOV EDI, EAX \n"
+		"MOV EBX, EDX \n"
+		"SHL RBX, 32 \n"
+		"OR RDI, RBX \n"
+		"MOVQ XMM0, RDI \n"
+		"CMP RDI, RSI \n"
+		"JBE 1f \n"
+		"STD \n"
+		"LEA RDI, [RDI*1+RCX-1] \n"
+		"LEA RSI, [RSI*1+RCX-1] \n"
+	"1: \n"
+		"REP movsb \n"
+		"CLD \n"
+		"RETF"
+	);
+}
+
+template <typename T1, typename T2> requires(std::is_pointer_v<T1> && std::is_same_v<remove_pointer_t<T1>, void> && std::is_pointer_v<T2> && std::is_same_v<remove_pointer_t<T2>, void>)
+inline PTR64<> regcall memmove64(T1 dst, T2 src, uint64_t size) {
+	PTR64<> ret;
+	if constexpr (std::is_same_v<T1, PTR64<>> && std::is_same_v<T2, PTR64<>>) {
+		FAR_CALL_IMM(0x33, memmove64Adapter,
+					 "=A"(ret),
+					 "A"(dst),
+					 "S"((uint32_t)src), "D"((uint32_t)((uint64_t)src >> 32)),
+					 "c"((uint32_t)size), "b"((uint32_t)(size >> 32))
+					 : clobber_list("xmm0")
+		);
+	} else if constexpr (std::is_same_v<T1, PTR64<>>) {
+		FAR_CALL_IMM(0x33, memmove64Adapter,
+					 "=A"(ret),
+					 "A"(dst),
+					 "S"((uint32_t)src), "D"(0),
+					 "c"((uint32_t)size), "b"((uint32_t)(size >> 32))
+					 : clobber_list("xmm0")
+		);
+	} else if constexpr (std::is_same_v<T2, PTR64<>>) {
+		FAR_CALL_IMM(0x33, memmove64Adapter,
+					 "=A"(ret),
+					 "a"((uint32_t)dst), "d"(0)
+					 "S"((uint32_t)src), "D"((uint32_t)((uint64_t)src >> 32)),
+					 "c"((uint32_t)size), "b"((uint32_t)(size >> 32))
+					 : clobber_list("xmm0")
+		);
+	} else {
+		FAR_CALL_IMM(0x33, memmove64Adapter,
+					 "=A"(ret),
+					 "a"((uint32_t)dst), "d"(0)
+					 "S"((uint32_t)src), "D"(0),
+					 "c"((uint32_t)size), "b"((uint32_t)(size >> 32))
+					 : clobber_list("xmm0")
+		);
+	}
+	__asm__ volatile ("":::clobber_list("ecx", "ebx", "esi", "edi"));
+	return ret;
+}
+
+dllexport gnu_noinline naked
 	int				// EAX
 regcall memcmp64Adapter(
 	PTR64<> lhs,	// ESI:EAX
@@ -849,21 +924,22 @@ regcall memcmp64Adapter(
 	uint64_t size	// ECX:EBX
 ) {
 	__asm__ volatile (
-		"movl %eax, %eax \n"
-		BIG_SHL_RSI(0x20)
-		REX_W "orl %eax, %esi \n" // "orq %rax, %rsi \n"
-		"movl %edx, %edx \n"
-		BIG_SHL_RDI(0x20)
-		REX_W "orl %edx, %edi \n" // "orq %rdx, %rdi \n"
-		"movl %ebx, %ebx \n"
-		BIG_SHL_RCX(0x20)
-		REX_W "orl %ebx, %ecx \n" // "orq %rbx, %rcx \n"
-		"repe cmpsb \n"
-		"sbbl %eax, %eax \n"
-		"sbbl $-1, %eax \n"
-		REX_W "testl %ecx, %ecx \n" // "testq %rcx, %rcx \n"
-		"cmovz %ecx, %eax \n"
-		"lret"
+		INTEL_64_DIRECTIVE
+		"MOV EAX, EAX \n"
+		"SHL RSI, 32 \n"
+		"OR RSI, RAX \n"
+		"MOV EDX, EDX \n"
+		"SHL RDI, 32 \n"
+		"OR RDI, RDX \n"
+		"MOV EBX, EBX \n"
+		"SHL RCX, 32 \n"
+		"OR RCX, RBX \n"
+		"REPE cmpsb \n"
+		"SBB EAX, EAX \n"
+		"SBB EAX, -1 \n"
+		"TEST RCX, RCX \n"
+		"CMOVZ EAX, ECX \n"
+		"RETF"
 	);
 }
 
@@ -914,63 +990,64 @@ regcall GetProcAddress64Adapter(
 	PTR64<const char> lookup_name	// EDI:ECX
 ) {
 	__asm__ volatile (
-		"xorps %xmm0, %xmm0 \n"
-		BIG_SHL_RDX(0x20) // "shlq $0x20, %rdx \n"
-		"movl %eax, %eax \n"
-		REX_W "leal (%edx,%eax), %esi \n" // "leaq (%rdx,%rax), %rsi \n"
-		"movl 0x3C(%edx,%eax), %eax \n" // "movl 0x3C(%rdx,%rax), %eax \n"
-		"movl 0x88(%eax,%esi), %edx \n" // "movl 0x88(%rax,%rsi), %edx \n"
-		REX_W "testl %edx, %edx \n" // "testq %rax, %rax \n"
-		"jz 1f \n"
-		BIG_SHL_RDI(0x20) // "shlq $0x20, %rdi \n"
-		"movl %ecx, %ecx \n"
-		REX_W "orl %edi, %ecx \n" // "orq %rdi, %rcx \n"
-		REX_W "cmpl $0x10000, %ecx \n" // "cmpq $0x10000, %rcx \n"
-		"jb 2f \n"
-		"movl 0x18(%esi,%edx), %edi \n" // "movl 0x18(%rsi,%rdx), %edi \n"
-		REX_R "movl 0x20(%esi,%edx), %eax \n" // "movl 0x20(%rsi,%rdx), %r8d \n"
-		REX_WB "addl %esi, %eax \n" // "addq %rsi, %r8 \n"
-		"jmp 3f \n"
+		INTEL_64_DIRECTIVE
+		"XORPS XMM0, XMM0 \n"
+		"SHL RDX, 32 \n"
+		"MOV EAX, EAX \n"
+		"LEA RSI, [RAX*1+RDX] \n"
+		"MOV EAX, DWORD PTR [RAX*1+RDX+0x3C] \n"
+		"MOV EDX, DWORD PTR [RSI*1+RAX+0x88] \n"
+		"TEST RAX, RAX \n"
+		"JZ 1f \n"
+		"SHL RDI, 32 \n"
+		"MOV ECX, ECX \n"
+		"OR RCX, RDI \n"
+		"CMP RCX, 0x10000 \n"
+		"JB 2f \n"
+		"MOV EDI, DWORD PTR [RDX*1+RSI+0x18] \n"
+		"MOV R8D, DWORD PTR [RDX*1+RSI+0x20] \n"
+		"ADD R8, RSI \n"
+		"JMP 3f \n"
 		".align 16, 0xCC \n"
 	"4: \n"
-		REX_R "cmpb %bl, %al \n" // "cmpb %r11b, %al \n"
-		"je 4f \n"
+		"CMP AL, R11B \n"
+		"JE 4f \n"
 	"3: \n"
-		REX_W ".byte 0x81, 0xEF, 0x01, 0x00, 0x00, 0x00 \n" // "subq $1, %rdi \n"
-		"jb 1f \n"
-		REX_RB "movl (%eax,%edi,4), %ecx \n" // "movl (%r8,%rdi,4), %r9d \n"
-		REX_WB "addl %esi, %ecx \n" // "addq %rsi, %rcx \n"
-		REX_RB "xorl %edx, %edx \n" // "xorl %r10d, %r10d \n"
+		".byte 0x48, 0x81, 0xEF, 0x01, 0x00, 0x00, 0x00 \n" // "SUB RDI, 1 \n" (wide encoding)
+		"JB 1f \n"
+		"MOV R9D, DWORD PTR [RDI*4+R8] \n"
+		"ADD RCX, RSI \n"
+		"XOR R10D, R10D \n"
 		".align 16 \n"
 	"5: \n"
-		REX_RX "movzbl (%ecx,%edx), %ebx \n" // "movzbl (%rcx,%r10), %r11d \n"
-		REX_WB INC_EDX() // "incq %r10 \n"
-		REX_XB "movzbl -1(%edx,%ecx), %eax \n" // "movzbl -1(%r10,%r9), %eax \n"
-		REX_RB "testb %bl, %bl \n" // "testb %r11b, %r11b \n"
-		"jz 4b \n"
-		REX_R "cmpb %bl, %al \n" // "cmpb %r11b, %al \n"
-		"je 5b \n"
-		"jmp 3b \n"
+		"MOVZX R11D, BYTE PTR [R10*1+RCX] \n"
+		"INC R10 \n"
+		"MOVZX EAX, BYTE PTR [R9*1+R10-1] \n"
+		"TEST R11B, R11B \n"
+		"JZ 4b \n"
+		"CMP AL, R11B \n"
+		"JE 5b \n"
+		"JMP 3b \n"
 	"2: \n"
-		"cmpl 0x14(%esi,%edx), %ecx \n" // "cmpl 0x14(%rsi,%rdx), %ecx \n"
-		"jb 2f \n"
+		"CMP ECX, DWORD PTR [RDX*1+RSI+0x14] \n"
+		"JB 2f \n"
 	"1: \n"
-		"xorl %eax, %eax \n"
-		"xorl %edx, %edx \n"
-		"lret \n"
+		"XOR EAX, EAX \n"
+		"XOR EDX, EDX \n"
+		"RETF \n"
 	"4: \n"
-		"movl 0x24(%esi,%edx), %eax \n" // "movl 0x24(%rsi,%rdx), %eax \n"
-		REX_W "addl %esi, %eax \n" // "addq %rsi, %rax \n"
-		"movzwl (%eax,%edi,2), %ecx \n" // "movzwl (%rax,%rdi,2), %ecx \n"
+		"MOV EAX, DWORD PTR [RDX*1+RSI+0x24] \n"
+		"ADD RAX, RSI \n"
+		"MOVZX ECX, WORD PTR [RDI*2+RAX] \n"
 	"2: \n"
-		"movl 0x1C(%esi,%edx), %eax \n" // "movl 0x1C(%rsi,%rdx), %eax \n"
-		REX_W "addl %esi, %eax \n" // "addq %rsi, %rax \n"
-		"movl (%eax,%ecx,4), %eax \n" // "movl (%rax,%rcx,4), %eax \n"
-		REX_W "addl %esi, %eax \n" // "addq %rsi, %rax \n"
-		DATASIZE REX_W "movd %eax, %mm0 \n" // "movq %rax, %xmm0 \n"
-		REX_W "movl %eax, %edx \n" // "movq %rax, %rdx \n"
-		BIG_SHR_RDX(0x20) // "shrq $0x20, %rdx \n"
-		"lret"
+		"MOV EAX, DWORD PTR [RDX*1+RSI+0x1C] \n"
+		"ADD RAX, RSI \n"
+		"MOV EAX, DWORD PTR [RCX*4+RAX] \n"
+		"ADD RAX, RSI \n"
+		"MOVQ XMM0, RAX \n"
+		"MOV RDX, RAX \n"
+		"SHR RDX, 32 \n"
+		"RETF"
 	);
 }
 
@@ -1057,35 +1134,36 @@ regcall VirtualAlloc64Adapter(
 	uint32_t protection			// EBX
 ) {
 	__asm__ volatile (
-		REX_B "movl %esi, %eax \n" // "movl %esi, %r8d \n"
-		"movl %esp, %esi \n"
-		"subl $0x48, %esp \n"
-		"andl $-0x10, %esp \n"
-		"movl %eax, %eax \n"
-		BIG_SHL_RDX(0x20)
-		REX_W "orl %eax, %edx \n" // "orq %rax, %rdx \n"
-		REX_W "movl %edx, 0x38(%esp) \n" // "movq %rdx, 0x38(%rsp) \n"
-		BIG_SHL_RDI(0x20)
-		"movl %ecx, %eax \n"
-		REX_W "orl %edi, %eax \n"
-		REX_W "movl %eax, 0x40(%esp) \n" // "movq %rax, 0x40(%rsp) \n"
-		"movl %ebx, 0x28(%esp) \n" // "movl %ebx, 0x28(%rsp) \n"
-		REX_R "movl %eax, 0x20(%esp) \n" // "movl %r8d, 0x20(%rsp) \n"
-		"xorl %edi, %edi \n"
-		REX_W "leal 0x38(%esp), %edx \n" // "leaq 0x38(%rsp), %rdx \n"
-		REX_WR "leal 0x40(%esp), %ecx \n" // "leaq 0x40(%rsp), %r9 \n"
-		MOVSX_RCX_IMM32(-1)
-		REX_RB "xorl %eax, %eax \n" // "xorl %r8d, %r8d \n"
-		CALL_PTR_LOW(ntdll64_data + 0x10)
-		"movl %eax, %ecx \n"
-		"testl %eax, %eax \n"
-		REX_W "cmovnsl 0x38(%esp), %edi \n" // "cmovnsq 0x38(%rsp), %rdi \n"
-		REX_W "movl %edi, %edx \n" // "movq %rdi, %rdx \n"
-		BIG_SHR_RDX(0x20)
-		DATASIZE REX_W "movd %edi, %mm0 \n" // "movq %rdi, %xmm0 \n"
-		REX_W "movl %edi, %eax \n" // "movq %rdi, %rax \n"
-		"movl %esi, %esp \n"
-		"lret"
+		INTEL_64_DIRECTIVE
+		"MOV R8D, ESI \n"
+		"MOV ESI, ESP \n"
+		"SUB ESP, 0x48 \n"
+		"AND ESP, -0x10 \n"
+		"MOV EAX, EAX \n"
+		"SHL RDX, 32 \n"
+		"OR RDX, RAX \n"
+		"MOV QWORD PTR [RSP+0x38], RDX \n"
+		"SHL RDI, 32 \n"
+		"MOV EAX, ECX \n"
+		"OR RAX, RDI \n"
+		"MOV QWORD PTR [RSP+0x40], RAX \n"
+		"MOV DWORD PTR [RSP+0x28], EBX \n"
+		"MOV DWORD PTR [RSP+0x20], R8D \n"
+		"XOR EDI, EDI \n"
+		"LEA RDX, [RSP+0x38] \n"
+		"LEA R9, [RSP+0x40] \n"
+		"MOV RCX, -1 \n"
+		"XOR R8D, R8D \n"
+		"CALL QWORD PTR [ntdll64_data + 0x10] \n"
+		"MOV ECX, EAX \n"
+		"TEST EAX, EAX \n"
+		"CMOVNS RDI, QWORD PTR [RSP+0x38] \n"
+		"MOV RDX, RDI \n"
+		"SHR RDX, 32 \n"
+		"MOVQ XMM0, RDI \n"
+		"MOV RAX, RDI \n"
+		"MOV ESP, ESI \n"
+		"RETF"
 	);
 }
 
@@ -1176,34 +1254,35 @@ regcall VirtualQuery64Adapter(
 	MEMORY_INFORMATION_CLASS info_class	// EBP
 ) {
 	__asm__ volatile (
-		REX_B "movl %ebp, %eax \n" // "movl %ebp, %r8d \n"
-		"movl %esp, %ebp \n"
-		"subl $0x38, %esp \n"
-		"andl $-0x10, %esp \n"
-		"movl %eax, %eax \n"
-		BIG_SHL_RDX(0x20)
-		REX_W "orl %eax, %edx \n" // "orq %rax, %rdx \n"
-		REX_B "movl %ecx, %ecx \n" // "movl %ecx, %r9d \n"
-		BIG_SHL_RDI(0x20)
-		REX_WB "orl %edi, %ecx \n" // "orq %rdi, %rcx \n"
-		BIG_SHL_RBX(0x20)
-		"movl %esi, %eax \n"
-		REX_W "orl %ebx, %eax \n" // "orq %rbx, %rax \n"
-		"xorl %edi, %edi \n"
-		REX_W "leal 0x30(%esp), %ecx \n" // "leaq 0x30(%rsp), %rcx \n"
-		REX_W "movl %ecx, 0x28(%esp) \n" // "movq %rcx, 0x28(%rsp) \n"
-		REX_W "movl %eax, 0x20(%esp) \n" // "movq %rax, 0x20(%rsp) \n"
-		MOVSX_RCX_IMM32(-1)
-		CALL_PTR_LOW(ntdll64_data + 0x18)
-		"movl %eax, %ecx \n"
-		"testl %eax, %eax \n"
-		REX_W "cmovnsl 0x30(%esp), %edi \n" // "cmovnsq 0x30(%rsp), %rdi \n"
-		REX_W "movl %edi, %edx \n" // "movq %rdi, %rdx \n"
-		BIG_SHR_RDX(0x20)
-		DATASIZE REX_W "movd %edi, %mm0 \n" // "movq %rdi, %xmm0 \n"
-		REX_W "movl %edi, %eax \n" // "movq %rdi, %rax \n"
-		"movl %ebp, %esp \n"
-		"lret"
+		INTEL_64_DIRECTIVE
+		"MOV R8D, EBP \n"
+		"MOV EBP, ESP \n"
+		"SUB ESP, 0x38 \n"
+		"AND ESP, -0x10 \n"
+		"MOV EAX, EAX \n"
+		"SHL RDX, 32 \n"
+		"OR RDX, RAX \n"
+		"MOV R9D, ECX \n"
+		"SHL RDI, 32 \n"
+		"OR R9, RDI \n"
+		"SHL RBX, 32 \n"
+		"MOV EAX, ESI \n"
+		"OR RAX, RBX \n"
+		"XOR EDI, EDI \n"
+		"LEA RCX, [RSP+0x30] \n"
+		"MOV QWORD PTR [RSP+0x28], RCX \n"
+		"MOV QWORD PTR [RSP+0x20], RAX \n"
+		"MOV RCX, -1 \n"
+		"CALL QWORD PTR [ntdll64_data + 0x18] \n"
+		"MOV ECX, EAX \n"
+		"TEST EAX, EAX \n"
+		"CMOVNS RDI, QWORD PTR [RSP+0x30] \n"
+		"MOV RDX, RDI \n"
+		"SHR RDX, 32 \n"
+		"MOVQ XMM0, RDI \n"
+		"MOV RAX, RDI \n"
+		"MOV ESP, EBP \n"
+		"RETF"
 	);
 }
 
@@ -1300,25 +1379,26 @@ regcall VirtualFree64Adapter(
 	uint32_t free_type				// ESI
 ) {
 	__asm__ volatile (
-		REX_B "movl %esi, %ecx \n" // "movl %esi, %r9d \n"
-		"movl %esp, %esi \n"
-		"subl $0x30, %esp \n"
-		"andl $-0x10, %esp \n"
-		"movl %eax, %eax \n"
-		BIG_SHL_RDX(0x20)
-		REX_W "orl %eax, %edx \n" // "orq %rax, %rdx \n"
-		REX_W "movl %edx, 0x28(%esp) \n" // "movq %rdx, 0x28(%rsp) \n"
-		BIG_SHL_RDI(0x20)
-		"movl %ecx, %eax \n"
-		REX_W "orl %edi, %eax \n" // "orq %rdi, %rax \n"
-		REX_W "movl %eax, 0x20(%esp) \n" // "movq %rax, 0x20(%rsp) \n"
-		MOVSX_RCX_IMM32(-1)
-		CALL_PTR_LOW(ntdll64_data + 0x20)
-		"movl %eax, %ecx \n"
-		"notl %eax \n"
-		"shrl $0x1F, %eax \n"
-		"movl %esi, %esp \n"
-		"lret"
+		INTEL_64_DIRECTIVE
+		"MOV R9D, ESI \n"
+		"MOV ESI, ESP \n"
+		"SUB ESP, 0x30 \n"
+		"AND ESP, -0x10 \n"
+		"MOV EAX, EAX \n"
+		"SHL RDX, 32 \n"
+		"OR RDX, RAX \n"
+		"MOV QWORD PTR [RSP+0x28], RDX \n"
+		"SHL RDI, 32 \n"
+		"MOV EAX, ECX \n"
+		"OR RAX, RDI \n"
+		"MOV QWORD PTR [RSP+0x20], RAX \n"
+		"MOV RCX, -1 \n"
+		"CALL QWORD PTR [ntdll64_data + 0x20] \n"
+		"MOV ECX, EAX \n"
+		"NOT EAX \n"
+		"SHR EAX, 31 \n"
+		"MOV ESP, ESI \n"
+		"RETF"
 	);
 }
 
@@ -1357,31 +1437,32 @@ regcall VirtualProtect64Adapter(
 	PTR64<uint32_t> old_protection	// EBP:EBX
 ) {
 	__asm__ volatile (
-		REX_B "movl %esi, %ecx \n" // "movl %esi, %r9d \n"
-		"movl %esp, %esi \n"
-		"subl $0x38, %esp \n"
-		"andl $-0x10, %esp \n"
-		"movl %eax, %eax \n"
-		BIG_SHL_RDX(0x20)
-		REX_W "orl %eax, %edx \n" // "orq %rax, %rdx \n"
-		REX_W "movl %edx, 0x30(%esp) \n" // "movq %rdx, 0x30(%rsp) \n"
-		BIG_SHL_RDI(0x20)
-		"movl %ecx, %eax \n"
-		REX_W "orl %edi, %eax \n" // "orq %rdi, %rax \n"
-		REX_W "movl %eax, 0x28(%esp) \n" // "movq %rax, 0x28(%rsp) \n"
-		"movl %ebx, %eax \n"
-		BIG_SHL_RBP(0x20)
-		REX_W "orl %ebp, %eax \n" // "orq %rbp, %rax \n"
-		REX_W "movl %eax, 0x20(%esp) \n" // "movq %rax, 0x20(%rsp) \n"
-		REX_W "leal 0x30(%esp), %edx \n" // "leaq 0x30(%rsp), %rdx \n"
-		REX_WR "leal 0x28(%esp), %eax \n" // "leaq 0x28(%rsp), %r8 \n"
-		MOVSX_RCX_IMM32(-1)
-		CALL_PTR_LOW(ntdll64_data + 0x28)
-		"movl %eax, %ecx \n"
-		"notl %eax \n"
-		"shrl $0x1F, %eax \n"
-		"movl %esi, %esp \n"
-		"lret"
+		INTEL_64_DIRECTIVE
+		"MOV R9D, ESI \n"
+		"MOV ESI, ESP \n"
+		"SUB ESP, 0x38 \n"
+		"AND ESP, -0x10 \n"
+		"MOV EAX, EAX \n"
+		"SHL RDX, 32 \n"
+		"OR RDX, RAX \n"
+		"MOV QWORD PTR [RSP+0x30], RDX \n"
+		"SHL RDI, 32 \n"
+		"MOV EAX, ECX \n"
+		"OR RAX, RDI \n"
+		"MOV QWORD PTR [RSP+0x28], RAX \n"
+		"MOV EAX, EBX \n"
+		"SHL RBP, 32 \n"
+		"OR RAX, RBP \n"
+		"MOV QWORD PTR [RSP+0x20], RAX \n"
+		"LEA RDX, [RSP+0x30] \n"
+		"LEA R8, [RSP+0x28] \n"
+		"MOV RCX, -1 \n"
+		"CALL QWORD PTR [ntdll64_data + 0x28] \n"
+		"MOV ECX, EAX \n"
+		"NOT EAX \n"
+		"SHR EAX, 31 \n"
+		"MOV ESP, ESI \n"
+		"RETF"
 	);
 }
 

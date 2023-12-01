@@ -22,13 +22,14 @@ _ASCII_MANAGER = 0x47B900
 .global _BULLET_TYPE_ANM_DATA
 _BULLET_TYPE_ANM_DATA = 0x46A6E8
 
-.global _EffectColorTablePtr, _UnknownSoundData_Table, _RandomItemIDs_LookupTable, _SpellcardPointsTable, _FuncCall_PtrTable, _EffectData_Table
+.global _EffectColorTablePtr, _UnknownSoundData_Table, _RandomItemIDs_LookupTable, _SpellcardPointsTable, _FuncCall_PtrTable, _EffectData_Table, _RenderDataFormatLookupDataTable
 _EffectColorTablePtr = 0x476438
 _UnknownSoundData_Table = 0x478528
 _RandomItemIDs_LookupTable = 0x476338
 _SpellcardPointsTable = 0x476120
 _FuncCall_PtrTable = 0x476220
 _EffectData_Table = 0x476298
+_RenderDataFormatLookupDataTable = 0x4765B8
 
 .global _SingleSpaceString, _MusicFormatString
 _SingleSpaceString = 0x46AC10

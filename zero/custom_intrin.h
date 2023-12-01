@@ -74,6 +74,20 @@ struct AbsFarOpcode32 {
 	// 0x7
 } gnu_packed;
 
+#define ATT_SYNTAX_DIRECTIVE ".att_syntax \n"
+#define INTEL_SYNTAX_DIRECTIVE ".intel_syntax \n"
+
+#define CODE_16_DIRECTIVE ".code16 \n"
+#define CODE_32_DIRECTIVE ".code32 \n"
+#define CODE_64_DIRECTIVE ".code64 \n"
+
+#define INTEL_16_DIRECTIVE INTEL_SYNTAX_DIRECTIVE CODE_16_DIRECTIVE
+#define INTEL_32_DIRECTIVE INTEL_SYNTAX_DIRECTIVE CODE_32_DIRECTIVE
+#define INTEL_64_DIRECTIVE INTEL_SYNTAX_DIRECTIVE CODE_64_DIRECTIVE
+#define ATT_16_DIRECTIVE ATT_SYNTAX_DIRECTIVE CODE_16_DIRECTIVE
+#define ATT_32_DIRECTIVE ATT_SYNTAX_DIRECTIVE CODE_32_DIRECTIVE
+#define ATT_64_DIRECTIVE ATT_SYNTAX_DIRECTIVE CODE_64_DIRECTIVE
+
 #define DATASIZE " .byte 0x66 \n "
 #define ADDRSIZE " .byte 0x67 \n "
 
@@ -136,6 +150,7 @@ typedef uint64_t udreg_t;
 #define RSP_REG_NAME ESP_REG_NAME
 #define RBP_REG EBP_REG
 #define RBP_REG_NAME EBP_REG_NAME
+#define CODE_DEFAULT_DIRECTIVE CODE_32_DIRECTIVE
 #else
 typedef int64_t sreg_t;
 typedef uint64_t usreg_t;
@@ -153,6 +168,7 @@ register int64_t rbp_reg asm("rbp");
 #define RSP_REG_NAME "rsp"
 #define RBP_REG "%%rbp"
 #define RBP_REG_NAME "rbp"
+#define CODE_DEFAULT_DIRECTIVE CODE_64_DIRECTIVE
 #endif
 
 template <typename T = uint8_t, sfinae_enable(sizeof(T) == sizeof(uint8_t))>
@@ -1110,7 +1126,7 @@ static inline uint16_t aad_math(uint16_t in, const uint8_t mul = 10u) {
 #ifndef __x86_64__
 		"AAD %[mul]"
 #else
-
+		""
 #endif
 		: asm_arg("+a", in)
 		: asm_arg("N", mul)
@@ -1232,20 +1248,20 @@ ValidateStructSize(0x4, FCWW);
 union FSW {
 	uint16_t raw;
 	struct {
-		uint16_t invalid_operation_exception : 1;
-		uint16_t denormal_operand_exception : 1;
-		uint16_t divide_by_zero_exception : 1;
-		uint16_t overflow_exception : 1;
-		uint16_t underflow_exception : 1;
-		uint16_t precision_exception : 1;
-		uint16_t stack_fault : 1;
-		uint16_t exception_summary : 1;
-		uint16_t c0 : 1;
-		uint16_t c1 : 1;
-		uint16_t c2 : 1;
-		uint16_t stack_top : 3;
-		uint16_t c3 : 1;
-		uint16_t busy : 1;
+		uint16_t invalid_operation_exception : 1; // 0
+		uint16_t denormal_operand_exception : 1; // 1
+		uint16_t divide_by_zero_exception : 1; // 2
+		uint16_t overflow_exception : 1; // 3
+		uint16_t underflow_exception : 1; // 4
+		uint16_t precision_exception : 1; // 5
+		uint16_t stack_fault : 1; // 6
+		uint16_t exception_summary : 1; // 7
+		uint16_t c0 : 1; // 8
+		uint16_t c1 : 1; // 9
+		uint16_t c2 : 1; // 10
+		uint16_t stack_top : 3; // 11-13
+		uint16_t c3 : 1; // 14
+		uint16_t busy : 1; // 15
 	};
 	struct {
 		uint16_t exceptions : 6;

@@ -8,6 +8,8 @@
 
 #pragma clang diagnostic ignored "-Wunused-variable"
 
+#ifndef DONT_COMPILE_REGISTER_ASSUME_JANK
+
 gnu_noinline void assume_non_vector_registers_volatile() {
 	_mm_empty();
 	static volatile double yeetus = 1.0f;
@@ -37,6 +39,7 @@ gnu_noinline void assume_all_registers_volatile(void* use_arg) {
 #endif
 }
 
+#endif
 
 struct StrConvFlags {
 	uint8_t known_base = 0;
