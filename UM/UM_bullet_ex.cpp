@@ -121,15 +121,15 @@ inline void matrix_set_identity(D3DMATRIX& matrix) {
 dllexport float vectorcall reduce_angle(float angle) asm_symbol_rel(0x4028F0);
 dllexport float vectorcall reduce_angle(float angle) {
     int32_t counter = 0;
-	while (angle > PI_f) {
-		angle -= TWO_PI_f;
-		if (counter++ > 32) break;
-	}
-	while (-PI_f > angle) {
-		angle += TWO_PI_f;
-		if (counter++ > 32) break;
-	}
-	return angle;
+    while (angle > PI_f) {
+        angle -= TWO_PI_f;
+        if (counter++ > 32) break;
+    }
+    while (-PI_f > angle) {
+        angle += TWO_PI_f;
+        if (counter++ > 32) break;
+    }
+    return angle;
 }
 
 template <InlineState inline_state = DefaultInline>
@@ -1907,8 +1907,8 @@ ValidateStructSize32(0x58, UpdateFuncRegistry);
 
 // size: 0x8
 struct Rng {
-	uint16_t value; // 0x0
-	uint32_t index; // 0x4
+    uint16_t value; // 0x0
+    uint32_t index; // 0x4
     // 0x8
     
     // 0x4026D0
@@ -1936,7 +1936,7 @@ struct Rng {
         }
         CRITICAL_SECTION_MANAGER.leave_section(RNG_CS);
         return (tempA << 16) | tempB;
-	}
+    }
     
     // 0x4027D0
     dllexport gnu_noinline float thiscall rand_float() asm_symbol_rel(0x4027D0) {
@@ -1947,9 +1947,9 @@ struct Rng {
     // 0x402810
     dllexport gnu_noinline float thiscall rand_float_signed() asm_symbol_rel(0x402810) {
         __asm FINIT;
-		float temp = this->rand_uint();
+        float temp = this->rand_uint();
         return temp / (float)INT32_MAX - 1.0f; // float jank rounds this to INT32_MAX+1
-	}
+    }
     // 0x405B90
     dllexport gnu_noinline float vectorcall rand_angle() asm_symbol_rel(0x405B90) {
         return this->rand_float_signed() * PI_f;
@@ -3308,11 +3308,11 @@ struct MotionData {
         return this->speed;
     }
     
-	// 0x422590
-	dllexport gnu_noinline ZUNAngle& get_angle() asm_symbol_rel(0x422590) {
-		return this->angle;
-	}
-	
+    // 0x422590
+    dllexport gnu_noinline ZUNAngle& get_angle() asm_symbol_rel(0x422590) {
+        return this->angle;
+    }
+    
     // 0x4225A0
     dllexport gnu_noinline void vectorcall set_angle(float angle) asm_symbol_rel(0x4225A0) {
         this->angle = angle;
@@ -3352,21 +3352,21 @@ struct MotionData {
     dllexport gnu_noinline float vectorcall get_ellipse_ratio() asm_symbol_rel(0x439EE0) {
         return this->ellipse_ratio;
     }
-	
-	// 0x439EF0
-	dllexport gnu_noinline void set_ellipse_mode() asm_symbol_rel(0x439EF0) {
-		this->mode = EllipseMovement;
-	}
-	
-	// 0x439F00
-	dllexport gnu_noinline void vectorcall set_ellipse_ratio(float ratio) asm_symbol_rel(0x439F00) {
-		this->ellipse_ratio = ratio;
-	}
-	
-	// 0x439F10
-	dllexport gnu_noinline void vectorcall set_ellipse_angle(float angle) asm_symbol_rel(0x439F10) {
-		this->ellipse_angle = angle;
-	}
+    
+    // 0x439EF0
+    dllexport gnu_noinline void set_ellipse_mode() asm_symbol_rel(0x439EF0) {
+        this->mode = EllipseMovement;
+    }
+    
+    // 0x439F00
+    dllexport gnu_noinline void vectorcall set_ellipse_ratio(float ratio) asm_symbol_rel(0x439F00) {
+        this->ellipse_ratio = ratio;
+    }
+    
+    // 0x439F10
+    dllexport gnu_noinline void vectorcall set_ellipse_angle(float angle) asm_symbol_rel(0x439F10) {
+        this->ellipse_angle = angle;
+    }
 
     // 0x439FA0
     dllexport gnu_noinline void vectorcall set_misc_float3_y(float value) asm_symbol_rel(0x439FA0) {
@@ -3393,21 +3393,21 @@ struct MotionData {
     forceinline void vectorcall set_orbit_origin_x(float value) {
         this->set_misc_float3_x(value);
     }
-	
-	// 0x439FC0
-	dllexport gnu_noinline float vectorcall get_orbit_radius() asm_symbol_rel(0x439FD0) {
-		return this->orbit_radius;
-	}
-	
-	// 0x439FD0
-	dllexport gnu_noinline float vectorcall get_orbit_velocity() asm_symbol_rel(0x439FD0) {
-		return this->orbit_velocity;
-	}
-	
-	// 0x43A270
-	dllexport gnu_noinline bool mode_is_orbit() asm_symbol_rel(0x43A270) {
-		return this->mode == OrbitMovement;
-	}
+    
+    // 0x439FC0
+    dllexport gnu_noinline float vectorcall get_orbit_radius() asm_symbol_rel(0x439FD0) {
+        return this->orbit_radius;
+    }
+    
+    // 0x439FD0
+    dllexport gnu_noinline float vectorcall get_orbit_velocity() asm_symbol_rel(0x439FD0) {
+        return this->orbit_velocity;
+    }
+    
+    // 0x43A270
+    dllexport gnu_noinline bool mode_is_orbit() asm_symbol_rel(0x43A270) {
+        return this->mode == OrbitMovement;
+    }
 
     inline MotionData() {};
 };
@@ -3551,18 +3551,18 @@ dllexport gnu_noinline float vectorcall __interp_inner_thing(int32_t mode, float
                 value = value * value * value * value;
                 return 0.5f + value * 0.5f;
             }
-        case 18: // sine
+        case DecelerateSine: // 18
             return zsinf(value * PI_f * 0.5f);
-        case 19: // 
+        case AccelerateSine: // 19
             return 1.0f - zsinf(value * PI_f * 0.5f + HALF_PI_f);
-        case 20: // 
+        case DecelAccelSine: // 20
             value += value;
             if (1.0f > value) {
                 return zsinf(value * PI_f * 0.5f) * 0.5f;
             } else {
                 return (1.0f - zsinf(value * PI_f * 0.5f)) * 0.5f + 0.5f;
             }
-        case 21: // 
+        case AccelDecelSine: // 21
             value += value;
             if (1.0f > value) {
                 return (1.0f - zsinf(value * PI_f * 0.5f + HALF_PI_f)) * 0.5f;
@@ -3570,51 +3570,51 @@ dllexport gnu_noinline float vectorcall __interp_inner_thing(int32_t mode, float
                 value = value - 1.0f;
                 return zsinf(value * PI_f * 0.5f) * 0.5f + 0.5f;
             }
-        case 22: // 
+        case AccelParabolaA: // 22
             value = value - 0.25f;
             value = (value * value / (9.0f / 16.0f) - 1.0f / 9.0f) / (8.0f / 9.0f);
             return value;
-        case 23: // 
+        case AccelParabolaB: // 23
             value = value - 0.3f;
             value = (value * value / 0.49f - 9.0f / 49.0f) / (40.0f / 49.0f);
             return value;
-        case 24: // 
+        case AccelParabolaC: // 24
             value = value - 0.35f;
             value = (value * value / 0.4225f - 49.0f / 169.0f) / (120.0f / 169.0f);
             return value;
-        case 25: // 
+        case AccelParabolaD: // 25
             value = value - 0.38f;
             value = (value * value / 0.3844f - 361.0f / 961.0f) / (600.0f / 961.0f);
             return value;
-        case 26: // 
+        case AccelParabolaE: // 26
             value = value - 0.4f;
             value = (value * value / 0.36f - 4.0f / 9.0f) / (5.0f / 9.0f);
             return value;
-        case 27: // 
+        case DecelParabolaA: // 27
             value = 1.0f - value;
             value = value - 0.25f;
             value = (value * value / (9.0f / 16.0f) - 1.0f / 9.0f) / (8.0f / 9.0f);
             value = 1.0f - value;
             return value;
-        case 28: // 
+        case DecelParabolaB: // 28
             value = 1.0f - value;
             value = value - 0.3f;
             value = (value * value / 0.49f - 9.0f / 49.0f) / (40.0f / 49.0f);
             value = 1.0f - value;
             return value;
-        case 29: // 
+        case DecelParabolaC: // 29
             value = 1.0f - value;
             value = value - 0.35f;
             value = (value * value / 0.4225f - 49.0f / 169.0f) / (120.0f / 169.0f);
             value = 1.0f - value;
             return value;
-        case 30: // 
+        case DecelParabolaD: // 30
             value = 1.0f - value;
             value = value - 0.38f;
             value = (value * value / 0.3844f - 361.0f / 961.0f) / (600.0f / 961.0f);
             value = 1.0f - value;
             return value;
-        case 31: // 
+        case DecelParabolaE: // 31
             value = 1.0f - value;
             value = value - 0.4f;
             value = (value * value / 0.36f - 4.0f / 9.0f) / (5.0f / 9.0f);
@@ -3733,7 +3733,7 @@ struct ZUNInterp { //       0x58    0x44    0x30
         } else if (end_time == 0) {
 TimeEnd:
             int32_t mode = this->mode[0];
-            if (mode != ConstantVelocity && mode != 17) {
+            if (mode != ConstantVelocity && mode != ConstantAccel) {
                 return this->final_value;
             } else {
                 return this->initial_value;
@@ -3744,7 +3744,7 @@ TimeEnd:
         if (mode == ConstantVelocity) { // 7
             return this->current = this->initial_value = initial + this->final_value;
         }
-        if (mode == 17) {
+        if (mode == ConstantAccel) { // 17
             T temp = this->bezier2;
             this->bezier2 = temp + this->final_value;
             return this->current = this->initial_value = initial + temp;
@@ -4202,6 +4202,7 @@ struct EclContext {
             uint32_t __unknown_flag_A : 1;
         };
     };
+    // 0x1208
 
     inline void set_float_interp_times(int32_t value) {
         this->float_interps[0].end_time = value;
@@ -4459,8 +4460,8 @@ union AnmVMRef {
     AnmVM* vm; // 0x0
 
     inline AnmVMRef() : id(NULL) {}
-	
-	inline AnmVMRef(AnmID& id_ref) : id(&id_ref) {}
+    
+    inline AnmVMRef(AnmID& id_ref) : id(&id_ref) {}
 
     // 0x488E30
     dllexport AnmVM* get_vm_ptr() asm_symbol_rel(0x488E30);
@@ -4494,6 +4495,8 @@ ValidateStructSize32(0x4, AnmVMRef);
 #pragma endregion
 */
 
+using EnemyID = uint32_t;
+
 // size: 0x88
 struct EnemyCallback {
     int32_t life; // 0x0
@@ -4507,6 +4510,20 @@ struct EnemyCallback {
         this->__sub_A.name[0] = '\0';
     }
 };
+
+// WEIRD CALLING CONVENTION
+struct ShotManager {
+private:
+    // 0x45F0F0
+    static dllexport gnu_noinline int32_t vectorcall enm_compute_damage_sources(int32_t, int32_t, Float3* position, Float2* sizeA, float, float, float, float rotation, float sizeB, int32_t& arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) asm_symbol_rel(0x45F0F0) {
+        
+    }
+public:
+    static forceinline int32_t enm_compute_damage_sources(Float3* position, Float2* sizeA, float sizeB, float rotation, int32_t& arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) {
+        return enm_compute_damage_sources(UNUSED_DWORD, UNUSED_DWORD, position, sizeA, UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT, rotation, sizeB, arg5, hit_position_out, arg7, enemy_id);
+    }
+};
+
 
 // size: 0x5600
 struct EnemyData {
@@ -4888,6 +4905,21 @@ public:
 
     // 0x42FF80
     dllexport gnu_noinline ZunResult thiscall update() asm_symbol_rel(0x42FF80);
+    
+    // 0x439480
+    dllexport gnu_noinline int32_t fastcall extra_damage_func1(int32_t prev_damage) asm_symbol_rel(0x439480) {
+        int32_t new_damage = this->int_vars[3];
+        if (new_damage > 0) {
+            new_damage += prev_damage;
+            this->int_vars[3] = 0;
+            return new_damage;
+        } else {
+            return prev_damage;
+        }
+    }
+    
+    // 0x4394A0
+    dllexport gnu_noinline int32_t fastcall extra_damage_func2(int32_t prev_damage) asm_symbol_rel(0x4394A0);
 };
 #pragma region // EnemyData Field Validation
 ValidateFieldOffset32(0x0, EnemyData, previous_motion);
@@ -5729,7 +5761,7 @@ enum Opcode : uint16_t {
 struct Enemy : EclVM {
     //EclVM vm; // 0x0
     EnemyData data; // 0x122C
-    int __dword_682C; // 0x682C
+    void* __on_kill_func; // 0x682C
     int32_t id; // 0x6830
     int32_t parent_id; // 0x6834
     int __dword_6838; // 0x6838
@@ -5844,7 +5876,7 @@ struct Enemy : EclVM {
 #pragma region // Enemy Validation
 //ValidateFieldOffset32(0x0, Enemy, vm);
 ValidateFieldOffset32(0x122C, Enemy, data);
-ValidateFieldOffset32(0x682C, Enemy, __dword_682C);
+ValidateFieldOffset32(0x682C, Enemy, __on_kill_func);
 ValidateFieldOffset32(0x6830, Enemy, id);
 ValidateFieldOffset32(0x6834, Enemy, parent_id);
 ValidateFieldOffset32(0x6838, Enemy, __dword_6838);
@@ -9835,30 +9867,84 @@ extern "C" {
     extern Player* PLAYER_PTR asm("_PLAYER_PTR");
 }
 
+enum MovementDirection : int32_t {
+    MovementNone = 0,
+    MovementUp = 1,
+    MovementDown = 2,
+    MovementLeft = 3,
+    MovementRight = 4,
+    MovementUpLeft = 5,
+    MovementUpRight = 6,
+    MovementDownLeft = 7,
+    MovementDownRight = 8
+};
+
 // size: 0x479D4
 struct Player {
 
     // size: 0xF0
     struct PlayerOption {
-        unknown_fields(0xF0); // 0x0
+        unknown_fields(0x54); // 0x0
+        uint32_t position_x; // 0x54
+        uint32_t position_y; // 0x58
+        unknown_fields(0x94); // 0x5C
         // 0xF0
     };
     // size: 0xF8
     struct PlayerBullet {
-        unknown_fields(0xF8); // 0x0
+        union {
+            uint32_t flags; // 0x0
+            struct {
+                uint32_t __unknown_flag_A : 1;
+            };
+        };
+        unknown_fields(0x4); // 0x0
+        AnmID __vm_id_8; // 0x8
+        Timer __timer_C; // 0xC
+        MotionData motion; // 0x20
+        unknown_fields(0x28); // 0x64
+        int state; // 0x8C
+        unknown_fields(0xC); // 0x90
+        int __int_9C; // 0x9C
+        unknown_fields(0xC); // 0xA0
+        int __dword_AC; // 0xAC
+        int32_t damage_source_index; // 0xB0
+        unknown_fields(0x38); // 0xB4
+        void* __func_ptr_EC; // 0xEC
+        unknown_fields(0x4); // 0xF0
+        void* __func_ptr_F4; // 0xF4
         // 0xF8
     };
     // size: 0x9C
     struct PlayerDamageSource {
-        unknown_fields(0x9C); // 0x0
+        union {
+            uint32_t flags; // 0x0
+        };
+        float __float_4; // 0x4
+        float __float_8; // 0x8
+        float __float_C; // 0xC
+        ZUNAngle __angle_10; // 0x10
+        float __float_14; // 0x14
+        float __float_18; // 0x18
+        MotionData motion; // 0x1C
+        Timer __timer_60; // 0x60
+        int32_t __int_74; // 0x74
+        int __int_78; // 0x78
+        int __int_7C; // 0x7C
+        int32_t __int_80; // 0x80
+        EnemyID __enemy_id_84; // 0x84
+        int32_t __int_88; // 0x88
+        int __int_8C; // 0x8C
+        int32_t __player_bullet_index; // 0x90
+        EnemyID __enemy_id_94; // 0x94
+        int32_t __unknown_func_index; // 0x98
         // 0x9C
     };
 
-    // size: 0x47304
+    // size: 0x47308
     struct PlayerData {
         Float3 position; // 0x0, 0x620
-        int __dword_C; // 0xC, 0x62C
-        int __dword_10; // 0x10, 0x630
+        Int2 internal_position; // 0xC, 0x62C
         Timer __timer_14; // 0x14, 0x634
         Timer __timer_28; // 0x28, 0x648
         Timer __timer_3C; // 0x3C, 0x65C
@@ -9867,18 +9953,18 @@ struct Player {
         PlayerBullet bullets[0x200]; // 0xF50, 0x1570
         int32_t last_created_damage_source_index; // 0x1FF50, 0x20570
         PlayerDamageSource damage_sources[0x401]; // 0x1FF54, 0x20574
-        unknown_fields(0x9C); // 0x46FF0, 0x47610
+        PlayerDamageSource __damage_source_46FF0; // 0x46FF0, 0x47610
         int32_t state; // 0x4708C, 0x476AC
         AnmID __vm_id_47090; // 0x47090, 0x476B0
         AnmID __vm_id_47094; // 0x47094, 0x476B4
-        unknown_fields(0x14); // 0x47098, 0x476B8
-        BOOL __dword_470AC; // 0x470AC, 0x476CC
+        Timer __timer_47098; // 0x47098, 0x476B8
+        BOOL focused; // 0x470AC, 0x476CC
         Timer shoot_key_short_timer; // 0x470B0, 0x476D0
         Timer shoot_key_long_timer; // 0x470C4, 0x476E4
-        int __dword_470D8; // 0x470D8, 0x476F8
-        unknown_fields(0x78); // 0x470DC, 0x476FC
+        int power; // 0x470D8, 0x476F8
+        int __dword_array_470DC[30]; // 0x470DC, 0x476FC
         Timer __timer_47154; // 0x47154, 0x47774
-        unknown_fields(0x14); // 0x47168, 0x47788
+        Timer __timer_47168; // 0x47168, 0x47788
         union {
             uint32_t flags; // 0x4717C, 0x4779C
             struct {
@@ -9886,21 +9972,32 @@ struct Player {
                 uint32_t __unknown_flag_C : 1;
                 uint32_t : 1;
                 uint32_t __unknown_flag_B : 1;
-                uint32_t : 5;
+                uint32_t __unknown_flag_F : 1;
+                uint32_t __unknown_flag_E : 1;
+                uint32_t __unknown_flag_G : 1;
+                uint32_t __unknown_field_A : 2;
                 uint32_t __unknown_flag_D : 1;
             };
         };
-        unknown_fields(0xE0); // 0x47180, 0x477A0
-        int __dword_47260; // 0x47260, 0x47880
-        int __dword_47264; // 0x47264, 0x47884
-        unknown_fields(0x24); // 0x47268, 0x47888
-        int __dword_4728C; // 0x4728C, 0x478AC
-        unknown_fields(0x58); // 0x47290, 0x478B0
+        Timer __timer_477A0; // 0x47180, 0x477A0
+        int32_t __unfocused_linear_speed; // 0x47194, 0x477B4
+        int32_t __focused_linear_speed; // 0x47198, 0x477B8
+        int32_t __unfocused_diagonal_speed; // 0x4719C, 0x477BC
+        int32_t __focused_diagonal_speed; // 0x471A0, 0x477C0
+        Float3 velocity; // 0x471A4, 0x477C4
+        Float3 __last_movement_velocity; // 0x471B0, 0x477D0
+        Int3 __internal_velocity; // 0x471BC, 0x477DC
+        int32_t __int_471C4; // 0x471C4, 0x477E4
+        int32_t __int_471C8; // 0x471C8, 0x477E8
+        float __speed_modifier; // 0x471CC, 0x477EC
+        Float3 __base_axis_speed; // 0x471D0, 0x477F0
+        unknown_fields(0x4); // 0x471DC, 0x477FC
+        Int2 previous_positions[33]; // 0x471E0, 0x47800
         int32_t num_deathbomb_frames; // 0x472E8, 0x47908
         float __float_472EC; // 0x472EC, 0x4790C
         float __float_472F0; // 0x472F0, 0x47910
-        unknown_fields(0x10); // 0x472F4, 0x47914
-        // 0x47304, 0x47924
+        Timer __timer_472F4; // 0x472F4, 0x47914
+        // 0x47308, 0x47928
     };
 
     unknown_fields(0xC); // 0x0
@@ -9908,7 +10005,9 @@ struct Player {
     AnmLoaded* __player_anm_copy; // 0x10
     AnmVM __vm_14; // 0x14
     PlayerData data; // 0x620
-    unknown_fields(0x1C); // 0x47924
+    Float3 __float3_47928; // 0x47928
+    Int2 __base_movement_velocity; // 0x47934
+    MovementDirection movement_direction; // 0x4793C
     void* __ptr_47940; // 0x47940 (Sht file?)
     int __dword_47944; // 0x47944
     char __byte_47948; // 0x47948
@@ -9916,7 +10015,7 @@ struct Player {
     ZUNInterp<float> scale_interp; // 0x4794C
     float scale; // 0x4797C
     float damage_multiplier; // 0x47980
-    unknown_fields(0x4); // 0x47984
+    int __int_47984; // 0x47984
     float __item_attract_speed; // 0x47988
     float item_collect_radius; // 0x4798C
     float item_attract_radius_focused; // 0x47990
@@ -9928,7 +10027,9 @@ struct Player {
     float __float_479AC; // 0x479AC
     Float2 __float2_479B0; // 0x479B0
     float __float_479B8; // 0x479B8
-    unknown_fields(0x18); // 0x479BC
+    unknown_fields(0x10); // 0x479BC
+    float __float_479CC; // 0x479CC
+    unknown_fields(0x4); // 0x479D0
     // 0x479D4
 
     // 0x4099D0
@@ -9969,7 +10070,7 @@ private:
         float B = (x_unit * y) + (y_unit * x);
         float C;
         float D;
-        BOOL boolA = player->data.__dword_470AC;
+        BOOL boolA = player->data.focused;
         if (boolA) {
             C = player->__float2_479B0.x;
             D = player->__float2_479B0.y;
@@ -10060,7 +10161,7 @@ dllexport gnu_noinline float vectorcall Float3::__bullet_effect_angle_jank(float
 
 // I completely forget if this was going to be EnemyInitData or something else
 struct EnemyAllocationData {
-	
+    
 };
 
 typedef int32_t(fastcall UnknownSFunc)(int, int);
@@ -10115,8 +10216,7 @@ struct EnemyManager {
     int32_t prev_enemy_id; // 0x94
     unknown_fields(0xCC); // 0x98
     int __dword_164; // 0x164
-    AnmLoaded* enemy_anms[4]; // 0x168
-    unknown_fields(0x10); // 0x178
+    AnmLoaded* enemy_anms[8]; // 0x168
     EnemyController* enemy_controller; // 0x188
     ZUNLinkedList<Enemy>* enemy_list_head; // 0x18C
     ZUNLinkedList<Enemy>* enemy_list_tail; // 0x190
@@ -10293,7 +10393,7 @@ dllexport gnu_noinline Enemy::Enemy(const char* sub_name) {
     this->initialize_vm();
     this->data.initialize(this);
     EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
-    this->__dword_682C = 0;
+    this->__on_kill_func = NULL;
     this->data.death_callback_sub.name[0] = '\0';
     this->id = enemy_manager->next_enemy_id;
     int32_t id = enemy_manager->next_enemy_id;
@@ -10484,6 +10584,7 @@ struct BulletSpriteColorData {
     int32_t spawn_effect_id; // 0x4
     int32_t cancel_effect_id; // 0x8
     int32_t cancel_script; // 0xC
+    // 0x10
 };
 // size: 0x118
 struct BulletSpriteData {
@@ -10491,16 +10592,17 @@ struct BulletSpriteData {
     BulletSpriteColorData color_data[16]; // 0x4
     float hitbox_size; // 0x104
     int32_t layer; // 0x108
-    int __dword_10C; // 0x10C
-    int __dword_110; // 0x110
-    int __dword_114; // 0x114
+    int __int_10C; // 0x10C
+    int __int_110; // 0x110
+    int32_t __anm_script_114; // 0x114
+    // 0x118
 };
 
 extern "C" {
     // 0x4C5F8C
-    extern BulletSpriteData BULLET_SPRITE_DATA[] asm("_BULLET_SPRITE_DATA");
+    extern BulletSpriteData BULLET_SPRITE_DATA[48] asm("_BULLET_SPRITE_DATA");
     // 0x4B36F0
-    extern int32_t BULLET_IDK_DATA[] asm("_BULLET_IDK_DATA");
+    extern int32_t BULLET_IDK_DATA[8] asm("_BULLET_IDK_DATA");
 }
 
 
@@ -11679,7 +11781,7 @@ dllexport void Bullet::run_effects() {
                 this->vm.data.origin_mode = 1;
                 AnmManager::mark_tree_id_for_delete(this->__anm_tree_id);
                 this->__anm_tree_id = 0;
-                if (int32_t value = BULLET_SPRITE_DATA[IntArg(0)].__dword_114) {
+                if (int32_t value = BULLET_SPRITE_DATA[IntArg(0)].__anm_script_114) {
                     AnmLoaded* bullet_anm = BULLET_MANAGER_PTR->bullet_anm;
                     AnmID new_vm_id;
                     CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
@@ -11697,7 +11799,7 @@ dllexport void Bullet::run_effects() {
                     CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
                     this->__anm_tree_id = new_vm_id;
                 }
-                switch (BULLET_SPRITE_DATA[this->sprite].__dword_10C) {
+                switch (BULLET_SPRITE_DATA[this->sprite].__int_10C) {
                     case 0:
                         this->__cancel_script_id = this->color * 2 + 4;
                         break;
@@ -11912,28 +12014,28 @@ dllexport void Bullet::run_effects() {
                 break;
             }
             case EX_ENEMY: {
-				EnemyInitData enemy_data;
-				enemy_data.position = this->position;
-				enemy_data.int_vars[0] = IntArg(0); // I0 = etEx a
-				enemy_data.int_vars[1] = IntArg(1); // I1 = etEx b
-				enemy_data.int_vars[2] = IntArg(2); // I2 = etEx c
-				enemy_data.int_vars[3] = IntArg(3); // I3 = etEx d
-				enemy_data.mirrored = false;
-				enemy_data.__basic_anm_update = false;
-				enemy_data.float_vars[4] = 0.0f;
-				enemy_data.float_vars[5] = 0.0f;
-				enemy_data.float_vars[6] = 0.0f;
-				enemy_data.float_vars[7] = 0.0f;
-				enemy_data.parent_id = 0;
-				enemy_data.life = 10000;
-				enemy_data.score = 0;
-				enemy_data.item_drop = 0;
-				enemy_data.float_vars[0] = FloatArg(0); // F0 = etEx r
-				enemy_data.float_vars[1] = FloatArg(1); // F1 = etEx s
-				enemy_data.float_vars[2] = FloatArg(2); // F2 = etEx m
-				enemy_data.float_vars[3] = FloatArg(3); // F3 = etEx n
+                EnemyInitData enemy_data;
+                enemy_data.position = this->position;
+                enemy_data.int_vars[0] = IntArg(0); // I0 = etEx a
+                enemy_data.int_vars[1] = IntArg(1); // I1 = etEx b
+                enemy_data.int_vars[2] = IntArg(2); // I2 = etEx c
+                enemy_data.int_vars[3] = IntArg(3); // I3 = etEx d
+                enemy_data.mirrored = false;
+                enemy_data.__basic_anm_update = false;
+                enemy_data.float_vars[4] = 0.0f;
+                enemy_data.float_vars[5] = 0.0f;
+                enemy_data.float_vars[6] = 0.0f;
+                enemy_data.float_vars[7] = 0.0f;
+                enemy_data.parent_id = 0;
+                enemy_data.life = 10000;
+                enemy_data.score = 0;
+                enemy_data.item_drop = 0;
+                enemy_data.float_vars[0] = FloatArg(0); // F0 = etEx r
+                enemy_data.float_vars[1] = FloatArg(1); // F1 = etEx s
+                enemy_data.float_vars[2] = FloatArg(2); // F2 = etEx m
+                enemy_data.float_vars[3] = FloatArg(3); // F3 = etEx n
                 ENEMY_MANAGER_PTR->allocate_new_enemy(current_effect.string, &enemy_data, UNUSED_DWORD);
-				break;
+                break;
             }
             case EX_LASER: {
                 switch (IntArg(0)) {
@@ -12111,6 +12213,25 @@ dllexport gnu_noinline ZunResult thiscall EnemyData::update() {
 
     }
     return ZUN_SUCCESS;
+}
+
+// 0x4394A0
+dllexport gnu_noinline int32_t fastcall EnemyData::extra_damage_func2(int32_t prev_damage) {
+    Float3 position = this->current_motion.position;
+    int32_t dummy = 0; // 
+    int32_t new_damageA = 0; // EBX
+    int32_t new_damageB = 0; // EDI
+    if (AnmVM* anm_vm = this->anm_vms[1].get_vm_ptr()) {
+        position.y += 24.0f;
+        Float2 hurtbox = {
+            anm_vm->data.scale.x * 192.0f,
+            anm_vm->data.scale.y * 32.0f
+        };
+        new_damageB = ShotManager::enm_compute_damage_sources(&position, &hurtbox, 0.0f, anm_vm->data.rotation.z, dummy, NULL, false, ((Enemy*)(this->vm))->id);
+        position.y += 32.0f;
+        new_damageA = ShotManager::enm_compute_damage_sources(&position, NULL, 48.0f, 0.0f, dummy, NULL, false, ((Enemy*)(this->vm))->id);
+    }
+    return new_damageA + new_damageB + prev_damage;
 }
 
 inline void EclContext::step_float_interps() {

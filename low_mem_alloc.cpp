@@ -691,7 +691,7 @@ regcall GetModuleHandleW64Adapter(
 	"1: \n"
 		"MOV R9, QWORD PTR [RDI+0x60] \n"
 		"MOV RBX, RAX \n"
-		"SUB RCX, RAX \n"
+		"SUB R9, RAX \n"
 	"1: \n"
 		"MOVZX ECX, BYTE PTR [RBX] \n"
 		"CMP CL, BYTE PTR [RBX*1+R9] \n"
@@ -1616,7 +1616,7 @@ dllexport gnu_noinline bool bs_dll64() {
 	return false;
 }
 
-#else
+#elif 0
 static constexpr const bool is_x64 = true;
 static const bool is_wow_64 = false;
 

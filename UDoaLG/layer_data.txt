@@ -1,0 +1,110 @@
+Layer	Priority	OriginMode	ResolutionMode	__int_71C
+0		5			0							
+1		7			0							
+2		9			0							
+3		10			1							-1
+4		11			1							
+5		13			1							
+6		16			1							-1
+7		18			1							
+8		20			1							
+9		21			1							
+10		22			1							
+11		24			1							
+12		27			1							-1
+13		28			1							
+14		33			1							
+15		34			1							
+16		37			1							
+17		40			1							
+18		43			1							
+19		46			1							
+20		49			2			1				-1
+21		50			2			1				
+22		58			2			1				
+23		60			2			1				
+24		62			2			1				-1
+25		63			2			1				
+26		70			2			1				-1
+27		66			2			1				-1
+28		67			2			1				
+29		71			2			1				
+30		74			2			1				
+31		76			2			1				
+32		79			2			1				
+33		81			2			1				
+34		96			2			1				
+35		98			2			1				
+36		101			2			1				
+37					2							
+38					2							
+39					2							
+40					2							
+41					2							
+42					2							
+43		61			2							-1
+44		72			2			1				
+45		75			2			1				
+46		77			2			1				
+47		78			2			1				
+48		80			2			1				
+49		97			2			1				
+50		99			2			1				
+51		102			2			1				
+
+
+OtherOnDraws		Priority	Stub
+AbilityManager		55			
+AbilityMenu			92			true
+AsciiManagerGroup0	100			
+AsciiManagerGroup1	59
+AsciiManagerGroup2	82
+AsciiManagerGroup3	73
+AsciiManagerGroup4	83
+GaugeManager		31			
+ScreenEffect2_5		10			
+StageA				3			true
+StageB				6			true
+BombManager			44			
+BulletManager		41			
+Spellcard			12			
+CPUInf				29			
+EffectManager		42			
+ScreenEffect0_3		103			
+Ending				85			
+EnemyManager		23			
+ExAttackManagerA	38
+ExAttackManagerB	69
+FpsCounter			94			
+GuiA				57			true
+GuiB				52			
+GameThread			2			
+GameRuleMenu		92			
+GhostManager		68			true
+HelpManual			90			
+ItemManagerA		35			true
+ItemManagerB		19			true
+KeyConfigMenu		92			
+LaserManager		39			
+LoadingThread		86			
+SupervisorA			2			
+SupervisorB			14			
+SupervisorC			15			
+SupervisorD			25			
+SupervisorE			26			
+SupervisorF			47			
+SupervisorG			48			
+SupervisorH			64			
+SupervisorI			65			
+SupervisorJ			104			
+NoticeManager		90			
+OptionsMenu			92			true
+PauseMenu			93			true
+Player				30			true
+GaugeManager		31			
+ReplayManager		89			
+PopupManager		51			true
+StageClearInf		84			true
+MainMenu			87			
+TrophyManager		91			
+NetworkManager		53			true

@@ -3,6 +3,8 @@
 #
 cmake_minimum_required (VERSION 3.8)
 
+set(CMAKE_CXX_STANDARD 23)
+
 project ("ClangAsmTest1")
 
 add_executable(${PROJECT_NAME})
@@ -119,6 +121,7 @@ target_compile_definitions(${EXE} PRIVATE
 	POINTER_64=__ptr64
 	# For some reason cdecl keeps getting itself undef'ed and this prevents it
 	DOSWIN32=1
+	_LDSUPPORT=1
 )
 if(IS_X64)
 target_compile_definitions(${EXE} PRIVATE
@@ -150,6 +153,8 @@ target_compile_definitions(${EXE} PRIVATE
 	__AVX512BF16INTRIN_H
 	__AVX512VLBF16INTRIN_H
 	__AVXNECONVERTINTRIN_H
+
+	_MSVC_LANG=202003L # Hopefully this is fine?
 )
 
 # Language Standards
@@ -209,6 +214,11 @@ target_compile_options(${EXE} PRIVATE
 	-Wno-microsoft-goto
 	-Wno-missing-declarations
 	-Wno-initializer-overrides
+	-Wno-microsoft-template
+	-Wno-deprecated-this-capture
+	-Wno-microsoft-extra-qualification
+	#-Wno-dynamic-class-memaccess
+	-Wno-inline-namespace-reopened-noninline
 )
 
 # Output Flags
@@ -499,7 +509,8 @@ target_compile_options(${EXE} PRIVATE
 #include_directories("F:\\Program Files\\LLVM\\lib\\clang\\14.0.0\\include")
 #include_directories(SYSTEM "F:\\Program Files\\LLVM\\lib\\clang\\15.0.2\\include")
 include_directories(BEFORE SYSTEM "F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\zero_include")
-include_directories(SYSTEM "F:\\Program Files\\LLVM\\lib\\clang\\16\\include")
+#include_directories(SYSTEM "F:\\Program Files\\LLVM\\lib\\clang\\16\\include")
+include_directories(SYSTEM "F:\\Program Files\\LLVM\\lib\\clang\\17\\include")
 include_directories(SYSTEM "C:\\WinDDK\\7600.16385.1\\inc\\ddk")
 include_directories(SYSTEM "F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT")
 include_directories(SYSTEM "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Include")
@@ -801,6 +812,7 @@ target_sources(UMTest1 PRIVATE
 	#"dummy_main.cpp"
 	$<TARGET_OBJECTS:UMAsm>
 	"UM/UM_bullet_ex.cpp"
+	"UM/new_header_test.cpp"
 )
 target_compile_definitions(UMTest1 PRIVATE
 	NO_ASM_SYMBOLS
@@ -813,9 +825,9 @@ target_compile_options(UMTest1 PRIVATE
 	"-mno-tbm"
 	"-mno-sse4a"
 	"-mno-fma4"
-	-Rpass=.*vectorize.*
-	-Rpass-missed=.*vectorize.*
-	-Rpass-analysis=.*vectorize.*
+	#-Rpass=.*vectorize.*
+	#-Rpass-missed=.*vectorize.*
+	#-Rpass-analysis=.*vectorize.*
 )
 if(MSVC)
 	target_compile_options(UMTest1 PRIVATE

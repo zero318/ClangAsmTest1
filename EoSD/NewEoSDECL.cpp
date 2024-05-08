@@ -325,6 +325,10 @@ struct Timer {
         this->subframe = 0.0f;
     }
 
+    inline operator float() {
+        return (float)this->current + this->subframe;
+    }
+
     // 0x41B5AF
     dllexport inline int32_t thiscall tick() asm_symbol_rel(codecave:TIMER_tick) {
         this->previous = this->current;
@@ -378,7 +382,7 @@ dllexport gnu_noinline void thiscall Timer::decrement(int32_t count) {
     } else {
         this->previous = this->current;
         this->subframe -= (float)count * SUPERVISOR.game_speed;
-        while (this->subframe <= 1.0f) {
+        while (this->subframe < 0.0f) {
             this->current--;
             this->subframe += 1.0f;
         }
@@ -4407,7 +4411,7 @@ struct Laser {
     union {
         uint16_t flags; // 0x268
         struct {
-            uint16_t __related_to_vm_0_alpha_color : 1;
+            uint16_t fade_appear_style : 1;
         };
     };
     uint16_t color;  // 0x26a
@@ -5071,9 +5075,8 @@ dllexport int32_t cdecl bullet_manager_on_tick(BulletManager* bullet_manager_arg
         current_laser->vm_0.rotation.z = TWO_PI_f - current_laser->angle;
         switch (current_laser->state) {
             case 0:
-                if (current_laser->__related_to_vm_0_alpha_color) {
-                    Timer* fade_timer = &current_laser->timer;
-                    int32_t alpha = ((float)fade_timer->current + fade_timer->subframe) * 255.0f / (float)current_laser->start_time;
+                if (current_laser->fade_appear_style) {
+                    int32_t alpha = (float)current_laser->timer * 255.0f / (float)current_laser->start_time;
                     if (alpha > 255) {
                         alpha = 255;
                     }
@@ -5082,8 +5085,7 @@ dllexport int32_t cdecl bullet_manager_on_tick(BulletManager* bullet_manager_arg
                     int32_t start_timeB = __max(current_laser->start_time, 30);
                     int32_t current_time = current_laser->timer.current;
                     if (current_laser->start_time - start_timeB < current_time) {
-                        Timer* fade_timer = &current_laser->timer;
-                        floatE = ((float)fade_timer->current + fade_timer->subframe) * current_laser->width / (float)current_laser->start_time;
+                        floatE = (float)current_laser->timer * current_laser->width / (float)current_laser->start_time;
                     } else {
                         floatE = 1.2f;
                     }
@@ -5110,17 +5112,15 @@ dllexport int32_t cdecl bullet_manager_on_tick(BulletManager* bullet_manager_arg
                     continue;
                 }
             case 2:
-                if (current_laser->__related_to_vm_0_alpha_color) {
-                    Timer* fade_timer = &current_laser->timer;
-                    int32_t alpha = ((float)fade_timer->current + fade_timer->subframe) * 255.0f / (float)current_laser->start_time;
+                if (current_laser->fade_appear_style) {
+                    int32_t alpha = (float)current_laser->timer * 255.0f / (float)current_laser->start_time;
                     if (alpha > 255) {
                         alpha = 255;
                     }
                     current_laser->vm_0.color = alpha << 24;
                 } else {
                     if (current_laser->end_time > 0) {
-                        Timer* fade_timer = &current_laser->timer;
-                        floatE = current_laser->width - (((float)fade_timer->current + fade_timer->subframe) * current_laser->width / (float)current_laser->end_time);
+                        floatE = current_laser->width - (float)current_laser->timer * current_laser->width / (float)current_laser->end_time;
                         current_laser->vm_0.scale_x = floatE / 16.0f;
                         float3A.x = floatE / 2.0f;
                     }

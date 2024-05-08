@@ -410,6 +410,8 @@ static constexpr MXCSR mxcsr_table[countof(rounding_table)] = {
 	0x00001F80, 0x00003F80, 0x00005F80, 0x00007F80
 };
 
+#if !IS_X64
+
 template<typename T, typename L1, typename L2>
 dllexport gnu_noinline void vectorcall ultimate_float_reduce_test(T& success_counts, long double divisor, L1 funcA, L2 funcB) {
 	FCW initial_fcw;
@@ -530,6 +532,8 @@ dllexport gnu_noinline void run_ultimate_float_reduce_test() {
 		, success_counts[ExtendedPrecision-1][RoundTowardsZero]
 	);
 }
+
+#endif
 
 #include "windows_crap.h"
 
@@ -2909,6 +2913,7 @@ dllexport gnu_noinline void __fastcall time_fix_test2(uint8_t* str) {
 	strftime((char*)str, 9, "", &time);
 }
 
+#if !IS_X64
 dllexport gnu_noinline void __fastcall time_fix_test3(uint8_t* str) {
 	tm time = {};
 	time.tm_mon = aad_math(PackUInt16(str[1], str[0]) - PackUInt16('0', '0'));
@@ -2916,6 +2921,7 @@ dllexport gnu_noinline void __fastcall time_fix_test3(uint8_t* str) {
 	time.tm_year = aad_math(PackUInt16(str[7], str[6]) - PackUInt16('0', '0')) + 2000;
 	strftime((char*)str, 9, "", &time);
 }
+#endif
 
 dllexport int64_t stdcall alldiv_fast(int64_t divisor, int64_t dividend) {
 	return dividend / divisor;
@@ -3145,10 +3151,13 @@ bool dumb_x64_hack() {
 	//std::string
 }
 
+#if !IS_X64
 #pragma comment (lib, "onecore.lib")
+#endif
 
 int stdcall main(int argc, char* argv[]) {
 
+	/*
 	printf("Available: %s\n", bool_str(IsApiSetImplemented("api-ms-win-eventing-classicprovider-l1-1-0")));
 
 	HMODULE module = LoadLibraryA("api-ms-win-eventing-classicprovider-l1-1-0.dll");
@@ -3165,6 +3174,7 @@ int stdcall main(int argc, char* argv[]) {
 	} else {
 		printf("Path: Invalid handle\n");
 	}
+	*/
 
 	return 0;
 
@@ -3831,6 +3841,8 @@ EarlyRet:
 
 //typedef void json_t;
 
+#if !IS_X64
+
 #include "jansson.h"
 
 struct _x86_reg_t {
@@ -3908,6 +3920,8 @@ extern "C" {
 	}
 
 }
+
+#endif
 
 extern "C" {
 	static SRWLOCK srwl = SRWLOCK_INIT;
@@ -4407,6 +4421,7 @@ static_assert(sizeof(fxsave_area_t) <= 512);
 
 //#define AlignUpToMultipleOf2(val, mul) (((val) + (mul) - 1) & -(mul))
 
+#if !IS_X64
 dllexport gnu_noinline gnu_attr(noduplicate) size_t cdecl breakpoint_process(void* bp, size_t addr_index, _x86_reg_t* regs) {
 	use_var(bp);
 	use_var(addr_index);
@@ -4424,6 +4439,7 @@ dllexport void bp_entry() {
 	_x86_reg_t* regs = (_x86_reg_t*)rsp_reg;
 
 }
+#endif
 
 dllexport void test_wrfsbase() {
 	uint64_t addr = rdfsbase64();
@@ -5536,6 +5552,7 @@ dllexport size_t regcall str_to_num_test(const char* str, size_t base) {
 static constexpr const char checkbox_str[] = "checkbox";
 
 
+#if !IS_X64
 /*
 {
 	"state_buffer": "expression",
@@ -5656,7 +5673,6 @@ extern "C" {
 #pragma pop_macro("cdecl")
 #pragma pop_macro("ms_abi")
 #pragma pop_macro("dllexport")
-
 
 struct MenuState {
 	size_t selection;
@@ -5924,6 +5940,8 @@ dllexport int cdecl menu_on_draw(x86_reg_t* regs, json_t* bp_info) {
 	}
 	return BREAKPOINT_EXEC_CAVE;
 }
+
+#endif
 
 #if IS_X64
 

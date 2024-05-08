@@ -553,6 +553,11 @@
           "name": "SIZE_OPTIMIZE",
           "value": "false",
           "type": "BOOL"
+        },
+        {
+          "name": "CMAKE_SYSTEM_VERSION",
+          "value": "10.0.20262.0",
+          "type": "STRING"
         }
       ],
       "intelliSenseMode": "windows-clang-x86"

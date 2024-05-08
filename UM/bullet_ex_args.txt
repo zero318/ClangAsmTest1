@@ -31,7 +31,7 @@ EX_ANGLE:
     r <= -999990.0                          : angle_arg = current_angle
     r > -999990.0 && r < 999990.0           : angle_arg = r
     r >= 999990.0 && r < 1999990.0          : angle_arg = angle_to_player_from_current_position + m
-    s >= 1999990.0 && s < 2999990.0         : angle_arg = r
+    r >= 1999990.0 && r < 2999990.0         : angle_arg = r
     r >= 2999990.0 && r < 3999990.0         : angle_arg = angle_to_player_from_current_position + m * RANDF2
     r >= 3999990.0 && r < 4999990.0         : angle_arg = current_angle + m * RANDF2
     r >= 4999990.0                          : angle_arg = angle_from_boss0_to_current_position

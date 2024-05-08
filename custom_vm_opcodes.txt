@@ -1,0 +1,85 @@
+0   NOARGS X
+        0   RET
+                Pops the stack into IP (JMPI is an alias)
+        1   CALLI
+                Pops the stack into IP, and then pushes the address of the instruction following CALLI
+        2   LEAVE
+                Moves BP into SP and then pops BP
+        3   PUSHIP
+                Pushes the address of the instruction following PUSHIP
+        4   ADD
+        5   SUB
+        6   MUL
+        7   IDIV
+        8   UDIV
+        9   IMOD
+        10  UMOD
+        11  SHL
+        12  SHR
+        13  SAR
+        14  ROL
+        15  ROR
+        16  OR
+        17  AND
+        18  XOR
+        19  EQU
+        20  NEQ
+        21  LES
+        22  LEQ
+        23  GTR
+        24  GEQ
+        25  BLW
+        26  BEQ
+        27  ABV
+        28  AEQ
+                Pop rhs, Pop lhs, Push (lhs op rhs)
+        29  NEG
+        30  INV
+        31  NOT
+        32  EQUZ
+        33  NEQZ
+        34  LESZ
+        35  LEQZ
+        36  GTRZ
+        37  GEQZ
+        38  ZXB
+        39  ZXW
+        40  SXB
+        41  SXW
+                Pop val, Push (op val)
+1   JMP #
+        Adds the 8 bit signed immediate # to IP
+2   JMP ####
+        Adds the 32 bit immediate #### to IP
+3   JMPA ####
+        Moves the 32 bit immediate #### into IP
+4   JZ #
+        Pops the stack and adds the 8 bit signed immediate # to IP if the popped value was zero
+5   JZ ####
+        Pops the stack and adds the 32 bit immediate #### to IP if the popped value was zero
+6   JNZ #
+        Pops the stack and adds the 8 bit signed immediate # to IP if the popped value was not zero
+7   JNZ ####
+        Pops the stack and adds the 32 bit immediate #### to IP if the popped value was not zero
+8   RET #
+        Pops the stack into IP and then discards # values from the stack
+9   CALLR ####
+        Adds the 32 bit immediate #### to IP, then pushes the address of the instruction following CALLR
+10  CALLA ####
+        Moves the 32 bit immediate #### into IP, then pushes the address of the instruction following CALLA
+11  ENTER #
+        Pushes BP, moves SP into BP, and then allocates space for # locals by modifying SP
+12  POP #
+        Discards # values from the stack
+13  PUSHL #
+        Pushes local index # onto the stack
+14  POPL #
+        Pops the stack into local index #
+15  PUSH #
+        Pushes stack index # onto the stack
+16  PUSHI ####
+        Pushes the 32 bit immediate #### (requires 3 instruction widths)
+17  PUSHB #
+        Pushes the 8 bit unsigned immediate # onto the stack
+18  PUSHC #
+        Pushes the 8 bit signed immediate # onto the stack

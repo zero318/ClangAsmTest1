@@ -1121,13 +1121,10 @@ static inline T tzmskz(const T& value) {
 #endif
 }
 
+#ifndef __x86_64__
 static inline uint16_t aad_math(uint16_t in, const uint8_t mul = 10u) {
 	__asm__(
-#ifndef __x86_64__
 		"AAD %[mul]"
-#else
-		""
-#endif
 		: asm_arg("+a", in)
 		: asm_arg("N", mul)
 		: "cc"
@@ -1146,17 +1143,14 @@ static inline aam_ret aam_math(uint8_t dividend, const uint8_t divisor = 10u) {
 	register uint8_t remainder asm("al");
 	register uint8_t quotient asm("ah");
 	__asm__(
-#ifndef __x86_64__
 		"AAM %[divisor]"
-#else
-
-#endif
 		: asm_arg("=a", remainder), asm_arg("=a", quotient)
 		: asm_arg("a", dividend), asm_arg("N", divisor)
 		: "cc"
 	);
 	return { remainder, quotient };
 }
+#endif
 
 static inline bool complement_carry(void) {
 	int carry_flag;

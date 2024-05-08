@@ -278,7 +278,22 @@ enum InterpMode : int32_t {
     DecelAccel = 13,
     DecelAccelFast = 14,
     ForceInitial = 15,
-    ForceFinal = 16
+    ForceFinal = 16,
+    ConstantAccel = 17,
+    DecelerateSine = 18,
+    AccelerateSine = 19,
+    DecelAccelSine = 20,
+    AccelDecelSine = 21,
+    AccelParabolaA = 22,
+    AccelParabolaB = 23,
+    AccelParabolaC = 24,
+    AccelParabolaD = 25,
+    AccelParabolaE = 26,
+    DecelParabolaA = 27,
+    DecelParabolaB = 28,
+    DecelParabolaC = 29,
+    DecelParabolaD = 30,
+    DecelParabolaE = 31
 };
 #endif
 

@@ -1,0 +1,14 @@
+!javamap
+
+# mappings from zero318
+
+!ins_names
+0 nop
+1 push_null
+2 push_neg1
+3 push_0
+4 push_1
+5 push_2
+6 push_3
+7 push_4
+8 push_5

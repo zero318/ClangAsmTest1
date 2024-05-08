@@ -679,8 +679,51 @@ using vec = std::conditional_t<is_aligned, \
 > gnu_attr(__aligned__(is_aligned ? count * sizeof(T) : 1));
 */
 
-template<typename T, size_t count>
-using vec = T gnu_attr(__vector_size__(count * sizeof(T)), __aligned__(count * sizeof(T)));
+//template<typename T, size_t count>
+//using vec = T gnu_attr(__vector_size__(count * sizeof(T)), __aligned__(count * sizeof(T)));
+
+template <typename T, size_t count, bool is_aligned>
+struct $vec_impl {
+    using type gnu_attr(__vector_size__(count * sizeof(T)), __aligned__(alignof(T))) = T;
+};
+
+template <typename T, size_t count>
+struct $vec_impl<T, count, true> {
+    using type gnu_attr(__vector_size__(count * sizeof(T))) = T;
+};
+
+template <typename T, size_t count, bool is_aligned = false>
+using vec = $vec_impl<T, count, is_aligned>::type;
+
+template <typename T, typename=void>
+struct is_vector : std::false_type {};
+
+template <typename T>
+struct is_vector<T, std::void_t<decltype(std::declval<T>()[0])>> {
+private:
+    using B = std::remove_reference_t<decltype(std::declval<T>()[0])>;
+public:
+    static constexpr bool value = !(std::is_pointer_v<T> || std::is_array_v<T> || std::is_class_v<T> || std::is_union_v<T>) && sizeof(B) <= sizeof(T);
+};
+
+template<typename T>
+inline constexpr bool is_vector_v = is_vector<T>::value;
+
+template <typename T>
+struct vector_type {
+    using type = std::remove_reference_t<decltype(std::declval<T>()[0])>;
+};
+
+template <typename T>
+using vector_type_t = vector_type<T>::type;
+
+template <typename T>
+struct vector_length {
+    static constexpr size_t value = sizeof(T) / sizeof(vector_type_t<T>);
+};
+
+template <typename T>
+inline constexpr size_t vector_length_v = vector_length<T>::value;
 
 enum InlineState {
 	DefaultInline,
