@@ -41,6 +41,8 @@ gnu_noinline void assume_all_registers_volatile(void* use_arg) {
 
 #endif
 
+/*
+
 struct StrConvFlags {
 	uint8_t known_base = 0;
 	bool skip_whitespace = true;
@@ -193,3 +195,4 @@ fail:
 	return { std::numeric_limits<T>::max, str };
 }
 
+*/

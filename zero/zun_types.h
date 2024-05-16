@@ -98,7 +98,7 @@ struct Float2 : Float1 {
     }
 
     // th14: 0x407090, 0x415590, 0x42E270, 0x443FA0
-    inline float angle_to_self_pos() {
+    inline float direction() {
         return zatan2f(this->y, this->x);
     }
     

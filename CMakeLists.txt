@@ -3,7 +3,7 @@
 #
 cmake_minimum_required (VERSION 3.8)
 
-set(CMAKE_CXX_STANDARD 23)
+#set(CMAKE_CXX_STANDARD 23)
 
 project ("ClangAsmTest1")
 
@@ -25,6 +25,7 @@ add_executable(crappy_launcher)
 add_executable(udoalg_test)
 add_executable(3d_flying_objects)
 add_executable(discord_test)
+add_executable(AoCFTest1)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
 add_library(winhttp_websocket SHARED)
@@ -34,6 +35,8 @@ add_library(parakit_inject SHARED)
 add_library(python_test SHARED)
 add_library(glaux STATIC)
 add_library(glcommon STATIC)
+#add_library(twitch_irc_test SHARED)
+add_executable(twitch_irc_test)
 
 set(programs
 ${PROJECT_NAME}
@@ -63,6 +66,8 @@ glaux
 glcommon
 3d_flying_objects
 discord_test
+twitch_irc_test
+AoCFTest1
 )
 
 enable_language(ASM-ATT)
@@ -101,6 +106,16 @@ target_compile_definitions(${EXE} PRIVATE
 )
 endif()
 
+if(${CLANG_TYPE} STREQUAL "CLANG-CL")
+target_compile_definitions(${EXE} PRIVATE
+	CLANG_CL=1
+)
+else()
+target_compile_definitions(${EXE} PRIVATE
+	CLANG_CL=0
+)
+endif()
+
 #if(MSVC)
 # Deal with MSVC warnings
 target_compile_definitions(${EXE} PRIVATE
@@ -117,11 +132,17 @@ target_compile_definitions(${EXE} PRIVATE
 	_HAS_EXCEPTIONS=0
 	_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 
+	# Clang loves complaining about deprecated
+	# things that I'm not even using
+	_WINSOCK_DEPRECATED_NO_WARNINGS
+
 	# IDK why this started not getting defined, but this fixes it
 	POINTER_64=__ptr64
 	# For some reason cdecl keeps getting itself undef'ed and this prevents it
 	DOSWIN32=1
 	_LDSUPPORT=1
+
+	DONT_COMPILE_REGISTER_ASSUME_JANK=1
 )
 if(IS_X64)
 target_compile_definitions(${EXE} PRIVATE
@@ -154,7 +175,7 @@ target_compile_definitions(${EXE} PRIVATE
 	__AVX512VLBF16INTRIN_H
 	__AVXNECONVERTINTRIN_H
 
-	_MSVC_LANG=202003L # Hopefully this is fine?
+	#_MSVC_LANG=202003L # Hopefully this is fine?
 )
 
 # Language Standards
@@ -174,18 +195,19 @@ target_compile_definitions(${EXE} PRIVATE
 
 # CPU Feature flags
 target_compile_options(${EXE} PRIVATE
-	#"-mno-avx"
-	#"-mno-bmi"
+	"-mno-avx"
+	"-mno-bmi"
 	#"-msse4.1"
-	#"-mno-sse4.1"
-	#"-mno-ssse3"
-	#"-mno-sse3"
+	"-mno-sse4.1"
+	"-mno-ssse3"
+	"-mno-sse3"
+	"-mno-lzcnt"
 
-	#"-mno-xop"
-	#"-mno-tbm"
-	#"-mno-sse4a"
-	#"-mno-fma4"
-	#"-mno-fma"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-fma"
 	#"SHELL:-Xclang -mprefer-vector-width=128"
 )
 
@@ -349,10 +371,13 @@ if(MSVC)
 	)
 endif()
 
+if(${CLANG_TYPE} STREQUAL "CLANG-CL")
+else()
 target_compile_options(${EXE} PRIVATE
 	#-flto=thin
-	#-flto=full
+	-flto=full
 )
+endif()
 
 target_compile_options(${EXE} PRIVATE
 	${SLASH_CLANG_ARG}-fvectorize
@@ -490,6 +515,8 @@ target_compile_options(${EXE} PRIVATE
 
 	${SLASH_CLANG_ARG}-mno-ms-bitfields
 	#"SHELL:-Xclang -mno-ms-bitfields"
+
+	-fno-exceptions
 )
 
 target_link_options(${EXE} PRIVATE
@@ -546,6 +573,7 @@ target_link_directories(${EXE} PRIVATE "C:\\Program Files (x86)\\Microsoft SDKs\
 else()
 target_link_libraries(${EXE} "C:\\WinDDK\\7600.16385.1\\lib\\wxp\\i386\\winmm.lib")
 target_link_directories(${EXE} PRIVATE "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.20262.0\\ucrt\\x86")
+target_link_directories(${EXE} PRIVATE "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.20262.0\\um\\x86")
 endif()
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\dsound.lib")
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\dinput8.lib")
@@ -563,7 +591,7 @@ target_sources(${EXE} PRIVATE
 	#"util.h"
 	"zero/force_macros.h"
 	"zero/util.h"
-	"zero/util.cpp"
+	#"zero/util.cpp"
 	"zero/zun.h"
 	"zero/zun_types.h"
 	"zero/zun_math.h"
@@ -825,6 +853,7 @@ target_compile_options(UMTest1 PRIVATE
 	"-mno-tbm"
 	"-mno-sse4a"
 	"-mno-fma4"
+	"-mno-sse3"
 	#-Rpass=.*vectorize.*
 	#-Rpass-missed=.*vectorize.*
 	#-Rpass-analysis=.*vectorize.*
@@ -861,6 +890,11 @@ target_compile_options(udoalg_test PRIVATE
 	-Rpass=.*vectorize.*
 	-Rpass-missed=.*vectorize.*
 	-Rpass-analysis=.*vectorize.*
+)
+
+target_sources(AoCFTest1 PRIVATE
+	"dummy_main.cpp"
+	"AoCF/aocf_test.cpp"
 )
 
 
@@ -975,6 +1009,26 @@ target_link_options(winhttp_websocket PRIVATE
 	/DEF:winhttp_websocket.def
 	/DLL
 )
+
+target_sources(twitch_irc_test PRIVATE
+	"twitch_irc_test/twitch_irc.cpp"
+	"twitch_irc_test/twitch_irc_test.cpp"
+)
+target_compile_options(twitch_irc_test PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+#target_compile_definitions(twitch_irc_test PRIVATE
+	#STOP_LINKING_DEFAULT_LIB_PLZ
+#)
+#target_link_options(twitch_irc_test PRIVATE
+	#/DLL
+#)
 
 target_sources(winhttp_test3 PRIVATE
 	"winhttp_test3/test.cpp"

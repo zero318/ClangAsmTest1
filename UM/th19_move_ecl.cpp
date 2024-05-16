@@ -42,9 +42,10 @@ enum EclOpcodes {
     MoveToEnemyIdRel = 433,
     MoveCurveAbs = 434,
     MoveCurveRel = 435,
-    
-    MoveCurveAddAbs = 438,
-    MoveCurveAddRel = 439,
+    MovePositionOffsetAbsInterp = 436,
+    MovePositionOffsetRelInterp = 437,
+    MoveCurveOffsetAbs = 438,
+    MoveCurveOffsetRel = 439,
     MoveAngleAbs = 440,
     MoveAngleAbsInterp = 441,
     MoveAngleRel = 442,
@@ -109,26 +110,26 @@ switch (opcode) {
     {
         MotionData& motion = (opcode == MovePositionAbs) ? this->motion.absolute : this->motion.relative;
         float X = this->get_float_arg(0);
-        motion.get_position().x = X;
+        motion.get_position().x += X;
         float Y = this->get_float_arg(1);
-        motion.get_position().y = Y;
+        motion.get_position().y += Y;
         float Z = this->get_float_arg(2);
-        motion.get_position().z = Z;
+        motion.get_position().z += Z;
         this->update_motion();
         break;
     }
     case MovePositionAbsInterp: case MovePositionRelInterp:
-    case 436: case 437:
+    case MovePositionOffsetAbsInterp: case MovePositionOffsetRelInterp:
     {
-        MotionData& motion = (opcode != MovePositionAbsInterp && opcode != 436) ? this->motion.relative : this->motion.absolute;
-        ZUNInterpEx<Float3>& position_interp = (opcode != MovePositionAbsInterp && opcode != 436) ? this->position_interp.relative : this->position_interp.absolute;
+        MotionData& motion = (opcode != MovePositionAbsInterp && opcode != MovePositionOffsetAbsInterp) ? this->motion.relative : this->motion.absolute;
+        ZUNInterpEx<Float3>& position_interp = (opcode != MovePositionAbsInterp && opcode != MovePositionOffsetAbsInterp) ? this->position_interp.relative : this->position_interp.absolute;
         float X = this->get_float_arg(2);
         float Y = this->get_float_arg(3);
         if (this->get_int_arg(0) <= 0) {
             position_interp.reset_end_time();
             break;
         }
-        if (opcode == 436 || opcode == 437) {
+        if (opcode == MovePositionOffsetAbsInterp || opcode == MovePositionOffsetRelInterp) {
             if (!this->get_mirror_flag()) {
                 X = motion.get_position_x() + X;
             } else {
@@ -149,21 +150,21 @@ switch (opcode) {
         }
         position_interp.set_bezier1(Float3(X, Y, 0.0f));
         position_interp.reset_timer();
-        position_interp.set_mode_to_0();
+        motion.set_axis_velocity_mode();
         break;
     }
     case MoveCurveAbs: case MoveCurveRel:
-    case MoveCurveAddAbs: case MoveCurveAddRel:
+    case MoveCurveOffsetAbs: case MoveCurveOffsetRel:
     {
-        MotionData& motion = (opcode != MoveCurveAbs && opcode != MoveCurveAddAbs) ? this->motion.relative : this->motion.absolute;
-        ZUNInterpEx<Float3>& position_interp = (opcode != MoveCurveAbs && opcode != MoveCurveAddAbs) ? this->position_interp.relative : this->position_interp.absolute;
+        MotionData& motion = (opcode != MoveCurveAbs && opcode != MoveCurveOffsetAbs) ? this->motion.relative : this->motion.absolute;
+        ZUNInterpEx<Float3>& position_interp = (opcode != MoveCurveAbs && opcode != MoveCurveOffsetAbs) ? this->position_interp.relative : this->position_interp.absolute;
         float X = this->get_float_arg(3);
         float Y = this->get_float_arg(4);
         if (this->get_int_arg(0) <= 0) {
             position_interp.reset_end_time();
             break;
         }
-        if (opcode == MoveCurveAddAbs || opcode == MoveCurveAddRel) {
+        if (opcode == MoveCurveOffsetAbs || opcode == MoveCurveOffsetRel) {
             if (!this->get_mirror_flag()) {
                 X = motion.get_position_x() + X;
             } else {
@@ -451,9 +452,9 @@ switch (opcode) {
         this->update_motion();
         break;
     }
-    case 418: case 419:
+    case MoveOriginAbs: case MoveOriginRel:
     {
-        MotionData& motion = (opcode == 418) ? this->motion.absolute : this->motion.relative;
+        MotionData& motion = (opcode == MoveOriginAbs) ? this->motion.absolute : this->motion.relative;
         float X = this->get_float_arg(0);
         float Y = this->get_float_arg(1);
         if (X > -999999.0) {

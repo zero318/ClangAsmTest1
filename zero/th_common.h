@@ -280,7 +280,6 @@ template <typename T, size_t count, bool is_aligned>
 struct _vec_impl {
     using type gnu_attr(__vector_size__(count * sizeof(T)), __aligned__(alignof(T))) = T;
 };
-
 template <typename T, size_t count>
 struct _vec_impl<T, count, true> {
     using type gnu_attr(__vector_size__(count * sizeof(T))) = T;
@@ -1578,7 +1577,9 @@ public:
 #if TH_VER > IN_VER
         return this->add(1.0f);
 #else
+        this->previous = this->current;
         // Notice that there's no lag frame handling
+        // and previous is always set correctly
         float game_speed = GAME_SPEED;
         if (
 #if TH_VER == EoSD_VER

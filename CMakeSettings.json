@@ -789,7 +789,8 @@
           "value": "false",
           "type": "BOOL"
         }
-      ]
+      ],
+      "intelliSenseMode": "windows-clang-x86"
     },
     {
       "name": "x86-Clang-Release-Debug-SmallSize",

@@ -1356,6 +1356,10 @@ gnu_used static volatile auto used_name = var
 gnu_noinline void assume_non_vector_registers_volatile();
 gnu_noinline void assume_all_registers_volatile();
 gnu_noinline void assume_all_registers_volatile(void* use_arg);
+#else
+static gnu_noinline void assume_non_vector_registers_volatile() {}
+static gnu_noinline void assume_all_registers_volatile() {}
+static gnu_noinline void assume_all_registers_volatile(void* use_arg) {}
 #endif
 
 template<typename T, uint8_t known_base = 0, bool enable_relative = false, bool skip_whitespace = true, bool check_sign = true>

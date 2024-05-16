@@ -1,0 +1,104 @@
+Instructions:
+- 30: The majority of the implementation is still present in MoF
+- 31: Does not currently exist on the website at all. Unknown debug instruction with no implementation known
+- 40: Rename to `frameEnter` because it's allocating stack frames instead of raw byte quantities (If called multiple times it will shift the meaning of existing local variable indices rather than just adding more).
+- 41: Does not currently exist on the website at all. Should be named `frameLeave` to mirror `ins_40`. Only useful if `ins_40` has been called multiple times because `ret` implicitly leaves the current frame.
+- 89: Name and description are both completely wrong. Should be named `angleDiff` and it functions as described here https://discord.com/channels/661700195561766935/668573654333784074/1226672008990031882
+- 92: Should be named `floatTimeBezier`.
+- 93: Should be named `circlePosRand`. 
+- 94: Does not currently exist on the website at all. Added in UM. Should be named `ellipsePos`.
+- 303: Should be named just `anmSetSlot` because it's setting the script and not a sprite.
+- 307: Should be named `anmCreateFrontAbs` since all it does is create an AnmVM at the enemy's current position and no data is written back to the ANM slots.
+- 308: Should be named `anmCreateFrontZero`. Similar to `anmCreateFrontAbs` but spawns at 0,0.
+- 313: Should be named `anmPlayAttack` and is not related to 307 at all. The argument is the ANM slot to play the attack animation on (`script`+5 relative to `anmSetMain`)
+- 314: Should be named `anmCreateBack`. It works exactly like 307 but adds the VM to the back of the world list instead of the front.
+- 315: Should be named `anmCreateRotate`.
+- 316: Should be named `anmPlayAttackEx`. The first argument is the ANM slot to play the attack animation on and the second argument is the index of the the script to play. (`script`+5+index relative to `anmSetMain`, but chooses `script` if index is negative)
+- 317: Should be named `anmInterrupt` for consistency with existing documentation about ANM.
+- 318: Should be named `anmPlayMain`. Switches the currently playing animation back to whatever was specified as the main script. Does not do any kind of "reset" on the other slots.
+- 322: Should be named `anmSetSlotIndirect` (similar to whatever the name of 303 is). Every enemy has a set of "indirect" ANM slots that can reference an existing slot if there isn't a script already running on that regular slot index. For example, if a script has been set into slot 0 and no script has been specified in slot 1, then `anmSetSlotIndirect(1, 0)` would fill slot 1 with a reference to the VM in slot 0. (This was used by Byakuren)
+- 324: Should be named `enmPos` instead of `ins_801`. This is an *exact* duplicate of `ins_801`, except it checks that the enemy ID actually exists. This instruction has existed longer (since UFO) and doesn't crash the game.
+- 333: Should be named `anmMoveTime`.
+- 334: Should be named `effCreate`.
+- 338: Should be named `anmCreateFrontRel`. Similar to `anmCreateFrontAbs` but allows specifying a 3D offset.
+- 339: Should be named `anmCreateFrontRun`. Similar to `anmCreateFrontAbs` but the created AnmVM is run a number of times equal to the third argument.
+- 400&402: If any of the arguments are <= -999999.0 then those arguments are ignored and their corresponding values are unchanged. Changes the current movement mode to "axis velocity".
+- 401&403:  If the time argument is negative then the current interpolation end time is set to 0 and nothing else is done, effectively stopping any current position interpolation. Overwrites any current position interpolation. If any of the arguments are <= -999999.0 then those arguments are ignored and their corresponding current values are used instead. Changes the current movement mode to "axis velocity".
+- 404&406&428&430: If any of the arguments are <= -999999.0 then those arguments are ignored and their corresponding values are unchanged. Changes the current movement mode to "axis velocity".
+- 405&407&429&431: If the time argument is negative then the current interpolation end time is set to 0 and nothing else is done, effectively stopping any current angle/speed interpolations. Overwrites any current angle/speed interpolations. If any of the arguments are <= -999999.0 then those arguments are ignored and their corresponding current values are used instead. Changes the current movement mode to "axis velocity".
+- 408&410: If any of the arguments are <= -999999.0 then those arguments are ignored and their corresponding values are unchanged. Changes the current movement mode to "circle". If the enemy is already in "circle" mode then any call to this instruction will update the origin position to the current position.
+- 409&411: If the time argument is negative then the current interpolation end time is set to 0 and nothing else is done, effectively stopping any current speed/circle interpolations. Overwrites any current speed/circle interpolations. If any of the arguments are <= -999999.0 then those arguments are ignored and their corresponding current values are used instead. Changes the current movement mode to "circle". If the enemy is already in "circle" mode then any call to this instruction will update the origin position to the current position.
+- 412: Should be named `moveRandTime`. Does not have any special handling for negative time arguments. Overwrites any current angle/speed interpolations. Changes the current movement mode to "axis velocity".
+- 413: Should be named `moveRandRelTime`. Does not have any special handling for negative time arguments. Overwrites any current angle/speed interpolations. Changes the current movement mode to "axis velocity".
+- 414-415: Needs a note that it applies specifically to boss 0. Does not change the current movement mode.
+- 416: Should be renamed to `movePosAdd`. Is *not* similar to `movePos`. Does not change the current movement mode.
+- 417: Should be renamed to `movePosAddRel`. Is *not* similar to `movPosRel`. Does not change the current movement mode.
+- 418: Should be renamed to `moveOrigin`. If any of the arguments are <= -999999.0 then those arguments are ignored and their corresponding values are unchanged. Does not change the current movement mode. Only ever acted like `movePosAdd` because ZUN reused the same Float3 for multiple purposes in different movement modes. Needs note in games < UDoALG that the implementation is broken and the instruction falls through into other code.
+- 419: Should be named `moveOriginRel`. Very similar to 418, including the fallthrough problem.
+- 420&422: If any of the arguments are <= -999999.0 then those arguments are ignored and their corresponding values are unchanged. Changes the current movement mode to "ellipse". If the enemy is already in "circle" mode (NOT ELLIPSE MODE) then any call to this instruction will update the origin position to the current position.
+- 421&423: If the time argument is negative then the current interpolation end time is set to 0 and nothing else is done, effectively stopping any current speed/circle/ellipse interpolations. Overwrites any current speed/circle/ellipse interpolations. If any of the arguments are <= -999999.0 then those arguments are ignored and their corresponding current values are used instead. Changes the current movement mode to "ellipse". If the enemy is already in "circle" mode (NOT ELLIPSE MODE) then any call to this instruction will update the origin position to the current position.
+- 425-426: Does not have any special handling for negative time arguments. Overwrites any current position interpolation. If the x1 or y1 arguments are <= -999999.0 then those arguments are ignored and the enemy's current position along the corresponding axis is used instead. Changes the current movement mode to "axis velocity".
+- 427: Should be renamed to `moveStop`. The current relative position is added to the absolute position and the relative position is set to 0. For both absolute and relative movement speed is set to 0, the mode-specific float3 is set to 0, the interpolators for position/angle/speed/circle/ellipse are cleared, and the current movement mode is set to "axis velocity". All angle values are left unchanged.
+- 432-433: Needs a warning about the game crashing if the enemy ID does not exist. Does not change the current movement mode.
+- 434-435: If the time argument is negative then the current interpolation end time is set to 0 and nothing else is done, effectively stopping any current position interpolation. Overwrites any current position interpolation. If the x or y arguments are <= -999999.0 then those arguments are ignored and the enemy's current position along the corresponding axis is used instead. Changes the current movement mode to "axis velocity".
+- 436: Should be named `movePosOffsetTime`. Functions like `movePosTime` but the enemy's current position is added to both the X and Y arguments. If the time argument is negative then the current interpolation end time is set to 0 and nothing else is done, effectively stopping any current position interpolation. Overwrites any current position interpolation. The current X position is subtracted instead if the mirror flag is set. If the x or y arguments (after adding position) are <= -999999.0 then those arguments are ignored and the enemy's current position along the corresponding axis is used instead. Changes the current movement mode to "axis velocity".
+- 437: Should be named `movePosOffsetRelTime`. I'm not retyping that whole block from 436, this is just a relative version.
+- 438: Should be named `moveCurveOffset`. If the time argument is negative then the current interpolation end time is set to 0 and nothing else is done, effectively stopping any current position interpolation. Overwrites any current position interpolation. The current X position is subtracted instead if the mirror flag is set. If the x or y arguments (after adding position) are <= -999999.0 then those arguments are ignored and the enemy's current position along the corresponding axis is used instead. Changes the current movement mode to "axis velocity".
+- 439: Should be named `moveCurveOffsetRel`. Similar to 438 but relative.
+- 440&442: Does not have any special handling for a value <= -999999.0. If the angle argument is used and the mirror flag is set then the angle value is used as (HALF_PI - (angle - HALF_PI)). Changes the current movement mode to "axis velocity".
+- 441&443: If the time argument is negative then the current interpolation end time is set to 0 and nothing else is done, effectively stopping any current angle interpolations. Overwrites any current angle/speed interpolations. If the angle argument is <= -999999.0 then that arguments is ignored and enemy's current angle is used instead. If the angle argument is used and the mirror flag is set then the angle value is used as (HALF_PI - (angle - HALF_PI)). Changes the current movement mode to "axis velocity".
+- 444&446: If the speed argument is <= -999999.0 then that arguments is ignored and enemy's current speed is used instead. Changes the current movement mode to "axis velocity".
+- 445&447: If the time argument is negative then the current interpolation end time is set to 0 and nothing else is done, effectively stopping any current speed interpolations. Overwrites any current speed interpolations. If the speed argument is <= -999999.0 then that arguments is ignored and enemy's current speed is used instead. Changes the current movement mode to "axis velocity".
+- 500: Any enemy that runs this instruction without having a chapter weight set will be automatically assigned a chapter weight of 1.
+- 506: For UM also clears all data about timed bonus drops.
+- 507: Arguments are incorrect. The enemy has a fixed array of "drop slots" that contain additional item ids to drop. The first argument selects a slot and the second argument is the item id. There is no amount argument. Index 0 corresponds to the main drop.
+- 518: Should be renamed to `msgRead` because MSG scripts don't need to contain dialog. (If this seems silly, think about how many stupid questions get asked about everything else.)
+- 519: Should be renamed to `msgWait` because it merely waits on any running MSG scripts to end rather than waiting for the dialog within them to end.
+- 520: Only boss ids 0, 1, and 2 are checked in most games.
+- 524: Sets the chapter weight of the current enemy to 0. (This might make it impossible to get 100% shootdown rate if used after ins_500, this needs to be checked)
+- 529: This instruction is completely broken and should never be used. If rank is > 200 then var = B, otherwise var = var. A and C are completely unreferenced.
+- 531: Name and description are both completely wrong. Should be named `rankFLerp` or something similar. Sets var to a value between A and B depending on rank.
+- 532: This instruction is completely broken and should never be used. If rank is > 200 then var = B, otherwise var = var. A and C are completely unreferenced.
+- 533: Name and description are both completely wrong. Should be named `rankILerp` or something similar. Sets var to a value between A and B depending on rank.
+- 535&536: Needs a note that the lunatic value is used on higher difficulties like overdrive.
+- 543: Sets a flag somewhere in the spellcard data related to ANM. Still not much is known.
+- 544: Should be named `flagNoHoming`. Sets the state of a bitflag that prevents homing shots from targeting this enemy.
+- 546: Bomb shields overwrite whatever script is currently playing in ANM slot 0.
+- 548: Needs a note that the lunatic value is used on higher difficulties like overdrive.
+- 549: Sets a flag in the current enemy's data. Still not much is known.
+- 550: Should be named `enmKillId`. Sets the kill id of the current enemy.
+- 551: Should be named `enmKillAllId`. Kills all enemies with a kill id matching the instruction argument.
+- 552: Description is inaccurate. Does not "increase" the layer of the ANM scripts and instead changes the value that they are offset from. (Calling this instruction twice will not accumulate anything, instead the value is merely set)
+- 560: Should be named `etBounceBounds`. Sets the x/y bounds for the bullet bounce effect.
+- 561: Name and description are both completely wrong. I don't know what a good name for it would be, but all it does is play the sounds/ANMs for an enemy dying. There is no code anywhere in the instruction that actually kills the enemy or changes the currently executing sub.
+- 563: Should be named `flagRectangleHitbox`.
+- 566: Should be named `enemyKill`. This does everything that the documentation claims ins_561 does.
+- 567: Sets a flag somewhere in the spellcard data. Still not much is known.
+- 568: Should be named `flagArmored`. Enables or disables spellcard damage reduction. Can be used arbitrarily regardless of whether a spell is/isn't active.
+- 569: Sets the chapter weight of the current enemy if it hasn't already been set. If the enemy has a spawn weight of 1 (a.k.a. you set a hitbox first with ins_500) then the value added to the chapter total will be the argument -1 (since ins_500 already added 1).
+- 570: Adds the chapter weight of the enemy to the chapter shootdown total and then resets the stored chapter weight to 0. This effectively "kills" the current enemy as far as shootdown calculation is concerned, but it can then be assigned a new weight later. (Maybe ZUN was thinking about accumulating multiple boss phases in one chapter?)
+- 571: Should be named `enmKillAllNoCallbacks`. Kills all enemies without running any death subs.
+- 573: Instruction added for UM that isn't currently on the website. Should be named `dropTimedExtra`. Similar to 507 but specifies the drop for a timed bonus drop slot instead of a regular extra drop.
+- 574: Instruction added for UM that isn't currently on the website. Should be named `dropTimer`. Sets how long the timed bonus drops are available for.
+- 619: Name and description are both completely wrong. Should be named `etSpeedRLerp` or something similar. Sets speed1 and speed2 to value2 between the corresponding arguments depending on rank.
+- 622: Name and description are both completely wrong. Should be named `etCountRLerp` or something similar. Sets count1 and count2 to value2 between the corresponding arguments depending on rank.
+- 625&626: Need a note that the lunatic values are used on higher difficulties like overdrive.
+- 629: Should be renamed to `bossFog` or similar to disambiguate from `fogTime`.
+- 630: Should be renamed to `stdInterrupt` for consistency with existing documentation about STD.
+- 633: Should be renamed to `setExtDmgFunc`. The argument is an index and several games support values >1.
+- 700: Should be renamed to `laserSize`. This instruction doesn't really do anything to "reset" the shooter's data like `etNew` does, instead merely configuring the size data. For example, it could be used in a loop without needing to re-call `laserTiming`.
+- 706: Should be renamed to `laserSpeed`. 
+- 707-709: Should have `St` removed from their names because they can also be used with beam lasers.
+- 713: Should be named `laserBeOn` or similar.
+- 714: Sets the state of a flag in beam lasers.
+- 800: Should be renamed to `enmIdChangeSub`. Does not actually work like an interrupt, instead reinitializing the EclVM, canceling all asyncs, and pointing it to the start of the specified sub. Does not crash the game if the enemy ID does not exist. Can safely be used on the current enemy.
+- 801: Should be renamed to `enmPosCrash`. The *only* difference between this instruction and 324 is that this one crashes the game with a null pointer if the enemy ID does not exist. This instruction needs ***BIG BOLD WARNINGS*** telling people to never use it because it is strictly worse.
+- 802: Only applies to boss ids 0, 1, and 2. Performs the same sort of sub change as 800.
+
+Variables:
+- I0-I3, F0-F7: Should be given an `E` prefix to indicate that they're valid per-enemy and not per-context like the variables in old engine games. (All of the `L` prefixed variables from IN should also be changed to an `E` because they work the same way.)
+- BOSS_X, BOSS_Y: Need a note that it applies specifically to boss 0.
+- ANM_ID: Should be renamed to `ANM_MAIN` to better match the instruction names and avoid confusion with the AnmID type used in RE stuff.
+- DS3: Not actually specific to DS. Seems to be related to detecting replays.
+- 9909: Should be named `PARENT_ID`.
+- 9905: Should be named `CHAPTER`.
