@@ -1910,9 +1910,11 @@ __asm__ __volatile__ ("CALL %P[" MACRO_STR(func) "]"::asm_arg("i", func))
 #if __x86_64__
 #define asm64(symbol) asm(symbol)
 #define asm32(symbol)
+#define asm3264(symbol32, symbol64) asm(symbol64)
 #else
 #define asm64(symbol)
 #define asm32(symbol) asm(symbol)
+#define asm3264(symbol32, symbol64) asm(symbol32)
 #endif
 
 #ifndef NO_ASM_SYMBOLS

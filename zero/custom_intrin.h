@@ -350,6 +350,17 @@ static forceinline int32_t sign_extend_eax_mask(int32_t eax_value) {
 	return ret;
 }
 
+static forceinline uint32_t rdtsc_low(void) {
+	uint32_t tick;
+	__asm__ volatile(
+		"RDTSC"
+		: asm_arg("=a", tick)
+		:
+		: clobber_list("edx")
+	);
+	return tick;
+}
+
 static forceinline uint64_t rdtsc(void) {
 #ifdef _M_IX86
 	uint64_t tick;

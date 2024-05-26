@@ -117,17 +117,17 @@ static inline T1* allocate(size_t count) {
 	return (T1*)malloc(sizeof(T1) + sizeof(T2[count]));
 }
 
-dllexport BOOL WINAPI WinHttpCloseHandle(HINTERNET hInternet) asm("_WinHttpCloseHandle");
-dllexport HINTERNET WINAPI WinHttpConnect(HINTERNET hSession, LPCWSTR pswzServerName, INTERNET_PORT nServerPort, DWORD dwReserved) asm("_WinHttpConnect");
-dllexport DWORD WINAPI WinHttpWebSocketClose(HINTERNET hWebSocket, USHORT usStatus, PVOID pvReason, DWORD dwReasonLength) asm("_WinHttpWebSocketClose");
-dllexport DWORD WINAPI WinHttpWebSocketReceive(HINTERNET hWebSocket, PVOID pvBuffer, DWORD dwBufferLength, DWORD* pdwBytesRead, WINHTTP_WEB_SOCKET_BUFFER_TYPE* peBufferType) asm("_WinHttpWebSocketReceive");
-dllexport DWORD WINAPI WinHttpWebSocketSend(HINTERNET hWebSocket, WINHTTP_WEB_SOCKET_BUFFER_TYPE eBufferType, PVOID pvBuffer, DWORD dwBufferLength) asm("_WinHttpWebSocketSend");
-dllexport HINTERNET WINAPI WinHttpWebSocketCompleteUpgrade(HINTERNET hRequest, DWORD_PTR pContext) asm("_WinHttpWebSocketCompleteUpgrade");
-dllexport BOOL WINAPI WinHttpReceiveResponse(HINTERNET hRequest, LPVOID lpReserved) asm("_WinHttpReceiveResponse");
-dllexport BOOL WINAPI WinHttpSendRequest(HINTERNET hRequest, LPCWSTR lpszHeaders, DWORD dwHeadersLength, LPVOID lpOptional, DWORD dwOptionalLength, DWORD dwTotalLength, DWORD_PTR dwContext) asm("_WinHttpSendRequest");
-dllexport HINTERNET WINAPI WinHttpOpenRequest(HINTERNET hConnect, LPCWSTR pwszVerb, LPCWSTR pwszObjectName, LPCWSTR pwszVersion, LPCWSTR pwszReferrer, LPCWSTR FAR* ppwszAcceptTypes, DWORD dwFlags) asm("_WinHttpOpenRequest");
-dllexport BOOL WINAPI WinHttpSetOption(HINTERNET hInternet, DWORD dwOption, LPVOID lpBuffer, DWORD dwBufferLength) asm("_WinHttpSetOption");
-dllexport HINTERNET WINAPI WinHttpOpen(LPCWSTR pszAgentW, DWORD dwAccessType, LPCWSTR pszProxyW, LPCWSTR pszProxyBypassW, DWORD dwFlags) asm("_WinHttpOpen");
+dllexport BOOL WINAPI WinHttpCloseHandle(HINTERNET hInternet) asm3264("_WinHttpCloseHandle", "WinHttpCloseHandle");
+dllexport HINTERNET WINAPI WinHttpConnect(HINTERNET hSession, LPCWSTR pswzServerName, INTERNET_PORT nServerPort, DWORD dwReserved) asm3264("_WinHttpConnect", "WinHttpConnect");
+dllexport DWORD WINAPI WinHttpWebSocketClose(HINTERNET hWebSocket, USHORT usStatus, PVOID pvReason, DWORD dwReasonLength) asm3264("_WinHttpWebSocketClose", "WinHttpWebSocketClose");
+dllexport DWORD WINAPI WinHttpWebSocketReceive(HINTERNET hWebSocket, PVOID pvBuffer, DWORD dwBufferLength, DWORD* pdwBytesRead, WINHTTP_WEB_SOCKET_BUFFER_TYPE* peBufferType) asm3264("_WinHttpWebSocketReceive", "WinHttpWebSocketReceive");
+dllexport DWORD WINAPI WinHttpWebSocketSend(HINTERNET hWebSocket, WINHTTP_WEB_SOCKET_BUFFER_TYPE eBufferType, PVOID pvBuffer, DWORD dwBufferLength) asm3264("_WinHttpWebSocketSend", "WinHttpWebSocketSend");
+dllexport HINTERNET WINAPI WinHttpWebSocketCompleteUpgrade(HINTERNET hRequest, DWORD_PTR pContext) asm3264("_WinHttpWebSocketCompleteUpgrade", "WinHttpWebSocketCompleteUpgrade");
+dllexport BOOL WINAPI WinHttpReceiveResponse(HINTERNET hRequest, LPVOID lpReserved) asm3264("_WinHttpReceiveResponse", "WinHttpReceiveResponse");
+dllexport BOOL WINAPI WinHttpSendRequest(HINTERNET hRequest, LPCWSTR lpszHeaders, DWORD dwHeadersLength, LPVOID lpOptional, DWORD dwOptionalLength, DWORD dwTotalLength, DWORD_PTR dwContext) asm3264("_WinHttpSendRequest", "WinHttpSendRequest");
+dllexport HINTERNET WINAPI WinHttpOpenRequest(HINTERNET hConnect, LPCWSTR pwszVerb, LPCWSTR pwszObjectName, LPCWSTR pwszVersion, LPCWSTR pwszReferrer, LPCWSTR FAR* ppwszAcceptTypes, DWORD dwFlags) asm3264("_WinHttpOpenRequest", "WinHttpOpenRequest");
+dllexport BOOL WINAPI WinHttpSetOption(HINTERNET hInternet, DWORD dwOption, LPVOID lpBuffer, DWORD dwBufferLength) asm3264("_WinHttpSetOption", "WinHttpSetOption");
+dllexport HINTERNET WINAPI WinHttpOpen(LPCWSTR pszAgentW, DWORD dwAccessType, LPCWSTR pszProxyW, LPCWSTR pszProxyBypassW, DWORD dwFlags) asm3264("_WinHttpOpen", "WinHttpOpen");
 
 // Replacement version of getaddrinfo that doesn't crash
 INT WSAAPI getaddrinfo_replacement(PCSTR pNodeName, PCSTR pServiceName, const ADDRINFOA* pHints, PADDRINFOA* ppResult) {

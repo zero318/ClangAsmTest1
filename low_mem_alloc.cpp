@@ -326,6 +326,8 @@ static inline constexpr T unpack_hilo(uint64_t low, uint64_t high) {
 	return ((Unpack) { { low, high } }).ret;
 }
 
+#define ASSUME_HIGH_REGS_ARE_ZERO 1
+
 #ifdef _M_IX86
 using IsWow64ProcessPtrT = decltype(&IsWow64Process);
 static constexpr const bool is_x64 = false;
@@ -669,7 +671,9 @@ regcall GetModuleHandleW64Adapter(
 	__asm__ volatile (
 		INTEL_64_DIRECTIVE
 		"SHL RDX, 32 \n"
+#if !ASSUME_HIGH_REGS_ARE_ZERO
 		"MOV EAX, EAX \n"
+#endif
 		"OR RAX, RDX \n"
 		"JZ 3f \n"
 		"MOV RCX, QWORD PTR GS:[0x60] \n"
@@ -690,18 +694,18 @@ regcall GetModuleHandleW64Adapter(
 		"RETF \n"
 	"1: \n"
 		"MOV R9, QWORD PTR [RDI+0x60] \n"
-		"MOV RBX, RAX \n"
+		"MOV RDX, RAX \n"
 		"SUB R9, RAX \n"
 	"1: \n"
-		"MOVZX ECX, BYTE PTR [RBX] \n"
-		"CMP CL, BYTE PTR [RBX*1+R9] \n"
+		"MOVZX ECX, BYTE PTR [RDX] \n"
+		"CMP CL, BYTE PTR [RDX*1+R9] \n"
 		"JNE 2b \n"
-		"INC RBX \n"
+		"INC RDX \n"
 		"DEC ESI \n"
 		"JNZ 1b \n"
 		"MOVQ XMM0, QWORD PTR [RDI+0x30] \n"
-		"MOV RAX, QWORD PTR [RDI+0x30] \n"
-		"MOV RDX, RAX \n"
+		"MOV RDX, QWORD PTR [RDI+0x30] \n"
+		"MOV EAX, EDX \n"
 		"SHR RDX, 32 \n"
 		"RETF"
 	);
@@ -714,13 +718,13 @@ inline PTR64<> regparm(2) GetModuleHandleW64(T name) {
 		FAR_CALL_IMM(0x33, GetModuleHandleW64Adapter,
 					 "=A"(ret),
 					 "a"((uint32_t)name), "d"((uint32_t)((uint64_t)name >> 32))
-					 : clobber_list("ecx", "ebx", "esi", "edi", "xmm0")
+					 : clobber_list("ecx", "esi", "edi", "xmm0")
 		);
 	} else {
 		FAR_CALL_IMM(0x33, GetModuleHandleW64Adapter,
 					 "=A"(ret),
 					 "a"((uint32_t)name), "d"(0)
-					 : clobber_list("ecx", "ebx", "esi", "edi", "xmm0")
+					 : clobber_list("ecx", "esi", "edi", "xmm0")
 		);
 	}
 	return ret;

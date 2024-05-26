@@ -251,3 +251,31 @@ void __input_get_states() {
     __joystick_device_get_state();
     __mouse_device_get_state(); // this one got inlined
 }
+
+typedef int (*NutFunc)(void*);
+
+// 0x10
+struct NutUnknownA {
+    const char* name; // 0x0
+    NutFunc func; // 0x4
+    int32_t __int_8; // 0x8
+    const char* __str_C; // 0xC
+    // 0x10
+};
+
+// Rx19CFF0
+int __nut_len(void*);
+
+// Rx498000
+NutUnknownA NUT_ARRAY_A[] = {
+    {
+        .name = "len",
+        .func = &__nut_len_sub,
+        .__int_8 = 1,
+        .__ptr_C = "t"
+    },
+    {
+        .name = "rawget",
+        .func = 
+    }
+};

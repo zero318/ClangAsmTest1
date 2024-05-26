@@ -26,17 +26,21 @@ add_executable(udoalg_test)
 add_executable(3d_flying_objects)
 add_executable(discord_test)
 add_executable(AoCFTest1)
+add_executable(loaddll)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
 add_library(winhttp_websocket SHARED)
 add_library(CSoundLib STATIC)
 add_library(wow64 SHARED)
+add_library(wow64cpu SHARED)
 add_library(parakit_inject SHARED)
 add_library(python_test SHARED)
 add_library(glaux STATIC)
 add_library(glcommon STATIC)
 #add_library(twitch_irc_test SHARED)
 add_executable(twitch_irc_test)
+add_library(x64_inject_test SHARED)
+add_executable(x64_injector)
 
 set(programs
 ${PROJECT_NAME}
@@ -56,6 +60,7 @@ winhttp
 winhttp_websocket
 winhttp_test3
 wow64
+wow64cpu
 parakit_inject
 smallest_pe_file
 ghidra_launch
@@ -68,6 +73,9 @@ glcommon
 discord_test
 twitch_irc_test
 AoCFTest1
+loaddll
+x64_inject_test
+x64_injector
 )
 
 enable_language(ASM-ATT)
@@ -92,8 +100,14 @@ target_compile_options(AsmTemp PRIVATE
 
 if(${CLANG_TYPE} STREQUAL "CLANG-CL")
 set(SLASH_CLANG_ARG "/clang:")
+set(COMPILE_DLL "/DLL")
+set(MSLINK_ARG "")
+set(NOSTDLIB_LINK "-nostartfiles -nodefaultlib")
 else()
 set(SLASH_CLANG_ARG "")
+set(COMPILE_DLL "-shared")
+set(MSLINK_ARG "-Wl")
+set(NOSTDLIB_LINK "")
 endif()
 
 foreach(EXE ${programs})
@@ -354,6 +368,9 @@ target_compile_options(${EXE} PRIVATE
 	# Disable more stack checking
 	#"SHELL:-Xclang -fno-stack-protector"
 	${SLASH_CLANG_ARG}-fno-stack-protector
+	${SLASH_CLANG_ARG}-fcf-protection=none
+	${SLASH_CLANG_ARG}-fno-sanitize-cfi-cross-dso
+	#${SLASH_CLANG_ARG}-mguard=none
 )
 if(MSVC)
 	target_compile_options(${EXE} PRIVATE
@@ -371,13 +388,13 @@ if(MSVC)
 	)
 endif()
 
-if(${CLANG_TYPE} STREQUAL "CLANG-CL")
-else()
+#if(${CLANG_TYPE} STREQUAL "CLANG-CL")
+#else()
 target_compile_options(${EXE} PRIVATE
 	#-flto=thin
 	-flto=full
 )
-endif()
+#endif()
 
 target_compile_options(${EXE} PRIVATE
 	${SLASH_CLANG_ARG}-fvectorize
@@ -516,11 +533,11 @@ target_compile_options(${EXE} PRIVATE
 	${SLASH_CLANG_ARG}-mno-ms-bitfields
 	#"SHELL:-Xclang -mno-ms-bitfields"
 
-	-fno-exceptions
+	#"-fno-exceptions"
 )
 
 target_link_options(${EXE} PRIVATE
-	"LINKER:--allow-multiple-definition"
+	#"LINKER:--allow-multiple-definition"
 )
 
 target_compile_options(${EXE} PRIVATE
@@ -566,15 +583,19 @@ include_directories(AFTER SYSTEM
 #target_link_libraries(${EXE} "msvcrt.lib")
 #target_link_libraries(${EXE} "C:\\WinDDK\\7600.16385.1\\lib\\wxp\\i386\\ntdll.lib")
 if (IS_X64)
-target_link_libraries(${EXE} "C:\\WinDDK\\7600.16385.1\\lib\\win7\\amd64\\winmm.lib")
+#target_link_libraries(${EXE} "C:\\WinDDK\\7600.16385.1\\lib\\win7\\amd64\\winmm.lib")
 target_link_directories(${EXE} PRIVATE "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.20262.0\\ucrt\\x64")
 target_link_directories(${EXE} PRIVATE "C:\\Program Files (x86)\\Microsoft SDKs\\Windows\\v7.1A\\Lib\\x64")
 #target_link_options(${EXE} PRIVATE "/libpath:\"C/Program Files (x86)/Windows Kits/10/Lib/10.0.20262.0/ucrt/x64/\"")
 else()
+if (NOT NO_STDLIB)
 target_link_libraries(${EXE} "C:\\WinDDK\\7600.16385.1\\lib\\wxp\\i386\\winmm.lib")
+endif()
 target_link_directories(${EXE} PRIVATE "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.20262.0\\ucrt\\x86")
 target_link_directories(${EXE} PRIVATE "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.20262.0\\um\\x86")
 endif()
+
+if (NOT NO_STDLIB)
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\dsound.lib")
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\dinput8.lib")
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\dxguid.lib")
@@ -582,6 +603,7 @@ target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\d3dx9.lib")
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\8.0a\\lib\\d3d8.lib")
 #target_link_libraries(${EXE} DummyDLL)
+endif()
 
 # Add source to this project's executable.
 target_sources(${EXE} PRIVATE
@@ -605,6 +627,7 @@ target_sources(${EXE} PRIVATE
 	"zero/compiler_support.h"
 	"zun/util.h"
 )
+if (NOT NO_STDLIB)
 if (STATIC_CSOUND)
 target_sources(${EXE} PRIVATE
 	"F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Optional\\SDKSound.cpp"
@@ -619,6 +642,7 @@ target_include_directories(${EXE} SYSTEM PRIVATE
 target_compile_definitions(CSoundLib PRIVATE
 	UNICODE
 )
+endif()
 endif()
 
 endforeach()
@@ -649,10 +673,10 @@ target_link_libraries(${PROJECT_NAME} "F:\\Users\\zero318\\Source\\Repos\\thcrap
 target_link_libraries(${PROJECT_NAME} "F:\\Users\\zero318\\Source\\Repos\\thcrap\\bin\\bin\\thcrap.lib")
 target_compile_options(${PROJECT_NAME} PRIVATE
 	#-fforce-emit-vtables
-	#"-mno-sse3"
-	#"-mno-avx"
-	#"-mno-bmi"
-	#"-mno-lzcnt"
+	"-mno-sse3"
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-lzcnt"
 	"-mno-xop"
 	"-mno-tbm"
 	"-mno-sse4a"
@@ -705,7 +729,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 	#"json5_test.cpp"
 	#"decent_rng.h"
 	"rtti_label_gen.cpp"
-	"zero/vec_lib.cpp"
+	#"zero/vec_lib.cpp"
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE
 	USE_AMD_FEATURES
@@ -958,10 +982,13 @@ target_compile_definitions(XInput1_4 PRIVATE
 	STOP_LINKING_DEFAULT_LIB_PLZ
 )
 target_link_options(XInput1_4 PRIVATE
-	/DEF:stop_complaining_about_xinput_1_4.def
-	/DLL
-	/NOENTRY
-	-nodefaultlib
+	${MSLINK_ARG}/DEF:stop_complaining_about_xinput_1_4.def
+	${MSLINK_ARG}/DLL
+	${MSLINK_ARG}/NOENTRY
+	#${MSLINK_ARG}-nodefaultlib
+	${NOSTDLIB_LINK}
+	#-nodefaultlibs
+	#-nostdlib
 )
 
 target_sources(winhttp PRIVATE
@@ -987,12 +1014,19 @@ target_link_options(winhttp PRIVATE
 	-nodefaultlib
 )
 
+if(IS_X64)
+target_sources(winhttp_websocket PRIVATE
+	"winhttp_websocket/websocket_impl.cpp"
+	"winhttp_websocket.def"
+)
+else()
 target_sources(winhttp_websocket PRIVATE
 	#"winhttp_websocket/websocket_impl.cpp"
 	"winhttp_websocket/websocket_impl_logging.cpp"
 	#"winhttp_websocket/new_impl.cpp"
 	"winhttp_websocket.def"
 )
+endif()
 target_compile_options(winhttp_websocket PRIVATE
 	"-mno-avx"
 	"-mno-bmi"
@@ -1006,8 +1040,8 @@ target_compile_definitions(winhttp_websocket PRIVATE
 	STOP_LINKING_DEFAULT_LIB_PLZ
 )
 target_link_options(winhttp_websocket PRIVATE
-	/DEF:winhttp_websocket.def
-	/DLL
+	${MSLINK_ARG}"/DEF:winhttp_websocket.def"
+	${COMPILE_DLL}
 )
 
 target_sources(twitch_irc_test PRIVATE
@@ -1052,6 +1086,27 @@ target_compile_definitions(wow64 PRIVATE
 )
 target_link_options(wow64 PRIVATE
 	/DLL
+)
+
+target_sources(wow64cpu PRIVATE
+	"wow64/wow64cpu_test.cpp"
+)
+target_compile_options(wow64cpu PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(wow64cpu PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+target_link_options(wow64cpu PRIVATE
+	${COMPILE_DLL}
+	#${MSLINK_ARG}/NOENTRY
+	${NOSTDLIB_LINK}
 )
 
 target_sources(parakit_inject PRIVATE
@@ -1256,6 +1311,67 @@ target_sources(discord_test PRIVATE
 )
 target_compile_definitions(discord_test PRIVATE
 	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+
+target_sources(loaddll PRIVATE
+	"loaddll/loaddll.cpp"
+)
+target_compile_options(loaddll PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(loaddll PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+target_link_options(loaddll PRIVATE
+	/ENTRY:yeet
+	${NOSTDLIB_LINK}
+)
+	
+
+target_sources(x64_inject_test PRIVATE
+	"x64_inject_test.cpp"
+)
+target_compile_options(x64_inject_test PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(x64_inject_test PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+target_link_options(x64_inject_test PRIVATE
+	${COMPILE_DLL}
+	${NOSTDLIB_LINK}
+	"LINKER:/base:0x7FFD95940000"
+)
+target_sources(x64_injector PRIVATE
+	"x64_injector.cpp"
+)
+target_compile_options(x64_injector PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(x64_injector PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+target_link_options(x64_injector PRIVATE
+	/ENTRY:entry	
+	${NOSTDLIB_LINK}
 )
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")

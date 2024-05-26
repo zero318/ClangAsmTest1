@@ -3155,6 +3155,10 @@ bool dumb_x64_hack() {
 #pragma comment (lib, "onecore.lib")
 #endif
 
+void thcrap_inject_test();
+
+void x64_inject_test();
+
 int stdcall main(int argc, char* argv[]) {
 
 	/*
@@ -3175,6 +3179,9 @@ int stdcall main(int argc, char* argv[]) {
 		printf("Path: Invalid handle\n");
 	}
 	*/
+
+	//thcrap_inject_test();
+	x64_inject_test();
 
 	return 0;
 
@@ -6101,4 +6108,343 @@ dllexport void wasted_wtf_is_this3() {
 	}
 }
 
+#endif
+
+/*
+enum ReturnCodes {
+	INJECT_INIT_FALSE = -1, // Initialization function returned false
+	INJECT_SUCCESS = 0,
+	INJECT_DLL_FALSE = 1, // DllMain returned FALSE
+	INJECT_DLL_ERROR = 2, // LoadLibrary failed
+	INJECT_INIT_ERROR = 3, // Initialization function not found
+};
+*/
+
+uint8_t inject_func[] = {
+	0x53,             //   PUSH EBX
+	0x6A, 0x00,       //   PUSH 0
+	0x6A, 0x00,       //   PUSH 0
+	0x68, 0, 0, 0, 0, //   PUSH dll_name
+	0xE8, 0, 0, 0, 0, //   CALL LoadLibraryExW
+	0x85, 0xC0,       //   TEST EAX, EAX
+	0x74, 0x30,       //   JZ load_library_fail
+	0x89, 0xC3,       //   MOV EBX, EAX
+	0x68, 0, 0, 0, 0, //   PUSH init_func_name
+	0x50,             //   PUSH EAX
+	0xE8, 0, 0, 0, 0, //   CALL GetProcAddress
+	0x85, 0xC0,       //   TEST EAX, EAX
+	0x74, 0x32,       //   JZ get_init_func_fail
+	0x68, 0, 0, 0, 0, //   PUSH init_func_param
+	0xFF, 0xD0,       //   CALL EAX
+	0x89, 0xD9,       //   MOV ECX, EBX
+	0x89, 0xC3,       //   MOV EBX, EAX
+	0x85, 0xC0,       //   TEST EAX, EAX
+	0x74, 0x09,       //   JZ init_func_success
+	0x83, 0xCB, 0xFF, //   OR EBX, -1
+					  // free_library:
+	0x51,             //   PUSH ECX
+	0xE8, 0, 0, 0, 0, //   CALL FreeLibrary
+					  // exit_thread:
+	0x53,             //   PUSH EBX
+	0xE8, 0, 0, 0, 0, //   CALL ExitThread
+	0xCC,             //   INT3
+					  // load_library_fail:
+	0x31, 0xDB,       //   XOR EBX, EBX
+					  //   CMP DWORD PTR FS:[LastErrorValue], STATUS_DLL_INIT_FAILED
+	0x64, 0x81, 0x3D, 0x34, 0x00, 0x00, 0x00, 0x42, 0x01, 0x00, 0xC0,
+	0x0F, 0x95, 0xC3, //   SETNE BL
+	0x43,             //   INC EBX
+	0xEB, 0xE6,       //   JMP exit_thread
+					  // get_init_func_fail:
+	0x89, 0xD9,       //   MOV ECX, EBX
+					  //   MOV EBX, 3
+	0xBB, 0x03, 0x00, 0x00, 0x00,
+	0xEB, 0xD7,       //   JMP free_library
+	0xCC
+};
+
+const size_t inject_func_length = sizeof(inject_func);
+const size_t dll_name = 6;
+const size_t load_library = 11;
+const size_t init_func_name = 22;
+const size_t get_proc_address = 28;
+const size_t init_func_param = 37;
+const size_t free_library = 56;
+const size_t exit_thread = 62;
+
+enum ReturnCodes {
+	INJECT_INIT_FALSE = -1, // Initialization function returned false
+	INJECT_SUCCESS = 0,
+	INJECT_DLL_FALSE = 1, // DllMain returned FALSE
+	INJECT_DLL_ERROR = 2, // LoadLibrary failed
+	INJECT_INIT_ERROR = 3, // Initialization function not found,
+	INJECT_ALLOC_FAIL = 4, // One of the virtual memory functions failed
+	INJECT_THREAD_FAIL = 5, // CreateRemoteThread failed
+};
+
+dllexport int inject(HANDLE process, const wchar_t* dll_str, const char* init_func, int32_t param) {
+	size_t dll_name_bytes = (wcslen(dll_str) + 1) * sizeof(wchar_t);
+	size_t init_func_bytes = strlen(init_func) + 1;
+
+	uint8_t* inject_buffer = (uint8_t*)VirtualAllocEx(process, NULL, inject_func_length + dll_name_bytes + init_func_bytes, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+	if (!inject_buffer) {
+		return INJECT_ALLOC_FAIL;
+	}
+
+	*(uint8_t**)&inject_func[dll_name] = &inject_buffer[inject_func_length];
+	*(int32_t*)&inject_func[load_library] = (uint8_t*)&LoadLibraryExW - &inject_buffer[load_library + sizeof(int32_t)];
+	*(uint8_t**)&inject_func[init_func_name] = &inject_buffer[inject_func_length + dll_name_bytes];
+	*(int32_t*)&inject_func[get_proc_address] = (uint8_t*)&GetProcAddress - &inject_buffer[get_proc_address + sizeof(int32_t)];
+	*(int32_t*)&inject_func[init_func_param] = param;
+	*(int32_t*)&inject_func[free_library] = (uint8_t*)&FreeLibrary - &inject_buffer[free_library + sizeof(int32_t)];
+	*(int32_t*)&inject_func[exit_thread] = (uint8_t*)&ExitThread - &inject_buffer[exit_thread + sizeof(int32_t)];
+
+	DWORD exit_code = INJECT_ALLOC_FAIL;
+	if (
+		WriteProcessMemory(process, inject_buffer, inject_func, inject_func_length, NULL) &&
+		WriteProcessMemory(process, inject_buffer + inject_func_length, dll_str, dll_name_bytes, NULL) &&
+		WriteProcessMemory(process, inject_buffer + inject_func_length + dll_name_bytes, init_func, init_func_bytes, NULL) &&
+		FlushInstructionCache(process, inject_buffer, inject_func_length)
+	) {
+		exit_code = INJECT_THREAD_FAIL;
+		HANDLE thread = CreateRemoteThread(process, NULL, 0, (LPTHREAD_START_ROUTINE)inject_buffer, 0, 0, NULL);
+		if (thread) {
+			WaitForSingleObject(thread, INFINITE);
+			GetExitCodeThread(thread, &exit_code);
+			CloseHandle(thread);
+		}
+	}
+
+	VirtualFreeEx(process, inject_buffer, 0, MEM_RELEASE);
+
+	return (int)exit_code;
+}
+
+static const uint8_t infinite_loop[] = {
+				// inf:
+	0xEB, 0xFE, //   JMP inf
+};
+
+void thcrap_inject_test() {
+
+	STARTUPINFOW si = { sizeof(STARTUPINFOW) };
+	PROCESS_INFORMATION pi = {};
+
+	if (CreateProcessW(
+		L"F:/Touhou_Stuff_2/disassembly_stuff/7/youmu - Copy2/th07.exe",
+		NULL,
+		NULL,
+		NULL,
+		TRUE,
+		CREATE_SUSPENDED,
+		NULL,
+		L"F:/Touhou_Stuff_2/disassembly_stuff/7/youmu - Copy2/",
+		&si,
+		&pi
+	)) {
+
+		CONTEXT context = {};
+		context.ContextFlags = CONTEXT_INTEGER | CONTEXT_SEGMENTS;
+		GetThreadContext(pi.hThread, &context);
+
+		uintptr_t addr;
+		//if (!is_running_on_wine) {
+			//addr = context.Eax;
+		//} else {
+			LDT_ENTRY entry;
+			GetThreadSelectorEntry(pi.hThread, context.SegFs, &entry);
+			addr = entry.BaseLow | entry.HighWord.Bits.BaseMid << 16 | entry.HighWord.Bits.BaseHi << 24;
+			ReadProcessMemory(pi.hProcess, (LPCVOID)(addr + 0x30), &addr, sizeof(uintptr_t), NULL);
+			ReadProcessMemory(pi.hProcess, (LPCVOID)(addr + 0x8), &addr, sizeof(uintptr_t), NULL);
+			DWORD offset;
+			ReadProcessMemory(pi.hProcess, (LPCVOID)(addr + 0x3C), &offset, sizeof(DWORD), NULL);
+			ReadProcessMemory(pi.hProcess, (LPCVOID)(addr + offset + 0x28), &offset, sizeof(DWORD), NULL);
+			addr += offset;
+		//}
+		;
+		DWORD protection;
+		VirtualProtectEx(pi.hProcess, (LPVOID)addr, sizeof(infinite_loop), PAGE_EXECUTE_READWRITE, &protection);
+		uint8_t old_bytes[sizeof(infinite_loop)];
+		ReadProcessMemory(pi.hProcess, (LPCVOID)addr, old_bytes, sizeof(old_bytes), NULL);
+		WriteProcessMemory(pi.hProcess, (LPVOID)addr, infinite_loop, sizeof(infinite_loop), NULL);
+		FlushInstructionCache(pi.hProcess, (LPCVOID)addr, sizeof(infinite_loop));
+
+		context.ContextFlags = CONTEXT_CONTROL;
+		do {
+			ResumeThread(pi.hThread);
+			Sleep(10);
+			SuspendThread(pi.hThread);
+			GetThreadContext(pi.hThread, &context);
+#if IS_X64
+		} while (addr != context.Rip);
+#else
+		} while (addr != context.Eip);
+#endif
+
+		WriteProcessMemory(pi.hProcess, (LPVOID)addr, old_bytes, sizeof(old_bytes), NULL);
+		VirtualProtectEx(pi.hProcess, (LPVOID)addr, sizeof(old_bytes), protection, &protection);
+		FlushInstructionCache(pi.hProcess, (LPCVOID)addr, sizeof(old_bytes));
+
+		SetCurrentDirectoryW(L"F:/Touhou_Stuff_2/_thtk-bin-new/__thcrap/bin/");
+		int code = inject(pi.hProcess, L"F:\\Touhou_Stuff_2\\_thtk-bin-new\\__thcrap\\bin\\thcrap.dll", "thcrap_init", 0x7FFE0100);
+		printf("%i", code);
+		if (code == 0) {
+			ResumeThread(pi.hThread);
+		} else {
+			TerminateProcess(pi.hProcess, 0);
+		}
+	}
+}
+
+uintptr_t arg_val;
+
+typedef int(__fastcall *init_func_t)(uintptr_t*);
+
+dllexport gnu_noinline HMODULE stdcall LoadLibraryExW_fake(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags) {
+	use_var(lpLibFileName);
+	use_var(hFile);
+	use_var(dwFlags);
+	return (HMODULE)rand();
+	//return LoadLibraryExW(lpLibFileName, hFile, dwFlags);
+}
+dllexport gnu_noinline FARPROC stdcall GetProcAddres_fake(HMODULE hModule, LPCSTR lpProcName) {
+	use_var(hModule);
+	use_var(lpProcName);
+	return (FARPROC)rand();
+	//return GetProcAddress(hModule, lpProcName);
+}
+dllexport gnu_noinline noreturn void stdcall ExitThread_fake(DWORD dwExitCode) {
+	use_var(dwExitCode);
+	//ExitThread(dwExitCode);
+}
+dllexport gnu_noinline BOOL stdcall FreeLibrary_fake(HMODULE hLibModule) {
+	use_var(hLibModule);
+	return (BOOL)rand();
+	//return FreeLibrary(hLibModule);
+}
+
+dllexport int inject_lib() {
+	HMODULE handle = LoadLibraryExW_fake(L"dummy.dll", NULL, 0);
+	HMODULE handleB = handle;
+	__asm__ volatile ("":"+b"(handleB));
+	HMODULE handle2;
+	if (expect(handle == NULL, false)) {
+		handleB = (HMODULE)(teb32->LastErrorValue == STATUS_DLL_INIT_FAILED ? INJECT_DLL_FALSE : INJECT_DLL_ERROR);
+		goto exit_label;
+	}
+
+	init_func_t init_func = (init_func_t)GetProcAddres_fake(handle, "dummy");
+	if (expect(init_func == NULL, false)) {
+		handle = handleB;
+		__asm__ volatile ("":"+c"(handle));
+		handleB = (HMODULE)INJECT_INIT_ERROR;
+		goto library_label;
+	}
+
+	int exit_code = init_func(&arg_val);
+	handle = handleB;
+	__asm__ volatile ("":"+c"(handle));
+	handleB = (HMODULE)exit_code;
+	if (exit_code != EXIT_SUCCESS) {
+		handleB = (HMODULE)INJECT_INIT_FALSE;
+		__asm__ volatile ("":"+b"(handleB));
+	library_label:
+		__asm__ volatile ("":"+c"(handle));
+		FreeLibrary_fake(handle);
+	}
+
+
+exit_label:
+	__asm__ volatile ("":::);
+	clang_noinline ExitThread_fake((DWORD)handleB);
+}
+
+static inline constexpr wchar_t dummy_dll_name[] = L"F:/Users/zero318/Source/Repos/ClangAsmTest1/out/build/x64-Clang-Release-Debug/x64_inject_test.dll";
+
+#if IS_X64
+#pragma comment (lib, "F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\ntdll64.lib")
+#pragma comment (lib, "F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\out\\build\\x64-Clang-Release-Debug\\x64_inject_test.lib")
+
+extern "C" {
+void config_wait(HANDLE id);
+void* wait_for_address();
+}
+
+void x64_inject_test() {
+
+	STARTUPINFOW si = { sizeof(STARTUPINFOW) };
+	PROCESS_INFORMATION pi = {};
+
+	if (CreateProcessW(L"C:/Windows/notepad.exe", NULL, NULL, NULL, TRUE, CREATE_SUSPENDED, NULL, NULL, &si, &pi)) {
+		//BOOL is_wow64 = false;
+		//if (auto is_wow64_func = (decltype(&IsWow64Process))GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "IsWow64Process")) {
+			//is_wow64_func(pi.hProcess, &is_wow64);
+		//}
+
+		PROCESS_BASIC_INFORMATIONX<64> process_info;
+		ULONG idgaf;
+		NtQueryInformationProcess(pi.hProcess, ProcessBasicInformation, &process_info, sizeof(process_info), &idgaf);
+
+		uintptr_t module_base;
+		ReadProcessMemory(pi.hProcess, &process_info.PebBaseAddress->ImageBaseAddress, &module_base, sizeof(module_base), NULL);
+		DWORD offset;
+		ReadProcessMemory(pi.hProcess, (LPCVOID)(module_base + 0x3C), &offset, sizeof(DWORD), NULL);
+		ReadProcessMemory(pi.hProcess, (LPCVOID)(module_base + offset + 0x28), &offset, sizeof(DWORD), NULL);
+
+		uintptr_t entrypoint = module_base + offset;
+
+		DWORD protection;
+		VirtualProtectEx(pi.hProcess, (LPVOID)entrypoint, sizeof(infinite_loop), PAGE_EXECUTE_READWRITE, &protection);
+		uint8_t old_bytes[sizeof(infinite_loop)];
+		ReadProcessMemory(pi.hProcess, (LPCVOID)entrypoint, old_bytes, sizeof(old_bytes), NULL);
+		WriteProcessMemory(pi.hProcess, (LPVOID)entrypoint, infinite_loop, sizeof(infinite_loop), NULL);
+		FlushInstructionCache(pi.hProcess, (LPCVOID)entrypoint, sizeof(infinite_loop));
+
+		CONTEXTX<64> context = {};
+		context.ContextFlags = CONTEXT_CONTROL;
+		do {
+			ResumeThread(pi.hThread);
+			Sleep(10);
+			SuspendThread(pi.hThread);
+			GetThreadContext(pi.hThread, (CONTEXT*)&context);
+		} while (entrypoint != context.Rip);
+
+		WriteProcessMemory(pi.hProcess, (LPVOID)entrypoint, old_bytes, sizeof(old_bytes), NULL);
+		VirtualProtectEx(pi.hProcess, (LPVOID)entrypoint, sizeof(old_bytes), protection, &protection);
+		FlushInstructionCache(pi.hProcess, (LPCVOID)entrypoint, sizeof(old_bytes));
+
+		void* inject_buffer = VirtualAllocEx(pi.hProcess, NULL, sizeof(dummy_dll_name), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+		WriteProcessMemory(pi.hProcess, inject_buffer, dummy_dll_name, sizeof(dummy_dll_name), NULL);
+
+		config_wait((HANDLE)process_info.UniqueProcessId);
+
+		void* init_address = NULL;
+
+		HANDLE thread = CreateRemoteThread(pi.hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)&LoadLibraryW, inject_buffer, 0, NULL);
+		if (thread) {
+			init_address = wait_for_address();
+			WaitForSingleObject(thread, INFINITE);
+			CloseHandle(thread);
+		}
+
+		VirtualFreeEx(pi.hProcess, inject_buffer, 0, MEM_RELEASE);
+
+		if (init_address) {
+			thread = CreateRemoteThread(pi.hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)init_address, (LPVOID)module_base, 0, NULL);
+			if (thread) {
+				WaitForSingleObject(thread, INFINITE);
+				CloseHandle(thread);
+			}
+		}
+
+		ResumeThread(pi.hThread);
+
+		CloseHandle(pi.hProcess);
+		CloseHandle(pi.hThread);
+
+
+		//CreateRemoteThread(pi.hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)&LoadLibraryA, )
+	}
+}
 #endif

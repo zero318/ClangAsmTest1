@@ -87,7 +87,7 @@ void ThunkContext32TO64(CONTEXTX<32>* Context32, CONTEXTX<64>* Context64, uintpt
 
 
 NTSTATUS Wow64pThunkProcessParameters(PEBX<32>* Peb32, PEBX<64>* Peb) {
-    _AddressOfReturnAddress()
+    //_AddressOfReturnAddress()
 }
 
 NTSTATUS ProcessInit(size_t* pCpuThreadSize) {

@@ -305,6 +305,7 @@ using error_index_t = UBitIntType<std::bit_width<size_t>(ENUM_MAX_VALUE(ERROR_IN
 
 static inline constexpr size_t kwjebrkwjerb32 = __builtin_offsetof(IMAGE_NT_HEADERS32, OptionalHeader.Magic);
 static inline constexpr size_t kwjebrkwjerb64 = __builtin_offsetof(IMAGE_NT_HEADERS64, OptionalHeader.Magic);
+static inline constexpr size_t kwjebrkwjerb564 = __builtin_offsetof(IMAGE_NT_HEADERS64, OptionalHeader.AddressOfEntryPoint);
 
 static inline constexpr size_t kwjebrkwje = __builtin_offsetof(IMAGE_DOS_HEADER, e_lfanew);
 
