@@ -3021,14 +3021,14 @@ struct Globals {
     int32_t __power_related_60; // 0x60 (Max power?)
     int32_t __power_related_64; // 0x64 (Power related)
     int __dword_68; // 0x68
-    int32_t __int_6C; // 0x6C
-    int32_t __int_70; // 0x70
-    int32_t __int_74; // 0x74
-    int32_t __int_78; // 0x78
-    int32_t __int_7C; // 0x7C
-    int32_t __int_80; // 0x80
-    int32_t __int_84; // 0x84
-    int32_t __int_88; // 0x88
+    int32_t life_stocks; // 0x6C
+    int32_t life_fragments; // 0x70
+    int32_t lives_added; // 0x74
+    int32_t life_stock_max; // 0x78
+    int32_t bomb_stocks; // 0x7C
+    int32_t bomb_fragments; // 0x80
+    int32_t bomb_stocks_for_new_life; // 0x84
+    int32_t bomb_stock_max; // 0x88
     int32_t __int_8C; // 0x8C
     int32_t __int_90; // 0x90
     int __dword_94; // 0x94
@@ -8460,7 +8460,8 @@ struct AnmManager {
     // 0x488B40
     dllexport gnu_noinline AnmVM* get_vm_with_id(const AnmID& vm_id) asm_symbol_rel(0x488B40) {
         if (vm_id) {
-            if (vm_id.fast_id == INVALID_FAST_ID) {
+            uint32_t fast_id = vm_id.fast_id;
+            if (fast_id == INVALID_FAST_ID) {
                 auto id_match = [=](AnmVM* vm){
                     return vm->controller.id == vm_id;
                 };
@@ -8468,9 +8469,9 @@ struct AnmManager {
                 if (AnmVM* ret = this->ui_list_head->find_if(id_match)) return ret;
             }
             else {
-                FastAnmVM& fast_vm = this->fast_array[vm_id];
+                FastAnmVM& fast_vm = this->fast_array[fast_id];
                 if (fast_vm.alive && fast_vm.controller.id == vm_id) {
-                    return &this->fast_array[vm_id];
+                    return &this->fast_array[fast_id];
                 }
             }
         }
@@ -10612,15 +10613,34 @@ struct ItemSpriteData {
 };
 
 enum ItemID : int32_t {
-
+    InvalidItem = 0,
+    PowerItem = 1,
+    PointItem = 2,
+    BigPowerItem = 3,
+    LifeFragmentItem = 4,
+    LifeItem = 5,
+    BombFragmentItem = 6,
+    BombItem = 7,
+    FItem = 8,
+    Piv5Item = 9,
+    Piv10Item = 10,
+    Piv20Item = 11,
+    Piv30Item = 12,
+    Piv40Item = 13,
+    Piv50Item = 14,
+    Item15 = 15,
+    Item16 = 16,
+    Item17 = 17,
+    Item18 = 18,
+    Item19 = 19
 };
 
 // size: 0xC94
 struct Item {
-    unknown_fields(0x10); // 0x0
+    ZUNLinkedList<Item> __list_node_0; // 0x0
     AnmVM __vm_10; // 0x10
     AnmVM __vm_61C; // 0x61C
-    unknown_fields(0x4); // 0xC28
+    AnmID __vm_id_C28; // 0xC28
     Float3 position; // 0xC2C
     Float3 velocity; // 0xC38
     int __dword_C44; // 0xC44
@@ -10629,19 +10649,26 @@ struct Item {
     unknown_fields(0x14); // 0xC60
     uint32_t state; // 0xC74
     ItemID id; // 0xC78
-    unknown_fields(0x14); // 0xC7C
+    unknown_fields(0x4); // 0xC7C
+    float __float_C80; // 0xC80
+    int32_t __int_C84; // 0xC84
+    unknown_fields(0x8); // 0xC8C
     int32_t sound_id; // 0xC90
     // 0xC94
 };
 #pragma region // Item Validation
+ValidateFieldOffset32(0x0, Item, __list_node_0);
 ValidateFieldOffset32(0x10, Item, __vm_10);
 ValidateFieldOffset32(0x61C, Item, __vm_61C);
+ValidateFieldOffset32(0xC28, Item, __vm_id_C28);
 ValidateFieldOffset32(0xC2C, Item, position);
 ValidateFieldOffset32(0xC38, Item, velocity);
 ValidateFieldOffset32(0xC44, Item, __dword_C44);
 ValidateFieldOffset32(0xC4C, Item, __timer_C4C);
 ValidateFieldOffset32(0xC74, Item, state);
 ValidateFieldOffset32(0xC78, Item, id);
+ValidateFieldOffset32(0xC80, Item, __float_C80);
+ValidateFieldOffset32(0xC84, Item, __int_C84);
 ValidateFieldOffset32(0xC90, Item, sound_id);
 ValidateStructSize32(0xC94, Item);
 #pragma endregion
@@ -10808,7 +10835,9 @@ struct Bullet {
     union {
         uint32_t flags; // 0x20
         struct {
-            uint32_t : 4;
+            uint32_t : 2;
+            uint32_t grazed : 1;
+            uint32_t : 1;
             uint32_t __unknown_flag_A : 1;
             uint32_t : 1;
             uint32_t __unknown_flag_B : 1;

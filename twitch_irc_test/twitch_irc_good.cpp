@@ -17,9 +17,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <utility>
-#include <tuple>
 #include <array>
-#include <string>
 #include <string_view>
 #if USE_VECTOR_FOR_NAME_HASHES
 #include <vector>
@@ -40,15 +38,11 @@
 #include <WS2tcpip.h>
 #include <MSWSock.h>
 
-#define ENABLE_SSL 1
-
-#define ENABLE_SSL_FOR_TWITCH 0
-
-#define ENABLE_YOUTUBE 1
+#define ENABLE_SSL 0
 
 #define PRINT_ERROR_MESSAGES 1
 
-#define PRINT_MESSAGES 1
+#define PRINT_MESSAGES 0
 
 #if ENABLE_SSL
 #include <algorithm>
@@ -94,71 +88,6 @@ static inline constexpr size_t str_len(const T* str) {
     return len;
 }
 
-// Returns end pointer for simplifying concat operations
-template <typename T>
-static inline T* str_copy(T* dst, const T* src, size_t count) {
-    for (size_t i = 0; i < count; ++i) {
-        dst[i] = src[i];
-    }
-    return dst + count;
-}
-
-template <typename T, typename S, typename ... StrsT> requires(std::is_same_v<S, std::basic_string<T>> || std::is_same_v<S, std::basic_string_view<T>>)
-static inline T* build_str(T* buffer, const S& str, StrsT&&... next_strs) {
-    if constexpr (sizeof...(StrsT)) {
-        return build_str(str_copy(buffer, str.data(), str.length()), std::forward<StrsT>(next_strs)...);
-    } else {
-        return str_copy(buffer, str.data(), str.length());
-    }
-}
-template <typename T, typename ... StrsT>
-static inline T* build_str(T* buffer, const T* str, size_t len, StrsT&&... next_strs) {
-    if constexpr (sizeof...(StrsT)) {
-        return build_str(str_copy(buffer, str, len), std::forward<StrsT>(next_strs)...);
-    } else {
-        return str_copy(buffer, str, len);
-    }
-}
-template <typename T, size_t len, typename ... StrsT> requires(!std::is_integral_v<std::tuple_element_t<0, std::tuple<StrsT...,void>>>)
-static inline T* build_str(T* buffer, const T(&str)[len], StrsT&&... next_strs) {
-    if constexpr (sizeof...(StrsT)) {
-        return build_str(str_copy(buffer, str, len - 1), std::forward<StrsT>(next_strs)...);
-    } else {
-        return str_copy(buffer, str, len - 1);
-    }
-}
-
-template <typename T, typename S, typename ... StrsT> requires(std::is_same_v<S, std::basic_string<T>> || std::is_same_v<S, std::basic_string_view<T>>)
-static inline size_t calc_str_len(size_t length, const S& str, StrsT&&... next_strs) {
-    if constexpr (sizeof...(StrsT)) {
-        return calc_str_len<T>(length + str.length(), std::forward<StrsT>(next_strs)...);
-    } else {
-        return length + str.length();
-    }
-}
-template <typename T, size_t len, typename ... StrsT> requires(!std::is_integral_v<std::tuple_element_t<0, std::tuple<StrsT..., void>>>)
-static inline size_t calc_str_len(size_t length, const T(&str)[len], StrsT&&... next_strs) {
-    if constexpr (sizeof...(StrsT)) {
-        return calc_str_len<T>(length + len - 1, std::forward<StrsT>(next_strs)...);
-    } else {
-        return length + len - 1;
-    }
-}
-
-template <typename T, typename ... StrsT>
-static inline auto build_new_str_impl(StrsT&&... strs) {
-    size_t length = calc_str_len<T>(0, std::forward<StrsT>(strs)...);
-    T* buffer = (T*)malloc(length * sizeof(T) + sizeof(T));
-    buffer[length] = (T)0;
-    build_str(buffer, std::forward<StrsT>(strs)...);
-    return std::make_pair(buffer, length);
-}
-
-template <typename T, typename ... StrsT>
-static inline auto build_new_str(StrsT&&... strs) {
-    return build_new_str_impl<T>(std::forward<std::conditional_t<!std::is_pointer_v<std::remove_reference_t<StrsT>>, StrsT, std::basic_string_view<T>>>(strs)...);
-}
-
 static bool winsock_initialized = false;
 
 static inline constexpr size_t receive_buffer_size = UINT16_MAX + 1;
@@ -198,27 +127,27 @@ static inline bool enable() {
     return winsock_initialized;
 }
 
-static inline constexpr const wchar_t twitch_server_name[] = L"irc.chat.twitch.tv";
-#if ENABLE_SSL && ENABLE_SSL_FOR_TWITCH
-static inline constexpr const wchar_t twitch_port_str[] = L"6697";
+static inline constexpr const wchar_t server_name[] = L"irc.chat.twitch.tv";
+#if ENABLE_SSL
+static inline constexpr const wchar_t port_str[] = L"6697";
 #else
-static inline constexpr const wchar_t twitch_port_str[] = L"6667";
-#endif
-#if ENABLE_YOUTUBE
-static inline constexpr const wchar_t googleapis_server_name_w[] = L"www.googleapis.com";
-static inline constexpr const char googleapis_server_name[] = "www.googleapis.com";
-static inline constexpr const wchar_t googleapis_port_str[] = L"443";
+static inline constexpr const wchar_t port_str[] = L"6667";
 #endif
 
-static inline constexpr const char get_request_header_part_1[] = "GET ";
-static inline constexpr const char get_request_header_part_2[] = " HTTP/1.1\r\n";
-static inline constexpr const char get_request_header_part_3[] = "\r\n";
+struct Socket {
 
-template<typename S>
-struct SocketBase {
     SOCKET sock = INVALID_SOCKET; // 0x0
     // room for 3 bytes
 protected:
+#if ENABLE_SSL
+    bool tls_in_use = false;
+    SecPkgContext_StreamSizes tls_sizes;
+
+    // Who knows WTF windows does with these, so
+    // don't make any weird promises to the compiler
+    mutable CredHandle tls_handle;
+    mutable CtxtHandle tls_context;
+#endif
 
     static inline constexpr ADDRINFOW addr_hint = {
         .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV,
@@ -227,28 +156,38 @@ protected:
         .ai_protocol = IPPROTO_TCP
     };
 
-    void initialize(SOCKET sock, const wchar_t* server_name) {
+#if ENABLE_SSL
+    static inline constexpr SCHANNEL_CRED tls_cred = {
+        .dwVersion = SCHANNEL_CRED_VERSION,
+        .grbitEnabledProtocols = SP_PROT_TLS1_2,  // allow only TLS v1.2
+        .dwFlags = SCH_USE_STRONG_CRYPTO |          // use only strong crypto alogorithms
+                   SCH_CRED_AUTO_CRED_VALIDATION |  // automatically validate server certificate
+                   SCH_CRED_NO_DEFAULT_CREDS     // no client certificate authentication
+    };
+#endif
+
+    void initialize(SOCKET sock) {
         this->sock = sock;
-        ((S*)this)->initialize_secondary(sock, server_name);
+#if ENABLE_SSL
+        this->tls_in_use = this->initialize_tls();
+#endif
     }
-
-    inline void initialize_secondary(SOCKET sock, const wchar_t* server_name) {}
-
 public:
+
     void close() {
         if (this->sock != INVALID_SOCKET) {
             closesocket(this->sock);
             this->sock = INVALID_SOCKET;
-            ((S*)this)->close_secondary();
+#if ENABLE_SSL
+            if (this->tls_in_use) {
+                DeleteSecurityContext(&this->tls_context);
+                FreeCredentialsHandle(&this->tls_handle);
+            }
+#endif
         }
     }
 
-protected:
-    inline void close_secondary() {}
-
-public:
-    
-    bool connect(const wchar_t* server_name, const wchar_t* port_str) {
+    bool connect() {
         // GetAddrInfoW just crashes for some reason when trying to
         // resolve a URL on Windows 7, so the DNS resolution needs
         // to be done manually.
@@ -297,15 +236,9 @@ found_addr:
                 if (expect(sock != INVALID_SOCKET, true)) {
                     if (expect(::connect(sock, addrs->ai_addr, (int)addrs->ai_addrlen) != SOCKET_ERROR, true)) {
                         FreeAddrInfoW(addrs);
-                        this->initialize(sock, server_name);
+                        this->initialize(sock);
                         return true;
                     }
-                    /*
-                    else {
-                        int error = WSAGetLastError();
-                        printf("%d\n", error);
-                    }
-                    */
                     closesocket(sock);
                 }
             } while ((addrs = addrs->ai_next));
@@ -315,114 +248,9 @@ found_addr:
     }
 
 protected:
-    inline size_t receive_impl(void* buffer, size_t recv_length) const {
-        int recv_ret = ::recv(this->sock, (char*)buffer, recv_length, 0);
-        if (expect(recv_ret <= 0, false)) {
-            //return 0;
-            recv_ret = 0;
-        }
-        return recv_ret;
-    }
-
-public:
-    size_t receive(void* buffer, size_t recv_length) const {
-        return ((const S*)this)->receive_impl(buffer, recv_length);
-    }
-
-    template<typename T, size_t len>
-    size_t receive_text(T(&buffer)[len]) const {
-        size_t ret = this->receive(buffer, sizeof(buffer) - sizeof(T));
-        buffer[ret] = '\0';
-        return ret;
-    }
-
-    template<typename T>
-    size_t receive(T& buffer) const {
-        return this->receive(&buffer, sizeof(buffer));
-    }
-
-protected:
-    inline size_t send_impl(const void* buffer, size_t send_length) const {
-
-        size_t sent = 0;
-        while (sent != send_length) {
-            int send_ret = ::send(this->sock, &((char*)buffer)[sent], send_length - sent, 0);
-            if (expect(send_ret <= 0, false)) {
-                return 0;
-            }
-            sent += send_ret;
-        }
-
-        return sent;
-    }
-
-public:
-    size_t send(const void* buffer, size_t send_length) const {
-        return ((const S*)this)->send_impl(buffer, send_length);
-    }
-
-    template <typename T, size_t len>
-    inline bool send_text(const T(&str)[len]) const {
-        return this->send(&str[0], sizeof(str) - sizeof(T));
-    }
-
-    template <typename T>
-    inline bool send(const T& buffer) const {
-        return this->send(&buffer, sizeof(buffer));
-    }
-
-    bool send_http_get(const char* path = "/", const char* extra_header_data = "") const {
-        auto [request, request_length] = build_new_str<char>(get_request_header_part_1, path, get_request_header_part_2, extra_header_data, get_request_header_part_3);
-        bool ret = this->send(request, request_length);
-        free(request);
-        return ret;
-    }
-};
-
-template<bool enable_ssl = false>
-struct Socket;
-
-template<>
-struct Socket<false> : SocketBase<Socket<false>> {
-};
-
 #if ENABLE_SSL
-template<>
-struct Socket<true> : SocketBase<Socket<true>> {
-    friend SocketBase<Socket<true>>;
-
-protected:
-    bool tls_in_use = false;
-    SecPkgContext_StreamSizes tls_sizes;
-
-    // Who knows WTF windows does with these, so
-    // don't make any weird promises to the compiler
-    mutable CredHandle tls_handle;
-    mutable CtxtHandle tls_context;
-
-    
-    static inline constexpr SCHANNEL_CRED tls_cred = {
-        .dwVersion = SCHANNEL_CRED_VERSION,
-        .grbitEnabledProtocols = SP_PROT_TLS1_2,  // allow only TLS v1.2
-        .dwFlags = SCH_USE_STRONG_CRYPTO |          // use only strong crypto alogorithms
-                   SCH_CRED_AUTO_CRED_VALIDATION |  // automatically validate server certificate
-                   SCH_CRED_NO_DEFAULT_CREDS     // no client certificate authentication
-    };
-
-    inline void initialize_secondary(SOCKET sock, const wchar_t* server_name) {
-        this->tls_in_use = this->initialize_tls(server_name);
-    }
-
-    inline void close_secondary() {
-        if (this->tls_in_use) {
-            DeleteSecurityContext(&this->tls_context);
-            FreeCredentialsHandle(&this->tls_handle);
-        }
-    }
-
-    
     // Adapted from this: https://github.com/odzhan/shells/blob/master/s6/tls.c
-    bool initialize_tls(const wchar_t* server_name) {
+    bool initialize_tls() {
         if (expect(AcquireCredentialsHandleW(NULL, (LPWSTR)UNISP_NAME_W, SECPKG_CRED_OUTBOUND, NULL, (void*)&tls_cred, NULL, NULL, &this->tls_handle, NULL) == SEC_E_OK, true)) {
 
             SecBuffer outbuffers[1] = { 0 };
@@ -546,16 +374,21 @@ protected:
         this->sock = INVALID_SOCKET;
         return false;
     }
+#endif
+public:
 
-    inline size_t receive_impl(void* buffer, size_t recv_length) const {
+    size_t receive(void* buffer, size_t recv_length) const {
         uint8_t* recv_buffer = (uint8_t*)buffer;
+#if ENABLE_SSL
         if (expect(!this->tls_in_use, false)) {
+#endif
             int recv_ret = ::recv(this->sock, (char*)recv_buffer, recv_length, 0);
             if (expect(recv_ret <= 0, false)) {
                 //return 0;
                 recv_ret = 0;
             }
             return recv_ret;
+#if ENABLE_SSL
         }
         size_t received_size = 0;
         size_t total_received = 0;
@@ -624,18 +457,33 @@ protected:
             }
         }
         return total_received;
+#endif
     }
 
-    inline size_t send_impl(const void* buffer, size_t send_length) const {
+    template<typename T, size_t len>
+    size_t receive_text(T(&buffer)[len]) const {
+        size_t ret = this->receive(buffer, sizeof(buffer) - sizeof(T));
+        buffer[ret] = '\0';
+        return ret;
+    }
+
+    template<typename T>
+    size_t receive(T& buffer) const {
+        return this->receive(&buffer, sizeof(buffer));
+    }
+
+    size_t send(const void* buffer, size_t send_length) const {
 
         uint8_t* send_buffer = (uint8_t*)buffer;
 
         size_t total_sent_length = 0;
-
+#if ENABLE_SSL
         while (send_length) {
+#endif
             char* current_send_buffer = (char*)send_buffer;
             size_t current_buffer_read_length = send_length;
             size_t current_send_length = current_buffer_read_length;
+#if ENABLE_SSL
             SecBuffer buffers[3];
             if (expect(this->tls_in_use, true)) {
                 current_send_buffer = packet_buffer;
@@ -659,6 +507,7 @@ protected:
                 }
                 current_send_length = buffers[0].cbBuffer + buffers[1].cbBuffer + buffers[2].cbBuffer;
             }
+#endif
             size_t sent = 0;
             while (sent != current_send_length) {
                 int send_ret = ::send(this->sock, &current_send_buffer[sent], current_send_length - sent, 0);
@@ -668,13 +517,24 @@ protected:
                 sent += send_ret;
                 total_sent_length += send_ret;
             }
+#if ENABLE_SSL
             send_buffer += current_buffer_read_length;
             send_length -= current_buffer_read_length;
         }
+#endif
         return total_sent_length;
     }
+
+    template <typename T, size_t len>
+    inline bool send_text(const T(&str)[len]) const {
+        return this->send(&str[0], sizeof(str) - sizeof(T));
+    }
+
+    template <typename T>
+    inline bool send(const T& buffer) const {
+        return this->send(&buffer, sizeof(buffer));
+    }
 };
-#endif
 
 #define LOCK_ALL_MESSAGES 1
 
@@ -739,11 +599,7 @@ void __fastcall write_recent_message(const std::string_view& message) {
 
 #define PARSE_TAGS 0
 
-#if !ENABLE_SSL_FOR_TWITCH
-static Socket<false> twitch_socket;
-#else
-static Socket<true> twitch_socket;
-#endif
+static Socket twitch_socket;
 
 static _Atomic(int8_t) vote_thread_stop;
 
@@ -909,7 +765,7 @@ std::array<size_t, 4> __fastcall get_final_votes() {
 
 bool __fastcall start_twitch_thread(const char* channel_name) {
     if (expect(enable(), true)) {
-        if (expect(twitch_socket.connect(twitch_server_name, twitch_port_str), true)) {
+        if (expect(twitch_socket.connect(), true)) {
 #if PARSE_TAGS
             socket.send_text("CAP REQ :"
 #if PARSE_TAGS
@@ -1034,31 +890,3 @@ bool __fastcall start_twitch_thread(const char* channel_name) {
     }
     return false;
 }
-
-#if ENABLE_YOUTUBE
-#include "..\zero_private\youtube_api_key.hpp"
-
-static Socket<true> youtube_socket;
-
-bool __fastcall start_youtube_thread(const char* channel_id) {
-    if (expect(enable(), true)) {
-        if (expect(youtube_socket.connect(googleapis_server_name_w, googleapis_port_str), true)) {
-            auto [path, length] = build_new_str<char>("/youtube/v3/search?part=snippet&channelId=", channel_id, "&eventType=live&type=video&key=", youtube_api_key);
-            auto [extra_headers, extra_length] = build_new_str<char>("Host:", googleapis_server_name, "\r\n");
-            youtube_socket.send_http_get(path, extra_headers);
-            free(path);
-            free(extra_headers);
-
-            size_t data_length = twitch_socket.receive(receive_buffer, receive_buffer_size);
-
-            receive_buffer[data_length] = '\0';
-            printf("%s", receive_buffer);
-
-            youtube_socket.close();
-        } else {
-            printf("connection failed\n");
-        }
-    }
-    return true;
-}
-#endif

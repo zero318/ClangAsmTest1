@@ -3159,7 +3159,25 @@ void thcrap_inject_test();
 
 void x64_inject_test();
 
+dllexport void say_hi() {
+	MessageBoxA(NULL, "hi from x64", "thcrap_inject_test", 0);
+}
+dllexport void say_bye() {
+	MessageBoxA(NULL, "injection_failed", "thcrap_inject_test", 0);
+}
+
+void make_shift_jis_conversion_table();
+
+gnu_noinline void segment_jank_test();
+
 int stdcall main(int argc, char* argv[]) {
+
+	segment_jank_test();
+	return 0;
+
+	clang_noinline say_bye();
+
+	return 0;
 
 	/*
 	printf("Available: %s\n", bool_str(IsApiSetImplemented("api-ms-win-eventing-classicprovider-l1-1-0")));
@@ -5603,6 +5621,7 @@ extern "C" {
 
 #undef TH_NODISCARD_REASON
 #define TH_NODISCARD_REASON(...)
+#define THCRAP_INTERNAL_API
 
 #undef TH_VECTORCALL
 #define TH_VECTORCALL __vectorcall
@@ -5620,8 +5639,18 @@ extern "C" {
 #define _TEB _TH_TEB
 #define TEB TH_TEB
 #define PTEB TH_PTEB
+#define _CURDIR _TH_CURDIR
+#define CURDIR TH_CURDIR
+#define _GDI_TEB_BATCH _TH_GDI_TEB_BATCH
+#define GDI_TEB_BATCH TH_GDI_TEB_BATCH
+#define _KSYSTEM_TIME _TH_KSYSTEM_TIME
+#define KSYSTEM_TIME TH_KSYSTEM_TIME
+#define _KUSER_SHARED_DATA _TH_KUSER_SHARED_DATA
+#define KUSER_SHARED_DATA TH_KUSER_SHARED_DATA
 #define _PROCESS_BASIC_INFORMATION _TH_PROCESS_BASIC_INFORMATION
 #define PROCESS_BASIC_INFORMATION TH_PROCESS_BASIC_INFORMATION
+#define _RTL_USER_PROCESS_PARAMETERS _TH_RTL_USER_PROCESS_PARAMETERS
+#define RTL_USER_PROCESS_PARAMETERS TH_RTL_USER_PROCESS_PARAMETERS
 #define PROCESSINFOCLASS TH_PROCESSINFOCLASS
 #define ProcessBasicInformation TH_ProcessBasicInformation
 #define ProcessWow64Information TH_ProcessWow64Information
@@ -5637,6 +5666,7 @@ extern "C" {
 #define EndAlternatives TH_EndAlternatives
 #define ALTERNATIVE_ARCHITECTURE_TYPE TH_ALTERNATIVE_ARCHITECTURE_TYPE
 #define TH_FORCEINLINE
+#define SpinLock TH_SpinLock
 #include "F:\\Users\\zero318\\Source\\Repos\\thcrap\\thcrap\\src\\util.h"
 #undef _PEB
 #undef PEB
@@ -5649,8 +5679,18 @@ extern "C" {
 #undef _TEB
 #undef TEB
 #undef PTEB
+#undef _CURDIR
+#undef CURDIR
+#undef _GDI_TEB_BATCH
+#undef GDT_TEB_BATCH
+#undef _KSYSTEM_TIME
+#undef KSYSTEM_TIME
+#undef _KUSER_SHARED_DATA
+#undef KUSER_SHARED_DATA
 #undef _PROCESS_BASIC_INFORMATION
 #undef PROCESS_BASIC_INFORMATION
+#undef _RTL_USER_PROCESS_PARAMETERS
+#undef RTL_USER_PROCESS_PARAMETERS
 #undef PROCESSINFOCLASS
 #undef ProcessBasicInformation
 #undef ProcessWow64Information
@@ -5664,6 +5704,7 @@ extern "C" {
 #undef NEC98x86
 #undef EndAlternatives
 #undef ALTERNATIVE_ARCHITECTURE_TYPE
+#undef SpinLock
 #include "F:\\Users\\zero318\\Source\\Repos\\thcrap\\thcrap\\src\\jansson_ex.h"
 #define LongDouble80 long double
 #include "F:\\Users\\zero318\\Source\\Repos\\thcrap\\thcrap\\src\\expression.h"
@@ -6361,6 +6402,7 @@ exit_label:
 
 static inline constexpr wchar_t dummy_dll_name[] = L"F:/Users/zero318/Source/Repos/ClangAsmTest1/out/build/x64-Clang-Release-Debug/x64_inject_test.dll";
 
+/*
 #if IS_X64
 #pragma comment (lib, "F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\ntdll64.lib")
 #pragma comment (lib, "F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\out\\build\\x64-Clang-Release-Debug\\x64_inject_test.lib")
@@ -6448,3 +6490,212 @@ void x64_inject_test() {
 	}
 }
 #endif
+*/
+
+#include <atomic>
+
+//#define _HAS_CXX20 1
+//#include <bit>
+
+// C++ Concurrency Named Requirements:
+// BasicLockable
+// Lockable
+// Mutex
+struct dllexport SpinLock {
+	std::atomic<bool> flag;
+
+	inline constexpr SpinLock() : flag(false) {}
+	SpinLock(const SpinLock&) = delete;
+	SpinLock& operator=(const SpinLock&) = delete;
+
+	inline void lock() {
+		while (this->flag.exchange(true, std::memory_order_acquire));
+		std::atomic_thread_fence(std::memory_order_acquire);
+	}
+	inline bool try_lock() {
+		bool ret = this->flag.exchange(true, std::memory_order_acquire);
+		std::atomic_thread_fence(std::memory_order_acquire);
+		return ret ^ true;
+	}
+	inline void unlock() {
+		std::atomic_thread_fence(std::memory_order_release);
+		this->flag.store(false, std::memory_order_release);
+	}
+};
+
+template<typename T = size_t>
+struct dllexport SpinQueue {
+	std::atomic<T> data;
+
+	inline constexpr SpinQueue() : data(0) {}
+	SpinQueue(const SpinQueue&) = delete;
+	SpinQueue& operator=(const SpinQueue&) = delete;
+
+	inline void lock() {
+		if (T ticket = this->data.fetch_add(1, std::memory_order_acquire)) {
+			do {
+			} while (this->data.load(std::memory_order_relaxed) != ticket);
+		}
+		std::atomic_thread_fence(std::memory_order_acquire);
+	}
+	inline void unlock() {
+		std::atomic_thread_fence(std::memory_order_release);
+		this->data.fetch_sub(1, std::memory_order_release);
+	}
+};
+
+template struct SpinQueue<size_t>;
+
+void make_shift_jis_conversion_table() {
+	wchar_t table[0x10000][2] = {};
+
+	std::string output = "";
+	for (size_t i = 0; i < 0x10000; ++i) {
+		if (i % 256 == 0) {
+			output += '\n';
+		}
+		int length = 0;
+		if (i < 0x80 || (i & 0x80)) {
+			length = MultiByteToWideChar(932, MB_ERR_INVALID_CHARS, (LPCCH)&i, 1 + (i > 255), table[i], 2);
+		}
+		output += '(';
+		if (length > 0) {
+			output += std::to_string((uint16_t)table[i][0]);
+		}
+		if (length > 1) {
+			output += ',' + std::to_string((uint16_t)table[i][1]);
+		}
+		output += ')';
+	}
+	if (FILE* dump = fopen("char_dump.txt", "wb")) {
+		fwrite(output.data(), 1, output.length(), dump);
+		fclose(dump);
+	}
+}
+
+#define FAR_CALL_IMM(seg, addr, ret, ...) __asm__ volatile ("lcall %[Seg],%[Addr]":ret: [Seg]"i"(seg), [Addr]"i"(addr) __VA_OPT__(,) __VA_ARGS__)
+#define FAR_JUMP_IMM(seg, addr, ret, ...) __asm__ volatile ("ljmp %[Seg],%[Addr]":ret: [Seg]"i"(seg), [Addr]"i"(addr) __VA_OPT__(,) __VA_ARGS__)
+
+gnu_noinline void segment_jank_test() {
+
+	constexpr uint64_t loop_iters = 1000000000ULL;
+	constexpr uint64_t counter_add = UINT64_MAX / loop_iters;
+
+	struct Dummy {
+		void* addr;
+		uint16_t seg;
+	};
+
+	uint64_t counter;
+
+	const uint32_t ss_segment = 0x2B;
+
+	builtin_start_time = rdtsc();
+	counter = 0;
+	do {
+		write_ss(ss_segment);
+	} while (!__builtin_add_overflow(counter, counter_add, &counter));
+	builtin_end_time = rdtsc();
+
+
+	custom1_start_time = rdtsc();
+	counter = 0;
+	do {
+		if (store_ss() != ss_segment) {
+			write_ss(ss_segment);
+		}
+	} while (!__builtin_add_overflow(counter, counter_add, &counter));
+	custom1_end_time = rdtsc();
+
+	static Dummy lss_test{
+		.addr = (void*)esp_reg,
+		.seg = ss_segment
+	};
+
+	custom2_start_time = rdtsc();
+	counter = 0;
+	do {
+		__asm__ volatile (
+			INTEL_SYNTAX_DIRECTIVE
+			"LSS ESP, FWORD PTR [%V[addr]]"
+			:
+			: [addr]"r"(&lss_test)
+		);
+	} while (!__builtin_add_overflow(counter, counter_add, &counter));
+	custom2_end_time = rdtsc();
+
+	/*
+	custom4_start_time = rdtsc();
+	counter = 0;
+	do {
+		__asm__ volatile goto (
+			".byte 0x9A \n"
+			".int %c[far_ret_i] \n"
+			".word %c[Seg]"
+			:
+			: [Seg]"i"(0x33), [far_ret_i]"i"(&&far_ret)
+			:
+			: far_ret, piss
+		);
+	} while (!__builtin_add_overflow(counter, counter_add, &counter));
+	custom4_end_time = rdtsc();
+
+	static const Dummy far_jump{
+		.addr = &&jump_back_ret,
+		.seg = 0x23
+	};
+	
+	custom5_start_time = rdtsc();
+	counter = 0;
+	do {
+		__asm__ volatile goto (
+			".byte 0xEA \n"
+			".int %c[far_jump_back_i] \n"
+			".word %c[Seg] \n"
+			".byte 0xCC"
+			:
+			: [Seg]"i"(0x33), [far_jump_back_i]"i"(&&far_jump_back)
+			:
+			: far_jump_back
+		);
+	jump_back_ret:;
+	} while (!__builtin_add_overflow(counter, counter_add, &counter));
+	custom5_end_time = rdtsc();
+	*/
+
+	printf(
+		"SS Always Time:  %llu\n"
+		"SS Cond Time:    %llu\n"
+		"LSS Always Time: %llu\n"
+		//"Far Call Time:   %llu\n"
+		//"Far Jump2 Time:  %llu\n"
+		//"Far IRET Time:   %llu\n"
+		, builtin_end_time - builtin_start_time
+		, custom1_end_time - custom1_start_time
+		, custom2_end_time - custom2_start_time
+		//, custom3_end_time - custom3_start_time
+		//, custom4_end_time - custom4_start_time
+	);
+
+	return;
+
+	/*
+piss:
+	__asm__ volatile(
+		".align 16, 0xCC \n"
+	);
+far_ret:
+	__asm__ volatile(
+		"lret \n"
+		".align 16, 0xCC \n"
+	);
+far_jump_back:
+	__asm__ volatile(
+		ATT_64_DIRECTIVE
+		"ljmp *%[far_jump] \n"
+		".align 16, 0xCC \n"
+		:
+		: [far_jump]"m"(far_jump)
+	);
+	*/
+}

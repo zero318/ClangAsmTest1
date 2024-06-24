@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include <string.h>
 #include <string>
+#include <memory>
+#include <atomic>
 
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -30,8 +32,13 @@ struct UnknownA {
     void* __ptr_4;
 };
 
+struct UnknownC {
+    SOCKET socket;
+};
+
 // This does something with TLS and is called everywhere. Seems to be something about error handling
 dllexport gnu_noinline void* __sub_r2DBEE0() {
+    // I haven't reversed this yet, returning rand just makes it compile
     return (void*)rand();
 };
 
@@ -53,6 +60,119 @@ dllexport gnu_noinline SOCKET __create_socket_r170620(int af, int type, int prot
     arg4->wsa_last_error = ERROR_SUCCESS;
     return sock;
 }
+
+template<typename T = uint32_t>
+struct JANK_CRITICAL_SECTION {
+    union {
+        CRITICAL_SECTION crit_section;
+        struct {
+            uint32_t : 32;
+            uint32_t : 32;
+            uint32_t : 32;
+            uint32_t : 32;
+            uint32_t : 32;
+            uint32_t : 32;
+            uint32_t : 32;
+            T __padding_reuse_1C;
+        };
+    };
+};
+
+struct UnknownF {
+    union {
+        WSAOVERLAPPED __overlapped_0; // 0x0
+        struct {
+            void* __ptr_0; // 0x0
+            unknown_fields(0x4); // 0x4
+            int error; // 0x8
+            int __int_C; // 0xC
+            unknown_fields(0x4); // 0x10
+            UnknownF* __unknownF_ptr_14; // 0x14
+        };
+    };
+    unknown_fields(0x4); // 0x18
+    std::atomic<int> __atomic_int_1C; // 0x1C
+    // 0x20
+};
+
+struct UnknownD {
+    std::atomic<int> __atomic_int_0;
+    unknown_fields(0x10);
+    HANDLE __handle_14; // 0x14
+    unknown_fields(0x1C); // 0x18
+    std::atomic<int> __atomic_int_34; // 0x34
+    JANK_CRITICAL_SECTION<UnknownF*> __jank_crit_section_38; // 0x38
+    UnknownF* __unknownF_ptr_58; // 0x58
+    // 0x5C
+
+    dllexport gnu_noinline void __sub_r16FDE0(UnknownF* unknown_f) {
+        int value = 0;
+        unknown_f->__atomic_int_1C.compare_exchange_strong(value, 1);
+        if (value == 1) {
+            if (!PostQueuedCompletionStatus(this->__handle_14, 0, 2, &unknown_f->__overlapped_0)) {
+                CRITICAL_SECTION* crit_section = &this->__jank_crit_section_38.crit_section;
+                EnterCriticalSection(crit_section);
+                unknown_f->__unknownF_ptr_14 = NULL;
+                if (UnknownF* local_ptr = this->__unknownF_ptr_58) {
+                    local_ptr->__unknownF_ptr_14 = unknown_f;
+                } else {
+                    this->__jank_crit_section_38.__padding_reuse_1C = unknown_f;
+                }
+                this->__unknownF_ptr_58 = unknown_f;
+                this->__atomic_int_34 = 1;
+                LeaveCriticalSection(crit_section);
+            }
+        }
+    }
+
+    dllexport gnu_noinline void __sub_r16FE50(UnknownF* unknown_f, int error, int arg3) {
+        unknown_f->__ptr_0 = __sub_r2DBEE0();
+        unknown_f->error = error;
+        unknown_f->__int_C = arg3;
+        if (!PostQueuedCompletionStatus(this->__handle_14, 0, 2, (LPOVERLAPPED)unknown_f)) {
+            CRITICAL_SECTION* crit_section = &this->__jank_crit_section_38.crit_section;
+            EnterCriticalSection(crit_section);
+            unknown_f->__unknownF_ptr_14 = NULL;
+            if (UnknownF* local_ptr = this->__unknownF_ptr_58) {
+                local_ptr->__unknownF_ptr_14 = unknown_f;
+            } else {
+                this->__jank_crit_section_38.__padding_reuse_1C = unknown_f;
+            }
+            this->__unknownF_ptr_58 = unknown_f;
+            this->__atomic_int_34 = 1;
+            LeaveCriticalSection(crit_section);
+        }
+    }
+};
+
+struct UnknownE {
+    unknown_fields(0x4);
+    UnknownD* __unknownD_ptr_4; // 0x4
+
+
+    dllexport gnu_noinline void __sub_r170E00(UnknownC* unknown_c, LPWSABUF buffers, DWORD bufferCount, sockaddr* from, DWORD flags, LPINT from_len, UnknownF* unknown_f) {
+
+        ++this->__unknownD_ptr_4->__atomic_int_0;
+
+        SOCKET socket = unknown_c->socket;
+        if (socket == INVALID_SOCKET) {
+            this->__unknownD_ptr_4->__sub_r16FE50(unknown_f, WSAEBADF, 0);
+            return;
+        }
+        flags = flags;
+        DWORD received = 0;
+        int result = WSARecvFrom(socket, buffers, bufferCount, &received, &flags, from, from_len, &unknown_f->__overlapped_0, NULL);
+        int error = WSAGetLastError();
+        if (error == ERROR_PORT_UNREACHABLE) {
+            error = WSAECONNREFUSED;
+        }
+        if (result != 0 && error != ERROR_IO_PENDING) {
+            this->__unknownD_ptr_4->__sub_r16FE50(unknown_f, error, received);
+        } else {
+            this->__unknownD_ptr_4->__sub_r16FDE0(unknown_f);
+        }
+    }
+};
 
 
 // Rx4DAD30
@@ -251,31 +371,3 @@ void __input_get_states() {
     __joystick_device_get_state();
     __mouse_device_get_state(); // this one got inlined
 }
-
-typedef int (*NutFunc)(void*);
-
-// 0x10
-struct NutUnknownA {
-    const char* name; // 0x0
-    NutFunc func; // 0x4
-    int32_t __int_8; // 0x8
-    const char* __str_C; // 0xC
-    // 0x10
-};
-
-// Rx19CFF0
-int __nut_len(void*);
-
-// Rx498000
-NutUnknownA NUT_ARRAY_A[] = {
-    {
-        .name = "len",
-        .func = &__nut_len_sub,
-        .__int_8 = 1,
-        .__ptr_C = "t"
-    },
-    {
-        .name = "rawget",
-        .func = 
-    }
-};

@@ -76,7 +76,13 @@ __declspec(noinline) void test_parsing() {
     }
 }
 
+extern bool __fastcall start_youtube_thread(const char* channel_id);
+
 int main(int argc, char* argv[]) {
+
+    start_youtube_thread("UCV6mNrW8CrmWtcxWfQXy11g");
+    return 0;
+
     //if (argc > 1) {
         //run_twitch_voting(argv[1]);
         if (start_twitch_thread("oatsngoats")) {

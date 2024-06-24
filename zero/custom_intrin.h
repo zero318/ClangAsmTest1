@@ -414,6 +414,16 @@ static forceinline void serialize_instructions() {
 	rdtsc_serialize(); // Surely there's a better way...
 }
 
+static uint32_t load_segment_limit(uint32_t value) {
+	uint32_t ret;
+	__asm__ volatile (
+		"LSL %[ret], %[value]"
+		: asm_arg("=r", ret)
+		: asm_arg("r", value)
+	);
+	return ret;
+}
+
 #ifdef _M_IX86
 static forceinline uint32_t push_cs() {
 	asm volatile(
@@ -422,6 +432,65 @@ static forceinline uint32_t push_cs() {
 	return GARBAGE_VALUE(uint32_t);
 }
 #endif
+
+static forceinline void read_cs(uint16_t& out) {
+	__asm__ volatile(
+		"MOV %[out], CS"
+		: asm_arg("=rm", out)
+	);
+}
+static forceinline uint16_t read_cs() {
+	uint16_t temp;
+	read_cs(temp);
+	return temp;
+}
+
+static forceinline void write_ss(const uint32_t& value) {
+	__asm__ volatile(
+		"MOV %[value], %%SS"
+		:
+		: [value]"r,m"(value)
+	);
+}
+static forceinline void store_ss(uint32_t& value) {
+	__asm__ volatile(
+		"MOV %%SS, %[value]"
+		: [value]"=r"(value)
+	);
+}
+static forceinline uint32_t store_ss() {
+	uint32_t temp;
+	store_ss(temp);
+	return temp;
+}
+static forceinline void write_ds(const uint16_t& value) {
+	__asm__ volatile(
+		"MOV DS, %[value]"
+		:
+		: [value] "r,m"((uint32_t)value)
+	);
+}
+static forceinline void write_es(const uint16_t& value) {
+	__asm__ volatile(
+		"MOV ES, %[value]"
+		:
+		: [value] "r,m"((uint32_t)value)
+	);
+}
+static forceinline void write_fs(const uint16_t& value) {
+	__asm__ volatile(
+		"MOV FS, %[value]"
+		:
+		: [value] "r,m"((uint32_t)value)
+	);
+}
+static forceinline void write_gs(const uint16_t& value) {
+	__asm__ volatile(
+		"MOV GS, %[value]"
+		:
+		: [value] "r,m"((uint32_t)value)
+	);
+}
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-type"

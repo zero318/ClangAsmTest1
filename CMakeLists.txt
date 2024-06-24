@@ -27,6 +27,7 @@ add_executable(3d_flying_objects)
 add_executable(discord_test)
 add_executable(AoCFTest1)
 add_executable(loaddll)
+add_executable(force_load_pe)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
 add_library(winhttp_websocket SHARED)
@@ -39,6 +40,7 @@ add_library(glaux STATIC)
 add_library(glcommon STATIC)
 #add_library(twitch_irc_test SHARED)
 add_executable(twitch_irc_test)
+add_executable(youtube_chat_test)
 add_library(x64_inject_test SHARED)
 add_executable(x64_injector)
 
@@ -72,10 +74,12 @@ glcommon
 3d_flying_objects
 discord_test
 twitch_irc_test
+youtube_chat_test
 AoCFTest1
 loaddll
 x64_inject_test
 x64_injector
+force_load_pe
 )
 
 enable_language(ASM-ATT)
@@ -1063,6 +1067,19 @@ target_compile_options(twitch_irc_test PRIVATE
 #target_link_options(twitch_irc_test PRIVATE
 	#/DLL
 #)
+target_sources(youtube_chat_test PRIVATE
+	"twitch_irc_test/youtube_test.cpp"
+)
+target_compile_options(youtube_chat_test PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_link_libraries(youtube_chat_test "F:\\Users\\zero318\\Source\\Repos\\thcrap\\bin\\bin\\jansson.lib")
 
 target_sources(winhttp_test3 PRIVATE
 	"winhttp_test3/test.cpp"
@@ -1099,6 +1116,7 @@ target_compile_options(wow64cpu PRIVATE
 	"-mno-sse4a"
 	"-mno-fma4"
 	"-mno-sse3"
+	#-mx32
 )
 target_compile_definitions(wow64cpu PRIVATE
 	STOP_LINKING_DEFAULT_LIB_PLZ
@@ -1107,6 +1125,7 @@ target_link_options(wow64cpu PRIVATE
 	${COMPILE_DLL}
 	#${MSLINK_ARG}/NOENTRY
 	${NOSTDLIB_LINK}
+	-force:unresolved
 )
 
 target_sources(parakit_inject PRIVATE
@@ -1332,7 +1351,25 @@ target_link_options(loaddll PRIVATE
 	/ENTRY:yeet
 	${NOSTDLIB_LINK}
 )
-	
+target_sources(force_load_pe PRIVATE
+	"loaddll/force_load_pe.cpp"
+)
+target_compile_options(force_load_pe PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(force_load_pe PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+target_link_options(force_load_pe PRIVATE
+	/ENTRY:yeet
+	${NOSTDLIB_LINK}
+)
 
 target_sources(x64_inject_test PRIVATE
 	"x64_inject_test.cpp"
@@ -1352,7 +1389,7 @@ target_compile_definitions(x64_inject_test PRIVATE
 target_link_options(x64_inject_test PRIVATE
 	${COMPILE_DLL}
 	${NOSTDLIB_LINK}
-	"LINKER:/base:0x7FFD95940000"
+	#"LINKER:/base:0x7FFD95940000"
 )
 target_sources(x64_injector PRIVATE
 	"x64_injector.cpp"

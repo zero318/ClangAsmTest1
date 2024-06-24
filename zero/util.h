@@ -1308,6 +1308,8 @@ static inline P* pointer_raw_offset(P* pointer, O offset) {
 #define vectorcall __vectorcall
 #define dllexport __declspec(dllexport)
 //#define dllimport __declspec(dllimport)
+#define dll_export dllexport
+#define dll_import __declspec(dllimport)
 #define debug_export extern "C"
 #define regparm(count) gnu_attr(regparm(count))
 #define regcall gnu_attr(regcall)
@@ -1318,6 +1320,9 @@ static inline P* pointer_raw_offset(P* pointer, O offset) {
 #undef pascal
 #endif
 #define pascalcall gnu_attr(pascal)
+#define preserve_none gnu_attr(preserve_none)
+#define preserve_most gnu_attr(preserve_most)
+#define preserve_all gnu_attr(preserve_all)
 
 #define sysv_abi gnu_attr(sysv_abi)
 #define ms_abi gnu_attr(ms_abi)
@@ -1935,7 +1940,7 @@ asm_symbol_raw("{<" MACRO_STR(symbol) ">}")
 #define asm_symbol_expr(symbol) \
 asm_symbol_raw("{(" MACRO_STR(symbol) ")}")
 
-#define align_statement(value) __asm__ volatile (".align " MACRO_STR(value) :)
+#define align_statement(...) __asm__ volatile (".align " #__VA_ARGS__ :)
 
 #define infinite_loop() __asm__ volatile (".byte 0xEB, 0xFE")
 

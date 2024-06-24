@@ -16,75 +16,95 @@
 
 #include "../windows_structs.h"
 
-static LARGE_INTEGER qpc_frequency;
-
-static inline constexpr bool skip_to_char(char*& str, char end) {
-	for (;;) {
-		char c = *str;
-		if (expect(!c, false)) {
-			return false;
-		}
-		if (c == end) {
-			return true;
-		}
-		++str;
-	}
-}
-
 BOOL APIENTRY DllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID);
 
 using DllEntry = decltype(DllMain);
 
-_Noreturn void yeet() {
+_Noreturn sysv_abi void yeet() {
 
-	//HMODULE self_handle = (HMODULE)teb->ProcessEnvironmentBlock.ImageBaseAddress;
+	wchar_t* command_line = GetCommandLineW();
 	
-	//QueryPerformanceFrequency(&qpc_frequency);
+	wchar_t c;
 	
-	char* command_line = GetCommandLineA();
-
-	if (*command_line == '"') {
+	if (*command_line == L'"') {
 		++command_line;
-		if (expect(!skip_to_char(command_line, '"'), false)) {
+		do {
+			c = *command_line++;
+			if (expect(!c, false)) {
+				ExitProcess(1);
+				unreachable;
+			}
+		} while (c != L'"');
+	}
+	
+	do {
+		c = *command_line++;
+		if (expect(!c, false)) {
 			ExitProcess(1);
 			unreachable;
 		}
-		++command_line;
+	} while (c != L' ');
+
+	wchar_t* dll_name = command_line;
+	if (*command_line++ == L'"') {
+		++dll_name;
+		
+		do {
+			c = *command_line;
+			if (c == L'"') {
+				*command_line = L'\0';
+				break;
+			}
+			++command_line;
+		} while (c != L'\0');
 	}
 
-	if (expect(!skip_to_char(command_line, ' '), false)) {
-		ExitProcess(1);
-		unreachable;
-	}
-	++command_line;
-
-	char end_char = ' ';
-	if (*command_line == '"') {
-		++command_line;
-		end_char = '"';
-	}
-	char* dll_name = command_line;
-
-	if (skip_to_char(command_line, end_char)) {
-		*command_line = '\0';
-	}
-
-	HMODULE dll_handle = LoadLibraryA(dll_name);
+	HMODULE dll_handle = LoadLibraryExW(dll_name, NULL, DONT_RESOLVE_DLL_REFERENCES | LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE);
 	if (expect(dll_handle == NULL, false)) {
 		ExitProcess(1);
 		unreachable;
 	}
+	void* dll_base = (void*)((uintptr_t)dll_handle & ~3);
 
-	//__asm int3
-	IMAGE_DOS_HEADER* dll_header = (IMAGE_DOS_HEADER*)dll_handle;
+	IMAGE_DOS_HEADER* dll_header = (IMAGE_DOS_HEADER*)dll_base;
 
-	// 
 
-	IMAGE_NT_HEADERS* nt_header = based_pointer<IMAGE_NT_HEADERS>(dll_handle, dll_header->e_lfanew);
+	IMAGE_NT_HEADERS* nt_header = based_pointer<IMAGE_NT_HEADERS>(dll_base, dll_header->e_lfanew);
 
 	DWORD entry_offset = nt_header->OptionalHeader.AddressOfEntryPoint;
+	DWORD code_offset = nt_header->OptionalHeader.BaseOfCode;
+
+	if (nt_header->FileHeader.Machine == IMAGE_FILE_MACHINE_AMD64) {
+
+		auto& user_shared_data = USER_SHARED_DATAR();
+
+		if (
+			(nt_header->OptionalHeader.MajorOperatingSystemVersion < user_shared_data.NtMajorVersion || (
+				nt_header->OptionalHeader.MajorOperatingSystemVersion == user_shared_data.NtMajorVersion &&
+				nt_header->OptionalHeader.MinorOperatingSystemVersion <= user_shared_data.NtMinorVersion
+			)) &&
+			(nt_header->OptionalHeader.MajorImageVersion < user_shared_data.NtMajorVersion || (
+				nt_header->OptionalHeader.MajorImageVersion == user_shared_data.NtMajorVersion &&
+				nt_header->OptionalHeader.MinorImageVersion <= user_shared_data.NtMinorVersion
+			)) &&
+			(nt_header->OptionalHeader.MajorSubsystemVersion < user_shared_data.NtMajorVersion || (
+				nt_header->OptionalHeader.MajorSubsystemVersion == user_shared_data.NtMajorVersion &&
+				nt_header->OptionalHeader.MinorSubsystemVersion <= user_shared_data.NtMinorVersion
+			))
+		) {
+			FreeLibrary(dll_handle);
+			dll_handle = LoadLibraryW(dll_name);
+			if (expect(dll_handle == NULL, false)) {
+				ExitProcess(1);
+				unreachable;
+			}
+
+			dll_base = (void*)dll_handle;
+		}
+	}
+
 	if (expect(entry_offset != 0, true)) {
-		DllEntry* entry_func = based_pointer<DllEntry>(dll_handle, entry_offset);
+		DllEntry* entry_func = based_pointer<DllEntry>(dll_base, entry_offset);
 		
 		register LPVOID lpvReserved asm("r8") = NULL;
 
@@ -98,13 +118,13 @@ _Noreturn void yeet() {
 			ATT_SYNTAX_DIRECTIVE
 			"call %A0\n"
 			:
-			: "r"(entry_func), "c"(dll_handle), "d"(DLL_PROCESS_ATTACH), "r"(lpvReserved)
+			: "r"(entry_func), "c"(dll_base), "d"(DLL_PROCESS_ATTACH), "r"(lpvReserved)
 			: clobber_list("rax")
 		);
 	}
 	else {
 
-		void* code = based_pointer<void>(dll_handle, nt_header->OptionalHeader.BaseOfCode);
+		void* code = based_pointer<void>(dll_base, code_offset);
 
 		__asm__ volatile (
 			INTEL_SYNTAX_DIRECTIVE
