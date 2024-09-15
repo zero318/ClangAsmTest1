@@ -1,0 +1,26 @@
+EXPORTS
+	CpuFlushInstructionCache @ 1
+	CpuGetContext @ 2
+	CpuGetStackPointer @ 3
+	CpuInitializeStartupContext @ 4
+	CpuNotifyAffinityChange @ 5
+	CpuNotifyAfterFork = CpuNotifyAffinityChange @ 6
+	CpuNotifyBeforeFork = CpuNotifyAffinityChange @ 7
+	CpuNotifyDllLoad = CpuNotifyAffinityChange @ 8
+	CpuNotifyDllUnload = CpuNotifyAffinityChange @ 9
+	CpuPrepareForDebuggerAttach = CpuNotifyAffinityChange @ 10
+	CpuProcessDebugEvent = CpuProcessTerm @ 11
+	CpuProcessInit @ 12
+	CpuProcessTerm @ 13
+	CpuResetFloatingPoint = CpuNotifyAffinityChange @ 14
+	CpuResetToConsistentState @ 15
+	CpuSetContext @ 16
+	CpuSetInstructionPointer @ 17
+	CpuSetStackPointer @ 18
+	CpuSimulate @ 19
+	CpuSuspendLocalThread @ 20
+	CpuSuspendThread = CpuProcessTerm @ 21
+	CpuThreadInit @ 22
+	CpuThreadTerm = CpuProcessTerm @ 23
+	TurboDispatchJumpAddressEnd @ 24
+	TurboDispatchJumpAddressStart @ 25

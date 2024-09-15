@@ -1232,6 +1232,52 @@ static inline aam_ret aam_math(uint8_t dividend, const uint8_t divisor = 10u) {
 }
 #endif
 
+template<typename T>
+size_t fastcall get_hex_digit_count(T value) {
+    if constexpr (sizeof(T) == sizeof(uint8_t)) {
+        return value > 0xF;
+    }
+    else {
+        T ret = 0;
+#if __LZCNT__
+        if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            int carry_flag;
+            __asm__(
+                "lzcntw %[value], %[ret]"
+                : asm_arg("=r", ret), asm_flags(c, carry_flag)
+                : asm_arg("r", value)
+            );
+            ret -= carry_flag;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            int carry_flag;
+            __asm__(
+                "lzcntl %[value], %[ret]"
+				: asm_arg("=r", ret), asm_flags(c, carry_flag)
+				: asm_arg("r", value)
+            );
+            ret -= carry_flag;
+        }
+#if __x86_64__
+        else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            int carry_flag;
+            __asm__(
+                "lzcntq %[value], %[ret]"
+				: asm_arg("=r", ret), asm_flags(c, carry_flag)
+				: asm_arg("r", value)
+            );
+            ret -= carry_flag;
+        }
+        else
+#endif
+#endif
+        {
+            ret = std::countl_zero<T>(value | 1u);
+        }
+        return (ret ^ bitsof(T) - 1) >> 2;
+    }
+}
+
 static inline bool complement_carry(void) {
 	int carry_flag;
 	__asm__(

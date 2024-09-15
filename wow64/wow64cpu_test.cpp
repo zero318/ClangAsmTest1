@@ -19,159 +19,14 @@
 #pragma comment (lib, "F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\ntdll64.lib")
 
 #include "..\win_syscalls\syscalls7.h"
-/*
-enum SyscallIndex : uint32_t {
-	NtSetInformationThreadID = 0x0A,
-	NtWaitForMultipleObjects32ID = 0x17,
-	NtQueryInformationThreadID = 0x22,
-	NtTerminateProcessID = 0x29,
-	NtWriteVirtualMemoryID = 0x37,
-	NtProtectVirtualMemoryID = 0x4D,
-	NtFlushInstructionCacheID = 0xC2,
 
-	NtUserGetThreadStateID = 0x1000
-};
-
-template<typename R = uint64_t>
-static R syscall0(SyscallIndex index) {
-	R ret;
-	__asm__ volatile(
-		"syscall"
-		: "=a"(ret)
-		: "a"(index)
-		: clobber_list("rcx", "r11")
-	);
-	__asm__ volatile ("":::clobber_list("r10"));
-	return ret;
-}
-template<typename R = uint64_t, typename A1>
-static R syscall1(SyscallIndex index, A1 arg1) {
-	register A1 temp1 asm("r10") = arg1;
-	R ret;
-	__asm__ volatile (
-		"syscall"
-		: "=a"(ret)
-		: "a"(index), "r"(temp1)
-		: clobber_list("rcx", "r11")
-	);
-	__asm__ volatile ("":::clobber_list("r10"));
-	return ret;
-}
-template<typename R = uint64_t, typename A1, typename A2>
-static R syscall2(SyscallIndex index, A1 arg1, A2 arg2) {
-	register A1 temp1 asm("r10") = arg1;
-	R ret;
-	__asm__ volatile (
-		"syscall"
-		: "=a"(ret)
-		: "a"(index), "r"(temp1), "d"(arg2)
-		: clobber_list("rcx", "r11")
-	);
-	__asm__ volatile ("":::clobber_list("r10"));
-	return ret;
-}
-template<typename R = uint64_t, typename A1, typename A2, typename A3>
-static R syscall3(SyscallIndex index, A1 arg1, A2 arg2, A3 arg3) {
-	register A1 temp1 asm("r10") = arg1;
-	register A3 temp3 asm("r8") = arg3;
-	R ret;
-	__asm__ volatile (
-		"syscall"
-		: "=a"(ret)
-		: "a"(index), "r"(temp1), "d"(arg2), "r"(temp3)
-		: clobber_list("rcx", "r11")
-	);
-	__asm__ volatile ("":::clobber_list("r10"));
-	return ret;
-}
-template<typename R = uint64_t, typename A1, typename A2, typename A3, typename A4>
-static R syscall4(SyscallIndex index, A1 arg1, A2 arg2, A3 arg3, A4 arg4) {
-	register A1 temp1 asm("r10") = arg1;
-	register A3 temp3 asm("r8") = arg3;
-	register A4 temp4 asm("r9") = arg4;
-	R ret;
-	__asm__ volatile (
-		"syscall"
-		: "=a"(ret)
-		: "a"(index), "r"(temp1), "d"(arg2), "r"(temp3), "r"(temp4)
-		: clobber_list("rcx", "r11")
-	);
-	__asm__ volatile ("":::clobber_list("r10"));
-	return ret;
-}
-template<typename R = uint64_t, typename A1, typename A2, typename A3, typename A4, typename A5>
-static R syscall5(SyscallIndex index, A1 arg1, A2 arg2, A3 arg3, A4 arg4, A5 arg5) {
-	register A1 temp1 asm("r10") = arg1;
-	register A3 temp3 asm("r8") = arg3;
-	register A4 temp4 asm("r9") = arg4;
-	R ret;
-	__asm__ volatile (
-		"syscall"
-		: "=a"(ret)
-		: "a"(index), "r"(temp1), "d"(arg2), "r"(temp3), "r"(temp4), "m"(arg5)
-		: clobber_list("rcx", "r11")
-	);
-	__asm__ volatile ("":::clobber_list("r10"));
-	return ret;
-}
-
-inline NTSTATUS NtSetInformationThread(HANDLE ThreadHandle, THREADINFOCLASS ThreadInformationClass, PVOID ThreadInformation, ULONG ThreadInformationLength) {
-	return syscall4<NTSTATUS>(NtSetInformationThreadID, ThreadHandle, ThreadInformationClass, ThreadInformation, ThreadInformationLength);
-}
-
-inline NTSTATUS NtQueryInformationThread(HANDLE ThreadHandle, THREADINFOCLASS ThreadInformationClass, PVOID ThreadInformation, ULONG ThreadInformationLength, PULONG ReturnLength) {
-	return syscall5<NTSTATUS>(NtQueryInformationThreadID, ThreadHandle, ThreadInformationClass, ThreadInformation, ThreadInformationLength, ReturnLength);
-}
-
-inline NTSTATUS NtTerminateProcess(HANDLE ProcessHandle, NTSTATUS ExitStatus) {
-	return syscall2<NTSTATUS>(NtTerminateProcessID, ProcessHandle, ExitStatus);
-}
-
-inline NTSTATUS NtWriteVirtualMemory(HANDLE ProcessHandle, PVOID BaseAddress, PVOID Buffer, ULONG NumberOfBytesToWrite, PULONG NumberOfBytesWritten) {
-	return syscall5<NTSTATUS>(NtWriteVirtualMemoryID, ProcessHandle, BaseAddress, Buffer, NumberOfBytesToWrite, NumberOfBytesWritten);
-}
-
-inline NTSTATUS NtProtectVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddress, PULONG NumberOfBytesToProtect, ULONG NewAccessProtection, PULONG OldAccessProtection) {
-	return syscall5<NTSTATUS>(NtProtectVirtualMemoryID, ProcessHandle, BaseAddress, NumberOfBytesToProtect, NewAccessProtection, OldAccessProtection);
-}
-
-inline NTSTATUS NtFlushInstructionCache(HANDLE ProcessHandle, PVOID BaseAddress, ULONG NumberOfBytesToFlush) {
-	return syscall3<NTSTATUS>(NtFlushInstructionCacheID, ProcessHandle, BaseAddress, NumberOfBytesToFlush);
-}
-
-inline NTSTATUS NtWaitForMultipleObjects32(ULONG ObjectCount, PHANDLE ObjectsArray, OBJECT_WAIT_TYPE WaitType, BOOLEAN Alertable, PLARGE_INTEGER TimeOut) {
-	return syscall5<NTSTATUS>(NtWaitForMultipleObjects32ID, ObjectCount, ObjectsArray, WaitType, Alertable, TimeOut);
-}
-*/
+#include "wow64_common.h"
 
 static constexpr uint32_t default_eflags_value			= 0x202;
 static constexpr uint16_t default_64_bit_code_segment	= 0x33;
 static constexpr uint16_t default_data_segment			= default_64_bit_code_segment - 0x8;
 static constexpr uint16_t default_32_bit_code_segment	= default_64_bit_code_segment - 0x10;
 static constexpr uint16_t teb_segment					= 0x53;
-
-struct CPUCONTEXT {
-	int __dword_0;
-	CONTEXTX<32> context32;
-	union {
-		uint32_t flags;
-		struct {
-			uint32_t return_with_iret : 1;
-		};
-	};
-};
-
-struct UnknownB {
-	unknown_fields(0x4);
-	int __dword_4;
-	union {
-		uint32_t flags;
-		struct {
-			uint32_t : 14;
-			uint32_t __unknown_flag_A : 1;
-		};
-	};
-};
 
 template<typename T>
 bool has_bits_set(T value, T bits) {
@@ -276,103 +131,113 @@ NTSTATUS RtlpWow64SetContextOnAmd64(CONTEXTX<32>* context_out, int, const CONTEX
 	return 0;
 }
 
-NTSTATUS RtlpWow64CtxFromAmd64(uint32_t context_flags, CONTEXTX<64>* context64, CONTEXTX<32>* context32) {
+NTSTATUS RtlpWow64CtxFromAmd64(uint32_t context_flags, const CONTEXTX<64>* context64, CONTEXTX<32>* context32) {
 	context32->ContextFlags = context_flags;
-	if (has_bits_set(context_flags, CONTEXTX_32 | CONTEXTX_CONTROL)) {
-		context32->Ebp = context64->Rbp;
-		context32->Eip = context64->Rip;
-		context32->SegCs = default_32_bit_code_segment;
-		context32->EFlags = context64->EFlags;
-		context32->Esp = context64->Rsp;
-		context32->SegSs = default_data_segment;
-	}
-	if (has_bits_set(context_flags, CONTEXTX_32 | CONTEXTX_INTEGER)) {
-		context32->Edi = context64->Rdi;
-		context32->Esi = context64->Rsi;
-		context32->Ebx = context64->Rbx;
-		context32->Edx = context64->Rdx;
-		context32->Ecx = context64->Rcx;
-		context32->Eax = context64->Rax;
-	}
-	if (has_bits_set(context_flags, CONTEXTX_32 | CONTEXTX_SEGMENTS)) {
-		context32->SegGs = default_data_segment;
-		context32->SegFs = teb_segment;
-		context32->SegEs = default_data_segment;
-		context32->SegDs = default_data_segment;
-	}
-	if (has_bits_set(context_flags, CONTEXTX_32 | CONTEXTX_EXTENDED_REGISTERS)) {
-		context32->ExtendedRegisters = {};
-		context32->ExtendedRegisters.ControlWord = context64->FltSave.ControlWord;
-		context32->ExtendedRegisters.StatusWord = context64->FltSave.StatusWord;
-		*(uint16_t*)&context32->ExtendedRegisters.TagWord = *(uint16_t*)&context64->FltSave.TagWord;
-		context32->ExtendedRegisters.ErrorOpcode = context64->FltSave.ErrorOpcode;
-		*(uint64_t*)&context32->ExtendedRegisters.ErrorOffset = context64->FltSave.ErrorOffset;
-		*(uint64_t*)&context32->ExtendedRegisters.DataOffset = context64->FltSave.DataOffset;
-		context32->ExtendedRegisters.MxCsr = context64->FltSave.MxCsr;
-		context32->ExtendedRegisters.MxCsr_Mask = context64->FltSave.MxCsr_Mask;
-		for (size_t i = 0; i < 8; ++i) {
-			__builtin_memcpy(&context32->FloatSave.RegisterArea[i], &context64->FltSave.FloatRegisters[i], sizeof(PackedLongDouble));
+	if (has_bits_set(context_flags, CONTEXTX_32)) {
+		if (has_bits_set(context_flags, CONTEXTX_CONTROL)) {
+			context32->Ebp = context64->Rbp;
+			context32->Eip = context64->Rip;
+			context32->SegCs = default_32_bit_code_segment;
+			context32->EFlags = context64->EFlags;
+			context32->Esp = context64->Rsp;
+			context32->SegSs = default_data_segment;
 		}
-		for (size_t i = 0; i < 8; ++i) {
-			context32->ExtendedRegisters.XmmRegisters[i] = context64->FltSave.XmmRegisters[i];
+		if (has_bits_set(context_flags, CONTEXTX_INTEGER)) {
+			context32->Edi = context64->Rdi;
+			context32->Esi = context64->Rsi;
+			context32->Ebx = context64->Rbx;
+			context32->Edx = context64->Rdx;
+			context32->Ecx = context64->Rcx;
+			context32->Eax = context64->Rax;
 		}
-	}
-	if (has_bits_set(context_flags, CONTEXTX_32 | CONTEXTX_FLOATING_POINT)) {
-		context32->FloatSave.ControlWord.raw_wide = context64->FltSave.ControlWord.raw;
-		FSW status_word = context64->FltSave.StatusWord;
-		context32->FloatSave.StatusWord.raw_wide = status_word.raw;
-		context32->FloatSave.ErrorOffset = context64->FltSave.ErrorOffset;
-		context32->FloatSave.ErrorSelector = context64->FltSave.ErrorSelector;
-		context32->FloatSave.ErrorOpcode = context64->FltSave.ErrorOpcode;
-		context32->FloatSave.DataOffset = context64->FltSave.DataOffset;
-		context32->FloatSave.DataSelector = context64->FltSave.DataSelector;
-		for (size_t i = 0; i < 8; ++i) {
-			__builtin_memcpy(&context32->FloatSave.RegisterArea[i], &context64->FltSave.FloatRegisters[i], sizeof(PackedLongDouble));
+		if (has_bits_set(context_flags, CONTEXTX_SEGMENTS)) {
+			context32->SegGs = default_data_segment;
+			context32->SegFs = teb_segment;
+			context32->SegEs = default_data_segment;
+			context32->SegDs = default_data_segment;
 		}
-		size_t stack_index = 7 - status_word.stack_top;
-		uint32_t tag_word = 0;
-		int8_t compressed_tag_word = context64->FltSave.TagWord;
-		for (size_t i = 0; i < 8; ++i) {
-			tag_word <<= 2;
-			if (compressed_tag_word < 0) {
-				switch (context64->FltSave.FloatRegisters[stack_index].raw[4] & 0x7FFF) {
-					case 0:
-						tag_word |= 2 >> !*(uint64_t*)&context64->FltSave.FloatRegisters[stack_index];
-						break;
-					default:
-						if (*(int64_t*)&context64->FltSave.FloatRegisters[stack_index] < 0) {
-					case 0x7FFF:
-							tag_word |= 2;
-						}
-						break;
+		if (has_bits_set(context_flags, CONTEXTX_EXTENDED_REGISTERS)) {
+			/*
+			context32->ExtendedRegisters = {};
+			context32->ExtendedRegisters.ControlWord = context64->FltSave.ControlWord;
+			context32->ExtendedRegisters.StatusWord = context64->FltSave.StatusWord;
+			*(uint16_t*)&context32->ExtendedRegisters.TagWord = *(uint16_t*)&context64->FltSave.TagWord;
+			context32->ExtendedRegisters.ErrorOpcode = context64->FltSave.ErrorOpcode;
+			*(uint64_t*)&context32->ExtendedRegisters.ErrorOffset = context64->FltSave.ErrorOffset;
+			*(uint64_t*)&context32->ExtendedRegisters.DataOffset = context64->FltSave.DataOffset;
+			context32->ExtendedRegisters.MxCsr = context64->FltSave.MxCsr;
+			context32->ExtendedRegisters.MxCsr_Mask = context64->FltSave.MxCsr_Mask;
+			*/
+			__builtin_memcpy(&context32->ExtendedRegisters, &context64->FltSave, 0x20);
+			__builtin_memset(context32->ExtendedRegisters.FloatRegisters, 0, sizeof(context32->ExtendedRegisters.FloatRegisters));
+			if (!has_bits_set(context_flags, CONTEXTX_FLOATING_POINT)) {
+				for (size_t i = 0; i < 8; ++i) {
+					__builtin_memcpy(&context32->FloatSave.RegisterArea[i], &context64->FltSave.FloatRegisters[i], sizeof(PackedLongDouble));
 				}
-			} else {
-				tag_word |= 3;
 			}
-			compressed_tag_word <<= 1;
-			stack_index = stack_index - 1 & 7;
+			for (size_t i = 0; i < 8; ++i) {
+				context32->ExtendedRegisters.XmmRegisters[i] = context64->FltSave.XmmRegisters[i];
+			}
+			__builtin_memset(&context32->ExtendedRegisters.XmmRegisters[8], 0, sizeof(context32->ExtendedRegisters) - offsetof(decltype(context32->ExtendedRegisters), XmmRegisters[8]));
 		}
-		context32->FloatSave.TagWord = tag_word;
-	}
-	if (expect(has_bits_set(context_flags, CONTEXTX_32 | CONTEXTX_DEBUG_REGISTERS), false)) {
-		uint32_t dr7 = context64->Dr7;
-		if (!(dr7 & 0x355)) {
-			__builtin_memset(&context32->Dr0, 0, sizeof(uint32_t[6]));
-			//context32->Dr0 = 0;
-			//context32->Dr1 = 0;
-			//context32->Dr2 = 0;
-			//context32->Dr3 = 0;
-			//context32->Dr6 = 0;
-			//context32->Dr7 = 0;
-		} else {
-			context32->Dr0 = context64->Dr0;
-			context32->Dr1 = context64->Dr1;
-			context32->Dr2 = context64->Dr2;
-			context32->Dr3 = context64->Dr3;
-			context32->Dr6 = context64->Dr6;
-			context32->Dr7 = dr7 & 0xFFFF0155;
+		if (has_bits_set(context_flags, CONTEXTX_FLOATING_POINT)) {
+			context32->FloatSave.ControlWord.raw_wide = context64->FltSave.ControlWord.raw;
+			FSW status_word = context64->FltSave.StatusWord;
+			context32->FloatSave.StatusWord.raw_wide = status_word.raw;
+			context32->FloatSave.ErrorOffset = context64->FltSave.ErrorOffset;
+			context32->FloatSave.ErrorSelector = context64->FltSave.ErrorSelector;
+			context32->FloatSave.ErrorOpcode = context64->FltSave.ErrorOpcode;
+			context32->FloatSave.DataOffset = context64->FltSave.DataOffset;
+			context32->FloatSave.DataSelector = context64->FltSave.DataSelector;
+			for (size_t i = 0; i < 8; ++i) {
+				__builtin_memcpy(&context32->FloatSave.RegisterArea[i], &context64->FltSave.FloatRegisters[i], sizeof(PackedLongDouble));
+			}
+			size_t stack_index = 7 - status_word.stack_top;
+			uint32_t tag_word = 0;
+			int8_t compressed_tag_word = context64->FltSave.TagWord;
+			for (size_t i = 0; i < 8; ++i) {
+				tag_word <<= 2;
+				if (compressed_tag_word < 0) {
+					switch (context64->FltSave.FloatRegisters[stack_index].raw[4] & 0x7FFF) {
+						case 0:
+							tag_word |= 2 >> !*(uint64_t*)&context64->FltSave.FloatRegisters[stack_index];
+							break;
+						default:
+							if (*(int64_t*)&context64->FltSave.FloatRegisters[stack_index] < 0) {
+						case 0x7FFF:
+							tag_word |= 2;
+							}
+							break;
+					}
+				} else {
+					tag_word |= 3;
+				}
+				compressed_tag_word <<= 1;
+				stack_index = stack_index - 1 & 7;
+			}
+			context32->FloatSave.TagWord = tag_word;
+		}
+		if (expect(has_bits_set(context_flags, CONTEXTX_DEBUG_REGISTERS), false)) {
+			uint32_t dr7 = context64->Dr7;
+			if (!(dr7 & 0x355)) {
+				__builtin_memset(&context32->Dr0, 0, sizeof(uint32_t[6]));
+				//context32->Dr0 = 0;
+				//context32->Dr1 = 0;
+				//context32->Dr2 = 0;
+				//context32->Dr3 = 0;
+				//context32->Dr6 = 0;
+				//context32->Dr7 = 0;
+			} else {
+				context32->Dr0 = context64->Dr0;
+				context32->Dr1 = context64->Dr1;
+				context32->Dr2 = context64->Dr2;
+				context32->Dr3 = context64->Dr3;
+				context32->Dr6 = context64->Dr6;
+				context32->Dr7 = dr7 & 0xFFFF0155;
+			}
 		}
 	}
+	return 0;
 }
 
 bool CpupIsInterixProcess() {
@@ -391,23 +256,12 @@ bool CpupIsInterixProcess() {
 				++section;
 			}
 		}
-		case IMAGE_SUBSYSTEM_POSIX_CUI:
-			return true;
 		default:
 			return false;
+		case IMAGE_SUBSYSTEM_POSIX_CUI:
+			return true;
 	}
 }
-
-#define SAVED_RSP_FOR_TEB(teb_arg) (*(void*)&(teb_arg)->TlsSlots[0])
-#define CPUCONTEXT_FOR_TEB(teb_arg) (*(CPUCONTEXT*)&(teb_arg)->TlsSlots[1])
-#define UNKNOWN_B_FOR_TEB(teb_arg) (*(UnknownB*)&(teb_arg)->TlsSlots[10])
-
-#define TEB_SAVED_RSP (*(void* GS_RELATIVE*)&teb->TlsSlots[0])
-#define TEB_CPUCONTEXT (*(CPUCONTEXT* GS_RELATIVE*)&teb->TlsSlots[1])
-#define TEB_UNKNOWNB (*(UnknownB* GS_RELATIVE*)&teb->TlsSlots[10])
-
-#define CURRENT_PROCESS_HANDLE ((HANDLE)~(uintptr_t)0)
-#define CURRENT_THREAD_HANDLE ((HANDLE)~(uintptr_t)1)
 
 extern "C" {
 
@@ -415,7 +269,7 @@ extern "C" {
 
 extern NTSYSAPI NTSTATUS LdrDisableThreadCalloutsForDll(PVOID DllHandle);
 
-gnu_used void X86SwitchTo64BitMode() {
+void X86SwitchTo64BitMode() {
 	__asm__ volatile (
 		CODE_32_DIRECTIVE
 		//"ljmpl %[Seg], CpupReturnFromSimulatedCode"
@@ -435,18 +289,21 @@ extern PTR32Z<> far_jump_addr;
 extern uint16_t long_mode_segment;
 extern uint64_t turbo_thunk_jump;
 
+WOW64CPU_EXPORT extern void* TurboDispatchJumpAddressEnd;
+WOW64CPU_EXPORT extern void* TurboDispatchJumpAddressStart;
+
 // For now I guess we're just going to hope this is correct
 static constexpr size_t turbo_dispatch_length = 8;
 
 // Export #1
-dllexport void CpuFlushInstructionCache(HANDLE ProcessHandle, PVOID BaseAddress, ULONG NumberOfBytesToFlush, BOOL skip) {
-	if (expect(!skip, true)) {
+WOW64CPU_EXPORT void CpuFlushInstructionCache(HANDLE ProcessHandle, void* BaseAddress, uint32_t NumberOfBytesToFlush, WOW64_FLUSH_REASON Reason) {
+	if (expect(Reason != WOW64_FLUSH_FORCE, true)) {
 		NtFlushInstructionCache(ProcessHandle, BaseAddress, NumberOfBytesToFlush);
 	}
 }
 
 // Export #2
-dllexport NTSTATUS CpuGetContext(HANDLE ThreadHandle, int, int, CONTEXTX<32>* context_out) {
+WOW64CPU_EXPORT NTSTATUS CpuGetContext(HANDLE ThreadHandle, UNUSED_ARG(HANDLE ProcessHandle), UNUSED_ARG(TEBX<64>* teb_ptr), CONTEXTX<32>* context_out) {
 	if (expect(
 		(ThreadHandle == CURRENT_THREAD_HANDLE) &&
 		!(context_out->ContextFlags & ~(CONTEXTX_32 | CONTEXTX_CONTROL | CONTEXTX_INTEGER | CONTEXTX_SEGMENTS))
@@ -459,12 +316,12 @@ dllexport NTSTATUS CpuGetContext(HANDLE ThreadHandle, int, int, CONTEXTX<32>* co
 }
 
 // Export #3
-dllexport PTR32Z<> CpuGetStackPointer() {
+WOW64CPU_EXPORT PTR32Z<> CpuGetStackPointer() {
 	return (PTR32Z<>)TEB_CPUCONTEXT->context32.Esp;
 }
 
 // Export #4
-dllexport void CpuInitializeStartupContext(HANDLE ProcessHandle, int, TEBX<64>* teb_ptr, CPUCONTEXT* context_out, const CONTEXTX<32>* context_in) {
+WOW64CPU_EXPORT void CpuInitializeStartupContext(HANDLE ProcessHandle, int, TEBX<64>* teb_ptr, CPUCONTEXT* context_out, const CONTEXTX<32>* context_in) {
 	CPUCONTEXT virt_context = {};
 	__builtin_memcpy(&virt_context.context32.Edi, &context_in->Edi, sizeof(uint32_t[8]));
 	//virt_context.context32.Edi = context_in->Edi;
@@ -478,35 +335,33 @@ dllexport void CpuInitializeStartupContext(HANDLE ProcessHandle, int, TEBX<64>* 
 	virt_context.context32.EFlags = mask_flags_value(context_in->EFlags);
 	virt_context.context32.Esp = context_in->Esp;
 	if (expect(SUCCEEDED(NtWriteVirtualMemory(ProcessHandle, context_out, &virt_context, sizeof(CPUCONTEXT), NULL)), true)) {
-		NtWriteVirtualMemory(ProcessHandle, &CPUCONTEXT_FOR_TEB(teb_ptr), &context_out, sizeof(CPUCONTEXT*), NULL);
+		NtWriteVirtualMemory(ProcessHandle, CPUCONTEXT_FOR_TEB(teb_ptr), &context_out, sizeof(CPUCONTEXT*), NULL);
 	}
 }
 
+#ifdef COMPILE_WOW64_CPU
 // Export #5, 6, 7, 8, 9, 10, 14
-dllexport void dummy_ret() {
+// dummy_ret
+WOW64CPU_EXPORT void CpuNotifyAffinityChange() {
 }
-
-// Export #11
-dllexport bool CpuProcessDebugEvent() {
-	return false;
-}
+#endif
 
 // Export #12
-dllexport NTSTATUS CpuProcessInit(int, size_t* arg2) {
+WOW64CPU_EXPORT NTSTATUS CpuProcessInit(UNUSED_ARG(wchar_t* ImageName), size_t* cpu_size) {
 	NTSTATUS ret = 0;
-	TEB_UNKNOWNB->__dword_4 = 1;
-	*arg2 = sizeof(CPUCONTEXT);
+	TEB_WOW64INFO->CpuFlags = 1;
+	*cpu_size = sizeof(CPUCONTEXT);
 	if (expect(long_mode_segment != default_64_bit_code_segment, false)) {
 		PVOID addr = &X86SwitchTo64BitMode;
 		ULONG length = 9;
 		ULONG old_protection;
 		if (expect(SUCCEEDED(ret = NtProtectVirtualMemory(CURRENT_PROCESS_HANDLE, &addr, &length, PAGE_EXECUTE_READWRITE, &old_protection)), true)) {
-			far_jump_addr = CpupReturnFromSimulatedCode; // TODO
+			far_jump_addr = CpupReturnFromSimulatedCode;
 			long_mode_segment = default_64_bit_code_segment;
 			ret = NtProtectVirtualMemory(CURRENT_PROCESS_HANDLE, &addr, &length, old_protection, &old_protection);
 		}
 	}
-	if (TEB_UNKNOWNB->__unknown_flag_A) {
+	if (expect(TEB_WOW64INFO->__unknown_flag_A, false)) {
 		if (expect(CpupIsInterixProcess(), false)) {
 			PVOID addr = &turbo_thunk_jump;
 			ULONG length = turbo_dispatch_length;
@@ -521,10 +376,12 @@ dllexport NTSTATUS CpuProcessInit(int, size_t* arg2) {
 	return ret;
 }
 
-// Export #13, 21, 23
-dllexport int dummy_ret0() {
+#ifdef COMPILE_WOW64_CPU
+// Export #11, 13, 21, 23
+WOW64CPU_EXPORT int CpuProcessTerm() {
 	return 0;
 }
+#endif
 
 static EXCEPTION_RECORDX<64> RecoverException64;
 static CONTEXTX<64> RecoverContext64;
@@ -538,7 +395,7 @@ struct IRETQ_Data {
 };
 
 // Export #15
-dllexport void CpuResetToConsistentState(EXCEPTION_POINTERSX<64>* exception_pointers) {
+WOW64CPU_EXPORT void CpuResetToConsistentState(EXCEPTION_POINTERSX<64>* exception_pointers) {
 	EXCEPTION_RECORDX<64>* record = exception_pointers->ExceptionRecord;
 	//RecoverException64 = *record;
 	CONTEXTX<64>* context = exception_pointers->ContextRecord;
@@ -548,20 +405,20 @@ dllexport void CpuResetToConsistentState(EXCEPTION_POINTERSX<64>* exception_poin
 	if (context->SegCs == default_32_bit_code_segment) {
 		context->SegCs = default_64_bit_code_segment;
 		context->Rsp = (uintptr_t)saved_rsp;
-		context->Rip = NULL; // TODO
+		context->Rip = (uintptr_t)CpupReturnFromSimulatedCode; // TODO
 
 		IRETQ_Data* return_data = (IRETQ_Data*)&record[1].ExceptionRecord;
-		return_data->retaddr = NULL; // TODO
+		return_data->retaddr = (uintptr_t)CpupReturnFromSimulatedCode; // TODO
 		return_data->cs = default_64_bit_code_segment;
 		return_data->rsp = (uint64_t)saved_rsp;
 		return_data->ss = default_data_segment;
 
-		RtlpWow64CtxFromAmd64(CONTEXTX_32 | CONTEXTX_INTEGER, context, &TEB_CPUCONTEXT->context32);
+		RtlpWow64CtxFromAmd64(CONTEXTX_32 | CONTEXTX_CONTROL | CONTEXTX_INTEGER | CONTEXTX_SEGMENTS | CONTEXTX_FLOATING_POINT | CONTEXTX_EXTENDED_REGISTERS, context, &TEB_CPUCONTEXT->context32);
 	}
 }
 
 // Export #16
-dllexport NTSTATUS CpuSetContext(HANDLE ThreadHandle, int, int, const CONTEXTX<32>* context_in) {
+WOW64CPU_EXPORT NTSTATUS CpuSetContext(HANDLE ThreadHandle, UNUSED_ARG(HANDLE ProcessHandle), UNUSED_ARG(TEBX<64>* teb_ptr), const CONTEXTX<32>* context_in) {
 	CPUCONTEXT* virt_context = TEB_CPUCONTEXT;
 	bool iret_return = false;
 	NTSTATUS status;
@@ -587,12 +444,12 @@ dllexport NTSTATUS CpuSetContext(HANDLE ThreadHandle, int, int, const CONTEXTX<3
 }
 
 // Export #17
-dllexport void CpuSetInstructionPointer(PTR32Z<> ptr) {
+WOW64CPU_EXPORT void CpuSetInstructionPointer(PTR32Z<> ptr) {
 	TEB_CPUCONTEXT->context32.Eip = (uint32_t)ptr;
 }
 
 // Export #18
-dllexport void CpuSetStackPointer(PTR32Z<> ptr) {
+WOW64CPU_EXPORT void CpuSetStackPointer(PTR32Z<> ptr) {
 	TEB_CPUCONTEXT->context32.Esp = (uint32_t)ptr;
 }
 
@@ -604,7 +461,7 @@ gnu_noinline int system_service_ex(int arg) {
 #define USE_LSS 1
 
 // Export #19
-dllexport void CpuSimulate() {
+WOW64CPU_EXPORT void CpuSimulate() {
 	// TODO
 	CPUCONTEXT* context = TEB_CPUCONTEXT;
 
@@ -743,6 +600,9 @@ far_jump_back:
 		"CpupReturnFromSimulatedCode: \n"
 			: "=r"(esp_reg), "=a"(eax), "=c"(rcx), "=d"(rdx), "=b"(ebx), "=r"(ebp), "=S"(esi), "=D"(edi)
 		);
+		// EAX = Syscall index
+		// ECX = Turbo thunk index
+		// EDX = Stack arg ptr
 
 		context->context32.Eip = *(uint32_t*)esp_reg;
 		context->context32.Esp = esp_reg;
@@ -751,6 +611,8 @@ far_jump_back:
 
 		//goto *(turbo_thunk_lookup[rcx]);
 		__asm__ volatile goto (
+			".global TurboDispatchJumpAddressStart \n"
+		"TurboDispatchJumpAddressStart: \n"
 		"turbo_thunk_jump: \n"
 			INTEL_SYNTAX_DIRECTIVE
 			"JMP QWORD PTR [%V[rcx]*8+%c[turbo_thunk_table]] \n"
@@ -773,6 +635,10 @@ far_jump_back:
 		context->context32.EFlags = __readeflags()
 
 turbo_dispatch_end:
+		__asm__ volatile (
+			".global TurboDispatchJumpAddressEnd \n"
+			"TurboDispatchJumpAddressEnd:"
+		);
 
 		SAVE_STATE();
 		context->context32.Eax = system_service_ex(eax);
@@ -819,12 +685,12 @@ Thunk1ArgSp:
 }
 
 // Export #20
-dllexport NTSTATUS CpuSuspendLocalThread() {
+WOW64CPU_EXPORT NTSTATUS CpuSuspendLocalThread() {
 	return STATUS_UNSUCCESSFUL;
 }
 
 // Export #22
-dllexport NTSTATUS CpuThreadInit(CPUCONTEXT* virt_context) {
+WOW64CPU_EXPORT NTSTATUS CpuThreadInit(CPUCONTEXT* virt_context) {
 	//*(uint32_t GS_RELATIVE*)&teb->arbitrary_offset[0x20C0] = (uint32_t)&X86SwitchTo64BitMode;
 	write_teb_offset(0x20C0, (uint32_t)&X86SwitchTo64BitMode);
 	if (expect(!TEB_CPUCONTEXT, true)) {
@@ -847,12 +713,15 @@ dllexport NTSTATUS CpuThreadInit(CPUCONTEXT* virt_context) {
 	return 0;
 }
 
+
+#ifdef COMPILE_WOW64_CPU
 //BOOL APIENTRY DllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID) {
-dllexport BOOL APIENTRY _DllMainCRTStartup(HMODULE hDll, DWORD ulReasonForCall, LPVOID) {
+BOOL APIENTRY _DllMainCRTStartup(HMODULE hDll, DWORD ulReasonForCall, LPVOID) {
 	if (expect(ulReasonForCall == DLL_PROCESS_ATTACH, true)) {
 		LdrDisableThreadCalloutsForDll(hDll);
 	}
 	return TRUE;
 }
+#endif
 
 }

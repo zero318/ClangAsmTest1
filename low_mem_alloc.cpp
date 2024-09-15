@@ -440,7 +440,6 @@ Adapter Return Value ABI:
 
 */
 
-#define FAR_CALL_IMM(seg, addr, ret, ...) __asm__ volatile ("lcall %[Seg],%[Addr]":ret: [Seg]"i"(seg), [Addr]"i"(addr) __VA_OPT__(,) __VA_ARGS__)
 #define CALL_PTR_LOW(sym) ".byte 0xFF, 0x14, 0x25 \n .long " MACRO_STR(sym) " \n"
 //#define UNALIGNED_X64_ENTRY(stack_size) "pushl %ebp \n movl %esp, %ebp \n subl $0x30 + $" MACRO_STR(stack_size) ", %esp \n andl $-0x10, %esp \n"
 //#define ALIGNED_X64_ENTRY(stack_size) "subl $0x20 + $" MACRO_STR(stack_size) ", %esp \n"

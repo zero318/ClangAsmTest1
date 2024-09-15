@@ -28,12 +28,18 @@ add_executable(discord_test)
 add_executable(AoCFTest1)
 add_executable(loaddll)
 add_executable(force_load_pe)
+add_executable(znet_client_test)
+add_executable(znet_server_test)
+add_executable(znet_p2p_test)
+add_executable(make_embed)
+add_executable(aocf_server)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
 add_library(winhttp_websocket SHARED)
 add_library(CSoundLib STATIC)
 add_library(wow64 SHARED)
 add_library(wow64cpu SHARED)
+add_library(wow64win SHARED)
 add_library(parakit_inject SHARED)
 add_library(python_test SHARED)
 add_library(glaux STATIC)
@@ -43,6 +49,8 @@ add_executable(twitch_irc_test)
 add_executable(youtube_chat_test)
 add_library(x64_inject_test SHARED)
 add_executable(x64_injector)
+add_library(aocf_netcode SHARED)
+add_library(Netplay SHARED)
 
 set(programs
 ${PROJECT_NAME}
@@ -63,6 +71,7 @@ winhttp_websocket
 winhttp_test3
 wow64
 wow64cpu
+wow64win
 parakit_inject
 smallest_pe_file
 ghidra_launch
@@ -80,6 +89,13 @@ loaddll
 x64_inject_test
 x64_injector
 force_load_pe
+aocf_netcode
+Netplay
+znet_client_test
+znet_server_test
+znet_p2p_test
+make_embed
+aocf_server
 )
 
 enable_language(ASM-ATT)
@@ -734,6 +750,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 	#"decent_rng.h"
 	"rtti_label_gen.cpp"
 	#"zero/vec_lib.cpp"
+	"dns_test.cpp"
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE
 	USE_AMD_FEATURES
@@ -1088,6 +1105,9 @@ target_sources(winhttp_test3 PRIVATE
 
 target_sources(wow64 PRIVATE
 	"wow64/wow64_test.cpp"
+	"wow64/wow64cpu_test.cpp"
+	"wow64/wow64win_test.cpp"
+	"wow64.def"
 )
 target_compile_options(wow64 PRIVATE
 	"-mno-avx"
@@ -1100,13 +1120,21 @@ target_compile_options(wow64 PRIVATE
 )
 target_compile_definitions(wow64 PRIVATE
 	STOP_LINKING_DEFAULT_LIB_PLZ
+	COMPILE_WOW64
 )
 target_link_options(wow64 PRIVATE
-	/DLL
+	/DEF:wow64.def	
+	${COMPILE_DLL}
+	#${MSLINK_ARG}/NOENTRY
+	${NOSTDLIB_LINK}
+	-force:unresolved
 )
 
 target_sources(wow64cpu PRIVATE
+	"wow64/wow64_test.cpp"
 	"wow64/wow64cpu_test.cpp"
+	"wow64/wow64win_test.cpp"
+	"wow64cpu.def"
 )
 target_compile_options(wow64cpu PRIVATE
 	"-mno-avx"
@@ -1120,8 +1148,37 @@ target_compile_options(wow64cpu PRIVATE
 )
 target_compile_definitions(wow64cpu PRIVATE
 	STOP_LINKING_DEFAULT_LIB_PLZ
+	COMPILE_WOW64_CPU
 )
 target_link_options(wow64cpu PRIVATE
+	/DEF:wow64cpu.def
+	${COMPILE_DLL}
+	#${MSLINK_ARG}/NOENTRY
+	${NOSTDLIB_LINK}
+	-force:unresolved
+)
+
+target_sources(wow64win PRIVATE
+	"wow64/wow64_test.cpp"
+	"wow64/wow64cpu_test.cpp"
+	"wow64/wow64win_test.cpp"
+	"wow64win.def"
+)
+target_compile_options(wow64win PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(wow64win PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+	COMPILE_WOW64_WIN
+)
+target_link_options(wow64win PRIVATE
+	/DEF:wow64win.def
 	${COMPILE_DLL}
 	#${MSLINK_ARG}/NOENTRY
 	${NOSTDLIB_LINK}
@@ -1409,6 +1466,107 @@ target_compile_definitions(x64_injector PRIVATE
 target_link_options(x64_injector PRIVATE
 	/ENTRY:entry	
 	${NOSTDLIB_LINK}
+)
+
+target_sources(aocf_netcode PRIVATE
+	"AoCF/netcode_files/main.cpp"
+	"AoCF/netcode_files/AllocMan.cpp"
+	"AoCF/netcode_files/AllocMan.h"
+	"AoCF/netcode_files/log.cpp"
+	"AoCF/netcode_files/log.h"
+	"AoCF/netcode_files/PatchUtils.cpp"
+	"AoCF/netcode_files/PatchUtils.h"
+	"AoCF/netcode_files/util.h"
+	"AoCF/netcode_files/zpunch.cpp"
+)
+target_compile_options(aocf_netcode PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(aocf_netcode PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+
+target_sources(Netplay PRIVATE
+	"AoCF/netplay_patch/netplay.cpp"
+)
+target_compile_options(Netplay PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(Netplay PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+target_link_options(Netplay PRIVATE
+	${COMPILE_DLL}
+	/ENTRY:DllMain
+	${NOSTDLIB_LINK}
+)
+
+target_sources(znet_client_test PRIVATE
+	"znet/client_test.cpp"
+)
+target_compile_options(znet_client_test PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+
+target_sources(znet_server_test PRIVATE
+	"znet/server_test.cpp"
+)
+target_compile_options(znet_server_test PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+
+target_sources(znet_p2p_test PRIVATE
+	"znet/p2p_test.cpp"
+)
+target_compile_options(znet_p2p_test PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+
+target_sources(aocf_server PRIVATE
+	"znet/aocf_server.cpp"
+)
+target_compile_options(aocf_server PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+
+target_sources(make_embed PRIVATE
+	"make_embed.cpp"
 )
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")

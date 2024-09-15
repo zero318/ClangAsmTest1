@@ -112,9 +112,45 @@ __if_not_exists(NTSTATUS) {
     using NTSTATUS = NTSTATUSX;
 }
 
-
-
+#ifndef STATUS_UNSUCCESSFUL
 #define STATUS_UNSUCCESSFUL ((NTSTATUS)0xC0000001L)
+#endif
+#ifndef STATUS_NOT_IMPLEMENTED
+#define STATUS_NOT_IMPLEMENTED ((NTSTATUS)0xC0000002L)
+#endif
+#ifndef STATUS_INVALID_INFO_CLASS
+#define STATUS_INVALID_INFO_CLASS ((NTSTATUS)0xC0000003L)
+#endif
+#ifndef STATUS_INFO_LENGTH_MISMATCH
+#define STATUS_INFO_LENGTH_MISMATCH ((NTSTATUS)0xC0000004L)
+#endif
+#ifndef STATUS_ACCESS_VIOLATION
+#define STATUS_ACCESS_VIOLATION ((NTSTATUS)0xC0000005L)
+#endif
+#ifndef STATUS_INVALID_PARAMETER
+#define STATUS_INVALID_PARAMETER ((NTSTATUS)0xC000000DL)
+#endif
+#ifndef STATUS_NO_MEMORY
+#define STATUS_NO_MEMORY ((NTSTATUS)0xC0000017L)
+#endif
+#ifndef STATUS_INVALID_SYSTEM_SERVICE
+#define STATUS_INVALID_SYSTEM_SERVICE ((NTSTATUS)0xC000001CL)
+#endif
+#ifndef STATUS_ILLEGAL_INSTRUCTION
+#define STATUS_ILLEGAL_INSTRUCTION ((NTSTATUS)0xC000001DL)
+#endif
+#ifndef STATUS_ACCESS_DENIED
+#define STATUS_ACCESS_DENIED ((NTSTATUS)0xC0000022L)
+#endif
+#ifndef STATUS_BUFFER_TOO_SMALL
+#define STATUS_BUFFER_TOO_SMALL ((NTSTATUS)0xC0000023L)
+#endif
+#ifndef STATUS_NONCONTINUABLE_EXCEPTION
+#define STATUS_NONCONTINUABLE_EXCEPTION ((NTSTATUS)0xC0000025L)
+#endif
+#ifndef STATUS_UNWIND
+#define STATUS_UNWIND ((NTSTATUS)0xC0000027L)
+#endif
 
 using UNKNOWN_TYPE = void;
 using ANY_TYPE = void;
@@ -142,8 +178,14 @@ ValidateStructAlignment(0x4, HANDLEX<32>);
 ValidateStructSize(0x8, HANDLEX<64>);
 ValidateStructAlignment(0x8, HANDLEX<64>);
 
+template<size_t bits = native_bits>
+using PHANDLEX = PTRZX<bits, HANDLEX<bits>>;
+
 __if_not_exists(HANDLE) {
     using HANDLE = HANDLEX<>;
+}
+__if_not_exists(PHANDLE) {
+    using PHANDLE = PHANDLEX<>;
 }
 
 using RTL_ATOMX = uint16_t;
@@ -199,13 +241,148 @@ ValidateStructAlignment(0x4, int64_tx<32>);
 ValidateStructSize(0x8, int64_tx<64>);
 ValidateStructAlignment(0x8, int64_tx<64>);
 
-
 template<size_t bits = native_bits>
 using uint64_tx = winstruct_alignment_impl<bits>::uint64_tx;
 ValidateStructSize(0x8, uint64_tx<32>);
 ValidateStructAlignment(0x4, uint64_tx<32>);
 ValidateStructSize(0x8, uint64_tx<64>);
 ValidateStructAlignment(0x8, uint64_tx<64>);
+
+template<size_t bits = native_bits>
+struct BaseWinTypes;
+
+template<>
+struct BaseWinTypes<16> {
+    typedef int16_t         BOOL, near* PBOOL, far* LPBOOL;
+    typedef uint8_t         BOOLEAN, near* PBOOLEAN, far* LPBOOLEAN;
+
+    typedef char            CHAR, near* PCHAR, far* LPCHAR;
+    typedef unsigned char   UCHAR, near* PUCHAR, far* LPUCHAR;
+
+    typedef wchar_t         WCHAR, near* PWCHAR, far* LPWCHAR;
+
+    typedef uint8_t         BYTE, near* PBYTE, far* LPBYTE;
+    typedef uint16_t        WORD, near* PWORD, far* LPWORD;
+    typedef uint32_t        DWORD, near* PDWORD, far* LPDWORD;
+    typedef uint64_tx<32>   DWORDLONG, near* PDWORDLONG, far* LPDWORDLONG;
+
+    typedef int16_t         SHORT, near* PSHORT, far* LPSHORT;
+    typedef uint16_t        USHORT, near* PUSHORT, far* LPUSHORT;
+    typedef int16_t         INT, near* PINT, far* LPINT;
+    typedef uint16_t        UINT, near* PUINT, far* LPUINT;
+    typedef int32_t         LONG, near* PLONG, far* LPLONG;
+    typedef uint32_t        ULONG, near* PULONG, far* LPULONG;
+    typedef int64_tx<32>    LONGLONG, near* PLONGLONG, far* LPLONGLONG;
+    typedef uint64_tx<32>   ULONGLONG, near* PULONGLONG, far* LPULONGLONG;
+
+    typedef int8_t          INT8, near* PINT8, far* LPINT8;
+    typedef int16_t         INT16, near* PINT16, far* LPINT16;
+    typedef int32_t         INT32, near* PINT32, far* LPINT32;
+    typedef int64_tx<32>    INT64, near* PINT64, far* LPINT64;
+    typedef uint8_t         UINT8, near* PUINT8, far* LPUINT8;
+    typedef uint16_t        UINT16, near* PUINT16, far* LPUINT16;
+    typedef uint32_t        UINT32, near* PUINT32, far* LPUINT32;
+    typedef uint64_tx<32>   UINT64, near* PUINT64, far* LPUINT64;
+
+    typedef int16_t         HALF_PTR, near* PHALF_PTR, far* LPHALF_PTR;
+    typedef uint16_t        UHALF_PTR, near* PUHALF_PTR, far* LPUHALF_PTR;
+    typedef intptr_tx<32>   INT_PTR, near* PINT_PTR, far* LPINT_PTR;
+    typedef uintptr_tx<32>  UINT_PTR, near* PUINT_PTR, far* LPUINT_PTR;
+    typedef intptr_tx<32>   LONG_PTR, near* PLONG_PTR, far* LPLONG_PTR;
+    typedef uintptr_tx<32>  ULONG_PTR, near* PULONG_PTR, far* LPULONG_PTR;
+    typedef uintptr_tx<32>  DWORD_PTR, near* PDWORD_PTR, far* LPDWORD_PTR;
+
+    typedef size_tx<32>     SIZE_T, near* PSIZE_T, far* LPSIZE_T;
+    typedef ssize_tx<32>    SSIZE_T, near* PSSIZE_T, far* LPSSIZE_T;
+};
+template<>
+struct BaseWinTypes<32> {
+    typedef int16_t         BOOL, near* PBOOL, far* LPBOOL;
+    typedef uint8_t         BOOLEAN, near* PBOOLEAN, far* LPBOOLEAN;
+
+    typedef char            CHAR, near* PCHAR, far* LPCHAR;
+    typedef unsigned char   UCHAR, near* PUCHAR, far* LPUCHAR;
+
+    typedef wchar_t         WCHAR, near* PWCHAR, far* LPWCHAR;
+
+    typedef uint8_t         BYTE, near* PBYTE, far* LPBYTE;
+    typedef uint16_t        WORD, near* PWORD, far* LPWORD;
+    typedef uint32_t        DWORD, near* PDWORD, far* LPDWORD;
+    typedef uint64_tx<32>   DWORDLONG, near* PDWORDLONG, far* LPDWORDLONG;
+
+    typedef int16_t         SHORT, near* PSHORT, far* LPSHORT;
+    typedef uint16_t        USHORT, near* PUSHORT, far* LPUSHORT;
+    typedef int32_t         INT, near* PINT, far* LPINT;
+    typedef uint32_t        UINT, near* PUINT, far* LPUINT;
+    typedef int32_t         LONG, near* PLONG, far* LPLONG;
+    typedef uint32_t        ULONG, near* PULONG, far* LPULONG;
+    typedef int64_tx<32>    LONGLONG, near* PLONGLONG, far* LPLONGLONG;
+    typedef uint64_tx<32>   ULONGLONG, near* PULONGLONG, far* LPULONGLONG;
+
+    typedef int8_t          INT8, near* PINT8, far* LPINT8;
+    typedef int16_t         INT16, near* PINT16, far* LPINT16;
+    typedef int32_t         INT32, near* PINT32, far* LPINT32;
+    typedef int64_tx<32>    INT64, near* PINT64, far* LPINT64;
+    typedef uint8_t         UINT8, near* PUINT8, far* LPUINT8;
+    typedef uint16_t        UINT16, near* PUINT16, far* LPUINT16;
+    typedef uint32_t        UINT32, near* PUINT32, far* LPUINT32;
+    typedef uint64_tx<32>   UINT64, near* PUINT64, far* LPUINT64;
+
+    typedef int16_t         HALF_PTR, near* PHALF_PTR, far* LPHALF_PTR;
+    typedef uint16_t        UHALF_PTR, near* PUHALF_PTR, far* LPUHALF_PTR;
+    typedef intptr_tx<32>   INT_PTR, near* PINT_PTR, far* LPINT_PTR;
+    typedef uintptr_tx<32>  UINT_PTR, near* PUINT_PTR, far* LPUINT_PTR;
+    typedef intptr_tx<32>   LONG_PTR, near* PLONG_PTR, far* LPLONG_PTR;
+    typedef uintptr_tx<32>  ULONG_PTR, near* PULONG_PTR, far* LPULONG_PTR;
+    typedef uintptr_tx<32>  DWORD_PTR, near* PDWORD_PTR, far* LPDWORD_PTR;
+
+    typedef size_tx<32>     SIZE_T, near* PSIZE_T, far* LPSIZE_T;
+    typedef ssize_tx<32>    SSIZE_T, near* PSSIZE_T, far* LPSSIZE_T;
+};
+template<>
+struct BaseWinTypes<64> {
+    typedef int16_t         BOOL, near* PBOOL, far* LPBOOL;
+    typedef uint8_t         BOOLEAN, near* PBOOLEAN, far* LPBOOLEAN;
+
+    typedef char            CHAR, near* PCHAR, far* LPCHAR;
+    typedef unsigned char   UCHAR, near* PUCHAR, far* LPUCHAR;
+
+    typedef wchar_t         WCHAR, near* PWCHAR, far* LPWCHAR;
+
+    typedef uint8_t         BYTE, near* PBYTE, far* LPBYTE;
+    typedef uint16_t        WORD, near* PWORD, far* LPWORD;
+    typedef uint32_t        DWORD, near* PDWORD, far* LPDWORD;
+    typedef uint64_tx<64>   DWORDLONG, near* PDWORDLONG, far* LPDWORDLONG;
+
+    typedef int16_t         SHORT, near* PSHORT, far* LPSHORT;
+    typedef uint16_t        USHORT, near* PUSHORT, far* LPUSHORT;
+    typedef int32_t         INT, near* PINT, far* LPINT;
+    typedef uint32_t        UINT, near* PUINT, far* LPUINT;
+    typedef int32_t         LONG, near* PLONG, far* LPLONG;
+    typedef uint32_t        ULONG, near* PULONG, far* LPULONG;
+    typedef int64_tx<64>    LONGLONG, near* PLONGLONG, far* LPLONGLONG;
+    typedef uint64_tx<64>   ULONGLONG, near* PULONGLONG, far* LPULONGLONG;
+
+    typedef int8_t          INT8, near* PINT8, far* LPINT8;
+    typedef int16_t         INT16, near* PINT16, far* LPINT16;
+    typedef int32_t         INT32, near* PINT32, far* LPINT32;
+    typedef int64_tx<64>    INT64, near* PINT64, far* LPINT64;
+    typedef uint8_t         UINT8, near* PUINT8, far* LPUINT8;
+    typedef uint16_t        UINT16, near* PUINT16, far* LPUINT16;
+    typedef uint32_t        UINT32, near* PUINT32, far* LPUINT32;
+    typedef uint64_tx<64>   UINT64, near* PUINT64, far* LPUINT64;
+
+    typedef int16_t         HALF_PTR, near* PHALF_PTR, far* LPHALF_PTR;
+    typedef uint16_t        UHALF_PTR, near* PUHALF_PTR, far* LPUHALF_PTR;
+    typedef intptr_tx<64>   INT_PTR, near* PINT_PTR, far* LPINT_PTR;
+    typedef uintptr_tx<64>  UINT_PTR, near* PUINT_PTR, far* LPUINT_PTR;
+    typedef intptr_tx<64>   LONG_PTR, near* PLONG_PTR, far* LPLONG_PTR;
+    typedef uintptr_tx<64>  ULONG_PTR, near* PULONG_PTR, far* LPULONG_PTR;
+    typedef uintptr_tx<64>  DWORD_PTR, near* PDWORD_PTR, far* LPDWORD_PTR;
+
+    typedef size_tx<64>     SIZE_T, near* PSIZE_T, far* LPSIZE_T;
+    typedef ssize_tx<64>    SSIZE_T, near* PSSIZE_T, far* LPSSIZE_T;
+};
 
 template<size_t bits = native_bits>
 union LARGE_INTEGERX {
@@ -225,8 +402,19 @@ ValidateStructAlignment(0x4, LARGE_INTEGERX<32>);
 ValidateStructSize(0x8, LARGE_INTEGERX<64>);
 ValidateStructAlignment(0x8, LARGE_INTEGERX<64>);
 
+template<size_t bits = native_bits>
+using PLARGE_INTEGERX = PTRZX<bits, LARGE_INTEGERX<bits>>;
+template<size_t bits = native_bits>
+using LPLARGE_INTEGERX = LPTRZX<bits, LARGE_INTEGERX<bits>>;
+
 __if_not_exists(LARGE_INTEGER) {
     using LARGE_INTEGER = LARGE_INTEGERX<>;
+}
+__if_not_exists(PLARGE_INTEGER) {
+    using PLARGE_INTEGER = PLARGE_INTEGERX<>;
+}
+__if_not_exists(LPLARGE_INTEGER) {
+    using LPLARGE_INTEGER = LPLARGE_INTEGERX<>;
 }
 
 template<size_t bits = native_bits>
@@ -247,8 +435,19 @@ ValidateStructAlignment(0x4, ULARGE_INTEGERX<32>);
 ValidateStructSize(0x8, ULARGE_INTEGERX<64>);
 ValidateStructAlignment(0x8, ULARGE_INTEGERX<64>);
 
+template<size_t bits = native_bits>
+using PULARGE_INTEGERX = PTRZX<bits, ULARGE_INTEGERX<bits>>;
+template<size_t bits = native_bits>
+using LPULARGE_INTEGERX = LPTRZX<bits, ULARGE_INTEGERX<bits>>;
+
 __if_not_exists(ULARGE_INTEGER) {
     using ULARGE_INTEGER = ULARGE_INTEGERX<>;
+}
+__if_not_exists(PULARGE_INTEGER) {
+    using PULARGE_INTEGER = PULARGE_INTEGERX<>;
+}
+__if_not_exists(LPULARGE_INTEGER) {
+    using LPULARGE_INTEGER = LPULARGE_INTEGERX<>;
 }
 
 template<size_t bits = native_bits>
@@ -300,28 +499,204 @@ enum OBJECT_WAIT_TYPEX : int32_t {
     WaitAllObjectX = 0,
     WaitAnyObjectX = 1
 };
-__if_not_exists(WaitAllObject) {
-    static constexpr auto WaitAllObject = WaitAllObjectX;
-}
-__if_not_exists(WaitAnyObject) {
-    static constexpr auto WaitAnyObject = WaitAnyObjectX;
-}
 __if_not_exists(OBJECT_WAIT_TYPE) {
     using OBJECT_WAIT_TYPE = OBJECT_WAIT_TYPEX;
+}
+__if_not_exists(WaitAllObject) {
+    static constexpr auto WaitAllObject = (OBJECT_WAIT_TYPE)WaitAllObjectX;
+}
+__if_not_exists(WaitAnyObject) {
+    static constexpr auto WaitAnyObject = (OBJECT_WAIT_TYPE)WaitAnyObjectX;
 }
 
 enum THREADINFOCLASSX : int32_t {
     ThreadIsIoPendingX = 16,
     ThreadNameInformationX = 38
 };
-__if_not_exists(ThreadIsIoPending) {
-    static constexpr auto ThreadIsIoPending = ThreadIsIoPendingX;
-}
-__if_not_exists(ThreadNameInformation) {
-    static constexpr auto ThreadNameInformation = ThreadNameInformationX;
-}
 __if_not_exists(THREADINFOCLASS) {
     using THREADINFOCLASS = THREADINFOCLASSX;
+}
+__if_not_exists(ThreadIsIoPending) {
+    static constexpr auto ThreadIsIoPending = (THREADINFOCLASS)ThreadIsIoPendingX;
+}
+__if_not_exists(ThreadNameInformation) {
+    static constexpr auto ThreadNameInformation = (THREADINFOCLASS)ThreadNameInformationX;
+}
+
+enum PROCESSINFOCLASSX : int32_t {
+    ProcessBasicInformationX = 0,
+    ProcessQuotaLimitsX = 1,
+    ProcessIoCountersX = 2,
+    ProcessVmCountersX = 3,
+    ProcessTimesX = 4,
+    ProcessBasePriorityX = 5,
+    ProcessRaisePriorityX = 6,
+    ProcessDebugPortX = 7,
+    ProcessExceptionPortX = 8,
+    ProcessAccessTokenX = 9,
+    ProcessLdtInformationX = 10,
+    ProcessLdtSizeX = 11,
+    ProcessDefaultHardErrorModeX = 12,
+    ProcessIoPortHandlersX = 13,
+    ProcessPooledUsageAndLimitsX = 14,
+    ProcessWorkingSetWatchX = 15,
+    ProcessUserModeIOPLX = 16,
+    ProcessEnableAlignmentFaultFixupX = 17,
+    ProcessPriorityClassX = 18,
+    ProcessWx86InformationX = 19,
+    ProcessHandleCountX = 20,
+    ProcessAffinityMaskX = 21,
+    ProcessPriorityBoostX = 22,
+    ProcessDeviceMapX = 23,
+    ProcessSessionInformationX = 24,
+    ProcessForegroundInformationX = 25,
+    ProcessWow64InformationX = 26,
+    ProcessImageFileNameX = 27,
+    ProcessLUIDDeviceMapsEnabledX = 28,
+    ProcessBreakOnTerminationX = 29,
+    ProcessDebugObjectHandleX = 30,
+    ProcessDebugFlagsX = 31,
+    ProcessHandleTracingX = 32,
+    ProcessIoPriorityX = 33,
+    ProcessExecuteFlagsX = 34,
+    ProcessTelemetryIdInformationX = 64,
+    ProcessSubsystemInformationX = 75
+};
+__if_not_exists(PROCESSINFOCLASS) {
+    using PROCESSINFOCLASS = PROCESSINFOCLASSX;
+}
+__if_not_exists(ProcessBasicInformation) {
+    static constexpr auto ProcessBasicInformation = (PROCESSINFOCLASS)ProcessBasicInformationX;
+}
+__if_not_exists(ProcessQuotaLimits) {
+    static constexpr auto ProcessQuotaLimits = (PROCESSINFOCLASS)ProcessQuotaLimitsX;
+}
+__if_not_exists(ProcessIoCounters) {
+    static constexpr auto ProcessIoCounters = (PROCESSINFOCLASS)ProcessIoCountersX;
+}
+__if_not_exists(ProcessVmCounters) {
+    static constexpr auto ProcessVmCounters = (PROCESSINFOCLASS)ProcessVmCountersX;
+}
+__if_not_exists(ProcessTimes) {
+    static constexpr auto ProcessTimes = (PROCESSINFOCLASS)ProcessTimesX;
+}
+__if_not_exists(ProcessBasePriority) {
+    static constexpr auto ProcessBasePriority = (PROCESSINFOCLASS)ProcessBasePriorityX;
+}
+__if_not_exists(ProcessRaisePriority) {
+    static constexpr auto ProcessRaisePriority = (PROCESSINFOCLASS)ProcessRaisePriorityX;
+}
+__if_not_exists(ProcessDebugPort) {
+    static constexpr auto ProcessDebugPort = (PROCESSINFOCLASS)ProcessDebugPortX;
+}
+__if_not_exists(ProcessExceptionPort) {
+    static constexpr auto ProcessExceptionPort = (PROCESSINFOCLASS)ProcessExceptionPortX;
+}
+__if_not_exists(ProcessAccessToken) {
+    static constexpr auto ProcessAccessToken = (PROCESSINFOCLASS)ProcessAccessTokenX;
+}
+__if_not_exists(ProcessLdtInformation) {
+    static constexpr auto ProcessLdtInformation = (PROCESSINFOCLASS)ProcessLdtInformationX;
+}
+__if_not_exists(ProcessLdtSize) {
+    static constexpr auto ProcessLdtSize = (PROCESSINFOCLASS)ProcessLdtSizeX;
+}
+__if_not_exists(ProcessDefaultHardErrorMode) {
+    static constexpr auto ProcessDefaultHardErrorMode = (PROCESSINFOCLASS)ProcessDefaultHardErrorModeX;
+}
+__if_not_exists(ProcessIoPortHandlers) {
+    static constexpr auto ProcessIoPortHandlers = (PROCESSINFOCLASS)ProcessIoPortHandlersX;
+}
+__if_not_exists(ProcessPooledUsageAndLimits) {
+    static constexpr auto ProcessPooledUsageAndLimits = (PROCESSINFOCLASS)ProcessPooledUsageAndLimitsX;
+}
+__if_not_exists(ProcessWorkingSetWatch) {
+    static constexpr auto ProcessWorkingSetWatch = (PROCESSINFOCLASS)ProcessWorkingSetWatchX;
+}
+__if_not_exists(ProcessUserModeIOPL) {
+    static constexpr auto ProcessUserModeIOPL = (PROCESSINFOCLASS)ProcessUserModeIOPLX;
+}
+__if_not_exists(ProcessEnableAlignmentFaultFixup) {
+    static constexpr auto ProcessEnableAlignmentFaultFixup = (PROCESSINFOCLASS)ProcessEnableAlignmentFaultFixupX;
+}
+__if_not_exists(ProcessPriorityClass) {
+    static constexpr auto ProcessPriorityClass = (PROCESSINFOCLASS)ProcessPriorityClassX;
+}
+__if_not_exists(ProcessWx86Information) {
+    static constexpr auto ProcessWx86Information = (PROCESSINFOCLASS)ProcessWx86InformationX;
+}
+__if_not_exists(ProcessHandleCount) {
+    static constexpr auto ProcessHandleCount = (PROCESSINFOCLASS)ProcessHandleCountX;
+}
+__if_not_exists(ProcessAffinityMask) {
+    static constexpr auto ProcessAffinityMask = (PROCESSINFOCLASS)ProcessAffinityMaskX;
+}
+__if_not_exists(ProcessPriorityBoost) {
+    static constexpr auto ProcessPriorityBoost = (PROCESSINFOCLASS)ProcessPriorityBoostX;
+}
+__if_not_exists(ProcessDeviceMap) {
+    static constexpr auto ProcessDeviceMap = (PROCESSINFOCLASS)ProcessDeviceMapX;
+}
+__if_not_exists(ProcessSessionInformation) {
+    static constexpr auto ProcessSessionInformation = (PROCESSINFOCLASS)ProcessSessionInformationX;
+}
+__if_not_exists(ProcessForegroundInformation) {
+    static constexpr auto ProcessForegroundInformation = (PROCESSINFOCLASS)ProcessForegroundInformationX;
+}
+__if_not_exists(ProcessWow64Information) {
+    static constexpr auto ProcessWow64Information = (PROCESSINFOCLASS)ProcessWow64InformationX;
+}
+__if_not_exists(ProcessImageFileName) {
+    static constexpr auto ProcessImageFileName = (PROCESSINFOCLASS)ProcessImageFileNameX;
+}
+__if_not_exists(ProcessLUIDDeviceMapsEnabled) {
+    static constexpr auto ProcessLUIDDeviceMapsEnabled = (PROCESSINFOCLASS)ProcessLUIDDeviceMapsEnabledX;
+}
+__if_not_exists(ProcessBreakOnTermination) {
+    static constexpr auto ProcessBreakOnTermination = (PROCESSINFOCLASS)ProcessBreakOnTerminationX;
+}
+__if_not_exists(ProcessDebugObjectHandle) {
+    static constexpr auto ProcessDebugObjectHandle = (PROCESSINFOCLASS)ProcessDebugObjectHandleX;
+}
+__if_not_exists(ProcessDebugFlags) {
+    static constexpr auto ProcessDebugFlags = (PROCESSINFOCLASS)ProcessDebugFlagsX;
+}
+__if_not_exists(ProcessHandleTracing) {
+    static constexpr auto ProcessHandleTracing = (PROCESSINFOCLASS)ProcessHandleTracingX;
+}
+__if_not_exists(ProcessIoPriority) {
+    static constexpr auto ProcessIoPriority = (PROCESSINFOCLASS)ProcessIoPriorityX;
+}
+__if_not_exists(ProcessExecuteFlags) {
+    static constexpr auto ProcessExecuteFlags = (PROCESSINFOCLASS)ProcessExecuteFlagsX;
+}
+__if_not_exists(ProcessTelemetryIdInformation) {
+    static constexpr auto ProcessTelemetryIdInformation = (PROCESSINFOCLASS)ProcessTelemetryIdInformationX;
+}
+__if_not_exists(ProcessSubsystemInformation) {
+    static constexpr auto ProcessSubsystemInformation = (PROCESSINFOCLASS)ProcessSubsystemInformationX;
+}
+
+template<size_t bits = native_bits>
+struct PROCESS_EXECUTE_FLAGSX {
+    union {
+        uint32_t raw; // 0x0, 0x0
+        struct {
+            uint32_t MEM_EXECUTE_OPTION_ENABLE : 1; // 1
+            uint32_t MEM_EXECUTE_OPTION_DISABLE : 1; // 2
+            uint32_t MEM_EXECUTE_OPTION_DISABLE_THUNK_EMULATION : 1; // 3
+            uint32_t MEM_EXECUTE_OPTION_PERMANENT : 1; // 4
+            uint32_t MEM_EXECUTE_OPTION_EXECUTE_DISPATCH_ENABLE : 1; // 5
+            uint32_t MEM_EXECUTE_OPTION_IMAGE_DISPATCH_ENABLE : 1; // 6
+        };
+    };
+    // 0x4, 0x4
+};
+ValidateStructSize(0x4, PROCESS_EXECUTE_FLAGSX<>);
+ValidateStructAlignment(0x4, PROCESS_EXECUTE_FLAGSX<>);
+
+__if_not_exists(PROCESS_EXECUTE_FLAGS) {
+    using PROCESS_EXECUTE_FLAGS = PROCESS_EXECUTE_FLAGSX<>;
 }
 
 static constexpr uint32_t THREADSTATE_GETTHREADINFO = 0;
@@ -336,6 +711,180 @@ static constexpr uint32_t THREADSTATE_GETINPUTSTATE = 8;
 static constexpr uint32_t THREADSTATE_UPTIMELASTREAD = 9;
 static constexpr uint32_t THREADSTATE_FOREGROUNDTHREAD = 10;
 static constexpr uint32_t THREADSTATE_GETCURSOR = 11;
+
+enum SYSTEM_INFORMATION_CLASSX : int32_t {
+    SystemBasicInformationX = 0,
+    SystemProcessorInformationX = 1,
+    SystemPerformanceInformationX = 2,
+    SystemTimeOfDayInformationX = 3,
+    SystemProcessInformationX = 5,
+    SystemProcessorPerformanceInformationX = 8,
+    SystemInterruptInformationX = 23,
+    SystemExceptionInformationX = 33,
+    SystemRegistryQuotaInformationX = 37,
+    SystemLookasideInformationX = 45,
+    SystemCodeIntegrityInformationX = 103,
+    SystemPolicyInformationX = 134,
+};
+__if_not_exists(SYSTEM_INFORMATION_CLASS) {
+    using SYSTEM_INFORMATION_CLASS = SYSTEM_INFORMATION_CLASSX;
+}
+__if_not_exists(SystemBasicInformation) {
+    static constexpr auto SystemBasicInformation = (SYSTEM_INFORMATION_CLASS)SystemBasicInformationX;
+}
+__if_not_exists(SystemProcessorInformation) {
+    static constexpr auto SystemProcessorInformation = (SYSTEM_INFORMATION_CLASS)SystemProcessorInformationX;
+}
+__if_not_exists(SystemPerformanceInformation) {
+    static constexpr auto SystemPerformanceInformation = (SYSTEM_INFORMATION_CLASS)SystemPerformanceInformationX;
+}
+__if_not_exists(SystemTimeOfDayInformation) {
+    static constexpr auto SystemTimeOfDayInformation = (SYSTEM_INFORMATION_CLASS)SystemTimeOfDayInformationX;
+}
+__if_not_exists(SystemProcessInformation) {
+    static constexpr auto SystemProcessInformation = (SYSTEM_INFORMATION_CLASS)SystemProcessInformationX;
+}
+__if_not_exists(SystemProcessorPerformanceInformation) {
+    static constexpr auto SystemProcessorPerformanceInformation = (SYSTEM_INFORMATION_CLASS)SystemProcessorPerformanceInformationX;
+}
+__if_not_exists(SystemInterruptInformation) {
+    static constexpr auto SystemInterruptInformation = (SYSTEM_INFORMATION_CLASS)SystemInterruptInformationX;
+}
+__if_not_exists(SystemExceptionInformation) {
+    static constexpr auto SystemExceptionInformation = (SYSTEM_INFORMATION_CLASS)SystemExceptionInformationX;
+}
+__if_not_exists(SystemRegistryQuotaInformation) {
+    static constexpr auto SystemRegistryQuotaInformation = (SYSTEM_INFORMATION_CLASS)SystemRegistryQuotaInformationX;
+}
+__if_not_exists(SystemLookasideInformation) {
+    static constexpr auto SystemLookasideInformation = (SYSTEM_INFORMATION_CLASS)SystemLookasideInformationX;
+}
+__if_not_exists(SystemCodeIntegrityInformation) {
+    static constexpr auto SystemCodeIntegrityInformation = (SYSTEM_INFORMATION_CLASS)SystemCodeIntegrityInformationX;
+}
+__if_not_exists(SystemPolicyInformation) {
+    static constexpr auto SystemPolicyInformation = (SYSTEM_INFORMATION_CLASS)SystemPolicyInformationX;
+}
+
+enum MEMORY_INFORMATION_CLASSX : int32_t {
+    MemoryBasicInformationX = 0
+};
+__if_not_exists(MEMORY_INFORMATION_CLASS) {
+    using MEMORY_INFORMATION_CLASS = MEMORY_INFORMATION_CLASSX;
+}
+__if_not_exists(MemoryBasicInformation) {
+    static constexpr auto MemoryBasicInformation = (MEMORY_INFORMATION_CLASS)MemoryBasicInformationX;
+}
+
+enum KEY_INFORMATION_CLASSX : int32_t {
+    KeyBasicInformationX = 0,
+    KeyNodeInformationX = 1,
+    KeyFullInformationX = 2,
+    KeyNameInformationX = 3,
+    KeyCachedInformationX = 4,
+    KeyFlagsInformationX = 5,
+    KeyVirtualizationInformationX = 6,
+    KeyHandleTagsInformationX = 7,
+    KeyTrustInformationX = 8,
+    KeyLayerInformationX = 9
+};
+__if_not_exists(KEY_INFORMATION_CLASS) {
+    using KEY_INFORMATION_CLASS = KEY_INFORMATION_CLASSX;
+}
+__if_not_exists(KeyBasicInformation) {
+    static constexpr auto KeyBasicInformation = (KEY_INFORMATION_CLASS)KeyBasicInformationX;
+}
+__if_not_exists(KeyNodeInformation) {
+    static constexpr auto KeyNodeInformation = (KEY_INFORMATION_CLASS)KeyNodeInformationX;
+}
+__if_not_exists(KeyFullInformation) {
+    static constexpr auto KeyFullInformation = (KEY_INFORMATION_CLASS)KeyFullInformationX;
+}
+__if_not_exists(KeyNameInformation) {
+    static constexpr auto KeyNameInformation = (KEY_INFORMATION_CLASS)KeyNameInformationX;
+}
+__if_not_exists(KeyCachedInformation) {
+    static constexpr auto KeyCachedInformation = (KEY_INFORMATION_CLASS)KeyCachedInformationX;
+}
+__if_not_exists(KeyFlagsInformation) {
+    static constexpr auto KeyFlagsInformation = (KEY_INFORMATION_CLASS)KeyFlagsInformationX;
+}
+__if_not_exists(KeyVirtualizationInformation) {
+    static constexpr auto KeyVirtualizationInformation = (KEY_INFORMATION_CLASS)KeyVirtualizationInformationX;
+}
+__if_not_exists(KeyHandleTagsInformation) {
+    static constexpr auto KeyHandleTagsInformation = (KEY_INFORMATION_CLASS)KeyHandleTagsInformationX;
+}
+__if_not_exists(KeyTrustInformation) {
+    static constexpr auto KeyTrustInformation = (KEY_INFORMATION_CLASS)KeyTrustInformationX;
+}
+__if_not_exists(KeyLayerInformation) {
+    static constexpr auto KeyLayerInformation = (KEY_INFORMATION_CLASS)KeyLayerInformationX;
+}
+
+enum KEY_VALUE_INFORMATION_CLASSX : int32_t {
+    KeyValueBasicInformationX = 0,
+    KeyValueFullInformationX = 1,
+    KeyValuePartialInformationX = 2,
+    KeyValueFullInformationAlign64X = 3,
+    KeyValuePartialInformationAlign64X = 4,
+    KeyValueLayerInformationX = 5
+};
+__if_not_exists(KEY_VALUE_INFORMATION_CLASS) {
+    using KEY_VALUE_INFORMATION_CLASS = KEY_VALUE_INFORMATION_CLASSX;
+}
+__if_not_exists(KeyValueBasicInformation) {
+    static constexpr auto KeyValueBasicInformation = (KEY_VALUE_INFORMATION_CLASS)KeyValueBasicInformationX;
+}
+__if_not_exists(KeyValueFullInformation) {
+    static constexpr auto KeyValueFullInformation = (KEY_VALUE_INFORMATION_CLASS)KeyValueFullInformationX;
+}
+__if_not_exists(KeyValuePartialInformation) {
+    static constexpr auto KeyValuePartialInformation = (KEY_VALUE_INFORMATION_CLASS)KeyValuePartialInformationX;
+}
+__if_not_exists(KeyValueFullInformationAlign64) {
+    static constexpr auto KeyValueFullInformationAlign64 = (KEY_VALUE_INFORMATION_CLASS)KeyValueFullInformationAlign64X;
+}
+__if_not_exists(KeyValuePartialInformationAlign64) {
+    static constexpr auto KeyValuePartialInformationAlign64 = (KEY_VALUE_INFORMATION_CLASS)KeyValuePartialInformationAlign64X;
+}
+__if_not_exists(KeyValueLayerInformation) {
+    static constexpr auto KeyValueLayerInformation = (KEY_VALUE_INFORMATION_CLASS)KeyValueLayerInformationX;
+}
+
+enum KEY_SET_INFORMATION_CLASSX : int32_t {
+    KeyWriteTimeInformationX = 0,
+    KeyWow64FlagsInformationX = 1,
+    KeyControlFlagsInformationX = 2,
+    KeySetVirtualizationInformationX = 3,
+    KeySetDebugInformationX = 4,
+    KeySetHandleTagsInformationX = 5,
+    KeySetLayerInformationX = 6
+};
+__if_not_exists(KEY_SET_INFORMATION_CLASS) {
+    using KEY_SET_INFORMATION_CLASS = KEY_SET_INFORMATION_CLASSX;
+}
+__if_not_exists(KeyWriteTimeInformation) {
+    static constexpr auto KeyWriteTimeInformation = (KEY_SET_INFORMATION_CLASS)KeyWriteTimeInformationX;
+}
+__if_not_exists(KeyWow64FlagsInformation) {
+    static constexpr auto KeyWow64FlagsInformation = (KEY_SET_INFORMATION_CLASS)KeyWow64FlagsInformationX;
+}
+__if_not_exists(KeyControlFlagsInformation) {
+    static constexpr auto KeyControlFlagsInformation = (KEY_SET_INFORMATION_CLASS)KeyControlFlagsInformationX;
+}
+__if_not_exists(KeySetVirtualizationInformation) {
+    static constexpr auto KeySetVirtualizationInformation = (KEY_SET_INFORMATION_CLASS)KeySetVirtualizationInformationX;
+}
+__if_not_exists(KeySetDebugInformation) {
+    static constexpr auto KeySetDebugInformation = (KEY_SET_INFORMATION_CLASS)KeySetDebugInformationX;
+}
+__if_not_exists(KeySetHandleTagsInformation) {
+    static constexpr auto KeySetHandleTagsInformation = (KEY_SET_INFORMATION_CLASS)KeySetHandleTagsInformationX;
+}
+__if_not_exists(KeySetLayerInformation) {
+    static constexpr auto KeySetLayerInformation = (KEY_SET_INFORMATION_CLASS)KeySetLayerInformationX;
+}
 
 #if !__INTELLISENSE__
 //template<size_t bits = native_bits>
@@ -391,6 +940,12 @@ ValidateStructAlignment(0x8, STRINGX<64>);
 __if_not_exists(STRING) {
     using STRING = STRINGX<>;
 }
+__if_not_exists(PSTRING) {
+    using PSTRING = STRINGX<>*;
+}
+__if_not_exists(LPSTRING) {
+    using LPSTRING = STRINGX<>*;
+}
 
 template<size_t bits = native_bits>
 struct UNICODE_STRINGX {
@@ -407,6 +962,12 @@ ValidateStructAlignment(0x8, UNICODE_STRINGX<64>);
 
 __if_not_exists(UNICODE_STRING) {
     using UNICODE_STRING = UNICODE_STRINGX<>;
+}
+__if_not_exists(PUNICODE_STRING) {
+    using PUNICODE_STRING = UNICODE_STRINGX<>*;
+}
+__if_not_exists(LPUNICODE_STRING) {
+    using LPUNICODE_STRING = UNICODE_STRINGX<>*;
 }
 
 template<size_t bits = native_bits, typename T = void>
@@ -2291,6 +2852,30 @@ __if_not_exists(EXCEPTION_POINTERS) {
     using EXCEPTION_POINTERS = EXCEPTION_POINTERSX<>;
 }
 
+template<size_t bits = native_bits>
+struct OBJECT_ATTRIBUTESX {
+    uint32_t Length; // 0x0, 0x0
+    __x64_padding(0x4);
+    PTRZX<bits> RootDirectory; // 0x4, 0x8
+    PTRZX<bits, UNICODE_STRINGX<bits>> ObjectName; // 0x8, 0x10
+    uint32_t Attributes; // 0xC, 0x18
+    __x64_padding(0x4);
+    PTRZX<bits> SecurityDescriptor; // 0x10, 0x20
+    PTRZX<bits> SecurityQualityOfService; // 0x14, 0x28
+    // 0x18, 0x30
+};
+ValidateStructSize(0x18, OBJECT_ATTRIBUTESX<32>);
+ValidateStructAlignment(0x4, OBJECT_ATTRIBUTESX<32>);
+ValidateStructSize(0x30, OBJECT_ATTRIBUTESX<64>);
+ValidateStructAlignment(0x8, OBJECT_ATTRIBUTESX<64>);
+
+template<size_t bits = native_bits>
+using POBJECT_ATTRIBUTESX = PTRZX<bits, OBJECT_ATTRIBUTESX<bits>>;
+
+__if_not_exists(POBJECT_ATTRIBUTES) {
+    using POBJECT_ATTRIBUTES = POBJECT_ATTRIBUTESX<>;
+}
+
 template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING>
 struct NT_TIBX {
     PTRZX<bits, EXCEPTION_REGISTRATION_RECORDX<bits, T>> ExceptionList; // 0x0, 0x0
@@ -2752,11 +3337,24 @@ __if_not_exists(TEB) {
 
 static inline constexpr auto teb32 = (TEBX<32> FS_RELATIVE*)0;
 static inline constexpr auto teb64 = (TEBX<64> GS_RELATIVE*)0;
+static inline constexpr auto cteb32 = (const TEBX<32> FS_RELATIVE*)0;
+static inline constexpr auto cteb64 = (const TEBX<64> GS_RELATIVE*)0;
 
 #if NATIVE_BITS == 32
 static inline constexpr auto teb = teb32;
+static inline constexpr auto cteb = cteb32;
 #else
 static inline constexpr auto teb = teb64;
+static inline constexpr auto cteb = cteb64;
+#endif
+
+#define peb32 (teb32->ProcessEnvironmentBlock)
+#define peb64 (teb64->ProcessEnvironmentBlock)
+
+#if NATIVE_BITS == 32
+#define peb peb32
+#else
+#define peb peb64
 #endif
 
 template<size_t bits = native_bits, typename T = void>
@@ -2775,6 +3373,244 @@ static inline T read_teb_offset(size_t offset) {
     } else if constexpr (bits == 64) {
         return *(T GS_RELATIVE*)&teb64->arbitrary_offset[offset];
     }
+}
+
+/*========================================
+    Syscall types
+========================================*/
+
+template<size_t bits = native_bits>
+struct SYSTEM_BASIC_INFORMATIONX {
+    uint32_t Reserved; // 0x0, 0x0 (This field is just set to 0)
+    uint32_t TimerResolution; // 0x4, 0x4
+    uint32_t PageSize; // 0x8, 0x8
+    uint32_t NumberOfPhysicalPages; // 0xC, 0xC
+    uint32_t LowestPhysicalPageNumber; // 0x10, 0x10
+    uint32_t HighestPhysicalPageNumber; // 0x14, 0x14
+    uint32_t AllocationGranularity; // 0x18, 0x18
+    __x64_padding(0x4);
+    uintptr_tx<bits> MinimumUserModeAddress; // 0x1C, 0x20
+    uintptr_tx<bits> MaximumUserModeAddress; // 0x20, 0x28
+    KAFFINITYX<bits> ActiveProcessorsAffinityMask; // 0x24, 0x30
+    int8_t NumberOfProcessors; // 0x28, 0x38
+    __padding(0x3);
+    __x64_padding(0x4);
+    // 0x2C, 0x40
+};
+ValidateStructSize(0x2C, SYSTEM_BASIC_INFORMATIONX<32>);
+ValidateStructAlignment(0x4, SYSTEM_BASIC_INFORMATIONX<32>);
+ValidateStructSize(0x40, SYSTEM_BASIC_INFORMATIONX<64>);
+ValidateStructAlignment(0x8, SYSTEM_BASIC_INFORMATIONX<64>);
+
+__if_not_exists(SYSTEM_BASIC_INFORMATION) {
+    using SYSTEM_BASIC_INFORMATION = SYSTEM_BASIC_INFORMATIONX<>;
+}
+
+template<size_t bits = native_bits>
+struct SYSTEM_PROCESSOR_FEATURES_INFORMATIONX;
+
+template<>
+struct SYSTEM_PROCESSOR_FEATURES_INFORMATIONX<32> {
+    union {
+        uint64_tx<32> ProcessorFeatureBits; // 0x0, 0x0
+        struct {
+            uint64_tx<32> VME : 1; // 1
+            uint64_tx<32> TSC : 1; // 2
+            uint64_tx<32> VME_PSE_PGE : 1; // 3
+            uint64_tx<32> CMOV : 1; // 4
+            uint64_tx<32> PGE : 1; // 5
+            uint64_tx<32> PSE : 1; // 6
+            uint64_tx<32> MTRR : 1; // 7
+            uint64_tx<32> CX8 : 1; // 8
+            uint64_tx<32> MMX : 1; // 9
+            uint64_tx<32> __unknown_intel_errata_fix : 1; // 10
+            uint64_tx<32> PAT : 1; // 11
+            uint64_tx<32> FXSR : 1; // 12
+            uint64_tx<32> SEP : 1; // 13
+            uint64_tx<32> SSE : 1; // 14
+            uint64_tx<32> _3DNow : 1; // 15
+            uint64_tx<32> __amd_mtrr : 1; // 16
+            uint64_tx<32> SSE2 : 1; // 17
+            uint64_tx<32> DS : 1; // 18
+            uint64_tx<32> CLFSH : 1; // 19
+            uint64_tx<32> SSE3 : 1; // 20
+            uint64_tx<32> __unknown_cpuid_bit : 1; // 21
+            uint64_tx<32> ACNT2 : 1; // 22 No idea what this is
+            uint64_tx<32> __unknown_A : 1; // 23
+            uint64_tx<32> __unknown_B : 1; // 24
+            uint64_tx<32> SMEP : 1; // 25
+            uint64_tx<32> RDRAND : 1; // 26
+            uint64_tx<32> NP : 1; // 27
+            uint64_tx<32> __unknown_C : 1; // 28
+            uint64_tx<32> __unused_A : 1; // 29
+            uint64_tx<32> NX : 1; // 30
+            uint64_tx<32> __unused_B : 1; // 31
+            uint64_tx<32> __unused_C : 1; // 32
+            uint64_tx<32> RDTSCP : 1; // 33
+            uint64_tx<32> CLFLUSHOPT : 1; // 34
+            uint64_tx<32> HDC : 1; // 35
+        };
+    };
+    uint64_tx<32> Reserved[3]; // 0x8, 0x8
+    // 0x20, 0x20
+};
+template<>
+struct SYSTEM_PROCESSOR_FEATURES_INFORMATIONX<64> {
+    union {
+        uint64_tx<64> ProcessorFeatureBits; // 0x0, 0x0
+        struct {
+            uint64_tx<64> SMEP : 1; // 1
+            uint64_tx<64> TSC : 1; // 2
+            uint64_tx<64> VME_PSE_PGE : 1; // 3
+            uint64_tx<64> CMOV : 1; // 4
+            uint64_tx<64> PGE : 1; // 5
+            uint64_tx<64> PSE : 1; // 6
+            uint64_tx<64> MTRR : 1; // 7
+            uint64_tx<64> CX8 : 1; // 8
+            uint64_tx<64> MMX : 1; // 9
+            uint64_tx<64> DS : 1; // 10
+            uint64_tx<64> PAT : 1; // 11
+            uint64_tx<64> FXSR : 1; // 12
+            uint64_tx<64> SEP : 1; // 13
+            uint64_tx<64> SSE : 1; // 14
+            uint64_tx<64> _3DNow : 1; // 15
+            uint64_tx<64> __unused_A : 1; // 16
+            uint64_tx<64> SSE2 : 1; // 17
+            uint64_tx<64> LBR : 1; // 18
+            uint64_tx<64> __unused_B : 1; // 19
+            uint64_tx<64> SSE3 : 1; // 20
+            uint64_tx<64> CMPXCHG16B : 1; // 21
+            uint64_tx<64> __unknown_cpuid_bit : 1; // 22
+            uint64_tx<64> ACNT2 : 1; // 23 No idea what this is
+            uint64_tx<64> __unknown_A : 1; // 24
+            uint64_tx<64> __unknown_B : 1; // 25
+            uint64_tx<64> __unused_C : 1; // 26
+            uint64_tx<64> NP : 1; // 27
+            uint64_tx<64> __unknown_C : 1; // 28
+            uint64_tx<64> FSGSBASE : 1; // 29
+            uint64_tx<64> NX : 1; // 30
+            uint64_tx<64> __unused_D : 1; // 31
+            uint64_tx<64> __unused_E : 1; // 32
+            uint64_tx<64> RDRAND : 1; // 33
+            uint64_tx<64> __unused_F : 1; // 34
+            uint64_tx<64> RDTSCP : 1; // 35
+            uint64_tx<64> __unused_G : 1; // 36
+            uint64_tx<64> __unused_H : 1; // 37
+            uint64_tx<64> gigabyte_pages : 1; // 38
+        };
+    };
+    uint64_tx<64> Reserved[3]; // 0x8, 0x8
+    // 0x20, 0x20
+};
+ValidateStructSize(0x20, SYSTEM_PROCESSOR_FEATURES_INFORMATIONX<32>);
+//ValidateStructAlignment(0x4, SYSTEM_PROCESSOR_FEATURES_INFORMATIONX<32>);
+ValidateStructSize(0x20, SYSTEM_PROCESSOR_FEATURES_INFORMATIONX<64>);
+ValidateStructAlignment(0x8, SYSTEM_PROCESSOR_FEATURES_INFORMATIONX<64>);
+
+__if_not_exists(SYSTEM_PROCESSOR_FEATURES_INFORMATION) {
+    using SYSTEM_PROCESSOR_FEATURES_INFORMATION = SYSTEM_PROCESSOR_FEATURES_INFORMATIONX<>;
+}
+
+template<size_t bits = native_bits>
+struct SYSTEM_PROCESSOR_INFORMATIONX;
+
+template<>
+struct SYSTEM_PROCESSOR_INFORMATIONX<32> {
+    uint16_t ProcessorArchitecture; // 0x0, 0x0
+    uint16_t ProcessorLevel; // 0x2, 0x2
+    uint16_t ProcessorRevision; // 0x4, 0x4
+    uint16_t MaximumProcessors; // 0x6, 0x6
+    union {
+        uint32_t ProcessorFeatureBits; // 0x8, 0x8
+        struct {
+            uint32_t VME : 1; // 1
+            uint32_t TSC : 1; // 2
+            uint32_t VME_PSE_PGE : 1; // 3
+            uint32_t CMOV : 1; // 4
+            uint32_t PGE : 1; // 5
+            uint32_t PSE : 1; // 6
+            uint32_t MTRR : 1; // 7
+            uint32_t CX8 : 1; // 8
+            uint32_t MMX : 1; // 9
+            uint32_t __unknown_intel_errata_fix : 1; // 10
+            uint32_t PAT : 1; // 11
+            uint32_t FXSR : 1; // 12
+            uint32_t SEP : 1; // 13
+            uint32_t SSE : 1; // 14
+            uint32_t _3DNow : 1; // 15
+            uint32_t __amd_mtrr : 1; // 16
+            uint32_t SSE2 : 1; // 17
+            uint32_t DS : 1; // 18
+            uint32_t CLFSH : 1; // 19
+            uint32_t SSE3 : 1; // 20
+            uint32_t __unknown_cpuid_bit : 1; // 21
+            uint32_t ACNT2 : 1; // 22 No idea what this is
+            uint32_t __unknown_A : 1; // 23
+            uint32_t __unknown_B : 1; // 24
+            uint32_t SMEP : 1; // 25
+            uint32_t RDRAND : 1; // 26
+            uint32_t NP : 1; // 27
+            uint32_t __unknown_C : 1; // 28
+            uint32_t __unused_A : 1; // 29
+            uint32_t NX : 1; // 30
+            uint32_t __NX_unknown_A : 1; // 31
+            uint32_t __NX_unknown_B : 1; // 32
+        };
+    };
+    // 0xC, 0xC
+};
+template<>
+struct SYSTEM_PROCESSOR_INFORMATIONX<64> {
+    uint16_t ProcessorArchitecture; // 0x0, 0x0
+    uint16_t ProcessorLevel; // 0x2, 0x2
+    uint16_t ProcessorRevision; // 0x4, 0x4
+    uint16_t MaximumProcessors; // 0x6, 0x6
+    union {
+        uint32_t ProcessorFeatureBits; // 0x8, 0x8
+        struct {
+            uint32_t SMEP : 1; // 1
+            uint32_t TSC : 1; // 2
+            uint32_t VME_PSE_PGE : 1; // 3
+            uint32_t CMOV : 1; // 4
+            uint32_t PGE : 1; // 5
+            uint32_t PSE : 1; // 6
+            uint32_t MTRR : 1; // 7
+            uint32_t CX8 : 1; // 8
+            uint32_t MMX : 1; // 9
+            uint32_t DS : 1; // 10
+            uint32_t PAT : 1; // 11
+            uint32_t FXSR : 1; // 12
+            uint32_t SEP : 1; // 13
+            uint32_t SSE : 1; // 14
+            uint32_t _3DNow : 1; // 15
+            uint32_t __unused_A : 1; // 16
+            uint32_t SSE2 : 1; // 17
+            uint32_t LBR : 1; // 18
+            uint32_t __unused_B : 1; // 19
+            uint32_t SSE3 : 1; // 20
+            uint32_t CMPXCHG16B : 1; // 21
+            uint32_t __unknown_cpuid_bit : 1; // 22
+            uint32_t ACNT2 : 1; // 23 No idea what this is
+            uint32_t __unknown_A : 1; // 24
+            uint32_t __unknown_B : 1; // 25
+            uint32_t __unused_C : 1; // 26
+            uint32_t NP : 1; // 27
+            uint32_t __unknown_C : 1; // 28
+            uint32_t FSGSBASE : 1; // 29
+            uint32_t NX : 1; // 30
+            uint32_t __NX_unknown_A : 1; // 31
+            uint32_t __NX_unknown_B : 1; // 32
+        };
+    };
+    // 0xC, 0xC
+};
+ValidateStructSize(0xC, SYSTEM_PROCESSOR_INFORMATIONX<32>);
+ValidateStructAlignment(0x4, SYSTEM_PROCESSOR_INFORMATIONX<32>);
+ValidateStructSize(0xC, SYSTEM_PROCESSOR_INFORMATIONX<64>);
+ValidateStructAlignment(0x4, SYSTEM_PROCESSOR_INFORMATIONX<64>);
+
+__if_not_exists(SYSTEM_PROCESSOR_INFORMATION) {
+    using SYSTEM_PROCESSOR_INFORMATION = SYSTEM_PROCESSOR_INFORMATIONX<>;
 }
 
 template<size_t bits = native_bits>
@@ -2818,6 +3654,196 @@ __if_not_exists(THREAD_BASIC_INFORMATION) {
     using THREAD_BASIC_INFORMATION = THREAD_BASIC_INFORMATIONX<>;
 }
 
+template<size_t bits = native_bits>
+struct MEMORY_BASIC_INFORMATIONX;
+
+template<>
+struct MEMORY_BASIC_INFORMATIONX<32> {
+    PTRZX<32> BaseAddress; // 0x0
+    PTRZX<32> AllocationBase; // 0x4
+    uint32_t AllocationProtect; // 0x8
+    size_tx<32> RegionSize; // 0xC
+    uint32_t State; // 0x10
+    uint32_t Protect; // 0x14
+    uint32_t Type; // 0x18
+    // 0x1C
+};
+template<>
+struct MEMORY_BASIC_INFORMATIONX<64> {
+    PTRZX<64> BaseAddress; // 0x0
+    PTRZX<64> AllocationBase; // 0x8
+    uint32_t AllocationProtect; // 0x10
+    uint16_t PartitionId; // 0x14
+    __x64_padding(0x2);
+    size_tx<64> RegionSize; // 0x18
+    uint32_t State; // 0x20
+    uint32_t Protect; // 0x24
+    uint32_t Type; // 0x28
+    __x64_padding(0x4);
+    // 0x30
+};
+ValidateStructSize(0x1C, MEMORY_BASIC_INFORMATIONX<32>);
+ValidateStructAlignment(0x4, MEMORY_BASIC_INFORMATIONX<32>);
+ValidateStructSize(0x30, MEMORY_BASIC_INFORMATIONX<64>);
+ValidateStructAlignment(0x8, MEMORY_BASIC_INFORMATIONX<64>);
+
+__if_not_exists(MEMORY_BASIC_INFORMATION) {
+    using MEMORY_BASIC_INFORMATION = MEMORY_BASIC_INFORMATIONX<>;
+}
+
+template<size_t N = 0, size_t bits = native_bits>
+struct KEY_VALUE_BASIC_INFORMATIONX {
+    uint32_t TitleIndex; // 0x0, 0x0
+    uint32_t Type; // 0x4, 0x4
+    uint32_t NameLength; // 0x8, 0x8
+    wchar_t Name[N]; // 0xC, 0xC
+};
+ValidateStructSize(0xC, KEY_VALUE_BASIC_INFORMATIONX<>);
+ValidateStructAlignment(0x4, KEY_VALUE_BASIC_INFORMATIONX<>);
+
+__if_not_exists(KEY_VALUE_BASIC_INFORMATION) {
+    using KEY_VALUE_BASIC_INFORMATION = KEY_VALUE_BASIC_INFORMATIONX<>;
+}
+
+template<size_t N = 0, size_t bits = native_bits>
+struct KEY_VALUE_FULL_INFORMATIONX {
+    uint32_t TitleIndex; // 0x0, 0x0
+    uint32_t Type; // 0x4, 0x4
+    uint32_t DataOffset; // 0x8, 0x8
+    uint32_t DataLength; // 0xC, 0xC
+    uint32_t NameLength; // 0x10, 0x10
+    wchar_t Name[N]; // 0x14, 0x14
+};
+ValidateStructSize(0x14, KEY_VALUE_FULL_INFORMATIONX<>);
+ValidateStructAlignment(0x4, KEY_VALUE_FULL_INFORMATIONX<>);
+
+__if_not_exists(KEY_VALUE_FULL_INFORMATION) {
+    using KEY_VALUE_FULL_INFORMATION = KEY_VALUE_FULL_INFORMATIONX<>;
+}
+
+template<size_t N = 0, size_t bits = native_bits>
+struct KEY_VALUE_PARTIAL_INFORMATIONX {
+    uint32_t TitleIndex; // 0x0, 0x0
+    uint32_t Type; // 0x4, 0x4
+    uint32_t DataLength; // 0x8, 0x8
+    uint8_t Data[N]; // 0xC, 0xC
+};
+ValidateStructSize(0xC, KEY_VALUE_PARTIAL_INFORMATIONX<>);
+ValidateStructAlignment(0x4, KEY_VALUE_PARTIAL_INFORMATIONX<>);
+
+__if_not_exists(KEY_VALUE_PARTIAL_INFORMATION) {
+    using KEY_VALUE_PARTIAL_INFORMATION = KEY_VALUE_PARTIAL_INFORMATIONX<>;
+}
+
+template<size_t N = 0, size_t bits = native_bits>
+struct KEY_BASIC_INFORMATIONX {
+    LARGE_INTEGERX<bits> LastWriteTime; // 0x0, 0x0
+    uint32_t TitleIndex; // 0x8, 0x8
+    uint32_t NameLength; // 0xC, 0xC
+    wchar_t Name[N]; // 0x10, 0x10
+};
+ValidateStructSize(0x10, KEY_BASIC_INFORMATIONX<0, 32>);
+ValidateStructAlignment(0x4, KEY_BASIC_INFORMATIONX<0, 32>);
+ValidateStructSize(0x10, KEY_BASIC_INFORMATIONX<0, 64>);
+ValidateStructAlignment(0x8, KEY_BASIC_INFORMATIONX<0, 64>);
+
+__if_not_exists(KEY_BASIC_INFORMATION) {
+    using KEY_BASIC_INFORMATION = KEY_BASIC_INFORMATIONX<>;
+}
+
+template<size_t N = 0, size_t bits = native_bits>
+struct KEY_NODE_INFORMATIONX {
+    LARGE_INTEGERX<bits> LastWriteTime; // 0x0, 0x0
+    uint32_t TitleIndex; // 0x8, 0x8
+    uint32_t ClassOffset; // 0xC, 0xC
+    uint32_t ClassLength; // 0x10, 0x10
+    uint32_t NameLength; // 0x14, 0x14
+    wchar_t Name[N]; // 0x18, 0x18
+};
+ValidateStructSize(0x18, KEY_NODE_INFORMATIONX<0, 32>);
+ValidateStructAlignment(0x4, KEY_NODE_INFORMATIONX<0, 32>);
+ValidateStructSize(0x18, KEY_NODE_INFORMATIONX<0, 64>);
+ValidateStructAlignment(0x8, KEY_NODE_INFORMATIONX<0, 64>);
+
+__if_not_exists(KEY_NODE_INFORMATION) {
+    using KEY_NODE_INFORMATION = KEY_NODE_INFORMATIONX<>;
+}
+
+template<size_t N = 0, size_t bits = native_bits>
+struct KEY_FULL_INFORMATIONX {
+    LARGE_INTEGERX<bits> LastWriteTime; // 0x0, 0x0
+    uint32_t TitleIndex; // 0x8, 0x8
+    uint32_t ClassOffset; // 0xC, 0xC
+    uint32_t ClassLength; // 0x10, 0x10
+    uint32_t SubKeys; // 0x14, 0x14
+    uint32_t MaxNameLen; // 0x18, 0x18
+    uint32_t MaxClassLen; // 0x1C, 0x1C
+    uint32_t Values; // 0x20, 0x20
+    uint32_t MaxValueNameLen; // 0x24, 0x24
+    uint32_t MaxValueDataLen; // 0x28, 0x28
+    wchar_t Class[N]; // 0x2C, 0x2C
+};
+ValidateStructSize(0x2C, KEY_FULL_INFORMATIONX<0, 32>);
+ValidateStructAlignment(0x4, KEY_FULL_INFORMATIONX<0, 32>);
+ValidateStructSize(0x30, KEY_FULL_INFORMATIONX<0, 64>);
+ValidateStructAlignment(0x8, KEY_FULL_INFORMATIONX<0, 64>);
+
+__if_not_exists(KEY_NODE_INFORMATION) {
+    using KEY_NODE_INFORMATION = KEY_NODE_INFORMATIONX<>;
+}
+
+template<size_t N = 0, size_t bits = native_bits>
+struct KEY_NAME_INFORMATIONX {
+    uint32_t NameLength; // 0x0, 0x0
+    wchar_t Name[N]; // 0x4, 0x4
+};
+ValidateStructSize(0x4, KEY_NAME_INFORMATIONX<>);
+ValidateStructAlignment(0x4, KEY_NAME_INFORMATIONX<>);
+
+__if_not_exists(KEY_NAME_INFORMATION) {
+    using KEY_NAME_INFORMATION = KEY_NAME_INFORMATIONX<>;
+}
+
+template<size_t bits = native_bits>
+struct KEY_CACHED_INFORMATIONX {
+    LARGE_INTEGERX<bits> LastWriteTime; // 0x0, 0x0
+    uint32_t TitleIndex; // 0x8, 0x8
+    uint32_t SubKeys; // 0xC, 0xC
+    uint32_t MaxNameLen; // 0x10, 0x10
+    uint32_t Values; // 0x14, 0x14
+    uint32_t MaxValueNameLen; // 0x18, 0x18
+    uint32_t MaxValueDataLen; // 0x1C, 0x1C
+    uint32_t NameLength; // 0x20, 0x20
+    __x64_padding(0x4);
+    // 0x24, 0x28
+};
+ValidateStructSize(0x24, KEY_CACHED_INFORMATIONX<32>);
+ValidateStructAlignment(0x4, KEY_CACHED_INFORMATIONX<32>);
+ValidateStructSize(0x28, KEY_CACHED_INFORMATIONX<64>);
+ValidateStructAlignment(0x8, KEY_CACHED_INFORMATIONX<64>);
+
+__if_not_exists(KEY_CACHED_INFORMATION) {
+    using KEY_CACHED_INFORMATION = KEY_CACHED_INFORMATIONX<>;
+}
+
+template<size_t bits = native_bits>
+struct KEY_WRITE_TIME_INFORMATIONX {
+    LARGE_INTEGERX<bits> LastWriteTime; // 0x0, 0x0
+    // 0x8, 0x8
+};
+ValidateStructSize(0x8, KEY_WRITE_TIME_INFORMATIONX<32>);
+ValidateStructAlignment(0x4, KEY_WRITE_TIME_INFORMATIONX<32>);
+ValidateStructSize(0x8, KEY_WRITE_TIME_INFORMATIONX<64>);
+ValidateStructAlignment(0x8, KEY_WRITE_TIME_INFORMATIONX<64>);
+
+__if_not_exists(KEY_WRITE_TIME_INFORMATION) {
+    using KEY_WRITE_TIME_INFORMATION = KEY_WRITE_TIME_INFORMATIONX<>;
+}
+
+/*========================================
+    User Shared Data Types
+========================================*/
+
 template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING>
 struct FIBERX {
     PTRZX<bits, EXCEPTION_REGISTRATION_RECORDX<bits, T>> ExceptionList; // 0x0, 0x0
@@ -2849,32 +3875,32 @@ enum PS_CREATE_STATEX : int32_t {
     PsCreateSuccessX = 6,
     PsCreateMaximumStatesX = 7
 };
-__if_not_exists(PsCreateInitialState) {
-    static constexpr auto PsCreateInitialState = PsCreateInitialStateX;
-}
-__if_not_exists(PsCreateFailOnFileOpen) {
-    static constexpr auto PsCreateFailOnFileOpen = PsCreateFailOnFileOpenX;
-}
-__if_not_exists(PsCreateFailOnSectionOpen) {
-    static constexpr auto PsCreateFailOnSectionOpen = PsCreateFailOnSectionOpenX;
-}
-__if_not_exists(PsCreateFailExeFormat) {
-    static constexpr auto PsCreateFailExeFormat = PsCreateFailExeFormatX;
-}
-__if_not_exists(PsCreateFailMachineMismatch) {
-    static constexpr auto PsCreateFailMachineMismatch = PsCreateFailMachineMismatchX;
-}
-__if_not_exists(PsCreateFailExeName) {
-    static constexpr auto PsCreateFailExeName = PsCreateFailExeNameX;
-}
-__if_not_exists(PsCreateSuccess) {
-    static constexpr auto PsCreateSuccess = PsCreateSuccessX;
-}
-__if_not_exists(PsCreateMaximumStates) {
-    static constexpr auto PsCreateMaximumStates = PsCreateMaximumStatesX;
-}
 __if_not_exists(PS_CREATE_STATE) {
     using PS_CREATE_STATE = PS_CREATE_STATEX;
+}
+__if_not_exists(PsCreateInitialState) {
+    static constexpr auto PsCreateInitialState = (PS_CREATE_STATE)PsCreateInitialStateX;
+}
+__if_not_exists(PsCreateFailOnFileOpen) {
+    static constexpr auto PsCreateFailOnFileOpen = (PS_CREATE_STATE)PsCreateFailOnFileOpenX;
+}
+__if_not_exists(PsCreateFailOnSectionOpen) {
+    static constexpr auto PsCreateFailOnSectionOpen = (PS_CREATE_STATE)PsCreateFailOnSectionOpenX;
+}
+__if_not_exists(PsCreateFailExeFormat) {
+    static constexpr auto PsCreateFailExeFormat = (PS_CREATE_STATE)PsCreateFailExeFormatX;
+}
+__if_not_exists(PsCreateFailMachineMismatch) {
+    static constexpr auto PsCreateFailMachineMismatch = (PS_CREATE_STATE)PsCreateFailMachineMismatchX;
+}
+__if_not_exists(PsCreateFailExeName) {
+    static constexpr auto PsCreateFailExeName = (PS_CREATE_STATE)PsCreateFailExeNameX;
+}
+__if_not_exists(PsCreateSuccess) {
+    static constexpr auto PsCreateSuccess = (PS_CREATE_STATE)PsCreateSuccessX;
+}
+__if_not_exists(PsCreateMaximumStates) {
+    static constexpr auto PsCreateMaximumStates = (PS_CREATE_STATE)PsCreateMaximumStatesX;
 }
 
 template<size_t bits = native_bits>
@@ -2960,17 +3986,17 @@ enum NT_PRODUCT_TYPEX : int32_t {
     NtProductLanManNtX = 2,
     NtProductServerX = 3
 };
-__if_not_exists(NtProductWinNt) {
-    static constexpr auto NtProductWinNt = NtProductWinNtX;
-}
-__if_not_exists(NtProductLanManNt) {
-    static constexpr auto NtProductLanManNt = NtProductLanManNtX;
-}
-__if_not_exists(NtProductServer) {
-    static constexpr auto NtProductServer = NtProductServerX;
-}
 __if_not_exists(NT_PRODUCT_TYPE) {
     using NT_PRODUCT_TYPE = NT_PRODUCT_TYPEX;
+}
+__if_not_exists(NtProductWinNt) {
+    static constexpr auto NtProductWinNt = (NT_PRODUCT_TYPE)NtProductWinNtX;
+}
+__if_not_exists(NtProductLanManNt) {
+    static constexpr auto NtProductLanManNt = (NT_PRODUCT_TYPE)NtProductLanManNtX;
+}
+__if_not_exists(NtProductServer) {
+    static constexpr auto NtProductServer = (NT_PRODUCT_TYPE)NtProductServerX;
 }
 
 enum ALTERNATIVE_ARCHITECTURE_TYPEX : int32_t {
@@ -2978,17 +4004,17 @@ enum ALTERNATIVE_ARCHITECTURE_TYPEX : int32_t {
     NEC98x86X = 1,
     EndAlternativesX = 2
 };
-__if_not_exists(StandardDesign) {
-    static constexpr auto StandardDesign = StandardDesignX;
-}
-__if_not_exists(NEC98x86) {
-    static constexpr auto NEC98x86 = NEC98x86X;
-}
-__if_not_exists(EndAlternatives) {
-    static constexpr auto EndAlternatives = EndAlternativesX;
-}
 __if_not_exists(ALTERNATIVE_ARCHITECTURE_TYPE) {
     using ALTERNATIVE_ARCHITECTURE_TYPE = ALTERNATIVE_ARCHITECTURE_TYPEX;
+}
+__if_not_exists(StandardDesign) {
+    static constexpr auto StandardDesign = (ALTERNATIVE_ARCHITECTURE_TYPE)StandardDesignX;
+}
+__if_not_exists(NEC98x86) {
+    static constexpr auto NEC98x86 = (ALTERNATIVE_ARCHITECTURE_TYPE)NEC98x86X;
+}
+__if_not_exists(EndAlternatives) {
+    static constexpr auto EndAlternatives = (ALTERNATIVE_ARCHITECTURE_TYPE)EndAlternativesX;
 }
 
 struct ETW_UMGL_KEYX {
@@ -3232,5 +4258,24 @@ extern "C" {
 #define USER_SHARED_DATAR(bits) (*(const KUSER_SHARED_DATAX<bits>*)0x7FFE0000)
 
 //static inline const KUSER_SHARED_DATAX<>& USER_SHARED_DATAR = *(const KUSER_SHARED_DATAX<>*)0x7FFE0000;
+
+/*========================================
+    Functions
+========================================*/
+
+//__if_not_exists(RtlInitUnicodeString) {
+template<size_t bits>
+static constexpr void RtlInitUnicodeString(UNICODE_STRINGX<bits>* unicode_string, const wchar_t* string) {
+    if (expect(string != NULL, true)) {
+        size_t length = byteloop_wcslen_raw(string);
+        if (length >= 0x7FFC) length = 0x7FFC;
+        unicode_string->Length = length;
+        unicode_string->MaximumLength = length + 2;
+        unicode_string->Buffer = (PTRZX<bits, wchar_t>)string;
+    } else {
+        __builtin_memset(unicode_string, 0, sizeof(*unicode_string));
+    }
+}
+//}
 
 #endif

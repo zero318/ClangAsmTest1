@@ -3170,9 +3170,17 @@ void make_shift_jis_conversion_table();
 
 gnu_noinline void segment_jank_test();
 
+gnu_noinline void atomic_timing_test();
+
+extern bool dns_connect(const wchar_t* server_name, const wchar_t* port_str);
+
 int stdcall main(int argc, char* argv[]) {
 
-	segment_jank_test();
+	//dns_connect(L"waluigistacostand.ddns.net", L"42069");
+
+	atomic_timing_test();
+
+	//segment_jank_test();
 	return 0;
 
 	clang_noinline say_bye();
@@ -3500,7 +3508,6 @@ int pingas() {
 
 	return (int)NtSetInformationProcess(self_handle, (PROCESSINFOCLASS)ProcessUserModeIOPL, &Iopl, sizeof(Iopl));
 	return 0;
-	
 
 	//test_float_func(TWO_PI_f, correct_remainderf3, test_remainderf);
 	//test_float_func(TWO_PI_d, correct_remainderf4, test_remainderf2);
@@ -4544,8 +4551,8 @@ gnu_noinline void yeetus_memory() {
 	auto NtOpenSection_func = (decltype(&NtOpenSection))GetProcAddress(ntdll_handle, "NtOpenSection");
 	
 	UNICODE_STRING device_name;
-	auto RtlInitUnicodeString_func = (decltype(&RtlInitUnicodeString))GetProcAddress(ntdll_handle, "RtlInitUnicodeString");
-	RtlInitUnicodeString_func(&device_name, L"\\Device\\PhysicalMemory");
+	//auto RtlInitUnicodeString_func = (decltype(&RtlInitUnicodeString)GetProcAddress(ntdll_handle, "RtlInitUnicodeString");
+	//RtlInitUnicodeString_func(&device_name, L"\\Device\\PhysicalMemory");
 	HANDLE section_handle;
 	OBJECT_ATTRIBUTES object_attributes;
 	InitializeObjectAttributes(&object_attributes, &device_name, OBJ_CASE_INSENSITIVE, NULL, NULL);
@@ -6698,4 +6705,63 @@ far_jump_back:
 		: [far_jump]"m"(far_jump)
 	);
 	*/
+}
+
+std::atomic<uint8_t> atomic_test;
+
+uint64_t exchange_start_time, exchange_end_time;
+uint64_t cmpexchange_start_time, cmpexchange_end_time;
+uint64_t bts_start_time, bts_end_time;
+gnu_noinline void atomic_timing_test() {
+
+	constexpr uint64_t loop_iters = 1000000000ULL;
+	constexpr uint64_t counter_add = UINT64_MAX / loop_iters;
+
+	uint64_t counter;
+
+	exchange_start_time = rdtsc();
+	counter = 0;
+	do {
+		if (!atomic_test.exchange(true)) {
+			//printf("test");
+			__asm__ volatile ("nop":);
+		}
+	} while (!__builtin_add_overflow(counter, counter_add, &counter));
+	exchange_end_time = rdtsc();
+
+	cmpexchange_start_time = rdtsc();
+	counter = 0;
+	do {
+		uint8_t expected = false;
+		if (atomic_test.compare_exchange_strong(expected, true)) {
+			//printf("test");
+			__asm__ volatile ("nop":);
+		}
+	} while (!__builtin_add_overflow(counter, counter_add, &counter));
+	cmpexchange_end_time = rdtsc();
+
+	bts_start_time = rdtsc();
+	counter = 0;
+	do {
+		int carry_flag;
+		__asm__(
+			"lock btsl %[bit_offset], %[atomic_test]"
+			: asm_arg("+m", atomic_test), asm_flags(c, carry_flag)
+			: [bit_offset] "Ns"(0)
+		);
+		if (!carry_flag) {
+			//printf("test");
+			__asm__ volatile ("nop":);
+		}
+	} while (!__builtin_add_overflow(counter, counter_add, &counter));
+	bts_end_time = rdtsc();
+
+	printf(
+		"XCHG:    %llu\n"
+		"CMPXCHG: %llu\n"
+		"BTS:     %llu\n"
+		, exchange_end_time - exchange_start_time
+		, cmpexchange_end_time - cmpexchange_start_time
+		, bts_end_time - bts_start_time
+	);
 }

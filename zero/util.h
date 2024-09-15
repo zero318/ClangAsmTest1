@@ -111,6 +111,7 @@ typedef char* MS_va_list;
 #include <type_traits>
 #include <new>
 #include <utility>
+#include <tuple>
 
 #define USE_ALL_FEATURES
 //#define USE_AMD_FEATURES
@@ -243,12 +244,22 @@ static inline constexpr SseTier_t SSE_TIER = IA32;
 #define static_lambda
 #define constexpr_lambda
 #define consteval_lambda
+#define ethis_template()
+#define ethis_params(...) __VA_ARGS__
+#define ethis_args(...) __VA_ARGS__
+#define ethis_type std::remove_cvref_t<std::remove_pointer_t<decltype(this)>>
+#define ethis (*this)
 #else
 #define INTELLISENSE_TYPENAME
 #define requires(...) requires (__VA_ARGS__)
 #define static_lambda static
 #define constexpr_lambda constexpr
 #define consteval_lambda consteval
+#define ethis_template() template <typename Self>
+#define ethis_params(...) __VA_ARGS__ __VA_OPT__(,) typename Self = void
+#define ethis_args(...) this Self&& self __VA_OPT__(,) __VA_ARGS__
+#define ethis_type Self
+#define ethis self
 #endif
 #define typeof(type) std::remove_reference_t<decltype(type)>
 
@@ -261,6 +272,7 @@ static inline constexpr SseTier_t SSE_TIER = IA32;
 #define MACRO_CATW(arg1, arg2, arg3) MACRO_CATW_RAW(arg1, arg2, arg3)
 #define _MACRO_STR(arg) #arg
 #define MACRO_STR(arg) _MACRO_STR(arg)
+#define MACRO_STRV(...) #__VA_ARGS__
 #define MACRO_EVAL(...) __VA_ARGS__
 
 // EoSD
@@ -411,6 +423,8 @@ MACRO_CAT(enum_name,_VALUE_COUNT)
 #define CACHE_LINE_SIZE 64
 #define cache_align alignas(CACHE_LINE_SIZE)
 
+#define gnu_attr(...) __attribute__((__VA_ARGS__))
+
 #if COMPILER_IS_GCC
 template<size_t bytes = 1, size_t alignment = 1>
 struct gnu_attr(aligned(alignment),packed) PaddingBytes {
@@ -488,10 +502,10 @@ template<typename> inline constexpr bool dependent_false_v = false;
 
 #define ValidateFieldOffset(offset, struct_type, member_name) \
 static_assert((offset) == __builtin_offsetof(struct_type, member_name), "Incorrect struct offset! Offset of " MACRO_STR(struct_type) "."#member_name" is not "#offset)
-#define ValidateStructSize(size, struct_type) \
-static_assert((size) == sizeof(struct_type), "Incorrect struct size! Size of " MACRO_STR(struct_type) " is not "#size)
-#define ValidateStructAlignment(align, struct_type) \
-static_assert((align) == alignof(struct_type), "Incorrect struct alignment! Alignment of " MACRO_STR(struct_type) " is not "#align)
+#define ValidateStructSize(size, ...) \
+static_assert((size) == sizeof(__VA_ARGS__), "Incorrect struct size! Size of " MACRO_STRV(__VA_ARGS__) " is not "#size)
+#define ValidateStructAlignment(align, ...) \
+static_assert((align) == alignof(__VA_ARGS__), "Incorrect struct alignment! Alignment of " MACRO_STRV(__VA_ARGS__) " is not "#align)
 
 #if __INTELLISENSE__
 #define ValidateVirtualFieldOffset(offset, struct_type, member_name) \
@@ -519,11 +533,11 @@ struct { \
     static_assert(vfo(), "Incorrect struct offset! Offset of " MACRO_STR(struct_type) "."#member_name" is not "#offset); \
 }
 
-#define ValidateStructSize(size, struct_type) \
+#define ValidateStructSize(size, ...) \
 struct { \
     template<size_t = 0> \
     static constexpr bool vss() { \
-        constexpr size_t test_value = sizeof(struct_type); \
+        constexpr size_t test_value = sizeof(__VA_ARGS__); \
         constexpr size_t expected_value = (size); \
         if constexpr (expected_value != test_value) { \
             using expected_val = char; \
@@ -535,14 +549,14 @@ struct { \
         } \
         return expected_value == test_value; \
     } \
-    static_assert(vss(), "Incorrect struct size! Size of " MACRO_STR(struct_type) " is not "#size); \
+    static_assert(vss(), "Incorrect struct size! Size of " MACRO_STRV(__VA_ARGS__) " is not "#size); \
 }
 
-#define ValidateStructAlignment(align, struct_type) \
+#define ValidateStructAlignment(align, ...) \
 struct { \
     template<size_t = 0> \
     static constexpr bool val() { \
-        constexpr size_t test_value = alignof(struct_type); \
+        constexpr size_t test_value = alignof(__VA_ARGS__); \
         constexpr size_t expected_value = (align); \
         if constexpr (expected_value != test_value) { \
             using expected_val = char; \
@@ -554,7 +568,7 @@ struct { \
         } \
         return expected_value == test_value; \
     } \
-    static_assert(val(), "Incorrect struct alignment! Alignment of " MACRO_STR(struct_type) " is not "#align); \
+    static_assert(val(), "Incorrect struct alignment! Alignment of " MACRO_STRV(__VA_ARGS__) " is not "#align); \
 }
 
 #if __INTELLISENSE__
@@ -599,15 +613,15 @@ struct MACRO_CAT(vfo,__COUNTER__) { \
     static inline constexpr bool vfo = validate_impl<(offset), __builtin_offsetof(struct_type, member_name)>(); \
     static_assert(vfo, "Incorrect struct offset! Offset of " MACRO_STR(struct_type) "."#member_name" is not "#offset); \
 }
-#define ValidateStructSize(size, struct_type) \
+#define ValidateStructSize(size, ...) \
 struct MACRO_CAT(vss,__COUNTER__) { \
-    static inline constexpr bool vss = validate_impl<(size), sizeof(struct_type)>(); \
-    static_assert(vss, "Incorrect struct size! Size of " MACRO_STR(struct_type) " is not "#size); \
+    static inline constexpr bool vss = validate_impl<(size), sizeof(__VA_ARGS__)>(); \
+    static_assert(vss, "Incorrect struct size! Size of " MACRO_STRV(__VA_ARGS__) " is not "#size); \
 }
-#define ValidateStructAlignment(align, struct_type) \
+#define ValidateStructAlignment(align, ...) \
 struct MACRO_CAT(val,__COUNTER__) { \
-    static inline constexpr bool val = validate_impl<(align), alignof(struct_type)>(); \
-    static_assert(val, "Incorrect struct alignment! Alignment of " MACRO_STR(struct_type) " is not "#align); \
+    static inline constexpr bool val = validate_impl<(align), alignof(__VA_ARGS__)>(); \
+    static_assert(val, "Incorrect struct alignment! Alignment of " MACRO_STRV(__VA_ARGS__) " is not "#align); \
 }
 
 #if __INTELLISENSE__
@@ -627,21 +641,21 @@ struct MACRO_CAT(vfo,__COUNTER__) { \
 #ifdef _M_IX86
 #define ValidateFieldOffset32(offset, struct_type, member_name) ValidateFieldOffset(offset, struct_type, member_name)
 #define ValidateVirtualFieldOffset32(offset, struct_type, member_name) ValidateVirtualFieldOffset(offset, struct_type, member_name)
-#define ValidateStructSize32(size, struct_type) ValidateStructSize(size, struct_type)
-#define ValidateStructAlignment32(align, struct_type) ValidateStructAlignment(align, struct_type)
+#define ValidateStructSize32(size, ...) ValidateStructSize(size, __VA_ARGS__)
+#define ValidateStructAlignment32(align, ...) ValidateStructAlignment(align, __VA_ARGS__)
 #define ValidateFieldOffset64(offset, struct_type, member_name)
 #define ValidateVirtualFieldOffset64(offset, struct_type, member_name)
-#define ValidateStructSize64(size, struct_type)
-#define ValidateStructAlignment64(align, struct_type)
+#define ValidateStructSize64(size, ...)
+#define ValidateStructAlignment64(align, ...)
 #else
 #define ValidateFieldOffset32(offset, struct_type, member_name)
 #define ValidateVirtualFieldOffset32(offset, struct_type, member_name)
-#define ValidateStructSize32(size, struct_type)
-#define ValidateStructAlignment32(align, struct_type)
+#define ValidateStructSize32(size, ...)
+#define ValidateStructAlignment32(align, ...)
 #define ValidateFieldOffset64(offset, struct_type, member_name) ValidateFieldOffset(offset, struct_type, member_name)
 #define ValidateVirtualFieldOffset64(offset, struct_type, member_name) ValidateVirtualFieldOffset(offset, struct_type, member_name)
-#define ValidateStructSize64(size, struct_type) ValidateStructSize(size, struct_type)
-#define ValidateStructAlignment64(align, struct_type) ValidateStructAlignment(align, struct_type)
+#define ValidateStructSize64(size, ...) ValidateStructSize(size, __VA_ARGS__)
+#define ValidateStructAlignment64(align, ...) ValidateStructAlignment(align, __VA_ARGS__)
 #endif
 
 #define ValidateFieldOffsetX(offset32, offset64, struct_type, member_name) \
@@ -656,8 +670,6 @@ ValidateStructSize(size64, struct_type<64>)
 #define ValidateStructAlignmentX(align32, align64, struct_type) \
 ValidateStructAlignment(align32, struct_type<32>); \
 ValidateStructAlignment(align64, struct_type<64>)
-
-#define gnu_attr(...) __attribute__((__VA_ARGS__))
 
 #define shuffle_vec __builtin_shufflevector
 #define shufflevec __builtin_shufflevector
@@ -1266,6 +1278,13 @@ static consteval size_t sizeof_template_impl() {
 #define dword_align(val) (size_t)AlignUpToMultipleOf2((size_t)(val), 4)
 #define ptr_dword_align(val) (BYTE*)dword_align((uintptr_t)(val))
 
+#define is_word_aligned(val) (!((uintptr_t)val & 1))
+#define is_dword_aligned(val) (!((uintptr_t)val & 3))
+#define is_qword_aligned(val) (!((uintptr_t)val & 7))
+
+#define is_byte_aligned_to_word(val) is_word_aligned(val)
+#define is_word_aligned_to_dword(val) (!((uintptr_t)val & 2))
+
 template <typename P, typename O>
 static inline P* pointer_raw_offset(P* pointer, O offset) {
 	return (P*)(((intptr_t)pointer) + offset);
@@ -1594,6 +1613,12 @@ static inline constexpr uint32_t PackUInt(uint8_t c1, uint8_t c2 = 0, uint8_t c3
 	return PackUInt32(c1, c2, c3, c4);
 }
 
+#ifndef far
+#define far
+#endif
+#ifndef near
+#define near
+#endif
 
 enum PointerType {
 	Near32Z			= 0b0001,
@@ -1633,6 +1658,32 @@ template<typename T = void>
 using PTR64Z = T * __ptr64 __uptr;
 template<typename T = void>
 using PTR64S = T * __ptr64 __sptr;
+
+template<typename T = void>
+using SPTR32 = T near * __ptr32;
+template<typename T = void>
+using SPTR32Z = T near * __ptr32 __uptr;
+template<typename T = void>
+using SPTR32S = T near * __ptr32 __sptr;
+template<typename T = void>
+using SPTR64 = T near * __ptr64;
+template<typename T = void>
+using SPTR64Z = T near * __ptr64 __uptr;
+template<typename T = void>
+using SPTR64S = T near * __ptr64 __sptr;
+
+template<typename T = void>
+using LPTR32 = T far * __ptr32;
+template<typename T = void>
+using LPTR32Z = T far * __ptr32 __uptr;
+template<typename T = void>
+using LPTR32S = T far * __ptr32 __sptr;
+template<typename T = void>
+using LPTR64 = T far * __ptr64;
+template<typename T = void>
+using LPTR64Z = T far * __ptr64 __uptr;
+template<typename T = void>
+using LPTR64S = T far * __ptr64 __sptr;
 
 template <typename T> struct remove_pointer { using type = T; };
 template <typename T> struct remove_pointer<T*> { using type = T; };
@@ -1727,28 +1778,51 @@ template<typename T>
 static inline constexpr bool ptr_is_64 = std::is_same_v<T, PTR64<remove_pointer_t<T>>>;
 
 template<size_t pointer_size, typename T = void>
-using PTRNZ = std::conditional_t<pointer_size == 32, PTR32Z<T>,
+using PTRNZ = std::conditional_t<pointer_size == 32 || pointer_size == 16, PTR32Z<T>, // TODO: 16
 			  std::conditional_t<pointer_size == 64, PTR64Z<T>,
 			  void>>;
 template<size_t pointer_size, typename T = void>
-using PTRNS = std::conditional_t<pointer_size == 32, PTR32S<T>,
+using PTRNS = std::conditional_t<pointer_size == 32 || pointer_size == 16, PTR32S<T>, // TODO: 16
 			  std::conditional_t<pointer_size == 64, PTR64S<T>,
 			  void>>;
 
+template<size_t pointer_size, typename T = void>
+using SPTRNZ = std::conditional_t<pointer_size == 32 || pointer_size == 16, SPTR32Z<T>, // TODO: 16
+			   std::conditional_t<pointer_size == 64, SPTR64Z<T>,
+			   void>>;
+template<size_t pointer_size, typename T = void>
+using SPTRNS = std::conditional_t<pointer_size == 32 || pointer_size == 16, SPTR32S<T>, // TODO: 16
+			   std::conditional_t<pointer_size == 64, SPTR64S<T>,
+			   void>>;
+
+template<size_t pointer_size, typename T = void>
+using LPTRNZ = std::conditional_t<pointer_size == 32 || pointer_size == 16, LPTR32Z<T>,
+			   std::conditional_t<pointer_size == 64, LPTR64Z<T>,
+			   void>>;
+template<size_t pointer_size, typename T = void>
+using LPTRNS = std::conditional_t<pointer_size == 32 || pointer_size == 16, LPTR32S<T>,
+			   std::conditional_t<pointer_size == 64, LPTR64S<T>,
+			   void>>;
+
 template<size_t pointer_size>
-using uintptr_tx = std::conditional_t<pointer_size == 32, uint32_t,
+using uintptr_tx = std::conditional_t<pointer_size == 32 || pointer_size == 16, uint32_t,
 				   std::conditional_t<pointer_size == 64, uint64_t,
 				   void>>;
 
 template<size_t pointer_size>
-using intptr_tx = std::conditional_t<pointer_size == 32, int32_t,
+using intptr_tx = std::conditional_t<pointer_size == 32 || pointer_size == 16, int32_t,
 				  std::conditional_t<pointer_size == 64, int64_t,
 				  void>>;
 
 template<size_t pointer_size>
-using size_tx = std::conditional_t<pointer_size == 32, uint32_t,
+using size_tx = std::conditional_t<pointer_size == 32 || pointer_size == 16, uint32_t,
 				std::conditional_t<pointer_size == 64, uint64_t,
 				void>>;
+
+template<size_t pointer_size>
+using ssize_tx = std::conditional_t<pointer_size == 32 || pointer_size == 16, int32_t,
+				 std::conditional_t<pointer_size == 64, int64_t,
+				 void>>;
 
 template<size_t pointer_size, typename T = void>
 using PTRZX = PTRNZ<pointer_size, T>;
@@ -1756,10 +1830,32 @@ using PTRZX = PTRNZ<pointer_size, T>;
 template<size_t pointer_size, typename T = void>
 using PTRSX = PTRNS<pointer_size, T>;
 
+template<size_t pointer_size, typename T = void>
+using SPTRZX = SPTRNZ<pointer_size, T>;
+
+template<size_t pointer_size, typename T = void>
+using SPTRSX = SPTRNS<pointer_size, T>;
+
+template<size_t pointer_size, typename T = void>
+using LPTRZX = PTRNZ<pointer_size, T>;
+
+template<size_t pointer_size, typename T = void>
+using LPTRSX = LPTRNS<pointer_size, T>;
+
 template<typename T>
 using PTRZ = PTRNZ<bitsof(void*), T>;
 template<typename T>
 using PTRS = PTRNS<bitsof(void*), T>;
+
+template<typename T>
+using SPTRZ = SPTRNZ<bitsof(void*), T>;
+template<typename T>
+using SPTRS = SPTRNS<bitsof(void*), T>;
+
+template<typename T>
+using LPTRZ = LPTRNZ<bitsof(void*), T>;
+template<typename T>
+using LPTRS = LPTRNS<bitsof(void*), T>;
 
 template<typename T = void>
 static forceinline T* based_pointer(void* base, size_t offset) {
@@ -1809,8 +1905,23 @@ constexpr inline const char *restrict byteloop_strchr(const char *const restrict
 
 constexpr inline size_t byteloop_wcslen(const wchar_t *const restrict str) {
 	const wchar_t *restrict temp = str;
-	while (*temp) ++temp;
-	return temp - str;
+	//while (*temp) ++temp;
+	//return temp - str;
+	size_t length = 0;
+	while (*temp++) ++length;
+	return length;
+}
+
+constexpr inline size_t byteloop_wcslen_raw(const wchar_t *const restrict str) {
+	const wchar_t *restrict temp = str;
+	//while (*temp) ++temp;
+	//return temp - str;
+	size_t length = 0;
+	while (*temp) {
+		++temp;
+		length += 2;
+	}
+	return length;
 }
 
 template<typename T = size_t>
@@ -1829,6 +1940,28 @@ constexpr inline size_t uint_width_max(size_t bit_count) {
 	while (bit_count--) ret = ret << 1 | 1;
 	return ret;
 }
+
+template<typename T1, typename T2>
+struct pack_reverse_impl;
+
+template<typename ... TArgs>
+struct pack_reverse_impl<std::tuple<>, std::tuple<TArgs...>> {
+	using types = std::tuple<TArgs...>;
+};
+
+template<typename A, typename ... Args, typename ... TArgs>
+struct pack_reverse_impl<std::tuple<A, Args...>, std::tuple<TArgs...>> : pack_reverse_impl<std::tuple<Args...>, std::tuple<A, TArgs...>> {
+};
+
+template<typename A, typename ... Args>
+struct pack_reverse_impl<std::tuple<A, Args...>, std::tuple<>> : pack_reverse_impl<std::tuple<Args...>, std::tuple<A>> {
+};
+
+template<typename ... Args>
+struct pack_reverse : pack_reverse_impl<std::tuple<Args...>, std::tuple<>> {};
+
+template<typename ... Args>
+using pack_reverse_t = typename pack_reverse<Args...>::types;
 
 //using vec = T __attribute__((__vector_size__(count * sizeof(T)),__aligned__(alignment ? alignment : (count * sizeof(T)))));
 
@@ -1980,6 +2113,7 @@ using UByteIntType = UBitIntType<byte_count * CHAR_BIT>;
 
 #include "custom_intrin.h"
 
+#define FAR_CALL_IMM(seg, addr, ret, ...) __asm__ volatile (CODE_32_DIRECTIVE "lcall %[Seg],%[Addr]":ret: [Seg]"i"(seg), [Addr]"i"(addr) __VA_OPT__(,) __VA_ARGS__)
 
 template<size_t max_float_width, size_t max_double_width, size_t max_byte_width, size_t max_word_width, size_t max_dword_width, size_t max_qword_width, size_t max_oword_width,
 		 size_t prefer_float_width, size_t prefer_double_width, size_t prefer_byte_width, size_t prefer_word_width, size_t prefer_dword_width, size_t prefer_qword_width, size_t prefer_oword_width>
