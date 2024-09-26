@@ -99,6 +99,32 @@ static constexpr T bswap(T value) {
 
 namespace net {
 
+template<typename T>
+static inline constexpr T hton(T value) {
+    if constexpr (std::endian::native == std::endian::little) {
+        return util::bswap(value);
+    }
+    else if constexpr (std::endian::native == std::endian::big) {
+        return value;
+    }
+    else {
+        static_assert(false);
+    }
+}
+
+template<typename T>
+static inline constexpr T ntoh(T value) {
+    if constexpr (std::endian::native == std::endian::little) {
+        return util::bswap(value);
+    }
+    else if constexpr (std::endian::native == std::endian::big) {
+        return value;
+    }
+    else {
+        static_assert(false);
+    }
+}
+
 #define ZNET_REQUIRE_IPV6       0b001
 #define ZNET_DONT_REQUIRE_IPV6  0b010
 #define ZNET_DISABLE_IPV6       0b100
@@ -236,14 +262,16 @@ static inline constexpr bool map_ip_to_ipv4(const sockaddr* addr, IP4_ADDRESS& o
 }
 
 uint16_t get_port(const sockaddr* addr) {
+    uint16_t port = 0;
     switch (addr->sa_family) {
         case AF_INET:
-            return ((const sockaddr_in*)addr)->sin_port;
+            port = ((const sockaddr_in*)addr)->sin_port;
+            break;
         case AF_INET6:
-            return ((const sockaddr_in6*)addr)->sin6_port;
-        [[unlikely]] default:
-            return 0;
+            port = ((const sockaddr_in6*)addr)->sin6_port;
+            break;
     }
+    return ntoh(port);
 }
 
 static inline constexpr size_t MAX_ADDR_BUFF_SIZE = (std::max)(INET_ADDRSTRLEN, INET6_ADDRSTRLEN);
@@ -718,32 +746,6 @@ static inline int recvfrom(SOCKET s, T* data, int flags, sockaddr_any& from) {
 static inline int recvfrom(SOCKET s, char* buf, int len, int flags, sockaddr_any& from) {
     from.length = sizeof(from.storage);
     return ::recvfrom(s, buf, len, flags, from, (int*)&from.length);
-}
-
-template<typename T>
-static inline constexpr T hton(T value) {
-    if constexpr (std::endian::native == std::endian::little) {
-        return util::bswap(value);
-    }
-    else if constexpr (std::endian::native == std::endian::big) {
-        return value;
-    }
-    else {
-        static_assert(false);
-    }
-}
-
-template<typename T>
-static inline constexpr T ntoh(T value) {
-    if constexpr (std::endian::native == std::endian::little) {
-        return util::bswap(value);
-    }
-    else if constexpr (std::endian::native == std::endian::big) {
-        return value;
-    }
-    else {
-        static_assert(false);
-    }
 }
 
 template<typename S>

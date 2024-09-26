@@ -19,10 +19,12 @@
 #include <deque>
 #include <stack>
 #include <queue>
+#include <bitset>
 
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <MSWSock.h>
+#include <WinDNS.h>
 
 #include <Windows.h>
 #include <timeapi.h>
@@ -34,6 +36,7 @@ using namespace std::literals::string_literals;
 #pragma comment (lib, "Ws2_32.lib")
 
 #include "..\zero\util.h"
+#include "..\zero\atomic_intrin.h"
 
 // size: 0x18
 struct CRITICAL_SECTION_SMALL {
@@ -46,43 +49,358 @@ struct UnknownA {
     void* __ptr_4;
 };
 
-struct UnknownC {
-    SOCKET socket;
-	unsigned char __byte_4;
+// size: 0x8
+struct ConstBufferSequence {
+    void* data; // 0x0
+    size_t size; // 0x4
+    // 0x8
 };
 
-// This does something with TLS and is called everywhere. Seems to be something about error handling
-dllexport gnu_noinline void* __sub_r2DBEE0() {
-    // I haven't reversed this yet, returning rand just makes it compile
-    return (void*)rand();
-};
-
-dllexport gnu_noinline void* __sub_r16F330() {
-    // I haven't reversed this yet, returning rand just makes it compile
-    return (void*)rand();
+inline bool operator==(const IP6_ADDRESS& lhs, const IP6_ADDRESS& rhs) {
+    return !memcmp(&lhs, &rhs, sizeof(IP6_ADDRESS));
+}
+inline bool operator!=(const IP6_ADDRESS& lhs, const IP6_ADDRESS& rhs) {
+    return memcmp(&lhs, &rhs, sizeof(IP6_ADDRESS));
 }
 
-// socket_ops::socket
-// https://github.com/boostorg/asio/blob/d6e7b5a547daaddfd19c548d2f602cb5b15361df/include/boost/asio/detail/impl/socket_ops.ipp#L1874C13-L1874C19
-dllexport gnu_noinline SOCKET __create_socket_r170620(int af, int type, int protocol, UnknownA* unknown_a) {
-    WSASetLastError(0);
-    SOCKET sock = WSASocketW(af, type, protocol, NULL, 0, WSA_FLAG_OVERLAPPED);
-    void* local1 = __sub_r2DBEE0();
-    int last_error = WSAGetLastError();
-    unknown_a->wsa_last_error = last_error;
-    unknown_a->__ptr_4 = local1;
-    if (sock == INVALID_SOCKET) {
-        return INVALID_SOCKET;
+struct BoostIPv6 {
+    IP6_ADDRESS addr;
+    ULONG scope;
+
+    inline bool operator==(const BoostIPv6& rhs) const {
+        return this->addr == rhs.addr && this->scope == rhs.scope;
     }
-    if (af == AF_INET6) {
-        uint32_t opt_value = 0;
-		// 41 = IPPROTO_IPV6
-		// 27 = IPV6_V6ONLY
-        setsockopt(sock, 41, 27, (char*)&opt_value, sizeof(opt_value));
+    inline bool operator!=(const BoostIPv6& rhs) const {
+        return this->addr != rhs.addr || this->scope != rhs.scope;
     }
-    unknown_a->__ptr_4 = __sub_r2DBEE0();
-    unknown_a->wsa_last_error = ERROR_SUCCESS;
-    return sock;
+
+    // why does this exist
+    // Rx1768B0
+    bool operator<(const BoostIPv6& rhs) const {
+        int ret = memcmp(&this->addr, &rhs.addr, sizeof(IP6_ADDRESS));
+        if (ret < 0) {
+            return true;
+        }
+        if (ret == 0) {
+            return false;
+        }
+        return this->scope < rhs.scope;
+    }
+};
+
+struct BoostSockAddr;
+
+// size: 0x1C
+struct BoostIPAddr {
+    BOOL is_ipv6 = FALSE; // 0x0
+    IP4_ADDRESS addr4 = {}; // 0x4
+    BoostIPv6 addr6 = {}; // 0x8
+    // 0x1C
+
+    BoostIPAddr() {}
+
+    BoostIPAddr(const sockaddr_in& addr4) {
+        this->addr4 = *(IP4_ADDRESS*)&addr4.sin_addr;
+    }
+
+    BoostIPAddr(const sockaddr_in6& addr6) {
+        this->is_ipv6 = TRUE;
+        this->addr6.addr = *(IP6_ADDRESS*)&addr6.sin6_addr;
+        this->addr6.scope = addr6.sin6_scope_id;
+    }
+
+    BoostIPAddr(const BoostSockAddr& addr);
+
+    // Rx170FB0
+    operator IP4_ADDRESS() const {
+        // if (this->is_ipv6 != FALSE)  // throw bad_cast
+        return this->addr4;
+    }
+
+    // Rx171020
+    operator BoostIPv6() const {
+        // if (this->is_ipv6 != TRUE)  // throw bad_cast
+        return this->addr6;
+    }
+
+    // 
+    bool fastcall operator==(const BoostIPAddr& rhs) const {
+        if (this->is_ipv6 != rhs.is_ipv6) {
+            return false;
+        }
+        if (
+            this->is_ipv6
+                ? this->addr6 != rhs.addr6
+                : this->addr4 != rhs.addr4
+        ) {
+            return false;
+        }
+        return true;
+    }
+
+    // Rx176920
+    bool fastcall operator!=(const BoostIPAddr& rhs) const {
+        if (this->is_ipv6 == rhs.is_ipv6) {
+            return true;
+        }
+        if (
+            this->is_ipv6
+                ? this->addr6 == rhs.addr6
+                : this->addr4 == rhs.addr4
+        ) {
+            return true;
+        }
+        return false;
+    }
+
+    inline bool fastcall operator<(const BoostIPAddr& rhs) const {
+        if (this->is_ipv6 < rhs.is_ipv6) {
+            return true;
+        }
+        if (
+            this->is_ipv6
+                ? this->addr6 < rhs.addr6
+                : htonl(this->addr4) < htonl(rhs.addr4)
+        ) {
+            return true;
+        }
+        return false;
+    }
+
+    // Rx1707F0
+    // Arg2 was probably a string in the source code and the
+    // compiler inlined it to produce this abomination
+    static int fastcall __get_loopback_boost_addr(int family, int Arg2, void* out, int, int& err) {
+        WSASetLastError(0);
+
+        switch (family) {
+            default:
+                err = WSAEAFNOSUPPORT;
+                return -1;
+            case AF_INET: case AF_INET6:
+
+                int length = 128;
+                uint8_t addrbuf[128];
+
+                wchar_t* strbuf = (wchar_t*)_alloca(sizeof(wchar_t[12]));
+                MultiByteToWideChar(CP_ACP, 0, "127.0.0.1", -1, strbuf, 10);
+                int ret = WSAStringToAddressW(strbuf, family, NULL, (LPSOCKADDR)addrbuf, &length);
+
+                if (family == AF_INET) {
+                    if (ret != SOCKET_ERROR) {
+                        *(IP4_ADDRESS*)out = *(IP4_ADDRESS*)&((sockaddr_in*)addrbuf)->sin_addr;
+                    }
+                    else {
+                        if (!strcmp("127.0.0.1", "255.255.255.255")) {
+                            *(IP4_ADDRESS*)out = -1;
+                        }
+                    }
+                }
+                else {
+                    if (ret != SOCKET_ERROR) {
+                        *(IP6_ADDRESS*)out = *(IP6_ADDRESS*)&((sockaddr_in6*)addrbuf)->sin6_addr;
+                    }
+                }
+                // there's may more junk here, but close enough
+                return 1;
+        }
+    }
+
+    // Rx1710E0
+    BoostIPAddr& __fill_loopback_impl(int& err) {
+        
+        BoostIPv6 ipv6;
+        ipv6.scope = 0;
+
+        if (__get_loopback_boost_addr(AF_INET6, GARBAGE_ARG(int), &ipv6, 0, err) <= 0) {
+            ipv6 = {};
+        }
+
+        if (err == 0) {
+            this->is_ipv6 = TRUE;
+            this->addr4 = {};
+            this->addr6 = ipv6;
+            return *this;
+        }
+
+        IP4_ADDRESS ipv4;
+
+        if (__get_loopback_boost_addr(AF_INET, GARBAGE_ARG(int), &ipv4, 0, err) <= 0) {
+            ipv4 = {};
+        }
+
+        this->is_ipv6 = FALSE;
+
+        if (err == 0) {
+            this->addr4 = ipv4;
+            this->addr6 = {};
+            return *this;
+        }
+
+        this->addr4 = {};
+        this->addr6 = {};
+
+        return *this;
+    }
+
+    // Rx171090
+    BoostIPAddr& __fill_loopback() {
+        int err = 0;
+        this->__fill_loopback_impl(err);
+
+        //if (err != 0) // throw some error
+
+        return *this;
+    }
+};
+
+// size: 0x1C
+struct BoostSockAddr {
+    SOCKADDR_INET addr = {}; // 0x0
+    // 0x1C
+
+    BoostSockAddr() {
+        this->addr.si_family = AF_INET;
+    }
+
+    // ntohl = 8
+    // htons = 9
+    // htonl = 14
+    // ntohs = 15
+
+    inline ADDRESS_FAMILY& family() { return this->addr.si_family; }
+    inline const ADDRESS_FAMILY& family() const { return this->addr.si_family; }
+
+    inline uint16_t& port() { return this->addr.Ipv4.sin_port; }
+    inline const uint16_t& port() const { return this->addr.Ipv4.sin_port; }
+
+    inline IP4_ADDRESS& ipv4() { return *(IP4_ADDRESS*)&this->addr.Ipv4.sin_addr; }
+    inline const IP4_ADDRESS& ipv4() const { return *(const IP4_ADDRESS*)&this->addr.Ipv4.sin_addr; }
+
+    inline IP6_ADDRESS& ipv6() { return *(IP6_ADDRESS*)&this->addr.Ipv6.sin6_addr; }
+    inline const IP6_ADDRESS& ipv6() const { return *(const IP6_ADDRESS*)&this->addr.Ipv6.sin6_addr; }
+
+    inline ULONG& ipv6_flow() { return this->addr.Ipv6.sin6_flowinfo; }
+    inline const ULONG& ipv6_flow() const { return this->addr.Ipv6.sin6_flowinfo; }
+
+    inline ULONG& ipv6_scope() { return this->addr.Ipv6.sin6_scope_id; }
+    inline const ULONG& ipv6_scope() const { return this->addr.Ipv6.sin6_scope_id; }
+
+    inline void set_family(ADDRESS_FAMILY family) {
+        this->family() = family;
+    }
+
+    inline void set_port(uint16_t port) {
+        this->port() = htons(port);
+    }
+
+    inline void set_ipv4(IP4_ADDRESS ipv4) {
+        this->ipv4() = ntohl(htonl(ipv4));
+    }
+
+    inline void set_ipv6(IP6_ADDRESS ipv6) {
+        this->ipv6() = ipv6;
+    }
+
+    inline void set_ipv6(BoostIPv6 ipv6) {
+        this->ipv6() = ipv6.addr;
+        this->ipv6_scope() = ipv6.scope;
+    }
+
+    inline void clear_ipv4() {
+        this->ipv4() = {};
+    }
+
+    inline void clear_ipv6() {
+        this->ipv6() = {};
+        this->ipv6_scope() = {};
+    }
+
+    // Rx1711A0
+    BoostSockAddr(int af, uint16_t port) {
+        if (af == AF_INET) {
+            this->set_family(AF_INET);
+            this->set_port(port);
+            this->clear_ipv4();
+        }
+        else {
+            this->set_family(AF_INET6);
+            this->set_port(port);
+            this->ipv6_flow() = {};
+            this->clear_ipv6();
+        }
+    }
+
+    // Rx171230
+    BoostSockAddr(const BoostIPAddr& ip, uint16_t port) {
+        if (!ip.is_ipv6) {
+            this->set_family(AF_INET);
+            this->set_port(port);
+            this->set_ipv4(ip);
+        }
+        else {
+            this->set_family(AF_INET6);
+            this->set_port(port);
+            this->ipv6_flow() = {};
+            this->set_ipv6(ip);
+        }
+    }
+
+    // Rx171320
+    BoostIPAddr get_ip() const {
+        if (this->family() == AF_INET) {
+            return this->addr.Ipv4;
+        }
+        else {
+            return this->addr.Ipv6;
+        }
+    }
+    
+    // Rx176980
+    bool fastcall operator<(const BoostSockAddr& rhs) const {
+        if (this->get_ip() < rhs.get_ip()) {
+            return true;
+        }
+        if (this->get_ip() != rhs.get_ip()) {
+            return false;
+        }
+        return ntohs(this->port()) < ntohs(rhs.port());
+    }
+
+    // Rx171380
+    bool fastcall operator==(const BoostSockAddr& rhs) const {
+        if (this->get_ip() != rhs.get_ip()) {
+            return false;
+        }
+        if (ntohs(this->port()) != ntohs(rhs.port())) {
+            return false;
+        }
+        return true;
+    }
+
+    inline bool fastcall operator!=(const BoostSockAddr& rhs) const {
+        return !this->operator==(rhs);
+    }
+
+    static inline BoostSockAddr loopback_sockaddr(uint16_t port) {
+        BoostIPAddr loopback_ip;
+        return BoostSockAddr(loopback_ip.__fill_loopback(), port);
+    }
+};
+
+BoostIPAddr::BoostIPAddr(const BoostSockAddr& addr) {
+    if (addr.family() == AF_INET) {
+        this->addr4 = ntohl(htonl(addr.ipv4()));
+        this->addr6 = {};
+        this->is_ipv6 = FALSE;
+    } else {
+        this->addr4 = {};
+        this->addr6 = {
+            addr.ipv6(),
+            addr.ipv6_scope()
+        };
+        this->is_ipv6 = TRUE;
+    }
 }
 
 template<typename T = uint32_t>
@@ -118,6 +436,83 @@ struct UnknownF {
     std::atomic<int> __atomic_int_1C; // 0x1C
     // 0x20
 };
+
+// size: 0x44
+struct BoostSocket {
+    SOCKET socket; // 0x0
+	unsigned char __byte_4; // 0x4
+    // 0x5
+    int __dword_8; // 0x8
+    int __dword_C; // 0xC
+
+    int __dword_1C; // 0x1C
+    unsigned char __byte_20; // 0x20
+    // 0x21
+    BoostSockAddr __addr_24; // 0x24
+    UnknownF* __unknown_f_ptr_40; // 0x40
+    // 0x44
+
+    // Rx174890
+    void thiscall __send_to(const ConstBufferSequence& buffers, const BoostSockAddr& addr) {
+
+    }
+
+    template <typename T>
+    inline void thiscall __send_to(const T& data, const BoostSockAddr& addr) {
+        return this->__send_to({ &data, sizeof(T) }, addr);
+    }
+
+    // Rx173600
+    void thiscall initialize(void*& Arg1, const BoostSockAddr& addr) {
+        // create/bind the socket
+    }
+
+    // Rx1736E0
+    void thiscall initialize(void*& Arg1, const int& family) {
+        // create the socket without binding
+    }
+};
+
+
+// Rx30F8B6
+uint64_t __calc_qpc_delta() {
+    // Calculates the difference in QPC values from startup
+    return rand();
+}
+
+// This does something with TLS and is called everywhere. Seems to be something about error handling
+dllexport gnu_noinline void* __sub_r2DBEE0() {
+    // I haven't reversed this yet, returning rand just makes it compile
+    return (void*)rand();
+};
+
+dllexport gnu_noinline void* __sub_r16F330() {
+    // I haven't reversed this yet, returning rand just makes it compile
+    return (void*)rand();
+}
+
+// socket_ops::socket
+// https://github.com/boostorg/asio/blob/d6e7b5a547daaddfd19c548d2f602cb5b15361df/include/boost/asio/detail/impl/socket_ops.ipp#L1874C13-L1874C19
+dllexport gnu_noinline SOCKET __create_socket_r170620(int af, int type, int protocol, UnknownA* unknown_a) {
+    WSASetLastError(0);
+    SOCKET sock = WSASocketW(af, type, protocol, NULL, 0, WSA_FLAG_OVERLAPPED);
+    void* local1 = __sub_r2DBEE0();
+    int last_error = WSAGetLastError();
+    unknown_a->wsa_last_error = last_error;
+    unknown_a->__ptr_4 = local1;
+    if (sock == INVALID_SOCKET) {
+        return INVALID_SOCKET;
+    }
+    if (af == AF_INET6) {
+        uint32_t opt_value = 0;
+		// 41 = IPPROTO_IPV6
+		// 27 = IPV6_V6ONLY
+        setsockopt(sock, 41, 27, (char*)&opt_value, sizeof(opt_value));
+    }
+    unknown_a->__ptr_4 = __sub_r2DBEE0();
+    unknown_a->wsa_last_error = ERROR_SUCCESS;
+    return sock;
+}
 
 struct UnknownD {
     std::atomic<int> __atomic_int_0;
@@ -168,9 +563,10 @@ struct UnknownD {
         }
     }
 
-	dllexport gnu_noinline UnknownA* __calls_create_socket_r170C70(
+
+	dllexport gnu_noinline UnknownA* win_iocp_socket_service_base_do_open(
 		UnknownA* unknown_a1,	// EBP+8
-		UnknownC* unknown_c,	// EBP+C
+		BoostSocket* unknown_c,	// EBP+C
 		int af,	// EBP+10
 		int type,	// EBP+14
 		int protocol,	// EBP+18
@@ -221,7 +617,7 @@ struct UnknownE {
     UnknownD* __unknownD_ptr_4; // 0x4
 
 
-    dllexport gnu_noinline void __sub_r170E00(UnknownC* unknown_c, LPWSABUF buffers, DWORD bufferCount, sockaddr* from, DWORD flags, LPINT from_len, UnknownF* unknown_f) {
+    dllexport gnu_noinline void __sub_r170E00(BoostSocket* unknown_c, LPWSABUF buffers, DWORD bufferCount, sockaddr* from, DWORD flags, LPINT from_len, UnknownF* unknown_f) {
 
         ++this->__unknownD_ptr_4->__atomic_int_0;
 
@@ -689,565 +1085,1502 @@ struct KiteSquirrelAPI {
 };
 
 
+// size: 0x8
+struct BoostMutex {
+    std::atomic<uint32_t> active_count; // 0x0
+    void* event_handle; // 0x4
+    // 0x8
+
+    static inline constexpr size_t LOCKED_BIT = 31;
+    static inline constexpr size_t LOCKED_BIT_MASK = (size_t)1 << LOCKED_BIT;
+    static inline constexpr size_t WAITING_BIT = 30;
+    static inline constexpr size_t WAITING_BIT_MASK = (size_t)1 << WAITING_BIT;
+
+    bool try_lock() {
+        return !atomic_bit_set(this->active_count, LOCKED_BIT);
+    }
+
+    void lock() {
+        if (!this->try_lock()) {
+
+        }
+    }
+};
+
+
+struct BoostLock {
+    BoostMutex* mutex; // 0x0
+    bool is_locked; // 0x5
+
+
+};
+
 namespace TF4 {
 
-    // Rx2EA00
-    static inline size_t stdcall file_tell(const HANDLE& file) {
-        return SetFilePointer(file, 0, NULL, FILE_CURRENT);
+// Rx2EA00
+static inline size_t stdcall file_tell(const HANDLE& file) {
+    return SetFilePointer(file, 0, NULL, FILE_CURRENT);
+}
+
+// Rx2EA50
+static inline size_t stdcall file_size(const HANDLE& file) {
+    return GetFileSize(file, NULL);
+}
+
+// Rx2EAC0
+static size_t stdcall file_seek(const HANDLE& file, const ssize_t& offset, const int& origin) {
+    switch (origin) {
+        default:
+            return 0;
+        case SEEK_SET:
+            return SetFilePointer(file, offset, NULL, FILE_BEGIN);
+        case SEEK_CUR:
+            return SetFilePointer(file, offset, NULL, FILE_CURRENT);
+        case SEEK_END:
+            return SetFilePointer(file, offset, NULL, FILE_END);
     }
+}
 
-    // Rx2EA50
-    static inline size_t stdcall file_size(const HANDLE& file) {
-        return GetFileSize(file, NULL);
-    }
+// Rx2EB70
+static inline BOOL stdcall file_read(const HANDLE& file, void *const& buffer, const size_t& size, size_t *const& bytes_read) {
+    return ReadFile(file, buffer, size, (LPDWORD)bytes_read, NULL) != FALSE;
+}
 
-    // Rx2EAC0
-    static size_t stdcall file_seek(const HANDLE& file, const ssize_t& offset, const int& origin) {
-        switch (origin) {
-            default:
-                return 0;
-            case SEEK_SET:
-                return SetFilePointer(file, offset, NULL, FILE_BEGIN);
-            case SEEK_CUR:
-                return SetFilePointer(file, offset, NULL, FILE_CURRENT);
-            case SEEK_END:
-                return SetFilePointer(file, offset, NULL, FILE_END);
-        }
-    }
+// Rx2EC60
+static inline HANDLE stdcall file_open(const char *const& path) {
+    return CreateFileA(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+}
 
-    // Rx2EB70
-    static inline BOOL stdcall file_read(const HANDLE& file, void *const& buffer, const size_t& size, size_t *const& bytes_read) {
-        return ReadFile(file, buffer, size, (LPDWORD)bytes_read, NULL) != FALSE;
-    }
+// This is some custom version of std::hash that I don't feel like figuring out
+static gnu_noinline uint32_t fastcall hash_path(const char* path, size_t length, uint32_t hash_constant = 2166136261) {
+    return (uintptr_t)path * (uintptr_t)length * hash_constant * rand();
+}
 
-    // Rx2EC60
-    static inline HANDLE stdcall file_open(const char *const& path) {
-        return CreateFileA(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
-    }
+// size: 8
+struct PakDataInnerA {
+    int __dword_0; // 0x0
+    int __dword_8; // 0x4
+    // 0x8
 
-    // This is some custom version of std::hash that I don't feel like figuring out
-    static gnu_noinline uint32_t fastcall hash_path(const char* path, size_t length, uint32_t hash_constant = 2166136261) {
-        return (uintptr_t)path * (uintptr_t)length * hash_constant * rand();
-    }
-
-    // size: 8
-    struct PakDataInnerA {
-        int __dword_0; // 0x0
-        int __dword_8; // 0x4
-        // 0x8
-
-        // Rx24410
-        void thiscall __sub_r24410(int* arg1, PakDataInnerA* self) {
+    // Rx24410
+    void thiscall __sub_r24410(int* arg1, PakDataInnerA* self) {
             
-        }
+    }
 
-        // Rx244A0
-        void* thiscall __sub_r244A0() {
+    // Rx244A0
+    void* thiscall __sub_r244A0() {
 
-        }
-    };
+    }
+};
 
-    // size: 0x18
-    struct PakDataInnerB {
-        std::string __string_0; // 0x0
-        unknown_fields(0x8); // 0x10
-        // 0x18
-    };
+// size: 0x18
+struct PakDataInnerB {
+    std::string __string_0; // 0x0
+    unknown_fields(0x8); // 0x10
+    // 0x18
+};
     
-    // size: 0xC
-    struct PakDataInnerC {
-        int __dword_0; // 0x0
-        int __dword_4; // 0x4
-        int __dword_8; // 0x8
-        // 0xC
-    };
+// size: 0xC
+struct PakDataInnerC {
+    int __dword_0; // 0x0
+    int __dword_4; // 0x4
+    int __dword_8; // 0x8
+    // 0xC
+};
     
-    // size: 8
-    struct PakDataInnerD {
-        int __dword_0; // 0x0
-        int __dword_4; // 0x4
-        // 0x8
-    };
+// size: 8
+struct PakDataInnerD {
+    int __dword_0; // 0x0
+    int __dword_4; // 0x4
+    // 0x8
+};
     
-    // size: 0xC
-    struct PakDataInnerE {
-        int __dword_0; // 0x0
-        int __dword_4; // 0x4
-        int __dword_8; // 0x8
-        // 0xC
-    };
+// size: 0xC
+struct PakDataInnerE {
+    int __dword_0; // 0x0
+    int __dword_4; // 0x4
+    int __dword_8; // 0x8
+    // 0xC
+};
 
-    struct PakDataInfo {
-        size_t __innerB_index; // 0x0
-        uint32_t file_name_hash; // 0x4
-        uint32_t __int_8; // 0x8
-        uint32_t __int_C; // 0xC
-        size_t file_size; // 0x10
-        uint32_t key[4]; // 0x14
-        // 0x24
-    };
+struct PakDataInfo {
+    size_t __innerB_index; // 0x0
+    uint32_t file_name_hash; // 0x4
+    uint32_t __int_8; // 0x8
+    uint32_t __int_C; // 0xC
+    size_t file_size; // 0x10
+    uint32_t key[4]; // 0x14
+    // 0x24
+};
 
-    struct PakData {
+struct PakData {
 
-        PakDataInnerB* __pak_innerB_ptr_0; // 0x0
-        unknown_fields(0x8); // 0x4
-        PakDataInnerC __pak_innerC_C; // 0xC
-        size_t __size_18; // 0x18
-        size_t __size_1C; // 0x1C
-        PakDataInnerA __pak_innerA_20; // 0x20
-        PakDataInnerD __pak_innerD_28; // 0x28
-        PakDataInnerE __pak_innerE_30; // 0x30
-        // 0x3C
+    PakDataInnerB* __pak_innerB_ptr_0; // 0x0
+    unknown_fields(0x8); // 0x4
+    PakDataInnerC __pak_innerC_C; // 0xC
+    size_t __size_18; // 0x18
+    size_t __size_1C; // 0x1C
+    PakDataInnerA __pak_innerA_20; // 0x20
+    PakDataInnerD __pak_innerD_28; // 0x28
+    PakDataInnerE __pak_innerE_30; // 0x30
+    // 0x3C
 
-        // Rx243B0
-        gnu_noinline PakDataInfo* thiscall __sub_r243B0(const char* path) {
-            -this->__sub_r26300(path);
+    // Rx243B0
+    gnu_noinline PakDataInfo* thiscall __sub_r243B0(const char* path) {
+        -this->__sub_r26300(path);
 
-            return (PakDataInfo*)rand() + (uintptr_t)path;
+        return (PakDataInfo*)rand() + (uintptr_t)path;
+    }
+
+    // Rx26120
+    gnu_noinline bool thiscall __sub_r26120(const char* path, size_t length) {
+        // This is another hash related thing maybe?
+        return (uintptr_t)path * length != rand();
+    }
+
+    // Rx26300
+    int32_t thiscall __sub_r26300(const char* path) {
+        if (!path) {
+            return 0;
         }
 
-        // Rx26120
-        gnu_noinline bool thiscall __sub_r26120(const char* path, size_t length) {
-            // This is another hash related thing maybe?
-            return (uintptr_t)path * length != rand();
+        size_t path_length = strlen(path);
+
+        if (!path_length) {
+            return 0;
         }
 
-        // Rx26300
-        int32_t thiscall __sub_r26300(const char* path) {
-            if (!path) {
-                return 0;
-            }
-
-            size_t path_length = strlen(path);
-
-            if (!path_length) {
-                return 0;
-            }
-
-            if (
-                path_length > this->__size_1C &&
-                (
-                    path[1] == ':' ||
-                    (path[0] == '\\' && path[1] == '\\')
-                )
-            ) {
-                path_length -= this->__size_1C;
-                path += this->__size_1C;
-                return hash_path(path, path_length);
-            }
-            if (path[0] == '.' && path[1] == '\\') {
-                path_length -= this->__size_18 + 2;
-                path += this->__size_18 + 2;
-            }
+        if (
+            path_length > this->__size_1C &&
+            (
+                path[1] == ':' ||
+                (path[0] == '\\' && path[1] == '\\')
+            )
+        ) {
+            path_length -= this->__size_1C;
+            path += this->__size_1C;
             return hash_path(path, path_length);
         }
-    };
+        if (path[0] == '.' && path[1] == '\\') {
+            path_length -= this->__size_18 + 2;
+            path += this->__size_18 + 2;
+        }
+        return hash_path(path, path_length);
+    }
+};
 
-    // Rx4DAD18
-    static PakData* PAK_DATA_PTR;
+// Rx4DAD18
+static PakData* PAK_DATA_PTR;
 
-    // size: 0x10014
-    struct FileReader {
-        // void* vftable; // 0x0
-        HANDLE file; // 0x4
-        uint8_t buffer[0x10000]; // 0x8
-        size_t buffer_filled; // 0x10008
-        size_t buffer_offset; // 0x1000C
-        size_t __int_10010; // 0x10010
-        // 0x10014
+// size: 0x10014
+struct FileReader {
+    // void* vftable; // 0x0
+    HANDLE file; // 0x4
+    uint8_t buffer[0x10000]; // 0x8
+    size_t buffer_filled; // 0x10008
+    size_t buffer_offset; // 0x1000C
+    size_t __int_10010; // 0x10010
+    // 0x10014
 
-        // Method 0
-        // Rx2ED70
-        virtual ~FileReader() {
-            if (this->file != INVALID_HANDLE_VALUE) {
-                CloseHandle(this->file);
+    // Method 0
+    // Rx2ED70
+    virtual ~FileReader() {
+        if (this->file != INVALID_HANDLE_VALUE) {
+            CloseHandle(this->file);
+        }
+    }
+
+    // Method 4
+    // Rx2EE00
+    virtual bool thiscall open(const std::string& path) {
+        return this->open(path.c_str());
+    }
+
+    // Method 8
+    // Rx2DE10
+    virtual bool thiscall open(const char* path) {
+        if (!path) {
+            return false;
+        }
+        HANDLE handle = file_open(path);
+        this->buffer_filled = 0;
+        this->file = handle;
+        this->buffer_offset = 0;
+        return handle != INVALID_HANDLE_VALUE;
+    }
+
+    // Method C
+    // Rx2DEE0
+    virtual void thiscall close() {
+        if (this->file != INVALID_HANDLE_VALUE) {
+            CloseHandle(this->file);
+            this->file = INVALID_HANDLE_VALUE;
+        }
+    }
+
+    // Method 10
+    // Rx2DF30
+    virtual bool thiscall read(void* out, size_t size) {
+        uint8_t* out_write = (uint8_t*)out;
+
+        if (this->buffer_offset + size > this->buffer_filled) {
+
+            size_t size_from_buffer = this->buffer_filled - this->buffer_offset;
+            if (size_from_buffer) {
+                memcpy(out_write, &this->buffer[this->buffer_offset], size_from_buffer);
             }
-        }
 
-        // Method 4
-        // Rx2EE00
-        virtual bool thiscall open(const std::string& path) {
-            return this->open(path.c_str());
-        }
+            size_t remaining_size = size - size_from_buffer;
+            this->buffer_offset = remaining_size;
 
-        // Method 8
-        // Rx2DE10
-        virtual bool thiscall open(const char* path) {
-            if (!path) {
-                return false;
+            if (remaining_size >= sizeof(this->buffer)) {
+                file_read(this->file, &out_write[size_from_buffer], remaining_size, &this->__int_10010);
+                this->__int_10010 += size_from_buffer;
+                this->buffer_offset = 0;
+                this->buffer_filled = 0;
+                return this->__int_10010 == size;
             }
-            HANDLE handle = file_open(path);
-            this->buffer_filled = 0;
-            this->file = handle;
-            this->buffer_offset = 0;
-            return handle != INVALID_HANDLE_VALUE;
-        }
+            else {
+                // Shouldn't this be passing remaining_size instead of buffer size?
+                file_read(this->file, this->buffer, sizeof(this->buffer), &this->buffer_filled);
 
-        // Method C
-        // Rx2DEE0
-        virtual void thiscall close() {
-            if (this->file != INVALID_HANDLE_VALUE) {
-                CloseHandle(this->file);
-                this->file = INVALID_HANDLE_VALUE;
-            }
-        }
-
-        // Method 10
-        // Rx2DF30
-        virtual bool thiscall read(void* out, size_t size) {
-            uint8_t* out_write = (uint8_t*)out;
-
-            if (this->buffer_offset + size > this->buffer_filled) {
-
-                size_t size_from_buffer = this->buffer_filled - this->buffer_offset;
-                if (size_from_buffer) {
-                    memcpy(out_write, &this->buffer[this->buffer_offset], size_from_buffer);
-                }
-
-                size_t remaining_size = size - size_from_buffer;
-                this->buffer_offset = remaining_size;
-
-                if (remaining_size >= sizeof(this->buffer)) {
-                    file_read(this->file, &out_write[size_from_buffer], remaining_size, &this->__int_10010);
-                    this->__int_10010 += size_from_buffer;
-                    this->buffer_offset = 0;
-                    this->buffer_filled = 0;
-                    return this->__int_10010 == size;
+                // buffer_offset currently holds remaining_size
+                if (this->buffer_offset > this->buffer_filled) {
+                    memcpy(&out_write[size_from_buffer], this->buffer, this->buffer_filled);
+                    this->buffer_offset = this->buffer_filled;
+                    this->__int_10010 = size_from_buffer + this->buffer_filled;
+                    return false;
                 }
                 else {
-                    // Shouldn't this be passing remaining_size instead of buffer size?
-                    file_read(this->file, this->buffer, sizeof(this->buffer), &this->buffer_filled);
+                    memcpy(&out_write[size_from_buffer], this->buffer, this->buffer_offset);
 
-                    // buffer_offset currently holds remaining_size
-                    if (this->buffer_offset > this->buffer_filled) {
-                        memcpy(&out_write[size_from_buffer], this->buffer, this->buffer_filled);
-                        this->buffer_offset = this->buffer_filled;
-                        this->__int_10010 = size_from_buffer + this->buffer_filled;
-                        return false;
-                    }
-                    else {
-                        memcpy(&out_write[size_from_buffer], this->buffer, this->buffer_offset);
-
-                        // buffer_offset doesn't get fixed here?
-                        this->__int_10010 = size;
-                        return true;
-                    }
+                    // buffer_offset doesn't get fixed here?
+                    this->__int_10010 = size;
+                    return true;
                 }
             }
-            else {
-                memcpy(out_write, &this->buffer[this->buffer_offset], size);
-                this->__int_10010 = size;
-                this->buffer_offset += size;
-                return true;
-            }
         }
-
-        inline size_t seek_impl(ssize_t offset, int origin) {
-            this->buffer_offset = 0;
-            this->buffer_filled = 0;
-            return file_seek(this->file, offset, origin);
-        }
-
-        // Method 14
-        // Rx2E090
-        virtual size_t thiscall seek(ssize_t offset, int origin) {
-            if (origin == SEEK_CUR) {
-                ssize_t combined_offset = this->buffer_offset - this->buffer_filled + offset;
-                return this->seek_impl(combined_offset, SEEK_CUR);
-            }
-            else {
-                return this->seek_impl(offset, origin);
-            }
-        }
-    };
-
-    // size: 0x10044
-    struct PackageReader : FileReader {
-        // FileReader base; // 0x0
-        uint32_t __int_10014; // 0x10014
-        size_t file_size; // 0x10018
-        uint32_t file_name_hash; // 0x1001C
-        uint32_t __int_10020; // 0x10020
-        size_t offset; // 0x10024
-        union {
-            uint32_t key[5]; // 0x10028
-            uint8_t key_bytes[20];
-        };
-        union {
-            uint32_t aux; // 0x1003C
-            uint8_t aux_bytes[4];
-            uint16_t aux_words[2];
-        };
-        uint32_t aux_mask; // 0x10040
-        // 0x10044
-
-        // Method 0
-        // RxAD90
-        virtual ~PackageReader() {
-        }
-
-        static uint32_t fastcall hash_file_path(const char* path) {
-            if (!path) {
-                return 0;
-            }
-            size_t length = strlen(path);
-            if (
-                length >= 2 &&
-                path[0] == '.' &&
-                path[1] == '/' || path[1] == '\\'
-            ) {
-                length -= 2;
-                path += 2;
-            }
-            return hash_path(path, length);
-        }
-
-        // Rx23E50
-        bool thiscall open(const char* path, PakData* pak_data) {
-            if (pak_data) {
-                PakDataInfo* pak_info = pak_data->__sub_r243B0(path);
-                if (!pak_info) {
-                    if (
-                        path &&
-                        pak_data->__sub_r26120(path, strlen(path)) &&
-                        this->FileReader::open(path)
-                    ) {
-                        this->__int_10014 = 0;
-                        // this->file_size = IDK
-                        this->file_name_hash = hash_file_path(path);
-                        this->__int_10020 = 0;
-                        memset(this->key, 0, sizeof(this->key));
-                        this->aux = 0;
-                        this->offset = 0;
-                        this->FileReader::seek(this->__int_10014, SEEK_SET);
-                        this->aux_mask = 0;
-                        return true;
-                    }
-                    return false;
-                }
-                this->FileReader::open(pak_data->__pak_innerB_ptr_0[pak_info->__innerB_index].__string_0.c_str());
-                if (this->file == INVALID_HANDLE_VALUE) {
-                    return false;
-                }
-                this->__int_10014 = pak_info->__int_C;
-                this->file_size = pak_info->file_size;
-                this->file_name_hash = pak_info->file_name_hash;
-                this->__int_10020 = pak_info->__int_8;
-                memcpy(this->key, pak_info->key, sizeof(pak_info->key));
-                this->aux = this->key[4] = this->key[0];
-                this->aux_mask = ~0;
-            }
-            else {
-                this->FileReader::open(path);
-                if (this->file == INVALID_HANDLE_VALUE) {
-                    return false;
-                }
-                // this->file_size = IDK
-                this->file_name_hash = hash_file_path(path);
-                this->__int_10020 = 0;
-                memset(this->key, 0, sizeof(this->key));
-                this->aux = 0;
-                this->aux_mask = 0;
-            }
-            this->offset = 0;
-            this->seek_impl(this->__int_10014, SEEK_SET);
-            this->key[0] = -this->key[0];
-            this->key[1] = -this->key[1];
-            this->key[2] = -this->key[2];
-            this->aux = this->key[3] = -this->key[3];
+        else {
+            memcpy(out_write, &this->buffer[this->buffer_offset], size);
+            this->__int_10010 = size;
+            this->buffer_offset += size;
             return true;
         }
+    }
 
-        // Method 4
-        // RxAD30
-        virtual bool thiscall open(const std::string& path) {
-            return this->open(path.c_str(), PAK_DATA_PTR);
+    inline size_t seek_impl(ssize_t offset, int origin) {
+        this->buffer_offset = 0;
+        this->buffer_filled = 0;
+        return file_seek(this->file, offset, origin);
+    }
+
+    // Method 14
+    // Rx2E090
+    virtual size_t thiscall seek(ssize_t offset, int origin) {
+        if (origin == SEEK_CUR) {
+            ssize_t combined_offset = this->buffer_offset - this->buffer_filled + offset;
+            return this->seek_impl(combined_offset, SEEK_CUR);
         }
-
-        // Method 8
-        // RxAD10
-        virtual bool thiscall open(const char* path) {
-            return this->open(path, PAK_DATA_PTR);
+        else {
+            return this->seek_impl(offset, origin);
         }
+    }
+};
 
-        // Method 10
-        // Rx24100
-        virtual bool thiscall read(void* out, size_t size) {
-            size_t remaining_size = this->file_size - this->offset;
+// size: 0x10044
+struct PackageReader : FileReader {
+    // FileReader base; // 0x0
+    uint32_t __int_10014; // 0x10014
+    size_t file_size; // 0x10018
+    uint32_t file_name_hash; // 0x1001C
+    uint32_t __int_10020; // 0x10020
+    size_t offset; // 0x10024
+    union {
+        uint32_t key[5]; // 0x10028
+        uint8_t key_bytes[20];
+    };
+    union {
+        uint32_t aux; // 0x1003C
+        uint8_t aux_bytes[4];
+        uint16_t aux_words[2];
+    };
+    uint32_t aux_mask; // 0x10040
+    // 0x10044
 
-            size_t requested_end = this->offset + size;
+    // Method 0
+    // RxAD90
+    virtual ~PackageReader() {
+    }
 
-            size_t read_size = requested_end <= this->file_size ? size : remaining_size;
+    static uint32_t fastcall hash_file_path(const char* path) {
+        if (!path) {
+            return 0;
+        }
+        size_t length = strlen(path);
+        if (
+            length >= 2 &&
+            path[0] == '.' &&
+            path[1] == '/' || path[1] == '\\'
+        ) {
+            length -= 2;
+            path += 2;
+        }
+        return hash_path(path, length);
+    }
 
-            if (!read_size) {
-                this->__int_10010 = 0;
+    // Rx23E50
+    bool thiscall open(const char* path, PakData* pak_data) {
+        if (pak_data) {
+            PakDataInfo* pak_info = pak_data->__sub_r243B0(path);
+            if (!pak_info) {
+                if (
+                    path &&
+                    pak_data->__sub_r26120(path, strlen(path)) &&
+                    this->FileReader::open(path)
+                ) {
+                    this->__int_10014 = 0;
+                    // this->file_size = IDK
+                    this->file_name_hash = hash_file_path(path);
+                    this->__int_10020 = 0;
+                    memset(this->key, 0, sizeof(this->key));
+                    this->aux = 0;
+                    this->offset = 0;
+                    this->FileReader::seek(this->__int_10014, SEEK_SET);
+                    this->aux_mask = 0;
+                    return true;
+                }
                 return false;
             }
+            this->FileReader::open(pak_data->__pak_innerB_ptr_0[pak_info->__innerB_index].__string_0.c_str());
+            if (this->file == INVALID_HANDLE_VALUE) {
+                return false;
+            }
+            this->__int_10014 = pak_info->__int_C;
+            this->file_size = pak_info->file_size;
+            this->file_name_hash = pak_info->file_name_hash;
+            this->__int_10020 = pak_info->__int_8;
+            memcpy(this->key, pak_info->key, sizeof(pak_info->key));
+            this->aux = this->key[4] = this->key[0];
+            this->aux_mask = ~0;
+        }
+        else {
+            this->FileReader::open(path);
+            if (this->file == INVALID_HANDLE_VALUE) {
+                return false;
+            }
+            // this->file_size = IDK
+            this->file_name_hash = hash_file_path(path);
+            this->__int_10020 = 0;
+            memset(this->key, 0, sizeof(this->key));
+            this->aux = 0;
+            this->aux_mask = 0;
+        }
+        this->offset = 0;
+        this->seek_impl(this->__int_10014, SEEK_SET);
+        this->key[0] = -this->key[0];
+        this->key[1] = -this->key[1];
+        this->key[2] = -this->key[2];
+        this->aux = this->key[3] = -this->key[3];
+        return true;
+    }
 
-            this->FileReader::read(out, read_size);
+    // Method 4
+    // RxAD30
+    virtual bool thiscall open(const std::string& path) {
+        return this->open(path.c_str(), PAK_DATA_PTR);
+    }
 
-            uint8_t* decrypt = ((uint8_t*)out) - this->offset;
-            size_t end_offset = this->offset + read_size;
+    // Method 8
+    // RxAD10
+    virtual bool thiscall open(const char* path) {
+        return this->open(path, PAK_DATA_PTR);
+    }
 
-            if (!is_byte_aligned_to_word(read_size)) {
-                uint8_t temp = decrypt[this->offset] & this->aux_mask;
+    // Method 10
+    // Rx24100
+    virtual bool thiscall read(void* out, size_t size) {
+        size_t remaining_size = this->file_size - this->offset;
 
-                decrypt[this->offset] ^= this->key_bytes[this->offset & 0xF] ^ this->aux;
+        size_t requested_end = this->offset + size;
 
-                ++this->offset;
-                this->aux >>= bitsof(uint8_t);
-                this->aux_bytes[3] = temp;
+        size_t read_size = requested_end <= this->file_size ? size : remaining_size;
+
+        if (!read_size) {
+            this->__int_10010 = 0;
+            return false;
+        }
+
+        this->FileReader::read(out, read_size);
+
+        uint8_t* decrypt = ((uint8_t*)out) - this->offset;
+        size_t end_offset = this->offset + read_size;
+
+        if (!is_byte_aligned_to_word(read_size)) {
+            uint8_t temp = decrypt[this->offset] & this->aux_mask;
+
+            decrypt[this->offset] ^= this->key_bytes[this->offset & 0xF] ^ this->aux;
+
+            ++this->offset;
+            this->aux >>= bitsof(uint8_t);
+            this->aux_bytes[3] = temp;
+        }
+
+        if (!is_word_aligned_to_dword(read_size)) {
+            uint16_t temp = *(uint16_t*)&decrypt[this->offset] & this->aux_mask;
+
+            *(uint16_t*)&decrypt[this->offset] ^= *(uint16_t*)&this->key_bytes[this->offset & 0xF] ^ this->aux;
+
+            this->offset += 2;
+            this->aux >>= bitsof(uint16_t);
+            this->aux_words[1] = temp;
+        }
+
+        while (this->offset < end_offset) {
+            uint32_t temp = *(uint32_t*)&decrypt[this->offset] & this->aux_mask;
+
+            *(uint32_t*)&decrypt[this->offset] ^= *(uint32_t*)&this->key_bytes[this->offset & 0xF] ^ this->aux;
+
+            this->offset += 4;
+            this->aux = temp;
+        }
+
+        this->__int_10010 = read_size;
+        return true;
+    }
+
+    template <typename T>
+    inline T read() {
+        T temp{};
+        this->PackageReader::read(&temp, sizeof(temp));
+        return temp;
+    }
+
+    // Method 14
+    // Rx24250
+    virtual size_t thiscall seek(ssize_t offset, int origin) {
+        switch (origin) {
+            default:
+                return SIZE_MAX;
+            case SEEK_CUR:
+                this->offset += offset;
+                break;
+            case SEEK_END:
+                offset += this->file_size;
+            case SEEK_SET:
+                this->offset = offset;
+        }
+        origin = SEEK_SET;
+
+
+        if (this->offset >= sizeof(uint32_t)) {
+            offset = this->offset - sizeof(uint32_t) + this->__int_10014;
+
+            size_t ret = this->seek_impl(offset, origin);
+
+            this->FileReader::read(&this->aux, sizeof(uint32_t));
+
+            this->aux &= this->aux_mask;
+
+            return ret + sizeof(uint32_t);
+        }
+        else {
+            this->aux = this->key[0] >> (this->offset << 3 & 0x1F);
+
+            size_t ret = this->seek_impl(this->__int_10014, origin);
+
+            this->FileReader::read(&this->aux_bytes[4 - this->offset], this->offset);
+
+            this->aux &= this->aux_mask;
+
+            return ret + this->offset;
+        }
+    }
+
+    // Method 18
+    // RxAD50
+    virtual size_t thiscall get_file_size() {
+        return this->file_size;
+    }
+
+    // Method 1C
+    // RxAD60
+    virtual size_t thiscall get_offset() {
+        return this->offset;
+    }
+
+    uint32_t thiscall get_file_hash_impl() {
+        if (this->file == INVALID_HANDLE_VALUE) {
+            return 0;
+        }
+        size_t old_offset = this->get_offset();
+        this->seek(0, SEEK_SET);
+
+        uint8_t data[1024]{};
+        this->read(data, sizeof(data));
+
+        // This is probably also an std::hash variant
+        uint32_t hash = 2166136261;
+        while (this->__int_10010) {
+            for (size_t i = 0; i < this->__int_10010; ++i) {
+                hash ^= data[i];
+                hash *= 16777619u;
+            }
+            this->read(data, sizeof(data));
+        }
+
+        this->seek(old_offset, SEEK_SET);
+
+        return hash;
+    }
+
+    // Method 20
+    // RxAD70
+    virtual uint32_t thiscall get_file_hash() {
+        if (!this->__int_10020) {
+            return this->get_file_hash_impl();
+        }
+        return this->__int_10020;
+    }
+
+    // Method 24
+    // RxAD80
+    virtual uint32_t thiscall get_file_name_hash() {
+        return this->file_name_hash;
+    }
+
+    // Rx42300
+    int32_t thiscall read_int() {
+        return this->read<int32_t>();
+    }
+
+    // Rx42320
+    float thiscall read_float() {
+        return this->read<float>();
+    }
+
+    // Rx42340
+    bool thiscall read_bool() {
+        return this->read<bool>();
+    }
+};
+
+
+struct IUDP {
+
+};
+
+// size: 0x4
+struct UDPInnerB {
+    int __dword_0; // 0x0
+    // 0x4
+
+    // Rx34D630
+    gnu_noinline bool thiscall __sub_r34D630() {
+        return rand();
+    }
+
+    // Rx1717A0
+    gnu_noinline void thiscall __sub_r1717A0() {
+
+    }
+};
+
+// size: 0x14+
+struct UDPInnerD {
+    void* __ptr_0; // 0x0
+    void* __ptr_4; // 0x4
+    void* __ptr_8; // 0x8
+    void* __ptr_C; // 0xC
+    int __dword_10; // 0x10
+    // 0x14
+};
+
+// size: 0x4
+struct UDPInnerE {
+    unknown_fields(0x4);
+    // 0x4
+};
+
+// size: 0x98
+struct ConnectionData {
+    BoostSockAddr addr; // 0x0
+    short __word_1C; // 0x1C
+    probably_padding_bytes(0x2); // 0x1E
+    int state; // 0x20
+    int __int_24; // 0x24
+    int __dword_28; // 0x28
+    uint32_t __uint_2C; // 0x2C
+    int __int_30; // 0x30
+    int __int_34; // 0x34
+    int __dword_38; // 0x38
+    int delay; // 0x3C
+    unsigned char __byte_40; // 0x40
+    probably_padding_bytes(0x3); // 0x41
+    uint32_t __uint_44; // 0x44 Written as u32, read as u16. QPC related
+    std::vector<uint8_t> __vector_48; // 0x48
+    std::vector<uint8_t> __vector_54; // 0x54
+    int __dword_60; // 0x60 Some sort of bitset thing?
+    int __dword_64; // 0x64
+    int __dword_68; // 0x68
+    int __dword_6C; // 0x6C Another instance of whatever 0x60 is
+    int __dword_70; // 0x70
+    int __dword_74; // 0x74
+    UDPInnerD __innerD_78; // 0x78
+    UDPInnerE __innerE_8C; // 0x8C
+    BoostMutex __mutex_90; // 0x90
+    // 0x98
+};
+
+enum PacketType : uint8_t {
+    PACKET_TYPE_0 = 0,
+    PACKET_TYPE_1 = 1,
+    PACKET_TYPE_2 = 2,
+    PACKET_TYPE_3 = 3,
+    PACKET_TYPE_4 = 4,
+    PACKET_TYPE_5 = 5,
+    PACKET_TYPE_6 = 6,
+    PACKET_TYPE_7 = 7,
+    PACKET_TYPE_8 = 8,
+    PACKET_TYPE_9 = 9,
+    PACKET_TYPE_10 = 10,
+    PACKET_TYPE_11 = 11,
+    PACKET_TYPE_12 = 12,
+    PACKET_TYPE_13 = 13,
+    PACKET_TYPE_14 = 14,
+    PACKET_TYPE_15 = 15,
+    PACKET_TYPE_16 = 16,
+    PACKET_TYPE_17 = 17,
+    PACKET_TYPE_18 = 18,
+    PACKET_TYPE_19 = 19,
+};
+
+struct Packet {
+    PacketType type; // 0x0
+    unsigned char data[]; // 0x1
+};
+
+// size: 0xC
+struct Packet0 {
+    PacketType type; // 0x0
+    // 0x1
+    int __dword_4; // 0x4
+    int __dword_8; // 0x8
+    // 0xC
+};
+
+// size: 0xC
+struct Packet1 {
+    PacketType type; // 0x0
+    uint8_t child_index; // 0x1
+    // 0x2
+    int __dword_4; // 0x4
+    int __dword_8; // 0x8
+    // 0xC
+};
+
+// size: 0x20
+struct Packet2 {
+    PacketType type; // 0x0
+    // 0x1
+    BoostSockAddr addr; // 0x4
+    // 0x20
+};
+
+// size: 0x20
+struct Packet3 {
+    PacketType type; // 0x0
+    // 0x1
+    BoostSockAddr addr; // 0x4
+    // 0x20
+};
+
+// size: 0x1
+struct Packet4 {
+    PacketType type; // 0x0
+    // 0x1
+};
+
+// size: 0xC
+struct Packet5 {
+    PacketType type; // 0x0
+    // 0x1
+    int __dword_4; // 0x4
+    int __dword_8; // 0x8
+    // 0xC
+};
+
+// size: 0x14
+struct Packet6 {
+    PacketType type; // 0x0
+    uint8_t child_index; // 0x1
+    // 0x2
+    int __dword_4; // 0x4
+    int __dword_8; // 0x8
+    int delay; // 0xC
+    int __dword_10; // 0x10
+    // 0x14
+};
+
+// size: 0x20
+struct Packet7 {
+    PacketType type; // 0x0
+    uint8_t __ubyte_1; // 0x1
+    // 0x2
+    BoostSockAddr addr; // 0x4
+    // 0x20
+};
+
+// size: 0x18
+struct Packet8 {
+    PacketType type; // 0x0
+    unsigned char __array_1[16]; // 0x1
+    // 0x11
+    int __dword_14; // 0x14
+    // 0x18
+};
+
+// size: 0x24+
+struct Packet9 {
+    PacketType type; // 0x0
+    unsigned char __array_1[16]; // 0x1
+    // 0x11
+    int __dword_14; // 0x14
+    int __dword_18; // 0x18
+    uint16_t __ushort_1C; // 0x1C
+    uint16_t __ushort_1E; // 0x1E
+    uint16_t __ushort_20; // 0x20
+    uint8_t __ubyte_22; // 0x22
+    uint8_t __ubyte_23; // 0x23
+    unsigned char data[]; // 0x24
+};
+
+// size: 0x30
+struct Packet11 {
+    PacketType type; // 0x0
+    uint8_t __ubyte_1; // 0x1
+    // 0x2
+    int __dword_4; // 0x4
+    BoostSockAddr __addr_8; // 0x8
+    int __dword_24; // 0x24
+    uint16_t __ushort_28; // 0x28
+    uint16_t __ushort_2A; // 0x2A
+    uint16_t __ushort_2C; // 0x2C
+    uint8_t __ubyte_2E; // 0x2E
+    uint8_t __ubyte_2F; // 0x2F
+    // 0x30
+};
+
+// size: 0x10
+struct Packet12 {
+    PacketType type; // 0x0
+    // 0x1
+    int __dword_4; // 0x4
+    uint16_t __ushort_8; // 0x8
+    uint16_t __ushort_A; // 0xA
+    uint16_t __ushort_C; // 0xC
+    uint8_t __byte_E; // 0xE
+    uint8_t __byte_F; // 0xF
+    // 0x10
+};
+
+// size: 0x94
+struct Packet13 {
+    PacketType type; // 0x0
+    // 0x1
+    int __dword_4; // 0x4
+    BoostSockAddr __addr_8; // 0x8
+    BoostSockAddr __addr_array_24[4]; // 0x24
+    // 0x94
+};
+
+// size: 0xC
+struct Packet15 {
+    PacketType type; // 0x0
+    // 0x1
+    int __dword_4; // 0x4
+    unsigned char __byte_8; // 0x8
+    // 0x9
+};
+
+// size: 0xC
+struct Packet16 {
+    PacketType type; // 0x0
+    uint8_t child_index; // 0x1
+    // 0x2
+    int __dword_4; // 0x4
+    unsigned char __byte_8; // 0x8
+    // 0x9
+};
+
+// size: 0x1+
+struct Packet18 {
+    PacketType type; // 0x0
+    unsigned char data[]; // 0x1
+};
+
+// size: 0x2+
+struct Packet19 {
+    PacketType type; // 0x0
+    uint8_t __ubyte_1; // 0x1
+    unsigned char data[]; // 0x2
+};
+
+
+// size: 0x24C
+struct UDP : IUDP {
+    // void* vftable; // 0x0
+    void* __mutex_related_4; // 0x4
+    int __dword_8; // 0x8 Something about "boost udp service resolver"?
+    unknown_fields(0x4); // 0xC
+    int __dword_array_10[4]; // 0x10
+    BoostSocket* socket; // 0x20
+    int __dword_24; // 0x24
+    BoostSockAddr __addr_28; // 0x28
+    BoostSockAddr __addr_44; // 0x44
+    BoostSockAddr __addr_60; // 0x60
+    BoostSockAddr __addr_7C; // 0x7C
+    UDPInnerB __innerB_98; // 0x98
+    ConnectionData __connection_9C; // 0x9C
+    ConnectionData parent; // 0x134
+    ConnectionData* child_array; // 0x1CC
+    size_t child_array_size; // 0x1D0
+    unsigned char __byte_1D4; // 0x1D4
+    probably_padding_bytes(0x3); // 0x1D5
+    UDPInnerB __innerB_1D8; // 0x1D8
+    void* __ptr_1DC; // 0x1DC std::vector<BoostSockAddr> maybe?
+    int __dword_1E0; // 0x1E0
+    int __dword_1E4; // 0x1E4
+    uint32_t __uint_1E8; // 0x1E8
+    uint32_t __uint_1EC; // 0x1EC These are counters of some sort
+    uint32_t __uint_1F0; // 0x1F0
+    BoostMutex __mutex_1F4; // 0x1F4
+    std::vector<uint8_t> __vector_1FC; // 0x1FC
+    BoostMutex __mutex_208; // 0x208
+    unsigned char __byte_210; // 0x210
+    probably_padding_bytes(0x3); // 0x211
+    UDPInnerB __innerB_214; // 0x214
+    BoostSockAddr recv_addr; // 0x218
+    std::vector<uint8_t> recv_data; // 0x234
+    void* __ptr_240; // 0x240
+    int __dword_244; // 0x244
+    void* __manbow_network_impl; // 0x248
+    // 0x24C
+
+    UDP() {
+        // winsock_init
+    }
+
+    // Rx176B00
+    void thiscall __recv_from() {
+        
+        // IDK how to interpret the jank with UnknownF,
+        // but it's definitely recvfrom and writing to
+        // the BoostSockAddr at 0x218 and the vector
+        // at 0x234
+
+    }
+
+    // Rx172BC0
+    bool thiscall __sub_r172BC0() {
+
+        BoostSockAddr loopback_addr = BoostSockAddr::loopback_sockaddr(10800);
+
+        // ???
+        void* idk;
+
+        BoostSocket temp_socket;
+        temp_socket.initialize(idk, loopback_addr);
+
+        //while (EBP-7C)
+        {
+            this->socket->__send_to("", loopback_addr);
+        }
+
+        // ???
+
+        // this->__addr_28 = BoostSockAddr::loopback_sockaddr(/*???*/);
+
+        return true;
+    }
+
+    // Rx172A50
+    bool thiscall __make_socket(uint16_t port) {
+        if (!port) {
+            BoostSocket* socket = new BoostSocket();
+
+            socket->initialize(this->__mutex_related_4, AF_INET);
+
+            this->socket = socket; // code is more complex
+
+            this->__sub_r172BC0();
+        }
+        else {
+            BoostSocket* socket = new BoostSocket();
+
+            socket->initialize(this->__mutex_related_4, BoostSockAddr(AF_INET, port));
+
+            this->socket = socket; // code is more complex
+
+            this->__addr_28 = BoostSockAddr::loopback_sockaddr(port);
+        }
+
+        this->__connection_9C.addr = this->__addr_28;
+        return true;
+    }
+
+    // Method 0
+    // Rx1725D0
+    virtual bool thiscall __method_0(size_t child_count, uint16_t port, int arg3) {
+        if (this->__make_socket(port)) {
+
+            // ???
+
+            this->child_array_size = child_count;
+            //memcpy(this->__dword_array_10, ???, 16);
+
+            if (auto* child_array = this->child_array) {
+                delete[] child_array;
             }
 
-            if (!is_word_aligned_to_dword(read_size)) {
-                uint16_t temp = *(uint16_t*)&decrypt[this->offset] & this->aux_mask;
+            this->child_array = new ConnectionData[this->child_array_size];
 
-                *(uint16_t*)&decrypt[this->offset] ^= *(uint16_t*)&this->key_bytes[this->offset & 0xF] ^ this->aux;
+            this->recv_data.resize(0x10001);
+            this->__vector_1FC.resize(0x10001);
 
-                this->offset += 2;
-                this->aux >>= bitsof(uint16_t);
-                this->aux_words[1] = temp;
-            }
+            this->__byte_210 = 1;
 
-            while (this->offset < end_offset) {
-                uint32_t temp = *(uint32_t*)&decrypt[this->offset] & this->aux_mask;
+            // ???
 
-                *(uint32_t*)&decrypt[this->offset] ^= *(uint32_t*)&this->key_bytes[this->offset & 0xF] ^ this->aux;
-
-                this->offset += 4;
-                this->aux = temp;
-            }
-
-            this->__int_10010 = read_size;
             return true;
         }
+        return false;
+    }
 
-        template <typename T>
-        inline T read() {
-            T temp{};
-            this->PackageReader::read(&temp, sizeof(temp));
-            return temp;
+    // Method 10
+    // Rx179160
+    virtual void thiscall __method_10() {
+
+        if (this->__innerB_1D8.__sub_r34D630()) {
+            this->__innerB_1D8.__sub_r1717A0();
         }
 
-        // Method 14
-        // Rx24250
-        virtual size_t thiscall seek(ssize_t offset, int origin) {
-            switch (origin) {
-                default:
-                    return SIZE_MAX;
-                case SEEK_CUR:
-                    this->offset += offset;
+        Packet16 packet = {
+            .type = PACKET_TYPE_16
+        };
+
+        {
+            // boost::unique_lock lock(this->parent.__mutex_90);
+
+            if (this->parent.state != 0) {
+                return;
+            }
+
+            packet.__byte_8 = this->parent.__int_24;
+
+            this->parent.state = 1;
+
+            packet.__dword_4 = this->parent.__dword_28;
+
+            if (auto* manbow_network = this->__manbow_network_impl) {
+                // manbow_network->__method_14();
+            }
+        }
+
+        this->socket->__send_to(packet, this->parent.addr);
+    }
+
+    // Method 14
+    // Rx1792D0
+    virtual int thiscall GetConnectState() {
+        return this->parent.state;
+    }
+
+    // Method 18
+    // Rx17C220
+    virtual void thiscall __method_18(void* data, size_t size) {
+        if (
+            this->parent.state == 0 &&
+            size < 0x500
+        ) {
+            // boost::unique_lock lock(this->__mutex_208);
+
+            ((Packet19*)this->__vector_1FC.data())->type = PACKET_TYPE_19;
+            ((Packet19*)this->__vector_1FC.data())->__ubyte_1 = this->parent.__int_24;
+            memcpy(((Packet19*)this->__vector_1FC.data())->data, data, size);
+
+            this->socket->__send_to(*(Packet19*)this->__vector_1FC.data(), this->parent.addr);
+        }
+    }
+
+    // Method 1C
+    virtual bool thiscall Standby(int, int, int) {
+        return false;
+    }
+
+    // Method 20
+    // Rx178B30
+    virtual void thiscall __method_20(size_t index, int Arg2, void* data, int size) {
+        ConnectionData& child = this->child_array[index];
+
+        // boost::unique_lock lock(child.__mutex_90);
+
+        switch (child.state) {
+            case 3:
+                if (size == -1) {
                     break;
-                case SEEK_END:
-                    offset += this->file_size;
-                case SEEK_SET:
-                    this->offset = offset;
-            }
-            origin = SEEK_SET;
-
-
-            if (this->offset >= sizeof(uint32_t)) {
-                offset = this->offset - sizeof(uint32_t) + this->__int_10014;
-
-                size_t ret = this->seek_impl(offset, origin);
-
-                this->FileReader::read(&this->aux, sizeof(uint32_t));
-
-                this->aux &= this->aux_mask;
-
-                return ret + sizeof(uint32_t);
-            }
-            else {
-                this->aux = this->key[0] >> (this->offset << 3 & 0x1F);
-
-                size_t ret = this->seek_impl(this->__int_10014, origin);
-
-                this->FileReader::read(&this->aux_bytes[4 - this->offset], this->offset);
-
-                this->aux &= this->aux_mask;
-
-                return ret + this->offset;
-            }
-        }
-
-        // Method 18
-        // RxAD50
-        virtual size_t thiscall get_file_size() {
-            return this->file_size;
-        }
-
-        // Method 1C
-        // RxAD60
-        virtual size_t thiscall get_offset() {
-            return this->offset;
-        }
-
-        uint32_t thiscall get_file_hash_impl() {
-            if (this->file == INVALID_HANDLE_VALUE) {
-                return 0;
-            }
-            size_t old_offset = this->get_offset();
-            this->seek(0, SEEK_SET);
-
-            uint8_t data[1024]{};
-            this->read(data, sizeof(data));
-
-            // This is probably also an std::hash variant
-            uint32_t hash = 2166136261;
-            while (this->__int_10010) {
-                for (size_t i = 0; i < this->__int_10010; ++i) {
-                    hash ^= data[i];
-                    hash *= 16777619u;
                 }
-                this->read(data, sizeof(data));
+                child.__dword_38 = Arg2;
+                child.__vector_54.resize(size);
+                if (size != 0) {
+                    memcpy(child.__vector_54.data(), data, size);
+                }
+                child.state = 0;
+            case 0:
+                // some funny inlined vector method
+
+        }
+
+        // ???
+    }
+
+    // Method 24
+    // Rx178E70
+    virtual void thiscall __method_24(size_t index, int Arg2, void* data, int size) {
+        ConnectionData& child = this->child_array[index];
+
+        {
+            // boost::unique_lock lock(child.__mutex_90);
+
+            switch (child.state) {
+                case 3:
+                    if (size == -1) {
+                        break;
+                    }
+                    child.__dword_38 = Arg2;
+                    child.__vector_54.resize(size);
+                    if (size != 0) {
+                        memcpy(child.__vector_54.data(), data, size);
+                    }
+                    child.state = 11;
+                case 11:
+                    // some funny inlined vector method
             }
-
-            this->seek(old_offset, SEEK_SET);
-
-            return hash;
         }
 
-        // Method 20
-        // RxAD70
-        virtual uint32_t thiscall get_file_hash() {
-            if (!this->__int_10020) {
-                return this->get_file_hash_impl();
+        // ???
+    }
+
+    // Method 28
+    // Rx172F60
+    virtual void thiscall __method_28(size_t index, int Arg2) {
+        ConnectionData& child = this->child_array[index];
+
+        BoostSockAddr dest;
+
+        Packet15 packet = {
+            .type = PACKET_TYPE_15
+        };
+
+        {
+            // boost::unique_lock lock(child.__mutex_90);
+            if (child.state != 0) {
+                return;
             }
-            return this->__int_10020;
+            child.state = 1;
+
+            dest = child.addr;
+
+            packet.__dword_4 = child.__dword_28;
+            packet.__byte_8 = this->__addr_28 != this->__connection_9C.addr & Arg2;
+
+            if (auto* manbow_network = this->__manbow_network_impl) {
+                // manbow_network->__method_4(index);
+            }
         }
 
-        // Method 24
-        // RxAD80
-        virtual uint32_t thiscall get_file_name_hash() {
-            return this->file_name_hash;
-        }
+        this->socket->__send_to(packet, dest);
+    }
 
-        // Rx42300
-        int32_t thiscall read_int() {
-            return this->read<int32_t>();
-        }
+    // Method 2C
+    // Rx17C340
+    virtual void thiscall __method_2C(size_t index, void* data, size_t size) {
+        if (index < this->child_array_size) {
+            ConnectionData& child = this->child_array[index];
 
-        // Rx42320
-        float thiscall read_float() {
-            return this->read<float>();
-        }
+            if (
+                child.state == 0 &&
+                size < 0x500
+            ) {
 
-        // Rx42340
-        bool thiscall read_bool() {
-            return this->read<bool>();
+                // boost::unique_lock lock(this->__mutex_208);
+
+                ((Packet18*)this->__vector_1FC.data())->type = PACKET_TYPE_18;
+                memcpy(((Packet18*)this->__vector_1FC.data())->data, data, size);
+
+                this->socket->__send_to(*(Packet18*)this->__vector_1FC.data(), this->parent.addr);
+            }
         }
-    };
+    }
+
+    // Method 30
+    // Rx17C430
+    virtual void thiscall __method_30(void* data, size_t size) {
+        if (size < 0x500) {
+            for (size_t i = 0; i < this->child_array_size; ++i) {
+                ConnectionData& child = this->child_array[i];
+                if (child.state == 0) {
+                    // boost::unique_lock lock(this->__mutex_208);
+
+                    ((Packet18*)this->__vector_1FC.data())->type = PACKET_TYPE_18;
+                    memcpy(((Packet18*)this->__vector_1FC.data())->data, data, size);
+
+                    this->socket->__send_to(*(Packet18*)this->__vector_1FC.data(), this->parent.addr);
+                }
+            }
+        }
+    }
+
+    // Method 34
+    // Rx173150
+    virtual int thiscall GetChildState(size_t index) {
+        if (index >= this->child_array_size) {
+            return 1;
+        } else {
+            return this->child_array[index].state;
+        }
+    }
+
+    // Method 38
+    // Rx173110
+    virtual int thiscall GetParentDelay() {
+        return this->parent.delay;
+    }
+
+    // Method 3C
+    // RxCE240
+    virtual int thiscall GetChildDelay(size_t index) {
+        if (index >= this->child_array_size) {
+            return 0;
+        }
+        else {
+            return this->child_array[index].delay;
+        }
+    }
+
+    // Method 40
+    // Rx171FE0
+    virtual void thiscall set_network_impl(void* network_ptr) {
+        this->__manbow_network_impl = network_ptr;
+    }
+
+    // Rx1792E0
+    void thiscall __sub_r1792E0() {
+
+    }
+
+    // Rx179820
+    void thiscall __sub_r179820() {
+
+    }
+
+    // Rx17C5E0
+    void thiscall __handle_packet_8(BoostSockAddr& addr, Packet8* packet) {
+        if (
+            this->child_array_size != 0 &&
+            !memcmp(this->__dword_array_10, packet->__array_1, 16)
+        ) {
+            for (size_t i = 0; i < this->child_array_size; ++i) {
+                ConnectionData& child = this->child_array[i];
+                if (child.state == 0) {
+                    // ???
+                }
+            }
+        }
+    }
+
+    // Rx17CC90
+    void thiscall __handle_packet_9(BoostSockAddr& addr, Packet9* packet) {
+        if (
+            this->child_array_size != 0 &&
+            !memcmp(this->__dword_array_10, packet->__array_1, 16) &&
+            packet->__ubyte_23 <= UINT16_MAX &&
+            packet->__ubyte_23 >= packet->__ubyte_22 &&
+            packet->__ushort_20 <= UINT16_MAX &&
+            packet->__ushort_20 >= packet->__ushort_1C &&
+            packet->__ushort_20 >= packet->__ushort_1E &&
+            packet->__ushort_1E >= packet->__ushort_1C
+        ) {
+            for (size_t i = 0; i < this->child_array_size; ++i) {
+                ConnectionData& child = this->child_array[i];
+                if (
+                    addr == child.addr &&
+                    packet->__dword_14 == child.__dword_28
+                ) {
+                    // boost::unique_lock lock(child.__mutex_90);
+                    
+                    switch (child.state) {
+                        case 11:
+                            // Instant deadlock?
+                            this->__method_24(i, 0, 0, -1);
+                            break;
+                        case 2:
+                            if (packet->__ushort_1C) {
+                                child.__uint_2C = 0;
+
+                            }
+                            break;
+                        case 0:
+                            // Instant deadlock?
+                            this->__method_20(i, 0, 0, -1);
+                            break;
+                        default:
+
+                    }
+                    return;
+                }
+                switch (child.state) {
+                    case 1: case 11:
+                        child.addr = addr;
+                        child.__dword_28 = packet->__dword_14;
+                        child.__int_30 = 0;
+                        child.__int_34 = 0;
+                        child.__uint_2C = 0;
+                        child.__int_24 = i;
+                        child.__dword_38 = packet->__dword_18;
+
+                        child.__vector_48.resize(packet->__ushort_20);
+                        memcpy(child.__vector_48.data(), packet->data, packet->__ushort_1E);
+
+                        return;
+                }
+            }
+        }
+    }
+
+    // Rx17CFB0
+    void thiscall __handle_packet_11(BoostSockAddr& addr, Packet11* packet) {
+
+    }
+
+    // Rx17D1A0
+    void thiscall __handle_packet_12(void* addr, Packet12* packet) {
+
+    }
+
+    // Rx17D330
+    void thiscall __handle_packet_13(BoostSockAddr& addr, Packet13* packet) {
+
+    }
+
+    // Rx17D580
+    void thiscall __handle_packet_15(void* addr, void* packet) {
+
+    }
+
+    // Rx17D630
+    void thiscall __handle_packet_16(BoostSockAddr& addr, size_t index) {
+
+    }
+
+    // Rx176BB0
+    void thiscall __packet_parser(size_t packet_size) {
+        Packet* packet = (Packet*)this->recv_data.data();
+        switch (packet->type) {
+            case PACKET_TYPE_5:
+                if (
+                    packet_size == sizeof(Packet5) &&
+                    this->parent.addr == this->recv_addr
+                ) {
+                    Packet5* packet5 = (Packet5*)packet;
+                    if (this->parent.__dword_28 == packet5->__dword_4) {
+
+                        Packet1 packet1 = {
+                            .type = PACKET_TYPE_1,
+                            .child_index = this->parent.__int_24,
+                            .__dword_4 = packet5->__dword_4,
+                            .__dword_8 = packet5->__dword_8
+                        };
+
+                        this->socket->__send_to(packet1, this->parent.addr);
+                    }
+                }
+                break;
+            case PACKET_TYPE_6:
+                if (packet_size == sizeof(Packet6)) {
+                    Packet6* packet6 = (Packet6*)packet;
+                    if (packet6->child_index < this->child_array_size) {
+                        ConnectionData& child = this->child_array[packet6->child_index];
+                        if (
+                            this->recv_addr == child.addr &&
+                            child.__dword_28 == packet6->__dword_4
+                        ) {
+                            child.delay = packet6->delay;
+                            child.__int_30 = packet6->__dword_8;
+                            child.__uint_2C = 0;
+
+                            Packet0 packet0 = {
+                                .type = PACKET_TYPE_0,
+                                .__dword_4 = packet6->__dword_4,
+                                .__dword_8 = packet6->__dword_10
+                            };
+                            this->socket->__send_to(packet0, child.addr);
+                        }
+                    }
+                }
+                break;
+            case PACKET_TYPE_0:
+                if (
+                    packet_size == sizeof(Packet0) &&
+                    this->parent.addr == this->recv_addr
+                ) {
+                    Packet0* packet0 = (Packet0*)packet;
+                    if (this->parent.__dword_28 == packet0->__dword_4) {
+                        // something with QPC diffs
+                    }
+                }
+                break;
+            case PACKET_TYPE_1:
+                if (packet_size == sizeof(Packet1)) {
+                    Packet1* packet1 = (Packet1*)packet;
+                    if (packet1->child_index < this->child_array_size) {
+                        ConnectionData& child = this->child_array[packet1->child_index];
+                        if (
+                            child.addr == this->recv_addr &&
+                            child.__dword_28 == packet1->__dword_4
+                        ) {
+                            // something with QPC diffs
+                        }
+                    }
+                }
+                break;
+            case PACKET_TYPE_7:
+                if (packet_size == sizeof(Packet7)) {
+                    Packet7* packet7 = (Packet7*)packet;
+                    Packet7 new_packet7;
+                    switch (packet7->__ubyte_1) {
+                        default:
+                            // ???
+                            break;
+                        case 1:
+                            new_packet7.__ubyte_1 = 2;
+                            new_packet7.addr = this->recv_addr;
+                            this->socket->__send_to(new_packet7, this->__addr_7C);
+                            break;
+                        case 0:
+                            new_packet7.__ubyte_1 = 1;
+                            new_packet7.addr = this->recv_addr;
+                            this->socket->__send_to(new_packet7, packet7->addr);
+                            break;
+                    }
+                }
+                break;
+            case PACKET_TYPE_2:
+                if (packet_size == sizeof(Packet2)) {
+                    Packet2* packet2 = (Packet2*)packet;
+
+                    Packet3 packet3 = {
+                        .type = PACKET_TYPE_3,
+                        .addr = this->recv_addr
+                    };
+                    this->socket->__send_to(packet3, packet2->addr);
+                }
+                break;
+            case PACKET_TYPE_3:
+                if (packet_size == sizeof(Packet3)) {
+                    Packet3* packet3 = (Packet3*)packet;
+
+                    Packet4 packet4 = {
+                        .type = PACKET_TYPE_4
+                    };
+                    this->socket->__send_to(packet4, packet3->addr);
+                }
+                break;
+            case PACKET_TYPE_4:
+                if (packet_size == sizeof(Packet4)) {
+                    this->__addr_7C = this->recv_addr;
+                    if (this->parent.state == 4) {
+                        this->parent.state = 5;
+                    }
+                }
+                break;
+            case PACKET_TYPE_8:
+                if (packet_size == sizeof(Packet8)) {
+                    this->__handle_packet_8(this->recv_addr, (Packet8*)packet);
+                }
+                break;
+            case PACKET_TYPE_9: {
+                Packet9* packet9 = (Packet9*)packet;
+
+                if (
+                    packet_size == packet9->__ushort_1E - packet9->__ushort_1C + 36
+                ) {
+                    this->__handle_packet_9(this->recv_addr, packet9);
+                }
+                break;
+            }
+            case PACKET_TYPE_11: {
+                Packet11* packet11 = (Packet11*)packet;
+
+                if (
+                    packet_size == packet11->__ushort_2A - packet11->__ushort_28 + 48 &&
+                    this->__addr_7C == this->recv_addr
+                ) {
+                    this->__handle_packet_11(this->recv_addr, packet11);
+                }
+                break;
+            }
+            case PACKET_TYPE_12: {
+                Packet12* packet12 = (Packet12*)packet;
+
+                if (
+                    packet_size == packet12->__ushort_A - packet12->__ushort_8 + 16 &&
+                    this->__addr_7C == this->recv_addr
+                ) {
+                    this->__handle_packet_12(GARBAGE_ARG(void*), packet12);
+                }
+                break;
+            }
+            case PACKET_TYPE_13:
+                if (packet_size == sizeof(Packet13)) {
+                    this->__handle_packet_13(this->recv_addr, (Packet13*)packet);
+                }
+                break;
+            case PACKET_TYPE_15:
+                if (packet_size == sizeof(Packet15)) {
+                    this->__handle_packet_15(GARBAGE_ARG(void*), GARBAGE_ARG(void*));
+                }
+                break;
+            case PACKET_TYPE_16:
+                if (packet_size == sizeof(Packet16)) {
+                    Packet16* packet16 = (Packet16*)packet;
+                    if (packet16->child_index < this->child_array_size) {
+                        this->__handle_packet_16(this->recv_addr, packet16->child_index);
+                    }
+                }
+                break;
+            case PACKET_TYPE_17:
+                this->__connection_9C.addr == this->recv_addr;
+                break;
+            case PACKET_TYPE_18:
+
+            case PACKET_TYPE_19:
+        }
+    }
+};
+
 }
 
 namespace Manbow {
-    struct SqFileReader : TF4::PackageReader {
 
-        // Method 8
-        // Rx422E0
-        virtual bool thiscall open(const char* path) {
-            return this->TF4::PackageReader::open(path, NULL);
-        }
-    };
+struct SqFileReader : TF4::PackageReader {
+
+    // Method 8
+    // Rx422E0
+    virtual bool thiscall open(const char* path) {
+        return this->TF4::PackageReader::open(path, NULL);
+    }
+};
+
 }
 
 #include <mutex>
@@ -1485,10 +2818,10 @@ struct AsyncLobbyClient : AsyncTcpSSLClient {
     int __dword_414; // 0x414
     uint32_t __time_418; // 0x418
     int __dword_41C; // 0x41C
-    uint8_t __byte_420; // 0x420
+    bool __bool_420; // 0x420
     // 0x421
     std::string __string_424; // 0x424 opponent nick?
-    char __byte_43C; // 0x43C
+    bool __bool_43C; // 0x43C
     // 0x43D
     std::string __recv_str; // 0x440
     //AsyncLobbyClientInnerC __innerC_458; // 0x458
@@ -1506,10 +2839,10 @@ struct AsyncLobbyClient : AsyncTcpSSLClient {
         this->set_lobby_user_state(LOBBY_CLOSED);
         this->__dword_3FC = 0;
         this->__dword_41C = 0;
-        this->__byte_420 = 0;
+        this->__bool_420 = false;
         this->__time_418 = 0;
         this->__dword_414 = 0;
-        this->__byte_43C = 0;
+        this->__bool_43C = false;
         this->max_nick_length = 10;
         this->set_strike_factor(1000, 1000);
     }
@@ -1538,7 +2871,7 @@ struct AsyncLobbyClient : AsyncTcpSSLClient {
         }
         if (
             this->__lobby_state == LOBBY_WAIT_INCOMING &&
-            this->__byte_420 != 0
+            this->__bool_420
         ) {
             return LOBBY_STATE_102;
         }
@@ -1554,7 +2887,7 @@ struct AsyncLobbyClient : AsyncTcpSSLClient {
         if (arg == LOBBY_WAIT_INCOMING) {
             this->__dword_3FC = 0;
             this->__dword_41C = 0;
-            this->__byte_420 = 0;
+            this->__bool_420 = false;
         }
         if (arg == LOBBY_MATCHING) {
             this->match_host = "";
@@ -1657,7 +2990,7 @@ struct AsyncLobbyClient : AsyncTcpSSLClient {
         this->__lobby_nameB = lobby_nameB;
         this->match_host = "";
         this->__match_user_data_str = "";
-        this->__byte_43C = 0;
+        this->__bool_43C = false;
         this->set_lobby_user_state(LOBBY_CLOSED);
         // crit section things
 
@@ -1822,7 +3155,7 @@ struct AsyncLobbyClient : AsyncTcpSSLClient {
                 }
                 default:
                     if (code >= 400 && code < 500) {
-                        this->__byte_43C = 1;
+                        this->__bool_43C = true;
                         this->socket_state = SOCKET_STATE_4;
                         return;
                     }
@@ -1960,7 +3293,7 @@ struct AsyncLobbyClient : AsyncTcpSSLClient {
         ) {
             int current_time = timeGetTime();
             int time_since_last = current_time - this->__time_418;
-            if (!this->__byte_420) {
+            if (!this->__bool_420) {
 
                 char buffer[2048] = "";
 
@@ -1972,7 +3305,7 @@ struct AsyncLobbyClient : AsyncTcpSSLClient {
                 // send buffer
 
                 this->__time_418 = current_time;
-                this->__byte_420 = 1;
+                this->__bool_420 = true;
 
                 this->__string_424 = nick;
                 this->__match_user_data_str = message_parts[2];

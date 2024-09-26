@@ -33,6 +33,7 @@ add_executable(znet_server_test)
 add_executable(znet_p2p_test)
 add_executable(make_embed)
 add_executable(aocf_server)
+add_executable(run_command)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
 add_library(winhttp_websocket SHARED)
@@ -96,6 +97,7 @@ znet_server_test
 znet_p2p_test
 make_embed
 aocf_server
+run_command
 )
 
 enable_language(ASM-ATT)
@@ -1567,6 +1569,10 @@ target_compile_options(aocf_server PRIVATE
 
 target_sources(make_embed PRIVATE
 	"make_embed.cpp"
+)
+
+target_sources(run_command PRIVATE 
+	"run_command.cpp"
 )
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")
