@@ -113,7 +113,7 @@ static inline size_t uint16_to_hex_strbuf(uint16_t value, T* text_buffer) {
 	do {
 		uint16_t digit = temp & 0xF;
 		temp >>= 2;
-		text_buffer[digit_offset] = (digit < 10 ? (T)'0' : (T)'A') + digit;
+		text_buffer[digit_offset] = (digit < 10 ? (T)'0' : (T)('A' - 10)) + digit;
 	} while (digit_offset--);
 	return ret;
 }
@@ -159,6 +159,22 @@ static inline size_t getsn_newline(char(&str)[N]) {
 	size_t length = strcspn(str, "\r\0");
 	str[length] = '\n';
 	return length;
+}
+
+constexpr size_t seconds_as_ms(size_t seconds) {
+	return seconds * 1000;
+}
+
+constexpr size_t seconds_as_ms(double seconds) {
+	return (size_t)(seconds * 1000.0);
+}
+
+constexpr size_t operator ""_secms(unsigned long long seconds) {
+	return seconds_as_ms((size_t)seconds);
+}
+
+constexpr size_t operator ""_secms(long double seconds) {
+	return seconds_as_ms((double)seconds);
 }
 
 #endif

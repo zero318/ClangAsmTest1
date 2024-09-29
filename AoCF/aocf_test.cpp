@@ -20,6 +20,8 @@
 #include <stack>
 #include <queue>
 #include <bitset>
+#include <forward_list>
+#include <list>
 
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -1683,6 +1685,11 @@ struct UDPInnerB {
     gnu_noinline void thiscall __sub_r1717A0() {
 
     }
+
+    // Rx17A940
+    gnu_noinline void thiscall __sub_r17A940() {
+
+    }
 };
 
 // size: 0x14+
@@ -1921,9 +1928,259 @@ struct Packet18 {
 // size: 0x2+
 struct Packet19 {
     PacketType type; // 0x0
-    uint8_t __ubyte_1; // 0x1
+    uint8_t child_index; // 0x1
     unsigned char data[]; // 0x2
 };
+
+}
+
+typedef void* HSQUIRRELVM;
+
+typedef struct SQObject HSQOBJECT;
+
+struct SQObject {
+    int _type;
+    void* _unVal;
+};
+
+
+namespace Sqrat {
+
+// size: 0x14
+    struct Object {
+        // void* vftable; // 0x0
+        HSQUIRRELVM vm; // 0x4
+        HSQOBJECT obj; // 0x8
+        bool release; // 0x10
+        // 0x11
+    };
+
+}
+
+// size: 0x10
+struct UnknownG {
+    short __short_0; // 0x0
+    // 0x2
+};
+
+// size: 0x38
+struct UnknownH {
+    short __short_0; // 0x0
+    // 0x2
+};
+
+
+namespace Manbow {
+
+struct NetworkNode {
+    // void* vftable; // 0x0
+    // 0x4
+
+    std::list<UnknownG> __list_18; // 0x18
+    Sqrat::Object __sq_object_20; // 0x20
+    int __dword_38; // 0x38
+    int __dword_3C; // 0x3C
+    int __dword_40; // 0x40
+    Sqrat::Object __sq_object_44; // 0x44
+    int __dword_5C; // 0x5C
+    Sqrat::Object __sq_object_60; // 0x60
+    Sqrat::Object __sq_object_74; // 0x74
+    Sqrat::Object __sq_object_88; // 0x88
+    Sqrat::Object __sq_object_9C; // 0x9C
+    int __dword_B0; // 0xB0
+    int __dword_B4; // 0xB4
+    int __dword_B8; // 0xB8
+    int __dword_BC; // 0xBC
+    int __dword_C0; // 0xC0
+    int __dword_C4; // 0xC4
+    int __dword_C8; // 0xC8
+    int __dword_CC; // 0xCC
+    std::vector<void*> __vector_D0; // 0xD0 UNKNOWN TYPE
+    Sqrat::Object __sq_object_DC; // 0xDC
+    Sqrat::Object __sq_object_F0; // 0xF0
+    Sqrat::Object __sq_object_104; // 0x104
+    Sqrat::Object __sq_object_118; // 0x118
+    Sqrat::Object __sq_object_12C; // 0x12C
+    Sqrat::Object __sq_object_140; // 0x140
+    Sqrat::Object __sq_object_154; // 0x154
+    Sqrat::Object __sq_object_168; // 0x168
+    Sqrat::Object __sq_object_168; // 0x168
+    Sqrat::Object __sq_object_17C; // 0x17C
+    Sqrat::Object __sq_object_190; // 0x190
+    Sqrat::Object __sq_object_190; // 0x190
+    int __dword_1A4; // 0x1A4
+    int __dword_1A8; // 0x1A8
+    // 0x1AC
+
+    // Some standard mutex thing here
+
+    std::list<UnknownH> __list_1E0; // 0x1E0
+    std::list<UnknownH> __list_1E8; // 0x1E8
+    // 0x1F0
+
+    // Method 0
+    // RxD8220
+    virtual void thiscall __method_0(int arg1, int arg2, int arg3, int arg4) {
+
+    }
+
+    // Method 4
+    // RxD8610
+    virtual void thiscall __method_4(size_t arg1) {
+
+    }
+
+    // Method 8 = purecall
+    virtual void thiscall __method_8(size_t index, uint8_t* data, size_t size) = NULL;
+
+    // Method C
+    // RxD8860
+    virtual void thiscall __method_C(int arg1, int arg2, int arg3, int arg4) {
+
+    }
+
+    // Method 10
+    // RxD8B60
+    virtual void thiscall __method_10(int arg1, int arg2, int arg3) {
+
+    }
+
+    // Method 14
+    // RxD8E80
+    virtual void thiscall __method_14() {
+
+    }
+
+    // Method 18 = purecall
+    virtual void thiscall __method_18(uint8_t* data, size_t size) = NULL;
+
+
+    // Method 1C
+    // RxDAF10
+    virtual ~NetworkNode() {
+
+    }
+
+    // Method 20 = purecall
+    virtual int thiscall __method_20(int arg1) = NULL;
+
+
+    // RxDB940
+    void thiscall __sub_rDB940(size_t index, uint8_t* data) {
+
+    }
+
+    // RxE3C60
+    void thiscall __sub_rE3C60(size_t index, uint8_t* data, size_t size) {
+
+    }
+};
+
+// RxD5860
+template<typename T>
+static inline int thiscall __network_node_method_20(T* self, int arg1) {
+
+
+    return arg1;
+}
+
+// size: 0x214
+struct NetworkClientImpl : NetworkNode {
+    // NetworkNode base; // 0x0
+    int __dword_1F0; // 0x1F0
+    int __dword_1F4; // 0x1F4
+    // 0x1F8
+    int __dword_1FC; // 0x1FC
+    int __dword_200; // 0x200
+    int __dword_204; // 0x204
+    int __dword_208; // 0x208
+    int __dword_20C; // 0x20C
+    // 0x210
+
+    // Method 8
+    // RxDFD10
+    virtual void thiscall __method_8(size_t index, uint8_t* data, size_t size) {
+        switch (*data) {
+            case 0:
+            case 1:
+            case 9:
+                this->__sub_rDB940(index, data);
+                break;
+            case 14:
+                this->__sub_rE3C60(index, data, size);
+                break;
+        }
+    }
+
+    // Method 18
+    // RxDFDF0
+    virtual void thiscall __method_18(uint8_t* data, size_t size) {
+        switch (*data) {
+            case 0:
+            case 1:
+            case 4:
+            case 6:
+            case 8:
+            case 10:
+            case 11:
+            case 12:
+            case 13:
+            case 14:
+        }
+    }
+
+    // Method 20
+    virtual int __method_20(int arg1) {
+        return __network_node_method_20(this, arg1);
+    }
+};
+
+// size: 0x218
+struct NetworkServerImpl : NetworkNode {
+    // NetworkNode base; // 0x0
+    int __dword_1F0; // 0x1F0
+    int __dword_1F4; // 0x1F4
+    int __dword_1F8; // 0x1F8
+    int __dword_1FC; // 0x1FC
+    int __dword_200; // 0x200
+    int __dword_204; // 0x204
+    int __dword_208; // 0x208
+    // 0x20C
+
+    int __dword_214; // 0x214
+    // 0x218
+
+
+    // Method 8
+    // RxD60B0
+    virtual void thiscall __method_8(size_t index, uint8_t* data, size_t size) {
+        switch (*data) {
+            case 0:
+            case 1:
+            case 6:
+            case 8:
+            case 9:
+                this->__sub_rDB940(index, data);
+                break;
+            case 14:
+                this->__sub_rE3C60(index, data, size);
+                break;
+        }
+    }
+
+    // Method 18
+    virtual void thiscall __method_18(uint8_t* data, size_t size) {
+    }
+
+    // Method 20
+    virtual int __method_20(int arg1) {
+        return __network_node_method_20(this, arg1);
+    }
+};
+
+}
+
+namespace TF4 {
 
 
 // size: 0x24C
@@ -1931,7 +2188,7 @@ struct UDP : IUDP {
     // void* vftable; // 0x0
     void* __mutex_related_4; // 0x4
     int __dword_8; // 0x8 Something about "boost udp service resolver"?
-    unknown_fields(0x4); // 0xC
+    void* __ptr_C; // 0xC
     int __dword_array_10[4]; // 0x10
     BoostSocket* socket; // 0x20
     int __dword_24; // 0x24
@@ -1947,9 +2204,7 @@ struct UDP : IUDP {
     unsigned char __byte_1D4; // 0x1D4
     probably_padding_bytes(0x3); // 0x1D5
     UDPInnerB __innerB_1D8; // 0x1D8
-    void* __ptr_1DC; // 0x1DC std::vector<BoostSockAddr> maybe?
-    int __dword_1E0; // 0x1E0
-    int __dword_1E4; // 0x1E4
+    std::vector<BoostSockAddr> __addr_vector_1DC; // 0x1DC
     uint32_t __uint_1E8; // 0x1E8
     uint32_t __uint_1EC; // 0x1EC These are counters of some sort
     uint32_t __uint_1F0; // 0x1F0
@@ -1963,7 +2218,7 @@ struct UDP : IUDP {
     std::vector<uint8_t> recv_data; // 0x234
     void* __ptr_240; // 0x240
     int __dword_244; // 0x244
-    void* __manbow_network_impl; // 0x248
+    Manbow::NetworkNode* __manbow_network_impl; // 0x248
     // 0x24C
 
     UDP() {
@@ -2056,6 +2311,119 @@ struct UDP : IUDP {
         return false;
     }
 
+    // Method 4
+    // Rx172920
+    virtual void thiscall __method_4() {
+        // if () // some atomic thing with offset C
+        {
+            this->__method_10();
+
+            for (size_t i = 0; i < this->child_array_size; ++i) {
+                this->__method_28(i, this->__addr_28 != this->__connection_9C.addr);
+            }
+
+            this->__byte_1D4 = 0;
+            this->__byte_210 = 0;
+
+            if (this->__innerB_98.__sub_r34D630()) {
+                this->__innerB_98.__sub_r1717A0();
+            }
+            if (this->__innerB_1D8.__sub_r34D630()) {
+                this->__innerB_1D8.__sub_r1717A0();
+            }
+
+            // another atomic thing with offset C
+
+            this->__innerB_214.__sub_r1717A0();
+
+            if (auto* children = this->child_array) {
+                delete[] children;
+                this->child_array = NULL;
+            }
+        }
+    }
+
+    // Method 8
+    // Rx178590
+    virtual bool thiscall __method_8(char* str, int arg2, void* data, uint16_t size) {
+
+        this->__byte_1D4 = 0;
+        if (this->__innerB_1D8.__sub_r34D630()) {
+            this->__innerB_1D8.__sub_r1717A0();
+        }
+
+        if (size < UINT16_MAX) {
+            if (size) {
+                this->parent.__vector_48.resize(size);
+                memcpy(this->parent.__vector_48.data(), data, size);
+            }
+            else {
+                // vector_48 thing
+            }
+        }
+        // vector_54 thing
+
+        if (str) {
+            this->parent.state = 1;
+
+            // udp service resolver thing
+
+            // sets this->connection_9C.addr
+        }
+
+        this->parent.__int_24 = 0;
+
+        // vector_54 thing
+
+        this->parent.__dword_28 = __calc_qpc_delta();
+
+        {
+            // boost::unique_lock lock(this->__mutex_1F4);
+
+            this->__addr_vector_1DC[0] = this->__connection_9C.addr;
+            this->__addr_7C = this->__addr_vector_1DC[0];
+            this->__addr_60 = this->__addr_7C;
+        }
+
+        this->__byte_1D4 = 1;
+
+        // ???
+
+        this->__innerB_1D8.__sub_r1717A0();
+
+        return true;
+    }
+
+    // Method C
+    // Rx1789B0
+    virtual void thiscall __method_C() {
+
+        this->__byte_1D4 = 0;
+        if (this->__innerB_1D8.__sub_r34D630()) {
+            this->__innerB_1D8.__sub_r1717A0();
+        }
+
+        this->parent.__int_24 = 0;
+
+        // vector_54 thing
+
+        this->parent.__dword_28 = __calc_qpc_delta();
+
+        {
+            // boost::unique_lock lock(this->__mutex_1F4);
+
+            this->__addr_vector_1DC[0] = this->__connection_9C.addr;
+            this->__addr_7C = this->__addr_vector_1DC[0];
+            this->__addr_60 = this->__addr_7C;
+        }
+
+        this->__byte_1D4 = 1;
+
+        // ???
+
+        this->__innerB_1D8.__sub_r1717A0();
+    }
+
     // Method 10
     // Rx179160
     virtual void thiscall __method_10() {
@@ -2082,7 +2450,7 @@ struct UDP : IUDP {
             packet.__dword_4 = this->parent.__dword_28;
 
             if (auto* manbow_network = this->__manbow_network_impl) {
-                // manbow_network->__method_14();
+                manbow_network->__method_14();
             }
         }
 
@@ -2105,7 +2473,7 @@ struct UDP : IUDP {
             // boost::unique_lock lock(this->__mutex_208);
 
             ((Packet19*)this->__vector_1FC.data())->type = PACKET_TYPE_19;
-            ((Packet19*)this->__vector_1FC.data())->__ubyte_1 = this->parent.__int_24;
+            ((Packet19*)this->__vector_1FC.data())->child_index = this->parent.__int_24;
             memcpy(((Packet19*)this->__vector_1FC.data())->data, data, size);
 
             this->socket->__send_to(*(Packet19*)this->__vector_1FC.data(), this->parent.addr);
@@ -2172,7 +2540,7 @@ struct UDP : IUDP {
 
     // Method 28
     // Rx172F60
-    virtual void thiscall __method_28(size_t index, int Arg2) {
+    virtual void thiscall __method_28(size_t index, bool Arg2) {
         ConnectionData& child = this->child_array[index];
 
         BoostSockAddr dest;
@@ -2194,7 +2562,7 @@ struct UDP : IUDP {
             packet.__byte_8 = this->__addr_28 != this->__connection_9C.addr & Arg2;
 
             if (auto* manbow_network = this->__manbow_network_impl) {
-                // manbow_network->__method_4(index);
+                manbow_network->__method_4(index);
             }
         }
 
@@ -2269,7 +2637,7 @@ struct UDP : IUDP {
 
     // Method 40
     // Rx171FE0
-    virtual void thiscall set_network_impl(void* network_ptr) {
+    virtual void thiscall set_network_impl(Manbow::NetworkNode* network_ptr) {
         this->__manbow_network_impl = network_ptr;
     }
 
@@ -2562,8 +2930,28 @@ struct UDP : IUDP {
                 this->__connection_9C.addr == this->recv_addr;
                 break;
             case PACKET_TYPE_18:
-
-            case PACKET_TYPE_19:
+                if (this->parent.addr == this->recv_addr) {
+                    this->parent.__uint_2C = 0;
+                    if (auto* manbow_network = this->__manbow_network_impl) {
+                        manbow_network->__method_18(((Packet18*)packet)->data, packet_size - sizeof(Packet18));
+                    }
+                }
+                break;
+            case PACKET_TYPE_19: {
+                Packet19* packet19 = (Packet19*)packet;
+                size_t index = packet19->child_index;
+                if (index < this->child_array_size) {
+                    ConnectionData& child = this->child_array[index];
+                    child.state = 0;
+                    if (child.addr == this->recv_addr) {
+                        child.__uint_2C = 0;
+                        if (auto* manbow_network = this->__manbow_network_impl) {
+                            manbow_network->__method_8(index, packet19->data, packet_size - sizeof(Packet19));
+                        }
+                    }
+                }
+                break;
+            }
         }
     }
 };

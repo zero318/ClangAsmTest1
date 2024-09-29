@@ -40,6 +40,123 @@ using namespace zero::thread;
 
 #include "common.h"
 
+enum PacketType : uint8_t {
+	// Original packets
+	PACKET_TYPE_0 = 0,
+	PACKET_TYPE_1 = 1,
+	PACKET_TYPE_2 = 2,
+	PACKET_TYPE_3 = 3,
+	PACKET_TYPE_4 = 4,
+	PACKET_TYPE_5 = 5,
+	PACKET_TYPE_6 = 6,
+	PACKET_TYPE_7 = 7,
+	PACKET_TYPE_8 = 8,
+	PACKET_TYPE_9 = 9,
+	PACKET_TYPE_10 = 10,
+	PACKET_TYPE_11 = 11,
+	PACKET_TYPE_12 = 12,
+	PACKET_TYPE_13 = 13,
+	PACKET_TYPE_14 = 14,
+	PACKET_TYPE_15 = 15,
+	PACKET_TYPE_16 = 16,
+	PACKET_TYPE_17 = 17,
+	PACKET_TYPE_18 = 18,
+	PACKET_TYPE_19 = 19,
+
+	// Custom packets
+	PACKET_TYPE_LOBBY_NAME = 0x80,
+	PACKET_TYPE_PUNCH_PING = 0x81,
+	PACKET_TYPE_PUNCH_WAIT = 0x82,
+	PACKET_TYPE_PUNCH_CONNECT = 0x83,
+	PACKET_TYPE_PUNCH_PEER = 0x84,
+	PACKET_TYPE_PUNCH = 0x85,
+	PACKET_TYPE_IPV6_TEST = 0x88,
+};
+
+struct PacketLayout {
+	PacketType type; // 0x0
+	unsigned char data[]; // 0x1
+};
+
+// size: 0x8+
+struct PacketLobbyName {
+	PacketType type; // 0x0
+	// 0x1
+	size_t length; // 0x4
+	alignas(4) char name[]; // 0x8
+};
+
+// size: 0x1
+struct PacketPunchPing {
+	PacketType type; // 0x0
+	// 0x1
+};
+
+static constexpr PacketPunchPing PUNCH_PING_PACKET = {
+	.type = PACKET_TYPE_PUNCH_PING
+};
+
+static constexpr uint8_t LOCAL_IS_IPV6_MASK = 0b01;
+static constexpr uint8_t DEST_IS_IPV6_MASK = 0b10;
+
+static constexpr size_t IP_BYTE_SIZE = (std::max)(sizeof(IP4_ADDRESS), sizeof(IP6_ADDRESS));
+
+// size: 0x4+
+struct PacketPunchWait {
+	PacketType type; // 0x0
+	uint8_t is_ipv6; // 0x1
+	uint16_t local_port; // 0x2
+	alignas(4) unsigned char ip[]; // 0x4
+
+	ipaddr_any local_ip() const {
+		return ipaddr_any(this->is_ipv6 & LOCAL_IS_IPV6_MASK, this->local_port, this->ip);
+	}
+};
+
+// size: 0x8+
+struct PacketPunchConnect {
+	PacketType type; // 0x0
+	uint8_t is_ipv6; // 0x1
+	uint16_t local_port; // 0x2
+	uint16_t dest_port; // 0x4
+	// 0x6
+	alignas(4) unsigned char ips[]; // 0x8
+
+	ipaddr_any local_ip() const {
+		return ipaddr_any(this->is_ipv6 & LOCAL_IS_IPV6_MASK, this->local_port, (void*)&this->ips[0]);
+	}
+
+	ipaddr_any dest_ip() const {
+		return ipaddr_any(this->is_ipv6 & DEST_IS_IPV6_MASK, this->dest_port, (void*)&this->ips[IP_BYTE_SIZE]);
+	}
+};
+
+// size: 0x4
+struct PacketPunchPeer {
+	PacketType type; // 0x0
+	uint8_t is_ipv6; // 0x1
+	uint16_t remote_port; // 0x2
+	alignas(4) unsigned char ip[]; // 0x4
+
+	PacketPunchPeer(bool is_ipv6, uint16_t port, const void* ip)
+		: type(PACKET_TYPE_PUNCH), is_ipv6(is_ipv6), remote_port(port)
+	{
+		if (is_ipv6) {
+			*(IP6_ADDRESS*)this->ip = *(IP6_ADDRESS*)ip;
+		} else {
+			*(IP4_ADDRESS*)this->ip = *(IP4_ADDRESS*)ip;
+		}
+	}
+};
+
+// size: 0x10
+struct PacketIPv6Test {
+	PacketType type; // 0x0
+	unsigned char padding[7]; // 0x1
+	alignas(8) LARGE_INTEGER tsc; // 0x8
+	// 0x10
+};
+
 enum ArgIndex {
 	PROGRAM_NAME_ARG = 0,
 	PORT_ARG = 1,
@@ -47,19 +164,38 @@ enum ArgIndex {
 };
 
 static constexpr size_t TCP_BUFFER_SIZE = 4096;
-static constexpr size_t TCP_SLEEP_TIME = 10;
+static constexpr size_t TCP_SLEEP_TIME = 0.01_secms;
 static constexpr size_t UDP_BUFFER_SIZE = 64;
-static constexpr size_t UDP_SLEEP_TIME = 10;
+static constexpr size_t UDP_SLEEP_TIME = 0.01_secms;
 
-static constexpr size_t UDP_PORT_TIMEOUT = 500;
-static constexpr size_t UDP_PORT_ITER_DELAY = 10;
+static constexpr size_t UDP_PORT_TIMEOUT = 0.5_secms;
+static constexpr size_t UDP_PORT_ITER_DELAY = 0.01_secms;
 
 static constexpr size_t UDP_PORT_ITERS = UDP_PORT_TIMEOUT / UDP_PORT_ITER_DELAY;
 
-static constexpr size_t CLIENT_SETUP_TIMEOUT = 1000;
-static constexpr size_t PONG_TIMEOUT = 10000;
+static constexpr size_t CLIENT_SETUP_TIMEOUT = 1_secms;
+static constexpr size_t JOIN_SETUP_TIMEOUT = 5_secms;
+static constexpr size_t PONG_TIMEOUT = 10_secms;
 
 static constexpr size_t MAX_NICKNAME_LENGTH = 32;
+
+
+static constexpr size_t PACKET_TYPE_LOBBY_NAME_MAX_SIZE = sizeof(PacketLobbyName) + MAX_NICKNAME_LENGTH;
+static constexpr size_t PACKET_TYPE_PUNCH_WAIT_MAX_SIZE = sizeof(PacketPunchWait) + IP_BYTE_SIZE;
+static constexpr size_t PACKET_TYPE_PUNCH_CONNECT_MAX_SIZE = sizeof(PacketPunchConnect) + IP_BYTE_SIZE * 2;
+static constexpr size_t PACKET_TYPE_IPV6_TEST_MAX_SIZE = sizeof(PacketIPv6Test);
+
+static constexpr size_t PACKET_TYPE_PUNCH_PEER_MAX_SIZE = sizeof(PacketPunchPeer) + IP_BYTE_SIZE;
+static constexpr size_t PACKET_TYPE_PUNCH_PEER_IPV4_SIZE = sizeof(PacketPunchPeer) + sizeof(IP4_ADDRESS);
+static constexpr size_t PACKET_TYPE_PUNCH_PEER_IPV6_SIZE = sizeof(PacketPunchPeer) + sizeof(IP6_ADDRESS);
+
+static constexpr size_t MAX_SERVER_UDP_PACKET = (std::max)({
+													PACKET_TYPE_LOBBY_NAME_MAX_SIZE,
+													PACKET_TYPE_PUNCH_WAIT_MAX_SIZE,
+													PACKET_TYPE_PUNCH_CONNECT_MAX_SIZE,
+													PACKET_TYPE_PUNCH_PEER_MAX_SIZE,
+													PACKET_TYPE_IPV6_TEST_MAX_SIZE
+												});
 
 enum RoomType : uint8_t {
 	INVALID_ROOM,
@@ -107,8 +243,44 @@ struct UserData {
 	}
 };
 
+static constexpr size_t PUNCH_DATA_TIMEOUT = 20_secms;
+static constexpr size_t PUNCH_DATA_FULL_PING_TIMER = PUNCH_DATA_TIMEOUT / UDP_SLEEP_TIME;
+static constexpr size_t PUNCH_DATA_PING_TIMER_SEND_THRESHOLD = PUNCH_DATA_FULL_PING_TIMER / 2;
+static constexpr size_t PUNCH_DATA_PING_SEND_REPEATS = 5;
+static constexpr size_t PUNCH_DATA_PING_SEND_INTERVAL = PUNCH_DATA_PING_TIMER_SEND_THRESHOLD / PUNCH_DATA_PING_SEND_REPEATS;
+
+static_assert(PUNCH_DATA_FULL_PING_TIMER < UINT16_MAX);
+
+struct PunchData {
+	bool alive;
+	uint16_t ping_timer;
+	ipaddr_any local_addr;
+	sockaddr_any remote_addr;
+
+	PunchData(const ipaddr_any& local_addr, const sockaddr_any& remote_addr)
+		: alive(true), ping_timer(PUNCH_DATA_FULL_PING_TIMER),
+		local_addr(local_addr), remote_addr(remote_addr)
+	{}
+
+	void reset_ping_timer() {
+		this->ping_timer = PUNCH_DATA_FULL_PING_TIMER;
+	}
+
+	bool tick_ping_timer() {
+		return --this->ping_timer;
+	}
+
+	bool ping_timer_send() const {
+		return
+			this->ping_timer <= PUNCH_DATA_PING_TIMER_SEND_THRESHOLD &&
+			!(this->ping_timer % PUNCH_DATA_PING_SEND_INTERVAL);
+	}
+};
+
 static std::unordered_map<std::string_view, UserData*> user_map;
 static std::shared_mutex user_mutex;
+
+static std::vector<PunchData> punch_data;
 
 using shared_mutex_lock = std::shared_lock<std::shared_mutex>;
 using unique_mutex_lock = std::unique_lock<std::shared_mutex>;
@@ -116,7 +288,7 @@ using unique_mutex_lock = std::unique_lock<std::shared_mutex>;
 template <typename L>
 static inline void shared_user_data(std::string_view user, const L& lambda) {
 	shared_mutex_lock lock(user_mutex);
-
+	
 	auto iter = user_map.find(user);
 	if (iter != user_map.end()) {
 		UserData* user_data = iter->second;
@@ -202,6 +374,35 @@ static inline void exclusive_iter_user_data(const L& lambda) {
 	}
 }
 
+static inline void insert_punch_data(const ipaddr_any& local_addr, const sockaddr_any& remote_addr) {
+	for (auto& punch_data : punch_data) {
+		if (!punch_data.alive) {
+			punch_data.alive = true;
+			punch_data.ping_timer = PUNCH_DATA_FULL_PING_TIMER;
+			punch_data.local_addr = local_addr;
+			punch_data.remote_addr = remote_addr;
+			return;
+		}
+	}
+	punch_data.emplace_back(local_addr, remote_addr);
+}
+
+template <typename L>
+static inline void find_punch_data(const L& lambda) {
+	for (auto& punch_data : punch_data) {
+		if (lambda(punch_data)) {
+			break;
+		}
+	}
+}
+
+template <typename L>
+static inline void iter_punch_data(const L& lambda) {
+	for (auto& punch_data : punch_data) {
+		lambda(punch_data);
+	}
+}
+
 static inline constexpr char REQUEST_LOGIN_REPLY[] = "E\n";
 
 static inline constexpr char NICK_IN_USE_REPLY[] = ": 433 E\n";
@@ -232,7 +433,7 @@ static inline constexpr std::string_view PASSWORD_VIEW = "PASS kzxmckfqbpqieh8rw
 
 int main(int argc, char* argv[]) {
 	if (argc < MIN_REQUIRED_ARGS) {
-		error_exit("aocf_server.exe <tcp_port> <udp_port>");
+		error_exit("aocf_server.exe <port>");
 	}
 
 	uint16_t port;
@@ -256,29 +457,103 @@ int main(int argc, char* argv[]) {
 						wait_for_keyboard();
 					});
 
+					//udp_socket.set_blocking_state(false);
+					udp_socket.set_receive_timeout(UDP_SLEEP_TIME);
+
 					zjthread udp_listen_thread([=](const std::atomic<uint8_t>& stop) {
 						do {
-							char text[MAX_NICKNAME_LENGTH + 1];
+							unsigned char buffer[MAX_SERVER_UDP_PACKET];
 
 							sockaddr_any peer_addr;
-							if (size_t receive_length = udp_socket.receive_text(text, peer_addr)) {
+							if (size_t receive_length = udp_socket.receive(buffer, peer_addr)) {
 
-								uint16_t peer_port = get_port(peer_addr);
+								PacketLayout* raw_packet = (PacketLayout*)buffer;
+								printf("UDP: %zu type %zu\n", receive_length, raw_packet->type);
+								switch (raw_packet->type) {
+									case PACKET_TYPE_LOBBY_NAME: {
 
-								printf("UDP :%s=%u\n", text, peer_port);
+										PacketLobbyName* packet = (PacketLobbyName*)raw_packet;
 
-								std::string_view peer_nickname_view{ text, receive_length };
+										uint16_t peer_port = get_port(peer_addr);
 
-								shared_user_data(peer_nickname_view, [peer_port](UserData* user_data) {
-									user_data->external_port = peer_port;
-								});
+										printf("NAMEPORT: %.*s = %u\n", packet->length, packet->name, peer_port);
 
-								//printf("UDP port set end\n");
+										std::string_view peer_nickname_view{ packet->name, packet->length };
+
+										shared_user_data(peer_nickname_view, [peer_port](UserData* user_data) {
+											user_data->external_port = peer_port;
+										});
+										//printf("UDP port set end\n");
+
+										break;
+									}
+									case PACKET_TYPE_PUNCH_PING: {
+										find_punch_data([&](PunchData& punch_data) {
+											if (
+												punch_data.alive &&
+												ports_match(punch_data.remote_addr, peer_addr) &&
+												ips_match(punch_data.remote_addr, peer_addr)
+											) {
+												punch_data.reset_ping_timer();
+												return true;
+											}
+											return false;
+										});
+										break;
+									}
+									case PACKET_TYPE_PUNCH_WAIT: {
+										PacketPunchWait* packet = (PacketPunchWait*)raw_packet;
+										insert_punch_data(packet->local_ip(), peer_addr);
+										break;
+									}
+									case PACKET_TYPE_PUNCH_CONNECT: {
+										PacketPunchConnect* packet = (PacketPunchConnect*)raw_packet;
+										ipaddr_any dest_addr = packet->dest_ip();
+										find_punch_data([&](PunchData& punch_data) {
+											if (
+												punch_data.alive &&
+												ports_match(punch_data.local_addr, dest_addr) &&
+												ips_match(punch_data.remote_addr, dest_addr)
+											) {
+												unsigned char buffer[PACKET_TYPE_PUNCH_PEER_MAX_SIZE];
+
+												// TODO: Attempt to map between v4 and v6 for compatibility
+
+												bool is_ipv6 = peer_addr.storage.ss_family == AF_INET6;
+												new (buffer) PacketPunchPeer(is_ipv6, get_port(peer_addr), peer_addr.get_ip_ptr());
+												udp_socket.send(buffer, is_ipv6 ? PACKET_TYPE_PUNCH_PEER_IPV6_SIZE : PACKET_TYPE_PUNCH_PEER_IPV4_SIZE, punch_data.remote_addr);
+												is_ipv6 = punch_data.remote_addr.storage.ss_family == AF_INET6;
+												new (buffer) PacketPunchPeer(is_ipv6, get_port(punch_data.remote_addr), punch_data.remote_addr.get_ip_ptr());
+												udp_socket.send(buffer, is_ipv6 ? PACKET_TYPE_PUNCH_PEER_IPV6_SIZE : PACKET_TYPE_PUNCH_PEER_IPV4_SIZE, peer_addr);
+												return true;
+											}
+											return false;
+										});
+										break;
+									}
+									case PACKET_TYPE_IPV6_TEST: {
+										//printf("IPv6 test received\n");
+										udp_socket.send(*(PacketIPv6Test*)buffer, peer_addr);
+										break;
+									}
+								}
 							}
-
-							Sleep(UDP_SLEEP_TIME);
+							iter_punch_data([&](PunchData& punch_data) {
+								if (punch_data.alive) {
+									if (punch_data.tick_ping_timer()) {
+										if (punch_data.ping_timer_send()) {
+											udp_socket.send(PUNCH_PING_PACKET, punch_data.remote_addr);
+										}
+									}
+									else {
+										printf("Killed punch client\n");
+										punch_data.alive = false;
+									}
+								}
+							});
+							//Sleep(UDP_SLEEP_TIME);
 						} while (!stop);
-						//printf("!!!!! UDP THREAD EXIT !!!!!\n");
+						printf("!!!!! UDP THREAD EXIT !!!!!\n");
 					});
 
 					do {
@@ -363,7 +638,7 @@ int main(int argc, char* argv[]) {
 
 											response_socket.send_text(REQUEST_JOIN_REPLY);
 
-											response_socket.set_receive_timeout(5000);
+											response_socket.set_receive_timeout(JOIN_SETUP_TIMEOUT);
 
 											std::string_view join_view;
 											if (receive_message(join_view)) {

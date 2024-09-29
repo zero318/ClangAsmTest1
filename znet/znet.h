@@ -27,6 +27,7 @@
 #include <atomic>
 #include <string>
 #include <string_view>
+#include <functional>
 
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -261,6 +262,7 @@ static inline constexpr bool map_ip_to_ipv4(const sockaddr* addr, IP4_ADDRESS& o
     }
 }
 
+template <bool byte_order_matters = true>
 uint16_t get_port(const sockaddr* addr) {
     uint16_t port = 0;
     switch (addr->sa_family) {
@@ -271,7 +273,11 @@ uint16_t get_port(const sockaddr* addr) {
             port = ((const sockaddr_in6*)addr)->sin6_port;
             break;
     }
-    return ntoh(port);
+    if constexpr (byte_order_matters) {
+        return ntoh(port);
+    } else {
+        return port;
+    }
 }
 
 static inline constexpr size_t MAX_ADDR_BUFF_SIZE = (std::max)(INET_ADDRSTRLEN, INET6_ADDRSTRLEN);
@@ -373,19 +379,19 @@ int sprint_ipv6(const IP6_ADDRESS& addr, T* buf) {
         */
         T* buf_write = buf;
         buf_write += uint16_to_hex_strbuf(__builtin_bswap16(addr.IP6Word[0]), buf_write);
-        *buf_write++ = ':';
+        *buf_write++ = (T)':';
         buf_write += uint16_to_hex_strbuf(__builtin_bswap16(addr.IP6Word[1]), buf_write);
-        *buf_write++ = ':';
+        *buf_write++ = (T)':';
         buf_write += uint16_to_hex_strbuf(__builtin_bswap16(addr.IP6Word[2]), buf_write);
-        *buf_write++ = ':';
+        *buf_write++ = (T)':';
         buf_write += uint16_to_hex_strbuf(__builtin_bswap16(addr.IP6Word[3]), buf_write);
-        *buf_write++ = ':';
+        *buf_write++ = (T)':';
         buf_write += uint16_to_hex_strbuf(__builtin_bswap16(addr.IP6Word[4]), buf_write);
-        *buf_write++ = ':';
+        *buf_write++ = (T)':';
         buf_write += uint16_to_hex_strbuf(__builtin_bswap16(addr.IP6Word[5]), buf_write);
-        *buf_write++ = ':';
+        *buf_write++ = (T)':';
         buf_write += uint16_to_hex_strbuf(__builtin_bswap16(addr.IP6Word[6]), buf_write);
-        *buf_write++ = ':';
+        *buf_write++ = (T)':';
         buf_write += uint16_to_hex_strbuf(__builtin_bswap16(addr.IP6Word[7]), buf_write);
         return buf_write - buf;
     }
@@ -411,6 +417,57 @@ int sprint_sockaddr(const sockaddr* addr, T* buf) {
             return sprint_ipv6(*(IP6_ADDRESS*)&((const sockaddr_in6*)addr)->sin6_addr, buf);
         default:
             return 0;
+    }
+}
+
+struct ipaddr_any {
+    uint16_t family;
+    uint16_t port;
+    union {
+        IP4_ADDRESS ipv4;
+        IP6_ADDRESS ipv6;
+    };
+
+    ipaddr_any() = default;
+
+    ipaddr_any(bool is_ipv6, uint16_t port, const void* ip)
+        : family(is_ipv6 ? AF_INET6 : AF_INET), port(hton(port))
+    {
+        if (is_ipv6) {
+            this->ipv6 = *(IP6_ADDRESS*)ip;
+
+        }
+        else {
+            this->ipv4 = *(IP4_ADDRESS*)ip;
+        }
+    }
+
+    bool compatible_with_ipv4() const {
+        if (this->family == AF_INET) {
+            return true;
+        }
+    }
+
+    const IP4_ADDRESS* compatible_ipv4() const {
+        switch (this->family) {
+            case AF_INET:
+                return &this->ipv4;
+            case AF_INET6:
+                if (is_ipv6_compatible_with_ipv4(this->ipv6)) {
+                    return &this->ipv6.IP6Dword[3];
+                }
+            default:
+                return NULL;
+        }
+    }
+};
+
+template <bool byte_order_matters = true>
+uint16_t get_port(const ipaddr_any& addr) {
+    if constexpr (byte_order_matters) {
+        return ntoh(addr.port);
+    } else {
+        return addr.port;
     }
 }
 
@@ -442,26 +499,106 @@ struct sockaddr_any {
         return (sockaddr*)&this->storage;
     }
 
-    friend bool ips_match(const sockaddr_any& lhs, const sockaddr_any& rhs) {
-        if (lhs.storage.ss_family == rhs.storage.ss_family) {
-            switch (lhs.storage.ss_family) {
-                case AF_INET:
-                    return !memcmp(
-                        &((const sockaddr_in*)&lhs.storage)->sin_addr,
-                        &((const sockaddr_in*)&rhs.storage)->sin_addr,
-                        sizeof(IN_ADDR)
-                    );
-                case AF_INET6:
-                    return !memcmp(
-                        &((const sockaddr_in6*)&lhs.storage)->sin6_addr,
-                        &((const sockaddr_in6*)&rhs.storage)->sin6_addr,
-                        sizeof(IN6_ADDR)
-                    );
-            }
+    void* get_ip_ptr() const {
+        switch (this->storage.ss_family) {
+            default:
+                return NULL;
+            case AF_INET:
+                return (void*)&((const sockaddr_in*)&this->storage)->sin_addr;
+            case AF_INET6:
+                return (void*)&((const sockaddr_in6*)&this->storage)->sin6_addr;
         }
-        return false;
+    }
+
+    ipaddr_any get_ip() const {
+        ipaddr_any ret;
+        switch (this->storage.ss_family) {
+            default:
+                return {};
+            case AF_INET:
+                ret.ipv4 = *(IP4_ADDRESS*)&((const sockaddr_in*)&this->storage)->sin_addr;
+                break;
+            case AF_INET6:
+                ret.ipv6 = *(IP6_ADDRESS*)&((const sockaddr_in6*)&this->storage)->sin6_addr;
+                break;
+        }
+        ret.family = this->storage.ss_family;
+        ret.port = get_port(*this);
+        return ret;
     }
 };
+
+static inline bool ips_match(const sockaddr_any& lhs, const sockaddr_any& rhs) {
+    if (lhs.storage.ss_family == rhs.storage.ss_family) {
+        switch (lhs.storage.ss_family) {
+            case AF_INET:
+                return !memcmp(
+                    &((const sockaddr_in*)&lhs.storage)->sin_addr,
+                    &((const sockaddr_in*)&rhs.storage)->sin_addr,
+                    sizeof(IP4_ADDRESS)
+                );
+            case AF_INET6:
+                return !memcmp(
+                    &((const sockaddr_in6*)&lhs.storage)->sin6_addr,
+                    &((const sockaddr_in6*)&rhs.storage)->sin6_addr,
+                    sizeof(IP6_ADDRESS)
+                );
+        }
+    }
+    return false;
+}
+
+static inline bool ips_match(const ipaddr_any& lhs, const ipaddr_any& rhs) {
+    if (lhs.family == rhs.family) {
+        switch (lhs.family) {
+            case AF_INET:
+                return !memcmp(&lhs.ipv4, &rhs.ipv4, sizeof(IP4_ADDRESS));
+            case AF_INET6:
+                return !memcmp(&lhs.ipv6, &rhs.ipv6, sizeof(IP6_ADDRESS));
+        }
+    }
+    return false;
+}
+
+static inline bool ips_match(const sockaddr_any& lhs, const ipaddr_any& rhs) {
+    if (lhs.storage.ss_family == rhs.family) {
+        switch (lhs.storage.ss_family) {
+            case AF_INET:
+                return !memcmp(
+                    &((const sockaddr_in*)&lhs.storage)->sin_addr,
+                    &rhs.ipv4,
+                    sizeof(IP4_ADDRESS)
+                );
+            case AF_INET6:
+                return !memcmp(
+                    &((const sockaddr_in6*)&lhs.storage)->sin6_addr,
+                    &rhs.ipv6,
+                    sizeof(IP6_ADDRESS)
+                );
+        }
+    }
+    return false;
+}
+
+static inline bool ips_match(const ipaddr_any& lhs, const sockaddr_any& rhs) {
+    return ips_match(rhs, lhs);
+}
+
+static inline bool ports_match(const sockaddr_any& lhs, const sockaddr_any& rhs) {
+    return get_port<false>(lhs) == get_port<false>(rhs);
+}
+
+static inline bool ports_match(const ipaddr_any& lhs, const ipaddr_any& rhs) {
+    return get_port<false>(lhs) == get_port<false>(rhs);
+}
+
+static inline bool ports_match(const sockaddr_any& lhs, const ipaddr_any& rhs) {
+    return get_port<false>(lhs) == get_port<false>(rhs);
+}
+
+static inline bool ports_match(const ipaddr_any& lhs, const sockaddr_any& rhs) {
+    return get_port<false>(lhs) == get_port<false>(rhs);
+}
 
 static inline DNS_STATUS WINAPI dns_query(PCSTR pszName, WORD wType, DWORD Options, PVOID pExtra, PDNS_RECORDA* ppQueryResults, PVOID* pReserved) {
     return ::DnsQuery_A(pszName, wType, Options, pExtra, (PDNS_RECORD*)ppQueryResults, pReserved);
@@ -1249,8 +1386,8 @@ public:
     }
 
     template <typename T>
-    inline bool sent(const T& buffer, const sockaddr_any& addr) const {
-        return this->send(&buffer, sizeof(T), addr)
+    inline bool send(const T& buffer, const sockaddr_any& addr) const {
+        return this->send(&buffer, sizeof(T), addr);
     }
 
     bool get_receive_timeout(size_t& timeout) const {
@@ -1991,7 +2128,7 @@ static inline constexpr bool winsock_config_initialized = true;
 static inline bool winsock_config_initialized = false;
 #endif
 
-static bool enable_winsock() {
+static bool enable_winsock(bool prefer_ipv6 = true) {
     union {
         WSADATA idgaf_about_winsock_version;
         struct {
@@ -2007,7 +2144,7 @@ static bool enable_winsock() {
             winsock_config_initialized = true;
             if (expect(RegGetValueW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters", L"DisabledComponents", RRF_RT_REG_DWORD, NULL, &ipv6_state, &ifgaf_about_data_size) == ERROR_SUCCESS, true)) {
                 if (ipv6_state != 0xFF) {
-                    enable_ipv6 = true;
+                    enable_ipv6 = prefer_ipv6;
                 }
             }
         }
