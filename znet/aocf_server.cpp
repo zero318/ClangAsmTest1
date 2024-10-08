@@ -32,6 +32,8 @@ using namespace std::literals::string_view_literals;
 
 #include <Windows.h>
 
+#define ZNET_IPV6_MODE ZNET_DISABLE_IPV6
+
 #include "znet.h"
 #include "zthread.h"
 
@@ -92,8 +94,18 @@ struct PacketPunchPing {
 	// 0x1
 };
 
+// size: 0x1
+struct PacketPunch {
+	PacketType type; // 0x0
+	// 0x1
+};
+
 static constexpr PacketPunchPing PUNCH_PING_PACKET = {
 	.type = PACKET_TYPE_PUNCH_PING
+};
+
+static constexpr PacketPunch PUNCH_PACKET = {
+	.type = PACKET_TYPE_PUNCH
 };
 
 static constexpr uint8_t LOCAL_IS_IPV6_MASK = 0b01;
@@ -224,6 +236,7 @@ struct UserData {
 			// still trying to track down that invalid free...
 			memset(&this->nickname, 0, sizeof(this->nickname));
 		}
+		this->socket.close();
 	}
 
 	void send_message_from(std::string_view nick, RoomType room, std::string_view source, std::string_view message) {
@@ -238,7 +251,9 @@ struct UserData {
 				source.data(), message.data()
 			);
 			printf("SEND:%s", message_buf);
-			this->socket.send(message_buf, send_length);
+			if (!this->socket.send(message_buf, send_length)) {
+				printf("SEND FAIL %u\n", WSAGetLastError());
+			}
 		}
 	}
 };
@@ -472,11 +487,15 @@ int main(int argc, char* argv[]) {
 								switch (raw_packet->type) {
 									case PACKET_TYPE_LOBBY_NAME: {
 
+										udp_socket.send(PUNCH_PACKET, peer_addr);
+
 										PacketLobbyName* packet = (PacketLobbyName*)raw_packet;
 
 										uint16_t peer_port = get_port(peer_addr);
 
-										printf("NAMEPORT: %.*s = %u\n", packet->length, packet->name, peer_port);
+										printf("NAMEPORT: %.*s = %u ", packet->length, packet->name, peer_port);
+										print_sockaddr(peer_addr);
+										printf("\n");
 
 										std::string_view peer_nickname_view{ packet->name, packet->length };
 
@@ -694,8 +713,12 @@ int main(int argc, char* argv[]) {
 												std::string_view message_view;
 												do {
 													while (receive_message(message_view)) {
-														printf("GOT :%s\n", message_view.data());
-														printf("FROM:%s\n", nick_view.data());
+														printf(
+															"GOT :%s\n"
+															"FROM:%s\n"
+															, message_view.data()
+															, nick_view.data()
+														);
 
 														char replacement_message[message_view.length() + 32];
 

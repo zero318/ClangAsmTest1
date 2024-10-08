@@ -282,7 +282,7 @@ uint16_t get_port(const sockaddr* addr) {
 
 static inline constexpr size_t MAX_ADDR_BUFF_SIZE = (std::max)(INET_ADDRSTRLEN, INET6_ADDRSTRLEN);
 
-void print_ipv4(IP4_ADDRESS addr) {
+void print_ipv4_full(IP4_ADDRESS addr) {
     union {
         uint32_t temp;
         uint8_t as_bytes[4];
@@ -294,27 +294,20 @@ void print_ipv4(IP4_ADDRESS addr) {
     );
 }
 
-template<typename T>
-int sprint_ipv4(IP4_ADDRESS addr, T* buf) {
-    /*
+int print_ipv4(IP4_ADDRESS addr) {
     union {
         uint32_t temp;
         uint8_t as_bytes[4];
     };
     temp = addr;
-    if constexpr (std::is_same_v<T, wchar_t>) {
-        return swprintf(buf,
-            L"%u.%u.%u.%u"
-            , as_bytes[0], as_bytes[1], as_bytes[2], as_bytes[3]
-        );
-    }
-    else {
-        return sprintf(buf,
-            "%u.%u.%u.%u"
-            , as_bytes[0], as_bytes[1], as_bytes[2], as_bytes[3]
-        );
-    }
-    */
+    return printf(
+        "%u.%u.%u.%u"
+        , as_bytes[0], as_bytes[1], as_bytes[2], as_bytes[3]
+    );
+}
+
+template<typename T>
+int sprint_ipv4(IP4_ADDRESS addr, T* buf) {
     T* buf_write = buf;
     buf_write += uint8_to_strbuf(addr, buf_write);
     *buf_write++ = (T)'.';
@@ -329,7 +322,7 @@ int sprint_ipv4(IP4_ADDRESS addr, T* buf) {
     return buf_write - buf;
 }
 
-void print_ipv6(const IP6_ADDRESS& addr) {
+void print_ipv6_full(const IP6_ADDRESS& addr) {
     printf(
         "v6: %0hX:%0hX:%0hX:%0hX:%0hX:%0hX:%0hX:%0hX"
         , __builtin_bswap16(addr.IP6Word[0]), __builtin_bswap16(addr.IP6Word[1])
@@ -337,46 +330,33 @@ void print_ipv6(const IP6_ADDRESS& addr) {
         , __builtin_bswap16(addr.IP6Word[4]), __builtin_bswap16(addr.IP6Word[5])
         , __builtin_bswap16(addr.IP6Word[6]), __builtin_bswap16(addr.IP6Word[7])
     );
-    if (
-        addr.IP6Dword[0] == 0 &&
-        addr.IP6Dword[1] == 0 &&
-        addr.IP6Dword[2] == 0xFFFF0000
-    ) {
+    if (is_ipv6_compatible_with_ipv4(addr)) {
         printf(" ");
         print_ipv4(addr.IP6Dword[3]);
     }
 }
 
+int print_ipv6(const IP6_ADDRESS& addr) {
+    if (is_ipv6_compatible_with_ipv4(addr)) {
+        return print_ipv4(addr.IP6Dword[3]);
+    }
+    else {
+        return printf(
+            "%0hX:%0hX:%0hX:%0hX:%0hX:%0hX:%0hX:%0hX"
+            , __builtin_bswap16(addr.IP6Word[0]), __builtin_bswap16(addr.IP6Word[1])
+            , __builtin_bswap16(addr.IP6Word[2]), __builtin_bswap16(addr.IP6Word[3])
+            , __builtin_bswap16(addr.IP6Word[4]), __builtin_bswap16(addr.IP6Word[5])
+            , __builtin_bswap16(addr.IP6Word[6]), __builtin_bswap16(addr.IP6Word[7])
+        );
+    }
+}
+
 template<typename T>
 int sprint_ipv6(const IP6_ADDRESS& addr, T* buf) {
-    if (
-        addr.IP6Dword[0] == 0 &&
-        addr.IP6Dword[1] == 0 &&
-        addr.IP6Dword[2] == 0xFFFF0000
-    ) {
+    if (is_ipv6_compatible_with_ipv4(addr)) {
         return sprint_ipv4(addr.IP6Dword[3], buf);
     }
     else {
-        /*
-        if constexpr (std::is_same_v<T, wchar_t>) {
-            return swprintf(buf,
-                L"%0hX:%0hX:%0hX:%0hX:%0hX:%0hX:%0hX:%0hX"
-                , __builtin_bswap16(addr.IP6Word[0]), __builtin_bswap16(addr.IP6Word[1])
-                , __builtin_bswap16(addr.IP6Word[2]), __builtin_bswap16(addr.IP6Word[3])
-                , __builtin_bswap16(addr.IP6Word[4]), __builtin_bswap16(addr.IP6Word[5])
-                , __builtin_bswap16(addr.IP6Word[6]), __builtin_bswap16(addr.IP6Word[7])
-            );
-        }
-        else {
-            return sprintf(buf,
-                "%0hX:%0hX:%0hX:%0hX:%0hX:%0hX:%0hX:%0hX"
-                , __builtin_bswap16(addr.IP6Word[0]), __builtin_bswap16(addr.IP6Word[1])
-                , __builtin_bswap16(addr.IP6Word[2]), __builtin_bswap16(addr.IP6Word[3])
-                , __builtin_bswap16(addr.IP6Word[4]), __builtin_bswap16(addr.IP6Word[5])
-                , __builtin_bswap16(addr.IP6Word[6]), __builtin_bswap16(addr.IP6Word[7])
-            );
-        }
-        */
         T* buf_write = buf;
         buf_write += uint16_to_hex_strbuf(__builtin_bswap16(addr.IP6Word[0]), buf_write);
         *buf_write++ = (T)':';
@@ -397,14 +377,25 @@ int sprint_ipv6(const IP6_ADDRESS& addr, T* buf) {
     }
 }
 
-void print_sockaddr(const sockaddr* addr) {
+void print_sockaddr_full(const sockaddr* addr) {
     switch (addr->sa_family) {
         case AF_INET:
-            print_ipv4(*(IP4_ADDRESS*)&((const sockaddr_in*)addr)->sin_addr);
+            print_ipv4_full(*(IP4_ADDRESS*)&((const sockaddr_in*)addr)->sin_addr);
             break;
         case AF_INET6:
-            print_ipv6(*(IP6_ADDRESS*)&((const sockaddr_in6*)addr)->sin6_addr);
+            print_ipv6_full(*(IP6_ADDRESS*)&((const sockaddr_in6*)addr)->sin6_addr);
             break;
+    }
+}
+
+int print_sockaddr(const sockaddr* addr) {
+    switch (addr->sa_family) {
+        case AF_INET:
+            return print_ipv4(*(IP4_ADDRESS*)&((const sockaddr_in*)addr)->sin_addr);
+        case AF_INET6:
+            return print_ipv6(*(IP6_ADDRESS*)&((const sockaddr_in6*)addr)->sin6_addr);
+        default:
+            return 0;
     }
 }
 
@@ -443,8 +434,14 @@ struct ipaddr_any {
     }
 
     bool compatible_with_ipv4() const {
-        if (this->family == AF_INET) {
-            return true;
+        switch (this->family) {
+            case AF_INET6:
+                if (is_ipv6_compatible_with_ipv4(this->ipv6)) {
+            case AF_INET:
+                    return true;
+                }
+            default:
+                return false;
         }
     }
 
@@ -729,14 +726,25 @@ found_addr:
 #endif
 }
 
-void print_sockaddr(const sockaddr_any& addr) {
+void print_sockaddr_full(const sockaddr_any& addr) {
     switch (addr.storage.ss_family) {
         case AF_INET:
-            print_ipv4(*(IP4_ADDRESS*)&((const sockaddr_in*)&addr.storage)->sin_addr);
+            print_ipv4_full(*(IP4_ADDRESS*)&((const sockaddr_in*)&addr.storage)->sin_addr);
             break;
         case AF_INET6:
-            print_ipv6(*(IP6_ADDRESS*)&((const sockaddr_in6*)&addr.storage)->sin6_addr);
+            print_ipv6_full(*(IP6_ADDRESS*)&((const sockaddr_in6*)&addr.storage)->sin6_addr);
             break;
+    }
+}
+
+int print_sockaddr(const sockaddr_any& addr) {
+    switch (addr.storage.ss_family) {
+        case AF_INET:
+            return print_ipv4(*(IP4_ADDRESS*)&((const sockaddr_in*)&addr.storage)->sin_addr);
+        case AF_INET6:
+            return print_ipv6(*(IP6_ADDRESS*)&((const sockaddr_in6*)&addr.storage)->sin6_addr);
+        default:
+            return 0;
     }
 }
 
