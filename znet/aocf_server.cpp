@@ -118,7 +118,7 @@ struct PacketPunchWait {
 	PacketType type; // 0x0
 	uint8_t is_ipv6; // 0x1
 	uint16_t local_port; // 0x2
-	alignas(4) unsigned char ip[]; // 0x4
+	alignas(4) unsigned char ip[sizeof(IP6_ADDRESS)]; // 0x4
 
 	ipaddr_any local_ip() const {
 		return ipaddr_any(this->is_ipv6 & LOCAL_IS_IPV6_MASK, this->local_port, this->ip);
@@ -132,14 +132,16 @@ struct PacketPunchConnect {
 	uint16_t local_port; // 0x2
 	uint16_t dest_port; // 0x4
 	// 0x6
-	alignas(4) unsigned char ips[]; // 0x8
+	alignas(4) unsigned char local_ip_buf[sizeof(IP6_ADDRESS)]; // 0x8
+	alignas(4) unsigned char dest_ip_buf[sizeof(IP6_ADDRESS)]; // 0x18
+	// 0x28
 
 	ipaddr_any local_ip() const {
-		return ipaddr_any(this->is_ipv6 & LOCAL_IS_IPV6_MASK, this->local_port, (void*)&this->ips[0]);
+		return ipaddr_any(this->is_ipv6 & LOCAL_IS_IPV6_MASK, this->local_port, this->local_ip_buf);
 	}
 
 	ipaddr_any dest_ip() const {
-		return ipaddr_any(this->is_ipv6 & DEST_IS_IPV6_MASK, this->dest_port, (void*)&this->ips[IP_BYTE_SIZE]);
+		return ipaddr_any(this->is_ipv6 & DEST_IS_IPV6_MASK, this->dest_port, this->dest_ip_buf);
 	}
 };
 
@@ -148,7 +150,9 @@ struct PacketPunchPeer {
 	PacketType type; // 0x0
 	uint8_t is_ipv6; // 0x1
 	uint16_t remote_port; // 0x2
-	alignas(4) unsigned char ip[]; // 0x4
+	alignas(4) unsigned char ip[sizeof(IP6_ADDRESS)]; // 0x4
+
+	PacketPunchPeer() = default;
 
 	PacketPunchPeer(bool is_ipv6, uint16_t port, const void* ip)
 		: type(PACKET_TYPE_PUNCH), is_ipv6(is_ipv6), remote_port(port)
@@ -252,7 +256,7 @@ struct UserData {
 			);
 			printf("SEND:%s", message_buf);
 			if (!this->socket.send(message_buf, send_length)) {
-				printf("SEND FAIL %u\n", WSAGetLastError());
+				printf("SEND FAIL %u (%d)\n", WSAGetLastError(), this->socket.sock);
 			}
 		}
 	}
@@ -282,6 +286,7 @@ struct PunchData {
 	}
 
 	bool tick_ping_timer() {
+		//printf("ping timer: %u\n", this->ping_timer);
 		return --this->ping_timer;
 	}
 
@@ -472,8 +477,8 @@ int main(int argc, char* argv[]) {
 						wait_for_keyboard();
 					});
 
-					//udp_socket.set_blocking_state(false);
-					udp_socket.set_receive_timeout(UDP_SLEEP_TIME);
+					udp_socket.set_blocking_state(false);
+					//udp_socket.set_receive_timeout(UDP_SLEEP_TIME);
 
 					zjthread udp_listen_thread([=](const std::atomic<uint8_t>& stop) {
 						do {
@@ -507,6 +512,9 @@ int main(int argc, char* argv[]) {
 										break;
 									}
 									case PACKET_TYPE_PUNCH_PING: {
+										printf("PUNCH PING ");
+										print_sockaddr(peer_addr);
+										printf("\n");
 										find_punch_data([&](PunchData& punch_data) {
 											if (
 												punch_data.alive &&
@@ -534,16 +542,16 @@ int main(int argc, char* argv[]) {
 												ports_match(punch_data.local_addr, dest_addr) &&
 												ips_match(punch_data.remote_addr, dest_addr)
 											) {
-												unsigned char buffer[PACKET_TYPE_PUNCH_PEER_MAX_SIZE];
+												PacketPunchPeer packet;
 
 												// TODO: Attempt to map between v4 and v6 for compatibility
 
 												bool is_ipv6 = peer_addr.storage.ss_family == AF_INET6;
-												new (buffer) PacketPunchPeer(is_ipv6, get_port(peer_addr), peer_addr.get_ip_ptr());
-												udp_socket.send(buffer, is_ipv6 ? PACKET_TYPE_PUNCH_PEER_IPV6_SIZE : PACKET_TYPE_PUNCH_PEER_IPV4_SIZE, punch_data.remote_addr);
+												new (&packet) PacketPunchPeer(is_ipv6, get_port(peer_addr), peer_addr.get_ip_ptr());
+												udp_socket.send(packet, punch_data.remote_addr);
 												is_ipv6 = punch_data.remote_addr.storage.ss_family == AF_INET6;
-												new (buffer) PacketPunchPeer(is_ipv6, get_port(punch_data.remote_addr), punch_data.remote_addr.get_ip_ptr());
-												udp_socket.send(buffer, is_ipv6 ? PACKET_TYPE_PUNCH_PEER_IPV6_SIZE : PACKET_TYPE_PUNCH_PEER_IPV4_SIZE, peer_addr);
+												new (&packet) PacketPunchPeer(is_ipv6, get_port(punch_data.remote_addr), punch_data.remote_addr.get_ip_ptr());
+												udp_socket.send(packet, peer_addr);
 												return true;
 											}
 											return false;
@@ -561,6 +569,7 @@ int main(int argc, char* argv[]) {
 								if (punch_data.alive) {
 									if (punch_data.tick_ping_timer()) {
 										if (punch_data.ping_timer_send()) {
+											//printf("Sending punch ping...\n");
 											udp_socket.send(PUNCH_PING_PACKET, punch_data.remote_addr);
 										}
 									}
@@ -570,7 +579,7 @@ int main(int argc, char* argv[]) {
 									}
 								}
 							});
-							//Sleep(UDP_SLEEP_TIME);
+							Sleep(UDP_SLEEP_TIME);
 						} while (!stop);
 						printf("!!!!! UDP THREAD EXIT !!!!!\n");
 					});
@@ -787,11 +796,10 @@ int main(int argc, char* argv[]) {
 													response_socket.send_text(PING_MESSAGE);
 												} while (receive_message(message_view) && message_view == PONG_REPLY);
 
-												remove_user_data(nick_view);
-
 												printf("SUCCEEDED, disconnecting...\n");
-												goto success;
 											}
+											remove_user_data(nick_view);
+											goto success;
 										}
 									}
 								}
