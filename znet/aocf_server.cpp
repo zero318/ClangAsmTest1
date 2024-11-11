@@ -171,6 +171,25 @@ struct PacketPunchPeer {
 	}
 };
 
+struct PacketPunchSelf {
+	PacketType type; // 0x0
+	uint8_t is_ipv6; // 0x1
+	uint16_t remote_port; // 0x2
+	alignas(4) unsigned char ip[sizeof(IP6_ADDRESS)]; // 0x4
+
+	PacketPunchSelf() = default;
+
+	PacketPunchSelf(bool is_ipv6, uint16_t port, const void* ip)
+		: type(PACKET_TYPE_PUNCH_SELF), is_ipv6(is_ipv6), remote_port(port)
+	{
+		if (is_ipv6) {
+			*(IP6_ADDRESS*)this->ip = *(IP6_ADDRESS*)ip;
+		} else {
+			*(IP4_ADDRESS*)this->ip = *(IP4_ADDRESS*)ip;
+		}
+	}
+};
+
 // size: 0x10
 struct PacketIPv6Test {
 	PacketType type; // 0x0
@@ -521,7 +540,8 @@ int main(int argc, char* argv[]) {
 								PacketLayout* raw_packet = (PacketLayout*)buffer;
 								printf("UDP: %zu type %zu\n", receive_length, raw_packet->type);
 								switch (raw_packet->type) {
-									case PACKET_TYPE_LOBBY_NAME: {
+									if (0) {
+									case PACKET_TYPE_LOBBY_NAME:
 
 										//udp_socket.send(PUNCH_PACKET, peer_addr);
 
@@ -539,7 +559,16 @@ int main(int argc, char* argv[]) {
 											user_data->external_port = peer_port;
 										});
 										//printf("UDP port set end\n");
-
+									} else {
+									case PACKET_TYPE_PUNCH_WAIT:
+										PacketPunchWait* packet = (PacketPunchWait*)raw_packet;
+										insert_punch_data(packet->local_ip(), peer_addr);
+									}
+									{
+										PacketPunchSelf packet;
+										bool is_ipv6 = peer_addr.storage.ss_family == AF_INET6;
+										new (&packet) PacketPunchSelf(is_ipv6, get_port(peer_addr), peer_addr.get_ip_ptr());
+										udp_socket.send(packet, peer_addr);
 										break;
 									}
 									case PACKET_TYPE_PUNCH_PING: {
@@ -557,11 +586,6 @@ int main(int argc, char* argv[]) {
 											}
 											return false;
 										});
-										break;
-									}
-									case PACKET_TYPE_PUNCH_WAIT: {
-										PacketPunchWait* packet = (PacketPunchWait*)raw_packet;
-										insert_punch_data(packet->local_ip(), peer_addr);
 										break;
 									}
 									/*
