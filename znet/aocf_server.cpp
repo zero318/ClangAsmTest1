@@ -42,6 +42,11 @@ using namespace zero::thread;
 
 #include "common.h"
 
+static inline char wait_for_keyboard(size_t delay) {
+	while (!_kbhit()) Sleep(delay);
+	return _getch();
+}
+
 enum PacketType : uint8_t {
 	// Original packets
 	PACKET_TYPE_0 = 0,
@@ -72,6 +77,7 @@ enum PacketType : uint8_t {
 	PACKET_TYPE_PUNCH_CONNECT = 0x83,
 	PACKET_TYPE_PUNCH_PEER = 0x84,
 	PACKET_TYPE_PUNCH = 0x85,
+	PACKET_TYPE_PUNCH_SELF = 0x86, // Same format as PACKET_TYPE_PUNCH_PEER
 	PACKET_TYPE_IPV6_TEST = 0x88,
 };
 
@@ -214,11 +220,13 @@ static constexpr size_t MAX_SERVER_UDP_PACKET = (std::max)({
 												});
 
 enum RoomType : uint8_t {
-	INVALID_ROOM,
 	FREE_ROOM,
 	NOVICE_ROOM,
-	VETERAN_ROOM
+	VETERAN_ROOM,
+	INVALID_ROOM = UINT8_MAX
 };
+
+static std::atomic<uint32_t> USER_COUNT[3] = {};
 
 struct UserData {
 	std::atomic<bool> delete_flag = { false }; // 0x0
@@ -256,6 +264,18 @@ struct UserData {
 			);
 			printf("SEND:%s", message_buf);
 			if (!this->socket.send(message_buf, send_length)) {
+				printf("SEND FAIL %u (%d)\n", WSAGetLastError(), this->socket.sock);
+			}
+		}
+	}
+
+	void send_message(std::string_view nick, RoomType room, std::string_view message) {
+		if (
+			this->room_type == room //&&
+			//this->nickname != nick
+		) {
+			printf("SEND:%.*s", message.length(), message.data());
+			if (!this->socket.send(message.data(), message.length())) {
 				printf("SEND FAIL %u (%d)\n", WSAGetLastError(), this->socket.sock);
 			}
 		}
@@ -428,24 +448,35 @@ static inline constexpr char REQUEST_LOGIN_REPLY[] = "E\n";
 static inline constexpr char NICK_IN_USE_REPLY[] = ": 433 E\n";
 static inline constexpr char REQUEST_JOIN_REPLY[] = ": 422 E\n";
 
-static inline constexpr char JOIN_FREE_REPLY[] = "! JOIN #th155_Free\n\0\0\0\0\0\0\0\0\0\0\0\0";
+//static inline constexpr char JOIN_FREE_REPLY[] = "! JOIN #th155_Free\n\0\0\0\0\0\0\0\0\0\0\0\0";
+static inline constexpr char JOIN_FREE_REPLY[] = "! JOIN #th155_Free %u\n";
 static inline constexpr size_t JOIN_FREE_REPLY_LEN = 19;
 
-static inline constexpr char JOIN_NOVICE_REPLY[] = "! JOIN #th155_Novice\n\0\0\0\0\0\0\0\0\0\0";
+//static inline constexpr char JOIN_NOVICE_REPLY[] = "! JOIN #th155_Novice\n\0\0\0\0\0\0\0\0\0\0";
+static inline constexpr char JOIN_NOVICE_REPLY[] = "! JOIN #th155_Novice %u\n";
 static inline constexpr size_t JOIN_NOVICE_REPLY_LEN = 21;
 
-static inline constexpr char JOIN_VETERAN_REPLY[] = "! JOIN #th155_Veteran\n\0\0\0\0\0\0\0\0\0";
+//static inline constexpr char JOIN_VETERAN_REPLY[] = "! JOIN #th155_Veteran\n\0\0\0\0\0\0\0\0\0";
+static inline constexpr char JOIN_VETERAN_REPLY[] = "! JOIN #th155_Veteran %u\n";
 static inline constexpr size_t JOIN_VETERAN_REPLY_LEN = 22;
 
 static inline constexpr std::string_view JOIN_FREE_VIEW = "JOIN #th155_Free Free"sv;
 static inline constexpr std::string_view JOIN_NOVICE_VIEW = "JOIN #th155_Novice Novice"sv;
 static inline constexpr std::string_view JOIN_VETERAN_VIEW = "JOIN #th155_Veteran Veteran"sv;
 
+#define CALC_JOIN_USERS_BUFFER(max_val) sizeof("! JOIN #th155_Veteran " MACRO_STR(max_val) "\n")
+
+static inline constexpr size_t JOIN_AND_USER_COUNT_BUFFER_SIZE = CALC_JOIN_USERS_BUFFER(4294967295);
+
+static inline constexpr char USER_COUNT_REPLY[] = "USERS ";
+static inline constexpr size_t USER_COUNT_REPLY_LEN = sizeof(USER_COUNT_REPLY) - 1;
+
 static inline constexpr char PING_MESSAGE[] = "PING\n";
 static inline constexpr std::string_view PONG_REPLY = "PONG 0"sv;
 
 static inline constexpr char ERROR_MESSAGE[] = "ERROR\n";
 
+static inline constexpr std::string_view STAT_COMMAND_VIEW = "STAT"sv;
 static inline constexpr std::string_view REQUEST_MATCH_COMMAND_VIEW = "REQUEST_MATCH "sv;
 static inline constexpr std::string_view WELCOME_COMMAND_VIEW = "WELCOME "sv;
 
@@ -474,7 +505,7 @@ int main(int argc, char* argv[]) {
 					tcp_socket.listen(50);
 
 					zjthread stupid_keyboard_thread([](const std::atomic<uint8_t>& stop) {
-						wait_for_keyboard();
+						wait_for_keyboard(1_secms);
 					});
 
 					udp_socket.set_blocking_state(false);
@@ -492,7 +523,7 @@ int main(int argc, char* argv[]) {
 								switch (raw_packet->type) {
 									case PACKET_TYPE_LOBBY_NAME: {
 
-										udp_socket.send(PUNCH_PACKET, peer_addr);
+										//udp_socket.send(PUNCH_PACKET, peer_addr);
 
 										PacketLobbyName* packet = (PacketLobbyName*)raw_packet;
 
@@ -533,6 +564,7 @@ int main(int argc, char* argv[]) {
 										insert_punch_data(packet->local_ip(), peer_addr);
 										break;
 									}
+									/*
 									case PACKET_TYPE_PUNCH_CONNECT: {
 										PacketPunchConnect* packet = (PacketPunchConnect*)raw_packet;
 										ipaddr_any dest_addr = packet->dest_ip();
@@ -558,6 +590,7 @@ int main(int argc, char* argv[]) {
 										});
 										break;
 									}
+									*/
 									case PACKET_TYPE_IPV6_TEST: {
 										//printf("IPv6 test received\n");
 										udp_socket.send(*(PacketIPv6Test*)buffer, peer_addr);
@@ -675,26 +708,29 @@ int main(int argc, char* argv[]) {
 												RoomType room_type;
 
 												const char* join_response_str;
+												char join_and_users_buffer[JOIN_AND_USER_COUNT_BUFFER_SIZE];
 												size_t join_response_length;
 												if (join_view == JOIN_FREE_VIEW) {
 													join_response_str = JOIN_FREE_REPLY;
-													join_response_length = JOIN_FREE_REPLY_LEN;
+													//join_response_length = JOIN_FREE_REPLY_LEN;
 													room_type = FREE_ROOM;
 												}
 												else if (join_view == JOIN_NOVICE_VIEW) {
 													join_response_str = JOIN_NOVICE_REPLY;
-													join_response_length = JOIN_NOVICE_REPLY_LEN;
+													//join_response_length = JOIN_NOVICE_REPLY_LEN;
 													room_type = NOVICE_ROOM;
 												}
 												else if (join_view == JOIN_VETERAN_VIEW) {
 													join_response_str = JOIN_VETERAN_REPLY;
-													join_response_length = JOIN_VETERAN_REPLY_LEN;
+													//join_response_length = JOIN_VETERAN_REPLY_LEN;
 													room_type = VETERAN_ROOM;
 												}
 												else {
 													remove_user_data(nick_view);
 													goto disconnect;
 												}
+
+												join_response_length = sprintf(join_and_users_buffer, join_response_str, USER_COUNT[room_type].load());
 
 												sockaddr_any address;
 												response_socket.get_peer_addr(address);
@@ -704,7 +740,7 @@ int main(int argc, char* argv[]) {
 													user_data->address = address;
 												});
 
-												memcpy(name_buffer + 1 + nick_view.length(), join_response_str, 32);
+												memcpy(name_buffer + 1 + nick_view.length(), join_and_users_buffer, JOIN_AND_USER_COUNT_BUFFER_SIZE);
 
 												//printf("%s", name_buffer);
 												response_socket.send(name_buffer, 1 + nick_view.length() + join_response_length);
@@ -720,6 +756,8 @@ int main(int argc, char* argv[]) {
 												std::string_view user_view{ name_buffer };
 
 												std::string_view message_view;
+												bool is_waiting = false;
+												memcpy(join_and_users_buffer, USER_COUNT_REPLY, USER_COUNT_REPLY_LEN);
 												do {
 													while (receive_message(message_view)) {
 														printf(
@@ -755,7 +793,17 @@ int main(int argc, char* argv[]) {
 																	}
 																};
 
-																if (command_view.starts_with(REQUEST_MATCH_COMMAND_VIEW)) {
+																if (command_view.starts_with(STAT_COMMAND_VIEW)) {
+																	if (!is_waiting) {
+																		size_t user_count_len = sprintf(&join_and_users_buffer[USER_COUNT_REPLY_LEN], "%u\n", ++USER_COUNT[room_type]) + USER_COUNT_REPLY_LEN;
+																		std::string_view user_count_view{ join_and_users_buffer, user_count_len };
+																		shared_iter_user_data([=](UserData* user_data) {
+																			user_data->send_message(nick_view, room_type, user_count_view);
+																		});
+																	}
+																	is_waiting = true;
+																}
+																else if (command_view.starts_with(REQUEST_MATCH_COMMAND_VIEW)) {
 																	prefix_length += REQUEST_MATCH_COMMAND_VIEW.length();
 																	command_view.remove_prefix(REQUEST_MATCH_COMMAND_VIEW.length());
 																	//printf("REPA:%s\n", command_view.data());
@@ -771,6 +819,15 @@ int main(int argc, char* argv[]) {
 																	});
 																}
 																else if (command_view.starts_with(WELCOME_COMMAND_VIEW)) {
+																	if (is_waiting) {
+																		size_t user_count_len = sprintf(&join_and_users_buffer[USER_COUNT_REPLY_LEN], "%u\n", --USER_COUNT[room_type]) + USER_COUNT_REPLY_LEN;
+																		std::string_view user_count_view{ join_and_users_buffer, user_count_len };
+																		shared_iter_user_data([=](UserData* user_data) {
+																			user_data->send_message(nick_view, room_type, user_count_view);
+																		});
+																	}
+																	is_waiting = false;
+
 																	prefix_length += WELCOME_COMMAND_VIEW.length();
 																	command_view.remove_prefix(WELCOME_COMMAND_VIEW.length());
 																	//printf("REPC:%s\n", command_view.data());
@@ -794,6 +851,16 @@ int main(int argc, char* argv[]) {
 														});
 													}
 													response_socket.send_text(PING_MESSAGE);
+
+													// If a ping needs to be sent, assume the user has stopped waiting
+													if (is_waiting) {
+														size_t user_count_len = sprintf(&join_and_users_buffer[USER_COUNT_REPLY_LEN], "%u\n", --USER_COUNT[room_type]) + USER_COUNT_REPLY_LEN;
+														std::string_view user_count_view{ join_and_users_buffer, user_count_len };
+														shared_iter_user_data([=](UserData* user_data) {
+															user_data->send_message(nick_view, room_type, user_count_view);
+														});
+													}
+													is_waiting = false;
 												} while (receive_message(message_view) && message_view == PONG_REPLY);
 
 												printf("SUCCEEDED, disconnecting...\n");

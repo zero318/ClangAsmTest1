@@ -19,4 +19,9 @@ extern fprintf_t* log_fprintf;
 #define debug_fprintf(...) (log_fprintf(__VA_ARGS__))
 #endif
 
+#define PACKET_LOGGING_NONE 0
+#define PACKET_LOGGING_ALL 1
+
+#define PACKET_LOGGING PACKET_LOGGING_NONE
+
 #endif

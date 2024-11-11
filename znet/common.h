@@ -3,6 +3,8 @@
 #ifndef ZNET_TEST_COMMON_H
 #define ZNET_TEST_COMMON_H 1
 
+#define _MACRO_STR(arg) #arg
+#define MACRO_STR(arg) _MACRO_STR(arg)
 #define MACRO_EVAL(...) __VA_ARGS__
 #define MACRO_VOID(...)
 #if __INTELLISENSE__
