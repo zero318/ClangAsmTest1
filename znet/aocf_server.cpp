@@ -131,6 +131,7 @@ struct PacketPunchWait {
 	}
 };
 
+/*
 // size: 0x8+
 struct PacketPunchConnect {
 	PacketType type; // 0x0
@@ -150,6 +151,18 @@ struct PacketPunchConnect {
 		return ipaddr_any(this->is_ipv6 & DEST_IS_IPV6_MASK, this->dest_port, this->dest_ip_buf);
 	}
 };
+*/
+
+struct PacketPunchConnect {
+	PacketType type; // 0x0
+	uint8_t is_ipv6; // 0x1
+	uint16_t dest_port; // 0x2
+	alignas(4) unsigned char dest_ip_buf[sizeof(IP6_ADDRESS)]; // 0x4
+
+	ipaddr_any dest_ip() const {
+		return ipaddr_any(this->is_ipv6 & DEST_IS_IPV6_MASK, this->dest_port, this->dest_ip_buf);
+	}
+};
 
 // size: 0x4
 struct PacketPunchPeer {
@@ -161,7 +174,7 @@ struct PacketPunchPeer {
 	PacketPunchPeer() = default;
 
 	PacketPunchPeer(bool is_ipv6, uint16_t port, const void* ip)
-		: type(PACKET_TYPE_PUNCH), is_ipv6(is_ipv6), remote_port(port)
+		: type(PACKET_TYPE_PUNCH_PEER), is_ipv6(is_ipv6), remote_port(port)
 	{
 		if (is_ipv6) {
 			*(IP6_ADDRESS*)this->ip = *(IP6_ADDRESS*)ip;
@@ -588,14 +601,14 @@ int main(int argc, char* argv[]) {
 										});
 										break;
 									}
-									/*
 									case PACKET_TYPE_PUNCH_CONNECT: {
 										PacketPunchConnect* packet = (PacketPunchConnect*)raw_packet;
 										ipaddr_any dest_addr = packet->dest_ip();
 										find_punch_data([&](PunchData& punch_data) {
 											if (
 												punch_data.alive &&
-												ports_match(punch_data.local_addr, dest_addr) &&
+												//ports_match(punch_data.local_addr, dest_addr) &&
+												ports_match(punch_data.remote_addr, dest_addr) &&
 												ips_match(punch_data.remote_addr, dest_addr)
 											) {
 												PacketPunchPeer packet;
@@ -605,16 +618,15 @@ int main(int argc, char* argv[]) {
 												bool is_ipv6 = peer_addr.storage.ss_family == AF_INET6;
 												new (&packet) PacketPunchPeer(is_ipv6, get_port(peer_addr), peer_addr.get_ip_ptr());
 												udp_socket.send(packet, punch_data.remote_addr);
-												is_ipv6 = punch_data.remote_addr.storage.ss_family == AF_INET6;
-												new (&packet) PacketPunchPeer(is_ipv6, get_port(punch_data.remote_addr), punch_data.remote_addr.get_ip_ptr());
-												udp_socket.send(packet, peer_addr);
+												//is_ipv6 = punch_data.remote_addr.storage.ss_family == AF_INET6;
+												//new (&packet) PacketPunchPeer(is_ipv6, get_port(punch_data.remote_addr), punch_data.remote_addr.get_ip_ptr());
+												//udp_socket.send(packet, peer_addr);
 												return true;
 											}
 											return false;
 										});
 										break;
 									}
-									*/
 									case PACKET_TYPE_IPV6_TEST: {
 										//printf("IPv6 test received\n");
 										udp_socket.send(*(PacketIPv6Test*)buffer, peer_addr);
