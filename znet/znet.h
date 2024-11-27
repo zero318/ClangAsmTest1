@@ -478,6 +478,24 @@ struct sockaddr_any {
         memcpy(&this->storage, addr, length);
     }
 
+    sockaddr_any(bool is_ipv6, uint16_t port, const void* ip) {
+        if (is_ipv6) {
+            *(sockaddr_in6*)&this->storage = {
+                .sin6_family = AF_INET6,
+                .sin6_port = hton(port),
+                .sin6_addr = *(in_addr6*)ip
+            };
+            this->length = sizeof(sockaddr_in6);
+        } else {
+            *(sockaddr_in*)&this->storage = {
+                .sin_family = AF_INET,
+                .sin_port = hton(port),
+                .sin_addr = *(in_addr*)ip
+            };
+            this->length = sizeof(sockaddr_in);
+        }
+    }
+
     void initialize(const sockaddr* addr, size_t length) {
         memcpy(&this->storage, addr, this->length = length);
     }
@@ -522,6 +540,17 @@ struct sockaddr_any {
         ret.family = this->storage.ss_family;
         ret.port = get_port(*this);
         return ret;
+    }
+
+    void store_ip(void* out) const {
+        switch (this->storage.ss_family) {
+            case AF_INET:
+                *(IP4_ADDRESS*)out = *(IP4_ADDRESS*)&((const sockaddr_in*)&this->storage)->sin_addr;
+                break;
+            case AF_INET6:
+                *(IP6_ADDRESS*)out = *(IP6_ADDRESS*)&((const sockaddr_in6*)&this->storage)->sin6_addr;
+                break;
+        }
     }
 };
 

@@ -78,7 +78,11 @@ enum PacketType : uint8_t {
 	PACKET_TYPE_PUNCH_PEER = 0x84,
 	PACKET_TYPE_PUNCH = 0x85,
 	PACKET_TYPE_PUNCH_SELF = 0x86, // Same format as PACKET_TYPE_PUNCH_PEER
+	PACKET_TYPE_LOBBY_NAME_WAIT = 0x87,
 	PACKET_TYPE_IPV6_TEST = 0x88,
+	PACKET_TYPE_PUNCH_DELAY_PING = 0x89,
+	PACKET_TYPE_PUNCH_DELAY_PONGA = 0x8A,
+	PACKET_TYPE_PUNCH_DELAY_PONGB = 0x8B,
 };
 
 struct PacketLayout {
@@ -114,9 +118,6 @@ static constexpr PacketPunch PUNCH_PACKET = {
 	.type = PACKET_TYPE_PUNCH
 };
 
-static constexpr uint8_t LOCAL_IS_IPV6_MASK = 0b01;
-static constexpr uint8_t DEST_IS_IPV6_MASK = 0b10;
-
 static constexpr size_t IP_BYTE_SIZE = (std::max)(sizeof(IP4_ADDRESS), sizeof(IP6_ADDRESS));
 
 // size: 0x4+
@@ -127,7 +128,7 @@ struct PacketPunchWait {
 	alignas(4) unsigned char ip[sizeof(IP6_ADDRESS)]; // 0x4
 
 	ipaddr_any local_ip() const {
-		return ipaddr_any(this->is_ipv6 & LOCAL_IS_IPV6_MASK, this->local_port, this->ip);
+		return ipaddr_any(this->is_ipv6, this->local_port, this->ip);
 	}
 };
 
@@ -160,7 +161,11 @@ struct PacketPunchConnect {
 	alignas(4) unsigned char dest_ip_buf[sizeof(IP6_ADDRESS)]; // 0x4
 
 	ipaddr_any dest_ip() const {
-		return ipaddr_any(this->is_ipv6 & DEST_IS_IPV6_MASK, this->dest_port, this->dest_ip_buf);
+		return ipaddr_any(this->is_ipv6, this->dest_port, this->dest_ip_buf);
+	}
+
+	sockaddr_any dest_sock() const {
+		return sockaddr_any(this->is_ipv6, this->dest_port, this->dest_ip_buf);
 	}
 };
 
@@ -201,6 +206,27 @@ struct PacketPunchSelf {
 			*(IP4_ADDRESS*)this->ip = *(IP4_ADDRESS*)ip;
 		}
 	}
+};
+
+struct PacketPunchDelayPing {
+	PacketType type; // 0x0
+	uint8_t flags; // 0x1
+	uint16_t dest_port; // 0x2
+	alignas(4) unsigned char dest_ip_buf[sizeof(IP6_ADDRESS)]; // 0x4
+
+	ipaddr_any dest_ip() const {
+		return ipaddr_any(this->flags & 0x80, this->dest_port, this->dest_ip_buf);
+	}
+
+	sockaddr_any dest_sock() const {
+		return sockaddr_any(this->flags & 0x80, this->dest_port, this->dest_ip_buf);
+	}
+};
+
+struct PacketPunchDelayPong {
+	PacketType type; // 0x0
+	uint8_t index; // 0x1
+	// 0x2
 };
 
 // size: 0x10
@@ -267,6 +293,8 @@ struct UserData {
 	SocketTCP socket; // 0x4
 	std::string_view nickname; // 0x8
 	sockaddr_any address = {}; // 0x10
+	//LARGE_INTEGER name_packet_timestamp = {};
+	//LARGE_INTEGER message_timestamp = {};
 
 	UserData(std::string_view nick, SocketTCP socket)
 		: socket(socket), nickname(nick)
@@ -325,12 +353,16 @@ static_assert(PUNCH_DATA_FULL_PING_TIMER < UINT16_MAX);
 struct PunchData {
 	bool alive;
 	uint16_t ping_timer;
-	ipaddr_any local_addr;
+	//ipaddr_any local_addr;
 	sockaddr_any remote_addr;
 
-	PunchData(const ipaddr_any& local_addr, const sockaddr_any& remote_addr)
+	PunchData(
+		//const ipaddr_any& local_addr,
+		const sockaddr_any& remote_addr
+	)
 		: alive(true), ping_timer(PUNCH_DATA_FULL_PING_TIMER),
-		local_addr(local_addr), remote_addr(remote_addr)
+		//local_addr(local_addr),
+		remote_addr(remote_addr)
 	{}
 
 	void reset_ping_timer() {
@@ -380,15 +412,16 @@ static inline void exclusive_user_data(std::string_view user, const L& lambda) {
 }
 
 template <typename L>
-static inline void shared_find_user_data(const L& lambda) {
+static inline bool shared_find_user_data(const L& lambda) {
 	shared_mutex_lock lock(user_mutex);
 
 	for (auto iter : user_map) {
 		UserData* user_data = iter.second;
 		if (lambda(user_data)) {
-			break;
+			return true;
 		}
 	}
+	return false;
 }
 
 static inline bool insert_user_data(std::string_view user, SocketTCP socket) {
@@ -446,26 +479,33 @@ static inline void exclusive_iter_user_data(const L& lambda) {
 	}
 }
 
-static inline void insert_punch_data(const ipaddr_any& local_addr, const sockaddr_any& remote_addr) {
+static inline void insert_punch_data(
+	//const ipaddr_any& local_addr,
+	const sockaddr_any& remote_addr
+) {
 	for (auto& punch_data : punch_data) {
 		if (!punch_data.alive) {
 			punch_data.alive = true;
 			punch_data.ping_timer = PUNCH_DATA_FULL_PING_TIMER;
-			punch_data.local_addr = local_addr;
+			//punch_data.local_addr = local_addr;
 			punch_data.remote_addr = remote_addr;
 			return;
 		}
 	}
-	punch_data.emplace_back(local_addr, remote_addr);
+	punch_data.emplace_back(
+		//local_addr,
+		remote_addr
+	);
 }
 
 template <typename L>
-static inline void find_punch_data(const L& lambda) {
+static inline bool find_punch_data(const L& lambda) {
 	for (auto& punch_data : punch_data) {
 		if (lambda(punch_data)) {
-			break;
+			return true;
 		}
 	}
+	return false;
 }
 
 template <typename L>
@@ -514,6 +554,8 @@ static inline constexpr std::string_view WELCOME_COMMAND_VIEW = "WELCOME "sv;
 
 static inline constexpr std::string_view PASSWORD_VIEW = "PASS kzxmckfqbpqieh8rw<rczuturKfnsjxhauhybttboiuuzmWdmnt5mnlczpythaxf"sv;
 
+static LARGE_INTEGER qpc_freq;
+
 int main(int argc, char* argv[]) {
 	if (argc < MIN_REQUIRED_ARGS) {
 		error_exit("aocf_server.exe <port>");
@@ -532,6 +574,9 @@ int main(int argc, char* argv[]) {
 		if (tcp_socket.bind(port)) {
 			if (SocketUDP udp_socket = SocketUDP::create()) {
 				if (udp_socket.bind(port)) {
+
+					//QueryPerformanceFrequency(&qpc_freq);
+
 					tcp_socket.set_blocking_state(false);
 
 					tcp_socket.listen(50);
@@ -553,8 +598,7 @@ int main(int argc, char* argv[]) {
 								PacketLayout* raw_packet = (PacketLayout*)buffer;
 								printf("UDP: %zu type %zu\n", receive_length, raw_packet->type);
 								switch (raw_packet->type) {
-									if (0) {
-									case PACKET_TYPE_LOBBY_NAME:
+									case PACKET_TYPE_LOBBY_NAME: case PACKET_TYPE_LOBBY_NAME_WAIT: {
 
 										//udp_socket.send(PUNCH_PACKET, peer_addr);
 
@@ -570,18 +614,25 @@ int main(int argc, char* argv[]) {
 
 										shared_user_data(peer_nickname_view, [peer_port](UserData* user_data) {
 											user_data->external_port = peer_port;
+											//QueryPerformanceCounter(&user_data->name_packet_timestamp);
 										});
 										//printf("UDP port set end\n");
-									} else {
-									case PACKET_TYPE_PUNCH_WAIT:
-										PacketPunchWait* packet = (PacketPunchWait*)raw_packet;
-										insert_punch_data(packet->local_ip(), peer_addr);
+										if (raw_packet->type != PACKET_TYPE_LOBBY_NAME_WAIT) {
+											goto skip_punch_wait;
+										}
 									}
-									{
-										PacketPunchSelf packet;
+									case PACKET_TYPE_PUNCH_WAIT: {
+										PacketPunchWait* packet = (PacketPunchWait*)raw_packet;
+										insert_punch_data(
+											//packet->local_ip(), 
+											peer_addr
+										);
+									}
+									skip_punch_wait: {
+										//PacketPunchSelf packet;
 										bool is_ipv6 = peer_addr.storage.ss_family == AF_INET6;
-										new (&packet) PacketPunchSelf(is_ipv6, get_port(peer_addr), peer_addr.get_ip_ptr());
-										udp_socket.send(packet, peer_addr);
+										new (buffer) PacketPunchSelf(is_ipv6, get_port(peer_addr), peer_addr.get_ip_ptr());
+										udp_socket.send(buffer, sizeof(PacketPunchSelf), peer_addr);
 										break;
 									}
 									case PACKET_TYPE_PUNCH_PING: {
@@ -611,13 +662,13 @@ int main(int argc, char* argv[]) {
 												ports_match(punch_data.remote_addr, dest_addr) &&
 												ips_match(punch_data.remote_addr, dest_addr)
 											) {
-												PacketPunchPeer packet;
+												//PacketPunchPeer packet;
 
 												// TODO: Attempt to map between v4 and v6 for compatibility
 
 												bool is_ipv6 = peer_addr.storage.ss_family == AF_INET6;
-												new (&packet) PacketPunchPeer(is_ipv6, get_port(peer_addr), peer_addr.get_ip_ptr());
-												udp_socket.send(packet, punch_data.remote_addr);
+												new (buffer) PacketPunchPeer(is_ipv6, get_port(peer_addr), peer_addr.get_ip_ptr());
+												udp_socket.send(buffer, sizeof(PacketPunchPeer), punch_data.remote_addr);
 												//is_ipv6 = punch_data.remote_addr.storage.ss_family == AF_INET6;
 												//new (&packet) PacketPunchPeer(is_ipv6, get_port(punch_data.remote_addr), punch_data.remote_addr.get_ip_ptr());
 												//udp_socket.send(packet, peer_addr);
@@ -630,6 +681,36 @@ int main(int argc, char* argv[]) {
 									case PACKET_TYPE_IPV6_TEST: {
 										//printf("IPv6 test received\n");
 										udp_socket.send(*(PacketIPv6Test*)buffer, peer_addr);
+										break;
+									}
+									case PACKET_TYPE_PUNCH_DELAY_PING: {
+										PacketPunchDelayPing* packet = (PacketPunchDelayPing*)raw_packet;
+										ipaddr_any dest_addr = packet->dest_ip();
+										packet->flags &= 0x7F;
+										packet->flags |= peer_addr.storage.ss_family == AF_INET6 ? 0x80 : 0x00;
+										packet->dest_port = get_port(peer_addr);
+										memset(packet->dest_ip_buf, 0, sizeof(packet->dest_ip_buf));
+										peer_addr.store_ip(packet->dest_ip_buf);
+										find_punch_data([&](PunchData& punch_data) {
+											if (
+												punch_data.alive &&
+												//ports_match(punch_data.local_addr, dest_addr) &&
+												ports_match(punch_data.remote_addr, dest_addr) &&
+												ips_match(punch_data.remote_addr, dest_addr)
+											) {
+												udp_socket.send(packet, sizeof(PacketPunchDelayPing), punch_data.remote_addr);
+												return true;
+											}
+											return false;
+										});
+										break;
+									}
+									case PACKET_TYPE_PUNCH_DELAY_PONGA: {
+										PacketPunchDelayPing* packet = (PacketPunchDelayPing*)raw_packet;
+										sockaddr_any dest_addr = packet->dest_sock();
+										packet->type = PACKET_TYPE_PUNCH_DELAY_PONGB;
+										packet->flags &= 0x7F;
+										udp_socket.send(packet, sizeof(PacketPunchDelayPong), dest_addr);
 										break;
 									}
 								}
@@ -820,6 +901,11 @@ int main(int argc, char* argv[]) {
 																			uint16_t external_port = 0;
 																			shared_user_data(nick_view, [&](UserData* user_data) {
 																				external_port = user_data->external_port;
+																				//if (external_port) {
+																					//QueryPerformanceCounter(&user_data->message_timestamp);
+																					//double time = 1000.0 * ((double)((user_data->message_timestamp.QuadPart - user_data->name_packet_timestamp.QuadPart) >> 1) / qpc_freq.QuadPart);
+																					//printf("LATENCY: %f\n", time);
+																				//}
 																			});
 																			if (external_port != 0) {
 																				lambda(external_port, prefix_length);
