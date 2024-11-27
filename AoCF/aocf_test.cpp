@@ -461,7 +461,7 @@ struct BoostSocket {
 
     template <typename T>
     inline void thiscall __send_to(const T& data, const BoostSockAddr& addr) {
-        return this->__send_to({ &data, sizeof(T) }, addr);
+        return this->__send_to(ConstBufferSequence((void*)&data, sizeof(T)), addr);
     }
 
     // Rx173600
@@ -663,6 +663,7 @@ static DWORD XINPUT_PACKET_NUMBERS[4];
 static BYTE KEYBOARD_STATE[256];
 
 bool __keyboard_device_initialize();
+bool __joystick_device_initialize();
 bool __mouse_device_initialize();
 BOOL PASCAL EnumDevicesCallback(LPCDIDEVICEINSTANCEA lpddi, LPVOID pvref);
 BOOL PASCAL EnumDeviceObjectsCallback(LPCDIDEVICEOBJECTINSTANCEA lpddoi, LPVOID pvRef);
@@ -1925,11 +1926,163 @@ struct Packet18 {
     unsigned char data[]; // 0x1
 };
 
+struct Packet18Data {
+	uint8_t type; // 0x0
+	unsigned char data[]; // 0x1
+};
+
+// size: 0x8
+struct Packet18Data0 {
+	uint8_t type; // 0x0
+	// 0x1
+	int __dword_4; // 0x4
+	// 0x8
+
+    Packet18Data0() = default;
+    constexpr Packet18Data0(int val) : type(0), __dword_4(val) {}
+};
+
+struct Packet18Data1 {
+	uint8_t type; // 0x0
+	// 0x1
+	int __dword_4; // 0x4
+	unsigned char data[]; // 0x8
+};
+
+struct Packet18Data4 {
+	uint8_t type; // 0x0
+	uint8_t __ubyte_1; // 0x1
+	// 0x2
+	int __dword_4; // 0x4
+	// 0x8
+};
+
+struct Packet18Data6 {
+	uint8_t type; // 0x0
+	uint8_t __ubyte_1; // 0x1
+	// 0x2
+	int __int_C; // 0xC
+	int __dword_array_10[]; // 0x10 
+};
+
+struct Packet18Data8 {
+	uint8_t type; // 0x0
+	// 0x1
+	int __dword_4; // 0x4
+	int __dword_8; // 0x8
+	// 0xC
+};
+
+struct Packet18Data10 {
+	uint8_t type; // 0x0
+	// 0x1
+	int __dword_4; // 0x4
+	uint8_t __ubyte_8; // 0x8
+	uint8_t __ubyte_9; // 0x9
+	// 0xA
+};
+
+struct Packet18Data11 {
+	uint8_t type; // 0x0
+	uint8_t __ubyte_1; // 0x1
+	// 0x2
+	int __dword_4; // 0x4
+	unsigned char data[]; // 0x8 Array of size 8
+};
+
+// size: 0x8
+struct Packet18Data12 {
+	uint8_t type; // 0x0
+	// 0x1
+	int __dword_4; // 0x4
+	// 0x8
+
+    Packet18Data12() = default;
+    constexpr Packet18Data12(int val) : type(12), __dword_4(val) {}
+};
+
+// size: 0x8+
+struct Packet18Data13 {
+    uint8_t type; // 0x0
+    // 0x1
+    int __dword_4; // 0x4
+    unsigned char data[]; // 0x8
+
+    Packet18Data13() = default;
+    constexpr Packet18Data13(int val) : type(13), __dword_4(val) {}
+};
+
+// size: 0x8
+struct Packet18Data14 {
+    uint8_t type; // 0x0
+    // 0x1
+    int __dword_4; // 0x4
+    // 0x8
+
+    Packet18Data14() = default;
+    constexpr Packet18Data14(int val) : type(14), __dword_4(val) {}
+};
+
 // size: 0x2+
 struct Packet19 {
     PacketType type; // 0x0
     uint8_t child_index; // 0x1
     unsigned char data[]; // 0x2
+};
+
+struct Packet19Data {
+	uint8_t type; // 0x0
+	unsigned char data[]; // 0x1
+};
+
+struct Packet19Data0 {
+	uint8_t type; // 0x0
+	// 0x1
+	int __dword_4; // 0x4
+	// 0x8
+};
+
+struct Packet19Data1 {
+    uint8_t type; // 0x0
+    // 0x1
+    int __dword_4; // 0x4
+    unsigned char data[]; // 0x8
+};
+
+struct Packet19Data9 {
+    uint8_t type; // 0x0
+    // 0x1
+};
+
+struct Packet19Data13 {
+    uint8_t type; // 0x0
+    // 0x1
+    int __dword_4; // 0x4
+    // 0x8
+};
+
+struct UnknownM {
+	int __int_0; // 0x0
+	int __int_4; // 0x4
+	// 0x8
+};
+
+// size: 0x8
+struct UnknownL {
+	UnknownM* __unknownM_0; // 0x0
+	// 0x4
+};
+
+// size: 0x24
+struct InputRecorder {
+	// void* vftable; // 0x0
+	std::vector<void*> __vector_4; // 0x4
+	UnknownL* __unknownL_10; // 0x10
+	UnknownL* __unknownL_14; // 0x14
+	// 0x18
+	
+	std::atomic<HANDLE> __handle_20; // 0x20
+	// 0x24
 };
 
 }
@@ -1970,24 +2123,185 @@ struct UnknownH {
 };
 
 
+namespace TF4 {
+typedef struct UDP UDP;
+
+
+template <typename T>
+struct WTFListNode {
+    WTFListNode<T>* next; // 0x0
+    WTFListNode<T>* prev; // 0x4
+    WTFListNode<T>* idk; // 0x8
+    bool __bool_C; // 0xC
+    bool __bool_D; // 0xD
+    // 0xE
+    T data; // 0x10
+
+    WTFListNode() : next(this), prev(this), idk(this), __bool_C(true), __bool_D(true) {}
+};
+
+template <typename T>
+struct WTFList {
+    WTFListNode<T>* nodes; // 0x0
+    int __dword_4; // 0x4
+    // 0x8
+};
+
+}
+
 namespace Manbow {
+	
+// size: 0x90
+struct UnknownJ {
+	int __int_0; // 0x0
+	int __int_4; // 0x4
+	// 0x8
+	
+	void* __ptr_5C; // 0x5C
+	// 0x60
+	
+	void* __ptr_84; // 0x84
+	// 0x88
+};
+
+// size: 0x4C
+struct InputRecorder : TF4::InputRecorder {
+	// InputRecorder base; // 0x0
+	// 0x24
+	
+	// A bunch of sqrat crap
+	
+	void* __ptr_40; // 0x40
+	void* __ptr_44; // 0x44
+	// 0x48
+};
+	
+struct UnknownI {
+	int __dword_0; // 0x0
+	uint8_t __byte_4; // 0x4
+	uint8_t __byte_5; // 0x5
+	// 0x6
+	
+	void* __ptr_10; // 0x10
+	// 0x14
+	
+	InputRecorder* input_recorder; // 0x24
+	// 0x28
+	
+	UnknownJ* __unknownJ_38; // 0x38
+	UnknownJ* __unknownJ_3C; // 0x3C
+	// 0x40
+	void* __ptr_44; // 0x44
+	// 0x48
+	
+	
+	// RxE3290
+	bool __sub_rE3290() {
+		
+	}
+	
+	// RxE3340
+	void __sub_rE3340() {
+		if (this->__dword_0) {
+			
+			for (size_t i = 0; i < this->__unknownJ_3C - this->__unknownJ_38; ++i) {
+				LARGE_INTEGER qpc_freq_lint;
+				QueryPerformanceFrequency(&qpc_freq_lint);
+				int64_t qpc_freq = qpc_freq_lint.QuadPart;
+				LARGE_INTEGER qpc_value_lint;
+				QueryPerformanceCounter(&qpc_value_lint);
+				int64_t qpc_value = qpc_value_lint.QuadPart;
+				int64_t qpc_seconds = qpc_value / qpc_freq;
+				(qpc_value % qpc_freq) * 1000000000;
+				
+				// more BS 64 bit math
+			}
+			uint32_t localA = 0;
+			for (size_t i = 0; i < this->__unknownJ_3C - this->__unknownJ_38; ++i) {
+				void* ptrA = this->__unknownJ_38[i].__ptr_5C;
+				if (!ptrA) {
+					// throw something
+				}
+				// Probably the __max macro...
+				//if (localA <= ((ptrA->__method_8() / 2) + 15) / 16) {
+					//localA = (ptrA->__method_8() / 2) + 15) / 16;
+				//}
+			}
+			// left off at RxE34F7
+			uint32_t localB = this->__byte_5;
+			auto& curM = this->input_recorder->__unknownL_10->__unknownM_0[localB];
+			
+			if (curM.__int_0 - curM.__int_4 <= localA + 1) {
+				if (this->__unknownJ_3C - this->__unknownJ_38) {
+					size_t i = 0;
+				
+					do {
+						
+					} while (++i < this->__unknownJ_3C - this->__unknownJ_38);
+				}
+			}
+			
+			for (size_t i = 0; i < this->__unknownJ_3C - this->__unknownJ_38; ++i) {
+				
+			}
+		}
+		
+	}
+	
+	// RxE3740
+	int __sub_rE3740() {
+		if (size_t i = this->__byte_5) {
+			do {
+				
+			} while (--i);
+		}
+	}
+};
+
+struct UnknownO {
+    // RxD2670
+    void thiscall __sub_rD2670(uint8_t* data, size_t size) {
+
+    }
+
+    
+};
+
+// size: 0x8
+struct UnknownP {
+    int __dword_0; // 0x0
+    uint32_t timestamp; // 0x4
+    // 0x8
+};
+
+// size: 0x18
+struct UnknownN {
+	
+	int __dword_4; // 0x4
+    UnknownO __unknownO_8; // 0x8
+
+    std::list<UnknownP> __list_10; // 0x10
+    // 0x18
+};
 
 struct NetworkNode {
     // void* vftable; // 0x0
-    // 0x4
-
+    TF4::UDP* udp_instance; // 0x4
+	
+	int __dword_C; // 0xC
+	void* __ptr_10; // 0x10
+	// 0x14
     std::list<UnknownG> __list_18; // 0x18
     Sqrat::Object __sq_object_20; // 0x20
-    int __dword_38; // 0x38
-    int __dword_3C; // 0x3C
-    int __dword_40; // 0x40
+    std::vector<UnknownN> __vector_38; // 0x38
     Sqrat::Object __sq_object_44; // 0x44
+    int __dword_58; // 0x58
     int __dword_5C; // 0x5C
     Sqrat::Object __sq_object_60; // 0x60
     Sqrat::Object __sq_object_74; // 0x74
     Sqrat::Object __sq_object_88; // 0x88
     Sqrat::Object __sq_object_9C; // 0x9C
-    int __dword_B0; // 0xB0
+    UnknownI* __unknownI_ptr_B0; // 0xB0
     int __dword_B4; // 0xB4
     int __dword_B8; // 0xB8
     int __dword_BC; // 0xBC
@@ -1995,7 +2309,7 @@ struct NetworkNode {
     int __dword_C4; // 0xC4
     int __dword_C8; // 0xC8
     int __dword_CC; // 0xCC
-    std::vector<void*> __vector_D0; // 0xD0 UNKNOWN TYPE
+    std::vector<uint8_t> __vector_D0; // 0xD0
     Sqrat::Object __sq_object_DC; // 0xDC
     Sqrat::Object __sq_object_F0; // 0xF0
     Sqrat::Object __sq_object_104; // 0x104
@@ -2004,9 +2318,7 @@ struct NetworkNode {
     Sqrat::Object __sq_object_140; // 0x140
     Sqrat::Object __sq_object_154; // 0x154
     Sqrat::Object __sq_object_168; // 0x168
-    Sqrat::Object __sq_object_168; // 0x168
     Sqrat::Object __sq_object_17C; // 0x17C
-    Sqrat::Object __sq_object_190; // 0x190
     Sqrat::Object __sq_object_190; // 0x190
     int __dword_1A4; // 0x1A4
     int __dword_1A8; // 0x1A8
@@ -2031,7 +2343,12 @@ struct NetworkNode {
     }
 
     // Method 8 = purecall
-    virtual void thiscall __method_8(size_t index, uint8_t* data, size_t size) = NULL;
+    virtual void thiscall __handle_packet_19(size_t index, TF4::Packet19Data* data, size_t size) = NULL;
+
+    template <typename T>
+    inline void thiscall __handle_packet_19(size_t index, const T& data) {
+        return this->__handle_packet_19(index, (TF4::Packet19Data*)&data, sizeof(T));
+    }
 
     // Method C
     // RxD8860
@@ -2052,7 +2369,12 @@ struct NetworkNode {
     }
 
     // Method 18 = purecall
-    virtual void thiscall __method_18(uint8_t* data, size_t size) = NULL;
+    virtual void thiscall __handle_packet_18(TF4::Packet18Data* data, size_t size) = NULL;
+
+    template <typename T>
+    inline void thiscall __handle_packet_18(const T& data) {
+        return this->__handle_packet_18((TF4::Packet18Data*)&data, sizeof(T));
+    }
 
 
     // Method 1C
@@ -2066,14 +2388,18 @@ struct NetworkNode {
 
 
     // RxDB940
-    void thiscall __sub_rDB940(size_t index, uint8_t* data) {
-
-    }
+    void thiscall __handle_packet_19_sub_9(size_t index, TF4::Packet19Data9* data);
 
     // RxE3C60
-    void thiscall __sub_rE3C60(size_t index, uint8_t* data, size_t size) {
+    dllexport void thiscall __handle_packet_19_sub_13(size_t index, TF4::Packet19Data13* data, size_t size);
+	
+	// DUMMY
+	bool SyncInput() { return false; }
 
-    }
+    // RxDBE80
+    void thiscall NetworkNode::SendToChild(size_t index, void* data);
+
+
 };
 
 // RxD5860
@@ -2089,7 +2415,7 @@ struct NetworkClientImpl : NetworkNode {
     // NetworkNode base; // 0x0
     int __dword_1F0; // 0x1F0
     int __dword_1F4; // 0x1F4
-    // 0x1F8
+    int32_t __int_1F8; // 0x1F8
     int __dword_1FC; // 0x1FC
     int __dword_200; // 0x200
     int __dword_204; // 0x204
@@ -2099,33 +2425,60 @@ struct NetworkClientImpl : NetworkNode {
 
     // Method 8
     // RxDFD10
-    virtual void thiscall __method_8(size_t index, uint8_t* data, size_t size) {
-        switch (*data) {
-            case 0:
-            case 1:
-            case 9:
-                this->__sub_rDB940(index, data);
-                break;
-            case 14:
-                this->__sub_rE3C60(index, data, size);
-                break;
-        }
+    virtual void thiscall __handle_packet_19(size_t index, TF4::Packet19Data* data, size_t size);
+
+    template <typename T>
+    inline void thiscall __handle_packet_19(size_t index, const T& data) {
+        return this->__handle_packet_19(index, (TF4::Packet19Data*)&data, sizeof(T));
+    }
+	
+	// RxE38B0
+	void thiscall __handle_packet_18_sub_13(uint8_t* data, size_t size) {
+		
+	}
+
+    template <typename T>
+    inline void thiscall __handle_packet_18(const T& data) {
+        return this->__handle_packet_18((TF4::Packet18Data*)&data, sizeof(T));
     }
 
     // Method 18
     // RxDFDF0
-    virtual void thiscall __method_18(uint8_t* data, size_t size) {
-        switch (*data) {
+    virtual void thiscall __handle_packet_18(TF4::Packet18Data* data, size_t size) {
+		switch (data->type) {
             case 0:
-            case 1:
-            case 4:
-            case 6:
-            case 8:
-            case 10:
-            case 11:
-            case 12:
-            case 13:
-            case 14:
+				this->__dword_C = ((TF4::Packet18Data0*)data)->__dword_4;
+				return;
+            case 1: {
+                TF4::Packet18Data1* packet_data = (TF4::Packet18Data1*)data;
+                this->__handle_packet_18(TF4::Packet18Data0(packet_data->__dword_4));
+				// this->__ptr_10->__sub_rD2670(packet_data->data, size - sizeof(TF4::Packet18Data0));
+				return;
+			}
+            case 4: {
+				
+			}
+            case 6: {
+				
+			}
+            case 8: {
+				
+			}
+            case 10: {
+				
+			}
+            case 11: {
+				
+			}
+            case 12: {
+				
+			}
+            case 13: {
+				
+			}
+            case 14: {
+				
+			}
         }
     }
 
@@ -2133,6 +2486,38 @@ struct NetworkClientImpl : NetworkNode {
     virtual int __method_20(int arg1) {
         return __network_node_method_20(this, arg1);
     }
+
+    // RxD5A30
+    bool thiscall Init(TF4::UDP* udp, uint16_t port, size_t child_count);
+
+    // RxD0230
+    void thiscall Reconnect();
+
+    // RxD0240
+    int thiscall GetConnectState();
+
+    // RxD0270
+    int thiscall GetParentDelay();
+
+    // RxD02C0
+    int thiscall GetInputDelay(size_t index);
+    
+	// RxDF6D0
+	bool thiscall SyncInput() {
+		UnknownI* unknownI = this->__unknownI_ptr_B0;
+		if (unknownI && unknownI->__dword_0) {
+			if (this->__int_1F8 > 0) {
+				return ++this->__int_1F8 != 0;
+			}
+			unknownI->__sub_rE3340();
+			this->__int_1F8 = this->__unknownI_ptr_B0->__sub_rE3740();
+			if (this->__int_1F8) {
+				this->__int_1F8 = std::min(--this->__int_1F8, 1);
+				return true;
+			}
+		}
+		return false;
+	}
 };
 
 // size: 0x218
@@ -2146,36 +2531,52 @@ struct NetworkServerImpl : NetworkNode {
     int __dword_204; // 0x204
     int __dword_208; // 0x208
     // 0x20C
-
-    int __dword_214; // 0x214
+	int32_t __int_210; // 0x210
+    int __int_214; // 0x214
     // 0x218
 
 
     // Method 8
     // RxD60B0
-    virtual void thiscall __method_8(size_t index, uint8_t* data, size_t size) {
-        switch (*data) {
-            case 0:
-            case 1:
-            case 6:
-            case 8:
-            case 9:
-                this->__sub_rDB940(index, data);
-                break;
-            case 14:
-                this->__sub_rE3C60(index, data, size);
-                break;
-        }
+    virtual void thiscall __handle_packet_19(size_t index, TF4::Packet19Data* data, size_t size);
+
+    template <typename T>
+    inline void thiscall __handle_packet_19(size_t index, const T& data) {
+        return this->__handle_packet_19(index, (TF4::Packet19Data*)&data, sizeof(T));
     }
 
     // Method 18
-    virtual void thiscall __method_18(uint8_t* data, size_t size) {
+    virtual void thiscall __handle_packet_18(TF4::Packet18Data* data, size_t size) {
     }
 
     // Method 20
     virtual int __method_20(int arg1) {
         return __network_node_method_20(this, arg1);
     }
+
+    // RxD5A30
+    bool thiscall Init(TF4::UDP* udp, uint16_t port, size_t child_count);
+	
+	// RxD6030
+	bool thiscall SyncInput() {
+		if (UnknownI* unknownI = this->__unknownI_ptr_B0) {
+			if (this->__int_210 > 0) {
+				return ++this->__int_210 != 0;
+			}
+			if (unknownI->__sub_rE3290()) {
+				this->__unknownI_ptr_B0->__sub_rE3340();
+				this->__unknownI_ptr_B0->__sub_rE3740();
+				if (this->__int_210) {
+					this->__int_210 = std::min(--this->__int_210, 1);
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+    // RxCE2F0
+    int thiscall GetInputDelay(size_t index);
 };
 
 }
@@ -2571,7 +2972,7 @@ struct UDP : IUDP {
 
     // Method 2C
     // Rx17C340
-    virtual void thiscall __method_2C(size_t index, void* data, size_t size) {
+    virtual void thiscall __send_packet_18_to_child(size_t index, void* data, size_t size) {
         if (index < this->child_array_size) {
             ConnectionData& child = this->child_array[index];
 
@@ -2590,9 +2991,15 @@ struct UDP : IUDP {
         }
     }
 
+    // Method 2C
+    template <typename T>
+    inline void thiscall __send_packet_18_to_child(size_t index, const T& data) {
+        return this->__send_packet_18_to_child(index, (void*)&data, sizeof(T));
+    }
+
     // Method 30
     // Rx17C430
-    virtual void thiscall __method_30(void* data, size_t size) {
+    virtual void thiscall __send_packet_18_to_children(void* data, size_t size) {
         if (size < 0x500) {
             for (size_t i = 0; i < this->child_array_size; ++i) {
                 ConnectionData& child = this->child_array[i];
@@ -2606,6 +3013,12 @@ struct UDP : IUDP {
                 }
             }
         }
+    }
+
+    // Method 30
+    template <typename T>
+    inline void thiscall __send_packet_18_to_children(const T& data) {
+        return this->__send_packet_18_to_children((void*)&data, sizeof(T));
     }
 
     // Method 34
@@ -2933,7 +3346,7 @@ struct UDP : IUDP {
                 if (this->parent.addr == this->recv_addr) {
                     this->parent.__uint_2C = 0;
                     if (auto* manbow_network = this->__manbow_network_impl) {
-                        manbow_network->__method_18(((Packet18*)packet)->data, packet_size - sizeof(Packet18));
+                        manbow_network->__handle_packet_18((Packet18Data*)((Packet18*)packet)->data, packet_size - sizeof(Packet18));
                     }
                 }
                 break;
@@ -2946,7 +3359,7 @@ struct UDP : IUDP {
                     if (child.addr == this->recv_addr) {
                         child.__uint_2C = 0;
                         if (auto* manbow_network = this->__manbow_network_impl) {
-                            manbow_network->__method_8(index, packet19->data, packet_size - sizeof(Packet19));
+                            manbow_network->__handle_packet_19(index, (Packet19Data*)packet19->data, packet_size - sizeof(Packet19));
                         }
                     }
                 }
@@ -2959,6 +3372,172 @@ struct UDP : IUDP {
 }
 
 namespace Manbow {
+
+// RxDBE80
+void thiscall NetworkNode::SendToChild(size_t index, void* data) {
+    if (this->udp_instance->GetChildState(index)) {
+        
+        size_t data_length = this->__vector_D0.size() - sizeof(TF4::Packet18Data13);
+
+        TF4::Packet18Data13* packet = new (this->__vector_D0.data()) TF4::Packet18Data13(0);
+
+        //this->udp_instance->__send_packet_18_to_child(index, this->__vector_D0.data(), );
+    }
+}
+
+// RxDB940
+void thiscall NetworkNode::__handle_packet_19_sub_9(size_t index, TF4::Packet19Data9* data) {
+
+    //this->udp_instance->__send_packet_18_to_child(index, TF4::Packet18Data12(0));
+
+}
+
+// RxE3C60
+dllexport void thiscall NetworkNode::__handle_packet_19_sub_13(size_t index, TF4::Packet19Data13* data, size_t size) {
+    UnknownN& unknownN = this->__vector_38[index];
+
+    int* dword_4_ptr = &data->__dword_4;
+    int dword_4_val = *dword_4_ptr;
+    if (dword_4_val) {
+        this->udp_instance->__send_packet_18_to_child(index, TF4::Packet18Data14(dword_4_val));
+
+        std::list<UnknownP>& list_idk = unknownN.__list_10;
+
+        //list_idk.
+
+        //if () {
+            uint32_t current_time = __calc_qpc_delta();
+
+            for (auto& unknownP : list_idk) {
+                if (current_time - unknownP.timestamp > 4096) {
+                    
+                }
+            }
+            
+        //}
+
+        
+    }
+}
+
+// RxD5A30
+bool thiscall NetworkClientImpl::Init(TF4::UDP* udp, uint16_t port, size_t child_count) {
+    this->udp_instance = udp;
+    udp->set_network_impl(this);
+
+    // TODO: way too much sqrat stuff
+
+    // this->__vector_38
+
+    this->__vector_D0.resize(0x4000);
+
+    this->udp_instance->__method_0(child_count, port, 0);
+
+    // TODO
+}
+
+// RxD0230
+void thiscall NetworkClientImpl::Reconnect() {
+    this->udp_instance->__method_C();
+}
+
+// RxD0240
+int thiscall NetworkClientImpl::GetConnectState() {
+    if (this->udp_instance) {
+        return this->udp_instance->GetConnectState();
+    }
+    return 1;
+}
+
+// RxD0270
+int thiscall NetworkClientImpl::GetParentDelay() {
+    if (this->udp_instance) {
+        return this->udp_instance->GetParentDelay();
+    }
+    return 0;
+}
+
+// RxD02C0
+int thiscall NetworkClientImpl::GetInputDelay(size_t index) {
+    if (index == 0 && this->udp_instance) {
+        return this->udp_instance->GetParentDelay();
+    }
+    return 0;
+}
+
+// Method 8
+// RxDFD10
+void thiscall NetworkClientImpl::__handle_packet_19(size_t index, TF4::Packet19Data* data, size_t size) {
+    switch (data->type) {
+        case 0:
+            this->__vector_38[index].__dword_4 = ((TF4::Packet19Data0*)data)->__dword_4;
+            return;
+        case 1: {
+            TF4::Packet19Data1* packet_data = (TF4::Packet19Data1*)data;
+            this->udp_instance->__send_packet_18_to_child(index, TF4::Packet18Data0(packet_data->__dword_4));
+            this->__vector_38[index].__unknownO_8.__sub_rD2670(packet_data->data, size - sizeof(TF4::Packet19Data1));
+            return;
+        }
+        case 9:
+            this->__handle_packet_19_sub_9(index, (TF4::Packet19Data9*)data);
+            return;
+        case 14:
+            this->__handle_packet_19_sub_13(index, (TF4::Packet19Data13*)data, size);
+            return;
+    }
+}
+
+// RxD5A30
+bool thiscall NetworkServerImpl::Init(TF4::UDP* udp, uint16_t port, size_t child_count) {
+    this->udp_instance = udp;
+    udp->set_network_impl(this);
+
+    // TODO: way too much sqrat stuff
+
+    this->__vector_D0.resize(0x4000);
+
+    this->udp_instance->__method_0(child_count, port, 0);
+
+    // TODO
+}
+
+// RxCE2F0
+int thiscall NetworkServerImpl::GetInputDelay(size_t index) {
+    if (index == 0) {
+        return 0;
+    }
+    --index;
+    if (this->udp_instance) {
+        return this->udp_instance->GetChildDelay(index);
+    }
+    return 0;
+}
+
+// Method 8
+// RxD60B0
+void thiscall NetworkServerImpl::__handle_packet_19(size_t index, TF4::Packet19Data* data, size_t size) {
+    switch (data->type) {
+        case 0:
+			this->__vector_38[index].__dword_4 = ((TF4::Packet19Data0*)data)->__dword_4;
+			return;
+        case 1: {
+            TF4::Packet19Data1* packet_data = (TF4::Packet19Data1*)data;
+            this->udp_instance->__send_packet_18_to_child(index, TF4::Packet18Data0(packet_data->__dword_4));
+            this->__vector_38[index].__unknownO_8.__sub_rD2670(packet_data->data, size - sizeof(TF4::Packet19Data1));
+            return;
+        }
+        case 6:
+            // TODO
+        case 8:
+            // TODO
+        case 9:
+            this->__handle_packet_19_sub_9(index, (TF4::Packet19Data9*)data);
+            return;
+        case 14:
+            this->__handle_packet_19_sub_13(index, (TF4::Packet19Data13*)data, size);
+            return;
+    }
+}
 
 struct SqFileReader : TF4::PackageReader {
 
