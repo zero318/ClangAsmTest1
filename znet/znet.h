@@ -29,11 +29,14 @@
 #include <string_view>
 #include <functional>
 
+#if _WIN32
+#define ZNET_SUPPORT_WCHAR 1
+
+#define ENABLE_SSL 1
+
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <MSWSock.h>
-
-#define ENABLE_SSL 1
 
 #if ENABLE_SSL
 #define SECURITY_WIN32
@@ -46,12 +49,41 @@
 
 #include <WinDNS.h>
 
+#else
+
+#define ENABLE_SSL 0
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+
+typedef int SOCKET;
+typedef struct addrinfo ADDRINFOA;
+typedef uint32_t IP4_ADDRESS;
+typedef union {
+    uint32_t IP6Dword[4];
+    uint16_t IP6Word[8];
+} IP6_ADDRESS;
+#define INVALID_SOCKET (~((SOCKET)0))
+#ifndef INET_ADDRSTRLEN
+#define INET_ADDRSTRLEN 22
+#endif
+#ifndef INET6_ADDRSTRLEN
+#define INET6_ADDRSTRLEN 65
+#endif
+#endif
+
+
 #include "common.h"
 
+#if _WIN32
 #pragma comment (lib, "Ws2_32.lib")
 #pragma comment (lib, "Dnsapi")
 #if ENABLE_SSL
 #pragma comment (lib, "secur32.lib")
+#endif
 #endif
 
 namespace zero {
@@ -126,6 +158,12 @@ static inline constexpr T ntoh(T value) {
     }
 }
 
+#if ZNET_SUPPORT_WCHAR
+#define ZNET_WHCAR_TEST(type) do; while(0)
+#else
+#define ZNET_WCHAR_TEST(type) if constexpr (std::is_same_v<type, wchar_t>) { static_assert(false, "Wide characters are not supported"); }
+#endif
+
 #define ZNET_REQUIRE_IPV6       0b001
 #define ZNET_DONT_REQUIRE_IPV6  0b010
 #define ZNET_DISABLE_IPV6       0b100
@@ -140,7 +178,11 @@ static inline constexpr T ntoh(T value) {
 static inline constexpr bool enable_ipv6 = true;
 #endif
 #if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6)
+#if _WIN32
 static inline bool enable_ipv6 = false;
+#else
+static inline bool enable_ipv6 = true;
+#endif
 #endif
 #if ZNET_IPV6_MODES(ZNET_DISABLE_IPV6)
 static inline constexpr bool enable_ipv6 = false;
@@ -193,8 +235,8 @@ struct IPv6Header {
     uint16_t payload_length; // 0x4
     uint8_t next_header; // 0x6
     uint8_t hop_limit; // 0x7
-    in_addr6 source; // 0x8
-    in_addr6 destination; // 0x18
+    in6_addr source; // 0x8
+    in6_addr destination; // 0x18
     // 0x28
 };
 
@@ -483,7 +525,7 @@ struct sockaddr_any {
             *(sockaddr_in6*)&this->storage = {
                 .sin6_family = AF_INET6,
                 .sin6_port = hton(port),
-                .sin6_addr = *(in_addr6*)ip
+                .sin6_addr = *(in6_addr*)ip
             };
             this->length = sizeof(sockaddr_in6);
         } else {
@@ -507,7 +549,7 @@ struct sockaddr_any {
         addr6->sin6_family = AF_INET6;
         addr6->sin6_port = addr4->sin_port;
         IP6_ADDRESS temp = map_ipv4_to_ipv6(*(IP4_ADDRESS*)&addr4->sin_addr);
-        addr6->sin6_addr = *(IN6_ADDR*)&temp;
+        addr6->sin6_addr = *(in6_addr*)&temp;
     }
 
     operator sockaddr*() const {
@@ -626,6 +668,7 @@ static inline bool ports_match(const ipaddr_any& lhs, const sockaddr_any& rhs) {
     return get_port<false>(lhs) == get_port<false>(rhs);
 }
 
+#if _WIN32
 static inline DNS_STATUS WINAPI dns_query(PCSTR pszName, WORD wType, DWORD Options, PVOID pExtra, PDNS_RECORDA* ppQueryResults, PVOID* pReserved) {
     return ::DnsQuery_A(pszName, wType, Options, pExtra, (PDNS_RECORD*)ppQueryResults, pReserved);
 }
@@ -635,10 +678,15 @@ static inline DNS_STATUS WINAPI dns_query(PCWSTR pszName, WORD wType, DWORD Opti
 static inline const wchar_t* inet_ntop(int Family, const void* pAddr, wchar_t* pStringBuf, size_t StringBufSize) {
     return ::InetNtopW(Family, pAddr, pStringBuf, StringBufSize);
 }
+#endif
+
+
 template <size_t N>
 static inline const char* inet_ntop(int Family, const void* pAddr, char(&str)[N]) {
     return ::inet_ntop(Family, pAddr, str, N);
 }
+
+#if _WIN32
 template <size_t N>
 static inline const wchar_t* inet_ntop(int Family, const void* pAddr, wchar_t(&str)[N]) {
     return ::InetNtopW(Family, pAddr, str, N);
@@ -754,6 +802,7 @@ found_addr:
     return true;
 #endif
 }
+#endif
 
 void print_sockaddr_full(const sockaddr_any& addr) {
     switch (addr.storage.ss_family) {
@@ -933,46 +982,72 @@ struct SocketBase {
 protected:
 
     static inline constexpr ADDRINFOA tcp_addr_hint_a = {
+#if _WIN32
         .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV,
+#else
+        .ai_flags = AI_NUMERIC_SERV,
+#endif
         .ai_family = AF_UNSPEC,
         .ai_socktype = SOCK_STREAM,
         .ai_protocol = IPPROTO_TCP
     };
 
     static inline constexpr ADDRINFOA udp_addr_hint_a = {
+#if _WIN32
         .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV,
+#else
+        .ai_flags = AI_NUMERIC_SERV,
+#endif
         .ai_family = AF_UNSPEC,
         .ai_socktype = SOCK_DGRAM,
         .ai_protocol = IPPROTO_UDP
     };
 
     static inline constexpr ADDRINFOA icmp_addr_hint_a = {
+#if _WIN32
         .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV,
+#else
+        .ai_flags = AI_NUMERIC_SERV,
+#endif
         .ai_family = AF_UNSPEC,
         .ai_socktype = SOCK_RAW,
         .ai_protocol = IPPROTO_ICMP
     };
 
+#if ZNET_SUPPORT_WCHAR
     static inline constexpr ADDRINFOW tcp_addr_hint_w = {
+#if _WIN32
         .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV,
+#else
+        .ai_flags = AI_NUMERIC_SERV,
+#endif
         .ai_family = AF_UNSPEC,
         .ai_socktype = SOCK_STREAM,
         .ai_protocol = IPPROTO_TCP
     };
 
     static inline constexpr ADDRINFOW udp_addr_hint_w = {
+#if _WIN32
         .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV,
+#else
+        .ai_flags = AI_NUMERIC_SERV,
+#endif
         .ai_family = AF_UNSPEC,
         .ai_socktype = SOCK_DGRAM,
         .ai_protocol = IPPROTO_UDP
     };
 
     static inline constexpr ADDRINFOW icmp_addr_hint_w = {
+#if _WIN32
         .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV,
+#else
+        .ai_flags = AI_NUMERIC_SERV,
+#endif
         .ai_family = AF_UNSPEC,
         .ai_socktype = SOCK_RAW,
         .ai_protocol = IPPROTO_ICMP
     };
+#endif
 
 public:
 
@@ -1028,8 +1103,13 @@ protected:
 
     template<SocketType socket_type, typename T>
     bool connect_ip_impl(const T* server_name, const T* port_str, const T* ip) const {
+        ZNET_WCHAR_TEST(T);
 
+#if ZNET_SUPPORT_WCHAR
         using ADDRINFO = std::conditional_t<std::is_same_v<T, wchar_t>, ADDRINFOW, ADDRINFOA>;
+#else
+        using ADDRINFO = ADDRINFOA;
+#endif
 
         const ADDRINFO* addr_hint;
         if constexpr (std::is_same_v<T, wchar_t>) {
@@ -1079,6 +1159,8 @@ protected:
 
     template<SocketType socket_type, typename T>
     bool connect_ipv6_impl(const T* server_name, const T* port_str, const T* ip) const {
+        ZNET_WCHAR_TEST(T);
+
 #if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6 | ZNET_DISABLE_IPV6)
         T addr_buff[INET_ADDRSTRLEN];
 #if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6)
@@ -1086,9 +1168,12 @@ protected:
 #endif
         {
             IP6_ADDRESS ipv6;
+#if ZNET_SUPPORT_WCHAR
             if constexpr (std::is_same_v<T, wchar_t>) {
                 inet_pton(AF_INET6, ip, &ipv6);
-            } else {
+            } else
+#endif
+            {
                 ::inet_pton(AF_INET6, ip, &ipv6);
             }
             if (!is_ipv6_compatible_with_ipv4(ipv6)) {
@@ -1103,6 +1188,8 @@ protected:
 
     template<SocketType socket_type, typename T>
     bool connect_ipv4_impl(const T* server_name, const T* port_str, const T* ip) const {
+        ZNET_WCHAR_TEST(T);
+
 #if ZNET_IPV6_MODES(ZNET_REQUIRE_IPV6 | ZNET_DONT_REQUIRE_IPV6)
         T addr_buff[INET6_ADDRSTRLEN];
 #if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6)
@@ -1114,9 +1201,12 @@ protected:
                     0x00000000, 0x00000000, 0xFFFF0000, 0
                 }
             };
+#if ZNET_SUPPORT_WCHAR
             if constexpr (std::is_same_v<T, wchar_t>) {
                 inet_pton(AF_INET, ip, &ipv6.IP6Dword[3]);
-            } else {
+            } else
+#endif
+            {
                 ::inet_pton(AF_INET, ip, &ipv6.IP6Dword[3]);
             }
             inet_ntop(AF_INET6, &ipv6, addr_buff);
@@ -1137,20 +1227,24 @@ public:
         return this->connect_ipv4_impl<socket_type, char>(NULL, port_str, ip);
     }
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type>
     bool connect_ipv4(const wchar_t* ip, const wchar_t* port_str) const {
         return this->connect_ipv4_impl<socket_type, wchar_t>(NULL, port_str, ip);
     }
+#endif
 
     template<SocketType socket_type>
     bool connect_ipv6(const char* ip, const char* port_str) const {
         return this->connect_ipv6_impl<socket_type, char>(NULL, port_str, ip);
     }
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type>
     bool connect_ipv6(const wchar_t* ip, const wchar_t* port_str) const {
         return this->connect_ipv6_impl<socket_type, wchar_t>(NULL, port_str, ip);
     }
+#endif
 
     template<SocketType socket_type>
     bool connect_ip(const char* ip, const char* port_str) const {
@@ -1161,6 +1255,7 @@ public:
         }
     }
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type>
     bool connect_ip(const wchar_t* ip, const wchar_t* port_str) const {
         if (wcschr(ip, '.') {
@@ -1169,24 +1264,35 @@ public:
             return this->connect_ipv6<socket_type>(ip, port_str);
         }
     }
+#endif
 
     template<SocketType socket_type>
     bool connect(const char* server_name, const char* port_str) const {
+#if _WIN32
         char addr_buff[MAX_ADDR_BUFF_SIZE];
         if (zero::net::resolve_address(server_name, addr_buff)) {
             return this->connect_ip_impl<socket_type>(server_name, port_str, addr_buff);
         }
         return false;
+#else
+        return this->connect_ip_impl<socket_type>(server_name, port_str, server_name);
+#endif
     }
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type>
     bool connect(const wchar_t* server_name, const wchar_t* port_str) const {
+#if _WIN32
         wchar_t addr_buff[MAX_ADDR_BUFF_SIZE];
         if (zero::net::resolve_address(server_name, addr_buff)) {
             return this->connect_ip_impl<socket_type>(server_name, port_str, addr_buff);
         }
         return false;
+#else
+        return this->connect_ip_impl<socket_type>(server_name, port_str, server_name);
+#endif
     }
+#endif
 
 protected:
 
@@ -1194,7 +1300,7 @@ protected:
         sockaddr_in6 local = {
             .sin6_family = AF_INET6,
             .sin6_port = hton(local_port),
-            .sin6_addr = *(const IN6_ADDR*)&ip
+            .sin6_addr = *(const in6_addr*)&ip
         };
         return zero::net::bind(this->sock, local) == 0;
     }
@@ -1496,40 +1602,48 @@ struct SocketTCP : Socket {
         return this->Socket::connect_ipv4<socket_type>(ip, port_str);
     }
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type = TCP>
     inline bool connect_ipv4(const wchar_t* ip, const wchar_t* port_str) const {
         return this->Socket::connect_ipv4<socket_type>(ip, port_str);
     }
+#endif
 
     template<SocketType socket_type = TCP>
     inline bool connect_ipv6(const char* ip, const char* port_str) const {
         return this->Socket::connect_ipv6<socket_type>(ip, port_str);
     }
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type = TCP>
     inline bool connect_ipv6(const wchar_t* ip, const wchar_t* port_str) const {
         return this->Socket::connect_ipv6<socket_type>(ip, port_str);
     }
+#endif
 
     template<SocketType socket_type = TCP>
     inline bool connect_ip(const char* ip, const char* port_str) const {
         return this->Socket::connect_ip<socket_type>(ip, port_str);
     }
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type = TCP>
     inline bool connect_ip(const wchar_t* ip, const wchar_t* port_str) const {
         return this->Socket::connect_ip<socket_type>(ip, port_str);
     }
+#endif
 
     template<SocketType socket_type = TCP>
     inline bool connect(const char* server_name, const char* port_str) const {
         return this->Socket::connect<socket_type>(server_name, port_str);
     }
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type = TCP>
     inline bool connect(const wchar_t* server_name, const wchar_t* port_str) const {
         return this->Socket::connect<socket_type>(server_name, port_str);
     }
+#endif
 
     template<SocketType socket_type = TCP>
     static inline SocketTCP create() {
@@ -1543,20 +1657,22 @@ template<> bool SocketTCP::initialize<UDP>() = delete;
 template<> bool SocketTCP::initialize<ICMP>() = delete;
 template<> inline bool SocketTCP::connect_ipv4<UDP>(const char* ip, const char* port_str) const = delete;
 template<> inline bool SocketTCP::connect_ipv4<ICMP>(const char* ip, const char* port_str) const = delete;
-template<> inline bool SocketTCP::connect_ipv4<UDP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
-template<> inline bool SocketTCP::connect_ipv4<ICMP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
 template<> inline bool SocketTCP::connect_ipv6<UDP>(const char* ip, const char* port_str) const = delete;
 template<> inline bool SocketTCP::connect_ipv6<ICMP>(const char* ip, const char* port_str) const = delete;
-template<> inline bool SocketTCP::connect_ipv6<UDP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
-template<> inline bool SocketTCP::connect_ipv6<ICMP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
 template<> inline bool SocketTCP::connect_ip<UDP>(const char* ip, const char* port_str) const = delete;
 template<> inline bool SocketTCP::connect_ip<ICMP>(const char* ip, const char* port_str) const = delete;
-template<> inline bool SocketTCP::connect_ip<UDP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
-template<> inline bool SocketTCP::connect_ip<ICMP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
 template<> inline bool SocketTCP::connect<UDP>(const char* server_name, const char* port_str) const = delete;
 template<> inline bool SocketTCP::connect<ICMP>(const char* server_name, const char* port_str) const = delete;
+#if ZNET_SUPPORT_WCHAR
+template<> inline bool SocketTCP::connect_ipv4<UDP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
+template<> inline bool SocketTCP::connect_ipv4<ICMP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
+template<> inline bool SocketTCP::connect_ipv6<UDP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
+template<> inline bool SocketTCP::connect_ipv6<ICMP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
+template<> inline bool SocketTCP::connect_ip<UDP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
+template<> inline bool SocketTCP::connect_ip<ICMP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
 template<> inline bool SocketTCP::connect<UDP>(const wchar_t* server_name, const wchar_t* port_str) const = delete;
 template<> inline bool SocketTCP::connect<ICMP>(const wchar_t* server_name, const wchar_t* port_str) const = delete;
+#endif
 template<> inline SocketTCP SocketTCP::create<UDP>() = delete;
 template<> inline SocketTCP SocketTCP::create<ICMP>() = delete;
 
@@ -1575,40 +1691,48 @@ struct SocketUDP : Socket {
         return this->Socket::connect_ipv4<socket_type>(ip, port_str);
     }
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type = UDP>
     inline bool connect_ipv4(const wchar_t* ip, const wchar_t* port_str) const {
         return this->Socket::connect_ipv4<socket_type>(ip, port_str);
     }
+#endif
 
     template<SocketType socket_type = UDP>
     inline bool connect_ipv6(const char* ip, const char* port_str) const {
         return this->Socket::connect_ipv6<socket_type>(ip, port_str);
     }
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type = UDP>
     inline bool connect_ipv6(const wchar_t* ip, const wchar_t* port_str) const {
         return this->Socket::connect_ipv6<socket_type>(ip, port_str);
     }
+#endif
 
     template<SocketType socket_type = UDP>
     inline bool connect_ip(const char* ip, const char* port_str) const {
         return this->Socket::connect_ip<socket_type>(ip, port_str);
     }
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type = UDP>
     inline bool connect_ip(const wchar_t* ip, const wchar_t* port_str) const {
         return this->Socket::connect_ip<socket_type>(ip, port_str);
     }
+#endif
 
     template<SocketType socket_type = UDP>
     inline bool connect(const char* server_name, const char* port_str) const {
         return this->Socket::connect<socket_type>(server_name, port_str);
     }
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type = UDP>
     inline bool connect(const wchar_t* server_name, const wchar_t* port_str) const {
         return this->Socket::connect<socket_type>(server_name, port_str);
     }
+#endif
 
     template<SocketType socket_type = UDP>
     static inline SocketUDP create() {
@@ -1622,20 +1746,22 @@ template<> bool SocketUDP::initialize<TCP>() = delete;
 template<> bool SocketUDP::initialize<ICMP>() = delete;
 template<> inline bool SocketUDP::connect_ipv4<TCP>(const char* ip, const char* port_str) const = delete;
 template<> inline bool SocketUDP::connect_ipv4<ICMP>(const char* ip, const char* port_str) const = delete;
-template<> inline bool SocketUDP::connect_ipv4<TCP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
-template<> inline bool SocketUDP::connect_ipv4<ICMP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
 template<> inline bool SocketUDP::connect_ipv6<TCP>(const char* ip, const char* port_str) const = delete;
 template<> inline bool SocketUDP::connect_ipv6<ICMP>(const char* ip, const char* port_str) const = delete;
-template<> inline bool SocketUDP::connect_ipv6<TCP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
-template<> inline bool SocketUDP::connect_ipv6<ICMP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
 template<> inline bool SocketUDP::connect_ip<TCP>(const char* ip, const char* port_str) const = delete;
 template<> inline bool SocketUDP::connect_ip<ICMP>(const char* ip, const char* port_str) const = delete;
-template<> inline bool SocketUDP::connect_ip<TCP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
-template<> inline bool SocketUDP::connect_ip<ICMP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
 template<> inline bool SocketUDP::connect<TCP>(const char* server_name, const char* port_str) const = delete;
 template<> inline bool SocketUDP::connect<ICMP>(const char* server_name, const char* port_str) const = delete;
+#if ZNET_SUPPORT_WCHAR
+template<> inline bool SocketUDP::connect_ipv4<TCP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
+template<> inline bool SocketUDP::connect_ipv4<ICMP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
+template<> inline bool SocketUDP::connect_ipv6<TCP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
+template<> inline bool SocketUDP::connect_ipv6<ICMP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
+template<> inline bool SocketUDP::connect_ip<TCP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
+template<> inline bool SocketUDP::connect_ip<ICMP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
 template<> inline bool SocketUDP::connect<TCP>(const wchar_t* server_name, const wchar_t* port_str) const = delete;
 template<> inline bool SocketUDP::connect<ICMP>(const wchar_t* server_name, const wchar_t* port_str) const = delete;
+#endif
 template<> inline SocketUDP SocketUDP::create<TCP>() = delete;
 template<> inline SocketUDP SocketUDP::create<ICMP>() = delete;
 
@@ -1654,40 +1780,48 @@ struct SocketICMP : Socket {
         return this->Socket::connect_ipv4<socket_type>(ip, port_str);
     }
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type = ICMP>
     inline bool connect_ipv4(const wchar_t* ip, const wchar_t* port_str) const {
         return this->Socket::connect_ipv4<socket_type>(ip, port_str);
     }
+#endif
 
     template<SocketType socket_type = ICMP>
     inline bool connect_ipv6(const char* ip, const char* port_str) const {
         return this->Socket::connect_ipv6<socket_type>(ip, port_str);
     }
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type = ICMP>
     inline bool connect_ipv6(const wchar_t* ip, const wchar_t* port_str) const {
         return this->Socket::connect_ipv6<socket_type>(ip, port_str);
     }
+#endif
 
     template<SocketType socket_type = ICMP>
     inline bool connect_ip(const char* ip, const char* port_str) const {
         return this->Socket::connect_ip<socket_type>(ip, port_str);
     }
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type = ICMP>
     inline bool connect_ip(const wchar_t* ip, const wchar_t* port_str) const {
         return this->Socket::connect_ip<socket_type>(ip, port_str);
     }
+#endif
 
     template<SocketType socket_type = ICMP>
     inline bool connect(const char* server_name, const char* port_str) const {
         return this->Socket::connect<socket_type>(server_name, port_str);
     }
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type = ICMP>
     inline bool connect(const wchar_t* server_name, const wchar_t* port_str) const {
         return this->Socket::connect<socket_type>(server_name, port_str);
     }
+#endif
 
     template<SocketType socket_type = ICMP>
     static inline SocketICMP create() {
@@ -1701,20 +1835,22 @@ template<> bool SocketICMP::initialize<TCP>() = delete;
 template<> bool SocketICMP::initialize<UDP>() = delete;
 template<> inline bool SocketICMP::connect_ipv4<TCP>(const char* ip, const char* port_str) const = delete;
 template<> inline bool SocketICMP::connect_ipv4<UDP>(const char* ip, const char* port_str) const = delete;
-template<> inline bool SocketICMP::connect_ipv4<TCP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
-template<> inline bool SocketICMP::connect_ipv4<UDP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
 template<> inline bool SocketICMP::connect_ipv6<TCP>(const char* ip, const char* port_str) const = delete;
 template<> inline bool SocketICMP::connect_ipv6<UDP>(const char* ip, const char* port_str) const = delete;
-template<> inline bool SocketICMP::connect_ipv6<TCP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
-template<> inline bool SocketICMP::connect_ipv6<UDP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
 template<> inline bool SocketICMP::connect_ip<TCP>(const char* ip, const char* port_str) const = delete;
 template<> inline bool SocketICMP::connect_ip<UDP>(const char* ip, const char* port_str) const = delete;
-template<> inline bool SocketICMP::connect_ip<TCP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
-template<> inline bool SocketICMP::connect_ip<UDP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
 template<> inline bool SocketICMP::connect<TCP>(const char* server_name, const char* port_str) const = delete;
 template<> inline bool SocketICMP::connect<UDP>(const char* server_name, const char* port_str) const = delete;
+#if ZNET_SUPPORT_WCHAR
+template<> inline bool SocketICMP::connect_ipv4<TCP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
+template<> inline bool SocketICMP::connect_ipv4<UDP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
+template<> inline bool SocketICMP::connect_ipv6<TCP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
+template<> inline bool SocketICMP::connect_ipv6<UDP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
+template<> inline bool SocketICMP::connect_ip<TCP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
+template<> inline bool SocketICMP::connect_ip<UDP>(const wchar_t* ip, const wchar_t* port_str) const = delete;
 template<> inline bool SocketICMP::connect<TCP>(const wchar_t* server_name, const wchar_t* port_str) const = delete;
 template<> inline bool SocketICMP::connect<UDP>(const wchar_t* server_name, const wchar_t* port_str) const = delete;
+#endif
 template<> inline SocketICMP SocketICMP::create<TCP>() = delete;
 template<> inline SocketICMP SocketICMP::create<UDP>() = delete;
 
@@ -1733,30 +1869,38 @@ struct SocketSSL : SocketBase<SocketSSL> {
     template<SocketType socket_type = TCP>
     inline bool connect_ipv4(const char* ip, const char* port_str) const = delete;
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type = TCP>
     inline bool connect_ipv4(const wchar_t* ip, const wchar_t* port_str) const = delete;
+#endif
 
     template<SocketType socket_type = TCP>
     inline bool connect_ipv6(const char* ip, const char* port_str) const = delete;
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type = TCP>
     inline bool connect_ipv6(const wchar_t* ip, const wchar_t* port_str) const = delete;
+#endif
 
     template<SocketType socket_type = TCP>
     inline bool connect_ip(const char* ip, const char* port_str) const = delete;
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type = TCP>
     inline bool connect_ip(const wchar_t* ip, const wchar_t* port_str) const = delete;
+#endif
 
     template<SocketType socket_type = TCP>
     inline bool connect(const char* server_name, const char* port_str) const {
         return this->SocketBase<SocketSSL>::connect<socket_type>(server_name, port_str);
     }
 
+#if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type = TCP>
     inline bool connect(const wchar_t* server_name, const wchar_t* port_str) const {
         return this->SocketBase<SocketSSL>::connect<socket_type>(server_name, port_str);
     }
+#endif
 
     template<SocketType socket_type = TCP>
     static inline SocketSSL create() {
@@ -2107,8 +2251,10 @@ template<> bool SocketSSL::initialize<UDP>() = delete;
 template<> bool SocketSSL::initialize<ICMP>() = delete;
 template<> inline bool SocketSSL::connect<UDP>(const char* server_name, const char* port_str) const = delete;
 template<> inline bool SocketSSL::connect<ICMP>(const char* server_name, const char* port_str) const = delete;
+#if ZNET_SUPPORT_WCHAR
 template<> inline bool SocketSSL::connect<UDP>(const wchar_t* server_name, const wchar_t* port_str) const = delete;
 template<> inline bool SocketSSL::connect<ICMP>(const wchar_t* server_name, const wchar_t* port_str) const = delete;
+#endif
 template<> inline SocketSSL SocketSSL::create<UDP>() = delete;
 template<> inline SocketSSL SocketSSL::create<ICMP>() = delete;
 #endif
@@ -2156,6 +2302,7 @@ struct Pinger<IPv6> : PingerBase {
 };
 */
 
+#if _WIN32
 static inline std::atomic<uint8_t> winsock_initialized = { false };
 
 #if ZNET_IPV6_MODES(ZNET_REQUIRE_IPV6 | ZNET_DISABLE_IPV6)
@@ -2164,8 +2311,10 @@ static inline constexpr bool winsock_config_initialized = true;
 #if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6)
 static inline bool winsock_config_initialized = false;
 #endif
+#endif
 
 static bool enable_winsock(bool prefer_ipv6 = true) {
+#if _WIN32
     union {
         WSADATA idgaf_about_winsock_version;
         struct {
@@ -2188,12 +2337,17 @@ static bool enable_winsock(bool prefer_ipv6 = true) {
 #endif
     }
     return winsock_initialized;
+#else
+    return true;
+#endif
 }
 
 static inline void disable_winsock() {
+#if _WIN32
     if (expect(winsock_initialized.exchange(false), true)) {
         ::WSACleanup();
     }
+#endif
 }
 
 

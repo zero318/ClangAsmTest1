@@ -28,9 +28,10 @@
 using namespace std::literals::string_literals;
 using namespace std::literals::string_view_literals;
 
+#if _WIN32
 #include <conio.h>
-
 #include <Windows.h>
+#endif
 
 #define ZNET_IPV6_MODE ZNET_DISABLE_IPV6
 
@@ -40,12 +41,13 @@ using namespace std::literals::string_view_literals;
 using namespace zero::net;
 using namespace zero::thread;
 
-#include "common.h"
+#if _WIN32
+#define INCLUDE_KEYBOARD_FUNCTIONS 1
+#else
+typedef uint64_t LARGE_INTEGER;
+#endif
 
-static inline char wait_for_keyboard(size_t delay) {
-	while (!_kbhit()) Sleep(delay);
-	return _getch();
-}
+#include "common.h"
 
 enum PacketType : uint8_t {
 	// Original packets
@@ -554,7 +556,7 @@ static inline constexpr std::string_view WELCOME_COMMAND_VIEW = "WELCOME "sv;
 
 static inline constexpr std::string_view PASSWORD_VIEW = "PASS kzxmckfqbpqieh8rw<rczuturKfnsjxhauhybttboiuuzmWdmnt5mnlczpythaxf"sv;
 
-static LARGE_INTEGER qpc_freq;
+//static LARGE_INTEGER qpc_freq;
 
 int main(int argc, char* argv[]) {
 	if (argc < MIN_REQUIRED_ARGS) {
@@ -581,9 +583,11 @@ int main(int argc, char* argv[]) {
 
 					tcp_socket.listen(50);
 
+#if INCLUDE_KEYBOARD_FUNCTIONS
 					zjthread stupid_keyboard_thread([](const std::atomic<uint8_t>& stop) {
 						wait_for_keyboard(1_secms);
 					});
+#endif
 
 					udp_socket.set_blocking_state(false);
 					//udp_socket.set_receive_timeout(UDP_SLEEP_TIME);
@@ -729,7 +733,7 @@ int main(int argc, char* argv[]) {
 									}
 								}
 							});
-							Sleep(UDP_SLEEP_TIME);
+							wait_milliseconds(UDP_SLEEP_TIME);
 						} while (!stop);
 						printf("!!!!! UDP THREAD EXIT !!!!!\n");
 					});
@@ -897,7 +901,7 @@ int main(int argc, char* argv[]) {
 																	if (const char* nickname_end = (const char*)memchr(command_view.data(), ' ', command_view.length())) {
 																		prefix_length += nickname_end - command_view.data() + 1;
 																		for (size_t i = 0; i < UDP_PORT_ITERS; ++i) {
-																			Sleep(UDP_PORT_ITER_DELAY);
+																			wait_milliseconds(UDP_PORT_ITER_DELAY);
 																			uint16_t external_port = 0;
 																			shared_user_data(nick_view, [&](UserData* user_data) {
 																				external_port = user_data->external_port;
@@ -998,11 +1002,17 @@ int main(int argc, char* argv[]) {
 								response_socket.close();
 							}).detach();
 						}
-						Sleep(TCP_SLEEP_TIME);
+						wait_milliseconds(TCP_SLEEP_TIME);
 						exclusive_iter_user_data([](UserData* user_data) -> bool {
 							return !user_data->delete_flag.load(std::memory_order_relaxed);
 						});
-					} while (!stupid_keyboard_thread.stopped());
+					} while (
+#if INCLUDE_KEYBOARD_FUNCTIONS
+						!stupid_keyboard_thread.stopped()
+#else
+						true
+#endif
+					);
 					udp_listen_thread.stop();
 				}
 				udp_socket.close();

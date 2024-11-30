@@ -20,22 +20,41 @@
 
 #include <type_traits>
 
-
 #if __INTELLISENSE__ && !_HAS_CXX20
 #define TEMP_DEF_CXX20 1
 #undef _HAS_CXX20
 #define _HAS_CXX20 1
 #endif
-
 #include <bit>
 #if __INTELLISENSE__ && TEMP_DEF_CXX20
 #undef _HAS_CXX20
 #define _HAS_CXX20 0
 #endif
 
+#if _WIN32
+#include <synchapi.h>
+#if INCLUDE_KEYBOARD_FUNCTIONS
 #include <conio.h>
+#endif
+#else
+#include <time.h>
+#endif
 
 #define expect __builtin_expect
+
+static inline void wait_milliseconds(size_t count) {
+#if _WIN32
+	return Sleep(count);
+#else
+	timespec sleep_time;
+	sleep_time.tv_sec = count / 1000;
+	sleep_time.tv_nsec = count % 1000 * 1000000;
+	timespec sleep_rem;
+	while (nanosleep(&sleep_time, &sleep_rem) != 0) {
+		sleep_time = sleep_rem;
+	}
+#endif
+}
 
 [[noreturn]] static void error_exit(const char* message) {
 	fputs(message, stderr);
@@ -50,10 +69,17 @@
 	exit(EXIT_FAILURE);
 }
 
+#if INCLUDE_KEYBOARD_FUNCTIONS
 static inline char wait_for_keyboard() {
 	while (!_kbhit());
 	return _getch();
 }
+
+static inline char wait_for_keyboard(size_t delay) {
+	while (!_kbhit()) wait_milliseconds(delay);
+	return _getch();
+}
+#endif
 
 template <typename T>
 static inline size_t uint8_to_strbuf(uint8_t value, T* text_buffer) {

@@ -1960,7 +1960,7 @@ struct Packet18Data4 {
 struct Packet18Data6 {
 	uint8_t type; // 0x0
 	uint8_t __ubyte_1; // 0x1
-	// 0x2
+	uint16_t inputs[5]; // 0x2
 	int __int_C; // 0xC
 	int __dword_array_10[]; // 0x10 
 };
