@@ -442,7 +442,7 @@ struct UnknownF {
 // size: 0x44
 struct BoostSocket {
     SOCKET socket; // 0x0
-	unsigned char __byte_4; // 0x4
+    unsigned char __byte_4; // 0x4
     // 0x5
     int __dword_8; // 0x8
     int __dword_C; // 0xC
@@ -521,8 +521,8 @@ dllexport gnu_noinline SOCKET __create_socket_r170620(int af, int type, int prot
     }
     if (af == AF_INET6) {
         uint32_t opt_value = 0;
-		// 41 = IPPROTO_IPV6
-		// 27 = IPV6_V6ONLY
+        // 41 = IPPROTO_IPV6
+        // 27 = IPV6_V6ONLY
         setsockopt(sock, 41, 27, (char*)&opt_value, sizeof(opt_value));
     }
     unknown_a->__ptr_4 = __sub_r2DBEE0();
@@ -580,51 +580,51 @@ struct UnknownD {
     }
 
 
-	dllexport gnu_noinline UnknownA* win_iocp_socket_service_base_do_open(
-		UnknownA* unknown_a1,	// EBP+8
-		BoostSocket* unknown_c,	// EBP+C
-		int af,	// EBP+10
-		int type,	// EBP+14
-		int protocol,	// EBP+18
-		UnknownA* unknown_a2	// EBP+1C
-	) {
-		if (unknown_c->socket != INVALID_SOCKET) {
-			void* idk = __sub_r16F330();
-			unknown_a1->wsa_last_error = 1;
-			unknown_a1->__ptr_4 = idk;
-			unknown_a2->wsa_last_error = 1;
-			unknown_a2->__ptr_4 = idk;
-			return unknown_a1;
-		}
-		SOCKET socket = __create_socket_r170620(af, type, protocol, unknown_a2);
-		if (socket == INVALID_SOCKET) {
-			*unknown_a1 = *unknown_a2;
-			return unknown_a1;
-		}
-		if (!CreateIoCompletionPort((HANDLE)socket, this->__handle_14, 0, 0)) {
-			unknown_a2->wsa_last_error = GetLastError();
-		} else {
-			unknown_a2->wsa_last_error = 0;
-		}
-		unknown_a2->__ptr_4 = __sub_r2DBEE0();
-		if (unknown_a2->wsa_last_error != 0) {
-			*unknown_a1 = *unknown_a2;
-			// TODO
-			return unknown_a1;
-		}
-		unknown_c->socket = socket;
-		switch (type) {
-			default:
-				unknown_c->__byte_4 = 0x00;
-				break;
-			case SOCK_STREAM:
-				unknown_c->__byte_4 = 0x10;
-				break;
-			case SOCK_DGRAM:
-				unknown_c->__byte_4 = 0x20;
-				break;
-		}
-	}
+    dllexport gnu_noinline UnknownA* win_iocp_socket_service_base_do_open(
+        UnknownA* unknown_a1,	// EBP+8
+        BoostSocket* unknown_c,	// EBP+C
+        int af,	// EBP+10
+        int type,	// EBP+14
+        int protocol,	// EBP+18
+        UnknownA* unknown_a2	// EBP+1C
+    ) {
+        if (unknown_c->socket != INVALID_SOCKET) {
+            void* idk = __sub_r16F330();
+            unknown_a1->wsa_last_error = 1;
+            unknown_a1->__ptr_4 = idk;
+            unknown_a2->wsa_last_error = 1;
+            unknown_a2->__ptr_4 = idk;
+            return unknown_a1;
+        }
+        SOCKET socket = __create_socket_r170620(af, type, protocol, unknown_a2);
+        if (socket == INVALID_SOCKET) {
+            *unknown_a1 = *unknown_a2;
+            return unknown_a1;
+        }
+        if (!CreateIoCompletionPort((HANDLE)socket, this->__handle_14, 0, 0)) {
+            unknown_a2->wsa_last_error = GetLastError();
+        } else {
+            unknown_a2->wsa_last_error = 0;
+        }
+        unknown_a2->__ptr_4 = __sub_r2DBEE0();
+        if (unknown_a2->wsa_last_error != 0) {
+            *unknown_a1 = *unknown_a2;
+            // TODO
+            return unknown_a1;
+        }
+        unknown_c->socket = socket;
+        switch (type) {
+            default:
+                unknown_c->__byte_4 = 0x00;
+                break;
+            case SOCK_STREAM:
+                unknown_c->__byte_4 = 0x10;
+                break;
+            case SOCK_DGRAM:
+                unknown_c->__byte_4 = 0x20;
+                break;
+        }
+    }
 
 };
 
@@ -859,44 +859,44 @@ void __input_get_states() {
 
 // Rx12E4F0 (thiscall function, unknown type)
 void* __sub_r12E4F0(
-	HMODULE module, // EBP+8
-	const char* func_name // EBP+C
+    HMODULE module, // EBP+8
+    const char* func_name // EBP+C
 ) {
-	
-	IMAGE_DOS_HEADER* dos_header = NULL; // EBP-1C
-	IMAGE_FILE_HEADER* file_header = NULL; // EBP-20
-	IMAGE_OPTIONAL_HEADER* optional_header = NULL; // EBP-24
-	
-	dos_header = (IMAGE_DOS_HEADER*)module;
-	file_header = based_pointer<IMAGE_FILE_HEADER>(module, dos_header->e_lfanew + offsetof(IMAGE_NT_HEADERS, FileHeader));
-	optional_header = based_pointer<IMAGE_OPTIONAL_HEADER>(file_header, sizeof(IMAGE_FILE_HEADER));
-	
-	DWORD export_directory_rva = optional_header->DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress; // EBP-2C
-	
-	void* base_address = (void*)module; // EBP-8
-	
-	IMAGE_EXPORT_DIRECTORY* export_directory = based_pointer<IMAGE_EXPORT_DIRECTORY>(base_address, export_directory_rva); // EBP-10
-	
-	DWORD* name_pointer_table = based_pointer<DWORD>(base_address, export_directory->AddressOfNames); // EBP-34
-	
-	DWORD* export_address_table = based_pointer<DWORD>(base_address, export_directory->AddressOfFunctions); // EBP-44
-	
-	WORD* ordinal_table = based_pointer<WORD>(base_address, export_directory->AddressOfNameOrdinals); // EBP-40
-	
-	DWORD number_of_names = export_directory->NumberOfNames; // EBP-30
-	
-	for (
-		DWORD i = 0; // EBP-C
-		i < number_of_names;
-		++i
-	) {
-		const char* export_name = based_pointer<const char>(base_address, name_pointer_table[i]); // EBP-38
-		int cmp_ret = strcmp(export_name, func_name); // EBP-3C
-		if (cmp_ret == 0) {
-			return based_pointer(base_address, export_address_table[ordinal_table[i]]);
-		}
-	}
-	return NULL;
+    
+    IMAGE_DOS_HEADER* dos_header = NULL; // EBP-1C
+    IMAGE_FILE_HEADER* file_header = NULL; // EBP-20
+    IMAGE_OPTIONAL_HEADER* optional_header = NULL; // EBP-24
+    
+    dos_header = (IMAGE_DOS_HEADER*)module;
+    file_header = based_pointer<IMAGE_FILE_HEADER>(module, dos_header->e_lfanew + offsetof(IMAGE_NT_HEADERS, FileHeader));
+    optional_header = based_pointer<IMAGE_OPTIONAL_HEADER>(file_header, sizeof(IMAGE_FILE_HEADER));
+    
+    DWORD export_directory_rva = optional_header->DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress; // EBP-2C
+    
+    void* base_address = (void*)module; // EBP-8
+    
+    IMAGE_EXPORT_DIRECTORY* export_directory = based_pointer<IMAGE_EXPORT_DIRECTORY>(base_address, export_directory_rva); // EBP-10
+    
+    DWORD* name_pointer_table = based_pointer<DWORD>(base_address, export_directory->AddressOfNames); // EBP-34
+    
+    DWORD* export_address_table = based_pointer<DWORD>(base_address, export_directory->AddressOfFunctions); // EBP-44
+    
+    WORD* ordinal_table = based_pointer<WORD>(base_address, export_directory->AddressOfNameOrdinals); // EBP-40
+    
+    DWORD number_of_names = export_directory->NumberOfNames; // EBP-30
+    
+    for (
+        DWORD i = 0; // EBP-C
+        i < number_of_names;
+        ++i
+    ) {
+        const char* export_name = based_pointer<const char>(base_address, name_pointer_table[i]); // EBP-38
+        int cmp_ret = strcmp(export_name, func_name); // EBP-3C
+        if (cmp_ret == 0) {
+            return based_pointer(base_address, export_address_table[ordinal_table[i]]);
+        }
+    }
+    return NULL;
 }
 
 /*
@@ -1941,75 +1941,75 @@ struct Packet18 {
 };
 
 struct Packet18Data {
-	uint8_t type; // 0x0
-	unsigned char data[]; // 0x1
+    uint8_t type; // 0x0
+    unsigned char data[]; // 0x1
 };
 
 // size: 0x8
 struct Packet18Data0 {
-	uint8_t type; // 0x0
-	// 0x1
-	int __dword_4; // 0x4
-	// 0x8
+    uint8_t type; // 0x0
+    // 0x1
+    int __dword_4; // 0x4
+    // 0x8
 
     Packet18Data0() = default;
     constexpr Packet18Data0(int val) : type(0), __dword_4(val) {}
 };
 
 struct Packet18Data1 {
-	uint8_t type; // 0x0
-	// 0x1
-	int __dword_4; // 0x4
-	unsigned char data[]; // 0x8
+    uint8_t type; // 0x0
+    // 0x1
+    int __dword_4; // 0x4
+    unsigned char data[]; // 0x8
 };
 
 struct Packet18Data4 {
-	uint8_t type; // 0x0
-	uint8_t __ubyte_1; // 0x1
-	// 0x2
-	int __int_4; // 0x4
-	// 0x8
+    uint8_t type; // 0x0
+    uint8_t __ubyte_1; // 0x1
+    // 0x2
+    int __int_4; // 0x4
+    // 0x8
 };
 
 struct Packet18Data6 {
-	uint8_t type; // 0x0
-	uint8_t __ubyte_1; // 0x1
-	uint16_t inputs[5]; // 0x2
-	int __int_C; // 0xC
-	uint32_t __timestamp_array[]; // 0x10 
+    uint8_t type; // 0x0
+    uint8_t __ubyte_1; // 0x1
+    uint16_t inputs[5]; // 0x2
+    int __int_C; // 0xC
+    uint32_t __timestamp_array[]; // 0x10 
 };
 
 struct Packet18Data8 {
-	uint8_t type; // 0x0
-	// 0x1
-	int __int_4; // 0x4
-	int __int_8; // 0x8
-	// 0xC
+    uint8_t type; // 0x0
+    // 0x1
+    int __int_4; // 0x4
+    int __int_8; // 0x8
+    // 0xC
 };
 
 struct Packet18Data10 {
-	uint8_t type; // 0x0
-	// 0x1
-	int __dword_4; // 0x4
-	uint8_t __ubyte_8; // 0x8
-	uint8_t __ubyte_9; // 0x9
-	// 0xA
+    uint8_t type; // 0x0
+    // 0x1
+    int __dword_4; // 0x4
+    uint8_t __ubyte_8; // 0x8
+    uint8_t __ubyte_9; // 0x9
+    // 0xA
 };
 
 struct Packet18Data11 {
-	uint8_t type; // 0x0
-	uint8_t __ubyte_1; // 0x1
-	// 0x2
-	int __dword_4; // 0x4
-	unsigned char data[]; // 0x8 Array of size 8
+    uint8_t type; // 0x0
+    uint8_t __ubyte_1; // 0x1
+    // 0x2
+    int __dword_4; // 0x4
+    unsigned char data[]; // 0x8 Array of size 8
 };
 
 // size: 0x8
 struct Packet18Data12 {
-	uint8_t type; // 0x0
-	// 0x1
-	int __dword_4; // 0x4
-	// 0x8
+    uint8_t type; // 0x0
+    // 0x1
+    int __dword_4; // 0x4
+    // 0x8
 
     Packet18Data12() = default;
     constexpr Packet18Data12(int val) : type(12), __dword_4(val) {}
@@ -2045,15 +2045,15 @@ struct Packet19 {
 };
 
 struct Packet19Data {
-	uint8_t type; // 0x0
-	unsigned char data[]; // 0x1
+    uint8_t type; // 0x0
+    unsigned char data[]; // 0x1
 };
 
 struct Packet19Data0 {
-	uint8_t type; // 0x0
-	// 0x1
-	int __dword_4; // 0x4
-	// 0x8
+    uint8_t type; // 0x0
+    // 0x1
+    int __dword_4; // 0x4
+    // 0x8
 };
 
 struct Packet19Data1 {
@@ -2092,10 +2092,10 @@ struct Packet19Data13 {
 };
 
 struct UnknownM {
-	uint32_t __timestamp_0; // 0x0
-	int __int_4; // 0x4
+    uint32_t __timestamp_0; // 0x0
+    int __int_4; // 0x4
     uint8_t __byte_8; // 0x8
-	// 0x9
+    // 0x9
     void* __ptr_C; // 0xC
     uint16_t* __ushort_ptr_10; // 0x10
     uint16_t* __ushort_ptr_14; // 0x14
@@ -2169,20 +2169,20 @@ struct UnknownM {
 // Probably std::shared_ptr<UnknownM>
 // size: 0x8
 struct UnknownL {
-	UnknownM* __unknownM_0; // 0x0
-	// 0x4
+    UnknownM* __unknownM_0; // 0x0
+    // 0x4
 };
 
 // size: 0x24
 struct InputRecorder {
-	// void* vftable; // 0x0
-	std::vector<void*> __vector_4; // 0x4
+    // void* vftable; // 0x0
+    std::vector<void*> __vector_4; // 0x4
     std::shared_ptr<UnknownM>* __unknownM_10; // 0x10
     std::shared_ptr<UnknownM>* __unknownM_14; // 0x14
-	// 0x18
-	
-	std::atomic<HANDLE> __handle_20; // 0x20
-	// 0x24
+    // 0x18
+    
+    std::atomic<HANDLE> __handle_20; // 0x20
+    // 0x24
 
     // Method 0
     // Rx168BA0
@@ -2362,35 +2362,35 @@ struct WTFList {
 }
 
 namespace Manbow {
-	
+    
 // size: 0x90
 struct UnknownJ {
-	int __int_0; // 0x0
-	uint32_t __timestamp_4; // 0x4
+    int __int_0; // 0x0
+    uint32_t __timestamp_4; // 0x4
     uint32_t __timestamp_8; // 0x8
     // 0xC
 
     void* __ptr_34; // 0x34
     // 0x38
-	
-	void* __ptr_5C; // 0x5C
-	// 0x60
-	
-	void* __ptr_84; // 0x84
+    
+    void* __ptr_5C; // 0x5C
+    // 0x60
+    
+    void* __ptr_84; // 0x84
     int64_t __qpc_timestamp_88; // 0x88
     // 0x90
 };
 
 // size: 0x4C
 struct InputRecorder : TF4::InputRecorder {
-	// InputRecorder base; // 0x0
-	// 0x24
-	
-	// A bunch of sqrat crap
-	
-	void* __ptr_40; // 0x40
-	void* __ptr_44; // 0x44
-	// 0x48
+    // InputRecorder base; // 0x0
+    // 0x24
+    
+    // A bunch of sqrat crap
+    
+    void* __ptr_40; // 0x40
+    void* __ptr_44; // 0x44
+    // 0x48
 
     // Method 4
     // Rx70A20
@@ -2407,78 +2407,78 @@ struct UnknownQ {
 
     uint32_t __timestamp_array_10[]; // 0x10
 };
-	
+    
 struct UnknownI {
-	int __int_0; // 0x0
-	uint8_t __byte_4; // 0x4
-	uint8_t __byte_5; // 0x5
-	// 0x6
-	
-	void* __ptr_10; // 0x10
-	// 0x14
-	
-	InputRecorder* input_recorder; // 0x24
-	// 0x28
+    int __int_0; // 0x0
+    uint8_t __byte_4; // 0x4
+    uint8_t __byte_5; // 0x5
+    // 0x6
+    
+    void* __ptr_10; // 0x10
+    // 0x14
+    
+    InputRecorder* input_recorder; // 0x24
+    // 0x28
     uint8_t* __byte_ptr_2C; // 0x2C
     // 0x30
 
-	UnknownJ* __unknownJ_38; // 0x38
-	UnknownJ* __unknownJ_3C; // 0x3C
-	// 0x40
-	UnknownQ* __unknownQ_ptr_44; // 0x44
-	// 0x48
+    UnknownJ* __unknownJ_38; // 0x38
+    UnknownJ* __unknownJ_3C; // 0x3C
+    // 0x40
+    UnknownQ* __unknownQ_ptr_44; // 0x44
+    // 0x48
 
     UnknownQ* __unknownQ_ptr_50; // 0x50
     // 0x54
-	
+    
     // RxE3150
     void __sub_rE3150(int arg1, int arg2) {
 
     }
 
-	// RxE3290
-	bool __sub_rE3290() {
-		
-	}
-	
-	// RxE3340
-	void __sub_rE3340() {
-		if (this->__int_0) {
-			
-			for (size_t i = 0; i < this->__unknownJ_3C - this->__unknownJ_38; ++i) {
-				LARGE_INTEGER qpc_freq_lint;
-				QueryPerformanceFrequency(&qpc_freq_lint);
-				int64_t qpc_freq = qpc_freq_lint.QuadPart;
-				LARGE_INTEGER qpc_value_lint;
-				QueryPerformanceCounter(&qpc_value_lint);
-				int64_t qpc_value = qpc_value_lint.QuadPart;
-				int64_t qpc_seconds = qpc_value / qpc_freq;
-				(qpc_value % qpc_freq) * 1000000000;
-				
-				// more BS 64 bit math
-			}
-			uint32_t localA = 0;
-			for (size_t i = 0; i < this->__unknownJ_3C - this->__unknownJ_38; ++i) {
-				void* ptrA = this->__unknownJ_38[i].__ptr_5C;
-				if (!ptrA) {
-					// throw something
-				}
-				// Probably the __max macro...
-				//if (localA <= ((ptrA->__method_8() / 2) + 15) / 16) {
-					//localA = (ptrA->__method_8() / 2) + 15) / 16;
-				//}
-			}
-			TF4::UnknownM& curM = *this->input_recorder->__unknownM_10[this->__byte_4].get();
-			if (curM.__timestamp_0 - curM.__int_4 <= localA + 1) {
+    // RxE3290
+    bool __sub_rE3290() {
+        
+    }
+    
+    // RxE3340
+    void __sub_rE3340() {
+        if (this->__int_0) {
+            
+            for (size_t i = 0; i < this->__unknownJ_3C - this->__unknownJ_38; ++i) {
+                LARGE_INTEGER qpc_freq_lint;
+                QueryPerformanceFrequency(&qpc_freq_lint);
+                int64_t qpc_freq = qpc_freq_lint.QuadPart;
+                LARGE_INTEGER qpc_value_lint;
+                QueryPerformanceCounter(&qpc_value_lint);
+                int64_t qpc_value = qpc_value_lint.QuadPart;
+                int64_t qpc_seconds = qpc_value / qpc_freq;
+                (qpc_value % qpc_freq) * 1000000000;
+                
+                // more BS 64 bit math
+            }
+            uint32_t localA = 0;
+            for (size_t i = 0; i < this->__unknownJ_3C - this->__unknownJ_38; ++i) {
+                void* ptrA = this->__unknownJ_38[i].__ptr_5C;
+                if (!ptrA) {
+                    // throw something
+                }
+                // Probably the __max macro...
+                //if (localA <= ((ptrA->__method_8() / 2) + 15) / 16) {
+                    //localA = (ptrA->__method_8() / 2) + 15) / 16;
+                //}
+            }
+            TF4::UnknownM& curM = *this->input_recorder->__unknownM_10[this->__byte_4].get();
+            if (curM.__timestamp_0 - curM.__int_4 <= localA + 1) {
                 bool localC = true;
                 if (this->__unknownJ_3C - this->__unknownJ_38) {
-					size_t i = 0;
+                    size_t i = 0;
                     uint32_t timestamp = this->input_recorder->__unknownM_10[this->__byte_4]->__timestamp_0;
-					do {
+                    do {
                         uint32_t cur_timestamp = this->__unknownJ_38[i].__int_0 + 5; // NETPLAY PATCH A CONSTANT
                         localC &= timestamp < cur_timestamp;
-					} while (++i < this->__unknownJ_3C - this->__unknownJ_38);
-				}
+                    } while (++i < this->__unknownJ_3C - this->__unknownJ_38);
+                }
                 if (localC) {
                     uint16_t localD;
                     if (void* ptr = this->__ptr_10) {
@@ -2488,33 +2488,33 @@ struct UnknownI {
                     }
                     this->input_recorder->__method_40(this->__byte_4, localD);
                 }
-			}
+            }
 
             UnknownQ* unknownQ_ptr = this->__unknownQ_ptr_50;
             for (int i = 0; i < this->__byte_5; ++i) {
                 unknownQ_ptr->__timestamp_array_10[i] = this->input_recorder->__unknownM_10[i]->__timestamp_0;
             }
-			
-			for (size_t i = 0; i < this->__unknownJ_3C - this->__unknownJ_38; ++i) {
+            
+            for (size_t i = 0; i < this->__unknownJ_3C - this->__unknownJ_38; ++i) {
                 UnknownJ* unknownJ_ptr = &this->__unknownJ_38[i];
                 uint32_t timestamp = unknownJ_ptr->__timestamp_8 + 5; // NETPLAY PATCH B CONSTANT
                 timestamp = std::min(timestamp, unknownQ_ptr->__timestamp_array_10[this->__byte_4]);
                 this->input_recorder->__method_38(this->__byte_4, unknownQ_ptr->__inputs_2, saturate_sub(timestamp, 5u), timestamp);
                 unknownQ_ptr->__timestamp_array_10[this->__byte_4] = timestamp;
                 // IDK
-			}
-		}
-		
-	}
-	
-	// RxE3740
-	int __sub_rE3740() {
-		if (size_t i = this->__byte_5) {
-			do {
-				
-			} while (--i);
-		}
-	}
+            }
+        }
+        
+    }
+    
+    // RxE3740
+    int __sub_rE3740() {
+        if (size_t i = this->__byte_5) {
+            do {
+                
+            } while (--i);
+        }
+    }
 
     // RxE3790
     void __sub_rE3790(size_t index) {
@@ -2555,8 +2555,8 @@ struct UnknownP {
 
 // size: 0x18
 struct UnknownN {
-	
-	int __dword_4; // 0x4
+    
+    int __dword_4; // 0x4
     UnknownO __unknownO_8; // 0x8
 
     std::list<UnknownP> __list_10; // 0x10
@@ -2566,10 +2566,10 @@ struct UnknownN {
 struct NetworkNode {
     // void* vftable; // 0x0
     TF4::UDP* udp_instance; // 0x4
-	
-	int __dword_C; // 0xC
-	UnknownO* __unknownO_ptr_10; // 0x10
-	// 0x14
+    
+    int __dword_C; // 0xC
+    UnknownO* __unknownO_ptr_10; // 0x10
+    // 0x14
     std::list<UnknownG> __list_18; // 0x18
     Sqrat::Object __sq_object_20; // 0x20
     std::vector<UnknownN> __vector_38; // 0x38
@@ -2668,9 +2668,9 @@ struct NetworkNode {
 
     // RxE3C60
     dllexport void thiscall __handle_packet_19_sub_13(size_t index, TF4::Packet19Data13* data, size_t size);
-	
-	// DUMMY
-	bool SyncInput() { return false; }
+    
+    // DUMMY
+    bool SyncInput() { return false; }
 
     // RxDBE80
     void thiscall NetworkNode::SendToChild(size_t index, void* data);
@@ -2707,11 +2707,11 @@ struct NetworkClientImpl : NetworkNode {
     inline void thiscall __handle_packet_19(size_t index, const T& data) {
         return this->__handle_packet_19(index, (TF4::Packet19Data*)&data, sizeof(T));
     }
-	
-	// RxE38B0
-	void thiscall __handle_packet_18_sub_13(uint8_t* data, size_t size) {
-		
-	}
+    
+    // RxE38B0
+    void thiscall __handle_packet_18_sub_13(uint8_t* data, size_t size) {
+        
+    }
 
     template <typename T>
     inline void thiscall __handle_packet_18(const T& data) {
@@ -2721,16 +2721,16 @@ struct NetworkClientImpl : NetworkNode {
     // Method 18
     // RxDFDF0
     virtual void thiscall __handle_packet_18(TF4::Packet18Data* data, size_t size) {
-		switch (data->type) {
+        switch (data->type) {
             case 0:
-				this->__dword_C = ((TF4::Packet18Data0*)data)->__dword_4;
-				return;
+                this->__dword_C = ((TF4::Packet18Data0*)data)->__dword_4;
+                return;
             case 1: {
                 TF4::Packet18Data1* packet_data = (TF4::Packet18Data1*)data;
                 this->__handle_packet_18(TF4::Packet18Data0(packet_data->__dword_4));
-				this->__unknownO_ptr_10->__sub_rD2670(packet_data->data, size - sizeof(TF4::Packet18Data0));
-				return;
-			}
+                this->__unknownO_ptr_10->__sub_rD2670(packet_data->data, size - sizeof(TF4::Packet18Data0));
+                return;
+            }
             case 4: {
                 TF4::Packet18Data4* packet_data = (TF4::Packet18Data4*)data;
                 auto unknownI_shared_ptr = this->__unknownI_ptr_B8;
@@ -2747,7 +2747,7 @@ struct NetworkClientImpl : NetworkNode {
                     }
                 }
                 return;
-			}
+            }
             case 6: {
                 TF4::Packet18Data6* packet_data = (TF4::Packet18Data6*)data;
                 auto unknownI_shared_ptr = this->__unknownI_ptr_B0;
@@ -2769,7 +2769,7 @@ struct NetworkClientImpl : NetworkNode {
                     }
                 }
                 return;
-			}
+            }
             case 8: {
                 TF4::Packet18Data8* packet_data = (TF4::Packet18Data8*)data;
                 auto unknownI_shared_ptr = this->__unknownI_ptr_B0;
@@ -2778,22 +2778,22 @@ struct NetworkClientImpl : NetworkNode {
                     unknownI_ptr->__unknownJ_38[packet_data->__int_8].__timestamp_4 = -100; // Actually signed data?
                 }
                 return;
-			}
+            }
             case 10: {
-				
-			}
+                
+            }
             case 11: {
-				
-			}
+                
+            }
             case 12: {
-				
-			}
+                
+            }
             case 13: {
-				
-			}
+                
+            }
             case 14: {
-				
-			}
+                
+            }
         }
     }
 
@@ -2817,22 +2817,22 @@ struct NetworkClientImpl : NetworkNode {
     // RxD02C0
     int thiscall GetInputDelay(size_t index);
     
-	// RxDF6D0
-	bool thiscall SyncInput() {
-		UnknownI* unknownI = this->__unknownI_ptr_B0.get();
-		if (unknownI && unknownI->__int_0) {
-			if (this->__int_1F8 > 0) {
-				return ++this->__int_1F8 != 0;
-			}
-			unknownI->__sub_rE3340();
-			this->__int_1F8 = this->__unknownI_ptr_B0->__sub_rE3740();
-			if (this->__int_1F8) {
-				this->__int_1F8 = std::min(--this->__int_1F8, 1);
-				return true;
-			}
-		}
-		return false;
-	}
+    // RxDF6D0
+    bool thiscall SyncInput() {
+        UnknownI* unknownI = this->__unknownI_ptr_B0.get();
+        if (unknownI && unknownI->__int_0) {
+            if (this->__int_1F8 > 0) {
+                return ++this->__int_1F8 != 0;
+            }
+            unknownI->__sub_rE3340();
+            this->__int_1F8 = this->__unknownI_ptr_B0->__sub_rE3740();
+            if (this->__int_1F8) {
+                this->__int_1F8 = std::min(--this->__int_1F8, 1);
+                return true;
+            }
+        }
+        return false;
+    }
 };
 
 // size: 0x218
@@ -2846,7 +2846,7 @@ struct NetworkServerImpl : NetworkNode {
     int __dword_204; // 0x204
     int __dword_208; // 0x208
     // 0x20C
-	int32_t __int_210; // 0x210
+    int32_t __int_210; // 0x210
     int __int_214; // 0x214
     // 0x218
 
@@ -2871,24 +2871,24 @@ struct NetworkServerImpl : NetworkNode {
 
     // RxD5A30
     bool thiscall Init(TF4::UDP* udp, uint16_t port, size_t child_count);
-	
-	// RxD6030
-	bool thiscall SyncInput() {
-		if (UnknownI* unknownI = this->__unknownI_ptr_B0.get()) {
-			if (this->__int_210 > 0) {
-				return ++this->__int_210 != 0;
-			}
-			if (unknownI->__sub_rE3290()) {
-				this->__unknownI_ptr_B0->__sub_rE3340();
-				this->__unknownI_ptr_B0->__sub_rE3740();
-				if (this->__int_210) {
-					this->__int_210 = std::min(--this->__int_210, 1);
-					return true;
-				}
-			}
-		}
-		return false;
-	}
+    
+    // RxD6030
+    bool thiscall SyncInput() {
+        if (UnknownI* unknownI = this->__unknownI_ptr_B0.get()) {
+            if (this->__int_210 > 0) {
+                return ++this->__int_210 != 0;
+            }
+            if (unknownI->__sub_rE3290()) {
+                this->__unknownI_ptr_B0->__sub_rE3340();
+                this->__unknownI_ptr_B0->__sub_rE3740();
+                if (this->__int_210) {
+                    this->__int_210 = std::min(--this->__int_210, 1);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
     // RxCE2F0
     int thiscall GetInputDelay(size_t index);
@@ -3833,8 +3833,8 @@ int thiscall NetworkServerImpl::GetInputDelay(size_t index) {
 void thiscall NetworkServerImpl::__handle_packet_19(size_t index, TF4::Packet19Data* data, size_t size) {
     switch (data->type) {
         case 0:
-			this->__vector_38[index].__dword_4 = ((TF4::Packet19Data0*)data)->__dword_4;
-			return;
+            this->__vector_38[index].__dword_4 = ((TF4::Packet19Data0*)data)->__dword_4;
+            return;
         case 1: {
             TF4::Packet19Data1* packet_data = (TF4::Packet19Data1*)data;
             this->udp_instance->__send_packet_18_to_child(index, TF4::Packet18Data0(packet_data->__dword_4));
@@ -3931,13 +3931,13 @@ struct AsyncTcpSSLClient {
     // 0x4
     SocketState socket_state; // 0x8
     SOCKET socket; // 0xC
-	// 0x10
-	
+    // 0x10
+    
     uint32_t __uint_114; // 0x114
     SOCKET __socket_array_118[64]; // 0x118
     AsyncTcpSSLClientInnerA* __innerA_ptr_218; // 0x218
     bool __enable_ssl; // 0x21C
-	// 0x21D
+    // 0x21D
     uint32_t __time_220; // 0x220
     // 0x224
     long long __longlong_228; // 0x228
@@ -4327,7 +4327,7 @@ struct AsyncLobbyClient : AsyncTcpSSLClient {
 
         this->__sub_r20060(server, port, true);
     }
-	
+    
     // Rx69C0
     void __recv() {
 
@@ -4376,8 +4376,8 @@ struct AsyncLobbyClient : AsyncTcpSSLClient {
         }
     }
 
-	// Rx6C40
-	void __parse_recv() {
+    // Rx6C40
+    void __parse_recv() {
         if (this->socket_state == SOCKET_CONNECTED) {
             char* buffer = new char[655535]; // This looks like an extra 5 as a typo
 
@@ -4424,7 +4424,7 @@ struct AsyncLobbyClient : AsyncTcpSSLClient {
             }
             delete buffer_ref; // clean up LOCAL 81
         }
-	}
+    }
 
     // Rx7230
     void __parse_message(const char* message) {
