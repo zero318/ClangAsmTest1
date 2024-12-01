@@ -1,4 +1,5 @@
 // ClassName::`RTTI Base Class Descriptor at (mpdisp,pdisp,vdisp,attributes)'
+// ClassName::`RTTI Base Class Descriptor at (0,-1,0,64)'
 // ClassName::`RTTI Base Class Descriptor at (0,-1,0,0)'
 // ClassName::`RTTI Base Class Array'
 // ClassName::`RTTI Class Hierarchy Descriptor'

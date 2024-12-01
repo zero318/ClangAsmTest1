@@ -1881,4 +1881,34 @@ static forceinline void stuff_rsb() {
 	}
 }
 
+template<typename T>
+static inline T saturate_add(T lhs, T rhs) {
+	if constexpr (std::is_signed_v<T>) {
+		using U = std::make_unsigned_t<T>;
+		T ret;
+		if (!__builtin_add_overflow(lhs, rhs, &ret)) {
+			return ret;
+		}
+		return ((U)rhs >> (bitsof(T) - 1)) + (U)(std::numeric_limits<T>::max)();
+	} else {
+		T ret = lhs + rhs;
+		return ret >= lhs ? ret : (std::numeric_limits<T>::max)();
+	}
+}
+
+template<typename T>
+static inline T saturate_sub(T lhs, T rhs) {
+	if constexpr (std::is_signed_v<T>) {
+		using U = std::make_unsigned_t<T>;
+		T ret;
+		if (!__builtin_sub_overflow(lhs, rhs, &ret)) {
+			return ret;
+		}
+		return (U)(std::numeric_limits<T>::min)() - ((U)rhs >> (bitsof(T) - 1));
+	} else {
+		T ret = lhs - rhs;
+		return ret <= lhs ? ret : (std::numeric_limits<T>::min)();
+	}
+}
+
 #endif
