@@ -33,6 +33,12 @@ using namespace std::literals::string_view_literals;
 #include <Windows.h>
 #endif
 
+#if _WIN32
+#define INCLUDE_KEYBOARD_FUNCTIONS 1
+#else
+typedef uint64_t LARGE_INTEGER;
+#endif
+
 #define ZNET_IPV6_MODE ZNET_DISABLE_IPV6
 
 #include "znet.h"
@@ -40,12 +46,6 @@ using namespace std::literals::string_view_literals;
 
 using namespace zero::net;
 using namespace zero::thread;
-
-#if _WIN32
-#define INCLUDE_KEYBOARD_FUNCTIONS 1
-#else
-typedef uint64_t LARGE_INTEGER;
-#endif
 
 #include "common.h"
 
@@ -291,7 +291,7 @@ static std::atomic<uint32_t> USER_COUNT[3] = {};
 struct UserData {
 	std::atomic<bool> delete_flag = { false }; // 0x0
 	RoomType room_type = INVALID_ROOM; // 0x1
-	std::atomic<uint16_t> external_port = { 0 }; // 0x2
+	std::atomic<in_port_t> external_port = { 0 }; // 0x2
 	SocketTCP socket; // 0x4
 	std::string_view nickname; // 0x8
 	sockaddr_any address = {}; // 0x10
@@ -308,7 +308,7 @@ struct UserData {
 		if (void* name = (void*)this->nickname.data()) {
 			free(name);
 			// still trying to track down that invalid free...
-			memset(&this->nickname, 0, sizeof(this->nickname));
+			//memset(&this->nickname, 0, sizeof(this->nickname));
 		}
 		this->socket.close();
 	}
@@ -336,7 +336,7 @@ struct UserData {
 			this->room_type == room //&&
 			//this->nickname != nick
 		) {
-			printf("SEND:%.*s", message.length(), message.data());
+			printf("SEND:%.*s", (int)message.length(), message.data());
 			if (!this->socket.send(message.data(), message.length())) {
 				printf("SEND FAIL %u (%d)\n", WSAGetLastError(), this->socket.sock);
 			}
@@ -556,8 +556,6 @@ static inline constexpr std::string_view WELCOME_COMMAND_VIEW = "WELCOME "sv;
 
 static inline constexpr std::string_view PASSWORD_VIEW = "PASS kzxmckfqbpqieh8rw<rczuturKfnsjxhauhybttboiuuzmWdmnt5mnlczpythaxf"sv;
 
-//static LARGE_INTEGER qpc_freq;
-
 int main(int argc, char* argv[]) {
 	if (argc < MIN_REQUIRED_ARGS) {
 		error_exit("aocf_server.exe <port>");
@@ -576,8 +574,6 @@ int main(int argc, char* argv[]) {
 		if (tcp_socket.bind(port)) {
 			if (SocketUDP udp_socket = SocketUDP::create()) {
 				if (udp_socket.bind(port)) {
-
-					//QueryPerformanceFrequency(&qpc_freq);
 
 					tcp_socket.set_blocking_state(false);
 
@@ -600,17 +596,15 @@ int main(int argc, char* argv[]) {
 							if (size_t receive_length = udp_socket.receive(buffer, peer_addr)) {
 
 								PacketLayout* raw_packet = (PacketLayout*)buffer;
-								printf("UDP: %zu type %zu\n", receive_length, raw_packet->type);
+								printf("UDP: %zu type %hhu\n", receive_length, raw_packet->type);
 								switch (raw_packet->type) {
 									case PACKET_TYPE_LOBBY_NAME: case PACKET_TYPE_LOBBY_NAME_WAIT: {
 
-										//udp_socket.send(PUNCH_PACKET, peer_addr);
-
 										PacketLobbyName* packet = (PacketLobbyName*)raw_packet;
 
-										uint16_t peer_port = get_port(peer_addr);
+										in_port_t peer_port = get_port(peer_addr);
 
-										printf("NAMEPORT: %.*s = %u ", packet->length, packet->name, peer_port);
+										printf("NAMEPORT: %.*s = %u ", (int)packet->length, packet->name, peer_port);
 										print_sockaddr(peer_addr);
 										printf("\n");
 
@@ -618,7 +612,6 @@ int main(int argc, char* argv[]) {
 
 										shared_user_data(peer_nickname_view, [peer_port](UserData* user_data) {
 											user_data->external_port = peer_port;
-											//QueryPerformanceCounter(&user_data->name_packet_timestamp);
 										});
 										//printf("UDP port set end\n");
 										if (raw_packet->type != PACKET_TYPE_LOBBY_NAME_WAIT) {
@@ -751,7 +744,7 @@ int main(int argc, char* argv[]) {
 								char text[TCP_BUFFER_SIZE];
 								std::queue<std::string_view> messages;
 
-								char name_buffer[MAX_NICKNAME_LENGTH + 1 + std::max(32u, MAX_ADDR_BUFF_SIZE)]{ ':' };
+								char name_buffer[MAX_NICKNAME_LENGTH + 1 + std::max((size_t)32, MAX_ADDR_BUFF_SIZE)]{ ':' };
 						
 								auto receive_message = [&, response_socket](std::string_view& out) -> bool {
 							
@@ -803,7 +796,7 @@ int main(int argc, char* argv[]) {
 											//printf("%s\n", user_msg_view.data());
 									
 											for (;;) {
-												//printf("NICK:%.*s\n", nick_view.length(), nick_view.data());
+												//printf("NICK:%.*s\n", (int)nick_view.length(), nick_view.data());
 												if (!insert_user_data(nick_view, response_socket)) {
 													response_socket.send_text(NICK_IN_USE_REPLY);
 
@@ -905,11 +898,6 @@ int main(int argc, char* argv[]) {
 																			uint16_t external_port = 0;
 																			shared_user_data(nick_view, [&](UserData* user_data) {
 																				external_port = user_data->external_port;
-																				//if (external_port) {
-																					//QueryPerformanceCounter(&user_data->message_timestamp);
-																					//double time = 1000.0 * ((double)((user_data->message_timestamp.QuadPart - user_data->name_packet_timestamp.QuadPart) >> 1) / qpc_freq.QuadPart);
-																					//printf("LATENCY: %f\n", time);
-																				//}
 																			});
 																			if (external_port != 0) {
 																				lambda(external_port, prefix_length);

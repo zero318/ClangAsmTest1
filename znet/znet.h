@@ -49,10 +49,18 @@
 
 #include <WinDNS.h>
 
+typedef int socklen_t;
+typedef uint16_t sa_family_t;
+typedef uint16_t in_port_t;
 #else
 
 #define ENABLE_SSL 0
+#include <errno.h>
+#include <unistd.h>
 #include <sys/types.h>
+#include <sys/time.h>
+#include <sys/ioctl.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -61,20 +69,16 @@
 
 typedef int SOCKET;
 typedef struct addrinfo ADDRINFOA;
-typedef uint32_t IP4_ADDRESS;
+typedef in_addr_t IP4_ADDRESS;
 typedef union {
     uint32_t IP6Dword[4];
     uint16_t IP6Word[8];
 } IP6_ADDRESS;
 #define INVALID_SOCKET (~((SOCKET)0))
-#ifndef INET_ADDRSTRLEN
-#define INET_ADDRSTRLEN 22
-#endif
-#ifndef INET6_ADDRSTRLEN
-#define INET6_ADDRSTRLEN 65
-#endif
+#define WSAGetLastError() errno
 #endif
 
+using usocklen_t = std::make_unsigned_t<socklen_t>;
 
 #include "common.h"
 
@@ -305,8 +309,8 @@ static inline constexpr bool map_ip_to_ipv4(const sockaddr* addr, IP4_ADDRESS& o
 }
 
 template <bool byte_order_matters = true>
-uint16_t get_port(const sockaddr* addr) {
-    uint16_t port = 0;
+in_port_t get_port(const sockaddr* addr) {
+    in_port_t port = 0;
     switch (addr->sa_family) {
         case AF_INET:
             port = ((const sockaddr_in*)addr)->sin_port;
@@ -454,8 +458,8 @@ int sprint_sockaddr(const sockaddr* addr, T* buf) {
 }
 
 struct ipaddr_any {
-    uint16_t family;
-    uint16_t port;
+    sa_family_t family;
+    in_port_t port;
     union {
         IP4_ADDRESS ipv4;
         IP6_ADDRESS ipv6;
@@ -463,7 +467,7 @@ struct ipaddr_any {
 
     ipaddr_any() = default;
 
-    ipaddr_any(bool is_ipv6, uint16_t port, const void* ip)
+    ipaddr_any(bool is_ipv6, in_port_t port, const void* ip)
         : family(is_ipv6 ? AF_INET6 : AF_INET), port(hton(port))
     {
         if (is_ipv6) {
@@ -502,7 +506,7 @@ struct ipaddr_any {
 };
 
 template <bool byte_order_matters = true>
-uint16_t get_port(const ipaddr_any& addr) {
+in_port_t get_port(const ipaddr_any& addr) {
     if constexpr (byte_order_matters) {
         return ntoh(addr.port);
     } else {
@@ -512,15 +516,15 @@ uint16_t get_port(const ipaddr_any& addr) {
 
 struct sockaddr_any {
     sockaddr_storage storage;
-    size_t length;
+    usocklen_t length;
 
     sockaddr_any() = default;
 
-    sockaddr_any(const sockaddr* addr, size_t length) : length(length) {
+    sockaddr_any(const sockaddr* addr, usocklen_t length) : length(length) {
         memcpy(&this->storage, addr, length);
     }
 
-    sockaddr_any(bool is_ipv6, uint16_t port, const void* ip) {
+    sockaddr_any(bool is_ipv6, in_port_t port, const void* ip) {
         if (is_ipv6) {
             *(sockaddr_in6*)&this->storage = {
                 .sin6_family = AF_INET6,
@@ -538,18 +542,19 @@ struct sockaddr_any {
         }
     }
 
-    void initialize(const sockaddr* addr, size_t length) {
+    void initialize(const sockaddr* addr, usocklen_t length) {
         memcpy(&this->storage, addr, this->length = length);
     }
 
     void initialize_v4_to_v6(const sockaddr* addr) {
         this->length = sizeof(sockaddr_in6);
         const sockaddr_in* addr4 = (const sockaddr_in*)addr;
-        sockaddr_in6* addr6 = (sockaddr_in6*)&this->storage;
-        addr6->sin6_family = AF_INET6;
-        addr6->sin6_port = addr4->sin_port;
         IP6_ADDRESS temp = map_ipv4_to_ipv6(*(IP4_ADDRESS*)&addr4->sin_addr);
-        addr6->sin6_addr = *(in6_addr*)&temp;
+        *(sockaddr_in6*)&this->storage = {
+            .sin6_family = AF_INET6,
+            .sin6_port = addr4->sin_port,
+            .sin6_addr = *(in6_addr*)&temp
+        };
     }
 
     operator sockaddr*() const {
@@ -863,7 +868,7 @@ static inline int setsockopt(SOCKET s, int level, int optname, const T& optval) 
 
 template<typename T>
 static inline int getsockopt(SOCKET s, int level, int optname, T& optval) {
-    int optlen = sizeof(T);
+    socklen_t optlen = sizeof(T);
     return ::getsockopt(s, level, optname, (char*)&optval, &optlen);
 }
 
@@ -916,28 +921,28 @@ static inline int recv(SOCKET s, T* data, int flags) {
 }
 
 template<typename T> requires(!std::is_pointer_v<T>)
-static inline int recvfrom(SOCKET s, T& data, int flags, sockaddr* from, int* fromlen) {
+static inline int recvfrom(SOCKET s, T& data, int flags, sockaddr* from, socklen_t* fromlen) {
     return ::recvfrom(s, (char*)&data, sizeof(T), flags, from, fromlen);
 }
 
 template<typename T>
-static inline int recvfrom(SOCKET s, T* data, int flags, sockaddr* from, int* fromlen) {
+static inline int recvfrom(SOCKET s, T* data, int flags, sockaddr* from, socklen_t* fromlen) {
     return ::recvfrom(s, (char*)data, sizeof(T), flags, from, fromlen);
 }
 
 static inline SOCKET accept(SOCKET s, sockaddr_any& addr) {
     addr.length = sizeof(addr.storage);
-    return ::accept(s, addr, (int*)&addr.length);
+    return ::accept(s, addr, (socklen_t*)&addr.length);
 }
 
 static inline int getpeername(SOCKET s, sockaddr_any& addr) {
     addr.length = sizeof(addr.storage);
-    return ::getpeername(s, addr, (int*)&addr.length);
+    return ::getpeername(s, addr, (socklen_t*)&addr.length);
 }
 
 static inline int getsockname(SOCKET s, sockaddr_any& addr) {
     addr.length = sizeof(addr.storage);
-    return ::getsockname(s, addr, (int*)&addr.length);
+    return ::getsockname(s, addr, (socklen_t*)&addr.length);
 }
 
 template<typename T> requires(!std::is_pointer_v<T>)
@@ -957,18 +962,18 @@ static inline int sendto(SOCKET s, const char* buf, int len, int flags, const so
 template<typename T> requires(!std::is_pointer_v<T>)
 static inline int recvfrom(SOCKET s, T& data, int flags, sockaddr_any& from) {
     from.length = sizeof(from.storage);
-    return ::recvfrom(s, (char*)&data, sizeof(T), flags, from, (int*)&from.length);
+    return ::recvfrom(s, (char*)&data, sizeof(T), flags, from, (socklen_t*)&from.length);
 }
 
 template<typename T>
 static inline int recvfrom(SOCKET s, T* data, int flags, sockaddr_any& from) {
     from.length = sizeof(from.storage);
-    return ::recvfrom(s, (char*)data, sizeof(T), flags, from, (int*)&from.length);
+    return ::recvfrom(s, (char*)data, sizeof(T), flags, from, (socklen_t*)&from.length);
 }
 
 static inline int recvfrom(SOCKET s, char* buf, int len, int flags, sockaddr_any& from) {
     from.length = sizeof(from.storage);
-    return ::recvfrom(s, buf, len, flags, from, (int*)&from.length);
+    return ::recvfrom(s, buf, len, flags, from, (socklen_t*)&from.length);
 }
 
 template<typename S>
@@ -985,7 +990,7 @@ protected:
 #if _WIN32
         .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV,
 #else
-        .ai_flags = AI_NUMERIC_SERV,
+        .ai_flags = AI_NUMERICSERV,
 #endif
         .ai_family = AF_UNSPEC,
         .ai_socktype = SOCK_STREAM,
@@ -996,7 +1001,7 @@ protected:
 #if _WIN32
         .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV,
 #else
-        .ai_flags = AI_NUMERIC_SERV,
+        .ai_flags = AI_NUMERICSERV,
 #endif
         .ai_family = AF_UNSPEC,
         .ai_socktype = SOCK_DGRAM,
@@ -1007,7 +1012,7 @@ protected:
 #if _WIN32
         .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV,
 #else
-        .ai_flags = AI_NUMERIC_SERV,
+        .ai_flags = AI_NUMERICSERV,
 #endif
         .ai_family = AF_UNSPEC,
         .ai_socktype = SOCK_RAW,
@@ -1019,7 +1024,7 @@ protected:
 #if _WIN32
         .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV,
 #else
-        .ai_flags = AI_NUMERIC_SERV,
+        .ai_flags = AI_NUMERICSERV,
 #endif
         .ai_family = AF_UNSPEC,
         .ai_socktype = SOCK_STREAM,
@@ -1030,7 +1035,7 @@ protected:
 #if _WIN32
         .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV,
 #else
-        .ai_flags = AI_NUMERIC_SERV,
+        .ai_flags = AI_NUMERICSERV,
 #endif
         .ai_family = AF_UNSPEC,
         .ai_socktype = SOCK_DGRAM,
@@ -1041,7 +1046,7 @@ protected:
 #if _WIN32
         .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV,
 #else
-        .ai_flags = AI_NUMERIC_SERV,
+        .ai_flags = AI_NUMERICSERV,
 #endif
         .ai_family = AF_UNSPEC,
         .ai_socktype = SOCK_RAW,
@@ -1085,7 +1090,11 @@ public:
     void close() {
         SOCKET sock = this->sock;
         if (sock != INVALID_SOCKET) {
+#if _WIN32
             ::closesocket(sock);
+#else
+            ::close(sock);
+#endif
             this->sock = INVALID_SOCKET;
             ((S*)this)->close_secondary();
         }
@@ -1112,6 +1121,7 @@ protected:
 #endif
 
         const ADDRINFO* addr_hint;
+#if ZNET_SUPPORT_WCHAR
         if constexpr (std::is_same_v<T, wchar_t>) {
             if constexpr (socket_type == TCP) {
                 addr_hint = &tcp_addr_hint_w;
@@ -1120,7 +1130,9 @@ protected:
             } else if constexpr (socket_type == ICMP) {
                 addr_hint = &icmp_addr_hint_w;
             }
-        } else {
+        } else
+#endif
+        {
             if constexpr (socket_type == TCP) {
                 addr_hint = &tcp_addr_hint_a;
             } else if constexpr (socket_type == UDP) {
@@ -1296,7 +1308,7 @@ public:
 
 protected:
 
-    bool bind_ipv6(const IP6_ADDRESS& ip, uint16_t local_port) const {
+    bool bind_ipv6(const IP6_ADDRESS& ip, in_port_t local_port) const {
         sockaddr_in6 local = {
             .sin6_family = AF_INET6,
             .sin6_port = hton(local_port),
@@ -1305,7 +1317,7 @@ protected:
         return zero::net::bind(this->sock, local) == 0;
     }
 
-    bool bind_ipv4(const IP4_ADDRESS& ip, uint16_t local_port) const {
+    bool bind_ipv4(const IP4_ADDRESS& ip, in_port_t local_port) const {
         sockaddr_in local = {
             .sin_family = AF_INET,
             .sin_port = hton(local_port),
@@ -1316,7 +1328,7 @@ protected:
 
 public:
 
-    bool bind(const IP6_ADDRESS& ip, uint16_t local_port) const {
+    bool bind(const IP6_ADDRESS& ip, in_port_t local_port) const {
 #if ZNET_IPV6_MODES(ZNET_REQUIRE_IPV6 | ZNET_REQUIRE_IPV6)
 #if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6)
         if (expect(enable_ipv6, true))
@@ -1333,7 +1345,7 @@ public:
 #endif
     }
 
-    bool bind(const IP4_ADDRESS& ip, uint16_t local_port) const {
+    bool bind(const IP4_ADDRESS& ip, in_port_t local_port) const {
 
 #if ZNET_IPV6_MODES(ZNET_REQUIRE_IPV6 | ZNET_REQUIRE_IPV6)
 #if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6)
@@ -1348,7 +1360,7 @@ public:
 #endif
     }
 
-    bool bind(uint16_t local_port) const {
+    bool bind(in_port_t local_port) const {
 #if ZNET_IPV6_MODES(ZNET_REQUIRE_IPV6 | ZNET_REQUIRE_IPV6)
 #if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6)
         if (expect(enable_ipv6, true))
@@ -1395,7 +1407,7 @@ protected:
 
     inline size_t receive_from_impl(void* buffer, size_t recv_length, sockaddr_any& addr) const {
         addr.length = sizeof(addr.storage);
-        int recv_ret = ::recvfrom(this->sock, (char*)buffer, recv_length, 0, addr, (int*)&addr.length);
+        int recv_ret = ::recvfrom(this->sock, (char*)buffer, recv_length, 0, addr, (socklen_t*)&addr.length);
         if (expect(recv_ret <= 0, false)) {
             recv_ret = 0;
         }
@@ -1439,7 +1451,7 @@ public:
     bool wait_for_incoming_data(size_t timeout) const {
         timeval time;
         time.tv_sec = timeout / 1000;
-        time.tv_usec = timeout % 1000;
+        time.tv_usec = (timeout % 1000) * 1000;
 
         fd_set fds;
         FD_ZERO(&fds);
@@ -1534,32 +1546,67 @@ public:
     }
 
     bool get_receive_timeout(size_t& timeout) const {
-        uint32_t timeout_dword = 0;
-        bool ret = zero::net::getsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO, timeout_dword) == 0;
-        timeout = timeout_dword;
+#if _WIN32
+        DWORD timeout_val = 0;
+#else
+        timeval timeout_val = {};
+#endif
+        bool ret = zero::net::getsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO, timeout_val) == 0;
+#if _WIN32
+        timeout = timeout_val;
+#else
+        timeout = timeout_val.tv_sec * 1000 + timeout_val.tv_usec / 1000;
+#endif
         return ret;
     }
 
     bool set_receive_timeout(size_t timeout) const {
-        uint32_t timeout_dword = (uint32_t)timeout;
-        return zero::net::setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO, timeout_dword);
+#if _WIN32
+        DWORD timeout_val = (DWORD)timeout;
+#else
+        timeval timeout_val;
+        timeout_val.tv_sec = timeout / 1000;
+        timeout_val.tv_usec = (timeout % 1000) * 1000;
+#endif
+        return zero::net::setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO, timeout_val);
     }
 
     bool get_send_timeout(size_t& timeout) const {
-        uint32_t timeout_dword = 0;
-        bool ret = zero::net::getsockopt(this->sock, SOL_SOCKET, SO_SNDTIMEO, timeout_dword) == 0;
-        timeout = timeout_dword;
+#if _WIN32
+        DWORD timeout_val = 0;
+#else
+        timeval timeout_val = {};
+#endif
+        bool ret = zero::net::getsockopt(this->sock, SOL_SOCKET, SO_SNDTIMEO, timeout_val) == 0;
+#if _WIN32
+        timeout = timeout_val;
+#else
+        timeout = timeout_val.tv_sec * 1000 + timeout_val.tv_usec / 1000;
+#endif
         return ret;
     }
 
     bool set_send_timeout(size_t timeout) const {
-        uint32_t timeout_dword = (uint32_t)timeout;
-        return zero::net::setsockopt(this->sock, SOL_SOCKET, SO_SNDTIMEO, timeout_dword);
+#if _WIN32
+        DWORD timeout_val = (DWORD)timeout;
+#else
+        timeval timeout_val;
+        timeout_val.tv_sec = timeout / 1000;
+        timeout_val.tv_usec = (timeout % 1000) * 1000;
+#endif
+        return zero::net::setsockopt(this->sock, SOL_SOCKET, SO_SNDTIMEO, timeout_val);
     }
 
     bool set_blocking_state(bool state) const {
+#if _WIN32
         u_long blocking_state = !state;
         return ::ioctlsocket(this->sock, FIONBIO, &blocking_state);
+#else
+        int flags = ::fcntl(this->sock, F_GETFL, 0);
+        flags &= O_NONBLOCK;
+        flags |= state ? 0 : O_NONBLOCK;
+        return ::fcntl(this->sock, F_SETFL, flags) == 0;
+#endif
     }
 };
 
@@ -2111,7 +2158,11 @@ protected:
             }
             ::FreeCredentialsHandle(&this->tls_handle);
         }
+#if _WIN32
         ::closesocket(this->sock);
+#else
+        ::close(this->sock);
+#endif
         this->sock = INVALID_SOCKET;
         return false;
     }
