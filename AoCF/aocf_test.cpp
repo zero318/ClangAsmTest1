@@ -483,7 +483,7 @@ uint64_t __calc_qpc_delta() {
 }
 
 // RxA3D0
-LARGE_INTEGER __qpc_sub_A3D0() {
+LARGE_INTEGER __qpc_nanoseconds() {
     LARGE_INTEGER qpc_freq_lint;
     QueryPerformanceFrequency(&qpc_freq_lint);
     int64_t qpc_freq = qpc_freq_lint.QuadPart;
@@ -491,8 +491,9 @@ LARGE_INTEGER __qpc_sub_A3D0() {
     QueryPerformanceCounter(&qpc_value_lint);
     int64_t qpc_value = qpc_value_lint.QuadPart;
 
-    // Not the real return value, but compiles.
-    return qpc_value_lint;
+    LARGE_INTEGER ret;
+    ret.QuadPart = (qpc_value / qpc_freq) * 1000000000ll + 1000000000ll * (qpc_value % qpc_freq) / qpc_freq;
+    return ret;
 }
 
 // This does something with TLS and is called everywhere. Seems to be something about error handling
@@ -2424,7 +2425,7 @@ struct UnknownI {
 	UnknownJ* __unknownJ_38; // 0x38
 	UnknownJ* __unknownJ_3C; // 0x3C
 	// 0x40
-	void* __ptr_44; // 0x44
+	UnknownQ* __unknownQ_ptr_44; // 0x44
 	// 0x48
 
     UnknownQ* __unknownQ_ptr_50; // 0x50
@@ -2467,22 +2468,40 @@ struct UnknownI {
 					//localA = (ptrA->__method_8() / 2) + 15) / 16;
 				//}
 			}
-			// left off at RxE34F7
-			uint32_t localB = this->__byte_5;
-			auto& curM = *this->input_recorder->__unknownM_10[localB].get();
-			
+			TF4::UnknownM& curM = *this->input_recorder->__unknownM_10[this->__byte_4].get();
 			if (curM.__timestamp_0 - curM.__int_4 <= localA + 1) {
-				if (this->__unknownJ_3C - this->__unknownJ_38) {
+                bool localC = true;
+                if (this->__unknownJ_3C - this->__unknownJ_38) {
 					size_t i = 0;
-				
+                    uint32_t timestamp = this->input_recorder->__unknownM_10[this->__byte_4]->__timestamp_0;
 					do {
-						
+                        uint32_t cur_timestamp = this->__unknownJ_38[i].__int_0 + 5; // NETPLAY PATCH A CONSTANT
+                        localC &= timestamp < cur_timestamp;
 					} while (++i < this->__unknownJ_3C - this->__unknownJ_38);
 				}
+                if (localC) {
+                    uint16_t localD;
+                    if (void* ptr = this->__ptr_10) {
+                        // localD = ptr->__method_10()->__sub_r169D80();
+                    } else {
+                        localD = 0;
+                    }
+                    this->input_recorder->__method_40(this->__byte_4, localD);
+                }
 			}
+
+            UnknownQ* unknownQ_ptr = this->__unknownQ_ptr_50;
+            for (int i = 0; i < this->__byte_5; ++i) {
+                unknownQ_ptr->__timestamp_array_10[i] = this->input_recorder->__unknownM_10[i]->__timestamp_0;
+            }
 			
 			for (size_t i = 0; i < this->__unknownJ_3C - this->__unknownJ_38; ++i) {
-				
+                UnknownJ* unknownJ_ptr = &this->__unknownJ_38[i];
+                uint32_t timestamp = unknownJ_ptr->__timestamp_8 + 5; // NETPLAY PATCH B CONSTANT
+                timestamp = std::min(timestamp, unknownQ_ptr->__timestamp_array_10[this->__byte_4]);
+                this->input_recorder->__method_38(this->__byte_4, unknownQ_ptr->__inputs_2, saturate_sub(timestamp, 5u), timestamp);
+                unknownQ_ptr->__timestamp_array_10[this->__byte_4] = timestamp;
+                // IDK
 			}
 		}
 		
@@ -2738,7 +2757,7 @@ struct NetworkClientImpl : NetworkNode {
                     unknownJ_ptr->__int_0 = packet_data->__int_C;
                     unknownJ_ptr->__timestamp_8 = packet_data->__timestamp_array[unknownI_ptr->__byte_4];
                     unknownJ_ptr->__timestamp_4 = packet_data->__timestamp_array[packet_data->__ubyte_1];
-                    unknownJ_ptr->__qpc_timestamp_88 = __qpc_sub_A3D0().QuadPart;
+                    unknownJ_ptr->__qpc_timestamp_88 = __qpc_nanoseconds().QuadPart;
                     uint32_t timestamp = packet_data->__timestamp_array[packet_data->__ubyte_1];
                     unknownI_shared_ptr.get()->input_recorder->__method_3C(packet_data->__ubyte_1, packet_data->inputs, saturate_sub(timestamp, 5u), timestamp);
                 }
@@ -3832,7 +3851,7 @@ void thiscall NetworkServerImpl::__handle_packet_19(size_t index, TF4::Packet19D
                 unknownJ_ptr->__int_0 = packet_data->__int_C;
                 unknownJ_ptr->__timestamp_8 = packet_data->__timestamp_array[unknownI_ptr->__byte_4];
                 unknownJ_ptr->__timestamp_4 = packet_data->__timestamp_array[packet_data->__ubyte_1];
-                unknownJ_ptr->__qpc_timestamp_88 = __qpc_sub_A3D0().QuadPart;
+                unknownJ_ptr->__qpc_timestamp_88 = __qpc_nanoseconds().QuadPart;
                 uint32_t timestamp = packet_data->__timestamp_array[packet_data->__ubyte_1];
                 unknownI_shared_ptr.get()->input_recorder->__method_3C(packet_data->__ubyte_1, packet_data->inputs, saturate_sub(timestamp, 5u), timestamp);
             }
