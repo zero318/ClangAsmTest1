@@ -28,6 +28,34 @@
 using namespace std::literals::string_literals;
 using namespace std::literals::string_view_literals;
 
+#define LOBBY_STATISTICS 1
+
+#define LOBBY_IRC_LOGGING 1
+#define LOBBY_UDP_LOGGING 1
+#define LOBBY_DEBUG_LOGGING 0
+
+#if LOBBY_DEBUG_LOGGING
+#define debug_printf(...) printf(__VA_ARGS__)
+#else
+#define debug_printf(...)
+#endif
+
+#if LOBBY_IRC_LOGGING
+#define irc_msg_printf(...) printf(__VA_ARGS__)
+#define irc_debug_printf(...) debug_printf(__VA_ARGS__)
+#else
+#define irc_msg_printf(...)
+#define irc_debug_printf(...)
+#endif
+
+#if LOBBY_UDP_LOGGING
+#define udp_printf(...) printf(__VA_ARGS__)
+#define udp_debug_printf(...) debug_printf(__VA_ARGS__)
+#else
+#define udp_printf(...)
+#define udp_debug_printf(...)
+#endif
+
 #if _WIN32
 #include <conio.h>
 #include <Windows.h>
@@ -291,7 +319,9 @@ enum RoomType : uint8_t {
 };
 
 static std::atomic<uint32_t> USER_COUNT[3] = {};
+#if LOBBY_STATISTICS
 static std::atomic<uint64_t> TOTAL_LOBBY_MATCHES = { 0 };
+#endif
 
 struct UserData {
 	std::atomic<bool> delete_flag = { false }; // 0x0
@@ -320,7 +350,7 @@ struct UserData {
 			this->nickname != nick
 		) {
 			if (!this->socket.send(message.data(), message.length())) {
-				printf("SEND FAIL %u (%d)\n", WSAGetLastError(), this->socket.sock);
+				irc_debug_printf("SEND FAIL %u (%d)\n", WSAGetLastError(), this->socket.sock);
 			}
 		}
 	}
@@ -330,7 +360,7 @@ struct UserData {
 			this->room_type == room
 		) {
 			if (!this->socket.send(message.data(), message.length())) {
-				printf("SEND FAIL %u (%d)\n", WSAGetLastError(), this->socket.sock);
+				irc_debug_printf("SEND FAIL %u (%d)\n", WSAGetLastError(), this->socket.sock);
 			}
 		}
 	}
@@ -563,7 +593,7 @@ static void send_user_count_packet(char* buffer, RoomType room_type) {
 		user_count_len = sprintf(&buffer[USER_COUNT_REPLY_LEN], "%u\n", --USER_COUNT[room_type]) + USER_COUNT_REPLY_LEN;
 	}
 	std::string_view user_count_view{ buffer, user_count_len };
-	printf("SEND:%.*s", (int)user_count_view.length(), user_count_view.data());
+	irc_msg_printf("SEND:%.*s", (int)user_count_view.length(), user_count_view.data());
 	shared_iter_user_data([=](UserData* user_data) {
 		user_data->send_message(room_type, user_count_view);
 	});
@@ -609,7 +639,7 @@ int main(int argc, char* argv[]) {
 							if (size_t receive_length = udp_socket.receive(buffer, peer_addr)) {
 
 								PacketLayout* raw_packet = (PacketLayout*)buffer;
-								//printf("UDP: %zu type %hhu\n", receive_length, raw_packet->type);
+								udp_printf("UDP: %zu type %hhu\n", receive_length, raw_packet->type);
 								switch (raw_packet->type) {
 									case PACKET_TYPE_LOBBY_NAME: case PACKET_TYPE_LOBBY_NAME_WAIT: {
 
@@ -617,16 +647,17 @@ int main(int argc, char* argv[]) {
 
 										in_port_t peer_port = get_port(peer_addr);
 
+#if LOBBY_UDP_LOGGING && LOBBY_DEBUG_LOGGING
 										printf("NAMEPORT: %.*s = %u ", (int)packet->length, packet->name, peer_port);
 										print_sockaddr(peer_addr);
 										printf("\n");
+#endif
 
 										std::string_view peer_nickname_view{ packet->name, packet->length };
 
 										shared_user_data(peer_nickname_view, [peer_port](UserData* user_data) {
 											user_data->external_port = peer_port;
 										});
-										//printf("UDP port set end\n");
 										if (raw_packet->type != PACKET_TYPE_LOBBY_NAME_WAIT) {
 											goto skip_punch_wait;
 										}
@@ -644,9 +675,11 @@ int main(int argc, char* argv[]) {
 										break;
 									}
 									case PACKET_TYPE_PUNCH_PING: {
-										//printf("PUNCH PING ");
-										//print_sockaddr(peer_addr);
-										//printf("\n");
+#if LOBBY_UDP_LOGGING && LOBBY_DEBUG_LOGGING
+										printf("PUNCH PING ");
+										print_sockaddr(peer_addr);
+										printf("\n");
+#endif
 										find_punch_data([&](PunchData& punch_data) {
 											if (
 												punch_data.alive &&
@@ -678,8 +711,6 @@ int main(int argc, char* argv[]) {
 												udp_socket.send(buffer, sizeof(PacketPunchPeer), punch_data.remote_addr);
 												//new (buffer) PacketPunchPeer(punch_data.remote_addr);
 												//udp_socket.send(buffer, sizeof(PacketPunchPeer), peer_addr);
-												// 
-												//printf("Sending punch peer packet\n");
 												return true;
 											}
 											return false;
@@ -732,7 +763,7 @@ int main(int argc, char* argv[]) {
 										}
 									}
 									else {
-										//printf("Killed punch client\n");
+										udp_debug_printf("Killed punch client\n");
 										punch_data.alive = false;
 									}
 								}
@@ -744,7 +775,7 @@ int main(int argc, char* argv[]) {
 
 					do {
 						if (SocketTCP response_socket = tcp_socket.accept()) {
-							printf("Accepted connection!\n");
+							irc_debug_printf("Accepted connection!\n");
 							std::thread([response_socket]() mutable {
 
 								response_socket.set_blocking_state(true);
@@ -885,7 +916,7 @@ int main(int argc, char* argv[]) {
 												memcpy(join_and_users_buffer, USER_COUNT_REPLY, USER_COUNT_REPLY_LEN);
 												do {
 													while (receive_message(message_view)) {
-														printf(
+														irc_msg_printf(
 															"GOT :%s\n"
 															"FROM:%s\n"
 															, message_view.data()
@@ -940,7 +971,9 @@ int main(int argc, char* argv[]) {
 																	});
 																}
 																else if (command_view.starts_with(WELCOME_COMMAND_VIEW)) {
+#if LOBBY_STATISTICS
 																	printf("Total matches: %llu\n", ++TOTAL_LOBBY_MATCHES);
+#endif
 																	if (is_waiting) {
 																		send_user_count_packet<DEC_USER_COUNT>(join_and_users_buffer, room_type);
 																	}
@@ -970,7 +1003,7 @@ int main(int argc, char* argv[]) {
 																user_view.data(), message_view.data()
 															);
 															message_view = std::string_view(message_buf, send_length);
-															printf("SEND:%.*s", (int)message_view.length(), message_view.data());
+															irc_msg_printf("SEND:%.*s", (int)message_view.length(), message_view.data());
 															shared_iter_user_data([=](UserData* user_data) {
 																user_data->send_message_from(nick_view, room_type, message_view);
 															});
@@ -985,7 +1018,7 @@ int main(int argc, char* argv[]) {
 													is_waiting = false;
 												} while (receive_message(message_view) && message_view == PONG_REPLY);
 
-												printf("SUCCEEDED, disconnecting...\n");
+												irc_debug_printf("SUCCEEDED, disconnecting...\n");
 											}
 											remove_user_data(nick_view);
 											goto success;
@@ -993,7 +1026,7 @@ int main(int argc, char* argv[]) {
 									}
 								}
 							disconnect:
-								printf("FAILED, disconnecting...\n");
+								irc_debug_printf("FAILED, disconnecting...\n");
 							success:
 								response_socket.close();
 							}).detach();
