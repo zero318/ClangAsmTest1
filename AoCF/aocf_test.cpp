@@ -2741,7 +2741,7 @@ struct NetworkClientImpl : NetworkNode {
                     if (
                         unknownI_ptr &&
                         packet_data->__int_4 &&
-                        this->__unknownI_ptr_B0->__int_0
+                        !this->__unknownI_ptr_B0->__int_0
                     ) {
                         unknownI_ptr->__sub_rE3150(packet_data->__int_4, packet_data->__ubyte_1);
                     }
