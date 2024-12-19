@@ -22,6 +22,7 @@
 #include <bitset>
 #include <forward_list>
 #include <list>
+#include <functional>
 
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -2091,94 +2092,89 @@ struct Packet19Data13 {
     // 0x8
 };
 
-struct UnknownM {
-    uint32_t __timestamp_0; // 0x0
-    int __int_4; // 0x4
-    uint8_t __byte_8; // 0x8
-    // 0x9
-    void* __ptr_C; // 0xC
-    uint16_t* __ushort_ptr_10; // 0x10
-    uint16_t* __ushort_ptr_14; // 0x14
-    // 0x18
-    // 
-
-    // Rx169770
-    void __sub_r169770() {
-        // Invoke method 1C
-        // this->__ptr_C
-        // Invoke method 8
-        this->__int_4 = 0;
-        this->__byte_8 = 0;
-        // IDK
-    }
-
-    // Rx169810
-    void __sub_r169810() {
-        // Invoke method 1C
-        // this->__ptr_C
-        // Invoke method 8
-        this->__timestamp_0 = 0;
-        this->__byte_8 = 0;
-        // IDK
-    }
-
-    // Rx169A20
-    void __sub_169A20(void* wtf) {
-        // boost::unique_lock lock(this->__mutex_1C);
-        if (this->__timestamp_0 <= this->__ushort_ptr_14 - this->__ushort_ptr_10) {
-            // IDK
-        }
-        //this->__ushort_ptr_10[this->__timestamp_0] = ;
-    }
-
-    // Rx169AF0
-    int __sub_r169AF0(uint16_t* arg1, uint32_t arg2, uint32_t arg3) {
-        if (this->__timestamp_0 > arg2) {
-            uint32_t localA = std::min(this->__timestamp_0, arg3);
-            uint32_t localB = localA - arg2;
-            if (localA < this->__ushort_ptr_14 - this->__ushort_ptr_10) {
-                // boost::unique_lock lock(this->__mutex_1C);
-                memcpy(arg1, &this->__ushort_ptr_10[arg2], sizeof(uint16_t[localB]));
-            }
-            return localB;
-        }
-        return 0;
-    }
-
-    // Rx169BD0
-    void __sub_r169BD0(uint16_t* arg1, uint32_t arg2, uint32_t arg3) {
-        if (this->__timestamp_0 >= arg2 && this->__timestamp_0 < arg3) {
-            // boost::unique_lock lock(this->__mutex_1C);
-            if (arg3 <= this->__ushort_ptr_14 - this->__ushort_ptr_10) {
-                // IDK
-            }
-            memcpy(&this->__ushort_ptr_10[this->__timestamp_0], &arg1[this->__timestamp_0 - arg2], sizeof(uint16_t[arg3 - this->__timestamp_0]));
-        }
-    }
-
-    // Rx169CC0
-    void __sub_r169CC0(uint16_t arg1) {
-        // boost::unique_lock lock(this->__mutex_1C);
-        if (this->__timestamp_0 <= this->__ushort_ptr_14 - this->__ushort_ptr_10) {
-            // IDK
-        }
-        this->__ushort_ptr_10[this->__timestamp_0] = arg1;
-    }
-};
-
-// Probably std::shared_ptr<UnknownM>
-// size: 0x8
-struct UnknownL {
-    UnknownM* __unknownM_0; // 0x0
-    // 0x4
-};
-
 // size: 0x24
 struct InputRecorder {
+
+    struct Device {
+        uint32_t __timestamp_0; // 0x0
+        int __int_4; // 0x4
+        uint8_t __byte_8; // 0x8
+        // 0x9
+        void* __ptr_C; // 0xC
+        uint16_t* __ushort_ptr_10; // 0x10
+        uint16_t* __ushort_ptr_14; // 0x14
+        // 0x18
+        // 
+
+        // Rx169770
+        void __sub_r169770() {
+            // Invoke method 1C
+            // this->__ptr_C
+            // Invoke method 8
+            this->__int_4 = 0;
+            this->__byte_8 = 0;
+            // IDK
+        }
+
+        // Rx169810
+        void __sub_r169810() {
+            // Invoke method 1C
+            // this->__ptr_C
+            // Invoke method 8
+            this->__timestamp_0 = 0;
+            this->__byte_8 = 0;
+            // IDK
+        }
+
+        // Rx169A20
+        void __sub_169A20(void* wtf) {
+            // boost::unique_lock lock(this->__mutex_1C);
+            if (this->__timestamp_0 <= this->__ushort_ptr_14 - this->__ushort_ptr_10) {
+                // IDK
+            }
+            //this->__ushort_ptr_10[this->__timestamp_0] = ;
+        }
+
+        // Rx169AF0
+        int __sub_r169AF0(uint16_t* arg1, uint32_t arg2, uint32_t arg3) {
+            if (this->__timestamp_0 > arg2) {
+                uint32_t localA = std::min(this->__timestamp_0, arg3);
+                uint32_t localB = localA - arg2;
+                if (localA < this->__ushort_ptr_14 - this->__ushort_ptr_10) {
+                    // boost::unique_lock lock(this->__mutex_1C);
+                    memcpy(arg1, &this->__ushort_ptr_10[arg2], sizeof(uint16_t[localB]));
+                }
+                return localB;
+            }
+            return 0;
+        }
+
+        // Rx169BD0
+        void __sub_r169BD0(uint16_t* arg1, uint32_t arg2, uint32_t arg3) {
+            if (this->__timestamp_0 >= arg2 && this->__timestamp_0 < arg3) {
+                // boost::unique_lock lock(this->__mutex_1C);
+                if (arg3 <= this->__ushort_ptr_14 - this->__ushort_ptr_10) {
+                    // IDK
+                }
+                memcpy(&this->__ushort_ptr_10[this->__timestamp_0], &arg1[this->__timestamp_0 - arg2], sizeof(uint16_t[arg3 - this->__timestamp_0]));
+            }
+        }
+
+        // Rx169CC0
+        void __sub_r169CC0(uint16_t arg1) {
+            // boost::unique_lock lock(this->__mutex_1C);
+            if (this->__timestamp_0 <= this->__ushort_ptr_14 - this->__ushort_ptr_10) {
+                // IDK
+            }
+            this->__ushort_ptr_10[this->__timestamp_0] = arg1;
+        }
+    };
+
+
     // void* vftable; // 0x0
     std::vector<void*> __vector_4; // 0x4
-    std::shared_ptr<UnknownM>* __unknownM_10; // 0x10
-    std::shared_ptr<UnknownM>* __unknownM_14; // 0x14
+    std::shared_ptr<Device>* __device_ptr_10; // 0x10
+    std::shared_ptr<Device>* __device_ptr_14; // 0x14
     // 0x18
     
     std::atomic<HANDLE> __handle_20; // 0x20
@@ -2203,8 +2199,8 @@ struct InputRecorder {
     // Method 14
     // Rx169530
     virtual void __method_14(size_t index) {
-        if (index < this->__unknownM_14 - this->__unknownM_10) {
-            if (void* ptr = this->__unknownM_10[index]->__ptr_C) {
+        if (index < this->__device_ptr_14 - this->__device_ptr_10) {
+            if (void* ptr = this->__device_ptr_10[index]->__ptr_C) {
                 // Invoke ptr method 0x20
             }
         }
@@ -2235,29 +2231,29 @@ struct InputRecorder {
     // Method 28
     // Rx169560
     virtual void __method_28(size_t index) {
-        if (index < this->__unknownM_14 - this->__unknownM_10) {
-            this->__unknownM_10[index]->__sub_r169770();
+        if (index < this->__device_ptr_14 - this->__device_ptr_10) {
+            this->__device_ptr_10[index]->__sub_r169770();
         }
     }
 
     // Method 2C
     // Rx169590
     virtual void __method_2C(size_t index) {
-        if (index < this->__unknownM_14 - this->__unknownM_10) {
-            this->__unknownM_10[index]->__sub_r169810();
+        if (index < this->__device_ptr_14 - this->__device_ptr_10) {
+            this->__device_ptr_10[index]->__sub_r169810();
         }
     }
 
     // Method 30
     // Rx1695C0
     virtual void __method_30(size_t index) {
-        if (index < this->__unknownM_14 - this->__unknownM_10) {
-            UnknownM* unknownM_ptr = this->__unknownM_10[index].get();
-            if (unknownM_ptr->__byte_8 == 0) {
-                if (void* ptr = unknownM_ptr->__ptr_C) {
+        if (index < this->__device_ptr_14 - this->__device_ptr_10) {
+            Device* device_ptr = this->__device_ptr_10[index].get();
+            if (device_ptr->__byte_8 == 0) {
+                if (void* ptr = device_ptr->__ptr_C) {
                     // Invoke ptr method 0x20
                 }
-                unknownM_ptr->__byte_8 = 1;
+                device_ptr->__byte_8 = 1;
             }
         }
     }
@@ -2265,17 +2261,17 @@ struct InputRecorder {
     // Method 34
     // Rx1696A0
     virtual void __method_34(size_t index) {
-        if (index < this->__unknownM_14 - this->__unknownM_10) {
-            this->__unknownM_10[index]->__int_4 = 0;
-            this->__unknownM_10[index]->__timestamp_0 = 0;
+        if (index < this->__device_ptr_14 - this->__device_ptr_10) {
+            this->__device_ptr_10[index]->__int_4 = 0;
+            this->__device_ptr_10[index]->__timestamp_0 = 0;
         }
     }
 
     // Method 38
     // Rx1696D0
     virtual int __method_38(size_t index, uint16_t* arg2, uint32_t arg3, uint32_t arg4) {
-        if (index < this->__unknownM_14 - this->__unknownM_10) {
-            return this->__unknownM_10[index]->__sub_r169AF0(arg2, arg3, arg4);
+        if (index < this->__device_ptr_14 - this->__device_ptr_10) {
+            return this->__device_ptr_10[index]->__sub_r169AF0(arg2, arg3, arg4);
         }
         return 0;
     }
@@ -2283,16 +2279,16 @@ struct InputRecorder {
     // Method 3C
     // Rx169710
     virtual void __method_3C(size_t index, uint16_t* arg2, uint32_t arg3, uint32_t arg4) {
-        if (index < this->__unknownM_14 - this->__unknownM_10) {
-            return this->__unknownM_10[index]->__sub_r169BD0(arg2, arg3, arg4);
+        if (index < this->__device_ptr_14 - this->__device_ptr_10) {
+            return this->__device_ptr_10[index]->__sub_r169BD0(arg2, arg3, arg4);
         }
     }
 
     // Method 40
     // Rx169740
     virtual void __method_40(size_t index, uint16_t arg2) {
-        if (index < this->__unknownM_14 - this->__unknownM_10) {
-            return this->__unknownM_10[index]->__sub_r169CC0(arg2);
+        if (index < this->__device_ptr_14 - this->__device_ptr_10) {
+            return this->__device_ptr_10[index]->__sub_r169CC0(arg2);
         }
     }
 };
@@ -2364,20 +2360,18 @@ struct WTFList {
 namespace Manbow {
     
 // size: 0x90
-struct UnknownJ {
+struct NetworkInputSessionRemote {
     int __int_0; // 0x0
-    uint32_t __timestamp_4; // 0x4
-    uint32_t __timestamp_8; // 0x8
+    uint32_t __timestamp_4; // 0x4 remote_frame
+    uint32_t __timestamp_8; // 0x8 local_frame
     // 0xC
-
+    std::function<void(void*, unsigned int)> __function_10; // 0x10
     void* __ptr_34; // 0x34
-    // 0x38
-    
+    std::function<void()> __function_38; // 0x38
     void* __ptr_5C; // 0x5C
-    // 0x60
-    
+    std::function<void()> __function_60; // 0x60
     void* __ptr_84; // 0x84
-    int64_t __qpc_timestamp_88; // 0x88
+    int64_t __qpc_timestamp_88; // 0x88 last_recv_time
     // 0x90
 };
 
@@ -2408,31 +2402,48 @@ struct UnknownQ {
     uint32_t __timestamp_array_10[]; // 0x10
 };
     
-struct UnknownI {
+struct NetworkInputSession {
     int __int_0; // 0x0
-    uint8_t __byte_4; // 0x4
-    uint8_t __byte_5; // 0x5
+    uint8_t __byte_4; // 0x4 out_idx
+    uint8_t __byte_5; // 0x5 player_count
     // 0x6
     
     void* __ptr_10; // 0x10
-    // 0x14
+    bool __bool_14; // 0x14
+    // 0x15
     
+    std::vector<std::shared_ptr<TF4::InputRecorder::Device>> __device_vector_18; // 0x18
     InputRecorder* input_recorder; // 0x24
     // 0x28
-    uint8_t* __byte_ptr_2C; // 0x2C
-    // 0x30
-
-    UnknownJ* __unknownJ_38; // 0x38
-    UnknownJ* __unknownJ_3C; // 0x3C
-    // 0x40
+    std::vector<uint8_t> __byte_vector_2C; // 0x2C
+    std::vector<NetworkInputSessionRemote> __remote_input_sessions; // 0x38
     UnknownQ* __unknownQ_ptr_44; // 0x44
     // 0x48
 
     UnknownQ* __unknownQ_ptr_50; // 0x50
     // 0x54
+
+    // RxE2E80
+    void __sub_rE2E80(uint8_t player_count, bool arg2, Sqrat::Object* input_local, Sqrat::Object* arg4, Sqrat::Object* arg5) {
+        HSQUIRRELVM vm = input_local->vm;
+        this->__sub_rE3200(input_local);
+        this->__bool_14 = arg2;
+        this->__byte_5 = player_count;
+        this->__device_vector_18.resize(player_count);
+        this->__byte_vector_2C.resize(player_count);
+
+        // some Sqrat thing
+
+        // IDK
+    }
     
     // RxE3150
     void __sub_rE3150(int arg1, int arg2) {
+
+    }
+
+    // RxE3200
+    void __sub_rE3200(Sqrat::Object* input_local) {
 
     }
 
@@ -2445,7 +2456,7 @@ struct UnknownI {
     void __sub_rE3340() {
         if (this->__int_0) {
             
-            for (size_t i = 0; i < this->__unknownJ_3C - this->__unknownJ_38; ++i) {
+            for (size_t i = 0; i < this->__remote_input_sessions.size(); ++i) {
                 LARGE_INTEGER qpc_freq_lint;
                 QueryPerformanceFrequency(&qpc_freq_lint);
                 int64_t qpc_freq = qpc_freq_lint.QuadPart;
@@ -2458,8 +2469,8 @@ struct UnknownI {
                 // more BS 64 bit math
             }
             uint32_t localA = 0;
-            for (size_t i = 0; i < this->__unknownJ_3C - this->__unknownJ_38; ++i) {
-                void* ptrA = this->__unknownJ_38[i].__ptr_5C;
+            for (size_t i = 0; i < this->__remote_input_sessions.size(); ++i) {
+                void* ptrA = this->__remote_input_sessions[i].__ptr_5C;
                 if (!ptrA) {
                     // throw something
                 }
@@ -2468,16 +2479,16 @@ struct UnknownI {
                     //localA = (ptrA->__method_8() / 2) + 15) / 16;
                 //}
             }
-            TF4::UnknownM& curM = *this->input_recorder->__unknownM_10[this->__byte_4].get();
-            if (curM.__timestamp_0 - curM.__int_4 <= localA + 1) {
+            TF4::InputRecorder::Device& cur_device = *this->input_recorder->__device_ptr_10[this->__byte_4].get();
+            if (cur_device.__timestamp_0 - cur_device.__int_4 <= localA + 1) {
                 bool localC = true;
-                if (this->__unknownJ_3C - this->__unknownJ_38) {
+                if (!this->__remote_input_sessions.empty()) {
                     size_t i = 0;
-                    uint32_t timestamp = this->input_recorder->__unknownM_10[this->__byte_4]->__timestamp_0;
+                    uint32_t timestamp = this->input_recorder->__device_ptr_10[this->__byte_4]->__timestamp_0;
                     do {
-                        uint32_t cur_timestamp = this->__unknownJ_38[i].__int_0 + 5; // NETPLAY PATCH A CONSTANT
+                        uint32_t cur_timestamp = this->__remote_input_sessions[i].__int_0 + 5; // NETPLAY PATCH A CONSTANT
                         localC &= timestamp < cur_timestamp;
-                    } while (++i < this->__unknownJ_3C - this->__unknownJ_38);
+                    } while (++i < this->__remote_input_sessions.size());
                 }
                 if (localC) {
                     uint16_t localD;
@@ -2492,12 +2503,12 @@ struct UnknownI {
 
             UnknownQ* unknownQ_ptr = this->__unknownQ_ptr_50;
             for (int i = 0; i < this->__byte_5; ++i) {
-                unknownQ_ptr->__timestamp_array_10[i] = this->input_recorder->__unknownM_10[i]->__timestamp_0;
+                unknownQ_ptr->__timestamp_array_10[i] = this->input_recorder->__device_ptr_10[i]->__timestamp_0;
             }
             
-            for (size_t i = 0; i < this->__unknownJ_3C - this->__unknownJ_38; ++i) {
-                UnknownJ* unknownJ_ptr = &this->__unknownJ_38[i];
-                uint32_t timestamp = unknownJ_ptr->__timestamp_8 + 5; // NETPLAY PATCH B CONSTANT
+            for (size_t i = 0; i < this->__remote_input_sessions.size(); ++i) {
+                NetworkInputSessionRemote* remote_input_session_ptr = &this->__remote_input_sessions[i];
+                uint32_t timestamp = remote_input_session_ptr->__timestamp_8 + 5; // NETPLAY PATCH B CONSTANT
                 timestamp = std::min(timestamp, unknownQ_ptr->__timestamp_array_10[this->__byte_4]);
                 this->input_recorder->__method_38(this->__byte_4, unknownQ_ptr->__inputs_2, saturate_sub(timestamp, 5u), timestamp);
                 unknownQ_ptr->__timestamp_array_10[this->__byte_4] = timestamp;
@@ -2519,15 +2530,15 @@ struct UnknownI {
     // RxE3790
     void __sub_rE3790(size_t index) {
         if (this->__int_0) {
-            uint8_t localA = this->__byte_ptr_2C[index];
+            uint8_t localA = this->__byte_vector_2C[index];
             if (localA != UINT8_MAX) {
-                UnknownJ* unknownJ_ptr = &this->__unknownJ_38[localA];
-                if (this->input_recorder->__unknownM_10[this->__byte_4]->__timestamp_0 < unknownJ_ptr->__timestamp_8) {
+                NetworkInputSessionRemote* remote_input_session_ptr = &this->__remote_input_sessions[localA];
+                if (this->input_recorder->__device_ptr_10[this->__byte_4]->__timestamp_0 < remote_input_session_ptr->__timestamp_8) {
                     UnknownQ* unknownQ_ptr = this->__unknownQ_ptr_50;
                     for (int i = 0; i < this->__byte_5; ++i) {
-                        unknownQ_ptr->__timestamp_array_10[i] = this->input_recorder->__unknownM_10[i]->__timestamp_0;
+                        unknownQ_ptr->__timestamp_array_10[i] = this->input_recorder->__device_ptr_10[i]->__timestamp_0;
                     }
-                    uint32_t timestamp = std::min(unknownJ_ptr->__timestamp_8 + 5, unknownQ_ptr->__timestamp_array_10[this->__byte_4]);
+                    uint32_t timestamp = std::min(remote_input_session_ptr->__timestamp_8 + 5, unknownQ_ptr->__timestamp_array_10[this->__byte_4]);
                     this->input_recorder->__method_38(this->__byte_4, unknownQ_ptr->__inputs_2, saturate_sub(timestamp, 5u), timestamp);
                     unknownQ_ptr->__timestamp_array_10[this->__byte_4] = timestamp;
                     // IDK
@@ -2580,8 +2591,8 @@ struct NetworkNode {
     Sqrat::Object __sq_object_74; // 0x74
     Sqrat::Object __sq_object_88; // 0x88
     Sqrat::Object __sq_object_9C; // 0x9C
-    std::shared_ptr<UnknownI> __unknownI_ptr_B0; // 0xB0
-    std::shared_ptr<UnknownI> __unknownI_ptr_B8; // 0xB8
+    std::shared_ptr<NetworkInputSession> __network_input_ptr_B0; // 0xB0
+    std::shared_ptr<NetworkInputSession> __network_input_ptr_B8; // 0xB8
     std::shared_ptr<void> __shared_ptr_C0; // 0xC0
     int __dword_C8; // 0xC8
     int __dword_CC; // 0xCC
@@ -2733,49 +2744,49 @@ struct NetworkClientImpl : NetworkNode {
             }
             case 4: {
                 TF4::Packet18Data4* packet_data = (TF4::Packet18Data4*)data;
-                auto unknownI_shared_ptr = this->__unknownI_ptr_B8;
-                UnknownI* unknownI_ptr = unknownI_shared_ptr.get();
-                if (!unknownI_ptr || unknownI_ptr->__int_0 != packet_data->__int_4) {
-                    unknownI_shared_ptr = this->__unknownI_ptr_B0;
-                    unknownI_ptr = unknownI_shared_ptr.get();
+                auto network_input_shared_ptr = this->__network_input_ptr_B8;
+                NetworkInputSession* network_input_ptr = network_input_shared_ptr.get();
+                if (!network_input_ptr || network_input_ptr->__int_0 != packet_data->__int_4) {
+                    network_input_shared_ptr = this->__network_input_ptr_B0;
+                    network_input_ptr = network_input_shared_ptr.get();
                     if (
-                        unknownI_ptr &&
+                        network_input_ptr &&
                         packet_data->__int_4 &&
-                        !this->__unknownI_ptr_B0->__int_0
+                        !this->__network_input_ptr_B0->__int_0
                     ) {
-                        unknownI_ptr->__sub_rE3150(packet_data->__int_4, packet_data->__ubyte_1);
+                        network_input_ptr->__sub_rE3150(packet_data->__int_4, packet_data->__ubyte_1);
                     }
                 }
                 return;
             }
             case 6: {
                 TF4::Packet18Data6* packet_data = (TF4::Packet18Data6*)data;
-                auto unknownI_shared_ptr = this->__unknownI_ptr_B0;
-                UnknownI* unknownI_ptr = unknownI_shared_ptr.get();
-                if (unknownI_ptr && unknownI_ptr->__int_0 == packet_data->__int_C) {
-                    UnknownJ* unknownJ_ptr = &unknownI_ptr->__unknownJ_38[unknownI_ptr->__byte_ptr_2C[packet_data->__ubyte_1]];
-                    unknownJ_ptr->__int_0 = packet_data->__int_C;
-                    unknownJ_ptr->__timestamp_8 = packet_data->__timestamp_array[unknownI_ptr->__byte_4];
-                    unknownJ_ptr->__timestamp_4 = packet_data->__timestamp_array[packet_data->__ubyte_1];
-                    unknownJ_ptr->__qpc_timestamp_88 = __qpc_nanoseconds().QuadPart;
+                auto network_input_shared_ptr = this->__network_input_ptr_B0;
+                NetworkInputSession* network_input_ptr = network_input_shared_ptr.get();
+                if (network_input_ptr && network_input_ptr->__int_0 == packet_data->__int_C) {
+                    NetworkInputSessionRemote* remote_input_session_ptr = &network_input_ptr->__remote_input_sessions[network_input_ptr->__byte_vector_2C[packet_data->__ubyte_1]];
+                    remote_input_session_ptr->__int_0 = packet_data->__int_C;
+                    remote_input_session_ptr->__timestamp_8 = packet_data->__timestamp_array[network_input_ptr->__byte_4];
+                    remote_input_session_ptr->__timestamp_4 = packet_data->__timestamp_array[packet_data->__ubyte_1];
+                    remote_input_session_ptr->__qpc_timestamp_88 = __qpc_nanoseconds().QuadPart;
                     uint32_t timestamp = packet_data->__timestamp_array[packet_data->__ubyte_1];
-                    unknownI_shared_ptr.get()->input_recorder->__method_3C(packet_data->__ubyte_1, packet_data->inputs, saturate_sub(timestamp, 5u), timestamp);
+                    network_input_shared_ptr.get()->input_recorder->__method_3C(packet_data->__ubyte_1, packet_data->inputs, saturate_sub(timestamp, 5u), timestamp);
                 }
                 else {
-                    unknownI_shared_ptr = this->__unknownI_ptr_B8;
-                    unknownI_ptr = unknownI_shared_ptr.get();
-                    if (unknownI_ptr && unknownI_ptr->__int_0 == packet_data->__int_C) {
-                        unknownI_ptr->__sub_rE3790(packet_data->__ubyte_1);
+                    network_input_shared_ptr = this->__network_input_ptr_B8;
+                    network_input_ptr = network_input_shared_ptr.get();
+                    if (network_input_ptr && network_input_ptr->__int_0 == packet_data->__int_C) {
+                        network_input_ptr->__sub_rE3790(packet_data->__ubyte_1);
                     }
                 }
                 return;
             }
             case 8: {
                 TF4::Packet18Data8* packet_data = (TF4::Packet18Data8*)data;
-                auto unknownI_shared_ptr = this->__unknownI_ptr_B0;
-                UnknownI* unknownI_ptr = unknownI_shared_ptr.get();
-                if (unknownI_ptr && unknownI_ptr->__int_0 == packet_data->__int_4) {
-                    unknownI_ptr->__unknownJ_38[packet_data->__int_8].__timestamp_4 = -100; // Actually signed data?
+                auto network_input_shared_ptr = this->__network_input_ptr_B0;
+                NetworkInputSession* network_input_ptr = network_input_shared_ptr.get();
+                if (network_input_ptr && network_input_ptr->__int_0 == packet_data->__int_4) {
+                    network_input_ptr->__remote_input_sessions[packet_data->__int_8].__timestamp_4 = -100; // Actually signed data?
                 }
                 return;
             }
@@ -2819,13 +2830,13 @@ struct NetworkClientImpl : NetworkNode {
     
     // RxDF6D0
     bool thiscall SyncInput() {
-        UnknownI* unknownI = this->__unknownI_ptr_B0.get();
-        if (unknownI && unknownI->__int_0) {
+        NetworkInputSession* network_input_session = this->__network_input_ptr_B0.get();
+        if (network_input_session && network_input_session->__int_0) {
             if (this->__int_1F8 > 0) {
                 return ++this->__int_1F8 != 0;
             }
-            unknownI->__sub_rE3340();
-            this->__int_1F8 = this->__unknownI_ptr_B0->__sub_rE3740();
+            network_input_session->__sub_rE3340();
+            this->__int_1F8 = this->__network_input_ptr_B0->__sub_rE3740();
             if (this->__int_1F8) {
                 this->__int_1F8 = std::min(--this->__int_1F8, 1);
                 return true;
@@ -2847,7 +2858,7 @@ struct NetworkServerImpl : NetworkNode {
     int __dword_208; // 0x208
     // 0x20C
     int32_t __int_210; // 0x210
-    int __int_214; // 0x214
+    uint32_t __int_214; // 0x214
     // 0x218
 
 
@@ -2871,16 +2882,53 @@ struct NetworkServerImpl : NetworkNode {
 
     // RxD5A30
     bool thiscall Init(TF4::UDP* udp, uint16_t port, size_t child_count);
+
+    // RxD5DB0
+    void thiscall BeginSyncInput(Sqrat::Object* input_local, int32_t player_count, bool arg3) {
+        if (!++this->__int_214) {
+            this->__int_214 = 1;
+        }
+        this->__int_210 = 0;
+
+        // IDK
+
+        NetworkInputSession* network_input_session; // This comes out of some function
+
+        network_input_session->__sub_rE2E80(player_count, arg3, input_local, &this->__sq_object_9C, &this->__sq_object_88);
+        network_input_session->__remote_input_sessions.resize(player_count - 1);
+
+        network_input_session->__byte_vector_2C[0] = UINT8_MAX;
+
+        --player_count;
+
+        for (int i = 0; i < player_count; ++i) {
+            NetworkInputSessionRemote* remote_input_session_ptr = &network_input_session->__remote_input_sessions[i];
+            remote_input_session_ptr->__timestamp_4 = 0;
+            remote_input_session_ptr->__int_0 = 0;
+            remote_input_session_ptr->__qpc_timestamp_88 = __qpc_nanoseconds().QuadPart;
+            remote_input_session_ptr->__function_10 = [this, i](void*, unsigned int) {
+                // ???
+            };
+            remote_input_session_ptr->__function_38 = [this, i]() {
+                // ???
+            };
+            remote_input_session_ptr->__function_60 = [this, i]() {
+                // ???
+            };
+        }
+
+        // shared pointer stuff
+    }
     
     // RxD6030
     bool thiscall SyncInput() {
-        if (UnknownI* unknownI = this->__unknownI_ptr_B0.get()) {
+        if (NetworkInputSession* network_input_session = this->__network_input_ptr_B0.get()) {
             if (this->__int_210 > 0) {
                 return ++this->__int_210 != 0;
             }
-            if (unknownI->__sub_rE3290()) {
-                this->__unknownI_ptr_B0->__sub_rE3340();
-                this->__unknownI_ptr_B0->__sub_rE3740();
+            if (network_input_session->__sub_rE3290()) {
+                this->__network_input_ptr_B0->__sub_rE3340();
+                this->__network_input_ptr_B0->__sub_rE3740();
                 if (this->__int_210) {
                     this->__int_210 = std::min(--this->__int_210, 1);
                     return true;
@@ -3843,33 +3891,33 @@ void thiscall NetworkServerImpl::__handle_packet_19(size_t index, TF4::Packet19D
         }
         case 6: {
             TF4::Packet19Data6* packet_data = (TF4::Packet19Data6*)data;
-            auto unknownI_shared_ptr = this->__unknownI_ptr_B0;
-            UnknownI* unknownI_ptr = unknownI_shared_ptr.get();
-            if (unknownI_ptr && unknownI_ptr->__int_0 == packet_data->__int_C) {
+            auto network_input_shared_ptr = this->__network_input_ptr_B0;
+            NetworkInputSession* network_input_ptr = network_input_shared_ptr.get();
+            if (network_input_ptr && network_input_ptr->__int_0 == packet_data->__int_C) {
                 // I copy/pasted this block from client packet 18 handling, needs checking
-                UnknownJ* unknownJ_ptr = &unknownI_ptr->__unknownJ_38[unknownI_ptr->__byte_ptr_2C[packet_data->__ubyte_1]];
-                unknownJ_ptr->__int_0 = packet_data->__int_C;
-                unknownJ_ptr->__timestamp_8 = packet_data->__timestamp_array[unknownI_ptr->__byte_4];
-                unknownJ_ptr->__timestamp_4 = packet_data->__timestamp_array[packet_data->__ubyte_1];
-                unknownJ_ptr->__qpc_timestamp_88 = __qpc_nanoseconds().QuadPart;
+                NetworkInputSessionRemote* remote_input_session_ptr = &network_input_ptr->__remote_input_sessions[network_input_ptr->__byte_vector_2C[packet_data->__ubyte_1]];
+                remote_input_session_ptr->__int_0 = packet_data->__int_C;
+                remote_input_session_ptr->__timestamp_8 = packet_data->__timestamp_array[network_input_ptr->__byte_4];
+                remote_input_session_ptr->__timestamp_4 = packet_data->__timestamp_array[packet_data->__ubyte_1];
+                remote_input_session_ptr->__qpc_timestamp_88 = __qpc_nanoseconds().QuadPart;
                 uint32_t timestamp = packet_data->__timestamp_array[packet_data->__ubyte_1];
-                unknownI_shared_ptr.get()->input_recorder->__method_3C(packet_data->__ubyte_1, packet_data->inputs, saturate_sub(timestamp, 5u), timestamp);
+                network_input_shared_ptr.get()->input_recorder->__method_3C(packet_data->__ubyte_1, packet_data->inputs, saturate_sub(timestamp, 5u), timestamp);
             }
             else {
-                unknownI_shared_ptr = this->__unknownI_ptr_B8;
-                unknownI_ptr = unknownI_shared_ptr.get();
-                if (unknownI_ptr && unknownI_ptr->__int_0 == packet_data->__int_C) {
-                    unknownI_ptr->__sub_rE3790(packet_data->__ubyte_1);
+                network_input_shared_ptr = this->__network_input_ptr_B8;
+                network_input_ptr = network_input_shared_ptr.get();
+                if (network_input_ptr && network_input_ptr->__int_0 == packet_data->__int_C) {
+                    network_input_ptr->__sub_rE3790(packet_data->__ubyte_1);
                 }
             }
             return;
         }
         case 8: {
             TF4::Packet19Data8* packet_data = (TF4::Packet19Data8*)data;
-            auto unknownI_shared_ptr = this->__unknownI_ptr_B0;
-            UnknownI* unknownI_ptr = unknownI_shared_ptr.get();
-            if (unknownI_ptr && unknownI_ptr->__int_0 == packet_data->__int_4) {
-                unknownI_ptr->__unknownJ_38[packet_data->__int_8].__timestamp_4 = -100; // Actually signed data?
+            auto network_input_shared_ptr = this->__network_input_ptr_B0;
+            NetworkInputSession* network_input_ptr = network_input_shared_ptr.get();
+            if (network_input_ptr && network_input_ptr->__int_0 == packet_data->__int_4) {
+                network_input_ptr->__remote_input_sessions[packet_data->__int_8].__timestamp_4 = -100; // Actually signed data?
             }
             return;
         }
