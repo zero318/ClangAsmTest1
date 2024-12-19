@@ -30,7 +30,9 @@
 #include <functional>
 
 #if _WIN32
+#ifndef ZNET_SUPPORT_WCHAR
 #define ZNET_SUPPORT_WCHAR 1
+#endif
 
 #define ENABLE_SSL 1
 
@@ -83,8 +85,8 @@ using usocklen_t = std::make_unsigned_t<socklen_t>;
 #include "common.h"
 
 #if _WIN32
-#pragma comment (lib, "Ws2_32.lib")
-#pragma comment (lib, "Dnsapi")
+#pragma comment (lib, "WS2_32.lib")
+#pragma comment (lib, "dnsapi.lib")
 #if ENABLE_SSL
 #pragma comment (lib, "secur32.lib")
 #endif
@@ -163,7 +165,7 @@ static inline constexpr T ntoh(T value) {
 }
 
 #if ZNET_SUPPORT_WCHAR
-#define ZNET_WHCAR_TEST(type) do; while(0)
+#define ZNET_WCHAR_TEST(type) do; while(0)
 #else
 #define ZNET_WCHAR_TEST(type) if constexpr (std::is_same_v<type, wchar_t>) { static_assert(false, "Wide characters are not supported"); }
 #endif
@@ -309,7 +311,7 @@ static inline constexpr bool map_ip_to_ipv4(const sockaddr* addr, IP4_ADDRESS& o
 }
 
 template <bool byte_order_matters = true>
-in_port_t get_port(const sockaddr* addr) {
+static in_port_t get_port(const sockaddr* addr) {
     in_port_t port = 0;
     switch (addr->sa_family) {
         case AF_INET:
@@ -327,8 +329,9 @@ in_port_t get_port(const sockaddr* addr) {
 }
 
 static inline constexpr size_t MAX_ADDR_BUFF_SIZE = (std::max)(INET_ADDRSTRLEN, INET6_ADDRSTRLEN);
+static inline constexpr size_t MAX_IP_BUFF_SIZE = (std::max)(sizeof(IP4_ADDRESS), sizeof(IP6_ADDRESS));
 
-void print_ipv4_full(IP4_ADDRESS addr) {
+static void print_ipv4_full(IP4_ADDRESS addr) {
     union {
         uint32_t temp;
         uint8_t as_bytes[4];
@@ -340,7 +343,7 @@ void print_ipv4_full(IP4_ADDRESS addr) {
     );
 }
 
-int print_ipv4(IP4_ADDRESS addr) {
+static int print_ipv4(IP4_ADDRESS addr) {
     union {
         uint32_t temp;
         uint8_t as_bytes[4];
@@ -353,8 +356,9 @@ int print_ipv4(IP4_ADDRESS addr) {
 }
 
 template<typename T>
-int sprint_ipv4(IP4_ADDRESS addr, T* buf) {
+static int sprint_ipv4(T* buf, IP4_ADDRESS addr) {
     T* buf_write = buf;
+#if !ZNET_SIZE_OPTIMIZE_PRINTS
     buf_write += uint8_to_strbuf(addr, buf_write);
     *buf_write++ = (T)'.';
     addr >>= 8;
@@ -365,16 +369,25 @@ int sprint_ipv4(IP4_ADDRESS addr, T* buf) {
     *buf_write++ = (T)'.';
     addr >>= 8;
     buf_write += uint8_to_strbuf(addr, buf_write);
+#else
+    size_t i = 4;
+    while (true) {
+        buf_write += uint8_to_strbuf(addr, buf_write);
+        if (--i == 0) break;
+        *buf_write++ = (T)'.';
+        addr >>= 8;
+    }
+#endif
     return buf_write - buf;
 }
 
-void print_ipv6_full(const IP6_ADDRESS& addr) {
+static void print_ipv6_full(const IP6_ADDRESS& addr) {
     printf(
         "v6: %0hX:%0hX:%0hX:%0hX:%0hX:%0hX:%0hX:%0hX"
-        , __builtin_bswap16(addr.IP6Word[0]), __builtin_bswap16(addr.IP6Word[1])
-        , __builtin_bswap16(addr.IP6Word[2]), __builtin_bswap16(addr.IP6Word[3])
-        , __builtin_bswap16(addr.IP6Word[4]), __builtin_bswap16(addr.IP6Word[5])
-        , __builtin_bswap16(addr.IP6Word[6]), __builtin_bswap16(addr.IP6Word[7])
+        , ntoh(addr.IP6Word[0]), ntoh(addr.IP6Word[1])
+        , ntoh(addr.IP6Word[2]), ntoh(addr.IP6Word[3])
+        , ntoh(addr.IP6Word[4]), ntoh(addr.IP6Word[5])
+        , ntoh(addr.IP6Word[6]), ntoh(addr.IP6Word[7])
     );
     if (is_ipv6_compatible_with_ipv4(addr)) {
         printf(" ");
@@ -382,48 +395,74 @@ void print_ipv6_full(const IP6_ADDRESS& addr) {
     }
 }
 
-int print_ipv6(const IP6_ADDRESS& addr) {
+static int print_ipv6(const IP6_ADDRESS& addr) {
     if (is_ipv6_compatible_with_ipv4(addr)) {
         return print_ipv4(addr.IP6Dword[3]);
     }
     else {
         return printf(
             "%0hX:%0hX:%0hX:%0hX:%0hX:%0hX:%0hX:%0hX"
-            , __builtin_bswap16(addr.IP6Word[0]), __builtin_bswap16(addr.IP6Word[1])
-            , __builtin_bswap16(addr.IP6Word[2]), __builtin_bswap16(addr.IP6Word[3])
-            , __builtin_bswap16(addr.IP6Word[4]), __builtin_bswap16(addr.IP6Word[5])
-            , __builtin_bswap16(addr.IP6Word[6]), __builtin_bswap16(addr.IP6Word[7])
+            , ntoh(addr.IP6Word[0]), ntoh(addr.IP6Word[1])
+            , ntoh(addr.IP6Word[2]), ntoh(addr.IP6Word[3])
+            , ntoh(addr.IP6Word[4]), ntoh(addr.IP6Word[5])
+            , ntoh(addr.IP6Word[6]), ntoh(addr.IP6Word[7])
         );
     }
 }
 
 template<typename T>
-int sprint_ipv6(const IP6_ADDRESS& addr, T* buf) {
-    if (is_ipv6_compatible_with_ipv4(addr)) {
-        return sprint_ipv4(addr.IP6Dword[3], buf);
+static int sprint_ipv6(T* buf, const IP6_ADDRESS& addr) {
+    T* buf_write = buf;
+#if !ZNET_SIZE_OPTIMIZE_PRINTS
+    buf_write += uint16_to_hex_strbuf(ntoh(addr.IP6Word[0]), buf_write);
+    *buf_write++ = (T)':';
+    buf_write += uint16_to_hex_strbuf(ntoh(addr.IP6Word[1]), buf_write);
+    *buf_write++ = (T)':';
+    buf_write += uint16_to_hex_strbuf(ntoh(addr.IP6Word[2]), buf_write);
+    *buf_write++ = (T)':';
+    buf_write += uint16_to_hex_strbuf(ntoh(addr.IP6Word[3]), buf_write);
+    *buf_write++ = (T)':';
+    buf_write += uint16_to_hex_strbuf(ntoh(addr.IP6Word[4]), buf_write);
+    *buf_write++ = (T)':';
+    buf_write += uint16_to_hex_strbuf(ntoh(addr.IP6Word[5]), buf_write);
+    *buf_write++ = (T)':';
+    buf_write += uint16_to_hex_strbuf(ntoh(addr.IP6Word[6]), buf_write);
+    *buf_write++ = (T)':';
+    buf_write += uint16_to_hex_strbuf(ntoh(addr.IP6Word[7]), buf_write);
+#else
+    size_t i = 0;
+    nounroll while (true) {
+        buf_write += uint16_to_hex_strbuf(ntoh(addr.IP6Word[i]), buf_write);
+        if (++i == 8) break;
+        *buf_write++ = (T)':';
     }
-    else {
-        T* buf_write = buf;
-        buf_write += uint16_to_hex_strbuf(__builtin_bswap16(addr.IP6Word[0]), buf_write);
-        *buf_write++ = (T)':';
-        buf_write += uint16_to_hex_strbuf(__builtin_bswap16(addr.IP6Word[1]), buf_write);
-        *buf_write++ = (T)':';
-        buf_write += uint16_to_hex_strbuf(__builtin_bswap16(addr.IP6Word[2]), buf_write);
-        *buf_write++ = (T)':';
-        buf_write += uint16_to_hex_strbuf(__builtin_bswap16(addr.IP6Word[3]), buf_write);
-        *buf_write++ = (T)':';
-        buf_write += uint16_to_hex_strbuf(__builtin_bswap16(addr.IP6Word[4]), buf_write);
-        *buf_write++ = (T)':';
-        buf_write += uint16_to_hex_strbuf(__builtin_bswap16(addr.IP6Word[5]), buf_write);
-        *buf_write++ = (T)':';
-        buf_write += uint16_to_hex_strbuf(__builtin_bswap16(addr.IP6Word[6]), buf_write);
-        *buf_write++ = (T)':';
-        buf_write += uint16_to_hex_strbuf(__builtin_bswap16(addr.IP6Word[7]), buf_write);
-        return buf_write - buf;
-    }
+#endif
+    return buf_write - buf;
 }
 
-void print_sockaddr_full(const sockaddr* addr) {
+template <typename T>
+static int sprint_ip(T* buf, bool is_ipv6, const void* addr) {
+    IP4_ADDRESS ip4;
+    if (is_ipv6) {
+        const IP6_ADDRESS& ip6 = *(const IP6_ADDRESS*)addr;
+        if (!is_ipv6_compatible_with_ipv4(ip6)) {
+            return sprint_ipv6(buf, ip6);
+        }
+        ip4 = ip6.IP6Dword[3];
+    } else {
+        ip4 = *(IP4_ADDRESS*)addr;
+    }
+    return sprint_ipv4(buf, ip4);
+}
+
+template <typename T>
+static int sprint_ip_and_port(T* buf, bool is_ipv6, const void* addr, uint16_t port) {
+    int addr_len = sprint_ip(buf, is_ipv6, addr);
+    buf[addr_len++] = (T)':';
+    return addr_len + uint16_to_strbuf(port, buf + addr_len);;
+}
+
+static void print_sockaddr_full(const sockaddr* addr) {
     switch (addr->sa_family) {
         case AF_INET:
             print_ipv4_full(*(IP4_ADDRESS*)&((const sockaddr_in*)addr)->sin_addr);
@@ -434,7 +473,7 @@ void print_sockaddr_full(const sockaddr* addr) {
     }
 }
 
-int print_sockaddr(const sockaddr* addr) {
+static int print_sockaddr(const sockaddr* addr) {
     switch (addr->sa_family) {
         case AF_INET:
             return print_ipv4(*(IP4_ADDRESS*)&((const sockaddr_in*)addr)->sin_addr);
@@ -446,12 +485,12 @@ int print_sockaddr(const sockaddr* addr) {
 }
 
 template<typename T>
-int sprint_sockaddr(const sockaddr* addr, T* buf) {
+static int sprint_sockaddr(const sockaddr* addr, T* buf) {
     switch (addr->sa_family) {
         case AF_INET:
-            return sprint_ipv4(*(IP4_ADDRESS*)&((const sockaddr_in*)addr)->sin_addr, buf);
+            return sprint_ipv4(buf, *(IP4_ADDRESS*)&((const sockaddr_in*)addr)->sin_addr);
         case AF_INET6:
-            return sprint_ipv6(*(IP6_ADDRESS*)&((const sockaddr_in6*)addr)->sin6_addr, buf);
+            return sprint_ipv6(buf, *(IP6_ADDRESS*)&((const sockaddr_in6*)addr)->sin6_addr);
         default:
             return 0;
     }
@@ -506,7 +545,7 @@ struct ipaddr_any {
 };
 
 template <bool byte_order_matters = true>
-in_port_t get_port(const ipaddr_any& addr) {
+static in_port_t get_port(const ipaddr_any& addr) {
     if constexpr (byte_order_matters) {
         return ntoh(addr.port);
     } else {
@@ -538,6 +577,21 @@ struct sockaddr_any {
                 .sin_port = hton(port),
                 .sin_addr = *(in_addr*)ip
             };
+            this->length = sizeof(sockaddr_in);
+        }
+    }
+
+    sockaddr_any(bool is_ipv6, in_port_t port, const char* ip) {
+        this->storage = {};
+        if (is_ipv6) {
+            this->storage.ss_family = AF_INET6;
+            ((sockaddr_in6*)&this->storage)->sin6_port = hton(port);
+            ::inet_pton(AF_INET6, ip, &((sockaddr_in6*)&this->storage)->sin6_addr);
+            this->length = sizeof(sockaddr_in6);
+        } else {
+            this->storage.ss_family = AF_INET;
+            ((sockaddr_in*)&this->storage)->sin_port = hton(port);
+            ::inet_pton(AF_INET, ip, &((sockaddr_in*)&this->storage)->sin_addr);
             this->length = sizeof(sockaddr_in);
         }
     }
@@ -817,7 +871,7 @@ found_addr:
 }
 #endif
 
-void print_sockaddr_full(const sockaddr_any& addr) {
+static void print_sockaddr_full(const sockaddr_any& addr) {
     switch (addr.storage.ss_family) {
         case AF_INET:
             print_ipv4_full(*(IP4_ADDRESS*)&((const sockaddr_in*)&addr.storage)->sin_addr);
@@ -828,7 +882,7 @@ void print_sockaddr_full(const sockaddr_any& addr) {
     }
 }
 
-int print_sockaddr(const sockaddr_any& addr) {
+static int print_sockaddr(const sockaddr_any& addr) {
     switch (addr.storage.ss_family) {
         case AF_INET:
             return print_ipv4(*(IP4_ADDRESS*)&((const sockaddr_in*)&addr.storage)->sin_addr);
@@ -840,12 +894,12 @@ int print_sockaddr(const sockaddr_any& addr) {
 }
 
 template<typename T>
-int sprint_sockaddr(const sockaddr_any& addr, T(&buf)[MAX_ADDR_BUFF_SIZE]) {
+static int sprint_sockaddr(const sockaddr_any& addr, T(&buf)[MAX_ADDR_BUFF_SIZE]) {
     switch (addr.storage.ss_family) {
         case AF_INET:
-            return sprint_ipv4(*(IP4_ADDRESS*)&((const sockaddr_in*)&addr.storage)->sin_addr, buf);
+            return sprint_ipv4(buf, *(IP4_ADDRESS*)&((const sockaddr_in*)&addr.storage)->sin_addr);
         case AF_INET6:
-            return sprint_ipv6(*(IP6_ADDRESS*)&((const sockaddr_in6*)&addr.storage)->sin6_addr, buf);
+            return sprint_ipv6(buf, *(IP6_ADDRESS*)&((const sockaddr_in6*)&addr.storage)->sin6_addr);
         default:
             return 0;
     }
@@ -896,6 +950,69 @@ static inline int bind(SOCKET s, const T& addr) {
 
 static inline int bind(SOCKET s, const sockaddr_any& addr) {
     return ::bind(s, addr, addr.length);
+}
+
+static inline int bind_ipv6(SOCKET s, const IP6_ADDRESS& ip, in_port_t local_port) {
+    sockaddr_in6 local = {
+        .sin6_family = AF_INET6,
+        .sin6_port = hton(local_port),
+        .sin6_addr = *(const in6_addr*)&ip
+    };
+    return bind(s, local);
+}
+
+static inline int bind_ipv4(SOCKET s, IP4_ADDRESS ip, in_port_t local_port) {
+    sockaddr_in local = {
+        .sin_family = AF_INET,
+        .sin_port = hton(local_port),
+        .sin_addr = ip
+    };
+    return bind(s, local);
+}
+
+static inline int bind(SOCKET s, const IP6_ADDRESS& ip, in_port_t local_port) {
+#if ZNET_IPV6_MODES(ZNET_REQUIRE_IPV6 | ZNET_REQUIRE_IPV6)
+#if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6)
+    if (expect(enable_ipv6, true))
+#endif
+    {
+        return bind_ipv6(s, ip, local_port);
+    }
+#endif
+#if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6 | ZNET_DISABLE_IPV6)
+    if (is_ipv6_compatible_with_ipv4(ip)) {
+        return bind_ipv4(s, ip.IP6Dword[3], local_port);
+    }
+    return -1;
+#endif
+}
+
+static inline int bind(SOCKET s, const IP4_ADDRESS& ip, in_port_t local_port) {
+#if ZNET_IPV6_MODES(ZNET_REQUIRE_IPV6 | ZNET_REQUIRE_IPV6)
+#if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6)
+    if (expect(enable_ipv6, true))
+#endif
+    {
+        return bind_ipv6(s, map_ipv4_to_ipv6(ip), local_port);
+    }
+#endif
+#if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6 | ZNET_DISABLE_IPV6)
+    return bind_ipv4(s, ip, local_port);
+#endif
+}
+
+static inline int bind(SOCKET s, in_port_t local_port) {
+#if ZNET_IPV6_MODES(ZNET_REQUIRE_IPV6 | ZNET_REQUIRE_IPV6)
+#if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6)
+    if (expect(enable_ipv6, true))
+#endif
+    {
+        return bind_ipv6(s, IN6ADDR_ANY_INIT, local_port);
+    }
+#endif
+#if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6 | ZNET_DISABLE_IPV6)
+    return bind_ipv4(s, INADDR_ANY, local_port);
+#endif
 }
 
 template<typename T> requires(!std::is_pointer_v<T>)
@@ -988,8 +1105,19 @@ template<typename S>
 struct SocketBase {
     SOCKET sock = INVALID_SOCKET; // 0x0
 
+    inline constexpr SocketBase() = default;
+    inline constexpr SocketBase(SOCKET sock) : sock(sock) {};
+
     inline operator bool() const {
         return this->sock != INVALID_SOCKET;
+    }
+
+    inline bool operator!() const {
+        return this->sock == INVALID_SOCKET;
+    }
+
+    inline operator SOCKET() const {
+        return this->sock;
     }
 
 protected:
@@ -1278,7 +1406,7 @@ public:
 #if ZNET_SUPPORT_WCHAR
     template<SocketType socket_type>
     bool connect_ip(const wchar_t* ip, const wchar_t* port_str) const {
-        if (wcschr(ip, '.') {
+        if (wcschr(ip, L'.')) {
             return this->connect_ipv4<socket_type>(ip, port_str);
         } else {
             return this->connect_ipv6<socket_type>(ip, port_str);
@@ -1317,55 +1445,21 @@ public:
 protected:
 
     bool bind_ipv6(const IP6_ADDRESS& ip, in_port_t local_port) const {
-        sockaddr_in6 local = {
-            .sin6_family = AF_INET6,
-            .sin6_port = hton(local_port),
-            .sin6_addr = *(const in6_addr*)&ip
-        };
-        return zero::net::bind(this->sock, local) == 0;
+        return zero::net::bind_ipv6(this->sock, ip, local_port) == 0;
     }
 
     bool bind_ipv4(const IP4_ADDRESS& ip, in_port_t local_port) const {
-        sockaddr_in local = {
-            .sin_family = AF_INET,
-            .sin_port = hton(local_port),
-            .sin_addr = ip
-        };
-        return zero::net::bind(this->sock, local) == 0;
+        return zero::net::bind_ipv4(this->sock, ip, local_port) == 0;
     }
 
 public:
 
     bool bind(const IP6_ADDRESS& ip, in_port_t local_port) const {
-#if ZNET_IPV6_MODES(ZNET_REQUIRE_IPV6 | ZNET_REQUIRE_IPV6)
-#if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6)
-        if (expect(enable_ipv6, true))
-#endif
-        {
-            return this->bind_ipv6(ip, local_port);
-        }
-#endif
-#if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6 | ZNET_DISABLE_IPV6)
-        if (is_ipv6_compatible_with_ipv4(ip)) {
-            return this->bind_ipv4(ip.IP6Dword[3], local_port);
-        }
-        return false;
-#endif
+        return zero::net::bind(this->sock, ip, local_port) == 0;
     }
 
     bool bind(const IP4_ADDRESS& ip, in_port_t local_port) const {
-
-#if ZNET_IPV6_MODES(ZNET_REQUIRE_IPV6 | ZNET_REQUIRE_IPV6)
-#if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6)
-        if (expect(enable_ipv6, true))
-#endif
-        {
-            return this->bind_ipv6(map_ipv4_to_ipv6(ip), local_port);
-        }
-#endif
-#if ZNET_IPV6_MODES(ZNET_DONT_REQUIRE_IPV6 | ZNET_DISABLE_IPV6)
-        return this->bind_ipv4(ip, local_port);
-#endif
+        return zero::net::bind(this->sock, ip, local_port) == 0;
     }
 
     bool bind(in_port_t local_port) const {
@@ -1616,9 +1710,43 @@ public:
         return ::fcntl(this->sock, F_SETFL, flags) == 0;
 #endif
     }
+
+    template <bool state>
+    bool set_blocking_state() const {
+#if _WIN32
+        if constexpr (state) {
+            static u_long BLOCKING_SOCKET = false;
+            return ::ioctlsocket(sock, FIONBIO, &BLOCKING_SOCKET);
+        } else {
+            static u_long NON_BLOCKING_SOCKET = true;
+            return ::ioctlsocket(sock, FIONBIO, &NON_BLOCKING_SOCKET);
+        }
+#else
+        return this->set_blocking_state(state);
+#endif
+    }
 };
 
+template <typename T>
+static inline bool operator==(const SocketBase<T>& lhs, const SOCKET& rhs) {
+    return lhs.sock == rhs;
+}
+template <typename T>
+static inline bool operator==(const SOCKET& lhs, const SocketBase<T>& rhs) {
+    return lhs == rhs.sock;
+}
+template <typename T>
+static inline bool operator!=(const SocketBase<T>& lhs, const SOCKET& rhs) {
+    return lhs.sock != rhs;
+}
+template <typename T>
+static inline bool operator!=(const SOCKET& lhs, const SocketBase<T>& rhs) {
+    return lhs != rhs.sock;
+}
+
 struct Socket : SocketBase<Socket> {
+
+    using SocketBase<Socket>::SocketBase;
 
     template<SocketType socket_type>
     static inline Socket create() {
@@ -1629,6 +1757,9 @@ struct Socket : SocketBase<Socket> {
 };
 
 struct SocketTCP : Socket {
+
+    using Socket::Socket;
+
     template<typename T>
     T accept(sockaddr_any& addr) const = delete;
 
@@ -1732,6 +1863,9 @@ template<> inline SocketTCP SocketTCP::create<UDP>() = delete;
 template<> inline SocketTCP SocketTCP::create<ICMP>() = delete;
 
 struct SocketUDP : Socket {
+
+    using Socket::Socket;
+
     template<SocketType socket_type = UDP>
     inline bool initialize() {
         return this->Socket::initialize<socket_type>();

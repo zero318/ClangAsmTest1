@@ -35,6 +35,7 @@ add_executable(make_embed)
 add_executable(aocf_server)
 add_executable(run_command)
 add_executable(aocf_plugin_patch)
+add_executable(unix_socket_test)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
 add_library(winhttp_websocket SHARED)
@@ -100,6 +101,7 @@ make_embed
 aocf_server
 run_command
 aocf_plugin_patch
+unix_socket_test
 )
 
 enable_language(ASM-ATT)
@@ -1591,6 +1593,19 @@ target_compile_options(aocf_plugin_patch PRIVATE
 )
 target_compile_definitions(aocf_plugin_patch PRIVATE
 	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+
+target_sources(unix_socket_test PRIVATE
+	"znet/unix_socket_test.cpp"
+)
+target_compile_options(unix_socket_test PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
 )
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")
