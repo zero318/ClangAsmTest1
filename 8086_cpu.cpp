@@ -34,9 +34,11 @@ enum REG_INDEX : uint8_t {
     DI = 7, BH = 7,
 };
 
-static inline constexpr size_t real_addr(size_t segment, size_t offset) {
-    return segment << 4 + offset;
-}
+enum REP_STATE : int8_t {
+    NO_REP = -1,
+    REP_NE = 0,
+    REP_E = 1
+};
 
 RAM mem;
 
@@ -56,7 +58,7 @@ struct x86Addr {
 
 
     inline constexpr size_t real_addr(size_t offset = 0) const {
-        return this->segment << 4 + (uint16_t)(this->offset + offset);
+        return ((size_t)this->segment << 4) + (uint16_t)(this->offset + offset);
     }
 
     inline constexpr operator size_t() const {
@@ -254,6 +256,10 @@ struct x86Context {
     int8_t rep_type;
     bool lock;
     size_t clock;
+
+    inline constexpr void set_seg_override(uint8_t seg) {
+        this->seg_override = seg & 3;
+    }
 
     inline constexpr uint16_t segment(uint8_t default_seg) const {
         return this->seg[this->seg_override < 0 ? default_seg : this->seg_override];
@@ -520,11 +526,18 @@ struct x86Context {
     template <typename T>
     inline void imul_impl(T src) {
         if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            this->ax = (int16_t)this->al * src;
+            int16_t temp = (int16_t)this->al * src;
+            if (this->rep_type > NO_REP) {
+                temp = -temp;
+            }
+            this->ax = temp;
             this->carry = this->overflow = this->ah != (int8_t)this->al >> 7;
         }
         else if constexpr (sizeof(T) == sizeof(uint16_t)) {
             int32_t temp = (int32_t)this->ax * src;
+            if (this->rep_type > NO_REP) {
+                temp = -temp;
+            }
             this->ax = temp;
             this->dx = temp >> 16;
             this->carry = this->overflow = this->dx != (int16_t)this->ax >> 15;
@@ -564,6 +577,9 @@ struct x86Context {
         if constexpr (sizeof(T) == sizeof(uint8_t)) {
             int16_t temp = this->ax;
             int16_t quot = temp / src;
+            if (this->rep_type > NO_REP) {
+                quot = -quot;
+            }
             if ((uint16_t)(quot - INT8_MIN) > UINT8_MAX) {
                 // TODO: exception
             }
@@ -573,6 +589,9 @@ struct x86Context {
         else if constexpr (sizeof(T) == sizeof(uint16_t)) {
             int32_t temp = this->ax | (uint32_t)this->dx << 16;
             int32_t quot = temp / src;
+            if (this->rep_type > NO_REP) {
+                quot = -quot;
+            }
             if ((uint32_t)(quot - INT16_MIN) > UINT16_MAX) {
                 // TODO: exception
             }
@@ -584,20 +603,20 @@ struct x86Context {
     // TODO: Read microcode dump to confirm accurate behavior of BCD, there's reason to doubt official docs here
     inline void aaa_impl() {
         if (this->auxiliary || (this->al & 0xF) > 9) {
-            this->ax += 0x106;
             this->auxiliary = this->carry = true;
+            this->ax += 0x106;
         } else {
-            this->auxiliary = this->carry = false;
+            this->carry = false;
         }
         this->al &= 0xF;
     }
 
     inline void aas_impl() {
         if (this->auxiliary || (this->al & 0xF) > 9) {
-            this->ax -= 0x106;
             this->auxiliary = this->carry = true;
+            this->ax -= 0x106;
         } else {
-            this->auxiliary = this->carry = false;
+            this->carry = false;
         }
         this->al &= 0xF;
     }
@@ -851,10 +870,15 @@ dllexport void execute_z86() {
     ctx = {
         .cs = 0xF000,
         .ip = 0xFFF0,
-        .seg_override = -1
     };
 
     for (;;) {
+        // Reset per-instruction states
+        ctx.seg_override = -1;
+        ctx.rep_type = NO_REP;
+        ctx.lock = false;
+
+
         x86Addr pc = ctx.pc();
         // TODO: The 6 byte prefetch cache
         // TODO: Clock cycles
@@ -1018,7 +1042,7 @@ dllexport void execute_z86() {
                 ctx.and_impl(ctx.ax, pc.read_advance<uint16_t>());
                 break;
             case 0x26: case 0x2E: case 0x36: case 0x3E: // SEG:
-                ctx.seg_override = opcode >> 3 & 3;
+                ctx.set_seg_override(opcode >> 3);
                 goto next_byte;
             case 0x27: // DAA
                 ctx.daa_impl();
