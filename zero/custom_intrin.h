@@ -1881,8 +1881,184 @@ static forceinline void stuff_rsb() {
 	}
 }
 
+#if !__has_builtin(__builtin_add_overflow)
+#define __builtin_add_overflow __builtin_add_overflow_impl
+// Return result if not pointer null
 template<typename T>
-static inline T saturate_add(T lhs, T rhs) {
+static inline constexpr bool __builtin_add_overflow_impl(T a, T b, T* res) {
+    if constexpr (std::is_signed_v<T>) {
+        using U = std::make_unsigned_t<T>;
+        U result = (U)a + (U)b;
+        *res = (T)result;
+        if (a > 0) {
+            return b <= (std::numeric_limits<T>::max)() - a;
+        } else {
+            return b >= (std::numeric_limits<T>::min)() - a;
+        }
+    } else {
+        return (*res = a + b) >= a;
+    }
+}
+// Ignore result if pointer is null
+template<typename T>
+static inline constexpr bool __builtin_add_overflow_impl(T a, T b, std::nullptr_t res) {
+    if constexpr (std::is_signed_v<T>) {
+        if (a > 0) {
+            return b <= std::numeric_limits<T>::max() - a;
+        } else {
+            return b >= std::numeric_limits<T>::min() - a;
+        }
+    } else {
+        return a + b >= a;
+    }
+}
+#endif
+
+#if !__has_builtin(__builtin_sub_overflow)
+#define __builtin_sub_overflow __builtin_sub_overflow_impl
+// Return result if not pointer null
+template<typename T>
+static inline constexpr bool __builtin_sub_overflow_impl(T a, T b, T* res) {
+    if constexpr (std::is_signed_v<T>) {
+        using U = std::make_unsigned_t<T>;
+        U result = (U)a - (U)b;
+        *res = (T)result;
+        if (a > 0) {
+            return b >= (std::numeric_limits<T>::max)() - a;
+        } else {
+            return b <= (std::numeric_limits<T>::min)() - a;
+        }
+    } else {
+        return (*res = a - b) <= a;
+    }
+}
+// Ignore result if pointer is null
+template<typename T>
+static inline constexpr bool __builtin_sub_overflow_impl(T a, T b, std::nullptr_t res) {
+    if constexpr (std::is_signed_v<T>) {
+        if (a > 0) {
+            return b >= std::numeric_limits<T>::max() - a;
+        } else {
+            return b <= std::numeric_limits<T>::min() - a;
+        }
+    } else {
+        return a - b <= a;
+    }
+}
+#endif
+
+#if !__has_builtin(__builtin_addcb)
+#define __builtin_addcb __builtin_addcb_impl
+static inline constexpr unsigned char __builtin_addcb_impl(unsigned char lhs, unsigned char rhs, unsigned char carry_in, unsigned char* carry_out) {
+	unsigned char s = 0;
+	unsigned char c1 = __builtin_add_overflow(lhs, rhs, &s);
+	unsigned char c2 = __builtin_add_overflow(s, carry_in, &s);
+	*carry_out = c1 | c2;
+	return s;
+}
+#endif
+
+#if !__has_builtin(__builtin_subcb)
+#define __builtin_subcb __builtin_subcb_impl
+static inline constexpr unsigned char __builtin_subcb_impl(unsigned char lhs, unsigned char rhs, unsigned char carry_in, unsigned char* carry_out) {
+	unsigned char s = 0;
+	unsigned char c1 = __builtin_sub_overflow(lhs, rhs, &s);
+	unsigned char c2 = __builtin_sub_overflow(s, carry_in, &s);
+	*carry_out = c1 | c2;
+	return s;
+}
+#endif
+
+#if !__has_builtin(__builtin_addcs)
+#define __builtin_addcs __builtin_addcs_impl
+static inline constexpr unsigned short __builtin_addcs_impl(unsigned short lhs, unsigned short rhs, unsigned short carry_in, unsigned short* carry_out) {
+	unsigned short s = 0;
+	unsigned short c1 = __builtin_add_overflow(lhs, rhs, &s);
+	unsigned short c2 = __builtin_add_overflow(s, carry_in, &s);
+	*carry_out = c1 | c2;
+	return s;
+}
+#endif
+
+#if !__has_builtin(__builtin_subcs)
+#define __builtin_subcs __builtin_subcs_impl
+static inline constexpr unsigned short __builtin_subcs_impl(unsigned short lhs, unsigned short rhs, unsigned short carry_in, unsigned short* carry_out) {
+	unsigned short s = 0;
+	unsigned short c1 = __builtin_sub_overflow(lhs, rhs, &s);
+	unsigned short c2 = __builtin_sub_overflow(s, carry_in, &s);
+	*carry_out = c1 | c2;
+	return s;
+}
+#endif
+
+#if !__has_builtin(__builtin_addc)
+#define __builtin_addc __builtin_addc_impl
+static inline constexpr unsigned int __builtin_addc_impl(unsigned int lhs, unsigned int rhs, unsigned int carry_in, unsigned int* carry_out) {
+	unsigned int s = 0;
+	unsigned int c1 = __builtin_add_overflow(lhs, rhs, &s);
+	unsigned int c2 = __builtin_add_overflow(s, carry_in, &s);
+	*carry_out = c1 | c2;
+	return s;
+}
+#endif
+
+#if !__has_builtin(__builtin_subc)
+#define __builtin_subc __builtin_subc_impl
+static inline constexpr unsigned int __builtin_subc_impl(unsigned int lhs, unsigned int rhs, unsigned int carry_in, unsigned int* carry_out) {
+	unsigned int s = 0;
+	unsigned int c1 = __builtin_sub_overflow(lhs, rhs, &s);
+	unsigned int c2 = __builtin_sub_overflow(s, carry_in, &s);
+	*carry_out = c1 | c2;
+	return s;
+}
+#endif
+
+#if !__has_builtin(__builtin_addcl)
+#define __builtin_addcl __builtin_addcl_impl
+static inline constexpr unsigned long __builtin_addcl_impl(unsigned long lhs, unsigned long rhs, unsigned long carry_in, unsigned long* carry_out) {
+	unsigned long s = 0;
+	unsigned long c1 = __builtin_add_overflow(lhs, rhs, &s);
+	unsigned long c2 = __builtin_add_overflow(s, carry_in, &s);
+	*carry_out = c1 | c2;
+	return s;
+}
+#endif
+
+#if !__has_builtin(__builtin_subcl)
+#define __builtin_subcl __builtin_subcl_impl
+static inline constexpr unsigned long __builtin_subcl_impl(unsigned long lhs, unsigned long rhs, unsigned long carry_in, unsigned long* carry_out) {
+	unsigned long s = 0;
+	unsigned long c1 = __builtin_sub_overflow(lhs, rhs, &s);
+	unsigned long c2 = __builtin_sub_overflow(s, carry_in, &s);
+	*carry_out = c1 | c2;
+	return s;
+}
+#endif
+
+#if !__has_builtin(__builtin_addcll)
+#define __builtin_addcll __builtin_addcll_impl
+static inline constexpr unsigned long long __builtin_addcl_impl(unsigned long long lhs, unsigned long long rhs, unsigned long long carry_in, unsigned long long* carry_out) {
+	unsigned long long s = 0;
+	unsigned long long c1 = __builtin_add_overflow(lhs, rhs, &s);
+	unsigned long long c2 = __builtin_add_overflow(s, carry_in, &s);
+	*carry_out = c1 | c2;
+	return s;
+}
+#endif
+
+#if !__has_builtin(__builtin_subcll)
+#define __builtin_subcll __builtin_subcll_impl
+static inline constexpr unsigned long long __builtin_subcl_impl(unsigned long long lhs, unsigned long long rhs, unsigned long long carry_in, unsigned long long* carry_out) {
+	unsigned long long s = 0;
+	unsigned long long c1 = __builtin_sub_overflow(lhs, rhs, &s);
+	unsigned long long c2 = __builtin_sub_overflow(s, carry_in, &s);
+	*carry_out = c1 | c2;
+	return s;
+}
+#endif
+
+template<typename T>
+static inline constexpr T saturate_add(T lhs, T rhs) {
 	if constexpr (std::is_signed_v<T>) {
 		using U = std::make_unsigned_t<T>;
 		T ret;
@@ -1897,7 +2073,7 @@ static inline T saturate_add(T lhs, T rhs) {
 }
 
 template<typename T>
-static inline T saturate_sub(T lhs, T rhs) {
+static inline constexpr T saturate_sub(T lhs, T rhs) {
 	if constexpr (std::is_signed_v<T>) {
 		using U = std::make_unsigned_t<T>;
 		T ret;
@@ -1909,6 +2085,84 @@ static inline T saturate_sub(T lhs, T rhs) {
 		T ret = lhs - rhs;
 		return ret <= lhs ? ret : (std::numeric_limits<T>::min)();
 	}
+}
+
+template<typename T>
+static inline constexpr T carry_add(T lhs, T rhs, bool& carry) {
+	if constexpr (sizeof(T) == sizeof(unsigned char)) {
+		unsigned char carry_temp = carry;
+		T ret = __builtin_addcb(lhs, rhs, carry_temp, &carry_temp);
+		carry = carry_temp;
+		return ret;
+	}
+	else if constexpr (sizeof(T) == sizeof(unsigned short)) {
+		unsigned short carry_temp = carry;
+		T ret = __builtin_addcs(lhs, rhs, carry_temp, &carry_temp);
+		carry = carry_temp;
+		return ret;
+	}
+	else if constexpr (sizeof(T) == sizeof(unsigned int)) {
+		unsigned int carry_temp = carry;
+		T ret = __builtin_addc(lhs, rhs, carry_temp, &carry_temp);
+		carry = carry_temp;
+		return ret;
+	}
+	else if constexpr (sizeof(T) == sizeof(unsigned long)) {
+		unsigned long carry_temp = carry;
+		T ret = __builtin_addcl(lhs, rhs, carry_temp, &carry_temp);
+		carry = carry_temp;
+		return ret;
+	}
+	else if constexpr (sizeof(T) == sizeof(unsigned long long)) {
+		unsigned long long carry_temp = carry;
+		T ret = __builtin_addcll(lhs, rhs, carry_temp, &carry_temp);
+		carry = carry_temp;
+		return ret;
+	}
+}
+
+template<typename T>
+static inline constexpr T carry_add(T lhs, T rhs, bool* carry) {
+	return carry_add(lhs, rhs, *carry);
+}
+
+template<typename T>
+static inline constexpr T carry_sub(T lhs, T rhs, bool& carry) {
+	if constexpr (sizeof(T) == sizeof(unsigned char)) {
+		unsigned char carry_temp = carry;
+		T ret = __builtin_subcb(lhs, rhs, carry_temp, &carry_temp);
+		carry = carry_temp;
+		return ret;
+	}
+	else if constexpr (sizeof(T) == sizeof(unsigned short)) {
+		unsigned short carry_temp = carry;
+		T ret = __builtin_subcs(lhs, rhs, carry_temp, &carry_temp);
+		carry = carry_temp;
+		return ret;
+	}
+	else if constexpr (sizeof(T) == sizeof(unsigned int)) {
+		unsigned int carry_temp = carry;
+		T ret = __builtin_subc(lhs, rhs, carry_temp, &carry_temp);
+		carry = carry_temp;
+		return ret;
+	}
+	else if constexpr (sizeof(T) == sizeof(unsigned long)) {
+		unsigned long carry_temp = carry;
+		T ret = __builtin_subcl(lhs, rhs, carry_temp, &carry_temp);
+		carry = carry_temp;
+		return ret;
+	}
+	else if constexpr (sizeof(T) == sizeof(unsigned long long)) {
+		unsigned long long carry_temp = carry;
+		T ret = __builtin_subcll(lhs, rhs, carry_temp, &carry_temp);
+		carry = carry_temp;
+		return ret;
+	}
+}
+
+template<typename T>
+static inline constexpr T carry_sub(T lhs, T rhs, bool* carry) {
+	return carry_sub(lhs, rhs, *carry);
 }
 
 #endif

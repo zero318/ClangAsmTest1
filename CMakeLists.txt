@@ -36,6 +36,7 @@ add_executable(aocf_server)
 add_executable(run_command)
 add_executable(aocf_plugin_patch)
 add_executable(unix_socket_test)
+add_executable(z86_emulator)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
 add_library(winhttp_websocket SHARED)
@@ -102,6 +103,7 @@ aocf_server
 run_command
 aocf_plugin_patch
 unix_socket_test
+z86_emulator
 )
 
 enable_language(ASM-ATT)
@@ -1606,6 +1608,13 @@ target_compile_options(unix_socket_test PRIVATE
 	"-mno-sse4a"
 	"-mno-fma4"
 	"-mno-sse3"
+)
+
+target_sources(z86_emulator PRIVATE
+	"8086_cpu.cpp"
+)
+target_compile_definitions(z86_emulator PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
 )
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")
