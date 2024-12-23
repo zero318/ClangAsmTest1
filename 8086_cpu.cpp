@@ -142,9 +142,15 @@ struct x86Addr {
     }
 
     template <typename T = uint8_t>
-    inline T read_advance() const {
+    inline void write_advance(const T& value, intptr_t index = sizeof(T)) {
+        this->write(value);
+        this->offset += index;
+    }
+
+    template <typename T = uint8_t>
+    inline T read_advance(intptr_t index = sizeof(T)) {
         T ret = this->read<T>();
-        this->offset += sizeof(T);
+        this->offset += index;
         return ret;
     }
 };
