@@ -7,6 +7,8 @@
 #include <tuple>
 #include <limits>
 
+#include "8086_cpu.h"
+
 #include "zero/util.h"
 
 #define DS DS_SEG
@@ -36,46 +38,7 @@ static inline constexpr size_t real_addr(size_t segment, size_t offset) {
     return segment << 4 + offset;
 }
 
-
-struct RAM {
-    uint8_t raw[0x110000];
-
-    template <typename T = uint8_t>
-    inline T* ptr(size_t offset) {
-        return (T*)&this->raw[offset];
-    }
-
-    template <typename T = uint8_t>
-    inline const T* ptr(size_t offset) const {
-        return (const T*)&this->raw[offset];
-    }
-
-    template <typename T = uint8_t>
-    inline T& ref(size_t offset) {
-        return *this->ptr<T>(offset);
-    }
-
-    template <typename T = uint8_t>
-    inline const T& ref(size_t offset) const {
-        return *this->ptr<T>(offset);
-    }
-
-    template <typename T = uint8_t>
-    inline T read(size_t offset) const {
-        return this->ref<T>(offset);
-    }
-
-    template <typename T = uint8_t>
-    inline void write(size_t offset, const T& value) {
-        this->ref<T>(offset) = value;
-    }
-
-    inline uint8_t operator[](size_t offset) const {
-        return this->read(offset);
-    }
-};
-
-static RAM mem;
+RAM mem;
 
 struct x86Addr {
     union {
@@ -526,6 +489,7 @@ struct x86Context {
         return ret;
     }
 
+    // TODO: rep prefix negating inputs of imul/idiv
     template <typename T>
     inline void mul_impl(T src) {
         if constexpr (sizeof(T) == sizeof(uint8_t)) {
@@ -885,7 +849,7 @@ static inline void binopSM(x86Addr& pc, const L& lambda) {
     ctx.ip = pc.offset;
 }
 
-dllexport void execute() {
+dllexport void execute_z86() {
     ctx = {
         .cs = 0xF000,
         .ip = 0xFFF0,
@@ -1722,8 +1686,4 @@ dllexport void execute() {
                 break;
         }
     }
-}
-
-int main(int argc, char* argv[]) {
-    return 0;
 }

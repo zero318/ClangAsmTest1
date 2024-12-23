@@ -1612,6 +1612,7 @@ target_compile_options(unix_socket_test PRIVATE
 
 target_sources(z86_emulator PRIVATE
 	"8086_cpu.cpp"
+	"dummy_main.cpp"
 )
 target_compile_definitions(z86_emulator PRIVATE
 	STOP_LINKING_DEFAULT_LIB_PLZ
