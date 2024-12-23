@@ -599,8 +599,8 @@ static inline bool repne_scasd(const uint32_t value, const uint32_t(&array_ref)[
 template<size_t array_len>
 static inline bool repne_scasd(const uint32_t value, const uint32_t(*array_ptr)[array_len]) {
 	size_t length = array_len;
-	const uint32_t* array_ptr = array_ref;
-	return repne_scasd(value, array_ref, length);
+	const uint32_t* array_ptrB = array_ptr;
+	return repne_scasd(value, array_ptrB, length);
 }
 static inline bool repne_scasd(const uint32_t value, const uint32_t* array_ref) {
 	size_t fake_length = -1;

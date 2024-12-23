@@ -1494,6 +1494,7 @@ static gnu_noinline std::pair<T, const char*> regcall strtonum(const char* str, 
 		case '1' ... '9':
 			break;
 	}
+	{
 start_number:
 	T ret = 0;
 	for (;; c = *++str_read) {
@@ -1536,6 +1537,7 @@ end_parse:
 			}
 		}
 		return std::make_pair(ret, (const char*)str_read);
+	}
 	}
 fail:
 	return std::make_pair(std::numeric_limits<T>::max(), str);
@@ -2372,7 +2374,11 @@ template<typename T>
 
 template<typename T, size_t alignment>
 [[nodiscard]] static inline gnu_attr(malloc) T* malloc_array_aligned(size_t count) {
+#if _WIN32
 	return (T*)_aligned_malloc(sizeof(T[count]), alignment);
+#else
+	return (T*)aligned_alloc(alignment, sizeof(T[count]));
+#endif
 }
 
 /*
