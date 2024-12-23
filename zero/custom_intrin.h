@@ -7,6 +7,7 @@
 #include <tuple>
 #include <initializer_list>
 #include <algorithm>
+#include <limits>
 #include "util.h"
 
 #if __INTELLISENSE__

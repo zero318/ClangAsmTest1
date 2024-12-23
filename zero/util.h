@@ -396,7 +396,7 @@ static inline constexpr SseTier_t SSE_TIER = IA32;
 
 using ssize_t = std::make_signed_t<size_t>;
 
-#if !_HAS_CXX20
+#if _WIN32 && !_HAS_CXX20
 namespace std {
 template <class _Ty>
 using remove_cvref_t = _Remove_cvref_t<_Ty>;
