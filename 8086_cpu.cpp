@@ -104,7 +104,7 @@ struct x86Addr {
     }
 
     template <typename T = uint8_t>
-    inline void x86Addr::write(const T& value, size_t offset = 0) {
+    inline void write(const T& value, size_t offset = 0) {
         if constexpr (sizeof(T) == sizeof(uint8_t)) {
             return mem.write<T>(this->real_addr(offset), value);
         }
@@ -121,7 +121,7 @@ struct x86Addr {
     }
 
     template <typename T = uint8_t>
-    inline T x86Addr::read(size_t offset = 0) const {
+    inline T read(size_t offset = 0) const {
         if constexpr (sizeof(T) == sizeof(uint8_t)) {
             return mem.read<T>(this->real_addr(offset));
         }
@@ -139,6 +139,13 @@ struct x86Addr {
                 return ret;
             }
         }
+    }
+
+    template <typename T = uint8_t>
+    inline T read_advance() const {
+        T ret = this->read<T>();
+        this->offset += sizeof(T);
+        return ret;
     }
 };
 
@@ -730,17 +737,14 @@ struct ModRM {
             case 0:
                 if (m == 6) {
                     default_segment = DS;
-                    offset = pc.read<int16_t>();
-                    pc += 2;
+                    offset = pc.read_advance<int16_t>();
                 }
                 break;
             case 1:
-                offset += pc.read<int8_t>();
-                ++pc;
+                offset += pc.read_advance<int8_t>();
                 break;
             case 2:
-                offset += pc.read<int16_t>();
-                pc += 2;
+                offset += pc.read_advance<int16_t>();
                 break;
             default:
                 unreachable;
@@ -751,8 +755,7 @@ struct ModRM {
 
 template <typename T, typename L>
 static inline void binopMR(x86Addr& pc, const L& lambda) {
-    ModRM modrm = pc.read<ModRM>();
-    ++pc;
+    ModRM modrm = pc.read_advance<ModRM>();
     T& rval = ctx.index_reg<T>(modrm.R());
     if (modrm.is_mem()) {
         x86Addr data_addr = modrm.parse_memM(pc);
@@ -764,13 +767,11 @@ static inline void binopMR(x86Addr& pc, const L& lambda) {
     else {
         lambda(ctx.index_reg<T>(modrm.M()), rval);
     }
-    ctx.ip = pc.offset;
 }
 
 template <typename T, typename L>
 static inline void binopRM(x86Addr& pc, const L& lambda) {
-    ModRM modrm = pc.read<ModRM>();
-    ++pc;
+    ModRM modrm = pc.read_advance<ModRM>();
     T& rval = ctx.index_reg<T>(modrm.R());
     if (modrm.is_mem()) {
         x86Addr data_addr = modrm.parse_memM(pc);
@@ -779,14 +780,12 @@ static inline void binopRM(x86Addr& pc, const L& lambda) {
     else {
         lambda(rval, ctx.index_reg<T>(modrm.M()));
     }
-    ctx.ip = pc.offset;
 }
 
 // Double width memory operand, special for LDS/LES
 template <typename T, typename L>
 static inline void binopRM2(x86Addr& pc, const L& lambda) {
-    ModRM modrm = pc.read<ModRM>();
-    ++pc;
+    ModRM modrm = pc.read_advance<ModRM>();
     T& rval = ctx.index_reg<T>(modrm.R());
     if (modrm.is_mem()) {
         x86Addr data_addr = modrm.parse_memM(pc);
@@ -795,13 +794,11 @@ static inline void binopRM2(x86Addr& pc, const L& lambda) {
     else {
         // TODO: jank
     }
-    ctx.ip = pc.offset;
 }
 
 template <typename T, typename L>
 static inline void unopM(x86Addr& pc, const L& lambda) {
-    ModRM modrm = pc.read<ModRM>();
-    ++pc;
+    ModRM modrm = pc.read_advance<ModRM>();
     uint8_t r = modrm.R();
     if (modrm.is_mem()) {
         x86Addr data_addr = modrm.parse_memM(pc);
@@ -813,13 +810,11 @@ static inline void unopM(x86Addr& pc, const L& lambda) {
     else {
         lambda(ctx.index_reg<T>(modrm.M()), r);
     }
-    ctx.ip = pc.offset;
 }
 
 template <typename T, typename L>
 static inline void binopMS(x86Addr& pc, const L& lambda) {
-    ModRM modrm = pc.read<ModRM>();
-    ++pc;
+    ModRM modrm = pc.read_advance<ModRM>();
     T& rval = ctx.index_seg(modrm.R());
     if (modrm.is_mem()) {
         x86Addr data_addr = modrm.parse_memM(pc);
@@ -831,13 +826,11 @@ static inline void binopMS(x86Addr& pc, const L& lambda) {
     else {
         lambda(ctx.index_seg(modrm.M()), rval);
     }
-    ctx.ip = pc.offset;
 }
 
 template <typename T, typename L>
 static inline void binopSM(x86Addr& pc, const L& lambda) {
-    ModRM modrm = pc.read<ModRM>();
-    ++pc;
+    ModRM modrm = pc.read_advance<ModRM>();
     T& rval = ctx.index_seg(modrm.R());
     if (modrm.is_mem()) {
         x86Addr data_addr = modrm.parse_memM(pc);
@@ -846,7 +839,6 @@ static inline void binopSM(x86Addr& pc, const L& lambda) {
     else {
         lambda(rval, ctx.index_seg(modrm.M()));
     }
-    ctx.ip = pc.offset;
 }
 
 dllexport void execute_z86() {
@@ -861,8 +853,7 @@ dllexport void execute_z86() {
         // TODO: The 6 byte prefetch cache
         // TODO: Clock cycles
     next_byte:
-        uint8_t opcode = pc.read();
-        ++pc;
+        uint8_t opcode = pc.read_advance();
         switch (opcode) {
             case 0x00: // ADD Mb, Rb
                 binopMR<uint8_t>(pc, [](auto& dst, auto src) {
@@ -889,20 +880,16 @@ dllexport void execute_z86() {
                 });
                 break;
             case 0x04: // ADD AL, Ib
-                ctx.add_impl(ctx.al, pc.read<uint8_t>(1));
-                ctx.ip += 2;
+                ctx.add_impl(ctx.al, pc.read_advance<uint8_t>());
                 break;
             case 0x05: // ADD AX, Iz
-                ctx.add_impl(ctx.ax, pc.read<uint16_t>(1));
-                ctx.ip += 3;
+                ctx.add_impl(ctx.ax, pc.read_advance<uint16_t>());
                 break;
             case 0x06: case 0x0E: case 0x16: case 0x1E: // PUSH seg
                 ctx.push_impl(ctx.index_seg(opcode >> 3));
-                ++ctx.ip;
                 break;
             case 0x07: case 0x0F: case 0x17: case 0x1F: // POP seg
                 ctx.index_seg(opcode >> 3) = ctx.pop_impl();
-                ++ctx.ip;
                 break;
             case 0x08: // OR Mb, Rb
                 binopMR<uint8_t>(pc, [](auto& dst, auto src) {
@@ -929,12 +916,10 @@ dllexport void execute_z86() {
                 });
                 break;
             case 0x0C: // OR AL, Ib
-                ctx.or_impl(ctx.al, pc.read<uint8_t>(1));
-                ctx.ip += 2;
+                ctx.or_impl(ctx.al, pc.read_advance<uint8_t>());
                 break;
             case 0x0D: // OR AX, Iz
-                ctx.or_impl(ctx.ax, pc.read<uint16_t>(1));
-                ctx.ip += 3;
+                ctx.or_impl(ctx.ax, pc.read_advance<uint16_t>());
                 break;
             case 0x10: // ADC Mb, Rb
                 binopMR<uint8_t>(pc, [](auto& dst, auto src) {
@@ -961,12 +946,10 @@ dllexport void execute_z86() {
                 });
                 break;
             case 0x14: // ADC AL, Ib
-                ctx.adc_impl(ctx.al, pc.read<uint8_t>(1));
-                ctx.ip += 2;
+                ctx.adc_impl(ctx.al, pc.read_advance<uint8_t>());
                 break;
             case 0x15: // ADC AX, Iz
-                ctx.adc_impl(ctx.ax, pc.read<uint16_t>(1));
-                ctx.ip += 3;
+                ctx.adc_impl(ctx.ax, pc.read_advance<uint16_t>());
                 break;
             case 0x18: // SBB Mb, Rb
                 binopMR<uint8_t>(pc, [](auto& dst, auto src) {
@@ -993,12 +976,10 @@ dllexport void execute_z86() {
                 });
                 break;
             case 0x1C: // SBB AL, Ib
-                ctx.sbb_impl(ctx.al, pc.read<uint8_t>(1));
-                ctx.ip += 2;
+                ctx.sbb_impl(ctx.al, pc.read_advance<uint8_t>());
                 break;
             case 0x1D: // SBB AX, Iz
-                ctx.sbb_impl(ctx.ax, pc.read<uint16_t>(1));
-                ctx.ip += 3;
+                ctx.sbb_impl(ctx.ax, pc.read_advance<uint16_t>());
                 break;
             case 0x20: // AND Mb, Rb
                 binopMR<uint8_t>(pc, [](auto& dst, auto src) {
@@ -1025,20 +1006,16 @@ dllexport void execute_z86() {
                 });
                 break;
             case 0x24: // AND AL, Ib
-                ctx.and_impl(ctx.al, pc.read<uint8_t>(1));
-                ctx.ip += 2;
+                ctx.and_impl(ctx.al, pc.read_advance<uint8_t>());
                 break;
             case 0x25: // AND AX, Iz
-                ctx.and_impl(ctx.ax, pc.read<uint16_t>(1));
-                ctx.ip += 3;
+                ctx.and_impl(ctx.ax, pc.read_advance<uint16_t>());
                 break;
             case 0x26: case 0x2E: case 0x36: case 0x3E: // SEG:
                 ctx.seg_override = opcode >> 3 & 3;
-                ++pc;
                 goto next_byte;
             case 0x27: // DAA
                 ctx.daa_impl();
-                ++ctx.ip;
                 break;
             case 0x28: // SUB Mb, Rb
                 binopMR<uint8_t>(pc, [](auto& dst, auto src) {
@@ -1065,16 +1042,13 @@ dllexport void execute_z86() {
                 });
                 break;
             case 0x2C: // SUB AL, Ib
-                ctx.sub_impl(ctx.al, pc.read<uint8_t>(1));
-                ctx.ip += 2;
+                ctx.sub_impl(ctx.al, pc.read_advance<uint8_t>());
                 break;
             case 0x2D: // SUB AX, Iz
-                ctx.sub_impl(ctx.ax, pc.read<uint16_t>(1));
-                ctx.ip += 3;
+                ctx.sub_impl(ctx.ax, pc.read_advance<uint16_t>());
                 break;
             case 0x2F: // DAS
                 ctx.das_impl();
-                ++ctx.ip;
                 break;
             case 0x30: // XOR Mb, Rb
                 binopMR<uint8_t>(pc, [](auto& dst, auto src) {
@@ -1101,16 +1075,13 @@ dllexport void execute_z86() {
                 });
                 break;
             case 0x34: // XOR AL, Ib
-                ctx.xor_impl(ctx.al, pc.read<uint8_t>(1));
-                ctx.ip += 2;
+                ctx.xor_impl(ctx.al, pc.read_advance<uint8_t>());
                 break;
             case 0x35: // XOR AX, Iz
-                ctx.xor_impl(ctx.ax, pc.read<uint16_t>(1));
-                ctx.ip += 3;
+                ctx.xor_impl(ctx.ax, pc.read_advance<uint16_t>());
                 break;
             case 0x37: // AAA
                 ctx.aaa_impl();
-                ++ctx.ip;
                 break;
             case 0x38: // CMP Mb, Rb
                 binopMR<uint8_t>(pc, [](auto dst, auto src) {
@@ -1137,104 +1108,97 @@ dllexport void execute_z86() {
                 });
                 break;
             case 0x3C: // CMP AL, Ib
-                ctx.cmp_impl(ctx.al, pc.read<uint8_t>(1));
-                ctx.ip += 2;
+                ctx.cmp_impl(ctx.al, pc.read_advance<uint8_t>());
                 break;
             case 0x3D: // CMP AX, Iz
-                ctx.cmp_impl(ctx.ax, pc.read<uint16_t>(1));
-                ctx.ip += 3;
+                ctx.cmp_impl(ctx.ax, pc.read_advance<uint16_t>());
                 break;
             case 0x3F: // AAS
                 ctx.aas_impl();
-                ++ctx.ip;
                 break;
             case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47: // INC reg
                 ctx.inc_impl(ctx.index_reg<uint16_t>(opcode & 7));
-                ++ctx.ip;
                 break;
             case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4E: case 0x4F: // DEC reg
                 ctx.dec_impl(ctx.index_reg<uint16_t>(opcode & 7));
-                ++ctx.ip;
                 break;
             case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x56: case 0x57: // PUSH reg
                 ctx.push_impl(ctx.index_reg<uint16_t>(opcode & 7));
-                ++ctx.ip;
                 break;
             case 0x58: case 0x59: case 0x5A: case 0x5B: case 0x5C: case 0x5D: case 0x5E: case 0x5F: // POP reg
                 ctx.index_reg<uint16_t>(opcode & 7) = ctx.pop_impl();
-                ++ctx.ip;
                 break;
             case 0x60: case 0x70: // JO Jb
             case 0x61: case 0x71: // JNO Jb
-                ctx.ip += 2;
+                ctx.ip = pc.offset + 1;
                 if (ctx.overflow != (opcode & 1)) {
-                    ctx.ip += pc.read<int8_t>(1);
+                    ctx.ip += pc.read<int8_t>();
                 }
-                break;
+                continue;
             case 0x62: case 0x72: // JC Jb
             case 0x63: case 0x73: // JNC Jb
-                ctx.ip += 2;
+                ctx.ip = pc.offset + 1;
                 if (ctx.carry != (opcode & 1)) {
-                    ctx.ip += pc.read<int8_t>(1);
+                    ctx.ip += pc.read<int8_t>();
                 }
-                break;
+                continue;
             case 0x64: case 0x74: // JZ Jb
             case 0x65: case 0x75: // JNZ Jb
-                ctx.ip += 2;
+                ctx.ip = pc.offset + 1;
                 if (ctx.zero != (opcode & 1)) {
-                    ctx.ip += pc.read<int8_t>(1);
+                    ctx.ip += pc.read<int8_t>();
                 }
-                break;
+                continue;
             case 0x66: case 0x76: // JBE Jb
-                ctx.ip += 2;
+                ctx.ip = pc.offset + 1;
                 if (ctx.cond_BE()) {
-                    ctx.ip += pc.read<int8_t>(1);
+                    ctx.ip += pc.read<int8_t>();
                 }
-                break;
+                continue;
             case 0x67: case 0x77: // JA Jb
-                ctx.ip += 2;
+                ctx.ip = pc.offset + 1;
                 if (ctx.cond_A()) {
-                    ctx.ip += pc.read<int8_t>(1);
+                    ctx.ip += pc.read<int8_t>();
                 }
-                break;
+                continue;
             case 0x68: case 0x78: // JS Jb
             case 0x69: case 0x79: // JNS Jb
-                ctx.ip += 2;
+                ctx.ip = pc.offset + 1;
                 if (ctx.sign != (opcode & 1)) {
-                    ctx.ip += pc.read<int8_t>(1);
+                    ctx.ip += pc.read<int8_t>();
                 }
-                break;
+                continue;
             case 0x6A: case 0x7A: // JP Jb
             case 0x6B: case 0x7B: // JNP Jb
-                ctx.ip += 2;
+                ctx.ip = pc.offset + 1;
                 if (ctx.parity != (opcode & 1)) {
-                    ctx.ip += pc.read<int8_t>(1);
+                    ctx.ip += pc.read<int8_t>();
                 }
-                break;
+                continue;
             case 0x6C: case 0x7C: // JL Jb
-                ctx.ip += 2;
+                ctx.ip = pc.offset + 1;
                 if (ctx.cond_L()) {
-                    ctx.ip += pc.read<int8_t>(1);
+                    ctx.ip += pc.read<int8_t>();
                 }
-                break;
+                continue;
             case 0x6D: case 0x7D: // JGE Jb
-                ctx.ip += 2;
+                ctx.ip = pc.offset + 1;
                 if (ctx.cond_GE()) {
-                    ctx.ip += pc.read<int8_t>(1);
+                    ctx.ip += pc.read<int8_t>();
                 }
-                break;
+                continue;
             case 0x6E: case 0x7E: // JLE Jb
-                ctx.ip += 2;
+                ctx.ip = pc.offset + 1;
                 if (ctx.cond_LE()) {
-                    ctx.ip += pc.read<int8_t>(1);
+                    ctx.ip += pc.read<int8_t>();
                 }
-                break;
+                continue;
             case 0x6F: case 0x7F: // JG Jb
-                ctx.ip += 2;
+                ctx.ip = pc.offset + 1;
                 if (ctx.cond_G()) {
-                    ctx.ip += pc.read<int8_t>(1);
+                    ctx.ip += pc.read<int8_t>();
                 }
-                break;
+                continue;
             case 0x80: case 0x82: // GRP1 Mb, Ib
                 unopM<uint8_t>(pc, [&](auto& dst, uint8_t r) {
                     uint8_t val = pc.read<int8_t>();
@@ -1250,7 +1214,7 @@ dllexport void execute_z86() {
                         default: unreachable;
                     }
                 });
-                ++ctx.ip;
+                ++pc;
                 break;
             case 0x81: // GRP1 Ev, Iz
                 unopM<uint16_t>(pc, [&](auto& dst, uint8_t r) {
@@ -1267,7 +1231,7 @@ dllexport void execute_z86() {
                         default: unreachable;
                     }
                 });
-                ctx.ip += 2;
+                pc += 2;
                 break;
             case 0x83: // GRP1 Ev, Ib
                 unopM<uint16_t>(pc, [&](auto& dst, uint8_t r) {
@@ -1284,7 +1248,7 @@ dllexport void execute_z86() {
                         default: unreachable;
                     }
                 });
-                ++ctx.ip;
+                ++pc;
                 break;
             case 0x84: // TEST Mb, Rb
                 binopMR<uint8_t>(pc, [](auto dst, auto src) {
@@ -1341,8 +1305,7 @@ dllexport void execute_z86() {
                 });
                 break;
             case 0x8D: { // LEA
-                ModRM modrm = pc.read<ModRM>();
-                ++pc;
+                ModRM modrm = pc.read_advance<ModRM>();
                 if (modrm.is_mem()) {
                     x86Addr addr = modrm.parse_memM(pc);
                     ctx.index_reg<uint16_t>(modrm.R()) = addr.offset;
@@ -1350,7 +1313,6 @@ dllexport void execute_z86() {
                 else {
                     // TODO: jank
                 }
-                ctx.ip = pc.offset;
                 break;
             }
             case 0x8E: // MOV seg, M
@@ -1375,64 +1337,52 @@ dllexport void execute_z86() {
                 break;
             case 0x90: case 0x91: case 0x92: case 0x93: case 0x94: case 0x95: case 0x96: case 0x97: // XCHG AX, reg
                 ctx.xchg_impl(ctx.ax, ctx.index_reg<uint16_t>(opcode & 7));
-                ++ctx.ip;
                 break;
             case 0x98: // CBW
                 ctx.ax = (int16_t)(int8_t)ctx.al;
-                ++ctx.ip;
                 break;
             case 0x99: // CWD
                 ctx.dx = (int16_t)ctx.ax >> 15;
-                ++ctx.ip;
                 break;
             case 0x9A: // CALL far abs
                 ctx.push_impl(ctx.cs);
-                ctx.push_impl(pc.offset + 5);
-                ctx.ip = pc.read<uint16_t>(1);
-                ctx.cs = pc.read<uint16_t>(3);
-                break;
+                ctx.push_impl(pc.offset + 4);
+                ctx.ip = pc.read<uint16_t>();
+                ctx.cs = pc.read<uint16_t>(2);
+                continue;
             case 0x9B: // WAIT
                 // NOP :D
-                ++ctx.ip;
                 break;
             case 0x9C: // PUSHF
                 ctx.push_impl(ctx.get_flags<uint16_t>());
-                ++ctx.ip;
                 break;
             case 0x9D: // POPF
                 ctx.set_flags<uint16_t>(ctx.pop_impl());
-                ++ctx.ip;
                 break;
             case 0x9E: // SAHF
                 ctx.set_flags<uint8_t>(ctx.ah);
-                ++ctx.ip;
                 break;
             case 0x9F: // LAHF
                 ctx.ah = ctx.get_flags<uint8_t>();
-                ++ctx.ip;
                 break;
             case 0xA0: { // MOV AL, mem
-                x86Addr addr = ctx.addr(DS, pc.read<uint16_t>(1));
+                x86Addr addr = ctx.addr(DS, pc.read_advance<uint16_t>());
                 ctx.al = addr.read<uint8_t>();
-                ctx.ip += 3;
                 break;
             }
             case 0xA1: { // MOV AX, mem
-                x86Addr addr = ctx.addr(DS, pc.read<uint16_t>(1));
+                x86Addr addr = ctx.addr(DS, pc.read_advance<uint16_t>());
                 ctx.ax = addr.read<uint16_t>();
-                ctx.ip += 3;
                 break;
             }
             case 0xA2: { // MOV mem, AL
-                x86Addr addr = ctx.addr(DS, pc.read<uint16_t>(1));
+                x86Addr addr = ctx.addr(DS, pc.read_advance<uint16_t>());
                 addr.write(ctx.al);
-                ctx.ip += 3;
                 break;
             }
             case 0xA3: { // MOV mem, AX
-                x86Addr addr = ctx.addr(DS, pc.read<uint16_t>(1));
+                x86Addr addr = ctx.addr(DS, pc.read_advance<uint16_t>());
                 addr.write(ctx.ax);
-                ctx.ip += 3;
                 break;
             }
             case 0xA4: // MOVSB
@@ -1442,12 +1392,10 @@ dllexport void execute_z86() {
                 // TODO
                 break;
             case 0xA8: // TEST AL, Ib
-                ctx.test_impl(ctx.al, pc.read<uint8_t>(1));
-                ctx.ip += 2;
+                ctx.test_impl(ctx.al, pc.read_advance<uint8_t>());
                 break;
             case 0xA9: // TEST AX, Iz
-                ctx.test_impl(ctx.ax, pc.read<uint16_t>(1));
-                ctx.ip += 3;
+                ctx.test_impl(ctx.ax, pc.read_advance<uint16_t>());
                 break;
             case 0xAA: // STOSB
             case 0xAB: // STOSW
@@ -1458,20 +1406,18 @@ dllexport void execute_z86() {
                 // TODO
                 break;
             case 0xB0: case 0xB1: case 0xB2: case 0xB3: case 0xB4: case 0xB5: case 0xB6: case 0xB7: // MOV reg8, Ib
-                ctx.index_reg<uint8_t>(opcode & 7) = pc.read<int8_t>(1);
-                ctx.ip += 2;
+                ctx.index_reg<uint8_t>(opcode & 7) = pc.read_advance<int8_t>();
                 break;
             case 0xB8: case 0xB9: case 0xBA: case 0xBB: case 0xBC: case 0xBD: case 0xBE: case 0xBF: // MOV reg, Iv
-                ctx.index_reg<uint16_t>(opcode & 7) = pc.read<uint16_t>(1);
-                ctx.ip += 3;
+                ctx.index_reg<uint16_t>(opcode & 7) = pc.read_advance<uint16_t>();
                 break;
             case 0xC0: case 0xC2: // RET imm
                 ctx.ip = ctx.pop_impl();
-                ctx.sp += pc.read<int16_t>(1);
-                break;
+                ctx.sp += pc.read<int16_t>();
+                continue;
             case 0xC1: case 0xC3: // RET
                 ctx.ip = ctx.pop_impl();
-                break;
+                continue;
             case 0xC4: // LES
                 binopRM2<uint16_t>(pc, [](auto& dst, uint32_t src) {
                     dst = src;
@@ -1491,24 +1437,24 @@ dllexport void execute_z86() {
                     dst = pc.read<int8_t>();
                     return true;
                 });
-                ++ctx.ip;
+                ++pc;
                 break;
             case 0xC7: // GRP11 Iz (Supposedly this just ignores R bits)
                 unopM<uint16_t>(pc, [&](auto& dst, uint8_t r) {
                     dst = pc.read<uint16_t>();
                     return true;
                 });
-                ctx.ip += 2;
+                pc += 2;
                 break;
             case 0xC8: case 0xCA: // RETF imm
                 ctx.ip = ctx.pop_impl();
                 ctx.cs = ctx.pop_impl();
-                ctx.sp += pc.read<int16_t>(1);
-                break;
+                ctx.sp += pc.read<int16_t>();
+                continue;
             case 0xC9: case 0xCB: // RETF
                 ctx.ip = ctx.pop_impl();
                 ctx.cs = ctx.pop_impl();
-                break;
+                continue;
             case 0xCC: // INT3
             case 0xCD: // INT Ib
             case 0xCE: // INTO
@@ -1518,7 +1464,7 @@ dllexport void execute_z86() {
                 ctx.ip = ctx.pop_impl();
                 ctx.cs = ctx.pop_impl();
                 ctx.set_flags(ctx.pop_impl());
-                break;
+                continue;
             case 0xD0: // GRP2 Mb, 1
             case 0xD1: // GRP2 Mv, 1
             case 0xD2: // GRP2 Mb, CL
@@ -1526,52 +1472,48 @@ dllexport void execute_z86() {
                 // TODO: Shifts/rotates
                 break;
             case 0xD4: // AAM Ib
-                ctx.aam_impl(pc.read<uint8_t>());
-                ctx.ip += 2;
+                ctx.aam_impl(pc.read_advance<uint8_t>());
                 break;
             case 0xD5: // AAD Ib
-                ctx.aad_impl(pc.read<uint8_t>());
-                ctx.ip += 2;
+                ctx.aad_impl(pc.read_advance<uint8_t>());
                 break;
             case 0xD6: // SALC
                 ctx.al = ctx.carry ? -1 : 0;
-                ++ctx.ip;
                 break;
             case 0xD7: { // XLAT
                 x86Addr addr = ctx.addr(DS, ctx.bx + ctx.al);
                 ctx.al = addr.read<uint8_t>();
-                ++ctx.ip;
                 break;
             }
             case 0xD8: case 0xD9: case 0xDA: case 0xDB: case 0xDC: case 0xDD: case 0xDE: case 0xDF: { // ESC x87
                 // NOP :D
-                ctx.ip += 2 + pc.read<ModRM>(1).extra_length();
+                pc += 1 + pc.read<ModRM>().extra_length();
                 break;
             }
             case 0xE0: // LOOPNZ Jb
-                ctx.ip += 2;
+                ctx.ip = pc.offset + 1;
                 if (--ctx.cx || ctx.cond_NZ()) {
-                    ctx.ip += pc.read<int8_t>(1);
+                    ctx.ip += pc.read<int8_t>();
                 }
-                break;
+                continue;
             case 0xE1: // LOOPZ Jb
-                ctx.ip += 2;
+                ctx.ip = pc.offset + 1;
                 if (--ctx.cx || ctx.cond_Z()) {
-                    ctx.ip += pc.read<int8_t>(1);
+                    ctx.ip += pc.read<int8_t>();
                 }
-                break;
+                continue;
             case 0xE2: // LOOP Jb
-                ctx.ip += 2;
+                ctx.ip = pc.offset + 1;
                 if (--ctx.cx) {
-                    ctx.ip += pc.read<int8_t>(1);
+                    ctx.ip += pc.read<int8_t>();
                 }
-                break;
+                continue;
             case 0xE3: // JCXZ Jb
-                ctx.ip += 2;
+                ctx.ip = pc.offset + 1;
                 if (!ctx.cx) {
-                    ctx.ip += pc.read<int8_t>(1);
+                    ctx.ip += pc.read<int8_t>();
                 }
-                break;
+                continue;
             case 0xE4: // IN AL, Ib
             case 0xE5: // IN AX, Ib
             case 0xE6: // OUT Ib, AL
@@ -1579,19 +1521,19 @@ dllexport void execute_z86() {
                 // TODO
                 break;
             case 0xE8: // CALL Jz
-                ctx.push_impl(pc.offset + 3);
-                ctx.ip += pc.read<int16_t>(1);
-                break;
+                ctx.push_impl(pc.offset + 2);
+                ctx.ip = pc.offset + 2 + pc.read<int16_t>();
+                continue;
             case 0xE9: // JMP Jz
-                ctx.ip += 3 + pc.read<int16_t>(1);
-                break;
+                ctx.ip = pc.offset + 2 + pc.read<int16_t>();
+                continue;
             case 0xEA: // JMP far abs
-                ctx.ip = pc.read<uint16_t>(1);
-                ctx.cx = pc.read<uint16_t>(3);
-                break;
+                ctx.ip = pc.read<uint16_t>();
+                ctx.cx = pc.read<uint16_t>(2);
+                continue;
             case 0xEB: // JMP Jb
-                ctx.ip += 2 + pc.read<int8_t>(1);
-                break;
+                ctx.ip = pc.offset + 1 + pc.read<int8_t>();
+                continue;
             case 0xEC: // IN AL, DX
             case 0xED: // IN AX, DX
             case 0xEE: // OUT DX, AL
@@ -1600,11 +1542,9 @@ dllexport void execute_z86() {
                 break;
             case 0xF0: case 0xF1: // LOCK
                 ctx.lock = true;
-                ++pc;
                 goto next_byte;
             case 0xF2: case 0xF3: // REPNE, REP
                 ctx.rep_type = opcode & 1;
-                ++pc;
                 goto next_byte;
             case 0xF4: // HLT
                 // TODO
@@ -1616,8 +1556,7 @@ dllexport void execute_z86() {
                 unopM<uint8_t>(pc, [&](auto& val, uint8_t r) {
                     switch (r) {
                         case 0: case 1: // TEST Mb, Ib
-                            ctx.test_impl(val, pc.read<uint8_t>());
-                            ++pc;
+                            ctx.test_impl(val, pc.read_advance<uint8_t>());
                             return false;
                         case 2: // NOT Mb
                             ctx.not_impl(val);
@@ -1646,7 +1585,7 @@ dllexport void execute_z86() {
                 unopM<uint16_t>(pc, [&](auto& val, uint8_t r) {
                     switch (r) {
                         case 0: case 1: // TEST Mv, Iz
-                            ctx.test_impl(val, pc.read<uint16_t>());
+                            ctx.test_impl(val, pc.read_advance<uint16_t>());
                             return false;
                         case 2: // NOT Mv
                             ctx.not_impl(val);
@@ -1685,5 +1624,6 @@ dllexport void execute_z86() {
                 // TODO: deal with the extra BS of getting segment refs on the far ops
                 break;
         }
+        ctx.ip = pc.offset;
     }
 }

@@ -5,7 +5,8 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-
+#include <string.h>
+#include <type_traits>
 
 struct RAM {
     uint8_t raw[0x110000];
@@ -37,7 +38,12 @@ struct RAM {
 
     template <typename T = uint8_t>
     inline void write(size_t offset, const T& value) {
-        this->ref<T>(offset) = value;
+        if constexpr (!std::is_array_v<std::remove_reference_t<T>>) {
+            this->ref<T>(offset) = value;
+        }
+        else {
+            memcpy(this->ptr(offset), &value, sizeof(T));
+        }
     }
 
     inline uint8_t operator[](size_t offset) const {
