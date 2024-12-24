@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include <type_traits>
 #include <utility>
@@ -988,6 +989,28 @@ struct x86Context {
 
     inline void cancel_interrupt() {
         this->pending_einterrupt = -1;
+    }
+
+    // Port I/O
+
+    template <typename T>
+    inline void in_impl(T& dst, uint16_t port) {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            printf("Tried to read byte from port %X\n", port);
+        }
+        else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            printf("Tried to read word from port %X\n", port);
+        }
+    }
+
+    template <typename T>
+    inline void out_impl(uint16_t port, T src) {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            printf("Tried to write %02X to port %X\n", src, port);
+        }
+        else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            printf("Tried to write %04X to port %X\n", src, port);
+        }
     }
 };
 
@@ -2039,10 +2062,17 @@ dllexport void z86_execute() {
                 }
                 goto next_instr;
             case 0xE4: // IN AL, Ib
+                ctx.in_impl(ctx.al, pc.read_advance<uint8_t>());
+                break;
             case 0xE5: // IN AX, Ib
+                ctx.in_impl(ctx.ax, pc.read_advance<uint8_t>());
+                break;
             case 0xE6: // OUT Ib, AL
+                ctx.out_impl(pc.read_advance<uint8_t>(), ctx.al);
+                break;
             case 0xE7: // OUT Ib, AX
-                // TODO
+                ctx.out_impl(pc.read_advance<uint8_t>(), ctx.ax);
+                break;
                 break;
             case 0xE8: // CALL Jz
                 ctx.push_impl(pc.offset + 2);
@@ -2059,10 +2089,16 @@ dllexport void z86_execute() {
                 ctx.ip = pc.offset + 1 + pc.read<int8_t>();
                 goto next_instr;
             case 0xEC: // IN AL, DX
+                ctx.in_impl(ctx.al, ctx.dx);
+                break;
             case 0xED: // IN AX, DX
+                ctx.in_impl(ctx.ax, ctx.dx);
+                break;
             case 0xEE: // OUT DX, AL
+                ctx.out_impl(ctx.dx, ctx.al);
+                break;
             case 0xEF: // OUT DX, AX
-                // TODO
+                ctx.out_impl(ctx.dx, ctx.ax);
                 break;
             case 0xF0: case 0xF1: // LOCK
                 ctx.lock = true;
