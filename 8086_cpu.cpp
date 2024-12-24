@@ -551,6 +551,30 @@ struct x86Context {
         return ret;
     }
 
+    template <typename T = uint16_t>
+    inline void jmpabs_impl(T new_ip) {
+        ctx.ip = new_ip;
+    }
+
+    template <typename T = uint16_t>
+    inline void callabs_impl(T next_ip, T new_ip) {
+        this->push_impl<T>(next_ip);
+        this->jmpabs_impl<T>(new_ip);
+    }
+
+    template <typename T = uint16_t>
+    inline void jmpfabs_impl(T new_ip, T new_cs) {
+        ctx.ip = new_ip;
+        ctx.cs = new_cs;
+    }
+
+    template <typename T = uint16_t>
+    inline void callfabs_impl(T next_ip, T new_ip, T new_cs) {
+        this->push_impl<T>(this->cs);
+        this->push_impl<T>(next_ip);
+        this->jmpfabs_impl<T>(new_ip, new_cs);
+    }
+
     // TODO: rep prefix negating inputs of imul/idiv
     template <typename T>
     inline void mul_impl(T src) {
@@ -1174,6 +1198,75 @@ static inline void unopM(x86Addr& pc, const L& lambda) {
     else {
         lambda(ctx.index_reg<T>(modrm.M()), r);
     }
+}
+
+// Special unop for groups 4/5
+template <typename T>
+static inline bool unopMS(x86Addr& pc) {
+    ModRM modrm = pc.read_advance<ModRM>();
+    uint8_t r = modrm.R();
+    T mval;
+    T sval = 0; // TODO: jank
+    if (modrm.is_mem()) {
+        x86Addr data_addr = modrm.parse_memM(pc);
+        mval = data_addr.read<T>();
+        switch (r) {
+            case 0:
+                ctx.inc_impl(mval);
+                break;
+            case 1:
+                ctx.dec_impl(mval);
+                break;
+            case 2: call:
+                ctx.callabs_impl<T>(pc.offset, mval);
+                return true;
+            case 3:
+                sval = data_addr.read<T>(2); // TODO: Byte offset?
+            callf:
+                ctx.callfabs_impl<T>(pc.offset, mval, sval);
+                return true;
+            case 4: jmp:
+                ctx.jmpabs_impl(mval);
+                return true;
+            case 5:
+                sval = data_addr.read<T>(2); // TODO: Byte offset?
+            jmpf:
+                ctx.jmpfabs_impl(mval, sval);
+                return true;
+            case 6: case 7: push:
+                ctx.push_impl(mval);
+                return false;
+            default:
+                unreachable;
+        }
+        data_addr.write<uint16_t>(mval);
+    } else {
+        T& mval_ref = ctx.index_reg<T>(modrm.M());
+        mval = mval_ref;
+        switch (r) {
+            case 0:
+                ctx.inc_impl(mval_ref);
+                break;
+            case 1:
+                ctx.dec_impl(mval_ref);
+                break;
+            case 2:
+                goto call;
+            case 3:
+                // TODO: jank
+                goto callf;
+            case 4:
+                goto jmp;
+            case 5:
+                // TODO: Jank
+                goto jmpf;
+            case 6: case 7: 
+                goto push;
+            default:
+                unreachable;
+        }
+    }
+    return false;
 }
 
 dllexport void z86_reset() {
@@ -2050,8 +2143,14 @@ dllexport void z86_execute() {
                 ctx.direction = opcode & 1;
                 break;
             case 0xFE: // GRP4 Mb
+                if (unopMS<uint8_t>(pc)) {
+                    goto next_instr;
+                }
+                break;
             case 0xFF: // GRP5 Mv
-                // TODO: deal with the extra BS of getting segment refs on the far ops
+                if (unopMS<uint16_t>(pc)) {
+                    goto next_instr;
+                }
                 break;
         }
         ctx.ip = pc.offset;
