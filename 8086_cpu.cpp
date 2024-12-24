@@ -8,6 +8,7 @@
 #include <tuple>
 #include <limits>
 #include <atomic>
+#include <vector>
 
 #if __INTELLISENSE__ && !_HAS_CXX20
 #define TEMP_DEF_CXX20 1
@@ -169,6 +170,35 @@ struct x86Addr {
         return ret;
     }
 };
+
+static std::vector<PortDevice*> io_devices;
+
+static void port_out(uint16_t port, uint16_t value) {
+    const std::vector<PortDevice*>& devices = io_devices;
+    for (auto device : devices) {
+        if (device->out(port, value)) {
+            return;
+        }
+    }
+    printf("Unhandled: OUT %X, %04X\n", port, value);
+}
+
+static void port_in(uint16_t& value, uint16_t port) {
+    // TODO: Check default value
+    value = 0;
+
+    const std::vector<PortDevice*>& devices = io_devices;
+    for (auto device : devices) {
+        if (device->in(value, port)) {
+            return;
+        }
+    }
+    printf("Unhandled: IN %04X, %X\n", value, port);
+}
+
+dllexport void z86_add_device(PortDevice* device) {
+    io_devices.push_back(device);
+}
 
 struct x86Context {
 
@@ -492,7 +522,6 @@ struct x86Context {
 
     template <typename T>
     inline void inc_impl(T& dst) {
-        using U = std::make_unsigned_t<T>;
         using S = std::make_signed_t<T>;
         this->overflow = dst == (std::numeric_limits<S>::max)();
         this->auxiliary = (dst ^ 1 ^ dst + 1) & 0x10; // BLCMSK
@@ -504,7 +533,6 @@ struct x86Context {
 
     template <typename T>
     inline void dec_impl(T& dst) {
-        using U = std::make_unsigned_t<T>;
         using S = std::make_signed_t<T>;
         this->overflow = dst == (std::numeric_limits<S>::max)();
         this->auxiliary = (dst ^ 1 ^ dst - 1) & 0x10; // BLSMSK
@@ -521,7 +549,6 @@ struct x86Context {
 
     template <typename T>
     inline void neg_impl(T& dst) {
-        using U = std::make_unsigned_t<T>;
         using S = std::make_signed_t<T>;
         this->carry = dst;
         this->overflow = (S)dst == (std::numeric_limits<S>::min)();
@@ -780,9 +807,7 @@ struct x86Context {
     template <typename T>
     inline void sar_impl(T& dst, uint8_t count) {
         if (count) {
-            using U = std::make_unsigned_t<T>;
             using S = std::make_signed_t<T>;
-
             this->carry = ((size_t)dst >> 1 - count) & 1;
             this->overflow = false;
             dst = (S)dst >> count;
@@ -989,28 +1014,6 @@ struct x86Context {
 
     inline void cancel_interrupt() {
         this->pending_einterrupt = -1;
-    }
-
-    // Port I/O
-
-    template <typename T>
-    inline void in_impl(T& dst, uint16_t port) {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            printf("Tried to read byte from port %X\n", port);
-        }
-        else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            printf("Tried to read word from port %X\n", port);
-        }
-    }
-
-    template <typename T>
-    inline void out_impl(uint16_t port, T src) {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            printf("Tried to write %02X to port %X\n", src, port);
-        }
-        else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            printf("Tried to write %04X to port %X\n", src, port);
-        }
     }
 };
 
@@ -2061,17 +2064,20 @@ dllexport void z86_execute() {
                     ctx.ip += pc.read<int8_t>();
                 }
                 goto next_instr;
-            case 0xE4: // IN AL, Ib
-                ctx.in_impl(ctx.al, pc.read_advance<uint8_t>());
+            case 0xE4: { // IN AL, Ib
+                uint16_t temp;
+                port_in(temp, pc.read_advance<uint8_t>());
+                ctx.al = temp;
                 break;
+            }
             case 0xE5: // IN AX, Ib
-                ctx.in_impl(ctx.ax, pc.read_advance<uint8_t>());
+                port_in(ctx.ax, pc.read_advance<uint8_t>());
                 break;
             case 0xE6: // OUT Ib, AL
-                ctx.out_impl(pc.read_advance<uint8_t>(), ctx.al);
+                port_out(pc.read_advance<uint8_t>(), ctx.al);
                 break;
             case 0xE7: // OUT Ib, AX
-                ctx.out_impl(pc.read_advance<uint8_t>(), ctx.ax);
+                port_out(pc.read_advance<uint8_t>(), ctx.ax);
                 break;
                 break;
             case 0xE8: // CALL Jz
@@ -2088,17 +2094,20 @@ dllexport void z86_execute() {
             case 0xEB: // JMP Jb
                 ctx.ip = pc.offset + 1 + pc.read<int8_t>();
                 goto next_instr;
-            case 0xEC: // IN AL, DX
-                ctx.in_impl(ctx.al, ctx.dx);
+            case 0xEC: { // IN AL, DX
+                uint16_t temp;
+                port_in(temp, ctx.dx);
+                ctx.al = temp;
                 break;
+            }
             case 0xED: // IN AX, DX
-                ctx.in_impl(ctx.ax, ctx.dx);
+                port_in(ctx.ax, ctx.dx);
                 break;
             case 0xEE: // OUT DX, AL
-                ctx.out_impl(ctx.dx, ctx.al);
+                port_out(ctx.dx, ctx.al);
                 break;
             case 0xEF: // OUT DX, AX
-                ctx.out_impl(ctx.dx, ctx.ax);
+                port_out(ctx.dx, ctx.ax);
                 break;
             case 0xF0: case 0xF1: // LOCK
                 ctx.lock = true;

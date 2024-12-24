@@ -8,6 +8,16 @@
 #include <string.h>
 #include <type_traits>
 
+struct PortDevice {
+    // Receive data from CPU.
+    // Returns true if this device handled the port
+    virtual bool out(uint16_t port, uint16_t value) = NULL;
+
+    // Send data to CPU
+    // Returns true if this device handled the port
+    virtual bool in(uint16_t& value, uint16_t port) = NULL;
+};
+
 struct RAM {
     uint8_t raw[0x110000];
 
@@ -66,5 +76,7 @@ void z86_interrupt(uint8_t number);
 void z86_cancel_interrupt();
 void z86_nmi();
 void z86_reset();
+
+void z86_add_device(PortDevice* device);
 
 #endif
