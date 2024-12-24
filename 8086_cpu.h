@@ -53,6 +53,18 @@ struct RAM {
 
 extern RAM mem;
 
-void execute_z86();
+enum Interrupt : uint8_t {
+    IntDE = 0,
+    IntDB = 1,
+    IntNMI = 2,
+    IntBP = 3,
+    IntOF = 4
+};
+
+void z86_execute();
+void z86_interrupt(uint8_t number);
+void z86_cancel_interrupt();
+void z86_nmi();
+void z86_reset();
 
 #endif

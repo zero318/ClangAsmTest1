@@ -29,13 +29,13 @@ MACRO_STR(MACRO_CAT(=@cc, flag)) (name)
 
 #define read_asm_flags(condition, expr) \
 [&](void) { \
-	int flag; \
-	__asm__ __volatile__( \
-		"" \
-		: asm_flags(condition, flag) \
-		: "X"(expr) \
-	); \
-	return flag; \
+    int flag; \
+    __asm__ __volatile__( \
+        "" \
+        : asm_flags(condition, flag) \
+        : "X"(expr) \
+    ); \
+    return flag; \
 }()
 
 #define read_parity_flag(expr)		read_asm_flags(p, expr)
@@ -49,30 +49,30 @@ MACRO_STR(MACRO_CAT(=@cc, flag)) (name)
 
 typedef uint16_t seg_t;
 struct FarPtr16 {
-	uint16_t addr;
-	seg_t seg;
+    uint16_t addr;
+    seg_t seg;
 };
 template<typename T = void>
 struct FarPtr32 {
-	PTR32Z<T> addr;
-	seg_t seg;
+    PTR32Z<T> addr;
+    seg_t seg;
 };
 template<typename T = void>
 struct FarPtr64 {
-	PTR64<T> addr;
-	seg_t seg;
+    PTR64<T> addr;
+    seg_t seg;
 };
 struct AbsFarOpcode16 {
-	uint8_t opcode gnu_packed; // 0x0
-	uint16_t addr gnu_packed; // 0x1
-	seg_t seg gnu_packed; // 0x3
-	// 0x5
+    uint8_t opcode gnu_packed; // 0x0
+    uint16_t addr gnu_packed; // 0x1
+    seg_t seg gnu_packed; // 0x3
+    // 0x5
 } gnu_packed;
 struct AbsFarOpcode32 {
-	uint8_t opcode gnu_packed; // 0x0
-	uint32_t addr gnu_packed; // 0x1
-	seg_t seg gnu_packed; // 0x5
-	// 0x7
+    uint8_t opcode gnu_packed; // 0x0
+    uint32_t addr gnu_packed; // 0x1
+    seg_t seg gnu_packed; // 0x5
+    // 0x7
 } gnu_packed;
 
 #define ATT_SYNTAX_DIRECTIVE ".att_syntax \n"
@@ -238,9 +238,9 @@ make_register_writes(edi, "=D", int32_t, uint32_t)
 
 template <typename T>
 static forceinline T& ref_eax() {
-	T ret;
-	asm volatile("":"=a"(ret));
-	return (T&)std::move(ret);
+    T ret;
+    asm volatile("":"=a"(ret));
+    return (T&)std::move(ret);
 }
 
 //template <typename T = int32_t, sfinae_enable(std::is_integral_v<T> && std::is_signed_v<T>)>
@@ -268,10 +268,10 @@ static forceinline uint32_t read_esp() { return (uint32_t)esp_reg; }
 //static forceinline uint32_t read_ebp() { return (uint32_t)ebp_reg; }
 template <typename T = uint32_t, sfinae_enable(sizeof(T) == sizeof(uint32_t))>
 static forceinline T read_ebp_old() {
-	register T reg asm("ebp") = GARBAGE_VALUE(int32_t);
-	T ret;
-	asm volatile ("":"=r"(ret) : "r"(reg));
-	return ret;
+    register T reg asm("ebp") = GARBAGE_VALUE(int32_t);
+    T ret;
+    asm volatile ("":"=r"(ret) : "r"(reg));
+    return ret;
 }
 static forceinline void write_esp(uint32_t value) { esp_reg = value; }
 static forceinline void write_ebp(uint32_t value) { ebp_reg = value; }
@@ -291,12 +291,12 @@ struct find_type_in_tuple;
 template <typename Find, typename... TupleTypes>
 struct find_type_in_tuple<Find, std::tuple<TupleTypes...>> {
 private:
-	template <typename>
-	struct impl;
-	template <size_t... idx>
-	struct impl <std::integer_sequence<size_t, idx...>> : std::integral_constant<ssize_t, std::max({ static_cast<ssize_t>(std::is_same_v<Find, TupleTypes> ? idx : -1)... })>{};
+    template <typename>
+    struct impl;
+    template <size_t... idx>
+    struct impl <std::integer_sequence<size_t, idx...>> : std::integral_constant<ssize_t, std::max({ static_cast<ssize_t>(std::is_same_v<Find, TupleTypes> ? idx : -1)... })>{};
 public:
-	static constexpr ssize_t value = impl<std::index_sequence_for<TupleTypes...>>::value;
+    static constexpr ssize_t value = impl<std::index_sequence_for<TupleTypes...>>::value;
 };
 template<typename Find, typename Tuple>
 inline constexpr ssize_t find_type_in_tuple_v = find_type_in_tuple<Find, Tuple>::value;
@@ -321,176 +321,176 @@ template <typename T>
 using ureg_fast_t = std::tuple_element_t<find_type_in_tuple_v<T, uint_types>, ureg_fast_types>;
 
 static forceinline void* alloc_vla(size_t size) {
-	rsp_reg -= AlignUpToMultipleOf2(size, 16);
-	return (void*)rsp_reg;
+    rsp_reg -= AlignUpToMultipleOf2(size, 16);
+    return (void*)rsp_reg;
 }
 
 static forceinline void* alloc_vla_aligned(size_t size) {
-	return alloc_vla(AlignUpToMultipleOf2(size, 16));
+    return alloc_vla(AlignUpToMultipleOf2(size, 16));
 }
 
 
 static forceinline void* chkstk(size_t size) {
-	size = AlignUpToMultipleOf2(size, 4);
-	volatile uint8_t* current = (uint8_t*)rsp_reg;
-	size >>= 12;
-	for (; size--; current += 0x1000) {
-		(void)(*current & 0);
-	}
-	rsp_reg = (uintptr_t)current;
-	return (void*)current;
+    size = AlignUpToMultipleOf2(size, 4);
+    volatile uint8_t* current = (uint8_t*)rsp_reg;
+    size >>= 12;
+    for (; size--; current += 0x1000) {
+        (void)(*current & 0);
+    }
+    rsp_reg = (uintptr_t)current;
+    return (void*)current;
 }
 
 static forceinline int32_t sign_extend_eax_mask(int32_t eax_value) {
-	int32_t ret;
-	__asm__(
-		"CDQ"
-		: asm_arg("=d", ret)
-		: asm_arg("a", eax_value)
-	);
-	return ret;
+    int32_t ret;
+    __asm__(
+        "CDQ"
+        : asm_arg("=d", ret)
+        : asm_arg("a", eax_value)
+    );
+    return ret;
 }
 
 static forceinline uint32_t rdtsc_low(void) {
-	uint32_t tick;
-	__asm__ volatile(
-		"RDTSC"
-		: asm_arg("=a", tick)
-		:
-		: clobber_list("edx")
-	);
-	return tick;
+    uint32_t tick;
+    __asm__ volatile(
+        "RDTSC"
+        : asm_arg("=a", tick)
+        :
+        : clobber_list("edx")
+    );
+    return tick;
 }
 
 static forceinline uint64_t rdtsc(void) {
 #ifdef _M_IX86
-	uint64_t tick;
-	__asm__ volatile (
-		"RDTSC"
-		: asm_arg("=A", tick)
-	);
-	return tick;
+    uint64_t tick;
+    __asm__ volatile (
+        "RDTSC"
+        : asm_arg("=A", tick)
+    );
+    return tick;
 #else
-	return __builtin_ia32_rdtsc();
+    return __builtin_ia32_rdtsc();
 
-	/*
-	uintptr_t tickl, tickh;
-	__asm__ volatile (
-		"RDTSC"
-		: asm_arg("=a", tickl), asm_arg("=d", tickh)
-	);
-	return (uint64_t)tickl + ((uint64_t)tickh << 32);
-	*/
+    /*
+    uintptr_t tickl, tickh;
+    __asm__ volatile (
+        "RDTSC"
+        : asm_arg("=a", tickl), asm_arg("=d", tickh)
+    );
+    return (uint64_t)tickl + ((uint64_t)tickh << 32);
+    */
 #endif
 }
 
 static forceinline uint64_t rdtscp(uint32_t& tsc_aux) {
 #ifdef _M_IX86
-	uint64_t tick;
-	__asm__ volatile (
-		"RDTSCP"
-		: asm_arg("=A", tick), asm_arg("=c", tsc_aux)
-	);
-	return tick;
+    uint64_t tick;
+    __asm__ volatile (
+        "RDTSCP"
+        : asm_arg("=A", tick), asm_arg("=c", tsc_aux)
+    );
+    return tick;
 #else
-	return __builtin_ia32_rdtscp(&tsc_aux);
+    return __builtin_ia32_rdtscp(&tsc_aux);
 
-	/*
-	uintptr_t tickl, tickh;
-	__asm__ volatile (
-		"RDTSCP"
-		: asm_arg("=a", tickl), asm_arg("=d", tickh), asm_arg("=c", tsc_aux)
-	);
-	return (uint64_t)tickl + ((uint64_t)tickh << 32);
-	*/
+    /*
+    uintptr_t tickl, tickh;
+    __asm__ volatile (
+        "RDTSCP"
+        : asm_arg("=a", tickl), asm_arg("=d", tickh), asm_arg("=c", tsc_aux)
+    );
+    return (uint64_t)tickl + ((uint64_t)tickh << 32);
+    */
 #endif
 }
 
 static forceinline uint64_t rdtsc_serialize() {
-	uint32_t idgaf;
-	return rdtscp(idgaf);
+    uint32_t idgaf;
+    return rdtscp(idgaf);
 }
 
 static forceinline void serialize_instructions() {
-	rdtsc_serialize(); // Surely there's a better way...
+    rdtsc_serialize(); // Surely there's a better way...
 }
 
 static uint32_t load_segment_limit(uint32_t value) {
-	uint32_t ret;
-	__asm__ volatile (
-		"LSL %[ret], %[value]"
-		: asm_arg("=r", ret)
-		: asm_arg("r", value)
-	);
-	return ret;
+    uint32_t ret;
+    __asm__ volatile (
+        "LSL %[ret], %[value]"
+        : asm_arg("=r", ret)
+        : asm_arg("r", value)
+    );
+    return ret;
 }
 
 #ifdef _M_IX86
 static forceinline uint32_t push_cs() {
-	asm volatile(
-		"PUSH CS"
-	);
-	return GARBAGE_VALUE(uint32_t);
+    asm volatile(
+        "PUSH CS"
+    );
+    return GARBAGE_VALUE(uint32_t);
 }
 #endif
 
 static forceinline void read_cs(uint16_t& out) {
-	__asm__ volatile(
-		"MOV %[out], CS"
-		: asm_arg("=rm", out)
-	);
+    __asm__ volatile(
+        "MOV %[out], CS"
+        : asm_arg("=rm", out)
+    );
 }
 static forceinline uint16_t read_cs() {
-	uint16_t temp;
-	read_cs(temp);
-	return temp;
+    uint16_t temp;
+    read_cs(temp);
+    return temp;
 }
 
 static forceinline void write_ss(const uint32_t& value) {
-	__asm__ volatile(
-		"MOV %[value], %%SS"
-		:
-		: [value]"r,m"(value)
-	);
+    __asm__ volatile(
+        "MOV %[value], %%SS"
+        :
+        : [value]"r,m"(value)
+    );
 }
 static forceinline void store_ss(uint32_t& value) {
-	__asm__ volatile(
-		"MOV %%SS, %[value]"
-		: [value]"=r"(value)
-	);
+    __asm__ volatile(
+        "MOV %%SS, %[value]"
+        : [value]"=r"(value)
+    );
 }
 static forceinline uint32_t store_ss() {
-	uint32_t temp;
-	store_ss(temp);
-	return temp;
+    uint32_t temp;
+    store_ss(temp);
+    return temp;
 }
 static forceinline void write_ds(const uint16_t& value) {
-	__asm__ volatile(
-		"MOV DS, %[value]"
-		:
-		: [value] "r,m"((uint32_t)value)
-	);
+    __asm__ volatile(
+        "MOV DS, %[value]"
+        :
+        : [value] "r,m"((uint32_t)value)
+    );
 }
 static forceinline void write_es(const uint16_t& value) {
-	__asm__ volatile(
-		"MOV ES, %[value]"
-		:
-		: [value] "r,m"((uint32_t)value)
-	);
+    __asm__ volatile(
+        "MOV ES, %[value]"
+        :
+        : [value] "r,m"((uint32_t)value)
+    );
 }
 static forceinline void write_fs(const uint16_t& value) {
-	__asm__ volatile(
-		"MOV FS, %[value]"
-		:
-		: [value] "r,m"((uint32_t)value)
-	);
+    __asm__ volatile(
+        "MOV FS, %[value]"
+        :
+        : [value] "r,m"((uint32_t)value)
+    );
 }
 static forceinline void write_gs(const uint16_t& value) {
-	__asm__ volatile(
-		"MOV GS, %[value]"
-		:
-		: [value] "r,m"((uint32_t)value)
-	);
+    __asm__ volatile(
+        "MOV GS, %[value]"
+        :
+        : [value] "r,m"((uint32_t)value)
+    );
 }
 
 #pragma clang diagnostic push
@@ -504,7 +504,7 @@ static forceinline T FarReturn64To32(T retval) {
         :
         : "a"(retval)
     );
-	//unreachable;
+    //unreachable;
 }
 template<typename T>
 requires (std::is_integral_v<T> && sizeof(T) > sizeof(usreg_t))
@@ -514,7 +514,7 @@ static forceinline T FarReturn64To32(T retval) {
         :
         : "A"(retval)
     );
-	//unreachable;
+    //unreachable;
 }
 template<typename T>
 requires (!std::is_integral_v<T> && sizeof(T) > sizeof(usreg_t))
@@ -524,173 +524,173 @@ static forceinline T FarReturn64To32(T retval) {
         :
         : "x"(retval)
     );
-	//unreachable;
+    //unreachable;
 }
 static forceinline void FarReturn64To32() {
     asm (
         "lret"
     );
-	//unreachable;
+    //unreachable;
 }
 
 template<auto func>
 struct FarCall32To64 {
-	template <typename... Args>
-	requires (std::is_invocable_v<decltype(func), Args...> && std::is_same_v<std::invoke_result_t<decltype(func), Args...>, void>)
-	forceinline void operator()(Args... args) {
-		asm(
-			"lcall $0x33, %[func]"
-			:
-			: asm_arg("i", func)
-		);
-	}
-	template <typename... Args>
-	requires (std::is_invocable_v<decltype(func), Args...> && std::is_integral_v<std::invoke_result_t<decltype(func), Args...>> && sizeof(std::invoke_result_t<decltype(func), Args...>) <= sizeof(usreg_t))
-	forceinline std::invoke_result_t<decltype(func), Args...> operator()(Args... args) {
-		uint32_t ret;
-		asm(
-			"lcall $0x33, %[func]"
-			: asm_arg("=a", ret)
-			: asm_arg("i", func)
-		);
-		return ret;
-	}
-	template <typename... Args>
-	requires (std::is_invocable_v<decltype(func), Args...> && std::is_integral_v<std::invoke_result_t<decltype(func), Args...>> && sizeof(std::invoke_result_t<decltype(func), Args...>) > sizeof(usreg_t))
-	forceinline std::invoke_result_t<decltype(func), Args...> operator()(Args... args) {
-		uint64_t ret;
-		asm(
-			"lcall $0x33, %[func]"
-			: asm_arg("=A", ret)
-			: asm_arg("i", func)
-		);
-		return ret;
-	}
     template <typename... Args>
-	requires (std::is_invocable_v<decltype(func), Args...> && !std::is_integral_v<std::invoke_result_t<decltype(func), Args...>> && sizeof(std::invoke_result_t<decltype(func), Args...>) > sizeof(usreg_t))
-	forceinline std::invoke_result_t<decltype(func), Args...> operator()(Args... args) {
-		register __m128 ret asm("xmm0");
-		asm (
+    requires (std::is_invocable_v<decltype(func), Args...> && std::is_same_v<std::invoke_result_t<decltype(func), Args...>, void>)
+    forceinline void operator()(Args... args) {
+        asm(
+            "lcall $0x33, %[func]"
+            :
+            : asm_arg("i", func)
+        );
+    }
+    template <typename... Args>
+    requires (std::is_invocable_v<decltype(func), Args...> && std::is_integral_v<std::invoke_result_t<decltype(func), Args...>> && sizeof(std::invoke_result_t<decltype(func), Args...>) <= sizeof(usreg_t))
+    forceinline std::invoke_result_t<decltype(func), Args...> operator()(Args... args) {
+        uint32_t ret;
+        asm(
+            "lcall $0x33, %[func]"
+            : asm_arg("=a", ret)
+            : asm_arg("i", func)
+        );
+        return ret;
+    }
+    template <typename... Args>
+    requires (std::is_invocable_v<decltype(func), Args...> && std::is_integral_v<std::invoke_result_t<decltype(func), Args...>> && sizeof(std::invoke_result_t<decltype(func), Args...>) > sizeof(usreg_t))
+    forceinline std::invoke_result_t<decltype(func), Args...> operator()(Args... args) {
+        uint64_t ret;
+        asm(
+            "lcall $0x33, %[func]"
+            : asm_arg("=A", ret)
+            : asm_arg("i", func)
+        );
+        return ret;
+    }
+    template <typename... Args>
+    requires (std::is_invocable_v<decltype(func), Args...> && !std::is_integral_v<std::invoke_result_t<decltype(func), Args...>> && sizeof(std::invoke_result_t<decltype(func), Args...>) > sizeof(usreg_t))
+    forceinline std::invoke_result_t<decltype(func), Args...> operator()(Args... args) {
+        register __m128 ret asm("xmm0");
+        asm (
             "lcall $0x33, %[func]"
             : asm_arg("=x", ret)
             : asm_arg("i", func)
         );
-		return bitcast<std::invoke_result_t<decltype(func), Args...>>(ret);
-	}
+        return bitcast<std::invoke_result_t<decltype(func), Args...>>(ret);
+    }
 };
 
 #pragma clang diagnostic pop
 
 static inline bool repne_scasd(const uint32_t value, const uint32_t*& array_ptr, size_t& array_len) {
-	bool ret;
-	__asm__ volatile (
-		"REPNE SCASD"
-		: asm_arg("+c", array_len), asm_arg("+D", array_ptr), asm_flags(z, ret)
-		: asm_arg("a", value)
-	);
-	return ret;
+    bool ret;
+    __asm__ volatile (
+        "REPNE SCASD"
+        : asm_arg("+c", array_len), asm_arg("+D", array_ptr), asm_flags(z, ret)
+        : asm_arg("a", value)
+    );
+    return ret;
 }
 
 template<size_t array_len>
 static inline bool repne_scasd(const uint32_t value, const uint32_t(&array_ref)[array_len]) {
-	size_t length = array_len;
-	const uint32_t* array_ptr = array_ref;
-	return repne_scasd(value, array_ptr, length);
+    size_t length = array_len;
+    const uint32_t* array_ptr = array_ref;
+    return repne_scasd(value, array_ptr, length);
 }
 template<size_t array_len>
 static inline bool repne_scasd(const uint32_t value, const uint32_t(*array_ptr)[array_len]) {
-	size_t length = array_len;
-	const uint32_t* array_ptrB = array_ptr;
-	return repne_scasd(value, array_ptrB, length);
+    size_t length = array_len;
+    const uint32_t* array_ptrB = array_ptr;
+    return repne_scasd(value, array_ptrB, length);
 }
 static inline bool repne_scasd(const uint32_t value, const uint32_t* array_ref) {
-	size_t fake_length = -1;
-	return repne_scasd(value, array_ref, fake_length);
+    size_t fake_length = -1;
+    return repne_scasd(value, array_ref, fake_length);
 }
 
 static inline void rep_movsd(void *restrict dst, const void *restrict src, size_t dword_len) {
-	__asm__ volatile (
-		"rep movsl"
-		: asm_arg("+c", dword_len), asm_arg("+S", src), asm_arg("+D", dst)
-		:
-		: "memory"
-	);
+    __asm__ volatile (
+        "rep movsl"
+        : asm_arg("+c", dword_len), asm_arg("+S", src), asm_arg("+D", dst)
+        :
+        : "memory"
+    );
 }
 template<typename T = void, typename T2 = T>
 static inline T *restrict rep_movsb(T *restrict dst, const T2 *restrict src, size_t byte_len) {
-	__asm__ volatile (
-		"rep movsb"
-		: "=c"(byte_len), "+D"(dst), "+S"(src)
-		: "0"(byte_len)
-		: "memory"
-	);
-	//assume(byte_len == 0);
-	return dst;
+    __asm__ volatile (
+        "rep movsb"
+        : "=c"(byte_len), "+D"(dst), "+S"(src)
+        : "0"(byte_len)
+        : "memory"
+    );
+    //assume(byte_len == 0);
+    return dst;
 }
 template<typename T = void>
 static inline T *restrict rep_stosb(T *restrict dst, uint8_t value, size_t byte_len) {
-	__asm__ volatile (
-		"rep stosb"
-		: "=c"(byte_len), "+D"(dst)
-		: "0"(byte_len), "a"(value)
-		: "memory"
-	);
-	//assume(byte_len == 0);
-	return dst;
+    __asm__ volatile (
+        "rep stosb"
+        : "=c"(byte_len), "+D"(dst)
+        : "0"(byte_len), "a"(value)
+        : "memory"
+    );
+    //assume(byte_len == 0);
+    return dst;
 }
 template<typename T = void>
 static inline bool repe_cmpsb(T *restrict dst, T *restrict src, size_t byte_len) {
-	__asm__ volatile (
-		"repe cmpsb"
-		: "=c"(byte_len), "+D"(dst), "+S"(src)
-		: "0"(byte_len)
-		: "memory"
-	);
+    __asm__ volatile (
+        "repe cmpsb"
+        : "=c"(byte_len), "+D"(dst), "+S"(src)
+        : "0"(byte_len)
+        : "memory"
+    );
 }
 template<typename T = void>
 static inline bool repne_scasb(T *restrict dst, int val, size_t byte_len) {
-	__asm__ volatile (
-		"repne scasb"
-		: "=c"(byte_len), "+D"(dst)
-		: "0"(byte_len), "a"(val)
-		: "memory"
-	);
+    __asm__ volatile (
+        "repne scasb"
+        : "=c"(byte_len), "+D"(dst)
+        : "0"(byte_len), "a"(val)
+        : "memory"
+    );
 }
 
 static inline dreg_t pack_dreg(const sreg_t low, const sreg_t high) {
-	dreg_t ret;
-	__asm__(
-		""
-		: asm_arg("=A", ret)
-		: asm_arg("a", low), asm_arg("d", high)
-	);
-	return ret;
+    dreg_t ret;
+    __asm__(
+        ""
+        : asm_arg("=A", ret)
+        : asm_arg("a", low), asm_arg("d", high)
+    );
+    return ret;
 }
 
 static inline udreg_t pack_udreg(const usreg_t low, const usreg_t high) {
-	udreg_t ret;
-	__asm__(
-		""
-		: asm_arg("=A", ret)
-		: asm_arg("a", low), asm_arg("d", high)
-	);
-	return ret;
+    udreg_t ret;
+    __asm__(
+        ""
+        : asm_arg("=A", ret)
+        : asm_arg("a", low), asm_arg("d", high)
+    );
+    return ret;
 }
 
 static inline void unpack_dreg(const dreg_t input, sreg_t& low, sreg_t& high) {
-	__asm__(
-		""
-		: asm_arg("=a", low), asm_arg("=d", high)
-		: asm_arg("A", input)
-	);
+    __asm__(
+        ""
+        : asm_arg("=a", low), asm_arg("=d", high)
+        : asm_arg("A", input)
+    );
 }
 
 static inline void unpack_udreg(const udreg_t input, usreg_t& low, usreg_t& high) {
-	__asm__(
-		""
-		: asm_arg("=a", low), asm_arg("=d", high)
-		: asm_arg("A", input)
-	);
+    __asm__(
+        ""
+        : asm_arg("=a", low), asm_arg("=d", high)
+        : asm_arg("A", input)
+    );
 }
 
 
@@ -700,113 +700,113 @@ static inline void unpack_udreg(const udreg_t input, usreg_t& low, usreg_t& high
 #pragma clang diagnostic ignored "-Wreturn-type"
 
 static gnu_noinline uint32_t LMrdfsbase32() {
-	uint32_t ret;
-	asm(
-		".byte 0xF3, 0x0F, 0xAE, 0xC0"
-		: asm_arg("=a", ret)
-	);
-	FarReturn64To32(ret);
+    uint32_t ret;
+    asm(
+        ".byte 0xF3, 0x0F, 0xAE, 0xC0"
+        : asm_arg("=a", ret)
+    );
+    FarReturn64To32(ret);
 }
 #define rdfsbase32() []() { \
-	FarCall32To64<LMrdfsbase32> call; \
-	return call(); \
+    FarCall32To64<LMrdfsbase32> call; \
+    return call(); \
 }()
 static gnu_noinline vec<uint64_t, 2> LMrdfsbase64() {
-	register vec<uint64_t, 2> ret asm("xmm0");
-	asm(
-		".byte 0xF3, 0x48, 0x0F, 0xAE, 0xC0 \n"
-		".byte 0x66, 0x48, 0x0F, 0x6E, 0xC0"
-		: asm_arg("=x", ret)
-	);
-	FarReturn64To32(ret);
+    register vec<uint64_t, 2> ret asm("xmm0");
+    asm(
+        ".byte 0xF3, 0x48, 0x0F, 0xAE, 0xC0 \n"
+        ".byte 0x66, 0x48, 0x0F, 0x6E, 0xC0"
+        : asm_arg("=x", ret)
+    );
+    FarReturn64To32(ret);
 }
 #define rdfsbase64() []() -> uint64_t { \
-	FarCall32To64<LMrdfsbase64> call; \
-	return call()[0]; \
+    FarCall32To64<LMrdfsbase64> call; \
+    return call()[0]; \
 }()
 static gnu_noinline uint32_t LMrdgsbase32() {
-	uint32_t ret;
-	asm(
-		".byte 0xF3, 0x0F, 0xAE, 0xC8"
-		: asm_arg("=a", ret)
-	);
-	FarReturn64To32(ret);
+    uint32_t ret;
+    asm(
+        ".byte 0xF3, 0x0F, 0xAE, 0xC8"
+        : asm_arg("=a", ret)
+    );
+    FarReturn64To32(ret);
 }
 #define rdgsbase32() []() { \
-	FarCall32To64<LMrdgsbase32> call; \
-	return call(); \
+    FarCall32To64<LMrdgsbase32> call; \
+    return call(); \
 }()
 static gnu_noinline vec<uint64_t, 2> LMrdgsbase64() {
-	register vec<uint64_t, 2> ret asm("xmm0");
-	asm(
-		".byte 0xF3, 0x48, 0x0F, 0xAE, 0xC8 \n"
-		".byte 0x66, 0x48, 0x0F, 0x6E, 0xC0"
-		: asm_arg("=x", ret)
-	);
-	FarReturn64To32(ret);
+    register vec<uint64_t, 2> ret asm("xmm0");
+    asm(
+        ".byte 0xF3, 0x48, 0x0F, 0xAE, 0xC8 \n"
+        ".byte 0x66, 0x48, 0x0F, 0x6E, 0xC0"
+        : asm_arg("=x", ret)
+    );
+    FarReturn64To32(ret);
 }
 
 #pragma clang diagnostic pop
 
 #define rdgsbase64() []() { \
-	FarCall32To64<LMrdgsbase64> call; \
-	return call()[0]; \
+    FarCall32To64<LMrdgsbase64> call; \
+    return call()[0]; \
 }()
 static gnu_noinline void fastcall LMwrfsbase32(uint32_t addr) {
-	asm(
-		".byte 0xF3, 0x0F, 0xAR, 0xD1"
-		:
-		: asm_arg("c", addr)
-	);
-	FarReturn64To32();
+    asm(
+        ".byte 0xF3, 0x0F, 0xAR, 0xD1"
+        :
+        : asm_arg("c", addr)
+    );
+    FarReturn64To32();
 }
 #define wrfsbase32(...) [](uint32_t addr) { \
-	FarCall32To64<LMwrfsbase32> call; \
-	call(addr); \
+    FarCall32To64<LMwrfsbase32> call; \
+    call(addr); \
 }(__VA_ARGS__)
 static gnu_noinline void fastcall LMwrfsbase64(uint32_t addr_low, uint32_t addr_high) {
-	asm(
-		".byte 0x48 \n"
-		"shl $0x20, %[addr_high] \n"
-		".byte 0x48 \n"
-		"or %[addr_high], %[addr_low] \n"
-		".byte 0xF3, 0x48, 0x0F, 0xAR, 0xD1"
-		:
-		: asm_arg("c", addr_low), asm_arg("d", addr_high)
-	);
-	FarReturn64To32();
+    asm(
+        ".byte 0x48 \n"
+        "shl $0x20, %[addr_high] \n"
+        ".byte 0x48 \n"
+        "or %[addr_high], %[addr_low] \n"
+        ".byte 0xF3, 0x48, 0x0F, 0xAR, 0xD1"
+        :
+        : asm_arg("c", addr_low), asm_arg("d", addr_high)
+    );
+    FarReturn64To32();
 }
 #define wrfsbase64(...) [](uint64_t addr) { \
-	FarCall32To64<LMwrfsbase64> call; \
-	call(addr, addr >> 32); \
+    FarCall32To64<LMwrfsbase64> call; \
+    call(addr, addr >> 32); \
 }(__VA_ARGS__)
 static gnu_noinline void fastcall LMwrgsbase32(uint32_t addr) {
-	asm(
-		".byte 0xF3, 0x0F, 0xAR, 0xD1"
-		:
-		: asm_arg("r", addr)
-	);
-	FarReturn64To32();
+    asm(
+        ".byte 0xF3, 0x0F, 0xAR, 0xD1"
+        :
+        : asm_arg("r", addr)
+    );
+    FarReturn64To32();
 }
 #define wrgsbase32(...) [](uint32_t addr) { \
-	FarCall32To64<LMwrgsbase32> call; \
-	call(addr); \
+    FarCall32To64<LMwrgsbase32> call; \
+    call(addr); \
 }(__VA_ARGS__)
 static gnu_noinline void fastcall LMwrgsbase64(uint32_t addr_low, uint32_t addr_high) {
-	asm(
-		".byte 0x48 \n"
-		"shl $0x20, %[addr_high] \n"
-		".byte 0x48 \n"
-		"or %[addr_high], %[addr_low] \n"
-		".byte 0xF3, 0x48, 0x0F, 0xAR, 0xD1"
-		:
-		: asm_arg("c", addr_low), asm_arg("d", addr_high)
-	);
-	FarReturn64To32();
+    asm(
+        ".byte 0x48 \n"
+        "shl $0x20, %[addr_high] \n"
+        ".byte 0x48 \n"
+        "or %[addr_high], %[addr_low] \n"
+        ".byte 0xF3, 0x48, 0x0F, 0xAR, 0xD1"
+        :
+        : asm_arg("c", addr_low), asm_arg("d", addr_high)
+    );
+    FarReturn64To32();
 }
 #define wrgsbase64(...) [](uint64_t addr) { \
-	FarCall32To64<LMwrgsbase64> call; \
-	call(addr, addr >> 32); \
+    FarCall32To64<LMwrgsbase64> call; \
+    call(addr, addr >> 32); \
 }(__VA_ARGS__)
 #define rdfsbase rdfsbase32
 #define rdgsbase rdgsbase32
@@ -825,64 +825,64 @@ static gnu_noinline void fastcall LMwrgsbase64(uint32_t addr_low, uint32_t addr_
 
 #else
 static inline uint32_t rdfsbase32() {
-	uint32_t ret;
-	asm(
-		"RDFSBASE %[ret]"
-		: asm_arg("=r", ret)
-	);
-	return ret;
+    uint32_t ret;
+    asm(
+        "RDFSBASE %[ret]"
+        : asm_arg("=r", ret)
+    );
+    return ret;
 }
 static inline uint64_t rdfsbase64() {
-	uint64_t ret;
-	asm(
-		"RDFSBASE %[ret]"
-		: asm_arg("=r", ret)
-	);
-	return ret;
+    uint64_t ret;
+    asm(
+        "RDFSBASE %[ret]"
+        : asm_arg("=r", ret)
+    );
+    return ret;
 }
 static inline uint32_t rdgsbase32() {
-	uint32_t ret;
-	asm(
-		"RDGSBASE %[ret]"
-		: asm_arg("=r", ret)
-	);
-	return ret;
+    uint32_t ret;
+    asm(
+        "RDGSBASE %[ret]"
+        : asm_arg("=r", ret)
+    );
+    return ret;
 }
 static inline uint64_t rdgsbase64() {
-	uint64_t ret;
-	asm(
-		"RDGSBASE %[ret]"
-		: asm_arg("=r", ret)
-	);
-	return ret;
+    uint64_t ret;
+    asm(
+        "RDGSBASE %[ret]"
+        : asm_arg("=r", ret)
+    );
+    return ret;
 }
 static inline void wrfsbase32(uint32_t addr) {
-	asm(
-		"WRFSBASE %[addr]"
-		:
-		: asm_arg("r", addr)
-	);
+    asm(
+        "WRFSBASE %[addr]"
+        :
+        : asm_arg("r", addr)
+    );
 }
 static inline void wrfsbase64(uint64_t addr) {
-	asm(
-		"WRFSBASE %[addr]"
-		:
-		: asm_arg("r", addr)
-	);
+    asm(
+        "WRFSBASE %[addr]"
+        :
+        : asm_arg("r", addr)
+    );
 }
 static inline void wrgsbase32(uint32_t addr) {
-	asm(
-		"WRGSBASE %[addr]"
-		:
-		: asm_arg("r", addr)
-	);
+    asm(
+        "WRGSBASE %[addr]"
+        :
+        : asm_arg("r", addr)
+    );
 }
 static inline void wrgsbase64(uint64_t addr) {
-	asm(
-		"WRGSBASE %[addr]"
-		:
-		: asm_arg("r", addr)
-	);
+    asm(
+        "WRGSBASE %[addr]"
+        :
+        : asm_arg("r", addr)
+    );
 }
 #define rdfsbase rdfsbase64
 #define rdgsbase rdgsbase64
@@ -903,195 +903,195 @@ static inline void wrgsbase64(uint64_t addr) {
 
 template <typename T>
 static inline bool read_least_significant_bit(const T& value) {
-	int carry_flag;
-	__asm__(
-		"ROL %[shift_count], %[value]"
-		: asm_arg("+X", value), asm_flags(c, carry_flag)
-		: [shift_count]"J"(sizeof(T))
-	);
-	return carry_flag;
+    int carry_flag;
+    __asm__(
+        "ROL %[shift_count], %[value]"
+        : asm_arg("+X", value), asm_flags(c, carry_flag)
+        : [shift_count]"J"(sizeof(T))
+    );
+    return carry_flag;
 }
 
 template <typename T>
 static inline bool read_most_significant_bit(const T& value) {
-	int carry_flag;
-	__asm__(
-		"ROR %[shift_count], %[value]"
-		: asm_arg("+X", value), asm_flags(c, carry_flag)
-		: [shift_count] "J"(sizeof(T))
-	);
-	return carry_flag;
+    int carry_flag;
+    __asm__(
+        "ROR %[shift_count], %[value]"
+        : asm_arg("+X", value), asm_flags(c, carry_flag)
+        : [shift_count] "J"(sizeof(T))
+    );
+    return carry_flag;
 }
 
 template <typename T>
 static inline bool bit_test(const T& value, std::make_unsigned_t<std::remove_volatile_t<T>> bit_offset) {
-	int carry_flag;
-	if constexpr (std::is_same_v<T, int16_t> || std::is_same_v<T, uint16_t>) {
-		__asm__(
-			"BTW %[bit_offset], %[value]"
-			: asm_flags(c, carry_flag)
-			: asm_arg("X", value), asm_arg("rNs", bit_offset)
-		);
-	} else if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
-		__asm__(
-			"BTL %[bit_offset], %[value]"
-			: asm_flags(c, carry_flag)
-			: asm_arg("X", value), asm_arg("rNs", bit_offset)
-		);
-	} else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>) {
-		__asm__(
-			"BTQ %[bit_offset], %[value]"
-			: asm_flags(c, carry_flag)
-			: asm_arg("X", value), asm_arg("rNs", bit_offset)
-		);
-	}
-	return carry_flag;
+    int carry_flag;
+    if constexpr (std::is_same_v<T, int16_t> || std::is_same_v<T, uint16_t>) {
+        __asm__(
+            "BTW %[bit_offset], %[value]"
+            : asm_flags(c, carry_flag)
+            : asm_arg("X", value), asm_arg("rNs", bit_offset)
+        );
+    } else if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
+        __asm__(
+            "BTL %[bit_offset], %[value]"
+            : asm_flags(c, carry_flag)
+            : asm_arg("X", value), asm_arg("rNs", bit_offset)
+        );
+    } else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>) {
+        __asm__(
+            "BTQ %[bit_offset], %[value]"
+            : asm_flags(c, carry_flag)
+            : asm_arg("X", value), asm_arg("rNs", bit_offset)
+        );
+    }
+    return carry_flag;
 }
 
 template <typename T>
 static inline bool bit_test_set(T& value, std::make_unsigned_t<std::remove_volatile_t<T>> bit_offset) {
-	int carry_flag;
-	if constexpr (std::is_same_v<T, int16_t> || std::is_same_v<T, uint16_t>) {
-		__asm__(
-			"BTSW %[bit_offset], %[value]"
-			: asm_arg("+rm", value), asm_flags(c, carry_flag)
-			: asm_arg("rNs", bit_offset)
-		);
-	} else if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
-		__asm__(
-			"BTSL %[bit_offset], %[value]"
-			: asm_arg("+rm", value), asm_flags(c, carry_flag)
-			: asm_arg("rNs", bit_offset)
-		);
-	} else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>) {
-		__asm__(
-			"BTSQ %[bit_offset], %[value]"
-			: asm_arg("+rm", value), asm_flags(c, carry_flag)
-			: asm_arg("rNs", bit_offset)
-		);
-	}
-	return carry_flag;
+    int carry_flag;
+    if constexpr (std::is_same_v<T, int16_t> || std::is_same_v<T, uint16_t>) {
+        __asm__(
+            "BTSW %[bit_offset], %[value]"
+            : asm_arg("+rm", value), asm_flags(c, carry_flag)
+            : asm_arg("rNs", bit_offset)
+        );
+    } else if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
+        __asm__(
+            "BTSL %[bit_offset], %[value]"
+            : asm_arg("+rm", value), asm_flags(c, carry_flag)
+            : asm_arg("rNs", bit_offset)
+        );
+    } else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>) {
+        __asm__(
+            "BTSQ %[bit_offset], %[value]"
+            : asm_arg("+rm", value), asm_flags(c, carry_flag)
+            : asm_arg("rNs", bit_offset)
+        );
+    }
+    return carry_flag;
 }
 
 template <typename T>
 static inline bool bit_test_reset(T& value, std::make_unsigned_t<std::remove_volatile_t<T>> bit_offset) {
-	int carry_flag;
-	if constexpr (std::is_same_v<T, int16_t> || std::is_same_v<T, uint16_t>) {
-		__asm__(
-			"BTRW %[bit_offset], %[value]"
-			: asm_arg("+rm", value), asm_flags(c, carry_flag)
-			: asm_arg("rNs", bit_offset)
-		);
-	} else if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
-		__asm__(
-			"BTRL %[bit_offset], %[value]"
-			: asm_arg("+rm", value), asm_flags(c, carry_flag)
-			: asm_arg("rNs", bit_offset)
-		);
-	} else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>) {
-		__asm__(
-			"BTRQ %[bit_offset], %[value]"
-			: asm_arg("+rm", value), asm_flags(c, carry_flag)
-			: asm_arg("rNs", bit_offset)
-		);
-	}
-	return carry_flag;
+    int carry_flag;
+    if constexpr (std::is_same_v<T, int16_t> || std::is_same_v<T, uint16_t>) {
+        __asm__(
+            "BTRW %[bit_offset], %[value]"
+            : asm_arg("+rm", value), asm_flags(c, carry_flag)
+            : asm_arg("rNs", bit_offset)
+        );
+    } else if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
+        __asm__(
+            "BTRL %[bit_offset], %[value]"
+            : asm_arg("+rm", value), asm_flags(c, carry_flag)
+            : asm_arg("rNs", bit_offset)
+        );
+    } else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>) {
+        __asm__(
+            "BTRQ %[bit_offset], %[value]"
+            : asm_arg("+rm", value), asm_flags(c, carry_flag)
+            : asm_arg("rNs", bit_offset)
+        );
+    }
+    return carry_flag;
 }
 
 template <typename T>
 static inline bool bit_test_complement(T& value, std::make_unsigned_t<std::remove_volatile_t<T>> bit_offset) {
-	int carry_flag;
-	if constexpr (std::is_same_v<T, int16_t> || std::is_same_v<T, uint16_t>) {
-		__asm__(
-			"BTCW %[bit_offset], %[value]"
-			: asm_arg("+rm", value), asm_flags(c, carry_flag)
-			: asm_arg("rNs", bit_offset)
-		);
-	} else if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
-		__asm__(
-			"BTCL %[bit_offset], %[value]"
-			: asm_arg("+rm", value), asm_flags(c, carry_flag)
-			: asm_arg("rNs", bit_offset)
-		);
-	} else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>) {
-		__asm__(
-			"BTCQ %[bit_offset], %[value]"
-			: asm_arg("+rm", value), asm_flags(c, carry_flag)
-			: asm_arg("rNs", bit_offset)
-		);
-	}
-	return carry_flag;
+    int carry_flag;
+    if constexpr (std::is_same_v<T, int16_t> || std::is_same_v<T, uint16_t>) {
+        __asm__(
+            "BTCW %[bit_offset], %[value]"
+            : asm_arg("+rm", value), asm_flags(c, carry_flag)
+            : asm_arg("rNs", bit_offset)
+        );
+    } else if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
+        __asm__(
+            "BTCL %[bit_offset], %[value]"
+            : asm_arg("+rm", value), asm_flags(c, carry_flag)
+            : asm_arg("rNs", bit_offset)
+        );
+    } else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>) {
+        __asm__(
+            "BTCQ %[bit_offset], %[value]"
+            : asm_arg("+rm", value), asm_flags(c, carry_flag)
+            : asm_arg("rNs", bit_offset)
+        );
+    }
+    return carry_flag;
 }
 
 template <typename T>
 static inline std::make_unsigned_t<std::remove_cvref_t<T>> bit_scan_forward(const T& value) {
-	std::make_unsigned_t<std::remove_cvref_t<T>> ret;
-	int zero_flag;
-	if constexpr (std::is_same_v<T, int16_t> || std::is_same_v<T, uint16_t>) {
-		__asm__(
-			"BSFW %[value], %[ret]"
-			: asm_arg("=r", ret), asm_flags(z, zero_flag)
-			: asm_arg("rm", value)
-		);
-	} else if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
-		__asm__(
-			"BSFL %[value], %[ret]"
-			: asm_arg("=r", ret), asm_flags(z, zero_flag)
-			: asm_arg("rm", value)
-		);
-	} else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>) {
-		__asm__(
-			"BSFQ %[value], %[ret]"
-			: asm_arg("=r", ret), asm_flags(z, zero_flag)
-			: asm_arg("rm", value)
-		);
-	}
-	return zero_flag ? ret : 0;
+    std::make_unsigned_t<std::remove_cvref_t<T>> ret;
+    int zero_flag;
+    if constexpr (std::is_same_v<T, int16_t> || std::is_same_v<T, uint16_t>) {
+        __asm__(
+            "BSFW %[value], %[ret]"
+            : asm_arg("=r", ret), asm_flags(z, zero_flag)
+            : asm_arg("rm", value)
+        );
+    } else if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
+        __asm__(
+            "BSFL %[value], %[ret]"
+            : asm_arg("=r", ret), asm_flags(z, zero_flag)
+            : asm_arg("rm", value)
+        );
+    } else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>) {
+        __asm__(
+            "BSFQ %[value], %[ret]"
+            : asm_arg("=r", ret), asm_flags(z, zero_flag)
+            : asm_arg("rm", value)
+        );
+    }
+    return zero_flag ? ret : 0;
 }
 
 template <typename T>
 static inline std::make_unsigned_t<std::remove_cvref_t<T>> bit_scan_reverse(const T& value) {
-	std::make_unsigned_t<std::remove_cvref_t<T>> ret;
-	int zero_flag;
-	if constexpr (std::is_same_v<T, int16_t> || std::is_same_v<T, uint16_t>) {
-		__asm__(
-			"BSRW %[value], %[ret]"
-			: asm_arg("=r", ret), asm_flags(z, zero_flag)
-			: asm_arg("rm", value)
-		);
-	} else if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
-		__asm__(
-			"BSRL %[value], %[ret]"
-			: asm_arg("=r", ret), asm_flags(z, zero_flag)
-			: asm_arg("rm", value)
-		);
-	} else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>) {
-		__asm__(
-			"BSRQ %[value], %[ret]"
-			: asm_arg("=r", ret), asm_flags(z, zero_flag)
-			: asm_arg("rm", value)
-		);
-	}
-	return zero_flag ? ret : 0;
+    std::make_unsigned_t<std::remove_cvref_t<T>> ret;
+    int zero_flag;
+    if constexpr (std::is_same_v<T, int16_t> || std::is_same_v<T, uint16_t>) {
+        __asm__(
+            "BSRW %[value], %[ret]"
+            : asm_arg("=r", ret), asm_flags(z, zero_flag)
+            : asm_arg("rm", value)
+        );
+    } else if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
+        __asm__(
+            "BSRL %[value], %[ret]"
+            : asm_arg("=r", ret), asm_flags(z, zero_flag)
+            : asm_arg("rm", value)
+        );
+    } else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>) {
+        __asm__(
+            "BSRQ %[value], %[ret]"
+            : asm_arg("=r", ret), asm_flags(z, zero_flag)
+            : asm_arg("rm", value)
+        );
+    }
+    return zero_flag ? ret : 0;
 }
 
 template<typename T> requires(std::is_integral_v<T>)
 static forceinline bool umul_overflow(T left, T right, T* out) {
-	bool carry;
+    bool carry;
 #if IS_X64
 
 #else
-	if constexpr (std::is_same_v<T, uint32_t>) {
-		uint64_t value;
-		__asm__ volatile (
-			"mul %[right]"
-			: asm_arg("=A", value), asm_flags(c, carry)
-			: asm_arg("%a", left), asm_arg("%r", right)
-		);
-		if (out) *out = (uint32_t)value;
-	}
+    if constexpr (std::is_same_v<T, uint32_t>) {
+        uint64_t value;
+        __asm__ volatile (
+            "mul %[right]"
+            : asm_arg("=A", value), asm_flags(c, carry)
+            : asm_arg("%a", left), asm_arg("%r", right)
+        );
+        if (out) *out = (uint32_t)value;
+    }
 #endif
-	return carry;
+    return carry;
 }
 
 #define HAS_BMI1 (__BMI__ || COMPILER_IS_MSVC && __AVX2__)
@@ -1099,73 +1099,73 @@ static forceinline bool umul_overflow(T left, T right, T* out) {
 
 template<typename T> requires(std::is_integral_v<T>)
 static inline T sbb_bool(T value) {
-	using U = std::make_unsigned_t<T>;
-	return (T)((U)value < (U)value - 1 ? -1 : 0);
+    using U = std::make_unsigned_t<T>;
+    return (T)((U)value < (U)value - 1 ? -1 : 0);
 }
 
 template<typename T> requires(std::is_integral_v<T>)
 static inline T blsi(T value) {
 #if HAS_BMI1
-	if constexpr (sizeof(T) < sizeof(uint32_t)) {
-		uint32_t value_wide = value;
-		return (T)(value_wide & -value_wide);
-	}
+    if constexpr (sizeof(T) < sizeof(uint32_t)) {
+        uint32_t value_wide = value;
+        return (T)(value_wide & -value_wide);
+    }
 #endif
-	return value & -value;
+    return value & -value;
 }
 
 template<typename T> requires(std::is_integral_v<T>)
 static inline T blsr(T value) {
 #if HAS_BMI1
-	if constexpr (sizeof(T) < sizeof(uint32_t)) {
-		uint32_t value_wide = value;
-		return (T)(value_wide & value_wide - 1);
-	}
+    if constexpr (sizeof(T) < sizeof(uint32_t)) {
+        uint32_t value_wide = value;
+        return (T)(value_wide & value_wide - 1);
+    }
 #endif
-	return value & value - 1;
+    return value & value - 1;
 }
 
 template<typename T> requires(std::is_integral_v<T>)
 static inline T blsmsk(T value) {
 #if HAS_BMI1
-	if constexpr (sizeof(T) < sizeof(uint32_t)) {
-		uint32_t value_wide = value;
-		return (T)(value_wide ^ value_wide - 1);
-	}
+    if constexpr (sizeof(T) < sizeof(uint32_t)) {
+        uint32_t value_wide = value;
+        return (T)(value_wide ^ value_wide - 1);
+    }
 #endif
-	return value ^ value - 1;
+    return value ^ value - 1;
 }
 
 template<typename T> requires(std::is_integral_v<T>)
 static inline T blsmskz(const T& value) {
 #if HAS_BMI1_NOT_MSVC
-	using R = std::conditional_t <sizeof(T) < sizeof(uint64_t), uint32_t, uint64_t>;
-	R temp = value;
-	R ret;
-	bool carry_flag;
-	asm(
-		"BLSMSK %[temp], %[ret]"
-		: asm_arg("=r", ret), asm_flags(c, carry_flag)
-		: asm_arg("X", temp)
-	);
-	return ret + carry_flag;
+    using R = std::conditional_t <sizeof(T) < sizeof(uint64_t), uint32_t, uint64_t>;
+    R temp = value;
+    R ret;
+    bool carry_flag;
+    asm(
+        "BLSMSK %[temp], %[ret]"
+        : asm_arg("=r", ret), asm_flags(c, carry_flag)
+        : asm_arg("X", temp)
+    );
+    return ret + carry_flag;
 #else
 #if HAS_BMI1
-	if constexpr (sizeof(T) < sizeof(uint32_t)) {
-		uint32_t value_wide = value;
-		return (T)(blsmsk(value_wide) - sbb_bool(value));
-	}
+    if constexpr (sizeof(T) < sizeof(uint32_t)) {
+        uint32_t value_wide = value;
+        return (T)(blsmsk(value_wide) - sbb_bool(value));
+    }
 #endif
-	return blsmsk(value) - sbb_bool(value);
+    return blsmsk(value) - sbb_bool(value);
 #endif
 }
 
 template<typename T> requires(std::is_integral_v<T>)
 static inline T tzmsk(T value) {
 #if HAS_BMI1
-	return ~value & value - 1;
+    return ~value & value - 1;
 #else
-	return (std::make_signed_t<T>)blsmsk(value) >> 1;
+    return (std::make_signed_t<T>)blsmsk(value) >> 1;
 #endif
 }
 
@@ -1173,63 +1173,63 @@ template <typename T> requires(std::is_integral_v<T>)
 static inline T tzmskz(const T& value) {
 #if !COMPILER_IS_MSVC
 #if __TBM__ || __BMI__
-	using R = std::conditional_t<sizeof(T) < sizeof(uint64_t), uint32_t, uint64_t>;
-	R temp = value;
-	R ret;
-	bool carry_flag;
-	asm(
+    using R = std::conditional_t<sizeof(T) < sizeof(uint64_t), uint32_t, uint64_t>;
+    R temp = value;
+    R ret;
+    bool carry_flag;
+    asm(
 #if __TBM__
-		"TZMSK %[temp], %[ret]"
+        "TZMSK %[temp], %[ret]"
 #elif __BMI__
-		"BLSI %[temp], %[ret]"
+        "BLSI %[temp], %[ret]"
 #endif
-		: asm_arg("=r", ret), asm_flags(c, carry_flag)
-		: asm_arg("X", temp)
-	);
+        : asm_arg("=r", ret), asm_flags(c, carry_flag)
+        : asm_arg("X", temp)
+    );
 #if __TBM__
-		ret += carry_flag;
+        ret += carry_flag;
 #elif __BMI__
-		ret -= carry_flag;
+        ret -= carry_flag;
 #endif
-	return ret;
+    return ret;
 #else
-	T ret = value;
-	return blsi(ret) + sbb_bool(ret);
+    T ret = value;
+    return blsi(ret) + sbb_bool(ret);
 #endif
 #else
-	T ret = value;
-	return tzmsk(ret) - sbb_bool(ret);
+    T ret = value;
+    return tzmsk(ret) - sbb_bool(ret);
 #endif
 }
 
 #ifndef __x86_64__
 static inline uint16_t aad_math(uint16_t in, const uint8_t mul = 10u) {
-	__asm__(
-		"AAD %[mul]"
-		: asm_arg("+a", in)
-		: asm_arg("N", mul)
-		: "cc"
-	);
-	return in;
+    __asm__(
+        "AAD %[mul]"
+        : asm_arg("+a", in)
+        : asm_arg("N", mul)
+        : "cc"
+    );
+    return in;
 }
 static inline uint16_t aad_math(uint8_t low, uint8_t high, const uint8_t mul = 10u) {
-	return aad_math(PackUInt16(low, high), mul);
+    return aad_math(PackUInt16(low, high), mul);
 }
 
 struct aam_ret {
-	uint8_t remainder;
-	uint8_t quotient;
+    uint8_t remainder;
+    uint8_t quotient;
 };
 static inline aam_ret aam_math(uint8_t dividend, const uint8_t divisor = 10u) {
-	register uint8_t remainder asm("al");
-	register uint8_t quotient asm("ah");
-	__asm__(
-		"AAM %[divisor]"
-		: asm_arg("=a", remainder), asm_arg("=a", quotient)
-		: asm_arg("a", dividend), asm_arg("N", divisor)
-		: "cc"
-	);
-	return { remainder, quotient };
+    register uint8_t remainder asm("al");
+    register uint8_t quotient asm("ah");
+    __asm__(
+        "AAM %[divisor]"
+        : asm_arg("=a", remainder), asm_arg("=a", quotient)
+        : asm_arg("a", dividend), asm_arg("N", divisor)
+        : "cc"
+    );
+    return { remainder, quotient };
 }
 #endif
 
@@ -1254,8 +1254,8 @@ size_t fastcall get_hex_digit_count(T value) {
             int carry_flag;
             __asm__(
                 "lzcntl %[value], %[ret]"
-				: asm_arg("=r", ret), asm_flags(c, carry_flag)
-				: asm_arg("r", value)
+                : asm_arg("=r", ret), asm_flags(c, carry_flag)
+                : asm_arg("r", value)
             );
             ret -= carry_flag;
         }
@@ -1264,8 +1264,8 @@ size_t fastcall get_hex_digit_count(T value) {
             int carry_flag;
             __asm__(
                 "lzcntq %[value], %[ret]"
-				: asm_arg("=r", ret), asm_flags(c, carry_flag)
-				: asm_arg("r", value)
+                : asm_arg("=r", ret), asm_flags(c, carry_flag)
+                : asm_arg("r", value)
             );
             ret -= carry_flag;
         }
@@ -1280,273 +1280,273 @@ size_t fastcall get_hex_digit_count(T value) {
 }
 
 static inline bool complement_carry(void) {
-	int carry_flag;
-	__asm__(
-		"CMC"
-		: asm_flags(c, carry_flag)
-	);
-	return carry_flag;
+    int carry_flag;
+    __asm__(
+        "CMC"
+        : asm_flags(c, carry_flag)
+    );
+    return carry_flag;
 }
 
 static inline void clear_dir_flag() {
-	asm(
-		"CLD"
-		:
-		:
-		: clobber_list("dirflag")
-	);
+    asm(
+        "CLD"
+        :
+        :
+        : clobber_list("dirflag")
+    );
 }
 static inline void set_dir_flag() {
-	asm(
-		"STD"
-		:
-		:
-		: clobber_list("dirflag")
-	);
+    asm(
+        "STD"
+        :
+        :
+        : clobber_list("dirflag")
+    );
 }
 
 enum x86FloatPrecision : uint8_t {
-	SinglePrecision = 0,
-	DoublePrecision = 2,
-	ExtendedPrecision = 3
+    SinglePrecision = 0,
+    DoublePrecision = 2,
+    ExtendedPrecision = 3
 };
 enum x86FloatRounding : uint8_t {
-	RoundToNearest = 0,
-	RoundDown = 1,
-	RoundUp = 2,
-	RoundTowardsZero = 3
+    RoundToNearest = 0,
+    RoundDown = 1,
+    RoundUp = 2,
+    RoundTowardsZero = 3
 };
 union FCW {
-	uint16_t raw;
-	struct {
-		uint8_t low_byte;
-		uint8_t high_byte;
-	};
-	struct {
-		uint16_t invalid_operation_mask : 1; // 0
-		uint16_t denormal_operand_mask : 1; // 1
-		uint16_t divide_by_zero_mask : 1; // 2
-		uint16_t overflow_mask : 1; // 3
-		uint16_t underflow_mask : 1; // 4
-		uint16_t precision_mask : 1; // 5
-		uint16_t : 2; // 6-7
-		uint16_t precision : 2; // 8-9
-		uint16_t rounding : 2; // 10-11
-		uint16_t infinity_control : 1; // 12
-		uint16_t : 3; // 13-15
-	};
-	struct {
-		uint16_t exception_masks : 6;
-	};
+    uint16_t raw;
+    struct {
+        uint8_t low_byte;
+        uint8_t high_byte;
+    };
+    struct {
+        uint16_t invalid_operation_mask : 1; // 0
+        uint16_t denormal_operand_mask : 1; // 1
+        uint16_t divide_by_zero_mask : 1; // 2
+        uint16_t overflow_mask : 1; // 3
+        uint16_t underflow_mask : 1; // 4
+        uint16_t precision_mask : 1; // 5
+        uint16_t : 2; // 6-7
+        uint16_t precision : 2; // 8-9
+        uint16_t rounding : 2; // 10-11
+        uint16_t infinity_control : 1; // 12
+        uint16_t : 3; // 13-15
+    };
+    struct {
+        uint16_t exception_masks : 6;
+    };
 };
 ValidateStructSize(0x2, FCW);
 union FCWW {
-	uint32_t raw_wide;
-	uint16_t raw;
-	struct {
-		uint8_t low_byte;
-		uint8_t high_byte;
-	};
-	struct {
-		uint32_t invalid_operation_mask : 1; // 0
-		uint32_t denormal_operand_mask : 1; // 1
-		uint32_t divide_by_zero_mask : 1; // 2
-		uint32_t overflow_mask : 1; // 3
-		uint32_t underflow_mask : 1; // 4
-		uint32_t precision_mask : 1; // 5
-		uint32_t : 2; // 6-7
-		uint32_t precision : 2; // 8-9
-		uint32_t rounding : 2; // 10-11
-		uint32_t infinity_control : 1; // 12
-		uint32_t : 19; // 13-31
-	};
-	struct {
-		uint32_t exception_masks : 6;
-	};
+    uint32_t raw_wide;
+    uint16_t raw;
+    struct {
+        uint8_t low_byte;
+        uint8_t high_byte;
+    };
+    struct {
+        uint32_t invalid_operation_mask : 1; // 0
+        uint32_t denormal_operand_mask : 1; // 1
+        uint32_t divide_by_zero_mask : 1; // 2
+        uint32_t overflow_mask : 1; // 3
+        uint32_t underflow_mask : 1; // 4
+        uint32_t precision_mask : 1; // 5
+        uint32_t : 2; // 6-7
+        uint32_t precision : 2; // 8-9
+        uint32_t rounding : 2; // 10-11
+        uint32_t infinity_control : 1; // 12
+        uint32_t : 19; // 13-31
+    };
+    struct {
+        uint32_t exception_masks : 6;
+    };
 };
 ValidateStructSize(0x4, FCWW);
 
 union FSW {
-	uint16_t raw;
-	struct {
-		uint16_t invalid_operation_exception : 1; // 0
-		uint16_t denormal_operand_exception : 1; // 1
-		uint16_t divide_by_zero_exception : 1; // 2
-		uint16_t overflow_exception : 1; // 3
-		uint16_t underflow_exception : 1; // 4
-		uint16_t precision_exception : 1; // 5
-		uint16_t stack_fault : 1; // 6
-		uint16_t exception_summary : 1; // 7
-		uint16_t c0 : 1; // 8
-		uint16_t c1 : 1; // 9
-		uint16_t c2 : 1; // 10
-		uint16_t stack_top : 3; // 11-13
-		uint16_t c3 : 1; // 14
-		uint16_t busy : 1; // 15
-	};
-	struct {
-		uint16_t exceptions : 6;
-	};
+    uint16_t raw;
+    struct {
+        uint16_t invalid_operation_exception : 1; // 0
+        uint16_t denormal_operand_exception : 1; // 1
+        uint16_t divide_by_zero_exception : 1; // 2
+        uint16_t overflow_exception : 1; // 3
+        uint16_t underflow_exception : 1; // 4
+        uint16_t precision_exception : 1; // 5
+        uint16_t stack_fault : 1; // 6
+        uint16_t exception_summary : 1; // 7
+        uint16_t c0 : 1; // 8
+        uint16_t c1 : 1; // 9
+        uint16_t c2 : 1; // 10
+        uint16_t stack_top : 3; // 11-13
+        uint16_t c3 : 1; // 14
+        uint16_t busy : 1; // 15
+    };
+    struct {
+        uint16_t exceptions : 6;
+    };
 };
 ValidateStructSize(0x2, FSW);
 union FSWW {
-	uint32_t raw_wide;
-	uint16_t raw;
-	struct {
-		uint32_t invalid_operation_exception : 1;
-		uint32_t denormal_operand_exception : 1;
-		uint32_t divide_by_zero_exception : 1;
-		uint32_t overflow_exception : 1;
-		uint32_t underflow_exception : 1;
-		uint32_t precision_exception : 1;
-		uint32_t stack_fault : 1;
-		uint32_t exception_summary : 1;
-		uint32_t c0 : 1;
-		uint32_t c1 : 1;
-		uint32_t c2 : 1;
-		uint32_t stack_top : 3;
-		uint32_t c3 : 1;
-		uint32_t busy : 1;
-		uint32_t : 16;
-	};
-	struct {
-		uint32_t exceptions : 6;
-	};
+    uint32_t raw_wide;
+    uint16_t raw;
+    struct {
+        uint32_t invalid_operation_exception : 1;
+        uint32_t denormal_operand_exception : 1;
+        uint32_t divide_by_zero_exception : 1;
+        uint32_t overflow_exception : 1;
+        uint32_t underflow_exception : 1;
+        uint32_t precision_exception : 1;
+        uint32_t stack_fault : 1;
+        uint32_t exception_summary : 1;
+        uint32_t c0 : 1;
+        uint32_t c1 : 1;
+        uint32_t c2 : 1;
+        uint32_t stack_top : 3;
+        uint32_t c3 : 1;
+        uint32_t busy : 1;
+        uint32_t : 16;
+    };
+    struct {
+        uint32_t exceptions : 6;
+    };
 };
 ValidateStructSize(0x4, FSWW);
 
 union MXCSR {
-	uint32_t raw;
-	struct {
-		uint32_t invalid_operation_exception : 1; // 0
-		uint32_t denormal_operand_exception : 1; // 1
-		uint32_t divide_by_zero_exception : 1; // 2
-		uint32_t overflow_exception : 1; // 3
-		uint32_t underflow_exception : 1; // 4
-		uint32_t precision_exception : 1; // 5
-		uint32_t denormals_are_zeros : 1; // 6
-		uint32_t invalid_operation_mask : 1; // 7
-		uint32_t denormal_operand_mask : 1; // 8
-		uint32_t divide_by_zero_mask : 1; // 9
-		uint32_t overflow_mask : 1; // 10
-		uint32_t underflow_mask : 1; // 11
-		uint32_t precision_mask : 1; // 12
-		uint32_t rounding : 2; // 13-14
-		uint32_t flush_to_zero : 1; // 15
-		uint32_t : 1; // 16
-		uint32_t misaligned_exception_mask : 1; // 17
-		uint32_t : 2; // 18-19
-		uint32_t __unknown_k10m_bit_A : 1; // 20
-		uint32_t disable_unmasked_exceptions : 1; // 21
-		uint32_t : 10; // 22-31
-	};
-	struct {
-		uint32_t exceptions : 6;
-		uint32_t : 1;
-		uint32_t exception_masks : 6;
-	};
+    uint32_t raw;
+    struct {
+        uint32_t invalid_operation_exception : 1; // 0
+        uint32_t denormal_operand_exception : 1; // 1
+        uint32_t divide_by_zero_exception : 1; // 2
+        uint32_t overflow_exception : 1; // 3
+        uint32_t underflow_exception : 1; // 4
+        uint32_t precision_exception : 1; // 5
+        uint32_t denormals_are_zeros : 1; // 6
+        uint32_t invalid_operation_mask : 1; // 7
+        uint32_t denormal_operand_mask : 1; // 8
+        uint32_t divide_by_zero_mask : 1; // 9
+        uint32_t overflow_mask : 1; // 10
+        uint32_t underflow_mask : 1; // 11
+        uint32_t precision_mask : 1; // 12
+        uint32_t rounding : 2; // 13-14
+        uint32_t flush_to_zero : 1; // 15
+        uint32_t : 1; // 16
+        uint32_t misaligned_exception_mask : 1; // 17
+        uint32_t : 2; // 18-19
+        uint32_t __unknown_k10m_bit_A : 1; // 20
+        uint32_t disable_unmasked_exceptions : 1; // 21
+        uint32_t : 10; // 22-31
+    };
+    struct {
+        uint32_t exceptions : 6;
+        uint32_t : 1;
+        uint32_t exception_masks : 6;
+    };
 };
 ValidateStructSize(0x4, MXCSR);
 
 enum VexState {
-	SSE_Encoding,
-	VEX_Encoding,
-	EVEX_Encoding
+    SSE_Encoding,
+    VEX_Encoding,
+    EVEX_Encoding
 };
 
 template <bool wait = false>
 static inline void clear_x87_exceptions() {
-	if constexpr (!wait) {
-		__asm__ volatile (
-			"FNCLEX"
-			:
-			:
-			: "fpsr"
-		);
-	} else {
-		__asm__ volatile (
-			"FCLEX"
-			:
-			:
-			: "fpsr"
-		);
-	}
+    if constexpr (!wait) {
+        __asm__ volatile (
+            "FNCLEX"
+            :
+            :
+            : "fpsr"
+        );
+    } else {
+        __asm__ volatile (
+            "FCLEX"
+            :
+            :
+            : "fpsr"
+        );
+    }
 }
 
 template <bool wait = false>
 static inline FCW store_x87_cw(FCW& cw) {
-	if constexpr (!wait) {
-		__asm__ volatile (
-			"FNSTCW %[cw]"
-			: asm_arg("=m", cw)
-		);
-	} else {
-		__asm__ volatile (
-			"FSTCW %[cw]"
-			: asm_arg("=m", cw)
-		);
-	}
-	return cw;
+    if constexpr (!wait) {
+        __asm__ volatile (
+            "FNSTCW %[cw]"
+            : asm_arg("=m", cw)
+        );
+    } else {
+        __asm__ volatile (
+            "FSTCW %[cw]"
+            : asm_arg("=m", cw)
+        );
+    }
+    return cw;
 }
 template <bool wait = false>
 static inline FCW store_x87_cw() {
-	FCW cw;
-	return store_x87_cw<wait>(cw);
+    FCW cw;
+    return store_x87_cw<wait>(cw);
 }
 template <bool wait = false>
 static inline FCWW store_x87_cw(FCWW& cww) {
-	if constexpr (!wait) {
-		__asm__ volatile (
-			"FNSTCW %[cww]"
-			: asm_arg("=m", cww)
-		);
-	} else {
-		__asm__ volatile (
-			"FSTCW %[cww]"
-			: asm_arg("=m", cww)
-		);
-	}
-	return cww;
+    if constexpr (!wait) {
+        __asm__ volatile (
+            "FNSTCW %[cww]"
+            : asm_arg("=m", cww)
+        );
+    } else {
+        __asm__ volatile (
+            "FSTCW %[cww]"
+            : asm_arg("=m", cww)
+        );
+    }
+    return cww;
 }
 #define store_fcw(...) (store_x87_cw(__VA_ARGS__))
 #define current_fcw() (store_fcw())
 
 template <bool wait = false>
 static inline FCWW store_x87_cww(FCWW& cww) {
-	if constexpr (!wait) {
-		__asm__ volatile (
-			"FNSTCW %[cww]"
-			: asm_arg("=m", cww)
-		);
-	} else {
-		__asm__ volatile (
-			"FSTCW %[cww]"
-			: asm_arg("=m", cww)
-		);
-	}
-	return cww;
+    if constexpr (!wait) {
+        __asm__ volatile (
+            "FNSTCW %[cww]"
+            : asm_arg("=m", cww)
+        );
+    } else {
+        __asm__ volatile (
+            "FSTCW %[cww]"
+            : asm_arg("=m", cww)
+        );
+    }
+    return cww;
 }
 template <bool wait = false>
 static inline FCWW store_x87_cww() {
-	FCWW cww;
-	return store_x87_cww<wait>(cww);
+    FCWW cww;
+    return store_x87_cww<wait>(cww);
 }
 #define store_fcww(...) (store_x87_cww(__VA_ARGS__))
 #define current_fcww() (store_fcww())
 
 static inline void load_x87_cw(const FCW& cw) {
-	__asm__ volatile (
-		"FLDCW %[cw]"
-		:
-		: asm_arg("m", cw)
-	);
+    __asm__ volatile (
+        "FLDCW %[cw]"
+        :
+        : asm_arg("m", cw)
+    );
 }
 static inline void load_x87_cw(const FCWW& cw) {
-	__asm__ volatile (
-		"FLDCW %[cw]"
-		:
-		: asm_arg("m", cw)
-	);
+    __asm__ volatile (
+        "FLDCW %[cw]"
+        :
+        : asm_arg("m", cw)
+    );
 }
 #define load_fcw(cw) (load_x87_cw(cw))
 #define load_fcww(cww) (load_x87_cw(cww))
@@ -1554,89 +1554,89 @@ static inline void load_x87_cw(const FCWW& cw) {
 
 template <bool wait = false>
 static inline FSW store_x87_sw() {
-	FSW sw;
-	if constexpr (!wait) {
-		__asm__ volatile (
-			"FNSTSW %[sw]"
-			: asm_arg("=a", sw)
-		);
-	} else {
-		__asm__ volatile (
-			"FSTSW %[sw]"
-			: asm_arg("=a", sw)
-		);
-	}
-	return sw;
+    FSW sw;
+    if constexpr (!wait) {
+        __asm__ volatile (
+            "FNSTSW %[sw]"
+            : asm_arg("=a", sw)
+        );
+    } else {
+        __asm__ volatile (
+            "FSTSW %[sw]"
+            : asm_arg("=a", sw)
+        );
+    }
+    return sw;
 }
 template <bool wait = false>
 static inline FSW store_x87_sw(FSW& sw) {
-	if constexpr (!wait) {
-		__asm__ volatile (
-			"FNSTSW %[sw]"
-			: asm_arg("=m", sw)
-		);
-	} else {
-		__asm__ volatile (
-			"FSTSW %[sw]"
-			: asm_arg("=m", sw)
-		);
-	}
-	return sw;
+    if constexpr (!wait) {
+        __asm__ volatile (
+            "FNSTSW %[sw]"
+            : asm_arg("=m", sw)
+        );
+    } else {
+        __asm__ volatile (
+            "FSTSW %[sw]"
+            : asm_arg("=m", sw)
+        );
+    }
+    return sw;
 }
 #define store_fsw(...) (store_x87_sw(__VA_ARGS__))
 #define current_fsw() (store_fsw())
 
 template <bool wait = false>
 static inline FSWW store_x87_sww() {
-	FSWW sww;
-	if constexpr (!wait) {
-		__asm__ volatile (
-			"FNSTSW %[sww]"
-			: asm_arg("=a", sww)
-		);
-	} else {
-		__asm__ volatile (
-			"FSTSW %[sww]"
-			: asm_arg("=a", sww)
-		);
-	}
-	return sww;
+    FSWW sww;
+    if constexpr (!wait) {
+        __asm__ volatile (
+            "FNSTSW %[sww]"
+            : asm_arg("=a", sww)
+        );
+    } else {
+        __asm__ volatile (
+            "FSTSW %[sww]"
+            : asm_arg("=a", sww)
+        );
+    }
+    return sww;
 }
 template <bool wait = false>
 static inline FSWW store_x87_sww(FSWW& sww) {
-	if constexpr (!wait) {
-		__asm__ volatile (
-			"FNSTSW %[sww]"
-			: asm_arg("=m", sww)
-		);
-	} else {
-		__asm__ volatile (
-			"FSTSW %[sww]"
-			: asm_arg("=m", sww)
-		);
-	}
-	return sww;
+    if constexpr (!wait) {
+        __asm__ volatile (
+            "FNSTSW %[sww]"
+            : asm_arg("=m", sww)
+        );
+    } else {
+        __asm__ volatile (
+            "FSTSW %[sww]"
+            : asm_arg("=m", sww)
+        );
+    }
+    return sww;
 }
 #define store_fsww(...) (store_x87_sww(__VA_ARGS__))
 #define current_fsww() (store_fsww())
 
 template <bool wait = false>
 static inline void store_x87_env(void* env) {
-	if constexpr (!wait) {
-		__asm__ volatile (
-			"FNSTENV %[env]"
-			: asm_arg("=m", env)
-			:
-			: "fpcr"
-		);
-	} else {
-		__asm__ volatile (
-			"FSTENV %[env]"
-			: asm_arg("=m", env)
-			:
-			: "fpcr"
-		);
-	}
+    if constexpr (!wait) {
+        __asm__ volatile (
+            "FNSTENV %[env]"
+            : asm_arg("=m", env)
+            :
+            : "fpcr"
+        );
+    } else {
+        __asm__ volatile (
+            "FSTENV %[env]"
+            : asm_arg("=m", env)
+            :
+            : "fpcr"
+        );
+    }
 }
 
 #if __AVX__
@@ -1647,166 +1647,166 @@ static inline constexpr VexState default_mxcsr_encoding = SSE_Encoding;
 
 template <VexState encoding = default_mxcsr_encoding>
 static inline MXCSR store_mxcsr(MXCSR& mxcsr) {
-	if constexpr (encoding == SSE_Encoding) {
-		__asm__ volatile (
-			"stmxcsr %[mxcsr]"
-			: asm_arg("=m", mxcsr)
-		);
-	} else {
-		__asm__ volatile (
-			"vstmxcsr %[mxcsr]"
-			: asm_arg("=m", mxcsr)
-		);
-	}
-	return mxcsr;
+    if constexpr (encoding == SSE_Encoding) {
+        __asm__ volatile (
+            "stmxcsr %[mxcsr]"
+            : asm_arg("=m", mxcsr)
+        );
+    } else {
+        __asm__ volatile (
+            "vstmxcsr %[mxcsr]"
+            : asm_arg("=m", mxcsr)
+        );
+    }
+    return mxcsr;
 }
 template <VexState encoding = default_mxcsr_encoding>
 static inline MXCSR store_mxcsr() {
-	MXCSR ret;
-	return store_mxcsr<encoding>(ret);
+    MXCSR ret;
+    return store_mxcsr<encoding>(ret);
 }
 template <VexState encoding = default_mxcsr_encoding>
 static inline MXCSR current_mxcsr() {
-	return store_mxcsr<encoding>();
+    return store_mxcsr<encoding>();
 }
 
 template <VexState encoding = default_mxcsr_encoding>
 static inline void load_mxcsr(const MXCSR& mxcsr) {
-	if constexpr (encoding == SSE_Encoding) {
-		__asm__ volatile (
-			"ldmxcsr %[mxcsr]"
-			:
-			: asm_arg("m", mxcsr)
-		);
-	} else {
-		__asm__ volatile (
-			"vldmxcsr %[mxcsr]"
-			:
-			: asm_arg("m", mxcsr)
-		);
-	}
+    if constexpr (encoding == SSE_Encoding) {
+        __asm__ volatile (
+            "ldmxcsr %[mxcsr]"
+            :
+            : asm_arg("m", mxcsr)
+        );
+    } else {
+        __asm__ volatile (
+            "vldmxcsr %[mxcsr]"
+            :
+            : asm_arg("m", mxcsr)
+        );
+    }
 }
 
 static inline void load_x87_env(void* env) {
-	__asm__ volatile (
-		"FLDENV %[env]"
-		: asm_arg("=m", env)
-	);
+    __asm__ volatile (
+        "FLDENV %[env]"
+        : asm_arg("=m", env)
+    );
 }
 
 static inline void get_cpuid(uint32_t page_num, uint32_t& eax_out, uint32_t& ebx_out, uint32_t& ecx_out, uint32_t& edx_out) {
-	__asm__ volatile (
-		"cpuid"
-		: "=a"(eax_out), "=b"(ebx_out), "=c"(ecx_out), "=d"(edx_out)
-		: "a"(page_num)
-	);
+    __asm__ volatile (
+        "cpuid"
+        : "=a"(eax_out), "=b"(ebx_out), "=c"(ecx_out), "=d"(edx_out)
+        : "a"(page_num)
+    );
 }
 static inline void get_cpuid_ex(uint32_t page_num, uint32_t subpage_num, uint32_t& eax_out, uint32_t& ebx_out, uint32_t& ecx_out, uint32_t& edx_out) {
-	__asm__ volatile (
-		"cpuid"
-		: "=a"(eax_out), "=b"(ebx_out), "=c"(ecx_out), "=d"(edx_out)
-		: "a"(page_num), "c"(subpage_num)
-	);
+    __asm__ volatile (
+        "cpuid"
+        : "=a"(eax_out), "=b"(ebx_out), "=c"(ecx_out), "=d"(edx_out)
+        : "a"(page_num), "c"(subpage_num)
+    );
 }
 static inline void get_cpuid2(uint32_t page_num, uint64_t& eax_edx_out, uint32_t& ebx_out, uint32_t& ecx_out) {
-	__asm__ volatile (
-		"cpuid"
-		: "=A"(eax_edx_out), "=b"(ebx_out), "=c"(ecx_out)
-		: "a"(page_num)
-	);
+    __asm__ volatile (
+        "cpuid"
+        : "=A"(eax_edx_out), "=b"(ebx_out), "=c"(ecx_out)
+        : "a"(page_num)
+    );
 }
 static inline void get_cpuid_ex2(uint32_t page_num, uint32_t subpage_num, uint64_t& eax_edx_out, uint32_t& ebx_out, uint32_t& ecx_out) {
-	__asm__ volatile (
-		"cpuid"
-		: "=A"(eax_edx_out), "=b"(ebx_out), "=c"(ecx_out)
-		: "a"(page_num), "c"(subpage_num)
-	);
+    __asm__ volatile (
+        "cpuid"
+        : "=A"(eax_edx_out), "=b"(ebx_out), "=c"(ecx_out)
+        : "a"(page_num), "c"(subpage_num)
+    );
 }
 
 template<uint8_t index, typename T>
 struct CR {
 
-	static inline void write_raw(usreg_t value) {
-		if constexpr (index == 0) {
-			__asm__ volatile (
-				"mov %[value], %%cr0"
-				:
-				: asm_arg("r", value)
-			);
-		} else if constexpr (index == 2) {
-			__asm__ volatile (
-				"mov %[value], %%cr2"
-				:
-				: asm_arg("r", value)
-			);
-		} else if constexpr (index == 3) {
+    static inline void write_raw(usreg_t value) {
+        if constexpr (index == 0) {
+            __asm__ volatile (
+                "mov %[value], %%cr0"
+                :
+                : asm_arg("r", value)
+            );
+        } else if constexpr (index == 2) {
+            __asm__ volatile (
+                "mov %[value], %%cr2"
+                :
+                : asm_arg("r", value)
+            );
+        } else if constexpr (index == 3) {
 
-		}
-	}
+        }
+    }
 
 };
 
 template<uint32_t index, typename T>
 struct MSR {
 
-	static inline void regparm(2) write_raw_wide(udreg_t value) {
-		__asm__ volatile (
-			"wrmsr"
-			:
-			: "A"(value), "c"(index)
-		);
-	}
+    static inline void regparm(2) write_raw_wide(udreg_t value) {
+        __asm__ volatile (
+            "wrmsr"
+            :
+            : "A"(value), "c"(index)
+        );
+    }
 
-	static inline void regparm(2) write_raw_halves(const uint32_t low, const uint32_t high) {
-		__asm__ volatile (
-			"wrmsr"
-			:
-			: "a"(low), "d"(high), "c"(index)
-		);
-	}
+    static inline void regparm(2) write_raw_halves(const uint32_t low, const uint32_t high) {
+        __asm__ volatile (
+            "wrmsr"
+            :
+            : "a"(low), "d"(high), "c"(index)
+        );
+    }
 
-	static inline void regparm(2) write_raw(const uint64_t value) {
+    static inline void regparm(2) write_raw(const uint64_t value) {
 #ifndef __x86_64__
-		__asm__ volatile (
-			"wrmsr"
-			:
-			: "A"(value), "c"(index)
-		);
+        __asm__ volatile (
+            "wrmsr"
+            :
+            : "A"(value), "c"(index)
+        );
 #else
-		write_raw_halves(value, value >> 32);
+        write_raw_halves(value, value >> 32);
 #endif
-	}
+    }
     
     static inline void write(T& value) {
         write_raw(bitcast<uint64_t>(value));
     }
-	
+    
     template<bool nest = true> requires(nest)
     static inline void write(const T&& value) {
-		write_raw(bitcast<uint64_t>(value));
+        write_raw(bitcast<uint64_t>(value));
     }
     
-	template<typename ... Args, bool nest = false> requires(!nest)
+    template<typename ... Args, bool nest = false> requires(!nest)
     static inline void write(Args&&... args) {
-		write<true>({{}, std::forward<Args>(args)... });
+        write<true>({{}, std::forward<Args>(args)... });
     }
 
-	static inline udreg_t read_raw_wide() {
-		udreg_t ret;
-		__asm__ volatile (
-			"rdmsr"
-			: "=A"(ret)
-			: "c"(index)
-		);
-		return ret;
-	}
+    static inline udreg_t read_raw_wide() {
+        udreg_t ret;
+        __asm__ volatile (
+            "rdmsr"
+            : "=A"(ret)
+            : "c"(index)
+        );
+        return ret;
+    }
     
     static inline uint64_t read_raw() {
 #ifndef __x86_64__
-		uint64_t ret;
+        uint64_t ret;
 #else
-		uint32_t ret_low;
-		uint32_t ret_high;
+        uint32_t ret_low;
+        uint32_t ret_high;
 #endif
         __asm__ volatile (
             "rdmsr"
@@ -1818,9 +1818,9 @@ struct MSR {
             : "c"(index)
         );
 #ifndef __x86_64__
-		return ret;
+        return ret;
 #else
-		return (uint64_t)ret_low + ((uint64_t)ret_high << 32);
+        return (uint64_t)ret_low + ((uint64_t)ret_high << 32);
 #endif
     }
 
@@ -1833,53 +1833,53 @@ struct MSR {
 #define RSB_LOOP_SIZE 2
 template<size_t rsb_count = RSB_COUNT, size_t rsb_loop_size = RSB_LOOP_SIZE, bool inc_shadow_stack = false>
 static forceinline void stuff_rsb() {
-	uint32_t loop_counter = rsb_count / rsb_loop_size;
-	nounroll do {
-		__asm__ volatile (
-			".rept %c[rsb_loop_size] \n"
-				"call 1f \n"
-				"int3 \n"
-			"1: \n"
-			".endr \n"
+    uint32_t loop_counter = rsb_count / rsb_loop_size;
+    nounroll do {
+        __asm__ volatile (
+            ".rept %c[rsb_loop_size] \n"
+                "call 1f \n"
+                "int3 \n"
+            "1: \n"
+            ".endr \n"
 #ifdef __x86_64__
-				"addq %[rsb_loop_offset], %%rsp \n"
+                "addq %[rsb_loop_offset], %%rsp \n"
 #else
-				"addl %[rsb_loop_offset], %%esp \n"
+                "addl %[rsb_loop_offset], %%esp \n"
 #endif
-			:
-			: asm_arg("i", rsb_loop_size), [rsb_loop_offset]"i"(rsb_loop_size * sizeof(void*))
-		);
-		if constexpr (inc_shadow_stack) {
-			__asm__ volatile (
-				INCSSP "%[rsb_loop_size] \n"
-				:
-				: asm_arg("r", rsb_loop_size)
-			);
-		}
-	} while (--loop_counter);
-	if constexpr (constexpr size_t rsb_extra_count = rsb_count % rsb_loop_size) {
-		__asm__ volatile (
-			".rept %c[rsb_extra_count] \n"
-				"call 1f \n"
-				"int3 \n"
-			"1: \n"
-			".endr \n"
+            :
+            : asm_arg("i", rsb_loop_size), [rsb_loop_offset]"i"(rsb_loop_size * sizeof(void*))
+        );
+        if constexpr (inc_shadow_stack) {
+            __asm__ volatile (
+                INCSSP "%[rsb_loop_size] \n"
+                :
+                : asm_arg("r", rsb_loop_size)
+            );
+        }
+    } while (--loop_counter);
+    if constexpr (constexpr size_t rsb_extra_count = rsb_count % rsb_loop_size) {
+        __asm__ volatile (
+            ".rept %c[rsb_extra_count] \n"
+                "call 1f \n"
+                "int3 \n"
+            "1: \n"
+            ".endr \n"
 #ifdef __x86_64__
-				"addq %[rsb_extra_offset], %%rsp \n"
+                "addq %[rsb_extra_offset], %%rsp \n"
 #else
-				"addl %[rsb_extra_offset], %%esp \n"
+                "addl %[rsb_extra_offset], %%esp \n"
 #endif
-			:
-			: asm_arg("i", rsb_extra_count), [rsb_extra_offset]"i"(rsb_extra_count * sizeof(void*))
-		);
-		if constexpr (inc_shadow_stack) {
-			__asm__ volatile (
-				INCSSP "%[rsb_extra_count] \n"
-				:
-				: asm_arg("r", rsb_extra_count)
-			);
-		}
-	}
+            :
+            : asm_arg("i", rsb_extra_count), [rsb_extra_offset]"i"(rsb_extra_count * sizeof(void*))
+        );
+        if constexpr (inc_shadow_stack) {
+            __asm__ volatile (
+                INCSSP "%[rsb_extra_count] \n"
+                :
+                : asm_arg("r", rsb_extra_count)
+            );
+        }
+    }
 }
 
 #if !__has_builtin(__builtin_add_overflow)
@@ -1948,222 +1948,234 @@ static inline constexpr bool __builtin_sub_overflow_impl(T a, T b, std::nullptr_
 }
 #endif
 
+template<typename T>
+static inline constexpr bool add_would_overflow(T a, T b) {
+    T dummy = 0;
+    return __builtin_add_overflow(a, b, &dummy);
+}
+
+template<typename T>
+static inline constexpr bool sub_would_overflow(T a, T b) {
+    T dummy = 0;
+    return __builtin_sub_overflow(a, b, &dummy);
+}
+
 #if !__has_builtin(__builtin_addcb)
 #define __builtin_addcb __builtin_addcb_impl
 static inline constexpr unsigned char __builtin_addcb_impl(unsigned char lhs, unsigned char rhs, unsigned char carry_in, unsigned char* carry_out) {
-	unsigned char s = 0;
-	unsigned char c1 = __builtin_add_overflow(lhs, rhs, &s);
-	unsigned char c2 = __builtin_add_overflow(s, carry_in, &s);
-	*carry_out = c1 | c2;
-	return s;
+    unsigned char s = 0;
+    unsigned char c1 = __builtin_add_overflow(lhs, rhs, &s);
+    unsigned char c2 = __builtin_add_overflow(s, carry_in, &s);
+    *carry_out = c1 | c2;
+    return s;
 }
 #endif
 
 #if !__has_builtin(__builtin_subcb)
 #define __builtin_subcb __builtin_subcb_impl
 static inline constexpr unsigned char __builtin_subcb_impl(unsigned char lhs, unsigned char rhs, unsigned char carry_in, unsigned char* carry_out) {
-	unsigned char s = 0;
-	unsigned char c1 = __builtin_sub_overflow(lhs, rhs, &s);
-	unsigned char c2 = __builtin_sub_overflow(s, carry_in, &s);
-	*carry_out = c1 | c2;
-	return s;
+    unsigned char s = 0;
+    unsigned char c1 = __builtin_sub_overflow(lhs, rhs, &s);
+    unsigned char c2 = __builtin_sub_overflow(s, carry_in, &s);
+    *carry_out = c1 | c2;
+    return s;
 }
 #endif
 
 #if !__has_builtin(__builtin_addcs)
 #define __builtin_addcs __builtin_addcs_impl
 static inline constexpr unsigned short __builtin_addcs_impl(unsigned short lhs, unsigned short rhs, unsigned short carry_in, unsigned short* carry_out) {
-	unsigned short s = 0;
-	unsigned short c1 = __builtin_add_overflow(lhs, rhs, &s);
-	unsigned short c2 = __builtin_add_overflow(s, carry_in, &s);
-	*carry_out = c1 | c2;
-	return s;
+    unsigned short s = 0;
+    unsigned short c1 = __builtin_add_overflow(lhs, rhs, &s);
+    unsigned short c2 = __builtin_add_overflow(s, carry_in, &s);
+    *carry_out = c1 | c2;
+    return s;
 }
 #endif
 
 #if !__has_builtin(__builtin_subcs)
 #define __builtin_subcs __builtin_subcs_impl
 static inline constexpr unsigned short __builtin_subcs_impl(unsigned short lhs, unsigned short rhs, unsigned short carry_in, unsigned short* carry_out) {
-	unsigned short s = 0;
-	unsigned short c1 = __builtin_sub_overflow(lhs, rhs, &s);
-	unsigned short c2 = __builtin_sub_overflow(s, carry_in, &s);
-	*carry_out = c1 | c2;
-	return s;
+    unsigned short s = 0;
+    unsigned short c1 = __builtin_sub_overflow(lhs, rhs, &s);
+    unsigned short c2 = __builtin_sub_overflow(s, carry_in, &s);
+    *carry_out = c1 | c2;
+    return s;
 }
 #endif
 
 #if !__has_builtin(__builtin_addc)
 #define __builtin_addc __builtin_addc_impl
 static inline constexpr unsigned int __builtin_addc_impl(unsigned int lhs, unsigned int rhs, unsigned int carry_in, unsigned int* carry_out) {
-	unsigned int s = 0;
-	unsigned int c1 = __builtin_add_overflow(lhs, rhs, &s);
-	unsigned int c2 = __builtin_add_overflow(s, carry_in, &s);
-	*carry_out = c1 | c2;
-	return s;
+    unsigned int s = 0;
+    unsigned int c1 = __builtin_add_overflow(lhs, rhs, &s);
+    unsigned int c2 = __builtin_add_overflow(s, carry_in, &s);
+    *carry_out = c1 | c2;
+    return s;
 }
 #endif
 
 #if !__has_builtin(__builtin_subc)
 #define __builtin_subc __builtin_subc_impl
 static inline constexpr unsigned int __builtin_subc_impl(unsigned int lhs, unsigned int rhs, unsigned int carry_in, unsigned int* carry_out) {
-	unsigned int s = 0;
-	unsigned int c1 = __builtin_sub_overflow(lhs, rhs, &s);
-	unsigned int c2 = __builtin_sub_overflow(s, carry_in, &s);
-	*carry_out = c1 | c2;
-	return s;
+    unsigned int s = 0;
+    unsigned int c1 = __builtin_sub_overflow(lhs, rhs, &s);
+    unsigned int c2 = __builtin_sub_overflow(s, carry_in, &s);
+    *carry_out = c1 | c2;
+    return s;
 }
 #endif
 
 #if !__has_builtin(__builtin_addcl)
 #define __builtin_addcl __builtin_addcl_impl
 static inline constexpr unsigned long __builtin_addcl_impl(unsigned long lhs, unsigned long rhs, unsigned long carry_in, unsigned long* carry_out) {
-	unsigned long s = 0;
-	unsigned long c1 = __builtin_add_overflow(lhs, rhs, &s);
-	unsigned long c2 = __builtin_add_overflow(s, carry_in, &s);
-	*carry_out = c1 | c2;
-	return s;
+    unsigned long s = 0;
+    unsigned long c1 = __builtin_add_overflow(lhs, rhs, &s);
+    unsigned long c2 = __builtin_add_overflow(s, carry_in, &s);
+    *carry_out = c1 | c2;
+    return s;
 }
 #endif
 
 #if !__has_builtin(__builtin_subcl)
 #define __builtin_subcl __builtin_subcl_impl
 static inline constexpr unsigned long __builtin_subcl_impl(unsigned long lhs, unsigned long rhs, unsigned long carry_in, unsigned long* carry_out) {
-	unsigned long s = 0;
-	unsigned long c1 = __builtin_sub_overflow(lhs, rhs, &s);
-	unsigned long c2 = __builtin_sub_overflow(s, carry_in, &s);
-	*carry_out = c1 | c2;
-	return s;
+    unsigned long s = 0;
+    unsigned long c1 = __builtin_sub_overflow(lhs, rhs, &s);
+    unsigned long c2 = __builtin_sub_overflow(s, carry_in, &s);
+    *carry_out = c1 | c2;
+    return s;
 }
 #endif
 
 #if !__has_builtin(__builtin_addcll)
 #define __builtin_addcll __builtin_addcll_impl
 static inline constexpr unsigned long long __builtin_addcl_impl(unsigned long long lhs, unsigned long long rhs, unsigned long long carry_in, unsigned long long* carry_out) {
-	unsigned long long s = 0;
-	unsigned long long c1 = __builtin_add_overflow(lhs, rhs, &s);
-	unsigned long long c2 = __builtin_add_overflow(s, carry_in, &s);
-	*carry_out = c1 | c2;
-	return s;
+    unsigned long long s = 0;
+    unsigned long long c1 = __builtin_add_overflow(lhs, rhs, &s);
+    unsigned long long c2 = __builtin_add_overflow(s, carry_in, &s);
+    *carry_out = c1 | c2;
+    return s;
 }
 #endif
 
 #if !__has_builtin(__builtin_subcll)
 #define __builtin_subcll __builtin_subcll_impl
 static inline constexpr unsigned long long __builtin_subcl_impl(unsigned long long lhs, unsigned long long rhs, unsigned long long carry_in, unsigned long long* carry_out) {
-	unsigned long long s = 0;
-	unsigned long long c1 = __builtin_sub_overflow(lhs, rhs, &s);
-	unsigned long long c2 = __builtin_sub_overflow(s, carry_in, &s);
-	*carry_out = c1 | c2;
-	return s;
+    unsigned long long s = 0;
+    unsigned long long c1 = __builtin_sub_overflow(lhs, rhs, &s);
+    unsigned long long c2 = __builtin_sub_overflow(s, carry_in, &s);
+    *carry_out = c1 | c2;
+    return s;
 }
 #endif
 
 template<typename T>
 static inline constexpr T saturate_add(T lhs, T rhs) {
-	if constexpr (std::is_signed_v<T>) {
-		using U = std::make_unsigned_t<T>;
-		T ret;
-		if (!__builtin_add_overflow(lhs, rhs, &ret)) {
-			return ret;
-		}
-		return ((U)rhs >> (bitsof(T) - 1)) + (U)(std::numeric_limits<T>::max)();
-	} else {
-		T ret = lhs + rhs;
-		return ret >= lhs ? ret : (std::numeric_limits<T>::max)();
-	}
+    if constexpr (std::is_signed_v<T>) {
+        using U = std::make_unsigned_t<T>;
+        T ret;
+        if (!__builtin_add_overflow(lhs, rhs, &ret)) {
+            return ret;
+        }
+        return ((U)rhs >> (bitsof(T) - 1)) + (U)(std::numeric_limits<T>::max)();
+    } else {
+        T ret = lhs + rhs;
+        return ret >= lhs ? ret : (std::numeric_limits<T>::max)();
+    }
 }
 
 template<typename T>
 static inline constexpr T saturate_sub(T lhs, T rhs) {
-	if constexpr (std::is_signed_v<T>) {
-		using U = std::make_unsigned_t<T>;
-		T ret;
-		if (!__builtin_sub_overflow(lhs, rhs, &ret)) {
-			return ret;
-		}
-		return (U)(std::numeric_limits<T>::min)() - ((U)rhs >> (bitsof(T) - 1));
-	} else {
-		T ret = lhs - rhs;
-		return ret <= lhs ? ret : (std::numeric_limits<T>::min)();
-	}
+    if constexpr (std::is_signed_v<T>) {
+        using U = std::make_unsigned_t<T>;
+        T ret;
+        if (!__builtin_sub_overflow(lhs, rhs, &ret)) {
+            return ret;
+        }
+        return (U)(std::numeric_limits<T>::min)() - ((U)rhs >> (bitsof(T) - 1));
+    } else {
+        T ret = lhs - rhs;
+        return ret <= lhs ? ret : (std::numeric_limits<T>::min)();
+    }
 }
 
 template<typename T>
 static inline constexpr T carry_add(T lhs, T rhs, bool& carry) {
-	if constexpr (sizeof(T) == sizeof(unsigned char)) {
-		unsigned char carry_temp = carry;
-		T ret = __builtin_addcb(lhs, rhs, carry_temp, &carry_temp);
-		carry = carry_temp;
-		return ret;
-	}
-	else if constexpr (sizeof(T) == sizeof(unsigned short)) {
-		unsigned short carry_temp = carry;
-		T ret = __builtin_addcs(lhs, rhs, carry_temp, &carry_temp);
-		carry = carry_temp;
-		return ret;
-	}
-	else if constexpr (sizeof(T) == sizeof(unsigned int)) {
-		unsigned int carry_temp = carry;
-		T ret = __builtin_addc(lhs, rhs, carry_temp, &carry_temp);
-		carry = carry_temp;
-		return ret;
-	}
-	else if constexpr (sizeof(T) == sizeof(unsigned long)) {
-		unsigned long carry_temp = carry;
-		T ret = __builtin_addcl(lhs, rhs, carry_temp, &carry_temp);
-		carry = carry_temp;
-		return ret;
-	}
-	else if constexpr (sizeof(T) == sizeof(unsigned long long)) {
-		unsigned long long carry_temp = carry;
-		T ret = __builtin_addcll(lhs, rhs, carry_temp, &carry_temp);
-		carry = carry_temp;
-		return ret;
-	}
+    if constexpr (sizeof(T) == sizeof(unsigned char)) {
+        unsigned char carry_temp = carry;
+        T ret = __builtin_addcb(lhs, rhs, carry_temp, &carry_temp);
+        carry = carry_temp;
+        return ret;
+    }
+    else if constexpr (sizeof(T) == sizeof(unsigned short)) {
+        unsigned short carry_temp = carry;
+        T ret = __builtin_addcs(lhs, rhs, carry_temp, &carry_temp);
+        carry = carry_temp;
+        return ret;
+    }
+    else if constexpr (sizeof(T) == sizeof(unsigned int)) {
+        unsigned int carry_temp = carry;
+        T ret = __builtin_addc(lhs, rhs, carry_temp, &carry_temp);
+        carry = carry_temp;
+        return ret;
+    }
+    else if constexpr (sizeof(T) == sizeof(unsigned long)) {
+        unsigned long carry_temp = carry;
+        T ret = __builtin_addcl(lhs, rhs, carry_temp, &carry_temp);
+        carry = carry_temp;
+        return ret;
+    }
+    else if constexpr (sizeof(T) == sizeof(unsigned long long)) {
+        unsigned long long carry_temp = carry;
+        T ret = __builtin_addcll(lhs, rhs, carry_temp, &carry_temp);
+        carry = carry_temp;
+        return ret;
+    }
 }
 
 template<typename T>
 static inline constexpr T carry_add(T lhs, T rhs, bool* carry) {
-	return carry_add(lhs, rhs, *carry);
+    return carry_add(lhs, rhs, *carry);
 }
 
 template<typename T>
 static inline constexpr T carry_sub(T lhs, T rhs, bool& carry) {
-	if constexpr (sizeof(T) == sizeof(unsigned char)) {
-		unsigned char carry_temp = carry;
-		T ret = __builtin_subcb(lhs, rhs, carry_temp, &carry_temp);
-		carry = carry_temp;
-		return ret;
-	}
-	else if constexpr (sizeof(T) == sizeof(unsigned short)) {
-		unsigned short carry_temp = carry;
-		T ret = __builtin_subcs(lhs, rhs, carry_temp, &carry_temp);
-		carry = carry_temp;
-		return ret;
-	}
-	else if constexpr (sizeof(T) == sizeof(unsigned int)) {
-		unsigned int carry_temp = carry;
-		T ret = __builtin_subc(lhs, rhs, carry_temp, &carry_temp);
-		carry = carry_temp;
-		return ret;
-	}
-	else if constexpr (sizeof(T) == sizeof(unsigned long)) {
-		unsigned long carry_temp = carry;
-		T ret = __builtin_subcl(lhs, rhs, carry_temp, &carry_temp);
-		carry = carry_temp;
-		return ret;
-	}
-	else if constexpr (sizeof(T) == sizeof(unsigned long long)) {
-		unsigned long long carry_temp = carry;
-		T ret = __builtin_subcll(lhs, rhs, carry_temp, &carry_temp);
-		carry = carry_temp;
-		return ret;
-	}
+    if constexpr (sizeof(T) == sizeof(unsigned char)) {
+        unsigned char carry_temp = carry;
+        T ret = __builtin_subcb(lhs, rhs, carry_temp, &carry_temp);
+        carry = carry_temp;
+        return ret;
+    }
+    else if constexpr (sizeof(T) == sizeof(unsigned short)) {
+        unsigned short carry_temp = carry;
+        T ret = __builtin_subcs(lhs, rhs, carry_temp, &carry_temp);
+        carry = carry_temp;
+        return ret;
+    }
+    else if constexpr (sizeof(T) == sizeof(unsigned int)) {
+        unsigned int carry_temp = carry;
+        T ret = __builtin_subc(lhs, rhs, carry_temp, &carry_temp);
+        carry = carry_temp;
+        return ret;
+    }
+    else if constexpr (sizeof(T) == sizeof(unsigned long)) {
+        unsigned long carry_temp = carry;
+        T ret = __builtin_subcl(lhs, rhs, carry_temp, &carry_temp);
+        carry = carry_temp;
+        return ret;
+    }
+    else if constexpr (sizeof(T) == sizeof(unsigned long long)) {
+        unsigned long long carry_temp = carry;
+        T ret = __builtin_subcll(lhs, rhs, carry_temp, &carry_temp);
+        carry = carry_temp;
+        return ret;
+    }
 }
 
 template<typename T>
 static inline constexpr T carry_sub(T lhs, T rhs, bool* carry) {
-	return carry_sub(lhs, rhs, *carry);
+    return carry_sub(lhs, rhs, *carry);
 }
 
 #endif

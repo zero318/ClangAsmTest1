@@ -6,6 +6,7 @@
 #include <utility>
 #include <tuple>
 #include <limits>
+#include <atomic>
 
 #if __INTELLISENSE__ && !_HAS_CXX20
 #define TEMP_DEF_CXX20 1
@@ -172,7 +173,7 @@ struct x86Context {
 
     // Normal state
     union {
-        GPR gpr[7];
+        GPR gpr[8];
         struct {
             union {
                 uint16_t ax;
@@ -209,7 +210,7 @@ struct x86Context {
         };
     };
     union {
-        uint16_t seg[7];
+        uint16_t seg[8];
         struct {
             uint16_t es;
             uint16_t cs;
@@ -263,10 +264,29 @@ struct x86Context {
 
 
     // Internal state
+    bool lock;
+    std::atomic<bool> pending_nmi;
+    std::atomic<bool> halted;
     int8_t seg_override;
     int8_t rep_type;
-    bool lock;
+    std::atomic<int16_t> pending_einterrupt;
+    int16_t pending_sinterrupt;
     size_t clock;
+
+    inline constexpr void init() {
+        memset(this, 0, sizeof(*this));
+        this->cs = 0xF000;
+        this->ip = 0xFFF0;
+        this->pending_einterrupt = -1;
+        this->pending_sinterrupt = -1;
+    }
+
+    inline constexpr void reset() {
+        this->init();
+        this->seg_override = -1;
+        this->rep_type = NO_REP;
+        this->halted = false;
+    }
 
     inline constexpr void set_seg_override(uint8_t seg) {
         this->seg_override = seg & 3;
@@ -322,7 +342,7 @@ struct x86Context {
     }
 
     // Instruction implementations
-    template <typename T>
+    template <typename T = uint16_t>
     inline T get_flags() const {
         uint16_t base = 0b111100000000010;
         base |= this->carry;
@@ -339,7 +359,7 @@ struct x86Context {
         return base;
     }
 
-    template <typename T>
+    template <typename T = uint16_t>
     inline void set_flags(T src) {
         this->carry = src & 0x01;
         this->parity = src & 0x04;
@@ -362,10 +382,9 @@ struct x86Context {
     inline void add_impl(T& dst, T src) {
         using U = std::make_unsigned_t<T>;
         using S = std::make_signed_t<T>;
-        T res;
-        this->carry = __builtin_add_overflow((U)dst, (U)src, (U*)&res);
-        this->overflow = __builtin_add_overflow((S)dst, (S)src, (S*)&res);
-        res = dst + src;
+        this->carry = add_would_overflow<U>(dst, src);
+        this->overflow = add_would_overflow<S>(dst, src);
+        T res = dst + src;
         this->auxiliary = (dst ^ src ^ res) & 0x10;
         dst = res;
         this->update_parity(dst);
@@ -425,10 +444,9 @@ struct x86Context {
     inline void sub_impl(T& dst, T src) {
         using U = std::make_unsigned_t<T>;
         using S = std::make_signed_t<T>;
-        T res;
-        this->carry = __builtin_sub_overflow((U)dst, (U)src, (U*)&res);
-        this->overflow = __builtin_sub_overflow((S)dst, (S)src, (S*)&res);
-        res = dst + src;
+        this->carry = sub_would_overflow<U>(dst, src);
+        this->overflow = sub_would_overflow<S>(dst, src);
+        T res = dst - src;
         this->auxiliary = (dst ^ src ^ res) & 0x10;
         dst = res;
         this->update_parity(dst);
@@ -451,10 +469,9 @@ struct x86Context {
     inline void cmp_impl(T dst, T src) {
         using U = std::make_unsigned_t<T>;
         using S = std::make_signed_t<T>;
-        T res;
-        this->carry = __builtin_sub_overflow((U)dst, (U)src, (U*)&res);
-        this->overflow = __builtin_sub_overflow((S)dst, (S)src, (S*)&res);
-        res = dst + src;
+        this->carry = sub_would_overflow<U>(dst, src);
+        this->overflow = sub_would_overflow<S>(dst, src);
+        T res = dst - src;
         this->auxiliary = (dst ^ src ^ res) & 0x10;
         this->update_parity(res);
         this->zero = !res;
@@ -572,57 +589,61 @@ struct x86Context {
 
     template <typename T>
     inline void div_impl(T src) {
-        if (!src) {
-            // TODO: exception
-        }
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            uint16_t temp = this->ax;
-            uint16_t quot = temp / src;
-            if (quot > UINT8_MAX) {
-                // TODO: exception
+        if (src) {
+            if constexpr (sizeof(T) == sizeof(uint8_t)) {
+                uint16_t temp = this->ax;
+                uint16_t quot = temp / src;
+                this->al = quot;
+                this->ah = temp % src;
+                if (quot > UINT8_MAX) {
+                    this->software_interrupt(IntDE);
+                }
             }
-            this->al = quot;
-            this->ah = temp % src;
-        }
-        else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            uint32_t temp = this->ax | (uint32_t)this->dx << 16;
-            uint32_t quot = temp / src;
-            if (quot > UINT16_MAX) {
-                // TODO: exception
+            else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+                uint32_t temp = this->ax | (uint32_t)this->dx << 16;
+                uint32_t quot = temp / src;
+                this->ax = quot;
+                this->dx = temp % src;
+                if (quot > UINT16_MAX) {
+                    this->software_interrupt(IntDE);
+                }
             }
-            this->ax = quot;
-            this->dx = temp % src;
+        }
+        else {
+            this->software_interrupt(IntDE);
         }
     }
 
     template <typename T>
     inline void idiv_impl(T src) {
-        if (!src) {
-            // TODO: exception
+        if (src) {
+            if constexpr (sizeof(T) == sizeof(uint8_t)) {
+                int16_t temp = this->ax;
+                int16_t quot = temp / src;
+                if (this->rep_type > NO_REP) {
+                    quot = -quot;
+                }
+                this->al = quot;
+                this->ah = temp % src;
+                if ((uint16_t)(quot - INT8_MIN) > UINT8_MAX) {
+                    this->software_interrupt(IntDE);
+                }
+            }
+            else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+                int32_t temp = this->ax | (uint32_t)this->dx << 16;
+                int32_t quot = temp / src;
+                if (this->rep_type > NO_REP) {
+                    quot = -quot;
+                }
+                this->ax = quot;
+                this->dx = temp % src;
+                if ((uint32_t)(quot - INT16_MIN) > UINT16_MAX) {
+                    this->software_interrupt(IntDE);
+                }
+            }
         }
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            int16_t temp = this->ax;
-            int16_t quot = temp / src;
-            if (this->rep_type > NO_REP) {
-                quot = -quot;
-            }
-            if ((uint16_t)(quot - INT8_MIN) > UINT8_MAX) {
-                // TODO: exception
-            }
-            this->al = quot;
-            this->ah = temp % src;
-        }
-        else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            int32_t temp = this->ax | (uint32_t)this->dx << 16;
-            int32_t quot = temp / src;
-            if (this->rep_type > NO_REP) {
-                quot = -quot;
-            }
-            if ((uint32_t)(quot - INT16_MIN) > UINT16_MAX) {
-                // TODO: exception
-            }
-            this->ax = quot;
-            this->dx = temp % src;
+        else {
+            this->software_interrupt(IntDE);
         }
     }
 
@@ -849,11 +870,16 @@ struct x86Context {
     }
 
     inline void aam_impl(uint8_t imm) {
-        this->ah = this->al / imm;
-        this->al %= imm;
-        this->update_parity(this->al);
-        this->zero = !this->al;
-        this->sign = (int8_t)this->al < 0;
+        if (imm) {
+            this->ah = this->al / imm;
+            this->al %= imm;
+            this->update_parity(this->al);
+            this->zero = !this->al;
+            this->sign = (int8_t)this->al < 0;
+        }
+        else {
+            this->software_interrupt(IntDE);
+        }
     }
 
     inline void aad_impl(uint8_t imm) {
@@ -862,6 +888,82 @@ struct x86Context {
         this->update_parity(this->al);
         this->zero = !this->al;
         this->sign = (int8_t)this->al < 0;
+    }
+
+    inline void check_for_software_interrupt() {
+        int16_t pending_software = this->pending_sinterrupt;
+        if (pending_software > 0) {
+            this->pending_sinterrupt = -1;
+            this->call_interrupt(pending_software);
+        }
+    }
+
+    template <bool set_halt = false>
+    inline void check_for_nmi() {
+        if (this->pending_nmi.exchange(false)) {
+            if constexpr (set_halt) {
+                this->halted = false;
+            }
+            this->call_interrupt(IntNMI);
+        }
+    }
+
+    template <bool set_halt = false>
+    inline void check_for_external_interrupt() {
+        if (this->interrupt) {
+            int16_t external = this->pending_einterrupt.exchange(-1);
+            if (external > 0) {
+                if constexpr (set_halt) {
+                    this->halted = false;
+                }
+                this->call_interrupt(external);
+            }
+        }
+    }
+
+    inline void call_interrupt(uint8_t number) {
+        this->push_impl(this->get_flags());
+        this->interrupt = false;
+        bool prev_trap = this->trap;
+        this->trap = false;
+        this->push_impl(this->cs);
+        this->push_impl(this->ip);
+
+        size_t interrupt_addr = (size_t)number << 2;
+        this->cs = mem.read<uint16_t>(interrupt_addr);
+        this->ip = mem.read<uint16_t>(interrupt_addr + 2);
+
+        this->check_for_nmi();
+        if (prev_trap) {
+            this->call_interrupt(IntDB);
+        }
+    }
+
+    inline void execute_pending_interrupts() {
+        this->check_for_software_interrupt();
+        do {
+            this->check_for_nmi<true>();
+            this->check_for_external_interrupt<true>();
+        } while (this->halted);
+        if (this->trap) {
+            this->call_interrupt(IntDB);
+        }
+    }
+
+    inline void software_interrupt(uint8_t number) {
+        this->pending_sinterrupt = number;
+    }
+
+    inline void external_interrupt(uint8_t number) {
+        this->pending_einterrupt = number;
+    }
+
+    inline void nmi() {
+        this->pending_nmi = true;
+    }
+
+    inline void cancel_interrupt() {
+        this->pending_einterrupt = -1;
     }
 };
 
@@ -963,8 +1065,8 @@ struct ModRM {
         switch (this->Mod()) {
             case 0:
                 if (m == 6) {
-                    default_segment = DS;
                     offset = pc.read_advance<int16_t>();
+                    default_segment = DS;
                 }
                 break;
             case 1:
@@ -1000,13 +1102,15 @@ template <typename T, typename L>
 static inline void binopRM(x86Addr& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     T& rval = ctx.index_reg<T>(modrm.R());
+    T mval;
     if (modrm.is_mem()) {
         x86Addr data_addr = modrm.parse_memM(pc);
-        lambda(rval, data_addr.read<T>());
+        mval = data_addr.read<T>();
     }
     else {
-        lambda(rval, ctx.index_reg<T>(modrm.M()));
+        mval = ctx.index_reg<T>(modrm.M());
     }
+    lambda(rval, mval);
 }
 
 // Double width memory operand, special for LDS/LES
@@ -1022,22 +1126,6 @@ static inline void binopRM2(x86Addr& pc, const L& lambda) {
     }
     else {
         // TODO: jank
-    }
-}
-
-template <typename T, typename L>
-static inline void unopM(x86Addr& pc, const L& lambda) {
-    ModRM modrm = pc.read_advance<ModRM>();
-    uint8_t r = modrm.R();
-    if (modrm.is_mem()) {
-        x86Addr data_addr = modrm.parse_memM(pc);
-        T mval = data_addr.read<T>();
-        if (lambda(mval, r)) {
-            data_addr.write<T>(mval);
-        }
-    }
-    else {
-        lambda(ctx.index_reg<T>(modrm.M()), r);
     }
 }
 
@@ -1061,20 +1149,51 @@ template <typename T, typename L>
 static inline void binopSM(x86Addr& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     T& rval = ctx.index_seg(modrm.R());
+    T mval;
     if (modrm.is_mem()) {
         x86Addr data_addr = modrm.parse_memM(pc);
-        lambda(rval, data_addr.read<T>());
+        mval = data_addr.read<T>();
     }
     else {
-        lambda(rval, ctx.index_seg(modrm.M()));
+        mval = ctx.index_seg(modrm.M());
+    }
+    lambda(rval, mval);
+}
+
+template <typename T, typename L>
+static inline void unopM(x86Addr& pc, const L& lambda) {
+    ModRM modrm = pc.read_advance<ModRM>();
+    uint8_t r = modrm.R();
+    if (modrm.is_mem()) {
+        x86Addr data_addr = modrm.parse_memM(pc);
+        T mval = data_addr.read<T>();
+        if (lambda(mval, r)) {
+            data_addr.write<T>(mval);
+        }
+    }
+    else {
+        lambda(ctx.index_reg<T>(modrm.M()), r);
     }
 }
 
-dllexport void execute_z86() {
-    ctx = {
-        .cs = 0xF000,
-        .ip = 0xFFF0,
-    };
+dllexport void z86_reset() {
+    ctx.reset();
+}
+
+dllexport void z86_nmi() {
+    ctx.nmi();
+}
+
+dllexport void z86_interrupt(uint8_t number) {
+    ctx.external_interrupt(number);
+}
+
+dllexport void z86_cancel_interrupt() {
+    ctx.cancel_interrupt();
+}
+
+dllexport void z86_execute() {
+    ctx.init();
 
     for (;;) {
         // Reset per-instruction states
@@ -1368,71 +1487,71 @@ dllexport void execute_z86() {
                 if (ctx.overflow != (opcode & 1)) {
                     ctx.ip += pc.read<int8_t>();
                 }
-                continue;
+                goto next_instr;
             case 0x62: case 0x72: // JC Jb
             case 0x63: case 0x73: // JNC Jb
                 ctx.ip = pc.offset + 1;
                 if (ctx.carry != (opcode & 1)) {
                     ctx.ip += pc.read<int8_t>();
                 }
-                continue;
+                goto next_instr;
             case 0x64: case 0x74: // JZ Jb
             case 0x65: case 0x75: // JNZ Jb
                 ctx.ip = pc.offset + 1;
                 if (ctx.zero != (opcode & 1)) {
                     ctx.ip += pc.read<int8_t>();
                 }
-                continue;
+                goto next_instr;
             case 0x66: case 0x76: // JBE Jb
                 ctx.ip = pc.offset + 1;
                 if (ctx.cond_BE()) {
                     ctx.ip += pc.read<int8_t>();
                 }
-                continue;
+                goto next_instr;
             case 0x67: case 0x77: // JA Jb
                 ctx.ip = pc.offset + 1;
                 if (ctx.cond_A()) {
                     ctx.ip += pc.read<int8_t>();
                 }
-                continue;
+                goto next_instr;
             case 0x68: case 0x78: // JS Jb
             case 0x69: case 0x79: // JNS Jb
                 ctx.ip = pc.offset + 1;
                 if (ctx.sign != (opcode & 1)) {
                     ctx.ip += pc.read<int8_t>();
                 }
-                continue;
+                goto next_instr;
             case 0x6A: case 0x7A: // JP Jb
             case 0x6B: case 0x7B: // JNP Jb
                 ctx.ip = pc.offset + 1;
                 if (ctx.parity != (opcode & 1)) {
                     ctx.ip += pc.read<int8_t>();
                 }
-                continue;
+                goto next_instr;
             case 0x6C: case 0x7C: // JL Jb
                 ctx.ip = pc.offset + 1;
                 if (ctx.cond_L()) {
                     ctx.ip += pc.read<int8_t>();
                 }
-                continue;
+                goto next_instr;
             case 0x6D: case 0x7D: // JGE Jb
                 ctx.ip = pc.offset + 1;
                 if (ctx.cond_GE()) {
                     ctx.ip += pc.read<int8_t>();
                 }
-                continue;
+                goto next_instr;
             case 0x6E: case 0x7E: // JLE Jb
                 ctx.ip = pc.offset + 1;
                 if (ctx.cond_LE()) {
                     ctx.ip += pc.read<int8_t>();
                 }
-                continue;
+                goto next_instr;
             case 0x6F: case 0x7F: // JG Jb
                 ctx.ip = pc.offset + 1;
                 if (ctx.cond_G()) {
                     ctx.ip += pc.read<int8_t>();
                 }
-                continue;
+                goto next_instr;
             case 0x80: case 0x82: // GRP1 Mb, Ib
                 unopM<uint8_t>(pc, [&](auto& dst, uint8_t r) {
                     uint8_t val = pc.read<int8_t>();
@@ -1583,7 +1702,7 @@ dllexport void execute_z86() {
                 ctx.push_impl(pc.offset + 4);
                 ctx.ip = pc.read<uint16_t>();
                 ctx.cs = pc.read<uint16_t>(2);
-                continue;
+                goto next_instr;
             case 0x9B: // WAIT
                 // NOP :D
                 break;
@@ -1664,10 +1783,10 @@ dllexport void execute_z86() {
             case 0xC0: case 0xC2: // RET imm
                 ctx.ip = ctx.pop_impl();
                 ctx.sp += pc.read<int16_t>();
-                continue;
+                goto next_instr;
             case 0xC1: case 0xC3: // RET
                 ctx.ip = ctx.pop_impl();
-                continue;
+                goto next_instr;
             case 0xC4: // LES
                 binopRM2<uint16_t>(pc, [](auto& dst, uint32_t src) {
                     dst = src;
@@ -1700,21 +1819,27 @@ dllexport void execute_z86() {
                 ctx.ip = ctx.pop_impl();
                 ctx.cs = ctx.pop_impl();
                 ctx.sp += pc.read<int16_t>();
-                continue;
+                goto next_instr;
             case 0xC9: case 0xCB: // RETF
                 ctx.ip = ctx.pop_impl();
                 ctx.cs = ctx.pop_impl();
-                continue;
+                goto next_instr;
             case 0xCC: // INT3
+                ctx.software_interrupt(IntBP);
+                break;
             case 0xCD: // INT Ib
+                ctx.software_interrupt(pc.read_advance<uint8_t>());
+                break;
             case 0xCE: // INTO
-                // TODO
+                if (ctx.overflow) {
+                    ctx.software_interrupt(IntOF);
+                }
                 break;
             case 0xCF: // IRET
                 ctx.ip = ctx.pop_impl();
                 ctx.cs = ctx.pop_impl();
                 ctx.set_flags(ctx.pop_impl());
-                continue;
+                continue; // Using continues delays execution deliberately
             case 0xD0: // GRP2 Mb, 1
                 unopM<uint8_t>(pc, [](auto& dst, uint8_t r) {
                     switch (r) {
@@ -1800,25 +1925,25 @@ dllexport void execute_z86() {
                 if (--ctx.cx || ctx.cond_NZ()) {
                     ctx.ip += pc.read<int8_t>();
                 }
-                continue;
+                goto next_instr;
             case 0xE1: // LOOPZ Jb
                 ctx.ip = pc.offset + 1;
                 if (--ctx.cx || ctx.cond_Z()) {
                     ctx.ip += pc.read<int8_t>();
                 }
-                continue;
+                goto next_instr;
             case 0xE2: // LOOP Jb
                 ctx.ip = pc.offset + 1;
                 if (--ctx.cx) {
                     ctx.ip += pc.read<int8_t>();
                 }
-                continue;
+                goto next_instr;
             case 0xE3: // JCXZ Jb
                 ctx.ip = pc.offset + 1;
                 if (!ctx.cx) {
                     ctx.ip += pc.read<int8_t>();
                 }
-                continue;
+                goto next_instr;
             case 0xE4: // IN AL, Ib
             case 0xE5: // IN AX, Ib
             case 0xE6: // OUT Ib, AL
@@ -1828,17 +1953,17 @@ dllexport void execute_z86() {
             case 0xE8: // CALL Jz
                 ctx.push_impl(pc.offset + 2);
                 ctx.ip = pc.offset + 2 + pc.read<int16_t>();
-                continue;
+                goto next_instr;
             case 0xE9: // JMP Jz
                 ctx.ip = pc.offset + 2 + pc.read<int16_t>();
-                continue;
+                goto next_instr;
             case 0xEA: // JMP far abs
                 ctx.ip = pc.read<uint16_t>();
                 ctx.cs = pc.read<uint16_t>(2);
-                continue;
+                goto next_instr;
             case 0xEB: // JMP Jb
                 ctx.ip = pc.offset + 1 + pc.read<int8_t>();
-                continue;
+                goto next_instr;
             case 0xEC: // IN AL, DX
             case 0xED: // IN AX, DX
             case 0xEE: // OUT DX, AL
@@ -1852,7 +1977,7 @@ dllexport void execute_z86() {
                 ctx.rep_type = opcode & 1;
                 goto next_byte;
             case 0xF4: // HLT
-                // TODO
+                ctx.halted = true;
                 break;
             case 0xF5: // CMC
                 ctx.carry ^= 1;
@@ -1930,5 +2055,7 @@ dllexport void execute_z86() {
                 break;
         }
         ctx.ip = pc.offset;
+    next_instr:
+        ctx.execute_pending_interrupts();
     }
 }

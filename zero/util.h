@@ -174,22 +174,22 @@ typedef char* MS_va_list;
 #endif
 
 enum SseTier_t : uint8_t {
-	IA32 = 0,
-	MMX = 1,
-	_3DNOW = 2,
-	SSE = 3,
-	SSE2 = 4,
-	SSE3 = 5,
-	SSSE3 = 6,
-	SSE41 = 7,
-	SSE42 = 8,
-	AVX = 9,
-	XOP = 10,
-	AVX2 = 11,
-	AVX512_basic = 12,
-	AVX512_wide = 13,
-	AVX512_full = 14,
-	AVX512_fast = 15
+    IA32 = 0,
+    MMX = 1,
+    _3DNOW = 2,
+    SSE = 3,
+    SSE2 = 4,
+    SSE3 = 5,
+    SSSE3 = 6,
+    SSE41 = 7,
+    SSE42 = 8,
+    AVX = 9,
+    XOP = 10,
+    AVX2 = 11,
+    AVX512_basic = 12,
+    AVX512_wide = 13,
+    AVX512_full = 14,
+    AVX512_fast = 15
 };
 
 #if __AVX512BF16__ && __AVX512IFMA__
@@ -403,7 +403,7 @@ using remove_cvref_t = _Remove_cvref_t<_Ty>;
 
 template <class _Ty>
 struct remove_cvref {
-	using type = remove_cvref_t<_Ty>;
+    using type = remove_cvref_t<_Ty>;
 };
 template <class _Callable, class... _Args>
 inline constexpr bool is_invocable_v = _Select_invoke_traits<_Callable, _Args...>::_Is_invocable::value;
@@ -686,8 +686,8 @@ ValidateStructAlignment(align64, struct_type<64>)
 /*
 template<typename T, size_t count, bool is_aligned = false>
 using vec = std::conditional_t<is_aligned, \
-	T gnu_attr(__vector_size__(count * sizeof(T))), \
-	unaligned T gnu_attr(__vector_size__(count * sizeof(T))) \
+    T gnu_attr(__vector_size__(count * sizeof(T))), \
+    unaligned T gnu_attr(__vector_size__(count * sizeof(T))) \
 > gnu_attr(__aligned__(is_aligned ? count * sizeof(T) : 1));
 */
 
@@ -738,9 +738,9 @@ template <typename T>
 inline constexpr size_t vector_length_v = vector_length<T>::value;
 
 enum InlineState {
-	DefaultInline,
-	ForceInline,
-	NoInline
+    DefaultInline,
+    ForceInline,
+    NoInline
 };
 
 #if !CPP20 && !(defined(__cpp_consteval) && __cpp_consteval >= 201811L)
@@ -765,8 +765,8 @@ enum InlineState {
 
 template <typename T>
 static inline constexpr T garbage_value(void) {
-	T garbage;
-	return garbage;
+    T garbage;
+    return garbage;
 }
 
 #define GARBAGE_VALUE(type) garbage_value<type>()
@@ -801,64 +801,64 @@ static inline constexpr T garbage_value(void) {
 #define HBM_VER 185
 #define UDoALG_VER 190
 enum GameVersion : size_t {
-	EoSD = EoSD_VER,
-	PCB = PCB_VER,
-	IN = IN_VER,
-	PoFV = PoFV_VER,
-	StB = StB_VER,
-	MoF = MoF_VER,
-	UB = UB_VER,
-	SA = SA_VER,
-	UFO = UFO_VER,
-	DS = DS_VER,
-	GFW = GFW_VER,
-	TD = TD_VER,
-	DDC = DDC_VER,
-	ISC = ISC_VER,
-	LoLK = LoLK_VER,
-	HSiFS = HSiFS_VER,
-	VD = VS_VER,
-	WBaWC = WBaWC_VER,
-	UM = UM_VER,
-	HBM = HBM_VER,
-	UDoALG = UDoALG_VER
+    EoSD = EoSD_VER,
+    PCB = PCB_VER,
+    IN = IN_VER,
+    PoFV = PoFV_VER,
+    StB = StB_VER,
+    MoF = MoF_VER,
+    UB = UB_VER,
+    SA = SA_VER,
+    UFO = UFO_VER,
+    DS = DS_VER,
+    GFW = GFW_VER,
+    TD = TD_VER,
+    DDC = DDC_VER,
+    ISC = ISC_VER,
+    LoLK = LoLK_VER,
+    HSiFS = HSiFS_VER,
+    VD = VS_VER,
+    WBaWC = WBaWC_VER,
+    UM = UM_VER,
+    HBM = HBM_VER,
+    UDoALG = UDoALG_VER
 };
 
 #define IN
 
 template <typename T>
 struct ZUNEmbeddedList {
-	T* next;
-	T* prev;
+    T* next;
+    T* prev;
 };
 
 #define EMBEDDED_NODE list_node
 
 template <typename T>
 struct ZUNEmbeddedList2 {
-	T* prev;
-	T* next;
+    T* prev;
+    T* next;
 
-	inline void unlink_from_next() {
-		if (T* next_node = this->next) {
-			next_node->EMBEDDED_NODE.prev = this->prev;
-		}
-	}
-	inline void unlink_from_prev() {
-		if (T* prev_node = this->prev) {
-			prev_node->EMBEDDED_NODE.next = this->next;
-		}
-	}
+    inline void unlink_from_next() {
+        if (T* next_node = this->next) {
+            next_node->EMBEDDED_NODE.prev = this->prev;
+        }
+    }
+    inline void unlink_from_prev() {
+        if (T* prev_node = this->prev) {
+            prev_node->EMBEDDED_NODE.next = this->next;
+        }
+    }
 
-	inline void unlink() {
-		this->prev->EMBEDDED_NODE.next = this->next;
-		this->unlink_from_next();
-	}
+    inline void unlink() {
+        this->prev->EMBEDDED_NODE.next = this->next;
+        this->unlink_from_next();
+    }
 
-	inline void prepend(T* new_node) {
-		new_node->prev = ZUNListNCast(this);
-		this->prev = new_node;
-	}
+    inline void prepend(T* new_node) {
+        new_node->prev = ZUNListNCast(this);
+        this->prev = new_node;
+    }
 };
 
 #define ZUNListPlayNiceWithIntellisense
@@ -877,345 +877,345 @@ struct ZUNLinkedListBase;
 
 template <typename T, bool has_idk>
 struct ZUNLinkedListData {
-	using N = ZUNLinkedListBase<T, false>;
-	T* data;
-	N* next;
-	N* prev;
+    using N = ZUNLinkedListBase<T, false>;
+    T* data;
+    N* next;
+    N* prev;
 };
 template <typename T>
 struct ZUNLinkedListData<T, true> {
-	using N = ZUNLinkedListBase<T, true>;
-	T* data;
-	N* next;
-	N* prev;
-	N* idk;
+    using N = ZUNLinkedListBase<T, true>;
+    T* data;
+    N* next;
+    N* prev;
+    N* idk;
 };
 
 template <typename T, bool has_idk ZUNListIdkDefaultValue>
 struct ZUNLinkedListBase : ZUNLinkedListData<T, has_idk> {
-	using N = ZUNLinkedListBase;
+    using N = ZUNLinkedListBase;
 
-	inline void initialize_with(T* data) requires (!has_idk) {
-		this->data = data;
-		this->next = NULL;
-		this->prev = NULL;
-	}
+    inline void initialize_with(T* data) requires (!has_idk) {
+        this->data = data;
+        this->next = NULL;
+        this->prev = NULL;
+    }
 
-	inline void initialize_with(T* data) requires has_idk {
-		this->data = data;
-		this->next = NULL;
-		this->prev = NULL;
-		this->idk = NULL;
-	}
+    inline void initialize_with(T* data) requires has_idk {
+        this->data = data;
+        this->next = NULL;
+        this->prev = NULL;
+        this->idk = NULL;
+    }
 #else
 #define ZUNListNCast(ptr) ((N*)ptr)
 
 template <typename T, bool has_idk ZUNListIdkDefaultValue, bool link_type = has_idk>
 struct ZUNLinkedListBase {
-	using N = ZUNLinkedListBase<T, link_type, link_type>;
-	T* data;
-	N* next;
-	N* prev;
-	
-	inline void initialize_with(T* data) {
-		this->data = data;
-		this->next = NULL;
-		this->prev = NULL;
-	}
+    using N = ZUNLinkedListBase<T, link_type, link_type>;
+    T* data;
+    N* next;
+    N* prev;
+    
+    inline void initialize_with(T* data) {
+        this->data = data;
+        this->next = NULL;
+        this->prev = NULL;
+    }
 #endif
 
-	inline void unlink_from_next() {
-		if (N* next_node = this->next) {
-			next_node->prev = this->prev;
-		}
-	}
-	inline void unlink_from_prev() {
-		if (N* prev_node = this->prev) {
-			prev_node->next = this->next;
-		}
-	}
+    inline void unlink_from_next() {
+        if (N* next_node = this->next) {
+            next_node->prev = this->prev;
+        }
+    }
+    inline void unlink_from_prev() {
+        if (N* prev_node = this->prev) {
+            prev_node->next = this->next;
+        }
+    }
 
-	inline void unlink() {
-		if (N* next_node = this->next) {
-			next_node->prev = this->prev;
-		}
-		if (N* prev_node = this->prev) {
-			prev_node->next = this->next;
-		}
-		this->next = NULL;
-		this->prev = NULL;
-	}
+    inline void unlink() {
+        if (N* next_node = this->next) {
+            next_node->prev = this->prev;
+        }
+        if (N* prev_node = this->prev) {
+            prev_node->next = this->next;
+        }
+        this->next = NULL;
+        this->prev = NULL;
+    }
 
-	inline void unlink_from_head(N*& head_node) {
-		if (this == head_node) {
-			head_node = this->next;
-		}
-	}
+    inline void unlink_from_head(N*& head_node) {
+        if (this == head_node) {
+            head_node = this->next;
+        }
+    }
 
-	inline void unlink_from_tail(N*& tail_node) {
-		if (this == tail_node) {
-			tail_node = this->prev;
-		}
-	}
+    inline void unlink_from_tail(N*& tail_node) {
+        if (this == tail_node) {
+            tail_node = this->prev;
+        }
+    }
 
-	inline void prepend(N* new_node) {
-		new_node->next = ZUNListNCast(this);
-		this->prev = new_node;
-	}
+    inline void prepend(N* new_node) {
+        new_node->next = ZUNListNCast(this);
+        this->prev = new_node;
+    }
 
 #ifndef ZUNListPlayNiceWithIntellisense
-	inline void append(N* new_node) requires (!has_idk) {
-		if (N* next_node = this->next) {
-			next_node->prepend(new_node);
-		}
-		new_node->prepend(this);
-	}
+    inline void append(N* new_node) requires (!has_idk) {
+        if (N* next_node = this->next) {
+            next_node->prepend(new_node);
+        }
+        new_node->prepend(this);
+    }
 
-	inline void append(N* new_node) requires has_idk {
-		if (N* next_node = this->next) {
-			next_node->prepend(new_node);
-		}
-		if (this->idk) {
-			this->idk = new_node;
-		}
-		new_node->prepend(this);
-	}
+    inline void append(N* new_node) requires has_idk {
+        if (N* next_node = this->next) {
+            next_node->prepend(new_node);
+        }
+        if (this->idk) {
+            this->idk = new_node;
+        }
+        new_node->prepend(this);
+    }
 #else
-	inline void append(N* new_node) {
-		if (N* next_node = this->next) {
-			next_node->prepend(new_node);
-		}
-		new_node->prepend(this);
-	}
+    inline void append(N* new_node) {
+        if (N* next_node = this->next) {
+            next_node->prepend(new_node);
+        }
+        new_node->prepend(this);
+    }
 #endif
 
 protected:
-	static inline void delete_each_impl(N* node) {
-		for (N* next_node; node; node = next_node) {
-			next_node = node->next;
-			assume(node->data != NULL);
-			delete node->data;
-			delete node;
-		}
-	}
-	template <typename L>
-	static inline void for_each_impl(const L& lambda, N* node) {
-		for (; node; node = node->next) {
-			lambda(node->data);
-		}
-	}
-	template <typename L>
-	static inline void for_eachB_impl(const L& lambda, N* node) {
-		for (N* next_node; node; node = next_node) {
-			T* data = node->data;
-			next_node = node->next;
-			if constexpr (std::is_invocable_v<L, T*, N*>) {
-				lambda(data, node);
-			} else {
-				lambda(data);
-			}
-		}
-	}
-	template <typename L>
-	static inline bool do_while_impl(const L& lambda, N* node) {
-		for (; node; node = node->next) {
-			if (!lambda(node->data)) return false;
-		}
-		return true;
-	}
-	template <typename L>
-	static inline bool do_whileB_impl(const L& lambda, N* node) {
-		for (N* next_node; node; node = next_node) {
-			next_node = node->next;
-			T* data = node->data;
-			if constexpr (std::is_invocable_v<L, T*, N*>) {
-				if (!lambda(data, node)) return false;
-			} else {
-				if (!lambda(data)) return false;
-			}
-		}
-		return true;
-	}
-	template <typename L>
-	static inline T* find_if_impl(const L& lambda, N* node) {
-		for (; node; node = node->next) {
-			if (T* data = node->data; lambda(data)) return data;
-		}
-		return NULL;
-	}
-	template <typename L>
-	static inline T* find_if_not_impl(const L& lambda, N* node) {
-		for (; node; node = node->next) {
-			if (T* data = node->data; !lambda(data)) return data;
-		}
-		return NULL;
-	}
-	template <typename L>
-	static inline N* find_node_if_impl(const L& lambda, N* node) {
-		for (; node; node = node->next) {
-			if (T* data = node->data; lambda(data)) break;
-		}
-		return node;
-	}
-	template <typename L>
-	static inline N* find_node_before_impl(const L& lambda, N* node) {
-		for (N* next_node; (next_node = node->next); node = next_node) {
-			if (T* data = next_node->data; lambda(data)) break;
-		}
-		return node;
-	}
-	template <typename L>
-	static inline int32_t count_if_impl(const L& lambda, N* node) {
-		int32_t ret = 0;
-		for (N* next_node; node; node = next_node) {
-			next_node = node->next;
-			if (T* data = node->data; lambda(data)) ++ret;
-		}
-		return ret;
-	}
-	template <typename L>
-	static inline int32_t count_if_not_impl(const L& lambda, N* node) {
-		int32_t ret = 0;
-		for (N* next_node; node; node = next_node) {
-			next_node = node->next;
-			if (T* data = node->data; !lambda(data)) ++ret;
-		}
-		return ret;
-	}
-	template <typename L>
-	static inline int32_t count_ifB_impl(const L& lambda, N* node) {
-		int32_t ret = 0;
-		for (; node; node = node->next) {
-			if (T* data = node->data; lambda(data)) ++ret;
-		}
-		return ret;
-	}
+    static inline void delete_each_impl(N* node) {
+        for (N* next_node; node; node = next_node) {
+            next_node = node->next;
+            assume(node->data != NULL);
+            delete node->data;
+            delete node;
+        }
+    }
+    template <typename L>
+    static inline void for_each_impl(const L& lambda, N* node) {
+        for (; node; node = node->next) {
+            lambda(node->data);
+        }
+    }
+    template <typename L>
+    static inline void for_eachB_impl(const L& lambda, N* node) {
+        for (N* next_node; node; node = next_node) {
+            T* data = node->data;
+            next_node = node->next;
+            if constexpr (std::is_invocable_v<L, T*, N*>) {
+                lambda(data, node);
+            } else {
+                lambda(data);
+            }
+        }
+    }
+    template <typename L>
+    static inline bool do_while_impl(const L& lambda, N* node) {
+        for (; node; node = node->next) {
+            if (!lambda(node->data)) return false;
+        }
+        return true;
+    }
+    template <typename L>
+    static inline bool do_whileB_impl(const L& lambda, N* node) {
+        for (N* next_node; node; node = next_node) {
+            next_node = node->next;
+            T* data = node->data;
+            if constexpr (std::is_invocable_v<L, T*, N*>) {
+                if (!lambda(data, node)) return false;
+            } else {
+                if (!lambda(data)) return false;
+            }
+        }
+        return true;
+    }
+    template <typename L>
+    static inline T* find_if_impl(const L& lambda, N* node) {
+        for (; node; node = node->next) {
+            if (T* data = node->data; lambda(data)) return data;
+        }
+        return NULL;
+    }
+    template <typename L>
+    static inline T* find_if_not_impl(const L& lambda, N* node) {
+        for (; node; node = node->next) {
+            if (T* data = node->data; !lambda(data)) return data;
+        }
+        return NULL;
+    }
+    template <typename L>
+    static inline N* find_node_if_impl(const L& lambda, N* node) {
+        for (; node; node = node->next) {
+            if (T* data = node->data; lambda(data)) break;
+        }
+        return node;
+    }
+    template <typename L>
+    static inline N* find_node_before_impl(const L& lambda, N* node) {
+        for (N* next_node; (next_node = node->next); node = next_node) {
+            if (T* data = next_node->data; lambda(data)) break;
+        }
+        return node;
+    }
+    template <typename L>
+    static inline int32_t count_if_impl(const L& lambda, N* node) {
+        int32_t ret = 0;
+        for (N* next_node; node; node = next_node) {
+            next_node = node->next;
+            if (T* data = node->data; lambda(data)) ++ret;
+        }
+        return ret;
+    }
+    template <typename L>
+    static inline int32_t count_if_not_impl(const L& lambda, N* node) {
+        int32_t ret = 0;
+        for (N* next_node; node; node = next_node) {
+            next_node = node->next;
+            if (T* data = node->data; !lambda(data)) ++ret;
+        }
+        return ret;
+    }
+    template <typename L>
+    static inline int32_t count_ifB_impl(const L& lambda, N* node) {
+        int32_t ret = 0;
+        for (; node; node = node->next) {
+            if (T* data = node->data; lambda(data)) ++ret;
+        }
+        return ret;
+    }
 public:
-	inline void delete_each() {
-		return delete_each_impl((N*)this);
-	}
-	template <typename L>
-	inline void for_each(const L& lambda) {
-		return for_each_impl(lambda, (N*)this);
-	}
-	template <typename L>
-	inline void for_eachB(const L& lambda) {
-		return for_eachB_impl(lambda, (N*)this);
-	}
-	template <typename L>
-	inline bool do_while(const L& lambda) {
-		return do_while_impl(lambda, (N*)this);
-	}
-	template <typename L>
-	inline bool do_whileB(const L& lambda) {
-		return do_whileB_impl(lambda, (N*)this);
-	}
-	template <typename L>
-	inline T* find_if(const L& lambda) {
-		return find_if_impl(lambda, (N*)this);
-	}
-	template <typename L>
-	inline T* find_if_not(const L& lambda) {
-		return find_if_not_impl(lambda, (N*)this);
-	}
-	template <typename L>
-	inline N* find_node_if(const L& lambda) {
-		return find_node_if_impl(lambda, (N*)this);
-	}
-	template <typename L>
-	inline N* find_node_before(const L& lambda) {
-		return find_node_before_impl(lambda, (N*)this);
-	}
-	template <typename L>
-	inline int32_t count_if(const L& lambda) {
-		return count_if_impl(lambda, (N*)this);
-	}
-	template <typename L>
-	inline int32_t count_if_not(const L& lambda) {
-		return count_if_not_impl(lambda, (N*)this);
-	}
-	template <typename L>
-	inline int32_t count_ifB(const L& lambda) {
-		return count_ifB_impl(lambda, (N*)this);
-	}
+    inline void delete_each() {
+        return delete_each_impl((N*)this);
+    }
+    template <typename L>
+    inline void for_each(const L& lambda) {
+        return for_each_impl(lambda, (N*)this);
+    }
+    template <typename L>
+    inline void for_eachB(const L& lambda) {
+        return for_eachB_impl(lambda, (N*)this);
+    }
+    template <typename L>
+    inline bool do_while(const L& lambda) {
+        return do_while_impl(lambda, (N*)this);
+    }
+    template <typename L>
+    inline bool do_whileB(const L& lambda) {
+        return do_whileB_impl(lambda, (N*)this);
+    }
+    template <typename L>
+    inline T* find_if(const L& lambda) {
+        return find_if_impl(lambda, (N*)this);
+    }
+    template <typename L>
+    inline T* find_if_not(const L& lambda) {
+        return find_if_not_impl(lambda, (N*)this);
+    }
+    template <typename L>
+    inline N* find_node_if(const L& lambda) {
+        return find_node_if_impl(lambda, (N*)this);
+    }
+    template <typename L>
+    inline N* find_node_before(const L& lambda) {
+        return find_node_before_impl(lambda, (N*)this);
+    }
+    template <typename L>
+    inline int32_t count_if(const L& lambda) {
+        return count_if_impl(lambda, (N*)this);
+    }
+    template <typename L>
+    inline int32_t count_if_not(const L& lambda) {
+        return count_if_not_impl(lambda, (N*)this);
+    }
+    template <typename L>
+    inline int32_t count_ifB(const L& lambda) {
+        return count_ifB_impl(lambda, (N*)this);
+    }
 };
 
 #ifdef ZUNListPlayNiceWithIntellisense
 template <typename T>
 struct ZUNLinkedListBase<T, true, true> : ZUNLinkedListBase<T, false, true> {
-	using N = ZUNLinkedListBase<T, true, true>;
-	N* idk;
+    using N = ZUNLinkedListBase<T, true, true>;
+    N* idk;
 
-	inline void initialize_with(T* data) {
-		this->data = data;
-		this->next = NULL;
-		this->prev = NULL;
-		this->idk = NULL;
-	}
+    inline void initialize_with(T* data) {
+        this->data = data;
+        this->next = NULL;
+        this->prev = NULL;
+        this->idk = NULL;
+    }
 
-	inline void append(N* new_node) {
-		if (N* next_node = this->next) {
-			next_node->prepend(new_node);
-		}
-		if (this->idk) {
-			this->idk = new_node;
-		}
-		new_node->prepend(this);
-	}
+    inline void append(N* new_node) {
+        if (N* next_node = this->next) {
+            next_node->prepend(new_node);
+        }
+        if (this->idk) {
+            this->idk = new_node;
+        }
+        new_node->prepend(this);
+    }
 };
 #endif
 
 template <typename T, bool has_idk ZUNListIdkDefaultValue>
 struct ZUNLinkedListHeadDummyBase : ZUNLinkedListBase<T, has_idk> {
-	using N = ZUNLinkedListBase<T, has_idk>;
+    using N = ZUNLinkedListBase<T, has_idk>;
 
-	inline void delete_each() {
-		return delete_each_impl(this->next);
-	}
-	template <typename L>
-	inline void for_each(const L& lambda) {
-		return for_each_impl(lambda, this->next);
-	}
-	template <typename L>
-	inline void for_eachB(const L& lambda) {
-		return for_eachB_impl(lambda, this->next);
-	}
-	template <typename L>
-	inline bool do_while(const L& lambda) {
-		return do_while_impl(lambda, this->next);
-	}
-	template <typename L>
-	inline bool do_whileB(const L& lambda) {
-		return do_whileB_impl(lambda, this->next);
-	}
-	template <typename L>
-	inline T* find_if(const L& lambda) {
-		return find_if_impl(lambda, this->next);
-	}
-	template <typename L>
-	inline T* find_if_not(const L& lambda) {
-		return find_if_not_impl(lambda, this->next);
-	}
-	template <typename L>
-	inline N* find_node_if(const L& lambda) {
-		return find_node_if_impl(lambda, this->next);
-	}
-	template <typename L>
-	inline N* find_node_before(const L& lambda) {
-		return find_node_before_impl(lambda, this->next);
-	}
-	template <typename L>
-	inline int32_t count_if(const L& lambda) {
-		return count_if_impl(lambda, this->next);
-	}
-	template <typename L>
-	inline int32_t count_if_not(const L& lambda) {
-		return count_if_not_impl(lambda, this->next);
-	}
-	template <typename L>
-	inline int32_t count_ifB(const L& lambda) {
-		return count_ifB_impl(lambda, this->next);
-	}
+    inline void delete_each() {
+        return delete_each_impl(this->next);
+    }
+    template <typename L>
+    inline void for_each(const L& lambda) {
+        return for_each_impl(lambda, this->next);
+    }
+    template <typename L>
+    inline void for_eachB(const L& lambda) {
+        return for_eachB_impl(lambda, this->next);
+    }
+    template <typename L>
+    inline bool do_while(const L& lambda) {
+        return do_while_impl(lambda, this->next);
+    }
+    template <typename L>
+    inline bool do_whileB(const L& lambda) {
+        return do_whileB_impl(lambda, this->next);
+    }
+    template <typename L>
+    inline T* find_if(const L& lambda) {
+        return find_if_impl(lambda, this->next);
+    }
+    template <typename L>
+    inline T* find_if_not(const L& lambda) {
+        return find_if_not_impl(lambda, this->next);
+    }
+    template <typename L>
+    inline N* find_node_if(const L& lambda) {
+        return find_node_if_impl(lambda, this->next);
+    }
+    template <typename L>
+    inline N* find_node_before(const L& lambda) {
+        return find_node_before_impl(lambda, this->next);
+    }
+    template <typename L>
+    inline int32_t count_if(const L& lambda) {
+        return count_if_impl(lambda, this->next);
+    }
+    template <typename L>
+    inline int32_t count_if_not(const L& lambda) {
+        return count_if_not_impl(lambda, this->next);
+    }
+    template <typename L>
+    inline int32_t count_ifB(const L& lambda) {
+        return count_ifB_impl(lambda, this->next);
+    }
 };
 
 #ifdef ZUNListIdkDefault
@@ -1226,9 +1226,9 @@ using ZUNLinkedListHeadDummy = ZUNLinkedListHeadDummyBase<T, ZUNListIdkDefault>;
 #endif
 
 union ZUNMagic {
-	char text[4];
-	int32_t as_int;
-	uint32_t as_uint;
+    char text[4];
+    int32_t as_int;
+    uint32_t as_uint;
 };
 
 #define countof(array_type) \
@@ -1287,7 +1287,7 @@ static consteval size_t sizeof_template_impl() {
 
 template <typename P, typename O>
 static inline P* pointer_raw_offset(P* pointer, O offset) {
-	return (P*)(((intptr_t)pointer) + offset);
+    return (P*)(((intptr_t)pointer) + offset);
 }
 
 #define _identifier(name) __identifier(MACRO_STR(name))
@@ -1388,231 +1388,231 @@ static gnu_noinline void assume_all_registers_volatile(void* use_arg) {}
 
 template<typename T, uint8_t known_base = 0, bool enable_relative = false, bool skip_whitespace = true, bool check_sign = true>
 static gnu_noinline std::pair<T, const char*> regcall strtonum(const char* str, size_t base) {
-	const uint8_t* str_read = (const uint8_t*)str;
-	uint8_t number_base;
-	if constexpr (known_base == 0 || known_base == 10) {
-		number_base = 10;
-	} else if constexpr (known_base == 2 || known_base == 16) {
-		number_base = known_base;
-	}
-	uint8_t flags = 0;
-	const uint8_t is_negate = 0x01;
-	const uint8_t is_relative = 0x02;
-	const uint8_t is_max = 0x80;
-	uint32_t c;
-	if constexpr (skip_whitespace || check_sign) {
-	pre_number_loop:
-		switch (c = *str_read) {
-			case '\t': case '\n': case '\v': case '\f': case '\r': case ' ':
-				if constexpr (!skip_whitespace) {
-					++str_read;
-					goto pre_number_loop;
-				} else {
-					goto fail;
-				}
-			case '-':
-				if constexpr (check_sign) {
-					flags |= is_negate;
-					break;
-				} else {
-					goto fail;
-				}
-			case '+':
-				if constexpr (check_sign) {
-					break;
-				} else {
-					goto fail;
-				}
-			default: [[unlikely]];
-				goto fail;
-			case 'r': case 'R':
-				if constexpr (enable_relative) {
-					goto is_leading_r;
-				} else {
-					goto fail;
-				}
-			case '0':
-				goto is_leading_zero;
-			case '1' ... '9':
-				goto start_number;
-		}
-		++str_read;
-	}
-	switch (c = *str_read) {
-		default:
-			goto fail;
-		case 'r': case 'R': is_leading_r:
-			if constexpr (!enable_relative) {
-				goto fail;
-			} else {
-				flags |= is_relative;
-			}
-		case '0': is_leading_zero:
-			if constexpr (known_base == 16) {
-				switch (*++str_read) {
-					case 'x': case 'X':
-						c = *++str_read;
-						break;
-					default: [[unlikely]];
-						goto fail;
-				}
-				break;
-			} else if constexpr (known_base == 2) {
-				switch (*++str_read) {
-					case 'b': case 'B':
-						c = *++str_read;
-						break;
-					default: [[unlikely]];
-						goto fail;
-				}
-				break;
-			} else if constexpr (known_base == 10) {
-				switch (c = *++str_read) {
-					case '0' ... '9':
-						break;
-					default: [[unlikely]];
-						goto fail;
-				}
-				break;
-			} else {
-				switch (c = *++str_read) {
-					default: [[unlikely]];
-						goto fail;
-					case 'x': case 'X':
-						number_base = 16;
-						c = *++str_read;
-						break;
-					case 'b': case 'B':
-						number_base = 2;
-						c = *++str_read;
-						break;
-					case '0' ... '9':
-						break;
-				}
-				break;
-			}
-		case '1' ... '9':
-			break;
-	}
-	{
+    const uint8_t* str_read = (const uint8_t*)str;
+    uint8_t number_base;
+    if constexpr (known_base == 0 || known_base == 10) {
+        number_base = 10;
+    } else if constexpr (known_base == 2 || known_base == 16) {
+        number_base = known_base;
+    }
+    uint8_t flags = 0;
+    const uint8_t is_negate = 0x01;
+    const uint8_t is_relative = 0x02;
+    const uint8_t is_max = 0x80;
+    uint32_t c;
+    if constexpr (skip_whitespace || check_sign) {
+    pre_number_loop:
+        switch (c = *str_read) {
+            case '\t': case '\n': case '\v': case '\f': case '\r': case ' ':
+                if constexpr (!skip_whitespace) {
+                    ++str_read;
+                    goto pre_number_loop;
+                } else {
+                    goto fail;
+                }
+            case '-':
+                if constexpr (check_sign) {
+                    flags |= is_negate;
+                    break;
+                } else {
+                    goto fail;
+                }
+            case '+':
+                if constexpr (check_sign) {
+                    break;
+                } else {
+                    goto fail;
+                }
+            default: [[unlikely]];
+                goto fail;
+            case 'r': case 'R':
+                if constexpr (enable_relative) {
+                    goto is_leading_r;
+                } else {
+                    goto fail;
+                }
+            case '0':
+                goto is_leading_zero;
+            case '1' ... '9':
+                goto start_number;
+        }
+        ++str_read;
+    }
+    switch (c = *str_read) {
+        default:
+            goto fail;
+        case 'r': case 'R': is_leading_r:
+            if constexpr (!enable_relative) {
+                goto fail;
+            } else {
+                flags |= is_relative;
+            }
+        case '0': is_leading_zero:
+            if constexpr (known_base == 16) {
+                switch (*++str_read) {
+                    case 'x': case 'X':
+                        c = *++str_read;
+                        break;
+                    default: [[unlikely]];
+                        goto fail;
+                }
+                break;
+            } else if constexpr (known_base == 2) {
+                switch (*++str_read) {
+                    case 'b': case 'B':
+                        c = *++str_read;
+                        break;
+                    default: [[unlikely]];
+                        goto fail;
+                }
+                break;
+            } else if constexpr (known_base == 10) {
+                switch (c = *++str_read) {
+                    case '0' ... '9':
+                        break;
+                    default: [[unlikely]];
+                        goto fail;
+                }
+                break;
+            } else {
+                switch (c = *++str_read) {
+                    default: [[unlikely]];
+                        goto fail;
+                    case 'x': case 'X':
+                        number_base = 16;
+                        c = *++str_read;
+                        break;
+                    case 'b': case 'B':
+                        number_base = 2;
+                        c = *++str_read;
+                        break;
+                    case '0' ... '9':
+                        break;
+                }
+                break;
+            }
+        case '1' ... '9':
+            break;
+    }
+    {
 start_number:
-	T ret = 0;
-	for (;; c = *++str_read) {
-		uint32_t digit = c;
-		switch (digit) {
-			case '0' ... '9':
-				digit -= '0';
-				break;
-			case 'a' ... 'f':
-				digit -= 'a' - 10;
-				break;
-			case 'A' ... 'F':
-				digit -= 'A' - 10;
-				break;
-			default:
-				goto end_parse;
-		}
-		if (digit >= number_base) {
-			break;
-		}
-		if (expect(!(flags & is_max), true)) {
-			if (expect(!__builtin_mul_overflow(ret, number_base, &ret), true)) {
-				if (expect(!__builtin_add_overflow(ret, digit, &ret), true)) {
-					continue;
-				}
-			}
-			flags |= is_max;
-		}
-	}
+    T ret = 0;
+    for (;; c = *++str_read) {
+        uint32_t digit = c;
+        switch (digit) {
+            case '0' ... '9':
+                digit -= '0';
+                break;
+            case 'a' ... 'f':
+                digit -= 'a' - 10;
+                break;
+            case 'A' ... 'F':
+                digit -= 'A' - 10;
+                break;
+            default:
+                goto end_parse;
+        }
+        if (digit >= number_base) {
+            break;
+        }
+        if (expect(!(flags & is_max), true)) {
+            if (expect(!__builtin_mul_overflow(ret, number_base, &ret), true)) {
+                if (expect(!__builtin_add_overflow(ret, digit, &ret), true)) {
+                    continue;
+                }
+            }
+            flags |= is_max;
+        }
+    }
 end_parse:
-	if (!(flags & is_max)) {
-		if constexpr (check_sign) {
-			if (flags & is_negate) {
-				ret = -ret;
-			}
-		}
-		if constexpr (enable_relative) {
-			if (flags & is_relative) {
-				ret += base;
-			}
-		}
-		return std::make_pair(ret, (const char*)str_read);
-	}
-	}
+    if (!(flags & is_max)) {
+        if constexpr (check_sign) {
+            if (flags & is_negate) {
+                ret = -ret;
+            }
+        }
+        if constexpr (enable_relative) {
+            if (flags & is_relative) {
+                ret += base;
+            }
+        }
+        return std::make_pair(ret, (const char*)str_read);
+    }
+    }
 fail:
-	return std::make_pair(std::numeric_limits<T>::max(), str);
+    return std::make_pair(std::numeric_limits<T>::max(), str);
 }
 
 template <typename T>
 inline T confine_to_range(T min, T input, T max) {
-	T temp = __max(min, input);
-	return __min(max, temp);
+    T temp = __max(min, input);
+    return __min(max, temp);
 }
 
 // Efficiently tests if [value] is within the range [min, max)
 template <typename T> requires(std::is_integral_v<T>)
 static inline constexpr bool in_range_exclusive(T value, T min, T max) {
-	return (std::make_unsigned_t<T>)(value - min) < (std::make_unsigned_t<T>)(max - min);
+    return (std::make_unsigned_t<T>)(value - min) < (std::make_unsigned_t<T>)(max - min);
 }
 // Efficiently tests if [value] is within the range [min, max]
 // Valid for both signed and unsigned integers
 template <typename T> requires(std::is_integral_v<T>)
 static inline constexpr bool in_range_inclusive(T value, T min, T max) {
-	return (std::make_unsigned_t<T>)(value - min) <= (std::make_unsigned_t<T>)(max - min);
+    return (std::make_unsigned_t<T>)(value - min) <= (std::make_unsigned_t<T>)(max - min);
 }
 
 template <typename T1, typename T2>
 static inline constexpr T1 lerp(const T1& initial_val, const T1& final_val, const T2& time) {
-	if constexpr (std::is_integral_v<T1>) {
-		return (float)initial_val + time * (final_val - initial_val);
-	} else {
-		return initial_val + time * (final_val - initial_val);
-	}
+    if constexpr (std::is_integral_v<T1>) {
+        return (float)initial_val + time * (final_val - initial_val);
+    } else {
+        return initial_val + time * (final_val - initial_val);
+    }
 }
 
 // Packs the bytes [c1] and [c2] together as a 16 bit little endian signed integer
 static inline constexpr int16_t PackSInt16(uint8_t c1, uint8_t c2 = 0) {
-	return c2 << 8 | c1;
+    return c2 << 8 | c1;
 }
 // Packs the bytes [c1], [c2], [c3], and [c4] together as a 32 bit little endian signed integer
 static inline constexpr int32_t PackSInt32(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0) {
-	return c4 << 24 | c3 << 16 | c2 << 8 | c1;
+    return c4 << 24 | c3 << 16 | c2 << 8 | c1;
 }
 // Packs the bytes [c1], [c2], [c3], [c4], [c5], [c6], [c7], and [c8] together as a 64 bit little endian signed integer
 static inline constexpr int64_t PackSInt64(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0, uint8_t c5 = 0, uint8_t c6 = 0, uint8_t c7 = 0, uint8_t c8 = 0) {
-	return (uint64_t)c8 << 56 | (uint64_t)c7 << 48 | (uint64_t)c6 << 40 | (uint64_t)c5 << 32 | c4 << 24 | c3 << 16 | c2 << 8 | c1;
+    return (uint64_t)c8 << 56 | (uint64_t)c7 << 48 | (uint64_t)c6 << 40 | (uint64_t)c5 << 32 | c4 << 24 | c3 << 16 | c2 << 8 | c1;
 }
 // Packs the bytes [c1] and [c2] together as a 16 bit little endian unsigned integer
 static inline constexpr uint16_t PackUInt16(uint8_t c1, uint8_t c2 = 0) {
-	return c2 << 8 | c1;
+    return c2 << 8 | c1;
 }
 // Packs the bytes [c1], [c2], [c3], and [c4] together as a 32 bit little endian unsigned integer
 static inline constexpr uint32_t PackUInt32(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0) {
-	return c4 << 24 | c3 << 16 | c2 << 8 | c1;
+    return c4 << 24 | c3 << 16 | c2 << 8 | c1;
 }
 // Packs the bytes [c1], [c2], [c3], [c4], [c5], [c6], [c7], and [c8] together as a 64 bit little endian unsigned integer
 static inline constexpr uint64_t PackUInt64(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0, uint8_t c5 = 0, uint8_t c6 = 0, uint8_t c7 = 0, uint8_t c8 = 0) {
-	return (uint64_t)c8 << 56 | (uint64_t)c7 << 48 | (uint64_t)c6 << 40 | (uint64_t)c5 << 32 | c4 << 24 | c3 << 16 | c2 << 8 | c1;
+    return (uint64_t)c8 << 56 | (uint64_t)c7 << 48 | (uint64_t)c6 << 40 | (uint64_t)c5 << 32 | c4 << 24 | c3 << 16 | c2 << 8 | c1;
 }
 // Packs the bytes [c1] and [c2] together as a 16 bit little endian signed integer
 static inline constexpr int16_t PackInt16(uint8_t c1, uint8_t c2 = 0) {
-	return PackSInt16(c1, c2);
+    return PackSInt16(c1, c2);
 }
 // Packs the bytes [c1], [c2], [c3], and [c4] together as a 32 bit little endian signed integer
 static inline constexpr int32_t PackInt32(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0) {
-	return PackSInt32(c1, c2, c3, c4);
+    return PackSInt32(c1, c2, c3, c4);
 }
 // Packs the bytes [c1], [c2], [c3], [c4], [c5], [c6], [c7], and [c8] together as a 64 bit little endian signed integer
 static inline constexpr int64_t PackInt64(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0, uint8_t c5 = 0, uint8_t c6 = 0, uint8_t c7 = 0, uint8_t c8 = 0) {
-	return PackSInt64(c1, c2, c3, c4, c5, c6, c7, c8);
+    return PackSInt64(c1, c2, c3, c4, c5, c6, c7, c8);
 }
 // Packs the bytes [c1], [c2], [c3], and [c4] together as a 32 bit little endian signed integer
 static inline constexpr int32_t PackInt(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0) {
-	return PackSInt32(c1, c2, c3, c4);
+    return PackSInt32(c1, c2, c3, c4);
 }
 // Packs the bytes [c1], [c2], [c3], and [c4] together as a 32 bit little endian unsigned integer
 static inline constexpr uint32_t PackUInt(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0) {
-	return PackUInt32(c1, c2, c3, c4);
+    return PackUInt32(c1, c2, c3, c4);
 }
 
 #ifndef far
@@ -1623,26 +1623,26 @@ static inline constexpr uint32_t PackUInt(uint8_t c1, uint8_t c2 = 0, uint8_t c3
 #endif
 
 enum PointerType {
-	Near32Z			= 0b0001,
-	Near64Z			= 0b0010,
-	Near16Z			= 0b0011,
-	SegmentPointer	= 0b0100,
-	Far32Z			= 0b0101,
-	Far64Z			= 0b0110,
-	Far16Z			= 0b0111,
-	SignedPointer	= 0b1000,
-	Near32S			= 0b1001,
-	Near64S			= 0b1010,
-	Near16S			= 0b1011,
-	Far32S			= 0b1101,
-	Far64S			= 0b1110,
-	Far16S			= 0b1111,
-	Near32 = Near32Z,
-	Near64 = Near64Z,
-	Near16 = Near16Z,
-	Pointer32 = Near32,
-	Pointer64 = Near64,
-	Pointer16 = Near16
+    Near32Z			= 0b0001,
+    Near64Z			= 0b0010,
+    Near16Z			= 0b0011,
+    SegmentPointer	= 0b0100,
+    Far32Z			= 0b0101,
+    Far64Z			= 0b0110,
+    Far16Z			= 0b0111,
+    SignedPointer	= 0b1000,
+    Near32S			= 0b1001,
+    Near64S			= 0b1010,
+    Near16S			= 0b1011,
+    Far32S			= 0b1101,
+    Far64S			= 0b1110,
+    Far16S			= 0b1111,
+    Near32 = Near32Z,
+    Near64 = Near64Z,
+    Near16 = Near16Z,
+    Pointer32 = Near32,
+    Pointer64 = Near64,
+    Pointer16 = Near16
 };
 
 static inline constexpr size_t native_bits = NATIVE_BITS;
@@ -1781,50 +1781,50 @@ static inline constexpr bool ptr_is_64 = std::is_same_v<T, PTR64<remove_pointer_
 
 template<size_t pointer_size, typename T = void>
 using PTRNZ = std::conditional_t<pointer_size == 32 || pointer_size == 16, PTR32Z<T>, // TODO: 16
-			  std::conditional_t<pointer_size == 64, PTR64Z<T>,
-			  void>>;
+              std::conditional_t<pointer_size == 64, PTR64Z<T>,
+              void>>;
 template<size_t pointer_size, typename T = void>
 using PTRNS = std::conditional_t<pointer_size == 32 || pointer_size == 16, PTR32S<T>, // TODO: 16
-			  std::conditional_t<pointer_size == 64, PTR64S<T>,
-			  void>>;
+              std::conditional_t<pointer_size == 64, PTR64S<T>,
+              void>>;
 
 template<size_t pointer_size, typename T = void>
 using SPTRNZ = std::conditional_t<pointer_size == 32 || pointer_size == 16, SPTR32Z<T>, // TODO: 16
-			   std::conditional_t<pointer_size == 64, SPTR64Z<T>,
-			   void>>;
+               std::conditional_t<pointer_size == 64, SPTR64Z<T>,
+               void>>;
 template<size_t pointer_size, typename T = void>
 using SPTRNS = std::conditional_t<pointer_size == 32 || pointer_size == 16, SPTR32S<T>, // TODO: 16
-			   std::conditional_t<pointer_size == 64, SPTR64S<T>,
-			   void>>;
+               std::conditional_t<pointer_size == 64, SPTR64S<T>,
+               void>>;
 
 template<size_t pointer_size, typename T = void>
 using LPTRNZ = std::conditional_t<pointer_size == 32 || pointer_size == 16, LPTR32Z<T>,
-			   std::conditional_t<pointer_size == 64, LPTR64Z<T>,
-			   void>>;
+               std::conditional_t<pointer_size == 64, LPTR64Z<T>,
+               void>>;
 template<size_t pointer_size, typename T = void>
 using LPTRNS = std::conditional_t<pointer_size == 32 || pointer_size == 16, LPTR32S<T>,
-			   std::conditional_t<pointer_size == 64, LPTR64S<T>,
-			   void>>;
+               std::conditional_t<pointer_size == 64, LPTR64S<T>,
+               void>>;
 
 template<size_t pointer_size>
 using uintptr_tx = std::conditional_t<pointer_size == 32 || pointer_size == 16, uint32_t,
-				   std::conditional_t<pointer_size == 64, uint64_t,
-				   void>>;
+                   std::conditional_t<pointer_size == 64, uint64_t,
+                   void>>;
 
 template<size_t pointer_size>
 using intptr_tx = std::conditional_t<pointer_size == 32 || pointer_size == 16, int32_t,
-				  std::conditional_t<pointer_size == 64, int64_t,
-				  void>>;
+                  std::conditional_t<pointer_size == 64, int64_t,
+                  void>>;
 
 template<size_t pointer_size>
 using size_tx = std::conditional_t<pointer_size == 32 || pointer_size == 16, uint32_t,
-				std::conditional_t<pointer_size == 64, uint64_t,
-				void>>;
+                std::conditional_t<pointer_size == 64, uint64_t,
+                void>>;
 
 template<size_t pointer_size>
 using ssize_tx = std::conditional_t<pointer_size == 32 || pointer_size == 16, int32_t,
-				 std::conditional_t<pointer_size == 64, int64_t,
-				 void>>;
+                 std::conditional_t<pointer_size == 64, int64_t,
+                 void>>;
 
 template<size_t pointer_size, typename T = void>
 using PTRZX = PTRNZ<pointer_size, T>;
@@ -1861,86 +1861,86 @@ using LPTRS = LPTRNS<bitsof(void*), T>;
 
 template<typename T = void>
 static forceinline T* based_pointer(void* base, size_t offset) {
-	return (T*)(uintptr_t(base) + offset);
+    return (T*)(uintptr_t(base) + offset);
 }
 template<typename T = void>
 static forceinline const T* based_pointer(const void* base, size_t offset) {
-	return (const T*)(uintptr_t(base) + offset);
+    return (const T*)(uintptr_t(base) + offset);
 }
 template<typename T, typename T2 = T>
 static forceinline T2* based_pointer(T* base, size_t offset) {
-	return (T*)(uintptr_t(base) + offset);
+    return (T*)(uintptr_t(base) + offset);
 }
 template<typename T = void>
 static forceinline T* based_pointer(void* base, void* offset) {
-	return (T*)(uintptr_t(base) + uintptr_t(offset));
+    return (T*)(uintptr_t(base) + uintptr_t(offset));
 }
 template<typename T = void>
 static forceinline const T* based_pointer(const void* base, void* offset) {
-	return (const T*)(uintptr_t(base) + uintptr_t(offset));
+    return (const T*)(uintptr_t(base) + uintptr_t(offset));
 }
 
 #define PtrDiffStrlen(end_ptr, start_ptr) ((size_t)((end_ptr) - (start_ptr)))
 
 constexpr inline size_t byteloop_strlen(const char *const restrict str) {
-	const char *restrict temp = str;
-	while (*temp) ++temp;
-	return temp - str;
+    const char *restrict temp = str;
+    while (*temp) ++temp;
+    return temp - str;
 }
 
 constexpr inline char* byteloop_strcpy(char *const restrict dest, const char *restrict src) {
-	char *restrict temp = dest;
-	while ((*temp++ = *src++));
-	return dest;
+    char *restrict temp = dest;
+    while ((*temp++ = *src++));
+    return dest;
 }
 
 constexpr inline const char *restrict byteloop_strchr(const char *const restrict str, char ch) {
-	const char *restrict temp = str;
-	unsigned char c = 0;
-	for (
-		;
-		(c = *temp) && c != ch;
-		++temp
-	);
-	return c ? temp : NULL;
+    const char *restrict temp = str;
+    unsigned char c = 0;
+    for (
+        ;
+        (c = *temp) && c != ch;
+        ++temp
+    );
+    return c ? temp : NULL;
 }
 
 constexpr inline size_t byteloop_wcslen(const wchar_t *const restrict str) {
-	const wchar_t *restrict temp = str;
-	//while (*temp) ++temp;
-	//return temp - str;
-	size_t length = 0;
-	while (*temp++) ++length;
-	return length;
+    const wchar_t *restrict temp = str;
+    //while (*temp) ++temp;
+    //return temp - str;
+    size_t length = 0;
+    while (*temp++) ++length;
+    return length;
 }
 
 constexpr inline size_t byteloop_wcslen_raw(const wchar_t *const restrict str) {
-	const wchar_t *restrict temp = str;
-	//while (*temp) ++temp;
-	//return temp - str;
-	size_t length = 0;
-	while (*temp) {
-		++temp;
-		length += 2;
-	}
-	return length;
+    const wchar_t *restrict temp = str;
+    //while (*temp) ++temp;
+    //return temp - str;
+    size_t length = 0;
+    while (*temp) {
+        ++temp;
+        length += 2;
+    }
+    return length;
 }
 
 template<typename T = size_t>
 constexpr inline T mask_width(uint8_t bit_count) {
-	T ret = 0;
-	while (bit_count--) ret = ret << 1 | 1;
-	return ret;
+    T ret = 0;
+    while (bit_count--) ret = ret << 1 | 1;
+    return ret;
 }
 constexpr inline size_t sint_width_max(size_t bit_count) {
-	size_t ret = 0;
-	while (--bit_count) ret = ret << 1 | 1;
-	return ret;
+    size_t ret = 0;
+    while (--bit_count) ret = ret << 1 | 1;
+    return ret;
 }
 constexpr inline size_t uint_width_max(size_t bit_count) {
-	size_t ret = 0;
-	while (bit_count--) ret = ret << 1 | 1;
-	return ret;
+    size_t ret = 0;
+    while (bit_count--) ret = ret << 1 | 1;
+    return ret;
 }
 
 template<typename T1, typename T2>
@@ -1948,7 +1948,7 @@ struct pack_reverse_impl;
 
 template<typename ... TArgs>
 struct pack_reverse_impl<std::tuple<>, std::tuple<TArgs...>> {
-	using types = std::tuple<TArgs...>;
+    using types = std::tuple<TArgs...>;
 };
 
 template<typename A, typename ... Args, typename ... TArgs>
@@ -1970,8 +1970,8 @@ using pack_reverse_t = typename pack_reverse<Args...>::types;
 /*
 template<typename T, size_t count, bool is_aligned = false>
 using vec = std::conditional_t<is_aligned, \
-	T __attribute__((__vector_size__(count * sizeof(T)))), \
-	unaligned T __attribute__((__vector_size__(count * sizeof(T)))) \
+    T __attribute__((__vector_size__(count * sizeof(T)))), \
+    unaligned T __attribute__((__vector_size__(count * sizeof(T)))) \
 > __attribute__((__aligned__(is_aligned ? count * sizeof(T) : 1)));
 */
 
@@ -2027,7 +2027,7 @@ using vec = std::conditional_t<is_aligned, \
 
 template<typename T1, typename T2>
 static forceinline constexpr T1 bitcast(const T2& value) {
-	return __builtin_bit_cast(T1, value);
+    return __builtin_bit_cast(T1, value);
 }
 
 //#define bitcast(type, value) ((bitcast<type>)(value))
@@ -2081,16 +2081,16 @@ asm_symbol_raw("{(" MACRO_STR(symbol) ")}")
 
 template <size_t bit_count>
 using SBitIntType = std::conditional_t<bit_count <= 8, int8_t,
-					std::conditional_t<bit_count <= 16, int16_t,
-					std::conditional_t<bit_count <= 32, int32_t,
-					std::conditional_t<bit_count <= 64, int64_t,
-					void>>>>;
+                    std::conditional_t<bit_count <= 16, int16_t,
+                    std::conditional_t<bit_count <= 32, int32_t,
+                    std::conditional_t<bit_count <= 64, int64_t,
+                    void>>>>;
 template <size_t bit_count>
 using UBitIntType = std::conditional_t<bit_count <= 8, uint8_t,
-					std::conditional_t<bit_count <= 16, uint16_t,
-					std::conditional_t<bit_count <= 32, uint32_t,
-					std::conditional_t<bit_count <= 64, uint64_t,
-					void>>>>;
+                    std::conditional_t<bit_count <= 16, uint16_t,
+                    std::conditional_t<bit_count <= 32, uint32_t,
+                    std::conditional_t<bit_count <= 64, uint64_t,
+                    void>>>>;
 
 template <size_t byte_count>
 using SByteIntType = SBitIntType<byte_count * CHAR_BIT>;
@@ -2118,45 +2118,45 @@ using UByteIntType = UBitIntType<byte_count * CHAR_BIT>;
 #define FAR_CALL_IMM(seg, addr, ret, ...) __asm__ volatile (CODE_32_DIRECTIVE "lcall %[Seg],%[Addr]":ret: [Seg]"i"(seg), [Addr]"i"(addr) __VA_OPT__(,) __VA_ARGS__)
 
 template<size_t max_float_width, size_t max_double_width, size_t max_byte_width, size_t max_word_width, size_t max_dword_width, size_t max_qword_width, size_t max_oword_width,
-		 size_t prefer_float_width, size_t prefer_double_width, size_t prefer_byte_width, size_t prefer_word_width, size_t prefer_dword_width, size_t prefer_qword_width, size_t prefer_oword_width>
+         size_t prefer_float_width, size_t prefer_double_width, size_t prefer_byte_width, size_t prefer_word_width, size_t prefer_dword_width, size_t prefer_qword_width, size_t prefer_oword_width>
 struct VEC_TRAITS_BASE {
-	static inline constexpr size_t MAX_FLOAT_VEC_WIDTH = max_float_width;
-	static inline constexpr size_t MAX_DOUBLE_VEC_WIDTH = max_double_width;
-	static inline constexpr size_t MAX_OWORD_VEC_WIDTH = max_oword_width;
-	static inline constexpr size_t MAX_QWORD_VEC_WIDTH = max_qword_width;
-	static inline constexpr size_t MAX_DWORD_VEC_WIDTH = max_dword_width;
-	static inline constexpr size_t MAX_WORD_VEC_WIDTH = max_word_width;
-	static inline constexpr size_t MAX_BYTE_VEC_WIDTH = max_byte_width;
-	static inline constexpr size_t PREFER_FLOAT_VEC_WIDTH = prefer_float_width;
-	static inline constexpr size_t PREFER_DOUBLE_VEC_WIDTH = prefer_double_width;
-	static inline constexpr size_t PREFER_OWORD_VEC_WIDTH = prefer_oword_width;
-	static inline constexpr size_t PREFER_QWORD_VEC_WIDTH = prefer_qword_width;
-	static inline constexpr size_t PREFER_DWORD_VEC_WIDTH = prefer_dword_width;
-	static inline constexpr size_t PREFER_WORD_VEC_WIDTH = prefer_word_width;
-	static inline constexpr size_t PREFER_BYTE_VEC_WIDTH = prefer_byte_width;
+    static inline constexpr size_t MAX_FLOAT_VEC_WIDTH = max_float_width;
+    static inline constexpr size_t MAX_DOUBLE_VEC_WIDTH = max_double_width;
+    static inline constexpr size_t MAX_OWORD_VEC_WIDTH = max_oword_width;
+    static inline constexpr size_t MAX_QWORD_VEC_WIDTH = max_qword_width;
+    static inline constexpr size_t MAX_DWORD_VEC_WIDTH = max_dword_width;
+    static inline constexpr size_t MAX_WORD_VEC_WIDTH = max_word_width;
+    static inline constexpr size_t MAX_BYTE_VEC_WIDTH = max_byte_width;
+    static inline constexpr size_t PREFER_FLOAT_VEC_WIDTH = prefer_float_width;
+    static inline constexpr size_t PREFER_DOUBLE_VEC_WIDTH = prefer_double_width;
+    static inline constexpr size_t PREFER_OWORD_VEC_WIDTH = prefer_oword_width;
+    static inline constexpr size_t PREFER_QWORD_VEC_WIDTH = prefer_qword_width;
+    static inline constexpr size_t PREFER_DWORD_VEC_WIDTH = prefer_dword_width;
+    static inline constexpr size_t PREFER_WORD_VEC_WIDTH = prefer_word_width;
+    static inline constexpr size_t PREFER_BYTE_VEC_WIDTH = prefer_byte_width;
 
-	template <typename T> requires(std::is_integral_v<T>)
-	static inline constexpr size_t max_integral_width_v = sizeof(T) == sizeof(uint8_t) ? MAX_BYTE_VEC_WIDTH :
-														  sizeof(T) == sizeof(uint16_t) ? MAX_WORD_VEC_WIDTH :
-														  sizeof(T) == sizeof(uint32_t) ? MAX_DWORD_VEC_WIDTH :
-														  sizeof(T) == sizeof(uint64_t) ? MAX_QWORD_VEC_WIDTH :
-														  sizeof(T) == sizeof(__uint128_t) ? MAX_OWORD_VEC_WIDTH :
-														  0;
-	template <typename T> requires(std::is_integral_v<T>)
-	static inline constexpr size_t prefer_integral_width_v = sizeof(T) == sizeof(uint8_t) ? PREFER_BYTE_VEC_WIDTH :
-															 sizeof(T) == sizeof(uint16_t) ? PREFER_WORD_VEC_WIDTH :
-															 sizeof(T) == sizeof(uint32_t) ? PREFER_DWORD_VEC_WIDTH :
-															 sizeof(T) == sizeof(uint64_t) ? PREFER_QWORD_VEC_WIDTH :
-															 sizeof(T) == sizeof(__uint128_t) ? PREFER_OWORD_VEC_WIDTH :
-															 0;
-	template <typename T> requires(std::is_floating_point_v<T>)
-	static inline constexpr size_t max_float_width_v = std::is_same_v<T, float> ? MAX_FLOAT_VEC_WIDTH :
-													   std::is_same_v<T, double> ? MAX_DOUBLE_VEC_WIDTH :
-													   0;
-	template <typename T> requires(std::is_floating_point_v<T>)
-	static inline constexpr size_t prefer_float_width_v = std::is_same_v<T, float> ? PREFER_FLOAT_VEC_WIDTH :
-														  std::is_same_v<T, double> ? PREFER_DOUBLE_VEC_WIDTH :
-														  0;
+    template <typename T> requires(std::is_integral_v<T>)
+    static inline constexpr size_t max_integral_width_v = sizeof(T) == sizeof(uint8_t) ? MAX_BYTE_VEC_WIDTH :
+                                                          sizeof(T) == sizeof(uint16_t) ? MAX_WORD_VEC_WIDTH :
+                                                          sizeof(T) == sizeof(uint32_t) ? MAX_DWORD_VEC_WIDTH :
+                                                          sizeof(T) == sizeof(uint64_t) ? MAX_QWORD_VEC_WIDTH :
+                                                          sizeof(T) == sizeof(__uint128_t) ? MAX_OWORD_VEC_WIDTH :
+                                                          0;
+    template <typename T> requires(std::is_integral_v<T>)
+    static inline constexpr size_t prefer_integral_width_v = sizeof(T) == sizeof(uint8_t) ? PREFER_BYTE_VEC_WIDTH :
+                                                             sizeof(T) == sizeof(uint16_t) ? PREFER_WORD_VEC_WIDTH :
+                                                             sizeof(T) == sizeof(uint32_t) ? PREFER_DWORD_VEC_WIDTH :
+                                                             sizeof(T) == sizeof(uint64_t) ? PREFER_QWORD_VEC_WIDTH :
+                                                             sizeof(T) == sizeof(__uint128_t) ? PREFER_OWORD_VEC_WIDTH :
+                                                             0;
+    template <typename T> requires(std::is_floating_point_v<T>)
+    static inline constexpr size_t max_float_width_v = std::is_same_v<T, float> ? MAX_FLOAT_VEC_WIDTH :
+                                                       std::is_same_v<T, double> ? MAX_DOUBLE_VEC_WIDTH :
+                                                       0;
+    template <typename T> requires(std::is_floating_point_v<T>)
+    static inline constexpr size_t prefer_float_width_v = std::is_same_v<T, float> ? PREFER_FLOAT_VEC_WIDTH :
+                                                          std::is_same_v<T, double> ? PREFER_DOUBLE_VEC_WIDTH :
+                                                          0;
 };
 
 template<SseTier_t tier> struct VEC_TRAITS;
@@ -2181,10 +2181,10 @@ using CURRENT_VEC_TRAITS = VEC_TRAITS<SSE_TIER>;
 
 template <typename T> requires(std::is_integral_v<T> && std::is_unsigned_v<T>)
 using DoubleSizeUintT = std::conditional_t<sizeof(T) == sizeof(uint8_t), uint16_t,
-						std::conditional_t<sizeof(T) == sizeof(uint16_t), uint32_t,
-						std::conditional_t<sizeof(T) == sizeof(uint32_t), uint64_t,
-						std::conditional_t<sizeof(T) == sizeof(uint64_t), __uint128_t,
-						void>>>>;
+                        std::conditional_t<sizeof(T) == sizeof(uint16_t), uint32_t,
+                        std::conditional_t<sizeof(T) == sizeof(uint32_t), uint64_t,
+                        std::conditional_t<sizeof(T) == sizeof(uint64_t), __uint128_t,
+                        void>>>>;
 
 #define uppercase_mask 0xDFu
 #define lowercase_mask 0x20u
@@ -2212,83 +2212,83 @@ using DoubleSizeUintT = std::conditional_t<sizeof(T) == sizeof(uint8_t), uint16_
 //}
 
 inline int byteloop_strcmp(const char* restrict strA, const char* restrict strB) {
-	auto A = (const volatile uint8_t * restrict)strA;
-	auto B = (const volatile uint8_t * restrict)strB;
-	char D;
-	for (uint8_t C; !(D = (C = *A++) - *B++);) if (!C) return 0;
-	return D;
+    auto A = (const volatile uint8_t * restrict)strA;
+    auto B = (const volatile uint8_t * restrict)strB;
+    char D;
+    for (uint8_t C; !(D = (C = *A++) - *B++);) if (!C) return 0;
+    return D;
 }
 
 inline bool byteloop_strmatch(const char *restrict strA, const char *restrict strB) {
-	bool ret;
-	for (char c; (ret = (c = *strA++) == *strB++) && c;);
-	return ret;
+    bool ret;
+    for (char c; (ret = (c = *strA++) == *strB++) && c;);
+    return ret;
 }
 
 inline int byteloop_strcmp_fancy(const uint8_t* restrict strA, const uint8_t* restrict strB) {
-	uint8_t ret;
-	for (uint8_t c, diff; (ret = __builtin_sub_overflow((c = *strA++), *strB++, &diff)), diff;) if (!c) return 0;
-	return (ret - 1) | 1;
+    uint8_t ret;
+    for (uint8_t c, diff; (ret = __builtin_sub_overflow((c = *strA++), *strB++, &diff)), diff;) if (!c) return 0;
+    return (ret - 1) | 1;
 }
 
 inline int8_t strcmp_asm(const char* restrict strA, const char* restrict strB) {
-	int32_t ret;
-	int8_t carry, zero;
-	__asm__(
-		".align 16 \n"
-		"0: \n"
-		"	MOVZB (%[strA]), %[ret] \n"
-		"	MOVB (%[strB]), %h[ret] \n"
-		"	SUBB %h[ret], %b[ret] \n"
-		"   JNE 1f \n"
-		//J_CXZ" strcmp_break_label \n"
-		"   INC %[strA] \n"
-		"   INC %[strB] \n"
-		//"   LEA 1(%[strB]), %[strB] \n"
-		"   TEST %h[ret], %h[ret] \n"
-		"   JE 0b \n"
-		//"strcmp_break_label2: \n"
-		//"   SBB %[ret], %[ret] \n"
-		//"   OR $1, %[ret] \n"
-		"1: \n"
-		//"   MOVSB %b[ret], %[ret] \n"
-		: asm_arg("=&Q", ret), asm_arg("+r", strA), asm_arg("+r", strB)
-	);
-	return ret;
+    int32_t ret;
+    int8_t carry, zero;
+    __asm__(
+        ".align 16 \n"
+        "0: \n"
+        "	MOVZB (%[strA]), %[ret] \n"
+        "	MOVB (%[strB]), %h[ret] \n"
+        "	SUBB %h[ret], %b[ret] \n"
+        "   JNE 1f \n"
+        //J_CXZ" strcmp_break_label \n"
+        "   INC %[strA] \n"
+        "   INC %[strB] \n"
+        //"   LEA 1(%[strB]), %[strB] \n"
+        "   TEST %h[ret], %h[ret] \n"
+        "   JE 0b \n"
+        //"strcmp_break_label2: \n"
+        //"   SBB %[ret], %[ret] \n"
+        //"   OR $1, %[ret] \n"
+        "1: \n"
+        //"   MOVSB %b[ret], %[ret] \n"
+        : asm_arg("=&Q", ret), asm_arg("+r", strA), asm_arg("+r", strB)
+    );
+    return ret;
 }
 
 inline bool byteloop_strucmp(const volatile uint8_t* restrict strA, const volatile uint8_t* restrict strB) {
-	for (uint8_t c; (c = *strA++) == *strB++;) if (!c) return false;
-	return true;
+    for (uint8_t c; (c = *strA++) == *strB++;) if (!c) return false;
+    return true;
 }
 
 template <size_t size>
 inline char* byteloop_strcat(char* restrict dst, const char (&src)[size]) {
-	char* original_dst = dst;
-	while (*dst) ++dst;
-	__builtin_memcpy(dst, src, sizeof(src));
-	return original_dst;
+    char* original_dst = dst;
+    while (*dst) ++dst;
+    __builtin_memcpy(dst, src, sizeof(src));
+    return original_dst;
 }
 
 /*
 template <typename T>
 inline char* byteloop_strcat(char*restrict dst, const T src) {
-	char* original_dst = dst;
-	while (*dst) ++dst;
-	byteloop_strcpy(dst, src);
-	return original_dst;
+    char* original_dst = dst;
+    while (*dst) ++dst;
+    byteloop_strcpy(dst, src);
+    return original_dst;
 }
 */
 
 template <typename T>
 inline char* byteloop_strcat(char* restrict dst, T src) {
-	const char* original_src = src;
-	while (*src++);
-	size_t src_length = PtrDiffStrlen(src, original_src);
-	char* dst_end = dst - 1;
-	while (*++dst_end);
-	__builtin_memcpy(dst_end, src, src_length);
-	return dst;
+    const char* original_src = src;
+    while (*src++);
+    size_t src_length = PtrDiffStrlen(src, original_src);
+    char* dst_end = dst - 1;
+    while (*++dst_end);
+    __builtin_memcpy(dst_end, src, src_length);
+    return dst;
 }
 
 #define is_valid_decimal(c) ((uint8_t)((c) - '0') < 10)
@@ -2302,7 +2302,7 @@ template<typename F>
 struct function_traits;
 template<typename R, typename... Args>
 struct function_traits<R(Args...)> {
-	using ret_type = R;
+    using ret_type = R;
 
 };
 
@@ -2322,10 +2322,10 @@ struct RegParm3T {};
 struct PascalCallT {};
 template <typename RIn, typename CCIn, typename TypesIn, bool variadic>
 struct FuncTypes {
-	using R = RIn;
-	using CC = CCIn;
-	using Types = TypesIn;
-	static constexpr bool is_variadic = variadic;
+    using R = RIn;
+    using CC = CCIn;
+    using Types = TypesIn;
+    static constexpr bool is_variadic = variadic;
 };
 template<typename R, typename CC = CdeclT, typename... Args>
 constexpr FuncTypes<R, CC, Types<Args...>, false> get_func_types_of(R(cdecl*)(Args...));
@@ -2354,9 +2354,9 @@ constexpr FuncTypes<R, CC, Types<Args...>, false> get_func_types_of(R(vectorcall
 #else
 template <typename RIn, typename TypesIn, bool variadic>
 struct FuncTypes {
-	using R = RIn;
-	using Types = TypesIn;
-	static constexpr bool is_variadic = variadic;
+    using R = RIn;
+    using Types = TypesIn;
+    static constexpr bool is_variadic = variadic;
 };
 template<typename R, typename... Args>
 constexpr FuncTypes<R, Types<Args...>, false> get_func_types_of(R(*)(Args...));
@@ -2369,15 +2369,15 @@ constexpr FuncTypes<R, Types<Args...>, true> get_func_types_of(R(*)(Args..., ...
 
 template<typename T>
 [[nodiscard]] static inline gnu_attr(malloc) T* malloc_array(size_t count) {
-	return (T*)malloc(sizeof(T[count]));
+    return (T*)malloc(sizeof(T[count]));
 }
 
 template<typename T, size_t alignment>
 [[nodiscard]] static inline gnu_attr(malloc) T* malloc_array_aligned(size_t count) {
 #if _WIN32
-	return (T*)_aligned_malloc(sizeof(T[count]), alignment);
+    return (T*)_aligned_malloc(sizeof(T[count]), alignment);
 #else
-	return (T*)aligned_alloc(alignment, sizeof(T[count]));
+    return (T*)aligned_alloc(alignment, sizeof(T[count]));
 #endif
 }
 
@@ -2386,17 +2386,17 @@ template<typename T, size_t alignment>
 #include <string>
 
 struct FuncDoesExist {
-	void dump_struct() {
+    void dump_struct() {
 
-	}
+    }
 };
 struct FuncDoesNotExist {
 
 };
 struct FuncDoesExistStatic {
-	static void dump_struct() {
+    static void dump_struct() {
 
-	}
+    }
 };
 
 template<typename T, typename = void>
@@ -2418,11 +2418,11 @@ template<typename T, typename = void, typename ... ExtraArgs>
 struct has_member_dump_print_func : std::false_type {};
 template<typename T, typename ... ExtraArgs>
 struct has_member_dump_print_func<T,
-	std::enable_if_t<
-		std::is_member_function_pointer_v<decltype(&T::dump_struct_print)> &&
-		std::is_invocable_v<decltype(&T::dump_struct_print), T&, ExtraArgs..., const char*>
-	>,
-	ExtraArgs...
+    std::enable_if_t<
+        std::is_member_function_pointer_v<decltype(&T::dump_struct_print)> &&
+        std::is_invocable_v<decltype(&T::dump_struct_print), T&, ExtraArgs..., const char*>
+    >,
+    ExtraArgs...
 > : std::true_type {};
 template<typename T, typename ... ExtraArgs>
 static inline constexpr bool has_member_dump_print_func_v = has_member_dump_print_func<T>::value;
@@ -2430,11 +2430,11 @@ template<typename T, typename = void, typename ... ExtraArgs>
 struct has_static_dump_print_func : std::false_type {};
 template<typename T, typename ... ExtraArgs>
 struct has_static_dump_print_func<T,
-	std::enable_if_t<
-		std::is_function_v<decltype(T::dump_struct_print)> &&
-		std::is_invocable_v<decltype(T::dump_struct_print), ExtraArgs..., const char*>
-	>,
-	ExtraArgs...
+    std::enable_if_t<
+        std::is_function_v<decltype(T::dump_struct_print)> &&
+        std::is_invocable_v<decltype(T::dump_struct_print), ExtraArgs..., const char*>
+    >,
+    ExtraArgs...
 > : std::true_type {};
 template<typename T, typename ... ExtraArgs>
 static inline constexpr bool has_static_dump_print_func_v = has_static_dump_print_func<T>::value;
@@ -2465,23 +2465,23 @@ static_assert(!test_dump_func_false_not_exist);
 
 template<typename T, typename F, typename ... ExtraArgs> requires std::is_invocable_v<F, ExtraArgs..., const char*>
 static void dump_type(const T& dump_data, F* print_func, ExtraArgs&&... extra_args) {
-	__builtin_dump_struct(&dump_data, print_func, std::forward<ExtraArgs>(extra_args)...);
+    __builtin_dump_struct(&dump_data, print_func, std::forward<ExtraArgs>(extra_args)...);
 }
 template<typename T, typename ... ExtraArgs> requires has_static_dump_func_v<T>
 static inline void dump_type(const T& dump_data, ExtraArgs&&... extra_args) {
-	dump_type(dump_data, T::dump_struct, std::forward<ExtraArgs>(extra_args)...);
+    dump_type(dump_data, T::dump_struct, std::forward<ExtraArgs>(extra_args)...);
 }
 
 void dump_type_test() {
-	struct pingas_yeet {
-		int test;
-		double dumb;
-		static void dump_struct(const char*) {
+    struct pingas_yeet {
+        int test;
+        double dumb;
+        static void dump_struct(const char*) {
 
-		}
-	};
-	pingas_yeet wtf;
-	char buffer[69];
-	dump_type(wtf);
+        }
+    };
+    pingas_yeet wtf;
+    char buffer[69];
+    dump_type(wtf);
 }
 */
