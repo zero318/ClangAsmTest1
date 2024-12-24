@@ -7,6 +7,17 @@
 #include <tuple>
 #include <limits>
 
+#if __INTELLISENSE__ && !_HAS_CXX20
+#define TEMP_DEF_CXX20 1
+#undef _HAS_CXX20
+#define _HAS_CXX20 1
+#endif
+#include <bit>
+#if __INTELLISENSE__ && TEMP_DEF_CXX20
+#undef _HAS_CXX20
+#define _HAS_CXX20 0
+#endif
+
 #include "8086_cpu.h"
 
 #include "zero/util.h"
@@ -65,12 +76,12 @@ struct x86Addr {
         return this->real_addr();
     }
 
-    inline constexpr x86Addr& operator+=(size_t offset) {
+    inline constexpr x86Addr& operator+=(intptr_t offset) {
         this->offset += offset;
         return *this;
     }
 
-    inline constexpr x86Addr& operator-=(size_t offset) {
+    inline constexpr x86Addr& operator-=(intptr_t offset) {
         this->offset -= offset;
         return *this;
     }
@@ -93,20 +104,20 @@ struct x86Addr {
         return x86Addr(this->segment, this->offset--);
     }
 
-    inline constexpr uint32_t operator+(size_t offset) const {
+    inline constexpr uint32_t operator+(intptr_t offset) const {
         x86Addr temp = this->raw;
         temp.offset += offset;
         return temp.raw;
     }
 
-    inline constexpr uint32_t operator-(size_t offset) const {
+    inline constexpr uint32_t operator-(intptr_t offset) const {
         x86Addr temp = this->raw;
         temp.offset -= offset;
         return temp.raw;
     }
 
     template <typename T = uint8_t>
-    inline void write(const T& value, size_t offset = 0) {
+    inline void write(const T& value, intptr_t offset = 0) {
         if constexpr (sizeof(T) == sizeof(uint8_t)) {
             return mem.write<T>(this->real_addr(offset), value);
         }
@@ -123,7 +134,7 @@ struct x86Addr {
     }
 
     template <typename T = uint8_t>
-    inline T read(size_t offset = 0) const {
+    inline T read(intptr_t offset = 0) const {
         if constexpr (sizeof(T) == sizeof(uint8_t)) {
             return mem.read<T>(this->real_addr(offset));
         }
@@ -269,12 +280,24 @@ struct x86Context {
         return (uint32_t)this->segment(default_seg) << 16 | offset;
     }
 
+    inline constexpr uint32_t addr_force(uint8_t seg, uint16_t offset) const {
+        return (uint32_t)this->seg[seg] << 16 | offset;
+    }
+
     inline constexpr uint32_t pc() const {
         return (uint32_t)this->cs << 16 | this->ip;
     }
 
     inline constexpr uint32_t stack() const {
         return (uint32_t)this->ss << 16 | this->sp;
+    }
+
+    inline constexpr uint32_t str_src() const {
+        return this->addr(DS, this->si);
+    }
+
+    inline constexpr uint32_t str_dst() const {
+        return this->addr_force(ES, this->di);
     }
 
     inline constexpr uint8_t& index_byte_reg(uint8_t index) {
@@ -600,6 +623,182 @@ struct x86Context {
         }
     }
 
+    template <typename T>
+    inline void rol_impl(T& dst, uint8_t count) {
+        if (count) {
+            using U = std::make_unsigned_t<T>;
+            using S = std::make_signed_t<T>;
+
+            T res = std::rotl<U>(dst, count);
+            this->carry = res & 1;
+            this->overflow = this->carry == (S)res < 0;
+            dst = res;
+        }
+    }
+
+    template <typename T>
+    inline void ror_impl(T& dst, uint8_t count) {
+        if (count) {
+            using U = std::make_unsigned_t<T>;
+            using S = std::make_signed_t<T>;
+
+            T res = std::rotr<U>(dst, count);
+            this->carry = res & 1;
+            this->overflow = this->carry == (S)res < 0;
+            dst = res;
+        }
+    }
+
+    template <typename T>
+    inline void rcl_impl(T& dst, uint8_t count) {
+        if (count) {
+            using U = std::make_unsigned_t<T>;
+            using S = std::make_signed_t<T>;
+            constexpr size_t bits = bitsof(T) + 1;
+
+            UBitInt(bits) temp = dst;
+            if (this->carry) {
+                temp += (U)(std::numeric_limits<S>::min)();
+                temp += (U)(std::numeric_limits<S>::min)();
+            }
+            count %= bits;
+            temp = temp << count | temp >> bits - count;
+            this->carry = temp > (std::numeric_limits<U>::max)();
+            dst = (U)temp;
+            this->overflow = this->carry == (S)dst < 0;
+        }
+    }
+
+    template <typename T>
+    inline void rcr_impl(T& dst, uint8_t count) {
+        if (count) {
+            using U = std::make_unsigned_t<T>;
+            using S = std::make_signed_t<T>;
+            constexpr size_t bits = bitsof(T) + 1;
+
+            UBitInt(bits) temp = dst;
+            if (this->carry) {
+                temp += (U)(std::numeric_limits<S>::min)();
+                temp += (U)(std::numeric_limits<S>::min)();
+            }
+            count %= bits;
+            temp = temp >> count | temp << bits - count;
+            this->carry = temp > (std::numeric_limits<U>::max)();
+            dst = (U)temp;
+            this->overflow = __builtin_parity(dst & 3u << bitsof(T) - 2);
+        }
+    }
+
+    template <typename T>
+    inline void shl_impl(T& dst, uint8_t count) {
+        if (count) {
+            using U = std::make_unsigned_t<T>;
+            using S = std::make_signed_t<T>;
+
+            this->carry = ((size_t)dst >> bitsof(T) - count) & 1;
+            T res = (U)dst << count;
+            this->overflow = this->carry == (S)res < 0;
+            dst = res;
+            this->update_parity(dst);
+            this->zero = !dst;
+            this->sign = (S)dst < 0;
+        }
+    }
+
+    template <typename T>
+    inline void shr_impl(T& dst, uint8_t count) {
+        if (count) {
+            using U = std::make_unsigned_t<T>;
+            using S = std::make_signed_t<T>;
+
+            this->carry = ((size_t)dst >> 1 - count) & 1;
+            this->overflow = (S)dst < 0;
+            dst = (U)dst >> count;
+            this->update_parity(dst);
+            this->zero = !dst;
+            this->sign = (S)dst < 0;
+        }
+    }
+
+    // Yay, jank
+    template <typename T>
+    inline void setmo_impl(T& dst, uint8_t count) {
+        if (count) {
+            this->or_impl<T>(dst, (T)-1);
+        }
+    }
+
+    template <typename T>
+    inline void sar_impl(T& dst, uint8_t count) {
+        if (count) {
+            using U = std::make_unsigned_t<T>;
+            using S = std::make_signed_t<T>;
+
+            this->carry = ((size_t)dst >> 1 - count) & 1;
+            this->overflow = false;
+            dst = (S)dst >> count;
+            this->update_parity(dst);
+            this->zero = !dst;
+            this->sign = (S)dst < 0;
+        }
+    }
+
+    // TODO: Check what happens if an interrupt toggles 
+    // the direction flag during a repeating string instruction
+    template <typename T>
+    inline void lods_impl() {
+        intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
+        x86Addr src_addr = this->str_src();
+        do {
+            this->index_reg<T>(AX) = src_addr.read_advance<T>(offset);
+        } while (this->rep_type > NO_REP && --this->cx);
+        this->si = src_addr.offset;
+    }
+
+    template <typename T>
+    inline void movs_impl() {
+        intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
+        x86Addr src_addr = this->str_src();
+        x86Addr dst_addr = this->str_dst();
+        do {
+            dst_addr.write_advance<T>(src_addr.read_advance<T>(offset), offset);
+        } while (this->rep_type > NO_REP && --this->cx);
+        this->si = src_addr.offset;
+        this->di = dst_addr.offset;
+    }
+
+    template <typename T>
+    inline void stos_impl() {
+        intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
+        x86Addr dst_addr = this->str_dst();
+        do {
+            dst_addr.write_advance<T>(this->index_reg<T>(AX), offset);
+        } while (this->rep_type > NO_REP && --this->cx);
+        this->di = dst_addr.offset;
+    }
+
+    template <typename T>
+    inline void scas_impl() {
+        intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
+        x86Addr dst_addr = this->str_dst();
+        do {
+            this->cmp_impl<T>(this->index_reg<T>(AX), dst_addr.read_advance<T>(offset));
+        } while (this->rep_type > NO_REP && --this->cx && this->rep_type == this->zero);
+        this->di = dst_addr.offset;
+    }
+
+    template <typename T>
+    inline void cmps_impl() {
+        intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
+        x86Addr src_addr = this->str_src();
+        x86Addr dst_addr = this->str_dst();
+        do {
+            this->cmp_impl<T>(src_addr.read_advance<T>(offset), dst_addr.read_advance<T>(offset));
+        } while (this->rep_type > NO_REP && --this->cx && this->rep_type == this->zero);
+        this->si = src_addr.offset;
+        this->di = src_addr.offset;
+    }
+
     // TODO: Read microcode dump to confirm accurate behavior of BCD, there's reason to doubt official docs here
     inline void aaa_impl() {
         if (this->auxiliary || (this->al & 0xF) > 9) {
@@ -814,7 +1013,9 @@ static inline void binopRM2(x86Addr& pc, const L& lambda) {
     T& rval = ctx.index_reg<T>(modrm.R());
     if (modrm.is_mem()) {
         x86Addr data_addr = modrm.parse_memM(pc);
-        lambda(rval, data_addr.read<uint32_t>());
+        uint32_t temp = data_addr.read<uint16_t>();
+        temp |= (uint32_t)data_addr.read<uint16_t>(2) << 16;
+        lambda(rval, temp);
     }
     else {
         // TODO: jank
@@ -1416,10 +1617,16 @@ dllexport void execute_z86() {
                 break;
             }
             case 0xA4: // MOVSB
+                ctx.movs_impl<uint8_t>();
+                break;
             case 0xA5: // MOVSW
+                ctx.movs_impl<uint16_t>();
+                break;
             case 0xA6: // CMPSB
+                ctx.cmps_impl<uint8_t>();
+                break;
             case 0xA7: // CMPSW
-                // TODO
+                ctx.cmps_impl<uint16_t>();
                 break;
             case 0xA8: // TEST AL, Ib
                 ctx.test_impl(ctx.al, pc.read_advance<uint8_t>());
@@ -1428,12 +1635,22 @@ dllexport void execute_z86() {
                 ctx.test_impl(ctx.ax, pc.read_advance<uint16_t>());
                 break;
             case 0xAA: // STOSB
+                ctx.stos_impl<uint8_t>();
+                break;
             case 0xAB: // STOSW
+                ctx.stos_impl<uint16_t>();
+                break;
             case 0xAC: // LODSB
+                ctx.lods_impl<uint8_t>();
+                break;
             case 0xAD: // LODSW
+                ctx.lods_impl<uint16_t>();
+                break;
             case 0xAE: // SCASB
+                ctx.scas_impl<uint8_t>();
+                break;
             case 0xAF: // SCASW
-                // TODO
+                ctx.scas_impl<uint16_t>();
                 break;
             case 0xB0: case 0xB1: case 0xB2: case 0xB3: case 0xB4: case 0xB5: case 0xB6: case 0xB7: // MOV reg8, Ib
                 ctx.index_reg<uint8_t>(opcode & 7) = pc.read_advance<int8_t>();
@@ -1496,10 +1713,65 @@ dllexport void execute_z86() {
                 ctx.set_flags(ctx.pop_impl());
                 continue;
             case 0xD0: // GRP2 Mb, 1
+                unopM<uint8_t>(pc, [](auto& dst, uint8_t r) {
+                    switch (r) {
+                        case 0: ctx.rol_impl(dst, 1); return true;
+                        case 1: ctx.ror_impl(dst, 1); return true;
+                        case 2: ctx.rcl_impl(dst, 1); return true;
+                        case 3: ctx.rcr_impl(dst, 1); return true;
+                        case 4: ctx.shl_impl(dst, 1); return true;
+                        case 5: ctx.shr_impl(dst, 1); return true;
+                        case 6: ctx.setmo_impl(dst, 1); return true;
+                        case 7: ctx.sar_impl(dst, 1); return true;
+                        default: unreachable;
+                    }
+                });
+                break;
             case 0xD1: // GRP2 Mv, 1
+                unopM<uint16_t>(pc, [](auto& dst, uint8_t r) {
+                    switch (r) {
+                        case 0: ctx.rol_impl(dst, 1); return true;
+                        case 1: ctx.ror_impl(dst, 1); return true;
+                        case 2: ctx.rcl_impl(dst, 1); return true;
+                        case 3: ctx.rcr_impl(dst, 1); return true;
+                        case 4: ctx.shl_impl(dst, 1); return true;
+                        case 5: ctx.shr_impl(dst, 1); return true;
+                        case 6: ctx.setmo_impl(dst, 1); return true;
+                        case 7: ctx.sar_impl(dst, 1); return true;
+                        default: unreachable;
+                    }
+                });
+                break;
             case 0xD2: // GRP2 Mb, CL
+                unopM<uint8_t>(pc, [](auto& dst, uint8_t r) {
+                    switch (r) {
+                        case 0: ctx.rol_impl(dst, ctx.cl); return true;
+                        case 1: ctx.ror_impl(dst, ctx.cl); return true;
+                        case 2: ctx.rcl_impl(dst, ctx.cl); return true;
+                        case 3: ctx.rcr_impl(dst, ctx.cl); return true;
+                        case 4: ctx.shl_impl(dst, ctx.cl); return true;
+                        case 5: ctx.shr_impl(dst, ctx.cl); return true;
+                        case 6: ctx.setmo_impl(dst, ctx.cl); return true;
+                        case 7: ctx.sar_impl(dst, ctx.cl); return true;
+                        default: unreachable;
+                    }
+                });
+                break;
             case 0xD3: // GRP2 Mv, CL
-                // TODO: Shifts/rotates
+                unopM<uint16_t>(pc, [](auto& dst, uint8_t r) {
+                    switch (r) {
+                        case 0: ctx.rol_impl(dst, ctx.cl); return true;
+                        case 1: ctx.ror_impl(dst, ctx.cl); return true;
+                        case 2: ctx.rcl_impl(dst, ctx.cl); return true;
+                        case 3: ctx.rcr_impl(dst, ctx.cl); return true;
+                        case 4: ctx.shl_impl(dst, ctx.cl); return true;
+                        case 5: ctx.shr_impl(dst, ctx.cl); return true;
+                        case 6: ctx.setmo_impl(dst, ctx.cl); return true;
+                        case 7: ctx.sar_impl(dst, ctx.cl); return true;
+                        default: unreachable;
+                    }
+                });
+                break;
                 break;
             case 0xD4: // AAM Ib
                 ctx.aam_impl(pc.read_advance<uint8_t>());
@@ -1559,7 +1831,7 @@ dllexport void execute_z86() {
                 continue;
             case 0xEA: // JMP far abs
                 ctx.ip = pc.read<uint16_t>();
-                ctx.cx = pc.read<uint16_t>(2);
+                ctx.cs = pc.read<uint16_t>(2);
                 continue;
             case 0xEB: // JMP Jb
                 ctx.ip = pc.offset + 1 + pc.read<int8_t>();
