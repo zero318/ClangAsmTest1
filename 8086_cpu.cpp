@@ -1207,8 +1207,9 @@ static inline bool unopMS(x86Addr& pc) {
     uint8_t r = modrm.R();
     T mval;
     T sval = 0; // TODO: jank
+    x86Addr data_addr;
     if (modrm.is_mem()) {
-        x86Addr data_addr = modrm.parse_memM(pc);
+        data_addr = modrm.parse_memM(pc);
         mval = data_addr.read<T>();
         switch (r) {
             case 0:
