@@ -553,7 +553,7 @@ struct x86Context {
 
     template <typename T = uint16_t>
     inline void jmpabs_impl(T new_ip) {
-        ctx.ip = new_ip;
+        this->ip = new_ip;
     }
 
     template <typename T = uint16_t>
@@ -564,8 +564,8 @@ struct x86Context {
 
     template <typename T = uint16_t>
     inline void jmpfabs_impl(T new_ip, T new_cs) {
-        ctx.ip = new_ip;
-        ctx.cs = new_cs;
+        this->ip = new_ip;
+        this->cs = new_cs;
     }
 
     template <typename T = uint16_t>
