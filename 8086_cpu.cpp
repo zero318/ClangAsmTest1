@@ -362,9 +362,10 @@ struct x86Context {
     inline void add_impl(T& dst, T src) {
         using U = std::make_unsigned_t<T>;
         using S = std::make_signed_t<T>;
-        T res = dst + src;
-        this->carry = __builtin_add_overflow((U)dst, (U)src, (U*)NULL);
-        this->overflow = __builtin_add_overflow((S)dst, (S)src, (S*)NULL);
+        T res;
+        this->carry = __builtin_add_overflow((U)dst, (U)src, (U*)&res);
+        this->overflow = __builtin_add_overflow((S)dst, (S)src, (S*)&res);
+        res = dst + src;
         this->auxiliary = (dst ^ src ^ res) & 0x10;
         dst = res;
         this->update_parity(dst);
@@ -424,9 +425,10 @@ struct x86Context {
     inline void sub_impl(T& dst, T src) {
         using U = std::make_unsigned_t<T>;
         using S = std::make_signed_t<T>;
-        T res = dst + src;
-        this->carry = __builtin_sub_overflow((U)dst, (U)src, (U*)NULL);
-        this->overflow = __builtin_sub_overflow((S)dst, (S)src, (S*)NULL);
+        T res;
+        this->carry = __builtin_sub_overflow((U)dst, (U)src, (U*)&res);
+        this->overflow = __builtin_sub_overflow((S)dst, (S)src, (S*)&res);
+        res = dst + src;
         this->auxiliary = (dst ^ src ^ res) & 0x10;
         dst = res;
         this->update_parity(dst);
@@ -449,9 +451,10 @@ struct x86Context {
     inline void cmp_impl(T dst, T src) {
         using U = std::make_unsigned_t<T>;
         using S = std::make_signed_t<T>;
-        T res = dst + src;
-        this->carry = __builtin_sub_overflow((U)dst, (U)src, (U*)NULL);
-        this->overflow = __builtin_sub_overflow((S)dst, (S)src, (S*)NULL);
+        T res;
+        this->carry = __builtin_sub_overflow((U)dst, (U)src, (U*)&res);
+        this->overflow = __builtin_sub_overflow((S)dst, (S)src, (S*)&res);
+        res = dst + src;
         this->auxiliary = (dst ^ src ^ res) & 0x10;
         this->update_parity(res);
         this->zero = !res;
