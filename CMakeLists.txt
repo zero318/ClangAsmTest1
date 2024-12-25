@@ -36,7 +36,9 @@ add_executable(aocf_server)
 add_executable(run_command)
 add_executable(aocf_plugin_patch)
 add_executable(unix_socket_test)
+add_executable(z8086_old)
 add_executable(z86_emulator)
+add_library(z8086 SHARED)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
 add_library(winhttp_websocket SHARED)
@@ -103,7 +105,9 @@ aocf_server
 run_command
 aocf_plugin_patch
 unix_socket_test
+z8086_old
 z86_emulator
+z8086
 )
 
 enable_language(ASM-ATT)
@@ -1610,11 +1614,31 @@ target_compile_options(unix_socket_test PRIVATE
 	"-mno-sse3"
 )
 
-target_sources(z86_emulator PRIVATE
+target_sources(z8086_old PRIVATE
 	"8086_cpu.cpp"
 	"dummy_main.cpp"
 )
+target_compile_definitions(z8086_old PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+
+target_sources(z86_emulator PRIVATE
+	"x86_emulators/core_manager.cpp"
+	"x86_emulators/8086_cpu.cpp"
+)
 target_compile_definitions(z86_emulator PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+
+target_sources(z8086 PRIVATE
+	"x86_emulators/8086_cpu.cpp"
+	"dummy_dllmain.cpp"
+)
+target_link_options(z8086 PRIVATE
+	${COMPILE_DLL}
+	/ENTRY:DllMain
+)
+target_compile_definitions(z8086 PRIVATE
 	STOP_LINKING_DEFAULT_LIB_PLZ
 )
 

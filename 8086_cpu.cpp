@@ -1151,7 +1151,6 @@ static inline void binopMR(x86Addr& pc, const L& lambda) {
 template <typename T, typename L>
 static inline void binopRM(x86Addr& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
-    T& rval = ctx.index_reg<T>(modrm.R());
     T mval;
     if (modrm.is_mem()) {
         x86Addr data_addr = modrm.parse_memM(pc);
@@ -1160,7 +1159,7 @@ static inline void binopRM(x86Addr& pc, const L& lambda) {
     else {
         mval = ctx.index_reg<T>(modrm.M());
     }
-    lambda(rval, mval);
+    lambda(ctx.index_reg<T>(modrm.R()), mval);
 }
 
 // Double width memory operand, special for LDS/LES
@@ -1182,7 +1181,7 @@ static inline void binopRM2(x86Addr& pc, const L& lambda) {
 template <typename T, typename L>
 static inline void binopMS(x86Addr& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
-    T& rval = ctx.index_seg(modrm.R());
+    uint16_t& rval = ctx.index_seg(modrm.R());
     if (modrm.is_mem()) {
         x86Addr data_addr = modrm.parse_memM(pc);
         T mval = data_addr.read<T>();
@@ -1191,23 +1190,22 @@ static inline void binopMS(x86Addr& pc, const L& lambda) {
         }
     }
     else {
-        lambda(ctx.index_seg(modrm.M()), rval);
+        lambda(ctx.index_reg<T>(modrm.M()), rval);
     }
 }
 
 template <typename T, typename L>
 static inline void binopSM(x86Addr& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
-    T& rval = ctx.index_seg(modrm.R());
     T mval;
     if (modrm.is_mem()) {
         x86Addr data_addr = modrm.parse_memM(pc);
         mval = data_addr.read<T>();
     }
     else {
-        mval = ctx.index_seg(modrm.M());
+        mval = ctx.index_reg<T>(modrm.M());
     }
-    lambda(rval, mval);
+    lambda(ctx.index_seg(modrm.R()), mval);
 }
 
 template <typename T, typename L>

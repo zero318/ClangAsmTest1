@@ -280,6 +280,25 @@ static forceinline void write_ax_dx(udreg_t value) { udreg_t temp; asm volatile(
 
 using ssize_t = std::make_signed_t<size_t>;
 
+template <size_t bit_count>
+using SBitIntTypeEx = std::conditional_t<bit_count <= 8, int8_t,
+                      std::conditional_t<bit_count <= 16, int16_t,
+                      std::conditional_t<bit_count <= 32, int32_t,
+                      std::conditional_t<bit_count <= 64, int64_t,
+                      std::conditional_t<bit_count <= 128, int128_t,
+                      void>>>>>;
+template <size_t bit_count>
+using UBitIntTypeEx = std::conditional_t<bit_count <= 8, uint8_t,
+                      std::conditional_t<bit_count <= 16, uint16_t,
+                      std::conditional_t<bit_count <= 32, uint32_t,
+                      std::conditional_t<bit_count <= 64, uint64_t,
+                      std::conditional_t<bit_count <= 128, uint128_t,
+                      void>>>>>;
+
+template <size_t byte_count>
+using SByteIntTypeEx = SBitIntTypeEx<byte_count * CHAR_BIT>;
+template <size_t byte_count>
+using UByteIntTypeEx = UBitIntTypeEx<byte_count * CHAR_BIT>;
 
 template <typename T>
 struct bit_count : std::integral_constant<size_t, sizeof(T) * CHAR_BIT> {};
@@ -301,9 +320,11 @@ public:
 template<typename Find, typename Tuple>
 inline constexpr ssize_t find_type_in_tuple_v = find_type_in_tuple<Find, Tuple>::value;
 
-
 using int_types = std::tuple<int8_t, int16_t, int32_t, int64_t>;
 using uint_types = std::tuple<uint8_t, uint16_t, uint32_t, uint64_t>;
+
+using int_types_ex = std::tuple<int8_t, int16_t, int32_t, int64_t, int128_t>;
+using uint_types_ex = std::tuple<uint8_t, uint16_t, uint32_t, uint64_t, uint128_t>;
 
 using int_fast_types = std::tuple<int_fast8_t, int_fast16_t, int_fast32_t, int_fast64_t>;
 using uint_fast_types = std::tuple<uint_fast8_t, uint_fast16_t, uint_fast32_t, uint_fast64_t>;
@@ -319,6 +340,22 @@ template <typename T>
 using reg_fast_t = std::tuple_element_t<find_type_in_tuple_v<T, int_types>, reg_fast_types>;
 template <typename T>
 using ureg_fast_t = std::tuple_element_t<find_type_in_tuple_v<T, uint_types>, ureg_fast_types>;
+
+template <typename T>
+using dbl_sint_t = std::tuple_element_t<find_type_in_tuple_v<T, int_types_ex>, std::tuple<int16_t, int32_t, int64_t, int128_t, int128_t>>;
+template <typename T>
+using dbl_uint_t = std::tuple_element_t<find_type_in_tuple_v<T, uint_types_ex>, std::tuple<uint16_t, uint32_t, uint64_t, uint128_t, uint128_t>>;
+
+template <typename T>
+using dbl_int_t = std::conditional_t<std::is_unsigned_v<T>, dbl_uint_t<std::make_unsigned_t<T>>, dbl_sint_t<std::make_signed_t<T>>>;
+
+template <typename T>
+using hlf_sint_t = std::tuple_element_t<find_type_in_tuple_v<T, int_types_ex>, std::tuple<int8_t, int8_t, int16_t, int32_t, int64_t>>;
+template <typename T>
+using hlf_uint_t = std::tuple_element_t<find_type_in_tuple_v<T, uint_types_ex>, std::tuple<uint8_t, uint8_t, uint16_t, uint32_t, uint64_t>>;
+
+template <typename T>
+using hlf_int_t = std::conditional_t<std::is_unsigned_v<T>, hlf_uint_t<std::make_unsigned_t<T>>, hlf_sint_t<std::make_signed_t<T>>>;
 
 static forceinline void* alloc_vla(size_t size) {
     rsp_reg -= AlignUpToMultipleOf2(size, 16);
