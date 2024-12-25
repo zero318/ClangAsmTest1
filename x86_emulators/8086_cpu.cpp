@@ -137,38 +137,6 @@ struct x86Context : z86Base<16> {
         }
     }
 
-    template <typename T>
-    inline void stos_impl() {
-        intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
-        z86Addr dst_addr = this->str_dst();
-        do {
-            dst_addr.write_advance<T>(this->A<T>(), offset);
-        } while (this->rep_type > NO_REP && --this->cx);
-        this->di = dst_addr.offset;
-    }
-
-    template <typename T>
-    inline void scas_impl() {
-        intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
-        z86Addr dst_addr = this->str_dst();
-        do {
-            this->CMP<T>(this->A<T>(), dst_addr.read_advance<T>(offset));
-        } while (this->rep_type > NO_REP && --this->cx && this->rep_type == this->zero);
-        this->di = dst_addr.offset;
-    }
-
-    template <typename T>
-    inline void cmps_impl() {
-        intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
-        z86Addr src_addr = this->str_src();
-        z86Addr dst_addr = this->str_dst();
-        do {
-            this->CMP<T>(src_addr.read_advance<T>(offset), dst_addr.read_advance<T>(offset));
-        } while (this->rep_type > NO_REP && --this->cx && this->rep_type == this->zero);
-        this->si = src_addr.offset;
-        this->di = src_addr.offset;
-    }
-
     inline void check_for_software_interrupt() {
         int16_t pending_software = this->pending_sinterrupt;
         if (pending_software > 0) {
@@ -854,10 +822,10 @@ dllexport void z86_execute() {
                 ctx.MOVS();
                 break;
             case 0xA6: // CMPSB
-                ctx.cmps_impl<uint8_t>();
+                ctx.CMPS<true>();
                 break;
             case 0xA7: // CMPSW
-                ctx.cmps_impl<uint16_t>();
+                ctx.CMPS();
                 break;
             case 0xA8: // TEST AL, Ib
                 ctx.TEST(ctx.al, pc.read_advance<uint8_t>());
@@ -866,10 +834,10 @@ dllexport void z86_execute() {
                 ctx.TEST(ctx.ax, pc.read_advance<uint16_t>());
                 break;
             case 0xAA: // STOSB
-                ctx.stos_impl<uint8_t>();
+                ctx.STOS<true>();
                 break;
             case 0xAB: // STOSW
-                ctx.stos_impl<uint16_t>();
+                ctx.STOS();
                 break;
             case 0xAC: // LODSB
                 ctx.LODS<true>();
@@ -878,10 +846,10 @@ dllexport void z86_execute() {
                 ctx.LODS();
                 break;
             case 0xAE: // SCASB
-                ctx.scas_impl<uint8_t>();
+                ctx.SCAS<true>();
                 break;
             case 0xAF: // SCASW
-                ctx.scas_impl<uint16_t>();
+                ctx.SCAS();
                 break;
             case 0xB0: case 0xB1: case 0xB2: case 0xB3: case 0xB4: case 0xB5: case 0xB6: case 0xB7: // MOV reg8, Ib
                 ctx.index_reg<uint8_t>(opcode & 7) = pc.read_advance<int8_t>();

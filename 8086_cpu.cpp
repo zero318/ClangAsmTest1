@@ -823,9 +823,16 @@ struct x86Context {
     inline void lods_impl() {
         intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
         x86Addr src_addr = this->str_src();
-        do {
+        if (this->rep_type > NO_REP) {
+            if (this->cx) {
+                do {
+                    this->index_reg<T>(AX) = src_addr.read_advance<T>(offset);
+                } while (--this->cx);
+            }
+        }
+        else {
             this->index_reg<T>(AX) = src_addr.read_advance<T>(offset);
-        } while (this->rep_type > NO_REP && --this->cx);
+        }
         this->si = src_addr.offset;
     }
 
@@ -834,9 +841,16 @@ struct x86Context {
         intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
         x86Addr src_addr = this->str_src();
         x86Addr dst_addr = this->str_dst();
-        do {
+        if (this->rep_type > NO_REP) {
+            if (this->cx) {
+                do {
+                    dst_addr.write_advance<T>(src_addr.read_advance<T>(offset), offset);
+                } while (--this->cs);
+            }
+        }
+        else {
             dst_addr.write_advance<T>(src_addr.read_advance<T>(offset), offset);
-        } while (this->rep_type > NO_REP && --this->cx);
+        }
         this->si = src_addr.offset;
         this->di = dst_addr.offset;
     }
@@ -845,9 +859,16 @@ struct x86Context {
     inline void stos_impl() {
         intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
         x86Addr dst_addr = this->str_dst();
-        do {
+        if (this->rep_type > NO_REP) {
+            if (this->cx) {
+                do {
+                    dst_addr.write_advance<T>(this->index_reg<T>(AX), offset);
+                } while (--this->cx);
+            }
+        }
+        else {
             dst_addr.write_advance<T>(this->index_reg<T>(AX), offset);
-        } while (this->rep_type > NO_REP && --this->cx);
+        }
         this->di = dst_addr.offset;
     }
 
@@ -855,9 +876,16 @@ struct x86Context {
     inline void scas_impl() {
         intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
         x86Addr dst_addr = this->str_dst();
-        do {
+        if (this->rep_type > NO_REP) {
+            if (this->cx) {
+                do {
+                    this->cmp_impl<T>(this->index_reg<T>(AX), dst_addr.read_advance<T>(offset));
+                } while (--this->cx && this->rep_type == this->zero);
+            }
+        }
+        else {
             this->cmp_impl<T>(this->index_reg<T>(AX), dst_addr.read_advance<T>(offset));
-        } while (this->rep_type > NO_REP && --this->cx && this->rep_type == this->zero);
+        }
         this->di = dst_addr.offset;
     }
 
@@ -866,9 +894,16 @@ struct x86Context {
         intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
         x86Addr src_addr = this->str_src();
         x86Addr dst_addr = this->str_dst();
-        do {
+        if (this->rep_type > NO_REP) {
+            if (this->cx) {
+                do {
+                    this->cmp_impl<T>(src_addr.read_advance<T>(offset), dst_addr.read_advance<T>(offset));
+                } while (--this->cx && this->rep_type == this->zero);
+            }
+        }
+        else {
             this->cmp_impl<T>(src_addr.read_advance<T>(offset), dst_addr.read_advance<T>(offset));
-        } while (this->rep_type > NO_REP && --this->cx && this->rep_type == this->zero);
+        }
         this->si = src_addr.offset;
         this->di = src_addr.offset;
     }

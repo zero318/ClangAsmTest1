@@ -177,9 +177,15 @@ template <typename T, typename P>
 inline void z86Base<bits>::LODS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
-    do {
+    if (this->rep_type > NO_REP) {
+        while (this->C<P>()) {
+            --this->C<P>();
+            this->A<T>() = src_addr.read_advance<T>(offset);
+        }
+    }
+    else {
         this->A<T>() = src_addr.read_advance<T>(offset);
-    } while (this->rep_type > NO_REP && --this->C<P>());
+    }
     this->SI<P>() = src_addr.offset;
 }
 
@@ -189,11 +195,74 @@ inline void z86Base<bits>::MOVS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
     z86Addr dst_addr = this->str_dst<P>();
-    do {
+    if (this->rep_type > NO_REP) {
+        if (this->C<P>()) {
+            do {
+                dst_addr.write_advance<T>(src_addr.read_advance<T>(offset), offset);
+            } while (--this->C<P>());
+        }
+    }
+    else {
         dst_addr.write_advance<T>(src_addr.read_advance<T>(offset), offset);
-    } while (this->rep_type > NO_REP && --this->C<P>());
+    }
     this->SI<P>() = src_addr.offset;
     this->DI<P>() = dst_addr.offset;
+}
+
+template <size_t bits>
+template <typename T, typename P>
+inline void z86Base<bits>::STOS_impl() {
+    intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
+    z86Addr dst_addr = this->str_dst<P>();
+    if (this->rep_type > NO_REP) {
+        if (this->C<P>()) {
+            do {
+                dst_addr.write_advance<T>(this->A<T>(), offset);
+            } while (--this->C<P>());
+        }
+    }
+    else {
+        dst_addr.write_advance<T>(this->A<T>(), offset);
+    }
+    this->DI<P>() = dst_addr.offset;
+}
+
+template <size_t bits>
+template <typename T, typename P>
+inline void z86Base<bits>::SCAS_impl() {
+    intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
+    z86Addr dst_addr = this->str_dst<P>();
+    if (this->rep_type > NO_REP) {
+        if (this->C<P>()) {
+            do {
+                this->CMP<T>(this->A<T>(), dst_addr.read_advance<T>(offset));
+            } while (--this->C<P>() && this->rep_type == this->zero);
+        }
+    }
+    else {
+        this->CMP<T>(this->A<T>(), dst_addr.read_advance<T>(offset));
+    }
+    this->DI<P>() = dst_addr.offset;
+}
+
+template <size_t bits>
+template <typename T, typename P>
+inline void z86Base<bits>::CMPS_impl() {
+    intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
+    z86Addr src_addr = this->str_src<P>();
+    z86Addr dst_addr = this->str_dst<P>();
+    if (this->rep_type > NO_REP) {
+        if (this->C<P>()) {
+            do {
+                this->CMP<T>(src_addr.read_advance<T>(offset), dst_addr.read_advance<T>(offset));
+            } while (--this->C<P>() && this->rep_type == this->zero);
+        }
+    }
+    else {
+        this->CMP<T>(src_addr.read_advance<T>(offset), dst_addr.read_advance<T>(offset));
+    }
+    this->SI<P>() = src_addr.offset;
+    this->DI<P>() = src_addr.offset;
 }
 
 // Special unop for groups 4/5

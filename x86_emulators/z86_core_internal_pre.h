@@ -1685,6 +1685,175 @@ struct z86Base : z86BaseGPRs<bits> {
         }
     }
 
+    template <typename T, typename P>
+    inline void z86Base<bits>::STOS_impl();
+
+    template <bool is_byte = false>
+    inline void STOS() {
+        if constexpr (is_byte) {
+            if constexpr (bits > 16) {
+                if (this->addr_size == 0) {
+                    return this->STOS_impl<uint8_t, uint32_t>();
+                }
+                if constexpr (bits == 64) {
+                    if (this->addr_size > 0) {
+                        return this->STOS_impl<uint8_t, uint64_t>();
+                    }
+                }
+            }
+            return this->STOS_impl<uint8_t, uint16_t>();
+        }
+        else {
+            if constexpr (bits > 16) {
+                if (this->addr_size == 0) {
+                    if (this->data_size == 0) {
+                        return this->STOS_impl<uint32_t, uint32_t>();
+                    }
+                    if constexpr (bits == 64) {
+                        if (data_size > 0) {
+                            return this->STOS_impl<uint64_t, uint32_t>();
+                        }
+                    }
+                    return this->STOS_impl<uint16_t, uint32_t>();
+                }
+                if constexpr (bits == 64) {
+                    if (this->addr_size > 0) {
+                        if (this->data_size == 0) {
+                            return this->STOS_impl<uint32_t, uint64_t>();
+                        }
+                        if constexpr (bits == 64) {
+                            if (this->data_size > 0) {
+                                return this->STOS_impl<uint64_t, uint64_t>();
+                            }
+                        }
+                        return this->STOS_impl<uint16_t, uint64_t>();
+                    }
+                }
+                if (this->data_size == 0) {
+                    return this->STOS_impl<uint32_t, uint16_t>();
+                }
+                if constexpr (bits == 64) {
+                    if (this->data_size > 0) {
+                        return this->STOS_impl<uint64_t, uint16_t>();
+                    }
+                }
+            }
+            return this->STOS_impl<uint16_t, uint16_t>();
+        }
+    }
+
+    template <typename T, typename P>
+    inline void z86Base<bits>::SCAS_impl();
+
+    template <bool is_byte = false>
+    inline void SCAS() {
+        if constexpr (is_byte) {
+            if constexpr (bits > 16) {
+                if (this->addr_size == 0) {
+                    return this->SCAS_impl<uint8_t, uint32_t>();
+                }
+                if constexpr (bits == 64) {
+                    if (this->addr_size > 0) {
+                        return this->SCAS_impl<uint8_t, uint64_t>();
+                    }
+                }
+            }
+            return this->SCAS_impl<uint8_t, uint16_t>();
+        } else {
+            if constexpr (bits > 16) {
+                if (this->addr_size == 0) {
+                    if (this->data_size == 0) {
+                        return this->SCAS_impl<uint32_t, uint32_t>();
+                    }
+                    if constexpr (bits == 64) {
+                        if (data_size > 0) {
+                            return this->SCAS_impl<uint64_t, uint32_t>();
+                        }
+                    }
+                    return this->SCAS_impl<uint16_t, uint32_t>();
+                }
+                if constexpr (bits == 64) {
+                    if (this->addr_size > 0) {
+                        if (this->data_size == 0) {
+                            return this->SCAS_impl<uint32_t, uint64_t>();
+                        }
+                        if constexpr (bits == 64) {
+                            if (this->data_size > 0) {
+                                return this->SCAS_impl<uint64_t, uint64_t>();
+                            }
+                        }
+                        return this->SCAS_impl<uint16_t, uint64_t>();
+                    }
+                }
+                if (this->data_size == 0) {
+                    return this->SCAS_impl<uint32_t, uint16_t>();
+                }
+                if constexpr (bits == 64) {
+                    if (this->data_size > 0) {
+                        return this->SCAS_impl<uint64_t, uint16_t>();
+                    }
+                }
+            }
+            return this->SCAS_impl<uint16_t, uint16_t>();
+        }
+    }
+
+    template <typename T, typename P>
+    inline void z86Base<bits>::CMPS_impl();
+
+    template <bool is_byte = false>
+    inline void CMPS() {
+        if constexpr (is_byte) {
+            if constexpr (bits > 16) {
+                if (this->addr_size == 0) {
+                    return this->CMPS_impl<uint8_t, uint32_t>();
+                }
+                if constexpr (bits == 64) {
+                    if (this->addr_size > 0) {
+                        return this->CMPS_impl<uint8_t, uint64_t>();
+                    }
+                }
+            }
+            return this->CMPS_impl<uint8_t, uint16_t>();
+        } else {
+            if constexpr (bits > 16) {
+                if (this->addr_size == 0) {
+                    if (this->data_size == 0) {
+                        return this->CMPS_impl<uint32_t, uint32_t>();
+                    }
+                    if constexpr (bits == 64) {
+                        if (data_size > 0) {
+                            return this->CMPS_impl<uint64_t, uint32_t>();
+                        }
+                    }
+                    return this->CMPS_impl<uint16_t, uint32_t>();
+                }
+                if constexpr (bits == 64) {
+                    if (this->addr_size > 0) {
+                        if (this->data_size == 0) {
+                            return this->CMPS_impl<uint32_t, uint64_t>();
+                        }
+                        if constexpr (bits == 64) {
+                            if (this->data_size > 0) {
+                                return this->CMPS_impl<uint64_t, uint64_t>();
+                            }
+                        }
+                        return this->CMPS_impl<uint16_t, uint64_t>();
+                    }
+                }
+                if (this->data_size == 0) {
+                    return this->CMPS_impl<uint32_t, uint16_t>();
+                }
+                if constexpr (bits == 64) {
+                    if (this->data_size > 0) {
+                        return this->CMPS_impl<uint64_t, uint16_t>();
+                    }
+                }
+            }
+            return this->CMPS_impl<uint16_t, uint16_t>();
+        }
+    }
+
     // TODO: Read microcode dump to confirm accurate behavior of BCD, there's reason to doubt official docs here
     inline void AAA() {
         if (this->auxiliary || (this->al & 0xF) > 9) {
