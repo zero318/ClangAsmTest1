@@ -743,7 +743,7 @@ struct ModRMBase {
     }
 };
 
-template <size_t bits>
+template <size_t bits, size_t bus>
 struct z86Base : z86BaseGPRs<bits> {
 
     using HT = z86BaseGPRs<bits>::HT;
@@ -1686,7 +1686,7 @@ struct z86Base : z86BaseGPRs<bits> {
     }
 
     template <typename T, typename P>
-    inline void z86Base<bits>::STOS_impl();
+    inline void STOS_impl();
 
     template <bool is_byte = false>
     inline void STOS() {
@@ -1743,7 +1743,7 @@ struct z86Base : z86BaseGPRs<bits> {
     }
 
     template <typename T, typename P>
-    inline void z86Base<bits>::SCAS_impl();
+    inline void SCAS_impl();
 
     template <bool is_byte = false>
     inline void SCAS() {
@@ -1799,7 +1799,7 @@ struct z86Base : z86BaseGPRs<bits> {
     }
 
     template <typename T, typename P>
-    inline void z86Base<bits>::CMPS_impl();
+    inline void CMPS_impl();
 
     template <bool is_byte = false>
     inline void CMPS() {
@@ -1851,6 +1851,42 @@ struct z86Base : z86BaseGPRs<bits> {
                 }
             }
             return this->CMPS_impl<uint16_t, uint16_t>();
+        }
+    }
+
+    template <typename T>
+    inline void port_out_impl(uint16_t port) const;
+
+    template <bool is_byte = false>
+    inline void port_out(uint16_t port) const {
+        if constexpr (is_byte) {
+            return this->port_out_impl<uint8_t>(port);
+        }
+        else {
+            if constexpr (bits > 16) {
+                if (this->data_size >= 0) {
+                    return this->port_out_impl<uint32_t>(port);
+                }
+            }
+            return this->port_out_impl<uint16_t>(port);
+        }
+    }
+
+    template <typename T>
+    inline void port_in_impl(uint16_t port);
+
+    template <bool is_byte = false>
+    inline void port_in(uint16_t port) {
+        if constexpr (is_byte) {
+            return this->port_in_impl<uint8_t>(port);
+        }
+        else {
+            if constexpr (bits > 16) {
+                if (this->data_size >= 0) {
+                    return this->port_in_impl<uint32_t>(port);
+                }
+            }
+            return this->port_in_impl<uint16_t>(port);
         }
     }
 

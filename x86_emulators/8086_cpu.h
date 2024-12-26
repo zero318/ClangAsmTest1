@@ -8,14 +8,64 @@
 #include <string.h>
 #include <type_traits>
 
-struct PortDevice {
+struct PortByteDevice {
     // Receive data from CPU.
     // Returns true if this device handled the port
-    virtual bool out(uint16_t port, uint16_t value) = NULL;
+    virtual bool out_byte(uint32_t port, uint8_t value) {
+        return false;
+    }
 
     // Send data to CPU
     // Returns true if this device handled the port
-    virtual bool in(uint16_t& value, uint16_t port) = NULL;
+    virtual bool in_byte(uint8_t& value, uint32_t port) {
+        return false;
+    }
+};
+
+struct PortWordDevice {
+    // Receive data from CPU.
+    // Returns true if this device handled the port
+    virtual bool out_word(uint32_t port, uint16_t value) {
+        return false;
+    }
+    virtual bool out_byte(uint32_t port, uint8_t value) {
+        return false;
+    }
+
+    // Send data to CPU
+    // Returns true if this device handled the port
+    virtual bool in_word(uint16_t& value, uint32_t port) {
+        return false;
+    }
+    virtual bool in_byte(uint8_t& value, uint32_t port) {
+        return false;
+    }
+};
+
+struct PortDwordDevice {
+    // Receive data from CPU.
+    // Returns true if this device handled the port
+    virtual bool out_dword(uint32_t port, uint32_t value) {
+        return false;
+    }
+    virtual bool out_word(uint32_t port, uint16_t value) {
+        return false;
+    }
+    virtual bool out_byte(uint32_t port, uint8_t value) {
+        return false;
+    }
+
+    // Send data to CPU
+    // Returns true if this device handled the port
+    virtual bool in_dword(uint32_t& value, uint32_t port) {
+        return false;
+    }
+    virtual bool in_word(uint16_t& value, uint32_t port) {
+        return false;
+    }
+    virtual bool in_byte(uint8_t& value, uint32_t port) {
+        return false;
+    }
 };
 
 enum Interrupt : uint8_t {
@@ -32,7 +82,9 @@ void z86_cancel_interrupt();
 void z86_nmi();
 void z86_reset();
 
-void z86_add_device(PortDevice* device);
+void z86_add_dword_device(PortDwordDevice* device);
+void z86_add_word_device(PortWordDevice* device);
+void z86_add_byte_device(PortByteDevice* device);
 
 size_t z86_mem_write(size_t dst, const void* src, size_t size);
 

@@ -366,7 +366,6 @@ static forceinline void* alloc_vla_aligned(size_t size) {
     return alloc_vla(AlignUpToMultipleOf2(size, 16));
 }
 
-
 static forceinline void* chkstk(size_t size) {
     size = AlignUpToMultipleOf2(size, 4);
     volatile uint8_t* current = (uint8_t*)rsp_reg;

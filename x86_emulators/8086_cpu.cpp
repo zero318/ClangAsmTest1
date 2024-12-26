@@ -31,7 +31,7 @@
 
 static z86Memory<1_MB> mem;
 
-struct x86Context : z86Base<16> {
+struct z8086Context : z86Base<16, 16> {
 
     // Internal state
     std::atomic<bool> pending_nmi;
@@ -210,10 +210,14 @@ struct x86Context : z86Base<16> {
     }
 };
 
-static x86Context ctx;
+static z8086Context ctx;
 
 using z86Addr = z86AddrImpl<16>;
 using ModRM = ModRMBase<ctx>;
+
+static std::vector<PortDwordDevice*> io_dword_devices;
+static std::vector<PortWordDevice*> io_word_devices;
+static std::vector<PortByteDevice*> io_byte_devices;
 
 #include "z86_core_internal_post.h"
 
@@ -224,33 +228,14 @@ dllexport size_t z86_mem_read(void* dst, size_t src, size_t size) {
     return mem.read(dst, src, size);
 }
 
-static std::vector<PortDevice*> io_devices;
-
-static void port_out(uint16_t port, uint16_t value) {
-    const std::vector<PortDevice*>& devices = io_devices;
-    for (auto device : devices) {
-        if (device->out(port, value)) {
-            return;
-        }
-    }
-    printf("Unhandled: OUT %X, %04X\n", port, value);
+dllexport void z86_add_dword_device(PortDwordDevice* device) {
+    //io_dword_devices.push_back(device);
 }
-
-static void port_in(uint16_t& value, uint16_t port) {
-    // TODO: Check default value
-    value = 0;
-
-    const std::vector<PortDevice*>& devices = io_devices;
-    for (auto device : devices) {
-        if (device->in(value, port)) {
-            return;
-        }
-    }
-    printf("Unhandled: IN %04X, %X\n", value, port);
+dllexport void z86_add_word_device(PortWordDevice* device) {
+    io_word_devices.push_back(device);
 }
-
-dllexport void z86_add_device(PortDevice* device) {
-    io_devices.push_back(device);
+dllexport void z86_add_byte_device(PortByteDevice* device) {
+    io_byte_devices.push_back(device);
 }
 
 dllexport void z86_reset() {
@@ -1021,21 +1006,17 @@ dllexport void z86_execute() {
                     ctx.ip += pc.read<int8_t>();
                 }
                 goto next_instr;
-            case 0xE4: { // IN AL, Ib
-                uint16_t temp;
-                port_in(temp, pc.read_advance<uint8_t>());
-                ctx.al = temp;
+            case 0xE4: // IN AL, Ib
+                ctx.port_in<true>(pc.read_advance<uint8_t>());
                 break;
-            }
             case 0xE5: // IN AX, Ib
-                port_in(ctx.ax, pc.read_advance<uint8_t>());
+                ctx.port_in(pc.read_advance<uint8_t>());
                 break;
             case 0xE6: // OUT Ib, AL
-                port_out(pc.read_advance<uint8_t>(), ctx.al);
+                ctx.port_out<true>(pc.read_advance<uint8_t>());
                 break;
             case 0xE7: // OUT Ib, AX
-                port_out(pc.read_advance<uint8_t>(), ctx.ax);
-                break;
+                ctx.port_out(pc.read_advance<uint8_t>());
                 break;
             case 0xE8: // CALL Jz
                 ctx.PUSH(pc.offset + 2);
@@ -1051,20 +1032,17 @@ dllexport void z86_execute() {
             case 0xEB: // JMP Jb
                 ctx.ip = pc.offset + 1 + pc.read<int8_t>();
                 goto next_instr;
-            case 0xEC: { // IN AL, DX
-                uint16_t temp;
-                port_in(temp, ctx.dx);
-                ctx.al = temp;
+            case 0xEC: // IN AL, DX
+                ctx.port_in<true>(ctx.dx);
                 break;
-            }
             case 0xED: // IN AX, DX
-                port_in(ctx.ax, ctx.dx);
+                ctx.port_in(ctx.dx);
                 break;
             case 0xEE: // OUT DX, AL
-                port_out(ctx.dx, ctx.al);
+                ctx.port_out<true>(ctx.dx);
                 break;
             case 0xEF: // OUT DX, AX
-                port_out(ctx.dx, ctx.ax);
+                ctx.port_out(ctx.dx);
                 break;
             case 0xF0: case 0xF1: // LOCK
                 ctx.lock = true;
