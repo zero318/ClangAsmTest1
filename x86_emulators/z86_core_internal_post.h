@@ -15,9 +15,191 @@
 
 #include "../zero/util.h"
 
+template <typename P>
+uint32_t ModRM::extra_length(const P& pc) const {
+    uint8_t mod = this->Mod();
+    if (mod == 3) {
+        return 0;
+    }
+    if constexpr (ctx.max_bits > 16) {
+        if (ctx.addr_size <= 0) {
+            uint32_t length = 0;
+            switch (this->M()) {
+                case 4:
+                    ++length;
+                    if (mod == 0) {
+                        return length + (pc.read<SIB>(1).B() == 5) * 4;
+                    }
+                    break;
+                case 5:
+                    if (mod == 0) {
+                        return 4;
+                    }
+            }
+            switch (mod) {
+                case 0:
+                    return length;
+                case 1:
+                    return length + 1;
+                case 2:
+                    return length + 4;
+                default:
+                    unreachable;
+            }
+        }
+    }
+    switch (mod) {
+        case 0:
+            return (this->M() == 6) * 2;
+        case 1:
+            return 1;
+        case 2:
+            return 2;
+        default:
+            unreachable;
+    }
+}
+
+template <typename P>
+auto ModRM::parse_memM(P& pc) const {
+    uint8_t default_segment = DS;
+    size_t offset = 0;
+    uint8_t m = this->M();
+    uint8_t mod = this->Mod();
+    if constexpr (ctx.max_bits > 16) {
+        if (ctx.addr_size <= 0) {
+            if constexpr (ctx.max_bits == 64) {
+                if (ctx.addr_size < 0) {
+                    switch (m) {
+                        case 4: {
+                            SIB sib = pc.read_advance<SIB>();
+                            uint8_t i = sib.I();
+                            if (i != 4) {
+                                offset = ctx.index_qword_reg(i) * (1 << sib.S());
+                            }
+                            switch (uint8_t b = sib.B()) {
+                                case 5:
+                                    if (mod != 0) {
+                                        offset += ctx.rbp;
+                                        default_segment = SS;
+                                    }
+                                    break;
+                                case 4:
+                                    default_segment = SS;
+                                default:
+                                    offset += ctx.index_qword_reg(b);
+                                    break;
+                            }
+                            break;
+                        }
+                        case 5:
+                            default_segment = SS;
+                        default:
+                            offset = ctx.index_qword_reg(m);
+                    }
+                }
+                goto add_const;
+            }
+            switch (m) {
+                case 4: {
+                    SIB sib = pc.read_advance<SIB>();
+                    uint8_t i = sib.I();
+                    if (i != 4) {
+                        offset = ctx.index_qword_reg(i) * (1 << sib.S());
+                    }
+                    switch (uint8_t b = sib.B()) {
+                        case 5:
+                            if (mod != 0) {
+                                offset += ctx.rbp;
+                                default_segment = SS;
+                            }
+                            break;
+                        case 4:
+                            default_segment = SS;
+                        default:
+                            offset += ctx.index_qword_reg(b);
+                            break;
+                    }
+                    break;
+                }
+                case 5:
+                    default_segment = SS;
+                default:
+                    offset = ctx.index_dword_reg(m);
+            }
+        add_const:
+            switch (mod) {
+                case 0:
+                    if (m == 5) {
+                        offset += (ssize_t)pc.read_advance<int32_t>();
+                        default_segment = DS;
+                    }
+                    break;
+                case 1:
+                    offset += pc.read_advance<int8_t>();
+                    break;
+                case 2:
+                    offset += pc.read_advance<int32_t>();
+                    break;
+                default:
+                    unreachable;
+            }
+            return ctx.addr(default_segment, offset);
+        }
+    }
+    switch (m) {
+        case 0:
+            offset = ctx.bx + ctx.si;
+            break;
+        case 1:
+            offset = ctx.bx + ctx.di;
+            break;
+        case 2:
+            offset = ctx.bp + ctx.si;
+            default_segment = SS;
+            break;
+        case 3:
+            offset = ctx.bp + ctx.di;
+            default_segment = SS;
+            break;
+        case 4:
+            offset = ctx.si;
+            break;
+        case 5:
+            offset = ctx.di;
+            break;
+        case 6:
+            offset = ctx.bp;
+            default_segment = SS;
+            break;
+        case 7:
+            offset = ctx.bx;
+            break;
+        default:
+            unreachable;
+    }
+    switch (mod) {
+        case 0:
+            if (m == 6) {
+                offset = pc.read_advance<int16_t>();
+                default_segment = DS;
+            }
+            break;
+        case 1:
+            offset += pc.read_advance<int8_t>();
+            break;
+        case 2:
+            offset += pc.read_advance<int16_t>();
+            break;
+        default:
+            unreachable;
+    }
+    return ctx.addr(default_segment, offset);
+}
+
 template <size_t bits>
 template <typename T>
-inline void z86AddrImpl<bits>::write(const T& value, intptr_t offset) {
+inline void z86AddrImpl<bits>::write(const T& value, ssize_t offset) {
     if constexpr (sizeof(T) == sizeof(uint8_t)) {
         return mem.write<T>(this->real_addr(offset), value);
     }
@@ -31,11 +213,17 @@ inline void z86AddrImpl<bits>::write(const T& value, intptr_t offset) {
             mem.write<uint8_t>(this->real_addr(offset + 1), raw >> 8);
         }
     }
+    else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+        return mem.write<T>(this->real_addr(offset), value);
+    }
+    else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+        return mem.write<T>(this->real_addr(offset), value);
+    }
 }
 
 template <size_t bits>
 template <typename T>
-inline T z86AddrImpl<bits>::read(intptr_t offset) const {
+inline T z86AddrImpl<bits>::read(ssize_t offset) const {
     if constexpr (sizeof(T) == sizeof(uint8_t)) {
         return mem.read<T>(this->real_addr(offset));
     }
@@ -53,6 +241,112 @@ inline T z86AddrImpl<bits>::read(intptr_t offset) const {
             return ret;
         }
     }
+    else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+        return mem.read<T>(this->real_addr(offset));
+    }
+    else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+        return mem.read<T>(this->real_addr(offset));
+    }
+}
+
+template <size_t bits>
+inline uint32_t z86AddrImpl<bits>::read_Iz(ssize_t index = 0) const {
+    if constexpr (ctx.max_bits > 16) {
+        if (ctx.data_size <= 0) {
+            return this->read<uint32_t>();
+        }
+    }
+    return this->read<uint16_t>();
+}
+
+template <size_t bits>
+inline uint32_t z86AddrImpl<bits>::read_advance_Iz() {
+    if constexpr (ctx.max_bits > 16) {
+        if (ctx.data_size <= 0) {
+            return this->read_advance<uint32_t>();
+        }
+    }
+    return this->read_advance<uint16_t>();
+}
+
+template <size_t bits>
+inline int32_t z86AddrImpl<bits>::read_Is(ssize_t index = 0) const {
+    if constexpr (ctx.max_bits > 16) {
+        if (ctx.data_size <= 0) {
+            return this->read<int32_t>();
+        }
+    }
+    return this->read<int16_t>();
+}
+
+template <size_t bits>
+inline int32_t z86AddrImpl<bits>::read_advance_Is() {
+    if constexpr (ctx.max_bits > 16) {
+        if (ctx.data_size <= 0) {
+            return this->read_advance<int32_t>();
+        }
+    }
+    return this->read_advance<int16_t>();
+}
+
+template <size_t bits>
+inline uint64_t z86AddrImpl<bits>::read_Iv(ssize_t index = 0) const {
+    if constexpr (ctx.max_bits > 16) {
+        if (ctx.data_size <= 0) {
+            if constexpr (ctx.max_bits > 32) {
+                if (ctx.data_size < 0) {
+                    return this->read<uint64_t>();
+                }
+            }
+            return this->read<uint32_t>();
+        }
+    }
+    return this->read<uint16_t>();
+}
+
+template <size_t bits>
+inline uint64_t z86AddrImpl<bits>::read_advance_Iv() {
+    if constexpr (ctx.max_bits > 16) {
+        if (ctx.data_size <= 0) {
+            if constexpr (ctx.max_bits > 32) {
+                if (ctx.data_size < 0) {
+                    return this->read_advance<uint64_t>();
+                }
+            }
+            return this->read_advance<uint32_t>();
+        }
+    }
+    return this->read_advance<uint16_t>();
+}
+
+template <size_t bits>
+inline uint64_t z86AddrImpl<bits>::read_O(ssize_t index = 0) const {
+    if constexpr (ctx.max_bits > 16) {
+        if (ctx.addr_size <= 0) {
+            if constexpr (ctx.max_bits > 32) {
+                if (ctx.addr_size < 0) {
+                    return this->read<uint64_t>();
+                }
+            }
+            return this->read<uint32_t>();
+        }
+    }
+    return this->read<uint16_t>();
+}
+
+template <size_t bits>
+inline uint64_t z86AddrImpl<bits>::read_advance_O() {
+    if constexpr (ctx.max_bits > 16) {
+        if (ctx.addr_size <= 0) {
+            if constexpr (ctx.max_bits > 32) {
+                if (ctx.addr_size < 0) {
+                    return this->read_advance<uint64_t>();
+                }
+            }
+            return this->read_advance<uint32_t>();
+        }
+    }
+    return this->read_advance<uint16_t>();
 }
 
 template <size_t bits, size_t bus>

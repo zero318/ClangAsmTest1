@@ -256,9 +256,9 @@ struct z86BaseGPRs<16> {
         uint16_t ip;
     };
 
-    static constexpr inline int8_t data_size = -1;
-    static constexpr inline int8_t addr_size = -1;
-    static constexpr inline int8_t stack_size = -1;
+    static constexpr inline int8_t data_size = 1;
+    static constexpr inline int8_t addr_size = 1;
+    static constexpr inline int8_t stack_size = 1;
 
     inline constexpr uint8_t& index_byte_reg(uint8_t index) {
         return *(&this->gpr[index & 3].byte + (index > 3));
@@ -343,6 +343,10 @@ struct z86BaseGPRs<32> {
         uint32_t eip;
         uint16_t ip;
     };
+
+    int8_t data_size = 1;
+    int8_t addr_size = 1;
+    int8_t stack_size = 1;
 
     inline constexpr uint8_t& index_byte_reg(uint8_t index) {
         return *(&this->gpr[index & 3].byte + (index > 3));
@@ -476,6 +480,10 @@ struct z86BaseGPRs<64> {
         uint16_t ip;
     };
 
+
+    int8_t data_size = 1;
+    int8_t addr_size = 1;
+    int8_t stack_size = 1;
     int8_t rex_bits;
 
     inline constexpr uint8_t& index_byte_reg(uint8_t index) {
@@ -562,6 +570,9 @@ struct z86AddrImpl : z86AddrBase<bits> {
     inline constexpr z86AddrImpl(uint16_t segment, OT offset) : z86AddrBase<bits>::z86AddrBase(segment, offset) {}
     inline constexpr z86AddrImpl(const z86AddrImpl&) = default;
 
+    template <size_t other_bits>
+    inline constexpr z86AddrImpl(const z86AddrImpl<other_bits>& addr) : z86AddrBase<bits>::z86AddrBase(addr.segment, addr.offset) {}
+
     inline constexpr size_t real_addr(size_t offset = 0) const {
         return ((size_t)this->segment << 4) + (uint16_t)(this->offset + offset);
     }
@@ -607,30 +618,84 @@ struct z86AddrImpl : z86AddrBase<bits> {
     }
 
     template <typename T = uint8_t>
-    inline void write(const T& value, intptr_t offset = 0);
+    inline void write(const T& value, ssize_t offset = 0);
 
     template <typename T = uint8_t>
-    inline T read(intptr_t offset = 0) const;
+    inline T read(ssize_t offset = 0) const;
 
     template <typename T = uint8_t>
-    inline void write_advance(const T& value, intptr_t index = sizeof(T)) {
+    inline void write_advance(const T& value, ssize_t index = sizeof(T)) {
         this->write(value);
         this->offset += index;
     }
 
     template <typename T = uint8_t>
-    inline T read_advance(intptr_t index = sizeof(T)) {
+    inline T read_advance(ssize_t index = sizeof(T)) {
         T ret = this->read<T>();
         this->offset += index;
         return ret;
     }
+
+    inline uint32_t read_Iz(ssize_t index = 0) const;
+
+    inline uint32_t read_advance_Iz();
+
+    inline int32_t read_Is(ssize_t index = 0) const;
+
+    inline int32_t read_advance_Is();
+
+    inline uint64_t read_Iv(ssize_t index = 0) const;
+
+    inline uint64_t read_advance_Iv();
+
+    inline uint64_t read_O(ssize_t index = 0) const;
+
+    inline uint64_t read_advance_O();
 };
 
 struct DataSize {};
 struct AddrSize {};
 
-template <auto& ctx>
-struct ModRMBase {
+struct SIB {
+#if USE_BITFIELDS
+    union {
+        uint8_t raw;
+        struct {
+            uint8_t b : 3;
+            uint8_t i : 3;
+            uint8_t s : 2;
+        };
+    };
+
+    inline constexpr uint8_t S() const {
+        return this->s;
+    }
+
+    inline constexpr uint8_t I() const {
+        return this->i;
+    }
+
+    inline constexpr uint8_t B() const {
+        return this->b;
+    }
+#else
+    uint8_t raw;
+
+    inline constexpr uint8_t S() const {
+        return this->raw >> 6;
+}
+
+    inline constexpr uint8_t I() const {
+        return (this->raw & 0070) >> 3;
+    }
+
+    inline constexpr uint8_t B() const {
+        return this->raw & 0007;
+    }
+#endif
+};
+
+struct ModRM {
 #if USE_BITFIELDS
     union {
         uint8_t raw;
@@ -672,79 +737,18 @@ struct ModRMBase {
         return this->Mod() != 3;
     }
 
-    uint32_t extra_length() const {
-        switch (this->Mod()) {
-            case 0:
-                return (this->M() == 6) * 2;
-            case 1:
-                return 1;
-            case 2:
-                return 2;
-            case 3:
-                return 0;
-            default:
-                unreachable;
-        }
-    }
+    template <typename P>
+    uint32_t extra_length(const P& pc) const;
 
-    template <typename T>
-    uint32_t parse_memM(T& pc) const {
-        uint8_t default_segment = DS;
-        size_t offset;
-        uint8_t m = this->M();
-        switch (m) {
-            case 0:
-                offset = ctx.bx + ctx.si;
-                break;
-            case 1:
-                offset = ctx.bx + ctx.di;
-                break;
-            case 2:
-                offset = ctx.bp + ctx.si;
-                default_segment = SS;
-                break;
-            case 3:
-                offset = ctx.bp + ctx.di;
-                default_segment = SS;
-                break;
-            case 4:
-                offset = ctx.si;
-                break;
-            case 5:
-                offset = ctx.di;
-                break;
-            case 6:
-                offset = ctx.bp;
-                default_segment = SS;
-                break;
-            case 7:
-                offset = ctx.bx;
-                break;
-            default:
-                unreachable;
-        }
-        switch (this->Mod()) {
-            case 0:
-                if (m == 6) {
-                    offset = pc.read_advance<int16_t>();
-                    default_segment = DS;
-                }
-                break;
-            case 1:
-                offset += pc.read_advance<int8_t>();
-                break;
-            case 2:
-                offset += pc.read_advance<int16_t>();
-                break;
-            default:
-                unreachable;
-        }
-        return ctx.addr(default_segment, offset);
-    }
+    template <typename P>
+    auto parse_memM(P& pc) const;
 };
 
 template <size_t bits, size_t bus>
 struct z86Base : z86BaseGPRs<bits> {
+
+    static inline constexpr size_t max_bits = bits;
+    static inline constexpr size_t bus_width = bus;
 
     using HT = z86BaseGPRs<bits>::HT;
     using RT = z86BaseGPRs<bits>::RT;
@@ -1208,12 +1212,22 @@ struct z86Base : z86BaseGPRs<bits> {
         this->update_pzs(dst);
     }
 
+    template <typename T1, typename T2>
+    inline void ADD(T1& dst, T2 src) {
+        return this->ADD<T1>(dst, (std::make_signed_t<T1>)src);
+    }
+
     template <typename T>
     inline void OR(T& dst, T src) {
         this->carry = false;
         this->overflow = false;
         dst |= src;
         this->update_pzs(dst);
+    }
+
+    template <typename T1, typename T2>
+    inline void OR(T1& dst, T2 src) {
+        return this->OR<T1>(dst, (std::make_signed_t<T1>)src);
     }
 
     template <typename T>
@@ -1227,6 +1241,11 @@ struct z86Base : z86BaseGPRs<bits> {
         this->update_pzs(dst);
     }
 
+    template <typename T1, typename T2>
+    inline void ADC(T1& dst, T2 src) {
+        return this->ADC<T1>(dst, (std::make_signed_t<T1>)src);
+    }
+
     template <typename T>
     inline void SBB(T& dst, T src) {
         using U = std::make_unsigned_t<T>;
@@ -1238,12 +1257,22 @@ struct z86Base : z86BaseGPRs<bits> {
         this->update_pzs(dst);
     }
 
+    template <typename T1, typename T2>
+    inline void SBB(T1& dst, T2 src) {
+        return this->SBB<T1>(dst, (std::make_signed_t<T1>)src);
+    }
+
     template <typename T>
     inline void AND(T& dst, T src) {
         this->carry = false;
         this->overflow = false;
         dst &= src;
         this->update_pzs(dst);
+    }
+
+    template <typename T1, typename T2>
+    inline void AND(T1& dst, T2 src) {
+        return this->AND<T1>(dst, (std::make_signed_t<T1>)src);
     }
 
     template <typename T>
@@ -1258,12 +1287,22 @@ struct z86Base : z86BaseGPRs<bits> {
         this->update_pzs(dst);
     }
 
+    template <typename T1, typename T2>
+    inline void SUB(T1& dst, T2 src) {
+        return this->SUB<T1>(dst, (std::make_signed_t<T1>)src);
+    }
+
     template <typename T>
     inline void XOR(T& dst, T src) {
         this->carry = false;
         this->overflow = false;
         dst ^= src;
         this->update_pzs(dst);
+    }
+
+    template <typename T1, typename T2>
+    inline void XOR(T1& dst, T2 src) {
+        return this->XOR<T1>(dst, (std::make_signed_t<T1>)src);
     }
 
     template <typename T>
@@ -1277,11 +1316,21 @@ struct z86Base : z86BaseGPRs<bits> {
         this->update_pzs(res);
     }
 
+    template <typename T1, typename T2>
+    inline void CMP(T1 dst, T2 src) {
+        return this->CMP<T1>(dst, (std::make_signed_t<T1>)src);
+    }
+
     template <typename T>
     inline void TEST(T dst, T src) {
         this->carry = false;
         this->overflow = false;
         this->update_pzs((T)(dst & src));
+    }
+
+    template <typename T1, typename T2>
+    inline void TEST(T1 dst, T2 src) {
+        return this->TEST<T1>(dst, (std::make_signed_t<T1>)src);
     }
 
     template <typename T>
@@ -1582,7 +1631,7 @@ struct z86Base : z86BaseGPRs<bits> {
                     return this->LODS_impl<uint8_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size > 0) {
+                    if (this->addr_size < 0) {
                         return this->LODS_impl<uint8_t, uint64_t>();
                     }
                 }
@@ -1596,19 +1645,19 @@ struct z86Base : z86BaseGPRs<bits> {
                         return this->LODS_impl<uint32_t, uint32_t>();
                     }
                     if constexpr (bits == 64) {
-                        if (data_size > 0) {
+                        if (data_size < 0) {
                             return this->LODS_impl<uint64_t, uint32_t>();
                         }
                     }
                     return this->LODS_impl<uint16_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size > 0) {
+                    if (this->addr_size < 0) {
                         if (this->data_size == 0) {
                             return this->LODS_impl<uint32_t, uint64_t>();
                         }
                         if constexpr (bits == 64) {
-                            if (this->data_size > 0) {
+                            if (this->data_size < 0) {
                                 return this->LODS_impl<uint64_t, uint64_t>();
                             }
                         }
@@ -1619,7 +1668,7 @@ struct z86Base : z86BaseGPRs<bits> {
                     return this->LODS_impl<uint32_t, uint16_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size > 0) {
+                    if (this->data_size < 0) {
                         return this->LODS_impl<uint64_t, uint16_t>();
                     }
                 }
@@ -1639,7 +1688,7 @@ struct z86Base : z86BaseGPRs<bits> {
                     return this->MOVS_impl<uint8_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size > 0) {
+                    if (this->addr_size < 0) {
                         return this->MOVS_impl<uint8_t, uint64_t>();
                     }
                 }
@@ -1653,19 +1702,19 @@ struct z86Base : z86BaseGPRs<bits> {
                         return this->MOVS_impl<uint32_t, uint32_t>();
                     }
                     if constexpr (bits == 64) {
-                        if (data_size > 0) {
+                        if (data_size < 0) {
                             return this->MOVS_impl<uint64_t, uint32_t>();
                         }
                     }
                     return this->MOVS_impl<uint16_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size > 0) {
+                    if (this->addr_size < 0) {
                         if (this->data_size == 0) {
                             return this->MOVS_impl<uint32_t, uint64_t>();
                         }
                         if constexpr (bits == 64) {
-                            if (this->data_size > 0) {
+                            if (this->data_size < 0) {
                                 return this->MOVS_impl<uint64_t, uint64_t>();
                             }
                         }
@@ -1676,7 +1725,7 @@ struct z86Base : z86BaseGPRs<bits> {
                     return this->MOVS_impl<uint32_t, uint16_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size > 0) {
+                    if (this->data_size < 0) {
                         return this->MOVS_impl<uint64_t, uint16_t>();
                     }
                 }
@@ -1696,7 +1745,7 @@ struct z86Base : z86BaseGPRs<bits> {
                     return this->STOS_impl<uint8_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size > 0) {
+                    if (this->addr_size < 0) {
                         return this->STOS_impl<uint8_t, uint64_t>();
                     }
                 }
@@ -1710,19 +1759,19 @@ struct z86Base : z86BaseGPRs<bits> {
                         return this->STOS_impl<uint32_t, uint32_t>();
                     }
                     if constexpr (bits == 64) {
-                        if (data_size > 0) {
+                        if (data_size < 0) {
                             return this->STOS_impl<uint64_t, uint32_t>();
                         }
                     }
                     return this->STOS_impl<uint16_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size > 0) {
+                    if (this->addr_size < 0) {
                         if (this->data_size == 0) {
                             return this->STOS_impl<uint32_t, uint64_t>();
                         }
                         if constexpr (bits == 64) {
-                            if (this->data_size > 0) {
+                            if (this->data_size < 0) {
                                 return this->STOS_impl<uint64_t, uint64_t>();
                             }
                         }
@@ -1733,7 +1782,7 @@ struct z86Base : z86BaseGPRs<bits> {
                     return this->STOS_impl<uint32_t, uint16_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size > 0) {
+                    if (this->data_size < 0) {
                         return this->STOS_impl<uint64_t, uint16_t>();
                     }
                 }
@@ -1753,7 +1802,7 @@ struct z86Base : z86BaseGPRs<bits> {
                     return this->SCAS_impl<uint8_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size > 0) {
+                    if (this->addr_size < 0) {
                         return this->SCAS_impl<uint8_t, uint64_t>();
                     }
                 }
@@ -1766,19 +1815,19 @@ struct z86Base : z86BaseGPRs<bits> {
                         return this->SCAS_impl<uint32_t, uint32_t>();
                     }
                     if constexpr (bits == 64) {
-                        if (data_size > 0) {
+                        if (data_size < 0) {
                             return this->SCAS_impl<uint64_t, uint32_t>();
                         }
                     }
                     return this->SCAS_impl<uint16_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size > 0) {
+                    if (this->addr_size < 0) {
                         if (this->data_size == 0) {
                             return this->SCAS_impl<uint32_t, uint64_t>();
                         }
                         if constexpr (bits == 64) {
-                            if (this->data_size > 0) {
+                            if (this->data_size < 0) {
                                 return this->SCAS_impl<uint64_t, uint64_t>();
                             }
                         }
@@ -1789,7 +1838,7 @@ struct z86Base : z86BaseGPRs<bits> {
                     return this->SCAS_impl<uint32_t, uint16_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size > 0) {
+                    if (this->data_size < 0) {
                         return this->SCAS_impl<uint64_t, uint16_t>();
                     }
                 }
@@ -1809,7 +1858,7 @@ struct z86Base : z86BaseGPRs<bits> {
                     return this->CMPS_impl<uint8_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size > 0) {
+                    if (this->addr_size < 0) {
                         return this->CMPS_impl<uint8_t, uint64_t>();
                     }
                 }
@@ -1822,19 +1871,19 @@ struct z86Base : z86BaseGPRs<bits> {
                         return this->CMPS_impl<uint32_t, uint32_t>();
                     }
                     if constexpr (bits == 64) {
-                        if (data_size > 0) {
+                        if (data_size < 0) {
                             return this->CMPS_impl<uint64_t, uint32_t>();
                         }
                     }
                     return this->CMPS_impl<uint16_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size > 0) {
+                    if (this->addr_size < 0) {
                         if (this->data_size == 0) {
                             return this->CMPS_impl<uint32_t, uint64_t>();
                         }
                         if constexpr (bits == 64) {
-                            if (this->data_size > 0) {
+                            if (this->data_size < 0) {
                                 return this->CMPS_impl<uint64_t, uint64_t>();
                             }
                         }
@@ -1845,7 +1894,7 @@ struct z86Base : z86BaseGPRs<bits> {
                     return this->CMPS_impl<uint32_t, uint16_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size > 0) {
+                    if (this->data_size < 0) {
                         return this->CMPS_impl<uint64_t, uint16_t>();
                     }
                 }
@@ -1971,7 +2020,7 @@ struct z86Base : z86BaseGPRs<bits> {
                     return this->binopMR_impl<uint32_t>(pc, lambda);
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size > 0) {
+                    if (this->data_size < 0) {
                         return this->binopMR_impl<uint64_t>(pc, lambda);
                     }
                 }
@@ -1994,7 +2043,7 @@ struct z86Base : z86BaseGPRs<bits> {
                     return this->binopRM_impl<uint32_t>(pc, lambda);
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size > 0) {
+                    if (this->data_size < 0) {
                         return this->binopRM_impl<uint64_t>(pc, lambda);
                     }
                 }
@@ -2013,7 +2062,7 @@ struct z86Base : z86BaseGPRs<bits> {
                 return this->binopRM2_impl<uint32_t>(pc, lambda);
             }
             if constexpr (bits == 64) {
-                if (this->data_size > 0) {
+                if (this->data_size < 0) {
                     return this->binopRM2_impl<uint64_t>(pc, lambda);
                 }
             }
@@ -2031,7 +2080,7 @@ struct z86Base : z86BaseGPRs<bits> {
                 return this->binopMS_impl<uint32_t>(pc, lambda);
             }
             if constexpr (bits == 64) {
-                if (this->data_size > 0) {
+                if (this->data_size < 0) {
                     return this->binopMS_impl<uint64_t>(pc, lambda);
                 }
             }
@@ -2049,7 +2098,7 @@ struct z86Base : z86BaseGPRs<bits> {
                 return this->binopSM_impl<uint32_t>(pc, lambda);
             }
             if constexpr (bits == 64) {
-                if (this->data_size > 0) {
+                if (this->data_size < 0) {
                     return this->binopSM_impl<uint64_t>(pc, lambda);
                 }
             }
@@ -2071,7 +2120,7 @@ struct z86Base : z86BaseGPRs<bits> {
                     return this->unopM_impl<uint32_t>(pc, lambda);
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size > 0) {
+                    if (this->data_size < 0) {
                         return this->unopM_impl<uint64_t>(pc, lambda);
                     }
                 }
@@ -2094,7 +2143,7 @@ struct z86Base : z86BaseGPRs<bits> {
                     return this->unopMS_impl<uint32_t>(pc);
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size > 0) {
+                    if (this->data_size < 0) {
                         return this->unopMS_impl<uint64_t>(pc);
                     }
                 }

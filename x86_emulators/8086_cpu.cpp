@@ -213,7 +213,6 @@ struct z8086Context : z86Base<16, 16> {
 static z8086Context ctx;
 
 using z86Addr = z86AddrImpl<16>;
-using ModRM = ModRMBase<ctx>;
 
 static std::vector<PortDwordDevice*> io_dword_devices;
 static std::vector<PortWordDevice*> io_word_devices;
@@ -297,8 +296,8 @@ dllexport void z86_execute() {
             case 0x04: // ADD AL, Ib
                 ctx.ADD(ctx.al, pc.read_advance<uint8_t>());
                 break;
-            case 0x05: // ADD AX, Iz
-                ctx.ADD(ctx.ax, pc.read_advance<uint16_t>());
+            case 0x05: // ADD AX, Is
+                ctx.ADD(ctx.ax, pc.read_advance_Is());
                 break;
             case 0x06: case 0x0E: case 0x16: case 0x1E: // PUSH seg
                 ctx.PUSH(ctx.index_seg(opcode >> 3));
@@ -333,8 +332,8 @@ dllexport void z86_execute() {
             case 0x0C: // OR AL, Ib
                 ctx.OR(ctx.al, pc.read_advance<uint8_t>());
                 break;
-            case 0x0D: // OR AX, Iz
-                ctx.OR(ctx.ax, pc.read_advance<uint16_t>());
+            case 0x0D: // OR AX, Is
+                ctx.OR(ctx.ax, pc.read_advance_Is());
                 break;
             case 0x10: // ADC Mb, Rb
                 ctx.binopMR<true>(pc, [](auto& dst, auto src) {
@@ -363,8 +362,8 @@ dllexport void z86_execute() {
             case 0x14: // ADC AL, Ib
                 ctx.ADC(ctx.al, pc.read_advance<uint8_t>());
                 break;
-            case 0x15: // ADC AX, Iz
-                ctx.ADC(ctx.ax, pc.read_advance<uint16_t>());
+            case 0x15: // ADC AX, Is
+                ctx.ADC(ctx.ax, pc.read_advance_Is());
                 break;
             case 0x18: // SBB Mb, Rb
                 ctx.binopMR<true>(pc, [](auto& dst, auto src) {
@@ -393,8 +392,8 @@ dllexport void z86_execute() {
             case 0x1C: // SBB AL, Ib
                 ctx.SBB(ctx.al, pc.read_advance<uint8_t>());
                 break;
-            case 0x1D: // SBB AX, Iz
-                ctx.SBB(ctx.ax, pc.read_advance<uint16_t>());
+            case 0x1D: // SBB AX, Is
+                ctx.SBB(ctx.ax, pc.read_advance_Is());
                 break;
             case 0x20: // AND Mb, Rb
                 ctx.binopMR<true>(pc, [](auto& dst, auto src) {
@@ -423,8 +422,8 @@ dllexport void z86_execute() {
             case 0x24: // AND AL, Ib
                 ctx.AND(ctx.al, pc.read_advance<uint8_t>());
                 break;
-            case 0x25: // AND AX, Iz
-                ctx.AND(ctx.ax, pc.read_advance<uint16_t>());
+            case 0x25: // AND AX, Is
+                ctx.AND(ctx.ax, pc.read_advance_Is());
                 break;
             case 0x26: case 0x2E: case 0x36: case 0x3E: // SEG:
                 ctx.set_seg_override(opcode >> 3);
@@ -459,8 +458,8 @@ dllexport void z86_execute() {
             case 0x2C: // SUB AL, Ib
                 ctx.SUB(ctx.al, pc.read_advance<uint8_t>());
                 break;
-            case 0x2D: // SUB AX, Iz
-                ctx.SUB(ctx.ax, pc.read_advance<uint16_t>());
+            case 0x2D: // SUB AX, Is
+                ctx.SUB(ctx.ax, pc.read_advance_Is());
                 break;
             case 0x2F: // DAS
                 ctx.DAS();
@@ -492,8 +491,8 @@ dllexport void z86_execute() {
             case 0x34: // XOR AL, Ib
                 ctx.XOR(ctx.al, pc.read_advance<uint8_t>());
                 break;
-            case 0x35: // XOR AX, Iz
-                ctx.XOR(ctx.ax, pc.read_advance<uint16_t>());
+            case 0x35: // XOR AX, Is
+                ctx.XOR(ctx.ax, pc.read_advance_Is());
                 break;
             case 0x37: // AAA
                 ctx.AAA();
@@ -525,8 +524,8 @@ dllexport void z86_execute() {
             case 0x3C: // CMP AL, Ib
                 ctx.CMP(ctx.al, pc.read_advance<uint8_t>());
                 break;
-            case 0x3D: // CMP AX, Iz
-                ctx.CMP(ctx.ax, pc.read_advance<uint16_t>());
+            case 0x3D: // CMP AX, Is
+                ctx.CMP(ctx.ax, pc.read_advance_Is());
                 break;
             case 0x3F: // AAS
                 ctx.AAS();
@@ -631,9 +630,9 @@ dllexport void z86_execute() {
                 });
                 ++pc;
                 break;
-            case 0x81: // GRP1 Ev, Iz
+            case 0x81: // GRP1 Ev, Is
                 ctx.unopM(pc, [&](auto& dst, uint8_t r) {
-                    uint16_t val = pc.read<uint16_t>();
+                    int32_t val = pc.read_advance_Is();
                     switch (r) {
                         case 0: ctx.ADD(dst, val); return true;
                         case 1: ctx.OR(dst, val); return true;
@@ -646,11 +645,10 @@ dllexport void z86_execute() {
                         default: unreachable;
                     }
                 });
-                pc += 2;
                 break;
             case 0x83: // GRP1 Ev, Ib
                 ctx.unopM(pc, [&](auto& dst, uint8_t r) {
-                    uint16_t val = (int16_t)pc.read<int8_t>();
+                    int32_t val = pc.read<int8_t>();
                     switch (r) {
                         case 0: ctx.ADD(dst, val); return true;
                         case 1: ctx.OR(dst, val); return true;
@@ -762,8 +760,8 @@ dllexport void z86_execute() {
             case 0x9A: // CALL far abs
                 ctx.PUSH(ctx.cs);
                 ctx.PUSH(pc.offset + 4);
-                ctx.ip = pc.read<uint16_t>();
-                ctx.cs = pc.read<uint16_t>(2);
+                ctx.rip = pc.read_advance_Iz();
+                ctx.cs = pc.read<uint16_t>();
                 goto next_instr;
             case 0x9B: // WAIT
                 // NOP :D
@@ -781,22 +779,22 @@ dllexport void z86_execute() {
                 ctx.ah = ctx.get_flags<uint8_t>();
                 break;
             case 0xA0: { // MOV AL, mem
-                z86Addr addr = ctx.addr(DS, pc.read_advance<uint16_t>());
+                z86Addr addr = ctx.addr(DS, pc.read_advance_O());
                 ctx.al = addr.read<uint8_t>();
                 break;
             }
             case 0xA1: { // MOV AX, mem
-                z86Addr addr = ctx.addr(DS, pc.read_advance<uint16_t>());
+                z86Addr addr = ctx.addr(DS, pc.read_advance_O());
                 ctx.ax = addr.read<uint16_t>();
                 break;
             }
             case 0xA2: { // MOV mem, AL
-                z86Addr addr = ctx.addr(DS, pc.read_advance<uint16_t>());
+                z86Addr addr = ctx.addr(DS, pc.read_advance_O());
                 addr.write(ctx.al);
                 break;
             }
             case 0xA3: { // MOV mem, AX
-                z86Addr addr = ctx.addr(DS, pc.read_advance<uint16_t>());
+                z86Addr addr = ctx.addr(DS, pc.read_advance_O());
                 addr.write(ctx.ax);
                 break;
             }
@@ -815,8 +813,8 @@ dllexport void z86_execute() {
             case 0xA8: // TEST AL, Ib
                 ctx.TEST(ctx.al, pc.read_advance<uint8_t>());
                 break;
-            case 0xA9: // TEST AX, Iz
-                ctx.TEST(ctx.ax, pc.read_advance<uint16_t>());
+            case 0xA9: // TEST AX, Is
+                ctx.TEST(ctx.ax, pc.read_advance_Is());
                 break;
             case 0xAA: // STOSB
                 ctx.STOS<true>();
@@ -840,14 +838,14 @@ dllexport void z86_execute() {
                 ctx.index_reg<uint8_t>(opcode & 7) = pc.read_advance<int8_t>();
                 break;
             case 0xB8: case 0xB9: case 0xBA: case 0xBB: case 0xBC: case 0xBD: case 0xBE: case 0xBF: // MOV reg, Iv
-                ctx.index_reg<uint16_t>(opcode & 7) = pc.read_advance<uint16_t>();
+                ctx.index_reg<uint16_t>(opcode & 7) = pc.read_advance_Iv();
                 break;
             case 0xC0: case 0xC2: // RET imm
                 ctx.ip = ctx.POP();
-                ctx.sp += pc.read<int16_t>();
+                ctx.sp += pc.read<uint16_t>();
                 goto next_instr;
             case 0xC1: case 0xC3: // RET
-                ctx.ip = ctx.POP();
+                ctx.rip = ctx.POP();
                 goto next_instr;
             case 0xC4: // LES
                 ctx.binopRM2(pc, [](auto& dst, uint32_t src) {
@@ -870,17 +868,16 @@ dllexport void z86_execute() {
                 });
                 ++pc;
                 break;
-            case 0xC7: // GRP11 Iz (Supposedly this just ignores R bits)
+            case 0xC7: // GRP11 Is (Supposedly this just ignores R bits)
                 ctx.unopM(pc, [&](auto& dst, uint8_t r) {
-                    dst = pc.read<uint16_t>();
+                    dst = pc.read_advance_Is();
                     return true;
                 });
-                pc += 2;
                 break;
             case 0xC8: case 0xCA: // RETF imm
                 ctx.ip = ctx.POP();
                 ctx.cs = ctx.POP();
-                ctx.sp += pc.read<int16_t>();
+                ctx.sp += pc.read<uint16_t>();
                 goto next_instr;
             case 0xC9: case 0xCB: // RETF
                 ctx.ip = ctx.POP();
@@ -979,7 +976,7 @@ dllexport void z86_execute() {
             }
             case 0xD8: case 0xD9: case 0xDA: case 0xDB: case 0xDC: case 0xDD: case 0xDE: case 0xDF: { // ESC x87
                 // NOP :D
-                pc += 1 + pc.read<ModRM>().extra_length();
+                pc += 1 + pc.read<ModRM>().extra_length(pc);
                 break;
             }
             case 0xE0: // LOOPNZ Jb
@@ -1018,16 +1015,20 @@ dllexport void z86_execute() {
             case 0xE7: // OUT Ib, AX
                 ctx.port_out(pc.read_advance<uint8_t>());
                 break;
-            case 0xE8: // CALL Jz
-                ctx.PUSH(pc.offset + 2);
-                ctx.ip = pc.offset + 2 + pc.read<int16_t>();
+            case 0xE8: { // CALL Jz
+                int32_t offset = pc.read_advance_Is();
+                ctx.PUSH(pc.offset);
+                ctx.ip = pc.offset + offset;
                 goto next_instr;
-            case 0xE9: // JMP Jz
-                ctx.ip = pc.offset + 2 + pc.read<int16_t>();
+            }
+            case 0xE9: { // JMP Jz
+                int32_t offset = pc.read_advance_Is();
+                ctx.ip = pc.offset + offset;
                 goto next_instr;
+            }
             case 0xEA: // JMP far abs
-                ctx.ip = pc.read<uint16_t>();
-                ctx.cs = pc.read<uint16_t>(2);
+                ctx.rip = pc.read_advance_Iz();
+                ctx.cs = pc.read<uint16_t>();
                 goto next_instr;
             case 0xEB: // JMP Jb
                 ctx.ip = pc.offset + 1 + pc.read<int8_t>();
@@ -1088,8 +1089,8 @@ dllexport void z86_execute() {
             case 0xF7: // GRP3 Mv
                 ctx.unopM(pc, [&](auto& val, uint8_t r) {
                     switch (r) {
-                        case 0: case 1: // TEST Mv, Iz
-                            ctx.TEST(val, pc.read_advance<uint16_t>());
+                        case 0: case 1: // TEST Mv, Is
+                            ctx.TEST(val, pc.read_advance_Is());
                             return false;
                         case 2: // NOT Mv
                             ctx.NOT(val);
