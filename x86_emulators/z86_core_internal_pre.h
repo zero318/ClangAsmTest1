@@ -14,6 +14,8 @@
 
 #include "../zero/util.h"
 
+#undef REX
+
 static inline constexpr unsigned long long operator ""_KB(unsigned long long value) {
     return value * 1024ull;
 }
@@ -168,10 +170,87 @@ enum REG_INDEX : uint8_t {
     R15  = 15, R15D = 15, R15W = 15, R15B = 15, XMM15 = 15
 };
 
+enum DATA_SIZE : int8_t {
+    DataSize64 = -1,
+    DataSize32 = 0,
+    DataSize16 = 1
+};
+
+enum ADDR_SIZE : int8_t {
+    AddrSize64 = -1,
+    AddrSize32 = 0,
+    AddrSize16 = 1
+};
+
 enum REP_STATE : int8_t {
     NO_REP = -1,
     REP_NE = 0,
     REP_E = 1
+};
+
+
+
+struct REX {
+#if USE_BITFIELDS
+    union {
+        uint8_t raw;
+        struct {
+            uint8_t b : 1;
+            uint8_t x : 1;
+            uint8_t r : 1;
+            uint8_t w : 1;
+            uint8_t pre : 4;
+        };
+    };
+
+    inline constexpr REX() : raw(0) {}
+
+    inline constexpr uint8_t B() const {
+        return this->b << 3;;
+    }
+
+    inline constexpr uint8_t X() const {
+        return this->x << 3;
+    }
+
+    inline constexpr uint8_t R() const {
+        return this->r << 3;
+    }
+
+    inline constexpr bool W() const {
+        return this->w;
+    }
+#else
+    uint8_t raw;
+
+    inline constexpr uint8_t B() const {
+        return (this->raw & 1) << 3;
+    }
+
+    inline constexpr uint8_t X() const {
+        return (this->raw & 2) << 2;
+    }
+
+    inline constexpr uint8_t R() const {
+        return (this->raw & 4) << 1;
+    }
+
+    inline constexpr bool W() const {
+        return this->raw & 8;
+    }
+#endif
+
+    inline constexpr bool is_present() const {
+        return this->raw;
+    }
+
+    inline constexpr operator bool() const {
+        return this->raw;
+    }
+
+    inline constexpr bool operator!() const {
+        return !this->raw;
+    }
 };
 
 template<size_t max_bits>
@@ -259,10 +338,8 @@ struct z86BaseGPRs<16> {
     static constexpr inline int8_t data_size = 1;
     static constexpr inline int8_t addr_size = 1;
     static constexpr inline int8_t stack_size = 1;
-
-    inline constexpr uint8_t& index_byte_reg(uint8_t index) {
-        return *(&this->gpr[index & 3].byte + (index > 3));
-    }
+    static constexpr inline int8_t mode = 1;
+    static constexpr inline REX rex_bits = {};
 };
 
 // size: 0x24
@@ -347,9 +424,23 @@ struct z86BaseGPRs<32> {
     int8_t data_size = 1;
     int8_t addr_size = 1;
     int8_t stack_size = 1;
+    int8_t mode = 1;
+    static constexpr inline REX rex_bits = {};
 
     inline constexpr uint8_t& index_byte_reg(uint8_t index) {
         return *(&this->gpr[index & 3].byte + (index > 3));
+    }
+
+    inline constexpr auto& index_word_reg(uint8_t index) {
+        return this->gpr[index].word;
+    }
+
+    inline constexpr auto& index_dword_reg(uint8_t index) {
+        return this->gpr[index].dword;
+    }
+
+    inline constexpr auto& index_qword_reg(uint8_t index) {
+        return this->gpr[index].qword;
     }
 };
 
@@ -484,14 +575,21 @@ struct z86BaseGPRs<64> {
     int8_t data_size = 1;
     int8_t addr_size = 1;
     int8_t stack_size = 1;
-    int8_t rex_bits;
+    int8_t mode = 1;
+    REX rex_bits = {};
 
-    inline constexpr uint8_t& index_byte_reg(uint8_t index) {
-        if (!rex_bits) {
-            return *(&this->gpr[index & 3].byte + (index > 3));
-        } else {
-            return this->gpr[index].byte;
-        }
+    
+
+    inline constexpr auto& index_word_reg(uint8_t index) {
+        return this->gpr[index].word;
+    }
+
+    inline constexpr auto& index_dword_reg(uint8_t index) {
+        return this->gpr[index].dword;
+    }
+
+    inline constexpr auto& index_qword_reg(uint8_t index) {
+        return this->gpr[index].qword;
     }
 };
 
@@ -620,8 +718,8 @@ struct z86AddrImpl : z86AddrBase<bits> {
     template <typename T = uint8_t>
     inline void write(const T& value, ssize_t offset = 0);
 
-    template <typename T = uint8_t>
-    inline T read(ssize_t offset = 0) const;
+    template <typename T = uint8_t, typename V = std::remove_reference_t<T>>
+    inline V read(ssize_t offset = 0) const;
 
     template <typename T = uint8_t>
     inline void write_advance(const T& value, ssize_t index = sizeof(T)) {
@@ -629,9 +727,9 @@ struct z86AddrImpl : z86AddrBase<bits> {
         this->offset += index;
     }
 
-    template <typename T = uint8_t>
-    inline T read_advance(ssize_t index = sizeof(T)) {
-        T ret = this->read<T>();
+    template <typename T = uint8_t, typename V = std::remove_reference_t<T>>
+    inline V read_advance(ssize_t index = sizeof(V)) {
+        V ret = this->read<V>();
         this->offset += index;
         return ret;
     }
@@ -652,9 +750,6 @@ struct z86AddrImpl : z86AddrBase<bits> {
 
     inline uint64_t read_advance_O();
 };
-
-struct DataSize {};
-struct AddrSize {};
 
 struct SIB {
 #if USE_BITFIELDS
@@ -756,28 +851,184 @@ struct z86Base : z86BaseGPRs<bits> {
 
     using SRT = std::make_signed_t<RT>;
 
-    inline constexpr auto& index_word_reg(uint8_t index) {
+    inline constexpr bool data_size_16() const {
+        return data_size > 0;
+    }
+    inline constexpr bool data_size_32() const {
+        return data_size == 0;
+    }
+    inline constexpr bool data_size_64() const {
+        return data_size < 0;
+    }
+    inline constexpr bool addr_size_16() const {
+        return addr_size > 0;
+    }
+    inline constexpr bool addr_size_32() const {
+        return addr_size == 0;
+    }
+    inline constexpr bool addr_size_64() const {
+        return addr_size < 0;
+    }
+    inline constexpr bool stack_size_16() const {
+        return stack_size > 0;
+    }
+    inline constexpr bool stack_size_32() const {
+        return stack_size == 0;
+    }
+    inline constexpr bool stack_size_64() const {
+        return stack_size < 0;
+    }
+
+    template <bool ignore_rex = false>
+    inline constexpr uint8_t& index_byte_regR(uint8_t index) {
+        assume(index < 8);
+        if constexpr (!ignore_rex) {
+            if (rex_bits) {
+                return this->gpr[index | rex_bits.R()].byte;
+            }
+        }
+        return *(&this->gpr[index & 3].byte + (index > 3));
+    }
+
+    template <bool ignore_rex = false>
+    inline constexpr uint8_t& index_byte_regI(uint8_t index) {
+        assume(index < 8);
+        if constexpr (!ignore_rex) {
+            if (rex_bits) {
+                return this->gpr[index | rex_bits.X()].byte;
+            }
+        }
+        return *(&this->gpr[index & 3].byte + (index > 3));
+    }
+
+    template <bool ignore_rex = false>
+    inline constexpr uint8_t& index_byte_regMB(uint8_t index) {
+        assume(index < 8);
+        if constexpr (!ignore_rex) {
+            if (rex_bits) {
+                return this->gpr[index | rex_bits.B()].byte;
+            }
+        }
+        return *(&this->gpr[index & 3].byte + (index > 3));
+    }
+
+    template <bool ignore_rex = false>
+    inline constexpr auto& index_word_regR(uint8_t index) {
+        assume(index < 8);
+        if constexpr (!ignore_rex) {
+            index |= rex_bits.R();
+        }
         return this->gpr[index].word;
     }
 
-    inline constexpr auto& index_dword_reg(uint8_t index) {
+    template <bool ignore_rex = false>
+    inline constexpr auto& index_word_regI(uint8_t index) {
+        assume(index < 8);
+        if constexpr (!ignore_rex) {
+            index |= rex_bits.X();
+        }
+        return this->gpr[index].word;
+    }
+
+    template <bool ignore_rex = false>
+    inline constexpr auto& index_word_regMB(uint8_t index) {
+        assume(index < 8);
+        if constexpr (!ignore_rex) {
+            index |= rex_bits.B();
+        }
+        return this->gpr[index].word;
+    }
+
+    template <bool ignore_rex = false>
+    inline constexpr auto& index_dword_regR(uint8_t index) {
+        assume(index < 8);
+        if constexpr (!ignore_rex) {
+            index |= rex_bits.R();
+        }
         return this->gpr[index].dword;
     }
 
-    inline constexpr auto& index_qword_reg(uint8_t index) {
+    template <bool ignore_rex = false>
+    inline constexpr auto& index_dword_regI(uint8_t index) {
+        assume(index < 8);
+        if constexpr (!ignore_rex) {
+            index |= rex_bits.X();
+        }
+        return this->gpr[index].dword;
+    }
+
+    template <bool ignore_rex = false>
+    inline constexpr auto& index_dword_regMB(uint8_t index) {
+        assume(index < 8);
+        if constexpr (!ignore_rex) {
+            index |= rex_bits.B();
+        }
+        return this->gpr[index].dword;
+    }
+
+    template <bool ignore_rex = false>
+    inline constexpr auto& index_qword_regR(uint8_t index) {
+        assume(index < 8);
+        if constexpr (!ignore_rex) {
+            index |= rex_bits.R();
+        }
         return this->gpr[index].qword;
     }
 
-    template <typename T>
-    inline constexpr auto& index_reg(uint8_t index) {
+    template <bool ignore_rex = false>
+    inline constexpr auto& index_qword_regI(uint8_t index) {
+        assume(index < 8);
+        if constexpr (!ignore_rex) {
+            index |= rex_bits.X();
+        }
+        return this->gpr[index].qword;
+    }
+
+    template <bool ignore_rex = false>
+    inline constexpr auto& index_qword_regMB(uint8_t index) {
+        assume(index < 8);
+        if constexpr (!ignore_rex) {
+            index |= rex_bits.B();
+        }
+        return this->gpr[index].qword;
+    }
+
+    template <typename T, bool ignore_rex = false>
+    inline constexpr auto& index_regR(uint8_t index) {
         if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->index_byte_reg(index);
+            return this->index_byte_regR<ignore_rex>(index);
         } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->index_word_reg(index);
+            return this->index_word_regR<ignore_rex>(index);
         } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->index_dword_reg(index);
+            return this->index_dword_regR<ignore_rex>(index);
         } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->index_qword_reg(index);
+            return this->index_qword_regR<ignore_rex>(index);
+        }
+    }
+
+    template <typename T, bool ignore_rex = false>
+    inline constexpr auto& index_regI(uint8_t index) {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->index_byte_regI<ignore_rex>(index);
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->index_word_regI<ignore_rex>(index);
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->index_dword_regI<ignore_rex>(index);
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->index_qword_regI<ignore_rex>(index);
+        }
+    }
+
+    template <typename T, bool ignore_rex = false>
+    inline constexpr auto& index_regMB(uint8_t index) {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->index_byte_regMB<ignore_rex>(index);
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->index_word_regMB<ignore_rex>(index);
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->index_dword_regMB<ignore_rex>(index);
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->index_qword_regMB<ignore_rex>(index);
         }
     }
 
@@ -1369,6 +1620,44 @@ struct z86Base : z86BaseGPRs<bits> {
         std::swap(dst, src);
     }
 
+    inline void CBW() {
+        if constexpr (bits > 16) {
+            if (this->data_size_32()) {
+                // CWDE
+                ctx.eax = (int32_t)(int16_t)ctx.ax;
+                return;
+            }
+            if constexpr (bits == 64) {
+                if (this->data_size_64()) {
+                    // CDQE
+                    ctx.rax = (int64_t)(int32_t)ctx.eax;
+                    return;
+                }
+            }
+        }
+        // CBW
+        ctx.ax = (int16_t)(int8_t)ctx.al;
+    }
+
+    inline void CWD() {
+        if constexpr (bits > 16) {
+            if (this->data_size_32()) {
+                // CDQ
+                ctx.edx = (int32_t)ctx.eax >> 31;
+                return;
+            }
+            if constexpr (bits == 64) {
+                if (this->data_size_64()) {
+                    // CDO
+                    ctx.rdx = (int64_t)ctx.rax >> 63;
+                    return;
+                }
+            }
+        }
+        // CWD
+        ctx.dx = (int16_t)ctx.ax >> 15;
+    }
+
     template <typename T>
     inline void MUL(T src) {
         using UD = std::make_unsigned_t<dbl_int_t<T>>;
@@ -1627,11 +1916,11 @@ struct z86Base : z86BaseGPRs<bits> {
     inline void LODS() {
         if constexpr (is_byte) {
             if constexpr (bits > 16) {
-                if (this->addr_size == 0) {
+                if (this->addr_size_32()) {
                     return this->LODS_impl<uint8_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size < 0) {
+                    if (this->addr_size_64()) {
                         return this->LODS_impl<uint8_t, uint64_t>();
                     }
                 }
@@ -1640,35 +1929,35 @@ struct z86Base : z86BaseGPRs<bits> {
         }
         else {
             if constexpr (bits > 16) {
-                if (this->addr_size == 0) {
-                    if (this->data_size == 0) {
+                if (this->addr_size_32()) {
+                    if (this->data_size_32()) {
                         return this->LODS_impl<uint32_t, uint32_t>();
                     }
                     if constexpr (bits == 64) {
-                        if (data_size < 0) {
+                        if (this->data_size_64()) {
                             return this->LODS_impl<uint64_t, uint32_t>();
                         }
                     }
                     return this->LODS_impl<uint16_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size < 0) {
-                        if (this->data_size == 0) {
+                    if (this->addr_size_64()) {
+                        if (this->data_size_32()) {
                             return this->LODS_impl<uint32_t, uint64_t>();
                         }
                         if constexpr (bits == 64) {
-                            if (this->data_size < 0) {
+                            if (this->data_size_64()) {
                                 return this->LODS_impl<uint64_t, uint64_t>();
                             }
                         }
                         return this->LODS_impl<uint16_t, uint64_t>();
                     }
                 }
-                if (this->data_size == 0) {
+                if (this->data_size_32()) {
                     return this->LODS_impl<uint32_t, uint16_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size < 0) {
+                    if (this->data_size_64()) {
                         return this->LODS_impl<uint64_t, uint16_t>();
                     }
                 }
@@ -1684,11 +1973,11 @@ struct z86Base : z86BaseGPRs<bits> {
     inline void MOVS() {
         if constexpr (is_byte) {
             if constexpr (bits > 16) {
-                if (this->addr_size == 0) {
+                if (this->addr_size_32()) {
                     return this->MOVS_impl<uint8_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size < 0) {
+                    if (this->addr_size_64()) {
                         return this->MOVS_impl<uint8_t, uint64_t>();
                     }
                 }
@@ -1697,35 +1986,35 @@ struct z86Base : z86BaseGPRs<bits> {
         }
         else {
             if constexpr (bits > 16) {
-                if (this->addr_size == 0) {
-                    if (this->data_size == 0) {
+                if (this->addr_size_32()) {
+                    if (this->data_size_32()) {
                         return this->MOVS_impl<uint32_t, uint32_t>();
                     }
                     if constexpr (bits == 64) {
-                        if (data_size < 0) {
+                        if (this->data_size_64()) {
                             return this->MOVS_impl<uint64_t, uint32_t>();
                         }
                     }
                     return this->MOVS_impl<uint16_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size < 0) {
-                        if (this->data_size == 0) {
+                    if (this->addr_size_64()) {
+                        if (this->data_size_32()) {
                             return this->MOVS_impl<uint32_t, uint64_t>();
                         }
                         if constexpr (bits == 64) {
-                            if (this->data_size < 0) {
+                            if (this->data_size_64()) {
                                 return this->MOVS_impl<uint64_t, uint64_t>();
                             }
                         }
                         return this->MOVS_impl<uint16_t, uint64_t>();
                     }
                 }
-                if (this->data_size == 0) {
+                if (this->data_size_32()) {
                     return this->MOVS_impl<uint32_t, uint16_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size < 0) {
+                    if (this->data_size_64()) {
                         return this->MOVS_impl<uint64_t, uint16_t>();
                     }
                 }
@@ -1741,11 +2030,11 @@ struct z86Base : z86BaseGPRs<bits> {
     inline void STOS() {
         if constexpr (is_byte) {
             if constexpr (bits > 16) {
-                if (this->addr_size == 0) {
+                if (this->addr_size_32()) {
                     return this->STOS_impl<uint8_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size < 0) {
+                    if (this->addr_size_64()) {
                         return this->STOS_impl<uint8_t, uint64_t>();
                     }
                 }
@@ -1754,35 +2043,35 @@ struct z86Base : z86BaseGPRs<bits> {
         }
         else {
             if constexpr (bits > 16) {
-                if (this->addr_size == 0) {
-                    if (this->data_size == 0) {
+                if (this->addr_size_32()) {
+                    if (this->data_size_32()) {
                         return this->STOS_impl<uint32_t, uint32_t>();
                     }
                     if constexpr (bits == 64) {
-                        if (data_size < 0) {
+                        if (this->data_size_64()) {
                             return this->STOS_impl<uint64_t, uint32_t>();
                         }
                     }
                     return this->STOS_impl<uint16_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size < 0) {
-                        if (this->data_size == 0) {
+                    if (this->addr_size_64()) {
+                        if (this->data_size_32()) {
                             return this->STOS_impl<uint32_t, uint64_t>();
                         }
                         if constexpr (bits == 64) {
-                            if (this->data_size < 0) {
+                            if (this->data_size_64()) {
                                 return this->STOS_impl<uint64_t, uint64_t>();
                             }
                         }
                         return this->STOS_impl<uint16_t, uint64_t>();
                     }
                 }
-                if (this->data_size == 0) {
+                if (this->data_size_32()) {
                     return this->STOS_impl<uint32_t, uint16_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size < 0) {
+                    if (this->data_size_64()) {
                         return this->STOS_impl<uint64_t, uint16_t>();
                     }
                 }
@@ -1798,11 +2087,11 @@ struct z86Base : z86BaseGPRs<bits> {
     inline void SCAS() {
         if constexpr (is_byte) {
             if constexpr (bits > 16) {
-                if (this->addr_size == 0) {
+                if (this->addr_size_32()) {
                     return this->SCAS_impl<uint8_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size < 0) {
+                    if (this->addr_size_64()) {
                         return this->SCAS_impl<uint8_t, uint64_t>();
                     }
                 }
@@ -1810,35 +2099,35 @@ struct z86Base : z86BaseGPRs<bits> {
             return this->SCAS_impl<uint8_t, uint16_t>();
         } else {
             if constexpr (bits > 16) {
-                if (this->addr_size == 0) {
-                    if (this->data_size == 0) {
+                if (this->addr_size_32()) {
+                    if (this->data_size_32()) {
                         return this->SCAS_impl<uint32_t, uint32_t>();
                     }
                     if constexpr (bits == 64) {
-                        if (data_size < 0) {
+                        if (this->data_size_64()) {
                             return this->SCAS_impl<uint64_t, uint32_t>();
                         }
                     }
                     return this->SCAS_impl<uint16_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size < 0) {
-                        if (this->data_size == 0) {
+                    if (this->addr_size_64()) {
+                        if (this->data_size_32()) {
                             return this->SCAS_impl<uint32_t, uint64_t>();
                         }
                         if constexpr (bits == 64) {
-                            if (this->data_size < 0) {
+                            if (this->data_size_64()) {
                                 return this->SCAS_impl<uint64_t, uint64_t>();
                             }
                         }
                         return this->SCAS_impl<uint16_t, uint64_t>();
                     }
                 }
-                if (this->data_size == 0) {
+                if (this->data_size_32()) {
                     return this->SCAS_impl<uint32_t, uint16_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size < 0) {
+                    if (this->data_size_64()) {
                         return this->SCAS_impl<uint64_t, uint16_t>();
                     }
                 }
@@ -1854,11 +2143,11 @@ struct z86Base : z86BaseGPRs<bits> {
     inline void CMPS() {
         if constexpr (is_byte) {
             if constexpr (bits > 16) {
-                if (this->addr_size == 0) {
+                if (this->addr_size_32()) {
                     return this->CMPS_impl<uint8_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size < 0) {
+                    if (this->addr_size_64()) {
                         return this->CMPS_impl<uint8_t, uint64_t>();
                     }
                 }
@@ -1866,35 +2155,35 @@ struct z86Base : z86BaseGPRs<bits> {
             return this->CMPS_impl<uint8_t, uint16_t>();
         } else {
             if constexpr (bits > 16) {
-                if (this->addr_size == 0) {
-                    if (this->data_size == 0) {
+                if (this->addr_size_32()) {
+                    if (this->data_size_32()) {
                         return this->CMPS_impl<uint32_t, uint32_t>();
                     }
                     if constexpr (bits == 64) {
-                        if (data_size < 0) {
+                        if (this->data_size_64()) {
                             return this->CMPS_impl<uint64_t, uint32_t>();
                         }
                     }
                     return this->CMPS_impl<uint16_t, uint32_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->addr_size < 0) {
-                        if (this->data_size == 0) {
+                    if (this->addr_size_64()) {
+                        if (this->data_size_32()) {
                             return this->CMPS_impl<uint32_t, uint64_t>();
                         }
                         if constexpr (bits == 64) {
-                            if (this->data_size < 0) {
+                            if (this->data_size_64()) {
                                 return this->CMPS_impl<uint64_t, uint64_t>();
                             }
                         }
                         return this->CMPS_impl<uint16_t, uint64_t>();
                     }
                 }
-                if (this->data_size == 0) {
+                if (this->data_size_32()) {
                     return this->CMPS_impl<uint32_t, uint16_t>();
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size < 0) {
+                    if (this->data_size_64()) {
                         return this->CMPS_impl<uint64_t, uint16_t>();
                     }
                 }
@@ -1913,7 +2202,7 @@ struct z86Base : z86BaseGPRs<bits> {
         }
         else {
             if constexpr (bits > 16) {
-                if (this->data_size >= 0) {
+                if (!this->data_size_16()) {
                     return this->port_out_impl<uint32_t>(port);
                 }
             }
@@ -1931,7 +2220,7 @@ struct z86Base : z86BaseGPRs<bits> {
         }
         else {
             if constexpr (bits > 16) {
-                if (this->data_size >= 0) {
+                if (!this->data_size_16()) {
                     return this->port_in_impl<uint32_t>(port);
                 }
             }
@@ -2006,6 +2295,47 @@ struct z86Base : z86BaseGPRs<bits> {
         this->pending_sinterrupt = number;
     }
 
+    template <bool is_byte = false, typename P, typename L>
+    inline void binopAI(P& pc, const L& lambda) {
+        if constexpr (is_byte) {
+            return lambda(ctx.al, pc.read_advance<uint8_t>());
+        }
+        else {
+            if constexpr (bits > 16) {
+                if (this->data_size_32()) {
+                    return lambda(ctx.eax, pc.read_advance<uint32_t>());
+                }
+                if constexpr (bits == 64) {
+                    if (this->data_size_64()) {
+                        return lambda(ctx.rax, (uint64_t)(int64_t)pc.read_advance<int32_t>());
+                    }
+                }
+            }
+            return lambda(ctx.ax, pc.read_advance<uint16_t>());
+        }
+    }
+
+    template <bool is_byte = false, typename P, typename L>
+    inline void binopAO(P& pc, const L& lambda) {
+        auto offset = pc.read_advance_O();
+        if constexpr (is_byte) {
+            return lambda(ctx.al, offset);
+        }
+        else {
+            if constexpr (bits > 16) {
+                if (this->data_size_32()) {
+                    return lambda(ctx.eax, offset);
+                }
+                if constexpr (bits == 64) {
+                    if (this->data_size_64()) {
+                        return lambda(ctx.rax, offset);
+                    }
+                }
+            }
+            return lambda(ctx.ax, offset);
+        }
+    }
+
     template <typename T, typename P, typename L>
     inline void binopMR_impl(P& pc, const L& lambda);
 
@@ -2016,11 +2346,11 @@ struct z86Base : z86BaseGPRs<bits> {
         }
         else {
             if constexpr (bits > 16) {
-                if (this->data_size == 0) {
+                if (this->data_size_32()) {
                     return this->binopMR_impl<uint32_t>(pc, lambda);
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size < 0) {
+                    if (this->data_size_64()) {
                         return this->binopMR_impl<uint64_t>(pc, lambda);
                     }
                 }
@@ -2039,11 +2369,11 @@ struct z86Base : z86BaseGPRs<bits> {
         }
         else {
             if constexpr (bits > 16) {
-                if (this->data_size == 0) {
+                if (this->data_size_32()) {
                     return this->binopRM_impl<uint32_t>(pc, lambda);
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size < 0) {
+                    if (this->data_size_64()) {
                         return this->binopRM_impl<uint64_t>(pc, lambda);
                     }
                 }
@@ -2058,11 +2388,11 @@ struct z86Base : z86BaseGPRs<bits> {
     template <typename P, typename L>
     inline void binopRM2(P& pc, const L& lambda) {
         if constexpr (bits > 16) {
-            if (this->data_size == 0) {
+            if (this->data_size_32()) {
                 return this->binopRM2_impl<uint32_t>(pc, lambda);
             }
             if constexpr (bits == 64) {
-                if (this->data_size < 0) {
+                if (this->data_size_64()) {
                     return this->binopRM2_impl<uint64_t>(pc, lambda);
                 }
             }
@@ -2076,11 +2406,11 @@ struct z86Base : z86BaseGPRs<bits> {
     template <typename P, typename L>
     inline void binopMS(P& pc, const L& lambda) {
         if constexpr (bits > 16) {
-            if (this->data_size == 0) {
+            if (this->data_size_32()) {
                 return this->binopMS_impl<uint32_t>(pc, lambda);
             }
             if constexpr (bits == 64) {
-                if (this->data_size < 0) {
+                if (this->data_size_64()) {
                     return this->binopMS_impl<uint64_t>(pc, lambda);
                 }
             }
@@ -2094,11 +2424,11 @@ struct z86Base : z86BaseGPRs<bits> {
     template <typename P, typename L>
     inline void binopSM(P& pc, const L& lambda) {
         if constexpr (bits > 16) {
-            if (this->data_size == 0) {
+            if (this->data_size_32()) {
                 return this->binopSM_impl<uint32_t>(pc, lambda);
             }
             if constexpr (bits == 64) {
-                if (this->data_size < 0) {
+                if (this->data_size_64()) {
                     return this->binopSM_impl<uint64_t>(pc, lambda);
                 }
             }
@@ -2116,11 +2446,11 @@ struct z86Base : z86BaseGPRs<bits> {
         }
         else {
             if constexpr (bits > 16) {
-                if (this->data_size == 0) {
+                if (this->data_size_32()) {
                     return this->unopM_impl<uint32_t>(pc, lambda);
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size < 0) {
+                    if (this->data_size_64()) {
                         return this->unopM_impl<uint64_t>(pc, lambda);
                     }
                 }
@@ -2139,11 +2469,11 @@ struct z86Base : z86BaseGPRs<bits> {
         }
         else {
             if constexpr (bits > 16) {
-                if (this->data_size == 0) {
+                if (this->data_size_32()) {
                     return this->unopMS_impl<uint32_t>(pc);
                 }
                 if constexpr (bits == 64) {
-                    if (this->data_size < 0) {
+                    if (this->data_size_64()) {
                         return this->unopMS_impl<uint64_t>(pc);
                     }
                 }

@@ -294,10 +294,14 @@ dllexport void z86_execute() {
                 });
                 break;
             case 0x04: // ADD AL, Ib
-                ctx.ADD(ctx.al, pc.read_advance<uint8_t>());
+                ctx.binopAI<true>(pc, [](auto& dst, auto src) {
+                    ctx.ADD(dst, src);
+                });
                 break;
             case 0x05: // ADD AX, Is
-                ctx.ADD(ctx.ax, pc.read_advance_Is());
+                ctx.binopAI(pc, [](auto& dst, auto src) {
+                    ctx.ADD(dst, src);
+                });
                 break;
             case 0x06: case 0x0E: case 0x16: case 0x1E: // PUSH seg
                 ctx.PUSH(ctx.index_seg(opcode >> 3));
@@ -330,10 +334,14 @@ dllexport void z86_execute() {
                 });
                 break;
             case 0x0C: // OR AL, Ib
-                ctx.OR(ctx.al, pc.read_advance<uint8_t>());
+                ctx.binopAI<true>(pc, [](auto& dst, auto src) {
+                    ctx.OR(dst, src);
+                });
                 break;
             case 0x0D: // OR AX, Is
-                ctx.OR(ctx.ax, pc.read_advance_Is());
+                ctx.binopAI(pc, [](auto& dst, auto src) {
+                    ctx.OR(dst, src);
+                });
                 break;
             case 0x10: // ADC Mb, Rb
                 ctx.binopMR<true>(pc, [](auto& dst, auto src) {
@@ -360,10 +368,14 @@ dllexport void z86_execute() {
                 });
                 break;
             case 0x14: // ADC AL, Ib
-                ctx.ADC(ctx.al, pc.read_advance<uint8_t>());
+                ctx.binopAI<true>(pc, [](auto& dst, auto src) {
+                    ctx.ADC(dst, src);
+                });
                 break;
             case 0x15: // ADC AX, Is
-                ctx.ADC(ctx.ax, pc.read_advance_Is());
+                ctx.binopAI(pc, [](auto& dst, auto src) {
+                    ctx.ADC(dst, src);
+                });
                 break;
             case 0x18: // SBB Mb, Rb
                 ctx.binopMR<true>(pc, [](auto& dst, auto src) {
@@ -390,10 +402,14 @@ dllexport void z86_execute() {
                 });
                 break;
             case 0x1C: // SBB AL, Ib
-                ctx.SBB(ctx.al, pc.read_advance<uint8_t>());
+                ctx.binopAI<true>(pc, [](auto& dst, auto src) {
+                    ctx.SBB(dst, src);
+                });
                 break;
             case 0x1D: // SBB AX, Is
-                ctx.SBB(ctx.ax, pc.read_advance_Is());
+                ctx.binopAI<true>(pc, [](auto& dst, auto src) {
+                    ctx.SBB(dst, src);
+                });
                 break;
             case 0x20: // AND Mb, Rb
                 ctx.binopMR<true>(pc, [](auto& dst, auto src) {
@@ -420,10 +436,14 @@ dllexport void z86_execute() {
                 });
                 break;
             case 0x24: // AND AL, Ib
-                ctx.AND(ctx.al, pc.read_advance<uint8_t>());
+                ctx.binopAI<true>(pc, [](auto& dst, auto src) {
+                    ctx.AND(dst, src);
+                });
                 break;
             case 0x25: // AND AX, Is
-                ctx.AND(ctx.ax, pc.read_advance_Is());
+                ctx.binopAI(pc, [](auto& dst, auto src) {
+                    ctx.AND(dst, src);
+                });
                 break;
             case 0x26: case 0x2E: case 0x36: case 0x3E: // SEG:
                 ctx.set_seg_override(opcode >> 3);
@@ -456,10 +476,14 @@ dllexport void z86_execute() {
                 });
                 break;
             case 0x2C: // SUB AL, Ib
-                ctx.SUB(ctx.al, pc.read_advance<uint8_t>());
+                ctx.binopAI<true>(pc, [](auto& dst, auto src) {
+                    ctx.SUB(dst, src);
+                });
                 break;
             case 0x2D: // SUB AX, Is
-                ctx.SUB(ctx.ax, pc.read_advance_Is());
+                ctx.binopAI(pc, [](auto& dst, auto src) {
+                    ctx.SUB(dst, src);
+                });
                 break;
             case 0x2F: // DAS
                 ctx.DAS();
@@ -489,10 +513,14 @@ dllexport void z86_execute() {
                 });
                 break;
             case 0x34: // XOR AL, Ib
-                ctx.XOR(ctx.al, pc.read_advance<uint8_t>());
+                ctx.binopAI<true>(pc, [](auto& dst, auto src) {
+                    ctx.XOR(dst, src);
+                });
                 break;
             case 0x35: // XOR AX, Is
-                ctx.XOR(ctx.ax, pc.read_advance_Is());
+                ctx.binopAI(pc, [](auto& dst, auto src) {
+                    ctx.XOR(dst, src);
+                });
                 break;
             case 0x37: // AAA
                 ctx.AAA();
@@ -522,25 +550,29 @@ dllexport void z86_execute() {
                 });
                 break;
             case 0x3C: // CMP AL, Ib
-                ctx.CMP(ctx.al, pc.read_advance<uint8_t>());
+                ctx.binopAI<true>(pc, [](auto dst, auto src) {
+                    ctx.CMP(dst, src);
+                });
                 break;
             case 0x3D: // CMP AX, Is
-                ctx.CMP(ctx.ax, pc.read_advance_Is());
+                ctx.binopAI(pc, [](auto& dst, auto src) {
+                    ctx.CMP(dst, src);
+                });
                 break;
             case 0x3F: // AAS
                 ctx.AAS();
                 break;
             case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47: // INC reg
-                ctx.INC(ctx.index_reg<uint16_t>(opcode & 7));
+                ctx.INC(ctx.index_regMB<uint16_t>(opcode & 7));
                 break;
             case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4E: case 0x4F: // DEC reg
-                ctx.DEC(ctx.index_reg<uint16_t>(opcode & 7));
+                ctx.DEC(ctx.index_regMB<uint16_t>(opcode & 7));
                 break;
             case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x56: case 0x57: // PUSH reg
-                ctx.PUSH(ctx.index_reg<uint16_t>(opcode & 7));
+                ctx.PUSH(ctx.index_regMB<uint16_t>(opcode & 7));
                 break;
             case 0x58: case 0x59: case 0x5A: case 0x5B: case 0x5C: case 0x5D: case 0x5E: case 0x5F: // POP reg
-                ctx.index_reg<uint16_t>(opcode & 7) = ctx.POP();
+                ctx.index_regMB<uint16_t>(opcode & 7) = ctx.POP();
                 break;
             case 0x60: case 0x70: // JO Jb
             case 0x61: case 0x71: // JNO Jb
@@ -721,7 +753,7 @@ dllexport void z86_execute() {
                 ModRM modrm = pc.read_advance<ModRM>();
                 if (modrm.is_mem()) {
                     z86Addr addr = modrm.parse_memM(pc);
-                    ctx.index_reg<uint16_t>(modrm.R()) = addr.offset;
+                    ctx.index_regR<uint16_t>(modrm.R()) = addr.offset;
                 }
                 else {
                     // TODO: jank
@@ -748,14 +780,19 @@ dllexport void z86_execute() {
                     }
                 });
                 break;
-            case 0x90: case 0x91: case 0x92: case 0x93: case 0x94: case 0x95: case 0x96: case 0x97: // XCHG AX, reg
-                ctx.XCHG(ctx.ax, ctx.index_reg<uint16_t>(opcode & 7));
+            case 0x90: // NOP, XCHG RAX, R8
+                if (!ctx.rex_bits.B()) {
+                    // NOP
+                    break;
+                }
+            case 0x91: case 0x92: case 0x93: case 0x94: case 0x95: case 0x96: case 0x97: // XCHG AX, reg
+                ctx.XCHG(ctx.ax, ctx.index_regR<uint16_t>(opcode & 7));
                 break;
             case 0x98: // CBW
-                ctx.ax = (int16_t)(int8_t)ctx.al;
+                ctx.CBW();
                 break;
             case 0x99: // CWD
-                ctx.dx = (int16_t)ctx.ax >> 15;
+                ctx.CWD();
                 break;
             case 0x9A: // CALL far abs
                 ctx.PUSH(ctx.cs);
@@ -778,26 +815,30 @@ dllexport void z86_execute() {
             case 0x9F: // LAHF
                 ctx.ah = ctx.get_flags<uint8_t>();
                 break;
-            case 0xA0: { // MOV AL, mem
-                z86Addr addr = ctx.addr(DS, pc.read_advance_O());
-                ctx.al = addr.read<uint8_t>();
+            case 0xA0: // MOV AL, mem
+                ctx.binopAO<true>(pc, [](auto& dst, auto offset) {
+                    z86Addr addr = ctx.addr(DS, offset);
+                    dst = addr.read<decltype(dst)>();
+                });
                 break;
-            }
-            case 0xA1: { // MOV AX, mem
-                z86Addr addr = ctx.addr(DS, pc.read_advance_O());
-                ctx.ax = addr.read<uint16_t>();
+            case 0xA1: // MOV AX, mem
+                ctx.binopAO(pc, [](auto& dst, auto offset) {
+                    z86Addr addr = ctx.addr(DS, offset);
+                    dst = addr.read<decltype(dst)>();
+                });
                 break;
-            }
-            case 0xA2: { // MOV mem, AL
-                z86Addr addr = ctx.addr(DS, pc.read_advance_O());
-                addr.write(ctx.al);
+            case 0xA2: // MOV mem, AL
+                ctx.binopAO<true>(pc, [](auto src, auto offset) {
+                    z86Addr addr = ctx.addr(DS, offset);
+                    addr.write(src);
+                });
                 break;
-            }
-            case 0xA3: { // MOV mem, AX
-                z86Addr addr = ctx.addr(DS, pc.read_advance_O());
-                addr.write(ctx.ax);
+            case 0xA3: // MOV mem, AX
+                ctx.binopAO(pc, [](auto src, auto offset) {
+                    z86Addr addr = ctx.addr(DS, offset);
+                    addr.write(src);
+                });
                 break;
-            }
             case 0xA4: // MOVSB
                 ctx.MOVS<true>();
                 break;
@@ -811,10 +852,14 @@ dllexport void z86_execute() {
                 ctx.CMPS();
                 break;
             case 0xA8: // TEST AL, Ib
-                ctx.TEST(ctx.al, pc.read_advance<uint8_t>());
+                ctx.binopAI<true>(pc, [](auto dst, auto src) {
+                    ctx.TEST(dst, src);
+                });
                 break;
             case 0xA9: // TEST AX, Is
-                ctx.TEST(ctx.ax, pc.read_advance_Is());
+                ctx.binopAI(pc, [](auto dst, auto src) {
+                    ctx.TEST(dst, src);
+                });
                 break;
             case 0xAA: // STOSB
                 ctx.STOS<true>();
@@ -835,10 +880,10 @@ dllexport void z86_execute() {
                 ctx.SCAS();
                 break;
             case 0xB0: case 0xB1: case 0xB2: case 0xB3: case 0xB4: case 0xB5: case 0xB6: case 0xB7: // MOV reg8, Ib
-                ctx.index_reg<uint8_t>(opcode & 7) = pc.read_advance<int8_t>();
+                ctx.index_regR<uint8_t>(opcode & 7) = pc.read_advance<int8_t>();
                 break;
             case 0xB8: case 0xB9: case 0xBA: case 0xBB: case 0xBC: case 0xBD: case 0xBE: case 0xBF: // MOV reg, Iv
-                ctx.index_reg<uint16_t>(opcode & 7) = pc.read_advance_Iv();
+                ctx.index_regR<uint16_t>(opcode & 7) = pc.read_advance_Iv();
                 break;
             case 0xC0: case 0xC2: // RET imm
                 ctx.ip = ctx.POP();

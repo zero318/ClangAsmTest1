@@ -683,6 +683,11 @@ ValidateStructAlignment(align64, struct_type<64>)
 
 #define bool_str(...) ((bool)(__VA_ARGS__) ? "true" : "false")
 
+template <typename T, typename P>
+static inline constexpr bool is_aligned(const P& value) {
+    return !(value & sizeof(T) - 1);
+}
+
 /*
 template<typename T, size_t count, bool is_aligned = false>
 using vec = std::conditional_t<is_aligned, \
