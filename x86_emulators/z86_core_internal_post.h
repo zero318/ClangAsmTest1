@@ -449,20 +449,139 @@ inline void z86Base<bits, bus>::unopM_impl(P& pc, const L& lambda) {
 }
 
 template <size_t bits, size_t bus>
-template <typename T>
-inline void z86Base<bits, bus>::PUSH(T src) {
-    this->SP<T>() -= (std::max)(sizeof(T), (size_t)2);
-    z86Addr stack = this->stack();
+template <typename P, typename T>
+inline void z86Base<bits, bus>::PUSH_impl(T src) {
+    this->SP<P>() -= (std::max)(sizeof(T), (size_t)2);
+    z86Addr stack = this->stack<P>();
     stack.write(src);
 }
 
 template <size_t bits, size_t bus>
-template <typename T>
-inline T z86Base<bits, bus>::POP() {
-    z86Addr stack = this->stack();
+template <typename P, typename T>
+inline T z86Base<bits, bus>::POP_impl() {
+    z86Addr stack = this->stack<P>();
     T ret = stack.read<T>();
-    this->SP<T>() += (std::max)(sizeof(T), (size_t)2);
+    this->SP<P>() += (std::max)(sizeof(T), (size_t)2);
     return ret;
+}
+
+// No wonder ENTER sucks
+template <size_t bits, size_t bus>
+template <typename T>
+inline void z86Base<bits, bus>::ENTER_impl(uint16_t alloc, uint8_t nesting) {
+    if constexpr (sizeof(T) == sizeof(uint64_t)) {
+        uint64_t cur_bp = this->rbp;
+        uint64_t new_bp = this->rsp - sizeof(T);
+        this->PUSH_impl<uint64_t>(cur_bp);
+        switch (nesting) {
+            default: {
+                z86Addr stack_bp(this->ss, cur_bp);
+                do {
+                    stack_bp.offset -= sizeof(T); // sizeof(T) = 8
+                    this->PUSH_impl<uint64_t>(stack_bp.read<T>());
+                } while (--nesting != 1);
+            }
+            case 1:
+                this->PUSH(new_bp);
+            case 0:
+                this->rbp = new_bp;
+                this->rsp -= alloc;
+        }
+    }
+    else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+        uint32_t cur_bp = this->ebp;
+        uint32_t new_bp = this->esp - sizeof(T);
+        if (expect(this->stack_size_32(), true)) {
+            this->PUSH_impl<uint32_t>(cur_bp);
+            switch (nesting) {
+                default: {
+                    z86Addr stack_bp(this->ss, cur_bp);
+                    do {
+                        stack_bp.offset -= sizeof(T); // sizeof(T) = 4
+                        this->PUSH_impl<uint32_t>(stack_bp.read<T>());
+                    } while (--nesting != 1);
+                }
+                case 1:
+                    this->PUSH_impl<uint32_t>(new_bp);
+                case 0:;
+            }
+        }
+        else {
+            this->PUSH_impl<uint16_t>(cur_bp);
+            switch (nesting) {
+                default: {
+                    z86Addr stack_bp(this->ss, (uint16_t)cur_bp);
+                    do {
+                        stack_bp.offset -= sizeof(T); // sizeof(T) = 4
+                        this->PUSH_impl<uint16_t>(stack_bp.read<T>());
+                    } while (--nesting != 1);
+                }
+                case 1:
+                    this->PUSH_impl<uint16_t>(new_bp);
+                case 0:
+                    break;
+            }
+        }
+        this->ebp = new_bp;
+        this->esp -= alloc;
+    }
+    else {
+        uint16_t cur_bp = this->bp;
+        uint16_t new_bp = this->sp - sizeof(T);
+        if constexpr (bits > 16) {
+            if (expect(this->stack_size_32(), false)) {
+                this->PUSH_impl<uint32_t>(cur_bp);
+                switch (nesting) {
+                    default: {
+                        z86Addr stack_bp(this->ss, this->ebp);
+                        do {
+                            stack_bp.offset -= sizeof(T); // sizeof(T) = 2
+                            this->PUSH_impl<uint32_t>(stack_bp.read<T>());
+                        } while (--nesting != 1);
+                    }
+                    case 1:
+                        this->PUSH_impl<uint32_t>(new_bp);
+                    case 0:
+                        goto end_enter16;
+                }
+            }
+            if constexpr (bits == 64) {
+                if (expect(this->stack_size_64(), false)) {
+                    this->PUSH_impl<uint64_t>(cur_bp);
+                    switch (nesting) {
+                        default: {
+                            z86Addr stack_bp(this->ss, this->rbp);
+                            do {
+                                stack_bp.offset -= sizeof(T); // sizeof(T) = 2
+                                this->PUSH_impl<uint64_t>(stack_bp.read<T>());
+                            } while (--nesting != 1);
+                        }
+                        case 1:
+                            this->PUSH_impl<uint64_t>(new_bp);
+                        case 0:
+                            goto end_enter16;
+                    }
+                }
+            }
+        }
+        this->PUSH_impl<uint16_t>(cur_bp);
+        switch (nesting) {
+            default: {
+                z86Addr stack_bp(this->ss, cur_bp);
+                do {
+                    stack_bp.offset -= sizeof(T); // sizeof(T) = 2
+                    this->PUSH_impl<uint16_t>(stack_bp.read<T>());
+                } while (--nesting != 1);
+            }
+            case 1:
+                this->PUSH_impl<uint16_t>(new_bp);
+            case 0:
+                break;
+        }
+    end_enter16:
+        this->bp = new_bp;
+        this->sp -= alloc;
+    }
 }
 
 // TODO: Check what happens if an interrupt toggles 

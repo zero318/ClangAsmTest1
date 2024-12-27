@@ -170,6 +170,25 @@ enum REG_INDEX : uint8_t {
     R15  = 15, R15D = 15, R15W = 15, R15B = 15, XMM15 = 15
 };
 
+enum CONDITION_CODE : uint8_t {
+    CondO = 0,
+    CondNO = 1,
+    CondC = 2, CondB = CondC, CondNAE = CondC,
+    CondNC = 3, CondNB = CondNC, CondAE = CondNC,
+    CondZ = 4, CondE = CondZ,
+    CondNZ = 5, CondNE = CondNZ,
+    CondBE = 6, CondNA = CondBE,
+    CondA = 7, CondNBE = CondA,
+    CondS = 8,
+    CondNS = 9,
+    CondP = 10, CondPE = CondP,
+    CondNP = 11, CondPO = CondP,
+    CondL = 12, CondNGE = CondL,
+    CondGE = 13, CondNL = CondGE,
+    CondLE = 14, CondNG = CondLE,
+    CondG = 15, CondNLE = CondG
+};
+
 enum DATA_SIZE : int8_t {
     DataSize64 = -1,
     DataSize32 = 0,
@@ -1289,37 +1308,56 @@ struct z86Base : z86BaseGPRs<bits> {
     bool direction;
     bool overflow;
 
-    inline constexpr bool cond_O() const { return this->overflow; }
-    inline constexpr bool cond_NO() const { return !this->overflow; }
-    inline constexpr bool cond_C() const { return this->carry; }
-    inline constexpr bool cond_B() const { return this->cond_C(); }
-    inline constexpr bool cond_NAE() const { return this->cond_C(); }
-    inline constexpr bool cond_NC() const { return !this->carry; }
-    inline constexpr bool cond_NB() const { return this->cond_NC(); }
-    inline constexpr bool cond_AE() const { return this->cond_NC(); }
-    inline constexpr bool cond_Z() const { return this->zero; }
-    inline constexpr bool cond_E() const { return this->cond_Z(); }
-    inline constexpr bool cond_NZ() const { return !this->zero; }
-    inline constexpr bool cond_NE() const { return this->cond_NZ(); }
-    inline constexpr bool cond_BE() const { return this->carry || this->zero; }
-    inline constexpr bool cond_NA() const { return this->cond_BE(); }
-    inline constexpr bool cond_A() const { return !this->carry && !this->zero; }
-    inline constexpr bool cond_NBE() const { return this->cond_A(); }
-    inline constexpr bool cond_S() const { return this->sign; }
-    inline constexpr bool cond_NS() const { return !this->sign; }
-    inline constexpr bool cond_P() const { return this->parity; }
-    inline constexpr bool cond_PE() const { return this->cond_P(); }
-    inline constexpr bool cond_NP() const { return !this->parity; }
-    inline constexpr bool cond_PO() const { return this->cond_NP(); }
-    inline constexpr bool cond_L() const { return this->sign != this->overflow; }
-    inline constexpr bool cond_NGE() const { return this->cond_L(); }
-    inline constexpr bool cond_GE() const { return this->sign == this->overflow; }
-    inline constexpr bool cond_NL() const { return this->cond_GE(); }
-    inline constexpr bool cond_LE() const { return this->zero || this->sign != this->overflow; }
-    inline constexpr bool cond_NG() const { return this->cond_LE(); }
-    inline constexpr bool cond_G() const { return !this->zero && this->sign == this->overflow; }
-    inline constexpr bool cond_NLE() const { return this->cond_G(); }
+    inline constexpr bool cond_O(bool val = true) const { return this->overflow == val; }
+    inline constexpr bool cond_NO(bool val = true) const { return this->overflow != val; }
+    inline constexpr bool cond_C(bool val = true) const { return this->carry == val; }
+    inline constexpr bool cond_B(bool val = true) const { return this->cond_C(val); }
+    inline constexpr bool cond_NAE(bool val = true) const { return this->cond_C(val); }
+    inline constexpr bool cond_NC(bool val = true) const { return this->carry != val; }
+    inline constexpr bool cond_NB(bool val = true) const { return this->cond_NC(val); }
+    inline constexpr bool cond_AE(bool val = true) const { return this->cond_NC(val); }
+    inline constexpr bool cond_Z(bool val = true) const { return this->zero == val; }
+    inline constexpr bool cond_E(bool val = true) const { return this->cond_Z(val); }
+    inline constexpr bool cond_NZ(bool val = true) const { return this->zero != val; }
+    inline constexpr bool cond_NE(bool val = true) const { return this->cond_NZ(val); }
+    inline constexpr bool cond_BE(bool val = true) const { return (this->carry || this->zero) == val; }
+    inline constexpr bool cond_NA(bool val = true) const { return this->cond_BE(val); }
+    inline constexpr bool cond_A(bool val = true) const { return (this->carry || this->zero) != val; }
+    inline constexpr bool cond_NBE(bool val = true) const { return this->cond_A(val); }
+    inline constexpr bool cond_S(bool val = true) const { return this->sign == val; }
+    inline constexpr bool cond_NS(bool val = true) const { return this->sign != val; }
+    inline constexpr bool cond_P(bool val = true) const { return this->parity == val; }
+    inline constexpr bool cond_PE(bool val = true) const { return this->cond_P(val); }
+    inline constexpr bool cond_NP(bool val = true) const { return this->parity != val; }
+    inline constexpr bool cond_PO(bool val = true) const { return this->cond_NP(val); }
+    inline constexpr bool cond_L(bool val = true) const { return (this->sign != this->overflow) == val; }
+    inline constexpr bool cond_NGE(bool val = true) const { return this->cond_L(val); }
+    inline constexpr bool cond_GE(bool val = true) const { return (this->sign != this->overflow) != val; }
+    inline constexpr bool cond_NL(bool val = true) const { return this->cond_GE(val); }
+    inline constexpr bool cond_LE(bool val = true) const { return (this->zero || this->sign != this->overflow) == val; }
+    inline constexpr bool cond_NG(bool val = true) const { return this->cond_LE(val); }
+    inline constexpr bool cond_G(bool val = true) const { return (this->zero || this->sign != this->overflow) != val; }
+    inline constexpr bool cond_NLE(bool val = true) const { return this->cond_G(val); }
 
+    template <CONDITION_CODE cc>
+    inline constexpr bool cond(bool val = true) const {
+        if constexpr (cc == CondO) return this->cond_O(val);
+        else if constexpr (cc == CondNO) return this->cond_NO(val);
+        else if constexpr (cc == CondC) return this->cond_C(val);
+        else if constexpr (cc == CondNC) return this->cond_NC(val);
+        else if constexpr (cc == CondZ) return this->cond_Z(val);
+        else if constexpr (cc == CondNZ) return this->cond_NZ(val);
+        else if constexpr (cc == CondBE) return this->cond_BE(val);
+        else if constexpr (cc == CondA) return this->cond_A(val);
+        else if constexpr (cc == CondS) return this->cond_S(val);
+        else if constexpr (cc == CondNS) return this->cond_NS(val);
+        else if constexpr (cc == CondP) return this->cond_P(val);
+        else if constexpr (cc == CondNP) return this->cond_NP(val);
+        else if constexpr (cc == CondL) return this->cond_L(val);
+        else if constexpr (cc == CondGE) return this->cond_L(val);
+        else if constexpr (cc == CondLE) return this->cond_LE(val);
+        else if constexpr (cc == CondG) return this->cond_G(val);
+    }
 
     bool lock;
 
@@ -1351,6 +1389,30 @@ struct z86Base : z86BaseGPRs<bits> {
     template <typename P = RT>
     inline constexpr DT stack() const {
         return this->addr_force(SS, this->SP<P>());
+    }
+
+    template <typename P = void>
+    inline constexpr RT stack_size_bp() const {
+        if constexpr (std::is_same_v<P, void>) {
+            // No size specified, calculate it
+            if constexpr (bits > 16) {
+                if (this->stack_size_32()) {
+                    return this->ebp;
+                }
+                if constexpr (bits == 64) {
+                    if (this->stack_size_64()) {
+                        return this->rbp;
+                    }
+                }
+            }
+        }
+        else if constexpr (sizeof(P) == sizeof(uint64_t)) {
+            return this->rbp;
+        }
+        else if constexpr (sizeof(P) == sizeof(uint32_t)) {
+            return this->ebp;
+        }
+        return this->bp;
     }
 
     template <typename P = RT>
@@ -1432,11 +1494,344 @@ struct z86Base : z86BaseGPRs<bits> {
         this->cs = new_cs;
     }
 
+    template <typename P>
+    inline void JMPFABS(const P& pc) {
+        if constexpr (bits == 64) {
+            // TODO: Exception conditions
+        }
+        if constexpr (bits > 16) {
+            if (this->data_size_32()) {
+                return this->JMPFABS(pc.read<uint32_t>(), pc.read<uint16_t>(4));
+            }
+        }
+        return this->JMPFABS(pc.read<uint16_t>(), pc.read<uint16_t>(2));
+    }
+
+    template <typename P, typename T>
+    inline void PUSH_impl(T src);
+
     template <typename T = SRT>
-    inline void PUSH(T src);
+    inline void PUSH(T src) {
+        if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            if constexpr (bits == 64) {
+                // 64 bit values can only be pushed in long
+                // mode, where the stack is always 64 bit
+                return this->PUSH_impl<uint64_t>(src);
+            }
+        }
+        else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            if constexpr (bits > 16) {
+                // No need to check for 64 bit stack size
+                // because a 32 bit push can't be encoded
+                // when running in long mode (hopefully)
+                if (this->stack_size_32()) {
+                    return this->PUSH_impl<uint32_t>(src);
+                }
+            }
+        }
+        else {
+            // 16 bit pushes are horrible and exist
+            // in all modes
+            if constexpr (bits > 16) {
+                if (this->stack_size_32()) {
+                    return this->PUSH_impl<uint32_t>(src);
+                }
+                if constexpr (bits == 64) {
+                    if (this->stack_size_64()) {
+                        return this->PUSH_impl<uint64_t>(src);
+                    }
+                }
+            }
+        }
+        // This is doubling as a backup case for the constexprs
+        return this->PUSH_impl<uint16_t>(src);
+    }
+
+    template <typename P, typename T>
+    inline T POP_impl();
 
     template <typename T = RT>
-    inline T POP();
+    inline T POP() {
+        if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            if constexpr (bits == 64) {
+                // 64 bit values can only be popped in long
+                // mode, where the stack is always 64 bit
+                return this->POP_impl<uint64_t, T>();
+            }
+        }
+        else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            if constexpr (bits > 16) {
+                // No need to check for 64 bit stack size
+                // because a 32 bit pop can't be encoded
+                // when running in long mode (hopefully)
+                if (this->stack_size_32()) {
+                    return this->POP_impl<uint32_t, T>();
+                }
+            }
+        }
+        else {
+            // 16 bit pops are horrible and exist
+            // in all modes
+            if constexpr (bits > 16) {
+                if (this->stack_size_32()) {
+                    return this->POP_impl<uint32_t, T>();
+                }
+                if constexpr (bits == 64) {
+                    if (this->stack_size_64()) {
+                        return this->POP_impl<uint64_t, T>();
+                    }
+                }
+            }
+        }
+        // This is doubling as a backup case for the constexprs
+        return this->POP_impl<uint16_t, T>();
+    }
+
+    template <typename T>
+    inline void ENTER_impl(uint16_t alloc, uint8_t nesting);
+
+
+    // http://www.os2museum.com/wp/if-you-enter-you-might-not-leave/
+    inline void ENTER(uint16_t alloc, uint8_t nesting) {
+        nesting &= 0x1F;
+    }
+
+    template <typename P>
+    inline void CALL(const P& pc) {
+        auto next_ip = pc.offset;
+        if constexpr (bits > 16) {
+            if (!this->data_size_16()) {
+                next_ip += 4;
+                auto dest_ip = next_ip + pc.read<int32_t>();
+                if (this->data_size_32()) {
+                    return this->CALLABS<uint32_t>(next_ip, dest_ip);
+                }
+                else {
+                    return this->CALLABS<uint64_t>(next_ip, dest_ip);
+                }
+            }
+        }
+        next_ip += 2;
+        return this->CALLABS<uint16_t>(next_ip, next_ip + pc.read<int16_t>());
+    }
+
+    inline void RET() {
+        if constexpr (bits > 16) {
+            if (this->data_size_32()) {
+                this->rip = this->POP<uint32_t>();
+                return;
+            }
+            if constexpr (bits == 64) {
+                if (this->data_size_64()) {
+                    this->rip = this->POP<uint64_t>();
+                    return;
+                }
+            }
+        }
+        this->rip = this->POP<uint16_t>();
+    }
+
+    inline void RETF() {
+        if constexpr (bits > 16) {
+            if (this->data_size_32()) {
+                this->rip = this->POP<uint32_t>();
+                this->cs = this->POP<uint32_t>();
+                return;
+            }
+            if constexpr (bits == 64) {
+                if (this->data_size_64()) {
+                    this->rip = this->POP<uint64_t>();
+                    this->cs = this->POP<uint64_t>();
+                    return;
+                }
+            }
+        }
+        this->rip = this->POP<uint16_t>();
+        this->cs = this->POP<uint16_t>();
+    }
+
+    template <typename P>
+    inline void RETI(const P& pc) {
+        this->RET();
+        if constexpr (bits > 16) {
+            if (this->stack_size_32()) {
+                this->esp += pc.read<uint16_t>();
+                return;
+            }
+            if constexpr (bits == 64) {
+                if (this->stack_size_64()) {
+                    this->rsp += pc.read<uint16_t>();
+                    return;
+                }
+            }
+        }
+        this->sp += pc.read<uint16_t>();
+    }
+
+    template <typename P>
+    inline void RETFI(const P& pc) {
+        this->RETF();
+        if constexpr (bits > 16) {
+            if (this->stack_size_32()) {
+                this->esp += pc.read<uint16_t>();
+                return;
+            }
+            if constexpr (bits == 64) {
+                if (this->stack_size_64()) {
+                    this->rsp += pc.read<uint16_t>();
+                    return;
+                }
+            }
+        }
+        this->sp += pc.read<uint16_t>();
+    }
+
+    template <bool is_byte = false, typename P>
+    inline void JMP(const P& pc) {
+        if constexpr (is_byte) {
+            auto new_ip = pc.offset + 1 + pc.read<int8_t>();
+            if constexpr (bits > 16) {
+                if (this->data_size_16()) {
+                    new_ip = (uint16_t)new_ip;
+                }
+            }
+            ctx.rip = new_ip;
+        }
+        else {
+            if constexpr (bits > 16) {
+                if (!this->data_size_16()) {
+                    ctx.rip = pc.offset + 4 + pc.read<int32_t>();
+                    return;
+                }
+            }
+            ctx.rip = (uint16_t)(pc.offset + 2 + pc.read<int16_t>());
+        }
+    }
+
+    template <CONDITION_CODE cc, bool is_byte = false, typename P>
+    inline void JCC(const P& pc, bool val = true) {
+        if constexpr (is_byte) {
+            auto new_ip = pc.offset + 1;
+            if (this->cond<cc>(val)) {
+                new_ip += pc.read<int8_t>();
+            }
+            if constexpr (bits > 16) {
+                if (this->data_size_16()) {
+                    new_ip = (uint16_t)new_ip;
+                }
+            }
+            ctx.rip = new_ip;
+        }
+        else {
+            auto new_ip = pc.offset + 2;
+            if constexpr (bits > 16) {
+                new_ip += !this->data_size_16() * 2;
+            }
+            if (this->cond<cc>(val)) {
+                if constexpr (bits > 16) {
+                    if (!this->data_size_16()) {
+                        new_ip += pc.read<int32_t>();
+                        goto set_rip;
+                    }
+                }
+                new_ip += pc.read<int16_t>();
+            }
+        set_rip:
+            if constexpr (bits > 16) {
+                if (this->data_size_16()) {
+                    new_ip = (uint16_t)new_ip;
+                }
+            }
+            ctx.rip = new_ip;
+        }
+    }
+
+    template <typename T, typename P>
+    inline void LOOP_impl(const P& pc, T& index) {
+        auto new_ip = pc.offset + 1;
+        if (--index) {
+            new_ip += pc.read<int8_t>();
+        }
+        if constexpr (bits > 16) {
+            if (this->data_size_16()) {
+                new_ip = (uint16_t)new_ip;
+            }
+        }
+        ctx.rip = new_ip;
+    }
+
+    template <typename P>
+    inline void LOOP(const P& pc) {
+        if constexpr (bits > 16) {
+            if (this->addr_size_32()) {
+                return this->LOOP_impl(pc, this->ecx);
+            }
+            if constexpr (bits == 64) {
+                if (this->addr_size_64()) {
+                    return this->LOOP_impl(pc, this->rcx);
+                }
+            }
+        }
+        return this->LOOP_impl(pc, this->cx);
+    }
+
+    template <typename T, typename P>
+    inline void LOOPCC_impl(const P& pc, T& index, bool val) {
+        auto new_ip = pc.offset + 1;
+        if (--index || this->cond_Z(val)) {
+            new_ip += pc.read<int8_t>();
+        }
+        if constexpr (bits > 16) {
+            if (this->data_size_16()) {
+                new_ip = (uint16_t)new_ip;
+            }
+        }
+        ctx.rip = new_ip;
+    }
+
+    template <typename P>
+    inline void LOOPCC(const P& pc, bool val) {
+        if constexpr (bits > 16) {
+            if (this->addr_size_32()) {
+                return this->LOOPCC_impl(pc, this->ecx, val);
+            }
+            if constexpr (bits == 64) {
+                if (this->addr_size_64()) {
+                    return this->LOOPCC_impl(pc, this->rcx, val);
+                }
+            }
+        }
+        return this->LOOPCC_impl(pc, this->cx, val);
+    }
+
+    template <typename T, typename P>
+    inline void JCXZ_impl(const P& pc, const T& index) {
+        auto new_ip = pc.offset + 1;
+        if (!index) {
+            new_ip += pc.read<int8_t>();
+        }
+        if constexpr (bits > 16) {
+            if (this->data_size_16()) {
+                new_ip = (uint16_t)new_ip;
+            }
+        }
+        ctx.rip = new_ip;
+    }
+
+    template <typename P>
+    inline void JCXZ(const P& pc) {
+        if constexpr (bits > 16) {
+            if (this->addr_size_32()) {
+                return this->JCXZ_impl(pc, this->ecx);
+            }
+            if constexpr (bits == 64) {
+                if (this->addr_size_64()) {
+                    return this->JCXZ_impl(pc, this->rcx);
+                }
+            }
+        }
+        return this->JCXZ_impl(pc, this->cx);
+    }
 
     template <typename T = RT>
     inline void CALLABS(T next_ip, T new_ip) {
@@ -1449,6 +1844,20 @@ struct z86Base : z86BaseGPRs<bits> {
         this->PUSH<T>(this->cs);
         this->PUSH(next_ip);
         this->JMPFABS(new_ip, new_cs);
+    }
+
+    template <typename P>
+    inline void CALLFABS(const P& pc) {
+        if constexpr (bits == 64) {
+            // TODO: Exception condition
+        }
+        auto next_ip = pc.offset + 4;
+        if constexpr (bits > 16) {
+            if (this->data_size_32()) {
+                return this->CALLFABS<uint32_t>(next_ip + 2, pc.read<uint32_t>(), pc.read<uint16_t>(4));
+            }
+        }
+        return this->CALLFABS<uint16_t>(next_ip, pc.read<uint16_t>(), pc.read<uint16_t>(2));
     }
 
     template <typename T>
@@ -1909,6 +2318,43 @@ struct z86Base : z86BaseGPRs<bits> {
         }
     }
 
+    template <typename T>
+    inline void BSF(T& dst, T src) {
+        if (!(this->zero = !src)) {
+            for (size_t i = 0; i < bitsof(T); ++i) {
+                if (src >> i & 1) {
+                    dst = i;
+                    return;
+                }
+            }
+        }
+    }
+
+    template <typename T>
+    inline void BSR(T& dst, T src) {
+        if (!(this->zero = !src)) {
+            size_t i = bitsof(T) - 1;
+            do {
+                if (src >> i & 1) {
+                    dst = i;
+                    return;
+                }
+            } while (i--);
+        }
+    }
+
+    template <typename T>
+    inline void BSWAP(T& src) {
+        if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            src = __builtin_bswap64(src);
+        }
+        else {
+            // 16 bit operands result in a 0 output
+            // because of internl extension to 32 bit
+            src = __builtin_bswap32(src);
+        }
+    }
+
     template <typename T, typename P>
     inline void LODS_impl();
 
@@ -2295,6 +2741,26 @@ struct z86Base : z86BaseGPRs<bits> {
         this->pending_sinterrupt = number;
     }
 
+    template <bool is_byte = false, typename L>
+    inline void binopAR(uint8_t index, const L& lambda) {
+        if constexpr (is_byte) {
+            return lambda(ctx.al, this->index_byte_regMB(index));
+        }
+        else {
+            if constexpr (bits > 16) {
+                if (this->data_size_32()) {
+                    return lambda(ctx.eax, this->index_dword_regMB(index));
+                }
+            }
+            if constexpr (bits == 64) {
+                if (this->data_size_64()) {
+                    return lambda(ctx.rax, this->index_qword_regMB(index));
+                }
+            }
+            return lambda(ctx.ax, this->index_word_regMB(index));
+        }
+    }
+
     template <bool is_byte = false, typename P, typename L>
     inline void binopAI(P& pc, const L& lambda) {
         if constexpr (is_byte) {
@@ -2333,6 +2799,28 @@ struct z86Base : z86BaseGPRs<bits> {
                 }
             }
             return lambda(ctx.ax, offset);
+        }
+    }
+
+    template <bool is_byte = false, typename P>
+    inline void MOV_RI(P& pc, uint8_t index) {
+        if constexpr (is_byte) {
+            this->index_byte_regMB(index) = pc.read_advance<uint8_t>();
+        }
+        else {
+            if constexpr (bits > 16) {
+                if (this->data_size_32()) {
+                    this->index_dword_regMB(index) = pc.read_advance<uint32_t>();
+                    return;
+                }
+                if constexpr (bits == 64) {
+                    if (this->data_size_64()) {
+                        this->index_qword_regMB(index) = pc.read_advance<uint64_t>();
+                        return;
+                    }
+                }
+            }
+            this->index_word_regMB(index) = pc.read_advance<uint16_t>();
         }
     }
 

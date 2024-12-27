@@ -174,7 +174,7 @@ struct z8086Context : z86Base<16, 16> {
         bool prev_trap = this->trap;
         this->trap = false;
         this->PUSH(this->cs);
-        this->PUSH(this->ip);
+        this->PUSH(this->rip);
 
         size_t interrupt_addr = (size_t)number << 2;
         this->cs = mem.read<uint16_t>(interrupt_addr);
@@ -576,74 +576,35 @@ dllexport void z86_execute() {
                 break;
             case 0x60: case 0x70: // JO Jb
             case 0x61: case 0x71: // JNO Jb
-                ctx.ip = pc.offset + 1;
-                if (ctx.overflow != (opcode & 1)) {
-                    ctx.ip += pc.read<int8_t>();
-                }
+                ctx.JCC<CondNO, true>(pc, opcode & 1);
                 goto next_instr;
             case 0x62: case 0x72: // JC Jb
             case 0x63: case 0x73: // JNC Jb
-                ctx.ip = pc.offset + 1;
-                if (ctx.carry != (opcode & 1)) {
-                    ctx.ip += pc.read<int8_t>();
-                }
+                ctx.JCC<CondNC, true>(pc, opcode & 1);
                 goto next_instr;
             case 0x64: case 0x74: // JZ Jb
             case 0x65: case 0x75: // JNZ Jb
-                ctx.ip = pc.offset + 1;
-                if (ctx.zero != (opcode & 1)) {
-                    ctx.ip += pc.read<int8_t>();
-                }
+                ctx.JCC<CondNZ, true>(pc, opcode & 1);
                 goto next_instr;
             case 0x66: case 0x76: // JBE Jb
-                ctx.ip = pc.offset + 1;
-                if (ctx.cond_BE()) {
-                    ctx.ip += pc.read<int8_t>();
-                }
-                goto next_instr;
             case 0x67: case 0x77: // JA Jb
-                ctx.ip = pc.offset + 1;
-                if (ctx.cond_A()) {
-                    ctx.ip += pc.read<int8_t>();
-                }
+                ctx.JCC<CondA, true>(pc, opcode & 1);
                 goto next_instr;
             case 0x68: case 0x78: // JS Jb
             case 0x69: case 0x79: // JNS Jb
-                ctx.ip = pc.offset + 1;
-                if (ctx.sign != (opcode & 1)) {
-                    ctx.ip += pc.read<int8_t>();
-                }
+                ctx.JCC<CondNS, true>(pc, opcode & 1);
                 goto next_instr;
             case 0x6A: case 0x7A: // JP Jb
             case 0x6B: case 0x7B: // JNP Jb
-                ctx.ip = pc.offset + 1;
-                if (ctx.parity != (opcode & 1)) {
-                    ctx.ip += pc.read<int8_t>();
-                }
+                ctx.JCC<CondNP, true>(pc, opcode & 1);
                 goto next_instr;
             case 0x6C: case 0x7C: // JL Jb
-                ctx.ip = pc.offset + 1;
-                if (ctx.cond_L()) {
-                    ctx.ip += pc.read<int8_t>();
-                }
-                goto next_instr;
             case 0x6D: case 0x7D: // JGE Jb
-                ctx.ip = pc.offset + 1;
-                if (ctx.cond_GE()) {
-                    ctx.ip += pc.read<int8_t>();
-                }
+                ctx.JCC<CondGE, true>(pc, opcode & 1);
                 goto next_instr;
             case 0x6E: case 0x7E: // JLE Jb
-                ctx.ip = pc.offset + 1;
-                if (ctx.cond_LE()) {
-                    ctx.ip += pc.read<int8_t>();
-                }
-                goto next_instr;
             case 0x6F: case 0x7F: // JG Jb
-                ctx.ip = pc.offset + 1;
-                if (ctx.cond_G()) {
-                    ctx.ip += pc.read<int8_t>();
-                }
+                ctx.JCC<CondG, true>(pc, opcode & 1);
                 goto next_instr;
             case 0x80: case 0x82: // GRP1 Mb, Ib
                 ctx.unopM<true>(pc, [&](auto& dst, uint8_t r) {
@@ -786,7 +747,9 @@ dllexport void z86_execute() {
                     break;
                 }
             case 0x91: case 0x92: case 0x93: case 0x94: case 0x95: case 0x96: case 0x97: // XCHG AX, reg
-                ctx.XCHG(ctx.ax, ctx.index_regR<uint16_t>(opcode & 7));
+                ctx.binopAR(opcode & 7, [](auto& dst, auto& src) {
+                    ctx.XCHG(dst, src);
+                });
                 break;
             case 0x98: // CBW
                 ctx.CBW();
@@ -795,10 +758,7 @@ dllexport void z86_execute() {
                 ctx.CWD();
                 break;
             case 0x9A: // CALL far abs
-                ctx.PUSH(ctx.cs);
-                ctx.PUSH(pc.offset + 4);
-                ctx.rip = pc.read_advance_Iz();
-                ctx.cs = pc.read<uint16_t>();
+                ctx.CALLFABS(pc);
                 goto next_instr;
             case 0x9B: // WAIT
                 // NOP :D
@@ -880,17 +840,16 @@ dllexport void z86_execute() {
                 ctx.SCAS();
                 break;
             case 0xB0: case 0xB1: case 0xB2: case 0xB3: case 0xB4: case 0xB5: case 0xB6: case 0xB7: // MOV reg8, Ib
-                ctx.index_regR<uint8_t>(opcode & 7) = pc.read_advance<int8_t>();
+                ctx.MOV_RI<true>(pc, opcode & 7);
                 break;
             case 0xB8: case 0xB9: case 0xBA: case 0xBB: case 0xBC: case 0xBD: case 0xBE: case 0xBF: // MOV reg, Iv
-                ctx.index_regR<uint16_t>(opcode & 7) = pc.read_advance_Iv();
+                ctx.MOV_RI(pc, opcode & 7);
                 break;
             case 0xC0: case 0xC2: // RET imm
-                ctx.ip = ctx.POP();
-                ctx.sp += pc.read<uint16_t>();
+                ctx.RETI(pc);
                 goto next_instr;
             case 0xC1: case 0xC3: // RET
-                ctx.rip = ctx.POP();
+                ctx.RET();
                 goto next_instr;
             case 0xC4: // LES
                 ctx.binopRM2(pc, [](auto& dst, uint32_t src) {
@@ -920,13 +879,10 @@ dllexport void z86_execute() {
                 });
                 break;
             case 0xC8: case 0xCA: // RETF imm
-                ctx.ip = ctx.POP();
-                ctx.cs = ctx.POP();
-                ctx.sp += pc.read<uint16_t>();
+                ctx.RETFI(pc);
                 goto next_instr;
             case 0xC9: case 0xCB: // RETF
-                ctx.ip = ctx.POP();
-                ctx.cs = ctx.POP();
+                ctx.RETF();
                 goto next_instr;
             case 0xCC: // INT3
                 ctx.software_interrupt(IntBP);
@@ -1004,7 +960,6 @@ dllexport void z86_execute() {
                     }
                 });
                 break;
-                break;
             case 0xD4: // AAM Ib
                 ctx.AAM(pc.read_advance<uint8_t>());
                 break;
@@ -1025,28 +980,14 @@ dllexport void z86_execute() {
                 break;
             }
             case 0xE0: // LOOPNZ Jb
-                ctx.ip = pc.offset + 1;
-                if (--ctx.cx || ctx.cond_NZ()) {
-                    ctx.ip += pc.read<int8_t>();
-                }
-                goto next_instr;
             case 0xE1: // LOOPZ Jb
-                ctx.ip = pc.offset + 1;
-                if (--ctx.cx || ctx.cond_Z()) {
-                    ctx.ip += pc.read<int8_t>();
-                }
+                ctx.LOOPCC(pc, opcode & 1);
                 goto next_instr;
             case 0xE2: // LOOP Jb
-                ctx.ip = pc.offset + 1;
-                if (--ctx.cx) {
-                    ctx.ip += pc.read<int8_t>();
-                }
+                ctx.LOOP(pc);
                 goto next_instr;
             case 0xE3: // JCXZ Jb
-                ctx.ip = pc.offset + 1;
-                if (!ctx.cx) {
-                    ctx.ip += pc.read<int8_t>();
-                }
+                ctx.JCXZ(pc);
                 goto next_instr;
             case 0xE4: // IN AL, Ib
                 ctx.port_in<true>(pc.read_advance<uint8_t>());
@@ -1060,23 +1001,17 @@ dllexport void z86_execute() {
             case 0xE7: // OUT Ib, AX
                 ctx.port_out(pc.read_advance<uint8_t>());
                 break;
-            case 0xE8: { // CALL Jz
-                int32_t offset = pc.read_advance_Is();
-                ctx.PUSH(pc.offset);
-                ctx.ip = pc.offset + offset;
+            case 0xE8: // CALL Jz
+                ctx.CALL(pc);
                 goto next_instr;
-            }
-            case 0xE9: { // JMP Jz
-                int32_t offset = pc.read_advance_Is();
-                ctx.ip = pc.offset + offset;
+            case 0xE9: // JMP Jz
+                ctx.JMP(pc);
                 goto next_instr;
-            }
             case 0xEA: // JMP far abs
-                ctx.rip = pc.read_advance_Iz();
-                ctx.cs = pc.read<uint16_t>();
+                ctx.JMPFABS(pc);
                 goto next_instr;
             case 0xEB: // JMP Jb
-                ctx.ip = pc.offset + 1 + pc.read<int8_t>();
+                ctx.JMP<true>(pc);
                 goto next_instr;
             case 0xEC: // IN AL, DX
                 ctx.port_in<true>(ctx.dx);
