@@ -223,6 +223,7 @@ struct REX {
     };
 
     inline constexpr REX() : raw(0) {}
+    inline constexpr REX(uint8_t raw) : raw(raw) {}
 
     inline constexpr uint8_t B() const {
         return this->b << 3;;
@@ -359,6 +360,37 @@ struct z86BaseGPRs<16> {
     static constexpr inline int8_t stack_size = 1;
     static constexpr inline int8_t mode = 1;
     static constexpr inline REX rex_bits = {};
+
+    inline constexpr bool data_size_16() const {
+        return true;
+    }
+    inline constexpr bool data_size_32() const {
+        return false;
+    }
+    inline constexpr bool data_size_64() const {
+        return false;
+    }
+    inline constexpr bool addr_size_16() const {
+        return true;
+    }
+    inline constexpr bool addr_size_32() const {
+        return false;
+    }
+    inline constexpr bool addr_size_64() const {
+        return false;
+    }
+    inline constexpr bool stack_size_16() const {
+        return true;
+    }
+    inline constexpr bool stack_size_32() const {
+        return true;
+    }
+    inline constexpr bool stack_size_64() const {
+        return true;
+    }
+    inline constexpr REX get_rex_bits() const {
+        return {};
+    }
 };
 
 // size: 0x24
@@ -460,6 +492,37 @@ struct z86BaseGPRs<32> {
 
     inline constexpr auto& index_qword_reg(uint8_t index) {
         return this->gpr[index].qword;
+    }
+
+    inline constexpr bool data_size_16() const {
+        return this->data_size != 0;
+    }
+    inline constexpr bool data_size_32() const {
+        return this->data_size == 0;
+    }
+    inline constexpr bool data_size_64() const {
+        return false;
+    }
+    inline constexpr bool addr_size_16() const {
+        return this->addr_size != 0;
+    }
+    inline constexpr bool addr_size_32() const {
+        return this->addr_size == 0;
+    }
+    inline constexpr bool addr_size_64() const {
+        return false;
+    }
+    inline constexpr bool stack_size_16() const {
+        return this->stack_size != 0;
+    }
+    inline constexpr bool stack_size_32() const {
+        return this->stack_size == 0;
+    }
+    inline constexpr bool stack_size_64() const {
+        return false;
+    }
+    inline constexpr REX get_rex_bits() const {
+        return {};
     }
 };
 
@@ -597,8 +660,6 @@ struct z86BaseGPRs<64> {
     int8_t mode = 1;
     REX rex_bits = {};
 
-    
-
     inline constexpr auto& index_word_reg(uint8_t index) {
         return this->gpr[index].word;
     }
@@ -609,6 +670,37 @@ struct z86BaseGPRs<64> {
 
     inline constexpr auto& index_qword_reg(uint8_t index) {
         return this->gpr[index].qword;
+    }
+
+    inline constexpr bool data_size_16() const {
+        return this->data_size > 0;
+    }
+    inline constexpr bool data_size_32() const {
+        return this->data_size == 0;
+    }
+    inline constexpr bool data_size_64() const {
+        return this->data_size < 0;
+    }
+    inline constexpr bool addr_size_16() const {
+        return this->addr_size > 0;
+    }
+    inline constexpr bool addr_size_32() const {
+        return this->addr_size == 0;
+    }
+    inline constexpr bool addr_size_64() const {
+        return this->addr_size < 0;
+    }
+    inline constexpr bool stack_size_16() const {
+        return this->stack_size > 0;
+    }
+    inline constexpr bool stack_size_32() const {
+        return this->stack_size == 0;
+    }
+    inline constexpr bool stack_size_64() const {
+        return this->stack_size < 0;
+    }
+    inline constexpr REX get_rex_bits() const {
+        return this->rex_bits;
     }
 };
 
@@ -870,40 +962,12 @@ struct z86Base : z86BaseGPRs<bits> {
 
     using SRT = std::make_signed_t<RT>;
 
-    inline constexpr bool data_size_16() const {
-        return data_size > 0;
-    }
-    inline constexpr bool data_size_32() const {
-        return data_size == 0;
-    }
-    inline constexpr bool data_size_64() const {
-        return data_size < 0;
-    }
-    inline constexpr bool addr_size_16() const {
-        return addr_size > 0;
-    }
-    inline constexpr bool addr_size_32() const {
-        return addr_size == 0;
-    }
-    inline constexpr bool addr_size_64() const {
-        return addr_size < 0;
-    }
-    inline constexpr bool stack_size_16() const {
-        return stack_size > 0;
-    }
-    inline constexpr bool stack_size_32() const {
-        return stack_size == 0;
-    }
-    inline constexpr bool stack_size_64() const {
-        return stack_size < 0;
-    }
-
     template <bool ignore_rex = false>
     inline constexpr uint8_t& index_byte_regR(uint8_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
-            if (rex_bits) {
-                return this->gpr[index | rex_bits.R()].byte;
+            if (REX rex = this->get_rex_bits()) {
+                return this->gpr[index | rex.R()].byte;
             }
         }
         return *(&this->gpr[index & 3].byte + (index > 3));
@@ -913,8 +977,8 @@ struct z86Base : z86BaseGPRs<bits> {
     inline constexpr uint8_t& index_byte_regI(uint8_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
-            if (rex_bits) {
-                return this->gpr[index | rex_bits.X()].byte;
+            if (REX rex = this->get_rex_bits()) {
+                return this->gpr[index | rex.X()].byte;
             }
         }
         return *(&this->gpr[index & 3].byte + (index > 3));
@@ -924,8 +988,8 @@ struct z86Base : z86BaseGPRs<bits> {
     inline constexpr uint8_t& index_byte_regMB(uint8_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
-            if (rex_bits) {
-                return this->gpr[index | rex_bits.B()].byte;
+            if (REX rex = this->get_rex_bits()) {
+                return this->gpr[index | rex.B()].byte;
             }
         }
         return *(&this->gpr[index & 3].byte + (index > 3));
@@ -935,7 +999,7 @@ struct z86Base : z86BaseGPRs<bits> {
     inline constexpr auto& index_word_regR(uint8_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
-            index |= rex_bits.R();
+            index |= this->get_rex_bits().R();
         }
         return this->gpr[index].word;
     }
@@ -944,7 +1008,7 @@ struct z86Base : z86BaseGPRs<bits> {
     inline constexpr auto& index_word_regI(uint8_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
-            index |= rex_bits.X();
+            index |= this->get_rex_bits().X();
         }
         return this->gpr[index].word;
     }
@@ -953,7 +1017,7 @@ struct z86Base : z86BaseGPRs<bits> {
     inline constexpr auto& index_word_regMB(uint8_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
-            index |= rex_bits.B();
+            index |= this->get_rex_bits().B();
         }
         return this->gpr[index].word;
     }
@@ -962,7 +1026,7 @@ struct z86Base : z86BaseGPRs<bits> {
     inline constexpr auto& index_dword_regR(uint8_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
-            index |= rex_bits.R();
+            index |= this->get_rex_bits().R();
         }
         return this->gpr[index].dword;
     }
@@ -971,7 +1035,7 @@ struct z86Base : z86BaseGPRs<bits> {
     inline constexpr auto& index_dword_regI(uint8_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
-            index |= rex_bits.X();
+            index |= this->get_rex_bits().X();
         }
         return this->gpr[index].dword;
     }
@@ -980,7 +1044,7 @@ struct z86Base : z86BaseGPRs<bits> {
     inline constexpr auto& index_dword_regMB(uint8_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
-            index |= rex_bits.B();
+            index |= this->get_rex_bits().B();
         }
         return this->gpr[index].dword;
     }
@@ -989,7 +1053,7 @@ struct z86Base : z86BaseGPRs<bits> {
     inline constexpr auto& index_qword_regR(uint8_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
-            index |= rex_bits.R();
+            index |= this->get_rex_bits().R();
         }
         return this->gpr[index].qword;
     }
@@ -998,7 +1062,7 @@ struct z86Base : z86BaseGPRs<bits> {
     inline constexpr auto& index_qword_regI(uint8_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
-            index |= rex_bits.X();
+            index |= this->get_rex_bits().X();
         }
         return this->gpr[index].qword;
     }
@@ -1007,7 +1071,7 @@ struct z86Base : z86BaseGPRs<bits> {
     inline constexpr auto& index_qword_regMB(uint8_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
-            index |= rex_bits.B();
+            index |= this->get_rex_bits().B();
         }
         return this->gpr[index].qword;
     }
@@ -1588,12 +1652,23 @@ struct z86Base : z86BaseGPRs<bits> {
     }
 
     template <typename T>
-    inline void ENTER_impl(uint16_t alloc, uint8_t nesting);
+    gnu_attr(minsize) inline void ENTER_impl(uint16_t alloc, uint8_t nesting);
 
 
     // http://www.os2museum.com/wp/if-you-enter-you-might-not-leave/
     inline void ENTER(uint16_t alloc, uint8_t nesting) {
         nesting &= 0x1F;
+        if constexpr (bits > 16) {
+            if (this->data_size_32()) {
+                return this->ENTER_impl<uint32_t>(alloc, nesting);
+            }
+            if constexpr (bits == 64) {
+                if (this->data_size_64()) {
+                    return this->ENTER_impl<uint64_t>(alloc, nesting);
+                }
+            }
+        }
+        return this->ENTER_impl<uint16_t>(alloc, nesting);
     }
 
     template <typename P>

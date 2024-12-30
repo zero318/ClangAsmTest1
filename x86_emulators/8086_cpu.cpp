@@ -878,7 +878,10 @@ dllexport void z86_execute() {
                     return true;
                 });
                 break;
-            case 0xC8: case 0xCA: // RETF imm
+            case 0xC8:
+                //ctx.ENTER(pc.read<uint16_t>(), pc.read<uint8_t>(2));
+                //break;
+            case 0xCA: // RETF imm
                 ctx.RETFI(pc);
                 goto next_instr;
             case 0xC9: case 0xCB: // RETF

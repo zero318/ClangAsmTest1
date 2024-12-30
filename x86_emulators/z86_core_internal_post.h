@@ -468,7 +468,7 @@ inline T z86Base<bits, bus>::POP_impl() {
 // No wonder ENTER sucks
 template <size_t bits, size_t bus>
 template <typename T>
-inline void z86Base<bits, bus>::ENTER_impl(uint16_t alloc, uint8_t nesting) {
+gnu_attr(minsize) inline void z86Base<bits, bus>::ENTER_impl(uint16_t alloc, uint8_t nesting) {
     if constexpr (sizeof(T) == sizeof(uint64_t)) {
         uint64_t cur_bp = this->rbp;
         uint64_t new_bp = this->rsp - sizeof(T);
