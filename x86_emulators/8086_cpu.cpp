@@ -31,7 +31,7 @@
 
 static z86Memory<1_MB> mem;
 
-struct z8086Context : z86Base<16, 16> {
+struct z8086Context : z86Core<z8086> {
 
     // Internal state
     std::atomic<bool> pending_nmi;
@@ -52,10 +52,6 @@ struct z8086Context : z86Base<16, 16> {
         this->seg_override = -1;
         this->rep_type = NO_REP;
         this->halted = false;
-    }
-
-    inline constexpr void set_seg_override(uint8_t seg) {
-        this->seg_override = seg & 3;
     }
 
     inline constexpr uint16_t& index_seg(uint8_t index) {
@@ -92,48 +88,6 @@ struct z8086Context : z86Base<16, 16> {
             this->interrupt = src & 0x0200;
             this->direction = src & 0x0400;
             this->overflow = src & 0x0800;
-        }
-    }
-
-    // TODO: rep prefix negating inputs of imul/idiv
-
-    template <typename T>
-    inline void IMUL(T src) {
-        using SD = std::make_signed_t<dbl_int_t<T>>;
-        using U = std::make_unsigned_t<T>;
-        using S = std::make_signed_t<T>;
-
-        SD temp = this->A<T>();
-        if (this->rep_type > NO_REP) {
-            temp = -temp;
-        }
-        temp *= src;
-        this->write_AD(temp);
-        this->carry = this->overflow = (U)(temp >> bitsof(T)) != (S)temp >> bitsof(T) - 1;
-    }
-
-    template <typename T>
-    inline void IDIV(T src) {
-        if (src) {
-            using SD = std::make_signed_t<dbl_int_t<T>>;
-            using S = std::make_signed_t<T>;
-            using U = std::make_unsigned_t<T>;
-
-            SD temp = this->read_AD<T>();
-            SD quot = temp / src;
-
-            if (this->rep_type > NO_REP) {
-                quot = -quot;
-            }
-
-            this->A<T>() = quot;
-            this->ADH<T>() = temp % src;
-            if ((U)(quot - (std::numeric_limits<S>::min)()) > (std::numeric_limits<U>::max)()) {
-                this->software_interrupt(IntDE);
-            }
-        }
-        else {
-            this->software_interrupt(IntDE);
         }
     }
 
@@ -256,50 +210,51 @@ dllexport void z86_cancel_interrupt() {
 dllexport void z86_execute() {
     ctx.init();
 
+#define FAULT_CHECK(...) if (expect(__VA_ARGS__, false)) { goto fault; }
+
     for (;;) {
         // Reset per-instruction states
         ctx.seg_override = -1;
         ctx.rep_type = NO_REP;
         ctx.lock = false;
 
-
         z86Addr pc = ctx.pc();
         // TODO: The 6 byte prefetch cache
         // TODO: Clock cycles
     next_byte:
-        uint8_t opcode = pc.read_advance();
+        uint32_t opcode = pc.read_advance();
         switch (opcode) {
             case 0x00: // ADD Mb, Rb
-                ctx.binopMR<true>(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopMR<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.ADD(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x01: // ADD Mv, Rv
-                ctx.binopMR(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) regcall {
                     ctx.ADD(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x02: // ADD Rb, Mb
-                ctx.binopRM<true>(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopRM<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.ADD(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x03: // ADD Rv, Mv
-                ctx.binopRM(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
                     ctx.ADD(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x04: // ADD AL, Ib
-                ctx.binopAI<true>(pc, [](auto& dst, auto src) {
+                ctx.binopAI<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.ADD(dst, src);
                 });
                 break;
             case 0x05: // ADD AX, Is
-                ctx.binopAI(pc, [](auto& dst, auto src) {
+                ctx.binopAI(pc, [](auto& dst, auto src) regcall {
                     ctx.ADD(dst, src);
                 });
                 break;
@@ -311,178 +266,178 @@ dllexport void z86_execute() {
                 ctx.index_seg(opcode >> 3) = ctx.POP();
                 break;
             case 0x08: // OR Mb, Rb
-                ctx.binopMR<true>(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopMR<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.OR(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x09: // OR Mv, Rv
-                ctx.binopMR(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) regcall {
                     ctx.OR(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x0A: // OR Rb, Mb
-                ctx.binopRM<true>(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopRM<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.OR(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x0B: // OR Rv, Mv
-                ctx.binopRM(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
                     ctx.OR(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x0C: // OR AL, Ib
-                ctx.binopAI<true>(pc, [](auto& dst, auto src) {
+                ctx.binopAI<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.OR(dst, src);
                 });
                 break;
             case 0x0D: // OR AX, Is
-                ctx.binopAI(pc, [](auto& dst, auto src) {
+                ctx.binopAI(pc, [](auto& dst, auto src) regcall {
                     ctx.OR(dst, src);
                 });
                 break;
             case 0x10: // ADC Mb, Rb
-                ctx.binopMR<true>(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopMR<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.ADC(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x11: // ADC Mv, Rv
-                ctx.binopMR(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) regcall {
                     ctx.ADC(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x12: // ADC Rb, Mb
-                ctx.binopRM<true>(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopRM<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.ADC(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x13: // ADC Rv, Mv
-                ctx.binopRM(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
                     ctx.ADC(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x14: // ADC AL, Ib
-                ctx.binopAI<true>(pc, [](auto& dst, auto src) {
+                ctx.binopAI<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.ADC(dst, src);
                 });
                 break;
             case 0x15: // ADC AX, Is
-                ctx.binopAI(pc, [](auto& dst, auto src) {
+                ctx.binopAI(pc, [](auto& dst, auto src) regcall {
                     ctx.ADC(dst, src);
                 });
                 break;
             case 0x18: // SBB Mb, Rb
-                ctx.binopMR<true>(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopMR<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.SBB(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x19: // SBB Mv, Rv
-                ctx.binopMR(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) regcall {
                     ctx.SBB(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x1A: // SBB Rb, Mb
-                ctx.binopRM<true>(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopRM<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.SBB(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x1B: // SBB Rv, Mv
-                ctx.binopRM(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
                     ctx.SBB(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x1C: // SBB AL, Ib
-                ctx.binopAI<true>(pc, [](auto& dst, auto src) {
+                ctx.binopAI<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.SBB(dst, src);
                 });
                 break;
             case 0x1D: // SBB AX, Is
-                ctx.binopAI<true>(pc, [](auto& dst, auto src) {
+                ctx.binopAI(pc, [](auto& dst, auto src) regcall {
                     ctx.SBB(dst, src);
                 });
                 break;
             case 0x20: // AND Mb, Rb
-                ctx.binopMR<true>(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopMR<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.AND(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x21: // AND Mv, Rv
-                ctx.binopMR(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) regcall {
                     ctx.AND(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x22: // AND Rb, Mb
-                ctx.binopRM<true>(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopRM<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.AND(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x23: // AND Rv, Mv
-                ctx.binopRM(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
                     ctx.AND(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x24: // AND AL, Ib
-                ctx.binopAI<true>(pc, [](auto& dst, auto src) {
+                ctx.binopAI<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.AND(dst, src);
                 });
                 break;
             case 0x25: // AND AX, Is
-                ctx.binopAI(pc, [](auto& dst, auto src) {
+                ctx.binopAI(pc, [](auto& dst, auto src) regcall {
                     ctx.AND(dst, src);
                 });
                 break;
             case 0x26: case 0x2E: case 0x36: case 0x3E: // SEG:
-                ctx.set_seg_override(opcode >> 3);
+                ctx.set_seg_override((opcode >> 3) & 3);
                 goto next_byte;
             case 0x27: // DAA
                 ctx.DAA();
                 break;
             case 0x28: // SUB Mb, Rb
-                ctx.binopMR<true>(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopMR<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.SUB(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x29: // SUB Mv, Rv
-                ctx.binopMR(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) regcall {
                     ctx.SUB(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x2A: // SUB Rb, Mb
-                ctx.binopRM<true>(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopRM<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.SUB(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x2B: // SUB Rv, Mv
-                ctx.binopRM(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
                     ctx.SUB(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x2C: // SUB AL, Ib
-                ctx.binopAI<true>(pc, [](auto& dst, auto src) {
+                ctx.binopAI<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.SUB(dst, src);
                 });
                 break;
             case 0x2D: // SUB AX, Is
-                ctx.binopAI(pc, [](auto& dst, auto src) {
+                ctx.binopAI(pc, [](auto& dst, auto src) regcall {
                     ctx.SUB(dst, src);
                 });
                 break;
@@ -490,36 +445,36 @@ dllexport void z86_execute() {
                 ctx.DAS();
                 break;
             case 0x30: // XOR Mb, Rb
-                ctx.binopMR<true>(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopMR<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.XOR(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x31: // XOR Mv, Rv
-                ctx.binopMR(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) regcall {
                     ctx.XOR(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x32: // XOR Rb, Mb
-                ctx.binopRM<true>(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopRM<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.XOR(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x33: // XOR Rv, Mv
-                ctx.binopRM(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
                     ctx.XOR(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x34: // XOR AL, Ib
-                ctx.binopAI<true>(pc, [](auto& dst, auto src) {
+                ctx.binopAI<true>(pc, [](auto& dst, auto src) regcall {
                     ctx.XOR(dst, src);
                 });
                 break;
             case 0x35: // XOR AX, Is
-                ctx.binopAI(pc, [](auto& dst, auto src) {
+                ctx.binopAI(pc, [](auto& dst, auto src) regcall {
                     ctx.XOR(dst, src);
                 });
                 break;
@@ -527,36 +482,36 @@ dllexport void z86_execute() {
                 ctx.AAA();
                 break;
             case 0x38: // CMP Mb, Rb
-                ctx.binopMR<true>(pc, [](auto dst, auto src) {
+                FAULT_CHECK(ctx.binopMR<true>(pc, [](auto dst, auto src) regcall {
                     ctx.CMP(dst, src);
                     return false;
-                });
+                }));
                 break;
             case 0x39: // CMP Mv, Rv
-                ctx.binopMR(pc, [](auto dst, auto src) {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto dst, auto src) regcall {
                     ctx.CMP(dst, src);
                     return false;
-                });
+                }));
                 break;
             case 0x3A: // CMP Rb, Mb
-                ctx.binopRM<true>(pc, [](auto dst, auto src) {
+                FAULT_CHECK(ctx.binopRM<true>(pc, [](auto dst, auto src) regcall {
                     ctx.CMP(dst, src);
                     return false;
-                });
+                }));
                 break;
             case 0x3B: // CMP Rv, Mv
-                ctx.binopRM(pc, [](auto dst, auto src) {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto dst, auto src) regcall {
                     ctx.CMP(dst, src);
                     return false;
-                });
+                }));
                 break;
             case 0x3C: // CMP AL, Ib
-                ctx.binopAI<true>(pc, [](auto dst, auto src) {
+                ctx.binopAI<true>(pc, [](auto dst, auto src) regcall {
                     ctx.CMP(dst, src);
                 });
                 break;
             case 0x3D: // CMP AX, Is
-                ctx.binopAI(pc, [](auto& dst, auto src) {
+                ctx.binopAI(pc, [](auto& dst, auto src) regcall {
                     ctx.CMP(dst, src);
                 });
                 break;
@@ -570,45 +525,193 @@ dllexport void z86_execute() {
                 ctx.DEC(ctx.index_regMB<uint16_t>(opcode & 7));
                 break;
             case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x56: case 0x57: // PUSH reg
-                ctx.PUSH(ctx.index_regMB<uint16_t>(opcode & 7));
+                if constexpr (ctx.OLD_PUSH_SP) {
+                    ctx.PUSH(ctx.index_regMB<uint16_t>(opcode & 7));
+                }
+                else {
+                    auto temp = ctx.index_regMB<uint16_t>(opcode & 7);
+                    ctx.PUSH(temp);
+                }
                 break;
             case 0x58: case 0x59: case 0x5A: case 0x5B: case 0x5C: case 0x5D: case 0x5E: case 0x5F: // POP reg
                 ctx.index_regMB<uint16_t>(opcode & 7) = ctx.POP();
                 break;
-            case 0x60: case 0x70: // JO Jb
-            case 0x61: case 0x71: // JNO Jb
+            case 0x60: // PUSHA
+                if constexpr (ctx.OPCODES_80186) {
+                    ctx.PUSHA();
+                    break;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            case 0x61:
+                if constexpr (ctx.OPCODES_80186) {
+                    ctx.POPA();
+                    break;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            case 0x70: // JO Jb
+            case 0x71: // JNO Jb
                 ctx.JCC<CondNO, true>(pc, opcode & 1);
                 goto next_instr;
-            case 0x62: case 0x72: // JC Jb
-            case 0x63: case 0x73: // JNC Jb
+            case 0x62: // BOUND Rv, Mv2
+                if constexpr (ctx.OPCODES_80186) {
+                    FAULT_CHECK(ctx.binopRM2(pc, [](auto index, auto lower, auto upper) regcall{
+                        return ctx.BOUND(index, lower, upper);
+                    }));
+                    break;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            case 0x63: // ARPL
+                if constexpr (ctx.OPCODES_80286) {
+                    // Not valid in real mode apparently
+                    // TODO
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            case 0x72: // JC Jb
+            case 0x73: // JNC Jb
                 ctx.JCC<CondNC, true>(pc, opcode & 1);
                 goto next_instr;
-            case 0x64: case 0x74: // JZ Jb
-            case 0x65: case 0x75: // JNZ Jb
+            case 0x64: case 0x65: // FS/GS prefixes
+                if constexpr (ctx.OPCODES_80386) {
+                    ctx.set_seg_override(opcode & 0xF);
+                    goto next_byte;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            case 0x74: // JZ Jb
+            case 0x75: // JNZ Jb
                 ctx.JCC<CondNZ, true>(pc, opcode & 1);
                 goto next_instr;
-            case 0x66: case 0x76: // JBE Jb
-            case 0x67: case 0x77: // JA Jb
+            case 0x66: // Data size prefix
+                if constexpr (ctx.max_bits > 16) {
+                    // TODO: Temporary override
+                    goto next_byte;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            case 0x67: // Addr size prefix
+                if constexpr (ctx.max_bits > 16) {
+                    // TODO: Temporary override
+                    goto next_byte;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            case 0x76: // JBE Jb
+            case 0x77: // JA Jb
                 ctx.JCC<CondA, true>(pc, opcode & 1);
                 goto next_instr;
-            case 0x68: case 0x78: // JS Jb
-            case 0x69: case 0x79: // JNS Jb
+            case 0x68: // PUSH Is
+                if constexpr (ctx.OPCODES_80186) {
+                    ctx.PUSHI(pc.read_advance_Is());
+                    break;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            case 0x69: // IMUL Rv, Mv, Is
+                if constexpr (ctx.OPCODES_80186) {
+                    FAULT_CHECK(ctx.binopRM(pc, [&](auto& dst, auto src) regcall {
+                        ctx.IMUL(dst, src, pc.read_advance_Is());
+                    }));
+                    break;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            case 0x78: // JS Jb
+            case 0x79: // JNS Jb
                 ctx.JCC<CondNS, true>(pc, opcode & 1);
                 goto next_instr;
-            case 0x6A: case 0x7A: // JP Jb
-            case 0x6B: case 0x7B: // JNP Jb
+            case 0x6A: // PUSH Ib
+                if constexpr (ctx.OPCODES_80186) {
+                    ctx.PUSHI(pc.read_advance<int8_t>());
+                    break;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            case 0x6B: // IMUL Rv, Mv, Ib
+                if constexpr (ctx.OPCODES_80186) {
+                    FAULT_CHECK(ctx.binopRM(pc, [&](auto& dst, auto src) regcall {
+                        ctx.IMUL(dst, src, pc.read<int8_t>());
+                    }));
+                    ++pc;
+                    break;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            case 0x7A: // JP Jb
+            case 0x7B: // JNP Jb
                 ctx.JCC<CondNP, true>(pc, opcode & 1);
                 goto next_instr;
-            case 0x6C: case 0x7C: // JL Jb
-            case 0x6D: case 0x7D: // JGE Jb
+            case 0x6C: // INSB
+                if constexpr (ctx.OPCODES_80186) {
+                    FAULT_CHECK(ctx.INS<true>());
+                    break;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            case 0x6D: // INS
+                if constexpr (ctx.OPCODES_80186) {
+                    FAULT_CHECK(ctx.INS());
+                    break;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            case 0x7C: // JL Jb
+            case 0x7D: // JGE Jb
                 ctx.JCC<CondGE, true>(pc, opcode & 1);
                 goto next_instr;
-            case 0x6E: case 0x7E: // JLE Jb
-            case 0x6F: case 0x7F: // JG Jb
+            case 0x6E: // OUTSB
+                if constexpr (ctx.OPCODES_80186) {
+                    FAULT_CHECK(ctx.OUTS<true>());
+                    break;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            case 0x6F: // OUTS
+                if constexpr (ctx.OPCODES_80186) {
+                    FAULT_CHECK(ctx.OUTS());
+                    break;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            case 0x7E: // JLE Jb
+            case 0x7F: // JG Jb
                 ctx.JCC<CondG, true>(pc, opcode & 1);
                 goto next_instr;
             case 0x80: case 0x82: // GRP1 Mb, Ib
-                ctx.unopM<true>(pc, [&](auto& dst, uint8_t r) {
+                FAULT_CHECK(ctx.unopM<true>(pc, [&](auto& dst, uint8_t r) regcall {
                     uint8_t val = pc.read<int8_t>();
                     switch (r) {
                         case 0: ctx.ADD(dst, val); return true;
@@ -621,11 +724,11 @@ dllexport void z86_execute() {
                         case 7: ctx.CMP(dst, val); return false;
                         default: unreachable;
                     }
-                });
+                }));
                 ++pc;
                 break;
             case 0x81: // GRP1 Ev, Is
-                ctx.unopM(pc, [&](auto& dst, uint8_t r) {
+                FAULT_CHECK(ctx.unopM(pc, [&](auto& dst, uint8_t r) regcall {
                     int32_t val = pc.read_advance_Is();
                     switch (r) {
                         case 0: ctx.ADD(dst, val); return true;
@@ -638,10 +741,10 @@ dllexport void z86_execute() {
                         case 7: ctx.CMP(dst, val); return false;
                         default: unreachable;
                     }
-                });
+                }));
                 break;
             case 0x83: // GRP1 Ev, Ib
-                ctx.unopM(pc, [&](auto& dst, uint8_t r) {
+                FAULT_CHECK(ctx.unopM(pc, [&](auto& dst, uint8_t r) regcall {
                     int32_t val = pc.read<int8_t>();
                     switch (r) {
                         case 0: ctx.ADD(dst, val); return true;
@@ -654,62 +757,62 @@ dllexport void z86_execute() {
                         case 7: ctx.CMP(dst, val); return false;
                         default: unreachable;
                     }
-                });
+                }));
                 ++pc;
                 break;
             case 0x84: // TEST Mb, Rb
-                ctx.binopMR<true>(pc, [](auto dst, auto src) {
+                FAULT_CHECK(ctx.binopMR<true>(pc, [](auto dst, auto src) regcall {
                     ctx.TEST(dst, src);
                     return false;
-                });
+                }));
                 break;
             case 0x85: // TEST Mv, Rv
-                ctx.binopMR(pc, [](auto dst, auto src) {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto dst, auto src) regcall {
                     ctx.TEST(dst, src);
                     return false;
-                });
+                }));
                 break;
             case 0x86: // XCHG Mb, Rb
-                ctx.binopMR<true>(pc, [](auto& dst, auto& src) {
+                FAULT_CHECK(ctx.binopMR<true>(pc, [](auto& dst, auto& src) regcall {
                     ctx.XCHG(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x87: // XCHG Mv, Rv
-                ctx.binopMR(pc, [](auto& dst, auto& src) {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto& src) regcall {
                     ctx.XCHG(dst, src);
                     return true;
-                });
+                }));
                 break;
             case 0x88: // MOV Mb, Rb
-                ctx.binopMR<true>(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopMR<true>(pc, [](auto& dst, auto src) regcall {
                     dst = src;
                     return true;
-                });
+                }));
                 break;
             case 0x89: // MOV Mv, Rv
-                ctx.binopMR(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) regcall {
                     dst = src;
                     return true;
-                });
+                }));
                 break;
             case 0x8A: // MOV Rb, Mb
-                ctx.binopRM<true>(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopRM<true>(pc, [](auto& dst, auto src) regcall {
                     dst = src;
                     return true;
-                });
+                }));
                 break;
             case 0x8B: // MOV Rv, Mv
-                ctx.binopRM(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
                     dst = src;
                     return true;
-                });
+                }));
                 break;
             case 0x8C: // MOV M, seg
-                ctx.binopMS(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopMS(pc, [](auto& dst, auto src) regcall {
                     dst = src;
                     return true;
-                });
+                }));
                 break;
             case 0x8D: { // LEA
                 ModRM modrm = pc.read_advance<ModRM>();
@@ -718,18 +821,24 @@ dllexport void z86_execute() {
                     ctx.index_regR<uint16_t>(modrm.R()) = addr.offset;
                 }
                 else {
-                    // TODO: jank
+                    if constexpr (ctx.NO_UD) {
+                        // TODO: jank
+                    }
+                    else {
+                        ctx.set_fault(IntUD);
+                        goto fault;
+                    }
                 }
                 break;
             }
             case 0x8E: // MOV seg, M
-                ctx.binopSM(pc, [](auto& dst, auto src) {
+                FAULT_CHECK(ctx.binopSM(pc, [](auto& dst, auto src) regcall {
                     dst = src;
                     return true;
-                });
+                }));
                 break;
             case 0x8F: // GRP1A (Supposedly this does mystery jank if R != 0)
-                ctx.unopM(pc, [](auto src, uint8_t r) {
+                FAULT_CHECK(ctx.unopM(pc, [](auto src, uint8_t r) regcall {
                     switch (r) {
                         case 0:
                             ctx.PUSH(src);
@@ -740,7 +849,7 @@ dllexport void z86_execute() {
                         default:
                             unreachable;
                     }
-                });
+                }));
                 break;
             case 0x90: // NOP, XCHG RAX, R8
                 if (!ctx.rex_bits.B()) {
@@ -748,7 +857,7 @@ dllexport void z86_execute() {
                     break;
                 }
             case 0x91: case 0x92: case 0x93: case 0x94: case 0x95: case 0x96: case 0x97: // XCHG AX, reg
-                ctx.binopAR(opcode & 7, [](auto& dst, auto& src) {
+                ctx.binopAR(opcode & 7, [](auto& dst, auto& src) regcall {
                     ctx.XCHG(dst, src);
                 });
                 break;
@@ -777,68 +886,68 @@ dllexport void z86_execute() {
                 ctx.ah = ctx.get_flags<uint8_t>();
                 break;
             case 0xA0: // MOV AL, mem
-                ctx.binopAO<true>(pc, [](auto& dst, auto offset) {
+                ctx.binopAO<true>(pc, [](auto& dst, auto offset) regcall {
                     z86Addr addr = ctx.addr(DS, offset);
                     dst = addr.read<decltype(dst)>();
                 });
                 break;
             case 0xA1: // MOV AX, mem
-                ctx.binopAO(pc, [](auto& dst, auto offset) {
+                ctx.binopAO(pc, [](auto& dst, auto offset) regcall {
                     z86Addr addr = ctx.addr(DS, offset);
                     dst = addr.read<decltype(dst)>();
                 });
                 break;
             case 0xA2: // MOV mem, AL
-                ctx.binopAO<true>(pc, [](auto src, auto offset) {
+                ctx.binopAO<true>(pc, [](auto src, auto offset) regcall {
                     z86Addr addr = ctx.addr(DS, offset);
                     addr.write(src);
                 });
                 break;
             case 0xA3: // MOV mem, AX
-                ctx.binopAO(pc, [](auto src, auto offset) {
+                ctx.binopAO(pc, [](auto src, auto offset) regcall {
                     z86Addr addr = ctx.addr(DS, offset);
                     addr.write(src);
                 });
                 break;
             case 0xA4: // MOVSB
-                ctx.MOVS<true>();
+                FAULT_CHECK(ctx.MOVS<true>());
                 break;
             case 0xA5: // MOVSW
-                ctx.MOVS();
+                FAULT_CHECK(ctx.MOVS());
                 break;
             case 0xA6: // CMPSB
-                ctx.CMPS<true>();
+                FAULT_CHECK(ctx.CMPS<true>());
                 break;
             case 0xA7: // CMPSW
-                ctx.CMPS();
+                FAULT_CHECK(ctx.CMPS());
                 break;
             case 0xA8: // TEST AL, Ib
-                ctx.binopAI<true>(pc, [](auto dst, auto src) {
+                ctx.binopAI<true>(pc, [](auto dst, auto src) regcall {
                     ctx.TEST(dst, src);
                 });
                 break;
             case 0xA9: // TEST AX, Is
-                ctx.binopAI(pc, [](auto dst, auto src) {
+                ctx.binopAI(pc, [](auto dst, auto src) regcall {
                     ctx.TEST(dst, src);
                 });
                 break;
             case 0xAA: // STOSB
-                ctx.STOS<true>();
+                FAULT_CHECK(ctx.STOS<true>());
                 break;
             case 0xAB: // STOSW
-                ctx.STOS();
+                FAULT_CHECK(ctx.STOS());
                 break;
             case 0xAC: // LODSB
-                ctx.LODS<true>();
+                FAULT_CHECK(ctx.LODS<true>());
                 break;
             case 0xAD: // LODSW
-                ctx.LODS();
+                FAULT_CHECK(ctx.LODS());
                 break;
             case 0xAE: // SCASB
-                ctx.SCAS<true>();
+                FAULT_CHECK(ctx.SCAS<true>());
                 break;
             case 0xAF: // SCASW
-                ctx.SCAS();
+                FAULT_CHECK(ctx.SCAS());
                 break;
             case 0xB0: case 0xB1: case 0xB2: case 0xB3: case 0xB4: case 0xB5: case 0xB6: case 0xB7: // MOV reg8, Ib
                 ctx.MOV_RI<true>(pc, opcode & 7);
@@ -846,57 +955,120 @@ dllexport void z86_execute() {
             case 0xB8: case 0xB9: case 0xBA: case 0xBB: case 0xBC: case 0xBD: case 0xBE: case 0xBF: // MOV reg, Iv
                 ctx.MOV_RI(pc, opcode & 7);
                 break;
-            case 0xC0: case 0xC2: // RET imm
+            case 0xC0: // GRP2 Mb, Ib
+                if constexpr (ctx.OPCODES_80186) {
+                    FAULT_CHECK(ctx.unopM<true>(pc, [&](auto& dst, uint8_t r) regcall{
+                        uint8_t count = pc.read<uint8_t>();
+                        switch (r) {
+                            case 0: ctx.ROL(dst, count); return true;
+                            case 1: ctx.ROR(dst, count); return true;
+                            case 2: ctx.RCL(dst, count); return true;
+                            case 3: ctx.RCR(dst, count); return true;
+                            case 4: ctx.SHL(dst, count); return true;
+                            case 5: ctx.SHR(dst, count); return true;
+                            case 6: ctx.SETMO(dst, count); return true;
+                            case 7: ctx.SAR(dst, count); return true;
+                            default: unreachable;
+                        }
+                    }));
+                    ++pc;
+                    break;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            case 0xC2: // RET imm
                 ctx.RETI(pc);
                 goto next_instr;
-            case 0xC1: case 0xC3: // RET
+            case 0xC1: // GRP2 Mv, Ib
+                if constexpr (ctx.OPCODES_80186) {
+                    FAULT_CHECK(ctx.unopM(pc, [&](auto& dst, uint8_t r) regcall{
+                        uint8_t count = pc.read<uint8_t>();
+                        switch (r) {
+                            case 0: ctx.ROL(dst, count); return true;
+                            case 1: ctx.ROR(dst, count); return true;
+                            case 2: ctx.RCL(dst, count); return true;
+                            case 3: ctx.RCR(dst, count); return true;
+                            case 4: ctx.SHL(dst, count); return true;
+                            case 5: ctx.SHR(dst, count); return true;
+                            case 6: ctx.SETMO(dst, count); return true;
+                            case 7: ctx.SAR(dst, count); return true;
+                            default: unreachable;
+                        }
+                    }));
+                    ++pc;
+                    break;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            
+            case 0xC3: // RET
                 ctx.RET();
                 goto next_instr;
             case 0xC4: // LES
-                ctx.binopRM2(pc, [](auto& dst, uint32_t src) {
+                FAULT_CHECK(ctx.binopRMF(pc, [](auto& dst, auto src) regcall {
                     dst = src;
-                    ctx.es = src >> 16;
+                    ctx.es = src >> (bitsof(src) >> 1);
                     return true;
-                });
+                }));
                 break;
             case 0xC5: // LDS
-                ctx.binopRM2(pc, [](auto& dst, uint32_t src) {
+                FAULT_CHECK(ctx.binopRMF(pc, [](auto& dst, auto src) regcall {
                     dst = src;
-                    ctx.ds = src >> 16;
+                    ctx.ds = src >> (bitsof(src) >> 1);
                     return true;
-                });
+                }));
                 break;
             case 0xC6: // GRP11 Ib (Supposedly this just ignores R bits)
-                ctx.unopM<true>(pc, [&](auto& dst, uint8_t r) {
+                FAULT_CHECK(ctx.unopM<true>(pc, [&](auto& dst, uint8_t r) regcall {
                     dst = pc.read<int8_t>();
                     return true;
-                });
+                }));
                 ++pc;
                 break;
             case 0xC7: // GRP11 Is (Supposedly this just ignores R bits)
-                ctx.unopM(pc, [&](auto& dst, uint8_t r) {
+                FAULT_CHECK(ctx.unopM(pc, [&](auto& dst, uint8_t r) regcall {
                     dst = pc.read_advance_Is();
                     return true;
-                });
+                }));
                 break;
-            case 0xC8:
-                //ctx.ENTER(pc.read<uint16_t>(), pc.read<uint8_t>(2));
-                //break;
+            case 0xC8: // ENTER Iw, Ib
+                if constexpr (ctx.OPCODES_80186) {
+                    ctx.ENTER(pc.read<uint16_t>(), pc.read<uint8_t>(2));
+                    break;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
             case 0xCA: // RETF imm
                 ctx.RETFI(pc);
                 goto next_instr;
-            case 0xC9: case 0xCB: // RETF
+            case 0xC9: // LEAVE
+                if constexpr (ctx.OPCODES_80186) {
+                    ctx.LEAVE();
+                    break;
+                }
+                if constexpr (!ctx.NO_UD) {
+                    ctx.set_fault(IntUD);
+                    goto fault;
+                }
+            case 0xCB: // RETF
                 ctx.RETF();
                 goto next_instr;
             case 0xCC: // INT3
-                ctx.software_interrupt(IntBP);
-                break;
+                ctx.set_trap(IntBP);
+                goto trap;
             case 0xCD: // INT Ib
-                ctx.software_interrupt(pc.read_advance<uint8_t>());
-                break;
+                ctx.set_trap(pc.read_advance<uint8_t>());
+                goto trap;
             case 0xCE: // INTO
                 if (ctx.overflow) {
-                    ctx.software_interrupt(IntOF);
+                    ctx.set_trap(IntOF);
+                    goto trap;
                 }
                 break;
             case 0xCF: // IRET
@@ -905,7 +1077,7 @@ dllexport void z86_execute() {
                 ctx.set_flags(ctx.POP());
                 continue; // Using continues delays execution deliberately
             case 0xD0: // GRP2 Mb, 1
-                ctx.unopM<true>(pc, [](auto& dst, uint8_t r) {
+                FAULT_CHECK(ctx.unopM<true>(pc, [](auto& dst, uint8_t r) regcall {
                     switch (r) {
                         case 0: ctx.ROL(dst, 1); return true;
                         case 1: ctx.ROR(dst, 1); return true;
@@ -917,10 +1089,10 @@ dllexport void z86_execute() {
                         case 7: ctx.SAR(dst, 1); return true;
                         default: unreachable;
                     }
-                });
+                }));
                 break;
             case 0xD1: // GRP2 Mv, 1
-                ctx.unopM(pc, [](auto& dst, uint8_t r) {
+                FAULT_CHECK(ctx.unopM(pc, [](auto& dst, uint8_t r) regcall {
                     switch (r) {
                         case 0: ctx.ROL(dst, 1); return true;
                         case 1: ctx.ROR(dst, 1); return true;
@@ -932,10 +1104,10 @@ dllexport void z86_execute() {
                         case 7: ctx.SAR(dst, 1); return true;
                         default: unreachable;
                     }
-                });
+                }));
                 break;
             case 0xD2: // GRP2 Mb, CL
-                ctx.unopM<true>(pc, [](auto& dst, uint8_t r) {
+                FAULT_CHECK(ctx.unopM<true>(pc, [](auto& dst, uint8_t r) regcall {
                     switch (r) {
                         case 0: ctx.ROL(dst, ctx.cl); return true;
                         case 1: ctx.ROR(dst, ctx.cl); return true;
@@ -947,10 +1119,10 @@ dllexport void z86_execute() {
                         case 7: ctx.SAR(dst, ctx.cl); return true;
                         default: unreachable;
                     }
-                });
+                }));
                 break;
             case 0xD3: // GRP2 Mv, CL
-                ctx.unopM(pc, [](auto& dst, uint8_t r) {
+                FAULT_CHECK(ctx.unopM(pc, [](auto& dst, uint8_t r) regcall {
                     switch (r) {
                         case 0: ctx.ROL(dst, ctx.cl); return true;
                         case 1: ctx.ROR(dst, ctx.cl); return true;
@@ -962,10 +1134,10 @@ dllexport void z86_execute() {
                         case 7: ctx.SAR(dst, ctx.cl); return true;
                         default: unreachable;
                     }
-                });
+                }));
                 break;
             case 0xD4: // AAM Ib
-                ctx.AAM(pc.read_advance<uint8_t>());
+                FAULT_CHECK(ctx.AAM(pc.read_advance<uint8_t>()));
                 break;
             case 0xD5: // AAD Ib
                 ctx.AAD(pc.read_advance<uint8_t>());
@@ -1042,10 +1214,10 @@ dllexport void z86_execute() {
                 ctx.carry ^= 1;
                 break;
             case 0xF6: // GRP3 Mb
-                ctx.unopM<true>(pc, [&](auto& val, uint8_t r) {
+                FAULT_CHECK(ctx.unopM<true>(pc, [&](auto& val, uint8_t r) regcall -> uint8_t {
                     switch (r) {
                         case 0: case 1: // TEST Mb, Ib
-                            ctx.TEST(val, pc.read_advance<uint8_t>());
+                            ctx.TEST(val, pc.read<uint8_t>());
                             return false;
                         case 2: // NOT Mb
                             ctx.NOT(val);
@@ -1060,18 +1232,17 @@ dllexport void z86_execute() {
                             ctx.IMUL(val);
                             return false;
                         case 6: // DIV Mb
-                            ctx.DIV(val);
-                            return false;
+                            return ctx.DIV(val) ? 2 : 0;
                         case 7: // IDIV Mb
-                            ctx.IDIV(val);
-                            return false;
+                            return ctx.IDIV(val) ? 2 : 0;
                         default:
                             unreachable;
                     }
-                });
+                }));
+                ++pc;
                 break;
             case 0xF7: // GRP3 Mv
-                ctx.unopM(pc, [&](auto& val, uint8_t r) {
+                FAULT_CHECK(ctx.unopM(pc, [&](auto& val, uint8_t r) regcall -> uint8_t{
                     switch (r) {
                         case 0: case 1: // TEST Mv, Is
                             ctx.TEST(val, pc.read_advance_Is());
@@ -1089,15 +1260,13 @@ dllexport void z86_execute() {
                             ctx.IMUL(val);
                             return false;
                         case 6: // DIV Mv
-                            ctx.DIV(val);
-                            return false;
+                            return ctx.DIV(val) ? 2 : 0;
                         case 7: // IDIV Mv
-                            ctx.IDIV(val);
-                            return false;
+                            return ctx.IDIV(val) ? 2: 0;
                         default:
                             unreachable;
                     }
-                });
+                }));
                 break;
             case 0xF8: case 0xF9: // CLC, STC
                 ctx.carry = opcode & 1;
@@ -1108,6 +1277,8 @@ dllexport void z86_execute() {
             case 0xFC: case 0xFD: // CLD, STD
                 ctx.direction = opcode & 1;
                 break;
+
+                // TODO: Fault support
             case 0xFE: // GRP4 Mb
                 if (ctx.unopMS<true>(pc)) {
                     goto next_instr;
@@ -1118,7 +1289,13 @@ dllexport void z86_execute() {
                     goto next_instr;
                 }
                 break;
+            fault:
+                if constexpr (ctx.FAULTS_ARE_TRAPS) {
+                    goto trap;
+                }
+                goto next_instr;
         }
+    trap:
         ctx.ip = pc.offset;
     next_instr:
         ctx.execute_pending_interrupts();

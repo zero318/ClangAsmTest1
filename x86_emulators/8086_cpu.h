@@ -69,11 +69,15 @@ struct PortDwordDevice {
 };
 
 enum Interrupt : uint8_t {
+    // 8086
     IntDE = 0,
     IntDB = 1,
     IntNMI = 2,
     IntBP = 3,
-    IntOF = 4
+    IntOF = 4,
+    // 80186
+    IntBR = 5,
+    IntUD = 6
 };
 
 void z86_execute();

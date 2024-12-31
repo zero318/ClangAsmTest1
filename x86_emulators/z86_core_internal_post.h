@@ -199,7 +199,7 @@ auto ModRM::parse_memM(P& pc) const {
 
 template <size_t bits>
 template <typename T>
-inline void z86AddrImpl<bits>::write(const T& value, ssize_t offset) {
+inline void regcall z86AddrImpl<bits>::write(const T& value, ssize_t offset) {
     if constexpr (sizeof(T) == sizeof(uint8_t)) {
         return mem.write<T>(this->real_addr(offset), value);
     }
@@ -349,9 +349,9 @@ inline uint64_t z86AddrImpl<bits>::read_advance_O() {
     return this->read_advance<uint16_t>();
 }
 
-template <size_t bits, size_t bus>
+template <z86BaseTemplate>
 template <typename T, typename P, typename L>
-inline void z86Base<bits, bus>::binopMR_impl(P& pc, const L& lambda) {
+inline bool regcall z86BaseDefault::binopMR_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     T& rval = this->index_regR<T>(modrm.R());
     if (modrm.is_mem()) {
@@ -364,11 +364,12 @@ inline void z86Base<bits, bus>::binopMR_impl(P& pc, const L& lambda) {
     else {
         lambda(this->index_regMB<T>(modrm.M()), rval);
     }
+    return false;
 }
 
-template <size_t bits, size_t bus>
+template <z86BaseTemplate>
 template <typename T, typename P, typename L>
-inline void z86Base<bits, bus>::binopRM_impl(P& pc, const L& lambda) {
+inline bool regcall z86BaseDefault::binopRM_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     T mval;
     if (modrm.is_mem()) {
@@ -379,29 +380,59 @@ inline void z86Base<bits, bus>::binopRM_impl(P& pc, const L& lambda) {
         mval = this->index_regMB<T>(modrm.M());
     }
     lambda(this->index_regR<T>(modrm.R()), mval);
+    return false;
 }
 
-// Double width memory operand, special for LDS/LES
-template <size_t bits, size_t bus>
+// Far width memory operand, special for LDS/LES
+template <z86BaseTemplate>
 template <typename T, typename P, typename L>
-inline void z86Base<bits, bus>::binopRM2_impl(P& pc, const L& lambda) {
+inline bool regcall z86BaseDefault::binopRMF_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     T& rval = this->index_regR<T>(modrm.R());
     if (modrm.is_mem()) {
         using DT = dbl_int_t<T>;
         P data_addr = modrm.parse_memM(pc);
         DT temp = data_addr.read<T>();
-        temp |= (DT)data_addr.read<T>(sizeof(T)) << bitsof(T);
+        temp |= (DT)data_addr.read<uint16_t>(sizeof(T)) << bitsof(T);
         lambda(rval, temp);
     }
     else {
-        // TODO: jank
+        if constexpr (!this->NO_UD) {
+            // TODO: jank
+        }
+        else {
+            this->set_fault(IntUD);
+            return true;
+        }
     }
+    return false;
 }
 
-template <size_t bits, size_t bus>
+// Double width memory operand, special for BOUND
+template <z86BaseTemplate>
 template <typename T, typename P, typename L>
-inline void z86Base<bits, bus>::binopMS_impl(P& pc, const L& lambda) {
+inline bool regcall z86BaseDefault::binopRM2_impl(P& pc, const L& lambda) {
+    ModRM modrm = pc.read_advance<ModRM>();
+    T& rval = this->index_regR<T>(modrm.R());
+    if (modrm.is_mem()) {
+        P data_addr = modrm.parse_memM(pc);
+        return lambda(rval, data_addr.read<T>(), data_addr.read<T>(sizeof(T)));
+    }
+    else {
+        if constexpr (!this->NO_UD) {
+            // TODO: jank
+        }
+        else {
+            this->set_fault(IntUD);
+            return true;
+        }
+    }
+    return false;
+}
+
+template <z86BaseTemplate>
+template <typename T, typename P, typename L>
+inline bool regcall z86BaseDefault::binopMS_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     uint16_t& rval = this->index_seg(modrm.R());
     if (modrm.is_mem()) {
@@ -414,11 +445,12 @@ inline void z86Base<bits, bus>::binopMS_impl(P& pc, const L& lambda) {
     else {
         lambda(this->index_regMB<T>(modrm.M()), rval);
     }
+    return false;
 }
 
-template <size_t bits, size_t bus>
+template <z86BaseTemplate>
 template <typename T, typename P, typename L>
-inline void z86Base<bits, bus>::binopSM_impl(P& pc, const L& lambda) {
+inline bool regcall z86BaseDefault::binopSM_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     T mval;
     if (modrm.is_mem()) {
@@ -429,36 +461,43 @@ inline void z86Base<bits, bus>::binopSM_impl(P& pc, const L& lambda) {
         mval = this->index_regMB<T>(modrm.M());
     }
     lambda(this->index_seg(modrm.R()), mval);
+    return false;
 }
 
-template <size_t bits, size_t bus>
+template <z86BaseTemplate>
 template <typename T, typename P, typename L>
-inline void z86Base<bits, bus>::unopM_impl(P& pc, const L& lambda) {
+inline bool regcall z86BaseDefault::unopM_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     uint8_t r = modrm.R();
+    uint8_t ret;
     if (modrm.is_mem()) {
         P data_addr = modrm.parse_memM(pc);
         T mval = data_addr.read<T>();
-        if (lambda(mval, r)) {
+        ret = lambda(mval, r);
+        if (ret & 1) {
             data_addr.write<T>(mval);
         }
     }
     else {
-        lambda(this->index_regMB<T>(modrm.M()), r);
+        ret = lambda(this->index_regMB<T>(modrm.M()), r);
     }
+    if constexpr (this->FAULTS_ARE_TRAPS) {
+        return false;
+    }
+    return ret & 2;
 }
 
-template <size_t bits, size_t bus>
+template <z86BaseTemplate>
 template <typename P, typename T>
-inline void z86Base<bits, bus>::PUSH_impl(T src) {
+inline void regcall z86BaseDefault::PUSH_impl(const T& src) {
     this->SP<P>() -= (std::max)(sizeof(T), (size_t)2);
     z86Addr stack = this->stack<P>();
     stack.write(src);
 }
 
-template <size_t bits, size_t bus>
+template <z86BaseTemplate>
 template <typename P, typename T>
-inline T z86Base<bits, bus>::POP_impl() {
+inline T z86BaseDefault::POP_impl() {
     z86Addr stack = this->stack<P>();
     T ret = stack.read<T>();
     this->SP<P>() += (std::max)(sizeof(T), (size_t)2);
@@ -466,9 +505,9 @@ inline T z86Base<bits, bus>::POP_impl() {
 }
 
 // No wonder ENTER sucks
-template <size_t bits, size_t bus>
+template <z86BaseTemplate>
 template <typename T>
-gnu_attr(minsize) inline void z86Base<bits, bus>::ENTER_impl(uint16_t alloc, uint8_t nesting) {
+gnu_attr(minsize) inline void regcall z86BaseDefault::ENTER_impl(uint16_t alloc, uint8_t nesting) {
     if constexpr (sizeof(T) == sizeof(uint64_t)) {
         uint64_t cur_bp = this->rbp;
         uint64_t new_bp = this->rsp - sizeof(T);
@@ -586,9 +625,9 @@ gnu_attr(minsize) inline void z86Base<bits, bus>::ENTER_impl(uint16_t alloc, uin
 
 // TODO: Check what happens if an interrupt toggles 
 // the direction flag during a repeating string instruction
-template <size_t bits, size_t bus>
+template <z86BaseTemplate>
 template <typename T, typename P>
-inline void z86Base<bits, bus>::LODS_impl() {
+inline bool regcall z86BaseDefault::LODS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
     if (this->rep_type > NO_REP) {
@@ -603,11 +642,12 @@ inline void z86Base<bits, bus>::LODS_impl() {
         this->A<T>() = src_addr.read_advance<T>(offset);
     }
     this->SI<P>() = src_addr.offset;
+    return false;
 }
 
-template <size_t bits, size_t bus>
+template <z86BaseTemplate>
 template <typename T, typename P>
-inline void z86Base<bits, bus>::MOVS_impl() {
+inline bool regcall z86BaseDefault::MOVS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
     z86Addr dst_addr = this->str_dst<P>();
@@ -624,11 +664,12 @@ inline void z86Base<bits, bus>::MOVS_impl() {
     }
     this->SI<P>() = src_addr.offset;
     this->DI<P>() = dst_addr.offset;
+    return false;
 }
 
-template <size_t bits, size_t bus>
+template <z86BaseTemplate>
 template <typename T, typename P>
-inline void z86Base<bits, bus>::STOS_impl() {
+inline bool regcall z86BaseDefault::STOS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr dst_addr = this->str_dst<P>();
     if (this->rep_type > NO_REP) {
@@ -643,11 +684,12 @@ inline void z86Base<bits, bus>::STOS_impl() {
         dst_addr.write_advance<T>(this->A<T>(), offset);
     }
     this->DI<P>() = dst_addr.offset;
+    return false;
 }
 
-template <size_t bits, size_t bus>
+template <z86BaseTemplate>
 template <typename T, typename P>
-inline void z86Base<bits, bus>::SCAS_impl() {
+inline bool regcall z86BaseDefault::SCAS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr dst_addr = this->str_dst<P>();
     if (this->rep_type > NO_REP) {
@@ -662,11 +704,12 @@ inline void z86Base<bits, bus>::SCAS_impl() {
         this->CMP<T>(this->A<T>(), dst_addr.read_advance<T>(offset));
     }
     this->DI<P>() = dst_addr.offset;
+    return false;
 }
 
-template <size_t bits, size_t bus>
+template <z86BaseTemplate>
 template <typename T, typename P>
-inline void z86Base<bits, bus>::CMPS_impl() {
+inline bool regcall z86BaseDefault::CMPS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
     z86Addr dst_addr = this->str_dst<P>();
@@ -683,14 +726,55 @@ inline void z86Base<bits, bus>::CMPS_impl() {
     }
     this->SI<P>() = src_addr.offset;
     this->DI<P>() = src_addr.offset;
+    return false;
 }
 
-template <size_t bits, size_t bus>
-template <typename T>
-inline void z86Base<bits, bus>::port_out_impl(uint16_t port) const {
-    uint32_t full_port = port;
+template <z86BaseTemplate>
+template <typename T, typename P>
+inline bool regcall z86BaseDefault::OUTS_impl() {
+    intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
+    z86Addr src_addr = this->str_src<P>();
+    uint16_t port = this->dx;
+    if (this->rep_type > NO_REP) {
+        if (this->C<P>()) {
+            do {
+                // TODO: Interrupt check here
+                this->port_out_impl<T>(port, src_addr.read_advance<T>(offset));
+            } while (--this->C<P>());
+        }
+    }
+    else {
+        this->port_out_impl<T>(port, src_addr.read_advance<T>(offset));
+    }
+    this->SI<P>() = src_addr.offset;
+    return false;
+}
 
-    T value = this->A<T>();
+template <z86BaseTemplate>
+template <typename T, typename P>
+inline bool regcall z86BaseDefault::INS_impl() {
+    intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
+    z86Addr dst_addr = this->str_dst<P>();
+    uint16_t port = this->dx;
+    if (this->rep_type > NO_REP) {
+        if (this->C<P>()) {
+            do {
+                // TODO: Interrupt check here
+                dst_addr.write_advance<T>(this->port_in_impl<T>(port), offset);
+            } while (--this->C<P>());
+        }
+    }
+    else {
+        dst_addr.write_advance<T>(this->port_in_impl<T>(port), offset);
+    }
+    this->DI<P>() = dst_addr.offset;
+    return false;
+}
+
+template <z86BaseTemplate>
+template <typename T>
+inline void regcall z86BaseDefault::port_out_impl(uint16_t port, T value) const {
+    uint32_t full_port = port;
 
     if constexpr (sizeof(T) == sizeof(uint8_t)) {
         const std::vector<PortByteDevice*>& devices = io_byte_devices;
@@ -754,19 +838,18 @@ inline void z86Base<bits, bus>::port_out_impl(uint16_t port) const {
     }
 }
 
-template <size_t bits, size_t bus>
+template <z86BaseTemplate>
 template <typename T>
-inline void z86Base<bits, bus>::port_in_impl(uint16_t port) {
+inline T regcall z86BaseDefault::port_in_impl(uint16_t port) {
     uint32_t full_port = port;
 
-    T value = 0;
+    T value;
 
     if constexpr (sizeof(T) == sizeof(uint8_t)) {
         const std::vector<PortByteDevice*>& devices = io_byte_devices;
         for (auto device : devices) {
             if (device->in_byte(value, full_port)) {
-                this->A<T>() = value;
-                return;
+                return value;
             }
         }
         printf("Unhandled: IN AL, %X\n", full_port);
@@ -779,16 +862,14 @@ inline void z86Base<bits, bus>::port_in_impl(uint16_t port) {
                     is_aligned<uint16_t>(full_port) &&
                     device->in_word(value, full_port)
                 ) {
-                    this->A<T>() = value;
-                    return;
+                    return value;
                 }
             }
             if (
                 device->in_byte(((uint8_t*)&value)[0], full_port) &&
                 device->in_byte(((uint8_t*)&value)[1], full_port + 1)
             ) {
-                this->A<T>() = value;
-                return;
+                return value;
             }
         }
         printf("Unhandled: IN AX, %X\n", full_port);
@@ -801,8 +882,7 @@ inline void z86Base<bits, bus>::port_in_impl(uint16_t port) {
                     is_aligned<uint32_t>(full_port) &&
                     device->in_dword(value, full_port)
                 ) {
-                    this->A<T>() = value;
-                    return;
+                    return value;
                 }
             }
             if constexpr (bus >= 16) {
@@ -811,28 +891,27 @@ inline void z86Base<bits, bus>::port_in_impl(uint16_t port) {
                     device->in_word(((uint16_t*)&value)[0], full_port) &&
                     device->in_word(((uint16_t*)&value)[1], full_port + 2)
                 ) {
-                    this->A<T>() = value;
-                    return;
+                    return value;
                 }
             }
             if (
-                device->out_byte(full_port, value) &&
-                device->out_byte(full_port + 1, value >> 8) &&
-                device->out_byte(full_port + 2, value >> 16) &&
-                device->out_byte(full_port + 3, value >> 24)
+                device->in_byte(((uint8_t*)&value)[0], full_port) &&
+                device->in_byte(((uint8_t*)&value)[1], full_port + 1) &&
+                device->in_byte(((uint8_t*)&value)[2], full_port + 2) &&
+                device->in_byte(((uint8_t*)&value)[3], full_port + 3)
             ) {
-                this->A<T>() = value;
-                return;
+                return value;
             }
         }
         printf("Unhandled: IN EAX, %X\n", full_port);
     }
+    return 0;
 }
 
 // Special unop for groups 4/5
-template <size_t bits, size_t bus>
+template <z86BaseTemplate>
 template <typename T, typename P>
-inline bool z86Base<bits, bus>::unopMS_impl(P& pc) {
+inline bool regcall z86BaseDefault::unopMS_impl(P& pc) {
     ModRM modrm = pc.read_advance<ModRM>();
     uint8_t r = modrm.R();
     T mval;
@@ -848,7 +927,9 @@ inline bool z86Base<bits, bus>::unopMS_impl(P& pc) {
             case 1:
                 ctx.DEC(mval);
                 break;
-            case 2: call:
+            case 2:
+            
+            call:
                 ctx.CALLABS<T>(pc.offset, mval);
                 return true;
             case 3:
@@ -871,7 +952,8 @@ inline bool z86Base<bits, bus>::unopMS_impl(P& pc) {
                 unreachable;
         }
         data_addr.write<T>(mval);
-    } else {
+    }
+    else {
         T& mval_ref = ctx.index_regMB<T>(modrm.M());
         mval = mval_ref;
         switch (r) {
