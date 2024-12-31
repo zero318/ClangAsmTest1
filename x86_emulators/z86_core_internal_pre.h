@@ -40,6 +40,26 @@ static inline constexpr unsigned long long operator ""_GB(long double value) {
     return value * 1073741824.0L;
 }
 
+// Avoid the values 8, 16, 32, and 64 so that template values
+// can be differentiated from bit values.
+// THESE VALUES WILL LIKELY CHANGE
+enum z86CoreType : size_t {
+    z8086 = 0,
+    z80186 = 1,
+    z80286 = 2,
+    zNV20 = 3,
+    z80386 = 4,
+    z80486
+};
+
+// V20 series:
+// TEST1, CLR1, SET1, NOT1, ADD4S, SUB4S, CMP4S, ROL4, ROR4, EXT, INS, REPC, REPNC, FPO2
+// BRKEM
+
+// Quirk Flags
+static inline constexpr size_t HAS_POP_CS = 1;
+static inline constexpr size_t OLD_PUSH_SP = 1;
+
 // Code shared between x86 cores
 
 template <size_t bytes>
@@ -149,25 +169,92 @@ struct GPR<64> {
     };
 };
 
+struct MMXREG {
+    union {
+        vec<float, 2> f32;
+        vec<uint8_t, 8> byte;
+        vec<int8_t, 8> sbyte;
+        vec<uint16_t, 4> word;
+        vec<int16_t, 4> sword;
+        vec<uint32_t, 2> dword;
+        vec<int32_t, 2> sdword;
+        uint64_t qword;
+        int64_t sqword;
+    };
+};
+
+struct FPUREG {
+    union {
+        long double st;
+        MMXREG mmx;
+    };
+};
+
+struct SSEREG {
+    vec<float, 4> f32;
+    vec<double, 2> f64;
+    vec<uint8_t, 16> byte;
+    vec<int8_t, 16> sbyte;
+    vec<uint16_t, 8> word;
+    vec<int16_t, 8> sword;
+    vec<uint32_t, 4> dword;
+    vec<int32_t, 4> sdword;
+    vec<uint64_t, 2> qword;
+    vec<int64_t, 2> sqword;
+    uint128_t oword;
+    int128_t soword;
+};
+
+struct AVXREG {
+    vec<float, 8> f32;
+    vec<double, 4> f64;
+    vec<uint8_t, 32> byte;
+    vec<int8_t, 32> sbyte;
+    vec<uint16_t, 16> word;
+    vec<int16_t, 16> sword;
+    vec<uint32_t, 8> dword;
+    vec<int32_t, 8> sdword;
+    vec<uint64_t, 4> qword;
+    vec<int64_t, 4> sqword;
+    vec<uint128_t, 2> oword;
+    vec<int128_t, 2> soword;
+};
+
 #define DS DS_SEG
 
 enum REG_INDEX : uint8_t {
-    RAX  =  0, EAX  =  0, AX   =  0, AL   =  0, XMM0  =  0, CR0 = 0, ST0 = 0, MM0 = 0, DR0 = 0, ES = 0,
-    RCX  =  1, ECX  =  1, CX   =  1, CL   =  1, XMM1  =  1, CR1 = 1, ST1 = 1, MM1 = 1, DR1 = 1, CS = 1,
-    RDX  =  2, EDX  =  2, DX   =  2, DL   =  2, XMM2  =  2, CR2 = 2, ST2 = 2, MM2 = 2, DR2 = 2, SS = 2,
-    RBX  =  3, EBX  =  3, BX   =  3, BL   =  3, XMM3  =  3, CR3 = 3, ST3 = 3, MM3 = 3, DR3 = 3, DS = 3,
-    RSP  =  4, ESP  =  4, SP   =  4, AH   =  4, XMM4  =  4, CR4 = 4, ST4 = 4, MM4 = 4, DR4 = 4, FS = 4,
-    RBP  =  5, EBP  =  5, BP   =  5, CH   =  5, XMM5  =  5, CR5 = 5, ST5 = 5, MM5 = 5, DR5 = 5, GS = 5,
-    RSI  =  6, ESI  =  6, SI   =  6, DH   =  6, XMM6  =  6, CR6 = 6, ST6 = 6, MM6 = 6, DR6 = 6,
-    RDI  =  7, EDI  =  7, DI   =  7, BH   =  7, XMM7  =  7, CR7 = 7, ST7 = 7, MM7 = 7, DR7 = 7,
-    R8   =  8, R8D  =  8, R8W  =  8, R8B  =  8, XMM8  =  8, CR8 = 8,
-    R9   =  9, R9D  =  9, R9W  =  9, R9B  =  9, XMM9  =  9,
-    R10  = 10, R10D = 10, R10W = 10, R10B = 10, XMM10 = 10,
-    R11  = 11, R11D = 11, R11W = 11, R11B = 11, XMM11 = 11,
-    R12  = 12, R12D = 12, R12W = 12, R12B = 12, XMM12 = 12,
-    R13  = 13, R13D = 13, R13W = 13, R13B = 13, XMM13 = 13,
-    R14  = 14, R14D = 14, R14W = 14, R14B = 14, XMM14 = 14,
-    R15  = 15, R15D = 15, R15W = 15, R15B = 15, XMM15 = 15
+    ZMM0  =  0, YMM0  =  0, XMM0  =  0, RAX  =  0, EAX  =  0, AX   =  0, AL   =  0, CR0 = 0, K0 = 0, ST0 = 0, MM0 = 0, DR0 = 0, ES = 0,
+    ZMM1  =  1, YMM1  =  1, XMM1  =  1, RCX  =  1, ECX  =  1, CX   =  1, CL   =  1, CR1 = 1, K1 = 1, ST1 = 1, MM1 = 1, DR1 = 1, CS = 1,
+    ZMM2  =  2, YMM2  =  2, XMM2  =  2, RDX  =  2, EDX  =  2, DX   =  2, DL   =  2, CR2 = 2, K2 = 2, ST2 = 2, MM2 = 2, DR2 = 2, SS = 2,
+    ZMM3  =  3, YMM3  =  3, XMM3  =  3, RBX  =  3, EBX  =  3, BX   =  3, BL   =  3, CR3 = 3, K3 = 3, ST3 = 3, MM3 = 3, DR3 = 3, DS = 3,
+    ZMM4  =  4, YMM4  =  4, XMM4  =  4, RSP  =  4, ESP  =  4, SP   =  4, AH   =  4, CR4 = 4, K4 = 4, ST4 = 4, MM4 = 4, DR4 = 4, FS = 4,
+    ZMM5  =  5, YMM5  =  5, XMM5  =  5, RBP  =  5, EBP  =  5, BP   =  5, CH   =  5, CR5 = 5, K5 = 5, ST5 = 5, MM5 = 5, DR5 = 5, GS = 5,
+    ZMM6  =  6, YMM6  =  6, XMM6  =  6, RSI  =  6, ESI  =  6, SI   =  6, DH   =  6, CR6 = 6, K6 = 6, ST6 = 6, MM6 = 6, DR6 = 6, DS3 = 6,
+    ZMM7  =  7, YMM7  =  7, XMM7  =  7, RDI  =  7, EDI  =  7, DI   =  7, BH   =  7, CR7 = 7, K7 = 7, ST7 = 7, MM7 = 7, DR7 = 7, DS2 = 7,
+    ZMM8  =  8, YMM8  =  8, XMM8  =  8, R8   =  8, R8D  =  8, R8W  =  8, R8B  =  8, CR8 = 8,
+    ZMM9  =  9, YMM9  =  9, XMM9  =  9, R9   =  9, R9D  =  9, R9W  =  9, R9B  =  9,
+    ZMM10 = 10, YMM10 = 10, XMM10 = 10, R10  = 10, R10D = 10, R10W = 10, R10B = 10,
+    ZMM11 = 11, YMM11 = 11, XMM11 = 11, R11  = 11, R11D = 11, R11W = 11, R11B = 11,
+    ZMM12 = 12, YMM12 = 12, XMM12 = 12, R12  = 12, R12D = 12, R12W = 12, R12B = 12,
+    ZMM13 = 13, YMM13 = 13, XMM13 = 13, R13  = 13, R13D = 13, R13W = 13, R13B = 13,
+    ZMM14 = 14, YMM14 = 14, XMM14 = 14, R14  = 14, R14D = 14, R14W = 14, R14B = 14,
+    ZMM15 = 15, YMM15 = 15, XMM15 = 15, R15  = 15, R15D = 15, R15W = 15, R15B = 15,
+    ZMM16 = 16, YMM16 = 16, XMM16 = 16, R16  = 16, R16D = 16, R16W = 16, R16B = 16,
+    ZMM17 = 17, YMM17 = 17, XMM17 = 17, R17  = 17, R17D = 17, R17W = 17, R17B = 17,
+    ZMM18 = 18, YMM18 = 18, XMM18 = 18, R18  = 18, R18D = 18, R18W = 18, R18B = 18,
+    ZMM19 = 19, YMM19 = 19, XMM19 = 19, R19  = 19, R19D = 19, R19W = 19, R19B = 19,
+    ZMM20 = 20, YMM20 = 20, XMM20 = 20, R20  = 20, R20D = 20, R20W = 20, R20B = 20,
+    ZMM21 = 21, YMM21 = 21, XMM21 = 21, R21  = 21, R21D = 21, R21W = 21, R21B = 21,
+    ZMM22 = 22, YMM22 = 22, XMM22 = 22, R22  = 22, R22D = 22, R22W = 22, R22B = 22,
+    ZMM23 = 23, YMM23 = 23, XMM23 = 23, R23  = 23, R23D = 23, R23W = 23, R23B = 23,
+    ZMM24 = 24, YMM24 = 24, XMM24 = 24, R24  = 24, R24D = 24, R24W = 24, R24B = 24,
+    ZMM25 = 25, YMM25 = 25, XMM25 = 25, R25  = 25, R25D = 25, R25W = 25, R25B = 25,
+    ZMM26 = 26, YMM26 = 26, XMM26 = 26, R26  = 26, R26D = 26, R26W = 26, R26B = 26,
+    ZMM27 = 27, YMM27 = 27, XMM27 = 27, R27  = 27, R27D = 27, R27W = 27, R27B = 27,
+    ZMM28 = 28, YMM28 = 28, XMM28 = 28, R28  = 28, R28D = 28, R28W = 28, R28B = 28,
+    ZMM29 = 29, YMM29 = 29, XMM29 = 29, R29  = 29, R29D = 29, R29W = 29, R29B = 29,
+    ZMM30 = 30, YMM30 = 30, XMM30 = 30, R30  = 30, R30D = 30, R30W = 30, R30B = 30,
+    ZMM31 = 31, YMM31 = 31, XMM31 = 31, R31  = 31, R31D = 31, R31W = 31, R31B = 31
 };
 
 enum CONDITION_CODE : uint8_t {
@@ -203,11 +290,9 @@ enum ADDR_SIZE : int8_t {
 
 enum REP_STATE : int8_t {
     NO_REP = -1,
-    REP_NE = 0,
-    REP_E = 1
+    REP_NZ = 0, REP_NE = REP_NZ,
+    REP_Z = 1, REP_E = REP_Z
 };
-
-
 
 struct REX {
 #if USE_BITFIELDS
@@ -273,11 +358,11 @@ struct REX {
     }
 };
 
-template<size_t max_bits>
+template <size_t max_bits>
 struct z86BaseGPRs;
 
-// size: 0x12
-template<>
+// size: 0x10
+template <>
 struct z86BaseGPRs<16> {
 
     using HT = uint8_t; // Half Reg Type
@@ -349,52 +434,10 @@ struct z86BaseGPRs<16> {
             };
         };
     };
-    union {
-        uint16_t rip;
-        uint16_t eip;
-        uint16_t ip;
-    };
-
-    static constexpr inline int8_t data_size = 1;
-    static constexpr inline int8_t addr_size = 1;
-    static constexpr inline int8_t stack_size = 1;
-    static constexpr inline int8_t mode = 1;
-    static constexpr inline REX rex_bits = {};
-
-    inline constexpr bool data_size_16() const {
-        return true;
-    }
-    inline constexpr bool data_size_32() const {
-        return false;
-    }
-    inline constexpr bool data_size_64() const {
-        return false;
-    }
-    inline constexpr bool addr_size_16() const {
-        return true;
-    }
-    inline constexpr bool addr_size_32() const {
-        return false;
-    }
-    inline constexpr bool addr_size_64() const {
-        return false;
-    }
-    inline constexpr bool stack_size_16() const {
-        return true;
-    }
-    inline constexpr bool stack_size_32() const {
-        return true;
-    }
-    inline constexpr bool stack_size_64() const {
-        return true;
-    }
-    inline constexpr REX get_rex_bits() const {
-        return {};
-    }
 };
 
-// size: 0x24
-template<>
+// size: 0x20
+template <>
 struct z86BaseGPRs<32> {
 
     using HT = uint16_t; // Half Reg Type
@@ -466,67 +509,9 @@ struct z86BaseGPRs<32> {
             };
         };
     };
-    union {
-        uint32_t rip;
-        uint32_t eip;
-        uint16_t ip;
-    };
-
-    int8_t data_size = 1;
-    int8_t addr_size = 1;
-    int8_t stack_size = 1;
-    int8_t mode = 1;
-    static constexpr inline REX rex_bits = {};
-
-    inline constexpr uint8_t& index_byte_reg(uint8_t index) {
-        return *(&this->gpr[index & 3].byte + (index > 3));
-    }
-
-    inline constexpr auto& index_word_reg(uint8_t index) {
-        return this->gpr[index].word;
-    }
-
-    inline constexpr auto& index_dword_reg(uint8_t index) {
-        return this->gpr[index].dword;
-    }
-
-    inline constexpr auto& index_qword_reg(uint8_t index) {
-        return this->gpr[index].qword;
-    }
-
-    inline constexpr bool data_size_16() const {
-        return this->data_size != 0;
-    }
-    inline constexpr bool data_size_32() const {
-        return this->data_size == 0;
-    }
-    inline constexpr bool data_size_64() const {
-        return false;
-    }
-    inline constexpr bool addr_size_16() const {
-        return this->addr_size != 0;
-    }
-    inline constexpr bool addr_size_32() const {
-        return this->addr_size == 0;
-    }
-    inline constexpr bool addr_size_64() const {
-        return false;
-    }
-    inline constexpr bool stack_size_16() const {
-        return this->stack_size != 0;
-    }
-    inline constexpr bool stack_size_32() const {
-        return this->stack_size == 0;
-    }
-    inline constexpr bool stack_size_64() const {
-        return false;
-    }
-    inline constexpr REX get_rex_bits() const {
-        return {};
-    }
 };
 
-// size: 0x48 + 1
+// size: 0x40
 template <>
 struct z86BaseGPRs<64> {
 
@@ -647,12 +632,287 @@ struct z86BaseGPRs<64> {
             };
         };
     };
+};
+
+// size: 0x80
+struct z86BaseFPU {
+    union {
+        alignas(16) FPUREG st[8];
+        struct {
+            union {
+                alignas(16) long double st0;
+                alignas(16) MMXREG mm0;
+            };
+            union {
+                alignas(16) long double st1;
+                alignas(16) MMXREG mm1;
+            };
+            union {
+                alignas(16) long double st2;
+                alignas(16) MMXREG mm2;
+            };
+            union {
+                alignas(16) long double st3;
+                alignas(16) MMXREG mm3;
+            };
+            union {
+                alignas(16) long double st4;
+                alignas(16) MMXREG mm4;
+            };
+            union {
+                alignas(16) long double st5;
+                alignas(16) MMXREG mm5;
+            };
+            union {
+                alignas(16) long double st6;
+                alignas(16) MMXREG mm6;
+            };
+            union {
+                alignas(16) long double st7;
+                alignas(16) MMXREG mm7;
+            };
+        };
+    };
+};
+
+template <size_t max_bits, size_t reg_count>
+struct z86BaseSSE;
+
+template <>
+struct z86BaseSSE<128, 8> {
+    union {
+        SSEREG xmm[8];
+        struct {
+            SSEREG xmm0;
+            SSEREG xmm1;
+            SSEREG xmm2;
+            SSEREG xmm3;
+            SSEREG xmm4;
+            SSEREG xmm5;
+            SSEREG xmm6;
+            SSEREG xmm7;
+        };
+    };
+};
+
+template <>
+struct z86BaseSSE<128, 16> {
+    union {
+        SSEREG xmm[16];
+        struct {
+            SSEREG xmm0;
+            SSEREG xmm1;
+            SSEREG xmm2;
+            SSEREG xmm3;
+            SSEREG xmm4;
+            SSEREG xmm5;
+            SSEREG xmm6;
+            SSEREG xmm7;
+            SSEREG xmm8;
+            SSEREG xmm9;
+            SSEREG xmm10;
+            SSEREG xmm11;
+            SSEREG xmm12;
+            SSEREG xmm14;
+            SSEREG xmm15;
+        };
+    };
+};
+
+template <>
+struct z86BaseSSE<256, 16> {
+    union {
+        SSEREG xmm[16];
+        AVXREG ymm[16];
+        struct {
+            union {
+                SSEREG xmm0;
+                AVXREG ymm0;
+            };
+            union {
+                SSEREG xmm1;
+                AVXREG ymm1;
+            };
+            union {
+                SSEREG xmm2;
+                AVXREG ymm2;
+            };
+            union {
+                SSEREG xmm3;
+                AVXREG ymm3;
+            };
+            union {
+                SSEREG xmm4;
+                AVXREG ymm4;
+            };
+            union {
+                SSEREG xmm5;
+                AVXREG ymm5;
+            };
+            union {
+                SSEREG xmm6;
+                AVXREG ymm6;
+            };
+            union {
+                SSEREG xmm7;
+                AVXREG ymm7;
+            };
+            union {
+                SSEREG xmm8;
+                AVXREG ymm8;
+            };
+            union {
+                SSEREG xmm9;
+                AVXREG ymm9;
+            };
+            union {
+                SSEREG xmm10;
+                AVXREG ymm10;
+            };
+            union {
+                SSEREG xmm11;
+                AVXREG ymm11;
+            };
+            union {
+                SSEREG xmm12;
+                AVXREG ymm12;
+            };
+            union {
+                SSEREG xmm13;
+                AVXREG ymm13;
+            };
+            union {
+                SSEREG xmm14;
+                AVXREG ymm14;
+            };
+            union {
+                SSEREG xmm15;
+                AVXREG ymm15;
+            };
+        };
+    };
+};
+
+template <size_t max_bits>
+struct z86RegBase;
+
+template <>
+struct z86RegBase<16> : z86BaseGPRs<16> {
+    union {
+        uint16_t rip;
+        uint16_t eip;
+        uint16_t ip;
+    };
+
+    static constexpr inline int8_t data_size = 1;
+    static constexpr inline int8_t addr_size = 1;
+    static constexpr inline int8_t stack_size = 1;
+    static constexpr inline int8_t mode = 1;
+    static constexpr inline REX rex_bits = {};
+
+    inline constexpr bool data_size_16() const {
+        return true;
+    }
+    inline constexpr bool data_size_32() const {
+        return false;
+    }
+    inline constexpr bool data_size_64() const {
+        return false;
+    }
+    inline constexpr bool addr_size_16() const {
+        return true;
+    }
+    inline constexpr bool addr_size_32() const {
+        return false;
+    }
+    inline constexpr bool addr_size_64() const {
+        return false;
+    }
+    inline constexpr bool stack_size_16() const {
+        return true;
+    }
+    inline constexpr bool stack_size_32() const {
+        return true;
+    }
+    inline constexpr bool stack_size_64() const {
+        return true;
+    }
+    inline constexpr REX get_rex_bits() const {
+        return {};
+    }
+
+};
+
+template <>
+struct z86RegBase<32> : z86BaseGPRs<32> {
+    union {
+        uint32_t rip;
+        uint32_t eip;
+        uint16_t ip;
+    };
+
+    int8_t data_size = 1;
+    int8_t addr_size = 1;
+    int8_t stack_size = 1;
+    int8_t mode = 1;
+    static constexpr inline REX rex_bits = {};
+
+    inline constexpr uint8_t& index_byte_reg(uint8_t index) {
+        return *(&this->gpr[index & 3].byte + (index > 3));
+    }
+
+    inline constexpr auto& index_word_reg(uint8_t index) {
+        return this->gpr[index].word;
+    }
+
+    inline constexpr auto& index_dword_reg(uint8_t index) {
+        return this->gpr[index].dword;
+    }
+
+    inline constexpr auto& index_qword_reg(uint8_t index) {
+        return this->gpr[index].qword;
+    }
+
+    inline constexpr bool data_size_16() const {
+        return this->data_size != 0;
+    }
+    inline constexpr bool data_size_32() const {
+        return this->data_size == 0;
+    }
+    inline constexpr bool data_size_64() const {
+        return false;
+    }
+    inline constexpr bool addr_size_16() const {
+        return this->addr_size != 0;
+    }
+    inline constexpr bool addr_size_32() const {
+        return this->addr_size == 0;
+    }
+    inline constexpr bool addr_size_64() const {
+        return false;
+    }
+    inline constexpr bool stack_size_16() const {
+        return this->stack_size != 0;
+    }
+    inline constexpr bool stack_size_32() const {
+        return this->stack_size == 0;
+    }
+    inline constexpr bool stack_size_64() const {
+        return false;
+    }
+    inline constexpr REX get_rex_bits() const {
+        return {};
+    }
+
+};
+
+template <>
+struct z86RegBase<64> : z86BaseGPRs<64> {
     union {
         uint64_t rip;
         uint32_t eip;
         uint16_t ip;
     };
-
 
     int8_t data_size = 1;
     int8_t addr_size = 1;
@@ -702,6 +962,7 @@ struct z86BaseGPRs<64> {
     inline constexpr REX get_rex_bits() const {
         return this->rex_bits;
     }
+
 };
 
 template <size_t bits>
@@ -950,11 +1211,16 @@ struct ModRM {
     auto parse_memM(P& pc) const;
 };
 
-template <size_t bits, size_t bus>
-struct z86Base : z86BaseGPRs<bits> {
+template <size_t bits, size_t bus = bits>
+struct z86Base : z86RegBase<bits> {
 
     static inline constexpr size_t max_bits = bits;
     static inline constexpr size_t bus_width = bus;
+
+    static inline constexpr bool HAS_8086_JANK = true;
+    static inline constexpr bool HAS_TWO_BYTE_OPS = false;
+    static inline constexpr bool OLD_PUSH_SP = true;
+    static inline constexpr bool SHIFT_MASKING = false;
 
     using HT = z86BaseGPRs<bits>::HT;
     using RT = z86BaseGPRs<bits>::RT;
@@ -1354,6 +1620,8 @@ struct z86Base : z86BaseGPRs<bits> {
             uint16_t ds;
             uint16_t fs;
             uint16_t gs;
+            uint16_t ds3;
+            uint16_t ds2;
         };
     };
 
@@ -1770,16 +2038,16 @@ struct z86Base : z86BaseGPRs<bits> {
                     new_ip = (uint16_t)new_ip;
                 }
             }
-            ctx.rip = new_ip;
+            this->rip = new_ip;
         }
         else {
             if constexpr (bits > 16) {
                 if (!this->data_size_16()) {
-                    ctx.rip = pc.offset + 4 + pc.read<int32_t>();
+                    this->rip = pc.offset + 4 + pc.read<int32_t>();
                     return;
                 }
             }
-            ctx.rip = (uint16_t)(pc.offset + 2 + pc.read<int16_t>());
+            this->rip = (uint16_t)(pc.offset + 2 + pc.read<int16_t>());
         }
     }
 
@@ -1795,7 +2063,7 @@ struct z86Base : z86BaseGPRs<bits> {
                     new_ip = (uint16_t)new_ip;
                 }
             }
-            ctx.rip = new_ip;
+            this->rip = new_ip;
         }
         else {
             auto new_ip = pc.offset + 2;
@@ -1817,7 +2085,7 @@ struct z86Base : z86BaseGPRs<bits> {
                     new_ip = (uint16_t)new_ip;
                 }
             }
-            ctx.rip = new_ip;
+            this->rip = new_ip;
         }
     }
 
@@ -1832,7 +2100,7 @@ struct z86Base : z86BaseGPRs<bits> {
                 new_ip = (uint16_t)new_ip;
             }
         }
-        ctx.rip = new_ip;
+        this->rip = new_ip;
     }
 
     template <typename P>
@@ -1861,7 +2129,7 @@ struct z86Base : z86BaseGPRs<bits> {
                 new_ip = (uint16_t)new_ip;
             }
         }
-        ctx.rip = new_ip;
+        this->rip = new_ip;
     }
 
     template <typename P>
@@ -1890,7 +2158,7 @@ struct z86Base : z86BaseGPRs<bits> {
                 new_ip = (uint16_t)new_ip;
             }
         }
-        ctx.rip = new_ip;
+        this->rip = new_ip;
     }
 
     template <typename P>
@@ -2108,38 +2376,38 @@ struct z86Base : z86BaseGPRs<bits> {
         if constexpr (bits > 16) {
             if (this->data_size_32()) {
                 // CWDE
-                ctx.eax = (int32_t)(int16_t)ctx.ax;
+                this->eax = (int32_t)(int16_t)this->ax;
                 return;
             }
             if constexpr (bits == 64) {
                 if (this->data_size_64()) {
                     // CDQE
-                    ctx.rax = (int64_t)(int32_t)ctx.eax;
+                    this->rax = (int64_t)(int32_t)this->eax;
                     return;
                 }
             }
         }
         // CBW
-        ctx.ax = (int16_t)(int8_t)ctx.al;
+        this->ax = (int16_t)(int8_t)this->al;
     }
 
     inline void CWD() {
         if constexpr (bits > 16) {
             if (this->data_size_32()) {
                 // CDQ
-                ctx.edx = (int32_t)ctx.eax >> 31;
+                this->edx = (int32_t)this->eax >> 31;
                 return;
             }
             if constexpr (bits == 64) {
                 if (this->data_size_64()) {
                     // CDO
-                    ctx.rdx = (int64_t)ctx.rax >> 63;
+                    this->rdx = (int64_t)this->rax >> 63;
                     return;
                 }
             }
         }
         // CWD
-        ctx.dx = (int16_t)ctx.ax >> 15;
+        this->dx = (int16_t)this->ax >> 15;
     }
 
     template <typename T>
@@ -2161,7 +2429,7 @@ struct z86Base : z86BaseGPRs<bits> {
         SD temp = this->A<T>();
         temp *= src;
         this->write_AD(temp);
-        this->carry = this->overflow = (U)(temp >> bitsof(T)) != (S)temp >> bitsof(T) - 1;
+        this->carry = this->overflow = (U)(temp >> bitsof(T)) != (S)temp >> (bitsof(T) - 1);
     }
 
     template <typename T>
@@ -2203,10 +2471,10 @@ struct z86Base : z86BaseGPRs<bits> {
         }
     }
 
-    template <bool mask_count = true, typename T>
+    template <typename T>
     inline void ROL(T& dst, uint8_t count) {
 
-        if constexpr (mask_count) {
+        if constexpr (SHIFT_MASKING) {
             if constexpr (sizeof(T) < sizeof(uint64_t)) {
                 count &= 0x1F;
             } else {
@@ -2225,10 +2493,10 @@ struct z86Base : z86BaseGPRs<bits> {
         }
     }
 
-    template <bool mask_count = true, typename T>
+    template <typename T>
     inline void ROR(T& dst, uint8_t count) {
 
-        if constexpr (mask_count) {
+        if constexpr (SHIFT_MASKING) {
             if constexpr (sizeof(T) < sizeof(uint64_t)) {
                 count &= 0x1F;
             } else {
@@ -2247,11 +2515,11 @@ struct z86Base : z86BaseGPRs<bits> {
         }
     }
 
-    template <bool mask_count = true, typename T>
+    template <typename T>
     inline void RCL(T& dst, uint8_t count) {
 
         constexpr size_t bits = bitsof(T) + 1;
-        if constexpr (mask_count) {
+        if constexpr (SHIFT_MASKING) {
             if constexpr (sizeof(T) < sizeof(uint32_t)) {
                 count = (count & 0x1F) % bits;
             } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
@@ -2273,7 +2541,7 @@ struct z86Base : z86BaseGPRs<bits> {
                 temp += (U)(std::numeric_limits<S>::min)();
             }
 
-            if constexpr (!mask_count) {
+            if constexpr (!SHIFT_MASKING) {
                 count %= bits;
             }
 
@@ -2284,11 +2552,11 @@ struct z86Base : z86BaseGPRs<bits> {
         }
     }
 
-    template <bool mask_count = true, typename T>
+    template <typename T>
     inline void RCR(T& dst, uint8_t count) {
 
         constexpr size_t bits = bitsof(T) + 1;
-        if constexpr (mask_count) {
+        if constexpr (SHIFT_MASKING) {
             if constexpr (sizeof(T) < sizeof(uint32_t)) {
                 count = (count & 0x1F) % bits;
             } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
@@ -2308,7 +2576,7 @@ struct z86Base : z86BaseGPRs<bits> {
                 temp += (U)(std::numeric_limits<S>::min)();
             }
 
-            if constexpr (!mask_count) {
+            if constexpr (!SHIFT_MASKING) {
                 count %= bits;
             }
 
@@ -2319,9 +2587,9 @@ struct z86Base : z86BaseGPRs<bits> {
         }
     }
 
-    template <bool mask_count = true, typename T>
+    template <typename T>
     inline void SHL(T& dst, uint8_t count) {
-        if constexpr (mask_count) {
+        if constexpr (SHIFT_MASKING) {
             if constexpr (sizeof(T) < sizeof(uint64_t)) {
                 count &= 0x1F;
             } else {
@@ -2339,9 +2607,9 @@ struct z86Base : z86BaseGPRs<bits> {
         }
     }
 
-    template <bool mask_count = true, typename T>
+    template <typename T>
     inline void SHR(T& dst, uint8_t count) {
-        if constexpr (mask_count) {
+        if constexpr (SHIFT_MASKING) {
             if constexpr (sizeof(T) < sizeof(uint64_t)) {
                 count &= 0x1F;
             } else {
@@ -2360,24 +2628,29 @@ struct z86Base : z86BaseGPRs<bits> {
     }
 
     // Yay, jank
-    template <bool mask_count = true, typename T>
+    template <typename T>
     inline void SETMO(T& dst, uint8_t count) {
-        if constexpr (mask_count) {
-            if constexpr (sizeof(T) < sizeof(uint64_t)) {
-                count &= 0x1F;
-            } else {
-                count &= 0x3F;
+        if constexpr (HAS_8086_JANK) {
+            if constexpr (SHIFT_MASKING) {
+                if constexpr (sizeof(T) < sizeof(uint64_t)) {
+                    count &= 0x1F;
+                } else {
+                    count &= 0x3F;
+                }
+            }
+
+            if (count) {
+                this->OR<T>(dst, (T)-1);
             }
         }
-
-        if (count) {
-            this->OR<T>(dst, (T)-1);
+        else {
+            return this->SHL(dst, count);
         }
     }
 
-    template <bool mask_count = true, typename T>
+    template <typename T>
     inline void SAR(T& dst, uint8_t count) {
-        if constexpr (mask_count) {
+        if constexpr (SHIFT_MASKING) {
             if constexpr (sizeof(T) < sizeof(uint64_t)) {
                 count &= 0x1F;
             } else {
@@ -2819,40 +3092,40 @@ struct z86Base : z86BaseGPRs<bits> {
     template <bool is_byte = false, typename L>
     inline void binopAR(uint8_t index, const L& lambda) {
         if constexpr (is_byte) {
-            return lambda(ctx.al, this->index_byte_regMB(index));
+            return lambda(this->al, this->index_byte_regMB(index));
         }
         else {
             if constexpr (bits > 16) {
                 if (this->data_size_32()) {
-                    return lambda(ctx.eax, this->index_dword_regMB(index));
+                    return lambda(this->eax, this->index_dword_regMB(index));
                 }
             }
             if constexpr (bits == 64) {
                 if (this->data_size_64()) {
-                    return lambda(ctx.rax, this->index_qword_regMB(index));
+                    return lambda(this->rax, this->index_qword_regMB(index));
                 }
             }
-            return lambda(ctx.ax, this->index_word_regMB(index));
+            return lambda(this->ax, this->index_word_regMB(index));
         }
     }
 
     template <bool is_byte = false, typename P, typename L>
     inline void binopAI(P& pc, const L& lambda) {
         if constexpr (is_byte) {
-            return lambda(ctx.al, pc.read_advance<uint8_t>());
+            return lambda(this->al, pc.read_advance<uint8_t>());
         }
         else {
             if constexpr (bits > 16) {
                 if (this->data_size_32()) {
-                    return lambda(ctx.eax, pc.read_advance<uint32_t>());
+                    return lambda(this->eax, pc.read_advance<uint32_t>());
                 }
                 if constexpr (bits == 64) {
                     if (this->data_size_64()) {
-                        return lambda(ctx.rax, (uint64_t)(int64_t)pc.read_advance<int32_t>());
+                        return lambda(this->rax, (uint64_t)(int64_t)pc.read_advance<int32_t>());
                     }
                 }
             }
-            return lambda(ctx.ax, pc.read_advance<uint16_t>());
+            return lambda(this->ax, pc.read_advance<uint16_t>());
         }
     }
 
@@ -2860,20 +3133,20 @@ struct z86Base : z86BaseGPRs<bits> {
     inline void binopAO(P& pc, const L& lambda) {
         auto offset = pc.read_advance_O();
         if constexpr (is_byte) {
-            return lambda(ctx.al, offset);
+            return lambda(this->al, offset);
         }
         else {
             if constexpr (bits > 16) {
                 if (this->data_size_32()) {
-                    return lambda(ctx.eax, offset);
+                    return lambda(this->eax, offset);
                 }
                 if constexpr (bits == 64) {
                     if (this->data_size_64()) {
-                        return lambda(ctx.rax, offset);
+                        return lambda(this->rax, offset);
                     }
                 }
             }
-            return lambda(ctx.ax, offset);
+            return lambda(this->ax, offset);
         }
     }
 
@@ -3045,5 +3318,6 @@ struct z86Base : z86BaseGPRs<bits> {
         }
     }
 };
+
 
 #endif

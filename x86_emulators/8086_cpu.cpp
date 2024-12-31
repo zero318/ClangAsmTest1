@@ -306,7 +306,8 @@ dllexport void z86_execute() {
             case 0x06: case 0x0E: case 0x16: case 0x1E: // PUSH seg
                 ctx.PUSH(ctx.index_seg(opcode >> 3));
                 break;
-            case 0x07: case 0x0F: case 0x17: case 0x1F: // POP seg
+            case 0x0F:
+            case 0x07: case 0x17: case 0x1F: // POP seg
                 ctx.index_seg(opcode >> 3) = ctx.POP();
                 break;
             case 0x08: // OR Mb, Rb
@@ -906,14 +907,14 @@ dllexport void z86_execute() {
             case 0xD0: // GRP2 Mb, 1
                 ctx.unopM<true>(pc, [](auto& dst, uint8_t r) {
                     switch (r) {
-                        case 0: ctx.ROL<false>(dst, 1); return true;
-                        case 1: ctx.ROR<false>(dst, 1); return true;
-                        case 2: ctx.RCL<false>(dst, 1); return true;
-                        case 3: ctx.RCR<false>(dst, 1); return true;
-                        case 4: ctx.SHL<false>(dst, 1); return true;
-                        case 5: ctx.SHR<false>(dst, 1); return true;
-                        case 6: ctx.SETMO<false>(dst, 1); return true;
-                        case 7: ctx.SAR<false>(dst, 1); return true;
+                        case 0: ctx.ROL(dst, 1); return true;
+                        case 1: ctx.ROR(dst, 1); return true;
+                        case 2: ctx.RCL(dst, 1); return true;
+                        case 3: ctx.RCR(dst, 1); return true;
+                        case 4: ctx.SHL(dst, 1); return true;
+                        case 5: ctx.SHR(dst, 1); return true;
+                        case 6: ctx.SETMO(dst, 1); return true;
+                        case 7: ctx.SAR(dst, 1); return true;
                         default: unreachable;
                     }
                 });
@@ -921,14 +922,14 @@ dllexport void z86_execute() {
             case 0xD1: // GRP2 Mv, 1
                 ctx.unopM(pc, [](auto& dst, uint8_t r) {
                     switch (r) {
-                        case 0: ctx.ROL<false>(dst, 1); return true;
-                        case 1: ctx.ROR<false>(dst, 1); return true;
-                        case 2: ctx.RCL<false>(dst, 1); return true;
-                        case 3: ctx.RCR<false>(dst, 1); return true;
-                        case 4: ctx.SHL<false>(dst, 1); return true;
-                        case 5: ctx.SHR<false>(dst, 1); return true;
-                        case 6: ctx.SETMO<false>(dst, 1); return true;
-                        case 7: ctx.SAR<false>(dst, 1); return true;
+                        case 0: ctx.ROL(dst, 1); return true;
+                        case 1: ctx.ROR(dst, 1); return true;
+                        case 2: ctx.RCL(dst, 1); return true;
+                        case 3: ctx.RCR(dst, 1); return true;
+                        case 4: ctx.SHL(dst, 1); return true;
+                        case 5: ctx.SHR(dst, 1); return true;
+                        case 6: ctx.SETMO(dst, 1); return true;
+                        case 7: ctx.SAR(dst, 1); return true;
                         default: unreachable;
                     }
                 });
@@ -936,14 +937,14 @@ dllexport void z86_execute() {
             case 0xD2: // GRP2 Mb, CL
                 ctx.unopM<true>(pc, [](auto& dst, uint8_t r) {
                     switch (r) {
-                        case 0: ctx.ROL<false>(dst, ctx.cl); return true;
-                        case 1: ctx.ROR<false>(dst, ctx.cl); return true;
-                        case 2: ctx.RCL<false>(dst, ctx.cl); return true;
-                        case 3: ctx.RCR<false>(dst, ctx.cl); return true;
-                        case 4: ctx.SHL<false>(dst, ctx.cl); return true;
-                        case 5: ctx.SHR<false>(dst, ctx.cl); return true;
-                        case 6: ctx.SETMO<false>(dst, ctx.cl); return true;
-                        case 7: ctx.SAR<false>(dst, ctx.cl); return true;
+                        case 0: ctx.ROL(dst, ctx.cl); return true;
+                        case 1: ctx.ROR(dst, ctx.cl); return true;
+                        case 2: ctx.RCL(dst, ctx.cl); return true;
+                        case 3: ctx.RCR(dst, ctx.cl); return true;
+                        case 4: ctx.SHL(dst, ctx.cl); return true;
+                        case 5: ctx.SHR(dst, ctx.cl); return true;
+                        case 6: ctx.SETMO(dst, ctx.cl); return true;
+                        case 7: ctx.SAR(dst, ctx.cl); return true;
                         default: unreachable;
                     }
                 });
@@ -951,14 +952,14 @@ dllexport void z86_execute() {
             case 0xD3: // GRP2 Mv, CL
                 ctx.unopM(pc, [](auto& dst, uint8_t r) {
                     switch (r) {
-                        case 0: ctx.ROL<false>(dst, ctx.cl); return true;
-                        case 1: ctx.ROR<false>(dst, ctx.cl); return true;
-                        case 2: ctx.RCL<false>(dst, ctx.cl); return true;
-                        case 3: ctx.RCR<false>(dst, ctx.cl); return true;
-                        case 4: ctx.SHL<false>(dst, ctx.cl); return true;
-                        case 5: ctx.SHR<false>(dst, ctx.cl); return true;
-                        case 6: ctx.SETMO<false>(dst, ctx.cl); return true;
-                        case 7: ctx.SAR<false>(dst, ctx.cl); return true;
+                        case 0: ctx.ROL(dst, ctx.cl); return true;
+                        case 1: ctx.ROR(dst, ctx.cl); return true;
+                        case 2: ctx.RCL(dst, ctx.cl); return true;
+                        case 3: ctx.RCR(dst, ctx.cl); return true;
+                        case 4: ctx.SHL(dst, ctx.cl); return true;
+                        case 5: ctx.SHR(dst, ctx.cl); return true;
+                        case 6: ctx.SETMO(dst, ctx.cl); return true;
+                        case 7: ctx.SAR(dst, ctx.cl); return true;
                         default: unreachable;
                     }
                 });
