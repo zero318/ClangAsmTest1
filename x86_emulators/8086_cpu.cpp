@@ -31,7 +31,7 @@
 
 static z86Memory<1_MB> mem;
 
-struct z8086Context : z86Core<z8086> {
+struct z8086Context : z86Core<z8086 /*, FLAG_OPCODES_80186 | FLAG_OPCODES_80286 | FLAG_OPCODES_80386 | FLAG_OPCODES_80486 | FLAG_CPUID_CMOV*/> {
 
     // Internal state
     std::atomic<bool> pending_nmi;
@@ -212,6 +212,8 @@ dllexport void z86_execute() {
 
 #define FAULT_CHECK(...) if (expect(__VA_ARGS__, false)) { goto fault; }
 
+#define THROW_UD() if constexpr (!ctx.NO_UD) { ctx.set_fault(IntUD); goto fault; }
+
     for (;;) {
         // Reset per-instruction states
         ctx.seg_override = -1;
@@ -257,13 +259,6 @@ dllexport void z86_execute() {
                 ctx.binopAI(pc, [](auto& dst, auto src) regcall {
                     ctx.ADD(dst, src);
                 });
-                break;
-            case 0x06: case 0x0E: case 0x16: case 0x1E: // PUSH seg
-                ctx.PUSH(ctx.index_seg(opcode >> 3));
-                break;
-            case 0x0F:
-            case 0x07: case 0x17: case 0x1F: // POP seg
-                ctx.index_seg(opcode >> 3) = ctx.POP();
                 break;
             case 0x08: // OR Mb, Rb
                 FAULT_CHECK(ctx.binopMR<true>(pc, [](auto& dst, auto src) regcall {
@@ -541,19 +536,13 @@ dllexport void z86_execute() {
                     ctx.PUSHA();
                     break;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0x61:
                 if constexpr (ctx.OPCODES_80186) {
                     ctx.POPA();
                     break;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0x70: // JO Jb
             case 0x71: // JNO Jb
                 ctx.JCC<CondNO, true>(pc, opcode & 1);
@@ -565,19 +554,13 @@ dllexport void z86_execute() {
                     }));
                     break;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0x63: // ARPL
                 if constexpr (ctx.OPCODES_80286) {
                     // Not valid in real mode apparently
                     // TODO
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0x72: // JC Jb
             case 0x73: // JNC Jb
                 ctx.JCC<CondNC, true>(pc, opcode & 1);
@@ -587,10 +570,7 @@ dllexport void z86_execute() {
                     ctx.set_seg_override(opcode & 0xF);
                     goto next_byte;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0x74: // JZ Jb
             case 0x75: // JNZ Jb
                 ctx.JCC<CondNZ, true>(pc, opcode & 1);
@@ -600,19 +580,13 @@ dllexport void z86_execute() {
                     // TODO: Temporary override
                     goto next_byte;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0x67: // Addr size prefix
                 if constexpr (ctx.max_bits > 16) {
                     // TODO: Temporary override
                     goto next_byte;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0x76: // JBE Jb
             case 0x77: // JA Jb
                 ctx.JCC<CondA, true>(pc, opcode & 1);
@@ -622,10 +596,7 @@ dllexport void z86_execute() {
                     ctx.PUSHI(pc.read_advance_Is());
                     break;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0x69: // IMUL Rv, Mv, Is
                 if constexpr (ctx.OPCODES_80186) {
                     FAULT_CHECK(ctx.binopRM(pc, [&](auto& dst, auto src) regcall {
@@ -633,10 +604,7 @@ dllexport void z86_execute() {
                     }));
                     break;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0x78: // JS Jb
             case 0x79: // JNS Jb
                 ctx.JCC<CondNS, true>(pc, opcode & 1);
@@ -646,10 +614,7 @@ dllexport void z86_execute() {
                     ctx.PUSHI(pc.read_advance<int8_t>());
                     break;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0x6B: // IMUL Rv, Mv, Ib
                 if constexpr (ctx.OPCODES_80186) {
                     FAULT_CHECK(ctx.binopRM(pc, [&](auto& dst, auto src) regcall {
@@ -658,10 +623,7 @@ dllexport void z86_execute() {
                     ++pc;
                     break;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0x7A: // JP Jb
             case 0x7B: // JNP Jb
                 ctx.JCC<CondNP, true>(pc, opcode & 1);
@@ -671,19 +633,13 @@ dllexport void z86_execute() {
                     FAULT_CHECK(ctx.INS<true>());
                     break;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0x6D: // INS
                 if constexpr (ctx.OPCODES_80186) {
                     FAULT_CHECK(ctx.INS());
                     break;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0x7C: // JL Jb
             case 0x7D: // JGE Jb
                 ctx.JCC<CondGE, true>(pc, opcode & 1);
@@ -693,19 +649,13 @@ dllexport void z86_execute() {
                     FAULT_CHECK(ctx.OUTS<true>());
                     break;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0x6F: // OUTS
                 if constexpr (ctx.OPCODES_80186) {
                     FAULT_CHECK(ctx.OUTS());
                     break;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0x7E: // JLE Jb
             case 0x7F: // JG Jb
                 ctx.JCC<CondG, true>(pc, opcode & 1);
@@ -821,13 +771,8 @@ dllexport void z86_execute() {
                     ctx.index_regR<uint16_t>(modrm.R()) = addr.offset;
                 }
                 else {
-                    if constexpr (ctx.NO_UD) {
-                        // TODO: jank
-                    }
-                    else {
-                        ctx.set_fault(IntUD);
-                        goto fault;
-                    }
+                    THROW_UD();
+                    // TODO: jank
                 }
                 break;
             }
@@ -974,10 +919,7 @@ dllexport void z86_execute() {
                     ++pc;
                     break;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0xC2: // RET imm
                 ctx.RETI(pc);
                 goto next_instr;
@@ -1000,11 +942,7 @@ dllexport void z86_execute() {
                     ++pc;
                     break;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
-            
+                THROW_UD();
             case 0xC3: // RET
                 ctx.RET();
                 goto next_instr;
@@ -1040,10 +978,7 @@ dllexport void z86_execute() {
                     ctx.ENTER(pc.read<uint16_t>(), pc.read<uint8_t>(2));
                     break;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0xCA: // RETF imm
                 ctx.RETFI(pc);
                 goto next_instr;
@@ -1052,10 +987,7 @@ dllexport void z86_execute() {
                     ctx.LEAVE();
                     break;
                 }
-                if constexpr (!ctx.NO_UD) {
-                    ctx.set_fault(IntUD);
-                    goto fault;
-                }
+                THROW_UD();
             case 0xCB: // RETF
                 ctx.RETF();
                 goto next_instr;
@@ -1242,7 +1174,7 @@ dllexport void z86_execute() {
                 ++pc;
                 break;
             case 0xF7: // GRP3 Mv
-                FAULT_CHECK(ctx.unopM(pc, [&](auto& val, uint8_t r) regcall -> uint8_t{
+                FAULT_CHECK(ctx.unopM(pc, [&](auto& val, uint8_t r) regcall -> uint8_t {
                     switch (r) {
                         case 0: case 1: // TEST Mv, Is
                             ctx.TEST(val, pc.read_advance_Is());
@@ -1289,6 +1221,571 @@ dllexport void z86_execute() {
                     goto next_instr;
                 }
                 break;
+            case 0x06: case 0x0E: case 0x16: case 0x1E: // PUSH seg
+                ctx.PUSH(ctx.index_seg(opcode >> 3));
+                break;
+            case 0x0F:
+                if constexpr (ctx.OPCODES_80286) {
+                    // TODO: crap
+                    opcode = pc.read_advance();
+                    switch (opcode) {
+                        case 0x00: // GRP6
+                        case 0x01: // GRP7
+                        case 0x02: // LAR Rv, Mv
+                        case 0x03: // LSL Rv, Mv
+                        case 0x04: // SAVEALL
+                        case 0x05: // SYSCALL, LOADALL2
+                        case 0x06: // CLTS
+                        case 0x07: // SYSRET, LOADALL3
+                        case 0x08: // INVD (486)
+                        case 0x09: // WBINVD (486)
+                        case 0x0A: // CL1INVMB (wtf)
+                            break;
+                        case 0x0B: // UD2
+                        case 0xB9: // UD1
+                        case 0xFF: // UD0
+                            ctx.set_fault(IntUD);
+                            goto fault;
+                        case 0x24: // MOV M, TR
+                        case 0x26: // MOV TR, M
+                        case 0xA6: // XBTS
+                        case 0xA7: // IBTS
+                        case 0x0C: case 0x25: case 0x27: case 0x36: case 0x37:
+                        case 0x39: case 0x3B: case 0x3C: case 0x3E: case 0x3F:
+                        case 0x7A: case 0x7B:
+                            THROW_UD();
+                            break;
+                        case 0x0D: // PREFETCHx
+                        case 0x0E: // FEMMS
+                        case 0x0F: // 3DNow!
+                        case 0x10: // MOVUPS/MOVUPD/MOVSS/MOVSD Rx, Mx
+                        case 0x11: // MOVUPS/MOVUPD/MOVSS/MOVSD Mx, Rx
+                        case 0x12: // (MOVLPS/MOVLPD Rx, Mx), (MOVSLDUP Rx, Mx), (MOVDDUP Rx, Mx)
+                        case 0x13: // MOVLPS/MOVLPD Mx, Rx
+                        case 0x14: // UNPCKLPS/UNPCKLPD Rx, Mx
+                        case 0x15: // UNPCKLPS/UNPCKLPD Mx, Rx
+                        case 0x16: // (MOVHPS/MOVHPD Rx, Mx), (MOVSHDUP Rx, Mx)
+                        case 0x17: // MOVHPS/MOVHPD Mx, Rx
+                        case 0x18: case 0x19: case 0x1A: case 0x1B: case 0x1C: case 0x1D: case 0x1E: case 0x1F: // HINT_NOP
+                        case 0x20: // MOV M, CR
+                        case 0x21: // MOV M, DR
+                        case 0x22: // MOV CR, M
+                        case 0x23: // MOV DR, M
+                        case 0x28: // MOVAPS/MOVAPD Rx, Mx
+                        case 0x29: // MOVAPS/MOVAPD Mx, Rx
+                        case 0x2A: // CVTPI2PS/CVTPI2PD/CVTSI2SS/CVTSI2SD Rx, Mx
+                        case 0x2B: // MOVNTPS/MOVNTPD/MOVNTSS/MOVNTSD Mx, Rx
+                        case 0x2C: // (CVTTPS2PI/CVTTPD2PI Rm, Mx), (CVTTSS2SI/CVTTSD2SI Rv, Mx)
+                        case 0x2D: // (CVTPS2PI/CVTPD2PI Rm, Mx), (CVTSS2SI/CVTSD2SI Rv, Mx)
+                        case 0x2E: // UCOMISS/UCOMISD Rx, Mx
+                        case 0x2F: // COMISS/COMISD Rx, Mx
+                        case 0x30: // WRMSR
+                        case 0x31: // RDTSC
+                        case 0x32: // RDMSR
+                        case 0x33: // RDPMC
+                        case 0x34: // SYSENTER
+                        case 0x35: // SYSEXIT
+                        case 0x38: // Three byte opcodes A
+                        case 0x3A: // Three byte opcodes B
+                            break;
+                        case 0x40: // CMOVO Rv, Mv
+                        case 0x41: // CMOVNO Rv, Mv
+                            if constexpr (!ctx.CPUID_CMOV) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) {
+                                ctx.CMOVCC<CondNO>(dst, src, opcode & 1);
+                                return true;
+                            }));
+                            break;
+                        case 0x42: // CMOVC Rv, Mv
+                        case 0x43: // CMOVNC Rv, Mv
+                            if constexpr (!ctx.CPUID_CMOV) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) {
+                                ctx.CMOVCC<CondNC>(dst, src, opcode & 1);
+                                return true;
+                            }));
+                            break;
+                        case 0x44: // CMOVZ Rv, Mv
+                        case 0x45: // CMOVNZ Rv, Mv
+                            if constexpr (!ctx.CPUID_CMOV) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) {
+                                ctx.CMOVCC<CondNZ>(dst, src, opcode & 1);
+                                return true;
+                            }));
+                            break;
+                        case 0x46: // CMOVBE Rv, Mv
+                        case 0x47: // CMOVA Rv, Mv
+                            if constexpr (!ctx.CPUID_CMOV) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) {
+                                ctx.CMOVCC<CondA>(dst, src, opcode & 1);
+                                return true;
+                            }));
+                            break;
+                        case 0x48: // CMOVS Rv, Mv
+                        case 0x49: // CMOVNS Rv, Mv
+                            if constexpr (!ctx.CPUID_CMOV) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) {
+                                ctx.CMOVCC<CondNS>(dst, src, opcode & 1);
+                                return true;
+                            }));
+                            break;
+                        case 0x4A: // CMOVP Rv, Mv
+                        case 0x4B: // CMOVNP Rv, Mv
+                            if constexpr (!ctx.CPUID_CMOV) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) {
+                                ctx.CMOVCC<CondNP>(dst, src, opcode & 1);
+                                return true;
+                            }));
+                            break;
+                        case 0x4C: // CMOVL Rv, Mv
+                        case 0x4D: // CMOVGE Rv, Mv
+                            if constexpr (!ctx.CPUID_CMOV) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) {
+                                ctx.CMOVCC<CondGE>(dst, src, opcode & 1);
+                                return true;
+                            }));
+                            break;
+                        case 0x4E: // CMOVLE Rv, Mv
+                        case 0x4F: // CMOVG Rv, Mv
+                            if constexpr (!ctx.CPUID_CMOV) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) {
+                                ctx.CMOVCC<CondG>(dst, src, opcode & 1);
+                                return true;
+                            }));
+                            break;
+                        case 0x50: // MOVMSKPS/MOVMSKPD Rv, Mx
+                        case 0x51: // SQRTPS/SQRTPD/SQRTSS/SQRTSD Rx, Mx
+                        case 0x52: // RSQRTPS/RSQRTSS Rx, Mx
+                        case 0x53: // RCPPS/RCPSS Rx, Mx
+                        case 0x54: // ANDPS/ANDPD Rx, Mx
+                        case 0x55: // ANDNPS/ANDNPD Rx, Mx
+                        case 0x56: // ORPS/ORPD Rx, Mx
+                        case 0x57: // XORPS/XORPD Rx, Mx
+                        case 0x58: // ADDPS/ADDPD/ADDSS/ADDSD Rx, Mx
+                        case 0x59: // MULPS/MULPD/MULSS/MULSD Rx, Mx
+                        case 0x5A: // CVTPS2PD/CVTPD2PS/CVTSS2SD/CVTSD2SS Rx, Mx
+                        case 0x5B: // CVTDQ2PS/CVTPS2DQ/CVTTPS2DQ Rx, Mx
+                        case 0x5C: // SUBPS/SUBPD/SUBSS/SUBSD Rx, Mx
+                        case 0x5D: // MINPS/MINPD/MINSS/MINSD Rx, Mx
+                        case 0x5E: // DIVPS/DIVPD/DIVSS/DIVSD Rx, Mx
+                        case 0x5F: // MAXPS/MAXPD/MAXSS/MAXSD Rx, Mx
+                        case 0x60: // PUNPCKLBW R, M
+                        case 0x61: // PUNPCKLWD R, M
+                        case 0x62: // PUNPCKLDQ R, M
+                        case 0x63: // PACKSSWB R, M
+                        case 0x64: // PCMPGTB R, M
+                        case 0x65: // PCMPGTW R, M
+                        case 0x66: // PCMPGTD R, M
+                        case 0x67: // PACKUSWB R, M
+                        case 0x68: // PUNPCKHBW R, M
+                        case 0x69: // PUNPCKHWD R, M
+                        case 0x6A: // PUNPCKHDQ R, M
+                        case 0x6B: // PACKSSDW R, M
+                        case 0x6C: // PUNPCKLQDQ R, M
+                        case 0x6D: // PUNPCKHQDQ R, M
+                        case 0x6E: // MOVD R, M
+                        case 0x6F: // MOVQ/MOVDQA/MOVDQU R, M
+                        case 0x70: // PSHUFW/PSHUFD/PSHUFHW/PSHUFLW R, M, Ib
+                        case 0x71: // GRP12
+                        case 0x72: // GRP13
+                        case 0x73: // GRP14
+                        case 0x74: // PCMPEQB Rx, Mx
+                        case 0x75: // PCMPEQW Rx, Mx
+                        case 0x76: // PCMPEQD Rx, Mx
+                        case 0x77: // EMMS
+                        case 0x78: // EXTRQ/INSERTQ
+                        case 0x79: // EXTRQ/INSERTQ
+                        case 0x7C: // HADDPD/HADDPS Rx, Mx
+                        case 0x7D: // HSUBPD/HSUBPS Rx, Mx
+                        case 0x7E: // MOVD/MOVQ
+                        case 0x7F: // MOVQ/MOVDQA/MOVDQU M, R
+                            break;
+                        case 0x80: // JO Jz
+                        case 0x81: // JNO Jz
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            ctx.JCC<CondNO>(pc, opcode & 1);
+                            goto next_instr;
+                        case 0x82: // JC Jz
+                        case 0x83: // JNC Jz
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            ctx.JCC<CondNC>(pc, opcode & 1);
+                            goto next_instr;
+                        case 0x84: // JZ Jz
+                        case 0x85: // JNZ Jz
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            ctx.JCC<CondNZ>(pc, opcode & 1);
+                            goto next_instr;
+                        case 0x86: // JBE Jz
+                        case 0x87: // JA Jz
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            ctx.JCC<CondA>(pc, opcode & 1);
+                            goto next_instr;
+                        case 0x88: // JS Jz
+                        case 0x89: // JNS Jz
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            ctx.JCC<CondNS>(pc, opcode & 1);
+                            goto next_instr;
+                        case 0x8A: // JP Jz
+                        case 0x8B: // JNP Jz
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            ctx.JCC<CondNP>(pc, opcode & 1);
+                            goto next_instr;
+                        case 0x8C: // JL Jz
+                        case 0x8D: // JGE Jz
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            ctx.JCC<CondGE>(pc, opcode & 1);
+                            goto next_instr;
+                        case 0x8E: // JLE Jz
+                        case 0x8F: // JG Jz
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            ctx.JCC<CondG>(pc, opcode & 1);
+                            goto next_instr;
+                        case 0x90: // SETO Mb
+                        case 0x91: // SETNO Mb
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.unopM<true>(pc, [=](auto& dst, uint8_t r) regcall {
+                                ctx.SETCC<CondNO>(dst, opcode & 1);
+                                return true;
+                            }));
+                            break;
+                        case 0x92: // SETC Mb
+                        case 0x93: // SETNC Mb
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.unopM<true>(pc, [=](auto& dst, uint8_t r) regcall {
+                                ctx.SETCC<CondNC>(dst, opcode & 1);
+                                return true;
+                            }));
+                            break;
+                        case 0x94: // SETZ Mb
+                        case 0x95: // SETNZ Mb
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.unopM<true>(pc, [=](auto& dst, uint8_t r) regcall {
+                                ctx.SETCC<CondNZ>(dst, opcode & 1);
+                                return true;
+                            }));
+                            break;
+                        case 0x96: // SETBE Mb
+                        case 0x97: // SETA Mb
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.unopM<true>(pc, [=](auto& dst, uint8_t r) regcall {
+                                ctx.SETCC<CondA>(dst, opcode & 1);
+                                return true;
+                            }));
+                            break;
+                        case 0x98: // SETS Mb
+                        case 0x99: // SETNS Mb
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.unopM<true>(pc, [=](auto& dst, uint8_t r) regcall {
+                                ctx.SETCC<CondNS>(dst, opcode & 1);
+                                return true;
+                            }));
+                            break;
+                        case 0x9A: // SETP Mb
+                        case 0x9B: // SETNP Mb
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.unopM<true>(pc, [=](auto& dst, uint8_t r) regcall {
+                                ctx.SETCC<CondNP>(dst, opcode & 1);
+                                return true;
+                            }));
+                            break;
+                        case 0x9C: // SETL Mb
+                        case 0x9D: // SETGE Mb
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.unopM<true>(pc, [=](auto& dst, uint8_t r) regcall {
+                                ctx.SETCC<CondGE>(dst, opcode & 1);
+                                return true;
+                            }));
+                            break;
+                        case 0x9E: // SETLE Mb
+                        case 0x9F: // SETG Mb
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.unopM<true>(pc, [=](auto& dst, uint8_t r) regcall {
+                                ctx.SETCC<CondG>(dst, opcode & 1);
+                                return true;
+                            }));
+                            break;
+                        case 0xA0: // PUSH FS
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            ctx.PUSH(ctx.fs);
+                            break;
+                        case 0xA1: // POP FS
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            ctx.fs = ctx.POP<uint16_t>();
+                            break;
+                        case 0xA2: // CPUID
+                            break;
+                        case 0xA3: // BT Mv, Gv
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) {
+                                // TODO
+                                return false;
+                            }));
+                            break;
+                        case 0xA4: // SHLD Mv, Gv, Ib
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopMR(pc, [&](auto& dst, auto src) {
+                                ctx.SHLD(dst, src, pc.read<uint8_t>());
+                                return true;
+                            }));
+                            ++pc;
+                            break;
+                        case 0xA5: // SHLD Mv, Gv, CL
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) {
+                                ctx.SHLD(dst, src, ctx.cl);
+                                return true;
+                            }));
+                            break;
+                        case 0xA8: // PUSH GS
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            ctx.PUSH(ctx.gs);
+                            break;
+                        case 0xA9: // POP GS
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            ctx.gs = ctx.POP<uint16_t>();
+                            break;
+                        case 0xAA: // RSM
+                            break;
+                        case 0xAB: // BTS Mv, Rv
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) {
+                                // TODO
+                                return true;
+                            }));
+                            break;
+                        case 0xAC: // SHRD Mv, Rv, Ib
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopMR(pc, [&](auto dst, auto src) {
+                                ctx.SHRD(dst, src, pc.read<uint8_t>());
+                                return true;
+                            }));
+                            ++pc;
+                            break;
+                        case 0xAD: // SHRD Mv, Rv, CL
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopMR(pc, [](auto dst, auto src) {
+                                ctx.SHRD(dst, src, ctx.cl);
+                                return true;
+                            }));
+                            break;
+                        case 0xAE: // GRP15
+                            break;
+                        case 0xAF: // IMUL Rv, Mv
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) {
+                                ctx.IMUL(dst, src);
+                                return true;
+                            }));
+                            break;
+                        case 0xB0: // CMPXCHG Mb, Rb
+                        case 0xB1: // CMPXCHG Mv, Rb
+                            break;
+                        case 0xB2: // LSS Rv, M
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopRMF(pc, [](auto& dst, auto src) regcall {
+                                dst = src;
+                                ctx.ss = src >> (bitsof(src) >> 1);
+                                return true;
+                            }));
+                            break;
+                        case 0xB3: // BTR Mv, Rv
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) {
+                                // TODO
+                                return true;
+                            }));
+                            break;
+                        case 0xB4: case 0xB5: // LFS/LGS Rv, M
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopRMF(pc, [=](auto& dst, auto src) regcall {
+                                dst = src;
+                                ctx.index_seg(FS + (opcode & 1)) = src >> (bitsof(src) >> 1);
+                                return true;
+                            }));
+                            break;
+                        case 0xB6: // MOVZX Rv, Mb
+                        case 0xB7: // MOVZX Rv, Mv
+                        case 0xB8: // JMPE, POPCNT Rv, Mv
+                        case 0xBA: // GRP8
+                            break;
+                        case 0xBB: // BTC Mv, Gv
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) {
+                                // TODO
+                                return true;
+                            }));
+                            break;
+                        case 0xBC: // BSF/TZCNT Rv, Mv
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) {
+                                ctx.BSF(dst, src);
+                                return true;
+                            }));
+                            break;
+                        case 0xBD: // BSR/LZCNT Rv, Mv
+                            if constexpr (!ctx.OPCODES_80386) {
+                                THROW_UD();
+                            }
+                            FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) {
+                                ctx.BSR(dst, src);
+                                return true;
+                            }));
+                            break;
+                        case 0xBE: // MOVSX Rv, Mb
+                        case 0xBF: // MOVSX Rv, Mv
+                        case 0xC0: // XADD Mb, Rb
+                        case 0xC1: // XADD Mv, Rv
+                        case 0xC2: // CMPccPS/CMPccPD/CMPccSS/CMPccSD Rx, Mx
+                        case 0xC3: // MOVNTI Mv, Rv
+                        case 0xC4: // PINSRW Rx, Mx, Ib
+                        case 0xC5: // PEXTRW Rx, Mx, Ib
+                        case 0xC6: // SHUFPS/SHUFPD Rx, Mx, Ib
+                        case 0xC7: // GRP9
+                            break;
+                        case 0xC8: case 0xC9: case 0xCA: case 0xCB: case 0xCC: case 0xCD: case 0xCE: case 0xCF: // BSWAP reg
+                            if constexpr (!ctx.OPCODES_80486) {
+                                THROW_UD();
+                            }
+                            ctx.BSWAP(ctx.index_regMB<uint16_t>(opcode & 7));
+                            break;
+                        case 0xD0: // ADDSUBPD/ADDSUBPS Rx, Mx
+                        case 0xD1: // PSRLW Rx, Mx
+                        case 0xD2: // PSRLD Rx, Mx
+                        case 0xD3: // PSRLQ Rx, Mx
+                        case 0xD4: // PADDQ Rx, Mx
+                        case 0xD5: // MULLW Rx, Mx
+                        case 0xD6: // MOVQ/MOVQ2DQ/MOVDQ2W
+                        case 0xD7: // PMOVMSKB Rx, Mx
+                        case 0xD8: // PSUBUSB Rx, Mx
+                        case 0xD9: // PSUBUSW Rx, Mx
+                        case 0xDA: // PMINUB Rx, Mx
+                        case 0xDB: // PAND Rx, Mx
+                        case 0xDC: // PADDUSB Rx, Mx
+                        case 0xDD: // PADDUSW Rx, Mx
+                        case 0xDE: // PMAXUB Rx, Mx
+                        case 0xDF: // PANDN Rx, Mx
+                        case 0xE0: // PAVGB Rx, Mx
+                        case 0xE1: // PSRAW Rx, Mx
+                        case 0xE2: // PSRAS Rx, Mx
+                        case 0xE3: // PAVGW Rx, Mx
+                        case 0xE4: // PMULHUW Rx, Mx
+                        case 0xE5: // PMULHW Rx, Mx
+                        case 0xE6: // CVTTPD2DQ/CVTDQ2PD/CVTPD2DQ Rx, Mx
+                        case 0xE7: // MOVNTQ/MOVNTDQ Mx, Rx
+                        case 0xE8: // PSUBSB Rx, Mx
+                        case 0xE9: // PSUBSW Rx, Mx
+                        case 0xEA: // PMINSW Rx, Mx
+                        case 0xEB: // POR Rx, Mx
+                        case 0xEC: // PADDSB Rx, Mx
+                        case 0xED: // PADDSW Rx, Mx
+                        case 0xEE: // PMAXSW Rx, Mx
+                        case 0xEF: // PXOR Rx, Mx
+                        case 0xF0: // LDDQU Rx, Mx
+                        case 0xF1: // PSLLW Rx, Mx
+                        case 0xF2: // PSLLD Rx, Mx
+                        case 0xF3: // PSLLQ Rx, Mx
+                        case 0xF4: // PMULUDQ Rx, Mx
+                        case 0xF5: // PMADDWD Rx, Mx
+                        case 0xF6: // PSADBW Rx, Mx
+                        case 0xF7: // MASKMOVQ/MASKMOVDQU Rx, Mx
+                        case 0xF8: // PSUBB Rx, Mx
+                        case 0xF9: // PSUBW Rx, Mx
+                        case 0xFA: // PSUBD Rx, Mx
+                        case 0xFB: // PSUBQ Rx, Mx
+                        case 0xFC: // PADDB Rx, Mx
+                        case 0xFD: // PADDW Rx, Mx
+                        case 0xFE: // PADDD Rx, Mx
+                            break;
+                        default:
+                            unreachable;
+                    }
+                    break;
+                }
+                THROW_UD();
+            case 0x07: case 0x17: case 0x1F: // POP seg
+                ctx.index_seg(opcode >> 3) = ctx.POP();
+                break;
+            default:
+                unreachable;
             fault:
                 if constexpr (ctx.FAULTS_ARE_TRAPS) {
                     goto trap;

@@ -70,7 +70,11 @@ enum z86FeatureFlagsA : uint64_t {
     FLAG_NO_UD              = 1 << 3,
     FLAG_UNMASK_SHIFTS      = 1 << 4,
     FLAG_OLD_PUSH_SP        = 1 << 5,
-    FLAG_OPCODES_80186      = 1 << 6
+    FLAG_OPCODES_80186      = 1 << 6,
+    FLAG_OPCODES_80286      = 1 << 7,
+    FLAG_OPCODES_80386      = 1 << 8,
+    FLAG_OPCODES_80486      = 1 << 9,
+    FLAG_CPUID_CMOV         = 1 << 10
 };
 
 // Code shared between x86 cores
@@ -1242,8 +1246,13 @@ struct z86Base : z86RegBase<bits> {
     static inline constexpr bool FAULTS_ARE_TRAPS = flagsA & FLAG_FAULTS_ARE_TRAPS;
     static inline constexpr bool OLD_PUSH_SP = flagsA & FLAG_OLD_PUSH_SP;
     static inline constexpr bool OPCODES_80186 = flagsA & FLAG_OPCODES_80186;
-    static inline constexpr bool OPCODES_80286 = false;
-    static inline constexpr bool OPCODES_80386 = false;
+    static inline constexpr bool OPCODES_80286 = flagsA & FLAG_OPCODES_80286;
+    static inline constexpr bool OPCODES_80386 = flagsA & FLAG_OPCODES_80386;
+    static inline constexpr bool OPCODES_80486 = flagsA & FLAG_OPCODES_80486;
+    static inline constexpr bool CPUID_CMOV = flagsA & FLAG_CPUID_CMOV;
+    static inline constexpr bool CPUID_MMX = false;
+    static inline constexpr bool CPUID_SSE = false;
+    static inline constexpr bool CPUID_SSE2 = false;
 
     using HT = z86BaseGPRs<bits>::HT;
     using RT = z86BaseGPRs<bits>::RT;
@@ -2252,6 +2261,18 @@ struct z86Base : z86RegBase<bits> {
         }
     }
 
+    template <CONDITION_CODE cc, typename T>
+    inline void regcall CMOVCC(T& dst, T src, bool val = true) {
+        if (this->cond<cc>(val)) {
+            dst = src;
+        }
+    }
+
+    template <CONDITION_CODE cc, typename T>
+    inline void regcall SETCC(T& dst, bool val = true) {
+        dst = this->cond<cc>(val);
+    }
+
     template <CONDITION_CODE cc, bool is_byte = false, typename P>
     inline void regcall JCC(const P& pc, bool val = true) {
         if constexpr (is_byte) {
@@ -2839,7 +2860,7 @@ struct z86Base : z86RegBase<bits> {
         if (count) {
             using S = std::make_signed_t<T>;
 
-            this->carry = ((size_t)dst >> bitsof(T) - count) & 1;
+            this->carry = ((size_t)dst >> (bitsof(T) - count)) & 1;
             T res = (size_t)dst << count;
             this->overflow = this->carry == (S)res < 0;
             dst = res;
@@ -2860,7 +2881,7 @@ struct z86Base : z86RegBase<bits> {
         if (count) {
             using S = std::make_signed_t<T>;
 
-            this->carry = ((size_t)dst >> 1 - count) & 1;
+            this->carry = ((size_t)dst >> (count - 1)) & 1;
             this->overflow = (S)dst < 0;
             dst = (size_t)dst >> count;
             this->update_pzs(dst);
@@ -2899,9 +2920,56 @@ struct z86Base : z86RegBase<bits> {
         }
 
         if (count) {
-            this->carry = ((size_t)dst >> 1 - count) & 1;
+            this->carry = ((size_t)dst >> (count - 1)) & 1;
             this->overflow = false;
             dst = (ssize_t)dst >> count;
+            this->update_pzs(dst);
+        }
+    }
+
+    template <typename T>
+    inline void regcall SHLD(T& dst, T src, uint8_t count) {
+        if constexpr (SHIFT_MASKING) {
+            if constexpr (sizeof(T) < sizeof(uint64_t)) {
+                count &= 0x1F;
+            } else {
+                count &= 0x3F;
+            }
+        }
+
+        if (count) {
+            using DU = dbl_int_t<std::make_unsigned_t<T>>;
+            using S = std::make_signed_t<T>;
+
+            DU temp = src;
+            temp |= (DU)dst << bitsof(T);
+            this->carry = ((size_t)temp >> (bitsof(DU) - count)) & 1;
+            dst = (size_t)temp << count;
+            this->overflow = this->carry == (S)dst < 0;
+            this->update_pzs(dst);
+        }
+    }
+
+    template <typename T>
+    inline void regcall SHRD(T& dst, T src, uint8_t count) {
+        if constexpr (SHIFT_MASKING) {
+            if constexpr (sizeof(T) < sizeof(uint64_t)) {
+                count &= 0x1F;
+            } else {
+                count &= 0x3F;
+            }
+        }
+
+        if (count) {
+            using U = std::make_unsigned_t<T>;
+            using DU = dbl_int_t<U>;
+            using S = std::make_signed_t<T>;
+
+            DU temp = dst;
+            temp |= (DU)src << bitsof(T);
+            this->carry = ((size_t)temp >> (count - 1)) & 1;
+            dst = (size_t)temp >> count;
+            this->overflow = __builtin_parity((U)dst >> (bitsof(T) - 2) & 3);
             this->update_pzs(dst);
         }
     }
@@ -3671,14 +3739,14 @@ struct z86Base : z86RegBase<bits> {
     }
 };
 
-template <z86CoreType core_type>
+template <z86CoreType core_type, uint64_t flagsA = 0>
 struct z86Core;
 
-template <>
-struct z86Core<z8086> : z86Base<16, 16, FLAG_PUSH_CS | FLAG_REP_INVERT_MULDIV | FLAG_FAULTS_ARE_TRAPS | FLAG_NO_UD | FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP> {};
+template <uint64_t flagsA>
+struct z86Core<z8086, flagsA> : z86Base<16, 16, flagsA | FLAG_PUSH_CS | FLAG_REP_INVERT_MULDIV | FLAG_FAULTS_ARE_TRAPS | FLAG_NO_UD | FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP> {};
 
-template <>
-struct z86Core<z80186> : z86Base<16, 16, FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP | FLAG_OPCODES_80186> {};
+template <uint64_t flagsA>
+struct z86Core<z80186, flagsA> : z86Base<16, 16, flagsA | FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP | FLAG_OPCODES_80186> {};
 
 
 #endif
