@@ -311,6 +311,13 @@ enum REP_STATE : int8_t {
     REP_Z = 1, REP_E = REP_Z
 };
 
+enum OPCODE_PREFIX_TYPE : uint8_t {
+    OpcodeNoPrefix = 0,
+    Opcode66Prefix = 1,
+    OpcodeF2Prefix = 2,
+    OpcodeF3Prefix = 3
+};
+
 struct REX {
 #if USE_BITFIELDS
     union {
@@ -824,8 +831,27 @@ struct z86RegBase<16> : z86BaseGPRs<16> {
     static constexpr inline int8_t data_size = 1;
     static constexpr inline int8_t addr_size = 1;
     static constexpr inline int8_t stack_size = 1;
+    static constexpr inline int8_t default_data_size = 1;
+    static constexpr inline int8_t default_addr_size = 1;
     static constexpr inline int8_t mode = 1;
+    static constexpr inline uint8_t opcode_prefix = 0;
     static constexpr inline REX rex_bits = {};
+
+    inline constexpr void reset_prefixes() {
+    }
+
+    inline constexpr void set_opcode_select(uint8_t type) {
+    }
+
+    inline constexpr void data_size_prefix() {
+    }
+
+    inline constexpr void addr_size_prefix() {
+    }
+
+    inline constexpr uint8_t opcode_select() const {
+        return this->opcode_prefix;
+    }
 
     inline constexpr bool data_size_16() const {
         return true;
@@ -858,6 +884,7 @@ struct z86RegBase<16> : z86BaseGPRs<16> {
         return {};
     }
 
+
 };
 
 template <>
@@ -871,8 +898,34 @@ struct z86RegBase<32> : z86BaseGPRs<32> {
     int8_t data_size = 1;
     int8_t addr_size = 1;
     int8_t stack_size = 1;
+    int8_t default_data_size = 1;
+    int8_t default_addr_size = 1;
     int8_t mode = 1;
+    uint8_t opcode_prefix = 0;
     static constexpr inline REX rex_bits = {};
+    
+    inline constexpr void reset_prefixes() {
+        this->data_size = this->default_data_size;
+        this->addr_size = this->default_addr_size;
+        this->opcode_prefix = 0;
+    }
+
+    inline constexpr void set_opcode_select(uint8_t type) {
+        this->opcode_prefix = type;
+    }
+
+    inline constexpr void data_size_prefix() {
+        this->data_size = !this->default_data_size;
+        this->set_opcode_select(1);
+    }
+
+    inline constexpr void addr_size_prefix() {
+        this->addr_size = !this->default_addr_size;
+    }
+
+    inline constexpr uint8_t opcode_select() const {
+        return this->opcode_prefix;
+    }
 
     inline constexpr uint8_t& index_byte_reg(uint8_t index) {
         return *(&this->gpr[index & 3].byte + (index > 3));
@@ -934,8 +987,34 @@ struct z86RegBase<64> : z86BaseGPRs<64> {
     int8_t data_size = 1;
     int8_t addr_size = 1;
     int8_t stack_size = 1;
+    int8_t default_data_size = 1;
+    int8_t default_addr_size = 1;
     int8_t mode = 1;
+    uint8_t opcode_prefix = 0;
     REX rex_bits = {};
+
+    inline constexpr void reset_prefixes() {
+        this->data_size = this->default_data_size;
+        this->addr_size = this->default_addr_size;
+        this->opcode_prefix = 0;
+    }
+
+    inline constexpr void set_opcode_select(uint8_t type) {
+        this->opcode_prefix = type;
+    }
+
+    inline constexpr void data_size_prefix() {
+        this->data_size = this->default_data_size <= 0;
+        this->set_opcode_select(1);
+    }
+
+    inline constexpr void addr_size_prefix() {
+        this->addr_size = this->default_addr_size <= 0;
+    }
+
+    inline constexpr uint8_t opcode_select() const {
+        return this->opcode_prefix;
+    }
 
     inline constexpr auto& index_word_reg(uint8_t index) {
         return this->gpr[index].word;
@@ -1253,6 +1332,11 @@ struct z86Base : z86RegBase<bits> {
     static inline constexpr bool CPUID_MMX = false;
     static inline constexpr bool CPUID_SSE = false;
     static inline constexpr bool CPUID_SSE2 = false;
+    static inline constexpr bool CPUID_SSE3 = false;
+    static inline constexpr bool CPUID_SSSE3 = false;
+    static inline constexpr bool CPUID_SSE41 = false;
+    static inline constexpr bool CPUID_SSE42 = false;
+    static inline constexpr bool CPUID_SSE4A = false;
 
     using HT = z86BaseGPRs<bits>::HT;
     using RT = z86BaseGPRs<bits>::RT;
@@ -1728,6 +1812,12 @@ struct z86Base : z86RegBase<bits> {
     int8_t seg_override;
     int8_t rep_type;
     int16_t pending_sinterrupt;
+
+    inline constexpr void set_rep_type(uint8_t type) {
+        type &= 1;
+        this->rep_type = type;
+        this->set_opcode_select(type + 2);
+    }
 
     inline constexpr void set_seg_override(uint8_t seg) {
         this->seg_override = seg;
@@ -2975,6 +3065,45 @@ struct z86Base : z86RegBase<bits> {
     }
 
     template <typename T>
+    inline void regcall BT(T dst, T src) {
+        assume(src < bitsof(T));
+        using U = std::make_unsigned_t<T>;
+
+        const U mask = (U)1 << src;
+        this->carry = dst & mask;
+    }
+
+    template <typename T>
+    inline void regcall BTS(T& dst, T src) {
+        assume(src < bitsof(T));
+        using U = std::make_unsigned_t<T>;
+
+        const U mask = (U)1 << src;
+        this->carry = dst & mask;
+        dst |= mask;
+    }
+
+    template <typename T>
+    inline void regcall BTR(T& dst, T src) {
+        assume(src < bitsof(T));
+        using U = std::make_unsigned_t<T>;
+
+        const U mask = (U)1 << src;
+        this->carry = dst & mask;
+        dst &= ~mask;
+    }
+
+    template <typename T>
+    inline void regcall BTC(T& dst, T src) {
+        assume(src < bitsof(T));
+        using U = std::make_unsigned_t<T>;
+
+        const U mask = (U)1 << src;
+        this->carry = dst & mask;
+        dst ^= mask;
+    }
+
+    template <typename T>
     inline void regcall BSF(T& dst, T src) {
         if (!(this->zero = !src)) {
             for (size_t i = 0; i < bitsof(T); ++i) {
@@ -3621,6 +3750,24 @@ struct z86Base : z86RegBase<bits> {
     }
 
     template <typename T, typename P, typename L>
+    inline bool regcall binopMRB_impl(P& pc, const L& lambda);
+
+    template <typename P, typename L>
+    inline bool regcall binopMRB(P& pc, const L& lambda) {
+        if constexpr (bits > 16) {
+            if (this->data_size_32()) {
+                return this->binopMRB_impl<uint32_t>(pc, lambda);
+            }
+            if constexpr (bits == 64) {
+                if (this->data_size_64()) {
+                    return this->binopMRB_impl<uint64_t>(pc, lambda);
+                }
+            }
+        }
+        return this->binopMRB_impl<uint16_t>(pc, lambda);
+    }
+
+    template <typename T, typename P, typename L>
     inline bool regcall binopRMF_impl(P& pc, const L& lambda);
 
     template <typename P, typename L>
@@ -3735,6 +3882,47 @@ struct z86Base : z86RegBase<bits> {
                 }
             }
             return this->unopMS_impl<uint16_t>(pc);
+        }
+    }
+
+    template <typename T, typename P, typename L>
+    inline bool regcall unopMW_impl(P& pc, const L& lambda);
+
+    template <typename P, typename L>
+    inline bool regcall unopMW(P& pc, const L& lambda) {
+        if constexpr (bits > 16) {
+            if (this->data_size_32()) {
+                return this->unopMW_impl<uint32_t>(pc, lambda);
+            }
+            if constexpr (bits == 64) {
+                if (this->data_size_64()) {
+                    return this->unopMW_impl<uint64_t>(pc, lambda);
+                }
+            }
+        }
+        return this->unopMW_impl<uint16_t>(pc, lambda);
+    }
+
+    template <typename T, typename P, typename L>
+    inline bool regcall unopMM_impl(P& pc, const L& lambda);
+
+    template <bool is_byte = false, typename P, typename L>
+    inline bool regcall unopMM(P& pc, const L& lambda) {
+        if constexpr (is_byte) {
+            return this->unopMM_impl(pc, lambda);
+        }
+        else {
+            if constexpr (bits > 16) {
+                if (this->data_size_32()) {
+                    return this->unopMM_impl<uint32_t>(pc, lambda);
+                }
+                if constexpr (bits == 64) {
+                    if (this->data_size_64()) {
+                        return this->unopMM_impl<uint64_t>(pc, lambda);
+                    }
+                }
+            }
+            return this->unopMM_impl<uint16_t>(pc, lambda);
         }
     }
 };

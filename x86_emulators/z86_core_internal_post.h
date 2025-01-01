@@ -383,6 +383,27 @@ inline bool regcall z86BaseDefault::binopRM_impl(P& pc, const L& lambda) {
     return false;
 }
 
+// Bit test memory operand
+template <z86BaseTemplate>
+template <typename T, typename P, typename L>
+inline bool regcall z86BaseDefault::binopMRB_impl(P& pc, const L& lambda) {
+    ModRM modrm = pc.read_advance<ModRM>();
+    T rval = this->index_regR<T>(modrm.R());
+    T mask = rval & bitsof(T) - 1;
+    if (modrm.is_mem()) {
+        P data_addr = modrm.parse_memM(pc);
+        data_addr.offset += sizeof(T) * (rval >> std::bit_width(bitsof(T) - 1));
+        T mval = data_addr.read<T>();
+        if (lambda(mval, mask)) {
+            data_addr.write<T>(mval);
+        }
+    }
+    else {
+        lambda(this->index_regMB<T>(modrm.M()), mask);
+    }
+    return false;
+}
+
 // Far width memory operand, special for LDS/LES
 template <z86BaseTemplate>
 template <typename T, typename P, typename L>
@@ -980,6 +1001,53 @@ inline bool regcall z86BaseDefault::unopMS_impl(P& pc) {
         }
     }
     return false;
+}
+
+// Special unop for group 6
+template <z86BaseTemplate>
+template <typename T, typename P, typename L>
+inline bool regcall z86BaseDefault::unopMW_impl(P& pc, const L& lambda) {
+    ModRM modrm = pc.read_advance<ModRM>();
+    uint8_t r = modrm.R();
+    uint8_t ret;
+    if (modrm.is_mem()) {
+        P data_addr = modrm.parse_memM(pc);
+        T mval = data_addr.read<uint16_t>();
+        ret = lambda(mval, r);
+        if (ret & 1) {
+            data_addr.write<uint16_t>(mval);
+        }
+    }
+    else {
+        ret = lambda(this->index_regMB<T>(modrm.M()), r);
+    }
+    if constexpr (this->FAULTS_ARE_TRAPS) {
+        return false;
+    }
+    return ret & 2;
+}
+
+template <z86BaseTemplate>
+template <typename T, typename P, typename L>
+inline bool regcall z86BaseDefault::unopMM_impl(P& pc, const L& lambda) {
+    ModRM modrm = pc.read_advance<ModRM>();
+    uint8_t r = modrm.R();
+    uint8_t ret;
+    if (modrm.is_mem()) {
+        P data_addr = modrm.parse_memM(pc);
+        T mval = data_addr.read<uint16_t>();
+        ret = lambda(mval, r);
+        if (ret & 1) {
+            data_addr.write<uint16_t>(mval);
+        }
+    }
+    else {
+        ret = lambda(this->index_regMB<T>(modrm.M()), r);
+    }
+    if constexpr (this->FAULTS_ARE_TRAPS) {
+        return false;
+    }
+    return ret & 2;
 }
 
 #endif
