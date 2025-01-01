@@ -903,7 +903,7 @@ struct z86RegBase<16, has_x87, max_sse_bits, sse_reg_count> : z86BaseGPRs<16>, z
 };
 
 template <bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
-struct z86RegBase<32, has_x87, max_sse_bits, sse_reg_count> : z86BaseGPRs<32>, z86BaseFPU<has_x87>, z86BaseSSE<max_sse_bits, sse_reg_count>
+struct z86RegBase<32, has_x87, max_sse_bits, sse_reg_count> : z86BaseGPRs<32>, z86BaseFPU<has_x87>, z86BaseSSE<max_sse_bits, sse_reg_count> {
     union {
         uint32_t rip;
         uint32_t eip;
@@ -992,7 +992,7 @@ struct z86RegBase<32, has_x87, max_sse_bits, sse_reg_count> : z86BaseGPRs<32>, z
 };
 
 template <bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
-struct z86RegBase<64, has_x87, max_sse_bits, sse_reg_count> : z86BaseGPRs<64>, z86BaseFPU<has_x87>, z86BaseSSE<max_sse_bits, sse_reg_count>
+struct z86RegBase<64, has_x87, max_sse_bits, sse_reg_count> : z86BaseGPRs<64>, z86BaseFPU<has_x87>, z86BaseSSE<max_sse_bits, sse_reg_count> {
     union {
         uint64_t rip;
         uint32_t eip;
@@ -2906,7 +2906,7 @@ struct z86Base : z86RegBase<bits, false, 0, 0> {
             }
 
             if constexpr (!SHIFT_MASKING) {
-                count %= bits;
+                count %= total_bits;
             }
 
             temp = temp << count | temp >> (total_bits - count);
@@ -2919,10 +2919,10 @@ struct z86Base : z86RegBase<bits, false, 0, 0> {
     template <typename T>
     inline void regcall RCR(T& dst, uint8_t count) {
 
-        constexpr size_t bits = bitsof(T) + 1;
+        constexpr size_t total_bits = bitsof(T) + 1;
         if constexpr (SHIFT_MASKING) {
             if constexpr (sizeof(T) < sizeof(uint32_t)) {
-                count = (count & 0x1F) % bits;
+                count = (count & 0x1F) % total_bits;
             } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
                 count &= 0x1F;
             } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
@@ -2934,17 +2934,17 @@ struct z86Base : z86RegBase<bits, false, 0, 0> {
             using U = std::make_unsigned_t<T>;
             using S = std::make_signed_t<T>;
 
-            UBitInt(bits) temp = dst;
+            UBitInt(total_bits) temp = dst;
             if (this->carry) {
                 temp += (U)(std::numeric_limits<S>::min)();
                 temp += (U)(std::numeric_limits<S>::min)();
             }
 
             if constexpr (!SHIFT_MASKING) {
-                count %= bits;
+                count %= total_bits;
             }
 
-            temp = temp >> count | temp << bits - count;
+            temp = temp >> count | temp << total_bits - count;
             this->carry = temp > (std::numeric_limits<U>::max)();
             dst = (U)temp;
             this->overflow = __builtin_parity(dst & 3u << bitsof(T) - 2);
@@ -3066,7 +3066,6 @@ struct z86Base : z86RegBase<bits, false, 0, 0> {
         if (count) {
             using U = std::make_unsigned_t<T>;
             using DU = dbl_int_t<U>;
-            using S = std::make_signed_t<T>;
 
             DU temp = dst;
             temp |= (DU)src << bitsof(T);
