@@ -1562,9 +1562,11 @@ dllexport void z86_execute() {
             case 0x134: // SYSENTER
             case 0x135: // SYSEXIT
             case 0x138: // Three byte opcodes A
+                THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
                 map = 2;
                 goto next_byte;
             case 0x13A: // Three byte opcodes B
+                THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
                 map = 3;
                 goto next_byte;
             case 0x140: // CMOVO Rv, Mv
@@ -3328,6 +3330,36 @@ dllexport void z86_execute() {
                         ALWAYS_UD();
                 }
                 break;
+                /*
+            case 0x200:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // PSHUFB Rm, Mm
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
+                        break;
+                    case Opcode66Prefix: // PSHUFB Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x201:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // PHADDW Rm, Mm
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
+                        break;
+                    case Opcode66Prefix: // PHADDW Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+                */
             default:
                 unreachable;
             fault:

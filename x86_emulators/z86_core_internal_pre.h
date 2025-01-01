@@ -74,7 +74,15 @@ enum z86FeatureFlagsA : uint64_t {
     FLAG_OPCODES_80286      = 1 << 7,
     FLAG_OPCODES_80386      = 1 << 8,
     FLAG_OPCODES_80486      = 1 << 9,
-    FLAG_CPUID_CMOV         = 1 << 10
+    FLAG_CPUID_CMOV         = 1 << 10,
+    FLAG_CPUID_MMX          = 1 << 11,
+    FLAG_CPUID_SSE          = 1 << 12,
+    FLAG_CPUID_SSE2         = 1 << 13,
+    FLAG_CPUID_SSE3         = 1 << 14,
+    FLAG_CPUID_SSSE3        = 1 << 15,
+    FLAG_CPUID_SSE41        = 1 << 16,
+    FLAG_CPUID_SSE42        = 1 << 17,
+    FLAG_CPUID_SSE4A        = 1 << 18
 };
 
 // Code shared between x86 cores
@@ -658,8 +666,13 @@ struct z86BaseGPRs<64> {
     };
 };
 
-// size: 0x80
+template <bool has_x87>
 struct z86BaseFPU {
+};
+
+// size: 0x80
+template <>
+struct z86BaseFPU<true> {
     union {
         alignas(16) FPUREG st[8];
         struct {
@@ -701,6 +714,10 @@ struct z86BaseFPU {
 
 template <size_t max_bits, size_t reg_count>
 struct z86BaseSSE;
+
+template <>
+struct z86BaseSSE<0, 0> {
+};
 
 template <>
 struct z86BaseSSE<128, 8> {
@@ -817,11 +834,11 @@ struct z86BaseSSE<256, 16> {
     };
 };
 
-template <size_t max_bits>
+template <size_t max_bits, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
 struct z86RegBase;
 
-template <>
-struct z86RegBase<16> : z86BaseGPRs<16> {
+template <bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
+struct z86RegBase<16, has_x87, max_sse_bits, sse_reg_count> : z86BaseGPRs<16>, z86BaseFPU<has_x87>, z86BaseSSE<max_sse_bits, sse_reg_count> {
     union {
         uint16_t rip;
         uint16_t eip;
@@ -883,12 +900,10 @@ struct z86RegBase<16> : z86BaseGPRs<16> {
     inline constexpr REX get_rex_bits() const {
         return {};
     }
-
-
 };
 
-template <>
-struct z86RegBase<32> : z86BaseGPRs<32> {
+template <bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
+struct z86RegBase<32, has_x87, max_sse_bits, sse_reg_count> : z86BaseGPRs<32>, z86BaseFPU<has_x87>, z86BaseSSE<max_sse_bits, sse_reg_count>
     union {
         uint32_t rip;
         uint32_t eip;
@@ -976,8 +991,8 @@ struct z86RegBase<32> : z86BaseGPRs<32> {
 
 };
 
-template <>
-struct z86RegBase<64> : z86BaseGPRs<64> {
+template <bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
+struct z86RegBase<64, has_x87, max_sse_bits, sse_reg_count> : z86BaseGPRs<64>, z86BaseFPU<has_x87>, z86BaseSSE<max_sse_bits, sse_reg_count>
     union {
         uint64_t rip;
         uint32_t eip;
@@ -1311,7 +1326,7 @@ struct ModRM {
 #define z86BaseDefault z86Base<bits, bus, flagsA>
 
 template <size_t bits, size_t bus = bits, uint64_t flagsA = 0>
-struct z86Base : z86RegBase<bits> {
+struct z86Base : z86RegBase<bits, false, 0, 0> {
 
     static inline constexpr size_t max_bits = bits;
     static inline constexpr size_t bus_width = bus;
@@ -1329,14 +1344,14 @@ struct z86Base : z86RegBase<bits> {
     static inline constexpr bool OPCODES_80386 = flagsA & FLAG_OPCODES_80386;
     static inline constexpr bool OPCODES_80486 = flagsA & FLAG_OPCODES_80486;
     static inline constexpr bool CPUID_CMOV = flagsA & FLAG_CPUID_CMOV;
-    static inline constexpr bool CPUID_MMX = false;
-    static inline constexpr bool CPUID_SSE = false;
-    static inline constexpr bool CPUID_SSE2 = false;
-    static inline constexpr bool CPUID_SSE3 = false;
-    static inline constexpr bool CPUID_SSSE3 = false;
-    static inline constexpr bool CPUID_SSE41 = false;
-    static inline constexpr bool CPUID_SSE42 = false;
-    static inline constexpr bool CPUID_SSE4A = false;
+    static inline constexpr bool CPUID_MMX = flagsA & FLAG_CPUID_MMX;
+    static inline constexpr bool CPUID_SSE = flagsA & FLAG_CPUID_SSE;
+    static inline constexpr bool CPUID_SSE2 = flagsA & FLAG_CPUID_SSE2;
+    static inline constexpr bool CPUID_SSE3 = flagsA & FLAG_CPUID_SSE3;
+    static inline constexpr bool CPUID_SSSE3 = flagsA & FLAG_CPUID_SSSE3;
+    static inline constexpr bool CPUID_SSE41 = flagsA & FLAG_CPUID_SSE41;
+    static inline constexpr bool CPUID_SSE42 = flagsA & FLAG_CPUID_SSE42;
+    static inline constexpr bool CPUID_SSE4A = flagsA & FLAG_CPUID_SSE4A;
 
     using HT = z86BaseGPRs<bits>::HT;
     using RT = z86BaseGPRs<bits>::RT;
@@ -2730,7 +2745,7 @@ struct z86Base : z86RegBase<bits> {
         temp *= src;
 
         // Is this correct here?
-        if constexpr (this->REP_INVERT_MULDIV) {
+        if constexpr (REP_INVERT_MULDIV) {
             if (this->rep_type >= 0) {
                 temp = -temp;
             }
@@ -2748,7 +2763,7 @@ struct z86Base : z86RegBase<bits> {
         R ret = lhs;
         ret *= (S)rhs;
 
-        if constexpr (this->REP_INVERT_MULDIV) {
+        if constexpr (REP_INVERT_MULDIV) {
             if (this->rep_type >= 0) {
                 ret = -ret;
             }
@@ -2804,7 +2819,7 @@ struct z86Base : z86RegBase<bits> {
             SD temp = this->read_AD<T>();
             SD quot = temp / src;
 
-            if constexpr (this->REP_INVERT_MULDIV) {
+            if constexpr (REP_INVERT_MULDIV) {
                 if (this->rep_type >= 0) {
                     quot = -quot;
                 }
@@ -2869,10 +2884,10 @@ struct z86Base : z86RegBase<bits> {
     template <typename T>
     inline void regcall RCL(T& dst, uint8_t count) {
 
-        constexpr size_t bits = bitsof(T) + 1;
+        constexpr size_t total_bits = bitsof(T) + 1;
         if constexpr (SHIFT_MASKING) {
             if constexpr (sizeof(T) < sizeof(uint32_t)) {
-                count = (count & 0x1F) % bits;
+                count = (count & 0x1F) % total_bits;
             } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
                 count &= 0x1F;
             } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
@@ -2884,9 +2899,7 @@ struct z86Base : z86RegBase<bits> {
             using U = std::make_unsigned_t<T>;
             using S = std::make_signed_t<T>;
 
-            constexpr size_t bits = bitsof(T) + 1;
-
-            UBitInt(bits) temp = dst;
+            UBitInt(total_bits) temp = dst;
             if (this->carry) {
                 temp += (U)(std::numeric_limits<S>::min)();
                 temp += (U)(std::numeric_limits<S>::min)();
@@ -2896,7 +2909,7 @@ struct z86Base : z86RegBase<bits> {
                 count %= bits;
             }
 
-            temp = temp << count | temp >> bits - count;
+            temp = temp << count | temp >> (total_bits - count);
             this->carry = temp > (std::numeric_limits<U>::max)();
             dst = (U)temp;
             this->overflow = this->carry == (S)dst < 0;
@@ -3613,7 +3626,7 @@ struct z86Base : z86RegBase<bits> {
 
     inline bool regcall set_fault(uint8_t number) {
         this->software_interrupt(number);
-        return !this->FAULTS_ARE_TRAPS;
+        return !FAULTS_ARE_TRAPS;
     }
 
     inline void regcall set_trap(uint8_t number) {
