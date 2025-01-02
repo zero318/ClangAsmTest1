@@ -15,6 +15,32 @@
 
 #include "../zero/util.h"
 
+#if __INTELLISENSE__
+// This just helps when intellisense derps out sometimes
+#if !Z86_CORE_INTERNAL_PRE_H
+#include "z86_core_internal_pre.h"
+#endif
+#endif
+
+template <size_t max_bits>
+struct z86AddrESImpl<max_bits, true> {
+    using type = z86AddrFixedImpl<max_bits, ES>;
+};
+template <size_t max_bits>
+struct z86AddrCSImpl<max_bits, true> {
+    using type = z86AddrFixedImpl<max_bits, CS>;
+};
+template <size_t max_bits>
+struct z86AddrSSImpl<max_bits, true> {
+    using type = z86AddrFixedImpl<max_bits, SS>;
+};
+
+using z86Addr = z86AddrImpl<ctx.max_bits, ctx.PROTECTED_MODE>;
+
+using z86AddrES = z86AddrESImpl<ctx.max_bits, ctx.PROTECTED_MODE>::type;
+using z86AddrCS = z86AddrCSImpl<ctx.max_bits, ctx.PROTECTED_MODE>::type;
+using z86AddrSS = z86AddrSSImpl<ctx.max_bits, ctx.PROTECTED_MODE>::type;
+
 template <typename P>
 uint32_t ModRM::extra_length(const P& pc) const {
     uint8_t mod = this->Mod();
@@ -197,156 +223,180 @@ auto ModRM::parse_memM(P& pc) const {
     return ctx.addr(default_segment, offset);
 }
 
-template <size_t bits>
-template <typename T>
-inline void regcall z86AddrImpl<bits>::write(const T& value, ssize_t offset) {
-    if constexpr (sizeof(T) == sizeof(uint8_t)) {
-        return mem.write<T>(this->real_addr(offset), value);
+template <size_t max_bits>
+inline constexpr SEG_DESCRIPTOR<max_bits>* z86DescriptorCache<max_bits>::load_selector(uint16_t selector) const {
+    //uint8_t rpl = selector & 3;
+    BT offset = selector & 0xFFF8;
+    if (offset <= this->limit) {
+        return mem.ptr<SEG_DESCRIPTOR<max_bits>>(offset + this->base);
     }
-    else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-        if (is_aligned<uint16_t>(this->offset + offset)) {
-            return mem.write<T>(this->real_addr(offset), value);
-        }
-        else {
-            uint16_t raw = *(uint16_t*)&value;
-            mem.write<uint8_t>(this->real_addr(offset), raw);
-            mem.write<uint8_t>(this->real_addr(offset + 1), raw >> 8);
-        }
+    return NULL;
+}
+
+template <size_t bits, bool protected_mode>
+inline constexpr size_t z86AddrImpl<bits, protected_mode>::addr(ssize_t offset) const {
+    if constexpr (protected_mode) {
+        return ctx.descriptors[this->segment].base + (OT)(this->offset + offset);
     }
-    else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-        return mem.write<T>(this->real_addr(offset), value);
-    }
-    else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-        return mem.write<T>(this->real_addr(offset), value);
+    else {
+        return ((size_t)this->segment << 4) + (OT)(this->offset + offset);
     }
 }
 
-template <size_t bits>
-template <typename T, typename V>
-inline V z86AddrImpl<bits>::read(ssize_t offset) const {
+template <size_t max_bits, uint8_t descriptor_index>
+inline constexpr size_t z86AddrFixedImpl<max_bits, descriptor_index>::addr(ssize_t offset) const {
+    return ctx.descriptors[descriptor_index].base + (OT)(this->offset + offset);
+}
+
+template <typename T, typename P>
+inline void regcall z86AddrSharedFuncs::write(P* self, const T& value, ssize_t offset) {
+    if constexpr (sizeof(T) == sizeof(uint8_t)) {
+        return mem.write<T>(self->addr(offset), value);
+    }
+    else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+        if (is_aligned<uint16_t>(self->offset + offset)) {
+            return mem.write<T>(self->addr(offset), value);
+        }
+        else {
+            uint16_t raw = *(uint16_t*)&value;
+            mem.write<uint8_t>(self->addr(offset), raw);
+            mem.write<uint8_t>(self->addr(offset + 1), raw >> 8);
+        }
+    }
+    else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+        return mem.write<T>(self->addr(offset), value);
+    }
+    else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+        return mem.write<T>(self->addr(offset), value);
+    }
+}
+
+template <typename T, typename V, typename P>
+static inline V z86AddrSharedFuncs::read(const P* self, ssize_t offset) {
     if constexpr (sizeof(V) == sizeof(uint8_t)) {
-        return mem.read<V>(this->real_addr(offset));
+        return mem.read<V>(self->addr(offset));
     }
     else if constexpr (sizeof(V) == sizeof(uint16_t)) {
-        if (is_aligned<uint16_t>(this->offset + offset)) {
-            return mem.read<V>(this->real_addr(offset));
+        if (is_aligned<uint16_t>(self->offset + offset)) {
+            return mem.read<V>(self->addr(offset));
         }
         else {
             union {
                 V ret;
                 uint16_t raw;
             };
-            raw = mem.read<uint8_t>(this->real_addr(offset));
-            raw |= mem.read<uint8_t>(this->real_addr(offset + 1)) << 8;
+            raw = mem.read<uint8_t>(self->addr(offset));
+            raw |= mem.read<uint8_t>(self->addr(offset + 1)) << 8;
             return ret;
         }
     }
     else if constexpr (sizeof(V) == sizeof(uint32_t)) {
-        return mem.read<V>(this->real_addr(offset));
+        return mem.read<V>(self->addr(offset));
     }
     else if constexpr (sizeof(V) == sizeof(uint64_t)) {
-        return mem.read<V>(this->real_addr(offset));
+        return mem.read<V>(self->addr(offset));
     }
 }
 
-template <size_t bits>
-inline uint32_t z86AddrImpl<bits>::read_Iz(ssize_t index) const {
+template <typename P>
+inline uint32_t z86AddrSharedFuncs::read_Iz(const P* self, ssize_t index) {
     if constexpr (ctx.max_bits > 16) {
         if (!ctx.data_size_16()) {
-            return this->read<uint32_t>();
+            return self->read<uint32_t>(index);
         }
     }
-    return this->read<uint16_t>();
+    return self->read<uint16_t>(index);
 }
 
-template <size_t bits>
-inline uint32_t z86AddrImpl<bits>::read_advance_Iz() {
+template <typename P>
+inline uint32_t z86AddrSharedFuncs::read_advance_Iz(P* self) {
     if constexpr (ctx.max_bits > 16) {
         if (!ctx.data_size_16()) {
-            return this->read_advance<uint32_t>();
+            return self->read_advance<uint32_t>();
         }
     }
-    return this->read_advance<uint16_t>();
+    return self->read_advance<uint16_t>();
 }
 
-template <size_t bits>
-inline int32_t z86AddrImpl<bits>::read_Is(ssize_t index) const {
+template <typename P>
+inline int32_t z86AddrSharedFuncs::read_Is(const P* self, ssize_t index) {
     if constexpr (ctx.max_bits > 16) {
         if (!ctx.data_size_16()) {
-            return this->read<int32_t>();
+            return self->read<int32_t>(index);
         }
     }
-    return this->read<int16_t>();
+    return self->read<int16_t>(index);
 }
 
-template <size_t bits>
-inline int32_t z86AddrImpl<bits>::read_advance_Is() {
+template <typename P>
+inline int32_t z86AddrSharedFuncs::read_advance_Is(P* self) {
     if constexpr (ctx.max_bits > 16) {
         if (!ctx.data_size_16()) {
-            return this->read_advance<int32_t>();
+            return self->read_advance<int32_t>();
         }
     }
-    return this->read_advance<int16_t>();
+    return self->read_advance<int16_t>();
 }
 
-template <size_t bits>
-inline uint64_t z86AddrImpl<bits>::read_Iv(ssize_t index) const {
-    if constexpr (ctx.max_bits > 16) {
-        if (!ctx.data_size_16()) {
-            if constexpr (ctx.max_bits > 32) {
-                if (ctx.data_size_64()) {
-                    return this->read<uint64_t>();
-                }
-            }
-            return this->read<uint32_t>();
-        }
-    }
-    return this->read<uint16_t>();
-}
-
-template <size_t bits>
-inline uint64_t z86AddrImpl<bits>::read_advance_Iv() {
+template <typename P>
+inline uint64_t z86AddrSharedFuncs::read_Iv(const P* self, ssize_t index) {
     if constexpr (ctx.max_bits > 16) {
         if (!ctx.data_size_16()) {
             if constexpr (ctx.max_bits > 32) {
                 if (ctx.data_size_64()) {
-                    return this->read_advance<uint64_t>();
+                    return self->read<uint64_t>(index);
                 }
             }
-            return this->read_advance<uint32_t>();
+            return self->read<uint32_t>(index);
         }
     }
-    return this->read_advance<uint16_t>();
+    return self->read<uint16_t>(index);
 }
 
-template <size_t bits>
-inline uint64_t z86AddrImpl<bits>::read_O(ssize_t index) const {
+template <typename P>
+inline uint64_t z86AddrSharedFuncs::read_advance_Iv(P* self) {
+    if constexpr (ctx.max_bits > 16) {
+        if (!ctx.data_size_16()) {
+            if constexpr (ctx.max_bits > 32) {
+                if (ctx.data_size_64()) {
+                    return self->read_advance<uint64_t>();
+                }
+            }
+            return self->read_advance<uint32_t>();
+        }
+    }
+    return self->read_advance<uint16_t>();
+}
+
+
+template <typename P>
+inline uint64_t z86AddrSharedFuncs::read_O(const P* self, ssize_t index) {
     if constexpr (ctx.max_bits > 16) {
         if (!ctx.addr_size_16()) {
             if constexpr (ctx.max_bits > 32) {
                 if (ctx.addr_size_64()) {
-                    return this->read<uint64_t>();
+                    return self->read<uint64_t>(index);
                 }
             }
-            return this->read<uint32_t>();
+            return self->read<uint32_t>(index);
         }
     }
-    return this->read<uint16_t>();
+    return self->read<uint16_t>(index);
 }
 
-template <size_t bits>
-inline uint64_t z86AddrImpl<bits>::read_advance_O() {
+template <typename P>
+inline uint64_t z86AddrSharedFuncs::read_advance_O(P* self) {
     if constexpr (ctx.max_bits > 16) {
         if (!ctx.addr_size_16()) {
             if constexpr (ctx.max_bits > 32) {
                 if (ctx.addr_size_64()) {
-                    return this->read_advance<uint64_t>();
+                    return self->read_advance<uint64_t>();
                 }
             }
-            return this->read_advance<uint32_t>();
+            return self->read_advance<uint32_t>();
         }
     }
-    return this->read_advance<uint16_t>();
+    return self->read_advance<uint16_t>();
 }
 
 template <z86BaseTemplate>
@@ -455,7 +505,7 @@ template <z86BaseTemplate>
 template <typename T, typename P, typename L>
 inline bool regcall z86BaseDefault::binopMS_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
-    uint16_t& rval = this->index_seg(modrm.R());
+    uint16_t rval = this->get_seg(modrm.R());
     if (modrm.is_mem()) {
         P data_addr = modrm.parse_memM(pc);
         T mval = data_addr.read<T>();
@@ -481,7 +531,10 @@ inline bool regcall z86BaseDefault::binopSM_impl(P& pc, const L& lambda) {
     else {
         mval = this->index_regMB<T>(modrm.M());
     }
-    lambda(this->index_seg(modrm.R()), mval);
+    uint8_t seg_index = modrm.R();
+    uint16_t rval = this->get_seg(seg_index);
+    lambda(rval, mval);
+    this->write_seg(seg_index, rval);
     return false;
 }
 
@@ -512,14 +565,14 @@ template <z86BaseTemplate>
 template <typename P, typename T>
 inline void regcall z86BaseDefault::PUSH_impl(const T& src) {
     this->SP<P>() -= (std::max)(sizeof(T), (size_t)2);
-    z86Addr stack = this->stack<P>();
+    z86AddrSS stack = this->stack<P>();
     stack.write(src);
 }
 
 template <z86BaseTemplate>
 template <typename P, typename T>
 inline T z86BaseDefault::POP_impl() {
-    z86Addr stack = this->stack<P>();
+    z86AddrSS stack = this->stack<P>();
     T ret = stack.read<T>();
     this->SP<P>() += (std::max)(sizeof(T), (size_t)2);
     return ret;
@@ -671,7 +724,7 @@ template <typename T, typename P>
 inline bool regcall z86BaseDefault::MOVS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
-    z86Addr dst_addr = this->str_dst<P>();
+    z86AddrES dst_addr = this->str_dst<P>();
     if (this->rep_type > NO_REP) {
         if (this->C<P>()) {
             do {
@@ -692,7 +745,7 @@ template <z86BaseTemplate>
 template <typename T, typename P>
 inline bool regcall z86BaseDefault::STOS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
-    z86Addr dst_addr = this->str_dst<P>();
+    z86AddrES dst_addr = this->str_dst<P>();
     if (this->rep_type > NO_REP) {
         if (this->C<P>()) {
             do {
@@ -712,7 +765,7 @@ template <z86BaseTemplate>
 template <typename T, typename P>
 inline bool regcall z86BaseDefault::SCAS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
-    z86Addr dst_addr = this->str_dst<P>();
+    z86AddrES dst_addr = this->str_dst<P>();
     if (this->rep_type > NO_REP) {
         if (this->C<P>()) {
             do {
@@ -733,7 +786,7 @@ template <typename T, typename P>
 inline bool regcall z86BaseDefault::CMPS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
-    z86Addr dst_addr = this->str_dst<P>();
+    z86AddrES dst_addr = this->str_dst<P>();
     if (this->rep_type > NO_REP) {
         if (this->C<P>()) {
             do {
@@ -775,7 +828,7 @@ template <z86BaseTemplate>
 template <typename T, typename P>
 inline bool regcall z86BaseDefault::INS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
-    z86Addr dst_addr = this->str_dst<P>();
+    z86AddrES dst_addr = this->str_dst<P>();
     uint16_t port = this->dx;
     if (this->rep_type > NO_REP) {
         if (this->C<P>()) {

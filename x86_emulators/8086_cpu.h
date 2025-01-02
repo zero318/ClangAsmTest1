@@ -77,7 +77,23 @@ enum Interrupt : uint8_t {
     IntOF = 4,
     // 80186
     IntBR = 5,
-    IntUD = 6
+    IntUD = 6,
+    // 80286
+    IntNM = 7,
+    IntDF = 8,
+    IntCSO = 9, // Coprocessor segment overrun
+    IntTS = 10,
+    IntNP = 11,
+    IntSS = 12,
+    IntGP = 13,
+    // ???
+    IntPF = 14,
+    IntMF = 16,
+    IntAC = 17,
+    IntMC = 18,
+    IntXM = 19,
+    IntVE = 20,
+    IntCP = 21
 };
 
 void z86_execute();

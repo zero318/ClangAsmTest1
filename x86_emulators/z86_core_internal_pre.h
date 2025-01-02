@@ -11,8 +11,13 @@
 #include <algorithm>
 #include <utility>
 #include <type_traits>
+//#include <new>
+//#include <memory>
 
 #include "../zero/util.h"
+
+#define USE_BITFIELDS 1
+#define USE_VECTORS 1
 
 #undef REX
 
@@ -38,6 +43,12 @@ static inline constexpr unsigned long long operator ""_GB(unsigned long long val
 
 static inline constexpr unsigned long long operator ""_GB(long double value) {
     return value * 1073741824.0L;
+}
+
+template <typename T, typename ... Args>
+static inline constexpr void reconstruct_at(T* p, Args&&... args) {
+    std::destroy_at(p);
+    new (p) T(std::forward<Args>(args)...);
 }
 
 // Avoid the values 8, 16, 32, and 64 so that template values
@@ -70,19 +81,22 @@ enum z86FeatureFlagsA : uint64_t {
     FLAG_NO_UD              = 1 << 3,
     FLAG_UNMASK_SHIFTS      = 1 << 4,
     FLAG_OLD_PUSH_SP        = 1 << 5,
-    FLAG_OPCODES_80186      = 1 << 6,
-    FLAG_OPCODES_80286      = 1 << 7,
-    FLAG_OPCODES_80386      = 1 << 8,
-    FLAG_OPCODES_80486      = 1 << 9,
-    FLAG_CPUID_CMOV         = 1 << 10,
-    FLAG_CPUID_MMX          = 1 << 11,
-    FLAG_CPUID_SSE          = 1 << 12,
-    FLAG_CPUID_SSE2         = 1 << 13,
-    FLAG_CPUID_SSE3         = 1 << 14,
-    FLAG_CPUID_SSSE3        = 1 << 15,
-    FLAG_CPUID_SSE41        = 1 << 16,
-    FLAG_CPUID_SSE42        = 1 << 17,
-    FLAG_CPUID_SSE4A        = 1 << 18
+    FLAG_WRAP_SEGMENT_MODRM = 1 << 6,
+    FLAG_PROTECTED_MODE     = 1 << 7,
+    FLAG_OPCODES_80186      = 1 << 8,
+    FLAG_OPCODES_80286      = 1 << 9,
+    FLAG_OPCODES_80386      = 1 << 10,
+    FLAG_OPCODES_80486      = 1 << 11,
+    FLAG_CPUID_X87          = 1 << 12,
+    FLAG_CPUID_CMOV         = 1 << 13,
+    FLAG_CPUID_MMX          = 1 << 14,
+    FLAG_CPUID_SSE          = 1 << 15,
+    FLAG_CPUID_SSE2         = 1 << 16,
+    FLAG_CPUID_SSE3         = 1 << 17,
+    FLAG_CPUID_SSSE3        = 1 << 18,
+    FLAG_CPUID_SSE41        = 1 << 19,
+    FLAG_CPUID_SSE42        = 1 << 20,
+    FLAG_CPUID_SSE4A        = 1 << 21
 };
 
 // Code shared between x86 cores
@@ -245,21 +259,183 @@ struct AVXREG {
     vec<int128_t, 2> soword;
 };
 
+struct AVX512REG {
+    vec<float, 16> f32;
+    vec<double, 8> f64;
+    vec<uint8_t, 64> byte;
+    vec<int8_t, 64> sbyte;
+    vec<uint16_t, 32> word;
+    vec<int16_t, 32> sword;
+    vec<uint32_t, 16> dword;
+    vec<int32_t, 16> sdword;
+    vec<uint64_t, 8> qword;
+    vec<int64_t, 8> sqword;
+    vec<uint128_t, 4> oword;
+    vec<int128_t, 4> soword;
+};
+
+template <size_t bits>
+struct SEG_DESCRIPTOR {
+    union {
+        uint16_t limit_low;
+        uint16_t gate_ip;
+    };
+    union {
+        uint16_t base_low;
+        uint16_t gate_cs;
+    };
+    union {
+        uint8_t base_middle;
+        uint8_t gate_params : 5;
+    };
+    union {
+        uint8_t flags1;
+        struct { // Generic flags
+            uint8_t type : 5;
+            uint8_t dpl : 2;
+            uint8_t present : 1;
+        };
+        struct {
+            uint8_t accessed : 1;
+            uint8_t readable : 1;
+            uint8_t conforming : 1;
+        } code;
+        struct {
+            uint8_t accessed : 1;
+            uint8_t writable : 1;
+            uint8_t expand_down : 1;
+        } data;
+        struct {
+            uint8_t type : 4;
+        } system;
+    };
+
+    inline constexpr bool is_system() const {
+        return this->type < 0b10000;
+    }
+
+    inline constexpr bool is_code() const {
+        return this->type >= 0b11000;
+    }
+
+    inline constexpr bool is_data() const {
+        return this->type - 0b10000u < 0b1000u;
+    }
+
+    inline constexpr bool is_gate() const {
+        return (this->type & 0b10111) - 4 < 3;
+    }
+};
+
+template <>
+struct SEG_DESCRIPTOR<16> : SEG_DESCRIPTOR<0> {
+    uint16_t must_be_zero;
+
+    inline uint32_t base() const {
+        return *(uint32_t*)&this->base_low & 0xFFFFFF;
+    }
+
+    inline constexpr uint16_t limit() const {
+        return this->limit_low;
+    }
+
+    inline constexpr uint16_t ip() const {
+        return this->gate_ip;
+    }
+};
+
+template <>
+struct SEG_DESCRIPTOR<32> : SEG_DESCRIPTOR<0> {
+    union {
+        struct {
+            union {
+                uint8_t flags2;
+                struct {
+                    uint8_t limit_high : 4;
+                    uint8_t system_use : 1;
+                    uint8_t long_mode : 1;
+                    uint8_t big : 1;
+                    uint8_t granularity : 1;
+                };
+            };
+            uint8_t base_high;
+        };
+        uint16_t gate_ip_high;
+    };
+
+    inline uint32_t base() const {
+#if USE_VECTORS
+        const vec<uint8_t, 8> seg = *(vec<uint8_t, 8>*)this;
+        const vec<uint8_t, 8> zero = {};
+        vec<uint8_t, 8> ret = shufflevec(seg, zero, 2, 3, 4, 7, 8, 8, 8, 8);
+        return std::bit_cast<vec<uint32_t, 2>>(ret)[0];
+#else
+        return (*(uint32_t*)&this->base_low & 0xFFFFFF) | (uint32_t)this->base_high << 24;
+#endif
+    }
+
+    inline constexpr uint32_t limit() const {
+        uint32_t limit = (uint32_t)this->limit_low | (uint32_t)this->limit_high << 16;
+        if (this->granularity) {
+            limit <<= 12;
+        }
+        return limit;
+    }
+
+    inline constexpr uint32_t ip() const {
+        return (uint32_t)this->gate_ip | (uint32_t)this->gate_ip_high << 16;
+    }
+};
+
+template <>
+struct SEG_DESCRIPTOR<64> : SEG_DESCRIPTOR<32> {
+    union {
+        uint32_t base_upper;
+        uint32_t gate_ip_upper;
+    };
+    uint32_t must_be_zero;
+
+    inline uint64_t base() const {
+#if USE_VECTORS
+        if constexpr (sizeof(void*) == sizeof(uint64_t)) {
+            const vec<uint8_t, 16> seg = *(vec<uint8_t, 16>*)this;
+            const vec<uint8_t, 16> zero = {};
+            vec<uint8_t, 16> ret = shufflevec(seg, zero, 2, 3, 4, 7, 8, 9, 10, 11, 16, 16, 16, 16, 16, 16, 16, 16);
+            return std::bit_cast<vec<uint64_t, 2>>(ret)[0];
+        }
+        else {
+            const vec<uint8_t, 8> seg = *(vec<uint8_t, 8>*)this;
+            const vec<uint8_t, 8> zero = {};
+            vec<uint8_t, 8> ret = shufflevec(seg, zero, 2, 3, 4, 7, 8, 8, 8, 8);
+            return (uint64_t)std::bit_cast<vec<uint32_t, 2>>(ret)[0] | (uint64_t)this->base_upper << 32;
+        }
+#else
+        uint64_t ret = *(uint32_t*)&seg->base_low & 0xFFFFFF | (uint32_t)seg->base_high << 24;
+        return ret | (uint64_t)seg->base_upper << 32;
+#endif
+    }
+
+    inline constexpr uint64_t ip() const {
+        uint64_t ret = (uint32_t)this->gate_ip | (uint32_t)this->gate_ip_high << 16;
+        return ret | (uint64_t)this->gate_ip_upper << 32;
+    }
+};
+
 #define DS DS_SEG
 
 enum REG_INDEX : uint8_t {
-    ZMM0  =  0, YMM0  =  0, XMM0  =  0, RAX  =  0, EAX  =  0, AX   =  0, AL   =  0, CR0 = 0, K0 = 0, ST0 = 0, MM0 = 0, DR0 = 0, ES = 0,
-    ZMM1  =  1, YMM1  =  1, XMM1  =  1, RCX  =  1, ECX  =  1, CX   =  1, CL   =  1, CR1 = 1, K1 = 1, ST1 = 1, MM1 = 1, DR1 = 1, CS = 1,
-    ZMM2  =  2, YMM2  =  2, XMM2  =  2, RDX  =  2, EDX  =  2, DX   =  2, DL   =  2, CR2 = 2, K2 = 2, ST2 = 2, MM2 = 2, DR2 = 2, SS = 2,
-    ZMM3  =  3, YMM3  =  3, XMM3  =  3, RBX  =  3, EBX  =  3, BX   =  3, BL   =  3, CR3 = 3, K3 = 3, ST3 = 3, MM3 = 3, DR3 = 3, DS = 3,
-    ZMM4  =  4, YMM4  =  4, XMM4  =  4, RSP  =  4, ESP  =  4, SP   =  4, AH   =  4, CR4 = 4, K4 = 4, ST4 = 4, MM4 = 4, DR4 = 4, FS = 4,
-    ZMM5  =  5, YMM5  =  5, XMM5  =  5, RBP  =  5, EBP  =  5, BP   =  5, CH   =  5, CR5 = 5, K5 = 5, ST5 = 5, MM5 = 5, DR5 = 5, GS = 5,
-    ZMM6  =  6, YMM6  =  6, XMM6  =  6, RSI  =  6, ESI  =  6, SI   =  6, DH   =  6, CR6 = 6, K6 = 6, ST6 = 6, MM6 = 6, DR6 = 6, DS3 = 6,
-    ZMM7  =  7, YMM7  =  7, XMM7  =  7, RDI  =  7, EDI  =  7, DI   =  7, BH   =  7, CR7 = 7, K7 = 7, ST7 = 7, MM7 = 7, DR7 = 7, DS2 = 7,
-    ZMM8  =  8, YMM8  =  8, XMM8  =  8, R8   =  8, R8D  =  8, R8W  =  8, R8B  =  8, CR8 = 8,
-    ZMM9  =  9, YMM9  =  9, XMM9  =  9, R9   =  9, R9D  =  9, R9W  =  9, R9B  =  9,
-    ZMM10 = 10, YMM10 = 10, XMM10 = 10, R10  = 10, R10D = 10, R10W = 10, R10B = 10,
-    ZMM11 = 11, YMM11 = 11, XMM11 = 11, R11  = 11, R11D = 11, R11W = 11, R11B = 11,
+    ZMM0  =  0, YMM0  =  0, XMM0  =  0, RAX  =  0, EAX  =  0, AX   =  0, AL   =  0, ES  =  0, CR0 = 0, K0 = 0, ST0 = 0, MM0 = 0, DR0 = 0,
+    ZMM1  =  1, YMM1  =  1, XMM1  =  1, RCX  =  1, ECX  =  1, CX   =  1, CL   =  1, CS  =  1, CR1 = 1, K1 = 1, ST1 = 1, MM1 = 1, DR1 = 1,
+    ZMM2  =  2, YMM2  =  2, XMM2  =  2, RDX  =  2, EDX  =  2, DX   =  2, DL   =  2, SS  =  2, CR2 = 2, K2 = 2, ST2 = 2, MM2 = 2, DR2 = 2,
+    ZMM3  =  3, YMM3  =  3, XMM3  =  3, RBX  =  3, EBX  =  3, BX   =  3, BL   =  3, DS  =  3, CR3 = 3, K3 = 3, ST3 = 3, MM3 = 3, DR3 = 3,
+    ZMM4  =  4, YMM4  =  4, XMM4  =  4, RSP  =  4, ESP  =  4, SP   =  4, AH   =  4, FS  =  4, CR4 = 4, K4 = 4, ST4 = 4, MM4 = 4, DR4 = 4,
+    ZMM5  =  5, YMM5  =  5, XMM5  =  5, RBP  =  5, EBP  =  5, BP   =  5, CH   =  5, GS  =  5, CR5 = 5, K5 = 5, ST5 = 5, MM5 = 5, DR5 = 5,
+    ZMM6  =  6, YMM6  =  6, XMM6  =  6, RSI  =  6, ESI  =  6, SI   =  6, DH   =  6, DS3 =  6, CR6 = 6, K6 = 6, ST6 = 6, MM6 = 6, DR6 = 6,
+    ZMM7  =  7, YMM7  =  7, XMM7  =  7, RDI  =  7, EDI  =  7, DI   =  7, BH   =  7, DS2 =  7, CR7 = 7, K7 = 7, ST7 = 7, MM7 = 7, DR7 = 7,
+    ZMM8  =  8, YMM8  =  8, XMM8  =  8, R8   =  8, R8D  =  8, R8W  =  8, R8B  =  8, GDT =  8, CR8 = 8,
+    ZMM9  =  9, YMM9  =  9, XMM9  =  9, R9   =  9, R9D  =  9, R9W  =  9, R9B  =  9, LDT =  9,
+    ZMM10 = 10, YMM10 = 10, XMM10 = 10, R10  = 10, R10D = 10, R10W = 10, R10B = 10, IDT = 10,
+    ZMM11 = 11, YMM11 = 11, XMM11 = 11, R11  = 11, R11D = 11, R11W = 11, R11B = 11, TSS = 11,
     ZMM12 = 12, YMM12 = 12, XMM12 = 12, R12  = 12, R12D = 12, R12W = 12, R12B = 12,
     ZMM13 = 13, YMM13 = 13, XMM13 = 13, R13  = 13, R13D = 13, R13W = 13, R13B = 13,
     ZMM14 = 14, YMM14 = 14, XMM14 = 14, R14  = 14, R14D = 14, R14W = 14, R14B = 14,
@@ -723,15 +899,49 @@ template <>
 struct z86BaseSSE<128, 8> {
     union {
         SSEREG xmm[8];
+        SSEREG ymm[8];
+        SSEREG zmm[8];
         struct {
-            SSEREG xmm0;
-            SSEREG xmm1;
-            SSEREG xmm2;
-            SSEREG xmm3;
-            SSEREG xmm4;
-            SSEREG xmm5;
-            SSEREG xmm6;
-            SSEREG xmm7;
+            union {
+                SSEREG xmm0;
+                SSEREG ymm0;
+                SSEREG zmm0;
+            };
+            union {
+                SSEREG xmm1;
+                SSEREG ymm1;
+                SSEREG zmm1;
+            };
+            union {
+                SSEREG xmm2;
+                SSEREG ymm2;
+                SSEREG zmm2;
+            };
+            union {
+                SSEREG xmm3;
+                SSEREG ymm3;
+                SSEREG zmm3;
+            };
+            union {
+                SSEREG xmm4;
+                SSEREG ymm4;
+                SSEREG zmm4;
+            };
+            union {
+                SSEREG xmm5;
+                SSEREG ymm5;
+                SSEREG zmm5;
+            };
+            union {
+                SSEREG xmm6;
+                SSEREG ymm6;
+                SSEREG zmm6;
+            };
+            union {
+                SSEREG xmm7;
+                SSEREG ymm7;
+                SSEREG zmm7;
+            };
         };
     };
 };
@@ -740,22 +950,89 @@ template <>
 struct z86BaseSSE<128, 16> {
     union {
         SSEREG xmm[16];
+        SSEREG ymm[16];
+        SSEREG zmm[16];
         struct {
-            SSEREG xmm0;
-            SSEREG xmm1;
-            SSEREG xmm2;
-            SSEREG xmm3;
-            SSEREG xmm4;
-            SSEREG xmm5;
-            SSEREG xmm6;
-            SSEREG xmm7;
-            SSEREG xmm8;
-            SSEREG xmm9;
-            SSEREG xmm10;
-            SSEREG xmm11;
-            SSEREG xmm12;
-            SSEREG xmm14;
-            SSEREG xmm15;
+            union {
+                SSEREG xmm0;
+                SSEREG ymm0;
+                SSEREG zmm0;
+            };
+            union {
+                SSEREG xmm1;
+                SSEREG ymm1;
+                SSEREG zmm1;
+            };
+            union {
+                SSEREG xmm2;
+                SSEREG ymm2;
+                SSEREG zmm2;
+            };
+            union {
+                SSEREG xmm3;
+                SSEREG ymm3;
+                SSEREG zmm3;
+            };
+            union {
+                SSEREG xmm4;
+                SSEREG ymm4;
+                SSEREG zmm4;
+            };
+            union {
+                SSEREG xmm5;
+                SSEREG ymm5;
+                SSEREG zmm5;
+            };
+            union {
+                SSEREG xmm6;
+                SSEREG ymm6;
+                SSEREG zmm6;
+            };
+            union {
+                SSEREG xmm7;
+                SSEREG ymm7;
+                SSEREG zmm7;
+            };
+            union {
+                SSEREG xmm8;
+                SSEREG ymm8;
+                SSEREG zmm8;
+            };
+            union {
+                SSEREG xmm9;
+                SSEREG ymm9;
+                SSEREG zmm9;
+            };
+            union {
+                SSEREG xmm10;
+                SSEREG ymm10;
+                SSEREG zmm10;
+            };
+            union {
+                SSEREG xmm11;
+                SSEREG ymm11;
+                SSEREG zmm11;
+            };
+            union {
+                SSEREG xmm12;
+                SSEREG ymm12;
+                SSEREG zmm12;
+            };
+            union {
+                SSEREG xmm13;
+                SSEREG ymm13;
+                SSEREG zmm13;
+            };
+            union {
+                SSEREG xmm14;
+                SSEREG ymm14;
+                SSEREG zmm14;
+            };
+            union {
+                SSEREG xmm15;
+                SSEREG ymm15;
+                SSEREG zmm15;
+            };
         };
     };
 };
@@ -765,80 +1042,723 @@ struct z86BaseSSE<256, 16> {
     union {
         SSEREG xmm[16];
         AVXREG ymm[16];
+        AVXREG zmm[16];
         struct {
             union {
                 SSEREG xmm0;
                 AVXREG ymm0;
+                AVXREG zmm0;
             };
             union {
                 SSEREG xmm1;
                 AVXREG ymm1;
+                AVXREG zmm1;
             };
             union {
                 SSEREG xmm2;
                 AVXREG ymm2;
+                AVXREG zmm2;
             };
             union {
                 SSEREG xmm3;
                 AVXREG ymm3;
+                AVXREG zmm3;
             };
             union {
                 SSEREG xmm4;
                 AVXREG ymm4;
+                AVXREG zmm4;
             };
             union {
                 SSEREG xmm5;
                 AVXREG ymm5;
+                AVXREG zmm5;
             };
             union {
                 SSEREG xmm6;
                 AVXREG ymm6;
+                AVXREG zmm6;
             };
             union {
                 SSEREG xmm7;
                 AVXREG ymm7;
+                AVXREG zmm7;
             };
             union {
                 SSEREG xmm8;
                 AVXREG ymm8;
+                AVXREG zmm8;
             };
             union {
                 SSEREG xmm9;
                 AVXREG ymm9;
+                AVXREG zmm9;
             };
             union {
                 SSEREG xmm10;
                 AVXREG ymm10;
+                AVXREG zmm10;
             };
             union {
                 SSEREG xmm11;
                 AVXREG ymm11;
+                AVXREG zmm11;
             };
             union {
                 SSEREG xmm12;
                 AVXREG ymm12;
+                AVXREG zmm12;
             };
             union {
                 SSEREG xmm13;
                 AVXREG ymm13;
+                AVXREG zmm13;
             };
             union {
                 SSEREG xmm14;
                 AVXREG ymm14;
+                AVXREG zmm14;
             };
             union {
                 SSEREG xmm15;
                 AVXREG ymm15;
+                AVXREG zmm15;
             };
         };
     };
 };
 
-template <size_t max_bits, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
+template <>
+struct z86BaseSSE<512, 32> {
+    union {
+        SSEREG xmm[32];
+        AVXREG ymm[32];
+        AVX512REG zmm[32];
+        struct {
+            union {
+                SSEREG xmm0;
+                AVXREG ymm0;
+                AVX512REG zmm0;
+            };
+            union {
+                SSEREG xmm1;
+                AVXREG ymm1;
+                AVX512REG zmm1;
+            };
+            union {
+                SSEREG xmm2;
+                AVXREG ymm2;
+                AVX512REG zmm2;
+            };
+            union {
+                SSEREG xmm3;
+                AVXREG ymm3;
+                AVX512REG zmm3;
+            };
+            union {
+                SSEREG xmm4;
+                AVXREG ymm4;
+                AVX512REG zmm4;
+            };
+            union {
+                SSEREG xmm5;
+                AVXREG ymm5;
+                AVX512REG zmm5;
+            };
+            union {
+                SSEREG xmm6;
+                AVXREG ymm6;
+                AVX512REG zmm6;
+            };
+            union {
+                SSEREG xmm7;
+                AVXREG ymm7;
+                AVX512REG zmm7;
+            };
+            union {
+                SSEREG xmm8;
+                AVXREG ymm8;
+                AVX512REG zmm8;
+            };
+            union {
+                SSEREG xmm9;
+                AVXREG ymm9;
+                AVX512REG zmm9;
+            };
+            union {
+                SSEREG xmm10;
+                AVXREG ymm10;
+                AVX512REG zmm10;
+            };
+            union {
+                SSEREG xmm11;
+                AVXREG ymm11;
+                AVX512REG zmm11;
+            };
+            union {
+                SSEREG xmm12;
+                AVXREG ymm12;
+                AVX512REG zmm12;
+            };
+            union {
+                SSEREG xmm13;
+                AVXREG ymm13;
+                AVX512REG zmm13;
+            };
+            union {
+                SSEREG xmm14;
+                AVXREG ymm14;
+                AVX512REG zmm14;
+            };
+            union {
+                SSEREG xmm15;
+                AVXREG ymm15;
+                AVX512REG zmm15;
+            };
+            union {
+                SSEREG xmm16;
+                AVXREG ymm16;
+                AVX512REG zmm16;
+            };
+            union {
+                SSEREG xmm17;
+                AVXREG ymm17;
+                AVX512REG zmm17;
+            };
+            union {
+                SSEREG xmm18;
+                AVXREG ymm18;
+                AVX512REG zmm18;
+            };
+            union {
+                SSEREG xmm19;
+                AVXREG ymm19;
+                AVX512REG zmm19;
+            };
+            union {
+                SSEREG xmm20;
+                AVXREG ymm20;
+                AVX512REG zmm20;
+            };
+            union {
+                SSEREG xmm21;
+                AVXREG ymm21;
+                AVX512REG zmm21;
+            };
+            union {
+                SSEREG xmm22;
+                AVXREG ymm22;
+                AVX512REG zmm22;
+            };
+            union {
+                SSEREG xmm23;
+                AVXREG ymm23;
+                AVX512REG zmm23;
+            };
+            union {
+                SSEREG xmm24;
+                AVXREG ymm24;
+                AVX512REG zmm24;
+            };
+            union {
+                SSEREG xmm25;
+                AVXREG ymm25;
+                AVX512REG zmm25;
+            };
+            union {
+                SSEREG xmm26;
+                AVXREG ymm26;
+                AVX512REG zmm26;
+            };
+            union {
+                SSEREG xmm27;
+                AVXREG ymm27;
+                AVX512REG zmm27;
+            };
+            union {
+                SSEREG xmm28;
+                AVXREG ymm28;
+                AVX512REG zmm28;
+            };
+            union {
+                SSEREG xmm29;
+                AVXREG ymm29;
+                AVX512REG zmm29;
+            };
+            union {
+                SSEREG xmm30;
+                AVXREG ymm30;
+                AVX512REG zmm30;
+            };
+            union {
+                SSEREG xmm31;
+                AVXREG ymm31;
+                AVX512REG zmm31;
+            };
+        };
+    };
+    union {
+        uint64_t k[8];
+        struct {
+            uint64_t k0;
+            uint64_t k1;
+            uint64_t k2;
+            uint64_t k3;
+            uint64_t k4;
+            uint64_t k5;
+            uint64_t k6;
+            uint64_t k7;
+        };
+    };
+};
+
+template <size_t max_bits, bool has_x87, bool has_sse>
+struct z86BaseFPUControl {
+};
+
+// size: 0x4
+template <size_t max_bits>
+struct z86BaseFPUControl<max_bits, false, true> {
+    MXCSR mxcsr; // 0x0
+    // 0x4
+};
+
+// size: 0x10
+template <>
+struct z86BaseFPUControl<16, true, false> {
+    FCW fcw; // 0x0
+    FSW fsw; // 0x2
+    uint16_t ftw; // 0x4
+    uint16_t fop; // 0x6
+    uint32_t fip; // 0x8
+    uint32_t fdp; // 0xC
+    // 0x10
+};
+
+// size: 0x14
+template <>
+struct z86BaseFPUControl<16, true, true> {
+    FCW fcw; // 0x0
+    FSW fsw; // 0x2
+    uint16_t ftw; // 0x4
+    uint16_t fop; // 0x6
+    uint32_t fip; // 0x8
+    uint32_t fdp; // 0xC
+    MXCSR mxcsr; // 0x10
+    // 0x14
+};
+
+// size: 0x14
+template <>
+struct z86BaseFPUControl<32, true, false> {
+    FCW fcw; // 0x0
+    FSW fsw; // 0x2
+    uint16_t ftw; // 0x4
+    uint16_t fop; // 0x6
+    uint32_t fip; // 0x8
+    uint32_t fdp; // 0xC
+    uint16_t fcs; // 0x10
+    uint16_t fds; // 0x12
+    // 0x14
+};
+
+// size: 0x18
+template <>
+struct z86BaseFPUControl<32, true, true> {
+    FCW fcw; // 0x0
+    FSW fsw; // 0x2
+    uint16_t ftw; // 0x4
+    uint16_t fop; // 0x6
+    uint32_t fip; // 0x8
+    uint32_t fdp; // 0xC
+    uint16_t fcs; // 0x10
+    uint16_t fds; // 0x12
+    MXCSR mxcsr; // 0x14
+    // 0x18
+};
+
+// size: 0x20 (because of alignment)
+template <>
+struct z86BaseFPUControl<64, true, false> {
+    FCW fcw; // 0x0
+    FSW fsw; // 0x2
+    uint16_t ftw; // 0x4
+    uint16_t fop; // 0x6
+    uint64_t fip; // 0x8
+    uint64_t fdp; // 0x10
+    uint16_t fcs; // 0x18
+    uint16_t fds; // 0x1A
+    // 0x1C
+};
+
+// size: 0x20
+template <>
+struct z86BaseFPUControl<64, true, true> {
+    FCW fcw; // 0x0
+    FSW fsw; // 0x2
+    uint16_t ftw; // 0x4
+    uint16_t fop; // 0x6
+    uint64_t fip; // 0x8
+    uint64_t fdp; // 0x10
+    uint16_t fcs; // 0x18
+    uint16_t fds; // 0x1A
+    MXCSR mxcsr; // 0x1C
+    // 0x20
+};
+
+struct z86DescriptorCache80286 {
+    uint16_t base_low;
+    uint8_t base_high;
+    uint8_t access_rights;
+    uint16_t limit;
+};
+
+template <size_t max_bits>
+struct z86DescriptorCacheBase;
+// Seg Defaults:
+// - Base: 0
+// - Limit: 0xFFFF
+// - Access: 0x93
+// Table Defaults:
+// - Base: 0
+// - Limit: 0xFFFF
+// - Access: 0x82
+
+// Size: 0x8
+template <>
+struct z86DescriptorCacheBase<16> {
+    using BT = uint32_t; // Base Type
+    using LT = uint16_t; // Limit type
+
+    const uint32_t base = 0; // 0x0
+    const uint16_t limit = 0; // 0x4
+    const uint8_t type = 0; // 0x6
+    const uint8_t privilege = 0; // 0x7
+    // 0x8
+
+    inline constexpr z86DescriptorCacheBase() = default;
+    inline constexpr z86DescriptorCacheBase(uint16_t limit, uint32_t base) : base(base), limit(limit), type(0), privilege(0) {}
+    inline constexpr z86DescriptorCacheBase(uint16_t limit, uint32_t base, uint8_t type, uint8_t privilege) : base(base), limit(limit), type(type), privilege(privilege) {}
+
+    inline constexpr z86DescriptorCacheBase(SEG_DESCRIPTOR<16>* descriptor)
+        : base(descriptor->base()), limit(descriptor->limit()), type(0), privilege(0)
+    {}
+};
+
+// Size: 0xC
+template <>
+struct z86DescriptorCacheBase<32> {
+    using BT = uint32_t; // Base Type
+    using LT = uint32_t; // Limit type
+
+    const uint32_t base = 0; // 0x0
+    const uint32_t limit = 0; // 0x4
+    const uint8_t type = 0; // 0x8
+    const uint8_t privilege = 0; // 0x9
+    // 0xA
+
+    inline constexpr z86DescriptorCacheBase() = default;
+    inline constexpr z86DescriptorCacheBase(uint32_t limit, uint32_t base) : base(base), limit(limit), type(0), privilege(0) {}
+    inline constexpr z86DescriptorCacheBase(uint32_t limit, uint32_t base, uint8_t type, uint8_t privilege) : base(base), limit(limit), type(type), privilege(privilege) {}
+
+    inline constexpr z86DescriptorCacheBase(SEG_DESCRIPTOR<32>* descriptor)
+        : base(descriptor->base()), limit(descriptor->limit()), type(0), privilege(0)
+    {}
+};
+
+// Size: 0x10
+template <>
+struct z86DescriptorCacheBase<64> {
+    using BT = uint64_t; // Base Type
+    using LT = uint32_t; // Limit type
+
+    const uint64_t base = 0; // 0x0
+    const uint32_t limit = 0; // 0x8
+    const uint8_t type = 0; // 0xC
+    const uint8_t privilege = 0; // 0xD
+    // 0xE
+
+    inline constexpr z86DescriptorCacheBase() = default;
+    inline constexpr z86DescriptorCacheBase(uint32_t limit, uint64_t base) : base(base), limit(limit), type(0), privilege(0) {}
+    inline constexpr z86DescriptorCacheBase(uint32_t limit, uint64_t base, uint8_t type, uint8_t privilege) : base(base), limit(limit), type(type), privilege(privilege) {}
+    
+    inline constexpr z86DescriptorCacheBase(SEG_DESCRIPTOR<64>* descriptor)
+        : base(descriptor->base()), limit(descriptor->limit()), type(0), privilege(0)
+    {}
+};
+
+template <size_t max_bits>
+struct z86DescriptorCache : z86DescriptorCacheBase<max_bits> {
+    using BT = z86DescriptorCacheBase<max_bits>::BT;
+    using LT = z86DescriptorCacheBase<max_bits>::LT;
+
+    inline constexpr z86DescriptorCache() = default;
+    inline constexpr z86DescriptorCache(LT limit, BT base) : z86DescriptorCacheBase<max_bits>::z86DescriptorCacheBase(limit, base) {}
+    inline constexpr z86DescriptorCache(LT limit, BT base, uint8_t type, uint8_t privilege) : z86DescriptorCacheBase<max_bits>::z86DescriptorCacheBase(limit, base, type, privilege) {}
+    inline constexpr z86DescriptorCache(SEG_DESCRIPTOR<max_bits>* descriptor) : z86DescriptorCacheBase<max_bits>::z86DescriptorCacheBase(descriptor) {}
+
+    /*
+    inline constexpr void load_table(LT limit, BT base) {
+        this->base = base;
+        this->limit = limit;
+    }
+
+    inline constexpr void load_descriptor(SEG_DESCRIPTOR<max_bits>* descriptor) {
+        this->base = descriptor->base();
+        this->limit = descriptor->limit();
+    }
+    */
+
+    // Invoked on GDT/LDT
+    inline constexpr SEG_DESCRIPTOR<max_bits>* load_selector(uint16_t selector) const;
+};
+
+struct z86Loadall2Frame {
+    uint16_t x0;
+    uint16_t x1;
+    uint16_t x2;
+    uint16_t msw;
+    uint16_t x3;
+    uint16_t x4;
+    uint16_t x5;
+    uint16_t x6;
+    uint16_t x7;
+    uint16_t x8;
+    uint16_t x9;
+    uint16_t tr;
+    uint16_t flags;
+    uint16_t ip;
+    uint16_t ldtr;
+    uint16_t ds;
+    uint16_t ss;
+    uint16_t cs;
+    uint16_t es;
+    uint16_t di;
+    uint16_t si;
+    uint16_t bp;
+    uint16_t sp;
+    uint16_t bx;
+    uint16_t dx;
+    uint16_t cx;
+    uint16_t ax;
+    z86DescriptorCache80286 es_descriptor;
+    z86DescriptorCache80286 cs_descriptor;
+    z86DescriptorCache80286 ss_descriptor;
+    z86DescriptorCache80286 ds_descriptor;
+    z86DescriptorCache80286 gdt_descriptor;
+    z86DescriptorCache80286 ldt_descriptor;
+    z86DescriptorCache80286 idt_descriptor;
+    z86DescriptorCache80286 tss_descriptor;
+};
+
+template <size_t max_bits, bool protected_mode>
+struct z86BaseControlBase;
+
+// size: 0x16
+template <size_t max_bits>
+struct z86BaseControlBase<max_bits, false> {
+
+    static inline constexpr z86DescriptorCache<max_bits> descriptors[12] = {};
+
+    union {
+        uint16_t seg[8];
+        struct {
+            uint16_t es;
+            uint16_t cs;
+            uint16_t ss;
+            uint16_t ds;
+            uint16_t fs;
+            uint16_t gs;
+            uint16_t ds3;
+            uint16_t ds2;
+        };
+    };
+
+    inline constexpr const uint16_t& get_seg_impl(uint8_t index) {
+        return this->seg[index];
+    }
+};
+
+template <>
+struct z86BaseControlBase<16, true> : z86BaseControlBase<16, false> {
+    union {
+        z86DescriptorCache<16> descriptors[12] = {};
+        struct {
+            z86DescriptorCache<16> es_descriptor;
+            z86DescriptorCache<16> cs_descriptor;
+            z86DescriptorCache<16> ss_descriptor;
+            z86DescriptorCache<16> ds_descriptor;
+            z86DescriptorCache<16> fs_descriptor;
+            z86DescriptorCache<16> gs_descriptor;
+            z86DescriptorCache<16> ds3_descriptor;
+            z86DescriptorCache<16> ds2_descriptor;
+            z86DescriptorCache<16> gdt_descriptor;
+            z86DescriptorCache<16> ldt_descriptor;
+            z86DescriptorCache<16> idt_descriptor;
+            z86DescriptorCache<16> tss_descriptor;
+        };
+    };
+    union {
+        uint16_t msw;
+        uint16_t cr0;
+        union {
+            uint8_t protected_mode : 1;
+        };
+    };
+    union {
+        uint16_t control_selectors[2];
+        struct {
+            uint16_t ldtr;
+            uint16_t tr;
+        };
+    };
+};
+
+template <>
+struct z86BaseControlBase<32, true> : z86BaseControlBase<32, false> {
+    union {
+        z86DescriptorCache<32> descriptors[12] = {};
+        struct {
+            z86DescriptorCache<32> es_descriptor;
+            z86DescriptorCache<32> cs_descriptor;
+            z86DescriptorCache<32> ss_descriptor;
+            z86DescriptorCache<32> ds_descriptor;
+            z86DescriptorCache<32> fs_descriptor;
+            z86DescriptorCache<32> gs_descriptor;
+            z86DescriptorCache<32> ds3_descriptor;
+            z86DescriptorCache<32> ds2_descriptor;
+            z86DescriptorCache<32> gdt_descriptor;
+            z86DescriptorCache<32> ldt_descriptor;
+            z86DescriptorCache<32> idt_descriptor;
+            z86DescriptorCache<32> tss_descriptor;
+        };
+    };
+    union {
+        uint16_t msw;
+        uint32_t cr0;
+        union {
+            uint8_t protected_mode : 1;
+        };
+    };
+    union {
+        uint16_t control_selectors[2];
+        struct {
+            uint16_t ldtr;
+            uint16_t tr;
+        };
+    };
+};
+
+template <>
+struct z86BaseControlBase<64, true> : z86BaseControlBase<64, false> {
+    union {
+        z86DescriptorCache<64> descriptors[12] = {};
+        struct {
+            z86DescriptorCache<64> es_descriptor;
+            z86DescriptorCache<64> cs_descriptor;
+            z86DescriptorCache<64> ss_descriptor;
+            z86DescriptorCache<64> ds_descriptor;
+            z86DescriptorCache<64> fs_descriptor;
+            z86DescriptorCache<64> gs_descriptor;
+            z86DescriptorCache<64> ds3_descriptor;
+            z86DescriptorCache<64> ds2_descriptor;
+            z86DescriptorCache<64> gdt_descriptor;
+            z86DescriptorCache<64> ldt_descriptor;
+            z86DescriptorCache<64> idt_descriptor;
+            z86DescriptorCache<64> tss_descriptor;
+        };
+    };
+    union {
+        uint16_t msw;
+        uint32_t cr0;
+        union {
+            uint8_t protected_mode : 1;
+        };
+    };
+    union {
+        uint16_t control_selectors[2];
+        struct {
+            uint16_t ldtr;
+            uint16_t tr;
+        };
+    };
+};
+
+template <size_t max_bits, bool has_protected_mode>
+struct z86BaseControl;
+
+template <size_t max_bits>
+struct z86BaseControl<max_bits, false> : z86BaseControlBase<max_bits, false> {
+
+    inline constexpr void write_seg_impl(uint8_t index, uint16_t value) {
+        this->seg[index] = value;
+    }
+
+    // Assuming a previous memset of full context
+    inline constexpr void reset_descriptors() {
+        this->cs = 0xF000;
+    }
+};
+
+// Various notes about 80286 descriptor caches, LOADALL, etc.:
+// https://www.rcollins.org/articles/loadall/
+// https://gist.github.com/luelista/557dd8f7f5b28cc1f9c28776c88ec347
+// https://www.pcjs.org/documents/manuals/intel/80386/loadall/
+// https://www.vogons.org/viewtopic.php?t=65223&start=580
+// https://forum.vcfed.org/index.php?threads/i-found-the-saveall-opcode.71519/
+// https://rep-lodsb.mataroa.blog/blog/the-286s-internal-registers/
+template <size_t max_bits>
+struct z86BaseControl<max_bits, true> : z86BaseControlBase<max_bits, true> {
+    using BT = z86DescriptorCache<max_bits>::BT;
+    using LT = z86DescriptorCache<max_bits>::LT;
+
+    inline constexpr void write_seg_impl(uint8_t index, uint16_t selector) {
+        if (this->protected_mode) {
+            //this->descriptors[index].load_descriptor(this->descriptors[GDT + (selector >> 2 & 1)].load_selector(selector));
+            auto* new_descriptor = this->descriptors[GDT + (selector >> 2 & 1)].load_selector(selector);
+
+            //std::destroy_at(&this->descriptors[index]);
+            //new (&this->descriptors[index]) z86DescriptorCache<max_bits>(new_descriptor);
+            reconstruct_at(&this->descriptors[index], new_descriptor);
+        } else {
+            //this->descriptors[index].base = (size_t)selector << 4;
+            reconstruct_at(&this->descriptors[index], this->descriptors[index].limit, (size_t)selector << 4, this->descriptors[index].type, this->descriptors[index].privilege);
+        }
+        this->seg[index] = selector;
+    }
+
+    // Used for control flow specifically
+    inline constexpr void write_cs(uint16_t value) {
+
+    }
+
+    // Assuming a previous memset of full context
+    inline constexpr void reset_descriptors() {
+        this->cs = 0xF000;
+        //this->cs_descriptor.base = 0xFFFF0000;
+        reconstruct_at(&this->cs_descriptor, this->cs_descriptor.limit, 0xFFFF0000, this->cs_descriptor.type, this->cs_descriptor.privilege);
+        for (size_t i = 0; i < 8; ++i) {
+            //this->descriptors[i].limit = 0xFFFF;
+            //std::destroy_at(&this->descriptors[i]);
+            //new (&this->descriptors[i]) z86DescriptorCache<max_bits>((LT)0xFFFF, (BT)0);
+            reconstruct_at(&this->descriptors[i], 0xFFFF, this->descriptors[i].base, this->descriptors[i].type, this->descriptors[i].privilege);
+        }
+        //std::destroy_at(&this->cs_descriptor);
+        //new (&this->cs_descriptor) z86DescriptorCache<max_bits>((LT)0xFFFF, (BT)0);
+    }
+};
+
+template <size_t max_bits, bool has_protected_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
 struct z86RegBase;
 
-template <bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
-struct z86RegBase<16, has_x87, max_sse_bits, sse_reg_count> : z86BaseGPRs<16>, z86BaseFPU<has_x87>, z86BaseSSE<max_sse_bits, sse_reg_count> {
+template <bool has_protected_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
+struct z86RegBase<16, has_protected_mode, has_x87, max_sse_bits, sse_reg_count> :
+    z86BaseSSE<max_sse_bits, sse_reg_count>,
+    z86BaseFPU<has_x87>,
+    z86BaseGPRs<16>,
+    z86BaseControl<16, has_protected_mode>,
+    z86BaseFPUControl<16, has_x87, max_sse_bits != 0>
+{
     union {
         uint16_t rip;
         uint16_t eip;
@@ -902,8 +1822,14 @@ struct z86RegBase<16, has_x87, max_sse_bits, sse_reg_count> : z86BaseGPRs<16>, z
     }
 };
 
-template <bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
-struct z86RegBase<32, has_x87, max_sse_bits, sse_reg_count> : z86BaseGPRs<32>, z86BaseFPU<has_x87>, z86BaseSSE<max_sse_bits, sse_reg_count> {
+template <bool has_protected_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
+struct z86RegBase<32, has_protected_mode, has_x87, max_sse_bits, sse_reg_count> :
+    z86BaseSSE<max_sse_bits, sse_reg_count>,
+    z86BaseFPU<has_x87>,
+    z86BaseGPRs<32>,
+    z86BaseControl<32, has_protected_mode>,
+    z86BaseFPUControl<32, has_x87, max_sse_bits != 0>
+{
     union {
         uint32_t rip;
         uint32_t eip;
@@ -991,8 +1917,14 @@ struct z86RegBase<32, has_x87, max_sse_bits, sse_reg_count> : z86BaseGPRs<32>, z
 
 };
 
-template <bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
-struct z86RegBase<64, has_x87, max_sse_bits, sse_reg_count> : z86BaseGPRs<64>, z86BaseFPU<has_x87>, z86BaseSSE<max_sse_bits, sse_reg_count> {
+template <bool has_protected_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
+struct z86RegBase<64, has_protected_mode, has_x87, max_sse_bits, sse_reg_count> :
+    z86BaseSSE<max_sse_bits, sse_reg_count>,
+    z86BaseFPU<has_x87>,
+    z86BaseGPRs<64>,
+    z86BaseControl<64, has_protected_mode>,
+    z86BaseFPUControl<64, has_x87, max_sse_bits != 0>
+{
     union {
         uint64_t rip;
         uint32_t eip;
@@ -1076,11 +2008,43 @@ struct z86RegBase<64, has_x87, max_sse_bits, sse_reg_count> : z86BaseGPRs<64>, z
 
 };
 
-template <size_t bits>
+struct z86AddrSharedFuncs {
+    template <typename T, typename P>
+    static inline void regcall write(P* self, const T& value, ssize_t offset);
+
+    template <typename T = uint8_t, typename V = std::remove_reference_t<T>, typename P>
+    static inline V read(const P* self, ssize_t offset = 0);
+
+    template <typename P>
+    static inline uint32_t read_Iz(const P* self, ssize_t index = 0);
+
+    template <typename P>
+    static inline uint32_t read_advance_Iz(P* self);
+
+    template <typename P>
+    static inline int32_t read_Is(const P* self, ssize_t index = 0);
+
+    template <typename P>
+    static inline int32_t read_advance_Is(P* self);
+
+    template <typename P>
+    static inline uint64_t read_Iv(const P* self, ssize_t index = 0);
+
+    template <typename P>
+    static inline uint64_t read_advance_Iv(P* self);
+
+    template <typename P>
+    static inline uint64_t read_O(const P* self, ssize_t index = 0);
+
+    template <typename P>
+    static inline uint64_t read_advance_O(P* self);
+};
+
+template <size_t bits, bool protected_mode>
 struct z86AddrBase;
 
 template <>
-struct z86AddrBase<16> {
+struct z86AddrBase<16, false> {
     using OT = uint16_t; // Offset Type
     using FT = uint32_t; // Far Type
     using MT = uint32_t; // Memory Addr Type
@@ -1100,7 +2064,27 @@ struct z86AddrBase<16> {
 };
 
 template <>
-struct z86AddrBase<32> {
+struct z86AddrBase<16, true> {
+    using OT = uint16_t; // Offset Type
+    using FT = uint32_t; // Far Type
+    using MT = uint32_t; // Memory Addr Type
+
+    union {
+        uint32_t raw;
+        struct {
+            uint16_t offset;
+            uint8_t segment;
+        };
+    };
+
+    inline constexpr z86AddrBase() : raw(0) {}
+    inline constexpr z86AddrBase(FT raw) : raw(raw) {}
+    inline constexpr z86AddrBase(uint8_t segment, OT offset) : offset(offset), segment(segment) {}
+    inline constexpr z86AddrBase(const z86AddrBase&) = default;
+};
+
+template <>
+struct z86AddrBase<32, false> {
     using OT = uint32_t; // Offset Type
     using FT = uint64_t; // Far Type
     using MT = uint32_t; // Memory Addr Type
@@ -1120,7 +2104,27 @@ struct z86AddrBase<32> {
 };
 
 template <>
-struct z86AddrBase<64> {
+struct z86AddrBase<32, true> {
+    using OT = uint32_t; // Offset Type
+    using FT = uint64_t; // Far Type
+    using MT = uint32_t; // Memory Addr Type
+
+    union {
+        uint64_t raw;
+        struct {
+            uint32_t offset;
+            uint8_t segment;
+        };
+    };
+
+    inline constexpr z86AddrBase() : raw(0) {}
+    inline constexpr z86AddrBase(FT raw) : raw(raw) {}
+    inline constexpr z86AddrBase(uint8_t segment, OT offset) : offset(offset), segment(segment) {}
+    inline constexpr z86AddrBase(const z86AddrBase&) = default;
+};
+
+template <>
+struct z86AddrBase<64, false> {
     using OT = uint64_t; // Offset Type
     using FT = uint128_t; // Far Type
     using MT = uint64_t; // Memory Addr Type
@@ -1139,24 +2143,42 @@ struct z86AddrBase<64> {
     inline constexpr z86AddrBase(const z86AddrBase&) = default;
 };
 
-template <size_t bits>
-struct z86AddrImpl : z86AddrBase<bits> {
+template <>
+struct z86AddrBase<64, true> {
+    using OT = uint64_t; // Offset Type
+    using FT = uint128_t; // Far Type
+    using MT = uint64_t; // Memory Addr Type
 
-    using OT = z86AddrBase<bits>::OT;
-    using FT = z86AddrBase<bits>::FT;
-    using MT = z86AddrBase<bits>::MT;
+    union {
+        uint128_t raw;
+        struct {
+            uint64_t offset;
+            uint8_t segment;
+        };
+    };
 
-    inline constexpr z86AddrImpl() : z86AddrBase<bits>::z86AddrBase() {}
-    inline constexpr z86AddrImpl(FT raw) : z86AddrBase<bits>::z86AddrBase(raw) {}
-    inline constexpr z86AddrImpl(uint16_t segment, OT offset) : z86AddrBase<bits>::z86AddrBase(segment, offset) {}
+    inline constexpr z86AddrBase() : raw(0) {}
+    inline constexpr z86AddrBase(FT raw) : raw(raw) {}
+    inline constexpr z86AddrBase(uint8_t segment, OT offset) : offset(offset), segment(segment) {}
+    inline constexpr z86AddrBase(const z86AddrBase&) = default;
+};
+
+template <size_t bits, bool protected_mode>
+struct z86AddrImpl : z86AddrBase<bits, protected_mode> {
+
+    using OT = z86AddrBase<bits, protected_mode>::OT;
+    using FT = z86AddrBase<bits, protected_mode>::FT;
+    using MT = z86AddrBase<bits, protected_mode>::MT;
+
+    inline constexpr z86AddrImpl() : z86AddrBase<bits, protected_mode>::z86AddrBase() {}
+    inline constexpr z86AddrImpl(FT raw) : z86AddrBase<bits, protected_mode>::z86AddrBase(raw) {}
+    inline constexpr z86AddrImpl(uint16_t segment, OT offset) : z86AddrBase<bits, protected_mode>::z86AddrBase(segment, offset) {}
     inline constexpr z86AddrImpl(const z86AddrImpl&) = default;
 
-    template <size_t other_bits>
-    inline constexpr z86AddrImpl(const z86AddrImpl<other_bits>& addr) : z86AddrBase<bits>::z86AddrBase(addr.segment, addr.offset) {}
+    template <size_t other_bits, bool other_protection>
+    inline constexpr z86AddrImpl(const z86AddrImpl<other_bits, other_protection>& addr) : z86AddrBase<bits, protected_mode>::z86AddrBase(addr.segment, addr.offset) {}
 
-    inline constexpr size_t real_addr(size_t offset = 0) const {
-        return ((size_t)this->segment << 4) + (uint16_t)(this->offset + offset);
-    }
+    inline constexpr size_t addr(ssize_t offset = 0) const;
 
     inline constexpr z86AddrImpl& operator+=(ssize_t offset) {
         this->offset += offset;
@@ -1174,7 +2196,7 @@ struct z86AddrImpl : z86AddrBase<bits> {
     }
 
     inline constexpr z86AddrImpl operator++(int) {
-        return z86Addr(this->segment, this->offset++);
+        return z86AddrImpl(this->segment, this->offset++);
     }
 
     inline constexpr z86AddrImpl& operator--() {
@@ -1199,10 +2221,14 @@ struct z86AddrImpl : z86AddrBase<bits> {
     }
 
     template <typename T = uint8_t>
-    inline void regcall write(const T& value, ssize_t offset = 0);
+    inline void regcall write(const T& value, ssize_t offset = 0) {
+        return z86AddrSharedFuncs::write<T>(this, value, offset);
+    }
 
     template <typename T = uint8_t, typename V = std::remove_reference_t<T>>
-    inline V read(ssize_t offset = 0) const;
+    inline V read(ssize_t offset = 0) const {
+        return z86AddrSharedFuncs::read<T>(this, offset);
+    }
 
     template <typename T = uint8_t>
     inline void regcall write_advance(const T& value, ssize_t index = sizeof(T)) {
@@ -1217,21 +2243,212 @@ struct z86AddrImpl : z86AddrBase<bits> {
         return ret;
     }
 
-    inline uint32_t read_Iz(ssize_t index = 0) const;
+    inline uint32_t read_Iz(ssize_t index = 0) const {
+        return z86AddrSharedFuncs::read_Iz(this, index);
+    }
 
-    inline uint32_t read_advance_Iz();
+    inline uint32_t read_advance_Iz() {
+        return z86AddrSharedFuncs::read_advance_Iz(this);
+    }
 
-    inline int32_t read_Is(ssize_t index = 0) const;
+    inline int32_t read_Is(ssize_t index = 0) const {
+        return z86AddrSharedFuncs::read_Is(this, index);
+    }
 
-    inline int32_t read_advance_Is();
+    inline int32_t read_advance_Is() {
+        return z86AddrSharedFuncs::read_advance_Is(this);
+    }
 
-    inline uint64_t read_Iv(ssize_t index = 0) const;
+    inline uint64_t read_Iv(ssize_t index = 0) const {
+        return z86AddrSharedFuncs::read_Iv(this, index);
+    }
 
-    inline uint64_t read_advance_Iv();
+    inline uint64_t read_advance_Iv() {
+        return z86AddrSharedFuncs::read_advance_Iv(this);
+    }
 
-    inline uint64_t read_O(ssize_t index = 0) const;
+    inline uint64_t read_O(ssize_t index = 0) const {
+        return z86AddrSharedFuncs::read_O(this, index);
+    }
 
-    inline uint64_t read_advance_O();
+    inline uint64_t read_advance_O() {
+        return z86AddrSharedFuncs::read_advance_O(this);
+    }
+};
+
+template <size_t max_bits>
+struct z86AddrFixedBase;
+
+template <>
+struct z86AddrFixedBase<16> {
+    using OT = uint16_t; // Offset Type
+    using FT = uint32_t; // Far Type
+    using MT = uint32_t; // Memory Addr Type
+
+    uint16_t offset;
+
+    inline constexpr z86AddrFixedBase() : offset(0) {}
+    inline constexpr z86AddrFixedBase(OT offset) : offset(offset) {}
+    inline constexpr z86AddrFixedBase(FT offset) : offset(offset) {}
+    inline constexpr z86AddrFixedBase(const z86AddrFixedBase&) = default;
+};
+
+template <>
+struct z86AddrFixedBase<32> {
+    using OT = uint32_t; // Offset Type
+    using FT = uint64_t; // Far Type
+    using MT = uint32_t; // Memory Addr Type
+
+    uint32_t offset;
+
+    inline constexpr z86AddrFixedBase() : offset(0) {}
+    inline constexpr z86AddrFixedBase(OT offset) : offset(offset) {}
+    inline constexpr z86AddrFixedBase(FT offset) : offset(offset) {}
+    inline constexpr z86AddrFixedBase(const z86AddrFixedBase&) = default;
+};
+
+template <>
+struct z86AddrFixedBase<64> {
+    using OT = uint64_t; // Offset Type
+    using FT = uint128_t; // Far Type
+    using MT = uint64_t; // Memory Addr Type
+
+    uint64_t offset;
+
+    inline constexpr z86AddrFixedBase() : offset(0) {}
+    inline constexpr z86AddrFixedBase(OT offset) : offset(offset) {}
+    inline constexpr z86AddrFixedBase(FT offset) : offset(offset) {}
+    inline constexpr z86AddrFixedBase(const z86AddrFixedBase&) = default;
+};
+
+template <size_t max_bits, uint8_t descriptor_index>
+struct z86AddrFixedImpl : z86AddrFixedBase<max_bits> {
+
+    using OT = z86AddrFixedBase<max_bits>::OT; // Offset Type
+    using FT = z86AddrFixedBase<max_bits>::FT; // Far Type
+    using MT = z86AddrFixedBase<max_bits>::MT; // Memory Addr Type
+
+    inline constexpr z86AddrFixedImpl() : z86AddrFixedBase<max_bits>::z86AddrFixedBase() {}
+    inline constexpr z86AddrFixedImpl(OT offset) : z86AddrFixedBase<max_bits>::z86AddrFixedBase(offset) {}
+    inline constexpr z86AddrFixedImpl(FT offset) : z86AddrFixedBase<max_bits>::z86AddrFixedBase(offset) {}
+    inline constexpr z86AddrFixedImpl(const z86AddrFixedImpl&) = default;
+
+    inline constexpr size_t addr(ssize_t offset = 0) const;
+
+    inline constexpr z86AddrFixedImpl& operator+=(ssize_t offset) {
+        this->offset += offset;
+        return *this;
+    }
+
+    inline constexpr z86AddrFixedImpl& operator-=(ssize_t offset) {
+        this->offset -= offset;
+        return *this;
+    }
+
+    inline constexpr z86AddrFixedImpl& operator++() {
+        ++this->offset;
+        return *this;
+    }
+
+    inline constexpr z86AddrFixedImpl operator++(int) {
+        return z86AddrFixedImpl(this->offset++);
+    }
+
+    inline constexpr z86AddrFixedImpl& operator--() {
+        --this->offset;
+        return *this;
+    }
+
+    inline constexpr z86AddrFixedImpl operator--(int) {
+        return z86AddrFixedImpl(this->offset--);
+    }
+
+    inline constexpr OT operator+(ssize_t offset) const {
+        return this->offset + offset;
+    }
+
+    inline constexpr OT operator-(ssize_t offset) const {
+        return this->offset - offset;
+    }
+
+    template <typename T = uint8_t>
+    inline void regcall write(const T& value, ssize_t offset = 0) {
+        return z86AddrSharedFuncs::write<T>(this, value, offset);
+    }
+
+    template <typename T = uint8_t, typename V = std::remove_reference_t<T>>
+    inline V read(ssize_t offset = 0) const {
+        return z86AddrSharedFuncs::read<T>(this, offset);
+    }
+
+    template <typename T = uint8_t>
+    inline void regcall write_advance(const T& value, ssize_t index = sizeof(T)) {
+        this->write(value);
+        this->offset += index;
+    }
+
+    template <typename T = uint8_t, typename V = std::remove_reference_t<T>>
+    inline V read_advance(ssize_t index = sizeof(V)) {
+        V ret = this->read<V>();
+        this->offset += index;
+        return ret;
+    }
+
+    inline uint32_t read_Iz(ssize_t index = 0) const {
+        return z86AddrSharedFuncs::read_Iz(this, index);
+    }
+
+    inline uint32_t read_advance_Iz() {
+        return z86AddrSharedFuncs::read_advance_Iz(this);
+    }
+
+    inline int32_t read_Is(ssize_t index = 0) const {
+        return z86AddrSharedFuncs::read_Is(this, index);
+    }
+
+    inline int32_t read_advance_Is() {
+        return z86AddrSharedFuncs::read_advance_Is(this);
+    }
+
+    inline uint64_t read_Iv(ssize_t index = 0) const {
+        return z86AddrSharedFuncs::read_Iv(this, index);
+    }
+
+    inline uint64_t read_advance_Iv() {
+        return z86AddrSharedFuncs::read_advance_Iv(this);
+    }
+
+    inline uint64_t read_O(ssize_t index = 0) const {
+        return z86AddrSharedFuncs::read_O(this, index);
+    }
+
+    inline uint64_t read_advance_O() {
+        return z86AddrSharedFuncs::read_advance_O(this);
+    }
+};
+
+template <size_t max_bits, bool protected_mode>
+struct z86AddrESImpl;
+
+template <size_t max_bits>
+struct z86AddrESImpl<max_bits, false> {
+    using type = z86AddrImpl<max_bits, false>;
+};
+
+template <size_t max_bits, bool protected_mode>
+struct z86AddrCSImpl;
+
+template <size_t max_bits>
+struct z86AddrCSImpl<max_bits, false> {
+    using type = z86AddrImpl<max_bits, false>;
+};
+
+template <size_t max_bits, bool protected_mode>
+struct z86AddrSSImpl;
+
+template <size_t max_bits>
+struct z86AddrSSImpl<max_bits, false> {
+    using type = z86AddrImpl<max_bits, false>;
 };
 
 struct SIB {
@@ -1326,7 +2543,7 @@ struct ModRM {
 #define z86BaseDefault z86Base<bits, bus, flagsA>
 
 template <size_t bits, size_t bus = bits, uint64_t flagsA = 0>
-struct z86Base : z86RegBase<bits, false, 0, 0> {
+struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CPUID_X87, 0, 0> {
 
     static inline constexpr size_t max_bits = bits;
     static inline constexpr size_t bus_width = bus;
@@ -1339,10 +2556,13 @@ struct z86Base : z86RegBase<bits, false, 0, 0> {
     static inline constexpr bool REP_INVERT_MULDIV = flagsA & FLAG_REP_INVERT_MULDIV;
     static inline constexpr bool FAULTS_ARE_TRAPS = flagsA & FLAG_FAULTS_ARE_TRAPS;
     static inline constexpr bool OLD_PUSH_SP = flagsA & FLAG_OLD_PUSH_SP;
+    static inline constexpr bool WRAP_SEGMENT_MODRM = flagsA & FLAG_WRAP_SEGMENT_MODRM;
+    static inline constexpr bool PROTECTED_MODE = flagsA & FLAG_PROTECTED_MODE;
     static inline constexpr bool OPCODES_80186 = flagsA & FLAG_OPCODES_80186;
     static inline constexpr bool OPCODES_80286 = flagsA & FLAG_OPCODES_80286;
     static inline constexpr bool OPCODES_80386 = flagsA & FLAG_OPCODES_80386;
     static inline constexpr bool OPCODES_80486 = flagsA & FLAG_OPCODES_80486;
+    static inline constexpr bool CPUID_X87 = flagsA & FLAG_CPUID_X87;
     static inline constexpr bool CPUID_CMOV = flagsA & FLAG_CPUID_CMOV;
     static inline constexpr bool CPUID_MMX = flagsA & FLAG_CPUID_MMX;
     static inline constexpr bool CPUID_SSE = flagsA & FLAG_CPUID_SSE;
@@ -1358,6 +2578,20 @@ struct z86Base : z86RegBase<bits, false, 0, 0> {
     using DT = z86BaseGPRs<bits>::DT;
 
     using SRT = std::make_signed_t<RT>;
+    
+    inline constexpr const uint16_t& get_seg(uint8_t index) {
+        if constexpr (WRAP_SEGMENT_MODRM) {
+            index &= 3;
+        }
+        return this->get_seg_impl(index);
+    }
+
+    inline constexpr void write_seg(uint8_t index, uint16_t selector) {
+        if constexpr (WRAP_SEGMENT_MODRM) {
+            index &= 3;
+        }
+        return this->write_seg_impl(index, selector);
+    }
 
     template <bool ignore_rex = false>
     inline constexpr uint8_t& index_byte_regR(uint8_t index) {
@@ -1742,24 +2976,6 @@ struct z86Base : z86RegBase<bits, false, 0, 0> {
         }
     }
 
-    union {
-        uint16_t seg[8];
-        struct {
-            uint16_t es;
-            uint16_t cs;
-            uint16_t ss;
-            uint16_t ds;
-            uint16_t fs;
-            uint16_t gs;
-            uint16_t ds3;
-            uint16_t ds2;
-        };
-    };
-
-    inline constexpr uint16_t& index_seg(uint8_t index) {
-        return this->seg[index];
-    }
-
     // Flags
     bool carry;
     bool parity;
@@ -1839,7 +3055,11 @@ struct z86Base : z86RegBase<bits, false, 0, 0> {
     }
 
     inline constexpr uint16_t segment(uint8_t default_seg) const {
-        return this->seg[this->seg_override < 0 ? default_seg : this->seg_override];
+        if constexpr (PROTECTED_MODE) {
+            return this->seg_override < 0 ? default_seg : this->seg_override;
+        } else {
+            return this->seg[this->seg_override < 0 ? default_seg : this->seg_override];
+        }
     }
 
     inline constexpr DT addr(uint8_t default_seg, RT offset) const {
@@ -1847,7 +3067,11 @@ struct z86Base : z86RegBase<bits, false, 0, 0> {
     }
 
     inline constexpr DT addr_force(uint8_t seg, RT offset) const {
-        return (DT)this->seg[seg] << bitsof(RT) | offset;
+        if constexpr (PROTECTED_MODE) {
+            return (DT)seg << bitsof(RT) | offset;
+        } else {
+            return (DT)this->seg[seg] << bitsof(RT) | offset;
+        }
     }
 
     template <typename P = RT>
@@ -3943,7 +5167,7 @@ template <z86CoreType core_type, uint64_t flagsA = 0>
 struct z86Core;
 
 template <uint64_t flagsA>
-struct z86Core<z8086, flagsA> : z86Base<16, 16, flagsA | FLAG_PUSH_CS | FLAG_REP_INVERT_MULDIV | FLAG_FAULTS_ARE_TRAPS | FLAG_NO_UD | FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP> {};
+struct z86Core<z8086, flagsA> : z86Base<16, 16, flagsA | FLAG_PUSH_CS | FLAG_REP_INVERT_MULDIV | FLAG_FAULTS_ARE_TRAPS | FLAG_NO_UD | FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP | FLAG_WRAP_SEGMENT_MODRM> {};
 
 template <uint64_t flagsA>
 struct z86Core<z80186, flagsA> : z86Base<16, 16, flagsA | FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP | FLAG_OPCODES_80186> {};

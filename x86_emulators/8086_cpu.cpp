@@ -25,8 +25,6 @@
 
 #include "../zero/util.h"
 
-#define USE_BITFIELDS 1
-
 #include "z86_core_internal_pre.h"
 
 static z86Memory<1_MB> mem;
@@ -41,7 +39,7 @@ struct z8086Context : z86Core<z8086 /*, FLAG_OPCODES_80186 | FLAG_OPCODES_80286 
 
     inline constexpr void init() {
         memset(this, 0, sizeof(*this));
-        this->cs = 0xF000;
+        this->reset_descriptors();
         this->ip = 0xFFF0;
         this->pending_einterrupt = -1;
         this->pending_sinterrupt = -1;
@@ -52,10 +50,6 @@ struct z8086Context : z86Core<z8086 /*, FLAG_OPCODES_80186 | FLAG_OPCODES_80286 
         this->seg_override = -1;
         this->rep_type = NO_REP;
         this->halted = false;
-    }
-
-    inline constexpr uint16_t& index_seg(uint8_t index) {
-        return this->seg[index & 3];
     }
 
     // Instruction implementations
@@ -166,8 +160,6 @@ struct z8086Context : z86Core<z8086 /*, FLAG_OPCODES_80186 | FLAG_OPCODES_80286 
 
 static z8086Context ctx;
 
-using z86Addr = z86AddrImpl<16>;
-
 static std::vector<PortDwordDevice*> io_dword_devices;
 static std::vector<PortWordDevice*> io_word_devices;
 static std::vector<PortByteDevice*> io_byte_devices;
@@ -213,14 +205,14 @@ dllexport void z86_execute() {
 #define FAULT_CHECK(...) if (expect(__VA_ARGS__, false)) { goto fault; }
 
 #define ALWAYS_UD() { ctx.set_fault(IntUD); goto fault; }
-#define THROW_UD() if constexpr (!ctx.NO_UD) { ctx.set_fault(IntUD); goto fault; }
+#define THROW_UD() if constexpr (!ctx.NO_UD) { ctx.set_fault(IntUD); goto fault; } else
 #define ALWAYS_UD_GRP() { ctx.set_fault(IntUD); return 2; }
-#define THROW_UD_GRP() if constexpr (!ctx.NO_UD) { ctx.set_fault(IntUD); return 2; }
+#define THROW_UD_GRP() if constexpr (!ctx.NO_UD) { ctx.set_fault(IntUD); return 2; } else
 
 #define ALWAYS_UD_WITHOUT_FLAG(...) if constexpr (!(__VA_ARGS__)) { ALWAYS_UD(); }
-#define THROW_UD_WITHOUT_FLAG(...) if constexpr (!(__VA_ARGS__)) { THROW_UD(); }
+#define THROW_UD_WITHOUT_FLAG(...) if constexpr (!(__VA_ARGS__)) { THROW_UD(); } else
 #define ALWAYS_UD_WITHOUT_FLAG_GRP(...) if constexpr (!(__VA_ARGS__)) { ALWAYS_UD_GRP(); }
-#define THROW_UD_WITHOUT_FLAG_GRP(...) if constexpr (!(__VA_ARGS__)) { THROW_UD_GRP(); }
+#define THROW_UD_WITHOUT_FLAG_GRP(...) if constexpr (!(__VA_ARGS__)) { THROW_UD_GRP(); } else
 
     for (;;) {
         // Reset per-instruction states
@@ -229,7 +221,7 @@ dllexport void z86_execute() {
         ctx.lock = false;
         ctx.reset_prefixes();
 
-        z86Addr pc = ctx.pc();
+        z86AddrCS pc = ctx.pc();
         uint8_t map = 0;
         // TODO: The 6 byte prefetch cache
         // TODO: Clock cycles
@@ -273,7 +265,7 @@ dllexport void z86_execute() {
                 });
                 break;
             case 0x06: case 0x0E: case 0x16: case 0x1E: // PUSH seg
-                ctx.PUSH(ctx.index_seg(opcode_byte >> 3));
+                ctx.PUSH(ctx.get_seg(opcode_byte >> 3));
                 break;
             case 0x0F:
                 if constexpr (ctx.OPCODES_80286) {
@@ -282,7 +274,7 @@ dllexport void z86_execute() {
                 }
                 THROW_UD();
             case 0x07: case 0x17: case 0x1F: // POP seg
-                ctx.index_seg(opcode_byte >> 3) = ctx.POP();
+                ctx.write_seg(opcode_byte >> 3, ctx.POP());
                 break;
             case 0x08: // OR Mb, Rb
                 FAULT_CHECK(ctx.binopMR<true>(pc, [](auto& dst, auto src) regcall {
@@ -1172,7 +1164,17 @@ dllexport void z86_execute() {
             case 0xEF: // OUT DX, AX
                 ctx.port_out(ctx.dx);
                 break;
-            case 0xF0: case 0xF1: // LOCK
+            case 0xF1:
+                if constexpr (ctx.OPCODES_80386) { // INT1
+                    ctx.set_trap(IntDB);
+                    goto trap;
+                }
+                if constexpr (ctx.OPCODES_80286) {
+                    // Stupid STOREALL prefix, just going to ignore this
+                    goto next_byte;
+                }
+                THROW_UD();
+            case 0xF0: // LOCK
                 ctx.lock = true;
                 goto next_byte;
             case 0xF2: case 0xF3: // REPNE, REP
@@ -1278,7 +1280,7 @@ dllexport void z86_execute() {
             case 0x101: // GRP7
             case 0x102: // LAR Rv, Mv
             case 0x103: // LSL Rv, Mv
-            case 0x104: // SAVEALL
+            case 0x104: // STOREALL
             case 0x105: // SYSCALL, LOADALL2
             case 0x106: // CLTS
             case 0x107: // SYSRET, LOADALL3
@@ -2514,7 +2516,7 @@ dllexport void z86_execute() {
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.binopRMF(pc, [=](auto& dst, auto src) regcall {
                     dst = src;
-                    ctx.index_seg(FS + (opcode_byte & 1)) = src >> (bitsof(src) >> 1);
+                    ctx.write_seg(FS + (opcode_byte & 1), src >> (bitsof(src) >> 1));
                     return true;
                 }));
                 break;
