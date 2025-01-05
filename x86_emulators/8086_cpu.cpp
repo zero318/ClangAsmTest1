@@ -1135,6 +1135,7 @@ dllexport void z86_execute() {
                 }
                 else {
                     ModRM modrm = pc.read_advance<ModRM>();
+                    ctx.fop_set(opcode, modrom.raw);
                     uint8_t r = modrm.R();
                     uint8_t m;
                     long double* lhs;
@@ -1445,11 +1446,27 @@ dllexport void z86_execute() {
                                         switch (m) {
                                             default: unreachable;
                                             case 0: // FENI
+                                                if constexpr (!ctx.OPCODES_80286) {
+
+                                                }
+                                                break;
                                             case 1: // FDISI
+                                                if constexpr (!ctx.OPCODES_80286) {
+
+                                                }
+                                                break;
                                             case 2: // FCLEX
                                             case 3: // FINIT
+                                                break;
                                             case 4: // FSETPM
+                                                if constexpr (!ctx.OPCODES_80386) {
+
+                                                }
+                                                break;
                                             case 5: // FRSTPM
+                                                if constexpr (!ctx.OPCODES_80386) {
+
+                                                }
                                                 break;
                                             case 6:
                                             case 7:

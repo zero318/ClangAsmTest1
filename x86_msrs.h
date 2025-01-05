@@ -143,7 +143,10 @@ struct MSR_IA32_MISC_ENABLE : MSR<0x1A0, MSR_IA32_MISC_ENABLE> {
 		struct {
 			uint64_t FastStringsEnable : 1; // 0
 			uint64_t : 1; // 1
-			uint64_t EanbleFOpcode : 1; // 2 (Used as an example for MSR format, but then not documented? WTF?) [Not Architectural]
+			// Finally found docs on this in the main manual volume 1.
+			// When set to 1 this sets FOP for all non-control x87 instructions
+			// and not just ones that produce unmasked exceptions
+			uint64_t EnableFOpcode : 1; // 2 (Used as an example for MSR format, but then not documented in the msr list) [Not Architectural]
 			uint64_t ATCCEnable : 1; // 3 (Automatic Thermal Control Circuit Enable)
 			uint64_t SplitLockDisable : 1; // 4 [Not Architectural]
 			uint64_t : 1; // 5

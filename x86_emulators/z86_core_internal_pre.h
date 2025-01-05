@@ -5068,8 +5068,11 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
         }
     }
 
-    template <typename P>
-    inline void regcall X87(P& pc, uint8_t opcode);
+    inline void regcall fop_set(uint8_t opcode, uint8_t modrm) {
+        if constexpr (CPUID_X87) {
+            this->fop = (uint16_t)opcode << 8 | modrm;
+        }
+    }
 
     inline void regcall FINCSTP() {
         if constexpr (CPUID_X87) {
@@ -5603,9 +5606,6 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
             return this->unopM_impl<uint16_t>(pc, lambda);
         }
     }
-
-    template <typename T = void, typename P, typename LM, typename LR>
-    inline bool regcall unop87(P& pc, const LM& lambdaM, const LR& lambdaR);
 
     template <typename T, typename P>
     inline bool regcall unopMS_impl(P& pc);
