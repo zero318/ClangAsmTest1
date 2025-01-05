@@ -604,7 +604,7 @@ dllexport void z86_execute() {
                     goto next_byte;
                 }
                 if constexpr (ctx.OPCODES_V20) {
-                    goto x87;
+                    goto modrm_nop;
                 }
                 THROW_UD();
             case 0x67: // Addr size prefix
@@ -613,7 +613,7 @@ dllexport void z86_execute() {
                     goto next_byte;
                 }
                 if constexpr (ctx.OPCODES_V20) {
-                    goto x87;
+                    goto modrm_nop;
                 }
                 THROW_UD();
             case 0x76: // JBE Jb
@@ -1128,7 +1128,489 @@ dllexport void z86_execute() {
                 ctx.al = addr.read<uint8_t>();
                 break;
             }
-            case 0xD8: case 0xD9: case 0xDA: case 0xDB: case 0xDC: case 0xDD: case 0xDE: case 0xDF: x87: // ESC x87
+            case 0xD8: case 0xDA: case 0xDC: case 0xDE:
+            case 0xD9: case 0xDB: case 0xDD: case 0xDF:
+                if constexpr (!ctx.CPUID_X87) {
+                    goto modrm_nop;
+                }
+                else {
+                    ModRM modrm = pc.read_advance<ModRM>();
+                    uint8_t r = modrm.R();
+                    uint8_t m;
+                    long double* lhs;
+                    long double rhs;
+                    if (modrm.is_mem()) {
+                        z86Addr data_addr = modrm.parse_memM(pc);
+                        switch (opcode & 7) {
+                            default: unreachable;
+                            case 0: // D8 ALU mem f32
+                                rhs = data_addr.read<float>();
+                                goto x87_math_op;
+                            case 1: // D9 MOV mem
+                                switch (r) {
+                                    default: unreachable;
+                                    case 0: // FLD f32
+                                        rhs = data_addr.read<float>();
+                                        goto fld;
+                                    case 1:
+                                        ALWAYS_UD();
+                                    case 2: // FST f32
+                                        data_addr.write<float>(ctx.FTOP());
+                                        break;
+                                    case 3: // FSTP f32
+                                        data_addr.write<float>(ctx.FPOP());
+                                        break;
+                                    case 4: // FLDENV
+                                        break;
+                                    case 5: // FLDCW Mw
+                                        break;
+                                    case 6: // FSTENV
+                                        break;
+                                    case 7: // FSTCW Mw
+                                        break;
+                                }
+                                break;
+                            case 2: // DA ALU mem i32
+                                rhs = data_addr.read<int32_t>();
+                                goto x87_math_op;
+                            case 3: // DB MOV mem
+                                switch (r) {
+                                    default: unreachable;
+                                    case 0: // FILD i32
+                                        rhs = data_addr.read<int32_t>();
+                                        goto fld;
+                                    case 2: // FIST i32
+                                        data_addr.write<int32_t>(ctx.FTOP());
+                                        break;
+                                    case 1: // FISTTP i32
+                                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE3);
+                                    case 3: // FISTP i32
+                                        data_addr.write<int32_t>(ctx.FPOP());
+                                        break;
+                                    case 4:
+                                        ALWAYS_UD();
+                                    case 5:
+                                        rhs = data_addr.read<long double>();
+                                        goto fld;
+                                    case 6:
+                                        ALWAYS_UD();
+                                    case 7:
+                                        data_addr.write<long double>(ctx.FPOP());
+                                        break;
+                                }
+                                break;
+                            case 4: // DC ALU mem f64
+                                rhs = data_addr.read<double>();
+                                goto x87_math_op;
+                            case 5: // DD MOV mem
+                                switch (r) {
+                                    default: unreachable;
+                                    case 0: // FLD f64
+                                        rhs = data_addr.read<double>();
+                                        goto fld;
+                                    case 1: // FISTTP i64
+                                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE3);
+                                        goto fistp64;
+                                    case 2: // FST f64
+                                        data_addr.write<double>(ctx.FTOP());
+                                        break;
+                                    case 3: // FSTP f64
+                                        data_addr.write<double>(ctx.FPOP());
+                                        break;
+                                    case 4: // FRSTOR
+                                    case 5:
+                                        ALWAYS_UD();
+                                    case 6: // FSAVE
+                                    case 7: // FSTSW Mw
+                                        break;
+                                }
+                                break;
+                            case 6: // DE ALU mem i16
+                                rhs = data_addr.read<int16_t>();
+                                goto x87_math_op;
+                            case 7: // DF MOV mem
+                                switch (r) {
+                                    default: unreachable;
+                                    case 0: // FILD i16
+                                        rhs = data_addr.read<int16_t>();
+                                        goto fld;
+                                    case 2: // FIST i16
+                                        data_addr.write<int16_t>(ctx.FTOP());
+                                        break;
+                                    case 1: // FISTTP i16
+                                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE3);
+                                    case 3: // FISTP i16
+                                        data_addr.write<int16_t>(ctx.FPOP());
+                                        break;
+                                    case 4: // FBLD
+                                        break;
+                                    case 5: // FILD i64
+                                        rhs = data_addr.read<int64_t>();
+                                        goto fld;
+                                    case 6: // FBSTP
+                                        break;
+                                    case 7: fistp64: // FISTP i64
+                                        data_addr.write<int64_t>(ctx.FPOP());
+                                        break;
+                                }
+                                break;
+                        }
+                    }
+                    else {
+                        m = modrm.M();
+                        switch (opcode & 7) {
+                            default: unreachable;
+                            case 0: // D8 ALU reg
+                                rhs = ctx.index_st_reg(m);
+                            x87_math_op:
+                                lhs = &ctx.FTOP();
+                                switch (r) {
+                                    default: unreachable;
+                                    case 0: fadd: // FADD ST(0), rhs
+                                        ctx.FADD(*lhs, rhs);
+                                        break;
+                                    case 1: fmul: // FMUL ST(0), rhs
+                                        ctx.FMUL(*lhs, rhs);
+                                        break;
+                                    case 2: fcom: // FCOM ST(0), rhs
+                                        ctx.FCOM(*lhs, rhs);
+                                        break;
+                                    case 3: fcomp: // FCOMP ST(0), rhs
+                                        ctx.FCOM(*lhs, rhs);
+                                        ctx.FINCSTP();
+                                        break;
+                                    case 4: fsub: // FSUB ST(0), rhs
+                                        ctx.FSUB(*lhs, rhs);
+                                        break;
+                                    case 5: fsubr: // FSUBR ST(0), rhs
+                                        ctx.FSUBR(*lhs, rhs);
+                                        break;
+                                    case 6: fdiv: // FDIV ST(0), rhs
+                                        ctx.FDIV(*lhs, rhs);
+                                        break;
+                                    case 7: fdivr: // FDIVR ST(0), rhs
+                                        ctx.FDIVR(*lhs, rhs);
+                                        break;
+                                }
+                                break;
+                            case 1: // D9 BS
+                                switch (r) {
+                                    default: unreachable;
+                                    case 0: // FLD ST(m)
+                                        rhs = ctx.index_st_reg(m);
+                                    fld:
+                                        ctx.FPUSH(rhs);
+                                        break;
+                                    case 1: fxch: // FXCH ST(0), ST(m)
+                                        ctx.FXCH(ctx.index_st_reg(m));
+                                        break;
+                                    case 2:
+                                        switch (m) {
+                                            default: unreachable;
+                                            case 1: case 2: case 3: case 4: case 5: case 6: case 7:
+                                                THROW_UD();
+                                            case 0: // FNOP
+                                                break;
+                                        }
+                                        break;
+                                    case 3: // FSTP1 ST(m)
+                                        goto fstp;
+                                    case 4:
+                                        // FCHS, FABS, Cyrix?, None, FTST, FXAM, FTSTP, Cyrix?
+                                        // Solution: We're making stuff up, just use the bottom 2 bits
+                                        // as the opcode and the top bit is a pop indicator.
+                                        switch (m & 3) {
+                                            default: unreachable;
+                                            case 0: // FCHS
+                                                break;
+                                            case 1: // FABS
+                                                break;
+                                            case 2: // FTST
+                                                break;
+                                            case 3: // FXAM
+                                                break;
+                                        }
+                                        if (m & 4) {
+                                            ctx.FINCSTP();
+                                        }
+                                        break;
+                                    case 5:
+                                        switch (m) {
+                                            default: unreachable;
+                                            case 0: // FLD1
+                                                rhs = 1.0L;
+                                                goto fld;
+                                            case 1: // FLDL2T
+                                            case 2: // FLDL2E
+                                            case 3: // FLDPI
+                                            case 4: // FLDLG2
+                                            case 5: // FLDLN2
+                                                break;
+                                            case 6: // FLDZ
+                                                rhs = 0.0L;
+                                                goto fld;
+                                            case 7:
+                                                ALWAYS_UD();
+                                        }
+                                        break;
+                                    case 6:
+                                        switch (m) {
+                                            default: unreachable;
+                                            case 0: // F2XM1
+                                            case 1: // FYL2X
+                                            case 2: // FPTAN
+                                            case 3: // FPATAN
+                                            case 4: // FXTRACT
+                                                break;
+                                            case 5: // FPREM1
+                                                THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
+                                                break;
+                                            case 6: // FDECSTP
+                                                ctx.FDECSTP();
+                                                break;
+                                            case 7: // FINCSTP
+                                                ctx.FINCSTP();
+                                                break;
+                                        }
+                                        break;
+                                    case 7:
+                                        switch (m) {
+                                            default: unreachable;
+                                            case 0: // FPREM
+                                            case 1: // FYL2XP1
+                                            case 2: // FSQRT
+                                                break;
+                                            case 3: // FSINCOS
+                                                THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
+                                                break;
+                                            case 4: // FRNDINT
+                                            case 5: // FSCALE
+                                                break;
+                                            case 6: // FSIN
+                                                THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
+                                                break;
+                                            case 7: // FCOS
+                                                THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
+                                                break;
+                                        }
+                                        break;
+                                }
+                                break;
+                            case 2: // DA FCMOV + FUCOMPP
+                                switch (r) {
+                                    default: unreachable;
+                                    case 0: fcmovb: // FCMOVB ST(0), ST(m)
+                                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
+                                        ctx.FCMOVCC<CondNB>(ctx.index_st_reg(m), opcode & 1);
+                                        break;
+                                    case 1: fcmove: // FCMOVE ST(0), ST(m)
+                                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
+                                        ctx.FCMOVCC<CondNE>(ctx.index_st_reg(m), opcode & 1);
+                                        break;
+                                    case 2: fcmovbe: // FCMOVBE ST(0), ST(m)
+                                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
+                                        ctx.FCMOVCC<CondNBE>(ctx.index_st_reg(m), opcode & 1);
+                                        break;
+                                    case 3: fcmovu: // FCMOVU ST(0), ST(m)
+                                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
+                                        ctx.FCMOVCC<CondNP>(ctx.index_st_reg(m), opcode & 1);
+                                        break;
+                                    case 4:
+                                        ALWAYS_UD();
+                                    case 5:
+                                        if (r == 1) { // FUCOMPP
+                                            THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
+                                            ctx.FUCOM(ctx.FTOP(), ctx.index_st_reg(1));
+                                            ctx.FINCSTP();
+                                            ctx.FINCSTP();
+                                            break;
+                                        }
+                                    case 6:
+                                    case 7:
+                                        ALWAYS_UD();
+                                }
+                                break;
+                            case 3: // DB FCMOV + BS
+                                switch (r) {
+                                    default: unreachable;
+                                    case 0: // FCMOVNB ST(0), ST(m)
+                                        goto fcmovb;
+                                    case 1: // FCMOVNE ST(0), ST(m)
+                                        goto fcmove;
+                                    case 2: // FCMOVNBE ST(0), ST(m)
+                                        goto fcmovbe;
+                                    case 3: // FCMOVNU ST(0), ST(m)
+                                        goto fcmovu;
+                                    case 4:
+                                        switch (m) {
+                                            default: unreachable;
+                                            case 0: // FENI
+                                            case 1: // FDISI
+                                            case 2: // FCLEX
+                                            case 3: // FINIT
+                                            case 4: // FSETPM
+                                            case 5: // FRSTPM
+                                                break;
+                                            case 6:
+                                            case 7:
+                                                ALWAYS_UD();
+                                        }
+                                        break;
+                                    case 5: // FUCOMI ST(0), ST(m)
+                                        THROW_UD_WITHOUT_FLAG(ctx.OPCODES_P6);
+                                        ctx.FUCOMI(ctx.index_st_reg(m));
+                                        break;
+                                    case 6: // FCMOI ST(0), ST(m)
+                                        THROW_UD_WITHOUT_FLAG(ctx.OPCODES_P6);
+                                        ctx.FCOMI(ctx.index_st_reg(m));
+                                        break;
+                                    case 7:
+                                        if (m == 4) { // FRINT2
+
+                                            break;
+                                        }
+                                        ALWAYS_UD();
+                                }
+                                break;
+                            case 4: // DC ALU reg reverse
+                                lhs = &ctx.index_st_reg(m);
+                                rhs = ctx.FTOP();
+                                switch (r) {
+                                    default: unreachable;
+                                    case 0: goto fadd;
+                                    case 1: goto fmul;
+                                    case 2: goto fcom;
+                                    case 3: goto fcomp;
+                                    case 4: goto fsubr;
+                                    case 5: goto fsub;
+                                    case 6: goto fdivr;
+                                    case 7: goto fdiv;
+                                }
+                            case 5: // DD misc
+                                switch (r) {
+                                    default: unreachable;
+                                    case 0: // FFREE ST(m)
+                                        ctx.FFREE(m);
+                                        break;
+                                    case 1: // FXCH4 ST(0), ST(m)
+                                        goto fxch;
+                                    case 2: fst: // FST ST(m)
+                                        ctx.index_st_reg(m) = ctx.FTOP();
+                                        break;
+                                    case 3: fstp: // FSTP ST(m)
+                                        ctx.index_st_reg(m) = ctx.FTOP();
+                                        ctx.FINCSTP();
+                                        break;
+                                    case 4: // FUCOM ST(0), ST(m)
+                                        THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
+                                        ctx.FUCOM(ctx.index_st_reg(m));
+                                        break;
+                                    case 5: // FUCOMP ST(0), ST(m)
+                                        THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
+                                        ctx.FUCOM(ctx.index_st_reg(m));
+                                        ctx.FINCSTP();
+                                        break;
+                                    case 6:
+                                        ALWAYS_UD();
+                                    case 7:
+                                        if (m == 4) { // FRICHOP
+
+                                            break;
+                                        }
+                                        ALWAYS_UD();
+                                }
+                                break;
+                            case 6: // DE ALU reg pop
+                                lhs = &ctx.index_st_reg(m);
+                                rhs = ctx.FTOP();
+                                switch (r) {
+                                    default: unreachable;
+                                    case 0: // FADDP ST(m), ST(0)
+                                        ctx.FADD(*lhs, rhs);
+                                        break;
+                                    case 1: // FMULP ST(m), ST(0)
+                                        ctx.FMUL(*lhs, rhs);
+                                        break;
+                                    case 2: // FCOMP ST(m), ST(0)
+                                        ctx.FCOM(*lhs, rhs);
+                                        break;
+                                    case 3:
+                                        switch (m) {
+                                            default: unreachable;
+                                            case 0: case 2: case 3: case 4: case 5: case 6: case 7:
+                                                THROW_UD();
+                                            case 1: // FCOMPP
+                                                ctx.FCOM(*lhs, rhs);
+                                                ctx.FINCSTP();
+                                                break;
+                                        }
+                                        break;
+                                    case 4: // FSUBRP ST(m), ST(0)
+                                        ctx.FSUBR(*lhs, rhs);
+                                        break;
+                                    case 5: // FSUB ST(m), ST(0)
+                                        ctx.FSUB(*lhs, rhs);
+                                        break;
+                                    case 6: // FDIVRP ST(m), ST(0)
+                                        ctx.FDIVR(*lhs, rhs);
+                                        break;
+                                    case 7: // FDIVP ST(m), ST(0)
+                                        ctx.FDIV(*lhs, rhs);
+                                        break;
+                                }
+                                ctx.FINCSTP();
+                                break;
+                            case 7: // DF misc
+                                switch (r) {
+                                    default: unreachable;
+                                    case 0: // FFREEP ST(m)
+                                        ctx.FFREE(m);
+                                        ctx.FINCSTP();
+                                        break;
+                                    case 1: // FXCH7 ST(0), ST(m)
+                                        goto fxch;
+                                    case 2: // FSTP8 ST(m)
+                                    case 3: // FSTP9 ST(m)
+                                        goto fstp;
+                                    case 4:
+                                        switch (m) {
+                                            default: unreachable;
+                                            case 0: // FSTSW AX
+                                                THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80286);
+                                                break;
+                                            case 1: // FSTDW AX
+                                            case 2: // FSTSG AX
+                                            case 3:
+                                            case 4:
+                                            case 5:
+                                            case 6:
+                                            case 7:
+                                                ALWAYS_UD();
+                                        }
+                                        break;
+                                    case 5: // FUCOMIP ST(0), ST(m)
+                                        THROW_UD_WITHOUT_FLAG(ctx.OPCODES_P6);
+                                        ctx.FUCOMI(ctx.index_st_reg(m));
+                                        ctx.FINCSTP();
+                                        break;
+                                    case 6: // FCOMIP ST(0), ST(m)
+                                        THROW_UD_WITHOUT_FLAG(ctx.OPCODES_P6);
+                                        ctx.FCOMI(ctx.index_st_reg(m));
+                                        ctx.FINCSTP();
+                                        break;
+                                    case 7:
+                                        if (m == 4) { // FRINEAR
+
+                                            break;
+                                        }
+                                        ALWAYS_UD();
+                                }
+                                break;
+                        }
+                    }
+                }
+                break;
+            x87: // ESC x87
                 // NOP :D
                 pc += pc.read<ModRM>().length(pc);
                 break;
@@ -1689,6 +2171,7 @@ dllexport void z86_execute() {
                 }
             hint_nop: // HINT_NOP
                 THROW_UD_WITHOUT_FLAG(ctx.HAS_LONG_NOP);
+            modrm_nop:
                 pc += pc.read<ModRM>().length(pc);
                 break;
             case 0x120:

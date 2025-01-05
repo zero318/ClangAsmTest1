@@ -104,18 +104,20 @@ enum z86FeatureFlagsA : uint64_t {
     FLAG_OPCODES_V20        = 1ull << 19,
     FLAG_OPCODES_80386      = 1ull << 20,
     FLAG_OPCODES_80486      = 1ull << 21,
-    FLAG_HAS_CPUID          = 1ull << 22,
-    FLAG_HAS_LONG_NOP       = 1ull << 23,
-    FLAG_CPUID_X87          = 1ull << 24,
-    FLAG_CPUID_CMOV         = 1ull << 25,
-    FLAG_CPUID_MMX          = 1ull << 26,
-    FLAG_CPUID_SSE          = 1ull << 27,
-    FLAG_CPUID_SSE2         = 1ull << 28,
-    FLAG_CPUID_SSE3         = 1ull << 29,
-    FLAG_CPUID_SSSE3        = 1ull << 30,
-    FLAG_CPUID_SSE41        = 1ull << 31,
-    FLAG_CPUID_SSE42        = 1ull << 32,
-    FLAG_CPUID_SSE4A        = 1ull << 33
+    FLAG_OPCODES_P5         = 1ull << 22,
+    FLAG_OPCODES_P6         = 1ull << 23,
+    FLAG_HAS_CPUID          = 1ull << 24,
+    FLAG_HAS_LONG_NOP       = 1ull << 25,
+    FLAG_CPUID_X87          = 1ull << 26,
+    FLAG_CPUID_CMOV         = 1ull << 27,
+    FLAG_CPUID_MMX          = 1ull << 28,
+    FLAG_CPUID_SSE          = 1ull << 29,
+    FLAG_CPUID_SSE2         = 1ull << 30,
+    FLAG_CPUID_SSE3         = 1ull << 31,
+    FLAG_CPUID_SSSE3        = 1ull << 32,
+    FLAG_CPUID_SSE41        = 1ull << 33,
+    FLAG_CPUID_SSE42        = 1ull << 34,
+    FLAG_CPUID_SSE4A        = 1ull << 35
 };
 
 // Code shared between x86 cores
@@ -230,6 +232,7 @@ struct GPR<64> {
 struct MMXREG {
     union {
         vec<float, 2> f32;
+        double f64;
         vec<uint8_t, 8> byte;
         vec<int8_t, 8> sbyte;
         vec<uint16_t, 4> word;
@@ -871,7 +874,8 @@ struct z86BaseFPU {
 template <>
 struct z86BaseFPU<true> {
     union {
-        alignas(16) FPUREG st[8];
+        alignas(16) long double st[8];
+        alignas(16) MMXREG mm[8];
         struct {
             union {
                 alignas(16) long double st0;
@@ -1334,8 +1338,7 @@ struct z86BaseSSE<512, 32> {
 };
 
 template <size_t max_bits, bool has_x87, bool has_sse>
-struct z86BaseFPUControl {
-};
+struct z86BaseFPUControl {};
 
 // size: 0x4
 template <size_t max_bits>
@@ -1344,7 +1347,7 @@ struct z86BaseFPUControl<max_bits, false, true> {
     // 0x4
 };
 
-// size: 0x10
+// size: 0x14
 template <>
 struct z86BaseFPUControl<16, true, false> {
     FCW fcw; // 0x0
@@ -1353,10 +1356,11 @@ struct z86BaseFPUControl<16, true, false> {
     uint16_t fop; // 0x6
     uint32_t fip; // 0x8
     uint32_t fdp; // 0xC
-    // 0x10
+    uint32_t stack_top; // 0x10
+    // 0x14
 };
 
-// size: 0x14
+// size: 0x18
 template <>
 struct z86BaseFPUControl<16, true, true> {
     FCW fcw; // 0x0
@@ -1365,11 +1369,12 @@ struct z86BaseFPUControl<16, true, true> {
     uint16_t fop; // 0x6
     uint32_t fip; // 0x8
     uint32_t fdp; // 0xC
-    MXCSR mxcsr; // 0x10
-    // 0x14
+    uint32_t stack_top; // 0x10
+    MXCSR mxcsr; // 0x14
+    // 0x18
 };
 
-// size: 0x14
+// size: 0x18
 template <>
 struct z86BaseFPUControl<32, true, false> {
     FCW fcw; // 0x0
@@ -1380,10 +1385,11 @@ struct z86BaseFPUControl<32, true, false> {
     uint32_t fdp; // 0xC
     uint16_t fcs; // 0x10
     uint16_t fds; // 0x12
-    // 0x14
+    uint32_t stack_top; // 0x14
+    // 0x18
 };
 
-// size: 0x18
+// size: 0x1C
 template <>
 struct z86BaseFPUControl<32, true, true> {
     FCW fcw; // 0x0
@@ -1394,11 +1400,12 @@ struct z86BaseFPUControl<32, true, true> {
     uint32_t fdp; // 0xC
     uint16_t fcs; // 0x10
     uint16_t fds; // 0x12
-    MXCSR mxcsr; // 0x14
-    // 0x18
+    uint32_t stack_top; // 0x14
+    MXCSR mxcsr; // 0x18
+    // 0x1C
 };
 
-// size: 0x20 (because of alignment)
+// size: 0x20
 template <>
 struct z86BaseFPUControl<64, true, false> {
     FCW fcw; // 0x0
@@ -1409,10 +1416,11 @@ struct z86BaseFPUControl<64, true, false> {
     uint64_t fdp; // 0x10
     uint16_t fcs; // 0x18
     uint16_t fds; // 0x1A
-    // 0x1C
+    uint32_t stack_top; // 0x1C
+    // 0x20
 };
 
-// size: 0x20
+// size: 0x28 (because of alignment)
 template <>
 struct z86BaseFPUControl<64, true, true> {
     FCW fcw; // 0x0
@@ -1423,8 +1431,9 @@ struct z86BaseFPUControl<64, true, true> {
     uint64_t fdp; // 0x10
     uint16_t fcs; // 0x18
     uint16_t fds; // 0x1A
-    MXCSR mxcsr; // 0x1C
-    // 0x20
+    uint32_t stack_top; // 0x1C
+    MXCSR mxcsr; // 0x20
+    // 0x24
 };
 
 struct z86DescriptorCache80286 {
@@ -2611,6 +2620,8 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
     static inline constexpr bool OPCODES_80286 = flagsA & FLAG_OPCODES_80286;
     static inline constexpr bool OPCODES_80386 = flagsA & FLAG_OPCODES_80386;
     static inline constexpr bool OPCODES_80486 = flagsA & FLAG_OPCODES_80486;
+    static inline constexpr bool OPCODES_P5 = flagsA & FLAG_OPCODES_P5;
+    static inline constexpr bool OPCODES_P6 = flagsA & FLAG_OPCODES_P6;
     static inline constexpr bool HAS_CPUID = flagsA & FLAG_HAS_CPUID;
     static inline constexpr bool HAS_LONG_NOP = flagsA & FLAG_HAS_LONG_NOP;
     static inline constexpr bool CPUID_X87 = flagsA & FLAG_CPUID_X87;
@@ -2763,6 +2774,53 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
             index |= this->get_rex_bits().B();
         }
         return this->gpr[index].qword;
+    }
+
+    inline constexpr long double& index_st_reg(uint8_t index) {
+        assume(index < 8);
+        if constexpr (CPUID_X87) {
+            return this->st[this->stack_top + index & 7];
+        }
+    }
+
+    template <typename T = void>
+    inline constexpr auto& index_mmx_reg(uint8_t index) {
+        assume(index < 8);
+        if constexpr (CPUID_MMX || CPUID_X87) {
+            if constexpr (std::is_same_v<T, void>) {
+                return this->mm[index];
+            }
+            else if constexpr (std::is_same_v<T, uint8_t>) {
+                return this->mm[index].byte;
+            }
+            else if constexpr (std::is_same_v<T, int8_t>) {
+                return this->mm[index].sbyte;
+            }
+            else if constexpr (std::is_same_v<T, uint16_t>) {
+                return this->mm[index].word;
+            }
+            else if constexpr (std::is_same_v<T, int16_t>) {
+                return this->mm[index].sword;
+            }
+            else if constexpr (std::is_same_v<T, uint32_t>) {
+                return this->mm[index].dword;
+            }
+            else if constexpr (std::is_same_v<T, int32_t>) {
+                return this->mm[index].sdword;
+            }
+            else if constexpr (std::is_same_v<T, uint64_t>) {
+                return this->mm[index].qword;
+            }
+            else if constexpr (std::is_same_v<T, int64_t>) {
+                return this->mm[index].sqword;
+            }
+            else if constexpr (std::is_same_v<T, float>) {
+                return this->mm[index].f32;
+            }
+            else if constexpr (std::is_same_v<T, double>) {
+                return this->mm[index].f64;
+            }
+        }
     }
 
     template <typename T, bool ignore_rex = false>
@@ -5010,6 +5068,172 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
         }
     }
 
+    template <typename P>
+    inline void regcall X87(P& pc, uint8_t opcode);
+
+    inline void regcall FINCSTP() {
+        if constexpr (CPUID_X87) {
+            ++this->stack_top;
+        }
+    }
+
+    inline void regcall FDECSTP() {
+        if constexpr (CPUID_X87) {
+            --this->stack_top;
+        }
+    }
+
+    inline constexpr long double& regcall FTOP() {
+        if constexpr (CPUID_X87) {
+            return this->st[this->stack_top & 7];
+        }
+    }
+
+    inline constexpr void regcall FPUSH(long double value) {
+        if constexpr (CPUID_X87) {
+            this->st[--this->stack_top & 7] = value;
+        }
+    }
+
+    inline constexpr long double regcall FPOP() {
+        if constexpr (CPUID_X87) {
+            return this->st[this->stack_top++ & 7];
+        }
+    }
+
+    inline void regcall FXCH(long double& value) {
+        if constexpr (CPUID_X87) {
+            std::swap(this->FTOP(), value);
+        }
+    }
+
+    template <CONDITION_CODE cc>
+    inline void regcall FCMOVCC(long double rhs, bool val = true) {
+        if constexpr (CPUID_X87) {
+            if (this->cond<cc>(val)) {
+                this->FTOP() = rhs;
+            }
+        }
+    }
+
+    inline void regcall FADD(long double& lhs, long double rhs) {
+        if constexpr (CPUID_X87) {
+            lhs += rhs;
+        }
+    }
+
+    inline void regcall FADD(long double rhs) {
+        if constexpr (CPUID_X87) {
+            return this->FADD(this->FTOP(), rhs);
+        }
+    }
+
+    inline void regcall FMUL(long double& lhs, long double rhs) {
+        if constexpr (CPUID_X87) {
+            lhs *= rhs;
+        }
+    }
+
+    inline void regcall FMUL(long double rhs) {
+        if constexpr (CPUID_X87) {
+            return this->FMUL(this->FTOP(), rhs);
+        }
+    }
+
+    inline void regcall FCOM(long double lhs, long double rhs) {
+        if constexpr (CPUID_X87) {
+
+        }
+    }
+
+    inline void regcall FCOM(long double rhs) {
+        if constexpr (CPUID_X87) {
+            return this->FCOM(this->FTOP(), rhs);
+        }
+    }
+
+    inline void regcall FSUB(long double& lhs, long double rhs) {
+        if constexpr (CPUID_X87) {
+            lhs -= rhs;
+        }
+    }
+
+    inline void regcall FSUB(long double rhs) {
+        if constexpr (CPUID_X87) {
+            return this->FSUB(this->FTOP(), rhs);
+        }
+    }
+
+    inline void regcall FSUBR(long double& lhs, long double rhs) {
+        if constexpr (CPUID_X87) {
+            lhs = rhs - lhs;
+        }
+    }
+
+    inline void regcall FSUBR(long double rhs) {
+        if constexpr (CPUID_X87) {
+            return this->FSUBR(this->FTOP(), rhs);
+        }
+    }
+
+    inline void regcall FDIV(long double& lhs, long double rhs) {
+        if constexpr (CPUID_X87) {
+            lhs /= rhs;
+        }
+    }
+
+    inline void regcall FDIV(long double rhs) {
+        if constexpr (CPUID_X87) {
+            return this->FDIV(this->FTOP(), rhs);
+        }
+    }
+
+    inline void regcall FDIVR(long double& lhs, long double rhs) {
+        if constexpr (CPUID_X87) {
+            lhs = rhs / lhs;
+        }
+    }
+
+    inline void regcall FDIVR(long double rhs) {
+        if constexpr (CPUID_X87) {
+            return this->FDIVR(this->FTOP(), rhs);
+        }
+    }
+
+    inline void regcall FUCOM(long double& lhs, long double rhs) {
+
+    }
+
+    inline void regcall FUCOM(long double rhs) {
+        if constexpr (CPUID_X87) {
+            return this->FUCOM(this->FTOP(), rhs);
+        }
+    }
+
+    inline void regcall FCOMI(long double& lhs, long double rhs) {
+
+    }
+
+    inline void regcall FCOMI(long double rhs) {
+        if constexpr (CPUID_X87) {
+            return this->FCOMI(this->FTOP(), rhs);
+        }
+    }
+
+    inline void regcall FUCOMI(long double& lhs, long double rhs) {
+
+    }
+    
+    inline void regcall FUCOMI(long double rhs) {
+        if constexpr (CPUID_X87) {
+            return this->FUCOMI(this->FTOP(), rhs);
+        }
+    }
+
+    inline void regcall FFREE(uint8_t index) {
+
+    }
+
     // TODO: Read microcode dump to confirm accurate behavior of BCD, there's reason to doubt official docs here
     inline void regcall AAA() {
         if (this->auxiliary || (this->al & 0xF) > 9) {
@@ -5379,6 +5603,9 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
             return this->unopM_impl<uint16_t>(pc, lambda);
         }
     }
+
+    template <typename T = void, typename P, typename LM, typename LR>
+    inline bool regcall unop87(P& pc, const LM& lambdaM, const LR& lambdaR);
 
     template <typename T, typename P>
     inline bool regcall unopMS_impl(P& pc);

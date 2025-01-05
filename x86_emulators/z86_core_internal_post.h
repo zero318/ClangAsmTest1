@@ -555,7 +555,7 @@ inline bool regcall z86BaseDefault::unopM_impl(P& pc, const L& lambda) {
     else {
         ret = lambda(this->index_regMB<T>(modrm.M()), r);
     }
-    if constexpr (this->FAULTS_ARE_TRAPS) {
+    if constexpr (FAULTS_ARE_TRAPS) {
         return false;
     }
     return OP_HAD_FAULT(ret);
@@ -1107,7 +1107,7 @@ inline bool regcall z86BaseDefault::unopMW_impl(P& pc, const L& lambda) {
     else {
         ret = lambda(this->index_regMB<T>(modrm.M()), r);
     }
-    if constexpr (this->FAULTS_ARE_TRAPS) {
+    if constexpr (FAULTS_ARE_TRAPS) {
         return false;
     }
     return OP_HAD_FAULT(ret);
@@ -1130,7 +1130,27 @@ inline bool regcall z86BaseDefault::unopMM_impl(P& pc, const L& lambda) {
     else {
         ret = lambda(this->index_regMB<T>(modrm.M()), r);
     }
-    if constexpr (this->FAULTS_ARE_TRAPS) {
+    if constexpr (FAULTS_ARE_TRAPS) {
+        return false;
+    }
+    return OP_HAD_FAULT(ret);
+}
+
+template <z86BaseTemplate>
+template <typename T, typename P, typename LM, typename LR>
+inline bool regcall z86BaseDefault::unop87(P& pc, const LM& lambdaM, const LR& lambdaR) {
+    ModRM modrm = pc.read_advance<ModRM>();
+    uint8_t r = modrm.R();
+    uint8_t ret;
+    if constexpr (!std::is_same_v<T, void>) {
+        if (modrm.is_mem()) {
+            ret = lambdaM(r, modrm.parse_memM(pc));
+        }
+        else {
+            ret = lambdaR(r, modrm.M());
+        }
+    }
+    if constexpr (FAULTS_ARE_TRAPS) {
         return false;
     }
     return OP_HAD_FAULT(ret);
