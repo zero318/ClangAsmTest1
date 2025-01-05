@@ -548,7 +548,7 @@ inline bool regcall z86BaseDefault::unopM_impl(P& pc, const L& lambda) {
         P data_addr = modrm.parse_memM(pc);
         T mval = data_addr.read<T>();
         ret = lambda(mval, r);
-        if (ret & 1) {
+        if (OP_NEEDS_WRITE(ret)) {
             data_addr.write<T>(mval);
         }
     }
@@ -558,7 +558,7 @@ inline bool regcall z86BaseDefault::unopM_impl(P& pc, const L& lambda) {
     if constexpr (this->FAULTS_ARE_TRAPS) {
         return false;
     }
-    return ret & 2;
+    return OP_HAD_FAULT(ret);
 }
 
 template <z86BaseTemplate>
@@ -704,7 +704,7 @@ template <typename T, typename P>
 inline bool regcall z86BaseDefault::LODS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
-    if (this->rep_type > NO_REP) {
+    if (this->has_rep()) {
         if (this->C<P>()) {
             do {
                 // TODO: Interrupt check here
@@ -725,7 +725,7 @@ inline bool regcall z86BaseDefault::MOVS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
     z86AddrES dst_addr = this->str_dst<P>();
-    if (this->rep_type > NO_REP) {
+    if (this->has_rep()) {
         if (this->C<P>()) {
             do {
                 // TODO: Interrupt check here
@@ -746,7 +746,7 @@ template <typename T, typename P>
 inline bool regcall z86BaseDefault::STOS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86AddrES dst_addr = this->str_dst<P>();
-    if (this->rep_type > NO_REP) {
+    if (this->has_rep()) {
         if (this->C<P>()) {
             do {
                 // TODO: Interrupt check here
@@ -766,8 +766,17 @@ template <typename T, typename P>
 inline bool regcall z86BaseDefault::SCAS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86AddrES dst_addr = this->str_dst<P>();
-    if (this->rep_type > NO_REP) {
+    if (this->has_rep()) {
         if (this->C<P>()) {
+            if constexpr (OPCODES_V20 && !OPCODES_80386) {
+                if (this->is_repc()) {
+                    do {
+                        // TODO: Interrupt check here
+                        this->CMP<T>(this->A<T>(), dst_addr.read_advance<T>(offset));
+                    } while (--this->C<P>() && this->rep_type == this->carry + 2);
+                    goto finish;
+                }
+            }
             do {
                 // TODO: Interrupt check here
                 this->CMP<T>(this->A<T>(), dst_addr.read_advance<T>(offset));
@@ -777,6 +786,7 @@ inline bool regcall z86BaseDefault::SCAS_impl() {
     else {
         this->CMP<T>(this->A<T>(), dst_addr.read_advance<T>(offset));
     }
+finish:
     this->DI<P>() = dst_addr.offset;
     return false;
 }
@@ -787,8 +797,17 @@ inline bool regcall z86BaseDefault::CMPS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
     z86AddrES dst_addr = this->str_dst<P>();
-    if (this->rep_type > NO_REP) {
+    if (this->has_rep()) {
         if (this->C<P>()) {
+            if constexpr (OPCODES_V20 && !OPCODES_80386) {
+                if (this->is_repc()) {
+                    do {
+                        // TODO: Interrupt check here
+                        this->CMP<T>(src_addr.read_advance<T>(offset), dst_addr.read_advance<T>(offset));
+                    } while (--this->C<P>() && this->rep_type == this->carry + 2);
+                    goto finish;
+                }
+            }
             do {
                 // TODO: Interrupt check here
                 this->CMP<T>(src_addr.read_advance<T>(offset), dst_addr.read_advance<T>(offset));
@@ -798,9 +817,23 @@ inline bool regcall z86BaseDefault::CMPS_impl() {
     else {
         this->CMP<T>(src_addr.read_advance<T>(offset), dst_addr.read_advance<T>(offset));
     }
+finish:
     this->SI<P>() = src_addr.offset;
     this->DI<P>() = src_addr.offset;
     return false;
+}
+
+template <z86BaseTemplate>
+template <typename P>
+inline bool regcall z86BaseDefault::ADD4S_impl() {
+    // How does this actually behave on real hardware?
+    z86Addr src_addr = this->str_src<P>();
+    z86AddrES dst_addr = this->str_dst<P>();
+    // Yes, this overflows ridiculously for 0 and 255
+    uint16_t count = (uint8_t)(this->cl + 1) >> 1;
+    while (--count) {
+
+    }
 }
 
 template <z86BaseTemplate>
@@ -809,7 +842,7 @@ inline bool regcall z86BaseDefault::OUTS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
     uint16_t port = this->dx;
-    if (this->rep_type > NO_REP) {
+    if (this->has_rep()) {
         if (this->C<P>()) {
             do {
                 // TODO: Interrupt check here
@@ -830,7 +863,7 @@ inline bool regcall z86BaseDefault::INS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86AddrES dst_addr = this->str_dst<P>();
     uint16_t port = this->dx;
-    if (this->rep_type > NO_REP) {
+    if (this->has_rep()) {
         if (this->C<P>()) {
             do {
                 // TODO: Interrupt check here
@@ -1067,7 +1100,7 @@ inline bool regcall z86BaseDefault::unopMW_impl(P& pc, const L& lambda) {
         P data_addr = modrm.parse_memM(pc);
         T mval = data_addr.read<uint16_t>();
         ret = lambda(mval, r);
-        if (ret & 1) {
+        if (OP_NEEDS_WRITE(ret)) {
             data_addr.write<uint16_t>(mval);
         }
     }
@@ -1077,7 +1110,7 @@ inline bool regcall z86BaseDefault::unopMW_impl(P& pc, const L& lambda) {
     if constexpr (this->FAULTS_ARE_TRAPS) {
         return false;
     }
-    return ret & 2;
+    return OP_HAD_FAULT(ret);
 }
 
 template <z86BaseTemplate>
@@ -1090,7 +1123,7 @@ inline bool regcall z86BaseDefault::unopMM_impl(P& pc, const L& lambda) {
         P data_addr = modrm.parse_memM(pc);
         T mval = data_addr.read<uint16_t>();
         ret = lambda(mval, r);
-        if (ret & 1) {
+        if (OP_NEEDS_WRITE(ret)) {
             data_addr.write<uint16_t>(mval);
         }
     }
@@ -1100,7 +1133,7 @@ inline bool regcall z86BaseDefault::unopMM_impl(P& pc, const L& lambda) {
     if constexpr (this->FAULTS_ARE_TRAPS) {
         return false;
     }
-    return ret & 2;
+    return OP_HAD_FAULT(ret);
 }
 
 #endif

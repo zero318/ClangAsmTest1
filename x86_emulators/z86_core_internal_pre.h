@@ -14,6 +14,12 @@
 //#include <new>
 //#include <memory>
 
+// TODO: Investigate these:
+// https://gist.github.com/TomHarte/f9c89349f676ebbe5bc92e52af77b0a1
+// https://fd.lod.bz/rbil/opcode/other.html
+
+// Random 80186 jank: https://news.ycombinator.com/item?id=34334799
+
 #include "../zero/util.h"
 
 #define USE_BITFIELDS 1
@@ -58,7 +64,7 @@ enum z86CoreType : size_t {
     z8086 = 0,
     z80186 = 1,
     z80286 = 2,
-    zNV20 = 3,
+    zNV30 = 3,
     z80386 = 4,
     z80486
 };
@@ -74,29 +80,42 @@ enum z86FeatureTier {
     FEATURES_80286, // Protected mode, ARPL, 2 byte opcodes
 };
 
+// QUIRK DEFS
 enum z86FeatureFlagsA : uint64_t {
-    FLAG_PUSH_CS            = 1 << 0,
-    FLAG_REP_INVERT_MULDIV  = 1 << 1,
-    FLAG_FAULTS_ARE_TRAPS   = 1 << 2,
-    FLAG_NO_UD              = 1 << 3,
-    FLAG_UNMASK_SHIFTS      = 1 << 4,
-    FLAG_OLD_PUSH_SP        = 1 << 5,
-    FLAG_WRAP_SEGMENT_MODRM = 1 << 6,
-    FLAG_PROTECTED_MODE     = 1 << 7,
-    FLAG_OPCODES_80186      = 1 << 8,
-    FLAG_OPCODES_80286      = 1 << 9,
-    FLAG_OPCODES_80386      = 1 << 10,
-    FLAG_OPCODES_80486      = 1 << 11,
-    FLAG_CPUID_X87          = 1 << 12,
-    FLAG_CPUID_CMOV         = 1 << 13,
-    FLAG_CPUID_MMX          = 1 << 14,
-    FLAG_CPUID_SSE          = 1 << 15,
-    FLAG_CPUID_SSE2         = 1 << 16,
-    FLAG_CPUID_SSE3         = 1 << 17,
-    FLAG_CPUID_SSSE3        = 1 << 18,
-    FLAG_CPUID_SSE41        = 1 << 19,
-    FLAG_CPUID_SSE42        = 1 << 20,
-    FLAG_CPUID_SSE4A        = 1 << 21
+    FLAG_PUSH_CS            = 1ull << 0, // 8086
+    FLAG_SAL_IS_SETMO       = 1ull << 1, // 8086
+    FLAG_REP_INVERT_MUL     = 1ull << 2, // 8086
+    FLAG_REP_INVERT_IDIV    = 1ull << 3, // 8086, 80186
+    FLAG_FAULTS_ARE_TRAPS   = 1ull << 4, // 8086
+    FLAG_NO_UD              = 1ull << 5, // 8086
+    FLAG_UNMASK_SHIFTS      = 1ull << 6, // 8086, 80186, v20
+    FLAG_OLD_PUSH_SP        = 1ull << 7, // 8086, 80186, v20
+    FLAG_OLD_RESET_PC       = 1ull << 8, // 8086, 80186, v20
+    FLAG_OLD_AAA            = 1ull << 9, // 8086, 80186 (v20 unknown)
+    FLAG_WRAP_SEGMENT_MODRM = 1ull << 10, // 8086, 80186
+    FLAG_AAM_NO_DE          = 1ull << 11, // 80186
+    FLAG_UNMASK_ENTER       = 1ull << 12, // 80186, v20
+    FLAG_REP_BOUND          = 1ull << 13, // 80186
+    FLAG_REP_MUL_MISSTORE   = 1ull << 14, // 80186
+    FLAG_PROTECTED_MODE     = 1ull << 15, // 80286+
+    FLAG_HAS_TEST_REGS      = 1ull << 16, // 80386, 80486
+    FLAG_OPCODES_80186      = 1ull << 17,
+    FLAG_OPCODES_80286      = 1ull << 18,
+    FLAG_OPCODES_V20        = 1ull << 19,
+    FLAG_OPCODES_80386      = 1ull << 20,
+    FLAG_OPCODES_80486      = 1ull << 21,
+    FLAG_HAS_CPUID          = 1ull << 22,
+    FLAG_HAS_LONG_NOP       = 1ull << 23,
+    FLAG_CPUID_X87          = 1ull << 24,
+    FLAG_CPUID_CMOV         = 1ull << 25,
+    FLAG_CPUID_MMX          = 1ull << 26,
+    FLAG_CPUID_SSE          = 1ull << 27,
+    FLAG_CPUID_SSE2         = 1ull << 28,
+    FLAG_CPUID_SSE3         = 1ull << 29,
+    FLAG_CPUID_SSSE3        = 1ull << 30,
+    FLAG_CPUID_SSE41        = 1ull << 31,
+    FLAG_CPUID_SSE42        = 1ull << 32,
+    FLAG_CPUID_SSE4A        = 1ull << 33
 };
 
 // Code shared between x86 cores
@@ -492,7 +511,9 @@ enum ADDR_SIZE : int8_t {
 enum REP_STATE : int8_t {
     NO_REP = -1,
     REP_NZ = 0, REP_NE = REP_NZ,
-    REP_Z = 1, REP_E = REP_Z
+    REP_Z = 1, REP_E = REP_Z,
+    REP_NC = 2,
+    REP_C = 3
 };
 
 enum OPCODE_PREFIX_TYPE : uint8_t {
@@ -1684,11 +1705,11 @@ struct z86BaseControlBase<64, true> : z86BaseControlBase<64, false> {
     };
 };
 
-template <size_t max_bits, bool has_protected_mode>
+template <size_t max_bits, bool use_old_reset, bool has_protected_mode>
 struct z86BaseControl;
 
-template <size_t max_bits>
-struct z86BaseControl<max_bits, false> : z86BaseControlBase<max_bits, false> {
+template <size_t max_bits, bool use_old_reset>
+struct z86BaseControl<max_bits, use_old_reset, false> : z86BaseControlBase<max_bits, false> {
 
     inline constexpr void write_seg_impl(uint8_t index, uint16_t value) {
         this->seg[index] = value;
@@ -1696,7 +1717,12 @@ struct z86BaseControl<max_bits, false> : z86BaseControlBase<max_bits, false> {
 
     // Assuming a previous memset of full context
     inline constexpr void reset_descriptors() {
-        this->cs = 0xF000;
+        if constexpr (!use_old_reset) {
+            this->cs = 0xF000;
+        }
+        else {
+            this->cs = 0xFFFF;
+        }
     }
 };
 
@@ -1707,8 +1733,8 @@ struct z86BaseControl<max_bits, false> : z86BaseControlBase<max_bits, false> {
 // https://www.vogons.org/viewtopic.php?t=65223&start=580
 // https://forum.vcfed.org/index.php?threads/i-found-the-saveall-opcode.71519/
 // https://rep-lodsb.mataroa.blog/blog/the-286s-internal-registers/
-template <size_t max_bits>
-struct z86BaseControl<max_bits, true> : z86BaseControlBase<max_bits, true> {
+template <size_t max_bits, bool use_old_reset>
+struct z86BaseControl<max_bits, use_old_reset, true> : z86BaseControlBase<max_bits, true> {
     using BT = z86DescriptorCache<max_bits>::BT;
     using LT = z86DescriptorCache<max_bits>::LT;
 
@@ -1734,9 +1760,16 @@ struct z86BaseControl<max_bits, true> : z86BaseControlBase<max_bits, true> {
 
     // Assuming a previous memset of full context
     inline constexpr void reset_descriptors() {
-        this->cs = 0xF000;
-        //this->cs_descriptor.base = 0xFFFF0000;
-        reconstruct_at(&this->cs_descriptor, this->cs_descriptor.limit, 0xFFFF0000, this->cs_descriptor.type, this->cs_descriptor.privilege);
+        if constexpr (!use_old_reset) {
+            this->cs = 0xF000;
+            //this->cs_descriptor.base = 0xFFFF0000;
+            reconstruct_at(&this->cs_descriptor, this->cs_descriptor.limit, 0xFFFF0000, this->cs_descriptor.type, this->cs_descriptor.privilege);
+        }
+        else {
+            this->cs = 0xFFFF;
+            //this->cs_descriptor.base = 0xFFFFFFF0;
+            reconstruct_at(&this->cs_descriptor, this->cs_descriptor.limit, 0xFFFFFFF0, this->cs_descriptor.type, this->cs_descriptor.privilege);
+        }
         for (size_t i = 0; i < 8; ++i) {
             //this->descriptors[i].limit = 0xFFFF;
             //std::destroy_at(&this->descriptors[i]);
@@ -1748,15 +1781,15 @@ struct z86BaseControl<max_bits, true> : z86BaseControlBase<max_bits, true> {
     }
 };
 
-template <size_t max_bits, bool has_protected_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
+template <size_t max_bits, bool use_old_reset, bool has_protected_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
 struct z86RegBase;
 
-template <bool has_protected_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
-struct z86RegBase<16, has_protected_mode, has_x87, max_sse_bits, sse_reg_count> :
+template <bool use_old_reset, bool has_protected_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
+struct z86RegBase<16, use_old_reset, has_protected_mode, has_x87, max_sse_bits, sse_reg_count> :
     z86BaseSSE<max_sse_bits, sse_reg_count>,
     z86BaseFPU<has_x87>,
     z86BaseGPRs<16>,
-    z86BaseControl<16, has_protected_mode>,
+    z86BaseControl<16, use_old_reset, has_protected_mode>,
     z86BaseFPUControl<16, has_x87, max_sse_bits != 0>
 {
     union {
@@ -1822,12 +1855,12 @@ struct z86RegBase<16, has_protected_mode, has_x87, max_sse_bits, sse_reg_count> 
     }
 };
 
-template <bool has_protected_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
-struct z86RegBase<32, has_protected_mode, has_x87, max_sse_bits, sse_reg_count> :
+template <bool use_old_reset, bool has_protected_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
+struct z86RegBase<32, use_old_reset, has_protected_mode, has_x87, max_sse_bits, sse_reg_count> :
     z86BaseSSE<max_sse_bits, sse_reg_count>,
     z86BaseFPU<has_x87>,
     z86BaseGPRs<32>,
-    z86BaseControl<32, has_protected_mode>,
+    z86BaseControl<32, use_old_reset, has_protected_mode>,
     z86BaseFPUControl<32, has_x87, max_sse_bits != 0>
 {
     union {
@@ -1917,12 +1950,12 @@ struct z86RegBase<32, has_protected_mode, has_x87, max_sse_bits, sse_reg_count> 
 
 };
 
-template <bool has_protected_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
-struct z86RegBase<64, has_protected_mode, has_x87, max_sse_bits, sse_reg_count> :
+template <bool use_old_reset, bool has_protected_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
+struct z86RegBase<64, use_old_reset, has_protected_mode, has_x87, max_sse_bits, sse_reg_count> :
     z86BaseSSE<max_sse_bits, sse_reg_count>,
     z86BaseFPU<has_x87>,
     z86BaseGPRs<64>,
-    z86BaseControl<64, has_protected_mode>,
+    z86BaseControl<64, use_old_reset, has_protected_mode>,
     z86BaseFPUControl<64, has_x87, max_sse_bits != 0>
 {
     union {
@@ -2536,6 +2569,11 @@ struct ModRM {
     uint32_t extra_length(const P& pc) const;
 
     template <typename P>
+    inline uint32_t length(const P& pc) const {
+        return 1 + this->extra_length(pc);
+    }
+
+    template <typename P>
     auto parse_memM(P& pc) const;
 };
 
@@ -2543,25 +2581,38 @@ struct ModRM {
 #define z86BaseDefault z86Base<bits, bus, flagsA>
 
 template <size_t bits, size_t bus = bits, uint64_t flagsA = 0>
-struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CPUID_X87, 0, 0> {
+struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CPUID_X87, 0, 0> {
 
     static inline constexpr size_t max_bits = bits;
     static inline constexpr size_t bus_width = bus;
 
     static inline constexpr z86FeatureTier tier = FEATURES_8086;
 
+    // QUIRK FLAGS
     static inline constexpr bool PUSH_CS = flagsA & FLAG_PUSH_CS;
+    static inline constexpr bool SAL_IS_SETMO = flagsA & FLAG_SAL_IS_SETMO;
     static inline constexpr bool NO_UD = flagsA & FLAG_NO_UD;
     static inline constexpr bool SHIFT_MASKING = !(flagsA & FLAG_UNMASK_SHIFTS);
-    static inline constexpr bool REP_INVERT_MULDIV = flagsA & FLAG_REP_INVERT_MULDIV;
+    static inline constexpr bool REP_INVERT_MUL = flagsA & FLAG_REP_INVERT_MUL;
+    static inline constexpr bool REP_INVERT_IDIV = flagsA & FLAG_REP_INVERT_IDIV;
     static inline constexpr bool FAULTS_ARE_TRAPS = flagsA & FLAG_FAULTS_ARE_TRAPS;
     static inline constexpr bool OLD_PUSH_SP = flagsA & FLAG_OLD_PUSH_SP;
+    static inline constexpr bool OLD_RESET_PC = flagsA & FLAG_OLD_RESET_PC;
+    static inline constexpr bool OLD_AAA = flagsA & FLAG_OLD_AAA;
     static inline constexpr bool WRAP_SEGMENT_MODRM = flagsA & FLAG_WRAP_SEGMENT_MODRM;
+    static inline constexpr bool AAM_NO_DE = flagsA & FLAG_AAM_NO_DE;
+    static inline constexpr bool UNMASK_ENTER = flagsA & FLAG_UNMASK_ENTER;
+    static inline constexpr bool REP_BOUND = flagsA & FLAG_REP_BOUND;
+    static inline constexpr bool REP_MUL_MISSTORE = flagsA & FLAG_REP_MUL_MISSTORE;
     static inline constexpr bool PROTECTED_MODE = flagsA & FLAG_PROTECTED_MODE;
+    static inline constexpr bool HAS_TEST_REGS = flagsA & FLAG_HAS_TEST_REGS;
     static inline constexpr bool OPCODES_80186 = flagsA & FLAG_OPCODES_80186;
+    static inline constexpr bool OPCODES_V20 = flagsA & FLAG_OPCODES_V20;
     static inline constexpr bool OPCODES_80286 = flagsA & FLAG_OPCODES_80286;
     static inline constexpr bool OPCODES_80386 = flagsA & FLAG_OPCODES_80386;
     static inline constexpr bool OPCODES_80486 = flagsA & FLAG_OPCODES_80486;
+    static inline constexpr bool HAS_CPUID = flagsA & FLAG_HAS_CPUID;
+    static inline constexpr bool HAS_LONG_NOP = flagsA & FLAG_HAS_LONG_NOP;
     static inline constexpr bool CPUID_X87 = flagsA & FLAG_CPUID_X87;
     static inline constexpr bool CPUID_CMOV = flagsA & FLAG_CPUID_CMOV;
     static inline constexpr bool CPUID_MMX = flagsA & FLAG_CPUID_MMX;
@@ -2572,6 +2623,13 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
     static inline constexpr bool CPUID_SSE41 = flagsA & FLAG_CPUID_SSE41;
     static inline constexpr bool CPUID_SSE42 = flagsA & FLAG_CPUID_SSE42;
     static inline constexpr bool CPUID_SSE4A = flagsA & FLAG_CPUID_SSE4A;
+
+    // Assuming a previous memset of full context
+    inline constexpr void reset_ip() {
+        if constexpr (!OLD_RESET_PC) {
+            this->rip = 0xFFF0;
+        }
+    }
 
     using HT = z86BaseGPRs<bits>::HT;
     using RT = z86BaseGPRs<bits>::RT;
@@ -3050,6 +3108,25 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
         this->set_opcode_select(type + 2);
     }
 
+    inline constexpr void set_repc_type(uint8_t type) {
+        if constexpr (OPCODES_V20 && !OPCODES_80386) {
+            this->rep_type = REP_NC + (type & 1);
+        }
+    }
+
+    inline constexpr bool has_rep() const {
+        return this->rep_type >= NO_REP;
+    }
+
+    inline constexpr bool is_repc() const {
+        if constexpr (OPCODES_V20 && !OPCODES_80386) {
+            return this->rep_type >= REP_NC;
+        }
+        else {
+            return false;
+        }
+    }
+
     inline constexpr void set_seg_override(uint8_t seg) {
         this->seg_override = seg;
     }
@@ -3428,7 +3505,9 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
 
     // http://www.os2museum.com/wp/if-you-enter-you-might-not-leave/
     inline void regcall ENTER(uint16_t alloc, uint8_t nesting) {
-        nesting &= 0x1F;
+        if constexpr (!UNMASK_ENTER) {
+            nesting &= 0x1F;
+        }
         if constexpr (bits > 16) {
             if (this->data_size_32()) {
                 return this->ENTER_impl<uint32_t>(alloc, nesting);
@@ -3961,22 +4040,45 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
         this->dx = (int16_t)this->ax >> 15;
     }
 
-    template <typename T>
-    inline void regcall MUL(T src) {
-        using UD = std::make_unsigned_t<dbl_int_t<T>>;
+    template <typename T, typename R = std::make_unsigned_t<dbl_int_t<T>>>
+    inline R MUL_impl(T lhs, T rhs) {
+        using U = std::make_unsigned_t<T>;
 
-        UD temp = this->A<T>();
-        temp *= src;
+        R ret = lhs;
+        ret *= (U)rhs;
 
         // Is this correct here?
-        if constexpr (REP_INVERT_MULDIV) {
-            if (this->rep_type >= 0) {
-                temp = -temp;
+        if constexpr (REP_INVERT_MUL) {
+            if (expect(this->has_rep(), false)) {
+                ret = -ret;
             }
         }
 
-        this->write_AD(temp);
-        this->carry = this->overflow = temp >> bitsof(T);
+        this->carry = this->overflow = ret >> bitsof(T);
+        return ret;
+    }
+
+    template <typename T>
+    inline void regcall MUL(T src) {
+        auto value = this->MUL_impl(this->A<T>(), src);
+        if constexpr (REP_MUL_MISSTORE) {
+            if (expect(this->has_rep(), false)) {
+                if constexpr (sizeof(T) == sizeof(uint8_t)) {
+                    this->index_byte_regR(4) = value; // AH
+                }
+                else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+                    this->index_word_regR(4) = value; // SP
+                }
+                else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+                    this->index_dword_regR(4) = value; // ESP
+                }
+                else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+                    this->index_qword_regR(4) = value; // RSP
+                }
+                return;
+            }
+        }
+        return this->write_AD(value);
     }
 
     template <typename T, typename R = std::make_signed_t<dbl_int_t<T>>>
@@ -3987,8 +4089,10 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
         R ret = lhs;
         ret *= (S)rhs;
 
-        if constexpr (REP_INVERT_MULDIV) {
-            if (this->rep_type >= 0) {
+        // Supposedly there's 80186 rep jank too:
+        // https://forum.vcfed.org/index.php?threads/8088-8086-microcode-disassembly.77933/page-2#post-951895
+        if constexpr (REP_INVERT_MUL) {
+            if (expect(this->has_rep(), false)) {
                 ret = -ret;
             }
         }
@@ -3999,7 +4103,25 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
 
     template <typename T>
     inline void regcall IMUL(T src) {
-        return this->write_AD(this->IMUL_impl(this->A<T>(), src));
+        auto value = this->IMUL_impl(this->A<T>(), src);
+        if constexpr (REP_MUL_MISSTORE) {
+            if (expect(this->has_rep(), false)) {
+                if constexpr (sizeof(T) == sizeof(uint8_t)) {
+                    this->index_byte_regR(5) = value; // CH
+                }
+                else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+                    this->index_word_regR(5) = value; // BP
+                }
+                else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+                    this->index_dword_regR(5) = value; // EBP
+                }
+                else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+                    this->index_qword_regR(5) = value; // RBP
+                }
+                return;
+            }
+        }
+        return this->write_AD(value);
     }
 
     template <typename T>
@@ -4043,8 +4165,8 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
             SD temp = this->read_AD<T>();
             SD quot = temp / src;
 
-            if constexpr (REP_INVERT_MULDIV) {
-                if (this->rep_type >= 0) {
+            if constexpr (REP_INVERT_IDIV) {
+                if (expect(this->has_rep(), false)) {
                     quot = -quot;
                 }
             }
@@ -4059,6 +4181,28 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
             return this->set_fault(IntDE);
         }
         return false;
+    }
+
+    inline void regcall ROL4(uint8_t& dst) {
+        // HACK: ROL4 AL just rotates by 4
+        if (&dst != &this->al) {
+            uint8_t temp = dst;
+            dst = temp << 4 | this->al & 0xF;
+            this->al <<= 4;
+            this->al |= temp >> 4;
+        }
+        else {
+            dst = std::rotl(dst, 4);
+        }
+    }
+
+    inline void regcall ROR4(uint8_t& dst) {
+        // HACK: ROR4 AL does nothing
+        if (&dst != &this->al) {
+            uint8_t temp = dst;
+            dst = this->al << 4 | temp >> 4;
+            this->al = temp;
+        }
     }
 
     template <typename T>
@@ -4218,8 +4362,11 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
     // Yay, jank
     template <typename T>
     inline void regcall SETMO(T& dst, uint8_t count) {
-        if constexpr (tier == FEATURES_8086) {
-            if constexpr (tier >= FEATURES_80286) {
+        if constexpr (!SAL_IS_SETMO) {
+            return this->SHL(dst, count);
+        }
+        else {
+            if constexpr (SHIFT_MASKING) {
                 if constexpr (sizeof(T) < sizeof(uint64_t)) {
                     count &= 0x1F;
                 } else {
@@ -4230,9 +4377,6 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
             if (count) {
                 this->OR<T>(dst, (T)-1);
             }
-        }
-        else {
-            return this->SHL(dst, count);
         }
     }
 
@@ -4318,7 +4462,6 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
         this->carry = dst & mask;
         dst |= mask;
     }
-
     template <typename T>
     inline void regcall BTR(T& dst, T src) {
         assume(src < bitsof(T));
@@ -4362,6 +4505,88 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
                 }
             } while (i--);
         }
+    }
+
+    template <typename T>
+    inline void regcall TEST1(T dst, uint8_t count) {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            count &= 0x7;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            count &= 0xF;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            count &= 0x1F;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            count &= 0x3F;
+        }
+        using U = std::make_unsigned_t<T>;
+
+        this->zero = dst & (U)1 << count;
+        // Some docs say carry/overflow are set to 0
+        this->carry = this->overflow = false;
+    }
+
+    template <typename T>
+    inline void regcall SET1(T& dst, uint8_t count) {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            count &= 0x7;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            count &= 0xF;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            count &= 0x1F;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            count &= 0x3F;
+        }
+        using U = std::make_unsigned_t<T>;
+
+        const U mask = (U)1 << count;
+        dst |= mask;
+    }
+
+
+    template <typename T>
+    inline void regcall CLR1(T& dst, uint8_t count) {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            count &= 0x7;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            count &= 0xF;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            count &= 0x1F;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            count &= 0x3F;
+        }
+        using U = std::make_unsigned_t<T>;
+
+        const U mask = (U)1 << count;
+        dst &= ~mask;
+    }
+
+    template <typename T>
+    inline void regcall NOT1(T& dst, uint8_t count) {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            count &= 0x7;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            count &= 0xF;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            count &= 0x1F;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            count &= 0x3F;
+        }
+        using U = std::make_unsigned_t<T>;
+
+        const U mask = (U)1 << count;
+        dst ^= mask;
     }
 
     template <typename T>
@@ -4649,6 +4874,23 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
         }
     }
 
+    template <typename P>
+    inline bool regcall ADD4S_impl();
+
+    inline bool regcall ADD4S() {
+        if constexpr (bits > 16) {
+            if (this->addr_size_32()) {
+                return this->ADD4S_impl<uint32_t>();
+            }
+            if constexpr (bits == 64) {
+                if (this->addr_size_64()) {
+                    return this->ADD4S_impl<uint64_t>();
+                }
+            }
+        }
+        return this->ADD4S_impl<uint16_t>();
+    }
+
     template <typename T>
     inline void regcall port_out_impl(uint16_t port, T value) const;
 
@@ -4772,7 +5014,12 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
     inline void regcall AAA() {
         if (this->auxiliary || (this->al & 0xF) > 9) {
             this->auxiliary = this->carry = true;
-            this->ax += 0x106;
+            if constexpr (!OLD_AAA) {
+                this->ax += 0x106;
+            } else {
+                this->al += 6;
+                this->ah += 1;
+            }
         } else {
             this->carry = false;
         }
@@ -4782,7 +5029,7 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
     inline void regcall AAS() {
         if (this->auxiliary || (this->al & 0xF) > 9) {
             this->auxiliary = this->carry = true;
-            this->ax -= 0x106;
+            this->ax -= 0x106; // Was this different on 8086 too?
         } else {
             this->carry = false;
         }
@@ -4800,6 +5047,7 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
             this->carry = true;
             this->al -= 0x60;
         }
+        this->update_pzs(this->al);
     }
 
     inline void regcall DAS() {
@@ -4812,17 +5060,26 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
             this->carry = true;
             this->al += 0x60;
         }
+        this->update_pzs(this->al);
     }
 
+    // Note: NEC only handles default imm of 10
     inline bool regcall AAM(uint8_t imm) {
         if (imm) {
             this->ah = this->al / imm;
             this->al %= imm;
-            this->update_pzs(this->al);
         }
         else {
-            return this->set_fault(IntDE);
+            if constexpr (!AAM_NO_DE) {
+                return this->set_fault(IntDE);
+            }
+            else {
+                // https://news.ycombinator.com/item?id=34334799
+                this->ah = 0xFF;
+                // Assuming v20 replicates 80186
+            }
         }
+        this->update_pzs(this->al);
         return false;
     }
 
@@ -4836,9 +5093,24 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
     inline bool regcall BOUND(T index, T lower, T upper) {
         using S = std::make_signed_t<T>;
 
-        if ((S)index < (S)lower || (S)index > (S)upper) {
-            this->set_fault(IntBR);
-            return true;
+        // (S)index < (S)lower || (S)index > (S)upper
+        if constexpr (REP_BOUND) {
+            if (
+                (S)index < (S)lower ||
+                (
+                    expect(!this->has_rep(), true) &&
+                    (S)index > (S)upper
+                )
+            ) {
+                this->set_fault(IntBR);
+                return true;
+            }
+        }
+        else {
+            if (!in_range_inclusive<S>(index, lower, upper)) {
+                this->set_fault(IntBR);
+                return true;
+            }
         }
         return false;
     }
@@ -4855,6 +5127,16 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CP
     inline void regcall set_trap(uint8_t number) {
         return this->software_interrupt(number);
     }
+
+// Constants for returning from op wrappers
+#define OP_NOT_MEM  ((uint8_t)0)
+#define OP_NO_WRITE ((uint8_t)0)
+#define OP_WRITE    ((uint8_t)1)
+#define OP_NO_FAULT ((uint8_t)0)
+#define OP_FAULT    ((uint8_t)2)
+
+#define OP_NEEDS_WRITE(...) ((__VA_ARGS__)&1)
+#define OP_HAD_FAULT(...)   ((__VA_ARGS__)&2)
 
     template <bool is_byte = false, typename L>
     inline void regcall binopAR(uint8_t index, const L& lambda) {
@@ -5167,10 +5449,33 @@ template <z86CoreType core_type, uint64_t flagsA = 0>
 struct z86Core;
 
 template <uint64_t flagsA>
-struct z86Core<z8086, flagsA> : z86Base<16, 16, flagsA | FLAG_PUSH_CS | FLAG_REP_INVERT_MULDIV | FLAG_FAULTS_ARE_TRAPS | FLAG_NO_UD | FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP | FLAG_WRAP_SEGMENT_MODRM> {};
+struct z86Core<z8086, flagsA> :
+    z86Base<
+        16, 16, flagsA |
+        FLAG_PUSH_CS | FLAG_SAL_IS_SETMO | FLAG_REP_INVERT_MUL | FLAG_REP_INVERT_IDIV | FLAG_FAULTS_ARE_TRAPS | FLAG_NO_UD | FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP | FLAG_OLD_RESET_PC | FLAG_OLD_AAA | FLAG_WRAP_SEGMENT_MODRM
+    > {};
 
 template <uint64_t flagsA>
-struct z86Core<z80186, flagsA> : z86Base<16, 16, flagsA | FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP | FLAG_OPCODES_80186> {};
+struct z86Core<z80186, flagsA> :
+    z86Base<16, 16, flagsA |
+        FLAG_REP_INVERT_IDIV | FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP | FLAG_OLD_RESET_PC | FLAG_OLD_AAA | FLAG_AAM_NO_DE | FLAG_UNMASK_ENTER | FLAG_REP_BOUND | FLAG_REP_MUL_MISSTORE |
+        FLAG_OPCODES_80186
+    > {};
 
+template <uint64_t flagsA>
+struct z86Core<z80286, flagsA> :
+    z86Base<
+        16, 16, flagsA |
+        FLAG_PROTECTED_MODE |
+        FLAG_OPCODES_80186 | FLAG_OPCODES_80286
+    > {};
+
+template <uint64_t flagsA>
+struct z86Core<zNV30, flagsA> :
+    z86Base<
+        16, 16, flagsA |
+        FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP | FLAG_OLD_RESET_PC | FLAG_UNMASK_ENTER |
+        FLAG_OPCODES_80186 | FLAG_OPCODES_80286 | FLAG_OPCODES_V20
+    > {};
 
 #endif
