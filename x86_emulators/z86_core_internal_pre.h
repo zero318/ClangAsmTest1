@@ -1897,7 +1897,7 @@ struct z86BaseControl<max_bits, use_old_reset, true> : z86BaseControlBase<max_bi
     }
 
     inline constexpr void load_descriptor_table(uint8_t index, LT limit, BT base) {
-        //reconstruct_at(&this->descriptors[GDT + index], limit, base, this->descriptors[GDT + index].type, this->descriptors[GDT + index].privilege);
+        reconstruct_at(&this->descriptors[GDT + index], limit, base, this->descriptors[GDT + index].type, this->descriptors[GDT + index].privilege);
     }
 
     inline constexpr LT get_descriptor_table_limit(uint8_t index) const {
@@ -1916,7 +1916,7 @@ struct z86BaseControl<max_bits, use_old_reset, true> : z86BaseControlBase<max_bi
     }
     inline constexpr void set_machine_status_word(uint16_t msw) {
         // TODO: filter bits
-        //this->msw = msw;
+        this->msw = msw;
     }
 };
 
