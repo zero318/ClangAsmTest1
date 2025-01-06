@@ -214,6 +214,11 @@ dllexport void z86_execute() {
 #define ALWAYS_UD_WITHOUT_FLAG_GRP(...) if constexpr (!(__VA_ARGS__)) { ALWAYS_UD_GRP(); }
 #define THROW_UD_WITHOUT_FLAG_GRP(...) if constexpr (!(__VA_ARGS__)) { THROW_UD_GRP(); } else
 
+#define ALWAYS_GP() { ctx.set_fault(IntGP); goto fault; }
+#define ALWAYS_GP_GRP() { ctx.set_fault(IntGP); return OP_FAULT; }
+#define GP_WITHOUT_CPL0() if (ctx.current_privilege_level() != 0) { ALWAYS_GP(); } else
+#define GP_WITHOUT_CPL0_GRP() if (ctx.current_privilege_level() != 0) { ALWAYS_GP_GRP(); } else
+
     for (;;) {
         // Reset per-instruction states
         ctx.seg_override = -1;
@@ -225,8 +230,11 @@ dllexport void z86_execute() {
         uint8_t map = 0;
         // TODO: The 6 byte prefetch cache
         // TODO: Clock cycles
+    prefix_byte:
+        assume(map == 0);
     next_byte:
         uint8_t opcode_byte = pc.read_advance();
+        //assume(!(map & 0xFF));
         uint32_t opcode = opcode_byte | (uint32_t)map << 8;
         assume(opcode <= UINT16_MAX);
         switch (opcode) {
@@ -265,6 +273,11 @@ dllexport void z86_execute() {
                 });
                 break;
             case 0x06: case 0x0E: case 0x16: case 0x1E: // PUSH seg
+                if constexpr (ctx.LONG_MODE) {
+                    if (ctx.is_long_mode()) {
+                        THROW_UD();
+                    }
+                }
                 ctx.PUSH(ctx.get_seg(opcode_byte >> 3));
                 break;
             case 0x0F:
@@ -274,6 +287,11 @@ dllexport void z86_execute() {
                 }
                 THROW_UD();
             case 0x07: case 0x17: case 0x1F: // POP seg
+                if constexpr (ctx.LONG_MODE) {
+                    if (ctx.is_long_mode()) {
+                        THROW_UD();
+                    }
+                }
                 ctx.write_seg(opcode_byte >> 3, ctx.POP());
                 break;
             case 0x08: // OR Mb, Rb
@@ -414,8 +432,13 @@ dllexport void z86_execute() {
                 break;
             case 0x26: case 0x2E: case 0x36: case 0x3E: // SEG:
                 ctx.set_seg_override((opcode_byte >> 3) & 3);
-                goto next_byte;
+                goto prefix_byte;
             case 0x27: // DAA
+                if constexpr (ctx.LONG_MODE) {
+                    if (ctx.is_long_mode()) {
+                        THROW_UD();
+                    }
+                }
                 ctx.DAA();
                 break;
             case 0x28: // SUB Mb, Rb
@@ -453,6 +476,11 @@ dllexport void z86_execute() {
                 });
                 break;
             case 0x2F: // DAS
+                if constexpr (ctx.LONG_MODE) {
+                    if (ctx.is_long_mode()) {
+                        THROW_UD();
+                    }
+                }
                 ctx.DAS();
                 break;
             case 0x30: // XOR Mb, Rb
@@ -490,6 +518,11 @@ dllexport void z86_execute() {
                 });
                 break;
             case 0x37: // AAA
+                if constexpr (ctx.LONG_MODE) {
+                    if (ctx.is_long_mode()) {
+                        THROW_UD();
+                    }
+                }
                 ctx.AAA();
                 break;
             case 0x38: // CMP Mb, Rb
@@ -527,12 +560,29 @@ dllexport void z86_execute() {
                 });
                 break;
             case 0x3F: // AAS
+                if constexpr (ctx.LONG_MODE) {
+                    if (ctx.is_long_mode()) {
+                        THROW_UD();
+                    }
+                }
                 ctx.AAS();
                 break;
             case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47: // INC reg
+                if constexpr (ctx.LONG_MODE) {
+                    if (ctx.is_long_mode()) {
+                        ctx.set_rex_bits(opcode);
+                        goto prefix_byte;
+                    }
+                }
                 ctx.INC(ctx.index_regMB<uint16_t>(opcode_byte & 7));
                 break;
             case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4E: case 0x4F: // DEC reg
+                if constexpr (ctx.LONG_MODE) {
+                    if (ctx.is_long_mode()) {
+                        ctx.set_rex_bits(opcode);
+                        goto prefix_byte;
+                    }
+                }
                 ctx.DEC(ctx.index_regMB<uint16_t>(opcode_byte & 7));
                 break;
             case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x56: case 0x57: // PUSH reg
@@ -549,12 +599,22 @@ dllexport void z86_execute() {
                 break;
             case 0x60: // PUSHA
                 if constexpr (ctx.OPCODES_80186) {
+                    if constexpr (ctx.LONG_MODE) {
+                        if (ctx.is_long_mode()) {
+                            THROW_UD();
+                        }
+                    }
                     ctx.PUSHA();
                     break;
                 }
                 THROW_UD();
             case 0x61:
                 if constexpr (ctx.OPCODES_80186) {
+                    if constexpr (ctx.LONG_MODE) {
+                        if (ctx.is_long_mode()) {
+                            THROW_UD();
+                        }
+                    }
                     ctx.POPA();
                     break;
                 }
@@ -565,15 +625,30 @@ dllexport void z86_execute() {
                 goto next_instr;
             case 0x62: // BOUND Rv, Mv2
                 if constexpr (ctx.OPCODES_80186) {
+                    if constexpr (ctx.LONG_MODE) {
+                        if (ctx.is_long_mode()) {
+                            // Parse EVEX
+                            THROW_UD();
+                        }
+                    }
                     FAULT_CHECK(ctx.binopRM2(pc, [](auto index, auto lower, auto upper) regcall {
                         return ctx.BOUND(index, lower, upper);
                     }));
                     break;
                 }
                 THROW_UD();
-            case 0x63: // ARPL
+            case 0x63: // ARPL Mw, Rw
                 if constexpr (ctx.PROTECTED_MODE && ctx.OPCODES_80286) {
                     // Not valid in real mode apparently
+                    if (ctx.is_real_mode()) {
+                        THROW_UD();
+                    }
+                    if constexpr (ctx.LONG_MODE) {
+                        if (ctx.is_long_mode()) {
+                            // MOVSXD Rv, Mv
+                            THROW_UD();
+                        }
+                    }
                     // TODO
                 }
                 else if constexpr (ctx.OPCODES_V20) {
@@ -587,11 +662,11 @@ dllexport void z86_execute() {
             case 0x64: case 0x65: // FS/GS prefixes
                 if constexpr (ctx.OPCODES_80386) {
                     ctx.set_seg_override(opcode_byte & 0xF);
-                    goto next_byte;
+                    goto prefix_byte;
                 }
                 else if constexpr (ctx.OPCODES_V20) {
                     ctx.set_repc_type(opcode_byte);
-                    goto next_byte;
+                    goto prefix_byte;
                 }
                 THROW_UD();
             case 0x74: // JZ Jb
@@ -600,8 +675,8 @@ dllexport void z86_execute() {
                 goto next_instr;
             case 0x66: // Data size prefix
                 if constexpr (ctx.max_bits > 16) {
-                    // TODO: Temporary override
-                    goto next_byte;
+                    ctx.data_size_prefix();
+                    goto prefix_byte;
                 }
                 if constexpr (ctx.OPCODES_V20) {
                     goto modrm_nop;
@@ -609,8 +684,8 @@ dllexport void z86_execute() {
                 THROW_UD();
             case 0x67: // Addr size prefix
                 if constexpr (ctx.max_bits > 16) {
-                    // TODO: Temporary override
-                    goto next_byte;
+                    ctx.addr_size_prefix();
+                    goto prefix_byte;
                 }
                 if constexpr (ctx.OPCODES_V20) {
                     goto modrm_nop;
@@ -690,7 +765,11 @@ dllexport void z86_execute() {
                 ctx.JCC<CondG, true>(pc, opcode_byte & 1);
                 goto next_instr;
             case 0x82:
-                // TODO: x64 fault
+                if constexpr (ctx.LONG_MODE) {
+                    if (ctx.is_long_mode()) {
+                        THROW_UD();
+                    }
+                }
             case 0x80: // GRP1 Mb, Ib
                 FAULT_CHECK(ctx.unopM<true>(pc, [&](auto& dst, uint8_t r) regcall {
                     uint8_t val = pc.read<int8_t>();
@@ -843,6 +922,11 @@ dllexport void z86_execute() {
                 ctx.CWD();
                 break;
             case 0x9A: // CALL far abs
+                if constexpr (ctx.LONG_MODE) {
+                    if (ctx.is_long_mode()) {
+                        THROW_UD();
+                    }
+                }
                 ctx.CALLFABS(pc);
                 goto next_instr;
             case 0x9B: // WAIT
@@ -976,14 +1060,14 @@ dllexport void z86_execute() {
             case 0xC3: // RET
                 ctx.RET();
                 goto next_instr;
-            case 0xC4: // LES
+            case 0xC4: // LES Rv, Mf
                 FAULT_CHECK(ctx.binopRMF(pc, [](auto& dst, auto src) regcall {
                     dst = src;
                     ctx.es = src >> (bitsof(src) >> 1);
                     return true;
                 }));
                 break;
-            case 0xC5: // LDS
+            case 0xC5: // LDS Rv, Mf
                 FAULT_CHECK(ctx.binopRMF(pc, [](auto& dst, auto src) regcall {
                     dst = src;
                     ctx.ds = src >> (bitsof(src) >> 1);
@@ -1042,6 +1126,11 @@ dllexport void z86_execute() {
                 ctx.set_trap(pc.read_advance<uint8_t>());
                 goto trap;
             case 0xCE: // INTO
+                if constexpr (ctx.LONG_MODE) {
+                    if (ctx.is_long_mode()) {
+                        THROW_UD();
+                    }
+                }
                 if (ctx.overflow) {
                     ctx.set_trap(IntOF);
                     goto trap;
@@ -1113,13 +1202,29 @@ dllexport void z86_execute() {
                 }));
                 break;
             case 0xD4: // AAM Ib
+                if constexpr (ctx.LONG_MODE) {
+                    if (ctx.is_long_mode()) {
+                        THROW_UD();
+                    }
+                }
                 FAULT_CHECK(ctx.AAM(pc.read_advance<uint8_t>()));
                 break;
             case 0xD5: // AAD Ib
+                if constexpr (ctx.LONG_MODE) {
+                    if (ctx.is_long_mode()) {
+                        THROW_UD();
+                    }
+                }
                 ctx.AAD(pc.read_advance<uint8_t>());
                 break;
             case 0xD6: // SALC
                 if constexpr (!ctx.OPCODES_V20) {
+                    if constexpr (ctx.LONG_MODE) {
+                        if (ctx.is_long_mode()) {
+                            // Screw larabee junk
+                            THROW_UD();
+                        }
+                    }
                     ctx.al = ctx.carry ? -1 : 0;
                     break;
                 }
@@ -1135,7 +1240,7 @@ dllexport void z86_execute() {
                 }
                 else {
                     ModRM modrm = pc.read_advance<ModRM>();
-                    ctx.fop_set(opcode, modrom.raw);
+                    ctx.fop_set(opcode, modrm.raw);
                     uint8_t r = modrm.R();
                     uint8_t m;
                     long double* lhs;
@@ -1317,22 +1422,22 @@ dllexport void z86_execute() {
                                     case 3: // FSTP1 ST(m)
                                         goto fstp;
                                     case 4:
-                                        // FCHS, FABS, Cyrix?, None, FTST, FXAM, FTSTP, Cyrix?
-                                        // Solution: We're making stuff up, just use the bottom 2 bits
-                                        // as the opcode and the top bit is a pop indicator.
-                                        switch (m & 3) {
+                                        switch (m) {
                                             default: unreachable;
                                             case 0: // FCHS
                                                 break;
                                             case 1: // FABS
                                                 break;
-                                            case 2: // FTST
+                                            case 2: // Cyrix?
+                                            case 3:
+                                                ALWAYS_UD();
+                                            case 4: // FTST
                                                 break;
-                                            case 3: // FXAM
+                                            case 5: // FXAM
                                                 break;
-                                        }
-                                        if (m & 4) {
-                                            ctx.FINCSTP();
+                                            case 6: // FTSTP
+                                            case 7:
+                                                ALWAYS_UD();
                                         }
                                         break;
                                     case 5:
@@ -1660,6 +1765,11 @@ dllexport void z86_execute() {
                 ctx.JMP(pc);
                 goto next_instr;
             case 0xEA: // JMP far abs
+                if constexpr (ctx.LONG_MODE) {
+                    if (ctx.is_long_mode()) {
+                        THROW_UD();
+                    }
+                }
                 ctx.JMPFABS(pc);
                 goto next_instr;
             case 0xEB: // JMP Jb
@@ -1684,18 +1794,19 @@ dllexport void z86_execute() {
                 }
                 if constexpr (ctx.OPCODES_80286) {
                     // Stupid STOREALL prefix, just going to ignore this
-                    goto next_byte;
+                    goto prefix_byte;
                 }
                 if constexpr (!ctx.OPCODES_V20) {
                     THROW_UD();
                 }
             case 0xF0: // LOCK
-                ctx.lock = true;
-                goto next_byte;
+                ctx.set_lock();
+                goto prefix_byte;
             case 0xF2: case 0xF3: // REPNE, REP
                 ctx.set_rep_type(opcode_byte);
-                goto next_byte;
+                goto prefix_byte;
             case 0xF4: // HLT
+                GP_WITHOUT_CPL0();
                 ctx.halted = true;
                 break;
             case 0xF5: // CMC
@@ -1778,27 +1889,113 @@ dllexport void z86_execute() {
             case 0x100: // GRP6
                 FAULT_CHECK(ctx.unopMW(pc, [](auto& dst, uint8_t r) regcall {
                     switch (r) {
-                        case 0: // SLDT
-                        case 1: // STR
-                        case 2: // LLDT
-                        case 3: // LTR
-                        case 4: // VERR
-                        case 5: // VERW
-                            break;
-                        default:
+                        default: unreachable;
+                        case 0: // SLDT Mw
+                        case 1: // STR Mw
+                            dst = ctx.get_control_seg(r & 1);
+                            return OP_WRITE;
+                        case 2: // LLDT Mw
+                        case 3: // LTR Mw
+                            ctx.write_control_seg(r & 1, dst);
+                            return OP_NO_WRITE;
+                        case 4: // VERR Mw
+                        case 5: // VERW Mw
+                            return OP_NO_WRITE;
+                        case 6:
+                        case 7:
                             ALWAYS_UD_GRP();
                     }
                 }));
                 break;
             case 0x101: // GRP7
+                FAULT_CHECK(ctx.unopMM(pc,
+                    [](auto data_addr_raw, uint8_t r) regcall {
+                        z86Addr data_addr = data_addr_raw;
+                        switch (r) {
+                            default: unreachable;
+                            case 0: // SGDT M
+                            case 1: // SIDT M
+                            {
+                                data_addr.write<uint16_t>(ctx.get_descriptor_table_limit(r & 1));
+                                auto base = ctx.get_descriptor_table_base(r & 1);
+                                if constexpr (ctx.LONG_MODE) {
+                                    if (ctx.is_long_mode()) {
+                                        data_addr.write<uint64_t>(base, 2);
+                                        return OP_NO_FAULT;
+                                    }
+                                }
+                                data_addr.write<uint32_t>(base, 2);
+                                return OP_NO_FAULT;
+                            }
+                            case 2: // LGDT M
+                            case 3: // LIDT M
+                            {
+                                uint16_t limit = data_addr.read<uint16_t>();
+                                decltype(ctx.get_descriptor_table_base(0)) base;
+                                if constexpr (ctx.LONG_MODE) {
+                                    if (ctx.is_long_mode()) {
+                                        base = data_addr.read<uint64_t>(2);
+                                        goto load_table;
+                                    }
+                                }
+                                base = data_addr.read<uint32_t>(2);
+                            load_table:
+                                ctx.load_descriptor_table(r & 1, limit, base);
+                                return OP_NO_FAULT;
+                            }
+                            case 4: // SMSW Mw
+                                data_addr.write<uint16_t>(ctx.get_machine_status_word());
+                                return OP_NO_FAULT;
+                            case 5:
+                                ALWAYS_UD_GRP();
+                            case 6: // LMSW Mw
+                                ctx.set_machine_status_word(data_addr.read<uint16_t>());
+                                return OP_NO_FAULT;
+                            case 7: // INVLPG M
+                                THROW_UD_WITHOUT_FLAG_GRP(ctx.OPCODES_80486);
+                                return OP_NO_FAULT;
+                        }
+                    },
+                    [](auto& src, uint8_t r) regcall{
+                        switch (r) {
+                            default: unreachable;
+                            case 0:
+                            case 1:
+                            case 2:
+                            case 3:
+                                ALWAYS_UD_GRP();
+                            case 4: // SMSW Rv
+                                src = ctx.get_machine_status_word();
+                                return OP_NO_FAULT;
+                            case 5:
+                                ALWAYS_UD_GRP();
+                            case 6: // LMSW Rv
+                                ctx.set_machine_status_word(src);
+                                return OP_NO_FAULT;
+                            case 7:
+                                ALWAYS_UD_GRP();
+                        }
+                    }
+                ));
+                break;
             case 0x102: // LAR Rv, Mv
             case 0x103: // LSL Rv, Mv
             case 0x104: // STOREALL
             case 0x105: // SYSCALL, LOADALL2
+                break;
             case 0x106: // CLTS
+                GP_WITHOUT_CPL0();
+
+                break;
             case 0x107: // SYSRET, LOADALL3
             case 0x108: // INVD (486)
+                THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80486);
+                GP_WITHOUT_CPL0();
+                break;
             case 0x109: // WBINVD (486)
+                THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80486);
+                GP_WITHOUT_CPL0();
+                break;
             case 0x10A: // CL1INVMB (wtf)
                 break;
             case 0x10B: // UD2

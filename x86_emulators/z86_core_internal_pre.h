@@ -88,36 +88,39 @@ enum z86FeatureFlagsA : uint64_t {
     FLAG_REP_INVERT_IDIV    = 1ull << 3, // 8086, 80186
     FLAG_FAULTS_ARE_TRAPS   = 1ull << 4, // 8086
     FLAG_NO_UD              = 1ull << 5, // 8086
-    FLAG_UNMASK_SHIFTS      = 1ull << 6, // 8086, 80186, v20
-    FLAG_OLD_PUSH_SP        = 1ull << 7, // 8086, 80186, v20
-    FLAG_OLD_RESET_PC       = 1ull << 8, // 8086, 80186, v20
-    FLAG_OLD_AAA            = 1ull << 9, // 8086, 80186 (v20 unknown)
-    FLAG_WRAP_SEGMENT_MODRM = 1ull << 10, // 8086, 80186
-    FLAG_AAM_NO_DE          = 1ull << 11, // 80186
-    FLAG_UNMASK_ENTER       = 1ull << 12, // 80186, v20
-    FLAG_REP_BOUND          = 1ull << 13, // 80186
-    FLAG_REP_MUL_MISSTORE   = 1ull << 14, // 80186
-    FLAG_PROTECTED_MODE     = 1ull << 15, // 80286+
-    FLAG_HAS_TEST_REGS      = 1ull << 16, // 80386, 80486
-    FLAG_OPCODES_80186      = 1ull << 17,
-    FLAG_OPCODES_80286      = 1ull << 18,
-    FLAG_OPCODES_V20        = 1ull << 19,
-    FLAG_OPCODES_80386      = 1ull << 20,
-    FLAG_OPCODES_80486      = 1ull << 21,
-    FLAG_OPCODES_P5         = 1ull << 22,
-    FLAG_OPCODES_P6         = 1ull << 23,
-    FLAG_HAS_CPUID          = 1ull << 24,
-    FLAG_HAS_LONG_NOP       = 1ull << 25,
-    FLAG_CPUID_X87          = 1ull << 26,
-    FLAG_CPUID_CMOV         = 1ull << 27,
-    FLAG_CPUID_MMX          = 1ull << 28,
-    FLAG_CPUID_SSE          = 1ull << 29,
-    FLAG_CPUID_SSE2         = 1ull << 30,
-    FLAG_CPUID_SSE3         = 1ull << 31,
-    FLAG_CPUID_SSSE3        = 1ull << 32,
-    FLAG_CPUID_SSE41        = 1ull << 33,
-    FLAG_CPUID_SSE42        = 1ull << 34,
-    FLAG_CPUID_SSE4A        = 1ull << 35
+    FLAG_SINGLE_MEM_WRAPS   = 1ull << 6, // 8086, 80186
+    FLAG_UNMASK_SHIFTS      = 1ull << 7, // 8086, 80186, v20
+    FLAG_OLD_PUSH_SP        = 1ull << 8, // 8086, 80186, v20
+    FLAG_OLD_RESET_PC       = 1ull << 9, // 8086, 80186, v20
+    FLAG_OLD_AAA            = 1ull << 10, // 8086, 80186 (v20 unknown)
+    FLAG_WRAP_SEGMENT_MODRM = 1ull << 11, // 8086, 80186
+    FLAG_AAM_NO_DE          = 1ull << 12, // 80186
+    FLAG_UNMASK_ENTER       = 1ull << 13, // 80186, v20
+    FLAG_REP_BOUND          = 1ull << 14, // 80186
+    FLAG_REP_MUL_MISSTORE   = 1ull << 15, // 80186
+    FLAG_PROTECTED_MODE     = 1ull << 16, // 80286+
+    FLAG_PAGING             = 1ull << 17, // 80386+
+    FLAG_LONG_MODE          = 1ull << 18,
+    FLAG_HAS_TEST_REGS      = 1ull << 19, // 80386, 80486
+    FLAG_OPCODES_80186      = 1ull << 20,
+    FLAG_OPCODES_80286      = 1ull << 21,
+    FLAG_OPCODES_V20        = 1ull << 22,
+    FLAG_OPCODES_80386      = 1ull << 23,
+    FLAG_OPCODES_80486      = 1ull << 24,
+    FLAG_OPCODES_P5         = 1ull << 25,
+    FLAG_OPCODES_P6         = 1ull << 26,
+    FLAG_HAS_CPUID          = 1ull << 27,
+    FLAG_HAS_LONG_NOP       = 1ull << 28,
+    FLAG_CPUID_X87          = 1ull << 29,
+    FLAG_CPUID_CMOV         = 1ull << 30,
+    FLAG_CPUID_MMX          = 1ull << 31,
+    FLAG_CPUID_SSE          = 1ull << 32,
+    FLAG_CPUID_SSE2         = 1ull << 33,
+    FLAG_CPUID_SSE3         = 1ull << 34,
+    FLAG_CPUID_SSSE3        = 1ull << 35,
+    FLAG_CPUID_SSE41        = 1ull << 36,
+    FLAG_CPUID_SSE42        = 1ull << 37,
+    FLAG_CPUID_SSE4A        = 1ull << 38
 };
 
 // Code shared between x86 cores
@@ -177,6 +180,10 @@ struct z86Memory {
         return 0;
     }
 
+    inline void* read_movsb(void* dst, size_t src, size_t length) const {
+        return rep_movsb(dst, &this->raw[src], length);
+    }
+
     inline size_t write(size_t dst, const void* src, size_t length) {
         if (dst < bytes) {
             length = (std::min)(bytes - dst, length);
@@ -184,6 +191,10 @@ struct z86Memory {
             return length;
         }
         return 0;
+    }
+
+    inline const void* write_movsb(size_t dst, const void* src, size_t length) {
+        return rep_movsbS(&this->raw[dst], src, length);
     }
 };
 
@@ -454,10 +465,10 @@ enum REG_INDEX : uint8_t {
     ZMM5  =  5, YMM5  =  5, XMM5  =  5, RBP  =  5, EBP  =  5, BP   =  5, CH   =  5, GS  =  5, CR5 = 5, K5 = 5, ST5 = 5, MM5 = 5, DR5 = 5,
     ZMM6  =  6, YMM6  =  6, XMM6  =  6, RSI  =  6, ESI  =  6, SI   =  6, DH   =  6, DS3 =  6, CR6 = 6, K6 = 6, ST6 = 6, MM6 = 6, DR6 = 6,
     ZMM7  =  7, YMM7  =  7, XMM7  =  7, RDI  =  7, EDI  =  7, DI   =  7, BH   =  7, DS2 =  7, CR7 = 7, K7 = 7, ST7 = 7, MM7 = 7, DR7 = 7,
-    ZMM8  =  8, YMM8  =  8, XMM8  =  8, R8   =  8, R8D  =  8, R8W  =  8, R8B  =  8, GDT =  8, CR8 = 8,
-    ZMM9  =  9, YMM9  =  9, XMM9  =  9, R9   =  9, R9D  =  9, R9W  =  9, R9B  =  9, LDT =  9,
-    ZMM10 = 10, YMM10 = 10, XMM10 = 10, R10  = 10, R10D = 10, R10W = 10, R10B = 10, IDT = 10,
-    ZMM11 = 11, YMM11 = 11, XMM11 = 11, R11  = 11, R11D = 11, R11W = 11, R11B = 11, TSS = 11,
+    ZMM8  =  8, YMM8  =  8, XMM8  =  8, R8   =  8, R8D  =  8, R8W  =  8, R8B  =  8, LDT =  8, CR8 = 8,
+    ZMM9  =  9, YMM9  =  9, XMM9  =  9, R9   =  9, R9D  =  9, R9W  =  9, R9B  =  9, TSS =  9,
+    ZMM10 = 10, YMM10 = 10, XMM10 = 10, R10  = 10, R10D = 10, R10W = 10, R10B = 10, GDT = 10,
+    ZMM11 = 11, YMM11 = 11, XMM11 = 11, R11  = 11, R11D = 11, R11W = 11, R11B = 11, IDT = 11,
     ZMM12 = 12, YMM12 = 12, XMM12 = 12, R12  = 12, R12D = 12, R12W = 12, R12B = 12,
     ZMM13 = 13, YMM13 = 13, XMM13 = 13, R13  = 13, R13D = 13, R13W = 13, R13B = 13,
     ZMM14 = 14, YMM14 = 14, XMM14 = 14, R14  = 14, R14D = 14, R14W = 14, R14B = 14,
@@ -1603,14 +1614,29 @@ struct z86BaseControlBase<max_bits, false> {
             uint16_t ds2;
         };
     };
+    static inline constexpr uint16_t ldtr = 0;
+    static inline constexpr uint16_t tr = 0;
 
-    inline constexpr const uint16_t& get_seg_impl(uint8_t index) {
-        return this->seg[index];
-    }
+    static inline constexpr uint8_t cpl = 0;
 };
 
 template <>
-struct z86BaseControlBase<16, true> : z86BaseControlBase<16, false> {
+struct z86BaseControlBase<16, true> {
+    union {
+        uint16_t seg[10];
+        struct {
+            uint16_t es;
+            uint16_t cs;
+            uint16_t ss;
+            uint16_t ds;
+            uint16_t fs;
+            uint16_t gs;
+            uint16_t ds3;
+            uint16_t ds2;
+            uint16_t ldtr;
+            uint16_t tr;
+        };
+    };
     union {
         z86DescriptorCache<16> descriptors[12] = {};
         struct {
@@ -1622,10 +1648,10 @@ struct z86BaseControlBase<16, true> : z86BaseControlBase<16, false> {
             z86DescriptorCache<16> gs_descriptor;
             z86DescriptorCache<16> ds3_descriptor;
             z86DescriptorCache<16> ds2_descriptor;
-            z86DescriptorCache<16> gdt_descriptor;
             z86DescriptorCache<16> ldt_descriptor;
-            z86DescriptorCache<16> idt_descriptor;
             z86DescriptorCache<16> tss_descriptor;
+            z86DescriptorCache<16> gdt_descriptor;
+            z86DescriptorCache<16> idt_descriptor;
         };
     };
     union {
@@ -1635,17 +1661,26 @@ struct z86BaseControlBase<16, true> : z86BaseControlBase<16, false> {
             uint8_t protected_mode : 1;
         };
     };
+    uint8_t cpl;
+};
+
+template <>
+struct z86BaseControlBase<32, true> {
     union {
-        uint16_t control_selectors[2];
+        uint16_t seg[10];
         struct {
+            uint16_t es;
+            uint16_t cs;
+            uint16_t ss;
+            uint16_t ds;
+            uint16_t fs;
+            uint16_t gs;
+            uint16_t ds3;
+            uint16_t ds2;
             uint16_t ldtr;
             uint16_t tr;
         };
     };
-};
-
-template <>
-struct z86BaseControlBase<32, true> : z86BaseControlBase<32, false> {
     union {
         z86DescriptorCache<32> descriptors[12] = {};
         struct {
@@ -1657,30 +1692,51 @@ struct z86BaseControlBase<32, true> : z86BaseControlBase<32, false> {
             z86DescriptorCache<32> gs_descriptor;
             z86DescriptorCache<32> ds3_descriptor;
             z86DescriptorCache<32> ds2_descriptor;
-            z86DescriptorCache<32> gdt_descriptor;
             z86DescriptorCache<32> ldt_descriptor;
-            z86DescriptorCache<32> idt_descriptor;
             z86DescriptorCache<32> tss_descriptor;
+            z86DescriptorCache<32> gdt_descriptor;
+            z86DescriptorCache<32> idt_descriptor;
         };
     };
     union {
-        uint16_t msw;
-        uint32_t cr0;
-        union {
-            uint8_t protected_mode : 1;
-        };
-    };
-    union {
-        uint16_t control_selectors[2];
+        uint32_t cr[8];
         struct {
+            union {
+                uint16_t msw;
+                uint32_t cr0;
+                union {
+                    uint8_t protected_mode : 1;
+                };
+            };
+            uint32_t cr1;
+            uint32_t cr2;
+            uint32_t cr3;
+            uint32_t cr4;
+            uint32_t cr5;
+            uint32_t cr6;
+            uint32_t cr7;
+        };
+    };
+    uint8_t cpl;
+};
+
+template <>
+struct z86BaseControlBase<64, true> {
+    union {
+        uint16_t seg[10];
+        struct {
+            uint16_t es;
+            uint16_t cs;
+            uint16_t ss;
+            uint16_t ds;
+            uint16_t fs;
+            uint16_t gs;
+            uint16_t ds3;
+            uint16_t ds2;
             uint16_t ldtr;
             uint16_t tr;
         };
     };
-};
-
-template <>
-struct z86BaseControlBase<64, true> : z86BaseControlBase<64, false> {
     union {
         z86DescriptorCache<64> descriptors[12] = {};
         struct {
@@ -1692,26 +1748,33 @@ struct z86BaseControlBase<64, true> : z86BaseControlBase<64, false> {
             z86DescriptorCache<64> gs_descriptor;
             z86DescriptorCache<64> ds3_descriptor;
             z86DescriptorCache<64> ds2_descriptor;
-            z86DescriptorCache<64> gdt_descriptor;
             z86DescriptorCache<64> ldt_descriptor;
-            z86DescriptorCache<64> idt_descriptor;
             z86DescriptorCache<64> tss_descriptor;
+            z86DescriptorCache<64> gdt_descriptor;
+            z86DescriptorCache<64> idt_descriptor;
         };
     };
     union {
-        uint16_t msw;
-        uint32_t cr0;
-        union {
-            uint8_t protected_mode : 1;
-        };
-    };
-    union {
-        uint16_t control_selectors[2];
+        uint64_t cr[16];
         struct {
-            uint16_t ldtr;
-            uint16_t tr;
+            union {
+                uint16_t msw;
+                uint64_t cr0;
+                union {
+                    uint8_t protected_mode : 1;
+                };
+            };
+            uint64_t cr1;
+            uint64_t cr2;
+            uint64_t cr3;
+            uint64_t cr4;
+            uint64_t cr5;
+            uint64_t cr6;
+            uint64_t cr7;
+            uint64_t cr8;
         };
     };
+    uint8_t cpl;
 };
 
 template <size_t max_bits, bool use_old_reset, bool has_protected_mode>
@@ -1719,9 +1782,22 @@ struct z86BaseControl;
 
 template <size_t max_bits, bool use_old_reset>
 struct z86BaseControl<max_bits, use_old_reset, false> : z86BaseControlBase<max_bits, false> {
+    using BT = z86DescriptorCache<max_bits>::BT;
+    using LT = z86DescriptorCache<max_bits>::LT;
+
+    inline constexpr const uint16_t& get_seg_impl(uint8_t index) {
+        return this->seg[index];
+    }
+
+    inline constexpr uint16_t get_control_seg(uint8_t index) const {
+        return 0;
+    }
 
     inline constexpr void write_seg_impl(uint8_t index, uint16_t value) {
         this->seg[index] = value;
+    }
+
+    inline constexpr void write_control_seg(uint8_t index, uint16_t value) {
     }
 
     // Assuming a previous memset of full context
@@ -1732,6 +1808,25 @@ struct z86BaseControl<max_bits, use_old_reset, false> : z86BaseControlBase<max_b
         else {
             this->cs = 0xFFFF;
         }
+    }
+
+    inline constexpr void load_descriptor_table(uint8_t index, LT limit, BT base) {
+    }
+    inline constexpr LT get_descriptor_table_limit(uint8_t index) const {
+        return ~(LT)0;
+    }
+    inline constexpr BT get_descriptor_table_base(uint8_t index) const {
+        return 0;
+    }
+
+    inline constexpr uint8_t current_privilege_level() const {
+        return 0;
+    }
+
+    inline constexpr uint16_t get_machine_status_word() const {
+        return 0;
+    }
+    inline constexpr void set_machine_status_word(uint16_t msw) {
     }
 };
 
@@ -1747,6 +1842,14 @@ struct z86BaseControl<max_bits, use_old_reset, true> : z86BaseControlBase<max_bi
     using BT = z86DescriptorCache<max_bits>::BT;
     using LT = z86DescriptorCache<max_bits>::LT;
 
+    inline constexpr const uint16_t& get_seg_impl(uint8_t index) {
+        return this->seg[index];
+    }
+
+    inline constexpr uint16_t get_control_seg(uint8_t index) const {
+        return this->seg[LDT + index];
+    }
+
     inline constexpr void write_seg_impl(uint8_t index, uint16_t selector) {
         if (this->protected_mode) {
             //this->descriptors[index].load_descriptor(this->descriptors[GDT + (selector >> 2 & 1)].load_selector(selector));
@@ -1760,6 +1863,10 @@ struct z86BaseControl<max_bits, use_old_reset, true> : z86BaseControlBase<max_bi
             reconstruct_at(&this->descriptors[index], this->descriptors[index].limit, (size_t)selector << 4, this->descriptors[index].type, this->descriptors[index].privilege);
         }
         this->seg[index] = selector;
+    }
+
+    inline constexpr void write_control_seg(uint8_t index, uint16_t value) {
+        this->write_seg_impl(LDT + index, value);
     }
 
     // Used for control flow specifically
@@ -1787,6 +1894,29 @@ struct z86BaseControl<max_bits, use_old_reset, true> : z86BaseControlBase<max_bi
         }
         //std::destroy_at(&this->cs_descriptor);
         //new (&this->cs_descriptor) z86DescriptorCache<max_bits>((LT)0xFFFF, (BT)0);
+    }
+
+    inline constexpr void load_descriptor_table(uint8_t index, LT limit, BT base) {
+        //reconstruct_at(&this->descriptors[GDT + index], limit, base, this->descriptors[GDT + index].type, this->descriptors[GDT + index].privilege);
+    }
+
+    inline constexpr LT get_descriptor_table_limit(uint8_t index) const {
+        return this->descriptors[GDT + index].limit;
+    }
+    inline constexpr BT get_descriptor_table_base(uint8_t index) const {
+        return this->descriptors[GDT + index].base;
+    }
+
+    inline constexpr uint8_t current_privilege_level() const {
+        return this->cpl;
+    }
+
+    inline constexpr auto get_machine_status_word() const {
+        return this->cr0;
+    }
+    inline constexpr void set_machine_status_word(uint16_t msw) {
+        // TODO: filter bits
+        //this->msw = msw;
     }
 };
 
@@ -1829,7 +1959,7 @@ struct z86RegBase<16, use_old_reset, has_protected_mode, has_x87, max_sse_bits, 
     }
 
     inline constexpr uint8_t opcode_select() const {
-        return this->opcode_prefix;
+        return opcode_prefix;
     }
 
     inline constexpr bool data_size_16() const {
@@ -1861,6 +1991,19 @@ struct z86RegBase<16, use_old_reset, has_protected_mode, has_x87, max_sse_bits, 
     }
     inline constexpr REX get_rex_bits() const {
         return {};
+    }
+    inline constexpr void set_rex_bits(uint8_t bits) {
+    }
+    inline constexpr void reset_rex_bits() {
+    }
+    inline constexpr bool is_real_mode() const {
+        return true;
+    }
+    inline constexpr bool is_protected_mode() const {
+        return false;
+    }
+    inline constexpr bool is_long_mode() const {
+        return false;
     }
 };
 
@@ -1956,6 +2099,19 @@ struct z86RegBase<32, use_old_reset, has_protected_mode, has_x87, max_sse_bits, 
     inline constexpr REX get_rex_bits() const {
         return {};
     }
+    inline constexpr void set_rex_bits(uint8_t bits) {
+    }
+    inline constexpr void reset_rex_bits() {
+    }
+    inline constexpr bool is_real_mode() const {
+        return this->mode != 0;
+    }
+    inline constexpr bool is_protected_mode() const {
+        return this->mode == 0;
+    }
+    inline constexpr bool is_long_mode() const {
+        return false;
+    }
 
 };
 
@@ -1986,6 +2142,7 @@ struct z86RegBase<64, use_old_reset, has_protected_mode, has_x87, max_sse_bits, 
         this->data_size = this->default_data_size;
         this->addr_size = this->default_addr_size;
         this->opcode_prefix = 0;
+        this->reset_rex_bits();
     }
 
     inline constexpr void set_opcode_select(uint8_t type) {
@@ -2047,10 +2204,106 @@ struct z86RegBase<64, use_old_reset, has_protected_mode, has_x87, max_sse_bits, 
     inline constexpr REX get_rex_bits() const {
         return this->rex_bits;
     }
+    inline constexpr void set_rex_bits(uint8_t bits) {
+        this->rex_bits.raw = bits;
+        if (bits & 4) {
+            this->data_size = -1;
+        }
+    }
+    inline constexpr void reset_rex_bits() {
+        this->rex_bits = {};
+    }
+    inline constexpr bool is_real_mode() const {
+        return this->mode > 0;
+    }
+    inline constexpr bool is_protected_mode() const {
+        return this->mode == 0;
+    }
+    inline constexpr bool is_long_mode() const {
+        return this->mode < 0;
+    }
 
 };
 
+struct z86DataProperitesImpl {
+    template <typename T>
+    static inline constexpr size_t size() {
+        if constexpr (is_vector_v<T>) {
+            return sizeof(vector_type_t<T>) * vector_length_v<T>;
+        }
+        else if constexpr (std::is_same_v<T, float>) {
+            return 4;
+        }
+        else if constexpr (std::is_same_v<T, double>) {
+            return 8;
+        }
+        else if constexpr (std::is_same_v<T, long double>) {
+            return 10;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return 1;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return 2;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return 4;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return 8;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint128_t)) {
+            return 16;
+        }
+    }
+
+    template <typename T>
+    static inline constexpr size_t align() {
+        if constexpr (is_vector_v<T>) {
+            return sizeof(vector_type_t<T>) * vector_length_v<T>;
+        }
+        else if constexpr (std::is_same_v<T, float>) {
+            return 4;
+        }
+        else if constexpr (std::is_same_v<T, double>) {
+            return 8;
+        }
+        else if constexpr (std::is_same_v<T, long double>) {
+            return 8;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return 1;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return 2;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return 4;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return 8;
+        }
+        else if constexpr (sizeof(T) == sizeof(uint128_t)) {
+            return 16;
+        }
+    }
+};
+
+template <typename T>
+struct z86DataProperites {
+    static inline constexpr size_t size = z86DataProperitesImpl::size<T>();
+    static inline constexpr size_t align = z86DataProperitesImpl::align<T>();
+};
+
 struct z86AddrSharedFuncs {
+    template <typename T>
+    static inline constexpr bool addr_fits_on_bus(size_t addr);
+
+    template <typename T>
+    static inline constexpr bool addr_crosses_page(size_t addr);
+
+    static inline constexpr size_t regcall virt_to_phys(size_t addr);
+
     template <typename T, typename P>
     static inline void regcall write(P* self, const T& value, ssize_t offset);
 
@@ -2220,7 +2473,30 @@ struct z86AddrImpl : z86AddrBase<bits, protected_mode> {
     template <size_t other_bits, bool other_protection>
     inline constexpr z86AddrImpl(const z86AddrImpl<other_bits, other_protection>& addr) : z86AddrBase<bits, protected_mode>::z86AddrBase(addr.segment, addr.offset) {}
 
-    inline constexpr size_t addr(ssize_t offset = 0) const;
+    inline constexpr size_t ptr(ssize_t offset = 0) const {
+        return (OT)(this->offset + offset);
+    }
+
+    inline constexpr size_t seg() const;
+
+    inline constexpr size_t addr(ssize_t offset = 0) const {
+        return this->seg() + this->ptr(offset);
+    }
+
+    template <typename T>
+    inline constexpr size_t offset_wrap_sub(size_t wrap) const {
+        return (std::numeric_limits<OT>::max)() - (wrap - 1);
+    }
+
+    template <typename T>
+    inline constexpr size_t offset_wrap(ssize_t offset = 0) const {
+        OT base = this->offset + offset;
+        constexpr size_t non_wrapping_limit = (std::numeric_limits<OT>::max)() - (z86DataProperites<T>::size - 1);
+        if (base <= non_wrapping_limit) {
+            return 0;
+        }
+        return base - non_wrapping_limit;
+    }
 
     inline constexpr z86AddrImpl& operator+=(ssize_t offset) {
         this->offset += offset;
@@ -2375,7 +2651,30 @@ struct z86AddrFixedImpl : z86AddrFixedBase<max_bits> {
     inline constexpr z86AddrFixedImpl(FT offset) : z86AddrFixedBase<max_bits>::z86AddrFixedBase(offset) {}
     inline constexpr z86AddrFixedImpl(const z86AddrFixedImpl&) = default;
 
-    inline constexpr size_t addr(ssize_t offset = 0) const;
+    inline constexpr size_t ptr(ssize_t offset = 0) const {
+        return (OT)(this->offset + offset);
+    }
+
+    inline constexpr size_t seg() const;
+
+    inline constexpr size_t addr(ssize_t offset = 0) const {
+        return this->seg() + this->ptr(offset);
+    }
+    
+    template <typename T>
+    inline constexpr size_t offset_wrap_sub(size_t wrap) const {
+        return (std::numeric_limits<OT>::max)() - (wrap - 1);
+    }
+
+    template <typename T>
+    inline constexpr size_t offset_wrap(ssize_t offset = 0) const {
+        OT base = this->offset + offset;
+        constexpr size_t non_wrapping_limit = (std::numeric_limits<OT>::max)() - (z86DataProperites<T>::size - 1);
+        if (base <= non_wrapping_limit) {
+            return 0;
+        }
+        return base - non_wrapping_limit;
+    }
 
     inline constexpr z86AddrFixedImpl& operator+=(ssize_t offset) {
         this->offset += offset;
@@ -2594,6 +2893,7 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
 
     static inline constexpr size_t max_bits = bits;
     static inline constexpr size_t bus_width = bus;
+    static inline constexpr size_t bus_bytes = bus / 8;
 
     static inline constexpr z86FeatureTier tier = FEATURES_8086;
 
@@ -2601,6 +2901,7 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
     static inline constexpr bool PUSH_CS = flagsA & FLAG_PUSH_CS;
     static inline constexpr bool SAL_IS_SETMO = flagsA & FLAG_SAL_IS_SETMO;
     static inline constexpr bool NO_UD = flagsA & FLAG_NO_UD;
+    static inline constexpr bool SINGLE_MEM_WRAPS = flagsA & FLAG_SINGLE_MEM_WRAPS;
     static inline constexpr bool SHIFT_MASKING = !(flagsA & FLAG_UNMASK_SHIFTS);
     static inline constexpr bool REP_INVERT_MUL = flagsA & FLAG_REP_INVERT_MUL;
     static inline constexpr bool REP_INVERT_IDIV = flagsA & FLAG_REP_INVERT_IDIV;
@@ -2614,6 +2915,8 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
     static inline constexpr bool REP_BOUND = flagsA & FLAG_REP_BOUND;
     static inline constexpr bool REP_MUL_MISSTORE = flagsA & FLAG_REP_MUL_MISSTORE;
     static inline constexpr bool PROTECTED_MODE = flagsA & FLAG_PROTECTED_MODE;
+    static inline constexpr bool PAGING = flagsA & FLAG_PAGING;
+    static inline constexpr bool LONG_MODE = flagsA & FLAG_LONG_MODE;
     static inline constexpr bool HAS_TEST_REGS = flagsA & FLAG_HAS_TEST_REGS;
     static inline constexpr bool OPCODES_80186 = flagsA & FLAG_OPCODES_80186;
     static inline constexpr bool OPCODES_V20 = flagsA & FLAG_OPCODES_V20;
@@ -3160,15 +3463,34 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
     int8_t rep_type;
     int16_t pending_sinterrupt;
 
+    inline constexpr void set_lock() {
+        this->lock = true;
+        if constexpr (LONG_MODE) {
+            if (this->is_long_mode()) {
+                this->reset_rex_bits();
+            }
+        }
+    }
+
     inline constexpr void set_rep_type(uint8_t type) {
         type &= 1;
         this->rep_type = type;
         this->set_opcode_select(type + 2);
+        if constexpr (LONG_MODE) {
+            if (this->is_long_mode()) {
+                this->reset_rex_bits();
+            }
+        }
     }
 
     inline constexpr void set_repc_type(uint8_t type) {
         if constexpr (OPCODES_V20 && !OPCODES_80386) {
             this->rep_type = REP_NC + (type & 1);
+            if constexpr (LONG_MODE) {
+                if (this->is_long_mode()) {
+                    this->reset_rex_bits();
+                }
+            }
         }
     }
 
@@ -3187,6 +3509,11 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
 
     inline constexpr void set_seg_override(uint8_t seg) {
         this->seg_override = seg;
+        if constexpr (LONG_MODE) {
+            if (this->is_long_mode()) {
+                this->reset_rex_bits();
+            }
+        }
     }
 
     inline constexpr uint16_t segment(uint8_t default_seg) const {
@@ -5648,26 +5975,26 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
         return this->unopMW_impl<uint16_t>(pc, lambda);
     }
 
-    template <typename T, typename P, typename L>
-    inline bool regcall unopMM_impl(P& pc, const L& lambda);
+    template <typename T, typename P, typename LM, typename LR>
+    inline bool regcall unopMM_impl(P& pc, const LM& lambdaM, const LR& lambdaR);
 
-    template <bool is_byte = false, typename P, typename L>
-    inline bool regcall unopMM(P& pc, const L& lambda) {
+    template <bool is_byte = false, typename P, typename LM, typename LR>
+    inline bool regcall unopMM(P& pc, const LM& lambdaM, const LR& lambdaR) {
         if constexpr (is_byte) {
-            return this->unopMM_impl(pc, lambda);
+            return this->unopMM_impl<uint8_t>(pc, lambdaM, lambdaR);
         }
         else {
             if constexpr (bits > 16) {
                 if (this->data_size_32()) {
-                    return this->unopMM_impl<uint32_t>(pc, lambda);
+                    return this->unopMM_impl<uint32_t>(pc, lambdaM, lambdaR);
                 }
                 if constexpr (bits == 64) {
                     if (this->data_size_64()) {
-                        return this->unopMM_impl<uint64_t>(pc, lambda);
+                        return this->unopMM_impl<uint64_t>(pc, lambdaM, lambdaR);
                     }
                 }
             }
-            return this->unopMM_impl<uint16_t>(pc, lambda);
+            return this->unopMM_impl<uint16_t>(pc, lambdaM, lambdaR);
         }
     }
 };
@@ -5679,13 +6006,13 @@ template <uint64_t flagsA>
 struct z86Core<z8086, flagsA> :
     z86Base<
         16, 16, flagsA |
-        FLAG_PUSH_CS | FLAG_SAL_IS_SETMO | FLAG_REP_INVERT_MUL | FLAG_REP_INVERT_IDIV | FLAG_FAULTS_ARE_TRAPS | FLAG_NO_UD | FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP | FLAG_OLD_RESET_PC | FLAG_OLD_AAA | FLAG_WRAP_SEGMENT_MODRM
+        FLAG_PUSH_CS | FLAG_SAL_IS_SETMO | FLAG_REP_INVERT_MUL | FLAG_REP_INVERT_IDIV | FLAG_FAULTS_ARE_TRAPS | FLAG_NO_UD | FLAG_SINGLE_MEM_WRAPS | FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP | FLAG_OLD_RESET_PC | FLAG_OLD_AAA | FLAG_WRAP_SEGMENT_MODRM
     > {};
 
 template <uint64_t flagsA>
 struct z86Core<z80186, flagsA> :
     z86Base<16, 16, flagsA |
-        FLAG_REP_INVERT_IDIV | FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP | FLAG_OLD_RESET_PC | FLAG_OLD_AAA | FLAG_AAM_NO_DE | FLAG_UNMASK_ENTER | FLAG_REP_BOUND | FLAG_REP_MUL_MISSTORE |
+        FLAG_REP_INVERT_IDIV | FLAG_SINGLE_MEM_WRAPS | FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP | FLAG_OLD_RESET_PC | FLAG_OLD_AAA | FLAG_AAM_NO_DE | FLAG_UNMASK_ENTER | FLAG_REP_BOUND | FLAG_REP_MUL_MISSTORE |
         FLAG_OPCODES_80186
     > {};
 

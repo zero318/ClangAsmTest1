@@ -234,45 +234,197 @@ inline constexpr SEG_DESCRIPTOR<max_bits>* z86DescriptorCache<max_bits>::load_se
 }
 
 template <size_t bits, bool protected_mode>
-inline constexpr size_t z86AddrImpl<bits, protected_mode>::addr(ssize_t offset) const {
+inline constexpr size_t z86AddrImpl<bits, protected_mode>::seg() const {
     if constexpr (protected_mode) {
-        return ctx.descriptors[this->segment].base + (OT)(this->offset + offset);
+        return ctx.descriptors[this->segment].base;
     }
     else {
-        return ((size_t)this->segment << 4) + (OT)(this->offset + offset);
+        return (size_t)this->segment << 4;
     }
 }
 
 template <size_t max_bits, uint8_t descriptor_index>
-inline constexpr size_t z86AddrFixedImpl<max_bits, descriptor_index>::addr(ssize_t offset) const {
-    return ctx.descriptors[descriptor_index].base + (OT)(this->offset + offset);
+inline constexpr size_t z86AddrFixedImpl<max_bits, descriptor_index>::seg() const {
+    return ctx.descriptors[descriptor_index].base;
+}
+
+template <typename T>
+inline constexpr bool z86AddrSharedFuncs::addr_fits_on_bus(size_t addr) {
+    return (addr & align_mask<ctx.bus_bytes>) <= ctx.bus_bytes - z86DataProperites<T>::size;
+}
+
+template <typename T>
+inline constexpr bool z86AddrSharedFuncs::addr_crosses_page(size_t addr) {
+    if constexpr (ctx.PAGING) {
+        // No paging simulated yet
+    }
+    return false;
+}
+
+inline constexpr size_t regcall z86AddrSharedFuncs::virt_to_phys(size_t addr) {
+    // No paging yet
+    return addr;
 }
 
 template <typename T, typename P>
 inline void regcall z86AddrSharedFuncs::write(P* self, const T& value, ssize_t offset) {
-    if constexpr (sizeof(T) == sizeof(uint8_t)) {
+
+    if constexpr (!ctx.SINGLE_MEM_WRAPS) {
+        // TODO: Check segment limits
         return mem.write<T>(self->addr(offset), value);
     }
-    else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-        if (is_aligned<uint16_t>(self->offset + offset)) {
-            return mem.write<T>(self->addr(offset), value);
+    else {
+        // 8086 compatiblity
+        size_t virt_seg_base = self->seg();
+        size_t virt_addr_base = virt_seg_base + self->ptr(offset);
+        size_t wrap = self->offset_wrap<T>(offset);
+        if (expect(!wrap, true)) {
+            mem.write<T>(virt_addr_base, value);
         }
         else {
-            uint16_t raw = *(uint16_t*)&value;
-            mem.write<uint8_t>(self->addr(offset), raw);
-            mem.write<uint8_t>(self->addr(offset + 1), raw >> 8);
+            //mem.write(virt_addr_base, &value, wrap);
+            //mem.write(virt_seg_base + self->ptr(offset), &((uint8_t*)&value)[wrap], z86DataProperites<T>::size - wrap);
+            if constexpr (sizeof(T) != sizeof(uint16_t)) {
+                mem.write_movsb(
+                    virt_addr_base - self->offset_wrap_sub<T>(wrap),
+                    mem.write_movsb(virt_addr_base, &value, wrap),
+                    z86DataProperites<T>::size - wrap
+                );
+            }
+            else {
+                uint16_t raw = std::bit_cast<uint16_t>(value);
+                mem.write<uint8_t>(virt_addr_base, raw);
+                mem.write<uint8_t>(virt_addr_base - self->offset_wrap_sub<T>(wrap), raw >> 8);
+            }
         }
     }
+
+    /*
+    if constexpr (sizeof(T) == sizeof(uint8_t)) {
+        uint8_t raw = std::bit_cast<uint8_t>(value);
+        return mem.write<uint8_t>(self->addr(offset), raw);
+    }
+    else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+        size_t virt_seg_base = this->seg();
+        size_t virt_addr_base = virt_seg_base + self->ptr(offset);
+        uint16_t raw = std::bit_cast<uint16_t>(value);
+        if constexpr (ctx.bus_width >= 16) {
+            if (is_aligned<uint16_t>(virt_addr_base)) {
+                return mem.write<uint16_t>(virt_addr_base, raw);
+            }
+        }
+        mem.write<uint8_t>(virt_addr_base, raw);
+        mem.write<uint8_t>(virt_seg_base + self->ptr(offset + 1), raw >> 8);
+        return;
+    }
     else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-        return mem.write<T>(self->addr(offset), value);
+        size_t virt_seg_base = this->seg();
+        size_t virt_addr_base = virt_seg_base + self->ptr(offset);
+        uint32_t raw = std::bit_cast<uint32_t>(value);
+        if constexpr (ctx.bus_width >= 16) {
+            if constexpr (ctx.bus_width >= 32) {
+                if (is_aligned<uint32_t>(virt_addr_base)) {
+                    return mem.write<uint32_t>(virt_addr_base, raw);
+                }
+            }
+            if (is_aligned<uint16_t>(virt_addr_base)) {
+                mem.write<uint16_t>(virt_addr_base, raw);
+                mem.write<uint16_t>(virt_seg_base + self->ptr(offset + 2), raw >> 16);
+                return;
+            }
+        }
+        uint32_t raw = *(uint32_t*)&value;
+        mem.write<uint8_t>(virt_addr_base, raw);
+        mem.write<uint8_t>(virt_seg_base + self->ptr(offset + 1), raw >> 8);
+        mem.write<uint8_t>(virt_seg_base + self->ptr(offset + 2), raw >> 16);
+        mem.write<uint8_t>(virt_seg_base + self->ptr(offset + 3), raw >> 24);
+        return;
     }
     else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-        return mem.write<T>(self->addr(offset), value);
+        size_t virt_seg_base = this->seg();
+        size_t virt_addr_base = virt_seg_base + self->ptr(offset);
+        uint64_t raw = std::bit_cast<uint64_t>(value);
+        if constexpr (ctx.bus_width >= 16) {
+            if constexpr (ctx.bus_width >= 32) {
+                if constexpr (ctx.bus_width >= 64) {
+                    if (is_aligned<uint64_t>(self->offset + offset)) {
+                        return mem.write<T>(self->addr(offset), value);
+                    }
+                }
+                if (is_aligned<uint32_t>(self->offset + offset)) {
+                    uint64_t raw = *(uint64_t*)&value;
+                    mem.write<uint32_t>(self->addr(offset), raw);
+                    mem.write<uint32_t>(self->addr(offset + 4), raw >> 32);
+                    return;
+                }
+            }
+            if (is_aligned<uint16_t>(self->offset + offset)) {
+                uint64_t raw = *(uint64_t*)&value;
+                mem.write<uint16_t>(self->addr(offset), raw);
+                mem.write<uint16_t>(self->addr(offset + 2), raw >> 16);
+                mem.write<uint16_t>(self->addr(offset + 4), raw >> 32);
+                mem.write<uint16_t>(self->addr(offset + 6), raw >> 48);
+                return;
+            }
+        }
+        uint64_t raw = *(uint64_t*)&value;
+        mem.write<uint8_t>(self->addr(offset), raw);
+        mem.write<uint8_t>(self->addr(offset + 1), raw >> 8);
+        mem.write<uint8_t>(self->addr(offset + 2), raw >> 16);
+        mem.write<uint8_t>(self->addr(offset + 3), raw >> 24);
+        mem.write<uint8_t>(self->addr(offset + 4), raw >> 32);
+        mem.write<uint8_t>(self->addr(offset + 5), raw >> 40);
+        mem.write<uint8_t>(self->addr(offset + 6), raw >> 48);
+        mem.write<uint8_t>(self->addr(offset + 7), raw >> 56);
+        return;
     }
+    else {
+        size_t virt_seg_base = this->seg();
+        size_t virt_addr_base = virt_seg_base + self->ptr(offset);
+
+    }
+    */
 }
 
 template <typename T, typename V, typename P>
 static inline V z86AddrSharedFuncs::read(const P* self, ssize_t offset) {
+    if constexpr (!ctx.SINGLE_MEM_WRAPS) {
+        // TODO: Check segment limits
+        return mem.read<V>(self->addr(offset));
+    }
+    else {
+        // 8086 compatibility
+        size_t virt_seg_base = self->seg();
+        size_t virt_addr_base = virt_seg_base + self->ptr(offset);
+        size_t wrap = self->offset_wrap<V>(offset);
+        if (expect(!wrap, true)) {
+            return mem.read<V>(virt_addr_base);
+        }
+        else {
+            //union {
+                //V ret;
+            //};
+            if constexpr (sizeof(V) != sizeof(uint16_t)) {
+                unsigned char raw[z86DataProperites<V>::size];
+                mem.read_movsb(
+                    mem.read_movsb(raw, virt_addr_base, wrap),
+                    virt_addr_base - self->offset_wrap_sub<V>(wrap),
+                    z86DataProperites<V>::size - wrap
+                );
+                return *(V*)&raw;
+            }
+            else {
+                uint16_t raw;
+                raw = mem.read<uint8_t>(virt_addr_base);
+                raw |= (uint16_t)mem.read<uint8_t>(virt_addr_base - self->offset_wrap_sub<V>(wrap)) << 8;
+                return std::bit_cast<V>(raw);
+            }
+            //UByteIntTypeEx<z86DataProperites<V>::size> raw = {};
+
+        }
+    }
+
+    /*
     if constexpr (sizeof(V) == sizeof(uint8_t)) {
         return mem.read<V>(self->addr(offset));
     }
@@ -296,6 +448,7 @@ static inline V z86AddrSharedFuncs::read(const P* self, ssize_t offset) {
     else if constexpr (sizeof(V) == sizeof(uint64_t)) {
         return mem.read<V>(self->addr(offset));
     }
+    */
 }
 
 template <typename P>
@@ -1114,21 +1267,16 @@ inline bool regcall z86BaseDefault::unopMW_impl(P& pc, const L& lambda) {
 }
 
 template <z86BaseTemplate>
-template <typename T, typename P, typename L>
-inline bool regcall z86BaseDefault::unopMM_impl(P& pc, const L& lambda) {
+template <typename T, typename P, typename LM, typename LR>
+inline bool regcall z86BaseDefault::unopMM_impl(P& pc, const LM& lambdaM, const LR& lambdaR) {
     ModRM modrm = pc.read_advance<ModRM>();
     uint8_t r = modrm.R();
     uint8_t ret;
     if (modrm.is_mem()) {
-        P data_addr = modrm.parse_memM(pc);
-        T mval = data_addr.read<uint16_t>();
-        ret = lambda(mval, r);
-        if (OP_NEEDS_WRITE(ret)) {
-            data_addr.write<uint16_t>(mval);
-        }
+        ret = lambdaM(modrm.parse_memM(pc), r);
     }
     else {
-        ret = lambda(this->index_regMB<T>(modrm.M()), r);
+        ret = lambdaR(this->index_regMB<T>(modrm.M()), r);
     }
     if constexpr (FAULTS_ARE_TRAPS) {
         return false;

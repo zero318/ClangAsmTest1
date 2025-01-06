@@ -683,6 +683,9 @@ ValidateStructAlignment(align64, struct_type<64>)
 
 #define bool_str(...) ((bool)(__VA_ARGS__) ? "true" : "false")
 
+template <size_t bytes>
+inline constexpr size_t align_mask = bytes - 1;
+
 template <typename T, typename P>
 static inline constexpr bool is_aligned(const P& value) {
     return !(value & sizeof(T) - 1);

@@ -663,6 +663,17 @@ static inline T *restrict rep_movsb(T *restrict dst, const T2 *restrict src, siz
     //assume(byte_len == 0);
     return dst;
 }
+template<typename T = void, typename T2 = T>
+static inline const T2 *restrict rep_movsbS(T *restrict dst, const T2 *restrict src, size_t byte_len) {
+    __asm__ volatile (
+        "rep movsb"
+        : "=c"(byte_len), "+D"(dst), "+S"(src)
+        : "0"(byte_len)
+        : "memory"
+    );
+    //assume(byte_len == 0);
+    return src;
+}
 template<typename T = void>
 static inline T *restrict rep_stosb(T *restrict dst, uint8_t value, size_t byte_len) {
     __asm__ volatile (
