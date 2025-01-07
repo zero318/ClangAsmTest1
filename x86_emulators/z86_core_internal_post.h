@@ -553,36 +553,36 @@ inline uint64_t z86AddrSharedFuncs::read_advance_O(P* self) {
 }
 
 template <z86BaseTemplate>
-template <typename T, typename P, typename L>
+template <typename T1, typename T2, typename P, typename L>
 inline bool regcall z86BaseDefault::binopMR_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
-    T& rval = this->index_regR<T>(modrm.R());
+    T2& rval = this->index_regR<T2>(modrm.R());
     if (modrm.is_mem()) {
         P data_addr = modrm.parse_memM(pc);
-        T mval = data_addr.read<T>();
+        T1 mval = data_addr.read<T1>();
         if (lambda(mval, rval)) {
-            data_addr.write<T>(mval);
+            data_addr.write<T1>(mval);
         }
     }
     else {
-        lambda(this->index_regMB<T>(modrm.M()), rval);
+        lambda(this->index_regMB<T1>(modrm.M()), rval);
     }
     return false;
 }
 
 template <z86BaseTemplate>
-template <typename T, typename P, typename L>
+template <typename T1, typename T2, typename P, typename L>
 inline bool regcall z86BaseDefault::binopRM_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
-    T mval;
+    T2 mval;
     if (modrm.is_mem()) {
         P data_addr = modrm.parse_memM(pc);
-        mval = data_addr.read<T>();
+        mval = data_addr.read<T2>();
     }
     else {
-        mval = this->index_regMB<T>(modrm.M());
+        mval = this->index_regMB<T2>(modrm.M());
     }
-    lambda(this->index_regR<T>(modrm.R()), mval);
+    lambda(this->index_regR<T1>(modrm.R()), mval);
     return false;
 }
 
@@ -688,6 +688,74 @@ inline bool regcall z86BaseDefault::binopSM_impl(P& pc, const L& lambda) {
     uint16_t rval = this->get_seg(seg_index);
     lambda(rval, mval);
     this->write_seg(seg_index, rval);
+    return false;
+}
+
+template <z86BaseTemplate>
+template <typename T, typename P, typename L>
+inline bool regcall z86BaseDefault::binopMR_MMX(P& pc, const L& lambda) {
+    ModRM modrm = pc.read_advance<ModRM>();
+    MMXT<T>& rval = this->index_mmx_reg<T>(modrm.R());
+    if (modrm.is_mem()) {
+        P data_addr = modrm.parse_memM(pc);
+        MMXT<T> mval = data_addr.read<MMXT<T>>();
+        if (lambda(mval, rval)) {
+            data_addr.write<MMXT<T>>(mval);
+        }
+    }
+    else {
+        lambda(this->index_mmx_reg<T>(modrm.M()), rval);
+    }
+    return false;
+}
+
+template <z86BaseTemplate>
+template <typename T, typename P, typename L>
+inline bool regcall z86BaseDefault::binopRM_MMX(P& pc, const L& lambda) {
+    ModRM modrm = pc.read_advance<ModRM>();
+    MMXT<T> mval;
+    if (modrm.is_mem()) {
+        P data_addr = modrm.parse_memM(pc);
+        mval = data_addr.read<MMXT<T>>();
+    }
+    else {
+        mval = this->index_mmx_reg<T>(modrm.M());
+    }
+    lambda(this->index_mmx_reg<T>(modrm.R()), mval);
+    return false;
+}
+
+template <z86BaseTemplate>
+template <typename T, typename P, typename L>
+inline bool regcall z86BaseDefault::binopMR_SSE(P& pc, const L& lambda) {
+    ModRM modrm = pc.read_advance<ModRM>();
+    SSET<T>& rval = this->index_xmm_regR<T>(modrm.R());
+    if (modrm.is_mem()) {
+        P data_addr = modrm.parse_memM(pc);
+        SSET<T> mval = data_addr.read<SSET<T>>();
+        if (lambda(mval, rval)) {
+            data_addr.write<SSET<T>>(mval);
+        }
+    }
+    else {
+        lambda(this->index_xmm_regMB<T>(modrm.M()), rval);
+    }
+    return false;
+}
+
+template <z86BaseTemplate>
+template <typename T, typename P, typename L>
+inline bool regcall z86BaseDefault::binopRM_SSE(P& pc, const L& lambda) {
+    ModRM modrm = pc.read_advance<ModRM>();
+    SSET<T> mval;
+    if (modrm.is_mem()) {
+        P data_addr = modrm.parse_memM(pc);
+        mval = data_addr.read<SSET<T>>();
+    }
+    else {
+        mval = this->index_xmm_regMB<T>(modrm.M());
+    }
+    lambda(this->index_xmm_regR<T>(modrm.R()), mval);
     return false;
 }
 
@@ -1166,6 +1234,22 @@ inline T regcall z86BaseDefault::port_in_impl(uint16_t port) {
         printf("Unhandled: IN EAX, %X\n", full_port);
     }
     return 0;
+}
+
+template <z86BaseTemplate>
+template <typename T, typename P>
+inline bool regcall z86BaseDefault::MASKMOV_impl(T& src, T mask) {
+    z86Addr data_addr = this->addr(DS, this->DI<P>());
+
+    uint8_t* data_vec = (uint8_t*)&src;
+
+    // TODO: Get the compiler to generate PMOVMSKB for this
+    for (size_t i = 0; i < sizeof(T); ++i) {
+        if (mask[i] & 0x80) {
+            data_addr.write<uint8_t>(data_vec[i], i);
+        }
+    }
+    return false;
 }
 
 // Special unop for groups 4/5

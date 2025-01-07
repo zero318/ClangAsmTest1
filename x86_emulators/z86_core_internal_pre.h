@@ -80,47 +80,60 @@ enum z86FeatureTier {
     FEATURES_80286, // Protected mode, ARPL, 2 byte opcodes
 };
 
+static inline constexpr uint64_t QUIRK_FLAGS_A_START = __COUNTER__ + 1;
+
+// I got tired of rewriting the flag shifts
+#define QUIRK_FLAG(...) __VA_ARGS__ = 1ull << (__COUNTER__ - QUIRK_FLAGS_A_START)
+
 // QUIRK DEFS
 enum z86FeatureFlagsA : uint64_t {
-    FLAG_PUSH_CS            = 1ull << 0, // 8086
-    FLAG_SAL_IS_SETMO       = 1ull << 1, // 8086
-    FLAG_REP_INVERT_MUL     = 1ull << 2, // 8086
-    FLAG_REP_INVERT_IDIV    = 1ull << 3, // 8086, 80186
-    FLAG_FAULTS_ARE_TRAPS   = 1ull << 4, // 8086
-    FLAG_NO_UD              = 1ull << 5, // 8086
-    FLAG_SINGLE_MEM_WRAPS   = 1ull << 6, // 8086, 80186
-    FLAG_UNMASK_SHIFTS      = 1ull << 7, // 8086, 80186, v20
-    FLAG_OLD_PUSH_SP        = 1ull << 8, // 8086, 80186, v20
-    FLAG_OLD_RESET_PC       = 1ull << 9, // 8086, 80186, v20
-    FLAG_OLD_AAA            = 1ull << 10, // 8086, 80186 (v20 unknown)
-    FLAG_WRAP_SEGMENT_MODRM = 1ull << 11, // 8086, 80186
-    FLAG_AAM_NO_DE          = 1ull << 12, // 80186
-    FLAG_UNMASK_ENTER       = 1ull << 13, // 80186, v20
-    FLAG_REP_BOUND          = 1ull << 14, // 80186
-    FLAG_REP_MUL_MISSTORE   = 1ull << 15, // 80186
-    FLAG_PROTECTED_MODE     = 1ull << 16, // 80286+
-    FLAG_PAGING             = 1ull << 17, // 80386+
-    FLAG_LONG_MODE          = 1ull << 18,
-    FLAG_HAS_TEST_REGS      = 1ull << 19, // 80386, 80486
-    FLAG_OPCODES_80186      = 1ull << 20,
-    FLAG_OPCODES_80286      = 1ull << 21,
-    FLAG_OPCODES_V20        = 1ull << 22,
-    FLAG_OPCODES_80386      = 1ull << 23,
-    FLAG_OPCODES_80486      = 1ull << 24,
-    FLAG_OPCODES_P5         = 1ull << 25,
-    FLAG_OPCODES_P6         = 1ull << 26,
-    FLAG_HAS_CPUID          = 1ull << 27,
-    FLAG_HAS_LONG_NOP       = 1ull << 28,
-    FLAG_CPUID_X87          = 1ull << 29,
-    FLAG_CPUID_CMOV         = 1ull << 30,
-    FLAG_CPUID_MMX          = 1ull << 31,
-    FLAG_CPUID_SSE          = 1ull << 32,
-    FLAG_CPUID_SSE2         = 1ull << 33,
-    FLAG_CPUID_SSE3         = 1ull << 34,
-    FLAG_CPUID_SSSE3        = 1ull << 35,
-    FLAG_CPUID_SSE41        = 1ull << 36,
-    FLAG_CPUID_SSE42        = 1ull << 37,
-    FLAG_CPUID_SSE4A        = 1ull << 38
+    QUIRK_FLAG(FLAG_PUSH_CS),               // 8086
+    QUIRK_FLAG(FLAG_SAL_IS_SETMO),          // 8086
+    QUIRK_FLAG(FLAG_REP_INVERT_MUL),        // 8086
+    QUIRK_FLAG(FLAG_REP_INVERT_IDIV),       // 8086, 80186
+    QUIRK_FLAG(FLAG_FAULTS_ARE_TRAPS),      // 8086
+    QUIRK_FLAG(FLAG_NO_UD),                 // 8086
+    QUIRK_FLAG(FLAG_SINGLE_MEM_WRAPS),      // 8086, 80186
+    QUIRK_FLAG(FLAG_UNMASK_SHIFTS),         // 8086, 80186, v20
+    QUIRK_FLAG(FLAG_OLD_PUSH_SP),           // 8086, 80186, v20
+    QUIRK_FLAG(FLAG_OLD_RESET_PC),          // 8086, 80186, v20
+    QUIRK_FLAG(FLAG_OLD_AAA),               // 8086, 80186 (v20 unknown)
+    QUIRK_FLAG(FLAG_WRAP_SEGMENT_MODRM),    // 8086, 80186
+    QUIRK_FLAG(FLAG_AAM_NO_DE),             // 80186
+    QUIRK_FLAG(FLAG_UNMASK_ENTER),          // 80186, v20
+    QUIRK_FLAG(FLAG_REP_BOUND),             // 80186
+    QUIRK_FLAG(FLAG_REP_MUL_MISSTORE),      // 80186
+    QUIRK_FLAG(FLAG_PROTECTED_MODE),        // 80286+
+    QUIRK_FLAG(FLAG_PAGING),                // 80386+
+    QUIRK_FLAG(FLAG_LONG_MODE),
+    QUIRK_FLAG(FLAG_HAS_TEST_REGS),         // 80386, 80486
+    QUIRK_FLAG(FLAG_OPCODES_80186),
+    QUIRK_FLAG(FLAG_OPCODES_80286),
+    QUIRK_FLAG(FLAG_OPCODES_V20),
+    QUIRK_FLAG(FLAG_OPCODES_80386),
+    QUIRK_FLAG(FLAG_OPCODES_80486),
+    QUIRK_FLAG(FLAG_OPCODES_P5),
+    QUIRK_FLAG(FLAG_OPCODES_P6),
+    QUIRK_FLAG(FLAG_HAS_CPUID),
+    QUIRK_FLAG(FLAG_HAS_LONG_NOP),
+    QUIRK_FLAG(FLAG_CPUID_X87),
+    QUIRK_FLAG(FLAG_CPUID_CMOV),
+    QUIRK_FLAG(FLAG_CPUID_MMX),
+    QUIRK_FLAG(FLAG_CPUID_3DNOW),
+    QUIRK_FLAG(FLAG_CPUID_SSE),
+    QUIRK_FLAG(FLAG_CPUID_SSE2),
+    QUIRK_FLAG(FLAG_CPUID_SSE3),
+    QUIRK_FLAG(FLAG_CPUID_SSSE3),
+    QUIRK_FLAG(FLAG_CPUID_SSE41),
+    QUIRK_FLAG(FLAG_CPUID_SSE42),
+    QUIRK_FLAG(FLAG_CPUID_SSE4A),
+    QUIRK_FLAG(FLAG_CPUID_AVX),
+    QUIRK_FLAG(FLAG_CPUID_AVX2),
+    QUIRK_FLAG(FLAG_CPUID_XOP),
+    QUIRK_FLAG(FLAG_CPUID_FMA3),
+    QUIRK_FLAG(FLAG_CPUID_POPCNT),
+    QUIRK_FLAG(FLAG_CPUID_BMI1),
+    QUIRK_FLAG(FLAG_CPUID_BMI2),
 };
 
 // Code shared between x86 cores
@@ -250,10 +263,21 @@ struct MMXREG {
         vec<int16_t, 4> sword;
         vec<uint32_t, 2> dword;
         vec<int32_t, 2> sdword;
-        uint64_t qword;
-        int64_t sqword;
+        vec<uint64_t, 1> qword;
+        vec<int64_t, 1> sqword;
     };
+
+    template <typename T>
+    static inline constexpr size_t vec_size() {
+        return 8 / sizeof(T);
+    }
 };
+
+template <typename T>
+using MMXT = std::conditional_t<std::is_same_v<T, void>, MMXREG,
+             std::conditional_t<MMXREG::vec_size<T>() != 0,
+                                vec<T, MMXREG::vec_size<T>()>,
+                                void>>;
 
 struct FPUREG {
     union {
@@ -275,7 +299,20 @@ struct SSEREG {
     vec<int64_t, 2> sqword;
     uint128_t oword;
     int128_t soword;
+
+    template <typename T>
+    static inline constexpr size_t vec_size() {
+        return 16 / sizeof(T);
+    }
 };
+
+template <typename T>
+using SSET = std::conditional_t<std::is_same_v<T, void>, SSEREG,
+             std::conditional_t<SSEREG::vec_size<T>() != 0,
+                 std::conditional_t<SSEREG::vec_size<T>() != 1,
+                                        vec<T, SSEREG::vec_size<T>()>,
+                                        T>,
+                                    void>>;
 
 struct AVXREG {
     vec<float, 8> f32;
@@ -290,7 +327,20 @@ struct AVXREG {
     vec<int64_t, 4> sqword;
     vec<uint128_t, 2> oword;
     vec<int128_t, 2> soword;
+
+    template <typename T>
+    static inline constexpr size_t vec_size() {
+        return 32 / sizeof(T);
+    }
 };
+
+template <typename T>
+using AVXT = std::conditional_t<std::is_same_v<T, void>, AVXREG,
+             std::conditional_t<AVXREG::vec_size<T>() != 0,
+                 std::conditional_t<AVXREG::vec_size<T>() != 1,
+                                        vec<T, AVXREG::vec_size<T>()>,
+                                        T>,
+                                    void>>;
 
 struct AVX512REG {
     vec<float, 16> f32;
@@ -305,7 +355,20 @@ struct AVX512REG {
     vec<int64_t, 8> sqword;
     vec<uint128_t, 4> oword;
     vec<int128_t, 4> soword;
+
+    template <typename T>
+    static inline constexpr size_t vec_size() {
+        return 64 / sizeof(T);
+    }
 };
+
+template <typename T>
+using AVX512T = std::conditional_t<std::is_same_v<T, void>, AVX512REG,
+                std::conditional_t<AVX512REG::vec_size<T>() != 0,
+                    std::conditional_t<AVX512REG::vec_size<T>() != 1,
+                                           vec<T, AVX512REG::vec_size<T>()>,
+                                           T>,
+                                       void>>;
 
 template <size_t bits>
 struct SEG_DESCRIPTOR {
@@ -1623,21 +1686,6 @@ struct z86BaseControlBase<max_bits, false> {
 template <>
 struct z86BaseControlBase<16, true> {
     union {
-        uint16_t seg[10];
-        struct {
-            uint16_t es;
-            uint16_t cs;
-            uint16_t ss;
-            uint16_t ds;
-            uint16_t fs;
-            uint16_t gs;
-            uint16_t ds3;
-            uint16_t ds2;
-            uint16_t ldtr;
-            uint16_t tr;
-        };
-    };
-    union {
         z86DescriptorCache<16> descriptors[12] = {};
         struct {
             z86DescriptorCache<16> es_descriptor;
@@ -1661,11 +1709,6 @@ struct z86BaseControlBase<16, true> {
             uint8_t protected_mode : 1;
         };
     };
-    uint8_t cpl;
-};
-
-template <>
-struct z86BaseControlBase<32, true> {
     union {
         uint16_t seg[10];
         struct {
@@ -1681,6 +1724,11 @@ struct z86BaseControlBase<32, true> {
             uint16_t tr;
         };
     };
+    uint8_t cpl;
+};
+
+template <>
+struct z86BaseControlBase<32, true> {
     union {
         z86DescriptorCache<32> descriptors[12] = {};
         struct {
@@ -1717,11 +1765,6 @@ struct z86BaseControlBase<32, true> {
             uint32_t cr7;
         };
     };
-    uint8_t cpl;
-};
-
-template <>
-struct z86BaseControlBase<64, true> {
     union {
         uint16_t seg[10];
         struct {
@@ -1737,6 +1780,11 @@ struct z86BaseControlBase<64, true> {
             uint16_t tr;
         };
     };
+    uint8_t cpl;
+};
+
+template <>
+struct z86BaseControlBase<64, true> {
     union {
         z86DescriptorCache<64> descriptors[12] = {};
         struct {
@@ -1772,6 +1820,21 @@ struct z86BaseControlBase<64, true> {
             uint64_t cr6;
             uint64_t cr7;
             uint64_t cr8;
+        };
+    };
+    union {
+        uint16_t seg[10];
+        struct {
+            uint16_t es;
+            uint16_t cs;
+            uint16_t ss;
+            uint16_t ds;
+            uint16_t fs;
+            uint16_t gs;
+            uint16_t ds3;
+            uint16_t ds2;
+            uint16_t ldtr;
+            uint16_t tr;
         };
     };
     uint8_t cpl;
@@ -2889,7 +2952,13 @@ struct ModRM {
 #define z86BaseDefault z86Base<bits, bus, flagsA>
 
 template <size_t bits, size_t bus = bits, uint64_t flagsA = 0>
-struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROTECTED_MODE, flagsA & FLAG_CPUID_X87, 0, 0> {
+struct z86Base :
+    z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROTECTED_MODE,
+        flagsA & (FLAG_CPUID_X87 | FLAG_CPUID_MMX | FLAG_CPUID_3DNOW),
+        (flagsA & FLAG_CPUID_SSE) ? (flagsA & FLAG_CPUID_AVX) ? 256 : 128 : 0,
+        (flagsA & FLAG_CPUID_SSE) ? (flagsA & FLAG_LONG_MODE) ? 16 : 8 : 0
+    >
+{
 
     static inline constexpr size_t max_bits = bits;
     static inline constexpr size_t bus_width = bus;
@@ -2930,6 +2999,7 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
     static inline constexpr bool CPUID_X87 = flagsA & FLAG_CPUID_X87;
     static inline constexpr bool CPUID_CMOV = flagsA & FLAG_CPUID_CMOV;
     static inline constexpr bool CPUID_MMX = flagsA & FLAG_CPUID_MMX;
+    static inline constexpr bool CPUID_3DNOW = flagsA & FLAG_CPUID_3DNOW;
     static inline constexpr bool CPUID_SSE = flagsA & FLAG_CPUID_SSE;
     static inline constexpr bool CPUID_SSE2 = flagsA & FLAG_CPUID_SSE2;
     static inline constexpr bool CPUID_SSE3 = flagsA & FLAG_CPUID_SSE3;
@@ -2937,6 +3007,13 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
     static inline constexpr bool CPUID_SSE41 = flagsA & FLAG_CPUID_SSE41;
     static inline constexpr bool CPUID_SSE42 = flagsA & FLAG_CPUID_SSE42;
     static inline constexpr bool CPUID_SSE4A = flagsA & FLAG_CPUID_SSE4A;
+    static inline constexpr bool CPUID_AVX = flagsA & FLAG_CPUID_AVX;
+    static inline constexpr bool CPUID_AVX2 = flagsA & FLAG_CPUID_AVX2;
+    static inline constexpr bool CPUID_XOP = flagsA & FLAG_CPUID_XOP;
+    static inline constexpr bool CPUID_FMA3 = flagsA & FLAG_CPUID_FMA3;
+    static inline constexpr bool CPUID_POPCNT = flagsA & FLAG_CPUID_POPCNT;
+    static inline constexpr bool CPUID_BMI1 = flagsA & FLAG_CPUID_BMI1;
+    static inline constexpr bool CPUID_BMI2 = flagsA & FLAG_CPUID_BMI2;
 
     // Assuming a previous memset of full context
     inline constexpr void reset_ip() {
@@ -3122,6 +3199,104 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
             }
             else if constexpr (std::is_same_v<T, double>) {
                 return this->mm[index].f64;
+            }
+        }
+    }
+
+    template <typename T = void, bool ignore_rex = false>
+    inline constexpr auto& index_xmm_regR(uint8_t index) {
+        assume(index < 8);
+        if constexpr (CPUID_SSE) {
+            if constexpr (!ignore_rex) {
+                index |= this->get_rex_bits().R();
+            }
+            if constexpr (std::is_same_v<T, void>) {
+                return this->xmm[index];
+            }
+            else if constexpr (std::is_same_v<T, uint8_t>) {
+                return this->xmm[index].byte;
+            }
+            else if constexpr (std::is_same_v<T, int8_t>) {
+                return this->xmm[index].sbyte;
+            }
+            else if constexpr (std::is_same_v<T, uint16_t>) {
+                return this->xmm[index].word;
+            }
+            else if constexpr (std::is_same_v<T, int16_t>) {
+                return this->xmm[index].sword;
+            }
+            else if constexpr (std::is_same_v<T, uint32_t>) {
+                return this->xmm[index].dword;
+            }
+            else if constexpr (std::is_same_v<T, int32_t>) {
+                return this->xmm[index].sdword;
+            }
+            else if constexpr (std::is_same_v<T, uint64_t>) {
+                return this->xmm[index].qword;
+            }
+            else if constexpr (std::is_same_v<T, int64_t>) {
+                return this->xmm[index].sqword;
+            }
+            else if constexpr (std::is_same_v<T, uint128_t>) {
+                return this->xmm[index].oword;
+            }
+            else if constexpr (std::is_same_v<T, uint128_t>) {
+                return this->xmm[index].soword;
+            }
+            else if constexpr (std::is_same_v<T, float>) {
+                return this->xmm[index].f32;
+            }
+            else if constexpr (std::is_same_v<T, double>) {
+                return this->xmm[index].f64;
+            }
+        }
+    }
+
+    template <typename T = void, bool ignore_rex = false>
+    inline constexpr auto& index_xmm_regMB(uint8_t index) {
+        assume(index < 8);
+        if constexpr (CPUID_SSE) {
+            if constexpr (!ignore_rex) {
+                index |= this->get_rex_bits().B();
+            }
+            if constexpr (std::is_same_v<T, void>) {
+                return this->xmm[index];
+            }
+            else if constexpr (std::is_same_v<T, uint8_t>) {
+                return this->xmm[index].byte;
+            }
+            else if constexpr (std::is_same_v<T, int8_t>) {
+                return this->xmm[index].sbyte;
+            }
+            else if constexpr (std::is_same_v<T, uint16_t>) {
+                return this->xmm[index].word;
+            }
+            else if constexpr (std::is_same_v<T, int16_t>) {
+                return this->xmm[index].sword;
+            }
+            else if constexpr (std::is_same_v<T, uint32_t>) {
+                return this->xmm[index].dword;
+            }
+            else if constexpr (std::is_same_v<T, int32_t>) {
+                return this->xmm[index].sdword;
+            }
+            else if constexpr (std::is_same_v<T, uint64_t>) {
+                return this->xmm[index].qword;
+            }
+            else if constexpr (std::is_same_v<T, int64_t>) {
+                return this->xmm[index].sqword;
+            }
+            else if constexpr (std::is_same_v<T, uint128_t>) {
+                return this->xmm[index].oword;
+            }
+            else if constexpr (std::is_same_v<T, uint128_t>) {
+                return this->xmm[index].soword;
+            }
+            else if constexpr (std::is_same_v<T, float>) {
+                return this->xmm[index].f32;
+            }
+            else if constexpr (std::is_same_v<T, double>) {
+                return this->xmm[index].f64;
             }
         }
     }
@@ -5669,6 +5844,280 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
         return false;
     }
 
+    template <typename T, typename P>
+    inline bool regcall MASKMOV_impl(T& src, T mask);
+
+    template <typename T>
+    inline bool regcall MASKMOV(T& src, T mask) {
+        if constexpr (bits > 16) {
+            if (this->addr_size_32()) {
+                return this->MASKMOV_impl<T, uint32_t>(src, mask);
+            }
+            if constexpr (bits == 64) {
+                if (this->addr_size_64()) {
+                    return this->MASKMOV_impl<T, uint64_t>(src, mask);
+                }
+            }
+        }
+        return this->MASKMOV_impl<T, uint16_t>(src, mask);
+    }
+
+    template <typename T>
+    gnu_noinline bool regcall PACKSS(T& dst, T src) {
+        constexpr size_t src_vec_length = vector_length_v<T>;
+        constexpr size_t dst_vec_length = src_vec_length * 2;
+        using src_int = vector_type_t<T>;
+        using dst_int = hlf_int_t<src_int>;
+
+        vec<src_int, dst_vec_length> temp;
+        for (size_t i = 0; i < src_vec_length; ++i) {
+            temp[i] = dst[i];
+            temp[i + src_vec_length] = src[i];
+        }
+        
+        const vec<src_int, dst_vec_length> min_vec = vec_broadcast<src_int, dst_vec_length>((std::numeric_limits<dst_int>::min)());
+        const vec<src_int, dst_vec_length> max_vec = vec_broadcast<src_int, dst_vec_length>((std::numeric_limits<dst_int>::max)());
+        temp = __builtin_elementwise_min(temp, max_vec);
+        temp = __builtin_elementwise_max(temp, min_vec);
+        dst = std::bit_cast<T>(convertvec(temp, vec<dst_int, dst_vec_length>));
+        return false;
+    }
+
+    template <typename T>
+    gnu_noinline bool regcall PACKUS(T& dst, T src) {
+        constexpr size_t src_vec_length = vector_length_v<T>;
+        constexpr size_t dst_vec_length = src_vec_length * 2;
+        using src_int = vector_type_t<T>;
+        using dst_int = std::make_unsigned_t<hlf_int_t<src_int>>;
+
+        vec<src_int, dst_vec_length> temp;
+        for (size_t i = 0; i < src_vec_length; ++i) {
+            temp[i] = dst[i];
+            temp[i + src_vec_length] = src[i];
+        }
+        
+        const vec<src_int, dst_vec_length> min_vec = {};
+        const vec<src_int, dst_vec_length> max_vec = vec_broadcast<src_int, dst_vec_length>((std::numeric_limits<dst_int>::max)());
+        temp = __builtin_elementwise_min(temp, max_vec);
+        temp = __builtin_elementwise_max(temp, min_vec);
+        dst = std::bit_cast<T>(convertvec(temp, vec<dst_int, dst_vec_length>));
+        return false;
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PUNPCKL(T dst, T src) {
+        constexpr size_t vec_length = vector_length_v<T>;
+        constexpr size_t half_vec_length = vec_length / 2;
+        using src_int = vector_type_t<T>;
+
+        vec<src_int, vec_length> ret;
+        for (size_t i = 0; i < half_vec_length; ++i) {
+            ret[i * 2] = dst[i];
+            ret[i * 2 + 1] = src[i];
+        }
+        return ret;
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PUNPCKH(T dst, T src) {
+        constexpr size_t vec_length = vector_length_v<T>;
+        constexpr size_t half_vec_length = vec_length / 2;
+        using src_int = vector_type_t<T>;
+
+        vec<src_int, vec_length> ret;
+        for (size_t i = 0; i < half_vec_length; ++i) {
+            ret[i * 2] = dst[half_vec_length + i];
+            ret[i * 2 + 1] = src[half_vec_length + i];
+        }
+        return ret;
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PAVG(T dst, T src) {
+        constexpr size_t vec_length = vector_length_v<T>;
+        using src_int = vector_type_t<T>;
+        using tmp_int = dbl_int_t<src_int>;
+
+        vec<tmp_int, vec_length> temp = convertvec(dst, vec<tmp_int, vec_length>);
+        temp += convertvec(src, vec<tmp_int, vec_length>);
+        temp += 1;
+        temp >>= 1;
+        return convertvec(temp, T);
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PABS(T src) {
+        return __builtin_elementwise_abs(src);
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PADD(T dst, T src) {
+        return dst + src;
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PADDS(T dst, T src) {
+        return __builtin_elementwise_add_sat(dst, src);
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PHADD(T dst, T src) {
+        T odds = vec_odd_interleave(dst, src);
+        T evens = vec_even_interleave(dst, src);
+        return odds + evens;
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PHADDS(T dst, T src) {
+        T odds = vec_odd_interleave(dst, src);
+        T evens = vec_even_interleave(dst, src);
+        return __builtin_elementwise_add_sat(odds, evens);
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PSAD(T dst, T src) {
+        constexpr size_t src_vec_length = vector_length_v<T>;
+        constexpr size_t dst_vec_length = src_vec_length / 2;
+        using src_int = vector_type_t<T>;
+        using dst_int = dbl_int_t<src_int>;
+
+        T temp = __builtin_elementwise_abs(dst - src);
+
+        vec<dst_int, dst_vec_length> ret = {};
+        for (size_t i = 0; i < dst_vec_length / 4; ++i) {
+            ret[i * 4] = (dst_int)temp[i * 4] + (dst_int)temp[i * 4 + 1] + (dst_int)temp[i * 4 + 2] + (dst_int)temp[i * 4 + 3];
+        }
+        return std::bit_cast<T>(ret);
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PSUB(T dst, T src) {
+        return dst - src;
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PSUBS(T dst, T src) {
+        return __builtin_elementwise_sub_sat(dst, src);
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PHSUB(T dst, T src) {
+        T odds = vec_odd_interleave(dst, src);
+        T evens = vec_even_interleave(dst, src);
+        return odds - evens;
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PHSUBS(T dst, T src) {
+        T odds = vec_odd_interleave(dst, src);
+        T evens = vec_even_interleave(dst, src);
+        return __builtin_elementwise_sub_sat(odds, evens);
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PMADD(T dst, T src) {
+        constexpr size_t src_vec_length = vector_length_v<T>;
+        constexpr size_t dst_vec_length = src_vec_length / 2;
+        using src_int = vector_type_t<T>;
+        using dst_int = dbl_int_t<src_int>;
+
+        vec<dst_int, src_vec_length> temp = convertvec(dst, vec<dst_int, src_vec_length>);
+        temp *= convertvec(src, vec<dst_int, src_vec_length>);
+        
+        vec<dst_int, dst_vec_length> ret;
+        for (size_t i = 0; i < dst_vec_length; ++i) {
+            ret[i] = temp[i * 2] + temp[i * 2 + 1];
+        }
+        return std::bit_cast<T>(ret);
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PMULL(T dst, T src) {
+        return dst * src;
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PMULH(T dst, T src) {
+        constexpr size_t vec_length = vector_length_v<T>;
+        using src_int = vector_type_t<T>;
+        using tmp_int = dbl_int_t<src_int>;
+
+        vec<tmp_int, vec_length> temp = convertvec(dst, vec<tmp_int, vec_length>);
+        temp *= convertvec(src, vec<tmp_int, vec_length>);
+        temp >>= bitsof(src_int);
+        return convertvec(temp, T);
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PMUL(T dst, T src) {
+        constexpr size_t src_vec_length = vector_length_v<T>;
+        constexpr size_t dst_vec_length = src_vec_length / 2;
+        using src_int = vector_type_t<T>;
+        using dst_int = dbl_int_t<src_int>;
+
+        vec<dst_int, dst_vec_length> ret = {};
+        for (size_t i = 0; i < dst_vec_length; ++i) {
+            ret[i] = (dst_int)dst[i * 2] * (dst_int)src[i * 2];
+        }
+        return std::bit_cast<T>(ret);
+    }
+    
+    template <typename T1, typename T2>
+    gnu_noinline T1 regcall PSHL(T1 dst, T2 src) {
+        return dst << src;
+    }
+
+    template <typename T1, typename T2>
+    gnu_noinline T1 regcall PSHR(T1 dst, T2 src) {
+        return dst >> src;
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PAND(T dst, T src) {
+        return dst & src;
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PANDN(T dst, T src) {
+        return ~dst & src;
+    }
+
+    template <typename T>
+    gnu_noinline T regcall POR(T dst, T src) {
+        return dst | src;
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PXOR(T dst, T src) {
+        return dst ^ src;
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PMAX(T dst, T src) {
+        return __builtin_elementwise_max(dst, src);
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PMIN(T dst, T src) {
+        return __builtin_elementwise_max(dst, src);
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PCMPEQ(T dst, T src) {
+        return dst == src;
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PCMPGT(T dst, T src) {
+        return dst > src;
+    }
+
+    template <typename T>
+    gnu_noinline T regcall PSIGN(T dst, T src) {
+        const T zero = {};
+        return src == 0 ? zero : src > 0 ? dst : -dst;
+    }
+
     inline void regcall software_interrupt(uint8_t number) {
         this->pending_sinterrupt = number;
     }
@@ -5775,8 +6224,23 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
         }
     }
 
-    template <typename T, typename P, typename L>
+    template <typename T1, typename T2 = T1, typename P, typename L>
     inline bool regcall binopMR_impl(P& pc, const L& lambda);
+
+    template <typename T, typename P, typename L>
+    inline bool regcall MOVX(P& pc, const L& lambda) {
+        if constexpr (bits > 16) {
+            if (this->data_size_32()) {
+                return this->binopRM_impl<uint32_t, T>(pc, lambda);
+            }
+            if constexpr (bits == 64) {
+                if (this->data_size_64()) {
+                    return this->binopRM_impl<uint64_t, T>(pc, lambda);
+                }
+            }
+        }
+        return this->binopRM_impl<uint16_t, T>(pc, lambda);
+    }
 
     template <bool is_byte = false, typename P, typename L>
     inline bool regcall binopMR(P& pc, const L& lambda) {
@@ -5798,7 +6262,7 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
         }
     }
 
-    template <typename T, typename P, typename L>
+    template <typename T1, typename T2 = T1, typename P, typename L>
     inline bool regcall binopRM_impl(P& pc, const L& lambda);
 
     template <bool is_byte = false, typename P, typename L>
@@ -5910,6 +6374,18 @@ struct z86Base : z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROT
         }
         return this->binopSM_impl<uint16_t>(pc, lambda);
     }
+
+    template <typename T = uint64_t, typename P, typename L>
+    inline bool regcall binopMR_MMX(P& pc, const L& lambda);
+
+    template <typename T = uint64_t, typename P, typename L>
+    inline bool regcall binopRM_MMX(P& pc, const L& lambda);
+
+    template <typename T = uint128_t, typename P, typename L>
+    inline bool regcall binopMR_SSE(P& pc, const L& lambda);
+
+    template <typename T = uint128_t, typename P, typename L>
+    inline bool regcall binopRM_SSE(P& pc, const L& lambda);
 
     template <typename T, typename P, typename L>
     inline bool regcall unopM_impl(P& pc, const L& lambda);

@@ -726,19 +726,25 @@ public:
     static constexpr bool value = !(std::is_pointer_v<T> || std::is_array_v<T> || std::is_class_v<T> || std::is_union_v<T>) && sizeof(B) <= sizeof(T);
 };
 
-template<typename T>
+template <typename T>
 inline constexpr bool is_vector_v = is_vector<T>::value;
 
+template <typename T, typename=void>
+struct vector_type : std::type_identity<T> {};
+
 template <typename T>
-struct vector_type {
+struct vector_type<T, std::void_t<decltype(std::declval<T>()[0])>> {
     using type = std::remove_reference_t<decltype(std::declval<T>()[0])>;
 };
 
 template <typename T>
 using vector_type_t = vector_type<T>::type;
 
+template <typename T, typename=void>
+struct vector_length : std::integral_constant<size_t, 0> {};
+
 template <typename T>
-struct vector_length {
+struct vector_length<T, std::void_t<decltype(std::declval<T>()[0])>> {
     static constexpr size_t value = sizeof(T) / sizeof(vector_type_t<T>);
 };
 
@@ -2122,6 +2128,81 @@ using UByteIntType = UBitIntType<byte_count * CHAR_BIT>;
 #define nodistribute NoDistribute
 
 #include "custom_intrin.h"
+
+template <typename T, size_t count = vector_length_v<T>, typename E>
+static inline constexpr auto vec_broadcast(E value) {
+    using V = vector_type_t<T>;
+    vec<V, count> vector = {};
+    vector += (V)value; // Technically this is constexpr
+    //for (size_t i = 0; i < count; ++i) {
+        //vector[i] = (V)value;
+    //}
+    return vector;
+}
+
+template <typename T>
+static inline constexpr T vec_odd_interleave(T lower, T upper) {
+    constexpr size_t vec_length = vector_length_v<T>;
+    if constexpr (vec_length == 1) {
+        return lower;
+    }
+    else if constexpr (vec_length == 2) {
+        return shufflevec(lower, upper, 0, 2);
+    }
+    else if constexpr (vec_length == 4) {
+        return shufflevec(lower, upper, 0, 2, 4, 6);
+    }
+    else if constexpr (vec_length == 8) {
+        return shufflevec(lower, upper, 0, 2, 4, 6, 8, 10, 12, 14);
+    }
+    else if constexpr (vec_length == 16) {
+        return shufflevec(lower, upper, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30);
+    }
+    else if constexpr (vec_length == 32) {
+        return shufflevec(lower, upper, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62);
+    }
+    else {
+        constexpr size_t half_vec_length = vector_length_v<T>;
+        T ret = {};
+        for (size_t i = 0; i < half_vec_length; ++i) {
+            ret[i] = lower[i * 2];
+            ret[i + 1] = upper[i * 2];
+        }
+        return ret;
+    }
+}
+
+template <typename T>
+static inline constexpr T vec_even_interleave(T lower, T upper) {
+    constexpr size_t vec_length = vector_length_v<T>;
+    if constexpr (vec_length == 1) {
+        return lower;
+    }
+    else if constexpr (vec_length == 2) {
+        return shufflevec(lower, upper, 1, 3);
+    }
+    else if constexpr (vec_length == 4) {
+        return shufflevec(lower, upper, 1, 3, 5, 7);
+    }
+    else if constexpr (vec_length == 8) {
+        return shufflevec(lower, upper, 1, 3, 5, 7, 9, 11, 13, 15);
+    }
+    else if constexpr (vec_length == 16) {
+        return shufflevec(lower, upper, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31);
+    }
+    else if constexpr (vec_length == 32) {
+        return shufflevec(lower, upper, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63);
+    }
+    else {
+        constexpr size_t half_vec_length = vector_length_v<T>;
+        T ret = {};
+        for (size_t i = 0; i < half_vec_length; ++i) {
+            ret[i] = lower[i * 2];
+            ret[i + 1] = upper[i * 2];
+        }
+        return ret;
+    }
+}
 
 #define FAR_CALL_IMM(seg, addr, ret, ...) __asm__ volatile (CODE_32_DIRECTIVE "lcall %[Seg],%[Addr]":ret: [Seg]"i"(seg), [Addr]"i"(addr) __VA_OPT__(,) __VA_ARGS__)
 

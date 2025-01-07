@@ -29,7 +29,7 @@
 
 static z86Memory<1_MB> mem;
 
-struct z8086Context : z86Core<z8086 /*, FLAG_OPCODES_80186 | FLAG_OPCODES_80286 | FLAG_OPCODES_80386 | FLAG_OPCODES_80486 | FLAG_CPUID_CMOV*/> {
+struct z8086Context : z86Core<z80286, FLAG_CPUID_MMX | FLAG_CPUID_SSE | FLAG_CPUID_SSE2 | FLAG_CPUID_SSE3 | FLAG_CPUID_SSSE3 /*, FLAG_OPCODES_80186 | FLAG_OPCODES_80286 | FLAG_OPCODES_80386 | FLAG_OPCODES_80486 | FLAG_CPUID_CMOV*/> {
 
     // Internal state
     std::atomic<bool> pending_nmi;
@@ -646,7 +646,13 @@ dllexport void z86_execute() {
                     if constexpr (ctx.LONG_MODE) {
                         if (ctx.is_long_mode()) {
                             // MOVSXD Rv, Mv
-                            THROW_UD();
+                            FAULT_CHECK(ctx.MOVX<int32_t>(pc, [](auto& dst, auto src) regcall{
+                                using S = decltype(src);
+                                using D = std::remove_reference_t<decltype(dst)>;
+                                dst = (D)(S)src;
+                                return OP_NOT_MEM;
+                            }));
+                            break;
                         }
                     }
                     // TODO
@@ -1896,6 +1902,7 @@ dllexport void z86_execute() {
                             return OP_WRITE;
                         case 2: // LLDT Mw
                         case 3: // LTR Mw
+                            GP_WITHOUT_CPL0_GRP();
                             ctx.write_control_seg(r & 1, dst);
                             return OP_NO_WRITE;
                         case 4: // VERR Mw
@@ -1930,6 +1937,7 @@ dllexport void z86_execute() {
                             case 2: // LGDT M
                             case 3: // LIDT M
                             {
+                                GP_WITHOUT_CPL0_GRP();
                                 uint16_t limit = data_addr.read<uint16_t>();
                                 decltype(ctx.get_descriptor_table_base(0)) base;
                                 if constexpr (ctx.LONG_MODE) {
@@ -1949,6 +1957,7 @@ dllexport void z86_execute() {
                             case 5:
                                 ALWAYS_UD_GRP();
                             case 6: // LMSW Mw
+                                GP_WITHOUT_CPL0_GRP();
                                 ctx.set_machine_status_word(data_addr.read<uint16_t>());
                                 return OP_NO_FAULT;
                             case 7: // INVLPG M
@@ -2004,25 +2013,36 @@ dllexport void z86_execute() {
                 ALWAYS_UD();
             case 0x1A6: // XBTS
             case 0x1A7: // IBTS
-            case 0x10C: case 0x125: case 0x127: case 0x136: case 0x137:
+            case 0x10C:
+            case 0x125: case 0x127:
+            case 0x136: case 0x137:
             case 0x139: case 0x13B: case 0x13C: case 0x13E: case 0x13F:
-            case 0x17A: case 0x17B:
+            case 0x256: case 0x257:
+            case 0x25D:
+            case 0x260: case 0x261:
+            case 0x269: case 0x26A:
                 THROW_UD();
                 break;
             case 0x10D: // PREFETCHx
             case 0x10E: // FEMMS
-            case 0x10F: // 3DNow!
+                THROW_UD_WITHOUT_FLAG(ctx.CPUID_3DNOW);
+            femms:
                 break;
+            case 0x10F: { // 3DNow!
+                THROW_UD_WITHOUT_FLAG(ctx.CPUID_3DNOW);
+
+                break;
+            }
             case 0x110:
                 if constexpr (ctx.CPUID_SSE || ctx.CPUID_SSE2) {
                     switch (ctx.opcode_select()) {
                         default: unreachable;
                         case OpcodeNoPrefix: // MOVUPS Rx, Mx
                             THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
-                            break;
+                            goto movups_rm;
                         case Opcode66Prefix: // MOVUPD Rx, Mx (SSE2)
                             THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                            break;
+                            goto movups_rm;
                         case OpcodeF3Prefix: // MOVSS Rx, Mx (SSE)
                             THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
                             break;
@@ -2051,10 +2071,10 @@ dllexport void z86_execute() {
                         default: unreachable;
                         case OpcodeNoPrefix: // MOVUPS Mx, Rx
                             THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
-                            break;
+                            goto movups_mr;
                         case Opcode66Prefix: // MOVUPD Mx, Rx
                             THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                            break;
+                            goto movups_mr;
                         case OpcodeF3Prefix: // MOVSS Mx, Rx
                             THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
                             break;
@@ -2144,7 +2164,7 @@ dllexport void z86_execute() {
                         default: unreachable;
                         case OpcodeNoPrefix: // UNPCKLPS Rx, Mx
                             THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
-                            break;
+                            goto punpckldq_sse;
                         case Opcode66Prefix: // UNPCKLPD Rx, Mx
                             THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                             break;
@@ -2171,10 +2191,10 @@ dllexport void z86_execute() {
                 if constexpr (ctx.CPUID_SSE || ctx.CPUID_SSE2) {
                     switch (ctx.opcode_select()) {
                         default: unreachable;
-                        case OpcodeNoPrefix: // UNPCKLPS Mx, Rx
+                        case OpcodeNoPrefix: // UNPCKHPS Mx, Rx
                             THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
-                            break;
-                        case Opcode66Prefix: // UNPCKLPD Mx, Rx
+                            goto punpckhdq_sse;
+                        case Opcode66Prefix: // UNPCKHPD Mx, Rx
                             THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                             break;
                         case OpcodeF3Prefix:
@@ -2390,6 +2410,7 @@ dllexport void z86_execute() {
                 break;
             case 0x120:
                 if constexpr (ctx.OPCODES_80386) { // MOV M, CR
+                    GP_WITHOUT_CPL0();
 
                 }
                 else { // ADD4S
@@ -2399,12 +2420,14 @@ dllexport void z86_execute() {
                 break;
             case 0x121:
                 if constexpr (ctx.OPCODES_80386) { // MOV M, DR
+                    GP_WITHOUT_CPL0();
 
                 }
                 THROW_UD();
                 break;
             case 0x122:
                 if constexpr (ctx.OPCODES_80386) { // MOV CR, M
+                    GP_WITHOUT_CPL0();
 
                 }
                 else { // SUB4S
@@ -2414,6 +2437,7 @@ dllexport void z86_execute() {
                 break;
             case 0x123:
                 if constexpr (ctx.OPCODES_80386) { // MOV DR, M
+                    GP_WITHOUT_CPL0();
 
                 }
                 THROW_UD();
@@ -2437,10 +2461,10 @@ dllexport void z86_execute() {
                         default: unreachable;
                         case OpcodeNoPrefix: // MOVAPS Rx, Mx
                             THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
-                            break;
+                            goto movups_rm;
                         case Opcode66Prefix: // MOVAPD Rx, Mx
                             THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                            break;
+                            goto movups_rm;
                         case OpcodeF3Prefix:
                         case OpcodeF2Prefix:
                             ALWAYS_UD();
@@ -2465,10 +2489,10 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // MOVAPS Mx, Rx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
-                        break;
+                        goto movups_mr;
                     case Opcode66Prefix: // MOVAPD Mx, Rx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        break;
+                        goto movups_mr;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
                         ALWAYS_UD();
@@ -2511,10 +2535,10 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // MOVNTPS Mx, Rx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
-                        break;
+                        goto movups_mr;
                     case Opcode66Prefix: // MOVNTPD Mx, Rx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        break;
+                        goto movups_mr;
                     case OpcodeF3Prefix: // MOVNTSS Mx, Rx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE4A);
                         break;
@@ -2566,8 +2590,8 @@ dllexport void z86_execute() {
                     case Opcode66Prefix: // UCOMISD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                         break;
-                    case OpcodeF3Prefix:
-                    case OpcodeF2Prefix:
+                    case OpcodeF3Prefix: // VUCOMXSS Rx, Mx
+                    case OpcodeF2Prefix: // VUCOMXSD Rx, Mx
                         ALWAYS_UD();
                 }
                 break;
@@ -2580,15 +2604,21 @@ dllexport void z86_execute() {
                     case Opcode66Prefix: // COMISD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                         break;
-                    case OpcodeF3Prefix:
-                    case OpcodeF2Prefix:
+                    case OpcodeF3Prefix: // COMXSS Rx, Mx
+                    case OpcodeF2Prefix: // COMXSD Rx, Mx
                         ALWAYS_UD();
                 }
                 break;
             case 0x130: // WRMSR
+                GP_WITHOUT_CPL0();
+                break;
             case 0x131: // RDTSC
+                break;
             case 0x132: // RDMSR
+                GP_WITHOUT_CPL0();
+                break;
             case 0x133: // RDPMC
+                break;
             case 0x134: // SYSENTER
             case 0x135: // SYSEXIT
             case 0x138: // Three byte opcodes A
@@ -2599,8 +2629,9 @@ dllexport void z86_execute() {
                 THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
                 map = 3;
                 goto next_byte;
-            case 0x140: // CMOVO Rv, Mv
             case 0x141: // CMOVNO Rv, Mv
+                // KAND Rk, Vk, Mk (VEX)
+            case 0x140: // CMOVO Rv, Mv
                 THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
                 FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) {
                     ctx.CMOVCC<CondNO>(dst, src, opcode_byte & 1);
@@ -2608,6 +2639,7 @@ dllexport void z86_execute() {
                 }));
                 break;
             case 0x142: // CMOVC Rv, Mv
+                // KANDN Rk, Vk, Mk (VEX)
             case 0x143: // CMOVNC Rv, Mv
                 THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
                 FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) {
@@ -2616,7 +2648,9 @@ dllexport void z86_execute() {
                 }));
                 break;
             case 0x144: // CMOVZ Rv, Mv
+                // KNOT Rk, Mk (VEX)
             case 0x145: // CMOVNZ Rv, Mv
+                // KOR Rk, Vk, Mk (VEX)
                 THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
                 FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) {
                     ctx.CMOVCC<CondNZ>(dst, src, opcode_byte & 1);
@@ -2624,7 +2658,9 @@ dllexport void z86_execute() {
                 }));
                 break;
             case 0x146: // CMOVBE Rv, Mv
+                // KXNOR Rk, Vk, Mk (VEX)
             case 0x147: // CMOVA Rv, Mv
+                // KXOR Rk, Vk, Mk (VEX)
                 THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
                 FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) {
                     ctx.CMOVCC<CondA>(dst, src, opcode_byte & 1);
@@ -2640,7 +2676,9 @@ dllexport void z86_execute() {
                 }));
                 break;
             case 0x14A: // CMOVP Rv, Mv
+                // KADD Rk, Vk, Mk (VEX)
             case 0x14B: // CMOVNP Rv, Mv
+                // KUNPCK Rk, Vk, Mk (VEX)
                 THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
                 FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) {
                     ctx.CMOVCC<CondNP>(dst, src, opcode_byte & 1);
@@ -2729,10 +2767,10 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // ANDPS Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
-                        break;
+                        goto pand;
                     case Opcode66Prefix: // ANDPD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        break;
+                        goto pand;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
                         ALWAYS_UD();
@@ -2743,10 +2781,10 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // ANDNPS Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
-                        break;
+                        goto pandn;
                     case Opcode66Prefix: // ANDNPD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        break;
+                        goto pandn;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
                         ALWAYS_UD();
@@ -2757,10 +2795,10 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // ORPS Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
-                        break;
+                        goto por;
                     case Opcode66Prefix: // ORPD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        break;
+                        goto por;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
                         ALWAYS_UD();
@@ -2771,10 +2809,10 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // XORPS Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
-                        break;
+                        goto pxor;
                     case Opcode66Prefix: // XORPD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        break;
+                        goto pxor;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
                         ALWAYS_UD();
@@ -2917,9 +2955,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PUNPCKLBW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint8_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PUNPCKL(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PUNPCKLBW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint8_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PUNPCKL(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -2931,9 +2977,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PUNPCKLWD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint16_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PUNPCKL(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PUNPCKLWD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint16_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PUNPCKL(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -2945,9 +2999,18 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PUNPCKLDQ Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint32_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PUNPCKL(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PUNPCKLDQ Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                    punpckldq_sse:
+                        FAULT_CHECK(ctx.binopRM_SSE<uint32_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PUNPCKL(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -2959,9 +3022,15 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PACKSSWB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            return ctx.PACKSS(dst, src);
+                        }));
                         break;
                     case Opcode66Prefix: // PACKSSWB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            return ctx.PACKSS(dst, src);
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -2973,9 +3042,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PCMPGTB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<int8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PCMPGT(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PCMPGTB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PCMPGT(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -2987,9 +3064,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PCMPGTW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PCMPGT(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PCMPGTW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PCMPGT(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3001,9 +3086,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PCMPGTD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<int32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PCMPGT(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PCMPGTD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PCMPGT(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3015,9 +3108,15 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PACKUSWB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            return ctx.PACKUS(dst, src);
+                        }));
                         break;
                     case Opcode66Prefix: // PACKUSWB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            return ctx.PACKUS(dst, src);
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3029,9 +3128,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PUNPCKHBW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint8_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PUNPCKH(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PUNPCKHBW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint8_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PUNPCKH(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3043,9 +3150,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PUNPCKHWD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint16_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PUNPCKH(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PUNPCKHWD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint16_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PUNPCKH(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3057,9 +3172,18 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PUNPCKHDQ Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint32_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PUNPCKH(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PUNPCKHDQ Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                    punpckhdq_sse:
+                        FAULT_CHECK(ctx.binopRM_SSE<uint32_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PUNPCKH(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3071,9 +3195,15 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PACKSSDW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<int32_t>(pc, [](auto& dst, auto src) regcall {
+                            return ctx.PACKSS(dst, src);
+                        }));
                         break;
                     case Opcode66Prefix: // PACKSSDW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int32_t>(pc, [](auto& dst, auto src) regcall {
+                            return ctx.PACKSS(dst, src);
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3125,15 +3255,23 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // MOVQ Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX(pc, [](auto& dst, auto src) regcall {
+                            dst = src;
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // MOVDQA Rx, Mx
-                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        break;
                     case OpcodeF3Prefix: // MOVDQU Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                    movups_rm:
+                        FAULT_CHECK(ctx.binopRM_SSE(pc, [](auto& dst, auto src) regcall {
+                            dst = src;
+                            return OP_WRITE;
+                        }));
                         break;
-                    case OpcodeF2Prefix:
+                    case OpcodeF2Prefix: // VMOVDQU8 Rx, Mx
                         ALWAYS_UD();
+                        goto movups_rm;
                 }
                 break;
             case 0x170:
@@ -3200,9 +3338,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PCMPEQB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PCMPEQ(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PCMPEQB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PCMPEQ(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3214,9 +3360,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PCMPEQW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PCMPEQ(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PCMPEQW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PCMPEQ(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3228,9 +3382,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PCMPEQD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PCMPEQ(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PCMPEQD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PCMPEQ(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3241,8 +3403,9 @@ dllexport void z86_execute() {
                 switch (ctx.opcode_select()) {
                     default: unreachable;
                     case OpcodeNoPrefix: // EMMS
+                        // VZEROUPPER, VZEROALL (VEX)
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        break;
+                        goto femms;
                     case Opcode66Prefix:
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3253,13 +3416,17 @@ dllexport void z86_execute() {
                 switch (ctx.opcode_select()) {
                     default: unreachable;
                     case OpcodeNoPrefix: // VMREAD Mv, Rv
+                        // VCVTTPS2UDQ (EVEX)
                         ALWAYS_UD();
                     case Opcode66Prefix: // EXTRQ Mx, Ib, Ib
+                        // VCVTTPS2UQQ (EVEX)
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE4A);
                         break;
                     case OpcodeF3Prefix:
+                        // VCVTTSS2USI Rv, Mx (EVEX)
                         ALWAYS_UD();
                     case OpcodeF2Prefix: // INSERTQ Rx, Mx, Ib, Ib
+                        // VCVTTSD2USI Rv, Mx (EVEX)
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE4A);
                         break;
                 }
@@ -3268,15 +3435,41 @@ dllexport void z86_execute() {
                 switch (ctx.opcode_select()) {
                     default: unreachable;
                     case OpcodeNoPrefix: // VMWRITE Rv, Mv
+                        // VCVTPS2UDQ (EVEX)
                         ALWAYS_UD();
                     case Opcode66Prefix: // EXTRQ Rx, Mx
+                        // VCVTPS2UQQ (EVEX)
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE4A);
                         break;
                     case OpcodeF3Prefix:
+                        // VCVTSS2USI Rv, Mx (EVEX)
                         ALWAYS_UD();
                     case OpcodeF2Prefix: // INSERTQ Rx, Mx
+                        // VCVTSD2USI Rv, Mx (EVEX)
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE4A);
                         break;
+                }
+                break;
+            case 0x17A:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VCVTTPS2QQ (EVEX)
+                    case OpcodeF3Prefix: // VCVTUDQ2PD (EVEX)
+                    case OpcodeF2Prefix: // VCVTUDQ2PS (EVEX)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x17B:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VCVTPS2QQ (EVEX)
+                    case OpcodeF3Prefix: // VCVTUSI2SS (EVEX)
+                    case OpcodeF2Prefix: // VCVTUSI2SD (EVEX)
+                        ALWAYS_UD();
                 }
                 break;
             case 0x17C:
@@ -3330,15 +3523,26 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // MOVQ Mm, Rm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                    movq_mmx:
+                        FAULT_CHECK(ctx.binopMR_MMX(pc, [](auto& dst, auto src) regcall {
+                            dst = src;
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // MOVDQA Mx, Rx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        break;
+                        goto movups_mr;
                     case OpcodeF3Prefix: // MOVDQU Mx, Rx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                    movups_mr:
+                        FAULT_CHECK(ctx.binopMR_SSE(pc, [](auto& dst, auto src) regcall {
+                            dst = src;
+                            return OP_WRITE;
+                        }));
                         break;
-                    case OpcodeF2Prefix:
+                    case OpcodeF2Prefix: // VMOVDQU8 Mx, Rx
                         ALWAYS_UD();
+                        goto movups_mr;
                 }
                 break;
             case 0x180: // JO Jz
@@ -3382,7 +3586,9 @@ dllexport void z86_execute() {
                 ctx.JCC<CondG>(pc, opcode_byte & 1);
                 goto next_instr;
             case 0x190: // SETO Mb
+                // KMOV Rk, Mk (VEX)
             case 0x191: // SETNO Mb
+                // KMOV Mk, Rk (VEX)
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.unopM<true>(pc, [=](auto& dst, uint8_t r) regcall {
                     ctx.SETCC<CondNO>(dst, opcode_byte & 1);
@@ -3390,7 +3596,9 @@ dllexport void z86_execute() {
                 }));
                 break;
             case 0x192: // SETC Mb
+                // KMOV Rk, Mv
             case 0x193: // SETNC Mb
+                // KMOV Rv, Mk
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.unopM<true>(pc, [=](auto& dst, uint8_t r) regcall {
                     ctx.SETCC<CondNC>(dst, opcode_byte & 1);
@@ -3414,7 +3622,9 @@ dllexport void z86_execute() {
                 }));
                 break;
             case 0x198: // SETS Mb
+                // KORTEST Rk, Mk (VEX)
             case 0x199: // SETNS Mb
+                // KTEST Rk, Mk (VEX)
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.unopM<true>(pc, [=](auto& dst, uint8_t r) regcall {
                     ctx.SETCC<CondNS>(dst, opcode_byte & 1);
@@ -3550,11 +3760,17 @@ dllexport void z86_execute() {
                 break;
             case 0x1B6: // MOVZX Rv, Mb
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                // TODO
+                FAULT_CHECK(ctx.MOVX<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                    dst = src;
+                    return OP_NOT_MEM;
+                }));
                 break;
-            case 0x1B7: // MOVZX Rv, Mv
+            case 0x1B7: // MOVZX Rv, Mw
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                // TODO
+                FAULT_CHECK(ctx.MOVX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                    dst = src;
+                    return OP_NOT_MEM;
+                }));
                 break;
             case 0x1B8:
                 switch (ctx.opcode_select()) {
@@ -3606,11 +3822,21 @@ dllexport void z86_execute() {
                 break;
             case 0x1BE: // MOVSX Rv, Mb
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                // TODO
+                FAULT_CHECK(ctx.MOVX<int8_t>(pc, [](auto& dst, auto src) regcall{
+                    using S = decltype(src);
+                    using D = std::remove_reference_t<decltype(dst)>;
+                    dst = (D)(S)src;
+                    return OP_NOT_MEM;
+                }));
                 break;
-            case 0x1BF: // MOVSX Rv, Mv
+            case 0x1BF: // MOVSX Rv, Mw
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                // TODO
+                FAULT_CHECK(ctx.MOVX<int16_t>(pc, [](auto& dst, auto src) regcall{
+                    using S = decltype(src);
+                    using D = std::remove_reference_t<decltype(dst)>;
+                    dst = (D)(S)src;
+                    return OP_NOT_MEM;
+                }));
                 break;
             case 0x1C0: // XADD Mb, Rb
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80486);
@@ -3718,9 +3944,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSRLW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSHR(dst, std::bit_cast<uint64_t>(src));
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PSRLW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSHR(dst, std::bit_cast<vec<uint64_t, sizeof(src) / sizeof(uint64_t)>>(src)[0]);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3732,9 +3966,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSRLD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSHR(dst, std::bit_cast<uint64_t>(src));
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PSRLD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSHR(dst, std::bit_cast<vec<uint64_t, sizeof(src) / sizeof(uint64_t)>>(src)[0]);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3746,9 +3988,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSRLQ Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint64_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSHR(dst, std::bit_cast<uint64_t>(src));
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PSRLQ Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint64_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSHR(dst, std::bit_cast<vec<uint64_t, sizeof(src) / sizeof(uint64_t)>>(src)[0]);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3760,9 +4010,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PADDQ Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint64_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PADDQ Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint64_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3772,11 +4030,19 @@ dllexport void z86_execute() {
             case 0x1D5:
                 switch (ctx.opcode_select()) {
                     default: unreachable;
-                    case OpcodeNoPrefix: // MULLW Rm, Mm
+                    case OpcodeNoPrefix: // PMULLW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMULL(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
-                    case Opcode66Prefix: // MULLW Rx, Mx
+                    case Opcode66Prefix: // PMULLW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMULL(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3818,9 +4084,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSUBUSB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSUBS(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PSUBUSB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADDS(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3832,9 +4106,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSUBUSW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADDS(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PSUBUSW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADDS(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3846,9 +4128,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PMINUB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMIN(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PMINUB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMIN(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3860,9 +4150,18 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PAND Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PAND(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PAND Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                    pand:
+                        FAULT_CHECK(ctx.binopRM_SSE<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PAND(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3874,9 +4173,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PADDUSB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADDS(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PADDUSB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADDS(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3888,9 +4195,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PADDUSW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADDS(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PADDUSW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADDS(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3902,9 +4217,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PMAXUB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMAX(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PMAXUB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMAX(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3916,9 +4239,18 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PANDN Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PANDN(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PANDN Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                    pandn:
+                        FAULT_CHECK(ctx.binopRM_SSE<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PANDN(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3930,9 +4262,18 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PAVGB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
+                    pavgb_mmx:
+                        FAULT_CHECK(ctx.binopRM_MMX<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PAVG(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PAVGB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PAVG(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3944,9 +4285,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSRAW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSHR(dst, std::bit_cast<uint64_t>(src));
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PSRAW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSHR(dst, std::bit_cast<vec<uint64_t, sizeof(src) / sizeof(uint64_t)>>(src)[0]);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3958,9 +4307,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSRAD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<int32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSHR(dst, std::bit_cast<uint64_t>(src));
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PSRAD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSHR(dst, std::bit_cast<vec<uint64_t, sizeof(src) / sizeof(uint64_t)>>(src)[0]);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3972,9 +4329,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PAVGW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PAVG(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PAVGW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PAVG(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -3986,9 +4351,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PMULHUW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMULH(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PMULHUW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMULH(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4000,9 +4373,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PMULHW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMULH(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PMULHW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMULH(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4030,7 +4411,7 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // MOVNTQ Mm, Rm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
-                        break;
+                        goto movq_mmx;
                     case Opcode66Prefix: // MOVNTDQ Mx, Rx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                         break;
@@ -4044,9 +4425,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSUBSB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<int8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSUBS(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PSUBSB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADDS(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4058,9 +4447,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSUBSW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADDS(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PSUBSW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADDS(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4072,9 +4469,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PMINSW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
+                        FAULT_CHECK(ctx.binopRM_MMX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMIN(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PMINSW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMIN(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4086,9 +4491,18 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // POR Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.POR(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // POR Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                    por:
+                        FAULT_CHECK(ctx.binopRM_SSE<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.POR(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4100,9 +4514,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PADDSB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<int8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADDS(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PADDSB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADDS(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4114,9 +4536,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PADDSW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADDS(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PADDSW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADDS(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4128,9 +4558,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PMAXSW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
+                        FAULT_CHECK(ctx.binopRM_MMX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMAX(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PMAXSW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMAX(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4142,9 +4580,18 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PXOR Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PXOR(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PXOR Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                    pxor:
+                        FAULT_CHECK(ctx.binopRM_SSE<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PXOR(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4159,7 +4606,7 @@ dllexport void z86_execute() {
                         ALWAYS_UD();
                     case OpcodeF3Prefix: // LDDQU Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE3);
-                        break;
+                        goto movups_rm;
                     case OpcodeF2Prefix:
                         ALWAYS_UD();
                 }
@@ -4169,9 +4616,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSLLW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSHL(dst, std::bit_cast<uint64_t>(src));
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PSLLW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSHL(dst, std::bit_cast<vec<uint64_t, sizeof(src) / sizeof(uint64_t)>>(src)[0]);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4183,9 +4638,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSLLD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSHL(dst, std::bit_cast<uint64_t>(src));
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PSLLD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSHL(dst, std::bit_cast<vec<uint64_t, sizeof(src) / sizeof(uint64_t)>>(src)[0]);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4197,9 +4660,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSLLQ Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint64_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSHL(dst, std::bit_cast<uint64_t>(src));
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PSLLQ Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint64_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSHL(dst, std::bit_cast<vec<uint64_t, sizeof(src) / sizeof(uint64_t)>>(src)[0]);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4211,9 +4682,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PMULUDQ Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMUL(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PMULUDQ Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMUL(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4225,9 +4704,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PMADDWD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PMADDWD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4239,9 +4726,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSADBW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
+                        FAULT_CHECK(ctx.binopRM_MMX<int8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSAD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PSADBW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSAD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4253,9 +4748,15 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // MASKMOVQ Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
+                        FAULT_CHECK(ctx.binopRM_MMX<int8_t>(pc, [](auto dst, auto src) regcall {
+                            return ctx.MASKMOV(dst, src);
+                        }));
                         break;
                     case Opcode66Prefix: // MASKMOVDQU Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<int8_t>(pc, [](auto dst, auto src) regcall {
+                            return ctx.MASKMOV(dst, src);
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4267,9 +4768,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSUBB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint8_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PSUB(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PSUBB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint8_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4281,9 +4790,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSUBW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint16_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PSUBW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint16_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4295,9 +4812,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSUBD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint32_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PSUBD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint32_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4309,9 +4834,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSUBQ Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint64_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PSUBQ Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint64_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4323,9 +4856,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PADDB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint8_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PADDB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint8_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4337,9 +4878,17 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PADDW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PADDW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
@@ -4351,16 +4900,23 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PADDD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PADDD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint32_t>(pc, [](auto& dst, auto src) regcall{
+                            dst = ctx.PADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case OpcodeF3Prefix:
                     case OpcodeF2Prefix:
                         ALWAYS_UD();
                 }
                 break;
-                /*
             case 0x200:
                 switch (ctx.opcode_select()) {
                     default: unreachable;
@@ -4380,8 +4936,74 @@ dllexport void z86_execute() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PHADDW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PHADD(dst, src);
+                            return OP_WRITE;
+                        }));
                         break;
                     case Opcode66Prefix: // PHADDW Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PHADD(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x202:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // PHADDD Rm, Mm
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PHADD(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case Opcode66Prefix: // PHADDD Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PHADD(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x203:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // PHADDSW Rm, Mm
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_MMX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PHADDS(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case Opcode66Prefix: // PHADDSW Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_SSE<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PHADDS(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x204:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // PMADDUBSW Rm, Mm
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
+                        break;
+                    case Opcode66Prefix: // PMADDUBSW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
                         break;
                     case OpcodeF3Prefix:
@@ -4389,8 +5011,1403 @@ dllexport void z86_execute() {
                         ALWAYS_UD();
                 }
                 break;
-                */
+            case 0x205:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // PHSUBW Rm, Mm
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PHSUB(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case Opcode66Prefix: // PHSUBW Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PHSUB(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x206:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // PHSUBD Rm, Mm
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_MMX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PHSUB(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case Opcode66Prefix: // PHSUBD Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PHSUB(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x207:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // PHSUBSW Rm, Mm
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_MMX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PHSUBS(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case Opcode66Prefix: // PHSUBSW Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_SSE<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PHSUBS(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x208:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // PSIGNB Rm, Mm
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_MMX<int8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSIGN(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case Opcode66Prefix: // PSIGNB Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_SSE<int8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSIGN(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x209:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // PSIGNW Rm, Mm
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_MMX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSIGN(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case Opcode66Prefix: // PSIGNW Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_SSE<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSIGN(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x20A:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // PSIGND Rm, Mm
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_MMX<int32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSIGN(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case Opcode66Prefix: // PSIGND Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_SSE<int32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PSIGN(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x20B:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // PMULHRSW Rm, Mm
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
+                        break;
+                    case Opcode66Prefix: // PMULHRSW Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x20C:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VPERMILPS Rx, Vx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x20D:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VPERMILPD Rx, Vx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x20E:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VTESTPS Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x20F:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VTESTPD Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x210:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // PBLENDVB Rx, Mx, XMM0
+                        // VPSRLVW Rx, Vx, Mx (EVEX)
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix: // VPMOVUSWB Mx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x211:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPSRAVW Rx, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix: // VPMOVUSDB Mx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x212:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPSLLVW Rx, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix: // VPMOVUSQB Mx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x213:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VCVTPH2PS Rx, Mx (F16C)
+                    case OpcodeF3Prefix: // VPMOVUSDW Mx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x214:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // BLENDVPS Rx, Mx, XMM0
+                        // VPRORVD Rx, Vx, Mx (EVEX)
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix: // VPMOVUSDW Mx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x215:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // BLENDVPD Rx, Mx, XMM0
+                        // VPROLVD Rx, Vx, Mx (EVEX)
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix: // VPMOVUSQD Mx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x216:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VPERMPS Rx, Vx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX2);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x217:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // PTEST Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x218:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VBROADCASTSS Rx, M
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x219:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VBROADCASTSD Rx, M
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x21A:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VBROADCASTF128 Rx, M
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x21B:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VBROADCASTF32X8 Rx, M (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x21C:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // PABSB Rm, Mm
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_MMX<int8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PABS(src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case Opcode66Prefix: // PABSB Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_SSE<int8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PABS(src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x21D:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // PABSW Rm, Mm
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_MMX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PABS(src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case Opcode66Prefix: // PABSW Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_SSE<int16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PABS(src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x21E:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // PABSD Rm, Mm
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_MMX<int32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PABS(src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case Opcode66Prefix: // PABSD Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
+                        FAULT_CHECK(ctx.binopRM_SSE<int32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PABS(src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x21F:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VPABSQ Rx, Mx (EVEX)
+                        ALWAYS_UD();
+                        FAULT_CHECK(ctx.binopRM_SSE<int64_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PABS(src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x220:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // PMOVSXBW Rx, Wx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix: // VPMOVSWB Wx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x221:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // PMOVSXBD Rx, Wx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix: // VPMOVSDB Wx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x222:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // PMOVSXBQ Rx, Wx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix: // VPMOVSQB Wx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x223:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // PMOVSXWD Rx, Wx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix: // VPMOVSDW Wx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x224:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // PMOVSXWQ Rx, Wx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix: // VPMOVSQW Wx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x225:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // PMOVSXDQ Rx, Wx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix: // VPMOVSQD Wx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x226:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPTESTMB Rk, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix: // VPTESTNMB Rk, Vx, Mx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x227:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPTESTMD Rk, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix: // VPTESTNMD Rk, Vx, Mx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x228:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // PMULDQ Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        FAULT_CHECK(ctx.binopRM_SSE<int32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PABS(src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix: // VPMOVM2B Rx, Mk (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x229:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // PCMPEQQ Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint64_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PCMPEQ(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix: // VPMOVM2B Rx, Mk (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x22A:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // MOVNTDQA Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        goto movups_rm;
+                    case OpcodeF3Prefix: // VPBROADCASTMB2Q Rx, Mk (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x22B:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // PACKUSDW Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x22C:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VMASKMOVPS Rx, Vx, Mx
+                        // VSCALEFPS Rx, Vx, Mx (EVEX)
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x22D:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VMASKMOVPD Rx, Vx, Mx
+                        // VSCALEFSS Rx, Vx, Mx (EVEX)
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x22E:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VMASKMOVPS Mx, Vx, Rx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x22F:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VMASKMOVPD Mx, Vx, Rx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x230:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // PMOVZXBW Rx, Wx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix: // VPMOVWB Wx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x231:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // PMOVZXBD Rx, Wx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix: // VPMOVDB Wx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x232:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // PMOVZXBQ Rx, Wx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix: // VPMOVQB Wx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x233:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // PMOVZXWD Rx, Wx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix: // VPMOVDW Wx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x234:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // PMOVZXWQ Rx, Wx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix: // VPMOVQW Wx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x235:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // PMOVZXDQ Rx, Wx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix: // VPMOVQD Wx, Rx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x236:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPERMD Rx, Vx, Wx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX2);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x237:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // PCMPGTQ Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        FAULT_CHECK(ctx.binopRM_SSE<int64_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PCMPGT(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x238:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // PMINSB Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        FAULT_CHECK(ctx.binopRM_SSE<int8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMIN(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix: // VPMOVM2D Rx, Mk (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x239:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // PMINSD Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        FAULT_CHECK(ctx.binopRM_SSE<int32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMIN(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix: // VPMOVD2M Rx, Mk (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x23A:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // PMINUW Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMIN(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix: // VPBROADCASTMW2D Rx, Mk (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x23B:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // PMINUD Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMIN(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x23C:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // PMAXSB Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        FAULT_CHECK(ctx.binopRM_SSE<int8_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMAX(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x23D:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // PMAXSD Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        FAULT_CHECK(ctx.binopRM_SSE<int32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMAX(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x23E:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // PMAXUW Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMAX(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x23F:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // PMAXUD Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMAX(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x240:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // PMULLD Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        FAULT_CHECK(ctx.binopRM_SSE<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                            dst = ctx.PMULL(dst, src);
+                            return OP_WRITE;
+                        }));
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x241:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // PHMINPOSUW Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x242:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VGETEXPPS Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x243:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VGETEXPSS Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x244:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // VPLZCNTB Rx, Mx (EVEX)
+                    case Opcode66Prefix: // VPLZCNTD Rx, Mx (EVEX)
+                    case OpcodeF3Prefix: // VPTZCNTB Rx, Mx (EVEX)
+                    case OpcodeF2Prefix: // VPTZCNTD Rx, Mx (EVEX)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x245:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VPSRLVD Rx, Vx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX2);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x246:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VPSRAVD Rx, Vx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX2);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x247:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VPSLLVD Rx, Vx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX2);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x248:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // TTMMULTF32PS Rt, Mt, Vt (AMX)
+                    case Opcode66Prefix: // TMMULTF32PS Rt, Mt, Vt (AMX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x249:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // LDTILECFG M, TILERELEASE (AMX)
+                    case Opcode66Prefix: // STTILECFG M (AMX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix: // TILEZERO Rt
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x24A:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // TILELOADDRST1 Rt, M (AMX)
+                        // TILEMOVROW Rx, Mt, Vv (AMX, EVEX)
+                    case OpcodeF2Prefix: // TILELOADDRS Rt, M (AMX)
+                    case OpcodeF3Prefix: // TCVTROWD2PS Rx, Mt, Vv (AMX, EVEX)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x24B:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // TILELOADDT1 Rt, M (AMX)
+                        // TILEMOVROW Rx, Mt, Vv (AMX, EVEX)
+                    case OpcodeF2Prefix: // TILELOADD Rt, M (AMX)
+                    case OpcodeF3Prefix: // TILESTORED M, Rt
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x24C:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VRCP14PS Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x24D:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VRCP14SS Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x24E:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VRSQRT14PS Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x24F:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VRSQRT14SS Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x250:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // VPDPBUUD Rx, Vx, Mx (AVX VNNI)
+                    case Opcode66Prefix: // VPDPBUSD Rx, Vx, Mx (AVX VNNI)
+                    case OpcodeF3Prefix: // VPDPBSUD Rx, Vx, Mx (AVX VNNI)
+                    case OpcodeF2Prefix: // VPDPBSSD Rx, Vx, Mx (AVX VNNI)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x251:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // VPDPBUUDS Rx, Vx, Mx (AVX VNNI)
+                    case Opcode66Prefix: // VPDPBUSDS Rx, Vx, Mx (AVX VNNI)
+                    case OpcodeF3Prefix: // VPDPBSUDS Rx, Vx, Mx (AVX VNNI)
+                    case OpcodeF2Prefix: // VPDPBSSDS Rx, Vx, Mx (AVX VNNI)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x252:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // VDPPHPS Rx, Vx, Mx (AVX 10.2)
+                    case Opcode66Prefix: // VPDPWSSD Rx, Vx, Mx (AVX VNNI)
+                    case OpcodeF3Prefix: // VDPBF16PS Rx, Vx, Mx (AVX 10.2)
+                    case OpcodeF2Prefix: // VP4DPWSSD Rx, Vx, Mx (EVEX)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x253:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPDPWSSDS Rx, Vx, Mx (AVX VNNI)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix: // VP4DPWSSDS Rx, Vx, Mx (EVX)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x254:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPOPCNTB Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x255:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPOPCNTD Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x258:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPBROADCASTD Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX2);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x259:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPBROADCASTQ Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX2);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x25A:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VBROADCASTI128 Rx, Mx
+                        THROW_UD_WITHOUT_FLAG(ctx.CPUID_AVX2);
+                        break;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x25B:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VBROADCASTI32X8 Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x25C:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix:
+                    case OpcodeF3Prefix: // TDPBF16PS Rt, Mt, Vt (AMX)
+                    case OpcodeF2Prefix: // TDPFP16PS Rt, Mt, Vt (AMX)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x25E:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // TDPBUUD Rt, Mt, Vt (AMX)
+                    case Opcode66Prefix: // TDPBUSD Rt, Mt, Vt (AMX)
+                    case OpcodeF3Prefix: // TDPBSUD Rt, Mt, Vt (AMX)
+                    case OpcodeF2Prefix: // TDPBSSD Rt, Mt, Vt (AMX)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x25F:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix:
+                    case OpcodeF3Prefix: // TTRANSPOSED Rt, Mt (AMX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x262:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPEXPANDB Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x263:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPCOMPRESSB Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x264:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPBLENDMD Rx, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x265:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VBLENDMPS Rx, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x266:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPBLENDMB Rx, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x267:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VCVT2PS2PHX Rx, Vx, Mx (AVX 10.2)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x268:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix:
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix: // VP2INTERSECTD (EVEX)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x26B:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // TCONJTCMMIMFP16PS Rt, Mt, Vt (AMX)
+                    case Opcode66Prefix: // TCONJTFP16 Rt, Mt (AMX)
+                    case OpcodeF3Prefix: // TTCMMRLFP16PS Rt, Mt, Vt (AMX)
+                    case OpcodeF2Prefix: // TTCMMIMFP16PS Rt, Mt, Vt (AMX)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x26C:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // TCMMRLFP16PS Rt, Mt, Vt (AMX)
+                    case Opcode66Prefix: // TCMMIMFP16PS Rt, Mt, Vt (AMX)
+                    case OpcodeF3Prefix: // TTDPBF16PS Rt, Mt, Vt (AMX)
+                    case OpcodeF2Prefix: // TTDPFP16PS Rt, Mt, Vt (AMX)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x26D:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // TCVTROWPS2PHH Rx, Mt, Vv (AMX, EVEX)
+                    case Opcode66Prefix: // TCVTROWPS2PHL Rx, Mt, Vv (AMX, EVEX)
+                    case OpcodeF3Prefix: // TCVTROWPS2PBF16L Rt, Mt, Vt (AMX, EVEX)
+                    case OpcodeF2Prefix: // TCVTROWPS2PBF16H Rt, Mt, Vt (AMX, EVEX)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x26E:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // T2RPNTLVWZ0 Rt, M (AMX)
+                t2rpntlvwz0:
+                    case Opcode66Prefix: // T2RPNTLVWZ1 Rt, M (AMX)
+                t2rpntlvwz1:
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x26F:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // T2RPNTLVWZ0 Rt, M (AMX)
+                        goto t2rpntlvwz0;
+                    case Opcode66Prefix: // T2RPNTLVWZ1 Rt, M (AMX)
+                        goto t2rpntlvwz1;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x270:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPSHLDVW Rx, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x271:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPSHLDVD Rx, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x272:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPSHRDVW Rx, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix: // VCVTNEPS2BF16 Rx, Mx (AVX)
+                    case OpcodeF2Prefix: // VCVTNE2PS2BF16 Rx, Vx, Mx (EVEX)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x273:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPSHRDVD Rx, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x274:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // VCVTBIASPH2BF8 Rx, Vx, Mx (EVEX, AVX 10.2)
+                    case Opcode66Prefix:
+                    case OpcodeF3Prefix: // VCVTNEPH2BF8 Rx, Mx (EVEX, AVX 10.2)
+                    case OpcodeF2Prefix: // VCVTNE2PH2BF8 Rx, Vx, Mx (EVEX, AVX 10.2)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x275:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPERMI2B Rx, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x276:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                        ALWAYS_UD();
+                    case Opcode66Prefix: // VPERMI2D Rx, Vx, Mx (EVEX)
+                        goto vpermi2ps;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x277:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPERMI2PS Rx, Vx, Mx (EVEX)
+                vpermi2ps:
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
             default:
+                //ALWAYS_UD();
                 unreachable;
             fault:
                 if constexpr (ctx.FAULTS_ARE_TRAPS) {
