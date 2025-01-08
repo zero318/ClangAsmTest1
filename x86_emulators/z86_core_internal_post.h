@@ -190,8 +190,21 @@ auto ModRM::parse_memM(P& pc) const {
         }
     }
     
-    static constexpr uint32_t first_reg16[] = { BX, BX, BP, BP, SI, DI, BP, BX };
-    offset = ctx.index_word_regMB<true>(first_reg16[m]);
+    uint32_t base16;
+    if constexpr (sizeof(void*) == sizeof(uint64_t)) {
+        static constexpr uint64_t first_reg16 = PackUInt64(BX, BX, BP, BP, SI, DI, BP, BX);
+        base16 = first_reg16 >> m * 8 & 0xFF;
+    }
+    else {
+        // This is using octets instead of nibbles
+        // just because LEA reg [reg*2+reg] is
+        // shorter than LEA reg [reg*4]
+        static constexpr uint32_t first_reg16 = PackUIntOctets32(BX, BX, BP, BP, SI, DI, BP, BX);
+        base16 = first_reg16 >> m * 3 & 0x7;
+    }
+    //static constexpr uint32_t first_reg16[] = { BX, BX, BP, BP, SI, DI, BP, BX };
+    //offset = ctx.index_word_regMB<true>(first_reg16[m]);
+    offset = ctx.index_word_regMB<true>(base16);
     if (m < 4) {
         offset += ctx.index_word_regI<true>(SI | m);
     }
@@ -219,9 +232,8 @@ ret:
 
 template <size_t max_bits>
 inline constexpr SEG_DESCRIPTOR<max_bits>* z86DescriptorCache<max_bits>::load_selector(uint16_t selector) const {
-    //uint8_t rpl = selector & 3;
     BT offset = selector & 0xFFF8;
-    if (offset <= this->limit) {
+    if (expect(offset <= this->limit, true)) {
         return mem.ptr<SEG_DESCRIPTOR<max_bits>>(offset + this->base);
     }
     return NULL;
@@ -381,7 +393,7 @@ inline void regcall z86AddrSharedFuncs::write(P* self, const T& value, ssize_t o
 }
 
 template <typename T, typename V, typename P>
-static inline V z86AddrSharedFuncs::read(const P* self, ssize_t offset) {
+inline V z86AddrSharedFuncs::read(const P* self, ssize_t offset) {
     if constexpr (!ctx.SINGLE_MEM_WRAPS) {
         // TODO: Check segment limits
         return mem.read<V>(self->addr(offset));
@@ -615,7 +627,7 @@ inline bool regcall z86BaseDefault::binopRMF_impl(P& pc, const L& lambda) {
         lambda(rval, temp);
     }
     else {
-        if constexpr (!this->NO_UD) {
+        if constexpr (!NO_UD) {
             // TODO: jank
         }
         else {
@@ -637,7 +649,7 @@ inline bool regcall z86BaseDefault::binopRM2_impl(P& pc, const L& lambda) {
         return lambda(rval, data_addr.read<T>(), data_addr.read<T>(sizeof(T)));
     }
     else {
-        if constexpr (!this->NO_UD) {
+        if constexpr (!NO_UD) {
             // TODO: jank
         }
         else {

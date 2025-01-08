@@ -1629,6 +1629,15 @@ static inline constexpr uint32_t PackUInt(uint8_t c1, uint8_t c2 = 0, uint8_t c3
     return PackUInt32(c1, c2, c3, c4);
 }
 
+// Packs the nibbles [n1], [n2], [n3], [n4], [n5], [n6], [n7], and [n8] together as a 32 bit little endian unsigned integer
+static inline constexpr uint32_t PackUIntNibbles32(uint8_t n1, uint8_t n2 = 0, uint8_t n3 = 0, uint8_t n4 = 0, uint8_t n5 = 0, uint8_t n6 = 0, uint8_t n7 = 0, uint8_t n8 = 0) {
+    return (uint32_t)n8 << 28 | (uint32_t)n7 << 24 | (uint32_t)n6 << 20 | (uint32_t)n5 << 16 | (uint32_t)n4 << 12 | (uint32_t)n3 << 8 | n2 << 4 | n1;
+}
+// Packs the nibbles [n1], [n2], [n3], [n4], [n5], [n6], [n7], and [n8] together as a 32 bit little endian unsigned integer
+static inline constexpr uint32_t PackUIntOctets32(uint8_t n1, uint8_t n2 = 0, uint8_t n3 = 0, uint8_t n4 = 0, uint8_t n5 = 0, uint8_t n6 = 0, uint8_t n7 = 0, uint8_t n8 = 0) {
+    return (uint32_t)n8 << 21 | (uint32_t)n7 << 18 | (uint32_t)n6 << 15 | (uint32_t)n5 << 12 | (uint32_t)n4 << 9 | (uint32_t)n3 << 6 | n2 << 3 | n1;
+}
+
 #ifndef far
 #define far
 #endif

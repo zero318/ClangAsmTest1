@@ -412,6 +412,10 @@ struct SEG_DESCRIPTOR {
         } system;
     };
 
+    inline constexpr uint8_t get_dpl() const {
+        return this->dpl;
+    }
+
     inline constexpr bool is_system() const {
         return this->type < 0b10000;
     }
@@ -1687,6 +1691,7 @@ struct z86BaseControlBase<max_bits, false> {
     static inline constexpr uint16_t tr = 0;
 
     static inline constexpr uint8_t cpl = 0;
+    static inline constexpr uint8_t iopl = 0;
 };
 
 template <>
@@ -1731,6 +1736,7 @@ struct z86BaseControlBase<16, true> {
         };
     };
     uint8_t cpl;
+    uint8_t iopl;
 };
 
 template <>
@@ -1787,6 +1793,7 @@ struct z86BaseControlBase<32, true> {
         };
     };
     uint8_t cpl;
+    uint8_t iopl;
 };
 
 template <>
@@ -1844,6 +1851,7 @@ struct z86BaseControlBase<64, true> {
         };
     };
     uint8_t cpl;
+    uint8_t iopl;
 };
 
 template <size_t max_bits, bool use_old_reset, bool has_protected_mode>
@@ -1862,8 +1870,9 @@ struct z86BaseControl<max_bits, use_old_reset, false> : z86BaseControlBase<max_b
         return 0;
     }
 
-    inline constexpr void write_seg_impl(uint8_t index, uint16_t value) {
+    inline constexpr bool write_seg_impl(uint8_t index, uint16_t value) {
         this->seg[index] = value;
+        return false;
     }
 
     inline constexpr void write_control_seg(uint8_t index, uint16_t value) {
@@ -1897,6 +1906,15 @@ struct z86BaseControl<max_bits, use_old_reset, false> : z86BaseControlBase<max_b
     }
     inline constexpr void set_machine_status_word(uint16_t msw) {
     }
+
+    inline constexpr void set_iopl(uint8_t value) {
+    }
+    inline constexpr uint8_t get_iopl() const {
+        return 3;
+    }
+    inline constexpr bool io_is_allowed() const {
+        return true;
+    }
 };
 
 // Various notes about 80286 descriptor caches, LOADALL, etc.:
@@ -1919,21 +1937,35 @@ struct z86BaseControl<max_bits, use_old_reset, true> : z86BaseControlBase<max_bi
         return this->seg[LDT + index];
     }
 
-    inline constexpr void write_seg_impl(uint8_t index, uint16_t selector) {
+    // Allowed segment types:
+    // screw this though
+    // CS: E code, ER code
+    // SS: RW data
+    // Other: R data, RW data, ER code
+    inline constexpr bool write_seg_impl(uint8_t index, uint16_t selector) {
         if (this->protected_mode) {
-            //this->descriptors[index].load_descriptor(this->descriptors[GDT + (selector >> 2 & 1)].load_selector(selector));
-            auto* new_descriptor = this->descriptors[GDT + (selector >> 2 & 1)].load_selector(selector);
+            if (this->cpl > (selector & 3)) {
+                return false;
+            }
+
+            //this->descriptors[index].load_descriptor(this->descriptors[GDT + (bool)(selector & 4)].load_selector(selector));
+            auto* new_descriptor = this->descriptors[GDT + (bool)(selector & 4)].load_selector(selector);
 
             // CHECK FOR DANG GATES
+            if (this->cpl > new_descriptor->get_dpl()) {
+                return false;
+            }
             
             //std::destroy_at(&this->descriptors[index]);
             //new (&this->descriptors[index]) z86DescriptorCache<max_bits>(new_descriptor);
             reconstruct_at(&this->descriptors[index], new_descriptor);
+            this->cpl = selector & 3;
         } else {
             //this->descriptors[index].base = (size_t)selector << 4;
             reconstruct_at(&this->descriptors[index], this->descriptors[index].limit, (size_t)selector << 4, this->descriptors[index].type, this->descriptors[index].privilege);
         }
         this->seg[index] = selector;
+        return false;
     }
 
     inline constexpr void write_control_seg(uint8_t index, uint16_t value) {
@@ -1988,6 +2020,15 @@ struct z86BaseControl<max_bits, use_old_reset, true> : z86BaseControlBase<max_bi
     inline constexpr void set_machine_status_word(uint16_t msw) {
         // TODO: filter bits
         this->msw = msw;
+    }
+    inline constexpr void set_iopl(uint8_t value) {
+        this->iopl = value;
+    }
+    inline constexpr uint8_t get_iopl() const {
+        return this->iopl;
+    }
+    inline constexpr bool io_is_allowed() const {
+        return this->cpl <= this->iopl;
     }
 };
 
@@ -2954,8 +2995,10 @@ struct ModRM {
 
 template <size_t bits, size_t bus = bits, uint64_t flagsA = 0>
 struct z86Base :
-    z86RegBase<bits, flagsA & FLAG_OLD_RESET_PC, flagsA & FLAG_PROTECTED_MODE,
-        flagsA & (FLAG_CPUID_X87 | FLAG_CPUID_MMX | FLAG_CPUID_3DNOW),
+    z86RegBase<bits,
+        (bool)(flagsA & FLAG_OLD_RESET_PC),
+        (bool)(flagsA & FLAG_PROTECTED_MODE),
+        (bool)(flagsA & (FLAG_CPUID_X87 | FLAG_CPUID_MMX | FLAG_CPUID_3DNOW)),
         (flagsA & FLAG_CPUID_SSE) ? (flagsA & FLAG_CPUID_AVX) ? 256 : 128 : 0,
         (flagsA & FLAG_CPUID_SSE) ? (flagsA & FLAG_LONG_MODE) ? 16 : 8 : 0
     >
@@ -3037,7 +3080,7 @@ struct z86Base :
         return this->get_seg_impl(index);
     }
 
-    inline constexpr void write_seg(uint8_t index, uint16_t selector) {
+    inline constexpr bool write_seg(uint8_t index, uint16_t selector) {
         if constexpr (WRAP_SEGMENT_MODRM) {
             index &= 3;
         }
@@ -3682,6 +3725,52 @@ struct z86Base :
         else if constexpr (cc == CondG) return this->cond_G(val);
     }
 
+    template <typename T = uint16_t>
+    inline T get_flags() const {
+        T base = 0b110000000000010;
+        base |= this->carry;
+        base |= (uint32_t)this->parity << 2;
+        base |= (uint32_t)this->auxiliary << 4;
+        base |= (uint32_t)this->zero << 6;
+        base |= (uint32_t)this->sign << 7;
+        if constexpr (sizeof(T) >= sizeof(uint16_t)) {
+            base |= (uint32_t)this->trap << 8;
+            base |= (uint32_t)this->interrupt << 9;
+            base |= (uint32_t)this->direction << 10;
+            base |= (uint32_t)this->overflow << 11;
+            base |= (uint32_t)this->get_iopl() << 12;
+            if constexpr (sizeof(T) >= sizeof(uint32_t)) {
+
+            }
+        }
+        return base;
+    }
+
+    template <typename T = uint16_t>
+    inline void set_flags(T src) {
+        this->carry = src & 0x01;
+        this->parity = src & 0x04;
+        this->auxiliary = src & 0x10;
+        this->zero = src & 0x40;
+        this->sign = src & 0x80;
+        if constexpr (sizeof(T) >= sizeof(uint16_t)) {
+            this->trap = src & 0x0100;
+            uint8_t cpl = this->current_privilege_level();
+            uint8_t iopl = this->get_iopl();
+            if (cpl <= iopl) {
+                this->interrupt = src & 0x0200;
+            }
+            this->direction = src & 0x0400;
+            this->overflow = src & 0x0800;
+            if (cpl == 0) {
+                this->set_iopl(src >> 12 & 3);
+            }
+            if constexpr (sizeof(T) >= sizeof(uint32_t)) {
+
+            }
+        }
+    }
+
     bool lock;
 
     int8_t seg_override;
@@ -4255,6 +4344,28 @@ struct z86Base :
             }
         }
         this->sp += pc.read<uint16_t>();
+    }
+
+    inline void regcall IRET() {
+        if constexpr (bits > 16) {
+            if (this->data_size_32()) {
+                this->rip = this->POP<uint32_t>();
+                this->cs = this->POP<uint32_t>();
+                this->set_flags(this->POP<uint32_t>());
+                return;
+            }
+            if constexpr (bits == 64) {
+                if (this->data_size_64()) {
+                    this->rip = this->POP<uint64_t>();
+                    this->cs = this->POP<uint64_t>();
+                    this->set_flags(this->POP<uint64_t>());
+                    return;
+                }
+            }
+        }
+        this->rip = this->POP<uint16_t>();
+        this->cs = this->POP<uint16_t>();
+        this->set_flags(this->POP<uint16_t>());
     }
 
     template <bool is_byte = false, typename P>

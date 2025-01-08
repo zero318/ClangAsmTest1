@@ -53,39 +53,6 @@ struct z8086Context : z86Core<z8086> {
         this->halted = false;
     }
 
-    // Instruction implementations
-    template <typename T = uint16_t>
-    inline T get_flags() const {
-        uint16_t base = 0b111100000000010;
-        base |= this->carry;
-        base |= (uint32_t)this->parity << 2;
-        base |= (uint32_t)this->auxiliary << 4;
-        base |= (uint32_t)this->zero << 6;
-        base |= (uint32_t)this->sign << 7;
-        if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            base |= (uint32_t)this->trap << 8;
-            base |= (uint32_t)this->interrupt << 9;
-            base |= (uint32_t)this->direction << 10;
-            base |= (uint32_t)this->overflow << 11;
-        }
-        return base;
-    }
-
-    template <typename T = uint16_t>
-    inline void set_flags(T src) {
-        this->carry = src & 0x01;
-        this->parity = src & 0x04;
-        this->auxiliary = src & 0x10;
-        this->zero = src & 0x40;
-        this->sign = src & 0x80;
-        if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            this->trap = src & 0x0100;
-            this->interrupt = src & 0x0200;
-            this->direction = src & 0x0400;
-            this->overflow = src & 0x0800;
-        }
-    }
-
     inline void check_for_software_interrupt() {
         int16_t pending_software = this->pending_sinterrupt;
         if (pending_software > 0) {
@@ -135,12 +102,22 @@ struct z8086Context : z86Core<z8086> {
         }
     }
 
-    inline void execute_pending_interrupts() {
+    inline void HLT() {
+        this->halted = true;
         this->check_for_software_interrupt();
         do {
             this->check_for_nmi<true>();
             this->check_for_external_interrupt<true>();
         } while (this->halted);
+        if (this->trap) {
+            this->call_interrupt(IntDB);
+        }
+    }
+
+    inline void execute_pending_interrupts() {
+        this->check_for_software_interrupt();
+        this->check_for_nmi();
+        this->check_for_external_interrupt();
         if (this->trap) {
             this->call_interrupt(IntDB);
         }
@@ -222,6 +199,9 @@ dllexport void z86_execute() {
 #define ALWAYS_GP_GRP() { ctx.set_fault(IntGP); return OP_FAULT; }
 #define GP_WITHOUT_CPL0() if (ctx.current_privilege_level() != 0) { ALWAYS_GP(); } else
 #define GP_WITHOUT_CPL0_GRP() if (ctx.current_privilege_level() != 0) { ALWAYS_GP_GRP(); } else
+
+#define GP_WITHOUT_IOPL() if (ctx.current_privilege_level() > ctx.get_iopl()) { ALWAYS_GP(); } else
+#define GP_WITHOUT_IOPL_GRP() if (ctx.current_privilege_level() > ctx.get_iopl()) { ALWAYS_GP_GRP(); } else
 
 #define FAULT_CHECK(...) if (expect((__VA_ARGS__), false)) { goto fault; }
 
@@ -752,12 +732,14 @@ dllexport void z86_execute() {
                 goto next_instr;
             case 0x6C: // INSB
                 if constexpr (ctx.OPCODES_80186) {
+                    GP_WITHOUT_IOPL();
                     FAULT_CHECK(ctx.INS<true>());
                     break;
                 }
                 THROW_UD();
             case 0x6D: // INS
                 if constexpr (ctx.OPCODES_80186) {
+                    GP_WITHOUT_IOPL();
                     FAULT_CHECK(ctx.INS());
                     break;
                 }
@@ -768,12 +750,14 @@ dllexport void z86_execute() {
                 goto next_instr;
             case 0x6E: // OUTSB
                 if constexpr (ctx.OPCODES_80186) {
+                    GP_WITHOUT_IOPL();
                     FAULT_CHECK(ctx.OUTS<true>());
                     break;
                 }
                 THROW_UD();
             case 0x6F: // OUTS
                 if constexpr (ctx.OPCODES_80186) {
+                    GP_WITHOUT_IOPL();
                     FAULT_CHECK(ctx.OUTS());
                     break;
                 }
@@ -1155,9 +1139,7 @@ dllexport void z86_execute() {
                 }
                 break;
             case 0xCF: // IRET
-                ctx.ip = ctx.POP();
-                ctx.cs = ctx.POP();
-                ctx.set_flags(ctx.POP());
+                ctx.IRET();
                 continue; // Using continues delays execution deliberately
             case 0xD0: // GRP2 Mb, 1
                 FAULT_CHECK(ctx.unopM<true>(pc, [](auto& dst, uint8_t r) regcall {
@@ -1765,15 +1747,19 @@ dllexport void z86_execute() {
                 ctx.JCXZ(pc);
                 goto next_instr;
             case 0xE4: // IN AL, Ib
+                GP_WITHOUT_IOPL();
                 ctx.port_in<true>(pc.read_advance<uint8_t>());
                 break;
             case 0xE5: // IN AX, Ib
+                GP_WITHOUT_IOPL();
                 ctx.port_in(pc.read_advance<uint8_t>());
                 break;
             case 0xE6: // OUT Ib, AL
+                GP_WITHOUT_IOPL();
                 ctx.port_out<true>(pc.read_advance<uint8_t>());
                 break;
             case 0xE7: // OUT Ib, AX
+                GP_WITHOUT_IOPL();
                 ctx.port_out(pc.read_advance<uint8_t>());
                 break;
             case 0xE8: // CALL Jz
@@ -1794,15 +1780,19 @@ dllexport void z86_execute() {
                 ctx.JMP<true>(pc);
                 goto next_instr;
             case 0xEC: // IN AL, DX
+                GP_WITHOUT_IOPL();
                 ctx.port_in<true>(ctx.dx);
                 break;
             case 0xED: // IN AX, DX
+                GP_WITHOUT_IOPL();
                 ctx.port_in(ctx.dx);
                 break;
             case 0xEE: // OUT DX, AL
+                GP_WITHOUT_IOPL();
                 ctx.port_out<true>(ctx.dx);
                 break;
             case 0xEF: // OUT DX, AX
+                GP_WITHOUT_IOPL();
                 ctx.port_out(ctx.dx);
                 break;
             case 0xF1:
@@ -1825,8 +1815,8 @@ dllexport void z86_execute() {
                 goto prefix_byte;
             case 0xF4: // HLT
                 GP_WITHOUT_CPL0();
-                ctx.halted = true;
-                break;
+                ctx.HLT();
+                continue;
             case 0xF5: // CMC
                 ctx.carry ^= 1;
                 break;
@@ -1887,6 +1877,7 @@ dllexport void z86_execute() {
                 ctx.carry = opcode_byte & 1;
                 break;
             case 0xFA: case 0xFB: // CLI, STI
+                GP_WITHOUT_IOPL();
                 ctx.interrupt = opcode_byte & 1;
                 break;
             case 0xFC: case 0xFD: // CLD, STD
