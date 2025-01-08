@@ -88,139 +88,133 @@ uint32_t ModRM::extra_length(const P& pc) const {
 
 template <typename P>
 auto ModRM::parse_memM(P& pc) const {
-    uint8_t default_segment = DS;
+    uint32_t segment_mask;
     size_t offset = 0;
     uint8_t m = this->M();
+    assume(m < 8);
     uint8_t mod = this->Mod();
     if constexpr (ctx.max_bits > 16) {
         if (!ctx.addr_size_16()) {
             if constexpr (ctx.max_bits == 64) {
                 if (ctx.addr_size_64()) {
                     switch (m) {
-                        case 4: {
+                        default: unreachable;
+                        case RSP: {
                             SIB sib = pc.read_advance<SIB>();
                             uint8_t i = sib.I();
-                            if (i != 4) {
+                            if (i != RSP) {
                                 offset = ctx.index_qword_regI(i) * (1 << sib.S());
                             }
-                            switch (uint8_t b = sib.B()) {
-                                case 5:
-                                    if (mod != 0) {
-                                        offset += ctx.rbp;
-                                        default_segment = SS;
-                                    }
-                                    break;
-                                case 4:
-                                    default_segment = SS;
-                                default:
-                                    offset += ctx.index_qword_regMB(b);
-                                    break;
+                            m = sib.B();
+                            if (m == RBP && mod == 0) {
+                                // Not RIP relative
+                                // Label overrides segment to DS
+                                goto add_const32;
                             }
                             break;
                         }
-                        case 5:
-                            default_segment = SS;
-                        default:
-                            offset = ctx.index_qword_regMB(m);
+                        case RBP:
+                            if (mod == 0) {
+                                // TODO: Properly offset for
+                                // the end of the instruction
+                                offset = ctx.rip;
+                                goto add_const32;
+                            }
+                        case RAX: case RCX: case RDX: case RBX: case RSI: case RDI:
+                            break;
                     }
+                    // Initialize the full M so that
+                    // later code can bit test for 
+                    // default segment
+                    m = ctx.full_indexMB(m);
+                    offset += ctx.index_qword_reg_raw(m);
                 }
                 goto add_const;
             }
             switch (m) {
-                case 4: {
+                default: unreachable;
+                case ESP: {
                     SIB sib = pc.read_advance<SIB>();
                     uint8_t i = sib.I();
-                    if (i != 4) {
+                    if (i != ESP) {
                         offset = ctx.index_dword_regI(i) * (1 << sib.S());
                     }
-                    switch (uint8_t b = sib.B()) {
-                        case 5:
-                            if (mod != 0) {
-                                offset += ctx.rbp;
-                                default_segment = SS;
-                            }
-                            break;
-                        case 4:
-                            default_segment = SS;
-                        default:
-                            offset += ctx.index_dword_regMB(b);
-                            break;
+                    m = sib.B();
+                    if (m == EBP && mod == 0) {
+                        // Not EIP relative
+                        // Label overrides segment to DS
+                        goto add_const32;
                     }
                     break;
                 }
-                case 5:
-                    default_segment = SS;
-                default:
-                    offset = ctx.index_dword_regMB(m);
+                case EBP:
+                    if (mod == 0) {
+                        if constexpr (ctx.max_bits == 64) {
+                            if (expect(ctx.is_long_mode(), false)) {
+                                // TODO: Properly offset for
+                                // the end of the instruction
+                                offset = ctx.eip;
+                            }
+                        }
+                        goto add_const32;
+                    }
+                case EAX: case ECX: case EDX: case EBX: case ESI: case EDI:
+                    break;
             }
+            // Initialize the full M so that
+            // later code can bit test for 
+            // default segment
+            m = ctx.full_indexMB(m);
+            offset += ctx.index_dword_reg_raw(m);
         add_const:
             switch (mod) {
-                case 0:
-                    if (m == 5) {
-                        offset += (ssize_t)pc.read_advance<int32_t>();
-                        default_segment = DS;
-                    }
-                    break;
+                default: unreachable;
                 case 1:
                     offset += pc.read_advance<int8_t>();
                     break;
+                add_const32:
+                    // Override the segment to always be DS
+                    m = 0;
                 case 2:
                     offset += pc.read_advance<int32_t>();
-                    break;
-                default:
-                    unreachable;
+                case 0:;
             }
-            return ctx.addr(default_segment, offset);
+            // Set bits are for DS
+            if constexpr (ctx.max_bits == 64) {
+                segment_mask = 0b11111111111111111111111111001111;
+            }
+            else {
+                segment_mask = 0b11001111;
+            }
+            goto ret;
         }
     }
-    switch (m) {
-        case 0:
-            offset = ctx.bx + ctx.si;
-            break;
-        case 1:
-            offset = ctx.bx + ctx.di;
-            break;
-        case 2:
-            offset = ctx.bp + ctx.si;
-            default_segment = SS;
-            break;
-        case 3:
-            offset = ctx.bp + ctx.di;
-            default_segment = SS;
-            break;
-        case 4:
-            offset = ctx.si;
-            break;
-        case 5:
-            offset = ctx.di;
-            break;
-        case 6:
-            offset = ctx.bp;
-            default_segment = SS;
-            break;
-        case 7:
-            offset = ctx.bx;
-            break;
-        default:
-            unreachable;
+    
+    static constexpr uint32_t first_reg16[] = { BX, BX, BP, BP, SI, DI, BP, BX };
+    offset = ctx.index_word_regMB<true>(first_reg16[m]);
+    if (m < 4) {
+        offset += ctx.index_word_regI<true>(SI | m);
     }
     switch (mod) {
-        case 0:
-            if (m == 6) {
-                offset = pc.read_advance<int16_t>();
-                default_segment = DS;
-            }
-            break;
+        default: unreachable;
         case 1:
+            // TODO:
+            // Merge this with 32 bit byte offset somehow?
             offset += pc.read_advance<int8_t>();
             break;
+        case 0:
+            if (m != 6) {
+                break;
+            }
+            m = 0;
+            offset = 0;
         case 2:
             offset += pc.read_advance<int16_t>();
-            break;
-        default:
-            unreachable;
     }
-    return ctx.addr(default_segment, offset);
+    // Set bits are for DS
+    segment_mask = 0b10110011;
+ret:
+    return ctx.addr(SS + (bool)(segment_mask & 1 << m), offset);
 }
 
 template <size_t max_bits>
@@ -693,7 +687,7 @@ inline bool regcall z86BaseDefault::binopSM_impl(P& pc, const L& lambda) {
 
 template <z86BaseTemplate>
 template <typename T, typename P, typename L>
-inline bool regcall z86BaseDefault::binopMR_MMX(P& pc, const L& lambda) {
+inline bool regcall z86BaseDefault::binopMR_MM(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     MMXT<T>& rval = this->index_mmx_reg<T>(modrm.R());
     if (modrm.is_mem()) {
@@ -711,7 +705,7 @@ inline bool regcall z86BaseDefault::binopMR_MMX(P& pc, const L& lambda) {
 
 template <z86BaseTemplate>
 template <typename T, typename P, typename L>
-inline bool regcall z86BaseDefault::binopRM_MMX(P& pc, const L& lambda) {
+inline bool regcall z86BaseDefault::binopRM_MM(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     MMXT<T> mval;
     if (modrm.is_mem()) {
@@ -727,7 +721,7 @@ inline bool regcall z86BaseDefault::binopRM_MMX(P& pc, const L& lambda) {
 
 template <z86BaseTemplate>
 template <typename T, typename P, typename L>
-inline bool regcall z86BaseDefault::binopMR_SSE(P& pc, const L& lambda) {
+inline bool regcall z86BaseDefault::binopMR_XX(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     SSET<T>& rval = this->index_xmm_regR<T>(modrm.R());
     if (modrm.is_mem()) {
@@ -745,7 +739,7 @@ inline bool regcall z86BaseDefault::binopMR_SSE(P& pc, const L& lambda) {
 
 template <z86BaseTemplate>
 template <typename T, typename P, typename L>
-inline bool regcall z86BaseDefault::binopRM_SSE(P& pc, const L& lambda) {
+inline bool regcall z86BaseDefault::binopRM_XX(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     SSET<T> mval;
     if (modrm.is_mem()) {
@@ -756,6 +750,22 @@ inline bool regcall z86BaseDefault::binopRM_SSE(P& pc, const L& lambda) {
         mval = this->index_xmm_regMB<T>(modrm.M());
     }
     lambda(this->index_xmm_regR<T>(modrm.R()), mval);
+    return false;
+}
+
+template <z86BaseTemplate>
+template <typename T, typename P, typename L>
+inline bool regcall z86BaseDefault::binopRM_MX(P& pc, const L& lambda) {
+    ModRM modrm = pc.read_advance<ModRM>();
+    SSET<T> mval;
+    if (modrm.is_mem()) {
+        P data_addr = modrm.parse_memM(pc);
+        mval = { data_addr.read<T>() };
+    }
+    else {
+        mval = this->index_xmm_regMB<T>(modrm.M());
+    }
+    lambda(this->index_mmx_reg<T>(modrm.R()), mval);
     return false;
 }
 

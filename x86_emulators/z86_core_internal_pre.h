@@ -287,18 +287,20 @@ struct FPUREG {
 };
 
 struct SSEREG {
-    vec<float, 4> f32;
-    vec<double, 2> f64;
-    vec<uint8_t, 16> byte;
-    vec<int8_t, 16> sbyte;
-    vec<uint16_t, 8> word;
-    vec<int16_t, 8> sword;
-    vec<uint32_t, 4> dword;
-    vec<int32_t, 4> sdword;
-    vec<uint64_t, 2> qword;
-    vec<int64_t, 2> sqword;
-    uint128_t oword;
-    int128_t soword;
+    union {
+        vec<float, 4> f32;
+        vec<double, 2> f64;
+        vec<uint8_t, 16> byte;
+        vec<int8_t, 16> sbyte;
+        vec<uint16_t, 8> word;
+        vec<int16_t, 8> sword;
+        vec<uint32_t, 4> dword;
+        vec<int32_t, 4> sdword;
+        vec<uint64_t, 2> qword;
+        vec<int64_t, 2> sqword;
+        uint128_t oword;
+        int128_t soword;
+    };
 
     template <typename T>
     static inline constexpr size_t vec_size() {
@@ -315,18 +317,20 @@ using SSET = std::conditional_t<std::is_same_v<T, void>, SSEREG,
                                     void>>;
 
 struct AVXREG {
-    vec<float, 8> f32;
-    vec<double, 4> f64;
-    vec<uint8_t, 32> byte;
-    vec<int8_t, 32> sbyte;
-    vec<uint16_t, 16> word;
-    vec<int16_t, 16> sword;
-    vec<uint32_t, 8> dword;
-    vec<int32_t, 8> sdword;
-    vec<uint64_t, 4> qword;
-    vec<int64_t, 4> sqword;
-    vec<uint128_t, 2> oword;
-    vec<int128_t, 2> soword;
+    union {
+        vec<float, 8> f32;
+        vec<double, 4> f64;
+        vec<uint8_t, 32> byte;
+        vec<int8_t, 32> sbyte;
+        vec<uint16_t, 16> word;
+        vec<int16_t, 16> sword;
+        vec<uint32_t, 8> dword;
+        vec<int32_t, 8> sdword;
+        vec<uint64_t, 4> qword;
+        vec<int64_t, 4> sqword;
+        vec<uint128_t, 2> oword;
+        vec<int128_t, 2> soword;
+    };
 
     template <typename T>
     static inline constexpr size_t vec_size() {
@@ -343,18 +347,20 @@ using AVXT = std::conditional_t<std::is_same_v<T, void>, AVXREG,
                                     void>>;
 
 struct AVX512REG {
-    vec<float, 16> f32;
-    vec<double, 8> f64;
-    vec<uint8_t, 64> byte;
-    vec<int8_t, 64> sbyte;
-    vec<uint16_t, 32> word;
-    vec<int16_t, 32> sword;
-    vec<uint32_t, 16> dword;
-    vec<int32_t, 16> sdword;
-    vec<uint64_t, 8> qword;
-    vec<int64_t, 8> sqword;
-    vec<uint128_t, 4> oword;
-    vec<int128_t, 4> soword;
+    union {
+        vec<float, 16> f32;
+        vec<double, 8> f64;
+        vec<uint8_t, 64> byte;
+        vec<int8_t, 64> sbyte;
+        vec<uint16_t, 32> word;
+        vec<int16_t, 32> sword;
+        vec<uint32_t, 16> dword;
+        vec<int32_t, 16> sdword;
+        vec<uint64_t, 8> qword;
+        vec<int64_t, 8> sqword;
+        vec<uint128_t, 4> oword;
+        vec<int128_t, 4> soword;
+    };
 
     template <typename T>
     static inline constexpr size_t vec_size() {
@@ -1918,6 +1924,8 @@ struct z86BaseControl<max_bits, use_old_reset, true> : z86BaseControlBase<max_bi
             //this->descriptors[index].load_descriptor(this->descriptors[GDT + (selector >> 2 & 1)].load_selector(selector));
             auto* new_descriptor = this->descriptors[GDT + (selector >> 2 & 1)].load_selector(selector);
 
+            // CHECK FOR DANG GATES
+            
             //std::destroy_at(&this->descriptors[index]);
             //new (&this->descriptors[index]) z86DescriptorCache<max_bits>(new_descriptor);
             reconstruct_at(&this->descriptors[index], new_descriptor);
@@ -2116,22 +2124,6 @@ struct z86RegBase<32, use_old_reset, has_protected_mode, has_x87, max_sse_bits, 
         return this->opcode_prefix;
     }
 
-    inline constexpr uint8_t& index_byte_reg(uint8_t index) {
-        return *(&this->gpr[index & 3].byte + (index > 3));
-    }
-
-    inline constexpr auto& index_word_reg(uint8_t index) {
-        return this->gpr[index].word;
-    }
-
-    inline constexpr auto& index_dword_reg(uint8_t index) {
-        return this->gpr[index].dword;
-    }
-
-    inline constexpr auto& index_qword_reg(uint8_t index) {
-        return this->gpr[index].qword;
-    }
-
     inline constexpr bool data_size_16() const {
         return this->data_size != 0;
     }
@@ -2223,18 +2215,6 @@ struct z86RegBase<64, use_old_reset, has_protected_mode, has_x87, max_sse_bits, 
 
     inline constexpr uint8_t opcode_select() const {
         return this->opcode_prefix;
-    }
-
-    inline constexpr auto& index_word_reg(uint8_t index) {
-        return this->gpr[index].word;
-    }
-
-    inline constexpr auto& index_dword_reg(uint8_t index) {
-        return this->gpr[index].dword;
-    }
-
-    inline constexpr auto& index_qword_reg(uint8_t index) {
-        return this->gpr[index].qword;
     }
 
     inline constexpr bool data_size_16() const {
@@ -2403,9 +2383,12 @@ struct z86AddrBase;
 
 template <>
 struct z86AddrBase<16, false> {
-    using OT = uint16_t; // Offset Type
-    using FT = uint32_t; // Far Type
-    using MT = uint32_t; // Memory Addr Type
+    // Offset Type
+    using OT = uint16_t;
+    // Far Type
+    using FT = uint32_t;
+    // Physical Addr Type
+    using MT = uint32_t;
 
     union {
         uint32_t raw;
@@ -2423,9 +2406,12 @@ struct z86AddrBase<16, false> {
 
 template <>
 struct z86AddrBase<16, true> {
-    using OT = uint16_t; // Offset Type
-    using FT = uint32_t; // Far Type
-    using MT = uint32_t; // Memory Addr Type
+    // Offset Type
+    using OT = uint16_t;
+    // Far Type
+    using FT = uint32_t;
+    // Physical Addr Type
+    using MT = uint32_t;
 
     union {
         uint32_t raw;
@@ -2443,9 +2429,12 @@ struct z86AddrBase<16, true> {
 
 template <>
 struct z86AddrBase<32, false> {
-    using OT = uint32_t; // Offset Type
-    using FT = uint64_t; // Far Type
-    using MT = uint32_t; // Memory Addr Type
+    // Offset Type
+    using OT = uint32_t;
+    // Far Type
+    using FT = uint64_t;
+    // Physical Addr Type
+    using MT = uint32_t;
 
     union {
         uint64_t raw;
@@ -2463,9 +2452,12 @@ struct z86AddrBase<32, false> {
 
 template <>
 struct z86AddrBase<32, true> {
-    using OT = uint32_t; // Offset Type
-    using FT = uint64_t; // Far Type
-    using MT = uint32_t; // Memory Addr Type
+    // Offset Type
+    using OT = uint32_t;
+    // Far Type
+    using FT = uint64_t;
+    // Physical Addr Type
+    using MT = uint32_t;
 
     union {
         uint64_t raw;
@@ -2483,9 +2475,12 @@ struct z86AddrBase<32, true> {
 
 template <>
 struct z86AddrBase<64, false> {
-    using OT = uint64_t; // Offset Type
-    using FT = uint128_t; // Far Type
-    using MT = uint64_t; // Memory Addr Type
+    // Offset Type
+    using OT = uint64_t;
+    // Far Type
+    using FT = uint128_t;
+    // Physical Addr Type
+    using MT = uint64_t;
 
     union {
         uint128_t raw;
@@ -2503,9 +2498,12 @@ struct z86AddrBase<64, false> {
 
 template <>
 struct z86AddrBase<64, true> {
-    using OT = uint64_t; // Offset Type
-    using FT = uint128_t; // Far Type
-    using MT = uint64_t; // Memory Addr Type
+    // Offset Type
+    using OT = uint64_t;
+    // Far Type
+    using FT = uint128_t;
+    // Physical Addr Type
+    using MT = uint64_t;
 
     union {
         uint128_t raw;
@@ -2524,8 +2522,11 @@ struct z86AddrBase<64, true> {
 template <size_t bits, bool protected_mode>
 struct z86AddrImpl : z86AddrBase<bits, protected_mode> {
 
+    // Offset Type
     using OT = z86AddrBase<bits, protected_mode>::OT;
+    // Far Type
     using FT = z86AddrBase<bits, protected_mode>::FT;
+    // Physical Addr Type
     using MT = z86AddrBase<bits, protected_mode>::MT;
 
     inline constexpr z86AddrImpl() : z86AddrBase<bits, protected_mode>::z86AddrBase() {}
@@ -3014,6 +3015,7 @@ struct z86Base :
     static inline constexpr bool CPUID_POPCNT = flagsA & FLAG_CPUID_POPCNT;
     static inline constexpr bool CPUID_BMI1 = flagsA & FLAG_CPUID_BMI1;
     static inline constexpr bool CPUID_BMI2 = flagsA & FLAG_CPUID_BMI2;
+    static inline constexpr bool MADE_UP_INSTRUCTIONS = false;
 
     // Assuming a previous memset of full context
     inline constexpr void reset_ip() {
@@ -3043,7 +3045,43 @@ struct z86Base :
     }
 
     template <bool ignore_rex = false>
-    inline constexpr uint8_t& index_byte_regR(uint8_t index) {
+    inline constexpr uint8_t full_indexR(uint8_t index) {
+        assume(index < 8);
+        if constexpr (!ignore_rex) {
+            if (REX rex = this->get_rex_bits()) {
+                index |= rex.R();
+                assume(index < 16);
+            }
+        }
+        return index;
+    }
+
+    template <bool ignore_rex = false>
+    inline constexpr uint8_t full_indexI(uint8_t index) {
+        assume(index < 8);
+        if constexpr (!ignore_rex) {
+            if (REX rex = this->get_rex_bits()) {
+                index |= rex.X();
+                assume(index < 16);
+            }
+        }
+        return index;
+    }
+
+    template <bool ignore_rex = false>
+    inline constexpr uint8_t full_indexMB(uint8_t index) {
+        assume(index < 8);
+        if constexpr (!ignore_rex) {
+            if (REX rex = this->get_rex_bits()) {
+                index |= rex.B();
+                assume(index < 16);
+            }
+        }
+        return index;
+    }
+
+    template <bool ignore_rex = false>
+    inline constexpr uint8_t& index_byte_regR(uint32_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
             if (REX rex = this->get_rex_bits()) {
@@ -3054,7 +3092,7 @@ struct z86Base :
     }
 
     template <bool ignore_rex = false>
-    inline constexpr uint8_t& index_byte_regI(uint8_t index) {
+    inline constexpr uint8_t& index_byte_regI(uint32_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
             if (REX rex = this->get_rex_bits()) {
@@ -3065,7 +3103,7 @@ struct z86Base :
     }
 
     template <bool ignore_rex = false>
-    inline constexpr uint8_t& index_byte_regMB(uint8_t index) {
+    inline constexpr uint8_t& index_byte_regMB(uint32_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
             if (REX rex = this->get_rex_bits()) {
@@ -3075,8 +3113,12 @@ struct z86Base :
         return *(&this->gpr[index & 3].byte + (index > 3));
     }
 
+    inline constexpr auto& index_word_reg_raw(uint32_t index) {
+        return this->gpr[index].word;
+    }
+
     template <bool ignore_rex = false>
-    inline constexpr auto& index_word_regR(uint8_t index) {
+    inline constexpr auto& index_word_regR(uint32_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
             index |= this->get_rex_bits().R();
@@ -3085,7 +3127,7 @@ struct z86Base :
     }
 
     template <bool ignore_rex = false>
-    inline constexpr auto& index_word_regI(uint8_t index) {
+    inline constexpr auto& index_word_regI(uint32_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
             index |= this->get_rex_bits().X();
@@ -3094,7 +3136,7 @@ struct z86Base :
     }
 
     template <bool ignore_rex = false>
-    inline constexpr auto& index_word_regMB(uint8_t index) {
+    inline constexpr auto& index_word_regMB(uint32_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
             index |= this->get_rex_bits().B();
@@ -3102,8 +3144,12 @@ struct z86Base :
         return this->gpr[index].word;
     }
 
+    inline constexpr auto& index_dword_reg_raw(uint32_t index) {
+        return this->gpr[index].dword;
+    }
+
     template <bool ignore_rex = false>
-    inline constexpr auto& index_dword_regR(uint8_t index) {
+    inline constexpr auto& index_dword_regR(uint32_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
             index |= this->get_rex_bits().R();
@@ -3112,7 +3158,7 @@ struct z86Base :
     }
 
     template <bool ignore_rex = false>
-    inline constexpr auto& index_dword_regI(uint8_t index) {
+    inline constexpr auto& index_dword_regI(uint32_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
             index |= this->get_rex_bits().X();
@@ -3121,7 +3167,7 @@ struct z86Base :
     }
 
     template <bool ignore_rex = false>
-    inline constexpr auto& index_dword_regMB(uint8_t index) {
+    inline constexpr auto& index_dword_regMB(uint32_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
             index |= this->get_rex_bits().B();
@@ -3129,8 +3175,12 @@ struct z86Base :
         return this->gpr[index].dword;
     }
 
+    inline constexpr auto& index_qword_reg_raw(uint32_t index) {
+        return this->gpr[index].qword;
+    }
+
     template <bool ignore_rex = false>
-    inline constexpr auto& index_qword_regR(uint8_t index) {
+    inline constexpr auto& index_qword_regR(uint32_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
             index |= this->get_rex_bits().R();
@@ -3139,7 +3189,7 @@ struct z86Base :
     }
 
     template <bool ignore_rex = false>
-    inline constexpr auto& index_qword_regI(uint8_t index) {
+    inline constexpr auto& index_qword_regI(uint32_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
             index |= this->get_rex_bits().X();
@@ -3148,7 +3198,7 @@ struct z86Base :
     }
 
     template <bool ignore_rex = false>
-    inline constexpr auto& index_qword_regMB(uint8_t index) {
+    inline constexpr auto& index_qword_regMB(uint32_t index) {
         assume(index < 8);
         if constexpr (!ignore_rex) {
             index |= this->get_rex_bits().B();
@@ -3156,7 +3206,7 @@ struct z86Base :
         return this->gpr[index].qword;
     }
 
-    inline constexpr long double& index_st_reg(uint8_t index) {
+    inline constexpr long double& index_st_reg(uint32_t index) {
         assume(index < 8);
         if constexpr (CPUID_X87) {
             return this->st[this->stack_top + index & 7];
@@ -3164,7 +3214,7 @@ struct z86Base :
     }
 
     template <typename T = void>
-    inline constexpr auto& index_mmx_reg(uint8_t index) {
+    inline constexpr auto& index_mmx_reg(uint32_t index) {
         assume(index < 8);
         if constexpr (CPUID_MMX || CPUID_X87) {
             if constexpr (std::is_same_v<T, void>) {
@@ -3204,7 +3254,7 @@ struct z86Base :
     }
 
     template <typename T = void, bool ignore_rex = false>
-    inline constexpr auto& index_xmm_regR(uint8_t index) {
+    inline constexpr auto& index_xmm_regR(uint32_t index) {
         assume(index < 8);
         if constexpr (CPUID_SSE) {
             if constexpr (!ignore_rex) {
@@ -3253,7 +3303,7 @@ struct z86Base :
     }
 
     template <typename T = void, bool ignore_rex = false>
-    inline constexpr auto& index_xmm_regMB(uint8_t index) {
+    inline constexpr auto& index_xmm_regMB(uint32_t index) {
         assume(index < 8);
         if constexpr (CPUID_SSE) {
             if constexpr (!ignore_rex) {
@@ -3302,7 +3352,7 @@ struct z86Base :
     }
 
     template <typename T, bool ignore_rex = false>
-    inline constexpr auto& index_regR(uint8_t index) {
+    inline constexpr auto& index_regR(uint32_t index) {
         if constexpr (sizeof(T) == sizeof(uint8_t)) {
             return this->index_byte_regR<ignore_rex>(index);
         } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
@@ -3315,7 +3365,7 @@ struct z86Base :
     }
 
     template <typename T, bool ignore_rex = false>
-    inline constexpr auto& index_regI(uint8_t index) {
+    inline constexpr auto& index_regI(uint32_t index) {
         if constexpr (sizeof(T) == sizeof(uint8_t)) {
             return this->index_byte_regI<ignore_rex>(index);
         } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
@@ -3328,7 +3378,7 @@ struct z86Base :
     }
 
     template <typename T, bool ignore_rex = false>
-    inline constexpr auto& index_regMB(uint8_t index) {
+    inline constexpr auto& index_regMB(uint32_t index) {
         if constexpr (sizeof(T) == sizeof(uint8_t)) {
             return this->index_byte_regMB<ignore_rex>(index);
         } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
@@ -5863,7 +5913,7 @@ struct z86Base :
     }
 
     template <typename T>
-    gnu_noinline bool regcall PACKSS(T& dst, T src) {
+    bool regcall PACKSS(T& dst, T src) {
         constexpr size_t src_vec_length = vector_length_v<T>;
         constexpr size_t dst_vec_length = src_vec_length * 2;
         using src_int = vector_type_t<T>;
@@ -5884,7 +5934,7 @@ struct z86Base :
     }
 
     template <typename T>
-    gnu_noinline bool regcall PACKUS(T& dst, T src) {
+    bool regcall PACKUS(T& dst, T src) {
         constexpr size_t src_vec_length = vector_length_v<T>;
         constexpr size_t dst_vec_length = src_vec_length * 2;
         using src_int = vector_type_t<T>;
@@ -5905,7 +5955,7 @@ struct z86Base :
     }
 
     template <typename T>
-    gnu_noinline T regcall PUNPCKL(T dst, T src) {
+    T regcall PUNPCKL(T dst, T src) {
         constexpr size_t vec_length = vector_length_v<T>;
         constexpr size_t half_vec_length = vec_length / 2;
         using src_int = vector_type_t<T>;
@@ -5919,7 +5969,7 @@ struct z86Base :
     }
 
     template <typename T>
-    gnu_noinline T regcall PUNPCKH(T dst, T src) {
+    T regcall PUNPCKH(T dst, T src) {
         constexpr size_t vec_length = vector_length_v<T>;
         constexpr size_t half_vec_length = vec_length / 2;
         using src_int = vector_type_t<T>;
@@ -5933,7 +5983,7 @@ struct z86Base :
     }
 
     template <typename T>
-    gnu_noinline T regcall PAVG(T dst, T src) {
+    T regcall PAVG(T dst, T src) {
         constexpr size_t vec_length = vector_length_v<T>;
         using src_int = vector_type_t<T>;
         using tmp_int = dbl_int_t<src_int>;
@@ -5946,36 +5996,36 @@ struct z86Base :
     }
 
     template <typename T>
-    gnu_noinline T regcall PABS(T src) {
+    T regcall PABS(T src) {
         return __builtin_elementwise_abs(src);
     }
 
     template <typename T>
-    gnu_noinline T regcall PADD(T dst, T src) {
+    T regcall PADD(T dst, T src) {
         return dst + src;
     }
 
     template <typename T>
-    gnu_noinline T regcall PADDS(T dst, T src) {
+    T regcall PADDS(T dst, T src) {
         return __builtin_elementwise_add_sat(dst, src);
     }
 
     template <typename T>
-    gnu_noinline T regcall PHADD(T dst, T src) {
+    T regcall PHADD(T dst, T src) {
         T odds = vec_odd_interleave(dst, src);
         T evens = vec_even_interleave(dst, src);
         return odds + evens;
     }
 
     template <typename T>
-    gnu_noinline T regcall PHADDS(T dst, T src) {
+    T regcall PHADDS(T dst, T src) {
         T odds = vec_odd_interleave(dst, src);
         T evens = vec_even_interleave(dst, src);
         return __builtin_elementwise_add_sat(odds, evens);
     }
 
     template <typename T>
-    gnu_noinline T regcall PSAD(T dst, T src) {
+    T regcall PSAD(T dst, T src) {
         constexpr size_t src_vec_length = vector_length_v<T>;
         constexpr size_t dst_vec_length = src_vec_length / 2;
         using src_int = vector_type_t<T>;
@@ -5991,31 +6041,31 @@ struct z86Base :
     }
 
     template <typename T>
-    gnu_noinline T regcall PSUB(T dst, T src) {
+    T regcall PSUB(T dst, T src) {
         return dst - src;
     }
 
     template <typename T>
-    gnu_noinline T regcall PSUBS(T dst, T src) {
+    T regcall PSUBS(T dst, T src) {
         return __builtin_elementwise_sub_sat(dst, src);
     }
 
     template <typename T>
-    gnu_noinline T regcall PHSUB(T dst, T src) {
+    T regcall PHSUB(T dst, T src) {
         T odds = vec_odd_interleave(dst, src);
         T evens = vec_even_interleave(dst, src);
         return odds - evens;
     }
 
     template <typename T>
-    gnu_noinline T regcall PHSUBS(T dst, T src) {
+    T regcall PHSUBS(T dst, T src) {
         T odds = vec_odd_interleave(dst, src);
         T evens = vec_even_interleave(dst, src);
         return __builtin_elementwise_sub_sat(odds, evens);
     }
 
     template <typename T>
-    gnu_noinline T regcall PMADD(T dst, T src) {
+    T regcall PMADD(T dst, T src) {
         constexpr size_t src_vec_length = vector_length_v<T>;
         constexpr size_t dst_vec_length = src_vec_length / 2;
         using src_int = vector_type_t<T>;
@@ -6032,12 +6082,12 @@ struct z86Base :
     }
 
     template <typename T>
-    gnu_noinline T regcall PMULL(T dst, T src) {
+    T regcall PMULL(T dst, T src) {
         return dst * src;
     }
 
     template <typename T>
-    gnu_noinline T regcall PMULH(T dst, T src) {
+    T regcall PMULH(T dst, T src) {
         constexpr size_t vec_length = vector_length_v<T>;
         using src_int = vector_type_t<T>;
         using tmp_int = dbl_int_t<src_int>;
@@ -6049,7 +6099,7 @@ struct z86Base :
     }
 
     template <typename T>
-    gnu_noinline T regcall PMUL(T dst, T src) {
+    T regcall PMUL(T dst, T src) {
         constexpr size_t src_vec_length = vector_length_v<T>;
         constexpr size_t dst_vec_length = src_vec_length / 2;
         using src_int = vector_type_t<T>;
@@ -6063,57 +6113,57 @@ struct z86Base :
     }
     
     template <typename T1, typename T2>
-    gnu_noinline T1 regcall PSHL(T1 dst, T2 src) {
+    T1 regcall PSHL(T1 dst, T2 src) {
         return dst << src;
     }
 
     template <typename T1, typename T2>
-    gnu_noinline T1 regcall PSHR(T1 dst, T2 src) {
+    T1 regcall PSHR(T1 dst, T2 src) {
         return dst >> src;
     }
 
     template <typename T>
-    gnu_noinline T regcall PAND(T dst, T src) {
+    T regcall PAND(T dst, T src) {
         return dst & src;
     }
 
     template <typename T>
-    gnu_noinline T regcall PANDN(T dst, T src) {
+    T regcall PANDN(T dst, T src) {
         return ~dst & src;
     }
 
     template <typename T>
-    gnu_noinline T regcall POR(T dst, T src) {
+    T regcall POR(T dst, T src) {
         return dst | src;
     }
 
     template <typename T>
-    gnu_noinline T regcall PXOR(T dst, T src) {
+    T regcall PXOR(T dst, T src) {
         return dst ^ src;
     }
 
     template <typename T>
-    gnu_noinline T regcall PMAX(T dst, T src) {
+    T regcall PMAX(T dst, T src) {
         return __builtin_elementwise_max(dst, src);
     }
 
     template <typename T>
-    gnu_noinline T regcall PMIN(T dst, T src) {
+    T regcall PMIN(T dst, T src) {
         return __builtin_elementwise_max(dst, src);
     }
 
     template <typename T>
-    gnu_noinline T regcall PCMPEQ(T dst, T src) {
+    T regcall PCMPEQ(T dst, T src) {
         return dst == src;
     }
 
     template <typename T>
-    gnu_noinline T regcall PCMPGT(T dst, T src) {
+    T regcall PCMPGT(T dst, T src) {
         return dst > src;
     }
 
     template <typename T>
-    gnu_noinline T regcall PSIGN(T dst, T src) {
+    T regcall PSIGN(T dst, T src) {
         const T zero = {};
         return src == 0 ? zero : src > 0 ? dst : -dst;
     }
@@ -6142,7 +6192,8 @@ struct z86Base :
 #define OP_HAD_FAULT(...)   ((__VA_ARGS__)&2)
 
     template <bool is_byte = false, typename L>
-    inline void regcall binopAR(uint8_t index, const L& lambda) {
+    inline void regcall binopAR(uint32_t index, const L& lambda) {
+        assume(index < 8);
         if constexpr (is_byte) {
             return lambda(this->al, this->index_byte_regMB(index));
         }
@@ -6203,7 +6254,8 @@ struct z86Base :
     }
 
     template <bool is_byte = false, typename P>
-    inline void regcall MOV_RI(P& pc, uint8_t index) {
+    inline void regcall MOV_RI(P& pc, uint32_t index) {
+        assume(index < 8);
         if constexpr (is_byte) {
             this->index_byte_regMB(index) = pc.read_advance<uint8_t>();
         }
@@ -6375,17 +6427,29 @@ struct z86Base :
         return this->binopSM_impl<uint16_t>(pc, lambda);
     }
 
+    // Mm <- Rm
     template <typename T = uint64_t, typename P, typename L>
-    inline bool regcall binopMR_MMX(P& pc, const L& lambda);
+    inline bool regcall binopMR_MM(P& pc, const L& lambda);
 
+    // Rm <- Mm
     template <typename T = uint64_t, typename P, typename L>
-    inline bool regcall binopRM_MMX(P& pc, const L& lambda);
+    inline bool regcall binopRM_MM(P& pc, const L& lambda);
 
+    // Mx <- Rx
     template <typename T = uint128_t, typename P, typename L>
-    inline bool regcall binopMR_SSE(P& pc, const L& lambda);
+    inline bool regcall binopMR_XX(P& pc, const L& lambda);
 
+    // Rx <- Mx
     template <typename T = uint128_t, typename P, typename L>
-    inline bool regcall binopRM_SSE(P& pc, const L& lambda);
+    inline bool regcall binopRM_XX(P& pc, const L& lambda);
+
+    // Rm <- Mx
+    template <typename T, typename P, typename L>
+    inline bool regcall binopRM_MX(P& pc, const L& lambda);
+
+    // Rx <- Mm
+    template <typename T, typename P, typename L>
+    inline bool regcall binopRM_XM(P& pc, const L& lambda);
 
     template <typename T, typename P, typename L>
     inline bool regcall unopM_impl(P& pc, const L& lambda);
@@ -6478,6 +6542,10 @@ struct z86Base :
 template <z86CoreType core_type, uint64_t flagsA = 0>
 struct z86Core;
 
+// Software exceptions
+// NMI
+// Maskable interrupts
+// Trap flag
 template <uint64_t flagsA>
 struct z86Core<z8086, flagsA> :
     z86Base<
@@ -6492,6 +6560,12 @@ struct z86Core<z80186, flagsA> :
         FLAG_OPCODES_80186
     > {};
 
+// Software exceptions
+// Trap flag
+// NMI
+// Coprocessor overrun
+// Maskable interrupts
+// INT instruction
 template <uint64_t flagsA>
 struct z86Core<z80286, flagsA> :
     z86Base<
@@ -6506,6 +6580,14 @@ struct z86Core<zNV30, flagsA> :
         16, 16, flagsA |
         FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP | FLAG_OLD_RESET_PC | FLAG_UNMASK_ENTER |
         FLAG_OPCODES_80186 | FLAG_OPCODES_80286 | FLAG_OPCODES_V20
+    > {};
+
+template <uint64_t flagsA>
+struct z86Core<z80386, flagsA> :
+    z86Base<
+        32, 32, flagsA |
+        FLAG_PROTECTED_MODE |
+        FLAG_OPCODES_80186 | FLAG_OPCODES_80286 | FLAG_OPCODES_80386
     > {};
 
 #endif
