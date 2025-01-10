@@ -2150,6 +2150,41 @@ static inline constexpr auto vec_broadcast(E value) {
 }
 
 template <typename T>
+static inline constexpr T vec_reverse(T vector) {
+    constexpr size_t vec_length = vector_length_v<T>;
+    if constexpr (vec_length == 1) {
+        return vector;
+    }
+    else if constexpr (vec_length == 2) {
+        return shufflevec(vector, vector, 1, 0);
+    }
+    else if constexpr (vec_length == 4) {
+        return shufflevec(vector, vector, 3, 2, 1, 0);
+    }
+    else if constexpr (vec_length == 8) {
+        return shufflevec(vector, vector, 7, 6, 5, 4, 3, 2, 1, 0);
+    }
+    else if constexpr (vec_length == 16) {
+        return shufflevec(vector, vector, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+    }
+    else if constexpr (vec_length == 32) {
+        return shufflevec(vector, vector, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+    }
+    else if constexpr (vec_length == 64) {
+        return shufflevec(vector, vector, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+    }
+    else {
+        constexpr size_t half_vec_length = vec_length / 2;
+        for (size_t i = 0; i < half_vec_length; ++i) {
+            auto temp = vector[i];
+            vector[i] = vector[(vec_length - 1) - i];
+            vector[(vec_length - 1) - i] = temp;
+        }
+        return vector;
+    }
+}
+
+template <typename T>
 static inline constexpr T vec_odd_interleave(T lower, T upper) {
     constexpr size_t vec_length = vector_length_v<T>;
     if constexpr (vec_length == 1) {
@@ -2170,8 +2205,11 @@ static inline constexpr T vec_odd_interleave(T lower, T upper) {
     else if constexpr (vec_length == 32) {
         return shufflevec(lower, upper, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62);
     }
+    else if constexpr (vec_length == 64) {
+        return shufflevec(lower, upper, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62, 64, 66, 68, 70, 72, 74, 76, 78, 80, 82, 84, 86, 88, 90, 92, 94, 96, 98, 100, 102, 104, 106, 108, 110, 112, 114, 116, 118, 120, 122, 124, 126);
+    }
     else {
-        constexpr size_t half_vec_length = vector_length_v<T>;
+        constexpr size_t half_vec_length = vec_length / 2;
         T ret = {};
         for (size_t i = 0; i < half_vec_length; ++i) {
             ret[i] = lower[i * 2];
@@ -2202,8 +2240,11 @@ static inline constexpr T vec_even_interleave(T lower, T upper) {
     else if constexpr (vec_length == 32) {
         return shufflevec(lower, upper, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63);
     }
+    else if constexpr (vec_length == 64) {
+        return shufflevec(lower, upper, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63, 65, 67, 69, 71, 73, 75, 77, 79, 81, 83, 85, 87, 89, 91, 93, 95, 96, 97, 99, 101, 103, 105, 107, 109, 111, 113, 115, 117, 119, 121, 123, 125, 127);
+    }
     else {
-        constexpr size_t half_vec_length = vector_length_v<T>;
+        constexpr size_t half_vec_length = vec_length / 2;
         T ret = {};
         for (size_t i = 0; i < half_vec_length; ++i) {
             ret[i] = lower[i * 2];

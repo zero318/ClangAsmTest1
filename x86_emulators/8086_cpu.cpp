@@ -938,7 +938,7 @@ dllexport void z86_execute() {
                         THROW_UD();
                     }
                 }
-                ctx.CALLFABS(pc);
+                FAULT_CHECK(ctx.CALLFABS(pc));
                 goto next_instr;
             case 0x9B: // WAIT
                 // NOP :D
@@ -1148,7 +1148,7 @@ dllexport void z86_execute() {
                 }
                 break;
             case 0xCF: // IRET
-                ctx.IRET();
+                FAULT_CHECK(ctx.IRET());
                 continue; // Using continues delays execution deliberately
             case 0xD0: // GRP2 Mb, 1
                 FAULT_CHECK(ctx.unopM<true>(pc, [](auto& dst, uint8_t r) regcall {
@@ -1783,7 +1783,7 @@ dllexport void z86_execute() {
                         THROW_UD();
                     }
                 }
-                ctx.JMPFABS(pc);
+                FAULT_CHECK(ctx.JMPFABS(pc));
                 goto next_instr;
             case 0xEB: // JMP Jb
                 ctx.JMP<true>(pc);
@@ -1824,6 +1824,7 @@ dllexport void z86_execute() {
                 goto prefix_byte;
             case 0xF4: // HLT
                 GP_WITHOUT_CPL0();
+            hlt:
                 ctx.HLT();
                 continue;
             case 0xF5: // CMC
@@ -2000,14 +2001,32 @@ dllexport void z86_execute() {
                 break;
             case 0x102: // LAR Rv, Mv
             case 0x103: // LSL Rv, Mv
+                break;
             case 0x104: // STOREALL
+                THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80286 && !ctx.OPCODES_80386);
+                // We're just going to pretend that LOCK is the ICE prefix
+                if (!ctx.lock) {
+                    ALWAYS_UD();
+                }
+                ctx.STOREALL();
+                ctx.interrupt = false;
+                goto hlt;
             case 0x105: // SYSCALL, LOADALL2
+                THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80286 && !ctx.OPCODES_80386);
+                // LOADALL2
+                ctx.LOADALL2();
                 break;
             case 0x106: // CLTS
                 GP_WITHOUT_CPL0();
 
                 break;
             case 0x107: // SYSRET, LOADALL3
+                // Technically LOADALL is still here on the 80486,
+                // but can only be used from within ICE mode.
+                THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386 && !ctx.OPCODES_80486);
+                // LOADALL3
+                ctx.LOADALL3();
+                break;
             case 0x108: // INVD (486)
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80486);
                 GP_WITHOUT_CPL0();

@@ -233,7 +233,13 @@ ret:
 }
 
 template <size_t max_bits>
-inline constexpr SEG_DESCRIPTOR<max_bits>* z86DescriptorCache<max_bits>::load_selector(uint16_t selector) const {
+template <typename T>
+inline constexpr T* z86DescriptorCache<max_bits>::get_ptr() const {
+    return mem.ptr<T>(this->base);
+}
+
+template <size_t max_bits>
+inline constexpr SEG_DESCRIPTOR<max_bits>* z86DescriptorCache<max_bits>::get_descriptor(uint16_t selector) const {
     BT offset = selector & 0xFFF8;
     if (expect(offset <= this->limit, true)) {
         return mem.ptr<SEG_DESCRIPTOR<max_bits>>(offset + this->base);
@@ -806,17 +812,17 @@ inline bool regcall z86BaseDefault::unopM_impl(P& pc, const L& lambda) {
     return OP_HAD_FAULT(ret);
 }
 
-template <z86BaseTemplate>
+template <z86RegCommonTemplate>
 template <typename P, typename T>
-inline void regcall z86BaseDefault::PUSH_impl(const T& src) {
+inline void regcall z86RegCommonDefault::PUSH_impl(const T& src) {
     this->SP<P>() -= (std::max)(sizeof(T), (size_t)2);
     z86AddrSS stack = this->stack<P>();
     stack.write(src);
 }
 
-template <z86BaseTemplate>
+template <z86RegCommonTemplate>
 template <typename P, typename T>
-inline T z86BaseDefault::POP_impl() {
+inline T z86RegCommonDefault::POP_impl() {
     z86AddrSS stack = this->stack<P>();
     T ret = stack.read<T>();
     this->SP<P>() += (std::max)(sizeof(T), (size_t)2);
@@ -887,22 +893,6 @@ gnu_attr(minsize) inline void regcall z86BaseDefault::ENTER_impl(uint16_t alloc,
         uint16_t cur_bp = this->bp;
         uint16_t new_bp = this->sp - sizeof(T);
         if constexpr (bits > 16) {
-            if (expect(this->stack_size_32(), false)) {
-                this->PUSH_impl<uint32_t>(cur_bp);
-                switch (nesting) {
-                    default: {
-                        z86Addr stack_bp(this->ss, this->ebp);
-                        do {
-                            stack_bp.offset -= sizeof(T); // sizeof(T) = 2
-                            this->PUSH_impl<uint32_t>(stack_bp.read<T>());
-                        } while (--nesting != 1);
-                    }
-                    case 1:
-                        this->PUSH_impl<uint32_t>(new_bp);
-                    case 0:
-                        goto end_enter16;
-                }
-            }
             if constexpr (bits == 64) {
                 if (expect(this->stack_size_64(), false)) {
                     this->PUSH_impl<uint64_t>(cur_bp);
@@ -919,6 +909,22 @@ gnu_attr(minsize) inline void regcall z86BaseDefault::ENTER_impl(uint16_t alloc,
                         case 0:
                             goto end_enter16;
                     }
+                }
+            }
+            if (expect(this->stack_size_32(), false)) {
+                this->PUSH_impl<uint32_t>(cur_bp);
+                switch (nesting) {
+                    default: {
+                        z86Addr stack_bp(this->ss, this->ebp);
+                        do {
+                            stack_bp.offset -= sizeof(T); // sizeof(T) = 2
+                            this->PUSH_impl<uint32_t>(stack_bp.read<T>());
+                        } while (--nesting != 1);
+                    }
+                    case 1:
+                        this->PUSH_impl<uint32_t>(new_bp);
+                    case 0:
+                        goto end_enter16;
                 }
             }
         }
@@ -1348,6 +1354,103 @@ inline bool regcall z86BaseDefault::unopMS_impl(P& pc) {
         }
     }
     return false;
+}
+
+template <z86BaseTemplate>
+void z86BaseDefault::LOADALL2() {
+    const z86LoadallFrame80286& loadall_data = mem.ref<z86LoadallFrame80286>(0x800);
+    this->set_machine_status_word(loadall_data.msw);
+    this->seg[TSS] = loadall_data.tr;
+    this->set_flags<uint16_t, true>(loadall_data.flags);
+    this->ip = loadall_data.ip;
+    this->seg[LDT] = loadall_data.ldtr;
+    this->ds = loadall_data.ds;
+    this->ss = loadall_data.ss;
+    this->cs = loadall_data.cs;
+    this->es = loadall_data.es;
+    this->di = loadall_data.di;
+    this->si = loadall_data.si;
+    this->bp = loadall_data.bp;
+    this->sp = loadall_data.sp;
+    this->bx = loadall_data.bx;
+    this->dx = loadall_data.dx;
+    this->cx = loadall_data.cx;
+    this->ax = loadall_data.ax;
+    this->load_descriptor(ES, loadall_data.es_descriptor);
+    this->load_descriptor(CS, loadall_data.cs_descriptor);
+    this->load_descriptor(SS, loadall_data.ss_descriptor);
+    this->load_descriptor(DS, loadall_data.ds_descriptor);
+    this->load_descriptor(GDT, loadall_data.gdt_descriptor);
+    this->load_descriptor(LDT, loadall_data.ldt_descriptor);
+    this->load_descriptor(IDT, loadall_data.idt_descriptor);
+    this->load_descriptor(TSS, loadall_data.tss_descriptor);
+}
+
+template <z86BaseTemplate>
+void z86BaseDefault::STOREALL() {
+    z86LoadallFrame80286& loadall_data = mem.ref<z86LoadallFrame80286>(0x800);
+    loadall_data.msw = ctx.get_machine_status_word();
+    loadall_data.tr = this->seg[TSS];
+    loadall_data.flags = this->get_flags<uint16_t>();
+    loadall_data.ip = this->ip; // Is this supposed to be after or before the instruction?
+    loadall_data.ldtr = this->seg[LDT];
+    loadall_data.ds = this->ds;
+    loadall_data.ss = this->ss;
+    loadall_data.cs = this->cs;
+    loadall_data.es = this->es;
+    loadall_data.di = this->di;
+    loadall_data.si = this->si;
+    loadall_data.bp = this->bp;
+    loadall_data.sp = this->sp;
+    loadall_data.bx = this->bx;
+    loadall_data.dx = this->dx;
+    loadall_data.cx = this->cx;
+    loadall_data.ax = this->ax;
+    loadall_data.es_descriptor.access_rights = 0;
+    this->fill_descriptor(ES, loadall_data.es_descriptor);
+    this->fill_descriptor(CS, loadall_data.cs_descriptor);
+    this->fill_descriptor(SS, loadall_data.ss_descriptor);
+    this->fill_descriptor(DS, loadall_data.ds_descriptor);
+    this->fill_descriptor(GDT, loadall_data.gdt_descriptor);
+    this->fill_descriptor(LDT, loadall_data.ldt_descriptor);
+    this->fill_descriptor(IDT, loadall_data.idt_descriptor);
+    this->fill_descriptor(TSS, loadall_data.tss_descriptor);
+}
+
+template <z86BaseTemplate>
+void z86BaseDefault::LOADALL3() {
+    z86AddrES load_addr = this->str_dst();
+    this->set_control_reg(CR0, load_addr.read<uint32_t>());
+    this->set_flags<uint32_t, true>(load_addr.read<uint32_t>(4));
+    this->eip = load_addr.read<uint32_t>(8);
+    this->edi = load_addr.read<uint32_t>(0xC);
+    this->esi = load_addr.read<uint32_t>(0x10);
+    this->ebp = load_addr.read<uint32_t>(0x14);
+    this->esp = load_addr.read<uint32_t>(0x18);
+    this->ebx = load_addr.read<uint32_t>(0x1C);
+    this->edx = load_addr.read<uint32_t>(0x20);
+    this->ecx = load_addr.read<uint32_t>(0x24);
+    this->eax = load_addr.read<uint32_t>(0x28);
+    //this->dr[DR6] = load_addr.read<uint32_t>(0x2C);
+    //this->dr[DR7] = load_addr.read<uint32_t>(0x30);
+    this->seg[TSS] = load_addr.read<uint16_t>(0x34);
+    this->seg[LDT] = load_addr.read<uint16_t>(0x38);
+    this->seg[GS] = load_addr.read<uint16_t>(0x3C);
+    this->seg[FS] = load_addr.read<uint16_t>(0x40);
+    this->ds = load_addr.read<uint16_t>(0x44);
+    this->ss = load_addr.read<uint16_t>(0x48);
+    this->cs = load_addr.read<uint16_t>(0x4C);
+    this->es = load_addr.read<uint16_t>(0x50);
+    this->load_descriptor(TSS, load_addr.read<uint32_t>(0x58), load_addr.read<uint32_t>(0x5C), load_addr.read<uint32_t>(0x54), 0);
+    this->load_descriptor(IDT, load_addr.read<uint32_t>(0x64), load_addr.read<uint32_t>(0x68), load_addr.read<uint32_t>(0x60), 0);
+    this->load_descriptor(GDT, load_addr.read<uint32_t>(0x70), load_addr.read<uint32_t>(0x74), load_addr.read<uint32_t>(0x6C), 0);
+    this->load_descriptor(LDT, load_addr.read<uint32_t>(0x7C), load_addr.read<uint32_t>(0x80), load_addr.read<uint32_t>(0x78), 0);
+    this->load_descriptor(GS, load_addr.read<uint32_t>(0x88), load_addr.read<uint32_t>(0x8C), load_addr.read<uint32_t>(0x84), 0);
+    this->load_descriptor(FS, load_addr.read<uint32_t>(0x94), load_addr.read<uint32_t>(0x98), load_addr.read<uint32_t>(0x90), 0);
+    this->load_descriptor(DS, load_addr.read<uint32_t>(0xA0), load_addr.read<uint32_t>(0xA4), load_addr.read<uint32_t>(0x9C), 0);
+    this->load_descriptor(SS, load_addr.read<uint32_t>(0xAC), load_addr.read<uint32_t>(0xB0), load_addr.read<uint32_t>(0xA8), 0);
+    this->load_descriptor(CS, load_addr.read<uint32_t>(0xB8), load_addr.read<uint32_t>(0xBC), load_addr.read<uint32_t>(0xB4), 0);
+    this->load_descriptor(ES, load_addr.read<uint32_t>(0xC4), load_addr.read<uint32_t>(0xC8), load_addr.read<uint32_t>(0xC0), 0);
 }
 
 // Special unop for group 6

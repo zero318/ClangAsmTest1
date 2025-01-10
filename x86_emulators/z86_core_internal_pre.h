@@ -526,6 +526,10 @@ struct SEG_DESCRIPTOR {
         } system;
     };
 
+    inline constexpr void set_accessed() {
+        this->data.accessed = true;
+    }
+
     inline constexpr uint8_t get_dpl() const {
         return this->dpl;
     }
@@ -1697,11 +1701,90 @@ struct z86BaseFPUControl<64, true, true> {
     // 0x24
 };
 
-struct z86DescriptorCache80286 {
+struct z86DescriptorCacheHardware {};
+
+struct z86DescriptorCache80286 : z86DescriptorCacheHardware {
     uint16_t base_low;
     uint8_t base_high;
     uint8_t access_rights;
-    uint16_t limit;
+    uint16_t limit_full;
+
+    inline constexpr uint32_t base() const {
+        return *(uint32_t*)&this->base_low & 0xFFFFFF;
+    }
+
+    inline constexpr uint16_t limit() const {
+        return this->limit_full;
+    }
+};
+static_assert(sizeof(z86DescriptorCache80286) == 0x6);
+
+struct z86DescriptorCache80386 : z86DescriptorCacheHardware {
+    uint8_t : 8;
+    union {
+        uint8_t flags2;
+    };
+    uint8_t flags1;
+    uint8_t : 8;
+    uint32_t base_full;
+    uint32_t limit_full;
+
+    inline constexpr uint32_t base() const {
+        return this->base_full;
+    }
+
+    inline constexpr uint32_t limit() const {
+        return this->limit_full;
+    }
+};
+static_assert(sizeof(z86DescriptorCache80386) == 0xC);
+
+struct z86DescriptorCachePentium : z86DescriptorCacheHardware {
+    uint32_t limit_full;
+    uint32_t base_full;
+    uint8_t flags1;
+    uint8_t flags2;
+
+    inline constexpr uint32_t base() const {
+        return this->base_full;
+    }
+
+    inline constexpr uint32_t limit() const {
+        return this->limit_full;
+    }
+};
+static_assert(sizeof(z86DescriptorCachePentium) == 0xC);
+
+struct z86DescriptorCachePentiumPro : z86DescriptorCacheHardware {
+    uint16_t selector;
+    uint8_t flags1;
+    uint8_t flags2;
+    uint32_t limit_full;
+    uint32_t base_full;
+
+    inline constexpr uint32_t base() const {
+        return this->base_full;
+    }
+
+    inline constexpr uint32_t limit() const {
+        return this->limit_full;
+    }
+};
+
+struct z86DescriptorCacheAMD64 : z86DescriptorCacheHardware {
+    uint16_t selector;
+    uint8_t flags1;
+    uint8_t flags2;
+    uint32_t limit_full;
+    uint64_t base_full;
+
+    inline constexpr uint64_t base() const {
+        return this->base_full;
+    }
+
+    inline constexpr uint32_t limit() const {
+        return this->limit_full;
+    }
 };
 
 template <size_t max_bits>
@@ -1731,8 +1814,23 @@ struct z86DescriptorCacheBase<16> {
     inline constexpr z86DescriptorCacheBase(uint16_t limit, uint32_t base) : base(base), limit(limit), type(0), privilege(0) {}
     inline constexpr z86DescriptorCacheBase(uint16_t limit, uint32_t base, uint8_t type, uint8_t privilege) : base(base), limit(limit), type(type), privilege(privilege) {}
 
-    inline constexpr z86DescriptorCacheBase(SEG_DESCRIPTOR<16>* descriptor)
+    inline constexpr z86DescriptorCacheBase(const SEG_DESCRIPTOR<16>* descriptor)
         : base(descriptor->base()), limit(descriptor->limit()), type(0), privilege(0)
+    {}
+    inline constexpr z86DescriptorCacheBase(const z86DescriptorCache80286& descriptor)
+        : base(descriptor.base()), limit(descriptor.limit()), type(0), privilege(0)
+    {}
+    inline constexpr z86DescriptorCacheBase(const z86DescriptorCache80386& descriptor)
+        : base(descriptor.base()), limit(descriptor.limit()), type(0), privilege(0)
+    {}
+    inline constexpr z86DescriptorCacheBase(const z86DescriptorCachePentium& descriptor)
+        : base(descriptor.base()), limit(descriptor.limit()), type(0), privilege(0)
+    {}
+    inline constexpr z86DescriptorCacheBase(const z86DescriptorCachePentiumPro& descriptor)
+        : base(descriptor.base()), limit(descriptor.limit()), type(0), privilege(0)
+    {}
+    inline constexpr z86DescriptorCacheBase(const z86DescriptorCacheAMD64& descriptor)
+        : base(descriptor.base()), limit(descriptor.limit()), type(0), privilege(0)
     {}
 };
 
@@ -1752,8 +1850,23 @@ struct z86DescriptorCacheBase<32> {
     inline constexpr z86DescriptorCacheBase(uint32_t limit, uint32_t base) : base(base), limit(limit), type(0), privilege(0) {}
     inline constexpr z86DescriptorCacheBase(uint32_t limit, uint32_t base, uint8_t type, uint8_t privilege) : base(base), limit(limit), type(type), privilege(privilege) {}
 
-    inline constexpr z86DescriptorCacheBase(SEG_DESCRIPTOR<32>* descriptor)
+    inline constexpr z86DescriptorCacheBase(const SEG_DESCRIPTOR<32>* descriptor)
         : base(descriptor->base()), limit(descriptor->limit()), type(0), privilege(0)
+    {}
+    inline constexpr z86DescriptorCacheBase(const z86DescriptorCache80286& descriptor)
+        : base(descriptor.base()), limit(descriptor.limit()), type(0), privilege(0)
+    {}
+    inline constexpr z86DescriptorCacheBase(const z86DescriptorCache80386& descriptor)
+        : base(descriptor.base()), limit(descriptor.limit()), type(0), privilege(0)
+    {}
+    inline constexpr z86DescriptorCacheBase(const z86DescriptorCachePentium& descriptor)
+        : base(descriptor.base()), limit(descriptor.limit()), type(0), privilege(0)
+    {}
+    inline constexpr z86DescriptorCacheBase(const z86DescriptorCachePentiumPro& descriptor)
+        : base(descriptor.base()), limit(descriptor.limit()), type(0), privilege(0)
+    {}
+    inline constexpr z86DescriptorCacheBase(const z86DescriptorCacheAMD64& descriptor)
+        : base(descriptor.base()), limit(descriptor.limit()), type(0), privilege(0)
     {}
 };
 
@@ -1773,8 +1886,23 @@ struct z86DescriptorCacheBase<64> {
     inline constexpr z86DescriptorCacheBase(uint32_t limit, uint64_t base) : base(base), limit(limit), type(0), privilege(0) {}
     inline constexpr z86DescriptorCacheBase(uint32_t limit, uint64_t base, uint8_t type, uint8_t privilege) : base(base), limit(limit), type(type), privilege(privilege) {}
     
-    inline constexpr z86DescriptorCacheBase(SEG_DESCRIPTOR<64>* descriptor)
+    inline constexpr z86DescriptorCacheBase(const SEG_DESCRIPTOR<64>* descriptor)
         : base(descriptor->base()), limit(descriptor->limit()), type(0), privilege(0)
+    {}
+    inline constexpr z86DescriptorCacheBase(const z86DescriptorCache80286& descriptor)
+        : base(descriptor.base()), limit(descriptor.limit()), type(0), privilege(0)
+    {}
+    inline constexpr z86DescriptorCacheBase(const z86DescriptorCache80386& descriptor)
+        : base(descriptor.base()), limit(descriptor.limit()), type(0), privilege(0)
+    {}
+    inline constexpr z86DescriptorCacheBase(const z86DescriptorCachePentium& descriptor)
+        : base(descriptor.base()), limit(descriptor.limit()), type(0), privilege(0)
+    {}
+    inline constexpr z86DescriptorCacheBase(const z86DescriptorCachePentiumPro& descriptor)
+        : base(descriptor.base()), limit(descriptor.limit()), type(0), privilege(0)
+    {}
+    inline constexpr z86DescriptorCacheBase(const z86DescriptorCacheAMD64& descriptor)
+        : base(descriptor.base()), limit(descriptor.limit()), type(0), privilege(0)
     {}
 };
 
@@ -1786,7 +1914,16 @@ struct z86DescriptorCache : z86DescriptorCacheBase<max_bits> {
     inline constexpr z86DescriptorCache() = default;
     inline constexpr z86DescriptorCache(LT limit, BT base) : z86DescriptorCacheBase<max_bits>::z86DescriptorCacheBase(limit, base) {}
     inline constexpr z86DescriptorCache(LT limit, BT base, uint8_t type, uint8_t privilege) : z86DescriptorCacheBase<max_bits>::z86DescriptorCacheBase(limit, base, type, privilege) {}
-    inline constexpr z86DescriptorCache(SEG_DESCRIPTOR<max_bits>* descriptor) : z86DescriptorCacheBase<max_bits>::z86DescriptorCacheBase(descriptor) {}
+    inline constexpr z86DescriptorCache(const SEG_DESCRIPTOR<max_bits>* descriptor) : z86DescriptorCacheBase<max_bits>::z86DescriptorCacheBase(descriptor) {}
+
+    inline constexpr z86DescriptorCache(const z86DescriptorCache80286& descriptor) : z86DescriptorCacheBase<max_bits>::z86DescriptorCacheBase(descriptor) {}
+    inline constexpr z86DescriptorCache(const z86DescriptorCache80386& descriptor) : z86DescriptorCacheBase<max_bits>::z86DescriptorCacheBase(descriptor) {}
+    inline constexpr z86DescriptorCache(const z86DescriptorCachePentium& descriptor) : z86DescriptorCacheBase<max_bits>::z86DescriptorCacheBase(descriptor) {}
+    inline constexpr z86DescriptorCache(const z86DescriptorCachePentiumPro& descriptor) : z86DescriptorCacheBase<max_bits>::z86DescriptorCacheBase(descriptor) {}
+    inline constexpr z86DescriptorCache(const z86DescriptorCacheAMD64& descriptor) : z86DescriptorCacheBase<max_bits>::z86DescriptorCacheBase(descriptor) {}
+
+    template <typename T>
+    inline constexpr T* get_ptr() const;
 
     /*
     inline constexpr void load_table(LT limit, BT base) {
@@ -1801,56 +1938,301 @@ struct z86DescriptorCache : z86DescriptorCacheBase<max_bits> {
     */
 
     // Invoked on GDT/LDT
-    inline constexpr SEG_DESCRIPTOR<max_bits>* load_selector(uint16_t selector) const;
+    inline constexpr SEG_DESCRIPTOR<max_bits>* get_descriptor(uint16_t selector) const;
+
+    inline constexpr void fill_descriptor(z86DescriptorCache80286& out) const {
+        out.access_rights = 0;
+        out.base_low = this->base;
+        out.base_high = this->base >> 16;
+        out.limit_full = this->limit;
+    }
 };
 
-struct z86Loadall2Frame {
-    uint16_t x0;
-    uint16_t x1;
-    uint16_t x2;
-    uint16_t msw;
-    uint16_t x3;
-    uint16_t x4;
-    uint16_t x5;
-    uint16_t x6;
-    uint16_t x7;
-    uint16_t x8;
-    uint16_t x9;
-    uint16_t tr;
-    uint16_t flags;
-    uint16_t ip;
-    uint16_t ldtr;
-    uint16_t ds;
-    uint16_t ss;
-    uint16_t cs;
-    uint16_t es;
-    uint16_t di;
-    uint16_t si;
-    uint16_t bp;
+// 80286 format
+struct z86LoadallFrame80286 {
+    uint16_t x0; // 0x0
+    uint16_t x1; // 0x2
+    uint16_t x2; // 0x4
+    uint16_t msw; // 0x6
+    uint16_t x3; // 0x8
+    uint16_t x4; // 0xA
+    uint16_t x5; // 0xC
+    uint16_t x6; // 0xE
+    uint16_t x7; // 0x10
+    uint16_t x8; // 0x12
+    uint16_t x9; // 0x14
+    uint16_t tr; // 0x16
+    uint16_t flags; // 0x18
+    uint16_t ip; // 0x1A
+    uint16_t ldtr; // 0x1C
+    uint16_t ds; // 0x1E
+    uint16_t ss; // 0x20
+    uint16_t cs; // 0x22
+    uint16_t es; // 0x24
+    uint16_t di; // 0x26
+    uint16_t si; // 0x28
+    uint16_t bp; // 0x2A
+    uint16_t sp; // 0x2C
+    uint16_t bx; // 0x2E
+    uint16_t dx; // 0x30
+    uint16_t cx; // 0x32
+    uint16_t ax; // 0x34
+    z86DescriptorCache80286 es_descriptor; // 0x36
+    z86DescriptorCache80286 cs_descriptor; // 0x3C
+    z86DescriptorCache80286 ss_descriptor; // 0x42
+    z86DescriptorCache80286 ds_descriptor; // 0x48
+    z86DescriptorCache80286 gdt_descriptor; // 0x4E
+    z86DescriptorCache80286 ldt_descriptor; // 0x54
+    z86DescriptorCache80286 idt_descriptor; // 0x5A
+    z86DescriptorCache80286 tss_descriptor; // 0x60
+    // 0x66
+};
+static_assert(sizeof(z86LoadallFrame80286) == 0x66);
+
+// 80386, 80486 format
+struct z86LoadallFrame80386 {
+    uint32_t cr0; // 0x0
+    uint32_t eflags; // 0x4
+    uint32_t eip; // 0x8
+    uint32_t edi; // 0xC
+    uint32_t esi; // 0x10
+    uint32_t ebp; // 0x14
+    uint32_t esp; // 0x18
+    uint32_t ebx; // 0x1C
+    uint32_t edx; // 0x20
+    uint32_t ecx; // 0x24
+    uint32_t eax; // 0x28
+    uint32_t dr6; // 0x2C
+    uint32_t dr7; // 0x30
+    alignas(4) uint16_t tr; // 0x34
+    alignas(4) uint16_t ldtr; // 0x38
+    alignas(4) uint16_t gs; // 0x3C
+    alignas(4) uint16_t fs; // 0x40
+    alignas(4) uint16_t ds; // 0x44
+    alignas(4) uint16_t ss; // 0x48
+    alignas(4) uint16_t cs; // 0x4C
+    alignas(4) uint16_t es; // 0x50
+    z86DescriptorCache80386 tss_descriptor; // 0x54
+    z86DescriptorCache80386 idt_descriptor; // 0x60
+    z86DescriptorCache80386 gdt_descriptor; // 0x6C
+    z86DescriptorCache80386 ldt_descriptor; // 0x78
+    z86DescriptorCache80386 gs_descriptor; // 0x84
+    z86DescriptorCache80386 fs_descriptor; // 0x90
+    z86DescriptorCache80386 ds_descriptor; // 0x9C
+    z86DescriptorCache80386 ss_descriptor; // 0xA8
+    z86DescriptorCache80386 cs_descriptor; // 0xB4
+    z86DescriptorCache80386 es_descriptor; // 0xC0
+    /*
+    // Are these real?
+    // Source: http://phg.chat.ru/opcode.txt
+    uint32_t : 32; // 0xCC
+    uint32_t : 32; // 0xD0
+    uint32_t : 32; // 0xD4
+    uint32_t : 32; // 0xD8
+    uint32_t : 32; // 0xDC
+    uint32_t : 32; // 0xE0
+    uint32_t : 32; // 0xE4
+    uint32_t : 32; // 0xE8
+    uint32_t : 32; // 0xEC
+    uint32_t : 32; // 0xF0
+    uint32_t : 32; // 0xF4
+    uint32_t : 32; // 0xF8
+    uint32_t : 32; // 0xFC
+    uint32_t x0; // 0x100
+    uint32_t x1; // 0x104
+    uint32_t x2; // 0x108
+    uint32_t x3; // 0x10C
+    uint32_t x4; // 0x110
+    uint32_t x5; // 0x114
+    uint32_t x6; // 0x118
+    uint32_t x7; // 0x11C
+    uint32_t x8; // 0x120
+    uint32_t x9; // 0x124
+    // 0x128
+    */
+};
+static_assert(sizeof(z86LoadallFrame80386) == 0xCC);
+
+struct z86RsmFramePentium {
+    uint32_t smm_base;
+    uint32_t smm_revision;
+    uint16_t io_restart_flag;
+    uint16_t halt_restart_flag;
+    uint32_t io_restart_edi;
+    uint32_t io_restart_ecx;
+    uint32_t io_restart_esi;
+    uint32_t io_restart_eip;
+    uint32_t : 32;
+    uint32_t : 32;
+    uint32_t : 32;
+    uint32_t : 32;
+    uint16_t dr6_alt;
+    uint16_t rsm_control;
+    uint32_t cr4;
+    uint32_t : 32;
+    z86DescriptorCachePentium es_descriptor;
+    z86DescriptorCachePentium cs_descriptor;
+    z86DescriptorCachePentium ss_descriptor;
+    z86DescriptorCachePentium ds_descriptor;
+    z86DescriptorCachePentium fs_descriptor;
+    z86DescriptorCachePentium gs_descriptor;
+    z86DescriptorCachePentium ldt_descriptor;
+    z86DescriptorCachePentium gdt_descriptor;
+    z86DescriptorCachePentium idt_descriptor;
+    z86DescriptorCachePentium tss_descriptor;
+    alignas(4) uint16_t es;
+    alignas(4) uint16_t cs;
+    alignas(4) uint16_t ss;
+    alignas(4) uint16_t ds;
+    alignas(4) uint16_t fs;
+    alignas(4) uint16_t gs;
+    alignas(4) uint16_t ldtr;
+    alignas(4) uint16_t tr;
+    uint32_t dr7;
+    uint32_t dr6;
+    uint32_t eax;
+    uint32_t ecx;
+    uint32_t edx;
+    uint32_t ebx;
+    uint32_t esp;
+    uint32_t ebp;
+    uint32_t esi;
+    uint32_t edi;
+    uint32_t eip;
+    uint32_t eflags;
+    uint32_t cr3;
+    uint32_t cr0;
+};
+
+struct z86RsmFrameIntel64 {
+    // "reserved"
+    uint64_t r15 packed_field;
+    uint64_t r14 packed_field;
+    uint64_t r13 packed_field;
+    uint64_t r12 packed_field;
+    uint64_t r11 packed_field;
+    uint64_t r10 packed_field;
+    uint64_t r9 packed_field;
+    uint64_t r8 packed_field;
+    uint64_t rax packed_field;
+    uint64_t rcx packed_field;
+    uint64_t rdx packed_field;
+    uint64_t rbx packed_field;
+    uint64_t rsp packed_field;
+    uint64_t rbp packed_field;
+    uint64_t rsi packed_field;
+    uint64_t rdi packed_field;
+    uint64_t io_mem_addr packed_field;
+    uint32_t io_misc;
+    alignas(4) uint16_t es;
+    alignas(4) uint16_t cs;
+    alignas(4) uint16_t ss;
+    alignas(4) uint16_t ds;
+    alignas(4) uint16_t fs;
+    alignas(4) uint16_t gs;
+    alignas(4) uint16_t ldtr;
+    alignas(4) uint16_t tr;
+    uint64_t dr7;
+    uint64_t dr6;
+    uint64_t rip;
+    uint64_t efer;
+    uint64_t rflags;
+    uint64_t cr3;
+    uint64_t cr0;
+};
+
+struct z86RsmFrameAMD64 {
+    z86DescriptorCacheAMD64 es_descriptor;
+    z86DescriptorCacheAMD64 cs_descriptor;
+    z86DescriptorCacheAMD64 ss_descriptor;
+    z86DescriptorCacheAMD64 ds_descriptor;
+    z86DescriptorCacheAMD64 fs_descriptor;
+    z86DescriptorCacheAMD64 gs_descriptor;
+    z86DescriptorCacheAMD64 gdt_descriptor;
+    z86DescriptorCacheAMD64 ldt_descriptor;
+    z86DescriptorCacheAMD64 idt_descriptor;
+    z86DescriptorCacheAMD64 tss_descriptor;
+    uint64_t io_restart_rip;
+    uint64_t io_restart_rcx;
+    uint64_t io_restart_rsi;
+    uint64_t io_restart_rdi;
+    uint32_t io_restart_dword;
+    uint32_t : 32;
+    uint8_t io_restart_flag;
+    uint8_t halt_restart_flag;
+    uint16_t : 16;
+    uint32_t : 32;
+    uint64_t efer;
+    uint64_t guest;
+    uint64_t guest_vmcb_physical_addr;
+    uint64_t guest_virtual_interrupt;
+    uint64_t : 64;
+    uint32_t : 32;
+    uint32_t smm_revision;
+    uint32_t smm_base;
+    uint32_t : 32;
+    uint64_t : 64;
+    uint64_t : 64;
+    uint64_t ssp;
+    uint64_t guest_pat;
+    uint64_t host_efer;
+    uint64_t host_cr4;
+    uint64_t host_cr3;
+    uint64_t host_cr0;
+    uint64_t cr4;
+    uint64_t cr3;
+    uint64_t cr0;
+    uint64_t dr7;
+    uint64_t dr6;
+    uint64_t rflags;
+    uint64_t rip;
+    uint64_t r15;
+    uint64_t r14;
+    uint64_t r13;
+    uint64_t r12;
+    uint64_t r11;
+    uint64_t r10;
+    uint64_t r9;
+    uint64_t r8;
+    uint64_t rdi;
+    uint64_t rsi;
+    uint64_t rbp;
+    uint64_t rsp;
+    uint64_t rbx;
+    uint64_t rdx;
+    uint64_t rcx;
+    uint64_t rax;
+};
+static_assert(sizeof(z86RsmFrameAMD64) == 0x200);
+
+template <size_t bits>
+struct z86TSSStack;
+
+template <>
+struct z86TSSStack<16> {
     uint16_t sp;
-    uint16_t bx;
-    uint16_t dx;
-    uint16_t cx;
-    uint16_t ax;
-    z86DescriptorCache80286 es_descriptor;
-    z86DescriptorCache80286 cs_descriptor;
-    z86DescriptorCache80286 ss_descriptor;
-    z86DescriptorCache80286 ds_descriptor;
-    z86DescriptorCache80286 gdt_descriptor;
-    z86DescriptorCache80286 ldt_descriptor;
-    z86DescriptorCache80286 idt_descriptor;
-    z86DescriptorCache80286 tss_descriptor;
-};
-
-struct TSS16Stack {
-    uint16_t sp;
     uint16_t ss;
 };
 
-struct TSS16 {
+template <>
+struct z86TSSStack<32> {
+    uint32_t sp;
+    alignas(4) uint16_t ss;
+};
+
+template <>
+struct z86TSSStack<64> {
+    uint64_t sp;
+};
+
+template <size_t bits>
+struct z86TSS;
+
+template <>
+struct z86TSS<16> {
     uint16_t link;
     union {
-        TSS16Stack stacks[3];
+        z86TSSStack<16> stacks[3];
         struct {
             uint16_t sp0;
             uint16_t ss0;
@@ -1876,6 +2258,76 @@ struct TSS16 {
     uint16_t ds;
     uint16_t ldtr;
 };
+
+template <>
+struct z86TSS<32> {
+    alignas(4) uint16_t link;
+    union {
+        z86TSSStack<32> stacks[3];
+        struct {
+            uint32_t sp0;
+            alignas(4) uint16_t ss0;
+            uint32_t sp1;
+            alignas(4) uint16_t ss1;
+            uint32_t sp2;
+            alignas(4) uint16_t ss2;
+        };
+    };
+    uint32_t cr3;
+    uint32_t ip;
+    uint32_t flags;
+    uint32_t ax;
+    uint32_t cx;
+    uint32_t dx;
+    uint32_t bx;
+    uint32_t sp;
+    uint32_t bp;
+    uint32_t si;
+    uint32_t di;
+    alignas(4) uint16_t es;
+    alignas(4) uint16_t cs;
+    alignas(4) uint16_t ss;
+    alignas(4) uint16_t ds;
+    alignas(4) uint16_t fs;
+    alignas(4) uint16_t gs;
+    alignas(4) uint16_t ldtr;
+    uint16_t task_trap : 1;
+    uint16_t : 15;
+    uint16_t io_map_base;
+    uint32_t ssp;
+};
+static_assert(sizeof(z86TSS<32>) == 108);
+
+template <>
+struct z86TSS<64> {
+    uint32_t : 32;
+    union {
+        z86TSSStack<64> stacks[3] packed_field;
+        struct {
+            uint64_t sp0 packed_field;
+            uint64_t sp1 packed_field;
+            uint64_t sp2 packed_field;
+        };
+    };
+    union {
+        uint64_t ist[8] packed_field;
+        struct {
+            uint64_t ist0 packed_field;
+            uint64_t ist1 packed_field;
+            uint64_t ist2 packed_field;
+            uint64_t ist3 packed_field;
+            uint64_t ist4 packed_field;
+            uint64_t ist5 packed_field;
+            uint64_t ist6 packed_field;
+            uint64_t ist7 packed_field;
+        };
+    };
+    uint32_t : 32;
+    uint32_t : 32;
+    uint16_t : 16;
+    uint16_t io_map_base;
+};
+static_assert(sizeof(z86TSS<64>) == 104);
 
 template <size_t max_bits, bool protected_mode>
 struct z86BaseControlBase;
@@ -1979,6 +2431,7 @@ struct z86BaseControlBase<64, false> {
 
     static inline constexpr uint8_t cpl = 0;
     static inline constexpr uint8_t iopl = 0;
+    static inline constexpr int8_t tss_size = 1;
     static inline constexpr uint8_t protected_mode = 0;
     static inline constexpr bool long_mode = false;
 };
@@ -2008,6 +2461,7 @@ struct z86BaseControlBase<16, true> {
         uint16_t ip;
     };
     union {
+        uint16_t cr[1];
         uint16_t msw;
         uint16_t cr0;
         union {
@@ -2033,6 +2487,7 @@ struct z86BaseControlBase<16, true> {
     uint16_t error_code;
     uint8_t cpl;
     uint8_t iopl;
+    int8_t tss_size = 1;
     static inline constexpr bool long_mode = false;
 };
 
@@ -2098,6 +2553,7 @@ struct z86BaseControlBase<32, true> {
     uint16_t error_code;
     uint8_t cpl;
     uint8_t iopl;
+    int8_t tss_size = 1;
     static inline constexpr bool long_mode = false;
 };
 
@@ -2164,6 +2620,7 @@ struct z86BaseControlBase<64, true> {
     uint16_t error_code;
     uint8_t cpl;
     uint8_t iopl;
+    int8_t tss_size = 1;
     bool long_mode;
 };
 
@@ -2174,6 +2631,15 @@ template <size_t max_bits, bool use_old_reset>
 struct z86BaseControl<max_bits, use_old_reset, false> : z86BaseControlBase<max_bits, false> {
     using BT = z86DescriptorCache<max_bits>::BT;
     using LT = z86DescriptorCache<max_bits>::LT;
+    using RT = z86BaseGPRs<max_bits>::RT;
+
+    template <typename T> requires(std::is_base_of_v<z86DescriptorCacheHardware, T>)
+    inline void load_descriptor(uint8_t index, const T& descriptor) {
+    }
+
+    template <typename T> requires(std::is_base_of_v<z86DescriptorCacheHardware, T>)
+    inline void fill_descriptor(uint8_t index, T& descriptor) {
+    }
 
     inline void regcall software_interrupt(uint8_t number) {
         this->pending_sinterrupt = number;
@@ -2217,7 +2683,14 @@ struct z86BaseControl<max_bits, use_old_reset, false> : z86BaseControlBase<max_b
     inline constexpr uint16_t get_machine_status_word() const {
         return 0;
     }
+
     inline constexpr void set_machine_status_word(uint16_t msw) {
+    }
+
+    inline constexpr RT get_control_reg(uint8_t index) const {
+        return 0;
+    }
+    inline constexpr void set_control_reg(uint8_t index, RT value) {
     }
 
     inline constexpr void set_iopl(uint8_t value) {
@@ -2251,6 +2724,41 @@ template <size_t max_bits, bool use_old_reset>
 struct z86BaseControl<max_bits, use_old_reset, true> : z86BaseControlBase<max_bits, true> {
     using BT = z86DescriptorCache<max_bits>::BT;
     using LT = z86DescriptorCache<max_bits>::LT;
+    using RT = z86BaseGPRs<max_bits>::RT;
+
+    inline void set_descriptor_base(uint8_t index, BT base) {
+        //this->descriptors[index].base = base;
+        reconstruct_at(&this->descriptors[index], this->descriptors[index].limit, base, this->descriptors[index].type, this->descriptors[index].privilege);
+    }
+
+    inline void set_descriptor_limit(uint8_t index, LT base) {
+        //this->descriptors[index].limit = 0xFFFF;
+        reconstruct_at(&this->descriptors[index], 0xFFFF, this->descriptors[index].base, this->descriptors[index].type, this->descriptors[index].privilege);
+    }
+
+    inline void load_descriptor(uint8_t index, BT base, LT limit, uint8_t type, uint8_t privilege) {
+        //this->descriptors[index].base = base;
+        //this->descriptors[index].limit = limit;
+        //this->descriptors[index].type = type;
+        //this->descriptors[index].privilege = privilege;
+        reconstruct_at(&this->descriptors[index], base, limit, type, privilege);
+    }
+
+    inline void load_descriptor(uint8_t index, const SEG_DESCRIPTOR<max_bits>* descriptor) {
+        //this->descriptors[index].base = descriptor->base();
+        //this->descriptors[index].limit = descriptor->limit();
+        reconstruct_at(&this->descriptors[index], descriptor);
+    }
+
+    template <typename T> requires(std::is_base_of_v<z86DescriptorCacheHardware, T>)
+    inline void load_descriptor(uint8_t index, const T& descriptor) {
+        reconstruct_at(&this->descriptors[index], descriptor);
+    }
+
+    template <typename T> requires(std::is_base_of_v<z86DescriptorCacheHardware, T>)
+    inline void fill_descriptor(uint8_t index, T& descriptor) {
+        this->descriptors[index].fill_descriptor(descriptor);
+    }
 
     inline void regcall software_interrupt(uint8_t number) {
         this->pending_sinterrupt = number;
@@ -2273,22 +2781,15 @@ struct z86BaseControl<max_bits, use_old_reset, true> : z86BaseControlBase<max_bi
     inline constexpr void reset_descriptors() {
         if constexpr (!use_old_reset) {
             this->cs = 0xF000;
-            //this->cs_descriptor.base = 0xFFFF0000;
-            reconstruct_at(&this->cs_descriptor, this->cs_descriptor.limit, 0xFFFF0000, this->cs_descriptor.type, this->cs_descriptor.privilege);
+            this->set_descriptor_base(CS, 0xF0000);
         }
         else {
             this->cs = 0xFFFF;
-            //this->cs_descriptor.base = 0xFFFFFFF0;
-            reconstruct_at(&this->cs_descriptor, this->cs_descriptor.limit, 0xFFFFFFF0, this->cs_descriptor.type, this->cs_descriptor.privilege);
+            this->set_descriptor_base(CS, 0xFFFF0);
         }
         for (size_t i = 0; i < 8; ++i) {
-            //this->descriptors[i].limit = 0xFFFF;
-            //std::destroy_at(&this->descriptors[i]);
-            //new (&this->descriptors[i]) z86DescriptorCache<max_bits>((LT)0xFFFF, (BT)0);
-            reconstruct_at(&this->descriptors[i], 0xFFFF, this->descriptors[i].base, this->descriptors[i].type, this->descriptors[i].privilege);
+            this->set_descriptor_limit(i, 0xFFFF);
         }
-        //std::destroy_at(&this->cs_descriptor);
-        //new (&this->cs_descriptor) z86DescriptorCache<max_bits>((LT)0xFFFF, (BT)0);
     }
 
     inline constexpr void load_descriptor_table(uint8_t index, LT limit, BT base) {
@@ -2309,10 +2810,19 @@ struct z86BaseControl<max_bits, use_old_reset, true> : z86BaseControlBase<max_bi
     inline constexpr auto get_machine_status_word() const {
         return this->cr0;
     }
+
     inline constexpr void set_machine_status_word(uint16_t msw) {
         // TODO: filter bits
         this->msw = msw;
     }
+
+    inline constexpr RT get_control_reg(uint8_t index) const {
+        return this->cr[index];
+    }
+    inline constexpr void set_control_reg(uint8_t index, RT value) {
+        this->cr[index] = value;
+    }
+
     inline constexpr void set_iopl(uint8_t value) {
         this->iopl = value;
     }
@@ -2349,11 +2859,16 @@ struct z86Flags<false> {
     bool zero;
     bool sign;
     bool overflow;
+    /*
     union {
         bool trap : 1;
         bool interrupt : 1;
         bool direction : 1;
     };
+    */
+    bool trap;
+    bool interrupt;
+    bool direction;
 };
 
 template <>
@@ -2365,12 +2880,18 @@ struct z86Flags<true> {
     bool zero;
     bool sign;
     bool overflow;
+    /*
     union {
         bool trap : 1;
         bool interrupt : 1;
         bool direction : 1;
         bool nested_task : 1;
     };
+    */
+    bool trap;
+    bool interrupt;
+    bool direction;
+    bool nested_task;
 };
 
 template <size_t max_bits, bool use_old_reset, bool has_protected_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
@@ -2387,8 +2908,7 @@ struct z86RegBase<16, use_old_reset, has_protected_mode, has_x87, max_sse_bits, 
 {
     static constexpr inline int8_t data_size = 1;
     static constexpr inline int8_t addr_size = 1;
-    static constexpr inline int8_t stack_size = 1;
-    static constexpr inline int8_t tss_size = 1;
+    static constexpr inline bool stack_size = true;
     static constexpr inline int8_t default_data_size = 1;
     static constexpr inline int8_t default_addr_size = 1;
     static constexpr inline uint8_t opcode_prefix = 0;
@@ -2466,8 +2986,7 @@ struct z86RegBase<32, use_old_reset, has_protected_mode, has_x87, max_sse_bits, 
 {
     int8_t data_size = 1;
     int8_t addr_size = 1;
-    int8_t stack_size = 1;
-    int8_t tss_size = 1;
+    bool stack_size = true;
     int8_t default_data_size = 1;
     int8_t default_addr_size = 1;
     uint8_t opcode_prefix = 0;
@@ -2515,10 +3034,10 @@ struct z86RegBase<32, use_old_reset, has_protected_mode, has_x87, max_sse_bits, 
         return false;
     }
     inline constexpr bool stack_size_16() const {
-        return this->stack_size != 0;
+        return this->stack_size;
     }
     inline constexpr bool stack_size_32() const {
-        return this->stack_size == 0;
+        return !this->stack_size;
     }
     inline constexpr bool stack_size_64() const {
         return false;
@@ -2552,8 +3071,7 @@ struct z86RegBase<64, use_old_reset, has_protected_mode, has_x87, max_sse_bits, 
 {
     int8_t data_size = 1;
     int8_t addr_size = 1;
-    int8_t stack_size = 1;
-    int8_t tss_size = 1;
+    bool stack_size = true;
     int8_t default_data_size = 1;
     int8_t default_addr_size = 1;
     uint8_t opcode_prefix = 0;
@@ -2602,13 +3120,13 @@ struct z86RegBase<64, use_old_reset, has_protected_mode, has_x87, max_sse_bits, 
         return this->addr_size < 0;
     }
     inline constexpr bool stack_size_16() const {
-        return this->stack_size > 0;
+        return this->stack_size;
     }
     inline constexpr bool stack_size_32() const {
-        return this->stack_size == 0;
+        return !this->stack_size;
     }
     inline constexpr bool stack_size_64() const {
-        return this->stack_size < 0;
+        return this->is_long_mode();
     }
     inline constexpr bool tss_size_16() const {
         return this->tss_size > 0;
@@ -2633,8 +3151,343 @@ struct z86RegBase<64, use_old_reset, has_protected_mode, has_x87, max_sse_bits, 
     }
 };
 
-template <size_t max_bits, bool use_old_reset, bool has_protected_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
+#define z86RegCommonTemplate size_t max_bits, bool use_old_reset, bool has_protected_mode, bool has_long_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count
+#define z86RegCommonDefault z86RegCommon<max_bits, use_old_reset, has_protected_mode, has_long_mode, has_x87, max_sse_bits, sse_reg_count>
+
+template <size_t max_bits, bool use_old_reset, bool has_protected_mode, bool has_long_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
 struct z86RegCommon : z86RegBase<max_bits, use_old_reset, has_protected_mode, has_x87, max_sse_bits, sse_reg_count> {
+
+    using HT = z86BaseGPRs<max_bits>::HT;
+    using RT = z86BaseGPRs<max_bits>::RT;
+    using DT = z86BaseGPRs<max_bits>::DT;
+
+    using SRT = std::make_signed_t<RT>;
+    int8_t seg_override;
+
+    inline constexpr void set_seg_override(uint8_t seg) {
+        this->seg_override = seg;
+        if constexpr (has_long_mode) {
+            if (this->is_long_mode()) {
+                this->reset_rex_bits();
+            }
+        }
+    }
+
+    inline constexpr uint16_t segment(uint8_t default_seg) const {
+        if constexpr (has_protected_mode) {
+            return this->seg_override < 0 ? default_seg : this->seg_override;
+        } else {
+            return this->seg[this->seg_override < 0 ? default_seg : this->seg_override];
+        }
+    }
+
+    inline constexpr DT addr(uint8_t default_seg, RT offset) const {
+        return (DT)this->segment(default_seg) << bitsof(RT) | offset;
+    }
+
+    inline constexpr DT addr_force(uint8_t seg, RT offset) const {
+        if constexpr (has_protected_mode) {
+            return (DT)seg << bitsof(RT) | offset;
+        } else {
+            return (DT)this->seg[seg] << bitsof(RT) | offset;
+        }
+    }
+
+    template <typename P = RT>
+    inline constexpr DT pc() const {
+        return this->addr_force(CS, this->IP<P>());
+    }
+
+    template <typename P = RT>
+    inline constexpr DT stack() const {
+        return this->addr_force(SS, this->SP<P>());
+    }
+
+    template <typename P = RT>
+    inline constexpr DT str_src() const {
+        return this->addr(DS, this->SI<P>());
+    }
+
+    template <typename P = RT>
+    inline constexpr DT str_dst() const {
+        return this->addr_force(ES, this->DI<P>());
+    }
+
+    template <typename T>
+    inline constexpr auto& A() {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->al;
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->ax;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->eax;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rax;
+        }
+    }
+
+    template <typename T>
+    inline constexpr const auto& A() const {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->al;
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->ax;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->eax;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rax;
+        }
+    }
+
+    template <typename T>
+    inline constexpr auto& C() {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->cl;
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->cx;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->ecx;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rcx;
+        }
+    }
+
+    template <typename T>
+    inline constexpr const auto& C() const {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->cl;
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->cx;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->ecx;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rcx;
+        }
+    }
+
+    template <typename T>
+    inline constexpr auto& D() {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->dl;
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->dx;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->edx;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rdx;
+        }
+    }
+
+    template <typename T>
+    inline constexpr const auto& D() const {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->dl;
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->dx;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->edx;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rdx;
+        }
+    }
+
+    template <typename T>
+    inline constexpr auto& B() {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->bl;
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->bx;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->ebx;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rbx;
+        }
+    }
+
+    template <typename T>
+    inline constexpr const auto& B() const {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->bl;
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->bx;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->ebx;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rbx;
+        }
+    }
+
+    template <typename T>
+    inline constexpr auto& SP() {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->spl;
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->sp;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->esp;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rsp;
+        }
+    }
+
+    template <typename T>
+    inline constexpr const auto& SP() const {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->spl;
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->sp;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->esp;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rsp;
+        }
+    }
+
+    template <typename T>
+    inline constexpr auto& BP() {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->bpl;
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->bp;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->ebp;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rbp;
+        }
+    }
+
+    template <typename T>
+    inline constexpr const auto& BP() const {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->bpl;
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->bp;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->ebp;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rbp;
+        }
+    }
+
+    template <typename T>
+    inline constexpr auto& SI() {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->sil;
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->si;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->esi;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rsi;
+        }
+    }
+
+    template <typename T>
+    inline constexpr const auto& SI() const {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->sil;
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->si;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->esi;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rsi;
+        }
+    }
+
+    template <typename T>
+    inline constexpr auto& DI() {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->dil;
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->di;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->edi;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rdi;
+        }
+    }
+
+    template <typename T>
+    inline constexpr const auto& DI() const {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->dil;
+        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->di;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->edi;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rdi;
+        }
+    }
+
+    template <typename T>
+    inline constexpr auto& IP() {
+        if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->ip;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->eip;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rip;
+        }
+    }
+
+    template <typename T>
+    inline constexpr const auto& IP() const {
+        if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            return this->ip;
+        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            return this->eip;
+        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            return this->rip;
+        }
+    }
+
+    // Read A double
+    template <typename T>
+    inline constexpr auto read_AD() const {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->ax;
+        }
+        else {
+            using U = std::make_unsigned_t<dbl_int_t<T>>;
+            return (U)this->D<T>() << bitsof(T) | this->A<T>();
+        }
+    }
+
+    // Write A double
+    template <typename T>
+    inline constexpr void write_AD(T value) {
+        if constexpr (sizeof(T) == sizeof(uint16_t)) {
+            this->ax = value;
+        }
+        else {
+            using U = std::make_unsigned_t<T>;
+            this->A<T>() = value;
+            this->D<T>() = (U)value >> bitsof(hlf_int_t<T>);
+        }
+    }
+
+    // A double high
+    template <typename T>
+    inline constexpr auto& ADH() {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->ah;
+        }
+        else {
+            return this->D<T>();
+        }
+    }
+
+    // A double high
+    template <typename T>
+    inline constexpr const auto& ADH() const {
+        if constexpr (sizeof(T) == sizeof(uint8_t)) {
+            return this->ah;
+        } else {
+            return this->D<T>();
+        }
+    }
 
 
     template <typename T = uint16_t>
@@ -2658,7 +3511,7 @@ struct z86RegCommon : z86RegBase<max_bits, use_old_reset, has_protected_mode, ha
         return base;
     }
 
-    template <typename T = uint16_t>
+    template <typename T = uint16_t, bool ignore_checks = false>
     inline void set_flags(T src) {
         this->carry = src & 0x01;
         this->parity = src & 0x04;
@@ -2669,12 +3522,12 @@ struct z86RegCommon : z86RegBase<max_bits, use_old_reset, has_protected_mode, ha
             this->trap = src & 0x0100;
             uint8_t cpl = this->current_privilege_level();
             uint8_t iopl = this->get_iopl();
-            if (cpl <= iopl) {
+            if (ignore_checks || cpl <= iopl) {
                 this->interrupt = src & 0x0200;
             }
             this->direction = src & 0x0400;
             this->overflow = src & 0x0800;
-            if (cpl == 0) {
+            if (ignore_checks || cpl == 0) {
                 this->set_iopl(src >> 12 & 3);
             }
             if constexpr (sizeof(T) >= sizeof(uint32_t)) {
@@ -2682,44 +3535,264 @@ struct z86RegCommon : z86RegBase<max_bits, use_old_reset, has_protected_mode, ha
             }
         }
     }
+
+    template <typename P, typename T>
+    inline void regcall PUSH_impl(const T& src);
+
+    template <typename T>
+    inline void regcall PUSH16(const T& src) {
+        return this->PUSH_impl<uint16_t>(src);
+    }
+
+    template <typename T>
+    inline void regcall PUSH32(const T& src) {
+        return this->PUSH_impl<uint32_t>(src);
+    }
+
+    template <typename T>
+    inline void regcall PUSH64(const T& src) {
+        return this->PUSH_impl<uint64_t>(src);
+    }
+
+    template <typename T = SRT>
+    inline void regcall PUSH(const T& src) {
+        if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            if constexpr (max_bits == 64) {
+                // 64 bit values can only be pushed in long
+                // mode, where the stack is always 64 bit
+                return this->PUSH64(src);
+            }
+        }
+        else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            if constexpr (max_bits > 16) {
+                // No need to check for 64 bit stack size
+                // because a 32 bit push can't be encoded
+                // when running in long mode (hopefully)
+                if (this->stack_size_32()) {
+                    return this->PUSH32(src);
+                }
+            }
+        }
+        else {
+            // 16 bit pushes are horrible and exist
+            // in all modes
+            if constexpr (max_bits > 16) {
+                if constexpr (max_bits == 64) {
+                    if (this->stack_size_64()) {
+                        return this->PUSH64(src);
+                    }
+                }
+                if (this->stack_size_32()) {
+                    return this->PUSH32(src);
+                }
+            }
+        }
+        // This is doubling as a backup case for the constexprs
+        return this->PUSH16(src);
+    }
+
+    template <typename P, typename T>
+    inline T regcall POP_impl();
+
+    template <typename T>
+    inline T regcall POP16() {
+        return this->POP_impl<uint16_t, T>();
+    }
+
+    template <typename T>
+    inline T regcall POP32() {
+        return this->POP_impl<uint32_t, T>();
+    }
+
+    template <typename T>
+    inline T regcall POP64() {
+        return this->POP_impl<uint64_t, T>();
+    }
+
+    template <typename T = RT>
+    inline T regcall POP() {
+        if constexpr (sizeof(T) == sizeof(uint64_t)) {
+            if constexpr (max_bits == 64) {
+                // 64 bit values can only be popped in long
+                // mode, where the stack is always 64 bit
+                return this->POP64<T>();
+            }
+        }
+        else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+            if constexpr (max_bits > 16) {
+                // No need to check for 64 bit stack size
+                // because a 32 bit pop can't be encoded
+                // when running in long mode (hopefully)
+                if (this->stack_size_32()) {
+                    return this->POP32<T>();
+                }
+            }
+        }
+        else {
+            // 16 bit pops are horrible and exist
+            // in all modes
+            if constexpr (max_bits > 16) {
+                if constexpr (max_bits == 64) {
+                    if (this->stack_size_64()) {
+                        return this->POP64<T>();
+                    }
+                }
+                if (this->stack_size_32()) {
+                    return this->POP32<T>();
+                }
+            }
+        }
+        // This is doubling as a backup case for the constexprs
+        return this->POP16<T>();
+    }
+
+    template <typename P = void>
+    inline constexpr RT stack_size_bp() const {
+        if constexpr (std::is_same_v<P, void>) {
+            // No size specified, calculate it
+            if constexpr (bits > 16) {
+                if constexpr (bits == 64) {
+                    if (this->stack_size_64()) {
+                        return this->rbp;
+                    }
+                }
+                if (this->stack_size_32()) {
+                    return this->ebp;
+                }
+            }
+        }
+        else if constexpr (sizeof(P) == sizeof(uint64_t)) {
+            return this->rbp;
+        }
+        else if constexpr (sizeof(P) == sizeof(uint32_t)) {
+            return this->ebp;
+        }
+        return this->bp;
+    }
+
+    template <typename T = RT>
+    inline bool regcall JMPABS(T new_ip) {
+        this->rip = new_ip;
+        return false;
+    }
+
+    template <typename T = RT>
+    inline bool regcall CALLABS(T next_ip, T new_ip) {
+        this->PUSH(next_ip);
+        return this->JMPABS(new_ip);
+    }
 };
 
-template <size_t max_bits, bool use_old_reset, bool has_protected_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
+template <size_t max_bits, bool use_old_reset, bool has_protected_mode, bool has_long_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
 struct z86Reg;
 
 template <size_t max_bits, bool use_old_reset, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
-struct z86Reg<max_bits, use_old_reset, false, has_x87, max_sse_bits, sse_reg_count> :
-    z86RegCommon<max_bits, use_old_reset, false, has_x87, max_sse_bits, sse_reg_count>
+struct z86Reg<max_bits, use_old_reset, false, false, has_x87, max_sse_bits, sse_reg_count> :
+    z86RegCommon<max_bits, use_old_reset, false, false, has_x87, max_sse_bits, sse_reg_count>
 {
+    using HT = z86BaseGPRs<max_bits>::HT;
+    using RT = z86BaseGPRs<max_bits>::RT;
+    using DT = z86BaseGPRs<max_bits>::DT;
+
+    using SRT = std::make_signed_t<RT>;
+
     inline constexpr bool write_seg_impl(uint8_t index, uint16_t value) {
         this->seg[index] = value;
         return false;
     }
 
-    inline constexpr bool write_seg_not_cs_impl(uint8_t index, uint16_t selector) {
-        return this->write_seg_impl(index, selector);
+    template <typename T = RT>
+    inline bool regcall JMPFABS_impl(T new_ip, uint16_t new_cs) {
+        this->cs = new_cs;
+        return this->JMPABS(new_ip);
     }
 
-    inline constexpr bool write_seg_cs_jmp_impl(uint16_t selector) {
-        return this->write_seg_impl(CS, selector);
+    template <typename T = RT>
+    inline bool regcall CALLFABS_impl(T next_ip, T new_ip, uint16_t new_cs) {
+        this->PUSH<T>(this->cs);
+        this->PUSH(next_ip);
+        return this->JMPFABS_impl(new_ip, new_cs);
     }
 
-    inline constexpr bool write_seg_cs_call_impl(uint16_t selector) {
-        return this->write_seg_impl(CS, selector);
+    inline bool regcall RETF() {
+        if constexpr (bits > 16) {
+            if (this->data_size_32()) {
+                this->rip = this->POP<uint32_t>();
+                this->cs = this->POP<uint32_t>();
+                return false;
+            }
+            if constexpr (bits == 64) {
+                if (this->data_size_64()) {
+                    this->rip = this->POP<uint64_t>();
+                    this->cs = this->POP<uint64_t>();
+                    return false;
+                }
+            }
+        }
+        this->rip = this->POP<uint16_t>();
+        this->cs = this->POP<uint16_t>();
+        return false;
     }
 
-    inline constexpr bool write_seg_cs_ret_impl(uint16_t selector) {
-        return this->write_seg_impl(CS, selector);
+    template <typename P> requires (!std::is_integral_v<P>)
+    inline bool regcall RETFI(const P& pc) {
+        this->RETF();
+        if constexpr (bits > 16) {
+            if constexpr (bits == 64) {
+                if (this->stack_size_64()) {
+                    this->rsp += pc.read<uint16_t>();
+                    return false;
+                }
+            }
+            if (this->stack_size_32()) {
+                this->esp += pc.read<uint16_t>();
+                return false;
+            }
+        }
+        this->sp += pc.read<uint16_t>();
+        return false;
+    }
+
+    inline bool regcall IRET() {
+        if constexpr (bits > 16) {
+            if (this->data_size_32()) {
+                this->rip = this->POP<uint32_t>();
+                this->cs = this->POP<uint32_t>();
+                this->set_flags(this->POP<uint32_t>());
+                return false;
+            }
+            if constexpr (bits == 64) {
+                if (this->data_size_64()) {
+                    this->rip = this->POP<uint64_t>();
+                    this->cs = this->POP<uint64_t>();
+                    this->set_flags(this->POP<uint64_t>());
+                    return false;
+                }
+            }
+        }
+        this->rip = this->POP<uint16_t>();
+        this->cs = this->POP<uint16_t>();
+        this->set_flags(this->POP<uint16_t>());
+        return false;
     }
 
     inline constexpr void write_control_seg(uint8_t index, uint16_t value) {
     }
 };
 
-template <size_t max_bits, bool use_old_reset, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
-struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_count> :
-    z86RegCommon<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_count>
+template <size_t max_bits, bool use_old_reset, bool has_long_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
+struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bits, sse_reg_count> :
+    z86RegCommon<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bits, sse_reg_count>
 {
+    using HT = z86BaseGPRs<max_bits>::HT;
+    using RT = z86BaseGPRs<max_bits>::RT;
+    using DT = z86BaseGPRs<max_bits>::DT;
+
+    using SRT = std::make_signed_t<RT>;
+
+    inline constexpr SEG_DESCRIPTOR<max_bits>* get_descriptor(uint16_t selector) const {
+        return this->descriptors[GDT + (bool)(selector & 4)].get_descriptor(selector);
+    }
 
     // Allowed segment types:
     // screw this though
@@ -2728,7 +3801,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_coun
     // Other: R data, RW data, ER code
 
     // x64: POP DS/ES/SS not valid, LDS/LES not valid
-    inline constexpr bool write_seg_not_cs_impl(uint8_t index, uint16_t selector) {
+    constexpr bool write_seg_impl(uint8_t index, uint16_t selector) {
         if (this->protected_mode) {
             using T = SEG_DESCRIPTOR<(std::min)((size_t)32, max_bits)>;
             T* new_descriptor;
@@ -2746,7 +3819,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_coun
                 }
                 // RPL check
                 if (expect(this->cpl != (selector & 3), false)) goto throw_gp_selector;
-                new_descriptor = (T*)this->descriptors[GDT + (bool)(selector & 4)].load_selector(selector);
+                new_descriptor = (T*)this->get_descriptor(selector);
                 // Table limit check
                 if (expect(!new_descriptor, false)) goto throw_gp_selector;
                 // DPL check
@@ -2762,7 +3835,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_coun
                 if (expect((selector & ~3) != 0, true)) {
                     // RPL check
                     if (expect(this->cpl > (selector & 3), false)) goto throw_gp_selector;
-                    new_descriptor = (T*)this->descriptors[GDT + (bool)(selector & 4)].load_selector(selector);
+                    new_descriptor = (T*)this->get_descriptor(selector);
                     // Table limit check
                     if (expect(!new_descriptor, false)) goto throw_gp_selector;
                     // DPL check
@@ -2780,6 +3853,8 @@ struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_coun
                     goto raw_segment_set;
                 }
             }
+            new_descriptor->set_accessed();
+            
             reconstruct_at(&this->descriptors[index], new_descriptor);
         }
         else {
@@ -2799,30 +3874,30 @@ struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_coun
         return true;
     }
 
-    inline constexpr bool write_seg_cs_jmp_impl(uint16_t selector) {
+    constexpr bool write_cs_jmp(RT& new_ip, uint16_t selector) {
         if (this->protected_mode) {
             // Null check
             if (expect(!(selector & ~3), false)) goto throw_gp_zero;
-            auto* new_descriptor = this->descriptors[GDT + (bool)(selector & 4)].load_selector(selector);
+            auto* new_descriptor = this->get_descriptor(selector);
             // Table limit check
             if (expect(!new_descriptor, false)) goto throw_gp_selector;
 
-            uint32_t allowed_types;
+            uint32_t allowed_typesA;
             if constexpr (max_bits == 64) {
                 if (this->is_long_mode()) {
-                    allowed_types = DESCRIPTORM_CALL_GATE | DESCRIPTORM_E_CODE | DESCRIPTORM_E_CODEA | DESCRIPTORM_ER_CODE | DESCRIPTORM_ER_CODEA | DESCRIPTORM_E_CCODE | DESCRIPTORM_E_CCODEA | DESCRIPTORM_ER_CCODE | DESCRIPTORM_ER_CCODEA;
+                    allowed_typesA = DESCRIPTORM_CALL_GATE | DESCRIPTORM_E_CODE | DESCRIPTORM_E_CODEA | DESCRIPTORM_ER_CODE | DESCRIPTORM_ER_CODEA | DESCRIPTORM_E_CCODE | DESCRIPTORM_E_CCODEA | DESCRIPTORM_ER_CCODE | DESCRIPTORM_ER_CCODEA;
                     goto check_type;
                 }
             }
             if constexpr (max_bits == 32) {
-                allowed_types = DESCRIPTORM_TSS16 | DESCRIPTORM_CALL_GATE16 | DESCRIPTORM_TASK_GATE | DESCRIPTORM_TSS | DESCRIPTORM_CALL_GATE | DESCRIPTORM_E_CODE | DESCRIPTORM_E_CODEA | DESCRIPTORM_ER_CODE | DESCRIPTORM_ER_CODEA | DESCRIPTORM_E_CCODE | DESCRIPTORM_E_CCODEA | DESCRIPTORM_ER_CCODE | DESCRIPTORM_ER_CCODEA;
+                allowed_typesA = DESCRIPTORM_TSS16 | DESCRIPTORM_CALL_GATE16 | DESCRIPTORM_TASK_GATE | DESCRIPTORM_TSS | DESCRIPTORM_CALL_GATE | DESCRIPTORM_E_CODE | DESCRIPTORM_E_CODEA | DESCRIPTORM_ER_CODE | DESCRIPTORM_ER_CODEA | DESCRIPTORM_E_CCODE | DESCRIPTORM_E_CCODEA | DESCRIPTORM_ER_CCODE | DESCRIPTORM_ER_CCODEA;
             }
             else {
-                allowed_types = DESCRIPTORM_TSS16 | DESCRIPTORM_CALL_GATE16 | DESCRIPTORM_TASK_GATE | DESCRIPTORM_E_CODE | DESCRIPTORM_E_CODEA | DESCRIPTORM_ER_CODE | DESCRIPTORM_ER_CODEA | DESCRIPTORM_E_CCODE | DESCRIPTORM_E_CCODEA | DESCRIPTORM_ER_CCODE | DESCRIPTORM_ER_CCODEA;
+                allowed_typesA = DESCRIPTORM_TSS16 | DESCRIPTORM_CALL_GATE16 | DESCRIPTORM_TASK_GATE | DESCRIPTORM_E_CODE | DESCRIPTORM_E_CODEA | DESCRIPTORM_ER_CODE | DESCRIPTORM_ER_CODEA | DESCRIPTORM_E_CCODE | DESCRIPTORM_E_CCODEA | DESCRIPTORM_ER_CCODE | DESCRIPTORM_ER_CCODEA;
             }
         check_type:
             uint8_t descriptor_type = new_descriptor->get_full_type();
-            if (expect(!(allowed_types & 1 << descriptor_type), false)) goto throw_gp_selector;
+            if (expect(!(allowed_typesA & 1 << descriptor_type), false)) goto throw_gp_selector;
             switch (descriptor_type) {
                 default: unreachable;
                 // Task gate
@@ -2838,17 +3913,12 @@ struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_coun
                     // Null check?
                     // Local bit check
                     if (expect((bool)(selector & 4), false)) goto throw_np_selector;
-                    new_descriptor = this->descriptors[GDT + (bool)(selector & 4)].load_selector(selector);
+                    new_descriptor = this->get_descriptor(selector);
                     // Table limit check
                     if (expect(!new_descriptor, false)) goto throw_np_selector;
-                    if constexpr (max_bits == 32) {
-                        allowed_types = DESCRIPTORM_TSS16 | DESCRIPTORM_TSS;
-                    }
-                    else {
-                        allowed_types = DESCRIPTORM_TSS16;
-                    }
                     // Type check
-                    if (expect(!(allowed_types & 1 << new_descriptor->get_full_type()), false)) goto throw_gp_selector;
+                    constexpr uint32_t allowed_typesB = max_bits == 32 ? DESCRIPTORM_TSS16 | DESCRIPTORM_TSS : DESCRIPTORM_TSS16;
+                    if (expect(!(allowed_typesB & 1 << new_descriptor->get_full_type()), false)) goto throw_gp_selector;
                     goto task_switch_common;
                 }
                 // Tss
@@ -2884,7 +3954,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_coun
                     selector = new_descriptor->segment();
                     // Null check
                     if (expect(!(selector & ~3), false)) goto throw_gp_zero;
-                    auto* dest_descriptor = this->descriptors[GDT + (bool)(selector & 4)].load_selector(selector);
+                    auto* dest_descriptor = this->get_descriptor(selector);
                     // Table limit check
                     if (expect(!dest_descriptor, false)) goto throw_gp_selector;
                     // Present check
@@ -2900,8 +3970,11 @@ struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_coun
                         }
                     }
                     // Type check
-                    switch (dest_descriptor->get_full_type()) {
-                        default: goto throw_gp_selector;
+                    constexpr uint32_t allowed_typesC = DESCRIPTORM_E_CODE | DESCRIPTORM_E_CODEA | DESCRIPTORM_ER_CODE | DESCRIPTORM_ER_CODEA | DESCRIPTORM_E_CCODE | DESCRIPTORM_E_CCODEA | DESCRIPTORM_ER_CCODE | DESCRIPTORM_ER_CCODEA;
+                    uint8_t dest_descriptor_type = dest_descriptor->get_full_type();
+                    if (expect(!(allowed_typesC & 1 << dest_descriptor_type), false)) goto throw_gp_selector;
+                    switch (dest_descriptor_type) {
+                        default: unreachable;
                         // Code Segment
                         case DESCRIPTOR_E_CODE: case DESCRIPTOR_E_CODEA:
                         case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA:
@@ -2910,27 +3983,37 @@ struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_coun
                         // Conforming code segment
                         case DESCRIPTOR_E_CCODE: case DESCRIPTOR_E_CCODEA:
                         case DESCRIPTOR_ER_CCODE: case DESCRIPTOR_ER_CCODEA:
+                            uint8_t param_count = 0;
                             if constexpr (max_bits >= 32) {
                                 if (descriptor_type == DESCRIPTOR_CALL_GATE) {
                                     if constexpr (max_bits == 64) {
                                         if constexpr (this->is_long_mode()) {
                                             // Call gate 64
-                                            this->rip = new_descriptor->rip();
+                                            new_ip = new_descriptor->rip();
                                             break;
                                         }
                                     }
                                     // Call gate 32
-                                    this->rip = new_descriptor->eip();
+                                    new_ip = new_descriptor->eip();
+                                    for (size_t i = 0; i < param_count; ++i) {
+                                        this->PUSH<uint32_t>(0); // TODO: params
+                                    }
                                     break;
                                 }
                             }
                             // Call gate 16
-                            this->rip = new_descriptor->ip();
+                            new_ip = new_descriptor->ip();
+                        call_gate_params16:
+                            for (size_t i = 0; i < param_count; ++i) {
+                                this->PUSH<uint16_t>(0); // TODO: params
+                            }
                             break;
                     }
                     new_descriptor = dest_descriptor;
                     // END CHECKS
                     // Set RPL to CPL
+                    selector &= ~3;
+                    selector |= this->cpl;
                     break;
                 }
                 // Conforming code segment
@@ -2957,8 +4040,11 @@ struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_coun
                     if (expect(!new_descriptor->is_present(), false)) goto throw_np_selector;
                     // END CHECKS
                     // Set RPL to CPL
+                    selector &= ~3;
+                    selector |= this->cpl;
                     break;
             }
+            new_descriptor->set_accessed();
             reconstruct_at(&this->cs_descriptor, new_descriptor);
         }
         else {
@@ -2983,30 +4069,39 @@ struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_coun
         return true;
     }
 
-    inline constexpr bool write_seg_cs_call_impl(uint16_t selector) {
+    template <typename T = RT>
+    inline bool regcall JMPFABS_impl(T new_ip, uint16_t new_cs) {
+        RT full_ip = new_ip;
+        if (!this->write_cs_jmp(full_ip, new_cs)) {
+            return this->JMPABS<RT>(full_ip);
+        }
+        return true;
+    }
+
+    constexpr bool write_cs_call(RT& new_ip, uint16_t selector) {
         if (this->protected_mode) {
             // Null check
             if (expect(!(selector & ~3), false)) goto throw_gp_zero;
-            auto* new_descriptor = this->descriptors[GDT + (bool)(selector & 4)].load_selector(selector);
+            auto* new_descriptor = this->get_descriptor(selector);
             // Table limit check
             if (expect(!new_descriptor, false)) goto throw_gp_selector;
 
-            uint32_t allowed_types;
+            uint32_t allowed_typesA;
             if constexpr (max_bits == 64) {
                 if (this->is_long_mode()) {
-                    allowed_types = DESCRIPTORM_CALL_GATE | DESCRIPTORM_E_CODE | DESCRIPTORM_E_CODEA | DESCRIPTORM_ER_CODE | DESCRIPTORM_ER_CODEA | DESCRIPTORM_E_CCODE | DESCRIPTORM_E_CCODEA | DESCRIPTORM_ER_CCODE | DESCRIPTORM_ER_CCODEA;
+                    allowed_typesA = DESCRIPTORM_CALL_GATE | DESCRIPTORM_E_CODE | DESCRIPTORM_E_CODEA | DESCRIPTORM_ER_CODE | DESCRIPTORM_ER_CODEA | DESCRIPTORM_E_CCODE | DESCRIPTORM_E_CCODEA | DESCRIPTORM_ER_CCODE | DESCRIPTORM_ER_CCODEA;
                     goto check_type;
                 }
             }
             if constexpr (max_bits == 32) {
-                allowed_types = DESCRIPTORM_TSS16 | DESCRIPTORM_CALL_GATE16 | DESCRIPTORM_TASK_GATE | DESCRIPTORM_TSS | DESCRIPTORM_CALL_GATE | DESCRIPTORM_E_CODE | DESCRIPTORM_E_CODEA | DESCRIPTORM_ER_CODE | DESCRIPTORM_ER_CODEA | DESCRIPTORM_E_CCODE | DESCRIPTORM_E_CCODEA | DESCRIPTORM_ER_CCODE | DESCRIPTORM_ER_CCODEA;
+                allowed_typesA = DESCRIPTORM_TSS16 | DESCRIPTORM_CALL_GATE16 | DESCRIPTORM_TASK_GATE | DESCRIPTORM_TSS | DESCRIPTORM_CALL_GATE | DESCRIPTORM_E_CODE | DESCRIPTORM_E_CODEA | DESCRIPTORM_ER_CODE | DESCRIPTORM_ER_CODEA | DESCRIPTORM_E_CCODE | DESCRIPTORM_E_CCODEA | DESCRIPTORM_ER_CCODE | DESCRIPTORM_ER_CCODEA;
             }
             else {
-                allowed_types = DESCRIPTORM_TSS16 | DESCRIPTORM_CALL_GATE16 | DESCRIPTORM_TASK_GATE | DESCRIPTORM_E_CODE | DESCRIPTORM_E_CODEA | DESCRIPTORM_ER_CODE | DESCRIPTORM_ER_CODEA | DESCRIPTORM_E_CCODE | DESCRIPTORM_E_CCODEA | DESCRIPTORM_ER_CCODE | DESCRIPTORM_ER_CCODEA;
+                allowed_typesA = DESCRIPTORM_TSS16 | DESCRIPTORM_CALL_GATE16 | DESCRIPTORM_TASK_GATE | DESCRIPTORM_E_CODE | DESCRIPTORM_E_CODEA | DESCRIPTORM_ER_CODE | DESCRIPTORM_ER_CODEA | DESCRIPTORM_E_CCODE | DESCRIPTORM_E_CCODEA | DESCRIPTORM_ER_CCODE | DESCRIPTORM_ER_CCODEA;
             }
         check_type:
             uint8_t descriptor_type = new_descriptor->get_full_type();
-            if (expect(!(allowed_types & 1 << descriptor_type), false)) goto throw_gp_selector;
+            if (expect(!(allowed_typesA & 1 << descriptor_type), false)) goto throw_gp_selector;
             switch (descriptor_type) {
                 default: unreachable;
                 // Task gate
@@ -3022,17 +4117,12 @@ struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_coun
                     // Null check?
                     // Local bit check
                     if (expect((bool)(selector & 4), false)) goto throw_np_selector;
-                    new_descriptor = this->descriptors[GDT + (bool)(selector & 4)].load_selector(selector);
+                    new_descriptor = this->get_descriptor(selector);
                     // Table limit check
                     if (expect(!new_descriptor, false)) goto throw_np_selector;
-                    if constexpr (max_bits == 32) {
-                        allowed_types = DESCRIPTORM_TSS16 | DESCRIPTORM_TSS;
-                    }
-                    else {
-                        allowed_types = DESCRIPTORM_TSS16;
-                    }
                     // Type check
-                    if (expect(!(allowed_types & 1 << new_descriptor->get_full_type()), false)) goto throw_gp_selector;
+                    constexpr uint32_t allowed_typesB = max_bits == 32 ? DESCRIPTORM_TSS16 | DESCRIPTORM_TSS : DESCRIPTORM_TSS16;
+                    if (expect(!(allowed_typesB & 1 << new_descriptor->get_full_type()), false)) goto throw_gp_selector;
                     goto task_switch_common;
                 }
                 // Tss
@@ -3068,7 +4158,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_coun
                     selector = new_descriptor->segment();
                     // Null check
                     if (expect(!(selector & ~3), false)) goto throw_gp_zero;
-                    auto* dest_descriptor = this->descriptors[GDT + (bool)(selector & 4)].load_selector(selector);
+                    auto* dest_descriptor = this->get_descriptor(selector);
                     // Table limit check
                     if (expect(!dest_descriptor, false)) goto throw_gp_selector;
                     // Present check
@@ -3084,33 +4174,50 @@ struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_coun
                         }
                     }
                     // Type check
-                    switch (dest_descriptor->get_full_type()) {
-                        default: goto throw_gp_selector;
+                    constexpr uint32_t allowed_typesC = DESCRIPTORM_E_CODE | DESCRIPTORM_E_CODEA | DESCRIPTORM_ER_CODE | DESCRIPTORM_ER_CODEA | DESCRIPTORM_E_CCODE | DESCRIPTORM_E_CCODEA | DESCRIPTORM_ER_CCODE | DESCRIPTORM_ER_CCODEA;
+                    uint8_t dest_descriptor_type = dest_descriptor->get_full_type();
+                    if (expect(!(allowed_typesC & 1 << dest_descriptor_type), false)) goto throw_gp_selector;
+                    uint8_t param_count;
+                    switch (dest_descriptor_type) {
+                        default: unreachable;
                         // Code Segment
                         case DESCRIPTOR_E_CODE: case DESCRIPTOR_E_CODEA:
                         case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA:
                             if (new_dpl < this->cpl) {
-                                uint16_t temp_cs = selector;
+                                auto old_sp = this->rsp;
+                                uint16_t old_ss = this->ss;
                                 {
+                                    uint16_t temp_cs = selector;
+                                    RT new_sp;
                                     if constexpr (max_bits >= 32) {
                                         if (!this->tss_size_16()) {
                                             if constexpr (max_bits == 64) {
                                                 if constexpr (this->tss_size_64()) {
                                                     // Load TSS 64
                                                     selector = new_dpl;
+                                                    this->rsp = this->tss_descriptor.get_ptr<z86TSS<64>>()->stacks[new_dpl].sp;
                                                     goto skip_gate_tss_checks;
                                                 }
                                             }
                                             // Load TSS 32
+                                            const auto* tss32 = this->tss_descriptor.get_ptr<z86TSS<32>>();
+                                            new_sp = tss32->stacks[new_dpl].sp;
+                                            selector = tss32->stacks[new_dpl].ss;
+                                            goto gate_tss_checks;
                                         }
                                     }
                                     // Load TSS 16
-
+                                    {
+                                        const auto* tss16 = this->tss_descriptor.get_ptr<z86TSS<16>>();
+                                        new_sp = tss16->stacks[new_dpl].sp;
+                                        selector = tss16->stacks[new_dpl].ss;
+                                    }
+                                gate_tss_checks:
                                     // Null check
                                     if (expect(!(selector & ~3), false)) goto throw_ts_selector;
                                     // RPL check
                                     if (expect(new_dpl != (selector & 3), false)) goto throw_ts_selector;
-                                    auto* ss_descriptor = this->descriptors[GDT + (bool)(selector & 4)].load_selector(selector);
+                                    auto* ss_descriptor = this->get_descriptor(selector);
                                     // Table limit check
                                     if (expect(!ss_descriptor, false)) goto throw_ts_selector;
                                     // DPL check
@@ -3120,49 +4227,70 @@ struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_coun
                                     // Present check
                                     if (expect(!ss_descriptor->is_present(), false)) goto throw_ss_selector;
                                     reconstruct_at(&this->ss_descriptor, ss_descriptor);
+                                    this->rsp = new_sp;
+                                    selector = temp_cs;
                                 }
                             skip_gate_tss_checks:
+                                param_count = 0;
                                 if constexpr (max_bits >= 32) {
                                     if (descriptor_type == DESCRIPTOR_CALL_GATE) {
                                         if constexpr (max_bits == 64) {
                                             if constexpr (this->is_long_mode()) {
                                                 // Call gate 64
-                                                this->rip = new_descriptor->rip();
+                                                new_ip = new_descriptor->rip();
+                                                this->PUSH<uint64_t>(old_ss);
+                                                this->PUSH<uint64_t>(old_sp);
                                                 break;
                                             }
                                         }
                                         // Call gate 32
-                                        this->rip = new_descriptor->eip();
-                                        break;
+                                        new_ip = new_descriptor->eip();
+                                        this->PUSH<uint32_t>(old_ss);
+                                        this->PUSH<uint32_t>(old_sp);
+                                        goto call_gate_params32;
                                     }
                                 }
                                 // Call gate 16
-                                this->rip = new_descriptor->ip();
-                                break;
+                                new_ip = new_descriptor->ip();
+                                this->PUSH<uint16_t>(old_ss);
+                                this->PUSH<uint16_t>(old_sp);
+                                goto call_gate_params16;
                             }
                         // Conforming code segment
                         case DESCRIPTOR_E_CCODE: case DESCRIPTOR_E_CCODEA:
                         case DESCRIPTOR_ER_CCODE: case DESCRIPTOR_ER_CCODEA:
+                            param_count = 0;
                             if constexpr (max_bits >= 32) {
                                 if (descriptor_type == DESCRIPTOR_CALL_GATE) {
                                     if constexpr (max_bits == 64) {
                                         if constexpr (this->is_long_mode()) {
                                             // Call gate 64
-                                            this->rip = new_descriptor->rip();
+                                            new_ip = new_descriptor->rip();
                                             break;
                                         }
                                     }
                                     // Call gate 32
-                                    this->rip = new_descriptor->eip();
-                                    break;
+                                    new_ip = new_descriptor->eip();
+                                    goto call_gate_params32;
                                 }
                             }
                             // Call gate 16
-                            this->rip = new_descriptor->ip();
+                            new_ip = new_descriptor->ip();
+                        call_gate_params16:
+                            for (size_t i = 0; i < param_count; ++i) {
+                                this->PUSH<uint16_t>(0); // TODO: params
+                            }
+                            break;
+                        call_gate_params32:
+                            for (size_t i = 0; i < param_count; ++i) {
+                                this->PUSH<uint32_t>(0); // TODO: params
+                            }
                             break;
                     }
                     // END CHECKS
                     // Set RPL to CPL
+                    selector &= ~3;
+                    selector |= this->cpl;
                     break;
                 }
                 // Conforming code segment
@@ -3189,8 +4317,11 @@ struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_coun
                     if (expect(!new_descriptor->is_present(), false)) goto throw_np_selector;
                     // END CHECKS
                     // Set RPL to CPL
+                    selector &= ~3;
+                    selector |= this->cpl;
                     break;
             }
+            new_descriptor->set_accessed();
             reconstruct_at(&this->cs_descriptor, new_descriptor);
         }
         else {
@@ -3215,16 +4346,214 @@ struct z86Reg<max_bits, use_old_reset, true, has_x87, max_sse_bits, sse_reg_coun
         return true;
     }
 
+    template <typename T = RT>
+    inline bool regcall CALLFABS_impl(T next_ip, T new_ip, uint16_t new_cs) {
+        RT full_ip = new_ip;
+        uint16_t old_cs = this->cs;
+        if (!this->write_cs_call(full_ip, new_cs)) {
+            this->PUSH<T>(old_cs);
+            this->PUSH(next_ip);
+            return this->JMPABS(full_ip);
+        }
+        return true;
+    }
+
     // Load DS/ES with NULL when returning to lower privilege
     // What about FS/GS?
-    inline constexpr bool write_seg_cs_ret_impl(uint16_t selector) {
+    constexpr bool write_cs_ret(RT& new_ip, uint16_t selector, uint16_t imm) {
+        if (this->protected_mode) {
+            // Null check
+            if (expect(!(selector & ~3), false)) goto throw_gp_zero;
+            // RPL check
+            if (expect(this->cpl > (selector & 3), false)) goto throw_gp_selector;
+            auto* new_descriptor = this->get_descriptor(selector);
+            // Table limit check
+            if (expect(!new_descriptor, false)) goto throw_gp_selector;
+            // Type check
+            constexpr uint32_t allowed_typesA = DESCRIPTORM_E_CODE | DESCRIPTORM_E_CODEA | DESCRIPTORM_ER_CODE | DESCRIPTORM_ER_CODEA | DESCRIPTORM_E_CCODE | DESCRIPTORM_E_CCODEA | DESCRIPTORM_ER_CCODE | DESCRIPTORM_ER_CCODEA;
+            uint8_t new_descriptor_type = new_descriptor->get_full_type();
+            if (expect(!(allowed_typesA & 1 << new_descriptor_type), false)) goto throw_gp_selector;
+            uint8_t new_dpl = new_descriptor->get_dpl();
+            switch (new_descriptor_type) {
+                default: unreachable;
+                // Code Segment
+                case DESCRIPTOR_E_CODE: case DESCRIPTOR_E_CODEA:
+                case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA:
+                    // DPL check
+                    if (expect(new_dpl != (selector & 3), false)) goto throw_gp_selector;
+                    break;
+                // Conforming code segment
+                case DESCRIPTOR_E_CCODE: case DESCRIPTOR_E_CCODEA:
+                case DESCRIPTOR_ER_CCODE: case DESCRIPTOR_ER_CCODEA:
+                    // DPL check
+                    if (expect(new_dpl > (selector & 3), false)) goto throw_gp_selector;
+                    break;
+            }
+            // Present check
+            if (expect(!new_descriptor->is_present(), false)) goto throw_np_selector;
+            this->rsp += imm;
+            if (this->cpl < (selector & 3)) {
+                // Deal with popping SS/SP
+
+            }
+            new_descriptor->set_accessed();
+            reconstruct_at(&this->cs_descriptor, new_descriptor);
+            // Protect data descriptors...
+        }
+        else {
+            //this->descriptors[CS].base = (size_t)selector << 4;
+            reconstruct_at(&this->cs_descriptor, this->cs_descriptor.limit, (size_t)selector << 4, this->cs_descriptor.type, this->cs_descriptor.privilege);
+            this->sp += imm;
+        }
+        this->cs = selector;
         return false;
+    throw_gp_zero:
+        selector = 0;
+    throw_gp_selector:
+        this->software_interrupt(IntGP, selector);
+        return true;
+    throw_np_selector:
+        this->software_interrupt(IntNP, selector);
+        return true;
+    }
+
+    // TODO: Make this only read the params, pop inside write_cs_ret
+    inline constexpr bool RETFI(uint16_t imm) {
+
+        RT new_ip;
+        uint16_t new_cs;
+        if constexpr (max_bits > 16) {
+            if (!this->data_size_16()) {
+                new_ip = this->POP<uint32_t>();
+                new_cs = this->POP<uint32_t>();
+                goto start_checks;
+            }
+            // No 64 bit operand size exists?
+            //if constexpr (bits == 64) {
+                //if (this->data_size_64()) {
+                    //new_ip = this->POP<uint64_t>();
+                    //new_cs = this->POP<uint64_t>();
+                    //goto start_checks;
+                //}
+            //}
+        }
+        new_ip = this->POP<uint16_t>();
+        new_cs = this->POP<uint16_t>();
+    start_checks:
+        if (!this->write_cs_ret(new_ip, new_cs, imm)) {
+            return this->JMPABS(new_ip);
+        }
+        return true;
+    }
+
+    inline bool regcall RETF() {
+        return this->RETFI(0);
+    }
+
+    template <typename P> requires (!std::is_integral_v<P>)
+    inline bool regcall RETFI(const P& pc) {
+        return this->RETFI(pc.read<uint16_t>());
+    }
+
+    inline constexpr bool write_cs_iret(RT& new_ip, uint16_t selector, uint32_t flags) {
+        if (this->protected_mode) {
+            if constexpr (max_bits == 64) {
+                if (this->is_long_mode()) {
+                    // NT check
+                    if (expect(this->nested_task, false)) goto throw_gp_zero;
+                    goto not_nested_task;
+                }
+            }
+            if (!this->nested_task) {
+                // Check v86 mode flag
+            not_nested_task:
+                if (this->cpl < (selector & 3)) {
+                    // Privilege change
+                    if constexpr (max_bits > 16) {
+                        if (this->data_size_32()) {
+                            //this->rsp = this->POP<uint32_t>();
+                            //this->ss = this->POP<uint32_t>();
+                            goto start_checks;
+                        }
+                        if constexpr (max_bits == 64) {
+                            if (this->data_size_64()) {
+                                //this->rsp = this->POP<uint32_t>();
+                                //this->ss = this->POP<uint32_t>();
+                                goto start_checks;
+                            }
+                        }
+                    }
+                    //this->rsp = this->POP<uint16_t>();
+                    //this->ss = this->POP<uint16_t>();
+                start_checks:
+                }
+                //new_descriptor->set_accessed();
+                //reconstruct_at(&this->cs_descriptor, new_descriptor);
+                // Protect data descriptors...
+            }
+            else {
+                // Task return
+                // WTF?
+            }
+        }
+        else {
+            //this->descriptors[CS].base = (size_t)selector << 4;
+            reconstruct_at(&this->cs_descriptor, this->cs_descriptor.limit, (size_t)selector << 4, this->cs_descriptor.type, this->cs_descriptor.privilege);
+        }
+        this->cs = selector;
+        return false;
+    throw_gp_zero:
+        selector = 0;
+    throw_gp_selector:
+        this->software_interrupt(IntGP, selector);
+        return true;
+    throw_np_selector:
+        this->software_interrupt(IntNP, selector);
+        return true;
+    }
+
+    // TODO: Make this only read the params, pop inside write_cs_iret
+    inline bool regcall IRET() {
+        RT new_ip;
+        uint16_t new_cs;
+        uint32_t new_flags;
+        if constexpr (max_bits > 16) {
+            if (this->data_size_32()) {
+                new_ip = this->POP<uint32_t>();
+                new_cs = this->POP<uint32_t>();
+                new_flags = this->POP<uint32_t>();
+                goto start_checks;
+            }
+            if constexpr (max_bits == 64) {
+                if (this->data_size_64()) {
+                    new_ip = this->POP<uint64_t>();
+                    new_cs = this->POP<uint64_t>();
+                    new_flags = this->POP<uint64_t>();
+                    goto start_checks;
+                }
+            }
+        }
+        new_ip = this->POP<uint16_t>();
+        new_cs = this->POP<uint16_t>();
+        new_flags = this->POP<uint16_t>();
+    start_checks:
+        if (!this->write_cs_iret(new_ip, new_cs, new_flags)) {
+            if constexpr (max_bits > 16) {
+                if (!this->data_size_16()) {
+                    this->set_flags<uint32_t>(new_flags);
+                    goto ret;
+                }
+            }
+            this->set_flags<uint16_t>(new_flags);
+        ret:
+            return this->JMPABS(new_ip);
+        }
+        return true;
     }
 
     inline constexpr void write_control_seg(uint8_t index, uint16_t value) {
         //this->write_seg_impl(LDT + index, value);
     }
-
 };
 
 struct z86DataProperitesImpl {
@@ -3922,6 +5251,7 @@ struct z86Base :
     z86Reg<bits,
         (bool)(flagsA & FLAG_OLD_RESET_PC),
         (bool)(flagsA & FLAG_PROTECTED_MODE),
+        (bool)(flagsA & FLAG_LONG_MODE),
         (bool)(flagsA & (FLAG_CPUID_X87 | FLAG_CPUID_MMX | FLAG_CPUID_3DNOW)),
         (flagsA & FLAG_CPUID_SSE) ? (flagsA & FLAG_CPUID_AVX) ? 256 : 128 : 0,
         (flagsA & FLAG_CPUID_SSE) ? (flagsA & FLAG_LONG_MODE) ? 16 : 8 : 0
@@ -4008,7 +5338,7 @@ struct z86Base :
         if constexpr (WRAP_SEGMENT_MODRM) {
             index &= 3;
         }
-        return this->write_seg_not_cs_impl(index, selector);
+        return this->write_seg_impl(index, selector);
     }
 
     template <bool ignore_rex = false>
@@ -4357,236 +5687,6 @@ struct z86Base :
         }
     }
 
-    template <typename T>
-    inline constexpr auto& A() {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->al;
-        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->ax;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->eax;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rax;
-        }
-    }
-
-    template <typename T>
-    inline constexpr const auto& A() const {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->al;
-        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->ax;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->eax;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rax;
-        }
-    }
-
-    template <typename T>
-    inline constexpr auto& C() {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->cl;
-        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->cx;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->ecx;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rcx;
-        }
-    }
-
-    template <typename T>
-    inline constexpr const auto& C() const {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->cl;
-        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->cx;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->ecx;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rcx;
-        }
-    }
-
-    template <typename T>
-    inline constexpr auto& D() {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->dl;
-        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->dx;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->edx;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rdx;
-        }
-    }
-
-    template <typename T>
-    inline constexpr const auto& D() const {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->dl;
-        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->dx;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->edx;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rdx;
-        }
-    }
-
-    template <typename T>
-    inline constexpr auto& B() {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->bl;
-        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->bx;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->ebx;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rbx;
-        }
-    }
-
-    template <typename T>
-    inline constexpr const auto& B() const {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->bl;
-        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->bx;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->ebx;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rbx;
-        }
-    }
-
-    template <typename T>
-    inline constexpr auto& SP() {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->spl;
-        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->sp;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->esp;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rsp;
-        }
-    }
-
-    template <typename T>
-    inline constexpr const auto& SP() const {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->spl;
-        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->sp;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->esp;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rsp;
-        }
-    }
-
-    template <typename T>
-    inline constexpr auto& BP() {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->bpl;
-        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->bp;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->ebp;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rbp;
-        }
-    }
-
-    template <typename T>
-    inline constexpr const auto& BP() const {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->bpl;
-        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->bp;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->ebp;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rbp;
-        }
-    }
-
-    template <typename T>
-    inline constexpr auto& SI() {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->sil;
-        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->si;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->esi;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rsi;
-        }
-    }
-
-    template <typename T>
-    inline constexpr const auto& SI() const {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->sil;
-        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->si;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->esi;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rsi;
-        }
-    }
-
-    template <typename T>
-    inline constexpr auto& DI() {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->dil;
-        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->di;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->edi;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rdi;
-        }
-    }
-
-    template <typename T>
-    inline constexpr const auto& DI() const {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->dil;
-        } else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->di;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->edi;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rdi;
-        }
-    }
-
-    template <typename T>
-    inline constexpr auto& IP() {
-        if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->ip;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->eip;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rip;
-        }
-    }
-
-    template <typename T>
-    inline constexpr const auto& IP() const {
-        if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            return this->ip;
-        } else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            return this->eip;
-        } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            return this->rip;
-        }
-    }
-
     inline constexpr bool cond_O(bool val = true) const { return this->overflow == val; }
     inline constexpr bool cond_NO(bool val = true) const { return this->overflow != val; }
     inline constexpr bool cond_C(bool val = true) const { return this->carry == val; }
@@ -4640,7 +5740,6 @@ struct z86Base :
 
     bool lock;
 
-    int8_t seg_override;
     int8_t rep_type;
 
     inline constexpr void set_lock() {
@@ -4687,125 +5786,6 @@ struct z86Base :
         }
     }
 
-    inline constexpr void set_seg_override(uint8_t seg) {
-        this->seg_override = seg;
-        if constexpr (LONG_MODE) {
-            if (this->is_long_mode()) {
-                this->reset_rex_bits();
-            }
-        }
-    }
-
-    inline constexpr uint16_t segment(uint8_t default_seg) const {
-        if constexpr (PROTECTED_MODE) {
-            return this->seg_override < 0 ? default_seg : this->seg_override;
-        } else {
-            return this->seg[this->seg_override < 0 ? default_seg : this->seg_override];
-        }
-    }
-
-    inline constexpr DT addr(uint8_t default_seg, RT offset) const {
-        return (DT)this->segment(default_seg) << bitsof(RT) | offset;
-    }
-
-    inline constexpr DT addr_force(uint8_t seg, RT offset) const {
-        if constexpr (PROTECTED_MODE) {
-            return (DT)seg << bitsof(RT) | offset;
-        } else {
-            return (DT)this->seg[seg] << bitsof(RT) | offset;
-        }
-    }
-
-    template <typename P = RT>
-    inline constexpr DT pc() const {
-        return this->addr_force(CS, this->IP<P>());
-    }
-
-    template <typename P = RT>
-    inline constexpr DT stack() const {
-        return this->addr_force(SS, this->SP<P>());
-    }
-
-    template <typename P = void>
-    inline constexpr RT stack_size_bp() const {
-        if constexpr (std::is_same_v<P, void>) {
-            // No size specified, calculate it
-            if constexpr (bits > 16) {
-                if (this->stack_size_32()) {
-                    return this->ebp;
-                }
-                if constexpr (bits == 64) {
-                    if (this->stack_size_64()) {
-                        return this->rbp;
-                    }
-                }
-            }
-        }
-        else if constexpr (sizeof(P) == sizeof(uint64_t)) {
-            return this->rbp;
-        }
-        else if constexpr (sizeof(P) == sizeof(uint32_t)) {
-            return this->ebp;
-        }
-        return this->bp;
-    }
-
-    template <typename P = RT>
-    inline constexpr DT str_src() const {
-        return this->addr(DS, this->SI<P>());
-    }
-
-    template <typename P = RT>
-    inline constexpr DT str_dst() const {
-        return this->addr_force(ES, this->DI<P>());
-    }
-
-    // Read A double
-    template <typename T>
-    inline constexpr auto read_AD() const {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->ax;
-        }
-        else {
-            using U = std::make_unsigned_t<dbl_int_t<T>>;
-            return (U)this->D<T>() << bitsof(T) | this->A<T>();
-        }
-    }
-
-    // Write A double
-    template <typename T>
-    inline constexpr void write_AD(T value) {
-        if constexpr (sizeof(T) == sizeof(uint16_t)) {
-            this->ax = value;
-        }
-        else {
-            using U = std::make_unsigned_t<T>;
-            this->A<T>() = value;
-            this->D<T>() = (U)value >> bitsof(hlf_int_t<T>);
-        }
-    }
-
-    // A double high
-    template <typename T>
-    inline constexpr auto& ADH() {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->ah;
-        }
-        else {
-            return this->D<T>();
-        }
-    }
-
-    // A double high
-    template <typename T>
-    inline constexpr const auto& ADH() const {
-        if constexpr (sizeof(T) == sizeof(uint8_t)) {
-            return this->ah;
-        } else {
-            return this->D<T>();
-        }
-    }
-
     inline void regcall update_parity(uint8_t val) {
         this->parity = !__builtin_parity(val);
     }
@@ -4819,18 +5799,12 @@ struct z86Base :
     }
 
     template <typename T = RT>
-    inline void regcall JMPABS(T new_ip) {
-        this->rip = new_ip;
-    }
-
-    template <typename T = RT>
-    inline void regcall JMPFABS(T new_ip, uint16_t new_cs) {
-        this->JMPABS(new_ip);
-        this->cs = new_cs;
+    inline bool regcall JMPFABS(T new_ip, uint16_t new_cs) {
+        return this->JMPFABS_impl(new_ip, new_cs);
     }
 
     template <typename P>
-    inline void regcall JMPFABS(const P& pc) {
+    inline bool regcall JMPFABS(const P& pc) {
         if constexpr (bits == 64) {
             // TODO: Exception conditions
         }
@@ -4840,61 +5814,6 @@ struct z86Base :
             }
         }
         return this->JMPFABS(pc.read<uint16_t>(), pc.read<uint16_t>(2));
-    }
-
-    template <typename P, typename T>
-    inline void regcall PUSH_impl(const T& src);
-
-    template <typename T>
-    inline void regcall PUSH16(const T& src) {
-        return this->PUSH_impl<uint16_t>(src);
-    }
-
-    template <typename T>
-    inline void regcall PUSH32(const T& src) {
-        return this->PUSH_impl<uint32_t>(src);
-    }
-
-    template <typename T>
-    inline void regcall PUSH64(const T& src) {
-        return this->PUSH_impl<uint64_t>(src);
-    }
-
-    template <typename T = SRT>
-    inline void regcall PUSH(const T& src) {
-        if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            if constexpr (bits == 64) {
-                // 64 bit values can only be pushed in long
-                // mode, where the stack is always 64 bit
-                return this->PUSH64(src);
-            }
-        }
-        else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            if constexpr (bits > 16) {
-                // No need to check for 64 bit stack size
-                // because a 32 bit push can't be encoded
-                // when running in long mode (hopefully)
-                if (this->stack_size_32()) {
-                    return this->PUSH32(src);
-                }
-            }
-        }
-        else {
-            // 16 bit pushes are horrible and exist
-            // in all modes
-            if constexpr (bits > 16) {
-                if (this->stack_size_32()) {
-                    return this->PUSH32(src);
-                }
-                if constexpr (bits == 64) {
-                    if (this->stack_size_64()) {
-                        return this->PUSH64(src);
-                    }
-                }
-            }
-        }
-        // This is doubling as a backup case for the constexprs
-        return this->PUSH16(src);
     }
 
     void PUSHA() {
@@ -4963,61 +5882,6 @@ struct z86Base :
         return this->PUSH<int16_t>(val);
     }
 
-    template <typename P, typename T>
-    inline T regcall POP_impl();
-
-    template <typename T>
-    inline T regcall POP16() {
-        return this->POP_impl<uint16_t, T>();
-    }
-
-    template <typename T>
-    inline T regcall POP32() {
-        return this->POP_impl<uint32_t, T>();
-    }
-
-    template <typename T>
-    inline T regcall POP64() {
-        return this->POP_impl<uint64_t, T>();
-    }
-
-    template <typename T = RT>
-    inline T regcall POP() {
-        if constexpr (sizeof(T) == sizeof(uint64_t)) {
-            if constexpr (bits == 64) {
-                // 64 bit values can only be popped in long
-                // mode, where the stack is always 64 bit
-                return this->POP64<T>();
-            }
-        }
-        else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-            if constexpr (bits > 16) {
-                // No need to check for 64 bit stack size
-                // because a 32 bit pop can't be encoded
-                // when running in long mode (hopefully)
-                if (this->stack_size_32()) {
-                    return this->POP32<T>();
-                }
-            }
-        }
-        else {
-            // 16 bit pops are horrible and exist
-            // in all modes
-            if constexpr (bits > 16) {
-                if (this->stack_size_32()) {
-                    return this->POP32<T>();
-                }
-                if constexpr (bits == 64) {
-                    if (this->stack_size_64()) {
-                        return this->POP64<T>();
-                    }
-                }
-            }
-        }
-        // This is doubling as a backup case for the constexprs
-        return this->POP16<T>();
-    }
-
     void POPA() {
         if constexpr (bits > 16) {
             if (this->data_size_32()) {
@@ -5065,6 +5929,10 @@ struct z86Base :
         this->ax = this->POP16<uint16_t>();
     }
 
+    void LOADALL2();
+    void STOREALL();
+    void LOADALL3();
+
     gnu_attr(minsize) bool regcall ARPL(uint16_t& dst, uint16_t src) {
         uint32_t temp = std::rotr(dst, 2);
         src <<= 14;
@@ -5100,18 +5968,6 @@ struct z86Base :
 
     inline void regcall LEAVE() {
         if constexpr (bits > 16) {
-            if (this->data_size_32()) {
-                if (this->stack_size_32()) {
-                    this->esp = this->ebp;
-                    this->ebp = this->POP32<uint32_t>();
-                    return;
-                }
-                else {
-                    this->sp = this->bp;
-                    this->ebp = this->POP16<uint32_t>();
-                    return;
-                }
-            }
             if constexpr (bits == 64) {
                 if (this->stack_size_64()) {
                     this->rsp = this->rbp;
@@ -5121,6 +5977,18 @@ struct z86Base :
                     else {
                         this->bp = this->POP64<uint16_t>();
                     }
+                    return;
+                }
+            }
+            if (this->data_size_32()) {
+                if (this->stack_size_32()) {
+                    this->esp = this->ebp;
+                    this->ebp = this->POP32<uint32_t>();
+                    return;
+                }
+                else {
+                    this->sp = this->bp;
+                    this->ebp = this->POP16<uint32_t>();
                     return;
                 }
             }
@@ -5135,7 +6003,7 @@ struct z86Base :
     }
 
     template <typename P>
-    inline void regcall CALL(const P& pc) {
+    inline bool regcall CALL(const P& pc) {
         auto next_ip = pc.offset;
         if constexpr (bits > 16) {
             if (!this->data_size_16()) {
@@ -5169,81 +6037,22 @@ struct z86Base :
         this->rip = this->POP<uint16_t>();
     }
 
-    inline void regcall RETF() {
-        if constexpr (bits > 16) {
-            if (this->data_size_32()) {
-                this->rip = this->POP<uint32_t>();
-                this->cs = this->POP<uint32_t>();
-                return;
-            }
-            if constexpr (bits == 64) {
-                if (this->data_size_64()) {
-                    this->rip = this->POP<uint64_t>();
-                    this->cs = this->POP<uint64_t>();
-                    return;
-                }
-            }
-        }
-        this->rip = this->POP<uint16_t>();
-        this->cs = this->POP<uint16_t>();
-    }
-
     template <typename P>
     inline void regcall RETI(const P& pc) {
         this->RET();
         if constexpr (bits > 16) {
-            if (this->stack_size_32()) {
-                this->esp += pc.read<uint16_t>();
-                return;
-            }
             if constexpr (bits == 64) {
                 if (this->stack_size_64()) {
                     this->rsp += pc.read<uint16_t>();
                     return;
                 }
             }
-        }
-        this->sp += pc.read<uint16_t>();
-    }
-
-    template <typename P>
-    inline void regcall RETFI(const P& pc) {
-        this->RETF();
-        if constexpr (bits > 16) {
             if (this->stack_size_32()) {
                 this->esp += pc.read<uint16_t>();
                 return;
             }
-            if constexpr (bits == 64) {
-                if (this->stack_size_64()) {
-                    this->rsp += pc.read<uint16_t>();
-                    return;
-                }
-            }
         }
         this->sp += pc.read<uint16_t>();
-    }
-
-    inline void regcall IRET() {
-        if constexpr (bits > 16) {
-            if (this->data_size_32()) {
-                this->rip = this->POP<uint32_t>();
-                this->cs = this->POP<uint32_t>();
-                this->set_flags(this->POP<uint32_t>());
-                return;
-            }
-            if constexpr (bits == 64) {
-                if (this->data_size_64()) {
-                    this->rip = this->POP<uint64_t>();
-                    this->cs = this->POP<uint64_t>();
-                    this->set_flags(this->POP<uint64_t>());
-                    return;
-                }
-            }
-        }
-        this->rip = this->POP<uint16_t>();
-        this->cs = this->POP<uint16_t>();
-        this->set_flags(this->POP<uint16_t>());
     }
 
     template <bool is_byte = false, typename P>
@@ -5406,23 +6215,12 @@ struct z86Base :
     }
 
     template <typename T = RT>
-    inline void regcall CALLABS(T next_ip, T new_ip) {
-        this->PUSH(next_ip);
-        this->JMPABS(new_ip);
-    }
-
-    template <typename T = RT>
-    inline void regcall CALLFABS(T next_ip, T new_ip, uint16_t new_cs) {
-        this->PUSH<T>(this->cs);
-        this->PUSH(next_ip);
-        this->JMPFABS(new_ip, new_cs);
+    inline bool regcall CALLFABS(T next_ip, T new_ip, uint16_t new_cs) {
+        return this->CALLFABS_impl(next_ip, new_ip, new_cs);
     }
 
     template <typename P>
-    inline void regcall CALLFABS(const P& pc) {
-        if constexpr (bits == 64) {
-            // TODO: Exception condition
-        }
+    inline bool regcall CALLFABS(const P& pc) {
         auto next_ip = pc.offset + 4;
         if constexpr (bits > 16) {
             if (this->data_size_32()) {
