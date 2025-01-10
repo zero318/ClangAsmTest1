@@ -41,20 +41,20 @@ using z86AddrES = z86AddrESImpl<ctx.max_bits, ctx.PROTECTED_MODE>::type;
 using z86AddrCS = z86AddrCSImpl<ctx.max_bits, ctx.PROTECTED_MODE>::type;
 using z86AddrSS = z86AddrSSImpl<ctx.max_bits, ctx.PROTECTED_MODE>::type;
 
-template <typename P>
+template <ModRMSpecialFlags mode, typename P>
 uint32_t ModRM::extra_length(const P& pc) const {
     uint8_t mod = this->Mod();
     if (mod == 3) {
         return 0;
     }
     if constexpr (ctx.max_bits > 16) {
-        if (!ctx.addr_size_16()) {
+        if ((mode & MODRM_NO16) || !ctx.addr_size_16()) {
             uint32_t length = 0;
             switch (this->M()) {
                 case 4:
                     ++length;
                     if (mod == 0) {
-                        return length + (pc.read<SIB>(1).B() == 5) * 4;
+                        return 1 + (pc.read<SIB>(1).B() == 5) * 4;
                     }
                     break;
                 case 5:
@@ -86,7 +86,7 @@ uint32_t ModRM::extra_length(const P& pc) const {
     }
 }
 
-template <typename P>
+template <ModRMSpecialFlags mode, typename P>
 auto ModRM::parse_memM(P& pc) const {
     uint32_t segment_mask;
     size_t offset = 0;
@@ -94,8 +94,8 @@ auto ModRM::parse_memM(P& pc) const {
     assume(m < 8);
     uint8_t mod = this->Mod();
     if constexpr (ctx.max_bits > 16) {
-        if (!ctx.addr_size_16()) {
-            if constexpr (ctx.max_bits == 64) {
+        if ((mode & MODRM_NO16) || !ctx.addr_size_16()) {
+            if constexpr (!(mode & MODRM_NO64) && ctx.max_bits == 64) {
                 if (ctx.addr_size_64()) {
                     switch (m) {
                         default: unreachable;
@@ -137,7 +137,7 @@ auto ModRM::parse_memM(P& pc) const {
                     SIB sib = pc.read_advance<SIB>();
                     uint8_t i = sib.I();
                     if (i != ESP) {
-                        offset = ctx.index_dword_regI(i) * (1 << sib.S());
+                        offset = ctx.index_dword_regI<mode & MODRM_NO64>(i) * (1 << sib.S());
                     }
                     m = sib.B();
                     if (m == EBP && mod == 0) {
@@ -149,7 +149,7 @@ auto ModRM::parse_memM(P& pc) const {
                 }
                 case EBP:
                     if (mod == 0) {
-                        if constexpr (ctx.max_bits == 64) {
+                        if constexpr (!(mode & MODRM_NO64) && ctx.max_bits == 64) {
                             if (expect(ctx.is_long_mode(), false)) {
                                 // TODO: Properly offset for
                                 // the end of the instruction
@@ -164,7 +164,9 @@ auto ModRM::parse_memM(P& pc) const {
             // Initialize the full M so that
             // later code can bit test for 
             // default segment
-            m = ctx.full_indexMB(m);
+            if constexpr (!(mode & MODRM_NO64)) {
+                m = ctx.full_indexMB(m);
+            }
             offset += ctx.index_dword_reg_raw(m);
         add_const:
             switch (mod) {
@@ -180,7 +182,7 @@ auto ModRM::parse_memM(P& pc) const {
                 case 0:;
             }
             // Set bits are for DS
-            if constexpr (ctx.max_bits == 64) {
+            if constexpr (!(mode & MODRM_NO64) && ctx.max_bits == 64) {
                 segment_mask = 0b11111111111111111111111111001111;
             }
             else {
@@ -1133,7 +1135,7 @@ inline void regcall z86BaseDefault::port_out_impl(uint16_t port, T value) const 
                 return;
             }
         }
-        printf("Unhandled: OUT %X, %02X\n", port, value);
+        printf("Unhandled: OUT 0x%X, 0x%02X\n", port, value);
     }
     else if constexpr (sizeof(T) == sizeof(uint16_t)) {
         const std::vector<PortWordDevice*>& devices = io_word_devices;
@@ -1153,7 +1155,7 @@ inline void regcall z86BaseDefault::port_out_impl(uint16_t port, T value) const 
                 return;
             }
         }
-        printf("Unhandled: OUT %X, %04X\n", port, value);
+        printf("Unhandled: OUT 0x%X, 0x%04X\n", port, value);
     }
     else if constexpr (sizeof(T) == sizeof(uint32_t)) {
         const std::vector<PortDwordDevice*>& devices = io_dword_devices;
@@ -1184,7 +1186,7 @@ inline void regcall z86BaseDefault::port_out_impl(uint16_t port, T value) const 
                 return;
             }
         }
-        printf("Unhandled: OUT %X, %08X\n", port, value);
+        printf("Unhandled: OUT 0x%X, 0x%08X\n", port, value);
     }
 }
 
@@ -1202,7 +1204,7 @@ inline T regcall z86BaseDefault::port_in_impl(uint16_t port) {
                 return value;
             }
         }
-        printf("Unhandled: IN AL, %X\n", full_port);
+        printf("Unhandled: IN AL, 0x%X\n", full_port);
     }
     else if constexpr (sizeof(T) == sizeof(uint16_t)) {
         const std::vector<PortWordDevice*>& devices = io_word_devices;
@@ -1222,7 +1224,7 @@ inline T regcall z86BaseDefault::port_in_impl(uint16_t port) {
                 return value;
             }
         }
-        printf("Unhandled: IN AX, %X\n", full_port);
+        printf("Unhandled: IN AX, 0x%X\n", full_port);
     }
     else if constexpr (sizeof(T) == sizeof(uint32_t)) {
         const std::vector<PortDwordDevice*>& devices = io_dword_devices;
@@ -1253,7 +1255,7 @@ inline T regcall z86BaseDefault::port_in_impl(uint16_t port) {
                 return value;
             }
         }
-        printf("Unhandled: IN EAX, %X\n", full_port);
+        printf("Unhandled: IN EAX, 0x%X\n", full_port);
     }
     return 0;
 }

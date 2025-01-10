@@ -1326,6 +1326,51 @@ size_t fastcall get_hex_digit_count(T value) {
     }
 }
 
+
+
+template<typename T>
+static inline T shld(T lhs, T rhs, uint8_t count) {
+    if constexpr (sizeof(T) == sizeof(uint16_t) || sizeof(T) == sizeof(uint32_t)) {
+        __asm__ volatile (
+            "shld %[count], %[rhs], %[lhs]"
+            : asm_arg("+r", lhs)
+            : asm_arg("r", rhs), asm_arg("Ic", count)
+            : "cc"
+        );
+    }
+    else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+        __asm__ volatile (
+            "shld %[count], %[rhs], %[lhs]"
+            : asm_arg("+r", lhs)
+            : asm_arg("r", rhs), asm_arg("Jc", count)
+            : "cc"
+        );
+    }
+    return lhs;
+}
+
+template<typename T>
+static inline T shrd(T lhs, T rhs, uint8_t count) {
+    if constexpr (sizeof(T) == sizeof(uint16_t) || sizeof(T) == sizeof(uint32_t)) {
+        __asm__ volatile (
+            "shrd %[count], %[rhs], %[lhs]"
+            : asm_arg("+r", lhs)
+            : asm_arg("r", rhs), asm_arg("Ic", count)
+            : "cc"
+        );
+    }
+    else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+        __asm__ volatile (
+            "shrd %[count], %[rhs], %[lhs]"
+            : asm_arg("+r", lhs)
+            : asm_arg("r", rhs), asm_arg("Jc", count)
+            : "cc"
+        );
+    }
+    return lhs;
+
+}
+
 static inline bool complement_carry(void) {
     int carry_flag;
     __asm__(

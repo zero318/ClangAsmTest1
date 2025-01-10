@@ -5,6 +5,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <type_traits>
 
@@ -38,6 +39,11 @@ struct PortWordDevice {
         return false;
     }
     virtual bool in_byte(uint8_t& value, uint32_t port) {
+        uint16_t temp = 0;
+        if (this->in_word(temp, port & ~1)) {
+            value = temp >> (port & 1) * 8;
+            return true;
+        }
         return false;
     }
 };
@@ -107,6 +113,7 @@ void z86_add_word_device(PortWordDevice* device);
 void z86_add_byte_device(PortByteDevice* device);
 
 size_t z86_mem_write(size_t dst, const void* src, size_t size);
+size_t z86_file_read(size_t dst, FILE* src, size_t size);
 
 template <typename T>
 static inline size_t z86_mem_write(size_t dst, const T& src) {
@@ -114,6 +121,7 @@ static inline size_t z86_mem_write(size_t dst, const T& src) {
 }
 
 size_t z86_mem_read(void* dst, size_t src, size_t size);
+size_t z86_file_write(FILE* dst, size_t src, size_t size);
 
 template <typename T>
 static inline size_t z86_mem_read(T& dst, size_t src) {

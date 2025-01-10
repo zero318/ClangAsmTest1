@@ -147,8 +147,14 @@ static std::vector<PortByteDevice*> io_byte_devices;
 dllexport size_t z86_mem_write(size_t dst, const void* src, size_t size) {
     return mem.write(dst, src, size);
 }
+dllexport size_t z86_file_read(size_t dst, FILE* src, size_t size) {
+    return mem.read_file(dst, src, size);
+}
 dllexport size_t z86_mem_read(void* dst, size_t src, size_t size) {
     return mem.read(dst, src, size);
+}
+dllexport size_t z86_file_write(FILE* dst, size_t src, size_t size) {
+    return mem.write_file(dst, src, size);
 }
 
 dllexport void z86_add_dword_device(PortDwordDevice* device) {
@@ -638,7 +644,7 @@ dllexport void z86_execute() {
                     if constexpr (ctx.LONG_MODE) {
                         if (ctx.is_long_mode()) {
                             // MOVSXD Rv, Mv
-                            FAULT_CHECK(ctx.MOVX<int32_t>(pc, [](auto& dst, auto src) regcall{
+                            FAULT_CHECK(ctx.MOVX<int32_t>(pc, [](auto& dst, auto src) regcall {
                                 using S = decltype(src);
                                 using D = std::remove_reference_t<decltype(dst)>;
                                 dst = (D)(S)src;
@@ -647,7 +653,10 @@ dllexport void z86_execute() {
                             break;
                         }
                     }
-                    // TODO
+                    FAULT_CHECK(ctx.binopMR_impl<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        return ctx.ARPL(dst, src);
+                    }));
+                    break;
                 }
                 else if constexpr (ctx.OPCODES_V20) {
                     // ???
@@ -1825,7 +1834,7 @@ dllexport void z86_execute() {
                     switch (r) {
                         default: unreachable;
                         case 0: case 1: // TEST Mb, Ib
-                            ctx.TEST(val, pc.read<uint8_t>());
+                            ctx.TEST(val, pc.read_advance<uint8_t>());
                             return OP_NO_WRITE;
                         case 2: // NOT Mb
                             ctx.NOT(val);
@@ -1845,7 +1854,6 @@ dllexport void z86_execute() {
                             return ctx.IDIV(val) ? OP_FAULT : OP_NOT_MEM;
                     }
                 }));
-                ++pc;
                 break;
             case 0xF7: // GRP3 Mv
                 FAULT_CHECK(ctx.unopM(pc, [&](auto& val, uint8_t r) regcall {
