@@ -248,6 +248,27 @@ inline constexpr SEG_DESCRIPTOR<max_bits>* z86DescriptorCache<max_bits>::get_des
 }
 
 template <size_t bits, bool protected_mode>
+inline constexpr const z86DescriptorCache<bits>& z86AddrImpl<bits, protected_mode>::descriptor() const {
+    if constexpr (protected_mode) {
+        return ctx.descriptors[this->segment];
+    }
+    else {
+        // This shouldn't get executed
+        return std::declval<z86DescriptorCache<bits>>();
+    }
+}
+
+template <size_t bits, bool protected_mode>
+inline constexpr size_t z86AddrImpl<bits, protected_mode>::limit() const {
+    if constexpr (protected_mode) {
+        return ctx.descriptors[this->segment].limit;
+    }
+    else {
+        return (std::numeric_limits<OT>::max)();
+    }
+}
+
+template <size_t bits, bool protected_mode>
 inline constexpr size_t z86AddrImpl<bits, protected_mode>::seg() const {
     if constexpr (protected_mode) {
         return ctx.descriptors[this->segment].base;
@@ -255,6 +276,16 @@ inline constexpr size_t z86AddrImpl<bits, protected_mode>::seg() const {
     else {
         return (size_t)this->segment << 4;
     }
+}
+
+template <size_t max_bits, uint8_t descriptor_index>
+inline constexpr const z86DescriptorCache<max_bits>& z86AddrFixedImpl<max_bits, descriptor_index>::descriptor() const {
+    return ctx.descriptors[descriptor_index];
+}
+
+template <size_t max_bits, uint8_t descriptor_index>
+inline constexpr size_t z86AddrFixedImpl<max_bits, descriptor_index>::limit() const {
+    return ctx.descriptors[descriptor_index].limit;
 }
 
 template <size_t max_bits, uint8_t descriptor_index>
@@ -281,11 +312,14 @@ inline constexpr size_t regcall z86AddrSharedFuncs::virt_to_phys(size_t addr) {
 }
 
 template <typename T, typename P>
-inline void regcall z86AddrSharedFuncs::write(P* self, const T& value, ssize_t offset) {
+inline EXCEPTION regcall z86AddrSharedFuncs::write(P* self, const T& value, ssize_t offset) {
 
+    // Can this flag just directly check for protected mode instead?
     if constexpr (!ctx.SINGLE_MEM_WRAPS) {
         // TODO: Check segment limits
-        return mem.write<T>(self->addr(offset), value);
+        //const auto& descriptor = self->descriptor();
+
+        mem.write<T>(self->addr(offset), value);
     }
     else {
         // 8086 compatiblity
@@ -296,14 +330,17 @@ inline void regcall z86AddrSharedFuncs::write(P* self, const T& value, ssize_t o
             mem.write<T>(virt_addr_base, value);
         }
         else {
-            //mem.write(virt_addr_base, &value, wrap);
-            //mem.write(virt_seg_base + self->ptr(offset), &((uint8_t*)&value)[wrap], z86DataProperites<T>::size - wrap);
             if constexpr (sizeof(T) != sizeof(uint16_t)) {
+#if _M_IX86 || __x86_64__
                 mem.write_movsb(
                     virt_addr_base - self->offset_wrap_sub<T>(wrap),
                     mem.write_movsb(virt_addr_base, &value, wrap),
                     z86DataProperites<T>::size - wrap
                 );
+#else
+                mem.write(virt_addr_base, &value, wrap);
+                mem.write(virt_addr_base - self->offset_wrap_sub<T>(wrap), (uint8_t*)&value) + wrap, z86DataProperites<T>::size - wrap);
+#endif
             }
             else {
                 uint16_t raw = std::bit_cast<uint16_t>(value);
@@ -312,92 +349,7 @@ inline void regcall z86AddrSharedFuncs::write(P* self, const T& value, ssize_t o
             }
         }
     }
-
-    /*
-    if constexpr (sizeof(T) == sizeof(uint8_t)) {
-        uint8_t raw = std::bit_cast<uint8_t>(value);
-        return mem.write<uint8_t>(self->addr(offset), raw);
-    }
-    else if constexpr (sizeof(T) == sizeof(uint16_t)) {
-        size_t virt_seg_base = this->seg();
-        size_t virt_addr_base = virt_seg_base + self->ptr(offset);
-        uint16_t raw = std::bit_cast<uint16_t>(value);
-        if constexpr (ctx.bus_width >= 16) {
-            if (is_aligned<uint16_t>(virt_addr_base)) {
-                return mem.write<uint16_t>(virt_addr_base, raw);
-            }
-        }
-        mem.write<uint8_t>(virt_addr_base, raw);
-        mem.write<uint8_t>(virt_seg_base + self->ptr(offset + 1), raw >> 8);
-        return;
-    }
-    else if constexpr (sizeof(T) == sizeof(uint32_t)) {
-        size_t virt_seg_base = this->seg();
-        size_t virt_addr_base = virt_seg_base + self->ptr(offset);
-        uint32_t raw = std::bit_cast<uint32_t>(value);
-        if constexpr (ctx.bus_width >= 16) {
-            if constexpr (ctx.bus_width >= 32) {
-                if (is_aligned<uint32_t>(virt_addr_base)) {
-                    return mem.write<uint32_t>(virt_addr_base, raw);
-                }
-            }
-            if (is_aligned<uint16_t>(virt_addr_base)) {
-                mem.write<uint16_t>(virt_addr_base, raw);
-                mem.write<uint16_t>(virt_seg_base + self->ptr(offset + 2), raw >> 16);
-                return;
-            }
-        }
-        uint32_t raw = *(uint32_t*)&value;
-        mem.write<uint8_t>(virt_addr_base, raw);
-        mem.write<uint8_t>(virt_seg_base + self->ptr(offset + 1), raw >> 8);
-        mem.write<uint8_t>(virt_seg_base + self->ptr(offset + 2), raw >> 16);
-        mem.write<uint8_t>(virt_seg_base + self->ptr(offset + 3), raw >> 24);
-        return;
-    }
-    else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-        size_t virt_seg_base = this->seg();
-        size_t virt_addr_base = virt_seg_base + self->ptr(offset);
-        uint64_t raw = std::bit_cast<uint64_t>(value);
-        if constexpr (ctx.bus_width >= 16) {
-            if constexpr (ctx.bus_width >= 32) {
-                if constexpr (ctx.bus_width >= 64) {
-                    if (is_aligned<uint64_t>(self->offset + offset)) {
-                        return mem.write<T>(self->addr(offset), value);
-                    }
-                }
-                if (is_aligned<uint32_t>(self->offset + offset)) {
-                    uint64_t raw = *(uint64_t*)&value;
-                    mem.write<uint32_t>(self->addr(offset), raw);
-                    mem.write<uint32_t>(self->addr(offset + 4), raw >> 32);
-                    return;
-                }
-            }
-            if (is_aligned<uint16_t>(self->offset + offset)) {
-                uint64_t raw = *(uint64_t*)&value;
-                mem.write<uint16_t>(self->addr(offset), raw);
-                mem.write<uint16_t>(self->addr(offset + 2), raw >> 16);
-                mem.write<uint16_t>(self->addr(offset + 4), raw >> 32);
-                mem.write<uint16_t>(self->addr(offset + 6), raw >> 48);
-                return;
-            }
-        }
-        uint64_t raw = *(uint64_t*)&value;
-        mem.write<uint8_t>(self->addr(offset), raw);
-        mem.write<uint8_t>(self->addr(offset + 1), raw >> 8);
-        mem.write<uint8_t>(self->addr(offset + 2), raw >> 16);
-        mem.write<uint8_t>(self->addr(offset + 3), raw >> 24);
-        mem.write<uint8_t>(self->addr(offset + 4), raw >> 32);
-        mem.write<uint8_t>(self->addr(offset + 5), raw >> 40);
-        mem.write<uint8_t>(self->addr(offset + 6), raw >> 48);
-        mem.write<uint8_t>(self->addr(offset + 7), raw >> 56);
-        return;
-    }
-    else {
-        size_t virt_seg_base = this->seg();
-        size_t virt_addr_base = virt_seg_base + self->ptr(offset);
-
-    }
-    */
+    return NO_FAULT;
 }
 
 template <typename T, typename V, typename P>
@@ -415,16 +367,18 @@ inline V z86AddrSharedFuncs::read(const P* self, ssize_t offset) {
             return mem.read<V>(virt_addr_base);
         }
         else {
-            //union {
-                //V ret;
-            //};
             if constexpr (sizeof(V) != sizeof(uint16_t)) {
                 unsigned char raw[z86DataProperites<V>::size];
+#if _M_IX86 || __x86_64__
                 mem.read_movsb(
                     mem.read_movsb(raw, virt_addr_base, wrap),
                     virt_addr_base - self->offset_wrap_sub<V>(wrap),
                     z86DataProperites<V>::size - wrap
                 );
+#else
+                mem.read(raw, virt_addr_base, wrap);
+                mem.read(&raw[wrap], virt_addr_base - self->offset_wrap_sub<V>(wrap), z86DataProperites<V>::size - wrap);
+#endif
                 return *(V*)&raw;
             }
             else {
@@ -433,36 +387,8 @@ inline V z86AddrSharedFuncs::read(const P* self, ssize_t offset) {
                 raw |= (uint16_t)mem.read<uint8_t>(virt_addr_base - self->offset_wrap_sub<V>(wrap)) << 8;
                 return std::bit_cast<V>(raw);
             }
-            //UByteIntTypeEx<z86DataProperites<V>::size> raw = {};
-
         }
     }
-
-    /*
-    if constexpr (sizeof(V) == sizeof(uint8_t)) {
-        return mem.read<V>(self->addr(offset));
-    }
-    else if constexpr (sizeof(V) == sizeof(uint16_t)) {
-        if (is_aligned<uint16_t>(self->offset + offset)) {
-            return mem.read<V>(self->addr(offset));
-        }
-        else {
-            union {
-                V ret;
-                uint16_t raw;
-            };
-            raw = mem.read<uint8_t>(self->addr(offset));
-            raw |= mem.read<uint8_t>(self->addr(offset + 1)) << 8;
-            return ret;
-        }
-    }
-    else if constexpr (sizeof(V) == sizeof(uint32_t)) {
-        return mem.read<V>(self->addr(offset));
-    }
-    else if constexpr (sizeof(V) == sizeof(uint64_t)) {
-        return mem.read<V>(self->addr(offset));
-    }
-    */
 }
 
 template <typename P>
@@ -567,13 +493,16 @@ inline uint64_t z86AddrSharedFuncs::read_advance_O(P* self) {
 }
 
 template <z86BaseTemplate>
-template <typename T1, typename T2, typename P, typename L>
-inline bool regcall z86BaseDefault::binopMR_impl(P& pc, const L& lambda) {
+template <uint8_t op_flags, typename T1, typename T2, typename P, typename L>
+inline EXCEPTION regcall z86BaseDefault::binopMR_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     T2& rval = this->index_regR<T2>(modrm.R());
     if (modrm.is_mem()) {
-        P data_addr = modrm.parse_memM(pc);
-        T1 mval = data_addr.read<T1>();
+        z86Addr data_addr = modrm.parse_memM(pc);
+        T1 mval;
+        if constexpr (!OP_SKIPS_READ(op_flags)) {
+            mval = data_addr.read<T1>();
+        }
         if (lambda(mval, rval)) {
             data_addr.write<T1>(mval);
         }
@@ -581,36 +510,39 @@ inline bool regcall z86BaseDefault::binopMR_impl(P& pc, const L& lambda) {
     else {
         lambda(this->index_regMB<T1>(modrm.M()), rval);
     }
-    return false;
+    return NO_FAULT;
 }
 
 template <z86BaseTemplate>
-template <typename T1, typename T2, typename P, typename L>
-inline bool regcall z86BaseDefault::binopRM_impl(P& pc, const L& lambda) {
+template <uint8_t op_flags, typename T1, typename T2, typename P, typename L>
+inline EXCEPTION regcall z86BaseDefault::binopRM_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     T2 mval;
     if (modrm.is_mem()) {
-        P data_addr = modrm.parse_memM(pc);
+        z86Addr data_addr = modrm.parse_memM(pc);
         mval = data_addr.read<T2>();
     }
     else {
         mval = this->index_regMB<T2>(modrm.M());
     }
     lambda(this->index_regR<T1>(modrm.R()), mval);
-    return false;
+    return NO_FAULT;
 }
 
 // Bit test memory operand
 template <z86BaseTemplate>
-template <typename T, typename P, typename L>
-inline bool regcall z86BaseDefault::binopMRB_impl(P& pc, const L& lambda) {
+template <uint8_t op_flags, typename T, typename P, typename L>
+inline EXCEPTION regcall z86BaseDefault::binopMRB_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     T rval = this->index_regR<T>(modrm.R());
     T mask = rval & bitsof(T) - 1;
     if (modrm.is_mem()) {
-        P data_addr = modrm.parse_memM(pc);
+        z86Addr data_addr = modrm.parse_memM(pc);
         data_addr.offset += sizeof(T) * (rval >> std::bit_width(bitsof(T) - 1));
-        T mval = data_addr.read<T>();
+        T mval;
+        if constexpr (!OP_SKIPS_READ(op_flags)) {
+            mval = data_addr.read<T>();
+        }
         if (lambda(mval, mask)) {
             data_addr.write<T>(mval);
         }
@@ -618,18 +550,18 @@ inline bool regcall z86BaseDefault::binopMRB_impl(P& pc, const L& lambda) {
     else {
         lambda(this->index_regMB<T>(modrm.M()), mask);
     }
-    return false;
+    return NO_FAULT;
 }
 
 // Far width memory operand, special for LDS/LES
 template <z86BaseTemplate>
-template <typename T, typename P, typename L>
-inline bool regcall z86BaseDefault::binopRMF_impl(P& pc, const L& lambda) {
+template <uint8_t op_flags, typename T, typename P, typename L>
+inline EXCEPTION regcall z86BaseDefault::binopRMF_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     T& rval = this->index_regR<T>(modrm.R());
     if (modrm.is_mem()) {
         using DT = dbl_int_t<T>;
-        P data_addr = modrm.parse_memM(pc);
+        z86Addr data_addr = modrm.parse_memM(pc);
         DT temp = data_addr.read<T>();
         temp |= (DT)data_addr.read<uint16_t>(sizeof(T)) << bitsof(T);
         lambda(rval, temp);
@@ -640,20 +572,20 @@ inline bool regcall z86BaseDefault::binopRMF_impl(P& pc, const L& lambda) {
         }
         else {
             this->set_fault(IntUD);
-            return true;
+            return FAULT;
         }
     }
-    return false;
+    return NO_FAULT;
 }
 
 // Double width memory operand, special for BOUND
 template <z86BaseTemplate>
-template <typename T, typename P, typename L>
-inline bool regcall z86BaseDefault::binopRM2_impl(P& pc, const L& lambda) {
+template <uint8_t op_flags, typename T, typename P, typename L>
+inline EXCEPTION regcall z86BaseDefault::binopRM2_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     T& rval = this->index_regR<T>(modrm.R());
     if (modrm.is_mem()) {
-        P data_addr = modrm.parse_memM(pc);
+        z86Addr data_addr = modrm.parse_memM(pc);
         return lambda(rval, data_addr.read<T>(), data_addr.read<T>(sizeof(T)));
     }
     else {
@@ -662,20 +594,23 @@ inline bool regcall z86BaseDefault::binopRM2_impl(P& pc, const L& lambda) {
         }
         else {
             this->set_fault(IntUD);
-            return true;
+            return FAULT;
         }
     }
-    return false;
+    return NO_FAULT;
 }
 
 template <z86BaseTemplate>
-template <typename T, typename P, typename L>
-inline bool regcall z86BaseDefault::binopMS_impl(P& pc, const L& lambda) {
+template <uint8_t op_flags, typename T, typename P, typename L>
+inline EXCEPTION regcall z86BaseDefault::binopMS_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     uint16_t rval = this->get_seg(modrm.R());
     if (modrm.is_mem()) {
-        P data_addr = modrm.parse_memM(pc);
-        T mval = data_addr.read<T>();
+        z86Addr data_addr = modrm.parse_memM(pc);
+        T mval;
+        if constexpr (!OP_SKIPS_READ(op_flags)) {
+            mval = data_addr.read<T>();
+        }
         if (lambda(mval, rval)) {
             data_addr.write<T>(mval);
         }
@@ -683,36 +618,41 @@ inline bool regcall z86BaseDefault::binopMS_impl(P& pc, const L& lambda) {
     else {
         lambda(this->index_regMB<T>(modrm.M()), rval);
     }
-    return false;
+    return NO_FAULT;
 }
 
 template <z86BaseTemplate>
-template <typename T, typename P, typename L>
-inline bool regcall z86BaseDefault::binopSM_impl(P& pc, const L& lambda) {
+template <uint8_t op_flags, typename T, typename P, typename L>
+inline EXCEPTION regcall z86BaseDefault::binopSM_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     T mval;
     if (modrm.is_mem()) {
-        P data_addr = modrm.parse_memM(pc);
+        z86Addr data_addr = modrm.parse_memM(pc);
         mval = data_addr.read<T>();
     }
     else {
         mval = this->index_regMB<T>(modrm.M());
     }
     uint8_t seg_index = modrm.R();
-    uint16_t rval = this->get_seg(seg_index);
+    uint16_t rval;
+    if constexpr (!OP_SKIPS_READ(op_flags)) {
+        rval = this->get_seg(seg_index);
+    }
     lambda(rval, mval);
-    this->write_seg(seg_index, rval);
-    return false;
+    return this->write_seg(seg_index, rval);
 }
 
 template <z86BaseTemplate>
-template <typename T, typename P, typename L>
-inline bool regcall z86BaseDefault::binopMR_MM(P& pc, const L& lambda) {
+template <typename T, uint8_t op_flags, typename P, typename L>
+inline EXCEPTION regcall z86BaseDefault::binopMR_MM(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     MMXT<T>& rval = this->index_mmx_reg<T>(modrm.R());
     if (modrm.is_mem()) {
-        P data_addr = modrm.parse_memM(pc);
-        MMXT<T> mval = data_addr.read<MMXT<T>>();
+        z86Addr data_addr = modrm.parse_memM(pc);
+        MMXT<T> mval;
+        if constexpr (!OP_SKIPS_READ(op_flags)) {
+            mval = data_addr.read<MMXT<T>>();
+        }
         if (lambda(mval, rval)) {
             data_addr.write<MMXT<T>>(mval);
         }
@@ -720,33 +660,36 @@ inline bool regcall z86BaseDefault::binopMR_MM(P& pc, const L& lambda) {
     else {
         lambda(this->index_mmx_reg<T>(modrm.M()), rval);
     }
-    return false;
+    return NO_FAULT;
 }
 
 template <z86BaseTemplate>
-template <typename T, typename P, typename L>
-inline bool regcall z86BaseDefault::binopRM_MM(P& pc, const L& lambda) {
+template <typename T, uint8_t op_flags, typename P, typename L>
+inline EXCEPTION regcall z86BaseDefault::binopRM_MM(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     MMXT<T> mval;
     if (modrm.is_mem()) {
-        P data_addr = modrm.parse_memM(pc);
+        z86Addr data_addr = modrm.parse_memM(pc);
         mval = data_addr.read<MMXT<T>>();
     }
     else {
         mval = this->index_mmx_reg<T>(modrm.M());
     }
     lambda(this->index_mmx_reg<T>(modrm.R()), mval);
-    return false;
+    return NO_FAULT;
 }
 
 template <z86BaseTemplate>
-template <typename T, typename P, typename L>
-inline bool regcall z86BaseDefault::binopMR_XX(P& pc, const L& lambda) {
+template <typename T, uint8_t op_flags, typename P, typename L>
+inline EXCEPTION regcall z86BaseDefault::binopMR_XX(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     SSET<T>& rval = this->index_xmm_regR<T>(modrm.R());
     if (modrm.is_mem()) {
-        P data_addr = modrm.parse_memM(pc);
-        SSET<T> mval = data_addr.read<SSET<T>>();
+        z86Addr data_addr = modrm.parse_memM(pc);
+        SSET<T> mval;
+        if constexpr (!OP_SKIPS_READ(op_flags)) {
+            mval = data_addr.read<SSET<T>>();
+        }
         if (lambda(mval, rval)) {
             data_addr.write<SSET<T>>(mval);
         }
@@ -754,50 +697,53 @@ inline bool regcall z86BaseDefault::binopMR_XX(P& pc, const L& lambda) {
     else {
         lambda(this->index_xmm_regMB<T>(modrm.M()), rval);
     }
-    return false;
+    return NO_FAULT;
 }
 
 template <z86BaseTemplate>
-template <typename T, typename P, typename L>
-inline bool regcall z86BaseDefault::binopRM_XX(P& pc, const L& lambda) {
+template <typename T, uint8_t op_flags, typename P, typename L>
+inline EXCEPTION regcall z86BaseDefault::binopRM_XX(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     SSET<T> mval;
     if (modrm.is_mem()) {
-        P data_addr = modrm.parse_memM(pc);
+        z86Addr data_addr = modrm.parse_memM(pc);
         mval = data_addr.read<SSET<T>>();
     }
     else {
         mval = this->index_xmm_regMB<T>(modrm.M());
     }
     lambda(this->index_xmm_regR<T>(modrm.R()), mval);
-    return false;
+    return NO_FAULT;
 }
 
 template <z86BaseTemplate>
-template <typename T, typename P, typename L>
-inline bool regcall z86BaseDefault::binopRM_MX(P& pc, const L& lambda) {
+template <typename T, uint8_t op_flags, typename P, typename L>
+inline EXCEPTION regcall z86BaseDefault::binopRM_MX(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     SSET<T> mval;
     if (modrm.is_mem()) {
-        P data_addr = modrm.parse_memM(pc);
+        z86Addr data_addr = modrm.parse_memM(pc);
         mval = { data_addr.read<T>() };
     }
     else {
         mval = this->index_xmm_regMB<T>(modrm.M());
     }
     lambda(this->index_mmx_reg<T>(modrm.R()), mval);
-    return false;
+    return NO_FAULT;
 }
 
 template <z86BaseTemplate>
-template <typename T, typename P, typename L>
-inline bool regcall z86BaseDefault::unopM_impl(P& pc, const L& lambda) {
+template <uint8_t op_flags, typename T, typename P, typename L>
+inline EXCEPTION regcall z86BaseDefault::unopM_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     uint8_t r = modrm.R();
     uint8_t ret;
     if (modrm.is_mem()) {
-        P data_addr = modrm.parse_memM(pc);
-        T mval = data_addr.read<T>();
+        z86Addr data_addr = modrm.parse_memM(pc);
+        T mval;
+        if constexpr (!OP_SKIPS_READ(op_flags)) {
+            mval = data_addr.read<T>();
+        }
         ret = lambda(mval, r);
         if (OP_NEEDS_WRITE(ret)) {
             data_addr.write<T>(mval);
@@ -807,17 +753,18 @@ inline bool regcall z86BaseDefault::unopM_impl(P& pc, const L& lambda) {
         ret = lambda(this->index_regMB<T>(modrm.M()), r);
     }
     if constexpr (FAULTS_ARE_TRAPS) {
-        return false;
+        return NO_FAULT;
     }
     return OP_HAD_FAULT(ret);
 }
 
 template <z86RegCommonTemplate>
 template <typename P, typename T>
-inline void regcall z86RegCommonDefault::PUSH_impl(const T& src) {
+inline EXCEPTION regcall z86RegCommonDefault::PUSH_impl(const T& src) {
     this->SP<P>() -= (std::max)(sizeof(T), (size_t)2);
     z86AddrSS stack = this->stack<P>();
     stack.write(src);
+    return NO_FAULT;
 }
 
 template <z86RegCommonTemplate>
@@ -832,7 +779,7 @@ inline T z86RegCommonDefault::POP_impl() {
 // No wonder ENTER sucks
 template <z86BaseTemplate>
 template <typename T>
-gnu_attr(minsize) inline void regcall z86BaseDefault::ENTER_impl(uint16_t alloc, uint8_t nesting) {
+gnu_attr(minsize) inline EXCEPTION regcall z86BaseDefault::ENTER_impl(uint16_t alloc, uint8_t nesting) {
     if constexpr (sizeof(T) == sizeof(uint64_t)) {
         uint64_t cur_bp = this->rbp;
         uint64_t new_bp = this->rsp - sizeof(T);
@@ -946,13 +893,14 @@ gnu_attr(minsize) inline void regcall z86BaseDefault::ENTER_impl(uint16_t alloc,
         this->bp = new_bp;
         this->sp -= alloc;
     }
+    return NO_FAULT;
 }
 
 // TODO: Check what happens if an interrupt toggles 
 // the direction flag during a repeating string instruction
 template <z86BaseTemplate>
 template <typename T, typename P>
-inline bool regcall z86BaseDefault::LODS_impl() {
+inline EXCEPTION regcall z86BaseDefault::LODS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
     if (this->has_rep()) {
@@ -967,12 +915,12 @@ inline bool regcall z86BaseDefault::LODS_impl() {
         this->A<T>() = src_addr.read_advance<T>(offset);
     }
     this->SI<P>() = src_addr.offset;
-    return false;
+    return NO_FAULT;
 }
 
 template <z86BaseTemplate>
 template <typename T, typename P>
-inline bool regcall z86BaseDefault::MOVS_impl() {
+inline EXCEPTION regcall z86BaseDefault::MOVS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
     z86AddrES dst_addr = this->str_dst<P>();
@@ -989,12 +937,12 @@ inline bool regcall z86BaseDefault::MOVS_impl() {
     }
     this->SI<P>() = src_addr.offset;
     this->DI<P>() = dst_addr.offset;
-    return false;
+    return NO_FAULT;
 }
 
 template <z86BaseTemplate>
 template <typename T, typename P>
-inline bool regcall z86BaseDefault::STOS_impl() {
+inline EXCEPTION regcall z86BaseDefault::STOS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86AddrES dst_addr = this->str_dst<P>();
     if (this->has_rep()) {
@@ -1009,12 +957,12 @@ inline bool regcall z86BaseDefault::STOS_impl() {
         dst_addr.write_advance<T>(this->A<T>(), offset);
     }
     this->DI<P>() = dst_addr.offset;
-    return false;
+    return NO_FAULT;
 }
 
 template <z86BaseTemplate>
 template <typename T, typename P>
-inline bool regcall z86BaseDefault::SCAS_impl() {
+inline EXCEPTION regcall z86BaseDefault::SCAS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86AddrES dst_addr = this->str_dst<P>();
     if (this->has_rep()) {
@@ -1039,12 +987,12 @@ inline bool regcall z86BaseDefault::SCAS_impl() {
     }
 finish:
     this->DI<P>() = dst_addr.offset;
-    return false;
+    return NO_FAULT;
 }
 
 template <z86BaseTemplate>
 template <typename T, typename P>
-inline bool regcall z86BaseDefault::CMPS_impl() {
+inline EXCEPTION regcall z86BaseDefault::CMPS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
     z86AddrES dst_addr = this->str_dst<P>();
@@ -1071,12 +1019,12 @@ inline bool regcall z86BaseDefault::CMPS_impl() {
 finish:
     this->SI<P>() = src_addr.offset;
     this->DI<P>() = src_addr.offset;
-    return false;
+    return NO_FAULT;
 }
 
 template <z86BaseTemplate>
 template <typename P>
-inline bool regcall z86BaseDefault::ADD4S_impl() {
+inline EXCEPTION regcall z86BaseDefault::ADD4S_impl() {
     // How does this actually behave on real hardware?
     z86Addr src_addr = this->str_src<P>();
     z86AddrES dst_addr = this->str_dst<P>();
@@ -1085,11 +1033,12 @@ inline bool regcall z86BaseDefault::ADD4S_impl() {
     while (--count) {
 
     }
+    return NO_FAULT;
 }
 
 template <z86BaseTemplate>
 template <typename T, typename P>
-inline bool regcall z86BaseDefault::OUTS_impl() {
+inline EXCEPTION regcall z86BaseDefault::OUTS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
     uint16_t port = this->dx;
@@ -1105,12 +1054,12 @@ inline bool regcall z86BaseDefault::OUTS_impl() {
         this->port_out_impl<T>(port, src_addr.read_advance<T>(offset));
     }
     this->SI<P>() = src_addr.offset;
-    return false;
+    return NO_FAULT;
 }
 
 template <z86BaseTemplate>
 template <typename T, typename P>
-inline bool regcall z86BaseDefault::INS_impl() {
+inline EXCEPTION regcall z86BaseDefault::INS_impl() {
     intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86AddrES dst_addr = this->str_dst<P>();
     uint16_t port = this->dx;
@@ -1126,7 +1075,7 @@ inline bool regcall z86BaseDefault::INS_impl() {
         dst_addr.write_advance<T>(this->port_in_impl<T>(port), offset);
     }
     this->DI<P>() = dst_addr.offset;
-    return false;
+    return NO_FAULT;
 }
 
 template <z86BaseTemplate>
@@ -1268,7 +1217,7 @@ inline T regcall z86BaseDefault::port_in_impl(uint16_t port) {
 
 template <z86BaseTemplate>
 template <typename T, typename P>
-inline bool regcall z86BaseDefault::MASKMOV_impl(T& src, T mask) {
+inline EXCEPTION regcall z86BaseDefault::MASKMOV_impl(T& src, T mask) {
     z86Addr data_addr = this->addr(DS, this->DI<P>());
 
     uint8_t* data_vec = (uint8_t*)&src;
@@ -1279,18 +1228,18 @@ inline bool regcall z86BaseDefault::MASKMOV_impl(T& src, T mask) {
             data_addr.write<uint8_t>(data_vec[i], i);
         }
     }
-    return false;
+    return NO_FAULT;
 }
 
 // Special unop for groups 4/5
 template <z86BaseTemplate>
-template <typename T, typename P>
+template <uint8_t op_flags, typename T, typename P>
 inline bool regcall z86BaseDefault::unopMS_impl(P& pc) {
     ModRM modrm = pc.read_advance<ModRM>();
     uint8_t r = modrm.R();
     T mval;
     uint16_t sval = 0; // TODO: jank
-    P data_addr;
+    z86Addr data_addr;
     if (modrm.is_mem()) {
         data_addr = modrm.parse_memM(pc);
         mval = data_addr.read<T>();
@@ -1376,14 +1325,15 @@ void z86BaseDefault::LOADALL2() {
     this->dx = loadall_data.dx;
     this->cx = loadall_data.cx;
     this->ax = loadall_data.ax;
-    this->load_descriptor(ES, loadall_data.es_descriptor);
-    this->load_descriptor(CS, loadall_data.cs_descriptor);
-    this->load_descriptor(SS, loadall_data.ss_descriptor);
-    this->load_descriptor(DS, loadall_data.ds_descriptor);
-    this->load_descriptor(GDT, loadall_data.gdt_descriptor);
-    this->load_descriptor(LDT, loadall_data.ldt_descriptor);
-    this->load_descriptor(IDT, loadall_data.idt_descriptor);
-    this->load_descriptor(TSS, loadall_data.tss_descriptor);
+    this->load_descriptor(ES, loadall_data.es_descriptor, loadall_data.es_descriptor.attributes<false>());
+    this->load_descriptor(CS, loadall_data.cs_descriptor, loadall_data.cs_descriptor.attributes<true>());
+    this->set_privilege_level((loadall_data.ss_descriptor.attributes_field & 0b1100000) >> 5);
+    this->load_descriptor(SS, loadall_data.ss_descriptor, loadall_data.ss_descriptor.attributes<false>());
+    this->load_descriptor(DS, loadall_data.ds_descriptor, loadall_data.ds_descriptor.attributes<false>());
+    this->load_descriptor(GDT, loadall_data.gdt_descriptor, loadall_data.gdt_descriptor.attributes<false>());
+    this->load_descriptor(LDT, loadall_data.ldt_descriptor, loadall_data.ldt_descriptor.attributes<false>());
+    this->load_descriptor(IDT, loadall_data.idt_descriptor, loadall_data.idt_descriptor.attributes<false>());
+    this->load_descriptor(TSS, loadall_data.tss_descriptor, loadall_data.tss_descriptor.attributes<false>());
 }
 
 template <z86BaseTemplate>
@@ -1406,7 +1356,6 @@ void z86BaseDefault::STOREALL() {
     loadall_data.dx = this->dx;
     loadall_data.cx = this->cx;
     loadall_data.ax = this->ax;
-    loadall_data.es_descriptor.access_rights = 0;
     this->fill_descriptor(ES, loadall_data.es_descriptor);
     this->fill_descriptor(CS, loadall_data.cs_descriptor);
     this->fill_descriptor(SS, loadall_data.ss_descriptor);
@@ -1418,7 +1367,7 @@ void z86BaseDefault::STOREALL() {
 }
 
 template <z86BaseTemplate>
-void z86BaseDefault::LOADALL3() {
+EXCEPTION z86BaseDefault::LOADALL3() {
     z86AddrES load_addr = this->str_dst();
     this->set_control_reg(CR0, load_addr.read<uint32_t>());
     this->set_flags<uint32_t, true>(load_addr.read<uint32_t>(4));
@@ -1441,28 +1390,43 @@ void z86BaseDefault::LOADALL3() {
     this->ss = load_addr.read<uint16_t>(0x48);
     this->cs = load_addr.read<uint16_t>(0x4C);
     this->es = load_addr.read<uint16_t>(0x50);
-    this->load_descriptor(TSS, load_addr.read<uint32_t>(0x58), load_addr.read<uint32_t>(0x5C), load_addr.read<uint32_t>(0x54), 0);
-    this->load_descriptor(IDT, load_addr.read<uint32_t>(0x64), load_addr.read<uint32_t>(0x68), load_addr.read<uint32_t>(0x60), 0);
-    this->load_descriptor(GDT, load_addr.read<uint32_t>(0x70), load_addr.read<uint32_t>(0x74), load_addr.read<uint32_t>(0x6C), 0);
-    this->load_descriptor(LDT, load_addr.read<uint32_t>(0x7C), load_addr.read<uint32_t>(0x80), load_addr.read<uint32_t>(0x78), 0);
-    this->load_descriptor(GS, load_addr.read<uint32_t>(0x88), load_addr.read<uint32_t>(0x8C), load_addr.read<uint32_t>(0x84), 0);
-    this->load_descriptor(FS, load_addr.read<uint32_t>(0x94), load_addr.read<uint32_t>(0x98), load_addr.read<uint32_t>(0x90), 0);
-    this->load_descriptor(DS, load_addr.read<uint32_t>(0xA0), load_addr.read<uint32_t>(0xA4), load_addr.read<uint32_t>(0x9C), 0);
-    this->load_descriptor(SS, load_addr.read<uint32_t>(0xAC), load_addr.read<uint32_t>(0xB0), load_addr.read<uint32_t>(0xA8), 0);
-    this->load_descriptor(CS, load_addr.read<uint32_t>(0xB8), load_addr.read<uint32_t>(0xBC), load_addr.read<uint32_t>(0xB4), 0);
-    this->load_descriptor(ES, load_addr.read<uint32_t>(0xC4), load_addr.read<uint32_t>(0xC8), load_addr.read<uint32_t>(0xC0), 0);
+    
+    uint16_t temp = z86DescriptorCache80386::make_full_attributes<false>(__builtin_bswap16(load_addr.read<uint16_t>(0x55)));
+    this->load_descriptor(TSS, load_addr.read<uint32_t>(0x58), load_addr.read<uint32_t>(0x5C), temp);
+    temp = z86DescriptorCache80386::make_full_attributes<false>(__builtin_bswap16(load_addr.read<uint16_t>(0x61)));
+    this->load_descriptor(IDT, load_addr.read<uint32_t>(0x64), load_addr.read<uint32_t>(0x68), temp);
+    temp = z86DescriptorCache80386::make_full_attributes<false>(__builtin_bswap16(load_addr.read<uint16_t>(0x6D)));
+    this->load_descriptor(GDT, load_addr.read<uint32_t>(0x70), load_addr.read<uint32_t>(0x74), temp);
+    temp = z86DescriptorCache80386::make_full_attributes<false>(__builtin_bswap16(load_addr.read<uint16_t>(0x79)));
+    this->load_descriptor(LDT, load_addr.read<uint32_t>(0x7C), load_addr.read<uint32_t>(0x80), temp);
+    temp = z86DescriptorCache80386::make_full_attributes<false>(__builtin_bswap16(load_addr.read<uint16_t>(0x85)));
+    this->load_descriptor(GS, load_addr.read<uint32_t>(0x88), load_addr.read<uint32_t>(0x8C), temp);
+    temp = z86DescriptorCache80386::make_full_attributes<false>(__builtin_bswap16(load_addr.read<uint16_t>(0x91)));
+    this->load_descriptor(FS, load_addr.read<uint32_t>(0x94), load_addr.read<uint32_t>(0x98), temp);
+    temp = z86DescriptorCache80386::make_full_attributes<false>(__builtin_bswap16(load_addr.read<uint16_t>(0x9D)));
+    this->load_descriptor(DS, load_addr.read<uint32_t>(0xA0), load_addr.read<uint32_t>(0xA4), temp);
+    temp = z86DescriptorCache80386::make_full_attributes<false>(__builtin_bswap16(load_addr.read<uint16_t>(0xA9)));
+    this->load_descriptor(SS, load_addr.read<uint32_t>(0xAC), load_addr.read<uint32_t>(0xB0), temp);
+    temp = z86DescriptorCache80386::make_full_attributes<true>(__builtin_bswap16(load_addr.read<uint16_t>(0xB5)));
+    this->load_descriptor(CS, load_addr.read<uint32_t>(0xB8), load_addr.read<uint32_t>(0xBC), temp);
+    temp = z86DescriptorCache80386::make_full_attributes<false>(__builtin_bswap16(load_addr.read<uint16_t>(0xC1)));
+    this->load_descriptor(ES, load_addr.read<uint32_t>(0xC4), load_addr.read<uint32_t>(0xC8), temp);
+    return NO_FAULT;
 }
 
 // Special unop for group 6
 template <z86BaseTemplate>
-template <typename T, typename P, typename L>
-inline bool regcall z86BaseDefault::unopMW_impl(P& pc, const L& lambda) {
+template <uint8_t op_flags, typename T, typename P, typename L>
+inline EXCEPTION regcall z86BaseDefault::unopMW_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     uint8_t r = modrm.R();
     uint8_t ret;
     if (modrm.is_mem()) {
-        P data_addr = modrm.parse_memM(pc);
-        T mval = data_addr.read<uint16_t>();
+        z86Addr data_addr = modrm.parse_memM(pc);
+        T mval;
+        if constexpr (!OP_SKIPS_READ(op_flags)) {
+            mval = data_addr.read<uint16_t>();
+        }
         ret = lambda(mval, r);
         if (OP_NEEDS_WRITE(ret)) {
             data_addr.write<uint16_t>(mval);
@@ -1472,14 +1436,14 @@ inline bool regcall z86BaseDefault::unopMW_impl(P& pc, const L& lambda) {
         ret = lambda(this->index_regMB<T>(modrm.M()), r);
     }
     if constexpr (FAULTS_ARE_TRAPS) {
-        return false;
+        return NO_FAULT;
     }
     return OP_HAD_FAULT(ret);
 }
 
 template <z86BaseTemplate>
-template <typename T, typename P, typename LM, typename LR>
-inline bool regcall z86BaseDefault::unopMM_impl(P& pc, const LM& lambdaM, const LR& lambdaR) {
+template <uint8_t op_flags, typename T, typename P, typename LM, typename LR>
+inline EXCEPTION regcall z86BaseDefault::unopMM_impl(P& pc, const LM& lambdaM, const LR& lambdaR) {
     ModRM modrm = pc.read_advance<ModRM>();
     uint8_t r = modrm.R();
     uint8_t ret;
@@ -1490,7 +1454,7 @@ inline bool regcall z86BaseDefault::unopMM_impl(P& pc, const LM& lambdaM, const 
         ret = lambdaR(this->index_regMB<T>(modrm.M()), r);
     }
     if constexpr (FAULTS_ARE_TRAPS) {
-        return false;
+        return NO_FAULT;
     }
     return OP_HAD_FAULT(ret);
 }
