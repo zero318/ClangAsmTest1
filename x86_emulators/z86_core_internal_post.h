@@ -579,7 +579,7 @@ template <uint8_t op_flags, typename T, typename P, typename L>
 inline EXCEPTION regcall z86BaseDefault::binopRMF_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
     T& rval = this->index_regR<T, OP_IGNORES_REX(op_flags)>(modrm.R());
-    uint8_t ret;
+    uint8_t ret = 0;
     if (modrm.is_mem()) {
         using DT = dbl_int_t<T>;
         z86Addr data_addr = modrm.parse_memM(pc);
