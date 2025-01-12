@@ -7,6 +7,8 @@
 
 static inline constexpr uint8_t protected_mode_testA[] = {
 	0x48,
+	0x40,
+	0x66, 0x48,
 	0xBB, 0x00, 0x10,
 	0x89, 0x07,
 	0x89, 0x5F, 0x02,
@@ -113,11 +115,11 @@ struct DumbBS : PortByteDevice {
 DumbBS startup_device;
 
 int main(int argc, char* argv[]) {
-	load_bios_rom();
+	//load_bios_rom();
 
-	//z86_mem_write(0xFFFF0, protected_mode_test_jump);
-	//z86_mem_write(0x04000, protected_mode_testA);
-	//z86_mem_write(0x05000, protected_mode_testB);
+	z86_mem_write(0xFFFF0, protected_mode_test_jump);
+	z86_mem_write(0x04000, protected_mode_testA);
+	z86_mem_write(0x05000, protected_mode_testB);
 
 	z86_add_byte_device(&startup_device);
 

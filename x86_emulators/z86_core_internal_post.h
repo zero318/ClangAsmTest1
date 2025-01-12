@@ -493,10 +493,30 @@ inline uint64_t z86AddrSharedFuncs::read_advance_O(P* self) {
 }
 
 template <z86BaseTemplate>
+template <uint8_t op_flags, typename T, typename P>
+inline EXCEPTION regcall z86BaseDefault::LEA_impl(P& pc) {
+    ModRM modrm = pc.read_advance<ModRM>();
+    if (modrm.is_mem()) {
+        z86Addr addr = modrm.parse_memM(pc);
+        this->index_regR<T>(modrm.R()) = addr.offset;
+    }
+    else {
+        if constexpr (NO_UD) {
+            // TODO: jank
+        }
+        else {
+            this->set_fault(IntUD);
+            return FAULT;
+        }
+    }
+    return NO_FAULT;
+}
+
+template <z86BaseTemplate>
 template <uint8_t op_flags, typename T1, typename T2, typename P, typename L>
 inline EXCEPTION regcall z86BaseDefault::binopMR_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
-    T2& rval = this->index_regR<T2>(modrm.R());
+    T2& rval = this->index_regR<T2, OP_IGNORES_REX(op_flags)>(modrm.R());
     if (modrm.is_mem()) {
         z86Addr data_addr = modrm.parse_memM(pc);
         T1 mval;
@@ -508,7 +528,7 @@ inline EXCEPTION regcall z86BaseDefault::binopMR_impl(P& pc, const L& lambda) {
         }
     }
     else {
-        lambda(this->index_regMB<T1>(modrm.M()), rval);
+        lambda(this->index_regMB<T1, OP_IGNORES_REX(op_flags)>(modrm.M()), rval);
     }
     return NO_FAULT;
 }
@@ -523,9 +543,9 @@ inline EXCEPTION regcall z86BaseDefault::binopRM_impl(P& pc, const L& lambda) {
         mval = data_addr.read<T2>();
     }
     else {
-        mval = this->index_regMB<T2>(modrm.M());
+        mval = this->index_regMB<T2, OP_IGNORES_REX(op_flags)>(modrm.M());
     }
-    lambda(this->index_regR<T1>(modrm.R()), mval);
+    lambda(this->index_regR<T1, OP_IGNORES_REX(op_flags)>(modrm.R()), mval);
     return NO_FAULT;
 }
 
@@ -534,7 +554,7 @@ template <z86BaseTemplate>
 template <uint8_t op_flags, typename T, typename P, typename L>
 inline EXCEPTION regcall z86BaseDefault::binopMRB_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
-    T rval = this->index_regR<T>(modrm.R());
+    T rval = this->index_regR<T, OP_IGNORES_REX(op_flags)>(modrm.R());
     T mask = rval & bitsof(T) - 1;
     if (modrm.is_mem()) {
         z86Addr data_addr = modrm.parse_memM(pc);
@@ -548,7 +568,7 @@ inline EXCEPTION regcall z86BaseDefault::binopMRB_impl(P& pc, const L& lambda) {
         }
     }
     else {
-        lambda(this->index_regMB<T>(modrm.M()), mask);
+        lambda(this->index_regMB<T, OP_IGNORES_REX(op_flags)>(modrm.M()), mask);
     }
     return NO_FAULT;
 }
@@ -558,16 +578,17 @@ template <z86BaseTemplate>
 template <uint8_t op_flags, typename T, typename P, typename L>
 inline EXCEPTION regcall z86BaseDefault::binopRMF_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
-    T& rval = this->index_regR<T>(modrm.R());
+    T& rval = this->index_regR<T, OP_IGNORES_REX(op_flags)>(modrm.R());
+    uint8_t ret;
     if (modrm.is_mem()) {
         using DT = dbl_int_t<T>;
         z86Addr data_addr = modrm.parse_memM(pc);
         DT temp = data_addr.read<T>();
         temp |= (DT)data_addr.read<uint16_t>(sizeof(T)) << bitsof(T);
-        lambda(rval, temp);
+        ret = lambda(rval, temp);
     }
     else {
-        if constexpr (!NO_UD) {
+        if constexpr (NO_UD) {
             // TODO: jank
         }
         else {
@@ -575,7 +596,7 @@ inline EXCEPTION regcall z86BaseDefault::binopRMF_impl(P& pc, const L& lambda) {
             return FAULT;
         }
     }
-    return NO_FAULT;
+    return OP_HAD_FAULT(ret);
 }
 
 // Double width memory operand, special for BOUND
@@ -583,13 +604,13 @@ template <z86BaseTemplate>
 template <uint8_t op_flags, typename T, typename P, typename L>
 inline EXCEPTION regcall z86BaseDefault::binopRM2_impl(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
-    T& rval = this->index_regR<T>(modrm.R());
+    T& rval = this->index_regR<T, OP_IGNORES_REX(op_flags)>(modrm.R());
     if (modrm.is_mem()) {
         z86Addr data_addr = modrm.parse_memM(pc);
         return lambda(rval, data_addr.read<T>(), data_addr.read<T>(sizeof(T)));
     }
     else {
-        if constexpr (!NO_UD) {
+        if constexpr (NO_UD) {
             // TODO: jank
         }
         else {
@@ -616,7 +637,7 @@ inline EXCEPTION regcall z86BaseDefault::binopMS_impl(P& pc, const L& lambda) {
         }
     }
     else {
-        lambda(this->index_regMB<T>(modrm.M()), rval);
+        lambda(this->index_regMB<T, OP_IGNORES_REX(op_flags)>(modrm.M()), rval);
     }
     return NO_FAULT;
 }
@@ -631,7 +652,7 @@ inline EXCEPTION regcall z86BaseDefault::binopSM_impl(P& pc, const L& lambda) {
         mval = data_addr.read<T>();
     }
     else {
-        mval = this->index_regMB<T>(modrm.M());
+        mval = this->index_regMB<T, OP_IGNORES_REX(op_flags)>(modrm.M());
     }
     uint8_t seg_index = modrm.R();
     uint16_t rval;
@@ -683,7 +704,7 @@ template <z86BaseTemplate>
 template <typename T, uint8_t op_flags, typename P, typename L>
 inline EXCEPTION regcall z86BaseDefault::binopMR_XX(P& pc, const L& lambda) {
     ModRM modrm = pc.read_advance<ModRM>();
-    SSET<T>& rval = this->index_xmm_regR<T>(modrm.R());
+    SSET<T>& rval = this->index_xmm_regR<T, OP_IGNORES_REX(op_flags)>(modrm.R());
     if (modrm.is_mem()) {
         z86Addr data_addr = modrm.parse_memM(pc);
         SSET<T> mval;
@@ -695,7 +716,7 @@ inline EXCEPTION regcall z86BaseDefault::binopMR_XX(P& pc, const L& lambda) {
         }
     }
     else {
-        lambda(this->index_xmm_regMB<T>(modrm.M()), rval);
+        lambda(this->index_xmm_regMB<T, OP_IGNORES_REX(op_flags)>(modrm.M()), rval);
     }
     return NO_FAULT;
 }
@@ -710,9 +731,9 @@ inline EXCEPTION regcall z86BaseDefault::binopRM_XX(P& pc, const L& lambda) {
         mval = data_addr.read<SSET<T>>();
     }
     else {
-        mval = this->index_xmm_regMB<T>(modrm.M());
+        mval = this->index_xmm_regMB<T, OP_IGNORES_REX(op_flags)>(modrm.M());
     }
-    lambda(this->index_xmm_regR<T>(modrm.R()), mval);
+    lambda(this->index_xmm_regR<T, OP_IGNORES_REX(op_flags)>(modrm.R()), mval);
     return NO_FAULT;
 }
 
@@ -726,10 +747,16 @@ inline EXCEPTION regcall z86BaseDefault::binopRM_MX(P& pc, const L& lambda) {
         mval = { data_addr.read<T>() };
     }
     else {
-        mval = this->index_xmm_regMB<T>(modrm.M());
+        mval = this->index_xmm_regMB<T, OP_IGNORES_REX(op_flags)>(modrm.M());
     }
-    lambda(this->index_mmx_reg<T>(modrm.R()), mval);
+    lambda(this->index_mmx_reg<T, OP_IGNORES_REX(op_flags)>(modrm.R()), mval);
     return NO_FAULT;
+}
+
+template <z86BaseTemplate>
+template <uint8_t op_flags, typename T, typename P, typename L>
+inline EXCEPTION regcall z86BaseDefault::unopR_impl(P& pc, uint8_t reg, const L& lambda) {
+    return OP_HAD_FAULT(lambda(this->index_regMB<T, OP_IGNORES_REX(op_flags)>(reg)));
 }
 
 template <z86BaseTemplate>
@@ -750,7 +777,7 @@ inline EXCEPTION regcall z86BaseDefault::unopM_impl(P& pc, const L& lambda) {
         }
     }
     else {
-        ret = lambda(this->index_regMB<T>(modrm.M()), r);
+        ret = lambda(this->index_regMB<T, OP_IGNORES_REX(op_flags)>(modrm.M()), r);
     }
     if constexpr (FAULTS_ARE_TRAPS) {
         return NO_FAULT;
@@ -1277,7 +1304,7 @@ inline bool regcall z86BaseDefault::unopMS_impl(P& pc) {
         data_addr.write<T>(mval);
     }
     else {
-        T& mval_ref = ctx.index_regMB<T>(modrm.M());
+        T& mval_ref = ctx.index_regMB<T, OP_IGNORES_REX(op_flags)>(modrm.M());
         mval = mval_ref;
         switch (r) {
             case 0:
@@ -1406,8 +1433,11 @@ EXCEPTION z86BaseDefault::LOADALL3() {
     temp = z86DescriptorCache80386::make_full_attributes<false>(__builtin_bswap16(load_addr.read<uint16_t>(0x9D)));
     this->load_descriptor(DS, load_addr.read<uint32_t>(0xA0), load_addr.read<uint32_t>(0xA4), temp);
     temp = z86DescriptorCache80386::make_full_attributes<false>(__builtin_bswap16(load_addr.read<uint16_t>(0xA9)));
+    this->set_privilege_level((temp & 0b1100000) >> 5);
     this->load_descriptor(SS, load_addr.read<uint32_t>(0xAC), load_addr.read<uint32_t>(0xB0), temp);
     temp = z86DescriptorCache80386::make_full_attributes<true>(__builtin_bswap16(load_addr.read<uint16_t>(0xB5)));
+    this->change_data_size(temp & 0x4000);
+    this->change_addr_size(temp & 0x4000);
     this->load_descriptor(CS, load_addr.read<uint32_t>(0xB8), load_addr.read<uint32_t>(0xBC), temp);
     temp = z86DescriptorCache80386::make_full_attributes<false>(__builtin_bswap16(load_addr.read<uint16_t>(0xC1)));
     this->load_descriptor(ES, load_addr.read<uint32_t>(0xC4), load_addr.read<uint32_t>(0xC8), temp);
@@ -1433,7 +1463,7 @@ inline EXCEPTION regcall z86BaseDefault::unopMW_impl(P& pc, const L& lambda) {
         }
     }
     else {
-        ret = lambda(this->index_regMB<T>(modrm.M()), r);
+        ret = lambda(this->index_regMB<T, OP_IGNORES_REX(op_flags)>(modrm.M()), r);
     }
     if constexpr (FAULTS_ARE_TRAPS) {
         return NO_FAULT;
@@ -1451,7 +1481,7 @@ inline EXCEPTION regcall z86BaseDefault::unopMM_impl(P& pc, const LM& lambdaM, c
         ret = lambdaM(modrm.parse_memM(pc), r);
     }
     else {
-        ret = lambdaR(this->index_regMB<T>(modrm.M()), r);
+        ret = lambdaR(this->index_regMB<T, OP_IGNORES_REX(op_flags)>(modrm.M()), r);
     }
     if constexpr (FAULTS_ARE_TRAPS) {
         return NO_FAULT;
