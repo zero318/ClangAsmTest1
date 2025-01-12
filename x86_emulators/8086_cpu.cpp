@@ -876,24 +876,28 @@ dllexport void z86_execute() {
                 }));
                 break;
             case 0x88: // MOV Mb, Rb
+            mov_mrb:
                 FAULT_CHECK(ctx.binopMR<OP_BYTE | OP_NO_READ>(pc, [](auto& dst, auto src) regcall {
                     dst = src;
                     return OP_WRITE;
                 }));
                 break;
             case 0x89: // MOV Mv, Rv
+            mov_mr:
                 FAULT_CHECK(ctx.binopMR<OP_NO_READ>(pc, [](auto& dst, auto src) regcall {
                     dst = src;
                     return OP_WRITE;
                 }));
                 break;
             case 0x8A: // MOV Rb, Mb
+            mov_rmb:
                 FAULT_CHECK(ctx.binopRM<OP_BYTE | OP_NO_READ>(pc, [](auto& dst, auto src) regcall {
                     dst = src;
                     return OP_WRITE;
                 }));
                 break;
             case 0x8B: // MOV Rv, Mv
+            mov_rm:
                 FAULT_CHECK(ctx.binopRM<OP_NO_READ>(pc, [](auto& dst, auto src) regcall {
                     dst = src;
                     return OP_WRITE;
@@ -2090,6 +2094,16 @@ dllexport void z86_execute() {
             case 0x25D:
             case 0x260: case 0x261:
             case 0x269: case 0x26A:
+            case 0x284: case 0x285: case 0x286: case 0x287:
+            case 0x294: case 0x295:
+            case 0x2A4: case 0x2A5:
+            case 0x2B2: case 0x2B3:
+            case 0x2C0: case 0x2C1: case 0x2C2: case 0x2C3: case 0x2C5:
+            case 0x2CE:
+            case 0x2D0: case 0x2D1: case 0x2D4: case 0x2D5: case 0x2D6: case 0x2D7:
+            case 0x2D9:
+            case 0x2F4:
+            case 0x2FD: case 0x2FE: case 0x2FF:
                 THROW_UD();
                 break;
             case 0x10D: // PREFETCHx
@@ -3902,7 +3916,7 @@ dllexport void z86_execute() {
                 switch (ctx.opcode_select()) {
                     default: unreachable;
                     case Opcode66Prefix: // POPCNT Rv, Mv
-                        if (ctx.rep_type > 0) {
+                        if (ctx.rep_type != REP_E) {
                     case OpcodeF3Prefix: // POPCNT Rv, Mv
                             // TODO
                             break;
@@ -6542,6 +6556,1036 @@ dllexport void z86_execute() {
                         ALWAYS_UD();
                 }
                 break;
+            case 0x278:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPBROADCASTB Rx, M (AVX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x279:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPBROADCASTW Rx, M (AVX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x27A:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPBROADCASTB Rx, Mb (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x27B:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPBROADCASTW Rx, Mw (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x27C:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPBROADCASTD Rx, Mv (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x27D:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPERMT2B Rx, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x27E:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPERMT2D Rx, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x27F:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPERMT2PS Rx, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x280:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // INVEPT Rv, M
+                    case OpcodeF3Prefix: // VPADDSD Rx, Vx, Mx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x281:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // INVVPID Rv, M
+                    case OpcodeF3Prefix: // VPADDUSD Rx, Vx, Mx (EVEX)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x282:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // INVPCID Rv, M
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x283:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPMULTISHIFTQB Rx, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x288:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VEXPANDPS Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x289:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPEXPANDD Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x28A:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // MOVRS Rb, Mb
+                        ALWAYS_UD();
+                        goto mov_rmb;
+                    case Opcode66Prefix: // VCOMPRESSPS Mx, Rx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x28B:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // MOVRS Rv, Mv
+                    case Opcode66Prefix:
+                        // VPCOMPRESSD Mx, Rx (EVEX)
+                        ALWAYS_UD();
+                        goto mov_rm;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x28C:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPMASKMOVD Rx, Vx, Mx (AVX2)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x28D:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPERMB Rx, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x28E:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPMASKMOVD Mx, Vx, Rx (AVX2)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x28F:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPSHUFBITQMB Rk, Vx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x290:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPGATHERDD Rx, Mx, Vx (AVX2)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x291:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPGATHERQD Rx, Mx, Vx (AVX2)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x292:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VGATHERDPS Rx, Mx, Vx (AVX2)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x293:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VGATHERQPS Rx, Mx, Vx (AVX2)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x296:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMADDSUB132PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x297:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMSUBADD132PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x298:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMADD132PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x299:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMADD132SS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x29A:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMSUB132PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix: // V4FMADDPS (EVEX)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x29B:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMSUB132SS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix: // V4FMADDSS (EVEX)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x29C:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFNMADD132PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x29D:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFNMADD132SS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x29E:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFNMSUB132PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x29F:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFNMSUB132SS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2A0:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPSCATTERDD M, Rx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2A1:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPSCATTERQD M, Rx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2A2:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VSCATTERDPS M, Rx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2A3:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VSCATTERQPS M, Rx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2A6:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMADDSUB213PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2A7:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMSUBADD213PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2A8:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMADD213PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2A9:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMADD213SS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2AA:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMSUB213PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix: // V4FNMADDPS (EVEX)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2AB:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMSUB213SS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix: // V4FNMADDSS (EVEX)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2AC:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFNMADD213PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2AD:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFNMADD213SS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2AE:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFNMSUB213PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2AF:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFNMSUB213SS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2B0:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // VCVTNEOPH2PS Rx, Mx (AVX NE CONVERT)
+                    case Opcode66Prefix: // VCVTNEEPH2PS Rx, Mx (AVX NE CONVERT)
+                    case OpcodeF3Prefix: // VCVTNEEBF162PS Rx, Mx (AVX NE CONVERT)
+                    case OpcodeF2Prefix: // VCVTNEOBF162PS Rx, Mx (AVX NE CONVERT)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2B1:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VBCSTNEPH2PS Rx, Mw (AVX NE CONVERT)
+                    case OpcodeF3Prefix: // VBCSTNEBF162PS Rx, Mw (AVX NE CONVERT)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2B4:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPMADD52LUQ Rx, Vx, Mx (AVX IFMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2B5:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPMADD52HUQ Rx, Vx, Mx (AVX IFMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2B6:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMADDSUB231PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2B7:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMSUBADD231PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2B8:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMADD231PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2B9:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMADD231SS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2BA:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMSUB231PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2BB:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFMSUB231SS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2BC:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFNMADD231PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2BD:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFNMADD231SS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2BE:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFNMSUB231PS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2BF:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VFNMSUB231SS Rx, Vx, Mx (FMA)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2C4:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // VPCONFLICTD Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2C6: // GRP18
+            case 0x2C7: // GRP18
+                ALWAYS_UD();
+            case 0x2C8:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // SHA1NEXTE Rx, Mx (SHA)
+                    case Opcode66Prefix: // VEXP2PS Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2C9:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // SHA1MSG1 Rx, Mx (SHA)
+                    case Opcode66Prefix:
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2CA:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // SHA1MSG2 Rx, Mx (SHA)
+                    case Opcode66Prefix: // VRCP28PS Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2CB:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // SHA256RNDS2 Rx, Mx (SHA)
+                    case Opcode66Prefix: // VRCP28SS Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2CC:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // SHA256MSG1 Rx, Mx (SHA)
+                    case Opcode66Prefix: // VRSQRT28PS Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2CC:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // SHA256MSG2 Rx, Mx (SHA)
+                    case Opcode66Prefix: // VRSQRT28SS Rx, Mx (EVEX)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2CF:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // GF2P8MULB Rx, Mx (GFNI)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2D2:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // VPDPWUUD Rx, Vx, Mx (AVX VNNI)
+                    case Opcode66Prefix: // VPDPWUSD Rx, Vx, Mx (AVX VNNI)
+                    case OpcodeF3Prefix: // VPDPWSUD Rx, Vx, Mx (AVX VNNI)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2D3:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // VPDPWUUDS Rx, Vx, Mx (AVX VNNI)
+                    case Opcode66Prefix: // VPDPWUSDS Rx, Vx, Mx (AVX VNNI)
+                    case OpcodeF3Prefix: // VPDPWSUDS Rx, Vx, Mx (AVX VNNI)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2D8:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix:
+                    case OpcodeF3Prefix: // GRP19
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2D8:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix:
+                    case OpcodeF3Prefix: // GRP19
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2DA:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // VSM3MSG1 Rx, Vx, Mx (SM3)
+                    case Opcode66Prefix: // VSM3MSG2 Rx, Vx, Mx (SM3)
+                    case OpcodeF3Prefix: // VSM4KEY4 Rx, Vx, Mx (SM4)
+                    case OpcodeF2Prefix: // VSM4RNDS4 Rx, Vx, Mx (SM4)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2DB:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // AESIMC Rx, Mx (AES)
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2DC:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // AESENC Rx, Mx (AES)
+                    case OpcodeF3Prefix: // AESENC128KL Rx, M (KL)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2DD:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // AESENCLAST Rx, Mx (AES)
+                    case OpcodeF3Prefix: // AESDEC128KL Rx, M (KL)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2DE:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // AESDEC Rx, Mx (AES)
+                    case OpcodeF3Prefix: // AESENC256KL Rx, M (KL)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2DF:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // AESDECLAST Rx, Mx (AES)
+                    case OpcodeF3Prefix: // AESDEC256KL Rx, M (KL)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2E0: // CMPOXADD Mv, Rv, Vv (CMPccXADD)
+            case 0x2E1: // CMPNOXADD Mv, Rv, Vv (CMPccXADD)
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // 
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2E2: // CMPCXADD Mv, Rv, Vv (CMPccXADD)
+            case 0x2E3: // CMPNCXADD Mv, Rv, Vv (CMPccXADD)
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // 
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2E4: // CMPZXADD Mv, Rv, Vv (CMPccXADD)
+            case 0x2E5: // CMPNZXADD Mv, Rv, Vv (CMPccXADD)
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // 
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2E6: // CMPBEXADD Mv, Rv, Vv (CMPccXADD)
+            case 0x2E7: // CMPAXADD Mv, Rv, Vv (CMPccXADD)
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // 
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2E8: // CMPSXADD Mv, Rv, Vv (CMPccXADD)
+            case 0x2E9: // CMPNSXADD Mv, Rv, Vv (CMPccXADD)
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // 
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2EA: // CMPPXADD Mv, Rv, Vv (CMPccXADD)
+            case 0x2EB: // CMPNPXADD Mv, Rv, Vv (CMPccXADD)
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // 
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2EC: // CMPLXADD Mv, Rv, Vv (CMPccXADD)
+            case 0x2ED: // CMPGEXADD Mv, Rv, Vv (CMPccXADD)
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // 
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2EE: // CMPLEXADD Mv, Rv, Vv (CMPccXADD)
+            case 0x2EF: // CMPGXADD Mv, Rv, Vv (CMPccXADD)
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // 
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2F0:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case Opcode66Prefix:
+                        if (ctx.rep_type == REP_NE) {
+                    case OpcodeF2Prefix: // CRC32 Rv, Mb
+                        }
+                        else {
+                    case OpcodeNoPrefix: // MOVBE Rv, Mv
+                        }
+                        ALWAYS_UD();
+                        break;
+                    case OpcodeF3Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2F1:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case Opcode66Prefix:
+                        if (ctx.rep_type == REP_NE) {
+                    case OpcodeF2Prefix: // CRC32 Rv, Mv
+                        } else {
+                    case OpcodeNoPrefix: // MOVBE Rv, Mv
+                        }
+                        ALWAYS_UD();
+                        break;
+                    case OpcodeF3Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2F2:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // ANDN Rv, Mv, Vv (BMI)
+                    case Opcode66Prefix:
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2F3:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // GRP17
+                    case Opcode66Prefix:
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2F5:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // BZHI Rv, Mv, Vv (BMI2)
+                    case Opcode66Prefix: // WRUSSD Mv, Rv (CET)
+                    case OpcodeF3Prefix: // PEXT Rv, Vv, Mv (BMI2)
+                    case OpcodeF2Prefix: // PDEP Rv, Vv, Mv (BMI2)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2F6:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // WRSSD Mv, Rv (CET)
+                    case Opcode66Prefix: // ADCX Rv, Mv (ADX)
+                    case OpcodeF3Prefix: // ADOX Rv, Mv (ADX)
+                    case OpcodeF2Prefix: // MULX Rv, Vv, Mv (BMI2)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2F7:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // BEXTR Rv, Mv, Vv (BMI)
+                    case Opcode66Prefix: // SHLX Rv, Mv, Vv (BMI2)
+                    case OpcodeF3Prefix: // SARX Rv, Mv, Vv (BMI2)
+                    case OpcodeF2Prefix: // SHRX Rv, Vv, Mv (BMI2)
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2F8:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // MOVDIR64B Rv, M
+                    case OpcodeF3Prefix: // (ENQCMDS Rv, M), UWRMSR
+                    case OpcodeF2Prefix: // (ENQCMD Rv, M), URDMSR
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2F9:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix: // MOVDIRI Mv, Rv
+                        ALWAYS_UD();
+                        goto mov_mr;
+                    case OpcodeF3Prefix:
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2FA:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix:
+                    case OpcodeF3Prefix: // ENCODEKEY128 (KL)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2FB:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix:
+                    case Opcode66Prefix:
+                    case OpcodeF3Prefix: // ENCODEKEY256 (KL)
+                    case OpcodeF2Prefix:
+                        ALWAYS_UD();
+                }
+                break;
+            case 0x2FC:
+                switch (ctx.opcode_select()) {
+                    default: unreachable;
+                    case OpcodeNoPrefix: // AADD Mv, Rv (RAO INT)
+                    case Opcode66Prefix: // AAND Mv, Rv (RAO INT)
+                    case OpcodeF3Prefix: // AXOR Mv, Rv (RAO INT)
+                    case OpcodeF2Prefix: // AOR Mv, Rv (RAO INT)
+                        ALWAYS_UD();
+                }
+                break;
+
             default:
                 //ALWAYS_UD();
                 unreachable;
