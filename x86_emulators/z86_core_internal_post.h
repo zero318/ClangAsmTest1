@@ -997,14 +997,17 @@ gnu_attr(minsize) inline EXCEPTION regcall z86BaseDefault::ENTER_impl(uint16_t a
 template <z86BaseTemplate>
 template <typename T, typename P>
 inline EXCEPTION regcall z86BaseDefault::LODS_impl() {
-    intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
-    if (this->has_rep()) {
+    intptr_t offset = this->direction ? -sizeof(T) : sizeof(T);
+    if (expect(this->has_rep(), false)) {
         if (this->C<P>()) {
             do {
                 // TODO: Interrupt check here
                 this->A<T>() = src_addr.read_advance<T>(offset);
             } while (--this->C<P>());
+        }
+        else {
+            return NO_FAULT;
         }
     }
     else {
@@ -1017,15 +1020,18 @@ inline EXCEPTION regcall z86BaseDefault::LODS_impl() {
 template <z86BaseTemplate>
 template <typename T, typename P>
 inline EXCEPTION regcall z86BaseDefault::MOVS_impl() {
-    intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
     z86AddrES dst_addr = this->str_dst<P>();
+    intptr_t offset = this->direction ? -sizeof(T) : sizeof(T);
     if (this->has_rep()) {
         if (this->C<P>()) {
             do {
                 // TODO: Interrupt check here
                 dst_addr.write_advance<T>(src_addr.read_advance<T>(offset), offset);
             } while (--this->C<P>());
+        }
+        else {
+            return NO_FAULT;
         }
     }
     else {
@@ -1039,14 +1045,17 @@ inline EXCEPTION regcall z86BaseDefault::MOVS_impl() {
 template <z86BaseTemplate>
 template <typename T, typename P>
 inline EXCEPTION regcall z86BaseDefault::STOS_impl() {
-    intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86AddrES dst_addr = this->str_dst<P>();
+    intptr_t offset = this->direction ? -sizeof(T) : sizeof(T);
     if (this->has_rep()) {
         if (this->C<P>()) {
             do {
                 // TODO: Interrupt check here
                 dst_addr.write_advance<T>(this->A<T>(), offset);
             } while (--this->C<P>());
+        }
+        else {
+            return NO_FAULT;
         }
     }
     else {
@@ -1059,8 +1068,8 @@ inline EXCEPTION regcall z86BaseDefault::STOS_impl() {
 template <z86BaseTemplate>
 template <typename T, typename P>
 inline EXCEPTION regcall z86BaseDefault::SCAS_impl() {
-    intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86AddrES dst_addr = this->str_dst<P>();
+    intptr_t offset = this->direction ? -sizeof(T) : sizeof(T);
     if (this->has_rep()) {
         if (this->C<P>()) {
             if constexpr (OPCODES_V20 && !OPCODES_80386) {
@@ -1077,6 +1086,9 @@ inline EXCEPTION regcall z86BaseDefault::SCAS_impl() {
                 this->CMP<T>(this->A<T>(), dst_addr.read_advance<T>(offset));
             } while (--this->C<P>() && this->rep_type == this->zero);
         }
+        else {
+            return NO_FAULT;
+        }
     }
     else {
         this->CMP<T>(this->A<T>(), dst_addr.read_advance<T>(offset));
@@ -1089,9 +1101,9 @@ finish:
 template <z86BaseTemplate>
 template <typename T, typename P>
 inline EXCEPTION regcall z86BaseDefault::CMPS_impl() {
-    intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
     z86AddrES dst_addr = this->str_dst<P>();
+    intptr_t offset = this->direction ? -sizeof(T) : sizeof(T);
     if (this->has_rep()) {
         if (this->C<P>()) {
             if constexpr (OPCODES_V20 && !OPCODES_80386) {
@@ -1108,13 +1120,16 @@ inline EXCEPTION regcall z86BaseDefault::CMPS_impl() {
                 this->CMP<T>(src_addr.read_advance<T>(offset), dst_addr.read_advance<T>(offset));
             } while (--this->C<P>() && this->rep_type == this->zero);
         }
+        else {
+            return NO_FAULT;
+        }
     }
     else {
         this->CMP<T>(src_addr.read_advance<T>(offset), dst_addr.read_advance<T>(offset));
     }
 finish:
     this->SI<P>() = src_addr.offset;
-    this->DI<P>() = src_addr.offset;
+    this->DI<P>() = dst_addr.offset;
     return NO_FAULT;
 }
 
@@ -1135,8 +1150,8 @@ inline EXCEPTION regcall z86BaseDefault::ADD4S_impl() {
 template <z86BaseTemplate>
 template <typename T, typename P>
 inline EXCEPTION regcall z86BaseDefault::OUTS_impl() {
-    intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86Addr src_addr = this->str_src<P>();
+    intptr_t offset = this->direction ? -sizeof(T) : sizeof(T);
     uint16_t port = this->dx;
     if (this->has_rep()) {
         if (this->C<P>()) {
@@ -1144,6 +1159,9 @@ inline EXCEPTION regcall z86BaseDefault::OUTS_impl() {
                 // TODO: Interrupt check here
                 this->port_out_impl<T>(port, src_addr.read_advance<T>(offset));
             } while (--this->C<P>());
+        }
+        else {
+            return NO_FAULT;
         }
     }
     else {
@@ -1156,8 +1174,8 @@ inline EXCEPTION regcall z86BaseDefault::OUTS_impl() {
 template <z86BaseTemplate>
 template <typename T, typename P>
 inline EXCEPTION regcall z86BaseDefault::INS_impl() {
-    intptr_t offset = this->direction ? sizeof(T) : -sizeof(T);
     z86AddrES dst_addr = this->str_dst<P>();
+    intptr_t offset = this->direction ? -sizeof(T) : sizeof(T);
     uint16_t port = this->dx;
     if (this->has_rep()) {
         if (this->C<P>()) {
@@ -1165,6 +1183,9 @@ inline EXCEPTION regcall z86BaseDefault::INS_impl() {
                 // TODO: Interrupt check here
                 dst_addr.write_advance<T>(this->port_in_impl<T>(port), offset);
             } while (--this->C<P>());
+        }
+        else {
+            return NO_FAULT;
         }
     }
     else {

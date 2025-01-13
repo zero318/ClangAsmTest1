@@ -5,6 +5,18 @@
 
 #include "8086_cpu.h"
 
+#include "..\bee_movie_script.h"
+
+#define REALSEG(seg) ((seg)>>4)
+#define BYTES16(value) (uint8_t)((value) & 0xFF), (uint8_t)((value) >> 8 & 0xFF)
+#define FADDR16_BYTES(seg, addr) BYTES16(addr), BYTES16(seg)
+
+#define ZBIOS_BASE 0x50000
+#define ZBIOS_SEGMENT REALSEG(ZBIOS_BASE)
+#define CALL_PUT_CHAR 0x9A, FADDR16_BYTES(ZBIOS_SEGMENT, 0x0000)
+#define CALL_PUT_STRN 0x9A, FADDR16_BYTES(ZBIOS_SEGMENT, 0x0005)
+#define CALL_GET_CHAR 0x9A, FADDR16_BYTES(ZBIOS_SEGMENT, 0x0018)
+
 static inline constexpr uint8_t zbios[] = {
 	// void put_char(char c)
 	// Args:
@@ -39,6 +51,23 @@ static inline constexpr uint8_t zbios[] = {
 	0xBA, 0x38, 0x7C,	// MOV DX, 31800
 	0xEC,				// IN AL, DX
 	0xCB				// RETF
+};
+
+
+static inline constexpr uint8_t zbios_test[] = {
+	CALL_GET_CHAR,
+	0x3C, 'b',
+	0x74, 0x0D,
+	0xB9, 0x0A, 0x00,
+	0xBE, 0x00, 0x50,
+	CALL_PUT_STRN,
+	0xEB, 0xFE,
+	0xB8, BYTES16(REALSEG(0x6000)),
+	0x8E, 0xD8,
+	0xB9, BYTES16(sizeof(BEE_MOVIE_SCRIPT) - 1),
+	0x31, 0xF6,
+	CALL_PUT_STRN,
+	0xEB, 0xFE,
 };
 
 static inline constexpr uint8_t protected_mode_testA[] = {
@@ -179,15 +208,21 @@ struct DebugWordDevice : PortWordDevice {
 };
 
 DumbBS startup_device;
+DebugByteDevice debug_byte_device;
 
 int main(int argc, char* argv[]) {
 	//load_bios_rom();
 
+	z86_mem_write(ZBIOS_BASE, zbios);
 	z86_mem_write(0xFFFF0, protected_mode_test_jump);
-	z86_mem_write(0x04000, protected_mode_testA);
-	z86_mem_write(0x05000, protected_mode_testB);
+	z86_mem_write(0x4000, zbios_test);
+	z86_mem_write(0x5000, "yo what up");
+	z86_mem_write(0x6000, BEE_MOVIE_SCRIPT);
+	//z86_mem_write(0x04000, protected_mode_testA);
+	//z86_mem_write(0x05000, protected_mode_testB);
 
 	z86_add_byte_device(&startup_device);
+	z86_add_byte_device(&debug_byte_device);
 
 	z86_execute();
 

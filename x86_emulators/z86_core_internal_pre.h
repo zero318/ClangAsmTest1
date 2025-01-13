@@ -3584,6 +3584,7 @@ struct z86RegCommon : z86RegBase<max_bits, use_old_reset, has_protected_mode, ha
     }
 
     inline constexpr uint16_t segment(uint8_t default_seg) const {
+        // TODO: Check if addition an expect hint is smart here
         if constexpr (has_protected_mode) {
             return this->seg_override < 0 ? default_seg : this->seg_override;
         } else {
@@ -5484,6 +5485,8 @@ struct z86AddrImpl : z86AddrBase<bits, protected_mode> {
 
     // Offset Type
     using OT = z86AddrBase<bits, protected_mode>::OT;
+    // Signed Offset Type
+    using ST = std::make_signed_t<OT>;
     // Far Type
     using FT = z86AddrBase<bits, protected_mode>::FT;
     // Physical Addr Type
@@ -5673,9 +5676,14 @@ struct z86AddrFixedBase<64> {
 template <size_t max_bits, uint8_t descriptor_index>
 struct z86AddrFixedImpl : z86AddrFixedBase<max_bits> {
 
-    using OT = z86AddrFixedBase<max_bits>::OT; // Offset Type
-    using FT = z86AddrFixedBase<max_bits>::FT; // Far Type
-    using MT = z86AddrFixedBase<max_bits>::MT; // Memory Addr Type
+    // Offset Type
+    using OT = z86AddrFixedBase<max_bits>::OT;
+    // Signed Offset Type
+    using ST = std::make_signed_t<OT>;
+    // Far Type
+    using FT = z86AddrFixedBase<max_bits>::FT;
+    // Memory Addr Type
+    using MT = z86AddrFixedBase<max_bits>::MT;
 
     inline constexpr z86AddrFixedImpl() : z86AddrFixedBase<max_bits>::z86AddrFixedBase() {}
     inline constexpr z86AddrFixedImpl(OT offset) : z86AddrFixedBase<max_bits>::z86AddrFixedBase(offset) {}
@@ -6976,9 +6984,9 @@ struct z86Base :
         this->carry = add_would_overflow<U>(dst, src);
         this->overflow = add_would_overflow<S>(dst, src);
         T res = dst + src;
+        this->update_pzs(res);
         this->auxiliary = (dst ^ src ^ res) & 0x10;
         dst = res;
-        this->update_pzs(dst);
     }
 
     template <typename T1, typename T2> requires(!std::is_same_v<T1, T2>)
@@ -7004,10 +7012,10 @@ struct z86Base :
         using U = std::make_unsigned_t<T>;
         using S = std::make_signed_t<T>;
         T res = carry_add((U)dst, (U)src, this->carry);
+        this->update_pzs(res);
         this->auxiliary = (dst ^ src ^ res) & 0x10;
         this->overflow = (S)(~(dst ^ src) & (dst ^ res)) < 0;
         dst = res;
-        this->update_pzs(dst);
     }
 
     template <typename T1, typename T2> requires(!std::is_same_v<T1, T2>)
@@ -7020,10 +7028,10 @@ struct z86Base :
         using U = std::make_unsigned_t<T>;
         using S = std::make_signed_t<T>;
         T res = carry_sub<U>(dst, src, this->carry);
+        this->update_pzs(res);
         this->auxiliary = (dst ^ src ^ res) & 0x10;
         this->overflow = (S)(~(dst ^ src) & (dst ^ res)) < 0;
         dst = res;
-        this->update_pzs(dst);
     }
 
     template <typename T1, typename T2> requires(!std::is_same_v<T1, T2>)
@@ -7051,9 +7059,9 @@ struct z86Base :
         this->carry = sub_would_overflow<U>(dst, src);
         this->overflow = sub_would_overflow<S>(dst, src);
         T res = dst - src;
+        this->update_pzs(res);
         this->auxiliary = (dst ^ src ^ res) & 0x10;
         dst = res;
-        this->update_pzs(dst);
     }
 
     template <typename T1, typename T2> requires(!std::is_same_v<T1, T2>)
@@ -7081,8 +7089,8 @@ struct z86Base :
         this->carry = sub_would_overflow<U>(dst, src);
         this->overflow = sub_would_overflow<S>(dst, src);
         T res = dst - src;
-        this->auxiliary = (dst ^ src ^ res) & 0x10;
         this->update_pzs(res);
+        this->auxiliary = (dst ^ src ^ res) & 0x10;
     }
 
     template <typename T1, typename T2> requires(!std::is_same_v<T1, T2>)
@@ -7472,9 +7480,9 @@ struct z86Base :
 
             this->carry = ((size_t)dst >> (bitsof(T) - count)) & 1;
             T res = (size_t)dst << count;
+            this->update_pzs(res);
             this->overflow = this->carry == (S)res < 0;
             dst = res;
-            this->update_pzs(dst);
         }
     }
 
@@ -7555,8 +7563,8 @@ struct z86Base :
             temp |= (DU)dst << bitsof(T);
             this->carry = ((size_t)temp >> (bitsof(DU) - count)) & 1;
             dst = (size_t)temp << count;
-            this->overflow = this->carry == (S)dst < 0;
             this->update_pzs(dst);
+            this->overflow = this->carry == (S)dst < 0;
         }
     }
 
@@ -7578,8 +7586,8 @@ struct z86Base :
             temp |= (DU)src << bitsof(T);
             this->carry = ((size_t)temp >> (count - 1)) & 1;
             dst = (size_t)temp >> count;
-            this->overflow = __builtin_parity((U)dst >> (bitsof(T) - 2) & 3);
             this->update_pzs(dst);
+            this->overflow = __builtin_parity((U)dst >> (bitsof(T) - 2) & 3);
         }
     }
 

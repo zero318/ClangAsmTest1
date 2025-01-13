@@ -30,7 +30,7 @@
 static z86Memory<1_MB> mem;
 
 //struct z8086Context : z86Core<z80286, FLAG_CPUID_MMX | FLAG_CPUID_SSE | FLAG_CPUID_SSE2 | FLAG_CPUID_SSE3 /*, FLAG_OPCODES_80186 | FLAG_OPCODES_80286 | FLAG_OPCODES_80386 | FLAG_OPCODES_80486 | FLAG_CPUID_CMOV*/> {
-struct z8086Context : z86Core<z8086, FLAG_XBTS_IBTS> {
+struct z8086Context : z86Core<z8086> {
 
     z8086Context() = default;
 
