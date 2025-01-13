@@ -29,8 +29,14 @@ struct PortWordDevice {
     virtual bool out_word(uint32_t port, uint16_t value) {
         return false;
     }
+
+    uint8_t temp_value;
     virtual bool out_byte(uint32_t port, uint8_t value) {
-        return false;
+        if (port & 1) {
+            return this->out_word(port & ~1, value << 8 | this->temp_value);
+        }
+        this->temp_value = value;
+        return true;
     }
 
     // Send data to CPU
@@ -54,10 +60,21 @@ struct PortDwordDevice {
     virtual bool out_dword(uint32_t port, uint32_t value) {
         return false;
     }
+
+    uint32_t temp_value;
     virtual bool out_word(uint32_t port, uint16_t value) {
+        if (port & 3) {
+            return this->out_dword(port & ~3, value << 16 | (uint16_t)this->temp_value);
+        }
+        this->temp_value = value;
         return false;
     }
     virtual bool out_byte(uint32_t port, uint8_t value) {
+        uint32_t full_value = this->temp_value >> 8 | value << 24;
+        if ((port & 3) == 3) {
+            return this->out_dword(port & ~3, full_value);
+        }
+        this->temp_value = full_value;
         return false;
     }
 
@@ -67,9 +84,19 @@ struct PortDwordDevice {
         return false;
     }
     virtual bool in_word(uint16_t& value, uint32_t port) {
+        uint32_t temp = 0;
+        if (this->in_dword(temp, port & ~3)) {
+            value = temp >> (port & 2) * 8;
+            return true;
+        }
         return false;
     }
     virtual bool in_byte(uint8_t& value, uint32_t port) {
+        uint32_t temp = 0;
+        if (this->in_dword(temp, port & ~3)) {
+            value = temp >> (port & 3) * 8;
+            return true;
+        }
         return false;
     }
 };

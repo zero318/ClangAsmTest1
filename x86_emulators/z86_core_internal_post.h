@@ -573,6 +573,75 @@ inline EXCEPTION regcall z86BaseDefault::binopMRB_impl(P& pc, const L& lambda) {
     return NO_FAULT;
 }
 
+// Bit string memory operand
+template <z86BaseTemplate>
+template <uint8_t op_flags, typename T, typename P>
+inline EXCEPTION regcall z86BaseDefault::IBTS_impl(P& pc) {
+    using DT = dbl_int_t<T>;
+
+    ModRM modrm = pc.read_advance<ModRM>();
+    T rval = this->index_regR<T, OP_IGNORES_REX(op_flags)>(modrm.R());
+    T aval = this->A<T>();
+    uint8_t offset = aval & bitsof(T) - 1;
+    uint8_t count = this->cl;
+    if constexpr (sizeof(T) < sizeof(uint64_t)) {
+        count &= 0x1F;
+    }
+    else {
+        count &= 0x3F;
+    }
+    if (modrm.is_mem()) {
+        z86Addr data_addr = modrm.parse_memM(pc);
+        data_addr.offset += sizeof(T) * (aval >> std::bit_width(bitsof(T) - 1));
+        DT mval = data_addr.read<T>();
+        uint8_t overflow_bits = offset + count;
+        if (overflow_bits > bitsof(T)) {
+            mval |= (DT)data_addr.read<T>(sizeof(T)) << bitsof(T);
+        }
+        this->IBTS(mval, rval, offset, count);
+        data_addr.write<T>(mval);
+        if (overflow_bits > bitsof(T)) {
+            data_addr.write<T>(mval >> bitsof(T), sizeof(T));
+        }
+    }
+    else {
+        this->IBTS(this->index_regMB<T, OP_IGNORES_REX(op_flags)>(modrm.M()), rval, offset, count);
+    }
+    return NO_FAULT;
+}
+
+template <z86BaseTemplate>
+template <uint8_t op_flags, typename T, typename P>
+inline EXCEPTION regcall z86BaseDefault::XBTS_impl(P& pc) {
+    ModRM modrm = pc.read_advance<ModRM>();
+    T aval = this->A<T>();
+    int8_t offset = aval & bitsof(T) - 1;
+    uint8_t count = this->cl;
+    if constexpr (sizeof(T) < sizeof(uint64_t)) {
+        count &= 0x1F;
+    }
+    else {
+        count &= 0x3F;
+    }
+    T mval;
+    if (modrm.is_mem()) {
+        z86Addr data_addr = modrm.parse_memM(pc);
+        data_addr.offset += sizeof(T) * (aval >> std::bit_width(bitsof(T) - 1));
+        mval = data_addr.read<T>() >> offset;
+        offset += count;
+        offset -= bitsof(T);
+        if (offset > 0) {
+            mval |= data_addr.read<T>(sizeof(T)) << offset;
+        }
+    }
+    else {
+        mval = this->index_regMB<T, OP_IGNORES_REX(op_flags)>(modrm.M());
+        mval >>= offset;
+    }
+    this->XBTS(this->index_regR<T, OP_IGNORES_REX(op_flags)>(modrm.R()), mval, count);
+    return NO_FAULT;
+}
+
 // Far width memory operand, special for LDS/LES
 template <z86BaseTemplate>
 template <uint8_t op_flags, typename T, typename P, typename L>
@@ -1434,6 +1503,7 @@ EXCEPTION z86BaseDefault::LOADALL3() {
     this->load_descriptor(DS, load_addr.read<uint32_t>(0xA0), load_addr.read<uint32_t>(0xA4), temp);
     temp = z86DescriptorCache80386::make_full_attributes<false>(__builtin_bswap16(load_addr.read<uint16_t>(0xA9)));
     this->set_privilege_level((temp & 0b1100000) >> 5);
+    this->change_stack_size(temp & 0x4000);
     this->load_descriptor(SS, load_addr.read<uint32_t>(0xAC), load_addr.read<uint32_t>(0xB0), temp);
     temp = z86DescriptorCache80386::make_full_attributes<true>(__builtin_bswap16(load_addr.read<uint16_t>(0xB5)));
     this->change_data_size(temp & 0x4000);

@@ -119,7 +119,9 @@ enum z86FeatureFlagsA : uint64_t {
     QUIRK_FLAG(FLAG_REP_BOUND),             // 80186
     QUIRK_FLAG(FLAG_REP_MUL_MISSTORE),      // 80186
     QUIRK_FLAG(FLAG_PROTECTED_MODE),        // 80286+
+    QUIRK_FLAG(FLAG_XBTS_IBTS),             // 80386
     QUIRK_FLAG(FLAG_PAGING),                // 80386+
+    QUIRK_FLAG(FLAG_OLD_CMPXCHG),           // 80486
     QUIRK_FLAG(FLAG_LONG_MODE),
     QUIRK_FLAG(FLAG_HAS_TEST_REGS),         // 80386, 80486
     QUIRK_FLAG(FLAG_OPCODES_80186),
@@ -2681,7 +2683,7 @@ struct z86BaseControlBase<16, false> {
             uint16_t ds2;
         };
     };
-    int16_t pending_sinterrupt;
+    int16_t pending_sinterrupt = -1;
 
     static inline constexpr uint16_t ldtr = 0;
     static inline constexpr uint16_t tr = 0;
@@ -2715,7 +2717,7 @@ struct z86BaseControlBase<32, false> {
             uint16_t ds2;
         };
     };
-    int16_t pending_sinterrupt;
+    int16_t pending_sinterrupt = -1;
 
     static inline constexpr uint16_t ldtr = 0;
     static inline constexpr uint16_t tr = 0;
@@ -2749,7 +2751,7 @@ struct z86BaseControlBase<64, false> {
             uint16_t ds2;
         };
     };
-    int16_t pending_sinterrupt;
+    int16_t pending_sinterrupt = -1;
 
     static inline constexpr uint16_t ldtr = 0;
     static inline constexpr uint16_t tr = 0;
@@ -2808,7 +2810,7 @@ struct z86BaseControlBase<16, true> {
             uint16_t tr;
         };
     };
-    int16_t pending_sinterrupt;
+    int16_t pending_sinterrupt = -1;
     uint16_t error_code;
     uint8_t cpl;
     uint8_t iopl;
@@ -2874,7 +2876,7 @@ struct z86BaseControlBase<32, true> {
             uint16_t tr;
         };
     };
-    int16_t pending_sinterrupt;
+    int16_t pending_sinterrupt = -1;
     uint16_t error_code;
     uint8_t cpl;
     uint8_t iopl;
@@ -2941,7 +2943,7 @@ struct z86BaseControlBase<64, true> {
             uint16_t tr;
         };
     };
-    int16_t pending_sinterrupt;
+    int16_t pending_sinterrupt = -1;
     uint16_t error_code;
     uint8_t cpl;
     uint8_t iopl;
@@ -3570,7 +3572,7 @@ struct z86RegCommon : z86RegBase<max_bits, use_old_reset, has_protected_mode, ha
     using DT = z86BaseGPRs<max_bits>::DT;
 
     using SRT = std::make_signed_t<RT>;
-    int8_t seg_override;
+    int8_t seg_override = -1;
 
     inline constexpr void set_seg_override(uint8_t seg) {
         this->seg_override = seg;
@@ -4271,6 +4273,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                 // Present check
                 if (expect(!new_descriptor->is_present(), false)) goto throw_ss_selector;
                 // Suppress exceptions
+                this->change_stack_size(new_descriptor->is_big());
             }
             else {
                 // Null check
@@ -4677,6 +4680,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                                     if (expect(!ss_descriptor->is_valid_for_stack(), false)) goto throw_ts_selector;
                                     // Present check
                                     if (expect(!ss_descriptor->is_present(), false)) goto throw_ss_selector;
+                                    this->change_stack_size(ss_descriptor->is_big());
                                     this->load_descriptor(SS, ss_descriptor, ATTRIBUTES_RW);
                                     this->rsp = new_sp;
                                     selector = temp_cs;
@@ -5929,10 +5933,12 @@ struct ModRM {
 #define z86BaseDefault z86Base<bits, bus, flagsA>
 
 enum OP_FLAGS : uint8_t {
-    OP_DEFAULT  = 0b000,
-    OP_BYTE     = 0b001,
-    OP_NO_READ  = 0b010,
-    OP_NO_REX   = 0b100
+    OP_DEFAULT      = 0b00000,
+    OP_BYTE         = 0b00001, // Op is always byte regardless of prefix
+    OP_NO_READ      = 0b00010, // Op can write to memory without reading first
+    OP_NO_REX       = 0b00100, // Op cannot be encoded with a rex prefix
+    OP_NO_ADDR16    = 0b01000, // Op cannot be encoded with 16 bit addressing
+    OP_NO_ADDR64    = 0b10000, // Op cannot be encoded with 64 bit addressing
 };
 
 #define OP_IS_BYTE(...) ((bool)((__VA_ARGS__) & OP_BYTE))
@@ -5975,7 +5981,9 @@ struct z86Base :
     static inline constexpr bool REP_BOUND = flagsA & FLAG_REP_BOUND;
     static inline constexpr bool REP_MUL_MISSTORE = flagsA & FLAG_REP_MUL_MISSTORE;
     static inline constexpr bool PROTECTED_MODE = flagsA & FLAG_PROTECTED_MODE;
+    static inline constexpr bool HAS_XBTS_IBTS = flagsA & FLAG_XBTS_IBTS;
     static inline constexpr bool PAGING = flagsA & FLAG_PAGING;
+    static inline constexpr bool HAS_OLD_CMPXCHG = flagsA & FLAG_OLD_CMPXCHG;
     static inline constexpr bool LONG_MODE = flagsA & FLAG_LONG_MODE;
     static inline constexpr bool HAS_TEST_REGS = flagsA & FLAG_HAS_TEST_REGS;
     static inline constexpr bool OPCODES_80186 = flagsA & FLAG_OPCODES_80186;
@@ -6433,7 +6441,7 @@ struct z86Base :
 
     bool lock;
 
-    int8_t rep_type;
+    int8_t rep_type = NO_REP;
 
     inline constexpr void set_lock() {
         this->lock = true;
@@ -7611,6 +7619,25 @@ struct z86Base :
         const U mask = (U)1 << src;
         this->carry = dst & mask;
         dst ^= mask;
+    }
+
+    // TODO: More research
+    template <typename T1, typename T2>
+    inline void regcall IBTS(T1& dst, T2 src, uint8_t offset, uint8_t count) {
+        assume(offset < bitsof(T2) && count < bitsof(T2));
+
+        const T2 low_mask = ((T2)1 << count) - 1;
+        src &= low_mask;
+        const T1 high_mask = (T1)low_mask << offset;
+        dst = (dst & ~high_mask) | (T1)src << offset;
+    }
+
+    // TODO: More research.
+    // Offset is handled in the function responsible for calling this.
+    template <typename T>
+    inline void regcall XBTS(T& dst, T src, uint8_t count) {
+        assume(count < bitsof(T));
+        dst = src & (((T)1 << count) - 1);
     }
 
     template <typename T>
@@ -8912,6 +8939,42 @@ struct z86Base :
             }
         }
         return this->binopMRB_impl<op_flags, uint16_t>(pc, lambda);
+    }
+
+    template <uint8_t op_flags, typename T, typename P>
+    inline EXCEPTION regcall IBTS_impl(P& pc);
+
+    template <uint8_t op_flags = OP_DEFAULT, typename P>
+    inline EXCEPTION regcall IBTS(P& pc) {
+        if constexpr (bits > 16) {
+            if (this->data_size_32()) {
+                return this->IBTS_impl<op_flags, uint32_t>(pc);
+            }
+            if constexpr (bits == 64) {
+                if (this->data_size_64()) {
+                    return this->IBTS_impl<op_flags, uint64_t>(pc);
+                }
+            }
+        }
+        return this->IBTS_impl<op_flags, uint16_t>(pc);
+    }
+
+    template <uint8_t op_flags, typename T, typename P>
+    inline EXCEPTION regcall XBTS_impl(P& pc);
+
+    template <uint8_t op_flags = OP_DEFAULT, typename P>
+    inline EXCEPTION regcall XBTS(P& pc) {
+        if constexpr (bits > 16) {
+            if (this->data_size_32()) {
+                return this->XBTS_impl<op_flags, uint32_t>(pc);
+            }
+            if constexpr (bits == 64) {
+                if (this->data_size_64()) {
+                    return this->XBTS_impl<op_flags, uint64_t>(pc);
+                }
+            }
+        }
+        return this->XBTS_impl<op_flags, uint16_t>(pc);
     }
 
     template <uint8_t op_flags, typename T, typename P, typename L>

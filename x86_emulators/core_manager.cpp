@@ -5,10 +5,44 @@
 
 #include "8086_cpu.h"
 
+static inline constexpr uint8_t zbios[] = {
+	// void put_char(char c)
+	// Args:
+	// c: AL
+	// Clobbers:
+	// DX
+	0xBA, 0x38, 0x7C,	// MOV DX, 31800
+	0xEE,				// OUT DX, AL
+// skip_put_strn:
+	0xCB,				// RETF
+	// void put_strn(const char* str, uint16_t len)
+	// Args:
+	// str: DS: [SI]
+	// len: CX
+	// Clobbers:
+	// AL, DX, SI
+	0xE3, 0xFD,			// JCXZ skip_put_strn
+	0xBA, 0x38, 0x7C,	// MOV DX, 31800
+	0x30, 0xC0,			// XOR AL, AL
+	0xD0, 0xF0,			// SETMO AL, 1
+	0x78, 0x03,			// JS put_strn8086
+	0xF3, 0x6E,			// REP OUTSB
+	0xCB,				// RETF
+// put_strn8086:
+	0xAC,				// LODSB
+	0xEE,				// OUT DX, AL
+	0xE2, 0xFC,			// LOOP put_strn8086
+	0xCB,				// RETF
+	// char get_char()
+	// Clobbers:
+	// DX
+	0xBA, 0x38, 0x7C,	// MOV DX, 31800
+	0xEC,				// IN AL, DX
+	0xCB				// RETF
+};
+
 static inline constexpr uint8_t protected_mode_testA[] = {
 	0x48,
-	0x40,
-	0x66, 0x48,
 	0xBB, 0x00, 0x10,
 	0x89, 0x07,
 	0x89, 0x5F, 0x02,
@@ -40,8 +74,9 @@ static inline constexpr uint8_t protected_mode_testA[] = {
 };
 
 static inline constexpr uint8_t protected_mode_testB[] = {
-	0xE6, 0x69, // nice
-	0xEB, 0xFC
+	//0xE6, 0x69, // nice
+	//0xEB, 0xFC
+	0xEB, 0xFE
 };
 
 static inline constexpr uint8_t protected_mode_test_jump[] = {
@@ -108,6 +143,37 @@ struct DumbBS : PortByteDevice {
 				}
 				return true;
 		}
+		return false;
+	}
+};
+
+struct DebugByteDevice : PortByteDevice {
+	virtual bool in_byte(uint8_t& value, uint32_t port) {
+		switch (port) {
+			case 31800:
+				value = getchar();
+				return true;
+		}
+		return false;
+	}
+	virtual bool out_byte(uint32_t port, uint8_t value) {
+		switch (port) {
+			case 31800:
+				putchar(value);
+				return true;
+			case 31801:
+				//switch (value) {
+					//case 0:
+				//}
+		}
+		return false;
+	}
+};
+struct DebugWordDevice : PortWordDevice {
+	virtual bool in_word(uint16_t& value, uint32_t port) {
+		return false;
+	}
+	virtual bool out_word(uint32_t port, uint16_t value) {
 		return false;
 	}
 };
