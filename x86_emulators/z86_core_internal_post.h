@@ -41,14 +41,14 @@ using z86AddrES = z86AddrESImpl<ctx.max_bits, ctx.PROTECTED_MODE>::type;
 using z86AddrCS = z86AddrCSImpl<ctx.max_bits, ctx.PROTECTED_MODE>::type;
 using z86AddrSS = z86AddrSSImpl<ctx.max_bits, ctx.PROTECTED_MODE>::type;
 
-template <ModRMSpecialFlags mode, typename P>
+template <OP_FLAGS op_flags, typename P>
 uint32_t ModRM::extra_length(const P& pc) const {
     uint8_t mod = this->Mod();
     if (mod == 3) {
         return 0;
     }
     if constexpr (ctx.max_bits > 16) {
-        if ((mode & MODRM_NO16) || !ctx.addr_size_16()) {
+        if (OP_CANNOT_ADDR16(op_flags) || !ctx.addr_size_16()) {
             uint32_t length = 0;
             switch (this->M()) {
                 case 4:
@@ -86,7 +86,7 @@ uint32_t ModRM::extra_length(const P& pc) const {
     }
 }
 
-template <ModRMSpecialFlags mode, typename P>
+template <OP_FLAGS op_flags, size_t imm_offset, typename P>
 auto ModRM::parse_memM(P& pc) const {
     uint32_t segment_mask;
     size_t offset = 0;
@@ -94,8 +94,8 @@ auto ModRM::parse_memM(P& pc) const {
     assume(m < 8);
     uint8_t mod = this->Mod();
     if constexpr (ctx.max_bits > 16) {
-        if ((mode & MODRM_NO16) || !ctx.addr_size_16()) {
-            if constexpr (!(mode & MODRM_NO64) && ctx.max_bits == 64) {
+        if (OP_CANNOT_ADDR16(op_flags) || !ctx.addr_size_16()) {
+            if constexpr (!OP_CANNOT_ADDR64(op_flags) && ctx.max_bits == 64) {
                 if (ctx.addr_size_64()) {
                     switch (m) {
                         default: unreachable;
@@ -117,7 +117,8 @@ auto ModRM::parse_memM(P& pc) const {
                             if (mod == 0) {
                                 // TODO: Properly offset for
                                 // the end of the instruction
-                                offset = ctx.rip;
+                                //offset = ctx.rip;
+                                offset = pc.offset + imm_offset;
                                 goto add_const32;
                             }
                         case RAX: case RCX: case RDX: case RBX: case RSI: case RDI:
@@ -137,7 +138,7 @@ auto ModRM::parse_memM(P& pc) const {
                     SIB sib = pc.read_advance<SIB>();
                     uint8_t i = sib.I();
                     if (i != ESP) {
-                        offset = ctx.index_dword_regI<mode & MODRM_NO64>(i) * (1 << sib.S());
+                        offset = ctx.index_dword_regI<OP_CANNOT_ADDR64(op_flags)>(i) * (1 << sib.S());
                     }
                     m = sib.B();
                     if (m == EBP && mod == 0) {
@@ -149,11 +150,12 @@ auto ModRM::parse_memM(P& pc) const {
                 }
                 case EBP:
                     if (mod == 0) {
-                        if constexpr (!(mode & MODRM_NO64) && ctx.max_bits == 64) {
+                        if constexpr (!OP_CANNOT_ADDR64(op_flags) && ctx.max_bits == 64) {
                             if (expect(ctx.is_long_mode(), false)) {
                                 // TODO: Properly offset for
                                 // the end of the instruction
-                                offset = ctx.eip;
+                                //offset = ctx.eip;
+                                offset = (uint32_t)pc.offset + imm_offset;
                             }
                         }
                         goto add_const32;
@@ -164,7 +166,7 @@ auto ModRM::parse_memM(P& pc) const {
             // Initialize the full M so that
             // later code can bit test for 
             // default segment
-            if constexpr (!(mode & MODRM_NO64)) {
+            if constexpr (!OP_CANNOT_ADDR64(op_flags)) {
                 m = ctx.full_indexMB(m);
             }
             offset += ctx.index_dword_reg_raw(m);
@@ -182,7 +184,7 @@ auto ModRM::parse_memM(P& pc) const {
                 case 0:;
             }
             // Set bits are for DS
-            if constexpr (!(mode & MODRM_NO64) && ctx.max_bits == 64) {
+            if constexpr (!OP_CANNOT_ADDR64(op_flags) && ctx.max_bits == 64) {
                 segment_mask = 0b11111111111111111111111111001111;
             }
             else {
@@ -229,6 +231,7 @@ auto ModRM::parse_memM(P& pc) const {
     // Set bits are for DS
     segment_mask = 0b10110011;
 ret:
+    //return std::make_pair(ctx.addr(SS + (bool)(segment_mask & 1 << m), offset), pc.raw);
     return ctx.addr(SS + (bool)(segment_mask & 1 << m), offset);
 }
 
@@ -331,7 +334,7 @@ inline EXCEPTION regcall z86AddrSharedFuncs::write(P* self, const T& value, ssiz
         }
         else {
             if constexpr (sizeof(T) != sizeof(uint16_t)) {
-#if _M_IX86 || __x86_64__
+#if USE_NATIVE_INSTRS
                 mem.write_movsb(
                     virt_addr_base - self->offset_wrap_sub<T>(wrap),
                     mem.write_movsb(virt_addr_base, &value, wrap),
@@ -369,7 +372,7 @@ inline V z86AddrSharedFuncs::read(const P* self, ssize_t offset) {
         else {
             if constexpr (sizeof(V) != sizeof(uint16_t)) {
                 unsigned char raw[z86DataProperites<V>::size];
-#if _M_IX86 || __x86_64__
+#if USE_NATIVE_INSTRS
                 mem.read_movsb(
                     mem.read_movsb(raw, virt_addr_base, wrap),
                     virt_addr_base - self->offset_wrap_sub<V>(wrap),
@@ -864,12 +867,14 @@ inline EXCEPTION regcall z86RegCommonDefault::PUSH_impl(const T& src) {
 }
 
 template <z86RegCommonTemplate>
-template <typename P, typename T>
-inline T z86RegCommonDefault::POP_impl() {
+template <typename P, typename R, typename T>
+inline EXCEPTION z86RegCommonDefault::POP_impl(T& dst) {
+    using SMALLER_T = std::conditional_t<sizeof(T) <= sizeof(R), T, R>;
+    
     z86AddrSS stack = this->stack<P>();
-    T ret = stack.read<T>();
-    this->SP<P>() += (std::max)(sizeof(T), (size_t)2);
-    return ret;
+    dst = stack.read<SMALLER_T>();
+    this->SP<P>() += (std::max)(sizeof(R), (size_t)2);
+    return NO_FAULT;
 }
 
 // No wonder ENTER sucks

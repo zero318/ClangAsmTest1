@@ -133,7 +133,8 @@ void z86_execute();
 void z86_interrupt(uint8_t number);
 void z86_cancel_interrupt();
 void z86_nmi();
-void z86_reset();
+void z86_reset(); // hard reset
+//void z86_init(); // soft reset?
 
 void z86_add_dword_device(PortDwordDevice* device);
 void z86_add_word_device(PortWordDevice* device);
