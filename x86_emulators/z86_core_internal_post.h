@@ -552,6 +552,21 @@ inline EXCEPTION regcall z86BaseDefault::binopRM_impl(P& pc, const L& lambda) {
     return NO_FAULT;
 }
 
+template <z86BaseTemplate>
+template <uint8_t op_flags, typename T, typename P, typename L>
+inline EXCEPTION regcall z86BaseDefault::binopRMW_impl(P& pc, const L& lambda) {
+    ModRM modrm = pc.read_advance<ModRM>();
+    uint16_t mval;
+    if (modrm.is_mem()) {
+        z86Addr data_addr = modrm.parse_memM(pc);
+        mval = data_addr.read<uint16_t>();
+    }
+    else {
+        mval = this->index_word_regMB<OP_IGNORES_REX(op_flags)>(modrm.M());
+    }
+    return lambda(this->index_regR<T, OP_IGNORES_REX(op_flags)>(modrm.R()), mval);
+}
+
 // Bit test memory operand
 template <z86BaseTemplate>
 template <uint8_t op_flags, typename T, typename P, typename L>

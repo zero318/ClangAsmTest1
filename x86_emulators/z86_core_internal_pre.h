@@ -664,6 +664,11 @@ struct SEG_DESCRIPTOR<16> : SEG_DESCRIPTOR<0> {
     inline constexpr uint16_t attributes(uint16_t extra = 0) const {
         return this->flags1 | extra;
     }
+
+    inline constexpr uint8_t access_rights() const {
+        return this->flags1;
+    }
+
     inline constexpr uint16_t eip() const {
         return this->ip();
     }
@@ -730,6 +735,17 @@ struct SEG_DESCRIPTOR<32> : SEG_DESCRIPTOR<0> {
 #endif
         {
             return (*(uint16_t*)&this->flags1 & 0xF0FF) | extra;
+        }
+    }
+
+    inline constevalexpr uint16_t access_rights() const {
+#if __cpp_if_consteval
+        if consteval {
+            return this->flags1 | this->flags2 << 16;
+        } else
+#endif
+        {
+            return *(uint16_t*)&this->flags1;
         }
     }
 
@@ -4390,17 +4406,25 @@ struct z86Reg<max_bits, use_old_reset, false, false, has_x87, max_sse_bits, sse_
     }
 
     inline EXCEPTION VERR(uint16_t selector) {
-        return NO_FAULT;
+        return FAULT;
     }
     inline EXCEPTION VERW(uint16_t selector) {
-        return NO_FAULT;
+        return FAULT;
+    }
+    template <typename T>
+    inline EXCEPTION LAR(T& dst, uint16_t selector) {
+        return FAULT;
+    }
+    template <typename T>
+    inline EXCEPTION LSL(T& dst, uint16_t selector) {
+        return FAULT;
     }
 
     inline EXCEPTION write_tr(uint16_t selector) {
-        return NO_FAULT;
+        return FAULT;
     }
     inline EXCEPTION write_ldtr(uint16_t selector) {
-        return NO_FAULT;
+        return FAULT;
     }
 };
 
@@ -4824,7 +4848,6 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                         case DESCRIPTOR_E_CODE: case DESCRIPTOR_E_CODEA:
                         case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA:
                             if (new_dpl < this->cpl) {
-                                this->cpl = new_dpl;
                                 auto old_sp = this->rsp;
                                 uint16_t old_ss = this->ss;
                                 {
@@ -4867,9 +4890,12 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                                     if (expect(!ss_descriptor->is_valid_for_stack(), false)) goto throw_ts_selector;
                                     // Present check
                                     if (expect(!ss_descriptor->is_present(), false)) goto throw_ss_selector;
+                                    this->set_privilege_level(new_dpl);
                                     this->change_stack_size(ss_descriptor->is_big());
+                                    ss_descriptor->set_accessed();
                                     this->load_descriptor(SS, ss_descriptor, ATTRIBUTES_RW);
                                     this->rsp = new_sp;
+                                    this->ss = selector;
                                     selector = temp_cs;
                                 }
                             skip_gate_tss_checks:
@@ -5035,11 +5061,67 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
             }
             // Present check
             if (expect(!new_descriptor->is_present(), false)) goto throw_np_selector;
-            this->rsp += imm;
             if (this->cpl < (selector & 3)) {
-                // Deal with popping SS/SP
-
+                uint16_t temp_cs = selector;
+                RT new_sp;
+                // Privilege change
+                if constexpr (max_bits > 16) {
+                    if (this->data_size_32()) {
+                        this->esp += imm;
+                        this->POP<uint32_t>(new_sp);
+                        this->POP<uint32_t>(selector);
+                        goto start_checks;
+                    }
+                    if constexpr (max_bits == 64) {
+                        if (this->data_size_64()) {
+                            this->rsp += imm;
+                            this->POP<uint64_t>(new_sp);
+                            this->POP<uint64_t>(selector);
+                            goto start_checks;
+                        }
+                    }
+                }
+                this->sp += imm;
+                this->POP<uint16_t>(new_sp);
+                this->POP<uint16_t>(selector);
+            start_checks:
+                // Null check
+                if (expect(!(selector & ~3), false)) goto throw_gp_selector;
+                // RPL check
+                if (expect((temp_cs & 3) != (selector & 3), false)) goto throw_gp_selector;
+                auto* ss_descriptor = this->get_descriptor(selector);
+                // Table limit check
+                if (expect(!ss_descriptor, false)) goto throw_gp_selector;
+                // DPL check
+                new_dpl = ss_descriptor->get_dpl();
+                if (expect((temp_cs & 3) != new_dpl, false)) goto throw_gp_selector;
+                // Type check
+                if (expect(!ss_descriptor->is_valid_for_stack(), false)) goto throw_gp_selector;
+                // Present check
+                if (expect(!ss_descriptor->is_present(), false)) goto throw_ss_selector;
+                this->set_privilege_level(new_dpl);
+                this->change_stack_size(ss_descriptor->is_big());
+                ss_descriptor->set_accessed();
+                this->load_descriptor(SS, ss_descriptor, ATTRIBUTES_RW);
+                this->rsp = new_sp;
+                this->ss = selector;
+                selector = temp_cs;
+                // Protect data descriptors...
             }
+            if constexpr (max_bits > 16) {
+                if constexpr (max_bits == 64) {
+                    if (this->stack_size_64()) {
+                        this->rsp += imm;
+                        goto after_stack_imm;
+                    }
+                }
+                if (this->stack_size_32()) {
+                    this->esp += imm;
+                    goto after_stack_imm;
+                }
+            }
+            this->sp += imm;
+        after_stack_imm:
             new_descriptor->set_accessed();
             if constexpr (max_bits >= 32) {
                 uint8_t new_size = new_descriptor->get_long_bits();
@@ -5061,27 +5143,28 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
     throw_np_selector:
         this->software_interrupt(IntNP, selector & ~3);
         return FAULT;
+    throw_ss_selector:
+        this->software_interrupt(IntSS, selector & ~3);
+        return FAULT;
     }
 
     // TODO: Make this only read the params, pop inside write_cs_ret
     inline constexpr EXCEPTION RETFI(uint16_t imm) {
-
         RT new_ip;
         uint16_t new_cs;
         if constexpr (max_bits > 16) {
-            if (!this->data_size_16()) {
+            if (this->data_size_32()) {
                 FAULT_CHECK(this->POP<uint32_t>(new_ip));
                 FAULT_CHECK(this->POP<uint32_t>(new_cs));
                 goto start_checks;
             }
-            // No 64 bit operand size exists?
-            //if constexpr (bits == 64) {
-                //if (this->data_size_64()) {
-                    //FAULT_CHECK(this->POP<uint64_t>(new_ip));
-                    //FAULT_CHECK(this->POP<uint64_t>(new_cs));
-                    //goto start_checks;
-                //}
-            //}
+            if constexpr (max_bits == 64) {
+                if (this->data_size_64()) {
+                    FAULT_CHECK(this->POP<uint64_t>(new_ip));
+                    FAULT_CHECK(this->POP<uint64_t>(new_cs));
+                    goto start_checks;
+                }
+            }
         }
         FAULT_CHECK(this->POP<uint16_t>(new_ip));
         FAULT_CHECK(this->POP<uint16_t>(new_cs));
@@ -5111,32 +5194,102 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                     goto not_nested_task;
                 }
             }
-            if (!this->nested_task) {
+            if (expect(!this->nested_task, true)) {
                 // Check v86 mode flag
             not_nested_task:
+                // Null check
+                if (expect(!(selector & ~3), false)) goto throw_gp_selector;
+                // RPL check
+                if (expect(this->cpl > (selector & 3), false)) goto throw_gp_selector;
+                auto* new_descriptor = this->get_descriptor(selector);
+                // Table limit check
+                if (expect(!new_descriptor, false)) goto throw_gp_selector;
+                // Type check
+                constexpr uint32_t allowed_typesA = DESCRIPTORM_E_CODE | DESCRIPTORM_E_CODEA | DESCRIPTORM_ER_CODE | DESCRIPTORM_ER_CODEA | DESCRIPTORM_E_CCODE | DESCRIPTORM_E_CCODEA | DESCRIPTORM_ER_CCODE | DESCRIPTORM_ER_CCODEA;
+                uint8_t descriptor_type = new_descriptor->get_full_type();
+                if (expect(!(allowed_typesA & 1 << descriptor_type), false)) goto throw_gp_selector;
+                uint8_t new_dpl = new_descriptor->get_dpl();
+                switch (descriptor_type) {
+                    default: unreachable;
+                    // Code Segment
+                    case DESCRIPTOR_E_CODE: case DESCRIPTOR_E_CODEA:
+                    case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA:
+                        // DPL check
+                        if (expect(new_dpl != (selector & 3), false)) goto throw_gp_selector;
+                        break;
+                    // Conforming code segment
+                    case DESCRIPTOR_E_CCODE: case DESCRIPTOR_E_CCODEA:
+                    case DESCRIPTOR_ER_CCODE: case DESCRIPTOR_ER_CCODEA:
+                        // DPL check
+                        if (expect(new_dpl > (selector & 3), false)) goto throw_gp_selector;
+                        break;
+                }
+                if constexpr (max_bits == 64) {
+                    if (this->is_long_mode()) {
+                        goto always_pop_ss;
+                    }
+                }
                 if (this->cpl < (selector & 3)) {
+                always_pop_ss:
+                    uint16_t temp_cs = selector;
+                    RT new_sp;
                     // Privilege change
                     if constexpr (max_bits > 16) {
                         if (this->data_size_32()) {
-                            //FAULT_CHECK(this->POP<uint32_t>(this->rsp));
-                            //FAULT_CHECK(this->POP<uint32_t>(this->ss));
+                            this->POP<uint32_t>(new_sp);
+                            this->POP<uint32_t>(selector);
                             goto start_checks;
                         }
                         if constexpr (max_bits == 64) {
                             if (this->data_size_64()) {
-                                //FAULT_CHECK(this->POP<uint64_t>(this->rsp));
-                                //FAULT_CHECK(this->POP<uint64_t>(this->ss));
+                                this->POP<uint64_t>(new_sp);
+                                this->POP<uint64_t>(selector);
                                 goto start_checks;
                             }
                         }
                     }
-                    //FAULT_CHECK(this->POP<uint16_t>(this->sp));
-                    //FAULT_CHECK(this->POP<uint16_t>(this->ss));
+                    this->POP<uint16_t>(new_sp);
+                    this->POP<uint16_t>(selector);
                 start_checks:
+                    // NULL is valid in long mode...
+                    // Null check
+                    if (expect(!(selector & ~3), false)) goto throw_gp_selector;
+                    // RPL check
+                    if (expect((temp_cs & 3) != (selector & 3), false)) goto throw_gp_selector;
+                    auto* ss_descriptor = this->get_descriptor(selector);
+                    // Table limit check
+                    if (expect(!ss_descriptor, false)) goto throw_gp_selector;
+                    // DPL check
+                    new_dpl = ss_descriptor->get_dpl();
+                    if (expect((temp_cs & 3) != new_dpl, false)) goto throw_gp_selector;
+                    // Type check
+                    if (expect(!ss_descriptor->is_valid_for_stack(), false)) goto throw_gp_selector;
+                    // Present check
+                    if (expect(!ss_descriptor->is_present(), false)) goto throw_ss_selector;
+                    this->set_privilege_level(new_dpl);
+                    this->change_stack_size(ss_descriptor->is_big());
+                    ss_descriptor->set_accessed();
+                    this->load_descriptor(SS, ss_descriptor, ATTRIBUTES_RW);
+                    this->rsp = new_sp;
+                    this->ss = selector;
+                    selector = temp_cs;
+                    // Protect data descriptors...
                 }
-                //new_descriptor->set_accessed();
-                //this->load_descriptor(CS, new_descriptor);
-                // Protect data descriptors...
+                if constexpr (max_bits > 16) {
+                    if (!this->data_size_16()) {
+                        this->set_flags(flags);
+                        goto after_flags;
+                    }
+                }
+                this->set_flags<uint16_t>(flags);
+            after_flags:
+                new_descriptor->set_accessed();
+                if constexpr (max_bits >= 32) {
+                    uint8_t new_size = new_descriptor->get_long_bits();
+                    this->change_data_size(new_size);
+                    this->change_addr_size(new_size);
+                }
+                this->load_descriptor(CS, new_descriptor, descriptor_type & 2 ? ATTRIBUTES_RE : ATTRIBUTES_E);
             }
             else {
                 // Task return
@@ -5145,7 +5298,15 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
         }
         else {
             this->set_descriptor_base(CS, (size_t)selector << 4);
+            if constexpr (max_bits > 16) {
+                if (!this->data_size_16()) {
+                    this->set_flags<uint32_t>(flags);
+                    goto ret;
+                }
+            }
+            this->set_flags<uint16_t>(flags);
         }
+    ret:
         this->cs = selector;
         return NO_FAULT;
     throw_gp_zero:
@@ -5155,6 +5316,9 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
         return FAULT;
     throw_np_selector:
         this->software_interrupt(IntNP, selector & ~3);
+        return FAULT;
+    throw_ss_selector:
+        this->software_interrupt(IntSS, selector & ~3);
         return FAULT;
     }
 
@@ -5184,14 +5348,6 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
         FAULT_CHECK(this->POP<uint16_t>(new_flags));
     start_checks:
         if (!FAULTED(this->write_cs_iret(new_ip, new_cs, new_flags))) {
-            if constexpr (max_bits > 16) {
-                if (!this->data_size_16()) {
-                    this->set_flags<uint32_t>(new_flags);
-                    goto ret;
-                }
-            }
-            this->set_flags<uint16_t>(new_flags);
-        ret:
             return this->JMPABS(new_ip);
         }
     fault:
@@ -5302,7 +5458,6 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                         case DESCRIPTOR_E_CODE: case DESCRIPTOR_E_CODEA:
                         case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA:
                             if (new_dpl < this->cpl) {
-                                this->cpl = new_dpl;
                                 auto old_sp = this->rsp;
                                 uint16_t old_ss = this->ss;
                                 {
@@ -5345,9 +5500,12 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                                     if (expect(!ss_descriptor->is_valid_for_stack(), false)) goto throw_ts_selector;
                                     // Present check
                                     if (expect(!ss_descriptor->is_present(), false)) goto throw_ss_selector;
+                                    this->set_privilege_level(new_dpl);
                                     this->change_stack_size(ss_descriptor->is_big());
+                                    ss_descriptor->set_accessed();
                                     this->load_descriptor(SS, ss_descriptor, ATTRIBUTES_RW);
                                     this->rsp = new_sp;
+                                    this->ss = selector;
                                     selector = temp_cs;
                                 }
                             skip_gate_tss_checks:
@@ -5539,7 +5697,6 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                         {
                             uint8_t new_dpl = dest_descriptor->get_dpl();
                             if (new_dpl < this->cpl) {
-                                this->cpl = new_dpl;
                                 auto old_sp = this->rsp;
                                 uint16_t old_ss = this->ss;
                                 {
@@ -5582,9 +5739,12 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                                     if (expect(!ss_descriptor->is_valid_for_stack(), false)) goto throw_df;
                                     // Present check
                                     if (expect(!ss_descriptor->is_present(), false)) goto throw_df;
+                                    this->set_privilege_level(new_dpl);
                                     this->change_stack_size(ss_descriptor->is_big());
+                                    ss_descriptor->set_accessed();
                                     this->load_descriptor(SS, ss_descriptor, ATTRIBUTES_RW);
                                     this->rsp = new_sp;
+                                    this->ss = selector;
                                     selector = temp_cs;
                                 }
                             skip_gate_tss_checks:
@@ -5704,17 +5864,17 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                 case DESCRIPTOR_E_CODE: case DESCRIPTOR_E_CODEA:
                 case DESCRIPTOR_E_CCODE: case DESCRIPTOR_E_CCODEA:
                     goto clear_zero;
-                case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA: {
+                case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA:
+                case DESCRIPTOR_R_DATA: case DESCRIPTOR_R_DATAA:
+                case DESCRIPTOR_RW_DATA: case DESCRIPTOR_RW_DATAA:
+                case DESCRIPTOR_R_EDATA: case DESCRIPTOR_R_EDATAA:
+                case DESCRIPTOR_RW_EDATA: case DESCRIPTOR_RW_EDATAA: {
                     uint8_t dpl = descriptor->get_dpl();
                     // CPL check
                     if (dpl < this->cpl || dpl < (selector & ~3)) {
                         goto clear_zero;
                     }
                 }
-                case DESCRIPTOR_R_DATA: case DESCRIPTOR_R_DATAA:
-                case DESCRIPTOR_RW_DATA: case DESCRIPTOR_RW_DATAA:
-                case DESCRIPTOR_R_EDATA: case DESCRIPTOR_R_EDATAA:
-                case DESCRIPTOR_RW_EDATA: case DESCRIPTOR_RW_EDATAA:
                 case DESCRIPTOR_ER_CCODE: case DESCRIPTOR_ER_CCODEA:
                     this->zero = true;
             }
@@ -5749,8 +5909,121 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                     goto clear_zero;
                 case DESCRIPTOR_RW_DATA: case DESCRIPTOR_RW_DATAA:
                 case DESCRIPTOR_RW_EDATA: case DESCRIPTOR_RW_EDATAA:
+                    uint8_t dpl = descriptor->get_dpl();
+                    // CPL check
+                    if (dpl < this->cpl || dpl < (selector & ~3)) {
+                        goto clear_zero;
+                    }
                     this->zero = true;
             }
+            return NO_FAULT;
+        clear_zero:
+            this->zero = false;
+            return NO_FAULT;
+        }
+        this->software_interrupt(IntUD);
+        return FAULT;
+    }
+
+    template <typename T>
+    inline EXCEPTION LAR(T& dst, uint16_t selector) {
+        if (expect(this->protected_mode, true)) {
+            // Null check
+            if (expect(!(selector & ~3), false)) goto clear_zero;
+            auto* descriptor = this->get_descriptor(selector);
+            // Table limit check
+            if (expect(!descriptor, false)) goto clear_zero;
+            switch (descriptor->get_full_type()) {
+                default: unreachable;
+                case DESCRIPTOR_TSS16: case DESCRIPTOR_TSS16_BUSY:
+                case DESCRIPTOR_CALL_GATE16: case DESCRIPTOR_TASK_GATE:
+                    if constexpr (max_bits == 64) {
+                        if (this->is_long_mode()) {
+                            goto clear_zero;
+                        }
+                    }
+                    goto cpl_check;
+                case DESCRIPTOR_TSS: case DESCRIPTOR_TSS_BUSY:
+                case DESCRIPTOR_CALL_GATE:
+                    if constexpr (max_bits > 16) {
+                        goto cpl_check;
+                    }
+                case DESCRIPTOR_EMPTY: case DESCRIPTOR_UNUSED_8: case DESCRIPTOR_UNUSED_10: case DESCRIPTOR_UNUSED_13:
+                case DESCRIPTOR_INTERRUPT_GATE16: case DESCRIPTOR_TRAP_GATE16:
+                case DESCRIPTOR_INTERRUPT_GATE: case DESCRIPTOR_TRAP_GATE:
+                    goto clear_zero;
+                case DESCRIPTOR_LDT:
+                case DESCRIPTOR_E_CODE: case DESCRIPTOR_E_CODEA:
+                case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA:
+                case DESCRIPTOR_E_CCODE: case DESCRIPTOR_E_CCODEA:
+                case DESCRIPTOR_ER_CCODE: case DESCRIPTOR_ER_CCODEA:
+                case DESCRIPTOR_R_DATA: case DESCRIPTOR_R_DATAA:
+                case DESCRIPTOR_R_EDATA: case DESCRIPTOR_R_EDATAA:
+                case DESCRIPTOR_RW_DATA: case DESCRIPTOR_RW_DATAA:
+                case DESCRIPTOR_RW_EDATA: case DESCRIPTOR_RW_EDATAA:
+                cpl_check:
+                    uint8_t dpl = descriptor->get_dpl();
+                    // CPL check
+                    if (dpl < this->cpl || dpl < (selector & ~3)) {
+                        goto clear_zero;
+                    }
+                    this->zero = true;
+            }
+            dst = descriptor->access_rights() << 8;
+            return NO_FAULT;
+        clear_zero:
+            this->zero = false;
+            return NO_FAULT;
+        }
+        this->software_interrupt(IntUD);
+        return FAULT;
+    }
+
+    template <typename T>
+    inline EXCEPTION LSL(T& dst, uint16_t selector) {
+        if (expect(this->protected_mode, true)) {
+            // Null check
+            if (expect(!(selector & ~3), false)) goto clear_zero;
+            auto* descriptor = this->get_descriptor(selector);
+            // Table limit check
+            if (expect(!descriptor, false)) goto clear_zero;
+            switch (descriptor->get_full_type()) {
+                default: unreachable;
+                case DESCRIPTOR_TSS16: case DESCRIPTOR_TSS16_BUSY:
+                    if constexpr (max_bits == 64) {
+                        if (this->is_long_mode()) {
+                            goto clear_zero;
+                        }
+                    }
+                    goto cpl_check;
+                case DESCRIPTOR_TSS: case DESCRIPTOR_TSS_BUSY:
+                    if constexpr (max_bits > 16) {
+                        goto cpl_check;
+                    }
+                case DESCRIPTOR_EMPTY: case DESCRIPTOR_UNUSED_8: case DESCRIPTOR_UNUSED_10: case DESCRIPTOR_UNUSED_13:
+                case DESCRIPTOR_INTERRUPT_GATE16: case DESCRIPTOR_TRAP_GATE16:
+                case DESCRIPTOR_INTERRUPT_GATE: case DESCRIPTOR_TRAP_GATE:
+                case DESCRIPTOR_CALL_GATE16:
+                case DESCRIPTOR_CALL_GATE: case DESCRIPTOR_TASK_GATE:
+                    goto clear_zero;
+                case DESCRIPTOR_LDT:
+                case DESCRIPTOR_E_CODE: case DESCRIPTOR_E_CODEA:
+                case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA:
+                case DESCRIPTOR_E_CCODE: case DESCRIPTOR_E_CCODEA:
+                case DESCRIPTOR_ER_CCODE: case DESCRIPTOR_ER_CCODEA:
+                case DESCRIPTOR_R_DATA: case DESCRIPTOR_R_DATAA:
+                case DESCRIPTOR_R_EDATA: case DESCRIPTOR_R_EDATAA:
+                case DESCRIPTOR_RW_DATA: case DESCRIPTOR_RW_DATAA:
+                case DESCRIPTOR_RW_EDATA: case DESCRIPTOR_RW_EDATAA:
+                cpl_check:
+                    uint8_t dpl = descriptor->get_dpl();
+                    // CPL check
+                    if (dpl < this->cpl || dpl < (selector & ~3)) {
+                        goto clear_zero;
+                    }
+                    this->zero = true;
+            }
+            dst = descriptor->limit();
             return NO_FAULT;
         clear_zero:
             this->zero = false;
@@ -9694,6 +9967,29 @@ struct z86Base :
                 }
             }
             return this->binopRM_impl<op_flags, uint16_t>(pc, lambda);
+        }
+    }
+
+    template <uint8_t op_flags, typename T, typename P, typename L>
+    inline EXCEPTION regcall binopRMW_impl(P& pc, const L& lambda);
+
+    template <uint8_t op_flags = OP_DEFAULT, typename P, typename L>
+    inline EXCEPTION regcall binopRMW(P& pc, const L& lambda) {
+        if constexpr (OP_IS_BYTE(op_flags)) {
+            return this->binopRMW_impl<op_flags, uint8_t>(pc, lambda);
+        }
+        else {
+            if constexpr (bits > 16) {
+                if (this->data_size_32()) {
+                    return this->binopRMW_impl<op_flags, uint32_t>(pc, lambda);
+                }
+                if constexpr (bits == 64) {
+                    if (this->data_size_64()) {
+                        return this->binopRMW_impl<op_flags, uint64_t>(pc, lambda);
+                    }
+                }
+            }
+            return this->binopRMW_impl<op_flags, uint16_t>(pc, lambda);
         }
     }
 

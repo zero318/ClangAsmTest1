@@ -30,7 +30,7 @@
 static z86Memory<1_MB> mem;
 
 //struct z86Context : z86Core<z80286, FLAG_CPUID_MMX | FLAG_CPUID_SSE | FLAG_CPUID_SSE2 | FLAG_CPUID_SSE3 /*, FLAG_OPCODES_80186 | FLAG_OPCODES_80286 | FLAG_OPCODES_80386 | FLAG_OPCODES_80486 | FLAG_CPUID_CMOV*/> {
-struct z86Context : z86Core<z80386> {
+struct z86Context : z86Core<z8086> {
 
     z86Context() = default;
 
@@ -231,6 +231,51 @@ void z86_execute_impl() {
 #define FAULT_CHECK_SSE(...) ALWAYS_UD_WITHOUT_SSE_REGS() { FAULT_CHECK(__VA_ARGS__); }
 #define FAULT_CHECK_MMX_SSE(...) ALWAYS_UD_WITHOUT_MMX_SSE_REGS() { FAULT_CHECK(__VA_ARGS__); }
 
+    /*
+        Custom Notation Guide:
+    
+        OP args
+
+        Args format:
+
+        ETM
+
+        E = Encoding location
+            A = AX register
+            O = Opcode bits (Type is always register, 64 bit uses rexB)
+            R = ModRM R bits
+            M = ModRM M bits
+            V = VEX third reg bits
+            I = Immediate constant
+            J = Relative displacement
+
+        T =     Reg Type        Mem Type        Imm Type
+            b = Byte GPR        Byte memory     8 bit immediate (sign extended to opsize if needed)
+            w = Word GPR        Word memory     16 bit immediate
+            v = Opsize GPR      Opsize memory   Opsize immediate
+            s = Segment reg     Word memory     16/32 bit immediate sign extended to opsize
+            m = MMX reg         Qword memory
+            x = XMM reg         Oword memory
+            y = YMM reg         ymmword memory
+            z = ZMM reg                         16/32 bit immediate zero extended to opsize
+            k = Mask reg        Qword memory
+            t = TMM reg         Ten byte memory
+            c = Control reg
+            d = Debug reg
+
+                Other types:
+            o = Addrsize absolute memory offset
+            p = Opsize GPR, Opsize memory (word/dword only)
+            y = Opsize GPR, Opsize memory (dword/qword only)
+
+        M = Memory size override (Used when memory form has different size)
+            F = Extra word of memory (LDS type opcodes)
+            2 = Two consecutive opsize memory locations (literally just BOUND)
+            W = Word memory
+            D = Dword memory
+            Q = Qword memory
+    */
+
     for (;;) {
         // Reset per-instruction states
         ctx.seg_override = -1;
@@ -275,17 +320,17 @@ void z86_execute_impl() {
                     return OP_WRITE;
                 }));
                 break;
-            case 0x04: // ADD AL, Ib
+            case 0x04: // ADD Ab, Ib
                 ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
                     ctx.ADD(dst, src);
                 });
                 break;
-            case 0x05: // ADD AX, Is
+            case 0x05: // ADD Av, Is
                 ctx.binopAI(pc, [](auto& dst, auto src) regcall {
                     ctx.ADD(dst, src);
                 });
                 break;
-            case 0x06: case 0x0E: case 0x16: case 0x1E: // PUSH seg
+            case 0x06: case 0x0E: case 0x16: case 0x1E: // PUSH Os
                 if constexpr (ctx.LONG_MODE) {
                     if (ctx.is_long_mode()) {
                         THROW_UD();
@@ -299,7 +344,7 @@ void z86_execute_impl() {
                     goto next_byte;
                 }
                 THROW_UD();
-            case 0x07: case 0x17: case 0x1F: // POP seg
+            case 0x07: case 0x17: case 0x1F: // POP Os
                 if constexpr (ctx.LONG_MODE) {
                     if (ctx.is_long_mode()) {
                         THROW_UD();
@@ -331,12 +376,12 @@ void z86_execute_impl() {
                     return OP_WRITE;
                 }));
                 break;
-            case 0x0C: // OR AL, Ib
+            case 0x0C: // OR Ab, Ib
                 ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
                     ctx.OR(dst, src);
                 });
                 break;
-            case 0x0D: // OR AX, Is
+            case 0x0D: // OR Av, Is
                 ctx.binopAI(pc, [](auto& dst, auto src) regcall {
                     ctx.OR(dst, src);
                 });
@@ -365,12 +410,12 @@ void z86_execute_impl() {
                     return OP_WRITE;
                 }));
                 break;
-            case 0x14: // ADC AL, Ib
+            case 0x14: // ADC Ab, Ib
                 ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
                     ctx.ADC(dst, src);
                 });
                 break;
-            case 0x15: // ADC AX, Is
+            case 0x15: // ADC Av, Is
                 ctx.binopAI(pc, [](auto& dst, auto src) regcall {
                     ctx.ADC(dst, src);
                 });
@@ -399,12 +444,12 @@ void z86_execute_impl() {
                     return OP_WRITE;
                 }));
                 break;
-            case 0x1C: // SBB AL, Ib
+            case 0x1C: // SBB Ab, Ib
                 ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
                     ctx.SBB(dst, src);
                 });
                 break;
-            case 0x1D: // SBB AX, Is
+            case 0x1D: // SBB Av, Is
                 ctx.binopAI(pc, [](auto& dst, auto src) regcall {
                     ctx.SBB(dst, src);
                 });
@@ -433,12 +478,12 @@ void z86_execute_impl() {
                     return OP_WRITE;
                 }));
                 break;
-            case 0x24: // AND AL, Ib
+            case 0x24: // AND Ab, Ib
                 ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
                     ctx.AND(dst, src);
                 });
                 break;
-            case 0x25: // AND AX, Is
+            case 0x25: // AND Av, Is
                 ctx.binopAI(pc, [](auto& dst, auto src) regcall {
                     ctx.AND(dst, src);
                 });
@@ -478,12 +523,12 @@ void z86_execute_impl() {
                     return OP_WRITE;
                 }));
                 break;
-            case 0x2C: // SUB AL, Ib
+            case 0x2C: // SUB Ab, Ib
                 ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
                     ctx.SUB(dst, src);
                 });
                 break;
-            case 0x2D: // SUB AX, Is
+            case 0x2D: // SUB Av, Is
                 ctx.binopAI(pc, [](auto& dst, auto src) regcall {
                     ctx.SUB(dst, src);
                 });
@@ -520,12 +565,12 @@ void z86_execute_impl() {
                     return OP_WRITE;
                 }));
                 break;
-            case 0x34: // XOR AL, Ib
+            case 0x34: // XOR Ab, Ib
                 ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
                     ctx.XOR(dst, src);
                 });
                 break;
-            case 0x35: // XOR AX, Is
+            case 0x35: // XOR Av, Is
                 ctx.binopAI(pc, [](auto& dst, auto src) regcall {
                     ctx.XOR(dst, src);
                 });
@@ -562,12 +607,12 @@ void z86_execute_impl() {
                     return OP_NO_WRITE;
                 }));
                 break;
-            case 0x3C: // CMP AL, Ib
+            case 0x3C: // CMP Ab, Ib
                 ctx.binopAI<OP_BYTE>(pc, [](auto dst, auto src) regcall {
                     ctx.CMP(dst, src);
                 });
                 break;
-            case 0x3D: // CMP AX, Is
+            case 0x3D: // CMP Av, Is
                 ctx.binopAI(pc, [](auto& dst, auto src) regcall {
                     ctx.CMP(dst, src);
                 });
@@ -580,7 +625,7 @@ void z86_execute_impl() {
                 }
                 ctx.AAS();
                 break;
-            case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47: // INC reg
+            case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47: // INC Ov
                 if constexpr (ctx.LONG_MODE) {
                     if (ctx.is_long_mode()) {
                         ctx.set_rex_bits(opcode_byte);
@@ -592,7 +637,7 @@ void z86_execute_impl() {
                     return OP_WRITE;
                 }));
                 break;
-            case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4E: case 0x4F: // DEC reg
+            case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4E: case 0x4F: // DEC Ov
                 if constexpr (ctx.LONG_MODE) {
                     if (ctx.is_long_mode()) {
                         ctx.set_rex_bits(opcode_byte);
@@ -604,7 +649,7 @@ void z86_execute_impl() {
                     return OP_WRITE;
                 }));
                 break;
-            case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x56: case 0x57: // PUSH reg
+            case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x56: case 0x57: // PUSH Ov
                 FAULT_CHECK(ctx.unopR(pc, opcode_byte & 7, [](auto& dst) regcall {
                     if constexpr (ctx.OLD_PUSH_SP) {
                         return ctx.PUSH(dst) ? OP_FAULT : OP_NO_WRITE; // Stack is written, not dst
@@ -615,7 +660,7 @@ void z86_execute_impl() {
                     }
                 }));
                 break;
-            case 0x58: case 0x59: case 0x5A: case 0x5B: case 0x5C: case 0x5D: case 0x5E: case 0x5F: // POP reg
+            case 0x58: case 0x59: case 0x5A: case 0x5B: case 0x5C: case 0x5D: case 0x5E: case 0x5F: // POP Ov
                 FAULT_CHECK(ctx.unopR<OP_NO_READ>(pc, opcode_byte & 7, [](auto& dst) regcall {
                     return ctx.POP(dst) ? OP_FAULT : OP_WRITE;
                 }));
@@ -909,7 +954,7 @@ void z86_execute_impl() {
                     return OP_WRITE;
                 }));
                 break;
-            case 0x8C: // MOV M, seg
+            case 0x8C: // MOV MvW, Rs
                 FAULT_CHECK(ctx.binopMS<OP_NO_READ>(pc, [](auto& dst, auto src) regcall {
                     dst = src;
                     return OP_WRITE;
@@ -918,7 +963,7 @@ void z86_execute_impl() {
             case 0x8D: // LEA Rv, M
                 FAULT_CHECK(ctx.LEA(pc));
                 break;
-            case 0x8E: // MOV seg, M
+            case 0x8E: // MOV Rs, MvW
                 FAULT_CHECK(ctx.binopSM<OP_NO_READ>(pc, [](auto& dst, auto src) regcall {
                     dst = src;
                     return OP_WRITE;
@@ -931,7 +976,7 @@ void z86_execute_impl() {
                         case 1: case 2: case 3: case 4: case 5: case 6: case 7:
                             THROW_UD_GRP();
                             // TODO: ???
-                        case 0:
+                        case 0: // POP Mv
                             return ctx.POP(src) ? OP_FAULT : OP_WRITE;
                     }
                 }));
@@ -941,7 +986,7 @@ void z86_execute_impl() {
                     // NOP
                     break;
                 }
-            case 0x91: case 0x92: case 0x93: case 0x94: case 0x95: case 0x96: case 0x97: // XCHG AX, reg
+            case 0x91: case 0x92: case 0x93: case 0x94: case 0x95: case 0x96: case 0x97: // XCHG Av, Ov
                 ctx.binopAR(opcode_byte & 7, [](auto& dst, auto& src) regcall {
                     ctx.XCHG(dst, src);
                 });
@@ -952,7 +997,7 @@ void z86_execute_impl() {
             case 0x99: // CWD
                 ctx.CWD();
                 break;
-            case 0x9A: // CALL far abs
+            case 0x9A: // CALLF Iv, Iw
                 if constexpr (ctx.LONG_MODE) {
                     if (ctx.is_long_mode()) {
                         THROW_UD();
@@ -975,28 +1020,28 @@ void z86_execute_impl() {
             case 0x9F: // LAHF
                 ctx.ah = ctx.get_flags<uint8_t>();
                 break;
-            case 0xA0: // MOV AL, mem
+            case 0xA0: // MOV Ab, Io
                 FAULT_CHECK(ctx.binopAO<OP_BYTE>(pc, [](auto& dst, auto offset) regcall {
                     z86Addr addr = ctx.addr(DS, offset);
                     dst = addr.read<decltype(dst)>();
                     return NO_FAULT;
                 }));
                 break;
-            case 0xA1: // MOV AX, mem
+            case 0xA1: // MOV Av, Io
                 FAULT_CHECK(ctx.binopAO(pc, [](auto& dst, auto offset) regcall {
                     z86Addr addr = ctx.addr(DS, offset);
                     dst = addr.read<decltype(dst)>();
                     return NO_FAULT;
                 }));
                 break;
-            case 0xA2: // MOV mem, AL
+            case 0xA2: // MOV Io, Ab
                 FAULT_CHECK(ctx.binopAO<OP_BYTE>(pc, [](auto src, auto offset) regcall {
                     z86Addr addr = ctx.addr(DS, offset);
                     addr.write(src);
                     return NO_FAULT;
                 }));
                 break;
-            case 0xA3: // MOV mem, AX
+            case 0xA3: // MOV Io, Av
                 FAULT_CHECK(ctx.binopAO(pc, [](auto src, auto offset) regcall {
                     z86Addr addr = ctx.addr(DS, offset);
                     addr.write(src);
@@ -1015,12 +1060,12 @@ void z86_execute_impl() {
             case 0xA7: // CMPSW
                 FAULT_CHECK(ctx.CMPS());
                 break;
-            case 0xA8: // TEST AL, Ib
+            case 0xA8: // TEST Ab, Ib
                 ctx.binopAI<OP_BYTE>(pc, [](auto dst, auto src) regcall {
                     ctx.TEST(dst, src);
                 });
                 break;
-            case 0xA9: // TEST AX, Is
+            case 0xA9: // TEST Av, Is
                 ctx.binopAI(pc, [](auto dst, auto src) regcall {
                     ctx.TEST(dst, src);
                 });
@@ -1043,10 +1088,10 @@ void z86_execute_impl() {
             case 0xAF: // SCASW
                 FAULT_CHECK(ctx.SCAS());
                 break;
-            case 0xB0: case 0xB1: case 0xB2: case 0xB3: case 0xB4: case 0xB5: case 0xB6: case 0xB7: // MOV reg8, Ib
+            case 0xB0: case 0xB1: case 0xB2: case 0xB3: case 0xB4: case 0xB5: case 0xB6: case 0xB7: // MOV Ob, Ib
                 ctx.MOV_RI<OP_BYTE>(pc, opcode_byte & 7);
                 break;
-            case 0xB8: case 0xB9: case 0xBA: case 0xBB: case 0xBC: case 0xBD: case 0xBE: case 0xBF: // MOV reg, Iv
+            case 0xB8: case 0xB9: case 0xBA: case 0xBB: case 0xBC: case 0xBD: case 0xBE: case 0xBF: // MOV Ov, Iv
                 ctx.MOV_RI(pc, opcode_byte & 7);
                 break;
             case 0xC0: // GRP2 Mb, Ib
@@ -1069,7 +1114,7 @@ void z86_execute_impl() {
                     break;
                 }
                 THROW_UD();
-            case 0xC2: // RET imm
+            case 0xC2: // RET Iw
                 FAULT_CHECK(ctx.RETI(pc));
                 goto next_instr;
             case 0xC1: // GRP2 Mv, Ib
@@ -1095,14 +1140,14 @@ void z86_execute_impl() {
             case 0xC3: // RET
                 FAULT_CHECK(ctx.RET());
                 goto next_instr;
-            case 0xC4: // LES Rv, Mf
+            case 0xC4: // LES Rv, MvF
                 FAULT_CHECK(ctx.binopRMF<OP_NO_REX>(pc, [](auto& dst, auto src) regcall {
                     dst = src;
                     ctx.write_seg(ES, src >> (bitsof(src) >> 1));
                     return true;
                 }));
                 break;
-            case 0xC5: // LDS Rv, Mf
+            case 0xC5: // LDS Rv, MvF
                 FAULT_CHECK(ctx.binopRMF<OP_NO_REX>(pc, [](auto& dst, auto src) regcall {
                     dst = src;
                     ctx.write_seg(DS, src >> (bitsof(src) >> 1));
@@ -1143,7 +1188,7 @@ void z86_execute_impl() {
                     break;
                 }
                 THROW_UD();
-            case 0xCA: // RETF imm
+            case 0xCA: // RETF Iw
                 FAULT_CHECK(ctx.RETFI(pc));
                 goto next_instr;
             case 0xC9: // LEAVE
@@ -1799,19 +1844,19 @@ void z86_execute_impl() {
             case 0xE3: // JCXZ Jb
                 FAULT_CHECK(ctx.JCXZ(pc));
                 goto next_instr;
-            case 0xE4: // IN AL, Ib
+            case 0xE4: // IN Ab, Ib
                 GP_WITHOUT_IOPL();
                 ctx.port_in<OP_BYTE>(pc.read_advance<uint8_t>());
                 break;
-            case 0xE5: // IN AX, Ib
+            case 0xE5: // IN Ap, Ib
                 GP_WITHOUT_IOPL();
                 ctx.port_in(pc.read_advance<uint8_t>());
                 break;
-            case 0xE6: // OUT Ib, AL
+            case 0xE6: // OUT Ib, Ab
                 GP_WITHOUT_IOPL();
                 ctx.port_out<OP_BYTE>(pc.read_advance<uint8_t>());
                 break;
-            case 0xE7: // OUT Ib, AX
+            case 0xE7: // OUT Ib, Ap
                 GP_WITHOUT_IOPL();
                 ctx.port_out(pc.read_advance<uint8_t>());
                 break;
@@ -1821,7 +1866,7 @@ void z86_execute_impl() {
             case 0xE9: // JMP Jz
                 FAULT_CHECK(ctx.JMP(pc));
                 goto next_instr;
-            case 0xEA: // JMP far abs
+            case 0xEA: // JMPF Iv, Iw
                 if constexpr (ctx.LONG_MODE) {
                     if (ctx.is_long_mode()) {
                         THROW_UD();
@@ -1832,19 +1877,19 @@ void z86_execute_impl() {
             case 0xEB: // JMP Jb
                 FAULT_CHECK(ctx.JMP<OP_BYTE>(pc));
                 goto next_instr;
-            case 0xEC: // IN AL, DX
+            case 0xEC: // IN Ab, DX
                 GP_WITHOUT_IOPL();
                 ctx.port_in<OP_BYTE>(ctx.dx);
                 break;
-            case 0xED: // IN AX, DX
+            case 0xED: // IN Ap, DX
                 GP_WITHOUT_IOPL();
                 ctx.port_in(ctx.dx);
                 break;
-            case 0xEE: // OUT DX, AL
+            case 0xEE: // OUT DX, Ab
                 GP_WITHOUT_IOPL();
                 ctx.port_out<OP_BYTE>(ctx.dx);
                 break;
-            case 0xEF: // OUT DX, AX
+            case 0xEF: // OUT DX, Ap
                 GP_WITHOUT_IOPL();
                 ctx.port_out(ctx.dx);
                 break;
@@ -2069,11 +2114,17 @@ void z86_execute_impl() {
                     }
                 ));
                 break;
-            case 0x102: // LAR Rv, Mv
+            case 0x102: // LAR Rv, Mw
                 THROW_UD_WITHOUT_FLAG(ctx.PROTECTED_MODE);
+                FAULT_CHECK(ctx.binopRMW(pc, [](auto& dst, uint16_t src) regcall {
+                    return ctx.LAR(dst, src);
+                }));
                 break;
-            case 0x103: // LSL Rv, Mv
+            case 0x103: // LSL Rv, Mw
                 THROW_UD_WITHOUT_FLAG(ctx.PROTECTED_MODE);
+                FAULT_CHECK(ctx.binopRMW(pc, [](auto& dst, uint16_t src) regcall {
+                    return ctx.LSL(dst, src);
+                }));
                 break;
             case 0x104: // STOREALL
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80286 && !ctx.OPCODES_80386);
@@ -2262,10 +2313,10 @@ void z86_execute_impl() {
                     case Opcode66Prefix: // MOVUPD Mx, Rx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                         goto movups_mr;
-                    case OpcodeF3Prefix: // MOVSS MxD, Rx (no read)
+                    case OpcodeF3Prefix: // MOVSS MxD, RxD (no read)
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
                         break;
-                    case OpcodeF2Prefix: // MOVSD MxQ, Rx (no read)
+                    case OpcodeF2Prefix: // MOVSD MxQ, RxQ (no read)
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                         break;
                 }
@@ -2604,7 +2655,7 @@ void z86_execute_impl() {
                 pc += pc.read<ModRM>().length(pc);
                 break;
             case 0x120:
-                if constexpr (ctx.OPCODES_80386) { // MOV M, CR
+                if constexpr (ctx.OPCODES_80386) { // MOV Mc, Rc
                     GP_WITHOUT_CPL0();
 
                 }
@@ -2614,14 +2665,14 @@ void z86_execute_impl() {
                 }
                 break;
             case 0x121:
-                if constexpr (ctx.OPCODES_80386) { // MOV M, DR
+                if constexpr (ctx.OPCODES_80386) { // MOV Md, Rd
                     GP_WITHOUT_CPL0();
 
                 }
                 THROW_UD();
                 break;
             case 0x122:
-                if constexpr (ctx.OPCODES_80386) { // MOV CR, M
+                if constexpr (ctx.OPCODES_80386) { // MOV Rc, Mc
                     GP_WITHOUT_CPL0();
 
                 }
@@ -2631,7 +2682,7 @@ void z86_execute_impl() {
                 }
                 break;
             case 0x123:
-                if constexpr (ctx.OPCODES_80386) { // MOV DR, M
+                if constexpr (ctx.OPCODES_80386) { // MOV Rd, Md
                     GP_WITHOUT_CPL0();
 
                 }
@@ -2749,10 +2800,10 @@ void z86_execute_impl() {
                     case Opcode66Prefix: // CVTTPD2PI Rm, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE2);
                         break;
-                    case OpcodeF3Prefix: // CVTTSS2SI Rv, Mx
+                    case OpcodeF3Prefix: // CVTTSS2SI Rv, MxD
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
                         break;
-                    case OpcodeF2Prefix: // CVTTSD2SI Rv, Mx
+                    case OpcodeF2Prefix: // CVTTSD2SI Rv, MxQ
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                         break;
                 }
@@ -2766,10 +2817,10 @@ void z86_execute_impl() {
                     case Opcode66Prefix: // CVTPD2PI Rm, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE2);
                         break;
-                    case OpcodeF3Prefix: // CVTSS2SI Rv, Mx
+                    case OpcodeF3Prefix: // CVTSS2SI Rv, MxD
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
                         break;
-                    case OpcodeF2Prefix: // CVTSD2SI Rv, Mx
+                    case OpcodeF2Prefix: // CVTSD2SI Rv, MxQ
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                         break;
                 }
@@ -2777,28 +2828,28 @@ void z86_execute_impl() {
             case 0x12E:
                 switch (ctx.opcode_select()) {
                     default: unreachable;
-                    case OpcodeNoPrefix: // UCOMISS Rx, Mx
+                    case OpcodeNoPrefix: // UCOMISS Rx, MxD
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
                         break;
-                    case Opcode66Prefix: // UCOMISD Rx, Mx
+                    case Opcode66Prefix: // UCOMISD Rx, MxQ
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                         break;
-                    case OpcodeF3Prefix: // VUCOMXSS Rx, Mx
-                    case OpcodeF2Prefix: // VUCOMXSD Rx, Mx
+                    case OpcodeF3Prefix: // VUCOMXSS Rx, MxD
+                    case OpcodeF2Prefix: // VUCOMXSD Rx, MxQ
                         ALWAYS_UD();
                 }
                 break;
             case 0x12F:
                 switch (ctx.opcode_select()) {
                     default: unreachable;
-                    case OpcodeNoPrefix: // COMISS Rx, Mx
+                    case OpcodeNoPrefix: // COMISS Rx, MxD
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
                         break;
-                    case Opcode66Prefix: // COMISD Rx, Mx
+                    case Opcode66Prefix: // COMISD Rx, MxQ
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                         break;
-                    case OpcodeF3Prefix: // COMXSS Rx, Mx
-                    case OpcodeF2Prefix: // COMXSD Rx, Mx
+                    case OpcodeF3Prefix: // COMXSS Rx, MxD
+                    case OpcodeF2Prefix: // COMXSD Rx, MxQ
                         ALWAYS_UD();
                 }
                 break;
@@ -3847,14 +3898,14 @@ void z86_execute_impl() {
             case 0x1A2: // CPUID
                 // TODO
                 break;
-            case 0x1A3: // BT Mv, Gv
+            case 0x1A3: // BT Mv, Rv
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.binopMRB(pc, [](auto dst, auto src) regcall {
                     ctx.BT(dst, src);
                     return OP_NO_WRITE;
                 }));
                 break;
-            case 0x1A4: // SHLD Mv, Gv, Ib
+            case 0x1A4: // SHLD Mv, Rv, Ib
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.binopMR(pc, [&](auto& dst, auto src) regcall {
                     ctx.SHLD(dst, src, pc.read<uint8_t>());
@@ -3862,7 +3913,7 @@ void z86_execute_impl() {
                 }));
                 ++pc;
                 break;
-            case 0x1A5: // SHLD Mv, Gv, CL
+            case 0x1A5: // SHLD Mv, Rv, CL
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) regcall {
                     ctx.SHLD(dst, src, ctx.cl);
@@ -3873,7 +3924,7 @@ void z86_execute_impl() {
                 if constexpr (ctx.HAS_OLD_CMPXCHG) {
                     goto cmpxchgb;
                 }
-                else { // XBTS Rv, Mv, AX, CL
+                else { // XBTS Rv, Mv, Av, CL
                     THROW_UD_WITHOUT_FLAG(ctx.HAS_XBTS_IBTS);
                     FAULT_CHECK(ctx.XBTS(pc));
                 }
@@ -3882,7 +3933,7 @@ void z86_execute_impl() {
                 if constexpr (ctx.HAS_OLD_CMPXCHG) {
                     goto cmpxchgv;
                 }
-                else { // IBTS Mv, AX, CL, Rv
+                else { // IBTS Mv, Av, CL, Rv
                     THROW_UD_WITHOUT_FLAG(ctx.HAS_XBTS_IBTS);
                     FAULT_CHECK(ctx.IBTS(pc));
                 }
@@ -3933,7 +3984,7 @@ void z86_execute_impl() {
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80486);
                 // TODO
                 break;
-            case 0x1B2: // LSS Rv, M
+            case 0x1B2: // LSS Rv, MvF
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.binopRMF(pc, [](auto& dst, auto src) regcall {
                     dst = src;
@@ -3947,7 +3998,7 @@ void z86_execute_impl() {
                     return OP_WRITE;
                 }));
                 break;
-            case 0x1B4: case 0x1B5: // LFS/LGS Rv, M
+            case 0x1B4: case 0x1B5: // LFS/LGS Rv, MvF
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.binopRMF(pc, [=](auto& dst, auto src) regcall {
                     dst = src;
@@ -3989,7 +4040,7 @@ void z86_execute_impl() {
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 // TODO
                 break;
-            case 0x1BB: // BTC Mv, Gv
+            case 0x1BB: // BTC Mv, Rv
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.binopMRB(pc, [](auto& dst, auto src) regcall {
                     ctx.BTC(dst, src);
@@ -4051,10 +4102,10 @@ void z86_execute_impl() {
                     case Opcode66Prefix: // CMPccPD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                         break;
-                    case OpcodeF3Prefix: // CMPccSS Rx, Mx
+                    case OpcodeF3Prefix: // CMPccSS Rx, MxD
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
                         break;
-                    case OpcodeF2Prefix: // CMPccSD Rx, Mx
+                    case OpcodeF2Prefix: // CMPccSD Rx, MxQ
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                         break;
                 }
