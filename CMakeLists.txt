@@ -619,6 +619,7 @@ if (IS_X64)
 target_link_directories(${EXE} PRIVATE "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.20262.0\\ucrt\\x64")
 target_link_directories(${EXE} PRIVATE "C:\\Program Files (x86)\\Microsoft SDKs\\Windows\\v7.1A\\Lib\\x64")
 #target_link_options(${EXE} PRIVATE "/libpath:\"C/Program Files (x86)/Windows Kits/10/Lib/10.0.20262.0/ucrt/x64/\"")
+target_link_libraries(${EXE} "F:\\Program Files\\LLVM\\lib\\clang\\17\\lib\\windows\\clang_rt.builtins-x86_64.lib")
 else()
 if (NOT NO_STDLIB)
 target_link_libraries(${EXE} "C:\\WinDDK\\7600.16385.1\\lib\\wxp\\i386\\winmm.lib")
@@ -1629,6 +1630,13 @@ target_sources(z86_emulator PRIVATE
 target_compile_definitions(z86_emulator PRIVATE
 	STOP_LINKING_DEFAULT_LIB_PLZ
 )
+if(IS_X64)
+target_compile_options(z86_emulator PRIVATE
+	"-fno-pic"
+	"-fno-pie"
+	"-msahf"
+)
+endif()
 
 target_sources(z8086 PRIVATE
 	"x86_emulators/8086_cpu.cpp"

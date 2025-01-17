@@ -33,13 +33,13 @@ Things that I don't want/plan to implement:
 #include "../zero/util.h"
 
 #define TYPEOF(...) std::remove_reference_t<decltype(__VA_ARGS__)>
-#define STYPEOF(...) std::make_signed_t<TYPEOF(__VA_ARGS__)>
-#define UTYPEOF(...) std::make_signed_t<TYPEOF(__VA_ARGS__)>
+#define STYPEOF(...) make_signed_ex_t<TYPEOF(__VA_ARGS__)>
+#define UTYPEOF(...) make_signed_ex_t<TYPEOF(__VA_ARGS__)>
 
 template <typename T>
-using IMMS32 = std::make_signed_t<std::conditional_t<sizeof(T) != sizeof(uint64_t), T, uint32_t>>;
+using IMMS32 = make_signed_ex_t<std::conditional_t<sizeof(T) != sizeof(uint64_t), T, uint32_t>>;
 template <typename T>
-using IMMZ32 = std::make_unsigned_t<std::conditional_t<sizeof(T) != sizeof(uint64_t), T, uint32_t>>;
+using IMMZ32 = make_unsigned_ex_t<std::conditional_t<sizeof(T) != sizeof(uint64_t), T, uint32_t>>;
 
 // Signed word immediate for type
 #define TYPE_IMMs(...) IMMS32<TYPEOF(__VA_ARGS__)>
@@ -102,7 +102,8 @@ enum z86CoreType : size_t {
     z80286 = 2,
     zNV30 = 3,
     z80386 = 4,
-    z80486
+    z80486 = 5,
+    z86_64
 };
 
 // V20 series:
@@ -3703,7 +3704,7 @@ struct z86RegCommon : z86RegBase<max_bits, use_old_reset, has_protected_mode, ha
     using RT = z86BaseGPRs<max_bits>::RT;
     using DT = z86BaseGPRs<max_bits>::DT;
 
-    using SRT = std::make_signed_t<RT>;
+    using SRT = make_signed_ex_t<RT>;
     int8_t seg_override = -1;
 
     inline constexpr void set_seg_override(uint8_t seg) {
@@ -3993,7 +3994,7 @@ struct z86RegCommon : z86RegBase<max_bits, use_old_reset, has_protected_mode, ha
             return this->ax;
         }
         else {
-            using U = std::make_unsigned_t<dbl_int_t<T>>;
+            using U = make_unsigned_ex_t<dbl_int_t<T>>;
             return (U)this->D<T>() << bitsof(T) | this->A<T>();
         }
     }
@@ -4005,9 +4006,9 @@ struct z86RegCommon : z86RegBase<max_bits, use_old_reset, has_protected_mode, ha
             this->ax = value;
         }
         else {
-            using U = std::make_unsigned_t<T>;
-            this->A<T>() = value;
-            this->D<T>() = (U)value >> bitsof(hlf_int_t<T>);
+            using U = make_unsigned_ex_t<T>;
+            this->A<hlf_int_t<T>>() = value;
+            this->D<hlf_int_t<T>>() = (U)value >> bitsof(hlf_int_t<T>);
         }
     }
 
@@ -4298,7 +4299,7 @@ struct z86Reg<max_bits, use_old_reset, false, false, has_x87, max_sse_bits, sse_
     using RT = z86BaseGPRs<max_bits>::RT;
     using DT = z86BaseGPRs<max_bits>::DT;
 
-    using SRT = std::make_signed_t<RT>;
+    using SRT = make_signed_ex_t<RT>;
 
     inline constexpr EXCEPTION write_seg_impl(uint8_t index, uint16_t value) {
         this->seg[index] = value;
@@ -4436,7 +4437,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
     using RT = z86BaseGPRs<max_bits>::RT;
     using DT = z86BaseGPRs<max_bits>::DT;
 
-    using SRT = std::make_signed_t<RT>;
+    using SRT = make_signed_ex_t<RT>;
 
     inline constexpr SEG_DESCRIPTOR<max_bits>* get_descriptor(uint16_t selector) const {
         return this->descriptors[GDT + (bool)(selector & 4)].get_descriptor(selector);
@@ -4626,7 +4627,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                     if constexpr (max_bits == 64) {
                         if (this->is_long_mode()) {
                             if (expect(descriptor_type == DESCRIPTOR_CALL_GATE16, false)) goto throw_gp_selector;
-                            if (expect(!dest_descriptor->valid_long_bits(), false)) goto throw_gp_selector;
+                            if (expect(!dest_descriptor->is_valid_long_bits(), false)) goto throw_gp_selector;
                         }
                     }
                     // Type check
@@ -4648,7 +4649,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                             if constexpr (max_bits >= 32) {
                                 if (gate_descriptor_type == DESCRIPTOR_CALL_GATE) {
                                     if constexpr (max_bits == 64) {
-                                        if constexpr (this->is_long_mode()) {
+                                        if (this->is_long_mode()) {
                                             // Call gate 64
                                             new_ip = new_descriptor->rip();
                                             break;
@@ -4833,7 +4834,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                     if constexpr (max_bits == 64) {
                         if (this->is_long_mode()) {
                             if (expect(descriptor_type == DESCRIPTOR_CALL_GATE16, false)) goto throw_gp_selector;
-                            if (expect(!dest_descriptor->valid_long_bits(), false)) goto throw_gp_selector;
+                            if (expect(!dest_descriptor->is_valid_long_bits(), false)) goto throw_gp_selector;
                         }
                     }
                     // Type check
@@ -4856,7 +4857,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                                     if constexpr (max_bits >= 32) {
                                         if (!this->tss_size_16()) {
                                             if constexpr (max_bits == 64) {
-                                                if constexpr (this->tss_size_64()) {
+                                                if (this->tss_size_64()) {
                                                     // Load TSS 64
                                                     selector = new_dpl;
                                                     this->rsp = this->tss_descriptor.get_ptr<z86TSS<64>>()->stacks[new_dpl].sp;
@@ -4903,7 +4904,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                                 if constexpr (max_bits >= 32) {
                                     if (gate_descriptor_type == DESCRIPTOR_CALL_GATE) {
                                         if constexpr (max_bits == 64) {
-                                            if constexpr (this->is_long_mode()) {
+                                            if (this->is_long_mode()) {
                                                 // Call gate 64
                                                 new_ip = new_descriptor->rip();
                                                 this->PUSH<uint64_t>(old_ss);
@@ -4931,7 +4932,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                             if constexpr (max_bits >= 32) {
                                 if (gate_descriptor_type == DESCRIPTOR_CALL_GATE) {
                                     if constexpr (max_bits == 64) {
-                                        if constexpr (this->is_long_mode()) {
+                                        if (this->is_long_mode()) {
                                             // Call gate 64
                                             new_ip = new_descriptor->rip();
                                             break;
@@ -5466,7 +5467,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                                     if constexpr (max_bits >= 32) {
                                         if (!this->tss_size_16()) {
                                             if constexpr (max_bits == 64) {
-                                                if constexpr (this->tss_size_64()) {
+                                                if (this->tss_size_64()) {
                                                     // Load TSS 64
                                                     selector = new_dpl;
                                                     this->rsp = this->tss_descriptor.get_ptr<z86TSS<64>>()->stacks[new_dpl].sp;
@@ -5514,7 +5515,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                                         default: unreachable;
                                         case DESCRIPTOR_TRAP_GATE: case DESCRIPTOR_INTERRUPT_GATE:
                                             if constexpr (max_bits == 64) {
-                                                if constexpr (this->is_long_mode()) {
+                                                if (this->is_long_mode()) {
                                                     this->PUSH<uint64_t>(old_ss);
                                                     this->PUSH<uint64_t>(old_sp);
                                                     goto after_sp_push;
@@ -5541,7 +5542,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                                         this->interrupt = false;
                                     case DESCRIPTOR_TRAP_GATE:
                                         if constexpr (max_bits == 64) {
-                                            if constexpr (this->is_long_mode()) {
+                                            if (this->is_long_mode()) {
                                                 this->rip = new_descriptor->rip();
                                                 this->PUSH<uint64_t>(flags);
                                                 this->PUSH<uint64_t>(this->cs);
@@ -5705,7 +5706,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                                     if constexpr (max_bits >= 32) {
                                         if (!this->tss_size_16()) {
                                             if constexpr (max_bits == 64) {
-                                                if constexpr (this->tss_size_64()) {
+                                                if (this->tss_size_64()) {
                                                     // Load TSS 64
                                                     selector = new_dpl;
                                                     this->rsp = this->tss_descriptor.get_ptr<z86TSS<64>>()->stacks[new_dpl].sp;
@@ -5753,7 +5754,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                                         default: unreachable;
                                         case DESCRIPTOR_TRAP_GATE: case DESCRIPTOR_INTERRUPT_GATE:
                                             if constexpr (max_bits == 64) {
-                                                if constexpr (this->is_long_mode()) {
+                                                if (this->is_long_mode()) {
                                                     this->PUSH<uint64_t>(old_ss);
                                                     this->PUSH<uint64_t>(old_sp);
                                                     goto after_sp_push;
@@ -5781,7 +5782,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                                         this->interrupt = false;
                                     case DESCRIPTOR_TRAP_GATE:
                                         if constexpr (max_bits == 64) {
-                                            if constexpr (this->is_long_mode()) {
+                                            if (this->is_long_mode()) {
                                                 this->PUSH<uint64_t>(flags);
                                                 this->PUSH<uint64_t>(this->cs);
                                                 this->PUSH<uint64_t>(this->rip);
@@ -6401,7 +6402,7 @@ struct z86AddrImpl : z86AddrBase<bits, protected_mode> {
     // Offset Type
     using OT = z86AddrBase<bits, protected_mode>::OT;
     // Signed Offset Type
-    using ST = std::make_signed_t<OT>;
+    using ST = make_signed_ex_t<OT>;
     // Far Type
     using FT = z86AddrBase<bits, protected_mode>::FT;
     // Physical Addr Type
@@ -6606,7 +6607,7 @@ struct z86AddrFixedImpl : z86AddrFixedBase<max_bits> {
     // Offset Type
     using OT = z86AddrFixedBase<max_bits>::OT;
     // Signed Offset Type
-    using ST = std::make_signed_t<OT>;
+    using ST = make_signed_ex_t<OT>;
     // Far Type
     using FT = z86AddrFixedBase<max_bits>::FT;
     // Memory Addr Type
@@ -6962,7 +6963,7 @@ struct z86Base :
     using RT = z86BaseGPRs<bits>::RT;
     using DT = z86BaseGPRs<bits>::DT;
 
-    using SRT = std::make_signed_t<RT>;
+    using SRT = make_signed_ex_t<RT>;
     
     inline constexpr const uint16_t& get_seg(uint8_t index) {
         if constexpr (WRAP_SEGMENT_MODRM) {
@@ -7429,7 +7430,7 @@ struct z86Base :
 
     template <typename T>
     inline void regcall update_pzs(T val) {
-        using S = std::make_signed_t<T>;
+        using S = make_signed_ex_t<T>;
         this->update_parity(val);
         this->zero = !val;
         this->sign = (S)val > 0;
@@ -7984,8 +7985,8 @@ struct z86Base :
 
     template <typename T>
     inline void regcall ADD(T& dst, T src) {
-        using U = std::make_unsigned_t<T>;
-        using S = std::make_signed_t<T>;
+        using U = make_unsigned_ex_t<T>;
+        using S = make_signed_ex_t<T>;
         T temp = dst;
         this->carry = add_would_overflow<U>(temp, src);
         this->overflow = add_would_overflow<S>(temp, src);
@@ -7997,7 +7998,7 @@ struct z86Base :
 
     template <typename T1, typename T2> requires(!std::is_same_v<T1, T2>)
     inline void regcall ADD(T1& dst, T2 src) {
-        return this->ADD<T1>(dst, (T1)(std::make_signed_t<T1>)src);
+        return this->ADD<T1>(dst, (T1)(make_signed_ex_t<T1>)src);
     }
 
     template <typename T>
@@ -8010,13 +8011,13 @@ struct z86Base :
 
     template <typename T1, typename T2> requires(!std::is_same_v<T1, T2>)
     inline void regcall OR(T1& dst, T2 src) {
-        return this->OR<T1>(dst, (T1)(std::make_signed_t<T1>)src);
+        return this->OR<T1>(dst, (T1)(make_signed_ex_t<T1>)src);
     }
 
     template <typename T>
     inline void regcall ADC(T& dst, T src) {
-        using U = std::make_unsigned_t<T>;
-        using S = std::make_signed_t<T>;
+        using U = make_unsigned_ex_t<T>;
+        using S = make_signed_ex_t<T>;
         T temp = dst;
         T res = carry_add((U)temp, (U)src, this->carry);
         this->update_pzs(res);
@@ -8027,13 +8028,13 @@ struct z86Base :
 
     template <typename T1, typename T2> requires(!std::is_same_v<T1, T2>)
     inline void regcall ADC(T1& dst, T2 src) {
-        return this->ADC<T1>(dst, (T1)(std::make_signed_t<T1>)src);
+        return this->ADC<T1>(dst, (T1)(make_signed_ex_t<T1>)src);
     }
 
     template <typename T>
     inline void regcall SBB(T& dst, T src) {
-        using U = std::make_unsigned_t<T>;
-        using S = std::make_signed_t<T>;
+        using U = make_unsigned_ex_t<T>;
+        using S = make_signed_ex_t<T>;
         T temp = dst;
         T res = carry_sub<U>(temp, src, this->carry);
         this->update_pzs(res);
@@ -8044,7 +8045,7 @@ struct z86Base :
 
     template <typename T1, typename T2> requires(!std::is_same_v<T1, T2>)
     inline void regcall SBB(T1& dst, T2 src) {
-        return this->SBB<T1>(dst, (T1)(std::make_signed_t<T1>)src);
+        return this->SBB<T1>(dst, (T1)(make_signed_ex_t<T1>)src);
     }
 
     template <typename T>
@@ -8057,13 +8058,13 @@ struct z86Base :
 
     template <typename T1, typename T2> requires(!std::is_same_v<T1, T2>)
     inline void regcall AND(T1& dst, T2 src) {
-        return this->AND<T1>(dst, (T1)(std::make_signed_t<T1>)src);
+        return this->AND<T1>(dst, (T1)(make_signed_ex_t<T1>)src);
     }
 
     template <typename T>
     inline void regcall SUB(T& dst, T src) {
-        using U = std::make_unsigned_t<T>;
-        using S = std::make_signed_t<T>;
+        using U = make_unsigned_ex_t<T>;
+        using S = make_signed_ex_t<T>;
         T temp = dst;
         this->carry = sub_would_overflow<U>(temp, src);
         this->overflow = sub_would_overflow<S>(temp, src);
@@ -8075,7 +8076,7 @@ struct z86Base :
 
     template <typename T1, typename T2> requires(!std::is_same_v<T1, T2>)
     inline void regcall SUB(T1& dst, T2 src) {
-        return this->SUB<T1>(dst, (T1)(std::make_signed_t<T1>)src);
+        return this->SUB<T1>(dst, (T1)(make_signed_ex_t<T1>)src);
     }
 
     template <typename T>
@@ -8088,13 +8089,13 @@ struct z86Base :
 
     template <typename T1, typename T2> requires(!std::is_same_v<T1, T2>)
     inline void regcall XOR(T1& dst, T2 src) {
-        return this->XOR<T1>(dst, (T1)(std::make_signed_t<T1>)src);
+        return this->XOR<T1>(dst, (T1)(make_signed_ex_t<T1>)src);
     }
 
     template <typename T>
     inline void regcall CMP(T dst, T src) {
-        using U = std::make_unsigned_t<T>;
-        using S = std::make_signed_t<T>;
+        using U = make_unsigned_ex_t<T>;
+        using S = make_signed_ex_t<T>;
         this->carry = sub_would_overflow<U>(dst, src);
         this->overflow = sub_would_overflow<S>(dst, src);
         T res = dst - src;
@@ -8104,7 +8105,7 @@ struct z86Base :
 
     template <typename T1, typename T2> requires(!std::is_same_v<T1, T2>)
     inline void regcall CMP(T1 dst, T2 src) {
-        return this->CMP<T1>(dst, (T1)(std::make_signed_t<T1>)src);
+        return this->CMP<T1>(dst, (T1)(make_signed_ex_t<T1>)src);
     }
 
     template <typename T>
@@ -8116,12 +8117,12 @@ struct z86Base :
 
     template <typename T1, typename T2> requires(!std::is_same_v<T1, T2>)
     inline void regcall TEST(T1 dst, T2 src) {
-        return this->TEST<T1>(dst, (T1)(std::make_signed_t<T1>)src);
+        return this->TEST<T1>(dst, (T1)(make_signed_ex_t<T1>)src);
     }
 
     template <typename T>
     inline void regcall INC(T& dst) {
-        using S = std::make_signed_t<T>;
+        using S = make_signed_ex_t<T>;
         T temp = dst;
         this->overflow = temp == (std::numeric_limits<S>::max)();
         this->auxiliary = (temp ^ 1 ^ temp + 1) & 0x10; // BLCMSK
@@ -8131,7 +8132,7 @@ struct z86Base :
 
     template <typename T>
     inline void regcall DEC(T& dst) {
-        using S = std::make_signed_t<T>;
+        using S = make_signed_ex_t<T>;
         T temp = dst;
         this->overflow = temp == (std::numeric_limits<S>::max)();
         this->auxiliary = (temp ^ 1 ^ temp - 1) & 0x10; // BLSMSK
@@ -8146,7 +8147,7 @@ struct z86Base :
 
     template <typename T>
     inline void regcall NEG(T& dst) {
-        using S = std::make_signed_t<T>;
+        using S = make_signed_ex_t<T>;
         T temp = dst;
         this->carry = temp;
         this->overflow = (S)temp == (std::numeric_limits<S>::min)();
@@ -8201,8 +8202,8 @@ struct z86Base :
 
     template <typename T>
     inline auto MUL_impl(T lhs, T rhs) {
-        using U = std::make_unsigned_t<T>;
-        using S = std::make_signed_t<T>;
+        using U = make_unsigned_ex_t<T>;
+        using S = make_signed_ex_t<T>;
         using R = dbl_int_t<U>;
 
         R ret = lhs;
@@ -8244,8 +8245,8 @@ struct z86Base :
 
     template <typename T>
     inline auto IMUL_impl(T lhs, T rhs) {
-        using U = std::make_unsigned_t<T>;
-        using S = std::make_signed_t<T>;
+        using U = make_unsigned_ex_t<T>;
+        using S = make_signed_ex_t<T>;
         using R = dbl_int_t<S>;
 
         R ret = lhs;
@@ -8293,14 +8294,14 @@ struct z86Base :
 
     template <typename T, typename I>
     inline void regcall IMUL(T& dst, T src, I val) {
-        using S = std::make_signed_t<T>;
+        using S = make_signed_ex_t<T>;
         dst = this->IMUL_impl(src, (T)(S)val);
     }
 
     template <typename T>
     inline EXCEPTION regcall DIV(T src) {
         if (expect(src != 0, true)) {
-            using U = std::make_unsigned_t<T>;
+            using U = make_unsigned_ex_t<T>;
             using UD = dbl_int_t<U>;
             UD temp = this->read_AD<T>();
             UD quot = temp / src;
@@ -8326,8 +8327,8 @@ struct z86Base :
     template <typename T>
     inline EXCEPTION regcall IDIV(T src) {
         if (expect(src != 0, true)) {
-            using S = std::make_signed_t<T>;
-            //using U = std::make_unsigned_t<T>;
+            using S = make_signed_ex_t<T>;
+            //using U = make_unsigned_ex_t<T>;
             using SD = dbl_int_t<S>;
 
             SD temp = this->read_AD<T>();
@@ -8399,8 +8400,8 @@ struct z86Base :
         }
 
         if (count) {
-            using U = std::make_unsigned_t<T>;
-            using S = std::make_signed_t<T>;
+            using U = make_unsigned_ex_t<T>;
+            using S = make_signed_ex_t<T>;
             
             T res = std::rotl<U>(dst, count);
             this->carry = res & 1;
@@ -8421,8 +8422,8 @@ struct z86Base :
         }
 
         if (count) {
-            using U = std::make_unsigned_t<T>;
-            using S = std::make_signed_t<T>;
+            using U = make_unsigned_ex_t<T>;
+            using S = make_signed_ex_t<T>;
 
             T res = std::rotr<U>(dst, count);
             this->carry = res & 1;
@@ -8446,8 +8447,8 @@ struct z86Base :
         }
 
         if (count) {
-            using U = std::make_unsigned_t<T>;
-            using S = std::make_signed_t<T>;
+            using U = make_unsigned_ex_t<T>;
+            using S = make_signed_ex_t<T>;
 
             UBitInt(total_bits) temp = dst;
             if (this->carry) {
@@ -8481,8 +8482,8 @@ struct z86Base :
         }
 
         if (count) {
-            using U = std::make_unsigned_t<T>;
-            using S = std::make_signed_t<T>;
+            using U = make_unsigned_ex_t<T>;
+            using S = make_signed_ex_t<T>;
 
             UBitInt(total_bits) temp = dst;
             if (this->carry) {
@@ -8511,7 +8512,7 @@ struct z86Base :
             }
         }
         if (count) {
-            using S = std::make_signed_t<T>;
+            using S = make_signed_ex_t<T>;
 
             T temp = dst;
             this->carry = ((size_t)temp >> (bitsof(T) - count)) & 1;
@@ -8533,7 +8534,7 @@ struct z86Base :
         }
 
         if (count) {
-            using S = std::make_signed_t<T>;
+            using S = make_signed_ex_t<T>;
 
             T temp = dst;
             this->carry = ((size_t)temp >> (count - 1)) & 1;
@@ -8594,8 +8595,8 @@ struct z86Base :
         }
 
         if (count) {
-            using DU = dbl_int_t<std::make_unsigned_t<T>>;
-            using S = std::make_signed_t<T>;
+            using DU = dbl_int_t<make_unsigned_ex_t<T>>;
+            using S = make_signed_ex_t<T>;
 
             DU temp = src;
             temp |= (DU)dst << bitsof(T);
@@ -8617,7 +8618,7 @@ struct z86Base :
         }
 
         if (count) {
-            using U = std::make_unsigned_t<T>;
+            using U = make_unsigned_ex_t<T>;
             using DU = dbl_int_t<U>;
 
             DU temp = dst;
@@ -8632,7 +8633,7 @@ struct z86Base :
     template <typename T>
     inline void regcall BT(T dst, T src) {
         assume(src < bitsof(T));
-        using U = std::make_unsigned_t<T>;
+        using U = make_unsigned_ex_t<T>;
 
         const U mask = (U)1 << src;
         this->carry = dst & mask;
@@ -8641,7 +8642,7 @@ struct z86Base :
     template <typename T>
     inline void regcall BTS(T& dst, T src) {
         assume(src < bitsof(T));
-        using U = std::make_unsigned_t<T>;
+        using U = make_unsigned_ex_t<T>;
 
         const U mask = (U)1 << src;
         this->carry = dst & mask;
@@ -8650,7 +8651,7 @@ struct z86Base :
     template <typename T>
     inline void regcall BTR(T& dst, T src) {
         assume(src < bitsof(T));
-        using U = std::make_unsigned_t<T>;
+        using U = make_unsigned_ex_t<T>;
 
         const U mask = (U)1 << src;
         this->carry = dst & mask;
@@ -8660,7 +8661,7 @@ struct z86Base :
     template <typename T>
     inline void regcall BTC(T& dst, T src) {
         assume(src < bitsof(T));
-        using U = std::make_unsigned_t<T>;
+        using U = make_unsigned_ex_t<T>;
 
         const U mask = (U)1 << src;
         this->carry = dst & mask;
@@ -8725,7 +8726,7 @@ struct z86Base :
         else if constexpr (sizeof(T) == sizeof(uint64_t)) {
             count &= 0x3F;
         }
-        using U = std::make_unsigned_t<T>;
+        using U = make_unsigned_ex_t<T>;
 
         this->zero = dst & (U)1 << count;
         // Some docs say carry/overflow are set to 0
@@ -8746,7 +8747,7 @@ struct z86Base :
         else if constexpr (sizeof(T) == sizeof(uint64_t)) {
             count &= 0x3F;
         }
-        using U = std::make_unsigned_t<T>;
+        using U = make_unsigned_ex_t<T>;
 
         const U mask = (U)1 << count;
         dst |= mask;
@@ -8767,7 +8768,7 @@ struct z86Base :
         else if constexpr (sizeof(T) == sizeof(uint64_t)) {
             count &= 0x3F;
         }
-        using U = std::make_unsigned_t<T>;
+        using U = make_unsigned_ex_t<T>;
 
         const U mask = (U)1 << count;
         dst &= ~mask;
@@ -8787,7 +8788,7 @@ struct z86Base :
         else if constexpr (sizeof(T) == sizeof(uint64_t)) {
             count &= 0x3F;
         }
-        using U = std::make_unsigned_t<T>;
+        using U = make_unsigned_ex_t<T>;
 
         const U mask = (U)1 << count;
         dst ^= mask;
@@ -9464,7 +9465,7 @@ struct z86Base :
 
     template <typename T>
     inline EXCEPTION regcall BOUND(T index, T lower, T upper) {
-        using S = std::make_signed_t<T>;
+        using S = make_signed_ex_t<T>;
 
         // (S)index < (S)lower || (S)index > (S)upper
         if constexpr (REP_BOUND) {
@@ -9532,7 +9533,7 @@ struct z86Base :
         constexpr size_t src_vec_length = vector_length_v<T>;
         constexpr size_t dst_vec_length = src_vec_length * 2;
         using src_int = vector_type_t<T>;
-        using dst_int = std::make_unsigned_t<hlf_int_t<src_int>>;
+        using dst_int = make_unsigned_ex_t<hlf_int_t<src_int>>;
 
         vec<src_int, dst_vec_length> temp;
         for (size_t i = 0; i < src_vec_length; ++i) {
@@ -9579,6 +9580,7 @@ struct z86Base :
     template <typename T>
     T regcall MOVLDUP(T src) {
         constexpr size_t vec_length = vector_length_v<T>;
+        using src_int = vector_type_t<T>;
 
         vec<src_int, vec_length> ret;
         for (size_t i = 0; i < vec_length; i += 2) {
@@ -9591,6 +9593,7 @@ struct z86Base :
     template <typename T>
     T regcall MOVHDUP(T src) {
         constexpr size_t vec_length = vector_length_v<T>;
+        using src_int = vector_type_t<T>;
 
         vec<src_int, vec_length> ret;
         for (size_t i = 0; i < vec_length; i += 2) {
@@ -10303,6 +10306,16 @@ struct z86Core<z80386, flagsA> :
         32, 32, flagsA |
         FLAG_PROTECTED_MODE |
         FLAG_OPCODES_80186 | FLAG_OPCODES_80286 | FLAG_OPCODES_80386
+    > {};
+
+template <uint64_t flagsA>
+struct z86Core<z86_64, flagsA> :
+    z86Base<
+        64, 64, flagsA |
+        FLAG_PROTECTED_MODE | FLAG_PAGING | FLAG_LONG_MODE |
+        FLAG_OPCODES_80186 | FLAG_OPCODES_80286 | FLAG_OPCODES_80386 | FLAG_OPCODES_80486 | FLAG_OPCODES_P5 | FLAG_OPCODES_P6 | FLAG_HAS_CPUID | FLAG_HAS_LONG_NOP |
+        FLAG_CPUID_X87 | FLAG_CPUID_CMOV | FLAG_CPUID_MMX | FLAG_CPUID_SSE | FLAG_CPUID_SSE2 | FLAG_CPUID_SSE3 | FLAG_CPUID_SSSE3 | FLAG_CPUID_SSE41 | FLAG_CPUID_SSE42 |
+        FLAG_CPUID_SSE4A | FLAG_CPUID_3DNOW
     > {};
 
 #endif

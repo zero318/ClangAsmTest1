@@ -836,7 +836,7 @@ inline EXCEPTION regcall z86BaseDefault::binopRM_MX(P& pc, const L& lambda) {
     else {
         mval = this->index_xmm_regMB<T, OP_IGNORES_REX(op_flags)>(modrm.M());
     }
-    lambda(this->index_mmx_reg<T, OP_IGNORES_REX(op_flags)>(modrm.R()), mval);
+    lambda(this->index_mmx_reg<T>(modrm.R()), mval);
     return NO_FAULT;
 }
 

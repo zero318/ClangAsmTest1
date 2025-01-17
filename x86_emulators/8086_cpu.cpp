@@ -2001,7 +2001,7 @@ void z86_execute_impl() {
                 }
                 break;
             case 0x100: // GRP6
-                FAULT_CHECK(ctx.unopMW(pc, [](auto& dst, uint8_t r) regcall { // 0x0F00
+                FAULT_CHECK(ctx.unopMW(pc, [](auto& dst, uint8_t r) fastcall { // 0x0F00
                     switch (r) {
                         default: unreachable;
                         case 0: // SLDT Mw
@@ -2031,7 +2031,7 @@ void z86_execute_impl() {
                 break;
             case 0x101: // GRP7
                 FAULT_CHECK(ctx.unopMM(pc,
-                    [](auto data_addr_raw, uint8_t r) regcall { // 0x0F01 mem
+                    [](auto data_addr_raw, uint8_t r) fastcall { // 0x0F01 mem
                         z86Addr data_addr = data_addr_raw;
                         switch (r) {
                             default: unreachable;

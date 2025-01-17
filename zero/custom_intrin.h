@@ -301,6 +301,38 @@ template <size_t byte_count>
 using UByteIntTypeEx = UBitIntTypeEx<byte_count * CHAR_BIT>;
 
 template <typename T>
+struct make_unsigned_ex : std::make_unsigned<T> {};
+
+template <>
+struct make_unsigned_ex<int128_t> {
+    using type = uint128_t;
+};
+
+template <>
+struct make_unsigned_ex<uint128_t> {
+    using type = uint128_t;
+};
+
+template <typename T>
+using make_unsigned_ex_t = make_unsigned_ex<T>::type;
+
+template <typename T>
+struct make_signed_ex : std::make_signed<T> {};
+
+template <>
+struct make_signed_ex<int128_t> {
+    using type = int128_t;
+};
+
+template <>
+struct make_signed_ex<uint128_t> {
+    using type = int128_t;
+};
+
+template <typename T>
+using make_signed_ex_t = make_signed_ex<T>::type;
+
+template <typename T>
 struct bit_count : std::integral_constant<size_t, sizeof(T) * CHAR_BIT> {};
 template <typename T>
 inline constexpr size_t bit_count_v = sizeof(T) * CHAR_BIT;
@@ -313,7 +345,7 @@ private:
     template <typename>
     struct impl;
     template <size_t... idx>
-    struct impl <std::integer_sequence<size_t, idx...>> : std::integral_constant<ssize_t, std::max({ static_cast<ssize_t>(std::is_same_v<Find, TupleTypes> ? idx : -1)... })>{};
+    struct impl <std::integer_sequence<size_t, idx...>> : std::integral_constant<ssize_t, (std::max)({ static_cast<ssize_t>(std::is_same_v<Find, TupleTypes> ? idx : -1)... })>{};
 public:
     static constexpr ssize_t value = impl<std::index_sequence_for<TupleTypes...>>::value;
 };
@@ -347,7 +379,7 @@ template <typename T>
 using dbl_uint_t = std::tuple_element_t<find_type_in_tuple_v<T, uint_types_ex>, std::tuple<uint16_t, uint32_t, uint64_t, uint128_t, uint128_t>>;
 
 template <typename T>
-using dbl_int_t = std::conditional_t<std::is_unsigned_v<T>, dbl_uint_t<std::make_unsigned_t<T>>, dbl_sint_t<std::make_signed_t<T>>>;
+using dbl_int_t = std::conditional_t<std::is_unsigned_v<T>, dbl_uint_t<make_unsigned_ex_t<T>>, dbl_sint_t<make_signed_ex_t<T>>>;
 
 template <typename T>
 using hlf_sint_t = std::tuple_element_t<find_type_in_tuple_v<T, int_types_ex>, std::tuple<int8_t, int8_t, int16_t, int32_t, int64_t>>;
@@ -355,7 +387,7 @@ template <typename T>
 using hlf_uint_t = std::tuple_element_t<find_type_in_tuple_v<T, uint_types_ex>, std::tuple<uint8_t, uint8_t, uint16_t, uint32_t, uint64_t>>;
 
 template <typename T>
-using hlf_int_t = std::conditional_t<std::is_unsigned_v<T>, hlf_uint_t<std::make_unsigned_t<T>>, hlf_sint_t<std::make_signed_t<T>>>;
+using hlf_int_t = std::conditional_t<std::is_unsigned_v<T>, hlf_uint_t<make_unsigned_ex_t<T>>, hlf_sint_t<make_signed_ex_t<T>>>;
 
 static forceinline void* alloc_vla(size_t size) {
     rsp_reg -= AlignUpToMultipleOf2(size, 16);
