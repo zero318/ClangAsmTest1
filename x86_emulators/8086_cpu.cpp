@@ -29,7 +29,6 @@
 
 static z86Memory<1_MB> mem;
 
-//struct z86Context : z86Core<z80286, FLAG_CPUID_MMX | FLAG_CPUID_SSE | FLAG_CPUID_SSE2 | FLAG_CPUID_SSE3 /*, FLAG_OPCODES_80186 | FLAG_OPCODES_80286 | FLAG_OPCODES_80386 | FLAG_OPCODES_80486 | FLAG_CPUID_CMOV*/> {
 struct z86Context : z86Core<z8086> {
 
     z86Context() = default;
@@ -191,14 +190,21 @@ void z86_execute_impl();
 dllexport void z86_execute() {
     // CPUs without protected mode don't have a concept of triple faults
     if constexpr (!ctx.PROTECTED_MODE) {
+#if !MORE_RELIABLE_BREAKPOINTS
         clang_forceinline return z86_execute_impl();
+#endif
     }
     else {
         if (setjmp(ctx.get_triple_fault_buf())) [[unlikely]] {
             RESET();
         }
+#if !MORE_RELIABLE_BREAKPOINTS
         clang_noinline [[clang::musttail]] return z86_execute_impl();
+#endif
     }
+#if MORE_RELIABLE_BREAKPOINTS
+    clang_noinline [[clang::musttail]] return z86_execute_impl();
+#endif
 }
 
 void z86_execute_impl() {
@@ -290,43 +296,43 @@ void z86_execute_impl() {
     prefix_byte:
         assume(map == 0);
     next_byte:
-        uint8_t opcode_byte = pc.read_advance();
+        uint8_t opcode_byte = pc.execute_advance();
         //assume(!(map & 0xFF));
         //uint32_t opcode = opcode_byte | (uint32_t)map << 8;
         //assume(opcode <= UINT16_MAX);
         //switch (opcode) {
         switch (opcode_byte | (uint32_t)map << 8) {
             case 0x00: // ADD Mb, Rb
-                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.ADD(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x01: // ADD Mv, Rv
-                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) z86call {
                     ctx.ADD(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x02: // ADD Rb, Mb
-                FAULT_CHECK(ctx.binopRM<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.ADD(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x03: // ADD Rv, Mv
-                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) z86call {
                     ctx.ADD(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x04: // ADD Ab, Ib
-                ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.ADD(dst, src);
                 });
                 break;
             case 0x05: // ADD Av, Is
-                ctx.binopAI(pc, [](auto& dst, auto src) regcall {
+                ctx.binopAI(pc, [](auto& dst, auto src) z86call {
                     ctx.ADD(dst, src);
                 });
                 break;
@@ -353,138 +359,138 @@ void z86_execute_impl() {
                 FAULT_CHECK(ctx.POPS<OP_NO_DATA64>(opcode_byte >> 3));
                 break;
             case 0x08: // OR Mb, Rb
-                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.OR(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x09: // OR Mv, Rv
-                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) z86call {
                     ctx.OR(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x0A: // OR Rb, Mb
-                FAULT_CHECK(ctx.binopRM<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.OR(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x0B: // OR Rv, Mv
-                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) z86call {
                     ctx.OR(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x0C: // OR Ab, Ib
-                ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.OR(dst, src);
                 });
                 break;
             case 0x0D: // OR Av, Is
-                ctx.binopAI(pc, [](auto& dst, auto src) regcall {
+                ctx.binopAI(pc, [](auto& dst, auto src) z86call {
                     ctx.OR(dst, src);
                 });
                 break;
             case 0x10: // ADC Mb, Rb
-                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.ADC(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x11: // ADC Mv, Rv
-                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) z86call {
                     ctx.ADC(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x12: // ADC Rb, Mb
-                FAULT_CHECK(ctx.binopRM<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.ADC(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x13: // ADC Rv, Mv
-                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) z86call {
                     ctx.ADC(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x14: // ADC Ab, Ib
-                ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.ADC(dst, src);
                 });
                 break;
             case 0x15: // ADC Av, Is
-                ctx.binopAI(pc, [](auto& dst, auto src) regcall {
+                ctx.binopAI(pc, [](auto& dst, auto src) z86call {
                     ctx.ADC(dst, src);
                 });
                 break;
             case 0x18: // SBB Mb, Rb
-                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.SBB(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x19: // SBB Mv, Rv
-                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) z86call {
                     ctx.SBB(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x1A: // SBB Rb, Mb
-                FAULT_CHECK(ctx.binopRM<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.SBB(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x1B: // SBB Rv, Mv
-                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) z86call {
                     ctx.SBB(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x1C: // SBB Ab, Ib
-                ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.SBB(dst, src);
                 });
                 break;
             case 0x1D: // SBB Av, Is
-                ctx.binopAI(pc, [](auto& dst, auto src) regcall {
+                ctx.binopAI(pc, [](auto& dst, auto src) z86call {
                     ctx.SBB(dst, src);
                 });
                 break;
             case 0x20: // AND Mb, Rb
-                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.AND(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x21: // AND Mv, Rv
-                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) z86call {
                     ctx.AND(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x22: // AND Rb, Mb
-                FAULT_CHECK(ctx.binopRM<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.AND(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x23: // AND Rv, Mv
-                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) z86call {
                     ctx.AND(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x24: // AND Ab, Ib
-                ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.AND(dst, src);
                 });
                 break;
             case 0x25: // AND Av, Is
-                ctx.binopAI(pc, [](auto& dst, auto src) regcall {
+                ctx.binopAI(pc, [](auto& dst, auto src) z86call {
                     ctx.AND(dst, src);
                 });
                 break;
@@ -500,36 +506,36 @@ void z86_execute_impl() {
                 ctx.DAA();
                 break;
             case 0x28: // SUB Mb, Rb
-                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.SUB(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x29: // SUB Mv, Rv
-                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) z86call {
                     ctx.SUB(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x2A: // SUB Rb, Mb
-                FAULT_CHECK(ctx.binopRM<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.SUB(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x2B: // SUB Rv, Mv
-                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) z86call {
                     ctx.SUB(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x2C: // SUB Ab, Ib
-                ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.SUB(dst, src);
                 });
                 break;
             case 0x2D: // SUB Av, Is
-                ctx.binopAI(pc, [](auto& dst, auto src) regcall {
+                ctx.binopAI(pc, [](auto& dst, auto src) z86call {
                     ctx.SUB(dst, src);
                 });
                 break;
@@ -542,36 +548,36 @@ void z86_execute_impl() {
                 ctx.DAS();
                 break;
             case 0x30: // XOR Mb, Rb
-                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.XOR(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x31: // XOR Mv, Rv
-                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) z86call {
                     ctx.XOR(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x32: // XOR Rb, Mb
-                FAULT_CHECK(ctx.binopRM<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.XOR(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x33: // XOR Rv, Mv
-                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) z86call {
                     ctx.XOR(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x34: // XOR Ab, Ib
-                ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) regcall {
+                ctx.binopAI<OP_BYTE>(pc, [](auto& dst, auto src) z86call {
                     ctx.XOR(dst, src);
                 });
                 break;
             case 0x35: // XOR Av, Is
-                ctx.binopAI(pc, [](auto& dst, auto src) regcall {
+                ctx.binopAI(pc, [](auto& dst, auto src) z86call {
                     ctx.XOR(dst, src);
                 });
                 break;
@@ -584,36 +590,36 @@ void z86_execute_impl() {
                 ctx.AAA();
                 break;
             case 0x38: // CMP Mb, Rb
-                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto dst, auto src) z86call {
                     ctx.CMP(dst, src);
                     return OP_NO_WRITE;
                 }));
                 break;
             case 0x39: // CMP Mv, Rv
-                FAULT_CHECK(ctx.binopMR(pc, [](auto dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto dst, auto src) z86call {
                     ctx.CMP(dst, src);
                     return OP_NO_WRITE;
                 }));
                 break;
             case 0x3A: // CMP Rb, Mb
-                FAULT_CHECK(ctx.binopRM<OP_BYTE>(pc, [](auto dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM<OP_BYTE>(pc, [](auto dst, auto src) z86call {
                     ctx.CMP(dst, src);
                     return OP_NO_WRITE;
                 }));
                 break;
             case 0x3B: // CMP Rv, Mv
-                FAULT_CHECK(ctx.binopRM(pc, [](auto dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto dst, auto src) z86call {
                     ctx.CMP(dst, src);
                     return OP_NO_WRITE;
                 }));
                 break;
             case 0x3C: // CMP Ab, Ib
-                ctx.binopAI<OP_BYTE>(pc, [](auto dst, auto src) regcall {
+                ctx.binopAI<OP_BYTE>(pc, [](auto dst, auto src) z86call {
                     ctx.CMP(dst, src);
                 });
                 break;
             case 0x3D: // CMP Av, Is
-                ctx.binopAI(pc, [](auto& dst, auto src) regcall {
+                ctx.binopAI(pc, [](auto& dst, auto src) z86call {
                     ctx.CMP(dst, src);
                 });
                 break;
@@ -632,7 +638,7 @@ void z86_execute_impl() {
                         goto prefix_byte;
                     }
                 }
-                FAULT_CHECK(ctx.unopR<OP_NO_REX>(pc, opcode_byte & 7, [](auto& dst) regcall {
+                FAULT_CHECK(ctx.unopR<OP_NO_REX>(pc, opcode_byte & 7, [](auto& dst) z86call {
                     ctx.INC(dst);
                     return OP_WRITE;
                 }));
@@ -644,13 +650,13 @@ void z86_execute_impl() {
                         goto prefix_byte;
                     }
                 }
-                FAULT_CHECK(ctx.unopR<OP_NO_REX>(pc, opcode_byte & 7, [](auto& dst) regcall {
+                FAULT_CHECK(ctx.unopR<OP_NO_REX>(pc, opcode_byte & 7, [](auto& dst) z86call {
                     ctx.DEC(dst);
                     return OP_WRITE;
                 }));
                 break;
             case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x56: case 0x57: // PUSH Ov
-                FAULT_CHECK(ctx.unopR(pc, opcode_byte & 7, [](auto& dst) regcall {
+                FAULT_CHECK(ctx.unopR(pc, opcode_byte & 7, [](auto& dst) z86call {
                     if constexpr (ctx.OLD_PUSH_SP) {
                         return ctx.PUSH(dst) ? OP_FAULT : OP_NO_WRITE; // Stack is written, not dst
                     }
@@ -661,7 +667,7 @@ void z86_execute_impl() {
                 }));
                 break;
             case 0x58: case 0x59: case 0x5A: case 0x5B: case 0x5C: case 0x5D: case 0x5E: case 0x5F: // POP Ov
-                FAULT_CHECK(ctx.unopR<OP_NO_READ>(pc, opcode_byte & 7, [](auto& dst) regcall {
+                FAULT_CHECK(ctx.unopR<OP_NO_READ>(pc, opcode_byte & 7, [](auto& dst) z86call {
                     return ctx.POP(dst) ? OP_FAULT : OP_WRITE;
                 }));
                 break;
@@ -699,7 +705,7 @@ void z86_execute_impl() {
                             THROW_UD();
                         }
                     }
-                    FAULT_CHECK(ctx.binopRM2<OP_NO_REX>(pc, [](auto index, auto lower, auto upper) regcall {
+                    FAULT_CHECK(ctx.binopRM2<OP_NO_REX>(pc, [](auto index, auto lower, auto upper) z86call {
                         return ctx.BOUND(index, lower, upper);
                     }));
                     break;
@@ -714,7 +720,7 @@ void z86_execute_impl() {
                     if constexpr (ctx.LONG_MODE) {
                         if (ctx.is_long_mode()) {
                             // MOVSXD Rv, Mv
-                            FAULT_CHECK(ctx.MOVX<int32_t>(pc, [](auto& dst, auto src) regcall {
+                            FAULT_CHECK(ctx.MOVX<int32_t>(pc, [](auto& dst, auto src) z86call {
                                 using S = decltype(src);
                                 using D = std::remove_reference_t<decltype(dst)>;
                                 dst = (D)(S)src;
@@ -723,7 +729,7 @@ void z86_execute_impl() {
                             break;
                         }
                     }
-                    FAULT_CHECK(ctx.binopMR_impl<OP_NO_REX, uint16_t>(pc, [](auto& dst, auto src) regcall {
+                    FAULT_CHECK(ctx.binopMR_impl<OP_NO_REX, uint16_t>(pc, [](auto& dst, auto src) z86call {
                         return ctx.ARPL(dst, src);
                     }));
                     break;
@@ -774,14 +780,14 @@ void z86_execute_impl() {
                 goto next_instr;
             case 0x68: // PUSH Is
                 if constexpr (ctx.OPCODES_80186) {
-                    FAULT_CHECK(ctx.PUSHI(pc.read_advance_Is()));
+                    FAULT_CHECK(ctx.PUSHI(pc));
                     break;
                 }
                 THROW_UD();
             case 0x69: // IMUL Rv, Mv, Is
                 if constexpr (ctx.OPCODES_80186) {
-                    FAULT_CHECK(ctx.binopRM(pc, [&](auto& dst, auto src) regcall {
-                        ctx.IMUL(dst, src, pc.read_advance<TYPE_IMMs(dst)>());
+                    FAULT_CHECK(ctx.binopRM(pc, [&](auto& dst, auto src) z86call {
+                        ctx.IMUL(dst, src, pc.execute_advance<TYPE_IMMs(dst)>());
                     }));
                     break;
                 }
@@ -792,15 +798,15 @@ void z86_execute_impl() {
                 goto next_instr;
             case 0x6A: // PUSH Ib
                 if constexpr (ctx.OPCODES_80186) {
-                    FAULT_CHECK(ctx.PUSHI(pc.read<int8_t>()));
+                    FAULT_CHECK(ctx.PUSHI(pc.execute<int8_t>()));
                     ++pc;
                     break;
                 }
                 THROW_UD();
             case 0x6B: // IMUL Rv, Mv, Ib
                 if constexpr (ctx.OPCODES_80186) {
-                    FAULT_CHECK(ctx.binopRM(pc, [&](auto& dst, auto src) regcall {
-                        ctx.IMUL(dst, src, pc.read<int8_t>());
+                    FAULT_CHECK(ctx.binopRM(pc, [&](auto& dst, auto src) z86call {
+                        ctx.IMUL(dst, src, pc.execute<int8_t>());
                     }));
                     ++pc;
                     break;
@@ -853,8 +859,8 @@ void z86_execute_impl() {
                     }
                 }
             case 0x80: // GRP1 Mb, Ib
-                FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [&](auto& dst, uint8_t r) regcall { // 0x80
-                    uint8_t val = pc.read<int8_t>();
+                FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [&](auto& dst, uint8_t r) z86call { // 0x80
+                    uint8_t val = pc.execute<int8_t>();
                     switch (r) {
                         default: unreachable;
                         case 0: ctx.ADD(dst, val); return OP_WRITE;
@@ -870,8 +876,8 @@ void z86_execute_impl() {
                 ++pc;
                 break;
             case 0x81: // GRP1 Mv, Is
-                FAULT_CHECK(ctx.unopM(pc, [&](auto& dst, uint8_t r) regcall { // 0x81
-                    int32_t val = pc.read_advance_Is();
+                FAULT_CHECK(ctx.unopM(pc, [&](auto& dst, uint8_t r) z86call { // 0x81
+                    int32_t val = pc.execute_advance_Is();
                     switch (r) {
                         default: unreachable;
                         case 0: ctx.ADD(dst, val); return OP_WRITE;
@@ -886,8 +892,8 @@ void z86_execute_impl() {
                 }));
                 break;
             case 0x83: // GRP1 Mv, Ib
-                FAULT_CHECK(ctx.unopM(pc, [&](auto& dst, uint8_t r) regcall { // 0x83
-                    int32_t val = pc.read<int8_t>();
+                FAULT_CHECK(ctx.unopM(pc, [&](auto& dst, uint8_t r) z86call { // 0x83
+                    int32_t val = pc.execute<int8_t>();
                     switch (r) {
                         default: unreachable;
                         case 0: ctx.ADD(dst, val); return OP_WRITE;
@@ -903,59 +909,59 @@ void z86_execute_impl() {
                 ++pc;
                 break;
             case 0x84: // TEST Mb, Rb
-                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto dst, auto src) z86call {
                     ctx.TEST(dst, src);
                     return OP_NO_WRITE;
                 }));
                 break;
             case 0x85: // TEST Mv, Rv
-                FAULT_CHECK(ctx.binopMR(pc, [](auto dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto dst, auto src) z86call {
                     ctx.TEST(dst, src);
                     return OP_NO_WRITE;
                 }));
                 break;
             case 0x86: // XCHG Mb, Rb
-                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto& dst, auto& src) regcall {
+                FAULT_CHECK(ctx.binopMR<OP_BYTE>(pc, [](auto& dst, auto& src) z86call {
                     ctx.XCHG(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x87: // XCHG Mv, Rv
-                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto& src) regcall {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto& src) z86call {
                     ctx.XCHG(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x88: // MOV Mb, Rb
             mov_mrb:
-                FAULT_CHECK(ctx.binopMR<OP_BYTE | OP_NO_READ>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR<OP_BYTE | OP_NO_READ>(pc, [](auto& dst, auto src) z86call {
                     dst = src;
                     return OP_WRITE;
                 }));
                 break;
             case 0x89: // MOV Mv, Rv
             mov_mr:
-                FAULT_CHECK(ctx.binopMR<OP_NO_READ>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR<OP_NO_READ>(pc, [](auto& dst, auto src) z86call {
                     dst = src;
                     return OP_WRITE;
                 }));
                 break;
             case 0x8A: // MOV Rb, Mb
             mov_rmb:
-                FAULT_CHECK(ctx.binopRM<OP_BYTE | OP_NO_READ>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM<OP_BYTE | OP_NO_READ>(pc, [](auto& dst, auto src) z86call {
                     dst = src;
                     return OP_WRITE;
                 }));
                 break;
             case 0x8B: // MOV Rv, Mv
             mov_rm:
-                FAULT_CHECK(ctx.binopRM<OP_NO_READ>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM<OP_NO_READ>(pc, [](auto& dst, auto src) z86call {
                     dst = src;
                     return OP_WRITE;
                 }));
                 break;
             case 0x8C: // MOV MvW, Rs
-                FAULT_CHECK(ctx.binopMS<OP_NO_READ>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMS<OP_NO_READ>(pc, [](auto& dst, auto src) z86call {
                     dst = src;
                     return OP_WRITE;
                 }));
@@ -964,13 +970,13 @@ void z86_execute_impl() {
                 FAULT_CHECK(ctx.LEA(pc));
                 break;
             case 0x8E: // MOV Rs, MvW
-                FAULT_CHECK(ctx.binopSM<OP_NO_READ>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopSM<OP_NO_READ>(pc, [](auto& dst, auto src) z86call {
                     dst = src;
                     return OP_WRITE;
                 }));
                 break;
             case 0x8F: // GRP1A (Supposedly this does mystery jank if R != 0)
-                FAULT_CHECK(ctx.unopM(pc, [](auto& src, uint8_t r) regcall { // 0x8F
+                FAULT_CHECK(ctx.unopM(pc, [](auto& src, uint8_t r) z86call { // 0x8F
                     switch (r) {
                         default: unreachable;
                         case 1: case 2: case 3: case 4: case 5: case 6: case 7:
@@ -987,7 +993,7 @@ void z86_execute_impl() {
                     break;
                 }
             case 0x91: case 0x92: case 0x93: case 0x94: case 0x95: case 0x96: case 0x97: // XCHG Av, Ov
-                ctx.binopAR(opcode_byte & 7, [](auto& dst, auto& src) regcall {
+                ctx.binopAR(opcode_byte & 7, [](auto& dst, auto& src) z86call {
                     ctx.XCHG(dst, src);
                 });
                 break;
@@ -1021,28 +1027,28 @@ void z86_execute_impl() {
                 ctx.ah = ctx.get_flags<uint8_t>();
                 break;
             case 0xA0: // MOV Ab, Io
-                FAULT_CHECK(ctx.binopAO<OP_BYTE>(pc, [](auto& dst, auto offset) regcall {
+                FAULT_CHECK(ctx.binopAO<OP_BYTE>(pc, [](auto& dst, auto offset) z86call {
                     z86Addr addr = ctx.addr(DS, offset);
                     dst = addr.read<decltype(dst)>();
                     return NO_FAULT;
                 }));
                 break;
             case 0xA1: // MOV Av, Io
-                FAULT_CHECK(ctx.binopAO(pc, [](auto& dst, auto offset) regcall {
+                FAULT_CHECK(ctx.binopAO(pc, [](auto& dst, auto offset) z86call {
                     z86Addr addr = ctx.addr(DS, offset);
                     dst = addr.read<decltype(dst)>();
                     return NO_FAULT;
                 }));
                 break;
             case 0xA2: // MOV Io, Ab
-                FAULT_CHECK(ctx.binopAO<OP_BYTE>(pc, [](auto src, auto offset) regcall {
+                FAULT_CHECK(ctx.binopAO<OP_BYTE>(pc, [](auto src, auto offset) z86call {
                     z86Addr addr = ctx.addr(DS, offset);
                     addr.write(src);
                     return NO_FAULT;
                 }));
                 break;
             case 0xA3: // MOV Io, Av
-                FAULT_CHECK(ctx.binopAO(pc, [](auto src, auto offset) regcall {
+                FAULT_CHECK(ctx.binopAO(pc, [](auto src, auto offset) z86call {
                     z86Addr addr = ctx.addr(DS, offset);
                     addr.write(src);
                     return NO_FAULT;
@@ -1061,12 +1067,12 @@ void z86_execute_impl() {
                 FAULT_CHECK(ctx.CMPS());
                 break;
             case 0xA8: // TEST Ab, Ib
-                ctx.binopAI<OP_BYTE>(pc, [](auto dst, auto src) regcall {
+                ctx.binopAI<OP_BYTE>(pc, [](auto dst, auto src) z86call {
                     ctx.TEST(dst, src);
                 });
                 break;
             case 0xA9: // TEST Av, Is
-                ctx.binopAI(pc, [](auto dst, auto src) regcall {
+                ctx.binopAI(pc, [](auto dst, auto src) z86call {
                     ctx.TEST(dst, src);
                 });
                 break;
@@ -1096,8 +1102,8 @@ void z86_execute_impl() {
                 break;
             case 0xC0: // GRP2 Mb, Ib
                 if constexpr (ctx.OPCODES_80186) {
-                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [&](auto& dst, uint8_t r) regcall { // 0xC0
-                        uint8_t count = pc.read<uint8_t>();
+                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [&](auto& dst, uint8_t r) z86call { // 0xC0
+                        uint8_t count = pc.execute<uint8_t>();
                         switch (r) {
                             default: unreachable;
                             case 0: ctx.ROL(dst, count); return OP_WRITE;
@@ -1119,8 +1125,8 @@ void z86_execute_impl() {
                 goto next_instr;
             case 0xC1: // GRP2 Mv, Ib
                 if constexpr (ctx.OPCODES_80186) {
-                    FAULT_CHECK(ctx.unopM(pc, [&](auto& dst, uint8_t r) regcall { // 0xC1
-                        uint8_t count = pc.read<uint8_t>();
+                    FAULT_CHECK(ctx.unopM(pc, [&](auto& dst, uint8_t r) z86call { // 0xC1
+                        uint8_t count = pc.execute<uint8_t>();
                         switch (r) {
                             default: unreachable;
                             case 0: ctx.ROL(dst, count); return OP_WRITE;
@@ -1141,26 +1147,26 @@ void z86_execute_impl() {
                 FAULT_CHECK(ctx.RET());
                 goto next_instr;
             case 0xC4: // LES Rv, MvF
-                FAULT_CHECK(ctx.binopRMF<OP_NO_REX>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRMF<OP_NO_REX>(pc, [](auto& dst, auto src) z86call {
                     dst = src;
                     ctx.write_seg(ES, src >> (bitsof(src) >> 1));
                     return true;
                 }));
                 break;
             case 0xC5: // LDS Rv, MvF
-                FAULT_CHECK(ctx.binopRMF<OP_NO_REX>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRMF<OP_NO_REX>(pc, [](auto& dst, auto src) z86call {
                     dst = src;
                     ctx.write_seg(DS, src >> (bitsof(src) >> 1));
                     return true;
                 }));
                 break;
             case 0xC6: // GRP11 Ib (Supposedly this just ignores R bits)
-                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [&](auto& dst, uint8_t r) regcall { // 0xC6
+                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [&](auto& dst, uint8_t r) z86call { // 0xC6
                     switch (r) {
                         case 1: case 2: case 3: case 4: case 5: case 6: case 7:
                             THROW_UD_GRP();
                         case 0: // MOV Mb, Ib
-                            dst = pc.read<int8_t>();
+                            dst = pc.execute<int8_t>();
                             return OP_WRITE;
                         default:
                             unreachable;
@@ -1169,12 +1175,12 @@ void z86_execute_impl() {
                 ++pc;
                 break;
             case 0xC7: // GRP11 Is (Supposedly this just ignores R bits)
-                FAULT_CHECK(ctx.unopM<OP_NO_READ>(pc, [&](auto& dst, uint8_t r) regcall { // 0xC7
+                FAULT_CHECK(ctx.unopM<OP_NO_READ>(pc, [&](auto& dst, uint8_t r) z86call { // 0xC7
                     switch (r) {
                         case 1: case 2: case 3: case 4: case 5: case 6: case 7:
                             THROW_UD_GRP();
                         case 0: // MOV Mv, Is
-                            dst = pc.read_advance_Is();
+                            dst = pc.execute_advance_Is();
                             return OP_WRITE;
                         default:
                             unreachable;
@@ -1183,7 +1189,7 @@ void z86_execute_impl() {
                 break;
             case 0xC8: // ENTER Iw, Ib
                 if constexpr (ctx.OPCODES_80186) {
-                    FAULT_CHECK(ctx.ENTER(pc.read<uint16_t>(), pc.read<uint8_t>(2)));
+                    FAULT_CHECK(ctx.ENTER(pc.execute<uint16_t>(), pc.execute<uint8_t>(2)));
                     pc += 3;
                     break;
                 }
@@ -1211,11 +1217,11 @@ void z86_execute_impl() {
                 }
             case 0xCD: // INT Ib
                 if constexpr (!ctx.PROTECTED_MODE) {
-                    ctx.set_trap(pc.read_advance<uint8_t>());
+                    ctx.set_trap(pc.execute_advance<uint8_t>());
                     goto trap;
                 }
                 else {
-                    uint8_t interrupt_number = pc.read_advance<uint8_t>();
+                    uint8_t interrupt_number = pc.execute_advance<uint8_t>();
                     FAULT_CHECK(ctx.int_software_interrupt(pc, interrupt_number, false));
                     continue;
                 }
@@ -1240,7 +1246,7 @@ void z86_execute_impl() {
                 FAULT_CHECK(ctx.IRET());
                 continue; // Using continues delays interrupt execution deliberately
             case 0xD0: // GRP2 Mb, 1
-                FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [](auto& dst, uint8_t r) regcall { // 0xD0
+                FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [](auto& dst, uint8_t r) z86call { // 0xD0
                     switch (r) {
                         default: unreachable;
                         case 0: ctx.ROL(dst, 1); return OP_WRITE;
@@ -1255,7 +1261,7 @@ void z86_execute_impl() {
                 }));
                 break;
             case 0xD1: // GRP2 Mv, 1
-                FAULT_CHECK(ctx.unopM(pc, [](auto& dst, uint8_t r) regcall { // 0xD1
+                FAULT_CHECK(ctx.unopM(pc, [](auto& dst, uint8_t r) z86call { // 0xD1
                     switch (r) {
                         default: unreachable;
                         case 0: ctx.ROL(dst, 1); return OP_WRITE;
@@ -1270,7 +1276,7 @@ void z86_execute_impl() {
                 }));
                 break;
             case 0xD2: // GRP2 Mb, CL
-                FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [](auto& dst, uint8_t r) regcall { // 0xD2
+                FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [](auto& dst, uint8_t r) z86call { // 0xD2
                     switch (r) {
                         default: unreachable;
                         case 0: ctx.ROL(dst, ctx.cl); return OP_WRITE;
@@ -1285,7 +1291,7 @@ void z86_execute_impl() {
                 }));
                 break;
             case 0xD3: // GRP2 Mv, CL
-                FAULT_CHECK(ctx.unopM(pc, [](auto& dst, uint8_t r) regcall { // 0xD3
+                FAULT_CHECK(ctx.unopM(pc, [](auto& dst, uint8_t r) z86call { // 0xD3
                     switch (r) {
                         default: unreachable;
                         case 0: ctx.ROL(dst, ctx.cl); return OP_WRITE;
@@ -1305,7 +1311,7 @@ void z86_execute_impl() {
                         THROW_UD();
                     }
                 }
-                FAULT_CHECK(ctx.AAM(pc.read_advance<uint8_t>()));
+                FAULT_CHECK(ctx.AAM(pc.execute_advance<uint8_t>()));
                 break;
             case 0xD5: // AAD Ib
                 if constexpr (ctx.LONG_MODE) {
@@ -1313,7 +1319,7 @@ void z86_execute_impl() {
                         THROW_UD();
                     }
                 }
-                ctx.AAD(pc.read_advance<uint8_t>());
+                ctx.AAD(pc.execute_advance<uint8_t>());
                 break;
             case 0xD6: // SALC
                 if constexpr (!ctx.OPCODES_V20) {
@@ -1337,7 +1343,7 @@ void z86_execute_impl() {
                     goto modrm_nop;
                 }
                 else {
-                    ModRM modrm = pc.read_advance<ModRM>();
+                    ModRM modrm = pc.execute_advance<ModRM>();
                     ctx.fop_set(opcode_byte, modrm.raw);
                     uint8_t r = modrm.R();
                     uint8_t m;
@@ -1832,7 +1838,7 @@ void z86_execute_impl() {
                 break;
             x87: // ESC x87
                 // NOP :D
-                pc += pc.read<ModRM>().length(pc);
+                pc += pc.execute<ModRM>().length(pc);
                 break;
             case 0xE0: // LOOPNZ Jb
             case 0xE1: // LOOPZ Jb
@@ -1846,19 +1852,19 @@ void z86_execute_impl() {
                 goto next_instr;
             case 0xE4: // IN Ab, Ib
                 GP_WITHOUT_IOPL();
-                ctx.port_in<OP_BYTE>(pc.read_advance<uint8_t>());
+                ctx.port_in<OP_BYTE>(pc.execute_advance<uint8_t>());
                 break;
             case 0xE5: // IN Ap, Ib
                 GP_WITHOUT_IOPL();
-                ctx.port_in(pc.read_advance<uint8_t>());
+                ctx.port_in(pc.execute_advance<uint8_t>());
                 break;
             case 0xE6: // OUT Ib, Ab
                 GP_WITHOUT_IOPL();
-                ctx.port_out<OP_BYTE>(pc.read_advance<uint8_t>());
+                ctx.port_out<OP_BYTE>(pc.execute_advance<uint8_t>());
                 break;
             case 0xE7: // OUT Ib, Ap
                 GP_WITHOUT_IOPL();
-                ctx.port_out(pc.read_advance<uint8_t>());
+                ctx.port_out(pc.execute_advance<uint8_t>());
                 break;
             case 0xE8: // CALL Jz
                 FAULT_CHECK(ctx.CALL(pc));
@@ -1926,11 +1932,11 @@ void z86_execute_impl() {
                 ctx.carry ^= 1;
                 break;
             case 0xF6: // GRP3 Mb
-                FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [&](auto& val, uint8_t r) regcall { // 0xF6
+                FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [&](auto& val, uint8_t r) z86call { // 0xF6
                     switch (r) {
                         default: unreachable;
                         case 0: case 1: // TEST Mb, Ib
-                            ctx.TEST(val, pc.read_advance<uint8_t>());
+                            ctx.TEST(val, pc.execute_advance<uint8_t>());
                             return OP_NO_WRITE;
                         case 2: // NOT Mb
                             ctx.NOT(val);
@@ -1952,12 +1958,12 @@ void z86_execute_impl() {
                 }));
                 break;
             case 0xF7: // GRP3 Mv
-                // 80386 compile crashes clang if this lambda is regcall...?
+                // 80386 compile crashes clang if this lambda is z86call...?
                 FAULT_CHECK(ctx.unopM(pc, [&](auto& val, uint8_t r) fastcall { // 0xF7
                     switch (r) {
                         default: unreachable;
                         case 0: case 1: // TEST Mv, Is
-                            ctx.TEST(val, pc.read_advance_Is());
+                            ctx.TEST(val, pc.execute_advance_Is());
                             return OP_NO_WRITE;
                         case 2: // NOT Mv
                             ctx.NOT(val);
@@ -2090,7 +2096,7 @@ void z86_execute_impl() {
                                 return OP_NO_FAULT;
                         }
                     },
-                    [](auto& src, uint8_t r) regcall { // 0x0F01 reg
+                    [](auto& src, uint8_t r) z86call { // 0x0F01 reg
                         switch (r) {
                             default: unreachable;
                             case 0:
@@ -2116,13 +2122,13 @@ void z86_execute_impl() {
                 break;
             case 0x102: // LAR Rv, Mw
                 THROW_UD_WITHOUT_FLAG(ctx.PROTECTED_MODE);
-                FAULT_CHECK(ctx.binopRMW(pc, [](auto& dst, uint16_t src) regcall {
+                FAULT_CHECK(ctx.binopRMW(pc, [](auto& dst, uint16_t src) z86call {
                     return ctx.LAR(dst, src);
                 }));
                 break;
             case 0x103: // LSL Rv, Mw
                 THROW_UD_WITHOUT_FLAG(ctx.PROTECTED_MODE);
-                FAULT_CHECK(ctx.binopRMW(pc, [](auto& dst, uint16_t src) regcall {
+                FAULT_CHECK(ctx.binopRMW(pc, [](auto& dst, uint16_t src) z86call {
                     return ctx.LSL(dst, src);
                 }));
                 break;
@@ -2194,8 +2200,8 @@ void z86_execute_impl() {
             case 0x10F: { // 3DNow!
                 THROW_UD_WITHOUT_FLAG(ctx.CPUID_3DNOW);
                 /*
-                FAULT_CHECK_MMX(ctx.binopRM_MM(pc, [&](auto& dst, auto src) regcall{
-                    switch (pc.read<uint8_t>()) {
+                FAULT_CHECK_MMX(ctx.binopRM_MM(pc, [&](auto& dst, auto src) z86call{
+                    switch (pc.execute<uint8_t>()) {
                         default: unreachable;
                         case 0x0C: // PI2FW Rm, Mm
                         case 0x0D: // PI2FD Rm, Mm
@@ -2252,7 +2258,7 @@ void z86_execute_impl() {
             case 0x110:
                 if constexpr (!ctx.CPUID_SSE && !ctx.CPUID_SSE2) {
                     THROW_UD_WITHOUT_FLAG(ctx.OPCODES_V20);
-                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [](auto dst, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [](auto dst, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
@@ -2269,7 +2275,7 @@ void z86_execute_impl() {
                     case OpcodeNoPrefix: // MOVUPS Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
                     movups_rm:
-                        FAULT_CHECK_SSE(ctx.binopRM_XX(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX(pc, [](auto& dst, auto src) z86call {
                             dst = src;
                             return OP_WRITE;
                         }));
@@ -2288,7 +2294,7 @@ void z86_execute_impl() {
             case 0x111:
                 if constexpr (!ctx.CPUID_SSE && !ctx.CPUID_SSE2) {
                     THROW_UD_WITHOUT_FLAG(ctx.OPCODES_V20);
-                    FAULT_CHECK(ctx.unopM(pc, [](auto dst, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM(pc, [](auto dst, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
@@ -2305,7 +2311,7 @@ void z86_execute_impl() {
                     case OpcodeNoPrefix: // MOVUPS Mx, Rx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
                     movups_mr:
-                        FAULT_CHECK_SSE(ctx.binopMR_XX<float, OP_NO_READ>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopMR_XX<float, OP_NO_READ>(pc, [](auto& dst, auto src) z86call {
                             dst = src;
                             return OP_WRITE;
                         }));
@@ -2324,7 +2330,7 @@ void z86_execute_impl() {
             case 0x112:
                 if constexpr (!ctx.CPUID_SSE && !ctx.CPUID_SSE2 && !ctx.CPUID_SSE3) {
                     THROW_UD_WITHOUT_FLAG(ctx.OPCODES_V20);
-                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [](auto& dst, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [](auto& dst, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
@@ -2346,7 +2352,7 @@ void z86_execute_impl() {
                         break;
                     case OpcodeF3Prefix: // MOVSLDUP Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE3);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<float>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<float>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.MOVLDUP(src);
                             return OP_WRITE;
                         }));
@@ -2359,7 +2365,7 @@ void z86_execute_impl() {
             case 0x113:
                 if constexpr (!ctx.CPUID_SSE && !ctx.CPUID_SSE2) {
                     THROW_UD_WITHOUT_FLAG(ctx.OPCODES_V20);
-                    FAULT_CHECK(ctx.unopM(pc, [](auto& dst, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM(pc, [](auto& dst, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
@@ -2387,7 +2393,7 @@ void z86_execute_impl() {
             case 0x114:
                 if constexpr (!ctx.CPUID_SSE && !ctx.CPUID_SSE2) {
                     THROW_UD_WITHOUT_FLAG(ctx.OPCODES_V20);
-                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [](auto& dst, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [](auto& dst, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
@@ -2404,7 +2410,7 @@ void z86_execute_impl() {
                     case OpcodeNoPrefix: // UNPCKLPS Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
                     unpcklps:
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<float>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<float>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PUNPCKL(dst, src);
                             return OP_WRITE;
                         }));
@@ -2412,7 +2418,7 @@ void z86_execute_impl() {
                     case Opcode66Prefix: // UNPCKLPD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                     unpcklpd:
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<double>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<double>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PUNPCKL(dst, src);
                             return OP_WRITE;
                         }));
@@ -2425,7 +2431,7 @@ void z86_execute_impl() {
             case 0x115:
                 if constexpr (!ctx.CPUID_SSE && !ctx.CPUID_SSE2) {
                     THROW_UD_WITHOUT_FLAG(ctx.OPCODES_V20);
-                    FAULT_CHECK(ctx.unopM(pc, [](auto& dst, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM(pc, [](auto& dst, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
@@ -2442,7 +2448,7 @@ void z86_execute_impl() {
                     case OpcodeNoPrefix: // UNPCKHPS Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE);
                     unpckhps:
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<float>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<float>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PUNPCKH(dst, src);
                             return OP_WRITE;
                         }));
@@ -2450,7 +2456,7 @@ void z86_execute_impl() {
                     case Opcode66Prefix: // UNPCKHPD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                     unpckhpd:
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<double>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<double>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PUNPCKH(dst, src);
                             return OP_WRITE;
                         }));
@@ -2463,7 +2469,7 @@ void z86_execute_impl() {
             case 0x116:
                 if constexpr (!ctx.CPUID_SSE && !ctx.CPUID_SSE2 && !ctx.CPUID_SSE3) {
                     THROW_UD_WITHOUT_FLAG(ctx.OPCODES_V20);
-                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [](auto& dst, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [](auto& dst, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
@@ -2485,7 +2491,7 @@ void z86_execute_impl() {
                         break;
                     case OpcodeF3Prefix: // MOVSHDUP Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE3);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<float>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<float>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.MOVHDUP(src);
                             return OP_WRITE;
                         }));
@@ -2497,7 +2503,7 @@ void z86_execute_impl() {
             case 0x117:
                 if constexpr (!ctx.CPUID_SSE && !ctx.CPUID_SSE2) {
                     THROW_UD_WITHOUT_FLAG(ctx.OPCODES_V20);
-                    FAULT_CHECK(ctx.unopM(pc, [](auto& dst, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM(pc, [](auto& dst, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
@@ -2524,13 +2530,13 @@ void z86_execute_impl() {
                 break;
             case 0x118:
                 if constexpr (ctx.OPCODES_V20) {
-                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [&](auto dst, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [&](auto dst, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
                                 THROW_UD_GRP();
                             case 0: // TEST1 Mb, Ib
-                                ctx.TEST1(dst, pc.read<uint8_t>());
+                                ctx.TEST1(dst, pc.execute<uint8_t>());
                                 return OP_NO_WRITE;
                         }
                     }));
@@ -2540,13 +2546,13 @@ void z86_execute_impl() {
                 goto hint_nop;
             case 0x119:
                 if constexpr (ctx.OPCODES_V20) {
-                    FAULT_CHECK(ctx.unopM(pc, [&](auto dst, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM(pc, [&](auto dst, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
                                 THROW_UD_GRP();
                             case 0: // TEST1 Mv, Ib
-                                ctx.TEST1(dst, pc.read<uint8_t>());
+                                ctx.TEST1(dst, pc.execute<uint8_t>());
                                 return OP_NO_WRITE;
                         }
                     }));
@@ -2556,13 +2562,13 @@ void z86_execute_impl() {
                 goto hint_nop;
             case 0x11A:
                 if constexpr (ctx.OPCODES_V20) { 
-                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [&](auto& dst, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [&](auto& dst, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
                                 THROW_UD_GRP();
                             case 0: // CLR1 Mb, Ib
-                                ctx.CLR1(dst, pc.read<uint8_t>());
+                                ctx.CLR1(dst, pc.execute<uint8_t>());
                                 return OP_NO_WRITE;
                         }
                     }));
@@ -2572,13 +2578,13 @@ void z86_execute_impl() {
                 goto hint_nop;
             case 0x11B:
                 if constexpr (ctx.OPCODES_V20) { 
-                    FAULT_CHECK(ctx.unopM(pc, [&](auto& dst, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM(pc, [&](auto& dst, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
                                 THROW_UD_GRP();
                             case 0: // CLR1 Mv, Ib
-                                ctx.CLR1(dst, pc.read<uint8_t>());
+                                ctx.CLR1(dst, pc.execute<uint8_t>());
                                 return OP_NO_WRITE;
                         }
                     }));
@@ -2588,13 +2594,13 @@ void z86_execute_impl() {
                 goto hint_nop;
             case 0x11C:
                 if constexpr (ctx.OPCODES_V20) { 
-                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [&](auto& dst, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [&](auto& dst, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
                                 THROW_UD_GRP();
                             case 0: // SET1 Mb, Ib
-                                ctx.SET1(dst, pc.read<uint8_t>());
+                                ctx.SET1(dst, pc.execute<uint8_t>());
                                 return OP_NO_WRITE;
                         }
                     }));
@@ -2604,13 +2610,13 @@ void z86_execute_impl() {
                 goto hint_nop;
             case 0x11D:
                 if constexpr (ctx.OPCODES_V20) { 
-                    FAULT_CHECK(ctx.unopM(pc, [&](auto& dst, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM(pc, [&](auto& dst, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
                                 THROW_UD_GRP();
                             case 0: // SET1 Mv, Ib
-                                ctx.SET1(dst, pc.read<uint8_t>());
+                                ctx.SET1(dst, pc.execute<uint8_t>());
                                 return OP_NO_WRITE;
                         }
                     }));
@@ -2620,13 +2626,13 @@ void z86_execute_impl() {
                 goto hint_nop;
             case 0x11E:
                 if constexpr (ctx.OPCODES_V20) { 
-                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [&](auto& dst, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [&](auto& dst, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
                                 THROW_UD_GRP();
                             case 0: // NOT1 Mb, Ib
-                                ctx.NOT1(dst, pc.read<uint8_t>());
+                                ctx.NOT1(dst, pc.execute<uint8_t>());
                                 return OP_NO_WRITE;
                         }
                     }));
@@ -2636,13 +2642,13 @@ void z86_execute_impl() {
                 goto hint_nop;
             case 0x11F:
                 if constexpr (ctx.OPCODES_V20) { 
-                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [&](auto& dst, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [&](auto& dst, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
                                 THROW_UD_GRP();
                             case 0: // NOT1 Mv, Ib
-                                ctx.NOT1(dst, pc.read<uint8_t>());
+                                ctx.NOT1(dst, pc.execute<uint8_t>());
                                 return OP_NO_WRITE;
                         }
                     }));
@@ -2652,7 +2658,7 @@ void z86_execute_impl() {
             hint_nop: // HINT_NOP
                 THROW_UD_WITHOUT_FLAG(ctx.HAS_LONG_NOP);
             modrm_nop:
-                pc += pc.read<ModRM>().length(pc);
+                pc += pc.execute<ModRM>().length(pc);
                 break;
             case 0x120:
                 if constexpr (ctx.OPCODES_80386) { // MOV Mc, Rc
@@ -2704,7 +2710,7 @@ void z86_execute_impl() {
             case 0x128:
                 if constexpr (!ctx.CPUID_SSE && !ctx.CPUID_SSE2) {
                     THROW_UD_WITHOUT_FLAG(ctx.OPCODES_V20);
-                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [](auto& src, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [](auto& src, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
@@ -2746,7 +2752,7 @@ void z86_execute_impl() {
             case 0x12A:
                 if constexpr (!ctx.CPUID_SSE && !ctx.CPUID_SSE2) {
                     THROW_UD_WITHOUT_FLAG(ctx.OPCODES_V20);
-                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [](auto& src, uint8_t r) regcall {
+                    FAULT_CHECK(ctx.unopM<OP_BYTE>(pc, [](auto& src, uint8_t r) z86call {
                         switch (r) {
                             default: unreachable;
                             case 1: case 2: case 3: case 4: case 5: case 6: case 7:
@@ -2877,7 +2883,7 @@ void z86_execute_impl() {
                 // KAND Rk, Vk, Mk (VEX)
             case 0x140: // CMOVO Rv, Mv
                 THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
-                FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) z86call {
                     ctx.CMOVCC<CondNO>(dst, src, opcode_byte & 1);
                     return OP_WRITE;
                 }));
@@ -2886,7 +2892,7 @@ void z86_execute_impl() {
                 // KANDN Rk, Vk, Mk (VEX)
             case 0x143: // CMOVNC Rv, Mv
                 THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
-                FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) z86call {
                     ctx.CMOVCC<CondNC>(dst, src, opcode_byte & 1);
                     return OP_WRITE;
                 }));
@@ -2896,7 +2902,7 @@ void z86_execute_impl() {
             case 0x145: // CMOVNZ Rv, Mv
                 // KOR Rk, Vk, Mk (VEX)
                 THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
-                FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) z86call {
                     ctx.CMOVCC<CondNZ>(dst, src, opcode_byte & 1);
                     return OP_WRITE;
                 }));
@@ -2906,7 +2912,7 @@ void z86_execute_impl() {
             case 0x147: // CMOVA Rv, Mv
                 // KXOR Rk, Vk, Mk (VEX)
                 THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
-                FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) z86call {
                     ctx.CMOVCC<CondA>(dst, src, opcode_byte & 1);
                     return OP_WRITE;
                 }));
@@ -2914,7 +2920,7 @@ void z86_execute_impl() {
             case 0x148: // CMOVS Rv, Mv
             case 0x149: // CMOVNS Rv, Mv
                 THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
-                FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) z86call {
                     ctx.CMOVCC<CondNS>(dst, src, opcode_byte & 1);
                     return OP_WRITE;
                 }));
@@ -2924,7 +2930,7 @@ void z86_execute_impl() {
             case 0x14B: // CMOVNP Rv, Mv
                 // KUNPCK Rk, Vk, Mk (VEX)
                 THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
-                FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) z86call {
                     ctx.CMOVCC<CondNP>(dst, src, opcode_byte & 1);
                     return OP_WRITE;
                 }));
@@ -2932,7 +2938,7 @@ void z86_execute_impl() {
             case 0x14C: // CMOVL Rv, Mv
             case 0x14D: // CMOVGE Rv, Mv
                 THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
-                FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) z86call {
                     ctx.CMOVCC<CondGE>(dst, src, opcode_byte & 1);
                     return OP_WRITE;
                 }));
@@ -2940,7 +2946,7 @@ void z86_execute_impl() {
             case 0x14E: // CMOVLE Rv, Mv
             case 0x14F: // CMOVG Rv, Mv
                 THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
-                FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) z86call {
                     ctx.CMOVCC<CondG>(dst, src, opcode_byte & 1);
                     return OP_WRITE;
                 }));
@@ -3200,7 +3206,7 @@ void z86_execute_impl() {
                     case OpcodeNoPrefix: // PUNPCKLBW Rm, MmD
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
                         /*
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PUNPCKL(dst, src);
                             return OP_WRITE;
                         }));
@@ -3208,7 +3214,7 @@ void z86_execute_impl() {
                         break;
                     case Opcode66Prefix: // PUNPCKLBW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PUNPCKL(dst, src);
                             return OP_WRITE;
                         }));
@@ -3224,7 +3230,7 @@ void z86_execute_impl() {
                     case OpcodeNoPrefix: // PUNPCKLWD Rm, MmD
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
                         /*
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PUNPCKL(dst, src);
                             return OP_WRITE;
                         }));
@@ -3232,7 +3238,7 @@ void z86_execute_impl() {
                         break;
                     case Opcode66Prefix: // PUNPCKLWD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PUNPCKL(dst, src);
                             return OP_WRITE;
                         }));
@@ -3248,7 +3254,7 @@ void z86_execute_impl() {
                     case OpcodeNoPrefix: // PUNPCKLDQ Rm, MmD
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
                         /*
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PUNPCKL(dst, src);
                             return OP_WRITE;
                         }));
@@ -3267,13 +3273,13 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PACKSSWB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) z86call {
                             return ctx.PACKSS(dst, src);
                         }));
                         break;
                     case Opcode66Prefix: // PACKSSWB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) z86call {
                             return ctx.PACKSS(dst, src);
                         }));
                         break;
@@ -3287,14 +3293,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PCMPGTB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PCMPGT(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PCMPGTB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PCMPGT(dst, src);
                             return OP_WRITE;
                         }));
@@ -3309,14 +3315,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PCMPGTW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PCMPGT(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PCMPGTW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PCMPGT(dst, src);
                             return OP_WRITE;
                         }));
@@ -3331,14 +3337,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PCMPGTD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PCMPGT(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PCMPGTD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PCMPGT(dst, src);
                             return OP_WRITE;
                         }));
@@ -3353,13 +3359,13 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PACKUSWB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) z86call {
                             return ctx.PACKUS(dst, src);
                         }));
                         break;
                     case Opcode66Prefix: // PACKUSWB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) z86call {
                             return ctx.PACKUS(dst, src);
                         }));
                         break;
@@ -3373,14 +3379,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PUNPCKHBW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PUNPCKH(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PUNPCKHBW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PUNPCKH(dst, src);
                             return OP_WRITE;
                         }));
@@ -3395,14 +3401,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PUNPCKHWD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PUNPCKH(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PUNPCKHWD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PUNPCKH(dst, src);
                             return OP_WRITE;
                         }));
@@ -3417,7 +3423,7 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PUNPCKHDQ Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PUNPCKH(dst, src);
                             return OP_WRITE;
                         }));
@@ -3435,13 +3441,13 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PACKSSDW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int32_t>(pc, [](auto& dst, auto src) z86call {
                             return ctx.PACKSS(dst, src);
                         }));
                         break;
                     case Opcode66Prefix: // PACKSSDW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) z86call {
                             return ctx.PACKSS(dst, src);
                         }));
                         break;
@@ -3495,7 +3501,7 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // MOVQ Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM(pc, [](auto& dst, auto src) z86call {
                             dst = src;
                             return OP_WRITE;
                         }));
@@ -3573,14 +3579,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PCMPEQB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PCMPEQ(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PCMPEQB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PCMPEQ(dst, src);
                             return OP_WRITE;
                         }));
@@ -3595,14 +3601,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PCMPEQW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PCMPEQ(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PCMPEQW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PCMPEQ(dst, src);
                             return OP_WRITE;
                         }));
@@ -3617,14 +3623,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PCMPEQD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PCMPEQ(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PCMPEQD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PCMPEQ(dst, src);
                             return OP_WRITE;
                         }));
@@ -3761,7 +3767,7 @@ void z86_execute_impl() {
                     case OpcodeNoPrefix: // MOVQ Mm, Rm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
                     movq_mmx:
-                        FAULT_CHECK_MMX(ctx.binopMR_MM<uint64_t, OP_NO_READ>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopMR_MM<uint64_t, OP_NO_READ>(pc, [](auto& dst, auto src) z86call {
                             dst = src;
                             return OP_WRITE;
                         }));
@@ -3822,7 +3828,7 @@ void z86_execute_impl() {
             case 0x191: // SETNO Mb
                 // KMOV Mk, Rk (VEX)
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) regcall {
+                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) z86call {
                     ctx.SETCC<CondNO>(dst, opcode_byte & 1);
                     return OP_WRITE;
                 }));
@@ -3832,7 +3838,7 @@ void z86_execute_impl() {
             case 0x193: // SETNC Mb
                 // KMOV Rv, Mk
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) regcall {
+                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) z86call {
                     ctx.SETCC<CondNC>(dst, opcode_byte & 1);
                     return OP_WRITE;
                 }));
@@ -3840,7 +3846,7 @@ void z86_execute_impl() {
             case 0x194: // SETZ Mb
             case 0x195: // SETNZ Mb
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) regcall {
+                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) z86call {
                     ctx.SETCC<CondNZ>(dst, opcode_byte & 1);
                     return OP_WRITE;
                 }));
@@ -3848,7 +3854,7 @@ void z86_execute_impl() {
             case 0x196: // SETBE Mb
             case 0x197: // SETA Mb
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) regcall {
+                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) z86call {
                     ctx.SETCC<CondA>(dst, opcode_byte & 1);
                     return OP_WRITE;
                 }));
@@ -3858,7 +3864,7 @@ void z86_execute_impl() {
             case 0x199: // SETNS Mb
                 // KTEST Rk, Mk (VEX)
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) regcall {
+                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) z86call {
                     ctx.SETCC<CondNS>(dst, opcode_byte & 1);
                     return OP_WRITE;
                 }));
@@ -3866,7 +3872,7 @@ void z86_execute_impl() {
             case 0x19A: // SETP Mb
             case 0x19B: // SETNP Mb
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) regcall {
+                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) z86call {
                     ctx.SETCC<CondNP>(dst, opcode_byte & 1);
                     return OP_WRITE;
                 }));
@@ -3874,7 +3880,7 @@ void z86_execute_impl() {
             case 0x19C: // SETL Mb
             case 0x19D: // SETGE Mb
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) regcall {
+                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) z86call {
                     ctx.SETCC<CondGE>(dst, opcode_byte & 1);
                     return OP_WRITE;
                 }));
@@ -3882,7 +3888,7 @@ void z86_execute_impl() {
             case 0x19E: // SETLE Mb
             case 0x19F: // SETG Mb
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) regcall {
+                FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) z86call {
                     ctx.SETCC<CondG>(dst, opcode_byte & 1);
                     return OP_WRITE;
                 }));
@@ -3900,22 +3906,22 @@ void z86_execute_impl() {
                 break;
             case 0x1A3: // BT Mv, Rv
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.binopMRB(pc, [](auto dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMRB(pc, [](auto dst, auto src) z86call {
                     ctx.BT(dst, src);
                     return OP_NO_WRITE;
                 }));
                 break;
             case 0x1A4: // SHLD Mv, Rv, Ib
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.binopMR(pc, [&](auto& dst, auto src) regcall {
-                    ctx.SHLD(dst, src, pc.read<uint8_t>());
+                FAULT_CHECK(ctx.binopMR(pc, [&](auto& dst, auto src) z86call {
+                    ctx.SHLD(dst, src, pc.execute<uint8_t>());
                     return OP_WRITE;
                 }));
                 ++pc;
                 break;
             case 0x1A5: // SHLD Mv, Rv, CL
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto& dst, auto src) z86call {
                     ctx.SHLD(dst, src, ctx.cl);
                     return OP_WRITE;
                 }));
@@ -3943,22 +3949,22 @@ void z86_execute_impl() {
                 break;
             case 0x1AB: // BTS Mv, Rv
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.binopMRB(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMRB(pc, [](auto& dst, auto src) z86call {
                     ctx.BTS(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x1AC: // SHRD Mv, Rv, Ib
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.binopMR(pc, [&](auto dst, auto src) regcall {
-                    ctx.SHRD(dst, src, pc.read<uint8_t>());
+                FAULT_CHECK(ctx.binopMR(pc, [&](auto dst, auto src) z86call {
+                    ctx.SHRD(dst, src, pc.execute<uint8_t>());
                     return OP_WRITE;
                 }));
                 ++pc;
                 break;
             case 0x1AD: // SHRD Mv, Rv, CL
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.binopMR(pc, [](auto dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMR(pc, [](auto dst, auto src) z86call {
                     ctx.SHRD(dst, src, ctx.cl);
                     return OP_WRITE;
                 }));
@@ -3968,7 +3974,7 @@ void z86_execute_impl() {
                 break;
             case 0x1AF: // IMUL Rv, Mv
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) z86call {
                     ctx.IMUL(dst, src);
                     return OP_WRITE;
                 }));
@@ -3986,35 +3992,35 @@ void z86_execute_impl() {
                 break;
             case 0x1B2: // LSS Rv, MvF
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.binopRMF(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRMF(pc, [](auto& dst, auto src) z86call {
                     dst = src;
                     return ctx.write_seg(SS, src >> (bitsof(src) >> 1)) ? OP_FAULT : OP_WRITE;
                 }));
                 break;
             case 0x1B3: // BTR Mv, Rv
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.binopMRB(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMRB(pc, [](auto& dst, auto src) z86call {
                     ctx.BTR(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x1B4: case 0x1B5: // LFS/LGS Rv, MvF
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.binopRMF(pc, [=](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRMF(pc, [=](auto& dst, auto src) z86call {
                     dst = src;
                     return ctx.write_seg(FS + (opcode_byte & 1), src >> (bitsof(src) >> 1)) ? OP_FAULT : OP_WRITE;
                 }));
                 break;
             case 0x1B6: // MOVZX Rv, Mb
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.MOVX<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.MOVX<uint8_t>(pc, [](auto& dst, auto src) z86call {
                     dst = src;
                     return OP_NOT_MEM;
                 }));
                 break;
             case 0x1B7: // MOVZX Rv, Mw
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.MOVX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.MOVX<uint16_t>(pc, [](auto& dst, auto src) z86call {
                     dst = src;
                     return OP_NOT_MEM;
                 }));
@@ -4042,7 +4048,7 @@ void z86_execute_impl() {
                 break;
             case 0x1BB: // BTC Mv, Rv
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.binopMRB(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopMRB(pc, [](auto& dst, auto src) z86call {
                     ctx.BTC(dst, src);
                     return OP_WRITE;
                 }));
@@ -4052,7 +4058,7 @@ void z86_execute_impl() {
                 if (ctx.rep_type > 0) { // TZCNT Rv, Mv
                     // TODO
                 }
-                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) z86call {
                     ctx.BSF(dst, src);
                     return OP_WRITE;
                 }));
@@ -4062,14 +4068,14 @@ void z86_execute_impl() {
                 if (ctx.rep_type > 0) { // LZCNT Rv, Mv
                     // TODO
                 }
-                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) z86call {
                     ctx.BSR(dst, src);
                     return OP_WRITE;
                 }));
                 break;
             case 0x1BE: // MOVSX Rv, Mb
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.MOVX<int8_t>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.MOVX<int8_t>(pc, [](auto& dst, auto src) z86call {
                     using S = decltype(src);
                     using D = std::remove_reference_t<decltype(dst)>;
                     dst = (D)(S)src;
@@ -4078,7 +4084,7 @@ void z86_execute_impl() {
                 break;
             case 0x1BF: // MOVSX Rv, Mw
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
-                FAULT_CHECK(ctx.MOVX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                FAULT_CHECK(ctx.MOVX<int16_t>(pc, [](auto& dst, auto src) z86call {
                     using S = decltype(src);
                     using D = std::remove_reference_t<decltype(dst)>;
                     dst = (D)(S)src;
@@ -4169,7 +4175,7 @@ void z86_execute_impl() {
                 break;
             case 0x1C8: case 0x1C9: case 0x1CA: case 0x1CB: case 0x1CC: case 0x1CD: case 0x1CE: case 0x1CF: // BSWAP reg
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80486);
-                FAULT_CHECK(ctx.unopR(pc, opcode_byte & 7, [](auto& dst) regcall {
+                FAULT_CHECK(ctx.unopR(pc, opcode_byte & 7, [](auto& dst) z86call {
                     ctx.BSWAP(dst);
                     return OP_WRITE;
                 }));
@@ -4194,14 +4200,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSRLW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSHR(dst, std::bit_cast<uint64_t>(src));
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSRLW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSHR(dst, std::bit_cast<vec<uint64_t, sizeof(src) / sizeof(uint64_t)>>(src)[0]);
                             return OP_WRITE;
                         }));
@@ -4216,14 +4222,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSRLD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSHR(dst, std::bit_cast<uint64_t>(src));
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSRLD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSHR(dst, std::bit_cast<vec<uint64_t, sizeof(src) / sizeof(uint64_t)>>(src)[0]);
                             return OP_WRITE;
                         }));
@@ -4238,14 +4244,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSRLQ Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint64_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint64_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSHR(dst, std::bit_cast<uint64_t>(src));
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSRLQ Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint64_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint64_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSHR(dst, std::bit_cast<vec<uint64_t, sizeof(src) / sizeof(uint64_t)>>(src)[0]);
                             return OP_WRITE;
                         }));
@@ -4260,14 +4266,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PADDQ Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE2);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint64_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint64_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADD(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PADDQ Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint64_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint64_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADD(dst, src);
                             return OP_WRITE;
                         }));
@@ -4282,14 +4288,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PMULLW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMULL(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PMULLW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMULL(dst, src);
                             return OP_WRITE;
                         }));
@@ -4338,14 +4344,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSUBUSB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSUBS(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSUBUSB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADDS(dst, src);
                             return OP_WRITE;
                         }));
@@ -4360,14 +4366,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSUBUSW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADDS(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSUBUSW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADDS(dst, src);
                             return OP_WRITE;
                         }));
@@ -4382,14 +4388,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PMINUB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMIN(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PMINUB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMIN(dst, src);
                             return OP_WRITE;
                         }));
@@ -4404,7 +4410,7 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PAND Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PAND(dst, src);
                             return OP_WRITE;
                         }));
@@ -4412,7 +4418,7 @@ void z86_execute_impl() {
                     case Opcode66Prefix: // PAND Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                     pand:
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PAND(dst, src);
                             return OP_WRITE;
                         }));
@@ -4427,14 +4433,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PADDUSB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADDS(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PADDUSB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADDS(dst, src);
                             return OP_WRITE;
                         }));
@@ -4449,14 +4455,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PADDUSW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADDS(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PADDUSW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADDS(dst, src);
                             return OP_WRITE;
                         }));
@@ -4471,14 +4477,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PMAXUB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMAX(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PMAXUB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMAX(dst, src);
                             return OP_WRITE;
                         }));
@@ -4493,7 +4499,7 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PANDN Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PANDN(dst, src);
                             return OP_WRITE;
                         }));
@@ -4501,7 +4507,7 @@ void z86_execute_impl() {
                     case Opcode66Prefix: // PANDN Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                     pandn:
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PANDN(dst, src);
                             return OP_WRITE;
                         }));
@@ -4517,14 +4523,14 @@ void z86_execute_impl() {
                     case OpcodeNoPrefix: // PAVGB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
                     pavgb_mmx:
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PAVG(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PAVGB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PAVG(dst, src);
                             return OP_WRITE;
                         }));
@@ -4539,14 +4545,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSRAW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSHR(dst, std::bit_cast<uint64_t>(src));
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSRAW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSHR(dst, std::bit_cast<vec<uint64_t, sizeof(src) / sizeof(uint64_t)>>(src)[0]);
                             return OP_WRITE;
                         }));
@@ -4561,14 +4567,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSRAD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSHR(dst, std::bit_cast<uint64_t>(src));
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSRAD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSHR(dst, std::bit_cast<vec<uint64_t, sizeof(src) / sizeof(uint64_t)>>(src)[0]);
                             return OP_WRITE;
                         }));
@@ -4583,14 +4589,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PAVGW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PAVG(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PAVGW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PAVG(dst, src);
                             return OP_WRITE;
                         }));
@@ -4605,14 +4611,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PMULHUW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMULH(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PMULHUW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMULH(dst, src);
                             return OP_WRITE;
                         }));
@@ -4627,14 +4633,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PMULHW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMULH(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PMULHW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMULH(dst, src);
                             return OP_WRITE;
                         }));
@@ -4679,14 +4685,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSUBSB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSUBS(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSUBSB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADDS(dst, src);
                             return OP_WRITE;
                         }));
@@ -4701,14 +4707,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSUBSW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADDS(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSUBSW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADDS(dst, src);
                             return OP_WRITE;
                         }));
@@ -4723,14 +4729,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PMINSW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMIN(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PMINSW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMIN(dst, src);
                             return OP_WRITE;
                         }));
@@ -4745,7 +4751,7 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // POR Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.POR(dst, src);
                             return OP_WRITE;
                         }));
@@ -4753,7 +4759,7 @@ void z86_execute_impl() {
                     case Opcode66Prefix: // POR Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                     por:
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.POR(dst, src);
                             return OP_WRITE;
                         }));
@@ -4768,14 +4774,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PADDSB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADDS(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PADDSB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADDS(dst, src);
                             return OP_WRITE;
                         }));
@@ -4790,14 +4796,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PADDSW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADDS(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PADDSW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADDS(dst, src);
                             return OP_WRITE;
                         }));
@@ -4812,14 +4818,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PMAXSW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMAX(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PMAXSW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMAX(dst, src);
                             return OP_WRITE;
                         }));
@@ -4834,7 +4840,7 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PXOR Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PXOR(dst, src);
                             return OP_WRITE;
                         }));
@@ -4842,7 +4848,7 @@ void z86_execute_impl() {
                     case Opcode66Prefix: // PXOR Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                     pxor:
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PXOR(dst, src);
                             return OP_WRITE;
                         }));
@@ -4870,14 +4876,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSLLW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSHL(dst, std::bit_cast<uint64_t>(src));
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSLLW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSHL(dst, std::bit_cast<vec<uint64_t, sizeof(src) / sizeof(uint64_t)>>(src)[0]);
                             return OP_WRITE;
                         }));
@@ -4892,14 +4898,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSLLD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSHL(dst, std::bit_cast<uint64_t>(src));
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSLLD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSHL(dst, std::bit_cast<vec<uint64_t, sizeof(src) / sizeof(uint64_t)>>(src)[0]);
                             return OP_WRITE;
                         }));
@@ -4914,14 +4920,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSLLQ Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint64_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint64_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSHL(dst, std::bit_cast<uint64_t>(src));
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSLLQ Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint64_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint64_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSHL(dst, std::bit_cast<vec<uint64_t, sizeof(src) / sizeof(uint64_t)>>(src)[0]);
                             return OP_WRITE;
                         }));
@@ -4936,14 +4942,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PMULUDQ Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE2);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMUL(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PMULUDQ Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMUL(dst, src);
                             return OP_WRITE;
                         }));
@@ -4958,14 +4964,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PMADDWD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMADD(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PMADDWD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMADD(dst, src);
                             return OP_WRITE;
                         }));
@@ -4980,14 +4986,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSADBW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSAD(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSADBW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSAD(dst, src);
                             return OP_WRITE;
                         }));
@@ -5002,13 +5008,13 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // MASKMOVQ Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int8_t>(pc, [](auto dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int8_t>(pc, [](auto dst, auto src) z86call {
                             return ctx.MASKMOV(dst, src);
                         }));
                         break;
                     case Opcode66Prefix: // MASKMOVDQU Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto dst, auto src) z86call {
                             return ctx.MASKMOV(dst, src);
                         }));
                         break;
@@ -5022,14 +5028,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSUBB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) regcall{
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) z86call{
                             dst = ctx.PSUB(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSUBB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) regcall{
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) z86call{
                             dst = ctx.PADD(dst, src);
                             return OP_WRITE;
                         }));
@@ -5044,14 +5050,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSUBW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) regcall{
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) z86call{
                             dst = ctx.PADD(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSUBW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) regcall{
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) z86call{
                             dst = ctx.PADD(dst, src);
                             return OP_WRITE;
                         }));
@@ -5066,14 +5072,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSUBD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) regcall{
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) z86call{
                             dst = ctx.PADD(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSUBD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) regcall{
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) z86call{
                             dst = ctx.PADD(dst, src);
                             return OP_WRITE;
                         }));
@@ -5088,14 +5094,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSUBQ Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSE2);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint64_t>(pc, [](auto& dst, auto src) regcall{
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint64_t>(pc, [](auto& dst, auto src) z86call{
                             dst = ctx.PADD(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSUBQ Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint64_t>(pc, [](auto& dst, auto src) regcall{
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint64_t>(pc, [](auto& dst, auto src) z86call{
                             dst = ctx.PADD(dst, src);
                             return OP_WRITE;
                         }));
@@ -5110,14 +5116,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PADDB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) regcall{
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint8_t>(pc, [](auto& dst, auto src) z86call{
                             dst = ctx.PADD(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PADDB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) regcall{
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint8_t>(pc, [](auto& dst, auto src) z86call{
                             dst = ctx.PADD(dst, src);
                             return OP_WRITE;
                         }));
@@ -5132,14 +5138,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PADDW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADD(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PADDW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADD(dst, src);
                             return OP_WRITE;
                         }));
@@ -5154,14 +5160,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PADDD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PADD(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PADDD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) regcall{
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) z86call{
                             dst = ctx.PADD(dst, src);
                             return OP_WRITE;
                         }));
@@ -5190,14 +5196,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PHADDW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PHADD(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PHADDW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PHADD(dst, src);
                             return OP_WRITE;
                         }));
@@ -5212,14 +5218,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PHADDD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PHADD(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PHADDD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PHADD(dst, src);
                             return OP_WRITE;
                         }));
@@ -5234,14 +5240,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PHADDSW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PHADDS(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PHADDSW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PHADDS(dst, src);
                             return OP_WRITE;
                         }));
@@ -5270,14 +5276,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PHSUBW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PHSUB(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PHSUBW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PHSUB(dst, src);
                             return OP_WRITE;
                         }));
@@ -5292,14 +5298,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PHSUBD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PHSUB(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PHSUBD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PHSUB(dst, src);
                             return OP_WRITE;
                         }));
@@ -5314,14 +5320,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PHSUBSW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PHSUBS(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PHSUBSW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PHSUBS(dst, src);
                             return OP_WRITE;
                         }));
@@ -5336,14 +5342,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSIGNB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSIGN(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSIGNB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSIGN(dst, src);
                             return OP_WRITE;
                         }));
@@ -5358,14 +5364,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSIGNW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSIGN(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSIGNW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSIGN(dst, src);
                             return OP_WRITE;
                         }));
@@ -5380,14 +5386,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PSIGND Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSIGN(dst, src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PSIGND Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PSIGN(dst, src);
                             return OP_WRITE;
                         }));
@@ -5615,14 +5621,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PABSB Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PABS(src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PABSB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PABS(src);
                             return OP_WRITE;
                         }));
@@ -5637,14 +5643,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PABSW Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PABS(src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PABSW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PABS(src);
                             return OP_WRITE;
                         }));
@@ -5659,14 +5665,14 @@ void z86_execute_impl() {
                     default: unreachable;
                     case OpcodeNoPrefix: // PABSD Rm, Mm
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_MMX && ctx.CPUID_SSSE3);
-                        FAULT_CHECK_MMX(ctx.binopRM_MM<int32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_MMX(ctx.binopRM_MM<int32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PABS(src);
                             return OP_WRITE;
                         }));
                         break;
                     case Opcode66Prefix: // PABSD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSSE3);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PABS(src);
                             return OP_WRITE;
                         }));
@@ -5683,7 +5689,7 @@ void z86_execute_impl() {
                         ALWAYS_UD();
                     case Opcode66Prefix: // VPABSQ Rx, Mx (EVEX)
                         ALWAYS_UD();
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int64_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int64_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PABS(src);
                             return OP_WRITE;
                         }));
@@ -5792,7 +5798,7 @@ void z86_execute_impl() {
                         ALWAYS_UD();
                     case Opcode66Prefix: // PMULDQ Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PABS(src);
                             return OP_WRITE;
                         }));
@@ -5809,7 +5815,7 @@ void z86_execute_impl() {
                         ALWAYS_UD();
                     case Opcode66Prefix: // PCMPEQQ Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint64_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint64_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PCMPEQ(dst, src);
                             return OP_WRITE;
                         }));
@@ -5839,7 +5845,7 @@ void z86_execute_impl() {
                         ALWAYS_UD();
                     case Opcode66Prefix: // PACKUSDW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) z86call {
                             return ctx.PACKUS(dst, src);
                         }));
                         break;
@@ -5993,7 +5999,7 @@ void z86_execute_impl() {
                         ALWAYS_UD();
                     case Opcode66Prefix: // PCMPGTQ Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int64_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int64_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PCMPGT(dst, src);
                             return OP_WRITE;
                         }));
@@ -6010,7 +6016,7 @@ void z86_execute_impl() {
                         ALWAYS_UD();
                     case Opcode66Prefix: // PMINSB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMIN(dst, src);
                             return OP_WRITE;
                         }));
@@ -6027,7 +6033,7 @@ void z86_execute_impl() {
                         ALWAYS_UD();
                     case Opcode66Prefix: // PMINSD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMIN(dst, src);
                             return OP_WRITE;
                         }));
@@ -6044,7 +6050,7 @@ void z86_execute_impl() {
                         ALWAYS_UD();
                     case Opcode66Prefix: // PMINUW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMIN(dst, src);
                             return OP_WRITE;
                         }));
@@ -6061,7 +6067,7 @@ void z86_execute_impl() {
                         ALWAYS_UD();
                     case Opcode66Prefix: // PMINUD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMIN(dst, src);
                             return OP_WRITE;
                         }));
@@ -6078,7 +6084,7 @@ void z86_execute_impl() {
                         ALWAYS_UD();
                     case Opcode66Prefix: // PMAXSB Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int8_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMAX(dst, src);
                             return OP_WRITE;
                         }));
@@ -6095,7 +6101,7 @@ void z86_execute_impl() {
                         ALWAYS_UD();
                     case Opcode66Prefix: // PMAXSD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<int32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMAX(dst, src);
                             return OP_WRITE;
                         }));
@@ -6112,7 +6118,7 @@ void z86_execute_impl() {
                         ALWAYS_UD();
                     case Opcode66Prefix: // PMAXUW Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint16_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMAX(dst, src);
                             return OP_WRITE;
                         }));
@@ -6129,7 +6135,7 @@ void z86_execute_impl() {
                         ALWAYS_UD();
                     case Opcode66Prefix: // PMAXUD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMAX(dst, src);
                             return OP_WRITE;
                         }));
@@ -6146,7 +6152,7 @@ void z86_execute_impl() {
                         ALWAYS_UD();
                     case Opcode66Prefix: // PMULLD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE41);
-                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) regcall {
+                        FAULT_CHECK_SSE(ctx.binopRM_XX<uint32_t>(pc, [](auto& dst, auto src) z86call {
                             dst = ctx.PMULL(dst, src);
                             return OP_WRITE;
                         }));

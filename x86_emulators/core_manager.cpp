@@ -73,6 +73,11 @@ static inline constexpr uint8_t zbios_test[] = {
 // Real mode, all registers 0, interrupts disabled
 // Memory may not be 0
 static inline constexpr uint8_t protected_mode_testA[] = {
+    0xD9, 0x06, 0xFF, 0xFF,
+    0xD9, 0x16, 0xFC, 0xFF,
+    0xD9, 0x16, 0xFD, 0xFF,
+    0xD9, 0x16, 0xFE, 0xFF,
+    0xD9, 0x16, 0xFF, 0xFF,
     0xBE, 0x00, 0x10,               // MOV SI, 0x1000
     0x8E, 0xDE,                     // MOV DS, SI
     0x8E, 0xC6,                     // MOV ES, SI
@@ -258,6 +263,8 @@ int main(int argc, char* argv[]) {
     //z86_mem_write(0x4000, zbios_test);
     z86_mem_write(0x5000, "yo what up");
     //z86_mem_write(0x6000, BEE_MOVIE_SCRIPT);
+    static constexpr uint8_t split_float_test[] = { 0x00, 0x80, 0x3F };
+    z86_mem_write(0x0000, split_float_test);
     z86_mem_write(0x04000, protected_mode_testA);
     z86_mem_write(0x05000, protected_mode_testB);
 

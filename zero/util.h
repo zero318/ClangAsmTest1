@@ -1338,7 +1338,7 @@ static inline P* pointer_raw_offset(P* pointer, O offset) {
 #define thiscall gnu_attr(thiscall)
 //#define stdcall __stdcall
 #define stdcall gnu_attr(stdcall)
-#define vectorcall __vectorcall
+#define vectorcall gnu_attr(vectorcall)
 #define dllexport __declspec(dllexport)
 //#define dllimport __declspec(dllimport)
 #define dll_export dllexport

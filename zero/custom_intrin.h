@@ -706,6 +706,17 @@ static inline const T2 *restrict rep_movsbS(T *restrict dst, const T2 *restrict 
     //assume(byte_len == 0);
     return src;
 }
+template<typename T = void, typename T2 = T>
+static inline auto rep_movsbP(T *restrict dst, const T2 *restrict src, size_t byte_len) {
+    __asm__ volatile (
+        "rep movsb"
+        : "=c"(byte_len), "+D"(dst), "+S"(src)
+        : "0"(byte_len)
+        : "memory"
+    );
+    //assume(byte_len == 0);
+    return std::make_pair(dst, src);
+}
 template<typename T = void>
 static inline T *restrict rep_stosb(T *restrict dst, uint8_t value, size_t byte_len) {
     __asm__ volatile (
@@ -2073,9 +2084,19 @@ static inline constexpr bool __builtin_sub_overflow_impl(T a, T b, std::nullptr_
 #endif
 
 template<typename T>
+static inline constexpr bool add_overflow(T a, T b, T& res) {
+    return __builtin_add_overflow(a, b, &res);
+}
+
+template<typename T>
 static inline constexpr bool add_would_overflow(T a, T b) {
     T dummy = 0;
     return __builtin_add_overflow(a, b, &dummy);
+}
+
+template<typename T>
+static inline constexpr bool sub_overflow(T a, T b, T& res) {
+    return __builtin_sub_overflow(a, b, &res);
 }
 
 template<typename T>
