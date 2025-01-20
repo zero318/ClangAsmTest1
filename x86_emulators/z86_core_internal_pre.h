@@ -72,30 +72,6 @@ using IMMZ32 = make_unsigned_ex_t<std::conditional_t<sizeof(T) != sizeof(uint64_
 
 #undef REX
 
-static inline constexpr unsigned long long operator ""_KB(unsigned long long value) {
-    return value * 1024ull;
-}
-
-static inline constexpr unsigned long long operator ""_KB(long double value) {
-    return value * 1024.0L;
-}
-
-static inline constexpr unsigned long long operator ""_MB(unsigned long long value) {
-    return value * 1048576ull;
-}
-
-static inline constexpr unsigned long long operator ""_MB(long double value) {
-    return value * 1048576.0L;
-}
-
-static inline constexpr unsigned long long operator ""_GB(unsigned long long value) {
-    return value * 1073741824ull;
-}
-
-static inline constexpr unsigned long long operator ""_GB(long double value) {
-    return value * 1073741824.0L;
-}
-
 template <typename T, typename ... Args>
 static inline constexpr void reconstruct_at(T* p, Args&&... args) {
     std::destroy_at(p);
@@ -258,7 +234,7 @@ struct z86DataProperites {
     static inline constexpr size_t align = z86DataProperitesImpl::align<T>();
 };
 
-template <size_t bytes>
+template <size_t bytes, bool needs_a20 = (bytes > 1_MB)>
 struct z86Memory {
     cache_align unsigned char raw[bytes];
 
@@ -349,6 +325,69 @@ struct z86Memory {
         return this->read_file(dst, src, remaining_size);
     }
     */
+};
+
+// TODO: Investigate whether or not it's worth just compiling
+// a whole separate core with/without the A20 gate and switching
+// between them at runtime rather than branching based on the gate.
+// That way extra expensive jank can be enabled if it's ever necessary
+// and everyone else can just enable the dang gate in the first
+// five seconds and pretend this abomination doesn't exist.
+//
+// Until the core is split, I'm *not* implementing anything to
+// split a single memory access across the A20 gate. It's either
+// going to be all below or all wrapping. Because screw that noise.
+template <size_t bytes>
+struct z86Memory<bytes, true> : z86Memory<bytes, false> {
+    static inline constexpr size_t A20_MASK = ~1_MB;
+
+    //bool a20;
+    size_t a20 = A20_MASK;
+
+
+    using z86Memory<bytes, false>::write;
+    using z86Memory<bytes, false>::read;
+
+
+    inline size_t a20_mask(size_t offset) const {
+        return offset & this->a20;
+        /*
+        if (expect(!this->a20, false)) {
+            offset &= A20_MASK;
+        }
+        return offset;
+        */
+    }
+
+    template <typename T = uint8_t>
+    inline T* ptr(size_t offset) {
+        return this->z86Memory<bytes, false>::ptr<T>(this->a20_mask(offset));
+    }
+
+    template <typename T = uint8_t>
+    inline const T* ptr(size_t offset) const {
+        return this->z86Memory<bytes, false>::ptr<T>(this->a20_mask(offset));
+    }
+
+    template <typename T = uint8_t>
+    inline T& ref(size_t offset) {
+        return this->z86Memory<bytes, false>::ref<T>(this->a20_mask(offset));
+    }
+
+    template <typename T = uint8_t>
+    inline const T& ref(size_t offset) const {
+        return this->z86Memory<bytes, false>::ref<T>(this->a20_mask(offset));
+    }
+
+    template <typename T = uint8_t>
+    inline T read(size_t offset) const {
+        return this->z86Memory<bytes, false>::read<T>(this->a20_mask(offset));
+    }
+
+    template <typename T = uint8_t>
+    inline void z86call write(size_t offset, const T& value) {
+        return this->z86Memory<bytes, false>::write<T>(this->a20_mask(offset), value);
+    }
 };
 
 template <size_t bits>
@@ -3176,6 +3215,9 @@ struct z86BaseControl<max_bits, use_old_reset, false> : z86BaseControlBase<max_b
     using LT = z86DescriptorCache<max_bits>::LT;
     using RT = z86BaseGPRs<max_bits>::RT;
 
+    template <typename T>
+    inline void set_descriptor_base(uint8_t index, const T& base) {
+    }
 
     inline void load_descriptor(uint8_t index, BT base, LT limit, uint16_t attributes) {
     }
@@ -4370,6 +4412,9 @@ struct z86RegCommon : z86RegBase<max_bits, use_old_reset, has_protected_mode, ha
 template <size_t max_bits, bool use_old_reset, bool has_protected_mode, bool has_long_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
 struct z86Reg;
 
+#define z86RegRealOnlyTemplate size_t max_bits, bool use_old_reset, bool has_x87, size_t max_sse_bits, size_t sse_reg_count
+#define z86RegRealOnlyDefault z86Reg<max_bits, use_old_reset, false, false, has_x87, max_sse_bits, sse_reg_count>
+
 template <size_t max_bits, bool use_old_reset, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
 struct z86Reg<max_bits, use_old_reset, false, false, has_x87, max_sse_bits, sse_reg_count> :
     z86RegCommon<max_bits, use_old_reset, false, false, has_x87, max_sse_bits, sse_reg_count>
@@ -4473,15 +4518,15 @@ struct z86Reg<max_bits, use_old_reset, false, false, has_x87, max_sse_bits, sse_
     }
 
     void handle_pending_interrupt(uint8_t number) {
-        this->PUSH(this->get_flags());
+        this->PUSH(this->get_flags<uint16_t>());
         this->interrupt = false;
         bool prev_trap = this->trap;
         this->trap = false;
         this->PUSH(this->cs);
-        this->PUSH(this->rip);
+        this->PUSH(this->ip);
 
         size_t interrupt_addr = (size_t)number << 2;
-        this->ip = mem.read<uint16_t>(interrupt_addr);
+        this->rip = mem.read<uint16_t>(interrupt_addr);
         this->cs = mem.read<uint16_t>(interrupt_addr + 2);
     }
 
@@ -4507,6 +4552,9 @@ struct z86Reg<max_bits, use_old_reset, false, false, has_x87, max_sse_bits, sse_
         return FAULT;
     }
 };
+
+#define z86RegProtectedTemplate size_t max_bits, bool use_old_reset, bool has_long_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count
+#define z86RegProtectedDefault z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bits, sse_reg_count>
 
 template <size_t max_bits, bool use_old_reset, bool has_long_mode, bool has_x87, size_t max_sse_bits, size_t sse_reg_count>
 struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bits, sse_reg_count> :

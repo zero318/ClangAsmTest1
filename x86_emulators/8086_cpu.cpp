@@ -70,28 +70,6 @@ struct z86Context : z86Core<z8086> {
         }
     }
 
-    /*
-    inline void call_interrupt(uint8_t number) {
-        this->PUSH(this->get_flags());
-        this->interrupt = false;
-        bool prev_trap = this->trap;
-        this->trap = false;
-        this->PUSH(this->cs);
-        this->PUSH(this->rip);
-
-        size_t interrupt_addr = (size_t)number << 2;
-        this->ip = mem.read<uint16_t>(interrupt_addr);
-        this->cs = mem.read<uint16_t>(interrupt_addr + 2);
-
-        this->check_for_nmi();
-        if (prev_trap) {
-        //if (expect(prev_trap, false)) {
-            //this->call_interrupt(IntDB);
-            this->handle_pending_interrupt(IntDB);
-        }
-    }
-    */
-
     inline void HLT() {
         this->halted = true;
         this->check_for_software_interrupt();

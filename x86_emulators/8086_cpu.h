@@ -9,6 +9,30 @@
 #include <string.h>
 #include <type_traits>
 
+static inline constexpr unsigned long long operator ""_KB(unsigned long long value) {
+    return value * 1024ull;
+}
+
+static inline constexpr unsigned long long operator ""_KB(long double value) {
+    return value * 1024.0L;
+}
+
+static inline constexpr unsigned long long operator ""_MB(unsigned long long value) {
+    return value * 1048576ull;
+}
+
+static inline constexpr unsigned long long operator ""_MB(long double value) {
+    return value * 1048576.0L;
+}
+
+static inline constexpr unsigned long long operator ""_GB(unsigned long long value) {
+    return value * 1073741824ull;
+}
+
+static inline constexpr unsigned long long operator ""_GB(long double value) {
+    return value * 1073741824.0L;
+}
+
 struct PortByteDevice {
     // Receive data from CPU.
     // Returns true if this device handled the port
