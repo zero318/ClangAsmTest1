@@ -3206,7 +3206,8 @@ template <size_t max_bits, bool use_old_reset>
 struct z86BaseControl<max_bits, use_old_reset, false> : z86BaseControlBase<max_bits, false, use_old_reset> {
 
     inline jmp_buf& get_triple_fault_buf() const {
-        return std::declval<jmp_buf>();
+        jmp_buf stop_it_bad_compiler = {};
+        return stop_it_bad_compiler;
     }
     inline constexpr void triple_fault() const {
     }
@@ -3232,6 +3233,10 @@ struct z86BaseControl<max_bits, use_old_reset, false> : z86BaseControlBase<max_b
 
     template <typename T> requires(std::is_base_of_v<z86DescriptorCacheHardware, T>)
     inline void fill_descriptor(uint8_t index, T& descriptor) {
+    }
+
+    static inline constexpr bool interrupt_uses_error_code(uint32_t number) {
+        return false;
     }
 
     inline void z86call software_interrupt(uint8_t number) {
@@ -4376,8 +4381,8 @@ struct z86RegCommon : z86RegBase<max_bits, use_old_reset, has_protected_mode, ha
     inline constexpr RT stack_size_bp() const {
         if constexpr (std::is_same_v<P, void>) {
             // No size specified, calculate it
-            if constexpr (bits > 16) {
-                if constexpr (bits == 64) {
+            if constexpr (max_bits > 16) {
+                if constexpr (max_bits == 64) {
                     if (this->stack_size_64()) {
                         return this->rbp;
                     }
@@ -4517,18 +4522,7 @@ struct z86Reg<max_bits, use_old_reset, false, false, has_x87, max_sse_bits, sse_
         return NO_FAULT;
     }
 
-    void handle_pending_interrupt(uint8_t number) {
-        this->PUSH(this->get_flags<uint16_t>());
-        this->interrupt = false;
-        bool prev_trap = this->trap;
-        this->trap = false;
-        this->PUSH(this->cs);
-        this->PUSH(this->ip);
-
-        size_t interrupt_addr = (size_t)number << 2;
-        this->rip = mem.read<uint16_t>(interrupt_addr);
-        this->cs = mem.read<uint16_t>(interrupt_addr + 2);
-    }
+    void handle_pending_interrupt(uint8_t number);
 
     inline EXCEPTION VERR(uint16_t selector) {
         return FAULT;
@@ -4686,6 +4680,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
         check_type:
             uint8_t descriptor_type = new_descriptor->get_full_type();
             if (expect(!(allowed_typesA & 1 << descriptor_type), false)) goto throw_gp_selector;
+            uint8_t new_dpl;
             switch (descriptor_type) {
                 default: unreachable;
                 // Task gate
@@ -4715,7 +4710,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                         unreachable;
                     }
                 case DESCRIPTOR_TSS16: {
-                    uint8_t new_dpl = new_descriptor->get_dpl();
+                    new_dpl = new_descriptor->get_dpl();
                     // DPL check
                     if (expect(this->cpl > new_dpl, false)) goto throw_gp_selector;
                     // RPL check
@@ -4732,7 +4727,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                         unreachable;
                     }
                 case DESCRIPTOR_CALL_GATE16: {
-                    uint8_t new_dpl = new_descriptor->get_dpl();
+                    new_dpl = new_descriptor->get_dpl();
                     // DPL check
                     if (expect(this->cpl > new_dpl, false)) goto throw_gp_selector;
                     // RPL check
@@ -4893,11 +4888,12 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
         check_type:
             uint8_t descriptor_type = new_descriptor->get_full_type();
             if (expect(!(allowed_typesA & 1 << descriptor_type), false)) goto throw_gp_selector;
+            uint8_t new_dpl;
             switch (descriptor_type) {
                 default: unreachable;
                 // Task gate
                 case DESCRIPTOR_TASK_GATE: {
-                    uint8_t new_dpl = new_descriptor->get_dpl();
+                    new_dpl = new_descriptor->get_dpl();
                     // DPL check
                     if (expect(this->cpl > new_dpl, false)) goto throw_gp_selector;
                     // RPL check
@@ -4922,7 +4918,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                         unreachable;
                     }
                 case DESCRIPTOR_TSS16: {
-                    uint8_t new_dpl = new_descriptor->get_dpl();
+                    new_dpl = new_descriptor->get_dpl();
                     // DPL check
                     if (expect(this->cpl > new_dpl, false)) goto throw_gp_selector;
                     // RPL check
@@ -5482,24 +5478,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
         return FAULT;
     }
 
-    inline EXCEPTION z86call real_mode_interrupt(uint8_t number) {
-        // TODO check limit
-        auto idt_base = this->idt_descriptor.base;
-        size_t interrupt_addr = idt_base + (size_t)number << 2;
-
-        this->PUSH(this->get_flags<uint16_t>());
-        this->interrupt = false;
-        bool prev_trap = this->trap;
-        this->trap = false;
-        this->PUSH(this->cs);
-        this->PUSH(this->ip);
-
-        this->rip = mem.read<uint16_t>(interrupt_addr);
-        uint16_t new_cs = mem.read<uint16_t>(interrupt_addr + 2);
-        this->cs = new_cs;
-        this->set_descriptor_base(CS, (size_t)new_cs << 4);
-        return NO_FAULT;
-    }
+    inline EXCEPTION z86call real_mode_interrupt(uint8_t number);
 
     template <typename P>
     EXCEPTION z86call int_software_interrupt(const P& pc, uint8_t number, bool is_int1) {
@@ -5979,34 +5958,35 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
     inline EXCEPTION VERR(uint16_t selector) {
         if (expect(this->protected_mode, true)) {
             // Null check
-            if (expect(!(selector & ~3), false)) goto clear_zero;
-            auto* descriptor = this->get_descriptor(selector);
-            // Table limit check
-            if (expect(!descriptor, false)) goto clear_zero;
-            switch (descriptor->get_full_type()) {
-                default: unreachable;
-                case DESCRIPTOR_EMPTY: case DESCRIPTOR_TSS16: case DESCRIPTOR_LDT: case DESCRIPTOR_TSS16_BUSY:
-                case DESCRIPTOR_CALL_GATE16: case DESCRIPTOR_TASK_GATE: case DESCRIPTOR_INTERRUPT_GATE16: case DESCRIPTOR_TRAP_GATE16:
-                case DESCRIPTOR_UNUSED_8: case DESCRIPTOR_TSS: case DESCRIPTOR_UNUSED_10: case DESCRIPTOR_TSS_BUSY:
-                case DESCRIPTOR_CALL_GATE: case DESCRIPTOR_UNUSED_13: case DESCRIPTOR_INTERRUPT_GATE: case DESCRIPTOR_TRAP_GATE:
-                case DESCRIPTOR_E_CODE: case DESCRIPTOR_E_CODEA:
-                case DESCRIPTOR_E_CCODE: case DESCRIPTOR_E_CCODEA:
-                    goto clear_zero;
-                case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA:
-                case DESCRIPTOR_R_DATA: case DESCRIPTOR_R_DATAA:
-                case DESCRIPTOR_RW_DATA: case DESCRIPTOR_RW_DATAA:
-                case DESCRIPTOR_R_EDATA: case DESCRIPTOR_R_EDATAA:
-                case DESCRIPTOR_RW_EDATA: case DESCRIPTOR_RW_EDATAA: {
-                    uint8_t dpl = descriptor->get_dpl();
-                    // CPL check
-                    if (dpl < this->cpl || dpl < (selector & ~3)) {
+            if (expect((selector & ~3) != 0, true)) {
+                auto* descriptor = this->get_descriptor(selector);
+                // Table limit check
+                if (expect(!descriptor, false)) goto clear_zero;
+                switch (descriptor->get_full_type()) {
+                    default: unreachable;
+                    case DESCRIPTOR_EMPTY: case DESCRIPTOR_TSS16: case DESCRIPTOR_LDT: case DESCRIPTOR_TSS16_BUSY:
+                    case DESCRIPTOR_CALL_GATE16: case DESCRIPTOR_TASK_GATE: case DESCRIPTOR_INTERRUPT_GATE16: case DESCRIPTOR_TRAP_GATE16:
+                    case DESCRIPTOR_UNUSED_8: case DESCRIPTOR_TSS: case DESCRIPTOR_UNUSED_10: case DESCRIPTOR_TSS_BUSY:
+                    case DESCRIPTOR_CALL_GATE: case DESCRIPTOR_UNUSED_13: case DESCRIPTOR_INTERRUPT_GATE: case DESCRIPTOR_TRAP_GATE:
+                    case DESCRIPTOR_E_CODE: case DESCRIPTOR_E_CODEA:
+                    case DESCRIPTOR_E_CCODE: case DESCRIPTOR_E_CCODEA:
                         goto clear_zero;
+                    case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA:
+                    case DESCRIPTOR_R_DATA: case DESCRIPTOR_R_DATAA:
+                    case DESCRIPTOR_RW_DATA: case DESCRIPTOR_RW_DATAA:
+                    case DESCRIPTOR_R_EDATA: case DESCRIPTOR_R_EDATAA:
+                    case DESCRIPTOR_RW_EDATA: case DESCRIPTOR_RW_EDATAA: {
+                        uint8_t dpl = descriptor->get_dpl();
+                        // CPL check
+                        if (dpl < this->cpl || dpl < (selector & ~3)) {
+                            goto clear_zero;
+                        }
                     }
+                    case DESCRIPTOR_ER_CCODE: case DESCRIPTOR_ER_CCODEA:
+                        this->zero = true;
                 }
-                case DESCRIPTOR_ER_CCODE: case DESCRIPTOR_ER_CCODEA:
-                    this->zero = true;
+                return NO_FAULT;
             }
-            return NO_FAULT;
         clear_zero:
             this->zero = false;
             return NO_FAULT;
@@ -6018,33 +5998,34 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
     inline EXCEPTION VERW(uint16_t selector) {
         if (expect(this->protected_mode, true)) {
             // Null check
-            if (expect(!(selector & ~3), false)) goto clear_zero;
-            auto* descriptor = this->get_descriptor(selector);
-            // Table limit check
-            if (expect(!descriptor, false)) goto clear_zero;
-            switch (descriptor->get_full_type()) {
-                default: unreachable;
-                case DESCRIPTOR_EMPTY: case DESCRIPTOR_TSS16: case DESCRIPTOR_LDT: case DESCRIPTOR_TSS16_BUSY:
-                case DESCRIPTOR_CALL_GATE16: case DESCRIPTOR_TASK_GATE: case DESCRIPTOR_INTERRUPT_GATE16: case DESCRIPTOR_TRAP_GATE16:
-                case DESCRIPTOR_UNUSED_8: case DESCRIPTOR_TSS: case DESCRIPTOR_UNUSED_10: case DESCRIPTOR_TSS_BUSY:
-                case DESCRIPTOR_CALL_GATE: case DESCRIPTOR_UNUSED_13: case DESCRIPTOR_INTERRUPT_GATE: case DESCRIPTOR_TRAP_GATE:
-                case DESCRIPTOR_E_CODE: case DESCRIPTOR_E_CODEA:
-                case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA:
-                case DESCRIPTOR_E_CCODE: case DESCRIPTOR_E_CCODEA:
-                case DESCRIPTOR_ER_CCODE: case DESCRIPTOR_ER_CCODEA:
-                case DESCRIPTOR_R_DATA: case DESCRIPTOR_R_DATAA:
-                case DESCRIPTOR_R_EDATA: case DESCRIPTOR_R_EDATAA:
-                    goto clear_zero;
-                case DESCRIPTOR_RW_DATA: case DESCRIPTOR_RW_DATAA:
-                case DESCRIPTOR_RW_EDATA: case DESCRIPTOR_RW_EDATAA:
-                    uint8_t dpl = descriptor->get_dpl();
-                    // CPL check
-                    if (dpl < this->cpl || dpl < (selector & ~3)) {
+            if (expect((selector & ~3) != 0, true)) {
+                auto* descriptor = this->get_descriptor(selector);
+                // Table limit check
+                if (expect(!descriptor, false)) goto clear_zero;
+                switch (descriptor->get_full_type()) {
+                    default: unreachable;
+                    case DESCRIPTOR_EMPTY: case DESCRIPTOR_TSS16: case DESCRIPTOR_LDT: case DESCRIPTOR_TSS16_BUSY:
+                    case DESCRIPTOR_CALL_GATE16: case DESCRIPTOR_TASK_GATE: case DESCRIPTOR_INTERRUPT_GATE16: case DESCRIPTOR_TRAP_GATE16:
+                    case DESCRIPTOR_UNUSED_8: case DESCRIPTOR_TSS: case DESCRIPTOR_UNUSED_10: case DESCRIPTOR_TSS_BUSY:
+                    case DESCRIPTOR_CALL_GATE: case DESCRIPTOR_UNUSED_13: case DESCRIPTOR_INTERRUPT_GATE: case DESCRIPTOR_TRAP_GATE:
+                    case DESCRIPTOR_E_CODE: case DESCRIPTOR_E_CODEA:
+                    case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA:
+                    case DESCRIPTOR_E_CCODE: case DESCRIPTOR_E_CCODEA:
+                    case DESCRIPTOR_ER_CCODE: case DESCRIPTOR_ER_CCODEA:
+                    case DESCRIPTOR_R_DATA: case DESCRIPTOR_R_DATAA:
+                    case DESCRIPTOR_R_EDATA: case DESCRIPTOR_R_EDATAA:
                         goto clear_zero;
-                    }
-                    this->zero = true;
+                    case DESCRIPTOR_RW_DATA: case DESCRIPTOR_RW_DATAA:
+                    case DESCRIPTOR_RW_EDATA: case DESCRIPTOR_RW_EDATAA:
+                        uint8_t dpl = descriptor->get_dpl();
+                        // CPL check
+                        if (dpl < this->cpl || dpl < (selector & ~3)) {
+                            goto clear_zero;
+                        }
+                        this->zero = true;
+                }
+                return NO_FAULT;
             }
-            return NO_FAULT;
         clear_zero:
             this->zero = false;
             return NO_FAULT;
@@ -6057,48 +6038,49 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
     inline EXCEPTION LAR(T& dst, uint16_t selector) {
         if (expect(this->protected_mode, true)) {
             // Null check
-            if (expect(!(selector & ~3), false)) goto clear_zero;
-            auto* descriptor = this->get_descriptor(selector);
-            // Table limit check
-            if (expect(!descriptor, false)) goto clear_zero;
-            switch (descriptor->get_full_type()) {
-                default: unreachable;
-                case DESCRIPTOR_TSS16: case DESCRIPTOR_TSS16_BUSY:
-                case DESCRIPTOR_CALL_GATE16: case DESCRIPTOR_TASK_GATE:
-                    if constexpr (max_bits == 64) {
-                        if (this->is_long_mode()) {
+            if (expect((selector & ~3) != 0, true)) {
+                auto* descriptor = this->get_descriptor(selector);
+                // Table limit check
+                if (expect(!descriptor, false)) goto clear_zero;
+                switch (descriptor->get_full_type()) {
+                    default: unreachable;
+                    case DESCRIPTOR_TSS16: case DESCRIPTOR_TSS16_BUSY:
+                    case DESCRIPTOR_CALL_GATE16: case DESCRIPTOR_TASK_GATE:
+                        if constexpr (max_bits == 64) {
+                            if (this->is_long_mode()) {
+                                goto clear_zero;
+                            }
+                        }
+                        goto cpl_check;
+                    case DESCRIPTOR_TSS: case DESCRIPTOR_TSS_BUSY:
+                    case DESCRIPTOR_CALL_GATE:
+                        if constexpr (max_bits > 16) {
+                            goto cpl_check;
+                        }
+                    case DESCRIPTOR_EMPTY: case DESCRIPTOR_UNUSED_8: case DESCRIPTOR_UNUSED_10: case DESCRIPTOR_UNUSED_13:
+                    case DESCRIPTOR_INTERRUPT_GATE16: case DESCRIPTOR_TRAP_GATE16:
+                    case DESCRIPTOR_INTERRUPT_GATE: case DESCRIPTOR_TRAP_GATE:
+                        goto clear_zero;
+                    case DESCRIPTOR_LDT:
+                    case DESCRIPTOR_E_CODE: case DESCRIPTOR_E_CODEA:
+                    case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA:
+                    case DESCRIPTOR_E_CCODE: case DESCRIPTOR_E_CCODEA:
+                    case DESCRIPTOR_ER_CCODE: case DESCRIPTOR_ER_CCODEA:
+                    case DESCRIPTOR_R_DATA: case DESCRIPTOR_R_DATAA:
+                    case DESCRIPTOR_R_EDATA: case DESCRIPTOR_R_EDATAA:
+                    case DESCRIPTOR_RW_DATA: case DESCRIPTOR_RW_DATAA:
+                    case DESCRIPTOR_RW_EDATA: case DESCRIPTOR_RW_EDATAA:
+                    cpl_check:
+                        uint8_t dpl = descriptor->get_dpl();
+                        // CPL check
+                        if (dpl < this->cpl || dpl < (selector & ~3)) {
                             goto clear_zero;
                         }
-                    }
-                    goto cpl_check;
-                case DESCRIPTOR_TSS: case DESCRIPTOR_TSS_BUSY:
-                case DESCRIPTOR_CALL_GATE:
-                    if constexpr (max_bits > 16) {
-                        goto cpl_check;
-                    }
-                case DESCRIPTOR_EMPTY: case DESCRIPTOR_UNUSED_8: case DESCRIPTOR_UNUSED_10: case DESCRIPTOR_UNUSED_13:
-                case DESCRIPTOR_INTERRUPT_GATE16: case DESCRIPTOR_TRAP_GATE16:
-                case DESCRIPTOR_INTERRUPT_GATE: case DESCRIPTOR_TRAP_GATE:
-                    goto clear_zero;
-                case DESCRIPTOR_LDT:
-                case DESCRIPTOR_E_CODE: case DESCRIPTOR_E_CODEA:
-                case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA:
-                case DESCRIPTOR_E_CCODE: case DESCRIPTOR_E_CCODEA:
-                case DESCRIPTOR_ER_CCODE: case DESCRIPTOR_ER_CCODEA:
-                case DESCRIPTOR_R_DATA: case DESCRIPTOR_R_DATAA:
-                case DESCRIPTOR_R_EDATA: case DESCRIPTOR_R_EDATAA:
-                case DESCRIPTOR_RW_DATA: case DESCRIPTOR_RW_DATAA:
-                case DESCRIPTOR_RW_EDATA: case DESCRIPTOR_RW_EDATAA:
-                cpl_check:
-                    uint8_t dpl = descriptor->get_dpl();
-                    // CPL check
-                    if (dpl < this->cpl || dpl < (selector & ~3)) {
-                        goto clear_zero;
-                    }
-                    this->zero = true;
+                        this->zero = true;
+                }
+                dst = descriptor->access_rights() << 8;
+                return NO_FAULT;
             }
-            dst = descriptor->access_rights() << 8;
-            return NO_FAULT;
         clear_zero:
             this->zero = false;
             return NO_FAULT;
@@ -6111,48 +6093,49 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
     inline EXCEPTION LSL(T& dst, uint16_t selector) {
         if (expect(this->protected_mode, true)) {
             // Null check
-            if (expect(!(selector & ~3), false)) goto clear_zero;
-            auto* descriptor = this->get_descriptor(selector);
-            // Table limit check
-            if (expect(!descriptor, false)) goto clear_zero;
-            switch (descriptor->get_full_type()) {
-                default: unreachable;
-                case DESCRIPTOR_TSS16: case DESCRIPTOR_TSS16_BUSY:
-                    if constexpr (max_bits == 64) {
-                        if (this->is_long_mode()) {
+            if (expect((selector & ~3) != 0, true)) {
+                auto* descriptor = this->get_descriptor(selector);
+                // Table limit check
+                if (expect(!descriptor, false)) goto clear_zero;
+                switch (descriptor->get_full_type()) {
+                    default: unreachable;
+                    case DESCRIPTOR_TSS16: case DESCRIPTOR_TSS16_BUSY:
+                        if constexpr (max_bits == 64) {
+                            if (this->is_long_mode()) {
+                                goto clear_zero;
+                            }
+                        }
+                        goto cpl_check;
+                    case DESCRIPTOR_TSS: case DESCRIPTOR_TSS_BUSY:
+                        if constexpr (max_bits > 16) {
+                            goto cpl_check;
+                        }
+                    case DESCRIPTOR_EMPTY: case DESCRIPTOR_UNUSED_8: case DESCRIPTOR_UNUSED_10: case DESCRIPTOR_UNUSED_13:
+                    case DESCRIPTOR_INTERRUPT_GATE16: case DESCRIPTOR_TRAP_GATE16:
+                    case DESCRIPTOR_INTERRUPT_GATE: case DESCRIPTOR_TRAP_GATE:
+                    case DESCRIPTOR_CALL_GATE16:
+                    case DESCRIPTOR_CALL_GATE: case DESCRIPTOR_TASK_GATE:
+                        goto clear_zero;
+                    case DESCRIPTOR_LDT:
+                    case DESCRIPTOR_E_CODE: case DESCRIPTOR_E_CODEA:
+                    case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA:
+                    case DESCRIPTOR_E_CCODE: case DESCRIPTOR_E_CCODEA:
+                    case DESCRIPTOR_ER_CCODE: case DESCRIPTOR_ER_CCODEA:
+                    case DESCRIPTOR_R_DATA: case DESCRIPTOR_R_DATAA:
+                    case DESCRIPTOR_R_EDATA: case DESCRIPTOR_R_EDATAA:
+                    case DESCRIPTOR_RW_DATA: case DESCRIPTOR_RW_DATAA:
+                    case DESCRIPTOR_RW_EDATA: case DESCRIPTOR_RW_EDATAA:
+                    cpl_check:
+                        uint8_t dpl = descriptor->get_dpl();
+                        // CPL check
+                        if (dpl < this->cpl || dpl < (selector & ~3)) {
                             goto clear_zero;
                         }
-                    }
-                    goto cpl_check;
-                case DESCRIPTOR_TSS: case DESCRIPTOR_TSS_BUSY:
-                    if constexpr (max_bits > 16) {
-                        goto cpl_check;
-                    }
-                case DESCRIPTOR_EMPTY: case DESCRIPTOR_UNUSED_8: case DESCRIPTOR_UNUSED_10: case DESCRIPTOR_UNUSED_13:
-                case DESCRIPTOR_INTERRUPT_GATE16: case DESCRIPTOR_TRAP_GATE16:
-                case DESCRIPTOR_INTERRUPT_GATE: case DESCRIPTOR_TRAP_GATE:
-                case DESCRIPTOR_CALL_GATE16:
-                case DESCRIPTOR_CALL_GATE: case DESCRIPTOR_TASK_GATE:
-                    goto clear_zero;
-                case DESCRIPTOR_LDT:
-                case DESCRIPTOR_E_CODE: case DESCRIPTOR_E_CODEA:
-                case DESCRIPTOR_ER_CODE: case DESCRIPTOR_ER_CODEA:
-                case DESCRIPTOR_E_CCODE: case DESCRIPTOR_E_CCODEA:
-                case DESCRIPTOR_ER_CCODE: case DESCRIPTOR_ER_CCODEA:
-                case DESCRIPTOR_R_DATA: case DESCRIPTOR_R_DATAA:
-                case DESCRIPTOR_R_EDATA: case DESCRIPTOR_R_EDATAA:
-                case DESCRIPTOR_RW_DATA: case DESCRIPTOR_RW_DATAA:
-                case DESCRIPTOR_RW_EDATA: case DESCRIPTOR_RW_EDATAA:
-                cpl_check:
-                    uint8_t dpl = descriptor->get_dpl();
-                    // CPL check
-                    if (dpl < this->cpl || dpl < (selector & ~3)) {
-                        goto clear_zero;
-                    }
-                    this->zero = true;
+                        this->zero = true;
+                }
+                dst = descriptor->limit();
+                return NO_FAULT;
             }
-            dst = descriptor->limit();
-            return NO_FAULT;
         clear_zero:
             this->zero = false;
             return NO_FAULT;

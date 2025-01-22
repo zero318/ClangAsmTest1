@@ -1052,6 +1052,40 @@ inline EXCEPTION z86RegCommonDefault::POP_impl(T& dst) {
     return NO_FAULT;
 }
 
+template <z86RegRealOnlyTemplate>
+void z86RegRealOnlyDefault::handle_pending_interrupt(uint8_t number) {
+    this->PUSH(this->get_flags<uint16_t>());
+    this->interrupt = false;
+    bool prev_trap = this->trap;
+    this->trap = false;
+    this->PUSH(this->cs);
+    this->PUSH(this->ip);
+
+    size_t interrupt_addr = (size_t)number << 2;
+    this->rip = mem.read<uint16_t>(interrupt_addr);
+    this->cs = mem.read<uint16_t>(interrupt_addr + 2);
+}
+
+template <z86RegProtectedTemplate>
+inline EXCEPTION z86call z86RegProtectedDefault::real_mode_interrupt(uint8_t number) {
+        // TODO check limit
+    auto idt_base = this->idt_descriptor.base;
+    size_t interrupt_addr = idt_base + (size_t)number << 2;
+
+    this->PUSH(this->get_flags<uint16_t>());
+    this->interrupt = false;
+    bool prev_trap = this->trap;
+    this->trap = false;
+    this->PUSH(this->cs);
+    this->PUSH(this->ip);
+
+    this->rip = mem.read<uint16_t>(interrupt_addr);
+    uint16_t new_cs = mem.read<uint16_t>(interrupt_addr + 2);
+    this->cs = new_cs;
+    this->set_descriptor_base(CS, (size_t)new_cs << 4);
+    return NO_FAULT;
+}
+
 // No wonder ENTER sucks
 template <z86BaseTemplate>
 template <typename T>
