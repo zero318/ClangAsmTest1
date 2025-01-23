@@ -127,6 +127,7 @@ enum z86FeatureFlagsA : uint64_t {
     QUIRK_FLAG(FLAG_UNMASK_ENTER),          // 80186, v20
     QUIRK_FLAG(FLAG_REP_BOUND),             // 80186
     QUIRK_FLAG(FLAG_REP_MUL_MISSTORE),      // 80186
+    QUIRK_FLAG(FLAG_NO_A20_GATE),           // 8086, 80186
     QUIRK_FLAG(FLAG_PROTECTED_MODE),        // 80286+
     QUIRK_FLAG(FLAG_XBTS_IBTS),             // 80386
     QUIRK_FLAG(FLAG_PAGING),                // 80386+
@@ -7081,6 +7082,7 @@ struct z86Base :
     static inline constexpr bool UNMASK_ENTER = flagsA & FLAG_UNMASK_ENTER;
     static inline constexpr bool REP_BOUND = flagsA & FLAG_REP_BOUND;
     static inline constexpr bool REP_MUL_MISSTORE = flagsA & FLAG_REP_MUL_MISSTORE;
+    static inline constexpr bool HAS_A20_GATE = !(flagsA & FLAG_NO_A20_GATE);
     static inline constexpr bool PROTECTED_MODE = flagsA & FLAG_PROTECTED_MODE;
     static inline constexpr bool HAS_XBTS_IBTS = flagsA & FLAG_XBTS_IBTS;
     static inline constexpr bool PAGING = flagsA & FLAG_PAGING;
@@ -10421,12 +10423,15 @@ template <uint64_t flagsA>
 struct z86Core<z8086, flagsA> :
     z86Base<
         16, 16, flagsA |
+        FLAG_NO_A20_GATE |
         FLAG_PUSH_CS | FLAG_SAL_IS_SETMO | FLAG_REP_INVERT_MUL | FLAG_REP_INVERT_IDIV | FLAG_MIN_DIV_FAULT | FLAG_FAULTS_ARE_TRAPS | FLAG_DE_IS_TRAP | FLAG_NO_UD | FLAG_SINGLE_MEM_WRAPS | FLAG_UNMASK_SHIFTS | FLAG_OLD_PUSH_SP | FLAG_OLD_RESET_PC | FLAG_OLD_AAA | FLAG_WRAP_SEGMENT_MODRM
     > {};
 
 template <uint64_t flagsA>
 struct z86Core<z80186, flagsA> :
-    z86Base<16, 16, flagsA |
+    z86Base<
+        16, 16, flagsA |
+        FLAG_NO_A20_GATE |
         FLAG_REP_INVERT_IDIV | FLAG_DE_IS_TRAP | FLAG_SINGLE_MEM_WRAPS | FLAG_OLD_PUSH_SP | FLAG_OLD_RESET_PC | FLAG_OLD_AAA | FLAG_AAM_NO_DE | FLAG_UNMASK_ENTER | FLAG_REP_BOUND | FLAG_REP_MUL_MISSTORE |
         FLAG_OPCODES_80186
     > {};

@@ -25,9 +25,9 @@
 
 #include "../zero/util.h"
 
-#include "z86_core_internal_pre.h"
+static inline constexpr size_t MAX_MEMORY = 1_MB;
 
-static z86Memory<1_MB> mem;
+#include "z86_core_internal_pre.h"
 
 struct z86Context : z86Core<z8086> {
 

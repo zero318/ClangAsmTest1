@@ -22,6 +22,8 @@
 #endif
 #endif
 
+static z86Memory<MAX_MEMORY, (MAX_MEMORY > 1_MB && ctx.HAS_A20_GATE)> mem;
+
 template <size_t max_bits>
 struct z86AddrESImpl<max_bits, true> {
     using type = z86AddrFixedImpl<max_bits, ES>;
