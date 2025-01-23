@@ -458,14 +458,14 @@ using MMXT = std::conditional_t<std::is_same_v<T, void>, MMXREG,
                                 vec<T, MMXREG::vec_size<T>()>,
                                 void>>;
 
-struct FPUREG {
+struct alignas(16) FPUREG {
     union {
         long double st;
         MMXREG mmx;
     };
 };
 
-struct SSEREG {
+struct XMMREG {
     union {
         vec<float, 4> f32;
         vec<double, 2> f64;
@@ -487,15 +487,21 @@ struct SSEREG {
     }
 };
 
+struct SSEREG {
+    XMMREG zmm;
+    XMMREG ymm;
+    XMMREG xmm;
+};
+
 template <typename T>
-using SSET = std::conditional_t<std::is_same_v<T, void>, SSEREG,
-             std::conditional_t<SSEREG::vec_size<T>() != 0,
-                 std::conditional_t<SSEREG::vec_size<T>() != 1,
-                                        vec<T, SSEREG::vec_size<T>()>,
+using SSET = std::conditional_t<std::is_same_v<T, void>, XMMREG,
+             std::conditional_t<XMMREG::vec_size<T>() != 0,
+                 std::conditional_t<XMMREG::vec_size<T>() != 1,
+                                        vec<T, XMMREG::vec_size<T>()>,
                                         T>,
                                     void>>;
 
-struct AVXREG {
+struct YMMREG {
     union {
         vec<float, 8> f32;
         vec<double, 4> f64;
@@ -517,15 +523,21 @@ struct AVXREG {
     }
 };
 
+struct AVXREG {
+    YMMREG zmm;
+    YMMREG ymm;
+    XMMREG xmm;
+};
+
 template <typename T>
-using AVXT = std::conditional_t<std::is_same_v<T, void>, AVXREG,
-             std::conditional_t<AVXREG::vec_size<T>() != 0,
-                 std::conditional_t<AVXREG::vec_size<T>() != 1,
-                                        vec<T, AVXREG::vec_size<T>()>,
+using AVXT = std::conditional_t<std::is_same_v<T, void>, YMMREG,
+             std::conditional_t<YMMREG::vec_size<T>() != 0,
+                 std::conditional_t<YMMREG::vec_size<T>() != 1,
+                                        vec<T, YMMREG::vec_size<T>()>,
                                         T>,
                                     void>>;
 
-struct AVX512REG {
+struct ZMMREG {
     union {
         vec<float, 16> f32;
         vec<double, 8> f64;
@@ -547,11 +559,17 @@ struct AVX512REG {
     }
 };
 
+struct AVX512REG {
+    ZMMREG zmm;
+    YMMREG ymm;
+    XMMREG xmm;
+};
+
 template <typename T>
-using AVX512T = std::conditional_t<std::is_same_v<T, void>, AVX512REG,
-                std::conditional_t<AVX512REG::vec_size<T>() != 0,
-                    std::conditional_t<AVX512REG::vec_size<T>() != 1,
-                                           vec<T, AVX512REG::vec_size<T>()>,
+using AVX512T = std::conditional_t<std::is_same_v<T, void>, ZMMREG,
+                std::conditional_t<ZMMREG::vec_size<T>() != 0,
+                    std::conditional_t<ZMMREG::vec_size<T>() != 1,
+                                           vec<T, ZMMREG::vec_size<T>()>,
                                            T>,
                                        void>>;
 
@@ -1101,7 +1119,7 @@ struct z86BaseGPRs<16> {
     using DT = uint32_t; // Double Reg Type
 
     union {
-        GPR<16> gpr[8];
+        GPR<16> gpr[8] = {};
         struct {
             union {
                 uint16_t rax;
@@ -1176,7 +1194,7 @@ struct z86BaseGPRs<32> {
     using DT = uint64_t; // Double Reg Type
 
     union {
-        GPR<32> gpr[8];
+        GPR<32> gpr[8] = {};
         struct {
             union {
                 uint32_t rax;
@@ -1251,7 +1269,7 @@ struct z86BaseGPRs<64> {
     using DT = uint128_t; // Double Reg Type
 
     union {
-        GPR<64> gpr[16];
+        GPR<64> gpr[16] = {};
         struct {
             union {
                 uint64_t rax;
@@ -1373,8 +1391,7 @@ struct z86BaseFPU {
 template <>
 struct z86BaseFPU<true> {
     union {
-        alignas(16) long double st[8];
-        alignas(16) MMXREG mm[8];
+        FPUREG st[8] = {};
         struct {
             union {
                 alignas(16) long double st0;
@@ -1422,49 +1439,47 @@ struct z86BaseSSE<0, 0> {
 template <>
 struct z86BaseSSE<128, 8> {
     union {
-        SSEREG xmm[8];
-        SSEREG ymm[8];
-        SSEREG zmm[8];
+        SSEREG _mm[8] = {};
         struct {
             union {
-                SSEREG xmm0;
-                SSEREG ymm0;
-                SSEREG zmm0;
+                XMMREG xmm0;
+                XMMREG ymm0;
+                XMMREG zmm0;
             };
             union {
-                SSEREG xmm1;
-                SSEREG ymm1;
-                SSEREG zmm1;
+                XMMREG xmm1;
+                XMMREG ymm1;
+                XMMREG zmm1;
             };
             union {
-                SSEREG xmm2;
-                SSEREG ymm2;
-                SSEREG zmm2;
+                XMMREG xmm2;
+                XMMREG ymm2;
+                XMMREG zmm2;
             };
             union {
-                SSEREG xmm3;
-                SSEREG ymm3;
-                SSEREG zmm3;
+                XMMREG xmm3;
+                XMMREG ymm3;
+                XMMREG zmm3;
             };
             union {
-                SSEREG xmm4;
-                SSEREG ymm4;
-                SSEREG zmm4;
+                XMMREG xmm4;
+                XMMREG ymm4;
+                XMMREG zmm4;
             };
             union {
-                SSEREG xmm5;
-                SSEREG ymm5;
-                SSEREG zmm5;
+                XMMREG xmm5;
+                XMMREG ymm5;
+                XMMREG zmm5;
             };
             union {
-                SSEREG xmm6;
-                SSEREG ymm6;
-                SSEREG zmm6;
+                XMMREG xmm6;
+                XMMREG ymm6;
+                XMMREG zmm6;
             };
             union {
-                SSEREG xmm7;
-                SSEREG ymm7;
-                SSEREG zmm7;
+                XMMREG xmm7;
+                XMMREG ymm7;
+                XMMREG zmm7;
             };
         };
     };
@@ -1473,89 +1488,87 @@ struct z86BaseSSE<128, 8> {
 template <>
 struct z86BaseSSE<128, 16> {
     union {
-        SSEREG xmm[16];
-        SSEREG ymm[16];
-        SSEREG zmm[16];
+        SSEREG _mm[16] = {};
         struct {
             union {
-                SSEREG xmm0;
-                SSEREG ymm0;
-                SSEREG zmm0;
+                XMMREG xmm0;
+                XMMREG ymm0;
+                XMMREG zmm0;
             };
             union {
-                SSEREG xmm1;
-                SSEREG ymm1;
-                SSEREG zmm1;
+                XMMREG xmm1;
+                XMMREG ymm1;
+                XMMREG zmm1;
             };
             union {
-                SSEREG xmm2;
-                SSEREG ymm2;
-                SSEREG zmm2;
+                XMMREG xmm2;
+                XMMREG ymm2;
+                XMMREG zmm2;
             };
             union {
-                SSEREG xmm3;
-                SSEREG ymm3;
-                SSEREG zmm3;
+                XMMREG xmm3;
+                XMMREG ymm3;
+                XMMREG zmm3;
             };
             union {
-                SSEREG xmm4;
-                SSEREG ymm4;
-                SSEREG zmm4;
+                XMMREG xmm4;
+                XMMREG ymm4;
+                XMMREG zmm4;
             };
             union {
-                SSEREG xmm5;
-                SSEREG ymm5;
-                SSEREG zmm5;
+                XMMREG xmm5;
+                XMMREG ymm5;
+                XMMREG zmm5;
             };
             union {
-                SSEREG xmm6;
-                SSEREG ymm6;
-                SSEREG zmm6;
+                XMMREG xmm6;
+                XMMREG ymm6;
+                XMMREG zmm6;
             };
             union {
-                SSEREG xmm7;
-                SSEREG ymm7;
-                SSEREG zmm7;
+                XMMREG xmm7;
+                XMMREG ymm7;
+                XMMREG zmm7;
             };
             union {
-                SSEREG xmm8;
-                SSEREG ymm8;
-                SSEREG zmm8;
+                XMMREG xmm8;
+                XMMREG ymm8;
+                XMMREG zmm8;
             };
             union {
-                SSEREG xmm9;
-                SSEREG ymm9;
-                SSEREG zmm9;
+                XMMREG xmm9;
+                XMMREG ymm9;
+                XMMREG zmm9;
             };
             union {
-                SSEREG xmm10;
-                SSEREG ymm10;
-                SSEREG zmm10;
+                XMMREG xmm10;
+                XMMREG ymm10;
+                XMMREG zmm10;
             };
             union {
-                SSEREG xmm11;
-                SSEREG ymm11;
-                SSEREG zmm11;
+                XMMREG xmm11;
+                XMMREG ymm11;
+                XMMREG zmm11;
             };
             union {
-                SSEREG xmm12;
-                SSEREG ymm12;
-                SSEREG zmm12;
+                XMMREG xmm12;
+                XMMREG ymm12;
+                XMMREG zmm12;
             };
             union {
-                SSEREG xmm13;
-                SSEREG ymm13;
-                SSEREG zmm13;
+                XMMREG xmm13;
+                XMMREG ymm13;
+                XMMREG zmm13;
             };
             union {
-                SSEREG xmm14;
-                SSEREG ymm14;
-                SSEREG zmm14;
+                XMMREG xmm14;
+                XMMREG ymm14;
+                XMMREG zmm14;
             };
             union {
-                SSEREG xmm15;
-                SSEREG ymm15;
-                SSEREG zmm15;
+                XMMREG xmm15;
+                XMMREG ymm15;
+                XMMREG zmm15;
             };
         };
     };
@@ -1564,89 +1577,87 @@ struct z86BaseSSE<128, 16> {
 template <>
 struct z86BaseSSE<256, 16> {
     union {
-        SSEREG xmm[16];
-        AVXREG ymm[16];
-        AVXREG zmm[16];
+        AVXREG _mm[16] = {};
         struct {
             union {
-                SSEREG xmm0;
-                AVXREG ymm0;
-                AVXREG zmm0;
+                XMMREG xmm0;
+                YMMREG ymm0;
+                YMMREG zmm0;
             };
             union {
-                SSEREG xmm1;
-                AVXREG ymm1;
-                AVXREG zmm1;
+                XMMREG xmm1;
+                YMMREG ymm1;
+                YMMREG zmm1;
             };
             union {
-                SSEREG xmm2;
-                AVXREG ymm2;
-                AVXREG zmm2;
+                XMMREG xmm2;
+                YMMREG ymm2;
+                YMMREG zmm2;
             };
             union {
-                SSEREG xmm3;
-                AVXREG ymm3;
-                AVXREG zmm3;
+                XMMREG xmm3;
+                YMMREG ymm3;
+                YMMREG zmm3;
             };
             union {
-                SSEREG xmm4;
-                AVXREG ymm4;
-                AVXREG zmm4;
+                XMMREG xmm4;
+                YMMREG ymm4;
+                YMMREG zmm4;
             };
             union {
-                SSEREG xmm5;
-                AVXREG ymm5;
-                AVXREG zmm5;
+                XMMREG xmm5;
+                YMMREG ymm5;
+                YMMREG zmm5;
             };
             union {
-                SSEREG xmm6;
-                AVXREG ymm6;
-                AVXREG zmm6;
+                XMMREG xmm6;
+                YMMREG ymm6;
+                YMMREG zmm6;
             };
             union {
-                SSEREG xmm7;
-                AVXREG ymm7;
-                AVXREG zmm7;
+                XMMREG xmm7;
+                YMMREG ymm7;
+                YMMREG zmm7;
             };
             union {
-                SSEREG xmm8;
-                AVXREG ymm8;
-                AVXREG zmm8;
+                XMMREG xmm8;
+                YMMREG ymm8;
+                YMMREG zmm8;
             };
             union {
-                SSEREG xmm9;
-                AVXREG ymm9;
-                AVXREG zmm9;
+                XMMREG xmm9;
+                YMMREG ymm9;
+                YMMREG zmm9;
             };
             union {
-                SSEREG xmm10;
-                AVXREG ymm10;
-                AVXREG zmm10;
+                XMMREG xmm10;
+                YMMREG ymm10;
+                YMMREG zmm10;
             };
             union {
-                SSEREG xmm11;
-                AVXREG ymm11;
-                AVXREG zmm11;
+                XMMREG xmm11;
+                YMMREG ymm11;
+                YMMREG zmm11;
             };
             union {
-                SSEREG xmm12;
-                AVXREG ymm12;
-                AVXREG zmm12;
+                XMMREG xmm12;
+                YMMREG ymm12;
+                YMMREG zmm12;
             };
             union {
-                SSEREG xmm13;
-                AVXREG ymm13;
-                AVXREG zmm13;
+                XMMREG xmm13;
+                YMMREG ymm13;
+                YMMREG zmm13;
             };
             union {
-                SSEREG xmm14;
-                AVXREG ymm14;
-                AVXREG zmm14;
+                XMMREG xmm14;
+                YMMREG ymm14;
+                YMMREG zmm14;
             };
             union {
-                SSEREG xmm15;
-                AVXREG ymm15;
-                AVXREG zmm15;
+                XMMREG xmm15;
+                YMMREG ymm15;
+                YMMREG zmm15;
             };
         };
     };
@@ -1655,169 +1666,167 @@ struct z86BaseSSE<256, 16> {
 template <>
 struct z86BaseSSE<512, 32> {
     union {
-        SSEREG xmm[32];
-        AVXREG ymm[32];
-        AVX512REG zmm[32];
+        AVX512REG _mm[32] = {};
         struct {
             union {
-                SSEREG xmm0;
-                AVXREG ymm0;
-                AVX512REG zmm0;
+                XMMREG xmm0;
+                YMMREG ymm0;
+                ZMMREG zmm0;
             };
             union {
-                SSEREG xmm1;
-                AVXREG ymm1;
-                AVX512REG zmm1;
+                XMMREG xmm1;
+                YMMREG ymm1;
+                ZMMREG zmm1;
             };
             union {
-                SSEREG xmm2;
-                AVXREG ymm2;
-                AVX512REG zmm2;
+                XMMREG xmm2;
+                YMMREG ymm2;
+                ZMMREG zmm2;
             };
             union {
-                SSEREG xmm3;
-                AVXREG ymm3;
-                AVX512REG zmm3;
+                XMMREG xmm3;
+                YMMREG ymm3;
+                ZMMREG zmm3;
             };
             union {
-                SSEREG xmm4;
-                AVXREG ymm4;
-                AVX512REG zmm4;
+                XMMREG xmm4;
+                YMMREG ymm4;
+                ZMMREG zmm4;
             };
             union {
-                SSEREG xmm5;
-                AVXREG ymm5;
-                AVX512REG zmm5;
+                XMMREG xmm5;
+                YMMREG ymm5;
+                ZMMREG zmm5;
             };
             union {
-                SSEREG xmm6;
-                AVXREG ymm6;
-                AVX512REG zmm6;
+                XMMREG xmm6;
+                YMMREG ymm6;
+                ZMMREG zmm6;
             };
             union {
-                SSEREG xmm7;
-                AVXREG ymm7;
-                AVX512REG zmm7;
+                XMMREG xmm7;
+                YMMREG ymm7;
+                ZMMREG zmm7;
             };
             union {
-                SSEREG xmm8;
-                AVXREG ymm8;
-                AVX512REG zmm8;
+                XMMREG xmm8;
+                YMMREG ymm8;
+                ZMMREG zmm8;
             };
             union {
-                SSEREG xmm9;
-                AVXREG ymm9;
-                AVX512REG zmm9;
+                XMMREG xmm9;
+                YMMREG ymm9;
+                ZMMREG zmm9;
             };
             union {
-                SSEREG xmm10;
-                AVXREG ymm10;
-                AVX512REG zmm10;
+                XMMREG xmm10;
+                YMMREG ymm10;
+                ZMMREG zmm10;
             };
             union {
-                SSEREG xmm11;
-                AVXREG ymm11;
-                AVX512REG zmm11;
+                XMMREG xmm11;
+                YMMREG ymm11;
+                ZMMREG zmm11;
             };
             union {
-                SSEREG xmm12;
-                AVXREG ymm12;
-                AVX512REG zmm12;
+                XMMREG xmm12;
+                YMMREG ymm12;
+                ZMMREG zmm12;
             };
             union {
-                SSEREG xmm13;
-                AVXREG ymm13;
-                AVX512REG zmm13;
+                XMMREG xmm13;
+                YMMREG ymm13;
+                ZMMREG zmm13;
             };
             union {
-                SSEREG xmm14;
-                AVXREG ymm14;
-                AVX512REG zmm14;
+                XMMREG xmm14;
+                YMMREG ymm14;
+                ZMMREG zmm14;
             };
             union {
-                SSEREG xmm15;
-                AVXREG ymm15;
-                AVX512REG zmm15;
+                XMMREG xmm15;
+                YMMREG ymm15;
+                ZMMREG zmm15;
             };
             union {
-                SSEREG xmm16;
-                AVXREG ymm16;
-                AVX512REG zmm16;
+                XMMREG xmm16;
+                YMMREG ymm16;
+                ZMMREG zmm16;
             };
             union {
-                SSEREG xmm17;
-                AVXREG ymm17;
-                AVX512REG zmm17;
+                XMMREG xmm17;
+                YMMREG ymm17;
+                ZMMREG zmm17;
             };
             union {
-                SSEREG xmm18;
-                AVXREG ymm18;
-                AVX512REG zmm18;
+                XMMREG xmm18;
+                YMMREG ymm18;
+                ZMMREG zmm18;
             };
             union {
-                SSEREG xmm19;
-                AVXREG ymm19;
-                AVX512REG zmm19;
+                XMMREG xmm19;
+                YMMREG ymm19;
+                ZMMREG zmm19;
             };
             union {
-                SSEREG xmm20;
-                AVXREG ymm20;
-                AVX512REG zmm20;
+                XMMREG xmm20;
+                YMMREG ymm20;
+                ZMMREG zmm20;
             };
             union {
-                SSEREG xmm21;
-                AVXREG ymm21;
-                AVX512REG zmm21;
+                XMMREG xmm21;
+                YMMREG ymm21;
+                ZMMREG zmm21;
             };
             union {
-                SSEREG xmm22;
-                AVXREG ymm22;
-                AVX512REG zmm22;
+                XMMREG xmm22;
+                YMMREG ymm22;
+                ZMMREG zmm22;
             };
             union {
-                SSEREG xmm23;
-                AVXREG ymm23;
-                AVX512REG zmm23;
+                XMMREG xmm23;
+                YMMREG ymm23;
+                ZMMREG zmm23;
             };
             union {
-                SSEREG xmm24;
-                AVXREG ymm24;
-                AVX512REG zmm24;
+                XMMREG xmm24;
+                YMMREG ymm24;
+                ZMMREG zmm24;
             };
             union {
-                SSEREG xmm25;
-                AVXREG ymm25;
-                AVX512REG zmm25;
+                XMMREG xmm25;
+                YMMREG ymm25;
+                ZMMREG zmm25;
             };
             union {
-                SSEREG xmm26;
-                AVXREG ymm26;
-                AVX512REG zmm26;
+                XMMREG xmm26;
+                YMMREG ymm26;
+                ZMMREG zmm26;
             };
             union {
-                SSEREG xmm27;
-                AVXREG ymm27;
-                AVX512REG zmm27;
+                XMMREG xmm27;
+                YMMREG ymm27;
+                ZMMREG zmm27;
             };
             union {
-                SSEREG xmm28;
-                AVXREG ymm28;
-                AVX512REG zmm28;
+                XMMREG xmm28;
+                YMMREG ymm28;
+                ZMMREG zmm28;
             };
             union {
-                SSEREG xmm29;
-                AVXREG ymm29;
-                AVX512REG zmm29;
+                XMMREG xmm29;
+                YMMREG ymm29;
+                ZMMREG zmm29;
             };
             union {
-                SSEREG xmm30;
-                AVXREG ymm30;
-                AVX512REG zmm30;
+                XMMREG xmm30;
+                YMMREG ymm30;
+                ZMMREG zmm30;
             };
             union {
-                SSEREG xmm31;
-                AVXREG ymm31;
-                AVX512REG zmm31;
+                XMMREG xmm31;
+                YMMREG ymm31;
+                ZMMREG zmm31;
             };
         };
     };
@@ -2826,10 +2835,10 @@ struct z86BaseControlBase<16, false, use_old_reset> {
         uint16_t ip;
     };
     union {
-        uint16_t seg[8];
+        uint16_t seg[8] = { 0, reset_cs, 0, 0, 0, 0, 0, 0 };
         struct {
             uint16_t es;
-            uint16_t cs = reset_cs;
+            uint16_t cs;
             uint16_t ss;
             uint16_t ds;
             uint16_t fs;
@@ -2866,10 +2875,10 @@ struct z86BaseControlBase<32, false, use_old_reset> {
         uint16_t ip;
     };
     union {
-        uint16_t seg[8];
+        uint16_t seg[8] = { 0, reset_cs, 0, 0, 0, 0, 0, 0 };
         struct {
             uint16_t es;
-            uint16_t cs = reset_cs;
+            uint16_t cs;
             uint16_t ss;
             uint16_t ds;
             uint16_t fs;
@@ -2906,10 +2915,10 @@ struct z86BaseControlBase<64, false, use_old_reset> {
         uint16_t ip;
     };
     union {
-        uint16_t seg[8];
+        uint16_t seg[8] = { 0, reset_cs, 0, 0, 0, 0, 0, 0 };
         struct {
             uint16_t es;
-            uint16_t cs = reset_cs;
+            uint16_t cs;
             uint16_t ss;
             uint16_t ds;
             uint16_t fs;
@@ -2975,7 +2984,7 @@ struct z86BaseControlBase<16, true, use_old_reset> {
         uint16_t ip;
     };
     union {
-        uint16_t cr[1];
+        uint16_t cr[1] = {};
         uint16_t msw;
         uint16_t cr0;
         union {
@@ -2983,10 +2992,10 @@ struct z86BaseControlBase<16, true, use_old_reset> {
         };
     };
     union {
-        uint16_t seg[10];
+        uint16_t seg[10] = { 0, reset_cs, 0, 0, 0, 0, 0, 0, 0, 0 };
         struct {
             uint16_t es;
-            uint16_t cs = reset_cs;
+            uint16_t cs;
             uint16_t ss;
             uint16_t ds;
             uint16_t fs;
@@ -2999,11 +3008,11 @@ struct z86BaseControlBase<16, true, use_old_reset> {
     };
     int16_t pending_sinterrupt = -1;
     std::atomic<int16_t> pending_einterrupt = -1;
-    uint16_t error_code;
+    uint16_t error_code = 0;
     std::atomic<bool> pending_nmi;
     std::atomic<bool> halted;
-    uint8_t cpl;
-    uint8_t iopl;
+    uint8_t cpl = 0;
+    uint8_t iopl = 0;
     int8_t tss_size = 1;
     static inline constexpr bool long_mode = false;
 };
@@ -3050,7 +3059,7 @@ struct z86BaseControlBase<32, true, use_old_reset> {
         uint16_t ip;
     };
     union {
-        uint32_t cr[8];
+        uint32_t cr[8] = {};
         struct {
             union {
                 uint16_t msw;
@@ -3069,10 +3078,10 @@ struct z86BaseControlBase<32, true, use_old_reset> {
         };
     };
     union {
-        uint16_t seg[10];
+        uint16_t seg[10] = { 0, reset_cs, 0, 0, 0, 0, 0, 0, 0, 0 };
         struct {
             uint16_t es;
-            uint16_t cs = reset_cs;
+            uint16_t cs;
             uint16_t ss;
             uint16_t ds;
             uint16_t fs;
@@ -3085,11 +3094,11 @@ struct z86BaseControlBase<32, true, use_old_reset> {
     };
     int16_t pending_sinterrupt = -1;
     std::atomic<int16_t> pending_einterrupt = -1;
-    uint16_t error_code;
+    uint16_t error_code = 0;
     std::atomic<bool> pending_nmi;
     std::atomic<bool> halted;
-    uint8_t cpl;
-    uint8_t iopl;
+    uint8_t cpl = 0;
+    uint8_t iopl = 0;
     int8_t tss_size = 1;
     static inline constexpr bool long_mode = false;
 };
@@ -3136,7 +3145,7 @@ struct z86BaseControlBase<64, true, use_old_reset> {
         uint16_t ip;
     };
     union {
-        uint64_t cr[16];
+        uint64_t cr[16] = {};
         struct {
             union {
                 uint16_t msw;
@@ -3156,10 +3165,10 @@ struct z86BaseControlBase<64, true, use_old_reset> {
         };
     };
     union {
-        uint16_t seg[10];
+        uint16_t seg[10] = { 0, reset_cs, 0, 0, 0, 0, 0, 0, 0, 0 };
         struct {
             uint16_t es;
-            uint16_t cs = reset_cs;
+            uint16_t cs;
             uint16_t ss;
             uint16_t ds;
             uint16_t fs;
@@ -3172,13 +3181,13 @@ struct z86BaseControlBase<64, true, use_old_reset> {
     };
     int16_t pending_sinterrupt = -1;
     std::atomic<int16_t> pending_einterrupt = -1;
-    uint16_t error_code;
+    uint16_t error_code = 0;
     std::atomic<bool> pending_nmi;
     std::atomic<bool> halted;
-    uint8_t cpl;
-    uint8_t iopl;
+    uint8_t cpl = 0;
+    uint8_t iopl = 0;
     int8_t tss_size = 1;
-    bool long_mode;
+    bool long_mode = false;
 };
 
 struct z86PageFaultErrorCode {
@@ -7292,7 +7301,7 @@ struct z86Base :
     inline constexpr long double& index_st_reg(uint32_t index) {
         assume(index < 8);
         if constexpr (CPUID_X87) {
-            return this->st[this->stack_top + index & 7];
+            return this->st[this->stack_top + index & 7].st;
         }
     }
 
@@ -7301,37 +7310,37 @@ struct z86Base :
         assume(index < 8);
         if constexpr (CPUID_MMX || CPUID_X87) {
             if constexpr (std::is_same_v<T, void>) {
-                return this->mm[index];
+                return this->st[index].mmx;
             }
             else if constexpr (std::is_same_v<T, uint8_t>) {
-                return this->mm[index].byte;
+                return this->st[index].mmx.byte;
             }
             else if constexpr (std::is_same_v<T, int8_t>) {
-                return this->mm[index].sbyte;
+                return this->st[index].mmx.sbyte;
             }
             else if constexpr (std::is_same_v<T, uint16_t>) {
-                return this->mm[index].word;
+                return this->st[index].mmx.word;
             }
             else if constexpr (std::is_same_v<T, int16_t>) {
-                return this->mm[index].sword;
+                return this->st[index].mmx.sword;
             }
             else if constexpr (std::is_same_v<T, uint32_t>) {
-                return this->mm[index].dword;
+                return this->st[index].mmx.dword;
             }
             else if constexpr (std::is_same_v<T, int32_t>) {
-                return this->mm[index].sdword;
+                return this->st[index].mmx.sdword;
             }
             else if constexpr (std::is_same_v<T, uint64_t>) {
-                return this->mm[index].qword;
+                return this->st[index].mmx.qword;
             }
             else if constexpr (std::is_same_v<T, int64_t>) {
-                return this->mm[index].sqword;
+                return this->st[index].mmx.sqword;
             }
             else if constexpr (std::is_same_v<T, float>) {
-                return this->mm[index].f32;
+                return this->st[index].mmx.f32;
             }
             else if constexpr (std::is_same_v<T, double>) {
-                return this->mm[index].f64;
+                return this->st[index].mmx.f64;
             }
         }
     }
@@ -7344,43 +7353,43 @@ struct z86Base :
                 index |= this->get_rex_bits().R();
             }
             if constexpr (std::is_same_v<T, void>) {
-                return this->xmm[index];
+                return this->_mm[index].xmm;
             }
             else if constexpr (std::is_same_v<T, uint8_t>) {
-                return this->xmm[index].byte;
+                return this->_mm[index].xmm.byte;
             }
             else if constexpr (std::is_same_v<T, int8_t>) {
-                return this->xmm[index].sbyte;
+                return this->_mm[index].xmm.sbyte;
             }
             else if constexpr (std::is_same_v<T, uint16_t>) {
-                return this->xmm[index].word;
+                return this->_mm[index].xmm.word;
             }
             else if constexpr (std::is_same_v<T, int16_t>) {
-                return this->xmm[index].sword;
+                return this->_mm[index].xmm.sword;
             }
             else if constexpr (std::is_same_v<T, uint32_t>) {
-                return this->xmm[index].dword;
+                return this->_mm[index].xmm.dword;
             }
             else if constexpr (std::is_same_v<T, int32_t>) {
-                return this->xmm[index].sdword;
+                return this->_mm[index].xmm.sdword;
             }
             else if constexpr (std::is_same_v<T, uint64_t>) {
-                return this->xmm[index].qword;
+                return this->_mm[index].xmm.qword;
             }
             else if constexpr (std::is_same_v<T, int64_t>) {
-                return this->xmm[index].sqword;
+                return this->_mm[index].xmm.sqword;
             }
             else if constexpr (std::is_same_v<T, uint128_t>) {
-                return this->xmm[index].oword;
+                return this->_mm[index].xmm.oword;
             }
             else if constexpr (std::is_same_v<T, uint128_t>) {
-                return this->xmm[index].soword;
+                return this->_mm[index].xmm.soword;
             }
             else if constexpr (std::is_same_v<T, float>) {
-                return this->xmm[index].f32;
+                return this->_mm[index].xmm.f32;
             }
             else if constexpr (std::is_same_v<T, double>) {
-                return this->xmm[index].f64;
+                return this->_mm[index].xmm.f64;
             }
         }
     }
@@ -7393,43 +7402,43 @@ struct z86Base :
                 index |= this->get_rex_bits().B();
             }
             if constexpr (std::is_same_v<T, void>) {
-                return this->xmm[index];
+                return this->_mm[index].xmm;
             }
             else if constexpr (std::is_same_v<T, uint8_t>) {
-                return this->xmm[index].byte;
+                return this->_mm[index].xmm.byte;
             }
             else if constexpr (std::is_same_v<T, int8_t>) {
-                return this->xmm[index].sbyte;
+                return this->_mm[index].xmm.sbyte;
             }
             else if constexpr (std::is_same_v<T, uint16_t>) {
-                return this->xmm[index].word;
+                return this->_mm[index].xmm.word;
             }
             else if constexpr (std::is_same_v<T, int16_t>) {
-                return this->xmm[index].sword;
+                return this->_mm[index].xmm.sword;
             }
             else if constexpr (std::is_same_v<T, uint32_t>) {
-                return this->xmm[index].dword;
+                return this->_mm[index].xmm.dword;
             }
             else if constexpr (std::is_same_v<T, int32_t>) {
-                return this->xmm[index].sdword;
+                return this->_mm[index].xmm.sdword;
             }
             else if constexpr (std::is_same_v<T, uint64_t>) {
-                return this->xmm[index].qword;
+                return this->_mm[index].xmm.qword;
             }
             else if constexpr (std::is_same_v<T, int64_t>) {
-                return this->xmm[index].sqword;
+                return this->_mm[index].xmm.sqword;
             }
             else if constexpr (std::is_same_v<T, uint128_t>) {
-                return this->xmm[index].oword;
+                return this->_mm[index].xmm.oword;
             }
             else if constexpr (std::is_same_v<T, uint128_t>) {
-                return this->xmm[index].soword;
+                return this->_mm[index].xmm.soword;
             }
             else if constexpr (std::is_same_v<T, float>) {
-                return this->xmm[index].f32;
+                return this->_mm[index].xmm.f32;
             }
             else if constexpr (std::is_same_v<T, double>) {
-                return this->xmm[index].f64;
+                return this->_mm[index].xmm.f64;
             }
         }
     }
@@ -7524,7 +7533,7 @@ struct z86Base :
         else if constexpr (cc == CondG) return this->cond_G(val);
     }
 
-    bool lock;
+    bool lock = false;
 
     int8_t rep_type = NO_REP;
 
@@ -9379,19 +9388,19 @@ struct z86Base :
 
     inline constexpr long double& z86call FTOP() {
         if constexpr (CPUID_X87) {
-            return this->st[this->stack_top & 7];
+            return this->st[this->stack_top & 7].st;
         }
     }
 
     inline constexpr void z86call FPUSH(long double value) {
         if constexpr (CPUID_X87) {
-            this->st[--this->stack_top & 7] = value;
+            this->st[--this->stack_top & 7].st = value;
         }
     }
 
     inline constexpr long double z86call FPOP() {
         if constexpr (CPUID_X87) {
-            return this->st[this->stack_top++ & 7];
+            return this->st[this->stack_top++ & 7].st;
         }
     }
 

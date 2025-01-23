@@ -762,7 +762,7 @@ enum InlineState {
 #pragma message("consteval not supported, using constexpr instead")
 #endif
 #if !CPP20 && !(defined(__cpp_constinit) && __cpp_constinit >= 201907L)
-#define constinit
+#define constinit static
 #pragma message("constinit not supported")
 #endif
 #if __INTELLISENSE__
@@ -770,7 +770,7 @@ enum InlineState {
 #define consteval constexpr
 #endif
 #ifndef constinit
-#define constinit
+#define constinit static
 #endif
 #endif
 

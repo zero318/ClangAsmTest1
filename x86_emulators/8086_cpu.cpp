@@ -31,8 +31,6 @@ static z86Memory<1_MB> mem;
 
 struct z86Context : z86Core<z8086> {
 
-    z86Context() = default;
-
     inline void check_for_software_interrupt() {
         int16_t pending_software = this->pending_sinterrupt;
         if (pending_software > 0) {
@@ -108,7 +106,7 @@ struct z86Context : z86Core<z8086> {
     }
 };
 
-static z86Context ctx;
+constinit z86Context ctx = z86Context();
 
 static std::vector<PortDwordDevice*> io_dword_devices;
 static std::vector<PortWordDevice*> io_word_devices;
