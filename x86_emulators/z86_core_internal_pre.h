@@ -3215,8 +3215,12 @@ struct z86BaseControl;
 template <size_t max_bits, bool use_old_reset>
 struct z86BaseControl<max_bits, use_old_reset, false> : z86BaseControlBase<max_bits, false, use_old_reset> {
 
+    // This function is just here to make the compiler happy,
+    // it shouldn't ever get compiled/emitted. Hopefully making
+    // it a template will help prevent that even in debug builds.
+    template <typename T = void>
     inline jmp_buf& get_triple_fault_buf() const {
-        jmp_buf stop_it_bad_compiler = {};
+        static jmp_buf stop_it_bad_compiler = {};
         return stop_it_bad_compiler;
     }
     inline constexpr void triple_fault() const {
@@ -5663,7 +5667,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                                                 this->PUSH<uint64_t>(flags);
                                                 this->PUSH<uint64_t>(this->cs);
                                                 this->PUSH<uint64_t>(pc.offset);
-                                                if (interrupt_uses_error_code(number)) {
+                                                if (this->interrupt_uses_error_code(number)) {
                                                     this->PUSH<uint64_t>(this->error_code);
                                                 }
                                                 goto after_stack_push;
@@ -5673,7 +5677,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                                         this->PUSH<uint32_t>(flags);
                                         this->PUSH<uint32_t>(this->cs);
                                         this->PUSH<uint32_t>(pc.offset);
-                                        if (interrupt_uses_error_code(number)) {
+                                        if (this->interrupt_uses_error_code(number)) {
                                             this->PUSH<uint32_t>(this->error_code);
                                         }
                                         goto after_stack_push;
@@ -5687,7 +5691,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                             this->PUSH<uint16_t>(flags);
                             this->PUSH<uint16_t>(this->cs);
                             this->PUSH<uint16_t>(pc.offset);
-                            if (interrupt_uses_error_code(number)) {
+                            if (this->interrupt_uses_error_code(number)) {
                                 this->PUSH<uint16_t>(this->error_code);
                             }
                         after_stack_push:;
@@ -5903,7 +5907,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                                                 this->PUSH<uint64_t>(this->cs);
                                                 this->PUSH<uint64_t>(this->rip);
                                                 this->rip = new_descriptor->rip();
-                                                if (interrupt_uses_error_code(number)) {
+                                                if (this->interrupt_uses_error_code(number)) {
                                                     this->PUSH<uint64_t>(error_code);
                                                 }
                                                 goto after_stack_push;
@@ -5913,7 +5917,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                                         this->PUSH<uint32_t>(this->cs);
                                         this->PUSH<uint32_t>(this->eip);
                                         this->rip = new_descriptor->eip();
-                                        if (interrupt_uses_error_code(number)) {
+                                        if (this->interrupt_uses_error_code(number)) {
                                             this->PUSH<uint32_t>(error_code);
                                         }
                                         goto after_stack_push;
@@ -5927,7 +5931,7 @@ struct z86Reg<max_bits, use_old_reset, true, has_long_mode, has_x87, max_sse_bit
                             this->PUSH<uint16_t>(this->cs);
                             this->PUSH<uint16_t>(this->ip);
                             this->rip = new_descriptor->ip();
-                            if (interrupt_uses_error_code(number)) {
+                            if (this->interrupt_uses_error_code(number)) {
                                 this->PUSH<uint16_t>(error_code);
                             }
                         after_stack_push:;

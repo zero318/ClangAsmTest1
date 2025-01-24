@@ -25,6 +25,9 @@
 
 #include "../zero/util.h"
 
+// Setting this to >1MB on models >=80286 will enable
+// code for dealing with the A20 gate. For testing purposes
+// things will run faster with this set <= 1MB.
 static inline constexpr size_t MAX_MEMORY = 1_MB;
 
 #include "z86_core_internal_pre.h"
