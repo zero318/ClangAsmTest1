@@ -96,10 +96,10 @@ dllexport gnu_noinline D3DMATRIX& cdecl matrix_set_identity(D3DMATRIX& matrix) {
 
 // size: 0x10
 struct Custom_RGBAQUAD {
-	uint32_t red_mask; // 0x0
-	uint32_t green_mask; // 0x4
-	uint32_t blue_mask; // 0x8
-	uint32_t alpha_mask; // 0xC
+    uint32_t red_mask; // 0x0
+    uint32_t green_mask; // 0x4
+    uint32_t blue_mask; // 0x8
+    uint32_t alpha_mask; // 0xC
     // 0x10
 };
 
@@ -143,15 +143,15 @@ extern "C" {
 
 // size: 0x38
 struct Config {
-	int16_t __input_related_0; // 0x0
-	int16_t __input_related_2; // 0x2
-	int16_t __input_related_4; // 0x4
-	int16_t __input_related_6; // 0x6
-	int16_t __input_related_8; // 0x8
-	int16_t __input_related_A; // 0xA
-	int16_t __input_related_C; // 0xC
-	int16_t __input_related_E; // 0xE
-	int16_t __input_related_10; // 0x10
+    int16_t __input_related_0; // 0x0
+    int16_t __input_related_2; // 0x2
+    int16_t __input_related_4; // 0x4
+    int16_t __input_related_6; // 0x6
+    int16_t __input_related_8; // 0x8
+    int16_t __input_related_A; // 0xA
+    int16_t __input_related_C; // 0xC
+    int16_t __input_related_E; // 0xE
+    int16_t __input_related_10; // 0x10
     probably_padding_bytes(0x2);
     uint32_t version; // 0x14
     uint8_t starting_lives; // 0x18
@@ -165,17 +165,17 @@ struct Config {
     uint16_t deadzone_x; // 0x20
     uint16_t deadzone_y; // 0x22
     unknown_fields(0x10); // 0x24
-	union {
-		uint32_t flags; // 0x34
-		struct {
-			uint32_t __unknown_flag_A : 1;
+    union {
+        uint32_t flags; // 0x34
+        struct {
+            uint32_t __unknown_flag_A : 1;
             uint32_t __unknown_flag_C : 1;
             uint32_t : 4;
             uint32_t __unknown_flag_D : 1;
             uint32_t : 1;
-			uint32_t __unknown_flag_B : 1;
-		};
-	};
+            uint32_t __unknown_flag_B : 1;
+        };
+    };
     // 0x38
 };
 
@@ -962,12 +962,12 @@ extern "C" {
 
 // size: 0x18
 struct RenderDataFormatLookupData {
-	D3DFORMAT format; // 0x0
-	int32_t bits_per_pixel; // 0x4
-	uint32_t alpha_mask; // 0x8
-	uint32_t red_mask; // 0xC
-	uint32_t green_mask; // 0x10
-	uint32_t blue_mask; // 0x14
+    D3DFORMAT format; // 0x0
+    int32_t bits_per_pixel; // 0x4
+    uint32_t alpha_mask; // 0x8
+    uint32_t red_mask; // 0xC
+    uint32_t green_mask; // 0x10
+    uint32_t blue_mask; // 0x14
     // 0x18
 };
 
@@ -986,129 +986,129 @@ struct Custom_BITMAPINFO {
 static constexpr auto wkrbwejkrb = offsetof(Custom_BITMAPINFO, bmiColors);
 
 struct BitmapRenderData {
-	D3DFORMAT format; // 0x0
-	int32_t width; // 0x4
-	int32_t height; // 0x8
-	size_t raw_bitmap_size; // 0xC
-	int32_t bytes_per_row; // 0x10
-	HDC device_context; // 0x14
-	HGDIOBJ screen_bitmap_object; // 0x18
-	HBITMAP bitmap_handle; // 0x1C
-	void* raw_bitmap_bits; // 0x20
+    D3DFORMAT format; // 0x0
+    int32_t width; // 0x4
+    int32_t height; // 0x8
+    size_t raw_bitmap_size; // 0xC
+    int32_t bytes_per_row; // 0x10
+    HDC device_context; // 0x14
+    HGDIOBJ screen_bitmap_object; // 0x18
+    HBITMAP bitmap_handle; // 0x1C
+    void* raw_bitmap_bits; // 0x20
     // 0x24
-	
-	inline void initialize() {
-		this->format = (D3DFORMAT)-1;
-		this->width = 0;
-		this->height = 0;
-		this->bitmap_handle = NULL;
-		this->screen_bitmap_object = NULL;
-		this->raw_bitmap_bits = 0;
-	}
-	
-	BitmapRenderData() {
-		this->initialize();
-	}
-	
+    
+    inline void initialize() {
+        this->format = (D3DFORMAT)-1;
+        this->width = 0;
+        this->height = 0;
+        this->bitmap_handle = NULL;
+        this->screen_bitmap_object = NULL;
+        this->raw_bitmap_bits = 0;
+    }
+    
+    BitmapRenderData() {
+        this->initialize();
+    }
+    
     // 0x41E992
-	dllexport gnu_noinline bool thiscall reset() asm_symbol_rel(0x41E992) {
-		if (this->device_context) {
-			SelectObject(this->device_context, this->screen_bitmap_object);
-			DeleteDC(this->device_context);
-			DeleteObject(this->bitmap_handle);
-			this->initialize();
-			return true;
-		}
-		return false;
-	}
-	
+    dllexport gnu_noinline bool thiscall reset() asm_symbol_rel(0x41E992) {
+        if (this->device_context) {
+            SelectObject(this->device_context, this->screen_bitmap_object);
+            DeleteDC(this->device_context);
+            DeleteObject(this->bitmap_handle);
+            this->initialize();
+            return true;
+        }
+        return false;
+    }
+    
     // 0x41E981
-	dllexport gnu_noinline ~BitmapRenderData() {
-		this->reset();
-	}
-	
+    dllexport gnu_noinline ~BitmapRenderData() {
+        this->reset();
+    }
+    
     // 0x41EC22
-	dllexport gnu_noinline RenderDataFormatLookupData* thiscall __sub_41EC22(D3DFORMAT format) asm_symbol_rel(0x41EC22) {
-		int32_t i = 0;
-		for (;
-			RenderDataFormatLookupDataTable[i].format != (D3DFORMAT)-1 &&
-			RenderDataFormatLookupDataTable[i].format != format;
-			++i
-		);
-		if (format == (D3DFORMAT)-1) {
-			return NULL;
-		}
-		return &RenderDataFormatLookupDataTable[i];
-	}
-	
+    dllexport gnu_noinline RenderDataFormatLookupData* thiscall __sub_41EC22(D3DFORMAT format) asm_symbol_rel(0x41EC22) {
+        int32_t i = 0;
+        for (;
+            RenderDataFormatLookupDataTable[i].format != (D3DFORMAT)-1 &&
+            RenderDataFormatLookupDataTable[i].format != format;
+            ++i
+        );
+        if (format == (D3DFORMAT)-1) {
+            return NULL;
+        }
+        return &RenderDataFormatLookupDataTable[i];
+    }
+    
     // 0x41EA63
-	dllexport gnu_noinline bool thiscall __sub_41EA63(int32_t width, int32_t height, D3DFORMAT format) asm_symbol_rel(0x41EA63) {
-		this->reset();
+    dllexport gnu_noinline bool thiscall __sub_41EA63(int32_t width, int32_t height, D3DFORMAT format) asm_symbol_rel(0x41EA63) {
+        this->reset();
         Custom_BITMAPINFO bitmap_info;
-		memset(&bitmap_info, 0, sizeof(Custom_BITMAPINFO));
-		RenderDataFormatLookupData* render_data_ptr = this->__sub_41EC22(format);
-		if (!render_data_ptr) {
-			return false;
-		}
-		int32_t bytes_per_row = dword_align(width * render_data_ptr->bits_per_pixel / CHAR_BIT) * sizeof(DWORD);
-		bitmap_info.bmiHeader.biSize = sizeof(Custom_BITMAPINFO);
-		bitmap_info.bmiHeader.biWidth = width;
-		bitmap_info.bmiHeader.biHeight = -(height + 1); // Some kind of crappy ~?
-		bitmap_info.bmiHeader.biPlanes = 1;
-		bitmap_info.bmiHeader.biBitCount = render_data_ptr->bits_per_pixel;
-		bitmap_info.bmiHeader.biSizeImage = height * bytes_per_row;
-		if (format != D3DFMT_X1R5G5B5 && format != D3DFMT_X8R8G8B8) {
-			bitmap_info.bmiHeader.biCompression = BI_BITFIELDS;
-			bitmap_info.bmiColors[0].red_mask = render_data_ptr->red_mask;
-			bitmap_info.bmiColors[0].green_mask = render_data_ptr->green_mask;
-			bitmap_info.bmiColors[0].blue_mask = render_data_ptr->blue_mask;
-			bitmap_info.bmiColors[0].alpha_mask = render_data_ptr->alpha_mask;
-		}
-		void* raw_bitmap_bits;
-		HBITMAP bitmap_handle = CreateDIBSection(NULL, (const BITMAPINFO*)&bitmap_info, DIB_RGB_COLORS, &raw_bitmap_bits, NULL, 0);
-		if (!bitmap_handle) {
-			return false;
-		}
-		memset(raw_bitmap_bits, 0, bitmap_info.bmiHeader.biSizeImage);
-		HDC device_context = CreateCompatibleDC(NULL);
-		HGDIOBJ screen_bitmap_object = SelectObject(device_context, bitmap_handle);
-		this->device_context = device_context;
-		this->bitmap_handle = bitmap_handle;
-		this->raw_bitmap_bits = raw_bitmap_bits;
-		this->raw_bitmap_size = bitmap_info.bmiHeader.biSizeImage;
-		this->screen_bitmap_object = screen_bitmap_object;
-		this->width = width;
-		this->height = height;
-		this->format = format;
-		this->bytes_per_row = bytes_per_row;
-		return true;
-	}
-	
+        memset(&bitmap_info, 0, sizeof(Custom_BITMAPINFO));
+        RenderDataFormatLookupData* render_data_ptr = this->__sub_41EC22(format);
+        if (!render_data_ptr) {
+            return false;
+        }
+        int32_t bytes_per_row = dword_align(width * render_data_ptr->bits_per_pixel / CHAR_BIT) * sizeof(DWORD);
+        bitmap_info.bmiHeader.biSize = sizeof(Custom_BITMAPINFO);
+        bitmap_info.bmiHeader.biWidth = width;
+        bitmap_info.bmiHeader.biHeight = -(height + 1); // Some kind of crappy ~?
+        bitmap_info.bmiHeader.biPlanes = 1;
+        bitmap_info.bmiHeader.biBitCount = render_data_ptr->bits_per_pixel;
+        bitmap_info.bmiHeader.biSizeImage = height * bytes_per_row;
+        if (format != D3DFMT_X1R5G5B5 && format != D3DFMT_X8R8G8B8) {
+            bitmap_info.bmiHeader.biCompression = BI_BITFIELDS;
+            bitmap_info.bmiColors[0].red_mask = render_data_ptr->red_mask;
+            bitmap_info.bmiColors[0].green_mask = render_data_ptr->green_mask;
+            bitmap_info.bmiColors[0].blue_mask = render_data_ptr->blue_mask;
+            bitmap_info.bmiColors[0].alpha_mask = render_data_ptr->alpha_mask;
+        }
+        void* raw_bitmap_bits;
+        HBITMAP bitmap_handle = CreateDIBSection(NULL, (const BITMAPINFO*)&bitmap_info, DIB_RGB_COLORS, &raw_bitmap_bits, NULL, 0);
+        if (!bitmap_handle) {
+            return false;
+        }
+        memset(raw_bitmap_bits, 0, bitmap_info.bmiHeader.biSizeImage);
+        HDC device_context = CreateCompatibleDC(NULL);
+        HGDIOBJ screen_bitmap_object = SelectObject(device_context, bitmap_handle);
+        this->device_context = device_context;
+        this->bitmap_handle = bitmap_handle;
+        this->raw_bitmap_bits = raw_bitmap_bits;
+        this->raw_bitmap_size = bitmap_info.bmiHeader.biSizeImage;
+        this->screen_bitmap_object = screen_bitmap_object;
+        this->width = width;
+        this->height = height;
+        this->format = format;
+        this->bytes_per_row = bytes_per_row;
+        return true;
+    }
+    
     // 0x41EA04
-	dllexport gnu_noinline bool thiscall __sub_41EA04(int32_t width, int32_t height, D3DFORMAT format) asm_symbol_rel(0x41EA04) {
-		if (this->__sub_41EA63(width, height, format)) {
-			return true;
-		}
-		if (format == D3DFMT_A1R5G5B5 || format == D3DFMT_A4R4G4B4) {
-			return this->__sub_41EA63(width, height, D3DFMT_A8R8G8B8);
-		}
-		if (format == D3DFMT_R5G6B5) {
-			return this->__sub_41EA63(width, height, D3DFMT_X8R8G8B8);
-		}
-		return false;
-	}
-	
+    dllexport gnu_noinline bool thiscall __sub_41EA04(int32_t width, int32_t height, D3DFORMAT format) asm_symbol_rel(0x41EA04) {
+        if (this->__sub_41EA63(width, height, format)) {
+            return true;
+        }
+        if (format == D3DFMT_A1R5G5B5 || format == D3DFMT_A4R4G4B4) {
+            return this->__sub_41EA63(width, height, D3DFMT_A8R8G8B8);
+        }
+        if (format == D3DFMT_R5G6B5) {
+            return this->__sub_41EA63(width, height, D3DFMT_X8R8G8B8);
+        }
+        return false;
+    }
+    
     // 0x41EC72
-	dllexport gnu_noinline bool thiscall __sub_41EC72(int32_t arg1, int32_t arg2, int32_t arg3, int32_t arg4) asm_symbol_rel(0x41EC72) {
-		gnu_used static volatile auto tempA = arg1;
-		gnu_used static volatile auto tempB = arg2;
-		gnu_used static volatile auto tempC = arg3;
-		gnu_used static volatile auto tempD = arg4;
-		return 0;
-	}
-	
+    dllexport gnu_noinline bool thiscall __sub_41EC72(int32_t arg1, int32_t arg2, int32_t arg3, int32_t arg4) asm_symbol_rel(0x41EC72) {
+        gnu_used static volatile auto tempA = arg1;
+        gnu_used static volatile auto tempB = arg2;
+        gnu_used static volatile auto tempC = arg3;
+        gnu_used static volatile auto tempD = arg4;
+        return 0;
+    }
+    
     // 0x41EF11
-	dllexport gnu_noinline bool thiscall __sub_41EF11(LPDIRECT3DSURFACE8 surface) asm_symbol_rel(0x41EF11) {
+    dllexport gnu_noinline bool thiscall __sub_41EF11(LPDIRECT3DSURFACE8 surface) asm_symbol_rel(0x41EF11) {
         if (!(bool)(this->bitmap_handle != NULL)) {
             return false;
         }
@@ -1141,7 +1141,7 @@ struct BitmapRenderData {
             }
         }
         surface->UnlockRect();
-	}
+    }
 };
 
 extern "C" {
@@ -1152,7 +1152,7 @@ extern "C" {
 // 0x41F008
 dllexport gnu_noinline void create_global_surface() asm_symbol_rel(codecave:create_global_surface);
 dllexport gnu_noinline void create_global_surface() {
-	SUPERVISOR.d3d_device->CreateImageSurface(640, 64, D3DFMT_A1R5G5B5, &UNKNOWN_SURFACE_A);
+    SUPERVISOR.d3d_device->CreateImageSurface(640, 64, D3DFMT_A1R5G5B5, &UNKNOWN_SURFACE_A);
 }
 
 // 0x41F02B
@@ -1164,39 +1164,39 @@ dllexport gnu_noinline void release_global_surface() {
 // 0x41F050
 dllexport gnu_noinline void cdecl render_text(int32_t x_pos, int32_t y_pos, int32_t width, int32_t height, int32_t font_width, int32_t font_height, D3DCOLOR colorA, D3DCOLOR colorB, char* text, IDirect3DTexture8* texture) asm_symbol_rel(0x41F050);
 dllexport gnu_noinline void cdecl render_text(
-	int32_t x_pos, // 0x8
-	int32_t y_pos, // 0xC
-	int32_t width, // 0x10
-	int32_t height, // 0x14
-	int32_t font_width, // 0x18
-	int32_t font_height, // 0x1C
-	D3DCOLOR colorA, // 0x20
-	D3DCOLOR colorB, // 0x24
-	char* text, // 0x28
+    int32_t x_pos, // 0x8
+    int32_t y_pos, // 0xC
+    int32_t width, // 0x10
+    int32_t height, // 0x14
+    int32_t font_width, // 0x18
+    int32_t font_height, // 0x1C
+    D3DCOLOR colorA, // 0x20
+    D3DCOLOR colorB, // 0x24
+    char* text, // 0x28
     LPDIRECT3DTEXTURE8 texture // 0x2C
 ) {
     // EBP-14
-	HFONT font_handle = CreateFontA(font_width * 2, 0, 0, 0, FW_BOLD, false, false, false, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY, FIXED_PITCH | FF_ROMAN, "‚l‚r ƒSƒVƒbƒN");
-	BitmapRenderData bitmap_data; // EBP-5C
+    HFONT font_handle = CreateFontA(font_width * 2, 0, 0, 0, FW_BOLD, false, false, false, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY, FIXED_PITCH | FF_ROMAN, "‚l‚r ƒSƒVƒbƒN");
+    BitmapRenderData bitmap_data; // EBP-5C
     bitmap_data.initialize();
-	D3DSURFACE_DESC surface_desc; // EBP-34
+    D3DSURFACE_DESC surface_desc; // EBP-34
     UNKNOWN_SURFACE_A->GetDesc(&surface_desc);
-	bitmap_data.__sub_41EA04(surface_desc.Width, surface_desc.Height, surface_desc.Format);
-	HDC screen_context = bitmap_data.device_context; // EBP-10
-	HGDIOBJ screen_font_object = SelectObject(screen_context, font_handle); // EBP-38
-	bitmap_data.__sub_41EC72(0, 0, width * 2, font_width * 2 + 6);
-	SetBkMode(screen_context, TRANSPARENT);
-	if (colorB != PackD3DCOLOR(255, 255, 255, 255)) {
-		SetTextColor(screen_context, colorB);
-		TextOutA(screen_context, x_pos * 2 + 6, 2, text, strlen(text));
-	}
-	SetTextColor(screen_context, colorA);
-	TextOutA(screen_context, x_pos * 2, 0, text, strlen(text));
-	(void)SelectObject(screen_context, screen_font_object);
-	bitmap_data.__sub_41EC72(0, 0, width * 2, font_width * 2 + 6);
-	bitmap_data.__sub_41EF11(UNKNOWN_SURFACE_A);
-	(void)SelectObject(screen_context, screen_font_object);
-	DeleteObject(font_handle);
+    bitmap_data.__sub_41EA04(surface_desc.Width, surface_desc.Height, surface_desc.Format);
+    HDC screen_context = bitmap_data.device_context; // EBP-10
+    HGDIOBJ screen_font_object = SelectObject(screen_context, font_handle); // EBP-38
+    bitmap_data.__sub_41EC72(0, 0, width * 2, font_width * 2 + 6);
+    SetBkMode(screen_context, TRANSPARENT);
+    if (colorB != PackD3DCOLOR(255, 255, 255, 255)) {
+        SetTextColor(screen_context, colorB);
+        TextOutA(screen_context, x_pos * 2 + 6, 2, text, strlen(text));
+    }
+    SetTextColor(screen_context, colorA);
+    TextOutA(screen_context, x_pos * 2, 0, text, strlen(text));
+    (void)SelectObject(screen_context, screen_font_object);
+    bitmap_data.__sub_41EC72(0, 0, width * 2, font_width * 2 + 6);
+    bitmap_data.__sub_41EF11(UNKNOWN_SURFACE_A);
+    (void)SelectObject(screen_context, screen_font_object);
+    DeleteObject(font_handle);
     RECT dest_rect; // EBP-7C
     dest_rect.left = 0;
     dest_rect.top = y_pos;
@@ -1207,9 +1207,9 @@ dllexport gnu_noinline void cdecl render_text(
     src_rect.top = 0;
     src_rect.right = width * 2 - 2;
     src_rect.bottom = font_width * 2 - 2;
-	LPDIRECT3DSURFACE8 dest_surface; // EBP-80
-	texture->GetSurfaceLevel(0, &dest_surface);
-	D3DXLoadSurfaceFromSurface(dest_surface, NULL, &dest_rect, UNKNOWN_SURFACE_A, NULL, &src_rect, D3DX_FILTER_TRIANGLE, 0);
+    LPDIRECT3DSURFACE8 dest_surface; // EBP-80
+    texture->GetSurfaceLevel(0, &dest_surface);
+    D3DXLoadSurfaceFromSurface(dest_surface, NULL, &dest_rect, UNKNOWN_SURFACE_A, NULL, &src_rect, D3DX_FILTER_TRIANGLE, 0);
     SAFE_RELEASE(dest_surface);
     int32_t wtf = -1;
 }
@@ -1857,7 +1857,7 @@ struct AnmManager {
         // remainderf at runtime and then do manual fixups on all
         // my codecaves. Besides, the precision of a single FPREM1
         // still beats the original function by a mile. :P
-	    // Real shame that there's no SSE version of FPREM1.
+        // Real shame that there's no SSE version of FPREM1.
         //__asm__(
         //    "FLDZ \n" // ST(2)
         //    "FLDS %[TWO_PI] \n" // ST(1)
@@ -2104,7 +2104,7 @@ struct AsciiManagerString {
     D3DCOLOR color;  // 0x4c
     Float2 scale;  // 0x50
     int __dword_58;  // 0x58
-	int __dword_5C;  // 0x5C
+    int __dword_5C;  // 0x5C
 };  // 0x60
 ValidateFieldOffset(0x0, AsciiManagerString, text);
 ValidateFieldOffset(0x40, AsciiManagerString, position);
@@ -2149,7 +2149,7 @@ struct AsciiManager {
     D3DCOLOR color;  // 0x6224
     Float2 scale;  // 0x6228
     int __dword_6230;  // 0x6230
-	int __dword_6234;  // 0x6234
+    int __dword_6234;  // 0x6234
     int32_t next_popupA_index;  // 0x6238
     int32_t next_popupB_index;  // 0x623c
     unknown_fields(0x4);  // 0x6240
@@ -2233,14 +2233,14 @@ struct AsciiManager {
             new_popup->characters = 1;
         }
     }
-	
-	// 0x401530
-	dllexport gnu_noinline void thiscall draw(Float3 *restrict position, const char *restrict text) asm("{[codecave:ASCII_MANAGER_draw]}") {
-		if (this->num_strings >= countof(this->strings)) {
-			return;
-		}
-		AsciiManagerString *restrict string = &this->strings[this->num_strings++];
-		byteloop_strcpy(string->text, text);
+    
+    // 0x401530
+    dllexport gnu_noinline void thiscall draw(Float3 *restrict position, const char *restrict text) asm("{[codecave:ASCII_MANAGER_draw]}") {
+        if (this->num_strings >= countof(this->strings)) {
+            return;
+        }
+        AsciiManagerString *restrict string = &this->strings[this->num_strings++];
+        byteloop_strcpy(string->text, text);
         string->position = *position;
 #ifdef __AVX__
         unaligned vec<float, 8>& output = *(unaligned vec<float, 8>*)&string->color;
@@ -2269,7 +2269,7 @@ struct AsciiManager {
             string->__dword_58 = 0;
         }*/
 #endif
-	}
+    }
 
     dllexport void drawf(Float3 *restrict position, const char *restrict format, ...)  asm("{[codecave:ASCII_MANAGER_drawf]}") {
     //void AsciiManager_drawf(AsciiManager *restrict ascii_manager, Float3 *restrict position, const char *restrict format, ...) {
@@ -2961,13 +2961,13 @@ typedef struct Enemy Enemy;
 
 typedef struct EclInstruction EclInstruction;
 struct EclInstruction {
-	uint32_t time;
-	int16_t opcode;
-	int16_t offset_to_next;
-	uint8_t unused;
-	uint8_t difficulty_mask;
-	uint16_t param_mask;
-	unsigned char args[];
+    uint32_t time;
+    int16_t opcode;
+    int16_t offset_to_next;
+    uint8_t unused;
+    uint8_t difficulty_mask;
+    uint16_t param_mask;
+    unsigned char args[];
 };
 ValidateFieldOffset(0x0, EclInstruction, time);
 ValidateFieldOffset(0x4, EclInstruction, opcode);
@@ -2981,14 +2981,14 @@ typedef void(*cdecl ins_call)(Enemy* restrict enemy, EclInstruction* restrict cu
 
 typedef struct EclContext EclContext;
 struct EclContext {
-	EclInstruction *restrict current_instr;  // 0x0
-	Timer time;  // 0x4
+    EclInstruction *restrict current_instr;  // 0x0
+    Timer time;  // 0x4
     ins_call func;  // 0x10
-	int32_t int_vars[4];  // 0x14
-	float float_vars[4];  // 0x24
-	int32_t counter_vars[4];  // 0x34
-	int32_t compare_register;  // 0x44
-	uint16_t sub_id;  // 0x48
+    int32_t int_vars[4];  // 0x14
+    float float_vars[4];  // 0x24
+    int32_t counter_vars[4];  // 0x34
+    int32_t compare_register;  // 0x44
+    uint16_t sub_id;  // 0x48
     probably_padding_bytes(0x2);  // 0x4A
 };  // 0x4c
 ValidateFieldOffset(0x0, EclContext, current_instr);
@@ -4366,28 +4366,28 @@ struct LaserShooter {
 };  // 0x54
 
 struct GenericShooter {
-	uint16_t sprite;  // 0x0
-	uint16_t color;  // 0x2
-	Float3 position;  // 0x4
-	float angle1;  // 0x10
+    uint16_t sprite;  // 0x0
+    uint16_t color;  // 0x2
+    Float3 position;  // 0x4
+    float angle1;  // 0x10
     float angle2;  // 0x14
     float speed1;  // 0x18
     float speed2;  // 0x1c
-	float start_offset;  // 0x20
+    float start_offset;  // 0x20
     float end_offset;  // 0x24
     float start_length;  // 0x28
     float width;  // 0x2c
-	int32_t start_time;  // 0x30
+    int32_t start_time;  // 0x30
     int32_t duration;  // 0x34
     int32_t stop_time;  // 0x38
     int32_t graze_delay;  // 0x3c
     int32_t graze_distance;  // 0x40
-	int16_t count_1;  // 0x44
+    int16_t count_1;  // 0x44
     int16_t count_2;  // 0x46
     uint16_t aim_mode;  // 0x48
     short __word_4A;  // 0x4a
-	uint32_t flags;  // 0x4c
-	int32_t sfx;  // 0x50
+    uint32_t flags;  // 0x4c
+    int32_t sfx;  // 0x50
 };
 
 typedef struct Laser Laser;
@@ -7310,14 +7310,14 @@ void EnemyManager::run_timeline(void) {
                     GAME_MANAGER.current_power = current_instruction->first_arg;
                     break;
                 case 12: { // boss_wait
-					Enemy* boss = this->bosses[current_instruction->first_arg];
+                    Enemy* boss = this->bosses[current_instruction->first_arg];
                     if (boss && boss->active) {
                         this->timeline_time.decrement(1);
                         this->timeline_instr = current_instruction;
                         return;
                     }
                     break;
-				}
+                }
             }
         } else if (current_instruction->time > this->timeline_time.current) {
             break;
