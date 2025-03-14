@@ -38,6 +38,10 @@ add_executable(aocf_plugin_patch)
 add_executable(unix_socket_test)
 add_executable(z8086_old)
 add_executable(z86_emulator)
+add_executable(ttt_no_mem)
+add_executable(libm_testing)
+add_executable(vpatch)
+add_executable(heroes_calculator)
 add_library(z8086 SHARED)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
@@ -57,6 +61,9 @@ add_library(x64_inject_test SHARED)
 add_executable(x64_injector)
 add_library(aocf_netcode SHARED)
 add_library(Netplay SHARED)
+add_library(dbghelp SHARED)
+add_library(_dbghelp SHARED)
+add_library(vpatch_dll SHARED)
 
 set(programs
 ${PROJECT_NAME}
@@ -108,6 +115,13 @@ unix_socket_test
 z8086_old
 z86_emulator
 z8086
+ttt_no_mem
+libm_testing
+dbghelp
+_dbghelp
+vpatch
+vpatch_dll
+heroes_calculator
 )
 
 enable_language(ASM-ATT)
@@ -159,6 +173,12 @@ target_compile_definitions(${EXE} PRIVATE
 else()
 target_compile_definitions(${EXE} PRIVATE
 	CLANG_CL=0
+)
+endif()
+
+if(CUSTOM_CLANG)
+target_compile_definitions(${EXE} PRIVATE
+	CUSTOM_CLANG=1
 )
 endif()
 
@@ -380,7 +400,7 @@ if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
 
 		# Unroll loops
 		"SHELL:-Xclang -funroll-loops"
-		"SHELL:-Xclang -freroll-loops"
+		#"SHELL:-Xclang -freroll-loops"
 
 		#-falign-loops
 	)
@@ -621,6 +641,7 @@ target_link_directories(${EXE} PRIVATE "C:\\Program Files (x86)\\Microsoft SDKs\
 #target_link_options(${EXE} PRIVATE "/libpath:\"C/Program Files (x86)/Windows Kits/10/Lib/10.0.20262.0/ucrt/x64/\"")
 target_link_libraries(${EXE} "F:\\Program Files\\LLVM\\lib\\clang\\17\\lib\\windows\\clang_rt.builtins-x86_64.lib")
 else()
+#target_link_libraries(${EXE} "F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\ntdll32.lib")
 if (NOT NO_STDLIB)
 target_link_libraries(${EXE} "C:\\WinDDK\\7600.16385.1\\lib\\wxp\\i386\\winmm.lib")
 endif()
@@ -1648,6 +1669,115 @@ target_link_options(z8086 PRIVATE
 )
 target_compile_definitions(z8086 PRIVATE
 	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+
+target_sources(ttt_no_mem PRIVATE
+	"ttt_no_mem.cpp"
+)
+target_compile_definitions(ttt_no_mem PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+target_compile_options(ttt_no_mem PRIVATE
+	"-fno-pic"
+	"-fno-pie"
+	"-msahf"
+)
+target_link_options(ttt_no_mem PRIVATE
+	/LARGEADDRESSAWARE:NO
+)
+
+target_sources(libm_testing PRIVATE
+	"libm/sin_cos.cpp"
+	"libm/trandisp.cpp"
+)
+target_compile_definitions(libm_testing PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+	_HAS_CXX17=1
+	_HAS_CXX20=1
+)
+target_compile_options(libm_testing PRIVATE
+	#"-mavx"
+	#"-mbmi"
+	#"-mxop"
+	#"-mtbm"
+	#"-msse4a"
+	#"-mfma4"
+	#"-msse3"
+	#"-mssse3"
+	#"-msse4.1"
+	#"-msse4.2"
+	#"-mlzcnt"
+)
+
+target_sources(dbghelp PRIVATE
+	"dbghelp/dbghelp.cpp"
+	"dbghelp/dbghelp.def"
+	"dbghelp/crc32.cpp"
+	"dummy_dllmain.cpp"
+)
+target_compile_options(dbghelp PRIVATE
+	"-mavx"
+	"-mbmi"
+	"-msse4.1"
+	"-mssse3"
+	"-msse3"
+	"-mlzcnt"
+	"-mxop"
+	"-mtbm"
+	"-msse4a"
+	"-mfma4"
+	"-mfma"
+)
+target_compile_definitions(dbghelp PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+	_HAS_CXX17=1
+	_HAS_CXX20=1
+)
+target_link_options(dbghelp PRIVATE
+	#${MSLINK_ARG}/DEF:dbghelp.def
+	#${COMPILE_DLL}
+	#/ENTRY:DllMain
+	#${NOSTDLIB_LINK}
+)
+target_link_libraries(dbghelp 
+	_dbghelp.lib
+	"F:\\Users\\zero318\\Source\\Repos\\thcrap\\bin\\bin\\jansson.lib"
+	libcmt.lib
+)
+
+target_sources(_dbghelp PRIVATE
+	"dbghelp/dbghelp_init_stub.cpp"
+	"dbghelp/dbghelp_stub.def"
+	"dummy_dllmain.cpp"
+)
+target_compile_definitions(_dbghelp PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+	_HAS_CXX17=1
+	_HAS_CXX20=1
+)
+target_link_options(_dbghelp PRIVATE
+	${COMPILE_DLL}
+	/ENTRY:DllMain
+	${NOSTDLIB_LINK}
+)
+
+target_sources(vpatch PRIVATE
+	"vpatch/vpatch_launcher.cpp"
+)
+target_compile_options(vpatch PRIVATE
+	"-mno-sse"
+	"-mno-sse2"
+)
+target_sources(vpatch_dll PRIVATE
+	"vpatch/vpatch_dll.cpp"
+)
+target_compile_options(vpatch_dll PRIVATE
+	"-mno-sse"
+	"-mno-sse2"
+)
+
+target_sources(heroes_calculator PRIVATE
+	"heroes_calculator.cpp"
 )
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")

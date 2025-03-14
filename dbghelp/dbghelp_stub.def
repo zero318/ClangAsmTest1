@@ -1,0 +1,15 @@
+EXPORTS
+	SymInitializeW
+	SymLoadModuleExW=SymInitializeW
+	SymGetSearchPathW=SymInitializeW
+	SymGetLineFromAddrW64=SymInitializeW
+	SymGetModuleBase64=SymInitializeW
+	SymGetModuleInfoW64=SymInitializeW
+	SymFunctionTableAccess64=SymInitializeW
+	SymCleanup=SymInitializeW
+	SymGetOptions=SymInitializeW
+	SymSetOptions=SymInitializeW
+	StackWalk64=SymInitializeW
+	UnDecorateSymbolNameW=SymInitializeW
+	SymFromAddrW=SymInitializeW
+	SymAddSymbolW=SymInitializeW

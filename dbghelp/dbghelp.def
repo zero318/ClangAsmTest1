@@ -1,0 +1,14 @@
+EXPORTS
+	SymInitializeW=SymInitializeW_shim
+	SymCleanup=SymCleanup_shim
+	SymLoadModuleExW=SymLoadModuleExW_shim
+	SymGetSearchPathW=dbghelp.SymGetSearchPathW
+	SymGetLineFromAddrW64=dbghelp.SymGetLineFromAddrW64
+	SymGetModuleBase64=dbghelp.SymGetModuleBase64
+	SymGetModuleInfoW64=dbghelp.SymGetModuleInfoW64
+	SymFunctionTableAccess64=dbghelp.SymFunctionTableAccess64
+	SymGetOptions=dbghelp.SymGetOptions
+	SymSetOptions=dbghelp.SymSetOptions
+	StackWalk64=dbghelp.StackWalk64
+	UnDecorateSymbolNameW=dbghelp.UnDecorateSymbolNameW
+	SymFromAddrW=dbghelp.SymFromAddrW

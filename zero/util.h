@@ -113,7 +113,7 @@ typedef char* MS_va_list;
 #include <utility>
 #include <tuple>
 
-#define USE_ALL_FEATURES
+//#define USE_ALL_FEATURES
 //#define USE_AMD_FEATURES
 
 #ifndef __SSE__
@@ -1367,6 +1367,11 @@ static inline P* pointer_raw_offset(P* pointer, O offset) {
 #define GS_RELATIVE gnu_attr(address_space(256))
 #define FS_RELATIVE gnu_attr(address_space(257))
 #define SS_RELATIVE gnu_attr(address_space(258))
+#if CUSTOM_CLANG
+#define CS_RELATIVE gnu_attr(address_space(259))
+#define DS_RELATIVE gnu_attr(address_space(260))
+#define ES_RELATIVE gnu_attr(address_space(261))
+#endif
 
 #if !__has_builtin(__builtin_expect_with_probability)
 #define __builtin_expect_with_probability(cond, ...) (cond)
@@ -1709,6 +1714,21 @@ template<typename T = void>
 using LPTR64Z = T far * __ptr64 __uptr;
 template<typename T = void>
 using LPTR64S = T far * __ptr64 __sptr;
+
+template<typename T = void>
+using FSPTR = T FS_RELATIVE*;
+template<typename T = void>
+using GSPTR = T GS_RELATIVE*;
+template<typename T = void>
+using SSPTR = T SS_RELATIVE*;
+#if CUSTOM_CLANG
+template<typename T = void>
+using CSPTR = T CS_RELATIVE*;
+template<typename T = void>
+using DSPTR = T DS_RELATIVE*;
+template<typename T = void>
+using ESPTR = T ES_RELATIVE*;
+#endif
 
 template <typename T> struct remove_pointer { using type = T; };
 template <typename T> struct remove_pointer<T*> { using type = T; };
@@ -2138,6 +2158,11 @@ using UByteIntType = UBitIntType<byte_count * CHAR_BIT>;
 
 #include "custom_intrin.h"
 
+template <typename T, typename IV>
+static inline constexpr T vec_xor(T vector, IV int_mask) {
+    return (T)((IV)vector ^ int_mask);
+}
+
 template <typename T, size_t count = vector_length_v<T>, typename E>
 static inline constexpr auto vec_broadcast(E value) {
     using V = vector_type_t<T>;
@@ -2255,6 +2280,7 @@ static inline constexpr T vec_even_interleave(T lower, T upper) {
 }
 
 #define FAR_CALL_IMM(seg, addr, ret, ...) __asm__ volatile (CODE_32_DIRECTIVE "lcall %[Seg],%[Addr]":ret: [Seg]"i"(seg), [Addr]"i"(addr) __VA_OPT__(,) __VA_ARGS__)
+#define FAR_JUMP_IMM(seg, addr, ret, ...) __asm__ volatile (CODE_32_DIRECTIVE "ljmp %[Seg],%[Addr]":ret: [Seg]"i"(seg), [Addr]"i"(addr) __VA_OPT__(,) __VA_ARGS__)
 
 template<size_t max_float_width, size_t max_double_width, size_t max_byte_width, size_t max_word_width, size_t max_dword_width, size_t max_qword_width, size_t max_oword_width,
          size_t prefer_float_width, size_t prefer_double_width, size_t prefer_byte_width, size_t prefer_word_width, size_t prefer_dword_width, size_t prefer_qword_width, size_t prefer_oword_width>

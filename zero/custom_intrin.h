@@ -1464,10 +1464,11 @@ union FCW {
         uint16_t overflow_mask : 1; // 3
         uint16_t underflow_mask : 1; // 4
         uint16_t precision_mask : 1; // 5
-        uint16_t : 2; // 6-7
+        uint16_t : 1; // 6
+        uint16_t interrupt_mask : 1; // 7 (Legacy bit from 8087)
         uint16_t precision : 2; // 8-9
         uint16_t rounding : 2; // 10-11
-        uint16_t infinity_control : 1; // 12
+        uint16_t infinity_control : 1; // 12 (Legacy bit from 8087)
         uint16_t : 3; // 13-15
     };
     struct {
@@ -1489,10 +1490,11 @@ union FCWW {
         uint32_t overflow_mask : 1; // 3
         uint32_t underflow_mask : 1; // 4
         uint32_t precision_mask : 1; // 5
-        uint32_t : 2; // 6-7
+        uint32_t : 1; // 6
+        uint32_t interrupt_mask : 1; // 7 (Legacy bit from 8087)
         uint32_t precision : 2; // 8-9
         uint32_t rounding : 2; // 10-11
-        uint32_t infinity_control : 1; // 12
+        uint32_t infinity_control : 1; // 12 (Legacy bit from 8087)
         uint32_t : 19; // 13-31
     };
     struct {

@@ -6547,8 +6547,8 @@ struct SoundManager {
     SoundManagerUnknownB __unknown_smb_array_1A84[SOUND_EFFECT_COUNT]; // 0x1A84
     void* sound_effect_files[countof(SOUND_EFFECT_FILENAMES)]; // 0x2264
     char __text_buffer_2384[0x100]; // 0x2384
-    SoundManagerUnknownD __unknown_smd_array_2484[31]; // 0x2484
-    unknown_fields(0x110C); // 0x44F8
+    SoundManagerUnknownD __unknown_smd_array_2484[32]; // 0x2484 (only 31 are used properly)
+    char __text_buffer_array_4604[16][0x100]; // 0x4604
     char thbgm_filename[0x100]; // 0x5604
     SoundManagerUnknownE* __unknown_sme_ptr_5704; // 0x5704
     unknown_fields(0x4); // 0x5708
@@ -12343,19 +12343,19 @@ dllexport void Bullet::run_effects() {
 #pragma pop_macro("WordArg")
 #pragma pop_macro("FloatArg")
 
- forceinline ZunResult thiscall EnemyData::update() {
-     if (ZUN_FAILED(this->__move())) {
-         return ZUN_ERROR;
-     }
-     if (ZUN_FAILED(this->vm->run_ecl(this->ecl_time.get_scale_unsafe()))) {
-         return ZUN_ERROR;
-     }
-     if (auto func_set_func = this->func_set_func) {
-         if (ZUN_FAILED(func_set_func(this))) {
-             return ZUN_ERROR;
-         }
-     }
-     return ZUN_SUCCESS;
+forceinline ZunResult thiscall EnemyData::update() {
+    if (ZUN_FAILED(this->__move())) {
+        return ZUN_ERROR;
+    }
+    if (ZUN_FAILED(this->vm->run_ecl(this->ecl_time.get_scale_unsafe()))) {
+        return ZUN_ERROR;
+    }
+    if (auto func_set_func = this->func_set_func) {
+        if (ZUN_FAILED(func_set_func(this))) {
+            return ZUN_ERROR;
+        }
+    }
+    return ZUN_SUCCESS;
 }
 
 // 0x42FF80

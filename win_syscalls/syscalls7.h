@@ -15,7 +15,11 @@
 
 #include "../windows_structs.h"
 
+#if __x86_64__
 #pragma comment (lib, "F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\ntdll64.lib")
+#else
+//#pragma comment (lib, "F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\ntdll32.lib")
+#endif
 
 enum SyscallIndex : uint32_t {
 	NtCallbackReturnID = 0x2,

@@ -171,6 +171,11 @@ __if_not_exists(KAFFINITY) {
     using KAFFINITY = KAFFINITYX<>;
 }
 
+using KIRQLX = uint8_t;
+__if_not_exists(KIRQL) {
+    using KIRQL = KIRQLX;
+}
+
 template<size_t bits = native_bits>
 using HANDLEX = PTRZX<bits>;
 ValidateStructSize(0x4, HANDLEX<32>);
@@ -235,14 +240,14 @@ struct winstruct_alignment_impl<64> {
 };
 
 template<size_t bits = native_bits>
-using int64_tx = winstruct_alignment_impl<bits>::int64_tx;
+using int64_tx = typename winstruct_alignment_impl<bits>::int64_tx;
 ValidateStructSize(0x8, int64_tx<32>);
 ValidateStructAlignment(0x4, int64_tx<32>);
 ValidateStructSize(0x8, int64_tx<64>);
 ValidateStructAlignment(0x8, int64_tx<64>);
 
 template<size_t bits = native_bits>
-using uint64_tx = winstruct_alignment_impl<bits>::uint64_tx;
+using uint64_tx = typename winstruct_alignment_impl<bits>::uint64_tx;
 ValidateStructSize(0x8, uint64_tx<32>);
 ValidateStructAlignment(0x4, uint64_tx<32>);
 ValidateStructSize(0x8, uint64_tx<64>);
@@ -4258,6 +4263,391 @@ extern "C" {
 #define USER_SHARED_DATAR(bits) (*(const KUSER_SHARED_DATAX<bits>*)0x7FFE0000)
 
 //static inline const KUSER_SHARED_DATAX<>& USER_SHARED_DATAR = *(const KUSER_SHARED_DATAX<>*)0x7FFE0000;
+
+/*========================================
+    Kernel Mode Stuff
+========================================*/
+
+template<size_t bits = native_bits>
+struct DBGKD_GET_VERSION64X {
+    uint16_t MajorVersion; // 0x0
+    uint16_t MinorVersion; // 0x2
+    uint8_t ProtocolVersion; // 0x4
+    uint8_t KdSecondaryVersion; // 0x5
+    union {
+        uint16_t Flags; // 0x6
+        struct {
+        };
+    };
+    uint16_t MachineType; // 0x8
+    uint8_t MaxPacketType; // 0xA
+    uint8_t MaxStateChange; // 0xB
+    uint8_t MaxManipulate; // 0xC
+    uint8_t Simulation; // 0xD
+    __padding(0x2); // 0xE
+    uint64_tx<bits> KernBase; // 0x10
+    uint64_tx<bits> PsLoadedModuleList; // 0x18
+    uint64_tx<bits> DebuggerDataList; // 0x20
+    // 0x28
+};
+ValidateStructSize(0x28, DBGKD_GET_VERSION64X<32>);
+//ValidateStructAlignment(0x4, DBGKD_GET_VERSION64X<32>);
+ValidateStructSize(0x28, DBGKD_GET_VERSION64X<64>);
+ValidateStructAlignment(0x8, DBGKD_GET_VERSION64X<64>);
+
+__if_not_exists(DBGKD_GET_VERSION64) {
+    using DBGKD_GET_VERSION64 = DBGKD_GET_VERSION64X<>;
+}
+
+template<size_t bits = native_bits>
+struct KIDTENTRYX;
+
+template<>
+struct alignas(8) KIDTENTRYX<32> {
+    uint16_t OffsetLow; // 0x0
+    uint16_t Selector; // 0x2
+    union {
+        uint16_t flags; // 0x4
+        struct {
+            uint16_t IstIndex : 3;
+            uint16_t : 5;
+            uint16_t Type : 5;
+            uint16_t Dpl : 2;
+            uint16_t Present : 1;
+        };
+    };
+    uint16_t OffsetMiddle; // 0x6
+    // 0x8
+};
+ValidateStructSize(0x8, KIDTENTRYX<32>);
+ValidateStructAlignment(0x8, KIDTENTRYX<32>);
+
+template<>
+struct alignas(16) KIDTENTRYX<64> {
+    uint16_t OffsetLow; // 0x0
+    uint16_t Selector; // 0x2
+    union {
+        uint16_t flags; // 0x4
+        struct {
+            uint16_t IstIndex : 3;
+            uint16_t : 5;
+            uint16_t Type : 5;
+            uint16_t Dpl : 2;
+            uint16_t Present : 1;
+        };
+    };
+    uint16_t OffsetMiddle; // 0x6
+    uint32_t OffsetHigh; // 0x8
+    __x64_padding(0x4); // 0xC
+    // 0x10
+};
+ValidateStructSize(0x10, KIDTENTRYX<64>);
+ValidateStructAlignment(0x10, KIDTENTRYX<64>);
+
+__if_not_exists(KIDTENTRY) {
+    using KIDTENTRY = KIDTENTRYX<32>;
+}
+__if_not_exists(KIDTENTRY64) {
+    using KIDTENTRY64 = KIDTENTRYX<64>;
+}
+
+template<size_t bits = native_bits>
+struct KGDTENTRYX;
+
+template<>
+struct alignas(8) KGDTENTRYX<32> {
+    uint16_t LimitLow; // 0x0
+    uint16_t BaseLow; // 0x2
+    uint8_t BaseMiddle; // 0x4
+    union {
+        uint8_t Flags1; // 0x5
+        struct {
+            uint8_t Type : 5;
+            uint8_t Dpl : 2;
+            uint8_t Present : 1;
+        };
+    };
+    union {
+        uint8_t Flags2; // 0x6
+        struct {
+            uint8_t LimitHigh : 4;
+            uint8_t System : 1;
+            uint8_t LongMode : 1;
+            uint8_t DefaultBig : 1;
+            uint8_t Granularity : 1;
+        };
+    };
+    uint8_t BaseHigh; // 0x7
+    // 0x8
+};
+ValidateStructSize(0x8, KGDTENTRYX<32>);
+ValidateStructAlignment(0x8, KGDTENTRYX<32>);
+
+template<>
+struct alignas(8) KGDTENTRYX<64> {
+    uint16_t LimitLow; // 0x0
+    uint16_t BaseLow; // 0x2
+    uint8_t BaseMiddle; // 0x4
+    union {
+        uint8_t Flags1; // 0x5
+        struct {
+            uint8_t Type : 5;
+            uint8_t Dpl : 2;
+            uint8_t Present : 1;
+        };
+    };
+    union {
+        uint8_t Flags2; // 0x6
+        struct {
+            uint8_t LimitHigh : 4;
+            uint8_t System : 1;
+            uint8_t LongMode : 1;
+            uint8_t DefaultBig : 1;
+            uint8_t Granularity : 1;
+        };
+    };
+    uint8_t BaseHigh; // 0x7
+    uint32_t BaseUpper; // 0x8
+    uint32_t MustBeZero; // 0xC
+    // 0x10
+};
+ValidateStructSize(0x10, KGDTENTRYX<64>);
+ValidateStructAlignment(0x8, KGDTENTRYX<64>);
+
+__if_not_exists(KGDTENTRY) {
+    using KGDTENTRY = KGDTENTRYX<32>;
+}
+__if_not_exists(KGDTENTRY64) {
+    using KGDTENTRY64 = KGDTENTRYX<64>;
+}
+
+struct KiIoAccessMapX {
+    uint8_t DirectionMap[32]; // 0x0
+    uint8_t IoMap[0x2004]; // 0x20
+    // 0x2024
+};
+ValidateStructSize(0x2024, KiIoAccessMapX);
+ValidateStructAlignment(0x1, KiIoAccessMapX);
+
+template<size_t bits = native_bits>
+struct KTSSX;
+
+template<>
+struct KTSSX<32> {
+    alignas(4) uint16_t Backlink; // 0x0
+    uint32_t Esp0; // 0x4
+    alignas(4) uint16_t Ss0; // 0x8
+    uint32_t Esp1; // 0xC
+    alignas(4) uint16_t Ss1; // 0x10
+    uint32_t Esp2; // 0x14
+    alignas(4) uint16_t Ss2; // 0x18
+    uint32_t CR3; // 0x1C
+    uint32_t Eip; // 0x20
+    uint32_t EFlags; // 0x24
+    uint32_t Eax; // 0x28
+    uint32_t Ecx; // 0x2C
+    uint32_t Edx; // 0x30
+    uint32_t Ebx; // 0x34
+    uint32_t Esp; // 0x38
+    uint32_t Ebp; // 0x3C
+    uint32_t Esi; // 0x40
+    uint32_t Edi; // 0x44
+    alignas(4) uint16_t Es; // 0x48
+    alignas(4) uint16_t Cs; // 0x4C
+    alignas(4) uint16_t Ss; // 0x50
+    alignas(4) uint16_t Ds; // 0x54
+    alignas(4) uint16_t Fs; // 0x58
+    alignas(4) uint16_t Gs; // 0x5C
+    alignas(4) uint16_t LDT; // 0x60
+    union {
+        uint16_t Flags; // 0x64
+        struct {
+            uint16_t Trap : 1;
+        };
+    };
+    uint16_t IoMapBase; // 0x66
+    KiIoAccessMapX IoMaps; // 0x68
+    uint8_t IntDirectionMap[32]; // 0x208C
+    // 0x20AC
+};
+ValidateStructSize(0x20AC, KTSSX<32>);
+ValidateStructAlignment(0x4, KTSSX<32>);
+
+template<>
+struct KTSSX<64> {
+    uint32_t Reserved0; // 0x0
+    uint64_t Rsp0 packed_field; // 0x4
+    uint64_t Rsp1 packed_field; // 0xC
+    uint64_t Rsp2 packed_field; // 0x14
+    uint64_t Ist[8] packed_field; // 0x1C
+    uint64_t Reserved1 packed_field; // 0x5C
+    uint16_t Reserved2; // 0x64
+    uint16_t IoMapBase; // 0x66
+    // 0x68
+};
+ValidateStructSize(0x68, KTSSX<64>);
+ValidateStructAlignment(0x4, KTSSX<64>);
+
+__if_not_exists(KTSS) {
+    using KTSS = KTSSX<32>;
+}
+__if_not_exists(KTSS64) {
+    using KTSS64 = KTSSX<64>;
+}
+
+template<size_t bits = native_bits>
+struct KSPIN_LOCK_QUEUEX {
+    volatile PTRZX<bits, KSPIN_LOCK_QUEUEX<bits>> Next; // 0x0, 0x0
+    volatile PTRZX<bits, uint32_t> Lock; // 0x4, 0x8
+    // 0x8, 0x10
+};
+ValidateStructSize(0x8, KSPIN_LOCK_QUEUEX<32>);
+ValidateStructAlignment(0x4, KSPIN_LOCK_QUEUEX<32>);
+ValidateStructSize(0x10, KSPIN_LOCK_QUEUEX<64>);
+ValidateStructAlignment(0x8, KSPIN_LOCK_QUEUEX<64>);
+
+__if_not_exists(KSPIN_LOCK_QUEUE) {
+    using KSPIN_LOCK_QUEUE = KSPIN_LOCK_QUEUEX<>;
+}
+
+template<size_t bits = native_bits>
+struct KTHREADX {
+};
+
+template<size_t bits = native_bits>
+struct KPRCBX;
+
+template<>
+struct KPRCBX<32> {
+    uint16_t MinorVersion; // 0x0
+    uint16_t MajorVersion; // 0x2
+    PTR32Z<KTHREADX<32>> CurrentThread; // 0x4
+    PTR32Z<KTHREADX<32>> NextThread; // 0x8
+    PTR32Z<KTHREADX<32>> IdleThread; // 0xC
+    uint8_t LegacyNumber; // 0x10
+    uint8_t NestingLevel; // 0x11
+    uint16_t BuildType; // 0x12
+};
+
+template<>
+struct KPRCBX<64> {
+    uint32_t MxCsr; // 0x0
+    uint8_t LegacyNumber; // 0x4
+    uint8_t NestingLevel; // 0x5
+    bool InterruptRequest; // 0x6
+    bool IdleHalt; // 0x7
+
+};
+
+template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING>
+struct KPCRX;
+
+template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING>
+struct KPCRX_base;
+
+template<typename T>
+struct KPCRX_base<32, T> {
+    union {
+        NT_TIBX<32, T> NtTib; // 0x0
+        uint8_t arbitrary_offset[0]; // 0x0
+        struct {
+            uint32_t : 32;
+            uint32_t : 32;
+            // Begin Windows 10+
+            uint32_t MxCsr; // 0x8
+            // End Windows 10+
+            PTR32Z<KTSSX<32>> TssCopy; // 0xC
+            uint32_t ContextSwitches; // 0x10
+            KAFFINITYX<32> SetMemberCopy; // 0x14
+            PTR32Z<TEBX<32>> Used_Self; // 0x18
+        };
+    };
+    PTR32Z<KPCRX<32, T>> Self; // 0x1C
+    PTR32Z<KPRCBX<32>> Prcb; // 0x20
+    KIRQLX Irql; // 0x24
+    __x86_padding(0x3); // 0x25 (do not use, sometimes written as 32 bits)
+    uint32_t IRR; // 0x28
+    uint32_t IrrActive; // 0x2C
+    uint32_t IDR; // 0x30
+    PTR32Z<DBGKD_GET_VERSION64X<32>> KdVersionBlock; // 0x34
+    PTR32Z<KIDTENTRYX<32>> IDT; // 0x38
+    PTR32Z<KGDTENTRYX<32>> GDT; // 0x3C
+    PTR32Z<KTSSX<32>> TSS; // 0x40
+    uint16_t MajorVersion; // 0x44
+    uint16_t MinorVersion; // 0x46
+    KAFFINITYX<32> SetMember; // 0x48
+    uint32_t StallScaleFactor; // 0x4C
+    // Begin Windows XP-
+    uint8_t DebugActive; // 0x50
+    // End Windows XP-
+    uint8_t Number; // 0x51
+    uint8_t Spare0; // 0x52
+    uint8_t SecondLevelCacheAssociativity; // 0x53
+    uint8_t VdmAlert; // 0x54
+    __x86_padding(0x3); // 0x55
+    uint32_t KernelReserved[14]; // 0x58
+    uint32_t SecondLevelCacheSize; // 0x90
+    uint32_t HalReserved[16]; // 0x94
+    uint32_t InterruptMode; // 0xD4
+    uint8_t Spare1; // 0xD8
+    __x86_padding(0x3); // 0xD9
+    uint32_t KernelReserved2[17]; // 0xDC
+    // 0x120
+};
+ValidateStructSize(0x120, KPCRX_base<32>);
+ValidateStructAlignment(0x4, KPCRX_base<32>);
+
+template<typename T>
+struct alignas(64) KPCRX_base<64, T> {
+    union {
+        NT_TIBX<64, T> NtTib; // 0x0
+        uint8_t arbitrary_offset[0]; // 0x0
+        struct {
+            PTR64Z<KGDTENTRYX<64>> GdtBase; // 0x0
+            PTR64Z<KTSSX<64>> TssBase; // 0x8
+            uint64_t UserRsp; // 0x10
+            PTR64Z<KPCRX<64, T>> Self; // 0x18
+            PTR64Z<KPRCBX<64>> CurrentPrcb; // 0x20
+            PTR64Z<KSPIN_LOCK_QUEUEX<64>> LockArray; // 0x28
+            PTR64Z<TEBX<64>> Used_Self; // 0x30
+        };
+    };
+    PTR64Z<KIDTENTRYX<64>> IdtBase; // 0x38
+    uint64_t Unused[2]; // 0x40
+    KIRQLX Irql; // 0x50
+    uint8_t SecondLevelCacheAssociativity; // 0x51
+    uint8_t ObsoleteNumber; // 0x52
+    uint8_t Fill0; // 0x53
+    uint32_t Unused0[3]; // 0x54
+    uint16_t MajorVersion; // 0x60
+    uint16_t MinorVersion; // 0x62
+    uint32_t StallScaleFactor; // 0x64
+    PTR64Z<> Unused1[3]; // 0x68
+    uint32_t KernelReserved[15]; // 0x80
+    uint32_t SecondLevelCacheSize; // 0xBC
+    uint32_t HalReserved[16]; // 0xC0
+    uint32_t Unused2; // 0x100
+    PTR64Z<> KdVersionBlock; // 0x108
+    PTR64Z<> Unused3; // 0x110
+    uint32_t PcrAlign1[24]; // 0x118
+    // 0x180
+};
+ValidateStructSize(0x180, KPCRX_base<64>);
+ValidateStructAlignment(64, KPCRX_base<64>);
+
+template<typename T>
+struct KPCRX<32, T> : KPCRX_base<32, T> {
+    KPRCBX<32> PrcbData;
+};
+
+template<typename T>
+struct KPCRX<64, T> : KPCRX_base<64, T> {
+    KPRCBX<64> Prcb;
+};
+
+__if_not_exists(KPCR) {
+    using KPCR = KPCRX<>;
+}
 
 /*========================================
     Functions

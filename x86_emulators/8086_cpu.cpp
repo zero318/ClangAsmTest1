@@ -32,7 +32,7 @@ static inline constexpr size_t MAX_MEMORY = 1_MB;
 
 #include "z86_core_internal_pre.h"
 
-struct z86Context : z86Core<z8086> {
+struct z86Context : z86Core<z80286> {
 
     inline void check_for_software_interrupt() {
         int16_t pending_software = this->pending_sinterrupt;
@@ -237,6 +237,8 @@ void z86_execute_impl() {
         T =     Reg Type        Mem Type        Imm Type
             b = Byte GPR        Byte memory     8 bit immediate (sign extended to opsize if needed)
             w = Word GPR        Word memory     16 bit immediate
+            i = Dword GPR       Dword memory
+            q = Qword GPR       Qword memory
             v = Opsize GPR      Opsize memory   Opsize immediate
             s = Segment reg     Word memory     16/32 bit immediate sign extended to opsize
             m = MMX reg         Qword memory
@@ -251,14 +253,18 @@ void z86_execute_impl() {
                 Other types:
             o = Addrsize absolute memory offset
             p = Opsize GPR, Opsize memory (word/dword only)
-            y = Opsize GPR, Opsize memory (dword/qword only)
+            g = Opsize GPR, Opsize memory (dword/qword only)
+            f = Max opsize GPR, max opsize memory
 
-        M = Memory size override (Used when memory form has different size)
+        M = Modifier
             F = Extra word of memory (LDS type opcodes)
             2 = Two consecutive opsize memory locations (literally just BOUND)
-            W = Word memory
-            D = Dword memory
-            Q = Qword memory
+            Z = Always zero extend to full GPR
+            B = Byte element    Byte memory
+            W = Word element    Word memory
+            D = Dword element   Dword memory
+            Q = Qword element   Qword memory
+            O = Oword element   Oword memory
     */
 
     for (;;) {
@@ -2709,9 +2715,10 @@ void z86_execute_impl() {
                     case Opcode66Prefix: // MOVAPD Rx, Mx
                         THROW_UD_WITHOUT_FLAG(ctx.CPUID_SSE2);
                         goto movups_rm;
-                    case OpcodeF3Prefix:
-                    case OpcodeF2Prefix:
+                    case OpcodeF3Prefix: // VMOVNRAPS Mz, Rz (MVEX, K10M only)
+                    case OpcodeF2Prefix: // VMOVNRAPS Mz, Rz (MVEX, K10M only)
                         ALWAYS_UD();
+                        goto movups_rm;
                 }
                 break;
             case 0x129:
@@ -2870,6 +2877,7 @@ void z86_execute_impl() {
             case 0x142: // CMOVC Rv, Mv
                 // KANDN Rk, Vk, Mk (VEX)
             case 0x143: // CMOVNC Rv, Mv
+                // KANDNR Rk, Vk, Mk (VEX, K10M only)
                 THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
                 FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) z86call {
                     ctx.CMOVCC<CondNC>(dst, src, opcode_byte & 1);
@@ -2897,7 +2905,9 @@ void z86_execute_impl() {
                 }));
                 break;
             case 0x148: // CMOVS Rv, Mv
+                // KMERGE2L1H Rk, Mk (VEX, K10M only)
             case 0x149: // CMOVNS Rv, Mv
+                // KMERGE2L1L Rk, Mk (VEX, K10M only)
                 THROW_UD_WITHOUT_FLAG(ctx.CPUID_CMOV);
                 FAULT_CHECK(ctx.binopRM(pc, [=](auto& dst, auto src) z86call {
                     ctx.CMOVCC<CondNS>(dst, src, opcode_byte & 1);
@@ -3824,6 +3834,7 @@ void z86_execute_impl() {
                 break;
             case 0x194: // SETZ Mb
             case 0x195: // SETNZ Mb
+                // KCONCATH Rq, Vk, Mk (VEX, K10M only)
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) z86call {
                     ctx.SETCC<CondNZ>(dst, opcode_byte & 1);
@@ -3832,6 +3843,7 @@ void z86_execute_impl() {
                 break;
             case 0x196: // SETBE Mb
             case 0x197: // SETA Mb
+                // KCONCATL Rq, Vk, Mk (VEX, K10M only)
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.unopM<OP_BYTE | OP_NO_READ>(pc, [=](auto& dst, uint8_t r) z86call {
                     ctx.SETCC<CondA>(dst, opcode_byte & 1);
@@ -4035,6 +4047,7 @@ void z86_execute_impl() {
             case 0x1BC: // BSF Rv, Mv
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 if (ctx.rep_type > 0) { // TZCNT Rv, Mv
+                    // TZCNTI Rv, Mv (K10M only)
                     // TODO
                 }
                 FAULT_CHECK(ctx.binopRM(pc, [](auto& dst, auto src) z86call {

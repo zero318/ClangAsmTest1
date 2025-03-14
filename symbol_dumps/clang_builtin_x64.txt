@@ -1,0 +1,3258 @@
+Microsoft (R) COFF/PE Dumper Version 14.29.30151.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+
+Dump of file F:\Program Files\LLVM\lib\clang\17\lib\windows\clang_rt.builtins-x86_64.lib
+
+File Type: LIBRARY
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length    6, #relocs    0, #linenums    0, checksum 46B0DE5A, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __floatdisf
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    floatdisf.c
+
+String Table Size = 0x1E bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length    6, #relocs    0, #linenums    0, checksum 8DEC0DFF, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __floatdidf
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    floatdidf.c
+
+String Table Size = 0x1E bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length  7C9, #relocs   35, #linenums    0, checksum  46A02EC, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __cpu_indicator_init
+009 00000000 SECTA  notype       Static       | .rdata
+    Section length  32C, #relocs   CB, #linenums    0, checksum 62A71F37, selection    5 (pick associative Section 0x4)
+00B 00000000 SECTB  notype       Static       | .xdata
+    Section length   14, #relocs    0, #linenums    0, checksum 86FFEFD4, selection    5 (pick associative Section 0x4)
+00D 00000000 SECT5  notype       Static       | .bss
+    Section length   10, #relocs    0, #linenums    0, checksum        0, selection    1 (pick no duplicates)
+00F 00000000 SECT5  notype       External     | __cpu_model
+010 00000000 SECT6  notype       Static       | .bss
+    Section length    4, #relocs    0, #linenums    0, checksum        0, selection    1 (pick no duplicates)
+012 00000000 SECT6  notype       External     | __cpu_features2
+013 00000000 SECT7  notype       Static       | .CRT$XCA00090
+    Section length    8, #relocs    1, #linenums    0, checksum        0
+015 00000000 SECT8  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+017 00000000 SECTC  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum A04E6292, selection    5 (pick associative Section 0x4)
+019 00000000 SECT9  notype       Static       | .llvm_addrsig
+    Section length    1, #relocs    0, #linenums    0, checksum  EDB8832
+01B 00000000 ABS    notype       Static       | @feat.00
+01C 00000000 DEBUG  notype       Filename     | .file
+    cpu_model.c
+
+String Table Size = 0x51 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length    1, #relocs    0, #linenums    0, checksum  26D930A, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __clear_cache
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    clear_cache.c
+
+String Table Size = 0x20 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length  1DE, #relocs    C, #linenums    0, checksum D3336833, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __gcc_personality_v0
+009 00000000 SECTA  notype       Static       | .xdata
+    Section length   18, #relocs    0, #linenums    0, checksum 1E9CB477, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .text
+    Section length   DF, #relocs    7, #linenums    0, checksum 4F578A9A, selection    1 (pick no duplicates)
+00D 00000000 SECT5  notype ()    Static       | readEncodedPointer
+00E 00000000 SECTB  notype       Static       | .rdata
+    Section length   34, #relocs    D, #linenums    0, checksum F96A92DF, selection    5 (pick associative Section 0x5)
+010 00000000 SECTC  notype       Static       | .xdata
+    Section length    C, #relocs    0, #linenums    0, checksum C9ADBD79, selection    5 (pick associative Section 0x5)
+012 00000000 SECT6  notype       Static       | .rdata
+    Section length   13, #relocs    0, #linenums    0, checksum  1988EAD, selection    2 (pick any)
+014 00000000 SECT6  notype       External     | ??_C@_0BD@CEGPLIDN@readEncodedPointer?$AA@ (`string')
+015 00000000 SECT7  notype       Static       | .rdata
+    Section length   56, #relocs    0, #linenums    0, checksum 753C25E3, selection    2 (pick any)
+017 00000000 SECT7  notype       External     | ??_C@_0FG@PCKAGJDJ@C?3?2src?2llvm_package_17?40?41?2llvm?9@ (`string')
+018 00000000 SECT8  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+01A 00000000 SECTD  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum B5E06F9A, selection    5 (pick associative Section 0x4)
+01C 00000000 SECTE  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum DF3D64B0, selection    5 (pick associative Section 0x5)
+01E 00000000 SECT9  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000009
+020 00000000 ABS    notype       Static       | @feat.00
+021 00000000 UNDEF  notype       External     | __security_cookie
+022 00000000 UNDEF  notype       External     | _Unwind_GetLanguageSpecificData
+023 00000000 UNDEF  notype       External     | _Unwind_GetIP
+024 00000000 UNDEF  notype       External     | _Unwind_GetRegionStart
+025 00000000 UNDEF  notype       External     | _Unwind_SetGR
+026 00000000 UNDEF  notype       External     | _Unwind_SetIP
+027 00000000 UNDEF  notype       External     | __security_check_cookie
+028 00000000 UNDEF  notype       External     | __compilerrt_abort_impl
+029 00000000 DEBUG  notype       Filename     | .file
+    gcc_personality_v0.c
+
+String Table Size = 0x144 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   60, #relocs    7, #linenums    0, checksum 1180986E, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __eprintf
+009 00000000 SECTC  notype       Static       | .xdata
+    Section length   10, #relocs    0, #linenums    0, checksum F343BAA3, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .text
+    Section length   64, #relocs    4, #linenums    0, checksum 623F2B96, selection    2 (pick any)
+00D 00000000 SECT5  notype ()    External     | fprintf
+00E 00000000 SECTD  notype       Static       | .xdata
+    Section length    C, #relocs    0, #linenums    0, checksum 47A30B67, selection    5 (pick associative Section 0x5)
+010 00000000 SECT6  notype       Static       | .text
+    Section length    8, #relocs    1, #linenums    0, checksum 411950D3, selection    2 (pick any)
+012 00000000 SECT6  notype ()    External     | __local_stdio_printf_options
+013 00000000 SECT7  notype       Static       | .rdata
+    Section length    A, #relocs    0, #linenums    0, checksum F8F918FD, selection    2 (pick any)
+015 00000000 SECT7  notype       External     | ??_C@_09OEIMIPHE@__eprintf?$AA@ (`string')
+016 00000000 SECT8  notype       Static       | .rdata
+    Section length   4B, #relocs    0, #linenums    0, checksum 8265A81F, selection    2 (pick any)
+018 00000000 SECT8  notype       External     | ??_C@_0EL@JPLIKAMM@C?3?2src?2llvm_package_17?40?41?2llvm?9@ (`string')
+019 00000000 SECT9  notype       Static       | .bss
+    Section length    8, #relocs    0, #linenums    0, checksum        0, selection    1 (pick no duplicates)
+01B 00000000 SECT9  notype       Static       | __local_stdio_printf_options._OptionsStorage
+01C 00000000 SECTA  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+01E 00000000 SECTE  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum D0EBA0BB, selection    5 (pick associative Section 0x4)
+020 00000000 SECTF  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 54A1AE41, selection    5 (pick associative Section 0x5)
+022 00000000 SECTB  notype       Static       | .llvm_addrsig
+    Section length    1, #relocs    0, #linenums    0, checksum 8A65C9EC
+024 00000000 ABS    notype       Static       | @feat.00
+025 00000000 UNDEF  notype       External     | __acrt_iob_func
+026 00000000 UNDEF  notype       External     | fflush
+027 00000000 UNDEF  notype       External     | __compilerrt_abort_impl
+028 00000000 UNDEF  notype       External     | __security_cookie
+029 00000000 UNDEF  notype       External     | __stdio_common_vfprintf
+02A 00000000 UNDEF  notype       External     | __security_check_cookie
+02B 00000000 DEBUG  notype       Filename     | .file
+    eprintf.c
+
+String Table Size = 0x12C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   57, #relocs    4, #linenums    0, checksum 241D5309, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __enable_execute_stack
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum A627E971, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 5FE3FADF, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 UNDEF  notype       External     | __security_cookie
+013 00000000 UNDEF  notype       External     | __imp_VirtualQuery
+014 00000000 UNDEF  notype       External     | __imp_VirtualProtect
+015 00000000 UNDEF  notype       External     | __security_check_cookie
+016 00000000 DEBUG  notype       Filename     | .file
+    enable_execute_stack.c
+
+String Table Size = 0x7B bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length  1DD, #relocs   1D, #linenums    0, checksum FFDE2B90, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __emutls_get_address
+009 00000000 SECT17 notype       Static       | .xdata
+    Section length   10, #relocs    0, #linenums    0, checksum  FD4199A, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .text
+    Section length    8, #relocs    1, #linenums    0, checksum 411950D3, selection    2 (pick any)
+00D 00000000 SECT5  notype ()    External     | __local_stdio_printf_options
+00E 00000000 SECT6  notype       Static       | .text
+    Section length   7B, #relocs    D, #linenums    0, checksum 6039D89A, selection    1 (pick no duplicates)
+010 00000000 SECT6  notype ()    Static       | emutls_init
+011 00000000 SECT18 notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x6)
+013 00000000 SECT7  notype       Static       | .text
+    Section length   A5, #relocs    9, #linenums    0, checksum 6C9B9A79, selection    1 (pick no duplicates)
+015 00000000 SECT7  notype ()    Static       | win_error
+016 00000000 SECT19 notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum 4EBA4287, selection    5 (pick associative Section 0x7)
+018 00000000 SECT8  notype       Static       | .text
+    Section length   9A, #relocs    B, #linenums    0, checksum 8A5BD251, selection    1 (pick no duplicates)
+01A 00000000 SECT8  notype ()    Static       | emutls_exit
+01B 00000000 SECT1A notype       Static       | .xdata
+    Section length    C, #relocs    0, #linenums    0, checksum C9ADBD79, selection    5 (pick associative Section 0x8)
+01D 00000000 SECT9  notype       Static       | .text
+    Section length   64, #relocs    4, #linenums    0, checksum 623F2B96, selection    2 (pick any)
+01F 00000000 SECT9  notype ()    External     | fprintf
+020 00000000 SECT1B notype       Static       | .xdata
+    Section length    C, #relocs    0, #linenums    0, checksum 47A30B67, selection    5 (pick associative Section 0x9)
+022 00000000 SECTA  notype       Static       | .bss
+    Section length    8, #relocs    0, #linenums    0, checksum        0, selection    1 (pick no duplicates)
+024 00000000 SECTA  notype       Static       | __local_stdio_printf_options._OptionsStorage
+025 00000000 SECTB  notype       Static       | .bss
+    Section length    8, #relocs    0, #linenums    0, checksum        0, selection    1 (pick no duplicates)
+027 00000000 SECTB  notype       Static       | emutls_num_object
+028 00000000 SECTC  notype       Static       | .bss
+    Section length    8, #relocs    0, #linenums    0, checksum        0, selection    1 (pick no duplicates)
+02A 00000000 SECTC  notype       Static       | emutls_init_once.once
+02B 00000000 SECTD  notype       Static       | .bss
+    Section length    8, #relocs    0, #linenums    0, checksum        0, selection    1 (pick no duplicates)
+02D 00000000 SECTD  notype       Static       | emutls_mutex
+02E 00000000 SECTE  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum 7FB7AEFC, selection    2 (pick any)
+030 00000000 SECTE  notype       External     | ??_C@_0BA@GMPDBKFG@_aligned_malloc?$AA@ (`string')
+031 00000000 SECTF  notype       Static       | .data
+    Section length    4, #relocs    0, #linenums    0, checksum DEBB20E3, selection    1 (pick no duplicates)
+033 00000000 SECTF  notype       Static       | emutls_tls_index
+034 00000000 SECT10 notype       Static       | .rdata
+    Section length    9, #relocs    0, #linenums    0, checksum 9117D07F, selection    2 (pick any)
+036 00000000 SECT10 notype       External     | ??_C@_08IIOBDLCO@TlsAlloc?$AA@ (`string')
+037 00000000 SECT11 notype       Static       | .rdata
+    Section length   13, #relocs    0, #linenums    0, checksum 72D42BDC, selection    2 (pick any)
+039 00000000 SECT11 notype       External     | ??_C@_0BD@FHCDBNEM@Windows?5error?3?5?$CFs?6?$AA@ (`string')
+03A 00000000 SECT12 notype       Static       | .rdata
+    Section length   1B, #relocs    0, #linenums    0, checksum 5D23D950, selection    2 (pick any)
+03C 00000000 SECT12 notype       External     | ??_C@_0BL@LIKGHEBM@Unknown?5Windows?5error?3?5?$CFs?6?$AA@ (`string')
+03D 00000000 SECT13 notype       Static       | .rdata
+    Section length    C, #relocs    0, #linenums    0, checksum  7D7A7CB, selection    2 (pick any)
+03F 00000000 SECT13 notype       External     | ??_C@_0M@IDPNJOFL@TlsGetValue?$AA@ (`string')
+040 00000000 SECT14 notype       Static       | .rdata
+    Section length    C, #relocs    0, #linenums    0, checksum F6FBB4B6, selection    2 (pick any)
+042 00000000 SECT14 notype       External     | ??_C@_0M@HCNBINCG@TlsSetValue?$AA@ (`string')
+043 00000000 SECT15 notype       Static       | .drectve
+    Section length   5A, #relocs    0, #linenums    0, checksum  82DC52A
+045 00000000 SECT1C notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 3B6F6879, selection    5 (pick associative Section 0x4)
+047 00000000 SECT1D notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum F13A8DC6, selection    5 (pick associative Section 0x6)
+049 00000000 SECT1E notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum E2ADE9E8, selection    5 (pick associative Section 0x7)
+04B 00000000 SECT1F notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum BE40A839, selection    5 (pick associative Section 0x8)
+04D 00000000 SECT20 notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 54A1AE41, selection    5 (pick associative Section 0x9)
+04F 00000000 SECT16 notype       Static       | .llvm_addrsig
+    Section length    4, #relocs    0, #linenums    0, checksum 6BFB5949
+051 00000000 ABS    notype       Static       | @feat.00
+052 00000000 UNDEF  notype       External     | __imp_InitOnceExecuteOnce
+053 00000000 UNDEF  notype       External     | __imp_EnterCriticalSection
+054 00000000 UNDEF  notype       External     | __imp_LeaveCriticalSection
+055 00000000 UNDEF  notype       External     | __imp_TlsGetValue
+056 00000000 UNDEF  notype       External     | realloc
+057 00000000 UNDEF  notype       External     | memset
+058 00000000 UNDEF  notype       External     | __imp_GetLastError
+059 00000000 UNDEF  notype       External     | malloc
+05A 00000000 UNDEF  notype       External     | __imp_TlsSetValue
+05B 00000000 UNDEF  notype       External     | _aligned_malloc
+05C 00000000 UNDEF  notype       External     | memcpy
+05D 00000000 UNDEF  notype       External     | abort
+05E 00000000 UNDEF  notype       External     | __imp_InitializeCriticalSection
+05F 00000000 UNDEF  notype       External     | __imp_TlsAlloc
+060 00000000 UNDEF  notype       External     | atexit
+061 00000000 UNDEF  notype       External     | __security_cookie
+062 00000000 UNDEF  notype       External     | __imp_FormatMessageA
+063 00000000 UNDEF  notype       External     | __acrt_iob_func
+064 00000000 UNDEF  notype       External     | __imp_LocalFree
+065 00000000 UNDEF  notype       External     | __security_check_cookie
+066 00000000 UNDEF  notype       External     | __imp_DeleteCriticalSection
+067 00000000 UNDEF  notype       External     | _aligned_free
+068 00000000 UNDEF  notype       External     | __imp_TlsFree
+069 00000000 UNDEF  notype       External     | __stdio_common_vfprintf
+06A 00000000 DEBUG  notype       Filename     | .file
+    emutls.c
+
+String Table Size = 0x348 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   6D, #relocs    3, #linenums    0, checksum  4030EFC, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __umodti3
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length    C, #relocs    0, #linenums    0, checksum 5F94A0C4, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 4BEEB56A, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 UNDEF  notype       External     | __security_cookie
+013 00000000 UNDEF  notype       External     | __udivmodti4
+014 00000000 UNDEF  notype       External     | __security_check_cookie
+015 00000000 DEBUG  notype       Filename     | .file
+    umodti3.c
+
+String Table Size = 0x53 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   D1, #relocs    0, #linenums    0, checksum 41E415AB, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __umodsi3
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum 51EA74CA, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum CAB77682, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 DEBUG  notype       Filename     | .file
+    umodsi3.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   E3, #relocs    0, #linenums    0, checksum 1C5DFEC2, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __umoddi3
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum 51EA74CA, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum  D5F2282, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 DEBUG  notype       Filename     | .file
+    umoddi3.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   69, #relocs    3, #linenums    0, checksum 947767F3, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __udivti3
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length    C, #relocs    0, #linenums    0, checksum E14D948A, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum CFA4BB90, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 UNDEF  notype       External     | __security_cookie
+013 00000000 UNDEF  notype       External     | __udivmodti4
+014 00000000 UNDEF  notype       External     | __security_check_cookie
+015 00000000 DEBUG  notype       Filename     | .file
+    udivti3.c
+
+String Table Size = 0x53 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   DA, #relocs    0, #linenums    0, checksum BF66C291, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __udivsi3
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum 51EA74CA, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 97DD6AD4, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 DEBUG  notype       Filename     | .file
+    udivsi3.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length  114, #relocs    0, #linenums    0, checksum 4FED47A5, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __udivmodti4
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum BCAC407E, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 5E863465, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 DEBUG  notype       Filename     | .file
+    udivmodti4.c
+
+String Table Size = 0x1F bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   22, #relocs    1, #linenums    0, checksum 9D85E7D0, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __udivmodsi4
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length    C, #relocs    0, #linenums    0, checksum  3A87E1E, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum BB53652B, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 UNDEF  notype       External     | __udivsi3
+013 00000000 DEBUG  notype       Filename     | .file
+    udivmodsi4.c
+
+String Table Size = 0x29 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length  263, #relocs    0, #linenums    0, checksum 41069243, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __udivmoddi4
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length    C, #relocs    0, #linenums    0, checksum 8BEDDE5D, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum C9FBB671, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 DEBUG  notype       Filename     | .file
+    udivmoddi4.c
+
+String Table Size = 0x1F bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   E2, #relocs    0, #linenums    0, checksum 5F954993, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __udivdi3
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum 51EA74CA, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum C1F5221C, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 DEBUG  notype       Filename     | .file
+    udivdi3.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   2C, #relocs    0, #linenums    0, checksum 63CF7659, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __ucmpti2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    ucmpti2.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   2D, #relocs    0, #linenums    0, checksum 280F3040, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __ucmpdi2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    ucmpdi2.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   FA, #relocs    0, #linenums    0, checksum 79F42E68, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __truncsfhf2
+009 00000000 SECT5  notype       Static       | .text
+    Section length    5, #relocs    1, #linenums    0, checksum 25C4A5AE, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __gnu_f2h_ieee
+00C 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00E 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+010 00000000 ABS    notype       Static       | @feat.00
+011 00000000 UNDEF  notype       External     | _fltused
+012 00000000 DEBUG  notype       Filename     | .file
+    truncsfhf2.c
+
+String Table Size = 0x2E bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length  124, #relocs    0, #linenums    0, checksum 95E4889B, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __truncdfsf2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    truncdfsf2.c
+
+String Table Size = 0x1F bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length  12E, #relocs    0, #linenums    0, checksum C1FB6A65, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __truncdfhf2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    truncdfhf2.c
+
+String Table Size = 0x1F bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+008 00000000 SECT5  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000005
+00A 00000000 ABS    notype       Static       | @feat.00
+00B 00000000 DEBUG  notype       Filename     | .file
+    trampoline_setup.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   74, #relocs    6, #linenums    0, checksum 5882C534, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __subvti3
+009 00000000 SECT9  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .rdata
+    Section length    A, #relocs    0, #linenums    0, checksum 1DE523F7, selection    2 (pick any)
+00D 00000000 SECT5  notype       External     | ??_C@_09BJALEHO@__subvti3?$AA@ (`string')
+00E 00000000 SECT6  notype       Static       | .rdata
+    Section length   4B, #relocs    0, #linenums    0, checksum C9814CAD, selection    2 (pick any)
+010 00000000 SECT6  notype       External     | ??_C@_0EL@NEFMEEHO@C?3?2src?2llvm_package_17?40?41?2llvm?9@ (`string')
+011 00000000 SECT7  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+013 00000000 SECTA  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 281A9F6A, selection    5 (pick associative Section 0x4)
+015 00000000 SECT8  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000008
+017 00000000 ABS    notype       Static       | @feat.00
+018 00000000 UNDEF  notype       External     | __compilerrt_abort_impl
+019 00000000 DEBUG  notype       Filename     | .file
+    subvti3.c
+
+String Table Size = 0x8F bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   4A, #relocs    6, #linenums    0, checksum D40A1FDF, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __subvsi3
+009 00000000 SECT9  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .rdata
+    Section length    A, #relocs    0, #linenums    0, checksum 80321B4E, selection    2 (pick any)
+00D 00000000 SECT5  notype       External     | ??_C@_09JMEHIMMH@__subvsi3?$AA@ (`string')
+00E 00000000 SECT6  notype       Static       | .rdata
+    Section length   4B, #relocs    0, #linenums    0, checksum D4847C15, selection    2 (pick any)
+010 00000000 SECT6  notype       External     | ??_C@_0EL@MJFJHEMG@C?3?2src?2llvm_package_17?40?41?2llvm?9@ (`string')
+011 00000000 SECT7  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+013 00000000 SECTA  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum B85DDE25, selection    5 (pick associative Section 0x4)
+015 00000000 SECT8  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000008
+017 00000000 ABS    notype       Static       | @feat.00
+018 00000000 UNDEF  notype       External     | __compilerrt_abort_impl
+019 00000000 DEBUG  notype       Filename     | .file
+    subvsi3.c
+
+String Table Size = 0x90 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   4F, #relocs    6, #linenums    0, checksum 3C803382, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __subvdi3
+009 00000000 SECT9  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .rdata
+    Section length    A, #relocs    0, #linenums    0, checksum 4DFC7468, selection    2 (pick any)
+00D 00000000 SECT5  notype       External     | ??_C@_09FBIJODOB@__subvdi3?$AA@ (`string')
+00E 00000000 SECT6  notype       Static       | .rdata
+    Section length   4B, #relocs    0, #linenums    0, checksum CA574E36, selection    2 (pick any)
+010 00000000 SECT6  notype       External     | ??_C@_0EL@NHIKEGOF@C?3?2src?2llvm_package_17?40?41?2llvm?9@ (`string')
+011 00000000 SECT7  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+013 00000000 SECTA  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum F0BDD041, selection    5 (pick associative Section 0x4)
+015 00000000 SECT8  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000008
+017 00000000 ABS    notype       Static       | @feat.00
+018 00000000 UNDEF  notype       External     | __compilerrt_abort_impl
+019 00000000 DEBUG  notype       Filename     | .file
+    subvdi3.c
+
+String Table Size = 0x90 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum 9A6116EA, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __xmm@80000000800000008000000080000000
+009 00000000 SECT5  notype       Static       | .text
+    Section length    C, #relocs    2, #linenums    0, checksum F32B79C8, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __subsf3
+00C 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00E 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+010 00000000 ABS    notype       Static       | @feat.00
+011 00000000 UNDEF  notype       External     | __addsf3
+012 00000000 UNDEF  notype       External     | _fltused
+013 00000000 DEBUG  notype       Filename     | .file
+    subsf3.c
+
+String Table Size = 0x39 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum 8BED836F, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __xmm@80000000000000008000000000000000
+009 00000000 SECT5  notype       Static       | .text
+    Section length    C, #relocs    2, #linenums    0, checksum F32B79C8, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __subdf3
+00C 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00E 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+010 00000000 ABS    notype       Static       | @feat.00
+011 00000000 UNDEF  notype       External     | __adddf3
+012 00000000 UNDEF  notype       External     | _fltused
+013 00000000 DEBUG  notype       Filename     | .file
+    subdf3.c
+
+String Table Size = 0x39 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length    4, #relocs    0, #linenums    0, checksum 8DE5B576, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __real@3f800000
+009 00000000 SECT5  notype       Static       | .text
+    Section length   65, #relocs    3, #linenums    0, checksum 4D177CB1, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __powisf2
+00C 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00E 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+010 00000000 ABS    notype       Static       | @feat.00
+011 00000000 UNDEF  notype       External     | _fltused
+012 00000000 DEBUG  notype       Filename     | .file
+    powisf2.c
+
+String Table Size = 0x2C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length    8, #relocs    0, #linenums    0, checksum A2DACC80, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __real@3ff0000000000000
+009 00000000 SECT5  notype       Static       | .text
+    Section length   68, #relocs    3, #linenums    0, checksum 5D429C20, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __powidf2
+00C 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00E 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+010 00000000 ABS    notype       Static       | @feat.00
+011 00000000 UNDEF  notype       External     | _fltused
+012 00000000 DEBUG  notype       Filename     | .file
+    powidf2.c
+
+String Table Size = 0x34 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   96, #relocs    0, #linenums    0, checksum D5FD3127, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __popcountti2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    popcountti2.c
+
+String Table Size = 0x20 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   3B, #relocs    0, #linenums    0, checksum 1E38E79B, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __popcountsi2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    popcountsi2.c
+
+String Table Size = 0x20 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   62, #relocs    0, #linenums    0, checksum DF66159D, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __popcountdi2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    popcountdi2.c
+
+String Table Size = 0x20 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   36, #relocs    0, #linenums    0, checksum  8C5299F, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __parityti2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    parityti2.c
+
+String Table Size = 0x1E bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   26, #relocs    0, #linenums    0, checksum CBF6DDF5, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __paritysi2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    paritysi2.c
+
+String Table Size = 0x1E bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   2F, #relocs    0, #linenums    0, checksum E040C3A1, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __paritydi2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    paritydi2.c
+
+String Table Size = 0x1E bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+008 00000000 SECT5  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000005
+00A 00000000 ABS    notype       Static       | @feat.00
+00B 00000000 DEBUG  notype       Filename     | .file
+    os_version_check.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum EDB88320, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __xmm@80000000000000000000000000000000
+009 00000000 SECT5  notype       Static       | .text
+    Section length   53, #relocs    4, #linenums    0, checksum FA0E863F, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __negvti2
+00C 00000000 SECTA  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x5)
+00E 00000000 SECT6  notype       Static       | .rdata
+    Section length    A, #relocs    0, #linenums    0, checksum D4533B31, selection    2 (pick any)
+010 00000000 SECT6  notype       External     | ??_C@_09MICGKMLI@__negvti2?$AA@ (`string')
+011 00000000 SECT7  notype       Static       | .rdata
+    Section length   4B, #relocs    0, #linenums    0, checksum 474D6D85, selection    2 (pick any)
+013 00000000 SECT7  notype       External     | ??_C@_0EL@FKJAGFFG@C?3?2src?2llvm_package_17?40?41?2llvm?9@ (`string')
+014 00000000 SECT8  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+016 00000000 SECTB  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum DBA9F425, selection    5 (pick associative Section 0x5)
+018 00000000 SECT9  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000009
+01A 00000000 ABS    notype       Static       | @feat.00
+01B 00000000 UNDEF  notype       External     | __compilerrt_abort_impl
+01C 00000000 DEBUG  notype       Filename     | .file
+    negvti2.c
+
+String Table Size = 0xB7 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   2E, #relocs    3, #linenums    0, checksum 63AFC120, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __negvsi2
+009 00000000 SECT9  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .rdata
+    Section length    A, #relocs    0, #linenums    0, checksum 49840388, selection    2 (pick any)
+00D 00000000 SECT5  notype       External     | ??_C@_09FFPBJEAB@__negvsi2?$AA@ (`string')
+00E 00000000 SECT6  notype       Static       | .rdata
+    Section length   4B, #relocs    0, #linenums    0, checksum 5A485D3D, selection    2 (pick any)
+010 00000000 SECT6  notype       External     | ??_C@_0EL@EHJFFFOO@C?3?2src?2llvm_package_17?40?41?2llvm?9@ (`string')
+011 00000000 SECT7  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+013 00000000 SECTA  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum ECFC7064, selection    5 (pick associative Section 0x4)
+015 00000000 SECT8  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000008
+017 00000000 ABS    notype       Static       | @feat.00
+018 00000000 UNDEF  notype       External     | __compilerrt_abort_impl
+019 00000000 DEBUG  notype       Filename     | .file
+    negvsi2.c
+
+String Table Size = 0x90 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   37, #relocs    3, #linenums    0, checksum 732293B5, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __negvdi2
+009 00000000 SECT9  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .rdata
+    Section length    A, #relocs    0, #linenums    0, checksum 844A6CAE, selection    2 (pick any)
+00D 00000000 SECT5  notype       External     | ??_C@_09JIDPPLCH@__negvdi2?$AA@ (`string')
+00E 00000000 SECT6  notype       Static       | .rdata
+    Section length   4B, #relocs    0, #linenums    0, checksum 449B6F1E, selection    2 (pick any)
+010 00000000 SECT6  notype       External     | ??_C@_0EL@FJEGGHMN@C?3?2src?2llvm_package_17?40?41?2llvm?9@ (`string')
+011 00000000 SECT7  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+013 00000000 SECTA  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 8F085A64, selection    5 (pick associative Section 0x4)
+015 00000000 SECT8  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000008
+017 00000000 ABS    notype       Static       | @feat.00
+018 00000000 UNDEF  notype       External     | __compilerrt_abort_impl
+019 00000000 DEBUG  notype       Filename     | .file
+    negvdi2.c
+
+String Table Size = 0x90 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   1A, #relocs    0, #linenums    0, checksum A31A9710, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __negti2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    negti2.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum 9A6116EA, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __xmm@80000000800000008000000080000000
+009 00000000 SECT5  notype       Static       | .text
+    Section length    8, #relocs    1, #linenums    0, checksum 6DF2C72C, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __negsf2
+00C 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00E 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+010 00000000 ABS    notype       Static       | @feat.00
+011 00000000 UNDEF  notype       External     | _fltused
+012 00000000 DEBUG  notype       Filename     | .file
+    negsf2.c
+
+String Table Size = 0x39 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length    7, #relocs    0, #linenums    0, checksum 3299148E, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __negdi2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    negdi2.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum 8BED836F, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __xmm@80000000000000008000000000000000
+009 00000000 SECT5  notype       Static       | .text
+    Section length    8, #relocs    1, #linenums    0, checksum 6DF2C72C, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __negdf2
+00C 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00E 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+010 00000000 ABS    notype       Static       | @feat.00
+011 00000000 UNDEF  notype       External     | _fltused
+012 00000000 DEBUG  notype       Filename     | .file
+    negdf2.c
+
+String Table Size = 0x39 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum EDB88320, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __xmm@80000000000000000000000000000000
+009 00000000 SECT5  notype       Static       | .text
+    Section length  1FC, #relocs    F, #linenums    0, checksum 4408B793, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __mulvti3
+00C 00000000 SECTA  notype       Static       | .xdata
+    Section length   14, #relocs    0, #linenums    0, checksum DF96DD32, selection    5 (pick associative Section 0x5)
+00E 00000000 SECT6  notype       Static       | .rdata
+    Section length    A, #relocs    0, #linenums    0, checksum A43A7118, selection    2 (pick any)
+010 00000000 SECT6  notype       External     | ??_C@_09LIEPOGJB@__mulvXi3?$AA@ (`string')
+011 00000000 SECT7  notype       Static       | .rdata
+    Section length   53, #relocs    0, #linenums    0, checksum 895CC0F9, selection    2 (pick any)
+013 00000000 SECT7  notype       External     | ??_C@_0FD@EPBKDKD@C?3?2src?2llvm_package_17?40?41?2llvm?9@ (`string')
+014 00000000 SECT8  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+016 00000000 SECTB  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum  EB30AB1, selection    5 (pick associative Section 0x5)
+018 00000000 SECT9  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000009
+01A 00000000 ABS    notype       Static       | @feat.00
+01B 00000000 UNDEF  notype       External     | __udivti3
+01C 00000000 UNDEF  notype       External     | __compilerrt_abort_impl
+01D 00000000 DEBUG  notype       Filename     | .file
+    mulvti3.c
+
+String Table Size = 0xC0 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   F6, #relocs    C, #linenums    0, checksum 272C9868, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __mulvsi3
+009 00000000 SECT9  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .rdata
+    Section length    A, #relocs    0, #linenums    0, checksum A43A7118, selection    2 (pick any)
+00D 00000000 SECT5  notype       External     | ??_C@_09LIEPOGJB@__mulvXi3?$AA@ (`string')
+00E 00000000 SECT6  notype       Static       | .rdata
+    Section length   53, #relocs    0, #linenums    0, checksum 895CC0F9, selection    2 (pick any)
+010 00000000 SECT6  notype       External     | ??_C@_0FD@EPBKDKD@C?3?2src?2llvm_package_17?40?41?2llvm?9@ (`string')
+011 00000000 SECT7  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+013 00000000 SECTA  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 39041DCD, selection    5 (pick associative Section 0x4)
+015 00000000 SECT8  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000008
+017 00000000 ABS    notype       Static       | @feat.00
+018 00000000 UNDEF  notype       External     | __compilerrt_abort_impl
+019 00000000 DEBUG  notype       Filename     | .file
+    mulvsi3.c
+
+String Table Size = 0x8F bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length  109, #relocs    C, #linenums    0, checksum F64495AB, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __mulvdi3
+009 00000000 SECT9  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .rdata
+    Section length    A, #relocs    0, #linenums    0, checksum A43A7118, selection    2 (pick any)
+00D 00000000 SECT5  notype       External     | ??_C@_09LIEPOGJB@__mulvXi3?$AA@ (`string')
+00E 00000000 SECT6  notype       Static       | .rdata
+    Section length   53, #relocs    0, #linenums    0, checksum 895CC0F9, selection    2 (pick any)
+010 00000000 SECT6  notype       External     | ??_C@_0FD@EPBKDKD@C?3?2src?2llvm_package_17?40?41?2llvm?9@ (`string')
+011 00000000 SECT7  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+013 00000000 SECTA  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum B938109F, selection    5 (pick associative Section 0x4)
+015 00000000 SECT8  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000008
+017 00000000 ABS    notype       Static       | @feat.00
+018 00000000 UNDEF  notype       External     | __compilerrt_abort_impl
+019 00000000 DEBUG  notype       Filename     | .file
+    mulvdi3.c
+
+String Table Size = 0x8F bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   7A, #relocs    0, #linenums    0, checksum 9A64FD9F, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __multi3
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length    C, #relocs    0, #linenums    0, checksum 8BEDDE5D, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 3D908D58, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 DEBUG  notype       Filename     | .file
+    multi3.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length    4, #relocs    0, #linenums    0, checksum  B40BBE3, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __real@7fc00000
+009 00000000 SECT5  notype       Static       | .text
+    Section length  1DA, #relocs    1, #linenums    0, checksum 998D5A43, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __mulsf3
+00C 00000000 SECT8  notype       Static       | .xdata
+    Section length    C, #relocs    0, #linenums    0, checksum 8BEDDE5D, selection    5 (pick associative Section 0x5)
+00E 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+010 00000000 SECT9  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 31AA6160, selection    5 (pick associative Section 0x5)
+012 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+014 00000000 ABS    notype       Static       | @feat.00
+015 00000000 UNDEF  notype       External     | _fltused
+016 00000000 DEBUG  notype       Filename     | .file
+    mulsf3.c
+
+String Table Size = 0x22 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum 49699BA5, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __xmm@7fffffff7fffffff7fffffff7fffffff
+009 00000000 SECT5  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum 9A6116EA, selection    2 (pick any)
+00B 00000000 SECT5  notype       External     | __xmm@80000000800000008000000080000000
+00C 00000000 SECT6  notype       Static       | .rdata
+    Section length    4, #relocs    0, #linenums    0, checksum FB39F4E6, selection    2 (pick any)
+00E 00000000 SECT6  notype       External     | __real@7f800000
+00F 00000000 SECT7  notype       Static       | .text
+    Section length  2CB, #relocs    6, #linenums    0, checksum 357BD291, selection    1 (pick no duplicates)
+011 00000000 SECT7  notype ()    External     | __mulsc3
+012 00000000 SECTA  notype       Static       | .xdata
+    Section length   1C, #relocs    0, #linenums    0, checksum 452F2AFE, selection    5 (pick associative Section 0x7)
+014 00000000 SECT8  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+016 00000000 SECTB  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum B0534A48, selection    5 (pick associative Section 0x7)
+018 00000000 SECT9  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000009
+01A 00000000 ABS    notype       Static       | @feat.00
+01B 00000000 UNDEF  notype       External     | _fltused
+01C 00000000 DEBUG  notype       Filename     | .file
+    mulsc3.c
+
+String Table Size = 0x70 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum EDB88320, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __xmm@80000000000000000000000000000000
+009 00000000 SECT5  notype       Static       | .text
+    Section length  17F, #relocs    2, #linenums    0, checksum EAF283F0, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __muloti4
+00C 00000000 SECT8  notype       Static       | .xdata
+    Section length   14, #relocs    0, #linenums    0, checksum 80988D68, selection    5 (pick associative Section 0x5)
+00E 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+010 00000000 SECT9  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum D3078888, selection    5 (pick associative Section 0x5)
+012 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+014 00000000 ABS    notype       Static       | @feat.00
+015 00000000 UNDEF  notype       External     | __udivti3
+016 00000000 DEBUG  notype       Filename     | .file
+    muloti4.c
+
+String Table Size = 0x4D bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   7E, #relocs    0, #linenums    0, checksum 15A9058F, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __mulosi4
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    mulosi4.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   90, #relocs    0, #linenums    0, checksum 20F1BBAD, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __mulodi4
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    mulodi4.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   7F, #relocs    0, #linenums    0, checksum 7D06FEAA, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __muldi3
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length    C, #relocs    0, #linenums    0, checksum 8BEDDE5D, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 7570833C, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 DEBUG  notype       Filename     | .file
+    muldi3.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length    8, #relocs    0, #linenums    0, checksum 1CDF0718, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __real@7ff8000000000000
+009 00000000 SECT5  notype       Static       | .text
+    Section length  274, #relocs    1, #linenums    0, checksum BA7D04E8, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __muldf3
+00C 00000000 SECT8  notype       Static       | .xdata
+    Section length   14, #relocs    0, #linenums    0, checksum 86FFEFD4, selection    5 (pick associative Section 0x5)
+00E 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+010 00000000 SECT9  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum BF858E43, selection    5 (pick associative Section 0x5)
+012 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+014 00000000 ABS    notype       Static       | @feat.00
+015 00000000 UNDEF  notype       External     | _fltused
+016 00000000 DEBUG  notype       Filename     | .file
+    muldf3.c
+
+String Table Size = 0x2A bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum 58E50E20, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __xmm@7fffffffffffffff7fffffffffffffff
+009 00000000 SECT5  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum 8BED836F, selection    2 (pick any)
+00B 00000000 SECT5  notype       External     | __xmm@80000000000000008000000000000000
+00C 00000000 SECT6  notype       Static       | .rdata
+    Section length    8, #relocs    0, #linenums    0, checksum D4068D10, selection    2 (pick any)
+00E 00000000 SECT6  notype       External     | __real@7ff0000000000000
+00F 00000000 SECT7  notype       Static       | .text
+    Section length  323, #relocs    6, #linenums    0, checksum E78DA645, selection    1 (pick no duplicates)
+011 00000000 SECT7  notype ()    External     | __muldc3
+012 00000000 SECTA  notype       Static       | .xdata
+    Section length   1C, #relocs    0, #linenums    0, checksum CD6EB670, selection    5 (pick associative Section 0x7)
+014 00000000 SECT8  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+016 00000000 SECTB  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 46117F28, selection    5 (pick associative Section 0x7)
+018 00000000 SECT9  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000009
+01A 00000000 ABS    notype       Static       | @feat.00
+01B 00000000 UNDEF  notype       External     | _fltused
+01C 00000000 DEBUG  notype       Filename     | .file
+    muldc3.c
+
+String Table Size = 0x78 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   C2, #relocs    3, #linenums    0, checksum 1F52330A, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __modti3
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length   10, #relocs    0, #linenums    0, checksum 7485A90E, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 3883404A, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 UNDEF  notype       External     | __security_cookie
+013 00000000 UNDEF  notype       External     | __udivmodti4
+014 00000000 UNDEF  notype       External     | __security_check_cookie
+015 00000000 DEBUG  notype       Filename     | .file
+    modti3.c
+
+String Table Size = 0x49 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   1D, #relocs    1, #linenums    0, checksum 99C9E15B, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __modsi3
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length    C, #relocs    0, #linenums    0, checksum C9ADBD79, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum E7BE24FA, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 UNDEF  notype       External     | __divsi3
+013 00000000 DEBUG  notype       Filename     | .file
+    modsi3.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   66, #relocs    3, #linenums    0, checksum E8AE5DAD, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __moddi3
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length    C, #relocs    0, #linenums    0, checksum  61084E5, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 1684A93C, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 UNDEF  notype       External     | __security_cookie
+013 00000000 UNDEF  notype       External     | __udivmoddi4
+014 00000000 UNDEF  notype       External     | __security_check_cookie
+015 00000000 DEBUG  notype       Filename     | .file
+    moddi3.c
+
+String Table Size = 0x49 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   3D, #relocs    0, #linenums    0, checksum  90B90B4, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __lshrti3
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    lshrti3.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   37, #relocs    0, #linenums    0, checksum E051B7E4, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __lshrdi3
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    lshrdi3.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length    A, #relocs    1, #linenums    0, checksum 925D2B7F, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __compilerrt_abort_impl
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 91C01CC8, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 UNDEF  notype       External     | abort
+013 00000000 DEBUG  notype       Filename     | .file
+    int_util.c
+
+String Table Size = 0x2A bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length    3, #relocs    0, #linenums    0, checksum EC3ECBE3, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __fe_getround
+009 00000000 SECT5  notype       Static       | .text
+    Section length    3, #relocs    0, #linenums    0, checksum EC3ECBE3, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __fe_raise_inexact
+00C 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00E 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+010 00000000 ABS    notype       Static       | @feat.00
+011 00000000 DEBUG  notype       Filename     | .file
+    fp_mode.c
+
+String Table Size = 0x33 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length  110, #relocs    3, #linenums    0, checksum 90B15F95, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __floatuntisf
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length   10, #relocs    0, #linenums    0, checksum DBE2EADF, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum DACC3A9F, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 UNDEF  notype       External     | __security_cookie
+013 00000000 UNDEF  notype       External     | __clzti2
+014 00000000 UNDEF  notype       External     | __security_check_cookie
+015 00000000 UNDEF  notype       External     | _fltused
+016 00000000 DEBUG  notype       Filename     | .file
+    floatuntisf.c
+
+String Table Size = 0x4A bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length  14E, #relocs    3, #linenums    0, checksum 172D1187, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __floatuntidf
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length   10, #relocs    0, #linenums    0, checksum DBE2EADF, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 9A60DB6B, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 UNDEF  notype       External     | __security_cookie
+013 00000000 UNDEF  notype       External     | __clzti2
+014 00000000 UNDEF  notype       External     | __security_check_cookie
+015 00000000 UNDEF  notype       External     | _fltused
+016 00000000 DEBUG  notype       Filename     | .file
+    floatuntidf.c
+
+String Table Size = 0x4A bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   6E, #relocs    0, #linenums    0, checksum 9A8DE57E, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __floatunsisf
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    floatunsisf.c
+
+String Table Size = 0x20 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   37, #relocs    0, #linenums    0, checksum 1089FBF5, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __floatunsidf
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    floatunsidf.c
+
+String Table Size = 0x20 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   9A, #relocs    0, #linenums    0, checksum  6558652, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __floatundisf
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    floatundisf.c
+
+String Table Size = 0x20 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length    8, #relocs    0, #linenums    0, checksum 379E0257, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __real@c530000000100000
+009 00000000 SECT5  notype       Static       | .text
+    Section length   37, #relocs    1, #linenums    0, checksum 3A0E1F81, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __floatundidf
+00C 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00E 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+010 00000000 ABS    notype       Static       | @feat.00
+011 00000000 UNDEF  notype       External     | _fltused
+012 00000000 DEBUG  notype       Filename     | .file
+    floatundidf.c
+
+String Table Size = 0x38 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length  144, #relocs    3, #linenums    0, checksum FA1D8AD9, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __floattisf
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length   10, #relocs    0, #linenums    0, checksum 28812A24, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum  BA0C7A3, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 UNDEF  notype       External     | __security_cookie
+013 00000000 UNDEF  notype       External     | __clzti2
+014 00000000 UNDEF  notype       External     | __security_check_cookie
+015 00000000 UNDEF  notype       External     | _fltused
+016 00000000 DEBUG  notype       Filename     | .file
+    floattisf.c
+
+String Table Size = 0x48 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length  158, #relocs    3, #linenums    0, checksum D2F09D67, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __floattidf
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length   10, #relocs    0, #linenums    0, checksum 28812A24, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 20B4E3C7, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 UNDEF  notype       External     | __security_cookie
+013 00000000 UNDEF  notype       External     | __clzti2
+014 00000000 UNDEF  notype       External     | __security_check_cookie
+015 00000000 UNDEF  notype       External     | _fltused
+016 00000000 DEBUG  notype       Filename     | .file
+    floattidf.c
+
+String Table Size = 0x48 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   85, #relocs    0, #linenums    0, checksum 2F181F19, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __floatsisf
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    floatsisf.c
+
+String Table Size = 0x1E bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   4E, #relocs    0, #linenums    0, checksum D82BCD26, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __floatsidf
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    floatsidf.c
+
+String Table Size = 0x1E bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   8A, #relocs    0, #linenums    0, checksum F97508A2, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __fixunssfti
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    fixunssfti.c
+
+String Table Size = 0x1F bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   52, #relocs    0, #linenums    0, checksum 832317D0, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __fixunssfsi
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    fixunssfsi.c
+
+String Table Size = 0x1F bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length    8, #relocs    0, #linenums    0, checksum 4CD4ADAC, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __real@3df0000000000000
+009 00000000 SECT5  notype       Static       | .rdata
+    Section length    8, #relocs    0, #linenums    0, checksum F8DF139B, selection    2 (pick any)
+00B 00000000 SECT5  notype       External     | __real@c1f0000000000000
+00C 00000000 SECT6  notype       Static       | .text
+    Section length   45, #relocs    2, #linenums    0, checksum 5D164036, selection    1 (pick no duplicates)
+00E 00000000 SECT6  notype ()    External     | __fixunssfdi
+00F 00000000 SECT7  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+011 00000000 SECT8  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000008
+013 00000000 ABS    notype       Static       | @feat.00
+014 00000000 UNDEF  notype       External     | _fltused
+015 00000000 DEBUG  notype       Filename     | .file
+    fixunssfdi.c
+
+String Table Size = 0x4F bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   93, #relocs    0, #linenums    0, checksum 51A34890, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __fixunsdfti
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    fixunsdfti.c
+
+String Table Size = 0x1F bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   4E, #relocs    0, #linenums    0, checksum C5583AB8, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __fixunsdfsi
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    fixunsdfsi.c
+
+String Table Size = 0x1F bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length    8, #relocs    0, #linenums    0, checksum 4CD4ADAC, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __real@3df0000000000000
+009 00000000 SECT5  notype       Static       | .rdata
+    Section length    8, #relocs    0, #linenums    0, checksum F8DF139B, selection    2 (pick any)
+00B 00000000 SECT5  notype       External     | __real@c1f0000000000000
+00C 00000000 SECT6  notype       Static       | .text
+    Section length   43, #relocs    2, #linenums    0, checksum  2ABDE27, selection    1 (pick no duplicates)
+00E 00000000 SECT6  notype ()    External     | __fixunsdfdi
+00F 00000000 SECT7  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+011 00000000 SECT8  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000008
+013 00000000 ABS    notype       Static       | @feat.00
+014 00000000 UNDEF  notype       External     | _fltused
+015 00000000 DEBUG  notype       Filename     | .file
+    fixunsdfdi.c
+
+String Table Size = 0x4F bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   C2, #relocs    0, #linenums    0, checksum  9DE0F02, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __fixsfti
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    fixsfti.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   62, #relocs    0, #linenums    0, checksum 1C6E535A, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __fixsfsi
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    fixsfsi.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum 9A6116EA, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __xmm@80000000800000008000000080000000
+009 00000000 SECT5  notype       Static       | .text
+    Section length   29, #relocs    3, #linenums    0, checksum F50B8C65, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __fixsfdi
+00C 00000000 SECT8  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x5)
+00E 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+010 00000000 SECT9  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum E639797D, selection    5 (pick associative Section 0x5)
+012 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+014 00000000 ABS    notype       Static       | @feat.00
+015 00000000 UNDEF  notype       External     | __fixunssfdi
+016 00000000 UNDEF  notype       External     | _fltused
+017 00000000 DEBUG  notype       Filename     | .file
+    fixsfdi.c
+
+String Table Size = 0x50 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   CB, #relocs    0, #linenums    0, checksum 22C0B838, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __fixdfti
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    fixdfti.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   64, #relocs    0, #linenums    0, checksum  715D846, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __fixdfsi
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    fixdfsi.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum 8BED836F, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __xmm@80000000000000008000000000000000
+009 00000000 SECT5  notype       Static       | .text
+    Section length   2C, #relocs    3, #linenums    0, checksum 3923F3BA, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __fixdfdi
+00C 00000000 SECT8  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x5)
+00E 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+010 00000000 SECT9  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum AED97719, selection    5 (pick associative Section 0x5)
+012 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+014 00000000 ABS    notype       Static       | @feat.00
+015 00000000 UNDEF  notype       External     | __fixunsdfdi
+016 00000000 UNDEF  notype       External     | _fltused
+017 00000000 DEBUG  notype       Filename     | .file
+    fixdfdi.c
+
+String Table Size = 0x50 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   25, #relocs    0, #linenums    0, checksum 59E53EE9, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __ffsti2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    ffsti2.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length    E, #relocs    0, #linenums    0, checksum 87B6B3DD, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __ffssi2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    ffssi2.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   1E, #relocs    0, #linenums    0, checksum 78C7626D, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __ffsdi2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    ffsdi2.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   74, #relocs    0, #linenums    0, checksum A7D8C09F, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __extendhfsf2
+009 00000000 SECT5  notype       Static       | .text
+    Section length    5, #relocs    1, #linenums    0, checksum 25C4A5AE, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __gnu_h2f_ieee
+00C 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00E 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+010 00000000 ABS    notype       Static       | @feat.00
+011 00000000 UNDEF  notype       External     | _fltused
+012 00000000 DEBUG  notype       Filename     | .file
+    extendhfsf2.c
+
+String Table Size = 0x2F bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   90, #relocs    0, #linenums    0, checksum 72501A9D, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __extendsfdf2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 UNDEF  notype       External     | _fltused
+00F 00000000 DEBUG  notype       Filename     | .file
+    extendsfdf2.c
+
+String Table Size = 0x20 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   C8, #relocs    3, #linenums    0, checksum D644FC74, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __divti3
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length    C, #relocs    0, #linenums    0, checksum AC18B13D, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum A9435C82, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 UNDEF  notype       External     | __security_cookie
+013 00000000 UNDEF  notype       External     | __udivmodti4
+014 00000000 UNDEF  notype       External     | __security_check_cookie
+015 00000000 DEBUG  notype       Filename     | .file
+    divti3.c
+
+String Table Size = 0x49 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   34, #relocs    0, #linenums    0, checksum 85522873, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __divsi3
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    divsi3.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length    4, #relocs    0, #linenums    0, checksum  B40BBE3, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __real@7fc00000
+009 00000000 SECT5  notype       Static       | .text
+    Section length  24D, #relocs    1, #linenums    0, checksum 80429AE2, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __divsf3
+00C 00000000 SECT8  notype       Static       | .xdata
+    Section length    C, #relocs    0, #linenums    0, checksum 8BEDDE5D, selection    5 (pick associative Section 0x5)
+00E 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+010 00000000 SECT9  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 2507C615, selection    5 (pick associative Section 0x5)
+012 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+014 00000000 ABS    notype       Static       | @feat.00
+015 00000000 UNDEF  notype       External     | _fltused
+016 00000000 DEBUG  notype       Filename     | .file
+    divsf3.c
+
+String Table Size = 0x22 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum 49699BA5, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __xmm@7fffffff7fffffff7fffffff7fffffff
+009 00000000 SECT5  notype       Static       | .rdata
+    Section length    4, #relocs    0, #linenums    0, checksum 168177C6, selection    2 (pick any)
+00B 00000000 SECT5  notype       External     | __real@ff800000
+00C 00000000 SECT6  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum 9A6116EA, selection    2 (pick any)
+00E 00000000 SECT6  notype       External     | __xmm@80000000800000008000000080000000
+00F 00000000 SECT7  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum 49E3D476, selection    2 (pick any)
+011 00000000 SECT7  notype       External     | __xmm@7f8000007f8000007f8000007f800000
+012 00000000 SECT8  notype       Static       | .rdata
+    Section length    4, #relocs    0, #linenums    0, checksum 8DE5B576, selection    2 (pick any)
+014 00000000 SECT8  notype       External     | __real@3f800000
+015 00000000 SECT9  notype       Static       | .rdata
+    Section length    4, #relocs    0, #linenums    0, checksum FB39F4E6, selection    2 (pick any)
+017 00000000 SECT9  notype       External     | __real@7f800000
+018 00000000 SECTA  notype       Static       | .text
+    Section length  66B, #relocs    A, #linenums    0, checksum C516B8E5, selection    1 (pick no duplicates)
+01A 00000000 SECTA  notype ()    External     | __divsc3
+01B 00000000 SECTD  notype       Static       | .xdata
+    Section length   1C, #relocs    0, #linenums    0, checksum 452F2AFE, selection    5 (pick associative Section 0xA)
+01D 00000000 SECTB  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+01F 00000000 SECTE  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum EE5189D7, selection    5 (pick associative Section 0xA)
+021 00000000 SECTC  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 0000000C
+023 00000000 ABS    notype       Static       | @feat.00
+024 00000000 UNDEF  notype       External     | _fltused
+025 00000000 DEBUG  notype       Filename     | .file
+    divsc3.c
+
+String Table Size = 0xB7 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   E1, #relocs    3, #linenums    0, checksum F1E69387, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __divmodti4
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length   10, #relocs    0, #linenums    0, checksum 4A2118E7, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 4F7A25FF, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 UNDEF  notype       External     | __security_cookie
+013 00000000 UNDEF  notype       External     | __udivmodti4
+014 00000000 UNDEF  notype       External     | __security_check_cookie
+015 00000000 DEBUG  notype       Filename     | .file
+    divmodti4.c
+
+String Table Size = 0x55 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   66, #relocs    3, #linenums    0, checksum 7AB0BE94, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __divmodsi4
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length   10, #relocs    0, #linenums    0, checksum 25070901, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 1684A93C, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 UNDEF  notype       External     | __security_cookie
+013 00000000 UNDEF  notype       External     | __udivmodsi4
+014 00000000 UNDEF  notype       External     | __security_check_cookie
+015 00000000 DEBUG  notype       Filename     | .file
+    divmodsi4.c
+
+String Table Size = 0x55 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   7B, #relocs    3, #linenums    0, checksum  74A9F02, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __divmoddi4
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length   10, #relocs    0, #linenums    0, checksum 75DF3574, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum F13A8DC6, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 UNDEF  notype       External     | __security_cookie
+013 00000000 UNDEF  notype       External     | __udivmoddi4
+014 00000000 UNDEF  notype       External     | __security_check_cookie
+015 00000000 DEBUG  notype       Filename     | .file
+    divmoddi4.c
+
+String Table Size = 0x55 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   44, #relocs    1, #linenums    0, checksum 5EBC304E, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __divdi3
+009 00000000 SECT7  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum 97C21FE7, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00D 00000000 SECT8  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum ADD7CC17, selection    5 (pick associative Section 0x4)
+00F 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+011 00000000 ABS    notype       Static       | @feat.00
+012 00000000 UNDEF  notype       External     | __udivmoddi4
+013 00000000 DEBUG  notype       Filename     | .file
+    divdi3.c
+
+String Table Size = 0x1F bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length    8, #relocs    0, #linenums    0, checksum 1CDF0718, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __real@7ff8000000000000
+009 00000000 SECT5  notype       Static       | .text
+    Section length  31E, #relocs    1, #linenums    0, checksum 779CD6D2, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __divdf3
+00C 00000000 SECT8  notype       Static       | .xdata
+    Section length   10, #relocs    0, #linenums    0, checksum 6D389976, selection    5 (pick associative Section 0x5)
+00E 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+010 00000000 SECT9  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 58D93984, selection    5 (pick associative Section 0x5)
+012 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+014 00000000 ABS    notype       Static       | @feat.00
+015 00000000 UNDEF  notype       External     | _fltused
+016 00000000 DEBUG  notype       Filename     | .file
+    divdf3.c
+
+String Table Size = 0x2A bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum 58E50E20, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __xmm@7fffffffffffffff7fffffffffffffff
+009 00000000 SECT5  notype       Static       | .rdata
+    Section length    8, #relocs    0, #linenums    0, checksum 39BE0E30, selection    2 (pick any)
+00B 00000000 SECT5  notype       External     | __real@fff0000000000000
+00C 00000000 SECT6  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum 8BED836F, selection    2 (pick any)
+00E 00000000 SECT6  notype       External     | __xmm@80000000000000008000000000000000
+00F 00000000 SECT7  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum EB500D8D, selection    2 (pick any)
+011 00000000 SECT7  notype       External     | __xmm@7ff00000000000007ff0000000000000
+012 00000000 SECT8  notype       Static       | .rdata
+    Section length    8, #relocs    0, #linenums    0, checksum A2DACC80, selection    2 (pick any)
+014 00000000 SECT8  notype       External     | __real@3ff0000000000000
+015 00000000 SECT9  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum 431E4F1A, selection    2 (pick any)
+017 00000000 SECT9  notype       External     | __xmm@3ff00000000000003ff0000000000000
+018 00000000 SECTA  notype       Static       | .text
+    Section length  750, #relocs    A, #linenums    0, checksum F37AC5D4, selection    1 (pick no duplicates)
+01A 00000000 SECTA  notype ()    External     | __divdc3
+01B 00000000 SECTD  notype       Static       | .xdata
+    Section length   28, #relocs    0, #linenums    0, checksum 644B75A7, selection    5 (pick associative Section 0xA)
+01D 00000000 SECTB  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+01F 00000000 SECTE  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 9081CD48, selection    5 (pick associative Section 0xA)
+021 00000000 SECTC  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 0000000C
+023 00000000 ABS    notype       Static       | @feat.00
+024 00000000 UNDEF  notype       External     | _fltused
+025 00000000 DEBUG  notype       Filename     | .file
+    divdc3.c
+
+String Table Size = 0xDE bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   25, #relocs    0, #linenums    0, checksum 974373FF, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __ctzti2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    ctzti2.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   67, #relocs    0, #linenums    0, checksum E82D9C9A, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __ctzsi2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    ctzsi2.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   23, #relocs    0, #linenums    0, checksum 683F818C, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __ctzdi2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    ctzdi2.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   57, #relocs    0, #linenums    0, checksum CE741CDA, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __lesf2
+009 00000000 SECT5  notype       Static       | .text
+    Section length   52, #relocs    0, #linenums    0, checksum 17965951, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __gesf2
+00C 00000000 SECT6  notype       Static       | .text
+    Section length   2A, #relocs    0, #linenums    0, checksum B8CD0B99, selection    1 (pick no duplicates)
+00E 00000000 SECT6  notype ()    External     | __unordsf2
+00F 00000000 SECT7  notype       Static       | .text
+    Section length   55, #relocs    0, #linenums    0, checksum 9C35BE4B, selection    1 (pick no duplicates)
+011 00000000 SECT7  notype ()    External     | __eqsf2
+012 00000000 SECT8  notype       Static       | .text
+    Section length   55, #relocs    0, #linenums    0, checksum 9C35BE4B, selection    1 (pick no duplicates)
+014 00000000 SECT8  notype ()    External     | __ltsf2
+015 00000000 SECT9  notype       Static       | .text
+    Section length   55, #relocs    0, #linenums    0, checksum 9C35BE4B, selection    1 (pick no duplicates)
+017 00000000 SECT9  notype ()    External     | __nesf2
+018 00000000 SECTA  notype       Static       | .text
+    Section length   50, #relocs    0, #linenums    0, checksum 99AC6066, selection    1 (pick no duplicates)
+01A 00000000 SECTA  notype ()    External     | __gtsf2
+01B 00000000 SECTB  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+01D 00000000 SECTC  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 0000000C
+01F 00000000 ABS    notype       Static       | @feat.00
+020 00000000 UNDEF  notype       External     | _fltused
+021 00000000 DEBUG  notype       Filename     | .file
+    comparesf2.c
+
+String Table Size = 0x1D bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   5D, #relocs    0, #linenums    0, checksum 3D7F4583, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __ledf2
+009 00000000 SECT5  notype       Static       | .text
+    Section length   58, #relocs    0, #linenums    0, checksum D69208CA, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __gedf2
+00C 00000000 SECT6  notype       Static       | .text
+    Section length   36, #relocs    0, #linenums    0, checksum 44FFAE21, selection    1 (pick no duplicates)
+00E 00000000 SECT6  notype ()    External     | __unorddf2
+00F 00000000 SECT7  notype       Static       | .text
+    Section length   5B, #relocs    0, #linenums    0, checksum 3453BD0D, selection    1 (pick no duplicates)
+011 00000000 SECT7  notype ()    External     | __eqdf2
+012 00000000 SECT8  notype       Static       | .text
+    Section length   5B, #relocs    0, #linenums    0, checksum 3453BD0D, selection    1 (pick no duplicates)
+014 00000000 SECT8  notype ()    External     | __ltdf2
+015 00000000 SECT9  notype       Static       | .text
+    Section length   5B, #relocs    0, #linenums    0, checksum 3453BD0D, selection    1 (pick no duplicates)
+017 00000000 SECT9  notype ()    External     | __nedf2
+018 00000000 SECTA  notype       Static       | .text
+    Section length   56, #relocs    0, #linenums    0, checksum AEE6B201, selection    1 (pick no duplicates)
+01A 00000000 SECTA  notype ()    External     | __gtdf2
+01B 00000000 SECTB  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+01D 00000000 SECTC  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 0000000C
+01F 00000000 ABS    notype       Static       | @feat.00
+020 00000000 UNDEF  notype       External     | _fltused
+021 00000000 DEBUG  notype       Filename     | .file
+    comparedf2.c
+
+String Table Size = 0x1D bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   2C, #relocs    0, #linenums    0, checksum 8523C996, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __cmpti2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    cmpti2.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   2D, #relocs    0, #linenums    0, checksum 4B59DDC8, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __cmpdi2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    cmpdi2.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   27, #relocs    0, #linenums    0, checksum 52177E49, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __clzti2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    clzti2.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   77, #relocs    0, #linenums    0, checksum 79FF5ADB, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __clzsi2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    clzsi2.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   20, #relocs    0, #linenums    0, checksum 5ECDFE2C, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __clzdi2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    clzdi2.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length    5, #relocs    0, #linenums    0, checksum  51D9D7B, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __bswapsi2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    bswapsi2.c
+
+String Table Size = 0x1D bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length    7, #relocs    0, #linenums    0, checksum C38C24B7, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __bswapdi2
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    bswapdi2.c
+
+String Table Size = 0x1D bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   41, #relocs    0, #linenums    0, checksum ADA840E0, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __ashrti3
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    ashrti3.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   3B, #relocs    0, #linenums    0, checksum B222A3A7, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __ashrdi3
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    ashrdi3.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   3D, #relocs    0, #linenums    0, checksum E7E9CEC6, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __ashlti3
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    ashlti3.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   33, #relocs    0, #linenums    0, checksum 44B84D3D, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __ashldi3
+009 00000000 SECT5  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+00B 00000000 SECT6  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000006
+00D 00000000 ABS    notype       Static       | @feat.00
+00E 00000000 DEBUG  notype       Filename     | .file
+    ashldi3.c
+
+String Table Size = 0x1C bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+008 00000000 SECT5  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000005
+00A 00000000 ABS    notype       Static       | @feat.00
+00B 00000000 DEBUG  notype       Filename     | .file
+    apple_versioning.c
+
+String Table Size = 0x12 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   7A, #relocs    6, #linenums    0, checksum 57385A89, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __addvti3
+009 00000000 SECT9  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .rdata
+    Section length    A, #relocs    0, #linenums    0, checksum 348B61C6, selection    2 (pick any)
+00D 00000000 SECT5  notype       External     | ??_C@_09CIPOPGEP@__addvti3?$AA@ (`string')
+00E 00000000 SECT6  notype       Static       | .rdata
+    Section length   4B, #relocs    0, #linenums    0, checksum 970E42CD, selection    2 (pick any)
+010 00000000 SECT6  notype       External     | ??_C@_0EL@IKNDEKBO@C?3?2src?2llvm_package_17?40?41?2llvm?9@ (`string')
+011 00000000 SECT7  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+013 00000000 SECTA  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 3D908D58, selection    5 (pick associative Section 0x4)
+015 00000000 SECT8  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000008
+017 00000000 ABS    notype       Static       | @feat.00
+018 00000000 UNDEF  notype       External     | __compilerrt_abort_impl
+019 00000000 DEBUG  notype       Filename     | .file
+    addvti3.c
+
+String Table Size = 0x90 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   49, #relocs    6, #linenums    0, checksum 6B8E1EB8, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __addvsi3
+009 00000000 SECT9  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .rdata
+    Section length    A, #relocs    0, #linenums    0, checksum A95C597F, selection    2 (pick any)
+00D 00000000 SECT5  notype       External     | ??_C@_09LFCJMOPG@__addvsi3?$AA@ (`string')
+00E 00000000 SECT6  notype       Static       | .rdata
+    Section length   4B, #relocs    0, #linenums    0, checksum 8A0B7275, selection    2 (pick any)
+010 00000000 SECT6  notype       External     | ??_C@_0EL@JHNGHKKG@C?3?2src?2llvm_package_17?40?41?2llvm?9@ (`string')
+011 00000000 SECT7  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+013 00000000 SECTA  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 36D2D9C6, selection    5 (pick associative Section 0x4)
+015 00000000 SECT8  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000008
+017 00000000 ABS    notype       Static       | @feat.00
+018 00000000 UNDEF  notype       External     | __compilerrt_abort_impl
+019 00000000 DEBUG  notype       Filename     | .file
+    addvsi3.c
+
+String Table Size = 0x90 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   4D, #relocs    6, #linenums    0, checksum 6D515308, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __addvdi3
+009 00000000 SECT9  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .rdata
+    Section length    A, #relocs    0, #linenums    0, checksum 64923659, selection    2 (pick any)
+00D 00000000 SECT5  notype       External     | ??_C@_09HIOHKBNA@__addvdi3?$AA@ (`string')
+00E 00000000 SECT6  notype       Static       | .rdata
+    Section length   4B, #relocs    0, #linenums    0, checksum 94D84056, selection    2 (pick any)
+010 00000000 SECT6  notype       External     | ??_C@_0EL@IJAFEIIF@C?3?2src?2llvm_package_17?40?41?2llvm?9@ (`string')
+011 00000000 SECT7  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+013 00000000 SECTA  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum B298D73C, selection    5 (pick associative Section 0x4)
+015 00000000 SECT8  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000008
+017 00000000 ABS    notype       Static       | @feat.00
+018 00000000 UNDEF  notype       External     | __compilerrt_abort_impl
+019 00000000 DEBUG  notype       Filename     | .file
+    addvdi3.c
+
+String Table Size = 0x90 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length    4, #relocs    0, #linenums    0, checksum  B40BBE3, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __real@7fc00000
+009 00000000 SECT5  notype       Static       | .text
+    Section length  267, #relocs    3, #linenums    0, checksum E53D59DF, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __addsf3
+00C 00000000 SECT8  notype       Static       | .xdata
+    Section length    C, #relocs    0, #linenums    0, checksum  3A87E1E, selection    5 (pick associative Section 0x5)
+00E 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+010 00000000 SECT9  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 4DB1B88B, selection    5 (pick associative Section 0x5)
+012 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+014 00000000 ABS    notype       Static       | @feat.00
+015 00000000 UNDEF  notype       External     | __fe_getround
+016 00000000 UNDEF  notype       External     | __fe_raise_inexact
+017 00000000 UNDEF  notype       External     | _fltused
+018 00000000 DEBUG  notype       Filename     | .file
+    addsf3.c
+
+String Table Size = 0x43 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length    8, #relocs    0, #linenums    0, checksum 1CDF0718, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __real@7ff8000000000000
+009 00000000 SECT5  notype       Static       | .text
+    Section length  2DD, #relocs    3, #linenums    0, checksum AE520FC7, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __adddf3
+00C 00000000 SECT8  notype       Static       | .xdata
+    Section length   10, #relocs    0, #linenums    0, checksum  FD4199A, selection    5 (pick associative Section 0x5)
+00E 00000000 SECT6  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+010 00000000 SECT9  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum  A8772E4, selection    5 (pick associative Section 0x5)
+012 00000000 SECT7  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000007
+014 00000000 ABS    notype       Static       | @feat.00
+015 00000000 UNDEF  notype       External     | __fe_getround
+016 00000000 UNDEF  notype       External     | __fe_raise_inexact
+017 00000000 UNDEF  notype       External     | _fltused
+018 00000000 DEBUG  notype       Filename     | .file
+    adddf3.c
+
+String Table Size = 0x4B bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .rdata
+    Section length   10, #relocs    0, #linenums    0, checksum EDB88320, selection    2 (pick any)
+008 00000000 SECT4  notype       External     | __xmm@80000000000000000000000000000000
+009 00000000 SECT5  notype       Static       | .text
+    Section length   61, #relocs    4, #linenums    0, checksum 22D557C1, selection    1 (pick no duplicates)
+00B 00000000 SECT5  notype ()    External     | __absvti2
+00C 00000000 SECTA  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x5)
+00E 00000000 SECT6  notype       Static       | .rdata
+    Section length    A, #relocs    0, #linenums    0, checksum 5093579E, selection    2 (pick any)
+010 00000000 SECT6  notype       External     | ??_C@_09EMOGMABH@__absvti2?$AA@ (`string')
+011 00000000 SECT7  notype       Static       | .rdata
+    Section length   4B, #relocs    0, #linenums    0, checksum 2AD66410, selection    2 (pick any)
+013 00000000 SECT7  notype       External     | ??_C@_0EL@DHALGMMD@C?3?2src?2llvm_package_17?40?41?2llvm?9@ (`string')
+014 00000000 SECT8  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+016 00000000 SECTB  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 1C41A025, selection    5 (pick associative Section 0x5)
+018 00000000 SECT9  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000009
+01A 00000000 ABS    notype       Static       | @feat.00
+01B 00000000 UNDEF  notype       External     | __compilerrt_abort_impl
+01C 00000000 DEBUG  notype       Filename     | .file
+    absvti2.c
+
+String Table Size = 0xB7 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   31, #relocs    3, #linenums    0, checksum 84FED58B, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __absvsi2
+009 00000000 SECT9  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .rdata
+    Section length    A, #relocs    0, #linenums    0, checksum CD446F27, selection    2 (pick any)
+00D 00000000 SECT5  notype       External     | ??_C@_09NBDBPIKO@__absvsi2?$AA@ (`string')
+00E 00000000 SECT6  notype       Static       | .rdata
+    Section length   4B, #relocs    0, #linenums    0, checksum 37D354A8, selection    2 (pick any)
+010 00000000 SECT6  notype       External     | ??_C@_0EL@CKAOFMHL@C?3?2src?2llvm_package_17?40?41?2llvm?9@ (`string')
+011 00000000 SECT7  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+013 00000000 SECTA  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum 496753E3, selection    5 (pick associative Section 0x4)
+015 00000000 SECT8  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000008
+017 00000000 ABS    notype       Static       | @feat.00
+018 00000000 UNDEF  notype       External     | __compilerrt_abort_impl
+019 00000000 DEBUG  notype       Filename     | .file
+    absvsi2.c
+
+String Table Size = 0x90 bytes
+
+COFF SYMBOL TABLE
+000 00000000 SECT1  notype       Static       | .text
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+002 00000000 SECT2  notype       Static       | .data
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+004 00000000 SECT3  notype       Static       | .bss
+    Section length    0, #relocs    0, #linenums    0, checksum        0
+006 00000000 SECT4  notype       Static       | .text
+    Section length   3B, #relocs    3, #linenums    0, checksum 648F1BB3, selection    1 (pick no duplicates)
+008 00000000 SECT4  notype ()    External     | __absvdi2
+009 00000000 SECT9  notype       Static       | .xdata
+    Section length    8, #relocs    0, #linenums    0, checksum  FC539D1, selection    5 (pick associative Section 0x4)
+00B 00000000 SECT5  notype       Static       | .rdata
+    Section length    A, #relocs    0, #linenums    0, checksum   8A0001, selection    2 (pick any)
+00D 00000000 SECT5  notype       External     | ??_C@_09BMPPJHII@__absvdi2?$AA@ (`string')
+00E 00000000 SECT6  notype       Static       | .rdata
+    Section length   4B, #relocs    0, #linenums    0, checksum 2900668B, selection    2 (pick any)
+010 00000000 SECT6  notype       External     | ??_C@_0EL@DENNGOFI@C?3?2src?2llvm_package_17?40?41?2llvm?9@ (`string')
+011 00000000 SECT7  notype       Static       | .drectve
+    Section length   30, #relocs    0, #linenums    0, checksum  8EC07DE
+013 00000000 SECTA  notype       Static       | .pdata
+    Section length    C, #relocs    3, #linenums    0, checksum D8A74F2B, selection    5 (pick associative Section 0x4)
+015 00000000 SECT8  notype       Static       | .llvm_addrsig
+    tag index 00000000 size 00000000 lines 00000000 next function 00000008
+017 00000000 ABS    notype       Static       | @feat.00
+018 00000000 UNDEF  notype       External     | __compilerrt_abort_impl
+019 00000000 DEBUG  notype       Filename     | .file
+    absvdi2.c
+
+String Table Size = 0x90 bytes
+
+  Summary
+
+           8 .CRT$XCA00090
+          3C .bss
+           4 .data
+        179A .drectve
+           6 .llvm_addrsig
+         2F4 .pdata
+         B60 .rdata
+        6566 .text
+         334 .xdata

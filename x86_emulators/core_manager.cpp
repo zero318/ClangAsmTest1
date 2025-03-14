@@ -72,12 +72,17 @@ static inline constexpr uint8_t zbios_test[] = {
 // Assuming init/reset state:
 // Real mode, all registers 0, interrupts disabled
 // Memory may not be 0
+// Sets the IDT to 0 (any interrupt will triple fault)
+// Sets up this GDT at 0x10000:
+// 0000 = NULL descriptor (LGDT buffer)
+// 0008 = 16 bit TSS at base 0xF000
+// 0010 = 16 bit ring 0 code segment at base 0x0000
+// 0018 = ring 0 data segment at base 0x0000
+// 0020 = 16 bit ring 3 code segment at base 0x1000
+// 0028 = ring 3 data segment at base 0x1000
+// 0030 = 32 bit ring 3 code segment at base 0x00002000
+// 0038 = ring 3 data segment at base 0x00002000
 static inline constexpr uint8_t protected_mode_testA[] = {
-    0xD9, 0x06, 0xFF, 0xFF,
-    0xD9, 0x16, 0xFC, 0xFF,
-    0xD9, 0x16, 0xFD, 0xFF,
-    0xD9, 0x16, 0xFE, 0xFF,
-    0xD9, 0x16, 0xFF, 0xFF,
     0xBE, 0x00, 0x10,               // MOV SI, 0x1000
     0x8E, 0xDE,                     // MOV DS, SI
     0x8E, 0xC6,                     // MOV ES, SI
@@ -97,6 +102,7 @@ static inline constexpr uint8_t protected_mode_testA[] = {
     // GDT Base (0x10000)
     0x41,                           // INC CX
     0x88, 0x4D, 0x04,               // MOV BYTE [DI+0x04], CL
+    0x41,                           // INC CX
     // TSS 16 Base (0xF000)
     0xB7, 0xF0,                     // MOV BH, 0xF0
     0x88, 0x7D, 0x0A,               // MOV BYTE [DI+0x0A], BH
@@ -116,7 +122,7 @@ static inline constexpr uint8_t protected_mode_testA[] = {
     0x89, 0x6D, 0x2A,               // MOV WORD [DI+0x2A], BP
     0x24, 0xF7,                     // AND AL, 0xF7
     0x89, 0x45, 0x2D,               // MOV WORD [DI+0x2D], AX
-    0x0D, 0xCF, 0x08,               // OR AX, 0x08CF
+    0x0D, 0x08, 0xCF,               // OR AX, 0xCF08
     0xD1, 0xE5,                     // SHL BP, 1
     0x83, 0xC7, 0x10,               // ADD DI, 0x10
     0xE2, 0xE8,                     // LOOP ring3_loop

@@ -13,14 +13,14 @@
 
 #define INLINE_SYSCALLS 1
 #define INLINE_SHORT_SYSCALLS 1
-#define INLINE_LONG_SYSCALLS 0
+#define INLINE_LONG_SYSCALLS 1
 
 #if !INLINE_SYSCALLS
 #undef INLINE_SHORT_SYSCALLS
 #undef INLINE_LONG_SYSCALLS
 #endif
 
-extern "C" {
+//extern "C" {
 
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtCallbackReturnID) {
@@ -694,6 +694,6 @@ __if_not_exists(NtUserGetKeyStateID) {
 }
 #endif
 
-}
+//}
 
 #endif

@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <float.h>
 #include <limits.h>
-
+#include <string.h>
 #include <float.h>
 
 #include <Bits.h>
@@ -235,7 +235,7 @@ gnu_noinline void test_float_func(const T1 divisor, T2 correct_func, T3 testing_
 
 //#define _TEST_BOUNDS 0x60490FDB
 //#define TEST_BOUNDS bitcast(float, _TEST_BOUNDS)
-#define TEST_BOUNDS 5.795216e+19
+#define TEST_BOUNDS 5.795216e+19f
 	
 	vec<float, 1> value2;
 	value2[0] = -TEST_BOUNDS;
@@ -3172,9 +3172,172 @@ gnu_noinline void segment_jank_test();
 
 gnu_noinline void atomic_timing_test();
 
+gnu_noinline void loop_timing_test();
+
 extern bool dns_connect(const wchar_t* server_name, const wchar_t* port_str);
 
+#include <conio.h>
+
+dllexport void tic_tac_bs();
+
+uint32_t derpy_rng_value = rand();
+dllexport uint32_t derp_rng() {
+	uint64_t temp = 0xBC8Full * derpy_rng_value;
+	//temp %= INT32_MAX;
+	uint32_t ret;
+	//_udiv64(temp, INT32_MAX, &ret);
+	//return ret;
+	derpy_rng_value = ret;
+	return ret;
+}
+
+//constexpr auto wkrjbb = __builtin_offsetof(CONTEXT, LastBranchToRip);
+
+#ifndef STATUS_NOT_IMPLEMENTED
+#define STATUS_NOT_IMPLEMENTED				((DWORD)0xC0000002L)
+#endif
+#ifndef STATUS_INVALID_LOCK_SEQUENCE
+#define STATUS_INVALID_LOCK_SEQUENCE		((DWORD)0xC000001EL)
+#endif
+#ifndef STATUS_BAD_STACK
+#define STATUS_BAD_STACK					((DWORD)0xC0000028L)
+#endif
+#ifndef STATUS_INVALID_UNWIND_TARGET
+#define STATUS_INVALID_UNWIND_TARGET		((DWORD)0xC0000029L)
+#endif
+#ifndef STATUS_BAD_FUNCTION_TABLE
+#define STATUS_BAD_FUNCTION_TABLE			((DWORD)0xC00000FFL)
+#endif
+#ifndef STATUS_DATATYPE_MISALIGNMENT_ERROR
+#define STATUS_DATATYPE_MISALIGNMENT_ERROR	((DWORD)0xC00002C5L)
+#endif
+#ifndef STATUS_HEAP_CORRUPTION
+#define STATUS_HEAP_CORRUPTION				((DWORD)0xC0000374L)
+#endif
+
+//#include <ehdata.h>
+
+// These defines are from internal CRT header ehdata.h
+// MSVC++ EH exception number
+#ifndef EH_EXCEPTION_NUMBER
+#define EH_EXCEPTION_NUMBER 0xE06D7363 // ('msc' | 0xE0000000)
+#endif
+#ifndef EH_MAGIC_NUMBER1
+#define EH_MAGIC_NUMBER1 0x19930520
+#endif
+
+#if !__x86_64__
+//#pragma comment (lib, "F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\ntdll32.lib")
+#else
+#pragma comment (lib, "F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\ntdll64.lib")
+#endif
+
+NTSTATUS NTAPI NtGetContextThread(HANDLE ThreadHandle, PCONTEXT pContext);
+
+using NtGetContextThread_t = decltype(NtGetContextThread);
+
+NtGetContextThread_t* NtGetContextThread_ptr;
+
+static uint64_t last_branch_to;
+static uint64_t last_branch_from;
+static uint64_t last_exception_to;
+static uint64_t last_exception_from;
+
+LONG WINAPI log_branch_records(LPEXCEPTION_POINTERS lpEI) {
+#if __x86_64__
+	last_branch_to = lpEI->ContextRecord->LastBranchToRip;
+	last_branch_from = lpEI->ContextRecord->LastBranchFromRip;
+	last_exception_to = lpEI->ContextRecord->LastExceptionToRip;
+	last_exception_from = lpEI->ContextRecord->LastExceptionFromRip;
+
+	lpEI->ContextRecord->Rip += 7;
+#else
+	CONTEXTX<64> x64_context;
+	x64_context.ContextFlags = 0x0010001F;
+	NtGetContextThread_ptr(GetCurrentThread(), (PCONTEXT)&x64_context);
+
+	last_branch_to = x64_context.LastBranchToRip;
+	last_branch_from = x64_context.LastBranchFromRip;
+	last_exception_to = x64_context.LastExceptionToRip;
+	last_exception_from = x64_context.LastExceptionFromRip;
+
+	lpEI->ContextRecord->Eip += 7;
+#endif
+
+	return EXCEPTION_CONTINUE_EXECUTION;
+}
+
+gnu_noinline void debug_test_func() {
+bs_label_testA:
+	__asm__ volatile(
+		"jmp 0f \n"
+		"int3 \n"
+	"0: \n"
+		"nop"
+	);
+bs_label_testB:
+	__asm {
+		_emit 0x8B
+		_emit 0x04
+		_emit 0x25
+		_emit 0
+		_emit 0
+		_emit 0
+		_emit 0
+	}
+
+	printf(
+		"BranchTo:   %llX\n"
+		"BranchFrom: %llX\n"
+		"ExceptTo:   %llX\n"
+		"ExceptFrom: %llX\n"
+		"LabelTestA: %zX\n"
+		"LabelTestB: %zX\n"
+		, last_branch_to
+		, last_branch_from
+		, last_exception_to
+		, last_exception_from
+		, &&bs_label_testA
+		, &&bs_label_testB
+	);
+}
+
 int stdcall main(int argc, char* argv[]) {
+	AddVectoredExceptionHandler(0, log_branch_records);
+
+	NtGetContextThread_ptr = (NtGetContextThread_t*)GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtGetContextThread");
+
+	CONTEXT context;
+	context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+	GetThreadContext(GetCurrentThread(), &context);
+
+	printf("Testing without DR7 bits... %zX\n", context.Dr7);
+	debug_test_func();
+
+
+	context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+	context.Dr7 |= 0x100;
+
+	SetThreadContext(GetCurrentThread(), &context);
+
+	context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+	GetThreadContext(GetCurrentThread(), &context);
+
+	if (context.Dr7 & 0x100) {
+
+		printf("\nTesting with DR7 bits... %zX\n", context.Dr7);
+		debug_test_func();
+
+	}
+	else {
+		printf("\nSetting DR7 failed %zX", context.Dr7);
+	}
+
+	return 0;
+
+	printf("test\n");
+	printf("\e[2J\e[3J");
+	return 0;
 
 	//dns_connect(L"waluigistacostand.ddns.net", L"42069");
 
@@ -3990,8 +4153,10 @@ extern "C" {
 //#undef atomic_thread_fence
 
 // Just compile already
-#define atomic_compare_exchange_strong(...) (__VA_ARGS__)
-#define atomic_fetch_add(...) (__VA_ARGS__)
+//#define atomic_compare_exchange_strong(...) (__VA_ARGS__)
+#define atomic_compare_exchange_strong(arg1, arg2, arg3) ((void)arg1, (void)arg2, arg3)
+//#define atomic_fetch_add(...) (__VA_ARGS__)
+#define atomic_fetch_add(arg1, arg2) ((void)arg1, arg2)
 
 #define SRWLockSpinCount 1024
 
@@ -4597,7 +4762,7 @@ gnu_noinline void yeetus_memory() {
 		}
 	}
 }
-
+/*
 // size: 
 struct alignas(8) KGDTENTRY {
 	uint16_t LimitLow; // 0x0
@@ -4723,6 +4888,7 @@ ValidateFieldOffset(0x8, KIDTENTRY64, OffsetHigh);
 ValidateStructSize(0x10, KIDTENTRY64);
 ValidateStructAlignment(0x10, KIDTENTRY64);
 #pragma endregion
+*/
 
 //#define PAGE_SIZE 4096
 
@@ -5364,13 +5530,15 @@ dllexport gnu_noinline bool fastcall new_overwrite_warning(SaveManager* save_man
 	return expect(selection == 3, true);
 }
 
-//#define thcrap_value2(type, name, value) \
+/*
+#define thcrap_value2(type, name, value) \
 struct { \
 	inline operator type() { \
 		static const unsigned char dummy[1] = {}; \
 		return bitcast<float>(&dummy[0]);\
 	} \
 } name asm(value)
+*/
 
 #define thcrap_value2(type, name, value) \
 dllexport gnu_used struct dummy_name { \
@@ -5542,7 +5710,7 @@ dllexport void __cdecl make_iat_test3() {
 		) {
 			iat_array[iat_index] = (void*)th_GetProcAddress(dll_handle, func_strings[iat_index]);
 		}
-	} while (dll_name = (++dll_iter)->dll_name);
+	} while ((dll_name = (++dll_iter)->dll_name));
 }
 
 struct DllImportT2 {
@@ -6580,8 +6748,8 @@ void make_shift_jis_conversion_table() {
 	}
 }
 
-#define FAR_CALL_IMM(seg, addr, ret, ...) __asm__ volatile ("lcall %[Seg],%[Addr]":ret: [Seg]"i"(seg), [Addr]"i"(addr) __VA_OPT__(,) __VA_ARGS__)
-#define FAR_JUMP_IMM(seg, addr, ret, ...) __asm__ volatile ("ljmp %[Seg],%[Addr]":ret: [Seg]"i"(seg), [Addr]"i"(addr) __VA_OPT__(,) __VA_ARGS__)
+//#define FAR_CALL_IMM(seg, addr, ret, ...) __asm__ volatile ("lcall %[Seg],%[Addr]":ret: [Seg]"i"(seg), [Addr]"i"(addr) __VA_OPT__(,) __VA_ARGS__)
+//#define FAR_JUMP_IMM(seg, addr, ret, ...) __asm__ volatile ("ljmp %[Seg],%[Addr]":ret: [Seg]"i"(seg), [Addr]"i"(addr) __VA_OPT__(,) __VA_ARGS__)
 
 gnu_noinline void segment_jank_test() {
 
@@ -6765,3 +6933,215 @@ gnu_noinline void atomic_timing_test() {
 		, bts_end_time - bts_start_time
 	);
 }
+
+uint64_t subjnz_start_time, subjnz_end_time;
+uint64_t decjnz_start_time, decjnz_end_time;
+uint64_t loop_start_time, loop_end_time;
+gnu_noinline void loop_timing_test() {
+
+	uint32_t xor_shift_state;
+	while (!(xor_shift_state = rdtsc()));
+	auto xor_shift = [&]() {
+		uint32_t val = xor_shift_state;
+		val ^= val << 13;
+		val ^= val >> 17;
+		val ^= val << 5;
+		xor_shift_state = val;
+		return val;
+	};
+
+	//uint64_t initial_tsc = rdtsc();
+	//while (rdtsc() - initial_tsc < 0x400000000);
+	//__asm INT3
+
+	subjnz_start_time = rdtsc();
+	uint32_t sub_counter = 0x10000000;
+	/*
+	__asm__ volatile (
+		".align 16 \n"
+	"0: \n"
+		"SUB $1, %[counter] \n"
+		"JNZ 0b \n"
+		: [counter]"+c"(sub_counter)
+	);
+	*/
+sub_loop:
+	__asm__ volatile goto (
+		"SUB $1, %[counter] \n"
+		"JZ 0f \n"
+		"TEST %[x], %[x] \n"
+		"JNZ %l3 \n"
+	"0: \n"
+		: [counter] "+c"(sub_counter)
+		: [x]"r"(xor_shift())
+		:
+		: sub_loop
+	);
+	subjnz_end_time = rdtsc();
+
+	decjnz_start_time = rdtsc();
+	sub_counter = 0x10000000;
+	/*
+	__asm__ volatile (
+		".align 16 \n"
+	"0: \n"
+		"DEC %[counter] \n"
+		"JNZ 0b \n"
+		: [counter]"+c"(sub_counter)
+	);
+	*/
+dec_loop:
+	__asm__ volatile goto (
+		"DEC %[counter] \n"
+		"JZ 0f \n"
+		"TEST %[x], %[x] \n"
+		"JNZ %l3 \n"
+	"0: \n"
+		: [counter]"+c"(sub_counter)
+		: [x]"r"(xor_shift())
+		:
+		: dec_loop
+	);
+	decjnz_end_time = rdtsc();
+
+	loop_start_time = rdtsc();
+	sub_counter = 0x10000000;
+	/*
+	__asm__ volatile (
+		".align 16 \n"
+	"0: \n"
+		".byte 0x67 \n"
+		"LOOP 0b \n"
+		: [counter]"+c"(sub_counter)
+	);
+	*/
+loop_loop:
+	__asm__ volatile goto (
+		//"TEST %[x], %[x] \n"
+		"LOOPNZ %l3 \n"
+		: [counter] "+c"(sub_counter)
+		: [x]"r"(xor_shift())
+		:
+		: loop_loop
+	);
+	loop_end_time = rdtsc();
+
+	printf(
+		"SUB/JNZ: %llu\n"
+		"DEC/JNZ: %llu\n"
+		"LOOP:    %llu\n"
+		, subjnz_end_time - subjnz_start_time
+		, decjnz_end_time - decjnz_start_time
+		, loop_end_time - loop_start_time
+	);
+}
+
+#if CUSTOM_CLANG
+dllexport int read_es_ptr(ESPTR<int> ptr) {
+	return *ptr;
+}
+#endif
+
+//#include "win_syscalls/syscalls7.h"
+//#include "win_syscalls/common.h"
+
+NTSTATUS NtQueryVirtualMemoryX(HANDLE ProcessHandle, PVOID BaseAddress, MEMORY_INFORMATION_CLASS MemoryInformationClass, PVOID MemoryInformation, SIZE_T MemoryInformationLength, PSIZE_T ReturnLength);
+
+dllexport decltype(NtQueryVirtualMemoryX)* NtQueryVirtualMemory;
+
+ULONG NTAPI BaseSetLastNtErrorX(NTSTATUS Status) asm("BaseSetLastNtError");
+
+dllexport decltype(BaseSetLastNtErrorX)* BaseSetLastNtError;
+
+static ULONG OfferVirtualMemoryInternal(
+	IN	PVOID			VirtualAddress,
+	IN	SIZE_T			Size,
+	IN	OFFER_PRIORITY	Priority,
+	IN	BOOL			DiscardMemory
+) {
+	NTSTATUS Status;
+	MEMORY_BASIC_INFORMATION BasicInformation;
+	PVOID VirtualAllocResult;
+	ULONG OldProtect;
+
+	//
+	// Parameter validation.
+	//
+
+	if (
+		expect(
+		(!VirtualAddress || !Size) ||
+		// The virtual address must be page-aligned.
+		((ULONG_PTR)VirtualAddress & 0xFFF) ||
+		// The size must be a multiple of the page size.
+		(Size & 0xFFF), false)
+	) {
+		return ERROR_INVALID_PARAMETER;
+	}
+
+	
+
+	//
+	// Check to see if the memory region provided is valid.
+	// The entire region must be readable, writable, and committed.
+	//
+
+	Status = NtQueryVirtualMemory(
+		NtCurrentProcess(),
+		VirtualAddress,
+		MemoryBasicInformation,
+		&BasicInformation,
+		sizeof(BasicInformation),
+		NULL);
+
+	if (expect(!NT_SUCCESS(Status), false)) {
+		return BaseSetLastNtError(Status);
+	}
+
+	if (expect(BasicInformation.RegionSize < Size ||
+		BasicInformation.Protect != PAGE_READWRITE ||
+		BasicInformation.State != MEM_COMMIT, false)
+	) {
+		// STATUS_INVALID_PAGE_PROTECTION
+		return BaseSetLastNtError(0xC0000045);
+	}
+
+	//
+	// Tell the kernel that we won't be needing the contents of this memory
+	// anymore.
+	//
+	VirtualAllocResult = VirtualAlloc(
+		VirtualAddress,
+		Size,
+		MEM_RESET,
+		PAGE_READWRITE);
+
+	if (expect(VirtualAllocResult != VirtualAddress, false)) {
+		return GetLastError();
+	}
+
+	if (DiscardMemory) {
+		VirtualUnlock(VirtualAddress, Size);
+	} else {
+		// If OfferVirtualMemory was called, then make those pages
+		// inaccessible.
+		VirtualProtect(VirtualAddress, Size, PAGE_NOACCESS, &OldProtect);
+	}
+
+	return ERROR_SUCCESS;
+}
+
+dllexport ULONG WINAPI DiscardVirtualMemory(
+	IN	PVOID	VirtualAddress,
+	IN	SIZE_T	Size
+) {
+	return OfferVirtualMemoryInternal(VirtualAddress, Size, VmOfferPriorityVeryLow, TRUE);
+}
+
+/*
+#include <Shlobj.h>
+
+void wtf_windows() {
+	FOLDERID_LocalAppData
+}
+*/

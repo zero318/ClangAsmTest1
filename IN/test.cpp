@@ -6,7 +6,17 @@
 #include "../zero/util.h"
 
 #include "../zero/BoundingBox.h"
+#undef WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#include <d3d8.h>
+#include <d3dx8.h>
+#include <dinput.h>
+#include <mmeapi.h>
+#include <dsound.h>
+#define UNICODE
+//#include <Core/DXUT.h>
+#include <Optional/SDKsound.h>
+#undef UNICODE
 
 #include "../zero/custom_intrin.h"
 
@@ -515,6 +525,85 @@ struct GameManager {
 };
 ValidateStructSize(0x3DE3C, GameManager);
 
+typedef struct QpcMonitor QpcMonitor;
+
+// size: 0x10
+struct ZUNThread {
+	HANDLE thread; // 0x0
+	uint32_t tid; // 0x4
+	BOOL __bool_8; // 0x8
+	BOOL __bool_C; // 0xC
+	// 0x10
+};
+
+// size: 0x364
+struct Supervisor {
+	HINSTANCE current_instance; // 0x0
+	LPDIRECT3D8 d3d; // 0x4
+	LPDIRECT3DDEVICE8 d3d_device; // 0x8
+	LPDIRECTINPUT8 dinput; // 0xC
+	LPDIRECTINPUTDEVICE8 dinput_device; // 0x10
+	LPDIRECTINPUTDEVICE8 joypad_device; // 0x14
+	DIDEVCAPS joypad_caps; // 0x18
+	HWND main_window; // 0x44
+	D3DMATRIX view_matrix; // 0x48
+	D3DMATRIX projection_matrix; // 0x88
+	D3DVIEWPORT8 viewport; // 0xC8
+	D3DPRESENT_PARAMETERS present_params; // 0xE0
+	QpcMonitor* qpc_monitor_ptr; // 0x114
+	Config config; // 0x118
+	int __dword_154; // 0x154
+	int __dword_158; // 0x158
+	int __int_15C; // 0x15C
+	int __int_160; // 0x160
+	int __int_164; // 0x164
+	int __int_168; // 0x168
+	int __int_16C; // 0x16C
+	unknown_fields(0x4); // 0x170
+	int32_t __sint_174; // 0x174
+	int __int_178; // 0x178
+	int __int_17C; // 0x17C
+	int __int_180; // 0x180
+	int __dword_184; // 0x184
+	float game_speed; // 0x188
+	MidiManager* midi_manager_ptr; // 0x18C
+	float __float_190; // 0x190
+	float __float_194; // 0x194
+	int16_t __sshort_198; // 0x198
+	probably_padding_bytes(0x2); // 0x19A
+	void* text_anm_loaded_ptr; // 0x19C
+	unknown_fields(0x4); // 0x1A0
+	union {
+		uint32_t flags; // 0x1A4
+		struct {
+			uint32_t : 6;
+			uint32_t __run_from_link : 1; // 7 (initial set may be buggy with thcrap?)
+		};
+	};
+	uint32_t system_time_milliseconds; // 0x1A8
+	uint32_t system_time; // 0x1AC
+	D3DCAPS8 device_caps; // 0x1B0
+	ZUNThread __thread_284; // 0x284
+	int __int_294; // 0x294
+	CRITICAL_SECTION critical_sections[4]; // 0x298
+	uint8_t critical_section_depths[4]; // 0x2F8
+	int __dword_2FC; // 0x2FC
+	int __dword_300; // 0x300
+	unknown_fields(0x34); // 0x304
+	int __dword_338; // 0x338
+	int32_t __sint_33C; // 0x33C
+	int __dword_340; // 0x340
+	int __dword_344; // 0x344
+	int __dword_348; // 0x348
+	int __dword_34C; // 0x34C
+	BOOL fog_enabled; // 0x350
+	int32_t game_exe_checksum; // 0x354
+	int32_t game_exe_file_size; // 0x358
+	int32_t ver_file_size; // 0x35C
+	void* ver_file_buffer; // 0x360
+	// 0x364
+};
+
 // size: 0x44
 struct WindowData {
     HWND window; // 0x0
@@ -533,11 +622,11 @@ struct WindowData {
     double __double_34; // 0x34
     double __double_3C; // 0x3C
     // 0x44
-    // LARGE_INTEGER startup_qpc_value; // 0x44
     
     // 0x442190
     double thiscall get_runtime();
     
+	/*
     // 0x441E70
     int32_t thiscall do_frame() {
         this->__double_2C = this->get_runtime();
@@ -583,6 +672,7 @@ struct WindowData {
             Sleep(0);
         }
     }
+	*/
 };
 
 // 0x17CE700
@@ -602,3 +692,107 @@ double thiscall WindowData::get_runtime() {
     }
     return current_time;
 }
+
+// 0x421DD0
+void cdecl __debug_log_stub_1(const char* format, ...) {}
+
+// size: 0x10
+struct MediaTimer {
+    //void* vftable; // 0x0
+    UINT id; // 0x4
+    TIMECAPS time_caps; // 0x8
+    // 0x10
+    
+    // 0x443DF0
+    MediaTimer() {
+        timeGetDevCaps(&this->time_caps, 8);
+        this->id = 0;
+    }
+    
+    // 0x443E20
+    ~MediaTimer() {
+        this->stop();
+        timeEndPeriod(this->time_caps.wPeriodMin);
+    }
+    
+    // Method 0
+    virtual void default_callback() {}
+    
+    static void CALLBACK invoke_default_callback(UINT timer_id, UINT msg, DWORD_PTR data, DWORD_PTR reserved1, DWORD_PTR reserved2) {
+        ((MediaTimer*)data)->default_callback();
+    }
+    
+    // 0x443E50
+    UINT start(UINT delay, LPTIMECALLBACK callback, DWORD_PTR callback_data) {
+        this->stop();
+        timeBeginPeriod(this->time_caps.wPeriodMin);
+        if (callback) {
+            this->id = timeSetEvent(delay, this->time_caps.wPeriodMin, callback, callback_data, TIME_PERIODIC);
+        }
+        else {
+            this->id = timeSetEvent(delay, this->time_caps.wPeriodMin, invoke_default_callback, (DWORD_PTR)this, TIME_PERIODIC);
+        }
+        return this->id;
+    }
+    
+    // 0x443ED0
+    BOOL stop() {
+        if (this->id) {
+            timeKillEvent(this->id);
+        }
+        timeEndPeriod(this->time_caps.wPeriodMin);
+        this->id = 0;
+        return TRUE;
+    }
+};
+
+// 0x17CE744
+LARGE_INTEGER QPC_VALUE;
+
+// size: 0x14
+struct QpcMonitor : MediaTimer {
+    unknown_fields(0x4); // 0x10
+    // 0x14
+
+	// 0x446F42
+	~QpcMonitor() {}
+    
+    // 0x445400
+    virtual void default_callback() {
+        QueryPerformanceCounter(&QPC_VALUE);
+    }
+    
+    // 0x445420
+	void start() {
+		this->MediaTimer::start(16, NULL, NULL);
+	}
+
+	// 0x445440
+	void stop() {
+		this->MediaTimer::stop();
+	}
+};
+
+struct MidiManagerInner {
+	int __dword_0; // 0x0
+	int __dword_4; // 0x4
+	// 0x8
+
+	// 0x443C60
+	MidiManagerInner() {
+		this->__dword_0 = 0;
+		this->__dword_4 = 0;
+	}
+
+	// 0x443C90
+	~MidiManagerInner() {
+
+	}
+};
+
+// size: 0x300
+struct MidiManager : MediaTimer {
+
+	MidiManagerInner __inner_13C; // 0x13C
+
+};
