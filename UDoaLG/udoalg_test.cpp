@@ -556,10 +556,90 @@ dllexport float vectorcall zsinfB(float value) {
     return zsinB(value);
 }
 
+struct Player {
+    char gap0[8420]; // 0x0
+    int32_t unfocused_linear_speed; // 0x20E4
+    int32_t focused_linear_speed; // 0x20E8
+    int32_t unfocused_diagonal_speed; // 0x20EC
+    int32_t focused_diagonal_speed; // 0x20F0
+};
+
+// size: 0x3C
+struct CpuCollider {
+    Float3 position; // 0x0
+    Float3 __float3_C; // 0xC
+    Float2 __hitbox_size; // 0x18
+    float __hitbox_radius; // 0x20
+    float __angle_24; // 0x24
+    float __angle_28; // 0x28
+    float __float_2C; // 0x2C
+    int32_t __life; // 0x30
+    void* __entity_ptr; // 0x34
+    union {
+        uint32_t flags; // 0x38
+        struct {
+            uint32_t round : 1;
+        };
+    };
+    // 0x3C
+};
+
+struct GameSide;
+
+// size: 0xEA64C
+struct CpuHit {
+    void* vftable; // 0x0
+    CpuCollider __collider_array_4[8000]; // 0x4
+    CpuCollider __collider_array_75304[8000]; // 0x75304
+    int32_t collider_count; // 0xEA604
+    Float3 position; // 0xEA608
+    int __int_EA614; // 0xEA614
+    int32_t __int_EA618; // 0xEA618
+    int32_t __int_EA61C; // 0xEA61C
+    int32_t __int_EA620; // 0xEA620
+    int32_t __int_EA624; // 0xEA624
+    int __int_EA628; // 0xEA628
+    int __dword_EA62C; // 0xEA62C
+    int __int_EA630; // 0xEA630
+    int __int_EA634; // 0xEA634
+    int __int_EA638; // 0xEA638
+    int __int_EA63C; // 0xEA63C
+    int __int_EA640; // 0xEA640
+    uint32_t side_index; // 0xEA644
+    GameSide* game_side_ptr; // 0xEA648
+    // 0xEA64C
+};
+
+// size: 0x36EECC
+struct CpuHitC {
+    void* vftable; // 0x0
+    CpuCollider __collider_array_4[30000]; // 0x4
+    CpuCollider __collider_array_1B7744[30000]; // 0x1B7744
+    int32_t collider_count; // 0x36EE84
+    Float3 position; // 0x36EE88
+    int __int_36EE94; // 0x36EE94
+    int32_t __int_36EE98; // 0x36EE98
+    int32_t __int_36EE9C; // 0x36EE9C
+    int32_t __int_36EEA0; // 0x36EEA0
+    int32_t __int_36EEA4; // 0x36EEA4
+    int __int_36EEA8; // 0x36EEA8
+    int __dword_36EEAC; // 0x36EEAC
+    int __int_36EEB0; // 0x36EEB0
+    int __int_36EEB4; // 0x36EEB4
+    int __int_36EEB8; // 0x36EEB8
+    int __int_36EEBC; // 0x36EEBC
+    int __int_36EEC0; // 0x36EEC0
+    uint32_t side_index; // 0x36EEC4
+    GameSide* game_side_ptr; // 0x36EEC8
+    // 0x36EECC
+
+    dllexport uint32_t* vectorcall __check_colliders_new(int, uint32_t *volatile hit_flags_ptr, float, float, float radius);
+};
+
 // size: 0x3C
 struct GameSide {
     void* bullet_manager_ptr; // 0x0
-    void* player_ptr; // 0x4
+    Player* player_ptr; // 0x4
     void* enemy_manager_ptr; // 0x8
     void* item_manager_ptr; // 0xC
     void* spellcard_ptr; // 0x10
@@ -578,6 +658,191 @@ struct GameSide {
 ValidateStructSize(0x3C, GameSide);
 
 dllexport GameSide GAME_SIDES[2];
+
+extern "C" {
+    extern vec<float, 4> vectorcall __libm_sse2_sincosf(float angle) asm("___libm_sse2_sincosf_");
+}
+
+dllexport uint32_t* vectorcall CpuHitC::__check_colliders_new(int, uint32_t *volatile hit_flags_ptr, float, float, float radius) {
+
+    uint32_t hit_flags;
+    __asm__(
+        "xor %0, %0"
+        : "=r"(hit_flags)
+    );
+
+    size_t collider_count = this->collider_count;
+    if (collider_count) {
+
+        CpuCollider* collider = &this->__collider_array_4[0];
+        __asm__("":"+r"(collider));
+
+        vec<int32_t, 4> speed_vec_int = *(vec<int32_t, 4>*)&this->game_side_ptr->player_ptr->unfocused_linear_speed; // { UL, FL, UD, FD }
+        vec<float, 4> speed_vec = convertvec(speed_vec_int, vec<float, 4>);
+        speed_vec *= 1.0f / 128.0f;
+
+        vec<float, 4> neg_speed_vec = -speed_vec;
+
+        //vec<float, 2> current_pos = *(vec<float, 2>*)&this->position;
+        vec<float, 4> current_pos_wide = { this->position.x, this->position.y, 0.0f, 0.0f };
+
+        constexpr vec<float, 4> min_clamp_wide = { -140.0f, 32.0f, -140.0f, 32.0f };
+        constexpr vec<float, 4> max_clamp_wide = { 140.0f, 432.0f, 140.0f, 432.0f };
+#define clamp(value) __builtin_elementwise_max(__builtin_elementwise_min(value, max_clamp_wide), min_clamp_wide)
+
+        union {
+            struct {
+                vec<float, 2> check_pos_list[18];
+                volatile vec<float, 4> radius_squared_vec_mem;
+                volatile vec<float, 4> radius_vec_mem;
+            };
+        };
+
+        check_pos_list[0] = *(vec<float, 2>*)&current_pos_wide;
+        check_pos_list[9] = *(vec<float, 2>*)&current_pos_wide;
+
+        //vec<float, 4> current_pos_wide = { current_pos[0], current_pos[1], current_pos[0], current_pos[1] };
+        current_pos_wide = shufflevec(current_pos_wide, current_pos_wide, 0, 1, 0, 1);
+
+        *(vec<float, 4>*)&check_pos_list[5] = clamp(current_pos_wide + shufflevec(neg_speed_vec, speed_vec, 3, 3, 6, 3)); // { -UD, -UD, +UD, -UD }
+        *(vec<float, 4>*)&check_pos_list[7] = clamp(current_pos_wide + shufflevec(neg_speed_vec, speed_vec, 3, 6, 6, 6)); // { -UD, +UD, +UD, +UD }
+        *(vec<float, 4>*)&check_pos_list[14] = clamp(current_pos_wide + shufflevec(neg_speed_vec, speed_vec, 4, 4, 7, 4)); // { -FD, -FD, +FD, -FD }
+        *(vec<float, 4>*)&check_pos_list[16] = clamp(current_pos_wide + shufflevec(neg_speed_vec, speed_vec, 4, 7, 7, 7)); // { -FD, +FD, +FD, +FD }
+
+        current_pos_wide = shufflevec(current_pos_wide, current_pos_wide, 0, 0, 1, 1); // { X, X, Y, Y }
+        vec<float, 4> tempA = shufflevec(current_pos_wide, current_pos_wide, 2, 3, 0, 1); // { Y, Y, X, X }
+
+        vec<float, 4> linear_speed = shufflevec(neg_speed_vec, speed_vec, 0, 4, 0, 4); // { -UL, +UL, -UL, +UL }
+        vec<float, 4> tempB = clamp(tempA + linear_speed);
+        *(vec<float, 4>*)&check_pos_list[1] = shufflevec(current_pos_wide, tempB, 0, 4, 1, 5);
+        *(vec<float, 4>*)&check_pos_list[3] = shufflevec(tempB, current_pos_wide, 2, 6, 3, 7);
+
+        linear_speed = shufflevec(neg_speed_vec, speed_vec, 1, 5, 1, 5); // { -FL, +FL, -FL, +FL }
+        tempB = clamp(tempA + linear_speed);
+        *(vec<float, 4>*)&check_pos_list[10] = shufflevec(current_pos_wide, tempB, 0, 4, 1, 5);
+        *(vec<float, 4>*)&check_pos_list[12] = shufflevec(tempB, current_pos_wide, 2, 6, 3, 7);
+
+        //vec<float, 4> zero_vec = {};
+        //radius_vec = shufflevec(radius_vec, zero_vec, 0, 4, 4, 0);
+        //vec<float, 4> radius_squared_vec = shufflevec(radius_vec, radius_vec, 0, 0, 0, 0);
+        //radius_squared_vec *= radius_squared_vec;
+        vec<float, 4> radius_vec = { radius, 0.0f, 0.0f, radius };
+        //volatile vec<float, 4> radius_vec_mem = radius_vec;
+        radius_vec_mem = radius_vec;
+        float radius_squared = radius * radius;
+        vec<float, 4> radius_squared_vec = { radius_squared, radius_squared, radius_squared, radius_squared };
+        //volatile vec<float, 4> radius_squared_vec_mem = radius_squared_vec;
+        radius_squared_vec_mem = radius_squared_vec;
+
+        CpuCollider* collider_end = collider + collider_count;
+        do {
+            if (collider->round) {
+                /*
+                float total_dist = collider->__hitbox_radius;
+                total_dist *= total_dist;
+                total_dist += radius_squared_vec[0];
+                vec<float, 2> position = *(vec<float, 2>*)&collider->position;
+                nounroll for (size_t j = 0, mask = 1; j != 18; ++j, mask <<= 1) {
+                    if (!(hit_flags & mask)) {
+                        vec<float, 2> diff = check_pos_list[j] - position;
+                        diff *= diff;
+                        if (total_dist > diff[0] + diff[1]) {
+                            hit_flags |= mask;
+                        }
+                    }
+                }
+                */
+                
+                float distance = collider->__hitbox_radius;
+                distance *= distance;
+                distance += radius_squared_vec[0];
+
+                vec<float, 4> distance_vec = { distance, distance, distance, distance };
+
+                vec<float, 2> position = *(vec<float, 2>*)&collider->position;
+                vec<float, 4> position_wide = { position[0], position[1], position[0], position[1] };
+
+                nounroll for (size_t i = 0; i != 16; i += 4) {
+                    vec<float, 4> diffA = *(vec<float, 4>*)&check_pos_list[i] - position_wide;
+                    diffA *= diffA;
+                    diffA += shufflevec(diffA, diffA, 1, -1, 3, -1);
+                    vec<float, 4> diffB = *(vec<float, 4>*)&check_pos_list[i + 2] - position_wide;
+                    diffB *= diffB;
+                    diffB += shufflevec(diffB, diffB, -1, 0, -1, 2);
+                    hit_flags |= vec_movmsk(distance_vec > shufflevec(diffA, diffB, 0, 2, 5, 7)) << i;
+                }
+                vec<float, 4> diffC = *(volatile vec<float, 4>*)&check_pos_list[16] - position_wide;
+                diffC *= diffC;
+                diffC += shufflevec(diffC, diffC, -1, 0, -1, 2);
+                hit_flags |= vec_movmsk((vec<double, 2>)(distance_vec > diffC)) << 16;
+                
+            }
+            else {
+                vec<float, 4> trig = __libm_sse2_sincosf(-collider->__angle_28);
+                radius_squared_vec = radius_squared_vec_mem;
+                trig = shufflevec(trig, trig, 1, 1, 0, 0);
+                trig = vec_xor(trig, 0.0f, 0.0f, -0.0f, 0.0f);
+                vec<float, 2> half_size = *(vec<float, 2>*)&collider->__hitbox_size * 0.5f;
+                vec<float, 4> half_size_wideA = { half_size[0], half_size[1], half_size[0], half_size[1] };
+                vec<float, 4> half_size_wideB = vec_xor(half_size_wideA, -0.0f, 0.0f, -0.0f, 0.0f);
+                vec<float, 2> position = *(vec<float, 2>*)&collider->position;
+                vec<float, 4> tempC = half_size_wideA;
+                tempC += radius_vec_mem;
+                nounroll for (size_t i = 0, mask = 1; i != 18; ++i, mask <<= 1) {
+                    if (!(hit_flags & mask)) {
+                        vec<float, 2> diff = check_pos_list[i] - position;
+                        vec<float, 4> diff_wide = { diff[0], diff[1], diff[1], diff[0] };
+
+                        vec<float, 4> rot = diff_wide * trig;
+                        rot = shufflevec(rot, rot, 0, 1, 0, 1) + shufflevec(rot, rot, 2, 3, 2, 3);
+
+                        vec<float, 4> abs_rot = __builtin_elementwise_abs(rot);
+
+                        int vec_mask = ~vec_movmsk(tempC >= abs_rot);
+                        __asm__("":"+a"(vec_mask));
+                        if (!(vec_mask & 0x3) || !(vec_mask & 0xC)) {
+                            hit_flags |= mask;
+                            continue;
+                        }
+
+                        rot += half_size_wideB;
+                        rot *= rot;
+                        rot += shufflevec(rot, rot, 2, 3, 1, 0);
+                        auto tempE = radius_squared_vec > rot;
+                        if (tempE[0] | tempE[1] | tempE[2] | tempE[3]) {
+                            hit_flags |= mask;
+                        }
+
+                        /*
+                        float x_sq1 = rot_x - half_size_x;
+                        x_sq1 *= x_sq1;
+                        float x_sq2 = rot_x + half_size_x;
+                        x_sq2 *= x_sq2;
+                        float y_sq1 = rot_y - half_size_y;
+                        y_sq1 *= y_sq1;
+                        float y_sq2 = rot_y + half_size_y;
+                        y_sq2 *= y_sq2;
+                        if (
+                            radius_squared_vec[0] > x_sq1 + y_sq1 || // 0 + 2   0 + 2
+                            radius_squared_vec[0] > x_sq2 + y_sq1 || // 1 + 2   1 + 3
+                            radius_squared_vec[0] > x_sq1 + y_sq2 || // 0 + 3   2 + 1
+                            radius_squared_vec[0] > x_sq2 + y_sq2 || // 1 + 3   3 + 0
+                            half_size_x + radius >= fabsf(rot_x) && half_size_y >= fabsf(rot_y) ||
+                            half_size_x >= fabsf(rot_x) && half_size_y + radius >= fabsf(rot_y)
+                        ) {
+                            hit_flags |= 1 << j;
+                        }
+                        */
+                    }
+                }
+            }
+        } while (++collider != collider_end);
+    }
+
+    uint32_t* ret = hit_flags_ptr;
+    *ret = hit_flags;
+    return ret;
+}
 
 struct EnemyData {
     dummy_fields(0x5638);

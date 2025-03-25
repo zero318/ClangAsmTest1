@@ -9,7 +9,7 @@
 #include <utility>
 #include <string.h>
 
-/*
+#include <type_traits>
 #include <codecvt>
 #include <string>
 
@@ -32,31 +32,33 @@ static inline size_t uint32_to_hex_strbuf(uint32_t value, T* text_buffer) {
     size_t ret = digit_offset + 1;
     do {
         uint16_t digit = temp & 0xF;
-        temp >>= 2;
+        temp >>= 4;
         text_buffer[digit_offset] = (digit < 10 ? (T)'0' : (T)('A' - 10)) + digit;
     } while (digit_offset--);
     return ret;
 }
-*/
+
 #undef WIN32_LEAN_AND_MEAN
 
 #include <Windows.h>
 #include <Psapi.h>
 
 #include "jansson.h"
+#include "json5pp.hpp"
 
 #include <intrin.h>
 //#include <DbgHelp.h>
 
-struct FileBuffer {
-    const uint8_t* buffer;
-    size_t size;
-};
-
-[[nodiscard]] auto read_file_to_buffer(const wchar_t* path) {
+template <typename T>
+[[nodiscard]] auto read_file_to_buffer(const T* path) {
     long file_size = 0;
     uint8_t* buffer = NULL;
-    FILE* file = _wfopen(path, L"rb");
+    FILE* file;
+    if constexpr (std::is_same_v<T, char>) {
+        file = fopen(path, "rb");
+    } else if constexpr (std::is_same_v<T, wchar_t>) {
+        file = _wfopen(path, L"rb");
+    }
     if (file) {
         _fseek_nolock(file, 0, SEEK_END);
         file_size = _ftell_nolock(file);
@@ -128,6 +130,16 @@ BOOL __stdcall SymCleanup_shim(HANDLE hProcess) {
     return cleanup(hProcess);
 }
 
+#define json_object_foreach_fast(object, key, value) \
+    for (void* iter = json_object_iter(object); \
+		 iter ? (value = json_object_iter_value(iter)), (key = json_object_iter_key(iter)), 1 : 0; \
+		 iter = json_object_iter_next(object, iter))
+
+#define json_array_foreach_scoped(ind_type, ind, arr, val) \
+	for(ind_type ind = 0, ind ## _max = json_array_size(arr); \
+		ind < ind ## _max ? (val = json_array_get(arr, ind)), 1 : 0; \
+		ind++)
+
 
 // hProcess, 0, img, mod, baseAddr, size, nullptr, 0
 DWORD64 __stdcall SymLoadModuleExW_shim(
@@ -143,6 +155,7 @@ DWORD64 __stdcall SymLoadModuleExW_shim(
     //DWORD64 ret = SymLoadModuleExW(hProcess, hFile, ImageName, ModuleName, BaseOfDll, DllSize, Data, Flags);
     DWORD64 ret = load_module(hProcess, hFile, ImageName, ModuleName, BaseOfDll, DllSize, Data, Flags);
     if (ret) {
+        /*
         if (!__builtin_wcscmp(ModuleName, L"th19.exe")) {
             add_symbol(hProcess, BaseOfDll, L"_sin", BaseOfDll + 0x7A070, 0x43, 0);
             add_symbol(hProcess, BaseOfDll, L"__sin_pentium4", BaseOfDll + 0x80C48, 0x1AF, 0);
@@ -159,7 +172,9 @@ DWORD64 __stdcall SymLoadModuleExW_shim(
             add_symbol(hProcess, BaseOfDll, L"__sub_r126990", BaseOfDll + 0x126990, 0x710, 0);
             add_symbol(hProcess, BaseOfDll, L"AnmManager::__sub_rC9380", BaseOfDll + 0xC9380, 0xA12, 0);
         }
-        /*
+        */
+        //__asm__ volatile (".byte 0xEB, 0xFE");
+        
         auto utf8_str = wstring_to_utf8(ModuleName);
         json_t* module_versions = json_object_get(label_json, utf8_str.data());
         if (__builtin_expect(module_versions != NULL, false)) {
@@ -174,15 +189,65 @@ DWORD64 __stdcall SymLoadModuleExW_shim(
 
                 json_t* filename = json_object_getn(module_versions, crc32_buf, length);
                 if (filename) {
-                    const char* filename_str = json_string_value(filename);
+                    std::string u8str = "extra_labels/";
+                    u8str.append(json_string_value(filename), json_string_length(filename));
+
+                    auto [label_buffer, label_size] = read_file_to_buffer(u8str.data());
+                    if (label_buffer) {
+                        try {
+                            json5pp::value json5 = json5pp::parse5(label_buffer, label_size);
+                            for (const auto& [key, value] : json5.as_object()) {
+                                std::wstring name = utf8_to_wstring(key);
+                                const auto& values = value.as_array();
+                                add_symbol(
+                                    hProcess,
+                                    BaseOfDll,
+                                    name.data(),
+                                    BaseOfDll + values[0].as_integer(),
+                                    values[1].as_integer(),
+                                    0
+                                );
+                            }
+                        }
+                        catch (json5pp::syntax_error e) {
+                        }
+                        _mm_free(label_buffer);
+                    }
+                    
+                    //json5pp::parse5()
+
+                    /*
+                    json_error_t err;
+                    json_t* exe_labels = json_load_file(u8str.data(), 0, &err);
+                    if (__builtin_expect(exe_labels != NULL, true)) {
+                        json_t* value;
+                        json_object_foreach_fast(exe_labels, u8str, value) {
+                            
+                        }
+                    }
+                    */
 
                     //SymAddSymbolW
-                    SymAddSymbolW(hProcess, BaseOfDll, L"__sin_pentium4", BaseOfDll + 0x80C48, 0x1AF, 0);
-                    SymAddSymbolW(hProcess, BaseOfDll, L"__cos_pentium4", BaseOfDll + 0x80F18, 0x191, 0);
+                    /*
+                    add_symbol(hProcess, BaseOfDll, L"_sin", BaseOfDll + 0x7A070, 0x43, 0);
+                    add_symbol(hProcess, BaseOfDll, L"__sin_pentium4", BaseOfDll + 0x80C48, 0x1AF, 0);
+                    add_symbol(hProcess, BaseOfDll, L"_cos", BaseOfDll + 0x7A0C0, 0x43, 0);
+                    add_symbol(hProcess, BaseOfDll, L"__cos_pentium4", BaseOfDll + 0x80F18, 0x191, 0);
+                    add_symbol(hProcess, BaseOfDll, L"AnmManager::render_layer(int layer_index)", BaseOfDll + 0xCC5A0, 0x267, 0);
+                    add_symbol(hProcess, BaseOfDll, L"CPUHitInf::__check_colliders", BaseOfDll + 0xF8F60, 0x5CF, 0);
+                    add_symbol(hProcess, BaseOfDll, L"AnmListEnds::on_tick_world", BaseOfDll + 0xCCE00, 0x98, 0);
+                    add_symbol(hProcess, BaseOfDll, L"AnmVM::run_anm", BaseOfDll + 0xBD660, 0x38B7, 0);
+                    add_symbol(hProcess, BaseOfDll, L"AnmVM::get_root_vm_custom_slowdown", BaseOfDll + 0x49D0, 0x31, 0);
+                    add_symbol(hProcess, BaseOfDll, L"AnmVM::__get_root_vm_controller_rotation", BaseOfDll + 0x4AE0, 0x90, 0);
+                    add_symbol(hProcess, BaseOfDll, L"AnmManager::draw_vm(AnmVM* vm)", BaseOfDll + 0xC50F0, 0xDCA, 0);
+                    add_symbol(hProcess, BaseOfDll, L"AnmVM::__step_interps", BaseOfDll + 0xBC9A0, 0x218, 0);
+                    add_symbol(hProcess, BaseOfDll, L"__sub_r126990", BaseOfDll + 0x126990, 0x710, 0);
+                    add_symbol(hProcess, BaseOfDll, L"AnmManager::__sub_rC9380", BaseOfDll + 0xC9380, 0xA12, 0);
+                    */
                 }
             }
         }
-        */
+        
     }
     return ret;
 }

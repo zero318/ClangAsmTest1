@@ -751,6 +751,22 @@ struct vector_length<T, std::void_t<decltype(std::declval<T>()[0])>> {
 template <typename T>
 inline constexpr size_t vector_length_v = vector_length<T>::value;
 
+template <typename T, typename... U>
+struct is_all_same {
+    static constexpr bool value = (... && std::is_same_v<T, U>);
+};
+
+template <typename T, typename... U>
+inline constexpr bool is_all_same_v = is_all_same<T, U...>::value;
+
+template <typename T, typename... U>
+struct is_all_same_size {
+    static constexpr bool value = (... && (sizeof(T) == sizeof(U)));
+};
+
+template <typename T, typename... U>
+inline constexpr bool is_all_same_size_v = is_all_same_size<T, U...>::value;
+
 enum InlineState {
     DefaultInline,
     ForceInline,
@@ -2134,11 +2150,18 @@ using UBitIntType = std::conditional_t<bit_count <= 8, uint8_t,
                     std::conditional_t<bit_count <= 32, uint32_t,
                     std::conditional_t<bit_count <= 64, uint64_t,
                     void>>>>;
+template <size_t bit_count>
+using BitFloatType = std::conditional_t<bit_count <= 32, float,
+                     std::conditional_t<bit_count <= 64, double,
+                     std::conditional_t<bit_count <= 80, long double,
+                     void>>>;
 
 template <size_t byte_count>
 using SByteIntType = SBitIntType<byte_count * CHAR_BIT>;
 template <size_t byte_count>
 using UByteIntType = UBitIntType<byte_count * CHAR_BIT>;
+template <size_t byte_count>
+using ByteFloatType = BitFloatType<byte_count * CHAR_BIT>;
 
 #if __INTELLISENSE__
 #define SBitInt(bit_count) SBitIntType<bit_count>
@@ -2158,9 +2181,82 @@ using UByteIntType = UBitIntType<byte_count * CHAR_BIT>;
 
 #include "custom_intrin.h"
 
-template <typename T, typename IV>
-static inline constexpr T vec_xor(T vector, IV int_mask) {
-    return (T)((IV)vector ^ int_mask);
+template <typename T>
+static inline constexpr auto vec_as_int(T vector) {
+    using V = vec<SBitIntType<bitsof(vector_type_t<T>)>, vector_length_v<T>>;
+    return __builtin_bit_cast(V, vector);
+}
+
+template <typename T>
+static inline constexpr auto vec_as_uint(T vector) {
+    using V = vec<UBitIntType<bitsof(vector_type_t<T>)>, vector_length_v<T>>;
+    return __builtin_bit_cast(V, vector);
+}
+
+template <typename T>
+static inline constexpr auto vec_as_float(T vector) {
+    using V = vec<BitFloatType<bitsof(vector_type_t<T>)>, vector_length_v<T>>;
+    return __builtin_bit_cast(V, vector);
+}
+
+template <typename T1, typename T2> requires(is_vector_v<T2>)
+static inline constexpr T1 vec_xor(T1 vector, T2 mask) {
+    using V1 = vec<SBitIntType<bitsof(vector_type_t<T1>)>, vector_length_v<T1>>;
+    using V2 = vec<SBitIntType<bitsof(vector_type_t<T2>)>, vector_length_v<T2>>;
+    return (T1)((V1)vector ^ (V2)mask);
+}
+
+template <typename T, typename ... Args>
+requires(sizeof...(Args) != 0 && is_all_same_size_v<Args...> && (... + sizeof(Args)) <= sizeof(T) && !(sizeof(T) % sizeof(std::tuple_element_t<0, std::tuple<Args...>>)))
+static inline constexpr T vec_xor(T vector, Args... mask) {
+    using E = std::tuple_element_t<0, std::tuple<Args...>>;
+    constexpr size_t L = sizeof(T) / sizeof(E);
+    return vec_xor(vector, (vec<E, L>) { __builtin_bit_cast(E, mask)... });
+}
+
+template <typename T1, typename T2> requires(is_vector_v<T2>)
+static inline constexpr T1 vec_and(T1 vector, T2 mask) {
+    using V1 = vec<SBitIntType<bitsof(vector_type_t<T1>)>, vector_length_v<T1>>;
+    using V2 = vec<SBitIntType<bitsof(vector_type_t<T2>)>, vector_length_v<T2>>;
+    return (T1)((V1)vector & (V2)mask);
+}
+
+template <typename T, typename ... Args>
+requires(sizeof...(Args) != 0 && is_all_same_size_v<Args...> && (... + sizeof(Args)) <= sizeof(T) && !(sizeof(T) % sizeof(std::tuple_element_t<0, std::tuple<Args...>>)))
+static inline constexpr T vec_and(T vector, Args... mask) {
+    using E = std::tuple_element_t<0, std::tuple<Args...>>;
+    constexpr size_t L = sizeof(T) / sizeof(E);
+    return vec_and(vector, (vec<E, L>) { __builtin_bit_cast(E, mask)... });
+}
+
+template <typename T1, typename T2> requires(is_vector_v<T2>)
+static inline constexpr T1 vec_andnot(T1 vector, T2 mask) {
+    using V1 = vec<SBitIntType<bitsof(vector_type_t<T1>)>, vector_length_v<T1>>;
+    using V2 = vec<SBitIntType<bitsof(vector_type_t<T2>)>, vector_length_v<T2>>;
+    return (T1)(~(V1)vector & (V2)mask);
+}
+
+template <typename T, typename ... Args>
+requires(sizeof...(Args) != 0 && is_all_same_size_v<Args...> && (... + sizeof(Args)) <= sizeof(T) && !(sizeof(T) % sizeof(std::tuple_element_t<0, std::tuple<Args...>>)))
+static inline constexpr T vec_andnot(T vector, Args... mask) {
+    using E = std::tuple_element_t<0, std::tuple<Args...>>;
+    constexpr size_t L = sizeof(T) / sizeof(E);
+    return vec_andnot(vector, (vec<E, L>) { __builtin_bit_cast(E, mask)... });
+}
+
+template <typename T1, typename T2> requires(is_vector_v<T2>)
+static inline constexpr T1 vec_or(T1 vector, T2 mask) {
+    using V1 = vec<SBitIntType<bitsof(vector_type_t<T1>)>, vector_length_v<T1>>;
+    using V2 = vec<SBitIntType<bitsof(vector_type_t<T2>)>, vector_length_v<T2>>;
+    return (T1)((V1)vector | (V2)mask);
+}
+
+template <typename T, typename ... Args>
+requires(sizeof...(Args) != 0 && is_all_same_size_v<Args...> && (... + sizeof(Args)) <= sizeof(T) && !(sizeof(T) % sizeof(std::tuple_element_t<0, std::tuple<Args...>>)))
+static inline constexpr T vec_or(T vector, Args... mask) {
+    using E = std::tuple_element_t<0, std::tuple<Args...>>;
+    constexpr size_t L = sizeof(T) / sizeof(E);
+    return vec_or(vector, (vec<E, L>) { __builtin_bit_cast(E, mask)... });
 }
 
 template <typename T, size_t count = vector_length_v<T>, typename E>
@@ -2276,6 +2372,49 @@ static inline constexpr T vec_even_interleave(T lower, T upper) {
             ret[i + 1] = upper[i * 2];
         }
         return ret;
+    }
+}
+
+template <typename T>
+static inline constexpr auto vec_movmsk(T vec) {
+    constexpr size_t vec_length = vector_length_v<T>;
+    using V = vector_type_t<T>;
+
+    if constexpr (sizeof(V) == sizeof(int8_t)) {
+        if constexpr (vec_length <= 16) {
+            return _mm_movemask_epi8((__m128i)vec);
+        }
+        else if constexpr (vec_length <= 32) {
+            return _mm256_movemask_epi8((__m256i)vec);
+        }
+        else {
+            static_assert(false);
+        }
+    }
+    else if constexpr (sizeof(V) == sizeof(int32_t)) {
+        if constexpr (vec_length <= 4) {
+            return _mm_movemask_ps((__m128)vec);
+        }
+        else if constexpr (vec_length <= 8) {
+            return _mm256_movemask_ps((__m256)vec);
+        }
+        else {
+            static_assert(false);
+        }
+    }
+    else if constexpr (sizeof(V) == sizeof(int64_t)) {
+        if constexpr (vec_length <= 2) {
+            return _mm_movemask_pd((__m128d)vec);
+        }
+        else if constexpr (vec_length <= 4) {
+            return _mm256_movemask_pd((__m256d)vec);
+        }
+        else {
+            static_assert(false);
+        }
+    }
+    else {
+        static_assert(false);
     }
 }
 
