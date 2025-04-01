@@ -2396,6 +2396,18 @@ public:
     dllexport int32_t thiscall operator--() {
         clang_forceinline return this->decrement();
     }
+
+    // 0x4210A0
+    dllexport BOOL thiscall __is_multiple_of(int32_t value) asm_symbol_rel(0x4210A0) {
+        int32_t current = this->current;
+        if (
+            current != this->previous &&
+            !(current % value)
+        ) {
+            return TRUE;
+        }
+        return FALSE;
+    }
 };
 #pragma region // Timer Validation
 ValidateFieldOffset32(0x0, Timer, previous);
@@ -2441,9 +2453,11 @@ static inline constexpr uint32_t BUTTON_DOWN        = 0x00000020;
 static inline constexpr uint32_t BUTTON_LEFT        = 0x00000040;
 static inline constexpr uint32_t BUTTON_RIGHT       = 0x00000080;
 static inline constexpr uint32_t BUTTON_PAUSE       = 0x00000100; // VK_ESCAPE
-
+static inline constexpr uint32_t BUTTON_SKIP        = 0x00000200;
 static inline constexpr uint32_t BUTTON_USE_CARD    = 0x00000400; // 'C'
 static inline constexpr uint32_t BUTTON_SWITCH_CARD = 0x00000800; // 'D'
+
+static inline constexpr uint32_t BUTTON_UNKNOWN_A   = 0x00010000;
 
 static inline constexpr uint32_t BUTTON_SCREENSHOT  = 0x00040000; // 'P', VK_HOME
 static inline constexpr uint32_t BUTTON_ENTER       = 0x00080000; // VK_RETURN
@@ -2487,15 +2501,9 @@ static inline constexpr uint32_t XINPUT_PAD_MAPPINGS[] = {
     XINPUT_GAMEPAD_BACK
 };
 
-enum InputDeviceType : int32_t {
-    InputDeviceXInput = 0,
-    InputDeviceJoypad = 1,
-    InputDeviceKeyboard = 2
-};
-
 enum InputMode : int32_t {
-    InputJoypad = 0,
-    InputXInput = 1,
+    InputXInput = 0,
+    InputJoypad = 1,
     InputKeyboard = 2,
 };
 
@@ -2531,10 +2539,10 @@ struct InputState {
 
         };
     };
-    uint32_t hardware_inputs_heldA[BUTTON_COUNT]; // 0x14
-    uint32_t inputs_heldA[BUTTON_COUNT]; // 0x94
-    uint32_t hardware_inputs_heldB[BUTTON_COUNT]; // 0x114
-    uint32_t inputs_heldB[BUTTON_COUNT]; // 0x194
+    uint32_t hardware_inputs_held_for_repeat[BUTTON_COUNT]; // 0x14
+    uint32_t inputs_held_for_repeat[BUTTON_COUNT]; // 0x94
+    uint32_t hardware_inputs_held[BUTTON_COUNT]; // 0x114
+    uint32_t inputs_held[BUTTON_COUNT]; // 0x194
     int __dword_214; // 0x214
     union {
         uint32_t inputs_current; // 0x218
@@ -2578,14 +2586,16 @@ struct InputState {
             
         };
     };
-    InputDeviceType __device_type; // 0x234
-    InputMapping mappings[3]; // 0x238
+    InputMode __device_type; // 0x234
+    InputMapping joypad_mapping; // 0x238
+    InputMapping xinput_mapping; // 0x24C
+    InputMapping keyboard_mapping; // 0x260
     // 0x274
 
     // 0x418CE0
     dllexport gnu_noinline void thiscall __reset_inputs() asm_symbol_rel(0x418CE0) {
-        memset(this->inputs_heldA, 0, sizeof(this->inputs_heldA));
-        memset(this->inputs_heldB, 0, sizeof(this->inputs_heldB));
+        memset(this->inputs_held_for_repeat, 0, sizeof(this->inputs_held_for_repeat));
+        memset(this->inputs_held, 0, sizeof(this->inputs_held));
         this->__dword_214 = 0;
         this->inputs_current = 0;
         this->inputs_previous = 0;
@@ -2602,17 +2612,18 @@ struct InputState {
 
         for (size_t i = 0; i < BUTTON_COUNT; ++i) {
             if (current & 1) {
-                ++this->hardware_inputs_heldA[i];
-                ++this->hardware_inputs_heldB[i];
-                if (this->hardware_inputs_heldA[i] >= 8) {
+                ++this->hardware_inputs_held_for_repeat[i];
+                ++this->hardware_inputs_held[i];
+                if (this->hardware_inputs_held_for_repeat[i] >= 8) {
                     this->hardware_inputs_held_8_frames |= mask;
                 }
-                if (this->hardware_inputs_heldA[i] >= 26) {
+                if (this->hardware_inputs_held_for_repeat[i] >= 26) {
                     this->hardware_inputs_held_26_frames |= mask;
+                    this->hardware_inputs_held_for_repeat[i] -= 8;
                 }
             } else {
-                this->hardware_inputs_heldA[i] = 0;
-                this->hardware_inputs_heldB[i] = 0;
+                this->hardware_inputs_held_for_repeat[i] = 0;
+                this->hardware_inputs_held[i] = 0;
             }
             current >>= 1;
             mask <<= 1;
@@ -2629,17 +2640,18 @@ struct InputState {
 
         for (size_t i = 0; i < BUTTON_COUNT; ++i) {
             if (current & 1) {
-                ++this->inputs_heldA[i];
-                ++this->inputs_heldB[i];
-                if (this->inputs_heldA[i] >= 8) {
+                ++this->inputs_held_for_repeat[i];
+                ++this->inputs_held[i];
+                if (this->inputs_held_for_repeat[i] >= 8) {
                     this->inputs_held_8_frames |= mask;
                 }
-                if (this->inputs_heldA[i] >= 26) {
+                if (this->inputs_held_for_repeat[i] >= 26) {
                     this->inputs_held_26_frames |= mask;
+                    this->inputs_held_for_repeat[i] -= 8;
                 }
             } else {
-                this->inputs_heldA[i] = 0;
-                this->inputs_heldB[i] = 0;
+                this->inputs_held_for_repeat[i] = 0;
+                this->inputs_held[i] = 0;
             }
             current >>= 1;
             mask <<= 1;
@@ -2650,19 +2662,45 @@ struct InputState {
         this->inputs_falling_edge = ~current & changed;
     }
 
-    inline bool __input_current(uint32_t mask) {
-        return this->inputs_current & mask;
+    inline BOOL check_inputs(uint32_t mask) {
+        if (!(this->inputs_current & mask)) {
+            return FALSE;
+        }
+        return TRUE;
     }
 
-    inline bool __hardware_input_current(uint32_t mask) {
-        return this->hardware_inputs_current & mask;
+    inline BOOL check_inputs_no_repeat(uint32_t mask) {
+        if (!(this->inputs_rising_edge & mask)) {
+            return FALSE;
+        }
+        return TRUE;
     }
 
-    inline bool __hardware_input_pressed(uint32_t mask) {
-        return this->hardware_inputs_rising_edge & mask;
+    inline BOOL check_inputs_repeating(uint32_t mask) {
+        if (
+            !(this->inputs_rising_edge & mask) &&
+            !(this->inputs_held_26_frames & mask)
+        ) {
+            return FALSE;
+        }
+        return TRUE;
     }
 
-    inline BOOL __hardware_input_pressed_or_held(uint32_t mask) {
+    inline BOOL check_hardware_inputs(uint32_t mask) {
+        if (!(this->hardware_inputs_current & mask)) {
+            return FALSE;
+        }
+        return TRUE;
+    }
+
+    inline BOOL check_hardware_inputs_no_repeat(uint32_t mask) {
+        if (!(this->hardware_inputs_rising_edge & mask)) {
+            return FALSE;
+        }
+        return TRUE;
+    }
+
+    inline BOOL check_hardware_inputs_repeating(uint32_t mask) {
         if (
             !(this->hardware_inputs_rising_edge & mask) &&
             !(this->hardware_inputs_held_26_frames & mask)
@@ -2711,29 +2749,29 @@ struct InputState {
                     buttons |= BUTTON_RIGHT;
                 }
 
-                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->mappings[InputXInput].shoot]) {
+                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->xinput_mapping.shoot]) {
                     buttons |= BUTTON_SHOOT;
                 }
-                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->mappings[InputXInput].bomb]) {
+                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->xinput_mapping.bomb]) {
                     buttons |= BUTTON_BOMB;
                 }
-                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->mappings[InputXInput].focus]) {
+                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->xinput_mapping.focus]) {
                     buttons |= BUTTON_FOCUS;
                 }
-                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->mappings[InputXInput].use_card]) {
+                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->xinput_mapping.use_card]) {
                     buttons |= BUTTON_USE_CARD;
                 }
-                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->mappings[InputXInput].switch_card]) {
+                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->xinput_mapping.switch_card]) {
                     buttons |= BUTTON_SWITCH_CARD;
                 }
-                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->mappings[InputXInput].pause]) {
+                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->xinput_mapping.pause]) {
                     buttons |= BUTTON_PAUSE;
                 }
             }
         }
 
         if (buttons != prev_buttons) {
-            this->__device_type = InputDeviceXInput;
+            this->__device_type = InputXInput;
         }
         return buttons;
     }
@@ -2749,8 +2787,8 @@ struct InputState {
         // Again, this original code is *bad*.
         // I'm not going to attempt to match it.
 
-        int32_t bomb = this->mappings[InputKeyboard].bomb;
-        int32_t shoot = this->mappings[InputKeyboard].shoot;
+        int32_t bomb = this->keyboard_mapping.bomb;
+        int32_t shoot = this->keyboard_mapping.shoot;
 
         uint32_t pressed = keys[shoot]; // becomes 0x1
         pressed >>= 1;
@@ -2761,7 +2799,7 @@ struct InputState {
         // mystery key
         pressed >>= 1;
 
-        int32_t focus = this->mappings[InputKeyboard].focus;
+        int32_t focus = this->keyboard_mapping.focus;
         pressed |= keys[focus] & 0x80; // becomes 0x8
         pressed >>= 1;
 
@@ -2784,18 +2822,18 @@ struct InputState {
         pressed2 |= (keys[VK_HOME] | keys['P']) & 0x80; // becomes 0x40000
         pressed2 <<= 7;
 
-        int32_t switch_card = this->mappings[InputKeyboard].switch_card;
+        int32_t switch_card = this->keyboard_mapping.switch_card;
         pressed2 |= keys[switch_card] & 0x80; // becomes 0x800
         pressed2 <<= 1;
 
-        int32_t use_card = this->mappings[InputKeyboard].use_card;
+        int32_t use_card = this->keyboard_mapping.use_card;
         pressed2 |= keys[use_card] & 0x80; // becomes 0x400
         pressed2 <<= 1;
 
         // mystery key
         pressed2 <<= 1;
 
-        int32_t pause = this->mappings[InputKeyboard].pause;
+        int32_t pause = this->keyboard_mapping.pause;
         pressed2 |= keys[pause] & 0x80; // becomes 0x100
         pressed2 <<= 1;
 
@@ -2811,7 +2849,7 @@ struct InputState {
         buttons |= pressed;
 
         if (buttons != prev_buttons) {
-            this->__device_type = InputDeviceKeyboard;
+            this->__device_type = InputKeyboard;
         }
         return buttons;
     }
@@ -2821,10 +2859,10 @@ ValidateFieldOffset32(0x0, InputState, hardware_inputs_current);
 ValidateFieldOffset32(0x4, InputState, hardware_inputs_previous);
 ValidateFieldOffset32(0x8, InputState, hardware_inputs_held_26_frames);
 ValidateFieldOffset32(0xC, InputState, hardware_inputs_rising_edge);
-ValidateFieldOffset32(0x14, InputState, hardware_inputs_heldA);
-ValidateFieldOffset32(0x94, InputState, inputs_heldA);
-ValidateFieldOffset32(0x114, InputState, hardware_inputs_heldB);
-ValidateFieldOffset32(0x194, InputState, inputs_heldB);
+ValidateFieldOffset32(0x14, InputState, hardware_inputs_held_for_repeat);
+ValidateFieldOffset32(0x94, InputState, inputs_held_for_repeat);
+ValidateFieldOffset32(0x114, InputState, hardware_inputs_held);
+ValidateFieldOffset32(0x194, InputState, inputs_held);
 ValidateFieldOffset32(0x214, InputState, __dword_214);
 ValidateFieldOffset32(0x218, InputState, inputs_current);
 ValidateFieldOffset32(0x21C, InputState, inputs_previous);
@@ -2834,7 +2872,9 @@ ValidateFieldOffset32(0x228, InputState, inputs_falling_edge);
 ValidateFieldOffset32(0x22C, InputState, hardware_inputs_held_8_frames);
 ValidateFieldOffset32(0x230, InputState, inputs_held_8_frames);
 ValidateFieldOffset32(0x234, InputState, __device_type);
-ValidateFieldOffset32(0x238, InputState, mappings);
+ValidateFieldOffset32(0x238, InputState, joypad_mapping);
+ValidateFieldOffset32(0x24C, InputState, xinput_mapping);
+ValidateFieldOffset32(0x260, InputState, keyboard_mapping);
 ValidateStructSize32(0x274, InputState);
 #pragma endregion
 
@@ -2851,15 +2891,17 @@ dllexport gnu_noinline void __update_input0() {
 }
 
 // 0x416B70
-dllexport gnu_noinline BOOL __hardware_input0_pressed_or_held(uint32_t mask) asm_symbol_rel(0x416B70);
-dllexport gnu_noinline BOOL __hardware_input0_pressed_or_held(uint32_t mask) {
-    return INPUT_STATES[0].__hardware_input_pressed_or_held(mask);
+dllexport gnu_noinline BOOL stdcall __hardware_input0_pressed_or_held(uint32_t mask) asm_symbol_rel(0x416B70);
+dllexport gnu_noinline BOOL stdcall __hardware_input0_pressed_or_held(uint32_t mask) {
+    return INPUT_STATES[0].check_hardware_inputs_repeating(mask);
 }
 
 // size : 0x88
 struct Config {
     int __dword_0; // 0x0
-    InputMapping mappings[3]; // 0x4
+    InputMapping joypad_mapping; // 0x4
+    InputMapping xinput_mapping; // 0x18
+    InputMapping keyboard_mapping; // 0x2C
     int16_t deadzone_x; // 0x40
     int16_t deadzone_y; // 0x42
     uint8_t __ubyte_44; // 0x44
@@ -2907,9 +2949,9 @@ struct Config {
         this->__ubyte_45 = 1;
         this->__ubyte_46 = 1;
         this->__ubyte_47 = 8;
-        this->mappings[InputXInput]   = INPUT_STATES[0].mappings[InputXInput];
-        this->mappings[InputJoypad]   = INPUT_STATES[0].mappings[InputJoypad];
-        this->mappings[InputKeyboard] = INPUT_STATES[0].mappings[InputKeyboard];
+        this->joypad_mapping = INPUT_STATES[0].joypad_mapping;
+        this->xinput_mapping = INPUT_STATES[0].xinput_mapping;
+        this->keyboard_mapping = INPUT_STATES[0].keyboard_mapping;
         this->__ubyte_49 = 2;
         this->__sbyte_4A = 0x64;
         this->__byte_4C = 0;
@@ -2925,7 +2967,9 @@ struct Config {
 };
 #pragma region // Config Validation
 ValidateFieldOffset32(0x0, Config, __dword_0);
-ValidateFieldOffset32(0x4, Config, mappings);
+ValidateFieldOffset32(0x4, Config, joypad_mapping);
+ValidateFieldOffset32(0x18, Config, xinput_mapping);
+ValidateFieldOffset32(0x2C, Config, keyboard_mapping);
 ValidateFieldOffset32(0x40, Config, deadzone_x);
 ValidateFieldOffset32(0x42, Config, deadzone_y);
 ValidateFieldOffset32(0x44, Config, __ubyte_44);
@@ -3128,13 +3172,29 @@ struct ZUNTask {
     // 0xC
 
     // 0x42A9A0
-    void __sub_42A9A0() {
+    dllexport void enable_funcs() {
         if (UpdateFunc* on_tick = this->on_tick_func) {
             on_tick->run_on_update = true;
         }
         if (UpdateFunc* on_draw = this->on_draw_func) {
             on_draw->run_on_update = true;
         }
+    }
+
+    inline BOOL on_tick_enabled() {
+        UpdateFunc* on_tick = this->on_tick_func;
+        if (on_tick && on_tick->run_on_update) {
+            return TRUE;
+        }
+        return FALSE;
+    }
+
+    inline BOOL on_draw_enabled() {
+        UpdateFunc* on_draw = this->on_draw_func;
+        if (on_draw && on_draw->run_on_update) {
+            return TRUE;
+        }
+        return FALSE;
     }
 };
 
@@ -3472,32 +3532,32 @@ inline uint32_t InputState::get_joypad(uint32_t buttons) {
 
                 int32_t mapping;
 
-                mapping = this->mappings[InputJoypad].shoot;
+                mapping = this->joypad_mapping.shoot;
                 if (mapping >= 0 && (int8_t)state.rgbButtons[mapping] < 0) {
                     buttons |= BUTTON_SHOOT;
                 }
 
-                mapping = this->mappings[InputJoypad].bomb;
+                mapping = this->joypad_mapping.bomb;
                 if (mapping >= 0 && (int8_t)state.rgbButtons[mapping] < 0) {
                     buttons |= BUTTON_BOMB;
                 }
 
-                mapping = this->mappings[InputJoypad].pause;
+                mapping = this->joypad_mapping.pause;
                 if (mapping >= 0 && (int8_t)state.rgbButtons[mapping] < 0) {
                     buttons |= BUTTON_PAUSE;
                 }
 
-                mapping = this->mappings[InputJoypad].focus;
+                mapping = this->joypad_mapping.focus;
                 if (mapping >= 0 && (int8_t)state.rgbButtons[mapping] < 0) {
                     buttons |= BUTTON_FOCUS;
                 }
 
-                mapping = this->mappings[InputJoypad].use_card;
+                mapping = this->joypad_mapping.use_card;
                 if (mapping >= 0 && (int8_t)state.rgbButtons[mapping] < 0) {
                     buttons |= BUTTON_USE_CARD;
                 }
 
-                mapping = this->mappings[InputJoypad].switch_card;
+                mapping = this->joypad_mapping.switch_card;
                 if (mapping >= 0 && (int8_t)state.rgbButtons[mapping] < 0) {
                     buttons |= BUTTON_SWITCH_CARD;
                 }
@@ -3523,7 +3583,7 @@ inline uint32_t InputState::get_joypad(uint32_t buttons) {
                 buttons |= axes;
 
                 if (buttons != prev_buttons) {
-                    this->__device_type = InputDeviceJoypad;
+                    this->__device_type = InputJoypad;
                 }
             }
         }
@@ -5115,6 +5175,8 @@ union AnmID {
         this->full = raw;
         return *this;
     }
+
+    AnmID thiscall __sub_489140()
 };
 #pragma region // AnmID Validation
 ValidateFieldOffset32(0x0, AnmID, full);
@@ -10262,12 +10324,138 @@ struct CardBase {
     union {
         uint32_t flags; // 0x50
         struct {
-
+            uint32_t : 5;
+            uint32_t __unknown_flag_A : 1;
         };
     };
     // 0x54
 
-    dllexport virtual gnu_noinline void stupid_vtables() = 0;
+    //dllexport virtual gnu_noinline void stupid_vtables() = 0;
+
+    // Method 0
+    // 0x413010
+    dllexport gnu_noinline virtual int thiscall initialize() {
+        return 0;
+    }
+
+    // Method 4
+    // 0x413020
+    dllexport gnu_noinline virtual int thiscall __method_4() {
+        return 0;
+    }
+
+    // Method 8
+    // 0x413030
+    dllexport gnu_noinline virtual int thiscall on_use() {
+        return 0;
+    }
+
+    // Method C
+    // 0x413040
+    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb(int) {
+        return 0;
+    }
+
+    // Method 10
+    // 0x413050
+    dllexport gnu_noinline virtual int thiscall on_player_death_pre_deathbomb() {
+        return 0;
+    }
+
+    // Method 14
+    // 0x413060
+    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb_frame_2() {
+        return 0;
+    }
+
+    // Method 18
+    // 0x413070
+    dllexport gnu_noinline virtual int thiscall on_power_level_change() {
+        return 0;
+    }
+
+    // Method 1C
+    // 0x413080
+    dllexport gnu_noinline virtual int thiscall on_shoot(int, int) {
+        return 0;
+    }
+
+    // Method 20
+    // 0x413090
+    dllexport gnu_noinline virtual int thiscall on_load() {
+        return 0;
+    }
+
+    // Method 24
+    // 0x4130A0
+    dllexport gnu_noinline virtual int thiscall on_tick() {
+        return 0;
+    }
+
+    // Method 28
+    // 0x4130B0
+    dllexport gnu_noinline virtual int thiscall __on_shoot_2(int) {
+        return 0;
+    }
+
+    // Method 2C
+    // 0x4130C0
+    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
+        return 0;
+    }
+
+    // Method 30
+    // 0x4130D0
+    dllexport gnu_noinline virtual int thiscall recharge(int, int) {
+        return 0;
+    }
+
+    // Method 34
+    // 0x4130E0
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    }
+
+    // Method 38
+    // 0x4130F0
+    dllexport gnu_noinline virtual int thiscall __timer_34_set(int time) {
+        this->__timer_34.set(time);
+        return 0;
+    }
+
+    // Method 3C
+    // 0x413130
+    dllexport gnu_noinline virtual int32_t thiscall __timer_34_current() {
+        return this->__timer_34.current;
+    }
+
+    // Method 40
+    // 0x413140
+    dllexport gnu_noinline virtual bool thiscall __get_unknown_flag_A() {
+        return this->__unknown_flag_A;
+    }
+
+    // Method 44
+    // 0x413050
+    dllexport gnu_noinline virtual int thiscall on_anm_id_assigned_to_hud(int) {
+        return 0;
+    }
+
+    // Method 48
+    // 0x413060
+    dllexport gnu_noinline virtual int thiscall on_draw() {
+        return 0;
+    }
+
+    // Method 4C
+    // 0x413070
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+    }
+
+    // Method 50
+    // 0x412ED0
+    virtual ~CardBase() {
+        this->list_node.unlink();
+    }
 };
 
 // size: 0x1C0
@@ -10529,7 +10717,64 @@ struct AbilityManager : ZUNTask {
         } while (++card_data_ptr != array_end_addr(CARD_DATA_TABLE));
         return 0;
     }
+
+
+
+private:
+    inline int32_t equipped_cards_get_ids_impl(int32_t* card_ids_out) {
+        memset(card_ids_out, 0, sizeof(int32_t[256]));
+        int32_t card_count = 0;
+        this->card_list.do_while([&](CardBase* card) {
+            ++card_count;
+            *card_ids_out++ = card->id;
+            return card_count < 255;
+        });
+        *card_ids_out = -1;
+        CardBase* active_card = this->selected_active_card;
+        if (!active_card) {
+            return -1;
+        }
+        return active_card->id;
+    }
+
+    inline int __equipped_cards_get_timer_34s_impl(int32_t* times_out) {
+        this->card_list.for_each([&](CardBase* card) {
+            *times_out++ = card->__timer_34_current();
+        });
+        *times_out = -1;
+        return 0;
+    }
+
+    inline int equipped_cards_run_on_load_impl() {
+        int ret = 0;
+        this->card_list.for_each([&](CardBase* card) {
+            ret |= card->on_load();
+        });
+        return ret;
+    }
+
+    // 0x418C70
+    dllexport gnu_noinline static int32_t stdcall equipped_cards_get_ids(int32_t* card_ids_out, int) {
+        return ABILITY_MANAGER_PTR->equipped_cards_get_ids_impl(card_ids_out);
+    }
+public:
+
+    // Wrapper to get rid of dummy arg when calling
+    inline int32_t equipped_cards_get_ids(int32_t* card_ids_out) {
+        return equipped_cards_get_ids(card_ids_out, UNUSED_DWORD);
+    }
+
+    // 0x408BA0
+    dllexport gnu_noinline static int stdcall __equipped_cards_get_timer_34(int32_t* times_out) {
+        return ABILITY_MANAGER_PTR->__equipped_cards_get_timer_34s_impl(times_out);
+    }
+
+    // 0x408AD0
+    dllexport gnu_noinline static int equipped_cards_run_on_load() {
+        return ABILITY_MANAGER_PTR->equipped_cards_run_on_load_impl();
+    }
 };
+
 
 dllexport gnu_noinline void count_cards_of_type(EnemyData* self) {
     int32_t* out;
@@ -14107,18 +14352,17 @@ struct ReplayChunk {
         this->list_node.unlink();
     }
 
-    // Yes, it needs to be jank like this because the pointer might clobber itself
     // 0x463060
     dllexport bool write_input(uint16_t current, uint16_t rising_edge, uint16_t falling_edge) asm_symbol_rel(0x463060) {
-        ((uint16_t*)this->next_input_write_pos)[0] = current;
-        ((uint16_t*)this->next_input_write_pos)[1] = rising_edge;
-        ((uint16_t*)this->next_input_write_pos)[2] = falling_edge;
+        this->next_input_write_pos->current = current;
+        this->next_input_write_pos->rising_edge = rising_edge;
+        this->next_input_write_pos->falling_edge = falling_edge;
         ++this->next_input_write_pos;
-        return this->input_overflowed();
+        return this->input_buffer_full();
     }
 
     inline bool write_input(const ReplayFrameInput& input) {
-        write_input(input.current, input.rising_edge, input.falling_edge);
+        return this->write_input(input.current, input.rising_edge, input.falling_edge);
     }
 
     inline ptrdiff_t input_count() {
@@ -14130,7 +14374,7 @@ struct ReplayChunk {
     }
 
     // Fun fact, if this actually overflows then the pointer is completely invalid anyway
-    inline bool input_overflowed() {
+    inline bool input_buffer_full() {
         return this->input_count() >= countof(this->inputs);
     }
 
@@ -14201,8 +14445,8 @@ struct ReplayManager : ZUNTask {
             __update_input0();
             if (
                 SUPERVISOR.config.__unknown_flag_C &&
-                INPUT_STATES[0].__input_current(BUTTON_SHOOT) &&
-                INPUT_STATES[0].inputs_heldB[BUTTON_SHOOT_INDEX] >= 10
+                INPUT_STATES[0].check_inputs(BUTTON_SHOOT) &&
+                INPUT_STATES[0].inputs_held[BUTTON_SHOOT_INDEX] >= 10
             ) {
                 INPUT_STATES[0].inputs_current |= BUTTON_FOCUS;
             }
@@ -14277,7 +14521,7 @@ struct ReplayManager : ZUNTask {
         if (
             GAME_THREAD_PTR && this->mode == __replay_mode_1
         ) {
-            if (!INPUT_STATES[0].__hardware_input_current(BUTTON_SHOOT | BUTTON_DOWN)) {
+            if (!INPUT_STATES[0].check_hardware_inputs(BUTTON_SHOOT | BUTTON_DOWN)) {
                 if (!this->__dword_10) {
                     SOUND_MANAGER.__unknown_sme_ptr_5704->__sub_48AF10(GAME_MANAGER.globals.__counter_14 / 60.0);
                 }
@@ -15085,8 +15329,7 @@ dllexport gnu_noinline ZunResult thiscall ReplayManager::__write_to_path(const c
 
     if (self->__unknown_flag_B && arg4) {
         ReplayChunk* cur_chunk = self->current_chunk_node->data;
-        cur_chunk->write_input(REPLAY_INPUT_END);
-        if (cur_chunk->input_overflowed()) {
+        if (cur_chunk->write_input(REPLAY_INPUT_END)) {
             self->current_chunk_node = self->allocate_chunk(self->stage_number);
         }
     }
@@ -15281,9 +15524,9 @@ dllexport gnu_noinline ZunResult thiscall Supervisor::load_config_file(int) {
             SUPERVISOR.config.__dword_0 == 0x180002 &&
             file_size == 0x88
         ) {
-            INPUT_STATES[0].mappings[InputXInput]   = SUPERVISOR.config.mappings[InputXInput];
-            INPUT_STATES[0].mappings[InputJoypad]   = SUPERVISOR.config.mappings[InputJoypad];
-            INPUT_STATES[0].mappings[InputKeyboard] = SUPERVISOR.config.mappings[InputKeyboard];
+            INPUT_STATES[0].xinput_mapping   = SUPERVISOR.config.xinput_mapping;
+            INPUT_STATES[0].joypad_mapping   = SUPERVISOR.config.joypad_mapping;
+            INPUT_STATES[0].keyboard_mapping = SUPERVISOR.config.keyboard_mapping;
         }
         else {
             LOG_BUFFER.write(JpEnStr("コンフィグデータが異常でしたので再初期化しました\r\n", "The configuration data was abnormal, so it was reinitialized\r\n"));
@@ -15949,18 +16192,18 @@ dllexport gnu_noinline void process_resolution_dialog() {
             TranslateMessage(&message);
             DispatchMessageA(&message);
         }
-        if (INPUT_STATES[0].__hardware_input_pressed(BUTTON_ENTER | BUTTON_SHOOT)) {
+        if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_ENTER | BUTTON_SHOOT)) {
             break;
         }
         if (
-            INPUT_STATES[0].__hardware_input_pressed_or_held(BUTTON_DOWN) &&
+            INPUT_STATES[0].check_hardware_inputs_repeating(BUTTON_DOWN) &&
             button_index < 9
         ) {
             while (disabled_buttons[++button_index]);
             CheckRadioButton(WINDOW_DATA.resolution_dialogue, 0xCF, 0xD8, ResolutionDialogButtonIDsB[button_index]);
         }
         if (
-            INPUT_STATES[0].__hardware_input_pressed_or_held(BUTTON_UP) &&
+            INPUT_STATES[0].check_hardware_inputs_repeating(BUTTON_UP) &&
             button_index > 0
         ) {
             while (disabled_buttons[--button_index]);
