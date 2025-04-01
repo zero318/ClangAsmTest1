@@ -5745,21 +5745,22 @@ struct EnemyManager {
     char *restrict stg_enm_anm_filename;  // 0x0
     char *restrict stg_enm2_anm_filename;  // 0x4
     Enemy template_enemy;  // 0x8
-    Enemy enemies[256];  // 0xed0
-    Enemy dummy_enemy_for_failed_spawns;
-    Enemy *restrict bosses[8];  // 0xee598
-    uint16_t random_item_spawn_index;  // 0xee5b8
-    uint16_t random_item_table_index;  // 0xee5ba
-    int32_t enemy_count_real;  // 0xee5bc
-    unknown_fields(0x4);  // 0xee5c0
-    int __dword_EE5C4;  // 0xee5c4
-    int32_t __spellcard_capture;  // 0xee5c8
-    int32_t __spellcard_bonus;  // 0xee5cc
-    int32_t __spellcard_number;  // 0xee5d0
-    int __dword_EE5D4;  // 0xee5d4
-    unknown_fields(0x4);  // 0xee5d8
-    TimelineInstruction *restrict timeline_instr;  // 0xee5dc
-    Timer timeline_time;  // 0xee5e0
+    Enemy enemies[256];  // 0xED0
+    Enemy dummy_enemy_for_failed_spawns; // 0xED6D0
+    Enemy *restrict bosses[8];  // 0xEE598
+    uint16_t random_item_spawn_index;  // 0xEE5B8
+    uint16_t random_item_table_index;  // 0xEE5BA
+    int32_t enemy_count_real;  // 0xEE5BC
+    unknown_fields(0x4);  // 0xEE5C0
+    int __dword_EE5C4;  // 0xEE5C4
+    int32_t __spellcard_capture;  // 0xEE5C8
+    int32_t __spellcard_bonus;  // 0xEE5CC
+    int32_t __spellcard_number;  // 0xEE5D0
+    int __dword_EE5D4;  // 0xEE5D4
+    unknown_fields(0x4);  // 0xEE5D8
+    TimelineInstruction *restrict timeline_instr;  // 0xEE5DC
+    Timer timeline_time;  // 0xEE5E0
+    // 0xEE5EC
 
     // 0x411390
     dllexport Enemy* create_enemy(int16_t SubID, Float3* position, int16_t life, int8_t item, int32_t score) asm("{[codecave:ENEMY_MANAGER_create_enemy]}");

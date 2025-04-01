@@ -1037,8 +1037,8 @@ protected:
     template <typename L>
     static inline void for_eachB_impl(const L& lambda, N* node) {
         for (N* next_node; node; node = next_node) {
-            T* data = node->data;
             next_node = node->next;
+            T* data = node->data;
             if constexpr (std::is_invocable_v<L, T*, N*>) {
                 lambda(data, node);
             } else {
@@ -1297,7 +1297,7 @@ static consteval size_t sizeof_template_impl() {
 #define AlignUpToMultipleOf2(val, mul) AlignDownToMultipleOf2((val) + (mul)-1,(mul))
 #endif
 
-#define AlignDownToMultipleOf(val, mul) ((val) - (val) % (mul))
+#define AlignDownToMultipleOf(val, mul) ((val) - ((val) % (mul)))
 #define AlignUpToMultipleOf(val, mul) (AlignDownToMultipleOf((val),(mul)) + (mul))
 
 #define AlignPtrDownToMultipleOf2(val, mul) ((decltype(val))AlignDownToMultipleOf2((uintptr_t)(val),(mul)))

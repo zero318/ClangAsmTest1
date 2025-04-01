@@ -1275,7 +1275,7 @@ dllexport gnu_noinline vec<float, 2> vectorcall sincosf_sse2(double x) {
     CVTSD2SI(lookup_index, A);
 
 #if __SSE4_1__
-    A __builtin_roundeven(A);
+    A = __builtin_roundeven(A);
 #else
     // 0x4338000000000000
     double SHIFTER = 6755399441055744.0;

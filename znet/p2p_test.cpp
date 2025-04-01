@@ -19,6 +19,11 @@ static inline constexpr auto decimal_digits_bound() {
 #include <windows.h>
 #include <Mmsystem.h>
 
+#define countof(array_type) \
+(sizeof(array_type) / sizeof(array_type[0]))
+
+#define INCLUDE_KEYBOARD_FUNCTIONS 1
+
 #include "znet.h"
 #include "zthread.h"
 

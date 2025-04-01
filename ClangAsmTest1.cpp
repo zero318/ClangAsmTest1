@@ -7508,7 +7508,7 @@ gnu_noinline uint8_t* replace_imm_with_bs(T value, uint8_t* code) {
 		*code++ = 0xC1; *code++ = 0xF8; *code++ = get_random_shift_count<false>(0x18); // SAR EAX, 24
 	}
 	else if constexpr (sizeof(T) == sizeof(int16_t)) {
-		*code++ = 0xC1; *code++ = 0xF8; *code++ = get_random_shift_count<false>(0x18); // SAR EAX, 24
+		*code++ = 0xC1; *code++ = 0xF8; *code++ = get_random_shift_count<false>(0x10); // SAR EAX, 16
 	}
 	else if constexpr (sizeof(T) == sizeof(int32_t)) {
 		*code++ = 0x89; *code++ = 0xD0; // MOV EAX, EDX
@@ -7520,3 +7520,34 @@ gnu_noinline uint8_t* replace_imm_with_bs(T value, uint8_t* code) {
 	*code++ = 0x5A; // POP EDX
 	return code;
 }
+
+#include <mmsystem.h>
+
+struct JankSound {
+
+};
+
+struct JankSoundManager {
+	HWAVEOUT wave_out;
+
+
+	// I just ripped this out of the normal UM code
+	static inline constexpr WAVEFORMATEX WAVE_FORMAT = {
+		.wFormatTag = WAVE_FORMAT_1S08,
+		.nChannels = 2,
+		.nSamplesPerSec = 44100,
+		.nAvgBytesPerSec = 176400,
+		.nBlockAlign = 4,
+		.wBitsPerSample = 16,
+		.cbSize = 0
+	};
+
+	bool initialize() {
+		if (MMSYSERR_NOERROR == waveOutOpen(&this->wave_out, WAVE_MAPPER, &WAVE_FORMAT, NULL, NULL, CALLBACK_NULL)) {
+
+		}
+		return false;
+	}
+};
+
+JankSoundManager JANK_SOUND_MANAGER;

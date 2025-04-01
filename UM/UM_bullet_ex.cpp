@@ -12,6 +12,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include <direct.h>
+#include <time.h>
 
 #include <string.h>
 
@@ -35,7 +36,7 @@ using ZUNLinkedListOld = ZUNLinkedListBase<T, true>;
 template <typename T>
 using ZUNLinkedList = ZUNLinkedListBase<T, true>;
 template <typename T>
-using ZUNLinkedListHeadDummy = ZUNLinkedListHeadDummyBase<T, true>;
+using ZUNLinkedListHead = ZUNLinkedListHeadDummyBase<T, true>;
 
 #define GAME_VERSION UM_VER
 
@@ -76,6 +77,7 @@ using ZUNLinkedListHeadDummy = ZUNLinkedListHeadDummyBase<T, true>;
 #include "../zero/zun.h"
 
 #pragma comment (lib, "wbemuuid.lib")
+#pragma comment (lib, "Xinput9_1_0.lib")
 
 
 #ifndef SAFE_FREE
@@ -99,6 +101,8 @@ dllexport gnu_noinline void* cdecl memset_force(void* dst, int val, size_t size)
 }
 
 #define zero_this() memset_force(this, 0, sizeof(*this));
+
+#define zero_this_inline() __builtin_memset(this, 0, sizeof(*this));
 
 #define UNUSED_DWORD (GARBAGE_ARG(int32_t))
 #define UNUSED_FLOAT (GARBAGE_ARG(float))
@@ -955,6 +959,18 @@ static UnknownP UNKNOWN_P[] = {
     }
 };
 
+// 0x401F50
+dllexport gnu_noinline void* fastcall __crypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_accel, int32_t arg3, int32_t arg4) asm_symbol_rel(0x401F50);
+dllexport gnu_noinline void* fastcall __crypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_accel, int32_t arg3, int32_t arg4) {
+    use_var(buffer);
+    use_var(buffer_size);
+    use_var(xor_mask);
+    use_var(xor_accel);
+    use_var(arg3);
+    use_var(arg4);
+    return (void*)rand();
+}
+
 // 0x401E40
 dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_accel, int32_t arg3, int32_t arg4) asm_symbol_rel(0x401E40);
 dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_accel, int32_t arg3, int32_t arg4) {
@@ -980,7 +996,7 @@ dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buf
                 int32_t i = (arg3 + 1) / 2;
                 i > 0;
 
-                ) {
+            ) {
                 uint8_t val = *input_buffer;
                 buffer_write -= 2;
                 val ^= xor_mask;
@@ -994,7 +1010,7 @@ dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buf
                 int32_t i = arg3 / 2;
                 i > 0;
 
-                ) {
+            ) {
                 uint8_t val = *input_buffer;
                 buffer_write -= 2;
                 val ^= xor_mask;
@@ -1014,6 +1030,15 @@ dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buf
 extern "C" {
     // 0x51F660
     extern uint8_t DECOMPRESS_BUFFER[0x2000] asm("_DECOMPRESS_BUFFER");
+}
+
+// 0x46F5B0
+dllexport gnu_noinline void* fastcall __compress_buffer(void* buffer_in, int32_t buffer_size, int32_t* out_buffer_size) asm_symbol_rel(0x46F5B0);
+dllexport gnu_noinline void* fastcall __compress_buffer(void* buffer_in, int32_t buffer_size, int32_t* out_buffer_size) {
+    use_var(buffer_in);
+    use_var(buffer_size);
+    *out_buffer_size = rand();
+    return (void*)rand();
 }
 
 // 0x46F840
@@ -1509,6 +1534,40 @@ inline ZunResult __zun_open_file(const char* filename) {
     return ZUN_SUCCESS;
 }
 
+// 0x4023E0
+dllexport gnu_noinline ZunResult fastcall __zun_open_new_file(const char* filename) asm_symbol_rel(0x4023E0);
+dllexport gnu_noinline ZunResult fastcall __zun_open_new_file(const char* filename) {
+    CRITICAL_SECTION_MANAGER.enter_section(FileIO_CS);
+    HANDLE file_handle = CreateFileA(
+        filename, // lpFileName
+        GENERIC_WRITE, // dwDesiredAccess
+        FILE_SHARE_READ, // dwShareMode
+        NULL, // lpSecurityFeatures
+        CREATE_ALWAYS, // dwCreationDisposition
+        FILE_ATTRIBUTE_NORMAL, // dwFlagsAndAttributes
+        NULL // hTemplateFile
+    );
+    STATIC_FILE_HANDLE = file_handle;
+    if (file_handle == INVALID_HANDLE_VALUE) {
+        char* message;
+        FormatMessageA(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_FROM_SYSTEM, // dwFlags
+            NULL, // lpSource
+            GetLastError(), // dwMessageId,
+            LANG_USER_DEFAULT, // dwLanguageId,
+            (LPSTR)&message, // lpBuffer
+            0, // nSize
+            NULL // Arguments
+        );
+        DebugLogger::__debug_log_stub_4("error : %s write error %s\r\n", filename, message);
+        LocalFree((HLOCAL)message);
+        CRITICAL_SECTION_MANAGER.leave_section(FileIO_CS);
+        return ZUN_ERROR;
+    }
+    DebugLogger::__debug_log_stub_4("%s open ...\r\n", filename);
+    return ZUN_SUCCESS;
+}
+
 // 0x4024A0
 dllexport gnu_noinline void* fastcall __zun_read_file(size_t bytes) asm_symbol_rel(0x4024A0);
 dllexport gnu_noinline void* fastcall __zun_read_file(size_t bytes) {
@@ -1531,15 +1590,35 @@ dllexport gnu_noinline void* fastcall __zun_read_file(size_t bytes) {
     return buffer;
 }
 
+inline ZunResult fastcall __zun_write_file(void* buffer, size_t bytes) {
+    if (STATIC_FILE_HANDLE == INVALID_HANDLE_VALUE) {
+        return ZUN_ERROR;
+    }
+    DWORD written;
+    WriteFile(
+        STATIC_FILE_HANDLE, // hFile
+        buffer, // lpBuffer
+        bytes, // nNumberOfBytesToRead
+        &written, // lpNumberOfBytesRead
+        NULL // lpOverlapped
+    );
+    if (bytes != written) {
+        CloseHandle(STATIC_FILE_HANDLE);
+        CRITICAL_SECTION_MANAGER.leave_section(FileIO_CS);
+        return ZUN_ERROR2;
+    }
+    return ZUN_SUCCESS;
+}
+
 // 0x402500
-dllexport gnu_noinline int32_t fastcall __zun_close_file() asm_symbol_rel(0x402500);
-dllexport gnu_noinline int32_t fastcall __zun_close_file() {
+dllexport gnu_noinline ZunResult fastcall __zun_close_file() asm_symbol_rel(0x402500);
+dllexport gnu_noinline ZunResult fastcall __zun_close_file() {
     HANDLE file_handle = STATIC_FILE_HANDLE;
     if (file_handle != INVALID_HANDLE_VALUE) {
         CloseHandle(file_handle);
         CRITICAL_SECTION_MANAGER.leave_section(FileIO_CS);
     }
-    return 0;
+    return ZUN_SUCCESS;
 }
 
 // size: 0x2008
@@ -1601,7 +1680,19 @@ extern "C" {
     extern LogBuffer<0x2000> LOG_BUFFER asm("_LOG_BUFFER");
 }
 
-typedef int32_t (fastcall UpdateFunction)(void*);
+enum UpdateFuncRet : int32_t {
+    UpdateFuncDeleteCurrentThenNext = 0,
+    UpdateFuncNext = 1,
+    UpdateFuncRepeatCurrent = 2,
+    UpdateFuncEnd1 = 3,
+    UpdateFuncEnd0 = 4,
+    UpdateFuncEndN1 = 5,
+    UpdateFuncRestartTick = 6,
+    UpdateFuncCleanupThenNext = 7,
+    UpdateFuncEnd0Dupe = 8,
+};
+
+typedef UpdateFuncRet(fastcall UpdateFunction)(void*);
 
 // size: 0x28
 struct UpdateFunc {
@@ -1664,18 +1755,6 @@ ValidateFieldOffset32(0x14, UpdateFunc, list_node);
 ValidateFieldOffset32(0x24, UpdateFunc, func_arg);
 ValidateStructSize32(0x28, UpdateFunc);
 #pragma endregion
-
-enum UpdateFuncRetVal : int32_t {
-    UpdateFuncDeleteCurrentThenNext = 0,
-    UpdateFuncNext = 1,
-    UpdateFuncRepeatCurrent = 2,
-    UpdateFuncEnd1 = 3,
-    UpdateFuncEnd0 = 4,
-    UpdateFuncEndN1 = 5,
-    UpdateFuncRestartTick = 6,
-    UpdateFuncCleanupThenNext = 7,
-    UpdateFuncEnd0Dupe = 8,
-};
 
 typedef struct UpdateFuncRegistry UpdateFuncRegistry;
 extern "C" {
@@ -2328,114 +2407,461 @@ ValidateStructSize32(0x14, Timer);
 #pragma endregion
 
 // size: 0x14
-struct UnknownOInner {
-    short __short_0; // 0x0
-    short __short_2; // 0x2
-    short __short_4; // 0x4
-    short __short_6; // 0x6
-    unknown_fields(0x8); // 0x8
-    short __short_10; // 0x10
-    short __short_12; // 0x12
+struct InputMapping {
+    int16_t shoot; // 0x0
+    int16_t bomb; // 0x2
+    int16_t focus; // 0x4
+    int16_t pause; // 0x6
+    int16_t __button4; // 0x8
+    int16_t __button5; // 0xA
+    int16_t __button6; // 0xC
+    int16_t __button7; // 0xE
+    int16_t use_card; // 0x10
+    int16_t switch_card; // 0x12
     // 0x14
 };
-#pragma region // UnknownOInner Validation
-ValidateFieldOffset32(0x0, UnknownOInner, __short_0);
-ValidateFieldOffset32(0x2, UnknownOInner, __short_2);
-ValidateFieldOffset32(0x4, UnknownOInner, __short_4);
-ValidateFieldOffset32(0x6, UnknownOInner, __short_6);
-ValidateFieldOffset32(0x10, UnknownOInner, __short_10);
-ValidateFieldOffset32(0x12, UnknownOInner, __short_12);
-ValidateStructSize32(0x14, UnknownOInner);
+#pragma region // InputMapping Validation
+ValidateFieldOffset32(0x0, InputMapping, shoot);
+ValidateFieldOffset32(0x2, InputMapping, bomb);
+ValidateFieldOffset32(0x4, InputMapping, focus);
+ValidateFieldOffset32(0x6, InputMapping, pause);
+ValidateFieldOffset32(0x10, InputMapping, use_card);
+ValidateFieldOffset32(0x12, InputMapping, switch_card);
+ValidateStructSize32(0x14, InputMapping);
 #pragma endregion
 
-struct UnknownO {
-    int __dword_0; // 0x0
-    int __dword_4; // 0x4
-    int __dword_8; // 0x8
-    int __dword_C; // 0xC
-    unknown_fields(0x84); // 0x10
-    uint32_t __uint_94; // 0x94
-    unknown_fields(0x7C); // 0x98
-    uint32_t __uint_114; // 0x114
-    unknown_fields(0x7C); // 0x118
-    uint32_t __uint_194; // 0x194
-    unknown_fields(0x20); // 0x198
-    uint32_t __uint_1B8; // 0x1B8
-    unknown_fields(0x5C); // 0x1BC
-    union {
-        uint32_t __flags_218; // 0x218
-        struct {
-            
-        };
-    };
-    union {
-        uint32_t __flags_21C; // 0x21C
-        struct {
-            
-        };
-    };
-    union {
-        uint32_t __flags_220; // 0x220
-        struct {
-            
-        };
-    };
-    union {
-        uint32_t __flags_224; // 0x224
-        struct {
-            
-        };
-    };
-    union {
-        uint32_t __flags_228; // 0x228
-        struct {
-            
-        };
-    };
-    unknown_fields(0x4); // 0x22C
-    union {
-        uint32_t __flags_230; // 0x230
-        struct {
-            
-        };
-    };
-    int __dword_234; // 0x234
-    UnknownOInner inners[3]; // 0x238
-    // 0x274
-};
-#pragma region // UnknownO Validation
-ValidateFieldOffset32(0x0, UnknownO, __dword_0);
-ValidateFieldOffset32(0x4, UnknownO, __dword_4);
-ValidateFieldOffset32(0x8, UnknownO, __dword_8);
-ValidateFieldOffset32(0xC, UnknownO, __dword_C);
-ValidateFieldOffset32(0x94, UnknownO, __uint_94);
-ValidateFieldOffset32(0x114, UnknownO, __uint_114);
-ValidateFieldOffset32(0x194, UnknownO, __uint_194);
-ValidateFieldOffset32(0x1B8, UnknownO, __uint_1B8);
-ValidateFieldOffset32(0x218, UnknownO, __flags_218);
-ValidateFieldOffset32(0x21C, UnknownO, __flags_21C);
-ValidateFieldOffset32(0x220, UnknownO, __flags_220);
-ValidateFieldOffset32(0x224, UnknownO, __flags_224);
-ValidateFieldOffset32(0x228, UnknownO, __flags_228);
+static inline constexpr size_t BUTTON_COUNT = 32;
 
-ValidateFieldOffset32(0x230, UnknownO, __flags_230);
-ValidateFieldOffset32(0x234, UnknownO, __dword_234);
-ValidateFieldOffset32(0x238, UnknownO, inners);
-ValidateStructSize32(0x274, UnknownO);
+static inline constexpr uint32_t BUTTON_SHOOT       = 0x00000001; // 'Z'
+static inline constexpr uint32_t BUTTON_BOMB        = 0x00000002; // 'X'
+
+static inline constexpr uint32_t BUTTON_FOCUS       = 0x00000008; // VK_SHIFT
+static inline constexpr uint32_t BUTTON_UP          = 0x00000010;
+static inline constexpr uint32_t BUTTON_DOWN        = 0x00000020;
+static inline constexpr uint32_t BUTTON_LEFT        = 0x00000040;
+static inline constexpr uint32_t BUTTON_RIGHT       = 0x00000080;
+static inline constexpr uint32_t BUTTON_PAUSE       = 0x00000100; // VK_ESCAPE
+
+static inline constexpr uint32_t BUTTON_USE_CARD    = 0x00000400; // 'C'
+static inline constexpr uint32_t BUTTON_SWITCH_CARD = 0x00000800; // 'D'
+
+static inline constexpr uint32_t BUTTON_SCREENSHOT  = 0x00040000; // 'P', VK_HOME
+static inline constexpr uint32_t BUTTON_ENTER       = 0x00080000; // VK_RETURN
+
+static inline constexpr uint32_t BUTTON_RESTART     = 0x00200000; // 'R', VK_END
+
+static inline constexpr uint32_t BUTTON_SELECT      = BUTTON_SHOOT | BUTTON_ENTER; // 'Z', VK_RETURN
+static inline constexpr uint32_t BUTTON_CANCEL      = BUTTON_BOMB; // 'X'
+
+static inline constexpr uint32_t BUTTON_SHOOT_INDEX = 0;
+static inline constexpr uint32_t BUTTON_BOMB_INDEX = 1;
+static inline constexpr uint32_t BUTTON_FOCUS_INDEX = 3;
+static inline constexpr uint32_t BUTTON_UP_INDEX = 4;
+static inline constexpr uint32_t BUTTON_DOWN_INDEX = 5;
+static inline constexpr uint32_t BUTTON_LEFT_INDEX = 6;
+static inline constexpr uint32_t BUTTON_RIGHT_INDEX = 7;
+static inline constexpr uint32_t BUTTON_PAUSE_INDEX = 8;
+static inline constexpr uint32_t BUTTON_USE_CARD_INDEX = 10;
+static inline constexpr uint32_t BUTTON_SWITCH_CARD_INDEX = 11;
+static inline constexpr uint32_t BUTTON_SCREENSHOT_INDEX = 18;
+static inline constexpr uint32_t BUTTON_ENTER_INDEX = 19;
+static inline constexpr uint32_t BUTTON_RESTART_INDEX = 21;
+
+#define XINPUT_GAMEPAD_LEFT_TRIGGER 0x10000
+#define XINPUT_GAMEPAD_RIGHT_TRIGGER 0x20000
+
+// 0x4B4320
+// Is this actually an array of 20 with extra blanks?
+static inline constexpr uint32_t XINPUT_PAD_MAPPINGS[] = {
+    XINPUT_GAMEPAD_A,
+    XINPUT_GAMEPAD_B,
+    XINPUT_GAMEPAD_X,
+    XINPUT_GAMEPAD_Y,
+    XINPUT_GAMEPAD_LEFT_SHOULDER,
+    XINPUT_GAMEPAD_RIGHT_SHOULDER,
+    XINPUT_GAMEPAD_LEFT_TRIGGER,
+    XINPUT_GAMEPAD_RIGHT_TRIGGER,
+    XINPUT_GAMEPAD_LEFT_THUMB,
+    XINPUT_GAMEPAD_RIGHT_THUMB,
+    XINPUT_GAMEPAD_START,
+    XINPUT_GAMEPAD_BACK
+};
+
+enum InputDeviceType : int32_t {
+    InputDeviceXInput = 0,
+    InputDeviceJoypad = 1,
+    InputDeviceKeyboard = 2
+};
+
+enum InputMode : int32_t {
+    InputJoypad = 0,
+    InputXInput = 1,
+    InputKeyboard = 2,
+};
+
+// This matches UnknownV in the th19 repo
+struct InputState {
+    union {
+        uint32_t hardware_inputs_current; // 0x0
+        struct {
+
+        };
+    };
+    union {
+        uint32_t hardware_inputs_previous; // 0x4
+        struct {
+
+        };
+    };
+    union {
+        uint32_t hardware_inputs_held_26_frames; // 0x8
+        struct {
+
+        };
+    };
+    union {
+        uint32_t hardware_inputs_rising_edge; // 0xC
+        struct {
+
+        };
+    };
+    union {
+        uint32_t hardware_inputs_falling_edge; // 0x10
+        struct {
+
+        };
+    };
+    uint32_t hardware_inputs_heldA[BUTTON_COUNT]; // 0x14
+    uint32_t inputs_heldA[BUTTON_COUNT]; // 0x94
+    uint32_t hardware_inputs_heldB[BUTTON_COUNT]; // 0x114
+    uint32_t inputs_heldB[BUTTON_COUNT]; // 0x194
+    int __dword_214; // 0x214
+    union {
+        uint32_t inputs_current; // 0x218
+        struct {
+            
+        };
+    };
+    union {
+        uint32_t inputs_previous; // 0x21C
+        struct {
+            
+        };
+    };
+    union {
+        uint32_t inputs_held_26_frames; // 0x220
+        struct {
+            
+        };
+    };
+    union {
+        uint32_t inputs_rising_edge; // 0x224
+        struct {
+            
+        };
+    };
+    union {
+        uint32_t inputs_falling_edge; // 0x228
+        struct {
+            
+        };
+    };
+    union {
+        uint32_t hardware_inputs_held_8_frames; // 0x22C
+        struct {
+
+        };
+    };
+    union {
+        uint32_t inputs_held_8_frames; // 0x230
+        struct {
+            
+        };
+    };
+    InputDeviceType __device_type; // 0x234
+    InputMapping mappings[3]; // 0x238
+    // 0x274
+
+    // 0x418CE0
+    dllexport gnu_noinline void thiscall __reset_inputs() asm_symbol_rel(0x418CE0) {
+        memset(this->inputs_heldA, 0, sizeof(this->inputs_heldA));
+        memset(this->inputs_heldB, 0, sizeof(this->inputs_heldB));
+        this->__dword_214 = 0;
+        this->inputs_current = 0;
+        this->inputs_previous = 0;
+        this->inputs_held_26_frames = 0;
+        this->inputs_rising_edge = 0;
+        this->inputs_falling_edge = 0;
+        this->inputs_held_8_frames = 0;
+    }
+
+    // 0x404E90
+    dllexport gnu_noinline void thiscall __update_hardware_input() asm_symbol_rel(0x404E90) {
+        uint32_t current = this->hardware_inputs_current;
+        uint32_t mask = 1;
+
+        for (size_t i = 0; i < BUTTON_COUNT; ++i) {
+            if (current & 1) {
+                ++this->hardware_inputs_heldA[i];
+                ++this->hardware_inputs_heldB[i];
+                if (this->hardware_inputs_heldA[i] >= 8) {
+                    this->hardware_inputs_held_8_frames |= mask;
+                }
+                if (this->hardware_inputs_heldA[i] >= 26) {
+                    this->hardware_inputs_held_26_frames |= mask;
+                }
+            } else {
+                this->hardware_inputs_heldA[i] = 0;
+                this->hardware_inputs_heldB[i] = 0;
+            }
+            current >>= 1;
+            mask <<= 1;
+        }
+        current = this->hardware_inputs_current;
+        uint32_t changed = current ^ this->hardware_inputs_previous;
+        this->hardware_inputs_rising_edge = current & changed;
+        this->hardware_inputs_falling_edge = ~current & changed;
+    }
+
+    inline void __update_input() {
+        uint32_t current = this->inputs_current;
+        uint32_t mask = 1;
+
+        for (size_t i = 0; i < BUTTON_COUNT; ++i) {
+            if (current & 1) {
+                ++this->inputs_heldA[i];
+                ++this->inputs_heldB[i];
+                if (this->inputs_heldA[i] >= 8) {
+                    this->inputs_held_8_frames |= mask;
+                }
+                if (this->inputs_heldA[i] >= 26) {
+                    this->inputs_held_26_frames |= mask;
+                }
+            } else {
+                this->inputs_heldA[i] = 0;
+                this->inputs_heldB[i] = 0;
+            }
+            current >>= 1;
+            mask <<= 1;
+        }
+        current = this->inputs_current;
+        uint32_t changed = current ^ this->inputs_previous;
+        this->inputs_rising_edge = current & changed;
+        this->inputs_falling_edge = ~current & changed;
+    }
+
+    inline bool __input_current(uint32_t mask) {
+        return this->inputs_current & mask;
+    }
+
+    inline bool __hardware_input_current(uint32_t mask) {
+        return this->hardware_inputs_current & mask;
+    }
+
+    inline bool __hardware_input_pressed(uint32_t mask) {
+        return this->hardware_inputs_rising_edge & mask;
+    }
+
+    inline BOOL __hardware_input_pressed_or_held(uint32_t mask) {
+        if (
+            !(this->hardware_inputs_rising_edge & mask) &&
+            !(this->hardware_inputs_held_26_frames & mask)
+        ) {
+            return FALSE;
+        }
+        return TRUE;
+    }
+
+    inline uint32_t get_xinput(uint32_t buttons) {
+        uint32_t prev_buttons = buttons;
+
+        nounroll for (DWORD i = 0; i < 4; ++i) {
+            XINPUT_STATE state = {};
+            if (XInputGetState(i, &state) == ERROR_SUCCESS) {
+                uint32_t pad_buttons = state.Gamepad.wButtons;
+                if (state.Gamepad.bLeftTrigger >= XINPUT_GAMEPAD_TRIGGER_THRESHOLD) {
+                    pad_buttons |= XINPUT_GAMEPAD_LEFT_TRIGGER;
+                }
+                if (state.Gamepad.bRightTrigger >= XINPUT_GAMEPAD_TRIGGER_THRESHOLD) {
+                    pad_buttons |= XINPUT_GAMEPAD_RIGHT_TRIGGER;
+                }
+                if (state.Gamepad.sThumbLY >= XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) {
+                    pad_buttons |= XINPUT_GAMEPAD_DPAD_UP;
+                }
+                if (state.Gamepad.sThumbLY <= -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) {
+                    pad_buttons |= XINPUT_GAMEPAD_DPAD_DOWN;
+                }
+                if (state.Gamepad.sThumbLX >= XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) {
+                    pad_buttons |= XINPUT_GAMEPAD_DPAD_RIGHT;
+                }
+                if (state.Gamepad.sThumbLX <= -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) {
+                    pad_buttons |= XINPUT_GAMEPAD_DPAD_LEFT;
+                }
+
+                if (pad_buttons & XINPUT_GAMEPAD_DPAD_UP) {
+                    buttons |= BUTTON_UP;
+                }
+                if (pad_buttons & XINPUT_GAMEPAD_DPAD_DOWN) {
+                    buttons |= BUTTON_DOWN;
+                }
+                if (pad_buttons & XINPUT_GAMEPAD_DPAD_LEFT) {
+                    buttons |= BUTTON_LEFT;
+                }
+                if (pad_buttons & XINPUT_GAMEPAD_DPAD_RIGHT) {
+                    buttons |= BUTTON_RIGHT;
+                }
+
+                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->mappings[InputXInput].shoot]) {
+                    buttons |= BUTTON_SHOOT;
+                }
+                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->mappings[InputXInput].bomb]) {
+                    buttons |= BUTTON_BOMB;
+                }
+                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->mappings[InputXInput].focus]) {
+                    buttons |= BUTTON_FOCUS;
+                }
+                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->mappings[InputXInput].use_card]) {
+                    buttons |= BUTTON_USE_CARD;
+                }
+                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->mappings[InputXInput].switch_card]) {
+                    buttons |= BUTTON_SWITCH_CARD;
+                }
+                if (pad_buttons & XINPUT_PAD_MAPPINGS[this->mappings[InputXInput].pause]) {
+                    buttons |= BUTTON_PAUSE;
+                }
+            }
+        }
+
+        if (buttons != prev_buttons) {
+            this->__device_type = InputDeviceXInput;
+        }
+        return buttons;
+    }
+
+    inline uint32_t get_joypad(uint32_t buttons);
+
+    inline uint32_t get_keyboard(uint32_t buttons) {
+        uint32_t prev_buttons = buttons;
+
+        BYTE keys[256];
+        GetKeyboardState(keys);
+
+        // Again, this original code is *bad*.
+        // I'm not going to attempt to match it.
+
+        int32_t bomb = this->mappings[InputKeyboard].bomb;
+        int32_t shoot = this->mappings[InputKeyboard].shoot;
+
+        uint32_t pressed = keys[shoot]; // becomes 0x1
+        pressed >>= 1;
+
+        pressed |= keys[bomb] & 0x80; // becomes 0x2
+        pressed >>= 1;
+
+        // mystery key
+        pressed >>= 1;
+
+        int32_t focus = this->mappings[InputKeyboard].focus;
+        pressed |= keys[focus] & 0x80; // becomes 0x8
+        pressed >>= 1;
+
+        pressed |= (keys[VK_UP] | keys[VK_NUMPAD8]) & 0x80; // becomes 0x10
+        pressed >>= 1;
+        pressed |= (keys[VK_DOWN] | keys[VK_NUMPAD2]) & 0x80; // becomes 0x20
+        pressed >>= 1;
+        pressed |= (keys[VK_LEFT] | keys[VK_NUMPAD4]) & 0x80; // becomes 0x40
+        pressed >>= 1;
+
+        uint32_t pressed2 = (keys[VK_END] | keys['R']) & 0x80; // becomes 0x200000
+        pressed2 <<= 1;
+
+        // mystery key
+        pressed2 <<= 1;
+
+        pressed2 |= keys[VK_RETURN] & 0x80; // becomes 0x80000
+        pressed2 <<= 1;
+
+        pressed2 |= (keys[VK_HOME] | keys['P']) & 0x80; // becomes 0x40000
+        pressed2 <<= 7;
+
+        int32_t switch_card = this->mappings[InputKeyboard].switch_card;
+        pressed2 |= keys[switch_card] & 0x80; // becomes 0x800
+        pressed2 <<= 1;
+
+        int32_t use_card = this->mappings[InputKeyboard].use_card;
+        pressed2 |= keys[use_card] & 0x80; // becomes 0x400
+        pressed2 <<= 1;
+
+        // mystery key
+        pressed2 <<= 1;
+
+        int32_t pause = this->mappings[InputKeyboard].pause;
+        pressed2 |= keys[pause] & 0x80; // becomes 0x100
+        pressed2 <<= 1;
+
+        pressed |= pressed2;
+
+        pressed |= (keys[VK_RIGHT] | keys[VK_NUMPAD6]) & 0x80; // becomes 0x80
+
+        pressed |= keys[VK_NUMPAD3] & 0x80 ? BUTTON_DOWN | BUTTON_RIGHT : 0;
+        pressed |= keys[VK_NUMPAD9] & 0x80 ? BUTTON_UP | BUTTON_RIGHT : 0;
+        pressed |= keys[VK_NUMPAD1] & 0x80 ? BUTTON_DOWN | BUTTON_LEFT : 0;
+        pressed |= keys[VK_NUMPAD7] & 0x80 ? BUTTON_UP | BUTTON_LEFT : 0;
+
+        buttons |= pressed;
+
+        if (buttons != prev_buttons) {
+            this->__device_type = InputDeviceKeyboard;
+        }
+        return buttons;
+    }
+};
+#pragma region // InputState Validation
+ValidateFieldOffset32(0x0, InputState, hardware_inputs_current);
+ValidateFieldOffset32(0x4, InputState, hardware_inputs_previous);
+ValidateFieldOffset32(0x8, InputState, hardware_inputs_held_26_frames);
+ValidateFieldOffset32(0xC, InputState, hardware_inputs_rising_edge);
+ValidateFieldOffset32(0x14, InputState, hardware_inputs_heldA);
+ValidateFieldOffset32(0x94, InputState, inputs_heldA);
+ValidateFieldOffset32(0x114, InputState, hardware_inputs_heldB);
+ValidateFieldOffset32(0x194, InputState, inputs_heldB);
+ValidateFieldOffset32(0x214, InputState, __dword_214);
+ValidateFieldOffset32(0x218, InputState, inputs_current);
+ValidateFieldOffset32(0x21C, InputState, inputs_previous);
+ValidateFieldOffset32(0x220, InputState, inputs_held_26_frames);
+ValidateFieldOffset32(0x224, InputState, inputs_rising_edge);
+ValidateFieldOffset32(0x228, InputState, inputs_falling_edge);
+ValidateFieldOffset32(0x22C, InputState, hardware_inputs_held_8_frames);
+ValidateFieldOffset32(0x230, InputState, inputs_held_8_frames);
+ValidateFieldOffset32(0x234, InputState, __device_type);
+ValidateFieldOffset32(0x238, InputState, mappings);
+ValidateStructSize32(0x274, InputState);
 #pragma endregion
 
 
 extern "C" {
     // 0x4CA210
-    extern UnknownO UNKNOWN_O[3] asm("_UNKNOWN_O");
+    extern InputState INPUT_STATES[3] asm("_INPUT_STATES");
+}
+
+// 0x42ABC0
+dllexport gnu_noinline void __update_input0() asm_symbol_rel(0x42ABC0);
+dllexport gnu_noinline void __update_input0() {
+    INPUT_STATES[0].__update_input();
+}
+
+// 0x416B70
+dllexport gnu_noinline BOOL __hardware_input0_pressed_or_held(uint32_t mask) asm_symbol_rel(0x416B70);
+dllexport gnu_noinline BOOL __hardware_input0_pressed_or_held(uint32_t mask) {
+    return INPUT_STATES[0].__hardware_input_pressed_or_held(mask);
 }
 
 // size : 0x88
 struct Config {
     int __dword_0; // 0x0
-    UnknownOInner unknown_o_inners[3]; // 0x4
-    int16_t __short_40; // 0x40
-    int16_t __short_42; // 0x42
+    InputMapping mappings[3]; // 0x4
+    int16_t deadzone_x; // 0x40
+    int16_t deadzone_y; // 0x42
     uint8_t __ubyte_44; // 0x44
     uint8_t __ubyte_45; // 0x45
     uint8_t __ubyte_46; // 0x46
@@ -2460,6 +2886,7 @@ struct Config {
             int32_t __disable_locale_detection : 1; // 7
             int32_t : 1; // 8
             int32_t __unknown_flag_A : 1; // 9
+            int32_t __unknown_flag_C : 1; // 10
         };
     };
     int32_t window_x; // 0x54
@@ -2475,14 +2902,14 @@ struct Config {
         this->zero_contents();
         this->__unknown_flag_A = true;
         this->__dword_0 = 0x180002;
-        this->__short_40 = 0x258;
-        this->__short_42 = 0x258;
+        this->deadzone_x = 0x258;
+        this->deadzone_y = 0x258;
         this->__ubyte_45 = 1;
         this->__ubyte_46 = 1;
         this->__ubyte_47 = 8;
-        this->unknown_o_inners[0] = UNKNOWN_O[0].inners[0];
-        this->unknown_o_inners[1] = UNKNOWN_O[0].inners[1];
-        this->unknown_o_inners[2] = UNKNOWN_O[0].inners[2];
+        this->mappings[InputXInput]   = INPUT_STATES[0].mappings[InputXInput];
+        this->mappings[InputJoypad]   = INPUT_STATES[0].mappings[InputJoypad];
+        this->mappings[InputKeyboard] = INPUT_STATES[0].mappings[InputKeyboard];
         this->__ubyte_49 = 2;
         this->__sbyte_4A = 0x64;
         this->__byte_4C = 0;
@@ -2491,12 +2918,16 @@ struct Config {
         this->window_x = INT32_MIN;
         this->window_y = INT32_MIN;
     }
+
+    inline Config() {
+        this->initialize();
+    }
 };
 #pragma region // Config Validation
 ValidateFieldOffset32(0x0, Config, __dword_0);
-ValidateFieldOffset32(0x4, Config, unknown_o_inners);
-ValidateFieldOffset32(0x40, Config, __short_40);
-ValidateFieldOffset32(0x42, Config, __short_42);
+ValidateFieldOffset32(0x4, Config, mappings);
+ValidateFieldOffset32(0x40, Config, deadzone_x);
+ValidateFieldOffset32(0x42, Config, deadzone_y);
 ValidateFieldOffset32(0x44, Config, __ubyte_44);
 ValidateFieldOffset32(0x45, Config, __ubyte_45);
 ValidateFieldOffset32(0x46, Config, __ubyte_46);
@@ -2683,6 +3114,30 @@ extern "C" {
     extern ZUNThread UNKNOWN_THREAD_A asm("_UNKNOWN_THREAD_A");
 }
 
+// size: 0xC
+struct ZUNTask {
+    union {
+        uint32_t task_flags; // 0x0
+        struct {
+            uint32_t : 1;
+            uint32_t __unknown_task_flag_A : 1;
+        };
+    };
+    UpdateFunc* on_tick_func; // 0x4
+    UpdateFunc* on_draw_func; // 0x8
+    // 0xC
+
+    // 0x42A9A0
+    void __sub_42A9A0() {
+        if (UpdateFunc* on_tick = this->on_tick_func) {
+            on_tick->run_on_update = true;
+        }
+        if (UpdateFunc* on_draw = this->on_draw_func) {
+            on_draw->run_on_update = true;
+        }
+    }
+};
+
 extern "C" {
     // 0x57095C
     extern size_t JOYPAD_INDEX asm("_JOYPAD_INDEX");
@@ -2692,12 +3147,14 @@ static constexpr LONG JOYPAD_MIN_RANGE = -1000;
 static constexpr LONG JOYPAD_MAX_RANGE = 1000;
 
 // size: 0x38
-struct FpsCounter {
-    int __dword_0; // 0x0
-    unknown_fields(0x4); // 0x4
-    UpdateFunc* on_draw_func; // 0x8
+struct FpsCounter : ZUNTask {
+    //ZUNTask base; // 0x0
     int __dword_C; // 0xC
-    unknown_fields(0x28); // 0x10
+    unknown_fields(0x10); // 0x10
+    double __double_20; // 0x20
+    double __double_28; // 0x28
+    float __float_30; // 0x30
+    unknown_fields(0x4); // 0x34
     // 0x38
 
     inline void zero_contents() {
@@ -2706,8 +3163,12 @@ struct FpsCounter {
 
     inline FpsCounter() {
         this->zero_contents();
-        this->__dword_0 |= 2;
+        this->__unknown_task_flag_A = true;
 
+    }
+
+    inline float calc_slowdown_rate() {
+        return 100.0f - (float)(this->__double_20 / this->__double_28) * 100.0f;
     }
 
     // 0x43A2D0
@@ -2831,22 +3292,22 @@ struct Supervisor {
     // 0xB60
 
     // 0x453460
-    dllexport static gnu_noinline int32_t fastcall __unknown_on_tick_A(void* self) asm_symbol_rel(0x453460) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall __INPUT_STATESn_tick_A(void* self) asm_symbol_rel(0x453460) {
 
     }
 
     // 0x4553B0
-    dllexport static gnu_noinline int32_t fastcall __unknown_on_draw_A(void* self) asm_symbol_rel(0x4553B0) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall __INPUT_STATESn_draw_A(void* self) asm_symbol_rel(0x4553B0) {
 
     }
 
     // 0x455610
-    dllexport static gnu_noinline int32_t fastcall __unknown_on_draw_B(void* self) asm_symbol_rel(0x455610) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall __INPUT_STATESn_draw_B(void* self) asm_symbol_rel(0x455610) {
 
     }
 
     // 0x453640
-    dllexport static gnu_noinline int32_t fastcall on_registration(void* self) asm_symbol_rel(0x453640);
+    dllexport static gnu_noinline UpdateFuncRet fastcall on_registration(void* self) asm_symbol_rel(0x453640);
     
     // 0x453DB0
     dllexport static gnu_noinline void initialize() asm_symbol_rel(0x453DB0);
@@ -2975,10 +3436,10 @@ dllexport gnu_noinline void Supervisor::initialize() {
     SUPERVISOR.gamemode_current = -2;
     SUPERVISOR.gamemode_switch = 0;
     SUPERVISOR.__dword_800 = 0;
-    UpdateFunc* update_func = new UpdateFunc(&Supervisor::__unknown_on_tick_A, true, &SUPERVISOR);
+    UpdateFunc* update_func = new UpdateFunc(&Supervisor::__INPUT_STATESn_tick_A, true, &SUPERVISOR);
     update_func->on_init_func = &Supervisor::on_registration;
     if (!UpdateFuncRegistry::register_on_tick(update_func, 1)) {
-        UpdateFuncRegistry::register_on_draw(new UpdateFunc(&Supervisor::__unknown_on_draw_A, true, &SUPERVISOR), 1);
+        UpdateFuncRegistry::register_on_draw(new UpdateFunc(&Supervisor::__INPUT_STATESn_draw_A, true, &SUPERVISOR), 1);
     }
 }
 
@@ -2991,6 +3452,86 @@ dllexport gnu_noinline int32_t Supervisor::__start_thread_A94(_beginthreadex_pro
     CRITICAL_SECTION_MANAGER.leave_section(__supervisor_thread_cs_1);
     return 0;
 }
+
+inline uint32_t InputState::get_joypad(uint32_t buttons) {
+    uint32_t prev_buttons = buttons;
+    if (SUPERVISOR.joypad_devices[0]) {
+        if (FAILED(SUPERVISOR.joypad_devices[0]->Poll())) {
+            for (size_t i = 0; i < 400; ++i) {
+                // This isn't even listed as a valid return value in the docs?
+                if (SUPERVISOR.joypad_devices[0]->Acquire() != DIERR_INPUTLOST) {
+                    break;
+                }
+            }
+        }
+        else {
+            DIJOYSTATE2 state = {};
+            if (SUCCEEDED(SUPERVISOR.joypad_devices[0]->GetDeviceState(sizeof(state), &state))) {
+                // This code is mangled AF to the point that no sane compiler will ever
+                // output it, so I'm not even going to attempt to match the codegen.
+
+                int32_t mapping;
+
+                mapping = this->mappings[InputJoypad].shoot;
+                if (mapping >= 0 && (int8_t)state.rgbButtons[mapping] < 0) {
+                    buttons |= BUTTON_SHOOT;
+                }
+
+                mapping = this->mappings[InputJoypad].bomb;
+                if (mapping >= 0 && (int8_t)state.rgbButtons[mapping] < 0) {
+                    buttons |= BUTTON_BOMB;
+                }
+
+                mapping = this->mappings[InputJoypad].pause;
+                if (mapping >= 0 && (int8_t)state.rgbButtons[mapping] < 0) {
+                    buttons |= BUTTON_PAUSE;
+                }
+
+                mapping = this->mappings[InputJoypad].focus;
+                if (mapping >= 0 && (int8_t)state.rgbButtons[mapping] < 0) {
+                    buttons |= BUTTON_FOCUS;
+                }
+
+                mapping = this->mappings[InputJoypad].use_card;
+                if (mapping >= 0 && (int8_t)state.rgbButtons[mapping] < 0) {
+                    buttons |= BUTTON_USE_CARD;
+                }
+
+                mapping = this->mappings[InputJoypad].switch_card;
+                if (mapping >= 0 && (int8_t)state.rgbButtons[mapping] < 0) {
+                    buttons |= BUTTON_SWITCH_CARD;
+                }
+
+                uint32_t axes = 0;
+
+                int32_t deadzone_x = SUPERVISOR.config.deadzone_x;
+                int32_t deadzone_y = SUPERVISOR.config.deadzone_y;
+
+                if (state.lX < -deadzone_x) {
+                    axes |= BUTTON_LEFT;
+                }
+                if (state.lY < -deadzone_y) {
+                    axes |= BUTTON_UP;
+                }
+                if (state.lX > deadzone_x) {
+                    axes |= BUTTON_RIGHT;
+                }
+                if (state.lY > SUPERVISOR.config.deadzone_y) {
+                    axes |= BUTTON_DOWN;
+                }
+
+                buttons |= axes;
+
+                if (buttons != prev_buttons) {
+                    this->__device_type = InputDeviceJoypad;
+                }
+            }
+        }
+    }
+    return buttons;
+}
+
+static inline constexpr size_t SHOTTYPES_PER_CHARACTER = 1;
 
 // size: 0xFC
 struct Globals {
@@ -3017,8 +3558,8 @@ struct Globals {
     int32_t max_point_item_value; // 0x50
     int32_t money_collected_in_game; // 0x54
     int32_t current_money; // 0x58
-    int32_t __power_related_5C; // 0x5C (Current power?)
-    int32_t __power_related_60; // 0x60 (Max power?)
+    int32_t current_power; // 0x5C
+    int32_t max_power; // 0x60
     int32_t __power_related_64; // 0x64 (Power related)
     int __dword_68; // 0x68
     int32_t life_stocks; // 0x6C
@@ -3051,20 +3592,86 @@ struct Globals {
     union {
         uint32_t flags; // 0xF8
         struct {
-            uint32_t : 11; // 1-11
+            uint32_t : 4; // 1-4
+            uint32_t __unknown_field_A : 2; // 5-6
+            uint32_t : 5; // 7-11
             uint32_t __unknown_flag_A : 1; // 12
         };
     };
     // 0xFC
 
+    inline int32_t shottype_index() const {
+        return this->character + this->shottype * SHOTTYPES_PER_CHARACTER;
+    }
+
+    // 0x417A60
+    dllexport gnu_noinline Globals& thiscall operator=(const Globals& rhs) {
+        this->current_stage = rhs.current_stage;
+        this->__stage_number_related_4 = rhs.__stage_number_related_4;
+        this->chapter = rhs.chapter;
+        this->__counter_C = rhs.__counter_C;
+        this->__counter_10 = rhs.__counter_10;
+        this->__counter_14 = rhs.__counter_14;
+        this->character = rhs.character;
+        this->shottype = rhs.shottype;
+        this->score = rhs.score;
+        this->difficulty = rhs.difficulty;
+        this->__counter_28 = rhs.__counter_28;
+        this->rank = rhs.rank;
+        this->graze_in_stage = rhs.graze_in_stage;
+        this->graze = rhs.graze;
+        this->__ecl_var_9907 = rhs.__ecl_var_9907;
+        this->miss_count_in_game = rhs.miss_count_in_game;
+        this->__dword_40 = rhs.__dword_40;
+        this->point_items_collected_in_game = rhs.point_items_collected_in_game;
+        this->point_item_value = rhs.point_item_value;
+        this->min_point_item_value = rhs.min_point_item_value;
+        this->max_point_item_value = rhs.max_point_item_value;
+        this->money_collected_in_game = rhs.money_collected_in_game;
+        this->current_money = rhs.current_money;
+        this->current_power = rhs.current_power;
+        this->max_power = rhs.max_power;
+        this->__power_related_64 = rhs.__power_related_64;
+        this->__dword_68 = rhs.__dword_68;
+        this->life_stocks = rhs.life_stocks;
+        this->life_fragments = rhs.life_fragments;
+        this->lives_added = rhs.lives_added;
+        this->life_stock_max = rhs.life_stock_max;
+        this->bomb_stocks = rhs.bomb_stocks;
+        this->bomb_fragments = rhs.bomb_fragments;
+        this->bomb_stocks_for_new_life = rhs.bomb_stocks_for_new_life;
+        this->bomb_stock_max = rhs.bomb_stock_max;
+        this->__int_8C = rhs.__int_8C;
+        this->__int_90 = rhs.__int_90;
+        this->__dword_94 = rhs.__dword_94;
+        this->__dword_98 = rhs.__dword_98;
+        this->__dword_9C = rhs.__dword_9C;
+        this->__dword_A0 = rhs.__dword_A0;
+        this->__dword_A4 = rhs.__dword_A4;
+        this->__dword_A8 = rhs.__dword_A8;
+        this->__dword_AC = rhs.__dword_AC;
+        this->__dword_B0 = rhs.__dword_B0;
+        this->__dword_B4 = rhs.__dword_B4;
+        this->__dword_B8 = rhs.__dword_B8;
+        this->__dword_BC = rhs.__dword_BC;
+        this->__dword_C0 = rhs.__dword_C0;
+        this->__timer_C4.set_from_timer(rhs.__timer_C4);
+        this->__timer_D8.set_from_timer(rhs.__timer_D8);
+        this->__dword_EC = rhs.__dword_EC;
+        this->__dword_F0 = rhs.__dword_F0;
+        this->__dword_F4 = rhs.__dword_F4;
+        this->flags = rhs.flags;
+        return *this;
+    }
+
     // 0x412FA0
     dllexport gnu_noinline void thiscall __set_unknown_value_A(int32_t value) asm_symbol_rel(0x412FA0) {
-        this->__power_related_5C = value;
-        int32_t A = this->__power_related_60;
+        this->current_power = value;
+        int32_t A = this->max_power;
         if (value <= A) {
             A = value < this->__power_related_64 ? this->__power_related_64 : value;
         }
-        this->__power_related_5C = A;
+        this->current_power = A;
     }
 
     // 0x42A970
@@ -3092,7 +3699,7 @@ struct Globals {
 
     // 0x457480
     dllexport gnu_noinline BOOL thiscall __sub_457480(int32_t value) asm_symbol_rel(0x457480) {
-        int32_t& A = this->__power_related_5C;
+        int32_t& A = this->current_power;
         int32_t B = this->__power_related_64;
         if (A <= B) {
             return false;
@@ -3150,7 +3757,7 @@ struct GameManager {
     }
 
     // 0x42A990
-    dllexport gnu_noinline bool thiscall __unknown_field_A_is_2() asm_symbol_rel(0x42A990) {
+    dllexport bool thiscall __unknown_field_A_is_2() asm_symbol_rel(0x42A990) {
         return this->__unknown_field_A == 2;
     }
 
@@ -4584,8 +5191,9 @@ public:
     }
 };
 
-struct Bomb {
-    unknown_fields(0x30); // 0x0
+struct Bomb : ZUNTask {
+    // ZUNTask base; // 0x0
+    unknown_fields(0x24); // 0xC
     BOOL bomb_active; // 0x30
 };
 
@@ -5996,7 +6604,7 @@ extern "C" {
     extern void* CACHED_MSG_FILE_PTR asm("_CACHED_MSG_FILE_PTR");
 }
 // size: 0x2CC
-struct Gui {
+struct Gui : ZUNTask {
     // size: 0xD8
     struct MenuHelper {
         int32_t next_selection; // 0x0
@@ -6086,7 +6694,8 @@ struct Gui {
     };
 #pragma endregion
 
-    unknown_fields(0x68); // 0x0
+    // ZUNTask base; // 0x0
+    unknown_fields(0x5C); // 0xC
     AnmVM* __anm_vm_ptr_array_68[7]; // 0x68
     AnmVM* __anm_vm_84; // 0x84
     AnmVM* __anm_vm_88; // 0x88
@@ -6150,6 +6759,9 @@ struct Gui {
     }
 };
 #pragma region // Gui Validation
+ValidateFieldOffset32(0x0, Gui, task_flags);
+ValidateFieldOffset32(0x4, Gui, on_tick_func);
+ValidateFieldOffset32(0x8, Gui, on_draw_func);
 ValidateFieldOffset32(0x68, Gui, __anm_vm_ptr_array_68);
 ValidateFieldOffset32(0x84, Gui, __anm_vm_84);
 ValidateFieldOffset32(0x88, Gui, __anm_vm_88);
@@ -6415,6 +7027,11 @@ struct SoundManagerUnknownE {
                 smg_ptr->__handle_8C = INVALID_HANDLE_VALUE;
             }
         }
+    }
+
+    // 0x48AF10
+    dllexport gnu_noinline void vectorcall __sub_48AF10(double arg1) asm_symbol_rel(0x48AF10) {
+        use_var(arg1);
     }
 
     // This is giga jank
@@ -6716,7 +7333,7 @@ extern "C" {
 
 
 // 0x453640
-dllexport gnu_noinline int32_t fastcall Supervisor::on_registration(void* self) {
+dllexport gnu_noinline UpdateFuncRet fastcall Supervisor::on_registration(void* self) {
     if (THDAT_ARCFILE.__sub_46EB80()) {
         char ver_file_name[64];
         int32_t ver_file_size;
@@ -7005,24 +7622,63 @@ dllexport gnu_noinline void vectorcall SoundManager::__play_sound_positioned(int
     }
 }
 
+enum ReplayMode {
+    __replay_mode_0 = 0,
+    __replay_mode_1 = 1,
+    __replay_mode_2 = 2
+};
+
 typedef struct GameThread GameThread;
 extern "C" {
     // 0x4CF2E4
     extern GameThread* GAME_THREAD_PTR asm("_GAME_THREAD_PTR");
 }
-struct GameThread {
-    unknown_fields(0xB0); // 0x0
+
+// size: 0xD8
+struct GameThread : ZUNTask {
+    //ZUNTask base; // 0x0
+    Timer __timer_C; // 0xC
+    int32_t stage_number; // 0x20
+    int32_t chapter; // 0x24
+    Config config; // 0x28
     union {
-        uint32_t flags; // 0xB4
+        uint32_t flags; // 0xB0
         struct {
-            uint32_t __unknown_flag_A : 1;
-            uint32_t __unknown_flag_B : 1;
-            uint32_t skip_flag : 1;
-            uint32_t : 7;
-            uint32_t __unknown_flag_C : 1;
+            uint32_t __unknown_flag_A : 1; // 1
+            uint32_t __unknown_flag_B : 1; // 2
+            uint32_t skip_flag : 1; // 3
+            uint32_t __unknown_flag_H : 1; // 4
+            uint32_t __unknown_flag_I : 1; // 5
+            uint32_t : 2; // 6-7
+            uint32_t __unknown_flag_J : 1; // 8
+            uint32_t __unknown_flag_D : 1; // 9
+            uint32_t : 1; // 10
+            uint32_t __unknown_flag_C : 1; // 11
+            uint32_t __unknown_flag_K : 1; // 12
+            uint32_t : 2; // 13-14
+            uint32_t __unknown_flag_E : 1; // 15
+            uint32_t : 1; // 16
+            uint32_t __unknown_flag_F : 1; // 17
+            uint32_t __unknown_flag_G : 1; // 18
         };
     };
-    // size unknown
+    unknown_fields(0x4); // 0xB4
+    int __int_B8; // 0xB8
+    unknown_fields(0x14); // 0xBC
+    ReplayMode replay_mode; // 0xD0
+    int __int_D4; // 0xD4
+    // 0xD8
+
+    // 0x4437B0
+    GameThread(ReplayMode mode) {
+
+    }
+
+    // 0x439E80
+    dllexport gnu_noinline void thiscall set_chapter(int32_t chapter) asm_symbol_rel(0x439E80) {
+        GAME_MANAGER.globals.chapter = chapter;
+        GAME_THREAD_PTR->chapter = chapter;
+    }
 };
 
 typedef int32_t (*volatile fastcall AnmOnFunc)(AnmVM*);
@@ -7210,7 +7866,7 @@ struct AnmVM {
         Timer __timer_1C; // 0x1C (0x560)
         ZUNLinkedList<AnmVM> global_list_node; // 0x30 (0x574)
         ZUNLinkedList<AnmVM> child_list_node; // 0x40 (0x584)
-        ZUNLinkedListHeadDummy<AnmVM> child_list_head; // 0x50 (0x594)
+        ZUNLinkedListHead<AnmVM> child_list_head; // 0x50 (0x594)
         //ZUNLinkedList<AnmVM> child_list_head; // 0x50 (0x594)
         ZUNLinkedList<AnmVM> destroy_list_node; // 0x60 (0x5A4)
         AnmVM* next_in_layer; // 0x70 (0x5B4)
@@ -7421,6 +8077,7 @@ struct AnmVM {
         }
     }
 
+    // 0x41B750
     inline ~AnmVM() {
         this->cleanup();
     }
@@ -7945,9 +8602,9 @@ struct AnmManager {
     FastAnmVM fast_array_end; // 0x31200DC
     int32_t next_snapshot_fast_id; // 0x3120700
     int32_t next_snapshot_discriminator; // 0x3120704
-    ZUNLinkedListHeadDummy<AnmVM> snapshot_list_head; // 0x3120708
+    ZUNLinkedListHead<AnmVM> snapshot_list_head; // 0x3120708
     //ZUNLinkedList<AnmVM> snapshot_list_head; // 0x3120708
-    ZUNLinkedListHeadDummy<FastAnmVM> free_list_head; // 0x3120718
+    ZUNLinkedListHead<FastAnmVM> free_list_head; // 0x3120718
     //ZUNLinkedList<FastAnmVM> free_list_head; // 0x3120718
     unknown_fields(0x4); // 0x3120728
     AnmLoaded* loaded_anm_files[33]; // 0x312072C
@@ -8010,7 +8667,7 @@ struct AnmManager {
     }
 
     // 0x488260
-    dllexport gnu_noinline int32_t thiscall render_layer(uint32_t layer_index) asm_symbol_rel(0x488260) {
+    dllexport gnu_noinline UpdateFuncRet thiscall render_layer(uint32_t layer_index) asm_symbol_rel(0x488260) {
         CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
         {
             this->world_list_head->for_eachB([&, this](AnmVM* vm) {
@@ -8043,70 +8700,70 @@ struct AnmManager {
             });
         }
         CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
-        return 1;
+        return UpdateFuncNext;
     }
 
     // 0x488220
-    dllexport static gnu_noinline int32_t fastcall pre_tick_world(void* self) asm_symbol_rel(0x488220) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall pre_tick_world(void* self) asm_symbol_rel(0x488220) {
     }
     // 0x488250
-    dllexport static gnu_noinline int32_t fastcall pre_tick_ui(void* self) asm_symbol_rel(0x488250) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall pre_tick_ui(void* self) asm_symbol_rel(0x488250) {
     }
 
 #define simple_draw_layer(address, index) \
-    /* // address */ dllexport static gnu_noinline int32_t fastcall MACRO_CAT(draw_layer_, index)(void* self) asm_symbol_rel(address) { return ((AnmManager*)self)->render_layer(index); }
+    /* // address */ dllexport static gnu_noinline UpdateFuncRet fastcall MACRO_CAT(draw_layer_, index)(void* self) asm_symbol_rel(address) { return ((AnmManager*)self)->render_layer(index); }
 
-    /* // 0x487670 */ dllexport static gnu_noinline int32_t fastcall draw_layer_0(void* self) asm_symbol_rel(0x487670) { return ((AnmManager*)self)->render_layer(0); }
-    /* // 0x487680 */ dllexport static gnu_noinline int32_t fastcall draw_layer_1(void* self) asm_symbol_rel(0x487680) { return ((AnmManager*)self)->render_layer(1); }
-    /* // 0x487690 */ dllexport static gnu_noinline int32_t fastcall draw_layer_2(void* self) asm_symbol_rel(0x487690) { return ((AnmManager*)self)->render_layer(2); }
-    /* // 0x4876A0 */ dllexport static gnu_noinline int32_t fastcall draw_layer_4(void* self) asm_symbol_rel(0x4876A0) { return ((AnmManager*)self)->render_layer(4); }
+    /* // 0x487670 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_0(void* self) asm_symbol_rel(0x487670) { return ((AnmManager*)self)->render_layer(0); }
+    /* // 0x487680 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_1(void* self) asm_symbol_rel(0x487680) { return ((AnmManager*)self)->render_layer(1); }
+    /* // 0x487690 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_2(void* self) asm_symbol_rel(0x487690) { return ((AnmManager*)self)->render_layer(2); }
+    /* // 0x4876A0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_4(void* self) asm_symbol_rel(0x4876A0) { return ((AnmManager*)self)->render_layer(4); }
     // 0x4876B0
-    dllexport static gnu_noinline int32_t fastcall draw_layer_3(void* self) asm_symbol_rel(0x4876B0) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_3(void* self) asm_symbol_rel(0x4876B0) {
         Supervisor::__sub_454950(&SUPERVISOR.cameras[3]);
         SUPERVISOR.set_camera_by_index_disable_fog(3);
         return ((AnmManager*)self)->render_layer(3);
     }
-    /* // 0x487770 */ dllexport static gnu_noinline int32_t fastcall draw_layer_5(void* self) asm_symbol_rel(0x487770) { return ((AnmManager*)self)->render_layer(5); }
-    /* // 0x487780 */ dllexport static gnu_noinline int32_t fastcall draw_layer_6(void* self) asm_symbol_rel(0x487780) { return ((AnmManager*)self)->render_layer(6); }
-    /* // 0x487790 */ dllexport static gnu_noinline int32_t fastcall draw_layer_7(void* self) asm_symbol_rel(0x487790) { return ((AnmManager*)self)->render_layer(7); }
-    /* // 0x4877A0 */ dllexport static gnu_noinline int32_t fastcall draw_layer_8(void* self) asm_symbol_rel(0x4877A0) { return ((AnmManager*)self)->render_layer(8); }
-    /* // 0x4877B0 */ dllexport static gnu_noinline int32_t fastcall draw_layer_9(void* self) asm_symbol_rel(0x4877B0) { return ((AnmManager*)self)->render_layer(9); }
-    /* // 0x4877C0 */ dllexport static gnu_noinline int32_t fastcall draw_layer_10(void* self) asm_symbol_rel(0x4877C0) { return ((AnmManager*)self)->render_layer(10); }
-    /* // 0x4877D0 */ dllexport static gnu_noinline int32_t fastcall draw_layer_11(void* self) asm_symbol_rel(0x4877D0) { return ((AnmManager*)self)->render_layer(11); }
-    /* // 0x4877E0 */ dllexport static gnu_noinline int32_t fastcall draw_layer_13(void* self) asm_symbol_rel(0x4877E0) { return ((AnmManager*)self)->render_layer(13); }
-    /* // 0x4877F0 */ dllexport static gnu_noinline int32_t fastcall draw_layer_14(void* self) asm_symbol_rel(0x4877F0) { return ((AnmManager*)self)->render_layer(14); }
-    /* // 0x487800 */ dllexport static gnu_noinline int32_t fastcall draw_layer_15(void* self) asm_symbol_rel(0x487800) { return ((AnmManager*)self)->render_layer(15); }
-    /* // 0x487810 */ dllexport static gnu_noinline int32_t fastcall draw_layer_16(void* self) asm_symbol_rel(0x487810) { return ((AnmManager*)self)->render_layer(16); }
-    /* // 0x487820 */ dllexport static gnu_noinline int32_t fastcall draw_layer_17(void* self) asm_symbol_rel(0x487820) { return ((AnmManager*)self)->render_layer(17); }
-    /* // 0x487830 */ dllexport static gnu_noinline int32_t fastcall draw_layer_18(void* self) asm_symbol_rel(0x487830) { return ((AnmManager*)self)->render_layer(18); }
-    /* // 0x487840 */ dllexport static gnu_noinline int32_t fastcall draw_layer_12(void* self) asm_symbol_rel(0x487840) { return ((AnmManager*)self)->render_layer(12); }
-    /* // 0x487850 */ dllexport static gnu_noinline int32_t fastcall draw_layer_19(void* self) asm_symbol_rel(0x487850) { return ((AnmManager*)self)->render_layer(19); }
-    /* // 0x487860 */ dllexport static gnu_noinline int32_t fastcall draw_layer_21(void* self) asm_symbol_rel(0x487860) { return ((AnmManager*)self)->render_layer(21); }
-    /* // 0x487870 */ dllexport static gnu_noinline int32_t fastcall draw_layer_22(void* self) asm_symbol_rel(0x487870) { return ((AnmManager*)self)->render_layer(22); }
-    /* // 0x487880 */ dllexport static gnu_noinline int32_t fastcall draw_layer_31(void* self) asm_symbol_rel(0x487880) { return ((AnmManager*)self)->render_layer(31); }
-    /* // 0x487890 */ dllexport static gnu_noinline int32_t fastcall draw_layer_32(void* self) asm_symbol_rel(0x487890) { return ((AnmManager*)self)->render_layer(32); }
-    /* // 0x4878A0 */ dllexport static gnu_noinline int32_t fastcall draw_layer_30(void* self) asm_symbol_rel(0x4878A0) { return ((AnmManager*)self)->render_layer(30); }
-    /* // 0x4878B0 */ dllexport static gnu_noinline int32_t fastcall draw_layer_26(void* self) asm_symbol_rel(0x4878B0) { return ((AnmManager*)self)->render_layer(26); }
-    /* // 0x4878C0 */ dllexport static gnu_noinline int32_t fastcall draw_layer_27(void* self) asm_symbol_rel(0x4878C0) { return ((AnmManager*)self)->render_layer(27); }
-    /* // 0x4878D0 */ dllexport static gnu_noinline int32_t fastcall draw_layer_25(void* self) asm_symbol_rel(0x4878D0) { return ((AnmManager*)self)->render_layer(25); }
-    /* // 0x4878E0 */ dllexport static gnu_noinline int32_t fastcall draw_layer_38(void* self) asm_symbol_rel(0x4878E0) { return ((AnmManager*)self)->render_layer(38); }
-    /* // 0x4878F0 */ dllexport static gnu_noinline int32_t fastcall draw_layer_39(void* self) asm_symbol_rel(0x4878F0) { return ((AnmManager*)self)->render_layer(39); }
-    /* // 0x487900 */ dllexport static gnu_noinline int32_t fastcall draw_layer_40(void* self) asm_symbol_rel(0x487900) { return ((AnmManager*)self)->render_layer(40); }
-    /* // 0x487910 */ dllexport static gnu_noinline int32_t fastcall draw_layer_43(void* self) asm_symbol_rel(0x487910) { return ((AnmManager*)self)->render_layer(43); }
-    /* // 0x487920 */ dllexport static gnu_noinline int32_t fastcall draw_layer_44(void* self) asm_symbol_rel(0x487920) { return ((AnmManager*)self)->render_layer(44); }
-    /* // 0x487930 */ dllexport static gnu_noinline int32_t fastcall draw_layer_45(void* self) asm_symbol_rel(0x487930) { return ((AnmManager*)self)->render_layer(45); }
+    /* // 0x487770 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_5(void* self) asm_symbol_rel(0x487770) { return ((AnmManager*)self)->render_layer(5); }
+    /* // 0x487780 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_6(void* self) asm_symbol_rel(0x487780) { return ((AnmManager*)self)->render_layer(6); }
+    /* // 0x487790 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_7(void* self) asm_symbol_rel(0x487790) { return ((AnmManager*)self)->render_layer(7); }
+    /* // 0x4877A0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_8(void* self) asm_symbol_rel(0x4877A0) { return ((AnmManager*)self)->render_layer(8); }
+    /* // 0x4877B0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_9(void* self) asm_symbol_rel(0x4877B0) { return ((AnmManager*)self)->render_layer(9); }
+    /* // 0x4877C0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_10(void* self) asm_symbol_rel(0x4877C0) { return ((AnmManager*)self)->render_layer(10); }
+    /* // 0x4877D0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_11(void* self) asm_symbol_rel(0x4877D0) { return ((AnmManager*)self)->render_layer(11); }
+    /* // 0x4877E0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_13(void* self) asm_symbol_rel(0x4877E0) { return ((AnmManager*)self)->render_layer(13); }
+    /* // 0x4877F0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_14(void* self) asm_symbol_rel(0x4877F0) { return ((AnmManager*)self)->render_layer(14); }
+    /* // 0x487800 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_15(void* self) asm_symbol_rel(0x487800) { return ((AnmManager*)self)->render_layer(15); }
+    /* // 0x487810 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_16(void* self) asm_symbol_rel(0x487810) { return ((AnmManager*)self)->render_layer(16); }
+    /* // 0x487820 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_17(void* self) asm_symbol_rel(0x487820) { return ((AnmManager*)self)->render_layer(17); }
+    /* // 0x487830 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_18(void* self) asm_symbol_rel(0x487830) { return ((AnmManager*)self)->render_layer(18); }
+    /* // 0x487840 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_12(void* self) asm_symbol_rel(0x487840) { return ((AnmManager*)self)->render_layer(12); }
+    /* // 0x487850 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_19(void* self) asm_symbol_rel(0x487850) { return ((AnmManager*)self)->render_layer(19); }
+    /* // 0x487860 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_21(void* self) asm_symbol_rel(0x487860) { return ((AnmManager*)self)->render_layer(21); }
+    /* // 0x487870 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_22(void* self) asm_symbol_rel(0x487870) { return ((AnmManager*)self)->render_layer(22); }
+    /* // 0x487880 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_31(void* self) asm_symbol_rel(0x487880) { return ((AnmManager*)self)->render_layer(31); }
+    /* // 0x487890 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_32(void* self) asm_symbol_rel(0x487890) { return ((AnmManager*)self)->render_layer(32); }
+    /* // 0x4878A0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_30(void* self) asm_symbol_rel(0x4878A0) { return ((AnmManager*)self)->render_layer(30); }
+    /* // 0x4878B0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_26(void* self) asm_symbol_rel(0x4878B0) { return ((AnmManager*)self)->render_layer(26); }
+    /* // 0x4878C0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_27(void* self) asm_symbol_rel(0x4878C0) { return ((AnmManager*)self)->render_layer(27); }
+    /* // 0x4878D0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_25(void* self) asm_symbol_rel(0x4878D0) { return ((AnmManager*)self)->render_layer(25); }
+    /* // 0x4878E0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_38(void* self) asm_symbol_rel(0x4878E0) { return ((AnmManager*)self)->render_layer(38); }
+    /* // 0x4878F0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_39(void* self) asm_symbol_rel(0x4878F0) { return ((AnmManager*)self)->render_layer(39); }
+    /* // 0x487900 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_40(void* self) asm_symbol_rel(0x487900) { return ((AnmManager*)self)->render_layer(40); }
+    /* // 0x487910 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_43(void* self) asm_symbol_rel(0x487910) { return ((AnmManager*)self)->render_layer(43); }
+    /* // 0x487920 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_44(void* self) asm_symbol_rel(0x487920) { return ((AnmManager*)self)->render_layer(44); }
+    /* // 0x487930 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_45(void* self) asm_symbol_rel(0x487930) { return ((AnmManager*)self)->render_layer(45); }
     // 0x487940
-    dllexport static gnu_noinline int32_t fastcall draw_layer_20(void* self) asm_symbol_rel(0x487940) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_20(void* self) asm_symbol_rel(0x487940) {
         SUPERVISOR.set_camera_by_index_disable_zwrite(1);
         return ((AnmManager*)self)->render_layer(20);
     }
     // 0x487A10
-    dllexport static gnu_noinline int32_t fastcall draw_layer_23(void* self) asm_symbol_rel(0x487A10) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_23(void* self) asm_symbol_rel(0x487A10) {
         SUPERVISOR.set_camera_by_index_disable_zwrite(1);
         return ((AnmManager*)self)->render_layer(23);
     }
     // 0x487AE0
-    dllexport static gnu_noinline int32_t fastcall draw_layer_24(void* self) asm_symbol_rel(0x487AE0) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_24(void* self) asm_symbol_rel(0x487AE0) {
         SUPERVISOR.set_camera_by_index_disable_zwrite(2);
         AnmManager* anm_manager = (AnmManager*)self;
         anm_manager->__int2_D0.x = 0;
@@ -8114,40 +8771,40 @@ struct AnmManager {
         return anm_manager->render_layer(24);
     }
     // 0x487BC0
-    dllexport static gnu_noinline int32_t fastcall draw_layer_28(void* self) asm_symbol_rel(0x487BC0) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_28(void* self) asm_symbol_rel(0x487BC0) {
         AnmManager* anm_manager = (AnmManager*)self;
         SUPERVISOR.set_camera2_alt();
-        int32_t ret = anm_manager->render_layer(28);
+        UpdateFuncRet ret = anm_manager->render_layer(28);
         SUPERVISOR.set_camera_by_index(2);
         return ret;
     }
     // 0x487C50
-    dllexport static gnu_noinline int32_t fastcall draw_layer_29(void* self) asm_symbol_rel(0x487C50) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_29(void* self) asm_symbol_rel(0x487C50) {
         AnmManager* anm_manager = (AnmManager*)self;
         SUPERVISOR.set_camera2_alt();
-        int32_t ret = anm_manager->render_layer(29);
+        UpdateFuncRet ret = anm_manager->render_layer(29);
         SUPERVISOR.set_camera_by_index(2);
         return ret;
     }
     // 0x487CE0
-    dllexport static gnu_noinline int32_t fastcall draw_layer_37(void* self) asm_symbol_rel(0x487CE0) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_37(void* self) asm_symbol_rel(0x487CE0) {
         SUPERVISOR.set_camera_by_index_disable_zwrite(2);
         return ((AnmManager*)self)->render_layer(37);
     }
     // 0x487DB0
-    dllexport static gnu_noinline int32_t fastcall draw_layer_41A(void* self) asm_symbol_rel(0x487DB0) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_41A(void* self) asm_symbol_rel(0x487DB0) {
         AnmManager* anm_manager = (AnmManager*)self;
         SUPERVISOR.set_camera2_alt();
-        int32_t ret = anm_manager->render_layer(41);
+        UpdateFuncRet ret = anm_manager->render_layer(41);
         SUPERVISOR.set_camera_by_index(2);
         return ret;
     }
     // Was this supposed to be 42?
     // 0x487E40
-    dllexport static gnu_noinline int32_t fastcall draw_layer_41B(void* self) asm_symbol_rel(0x487E40) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_41B(void* self) asm_symbol_rel(0x487E40) {
         AnmManager* anm_manager = (AnmManager*)self;
         SUPERVISOR.set_camera2_alt();
-        int32_t ret = anm_manager->render_layer(41);
+        UpdateFuncRet ret = anm_manager->render_layer(41);
         SUPERVISOR.set_camera_by_index(2);
         return ret;
     }
@@ -8187,7 +8844,7 @@ struct AnmManager {
         this->__dword_48 = -1;
         this->__dword_70 = -1;
         this->__dword_98 = -1;
-        ZUNLinkedListHeadDummy<FastAnmVM>* free_list_head_ptr = &this->free_list_head;
+        ZUNLinkedListHead<FastAnmVM>* free_list_head_ptr = &this->free_list_head;
         free_list_head_ptr->initialize_with((FastAnmVM*)&free_list_head_ptr);
         FastAnmVM* fast_array_ptr = this->fast_array;
         int32_t i = 0;
@@ -8589,7 +9246,7 @@ struct AnmManager {
     dllexport int32_t thiscall on_tick_world() asm_symbol_rel(0x487ED0) {
         CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
         {
-            ZUNLinkedListHeadDummy<AnmVM> destroy_list;
+            ZUNLinkedListHead<AnmVM> destroy_list;
             destroy_list.initialize_with(NULL);
 
             AnmVM* layer_lists[WORLD_LAYER_COUNT];
@@ -8622,7 +9279,7 @@ struct AnmManager {
     dllexport int32_t thiscall on_tick_ui() asm_symbol_rel(0x487FE0) {
         CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
         {
-            ZUNLinkedListHeadDummy<AnmVM> destroy_list;
+            ZUNLinkedListHead<AnmVM> destroy_list;
             destroy_list.initialize_with(NULL);
 
             //AnmVM* layer_lists[UI_LAYER_COUNT];
@@ -9398,8 +10055,8 @@ RunInterrupt:
 
 // 0x4573F0
 dllexport gnu_noinline BOOL thiscall Globals::__sub_4573F0(int32_t value) {
-    int32_t& A = this->__power_related_5C;
-    int32_t B = this->__power_related_60;
+    int32_t& A = this->current_power;
+    int32_t B = this->max_power;
     if (A >= B) {
         return false;
     }
@@ -9764,20 +10421,12 @@ ValidateStructSize32(0x63E0, AbilityTextData);
 #pragma endregion
 
 // 0xD70
-struct AbilityManager {
-    union {
-        uint32_t __flags_0; // 0x0
-        struct {
-            uint32_t : 1; // 1
-            uint32_t __unknown_flag_B : 1; // 2
-        };
-    };
-    UpdateFunc* on_tick_registration; // 0x4
-    UpdateFunc* on_draw_registration; // 0x8
+struct AbilityManager : ZUNTask {
+    // ZUNTask base; // 0x0
     AnmLoaded* ability_anm; // 0xC
     AnmLoaded* abcard_anm; // 0x10
     AnmLoaded* abmenu_anm; // 0x14
-    ZUNLinkedListHeadDummy<CardBase> card_list; // 0x18
+    ZUNLinkedListHead<CardBase> card_list; // 0x18
     int32_t card_count; // 0x28
     int32_t active_card_count; // 0x2C
     int32_t equipment_card_count; // 0x30
@@ -9809,7 +10458,7 @@ struct AbilityManager {
 
     inline AbilityManager() : __unknown_flag_A(false), __array_58{}, __array_458{} {
         this->zero_contents();
-        this->__unknown_flag_B = true;
+        this->__unknown_task_flag_A = true;
     }
 
     inline void load_files() {
@@ -9829,24 +10478,24 @@ struct AbilityManager {
     }
 
     // 0x408640
-    dllexport gnu_noinline int32_t thiscall on_tick() asm_symbol_rel(0x408640) {
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x408640) {
 
     }
 
     // 0x408A90
-    dllexport static gnu_noinline int32_t fastcall pre_on_tick(void* self) asm_symbol_rel(0x408A90) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall pre_on_tick(void* self) asm_symbol_rel(0x408A90) {
         if (ABILITY_SHOP_PTR) {
-            return 1;
+            return UpdateFuncNext;
         }
         return ((AbilityManager*)self)->on_tick();
     }
 
     // 0x408AB0
-    dllexport static gnu_noinline int32_t fastcall on_draw(void* self) asm_symbol_rel(0x408AB0) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall on_draw(void* self) asm_symbol_rel(0x408AB0) {
         ((AbilityManager*)self)->card_list.for_each([](CardBase* card) static_lambda {
 
         });
-        return 1;
+        return UpdateFuncNext;
     }
 
     // 0x4082B0
@@ -9857,10 +10506,10 @@ struct AbilityManager {
         ability_manager->load_files();
         UpdateFunc* on_tick = new UpdateFunc(&AbilityManager::pre_on_tick, false, ability_manager);
         UpdateFuncRegistry::register_on_tick(on_tick, 22);
-        ability_manager->on_tick_registration = on_tick;
+        ability_manager->on_tick_func = on_tick;
         UpdateFunc* on_draw = new UpdateFunc(&AbilityManager::on_draw, false, ability_manager);
-        UpdateFuncRegistry::register_on_tick(on_draw, 51);
-        ability_manager->on_tick_registration = on_draw;
+        UpdateFuncRegistry::register_on_draw(on_draw, 51);
+        ability_manager->on_draw_func = on_draw;
     }
 
     // 0x408BA0
@@ -9992,7 +10641,7 @@ enum MovementDirection : int32_t {
 };
 
 // size: 0x479D4
-struct Player {
+struct Player : ZUNTask {
 
     // size: 0xF0
     struct PlayerOption {
@@ -10112,7 +10761,7 @@ struct Player {
         // 0x47308, 0x47928
     };
 
-    unknown_fields(0xC); // 0x0
+    // ZUNTask base; // 0x0
     AnmLoaded* player_anm; // 0xC
     AnmLoaded* __player_anm_copy; // 0x10
     AnmVM __vm_14; // 0x14
@@ -10306,10 +10955,8 @@ extern "C" {
 }
 
 // size: 0x1A0
-struct EnemyManager {
-    void* vtable; // 0x0
-    void* on_tick; // 0x4
-    void* on_draw; // 0x8
+struct EnemyManager : ZUNTask {
+    //ZUNTask base; // 0x0
     int32_t int_vars[4]; // 0xC
     float float_vars[8]; // 0x1C
     int32_t player_death_count; // 0x3C
@@ -10441,9 +11088,9 @@ struct EnemyManager {
     }
 };
 #pragma region // EnemyManager Validation
-ValidateFieldOffset32(0x0, EnemyManager, vtable);
-ValidateFieldOffset32(0x4, EnemyManager, on_tick);
-ValidateFieldOffset32(0x8, EnemyManager, on_draw);
+ValidateFieldOffset32(0x0, EnemyManager, task_flags);
+ValidateFieldOffset32(0x4, EnemyManager, on_tick_func);
+ValidateFieldOffset32(0x8, EnemyManager, on_draw_func);
 ValidateFieldOffset32(0xC, EnemyManager, int_vars);
 ValidateFieldOffset32(0x1C, EnemyManager, float_vars);
 ValidateFieldOffset32(0x3C, EnemyManager, player_death_count);
@@ -10679,10 +11326,8 @@ extern "C" {
     dllexport extern ItemManager* ITEM_MANAGER_PTR asm("_ITEM_MANAGER_PTR");
 }
 // size: 0xE6BB28
-struct ItemManager {
-    unknown_fields(0x4); // 0x0
-    void* on_tick; // 0x4
-    void* on_draw; // 0x8
+struct ItemManager : ZUNTask {
+    //ZUNTask base; // 0x0
     unknown_fields(0x8); // 0xC
     Item items[600]; // 0x14
     Item cancel_items[0x1000]; // 0x1D7AF4
@@ -10704,8 +11349,9 @@ struct ItemManager {
     }
 };
 #pragma region // ItemManager Validation
-ValidateFieldOffset32(0x4, ItemManager, on_tick);
-ValidateFieldOffset32(0x8, ItemManager, on_draw);
+ValidateFieldOffset32(0x0, ItemManager, task_flags);
+ValidateFieldOffset32(0x4, ItemManager, on_tick_func);
+ValidateFieldOffset32(0x8, ItemManager, on_draw_func);
 ValidateFieldOffset32(0x14, ItemManager, items);
 ValidateFieldOffset32(0x1D7AF4, ItemManager, cancel_items);
 ValidateFieldOffset32(0xE6BAF4, ItemManager, items_freelist);
@@ -11480,35 +12126,84 @@ struct LaserBeam : LaserData {
     // 0x21F4
 };
 
+
+template <typename T, bool has_idk ZUNListIdkDefaultValue>
+struct ZUNLinkedListIterBase {
+    using N = ZUNLinkedListBase<T, has_idk>;
+    using H = ZUNLinkedListHeadDummyBase<T, has_idk>;
+
+    N* ptr;
+
+    inline ZUNLinkedListIterBase() = default;
+    inline ZUNLinkedListIterBase(N& node) : ptr(&node) {}
+    inline ZUNLinkedListIterBase(H& head) {
+        if (N* node = head.next) {
+
+        }
+    }
+};
+
+// size: 0x10
+struct BulletIters {
+    ZUNLinkedList<Bullet>* current[2]; // 0x0
+    ZUNLinkedList<Bullet>* next[2]; // 0x8
+    // 0x10
+};
+
 // size: 0x7A41F8
-struct BulletManager {
-    unknown_fields(0x4); // 0x0
-    void* on_tick; // 0x4
-    void* on_draw; // 0x8
+struct BulletManager : ZUNTask {
+    // ZUNTask base; // 0x0
     unknown_fields(0x4); // 0xC
-    Bullet* __bullet_cache_pointers[10]; // 0x10
-    unknown_fields(0x4); // 0x38
+    Bullet* __bullet_cache_pointers[12]; // 0x10
     int32_t __int_40; // 0x40 (ECL variable -9898)
     float player_protect_radius; // 0x44
     float __float_48; // 0x48
     float __float_4C; // 0x4C
-    unknown_fields(0x6C); // 0x50
-    ZUNLinkedList<Bullet> bullet_tick_list; // 0xBC
+    unknown_fields(0x8); // 0x50
+    int __graze_array[20]; // 0x58
+    int __int_A8; // 0xA8
+    ZUNLinkedList<void> __unknown_list_AC; // 0xAC
+    ZUNLinkedListHead<Bullet> bullet_tick_list; // 0xBC
     unknown_fields(0x20); // 0xCC
     Bullet dummy_bullet; // 0xEC
     Bullet bullets[2000]; // 0x108C
     int32_t anm_ids[2001]; // 0x7A228C
     int32_t __cancel_counter; // 0x7A41D0
     int32_t __int_7A41D4; // 0x7A41D4
-    ZUNLinkedList<Bullet>* bullet_iter_current; // 0x7A41D8
-    ZUNLinkedList<Bullet>* bullet_iter_current2; // 0x7A41DC
-    ZUNLinkedList<Bullet>* bullet_iter_next; // 0x7A41E0
-    ZUNLinkedList<Bullet>* bullet_iter_next2; // 0x7A41E4
+    //ZUNLinkedList<Bullet>* bullet_iter_current; // 0x7A41D8
+    //ZUNLinkedList<Bullet>* bullet_iter_current2; // 0x7A41DC
+    //ZUNLinkedList<Bullet>* bullet_iter_next; // 0x7A41E0
+    //ZUNLinkedList<Bullet>* bullet_iter_next2; // 0x7A41E4
+    BulletIters bullet_iter; // 0x7A41D8
     int32_t __cancel_counter2; // 0x7A41E8
     AnmLoaded* bullet_anm; // 0x7A41EC
     int32_t __unknown_counter_flag; // 0x7A41F0
     int32_t __unknown_counter; // 0x7A41F4
     // 0x7A41F8
+    
+    // 0x409940
+    dllexport gnu_noinline Bullet* thiscall start_bullet_iter(uint32_t index) asm_symbol_rel(0x409940) {
+        ZUNLinkedList<Bullet>* node = this->bullet_tick_list.next;
+        this->bullet_iter.current[index] = node;
+        if (node) {
+            this->bullet_iter.next[index] = node->next;
+            return node->data;
+        }
+        else {
+            this->bullet_iter.next[index] = NULL;
+            return NULL;
+        }
+    }
+
+    // 0x42CC70
+    dllexport gnu_noinline uint32_t thiscall __count_graze_array() asm_symbol_rel(0x42CC70) {
+        // MSVC loops this 2 at a time?
+        uint32_t count = 0;
+        for (size_t i = 0; i < countof(this->__graze_array); ++i) {
+            count += this->__graze_array[i];
+        }
+        return count;
+    }
 
     // 0x42CCA0
     dllexport gnu_noinline void vectorcall set_player_protect_radius(float radius) asm_symbol_rel(0x42CCA0) {
@@ -11543,13 +12238,53 @@ struct BulletManager {
         }
         return 0;
     }
+    
+    // 0x424C50
+    dllexport gnu_noinline int32_t thiscall on_tick__impl() asm_symbol_rel(0x424C50) {
+        for (size_t i = countof(this->__graze_array) - 1; i; --i) {
+            this->__graze_array[i] = this->__graze_array[i - 1];
+        }
+        this->__graze_array[0] = 0;
+        
+        Bullet* cur_bullet = this->start_bullet_iter(0);
+
+        this->__int_40 = 0;
+        this->__bullet_cache_pointers[5] = NULL;
+        this->__bullet_cache_pointers[4] = NULL;
+        this->__bullet_cache_pointers[3] = NULL;
+        this->__bullet_cache_pointers[2] = NULL;
+        this->__bullet_cache_pointers[1] = NULL;
+        this->__bullet_cache_pointers[0] = NULL;
+        this->__bullet_cache_pointers[11] = NULL;
+        this->__bullet_cache_pointers[10] = NULL;
+        this->__bullet_cache_pointers[9] = NULL;
+        this->__bullet_cache_pointers[8] = NULL;
+        this->__bullet_cache_pointers[7] = NULL;
+        this->__bullet_cache_pointers[6] = NULL;
+
+        while (cur_bullet) {
+
+        }
+
+        return 1;
+    }
+    
+    // 0x424E70
+    dllexport gnu_noinline int32_t thiscall on_tick() asm_symbol_rel(0x424E70) {
+        GameThread* game_thread_ptr = GAME_THREAD_PTR;
+        if (
+            (game_thread_ptr && (game_thread_ptr->__unknown_flag_A | game_thread_ptr->skip_flag)) ||
+            ABILITY_SHOP_PTR
+        ) {
+            return 1;
+        }
+        return this->on_tick__impl();
+    }
 };
 
 // size: 0x7C4
-struct LaserManager {
-    unknown_fields(0x4); // 0x0
-    UpdateFunc* on_tick; // 0x4
-    UpdateFunc* on_draw; // 0x8
+struct LaserManager : ZUNTask {
+    //ZUNTask base; // 0x0
     LaserData dummy_laser; // 0xC
     LaserData* list_head; // 0x794
     int32_t list_length; // 0x798
@@ -13133,21 +13868,57 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
     }
 }
 
+static inline constexpr uint32_t REPLAY_MAGIC = PackUInt('t', '1', '8', 'r');
+static inline constexpr uint32_t REPLAY_USER_MAGIC = PackUInt('U', 'S', 'E', 'R');
+static inline constexpr int32_t REPLAY_STAGE_COUNT = 8;
+static inline constexpr uint16_t REPLAY_VERSION_NUMBER = 6; // I'm just guessing at this
+
 // size: 0x24
 struct ReplayHeader {
     ZUNMagic magic; // 0x0
-    int __dword_4; // 0x4
-    unknown_fields(0x14); // 0x8
-    uint32_t file_size; // 0x1C
-    uint32_t __size_20; // 0x20
+    uint16_t __version; // 0x4
+    unknown_fields(0x6); // 0x6
+    uint32_t file_size; // 0xC
+    int __int_10; // 0x10
+    unknown_fields(0x8); // 0x14
+    uint32_t compressed_size; // 0x1C
+    uint32_t uncompressed_size; // 0x20
     // 0x24
+
+    inline void zero_contents() {
+        zero_this_inline();
+    }
+
+    inline ReplayHeader(uint32_t magic, uint16_t version) {
+        this->zero_contents();
+        this->magic.as_uint = magic;
+        this->__version = version;
+        this->__int_10 = 256;
+    }
 };
 #pragma region // ReplayHeader Verification
 ValidateFieldOffset32(0x0, ReplayHeader, magic);
-ValidateFieldOffset32(0x4, ReplayHeader, __dword_4);
-ValidateFieldOffset32(0x1C, ReplayHeader, file_size);
-ValidateFieldOffset32(0x20, ReplayHeader, __size_20);
+ValidateFieldOffset32(0x4, ReplayHeader, __version);
+ValidateFieldOffset32(0x10, ReplayHeader, __int_10);
+ValidateFieldOffset32(0x1C, ReplayHeader, compressed_size);
+ValidateFieldOffset32(0x20, ReplayHeader, uncompressed_size);
 ValidateStructSize32(0x24, ReplayHeader);
+#pragma endregion
+
+// size: 0xC+
+struct ReplayUserData {
+    ZUNMagic magic; // 0x0
+    int32_t size; // 0x4
+    uint8_t __byte_8; // 0x8
+    probably_padding_bytes(3); // 0x9
+    char text[]; // 0xC
+};
+#pragma region // ReplayUserData Verification
+ValidateFieldOffset32(0x0, ReplayUserData, magic);
+ValidateFieldOffset32(0x4, ReplayUserData, size);
+ValidateFieldOffset32(0x8, ReplayUserData, __byte_8);
+ValidateFieldOffset32(0xC, ReplayUserData, text);
+ValidateStructSize32(0xC, ReplayUserData);
 #pragma endregion
 
 // size: 0x6
@@ -13156,6 +13927,10 @@ struct ReplayFrameInput {
     uint16_t rising_edge; // 0x2
     uint16_t falling_edge; // 0x4
     // 0x6
+
+    inline bool is_end() const {
+        return this->current == 0xFFFF && this->rising_edge == 0xFFFF && this->falling_edge == 0xFFFF;
+    }
 };
 #pragma region // ReplayFrameInput Verification
 ValidateFieldOffset32(0x0, ReplayFrameInput, current);
@@ -13164,62 +13939,115 @@ ValidateFieldOffset32(0x4, ReplayFrameInput, falling_edge);
 ValidateStructSize32(0x6, ReplayFrameInput);
 #pragma endregion
 
+static inline constexpr ReplayFrameInput REPLAY_INPUT_END = { 0xFFFF, 0xFFFF, 0xFFFF };
+
 // size: 0x126C+
 struct ReplayGamestateSnapshot {
     int16_t stage_number; // 0x0
     uint16_t rng; // 0x2
     uint32_t input_count; // 0x4
     uint32_t extra_size; // 0x8
-    unknown_fields(0x158); // 0xC
+    int __dword_C; // 0xC
+    int __dword_10; // 0x10
+    unknown_fields(0x4); // 0x14
+    int __dword_array_18[20]; // 0x18
+    Globals globals; // 0x68
     int32_t cards_owned[0x100]; // 0x164
     int32_t __card_cooldowns[0x100]; // 0x564
     int32_t card_selected; // 0x964
-    unknown_fields(0x904); // 0x968
+    unknown_fields(0x900); // 0x968
+    union {
+        uint32_t flags; // 0x1268
+        struct {
+            uint32_t __unknown_flag_A : 1;
+        };
+    };
     unsigned char extra[]; // 0x126C
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline ReplayGamestateSnapshot() {
+        this->zero_contents();
+    }
 };
 #pragma region // ReplayFrameInput Verification
 ValidateFieldOffset32(0x0, ReplayGamestateSnapshot, stage_number);
 ValidateFieldOffset32(0x2, ReplayGamestateSnapshot, rng);
 ValidateFieldOffset32(0x4, ReplayGamestateSnapshot, input_count);
 ValidateFieldOffset32(0x8, ReplayGamestateSnapshot, extra_size);
+ValidateFieldOffset32(0xC, ReplayGamestateSnapshot, __dword_C);
+ValidateFieldOffset32(0x10, ReplayGamestateSnapshot, __dword_10);
+ValidateFieldOffset32(0x18, ReplayGamestateSnapshot, __dword_array_18);
+ValidateFieldOffset32(0x68, ReplayGamestateSnapshot, globals);
 ValidateFieldOffset32(0x164, ReplayGamestateSnapshot, cards_owned);
 ValidateFieldOffset32(0x564, ReplayGamestateSnapshot, __card_cooldowns);
 ValidateFieldOffset32(0x964, ReplayGamestateSnapshot, card_selected);
+ValidateFieldOffset32(0x1268, ReplayGamestateSnapshot, flags);
 ValidateFieldOffset32(0x126C, ReplayGamestateSnapshot, extra);
 ValidateStructSize32(0x126C, ReplayGamestateSnapshot);
 #pragma endregion
 
 // size: 0xC8
 struct ReplayInfo {
-    unknown_fields(0xA); // 0x0
-    bool practice_mode; // 0xA
-    unknown_fields(0x11); // 0xB
+    char name[9]; // 0x0
+    unknown_fields(0x1); // 0x9
+    union {
+        uint8_t flags; // 0xA
+        struct {
+            uint8_t practice_mode : 1;
+            uint8_t __unknown_flag_A : 1;
+        };
+    };
+    unknown_fields(0x5); // 0xB
+    time_t time; // 0x10 
+    int32_t score; // 0x18
     Config config; // 0x1C
-    unknown_fields(0x4); // 0xA4
+    float slowdown_rate; // 0xA4
     int32_t stage_count; // 0xA8
     int32_t character; // 0xAC
     int32_t shottype; // 0xB0
     int32_t difficulty; // 0xB4
-    unknown_fields(0x4); // 0xB8
-    int __dword_BC; // 0xBC (Related to globals counter 0x28)
-    unknown_fields(0x8); // 0xC0
+    int32_t __end_stage; // 0xB8
+    int32_t __int_BC; // 0xBC
+    int32_t __ecl_var_9907; // 0xC0
+    unknown_fields(0x4); // 0xC4
     // 0xC8
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline ReplayInfo() {
+        this->zero_contents();
+    }
+
+    inline int32_t shottype_index() const {
+        return this->character + this->shottype * SHOTTYPES_PER_CHARACTER;
+    }
 };
 #pragma region // ReplayFrameInput Verification
-ValidateFieldOffset32(0xA, ReplayInfo, practice_mode);
+ValidateFieldOffset32(0x0, ReplayInfo, name);
+ValidateFieldOffset32(0xA, ReplayInfo, flags);
+ValidateFieldOffset32(0x10, ReplayInfo, time);
+ValidateFieldOffset32(0x18, ReplayInfo, score);
 ValidateFieldOffset32(0x1C, ReplayInfo, config);
+ValidateFieldOffset32(0xA4, ReplayInfo, slowdown_rate);
 ValidateFieldOffset32(0xA8, ReplayInfo, stage_count);
 ValidateFieldOffset32(0xAC, ReplayInfo, character);
 ValidateFieldOffset32(0xB0, ReplayInfo, shottype);
 ValidateFieldOffset32(0xB4, ReplayInfo, difficulty);
-ValidateFieldOffset32(0xBC, ReplayInfo, __dword_BC);
+ValidateFieldOffset32(0xB8, ReplayInfo, __end_stage);
+ValidateFieldOffset32(0xBC, ReplayInfo, __int_BC);
+ValidateFieldOffset32(0xC0, ReplayInfo, __ecl_var_9907);
 ValidateStructSize32(0xC8, ReplayInfo);
 #pragma endregion
 
 // size: 0x28
 struct ReplayStageData {
     ReplayFrameInput* input_start; // 0x0
-    ReplayFrameInput* input_current; // 0x4
+    ReplayFrameInput* inputs_current; // 0x4
     uint8_t* fps_counts_start; // 0x8
     uint8_t* fps_counts_current; // 0xC
     ReplayGamestateSnapshot* gamestate_start; // 0x10
@@ -13228,7 +14056,7 @@ struct ReplayStageData {
     // 0x28
 
     inline void zero_contents() {
-        zero_this();
+        zero_this_inline();
     }
 
     // 0x4631F0
@@ -13245,7 +14073,7 @@ struct ReplayStageData {
 };
 #pragma region // ReplayStageData Verification
 ValidateFieldOffset32(0x0, ReplayStageData, input_start);
-ValidateFieldOffset32(0x4, ReplayStageData, input_current);
+ValidateFieldOffset32(0x4, ReplayStageData, inputs_current);
 ValidateFieldOffset32(0x8, ReplayStageData, fps_counts_start);
 ValidateFieldOffset32(0xC, ReplayStageData, fps_counts_current);
 ValidateFieldOffset32(0x10, ReplayStageData, gamestate_start);
@@ -13259,9 +14087,60 @@ struct ReplayChunk {
     ReplayFrameInput inputs[900]; // 0x0
     ReplayFrameInput* next_input_write_pos; // 0x1518
     uint8_t fps_counts[900]; // 0x151C
-    uint8_t next_fps_count_write_pos; // 0x18A0
+    uint8_t* next_fps_count_write_pos; // 0x18A0
     ZUNLinkedList<ReplayChunk> list_node; // 0x18A4
     // 0x18B4
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    ReplayChunk() {
+        this->zero_contents();
+        this->next_input_write_pos = this->inputs;
+        this->next_fps_count_write_pos = this->fps_counts;
+        this->list_node.initialize_with(this);
+
+    }
+
+    inline void cleanup() {
+        this->list_node.unlink();
+    }
+
+    // Yes, it needs to be jank like this because the pointer might clobber itself
+    // 0x463060
+    dllexport bool write_input(uint16_t current, uint16_t rising_edge, uint16_t falling_edge) asm_symbol_rel(0x463060) {
+        ((uint16_t*)this->next_input_write_pos)[0] = current;
+        ((uint16_t*)this->next_input_write_pos)[1] = rising_edge;
+        ((uint16_t*)this->next_input_write_pos)[2] = falling_edge;
+        ++this->next_input_write_pos;
+        return this->input_overflowed();
+    }
+
+    inline bool write_input(const ReplayFrameInput& input) {
+        write_input(input.current, input.rising_edge, input.falling_edge);
+    }
+
+    inline ptrdiff_t input_count() {
+        return this->next_input_write_pos - this->inputs;
+    }
+
+    inline size_t input_size() {
+        return this->input_count() * sizeof(ReplayFrameInput);
+    }
+
+    // Fun fact, if this actually overflows then the pointer is completely invalid anyway
+    inline bool input_overflowed() {
+        return this->input_count() >= countof(this->inputs);
+    }
+
+    inline ptrdiff_t fps_count() {
+        return this->next_fps_count_write_pos - this->fps_counts;
+    }
+
+    inline size_t fps_size() {
+        return this->fps_count() * sizeof(uint8_t);
+    }
 };
 #pragma region // ReplayChunk Verification
 ValidateFieldOffset32(0x0, ReplayChunk, inputs);
@@ -13272,23 +14151,37 @@ ValidateFieldOffset32(0x18A4, ReplayChunk, list_node);
 ValidateStructSize32(0x18B4, ReplayChunk);
 #pragma endregion
 
-enum ReplayMode {
-    __replay_mode_2 = 2
-};
-
-static constexpr uint32_t REPLAY_MAGIC = PackUInt('t', '1', '8', 'r');
+typedef struct ReplayManager ReplayManager;
+extern "C" {
+    // 0x4CF40C
+    extern ReplayManager* REPLAY_MANAGER_PTR asm("_REPLAY_MANAGER_PTR");
+}
 
 // size: 0x31C
-struct ReplayManager {
-    unknown_fields(0xC); // 0x0
+struct ReplayManager : ZUNTask {
+    // ZUNTask base; // 0x0
     ReplayMode mode; // 0xC
-    unknown_fields(0x4); // 0x10
+    int __dword_10; // 0x10
     ReplayHeader* header; // 0x14
     ReplayInfo* info; // 0x18
-    unknown_fields(0xA8); // 0x1C
-    ReplayStageData stage_data[8]; // 0xC4
+    ReplayGamestateSnapshot* game_states[REPLAY_STAGE_COUNT]; // 0x1C
+    ZUNLinkedListHead<ReplayChunk> chunk_lists[REPLAY_STAGE_COUNT]; // 0x3C
+    ZUNLinkedList<ReplayChunk>* current_chunk_node; // 0xBC
+    int __chunk_count; // 0xC0
+    ReplayStageData stage_data[REPLAY_STAGE_COUNT]; // 0xC4
     void* file_buffer; // 0x204
-    unknown_fields(0x14); // 0x208
+    uint8_t __byte_208; // 0x208
+    probably_padding_bytes(3); // 0x209
+    int32_t __int_20C; // 0x20C
+    UpdateFunc* on_tick_func_B; // 0x210
+    int32_t stage_number; // 0x214
+    union {
+        uint32_t flags; // 0x218
+        struct {
+            uint32_t __unknown_flag_B : 1;
+            uint32_t __unknown_flag_A : 1;
+        };
+    };
     char file_path[0x100]; // 0x21C
     // 0x31C
 
@@ -13300,8 +14193,263 @@ struct ReplayManager {
         this->zero_contents();
     }
 
+    dllexport static UpdateFuncRet fastcall on_tick_A1(void* ptr) {
+        ReplayManager* self = (ReplayManager*)ptr;
+        if (GAME_THREAD_PTR) {
+            INPUT_STATES[0].inputs_previous = INPUT_STATES[0].inputs_current;
+            INPUT_STATES[0].inputs_current = (uint16_t)INPUT_STATES[0].hardware_inputs_current;
+            __update_input0();
+            if (
+                SUPERVISOR.config.__unknown_flag_C &&
+                INPUT_STATES[0].__input_current(BUTTON_SHOOT) &&
+                INPUT_STATES[0].inputs_heldB[BUTTON_SHOOT_INDEX] >= 10
+            ) {
+                INPUT_STATES[0].inputs_current |= BUTTON_FOCUS;
+            }
+            if (self->__int_20C >= 0 && !ABILITY_SHOP_PTR) {
+                if (!(self->__int_20C % 30)) {
+                    float fps_count_f = FPS_COUNTER_PTR->__float_30 + 0.5f;
+                    int32_t fps_count = fps_count_f < 256.0f ? fps_count_f : 255;
+                    ReplayChunk* cur_chunk = self->current_chunk_node->data;
+                    *cur_chunk->next_fps_count_write_pos++ = fps_count;
+                }
+                if (self->current_chunk_node->data->write_input(INPUT_STATES[0].inputs_current, INPUT_STATES[0].inputs_rising_edge, INPUT_STATES[0].inputs_falling_edge)) {
+                    self->current_chunk_node = self->allocate_chunk(self->stage_number);
+                }
+                ++self->__int_20C;
+            }
+        }
+        return UpdateFuncNext;
+    }
+
+    dllexport static UpdateFuncRet fastcall on_tick_A2(void* ptr) {
+        ReplayManager* self = (ReplayManager*)ptr;
+        if (GAME_THREAD_PTR && !self->__unknown_flag_A) {
+            if (self->stage_data[self->stage_number].current_frame < 0) {
+                INPUT_STATES[0].inputs_current = 0;
+                INPUT_STATES[0].inputs_rising_edge = 0;
+                INPUT_STATES[0].inputs_falling_edge = 0;
+            }
+            else if (!ABILITY_SHOP_PTR) {
+                if (self->stage_number >= 0) {
+                    INPUT_STATES[0].inputs_previous = INPUT_STATES[0].inputs_current;
+                    if (self->stage_data[self->stage_number].current_frame < self->stage_data[self->stage_number].gamestate_start->input_count) {
+                        if (self->stage_data[self->stage_number].inputs_current->is_end()) {
+                            INPUT_STATES[0].inputs_current = 0;
+                            INPUT_STATES[0].inputs_rising_edge = 0;
+                            INPUT_STATES[0].inputs_falling_edge = 0;
+
+                            self->stage_number = -1;
+                        }
+                        else {
+                            INPUT_STATES[0].inputs_current = self->stage_data[self->stage_number].inputs_current->current;
+                            INPUT_STATES[0].inputs_rising_edge = self->stage_data[self->stage_number].inputs_current->rising_edge;
+                            INPUT_STATES[0].inputs_falling_edge = self->stage_data[self->stage_number].inputs_current->falling_edge;
+                            __update_input0();
+                            self->__byte_208 = *self->stage_data[self->stage_number].fps_counts_current;
+                            ++self->stage_data[self->stage_number].inputs_current;
+                            if (!(self->__int_20C % 30)) {
+                                ++self->stage_data[self->stage_number].fps_counts_current;
+                            }
+                        }
+                    }
+                    else {
+                        INPUT_STATES[0].inputs_current = 0;
+                        INPUT_STATES[0].inputs_rising_edge = 0;
+                        INPUT_STATES[0].inputs_falling_edge = 0;
+                    }
+                    ++self->stage_data[self->stage_number].current_frame;
+                    ++self->__int_20C;
+                }
+                else {
+                    INPUT_STATES[0].inputs_current = 0;
+                    INPUT_STATES[0].inputs_rising_edge = 0;
+                    INPUT_STATES[0].inputs_falling_edge = 0;
+                    ++self->__int_20C;
+                }
+            }
+        }
+        return UpdateFuncNext;
+    }
+
+    // 0x461DB0
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick_B_impl() asm_symbol_rel(0x461DB0) {
+        if (
+            GAME_THREAD_PTR && this->mode == __replay_mode_1
+        ) {
+            if (!INPUT_STATES[0].__hardware_input_current(BUTTON_SHOOT | BUTTON_DOWN)) {
+                if (!this->__dword_10) {
+                    SOUND_MANAGER.__unknown_sme_ptr_5704->__sub_48AF10(GAME_MANAGER.globals.__counter_14 / 60.0);
+                }
+                this->__dword_10 = 0;
+            }
+            else {
+                if (this->__int_20C % 8) {
+                    return UpdateFuncRestartTick;
+                }
+            }
+        }
+        return UpdateFuncNext;
+    }
+
+    // 0x462C30
+    dllexport static UpdateFuncRet fastcall on_tick_B(void* ptr) asm_symbol_rel(0x462C30) {
+        GameThread* game_thread_ptr = GAME_THREAD_PTR;
+        if (game_thread_ptr && game_thread_ptr->skip_flag) {
+            return UpdateFuncNext;
+        }
+        return ((ReplayManager*)ptr)->on_tick_B_impl();
+    }
+
+    // 0x462C50
+    dllexport static UpdateFuncRet fastcall on_draw(void* ptr) asm_symbol_rel(0x462C50) {
+        ReplayManager* self = (ReplayManager*)ptr;
+
+        GameThread* game_thread_ptr = GAME_THREAD_PTR;
+        if (game_thread_ptr && !game_thread_ptr->skip_flag) {
+            switch (self->mode) {
+                case __replay_mode_0:
+                    break;
+                case __replay_mode_1:
+                    // print some number to ascii manager
+            }
+        }
+        return UpdateFuncNext;
+    }
+
+    // 0x463180
+    dllexport gnu_noinline void thiscall delete_chunk_list(int32_t stage_number) asm_symbol_rel(0x463180) {
+        this->chunk_lists[stage_number].for_eachB([](ReplayChunk* chunk) {
+            chunk->cleanup();
+            delete chunk;
+        });
+    }
+
+    // 0x4630E0
+    dllexport gnu_noinline ZUNLinkedList<ReplayChunk>* thiscall allocate_chunk(int32_t stage_number) asm_symbol_rel(0x4630E0) {
+        ReplayChunk* chunk = new ReplayChunk();
+
+        ZUNLinkedList<ReplayChunk>* node = &this->chunk_lists[stage_number];
+        while (ZUNLinkedList<ReplayChunk>* next_node = node->next) {
+            node = next_node;
+        }
+        node->append(&chunk->list_node);
+        ++this->__chunk_count;
+        return &chunk->list_node;
+    }
+
+    // 0x4615E0
+    dllexport gnu_noinline ZunResult thiscall initialize(ReplayMode mode, const char* path) asm_symbol_rel(0x4615E0) {
+        this->mode = mode;
+        switch (mode) {
+            case __replay_mode_0: {
+                REPLAY_MANAGER_PTR = this;
+                this->delete_chunk_list(GAME_MANAGER.globals.current_stage);
+                this->current_chunk_node = this->allocate_chunk(GAME_MANAGER.globals.current_stage);
+                this->header = new ReplayHeader(REPLAY_MAGIC, REPLAY_VERSION_NUMBER);
+                this->info = new ReplayInfo();
+                this->game_states[GAME_MANAGER.globals.current_stage] = new ReplayGamestateSnapshot();
+                ReplayGamestateSnapshot* game_state = this->game_states[GAME_MANAGER.globals.current_stage];
+                this->info->character = GAME_MANAGER.globals.character;
+                this->info->shottype = GAME_MANAGER.globals.shottype;
+                this->info->difficulty = GAME_MANAGER.globals.difficulty;
+                this->info->practice_mode = GAME_MANAGER.__unknown_field_A & 1;
+                this->info->__unknown_flag_A = GAME_MANAGER.__unknown_field_A_is_2();
+                this->info->__ecl_var_9907 = GAME_MANAGER.globals.__ecl_var_9907;
+                if (GameThread* game_thread_ptr = GAME_THREAD_PTR) {
+                    this->info->config = game_thread_ptr->config;
+                }
+                game_state->stage_number = GAME_MANAGER.globals.current_stage;
+                game_state->rng = REPLAY_RNG.value;
+                REPLAY_RNG.index = 0;
+                game_state->__unknown_flag_A = SUPERVISOR.__int_804 & 1;
+                if (SUPERVISOR.__int_804) {
+                    game_state->__dword_C = 0;
+                    game_state->__dword_10 = 0;
+                }
+                game_state->globals = GAME_MANAGER.globals;
+
+                size_t bs_value = 0;
+                for (size_t i = 0; i < countof(game_state->__dword_array_18); ++i) {
+                    game_state->__dword_array_18[i] = bs_value;
+                    bs_value -= 0x21522153; // This is a suspiciously repetitve constant...
+                }
+
+                this->info->__int_BC = GAME_MANAGER.globals.__counter_28;
+
+                UpdateFunc* update_func = new UpdateFunc(&on_tick_A1, false, this);
+                UpdateFuncRegistry::register_on_tick(update_func, 17);
+                this->on_tick_func = update_func;
+                update_func = new UpdateFunc(&on_tick_B, false, this);
+                UpdateFuncRegistry::register_on_tick(update_func, 35);
+                this->on_tick_func_B = update_func;
+                update_func = new UpdateFunc(&on_draw, false, this);
+                UpdateFuncRegistry::register_on_draw(update_func, 77);
+                this->on_draw_func = update_func;
+
+                this->stage_number = GAME_MANAGER.globals.current_stage;
+                this->__int_20C = -1;
+                return ZUN_SUCCESS;
+            }
+            case __replay_mode_1: {
+                if (ZUN_SUCCEEDED(this->__load_from_path(path))) {
+                    GAME_THREAD_PTR->config = this->info->config;
+                    ReplayStageData& cur_stage_data = this->stage_data[GAME_MANAGER.globals.current_stage];
+                    ReplayGamestateSnapshot* game_state = cur_stage_data.gamestate_start;
+                    cur_stage_data.inputs_current = cur_stage_data.input_start;
+                    cur_stage_data.fps_counts_current = cur_stage_data.fps_counts_start;
+                    cur_stage_data.current_frame = -1;
+                    GAME_MANAGER.globals.character = this->info->character;
+                    GAME_MANAGER.globals.shottype = this->info->shottype;
+                    GAME_MANAGER.globals.difficulty = this->info->difficulty;
+                    REPLAY_RNG.value = game_state->rng;
+                    REPLAY_RNG.index = 0;
+                    GAME_MANAGER.globals = game_state->globals;
+
+                    int32_t A = GAME_MANAGER.globals.__ecl_var_9907;
+                    if (A >= 0) {
+                        if (GAME_MANAGER.globals.__unknown_field_A != 2) {
+                            A = -1;
+                        }
+                        GAME_MANAGER.globals.__unknown_field_A = 2;
+                    } else {
+                        if (GAME_MANAGER.globals.__unknown_field_A != 2) {
+                            A = -1;
+                        }
+                        GAME_MANAGER.globals.__unknown_field_A = 0;
+                    }
+                    GAME_MANAGER.globals.__ecl_var_9907 = A;
+
+                    UpdateFunc* update_func = new UpdateFunc(&on_tick_A2, false, this);
+                    UpdateFuncRegistry::register_on_tick(update_func, 17);
+                    this->on_tick_func = update_func;
+                    update_func = new UpdateFunc(&on_tick_B, false, this);
+                    UpdateFuncRegistry::register_on_tick(update_func, 35);
+                    this->on_tick_func_B = update_func;
+                    update_func = new UpdateFunc(&on_draw, false, this);
+                    UpdateFuncRegistry::register_on_draw(update_func, 77);
+                    this->on_draw_func = update_func;
+
+                    this->stage_number = -1;
+                    return ZUN_SUCCESS;
+                }
+                break;
+            }
+            case __replay_mode_2: {
+                if (ZUN_SUCCEEDED(this->__load_from_path(path))) {
+                    return ZUN_SUCCESS;
+                }
+                break;
+            }
+        }
+        return ZUN_ERROR;
+    }
+
     // 0x462680
     dllexport gnu_noinline ZunResult thiscall __load_from_path(const char* path) asm_symbol_rel(0x462680);
+
+    // 0x461E90
+    dllexport gnu_noinline ZunResult thiscall __write_to_path(const char* path, const char* name, bool arg3, bool arg4) asm_symbol_rel(0x461E90);
 
     // 0x461CF0
     dllexport static gnu_noinline ReplayManager* fastcall __make_manager_for_path(const char* path) asm_symbol_rel(0x461CF0) {
@@ -13317,32 +14465,37 @@ struct ReplayManager {
     }
 };
 #pragma region // ReplayManager Verification
+ValidateFieldOffset32(0x0, ReplayManager, task_flags);
+ValidateFieldOffset32(0x4, ReplayManager, on_tick_func);
+ValidateFieldOffset32(0x8, ReplayManager, on_draw_func);
 ValidateFieldOffset32(0xC, ReplayManager, mode);
+ValidateFieldOffset32(0x10, ReplayManager, __dword_10);
 ValidateFieldOffset32(0x14, ReplayManager, header);
 ValidateFieldOffset32(0x18, ReplayManager, info);
+ValidateFieldOffset32(0x1C, ReplayManager, game_states);
+ValidateFieldOffset32(0x3C, ReplayManager, chunk_lists);
+ValidateFieldOffset32(0xBC, ReplayManager, current_chunk_node);
+ValidateFieldOffset32(0xC0, ReplayManager, __chunk_count);
 ValidateFieldOffset32(0xC4, ReplayManager, stage_data);
 ValidateFieldOffset32(0x204, ReplayManager, file_buffer);
+ValidateFieldOffset32(0x208, ReplayManager, __byte_208);
+ValidateFieldOffset32(0x20C, ReplayManager, __int_20C);
+ValidateFieldOffset32(0x210, ReplayManager, on_tick_func_B);
+ValidateFieldOffset32(0x214, ReplayManager, stage_number);
+ValidateFieldOffset32(0x218, ReplayManager, flags);
 ValidateFieldOffset32(0x21C, ReplayManager, file_path);
 ValidateStructSize32(0x31C, ReplayManager);
 #pragma endregion
 
-typedef struct UnknownN UnknownN;
+typedef struct PauseMenu PauseMenu;
 extern "C" {
     // 0x4CF40C
-    extern UnknownN* UNKNOWN_N_PTR asm("_UNKNOWN_N_PTR");
+    extern PauseMenu* PAUSE_MENU_PTR asm("_PAUSE_MENU_PTR");
 }
 
 // size: 0x3F8
-struct UnknownN {
-    union {
-        uint32_t __flags_0; // 0x0
-        struct {
-            uint32_t : 1; // 1
-            uint32_t __unknown_flag_A : 1; // 2
-        };
-    };
-    UpdateFunc* on_tick_registration; // 0x4
-    UpdateFunc* on_draw_registration; // 0x8
+struct PauseMenu : ZUNTask {
+    //ZUNTask base; // 0x0
     Timer __timer_C; // 0xC
     Timer __timer_20; // 0x20
     int __dword_34; // 0x34
@@ -13379,34 +14532,34 @@ struct UnknownN {
         zero_this();
     }
 
-    inline UnknownN() {
+    inline PauseMenu() {
         this->zero_contents();
-        this->__unknown_flag_A = true;
+        this->__unknown_task_flag_A = true;
     }
 };
-#pragma region // UnknownN Verification
-ValidateFieldOffset32(0x0, UnknownN, __flags_0);
-ValidateFieldOffset32(0x4, UnknownN, on_tick_registration);
-ValidateFieldOffset32(0x8, UnknownN, on_draw_registration);
-ValidateFieldOffset32(0xC, UnknownN, __timer_C);
-ValidateFieldOffset32(0x20, UnknownN, __timer_20);
-ValidateFieldOffset32(0x34, UnknownN, __dword_34);
-ValidateFieldOffset32(0x104, UnknownN, __dword_104);
-ValidateFieldOffset32(0x108, UnknownN, __dword_108);
-ValidateFieldOffset32(0x10C, UnknownN, __dword_10C);
-ValidateFieldOffset32(0x1E4, UnknownN, __vm_id_1E4);
-ValidateFieldOffset32(0x1E8, UnknownN, __vm_id_1E8);
-ValidateFieldOffset32(0x1EC, UnknownN, __dword_1EC);
-ValidateFieldOffset32(0x1F0, UnknownN, __dword_1F0);
-ValidateFieldOffset32(0x1F4, UnknownN, __dword_1F4);
-ValidateFieldOffset32(0x1F8, UnknownN, __dword_1F8);
-ValidateFieldOffset32(0x1FC, UnknownN, __dword_1FC);
-ValidateFieldOffset32(0x208, UnknownN, __dword_208);
-ValidateFieldOffset32(0x20C, UnknownN, __replay_manager_array_20C);
-ValidateFieldOffset32(0x2E0, UnknownN, __float_2E0);
-ValidateFieldOffset32(0x3F0, UnknownN, __flags_3F0);
-ValidateFieldOffset32(0x3F4, UnknownN, __anm_loaded_3F4);
-ValidateStructSize32(0x3F8, UnknownN);
+#pragma region // PauseMenu Verification
+ValidateFieldOffset32(0x0, PauseMenu, task_flags);
+ValidateFieldOffset32(0x4, PauseMenu, on_tick_func);
+ValidateFieldOffset32(0x8, PauseMenu, on_draw_func);
+ValidateFieldOffset32(0xC, PauseMenu, __timer_C);
+ValidateFieldOffset32(0x20, PauseMenu, __timer_20);
+ValidateFieldOffset32(0x34, PauseMenu, __dword_34);
+ValidateFieldOffset32(0x104, PauseMenu, __dword_104);
+ValidateFieldOffset32(0x108, PauseMenu, __dword_108);
+ValidateFieldOffset32(0x10C, PauseMenu, __dword_10C);
+ValidateFieldOffset32(0x1E4, PauseMenu, __vm_id_1E4);
+ValidateFieldOffset32(0x1E8, PauseMenu, __vm_id_1E8);
+ValidateFieldOffset32(0x1EC, PauseMenu, __dword_1EC);
+ValidateFieldOffset32(0x1F0, PauseMenu, __dword_1F0);
+ValidateFieldOffset32(0x1F4, PauseMenu, __dword_1F4);
+ValidateFieldOffset32(0x1F8, PauseMenu, __dword_1F8);
+ValidateFieldOffset32(0x1FC, PauseMenu, __dword_1FC);
+ValidateFieldOffset32(0x208, PauseMenu, __dword_208);
+ValidateFieldOffset32(0x20C, PauseMenu, __replay_manager_array_20C);
+ValidateFieldOffset32(0x2E0, PauseMenu, __float_2E0);
+ValidateFieldOffset32(0x3F0, PauseMenu, __flags_3F0);
+ValidateFieldOffset32(0x3F4, PauseMenu, __anm_loaded_3F4);
+ValidateStructSize32(0x3F8, PauseMenu);
 #pragma endregion
 
 // size: 0x2108
@@ -13536,6 +14689,32 @@ ValidateFieldOffset32(0x20D4, WindowData, __dword_array_20D4);
 extern "C" {
     // 0x568C30
     extern WindowData WINDOW_DATA asm("_WINDOW_DATA");
+}
+
+// 0x401860
+dllexport gnu_noinline uint32_t get_hardware_xinput() asm_symbol_rel(0x401860);
+dllexport gnu_noinline uint32_t get_hardware_xinput() {
+    return INPUT_STATES[0].get_xinput(0);
+}
+
+// 0x401650
+dllexport gnu_noinline uint32_t get_joypad_input(uint32_t buttons) asm_symbol_rel(0x401650);
+dllexport gnu_noinline uint32_t get_joypad_input(uint32_t buttons) {
+    return INPUT_STATES[0].get_joypad(buttons);
+}
+
+// 0x401C50
+dllexport gnu_noinline uint32_t get_hardware_inputs() asm_symbol_rel(0x401C50);
+dllexport gnu_noinline uint32_t get_hardware_inputs() {
+    uint32_t buttons = get_hardware_xinput();
+    if (WINDOW_DATA.window_active) {
+        buttons = INPUT_STATES[0].get_keyboard(buttons);
+    }
+    buttons = get_joypad_input(buttons);
+    INPUT_STATES[0].hardware_inputs_previous = INPUT_STATES[0].hardware_inputs_current;
+    INPUT_STATES[0].hardware_inputs_current = buttons;
+    INPUT_STATES[0].__update_hardware_input();
+    return buttons;
 }
 
 // 0x486140
@@ -13811,7 +14990,7 @@ dllexport gnu_noinline ZunResult thiscall ReplayManager::__load_from_path(const 
     void* replay_data;
     ReplayHeader* header;
     byteloop_strcpy(this->file_path, path);
-    //if (!(UNKNOWN_M.__flags_8 & 0x40)) {
+    if (!GAME_MANAGER.__unknown_flag_C) {
         chdir(WINDOW_DATA.appdata_path);
         sprintf(buffer, "replay/%s", path);
         if (zun_file_exists(buffer)) {
@@ -13820,7 +14999,7 @@ dllexport gnu_noinline ZunResult thiscall ReplayManager::__load_from_path(const 
                 this->header = header;
                 if (
                     header->magic.as_int == REPLAY_MAGIC &&
-                    header->__dword_4 == 6
+                    header->__version == REPLAY_VERSION_NUMBER
                 ) {
                     replay_data = __zun_read_file(header->file_size);
                     __zun_close_file();
@@ -13832,25 +15011,24 @@ dllexport gnu_noinline ZunResult thiscall ReplayManager::__load_from_path(const 
         }
         chdir(WINDOW_DATA.exe_path);
         return ZUN_ERROR;
-    //}
-    //else {
+    }
+    else {
         void* file = read_file_to_buffer(path, (int32_t*)&replay_data, false);
         header = (ReplayHeader*)file;
         this->header = header;
         replay_data = based_pointer(file, sizeof(ReplayHeader));
-    //}
+    }
 valid_replay:
-    this->file_buffer = malloc(header->__size_20);
-    __decrypt_buffer(replay_data, this->header->file_size, 0x5C, 0xE1, 0x400, this->header->file_size);
-    __decrypt_buffer(replay_data, this->header->file_size, 0x7D, 0x3A, 0x100, this->header->file_size);
-    __decompress_buffer(replay_data, this->header->file_size, this->file_buffer, this->header->__size_20);
-    // TODO: finish writing this from 0x462880
-    file = this->file_buffer;
+    this->file_buffer = malloc(header->uncompressed_size);
+    __decrypt_buffer(replay_data, this->header->compressed_size, 0x5C, 0xE1, 0x400, this->header->compressed_size);
+    __decrypt_buffer(replay_data, this->header->compressed_size, 0x7D, 0x3A, 0x100, this->header->compressed_size);
+    __decompress_buffer(replay_data, this->header->compressed_size, this->file_buffer, this->header->uncompressed_size);
+    void* file = this->file_buffer;
     this->info = (ReplayInfo*)file;
     ReplayGamestateSnapshot* gamestate_snapshot_ptr = based_pointer<ReplayGamestateSnapshot>(file, sizeof(ReplayInfo));
     for (int32_t i = 0; ; ++i) {
         int32_t stage_count = this->info->stage_count;
-        stage_count = stage_count >= 8 ? 6 : stage_count;
+        stage_count = stage_count >= REPLAY_STAGE_COUNT ? 6 : stage_count;
         if (i >= stage_count) {
             break;
         }
@@ -13861,12 +15039,221 @@ valid_replay:
         gamestate_snapshot_ptr = based_pointer(gamestate_snapshot_ptr + 1, gamestate_snapshot_ptr->extra_size);
     }
     if (
-        //(UNKNOWN_M.__flags_8 & 0x40) &&
+        !GAME_MANAGER.__unknown_flag_C &&
         replay_data
     ) {
         free(replay_data);
     }
     chdir(WINDOW_DATA.exe_path);
+    return ZUN_SUCCESS;
+}
+
+// 0x4B41E0
+static inline constexpr const char* SIX_LETTER_CHARACTER_NAMES[] = {
+    "Reimu ",
+    "Marisa",
+    "Sakuya",
+    "Sanae "
+};
+
+// 0x4B41C0
+static inline constexpr const char* SEVEN_LETTER_DIFFICULTY_NAMES[] = {
+    "Easy   ",
+    "Normal ",
+    "Hard   ",
+    "Lunatic",
+    "Extra  ",
+    "O.D.   ",
+    "r" // This is definitely part of the table. Why?
+};
+
+// 0x461E90
+dllexport gnu_noinline ZunResult thiscall ReplayManager::__write_to_path(const char* filename, const char* name, bool arg3, bool arg4) {
+    ReplayManager* self = REPLAY_MANAGER_PTR;
+
+    int32_t stage_end = 0; // EBP-128
+    int32_t stage_start = 0; // EBP-120
+
+    byteloop_strcpy(self->info->name, name);
+    for (
+        int32_t i = strlen(name);
+        i < countof(self->info->name) - 1;
+        ++i
+    ) {
+        self->info->name[i] = ' ';
+    }
+
+    if (self->__unknown_flag_B && arg4) {
+        ReplayChunk* cur_chunk = self->current_chunk_node->data;
+        cur_chunk->write_input(REPLAY_INPUT_END);
+        if (cur_chunk->input_overflowed()) {
+            self->current_chunk_node = self->allocate_chunk(self->stage_number);
+        }
+    }
+
+    char path[MAX_PATH];
+    sprintf(path, "replay/%s", filename);
+
+    size_t alloc_size = sizeof(ReplayInfo);
+    size_t stage_count = 0;
+
+    for (int32_t i = 0; i < REPLAY_STAGE_COUNT; ++i) {
+        if (ReplayGamestateSnapshot* game_state = self->game_states[i]) {
+            stage_end = i;
+            if (!stage_start) {
+                stage_start = i; // This only works if 0 isn't a valid index, so why are the arrays 8...?
+            }
+
+            if (!self->__unknown_flag_B) {
+                game_state->extra_size = 0;
+            }
+            alloc_size += sizeof(ReplayGamestateSnapshot);
+            self->chunk_lists[i].for_each([&](ReplayChunk* chunk) {
+                size_t input_size = chunk->input_size();
+                alloc_size += input_size;
+                alloc_size += chunk->fps_size();
+                if (!self->__unknown_flag_B) {
+                    self->game_states[i]->extra_size += input_size + chunk->fps_size();
+                    self->game_states[i]->input_count += chunk->input_count();
+                }
+            });
+            ++stage_count;
+        }
+    }
+
+    self->info->stage_count = stage_count;
+    self->info->score = GAME_MANAGER.globals.score;
+    self->info->slowdown_rate = FPS_COUNTER_PTR->calc_slowdown_rate();
+
+    uint8_t* buffer = (uint8_t*)malloc(alloc_size);
+    *(ReplayInfo*)buffer = *self->info;
+
+    size_t offset = sizeof(ReplayInfo);
+    for (int32_t i = 0; i < REPLAY_STAGE_COUNT; ++i) {
+        if (ReplayGamestateSnapshot* game_state = self->game_states[i]) {
+            memcpy(&buffer[offset], game_state, sizeof(ReplayGamestateSnapshot));
+            offset += sizeof(ReplayGamestateSnapshot);
+            self->chunk_lists[i].for_each([&](ReplayChunk* chunk) {
+                memcpy(&buffer[offset], chunk->inputs, chunk->input_size());
+                offset += chunk->input_size();
+            });
+            self->chunk_lists[i].for_each([&](ReplayChunk* chunk) {
+                memcpy(&buffer[offset], chunk->fps_counts, chunk->fps_size());
+                offset += chunk->fps_size();
+            });
+        }
+    }
+
+    int32_t compressed_size;
+    uint8_t* compressed_buffer = (uint8_t*)__compress_buffer(buffer, offset, &compressed_size);
+    free(buffer);
+    __crypt_buffer(compressed_buffer, compressed_size, 0x7D, 0x3A, 0x100, compressed_size);
+    __crypt_buffer(compressed_buffer, compressed_size, 0x5C, 0xE1, 0x400, compressed_size);
+
+    self->header->uncompressed_size = offset;
+    self->header->compressed_size = compressed_size;
+    self->header->file_size = compressed_size + sizeof(ReplayHeader);
+
+    chdir(WINDOW_DATA.appdata_path);
+    __zun_open_new_file(path);
+    if (__zun_write_file(self->header, sizeof(ReplayHeader)) != ZUN_ERROR) {
+        __zun_write_file(compressed_buffer, compressed_size);
+    }
+
+    if (compressed_buffer) {
+        free(compressed_buffer);
+    }
+
+    // oh why zun
+    char* user_data_buffer = (char*)malloc(UINT16_MAX);
+    memset(user_data_buffer, 0, UINT16_MAX);
+
+    ReplayUserData* user_data = (ReplayUserData*)user_data_buffer;
+
+    user_data->magic.as_uint = REPLAY_USER_MAGIC;
+    char* user_write = user_data->text;
+
+    user_write += sprintf(user_write, 
+        JpEnStr("", "%s replay file information\r\n"),
+        JpEnStr("", "Oriental Rainbow Cave")
+    );
+    user_write += sprintf(user_write, "Version %s\r\n", "1.00a");
+    user_write += sprintf(user_write, "Name %s\r\n", self->info->name);
+
+    tm* time = localtime(&self->info->time);
+
+    user_write += sprintf(user_write, "Date %.2d/%.2d/%.2d %.2d:%.2d\r\n", time->tm_year % 100, time->tm_mon + 1, time->tm_mday, time->tm_hour, time->tm_min);
+
+    user_write += sprintf(user_write, "Chara %s\r\n", SIX_LETTER_CHARACTER_NAMES[self->info->shottype_index()]);
+
+    user_write += sprintf(user_write, "Rank %s\r\n", SEVEN_LETTER_DIFFICULTY_NAMES[self->info->difficulty]);
+
+    if (self->info->__end_stage > 7) {
+        if (stage_start == 7) {
+            user_write += sprintf(user_write, "Extra Stage Clear\r\n");
+        }
+        else {
+            user_write += sprintf(user_write, "Stage All Clear\r\n");
+        }
+    }
+    else {
+        if (stage_start == stage_end) {
+            if (stage_start == 7) {
+                user_write += sprintf(user_write, "Extra Stage\r\n");
+            }
+            else {
+                user_write += sprintf(user_write, "Stage %d\r\n", stage_start);
+            }
+        }
+        else {
+            user_write += sprintf(user_write, "Stage %d - %d\r\n", stage_start, stage_end);
+        }
+    }
+
+    user_write += sprintf(user_write, "Score %d\r\n", self->info->score);
+
+    user_write += sprintf(user_write, "Slow Rate %2.2f\r\n", self->info->slowdown_rate);
+
+    ++user_write;
+
+    int32_t user_size_align = (user_write - user_data_buffer) % 4;
+    if (!user_size_align) {
+        user_write += 4 - user_size_align;
+    }
+    int32_t user_size = user_write - user_data_buffer;
+    user_data->size = user_size;
+
+    __zun_write_file(user_data_buffer, user_size);
+
+    memset(user_data_buffer, 0, UINT16_MAX);
+    user_data->magic.as_uint = REPLAY_USER_MAGIC;
+    user_data->__byte_8 = 1;
+
+    user_write = user_data->text;
+
+    user_write += sprintf(user_write,
+        JpEnStr("", "can write comments")
+    );
+
+    ++user_write;
+
+    user_size_align = (user_write - user_data_buffer) % 4;
+    if (!user_size_align) {
+        user_write += 4 - user_size_align;
+    }
+    user_size = user_write - user_data_buffer;
+    user_data->size = user_size;
+
+    __zun_write_file(user_data_buffer, user_size);
+
+    free(user_data_buffer);
+
+    __zun_close_file();
+
+    chdir(WINDOW_DATA.exe_path);
+
+    self->__unknown_flag_B = true;
+
     return ZUN_SUCCESS;
 }
 
@@ -13894,9 +15281,9 @@ dllexport gnu_noinline ZunResult thiscall Supervisor::load_config_file(int) {
             SUPERVISOR.config.__dword_0 == 0x180002 &&
             file_size == 0x88
         ) {
-            UNKNOWN_O[0].inners[0] = SUPERVISOR.config.unknown_o_inners[0];
-            UNKNOWN_O[0].inners[1] = SUPERVISOR.config.unknown_o_inners[1];
-            UNKNOWN_O[0].inners[2] = SUPERVISOR.config.unknown_o_inners[2];
+            INPUT_STATES[0].mappings[InputXInput]   = SUPERVISOR.config.mappings[InputXInput];
+            INPUT_STATES[0].mappings[InputJoypad]   = SUPERVISOR.config.mappings[InputJoypad];
+            INPUT_STATES[0].mappings[InputKeyboard] = SUPERVISOR.config.mappings[InputKeyboard];
         }
         else {
             LOG_BUFFER.write(JpEnStr("コンフィグデータが異常でしたので再初期化しました\r\n", "The configuration data was abnormal, so it was reinitialized\r\n"));
@@ -14562,19 +15949,19 @@ dllexport gnu_noinline void process_resolution_dialog() {
             TranslateMessage(&message);
             DispatchMessageA(&message);
         }
-        if (UNKNOWN_O[0].__dword_C & 0x80001) {
+        if (INPUT_STATES[0].__hardware_input_pressed(BUTTON_ENTER | BUTTON_SHOOT)) {
             break;
         }
         if (
-            (UNKNOWN_O[0].__dword_C & 0x20 || UNKNOWN_O[0].__dword_8 & 0x20)
-            && button_index < 9
+            INPUT_STATES[0].__hardware_input_pressed_or_held(BUTTON_DOWN) &&
+            button_index < 9
         ) {
             while (disabled_buttons[++button_index]);
             CheckRadioButton(WINDOW_DATA.resolution_dialogue, 0xCF, 0xD8, ResolutionDialogButtonIDsB[button_index]);
         }
         if (
-            (UNKNOWN_O[0].__dword_C & 0x10 || UNKNOWN_O[0].__dword_8 & 0x10)
-            && button_index > 0
+            INPUT_STATES[0].__hardware_input_pressed_or_held(BUTTON_UP) &&
+            button_index > 0
         ) {
             while (disabled_buttons[--button_index]);
             CheckRadioButton(WINDOW_DATA.resolution_dialogue, 0xCF, 0xD8, ResolutionDialogButtonIDsB[button_index]);
@@ -15077,7 +16464,7 @@ dinput_init_success:
     );
     if (LPDIRECTINPUTDEVICE8 joypad_device = SUPERVISOR.joypad_devices[0]) {
         joypad_device->SetDataFormat(&c_dfDIJoystick2);
-        SUPERVISOR.joypad_devices[0]->SetCooperativeLevel(WINDOW_DATA.window, DISCL_NOWINKEY);
+        SUPERVISOR.joypad_devices[0]->SetCooperativeLevel(WINDOW_DATA.window, DISCL_NONEXCLUSIVE | DISCL_BACKGROUND);
         SUPERVISOR.__joypad_caps.dwSize = sizeof(DIDEVCAPS);
         SUPERVISOR.joypad_devices[0]->GetCapabilities(&SUPERVISOR.__joypad_caps);
         JOYPAD_INDEX = 0;
