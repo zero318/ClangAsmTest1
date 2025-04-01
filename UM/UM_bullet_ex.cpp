@@ -14238,7 +14238,7 @@ struct ReplayManager : ZUNTask {
                             INPUT_STATES[0].inputs_current = 0;
                             INPUT_STATES[0].inputs_rising_edge = 0;
                             INPUT_STATES[0].inputs_falling_edge = 0;
-
+                            // some mess with the pause screen, probably just replay end
                             self->stage_number = -1;
                         }
                         else {
