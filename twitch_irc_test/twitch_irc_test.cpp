@@ -6,8 +6,8 @@
 
 #include <Windows.h>
 
-inline char wait_for_keyboard() {
-    while (!_kbhit());
+inline char wait_for_keyboard(size_t delay) {
+    while (!_kbhit()) Sleep(delay);
     return _getch();
 }
 
@@ -15,7 +15,7 @@ __declspec(noinline) void test_parsing() {
     while (1) {
         //wait_for_keyboard();
 
-        switch (wait_for_keyboard()) {
+        switch (wait_for_keyboard(100)) {
             case 'l':
                 if (lock_recent_messages()) {
                     printf("Locking messages\n");
@@ -80,18 +80,21 @@ extern bool __fastcall start_youtube_thread(const char* channel_id);
 
 int main(int argc, char* argv[]) {
 
-    start_youtube_thread("UCV6mNrW8CrmWtcxWfQXy11g");
-    return 0;
+    //start_youtube_thread("UCV6mNrW8CrmWtcxWfQXy11g");
+    //return 0;
 
     //if (argc > 1) {
         //run_twitch_voting(argv[1]);
-        if (start_twitch_thread("oatsngoats")) {
+        if (start_twitch_thread("bravidunno")) {
 
             twitch_voting(true);
 
             test_parsing();
 
             stop_twitch_thread();
+        }
+        else {
+            wait_for_keyboard(100);
         }
         return 0;
     //}

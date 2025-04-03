@@ -117,7 +117,7 @@ struct Float2 : Float1 {
     Float2BinOp(/);
 #undef Float2BinOp
 #define Float2BinOpScalar(op) \
-    zun_operator_inline Float2 operator op(const float& value) { \
+    zun_operator_inline Float2 operator op(float value) { \
         return { \
             this->x op value, \
             this->y op value \
@@ -150,7 +150,7 @@ struct Float2 : Float1 {
     Float2AssignOp(/=);
 #undef Float2AssignOp
 #define Float2AssignOpScalar(op) \
-    zun_operator_inline Float2& operator op(const float& value) {\
+    zun_operator_inline Float2& operator op(float value) {\
         this->x op value; \
         this->y op value; \
         return *this; \
@@ -186,11 +186,16 @@ struct Float3 : Float2 {
     dllexport gnu_noinline float vectorcall __bullet_effect_angle_jank(float angle, float arg2, float arg3);
 #endif
 
+    void set(const Float3& src) {
+        *(double*)&this->x = *(double*)&src.x;
+        this->z = src.z;
+    }
+
     void safe_copy(Float3* src) {
         if (!src) {
             *this = { 0.0f, 0.0f, 0.0f };
         } else {
-            *this = *src;
+            this->set(*src);
         }
     }
 
@@ -217,7 +222,7 @@ struct Float3 : Float2 {
     Float3BinOp(/);
 #undef Float3BinOp
 #define Float3BinOpScalar(op) \
-    zun_operator_inline Float3 operator op(const float& value) { \
+    zun_operator_inline Float3 operator op(float value) { \
         return { \
             this->x op value, \
             this->y op value, \
@@ -259,7 +264,7 @@ struct Float3 : Float2 {
     Float3AssignOp(/=);
 #undef Float3AssignOp
 #define Float3AssignOpScalar(op) \
-    zun_operator_inline Float3& operator op(const float& value) {\
+    zun_operator_inline Float3& operator op(float value) {\
         this->x op value; \
         this->y op value; \
         this->z op value; \

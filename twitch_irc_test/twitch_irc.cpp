@@ -253,7 +253,7 @@ public:
         // resolve a URL on Windows 7, so the DNS resolution needs
         // to be done manually.
         // THIS IS DUMB
-
+        
         PDNS_RECORDW records;
         if (expect(DnsQuery_W(server_name, DNS_TYPE_AAAA, DNS_QUERY_DUAL_ADDR, NULL, (PDNS_RECORD*)&records, NULL) == 0, true)) {
             PDNS_RECORDW cur_record = records;
@@ -925,7 +925,7 @@ bool __fastcall start_twitch_thread(const char* channel_name) {
 
             //u_long mode = 1;
             //auto yeetus2 = ioctlsocket(socket.sock, FIONBIO, &mode);
-            DWORD timeout = 250;
+            DWORD timeout = 1000;
             setsockopt(twitch_socket.sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 
             size_t data_length = twitch_socket.receive(receive_buffer, receive_buffer_size);
