@@ -1261,6 +1261,12 @@ union ZUNMagic {
     uint32_t as_uint;
 };
 
+union ZUNMagic16 {
+    char text[2];
+    int16_t as_int;
+    uint16_t as_uint;
+};
+
 #define countof(array_type) \
 (sizeof(array_type) / sizeof(array_type[0]))
 

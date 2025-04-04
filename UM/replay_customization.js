@@ -1,0 +1,11 @@
+{
+    "options": {
+        
+    },
+    "codecaves": {
+        
+    },
+    "binhacks": {
+        
+    }
+}
