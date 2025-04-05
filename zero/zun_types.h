@@ -101,6 +101,18 @@ struct Float2 : Float1 {
     inline float direction() {
         return zatan2f(this->y, this->x);
     }
+
+    inline float distance_squared(const Float2* value) {
+        float x_diff = this->x - value->x;
+        float y_diff = this->y - value->y;
+        return x_diff * x_diff + y_diff * y_diff;
+    }
+
+    inline float distance(const Float2* value) {
+        float x_diff = this->x - value->x;
+        float y_diff = this->y - value->y;
+        return sqrtf(x_diff * x_diff + y_diff * y_diff);
+    }
     
 #pragma region // Float2 Operators
 

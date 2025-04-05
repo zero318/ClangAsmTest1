@@ -804,6 +804,8 @@ static inline constexpr T garbage_value(void) {
 
 #pragma clang diagnostic pop
 
+#define UNUSED_ARG(...) [[maybe_unused]] __VA_ARGS__
+
 #define assume(condition) __builtin_assume(condition)
 
 

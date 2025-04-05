@@ -2017,6 +2017,13 @@ struct Timer {
     };
     // 0x14
 
+    inline operator int32_t() {
+        return this->current;
+    }
+    inline operator float() {
+        return this->current_f;
+    }
+
     inline Timer() : initialized(false) {};
 
     inline void default_values() {
@@ -2050,8 +2057,18 @@ public:
         this->current_f = (float)time;
         this->previous = time - 1;
     }
+    inline void set_raw(float time) {
+        this->current_f = time;
+        int32_t int_time = (int32_t)time;
+        this->current = int_time;
+        this->previous = int_time - 1;
+    }
     // 0x405D10
     dllexport inline void thiscall set(int32_t time) asm_symbol_rel(0x405D10) {
+        this->initialize_important();
+        this->set_raw(time);
+    }
+    inline void set(float time) {
         this->initialize_important();
         this->set_raw(time);
     }
@@ -2163,7 +2180,7 @@ public:
     }
 
     // 0x4210A0
-    dllexport BOOL thiscall __is_multiple_of(int32_t value) asm_symbol_rel(0x4210A0) {
+    dllexport BOOL thiscall __is_multiple_of_not_paused(int32_t value) asm_symbol_rel(0x4210A0) {
         int32_t current = this->current;
         if (
             current != this->previous &&
@@ -2172,6 +2189,96 @@ public:
             return TRUE;
         }
         return FALSE;
+    }
+
+    inline bool __is_multiple_of(int32_t value) {
+        return !(this->current % value);
+    }
+
+    inline bool les(int32_t time) {
+        return this->current < time;
+    }
+    inline bool les(float time) {
+        return this->current_f < time;
+    }
+    inline bool leq(int32_t time) {
+        return this->current <= time;
+    }
+    inline bool leq(float time) {
+        return this->current_f <= time;
+    }
+    inline bool gre(int32_t time) {
+        return this->current > time;
+    }
+    inline bool gre(float time) {
+        return this->current_f > time;
+    }
+    inline bool geq(int32_t time) {
+        return this->current >= time;
+    }
+    inline bool geq(float time) {
+        return this->current_f >= time;
+    }
+    inline bool equ(int32_t time) {
+        return this->current == time;
+    }
+    inline bool equ(float time) {
+        return this->current_f == time;
+    }
+    inline bool neq(int32_t time) {
+        return this->current != time;
+    }
+    inline bool neq(float time) {
+        return this->current_f != time;
+    }
+    inline bool is_zero() {
+        return this->equ(0);
+    }
+    inline bool is_not_zero() {
+        return this->neq(0);
+    }
+
+    inline bool operator<(int32_t time) {
+        return this->les(time);
+    }
+    inline bool operator<(float time) {
+        return this->les(time);
+    }
+    inline bool operator<=(int32_t time) {
+        return this->leq(time);
+    }
+    inline bool operator<=(float time) {
+        return this->leq(time);
+    }
+    inline bool operator>(int32_t time) {
+        return this->gre(time);
+    }
+    inline bool operator>(float time) {
+        return this->gre(time);
+    }
+    inline bool operator>=(int32_t time) {
+        return this->geq(time);
+    }
+    inline bool operator>=(float time) {
+        return this->geq(time);
+    }
+    inline bool operator==(int32_t time) {
+        return this->equ(time);
+    }
+    inline bool operator==(float time) {
+        return this->equ(time);
+    }
+    inline bool operator!=(int32_t time) {
+        return this->neq(time);
+    }
+    inline bool operator!=(float time) {
+        return this->neq(time);
+    }
+    inline bool operator!() {
+        return this->is_zero();
+    }
+    inline operator bool() {
+        return this->is_not_zero();
     }
 };
 #pragma region // Timer Validation
@@ -3539,7 +3646,7 @@ private:
             }
         }
         else {
-            SOUND_MANAGER.__play_sound(46);
+            //SOUND_MANAGER.__play_sound(46);
         }
         __update_bomb_ui();
     }
@@ -5024,7 +5131,7 @@ struct ZUNInterp { //       0x58    0x44    0x30
         if (end_time > 0) {
             this->time.increment();
             end_time = this->end_time;
-            if (this->time.current >= end_time) {
+            if (this->time >= end_time) {
                 this->time.set(end_time);
                 goto TimeEnd;
             }
@@ -5806,7 +5913,21 @@ ValidateStructSize32(0x4, AnmVMRef);
 #pragma endregion
 */
 
-using EnemyID = uint32_t;
+union EnemyID {
+    uint32_t raw;
+
+    inline constexpr operator uint32_t() const {
+        return this->raw;
+    }
+    template<typename T> requires(std::is_integral_v<T>)
+        inline constexpr EnemyID& operator=(const T& raw) {
+        this->raw = raw;
+        return *this;
+    }
+
+    // 0x42E0C0
+    dllexport gnu_noinline Enemy* thiscall get_enemy_ptr() asm_symbol_rel(0x42E0C0);
+};
 
 // size: 0x88
 struct EnemyCallback {
@@ -5835,14 +5956,242 @@ public:
     }
 };
 
-struct Bomb : ZUNTask {
-    // ZUNTask base; // 0x0
-    unknown_fields(0x24); // 0xC
+typedef struct AbilityShop AbilityShop;
+extern "C" {
+    // 0x4CF2A4
+    extern AbilityShop* ABILITY_SHOP_PTR asm("_ABILITY_SHOP_PTR");
+}
+
+typedef struct BombBase BombBase;
+extern "C" {
+    // 0x4CF2B8
+    extern BombBase* BOMB_PTR asm("_BOMB_PTR");
+}
+
+// size: 0xA8
+struct BombBase : ZUNTask {
+    // void* vftable; // 0x0
+    // ZUNTask base; // 0x4
+    unknown_fields(0x4); // 0x10
+    Float3 __float3_14; // 0x14
+    unknown_fields(0x4); // 0x20
+    Float3 __float3_24; // 0x24 (only 0x2C is know so far, but it's Z rotation)
     BOOL bomb_active; // 0x30
+    Timer __timer_34; // 0x34
+    unknown_fields(0x14); // 0x48
+    AnmID __vm_id_5C; // 0x5C
+    AnmID __vm_id_60; // 0x60
+    AnmID __vm_id_64; // 0x64
+    unknown_fields(0x8); // 0x68
+    void* __ptr_70; // 0x70
+    float __float_74; // 0x74
+    float __float_78; // 0x78
+    Timer __timer_7C; // 0x7C
+    int __int_90; // 0x90
+    Float3 __float3_94; // 0x94
+    int __dword_A0; // 0xA0
+    int __int_A4; // 0xA4
+    // 0xA8
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline BombBase() {
+        this->zero_contents();
+        this->__unknown_task_flag_A = true;
+    }
+
+    // Method 0
+    // 0x41FC10
+    virtual ~BombBase() {
+        this->__vm_id_5C.mark_tree_for_delete();
+        this->__vm_id_60.mark_tree_for_delete();
+        this->__vm_id_64.mark_tree_for_delete();
+        // TODO
+        SAFE_FREE(this->__ptr_70);
+    }
+
+    // Method 4
+    // 0x41FB80
+    dllexport gnu_noinline virtual int thiscall activate() {
+        return 0;
+    }
+    // Method 8
+    // 0x41FB90
+    dllexport gnu_noinline virtual int thiscall on_tick_impl() {
+        return 0;
+    }
+    // Method C
+    // 0x41FBA0
+    dllexport gnu_noinline virtual int thiscall on_draw_impl() {
+        return 0;
+    }
+    // Method 10
+    // 0x41FBB0
+    dllexport gnu_noinline virtual int thiscall __method_10(int, int) {
+        return 0;
+    }
+    // Method 14
+    // 0x41FBC0
+    dllexport gnu_noinline virtual int thiscall __method_14() {
+        return 0;
+    }
+    // Method 18
+    // 0x41FBD0
+    dllexport gnu_noinline virtual void thiscall __method_18() {
+    }
+
+    // 0x41FD40
+    dllexport gnu_noinline static void allocate();
+
+    // 0x420040
+    dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) {
+        BombBase* self = (BombBase*)ptr;
+        if (!ABILITY_SHOP_PTR) {
+            if (self->__timer_34 < 0) {
+                ++self->__timer_34;
+            }
+            if (self->bomb_active) {
+                if (!self->on_tick_impl()) {
+                    self->bomb_active = FALSE;
+                    return UpdateFuncNext;
+                }
+                ++self->__timer_34;
+            }
+        }
+        return UpdateFuncNext;
+    }
+
+    // 0x420160
+    dllexport gnu_noinline static UpdateFuncRet fastcall on_draw(void* ptr) {
+        BombBase* self = (BombBase*)ptr;
+        self->on_draw_impl();
+        if (self->__timer_7C <= 0) {
+            self->__float_78 = -1.0f;
+            return UpdateFuncNext;
+        }
+        if (self->__timer_7C <= 60) {
+            // TODO
+            --self->__timer_7C;
+        }
+        return UpdateFuncNext;
+    }
 };
 
-extern "C" {
-    extern Bomb* BOMB_PTR asm("_BOMB_PTR");
+#pragma region // BombBase Validation
+ValidateVirtualFieldOffset32(0x30, BombBase, bomb_active);
+ValidateStructSize32(0xA8, BombBase);
+#pragma endregion
+
+// size: 0x14A0
+struct BombReimuAData {
+    unknown_fields(0x14A0); // 0x0
+    // 0x14A0
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    // 0x4212A0
+    dllexport gnu_noinline void thiscall __sub_4212A0() asm_symbol_rel(0x4212A0) {
+        // TODO
+    }
+};
+
+struct BombReimuA : BombBase {
+    // Method 4
+    // 0x421420
+    dllexport gnu_noinline virtual int thiscall activate() {
+        // TODO
+        //SOUND_MANAGER.__play_sound(49);
+        // TODO
+        //++ENEMY_MANAGER_PTR->player_bomb_count;
+        SAFE_FREE(this->__ptr_70);
+        this->__ptr_70 = malloc(sizeof(BombReimuAData));
+        memset(this->__ptr_70, 0, sizeof(BombReimuAData));
+        // TODO
+        return 0;
+    }
+    // Method 8
+    // 0x421590
+    dllexport gnu_noinline virtual int thiscall on_tick_impl() {
+        // TODO
+        if (this->__timer_34 >= 120) {
+            // TODO
+        }
+        // TODO
+        return 0;
+    }
+    // Method C
+    // 0x422380
+    dllexport gnu_noinline virtual int thiscall on_draw_impl() {
+        return 1;
+    }
+    // Method 10
+    // 0x422390
+    dllexport gnu_noinline virtual int thiscall __method_10(int, int) {
+        return 0;
+    }
+    // Method 14
+    // 0x4223A0
+    dllexport gnu_noinline virtual int thiscall __method_14() {
+        // TODO
+        return 0;
+    }
+    // Method 18
+    // 0x41FBD0
+    dllexport gnu_noinline virtual void thiscall __method_18() {
+        ((BombReimuAData*)this->__ptr_70)->__sub_4212A0();
+        this->__vm_id_64.interrupt_tree(1);
+        SAFE_FREE(this->__ptr_70);
+        // TODO
+        this->bomb_active = FALSE;
+    }
+};
+
+struct BombMarisaA : BombBase {
+
+};
+
+struct BombSakuya : BombBase {
+
+};
+
+struct BombSanaeA : BombBase {
+
+};
+
+// 0x41FD40
+dllexport gnu_noinline void BombBase::allocate() {
+    BombBase* bomb_ptr;
+    switch (GAME_MANAGER.globals.shottype_index()) {
+        default:
+            bomb_ptr = new BombReimuA();
+            break;
+        case 1:
+            bomb_ptr = new BombMarisaA();
+            break;
+        case 2:
+            bomb_ptr = new BombSakuya();
+            break;
+        case 3:
+            bomb_ptr = new BombSanaeA();
+            break;
+    }
+    UpdateFunc* update_func = new UpdateFunc(&on_tick, true, bomb_ptr);
+    UpdateFuncRegistry::register_on_tick(update_func, 25);
+    bomb_ptr->on_tick_func = update_func;
+    update_func = new UpdateFunc(&on_draw, true, bomb_ptr);
+    UpdateFuncRegistry::register_on_draw(update_func, 41);
+    bomb_ptr->on_draw_func = update_func;
+    bomb_ptr->__timer_34.reset();
+    bomb_ptr->__timer_7C.reset();
+    bomb_ptr->__float_78 = -1.0f;
+    bomb_ptr->__float_74 = 0.0f;
+    bomb_ptr->__dword_A0 = 0;
+    bomb_ptr->__int_A4 = 0;
+    BOMB_PTR = bomb_ptr;
 }
 
 // size: 0x5600
@@ -6227,7 +6576,7 @@ public:
 
     // 0x42ED40
     dllexport gnu_noinline ZunResult thiscall __update_state() asm_symbol_rel(0x42ED40) {
-        Bomb* bomb_ptr = BOMB_PTR;
+        BombBase* bomb_ptr = BOMB_PTR;
         if (this->bomb_shield) {
             if (bomb_ptr->bomb_active && !this->bomb_shield_active) {
                 this->anm_vms[0].__sub_488FD0(this->current_anm_script = this->bombshield_on_anm);
@@ -7112,8 +7461,8 @@ struct Enemy : EclVM {
     //EclVM vm; // 0x0
     EnemyData data; // 0x122C
     void* __on_kill_func; // 0x682C
-    int32_t id; // 0x6830
-    int32_t parent_id; // 0x6834
+    EnemyID id; // 0x6830
+    EnemyID parent_id; // 0x6834
     int __dword_6838; // 0x6838
     // 0x683C
 
@@ -9059,38 +9408,111 @@ struct AnmLoaded {
         vm->controller.script_time.reset();
     }
 
-    // 0x405BF0
-    dllexport AnmID& thiscall instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, int32_t layer, AnmVM** raw_out) asm_symbol_rel(0x405BF0);
-
-    // 0x409590
-    dllexport AnmID& thiscall instantiate_vm_to_ui_list_front(AnmID& out, int32_t script_index, Float3* position, int = 0) asm_symbol_rel(0x409590);
-
-    // 0x409670
-    dllexport AnmID& thiscall instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, Float3* position, int = 0) asm_symbol_rel(0x409670);
-
-    // 0x413180
-    dllexport AnmID& thiscall instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVM** raw_out) asm_symbol_rel(0x413180);
-
-    // 0x416A10
-    dllexport AnmID& thiscall instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, int = 0) asm_symbol_rel(0x416A10);
-
-    // 0x43A030
-    dllexport AnmID& thiscall instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, int32_t layer, int = 0) asm_symbol_rel(0x43A030);
-
-    // 0x43A110
-    dllexport AnmID& thiscall instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, Float3* position, float z_rotation, int = -1, int = 0) asm_symbol_rel(0x43A110);
-
-    inline AnmID& thiscall instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position);
-    inline uint32_t thiscall instantiate_vm_to_world_list_back(int32_t script_index, Float3* position);
-
+private:
     // 0x488770
     dllexport AnmID& thiscall instantiate_vm(AnmID& out, int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVMCreationFlags flags, AnmVM** raw_out) asm_symbol_rel(0x488770);
+public:
+    inline AnmID instantiate_vm(int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVMCreationFlags flags, AnmVM** raw_out) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_vm(dummy, script_index, position, z_rotation, layer, flags, raw_out);
+    }
 
+private:
+    inline AnmID& thiscall instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position);
+public:
+    inline AnmID instantiate_vm_to_world_list_back(int32_t script_index, Float3* position) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_vm_to_world_list_back(dummy, script_index, position);
+    }
+
+private:
+    inline AnmID& thiscall instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position, int32_t layer);
+public:
+    inline AnmID instantiate_vm_to_world_list_back(int32_t script_index, Float3* position, int32_t layer) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_vm_to_world_list_back(dummy, script_index, position, layer);
+    }
+
+private:
+    // 0x405BF0
+    dllexport AnmID& thiscall instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, int32_t layer, AnmVM** raw_out) asm_symbol_rel(0x405BF0);
+public:
+    inline AnmID instantiate_vm_to_world_list_back(int32_t script_index, int32_t layer, AnmVM** raw_out) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_vm_to_world_list_back(dummy, script_index, layer, raw_out);
+    }
+
+private:
+    // 0x413180
+    dllexport AnmID& thiscall instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVM** raw_out) asm_symbol_rel(0x413180);
+public:
+    inline AnmID instantiate_vm_to_world_list_back(int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVM** raw_out) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_vm_to_world_list_back(dummy, script_index, position, z_rotation, layer, raw_out);
+    }
+
+private:
+    // 0x43A030
+    dllexport AnmID& thiscall instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, int32_t layer, UNUSED_ARG(AnmVMCreationFlags flags)) asm_symbol_rel(0x43A030);
+public:
+    inline AnmID instantiate_vm_to_world_list_front(int32_t script_index, int32_t layer, AnmVMCreationFlags flags = GARBAGE_ARG(AnmVMCreationFlags)) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_vm_to_world_list_front(dummy, script_index, layer, flags);
+    }
+
+private:
+    // 0x43A110
+    dllexport AnmID& thiscall instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, Float3* position, float z_rotation, UNUSED_ARG(int32_t layer), UNUSED_ARG(AnmVMCreationFlags flags)) asm_symbol_rel(0x43A110);
+public:
+    inline AnmID instantiate_vm_to_world_list_front(int32_t script_index, Float3* position, float z_rotation, int32_t layer = -1, AnmVMCreationFlags flags = {}) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_vm_to_world_list_front(dummy, script_index, position, z_rotation, layer, flags);
+    }
+
+private:
+    // 0x416A10
+    dllexport AnmID& thiscall instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, UNUSED_ARG(AnmVMCreationFlags flags)) asm_symbol_rel(0x416A10);
+public:
+    inline AnmID instantiate_vm_to_ui_list_back(int32_t script_index) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_vm_to_ui_list_back(dummy, script_index, GARBAGE_ARG(AnmVMCreationFlags));
+    }
+
+private:
+    // 0x409670
+    dllexport AnmID& thiscall instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(AnmVMCreationFlags flags)) asm_symbol_rel(0x409670);
+public:
+    inline AnmID instantiate_vm_to_ui_list_back(int32_t script_index, Float3* position) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_vm_to_ui_list_back(dummy, script_index, position, GARBAGE_ARG(AnmVMCreationFlags));
+    }
+
+private:
+    // 0x409590
+    dllexport AnmID& thiscall instantiate_vm_to_ui_list_front(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(AnmVMCreationFlags flags)) asm_symbol_rel(0x409590);
+public:
+    inline AnmID instantiate_vm_to_ui_list_front(int32_t script_index, Float3* position) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_vm_to_ui_list_front(dummy, script_index, position, GARBAGE_ARG(AnmVMCreationFlags));
+    }
+
+private:
     // 0x4888F0
     dllexport AnmID& thiscall instantiate_child_vm(AnmID& out, int32_t script_index, AnmVM* parent, AnmVMCreationFlags flags) asm_symbol_rel(0x4888F0);
+public:
+    inline AnmID instantiate_child_vm(int32_t script_index, AnmVM* parent, AnmVMCreationFlags flags) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_child_vm(dummy, script_index, parent, flags);
+    }
 
+private:
     // 0x488A40
-    dllexport AnmID& thiscall instantiate_orphan_vm_to_world_list_back(AnmID& out, int32_t script_index, AnmVM* parent, int = 0) asm_symbol_rel(0x488A40);
+    dllexport AnmID& thiscall instantiate_orphan_vm_to_world_list_back(AnmID& out, int32_t script_index, AnmVM* parent, UNUSED_ARG(AnmVMCreationFlags flags)) asm_symbol_rel(0x488A40);
+public:
+    inline AnmID instantiate_orphan_vm_to_world_list_back(int32_t script_index, AnmVM* parent, AnmVMCreationFlags flags = {}) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_orphan_vm_to_world_list_back(dummy, script_index, parent, flags);
+    }
 
     // 0x4865B0
     dllexport gnu_noinline ZunResult thiscall preload(const char* filename) asm_symbol_rel(0x4865B0) {
@@ -10037,8 +10459,9 @@ struct AnmManager {
         out = vm->controller.id = new_id;
     }
 
+private:
     // 0x488350
-    // This function never uses a null pointer for the first arg
+    // This function never uses a pointer for the first arg
     // even though the return value is typically used instead,
     // so I can only assume it must be a reference type.
     dllexport static gnu_noinline AnmID& stdcall add_vm_to_world_list_back(AnmID& out, AnmVM* vm) asm_symbol_rel(0x488350) {
@@ -10054,7 +10477,13 @@ struct AnmManager {
         anm_manager->assign_next_id_to_ref(out, vm);
         return out;
     }
+public:
+    static inline AnmID add_vm_to_world_list_back(AnmVM* vm) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return add_vm_to_world_list_back(dummy, vm);
+    }
 
+private:
     // 0x488400
     dllexport static gnu_noinline AnmID& stdcall add_vm_to_world_list_front(AnmID& out, AnmVM* vm) asm_symbol_rel(0x488400) {
         AnmManager* anm_manager = ANM_MANAGER_PTR;
@@ -10069,7 +10498,13 @@ struct AnmManager {
         anm_manager->assign_next_id_to_ref(out, vm);
         return out;
     }
+public:
+    static inline AnmID add_vm_to_world_list_front(AnmVM* vm) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return add_vm_to_world_list_front(dummy, vm);
+    }
 
+private:
     // 0x488490
     dllexport static gnu_noinline AnmID& stdcall add_vm_to_ui_list_back(AnmID& out, AnmVM* vm) asm_symbol_rel(0x488490) {
         AnmManager* anm_manager = ANM_MANAGER_PTR;
@@ -10084,7 +10519,13 @@ struct AnmManager {
         anm_manager->assign_next_id_to_ref(out, vm);
         return out;
     }
+public:
+    static inline AnmID add_vm_to_ui_list_back(AnmVM* vm) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return add_vm_to_ui_list_back(dummy, vm);
+    }
 
+private:
     // 0x488540
     dllexport static gnu_noinline AnmID& stdcall add_vm_to_ui_list_front(AnmID& out, AnmVM* vm) asm_symbol_rel(0x488540) {
         AnmManager* anm_manager = ANM_MANAGER_PTR;
@@ -10098,6 +10539,11 @@ struct AnmManager {
         anm_manager->ui_list_head = world_node;
         anm_manager->assign_next_id_to_ref(out, vm);
         return out;
+    }
+public:
+    static inline AnmID add_vm_to_ui_list_front(AnmVM* vm) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return add_vm_to_ui_list_front(dummy, vm);
     }
 };
 #pragma region // AnmManager Validation
@@ -10281,195 +10727,6 @@ dllexport gnu_noinline void stdcall Supervisor::__sub_4548E0(StageCamera* camera
 }
 
 #pragma region // AnmLoaded instantiate funcs
-// 0x405BF0
-dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, int32_t layer, AnmVM** raw_out) {
-    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
-    {
-        this->__counter_134++;
-        AnmVM* vm = AnmManager::allocate_new_vm();
-        if (raw_out) {
-            *raw_out = vm;
-        }
-        this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
-        if (layer >= 0) {
-            vm->data.layer = layer;
-            if (layer < 23) {
-                vm->data.origin_mode = 1;
-            }
-        }
-        vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
-        vm->data.rotation.z = 0.0f;
-        vm->run_anm();
-        vm->data.creation_flags = { .list_type = WorldListBack };
-        out = 0;
-        AnmID new_id;
-        out = AnmManager::add_vm_to_world_list_back(new_id, vm);
-    }
-    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
-    return out;
-}
-
-// 0x409590
-dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_front(AnmID& out, int32_t script_index, Float3* position, int) {
-    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
-    {
-        this->__counter_134++;
-        AnmVM* vm = AnmManager::allocate_new_vm();
-        this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
-        vm->controller.position.safe_copy(position);
-        vm->data.rotation.z = 0.0f;
-        vm->run_anm();
-        vm->data.creation_flags = { .list_type = UiListFront };
-        out = 0;
-        AnmID new_id;
-        out = AnmManager::add_vm_to_ui_list_front(new_id, vm);
-        vm->data.__unknown_field_B = 0;
-    }
-    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
-    return out;
-}
-
-// 0x409670
-dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, Float3* position, int) {
-    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
-    {
-        this->__counter_134++;
-        AnmVM* vm = AnmManager::allocate_new_vm();
-        this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
-        vm->controller.position.safe_copy(position);
-        vm->data.rotation.z = 0.0f;
-        vm->run_anm();
-        vm->data.creation_flags = { .list_type = UiListBack };
-        out = 0;
-        AnmID new_id;
-        out = AnmManager::add_vm_to_ui_list_back(new_id, vm);
-        vm->data.__unknown_field_B = 0;
-    }
-    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
-    return out;
-}
-
-// 0x413180
-dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVM** raw_out) {
-    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
-    {
-        this->__counter_134++;
-        AnmVM* vm = AnmManager::allocate_new_vm();
-        if (raw_out) {
-            *raw_out = vm;
-        }
-        vm->data.use_animation_rng = true;
-        if (layer >= 0) {
-            vm->data.layer = layer;
-            if (layer < 23) {
-                vm->data.origin_mode = 1;
-            }
-        }
-        vm->controller.position.safe_copy(position);
-        vm->data.rotation.z = z_rotation;
-        vm->run_anm();
-        vm->data.creation_flags = { .list_type = WorldListBack };
-        out = 0;
-        AnmID new_id;
-        out = AnmManager::add_vm_to_world_list_back(new_id, vm);
-    }
-    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
-    return out;
-}
-
-// 0x416A10
-dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, int) {
-    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
-    {
-        this->__counter_134++;
-        AnmVM* vm = AnmManager::allocate_new_vm();
-        this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
-        vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
-        vm->data.rotation.z = 0.0f;
-        vm->run_anm();
-        vm->data.creation_flags = { .list_type = UiListBack };
-        out = 0;
-        AnmID new_id;
-        out = AnmManager::add_vm_to_ui_list_back(new_id, vm);
-        vm->data.__unknown_field_B = 0;
-    }
-    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
-    return out;
-}
-
-// 0x43A030
-dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, int32_t layer, int) {
-    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
-    {
-        this->__counter_134++;
-        AnmVM* vm = AnmManager::allocate_new_vm();
-        this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
-        if (layer >= 0) {
-            vm->data.layer = layer;
-            if (layer < 23) {
-                vm->data.origin_mode = 1;
-            }
-        }
-        vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
-        vm->data.rotation.z = 0.0f;
-        vm->run_anm();
-        vm->data.creation_flags = { .list_type = WorldListFront };
-        out = 0;
-        AnmID new_id;
-        out = AnmManager::add_vm_to_world_list_front(new_id, vm);
-    }
-    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
-    return out;
-}
-
-// 0x43A030
-dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, Float3* position, float z_rotation, int, int) {
-    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
-    {
-        this->__counter_134++;
-        AnmVM* vm = AnmManager::allocate_new_vm();
-        this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
-        vm->controller.position.safe_copy(position);
-        vm->data.rotation.z = z_rotation;
-        vm->run_anm();
-        vm->data.creation_flags = { .list_type = WorldListFront };
-        out = 0;
-        AnmID new_id;
-        out = AnmManager::add_vm_to_world_list_front(new_id, vm);
-    }
-    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
-    return out;
-}
-
-inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position) {
-    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
-    {
-        this->__counter_134++;
-        AnmVM* vm = AnmManager::allocate_new_vm();
-        this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
-        vm->controller.position.safe_copy(position);
-        vm->data.rotation.z = 0.0f;
-        vm->run_anm();
-        vm->data.creation_flags = { .list_type = WorldListBack };
-        AnmID new_id{ GARBAGE_VALUE(int) };
-        out = AnmManager::add_vm_to_world_list_back(new_id, vm);
-    }
-    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
-    return out;
-}
-
-inline uint32_t thiscall AnmLoaded::instantiate_vm_to_world_list_back(int32_t script_index, Float3* position) {
-    AnmID dummy{ GARBAGE_VALUE(int) };
-    return instantiate_vm_to_world_list_back(dummy, script_index, position).full;
-}
-
 // 0x488770
 dllexport AnmID& thiscall AnmLoaded::instantiate_vm(AnmID& out, int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVMCreationFlags flags, AnmVM** raw_out) {
     CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
@@ -10501,23 +10758,221 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm(AnmID& out, int32_t script_i
         vm->run_anm();
         vm->data.creation_flags = flags;
         out = 0;
-        AnmID new_id;
         switch (flags.list_type) {
             case UiListFront:
-                out = AnmManager::add_vm_to_ui_list_front(new_id, vm);
+                out = AnmManager::add_vm_to_ui_list_front(vm);
                 vm->data.__unknown_field_B = 0;
                 break;
             case UiListBack:
-                out = AnmManager::add_vm_to_ui_list_back(new_id, vm);
+                out = AnmManager::add_vm_to_ui_list_back(vm);
                 vm->data.__unknown_field_B = 0;
                 break;
             case WorldListFront:
-                out = AnmManager::add_vm_to_world_list_front(new_id, vm);
+                out = AnmManager::add_vm_to_world_list_front(vm);
                 break;
             case WorldListBack:
-                out = AnmManager::add_vm_to_world_list_back(new_id, vm);
+                out = AnmManager::add_vm_to_world_list_back(vm);
                 break;
         }
+    }
+    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
+    return out;
+}
+
+inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position) {
+    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
+    {
+        this->__counter_134++;
+        AnmVM* vm = AnmManager::allocate_new_vm();
+        this->__copy_data_to_vm(vm, script_index);
+        vm->data.use_animation_rng = true;
+        vm->controller.position.safe_copy(position);
+        vm->data.rotation.z = 0.0f;
+        vm->run_anm();
+        vm->data.creation_flags = { .list_type = WorldListBack };
+        out = AnmManager::add_vm_to_world_list_back(vm);
+    }
+    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
+    return out;
+}
+
+inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position, int32_t layer) {
+    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
+    {
+        this->__counter_134++;
+        AnmVM* vm = AnmManager::allocate_new_vm();
+        this->__copy_data_to_vm(vm, script_index);
+        vm->data.use_animation_rng = true;
+        if (layer >= 0) {
+            vm->data.layer = layer;
+            if (layer < 23) {
+                vm->data.origin_mode = 1;
+            }
+        }
+        vm->controller.position.safe_copy(position);
+        vm->data.rotation.z = 0.0f;
+        vm->run_anm();
+        vm->data.creation_flags = { .list_type = WorldListBack };
+        out = AnmManager::add_vm_to_world_list_back(vm);
+    }
+    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
+    return out;
+}
+
+// 0x405BF0
+dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, int32_t layer, AnmVM** raw_out) {
+    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
+    {
+        this->__counter_134++;
+        AnmVM* vm = AnmManager::allocate_new_vm();
+        if (raw_out) {
+            *raw_out = vm;
+        }
+        this->__copy_data_to_vm(vm, script_index);
+        vm->data.use_animation_rng = true;
+        if (layer >= 0) {
+            vm->data.layer = layer;
+            if (layer < 23) {
+                vm->data.origin_mode = 1;
+            }
+        }
+        vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
+        vm->data.rotation.z = 0.0f;
+        vm->run_anm();
+        vm->data.creation_flags = { .list_type = WorldListBack };
+        out = 0;
+        out = AnmManager::add_vm_to_world_list_back(vm);
+    }
+    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
+    return out;
+}
+
+// 0x413180
+dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVM** raw_out) {
+    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
+    {
+        this->__counter_134++;
+        AnmVM* vm = AnmManager::allocate_new_vm();
+        if (raw_out) {
+            *raw_out = vm;
+        }
+        vm->data.use_animation_rng = true;
+        if (layer >= 0) {
+            vm->data.layer = layer;
+            if (layer < 23) {
+                vm->data.origin_mode = 1;
+            }
+        }
+        vm->controller.position.safe_copy(position);
+        vm->data.rotation.z = z_rotation;
+        vm->run_anm();
+        vm->data.creation_flags = { .list_type = WorldListBack };
+        out = 0;
+        out = AnmManager::add_vm_to_world_list_back(vm);
+    }
+    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
+    return out;
+}
+
+// 0x43A030
+dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, int32_t layer, UNUSED_ARG(AnmVMCreationFlags flags)) {
+    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
+    {
+        this->__counter_134++;
+        AnmVM* vm = AnmManager::allocate_new_vm();
+        this->__copy_data_to_vm(vm, script_index);
+        vm->data.use_animation_rng = true;
+        if (layer >= 0) {
+            vm->data.layer = layer;
+            if (layer < 23) {
+                vm->data.origin_mode = 1;
+            }
+        }
+        vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
+        vm->data.rotation.z = 0.0f;
+        vm->run_anm();
+        vm->data.creation_flags = { .list_type = WorldListFront };
+        out = 0;
+        out = AnmManager::add_vm_to_world_list_front(vm);
+    }
+    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
+    return out;
+}
+
+// 0x43A110
+dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, Float3* position, float z_rotation, UNUSED_ARG(int32_t layer), UNUSED_ARG(AnmVMCreationFlags flags)) {
+    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
+    {
+        this->__counter_134++;
+        AnmVM* vm = AnmManager::allocate_new_vm();
+        this->__copy_data_to_vm(vm, script_index);
+        vm->data.use_animation_rng = true;
+        vm->controller.position.safe_copy(position);
+        vm->data.rotation.z = z_rotation;
+        vm->run_anm();
+        vm->data.creation_flags = { .list_type = WorldListFront };
+        out = 0;
+        out = AnmManager::add_vm_to_world_list_front(vm);
+    }
+    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
+    return out;
+}
+
+// 0x416A10
+dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, UNUSED_ARG(AnmVMCreationFlags flags)) {
+    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
+    {
+        this->__counter_134++;
+        AnmVM* vm = AnmManager::allocate_new_vm();
+        this->__copy_data_to_vm(vm, script_index);
+        vm->data.use_animation_rng = true;
+        vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
+        vm->data.rotation.z = 0.0f;
+        vm->run_anm();
+        vm->data.creation_flags = { .list_type = UiListBack };
+        out = 0;
+        out = AnmManager::add_vm_to_ui_list_back(vm);
+        vm->data.__unknown_field_B = 0;
+    }
+    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
+    return out;
+}
+
+// 0x409670
+dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(AnmVMCreationFlags flags)) {
+    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
+    {
+        this->__counter_134++;
+        AnmVM* vm = AnmManager::allocate_new_vm();
+        this->__copy_data_to_vm(vm, script_index);
+        vm->data.use_animation_rng = true;
+        vm->controller.position.safe_copy(position);
+        vm->data.rotation.z = 0.0f;
+        vm->run_anm();
+        vm->data.creation_flags = { .list_type = UiListBack };
+        out = 0;
+        out = AnmManager::add_vm_to_ui_list_back(vm);
+        vm->data.__unknown_field_B = 0;
+    }
+    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
+    return out;
+}
+
+// 0x409590
+dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_front(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(AnmVMCreationFlags flags)) {
+    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
+    {
+        this->__counter_134++;
+        AnmVM* vm = AnmManager::allocate_new_vm();
+        this->__copy_data_to_vm(vm, script_index);
+        vm->data.use_animation_rng = true;
+        vm->controller.position.safe_copy(position);
+        vm->data.rotation.z = 0.0f;
+        vm->run_anm();
+        vm->data.creation_flags = { .list_type = UiListFront };
+        out = 0;
+        out = AnmManager::add_vm_to_ui_list_front(vm);
+        vm->data.__unknown_field_B = 0;
     }
     CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
     return out;
@@ -10539,19 +10994,18 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_child_vm(AnmID& out, int32_t sc
         vm->run_anm();
         vm->data.creation_flags = flags;
         out = 0;
-        AnmID new_id;
         switch (flags.list_type) {
             case UiListFront:
-                out = AnmManager::add_vm_to_ui_list_front(new_id, vm);
+                out = AnmManager::add_vm_to_ui_list_front(vm);
                 break;
             case UiListBack:
-                out = AnmManager::add_vm_to_ui_list_back(new_id, vm);
+                out = AnmManager::add_vm_to_ui_list_back(vm);
                 break;
             case WorldListFront:
-                out = AnmManager::add_vm_to_world_list_front(new_id, vm);
+                out = AnmManager::add_vm_to_world_list_front(vm);
                 break;
             case WorldListBack:
-                out = AnmManager::add_vm_to_world_list_back(new_id, vm);
+                out = AnmManager::add_vm_to_world_list_back(vm);
                 break;
         }
         parent->controller.child_list_head.append(&vm->controller.child_list_node);
@@ -10561,7 +11015,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_child_vm(AnmID& out, int32_t sc
 }
 
 // 0x488A40
-dllexport AnmID& thiscall AnmLoaded::instantiate_orphan_vm_to_world_list_back(AnmID& out, int32_t script_index, AnmVM* parent, int) {
+dllexport AnmID& thiscall AnmLoaded::instantiate_orphan_vm_to_world_list_back(AnmID& out, int32_t script_index, AnmVM* parent, UNUSED_ARG(AnmVMCreationFlags flags)) {
     CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
     {
         this->__counter_134++;
@@ -10576,8 +11030,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_orphan_vm_to_world_list_back(An
         vm->run_anm();
         vm->data.creation_flags = { .list_type = WorldListBack };
         out = 0;
-        AnmID new_id;
-        out = AnmManager::add_vm_to_world_list_back(new_id, vm);
+        out = AnmManager::add_vm_to_world_list_back(vm);
     }
     CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
     return out;
@@ -10660,8 +11113,7 @@ dllexport void thiscall AnmID::__sub_488FD0(int32_t script) {
     if (AnmVM* vm = anm_manager_ptr->get_vm_with_id(*this)) {
         AnmLoaded* anm_loaded = anm_manager_ptr->loaded_anm_files[vm->data.slot];
         vm->data.visible = false;
-        AnmID new_id;
-        *this = anm_loaded->instantiate_vm_to_world_list_back(new_id, script, -1, NULL);
+        *this = anm_loaded->instantiate_vm_to_world_list_back(script, -1, NULL);
         vm->data.slot = anm_loaded->slot_index;
         vm->data.slot2 = anm_loaded->slot_index;
     }
@@ -10807,8 +11259,7 @@ dllexport gnu_noinline BOOL thiscall Globals::__add_power(int32_t value) {
         Gui* gui = GUI_PTR;
         AnmManager::mark_tree_id_for_delete(gui->__anm_id_BC);
         gui->__anm_id_BC = 0;
-        AnmID new_id;
-        gui->__anm_id_BC = gui->__anm_loaded_2C0->instantiate_vm_to_world_list_back(new_id, 33, -1, NULL);
+        gui->__anm_id_BC = gui->__anm_loaded_2C0->instantiate_vm_to_world_list_back(33, -1, NULL);
     }
     int32_t C = (A - value) / this->__power_related_64;
     int32_t D = A / this->__power_related_64;
@@ -11314,7 +11765,8 @@ ValidateStructSize32(0x19278, AsciiManager);
 typedef struct AbilityManager AbilityManager;
 typedef struct AbilityTextData AbilityTextData;
 typedef struct AbilityMenu AbilityMenu;
-typedef struct AbilityShop AbilityShop;
+
+typedef struct EnemyManager EnemyManager;
 
 extern "C" {
     // 0x4CF298
@@ -11323,13 +11775,16 @@ extern "C" {
     extern AbilityTextData* ABILITY_TEXT_DATA_PTR asm("_ABILITY_TEXT_DATA_PTR");
     // 0x4CF2A0
     extern AbilityMenu* ABILITY_MENU_PTR asm("_ABILITY_MENU_PTR");
-    // 0x4CF2A4
-    extern AbilityShop* ABILITY_SHOP_PTR asm("_ABILITY_SHOP_PTR");
     // 0x4CF2D4
     extern int32_t UNKNOWN_COUNTER_A asm("_UNKNOWN_COUNTER_A");
+
+    // 0x4CF2D0
+    extern EnemyManager* ENEMY_MANAGER_PTR asm("_ENEMY_MANAGER_PTR");
 }
 
 static inline bool enemies_are_alive();
+static inline float ability_manager_get_float_C58();
+static inline AnmLoaded* ability_manager_get_ability_anm();
 
 // size: 0x54
 struct CardBase {
@@ -11473,13 +11928,294 @@ struct CardBase {
     }
 
     // 0x408BF0
-    dllexport int thiscall __sub_408BF0() asm_symbol_rel(0x408BF0) {
+    dllexport int thiscall __dec_timer_34_during_gameplay() asm_symbol_rel(0x408BF0) {
         if (!GUI_PTR->msg_is_active() && enemies_are_alive()) {
-            if (this->__timer_34.current > 0) {
+            if (this->__timer_34 > 0) {
                 this->__timer_34--;
             }
         }
         return 0;
+    }
+
+    inline void __inc_timer_20_during_gameplay() {
+        if (!GUI_PTR->msg_is_active() && enemies_are_alive()) {
+            ++this->__timer_20;
+        }
+    }
+};
+
+// size: 0x58
+struct CardKoishi : CardBase {
+    // CardBase base; // 0x0
+    int32_t power; // 0x54
+    // 0x58
+
+    static inline constexpr CardId ID = KOISHI_CARD; // 27
+
+    inline CardKoishi() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__unknown_flag_E = false;
+        this->__unknown_flag_D = false;
+    }
+
+    // Method C
+    // 0x40D4E0
+    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb(int) {
+        this->power = GAME_MANAGER.globals.current_power;
+        return 0;
+    }
+    // Method 14
+    // 0x40D4F0
+    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb_frame_2() {
+        this->power -= 50;
+        int32_t new_power = this->power;
+        if (new_power < 100) {
+            this->power = 100;
+            new_power = 100;
+        }
+        int32_t max_power = GAME_MANAGER.globals.max_power;
+        if (new_power > max_power) {
+            GAME_MANAGER.globals.current_power = max_power;
+        }
+        else {
+            if (new_power < GAME_MANAGER.globals.__power_related_64) {
+                new_power = GAME_MANAGER.globals.__power_related_64;
+            }
+            GAME_MANAGER.globals.current_power = new_power;
+        }
+        return 0;
+    }
+    // Method 2C
+    // 0x40D4C0
+    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
+        /*
+        if (EnemyManager* enemy_manager = ENEMY_MANAGER_PTR) {
+            enemy_manager->__int_164 = 1;
+        }
+        */
+        return 0;
+    }
+    // Method 34
+    // 0x40D4A0
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__method_4C();
+    }
+    // Method 4C
+    // 0x40D4B0
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+};
+
+// size: 0x58
+struct CardMamizou : CardBase {
+    // CardBase base; // 0x0
+    int32_t power; // 0x54
+    // 0x58
+
+    static inline constexpr CardId ID = POWERMAX_CARD; // 32
+
+    inline CardMamizou() {
+        this->__unknown_flag_B = true;
+        this->__unknown_flag_C = true;
+        this->__unknown_flag_E = false;
+        this->__unknown_flag_D = false;
+    }
+
+    // Method 4
+    // 0x40D390
+    dllexport gnu_noinline virtual int thiscall __method_4() {
+        if (GAME_THREAD_PTR && this->__unknown_flag_B) {
+            BOOL A = GAME_MANAGER.globals.__add_power(100);
+            this->__unknown_flag_B = false;
+            if (A) {
+                /*
+                if (Player* player = PLAYER_PTR) {
+                    player->data.__sub_45D5E0();
+                    // TODO
+                    SOUND_MANAGER.__play_sound_positioned(13, PLAYER_PTR->data.position.x);
+                }
+                */
+            }
+        }
+        return 0;
+    }
+    // Method C
+    // 0x40D400
+    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb(int) {
+        this->power = GAME_MANAGER.globals.current_power;
+        return 0;
+    }
+    // Method 14
+    // 0x40D410
+    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb_frame_2() {
+        int32_t A = GAME_MANAGER.globals.__power_related_64;
+        int32_t new_power = this->power;
+        
+        int32_t B = A * 3;
+        if (new_power > B) {
+            this->power = B;
+            new_power = B;
+            A = GAME_MANAGER.globals.__power_related_64;
+        }
+
+        int32_t max_power = GAME_MANAGER.globals.max_power;
+        if (new_power > max_power) {
+            GAME_MANAGER.globals.current_power = max_power;
+        } else {
+            if (new_power < A) {
+                new_power = A;
+            }
+            GAME_MANAGER.globals.current_power = new_power;
+        }
+        return 0;
+    }
+    // Method 34
+    // 0x40D380
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        if (SUPERVISOR.__int_804) {
+            this->__method_4();
+        }
+    }
+    // Method 4C
+    // 0x40D370
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = true;
+    }
+};
+
+struct CardYuyuko : CardBase {
+    static inline constexpr CardId ID = YUYUKO_CARD; // 33
+
+    inline CardYuyuko() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__unknown_flag_E = false;
+        this->__unknown_flag_D = false;
+    }
+
+    // Method 2C
+    // 0x40D5A0
+    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
+        /*
+        if (BulletManager* bullet_manager = BULLET_MANAGER_PTR) {
+            bullet_manager->__unknown_counter_flag = 1;
+        }
+        */
+        return 0;
+    }
+    // Method 34
+    // 0x40D580
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__method_4C();
+    }
+    // Method 4C
+    // 0x40D590
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+};
+struct CardYachie : CardBase {
+    static inline constexpr CardId ID = MONEY_CARD; // 34
+
+    inline CardYachie() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__unknown_flag_E = false;
+        this->__unknown_flag_D = false;
+    }
+
+    // Method 30
+    // 0x40D630
+    dllexport gnu_noinline virtual int thiscall recharge(int, int) {
+        float A = REPLAY_RNG.rand_float_signed() * PI_f;
+        // TODO
+        return 0;
+    }
+    // Method 34
+    // 0x40D610
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__method_4C();
+    }
+    // Method 4C
+    // 0x40D620
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+};
+
+// size: 0x64
+struct CardShikiEiki : CardBase {
+    // CardBase base; // 0x0
+    int __int_54; // 0x54
+    AnmID __vm_id_58; // 0x58
+    void* __ptr_5C; // 0x5C PlayerDamageSource*?
+    unknown_fields(0x4); // 0x60
+    // 0x64
+
+    static inline constexpr CardId ID = ROKUMON_CARD; // 35
+
+    inline CardShikiEiki() {
+        this->__vm_id_58 = NULL;
+        this->__ptr_5C = NULL;
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__unknown_flag_E = false;
+        this->__unknown_flag_D = false;
+    }
+
+    // 0x40D840
+    dllexport gnu_noinline int thiscall __sub_40D840() asm_symbol_rel(0x40D840) {
+        // ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(41, &PLAYER_PTR->data.position);
+        SOUND_MANAGER.__play_sound(44);
+        // TODO
+        GAME_MANAGER.globals.current_money -= 200;
+        // PLAYER_PTR->.data.__timer_47154.set(60);
+        // ++ENEMY_MANAGER_PTR->player_bomb_count;
+        // ENEMY_MANAGER_PTR->can_capture_spell = FALSE;
+        // TODO
+        this->__timer_20.reset();
+        this->__int_54 = 1;
+    }
+    // Method C
+    // 0x40DA10
+    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb(int) {
+        if (GAME_MANAGER.globals.current_money >= 200) {
+            this->__sub_40D840();
+            // PLAYER_PTR->data.__timer_14.set(60);
+            // PLAYER_PTR->data.state = 1;
+            return 1;
+        }
+        return 0;
+    }
+    // Method 24
+    // 0x40DA80
+    dllexport gnu_noinline virtual int thiscall on_tick() {
+        switch (this->__int_54) {
+            case 1:
+                // TODO
+                if (this->__timer_20 >= 60) {
+                    this->__int_54 = 0;
+                    BOMB_PTR->__dword_A0 = 0;
+                }
+                break;
+        }
+        ++this->__timer_20;
+        return 0;
+    }
+    // Method 34
+    // 0x40D800
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__method_4C();
+    }
+    // Method 4C
+    // 0x40D810
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+        this->__vm_id_58.mark_tree_for_delete();
+        this->__int_54 = 0;
+        this->__ptr_5C = NULL;
     }
 };
 
@@ -11516,10 +12252,390 @@ struct CardSannyo : CardBase {
 };
 
 // size: 0x68
+struct CardShinmyoumaru : CardBase {
+    // CardBase base; // 0x0
+    int __int_54; // 0x54
+    Float3 position; // 0x58
+    int __dword_64; // 0x64
+    // 0x68
+
+    static inline constexpr CardId ID = KOZUCHI_CARD; // 42
+
+    inline CardShinmyoumaru() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = false;
+        this->__unknown_flag_E = true;
+        this->__unknown_flag_D = false;
+        this->__timer_20.reset();
+        this->recharge_time = 2400;
+        this->__int_54 = 0;
+        this->__timer_34.reset();
+    }
+
+    // Method 8
+    // 0x40F0F0
+    dllexport gnu_noinline virtual int thiscall on_activate() {
+        if (!this->__int_54 && this->recharge_time <= 0) {
+            //this->position = PLAYER_PTR->data.position;
+            this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(30, &this->position, 13);
+            this->__int_54 = 1;
+            this->__timer_20.reset();
+            SOUND_MANAGER.__play_sound_positioned(30, this->position.x);
+            this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
+            this->__dword_64 = 0;
+        }
+        return 0;
+    }
+    // Method C
+    // 0x40F0D0
+    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb(int) {
+        this->__int_54 = 0;
+        this->effect_vm_id.mark_tree_for_delete();
+        return 0;
+    }
+    // Method 2C
+    // 0x40EED0
+    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
+        switch (this->__int_54) {
+            case 3:
+                this->__unknown_flag_A = true;
+                if (this->__timer_20 < 10) {
+                    float A = (float)this->__timer_20 * 4.0f + 30.0f;
+                    // TODO
+                }
+                if (this->__timer_20 > 40) {
+                    this->__int_54 = 0;
+                    this->effect_vm_id.mark_tree_for_delete();
+                }
+                break;
+            case 2:
+                this->__unknown_flag_A = true;
+                if (this->__timer_20 > 10) {
+                    this->__int_54 = 3;
+                    // TODO, something inlined from sound manager
+                    SOUND_MANAGER.__play_sound_positioned(41, this->position.x);
+                    this->__timer_20.reset();
+                    this->position.y -= 84.0f;
+                }
+                break;
+            case 1:
+                //this->position = PLAYER_PTR->data.position;
+                this->position.y -= 16.0f;
+                this->effect_vm_id.set_controller_position(&this->position);
+                if (this->__timer_20 > 20) {
+                    this->__int_54 = 2;
+                    this->__timer_20.reset();
+                }
+                break;
+            case 0:
+                this->__unknown_flag_A = false;
+                this->__dec_timer_34_during_gameplay();
+                break;
+        }
+        ++this->__timer_20;
+        return 0;
+    }
+    // Method 34
+    // 0x40EE00
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__unknown_flag_B = false;
+        this->__timer_20.reset();
+        this->__int_54 = 0;
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+    // Method 4C
+    // 0x40EE50
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+        this->__timer_20.reset();
+        this->__int_54 = 0;
+        this->__timer_34.reset();
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+};
+
+// size: 0x74
+struct CardTenshi : CardBase {
+    // CardBase base; // 0x0
+    int __int_54; // 0x54
+    Float3 position; // 0x58
+    Float3 __float3_64; // 0x64
+    int __dword_70; // 0x70
+    // 0x74
+
+    static inline constexpr CardId ID = KANAME_CARD; // 43
+
+    inline CardTenshi() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = false;
+        this->__unknown_flag_E = true;
+        this->__unknown_flag_D = false;
+        this->__timer_20.reset();
+        this->recharge_time = 3600;
+        this->__int_54 = 0;
+        this->__timer_34.reset();
+    }
+
+    // Method 8
+    // 0x40EBF0
+    dllexport gnu_noinline virtual int thiscall on_activate() {
+        if (!this->__int_54 && this->recharge_time <= 0) {
+            //this->position = PLAYER_PTR->data.position;
+            this->position.y -= 100.0f;
+            this->__float3_64 = this->position;
+            this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(28, &this->position, 13);
+            this->__int_54 = 1;
+            this->__timer_20.reset();
+            SOUND_MANAGER.__play_sound_positioned(77, this->position.x);
+            this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
+            this->__unknown_flag_A = true;
+            this->__dword_70 = 0;
+        }
+        return 0;
+    }
+    // Method 2C
+    // 0x40E8C0
+    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
+        switch (this->__int_54) {
+            case 2:
+                this->__unknown_flag_A = false;
+                if (this->__timer_20 > 8) {
+                    this->__int_54 = 0;
+                    this->effect_vm_id.mark_tree_for_delete();
+                }
+                break;
+            case 1:
+                if (this->__timer_20 >= 30) {
+                    this->__unknown_flag_A = false;
+                }
+                // this->__float3_64 = PLAYER_PTR->data.position;
+                this->__float3_64.y -= 80.0f;
+                static constexpr float scale = 1.0f / 25.0f;
+                this->position += (this->__float3_64 - this->position) * scale;
+                this->effect_vm_id.set_controller_position(&this->position);
+                if (this->__timer_20 > 1800) {
+                    this->effect_vm_id.interrupt_tree(1);
+                    this->__int_54 = 2;
+                    this->__timer_20.reset();
+                    SOUND_MANAGER.__play_sound_positioned(41, this->position.x);
+                }
+                break;
+            case 0:
+                this->__unknown_flag_A = false;
+                this->__dec_timer_34_during_gameplay();
+                break;
+        }
+        if (this->__int_54 == 1) {
+            // TODO
+        }
+        this->__inc_timer_20_during_gameplay();
+        return 0;
+    }
+    // Method 34
+    // 0x40E7F0
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__unknown_flag_B = false;
+        this->__timer_20.reset();
+        this->__int_54 = 0;
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+    // Method 4C
+    // 0x40E840
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+        this->__timer_20.reset();
+        this->__int_54 = 0;
+        this->__timer_34.reset();
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+};
+
+// size: 0xC4
+struct CardClownpiece : CardBase {
+    // CardBase base; // 0x0
+    int __int_54; // 0x54
+    Float3 position; // 0x58
+    ZUNInterp<Float3> position_interp; // 0x64
+    void* __ptr_BC; // 0xBC PlayerDamageSource*?
+    float __float_C0; // 0xC0
+    // 0xC4
+
+    static inline constexpr CardId ID = MOON_CARD; // 44
+
+    inline CardClownpiece() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = false;
+        this->__unknown_flag_E = true;
+        this->__unknown_flag_D = false;
+        this->__timer_20.reset();
+        this->recharge_time = 2700;
+        this->__int_54 = 0;
+        this->__timer_34.reset();
+    }
+
+    // Method 8
+    // 0x40E040
+    dllexport gnu_noinline virtual int thiscall on_activate() {
+        if (!this->__int_54 && this->recharge_time <= 0) {
+            Float3 A;
+            // A = this->position_interp.initial_value = this->position = PLAYER_PTR->data.position;
+            A.y -= 400.0f;
+            this->position_interp.mode[0] = 1;
+            this->position_interp.end_time = 120;
+            this->position_interp.final_value = A;
+            this->position_interp.time.reset();
+            // TODO
+            this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(45, &this->position, 13);
+            this->__int_54 = 1;
+            this->__timer_20.reset();
+            this->__float_C0 = 0;
+            SOUND_MANAGER.__play_sound_positioned(77, this->position.x);
+            this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
+        }
+        return 0;
+    }
+    // Method 2C
+    // 0x40DCE0
+    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
+        switch (this->__int_54) {
+            case 2:
+                this->__unknown_flag_A = true;
+                this->position = this->position_interp.step();
+                this->position.y += this->__float_C0;
+                this->effect_vm_id.set_controller_position(&this->position);
+                if (this->__timer_20 > 40) {
+                    this->__int_54 = 0;
+                    this->effect_vm_id.mark_tree_for_delete();
+                }
+                break;
+            case 1:
+                this->__unknown_flag_A = true;
+                this->position = this->position_interp.step();
+                this->position.y += this->__float_C0;
+                this->effect_vm_id.set_controller_position(&this->position);
+                if (this->__timer_20 > 80) {
+                    this->__int_54 = 2;
+                    this->effect_vm_id.interrupt_tree(1);
+                    this->__timer_20.reset();
+
+                }
+                break;
+            case 0:
+                this->__unknown_flag_A = false;
+                this->__dec_timer_34_during_gameplay();
+                break;
+        }
+        if (this->__int_54) {
+            // TODO
+        }
+        ++this->__timer_20;
+        return 0;
+    }
+    // Method 34
+    // 0x40DC10
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__unknown_flag_B = false;
+        this->__timer_20.reset();
+        this->__int_54 = 0;
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+    // Method 4C
+    // 0x40DC60
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+        this->__timer_20.reset();
+        this->__int_54 = 0;
+        this->__timer_34.reset();
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+};
+
+// size: 0x68
+struct CardMiko : CardBase {
+    // CardBase base; // 0x0
+    int __int_54; // 0x54
+    Float3 position; // 0x58
+    void* __ptr_64; // 0x64 PlayerDamageSource*?
+    // 0x68
+
+    static inline constexpr CardId ID = MIKOFLASH_CARD; // 45
+
+    inline CardMiko() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = false;
+        this->__unknown_flag_E = true;
+        this->__unknown_flag_D = false;
+        this->__timer_20.reset();
+        this->recharge_time = 1800;
+        this->__int_54 = 0;
+        this->__timer_34.reset();
+    }
+
+    // Method 8
+    // 0x40E5C0
+    dllexport gnu_noinline virtual int thiscall on_activate() {
+        if (!this->__int_54 && this->recharge_time <= 0) {
+            // this->position = PLAYER_PTR->data.position;
+            // TODO
+            this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(47, &this->position, 13);
+            this->__int_54 = 1;
+            this->__timer_20.reset();
+            SOUND_MANAGER.__play_sound_positioned(77, this->position.x);
+            this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
+        }
+        return 0;
+    }
+    // Method 2C
+    // 0x40E3D0
+    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
+        switch (this->__int_54) {
+            case 1:
+                this->__unknown_flag_A = true;
+                // this->position = PLAYER_PTR->data.position;
+                // this->effect_vm_id.set_controller_position(&PLAYER_PTR->data.position);
+                if (this->__timer_20 > 130) {
+                    this->__int_54 = 0;
+                    this->effect_vm_id.mark_tree_for_delete();
+                }
+                if (
+                    (uint32_t)this->__timer_20.current - 40 <= 79 &&
+                    this->__timer_20.__is_multiple_of(8)
+                ) {
+                    // TODO
+                }
+                break;
+            case 0:
+                this->__unknown_flag_A = false;
+                this->__dec_timer_34_during_gameplay();
+                break;
+        }
+        ++this->__timer_20;
+        return 0;
+    }
+    // Method 34
+    // 0x40E300
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__unknown_flag_B = false;
+        this->__timer_20.reset();
+        this->__int_54 = 0;
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+    // Method 4C
+    // 0x40E350
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+        this->__timer_20.reset();
+        this->__int_54 = 0;
+        this->__timer_34.reset();
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+};
+
+// size: 0x68
 struct CardRemilia : CardBase {
     // CardBase base; // 0x0
     int __int_54; // 0x54
-    Float3 __float3_58; // 0x58
+    Float3 position; // 0x58
     int __dword_64; // 0x64
     // 0x68
 
@@ -11532,6 +12648,7 @@ struct CardRemilia : CardBase {
         this->__unknown_flag_D = false;
         this->__timer_20.reset();
         this->recharge_time = 1200;
+        this->__int_54 = 0;
         this->__timer_34.reset();
     }
 
@@ -11539,7 +12656,12 @@ struct CardRemilia : CardBase {
     // 0x40F670
     dllexport gnu_noinline virtual int thiscall on_activate() {
         if (!this->__int_54 && this->recharge_time <= 0) {
-            // TODO, needs player access
+            //this->position = PLAYER_PTR->data.position;
+            this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(38, &this->position, 13);
+            this->__int_54 = 1;
+            this->__timer_20.reset();
+            SOUND_MANAGER.__play_sound_positioned(30, this->position.x);
+            this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
             this->__dword_64 = 0;
         }
         return 0;
@@ -11556,23 +12678,36 @@ struct CardRemilia : CardBase {
     dllexport gnu_noinline virtual int thiscall __on_tick_2() {
         switch (this->__int_54) {
             case 2:
-                // TODO
-                if (this->__timer_20.current > 60) {
+                // this->position = PLAYER_PTR->data.position;
+                // this->effect_vm_id.set_controller_position(&PLAYER_PTR->data.position);
+                if (this->__timer_20 < 50) {
+                    Float3 A = this->position;
+                    float B;
+                    if (this->__timer_20 < 10) {
+                        B = (float)this->__timer_20 * 90.0f / 10.0f;
+                    } else {
+                        B = 90.0f;
+                    }
+                    A.y -= B * 0.5f;
+                    // TODO
+                }
+                if (this->__timer_20 > 60) {
                     this->__int_54 = 0;
                     this->effect_vm_id.mark_tree_for_delete();
                 }
                 break;
             case 1:
-                // TODO
-                if (this->__timer_20.current > 30) {
+                // this->position = PLAYER_PTR->data.position;
+                // this->effect_vm_id.set_controller_position(&PLAYER_PTR->data.position);
+                if (this->__timer_20 > 30) {
                     this->__int_54 = 2;
                     this->__timer_20.reset();
-                    SOUND_MANAGER.__play_sound_positioned(27, this->__float3_58.x);
+                    SOUND_MANAGER.__play_sound_positioned(27, this->position.x);
                 }
                 break;
             case 0:
                 this->__unknown_flag_A = false;
-                this->__sub_408BF0();
+                this->__dec_timer_34_during_gameplay();
                 break;
         }
         ++this->__timer_20;
@@ -11601,7 +12736,7 @@ struct CardRemilia : CardBase {
 struct CardUtsuho : CardBase {
     // CardBase base; // 0x0
     int __int_54; // 0x54
-    Float3 __float3_58; // 0x58
+    Float3 position; // 0x58
     int __dword_64; // 0x64
     void* __ptr_68; // 0x68 PlayerDamageSource*?
     // 0x6C
@@ -11615,6 +12750,7 @@ struct CardUtsuho : CardBase {
         this->__unknown_flag_D = false;
         this->__timer_20.reset();
         this->recharge_time = 18000;
+        this->__int_54 = 0;
         this->__timer_34.reset();
     }
 
@@ -11623,6 +12759,13 @@ struct CardUtsuho : CardBase {
     dllexport gnu_noinline virtual int thiscall on_activate() {
         if (!this->__int_54 && this->recharge_time <= 0) {
             // TODO
+            //this->position = PLAYER_PTR->data.position;
+            // TODO
+            this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(50, &this->position, 13);
+            this->__int_54 = 1;
+            this->__timer_20.reset();
+            SOUND_MANAGER.__play_sound_positioned(49, this->position.x);
+            this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
             this->__dword_64 = 0;
         }
         return 0;
@@ -11640,12 +12783,12 @@ struct CardUtsuho : CardBase {
         switch (this->__int_54) {
             case 2:
                 this->__unknown_flag_A = true;
-                if (this->__timer_20.current > 60) {
+                if (this->__timer_20 > 60) {
                     this->__int_54 = 0;
                     this->effect_vm_id.mark_tree_for_delete();
                 }
                 break;
-            case 1:
+            case 1: {
                 this->__unknown_flag_A = true;
                 // TODO
                 if (GUI_PTR->msg_vm) {
@@ -11653,22 +12796,24 @@ struct CardUtsuho : CardBase {
                     this->__timer_20.reset();
                     this->effect_vm_id.interrupt_tree(1);
                 }
+                float A = this->effect_vm_id.get_vm_ptr()->data.scale.x * 96.0f;
                 // TODO
-                if (this->__timer_20.current > 600) {
+                if (this->__timer_20 > 600) {
                     this->__int_54 = 2;
                     this->__timer_20.reset();
-                    SOUND_MANAGER.__play_sound_positioned(27, this->__float3_58.x);
+                    SOUND_MANAGER.__play_sound_positioned(27, this->position.x);
                 }
                 if (
-                    !(this->__timer_20.current % 6) &&
+                    this->__timer_20.__is_multiple_of(6) &&
                     GAME_MANAGER.globals.__sub_457480(1)
                 ) {
-                    // TODO, needs player access
+                    // PLAYER_PTR->data.__sub_45D5E0();
                 }
                 break;
+            }
             case 0:
                 this->__unknown_flag_A = false;
-                this->__sub_408BF0();
+                this->__dec_timer_34_during_gameplay();
                 break;
         }
         ++this->__timer_20;
@@ -11702,12 +12847,12 @@ struct CardLilyWhite : CardBase {
     static inline constexpr CardId ID = LILY_CARD; // 48
 
     inline CardLilyWhite() {
+        this->recharge_time = 7200;
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = false;
         this->__unknown_flag_E = true;
         this->__unknown_flag_D = false;
-        this->recharge_time = 7200;
-        this->__timer_20.reset();
+        this->__timer_34.reset();
         this->__int_54 = 0;
     }
 
@@ -11715,15 +12860,20 @@ struct CardLilyWhite : CardBase {
     // 0x40FE70
     dllexport gnu_noinline virtual int thiscall on_activate() {
         if (this->recharge_time <= 0) {
-            // TODO, needs enemy manager access
+            if (EnemyManager* enemy_manager = ENEMY_MANAGER_PTR) {
+                // TODO, needs full enemy manager access
+                this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
+                ++this->__int_54;
+                this->__unknown_flag_A = true;
+            }
         }
         return 0;
     }
     // Method 2C
     // 0x40FE20
     dllexport gnu_noinline virtual int thiscall __on_tick_2() {
-        this->__sub_408BF0();
-        if (this->__timer_34.current < this->recharge_time - 8) {
+        this->__dec_timer_34_during_gameplay();
+        if (this->__timer_34 < this->recharge_time - 8) {
             this->__unknown_flag_A = false;
         }
         return 0;
@@ -11758,7 +12908,7 @@ struct CardLilyWhite : CardBase {
 struct CardRaiko : CardBase {
     // CardBase base; // 0x0
     int __int_54; // 0x54
-    Float3 __float3_58; // 0x58
+    Float3 position; // 0x58
     int __dword_64; // 0x64
     // 0x68
 
@@ -11771,6 +12921,7 @@ struct CardRaiko : CardBase {
         this->__unknown_flag_D = false;
         this->__timer_20.reset();
         this->recharge_time = 600;
+        this->__int_54 = 0;
         this->__timer_34.reset();
     }
 
@@ -11778,7 +12929,13 @@ struct CardRaiko : CardBase {
     // 0x410250
     dllexport gnu_noinline virtual int thiscall on_activate() {
         if (!this->__int_54 && this->recharge_time <= 0) {
-            // TODO
+            //this->position = PLAYER_PTR->data.position;
+            this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(58, &this->position, 13);
+            this->__int_54 = 1;
+            this->__timer_20.reset();
+            SOUND_MANAGER.__play_sound_positioned(51, this->position.x);
+            this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
+            this->__dword_64 = 0;
         }
         return 0;
     }
@@ -11789,7 +12946,7 @@ struct CardRaiko : CardBase {
             case 1:
                 this->__unknown_flag_A = true;
                 // TODO
-                if (this->__timer_20.current >= 30) {
+                if (this->__timer_20 >= 30) {
                     this->__int_54 = 0;
                     this->__timer_20.reset();
                     this->effect_vm_id.mark_tree_for_delete();
@@ -11797,7 +12954,7 @@ struct CardRaiko : CardBase {
                 break;
             case 0:
                 this->__unknown_flag_A = false;
-                this->__sub_408BF0();
+                this->__dec_timer_34_during_gameplay();
                 break;
         }
         ++this->__timer_20;
@@ -11826,7 +12983,7 @@ struct CardRaiko : CardBase {
 struct CardSumireko : CardBase {
     // CardBase base; // 0x0
     int __int_54; // 0x54
-    Float3 __float3_58; // 0x58
+    Float3 position; // 0x58
     int __dword_64; // 0x64
     // 0x68
 
@@ -11839,6 +12996,7 @@ struct CardSumireko : CardBase {
         this->__unknown_flag_D = false;
         this->__timer_20.reset();
         this->recharge_time = 1500;
+        this->__int_54 = 0;
         this->__timer_34.reset();
     }
 
@@ -11846,7 +13004,13 @@ struct CardSumireko : CardBase {
     // 0x410780
     dllexport gnu_noinline virtual int thiscall on_activate() {
         if (!this->__int_54 && this->recharge_time <= 0) {
-            // TODO
+            //this->position = PLAYER_PTR->data.position;
+            this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(60, &this->position, 13);
+            this->__int_54 = 1;
+            this->__timer_20.reset();
+            SOUND_MANAGER.__play_sound_positioned(51, this->position.x);
+            this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
+            this->__dword_64 = 0;
         }
         return 0;
     }
@@ -11855,10 +13019,10 @@ struct CardSumireko : CardBase {
     dllexport gnu_noinline virtual int thiscall __on_tick_2() {
         switch (this->__int_54) {
             case 1:
-                this->effect_vm_id.set_controller_position(&this->__float3_58);
+                this->effect_vm_id.set_controller_position(&this->position);
                 this->__unknown_flag_A = true;
                 // TODO
-                if (this->__timer_20.current >= 120) {
+                if (this->__timer_20 >= 120) {
                     this->__int_54 = 0;
                     this->__timer_20.reset();
                     this->effect_vm_id.mark_tree_for_delete();
@@ -11866,9 +13030,8 @@ struct CardSumireko : CardBase {
                 break;
             case 0: 
                 this->__unknown_flag_A = false;
-                this->__sub_408BF0();
+                this->__dec_timer_34_during_gameplay();
                 break;
-            }
         }
         ++this->__timer_20;
         return 0;
@@ -11912,25 +13075,38 @@ struct CardTsukasa : CardBase {
         this->__unknown_flag_C = false;
         this->__unknown_flag_E = true;
         this->__unknown_flag_D = false;
+        this->__timer_34.reset();
     }
 
     // Method 8
     // 0x410E60
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (this->__timer_34.current <= 0) {
-            if (GAME_MANAGER.globals.current_power >= GAME_MANAGER.globals.__power_related_64 * 2) {
-                // TODO
+        if (this->__timer_34 <= 0) {
+            if (GAME_MANAGER.globals.current_power < GAME_MANAGER.globals.__power_related_64 * 2) {
+                SOUND_MANAGER.__play_sound(16);
                 return 0;
             }
-            SOUND_MANAGER.__play_sound(16);
+            BombBase* bomb_ptr = BOMB_PTR;
+            if (!bomb_ptr->bomb_active && !bomb_ptr->__dword_A0) {
+                bomb_ptr->bomb_active = TRUE;
+                bomb_ptr->__timer_34.reset();
+                // TODO
+                // SOUND_MANAGER.__play_sound_positioned(44, PLAYER_PTR->data.position.x);
+                bomb_ptr->activate();
+                UNKNOWN_COUNTER_A = 0;
+                // ENEMY_MANAGER_PTR->can_capture_spell = FALSE;
+                GAME_MANAGER.globals.__sub_457480(GAME_MANAGER.globals.__power_related_64);
+                // PLAYER_PTR->data.__sub_45D5E0();
+                this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
+            }
         }
         return 0;
     }
     // Method 2C
     // 0x410E10
     dllexport gnu_noinline virtual int thiscall __on_tick_2() {
-        this->__sub_408BF0();
-        if (this->__timer_34.current < this->recharge_time - 8) {
+        this->__dec_timer_34_during_gameplay();
+        if (this->__timer_34 < this->recharge_time - 8) {
             this->__unknown_flag_A = false;
         }
         return 0;
@@ -11956,33 +13132,37 @@ struct CardMegumu : CardBase {
         this->__unknown_flag_C = false;
         this->__unknown_flag_E = true;
         this->__unknown_flag_D = false;
+        this->__timer_34.reset();
     }
 
     // Method 8
     // 0x410BD0
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (this->__timer_34.current < 0) {
+        if (this->__timer_34 < 0) {
             if (GAME_MANAGER.globals.current_power >= GAME_MANAGER.globals.max_power) {
                 GAME_MANAGER.globals.add_bomb_fragment();
-                SOUND_MANAGER.__play_sound_positioned(13, PLAYER_PTR->data.position.x);
+                //SOUND_MANAGER.__play_sound_positioned(13, PLAYER_PTR->data.position.x);
             }
             else {
                 if (GAME_MANAGER.globals.__add_power(100)) {
+                    //PLAYER_PTR->data.__sub_45D5E0();
                     // TODO
-                    SOUND_MANAGER.__play_sound_positioned(13, PLAYER_PTR->data.position.x);
+                    //SOUND_MANAGER.__play_sound_positioned(13, PLAYER_PTR->data.position.x);
                 }
             }
-            // TODO
+            this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
+            //this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(66, &PLAYER_PTR->data.position, 13);
         }
         return 0;
     }
     // Method 2C
     // 0x410A90
     dllexport gnu_noinline virtual int thiscall __on_tick_2() {
-        this->__sub_408BF0();
-        if (this->__timer_34.current < this->recharge_time - 8) {
+        this->__dec_timer_34_during_gameplay();
+        if (this->__timer_34 < this->recharge_time - 8) {
             this->__unknown_flag_A = false;
         }
+        //this->effect_vm_id.set_controller_position(&PLAYER_PTR->data.position);
         // TODO
         return 0;
     }
@@ -12249,7 +13429,8 @@ struct AbilityManager : ZUNTask {
     int __array_58[0x100]; // 0x58
     int __array_458[0x100]; // 0x458
     int __array_858[0x100]; // 0x858
-    unknown_fields(0x8); // 0xC58
+    float __float_C58; // 0xC58
+    unknown_fields(0x4); // 0xC5C
     int __dword_C60; // 0xC60
     BOOL __created_ability_data; // 0xC64
     ZUNThread __thread_C68; // 0xC68
@@ -12401,6 +13582,13 @@ public:
         return ABILITY_MANAGER_PTR->equipped_cards_run_on_load_impl();
     }
 };
+
+static inline float ability_manager_get_float_C58() {
+    return ABILITY_MANAGER_PTR->__float_C58;
+}
+static inline AnmLoaded* ability_manager_get_ability_anm() {
+    return ABILITY_MANAGER_PTR->ability_anm;
+}
 
 static inline constexpr int32_t MENU_STACK_DEPTH = 16;
 
@@ -12882,7 +14070,7 @@ private:
                         case 2: case 3: case 4:
                             return 0;
                     }
-                    if (player->data.__timer_47154.current > 0) {
+                    if (player->data.__timer_47154 > 0) {
                         return 0;
                     }
 
@@ -12947,11 +14135,7 @@ struct UnknownS {
     // 0x20
 };
 
-typedef struct EnemyManager EnemyManager;
 extern "C" {
-    // 0x4CF2D0
-    extern EnemyManager* ENEMY_MANAGER_PTR asm("_ENEMY_MANAGER_PTR");
-
     // 0x5217D0
     extern Float3 UNKNOWN_FLOAT3_A asm("_UNKNOWN_FLOAT3_A");
     // 0x5217DC
@@ -12980,7 +14164,7 @@ struct EnemyManager : ZUNTask {
     int32_t next_enemy_id; // 0x90
     int32_t prev_enemy_id; // 0x94
     unknown_fields(0xCC); // 0x98
-    int __dword_164; // 0x164
+    int __int_164; // 0x164
     AnmLoaded* enemy_anms[8]; // 0x168
     EnemyController* enemy_controller; // 0x188
     ZUNLinkedList<Enemy>* enemy_list_head; // 0x18C
@@ -12989,6 +14173,12 @@ struct EnemyManager : ZUNTask {
     int32_t enemy_count; // 0x198
     unknown_fields(0x4); // 0x19C
     // 0x1A0
+
+    inline EnemyManager() {
+        EnemyController* enemy_controller = new EnemyController();
+        this->enemy_controller = enemy_controller;
+
+    }
 
     forceinline bool is_below_enemy_limit() {
         return this->enemy_count < this->enemy_limit;
@@ -13022,7 +14212,7 @@ struct EnemyManager : ZUNTask {
     dllexport static gnu_noinline int32_t count_killable_enemies() asm_symbol_rel(0x42D440) {
         if (auto* enemy_list = ENEMY_MANAGER_PTR->enemy_list_head) {
             return enemy_list->count_if_not([](Enemy* enemy) {
-                return enemy->data.disable_hurtbox || enemy->data.invincible || enemy->data.intangible || enemy->data.invulnerable_timer.current > 0;
+                return enemy->data.disable_hurtbox || enemy->data.invincible || enemy->data.intangible || enemy->data.invulnerable_timer > 0;
             });
         }
         return NULL;
@@ -13043,11 +14233,11 @@ struct EnemyManager : ZUNTask {
         ENEMY_MANAGER_PTR->__unknown_flag_A = value;
     }
 
-    static forceinline Enemy* get_enemy_by_id(int32_t enemy_id, EnemyManager* enemy_manager) {
+    forceinline Enemy* get_enemy_by_id_impl(int32_t enemy_id) {
         if (!enemy_id) {
             return NULL;
         } else {
-            if (auto* enemy_list = enemy_manager->enemy_list_head) {
+            if (auto* enemy_list = this->enemy_list_head) {
                 return enemy_list->find_if([=](Enemy* enemy) {
                     return enemy->id == enemy_id;
                 });
@@ -13058,13 +14248,13 @@ struct EnemyManager : ZUNTask {
 
     // 0x42D500
     dllexport gnu_noinline Enemy* get_enemy_by_id(int32_t enemy_id) asm_symbol_rel(0x42D500) {
-        return get_enemy_by_id(enemy_id, ENEMY_MANAGER_PTR);
+        return ENEMY_MANAGER_PTR->get_enemy_by_id_impl(enemy_id);
     }
 
     // 0x4237F0
     dllexport gnu_noinline Enemy* get_boss_by_index(int32_t index) asm_symbol_rel(0x4237F0) {
         EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
-        return get_enemy_by_id(enemy_manager->boss_ids[index], enemy_manager);
+        return enemy_manager->get_enemy_by_id_impl(enemy_manager->boss_ids[index]);
     }
 
     // 0x409990
@@ -13087,10 +14277,39 @@ struct EnemyManager : ZUNTask {
     // 0x438D40
     dllexport AnmLoaded* anm_file_lookup(int32_t file_index) asm_symbol_rel(0x438D40);
 
-    inline EnemyManager() {
-        EnemyController* enemy_controller = new EnemyController();
-        this->enemy_controller = enemy_controller;
-
+private:
+    inline EnemyID& __get_id_of_nearest_enemy_in_radius(EnemyID& out, Float2* position, float radius) {
+        Enemy* found = NULL;
+        float radius_squared = radius * radius;
+        if (auto* enemy_list = this->enemy_list_head) {
+            enemy_list->for_eachB([&](Enemy* enemy) {
+                if (!(
+                    enemy->data.disable_hurtbox | enemy->data.intangible |
+                    enemy->data.__basic_anm_update | enemy->data.homing_disable
+                )) {
+                    float distance_squared = position->distance_squared(&enemy->data.current_motion.position);
+                    if (distance_squared < radius_squared) {
+                        found = enemy;
+                        radius_squared = distance_squared;
+                    }
+                }
+            });
+            if (found) {
+                out = found->id;
+                return out;
+            }
+        }
+        out = 0;
+        return out;
+    }
+    // 0x438CB0
+    dllexport gnu_noinline static EnemyID& vectorcall __get_id_of_nearest_enemy_in_radius(int, int, EnemyID& out, Float2* position, float, float, float, float radius) {
+        return ENEMY_MANAGER_PTR->__get_id_of_nearest_enemy_in_radius(out, position, radius);
+    }
+public:
+    inline static EnemyID __get_id_of_nearest_enemy_in_radius(Float2* position, float radius) {
+        EnemyID temp;
+        return __get_id_of_nearest_enemy_in_radius(UNUSED_DWORD, UNUSED_DWORD, temp, position, UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT, radius);
     }
 };
 #pragma region // EnemyManager Validation
@@ -13107,7 +14326,7 @@ ValidateFieldOffset32(0x88, EnemyManager, flags);
 ValidateFieldOffset32(0x8C, EnemyManager, enemy_limit);
 ValidateFieldOffset32(0x90, EnemyManager, next_enemy_id);
 ValidateFieldOffset32(0x94, EnemyManager, prev_enemy_id);
-ValidateFieldOffset32(0x164, EnemyManager, __dword_164);
+ValidateFieldOffset32(0x164, EnemyManager, __int_164);
 ValidateFieldOffset32(0x168, EnemyManager, enemy_anms);
 ValidateFieldOffset32(0x188, EnemyManager, enemy_controller);
 ValidateFieldOffset32(0x18C, EnemyManager, enemy_list_head);
@@ -13116,6 +14335,15 @@ ValidateFieldOffset32(0x194, EnemyManager, __unknown_enemy_list);
 ValidateFieldOffset32(0x198, EnemyManager, enemy_count);
 ValidateStructSize32(0x1A0, EnemyManager);
 #pragma endregion
+
+// 0x42E0C0
+dllexport gnu_noinline Enemy* thiscall EnemyID::get_enemy_ptr() {
+    int32_t raw_id = this->raw;
+    if (!raw_id) {
+        return NULL;
+    }
+    return ENEMY_MANAGER_PTR->get_enemy_by_id_impl(raw_id);
+}
 
 static inline bool enemies_are_alive() {
     if (EnemyManager* enemy_manager = ENEMY_MANAGER_PTR) {
@@ -13962,7 +15190,7 @@ struct LaserLine : LaserData {
                     return 0;
                 }
                 if (result == 2) {
-                    if (!(this->graze_timer.current % 3)) {
+                    if (this->graze_timer.__is_multiple_of(3)) {
                         float C = this->angle;
                         float D;
                         float E;
@@ -15127,10 +16355,10 @@ dllexport gnu_noinline ZunResult thiscall EnemyData::on_tick() {
             }
         }
         this->drops.limited_timer++;
-        if (this->invulnerable_timer.current > 0) {
+        if (this->invulnerable_timer > 0) {
             this->invulnerable_timer--;
         }
-        if (this->no_hitbox_timer.current > 0) {
+        if (this->no_hitbox_timer > 0) {
             this->no_hitbox_timer--;
         }
         this->boss_timer++;
