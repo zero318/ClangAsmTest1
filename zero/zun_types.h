@@ -117,7 +117,7 @@ struct Float2 : Float1 {
 #pragma region // Float2 Operators
 
 #define Float2BinOp(op) \
-    zun_operator_inline Float2 operator op(const Float2& value) { \
+    zun_operator_inline Float2 operator op(const Float2& value) const { \
         return { \
             this->x op value.x, \
             this->y op value.y \
@@ -129,10 +129,16 @@ struct Float2 : Float1 {
     Float2BinOp(/);
 #undef Float2BinOp
 #define Float2BinOpScalar(op) \
-    zun_operator_inline Float2 operator op(float value) { \
+    zun_operator_inline Float2 operator op(float value) const { \
         return { \
             this->x op value, \
             this->y op value \
+        }; \
+    } \
+    friend zun_operator_inline Float2 operator op(float lhs, const Float2& rhs) { \
+        return { \
+            lhs op rhs.x, \
+            lhs op rhs.y \
         }; \
     }
     Float2BinOpScalar(+);
@@ -141,7 +147,7 @@ struct Float2 : Float1 {
     Float2BinOpScalar(/);
 #undef Float2BinOpScalar
 #define Float2UnOp(op) \
-    zun_operator_inline Float2 operator op() { \
+    zun_operator_inline Float2 operator op() const { \
         return { \
             op this->x, \
             op this->y \
@@ -214,14 +220,14 @@ struct Float3 : Float2 {
 #pragma region // Float3 Operators
 
 #define Float3BinOp(op) \
-    zun_operator_inline Float3 operator op(const Float3& value) { \
+    zun_operator_inline Float3 operator op(const Float3& value) const { \
         return { \
             this->x op value.x, \
             this->y op value.y, \
             this->z op value.z \
         }; \
     } \
-    zun_operator_inline Float3 operator op(const Float2& value) { \
+    zun_operator_inline Float3 operator op(const Float2& value) const { \
         return { \
             this->x op value.x, \
             this->y op value.y, \
@@ -234,11 +240,18 @@ struct Float3 : Float2 {
     Float3BinOp(/);
 #undef Float3BinOp
 #define Float3BinOpScalar(op) \
-    zun_operator_inline Float3 operator op(float value) { \
+    zun_operator_inline Float3 operator op(float value) const { \
         return { \
             this->x op value, \
             this->y op value, \
             this->z op value \
+        }; \
+    } \
+    friend zun_operator_inline Float3 operator op(float lhs, const Float3& rhs) { \
+        return { \
+            lhs op rhs.x, \
+            lhs op rhs.y, \
+            lhs op rhs.z \
         }; \
     }
     Float3BinOpScalar(+);
@@ -247,7 +260,7 @@ struct Float3 : Float2 {
     Float3BinOpScalar(/);
 #undef Float3BinOpScalar
 #define Float3UnOp(op) \
-    zun_operator_inline Float3 operator op() { \
+    zun_operator_inline Float3 operator op() const { \
         return { \
             op this->x, \
             op this->y, \

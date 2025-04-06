@@ -248,8 +248,8 @@ enum ZUNResult : int32_t {
     ZUN_ERROR2 = -2
 };
 
-#define ZUN_SUCCEEDED(result) (((ZunResult)(result)) >= ZUN_SUCCESS)
-#define ZUN_FAILED(result) (((ZunResult)(result)) < ZUN_SUCCESS)
+#define ZUN_SUCCEEDED(result) (((ZUNResult)(result)) >= ZUN_SUCCESS)
+#define ZUN_FAILED(result) (((ZUNResult)(result)) < ZUN_SUCCESS)
 
 // Packs the bytes [c1], [c2], [c3], and [c4] together as a 32 bit little endian unsigned integer
 static inline constexpr uint32_t PackUInt32(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0) {

@@ -22,7 +22,7 @@
 #include "../zero/custom_intrin.h"
 
 template <typename T>
-using ZUNLinkedList = ZUNLinkedListBase<T, true>;
+using ZUNList = ZUNListBase<T, true>;
 
 #define SetInstr(value) \
 current_instruction = (decltype(current_instruction))(value)
@@ -158,7 +158,7 @@ struct EclContext {
 	int32_t async_id;
 	union { // WTF even is this field, I can't tell.
 		EnemyFull* enemy_full;
-		ZUNLinkedList<EclContext>* parent;
+		ZUNList<EclContext>* parent;
 	};
 	unknown_fields(0x4);
 	uint8_t current_difficulty_mask;

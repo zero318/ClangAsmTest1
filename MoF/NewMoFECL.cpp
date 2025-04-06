@@ -9,7 +9,7 @@
 #include "../zero/util.h"
 
 template <typename T>
-using ZUNLinkedList = ZUNLinkedListBase<T, true>;
+using ZUNList = ZUNListBase<T, true>;
 
 #include <math.h>
 
@@ -721,7 +721,7 @@ struct EclContext {
 	union { // WTF even is this field, I can't tell.
 		EnemyFull* parent_enemy;
 		EclContext* parent;
-		ZUNLinkedList<EclContext>* parent_list;
+		ZUNList<EclContext>* parent_list;
 	};
 	int __async_dword_1018; // 0x1018
 	union {
@@ -953,7 +953,7 @@ struct EnemyBase {
 	// void* vtable; // 0x0
 	EclContext* current_context_ptr; // 0x4
 	EclContext current_context; // 0x8
-	ZUNLinkedList<EclContext> context_list; // 0x1030
+	ZUNList<EclContext> context_list; // 0x1030
 };
 
 // size: 0x2C
@@ -1075,7 +1075,7 @@ struct EnemyFull : EnemyBase {
 	// void* vtable; // 0x0
 	// EclContext* current_context_ptr; // 0x4
 	// EclContext current_context; // 0x8
-	// ZUNLinkedList<EclContext> context_list; // 0x1030
+	// ZUNList<EclContext> context_list; // 0x1030
 
 	Enemy enemy_inner;
 
@@ -1100,13 +1100,13 @@ struct EnemyFull : EnemyBase {
 			new_context->stack.top_offset = 0;
 			new_context->stack.locals_offset = 0;
 		}
-		ZUNLinkedList<EclContext>* new_context_link = (ZUNLinkedList<EclContext>*)malloc(sizeof(ZUNLinkedList<EclContext>));
+		ZUNList<EclContext>* new_context_link = (ZUNList<EclContext>*)malloc(sizeof(ZUNList<EclContext>));
 		new_context->async_id = async_id;
 		new_context->parent_enemy = this;
 		new_context->time = 0.0f;
 		new_context->current_instr = NULL;
 		new_context->current_difficulty_mask = this->current_context_ptr->current_difficulty_mask;
-		ZUNLinkedList<EclContext>* context_list_head = &this->context_list;
+		ZUNList<EclContext>* context_list_head = &this->context_list;
 		new_context_link->data = new_context;
 		new_context_link->next = NULL;
 		new_context_link->prev = NULL;
@@ -1119,8 +1119,8 @@ struct EnemyFull : EnemyBase {
 		new_context_link->data->call(this->current_context_ptr, index);
 	}
 
-	ZUNLinkedList<EclContext>* get_async_node_by_id(int32_t ID) {
-		ZUNLinkedList<EclContext>* current_node = &this->context_list;
+	ZUNList<EclContext>* get_async_node_by_id(int32_t ID) {
+		ZUNList<EclContext>* current_node = &this->context_list;
 		while (current_node) {
 			if (current_node->data->async_id == ID) {
 				break;
@@ -1131,9 +1131,9 @@ struct EnemyFull : EnemyBase {
 	}
 
 	void kill_all_asyncs() {
-		ZUNLinkedList<EclContext>* current_node = this->context_list.next;
+		ZUNList<EclContext>* current_node = this->context_list.next;
 		while (current_node) {
-			ZUNLinkedList<EclContext>* next_node = current_node->next;
+			ZUNList<EclContext>* next_node = current_node->next;
 			current_node->data->current_instr = NULL;
 			current_node = next_node;
 		}
@@ -1178,22 +1178,22 @@ dllexport gnu_noinline int32_t thiscall EclContext::LowECL_Run(float current_gam
 				break;
 			}
 			case 17: // kill_async
-				if (ZUNLinkedList<EclContext>* async_node = this->parent_enemy->get_async_node_by_id(this->get_int_arg(0))) {
+				if (ZUNList<EclContext>* async_node = this->parent_enemy->get_async_node_by_id(this->get_int_arg(0))) {
 					async_node->data->current_instr = NULL;
 				}
 				break;
 			case 18: // __async_unknown_flag_set
-				if (ZUNLinkedList<EclContext>* async_node = this->parent_enemy->get_async_node_by_id(this->get_int_arg(0))) {
+				if (ZUNList<EclContext>* async_node = this->parent_enemy->get_async_node_by_id(this->get_int_arg(0))) {
 					async_node->data->__async_flag_A = true;
 				}
 				break;
 			case 19: // __async_unknown_flag_clear
-				if (ZUNLinkedList<EclContext>* async_node = this->parent_enemy->get_async_node_by_id(this->get_int_arg(0))) {
+				if (ZUNList<EclContext>* async_node = this->parent_enemy->get_async_node_by_id(this->get_int_arg(0))) {
 					async_node->data->__async_flag_A = false;
 				}
 				break;
 			case 20: // __async_unknown_value
-				if (ZUNLinkedList<EclContext>* async_node = this->parent_enemy->get_async_node_by_id(this->get_int_arg(0))) {
+				if (ZUNList<EclContext>* async_node = this->parent_enemy->get_async_node_by_id(this->get_int_arg(0))) {
 					async_node->data->__async_dword_1018 = this->get_int_arg(1);
 				}
 				break;

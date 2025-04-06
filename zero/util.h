@@ -905,18 +905,18 @@ struct ZUNEmbeddedList2 {
 #define ZUNListNCast(ptr) (ptr)
 
 template <typename T, bool has_idk>
-struct ZUNLinkedListBase;
+struct ZUNListBase;
 
 template <typename T, bool has_idk>
-struct ZUNLinkedListData {
-    using N = ZUNLinkedListBase<T, false>;
+struct ZUNListData {
+    using N = ZUNListBase<T, false>;
     T* data;
     N* next;
     N* prev;
 };
 template <typename T>
-struct ZUNLinkedListData<T, true> {
-    using N = ZUNLinkedListBase<T, true>;
+struct ZUNListData<T, true> {
+    using N = ZUNListBase<T, true>;
     T* data;
     N* next;
     N* prev;
@@ -924,8 +924,8 @@ struct ZUNLinkedListData<T, true> {
 };
 
 template <typename T, bool has_idk ZUNListIdkDefaultValue>
-struct ZUNLinkedListBase : ZUNLinkedListData<T, has_idk> {
-    using N = ZUNLinkedListBase;
+struct ZUNListBase : ZUNListData<T, has_idk> {
+    using N = ZUNListBase;
 
     inline void initialize_with(T* data) requires (!has_idk) {
         this->data = data;
@@ -943,8 +943,8 @@ struct ZUNLinkedListBase : ZUNLinkedListData<T, has_idk> {
 #define ZUNListNCast(ptr) ((N*)ptr)
 
 template <typename T, bool has_idk ZUNListIdkDefaultValue, bool link_type = has_idk>
-struct ZUNLinkedListBase {
-    using N = ZUNLinkedListBase<T, link_type, link_type>;
+struct ZUNListBase {
+    using N = ZUNListBase<T, link_type, link_type>;
     T* data;
     N* next;
     N* prev;
@@ -1031,13 +1031,27 @@ protected:
         }
     }
     template <typename L>
-    static inline void for_each_impl(const L& lambda, N* node) {
+    static inline void for_each_node_impl(const L& lambda, N* node) {
         for (; node; node = node->next) {
-            lambda(node->data);
+            lambda(node);
         }
     }
     template <typename L>
-    static inline void for_eachB_impl(const L& lambda, N* node) {
+    static inline void for_each_node_safe_impl(const L& lambda, N* node) {
+        for (N* next_node; node; node = next_node) {
+            next_node = node->next;
+            lambda(node);
+        }
+    }
+    template <typename L>
+    static inline void for_each_impl(const L& lambda, N* node) {
+        for (; node; node = node->next) {
+            T* data = node->data;
+            lambda(data);
+        }
+    }
+    template <typename L>
+    static inline void for_each_safe_impl(const L& lambda, N* node) {
         for (N* next_node; node; node = next_node) {
             next_node = node->next;
             T* data = node->data;
@@ -1049,14 +1063,27 @@ protected:
         }
     }
     template <typename L>
+    static inline void for_each_safeB_impl(const L& lambda, N* node) {
+        for (N* next_node; node; node = next_node) {
+            T* data = node->data;
+            next_node = node->next;
+            if constexpr (std::is_invocable_v<L, T*, N*>) {
+                lambda(data, node);
+            } else {
+                lambda(data);
+            }
+        }
+    }
+    template <typename L>
     static inline bool do_while_impl(const L& lambda, N* node) {
         for (; node; node = node->next) {
-            if (!lambda(node->data)) return false;
+            T* data = node->data;
+            if (!lambda(data)) return false;
         }
         return true;
     }
     template <typename L>
-    static inline bool do_whileB_impl(const L& lambda, N* node) {
+    static inline bool do_while_safe_impl(const L& lambda, N* node) {
         for (N* next_node; node; node = next_node) {
             next_node = node->next;
             T* data = node->data;
@@ -1069,39 +1096,66 @@ protected:
         return true;
     }
     template <typename L>
+    static inline bool do_while_safeB_impl(const L& lambda, N* node) {
+        for (N* next_node; node; node = next_node) {
+            T* data = node->data;
+            next_node = node->next;
+            if constexpr (std::is_invocable_v<L, T*, N*>) {
+                if (!lambda(data, node)) return false;
+            } else {
+                if (!lambda(data)) return false;
+            }
+        }
+        return true;
+    }
+    template <typename L>
     static inline T* find_if_impl(const L& lambda, N* node) {
         for (; node; node = node->next) {
-            if (T* data = node->data; lambda(data)) return data;
+            T* data = node->data;
+            if (lambda(data)) return data;
         }
         return NULL;
     }
     template <typename L>
     static inline T* find_if_not_impl(const L& lambda, N* node) {
         for (; node; node = node->next) {
-            if (T* data = node->data; !lambda(data)) return data;
+            T* data = node->data;
+            if (!lambda(data)) return data;
         }
         return NULL;
     }
     template <typename L>
     static inline N* find_node_if_impl(const L& lambda, N* node) {
         for (; node; node = node->next) {
-            if (T* data = node->data; lambda(data)) break;
+            T* data = node->data;
+            if (lambda(data)) break;
         }
         return node;
     }
     template <typename L>
     static inline N* find_node_before_impl(const L& lambda, N* node) {
         for (N* next_node; (next_node = node->next); node = next_node) {
-            if (T* data = next_node->data; lambda(data)) break;
+            T* data = next_node->data;
+            if (lambda(data)) break;
         }
         return node;
     }
     template <typename L>
     static inline int32_t count_if_impl(const L& lambda, N* node) {
         int32_t ret = 0;
+        for (; node; node = node->next) {
+            T* data = node->data;
+            if (lambda(data)) ++ret;
+        }
+        return ret;
+    }
+    template <typename L>
+    static inline int32_t count_if_safe_impl(const L& lambda, N* node) {
+        int32_t ret = 0;
         for (N* next_node; node; node = next_node) {
             next_node = node->next;
-            if (T* data = node->data; lambda(data)) ++ret;
+            T* data = node->data;
+            if (lambda(data)) ++ret;
         }
         return ret;
     }
@@ -1110,15 +1164,8 @@ protected:
         int32_t ret = 0;
         for (N* next_node; node; node = next_node) {
             next_node = node->next;
-            if (T* data = node->data; !lambda(data)) ++ret;
-        }
-        return ret;
-    }
-    template <typename L>
-    static inline int32_t count_ifB_impl(const L& lambda, N* node) {
-        int32_t ret = 0;
-        for (; node; node = node->next) {
-            if (T* data = node->data; lambda(data)) ++ret;
+            T* data = node->data;
+            if (!lambda(data)) ++ret;
         }
         return ret;
     }
@@ -1127,20 +1174,36 @@ public:
         return delete_each_impl((N*)this);
     }
     template <typename L>
+    inline void for_each_node(const L& lambda) {
+        return for_each_node_impl(lambda, (N*)this);
+    }
+    template <typename L>
+    inline void for_each_node_safe(const L& lambda) {
+        return for_each_node_safe_impl(lambda, (N*)this);
+    }
+    template <typename L>
     inline void for_each(const L& lambda) {
         return for_each_impl(lambda, (N*)this);
     }
     template <typename L>
-    inline void for_eachB(const L& lambda) {
-        return for_eachB_impl(lambda, (N*)this);
+    inline void for_each_safe(const L& lambda) {
+        return for_each_safe_impl(lambda, (N*)this);
+    }
+    template <typename L>
+    inline void for_each_safeB(const L& lambda) {
+        return for_each_safeB_impl(lambda, (N*)this);
     }
     template <typename L>
     inline bool do_while(const L& lambda) {
         return do_while_impl(lambda, (N*)this);
     }
     template <typename L>
-    inline bool do_whileB(const L& lambda) {
-        return do_whileB_impl(lambda, (N*)this);
+    inline bool do_while_safe(const L& lambda) {
+        return do_while_safe_impl(lambda, (N*)this);
+    }
+    template <typename L>
+    inline bool do_while_safeB(const L& lambda) {
+        return do_while_safeB_impl(lambda, (N*)this);
     }
     template <typename L>
     inline T* find_if(const L& lambda) {
@@ -1163,19 +1226,19 @@ public:
         return count_if_impl(lambda, (N*)this);
     }
     template <typename L>
-    inline int32_t count_if_not(const L& lambda) {
-        return count_if_not_impl(lambda, (N*)this);
+    inline int32_t count_if_safe(const L& lambda) {
+        return count_if_safe_impl(lambda, (N*)this);
     }
     template <typename L>
-    inline int32_t count_ifB(const L& lambda) {
-        return count_ifB_impl(lambda, (N*)this);
+    inline int32_t count_if_not(const L& lambda) {
+        return count_if_not_impl(lambda, (N*)this);
     }
 };
 
 #ifdef ZUNListPlayNiceWithIntellisense
 template <typename T>
-struct ZUNLinkedListBase<T, true, true> : ZUNLinkedListBase<T, false, true> {
-    using N = ZUNLinkedListBase<T, true, true>;
+struct ZUNListBase<T, true, true> : ZUNListBase<T, false, true> {
+    using N = ZUNListBase<T, true, true>;
     N* idk;
 
     inline void initialize_with(T* data) {
@@ -1198,27 +1261,43 @@ struct ZUNLinkedListBase<T, true, true> : ZUNLinkedListBase<T, false, true> {
 #endif
 
 template <typename T, bool has_idk ZUNListIdkDefaultValue>
-struct ZUNLinkedListHeadDummyBase : ZUNLinkedListBase<T, has_idk> {
-    using N = ZUNLinkedListBase<T, has_idk>;
+struct ZUNListHeadDummyBase : ZUNListBase<T, has_idk> {
+    using N = ZUNListBase<T, has_idk>;
 
     inline void delete_each() {
         return delete_each_impl(this->next);
+    }
+    template <typename L>
+    inline void for_each_node(const L& lambda) {
+        return for_each_node_impl(lambda, this->next);
+    }
+    template <typename L>
+    inline void for_each_node_safe(const L& lambda) {
+        return for_each_node_safe_impl(lambda, this->next);
     }
     template <typename L>
     inline void for_each(const L& lambda) {
         return for_each_impl(lambda, this->next);
     }
     template <typename L>
-    inline void for_eachB(const L& lambda) {
-        return for_eachB_impl(lambda, this->next);
+    inline void for_each_safe(const L& lambda) {
+        return for_each_impl(lambda, this->next);
+    }
+    template <typename L>
+    inline void for_each_safeB(const L& lambda) {
+        return for_each_safeB_impl(lambda, this->next);
     }
     template <typename L>
     inline bool do_while(const L& lambda) {
         return do_while_impl(lambda, this->next);
     }
     template <typename L>
-    inline bool do_whileB(const L& lambda) {
-        return do_whileB_impl(lambda, this->next);
+    inline bool do_while_safe(const L& lambda) {
+        return do_while_safe_impl(lambda, this->next);
+    }
+    template <typename L>
+    inline bool do_while_safeB(const L& lambda) {
+        return do_while_safeB_impl(lambda, this->next);
     }
     template <typename L>
     inline T* find_if(const L& lambda) {
@@ -1241,20 +1320,20 @@ struct ZUNLinkedListHeadDummyBase : ZUNLinkedListBase<T, has_idk> {
         return count_if_impl(lambda, this->next);
     }
     template <typename L>
-    inline int32_t count_if_not(const L& lambda) {
-        return count_if_not_impl(lambda, this->next);
+    inline int32_t count_if_safe(const L& lambda) {
+        return count_if_safe_impl(lambda, this->next);
     }
     template <typename L>
-    inline int32_t count_ifB(const L& lambda) {
-        return count_ifB_impl(lambda, this->next);
+    inline int32_t count_if_not(const L& lambda) {
+        return count_if_not_impl(lambda, this->next);
     }
 };
 
 #ifdef ZUNListIdkDefault
 template <typename T>
-using ZUNLinkedList = ZUNLinkedListBase<T, ZUNListIdkDefault>;
+using ZUNList = ZUNListBase<T, ZUNListIdkDefault>;
 template <typename T>
-using ZUNLinkedListHeadDummy = ZUNLinkedListHeadDummyBase<T, ZUNListIdkDefault>;
+using ZUNListHeadDummy = ZUNListHeadDummyBase<T, ZUNListIdkDefault>;
 #endif
 
 union ZUNMagic {

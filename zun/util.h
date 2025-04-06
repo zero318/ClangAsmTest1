@@ -75,14 +75,14 @@
 #error "GAME_VERSION not set"
 #endif
 
-enum ZunResult : int32_t {
+enum ZUNResult : int32_t {
     ZUN_SUCCESS = 0,
     ZUN_ERROR = -1,
     ZUN_ERROR2 = -2
 };
 
-#define ZUN_SUCCEEDED(result) (((ZunResult)(result)) == ZUN_SUCCESS)
-#define ZUN_FAILED(result) (((ZunResult)(result)) != ZUN_SUCCESS)
+#define ZUN_SUCCEEDED(result) (((ZUNResult)(result)) == ZUN_SUCCESS)
+#define ZUN_FAILED(result) (((ZUNResult)(result)) != ZUN_SUCCESS)
 
 // ZUN probably wrote this himself to go with the other "SAFE" macros...
 #ifndef SAFE_FREE

@@ -33,9 +33,9 @@
 #include "../zero/util.h"
 
 template <typename T>
-using ZUNList = ZUNLinkedListBase<T, true>;
+using ZUNList = ZUNListBase<T, true>;
 template <typename T>
-using ZUNListHeadDummy = ZUNLinkedListHeadDummyBase<T, true>;
+using ZUNListHeadDummy = ZUNListHeadDummyBase<T, true>;
 
 #define GAME_VERSION UDoALG_VER
 

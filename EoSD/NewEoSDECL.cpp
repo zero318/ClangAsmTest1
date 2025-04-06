@@ -1242,7 +1242,7 @@ struct AnmManager {
     // 0x2112C
 
     // 0x432730
-    dllexport gnu_noinline ZunResult thiscall __sub_432730(AnmVM* VM, bool round_inputs) asm_symbol_rel(0x432730) {
+    dllexport gnu_noinline ZUNResult thiscall __sub_432730(AnmVM* VM, bool round_inputs) asm_symbol_rel(0x432730) {
         if (round_inputs) {
             long double A = CRT::rint_asm(SPRITE_VERTEX_BUFFER_B[0].position.x) - 0.5f;
             long double B = CRT::rint_asm(SPRITE_VERTEX_BUFFER_B[1].position.x) - 0.5f;
@@ -1314,7 +1314,7 @@ struct AnmManager {
     }
 
     // 0x432AD0
-    dllexport gnu_noinline ZunResult __draw_vm_1(AnmVM* vm) asm_symbol_rel(0x432AD0) {
+    dllexport gnu_noinline ZUNResult __draw_vm_1(AnmVM* vm) asm_symbol_rel(0x432AD0) {
         if (!vm->visible) {
             return ZUN_ERROR;
         }
@@ -1384,7 +1384,7 @@ struct AnmManager {
     dllexport void thiscall set_vm_script(AnmVM* vm, AnmInstruction* script_start) asm_symbol_rel(codecave:ANM_MANAGER_set_vm_script);
 
     // 0x4323A0
-    dllexport gnu_noinline ZunResult thiscall set_vm_sprite(AnmVM* vm, int32_t sprite_number) asm_symbol_rel(codecave:ANM_MANAGER_set_vm_sprite) {
+    dllexport gnu_noinline ZUNResult thiscall set_vm_sprite(AnmVM* vm, int32_t sprite_number) asm_symbol_rel(codecave:ANM_MANAGER_set_vm_sprite) {
         if (this->sprites[sprite_number].source_file_index < 0) {
             return ZUN_ERROR;
         }
@@ -1434,13 +1434,13 @@ struct AnmManager {
     }
 
     // 0x431DC0
-    dllexport gnu_noinline ZunResult thiscall load_anm_file(int32_t file_index, char *restrict filename, int32_t starting_sprite_index) asm_symbol_rel(0x431DC0) {
+    dllexport gnu_noinline ZUNResult thiscall load_anm_file(int32_t file_index, char *restrict filename, int32_t starting_sprite_index) asm_symbol_rel(0x431DC0) {
         gnu_used static volatile auto tempA = this;
         gnu_used static volatile auto tempB = file_index;
         gnu_used static volatile auto tempC = filename;
         gnu_used static volatile auto tempD = starting_sprite_index;
         assume_all_registers_volatile();
-        return (ZunResult)file_index;
+        return (ZUNResult)file_index;
     }
 
     // 0x434AF0
@@ -4828,7 +4828,7 @@ struct BulletManager {
 
 
     // 0x416D60
-    dllexport static gnu_noinline ZunResult cdecl bullet_manager_on_registration(BulletManager* self) asm_symbol_rel(codecave:BULLET_MANAGER_on_registration) {
+    dllexport static gnu_noinline ZUNResult cdecl bullet_manager_on_registration(BulletManager* self) asm_symbol_rel(codecave:BULLET_MANAGER_on_registration) {
         if ((bool)(SUPERVISOR.__dword_18C != 3)) {
             if (ZUN_FAILED(ANM_MANAGER_PTR->load_anm_file(6, "data/etama3.anm", etama3_scripts_base_index))) {
                 return ZUN_ERROR;
