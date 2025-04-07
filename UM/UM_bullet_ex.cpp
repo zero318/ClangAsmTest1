@@ -1962,12 +1962,18 @@ ValidateStructSize32(0x8, Rng);
 extern "C" {
     // 0x4CF280
     extern Rng RNG asm("_RNG");
-}
-
-extern "C" {
     // 0x4CF288
     extern Rng REPLAY_RNG asm("_REPLAY_RNG");
 }
+
+enum Difficulty {
+    EASY = 0,
+    NORMAL = 1,
+    HARD = 2,
+    LUNATIC = 3,
+    EXTRA = 4,
+    OVERDRIVE = 5
+};
 
 typedef struct Float3 Float3;
 typedef struct Enemy Enemy;
@@ -2347,6 +2353,7 @@ static inline constexpr uint32_t BUTTON_DOWN_INDEX = 5;
 static inline constexpr uint32_t BUTTON_LEFT_INDEX = 6;
 static inline constexpr uint32_t BUTTON_RIGHT_INDEX = 7;
 static inline constexpr uint32_t BUTTON_PAUSE_INDEX = 8;
+static inline constexpr uint32_t BUTTON_SKIP_INDEX = 9;
 static inline constexpr uint32_t BUTTON_USE_CARD_INDEX = 10;
 static inline constexpr uint32_t BUTTON_SWITCH_CARD_INDEX = 11;
 static inline constexpr uint32_t BUTTON_SCREENSHOT_INDEX = 18;
@@ -3128,24 +3135,44 @@ dllexport gnu_noinline FpsCounter* stdcall FpsCounter::destroy() {
 
 static inline constexpr size_t msg_variant_count = 4;
 
+// size: 0x28
+struct StageDataInner {
+    int32_t __spell_anm_indexA; // 0x0 (0x34)
+    int32_t __spell_anm_scriptA; // 0x4 (0x38)
+    int32_t __spell_flag_state; // 0x8 (0x3C)
+    int32_t __spell_anm_indexB; // 0xC (0x40)
+    int32_t __spell_anm_scriptB; // 0x10 (0x44)
+    int32_t __intro_anm_index; // 0x14 (0x48)
+    int32_t __intro_anm_script; // 0x18 (0x4C)
+    int32_t __portrait_anm_file_index; // 0x1C (0x50)
+    int32_t __portrait_anm_script; // 0x20 (0x54)
+    unknown_fields(0x4); // 0x24
+    // 0x28
+};
+
 // size: 0xD4
 struct StageData {
     int32_t stage_number; // 0x0
     const char* std_filename; // 0x4
     const char* ecl_filename; // 0x8
-    const char* __str_C; // 0xC
-    const char* __str_10; // 0x10
+    const char* __string_array_C[2]; // 0xC
     const char* msg_filenames[msg_variant_count]; // 0x14
     const char* logo_anm_filename; // 0x24
+    unknown_fields(0x4); // 0x28
+    int32_t music_index; // 0x2C
+    unknown_fields(0x4); // 0x30
+    StageDataInner innner[1]; // 0x34 this may actually be shifted up by 1 dword
 
+    int32_t __anm_file_index_78; // 0x78
+    int32_t __anm_script_7C; // 0x7C
+    int32_t __anm_script_80; // 0x80
+    // 0x84
 };
 
 extern "C" {
     // 0x4CF428
     extern StageData* STAGE_DATA_PTR asm("_STAGE_DATA_PTR");
 }
-
-
 
 typedef struct AnmManager AnmManager;
 
@@ -3198,6 +3225,9 @@ union AnmID {
 
     // 0x4892F0
     dllexport void thiscall set_color1(D3DCOLOR color) asm_symbol_rel(0x4892F0);
+
+    // 0x489230
+    dllexport gnu_noinline AnmVM* thiscall __wtf_child_list_jank_A(int32_t script, uint32_t arg2) asm_symbol_rel(0x489230);
 
     inline constexpr operator uint32_t() const {
         return this->full;
@@ -3258,7 +3288,7 @@ struct Supervisor {
     BOOL disable_vsync; // 0x820
     int __dword_824; // 0x824
     int __dword_828; // 0x828
-    AnmLoaded* text_anm_loaded_ptr; // 0x82C
+    AnmLoaded* text_anm; // 0x82C
     unknown_fields(0x4); // 0x830
     union {
         uint32_t flags; // 0x834
@@ -3295,17 +3325,17 @@ struct Supervisor {
     // 0xB60
 
     // 0x453460
-    dllexport static gnu_noinline UpdateFuncRet fastcall __INPUT_STATESn_tick_A(void* self) asm_symbol_rel(0x453460) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall __unknown_on_tick_A(void* self) asm_symbol_rel(0x453460) {
 
     }
 
     // 0x4553B0
-    dllexport static gnu_noinline UpdateFuncRet fastcall __INPUT_STATESn_draw_A(void* self) asm_symbol_rel(0x4553B0) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall __unknown_on_draw_A(void* self) asm_symbol_rel(0x4553B0) {
 
     }
 
     // 0x455610
-    dllexport static gnu_noinline UpdateFuncRet fastcall __INPUT_STATESn_draw_B(void* self) asm_symbol_rel(0x455610) {
+    dllexport static gnu_noinline UpdateFuncRet fastcall __unknown_on_draw_B(void* self) asm_symbol_rel(0x455610) {
 
     }
 
@@ -3411,7 +3441,7 @@ ValidateFieldOffset32(0x818, Supervisor, __dword_818);
 ValidateFieldOffset32(0x820, Supervisor, disable_vsync);
 ValidateFieldOffset32(0x824, Supervisor, __dword_824);
 ValidateFieldOffset32(0x828, Supervisor, __dword_828);
-ValidateFieldOffset32(0x82C, Supervisor, text_anm_loaded_ptr);
+ValidateFieldOffset32(0x82C, Supervisor, text_anm);
 ValidateFieldOffset32(0x834, Supervisor, flags);
 ValidateFieldOffset32(0x838, Supervisor, initial_rng_seed);
 ValidateFieldOffset32(0x840, Supervisor, d3dcaps);
@@ -3440,10 +3470,10 @@ dllexport gnu_noinline void Supervisor::initialize() {
     SUPERVISOR.gamemode_current = -2;
     SUPERVISOR.gamemode_switch = 0;
     SUPERVISOR.__dword_800 = 0;
-    UpdateFunc* update_func = new UpdateFunc(&Supervisor::__INPUT_STATESn_tick_A, true, &SUPERVISOR);
+    UpdateFunc* update_func = new UpdateFunc(&Supervisor::__unknown_on_tick_A, true, &SUPERVISOR);
     update_func->on_init_func = &Supervisor::on_registration;
     if (!UpdateFuncRegistry::register_on_tick(update_func, 1)) {
-        UpdateFuncRegistry::register_on_draw(new UpdateFunc(&Supervisor::__INPUT_STATESn_draw_A, true, &SUPERVISOR), 1);
+        UpdateFuncRegistry::register_on_draw(new UpdateFunc(&Supervisor::__unknown_on_draw_A, true, &SUPERVISOR), 1);
     }
 }
 
@@ -3539,6 +3569,11 @@ static inline constexpr size_t CHARACTER_COUNT = 4;
 static inline constexpr size_t SHOTTYPES_PER_CHARACTER = 1;
 static inline constexpr size_t SHOTTYPE_COUNT = CHARACTER_COUNT * SHOTTYPES_PER_CHARACTER;
 static inline constexpr size_t DIFFICULTY_COUNT = 6;
+
+static inline constexpr int32_t RANK_BOUND = 1024;
+static inline constexpr int32_t MAX_RANK = +RANK_BOUND; // 1024
+static inline constexpr int32_t MIN_RANK = -RANK_BOUND; // -1024
+static inline constexpr int32_t RANK_RANGE = RANK_BOUND * 2; // 2048
 
 static inline void __update_bomb_ui();
 
@@ -3693,6 +3728,12 @@ struct Globals {
         return this->rank;
     }
 
+    template <typename T>
+    inline T rank_lerp(const T& min_val, const T& max_val) {
+        int32_t rank = this->get_rank();
+        return min_val + ((rank + (T)RANK_BOUND) * (max_val - min_val)) / (T)RANK_RANGE;
+    }
+
     // 0x439EB0
     dllexport gnu_noinline void thiscall __add_to_int_90(int32_t value) asm_symbol_rel(0x439EB0) {
         this->__int_90 += value;
@@ -3718,7 +3759,7 @@ private:
             }
         }
         else {
-            //SOUND_MANAGER.__play_sound(46);
+            //SOUND_MANAGER.play_sound(46);
         }
         __update_bomb_ui();
     }
@@ -5807,7 +5848,7 @@ struct BulletEffectArgs {
     int32_t int_values[4]; // 0x10
     BulletEffectType type; // 0x20
     int32_t async; // 0x24
-    char* string; // 0x28
+    const char* string; // 0x28
     // 0x2C
 };
 #pragma region // BulletEffectArgs Validation
@@ -5819,6 +5860,8 @@ ValidateFieldOffset32(0x28, BulletEffectArgs, string);
 ValidateStructSize32(0x2C, BulletEffectArgs);
 #pragma endregion
 
+static inline constexpr int32_t BULLET_EFFECT_MAX = 24;
+
 // size: 0x488
 struct ShooterData {
     int32_t type; // 0x0
@@ -5829,13 +5872,14 @@ struct ShooterData {
     float speed1; // 0x1C
     float speed2; // 0x20
     float distance; // 0x24
-    BulletEffectArgs effects[24]; // 0x28
-    unknown_fields(0x10); // 0x448
+    BulletEffectArgs effects[BULLET_EFFECT_MAX]; // 0x28
+    float width; // 0x448
+    unknown_fields(0xC); // 0x44C
     int32_t start_time; // 0x458
     int32_t __transform_A; // 0x45C
     int32_t duration; // 0x460
     int32_t __transform_B; // 0x464
-    int32_t stop_time; // 0x468
+    int32_t __laser_flags; // 0x468
     int16_t count1; // 0x46C
     int16_t count2; // 0x46E
     int32_t aim_mode; // 0x470
@@ -5873,11 +5917,12 @@ ValidateFieldOffset32(0x1C, ShooterData, speed1);
 ValidateFieldOffset32(0x20, ShooterData, speed2);
 ValidateFieldOffset32(0x24, ShooterData, distance);
 ValidateFieldOffset32(0x28, ShooterData, effects);
+ValidateFieldOffset32(0x448, ShooterData, width);
 ValidateFieldOffset32(0x458, ShooterData, start_time);
 ValidateFieldOffset32(0x45C, ShooterData, __transform_A);
 ValidateFieldOffset32(0x460, ShooterData, duration);
 ValidateFieldOffset32(0x464, ShooterData, __transform_B);
-ValidateFieldOffset32(0x468, ShooterData, stop_time);
+ValidateFieldOffset32(0x468, ShooterData, __laser_flags);
 ValidateFieldOffset32(0x46C, ShooterData, count1);
 ValidateFieldOffset32(0x46E, ShooterData, count2);
 ValidateFieldOffset32(0x470, ShooterData, aim_mode);
@@ -5909,13 +5954,13 @@ union EnemyID {
 struct EnemyCallback {
     int32_t life; // 0x0
     int32_t time; // 0x4
-    EclSubName __sub_A; // 0x8
-    EclSubName __sub_B; // 0x48
+    EclSubName life_sub; // 0x8
+    EclSubName time_sub; // 0x48
 
     inline void initialize() {
         this->life = -1;
         this->time = -1;
-        this->__sub_A.name[0] = '\0';
+        this->life_sub.name[0] = '\0';
     }
 };
 
@@ -6080,7 +6125,7 @@ struct BombReimuA : BombBase {
     // 0x421420
     dllexport gnu_noinline virtual int thiscall activate() {
         // TODO
-        //SOUND_MANAGER.__play_sound(49);
+        //SOUND_MANAGER.play_sound(49);
         // TODO
         //++ENEMY_MANAGER_PTR->player_bomb_count;
         SAFE_FREE(this->__ptr_70);
@@ -6285,7 +6330,7 @@ struct EnemyData {
         }
 
         // 0x42CFB0
-        dllexport gnu_noinline void set_spell(bool value) asm_symbol_rel(0x42CFB0) {
+        dllexport gnu_noinline void set_spell(int32_t value) asm_symbol_rel(0x42CFB0) {
             this->is_spell = value;
         }
 
@@ -6431,6 +6476,10 @@ struct EnemyData {
     int32_t chapter; // 0x55F8, 0x6824
     int32_t chapter_spawn_weight; // 0x55FC, 0x6828
     // 0x5600, 0x682C
+
+    inline Enemy* enemy() {
+        return (Enemy*)this->vm;
+    }
 
     inline EnemyData() {
         zero_this();
@@ -6592,6 +6641,7 @@ public:
         if (this->delete_as_bullet) {
             // more BS
         }
+        // TODO
     }
 
     // 0x42F890
@@ -6755,7 +6805,7 @@ struct SptResource {
             this->sub_count += ecl_file->header.sub_count;
             EclSubHeader(*old_sub_array)[] = this->subs;
             void* file_data = ecl_file->data;
-
+            // TODO
         }
         else {
             this->files[this->file_count] = NULL;
@@ -6794,9 +6844,14 @@ struct EclVM {
     ZUNList<EclContext> context_list; // 0x121C
     // 0x122C
 
+private:
     // 0x42CDC0
-    dllexport gnu_noinline void vectorcall subtract_time_float(float amount) asm_symbol_rel(0x42CDC0) {
+    dllexport gnu_noinline void vectorcall subtract_time_float(float, float amount) asm_symbol_rel(0x42CDC0) {
         this->current_context->time -= amount;
+    }
+public:
+    inline void subtract_time_float(float amount) {
+        return this->subtract_time_float(UNUSED_FLOAT, amount);
     }
 
     // 0x42CE10
@@ -7264,7 +7319,7 @@ enum Opcode : uint16_t {
     anm_blend_mode_slot,
     anm_create_rel_front_rotated,
     __anm_create_zero_front_and_run,
-    __enemy_id_set_flag_unknown_A,
+    __enemy_id_set_flag_unknown_B,
 
     // Section C
     move_position_abs = 400,
@@ -7521,22 +7576,31 @@ struct Enemy : EclVM {
         if (life >= 0) {
             callback.time = time;
             if (sub_name) {
-                byteloop_strcpy(callback.__sub_A.name, sub_name);
-                byteloop_strcpy(callback.__sub_B.name, sub_name);
+                byteloop_strcpy(callback.life_sub.name, sub_name);
+                byteloop_strcpy(callback.time_sub.name, sub_name);
             } else {
-                callback.__sub_A.name[0] = '\0';
-                callback.__sub_B.name[0] = '\0';
+                callback.life_sub.name[0] = '\0';
+                callback.time_sub.name[0] = '\0';
             }
         }
     }
 
-    // 0x438A60
-    dllexport gnu_noinline void thiscall set_callback_subB_name(int32_t index, const char* sub_name) asm_symbol_rel(0x438A60) {
+    inline void set_callback_life_sub_name(int32_t index, const char* sub_name) {
         EnemyCallback& callback = this->data.callbacks[index];
         if (sub_name) {
-            byteloop_strcpy(callback.__sub_B.name, sub_name);
+            byteloop_strcpy(callback.life_sub.name, sub_name);
         } else {
-            callback.__sub_B.name[0] = '\0';
+            callback.life_sub.name[0] = '\0';
+        }
+    }
+
+    // 0x438A60
+    dllexport gnu_noinline void thiscall set_callback_time_sub_name(int32_t index, const char* sub_name) asm_symbol_rel(0x438A60) {
+        EnemyCallback& callback = this->data.callbacks[index];
+        if (sub_name) {
+            byteloop_strcpy(callback.time_sub.name, sub_name);
+        } else {
+            callback.time_sub.name[0] = '\0';
         }
     }
 
@@ -7654,74 +7718,371 @@ extern "C" {
     // 0x570918
     extern void* CACHED_MSG_FILE_PTR asm("_CACHED_MSG_FILE_PTR");
 }
+
+
+
+static inline constexpr int32_t MENU_STACK_DEPTH = 16;
+
+// size: 0xD8
+struct MenuSelect {
+    int32_t current_selection; // 0x0
+    int32_t previous_selection; // 0x4
+    int32_t menu_length; // 0x8
+    int32_t selection_stack[MENU_STACK_DEPTH]; // 0xC
+    int32_t menu_length_stack[MENU_STACK_DEPTH]; // 0x4C
+    int32_t stack_index; // 0x8C
+    int32_t disabled_selections[MENU_STACK_DEPTH]; // 0x90
+    BOOL enable_wrap; // 0xD0
+    int32_t disabled_selections_count; // 0xD4
+    // 0xD8
+
+    // 0x402940
+    dllexport gnu_noinline void thiscall push_state() asm_symbol_rel(0x402940) {
+        this->selection_stack[this->stack_index] = this->current_selection;
+        this->menu_length_stack[this->stack_index] = this->menu_length;
+        ++this->stack_index;
+        if (this->stack_index >= MENU_STACK_DEPTH) {
+            this->stack_index = MENU_STACK_DEPTH - 1;
+        }
+        this->disabled_selections_count = 0;
+    }
+
+    // 0x402990
+    dllexport gnu_noinline void thiscall pop_state() asm_symbol_rel(0x402990) {
+        if (--this->stack_index < 0) {
+            this->stack_index = 0;
+            this->current_selection = 0;
+            this->menu_length = 0;
+            this->disabled_selections_count = 0;
+        }
+        else {
+            this->current_selection = this->selection_stack[this->stack_index];
+            this->menu_length = this->menu_length_stack[this->stack_index];
+            this->disabled_selections_count = 0;
+        }
+    }
+
+    // 0x4029E0
+    dllexport gnu_noinline int32_t thiscall __move_selection(int32_t offset) asm_symbol_rel(0x4029E0) {
+        int32_t selection = this->current_selection;
+        int32_t menu_length = this->menu_length;
+
+        if (menu_length > 0) {
+            int32_t disabled_count = this->disabled_selections_count;
+
+        retry_selection:
+            selection += offset;
+            this->current_selection = selection;
+            if (selection >= menu_length) {
+                BOOL wrap = this->enable_wrap;
+                do {
+                    if (wrap) {
+                        selection -= menu_length;
+                    } else {
+                        --selection;
+                    }
+                    this->current_selection = selection;
+                } while (selection >= menu_length);
+            }
+            if (selection < 0) {
+                BOOL wrap = this->enable_wrap;
+                do {
+                    if (wrap) {
+                        selection += menu_length;
+                    } else {
+                        selection = 0;
+                    }
+                    this->current_selection = selection;
+                } while (selection < 0);
+            }
+
+            for (int32_t i = 0; i < disabled_count; ++i) {
+                if (this->current_selection == this->disabled_selections[i]) {
+                    goto retry_selection;
+                }
+            }
+        }
+
+        return selection;
+    }
+};
+#pragma region // MenuSelect Verification
+ValidateFieldOffset32(0x0, MenuSelect, current_selection);
+ValidateFieldOffset32(0x4, MenuSelect, previous_selection);
+ValidateFieldOffset32(0x8, MenuSelect, menu_length);
+ValidateFieldOffset32(0xC, MenuSelect, selection_stack);
+ValidateFieldOffset32(0x4C, MenuSelect, menu_length_stack);
+ValidateFieldOffset32(0x8C, MenuSelect, stack_index);
+ValidateFieldOffset32(0x90, MenuSelect, disabled_selections);
+ValidateFieldOffset32(0xD0, MenuSelect, enable_wrap);
+ValidateFieldOffset32(0xD4, MenuSelect, disabled_selections_count);
+ValidateStructSize32(0xD8, MenuSelect);
+#pragma endregion
+
+// size: 0x4
+struct MsgInstruction {
+    uint16_t time; // 0x0
+    uint8_t opcode; // 0x2
+    uint8_t args_size; // 0x3
+    unsigned char args[]; // 0x4
+};
+
+namespace Msg {
+enum Opcode : uint8_t {
+    msg_delete = 0,
+    initialize_player = 1,
+    initialize_boss = 2,
+    initialize_textbox = 3,
+    delete_player = 4,
+    delete_boss = 5,
+    delete_textbox = 6,
+    focus_player = 7,
+    focus_boss = 8,
+    focus_none = 9,
+    msg_flag_wait_skippable = 10,
+    wait = 11,
+    ecl_resume = 12,
+    portrait_player = 13,
+    portrait_boss = 14,
+    text_top_line = 15,
+    text_bottom_line = 16,
+    text_dialogue = 17,
+    text_clear = 18,
+    music_boss = 19,
+    text_intro = 20,
+    stage_end = 21,
+    music_fade_out = 22,
+    player_shake = 23,
+    boss_shake = 24,
+    text_offset = 25,
+    __unknown_flag_set_A = 26,
+    music_fade_out_time = 27,
+    text_position = 28,
+    text_type = 29,
+    
+};
+}
+
+// 0x570DA0
+static char MSG_DECRYPT_BUFFER[0x100];
+
+// 0x4419F0
+dllexport gnu_noinline const char* fastcall __decrypt_related(const char* str) {
+    uint8_t xor_mask = 0x77;
+    uint8_t xor_accel = 7;
+
+    char* buffer_write = MSG_DECRYPT_BUFFER;
+    uint8_t c;
+    do {
+        c = *str++;
+        c ^= xor_mask;
+        xor_mask += xor_accel;
+        xor_accel += 16;
+        *buffer_write++ = c;
+    } while (c);
+
+    char* buffer_read = MSG_DECRYPT_BUFFER;
+
+    while ((c = *buffer_read)) {
+        if (
+            (c <= 0x80 || 0xA0 <= c) &&
+            (c + ' ' > 0x1C)
+        ) {
+            if (c == '_') {
+                *buffer_read = ' ';
+            }
+        } else {
+            ++buffer_read;
+        }
+        ++buffer_read;
+    }
+
+    return MSG_DECRYPT_BUFFER;
+}
+
+// 0x4B6620
+static int32_t PLAYER_PORTRAIT_SCRIPT_TABLE[] = {
+    40, 46, 29, 28
+};
+
+// size: 0x1D8
+struct MsgVM {
+    unknown_fields(0x4); // 0x0
+    Timer __timer_4; // 0x4
+    Timer script_time; // 0x18
+    Timer pause_timer; // 0x2C
+    AnmID player_portraits[2]; // 0x40
+    AnmID enemy_portraits[4]; // 0x48
+    AnmID __vm_id_58; // 0x58
+    int __dword_5C; // 0x5C
+    unknown_fields(0x4); // 0x60
+    AnmID dialogue_lines[2]; // 0x64
+    AnmID furigana_lines[2]; // 0x6C
+    AnmID intro; // 0x74
+    AnmID __textbox_related; // 0x78
+    AnmID __vm_id_7C; // 0x7C
+    int32_t menu_time; // 0x80
+    int32_t menu_state; // 0x84
+    MenuSelect menu_controller; // 0x88
+    int __dword_160; // 0x160
+    MsgInstruction* current_instr; // 0x164
+    Float3 __float3_168; // 0x168
+    Float3 __float3_174; // 0x174
+    Float3 __float3_180; // 0x180
+    Float3 __float3_18C; // 0x18C
+    int32_t __enemy_appear_counter; // 0x198
+    union {
+        uint32_t flags; // 0x19C
+        struct {
+            uint32_t __unknown_flag_B : 1; // 1
+            uint32_t __unknown_flag_C : 1; // 1
+            uint32_t : 4; // 3-6
+            uint32_t __unknown_flag_A : 1; // 7
+        };
+    };
+    int32_t next_text_line; // 0x1A0
+    int __dword_1A4; // 0x1A4
+    int32_t __int_1A8; // 0x1A8
+    int32_t active_portait; // 0x1AC
+    D3DCOLOR __color_array_1B0[1]; // 0x1B0
+    int __dword_1B4; // 0x1B4
+    int __dword_1B8; // 0x1B8
+    int __dword_1BC; // 0x1BC
+    Float3 callout_position; // 0x1C0
+    float __float_1CC; // 0x1CC
+    unknown_fields(0x4); // 0x1D0
+    int32_t __int_1D4; // 0x1D4
+    // 0x1D8
+    
+private:
+    // 0x4416D0
+    dllexport gnu_noinline void vectorcall __sub_4416D0(int, float, float arg1, float arg2, float arg3, int arg4) asm_symbol_rel(0x4416D0) {
+        this->__textbox_related.mark_tree_for_delete();
+        // TODO
+    }
+public:
+    inline void __sub_4416D0(float arg1, float arg2, float arg3, int arg4) {
+        return this->__sub_4416D0(UNUSED_DWORD, UNUSED_FLOAT, arg1, arg2, arg3, arg4);
+    }
+
+    // 0x43E550
+    dllexport gnu_noinline int thiscall run_msg() {
+        using namespace Msg;
+
+        if (this->__enemy_appear_counter > 0) {
+            --this->__enemy_appear_counter;
+        }
+        if (this->__int_1A8 > 0) {
+            --this->__int_1A8;
+        } else {
+            if (INPUT_STATES[0].check_inputs_no_repeat(BUTTON_SHOOT | BUTTON_SKIP)) {
+                this->__unknown_flag_A = true;
+            }
+        }
+        if (
+            (this->__unknown_flag_A & this->__unknown_flag_B) &&
+            (
+                (INPUT_STATES[0].check_inputs(BUTTON_SKIP) && INPUT_STATES[0].inputs_held[BUTTON_SKIP_INDEX] >= 20) ||
+                (INPUT_STATES[0].check_inputs(BUTTON_SHOOT) && INPUT_STATES[0].inputs_held[BUTTON_SHOOT_INDEX] >= 20)
+            )
+        ) {
+            this->script_time.set(this->current_instr->time);
+        }
+
+        for (
+            MsgInstruction* current_instruction = this->current_instr;
+            this->script_time >= current_instruction->time;
+            this->current_instr = IndexInstr(sizeof(MsgInstruction) + this->current_instr->args_size)
+        ) {
+            switch (current_instruction->opcode) {
+                case __unknown_flag_set_A: // 36
+                    this->__unknown_flag_C = true;
+                    break;
+                case text_top_line: { // 15
+                    AnmVM* vm = this->dialogue_lines[0].get_vm_ptr();
+                    const char* text = __decrypt_related(StringArg(0));
+                    // ANM_MANAGER_PTR->draw_text_left(vm, this->__color_array_1B0[this->active_portait], 0, this->__unknown_flag_C + 4, 0, 0, text);
+                    break;
+                }
+                case text_bottom_line: { // 16
+                    AnmVM* vm = this->dialogue_lines[1].get_vm_ptr();
+                    const char* text = __decrypt_related(StringArg(0));
+                    // ANM_MANAGER_PTR->draw_text_left(vm, this->__color_array_1B0[this->active_portait], 0, this->__unknown_flag_C + 4, 0, 0, text);
+                    break;
+                }
+                case text_position: // 28
+                    this->callout_position.x = FloatArg(0) * 2;
+                    this->callout_position.y = FloatArg(1) * 2;
+                    break;
+                case text_dialogue: { // 17
+                    // TODO: A disgusting pile of inlined ANM code
+                    break;
+                }
+                case text_clear: // 18
+                    this->__textbox_related.mark_tree_for_delete();
+                    this->dialogue_lines[0].interrupt_tree(3);
+                    this->dialogue_lines[1].interrupt_tree(3);
+                    this->furigana_lines[0].interrupt_tree(3);
+                    this->furigana_lines[1].interrupt_tree(3);
+                    break;
+                case initialize_player: { // 1
+                    int32_t who = IntArg(0);
+                    if (who == 0) {
+
+                    }
+                    else {
+
+                    }
+                }
+            }
+        }
+        this->script_time++;
+        if (AnmVM* vm = this->__textbox_related.__wtf_child_list_jank_A(this->__int_1D4 + 170, 0)) {
+            // TODO
+        }
+        return 0;
+    }
+};
+#pragma region // MsgVM Validation
+ValidateFieldOffset32(0x4, MsgVM, __timer_4);
+ValidateFieldOffset32(0x18, MsgVM, script_time);
+ValidateFieldOffset32(0x2C, MsgVM, pause_timer);
+ValidateFieldOffset32(0x40, MsgVM, player_portraits);
+ValidateFieldOffset32(0x48, MsgVM, enemy_portraits);
+ValidateFieldOffset32(0x58, MsgVM, __vm_id_58);
+ValidateFieldOffset32(0x5C, MsgVM, __dword_5C);
+ValidateFieldOffset32(0x64, MsgVM, dialogue_lines);
+ValidateFieldOffset32(0x6C, MsgVM, furigana_lines);
+ValidateFieldOffset32(0x74, MsgVM, intro);
+ValidateFieldOffset32(0x78, MsgVM, __textbox_related);
+ValidateFieldOffset32(0x7C, MsgVM, __vm_id_7C);
+ValidateFieldOffset32(0x80, MsgVM, menu_time);
+ValidateFieldOffset32(0x84, MsgVM, menu_state);
+ValidateFieldOffset32(0x88, MsgVM, menu_controller);
+ValidateFieldOffset32(0x160, MsgVM, __dword_160);
+ValidateFieldOffset32(0x164, MsgVM, current_instr);
+ValidateFieldOffset32(0x168, MsgVM, __float3_168);
+ValidateFieldOffset32(0x174, MsgVM, __float3_174);
+ValidateFieldOffset32(0x180, MsgVM, __float3_180);
+ValidateFieldOffset32(0x18C, MsgVM, __float3_18C);
+ValidateFieldOffset32(0x198, MsgVM, __enemy_appear_counter);
+ValidateFieldOffset32(0x19C, MsgVM, flags);
+ValidateFieldOffset32(0x1A0, MsgVM, next_text_line);
+ValidateFieldOffset32(0x1A4, MsgVM, __dword_1A4);
+ValidateFieldOffset32(0x1A8, MsgVM, __int_1A8);
+ValidateFieldOffset32(0x1AC, MsgVM, active_portait);
+ValidateFieldOffset32(0x1B0, MsgVM, __color_array_1B0);
+ValidateFieldOffset32(0x1B4, MsgVM, __dword_1B4);
+ValidateFieldOffset32(0x1B8, MsgVM, __dword_1B8);
+ValidateFieldOffset32(0x1BC, MsgVM, __dword_1BC);
+ValidateFieldOffset32(0x1C0, MsgVM, callout_position);
+ValidateFieldOffset32(0x1CC, MsgVM, __float_1CC);
+ValidateFieldOffset32(0x1D4, MsgVM, __int_1D4);
+ValidateStructSize32(0x1D8, MsgVM);
+#pragma endregion
+
 // size: 0x2CC
 struct Gui : ZUNTask {
-    // size: 0xD8
-    struct MenuHelper {
-        int32_t next_selection; // 0x0
-        int32_t current_selection; // 0x4
-        int32_t choices; // 0x8
-        int32_t stack_selections[16]; // 0xC
-        int32_t stack_choices[16]; // 0x4C
-        int32_t stack_depth; // 0x8C
-        unknown_fields(0x40); // 0x90
-        int __dword_D0; // 0xD0
-        int __dword_D4; // 0xD4
-    };
-
-    // size: 0x4
-    struct MsgInstruction {
-        int16_t time; // 0x0
-        uint8_t opcode; // 0x2
-        uint8_t args_size; // 0x3
-        unsigned char args[]; // 0x4
-    };
-
-    // size: 0x1D8
-    struct MsgVM {
-        unknown_fields(0x0); // 0x0
-        Timer __timer_4; // 0x4
-        Timer script_time; // 0x18
-        Timer pause_timer; // 0x2C
-        AnmID player_portraits[2]; // 0x40
-        AnmID enemy_portraits[4]; // 0x48
-        AnmID __vm_id_58; // 0x58
-        int __dword_5C; // 0x5C
-        unknown_fields(0x4); // 0x60
-        AnmID dialogue_lines[2]; // 0x64
-        AnmID furigana_lines[2]; // 0x6C
-        AnmID intro; // 0x74
-        AnmID __textbox_related; // 0x78
-        AnmID __vm_ref_7C; // 0x7C
-        int32_t menu_time; // 0x80
-        int32_t menu_state; // 0x84
-        MenuHelper menu_controller; // 0x88
-        int __dword_160; // 0x160
-        MsgInstruction* current_instr; // 0x164
-        Float3 __float3_168; // 0x168
-        Float3 __float3_174; // 0x174
-        Float3 __float3_180; // 0x180
-        Float3 __float3_18C; // 0x18C
-        int32_t __enemy_appear_counter; // 0x198
-        union {
-            uint32_t flags; // 0x19C
-            struct {
-                uint32_t : 6; // 1-6
-                uint32_t __unknown_flag_A : 1; // 7
-            };
-        };
-        int32_t next_text_line; // 0x1A0
-        int __dword_1A4; // 0x1A4
-        int __dword_1A8; // 0x1A8
-        int32_t active_portait; // 0x1AC
-        int __dword_1B0; // 0x1B0
-        int __dword_1B4; // 0x1B4
-        int __dword_1B8; // 0x1B8
-        int __dword_1BC; // 0x1BC
-        Float3 callout_position; // 0x1C0
-        float __float_1CC; // 0x1CC
-        unknown_fields(0x14); // 0x1D0
-    };
 
 #pragma region IMPORTED_FROM_VD_DATA_NEEDS_VALIDATION
     // size: 0x8
@@ -7750,9 +8111,14 @@ struct Gui : ZUNTask {
     AnmVM* __anm_vm_ptr_array_68[7]; // 0x68
     AnmVM* __anm_vm_84; // 0x84
     AnmVM* __anm_vm_88; // 0x88
-    unknown_fields(0x30); // 0x8C
+    unknown_fields(0x2C); // 0x8C
+    AnmID __anm_id_B8; // 0xB8
     AnmID __anm_id_BC; // 0xBC
-    unknown_fields(0x7C); // 0xC0
+    unknown_fields(0x50); // 0xC0
+    AnmID __anm_id_110; // 0x110
+    unknown_fields(0x20); // 0x104
+    int __int_134; // 0x134
+    unknown_fields(0x4); // 0x138
     int32_t __int_13C; // 0x13C
     Timer __timer_140; // 0x140
     unknown_fields(0x4); // 0x154
@@ -7802,9 +8168,14 @@ struct Gui : ZUNTask {
     // 0x43A730
     dllexport gnu_noinline ZUNResult thiscall __sub_43A730() asm_symbol_rel(0x43A730);
 
+    // 0x407D60
+    dllexport bool thiscall msg_vm_active() {
+        return this->msg_vm;
+    }
+
     static inline bool msg_is_active() {
         if (Gui* gui = GUI_PTR) {
-            return gui->msg_vm;
+            return gui->msg_vm_active();
         }
         return false;
     }
@@ -7819,7 +8190,10 @@ ValidateFieldOffset32(0x8, Gui, on_draw_func);
 ValidateFieldOffset32(0x68, Gui, __anm_vm_ptr_array_68);
 ValidateFieldOffset32(0x84, Gui, __anm_vm_84);
 ValidateFieldOffset32(0x88, Gui, __anm_vm_88);
+ValidateFieldOffset32(0xB8, Gui, __anm_id_B8);
 ValidateFieldOffset32(0xBC, Gui, __anm_id_BC);
+ValidateFieldOffset32(0x110, Gui, __anm_id_110);
+ValidateFieldOffset32(0x134, Gui, __int_134);
 ValidateFieldOffset32(0x13C, Gui, __int_13C);
 ValidateFieldOffset32(0x140, Gui, __timer_140);
 ValidateFieldOffset32(0x158, Gui, __score);
@@ -8087,6 +8461,7 @@ struct SoundManagerUnknownE {
                 smg_ptr->__handle_8C = INVALID_HANDLE_VALUE;
             }
         }
+        // TODO
     }
 
     // 0x48AF10
@@ -8319,21 +8694,21 @@ struct SoundManager {
     dllexport gnu_noinline void thiscall __sub_476B40() asm_symbol_rel(0x476B40);
 
     // 0x476BE0
-    dllexport static gnu_noinline void stdcall __play_sound_centered(int32_t sound_id, float) asm_symbol_rel(0x476BE0);
+    dllexport static gnu_noinline void stdcall play_sound_centered(int32_t sound_id, float) asm_symbol_rel(0x476BE0);
 
     // 0x476C70
-    dllexport static gnu_noinline void vectorcall __play_sound_positioned(int32_t sound_id, float position) asm_symbol_rel(0x476C70);
+    dllexport static gnu_noinline void vectorcall play_sound_positioned(int32_t sound_id, float position) asm_symbol_rel(0x476C70);
 
-    static inline void __play_sound(int32_t sound_id) {
-        SoundManager::__play_sound_centered(sound_id, UNUSED_FLOAT);
+    static inline void play_sound(int32_t sound_id) {
+        SoundManager::play_sound_centered(sound_id, UNUSED_FLOAT);
     }
 
-    static inline void __play_sound_validate(int32_t sound_id) {
-        if (sound_id >= 0) SoundManager::__play_sound(sound_id);
+    static inline void play_sound_validate(int32_t sound_id) {
+        if (sound_id >= 0) SoundManager::play_sound(sound_id);
     }
 
-    static inline void __play_sound_positioned_validate(int32_t sound_id, const float& position) {
-        if (sound_id >= 0) SoundManager::__play_sound_positioned(sound_id, position);
+    static inline void play_sound_positioned_validate(int32_t sound_id, const float& position) {
+        if (sound_id >= 0) SoundManager::play_sound_positioned(sound_id, position);
     }
 
     inline void cleanup() { // Might be destructor?
@@ -8428,7 +8803,7 @@ dllexport gnu_noinline UpdateFuncRet fastcall Supervisor::on_registration(void* 
         0,
         &thread_id
     );
-
+    // TODO
 }
 
 // 0x4767B0
@@ -8638,7 +9013,7 @@ dllexport gnu_noinline void thiscall SoundManager::__sub_476B40() {
 }
 
 // 0x476BE0
-dllexport gnu_noinline void stdcall SoundManager::__play_sound_centered(int32_t sound_id, float) {
+dllexport gnu_noinline void stdcall SoundManager::play_sound_centered(int32_t sound_id, float) {
     int32_t idk = SOUND_DATA[sound_id].__short_A;
     nounroll for (size_t i = 0; i < countof(SOUND_MANAGER.active_sound_ids); ++i) {
         int32_t active_sound_id = SOUND_MANAGER.active_sound_ids[i];
@@ -8662,7 +9037,7 @@ dllexport gnu_noinline void stdcall SoundManager::__play_sound_centered(int32_t 
 }
 
 // 0x476C70
-dllexport gnu_noinline void vectorcall SoundManager::__play_sound_positioned(int32_t sound_id, float position) {
+dllexport gnu_noinline void vectorcall SoundManager::play_sound_positioned(int32_t sound_id, float position) {
     int32_t idk = SOUND_DATA[sound_id].__short_A;
     int32_t idk2 = (int32_t)(position * 1000.0f / 192.0f);
     nounroll for (size_t i = 0; i < countof(SOUND_MANAGER.active_sound_ids); ++i) {
@@ -8687,10 +9062,12 @@ dllexport gnu_noinline void vectorcall SoundManager::__play_sound_positioned(int
 }
 
 enum ReplayMode {
-    __replay_mode_0 = 0,
-    __replay_mode_1 = 1,
+    __replay_recording = 0,
+    __replay_playback = 1,
     __replay_mode_2 = 2
 };
+
+static inline bool is_replay();
 
 typedef struct GameThread GameThread;
 extern "C" {
@@ -9047,6 +9424,36 @@ struct AnmVM {
         this->data.alpha_interp.time.reset();
     }
 
+    // 0x4890B0
+    dllexport gnu_noinline AnmVM* thiscall __wtf_child_list_jank_A(int32_t script, uint32_t arg2) asm_symbol_rel(0x4890B0) {
+        for (
+            ZUNList<AnmVM>* node = &this->controller.child_list_head;
+            node;
+            node = node->next
+        ) {
+            AnmVM* vm = node->data;
+            if (vm && vm != this) {
+                if (vm->data.script_id2 == script || script == -1) {
+                    if (!arg2) {
+                        return vm;
+                    }
+                    --arg2;
+                }
+                if (vm->controller.child_list_head.next) {
+                    if (AnmVM* vm2 = vm->__wtf_child_list_jank_A(script, arg2)) {
+                        return vm2;
+                    }
+                }
+                if (
+                    this->data.script_id2 == (uint16_t)-2 &&
+                    !node->next
+                ) {
+                    return node->data;
+                }
+            }
+        }
+        return NULL;
+    }
 
     inline float get_custom_slowdown() {
         AnmVM* root_vm = this->controller.__root_vm;
@@ -9172,6 +9579,11 @@ struct AnmVM {
     declare_on_func(run_on_sprite_lookup, on_sprite_lookup_index, ANM_ON_SPRITE_LOOKUP_FUNCS, int32_t, sprite);
 
 #undef declare_on_func
+
+    inline void interrupt_and_run(int32_t interrupt) {
+        this->run_on_interrupt(interrupt);
+        this->run_anm();
+    }
 
     // 0x406AD0
     dllexport gnu_noinline static int fastcall __on_create_1(AnmVM* vm, void* arg) asm_symbol_rel(0x406AD0) {
@@ -9395,6 +9807,9 @@ enum AnmListEnd {
     AnmListFront
 };
 
+// 0x438D40
+dllexport AnmLoaded* stdcall anm_file_lookup(int32_t file_index);
+
 // size: 0x13C
 struct AnmLoaded {
     int32_t slot_index; // 0x0
@@ -9511,6 +9926,11 @@ public:
     inline AnmID instantiate_vm(int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVMCreationFlags flags, AnmVM** raw_out) {
         AnmID dummy{ GARBAGE_VALUE(int) };
         return this->instantiate_vm(dummy, script_index, position, z_rotation, layer, flags, raw_out);
+    }
+
+    inline AnmID instantiate_vm_to_world_list_back(int32_t script_index) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_vm_to_world_list_back(dummy, script_index, -1, nullptr);
     }
 
 private:
@@ -10228,6 +10648,7 @@ struct AnmManager {
             }
             DebugLogger::__debug_log_stub_6("::preloadAnimEnd : %s\n", filename);
         }
+        return anm_loaded;
     }
 
     // 0x4858E0
@@ -10705,7 +11126,7 @@ ValidateStructSize32(0x39724B8, AnmManager);
 // 0x441ED0
 dllexport gnu_noinline void thiscall Gui::__display_stage_logo() {
     if (SUPERVISOR.gamemode_switch != 8 && GAME_MANAGER.__unknown_flag_E) {
-        GUI_PTR->stage_logo_anm->instantiate_vm_to_world_list_back(0, -1, NULL);
+        GUI_PTR->stage_logo_anm->instantiate_vm_to_world_list_back(0);
     }
 }
 
@@ -11493,7 +11914,7 @@ dllexport void thiscall AnmID::__sub_488FD0(int32_t script) {
     if (AnmVM* vm = anm_manager_ptr->get_vm_with_id(*this)) {
         AnmLoaded* anm_loaded = anm_manager_ptr->loaded_anm_files[vm->data.slot];
         vm->data.visible = false;
-        *this = anm_loaded->instantiate_vm_to_world_list_back(script, -1, NULL);
+        *this = anm_loaded->instantiate_vm_to_world_list_back(script);
         vm->data.slot = anm_loaded->slot_index;
         vm->data.slot2 = anm_loaded->slot_index;
     }
@@ -11507,6 +11928,16 @@ dllexport void thiscall AnmID::set_color1(D3DCOLOR color) {
         return;
     }
     vm->data.color1 = color;
+}
+
+// 0x489230
+dllexport gnu_noinline AnmVM* thiscall AnmID::__wtf_child_list_jank_A(int32_t script, uint32_t arg2) {
+    AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this);
+    if (!vm) {
+        this->full = 0;
+        return NULL;
+    }
+    return vm->__wtf_child_list_jank_A(script, arg2);
 }
 
 inline void AnmLoaded::__prepare_vm_data(AnmVM* vm, int32_t script_id) {
@@ -11639,7 +12070,7 @@ dllexport gnu_noinline BOOL thiscall Globals::__add_power(int32_t value) {
         Gui* gui = GUI_PTR;
         AnmManager::mark_tree_id_for_delete(gui->__anm_id_BC);
         gui->__anm_id_BC = 0;
-        gui->__anm_id_BC = gui->__anm_loaded_2C0->instantiate_vm_to_world_list_back(33, -1, NULL);
+        gui->__anm_id_BC = gui->__anm_loaded_2C0->instantiate_vm_to_world_list_back(33);
     }
     int32_t C = (A - value) / this->__power_related_64;
     int32_t D = A / this->__power_related_64;
@@ -12342,6 +12773,11 @@ struct Player : ZUNTask {
     unknown_fields(0x4); // 0x479D0
     // 0x479D4
 
+    // 0x407D50
+    dllexport gnu_noinline Float3* thiscall get_position() asm_symbol_rel(0x407D50) {
+        return &this->data.position;
+    }
+
     // 0x4099D0
     dllexport static gnu_noinline void stdcall __set_data_timer_47154(int32_t time) asm_symbol_rel(0x4099D0) {
         PLAYER_PTR->data.__timer_47154.initialize_and_set(time);
@@ -12362,7 +12798,7 @@ struct Player : ZUNTask {
     // 0x45D3A0
     dllexport gnu_noinline void thiscall die() asm_symbol_rel(0x45D3A0) {
         if (!this->data.__unknown_flag_A) {
-            SoundManager::__play_sound(2);
+            SoundManager::play_sound(2);
         }
         // TODO
     }
@@ -12541,7 +12977,7 @@ struct PopupManager : ZUNTask {
     }
 
     // 0x4645F0
-    dllexport gnu_noinline static int stdcall create_popup(Float3* position, int32_t value, D3DCOLOR color) {
+    dllexport gnu_noinline static void stdcall create_popup(Float3* position, int32_t value, D3DCOLOR color) {
         PopupManager* popup_manager = POPUP_MANAGER_PTR;
 
         int32_t index = popup_manager->__index_10;
@@ -12870,7 +13306,7 @@ struct CardMamizou : CardBase {
                 if (Player* player = PLAYER_PTR) {
                     player->data.__sub_45D5E0();
                     POPUP_MANAGER_PTR->create_popup(&PLAYER_PTR->data.position, -1, PackD3DCOLOR(64, 255, 255, 255));
-                    SOUND_MANAGER.__play_sound_positioned(13, PLAYER_PTR->data.position.x);
+                    SOUND_MANAGER.play_sound_positioned(13, PLAYER_PTR->data.position.x);
                 }
             }
         }
@@ -13003,7 +13439,7 @@ struct CardShikiEiki : CardBase {
     // 0x40D840
     dllexport gnu_noinline int thiscall __sub_40D840() asm_symbol_rel(0x40D840) {
         ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(41, &PLAYER_PTR->data.position);
-        SOUND_MANAGER.__play_sound(44);
+        SOUND_MANAGER.play_sound(44);
         // TODO
         GAME_MANAGER.globals.current_money -= 200;
         PLAYER_PTR->data.__timer_47154.set(60);
@@ -13012,6 +13448,7 @@ struct CardShikiEiki : CardBase {
         // TODO
         this->__timer_20.reset();
         this->__int_54 = 1;
+        return 0;
     }
     // Method C
     // 0x40DA10
@@ -13115,7 +13552,7 @@ struct CardShinmyoumaru : CardBase {
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(30, &this->position, 13);
             this->__int_54 = 1;
             this->__timer_20.reset();
-            SOUND_MANAGER.__play_sound_positioned(30, this->position.x);
+            SOUND_MANAGER.play_sound_positioned(30, this->position.x);
             this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
             this->__dword_64 = 0;
         }
@@ -13148,7 +13585,7 @@ struct CardShinmyoumaru : CardBase {
                 if (this->__timer_20 > 10) {
                     this->__int_54 = 3;
                     // TODO, something inlined from sound manager
-                    SOUND_MANAGER.__play_sound_positioned(41, this->position.x);
+                    SOUND_MANAGER.play_sound_positioned(41, this->position.x);
                     this->__timer_20.reset();
                     this->position.y -= 84.0f;
                 }
@@ -13221,7 +13658,7 @@ struct CardTenshi : CardBase {
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(28, &this->position, 13);
             this->__int_54 = 1;
             this->__timer_20.reset();
-            SOUND_MANAGER.__play_sound_positioned(77, this->position.x);
+            SOUND_MANAGER.play_sound_positioned(77, this->position.x);
             this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
             this->__unknown_flag_A = true;
             this->__dword_70 = 0;
@@ -13252,7 +13689,7 @@ struct CardTenshi : CardBase {
                     this->effect_vm_id.interrupt_tree(1);
                     this->__int_54 = 2;
                     this->__timer_20.reset();
-                    SOUND_MANAGER.__play_sound_positioned(41, this->position.x);
+                    SOUND_MANAGER.play_sound_positioned(41, this->position.x);
                 }
                 break;
             case 0:
@@ -13323,7 +13760,7 @@ struct CardClownpiece : CardBase {
             this->__int_54 = 1;
             this->__timer_20.reset();
             this->__float_C0 = 0;
-            SOUND_MANAGER.__play_sound_positioned(77, this->position.x);
+            SOUND_MANAGER.play_sound_positioned(77, this->position.x);
             this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
         }
         return 0;
@@ -13414,7 +13851,7 @@ struct CardMiko : CardBase {
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(47, &this->position, 13);
             this->__int_54 = 1;
             this->__timer_20.reset();
-            SOUND_MANAGER.__play_sound_positioned(77, this->position.x);
+            SOUND_MANAGER.play_sound_positioned(77, this->position.x);
             this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
         }
         return 0;
@@ -13494,7 +13931,7 @@ struct CardRemilia : CardBase {
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(38, &this->position, 13);
             this->__int_54 = 1;
             this->__timer_20.reset();
-            SOUND_MANAGER.__play_sound_positioned(30, this->position.x);
+            SOUND_MANAGER.play_sound_positioned(30, this->position.x);
             this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
             this->__dword_64 = 0;
         }
@@ -13536,7 +13973,7 @@ struct CardRemilia : CardBase {
                 if (this->__timer_20 > 30) {
                     this->__int_54 = 2;
                     this->__timer_20.reset();
-                    SOUND_MANAGER.__play_sound_positioned(27, this->position.x);
+                    SOUND_MANAGER.play_sound_positioned(27, this->position.x);
                 }
                 break;
             case 0:
@@ -13598,7 +14035,7 @@ struct CardUtsuho : CardBase {
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(50, &this->position, 13);
             this->__int_54 = 1;
             this->__timer_20.reset();
-            SOUND_MANAGER.__play_sound_positioned(49, this->position.x);
+            SOUND_MANAGER.play_sound_positioned(49, this->position.x);
             this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
             this->__dword_64 = 0;
         }
@@ -13635,7 +14072,7 @@ struct CardUtsuho : CardBase {
                 if (this->__timer_20 > 600) {
                     this->__int_54 = 2;
                     this->__timer_20.reset();
-                    SOUND_MANAGER.__play_sound_positioned(27, this->position.x);
+                    SOUND_MANAGER.play_sound_positioned(27, this->position.x);
                 }
                 if (
                     this->__timer_20.__is_multiple_of(6) &&
@@ -13767,7 +14204,7 @@ struct CardRaiko : CardBase {
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(58, &this->position, 13);
             this->__int_54 = 1;
             this->__timer_20.reset();
-            SOUND_MANAGER.__play_sound_positioned(51, this->position.x);
+            SOUND_MANAGER.play_sound_positioned(51, this->position.x);
             this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
             this->__dword_64 = 0;
         }
@@ -13842,7 +14279,7 @@ struct CardSumireko : CardBase {
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(60, &this->position, 13);
             this->__int_54 = 1;
             this->__timer_20.reset();
-            SOUND_MANAGER.__play_sound_positioned(51, this->position.x);
+            SOUND_MANAGER.play_sound_positioned(51, this->position.x);
             this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
             this->__dword_64 = 0;
         }
@@ -13917,7 +14354,7 @@ struct CardTsukasa : CardBase {
     dllexport gnu_noinline virtual int thiscall on_activate() {
         if (this->__timer_34 <= 0) {
             if (GAME_MANAGER.globals.current_power < GAME_MANAGER.globals.__power_related_64 * 2) {
-                SOUND_MANAGER.__play_sound(16);
+                SOUND_MANAGER.play_sound(16);
                 return 0;
             }
             BombBase* bomb_ptr = BOMB_PTR;
@@ -13925,7 +14362,7 @@ struct CardTsukasa : CardBase {
                 bomb_ptr->bomb_active = TRUE;
                 bomb_ptr->__timer_34.reset();
                 // TODO
-                SOUND_MANAGER.__play_sound_positioned(44, PLAYER_PTR->data.position.x);
+                SOUND_MANAGER.play_sound_positioned(44, PLAYER_PTR->data.position.x);
                 bomb_ptr->activate();
                 UNKNOWN_COUNTER_A = 0;
                 // ENEMY_MANAGER_PTR->can_capture_spell = FALSE;
@@ -13975,13 +14412,13 @@ struct CardMegumu : CardBase {
         if (this->__timer_34 < 0) {
             if (GAME_MANAGER.globals.current_power >= GAME_MANAGER.globals.max_power) {
                 GAME_MANAGER.globals.add_bomb_fragment();
-                SOUND_MANAGER.__play_sound_positioned(13, PLAYER_PTR->data.position.x);
+                SOUND_MANAGER.play_sound_positioned(13, PLAYER_PTR->data.position.x);
             }
             else {
                 if (GAME_MANAGER.globals.__add_power(100)) {
                     PLAYER_PTR->data.__sub_45D5E0();
                     POPUP_MANAGER_PTR->create_popup(&PLAYER_PTR->data.position, -1, PackD3DCOLOR(64, 255, 255, 255));
-                    SOUND_MANAGER.__play_sound_positioned(13, PLAYER_PTR->data.position.x);
+                    SOUND_MANAGER.play_sound_positioned(13, PLAYER_PTR->data.position.x);
                 }
             }
             this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
@@ -14339,6 +14776,7 @@ struct AbilityManager : ZUNTask {
         UpdateFunc* on_draw = new UpdateFunc(&AbilityManager::on_draw, false, ability_manager);
         UpdateFuncRegistry::register_on_draw(on_draw, 51);
         ability_manager->on_draw_func = on_draw;
+        return ability_manager;
     }
 
     // 0x408BA0
@@ -14423,104 +14861,6 @@ static inline float ability_manager_get_float_C58() {
 static inline AnmLoaded* ability_manager_get_ability_anm() {
     return ABILITY_MANAGER_PTR->ability_anm;
 }
-
-static inline constexpr int32_t MENU_STACK_DEPTH = 16;
-
-// size: 0xD8
-struct MenuSelect {
-    int32_t current_selection; // 0x0
-    int32_t previous_selection; // 0x4
-    int32_t menu_length; // 0x8
-    int32_t selection_stack[MENU_STACK_DEPTH]; // 0xC
-    int32_t menu_length_stack[MENU_STACK_DEPTH]; // 0x4C
-    int32_t stack_index; // 0x8C
-    int32_t disabled_selections[MENU_STACK_DEPTH]; // 0x90
-    BOOL enable_wrap; // 0xD0
-    int32_t disabled_selections_count; // 0xD4
-    // 0xD8
-
-    // 0x402940
-    dllexport gnu_noinline void thiscall push_state() asm_symbol_rel(0x402940) {
-        this->selection_stack[this->stack_index] = this->current_selection;
-        this->menu_length_stack[this->stack_index] = this->menu_length;
-        ++this->stack_index;
-        if (this->stack_index >= MENU_STACK_DEPTH) {
-            this->stack_index = MENU_STACK_DEPTH - 1;
-        }
-        this->disabled_selections_count = 0;
-    }
-
-    // 0x402990
-    dllexport gnu_noinline void thiscall pop_state() asm_symbol_rel(0x402990) {
-        if (--this->stack_index < 0) {
-            this->stack_index = 0;
-            this->current_selection = 0;
-            this->menu_length = 0;
-            this->disabled_selections_count = 0;
-        }
-        else {
-            this->current_selection = this->selection_stack[this->stack_index];
-            this->menu_length = this->menu_length_stack[this->stack_index];
-            this->disabled_selections_count = 0;
-        }
-    }
-
-    // 0x4029E0
-    dllexport gnu_noinline int32_t thiscall __move_selection(int32_t offset) asm_symbol_rel(0x4029E0) {
-        int32_t selection = this->current_selection;
-        int32_t menu_length = this->menu_length;
-
-        if (menu_length > 0) {
-            int32_t disabled_count = this->disabled_selections_count;
-
-        retry_selection:
-            selection += offset;
-            this->current_selection = selection;
-            if (selection >= menu_length) {
-                BOOL wrap = this->enable_wrap;
-                do {
-                    if (wrap) {
-                        selection -= menu_length;
-                    } else {
-                        --selection;
-                    }
-                    this->current_selection = selection;
-                } while (selection >= menu_length);
-            }
-            if (selection < 0) {
-                BOOL wrap = this->enable_wrap;
-                do {
-                    if (wrap) {
-                        selection += menu_length;
-                    } else {
-                        selection = 0;
-                    }
-                    this->current_selection = selection;
-                } while (selection < 0);
-            }
-
-            for (int32_t i = 0; i < disabled_count; ++i) {
-                if (this->current_selection == this->disabled_selections[i]) {
-                    goto retry_selection;
-                }
-            }
-        }
-
-        return selection;
-    }
-};
-#pragma region // MenuSelect Verification
-ValidateFieldOffset32(0x0, MenuSelect, current_selection);
-ValidateFieldOffset32(0x4, MenuSelect, previous_selection);
-ValidateFieldOffset32(0x8, MenuSelect, menu_length);
-ValidateFieldOffset32(0xC, MenuSelect, selection_stack);
-ValidateFieldOffset32(0x4C, MenuSelect, menu_length_stack);
-ValidateFieldOffset32(0x8C, MenuSelect, stack_index);
-ValidateFieldOffset32(0x90, MenuSelect, disabled_selections);
-ValidateFieldOffset32(0xD0, MenuSelect, enable_wrap);
-ValidateFieldOffset32(0xD4, MenuSelect, disabled_selections_count);
-ValidateStructSize32(0xD8, MenuSelect);
-#pragma endregion
 
 // size: 0xE3C
 struct AbilityShop : ZUNTask {
@@ -14814,8 +15154,7 @@ struct EnemyManager : ZUNTask {
         ENEMY_MANAGER_PTR->enemy_limit = limit;
     }
 
-    // 0x438D40
-    dllexport AnmLoaded* anm_file_lookup(int32_t file_index) asm_symbol_rel(0x438D40);
+    inline AnmLoaded* anm_file_lookup(int32_t file_index) asm_symbol_rel(0x438D40);
 
 private:
     inline EnemyID& __get_id_of_nearest_enemy_in_radius(EnemyID& out, Float2* position, float radius) {
@@ -15083,6 +15422,200 @@ struct Stage {
     void* on_draw; // 0x8
 
     AnmLoaded* stage_anm; // 0x3464
+};
+
+typedef struct Spellcard Spellcard;
+extern "C" {
+    // 0x4CF2C0
+    extern Spellcard* SPELLCARD_PTR asm("_SPELLCARD_PTR");
+}
+
+// size: 0xC0
+struct Spellcard : ZUNTask {
+    // ZUNTask base; // 0x0
+    AnmID __vm_id_C; // 0xC
+    AnmID __vm_id_10; // 0x10
+    AnmID __vm_id_14; // 0x14
+    AnmID __vm_id_18; // 0x18
+    AnmID __vm_id_1C; // 0x1C
+    Timer __timer_20; // 0x20
+    char name[64]; // 0x34
+    int32_t id; // 0x74
+    union {
+        uint32_t flags; // 0x78
+        struct {
+            uint32_t __unknown_flag_A : 1;
+            uint32_t __unknown_flag_B : 1;
+            uint32_t : 1;
+            uint32_t __timeout_spell : 1;
+            uint32_t __unknown_flag_C : 1;
+            uint32_t __unknown_flag_E : 1;
+            uint32_t __unknown_flag_F : 1;
+            uint32_t __unknown_flag_D : 1;
+            uint32_t __unknown_flag_H: 1;
+            uint32_t __unknown_flag_G : 1;
+        };
+    };
+    int32_t __bonus_A; // 0x7C
+    int32_t __bonus_B; // 0x80
+    int32_t time; // 0x84
+    // 0x88
+    int __int_8C; // 0x8C
+    // 0x90
+
+    Float3 __float3_AC; // 0xAC
+    // 0xB8
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline Spellcard() {
+        this->zero_contents();
+    }
+
+    // 0x409B10
+    dllexport gnu_noinline BOOL thiscall __get_flag_A() asm_symbol_rel(0x409B10) {
+        return this->__unknown_flag_A;
+    }
+
+    // 0x42D640
+    dllexport gnu_noinline BOOL thiscall __get_flag_B() asm_symbol_rel(0x42D640) {
+        return this->__unknown_flag_B;
+    }
+
+    // 0x42D650
+    dllexport gnu_noinline void thiscall __set_timeout_flag() asm_symbol_rel(0x42D650) {
+        SPELLCARD_PTR->__timeout_spell = true;
+    }
+
+    // 0x42D610
+    dllexport gnu_noinline void thiscall __set_flag_H(int32_t state) asm_symbol_rel(0x42D610) {
+        SPELLCARD_PTR->__unknown_flag_H = state;
+    }
+
+    // 0x42D670
+    dllexport gnu_noinline void thiscall __sub_42D670() asm_symbol_rel(0x42D670) {
+        Spellcard* spellcard = SPELLCARD_PTR;
+        spellcard->__unknown_flag_C = true;
+        spellcard->__vm_id_1C.mark_tree_for_delete();
+    }
+
+    // 0x42A320
+    dllexport gnu_noinline void thiscall start_spell(int32_t id, const char* name, int32_t time, int32_t mode) asm_symbol_rel(0x42A320) {
+        __asm FINIT
+
+        this->__timer_20.reset();
+        this->id = id;
+        byteloop_strcpy(this->name, name);
+        this->__unknown_flag_A = true;
+        this->__unknown_flag_B = true;
+        this->__timeout_spell = false;
+        this->__unknown_flag_C = false;
+        this->__unknown_flag_D = false;
+        if (!is_replay()) {
+            // TODO: write to scorefile
+        }
+        Gui* gui = GUI_PTR;
+        gui->__anm_vm_84->interrupt_and_run(2);
+        gui->__anm_vm_88->interrupt_and_run(2);
+
+        this->__int_8C = 1;
+        this->__unknown_flag_E = false;
+        this->__unknown_flag_F = false;
+
+        this->__vm_id_10 = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(0);
+        this->__vm_id_14 = SUPERVISOR.text_anm->instantiate_vm_to_world_list_back(2);
+        this->__vm_id_18 = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(1);
+        AnmVM* vm = this->__vm_id_14.get_vm_ptr();
+        // TODO
+
+        SOUND_MANAGER.play_sound(33);
+        this->__vm_id_1C = EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(13);
+
+        Enemy* boss;
+        clang_forceinline boss = ENEMY_MANAGER_PTR->get_boss_by_index(0);
+        this->__float3_AC = boss->data.current_motion.position;
+        this->__vm_id_1C.set_controller_position(&boss->data.current_motion.position);
+
+        this->__vm_id_1C.__wtf_child_list_jank_A(11, 0)->data.current_context_vars.int_vars[2] = time;
+        this->__vm_id_1C.__wtf_child_list_jank_A(13, 0)->data.current_context_vars.int_vars[2] = time;
+
+        this->time = time;
+
+        // ZUN didn't mark this as const,
+        // so it gets written onto the
+        // stack for no good reason.
+        // 
+        // Trying to run this code on overdrive
+        // will end up reading the stack cookie
+        // as the bonus.
+        int32_t bonus_table[] = {
+            500000,
+            1000000,
+            1500000,
+            2000000,
+            1000000
+        };
+
+        int32_t bonus = bonus_table[GAME_MANAGER.globals.difficulty] * GAME_MANAGER.globals.current_stage;
+        this->__bonus_A = bonus;
+        this->__bonus_B = bonus;
+        if (bonus >= 1000000000) {
+            this->__bonus_B = 1000000000;
+        }
+
+        EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(20);
+
+        auto& anm_sourceA = STAGE_DATA_PTR->innner[mode];
+        anm_file_lookup(anm_sourceA.__spell_anm_indexA)->instantiate_vm_to_world_list_back(anm_sourceA.__spell_anm_scriptA);
+        auto& anm_sourceB = STAGE_DATA_PTR->innner[mode];
+        this->__unknown_flag_G = anm_sourceB.__spell_flag_state;
+        anm_file_lookup(anm_sourceB.__spell_anm_indexB)->instantiate_vm_to_world_list_back(anm_sourceB.__spell_anm_scriptB);
+        
+        GAME_MANAGER.globals.__unknown_flag_A = false;
+    }
+
+    // 0x42A780
+    dllexport gnu_noinline void thiscall end_spell() {
+        if (this->__unknown_flag_A) {
+            // TODO, sets some stage flag
+            this->__vm_id_10.interrupt_tree(1);
+            this->__vm_id_14.interrupt_tree(1);
+            this->__vm_id_18.interrupt_tree(1);
+            this->__unknown_flag_A = false;
+            this->__vm_id_C.mark_tree_for_delete();
+            this->__unknown_flag_E = false;
+            //GUI_PTR->__sub_429C30();
+            this->__vm_id_1C.mark_tree_for_delete();
+
+            if (this->__unknown_flag_B) {
+                GAME_MANAGER.add_to_score(this->__bonus_A);
+                //GUI_PTR->__sub_441A50(0, this->__bonus_A);
+                if (!is_replay()) {
+                    // TODO: update scorefile
+                }
+                SOUND_MANAGER.play_sound(46);
+            }
+            else {
+                Gui* gui = GUI_PTR;
+                gui->__anm_id_B8.mark_tree_for_delete();
+                gui->__anm_id_B8 = gui->__anm_loaded_2C0->instantiate_vm_to_world_list_back(50);
+                gui->__int_134 = 1;
+                gui->__anm_id_110 = gui->__anm_loaded_2C0->instantiate_vm_to_world_list_back(84);
+            }
+
+            if (this->__timeout_spell) {
+                SOUND_MANAGER.play_sound(69);
+            }
+        }
+    }
+
+    static inline Spellcard* allocate() {
+        Spellcard* spellcard = new Spellcard();
+
+        return spellcard;
+    }
 };
 
 // size: 0x8
@@ -15455,16 +15988,26 @@ struct Bullet {
     dllexport void run_effects() asm_symbol_rel(0x425C60);
 };
 
+enum LaserType {
+    LineLaser = 0,
+    InfiniteLaser = 1,
+    CurvyLaser = 2,
+    BeamLaser = 3
+};
+
 typedef struct LaserData LaserData;
 // size: 0x788
 struct LaserData {
     // void* vtable; // 0x0
-    LaserData* next; // 0x4
-    LaserData* prev; // 0x8
+    //LaserData* next_piss; // 0x4
+    //LaserData* prev; // 0x8
+    ZUNEmbeddedListR<LaserData> embedded_node; // 0x4
     union {
         uint32_t __flags_C; // 0xC
         struct {
-
+            uint32_t __unknown_flag_A : 1;
+            uint32_t __unknown_field_A : 2;
+            uint32_t __unknown_flag_B : 1;
         };
     };
     int32_t state; // 0x10
@@ -15496,7 +16039,7 @@ struct LaserData {
     int32_t invulnerable_time; // 0x77C
     int32_t sprite; // 0x780
     int32_t color; // 0x784
-    // 0x788
+    uint8_t derived_class[0]; // 0x788
 
     inline void zero_contents() {
         zero_this();
@@ -15508,24 +16051,68 @@ struct LaserData {
         this->__timer_18.reset();
     }
 
+private:
     // 0x42D6A0
-    dllexport gnu_noinline void vectorcall set_angle(float angle) asm_symbol_rel(0x42D6A0) {
+    dllexport gnu_noinline void vectorcall set_angle(float, float angle) asm_symbol_rel(0x42D6A0) {
         this->angle = angle;
     }
-
-    // 0x42D6B0
-    dllexport gnu_noinline void vectorcall set_width(float width) asm_symbol_rel(0x42D6B0) {
-        this->width = width;
+public:
+    inline void set_angle(float angle) {
+        return this->set_angle(UNUSED_FLOAT, angle);
     }
 
+private:
+    // 0x42D6B0
+    dllexport gnu_noinline void vectorcall set_width(float, float width) asm_symbol_rel(0x42D6B0) {
+        this->width = width;
+    }
+public:
+    inline void set_width(float width) {
+        return this->set_width(UNUSED_FLOAT, width);
+    }
+
+private:
     // 0x42D6C0
-    dllexport gnu_noinline void vectorcall set_speed(float speed) asm_symbol_rel(0x42D6C0) {
+    dllexport gnu_noinline void vectorcall set_speed(float, float speed) asm_symbol_rel(0x42D6C0) {
         this->speed = speed;
+    }
+public:
+    inline void set_speed(float speed) {
+        return this->set_speed(UNUSED_FLOAT, speed);
     }
 
     // 0x42D6D0
     dllexport gnu_noinline void thiscall set_id(int32_t id = 0) asm_symbol_rel(0x42D6D0) {
         this->id = 0;
+    }
+
+    // 0x42D700
+    dllexport gnu_noinline void thiscall set_position(Float3* position) asm_symbol_rel(0x42D700) {
+        // why zun, don't do this
+        *(Float3*)&this->derived_class[0] = this->position = *position;
+    }
+
+    // 0x42D730
+    // Line:        __angle_C, __length_related, length
+    // Infinite:    velocity
+    // Curve:       __angle_C, width, __speed1
+    // Beam:        velocity
+    dllexport gnu_noinline void thiscall set_velocity(Float3* set_velocity) asm_symbol_rel(0x42D730) {
+        *(Float3*)&this->derived_class[0xC] = *set_velocity;
+    }
+
+private:
+    // 0x42D750
+    dllexport gnu_noinline void vectorcall set_angular_velocity(float, float angular_velocity) {
+        *(float*)&this->derived_class[0x1C] = angular_velocity;
+    }
+public:
+    // Line:        width
+    // Infinite:    angular_velocity
+    // Curve:       color (incorrect type)
+    // Beam:        angular_velocity
+    inline void set_angular_velocity(float angular_velocity) {
+        return this->set_angular_velocity(UNUSED_FLOAT, angular_velocity);
     }
 
 #pragma region // LaserData method stubs
@@ -15557,10 +16144,7 @@ struct LaserData {
     // 0x448020
     // Method 0x18
     dllexport virtual gnu_noinline int thiscall __method_18() asm_symbol_rel(0x448020) {
-        this->next->prev = this->prev;
-        if (LaserData* laser = this->prev) {
-            laser->next = this->next;
-        }
+        this->embedded_node.unlink();
         return 0;
     }
     // 0x448040
@@ -15570,17 +16154,17 @@ struct LaserData {
     }
     // 0x448050
     // Method 0x20
-    dllexport virtual gnu_noinline int thiscall cancel_as_bomb_rectangle(Float3* arg1, Float3* arg2, int, int arg4, int32_t arg5) asm_symbol_rel(0x448050) {
+    dllexport virtual gnu_noinline int thiscall cancel_as_bomb_rectangle(Float3* arg1, Float3* arg2, float arg3, int arg4, int32_t arg5) asm_symbol_rel(0x448050) {
         return 0;
     }
     // 0x448060
     // Method 0x24
-    dllexport virtual gnu_noinline int thiscall cancel_as_bomb_circle(int, int, int, int) asm_symbol_rel(0x448060) {
+    dllexport virtual gnu_noinline int thiscall cancel_as_bomb_circle(Float3* arg1, float arg2, int arg3, int arg4) asm_symbol_rel(0x448060) {
         return 0;
     }
     // 0x448070
     // Method 0x28
-    dllexport virtual gnu_noinline int thiscall cancel(int, int) asm_symbol_rel(0x448070) {
+    dllexport virtual gnu_noinline int thiscall cancel(int32_t arg1, int32_t arg2) asm_symbol_rel(0x448070) {
         return 0;
     }
     // 0x448080
@@ -15659,10 +16243,25 @@ struct LaserData {
         return NULL;
     }
     // 0x4481E0
+    // Method 0x68
     virtual ~LaserData() {
     }
 
 #pragma endregion // LaserData method stubs
+
+    inline int on_tick_common() {
+        if (this->__unknown_flag_B) {
+            this->check_graze_or_kill(TRUE);
+        }
+        else {
+            if (this->on_tick()) {
+                return 1;
+            }
+            ++this->__timer_18;
+            this->__unknown_flag_A = true;
+        }
+        return 0;
+    }
 };
 
 // size: 0x460
@@ -15685,7 +16284,7 @@ struct LaserLineParams {
             uint32_t __unknown_flag_B : 1; // 2
         };
     };
-    BulletEffectArgs effects[24]; // 0x38, 0x7C0
+    BulletEffectArgs effects[BULLET_EFFECT_MAX]; // 0x38, 0x7C0
     int32_t shot_sound; // 0x458, 0xBE0
     int32_t transform_sound; // 0x45C, 0xBE4
     // 0x460, 0xBE8
@@ -15698,7 +16297,8 @@ struct LaserLineParams {
         this->zero_contents();
     }
 
-    inline LaserLineParams(int) {}
+    inline LaserLineParams(int) {
+    }
 };
 
 // size: 0x1E0C
@@ -15767,13 +16367,13 @@ struct LaserLine : LaserData {
 
     // 0x44ACA0
     // Method 0x20
-    dllexport virtual gnu_noinline int thiscall cancel_as_bomb_rectangle(Float3* arg1, Float3* arg2, int, int arg4, int32_t arg5) override asm_symbol_rel(0x44ACA0) {
+    dllexport virtual gnu_noinline int thiscall cancel_as_bomb_rectangle(Float3* arg1, Float3* arg2, float arg3, int arg4, int32_t arg5) override asm_symbol_rel(0x44ACA0) {
         // TODO
     }
 
     // 0x44BD00
     // Method 0x24
-    dllexport virtual gnu_noinline int thiscall cancel_as_bomb_circle(int, int, int, int) override asm_symbol_rel(0x44BD00) {
+    dllexport virtual gnu_noinline int thiscall cancel_as_bomb_circle(Float3* arg1, float arg2, int arg3, int arg4) override asm_symbol_rel(0x44BD00) {
         // TODO
     }
 
@@ -15910,7 +16510,7 @@ struct LaserInfiniteParams {
             uint32_t __unknown_flag_A : 1; // 2
         };
     };
-    BulletEffectArgs effects[24]; // 0x60, 0x7E8
+    BulletEffectArgs effects[BULLET_EFFECT_MAX]; // 0x60, 0x7E8
     // 0x480, 0xC08
 
     inline void zero_contents() {
@@ -15921,7 +16521,8 @@ struct LaserInfiniteParams {
         this->zero_contents();
     }
 
-    inline LaserInfiniteParams(int) {}
+    inline LaserInfiniteParams(int) {
+    }
 };
 
 // size: 0x1824
@@ -15931,6 +16532,9 @@ struct LaserInfinite : LaserData {
     AnmVM __vm_C0C; // 0xC0C
     AnmVM __vm_1218; // 0x1218
     // 0x1824
+
+    inline LaserInfinite() {
+    }
 };
 
 // size: 0x460
@@ -15949,7 +16553,7 @@ struct LaserCurveParams {
 
         };
     };
-    BulletEffectArgs effects[24]; // 0x2C, 0x7B4
+    BulletEffectArgs effects[BULLET_EFFECT_MAX]; // 0x2C, 0x7B4
     int32_t shot_sound; // 0x44C, 0xBD4
     int32_t transform_sound; // 0x450, 0xBD8
     unknown_fields(0xC); // 0x454, 0xBDC
@@ -15957,6 +16561,10 @@ struct LaserCurveParams {
 
     inline void zero_contents() {
         zero_this();
+    }
+
+    inline LaserCurveParams() {
+        this->zero_contents();
     }
 };
 
@@ -15999,12 +16607,26 @@ struct LaserCurve : LaserData {
 
 // size: 0x45C
 struct LaserBeamParams {
-    unknown_fields(0x3C); // 0x0
+    Float3 position; // 0x0
+    Float3 velocity; // 0xC
+    float __angle_18; // 0x18
+    float angular_velocity; // 0x1C
+    float __float_20; // 0x20
+    float __float_24; // 0x24
+    int32_t laser_id; // 0x28
+    int32_t color; // 0x2C
+    float distance; // 0x30
+    int32_t start_time; // 0x34
+    unknown_fields(0x4); // 0x38
     BulletEffectArgs effects[24]; // 0x3C
     // 0x45C
 
     inline void zero_contents() {
         zero_this();
+    }
+
+    inline LaserBeamParams() {
+        this->zero_contents();
     }
 };
 
@@ -16015,6 +16637,9 @@ struct LaserBeam : LaserData {
     AnmVM __vm_BE4; // 0xBE4
     unknown_fields(0x1004); // 0x11F0
     // 0x21F4
+
+    inline LaserBeam() {
+    }
 };
 
 
@@ -16048,8 +16673,7 @@ struct BulletManager : ZUNTask {
     Bullet* __bullet_cache_pointers[12]; // 0x10
     int32_t __int_40; // 0x40 (ECL variable -9898)
     float player_protect_radius; // 0x44
-    float __float_48; // 0x48
-    float __float_4C; // 0x4C
+    Float2 __bounce_bounds; // 0x48
     unknown_fields(0x8); // 0x50
     int __graze_array[20]; // 0x58
     int __int_A8; // 0xA8
@@ -16096,9 +16720,25 @@ struct BulletManager : ZUNTask {
         return count;
     }
 
+private:
     // 0x42CCA0
-    dllexport gnu_noinline void vectorcall set_player_protect_radius(float radius) asm_symbol_rel(0x42CCA0) {
+    dllexport gnu_noinline void vectorcall set_player_protect_radius(float, float radius) asm_symbol_rel(0x42CCA0) {
         BULLET_MANAGER_PTR->player_protect_radius = radius;
+    }
+public:
+    inline void set_player_protect_radius(float radius) {
+        return this->set_player_protect_radius(UNUSED_FLOAT, radius);
+    }
+
+private:
+    // 0x4237E0
+    dllexport gnu_noinline void vectorcall __set_bounce_bounds(float, float width, float height) {
+        this->__bounce_bounds.x = width;
+        this->__bounce_bounds.y = height;
+    }
+public:
+    inline void __set_bounce_bounds(float width, float height) {
+        return this->__set_bounce_bounds(UNUSED_FLOAT, width, height);
     }
 
     // 0x4297A0
@@ -16125,7 +16765,7 @@ struct BulletManager : ZUNTask {
         }
     break_outer:
         if (shooter->play_sound_on_spawn) {
-            SOUND_MANAGER.__play_sound_positioned(shooter->shoot_sound, shooter->position.x);
+            SOUND_MANAGER.play_sound_positioned(shooter->shoot_sound, shooter->position.x);
         }
         return 0;
     }
@@ -16173,45 +16813,286 @@ struct BulletManager : ZUNTask {
     }
 };
 
+static inline constexpr int32_t MAX_LASER_COUNT = 512;
+
 // size: 0x7C4
 struct LaserManager : ZUNTask {
-    //ZUNTask base; // 0x0
+    // ZUNTask base; // 0x0
     LaserData dummy_laser; // 0xC
-    LaserData* list_head; // 0x794
-    int32_t list_length; // 0x798
+    LaserData* list_tail; // 0x794
+    int32_t laser_count; // 0x798
     int32_t __prev_laser_id; // 0x79C
     Float3 __float3_7A0; // 0x7A0
     Float3 __float3_7AC; // 0x7AC
     AnmLoaded* bullet_anm; // 0x7B8
-    unknown_fields(0x8); // 0x7BC
+    int32_t __int_7BC; // 0x7BC
+    LaserData* __current_stupid_iter; // 0x7C0
     // 0x7C4
 
-    static constexpr int32_t MAX_LASER_COUNT = 512;
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline ZUNEmbeddedListRHead<LaserData>& list_head() {
+        return *(ZUNEmbeddedListRHead<LaserData>*)&this->dummy_laser.embedded_node;
+    }
+
+    inline LaserManager() {
+        this->zero_contents();
+        this->__prev_laser_id = 0x10000;
+    }
 
     inline void __increment_laser_id() {
         ++this->__prev_laser_id;
         this->__prev_laser_id = std::max(this->__prev_laser_id, 0x10000);
     }
 
+    inline void allocate_new_line_laser(LaserLineParams* data) {
+        if (this->laser_count < MAX_LASER_COUNT) {
+            this->__increment_laser_id();
+            LaserLine* laser = new LaserLine();
+            laser->id = this->__prev_laser_id;
+            this->list_tail->embedded_node.append(laser);
+            ++this->laser_count;
+            this->list_tail = laser;
+            laser->initialize(data);
+        }
+    }
+
     // 0x448920
     dllexport gnu_noinline int32_t thiscall allocate_new_laser(int32_t laser_type, void* data) asm_symbol_rel(0x448920) {
         LaserManager* laser_manager = LASER_MANAGER_PTR;
-        if (this->list_length >= MAX_LASER_COUNT) {
+        if (this->laser_count >= MAX_LASER_COUNT) {
             return 0;
         }
         laser_manager->__increment_laser_id();
         switch (laser_type) {
-            case 0:
+            case LineLaser: {
                 LaserLine* laser = new LaserLine();
                 laser->id = laser_manager->__prev_laser_id;
-                LaserData* list_head = laser_manager->list_head;
-                laser->next = list_head;
-                list_head->prev = laser;
-                ++laser_manager->list_length;
-                laser_manager->list_head = laser;
+                laser_manager->list_tail->embedded_node.append(laser);
+                ++laser_manager->laser_count;
+                laser_manager->list_tail = laser;
                 laser->initialize(data);
-                return laser_manager->__prev_laser_id;
+                break;
+            }
+            case InfiniteLaser: {
+                LaserInfinite* laser = new LaserInfinite();
+                laser->id = laser_manager->__prev_laser_id;
+                laser_manager->list_tail->embedded_node.append(laser);
+                ++laser_manager->laser_count;
+                laser_manager->list_tail = laser;
+                laser->initialize(data);
+                break;
+            }
+            case BeamLaser: {
+                LaserBeam* laser = new LaserBeam();
+                laser->id = laser_manager->__prev_laser_id;
+                laser_manager->list_tail->embedded_node.append(laser);
+                ++laser_manager->laser_count;
+                laser_manager->list_tail = laser;
+                laser->initialize(data);
+                break;
+            }
+            case CurvyLaser: {
+                LaserCurve* laser = new LaserCurve();
+                laser->id = laser_manager->__prev_laser_id;
+                laser_manager->list_tail->embedded_node.append(laser);
+                ++laser_manager->laser_count;
+                laser_manager->list_tail = laser;
+                laser->initialize(data);
+                break;
+            }
         }
+        return laser_manager->__prev_laser_id;
+    }
+
+    // 0x42D780
+    dllexport gnu_noinline LaserData* thiscall get_laser_with_id(int32_t id, int32_t arg2 = 0) {
+        LaserManager* laser_manager = LASER_MANAGER_PTR;
+        if (id) {
+            return laser_manager->list_head().find_if([=](LaserData* laser) {
+                return laser->id == id;
+            });
+        }
+        return NULL;
+    }
+
+    // 0x442480
+    dllexport gnu_noinline void thiscall destroy_all() asm_symbol_rel(0x442480) {
+        this->list_head().for_each_safe([](LaserData* laser) {
+            laser->__method_18();
+            laser->embedded_node.unlink();
+            delete laser;
+        });
+        this->laser_count = 0;
+        this->list_tail = &this->dummy_laser;
+    }
+
+    // 0x449090
+    dllexport gnu_noinline int thiscall cancel_all(int32_t arg1, int32_t arg2 = UNUSED_DWORD) asm_symbol_rel(0x449090) {
+        LASER_MANAGER_PTR->list_head().for_each_safe([=](LaserData* laser) {
+            if (laser->state != 1) {
+                laser->cancel(arg1, 0);
+            }
+        });
+        return 1;
+    }
+
+    // 0x448FA0
+    dllexport gnu_noinline int thiscall clear_all() asm_symbol_rel(0x448FA0) {
+        LASER_MANAGER_PTR->list_head().for_each_safe([](LaserData* laser) {
+            laser->__timer_754.reset();
+            laser->invulnerable_time = 0;
+            laser->cancel(1, 0);
+        });
+        return 0;
+    }
+
+private:
+    // 0x448F10
+    dllexport gnu_noinline static int vectorcall cancel_in_rectangle(int, int, float, float, float, Float3* arg1, Float3* arg2, float arg3, int arg4 = UNUSED_DWORD, int arg5 = 0) {
+        LaserManager* laser_manager = LASER_MANAGER_PTR;
+        int ret = 0;
+        laser_manager->__float3_7A0 = *arg1;
+        laser_manager->__float3_7AC = *arg2;
+        laser_manager->list_head().for_each_safe([&](LaserData* laser) {
+            if (
+                laser->state != 1 &&
+                laser->__unknown_flag_A
+            ) {
+                ret += laser->cancel_as_bomb_rectangle(arg1, arg2, arg3, 0, arg5);
+            }
+        });
+        return ret;
+    }
+public:
+    inline static int cancel_in_rectangle(Float3* arg1, Float3* arg2, float arg3, int arg4 = UNUSED_DWORD, int arg5 = 0) {
+        return cancel_in_rectangle(UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT, arg1, arg2, arg3, arg4, arg5);
+    }
+
+private:
+    // 0x449010
+    dllexport gnu_noinline static int vectorcall cancel_in_radius(int, int, float, float, Float3* arg1, float arg2, int arg3, int arg4) {
+        LaserManager* laser_manager = LASER_MANAGER_PTR;
+        int ret = 0;
+        laser_manager->__float3_7A0 = *arg1;
+        laser_manager->list_head().for_each_safe([&](LaserData* laser) {
+            if (laser->state != 1) {
+                ret += laser->cancel_as_bomb_circle(arg1, arg2, arg3, arg4);
+            }
+        });
+        return ret;
+    }
+public:
+    inline static int cancel_in_radius(Float3* arg1, float arg2, int arg3, int arg4) {
+        return cancel_in_radius(UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, arg1, arg2, arg3, arg4);
+    }
+
+    // 0x448760
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick() {
+        this->list_head().for_each_safe([=](LaserData* laser) {
+            if (
+                (laser->__unknown_field_A != 0 && ++laser->__unknown_field_A >= 2) ||
+                laser->state == 1 ||
+                laser->on_tick_common() != 0
+            ) {
+                laser->__method_18();
+                --this->laser_count;
+                laser->embedded_node.unlink();
+                if (this->list_tail == laser) {
+                    this->list_tail = laser->embedded_node.prev;
+                }
+                delete laser;
+            }
+        });
+        return UpdateFuncNext;
+    }
+
+    // 0x448870
+    dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) {
+        LaserManager* laser_manager = (LaserManager*)ptr;
+        if (
+            !(GAME_THREAD_PTR->skip_flag | GAME_THREAD_PTR->__unknown_flag_A) &&
+            !GAME_THREAD_PTR->__unknown_flag_C
+        ) {
+            if (GAME_THREAD_PTR->__unknown_flag_B) {
+                float prev_game_speed = GAME_SPEED.value;
+                GAME_SPEED.value = 0.0f;
+                UpdateFuncRet ret = laser_manager->on_tick();
+                GAME_SPEED.value = prev_game_speed;
+                return ret;
+            }
+            else {
+                if (!ABILITY_SHOP_PTR) {
+                    return laser_manager->on_tick();
+                }
+            }
+        }
+        return UpdateFuncNext;
+    }
+
+    // 0x4488E0
+    dllexport gnu_noinline static UpdateFuncRet fastcall on_draw(void* ptr) {
+        LaserManager* laser_manager = (LaserManager*)ptr;
+        if (!GAME_THREAD_PTR->skip_flag) {
+            laser_manager->list_head().for_each_safe([](LaserData* laser) {
+                if (laser->state != 1) {
+                    laser->on_draw();
+                }
+            });
+        }
+        return UpdateFuncNext;
+    }
+
+    static inline LaserManager* allocate() {
+        LaserManager* laser_manager = new LaserManager();
+        LASER_MANAGER_PTR = laser_manager;
+        laser_manager->bullet_anm = ANM_MANAGER_PTR->preload_anm(7, "bullet.anm");
+        if (!laser_manager->bullet_anm) {
+            LOG_BUFFER.write(JpEnStr("", "Enemy bullet data not found. Data is corrupted\r\n"));
+            delete laser_manager;
+            return NULL;
+        }
+
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, laser_manager);
+        UpdateFuncRegistry::register_on_tick(update_func, 28);
+        laser_manager->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, false, laser_manager);
+        UpdateFuncRegistry::register_on_draw(update_func, 36);
+
+        laser_manager->list_tail = &laser_manager->dummy_laser;
+
+        return laser_manager;
+    }
+
+    template <typename L>
+    static inline void for_each_laser_but_stupid(const L& lambda) {
+        LaserManager* laser_manager = LASER_MANAGER_PTR;
+        LaserData* data = laser_manager->list_head().next;
+        laser_manager->__current_stupid_iter = data;
+        if (data) {
+            do {
+                lambda(data);
+                laser_manager = LASER_MANAGER_PTR;
+                data = laser_manager->__current_stupid_iter;
+                if (!data) break;
+                data = data->embedded_node.next;
+                laser_manager->__current_stupid_iter = data;
+            } while (data);
+        }
+    }
+
+    dllexport static inline void __set_flag_B_on_all_lasers() {
+        for_each_laser_but_stupid([](LaserData* laser) {
+            laser->__unknown_flag_B = true;
+        });
+    }
+
+    dllexport static inline void __clear_flag_B_on_all_lasers() {
+        for_each_laser_but_stupid([](LaserData* laser) {
+            laser->__unknown_flag_B = false;
+        });
     }
 };
 
@@ -16253,7 +17134,7 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
     vm->data.origin_mode = 1;
     this->__timer_754.set(30);
     this->offscreen_timer.set(3);
-    SoundManager::__play_sound_positioned_validate(this->params.shot_sound, 0.0f);
+    SoundManager::play_sound_positioned_validate(this->params.shot_sound, 0.0f);
     this->graze_timer.reset();
     this->__timer_40.reset();
     // TODO: FINISH THIS
@@ -16312,7 +17193,7 @@ dllexport gnu_noinline void thiscall LaserLine::run_effects() {
                 effect_data.duration = IntArg(0);
                 effect_data.acceleration_vec.make_from_vector(effect_data.angle, effect_data.acceleration);
                 if (this->effect_index != 0) {
-                    SoundManager::__play_sound_validate(this->params.transform_sound);
+                    SoundManager::play_sound_validate(this->params.transform_sound);
                 }
                 break;
             }
@@ -16324,7 +17205,7 @@ dllexport gnu_noinline void thiscall LaserLine::run_effects() {
                 effect_data.timer.reset();
                 effect_data.duration = IntArg(0);
                 if (this->effect_index != 0) {
-                    SoundManager::__play_sound_validate(this->params.transform_sound);
+                    SoundManager::play_sound_validate(this->params.transform_sound);
                 }
                 break;
             }
@@ -16390,7 +17271,7 @@ dllexport gnu_noinline void thiscall LaserLine::run_effects() {
 }
 
 // 0x438D40
-dllexport AnmLoaded* EnemyManager::anm_file_lookup(int32_t file_index) {
+dllexport AnmLoaded* stdcall anm_file_lookup(int32_t file_index) {
     if (file_index == 7) {
         return STAGE_PTR->stage_anm;
     } else if (file_index == 0) {
@@ -16400,6 +17281,11 @@ dllexport AnmLoaded* EnemyManager::anm_file_lookup(int32_t file_index) {
     } else {
         return ENEMY_MANAGER_PTR->enemy_anms[file_index];
     }
+}
+
+
+inline AnmLoaded* EnemyManager::anm_file_lookup(int32_t file_index) {
+    return ::anm_file_lookup(file_index);
 }
 
 dllexport void Bullet::run_effects() {
@@ -16441,7 +17327,7 @@ dllexport void Bullet::run_effects() {
                 effect_data.duration = IntArg(0);
                 effect_data.acceleration_vec.make_from_vector(effect_data.angle, effect_data.acceleration);
                 if (this->effect_index != 0) {
-                    SoundManager::__play_sound_validate(this->transform_sound);
+                    SoundManager::play_sound_validate(this->transform_sound);
                 }
                 break;
             }
@@ -16453,7 +17339,7 @@ dllexport void Bullet::run_effects() {
                 effect_data.timer.reset();
                 effect_data.duration = IntArg(0);
                 if (this->effect_index != 0) {
-                    SoundManager::__play_sound_validate(this->transform_sound);
+                    SoundManager::play_sound_validate(this->transform_sound);
                 }
                 break;
             }
@@ -16524,7 +17410,7 @@ dllexport void Bullet::run_effects() {
                 break;
             }
             case EX_PLAYSOUND:
-                SoundManager::__play_sound_positioned(IntArg(0), this->position.x);
+                SoundManager::play_sound_positioned(IntArg(0), this->position.x);
                 break;
             case EX_DELETE:
                 if (IntArg(0) == true) {
@@ -16760,7 +17646,7 @@ dllexport void Bullet::run_effects() {
                 effect_data.duration = IntArg(0);
                 effect_data.velocity.make_from_vector(effect_data.angle, effect_data.speed);
                 if (this->effect_index != 0) {
-                    SoundManager::__play_sound_validate(this->transform_sound);
+                    SoundManager::play_sound_validate(this->transform_sound);
                 }
                 break;
             }
@@ -17201,7 +18087,7 @@ inline void thiscall EnemyData::anm_play_attack_ex_impl() {
 
 template <bool sanity_check_script>
 inline float EnemyData::kill_effects() {
-    SOUND_MANAGER.__play_sound_positioned_validate(this->death_sound, this->current_motion.position.x);
+    SOUND_MANAGER.play_sound_positioned_validate(this->death_sound, this->current_motion.position.x);
 
     float angle = -HALF_PI_f;
 
@@ -17331,7 +18217,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
     // this // EBP-570, EDI
     EclVM** vm_ptr = &this->vm; // EBP-578, ESI
     EclInstruction* current_instruction = this->vm->current_context->get_current_instruction(); // EBP-57C
-    int32_t opcode = current_instruction->opcode; // EBP-56C
+    int16_t opcode = current_instruction->opcode; // EBP-56C
 
     switch (opcode) {
         case enemy_create_rel_stage: case enemy_create_abs_stage: // 309, 310
@@ -17348,7 +18234,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
         case anm_source: // 302
             this->anm_source_index = this->get_int_arg(0);
             break;
-        case enemy_flag_mirror: case enemy_flag_mirror2: // 424, 558
+        case enemy_flag_mirror: // 424
             this->mirrored = this->get_int_arg(0);
             break;
         case __enemy_manager_flag_unknown_A: // 631
@@ -17378,7 +18264,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
         }
         // TODO
         case enemy_kill: // 566
-            if (((Enemy*)this->vm)->kill()) {
+            if (this->enemy()->kill()) {
                 return 1;
             }
             break;
@@ -18128,7 +19014,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             }
             else {
                 this->is_boss = true;
-                ENEMY_MANAGER_PTR->set_boss(index, (Enemy*)this->vm);
+                ENEMY_MANAGER_PTR->set_boss(index, this->enemy());
                 this->boss_id = index;
             }
             break;
@@ -18157,13 +19043,13 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             int32_t hard = this->get_int_arg(3);
             int32_t lunatic = this->get_int_arg(4);
             switch (GAME_MANAGER.get_difficulty()) {
-                case 0:
+                case EASY:
                     *this->get_int_ptr_arg(0) = easy;
                     break;
-                case 1:
+                case NORMAL:
                     *this->get_int_ptr_arg(0) = normal;
                     break;
-                case 2:
+                case HARD:
                     *this->get_int_ptr_arg(0) = hard;
                     break;
                 default:
@@ -18178,13 +19064,13 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             float hard = this->get_float_arg(3);
             float lunatic = this->get_float_arg(4);
             switch (GAME_MANAGER.get_difficulty()) {
-                case 0:
+                case EASY:
                     *this->get_float_ptr_arg(0) = easy;
                     break;
-                case 1:
+                case NORMAL:
                     *this->get_float_ptr_arg(0) = normal;
                     break;
-                case 2:
+                case HARD:
                     *this->get_float_ptr_arg(0) = hard;
                     break;
                 default:
@@ -18193,7 +19079,948 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             }
             break;
         }
-        // TODO
+        case shooter_reset: { // 600
+            int32_t slot = this->get_int_arg(0);
+            this->shooters[slot].zero_contents();
+            this->shooters[slot].angle1 = 0.0f;
+            this->shooters[slot].speed1 = 2.0f;
+            this->shooters[slot].count1 = 1;
+            this->shooters[slot].count2 = 1;
+            this->shooters[slot].shoot_sound = 21;
+            this->shooters[slot].transform_sound = 38;
+            this->shooters[slot].flags = 0x23; // TODO: convert to bitfields
+            this->shooter_offsets[slot].x = 0.0f;
+            this->shooter_offsets[slot].y = 0.0f;
+            this->shooter_origins[slot].x = 0.0f;
+            this->shooter_origins[slot].y = 0.0f;
+            this->shooter_origins[slot].z = 0.0f;
+            this->bullet_effect_indices[slot] = 0;
+            break;
+        }
+        case shooter_copy: { // 614
+            int32_t dst = this->get_int_arg(0);
+            int32_t src = this->get_int_arg(1);
+            this->shooters[dst] = this->shooters[src];
+            this->shooter_offsets[dst] = this->shooter_offsets[src];
+            this->shooter_origins[dst] = this->shooter_origins[src];
+            break;
+        }
+        case shoot_now: { // 601
+            int32_t slot = this->get_int_arg(0);
+            if (this->shooter_origins[slot].z > 0.9f) {
+                this->shooters[slot].position.set(this->shooter_offsets[slot].as2() + this->shooter_origins[slot].as2());
+            } else {
+                this->shooters[slot].position = this->current_motion.get_position() + this->shooter_offsets[slot];
+            }
+            BULLET_MANAGER_PTR->set_player_protect_radius(this->player_protect_radius);
+            BULLET_MANAGER_PTR->shoot_bullets(&this->shooters[slot]);
+            BULLET_MANAGER_PTR->set_player_protect_radius(0.0f);
+            break;
+        }
+        case bullet_sprite: { // 602
+            int32_t slot = this->get_int_arg(0);
+            int32_t type = this->get_int_arg(1);
+            this->shooters[slot].type = type;
+            int32_t color = this->get_int_arg(2);
+            this->shooters[slot].color = color;
+            break;
+        }
+        case shoot_offset: { // 603
+            int32_t slot = this->get_int_arg(0);
+            float x = this->get_float_arg(1);
+            this->shooter_offsets[slot].x = x;
+            float y = this->get_float_arg(2);
+            this->shooter_offsets[slot].y = y;
+            break;
+        }
+        case shoot_offset_circle: { // 626
+            int32_t slot = this->get_int_arg(0);
+            float angle = this->get_float_arg(1);
+            float radius = this->get_float_arg(2);
+            Float3 offset;
+            offset.make_from_vector(angle, radius);
+            this->shooter_offsets[slot].x = offset.x;
+            this->shooter_offsets[slot].y = offset.y;
+            break;
+        }
+        case shoot_spawn_distance: { // 627
+            int32_t slot = this->get_int_arg(0);
+            float distance = this->get_float_arg(1);
+            this->shooters[slot].distance = distance;
+            break;
+        }
+        case __shoot_origin: { // 628
+            int32_t slot = this->get_int_arg(0);
+            float x = this->get_float_arg(1);
+            this->shooter_origins[slot].x = x;
+            float y = this->get_float_arg(2);
+            this->shooter_origins[slot].y = y;
+            if (this->shooter_origins[slot].x < -990.0f) {
+                this->shooter_origins[slot].z = 0.0f;
+            } else {
+                this->shooter_origins[slot].z = 1.0f;
+            }
+            break;
+        }
+        case shoot_angle: { // 604
+            int32_t slot = this->get_int_arg(0);
+            float angle1 = reduce_angle(this->get_float_arg(1));
+            this->shooters[slot].angle1 = angle1;
+            float angle2 = reduce_angle(this->get_float_arg(2));
+            this->shooters[slot].angle2 = angle2;
+            break;
+        }
+        case bullet_speed: { // 605
+            int32_t slot = this->get_int_arg(0);
+            float speed1 = this->get_float_arg(1);
+            this->shooters[slot].speed1 = speed1;
+            float speed2 = this->get_float_arg(2);
+            this->shooters[slot].speed2 = speed2;
+            break;
+        }
+        case bullet_count: { // 606
+            int32_t slot = this->get_int_arg(0);
+            int32_t count1 = this->get_int_arg(1);
+            this->shooters[slot].count1 = count1;
+            int32_t count2 = this->get_int_arg(2);
+            this->shooters[slot].count2 = count2;
+            break;
+        }
+        case bullet_speed_difficulty: { // 624
+            int32_t slot = this->get_int_arg(0);
+            int32_t arg_index;
+            if (GAME_MANAGER.get_difficulty() == EASY) {
+                arg_index = 1;
+            } else if (GAME_MANAGER.get_difficulty() == NORMAL) {
+                arg_index = 2;
+            } else if (GAME_MANAGER.get_difficulty() == HARD) {
+                arg_index = 3;
+            } else {
+                arg_index = 4;
+            }
+            float speed1 = this->get_float_arg(arg_index);
+            this->shooters[slot].speed1 = speed1;
+            if (GAME_MANAGER.get_difficulty() == EASY) {
+                arg_index = 5;
+            } else if (GAME_MANAGER.get_difficulty() == NORMAL) {
+                arg_index = 6;
+            } else if (GAME_MANAGER.get_difficulty() == HARD) {
+                arg_index = 7;
+            } else {
+                arg_index = 8;
+            }
+            float speed2 = this->get_float_arg(arg_index);
+            this->shooters[slot].speed2 = speed2;
+            break;
+        }
+        case bullet_count_difficulty: { // 625
+            int32_t slot = this->get_int_arg(0);
+            int32_t arg_index;
+            if (GAME_MANAGER.get_difficulty() == EASY) {
+                arg_index = 1;
+            } else if (GAME_MANAGER.get_difficulty() == NORMAL) {
+                arg_index = 2;
+            } else if (GAME_MANAGER.get_difficulty() == HARD) {
+                arg_index = 3;
+            } else {
+                arg_index = 4;
+            }
+            int32_t count1 = this->get_int_arg(arg_index);
+            this->shooters[slot].count1 = count1;
+            if (GAME_MANAGER.get_difficulty() == EASY) {
+                arg_index = 5;
+            } else if (GAME_MANAGER.get_difficulty() == NORMAL) {
+                arg_index = 6;
+            } else if (GAME_MANAGER.get_difficulty() == HARD) {
+                arg_index = 7;
+            } else {
+                arg_index = 8;
+            }
+            int32_t count2 = this->get_int_arg(arg_index);
+            this->shooters[slot].count2 = count2;
+            break;
+        }
+        case bullet_speed_rank_3: { // 617
+            int32_t slot = this->get_int_arg(0);
+            int32_t arg1_index;
+            int32_t arg2_index;
+            if (GAME_MANAGER.globals.get_rank() >= 512) {
+                arg1_index = 5;
+                arg2_index = 6;
+            }
+            else if (GAME_MANAGER.globals.get_rank() >= -512) {
+                arg1_index = 3;
+                arg2_index = 4;
+            }
+            else {
+                arg1_index = 1;
+                arg2_index = 2;
+            }
+            float speed1 = this->get_float_arg(arg1_index);
+            this->shooters[slot].speed1 = speed1;
+            float speed2 = this->get_float_arg(arg2_index);
+            this->shooters[slot].speed2 = speed2;
+            break;
+        }
+        case bullet_speed_rank_5: { // 618
+            int32_t slot = this->get_int_arg(0);
+            int32_t arg1_index;
+            int32_t arg2_index;
+            if (GAME_MANAGER.globals.get_rank() >= 600) {
+                arg1_index = 9;
+                arg2_index = 10;
+            }
+            else if (GAME_MANAGER.globals.get_rank() >= 200) {
+                arg1_index = 7;
+                arg2_index = 8;
+            }
+            else if (GAME_MANAGER.globals.get_rank() >= -200) {
+                arg1_index = 5;
+                arg2_index = 6;
+            }
+            else if (GAME_MANAGER.globals.get_rank() >= -600) {
+                arg1_index = 3;
+                arg2_index = 4;
+            }
+            else {
+                arg1_index = 1;
+                arg2_index = 2;
+            }
+            float speed1 = this->get_float_arg(arg1_index);
+            this->shooters[slot].speed1 = speed1;
+            float speed2 = this->get_float_arg(arg2_index);
+            this->shooters[slot].speed2 = speed2;
+            break;
+        }
+        case bullet_speed_rank_lerp: { // 619
+            int32_t slot = this->get_int_arg(0);
+            float speed1_low = this->get_float_arg(1);
+            float speed2_low = this->get_float_arg(2);
+            float speed1_high = this->get_float_arg(3);
+            float speed2_high = this->get_float_arg(4);
+            this->shooters[slot].speed1 = GAME_MANAGER.globals.rank_lerp(speed1_low, speed1_high);
+            this->shooters[slot].speed2 = GAME_MANAGER.globals.rank_lerp(speed2_low, speed2_high);
+            break;
+        }
+        case bullet_count_rank_3: { // 620
+            int32_t slot = this->get_int_arg(0);
+            int32_t arg1_index;
+            int32_t arg2_index;
+            if (GAME_MANAGER.globals.get_rank() >= 512) {
+                arg1_index = 5;
+                arg2_index = 6;
+            }
+            else if (GAME_MANAGER.globals.get_rank() >= -512) {
+                arg1_index = 3;
+                arg2_index = 4;
+            }
+            else {
+                arg1_index = 1;
+                arg2_index = 2;
+            }
+            int32_t count1 = this->get_int_arg(arg1_index);
+            this->shooters[slot].count1 = count1;
+            int32_t count2 = this->get_int_arg(arg2_index);
+            this->shooters[slot].count2 = count2;
+            break;
+        }
+        case bullet_count_rank_5: { // 621
+            int32_t slot = this->get_int_arg(0);
+            int32_t arg1_index;
+            int32_t arg2_index;
+            if (GAME_MANAGER.globals.get_rank() >= 600) {
+                arg1_index = 9;
+                arg2_index = 10;
+            }
+            else if (GAME_MANAGER.globals.get_rank() >= 200) {
+                arg1_index = 7;
+                arg2_index = 8;
+            }
+            else if (GAME_MANAGER.globals.get_rank() >= -200) {
+                arg1_index = 5;
+                arg2_index = 6;
+            }
+            else if (GAME_MANAGER.globals.get_rank() >= -600) {
+                arg1_index = 3;
+                arg2_index = 4;
+            }
+            else {
+                arg1_index = 1;
+                arg2_index = 2;
+            }
+            int32_t count1 = this->get_int_arg(arg1_index);
+            this->shooters[slot].count1 = count1;
+            int32_t count2 = this->get_int_arg(arg2_index);
+            this->shooters[slot].count2 = count2;
+            break;
+        }
+        case bullet_count_rank_lerp: { // 619
+            int32_t slot = this->get_int_arg(0);
+            int32_t count1_low = this->get_int_arg(1);
+            int32_t count2_low = this->get_int_arg(2);
+            int32_t count1_high = this->get_int_arg(3);
+            int32_t count2_high = this->get_int_arg(4);
+            this->shooters[slot].count1 = GAME_MANAGER.globals.rank_lerp(count1_low, count1_high);
+            this->shooters[slot].count2 = GAME_MANAGER.globals.rank_lerp(count2_low, count2_high);
+            break;
+        }
+        case shoot_aim_mode: { // 607
+            int32_t slot = this->get_int_arg(0);
+            int32_t mode = this->get_int_arg(1);
+            this->shooters[slot].aim_mode = mode;
+            break;
+        }
+        case bullet_sound: { // 608
+            int32_t slot = this->get_int_arg(0);
+            int32_t shoot_sound = this->get_int_arg(1);
+            this->shooters[slot].shoot_sound = shoot_sound;
+            int32_t transform_sound = this->get_int_arg(2);
+            this->shooters[slot].transform_sound = transform_sound;
+            break;
+        }
+        case bullet_effects: case bullet_effects_ex: // 609, 610
+        case bullet_effects_add: case bullet_effects_add_ex: // 611, 612
+        {
+            // BUG: this is the argument used to select
+            // a shooter, not the effect index.
+            int32_t shooter_slot = this->get_int_arg(0);
+            if (shooter_slot >= BULLET_EFFECT_MAX || shooter_slot < 0) {
+                DebugLogger::__debug_log_stub_3("error et_ex over \n");
+                shooter_slot = 0;
+            }
+
+            opcode = current_instruction->opcode;
+
+            int32_t effect_arg_index; // ESI
+            if (
+                opcode != bullet_effects_add && // 611
+                opcode != bullet_effects_add_ex // 612
+            ) {
+                effect_arg_index = 2;
+            } else {
+                effect_arg_index = 1;
+            }
+
+            int32_t effect_slot;
+            if (
+                opcode != bullet_effects_add && // 611
+                opcode != bullet_effects_add_ex // 612
+            ) {
+                effect_slot = this->get_int_arg(1);
+            } else {
+                effect_slot = this->bullet_effect_indices[shooter_slot];
+            }
+
+            int32_t async = this->get_int_arg(effect_arg_index);
+            ++effect_arg_index;
+            this->shooters[shooter_slot].effects[effect_slot].async = async;
+
+            int32_t type = this->get_int_arg(effect_arg_index);
+            ++effect_arg_index;
+            this->shooters[shooter_slot].effects[effect_slot].type = (BulletEffectType)type;
+
+            int32_t A = this->get_int_arg(effect_arg_index);
+            ++effect_arg_index;
+            this->shooters[shooter_slot].effects[effect_slot].int_values[0] = A;
+            int32_t B = this->get_int_arg(effect_arg_index);
+            ++effect_arg_index;
+            this->shooters[shooter_slot].effects[effect_slot].int_values[1] = B;
+
+            opcode = current_instruction->opcode;
+            if (
+                opcode == bullet_effects_ex || // 610
+                opcode == bullet_effects_add_ex // 612
+            ) {
+                int32_t C = this->get_int_arg(effect_arg_index);
+                ++effect_arg_index;
+                this->shooters[shooter_slot].effects[effect_slot].int_values[2] = C;
+                int32_t D = this->get_int_arg(effect_arg_index);
+                ++effect_arg_index;
+                this->shooters[shooter_slot].effects[effect_slot].int_values[2] = D;
+            }
+
+            float R = this->get_float_arg(effect_arg_index);
+            ++effect_arg_index;
+            this->shooters[shooter_slot].effects[effect_slot].float_values[0] = R;
+            float S = this->get_float_arg(effect_arg_index);
+            ++effect_arg_index;
+            this->shooters[shooter_slot].effects[effect_slot].float_values[1] = S;
+
+            opcode = current_instruction->opcode;
+            if (
+                opcode == bullet_effects_ex || // 610
+                opcode == bullet_effects_add_ex // 612
+            ) {
+                float M = this->get_float_arg(effect_arg_index);
+                ++effect_arg_index;
+                this->shooters[shooter_slot].effects[effect_slot].float_values[2] = M;
+                float N = this->get_float_arg(effect_arg_index);
+                ++effect_arg_index;
+                this->shooters[shooter_slot].effects[effect_slot].float_values[3] = N;
+            }
+
+            opcode = current_instruction->opcode;
+            if (
+                opcode != bullet_effects_add && // 611
+                opcode != bullet_effects_add_ex // 612
+            ) {
+                this->bullet_effect_indices[shooter_slot] = effect_slot + 1;
+            } else {
+                ++this->bullet_effect_indices[shooter_slot];
+            }
+            break;
+        }
+        case __bullet_effects_prev: { // 641
+            int32_t slot = this->get_int_arg(0);
+            if (--this->bullet_effect_indices[slot] < 0) {
+                this->bullet_effect_indices[slot] = 0;
+            }
+            break;
+        }
+        case bullet_effects_set_string: { // 640
+            int32_t shooter_slot = this->get_int_arg(0);
+            int32_t effect_slot = this->get_int_arg(1);
+            this->shooters[shooter_slot].effects[effect_slot].string = StringArg(2);
+            break;
+        }
+        case laser_size_data: { // 700
+            int32_t slot = this->get_int_arg(0);
+            float length = this->get_float_arg(1);
+            this->shooters[slot].position.x = length;
+            float B = this->get_float_arg(2);
+            this->shooters[slot].position.y = B;
+            float C = this->get_float_arg(3);
+            this->shooters[slot].position.z = C;
+            float width = this->get_float_arg(4);
+            this->shooters[slot].width = width;
+            break;
+        }
+        case laser_timing_data: { // 701
+            int32_t slot = this->get_int_arg(0);
+            int32_t start_time = this->get_int_arg(1);
+            this->shooters[slot].start_time = start_time;
+            int32_t A = this->get_int_arg(2);
+            this->shooters[slot].__transform_A = A;
+            int32_t duration = this->get_int_arg(3);
+            this->shooters[slot].duration = duration;
+            int32_t B = this->get_int_arg(4);
+            this->shooters[slot].__transform_B = B;
+            int32_t __laser_flags = this->get_int_arg(5);
+            this->shooters[slot].__laser_flags = __laser_flags;
+            break;
+        }
+        case callback_ex: { // 514
+            const char* callback_sub = StringArg(4);
+            int32_t chapter;
+            if (
+                GAME_MANAGER.__unknown_field_A_is_2() &&
+                this->is_boss
+            ) {
+                // This section is very strange.
+                // The logic seems to be 100% redudant,
+                // so maybe it's a leftover structure
+                // from a previous game?
+                callback_sub = "BossDead";
+                if (this->boss_id == 0) {
+                    if (
+                        GAME_MANAGER.get_current_stage() == 7 &&
+                        GAME_MANAGER.get_chapter() < 41
+                    ) {
+                        callback_sub = "MBossDead";
+                    }
+                }
+                else {
+                    if (
+                        GAME_MANAGER.get_current_stage() == 7 &&
+                        GAME_MANAGER.get_chapter() < 41
+                    ) {
+                        callback_sub = "MBossDead";
+                    }
+                }
+
+                int32_t time_duration = this->get_int_arg(2);
+                int32_t callback_index = this->get_int_arg(0);
+                this->enemy()->set_callback(callback_index, 0, time_duration, callback_sub);
+                callback_index = this->get_int_arg(0);
+                this->enemy()->set_callback_time_sub_name(callback_index, "BossEscape");
+            }
+            else {
+                int32_t time_duration = this->get_int_arg(2);
+                int32_t life_threshold = this->get_int_arg(1);
+                int32_t callback_index = this->get_int_arg(0);
+                this->enemy()->set_callback(callback_index, life_threshold, time_duration, callback_sub);
+            }
+            break;
+        }
+        case timer_callback_sub: { // 521
+            const char* callback_sub = StringArg(1);
+            int32_t callback_index = this->get_int_arg(0);
+            this->enemy()->set_callback_time_sub_name(callback_index, callback_sub);
+            break;
+        }
+        case Opcode::death_callback_sub: { // 556
+            const char* callback_sub = StringArg(0);
+            byteloop_strcpy(this->death_callback_sub.name, callback_sub);
+            break;
+        }
+        case bullet_cancel: // 613
+            BULLET_MANAGER_PTR->cancel_all(0);
+            LASER_MANAGER_PTR->cancel_all(1, 0);
+            break;
+        case effect_sound: { // 516
+            Float3* position = &this->get_current_motion().position;
+            int32_t sound = this->get_int_arg(0);
+            SOUND_MANAGER.play_sound_positioned(sound, position->x);
+            break;
+        }
+        case effect_screen_shake: { // 517
+            // TODO
+            break;
+        }
+        case msg_read: { // 518
+            // TODO
+        }
+            [[fallthrough]];
+        case enemy_kill_all: // 525
+            ENEMY_MANAGER_PTR->kill_all();
+            break;
+        case msg_wait: // 519
+            if (
+                GUI_PTR->msg_vm_active() &&
+                !GUI_PTR->__get_enemy_appear_counter()
+            ) {
+                return -1;
+            }
+            break;
+        case boss_wait: // 520
+            if (
+                ENEMY_MANAGER_PTR->get_boss_by_index(0) ||
+                ENEMY_MANAGER_PTR->get_boss_by_index(1) ||
+                ENEMY_MANAGER_PTR->get_boss_by_index(2)
+            ) {
+                return -1;
+            }
+            break;
+        case enemy_flag_mirror2: // 558
+            this->mirrored = this->get_int_arg(0);
+            break;
+        case spellcard_start: case spellcard_start_2: // 522, 528
+        case spellcard_start_difficulty: case spellcard_start_difficulty_1: case spellcard_start_difficulty_2: // 537, 538, 539
+        {
+            // TODO
+            break;
+        }
+        case boss_timer_clear: // 513
+            this->ecl_time.reset(); // This is definitely the right offset...
+            break;
+        case __enemy_flag_armored: // 568
+            this->life.set_spell(this->get_int_arg(0));
+            break;
+        case spellcard_end: // 523
+            if (SPELLCARD_PTR->__get_flag_A() && SPELLCARD_PTR->__get_flag_B()) {
+                ITEM_MANAGER_PTR->spawn_item(LifeFragmentItem, &this->get_current_motion().position, -HALF_PI_f, 2.2f, 60);
+            }
+            SPELLCARD_PTR->end_spell();
+            this->life.set_spell(false);
+            break;
+        case spellcard_flag_timeout_set: // 542
+            SPELLCARD_PTR->__set_timeout_flag();
+            break;
+        case __spellcard_flag_anm_unknown: // 543
+            SPELLCARD_PTR->__sub_42D670();
+            break;
+        case __spellcard_flag_unknown_A: { // 567
+            int32_t state = this->get_int_arg(0);
+            SPELLCARD_PTR->__set_flag_H(state);
+            break;
+        }
+        case enemy_flag_homing_disable: // 544
+            this->homing_disable = this->get_int_arg(0);
+            break;
+        case laser_line_create: { // 702
+            LaserLineParams params;
+
+            int32_t slot = this->get_int_arg(0);
+            memcpy(params.effects, this->shooters[slot].effects, sizeof(BulletEffectArgs[BULLET_EFFECT_MAX]));
+
+            if (this->shooter_origins[slot].z > 0.9f) {
+                params.position.set(this->shooter_offsets[slot].as2() + this->shooter_origins[slot].as2());
+            } else {
+                params.position = this->current_motion.get_position() + this->shooter_offsets[slot];
+            }
+            params.sprite = this->shooters[slot].type;
+            params.color = this->shooters[slot].color;
+            params.__angle_C = reduce_angle(this->shooters[slot].angle1);
+            params.__speed_1 = this->shooters[slot].speed1;
+            params.length = this->shooters[slot].position.x;
+            params.flags = this->shooters[slot].__laser_flags | 1;
+            params.__length_related = this->shooters[slot].position.y;
+            params.shot_sound = this->shooters[slot].shoot_sound;
+            params.__float_18 = this->shooters[slot].position.z;
+            params.transform_sound = this->shooters[slot].transform_sound;
+            params.width = this->shooters[slot].width;
+            params.distance = this->shooters[slot].distance;
+            LASER_MANAGER_PTR->allocate_new_laser(LineLaser, &params);
+            break;
+        }
+        case laser_infinite_create: { // 703
+            LaserInfiniteParams params;
+
+            int32_t slot = this->get_int_arg(0);
+            memcpy(params.effects, this->shooters[slot].effects, sizeof(BulletEffectArgs[BULLET_EFFECT_MAX]));
+
+            if (this->shooter_origins[slot].z > 0.9f) {
+                params.position.set(this->shooter_offsets[slot].as2() + this->shooter_origins[slot].as2());
+            } else {
+                params.position = this->current_motion.get_position() + this->shooter_offsets[slot];
+            }
+            // TODO
+
+            params.laser_id = this->get_int_arg(1);
+            LASER_MANAGER_PTR->allocate_new_laser(InfiniteLaser, &params);
+            break;
+        }
+        case laser_beam_create: { // 713
+            LaserBeamParams params;
+
+            int32_t slot = this->get_int_arg(0);
+            memcpy(params.effects, this->shooters[slot].effects, sizeof(BulletEffectArgs[BULLET_EFFECT_MAX]));
+
+            if (this->shooter_origins[slot].z > 0.9f) {
+                params.position.set(this->shooter_offsets[slot].as2() + this->shooter_origins[slot].as2());
+            } else {
+                params.position = this->current_motion.get_position() + this->shooter_offsets[slot];
+            }
+            params.color = this->shooters[slot].color;
+            params.__angle_18 = reduce_angle(this->shooters[slot].angle1);
+            params.__float_20 = this->shooters[slot].position.z;
+            params.start_time = this->shooters[slot].start_time;
+            params.distance = this->shooters[slot].distance;
+            params.laser_id = this->get_int_arg(1);
+            LASER_MANAGER_PTR->allocate_new_laser(BeamLaser, &params);
+            break;
+        }
+        case laser_curve_create: { // 711
+            LaserCurveParams params;
+
+            int32_t slot = this->get_int_arg(0);
+            memcpy(params.effects, this->shooters[slot].effects, sizeof(BulletEffectArgs[BULLET_EFFECT_MAX]));
+
+            if (this->shooter_origins[slot].z > 0.9f) {
+                params.position.set(this->shooter_offsets[slot].as2() + this->shooter_origins[slot].as2());
+            } else {
+                params.position = this->current_motion.get_position() + this->shooter_offsets[slot];
+            }
+            // TODO
+
+            LASER_MANAGER_PTR->allocate_new_laser(CurvyLaser, &params);
+            break;
+        }
+        case laser_clear: // 710
+            while (LaserData* laser = LASER_MANAGER_PTR->get_laser_with_id(this->get_int_arg(0))) {
+                laser->cancel(0, 0);
+                laser->set_id(0);
+            }
+            break;
+        case laser_offset: { // 704
+            LaserData* laser = LASER_MANAGER_PTR->get_laser_with_id(this->get_int_arg(0));
+            Float3 position;
+            position.x = this->get_float_arg(1);
+            position.y = this->get_float_arg(2);
+            if (laser) {
+                position.z = 0.0f;
+                laser->set_position(&position);
+            }
+            break;
+        }
+        case laser_target: { // 705
+            LaserData* laser = LASER_MANAGER_PTR->get_laser_with_id(this->get_int_arg(0));
+            Float3 velocity;
+            velocity.x = this->get_float_arg(1);
+            velocity.y = this->get_float_arg(2);
+            if (laser) {
+                velocity.z = 0.0f;
+                laser->set_velocity(&velocity);
+            }
+            break;
+        }
+        case laser_speed: // 706
+            if (LaserData* laser = LASER_MANAGER_PTR->get_laser_with_id(this->get_int_arg(0))) {
+                float speed = this->get_float_arg(1);
+                laser->set_speed(speed);
+            }
+            break;
+        case laser_width: // 707
+            if (LaserData* laser = LASER_MANAGER_PTR->get_laser_with_id(this->get_int_arg(0))) {
+                float width = this->get_float_arg(1);
+                laser->set_width(width);
+            }
+            break;
+        case laser_angle: // 708
+            if (LaserData* laser = LASER_MANAGER_PTR->get_laser_with_id(this->get_int_arg(0))) {
+                float angle = this->get_float_arg(1);
+                laser->set_angle(angle);
+            }
+            break;
+        case laser_rotate: // 709
+            if (LaserData* laser = LASER_MANAGER_PTR->get_laser_with_id(this->get_int_arg(0))) {
+                float angular_velocity = this->get_float_arg(1);
+                laser->set_angular_velocity(angular_velocity);
+            }
+            break;
+        case __laser_beam_flag_unknown_A: // 714
+            if (LaserData* laser = LASER_MANAGER_PTR->get_laser_with_id(this->get_int_arg(0))) {
+                int32_t state = this->get_int_arg(1);
+                laser->__method_8(state);
+            }
+            break;
+        case bullet_cancel_radius: { // 615
+            float radius = this->get_float_arg(0);
+            //BULLET_MANAGER_PTR->canel_radius(&this->get_current_motion().position, radius, 1, 0);
+            LASER_MANAGER_PTR->cancel_in_radius(&this->get_current_motion().position, radius, 1, 1);
+            break;
+        }
+        case __bullet_cancel_weak_rectangle: { // 712
+            Float3 size;
+            size.x = this->get_float_arg(0);
+            size.y = this->get_float_arg(1);
+            float rotation = this->anm_vms[0].get_vm_ptr()->get_z_rotation();
+            //BULLET_MANAGER_PTR->canel_bullets_in_rectangle_as_bomb(&this->get_current_motion().position, &size, rotation, 1, 0);
+            break;
+        }
+        case bullet_clear_radius: { // 615
+            float radius = this->get_float_arg(0);
+            //BULLET_MANAGER_PTR->canel_radius(&this->get_current_motion().position, radius, 0, 0);
+            LASER_MANAGER_PTR->cancel_in_radius(&this->get_current_motion().position, radius, 0, 1);
+            break;
+        }
+        case bullet_cancel_weak_radius: { // 635
+            float radius = this->get_float_arg(0);
+            //BULLET_MANAGER_PTR->canel_radius_as_bomb(&this->get_current_motion().position, radius, 1, 99999, 0);
+            LASER_MANAGER_PTR->cancel_in_radius(&this->get_current_motion().position, radius, 1, 1);
+            break;
+        }
+        case bullet_clear_weak_radius: { // 636
+            float radius = this->get_float_arg(0);
+            //BULLET_MANAGER_PTR->canel_radius_as_bomb(&this->get_current_motion().position, radius, 0, 99999, 0);
+            LASER_MANAGER_PTR->cancel_in_radius(&this->get_current_motion().position, radius, 0, 1);
+            break;
+        }
+        case chapter_set: { // 524
+            int32_t chapter = this->get_int_arg(0);
+            GAME_THREAD_PTR->set_chapter(chapter);
+            this->chapter = chapter;
+            this->chapter_spawn_weight = 0;
+            break;
+        }
+        case set_float_rank_3: // 529
+            if (GAME_MANAGER.globals.get_rank() >= 512) {
+                *this->get_float_ptr_arg(0) = this->get_float_arg(2);
+            }
+            // BUG: Middle case is optimized out as impossible,
+            // likely because of a missing negative sign.
+            else if (GAME_MANAGER.globals.get_rank() >= 512) {
+                *this->get_float_ptr_arg(0) = this->get_float_arg(1);
+            }
+            else {
+                *this->get_float_ptr_arg(0) = this->get_float_arg(0);
+            }
+            break;
+        case set_float_rank_5: // 530
+            if (GAME_MANAGER.globals.get_rank() >= 600) {
+                *this->get_float_ptr_arg(0) = this->get_float_arg(4);
+            }
+            else if (GAME_MANAGER.globals.get_rank() >= 200) {
+                *this->get_float_ptr_arg(0) = this->get_float_arg(3);
+            }
+            else if (GAME_MANAGER.globals.get_rank() >= -200) {
+                *this->get_float_ptr_arg(0) = this->get_float_arg(2);
+            }
+            else if (GAME_MANAGER.globals.get_rank() >= -400) {
+                *this->get_float_ptr_arg(0) = this->get_float_arg(1);
+            }
+            else {
+                *this->get_float_ptr_arg(0) = this->get_float_arg(0);
+            }
+            break;
+        case math_float_rank_lerp: { // 531
+            float low = this->get_float_arg(1);
+            float high = this->get_float_arg(2);
+            *this->get_float_ptr_arg(0) = GAME_MANAGER.globals.rank_lerp(low, high);
+            break;
+        }
+        case set_int_rank_3: // 532
+            if (GAME_MANAGER.globals.get_rank() >= 512) {
+                *this->get_int_ptr_arg(0) = this->get_int_arg(2);
+            }
+            // BUG: Middle case is optimized out as impossible,
+            // likely because of a missing negative sign.
+            else if (GAME_MANAGER.globals.get_rank() >= 512) {
+                *this->get_int_ptr_arg(0) = this->get_int_arg(1);
+            }
+            else {
+                *this->get_int_ptr_arg(0) = this->get_int_arg(0);
+            }
+            break;
+        case set_int_rank_5: // 533
+            if (GAME_MANAGER.globals.get_rank() >= 600) {
+                *this->get_int_ptr_arg(0) = this->get_int_arg(4);
+            }
+            else if (GAME_MANAGER.globals.get_rank() >= 200) {
+                *this->get_int_ptr_arg(0) = this->get_int_arg(3);
+            }
+            else if (GAME_MANAGER.globals.get_rank() >= -200) {
+                *this->get_int_ptr_arg(0) = this->get_int_arg(2);
+            }
+            else if (GAME_MANAGER.globals.get_rank() >= -400) {
+                *this->get_int_ptr_arg(0) = this->get_int_arg(1);
+            }
+            else {
+                *this->get_int_ptr_arg(0) = this->get_int_arg(0);
+            }
+            break;
+        case math_int_rank_lerp: { // 534
+            int32_t low = this->get_int_arg(1);
+            int32_t high = this->get_int_arg(2);
+            *this->get_int_ptr_arg(0) = GAME_MANAGER.globals.rank_lerp(low, high);
+            break;
+        }
+        case boss_set_life_count: { // 540
+            int32_t lives = this->get_int_arg(0);
+            GUI_PTR->__set_field_170(lives);
+            break;
+        }
+        case laser_clear_all: // 545
+            LASER_MANAGER_PTR->clear_all();
+            break;
+        case enemy_bomb_shield: { // 546
+            this->bomb_shield = this->get_int_arg(0);
+            int32_t anm_script = this->get_int_arg(1);
+            this->disable_hitbox = false;
+            this->bomb_shield_active = false;
+            this->bombshield_on_anm = anm_script;
+            this->bombshield_off_anm = this->current_anm_script;
+            break;
+        }
+        case enemy_limit_set: { // 559
+            int32_t limit = this->get_int_arg(0);
+            ENEMY_MANAGER_PTR->set_enemy_limit(limit);
+            break;
+        }
+        case game_speed_set: { // 547
+            float speed = this->get_float_arg(0);
+            GAME_SPEED.set(speed);
+            break;
+        }
+        case set_float_angle_to_player_from_point: { // 623
+            float x_pos = PLAYER_PTR->get_position()->x - this->get_float_arg(0);
+            float y_pos = PLAYER_PTR->get_position()->y - this->get_float_arg(1);
+            *this->get_float_ptr_arg(0) = zatan2f(y_pos, x_pos);
+            break;
+        }
+        case ecl_time_sub_difficulty: { // 548
+            int32_t easy = this->get_int_arg(0);
+            int32_t normal = this->get_int_arg(1);
+            int32_t hard = this->get_int_arg(2);
+            int32_t lunatic = this->get_int_arg(3);
+            if (GAME_MANAGER.get_difficulty() == EASY) {
+                this->enemy()->subtract_time_float(easy);
+            } else if (GAME_MANAGER.get_difficulty() == NORMAL) {
+                this->enemy()->subtract_time_float(normal);
+            } else if (GAME_MANAGER.get_difficulty() == HARD) {
+                this->enemy()->subtract_time_float(hard);
+            } else {
+                this->enemy()->subtract_time_float(lunatic);
+            }
+            break;
+        }
+        case enemy_fog_spawn: { // 629
+            // TODO
+            break;
+        }
+        case std_interrupt: { // 630
+            int32_t interrupt = this->get_int_arg(0);
+            // STAGE_PTR->std_interrupt(interrupt);
+            break;
+        }
+        case std_fog_interp: { // 557
+            // TODO
+            break;
+        }
+        case __enemy_flag_unknown_A: // 549
+            this->__anm_related_A = this->get_int_arg(0);
+            break;
+        case enemy_set_kill_id: // 550
+            this->kill_id = this->get_int_arg(0);
+            break;
+        case enemy_id_exists: { // 555
+            int32_t* write = this->get_int_ptr_arg(0);
+            int32_t id = this->get_int_arg(1);
+            *write = ENEMY_MANAGER_PTR->enemy_exists_with_id(id);
+            break;
+        }
+        case enemy_id_get_position_crash: { // 801
+            int32_t id = this->get_int_arg(2);
+            Enemy* enemy = ENEMY_MANAGER_PTR->get_enemy_by_id(id);
+            *this->get_float_ptr_arg(0) = enemy->get_current_motion()->position.x;
+            *this->get_float_ptr_arg(1) = enemy->get_current_motion()->position.y;
+            break;
+        }
+        case boss_callback: { // 802
+            int32_t slot = this->get_int_arg(0);
+            for (int32_t i = 0; i < 4; ++i) {
+                Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(i);
+                if (
+                    i != this->boss_id &&
+                    boss != NULL &&
+                    boss->get_data().callbacks[slot].life >= 0 &&
+                    boss->get_data().callbacks[slot].life_sub.name // BUG: This is checking if the array exists
+                ) {
+                    boss->cleanup();
+                    boss->initialize_vm();
+                    boss->set_context_to_sub(boss->get_data().callbacks[slot].life_sub.name);
+                }
+            }
+            break;
+        }
+        case enemy_id_change_sub: { // 800
+            int32_t id = this->get_int_arg(0);
+            if (Enemy* enemy = ENEMY_MANAGER_PTR->get_enemy_by_id(id)) {
+                enemy->cleanup();
+                enemy->initialize_vm();
+                enemy->set_context_to_sub(StringArg(1));
+            }
+            break;
+        }
+        case enemy_id_get_position: { // 324
+            int32_t id = this->get_int_arg(2);
+            if (Enemy* enemy = ENEMY_MANAGER_PTR->get_enemy_by_id(id)) {
+                *this->get_float_ptr_arg(0) = enemy->get_current_motion()->position.x;
+                *this->get_float_ptr_arg(1) = enemy->get_current_motion()->position.y;
+            } else {
+                *this->get_float_ptr_arg(0) = this->get_current_motion().position.x;
+                *this->get_float_ptr_arg(1) = this->get_current_motion().position.y;
+            }
+            break;
+        }
+        case bullet_bounce_bounds_set: { // 560
+            float height = this->get_float_arg(1);
+            float width = this->get_float_arg(0);
+            BULLET_MANAGER_PTR->__set_bounce_bounds(width, height);
+            break;
+        }
+        case __enemy_id_set_flag_unknown_B: { // 340
+            int32_t id = this->get_int_arg(0);
+            if (Enemy* enemy = ENEMY_MANAGER_PTR->get_enemy_by_id(id)) {
+                enemy->__set_unknown_flag_B();
+            }
+            break;
+        }
+        case __globals_flag_unknown_A: { // 1001
+            int32_t state = this->get_int_arg(0);
+            GAME_MANAGER.globals.__set_unknown_flag_A(state);
+            break;
+        }
     }
     return 0;
 }
@@ -18700,7 +20527,7 @@ struct ReplayManager : ZUNTask {
     // 0x461DB0
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick_B_impl() asm_symbol_rel(0x461DB0) {
         if (
-            GAME_THREAD_PTR && this->mode == __replay_mode_1
+            GAME_THREAD_PTR && this->mode == __replay_playback
         ) {
             if (!INPUT_STATES[0].check_hardware_inputs(BUTTON_SHOOT | BUTTON_DOWN)) {
                 if (!this->__dword_10) {
@@ -18733,9 +20560,9 @@ struct ReplayManager : ZUNTask {
         GameThread* game_thread_ptr = GAME_THREAD_PTR;
         if (game_thread_ptr && !game_thread_ptr->skip_flag) {
             switch (self->mode) {
-                case __replay_mode_0:
+                case __replay_recording:
                     break;
-                case __replay_mode_1:
+                case __replay_playback:
                     Float3 position = {
                         383.0f, 450.0f, 0.0f
                     };
@@ -18782,7 +20609,7 @@ struct ReplayManager : ZUNTask {
     dllexport gnu_noinline ZUNResult thiscall initialize(ReplayMode mode, const char* path) asm_symbol_rel(0x4615E0) {
         this->mode = mode;
         switch (mode) {
-            case __replay_mode_0: {
+            case __replay_recording: {
                 REPLAY_MANAGER_PTR = this;
                 this->delete_chunk_list(GAME_MANAGER.globals.current_stage);
                 this->current_chunk_node = this->allocate_chunk(GAME_MANAGER.globals.current_stage);
@@ -18831,7 +20658,7 @@ struct ReplayManager : ZUNTask {
                 this->__int_20C = -1;
                 return ZUN_SUCCESS;
             }
-            case __replay_mode_1: {
+            case __replay_playback: {
                 if (ZUN_SUCCEEDED(this->__load_from_path(path))) {
                     GAME_THREAD_PTR->config = this->info->config;
                     ReplayStageData& cur_stage_data = this->stage_data[GAME_MANAGER.globals.current_stage];
@@ -18926,6 +20753,10 @@ ValidateFieldOffset32(0x218, ReplayManager, flags);
 ValidateFieldOffset32(0x21C, ReplayManager, file_path);
 ValidateStructSize32(0x31C, ReplayManager);
 #pragma endregion
+
+static inline bool is_replay() {
+    return REPLAY_MANAGER_PTR->mode == __replay_playback;
+}
 
 typedef struct PauseMenu PauseMenu;
 extern "C" {
@@ -19119,6 +20950,7 @@ dllexport gnu_noinline int32_t stdcall __sub_486390(AnmImage* image, AnmTexture*
     if (entry->low_res_scale && floatA < 2.0f) {
         rectB.right = (float)texture_width * floatA * 0.5f;
     }
+    // TODO
 }
 
 // 0x486560
@@ -19184,7 +21016,7 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__sub_486BC0(AnmLoaded* anm_
             return -1;
         }
     }
-
+    // TODO
 skip_adding_image_size:
 }
 

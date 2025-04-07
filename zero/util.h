@@ -858,42 +858,13 @@ enum GameVersion : size_t {
 
 #define IN
 
-template <typename T>
-struct ZUNEmbeddedList {
-    T* next;
-    T* prev;
-};
+#define ZUNListPlayNiceWithIntellisense 1
 
-#define EMBEDDED_NODE list_node
-
-template <typename T>
-struct ZUNEmbeddedList2 {
-    T* prev;
-    T* next;
-
-    inline void unlink_from_next() {
-        if (T* next_node = this->next) {
-            next_node->EMBEDDED_NODE.prev = this->prev;
-        }
-    }
-    inline void unlink_from_prev() {
-        if (T* prev_node = this->prev) {
-            prev_node->EMBEDDED_NODE.next = this->next;
-        }
-    }
-
-    inline void unlink() {
-        this->prev->EMBEDDED_NODE.next = this->next;
-        this->unlink_from_next();
-    }
-
-    inline void prepend(T* new_node) {
-        new_node->prev = ZUNListNCast(this);
-        this->prev = new_node;
-    }
-};
-
-#define ZUNListPlayNiceWithIntellisense
+#if !ZUNListPlayNiceWithIntellisense
+#define ZUNListNCast(ptr) (ptr)
+#else
+#define ZUNListNCast(ptr) ((N*)ptr)
+#endif
 
 #ifdef ZUNListIdkDefault
 #define ZUNListIdkDefaultValue = ZUNListIdkDefault
@@ -901,8 +872,116 @@ struct ZUNEmbeddedList2 {
 #define ZUNListIdkDefaultValue
 #endif
 
-#ifndef ZUNListPlayNiceWithIntellisense
-#define ZUNListNCast(ptr) (ptr)
+template <typename T>
+struct ZUNEmbeddedList {
+    T* next;
+    T* prev;
+};
+
+#define embedded_node embedded_node
+
+template <typename T>
+struct ZUNEmbeddedListR {
+    using N = ZUNEmbeddedListR<T>;
+
+    T* prev;
+    T* next;
+
+    inline T* data_ptr() {
+        return (T*)((uintptr_t)this - offsetof(T, embedded_node));
+    }
+
+    inline void unlink_from_next() {
+        if (T* next_node = this->next) {
+            next_node->embedded_node.prev = this->prev;
+        }
+    }
+    inline void unlink_from_prev() {
+        this->prev->embedded_node.next = this->next;
+    }
+
+    inline void unlink() {
+        this->prev->embedded_node.next = this->next;
+        if (T* next_node = this->next) {
+            next_node->embedded_node.prev = this->prev;
+        }
+    }
+
+    inline void append(T* new_node) {
+        new_node->embedded_node.prev = this->data_ptr();
+        this->next = new_node;
+    }
+
+    inline void append(N* new_node) {
+        new_node->prev = this->data_ptr();
+        this->next = new_node->data_ptr();
+    }
+
+protected:
+    template <typename L>
+    static inline void for_each_impl(const L& lambda, T* data) {
+        do {
+            lambda(data);
+            data = data->embedded_node.next;
+        } while (data);
+    }
+    template <typename L>
+    static inline void for_each_safe_impl(const L& lambda, T* data) {
+        do {
+            T* next_data = data->embedded_node.next;
+            lambda(data);
+            data = next_data;
+        } while (data);
+    }
+    template <typename L>
+    static inline T* find_if_impl(const L& lambda, T* data) {
+        do {
+            if (lambda(data)) return data;
+            data = data->embedded_node.next;
+        } while (data);
+        return NULL;
+    }
+public:
+    template <typename L>
+    inline void for_each(const L& lambda) {
+        return for_each_impl(lambda, this->data_ptr());
+    }
+    template <typename L>
+    inline void for_each_safe(const L& lambda) {
+        return for_each_safe_impl(lambda, this->data_ptr());
+    }
+    template <typename L>
+    inline T* find_if(const L& lambda) {
+        return find_if_impl(lambda, this->data_ptr());
+    }
+};
+
+template <typename T>
+struct ZUNEmbeddedListRHead : ZUNEmbeddedListR<T> {
+    using N = ZUNEmbeddedListR<T>;
+
+    template <typename L>
+    inline void for_each(const L& lambda) {
+        if (T* data = this->next) {
+            return for_each_impl(lambda, data);
+        }
+    }
+    template <typename L>
+    inline void for_each_safe(const L& lambda) {
+        if (T* data = this->next) {
+            return for_each_safe_impl(lambda, data);
+        }
+    }
+    template <typename L>
+    inline T* find_if(const L& lambda) {
+        if (T* data = this->next) {
+            return find_if_impl(lambda, data);
+        }
+        return NULL;
+    }
+};
+
+#if !ZUNListPlayNiceWithIntellisense
 
 template <typename T, bool has_idk>
 struct ZUNListBase;
@@ -940,7 +1019,6 @@ struct ZUNListBase : ZUNListData<T, has_idk> {
         this->idk = NULL;
     }
 #else
-#define ZUNListNCast(ptr) ((N*)ptr)
 
 template <typename T, bool has_idk ZUNListIdkDefaultValue, bool link_type = has_idk>
 struct ZUNListBase {
@@ -995,7 +1073,7 @@ struct ZUNListBase {
         this->prev = new_node;
     }
 
-#ifndef ZUNListPlayNiceWithIntellisense
+#if !ZUNListPlayNiceWithIntellisense
     inline void append(N* new_node) requires (!has_idk) {
         if (N* next_node = this->next) {
             next_node->prepend(new_node);
@@ -1235,7 +1313,7 @@ public:
     }
 };
 
-#ifdef ZUNListPlayNiceWithIntellisense
+#if ZUNListPlayNiceWithIntellisense
 template <typename T>
 struct ZUNListBase<T, true, true> : ZUNListBase<T, false, true> {
     using N = ZUNListBase<T, true, true>;

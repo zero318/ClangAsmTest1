@@ -204,6 +204,11 @@ struct Float3 : Float2 {
     dllexport gnu_noinline float vectorcall __bullet_effect_angle_jank(float angle, float arg2, float arg3);
 #endif
 
+    void set(const Float2& src) {
+        *(double*)&this->x = *(double*)&src.x;
+        this->z = 0.0f;
+    }
+
     void set(const Float3& src) {
         *(double*)&this->x = *(double*)&src.x;
         this->z = src.z;
