@@ -113,6 +113,15 @@ struct Float2 : Float1 {
         float y_diff = this->y - value->y;
         return sqrtf(x_diff * x_diff + y_diff * y_diff);
     }
+
+    inline Float2 rotate_around_origin(float angle) {
+        float y_unit = zsinf(angle);
+        float x_unit = zcosf(angle);
+        return {
+            (x_unit * this->x) - (y_unit * this->y),
+            (x_unit * this->y) + (y_unit * this->x)
+        };
+    }
     
 #pragma region // Float2 Operators
 
@@ -193,6 +202,8 @@ struct Float3 : Float2 {
 
     using Float2::Float2;
     inline constexpr Float3() {};
+    inline constexpr Float3(const Float2& v) : Float2(v), z(0.0f) {}
+    inline constexpr Float3(const Float2& v, float Z) : Float2(v), z(Z) {}
     inline constexpr Float3(const float& X, const float& Y, const float& Z) : Float2(X, Y), z(Z) {}
     
     inline Float2& as2() {

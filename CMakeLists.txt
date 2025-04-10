@@ -444,7 +444,7 @@ endif()
 #else()
 target_compile_options(${EXE} PRIVATE
 	#-flto=thin
-	-flto=full
+	#-flto=full
 )
 #endif()
 
@@ -1016,6 +1016,8 @@ target_compile_definitions(smallest_pe_file PRIVATE
 )
 target_link_options(smallest_pe_file PRIVATE
 	/ENTRY:yeet
+	"/STUB:F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\empty_dos_stub.exe"
+	/emittoolversioninfo:no
 	"LINKER:/fixed"
 	-nodefaultlib
 )
