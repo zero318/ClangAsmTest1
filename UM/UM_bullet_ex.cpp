@@ -13001,63 +13001,57 @@ public:
         ASCII_MANAGER_PTR->print_score_impl(position, score, continues);
     }
 
-private:
-    inline void print_score_bigger_impl(Float3* position, uint32_t score, uint32_t continues) {
-        char buffer[32];
-
+    dllexport gnu_noinline static void stdcall print_score_bigger(Float3* position, uint32_t score, uint32_t continues) {
         uint64_t big_score = score | (uint64_t)score_upper[1 + (*(uint32_t*)&position->y == 0x42800000)] << 32;
 
+        char buffer[32];
         char* buffer_write = &buffer[31];
-        *buffer_write-- = '\0';
-        *buffer_write-- = '0' + continues;
-        uint8_t comma_counter = 1;
+        *buffer_write = '\0';
+        *--buffer_write = '0' + continues;
+        uint8_t comma_counter = 2;
 
-        while (uint8_t digit = big_score % 10) {
+        while (big_score) {
+            uint8_t digit = big_score % 10;
             big_score /= 10;
-            *buffer_write-- = '0' + digit;
-            ++comma_counter;
-            if (comma_counter == 3 && big_score) {
-                comma_counter = 0;
-                *buffer_write-- = ',';
+            *--buffer_write = '0' + digit;
+            if (!--comma_counter && big_score) {
+                comma_counter = 3;
+                *--buffer_write = ',';
             }
         }
 
-        ++buffer_write;
+        AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
 
-        switch (this->font_id) {
+        switch (ascii_manager->font_id) {
             case 10: {
-                D3DCOLOR prev_color = this->color;
-                this->color = this->color2;
-                this->font_id = 11;
-                this->add_string(position, buffer_write);
-                this->font_id = 10;
-                this->color = prev_color;
+                D3DCOLOR prev_color = ascii_manager->color;
+                ascii_manager->color = ascii_manager->color2;
+                ascii_manager->font_id = 11;
+                ascii_manager->add_string(position, buffer_write);
+                ascii_manager->font_id = 10;
+                ascii_manager->color = prev_color;
                 break;
             }
             case 7: {
-                D3DCOLOR prev_color = this->color;
-                this->color = this->color2;
-                this->font_id = 9;
-                this->add_string(position, buffer_write);
-                this->font_id = 7;
-                this->color = prev_color;
+                D3DCOLOR prev_color = ascii_manager->color;
+                ascii_manager->color = ascii_manager->color2;
+                ascii_manager->font_id = 9;
+                ascii_manager->add_string(position, buffer_write);
+                ascii_manager->font_id = 7;
+                ascii_manager->color = prev_color;
                 break;
             }
             case 6: {
-                D3DCOLOR prev_color = this->color;
-                this->color = this->color2;
-                this->font_id = 8;
-                this->add_string(position, buffer_write);
-                this->font_id = 6;
-                this->color = prev_color;
+                D3DCOLOR prev_color = ascii_manager->color;
+                ascii_manager->color = ascii_manager->color2;
+                ascii_manager->font_id = 8;
+                ascii_manager->add_string(position, buffer_write);
+                ascii_manager->font_id = 6;
+                ascii_manager->color = prev_color;
                 break;
             }
         }
-        this->add_string(position, buffer_write);
-    }
-public:
-    dllexport gnu_noinline static void stdcall print_score_bigger(Float3* position, uint32_t score, uint32_t continues) {
-        ASCII_MANAGER_PTR->print_score_bigger_impl(position, score, continues);
+        ascii_manager->add_string(position, buffer_write);
     }
 
     // 0x41A110
