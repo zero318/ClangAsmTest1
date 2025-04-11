@@ -556,6 +556,9 @@ struct DebugLogger {
 extern "C" {
     // 0x4CF290
     extern DebugLogger* DEBUG_LOG_PTR asm("_DEBUG_LOG_PTR");
+
+    // 0x4CF2F0
+    extern char UNKNOWN_TEXT_BUFFER_A[MAX_PATH] asm("_UNKNOWN_TEXT_BUFFER_A");
 }
 
 namespace Pbg {
@@ -3267,6 +3270,8 @@ union AnmID {
     // 0x488E30
     dllexport AnmVM* get_vm_ptr() asm_symbol_rel(0x488E30);
 
+    inline int32_t run_vm();
+
     // 0x488E50
     dllexport void interrupt_tree(int32_t interrupt_index) asm_symbol_rel(0x488E50);
 
@@ -3312,6 +3317,11 @@ union AnmID {
 ValidateFieldOffset32(0x0, AnmID, full);
 ValidateStructSize32(0x4, AnmID);
 #pragma endregion
+
+extern "C" {
+    // 0x4C5F90
+    extern int32_t ACHIEVEMENT_MODE_STATE asm("_ACHIEVEMENT_MODE_STATE");
+}
 
 // size: 0xB60
 struct Supervisor {
@@ -3473,8 +3483,13 @@ struct Supervisor {
     // 0x454820
     dllexport HRESULT thiscall d3d_disable_zwrite() asm_symbol_rel(0x454820);
 
+private:
     // 0x454860
     dllexport static gnu_noinline int32_t stdcall __start_thread_A94(_beginthreadex_proc_type func, int) asm_symbol_rel(0x454860);
+public:
+    inline static int32_t __start_thread_A94(_beginthreadex_proc_type func) {
+        return __start_thread_A94(func, UNUSED_DWORD);
+    }
 
     // 0x4548E0
     dllexport static gnu_noinline void stdcall __sub_4548E0(StageCamera* camera) asm_symbol_rel(0x4548E0);
@@ -3713,11 +3728,15 @@ static inline constexpr size_t CHARACTER_COUNT = 4;
 static inline constexpr size_t SHOTTYPES_PER_CHARACTER = 1;
 static inline constexpr size_t SHOTTYPE_COUNT = CHARACTER_COUNT * SHOTTYPES_PER_CHARACTER;
 static inline constexpr size_t DIFFICULTY_COUNT = 6;
+static inline constexpr int32_t STAGE_COUNT = 8;
 
 static inline constexpr int32_t RANK_BOUND = 1024;
 static inline constexpr int32_t MAX_RANK = +RANK_BOUND; // 1024
 static inline constexpr int32_t MIN_RANK = -RANK_BOUND; // -1024
 static inline constexpr int32_t RANK_RANGE = RANK_BOUND * 2; // 2048
+
+// This is used as an index into the scorefile section B array
+static inline constexpr size_t SCOREFILE_TOTALS = SHOTTYPE_COUNT;
 
 static inline void __update_bomb_ui();
 
@@ -3733,7 +3752,7 @@ struct Globals {
     int32_t shottype; // 0x1C
     int32_t score; // 0x20
     int32_t difficulty; // 0x24
-    int32_t __counter_28; // 0x28
+    int32_t continues; // 0x28
     int32_t rank; // 0x2C
     int32_t graze_in_stage; // 0x30
     int32_t graze; // 0x34
@@ -3748,7 +3767,7 @@ struct Globals {
     int32_t current_money; // 0x58
     int32_t current_power; // 0x5C
     int32_t max_power; // 0x60
-    int32_t __power_related_64; // 0x64 (Power related)
+    int32_t power_per_level; // 0x64
     int __dword_68; // 0x68
     int32_t life_stocks; // 0x6C
     int32_t life_fragments; // 0x70
@@ -3804,7 +3823,7 @@ struct Globals {
         this->shottype = rhs.shottype;
         this->score = rhs.score;
         this->difficulty = rhs.difficulty;
-        this->__counter_28 = rhs.__counter_28;
+        this->continues = rhs.continues;
         this->rank = rhs.rank;
         this->graze_in_stage = rhs.graze_in_stage;
         this->graze = rhs.graze;
@@ -3819,7 +3838,7 @@ struct Globals {
         this->current_money = rhs.current_money;
         this->current_power = rhs.current_power;
         this->max_power = rhs.max_power;
-        this->__power_related_64 = rhs.__power_related_64;
+        this->power_per_level = rhs.power_per_level;
         this->__dword_68 = rhs.__dword_68;
         this->life_stocks = rhs.life_stocks;
         this->life_fragments = rhs.life_fragments;
@@ -3853,13 +3872,13 @@ struct Globals {
     }
 
     // 0x412FA0
-    dllexport gnu_noinline void thiscall __set_unknown_value_A(int32_t value) asm_symbol_rel(0x412FA0) {
+    dllexport gnu_noinline void thiscall set_power(int32_t value) asm_symbol_rel(0x412FA0) {
         this->current_power = value;
-        int32_t A = this->max_power;
-        if (value <= A) {
-            A = value < this->__power_related_64 ? this->__power_related_64 : value;
+        int32_t power = this->max_power;
+        if (value <= power) {
+            power = __max(power, this->power_per_level); // Effectively clamps to level 1 power
         }
-        this->current_power = A;
+        this->current_power = power;
     }
 
     // 0x42A970
@@ -3932,19 +3951,22 @@ public:
     }
 
     // 0x457480
-    dllexport gnu_noinline BOOL thiscall __sub_457480(int32_t value) asm_symbol_rel(0x457480) {
-        int32_t& A = this->current_power;
-        int32_t B = this->__power_related_64;
-        if (A <= B) {
+    dllexport gnu_noinline BOOL thiscall subtract_power(int32_t amount) asm_symbol_rel(0x457480) {
+        int32_t power = this->current_power;
+        int32_t min_power = this->power_per_level;
+        if (power <= min_power) {
             return false;
         }
-        A -= value;
-        if (A < B) {
-            A = B;
+        power -= amount;
+        this->current_power = power;
+        if (power < min_power) {
+            this->current_power = min_power;
+            power = min_power;
         }
-        int32_t C = (A + value) / this->__power_related_64;
-        int32_t D = A / this->__power_related_64;
-        return C != D;
+
+        int32_t prev_level = (power + amount) / min_power;
+        int32_t new_level = power / min_power;
+        return prev_level != new_level;
     }
 
     // 0x4574D0
@@ -3971,8 +3993,8 @@ public:
 
 // 0x130
 struct GameManager {
-    int32_t display_score; // 0x0
-    int32_t __continues; // 0x4
+    int32_t __high_score; // 0x0
+    int32_t __high_score_continues; // 0x4
     union {
         uint32_t flags; // 0x8
         struct {
@@ -4096,7 +4118,7 @@ struct WindowData {
     double __double_20C0; // 0x20C0
     unknown_fields(0x4); // 0x20C8
     int __dword_20CC; // 0x20CC
-    int __dword_20D0; // 0x20D0
+    int __int_20D0; // 0x20D0
     int __dword_array_20D4[12]; // 0x20D4 (This might be an array of 4 Int3...?)
     probably_padding_bytes(0x4); // 0x2104
     // 0x2108
@@ -4172,7 +4194,7 @@ ValidateFieldOffset32(0x20B8, WindowData, __double_20B8);
 ValidateFieldOffset32(0x20C0, WindowData, __double_20C0);
 
 ValidateFieldOffset32(0x20CC, WindowData, __dword_20CC);
-ValidateFieldOffset32(0x20D0, WindowData, __dword_20D0);
+ValidateFieldOffset32(0x20D0, WindowData, __int_20D0);
 ValidateFieldOffset32(0x20D4, WindowData, __dword_array_20D4);
 #pragma endregion
 
@@ -4256,7 +4278,8 @@ struct CardData {
     int __int_18; // 0x18
     unknown_fields(0x4); // 0x1C
     uint8_t __byte_20; // 0x20
-    unknown_fields(0xB); // 0x21
+    unknown_fields(0x7); // 0x21
+    BOOL __render_passive_in_hud; // 0x28
     int32_t sprite_large; // 0x2C
     int32_t sprite_small; // 0x30
     // 0x34
@@ -4269,6 +4292,7 @@ ValidateFieldOffset32(0x0, CardData, name);
 ValidateFieldOffset32(0x4, CardData, id);
 ValidateFieldOffset32(0x18, CardData, __int_18);
 ValidateFieldOffset32(0x20, CardData, __byte_20);
+ValidateFieldOffset32(0x28, CardData, __render_passive_in_hud);
 ValidateFieldOffset32(0x2C, CardData, sprite_large);
 ValidateFieldOffset32(0x30, CardData, sprite_small);
 ValidateStructSize32(0x34, CardData);
@@ -4289,8 +4313,55 @@ static inline constexpr const CardData& find_in_card_data(const L& lambda) {
     return CARD_DATA_TABLE[NULL_CARD];
 }
 
+// 0x407D70
+dllexport const CardData& find_id_in_card_data(int32_t id) {
+    return find_in_card_data([=](const CardData& card) {
+        return card.id == id;
+    });
+}
+
 static inline constexpr uint32_t SCOREFILE_MAGIC = PackUInt32('T', 'H', '8', '1'); // Yup, it's backwards
 static inline constexpr uint16_t SCOREFILE_VERSION_NUMBER = 6;
+
+static inline constexpr int32_t SPELL_COUNT = 97;
+
+// 0x4B3F30
+static const int8_t SPELL_DIFFICULTY_TABLE[SPELL_COUNT] = {
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EASY, NORMAL, HARD, LUNATIC,
+    EXTRA,
+    EXTRA,
+    EXTRA,
+    EXTRA,
+    EXTRA,
+    EXTRA,
+    EXTRA,
+    EXTRA,
+    EXTRA,
+    EXTRA,
+    EXTRA,
+    EXTRA,
+    EXTRA
+};
 
 // size: 0x18
 struct ScorefileHeader {
@@ -4321,7 +4392,7 @@ ValidateStructSize32(0x18, ScorefileHeader);
 struct ScorefileRecord {
     uint32_t score; // 0x0
     uint8_t __byte_4; // 0x4
-    uint8_t __byte_5; // 0x5
+    int8_t continues; // 0x5
     char name[10]; // 0x6
     time_t time; // 0x10
     float slowdown_rate; // 0x18
@@ -4331,11 +4402,44 @@ struct ScorefileRecord {
 #pragma region // ScorefileRecord Validation
 ValidateFieldOffset32(0x0, ScorefileRecord, score);
 ValidateFieldOffset32(0x4, ScorefileRecord, __byte_4);
-ValidateFieldOffset32(0x5, ScorefileRecord, __byte_5);
+ValidateFieldOffset32(0x5, ScorefileRecord, continues);
 ValidateFieldOffset32(0x6, ScorefileRecord, name);
 ValidateFieldOffset32(0x10, ScorefileRecord, time);
 ValidateFieldOffset32(0x18, ScorefileRecord, slowdown_rate);
 ValidateStructSize32(0x20, ScorefileRecord);
+#pragma endregion
+
+// size: 0xDC
+struct ScorefileSpellcard {
+    char name[0]; // 0x0, 0x8D0, 0x8D8
+    unknown_fields(0xC0); // 0x0
+    int32_t captures[2]; // 0xC0, 0x990, 0x998 0 = Spell record menu, Spell practice menu GAME MODE line, 1 = Spell practice menu
+    int32_t attempts[2]; // 0xC8, 0x998, 0x9A0 0 = Spell record menu, Spell practice menu GAME MODE line, 1 = Spell practice menu
+    int32_t id; // 0xD0, 0x9A0, 0x9A8
+    int32_t difficulty; // 0xD0, 0x9A0, 0x9A8
+    int32_t spell_practice_score; // 0xD0, 0x9A8, 0x9B0
+    // 0xDC
+
+    //inline void 
+};
+#pragma region // ScorefileSpellcard
+ValidateFieldOffset32(0x0, ScorefileSpellcard, name);
+ValidateStructSize32(0xDC, ScorefileSpellcard);
+#pragma endregion
+
+// size: 0x8
+struct ScorefileStagePractice {
+    uint32_t score; // 0x0, 0x12EF0, 0x12EF8
+    bool __bool_4; // 0x4, 0x12EF4, 0x12EFC
+    bool unlocked; // 0x5, 0x12EF5, 0x12EFD
+    unknown_fields(0x2); // 0x6, 0x12EF6, 0x12EFE
+    // 0x8, 0x12EF8, 0x12F00
+};
+#pragma region // ScorefileStagePractice Validation
+ValidateFieldOffset32(0x0, ScorefileStagePractice, score);
+ValidateFieldOffset32(0x4, ScorefileStagePractice, __bool_4);
+ValidateFieldOffset32(0x5, ScorefileStagePractice, unlocked);
+ValidateStructSize32(0x8, ScorefileStagePractice);
 #pragma endregion
 
 // size: 0xC
@@ -4376,12 +4480,35 @@ static inline constexpr uint16_t SCOREFILE_SECTION_B_MAGIC = PackUInt16('C', 'R'
 static inline constexpr uint16_t SCOREFILE_SECTION_B_VERSION_NUMBER = 3;
 static inline constexpr int32_t RECORDS_PER_DIFFICULTY = 10;
 
+/*
+uint32_t score; //
+bool __idk; // 0x12EF4, 0x12EFC
+bool __seen; // 0x12EF5, 0x12EFD
+// 0x12EFE
+// 0x12F00
+bool __idkB; // 0x12F05
+// 0x12F06
+*/
+
+static inline constexpr size_t wekjbkrb = sizeof(ScorefileStagePractice[DIFFICULTY_COUNT][STAGE_COUNT + 1]);
+
 // size: 0x130F0
 struct ScorefileSectionB : ScorefileSectionHeader {
-    int32_t index; // 0xC
-    ScorefileRecord records[DIFFICULTY_COUNT][RECORDS_PER_DIFFICULTY]; // 0x10
-    unknown_fields(0x12960); // 0x790
-    // 0x130F0
+    // ScorefileSectionHeader base; // 0x0, 0x8
+    int32_t index; // 0xC, 0x14
+    ScorefileRecord records[DIFFICULTY_COUNT][RECORDS_PER_DIFFICULTY]; // 0x10, 0x18
+    unknown_fields(0x140); // 0x790, 0x798
+    ScorefileSpellcard spells[SPELL_COUNT]; // 0x8D0, 0x8D8
+    unknown_fields(0x898); // 0x5C2C, 0x5C34
+    int32_t __int_64C4; // 0x64C4, 0x64CC
+    uint64_t __ulonglong_64C8; // 0x64C8, 0x64D0
+    int32_t __total_clears[DIFFICULTY_COUNT]; // 0x64D0, 0x64D8
+    unknown_fields(0x4); // 0x64E8, 0x64F0
+    int32_t __1cc_clears[DIFFICULTY_COUNT]; // 0x64EC, 0x64F4
+    unknown_fields(0xC9EC); // 0x6504, 0x650C
+    ScorefileStagePractice practice[DIFFICULTY_COUNT][STAGE_COUNT + 1]; // 0x12EF0, 0x12EF8
+    unknown_fields(0x50); // 0x130A0, 0x130A8
+    // 0x130F0, 0x130F8
 
     inline void zero_contents() {
         zero_this();
@@ -4393,6 +4520,13 @@ struct ScorefileSectionB : ScorefileSectionHeader {
 
     inline uint32_t calculate_checksum() {
         return ((ScorefileSection*)this)->calculate_checksum(sizeof(ScorefileSectionB));
+    }
+
+    inline void __add_play_count() {
+        int32_t count = this->__int_64C4;
+        if (count < 9999999) {
+            this->__int_64C4 = count + 1;
+        }
     }
 
     // 0x463350
@@ -4408,12 +4542,16 @@ struct ScorefileSectionB : ScorefileSectionHeader {
                 this->records[i][j].__byte_4 = 1;
                 memcpy(this->records[i][j].name, "--------", sizeof("--------"));
                 this->records[i][j].time = 0;
-                this->records[i][j].__byte_5 = 0;
+                this->records[i][j].continues = 0;
                 this->records[i][j].slowdown_rate = 0.0f;
             }
         }
 
-        // There's more here...
+        for (int32_t i = 0; i < SPELL_COUNT; ++i) {
+            int32_t difficulty = SPELL_DIFFICULTY_TABLE[i];
+            this->spells[i].id = i;
+            this->spells[i].difficulty = difficulty;
+        }
     }
 
     // 0x457870
@@ -4435,7 +4573,7 @@ struct ScorefileSectionB : ScorefileSectionHeader {
         }
 
         cur_record->score = GAME_MANAGER.globals.score;
-        cur_record->__byte_5 = GAME_MANAGER.globals.__counter_28;
+        cur_record->continues = GAME_MANAGER.globals.continues;
         cur_record->__byte_4 = GAME_MANAGER.globals.current_stage;
         time(&cur_record->time);
         cur_record->slowdown_rate = FPS_COUNTER_PTR->calc_slowdown_rate();
@@ -4450,6 +4588,12 @@ ValidateFieldOffset32(0x4, ScorefileSectionB, checksum);
 ValidateFieldOffset32(0x8, ScorefileSectionB, size);
 ValidateFieldOffset32(0xC, ScorefileSectionB, index);
 ValidateFieldOffset32(0x10, ScorefileSectionB, records);
+ValidateFieldOffset32(0x8D0, ScorefileSectionB, spells);
+ValidateFieldOffset32(0x64C4, ScorefileSectionB, __int_64C4);
+ValidateFieldOffset32(0x64C8, ScorefileSectionB, __ulonglong_64C8);
+ValidateFieldOffset32(0x64D0, ScorefileSectionB, __total_clears);
+ValidateFieldOffset32(0x64EC, ScorefileSectionB, __1cc_clears);
+ValidateFieldOffset32(0x12EF0, ScorefileSectionB, practice);
 ValidateStructSize32(0x130F0, ScorefileSectionB);
 #pragma endregion
 
@@ -4458,16 +4602,19 @@ static inline constexpr uint16_t SCOREFILE_SECTION_A_VERSION_NUMBER = 6;
 
 // size: 0x3D0
 struct ScorefileSectionA : ScorefileSectionHeader {
-    char __text_buffer_C[10]; // 0xC
-    unknown_fields(0xBA); // 0x16
-    uint8_t __byte_array_D0[CARD_COUNT]; // 0xD0
-    unknown_fields(0x47); // 0x109
-    char __text_buffers_150[3][16]; // 0x150
-    unknown_fields(0x40); // 0x180
-    int __int_array_1C0[3]; // 0x1C0
-    unknown_fields(0x4); // 0x1CC
-    short __short_array_1D0[0x100]; // 0x1D0
-    // 0x3D0
+    // ScorefileSectionHeader base; // 0x0, 0x5F4B8
+    char __text_buffer_C[10]; // 0xC, 0x5F4C4
+    unknown_fields(0x32); // 0x16, 0x5F4CE
+    uint64_t __ulonglong_48; // 0x48, 0x5F500
+    bool trophies[30]; // 0x50, 0x5F508
+    unknown_fields(0x62); // 0x6E, 0x5F526
+    uint8_t __byte_array_D0[CARD_COUNT]; // 0xD0, 0x5F588
+    unknown_fields(0x47); // 0x109, 0x5F5C1
+    uint8_t __card_ids_150[SHOTTYPE_COUNT][16]; // 0x150, 0x5F608
+    unknown_fields(0x30); // 0x190, 0x5F648
+    int32_t __int_array_1C0[4]; // 0x1C0, 0x5F678
+    short __short_array_1D0[0x100]; // 0x1D0, 0x5F688
+    // 0x3D0, 0x5F888
 
     inline void zero_contents() {
         zero_this();
@@ -4490,20 +4637,18 @@ struct ScorefileSectionA : ScorefileSectionHeader {
 
         memcpy(this->__text_buffer_C, "        ", sizeof("        "));
         for (int32_t i = 0; i < CARD_COUNT; ++i) {
-            auto& matched_card = find_in_card_data([=](const CardData& card) {
-                return card.id == i;
-            });
-            this->__byte_array_D0[i] = matched_card.__byte_20;
+            this->__byte_array_D0[i] = find_id_in_card_data(i).__byte_20;
         }
-        memset(this->__text_buffers_150, '8', sizeof(__text_buffers_150)); // WTF?
-        this->__text_buffers_150[0][0] = '*';
-        this->__int_array_1C0[0] = 3;
-        this->__text_buffers_150[1][0] = '*';
-        this->__text_buffers_150[1][0] = 0x10;
-        this->__text_buffers_150[1][0] = 0x18;
-        this->__int_array_1C0[1] = 5;
-        this->__text_buffers_150[2][0] = '*';
-        this->__int_array_1C0[2] = 0;
+        memset(this->__card_ids_150, NULL_CARD, sizeof(__card_ids_150));
+        this->__card_ids_150[0][0] = KOZUCHI_CARD;
+        this->__int_array_1C0[0] = 1;
+        this->__int_array_1C0[1] = 3;
+        this->__card_ids_150[1][0] = KOZUCHI_CARD;
+        this->__card_ids_150[1][1] = YOUMU_OP_CARD;
+        this->__card_ids_150[1][2] = DBOMBEXTEND_CARD;
+        this->__int_array_1C0[2] = 5;
+        this->__card_ids_150[2][0] = KOZUCHI_CARD;
+        this->__int_array_1C0[3] = 0;
         for (size_t i = 0; i < countof(this->__short_array_1D0); ++i) {
             this->__short_array_1D0[i] = REPLAY_RNG.rand_ushort();
         }
@@ -4515,8 +4660,10 @@ ValidateFieldOffset32(0x2, ScorefileSectionA, __version_number);
 ValidateFieldOffset32(0x4, ScorefileSectionA, checksum);
 ValidateFieldOffset32(0x8, ScorefileSectionA, size);
 ValidateFieldOffset32(0xC, ScorefileSectionA, __text_buffer_C);
+ValidateFieldOffset32(0x48, ScorefileSectionA, __ulonglong_48);
+ValidateFieldOffset32(0x50, ScorefileSectionA, trophies);
 ValidateFieldOffset32(0xD0, ScorefileSectionA, __byte_array_D0);
-ValidateFieldOffset32(0x150, ScorefileSectionA, __text_buffers_150);
+ValidateFieldOffset32(0x150, ScorefileSectionA, __card_ids_150);
 ValidateFieldOffset32(0x1C0, ScorefileSectionA, __int_array_1C0);
 ValidateFieldOffset32(0x1D0, ScorefileSectionA, __short_array_1D0);
 ValidateStructSize32(0x3D0, ScorefileSectionA);
@@ -4531,7 +4678,7 @@ struct ScorefileBuffer {
 struct Scorefile {
     ScorefileBuffer* buffer; // 0x0
     void* decompressed_buffer; // 0x4
-    ScorefileSectionB __sectionB_array[SHOTTYPE_COUNT + 1]; // 0x8
+    ScorefileSectionB shottypes[SHOTTYPE_COUNT + 1]; // 0x8, 0x130F8, 0x251E8, 0x392D8, 0x4C3C8
     ScorefileSectionA __sectionA; // 0x5F4B8
     // 0x5F888
 
@@ -4549,8 +4696,8 @@ private:
         *(ScorefileHeader*)big_buffer = scorefile->buffer->header;
         written_size += sizeof(ScorefileHeader);
         
-        ScorefileSectionB* sectionB = scorefile->__sectionB_array;
-        for (size_t i = 0; i < countof(scorefile->__sectionB_array); ++i) {
+        ScorefileSectionB* sectionB = scorefile->shottypes;
+        for (size_t i = 0; i < countof(scorefile->shottypes); ++i) {
             if (sectionB->magic.as_uint == SCOREFILE_SECTION_B_MAGIC) {
                 sectionB->index = i;
                 clang_forceinline sectionB->checksum = sectionB->calculate_checksum();
@@ -4612,7 +4759,7 @@ private:
                                 sectionB->checksum == sectionB->calculate_checksum() &&
                                 sectionB->size == sizeof(ScorefileSectionB)
                             ) {
-                                scorefile->__sectionB_array[sectionB->index] = *sectionB;
+                                scorefile->shottypes[sectionB->index] = *sectionB;
                                 remaining_size -= sectionB->size;
                                 if (remaining_size < 0) break;
                                 section = sectionB->next_section();
@@ -4661,8 +4808,8 @@ public:
         this->__sectionA.initialize();
 
         for (
-            ScorefileSectionB* sectionB = this->__sectionB_array;
-            (int32_t)(sectionB - this->__sectionB_array) < SHOTTYPE_COUNT + 1;
+            ScorefileSectionB* sectionB = this->shottypes;
+            (int32_t)(sectionB - this->shottypes) < SHOTTYPE_COUNT + 1;
             ++sectionB
         ) {
             sectionB->initialize();
@@ -4672,7 +4819,7 @@ public:
 #pragma region // Scorefile Validation
 ValidateFieldOffset32(0x0, Scorefile, buffer);
 ValidateFieldOffset32(0x4, Scorefile, decompressed_buffer);
-ValidateFieldOffset32(0x8, Scorefile, __sectionB_array);
+ValidateFieldOffset32(0x8, Scorefile, shottypes);
 ValidateFieldOffset32(0x5F4B8, Scorefile, __sectionA);
 ValidateStructSize32(0x5F888, Scorefile);
 #pragma endregion
@@ -4701,12 +4848,12 @@ struct ScorefileManager {
     }
 
     inline void copy_backup_to_primary() {
-        memcpy(this->primary_file.__sectionB_array, this->backup_file.__sectionB_array, sizeof(this->backup_file.__sectionB_array));
+        memcpy(this->primary_file.shottypes, this->backup_file.shottypes, sizeof(this->backup_file.shottypes));
         this->primary_file.__sectionA = this->backup_file.__sectionA;
     }
 
     inline void copy_primary_to_backup() {
-        memcpy(this->backup_file.__sectionB_array, this->primary_file.__sectionB_array, sizeof(this->primary_file.__sectionB_array));
+        memcpy(this->backup_file.shottypes, this->primary_file.shottypes, sizeof(this->primary_file.shottypes));
         this->backup_file.__sectionA = this->primary_file.__sectionA;
     }
 
@@ -7961,8 +8108,6 @@ extern "C" {
     extern void* CACHED_MSG_FILE_PTR asm("_CACHED_MSG_FILE_PTR");
 }
 
-
-
 static inline constexpr int32_t MENU_STACK_DEPTH = 16;
 
 // size: 0xD8
@@ -8323,31 +8468,32 @@ ValidateFieldOffset32(0x1D4, MsgVM, __int_1D4);
 ValidateStructSize32(0x1D8, MsgVM);
 #pragma endregion
 
-// size: 0x2CC
-struct Gui : ZUNTask {
-
 #pragma region IMPORTED_FROM_VD_DATA_NEEDS_VALIDATION
-    // size: 0x8
-    struct LifebarMarker {
-        float bar_position; // 0x0
-        D3DCOLOR section_color; // 0x4
-    };
-    // size: 0x54
-    struct Lifebar {
-        float bar_value; // 0x0
-        float life_percentage; // 0x4
-        int32_t current_life; // 0x8
-        unknown_fields(0x4); // 0xC
-        LifebarMarker markers[4]; // 0x10
-        AnmID main_vm; // 0x30
-        AnmID glowA_vm; // 0x34
-        AnmID glowB_vm; // 0x38
-        AnmID marker_vms[4]; // 0x3C
-        int32_t vms_initialized; // 0x4C
-        int __dword_50; // 0x50
-    };
+// size: 0x8
+struct LifebarMarker {
+    float bar_position; // 0x0
+    D3DCOLOR section_color; // 0x4
+    // 0x8
+};
+// size: 0x54
+struct Lifebar {
+    float bar_value; // 0x0
+    float life_percentage; // 0x4
+    int32_t current_life; // 0x8
+    unknown_fields(0x4); // 0xC
+    LifebarMarker markers[4]; // 0x10
+    AnmID main_vm; // 0x30
+    AnmID glowA_vm; // 0x34
+    AnmID glowB_vm; // 0x38
+    AnmID marker_vms[4]; // 0x3C
+    int32_t vms_initialized; // 0x4C
+    int __dword_50; // 0x50
+    // 0x54
+};
 #pragma endregion
 
+// size: 0x2CC
+struct Gui : ZUNTask {
     // ZUNTask base; // 0x0
     unknown_fields(0x5C); // 0xC
     AnmVM* __anm_vm_ptr_array_68[7]; // 0x68
@@ -8366,7 +8512,7 @@ struct Gui : ZUNTask {
     Timer __timer_140; // 0x140
     unknown_fields(0x4); // 0x154
     int32_t __score; // 0x158
-    unknown_fields(0x4); // 0x15C
+    int32_t __int_15C; // 0x15C
     AnmLoaded* stage_logo_anm; // 0x160
     unknown_fields(0xC); // 0x164
     int __dword_170; // 0x170
@@ -8374,7 +8520,8 @@ struct Gui : ZUNTask {
     union {
         uint32_t flags; // 0x194
         struct {
-
+            uint32_t : 8; // 1-8
+            uint32_t __unknown_flag_A : 1; // 9
         };
     };
     Timer __timer_198; // 0x198
@@ -8387,6 +8534,7 @@ struct Gui : ZUNTask {
     Lifebar lifebars[3]; // 0x1C4
     AnmLoaded* __anm_loaded_2C0; // 0x2C0
     unknown_fields(0x8); // 0x2C4
+    // 0x2CC
 
     inline void update_spell_timer(int32_t time) {
         // I'm only ~80% sure I got this math right
@@ -8453,6 +8601,7 @@ ValidateFieldOffset32(0x134, Gui, __int_134);
 ValidateFieldOffset32(0x13C, Gui, __int_13C);
 ValidateFieldOffset32(0x140, Gui, __timer_140);
 ValidateFieldOffset32(0x158, Gui, __score);
+ValidateFieldOffset32(0x15C, Gui, __int_15C);
 ValidateFieldOffset32(0x170, Gui, __dword_170);
 ValidateFieldOffset32(0x194, Gui, flags);
 ValidateFieldOffset32(0x198, Gui, __timer_198);
@@ -9347,7 +9496,8 @@ struct GameThread : ZUNTask {
             uint32_t skip_flag : 1; // 3
             uint32_t __unknown_flag_H : 1; // 4
             uint32_t __unknown_flag_I : 1; // 5
-            uint32_t : 2; // 6-7
+            uint32_t __unknown_flag_L : 1; // 6
+            uint32_t __unknown_flag_M : 1; // 7
             uint32_t __unknown_flag_J : 1; // 8
             uint32_t __unknown_flag_D : 1; // 9
             uint32_t : 1; // 10
@@ -9367,15 +9517,64 @@ struct GameThread : ZUNTask {
     int __int_D4; // 0xD4
     // 0xD8
 
-    // 0x4437B0
-    GameThread(ReplayMode mode) {
+    inline void zero_contents() {
+        zero_this();
+    }
 
+    inline GameThread() {
+        this->zero_contents();
     }
 
     // 0x439E80
     dllexport gnu_noinline void thiscall set_chapter(int32_t chapter) asm_symbol_rel(0x439E80) {
         GAME_MANAGER.globals.chapter = chapter;
         GAME_THREAD_PTR->chapter = chapter;
+    }
+
+    // 0x443860
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x443860);
+
+    // 0x443D70
+    dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) asm_symbol_rel(0x443D70) {
+        return ((GameThread*)ptr)->on_tick();
+    }
+
+    // 0x443D80
+    dllexport gnu_noinline static UpdateFuncRet fastcall on_draw(void* ptr) asm_symbol_rel(0x443D80);
+
+private:
+    inline unsigned thread_start_impl();
+public:
+    // 0x4424E0
+    dllexport gnu_noinline unsigned thiscall thread_start() {
+        return GAME_THREAD_PTR->thread_start_impl();
+    }
+
+    // 0x4432B0
+    dllexport static unsigned cdecl thread_start_stub(void*) {
+        return GAME_THREAD_PTR->thread_start();
+    }
+
+    // 0x443E60
+    dllexport gnu_noinline ZUNResult thiscall __sub_443E60() asm_symbol_rel(0x443E60) {
+
+    }
+
+    // 0x4443C0
+    dllexport gnu_noinline ZUNResult thiscall __sub_4443C0() asm_symbol_rel(0x4443C0) {
+
+    }
+
+    // 0x4437B0
+    dllexport gnu_noinline static GameThread* fastcall allocate(ReplayMode mode) asm_symbol_rel(0x4437B0) {
+        GameThread* game_thread = new GameThread();
+        WINDOW_DATA.__int_20D0 = 0;
+        SUPERVISOR.d3d_device->EvictManagedResources();
+        game_thread->skip_flag = true;
+        GAME_THREAD_PTR = game_thread;
+        game_thread->replay_mode = mode;
+        SUPERVISOR.__start_thread_A94((_beginthreadex_proc_type)&thread_start_stub);
+        return game_thread;
     }
 };
 
@@ -9866,6 +10065,9 @@ struct AnmVM {
     dllexport gnu_noinline static int fastcall __on_create_5(AnmVM* vm, void* arg) asm_symbol_rel(0x407590) {
 
     }
+    
+    // 0x488FA0
+    dllexport void thiscall set_sprite(int32_t sprite_id) asm_symbol_rel(0x488FA0);
 
     // 0x412F20
     dllexport inline void thiscall interrupt(int32_t interrupt_index) asm_symbol_rel(0x412F20) {
@@ -10499,7 +10701,7 @@ struct AnmManager {
 
     ZUNThreadB __thread_0; // 0x0
     unknown_fields(0x4); // 0x1C
-    int __dword_20; // 0x20
+    int32_t __int_20; // 0x20
     unknown_fields(0x24); // 0x24
     int __dword_48; // 0x48
     unknown_fields(0x24); // 0x4C
@@ -10508,7 +10710,8 @@ struct AnmManager {
     int __dword_98; // 0x98
     unknown_fields(0x24); // 0x9C
     int __dword_C0; // 0xC0
-    unknown_fields(0x8); // 0xC4
+    int __dword_C4; // 0xC4
+    int __dword_C8; // 0xC8
     int __dword_CC; // 0xCC
     Int2 __int2_D0; // 0xD0
     Float2 __float2_D8; // 0xD8
@@ -10523,9 +10726,7 @@ struct AnmManager {
     int32_t next_snapshot_fast_id; // 0x3120700
     int32_t next_snapshot_discriminator; // 0x3120704
     ZUNListHead<AnmVM> snapshot_list_head; // 0x3120708
-    //ZUNList<AnmVM> snapshot_list_head; // 0x3120708
     ZUNListHead<FastAnmVM> free_list_head; // 0x3120718
-    //ZUNList<FastAnmVM> free_list_head; // 0x3120718
     unknown_fields(0x4); // 0x3120728
     AnmLoaded* loaded_anm_files[33]; // 0x312072C
     D3DMATRIXZ __matrix_31207B0; // 0x31207B0
@@ -10601,34 +10802,38 @@ struct AnmManager {
     dllexport gnu_noinline UpdateFuncRet thiscall render_layer(uint32_t layer_index) asm_symbol_rel(0x488260) {
         CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
         {
-            this->world_list_head->for_each_safeB([&, this](AnmVM* vm) {
-                if (!vm->data.__vm_state) {
-                    uint32_t vm_layer = vm->data.layer;
-                    vm_layer = (vm_layer - WORLD_LAYER_COUNT) >= UI_LAYER_COUNT ? vm_layer : vm_layer - WORLD_LAYER_B_COUNT;
-                    if (vm_layer == layer_index) {
-                        this->draw_vm(vm);
-                        ++vm->data.position_interp.end_time;
+            if (auto* world_list_head = this->world_list_head) {
+                world_list_head->for_each_safeB([&, this](AnmVM* vm) {
+                    if (!vm->data.__vm_state) {
+                        uint32_t vm_layer = vm->data.layer;
+                        vm_layer = (vm_layer - WORLD_LAYER_COUNT) >= UI_LAYER_COUNT ? vm_layer : vm_layer - WORLD_LAYER_B_COUNT;
+                        if (vm_layer == layer_index) {
+                            this->draw_vm(vm);
+                            ++vm->data.position_interp.end_time;
+                        }
                     }
-                }
-            });
-            this->ui_list_head->for_each_safeB([=](AnmVM* vm) {
-                if (!vm->data.__vm_state) {
-                    int32_t vm_layer = vm->data.layer;
-                    if ((uint32_t)(vm_layer - WORLD_LAYER_A_COUNT) < UI_LAYER_COUNT) {
-                        vm_layer += WORLD_LAYER_B_COUNT;
+                });
+            }
+            if (auto* ui_list_head = this->ui_list_head) {
+                ui_list_head->for_each_safeB([=](AnmVM* vm) {
+                    if (!vm->data.__vm_state) {
+                        int32_t vm_layer = vm->data.layer;
+                        if ((uint32_t)(vm_layer - WORLD_LAYER_A_COUNT) < UI_LAYER_COUNT) {
+                            vm_layer += WORLD_LAYER_B_COUNT;
+                        }
+                        else if (
+                            vm_layer < WORLD_LAYER_COUNT ||
+                            vm_layer >= (WORLD_LAYER_COUNT + UI_LAYER_COUNT)
+                        ) {
+                            vm_layer = 39;
+                        }
+                        if (vm_layer == layer_index) {
+                            this->draw_vm(vm);
+                            ++vm->data.position_interp.end_time;
+                        }
                     }
-                    else if (
-                        vm_layer < WORLD_LAYER_COUNT ||
-                        vm_layer >= (WORLD_LAYER_COUNT + UI_LAYER_COUNT)
-                    ) {
-                        vm_layer = 39;
-                    }
-                    if (vm_layer == layer_index) {
-                        this->draw_vm(vm);
-                        ++vm->data.position_interp.end_time;
-                    }
-                }
-            });
+                });
+            }
         }
         CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
         return UpdateFuncNext;
@@ -10771,7 +10976,7 @@ struct AnmManager {
         this->__byte_3120E0B = 0;
         this->current_texture_blend_color = PackD3DCOLOR(0, 0, 0, 0);
         this->__byte_3120E0C = -1;
-        this->__dword_20 = -1;
+        this->__int_20 = -1;
         this->__dword_48 = -1;
         this->__dword_70 = -1;
         this->__dword_98 = -1;
@@ -11054,8 +11259,12 @@ struct AnmManager {
                 auto id_match = [=](AnmVM* vm){
                     return vm->controller.id == vm_id;
                 };
-                if (AnmVM* ret = this->world_list_head->find_if(id_match)) return ret;
-                if (AnmVM* ret = this->ui_list_head->find_if(id_match)) return ret;
+                if (auto* world_list_head = this->world_list_head) {
+                    if (AnmVM* ret = world_list_head->find_if(id_match)) return ret;
+                }
+                if (auto* ui_list_head = this->ui_list_head) {
+                    if (AnmVM* ret = ui_list_head->find_if(id_match)) return ret;
+                }
             }
             else {
                 FastAnmVM& fast_vm = this->fast_array[fast_id];
@@ -11188,17 +11397,19 @@ struct AnmManager {
                 //layer_lists[i] = &layer_heads[i];
                 layer_heads[i].controller.next_in_layer = NULL;
             } while (++i < WORLD_LAYER_COUNT);
-            this->world_list_head->for_each([&, this](AnmVM* vm) {
-                vm->controller.next_in_layer = NULL;
-                vm->controller.prev_in_layer = NULL;
-                switch (vm->data.__vm_state) {
-                    case AnmVMState::Normal:
-                        if (vm->run_anm()) {
-                    case AnmVMState::MarkedForDelete:
-                            this->__recursive_remove(vm, &destroy_list);
-                        }
-                }
-            });
+            if (auto* world_list_head = this->world_list_head) {
+                world_list_head->for_each([&, this](AnmVM* vm) {
+                    vm->controller.next_in_layer = NULL;
+                    vm->controller.prev_in_layer = NULL;
+                    switch (vm->data.__vm_state) {
+                        case AnmVMState::Normal:
+                            if (vm->run_anm()) {
+                        case AnmVMState::MarkedForDelete:
+                                this->__recursive_remove(vm, &destroy_list);
+                            }
+                    }
+                });
+            }
             destroy_list.for_each([this](AnmVM* vm) {
                 this->destroy_possibly_managed_vm(vm);
             });
@@ -11221,17 +11432,19 @@ struct AnmManager {
                 //layer_lists[i] = &layer_heads[i];
                 layer_heads[i].controller.next_in_layer = NULL;
             } while (++i < UI_LAYER_COUNT);
-            this->ui_list_head->for_each([&, this](AnmVM* vm) {
-                vm->controller.next_in_layer = NULL;
-                vm->controller.prev_in_layer = NULL;
-                switch (vm->data.__vm_state) {
-                    case AnmVMState::Normal:
-                        if (vm->run_anm()) {
-                    case AnmVMState::MarkedForDelete:
-                            this->__recursive_remove(vm, &destroy_list);
-                        }
-                }
-            });
+            if (auto* ui_list_head = this->ui_list_head) {
+                ui_list_head->for_each([&, this](AnmVM* vm) {
+                    vm->controller.next_in_layer = NULL;
+                    vm->controller.prev_in_layer = NULL;
+                    switch (vm->data.__vm_state) {
+                        case AnmVMState::Normal:
+                            if (vm->run_anm()) {
+                        case AnmVMState::MarkedForDelete:
+                                this->__recursive_remove(vm, &destroy_list);
+                            }
+                    }
+                });
+            }
             destroy_list.for_each([this](AnmVM* vm) {
                 this->destroy_possibly_managed_vm(vm);
             });
@@ -11338,14 +11551,41 @@ public:
         AnmID dummy{ GARBAGE_VALUE(int) };
         return add_vm_to_ui_list_front(dummy, vm);
     }
+
+    // 0x488DA0
+    dllexport gnu_noinline void thiscall __set_state1_for_all_vms_from_loaded(AnmLoaded* anm_loaded) asm_symbol_rel(0x488DA0) {
+        if (anm_loaded) {
+            auto set_state1_if_slot_matches = [=](AnmVM* vm) {
+                int32_t slot = anm_loaded->slot_index;
+                if (
+                    vm->data.slot == slot ||
+                    vm->data.slot2 == slot
+                ) {
+                    vm->data.__vm_state = 1;
+                }
+            };
+            if (auto* world_list_head = this->world_list_head) {
+                world_list_head->for_each_safe(set_state1_if_slot_matches);
+            }
+            if (auto* ui_list_head = this->ui_list_head) {
+                ui_list_head->for_each_safe(set_state1_if_slot_matches);
+            }
+        }
+    }
+
+    inline void __set_state1_for_all_vms_from_loaded_slot(int32_t slot) {
+        this->__set_state1_for_all_vms_from_loaded(this->loaded_anm_files[slot]);
+    }
 };
 #pragma region // AnmManager Validation
 ValidateFieldOffset32(0x0, AnmManager, __thread_0);
-ValidateFieldOffset32(0x20, AnmManager, __dword_20);
+ValidateFieldOffset32(0x20, AnmManager, __int_20);
 ValidateFieldOffset32(0x48, AnmManager, __dword_48);
 ValidateFieldOffset32(0x70, AnmManager, __dword_70);
 ValidateFieldOffset32(0x98, AnmManager, __dword_98);
 ValidateFieldOffset32(0xC0, AnmManager, __dword_C0);
+ValidateFieldOffset32(0xC4, AnmManager, __dword_C4);
+ValidateFieldOffset32(0xC8, AnmManager, __dword_C8);
 ValidateFieldOffset32(0xCC, AnmManager, __dword_CC);
 ValidateFieldOffset32(0xD0, AnmManager, __int2_D0);
 ValidateFieldOffset32(0xD8, AnmManager, __float2_D8);
@@ -11391,10 +11631,27 @@ ValidateFieldOffset32(0x39724B0, AnmManager, __color_39724B0);
 ValidateStructSize32(0x39724B8, AnmManager);
 #pragma endregion
 
+// 0x443D80
+dllexport gnu_noinline UpdateFuncRet fastcall GameThread::on_draw(void* ptr) {
+    AnmManager* anm_manager = ANM_MANAGER_PTR;
+    anm_manager->__dword_C4 = 0;
+    anm_manager->__dword_C8 = 0;
+    anm_manager->__dword_C0 = 0;
+    anm_manager->__dword_CC = 0;
+    return UpdateFuncNext;
+}
+
 // 0x441ED0
 dllexport gnu_noinline void thiscall Gui::__display_stage_logo() {
     if (SUPERVISOR.gamemode_switch != 8 && GAME_MANAGER.__unknown_flag_E) {
         GUI_PTR->stage_logo_anm->instantiate_vm_to_world_list_back(0);
+    }
+}
+
+// 0x488FA0
+dllexport void thiscall AnmVM::set_sprite(int32_t sprite_id) {
+    if (AnmLoaded* anm_loaded = ANM_MANAGER_PTR->loaded_anm_files[this->data.slot]) {
+        anm_loaded->set_sprite(this, sprite_id);
     }
 }
 
@@ -12123,6 +12380,16 @@ dllexport AnmVM* AnmID::get_vm_ptr() {
     return vm;
 }
 
+inline int32_t AnmID::run_vm() {
+    AnmManager* anm_manager = ANM_MANAGER_PTR;
+    AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this);
+    if (!vm) {
+        this->full = 0;
+        vm = &anm_manager->__vm_E4;
+    }
+    return vm->run_anm();
+}
+
 // 0x488E50
 dllexport void AnmID::interrupt_tree(int32_t interrupt_index) {
     AnmManager::interrupt_tree(*this, interrupt_index);
@@ -12340,8 +12607,8 @@ dllexport gnu_noinline BOOL thiscall Globals::__add_power(int32_t value) {
         gui->__anm_id_BC = 0;
         gui->__anm_id_BC = gui->__anm_loaded_2C0->instantiate_vm_to_world_list_back(33);
     }
-    int32_t C = (A - value) / this->__power_related_64;
-    int32_t D = A / this->__power_related_64;
+    int32_t C = (A - value) / this->power_per_level;
+    int32_t D = A / this->power_per_level;
     return C != D;
 }
 
@@ -12450,7 +12717,7 @@ extern "C" {
     extern AsciiManager* ASCII_MANAGER_PTR asm("_ASCII_MANAGER_PTR");
 }
 
-dllexport uint32_t display_score_upper[2] = { rand(), rand() };
+dllexport uint32_t score_upper[3] = { rand(), rand(), rand() };
 
 // size: 0x19278
 struct AsciiManager : ZUNTask {
@@ -12630,8 +12897,8 @@ struct AsciiManager : ZUNTask {
         this->add_string(position, buffer);
     }
 
-    // 0x419DD0
-    dllexport gnu_noinline void thiscall print_number(Float3* position, uint32_t number) asm_symbol_rel(0x419DD0) {
+private:
+    inline void print_number_impl(Float3* position, uint32_t number) {
         char buffer[0x100];
         if (number < 1000) {
             sprintf(buffer, "%d", number);
@@ -12667,9 +12934,14 @@ struct AsciiManager : ZUNTask {
         }
         this->add_string(position, buffer);
     }
+public:
+    // 0x419DD0
+    dllexport gnu_noinline static void stdcall print_number(Float3* position, uint32_t number) asm_symbol_rel(0x419DD0) {
+        ASCII_MANAGER_PTR->print_number_impl(position, number);
+    }
     
-    // 0x419F30
-    dllexport gnu_noinline void thiscall print_score(Float3* position, uint32_t score, uint32_t continues) asm_symbol_rel(0x419F30) {
+private:
+    inline void print_score_impl(Float3* position, uint32_t score, uint32_t continues) {
         char buffer[0x100];
         if (score < 100) {
             sprintf(buffer, "%d", score * 10 + continues);
@@ -12723,12 +12995,17 @@ struct AsciiManager : ZUNTask {
         }
         this->add_string(position, buffer);
     }
-
+public:
     // 0x419F30
-    dllexport gnu_noinline void thiscall print_score_bigger(Float3* position, uint32_t score, uint32_t continues) asm_symbol_rel(0x419F30) {
+    dllexport gnu_noinline static void stdcall print_score(Float3* position, uint32_t score, uint32_t continues) asm_symbol_rel(0x419F30) {
+        ASCII_MANAGER_PTR->print_score_impl(position, score, continues);
+    }
+
+private:
+    inline void print_score_bigger_impl(Float3* position, uint32_t score, uint32_t continues) {
         char buffer[32];
 
-        uint64_t big_score = score | (uint64_t)display_score_upper[*(uint32_t*)&position->y == 0x42800000] << 32;
+        uint64_t big_score = score | (uint64_t)score_upper[1 + (*(uint32_t*)&position->y == 0x42800000)] << 32;
 
         char* buffer_write = &buffer[31];
         *buffer_write-- = '\0';
@@ -12746,16 +13023,6 @@ struct AsciiManager : ZUNTask {
         }
 
         ++buffer_write;
-
-        /*
-        uint32_t char_count = &buffer[0xFF] - buffer_write;
-        char* buffer_copy = buffer;
-        
-        assume(char_count > 0 && char_count <= 28);
-        while (char_count--) {
-            *buffer_copy++ = *++buffer_write;
-        }
-        */
 
         switch (this->font_id) {
             case 10: {
@@ -12787,6 +13054,10 @@ struct AsciiManager : ZUNTask {
             }
         }
         this->add_string(position, buffer_write);
+    }
+public:
+    dllexport gnu_noinline static void stdcall print_score_bigger(Float3* position, uint32_t score, uint32_t continues) {
+        ASCII_MANAGER_PTR->print_score_bigger_impl(position, score, continues);
     }
 
     // 0x41A110
@@ -12976,112 +13247,111 @@ struct PlayerDamageSource {
     // 0x9C
 };
 
+// size: 0xF0
+struct PlayerOption {
+    unknown_fields(0x54); // 0x0
+    uint32_t position_x; // 0x54
+    uint32_t position_y; // 0x58
+    unknown_fields(0x94); // 0x5C
+    // 0xF0
+};
+// size: 0xF8
+struct PlayerBullet {
+    union {
+        uint32_t flags; // 0x0
+        struct {
+            uint32_t __unknown_flag_A : 1;
+        };
+    };
+    unknown_fields(0x4); // 0x0
+    AnmID __vm_id_8; // 0x8
+    Timer __timer_C; // 0xC
+    MotionData motion; // 0x20
+    unknown_fields(0x28); // 0x64
+    int state; // 0x8C
+    unknown_fields(0xC); // 0x90
+    int __int_9C; // 0x9C
+    unknown_fields(0xC); // 0xA0
+    int __dword_AC; // 0xAC
+    int32_t damage_source_index; // 0xB0
+    unknown_fields(0x38); // 0xB4
+    void* __func_ptr_EC; // 0xEC
+    unknown_fields(0x4); // 0xF0
+    void* __func_ptr_F4; // 0xF4
+    // 0xF8
+};
+
+// size: 0x47308
+struct PlayerData {
+    Float3 position; // 0x0, 0x620
+    Int2 internal_position; // 0xC, 0x62C
+    Timer __timer_14; // 0x14, 0x634
+    Timer __timer_28; // 0x28, 0x648
+    Timer __timer_3C; // 0x3C, 0x65C
+    PlayerOption options[4]; // 0x50, 0x670
+    PlayerOption equipment[12]; // 0x410, 0xA30
+    PlayerBullet bullets[0x200]; // 0xF50, 0x1570
+    int32_t last_created_damage_source_index; // 0x1FF50, 0x20570
+    PlayerDamageSource damage_sources[0x401]; // 0x1FF54, 0x20574
+    PlayerDamageSource __damage_source_46FF0; // 0x46FF0, 0x47610
+    int32_t state; // 0x4708C, 0x476AC
+    AnmID __vm_id_47090; // 0x47090, 0x476B0
+    AnmID __vm_id_47094; // 0x47094, 0x476B4
+    Timer __timer_47098; // 0x47098, 0x476B8
+    BOOL focused; // 0x470AC, 0x476CC
+    Timer shoot_key_short_timer; // 0x470B0, 0x476D0
+    Timer shoot_key_long_timer; // 0x470C4, 0x476E4
+    int power; // 0x470D8, 0x476F8
+    int __dword_array_470DC[30]; // 0x470DC, 0x476FC
+    Timer __timer_47154; // 0x47154, 0x47774
+    Timer __timer_47168; // 0x47168, 0x47788
+    union {
+        uint32_t flags; // 0x4717C, 0x4779C
+        struct {
+            uint32_t __unknown_flag_A : 1;
+            uint32_t __unknown_flag_C : 1;
+            uint32_t : 1;
+            uint32_t __unknown_flag_B : 1;
+            uint32_t __unknown_flag_F : 1;
+            uint32_t __unknown_flag_E : 1;
+            uint32_t __unknown_flag_G : 1;
+            uint32_t __unknown_field_A : 2;
+            uint32_t __unknown_flag_D : 1;
+        };
+    };
+    Timer __timer_477A0; // 0x47180, 0x477A0
+    int32_t __unfocused_linear_speed; // 0x47194, 0x477B4
+    int32_t __focused_linear_speed; // 0x47198, 0x477B8
+    int32_t __unfocused_diagonal_speed; // 0x4719C, 0x477BC
+    int32_t __focused_diagonal_speed; // 0x471A0, 0x477C0
+    Float3 velocity; // 0x471A4, 0x477C4
+    Float3 __last_movement_velocity; // 0x471B0, 0x477D0
+    Int3 __internal_velocity; // 0x471BC, 0x477DC
+    int32_t __int_471C4; // 0x471C4, 0x477E4
+    int32_t __int_471C8; // 0x471C8, 0x477E8
+    float __speed_modifier; // 0x471CC, 0x477EC
+    Float3 __base_axis_speed; // 0x471D0, 0x477F0
+    unknown_fields(0x4); // 0x471DC, 0x477FC
+    Int2 previous_positions[33]; // 0x471E0, 0x47800
+    int32_t num_deathbomb_frames; // 0x472E8, 0x47908
+    float __float_472EC; // 0x472EC, 0x4790C
+    float __float_472F0; // 0x472F0, 0x47910
+    Timer __timer_472F4; // 0x472F4, 0x47914
+    // 0x47308, 0x47928
+
+private:
+    // 0x45D5E0
+    dllexport gnu_noinline void thiscall __sub_45D5E0(int) {
+
+    }
+public:
+    inline void __sub_45D5E0() {
+        return this->__sub_45D5E0(UNUSED_DWORD);
+    }
+};
+
 // size: 0x479D4
 struct Player : ZUNTask {
-
-    // size: 0xF0
-    struct PlayerOption {
-        unknown_fields(0x54); // 0x0
-        uint32_t position_x; // 0x54
-        uint32_t position_y; // 0x58
-        unknown_fields(0x94); // 0x5C
-        // 0xF0
-    };
-    // size: 0xF8
-    struct PlayerBullet {
-        union {
-            uint32_t flags; // 0x0
-            struct {
-                uint32_t __unknown_flag_A : 1;
-            };
-        };
-        unknown_fields(0x4); // 0x0
-        AnmID __vm_id_8; // 0x8
-        Timer __timer_C; // 0xC
-        MotionData motion; // 0x20
-        unknown_fields(0x28); // 0x64
-        int state; // 0x8C
-        unknown_fields(0xC); // 0x90
-        int __int_9C; // 0x9C
-        unknown_fields(0xC); // 0xA0
-        int __dword_AC; // 0xAC
-        int32_t damage_source_index; // 0xB0
-        unknown_fields(0x38); // 0xB4
-        void* __func_ptr_EC; // 0xEC
-        unknown_fields(0x4); // 0xF0
-        void* __func_ptr_F4; // 0xF4
-        // 0xF8
-    };
-
-    // size: 0x47308
-    struct PlayerData {
-        Float3 position; // 0x0, 0x620
-        Int2 internal_position; // 0xC, 0x62C
-        Timer __timer_14; // 0x14, 0x634
-        Timer __timer_28; // 0x28, 0x648
-        Timer __timer_3C; // 0x3C, 0x65C
-        PlayerOption options[4]; // 0x50, 0x670
-        PlayerOption equipment[12]; // 0x410, 0xA30
-        PlayerBullet bullets[0x200]; // 0xF50, 0x1570
-        int32_t last_created_damage_source_index; // 0x1FF50, 0x20570
-        PlayerDamageSource damage_sources[0x401]; // 0x1FF54, 0x20574
-        PlayerDamageSource __damage_source_46FF0; // 0x46FF0, 0x47610
-        int32_t state; // 0x4708C, 0x476AC
-        AnmID __vm_id_47090; // 0x47090, 0x476B0
-        AnmID __vm_id_47094; // 0x47094, 0x476B4
-        Timer __timer_47098; // 0x47098, 0x476B8
-        BOOL focused; // 0x470AC, 0x476CC
-        Timer shoot_key_short_timer; // 0x470B0, 0x476D0
-        Timer shoot_key_long_timer; // 0x470C4, 0x476E4
-        int power; // 0x470D8, 0x476F8
-        int __dword_array_470DC[30]; // 0x470DC, 0x476FC
-        Timer __timer_47154; // 0x47154, 0x47774
-        Timer __timer_47168; // 0x47168, 0x47788
-        union {
-            uint32_t flags; // 0x4717C, 0x4779C
-            struct {
-                uint32_t __unknown_flag_A : 1;
-                uint32_t __unknown_flag_C : 1;
-                uint32_t : 1;
-                uint32_t __unknown_flag_B : 1;
-                uint32_t __unknown_flag_F : 1;
-                uint32_t __unknown_flag_E : 1;
-                uint32_t __unknown_flag_G : 1;
-                uint32_t __unknown_field_A : 2;
-                uint32_t __unknown_flag_D : 1;
-            };
-        };
-        Timer __timer_477A0; // 0x47180, 0x477A0
-        int32_t __unfocused_linear_speed; // 0x47194, 0x477B4
-        int32_t __focused_linear_speed; // 0x47198, 0x477B8
-        int32_t __unfocused_diagonal_speed; // 0x4719C, 0x477BC
-        int32_t __focused_diagonal_speed; // 0x471A0, 0x477C0
-        Float3 velocity; // 0x471A4, 0x477C4
-        Float3 __last_movement_velocity; // 0x471B0, 0x477D0
-        Int3 __internal_velocity; // 0x471BC, 0x477DC
-        int32_t __int_471C4; // 0x471C4, 0x477E4
-        int32_t __int_471C8; // 0x471C8, 0x477E8
-        float __speed_modifier; // 0x471CC, 0x477EC
-        Float3 __base_axis_speed; // 0x471D0, 0x477F0
-        unknown_fields(0x4); // 0x471DC, 0x477FC
-        Int2 previous_positions[33]; // 0x471E0, 0x47800
-        int32_t num_deathbomb_frames; // 0x472E8, 0x47908
-        float __float_472EC; // 0x472EC, 0x4790C
-        float __float_472F0; // 0x472F0, 0x47910
-        Timer __timer_472F4; // 0x472F4, 0x47914
-        // 0x47308, 0x47928
-
-    private:
-        // 0x45D5E0
-        dllexport gnu_noinline void thiscall __sub_45D5E0(int) {
-
-        }
-    public:
-        inline void __sub_45D5E0() {
-            return this->__sub_45D5E0(UNUSED_DWORD);
-        }
-    };
-
     // ZUNTask base; // 0x0
     AnmLoaded* player_anm; // 0xC
     AnmLoaded* __player_anm_copy; // 0x10
@@ -13111,8 +13381,15 @@ struct Player : ZUNTask {
     float __float_479B8; // 0x479B8
     unknown_fields(0x10); // 0x479BC
     float __float_479CC; // 0x479CC
-    unknown_fields(0x4); // 0x479D0
-    // 0x479D4
+    // 0x479D0
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline Player() {
+        this->zero_contents();
+    }
 
     // 0x407D50
     dllexport gnu_noinline Float3* thiscall get_position() asm_symbol_rel(0x407D50) {
@@ -13339,6 +13616,23 @@ public:
     static inline CollisionResult check_collision_circle(Float2* position, float radius, BOOL graze_only) {
         return check_collision_circle(UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, position, radius, graze_only);
     }
+
+    // 0x45A7A0
+    dllexport gnu_noinline ZUNResult thiscall initialize() {
+        // TODO
+        return ZUN_SUCCESS;
+    }
+
+    // 0x45AF20
+    dllexport gnu_noinline static Player* allocate() {
+        Player* player = new Player();
+        PLAYER_PTR = player;
+        if (ZUN_FAILED(player->initialize())) {
+            delete player;
+            return NULL;
+        }
+        return player;
+    }
 };
 
 typedef struct PopupManager PopupManager;
@@ -13508,18 +13802,18 @@ struct CardBase {
     Timer __timer_20; // 0x20
     Timer __timer_34; // 0x34
     int32_t recharge_time; // 0x48
-    CardData* data; // 0x4C
+    const CardData* data; // 0x4C
     union {
         uint32_t flags; // 0x50
         struct {
-            uint32_t : 1;
-            uint32_t __unknown_flag_B : 1;
-            uint32_t __unknown_flag_C : 1;
-            uint32_t __unknown_flag_E : 1;
-            uint32_t : 1;
-            uint32_t __unknown_flag_A : 1;
-            uint32_t __unknown_flag_D : 1;
-            uint32_t : 1;
+            uint32_t __unknown_flag_F : 1; // 1
+            uint32_t __unknown_flag_B : 1; // 2
+            uint32_t __unknown_flag_C : 1; // 3
+            uint32_t __is_active_card : 1; // 4
+            uint32_t : 1; // 5
+            uint32_t __unknown_flag_A : 1; // 6
+            uint32_t __is_equipment_card : 1; // 7
+            uint32_t : 1; // 8
         };
     };
     // 0x54
@@ -13536,13 +13830,13 @@ struct CardBase {
 
     // Method 0
     // 0x413010
-    dllexport gnu_noinline virtual int thiscall initialize() {
-        return 0;
+    dllexport gnu_noinline virtual ZUNResult thiscall initializeA() {
+        return ZUN_SUCCESS;
     }
     // Method 4
     // 0x413020
-    dllexport gnu_noinline virtual int thiscall __method_4() {
-        return 0;
+    dllexport gnu_noinline virtual ZUNResult thiscall initializeB() {
+        return ZUN_SUCCESS;
     }
     // Method 8
     // 0x413030
@@ -13621,7 +13915,7 @@ struct CardBase {
     }
     // Method 44
     // 0x413050
-    dllexport gnu_noinline virtual int thiscall on_anm_id_assigned_to_hud(uint32_t id) {
+    dllexport gnu_noinline virtual int thiscall on_anm_id_assigned_to_hud(AnmID id) {
         return 0;
     }
     // Method 48
@@ -13667,8 +13961,8 @@ struct CardKoishi : CardBase {
     inline CardKoishi() {
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = true;
-        this->__unknown_flag_E = false;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
     }
 
     // Method C
@@ -13691,8 +13985,8 @@ struct CardKoishi : CardBase {
             GAME_MANAGER.globals.current_power = max_power;
         }
         else {
-            if (new_power < GAME_MANAGER.globals.__power_related_64) {
-                new_power = GAME_MANAGER.globals.__power_related_64;
+            if (new_power < GAME_MANAGER.globals.power_per_level) {
+                new_power = GAME_MANAGER.globals.power_per_level;
             }
             GAME_MANAGER.globals.current_power = new_power;
         }
@@ -13726,8 +14020,8 @@ struct CardKaguya : CardBase {
     inline CardKaguya() {
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = true;
-        this->__unknown_flag_E = false;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
     }
 
     // Method 14
@@ -13748,8 +14042,8 @@ struct CardMamizou : CardBase {
     inline CardMamizou() {
         this->__unknown_flag_B = true;
         this->__unknown_flag_C = true;
-        this->__unknown_flag_E = false;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
     }
 
     // Method 4
@@ -13777,14 +14071,14 @@ struct CardMamizou : CardBase {
     // Method 14
     // 0x40D410
     dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb_frame_2() {
-        int32_t A = GAME_MANAGER.globals.__power_related_64;
+        int32_t A = GAME_MANAGER.globals.power_per_level;
         int32_t new_power = this->power;
         
         int32_t B = A * 3;
         if (new_power > B) {
             this->power = B;
             new_power = B;
-            A = GAME_MANAGER.globals.__power_related_64;
+            A = GAME_MANAGER.globals.power_per_level;
         }
 
         int32_t max_power = GAME_MANAGER.globals.max_power;
@@ -13818,8 +14112,8 @@ struct CardYuyuko : CardBase {
     inline CardYuyuko() {
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = true;
-        this->__unknown_flag_E = false;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
     }
 
     // Method 2C
@@ -13849,8 +14143,8 @@ struct CardYachie : CardBase {
     inline CardYachie() {
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = true;
-        this->__unknown_flag_E = false;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
     }
 
     // Method 30
@@ -13888,8 +14182,8 @@ struct CardShikiEiki : CardBase {
         this->__ptr_5C = NULL;
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = true;
-        this->__unknown_flag_E = false;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
     }
 
     // 0x40D840
@@ -13955,8 +14249,8 @@ struct CardMike : CardBase {
     inline CardMike() {
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = true;
-        this->__unknown_flag_E = false;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
     }
 };
 struct CardTakane : CardBase {
@@ -13965,8 +14259,8 @@ struct CardTakane : CardBase {
     inline CardTakane() {
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = true;
-        this->__unknown_flag_E = false;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
     }
 };
 struct CardSannyo : CardBase {
@@ -13975,8 +14269,8 @@ struct CardSannyo : CardBase {
     inline CardSannyo() {
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = true;
-        this->__unknown_flag_E = false;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
     }
 };
 
@@ -13993,8 +14287,8 @@ struct CardShinmyoumaru : CardBase {
     inline CardShinmyoumaru() {
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = false;
-        this->__unknown_flag_E = true;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = true;
+        this->__is_equipment_card = false;
         this->__timer_20.reset();
         this->recharge_time = 2400;
         this->__int_54 = 0;
@@ -14097,8 +14391,8 @@ struct CardTenshi : CardBase {
     inline CardTenshi() {
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = false;
-        this->__unknown_flag_E = true;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = true;
+        this->__is_equipment_card = false;
         this->__timer_20.reset();
         this->recharge_time = 3600;
         this->__int_54 = 0;
@@ -14194,8 +14488,8 @@ struct CardClownpiece : CardBase {
     inline CardClownpiece() {
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = false;
-        this->__unknown_flag_E = true;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = true;
+        this->__is_equipment_card = false;
         this->__timer_20.reset();
         this->recharge_time = 2700;
         this->__int_54 = 0;
@@ -14291,8 +14585,8 @@ struct CardMiko : CardBase {
     inline CardMiko() {
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = false;
-        this->__unknown_flag_E = true;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = true;
+        this->__is_equipment_card = false;
         this->__timer_20.reset();
         this->recharge_time = 1800;
         this->__int_54 = 0;
@@ -14372,8 +14666,8 @@ struct CardRemilia : CardBase {
     inline CardRemilia() {
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = false;
-        this->__unknown_flag_E = true;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = true;
+        this->__is_equipment_card = false;
         this->__timer_20.reset();
         this->recharge_time = 1200;
         this->__int_54 = 0;
@@ -14474,8 +14768,8 @@ struct CardUtsuho : CardBase {
     inline CardUtsuho() {
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = false;
-        this->__unknown_flag_E = true;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = true;
+        this->__is_equipment_card = false;
         this->__timer_20.reset();
         this->recharge_time = 18000;
         this->__int_54 = 0;
@@ -14538,7 +14832,7 @@ struct CardUtsuho : CardBase {
                 }
                 if (
                     this->__timer_20.is_multiple_of(6) &&
-                    GAME_MANAGER.globals.__sub_457480(1)
+                    GAME_MANAGER.globals.subtract_power(1)
                 ) {
                     PLAYER_PTR->data.__sub_45D5E0();
                 }
@@ -14583,8 +14877,8 @@ struct CardLilyWhite : CardBase {
         this->recharge_time = 7200;
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = false;
-        this->__unknown_flag_E = true;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = true;
+        this->__is_equipment_card = false;
         this->__timer_34.reset();
         this->__int_54 = 0;
     }
@@ -14650,8 +14944,8 @@ struct CardRaiko : CardBase {
     inline CardRaiko() {
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = false;
-        this->__unknown_flag_E = true;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = true;
+        this->__is_equipment_card = false;
         this->__timer_20.reset();
         this->recharge_time = 600;
         this->__int_54 = 0;
@@ -14725,8 +15019,8 @@ struct CardSumireko : CardBase {
     inline CardSumireko() {
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = false;
-        this->__unknown_flag_E = true;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = true;
+        this->__is_equipment_card = false;
         this->__timer_20.reset();
         this->recharge_time = 1500;
         this->__int_54 = 0;
@@ -14795,8 +15089,8 @@ struct CardMagtama : CardBase {
     inline CardMagtama() {
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = true;
-        this->__unknown_flag_E = false;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
     }
 };
 struct CardTsukasa : CardBase {
@@ -14806,8 +15100,8 @@ struct CardTsukasa : CardBase {
         this->recharge_time = 1200;
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = false;
-        this->__unknown_flag_E = true;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = true;
+        this->__is_equipment_card = false;
         this->__timer_34.reset();
     }
 
@@ -14815,7 +15109,7 @@ struct CardTsukasa : CardBase {
     // 0x410E60
     dllexport gnu_noinline virtual int thiscall on_activate() {
         if (this->__timer_34 <= 0) {
-            if (GAME_MANAGER.globals.current_power < GAME_MANAGER.globals.__power_related_64 * 2) {
+            if (GAME_MANAGER.globals.current_power < GAME_MANAGER.globals.power_per_level * 2) {
                 SOUND_MANAGER.play_sound(16);
                 return 0;
             }
@@ -14828,7 +15122,7 @@ struct CardTsukasa : CardBase {
                 bomb_ptr->activate();
                 UNKNOWN_COUNTER_A = 0;
                 // ENEMY_MANAGER_PTR->can_capture_spell = FALSE;
-                GAME_MANAGER.globals.__sub_457480(GAME_MANAGER.globals.__power_related_64);
+                GAME_MANAGER.globals.subtract_power(GAME_MANAGER.globals.power_per_level);
                 PLAYER_PTR->data.__sub_45D5E0();
                 this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
             }
@@ -14863,8 +15157,8 @@ struct CardMegumu : CardBase {
         this->recharge_time = 5400;
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = false;
-        this->__unknown_flag_E = true;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = true;
+        this->__is_equipment_card = false;
         this->__timer_34.reset();
     }
 
@@ -14926,8 +15220,8 @@ struct CardMomoyo : CardBase {
         UNKNOWN_COUNTER_A = 0;
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = true;
-        this->__unknown_flag_E = false;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
     }
 
     // Method 28
@@ -14982,8 +15276,8 @@ struct CardNull : CardBase {
     inline CardNull() {
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = true;
-        this->__unknown_flag_E = false;
-        this->__unknown_flag_D = false;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
     }
 };
 
@@ -15159,22 +15453,23 @@ struct AbilityManager : ZUNTask {
             uint32_t __unknown_flag_A : 1; // 1
         };
     };
-    int __array_58[0x100]; // 0x58
-    int __array_458[0x100]; // 0x458
-    int __array_858[0x100]; // 0x858
+    AnmID __anm_id_array_58[0x100]; // 0x58
+    AnmID __anm_id_array_458[0x100]; // 0x458
+    CardBase* __card_array_858[0x100]; // 0x858
     float __float_C58; // 0xC58
-    unknown_fields(0x4); // 0xC5C
-    int __dword_C60; // 0xC60
+    int32_t __int_C5C; // 0xC5C
+    BOOL __ability_data_loaded; // 0xC60
     BOOL __created_ability_data; // 0xC64
     ZUNThread __thread_C68; // 0xC68
-    unknown_fields(0xE8); // 0xC88
+    int __int_array_C84[CARD_COUNT - 1]; // 0xC84
+    unknown_fields(0xC); // 0xD64
     // 0xD70
 
     inline void zero_contents() {
         zero_this();
     }
 
-    inline AbilityManager() : __unknown_flag_A(false), __array_58{}, __array_458{} {
+    inline AbilityManager() : __unknown_flag_A(false) {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
     }
@@ -15190,19 +15485,193 @@ struct AbilityManager : ZUNTask {
                 this->__created_ability_data = true;
                 ABILITY_TEXT_DATA_PTR = new AbilityTextData();
             }
-            this->__dword_C60 = 1;
+            this->__ability_data_loaded = true;
         }
         LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
     }
 
-    // 0x411460
-    dllexport gnu_noinline int32_t thiscall allocate_new_card(CardId id, int) {
-        if (this->card_count < 0x100) {
-            switch (id) {
+    inline void wait_for_ability_data_to_load() {
+        while (!this->__ability_data_loaded) {
+            Sleep(1);
+        }
+    }
 
+    // 0x408DE0
+    dllexport gnu_noinline void thiscall create_card_list_for_hud(Float3* position_ptr, int32_t count, int card_type, BOOL arg4) {
+        Float3 position = *position_ptr;
+        ZUNList<CardBase>* node = this->card_list.next;
+        float offset_per_card = 80.0f; // LOCAL 1
+        if (count) {
+            float count_f = count;
+            float offset = count_f * offset_per_card; // EBP+C
+            if (offset > 304.0f) {
+                offset = 304.0f;
+                offset_per_card = 304.0f / count_f;
+            }
+            offset *= 0.5f;
+            offset += position.x;
+            position.x = offset;
+            if (node) {
+                size_t i = 0;
+                size_t j = 0;
+                node->for_each([&](CardBase* card) {
+                    const CardData* data = card->data;
+                    switch (card_type) {
+                        case 0:
+                            if (!card->__is_active_card) {
+                                goto skip_card;
+                            }
+                            break;
+                        case 1:
+                            if (!card->__is_equipment_card) {
+                                goto skip_card;
+                            }
+                            break;
+                        default:
+                            if (
+                                (card->__is_active_card | card->__is_equipment_card) ||
+                                !data->__render_passive_in_hud
+                            ) {
+                                goto skip_card;
+                            }
+                            break;
+                    }
+                    AnmID anm_id = this->abcard_anm->instantiate_vm_to_ui_list_back(5, &position);
+                    this->__anm_id_array_58[i] = anm_id;
+                    anm_id.run_vm();
+
+                    this->__anm_id_array_58[i].__wtf_child_list_jank_A(6, 0)->set_sprite(data->sprite_small);
+                    this->__anm_id_array_58[i].__wtf_child_list_jank_A(7, 0)->set_sprite(data->sprite_small);
+
+                    card->on_anm_id_assigned_to_hud(this->__anm_id_array_58[i]);
+
+                    if (arg4) {
+                        this->__anm_id_array_58[i].interrupt_tree(4);
+                    }
+
+                    if (card_type == 0) {
+                        this->__anm_id_array_458[j] = this->__anm_id_array_58[i];
+                        this->__card_array_858[j] = card;
+                        ++j;
+                    }
+
+                    offset -= offset_per_card;
+                    position.x = offset;
+
+                skip_card:
+                    ++i;
+                });
+            }
+        }
+    }
+
+    // 0x408D00
+    dllexport gnu_noinline void thiscall create_all_card_lists_for_hud(BOOL arg1) {
+        for (size_t i = 0; i < countof(this->__anm_id_array_58); ++i) {
+            this->__anm_id_array_58[i].mark_tree_for_delete();
+        }
+        if (GAME_THREAD_PTR) {
+            Float3 position = {};
+            this->create_card_list_for_hud(&position, this->active_card_count, 0, arg1);
+            position.y = 130.0f;
+            this->create_card_list_for_hud(&position, this->equipment_card_count, 1, arg1);
+            position.z = 260.0f;
+            this->create_card_list_for_hud(&position, this->passive_card_count, 2, arg1);
+        }
+    }
+
+    inline ZUNResult initialize_new_card(CardBase* card, int32_t id, uint32_t flags) {
+        card->id = id;
+        card->__array_index = this->card_count + 1;
+        BOOL flagF = flags & 1;
+        card->__unknown_flag_F = flagF;
+        if (!flagF) {
+            if (ZUN_FAILED(card->initializeA())) {
+                return ZUN_ERROR;
+            }
+        }
+        if (flags & 2) {
+            if (ZUN_FAILED(card->initializeB())) {
+                return ZUN_ERROR;
+            }
+        }
+        this->__int_array_C84[id] = 1;
+        this->card_list.append_to_list_end(&card->list_node);
+        if (card->__is_active_card) {
+            this->selected_active_card = card;
+        }
+        if (card->__is_active_card) {
+            ++this->active_card_count;
+        } else if (card->__is_equipment_card) {
+            ++this->equipment_card_count;
+        } else {
+            ++this->passive_card_count;
+        }
+        card->data = &find_id_in_card_data(card->id);
+
+        if (flags == 1) {
+            this->create_all_card_lists_for_hud(false);
+        }
+
+        ++this->card_count;
+
+        return ZUN_SUCCESS;
+    }
+
+    // 0x411460
+    dllexport gnu_noinline int32_t thiscall allocate_new_card(int32_t id, uint32_t flags) {
+        if (this->card_count < 0x100) {
+            CardBase* card;
+            switch (id) {
+                case NULL_CARD: // 56
+                    card = new CardNull();
+                    break;
+                // TODO
+                default:
+                    return -1;
+            }
+            if (card) {
+                if (ZUN_FAILED(this->initialize_new_card(card, id, flags))) {
+                    delete card;
+                }
+                return this->card_count;
             }
         }
         return -1;
+    }
+
+    // 0x407DA0
+    dllexport gnu_noinline void thiscall __sub_407DA0(BOOL arg1) {
+        this->card_list.delete_each_data();
+        this->card_list.initialize_with((CardBase*)this);
+        this->card_count = 0;
+        this->active_card_count = 0;
+        this->equipment_card_count = 0;
+        this->passive_card_count = 0;
+        this->__float_C58 = 1.0f;
+        this->selected_active_card = NULL;
+        ANM_MANAGER_PTR->__set_state1_for_all_vms_from_loaded_slot(30);
+        this->__anm_id_3C.mark_tree_for_delete();
+        ANM_MANAGER_PTR->__set_state1_for_all_vms_from_loaded_slot(31);
+
+        for (size_t i = 0; i < countof(this->__anm_id_array_58); ++i) {
+            this->__anm_id_array_58[i].mark_tree_for_delete();
+        }
+
+        if (arg1) {
+            // Do these REP STOS memsets correspond to std::array = {}?
+            memset(this->__int_array_C84, 0, sizeof(this->__int_array_C84));
+
+            ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
+            for (
+                int32_t i = 0;
+                i < scorefile_manager->primary_file.__sectionA.__int_array_1C0[this->__int_C5C];
+                ++i, scorefile_manager = SCOREFILE_MANAGER_PTR
+            ) {
+                int32_t card_id = scorefile_manager->primary_file.__sectionA.__card_ids_150[this->__int_C5C][i];
+                this->allocate_new_card(card_id, 1);
+            }
+        }
     }
 
     // 0x408640
@@ -15260,7 +15729,12 @@ struct AbilityManager : ZUNTask {
         return 0;
     }
 
-
+    // 0x412FE0
+    dllexport gnu_noinline static BOOL stdcall card_equipped(int32_t id) {
+        return (bool)ABILITY_MANAGER_PTR->card_list.find_if([=](CardBase* card) {
+            return card->id == id;
+        });
+    }
 
 private:
     inline int32_t equipped_cards_get_ids_impl(int32_t* card_ids_out) {
@@ -15316,6 +15790,33 @@ public:
         return ABILITY_MANAGER_PTR->equipped_cards_run_on_load_impl();
     }
 };
+#pragma region // AbilityManager Validation
+ValidateFieldOffset32(0x0, AbilityManager, task_flags);
+ValidateFieldOffset32(0x4, AbilityManager, on_tick_func);
+ValidateFieldOffset32(0x8, AbilityManager, on_draw_func);
+ValidateFieldOffset32(0xC, AbilityManager, ability_anm);
+ValidateFieldOffset32(0x10, AbilityManager, abcard_anm);
+ValidateFieldOffset32(0x14, AbilityManager, abmenu_anm);
+ValidateFieldOffset32(0x18, AbilityManager, card_list);
+ValidateFieldOffset32(0x28, AbilityManager, card_count);
+ValidateFieldOffset32(0x2C, AbilityManager, active_card_count);
+ValidateFieldOffset32(0x30, AbilityManager, equipment_card_count);
+ValidateFieldOffset32(0x34, AbilityManager, passive_card_count);
+ValidateFieldOffset32(0x38, AbilityManager, selected_active_card);
+ValidateFieldOffset32(0x3C, AbilityManager, __anm_id_3C);
+ValidateFieldOffset32(0x4C, AbilityManager, __anm_id_4C);
+ValidateFieldOffset32(0x54, AbilityManager, flags);
+ValidateFieldOffset32(0x58, AbilityManager, __anm_id_array_58);
+ValidateFieldOffset32(0x458, AbilityManager, __anm_id_array_458);
+ValidateFieldOffset32(0x858, AbilityManager, __card_array_858);
+ValidateFieldOffset32(0xC58, AbilityManager, __float_C58);
+ValidateFieldOffset32(0xC5C, AbilityManager, __int_C5C);
+ValidateFieldOffset32(0xC60, AbilityManager, __ability_data_loaded);
+ValidateFieldOffset32(0xC64, AbilityManager, __created_ability_data);
+ValidateFieldOffset32(0xC68, AbilityManager, __thread_C68);
+ValidateFieldOffset32(0xC84, AbilityManager, __int_array_C84);
+ValidateStructSize32(0xD70, AbilityManager);
+#pragma endregion
 
 static inline float ability_manager_get_float_C58() {
     return ABILITY_MANAGER_PTR->__float_C58;
@@ -15796,9 +16297,12 @@ dllexport gnu_noinline Enemy* get_boss_by_index(int32_t boss_index) {
     if (!boss_id) {
         return NULL;
     } else {
-        return enemy_manager->enemy_list_head->find_if([=](Enemy* enemy) {
-            return enemy->id == boss_id;
-        });
+        if (auto* enemy_list_head = enemy_manager->enemy_list_head) {
+            return enemy_list_head->find_if([=](Enemy* enemy) {
+                return enemy->id == boss_id;
+            });
+        }
+        return NULL;
     }
 }
 
@@ -15852,14 +16356,80 @@ dllexport gnu_noinline int thiscall Enemy::kill() {
 
 typedef struct Stage Stage;
 extern "C" {
+    // 0x4CF2B4
     extern Stage* STAGE_PTR asm("_STAGE_PTR");
+    // 0x4CF2B8
+    extern Stage* STAGE_B_PTR asm("_STAGE_B_PTR");
 }
+
 // size: 0x30
 struct StdDistortion {
     unknown_fields(0x2C); // 0x0
     int32_t enabled; // 0x2C
+    // 0x30
 };
-// size: 
+
+// size: 0x90
+struct StdHeader {
+    int16_t entry_count; // 0x0
+    int16_t face_count; // 0x2
+    uint32_t faces_offset; // 0x4
+    uint32_t script_offset; // 0x8
+    unknown_fields(0x4); // 0xC
+    char anm_name[128]; // 0x10
+    // 0x90
+};
+
+// size: 0x1C
+struct StdQuad {
+    int16_t type; // 0x0
+    int16_t offset_to_next; // 0x2
+    uint16_t anm_script; // 0x4
+    int16_t face_vm_index; // 0x6
+    Float3 position; // 0x8
+    Float2 size; // 0x14
+    // 0x1C
+};
+
+// size: 0x1C+
+struct StdEntry {
+    int16_t id; // 0x0
+    int8_t layer; // 0x2
+    union {
+        uint8_t flags; // 0x3
+        struct {
+
+        };
+    };
+    Float3 position; // 0x4
+    Float3 size; // 0x10
+    StdQuad quads[0]; // 0x1C
+};
+
+// size: 0x10
+struct StdFace {
+    int16_t entry_id; // 0x0
+    union {
+        uint16_t flags; // 0x2
+        struct {
+
+        };
+    };
+    Float3 position; // 0x4
+    // 0x10
+};
+
+// size: 0x8+
+struct StdInstruction {
+    int32_t time; // 0x0
+    int16_t opcode; // 0x4
+    int16_t size; // 0x6
+    unsigned char args[]; // 0x8
+};
+
+// It's been too long since I looked at stage stuff,
+// is this actually the whole thing?
+// size: 0x3444
 struct StdVM {
     Timer script_time; // 0x0
     int32_t current_instruction_offset; // 0x14
@@ -15880,14 +16450,80 @@ struct StdVM {
     D3DCOLOR __color_3440; // 0x3440
     // 0x3444
 };
-// size: 
-struct Stage {
-    unknown_fields(0x4); // 0x0
-    void* on_tick; // 0x4
-    void* on_draw; // 0x8
+#pragma region // StdVM Validation
+ValidateFieldOffset32(0x0, StdVM, script_time);
+ValidateFieldOffset32(0x14, StdVM, current_instruction_offset);
+ValidateFieldOffset32(0x18, StdVM, shaking_mode);
+ValidateFieldOffset32(0x1C, StdVM, shaking_timer);
+ValidateFieldOffset32(0x30, StdVM, __shaking_6_timer);
+ValidateFieldOffset32(0x44, StdVM, camera_facing_interp);
+ValidateFieldOffset32(0x9C, StdVM, camera_position_interp);
+ValidateFieldOffset32(0xF4, StdVM, camera_rotation_interp);
+ValidateFieldOffset32(0x14C, StdVM, sky_data_interp);
+ValidateFieldOffset32(0x1F4, StdVM, camera_fov_interp);
+ValidateFieldOffset32(0x224, StdVM, camera);
+ValidateFieldOffset32(0x388, StdVM, full_stage);
+ValidateFieldOffset32(0x38C, StdVM, vms);
+ValidateFieldOffset32(0x33EC, StdVM, anm_layers);
+ValidateFieldOffset32(0x340C, StdVM, draw_distance_squared);
+ValidateFieldOffset32(0x3410, StdVM, distortion);
+ValidateFieldOffset32(0x3440, StdVM, __color_3440);
+ValidateStructSize32(0x3444, StdVM);
+#pragma endregion
 
+// size: 0x3A40
+struct Stage : ZUNTask {
+    // ZUNTask base; // 0x0
+    StdVM std_vm; // 0xC
+    AnmVM* face_vms; // 0x3450
+    StdHeader* std_file; // 0x3454
+    StdEntry* entries; // 0x3458
+    StdFace* faces; // 0x345C
+    StdInstruction* script; // 0x3460
     AnmLoaded* stage_anm; // 0x3464
+    // 0x3464
+
+    union {
+        uint32_t flags; // 0x3474
+        struct {
+            uint32_t : 2; // 1-2
+            uint32_t __unknown_flag_B : 1; // 3
+            uint32_t __unknown_flag_A : 1; // 4
+        };
+    };
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline Stage() {
+        this->zero_contents();
+        this->__unknown_task_flag_A = true;
+    }
+
+    // 0x41B850
+    dllexport gnu_noinline ZUNResult thiscall initialize(const char* std_filename) asm_symbol_rel(0x41B850) {
+
+    }
+
+    // 0x41BF90
+    dllexport gnu_noinline static Stage* fastcall allocate(const char* std_filename) asm_symbol_rel(0x41BF90) {
+        int A = 0;
+        Stage* stage = new Stage();
+        A = -1;
+        if (ZUN_FAILED(stage->initialize(std_filename))) {
+            delete stage;
+            return NULL;
+        }
+        return stage;
+    }
 };
+#pragma region // Stage Validation
+ValidateFieldOffset32(0x0, Stage, task_flags);
+ValidateFieldOffset32(0x4, Stage, on_tick_func);
+ValidateFieldOffset32(0x8, Stage, on_draw_func);
+ValidateStructSize32(0x3444, StdVM);
+#pragma endregion
 
 typedef struct Spellcard Spellcard;
 extern "C" {
@@ -15924,12 +16560,12 @@ struct Spellcard : ZUNTask {
     int32_t __bonus_A; // 0x7C
     int32_t __bonus_B; // 0x80
     int32_t time; // 0x84
-    // 0x88
+    unknown_fields(0x4); // 0x88
     int __int_8C; // 0x8C
-    // 0x90
-
+    unknown_fields(0x1C); // 0x90
     Float3 __float3_AC; // 0xAC
-    // 0xB8
+    unknown_fields(0x8); // 0xB8
+    // 0xC0
 
     inline void zero_contents() {
         zero_this();
@@ -16008,7 +16644,8 @@ struct Spellcard : ZUNTask {
         this->__unknown_flag_C = false;
         this->__unknown_flag_D = false;
         if (!is_replay()) {
-            // TODO: write to scorefile
+            byteloop_strcpy(SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].spells[id].name, name);
+
         }
         Gui* gui = GUI_PTR;
         gui->__anm_vm_84->interrupt_and_run(2);
@@ -16127,6 +16764,26 @@ struct Spellcard : ZUNTask {
         return spellcard;
     }
 };
+#pragma region // Spellcard Validation
+ValidateFieldOffset32(0x0, Spellcard, task_flags);
+ValidateFieldOffset32(0x4, Spellcard, on_tick_func);
+ValidateFieldOffset32(0x8, Spellcard, on_draw_func);
+ValidateFieldOffset32(0xC, Spellcard, __vm_id_C);
+ValidateFieldOffset32(0x10, Spellcard, __vm_id_10);
+ValidateFieldOffset32(0x14, Spellcard, __vm_id_14);
+ValidateFieldOffset32(0x18, Spellcard, __vm_id_18);
+ValidateFieldOffset32(0x1C, Spellcard, __vm_id_1C);
+ValidateFieldOffset32(0x20, Spellcard, __timer_20);
+ValidateFieldOffset32(0x34, Spellcard, name);
+ValidateFieldOffset32(0x74, Spellcard, id);
+ValidateFieldOffset32(0x78, Spellcard, flags);
+ValidateFieldOffset32(0x7C, Spellcard, __bonus_A);
+ValidateFieldOffset32(0x80, Spellcard, __bonus_B);
+ValidateFieldOffset32(0x84, Spellcard, time);
+ValidateFieldOffset32(0x8C, Spellcard, __int_8C);
+ValidateFieldOffset32(0xAC, Spellcard, __float3_AC);
+ValidateStructSize32(0xC0, Spellcard);
+#pragma endregion
 
 // size: 0x8
 struct ItemSpriteData {
@@ -20897,7 +21554,6 @@ static inline constexpr const char* SIX_LETTER_SHOTTYPE_NAMES[] = {
 
 static inline constexpr uint32_t REPLAY_MAGIC = PackUInt('t', '1', '8', 'r');
 static inline constexpr uint32_t REPLAY_USER_MAGIC = PackUInt('U', 'S', 'E', 'R');
-static inline constexpr int32_t REPLAY_STAGE_COUNT = 8;
 static inline constexpr uint16_t REPLAY_VERSION_NUMBER = 6; // I'm just guessing at this
 
 // size: 0x24
@@ -21229,11 +21885,11 @@ struct ReplayManager : ZUNTask {
     int __dword_10; // 0x10
     ReplayHeader* header; // 0x14
     ReplayInfo* info; // 0x18
-    ReplayGamestate* game_states[REPLAY_STAGE_COUNT]; // 0x1C
-    ZUNListHead<ReplayChunk> chunk_lists[REPLAY_STAGE_COUNT]; // 0x3C
+    ReplayGamestate* game_states[STAGE_COUNT]; // 0x1C
+    ZUNListHead<ReplayChunk> chunk_lists[STAGE_COUNT]; // 0x3C
     ZUNList<ReplayChunk>* current_chunk_node; // 0xBC
     int __chunk_count; // 0xC0
-    ReplayStageData stage_data[REPLAY_STAGE_COUNT]; // 0xC4
+    ReplayStageData stage_data[STAGE_COUNT]; // 0xC4
     void* file_buffer; // 0x204
     uint8_t __byte_208; // 0x208
     probably_padding_bytes(3); // 0x209
@@ -21408,12 +22064,7 @@ struct ReplayManager : ZUNTask {
     // 0x4630E0
     dllexport gnu_noinline ZUNList<ReplayChunk>* thiscall allocate_chunk(int32_t stage_number) asm_symbol_rel(0x4630E0) {
         ReplayChunk* chunk = new ReplayChunk();
-
-        ZUNList<ReplayChunk>* node = &this->chunk_lists[stage_number];
-        while (ZUNList<ReplayChunk>* next_node = node->next) {
-            node = next_node;
-        }
-        node->append(&chunk->list_node);
+        this->chunk_lists[stage_number].append_to_list_end(&chunk->list_node);
         ++this->__chunk_count;
         return &chunk->list_node;
     }
@@ -21455,7 +22106,7 @@ struct ReplayManager : ZUNTask {
                     bs_value -= 0x21522153; // This is a suspiciously repetitve constant...
                 }
 
-                this->info->__int_BC = GAME_MANAGER.globals.__counter_28;
+                this->info->__int_BC = GAME_MANAGER.globals.continues;
 
                 UpdateFunc* update_func = new UpdateFunc(&on_tick_A1, false, this);
                 UpdateFuncRegistry::register_on_tick(update_func, 17);
@@ -21978,7 +22629,7 @@ valid_replay:
     ReplayGamestate* gamestate_ptr = based_pointer<ReplayGamestate>(file, sizeof(ReplayInfo));
     for (int32_t i = 0; ; ++i) {
         int32_t stage_count = this->info->stage_count;
-        stage_count = stage_count >= REPLAY_STAGE_COUNT ? 6 : stage_count;
+        stage_count = stage_count >= STAGE_COUNT ? 6 : stage_count;
         if (i >= stage_count) {
             break;
         }
@@ -22027,7 +22678,7 @@ dllexport gnu_noinline ZUNResult thiscall ReplayManager::__write_to_path(const c
     size_t alloc_size = sizeof(ReplayInfo);
     size_t stage_count = 0;
 
-    for (int32_t i = 0; i < REPLAY_STAGE_COUNT; ++i) {
+    for (int32_t i = 0; i < STAGE_COUNT; ++i) {
         if (ReplayGamestate* game_state = self->game_states[i]) {
             stage_end = i;
             if (!stage_start) {
@@ -22059,7 +22710,7 @@ dllexport gnu_noinline ZUNResult thiscall ReplayManager::__write_to_path(const c
     *(ReplayInfo*)buffer = *self->info;
 
     size_t offset = sizeof(ReplayInfo);
-    for (int32_t i = 0; i < REPLAY_STAGE_COUNT; ++i) {
+    for (int32_t i = 0; i < STAGE_COUNT; ++i) {
         if (ReplayGamestate* game_state = self->game_states[i]) {
             memcpy(&buffer[offset], game_state, sizeof(ReplayGamestate));
             offset += sizeof(ReplayGamestate);
@@ -22282,6 +22933,402 @@ dllexport gnu_noinline double vectorcall get_runtime() {
         CRITICAL_SECTION_MANAGER.leave_section(Menu_CS);
         return current_time;
     }
+}
+
+// 0x443860
+dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
+    if (SUPERVISOR.__unknown_bitfield_A != 0) {
+        return UpdateFuncDeleteCurrentThenNext;
+    }
+
+    if (this->__unknown_flag_E) {
+        if (this->__unknown_flag_I) {
+            return UpdateFuncEnd1;
+        }
+
+        int A = ++this->__int_D4;
+
+        ReplayMode replay_mode = this->replay_mode;
+        if (replay_mode != __replay_recording) {
+            if (A == 120) {
+                // PAUSE_MENU_PTR->__sub_4588F0();
+                replay_mode = this->replay_mode;
+            }
+        }
+        if (replay_mode == __replay_recording) {
+            if (this->__int_D4 == 180) {
+                // ScreenEffect::create(5, 0xC8, 0, 0, 0, 0x59);
+                replay_mode = this->replay_mode;
+            }
+        }
+        if (replay_mode == __replay_recording) {
+            if (this->__int_D4 > 380) {
+                // ABILITY_MANAGER_PTR->__sub_4074C0();
+                ABILITY_MANAGER_PTR->__sub_407DA0(true);
+
+                int32_t mode;
+                if (GAME_MANAGER.globals.difficulty != EXTRA) {
+                    mode = (SUPERVISOR.__unknown_bitfield_A & 1) ? 2 : 15;
+                } else {
+                    mode = (SUPERVISOR.__unknown_bitfield_A & 1) ? 2 : 16;
+                }
+                SUPERVISOR.gamemode_switch = mode;
+            }
+        }
+    }
+
+    Gui* gui = GUI_PTR;
+    if (
+        !gui->__unknown_flag_A ||
+        gui->__timer_198 >= 120
+        ) {
+        if (!this->__unknown_flag_I) {
+            return UpdateFuncNext;
+        }
+
+        // These both allocate the "main" enemy
+        switch (this->__timer_C.current) {
+            case 0:
+                if (ZUN_FAILED(this->__sub_443E60())) {
+                    return UpdateFuncNext;
+                }
+                break;
+            case 30:
+                this->__sub_4443C0();
+                break;
+        }
+    }
+
+    Stage* stageB = STAGE_B_PTR;
+    if (
+        stageB != NULL &&
+        stageB->__unknown_flag_A &&
+        stageB != NULL
+    ) {
+        delete stageB;
+    }
+
+    WINDOW_DATA.__int_20D0 = this->__timer_C == 5 ? 2 : WINDOW_DATA.__int_20D0;
+
+    if (this->skip_flag) {
+        this->__unknown_flag_J = true;
+        return UpdateFuncNext;
+    }
+
+    if (!GAME_MANAGER.__unknown_flag_E) {
+        if (
+            INPUT_STATES[0].check_hardware_inputs(BUTTON_SHOOT | BUTTON_BOMB | BUTTON_PAUSE | BUTTON_ENTER) ||
+            (this->__unknown_flag_I | this->__unknown_flag_L | this->__unknown_flag_M)
+        ) {
+            SUPERVISOR.gamemode_switch = (SUPERVISOR.__unknown_bitfield_A & 1) ? 2 : 4;
+        }
+
+        switch (this->__timer_C.current) {
+            case 3540:
+                // ScreenEffect::create(5, 0x3C, 0, 0, 0, 0x5B);
+                break;
+            case 3600:
+                SUPERVISOR.gamemode_switch = (SUPERVISOR.__unknown_bitfield_A & 1) ? 2 : 4;
+                break;
+        }
+    }
+
+    gui = GUI_PTR;
+    uint32_t score = GAME_MANAGER.globals.score;
+    uint32_t displayed_score = gui->__score;
+    if (score != displayed_score) {
+        uint32_t score_diff = score - displayed_score;
+        uint32_t score_diff_B = score_diff / 32;
+
+        int32_t score_diff_C = __max(__min(score_diff_B, 578910), 1);
+        
+        if (gui->__int_15C < score_diff_C) {
+            gui->__int_15C = score_diff_C;
+            score = GAME_MANAGER.globals.score;
+        }
+        else {
+            score_diff_C = gui->__int_15C;
+        }
+
+        int32_t score_diff_D = score - displayed_score;
+
+        if (score_diff_C > score_diff_D) {
+            gui->__int_15C = score_diff_D;
+            score_diff_C = score_diff_D;
+        }
+        displayed_score += score_diff_C;
+        gui->__score = displayed_score;
+
+        if (displayed_score >= (int32_t)GAME_MANAGER.globals.score) {
+            gui->__int_15C = 0;
+        }
+    }
+    if ((int32_t)GAME_MANAGER.__high_score < displayed_score) {
+        int32_t continues = GAME_MANAGER.globals.continues;
+        GAME_MANAGER.__unknown_flag_C = true;
+        GAME_MANAGER.__high_score = displayed_score;
+        GAME_MANAGER.__high_score_continues = continues;
+    }
+
+    /*
+    Gui* gui = GUI_PTR;
+    uint64_t score = GAME_MANAGER.globals.score | (uint64_t)score_upper[0] << 32;
+    uint64_t displayed_score = gui->__score | (uint64_t)score_upper[2] << 32;
+    if (score != displayed_score) {
+        uint64_t score_diff = score - displayed_score;
+        uint64_t score_diff_B = score_diff / 32;
+
+        uint32_t score_diff_C = __max(__min(score_diff_B, 578910), 1);
+
+        if (gui->__int_15C < score_diff_C) {
+            gui->__int_15C = score_diff_C;
+        } else {
+            score_diff_C = gui->__int_15C;
+        }
+
+        if (score_diff_C > score_diff) {
+            gui->__int_15C = score_diff;
+        } else {
+            score_diff = score_diff_C;
+        }
+        displayed_score += score_diff;
+        gui->__score = displayed_score;
+        score_upper[2] = displayed_score >> 32;
+
+        if (displayed_score >= score) {
+            gui->__int_15C = 0;
+        }
+    }
+    uint64_t high_score = GAME_MANAGER.__high_score | (uint64_t)score_upper[1] << 32;
+    if (high_score < displayed_score) {
+        int32_t continues_local = GAME_MANAGER.globals.continues;
+        GAME_MANAGER.__unknown_flag_C = true;
+        GAME_MANAGER.__high_score = displayed_score;
+        score_upper[1] = displayed_score >> 32;
+        GAME_MANAGER.__high_score_continues = continues_local;
+    }
+    */
+}
+
+// All values are stored / 100
+
+// 0x4B666C
+static const int32_t MIN_POINT_ITEM_VALUES_TABLE[DIFFICULTY_COUNT] = {
+    10000,
+    10000,
+    10000,
+    10000,
+    10000,
+    100000
+};
+// 0x4B6654
+static const int32_t MAX_POINT_ITEM_VALUES_TABLE[DIFFICULTY_COUNT] = {
+    200000,
+    500000,
+    700000,
+    1000000,
+    500000,
+    1000000
+};
+
+// 0x4B663C
+static const int32_t CONTINUE_CREDITS_TABLE[DIFFICULTY_COUNT] = {
+    5, 5, 5, 5,
+    0, 0
+};
+
+inline unsigned GameThread::thread_start_impl() {
+    GameThread* game_thread = GAME_THREAD_PTR;
+    
+    this->skip_flag = true;
+
+    __asm FINIT
+
+    while (ANM_MANAGER_PTR->__int_20 >= 0) {
+        if (SUPERVISOR.__unknown_bitfield_A) {
+            goto thread_start_important_label;
+        }
+        Sleep(1);
+    }
+
+    if (!SUPERVISOR.__int_804) {
+        Sleep(60);
+    }
+
+    SUPERVISOR.__arcade_vm_ptr_A->interrupt_and_run(2);
+
+    GAME_SPEED.value = 1.0f;
+    GAME_THREAD_PTR->__unknown_flag_E = false;
+    GAME_MANAGER.globals.__counter_C = 0;
+    GAME_MANAGER.globals.__counter_10 = 0;
+    GAME_MANAGER.globals.__counter_14 = 0;
+
+    ABILITY_MANAGER_PTR->wait_for_ability_data_to_load();
+
+    if (GAME_THREAD_PTR->replay_mode == __replay_recording) {
+        SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
+            .practice[GAME_MANAGER.globals.difficulty][GAME_MANAGER.globals.current_stage]
+                .unlocked = true;
+    }
+
+    if (SUPERVISOR.__int_804) {
+        int32_t difficulty = GAME_MANAGER.globals.difficulty;
+        if (GAME_MANAGER.globals.current_stage == 7) {
+            difficulty = __max(difficulty, LUNATIC);
+            GAME_MANAGER.globals.difficulty = difficulty;
+        }
+
+        switch (GAME_MANAGER.__unknown_field_A) {
+            case 2: {
+                ScorefileSpellcard& spell = SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
+                                                .spells[GAME_MANAGER.globals.__ecl_var_9907];
+                GAME_MANAGER.__high_score = spell.spell_practice_score;
+                GAME_MANAGER.__high_score_continues = 0;
+                break;
+            }
+            case 1: {
+                ScorefileStagePractice& practice = SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
+                                                       .practice[GAME_MANAGER.globals.difficulty][GAME_MANAGER.globals.current_stage];
+                GAME_MANAGER.__high_score = practice.score;
+                GAME_MANAGER.__high_score_continues = 0;
+                break;
+            }
+            default: {
+                ScorefileRecord& record = SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
+                                              .records[GAME_MANAGER.globals.difficulty][0];
+                GAME_MANAGER.__high_score = record.score;
+                GAME_MANAGER.__high_score_continues = record.continues;
+                break;
+            }
+        }
+
+        GAME_MANAGER.globals.graze_in_stage = 0;
+
+        int32_t continues = GAME_MANAGER.globals.continues;
+        continues = !GAME_MANAGER.__unknown_flag_D ? 0 : GAME_MANAGER.globals.continues;
+        GAME_MANAGER.globals.continues = continues;
+
+        GAME_MANAGER.globals.score = 0;
+
+        int32_t starting_bombs = __min(GAME_MANAGER.globals.bomb_stock_max, 3);
+
+        GAME_MANAGER.globals.money_collected_in_game = 0;
+        GAME_MANAGER.globals.current_money = 0;
+        GAME_MANAGER.globals.point_items_collected_in_game = 0;
+        GAME_MANAGER.globals.current_power = 0;
+        GAME_MANAGER.globals.power_per_level = 1;
+        GAME_MANAGER.globals.bomb_stocks_for_new_life = 3;
+        GAME_MANAGER.globals.bomb_stocks = starting_bombs;
+
+        // inlined version of standalone __update_bomb_ui
+        Gui* gui = GUI_PTR;
+        if (gui) {
+            gui->__update_bomb_ui(starting_bombs, GAME_MANAGER.globals.bomb_fragments, GAME_MANAGER.globals.bomb_stock_max);
+        }
+
+        GAME_MANAGER.globals.bomb_fragments = 0;
+        GAME_MANAGER.globals.life_fragments = 0;
+        GAME_MANAGER.globals.lives_added = 0;
+        GAME_MANAGER.globals.miss_count_in_game = 0;
+        GAME_MANAGER.globals.__dword_94 = 0;
+
+        GAME_MANAGER.globals.__timer_C4.reset();
+        GAME_MANAGER.globals.__timer_D8.reset();
+
+        int32_t min_item_value = MIN_POINT_ITEM_VALUES_TABLE[difficulty] * 100;
+        int32_t max_item_value = MAX_POINT_ITEM_VALUES_TABLE[difficulty] * 100;
+
+        GAME_MANAGER.globals.min_point_item_value = min_item_value;
+        GAME_MANAGER.globals.__dword_EC = 0;
+        GAME_MANAGER.globals.__dword_F0 = 0;
+        GAME_MANAGER.globals.__dword_F4 = 0;
+        GAME_MANAGER.globals.max_point_item_value = max_item_value;
+
+        // why are you like this ZUN
+        int32_t item_value = min_item_value / 100.0f * 100.0f;
+
+        if (item_value < max_item_value) {
+            item_value = __min(item_value, GAME_MANAGER.globals.min_point_item_value);
+        } else {
+            item_value = max_item_value;
+        }
+        GAME_MANAGER.globals.point_item_value = item_value;
+
+        GAME_MANAGER.continue_credits = CONTINUE_CREDITS_TABLE[difficulty];
+        GAME_MANAGER.globals.life_stock_max = 7;
+
+        switch (GAME_MANAGER.__unknown_field_A) {
+            case 2:
+                GAME_MANAGER.globals.bomb_stock_max = 7;
+                GAME_MANAGER.globals.life_stocks = 0;
+                GAME_MANAGER.globals.bomb_stocks = 0;
+                if (gui) {
+                    gui->__update_bomb_ui(0, 0, 7);
+                }
+                break;
+            case 0:
+                GAME_MANAGER.globals.bomb_stock_max = 7;
+                GAME_MANAGER.globals.life_stocks = 2;
+                GAME_MANAGER.globals.bomb_stocks = 3;
+                if (gui) {
+                    gui->__update_bomb_ui(3, 0, 7);
+                }
+                break;
+            default: {
+                int32_t life_override = GAME_MANAGER.__int_C;
+                if (!life_override) {
+                    GAME_MANAGER.globals.bomb_stock_max = 7;
+                    GAME_MANAGER.globals.life_stocks = 7;
+                } else {
+                    GAME_MANAGER.globals.life_stocks = life_override - 1;
+                }
+            }
+        }
+
+        if (!Player::allocate()) {
+            goto thread_start_important_label;
+        }
+
+        if (GAME_MANAGER.__unknown_field_A == 2) {
+            clang_forceinline GAME_MANAGER.globals.set_power(GAME_MANAGER.globals.power_per_level * 4);
+        }
+        else {
+            int32_t power;
+            int32_t stage = GAME_MANAGER.globals.current_stage;
+            if (stage <= 1) {
+                power = GAME_MANAGER.globals.power_per_level;
+            }
+            else if (stage == 7) {
+                power = GAME_MANAGER.globals.power_per_level;
+            }
+            else {
+                power = GAME_MANAGER.globals.power_per_level * 4;
+            }
+            GAME_MANAGER.globals.set_power(power);
+        }
+
+        GAME_MANAGER.__unknown_flag_C = false;
+
+        if (
+            game_thread->replay_mode == __replay_recording &&
+            ACHIEVEMENT_MODE_STATE < 0
+        ) {
+            SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].__add_play_count();
+        }
+
+        if (
+            GAME_MANAGER.globals.current_stage == 7 &&
+            !ABILITY_MANAGER_PTR->card_equipped(MAGATAMA2_CARD)
+        ) {
+            ABILITY_MANAGER_PTR->allocate_new_card(MAGATAMA2_CARD, 0);
+            //ABILITY_MANAGER_PTR->__sub_4094C0();
+        }
+        UNKNOWN_COUNTER_A = 0;
+    }
+    else {
+        GAME_MANAGER.__high_score = __max(GAME_MANAGER.globals.score, GAME_MANAGER.__high_score);
+    }
+thread_start_important_label:
 }
 
 // 0x4726A0
@@ -22753,7 +23800,7 @@ dllexport gnu_noinline BOOL WindowData::__create_window(HINSTANCE instance) {
     this->__dword_array_20D4[9] = 8;
     this->__dword_array_20D4[10] = 8;
     this->__dword_array_20D4[11] = 0;
-    this->__dword_20D0 = 0;
+    this->__int_20D0 = 0;
     this->__sub_4734E0(true);
     if (!SUPERVISOR.present_parameters.Windowed) {
         this->window = CreateWindowExA(

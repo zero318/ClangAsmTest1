@@ -49,7 +49,7 @@ struct Float1 {
     float x; // 0x0
     // 0x4
 
-    inline constexpr Float1() {};
+    inline Float1() = default;
     inline constexpr Float1(const float& X) : x(X) {}
 };
 
@@ -58,7 +58,7 @@ struct Float2 : Float1 {
     float y; // 0x4
 
     using Float1::Float1;
-    inline constexpr Float2() {};
+    inline Float2() = default;
     inline constexpr Float2(const float& X, const float& Y) : Float1(X), y(Y) {}
     
     // th18 A: 0x404DD0
@@ -201,7 +201,8 @@ struct Float3 : Float2 {
     float z; // 0x8
 
     using Float2::Float2;
-    inline constexpr Float3() {};
+    //inline constexpr Float3() {};
+    inline Float3() = default;
     inline constexpr Float3(const Float2& v) : Float2(v), z(0.0f) {}
     inline constexpr Float3(const Float2& v, float Z) : Float2(v), z(Z) {}
     inline constexpr Float3(const float& X, const float& Y, const float& Z) : Float2(X, Y), z(Z) {}

@@ -444,7 +444,7 @@ endif()
 #else()
 target_compile_options(${EXE} PRIVATE
 	#-flto=thin
-	#-flto=full
+	-flto=full
 )
 #endif()
 

@@ -1099,6 +1099,11 @@ struct ZUNListBase {
     }
 #endif
 
+    // UM: 0x412E90
+    inline void append_to_list_end(N* new_node) {
+        this->find_end_node()->append(new_node);
+    }
+
 protected:
     static inline void delete_each_impl(N* node) {
         for (N* next_node; node; node = next_node) {
@@ -1106,6 +1111,15 @@ protected:
             assume(node->data != NULL);
             delete node->data;
             delete node;
+        }
+    }
+    static inline void delete_each_data_impl(N* node) {
+        for (N* next_node; node; node = next_node) {
+            T* data = node->data;
+            next_node = node->next;
+            if (data) {
+                delete data;
+            }
         }
     }
     template <typename L>
@@ -1247,9 +1261,16 @@ protected:
         }
         return ret;
     }
+    static inline N* find_end_node_impl(N* node) {
+        while (N* next_node = node->next) node = next_node;
+        return node;
+    }
 public:
     inline void delete_each() {
         return delete_each_impl((N*)this);
+    }
+    inline void delete_each_data() {
+        return delete_each_data_impl((N*)this);
     }
     template <typename L>
     inline void for_each_node(const L& lambda) {
@@ -1311,6 +1332,9 @@ public:
     inline int32_t count_if_not(const L& lambda) {
         return count_if_not_impl(lambda, (N*)this);
     }
+    inline N* find_end_node() {
+        return find_end_node_impl((N*)this);
+    }
 };
 
 #if ZUNListPlayNiceWithIntellisense
@@ -1344,6 +1368,9 @@ struct ZUNListHeadDummyBase : ZUNListBase<T, has_idk> {
 
     inline void delete_each() {
         return delete_each_impl(this->next);
+    }
+    inline void delete_each_data() {
+        return delete_each_data_impl(this->next);
     }
     template <typename L>
     inline void for_each_node(const L& lambda) {
@@ -1405,6 +1432,11 @@ struct ZUNListHeadDummyBase : ZUNListBase<T, has_idk> {
     inline int32_t count_if_not(const L& lambda) {
         return count_if_not_impl(lambda, this->next);
     }
+    /*
+    inline N* find_end_node() {
+        return find_end_node_impl(this->next);
+    }
+    */
 };
 
 #ifdef ZUNListIdkDefault
