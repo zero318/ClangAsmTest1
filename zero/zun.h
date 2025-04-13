@@ -8,6 +8,9 @@
 
 #include "util.h"
 
+#define UNUSED_DWORD (GARBAGE_ARG(int32_t))
+#define UNUSED_FLOAT (GARBAGE_ARG(float))
+
 static inline constexpr size_t game_version = GAME_VERSION;
 
 #define NA_TO_GAME

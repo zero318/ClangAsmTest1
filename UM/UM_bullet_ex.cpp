@@ -31,12 +31,13 @@
 #include "../reduce_angle_fast.h"
 
 template <typename T>
-using ZUNListOld = ZUNListBase<T, true>;
-
-template <typename T>
 using ZUNList = ZUNListBase<T, true>;
 template <typename T>
-using ZUNListHead = ZUNListHeadDummyBase<T, true>;
+using ZUNListHead = ZUNListHeadBase<T, true>;
+template <typename T>
+using ZUNListIter = ZUNListIterBase<T, true>;
+template <typename T>
+using ZUNListEnds = ZUNListEndsBase<T, true>;
 
 #define GAME_VERSION UM_VER
 
@@ -47,6 +48,8 @@ using ZUNListHead = ZUNListHeadDummyBase<T, true>;
 #else
 #define JpEnStr(jstring, estring) estring
 #endif
+
+#define INCLUDE_PATCH_CODE 0
 
 //#define USE_VOLATILES_AND_BARRIERS_FOR_ORIGINAL_CODEGEN 1
 
@@ -103,9 +106,6 @@ dllexport gnu_noinline void* cdecl memset_force(void* dst, int val, size_t size)
 #define zero_this() memset_force(this, 0, sizeof(*this));
 
 #define zero_this_inline() __builtin_memset(this, 0, sizeof(*this));
-
-#define UNUSED_DWORD (GARBAGE_ARG(int32_t))
-#define UNUSED_FLOAT (GARBAGE_ARG(float))
 
 struct D3DMATRIXZ : D3DMATRIX {
     // D3DXMatrixIdentity
@@ -187,11 +187,13 @@ dllexport float vectorcall reduce_angle_add(float angle, float value) {
 }
 */
 
+/*
 // 0x404BC0
 dllexport float& vectorcall reduce_angle_add_write(float& angle_ref, float& out, float value) asm_symbol_rel(0x404BC0);
 dllexport float& vectorcall reduce_angle_add_write(float& angle_ref, float& out, float value) {
     return out = reduce_angle_add(angle_ref, value);
 }
+*/
 /*
 // 0x404D10
 dllexport float& vectorcall reduce_angle_add_assign_write(float& angle_ref, float value) asm_symbol_rel(0x404D10) {
@@ -249,15 +251,26 @@ struct ZUNAngle {
 
     inline constexpr ZUNAngle() {}
 
+private:
     // 0x404C20
-    dllexport gnu_noinline vectorcall ZUNAngle(float value) asm_symbol_rel(0x404C20) {
+    dllexport gnu_noinline void vectorcall constructor(float, const float value) asm_symbol_rel(0x404C20) {
         this->value = reduce_angle(value);
     }
+public:
+    inline ZUNAngle(const float value) {
+        this->constructor(UNUSED_FLOAT, value);
+    }
 
+private:
     // 0x404D70
-    dllexport ZUNAngle& vectorcall operator=(float value) asm_symbol_rel(0x404D70) {
+    dllexport ZUNAngle& vectorcall set(float, const float value) asm_symbol_rel(0x404D70) {
         this->value = reduce_angle(value);
         return *this;
+    }
+public:
+    // 0x404D70
+    inline ZUNAngle& vectorcall operator=(const float value) asm_symbol_rel(0x404D70) {
+        return this->set(UNUSED_FLOAT, value);
     }
 
     /*
@@ -266,39 +279,65 @@ struct ZUNAngle {
         return *this;
     }
     */
-    
+
     // 0x404DC0
     dllexport vectorcall operator float() const asm_symbol_rel(0x404DC0) {
         return this->value;
     }
 
+private:
     // 0x404BC0
-    dllexport ZUNAngle vectorcall operator+(const float value) const asm_symbol_rel(0x404BC0) {
-        return this->value + value;
+    dllexport ZUNAngle& vectorcall add(int, float, float, ZUNAngle& out, const float value) asm_symbol_rel(0x404BC0) {
+        return out = this->value + value;
+    }
+public:
+    inline ZUNAngle operator+(const float value) {
+        ZUNAngle dummy;
+        return this->add(UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, dummy, value);
     }
 
+private:
     // 0x45E2A0
-    dllexport ZUNAngle thiscall operator+(const ZUNAngle& angle) const asm_symbol_rel(0x45E2A0) {
-        return this->value + angle.value;
+    dllexport ZUNAngle& thiscall add(ZUNAngle& out, const ZUNAngle& angle) asm_symbol_rel(0x45E2A0) {
+        return out = this->value + angle.value;
     }
-    
+public:
+    inline ZUNAngle operator+(const ZUNAngle& angle) {
+        ZUNAngle dummy;
+        return this->add(dummy, angle);
+    }
+
+private:
     // 0x404D10
-    dllexport gnu_noinline ZUNAngle& vectorcall operator+=(const float value) asm_symbol_rel(0x404D10) {
-        clang_forceinline return *this = *this + value;
+    dllexport gnu_noinline ZUNAngle& vectorcall add_assign(float, const float value) asm_symbol_rel(0x404D10) {
+        return *this = this->value + value;
+    }
+public:
+    // 0x404D10
+    inline ZUNAngle& vectorcall operator+=(const float value) {
+        return this->add_assign(UNUSED_FLOAT, value);
     }
 
     // th14: 0x443D60
-    ZUNAngle& thiscall operator+=(const ZUNAngle& angle) {
-        return *this = *this + angle;
+    inline ZUNAngle& thiscall operator+=(const ZUNAngle& angle) {
+        return *this = this->value + angle.value;
     }
 
+    /*
     inline ZUNAngle operator-(const float value) const {
         return this->value - value;
     }
+    */
 
+private:
     // 0x404C70
-    dllexport ZUNAngle thiscall operator-(const ZUNAngle& angle) const asm_symbol_rel(0x404C70) {
-        return reduced_angle_diff(this->value, angle.value);
+    dllexport ZUNAngle& thiscall sub(ZUNAngle& out, const ZUNAngle& angle) asm_symbol_rel(0x404C70) {
+        return out = reduced_angle_diff(this->value, angle.value);
+    }
+public:
+    inline ZUNAngle thiscall operator-(const ZUNAngle& angle) {
+        ZUNAngle dummy;
+        return this->sub(dummy, angle);
     }
     
     /*
@@ -308,24 +347,32 @@ struct ZUNAngle {
         return *this - temp;
     }
     */
-
+    /*
     inline ZUNAngle& operator-=(const float value) {
         return *this = *this - value;
     }
+    */
 
+private:
     // 0x461540
-    dllexport gnu_noinline ZUNAngle& thiscall mul_write(ZUNAngle& out, float value) asm_symbol_rel(0x404BC0) {
-        return out = reduce_angle(this->value * value);
+    dllexport ZUNAngle& vectorcall mul(int, float, float, ZUNAngle& out, const float value) asm_symbol_rel(0x404BC0) {
+        return out = this->value * value;
+    }
+public:
+    inline ZUNAngle operator*(const float value) {
+        ZUNAngle dummy;
+        return this->mul(UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, dummy, value);
     }
 
-    inline ZUNAngle vectorcall operator*(const float& value) {
-        ZUNAngle ret;
-        clang_forceinline return this->mul_write(ret, value);
-    }
-
+private:
     // th14: 0x443D00
-    ZUNAngle vectorcall operator/(const float value) const {
-        return this->value / value;
+    inline ZUNAngle& vectorcall div(ZUNAngle& out, const float value) {
+        return out = this->value / value;
+    }
+public:
+    inline ZUNAngle vectorcall operator/(const float value) {
+        ZUNAngle dummy;
+        return this->div(dummy, value);
     }
 };
 
@@ -1634,12 +1681,18 @@ struct UpdateFunc {
             return func(this->func_arg); \
         } else return (ret)0; \
     }
-
-    declare_on_func(UpdateFuncRet, run_update, on_update_func)
     declare_on_func(ZUNResult, run_init, on_init_func)
     declare_on_func(ZUNResult, run_cleanup, on_cleanup_func)
 
 #undef declare_on_func
+
+    inline UpdateFuncRet run_update() {
+        UpdateFuncRet ret;
+        CRITICAL_SECTION_MANAGER.enter_section(UpdateFuncRegistry_CS);
+        ret = this->on_update_func(this->func_arg);
+        CRITICAL_SECTION_MANAGER.leave_section(UpdateFuncRegistry_CS);
+        return ret;
+    }
 };
 #pragma region // UpdateFunc Validation
 ValidateFieldOffset32(0x0, UpdateFunc, priority);
@@ -1661,13 +1714,13 @@ extern "C" {
 struct UpdateFuncRegistry {
     UpdateFunc on_tick_funcs; // 0x0
     UpdateFunc on_draw_funcs; // 0x28
-    ZUNList<UpdateFunc>* __head_node_ptr_50; // 0x50
+    ZUNList<UpdateFunc>* __next_node; // 0x50
     int __dword_54; // 0x54
     // 0x58
 
 
     UpdateFuncRegistry() : on_tick_funcs(NULL), on_draw_funcs(NULL) {
-        this->__head_node_ptr_50->data = NULL;
+        this->__next_node->data = NULL;
     }
 
     // 0x401180
@@ -1677,7 +1730,7 @@ struct UpdateFuncRegistry {
         CRITICAL_SECTION_MANAGER.enter_section(UpdateFuncRegistry_CS);
         {
             update_tick->priority = new_func_priority;
-            auto* prev_priority_node = update_func_registry->on_tick_funcs.list_node.next->find_node_before([=](UpdateFunc* update_func) {
+            auto* prev_priority_node = update_func_registry->on_tick_funcs.list_node.as_head().find_node_before([=](UpdateFunc* update_func) {
                 return update_func->priority >= new_func_priority;
             });
             prev_priority_node->append(&update_tick->list_node);
@@ -1693,7 +1746,7 @@ struct UpdateFuncRegistry {
         CRITICAL_SECTION_MANAGER.enter_section(UpdateFuncRegistry_CS);
         {
             update_draw->priority = new_func_priority;
-            auto* prev_priority_node = update_func_registry->on_draw_funcs.list_node.next->find_node_before([=](UpdateFunc* update_func) {
+            auto* prev_priority_node = update_func_registry->on_draw_funcs.list_node.as_head().find_node_before([=](UpdateFunc* update_func) {
                 return update_func->priority >= new_func_priority;
             });
             prev_priority_node->append(&update_draw->list_node);
@@ -1714,7 +1767,7 @@ struct UpdateFuncRegistry {
             ) {
                 return;
             }
-            update_func_node->unlink_from_head(this->__head_node_ptr_50);
+            update_func_node->unlink_from_head(this->__next_node);
             if (update_func_node->prev) { // Don't try to delete the list heads
                 update_func_node->unlink();
                 update_func->on_update_func = NULL;
@@ -1750,7 +1803,7 @@ RestartOnTick:
             ZUNList<UpdateFunc>* node = this->on_tick_funcs.list_node.next;
             while (node) {
                 ZUNList<UpdateFunc>* next_node = node->next;
-                this->__head_node_ptr_50 = next_node;
+                this->__next_node = next_node;
                 UpdateFunc* update_tick = node->data;
                 node = next_node;
                 if (!update_tick->on_update_func) {
@@ -1799,7 +1852,7 @@ CleanupThenNext:
                     }
                 }
 NextFunc:
-                node = this->__head_node_ptr_50;
+                node = this->__next_node;
                 ++ret;
             }
         }
@@ -1819,7 +1872,7 @@ EndOnTick:
             ZUNList<UpdateFunc>* node = update_func_registry->on_draw_funcs.list_node.next;
             while (expect(node != NULL, true)) {
                 ZUNList<UpdateFunc>* next_node = node->next;
-                update_func_registry->__head_node_ptr_50 = next_node;
+                update_func_registry->__next_node = next_node;
                 UpdateFunc* update_draw = node->data;
                 node = next_node;
                 if (!update_draw->on_update_func) {
@@ -1868,7 +1921,7 @@ CleanupThenNext:
                     }*/
                 }
             NextFunc:
-                node = update_func_registry->__head_node_ptr_50;
+                node = update_func_registry->__next_node;
                 ++ret;
             }
         }
@@ -1880,7 +1933,7 @@ EndOnDraw:
 #pragma region // UpdateFuncRegistry Validation
 ValidateFieldOffset32(0x0, UpdateFuncRegistry, on_tick_funcs);
 ValidateFieldOffset32(0x28, UpdateFuncRegistry, on_draw_funcs);
-ValidateFieldOffset32(0x50, UpdateFuncRegistry, __head_node_ptr_50);
+ValidateFieldOffset32(0x50, UpdateFuncRegistry, __next_node);
 ValidateFieldOffset32(0x54, UpdateFuncRegistry, __dword_54);
 ValidateStructSize32(0x58, UpdateFuncRegistry);
 #pragma endregion
@@ -2946,6 +2999,64 @@ struct StageSky {
     float end_distance; // 0x4
     D3DCOLORVALUE color_components; // 0x8
     D3DCOLOR color; // 0x18
+
+private:
+    // 0x41F830
+    dllexport gnu_noinline StageSky& add(StageSky& out, const StageSky& value) asm_symbol_rel(0x41F830) {
+        out.begin_distance = this->begin_distance + value.begin_distance;
+        out.begin_distance = this->begin_distance + value.end_distance;
+        out.color_components.r = this->color_components.r + value.color_components.r;
+        out.color_components.g = this->color_components.g + value.color_components.g;
+        out.color_components.b = this->color_components.b + value.color_components.b;
+        out.color_components.a = this->color_components.a + value.color_components.a;
+        for (size_t i = 0; i < 4; ++i) {
+            ((int8_t*)&out.color)[i] = ((float*)&out.color_components)[i];
+        }
+        return out;
+    }
+public:
+    inline StageSky operator+(const StageSky& value) {
+        StageSky dummy;
+        return this->add(dummy, value);
+    }
+
+private:
+    inline StageSky& sub(StageSky& out, const StageSky& value) {
+        out.begin_distance = this->begin_distance - value.begin_distance;
+        out.begin_distance = this->begin_distance - value.end_distance;
+        out.color_components.r = this->color_components.r - value.color_components.r;
+        out.color_components.g = this->color_components.g - value.color_components.g;
+        out.color_components.b = this->color_components.b - value.color_components.b;
+        out.color_components.a = this->color_components.a - value.color_components.a;
+        for (size_t i = 0; i < 4; ++i) {
+            ((int8_t*)&out.color)[i] = ((float*)&this->color_components)[i] - ((float*)&out.color_components)[i];
+        }
+        return out;
+    }
+public:
+    inline StageSky operator-(const StageSky& value) {
+        StageSky dummy;
+        return this->sub(dummy, value);
+    }
+
+private:
+    inline StageSky& mul(StageSky& out, const float value) {
+        out.begin_distance = this->begin_distance * value;
+        out.begin_distance = this->begin_distance * value;
+        out.color_components.r = this->color_components.r * value;
+        out.color_components.g = this->color_components.g * value;
+        out.color_components.b = this->color_components.b * value;
+        out.color_components.a = this->color_components.a * value;
+        for (size_t i = 0; i < 4; ++i) {
+            ((int8_t*)&out.color)[i] = ((float*)&this->color_components)[i] * value;
+        }
+        return out;
+    }
+public:
+    inline StageSky operator*(const float value) {
+        StageSky dummy;
+        return this->mul(dummy, value);
+    }
 };
 #pragma region // StageSky Validation
 ValidateFieldOffset32(0x0, StageSky, begin_distance);
@@ -5478,7 +5589,7 @@ dllexport gnu_noinline float vectorcall __interp_inner_thing(int32_t mode, float
     }
 }
 
-template <typename T, size_t modes = 1>
+template <typename T>
 struct ZUNInterp { //       0x58    0x44    0x30
     //                      T3      T2      T1
     T initial_value; //     0x0     0x0     0x0
@@ -5488,9 +5599,9 @@ struct ZUNInterp { //       0x58    0x44    0x30
     T current; //           0x30    0x20    0x10
     Timer time; //          0x3C    0x28    0x14
     int32_t end_time; //    0x50    0x3C    0x28
-    int32_t mode[modes]; // 0x54    0x40    0x2C
+    int32_t mode; //        0x54    0x40    0x2C
 
-    inline ZUNInterp<T, modes>() : end_time(0) {}
+    inline ZUNInterp<T>() : end_time(0) {}
 
     // float: 0x41F600
     // Float2: 0x439600
@@ -5518,7 +5629,7 @@ struct ZUNInterp { //       0x58    0x44    0x30
     // Float3: 0x405A10
     // ZUNAngle: 0x47CC40
     dllexport gnu_noinline void set_mode(int32_t mode) {
-        this->mode[0] = mode;
+        this->mode = mode;
     }
 
     // float: 0x41F620
@@ -5566,8 +5677,8 @@ struct ZUNInterp { //       0x58    0x44    0x30
     // int: 0x47CF40
     // float: 0x41F640
     // Float2: 0x4396A0
-    // Float3Ex: 0x439A10
     // ZUNAngle: 0x47CC50
+    // StageSky: 0x41EFA0
     dllexport T vectorcall step() {
         int32_t end_time = this->end_time;
         if (end_time > 0) {
@@ -5579,7 +5690,7 @@ struct ZUNInterp { //       0x58    0x44    0x30
             }
         } else if (end_time == 0) {
 TimeEnd:
-            int32_t mode = this->mode[0];
+            int32_t mode = this->mode;
             if (mode != ConstantVelocity && mode != ConstantAccel) {
                 return this->final_value;
             } else {
@@ -5587,7 +5698,7 @@ TimeEnd:
             }
         }
         T initial = this->initial_value;
-        int32_t mode = this->mode[0];
+        int32_t mode = this->mode;
         if (mode == ConstantVelocity) { // 7
             return this->current = this->initial_value = initial + this->final_value;
         }
@@ -5667,61 +5778,197 @@ ValidateFieldOffset32(0x54, ZUNInterp<Float3>, mode);
 ValidateStructSize32(0x58, ZUNInterp<Float3>);
 #pragma endregion
 
-template <typename T, size_t size = 4>
-struct ZUNInterpEx : ZUNInterp<T, size> { //     0x68    0x54    0x40
-    //                      T3      T2      T1
-    //int __dword_A; //     0x58    0x44    0x30
-    //int __dword_B; //     0x5C    0x48    0x34
-    //int32_t mode_3D; //   0x60    0x4C    0x38
+template <typename T, typename E>
+struct ZUNInterpExImpl { //                 0x68    0x50
+    static inline constexpr size_t AXIS_COUNT = sizeof(T) / sizeof(E);
+    T current; //                       0x0     0x0
+    T initial_value; //                 0xC     0x8
+    T final_value; //                   0x18    0x10
+    T bezier1; //                       0x24    0x18
+    T bezier2; //                       0x30    0x20
+    Timer time; //                      0x3C    0x28
+    int32_t end_time; //                0x50    0x3C
+    int32_t axis_modes[AXIS_COUNT]; //  0x54    0x40
+    int32_t combined_mode; //           0x60    0x48
     union {
-        uint32_t flags; //  0x64    0x50    0x3C
+        uint32_t flags; //              0x64    0x4C
         struct {
-            uint32_t __unknown_flag_A : 1; // 1
+            uint32_t interp_per_axis : 1; // 1
         };
     };
 
-    //inline ZUNInterpEx<T>() : end_time(0) {}
-    
-    // Float3Ex: 0x4399D0
-    dllexport gnu_noinline void set_indexed_mode(int32_t index, int32_t mode) {
-        this->__unknown_flag_A = true;
-        this->mode[index] = mode;
+    inline ZUNInterpExImpl<T, E>() : end_time(0) {}
+
+    // Float3: 0x439940
+    dllexport gnu_noinline void set_end_time(int32_t time) {
+        this->end_time = time;
+    }
+
+    // Float3: 0x439900
+    dllexport gnu_noinline void reset_end_time() {
+        this->end_time = 0;
+    }
+
+    // Float3: 0x4399B0
+    dllexport gnu_noinline void set_initial_value(const T& value) {
+        this->initial_value = value;
+    }
+
+    // Float3: 0x439990
+    dllexport gnu_noinline void set_final_value(const T& value) {
+        this->final_value = value;
+    }
+
+    // Float3: 0x439970
+    dllexport gnu_noinline void set_bezier1(const T& value) {
+        this->bezier1 = value;
+    }
+
+    // Float3: 0x439950
+    dllexport gnu_noinline void set_bezier2(const T& value) {
+        this->bezier2 = value;
+    }
+
+    // Float3: 0x439910
+    dllexport gnu_noinline void reset_timer() {
+        this->time.reset();
     }
     
-    // Float3Ex: 0x4399F0
-    dllexport gnu_noinline void set_mode_3(int32_t mode) {
-        this->__unknown_flag_A = false;
-        this->mode[3] = mode;
+    // Float3: 0x4399D0
+    dllexport gnu_noinline void set_axis_mode(int32_t axis, int32_t mode) {
+        this->interp_per_axis = true;
+        this->axis_modes[axis] = mode;
+    }
+    
+    // Float3: 0x4399F0
+    dllexport gnu_noinline void set_combined_mode(int32_t mode) {
+        this->interp_per_axis = false;
+        this->combined_mode = mode;
+    }
+
+    // Float3: 0x439A10
+    dllexport T vectorcall step() {
+        int32_t end_time = this->end_time;
+        if (end_time > 0) {
+            this->time.increment();
+            end_time = this->end_time;
+            if (this->time >= end_time) {
+                this->time.set(end_time);
+                goto TimeEnd;
+            }
+        } else if (end_time == 0) {
+TimeEnd:
+            int32_t mode = this->combined_mode;
+            if (mode != ConstantVelocity && mode != ConstantAccel) {
+                return this->final_value;
+            } else {
+                return this->initial_value;
+            }
+        }
+        if (!this->interp_per_axis) {
+            int32_t mode = this->combined_mode;
+            if (mode == ConstantVelocity) { // 7
+                T initial = this->initial_value;
+                return this->current = this->initial_value = initial + this->final_value;
+            }
+            if (mode == ConstantAccel) { // 17
+                T initial = this->initial_value;
+                T temp = this->bezier2;
+                this->bezier2 = temp + this->final_value;
+                return this->current = this->initial_value = initial + temp;
+            }
+            float current_time = this->time.current_f;
+            float end_time_f = end_time;
+            if (mode == Bezier) { // 8
+                current_time /= end_time_f;
+                float XMM3 = 1.0f - current_time;
+                float XMM2 = current_time + current_time;
+                float XMM5 = current_time - 1.0f;
+                XMM3 *= XMM3;
+                T initial = this->initial_value;
+                initial *= XMM5 * XMM5 * (XMM2 + 1.0f);
+                initial += (3.0f - XMM2) * this->final_value * current_time * current_time;
+                initial += XMM3 * this->bezier1 * current_time;
+                initial += XMM5 * this->bezier2 * current_time * current_time;
+                return this->current = initial;
+            }
+            else {
+                float interp_value = __interp_inner_thing(mode, current_time, end_time_f);
+                return this->current = lerp(this->initial_value, this->final_value, interp_value);
+            }
+        }
+        else {
+            for (size_t i = 0; i < AXIS_COUNT; ++i) {
+                E& current = ((E*)&this->current)[i];
+                E& initial_value = ((E*)&this->initial_value)[i];
+                E& final_value = ((E*)&this->final_value)[i];
+                E& bezier1 = ((E*)&this->bezier1)[i];
+                E& bezier2 = ((E*)&this->bezier2)[i];
+
+                int32_t mode = this->axis_modes[i];
+                if (mode == ConstantVelocity) { // 7
+                    current = initial_value = initial_value + final_value;
+                }
+                else if (mode == ConstantAccel) { // 17
+                    E temp = bezier2;
+                    bezier2 = temp + final_value;
+                    current = initial_value = initial_value + temp;
+                }
+                else {
+                    float end_time_f = end_time;
+                    E final_val = final_value;
+                    float current_time = this->time.current_f;
+                    if (mode == Bezier) { // 8
+                        current_time /= end_time_f;
+                        float XMM3 = 1.0f - current_time;
+                        float XMM2 = current_time + current_time;
+                        float XMM5 = current_time - 1.0f;
+                        XMM3 *= XMM3;
+                        E initial = initial_value;
+                        initial *= XMM5 * XMM5 * (XMM2 + 1.0f);
+                        initial += (3.0f - XMM2) * final_val * current_time * current_time;
+                        initial += XMM3 * bezier1 * current_time;
+                        initial += XMM5 * bezier2 * current_time * current_time;
+                        current = initial;
+                    }
+                    else {
+                        float interp_value = __interp_inner_thing(mode, current_time, end_time_f);
+                        current = lerp(initial_value, final_val, interp_value);
+                    }
+                }
+            }
+            return this->current;
+        }
     }
 };
+template <typename T> struct ZUNInterpEx;
+template <> struct ZUNInterpEx<Float2> : ZUNInterpExImpl<Float2, float> {};
+template <> struct ZUNInterpEx<Float3> : ZUNInterpExImpl<Float3, float> {};
+template <> struct ZUNInterpEx<Int2> : ZUNInterpExImpl<Int2, int32_t> {};
+template <> struct ZUNInterpEx<Int3> : ZUNInterpExImpl<Int3, int32_t> {};
 #pragma region // ZUNInterpEx Validation
-ValidateFieldOffset32(0x0, ZUNInterpEx<float>, initial_value);
-ValidateFieldOffset32(0x4, ZUNInterpEx<float>, final_value);
-ValidateFieldOffset32(0x8, ZUNInterpEx<float>, bezier1);
-ValidateFieldOffset32(0xC, ZUNInterpEx<float>, bezier2);
-ValidateFieldOffset32(0x10, ZUNInterpEx<float>, current);
-ValidateFieldOffset32(0x14, ZUNInterpEx<float>, time);
-ValidateFieldOffset32(0x28, ZUNInterpEx<float>, end_time);
-ValidateFieldOffset32(0x2C, ZUNInterpEx<float>, mode[0]);
-ValidateFieldOffset32(0x3C, ZUNInterpEx<float>, flags);
-ValidateFieldOffset32(0x0, ZUNInterpEx<Float2>, initial_value);
-ValidateFieldOffset32(0x8, ZUNInterpEx<Float2>, final_value);
-ValidateFieldOffset32(0x10, ZUNInterpEx<Float2>, bezier1);
-ValidateFieldOffset32(0x18, ZUNInterpEx<Float2>, bezier2);
-ValidateFieldOffset32(0x20, ZUNInterpEx<Float2>, current);
+ValidateFieldOffset32(0x0, ZUNInterpEx<Float2>, current);
+ValidateFieldOffset32(0x8, ZUNInterpEx<Float2>, initial_value);
+ValidateFieldOffset32(0x10, ZUNInterpEx<Float2>, final_value);
+ValidateFieldOffset32(0x18, ZUNInterpEx<Float2>, bezier1);
+ValidateFieldOffset32(0x20, ZUNInterpEx<Float2>, bezier2);
 ValidateFieldOffset32(0x28, ZUNInterpEx<Float2>, time);
 ValidateFieldOffset32(0x3C, ZUNInterpEx<Float2>, end_time);
-ValidateFieldOffset32(0x40, ZUNInterpEx<Float2>, mode[0]);
-ValidateFieldOffset32(0x50, ZUNInterpEx<Float2>, flags);
-ValidateFieldOffset32(0x0, ZUNInterpEx<Float3>, initial_value);
-ValidateFieldOffset32(0xC, ZUNInterpEx<Float3>, final_value);
-ValidateFieldOffset32(0x18, ZUNInterpEx<Float3>, bezier1);
-ValidateFieldOffset32(0x24, ZUNInterpEx<Float3>, bezier2);
-ValidateFieldOffset32(0x30, ZUNInterpEx<Float3>, current);
+ValidateFieldOffset32(0x40, ZUNInterpEx<Float2>, axis_modes);
+ValidateFieldOffset32(0x48, ZUNInterpEx<Float2>, combined_mode);
+ValidateFieldOffset32(0x4C, ZUNInterpEx<Float2>, flags);
+ValidateStructSize32(0x50, ZUNInterpEx<Float2>);
+ValidateFieldOffset32(0x0, ZUNInterpEx<Float3>, current);
+ValidateFieldOffset32(0xC, ZUNInterpEx<Float3>, initial_value);
+ValidateFieldOffset32(0x18, ZUNInterpEx<Float3>, final_value);
+ValidateFieldOffset32(0x24, ZUNInterpEx<Float3>, bezier1);
+ValidateFieldOffset32(0x30, ZUNInterpEx<Float3>, bezier2);
 ValidateFieldOffset32(0x3C, ZUNInterpEx<Float3>, time);
 ValidateFieldOffset32(0x50, ZUNInterpEx<Float3>, end_time);
-ValidateFieldOffset32(0x54, ZUNInterpEx<Float3>, mode[0]);
+ValidateFieldOffset32(0x54, ZUNInterpEx<Float3>, axis_modes);
+ValidateFieldOffset32(0x60, ZUNInterpEx<Float3>, combined_mode);
 ValidateFieldOffset32(0x64, ZUNInterpEx<Float3>, flags);
+ValidateStructSize32(0x68, ZUNInterpEx<Float3>);
 #pragma endregion
 
 #define SetInstr(value) \
@@ -6019,6 +6266,32 @@ struct EclStack {
         this->push<P>(func(left, right));
     }
 
+    inline ZUNResult enter_frame(int32_t size) {
+        int32_t prev_pointer = this->pointer;
+        size += prev_pointer;
+        if (size >= EclStackSize) {
+            return ZUN_ERROR;
+        } else {
+            this->pointer = size;
+            this->push(this->base);
+            this->base = prev_pointer;
+            return ZUN_SUCCESS;
+        }
+    }
+
+    ZUNResult leave_frame(void) {
+        int32_t new_base = this->pop<int32_t>();
+        int32_t new_pointer = this->base;
+        this->base = new_base;
+        this->pointer = new_pointer;
+        if (new_pointer) {
+            return ZUN_SUCCESS;
+        }
+        else {
+            return ZUN_ERROR;
+        }
+    }
+
     inline void zero_contents() {
         zero_this();
     }
@@ -6091,12 +6364,19 @@ struct EclContext {
 
 private:
     // 0x48D5A0
-    dllexport gnu_noinline float vectorcall get_float_arg(int32_t, int32_t index) asm_symbol_rel(0x48D5A0);
-
+    dllexport gnu_noinline float vectorcall get_float_arg(int, int32_t index) asm_symbol_rel(0x48D5A0);
 public:
     forceinline float get_float_arg(int32_t index) {
         return this->get_float_arg(UNUSED_DWORD, index);
     }
+
+    forceinline int32_t thiscall get_int_arg_pop(int32_t index, EclInstruction* current_instruction);
+
+    forceinline int32_t thiscall get_int_arg_pop(int32_t index);
+
+    forceinline float vectorcall get_float_arg_pop(int32_t index, EclInstruction* current_instruction);
+
+    forceinline float vectorcall get_float_arg_pop(int32_t index);
 
     forceinline int32_t thiscall parse_int_as_arg_pop(int32_t index, int32_t value, EclInstruction* current_instruction);
 
@@ -7276,7 +7556,7 @@ public:
 
     // 0x42CDD0
     dllexport gnu_noinline void cleanup_vm() asm_symbol_rel(0x42CDD0) {
-        this->context_list.delete_each();
+        this->context_list.as_head().delete_each();
     }
 
     // 0x42CF50
@@ -7433,6 +7713,44 @@ forceinline float vectorcall EclContext::get_float_arg(int32_t index, EclInstruc
 // 0x48D5A0
 dllexport gnu_noinline float vectorcall EclContext::get_float_arg(int32_t, int32_t index) {
     return this->get_float_arg(index, this->get_current_instruction());
+}
+
+forceinline int32_t thiscall EclContext::get_int_arg_pop(int32_t index, EclInstruction* current_instruction) {
+    if (current_instruction->param_mask & (1 << index)) {
+        int32_t value = IntArg(index);
+        if (value >= 0) {
+            return this->stack.read_local<int32_t>(value);
+        } else if (value <= -1 && value >= -100) {
+            return this->stack.pop_cast<int32_t>();
+        } else {
+            return this->vm->get_int_var(value);
+        }
+    } else {
+        return IntArg(index);
+    }
+}
+
+forceinline int32_t thiscall EclContext::get_int_arg_pop(int32_t index) {
+    return this->get_int_arg_pop(index, this->get_current_instruction());
+}
+
+forceinline float vectorcall EclContext::get_float_arg_pop(int32_t index, EclInstruction* current_instruction) {
+    float value = FloatArg(index);
+    if (current_instruction->param_mask & (1 << index)) {
+        if (value >= 0.0f) {
+            return this->stack.read_local<float>(value);
+        } else if (value <= -1.0f && value >= -100.0f) {
+            return this->stack.pop_cast<float>();
+        } else {
+            return this->vm->get_float_var(value);
+        }
+    } else {
+        return value;
+    }
+}
+
+forceinline float vectorcall EclContext::get_float_arg_pop(int32_t index) {
+    return this->get_float_arg_pop(index, this->get_current_instruction());
 }
 
 forceinline int32_t thiscall EclContext::parse_int_as_arg_pop(int32_t index, int32_t value, EclInstruction* current_instruction) {
@@ -7660,7 +7978,7 @@ enum Opcode : uint16_t {
     math_line_angle = 87,
     math_sqrt = 88,
     math_angle_diff = 89,
-    __math_point_rotate = 90,
+    math_point_rotate = 90,
     math_float_interp = 91,
     math_float_interp_bezier = 92,
     math_circle_pos_rand = 93,
@@ -7747,12 +8065,12 @@ enum Opcode : uint16_t {
     move_velocity_no_mirror_rel_interp,
     move_to_enemy_id_abs,
     move_to_enemy_id_rel,
-    __move_curve_abs,
-    __move_curve_rel,
+    move_axis_interp_abs,
+    move_axis_interp_rel,
     __move_position_offset_abs_interp,
     __move_position_offset_rel_interp,
-    __move_curve_offset_abs,
-    __move_curve_offset_rel,
+    __move_axis_offset_abs_interp,
+    __move_axis_offset_rel_interp,
     move_angle_abs,
     move_angle_abs_interp,
     move_angle_rel,
@@ -8050,7 +8368,7 @@ struct Enemy : EclVM {
 
 protected:
     template <bool no_callbacks = false>
-    inline void try_kill_success() {
+    forceinline void try_kill_success() {
         this->data.drops.reset();
         this->data.position_of_last_damage_source_to_hit.x = 0.0f;
         this->data.position_of_last_damage_source_to_hit.y = 192.0f;
@@ -8059,7 +8377,7 @@ protected:
             this->data.death_callback_sub[0] = '\0';
         }
         this->kill();
-        for (size_t i = 0; i < 16; ++i) {
+        nounroll for (size_t i = 0; i < 16; ++i) {
             this->data.anm_vms[i].mark_tree_for_delete();
         }
         this->data.__unknown_flag_B = true;
@@ -8067,14 +8385,14 @@ protected:
 
 public:
     template <bool no_callbacks = false>
-    inline void try_kill() {
+    forceinline void try_kill() {
         if (this->data.flags_allow_kill()) {
             this->try_kill_success<no_callbacks>();
         }
     }
 
     template <bool no_callbacks = false>
-    inline void try_kill_by_kill_id(int32_t kill_id) {
+    forceinline void try_kill_by_kill_id(int32_t kill_id) {
         if (
             this->data.flags_allow_kill() &&
             this->data.kill_id == kill_id
@@ -8098,6 +8416,7 @@ struct RGB {
     int32_t r; // 0x0
     int32_t g; // 0x4
     int32_t b; // 0x8
+    // 0xC
 };
 
 typedef struct Gui Gui;
@@ -9773,7 +10092,7 @@ struct AnmVM {
         Timer __timer_1C; // 0x1C (0x560)
         ZUNList<AnmVM> global_list_node; // 0x30 (0x574)
         ZUNList<AnmVM> child_list_node; // 0x40 (0x584)
-        ZUNListHead<AnmVM> child_list_head; // 0x50 (0x594)
+        ZUNList<AnmVM> child_list; // 0x50 (0x594)
         ZUNList<AnmVM> destroy_list_node; // 0x60 (0x5A4)
         AnmVM* next_in_layer; // 0x70 (0x5B4)
         AnmVM* prev_in_layer; // 0x74 (0x5B8)
@@ -9856,7 +10175,7 @@ struct AnmVM {
     // 0x405AD0
     dllexport gnu_noinline void thiscall set_position_interp_bezier(int32_t end_time, Float3* initial_pos, Float3* bezier1, Float3* final_pos, Float3* bezier2) asm_symbol_rel(0x405AD0) {
         this->data.position_interp.end_time = end_time;
-        this->data.position_interp.mode[0] = 8;
+        this->data.position_interp.mode = 8;
         this->data.position_interp.initial_value = *initial_pos;
         this->data.position_interp.final_value = *final_pos;
         this->data.position_interp.bezier1 = *bezier1;
@@ -9872,7 +10191,7 @@ struct AnmVM {
     // 0x406630
     dllexport gnu_noinline void thiscall initialize_alpha_interp(int32_t end_time, int32_t mode, uint8_t initial_alpha, uint8_t final_alpha) asm_symbol_rel(0x406630) {
         this->data.alpha_interp.end_time = end_time;
-        this->data.alpha_interp.mode[0] = mode;
+        this->data.alpha_interp.mode = mode;
         this->data.alpha_interp.initial_value = initial_alpha;
         this->data.alpha_interp.final_value = final_alpha;
         this->data.alpha_interp.bezier1 = 0;
@@ -9883,7 +10202,7 @@ struct AnmVM {
     // 0x4890B0
     dllexport gnu_noinline AnmVM* thiscall __wtf_child_list_jank_A(int32_t script, uint32_t arg2) asm_symbol_rel(0x4890B0) {
         for (
-            ZUNList<AnmVM>* node = &this->controller.child_list_head;
+            ZUNList<AnmVM>* node = &this->controller.child_list;
             node;
             node = node->next
         ) {
@@ -9895,7 +10214,7 @@ struct AnmVM {
                     }
                     --arg2;
                 }
-                if (vm->controller.child_list_head.next) {
+                if (vm->controller.child_list.next) {
                     if (AnmVM* vm2 = vm->__wtf_child_list_jank_A(script, arg2)) {
                         return vm2;
                     }
@@ -9991,7 +10310,7 @@ struct AnmVM {
         this->controller.parent = NULL;
         this->controller.global_list_node.initialize_with(this);
         this->controller.child_list_node.initialize_with(this);
-        this->controller.child_list_head.initialize_with(this);
+        this->controller.child_list.initialize_with(this);
         this->controller.destroy_list_node.initialize_with(this);
     }
 
@@ -10107,7 +10426,7 @@ struct AnmVM {
     // 0x488EF0
     dllexport void __unknown_tree_set_J() asm_symbol_rel(0x488EF0) {
         this->data.__unknown_flag_J = true;
-        this->controller.child_list_head.for_each([](AnmVM* vm) gnu_always_inline static_lambda {
+        this->controller.child_list.as_head().for_each([](AnmVM* vm) gnu_always_inline static_lambda {
             clang_noinline vm->__unknown_tree_set_J();
         });
     }
@@ -10115,7 +10434,7 @@ struct AnmVM {
     // 0x488F20
     dllexport void __unknown_tree_clear_J() asm_symbol_rel(0x488F20) {
         this->data.__unknown_flag_J = false;
-        this->controller.child_list_head.for_each([](AnmVM* vm) gnu_always_inline static_lambda {
+        this->controller.child_list.as_head().for_each([](AnmVM* vm) gnu_always_inline static_lambda {
             clang_noinline vm->__unknown_tree_clear_J();
         });
     }
@@ -10355,7 +10674,7 @@ struct AnmLoaded {
         vm->clear_controller();
         vm->controller.global_list_node.initialize_with(vm);
         vm->controller.child_list_node.initialize_with(vm);
-        vm->controller.child_list_head.initialize_with(vm);
+        vm->controller.child_list.initialize_with(vm);
         rep_movsd(&vm->data, &(*this->__vm_array)[index].data, sizeof(AnmVM::AnmVMData) / sizeof(DWORD));
         vm->controller.__timer_1C.reset();
         vm->controller.script_time.reset();
@@ -10717,10 +11036,8 @@ struct AnmManager {
     Float2 __float2_D8; // 0xD8
     unknown_fields(0x4); // 0xE0
     AnmVM __vm_E4; // 0xE4
-    ZUNList<AnmVM>* world_list_head; // 0x6F0
-    ZUNList<AnmVM>* world_list_tail; // 0x6F4
-    ZUNList<AnmVM>* ui_list_head; // 0x6F8
-    ZUNList<AnmVM>* ui_list_tail; // 0x6FC
+    ZUNListEnds<AnmVM> world_list; // 0x6F0
+    ZUNListEnds<AnmVM> ui_list; // 0x6F8
     FastAnmVM fast_array[uint_width_max(ANM_FAST_ID_BITS)]; // 0x700
     FastAnmVM fast_array_end; // 0x31200DC
     int32_t next_snapshot_fast_id; // 0x3120700
@@ -10802,38 +11119,34 @@ struct AnmManager {
     dllexport gnu_noinline UpdateFuncRet thiscall render_layer(uint32_t layer_index) asm_symbol_rel(0x488260) {
         CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
         {
-            if (auto* world_list_head = this->world_list_head) {
-                world_list_head->for_each_safeB([&, this](AnmVM* vm) {
-                    if (!vm->data.__vm_state) {
-                        uint32_t vm_layer = vm->data.layer;
-                        vm_layer = (vm_layer - WORLD_LAYER_COUNT) >= UI_LAYER_COUNT ? vm_layer : vm_layer - WORLD_LAYER_B_COUNT;
-                        if (vm_layer == layer_index) {
-                            this->draw_vm(vm);
-                            ++vm->data.position_interp.end_time;
-                        }
+            this->world_list.for_each_safeB([&, this](AnmVM* vm) {
+                if (!vm->data.__vm_state) {
+                    uint32_t vm_layer = vm->data.layer;
+                    vm_layer = (vm_layer - WORLD_LAYER_COUNT) >= UI_LAYER_COUNT ? vm_layer : vm_layer - WORLD_LAYER_B_COUNT;
+                    if (vm_layer == layer_index) {
+                        this->draw_vm(vm);
+                        ++vm->data.position_interp.end_time;
                     }
-                });
-            }
-            if (auto* ui_list_head = this->ui_list_head) {
-                ui_list_head->for_each_safeB([=](AnmVM* vm) {
-                    if (!vm->data.__vm_state) {
-                        int32_t vm_layer = vm->data.layer;
-                        if ((uint32_t)(vm_layer - WORLD_LAYER_A_COUNT) < UI_LAYER_COUNT) {
-                            vm_layer += WORLD_LAYER_B_COUNT;
-                        }
-                        else if (
-                            vm_layer < WORLD_LAYER_COUNT ||
-                            vm_layer >= (WORLD_LAYER_COUNT + UI_LAYER_COUNT)
-                        ) {
-                            vm_layer = 39;
-                        }
-                        if (vm_layer == layer_index) {
-                            this->draw_vm(vm);
-                            ++vm->data.position_interp.end_time;
-                        }
+                }
+            });
+            this->ui_list.for_each_safeB([=](AnmVM* vm) {
+                if (!vm->data.__vm_state) {
+                    int32_t vm_layer = vm->data.layer;
+                    if ((uint32_t)(vm_layer - WORLD_LAYER_A_COUNT) < UI_LAYER_COUNT) {
+                        vm_layer += WORLD_LAYER_B_COUNT;
                     }
-                });
-            }
+                    else if (
+                        vm_layer < WORLD_LAYER_COUNT ||
+                        vm_layer >= (WORLD_LAYER_COUNT + UI_LAYER_COUNT)
+                    ) {
+                        vm_layer = 39;
+                    }
+                    if (vm_layer == layer_index) {
+                        this->draw_vm(vm);
+                        ++vm->data.position_interp.end_time;
+                    }
+                }
+            });
         }
         CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
         return UpdateFuncNext;
@@ -11245,10 +11558,8 @@ struct AnmManager {
     }
 
     inline void unlink_node_from_list_ends(ZUNList<AnmVM>* node) {
-        node->unlink_from_tail(this->world_list_tail);
-        node->unlink_from_head(this->world_list_head);
-        node->unlink_from_tail(this->ui_list_tail);
-        node->unlink_from_head(this->ui_list_head);
+        node->unlink_from(this->world_list);
+        node->unlink_from(this->ui_list);
     }
 
     // 0x488B40
@@ -11259,12 +11570,8 @@ struct AnmManager {
                 auto id_match = [=](AnmVM* vm){
                     return vm->controller.id == vm_id;
                 };
-                if (auto* world_list_head = this->world_list_head) {
-                    if (AnmVM* ret = world_list_head->find_if(id_match)) return ret;
-                }
-                if (auto* ui_list_head = this->ui_list_head) {
-                    if (AnmVM* ret = ui_list_head->find_if(id_match)) return ret;
-                }
+                if (AnmVM* ret = this->world_list.find_if(id_match)) return ret;
+                if (AnmVM* ret = this->ui_list.find_if(id_match)) return ret;
             }
             else {
                 FastAnmVM& fast_vm = this->fast_array[fast_id];
@@ -11280,7 +11587,7 @@ struct AnmManager {
     dllexport static void interrupt_tree(const AnmID& id, int32_t interrupt_index) asm_symbol_rel(0x488BE0) {
         if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(id)) {
             vm->interrupt(interrupt_index);
-            vm->controller.child_list_head.for_each([=](AnmVM* vm) {
+            vm->controller.child_list.as_head().for_each([=](AnmVM* vm) {
                 vm->interrupt(interrupt_index);
             });
         }
@@ -11291,7 +11598,7 @@ struct AnmManager {
         if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(id)) {
             vm->interrupt(interrupt_index);
             vm->run_anm();
-            vm->controller.child_list_head.for_each([=](AnmVM*& vm) {
+            vm->controller.child_list.as_head().for_each([=](AnmVM*& vm) {
                 vm->interrupt(interrupt_index);
                 vm->run_anm();
             });
@@ -11302,7 +11609,7 @@ struct AnmManager {
     dllexport void thiscall mark_tree_for_delete(AnmVM* vm) asm_symbol_rel(0x488D50) {
         if (vm && !vm->data.__unknown_flag_F) {
             vm->data.__vm_state = AnmVMState::MarkedForDelete;
-            vm->controller.child_list_head.for_each([=](AnmVM* vm) gnu_always_inline {
+            vm->controller.child_list.as_head().for_each([=](AnmVM* vm) gnu_always_inline {
                 clang_noinline this->mark_tree_for_delete(vm);
             });
         }
@@ -11329,7 +11636,7 @@ struct AnmManager {
             vm->controller.parent = NULL;
             vm->controller.global_list_node.initialize_with(vm);
             vm->controller.child_list_node.initialize_with(vm);
-            vm->controller.child_list_head.initialize_with(vm);
+            vm->controller.child_list.initialize_with(vm);
             return vm;
         } else {
             AnmVM* vm = new AnmVM;
@@ -11344,7 +11651,7 @@ struct AnmManager {
 
     // 0x488110
     dllexport gnu_noinline void thiscall __recursive_remove(AnmVM* vm, ZUNList<AnmVM>* list_node) asm_symbol_rel(0x488110) {
-        vm->controller.child_list_head.for_each([=](AnmVM* current_vm) gnu_always_inline {
+        vm->controller.child_list.as_head().for_each_safe([=](AnmVM* current_vm) gnu_always_inline {
             clang_noinline this->__recursive_remove(current_vm, list_node);
         });
         if (vm->data.__vm_state != AnmVMState::Deleted) {
@@ -11397,19 +11704,17 @@ struct AnmManager {
                 //layer_lists[i] = &layer_heads[i];
                 layer_heads[i].controller.next_in_layer = NULL;
             } while (++i < WORLD_LAYER_COUNT);
-            if (auto* world_list_head = this->world_list_head) {
-                world_list_head->for_each([&, this](AnmVM* vm) {
-                    vm->controller.next_in_layer = NULL;
-                    vm->controller.prev_in_layer = NULL;
-                    switch (vm->data.__vm_state) {
-                        case AnmVMState::Normal:
-                            if (vm->run_anm()) {
-                        case AnmVMState::MarkedForDelete:
-                                this->__recursive_remove(vm, &destroy_list);
-                            }
-                    }
-                });
-            }
+            this->world_list.for_each([&, this](AnmVM* vm) {
+                vm->controller.next_in_layer = NULL;
+                vm->controller.prev_in_layer = NULL;
+                switch (vm->data.__vm_state) {
+                    case AnmVMState::Normal:
+                        if (vm->run_anm()) {
+                    case AnmVMState::MarkedForDelete:
+                            this->__recursive_remove(vm, &destroy_list);
+                        }
+                }
+            });
             destroy_list.for_each([this](AnmVM* vm) {
                 this->destroy_possibly_managed_vm(vm);
             });
@@ -11432,19 +11737,17 @@ struct AnmManager {
                 //layer_lists[i] = &layer_heads[i];
                 layer_heads[i].controller.next_in_layer = NULL;
             } while (++i < UI_LAYER_COUNT);
-            if (auto* ui_list_head = this->ui_list_head) {
-                ui_list_head->for_each([&, this](AnmVM* vm) {
-                    vm->controller.next_in_layer = NULL;
-                    vm->controller.prev_in_layer = NULL;
-                    switch (vm->data.__vm_state) {
-                        case AnmVMState::Normal:
-                            if (vm->run_anm()) {
-                        case AnmVMState::MarkedForDelete:
-                                this->__recursive_remove(vm, &destroy_list);
-                            }
-                    }
-                });
-            }
+            this->ui_list.for_each([&, this](AnmVM* vm) {
+                vm->controller.next_in_layer = NULL;
+                vm->controller.prev_in_layer = NULL;
+                switch (vm->data.__vm_state) {
+                    case AnmVMState::Normal:
+                        if (vm->run_anm()) {
+                    case AnmVMState::MarkedForDelete:
+                            this->__recursive_remove(vm, &destroy_list);
+                        }
+                }
+            });
             destroy_list.for_each([this](AnmVM* vm) {
                 this->destroy_possibly_managed_vm(vm);
             });
@@ -11474,12 +11777,7 @@ private:
         AnmManager* anm_manager = ANM_MANAGER_PTR;
         ZUNList<AnmVM>* world_node = &vm->controller.global_list_node;
         world_node->initialize_with(vm);
-        if (!anm_manager->world_list_head) {
-            anm_manager->world_list_head = world_node;
-        } else {
-            anm_manager->world_list_tail->append(world_node);
-        }
-        anm_manager->world_list_tail = world_node;
+        anm_manager->world_list.append(world_node);
         anm_manager->assign_next_id_to_ref(out, vm);
         return out;
     }
@@ -11495,12 +11793,7 @@ private:
         AnmManager* anm_manager = ANM_MANAGER_PTR;
         ZUNList<AnmVM>* world_node = &vm->controller.global_list_node;
         world_node->initialize_with(vm);
-        if (!anm_manager->world_list_head) {
-            anm_manager->world_list_tail = world_node;
-        } else {
-            anm_manager->world_list_head->prepend(world_node);
-        }
-        anm_manager->world_list_head = world_node;
+        anm_manager->world_list.prepend(world_node);
         anm_manager->assign_next_id_to_ref(out, vm);
         return out;
     }
@@ -11516,12 +11809,7 @@ private:
         AnmManager* anm_manager = ANM_MANAGER_PTR;
         ZUNList<AnmVM>* world_node = &vm->controller.global_list_node;
         world_node->initialize_with(vm);
-        if (!anm_manager->ui_list_head) {
-            anm_manager->ui_list_head = world_node;
-        } else {
-            anm_manager->ui_list_tail->append(world_node);
-        }
-        anm_manager->ui_list_tail = world_node;
+        anm_manager->ui_list.append(world_node);
         anm_manager->assign_next_id_to_ref(out, vm);
         return out;
     }
@@ -11537,12 +11825,7 @@ private:
         AnmManager* anm_manager = ANM_MANAGER_PTR;
         ZUNList<AnmVM>* world_node = &vm->controller.global_list_node;
         world_node->initialize_with(vm);
-        if (!anm_manager->ui_list_head) {
-            anm_manager->ui_list_tail = world_node;
-        } else {
-            anm_manager->ui_list_head->prepend(world_node);
-        }
-        anm_manager->ui_list_head = world_node;
+        anm_manager->ui_list.prepend(world_node);
         anm_manager->assign_next_id_to_ref(out, vm);
         return out;
     }
@@ -11564,12 +11847,8 @@ public:
                     vm->data.__vm_state = 1;
                 }
             };
-            if (auto* world_list_head = this->world_list_head) {
-                world_list_head->for_each_safe(set_state1_if_slot_matches);
-            }
-            if (auto* ui_list_head = this->ui_list_head) {
-                ui_list_head->for_each_safe(set_state1_if_slot_matches);
-            }
+            this->world_list.for_each_safe(set_state1_if_slot_matches);
+            this->ui_list.for_each_safe(set_state1_if_slot_matches);
         }
     }
 
@@ -11590,10 +11869,8 @@ ValidateFieldOffset32(0xCC, AnmManager, __dword_CC);
 ValidateFieldOffset32(0xD0, AnmManager, __int2_D0);
 ValidateFieldOffset32(0xD8, AnmManager, __float2_D8);
 ValidateFieldOffset32(0xE4, AnmManager, __vm_E4);
-ValidateFieldOffset32(0x6F0, AnmManager, world_list_head);
-ValidateFieldOffset32(0x6F4, AnmManager, world_list_tail);
-ValidateFieldOffset32(0x6F8, AnmManager, ui_list_head);
-ValidateFieldOffset32(0x6FC, AnmManager, ui_list_tail);
+ValidateFieldOffset32(0x6F0, AnmManager, world_list);
+ValidateFieldOffset32(0x6F8, AnmManager, ui_list);
 ValidateFieldOffset32(0x700, AnmManager, fast_array);
 ValidateFieldOffset32(0x31200DC, AnmManager, fast_array_end);
 ValidateFieldOffset32(0x3120700, AnmManager, next_snapshot_fast_id);
@@ -12334,7 +12611,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_child_vm(AnmID& out, int32_t sc
                 out = AnmManager::add_vm_to_world_list_back(vm);
                 break;
         }
-        parent->controller.child_list_head.append(&vm->controller.child_list_node);
+        parent->controller.child_list.append(&vm->controller.child_list_node);
     }
     CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
     return out;
@@ -12398,7 +12675,7 @@ dllexport void AnmID::interrupt_tree(int32_t interrupt_index) {
 inline void AnmID::__unknown_tree_set_J(AnmManager* anm_manager) {
     if (AnmVM* vm = anm_manager->get_vm_with_id(*this)) {
         vm->data.__unknown_flag_J = true;
-        vm->controller.child_list_head.for_each([](AnmVM* vm) static_lambda {
+        vm->controller.child_list.as_head().for_each([](AnmVM* vm) static_lambda {
             vm->__unknown_tree_set_J();
         });
     }
@@ -12413,7 +12690,7 @@ dllexport void AnmID::__unknown_tree_set_J() {
 dllexport void AnmID::__unknown_tree_clear_J() {
     if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this)) {
         vm->data.__unknown_flag_J = false;
-        vm->controller.child_list_head.for_each([](AnmVM* vm) static_lambda {
+        vm->controller.child_list.as_head().for_each([](AnmVM* vm) static_lambda {
             vm->__unknown_tree_clear_J();
         });
     }
@@ -12553,7 +12830,8 @@ dllexport gnu_noinline int32_t AnmVM::run_anm() {
 RunInterrupt:
     */
     use_var(this);
-    return 0;
+    return rand();
+    //return 0;
 }
 
 //template<size_t initial_size, size_t batch_size>
@@ -12717,7 +12995,9 @@ extern "C" {
     extern AsciiManager* ASCII_MANAGER_PTR asm("_ASCII_MANAGER_PTR");
 }
 
+#if INCLUDE_PATCH_CODE
 dllexport uint32_t score_upper[3] = { rand(), rand(), rand() };
+#endif
 
 // size: 0x19278
 struct AsciiManager : ZUNTask {
@@ -13001,6 +13281,7 @@ public:
         ASCII_MANAGER_PTR->print_score_impl(position, score, continues);
     }
 
+#if INCLUDE_PATCH_CODE
     dllexport gnu_noinline static void stdcall print_score_bigger(Float3* position, uint32_t score, uint32_t continues) {
         uint64_t big_score = score | (uint64_t)score_upper[1 + (*(uint32_t*)&position->y == 0x42800000)] << 32;
 
@@ -13053,6 +13334,7 @@ public:
         }
         ascii_manager->add_string(position, buffer_write);
     }
+#endif
 
     // 0x41A110
     dllexport gnu_noinline void cdecl debugf(Float3* position, const char* format, ...) asm_symbol_rel(0x41A110) {
@@ -14496,7 +14778,7 @@ struct CardClownpiece : CardBase {
         if (!this->__int_54 && this->recharge_time <= 0) {
             Float3 A = this->position_interp.initial_value = this->position = PLAYER_PTR->data.position;
             A.y -= 400.0f;
-            this->position_interp.mode[0] = 1;
+            this->position_interp.mode = 1;
             this->position_interp.end_time = 120;
             this->position_interp.final_value = A;
             this->position_interp.time.reset();
@@ -15709,7 +15991,7 @@ struct AbilityManager : ZUNTask {
 
     }
 
-
+#if INCLUDE_PATCH_CODE
     size_t vectorcall dont_worry_bravi_it_only_took_me_a_year(const char *restrict count_name) {
         const CardData *restrict card_data_ptr = CARD_DATA_TABLE;
         do {
@@ -15722,6 +16004,7 @@ struct AbilityManager : ZUNTask {
         } while (++card_data_ptr != array_end_addr(CARD_DATA_TABLE));
         return 0;
     }
+#endif
 
     // 0x412FE0
     dllexport gnu_noinline static BOOL stdcall card_equipped(int32_t id) {
@@ -15854,7 +16137,7 @@ struct AbilityShop : ZUNTask {
 
 #pragma endregion
 
-
+#if INCLUDE_PATCH_CODE
 dllexport gnu_noinline void count_cards_of_type(EnemyData* self) {
     int32_t* out;
     clang_forceinline out = self->get_int_ptr_arg();
@@ -15890,6 +16173,7 @@ dllexport gnu_noinline void count_cards_of_type2(EnemyData* self) {
     }
     clang_forceinline *self->get_int_ptr_arg() = count;
 }
+#endif
 
 dllexport gnu_noinline void stdcall log_vprintf(const char* format, va_list va) {
     vprintf(format, va);
@@ -16006,8 +16290,7 @@ struct EnemyManager : ZUNTask {
     int __int_164; // 0x164
     AnmLoaded* enemy_anms[8]; // 0x168
     EnemyController* enemy_controller; // 0x188
-    ZUNList<Enemy>* enemy_list_head; // 0x18C
-    ZUNList<Enemy>* enemy_list_tail; // 0x190
+    ZUNListEnds<Enemy> enemy_list; // 0x18C
     ZUNList<Enemy>* __unknown_enemy_list; // 0x194
     int32_t enemy_count; // 0x198
     ZUNAngle __angle_19C; // 0x19C
@@ -16049,13 +16332,10 @@ struct EnemyManager : ZUNTask {
 
     // 0x42D440
     dllexport static gnu_noinline int32_t count_killable_enemies() asm_symbol_rel(0x42D440) {
-        if (auto* enemy_list = ENEMY_MANAGER_PTR->enemy_list_head) {
-            return enemy_list->count_if_not([](Enemy* enemy) {
-                return !enemy->data.has_active_hitbox() || enemy->data.is_invulnerable();
-                //return enemy->data.disable_hitbox || enemy->data.invincible || enemy->data.intangible || enemy->data.invulnerable_timer > 0;
-            });
-        }
-        return NULL;
+        ENEMY_MANAGER_PTR->enemy_list.count_if_not([](Enemy* enemy) {
+            return !enemy->data.has_active_hitbox() || enemy->data.is_invulnerable();
+            //return enemy->data.disable_hitbox || enemy->data.invincible || enemy->data.intangible || enemy->data.invulnerable_timer > 0;
+        });
     }
 
     // 0x42D490
@@ -16077,12 +16357,9 @@ struct EnemyManager : ZUNTask {
         if (!enemy_id) {
             return NULL;
         } else {
-            if (auto* enemy_list = this->enemy_list_head) {
-                return enemy_list->find_if([=](Enemy* enemy) {
-                    return enemy->id == enemy_id;
-                });
-            }
-            return NULL;
+            return this->enemy_list.find_if([=](Enemy* enemy) {
+                return enemy->id == enemy_id;
+            });
         }
     }
 
@@ -16100,11 +16377,9 @@ struct EnemyManager : ZUNTask {
     // 0x409990
     dllexport gnu_noinline BOOL enemy_exists_with_id(int32_t enemy_id) asm_symbol_rel(0x409990) {
         if (enemy_id) {
-            if (auto* enemy_list = ENEMY_MANAGER_PTR->enemy_list_head) {
-                return (bool)enemy_list->find_if([=](Enemy* enemy) {
-                    return enemy->id == enemy_id;
-                });
-            }
+            return (bool)ENEMY_MANAGER_PTR->enemy_list.find_if([=](Enemy* enemy) {
+                return enemy->id == enemy_id;
+            });
         }
         return false;
     }
@@ -16120,23 +16395,21 @@ private:
     inline EnemyID& __get_id_of_nearest_enemy_in_radius(EnemyID& out, Float2* position, float radius) {
         Enemy* found = NULL;
         float radius_squared = radius * radius;
-        if (auto* enemy_list = this->enemy_list_head) {
-            enemy_list->for_each_safe([&](Enemy* enemy) {
-                if (!(
-                    enemy->data.disable_hitbox | enemy->data.intangible |
-                    enemy->data.__basic_anm_update | enemy->data.homing_disable
-                )) {
-                    float distance_squared = position->distance_squared(&enemy->data.current_motion.position);
-                    if (distance_squared < radius_squared) {
-                        found = enemy;
-                        radius_squared = distance_squared;
-                    }
+        this->enemy_list.for_each_safe([&](Enemy* enemy) {
+            if (!(
+                enemy->data.disable_hitbox | enemy->data.intangible |
+                enemy->data.__basic_anm_update | enemy->data.homing_disable
+            )) {
+                float distance_squared = position->distance_squared(&enemy->data.current_motion.position);
+                if (distance_squared < radius_squared) {
+                    found = enemy;
+                    radius_squared = distance_squared;
                 }
-            });
-            if (found) {
-                out = found->id;
-                return out;
             }
+        });
+        if (found) {
+            out = found->id;
+            return out;
         }
         out = 0;
         return out;
@@ -16154,7 +16427,7 @@ public:
     // 0x430710
     dllexport gnu_noinline static void kill_all() {
         EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
-        enemy_manager->enemy_list_head->for_each_safe([=](Enemy* enemy) {
+        enemy_manager->enemy_list.for_each_safe([=](Enemy* enemy) {
             enemy->try_kill();
         });
         enemy_manager->__timer_98++;
@@ -16163,7 +16436,7 @@ public:
     // 0x430B20
     dllexport gnu_noinline static void kill_all_no_callbacks() {
         EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
-        enemy_manager->enemy_list_head->for_each_safe([=](Enemy* enemy) {
+        enemy_manager->enemy_list.for_each_safe([=](Enemy* enemy) {
             enemy->try_kill<true>();
         });
         enemy_manager->__timer_98++;
@@ -16172,7 +16445,7 @@ public:
     // 0x430910
     dllexport gnu_noinline static void stdcall kill_all_by_kill_id(int32_t kill_id) {
         EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
-        enemy_manager->enemy_list_head->for_each_safe([=](Enemy* enemy) {
+        enemy_manager->enemy_list.for_each_safe([=](Enemy* enemy) {
             enemy->try_kill_by_kill_id(kill_id);
         });
         enemy_manager->__timer_98++;
@@ -16198,8 +16471,7 @@ ValidateFieldOffset32(0xB0, EnemyManager, __int_B0);
 ValidateFieldOffset32(0x164, EnemyManager, __int_164);
 ValidateFieldOffset32(0x168, EnemyManager, enemy_anms);
 ValidateFieldOffset32(0x188, EnemyManager, enemy_controller);
-ValidateFieldOffset32(0x18C, EnemyManager, enemy_list_head);
-ValidateFieldOffset32(0x190, EnemyManager, enemy_list_tail);
+ValidateFieldOffset32(0x18C, EnemyManager, enemy_list);
 ValidateFieldOffset32(0x194, EnemyManager, __unknown_enemy_list);
 ValidateFieldOffset32(0x198, EnemyManager, enemy_count);
 ValidateFieldOffset32(0x19C, EnemyManager, __angle_19C);
@@ -16291,20 +16563,17 @@ dllexport gnu_noinline Enemy* get_boss_by_index(int32_t boss_index) {
     if (!boss_id) {
         return NULL;
     } else {
-        if (auto* enemy_list_head = enemy_manager->enemy_list_head) {
-            return enemy_list_head->find_if([=](Enemy* enemy) {
-                return enemy->id == boss_id;
-            });
-        }
-        return NULL;
+        enemy_manager->enemy_list.find_if([=](Enemy* enemy) {
+            return enemy->id == boss_id;
+        });
     }
 }
 
 // 0x42D220
 dllexport gnu_noinline Enemy::~Enemy() {
     EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
-    this->data.global_list_node.unlink_from_head(enemy_manager->enemy_list_head);
-    this->data.global_list_node.unlink_from_tail(enemy_manager->enemy_list_tail);
+    this->data.global_list_node.unlink_from_head(enemy_manager->enemy_list.head);
+    this->data.global_list_node.unlink_from_tail(enemy_manager->enemy_list.tail);
     this->data.global_list_node.unlink_from_head(enemy_manager->__unknown_enemy_list);
     this->data.global_list_node.unlink();
     if (this->data.__unknown_flag_P) {
@@ -17803,23 +18072,6 @@ struct LaserBeam : LaserData {
     }
 };
 
-
-template <typename T, bool has_idk ZUNListIdkDefaultValue>
-struct ZUNListIterBase {
-    using N = ZUNListBase<T, has_idk>;
-    using H = ZUNListHeadDummyBase<T, has_idk>;
-
-    N* ptr;
-
-    inline ZUNListIterBase() = default;
-    inline ZUNListIterBase(N& node) : ptr(&node) {}
-    inline ZUNListIterBase(H& head) {
-        if (N* node = head.next) {
-
-        }
-    }
-};
-
 // size: 0x10
 struct BulletIters {
     ZUNList<Bullet>* current[2]; // 0x0
@@ -18762,7 +19014,7 @@ dllexport void Bullet::run_effects() {
                 this->effect_move_interp.bezier1 = UNKNOWN_FLOAT3_B;
                 this->effect_move_interp.bezier2 = UNKNOWN_FLOAT3_B;
                 this->effect_move_interp.end_time = IntArg(0);
-                this->effect_move_interp.mode[0] = IntArg(1);
+                this->effect_move_interp.mode = IntArg(1);
                 this->effect_move_interp.time.reset();
                 break;
             }
@@ -18793,7 +19045,7 @@ dllexport void Bullet::run_effects() {
                 this->scale_interp.bezier1 = 0.0f;
                 this->scale_interp.bezier2 = 0.0f;
                 this->scale_interp.end_time = IntArg(0);
-                this->scale_interp.mode[0] = IntArg(1);
+                this->scale_interp.mode = IntArg(1);
                 this->scale_interp.time.reset();
                 this->__unknown_flag_B = true;
                 break;
@@ -19657,20 +19909,453 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
         if (current_instruction->difficulty_mask & this->difficulty_mask) {
             int32_t opcode = current_instruction->opcode;
             switch (opcode) {
-                //case ret:
-
-                case enemy_delete:
+                case ret: // 10
+                    if (ZUN_SUCCEEDED(this->stack.leave_frame())) {
+                        this->location.sub_index = this->stack.pop<int32_t>();
+                        this->location.instruction_offset = this->stack.pop<int32_t>();
+                        this->time = this->stack.pop<float>();
+                        this->stack.pointer = this->stack.pop<int32_t>();
+                        current_instruction = this->get_current_instruction();
+                        if (this->location.instruction_offset >= 0) {
+                            break;
+                        }
+                    }
+                case enemy_delete: // 1
+                delete_enemy:
                     this->location.reset();
                     return ZUN_ERROR;
-                case async_call:
-                    this->vm->new_async(-1, false);
+                case async_call: // 15
+                    this->vm->new_async(-1, 0);
+                    goto skip_stack_adjust;
+                case async_stop_all: // 21
+                    this->vm->context_list.as_head().for_each_safeB([](EclContext* context) {
+                        context->location.reset();
+                    });
+                    goto skip_stack_adjust;
+                case async_call_id: { // 16
+                    int32_t string_len = IntArg(0);
+                    int32_t dword_len = (string_len + sizeof(int32_t)) / sizeof(int32_t);
+                    int32_t id = this->parse_int_as_arg_pop(1, IntArg(dword_len));
+                    this->vm->new_async(id, 1);
+                    goto skip_stack_adjust;
+                }
+                case async_stop_id: { // 17
+                    int32_t id = this->get_int_arg(0);
+                    auto async_id_matches = [=](EclContext* context) {
+                        return context->async_id == id;
+                    };
+                    if (EclContext* context = this->vm->context_list.find_if(async_id_matches)) {
+                        context->location.instruction_offset = -1;
+                    }
+                    break;
+                }
+                case __async_unknown_flag_set: { // 18
+                    int32_t id = this->get_int_arg(0);
+                    auto async_id_matches = [=](EclContext* context) {
+                        return context->async_id == id;
+                    };
+                    if (EclContext* context = this->vm->context_list.find_if(async_id_matches)) {
+                        context->__unknown_flag_A = true;
+                    }
+                    break;
+                }
+                case __async_unknown_flag_clear: { // 19
+                    int32_t id = this->get_int_arg(0);
+                    auto async_id_matches = [=](EclContext* context) {
+                        return context->async_id == id;
+                    };
+                    if (EclContext* context = this->vm->context_list.find_if(async_id_matches)) {
+                        context->__unknown_flag_A = false;
+                    }
+                    break;
+                }
+                case __async_unknown_value: { // 20
+                    int32_t id = this->get_int_arg(0);
+                    auto async_id_matches = [=](EclContext* context) {
+                        return context->async_id == id;
+                    };
+                    if (EclContext* context = this->vm->context_list.find_if(async_id_matches)) {
+                        context->__int_101C = this->get_int_arg(1);
+                    }
+                    break;
+                }
+                case Opcode::call: // 11
+                    current_instruction->stack_adjust = 0; // Evil hack by ZUN
+                    if (ZUN_FAILED(this->call(this, 0))) {
+                        goto delete_enemy;
+                    }
+                    current_instruction = this->get_current_instruction();
+                    continue;
+                case jump_neq: // 14
+                    if (this->stack.pop_cast<int32_t>()) {
+                        goto jump;
+                    }
+                    break;
+                case jump_equ: // 13
+                    if (this->stack.pop_cast<int32_t>()) {
+                        break;
+                    }
+                case jump: // 12
+                jump:
+                    this->time = IntArg(1);
+                    this->location.instruction_offset += IntArg(0);
+                    IndexInstr(IntArg(0));
+                    continue;
+                case ecl_time_sub: // 23
+                    this->time -= this->get_int_arg(0);
+                    break;
+                case ecl_time_sub_float: // 24
+                    this->time -= this->get_float_arg(0);
+                    break;
+                case frame_enter: { // 40
+                    int32_t locals_size = this->get_int_arg(0);
+                    this->stack.enter_frame(locals_size);
+                    break;
+                }
+                case frame_leave: // 41
+                    this->stack.leave_frame();
+                    break;
+                case push_int: // 42
+                    this->stack.push(this->get_int_arg_pop(0));
+                    goto skip_stack_adjust;
+                case push_float: // 44
+                    this->stack.push(this->get_float_arg_pop(0));
+                    goto skip_stack_adjust;
+                case pop_int: { // 43
+                    int32_t* write = this->get_int_ptr_arg(0);
+                    *write = this->stack.pop_cast<int32_t>();
+                    goto skip_stack_adjust;
+                }
+                case pop_float: { // 45
+                    float* write = this->get_float_ptr_arg(0);
+                    *write = this->stack.pop_cast<float>();
+                    goto skip_stack_adjust;
+                }
+                case math_int_add: // 50
+                    this->stack.binary_op([](int32_t lhs, int32_t rhs) {
+                        return lhs + rhs;
+                    });
+                    goto skip_stack_adjust;
+                case math_int_sub: // 52
+                    this->stack.binary_op([](int32_t lhs, int32_t rhs) {
+                        return lhs - rhs;
+                    });
+                    goto skip_stack_adjust;
+                case math_int_mul: // 54
+                    this->stack.binary_op([](int32_t lhs, int32_t rhs) {
+                        return lhs * rhs;
+                    });
+                    goto skip_stack_adjust;
+                case math_int_div: // 56
+                    this->stack.binary_op([](int32_t lhs, int32_t rhs) {
+                        return lhs / rhs;
+                    });
+                    goto skip_stack_adjust;
+                case math_int_mod: // 58
+                    this->stack.binary_op([](int32_t lhs, int32_t rhs) {
+                        return lhs % rhs;
+                    });
+                    goto skip_stack_adjust;
+                case math_float_add: // 51
+                    this->stack.binary_op([](float lhs, float rhs) {
+                        return lhs + rhs;
+                    });
+                    goto skip_stack_adjust;
+                case math_float_sub: // 53
+                    this->stack.binary_op([](float lhs, float rhs) {
+                        return lhs - rhs;
+                    });
+                    goto skip_stack_adjust;
+                case math_float_mul: // 55
+                    this->stack.binary_op([](float lhs, float rhs) {
+                        return lhs * rhs;
+                    });
+                    goto skip_stack_adjust;
+                case math_float_div: // 57
+                    this->stack.binary_op([](float lhs, float rhs) {
+                        return lhs / rhs;
+                    });
+                    goto skip_stack_adjust;
+                case cmp_int_equ: // 59
+                    this->stack.binary_op([](int32_t lhs, int32_t rhs) {
+                        return lhs == rhs;
+                    });
+                    goto skip_stack_adjust;
+                case cmp_int_neq: // 61
+                    this->stack.binary_op([](int32_t lhs, int32_t rhs) {
+                        return lhs != rhs;
+                    });
+                    goto skip_stack_adjust;
+                case cmp_int_les: // 63
+                    this->stack.binary_op([](int32_t lhs, int32_t rhs) {
+                        return lhs < rhs;
+                    });
+                    goto skip_stack_adjust;
+                case cmp_int_leq: // 65
+                    this->stack.binary_op([](int32_t lhs, int32_t rhs) {
+                        return lhs <= rhs;
+                    });
+                    goto skip_stack_adjust;
+                case cmp_int_gre: // 67
+                    this->stack.binary_op([](int32_t lhs, int32_t rhs) {
+                        return lhs > rhs;
+                    });
+                    goto skip_stack_adjust;
+                case cmp_int_geq: // 69
+                    this->stack.binary_op([](int32_t lhs, int32_t rhs) {
+                        return lhs >= rhs;
+                    });
+                    goto skip_stack_adjust;
+                case cmp_int_not: // 71
+                    this->stack.unary_op([](int32_t value) {
+                        return !value;
+                    });
+                    goto skip_stack_adjust;
+                case cmp_float_equ: // 60
+                    this->stack.binary_op([](float lhs, float rhs) {
+                        return lhs == rhs;
+                    });
+                    goto skip_stack_adjust;
+                case cmp_float_neq: // 62
+                    this->stack.binary_op([](float lhs, float rhs) {
+                        return lhs != rhs;
+                    });
+                    goto skip_stack_adjust;
+                case cmp_float_les: // 64
+                    this->stack.binary_op([](float lhs, float rhs) {
+                        return lhs < rhs;
+                    });
+                    goto skip_stack_adjust;
+                case cmp_float_leq: // 66
+                    this->stack.binary_op([](float lhs, float rhs) {
+                        return lhs <= rhs;
+                    });
+                    goto skip_stack_adjust;
+                case cmp_float_gre: // 68
+                    this->stack.binary_op([](float lhs, float rhs) {
+                        return lhs > rhs;
+                    });
+                    goto skip_stack_adjust;
+                case cmp_float_geq: // 70
+                    this->stack.binary_op([](float lhs, float rhs) {
+                        return lhs >= rhs;
+                    });
+                    goto skip_stack_adjust;
+                case cmp_float_not: // 72
+                    this->stack.unary_op([](float value) {
+                        return value != 0.0f;
+                    });
+                    goto skip_stack_adjust;
+                case cmp_or: // 73
+                    this->stack.binary_op([](int32_t lhs, int32_t rhs) {
+                        return lhs || rhs;
+                    });
+                    goto skip_stack_adjust;
+                case cmp_and: // 74
+                    this->stack.binary_op([](int32_t lhs, int32_t rhs) {
+                        return lhs && rhs;
+                    });
+                    goto skip_stack_adjust;
+                case math_bit_xor: // 75
+                    this->stack.binary_op([](int32_t lhs, int32_t rhs) {
+                        return lhs ^ rhs;
+                    });
+                    goto skip_stack_adjust;
+                case math_bit_or: // 76
+                    this->stack.binary_op([](int32_t lhs, int32_t rhs) {
+                        return lhs | rhs;
+                    });
+                    goto skip_stack_adjust;
+                case math_int_neg: // 83
+                    this->stack.unary_op([](int32_t value) {
+                        return -value;
+                    });
+                    goto skip_stack_adjust;
+                case math_float_neg: // 84
+                    this->stack.unary_op([](float value) {
+                        return -value;
+                    });
+                    goto skip_stack_adjust;
+                case math_post_dec: { // 78
+                    int32_t value = this->get_int_arg(0);
+                    int32_t* write = this->get_int_ptr_arg(0);
+                    *write = value - 1;
+                    this->stack.push(value);
+                    goto skip_stack_adjust;
+                }
+                case math_sin: // 79
+                    this->stack.unary_op([](float value) {
+                        return zsin(value);
+                    });
+                    goto skip_stack_adjust;
+                case math_sqrt: // 88
+                    this->stack.unary_op([](float value) {
+                        return zsqrt(value);
+                    });
+                    goto skip_stack_adjust;
+                case math_cos: // 80
+                    this->stack.unary_op([](float value) {
+                        return zcos(value);
+                    });
+                    goto skip_stack_adjust;
+                case math_circle_pos: { // 81
+                    float angle = reduce_angle(this->get_float_arg(2));
+                    float radius = this->get_float_arg(3);
+                    Float2 position;
+                    position.make_from_vector(angle, radius);
+                    float* x_write = this->get_float_ptr_arg(0);
+                    *x_write = position.x;
+                    float* y_write = this->get_float_ptr_arg(1);
+                    *y_write = position.y;
+                    break;
+                }
+                case math_hypot_squared: { // 85
+                    Float2 size;
+                    size.x = this->get_float_arg(1);
+                    size.y = this->get_float_arg(2);
+                    float* write = this->get_float_ptr_arg(0);
+                    *write = size.hypot_squared();
+                    break;
+                }
+                case math_hypot: { // 86
+                    Float2 size;
+                    size.x = this->get_float_arg(1);
+                    size.y = this->get_float_arg(2);
+                    float* write = this->get_float_ptr_arg(0);
+                    *write = size.hypot();
+                    break;
+                }
+                case math_reduce_angle: { // 82
+                    float angle = reduce_angle(this->get_float_arg(0));
+                    float* write = this->get_float_ptr_arg(0);
+                    *write = angle;
+                    break;
+                }
+                case math_line_angle: { // 87
+                    Float2 lhs;
+                    Float2 rhs;
+                    lhs.x = this->get_float_arg(1);
+                    lhs.y = this->get_float_arg(2);
+                    rhs.x = this->get_float_arg(3);
+                    rhs.y = this->get_float_arg(4);
+                    float angle = rhs.angle_to(lhs);
+                    float* write = this->get_float_ptr_arg(0);
+                    *write = angle;
+                    break;
+                }
+                case math_angle_diff: { // 89
+                    float angle1 = this->get_float_arg(1);
+                    float angle2 = this->get_float_arg(2);
+                    float diff = reduced_angle_diff(angle2, angle1);
+                    float* write = this->get_float_ptr_arg(0);
+                    *write = diff;
+                    break;
+                }
+                case math_point_rotate: { // 90
+                    Float2 position;
+                    position.x = this->get_float_arg(2);
+                    position.y = this->get_float_arg(3);
+                    float angle = reduce_angle(this->get_float_arg(4));
+                    position = position.rotate_around_origin(angle);
+                    float* x_write = this->get_float_ptr_arg(0);
+                    *x_write = position.x;
+                    float* y_write = this->get_float_ptr_arg(1);
+                    *y_write = position.y;
+                    break;
+                }
+                case math_float_interp: { // 91
+                    int32_t slot = this->get_int_arg(0);
+                    this->float_interp_locations[slot] = this->location;
+                    this->float_interps[slot].step(); // why?
+                    this->float_interps[slot].end_time = this->get_int_arg(2);
+                    this->float_interps[slot].mode = this->get_int_arg(3);
+                    float initial_value = this->get_float_arg(4);
+                    float final_value = this->get_float_arg(5);
+                    this->float_interps[slot].initial_value = initial_value;
+                    this->float_interps[slot].final_value = final_value;
+                    float* interp_write = this->get_float_ptr_arg(1);
+                    *interp_write = initial_value;
+                    this->float_interps[slot].time.reset();
+                    this->float_interp_stack_offsets[slot] = this->stack.base;
+                    break;
+                }
+                case math_float_interp_bezier: { // 92
+                    int32_t slot = this->get_int_arg(0);
+                    this->float_interp_locations[slot] = this->location;
+                    this->float_interps[slot].step(); // why?
+                    this->float_interps[slot].end_time = this->get_int_arg(2);
+                    this->float_interps[slot].mode = this->get_int_arg(3);
+                    float initial_value = this->get_float_arg(4);
+                    float final_value = this->get_float_arg(5);
+                    this->float_interps[slot].initial_value = initial_value;
+                    this->float_interps[slot].final_value = final_value;
+                    float* interp_write = this->get_float_ptr_arg(1);
+                    *interp_write = initial_value;
+                    float bezier1 = this->get_float_arg(6);
+                    float bezier2 = this->get_float_arg(7);
+                    this->float_interps[slot].bezier1 = bezier1;
+                    this->float_interps[slot].bezier2 = bezier2;
+                    this->float_interps[slot].time.reset();
+                    this->float_interp_stack_offsets[slot] = this->stack.base;
+                    break;
+                }
+                case math_circle_pos_rand: { // 93
+                    float min_radius = this->get_float_arg(0);
+                    float max_radius = this->get_float_arg(1);
+                    float angle = REPLAY_RNG.rand_float_signed() * PI_f;
+                    float percent = REPLAY_RNG.rand_float_signed();
+                    float radius = lerp(min_radius, max_radius, percent);
+                    Float2 position;
+                    position.make_from_vector(angle, radius);
+                    float* x_write = this->get_float_ptr_arg(0);
+                    *x_write = position.x;
+                    float* y_write = this->get_float_ptr_arg(1);
+                    *y_write = position.y;
+                    break;
+                }
+                case math_ellipse_pos: { // 94
+                    float angle = this->get_float_arg(2);
+                    float offset = this->get_float_arg(4);
+                    angle = reduce_angle(angle - offset);
+                    float radius = this->get_float_arg(3);
+                    Float2 position;
+                    position.make_from_vector(angle, radius);
+                    float ellipse_factor = this->get_float_arg(5);
+                    position.x *= ellipse_factor;
+                    position.rotate_around_origin(offset);
+                    float* x_write = this->get_float_ptr_arg(0);
+                    *x_write = position.x;
+                    float* y_write = this->get_float_ptr_arg(1);
+                    *y_write = position.y;
+                    break;
+                }
+                default:
+                    switch (this->vm->high_ecl_run()) {
+                        case -1:
+                            goto step_interps;
+                        case 0:
+                            break;
+                        case 1:
+                            goto skip_stack_adjust;
+                    }
+                    break;
+                case nop:
+                case __debug_unknown_A:
+                case debug_print:
+                case __debug_unknown_B:
+                    // These don't go to the default case
                     break;
             }
+            if (uint8_t stack_adjust = current_instruction->stack_adjust) {
+                this->stack.pointer -= stack_adjust;
+            }
         }
+    skip_stack_adjust:
         this->location.instruction_offset += current_instruction->offset_to_next;
         IndexInstr(current_instruction->offset_to_next);
     }
     current_time += current_gamespeed;
+step_interps:
     this->step_float_interps();
     return ZUN_SUCCESS;
 }
@@ -19897,33 +20582,33 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
                 Y = motion.get_position_y() + Y;
             }
             position_interp.set_end_time(this->get_int_arg(0));
-            position_interp.set_bezier2(UNKNOWN_FLOAT3_B);
             position_interp.set_bezier1(UNKNOWN_FLOAT3_B);
-            position_interp.set_mode_3(this->get_int_arg(1));
-            position_interp.set_final_value(motion.get_position());
+            position_interp.set_bezier2(UNKNOWN_FLOAT3_B);
+            position_interp.set_combined_mode(this->get_int_arg(1));
+            position_interp.set_initial_value(motion.get_position());
             if (!(Y > -999999.0f)) {
                 Y = motion.get_position_y();
             }
             if (!(X > -999999.0f)) {
                 X = motion.get_position_x();
             }
-            position_interp.set_bezier1(Float3(X, Y, 0.0f));
+            position_interp.set_final_value(Float3(X, Y, 0.0f));
             position_interp.reset_timer();
             motion.set_axis_velocity_mode();
             break;
         }
-        case __move_curve_abs: case __move_curve_rel: // 434, 435
-        case __move_curve_offset_abs: case __move_curve_offset_rel: // 438, 439
+        case move_axis_interp_abs: case move_axis_interp_rel: // 434, 435
+        case __move_axis_offset_abs_interp: case __move_axis_offset_rel_interp: // 438, 439
         {
-            MotionData& motion = (opcode != __move_curve_abs && opcode != __move_curve_offset_abs) ? this->motion.relative : this->motion.absolute;
-            ZUNInterpEx<Float3>& position_interp = (opcode != __move_curve_abs && opcode != __move_curve_offset_abs) ? this->position_interp.relative : this->position_interp.absolute;
+            MotionData& motion = (opcode != move_axis_interp_abs && opcode != __move_axis_offset_abs_interp) ? this->motion.relative : this->motion.absolute;
+            ZUNInterpEx<Float3>& position_interp = (opcode != move_axis_interp_abs && opcode != __move_axis_offset_abs_interp) ? this->position_interp.relative : this->position_interp.absolute;
             float X = this->get_float_arg(3);
             float Y = this->get_float_arg(4);
             if (this->get_int_arg(0) <= 0) {
                 position_interp.reset_end_time();
                 break;
             }
-            if (opcode == __move_curve_offset_abs || opcode == __move_curve_offset_rel) {
+            if (opcode == __move_axis_offset_abs_interp || opcode == __move_axis_offset_rel_interp) {
                 if (!this->get_mirror_flag()) {
                     X = motion.get_position_x() + X;
                 } else {
@@ -19932,18 +20617,18 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
                 Y = motion.get_position_y() + Y;
             }
             position_interp.set_end_time(this->get_int_arg(0));
+            position_interp.set_bezier1(UNKNOWN_FLOAT3_B);
             position_interp.set_bezier2(UNKNOWN_FLOAT3_B);
-            position_interp.set_current(UNKNOWN_FLOAT3_B);
-            position_interp.set_indexed_mode(0, this->get_int_arg(1));
-            position_interp.set_indexed_mode(1, this->get_int_arg(2));
-            position_interp.set_final_value(motion.get_position());
+            position_interp.set_axis_mode(0, this->get_int_arg(1));
+            position_interp.set_axis_mode(1, this->get_int_arg(2));
+            position_interp.set_initial_value(motion.get_position());
             if (!(Y > -999999.0f)) {
                 Y = motion.get_position_y();
             }
             if (!(X > -999999.0f)) {
                 X = motion.get_position_x();
             }
-            position_interp.set_bezier1(Float3(X, Y, 0.0f));
+            position_interp.set_final_value(Float3(X, Y, 0.0f));
             position_interp.reset_timer();
             motion.set_axis_velocity_mode();
             break;
@@ -19954,26 +20639,26 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             float X = this->get_float_arg(3);
             float Y = this->get_float_arg(4);
             float Z = 0.0f;
+            Float3 bezier1 = {};
             Float3 bezier2 = {};
-            Float3 current = {};
-            bezier2.x = this->get_float_arg(1);
-            bezier2.y = this->get_float_arg(2);
+            bezier1.x = this->get_float_arg(1);
+            bezier1.y = this->get_float_arg(2);
+            bezier1.z = 0.0f;
+            bezier2.x = this->get_float_arg(5);
+            bezier2.y = this->get_float_arg(6);
             bezier2.z = 0.0f;
-            current.x = this->get_float_arg(5);
-            current.y = this->get_float_arg(6);
-            current.z = 0.0f;
             position_interp.set_end_time(this->get_int_arg(0));
+            position_interp.set_bezier1(bezier1);
             position_interp.set_bezier2(bezier2);
-            position_interp.set_current(current);
-            position_interp.set_mode_3(Bezier);
-            position_interp.set_final_value(motion.get_position());
+            position_interp.set_combined_mode(Bezier);
+            position_interp.set_initial_value(motion.get_position());
             if (!(Y > -999999.0)) {
                 Y = motion.get_position_y();
             }
             if (!(X > -999999.0)) {
                 X = motion.get_position_x();
             }
-            position_interp.set_bezier1(Float3(X, Y, Z));
+            position_interp.set_final_value(Float3(X, Y, Z));
             position_interp.reset_timer();
             motion.set_axis_velocity_mode();
             break;
@@ -23027,45 +23712,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
         }
     }
 
+#if INCLUDE_PATCH_CODE
     gui = GUI_PTR;
-    uint32_t score = GAME_MANAGER.globals.score;
-    uint32_t displayed_score = gui->__score;
-    if (score != displayed_score) {
-        uint32_t score_diff = score - displayed_score;
-        uint32_t score_diff_B = score_diff / 32;
-
-        int32_t score_diff_C = __max(__min(score_diff_B, 578910), 1);
-        
-        if (gui->__int_15C < score_diff_C) {
-            gui->__int_15C = score_diff_C;
-            score = GAME_MANAGER.globals.score;
-        }
-        else {
-            score_diff_C = gui->__int_15C;
-        }
-
-        int32_t score_diff_D = score - displayed_score;
-
-        if (score_diff_C > score_diff_D) {
-            gui->__int_15C = score_diff_D;
-            score_diff_C = score_diff_D;
-        }
-        displayed_score += score_diff_C;
-        gui->__score = displayed_score;
-
-        if (displayed_score >= (int32_t)GAME_MANAGER.globals.score) {
-            gui->__int_15C = 0;
-        }
-    }
-    if ((int32_t)GAME_MANAGER.__high_score < displayed_score) {
-        int32_t continues = GAME_MANAGER.globals.continues;
-        GAME_MANAGER.__unknown_flag_C = true;
-        GAME_MANAGER.__high_score = displayed_score;
-        GAME_MANAGER.__high_score_continues = continues;
-    }
-
-    /*
-    Gui* gui = GUI_PTR;
     uint64_t score = GAME_MANAGER.globals.score | (uint64_t)score_upper[0] << 32;
     uint64_t displayed_score = gui->__score | (uint64_t)score_upper[2] << 32;
     if (score != displayed_score) {
@@ -23101,7 +23749,43 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
         score_upper[1] = displayed_score >> 32;
         GAME_MANAGER.__high_score_continues = continues_local;
     }
-    */
+#else
+    gui = GUI_PTR;
+    uint32_t score = GAME_MANAGER.globals.score;
+    uint32_t displayed_score = gui->__score;
+    if (score != displayed_score) {
+        uint32_t score_diff = score - displayed_score;
+        uint32_t score_diff_B = score_diff / 32;
+
+        int32_t score_diff_C = __max(__min(score_diff_B, 578910), 1);
+
+        if (gui->__int_15C < score_diff_C) {
+            gui->__int_15C = score_diff_C;
+            score = GAME_MANAGER.globals.score;
+        } else {
+            score_diff_C = gui->__int_15C;
+        }
+
+        int32_t score_diff_D = score - displayed_score;
+
+        if (score_diff_C > score_diff_D) {
+            gui->__int_15C = score_diff_D;
+            score_diff_C = score_diff_D;
+        }
+        displayed_score += score_diff_C;
+        gui->__score = displayed_score;
+
+        if (displayed_score >= (int32_t)GAME_MANAGER.globals.score) {
+            gui->__int_15C = 0;
+        }
+    }
+    if ((int32_t)GAME_MANAGER.__high_score < displayed_score) {
+        int32_t continues = GAME_MANAGER.globals.continues;
+        GAME_MANAGER.__unknown_flag_C = true;
+        GAME_MANAGER.__high_score = displayed_score;
+        GAME_MANAGER.__high_score_continues = continues;
+    }
+#endif
 }
 
 // All values are stored / 100

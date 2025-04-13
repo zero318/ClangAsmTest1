@@ -102,6 +102,27 @@ struct Float2 : Float1 {
         return zatan2f(this->y, this->x);
     }
 
+    inline float dot_product(const Float2& value) {
+        return this->x * value.x + this->y * value.y;
+    }
+
+    inline float hypot_squared() {
+        return this->dot_product(*this);
+    }
+
+    inline float hypot() {
+        return zsqrt(this->hypot_squared());
+    }
+
+    inline Float2 normalize() {
+        float scale_squared = this->hypot_squared();
+        Float2 ret = *this;
+        if (scale_squared >= 0.1f) {
+            ret /= zsqrt(scale_squared);
+        }
+        return ret;
+    }
+
     inline float distance_squared(const Float2* value) {
         float x_diff = this->x - value->x;
         float y_diff = this->y - value->y;

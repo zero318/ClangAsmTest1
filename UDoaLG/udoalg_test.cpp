@@ -35,7 +35,7 @@
 template <typename T>
 using ZUNList = ZUNListBase<T, true>;
 template <typename T>
-using ZUNListHeadDummy = ZUNListHeadDummyBase<T, true>;
+using ZUNListHead = ZUNListHeadBase<T, true>;
 
 #define GAME_VERSION UDoALG_VER
 

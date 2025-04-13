@@ -71,7 +71,6 @@ extern "C" {
     extern float vectorcall libm_sse2_powf(float base, float exponent) asm("___libm_sse2_powf");
     extern double vectorcall libm_sse2_sin(double value) asm("___libm_sse2_sin");
     extern float vectorcall libm_sse2_sinf(float value) asm("___libm_sse2_sinf");
-    extern double vectorcall libm_sse2_sqrt(double value) asm("___libm_sse2_sqrt");
     extern double vectorcall libm_sse2_tan(double value) asm("___libm_sse2_tan");
     extern float vectorcall libm_sse2_tanf(float value) asm("___libm_sse2_tanf");
 
@@ -229,7 +228,7 @@ static gnu_noinline double vectorcall libm_sse2_sin_precise(double value) {
 }
 static gnu_noinline double vectorcall libm_sse2_sqrt_precise(double value) {
     if (expect(control_words_are_normal(), true)) {
-        return CRT::libm_sse2_sqrt(value);
+        return __builtin_sqrt(value);
     }
     return CRT::sqrt(value);
 }
@@ -645,6 +644,7 @@ extern "C" {
     // PoFV: 0x42AED0
     // StB: 0x41B500
     // MoF: 0x44BC10
+    // UM: 0x402890
     reduce_angle_add_linkage float reduce_angle_add_convention reduce_angle_add(float angle, float value) {
         int32_t counter = 0;
         angle += value;
@@ -661,6 +661,7 @@ extern "C" {
 
     // StB: 0x41B580
     // MoF: 0x44BC70
+    // UM: 0x4028F0
     reduce_angle_linkage float reduce_angle_convention reduce_angle(float angle) {
         if constexpr (game_version < StB) {
             clang_forceinline return reduce_angle_add(angle, 0.0f);
@@ -679,6 +680,7 @@ extern "C" {
     }
 
     // MoF: 0x408660, 0x428CE0
+    // UM: 0x439FE0
     reduced_angle_diff_linkage float reduced_angle_diff_convention reduced_angle_diff(float angle, float value) {
         float diff = angle - value;
         if (diff > PI_f) {

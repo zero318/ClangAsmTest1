@@ -79,25 +79,25 @@ template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B
 template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,1,true,true,true,true,false,Args...> get_func_types_of3(R(B::*)(Args...,...) const volatile & noexcept(false));
 template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,1,true,true,true,true,true,Args...> get_func_types_of3(R(B::*)(Args...,...) const volatile & noexcept(true));
 
-template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,false,false,true,false,false,Args...> get_func_types_of3(R(B::*)(Args...) noexcept(false));
-template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,false,false,true,false,true,Args...> get_func_types_of3(R(B::*)(Args...) noexcept(true));
-template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,false,false,true,true,false,Args...> get_func_types_of3(R(B::*)(Args...,...) noexcept(false));
-template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,false,false,true,true,true,Args...> get_func_types_of3(R(B::*)(Args...,...) noexcept(true));
+template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,false,false,true,false,false,Args...> get_func_types_of3(R(B::*)(Args...) && noexcept(false));
+template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,false,false,true,false,true,Args...> get_func_types_of3(R(B::*)(Args...) && noexcept(true));
+template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,false,false,true,true,false,Args...> get_func_types_of3(R(B::*)(Args...,...) && noexcept(false));
+template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,false,false,true,true,true,Args...> get_func_types_of3(R(B::*)(Args...,...) && noexcept(true));
 
-template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,false,true,true,false,false,Args...> get_func_types_of3(R(B::*)(Args...) const noexcept(false));
-template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,false,true,true,false,true,Args...> get_func_types_of3(R(B::*)(Args...) const noexcept(true));
-template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,false,true,true,true,false,Args...> get_func_types_of3(R(B::*)(Args...,...) const noexcept(false));
-template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,false,true,true,true,true,Args...> get_func_types_of3(R(B::*)(Args...,...) const noexcept(true));
+template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,false,true,true,false,false,Args...> get_func_types_of3(R(B::*)(Args...) const && noexcept(false));
+template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,false,true,true,false,true,Args...> get_func_types_of3(R(B::*)(Args...) const && noexcept(true));
+template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,false,true,true,true,false,Args...> get_func_types_of3(R(B::*)(Args...,...) const && noexcept(false));
+template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,false,true,true,true,true,Args...> get_func_types_of3(R(B::*)(Args...,...) const && noexcept(true));
 
-template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,true,false,true,false,false,Args...> get_func_types_of3(R(B::*)(Args...) volatile noexcept(false));
-template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,true,false,true,false,true,Args...> get_func_types_of3(R(B::*)(Args...) volatile noexcept(true));
-template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,true,false,true,true,false,Args...> get_func_types_of3(R(B::*)(Args...,...) volatile noexcept(false));
-template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,true,false,true,true,true,Args...> get_func_types_of3(R(B::*)(Args...,...) volatile noexcept(true));
+template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,true,false,true,false,false,Args...> get_func_types_of3(R(B::*)(Args...) volatile && noexcept(false));
+template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,true,false,true,false,true,Args...> get_func_types_of3(R(B::*)(Args...) volatile && noexcept(true));
+template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,true,false,true,true,false,Args...> get_func_types_of3(R(B::*)(Args...,...) volatile && noexcept(false));
+template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,true,false,true,true,true,Args...> get_func_types_of3(R(B::*)(Args...,...) volatile && noexcept(true));
 
-template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,true,true,true,false,false,Args...> get_func_types_of3(R(B::*)(Args...) const volatile noexcept(false));
-template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,true,true,true,false,true,Args...> get_func_types_of3(R(B::*)(Args...) const volatile noexcept(true));
-template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,true,true,true,true,false,Args...> get_func_types_of3(R(B::*)(Args...,...) const volatile noexcept(false));
-template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,true,true,true,true,true,Args...> get_func_types_of3(R(B::*)(Args...,...) const volatile noexcept(true));
+template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,true,true,true,false,false,Args...> get_func_types_of3(R(B::*)(Args...) const volatile && noexcept(false));
+template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,true,true,true,false,true,Args...> get_func_types_of3(R(B::*)(Args...) const volatile && noexcept(true));
+template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,true,true,true,true,false,Args...> get_func_types_of3(R(B::*)(Args...,...) const volatile && noexcept(false));
+template<typename R,typename B,typename...Args> constexpr FunctionTraitsBase<R,B,2,true,true,true,true,true,Args...> get_func_types_of3(R(B::*)(Args...,...) const volatile && noexcept(true));
 
 
 template<auto func>
