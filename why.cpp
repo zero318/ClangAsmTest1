@@ -1,7 +1,7 @@
 
 //__declspec(dllexport) char text[] = "You are winner";
 
-/*
+
 #include <stdint.h>
 
 struct WorstZUNRng {
@@ -94,13 +94,13 @@ static __forceinline uint64_t rdtsc(void) {
 }
 
 WorstZUNRng worst_rng;
-*/
+
 
 int yeet() {
-	//worst_rng.seed = (uint16_t)rdtsc();
-	//return worst_rng.this_is_awful();
+	worst_rng.seed = (uint16_t)rdtsc();
+	return worst_rng.this_is_awful();
 	//return (int)text;
-	return 0;
+	//return 0;
 }
 
 

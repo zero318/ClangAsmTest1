@@ -269,7 +269,7 @@ private:
     }
 public:
     // 0x404D70
-    inline ZUNAngle& vectorcall operator=(const float value) asm_symbol_rel(0x404D70) {
+    inline ZUNAngle& vectorcall operator=(const float value) {
         return this->set(UNUSED_FLOAT, value);
     }
 
@@ -355,7 +355,7 @@ public:
 
 private:
     // 0x461540
-    dllexport ZUNAngle& vectorcall mul(int, float, float, ZUNAngle& out, const float value) asm_symbol_rel(0x404BC0) {
+    dllexport ZUNAngle& vectorcall mul(int, float, float, ZUNAngle& out, const float value) asm_symbol_rel(0x461540) {
         return out = this->value * value;
     }
 public:
@@ -5357,7 +5357,7 @@ struct MotionData {
     }
     
     // 0x439FC0
-    dllexport gnu_noinline float vectorcall get_orbit_radius() asm_symbol_rel(0x439FD0) {
+    dllexport gnu_noinline float vectorcall get_orbit_radius() asm_symbol_rel(0x439FC0) {
         return this->orbit_radius;
     }
     
@@ -5606,20 +5606,13 @@ struct ZUNInterp { //       0x58    0x44    0x30
     // float: 0x41F600
     // Float2: 0x439600
     // Float3: 0x405A00
-    // Float3Ex: 0x439940
     // ZUNAngle: 0x47CBF0
     dllexport gnu_noinline void set_end_time(int32_t time) {
         this->end_time = time;
     }
     
-    // Float3Ex: 0x439950
-    dllexport gnu_noinline void set_current(const T& value) {
-        this->current = value;
-    }
-    
     // float: 0x41B790
     // Float2: 0x4395C0
-    // Float3Ex: 0x439900
     dllexport gnu_noinline void reset_end_time() {
         this->end_time = 0;
     }
@@ -5643,7 +5636,6 @@ struct ZUNInterp { //       0x58    0x44    0x30
     // float: 0x41F610
     // Float2: 0x439650
     // Float3: 0x405A40
-    // Float3Ex: 0x4399B0
     // ZUNAngle: 0x47CC20
     dllexport gnu_noinline void set_final_value(const T& value) {
         this->final_value = value;
@@ -5651,7 +5643,6 @@ struct ZUNInterp { //       0x58    0x44    0x30
 
     // float: 0x429A70
     // Float3: 0x405A60
-    // Float3Ex: 0x439990
     // ZUNAngle: 0x47CC10
     dllexport gnu_noinline void set_bezier1(const T& value) {
         this->bezier1 = value;
@@ -5659,7 +5650,6 @@ struct ZUNInterp { //       0x58    0x44    0x30
 
     // float: 0x429A60
     // Float3: 0x405A80
-    // Float3Ex: 0x439970
     // ZUNAngle: 0x47CC00
     dllexport gnu_noinline void set_bezier2(const T& value) {
         this->bezier2 = value;
@@ -5667,8 +5657,6 @@ struct ZUNInterp { //       0x58    0x44    0x30
 
     // float: 0x41F5D0
     // Float2: 0x4395D0
-    // Float3: 0x405AA0
-    // Float3Ex: 0x439910
     // ZUNAngle: 0x47CBC0
     dllexport gnu_noinline void reset_timer() {
         this->time.reset();
@@ -5697,34 +5685,52 @@ TimeEnd:
                 return this->initial_value;
             }
         }
-        T initial = this->initial_value;
         int32_t mode = this->mode;
         if (mode == ConstantVelocity) { // 7
-            return this->current = this->initial_value = initial + this->final_value;
+            // Final value is per-tick velocity
+            return this->current = this->initial_value = this->initial_value + this->final_value;
         }
         if (mode == ConstantAccel) { // 17
+            // Bezier2 is per-tick velocity
+            // Final value is per-tick acceleration
             T temp = this->bezier2;
             this->bezier2 = temp + this->final_value;
-            return this->current = this->initial_value = initial + temp;
+            return this->current = this->initial_value = this->initial_value + temp;
         }
         float current_time = this->time.current_f;
         float end_time_f = end_time;
         if (mode == Bezier) { // 8
-            current_time /= end_time_f;
-            float XMM3 = 1.0f - current_time;
-            float XMM2 = current_time + current_time;
-            float XMM5 = current_time - 1.0f;
-            XMM3 *= XMM3;
-            initial *= XMM5 * XMM5 * (XMM2 + 1.0f);
-            initial += (3.0f - XMM2) * this->final_value * current_time * current_time;
-            initial += XMM3 * this->bezier1 * current_time;
-            initial += XMM5 * this->bezier2 * current_time * current_time;
-            return this->current = initial;
+            float t = current_time / end_time_f;
+
+            float t_plus_one = t + 1.0f;
+            float two_t = t + t;
+            float t_minus_one = t - 1.0f;
+            float one_minus_t = 1.0f - t;
+            float two_t_plus_one = two_t + 1.0f;
+
+            float initial_factor = t_minus_one * t_minus_one * two_t_plus_one;
+            float final_factor = (3.0f - two_t) * t * t;
+            float bezier1_factor = one_minus_t * one_minus_t * t;
+            float bezier2_factor = t_minus_one * t * t;
+
+            T value = this->initial_value * initial_factor;
+            value = value + this->final_value * final_factor;
+            value = value + this->bezier1 * bezier1_factor;
+            value = value + this->bezier2 * bezier2_factor;
+            return this->current = value;
         }
         else {
             float interp_value = __interp_inner_thing(mode, current_time, end_time_f);
-            return this->current = lerp(initial, this->final_value, interp_value);
+            return this->current = lerp(this->initial_value, this->final_value, interp_value);
         }
+    }
+
+    forceinline void __initialize_but_ignores_bezier(int32_t end_time, int32_t mode, const T& initial_value, const T& final_value) {
+        clang_forceinline this->set_end_time(end_time);
+        clang_forceinline this->set_mode(mode);
+        clang_forceinline this->set_initial_value(initial_value);
+        clang_forceinline this->set_final_value(final_value);
+        clang_forceinline this->reset_timer();
     }
 
     forceinline void initialize(int32_t end_time, int32_t mode, const T& initial_value, const T& final_value) {
@@ -5868,29 +5874,37 @@ TimeEnd:
         if (!this->interp_per_axis) {
             int32_t mode = this->combined_mode;
             if (mode == ConstantVelocity) { // 7
-                T initial = this->initial_value;
-                return this->current = this->initial_value = initial + this->final_value;
+                // Final value is per-tick velocity
+                return this->current = this->initial_value = this->initial_value + this->final_value;
             }
             if (mode == ConstantAccel) { // 17
-                T initial = this->initial_value;
+                // Bezier2 is per-tick velocity
+                // Final value is per-tick acceleration
                 T temp = this->bezier2;
                 this->bezier2 = temp + this->final_value;
-                return this->current = this->initial_value = initial + temp;
+                return this->current = this->initial_value = this->initial_value + temp;
             }
             float current_time = this->time.current_f;
             float end_time_f = end_time;
             if (mode == Bezier) { // 8
-                current_time /= end_time_f;
-                float XMM3 = 1.0f - current_time;
-                float XMM2 = current_time + current_time;
-                float XMM5 = current_time - 1.0f;
-                XMM3 *= XMM3;
-                T initial = this->initial_value;
-                initial *= XMM5 * XMM5 * (XMM2 + 1.0f);
-                initial += (3.0f - XMM2) * this->final_value * current_time * current_time;
-                initial += XMM3 * this->bezier1 * current_time;
-                initial += XMM5 * this->bezier2 * current_time * current_time;
-                return this->current = initial;
+                float t = current_time / end_time_f;
+
+                float t_plus_one = t + 1.0f;
+                float two_t = t + t;
+                float t_minus_one = t - 1.0f;
+                float one_minus_t = 1.0f - t;
+                float two_t_plus_one = two_t + 1.0f;
+
+                float initial_factor = t_minus_one * t_minus_one * two_t_plus_one;
+                float final_factor = (3.0f - two_t) * t * t;
+                float bezier1_factor = one_minus_t * one_minus_t * t;
+                float bezier2_factor = t_minus_one * t * t;
+
+                T value = this->initial_value * initial_factor;
+                value = value + this->final_value * final_factor;
+                value = value + this->bezier1 * bezier1_factor;
+                value = value + this->bezier2 * bezier2_factor;
+                return this->current = value;
             }
             else {
                 float interp_value = __interp_inner_thing(mode, current_time, end_time_f);
@@ -5907,9 +5921,12 @@ TimeEnd:
 
                 int32_t mode = this->axis_modes[i];
                 if (mode == ConstantVelocity) { // 7
+                    // Final value is per-tick velocity
                     current = initial_value = initial_value + final_value;
                 }
                 else if (mode == ConstantAccel) { // 17
+                    // Bezier2 is per-tick velocity
+                    // Final value is per-tick acceleration
                     E temp = bezier2;
                     bezier2 = temp + final_value;
                     current = initial_value = initial_value + temp;
@@ -5919,17 +5936,24 @@ TimeEnd:
                     E final_val = final_value;
                     float current_time = this->time.current_f;
                     if (mode == Bezier) { // 8
-                        current_time /= end_time_f;
-                        float XMM3 = 1.0f - current_time;
-                        float XMM2 = current_time + current_time;
-                        float XMM5 = current_time - 1.0f;
-                        XMM3 *= XMM3;
-                        E initial = initial_value;
-                        initial *= XMM5 * XMM5 * (XMM2 + 1.0f);
-                        initial += (3.0f - XMM2) * final_val * current_time * current_time;
-                        initial += XMM3 * bezier1 * current_time;
-                        initial += XMM5 * bezier2 * current_time * current_time;
-                        current = initial;
+                        float t = current_time / end_time_f;
+
+                        float t_plus_one = t + 1.0f;
+                        float two_t = t + t;
+                        float t_minus_one = t - 1.0f;
+                        float one_minus_t = 1.0f - t;
+                        float two_t_plus_one = two_t + 1.0f;
+
+                        float initial_factor = t_minus_one * t_minus_one * two_t_plus_one;
+                        float final_factor = (3.0f - two_t) * t * t;
+                        float bezier1_factor = one_minus_t * one_minus_t * t;
+                        float bezier2_factor = t_minus_one * t * t;
+
+                        E value = initial_value * initial_factor;
+                        value = value + final_val * final_factor;
+                        value = value + bezier1 * bezier1_factor;
+                        value = value + bezier2 * bezier2_factor;
+                        current = value;
                     }
                     else {
                         float interp_value = __interp_inner_thing(mode, current_time, end_time_f);
@@ -6701,9 +6725,26 @@ ValidateVirtualFieldOffset32(0x30, BombBase, bomb_active);
 ValidateStructSize32(0xA8, BombBase);
 #pragma endregion
 
+// size: 0xDC
+struct BombReimuAInner {
+    AnmID __vm_id_0; // 0x0
+    MotionData current_motion; // 0x4
+    // 0x48
+
+    Timer __timer_A4; // 0xA4
+    Float3 __float3_B8; // 0xB8
+    EnemyID __enemy_id_C4; // 0xC4
+    Enemy* __enemy_C8; // 0xC8
+    int __object_index; // 0xCC
+    int32_t __damage_source_index_D0; // 0xD0 // PlayerDamageSource
+    // 0xD4
+    float __float_D8; // 0xD8
+    // 0xDC
+};
+
 // size: 0x14A0
 struct BombReimuAData {
-    unknown_fields(0x14A0); // 0x0
+    BombReimuAInner inners[24]; // 0x0
     // 0x14A0
 
     inline void zero_contents() {
@@ -6981,6 +7022,9 @@ typedef struct EnemyData EnemyData;
 typedef int32_t fastcall ExtraDamageFunc(EnemyData* enemy_data, int32_t prev_damage);
 typedef int32_t fastcall ExtraHitboxFunc(EnemyData* enemy_data);
 
+static inline constexpr size_t ENEMY_ANM_SLOTS = 16;
+static inline constexpr size_t ENEMY_SHOOTER_SLOTS = 16;
+
 // size: 0x5600
 struct EnemyData {
     MotionData previous_motion; // 0x0, 0x122C
@@ -6989,9 +7033,9 @@ struct EnemyData {
     Float2 hitbox_size; // 0x110, 0x133C
     Float2 collision_size; // 0x118, 0x1344
     float hitbox_rotation; // 0x120, 0x134C
-    AnmID anm_vms[16]; // 0x124, 0x1350
-    Float3 anm_positions[16]; // 0x164, 0x1390
-    int32_t anm_vm_indices[16]; // 0x224, 0x1450
+    AnmID anm_vms[ENEMY_ANM_SLOTS]; // 0x124, 0x1350
+    Float3 anm_positions[ENEMY_ANM_SLOTS]; // 0x164, 0x1390
+    int32_t anm_vm_indices[ENEMY_ANM_SLOTS]; // 0x224, 0x1450
     int32_t anm_source_index; // 0x264, 0x1490
     int32_t anm_slot_0_source_index; // 0x268, 0x1494
     int32_t anm_slot_0_script; // 0x26C, 0x1498
@@ -7013,10 +7057,10 @@ struct EnemyData {
     ZUNInterp<float> speed_interp_relative; // 0x458, 0x1684
     ZUNAbsRel<ZUNInterp<Float2>> orbit_radius_interp; // 0x488, 0x16B4
     ZUNAbsRel<ZUNInterp<Float2>> ellipse_interp; // 0x510, 0x173C
-    ShooterData shooters[16]; // 0x598, 0x17C4
-    int32_t bullet_effect_indices[16]; // 0x4E18, 0x6044
-    Float3 shooter_offsets[16]; // 0x4E58, 0x6084
-    Float3 shooter_origins[16]; // 0x4F18, 0x6144
+    ShooterData shooters[ENEMY_SHOOTER_SLOTS]; // 0x598, 0x17C4
+    int32_t bullet_effect_indices[ENEMY_SHOOTER_SLOTS]; // 0x4E18, 0x6044
+    Float3 shooter_offsets[ENEMY_SHOOTER_SLOTS]; // 0x4E58, 0x6084
+    Float3 shooter_origins[ENEMY_SHOOTER_SLOTS]; // 0x4F18, 0x6144
     Float2 final_sprite_size; // 0x4FD8, 0x6204
     Float2 move_bounds_center; // 0x4FE0, 0x620C
     Float2 move_bounds_size; // 0x4FE8, 0x6214
@@ -7291,6 +7335,9 @@ public:
     dllexport gnu_noinline void thiscall anm_set_slot_impl() asm_symbol_rel(0x436BB0);
 
     inline void thiscall anm_set_slot_main_impl();
+    
+    // 0x436CF0
+    dllexport gnu_noinline void thiscall ecl_set_anm_data() asm_symbol_rel(0x436CF0);
 
     inline void thiscall anm_play_main_impl();
 
@@ -8377,7 +8424,7 @@ protected:
             this->data.death_callback_sub[0] = '\0';
         }
         this->kill();
-        nounroll for (size_t i = 0; i < 16; ++i) {
+        nounroll for (size_t i = 0; i < ENEMY_ANM_SLOTS; ++i) {
             this->data.anm_vms[i].mark_tree_for_delete();
         }
         this->data.__unknown_flag_B = true;
@@ -8417,6 +8464,42 @@ struct RGB {
     int32_t g; // 0x4
     int32_t b; // 0x8
     // 0xC
+
+private:
+    inline RGB& add(RGB& out, const RGB& value) {
+        out.r = this->r + value.r;
+        out.g = this->g + value.g;
+        out.b = this->b + value.b;
+        return out;
+    }
+public:
+    inline RGB operator+(const RGB& value) {
+        RGB dummy;
+        return this->add(dummy, value);
+    }
+
+private:
+    inline RGB& sub(RGB& out, const RGB& value) {
+        out.r = this->r - value.r;
+        out.g = this->g - value.g;
+        out.b = this->b - value.b;
+        return out;
+    }
+public:
+    inline RGB operator-(const RGB& value) {
+        RGB dummy;
+        return this->sub(dummy, value);
+    }
+
+private:
+    inline RGB& mul(RGB& out, const float value) {
+        
+    }
+public:
+    inline RGB operator*(const float value) {
+        RGB dummy;
+        return this->mul(dummy, value);
+    }
 };
 
 typedef struct Gui Gui;
@@ -9916,6 +9999,15 @@ extern "C" {
     extern AnmOnFunc ANM_ON_DRAW_FUNCS[] asm("_ANM_ON_DRAW_FUNCS");
 }
 
+extern "C" {
+    // 0x5217D0
+    extern Float3 UNKNOWN_FLOAT3_A asm("_UNKNOWN_FLOAT3_A");
+    // 0x5217DC
+    extern Float3 UNKNOWN_FLOAT3_B asm("_UNKNOWN_FLOAT3_B");
+    // 0x56AD78
+    extern Float2 UNKNOWN_FLOAT2_A asm("_UNKNOWN_FLOAT2_A");
+}
+
 // size: 0x8
 struct AnmInstruction {
     int16_t opcode; // 0x0
@@ -10172,8 +10264,19 @@ struct AnmVM {
         })->controller.slowdown;
     }
 
+    // 0x429AD0
+    dllexport gnu_noinline void thiscall initialize_position_interp(int32_t end_time, int32_t mode, Float3* initial_pos, Float3* final_pos) asm_symbol_rel(0x429AD0) {
+        this->data.position_interp.end_time = end_time;
+        this->data.position_interp.bezier1 = UNKNOWN_FLOAT3_B;
+        this->data.position_interp.bezier2 = UNKNOWN_FLOAT3_B;
+        this->data.position_interp.mode = mode;
+        this->data.position_interp.initial_value = *initial_pos;
+        this->data.position_interp.final_value = *final_pos;
+        this->data.position_interp.time.reset();
+    }
+
     // 0x405AD0
-    dllexport gnu_noinline void thiscall set_position_interp_bezier(int32_t end_time, Float3* initial_pos, Float3* bezier1, Float3* final_pos, Float3* bezier2) asm_symbol_rel(0x405AD0) {
+    dllexport gnu_noinline void thiscall initialize_position_interp_bezier(int32_t end_time, Float3* initial_pos, Float3* bezier1, Float3* final_pos, Float3* bezier2) asm_symbol_rel(0x405AD0) {
         this->data.position_interp.end_time = end_time;
         this->data.position_interp.mode = 8;
         this->data.position_interp.initial_value = *initial_pos;
@@ -10443,6 +10546,18 @@ struct AnmVM {
     dllexport gnu_noinline void vectorcall set_z_rotation(float value) asm_symbol_rel(0x4892E0) {
         this->data.__z_rotation = true;
         this->data.rotation.z = value;
+    }
+
+    inline void set_scale(float x, float y) {
+        this->data.__scale_related_A = true;
+        this->data.scale.x = x;
+        this->data.scale.y = y;
+    }
+
+    inline void set_scale2(float x, float y) {
+        this->data.__scale_related_A = true;
+        this->data.scale2.x = x;
+        this->data.scale2.y = y;
     }
 };
 ValidateStructSize32(0x60C, AnmVM);
@@ -16255,15 +16370,6 @@ struct UnknownS {
     // 0x20
 };
 
-extern "C" {
-    // 0x5217D0
-    extern Float3 UNKNOWN_FLOAT3_A asm("_UNKNOWN_FLOAT3_A");
-    // 0x5217DC
-    extern Float3 UNKNOWN_FLOAT3_B asm("_UNKNOWN_FLOAT3_B");
-    // 0x56AD78
-    extern Float2 UNKNOWN_FLOAT2_A asm("_UNKNOWN_FLOAT2_A");
-}
-
 // size: 0x1A0
 struct EnemyManager : ZUNTask {
     //ZUNTask base; // 0x0
@@ -16771,9 +16877,7 @@ struct Stage : ZUNTask {
 
     // 0x41BF90
     dllexport gnu_noinline static Stage* fastcall allocate(const char* std_filename) asm_symbol_rel(0x41BF90) {
-        int A = 0;
         Stage* stage = new Stage();
-        A = -1;
         if (ZUN_FAILED(stage->initialize(std_filename))) {
             delete stage;
             return NULL;
@@ -19584,7 +19688,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::on_tick() {
         }
         this->__update_fog();
         if (!this->__basic_anm_update) {
-            for (size_t i = 0; i < 16; ++i) {
+            for (size_t i = 0; i < ENEMY_ANM_SLOTS; ++i) {
                 if (AnmVM* vm = this->anm_vms[i].get_vm_ptr()) {
                     Float3 new_position = this->current_motion.position + this->anm_positions[i];
                     int32_t vm_index = this->anm_vm_indices[i];
@@ -19602,7 +19706,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::on_tick() {
                 }
             }
         } else {
-            for (size_t i = 0; i < 16; ++i) {
+            for (size_t i = 0; i < ENEMY_ANM_SLOTS; ++i) {
                 this->anm_vms[i].set_controller_position(&this->current_motion.position);
             }
         }
@@ -19756,6 +19860,137 @@ inline void thiscall EnemyData::anm_set_slot_main_impl() {
         this->anm_slot_0_script = sprite;
         this->current_anm_pose = 0;
         this->anm_slot_0_source_index = this->anm_source_index;
+    }
+}
+
+// 0x436CF0
+dllexport gnu_noinline void thiscall EnemyData::ecl_set_anm_data() {
+    using namespace Ecl;
+    
+    EclContext* current_context = this->vm->current_context;
+    EclInstruction* current_instruction = current_context->get_current_instruction();
+
+    int32_t slot = current_context->get_int_arg(0);
+    if (slot <= ENEMY_ANM_SLOTS) {
+        AnmVM* vm = this->anm_vms[slot].get_vm_ptr();
+        if (!vm) {
+            return;
+        }
+
+        switch (current_instruction->opcode) {
+            case anm_rotate_slot: { // 319
+                float rotation = this->vm->current_context->get_float_arg(1);
+                vm->set_z_rotation(rotation);
+                break;
+            }
+            case anm_scale_slot: { // 329
+                float y_scale = this->vm->current_context->get_float_arg(2);
+                float x_scale = this->vm->current_context->get_float_arg(1);
+                vm->set_scale(x_scale, y_scale);
+                break;
+            }
+            case anm_scale2_slot: { // 335
+                float y_scale = this->vm->current_context->get_float_arg(2);
+                float x_scale = this->vm->current_context->get_float_arg(1);
+                vm->set_scale2(x_scale, y_scale);
+                break;
+            }
+            case anm_scale_slot_interp: { // 330
+                Float2 scale;
+                scale.y = this->vm->current_context->get_float_arg(4);
+                scale.x = this->vm->current_context->get_float_arg(3);
+                int32_t mode = this->vm->current_context->get_int_arg(2);
+                int32_t end_time = this->vm->current_context->get_int_arg(1);
+                vm->data.scale_interp.__initialize_but_ignores_bezier(end_time, mode, vm->data.scale, scale);
+                break;
+            }
+            case anm_color_slot: { // 325
+                int B = this->vm->current_context->get_int_arg(3);
+                int G = this->vm->current_context->get_int_arg(2);
+                int R = this->vm->current_context->get_int_arg(1);
+                ((uint8_t*)&vm->data.color1)[2] = R;
+                ((uint8_t*)&vm->data.color1)[1] = G;
+                ((uint8_t*)&vm->data.color1)[0] = B;
+                break;
+            }
+            case anm_color_slot_interp: { // 326
+                uint8_t R = this->vm->current_context->get_int_arg(3);
+                uint8_t G = this->vm->current_context->get_int_arg(4);
+                uint8_t B = this->vm->current_context->get_int_arg(5);
+                int32_t mode = this->vm->current_context->get_int_arg(2);
+                int32_t end_time = this->vm->current_context->get_int_arg(1);
+                vm->data.color_interp.end_time = end_time;
+                RGB color = {};
+                vm->data.color_interp.bezier1 = color;
+                vm->data.color_interp.bezier2 = color;
+                color = { R, G, B };
+                vm->data.color_interp.initial_value = {
+                    ((uint8_t*)&vm->data.color1)[2],
+                    ((uint8_t*)&vm->data.color1)[1],
+                    ((uint8_t*)&vm->data.color1)[0],
+                };
+                vm->data.color_interp.mode = mode;
+                vm->data.color_interp.final_value = color;
+                vm->data.color_interp.time.reset();
+                break;
+            }
+            case anm_alpha_slot: { // 327
+                int32_t alpha = this->vm->current_context->get_int_arg(1);
+                ((uint8_t*)&vm->data.color1)[3] = alpha;
+                break;
+            }
+            case anm_alpha_slot_interp: { // 328
+                uint32_t alpha = this->vm->current_context->get_int_arg(3);
+                int32_t mode = this->vm->current_context->get_int_arg(2);
+                int32_t end_time = this->vm->current_context->get_int_arg(1);
+                vm->data.alpha_interp.initial_value = ((uint8_t*)&vm->data.color1)[3];
+                vm->data.alpha_interp.bezier1 = 0;
+                vm->data.alpha_interp.bezier2 = 0;
+                vm->data.alpha_interp.mode = mode;
+                vm->data.alpha_interp.final_value = (uint8_t)alpha;
+                vm->data.alpha_interp.time.reset();
+                break;
+            }
+            case anm_alpha2_slot: { // 331
+                int32_t alpha = this->vm->current_context->get_int_arg(1);
+                ((uint8_t*)&vm->data.color2)[3] = alpha;
+                break;
+            }
+            case anm_alpha2_slot_interp: { // 332
+                uint32_t alpha = this->vm->current_context->get_int_arg(3);
+                int32_t mode = this->vm->current_context->get_int_arg(2);
+                int32_t end_time = this->vm->current_context->get_int_arg(1);
+                vm->data.alpha2_interp.initial_value = ((uint8_t*)&vm->data.color2)[3];
+                vm->data.alpha2_interp.mode = mode;
+                vm->data.alpha2_interp.final_value = (uint8_t)alpha;
+                vm->data.alpha2_interp.time.reset();
+                if (vm->data.color_mode == 0) {
+                    vm->data.color_mode = 1;
+                }
+                break;
+            }
+            case anm_move_position_slot_interp: { // 333
+                float Y = this->vm->current_context->get_float_arg(4);
+                float X = this->vm->current_context->get_float_arg(3);
+                Float3 position = { X, Y, 0.0f };
+                slot = this->vm->current_context->get_int_arg(0);
+                int32_t mode = this->vm->current_context->get_int_arg(2);
+                int32_t end_time = this->vm->current_context->get_int_arg(1);
+                vm = this->anm_vms[slot].get_vm_ptr();
+                vm->initialize_position_interp(end_time, mode, &vm->controller.position, &position);
+                break;
+            }
+            case __anm_layer_slot: { // 336
+                int32_t layer = this->vm->current_context->get_int_arg(1);
+                vm->set_layer(layer);
+                break;
+            }
+            case anm_blend_mode_slot: { // 337
+                int32_t mode = this->vm->current_context->get_int_arg(1);
+                vm->data.blend_mode = mode;
+                break;
+            }
+        }
     }
 }
 
@@ -20372,15 +20607,14 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
     switch (opcode) {
         case enemy_create_rel_stage: case enemy_create_abs_stage: // 309, 310
         case enemy_create_rel_stage_mirror: case enemy_create_abs_stage_mirror: // 311, 312
-        {
             clang_forceinline if (ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                break;
+            }
         case enemy_create_rel: case enemy_create_abs: // 300, 301
         case enemy_create_rel_mirror: case enemy_create_abs_mirror: // 304, 305
         case __enemy_create_rel_2: // 321
-                // TODO
-            }
+            this->ecl_enm_create();
             break;
-        }
         case anm_source: // 302
             this->anm_source_index = this->get_int_arg(0);
             break;
@@ -21084,7 +21318,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
         case enemy_flags_set: // 502
             this->flags_low |= this->get_int_arg(0);
             if (this->intangible) {
-                for (size_t i = 0; i < 16; ++i) {
+                for (size_t i = 0; i < ENEMY_ANM_SLOTS; ++i) {
                     this->anm_vms[i].__unknown_tree_clear_J();
                 }
             }
@@ -21092,7 +21326,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
         case enemy_flags_clear: // 503
             this->flags_low &= ~this->get_int_arg(0);
             if (this->intangible) {
-                for (size_t i = 0; i < 16; ++i) {
+                for (size_t i = 0; i < ENEMY_ANM_SLOTS; ++i) {
                     this->anm_vms[i].__unknown_tree_set_J();
                 }
             }

@@ -1017,7 +1017,7 @@ target_compile_definitions(smallest_pe_file PRIVATE
 target_link_options(smallest_pe_file PRIVATE
 	/ENTRY:yeet
 	"/STUB:F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\empty_dos_stub.exe"
-	/emittoolversioninfo:no
+	#/emittoolversioninfo:no
 	"LINKER:/fixed"
 	-nodefaultlib
 )

@@ -2774,6 +2774,9 @@ using ByteFloatType = BitFloatType<byte_count * CHAR_BIT>;
 #define NoDistribute _Pragma("clang loop distribute(disable)")
 #define nodistribute NoDistribute
 
+#define FullUnroll _Pragma("clang loop unroll(full)")
+#define fullunroll FullUnroll
+
 #include "custom_intrin.h"
 
 template <typename T>
