@@ -384,10 +384,10 @@ private:
         float B = reduce_angle(arg8);
         float C = reduced_angle_diff(A, B);
         float D = reduce_angle(C);
-        if (!(fabsf(D) < 0.001f)) {
+        if (!(zfabsf(D) < 0.001f)) {
             float E = reduce_angle(__angle_diffB(A, B, C));
             float F = reduce_angle(reduced_angle_diff(E, PI_f));
-            if (!(fabsf(F) < 0.001f)) {
+            if (!(zfabsf(F) < 0.001f)) {
                 Float2 G;
                 G.make_from_vector(arg5, 10.0f);
                 float H = G.x;
@@ -395,7 +395,7 @@ private:
                 float J;
                 float K = 0.0f;
                 BOOL L;
-                if (fabsf(H) < 0.01f) {
+                if (zfabsf(H) < 0.01f) {
                     I = arg3;
                     J = 0.0f;
                     L = true;
@@ -408,7 +408,7 @@ private:
                 H = G.x;
                 float M;
                 BOOL N;
-                if (fabsf(H) < 0.01f) {
+                if (zfabsf(H) < 0.01f) {
                     M = arg6;
                     N = true;
                 } else {
@@ -434,7 +434,7 @@ private:
                         O = arg3;
                     } else {
                         P = arg3;
-                        if (fabsf(P - arg6) < 0.001f) {
+                        if (zfabsf(P - arg6) < 0.001f) {
                             return 0;
                         }
                         *arg2 = arg4;
@@ -1780,7 +1780,7 @@ struct UpdateFuncRegistry {
         }
     }
 
-#if GAME_VERSION == 190
+#if GAME_VERSION == UDoALG_VER
     // 0x401650
     dllexport gnu_noinline void thiscall delete_func_locked(UpdateFunc* update_func) asm_symbol_rel(0x401650) {
         if (update_func) {
@@ -2307,6 +2307,11 @@ public:
 
     friend inline int32_t operator%(int32_t amount, const Timer& self) {
         return amount % self.current;
+    }
+
+    inline bool __is_paused() {
+        int32_t current = this->current;
+        return current == this->previous;
     }
 
     // 0x4210A0
@@ -6584,19 +6589,6 @@ struct EnemyCallback {
     }
 };
 
-// WEIRD CALLING CONVENTION
-struct HitboxManager {
-private:
-    // 0x45F0F0
-    static dllexport gnu_noinline int32_t vectorcall enm_compute_damage_sources(int32_t, int32_t, float, float, float, Float3* position, Float2* size, float rotation, float radius, int32_t* arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) asm_symbol_rel(0x45F0F0) {
-        
-    }
-public:
-    static forceinline int32_t enm_compute_damage_sources(Float3* position, Float2* size, float rotation, float radius, int32_t* arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) {
-        return enm_compute_damage_sources(UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT, position, size, rotation, radius, arg5, hit_position_out, arg7, enemy_id);
-    }
-};
-
 typedef struct AbilityShop AbilityShop;
 extern "C" {
     // 0x4CF2A4
@@ -6670,7 +6662,7 @@ struct BombBase : ZUNTask {
     }
     // Method 10
     // 0x41FBB0
-    dllexport gnu_noinline virtual int thiscall __method_10(int, int) {
+    dllexport gnu_noinline virtual int32_t thiscall __method_10(Float3* position, Float2* size) {
         return 0;
     }
     // Method 14
@@ -6788,7 +6780,7 @@ struct BombReimuA : BombBase {
     }
     // Method 10
     // 0x422390
-    dllexport gnu_noinline virtual int thiscall __method_10(int, int) {
+    dllexport gnu_noinline virtual int32_t thiscall __method_10(Float3* position, Float2* size) {
         return 0;
     }
     // Method 14
@@ -10835,6 +10827,14 @@ public:
     }
 
 private:
+    inline AnmID& thiscall instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position, AnmVM** raw_out);
+public:
+    inline AnmID instantiate_vm_to_world_list_back(int32_t script_index, Float3* position, AnmVM** raw_out) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_vm_to_world_list_back(dummy, script_index, position, raw_out);
+    }
+
+private:
     inline AnmID& thiscall instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position, int32_t layer);
 public:
     inline AnmID instantiate_vm_to_world_list_back(int32_t script_index, Float3* position, int32_t layer) {
@@ -12491,6 +12491,26 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, 
     return out;
 }
 
+inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position, AnmVM** raw_out) {
+    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
+    {
+        this->__counter_134++;
+        AnmVM* vm = AnmManager::allocate_new_vm();
+        if (raw_out) {
+            *raw_out = vm;
+        }
+        this->__copy_data_to_vm(vm, script_index);
+        vm->data.use_animation_rng = true;
+        vm->controller.position.safe_copy(position);
+        vm->data.rotation.z = 0.0f;
+        vm->run_anm();
+        vm->data.creation_flags = WORLD_LIST_BACK;
+        out = AnmManager::add_vm_to_world_list_back(vm);
+    }
+    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
+    return out;
+}
+
 inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position, int32_t layer) {
     CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
     {
@@ -13612,22 +13632,305 @@ enum CollisionResult : int32_t {
     GrazeCollision = 2
 };
 
+
+enum DamageSourceHitboxType {
+    RectangleHitbox = 0,
+    CircleHitbox = 1
+};
+
+struct RectPoints {
+    Float2 points[4];
+
+    inline void rotate_around_origin(float angle) {
+        if (angle != 0.0f) {
+            float y_unit = zsin(angle);
+            float x_unit = zcos(angle);
+            // repeated rotate_around_origin
+            for (size_t i = 0; i < countof(this->points); ++i) {
+                float y = this->points[i].y;
+                float x = this->points[i].x;
+                this->points[i].y = (x_unit * y) + (y_unit * x);
+                this->points[i].x = (x_unit * x) - (y_unit * y);
+            }
+        }
+    }
+
+private:
+    // 0x403660
+    dllexport gnu_noinline BOOL vectorcall __sub_403660(float x, float y, float width, float height, float, float, float angle) asm_symbol_rel(0x403660) {
+        RectPoints rect; // ESP+1C
+
+        Float2 position = { x, y };
+
+        rect.points[0] = this->points[0] - position;
+        rect.points[1] = this->points[1] - position;
+        rect.points[2] = this->points[2] - position;
+        rect.points[3] = this->points[3] - position;
+
+        rect.rotate_around_origin(-angle);
+
+        float half_height = height * 0.5f;
+        float half_width = width * 0.5f;
+
+        if (
+            (half_width < zfabsf(rect.points[0].x) || half_height < zfabsf(rect.points[0].y)) &&
+            (half_width < zfabsf(rect.points[1].x) || half_height < zfabsf(rect.points[1].y)) &&
+            (half_width < zfabsf(rect.points[2].x) || half_height < zfabsf(rect.points[2].y)) &&
+            (half_width < zfabsf(rect.points[3].x) || half_height < zfabsf(rect.points[3].y))
+        ) {
+            return TRUE;
+        }
+
+        return FALSE;
+    }
+public:
+    inline BOOL __sub_403660(float x, float y, float width, float height, float angle) {
+        return this->__sub_403660(x, y, width, height, UNUSED_FLOAT, UNUSED_FLOAT, angle);
+    }
+};
+
+// 0x4B35A0
+// this could've been just +1 and a mask ZUN...
+static const int32_t AWFUL_RECTANGLE_INDEX_TABLE[] = {
+    0, 1,
+    1, 2,
+    2, 3,
+    3, 0
+};
+
+struct HitboxManager {
+
+private:
+    static forceinline float squared(float value) {
+        return value * value;
+    }
+    static forceinline float hypot_squared(float x, float y) {
+        return squared(x) + squared(y);
+    }
+    static forceinline float hypot(float x, float y) {
+        return zsqrt(hypot_squared(x, y));
+    }
+    static forceinline float distance_squared(float x1, float y1, float x2, float y2) {
+        return hypot_squared(x1 - x2, y1 - y2);
+    }
+    static forceinline float distance(float x1, float y1, float x2, float y2) {
+        return zsqrt(distance_squared(x1, y1, x2, y2));
+    }
+
+private:
+    static forceinline BOOL collision_rectangle_rectangle_impl(
+        float x1, float y1,             // XMM0,   XMM1,    (ESP+C,  ESP+14)
+        float width1, float height1,    // XMM2,   XMM3,    (ESP+24, ESP+20)
+        float rotation1,                // EBP+8,
+        float x2, float y2,             // EBP+C,  EBP+10,
+        float width2, float height2,    // EBP+14, EBP+18,
+        float rotation2                 // EBP+1C
+    ) {
+        float half_width1 = width1 * 0.5f; // ESP+2C
+        float half_height1 = height1 * 0.5f; // ESP+28
+        float half_width2 = width2 * 0.5f; // ESP+30
+        float half_height2 = height2 * 0.5f; // ESP+1C
+
+        float distance_val = distance(x1, y1, x2, y2); // ESP+18
+        float hypot1 = hypot(half_width1, half_height1); // ESP+10
+        float hypot2 = hypot(half_width2, half_height2);
+
+        if (
+            !(distance_val >= hypot1 + hypot2)
+        ) {
+            float neg_half_width1 = -width1 * 0.5f;
+            float neg_half_height1 = -height1 * 0.5f;
+
+            RectPoints rectA; // ESP+54
+            rectA.points[0] = { neg_half_width1, neg_half_height1 };
+            rectA.points[1] = { neg_half_width1, half_height1 };
+            rectA.points[2] = { half_width1, half_height1 };
+            rectA.points[3] = { half_width1, neg_half_height1 };
+
+            rectA.rotate_around_origin(rotation1);
+
+            float neg_half_width2 = -width2 * 0.5f;
+            float neg_half_height2 = -height2 * 0.5f;
+
+            RectPoints rectB; // ESP+34
+            rectB.points[0] = { neg_half_width2, neg_half_height2 };
+            rectB.points[1] = { neg_half_width2, half_height2 };
+            rectB.points[2] = { half_width2, half_height2 };
+            rectB.points[3] = { half_width2, neg_half_height2 };
+
+            rectB.rotate_around_origin(rotation2);
+
+            if (
+                rectA.__sub_403660(x1, y1, width1, height1, rotation1) ||
+                rectB.__sub_403660(x2, y2, width2, height2, rotation2)
+            ) {
+                return TRUE;
+            }
+
+            nounroll for (size_t i = 0; i < 4; ++i) {
+                int32_t A1 = AWFUL_RECTANGLE_INDEX_TABLE[i * 2];
+                int32_t A2 = AWFUL_RECTANGLE_INDEX_TABLE[i * 2 + 1];
+                nounroll for (size_t j = 0; j < 4; ++j) {
+                    int32_t B1 = AWFUL_RECTANGLE_INDEX_TABLE[j * 2];
+                    int32_t B2 = AWFUL_RECTANGLE_INDEX_TABLE[j * 2 + 1];
+
+                    float A1x = rectA.points[A1].x;
+                    float A2x = rectA.points[A2].x;
+                    float A1y = rectA.points[A1].y;
+                    float A2y = rectA.points[A2].y;
+                    float B1x = rectB.points[B1].x;
+                    float B1y = rectB.points[B1].y;
+                    float B2x = rectB.points[B2].x;
+                    float B2y = rectB.points[B2].y;
+
+                    float C = (A1x - B1x) * (A1y - A2y) + (B1y - A1y) * (A1x - A2x);
+                    float D = (A1x - B2x) * (A1y - A2y) + (B2y - A1y) * (A1x - A2x);
+                    if (!(C * D > 0.0f)) {
+                        if (C == 0.0f && D == 0.0f) {
+                            if (A1x > A2x) {
+                                std::swap(A1x, A2x);
+                                std::swap(A1y, A2y);
+                            }
+                            if (B1x > B2x) {
+                                std::swap(B1x, B2x);
+                                std::swap(B1y, B2y);
+                            }
+                            if (
+                                B2x >= A1x &&
+                                B2y >= A1y &&
+                                A2x >= B1x &&
+                                A2y >= B1y
+                            ) {
+                                return TRUE;
+                            }
+                        }
+                        else {
+                            C = (B1x - A1x) * (B1y - B2y) + (A1y - B1y) * (B1x - B2x);
+                            D = (B1x - A2x) * (B1y - B2y) + (A2y - B1y) * (B1x - B2x);
+                            if (!(C * D > 0.0f)) {
+                                return TRUE;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return FALSE;
+    }
+
+    // 0x404440
+    static dllexport gnu_noinline BOOL vectorcall collision_rectangle_rectangle(
+        int, int,
+        float x1, float y1,
+        float width1, float height1,
+        uint32_t rotation1,
+        uint32_t x2, uint32_t y2,
+        uint32_t width2, uint32_t height2,
+        uint32_t rotation2
+    ) asm_symbol_rel(0x404440) {
+        return collision_rectangle_rectangle_impl(x1, y1, width1, height1,
+                                                  bitcast<float>(rotation1), bitcast<float>(x2), bitcast<float>(y2),
+                                                  bitcast<float>(width2), bitcast<float>(height2), bitcast<float>(rotation2));
+    }
+public:
+    static forceinline BOOL collision_rectangle_rectangle(
+        float x1, float y1,
+        float width1, float height1,
+        float rotation1,
+        float x2, float y2,
+        float width2, float height2,
+        float rotation2
+    ) {
+        return collision_rectangle_rectangle(UNUSED_DWORD, UNUSED_DWORD, x1, y1, width1, height1,
+                                             bitcast<uint32_t>(rotation1), bitcast<uint32_t>(x2), bitcast<uint32_t>(y2),
+                                             bitcast<uint32_t>(width2), bitcast<uint32_t>(height2), bitcast<uint32_t>(rotation2));
+    }
+
+    static forceinline BOOL collision_rectangle_circle(
+        float x1, float y1,
+        float width1, float height1,
+        float rotation1,
+        float x2, float y2,
+        float radius2
+    ) {
+        Float2 position;
+        position.x = x2 - x1;
+        position.y = y2 - y1;
+        position = position.rotate_around_origin(-rotation1);
+
+        float half_width1 = width1 * 0.5f;
+        float half_height1 = height1 * 0.5f;
+
+        if (
+            (!(half_width1 + radius2 >= zfabsf(position.x)) || !(half_height1 >= zfabsf(position.y))) &&
+            (!(half_width1 >= zfabsf(position.x)) || !(half_height1 + radius2 >= zfabsf(position.y)))
+        ) {
+            if (
+                !(hypot_squared(position.y - half_height1, position.x - half_width1) < squared(radius2)) &&
+                !(hypot_squared(position.y - half_height1, position.x + half_width1) < squared(radius2)) &&
+                !(hypot_squared(position.y + half_height1, position.x - half_width1) < squared(radius2)) &&
+                !(hypot_squared(position.y + half_height1, position.x + half_width1) < squared(radius2))
+            ) {
+                return FALSE;
+            }
+        }
+        return TRUE;
+    }
+
+    static forceinline BOOL collision_circle_circle(
+        float x1, float y1,
+        float radius1,
+        float x2, float y2,
+        float radius2
+    ) {
+        float y_diff = y1 - y2;
+        float x_diff = x1 - x2;
+        float max_distance = radius1 + radius2;
+
+        if (
+            !(hypot_squared(x_diff, y_diff) < squared(max_distance))
+        ) {
+            return FALSE;
+        }
+        return TRUE;
+    }
+
+private:
+    // 0x45F0F0
+    static dllexport gnu_noinline int32_t vectorcall enm_compute_damage_sources(int32_t, int32_t, float, float, float, Float3* position, Float2* size, float rotation, float radius, int32_t* arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) asm_symbol_rel(0x45F0F0);
+public:
+    static forceinline int32_t HitboxManager::enm_compute_damage_sources(Float3* position, Float2* size, float rotation, float radius, int32_t* arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) {
+        return enm_compute_damage_sources(UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT, position, size, rotation, radius, arg5, hit_position_out, arg7, enemy_id);
+    }
+};
+
+typedef struct PlayerDamageSource PlayerDamageSource;
+typedef struct PlayerBullet PlayerBullet;
+
+using DamageSourceFunc = int32_t fastcall (PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius);
+using BulletDamageFunc = int32_t fastcall (PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius);
+
 // size: 0x9C
 struct PlayerDamageSource {
     union {
-        uint32_t flags; // 0x0
+        uint32_t flags; // 0x0, 0x20574
+        struct {
+            uint32_t __active : 1; // 1
+            uint32_t hitbox_type : 1; // 2
+            uint32_t __unknown_flag_A : 1; // 3
+        };
     };
-    float __float_4; // 0x4
+    float radius; // 0x4
     float __float_8; // 0x8
-    float __float_C; // 0xC
+    float rotation; // 0xC
     ZUNAngle __angle_10; // 0x10
-    float __float_14; // 0x14
-    float __float_18; // 0x18
+    Float2 size; // 0x14
     MotionData motion; // 0x1C
     Timer __timer_60; // 0x60
     int32_t __int_74; // 0x74
     int __int_78; // 0x78
-    int __int_7C; // 0x7C
+    int32_t __int_7C; // 0x7C
     int32_t __int_80; // 0x80
     EnemyID __enemy_id_84; // 0x84
     int32_t __int_88; // 0x88
@@ -13636,16 +13939,92 @@ struct PlayerDamageSource {
     EnemyID __enemy_id_94; // 0x94
     int32_t __unknown_func_index; // 0x98
     // 0x9C
+
+    inline bool check_collision(Float3* position, Float2* size, float rotation, float radius) {
+        switch (this->hitbox_type) {
+            default:
+                unreachable;
+            case RectangleHitbox:
+                if (size) {
+                    return HitboxManager::collision_rectangle_rectangle(
+                        this->motion.position.x, this->motion.position.y,
+                        this->size.x, this->size.y,
+                        this->rotation,
+                        position->x, position->y,
+                        size->x, size->y,
+                        rotation
+                    );
+                } else {
+                    return HitboxManager::collision_rectangle_circle(
+                        this->motion.position.x, this->motion.position.y,
+                        this->size.x, this->size.y,
+                        this->rotation,
+                        position->x, position->y,
+                        radius
+                    );
+                }
+            case CircleHitbox:
+                if (size) {
+                    return HitboxManager::collision_rectangle_circle(
+                        position->x, position->y,
+                        size->x, size->y,
+                        rotation,
+                        this->motion.position.x, this->motion.position.y,
+                        this->radius
+                    );
+                } else {
+                    return HitboxManager::collision_circle_circle(
+                        this->motion.position.x, this->motion.position.y,
+                        this->radius,
+                        position->x, position->y,
+                        radius
+                    );
+                }
+        }
+    }
+
+    // 0x45F6A0
+    dllexport gnu_noinline static int32_t fastcall __unknown_func_1(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius) asm_symbol_rel(0x45F6A0);
+
+    // 0x460AB0
+    dllexport gnu_noinline static int32_t fastcall __unknown_func_2(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius) asm_symbol_rel(0x460AB0);
+
+    // 0x420BF0
+    dllexport gnu_noinline static int32_t fastcall __unknown_func_3(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius) asm_symbol_rel(0x420BF0);
+};
+#pragma region // PlayerDamageSource Validation
+ValidateFieldOffset32(0x0, PlayerDamageSource, flags);
+ValidateFieldOffset32(0x4, PlayerDamageSource, radius);
+ValidateFieldOffset32(0x8, PlayerDamageSource, __float_8);
+ValidateFieldOffset32(0xC, PlayerDamageSource, rotation);
+ValidateFieldOffset32(0x10, PlayerDamageSource, __angle_10);
+ValidateFieldOffset32(0x14, PlayerDamageSource, size);
+ValidateFieldOffset32(0x1C, PlayerDamageSource, motion);
+ValidateFieldOffset32(0x60, PlayerDamageSource, __timer_60);
+ValidateFieldOffset32(0x74, PlayerDamageSource, __int_74);
+ValidateFieldOffset32(0x78, PlayerDamageSource, __int_78);
+ValidateFieldOffset32(0x7C, PlayerDamageSource, __int_7C);
+ValidateFieldOffset32(0x80, PlayerDamageSource, __int_80);
+ValidateFieldOffset32(0x84, PlayerDamageSource, __enemy_id_84);
+ValidateFieldOffset32(0x88, PlayerDamageSource, __int_88);
+ValidateFieldOffset32(0x8C, PlayerDamageSource, __int_8C);
+ValidateFieldOffset32(0x90, PlayerDamageSource, __player_bullet_index);
+ValidateFieldOffset32(0x94, PlayerDamageSource, __enemy_id_94);
+ValidateFieldOffset32(0x98, PlayerDamageSource, __unknown_func_index);
+ValidateStructSize32(0x9C, PlayerDamageSource);
+#pragma endregion
+
+// 0x4B4270
+static const DamageSourceFunc *const PLAYER_DAMAGE_SOURCE_UNKNOWN_FUNCS[] = {
+    NULL,
+    &PlayerDamageSource::__unknown_func_1,
+    &PlayerDamageSource::__unknown_func_2,
+    &PlayerDamageSource::__unknown_func_3
 };
 
-// size: 0xF0
-struct PlayerOption {
-    unknown_fields(0x54); // 0x0
-    uint32_t position_x; // 0x54
-    uint32_t position_y; // 0x58
-    unknown_fields(0x94); // 0x5C
-    // 0xF0
-};
+static inline PlayerDamageSource* get_damage_source_by_index(int32_t index);
+static inline PlayerBullet* get_player_bullet_by_index(int32_t index);
+
 // size: 0xF8
 struct PlayerBullet {
     union {
@@ -13657,8 +14036,8 @@ struct PlayerBullet {
     unknown_fields(0x4); // 0x0
     AnmID __vm_id_8; // 0x8
     Timer __timer_C; // 0xC
-    MotionData motion; // 0x20
-    unknown_fields(0x28); // 0x64
+    unknown_fields(0x28);// 0x20
+    MotionData motion; // 0x48
     int state; // 0x8C
     unknown_fields(0xC); // 0x90
     int __int_9C; // 0x9C
@@ -13668,9 +14047,51 @@ struct PlayerBullet {
     unknown_fields(0x38); // 0xB4
     void* __func_ptr_EC; // 0xEC
     unknown_fields(0x4); // 0xF0
-    void* __func_ptr_F4; // 0xF4
+    BulletDamageFunc* __damage_func; // 0xF4
     // 0xF8
+
+    // 0x45F6F0
+    dllexport gnu_noinline int32_t thiscall __sub_45F6F0() asm_symbol_rel(0x45F6F0) {
+        AnmVM* vm = this->__vm_id_8.get_vm_ptr();
+        this->motion.position.z = 0.1f;
+        vm->interrupt(1);
+        this->motion.speed *= 0.125f;
+        this->state = 2;
+        vm->controller.position = this->motion.position;
+
+        if (PlayerDamageSource* damage_source = get_damage_source_by_index(this->damage_source_index)) {
+            damage_source->__active = false;
+        }
+
+        int32_t ret = this->__int_9C;
+        this->damage_source_index = 0;
+        return ret;
+    }
 };
+#pragma region // PlayerBullet Validation
+ValidateFieldOffset32(0x0, PlayerBullet, flags);
+ValidateFieldOffset32(0x8, PlayerBullet, __vm_id_8);
+ValidateFieldOffset32(0xC, PlayerBullet, __timer_C);
+ValidateFieldOffset32(0x48, PlayerBullet, motion);
+ValidateFieldOffset32(0x8C, PlayerBullet, state);
+ValidateFieldOffset32(0x9C, PlayerBullet, __int_9C);
+ValidateFieldOffset32(0xAC, PlayerBullet, __dword_AC);
+ValidateFieldOffset32(0xB0, PlayerBullet, damage_source_index);
+ValidateFieldOffset32(0xEC, PlayerBullet, __func_ptr_EC);
+ValidateFieldOffset32(0xF4, PlayerBullet, __damage_func);
+ValidateStructSize32(0xF8, PlayerBullet);
+#pragma endregion
+
+// size: 0xF0
+struct PlayerOption {
+    unknown_fields(0x54); // 0x0
+    uint32_t position_x; // 0x54
+    uint32_t position_y; // 0x58
+    unknown_fields(0x94); // 0x5C
+    // 0xF0
+};
+
+static inline constexpr size_t PLAYER_DAMAGE_SOURCE_COUNT = 0x400;
 
 // size: 0x47308
 struct PlayerData {
@@ -13683,7 +14104,7 @@ struct PlayerData {
     PlayerOption equipment[12]; // 0x410, 0xA30
     PlayerBullet bullets[0x200]; // 0xF50, 0x1570
     int32_t last_created_damage_source_index; // 0x1FF50, 0x20570
-    PlayerDamageSource damage_sources[0x401]; // 0x1FF54, 0x20574
+    PlayerDamageSource damage_sources[PLAYER_DAMAGE_SOURCE_COUNT + 1]; // 0x1FF54, 0x20574
     PlayerDamageSource __damage_source_46FF0; // 0x46FF0, 0x47610
     int32_t state; // 0x4708C, 0x476AC
     AnmID __vm_id_47090; // 0x47090, 0x476B0
@@ -14024,7 +14445,155 @@ public:
         }
         return player;
     }
+
+    inline int32_t compute_damage_sources(Float3* position, Float2* size, float rotation, float radius, int32_t* arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) {
+        if (this->data.__timer_14.__is_paused()) {
+            return 0;
+        }
+
+        int32_t A; // LOCAL 17
+
+        BombBase* bomb = BOMB_PTR;
+        if (!bomb->bomb_active) {
+            A = 0;
+        } else {
+            // Nothing uses this... >_>
+            A = bomb->__method_10(position, size);
+        }
+
+        if (arg5) {
+            *arg5 = __min(A, 1);
+        }
+
+        BOOL B[4] = {};
+        int32_t C[4] = {};
+        int32_t D[4] = {};
+
+        PlayerDamageSource* damage_source_ptr = &this->data.damage_sources[0]; // LOCAL 16
+        for (
+            size_t i = 0;
+            i < PLAYER_DAMAGE_SOURCE_COUNT;
+            ++i, ++damage_source_ptr
+        ) {
+            if (
+                damage_source_ptr->__active &&
+                damage_source_ptr->__timer_60.__is_multiple_of_not_paused(damage_source_ptr->__int_80) &&
+                damage_source_ptr->__int_88 <= 0
+            ) {
+                if (damage_source_ptr->check_collision(position, size, rotation, radius)) {
+                    switch (int32_t index = damage_source_ptr->__int_8C - 1) {
+                        case 0: case 1: case 2: case 3:
+                            if (B[index] && C[index] > damage_source_ptr->__int_74) {
+                                continue;
+                            }
+                            A -= D[index];
+                            B[index] = true;
+                            C[index] = damage_source_ptr->__int_74;
+                    }
+                    if (enemy_id) {
+                        if (damage_source_ptr->__enemy_id_84 == enemy_id) {
+                            continue;
+                        }
+                        damage_source_ptr->__enemy_id_84 = enemy_id;
+                    }
+                    if (arg5 && damage_source_ptr->__unknown_flag_A) {
+                        *arg5 = 1;
+                    }
+                    int32_t E = damage_source_ptr->__int_74;
+                    if (!arg7) {
+                        if (damage_source_ptr->__unknown_func_index) {
+                            damage_source_ptr->__enemy_id_94 = enemy_id;
+                            int32_t F = PLAYER_DAMAGE_SOURCE_UNKNOWN_FUNCS[damage_source_ptr->__unknown_func_index](damage_source_ptr, position, size, rotation, radius);
+                            if (F >= 0) {
+                                E = F;
+                            }
+                        }
+                        damage_source_ptr->__int_78 += damage_source_ptr->__int_74;
+                    }
+                    switch (int32_t index = damage_source_ptr->__int_8C - 1) {
+                        case 0: case 1: case 2: case 3:
+                            D[index] = E;
+                    }
+                    A += E;
+                    if (hit_position_out) {
+                        *hit_position_out = damage_source_ptr->motion.position;
+                    }
+                    int32_t G = damage_source_ptr->__int_7C;
+                    if (
+                        G < 9999999 &&
+                        G <= damage_source_ptr->__int_78
+                    ) {
+                        damage_source_ptr->__active = false;
+                        damage_source_ptr->__int_74 = 0;
+                    }
+                }
+            }
+        }
+
+        A = __min(A, this->__int_47984);
+
+        if (
+            !arg7 &&
+            A != 0
+        ) {
+            GAME_MANAGER.add_to_score(A / 10 + 10);
+        }
+
+        return A;
+    }
 };
+
+// 0x45F0F0
+dllexport gnu_noinline int32_t vectorcall HitboxManager::enm_compute_damage_sources(int32_t, int32_t, float, float, float, Float3* position, Float2* size, float rotation, float radius, int32_t* arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) {
+    return PLAYER_PTR->compute_damage_sources(position, size, rotation, radius, arg5, hit_position_out, arg7, enemy_id);
+}
+
+static inline PlayerDamageSource* get_damage_source_by_index(int32_t index) {
+    if (!index) {
+        return &PLAYER_PTR->data.__damage_source_46FF0;
+    }
+    else {
+        return &PLAYER_PTR->data.damage_sources[index - 1];
+    }
+}
+
+static inline PlayerBullet* get_player_bullet_by_index(int32_t index) {
+    return &PLAYER_PTR->data.bullets[index];
+}
+
+// 0x45F6A0
+dllexport gnu_noinline int32_t fastcall PlayerDamageSource::__unknown_func_1(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius) {
+    PlayerBullet* bullet = get_player_bullet_by_index(self->__player_bullet_index);
+    if (auto* damage_func = bullet->__damage_func) {
+        return damage_func(bullet, position, size, rotation, radius);
+    } else {
+        return bullet->__sub_45F6F0();
+    }
+}
+
+// 0x460AB0
+dllexport gnu_noinline int32_t fastcall PlayerDamageSource::__unknown_func_2(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius) {
+    PlayerBullet* bullet = get_player_bullet_by_index(self->__player_bullet_index);
+    int32_t ret = bullet->__int_9C;
+    bullet->__int_9C = 1;
+    return ret;
+}
+
+// 0x420BF0
+dllexport gnu_noinline int32_t fastcall PlayerDamageSource::__unknown_func_3(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius) {
+    AnmVM* vm;
+    PLAYER_PTR->player_anm->instantiate_vm_to_world_list_back(20, position, &vm);
+
+    float A = BOMB_PTR->__float3_24.z;
+
+    Float2 idk;
+    idk.make_from_vector(A, 6.5f);
+
+    vm->data.current_context_vars.__float3_20.x = idk.x;
+    vm->data.current_context_vars.__float3_20.y = idk.y;
+
+    return -1;
+}
 
 typedef struct PopupManager PopupManager;
 extern "C" {
@@ -15835,15 +16404,8 @@ struct AbilityManager : ZUNTask {
     int32_t passive_card_count; // 0x34
     CardBase* selected_active_card; // 0x38
     AnmID __anm_id_3C; // 0x3C
-    unknown_fields(0xC); // 0x40
-    AnmID __anm_id_4C; // 0x4C
-    unknown_fields(0x4); // 0x50
-    union {
-        uint32_t flags; // 0x54
-        struct {
-            uint32_t __unknown_flag_A : 1; // 1
-        };
-    };
+    unknown_fields(0x4); // 0x40
+    Timer __timer_44; // 0x44
     AnmID __anm_id_array_58[0x100]; // 0x58
     AnmID __anm_id_array_458[0x100]; // 0x458
     CardBase* __card_array_858[0x100]; // 0x858
@@ -15860,7 +16422,7 @@ struct AbilityManager : ZUNTask {
         zero_this();
     }
 
-    inline AbilityManager() : __unknown_flag_A(false) {
+    inline AbilityManager() {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
     }
@@ -16000,7 +16562,7 @@ struct AbilityManager : ZUNTask {
         }
         card->data = &find_id_in_card_data(card->id);
 
-        if (flags == 1) {
+        if (flags != 1) {
             this->create_all_card_lists_for_hud(false);
         }
 
@@ -16196,8 +16758,7 @@ ValidateFieldOffset32(0x30, AbilityManager, equipment_card_count);
 ValidateFieldOffset32(0x34, AbilityManager, passive_card_count);
 ValidateFieldOffset32(0x38, AbilityManager, selected_active_card);
 ValidateFieldOffset32(0x3C, AbilityManager, __anm_id_3C);
-ValidateFieldOffset32(0x4C, AbilityManager, __anm_id_4C);
-ValidateFieldOffset32(0x54, AbilityManager, flags);
+ValidateFieldOffset32(0x44, AbilityManager, __timer_44);
 ValidateFieldOffset32(0x58, AbilityManager, __anm_id_array_58);
 ValidateFieldOffset32(0x458, AbilityManager, __anm_id_array_458);
 ValidateFieldOffset32(0x858, AbilityManager, __card_array_858);
@@ -19463,7 +20024,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
         if (
             HitboxManager::enm_compute_damage_sources(position, hitbox_size, rotation, radius, &A, damage_pos, true, id) != 0 &&
             A != 0
-            ) {
+        ) {
             if (this->enemy()->kill()) {
                 return ZUN_SUCCESS2; // triggers the fail condition
             }
@@ -20962,7 +21523,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
                 }
             }
             Float2 initial_val = Float2(motion.get_angle(), motion.get_speed());
-            if (fabsf(initial_val.x - final_val.x) >= PI_f) {
+            if (zfabsf<NoInline>(initial_val.x - final_val.x) >= PI_f) {
                 if (final_val.x > initial_val.x) {
                     initial_val.x += TWO_PI_f;
                 } else {

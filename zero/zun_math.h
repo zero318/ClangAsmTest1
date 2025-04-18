@@ -435,6 +435,17 @@ static float float_convention tanf(float value) {
 // ZUN namespace: function wrappers for each game
 inline namespace ZUN {
 
+template <InlineState inline_state = ForceInline>
+static forceinline float zfabsf(float value) {
+    if constexpr (inline_state == ForceInline) {
+        clang_forceinline return ZCRT::fabsf(value);
+    } else if constexpr (inline_state == NoInline) {
+        clang_noinline return ZCRT::fabsf(value);
+    } else {
+        return ZCRT::fabsf(value);
+    }
+}
+
 static forceinline long double zacosl(long double value) {
     return CRT::acosl(value);
 }
