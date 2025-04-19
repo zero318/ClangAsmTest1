@@ -49,7 +49,7 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define JpEnStr(jstring, estring) estring
 #endif
 
-#define INCLUDE_PATCH_CODE 0
+#define INCLUDE_PATCH_CODE 1
 
 //#define USE_VOLATILES_AND_BARRIERS_FOR_ORIGINAL_CODEGEN 1
 
@@ -89,6 +89,19 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 
 #ifndef SAFE_FREE_FAST
 #define SAFE_FREE_FAST(p)       { if (auto ptr = (p)) { free ((void*)ptr);     (p)=NULL; } }
+#endif
+
+#if INCLUDE_PATCH_CODE
+// just a stub to make the code look right
+dllexport gnu_noinline const char* fastcall eval_expr(const char* expr, char end, int32_t* out, void* regs, uintptr_t rel_source, HMODULE hMod) {
+    use_var(expr);
+    use_var(end);
+    use_var(regs);
+    use_var(rel_source);
+    use_var(hMod);
+    *out = rand();
+    return (const char*)rand();
+}
 #endif
 
 /*
@@ -6127,9 +6140,9 @@ struct EclValue {
 
     template<typename T>
     static forceinline T cast_to(const int32_t& value, const char& type) {
-        if constexpr (std::is_same_v<T, int32_t>) {
+        if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
             if (type == 'f') {
-                return bitcast<int32_t>((float)value);
+                return bitcast<T>((float)value);
             } else {
                 return value;
             }
@@ -6144,6 +6157,11 @@ struct EclValue {
 
     template<typename T>
     forceinline T read() {
+        return this->cast_to<T>(this->value.integer, this->type);
+    }
+
+    template<typename T>
+    forceinline T read() const {
         return this->cast_to<T>(this->value.integer, this->type);
     }
 };
@@ -6166,6 +6184,10 @@ struct EclStack {
     }
     template<typename T>
     forceinline T read_typed_offset(int32_t offset) {
+        return based_pointer<EclValue>(this->raw, offset)->read<T>();
+    }
+    template<typename T>
+    forceinline T read_typed_offset(int32_t offset) const {
         return based_pointer<EclValue>(this->raw, offset)->read<T>();
     }
     template<typename T>
@@ -6204,6 +6226,11 @@ struct EclStack {
     }
 
     template<typename T>
+    forceinline T read_temp_index(int32_t index) const {
+        return this->read_typed_offset<T>(this->pointer + index * sizeof(EclValue));
+    }
+
+    template<typename T>
     forceinline void write_offset(int32_t offset, const T& value) {
         *based_pointer<T>(this->raw, offset) = value;
     }
@@ -6224,8 +6251,21 @@ struct EclStack {
     forceinline void write_temp(int32_t index, const T& value) {
         this->write_temp<T>(index, value, this->pointer);
     }
-    
 
+    template<typename T>
+    forceinline void write_typed_temp(int32_t index, const T& value, int32_t top_offset) {
+        this->write_temp<T>(index * 2, value, top_offset);
+        if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
+            this->write_temp(index * 2 + 1, 'i', top_offset);
+        } else if constexpr (std::is_same_v<T, float>) {
+            this->write_temp(index * 2 + 1, 'f', top_offset);
+        }
+    }
+    template<typename T>
+    forceinline void write_typed_temp(int32_t index, const T& value) {
+        this->write_typed_temp<T>(index, value, this->pointer);
+    }
+    
     template<typename T>
     forceinline T& ref_offset(int32_t offset) {
         return *based_pointer<T>(this->raw, offset);
@@ -6261,6 +6301,16 @@ struct EclStack {
     }
 
     template<typename T>
+    forceinline void push_cast(const T& value) {
+        if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
+            this->push('i');
+        } else if constexpr (std::is_same_v<T, float>) {
+            this->push('f');
+        }
+        this->push(value);
+    }
+
+    template<typename T>
     forceinline T pop(int32_t& starting_offset) {
         starting_offset -= sizeof(int32_t);
         return this->read_offset<T>(starting_offset);
@@ -6283,17 +6333,41 @@ struct EclStack {
     void unary_op(const L& func) {
         using T = typename FunctionTraitsType<L>::template nth_arg_type<0>;
         using P = typename FunctionTraitsType<L>::ret_type;
-        this->push<P>(func(this->pop_cast<T>()));
+        this->push_cast<P>(func(this->pop_cast<T>()));
     }
 
     template<typename L> requires(FunctionTraitsType<L>::arg_count == 2 && std::is_same_v<typename FunctionTraitsType<L>::template nth_arg_type<0>, typename FunctionTraitsType<L>::template nth_arg_type<1>>)
     void binary_op(const L& func) {
+        using T1 = typename FunctionTraitsType<L>::template nth_arg_type<0>;
+        using T2 = typename FunctionTraitsType<L>::template nth_arg_type<1>;
+        using P = typename FunctionTraitsType<L>::ret_type;
+        T1 right = this->pop_cast<T1>();
+        T2 left = this->pop_cast<T2>();
+        this->push_cast<P>(func(left, right));
+    }
+
+#if INCLUDE_PATCH_CODE
+    template<typename L> requires(FunctionTraitsType<L>::arg_count == 1)
+    void unary_op_fast(const L& func) {
         using T = typename FunctionTraitsType<L>::template nth_arg_type<0>;
         using P = typename FunctionTraitsType<L>::ret_type;
-        T right = this->pop_cast<T>();
-        T left = this->pop_cast<T>();
-        this->push<P>(func(left, right));
+
+        this->read_typed_offset<int32_t>(top_offset + index * sizeof(EclValue));
+
+        this->write_typed_temp<P>(0, func(this->read_temp_index<T>(0)));
     }
+
+    template<typename L> requires(FunctionTraitsType<L>::arg_count == 2 && std::is_same_v<typename FunctionTraitsType<L>::template nth_arg_type<0>, typename FunctionTraitsType<L>::template nth_arg_type<1>>)
+    void binary_op_fast(const L& func) {
+        using T1 = typename FunctionTraitsType<L>::template nth_arg_type<0>;
+        using T2 = typename FunctionTraitsType<L>::template nth_arg_type<1>;
+        using P = typename FunctionTraitsType<L>::ret_type;
+        T1 right = this->read_temp_index<T1>(0);
+        T2 left = this->read_temp_index<T2>(-1);
+        this->write_typed_temp<P>(1, func(left, right));
+        this->pointer -= sizeof(EclValue);
+    }
+#endif
 
     inline ZUNResult enter_frame(int32_t size) {
         int32_t prev_pointer = this->pointer;
@@ -6448,6 +6522,10 @@ public:
     forceinline ZUNResult low_ecl_run(float current_gamespeed) {
         return this->low_ecl_run(UNUSED_FLOAT, current_gamespeed);
     }
+
+#if INCLUDE_PATCH_CODE
+    inline void basic_call(EclContext* new_context, EclInstruction* current_instruction);
+#endif
 };
 #pragma region // EclContext Validation
 ValidateFieldOffset32(0x0, EclContext, time);
@@ -6574,6 +6652,7 @@ union EnemyID {
 };
 
 static inline constexpr uint32_t MAX_CALLBACKS = 8;
+static inline constexpr uint32_t LAST_CALLBACK_INDEX = MAX_CALLBACKS - 1;
 
 // size: 0x88
 struct EnemyCallback {
@@ -6587,6 +6666,48 @@ struct EnemyCallback {
         this->time = -1;
         this->life_sub[0] = '\0';
     }
+
+    inline void set(int32_t life, int32_t time, const char* sub_name) {
+        this->life = life;
+        if (life >= 0) {
+            this->time = time;
+            if (sub_name) {
+                byteloop_strcpy(this->life_sub, sub_name);
+                byteloop_strcpy(this->time_sub, sub_name);
+            } else {
+                this->life_sub[0] = '\0';
+                this->time_sub[0] = '\0';
+            }
+        }
+    }
+
+    inline void set_life_sub(const char* sub_name) {
+        if (sub_name) {
+            byteloop_strcpy(this->life_sub, sub_name);
+        } else {
+            this->life_sub[0] = '\0';
+        }
+    }
+
+    inline void set_time_sub(const char* sub_name) {
+        if (sub_name) {
+            byteloop_strcpy(this->time_sub, sub_name);
+        } else {
+            this->time_sub[0] = '\0';
+        }
+    }
+
+#if INCLUDE_PATCH_CODE
+    inline void set_interrupt(uint32_t slot, const char* sub_name) {
+        this->life = -1;
+        this->time = -1;
+        byteloop_strcpy((&this->life_sub)[slot], sub_name);
+    }
+
+    inline const char* get_interrupt(uint32_t slot) {
+        return (&this->life_sub)[slot];
+    }
+#endif
 };
 
 typedef struct AbilityShop AbilityShop;
@@ -7113,6 +7234,10 @@ struct EnemyData {
             uint32_t __anm_slowdown_immune : 1; // 1
             uint32_t : 1; // 2
             uint32_t __unknown_flag_P : 1; // 3
+#if INCLUDE_PATCH_CODE
+            uint32_t : 21; // padding
+            uint32_t run_interrupt : 8;
+#endif
         };
     };
     int32_t bombshield_on_anm; // 0x5138, 0x6364
@@ -7363,6 +7488,19 @@ public:
     }
 
     inline void reinitialize_vm_with_sub(const char* sub_name);
+
+#if INCLUDE_PATCH_CODE
+    inline void set_interrupt(uint32_t slot, const char* sub_name) {
+        uint32_t inner_index = slot & 1;
+        this->callbacks[LAST_CALLBACK_INDEX - (slot >> 1)].set_interrupt(inner_index, sub_name);
+        
+    }
+
+    inline const char* get_interrupt(uint32_t slot) {
+        uint32_t inner_index = slot & 1;
+        this->callbacks[LAST_CALLBACK_INDEX - (slot >> 1)].get_interrupt(inner_index);
+    }
+#endif
 };
 #pragma region // EnemyData Field Validation
 ValidateFieldOffset32(0x0, EnemyData, previous_motion);
@@ -7444,6 +7582,10 @@ static ExtraHitboxFunc* EXTRA_HITBOX_FUNC_TABLE[] = {
 
 #pragma region // IMPORTED_FROM_MOF_DATA_NEEDS_VALIDATION
 
+static inline constexpr uint32_t ECL_FILE_MAGIC = PackUInt('S', 'C', 'P', 'T');
+static inline constexpr uint32_t ANM_INCLUDE_MAGIC = PackUInt('A', 'N', 'I', 'M');
+static inline constexpr uint32_t ECL_INCLUDE_MAGIC = PackUInt('E', 'C', 'L', 'I');
+
 // size: 0x10
 struct EclSub {
     ZUNMagic magic; // 0x0
@@ -7454,8 +7596,21 @@ struct EclSub {
 
 // size: 0x8
 struct EclSubHeader {
-    char* name; // 0x0
+    const char* name; // 0x0
     EclSub* data; // 0x4
+    // 0x8
+};
+#pragma region // EclSubHeader Validation
+ValidateFieldOffset32(0x0, EclSubHeader, name);
+ValidateFieldOffset32(0x4, EclSubHeader, data);
+ValidateStructSize32(0x8, EclSubHeader);
+#pragma endregion
+
+// size: 0x8
+struct EclIncludes {
+    ZUNMagic magic; // 0x0
+    uint32_t count; // 0x4
+    unsigned char data[]; // 0x8
 };
 
 // size: 0x24
@@ -7485,36 +7640,105 @@ struct SptResource {
     int32_t file_count; // 0x4
     int32_t sub_count; // 0x8
     EclFile* files[32]; // 0xC
-    EclSubHeader(*subs)[]; // 0x8C
+    EclSubHeader* subs; // 0x8C
+    // 0x90
+
+    inline ~SptResource() {
+        SAFE_FREE(this->subs);
+    }
 
     // 0x48D9D0
-    dllexport virtual gnu_noinline ZUNResult __method_0(const char* file_buffer) asm_symbol_rel(0x48D9D0) {
+    // Method 0
+    dllexport virtual gnu_noinline int32_t thiscall add_ecl_file(const char* file_buffer) asm_symbol_rel(0x48D9D0) {
         this->files[this->file_count] = (EclFile*)file_buffer;
         EclFile* ecl_file = this->files[this->file_count];
         if (
-            ecl_file->header.magic.as_uint == PackUInt('S', 'C', 'P', 'T') &&
+            ecl_file->header.magic.as_uint == ECL_FILE_MAGIC &&
             ecl_file->header.version == 1
         ) {
-            char* includes = based_pointer<char>(ecl_file, ecl_file->header.include_length);
-            this->sub_count += ecl_file->header.sub_count;
-            EclSubHeader(*old_sub_array)[] = this->subs;
-            void* file_data = ecl_file->data;
-            // TODO
+            const char* sub_data_start = based_pointer<char>(ecl_file->data, ecl_file->header.include_length);
+            uint32_t sub_count_in_file = ecl_file->header.sub_count;
+            this->sub_count += sub_count_in_file;
+            EclSubHeader* old_sub_array = this->subs; // ESI
+            const uint32_t* sub_offsets = (uint32_t*)sub_data_start; // EBP+8
+            const char* sub_names = sub_data_start + sizeof(uint32_t[sub_count_in_file]); // EDI, EBP-8
+
+            EclSubHeader* new_sub_array = (EclSubHeader*)malloc(sizeof(EclSubHeader[this->sub_count]));
+
+            if (!old_sub_array) {
+                this->subs = new_sub_array;
+                for (int32_t i = 0; i < this->sub_count; ++i) {
+                    EclSub* sub = based_pointer<EclSub>(this->files[this->file_count], *sub_offsets);
+                    this->subs[i].data = sub;
+                    this->subs[i].name = sub_names;
+                    sub_names += byteloop_strlen(sub_names) + 1;
+                    ++sub_offsets;
+                }
+            }
+            else {
+                this->subs = new_sub_array;
+                uint32_t old_sub_count = this->sub_count - this->files[this->file_count]->header.sub_count; // EBP-4
+                memcpy(new_sub_array, old_sub_array, sizeof(EclSubHeader[old_sub_count]));
+                free(old_sub_array);
+
+                int32_t checked_sub_count = old_sub_count;
+                for (
+                    int32_t i = 0; // EBP-C
+                    i < this->files[this->file_count]->header.sub_count;
+                    ++i
+                ) {
+                    int32_t j = 0; // EDI
+                    if (checked_sub_count > 0) {
+                        EclSubHeader* subs = this->subs;
+                        do {
+                            if (strcmp_asm(sub_names, subs[j].name) <= 0) {
+                                break;
+                            }
+                        } while (++j < checked_sub_count);
+                    }
+
+                    int32_t k = this->sub_count; // ESI
+                    while (--k > j) {
+                        this->subs[k] = this->subs[k - 1];
+                    }
+                    
+                    EclSub* sub = based_pointer<EclSub>(this->files[this->file_count], *sub_offsets);
+                    this->subs[j].data = sub;
+                    this->subs[j].name = sub_names;
+                    sub_names += byteloop_strlen(sub_names) + 1;
+                    ++checked_sub_count;
+                    ++sub_offsets;
+                }
+            }
+            
+            int32_t file_index = this->file_count++;
+            ecl_file = this->files[file_index];
+            if (ecl_file->header.include_length) {
+                this->load_imports((EclIncludes*)ecl_file->data);
+            }
+            return file_index;
         }
-        else {
-            this->files[this->file_count] = NULL;
-            return ZUN_ERROR;
-        }
+        this->files[this->file_count] = NULL;
+        return ZUN_ERROR;
+    }
+
+    // 0x42CCB0
+    // Method 4
+    dllexport virtual gnu_noinline ZUNResult thiscall load_imports(EclIncludes* includes) asm_symbol_rel(0x42CCB0) {
+        return ZUN_SUCCESS;
     }
 };
+#pragma region // SptResource Validation
+ValidateVirtualFieldOffset32(0x4, SptResource, file_count);
+ValidateVirtualFieldOffset32(0x8, SptResource, sub_count);
+ValidateVirtualFieldOffset32(0xC, SptResource, files);
+ValidateVirtualFieldOffset32(0x8C, SptResource, subs);
+ValidateStructSize32(0x90, SptResource);
+#pragma endregion
 
 // size: 0x1098
-struct EnemyController {
-    void* vtable; // 0x0
-    int32_t file_count; // 0x4
-    int32_t sub_count; // 0x8
-    EclFile* files[32]; // 0xC
-    EclSubHeader(*subs)[]; // 0x8C
+struct EclController : SptResource {
+    // SptResource base; // 0x0
     EclStack __wtf_stack_maybe; // 0x90
     // 0x1098
 
@@ -7522,10 +7746,30 @@ struct EnemyController {
         zero_this();
     }
 
-    inline EnemyController() {
+    inline EclController() {
         this->zero_contents();
     }
+
+    // 0x42D3E0
+    // Method 0
+    dllexport virtual gnu_noinline int32_t thiscall add_ecl_file(const char* file_name) asm_symbol_rel(0x42D3E0) {
+        const char* ecl_file = (const char*)read_file_from_dat(file_name);
+        int32_t index = __super::add_ecl_file(ecl_file);
+        return index >= 0 ? ZUN_SUCCESS : ZUN_ERROR;
+    }
+
+    // 0x42DA90
+    // Method 4
+    dllexport virtual gnu_noinline ZUNResult thiscall load_imports(EclIncludes* includes) asm_symbol_rel(0x42DA90);
 };
+#pragma region // EclController Validation
+ValidateVirtualFieldOffset32(0x4, EclController, file_count);
+ValidateVirtualFieldOffset32(0x8, EclController, sub_count);
+ValidateVirtualFieldOffset32(0xC, EclController, files);
+ValidateVirtualFieldOffset32(0x8C, EclController, subs);
+//ValidateVirtualFieldOffset32(0x90, EclController, __wtf_stack_maybe);
+ValidateStructSize32(0x1098, EclController);
+#pragma endregion
 
 // size: 0x122C
 struct EclVM {
@@ -7534,7 +7778,7 @@ struct EclVM {
     EclContext* prev_context; // 0x8
     EclContext* current_context; // 0xC
     EclContext context; // 0x10
-    EnemyController* controller; // 0x1218
+    EclController* controller; // 0x1218
     ZUNList<EclContext> context_list; // 0x121C
     // 0x122C
 
@@ -7651,12 +7895,12 @@ public:
 
     // 0x48D920
     dllexport gnu_noinline void thiscall locate_sub(const char* sub_name) asm_symbol_rel(0x48D920) {
-        EnemyController* enemy_controller = this->controller;
+        EclController* ecl_controller = this->controller;
         int32_t left_index = 0;
         assume(sub_name[0] != '\0');
-        int32_t right_index = enemy_controller->sub_count - 1;
+        int32_t right_index = ecl_controller->sub_count - 1;
         if (expect(right_index >= 0, true)) {
-            EclSubHeader* subs = *enemy_controller->subs;
+            EclSubHeader* subs = ecl_controller->subs;
             do {
                 int32_t index = right_index - left_index;
                 const char* name = sub_name;
@@ -7711,7 +7955,7 @@ inline void EnemyData::reinitialize_vm_with_sub(const char* sub_name) {
 }
 
 inline EclInstruction* EclContext::get_instruction(int32_t sub_index, int32_t instr_offset) {
-    return based_pointer((*this->vm->controller->subs)[sub_index].data->instructions, instr_offset);
+    return based_pointer(this->vm->controller->subs[sub_index].data->instructions, instr_offset);
 }
 
 forceinline int32_t thiscall EclContext::get_int_arg(int32_t index, EclInstruction* current_instruction) {
@@ -8297,23 +8541,24 @@ struct Enemy : EclVM {
     }
 
     // 0x42D220
-    dllexport gnu_noinline ~Enemy() asm_symbol_rel(0x42D220);
+    dllexport gnu_noinline virtual ~Enemy() asm_symbol_rel(0x42D220);
 
     // 0x42FE80
-    dllexport gnu_noinline void thiscall on_tick() asm_symbol_rel(0x42FE80) {
+    dllexport gnu_noinline ZUNResult thiscall on_tick() asm_symbol_rel(0x42FE80) {
         float enemy_slowdown = this->data.slowdown;
         if (enemy_slowdown <= 0.0f) {
             if (this->data.__anm_slowdown_immune) {
                 this->data.set_anm_vm_slowdowns(0.0f);
             }
-            this->data.on_tick();
+            return this->data.on_tick();
         } else {
             float previous_gamespeed = GAME_SPEED.value;
             GAME_SPEED.value = confine_to_range(0.0f, previous_gamespeed - enemy_slowdown * previous_gamespeed, 1.0f);
             this->data.set_anm_vm_slowdowns(this->data.slowdown);
-            this->data.on_tick();
+            ZUNResult ret = this->data.on_tick();
             GAME_SPEED.value = previous_gamespeed;
             this->data.__anm_slowdown_immune = true; // Why?
+            return ret;
         }
     }
 
@@ -14120,15 +14365,15 @@ struct PlayerData {
     union {
         uint32_t flags; // 0x4717C, 0x4779C
         struct {
-            uint32_t __unknown_flag_A : 1;
-            uint32_t __unknown_flag_C : 1;
-            uint32_t : 1;
-            uint32_t __unknown_flag_B : 1;
-            uint32_t __unknown_flag_F : 1;
-            uint32_t __unknown_flag_E : 1;
-            uint32_t __unknown_flag_G : 1;
-            uint32_t __unknown_field_A : 2;
-            uint32_t __unknown_flag_D : 1;
+            uint32_t __unknown_flag_A : 1; // 1
+            uint32_t __unknown_flag_C : 1; // 2
+            uint32_t : 1; // 3
+            uint32_t __unknown_flag_B : 1; // 4
+            uint32_t __unknown_flag_F : 1; // 5
+            uint32_t __unknown_flag_E : 1; // 6
+            uint32_t __unknown_flag_G : 1; // 7
+            uint32_t __unknown_field_A : 2; // 8-9
+            uint32_t __unknown_flag_D : 1; // 10
         };
     };
     Timer __timer_477A0; // 0x47180, 0x477A0
@@ -14231,6 +14476,15 @@ struct Player : ZUNTask {
             SoundManager::play_sound(2);
         }
         // TODO
+    }
+
+    inline void __reset_damage_multiplier() {
+        if (this->damage_multiplier < 1.01f) {
+            this->data.__unknown_flag_E = true;
+        } else {
+            this->data.__unknown_flag_E = false;
+        }
+        this->damage_multiplier = 1.0f;
     }
 
 private:
@@ -16956,21 +17210,39 @@ struct EnemyManager : ZUNTask {
     unknown_fields(0xB0); // 0xB4
     int __int_164; // 0x164
     AnmLoaded* enemy_anms[8]; // 0x168
-    EnemyController* enemy_controller; // 0x188
+    EclController* ecl_controller; // 0x188
     ZUNListEnds<Enemy> enemy_list; // 0x18C
     ZUNList<Enemy>* __unknown_enemy_list; // 0x194
     int32_t enemy_count; // 0x198
     ZUNAngle __angle_19C; // 0x19C
     // 0x1A0
 
-    inline EnemyManager() {
-        EnemyController* enemy_controller = new EnemyController();
-        this->enemy_controller = enemy_controller;
+    inline void zero_contents() {
+        zero_this();
+    }
 
+    inline EnemyManager() {
+        this->zero_contents();
+        this->__unknown_task_flag_A = true;
     }
 
     forceinline bool is_below_enemy_limit() {
         return this->enemy_count < this->enemy_limit;
+    }
+
+    inline void index_next_enemy_id() {
+        int32_t id = this->next_enemy_id;
+        this->prev_enemy_id = id;
+        this->next_enemy_id = ++id;
+        if (!id) {
+            this->next_enemy_id = ++id;
+        }
+    }
+
+    inline int32_t get_next_enemy_id() {
+        int32_t id = this->next_enemy_id;
+        this->index_next_enemy_id();
+        return id;
     }
 
     // 0x42D7D0
@@ -17117,6 +17389,76 @@ public:
         });
         enemy_manager->__timer_98++;
     }
+
+    inline UpdateFuncRet thiscall on_tick_impl() {
+        this->__int_AC = 0;
+        this->__int_B0 = 0;
+
+        this->enemy_list.for_each_safeB([](Enemy* enemy, ZUNList<Enemy>* node) {
+            if (
+                !enemy->data.__unknown_flag_B &&
+                ZUN_SUCCEEDED(enemy->on_tick())
+            ) {
+                enemy = node->data;
+                enemy->data.__unknown_flag_A = false;
+            }
+            else {
+                enemy = node->data;
+                if (enemy) {
+                    delete enemy;
+                }
+            }
+        });
+
+        PLAYER_PTR->__reset_damage_multiplier();
+
+        this->__timer_98++;
+
+        return UpdateFuncNext;
+    }
+
+    // 0x42DF50
+    dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) {
+        GameThread* game_thread_ptr = GAME_THREAD_PTR;
+        if (
+            game_thread_ptr &&
+            !(game_thread_ptr->__unknown_flag_A | game_thread_ptr->skip_flag) &&
+            !game_thread_ptr->__unknown_flag_C &&
+            !game_thread_ptr->__unknown_flag_B &&
+            !ABILITY_SHOP_PTR
+        ) {
+            return ((EnemyManager*)ptr)->on_tick_impl();
+        }
+        return UpdateFuncNext;
+    }
+
+    // 0x42E0B0
+    dllexport gnu_noinline static UpdateFuncRet fastcall on_draw(void* ptr) {
+        return UpdateFuncNext;
+    }
+
+    // 0x42DC20
+    dllexport gnu_noinline static EnemyManager* fastcall allocate(const char* ecl_filename) asm_symbol_rel(0x42DC20) {
+        EnemyManager* enemy_manager = new EnemyManager();
+        enemy_manager->index_next_enemy_id();
+        ENEMY_MANAGER_PTR = enemy_manager;
+
+        EclController* ecl_controller = new EclController();
+        enemy_manager->ecl_controller = ecl_controller;
+
+        ecl_controller->add_ecl_file(ecl_filename);
+
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, enemy_manager);
+        UpdateFuncRegistry::register_on_tick(update_func, 27);
+        update_func = new UpdateFunc(&on_draw, false, enemy_manager);
+        UpdateFuncRegistry::register_on_draw(update_func, 23);
+
+        enemy_manager->__timer_98.initialize_and_reset();
+        enemy_manager->enemy_limit = 99999;
+        enemy_manager->__int_164 = 0;
+
+        return enemy_manager;
+    }
 };
 #pragma region // EnemyManager Validation
 ValidateFieldOffset32(0x0, EnemyManager, task_flags);
@@ -17137,13 +17479,55 @@ ValidateFieldOffset32(0xAC, EnemyManager, __int_AC);
 ValidateFieldOffset32(0xB0, EnemyManager, __int_B0);
 ValidateFieldOffset32(0x164, EnemyManager, __int_164);
 ValidateFieldOffset32(0x168, EnemyManager, enemy_anms);
-ValidateFieldOffset32(0x188, EnemyManager, enemy_controller);
+ValidateFieldOffset32(0x188, EnemyManager, ecl_controller);
 ValidateFieldOffset32(0x18C, EnemyManager, enemy_list);
 ValidateFieldOffset32(0x194, EnemyManager, __unknown_enemy_list);
 ValidateFieldOffset32(0x198, EnemyManager, enemy_count);
 ValidateFieldOffset32(0x19C, EnemyManager, __angle_19C);
 ValidateStructSize32(0x1A0, EnemyManager);
 #pragma endregion
+
+// 0x42DA90
+// Method 4
+dllexport gnu_noinline ZUNResult thiscall EclController::load_imports(EclIncludes* includes) {
+    if (
+        includes->magic.as_uint == ANM_INCLUDE_MAGIC
+    ) {
+        const char* anm_names = (const char*)includes->data;
+        uint32_t i = 0;
+        if (includes->count > i) {
+            EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
+            do {
+                AnmLoaded* anm_loaded;
+                clang_forceinline anm_loaded = ANM_MANAGER_PTR->preload_anm(i + 10, anm_names);
+                enemy_manager->enemy_anms[i] = anm_loaded;
+                if (!anm_loaded) {
+                    LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
+                    return ZUN_ERROR;
+                }
+                anm_names += byteloop_strlen(anm_names) + 1;
+            } while (++i < includes->count);
+        }
+
+        int32_t includes_align = (anm_names - (char*)includes) % 4;
+        if (!includes_align) {
+            anm_names += 4 - includes_align;
+        }
+
+        includes = (EclIncludes*)anm_names;
+
+        if (
+            includes->magic.as_uint == ECL_INCLUDE_MAGIC
+        ) {
+            const char* ecl_names = (const char*)includes->data;
+            for (uint32_t i = 0; i < includes->count; ++i) {
+                this->add_ecl_file(ecl_names);
+                ecl_names += byteloop_strlen(ecl_names) + 1;
+            }
+        }
+    }
+    return ZUN_SUCCESS;
+}
 
 // 0x42E0C0
 dllexport gnu_noinline Enemy* thiscall EnemyID::get_enemy_ptr() {
@@ -17204,15 +17588,9 @@ dllexport gnu_noinline Enemy::Enemy(const char* sub_name) {
     EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
     this->__on_kill_func = NULL;
     this->data.death_callback_sub[0] = '\0';
-    this->id = enemy_manager->next_enemy_id;
-    int32_t id = enemy_manager->next_enemy_id;
-    enemy_manager->prev_enemy_id = id;
-    enemy_manager->next_enemy_id = ++id;
-    if (!id) {
-        enemy_manager->next_enemy_id = ++id;
-    }
+    this->id = enemy_manager->get_next_enemy_id();
     this->data.slowdown = 0.0f;
-    this->controller = enemy_manager->enemy_controller;
+    this->controller = enemy_manager->ecl_controller;
     this->locate_sub((char*)sub_name);
     this->current_context->location.instruction_offset = 0;
     this->current_context->time = 0.0f;
@@ -17243,10 +17621,10 @@ dllexport gnu_noinline Enemy::~Enemy() {
     this->data.global_list_node.unlink_from_tail(enemy_manager->enemy_list.tail);
     this->data.global_list_node.unlink_from_head(enemy_manager->__unknown_enemy_list);
     this->data.global_list_node.unlink();
-    if (this->data.__unknown_flag_P) {
+    if (!this->data.__unknown_flag_P) {
         --enemy_manager->enemy_count;
         // Probably a nested function here...
-        if (this->data.__unknown_flag_P) {
+        if (!this->data.__unknown_flag_P) {
             if (this->data.is_boss) {
                 enemy_manager->boss_ids[this->data.boss_id] = 0;
             }
@@ -18849,7 +19227,7 @@ public:
     }
     
     // 0x424C50
-    dllexport gnu_noinline int32_t thiscall on_tick__impl() asm_symbol_rel(0x424C50) {
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick__impl() asm_symbol_rel(0x424C50) {
         for (size_t i = countof(this->__graze_array) - 1; i; --i) {
             this->__graze_array[i] = this->__graze_array[i - 1];
         }
@@ -18875,19 +19253,19 @@ public:
 
         }
 
-        return 1;
+        return UpdateFuncNext;
     }
     
     // 0x424E70
-    dllexport gnu_noinline int32_t thiscall on_tick() asm_symbol_rel(0x424E70) {
+    dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) asm_symbol_rel(0x424E70) {
         GameThread* game_thread_ptr = GAME_THREAD_PTR;
         if (
             (game_thread_ptr && (game_thread_ptr->__unknown_flag_A | game_thread_ptr->skip_flag)) ||
             ABILITY_SHOP_PTR
         ) {
-            return 1;
+            return UpdateFuncNext;
         }
-        return this->on_tick__impl();
+        return ((BulletManager*)ptr)->on_tick__impl();
     }
 };
 
@@ -20692,6 +21070,36 @@ dllexport gnu_noinline ZUNResult thiscall EclContext::call(EclContext* new_conte
     }
 }
 
+#if INCLUDE_PATCH_CODE
+inline void EclContext::basic_call(EclContext* new_context, EclInstruction* current_instruction) {
+    int32_t stack_pointer = new_context->stack.pointer; // EBP-14 (LOCAL.5)
+    int32_t new_stack_pointer; // EBP-C (LOCAL.3)
+    if (!stack_pointer) {
+        new_stack_pointer = sizeof(int32_t[5]);
+        new_context->stack.push(0);
+    } else {
+        new_stack_pointer = stack_pointer + sizeof(int32_t[4]);
+    }
+    int32_t current_stack_pointer = new_context->stack.pointer; // EBP-14 (LOCAL.5)
+    if (stack_pointer) {
+        int32_t idk_what = new_context->stack.pop<int32_t>();
+        new_context->stack.pointer = stack_pointer;
+        new_context->stack.write_temp(-1, idk_what);
+        new_context->stack.write_temp(-2, current_stack_pointer);
+        new_context->stack.push(this->time);
+        new_context->stack.push(this->location.instruction_offset);
+        new_context->stack.push(this->location.sub_index);
+    } else {
+        new_context->stack.pointer = sizeof(int32_t);
+        new_context->stack.write_temp(0, current_stack_pointer);
+        new_context->stack.push(-1);
+        new_context->stack.push(-1);
+        new_context->stack.push(-1);
+    }
+    new_context->stack.pointer += sizeof(int32_t);
+}
+#endif
+
 // 0x48B3A0
 dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float current_gamespeed) {
     using namespace Ecl;
@@ -21125,6 +21533,51 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
                     *y_write = position.y;
                     break;
                 }
+#if INCLUDE_PATCH_CODE
+                case 95: // debug_breakpoint
+                    __asm INT3
+                    break;
+                case 96: { // thcrap_expr
+                    int32_t* write = this->get_int_ptr_arg(0);
+                    eval_expr(StringArg(1), '\0', write, NULL, 0, NULL);
+                    break;
+                }
+                case 97: // math_shl
+                    this->stack.binary_op_fast([](uint32_t lhs, uint32_t rhs) {
+                        return lhs << rhs;
+                    });
+                    break;
+                case 98: // math_shr
+                    this->stack.binary_op_fast([](uint32_t lhs, uint32_t rhs) {
+                        return lhs >> rhs;
+                    });
+                    break;
+                case 99: // math_sar
+                    this->stack.binary_op_fast([](int32_t lhs, int32_t rhs) {
+                        return lhs >> rhs;
+                    });
+                    break;
+                case 100: // math_rol
+                    this->stack.binary_op_fast([](uint32_t lhs, uint32_t rhs) {
+                        return _rotl(lhs, rhs);
+                    });
+                    break;
+                case 101: // math_ror
+                    this->stack.binary_op_fast([](uint32_t lhs, uint32_t rhs) {
+                        return _rotr(lhs, rhs);
+                    });
+                    break;
+                case 102: // math_udiv
+                    this->stack.binary_op_fast([](uint32_t lhs, uint32_t rhs) {
+                        return lhs / rhs;
+                    });
+                    break;
+                case 103: // math_umod
+                    this->stack.binary_op_fast([](uint32_t lhs, uint32_t rhs) {
+                        return lhs % rhs;
+                    });
+                    break;
+#endif
                 default:
                     switch (this->vm->high_ecl_run()) {
                         case -1:
@@ -22965,6 +23418,16 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             GAME_MANAGER.globals.__set_unknown_flag_A(state);
             break;
         }
+#if INCLUDE_PATCH_CODE
+        //case 1002: { // set_int_card_count
+            // The code wouldn't really include well if I wrote it here...
+        //}
+        case 1003: { // enemy_interrupt_set
+            uint32_t slot = this->get_int_arg(0);
+            this->set_interrupt(slot, StringArg(1));
+            break;
+        }
+#endif
     }
     return 0;
 }
