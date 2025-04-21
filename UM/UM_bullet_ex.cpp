@@ -224,6 +224,7 @@ inline float vectorcall __angle_diffB(float angle, float value, float temp) {
     }
 }
 
+/*
 // 0x439FE0
 dllexport float vectorcall reduced_angle_diff(float angle, float value) asm_symbol_rel(0x439FE0);
 dllexport float vectorcall reduced_angle_diff(float angle, float value) {
@@ -238,7 +239,35 @@ dllexport float vectorcall reduced_angle_diff(float angle, float value) {
         return temp;
     }
 }
+*/
 
+// 0x47D470
+dllexport gnu_noinline void fastcall circle_pos(float* x, float* y, float angle, float magnitude) asm_symbol_rel(0x47D470);
+dllexport gnu_noinline void fastcall circle_pos(float* x, float* y, float angle, float magnitude) {
+#ifndef __x86_64__
+    __asm {
+        MOV EAX, x;
+        FLD angle;
+        FSINCOS;
+        FMUL magnitude;
+        FSTP DWORD PTR [EAX]
+        FMUL magnitude;
+        MOV EAX, y
+        FSTP DWORD PTR [EAX]
+    };
+#else
+    __asm {
+        MOV RAX, x;
+        FLD angle;
+        FSINCOS;
+        FMUL magnitude;
+        FSTP DWORD PTR [RAX]
+        FMUL magnitude;
+        MOV RAX, y
+        FSTP DWORD PTR [RAX]
+    };
+#endif
+}
 
 // 0x46F150
 dllexport char* stdcall pbg_strdup(const char* str) asm_symbol_rel(0x46F150);
@@ -1646,9 +1675,11 @@ enum UpdateFuncRet : int32_t {
     UpdateFuncEnd0Dupe = 8,
 };
 
-typedef UpdateFuncRet(fastcall UpdateFunction)(void*);
-typedef ZUNResult(fastcall UpdateFuncInit)(void*);
-typedef ZUNResult(fastcall UpdateFuncCleanup)(void*);
+#define UpdateFuncCC fastcall
+
+typedef UpdateFuncRet(UpdateFuncCC UpdateFunction)(void*);
+typedef ZUNResult(UpdateFuncCC UpdateFuncInit)(void*);
+typedef ZUNResult(UpdateFuncCC UpdateFuncCleanup)(void*);
 
 // size: 0x28
 struct UpdateFunc {
@@ -2007,9 +2038,14 @@ struct Rng {
         return temp / TWO_PI_f - PI_f;
     }
     
+private:
     // 0x406AB0
-    dllexport gnu_noinline float vectorcall rand_float_range(float range) asm_symbol_rel(0x406AB0) {
+    dllexport gnu_noinline float vectorcall rand_float_range(float, float range) asm_symbol_rel(0x406AB0) {
         return this->rand_float() * range;
+    }
+public:
+    inline float rand_float_range(float range) {
+        return this->rand_float_range(UNUSED_FLOAT, range);
     }
     
     inline float rand_float_signed_range(float range) {
@@ -2060,6 +2096,10 @@ struct GameSpeed {
 
     // 0x43A200
     dllexport gnu_noinline void vectorcall set(float new_speed) asm_symbol_rel(0x43A200);
+
+    inline operator float() const {
+        return this->value;
+    }
 };
 #pragma region // GameSpeed Validation
 ValidateFieldOffset32(0x0, GameSpeed, value);
@@ -2184,10 +2224,15 @@ public:
         return *TIME_SCALING_TABLE[this->scale_table_index];
     }
 
+private:
     // 0x402A60
-    dllexport int32_t vectorcall add_raw(float value) asm_symbol_rel(0x402A60) {
+    dllexport gnu_noinline int32_t vectorcall add_raw(float, float value) asm_symbol_rel(0x402A60) {
         this->previous = this->current;
         return this->current = this->current_f += value;
+    }
+public:
+    inline int32_t add_raw(float value) {
+        return this->add_raw(UNUSED_FLOAT, value);
     }
 
     inline int32_t vectorcall add_float(float amount) {
@@ -2392,11 +2437,23 @@ public:
     inline bool operator<(float time) {
         return this->les(time);
     }
+    inline friend bool operator<(int32_t time, Timer& self) {
+        return time < self.current;
+    }
+    inline friend bool operator<(float time, Timer& self) {
+        return time < self.current_f;
+    }
     inline bool operator<=(int32_t time) {
         return this->leq(time);
     }
     inline bool operator<=(float time) {
         return this->leq(time);
+    }
+    inline friend bool operator<=(int32_t time, Timer& self) {
+        return time <= self.current;
+    }
+    inline friend bool operator<=(float time, Timer& self) {
+        return time <= self.current_f;
     }
     inline bool operator>(int32_t time) {
         return this->gre(time);
@@ -2404,11 +2461,23 @@ public:
     inline bool operator>(float time) {
         return this->gre(time);
     }
+    inline friend bool operator>(int32_t time, Timer& self) {
+        return time > self.current;
+    }
+    inline friend bool operator>(float time, Timer& self) {
+        return time > self.current_f;
+    }
     inline bool operator>=(int32_t time) {
         return this->geq(time);
     }
     inline bool operator>=(float time) {
         return this->geq(time);
+    }
+    inline friend bool operator>=(int32_t time, Timer& self) {
+        return time >= self.current;
+    }
+    inline friend bool operator>=(float time, Timer& self) {
+        return time >= self.current_f;
     }
     inline bool operator==(int32_t time) {
         return this->equ(time);
@@ -3346,7 +3415,7 @@ struct StageDataInner {
     int32_t __intro_anm_script; // 0x18 (0x4C)
     int32_t __portrait_anm_file_index; // 0x1C (0x50)
     int32_t __portrait_anm_script; // 0x20 (0x54)
-    unknown_fields(0x4); // 0x24
+    int32_t __anm_script_24; // 0x24 (0x58)
     // 0x28
 };
 
@@ -3405,12 +3474,12 @@ union AnmID {
     dllexport void interrupt_tree(int32_t interrupt_index) asm_symbol_rel(0x488E50);
 
     // 0x488E70
-    dllexport void __unknown_tree_set_J() asm_symbol_rel(0x488E70);
+    dllexport void __tree_set_visible2() asm_symbol_rel(0x488E70);
 
-    inline void __unknown_tree_set_J(AnmManager* anm_manager);
+    inline void __tree_set_visible2(AnmManager* anm_manager);
 
     // 0x488EB0
-    dllexport void __unknown_tree_clear_J() asm_symbol_rel(0x488EB0);
+    dllexport void __tree_clear_visible2() asm_symbol_rel(0x488EB0);
 
     // 0x488F50
     dllexport void mark_tree_for_delete() asm_symbol_rel(0x488F50);
@@ -3537,62 +3606,62 @@ struct Supervisor {
     dllexport static gnu_noinline void __release_rendering_surfaces() asm_symbol_rel(0x456180);
     
     // 0x453460
-    dllexport static gnu_noinline UpdateFuncRet fastcall __unknown_on_tick_A(void* self) asm_symbol_rel(0x453460) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_tick_A(void* self) asm_symbol_rel(0x453460) {
 
     }
 
     // 0x4553B0
-    dllexport static gnu_noinline UpdateFuncRet fastcall __unknown_on_draw_A(void* self) asm_symbol_rel(0x4553B0) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_A(void* self) asm_symbol_rel(0x4553B0) {
 
     }
 
     // 0x455610
-    dllexport static gnu_noinline UpdateFuncRet fastcall __unknown_on_draw_B(void* self) asm_symbol_rel(0x455610) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_B(void* self) asm_symbol_rel(0x455610) {
 
     }
 
     // 0x455530
-    dllexport static gnu_noinline UpdateFuncRet fastcall __unknown_on_draw_C(void* self) asm_symbol_rel(0x455530) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_C(void* self) asm_symbol_rel(0x455530) {
 
     }
 
     // 0x455A70
-    dllexport static gnu_noinline UpdateFuncRet fastcall __unknown_on_draw_D(void* self) asm_symbol_rel(0x455A70) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_D(void* self) asm_symbol_rel(0x455A70) {
 
     }
 
     // 0x4559A0
-    dllexport static gnu_noinline UpdateFuncRet fastcall __unknown_on_draw_E(void* self) asm_symbol_rel(0x4559A0) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_E(void* self) asm_symbol_rel(0x4559A0) {
 
     }
     
     // 0x455BC0
-    dllexport static gnu_noinline UpdateFuncRet fastcall __unknown_on_draw_F(void* self) asm_symbol_rel(0x455BC0) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_F(void* self) asm_symbol_rel(0x455BC0) {
 
     }
 
     // 0x455B10
-    dllexport static gnu_noinline UpdateFuncRet fastcall __unknown_on_draw_G(void* self) asm_symbol_rel(0x455B10) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_G(void* self) asm_symbol_rel(0x455B10) {
 
     }
 
     // 0x455CF0
-    dllexport static gnu_noinline UpdateFuncRet fastcall __unknown_on_draw_H(void* self) asm_symbol_rel(0x455CF0) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_H(void* self) asm_symbol_rel(0x455CF0) {
 
     }
 
     // 0x455C90
-    dllexport static gnu_noinline UpdateFuncRet fastcall __unknown_on_draw_I(void* self) asm_symbol_rel(0x455C90) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_I(void* self) asm_symbol_rel(0x455C90) {
 
     }
 
     // 0x455D40
-    dllexport static gnu_noinline UpdateFuncRet fastcall __unknown_on_draw_J(void* self) asm_symbol_rel(0x455D40) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_J(void* self) asm_symbol_rel(0x455D40) {
 
     }
 
     // 0x453640
-    dllexport static gnu_noinline ZUNResult fastcall on_registration(void* self) asm_symbol_rel(0x453640);
+    dllexport static gnu_noinline ZUNResult UpdateFuncCC on_registration(void* self) asm_symbol_rel(0x453640);
     
     // 0x453DB0
     dllexport static gnu_noinline ZUNResult initialize() asm_symbol_rel(0x453DB0);
@@ -3775,6 +3844,486 @@ dllexport gnu_noinline int32_t Supervisor::__start_thread_A94(_beginthreadex_pro
     return 0;
 }
 
+
+
+#define SOUND_EFFECT_COUNT 84
+
+// 0x4B47A0
+static inline constexpr const char *const SOUND_EFFECT_FILENAMES[] = {
+    "se_plst00.wav",
+    "se_enep00.wav",
+    "se_pldead00.wav",
+    "se_power0.wav",
+    "se_power1.wav",
+    "se_tan00.wav",
+    "se_tan01.wav",
+    "se_tan02.wav",
+    "se_ok00.wav",
+    "se_cancel00.wav",
+    "se_select00.wav",
+    "se_gun00.wav",
+    "se_cat00.wav",
+    "se_lazer00.wav",
+    "se_lazer01.wav",
+    "se_enep01.wav",
+    "se_damage00.wav",
+    "se_item00.wav",
+    "se_kira00.wav",
+    "se_kira01.wav",
+    "se_kira02.wav",
+    "se_timeout.wav",
+    "se_graze.wav",
+    "se_powerup.wav",
+    "se_pause.wav",
+    "se_cardget.wav",
+    "se_damage01.wav",
+    "se_timeout2.wav",
+    "se_invalid.wav",
+    "se_slash.wav",
+    "se_ch00.wav",
+    "se_ch01.wav",
+    "se_extend.wav",
+    "se_cardget.wav", // Yes, this is a duplicate
+    "se_nep00.wav",
+    "se_bonus.wav",
+    "se_bonus2.wav",
+    "se_enep02.wav",
+    "se_lazer02.wav",
+    "se_nodamage.wav",
+    "se_boon00.wav",
+    "se_don00.wav",
+    "se_boon01.wav",
+    "se_ch02.wav",
+    "se_ch03.wav",
+    "se_extend2.wav",
+    "se_pin00.wav",
+    "se_pin01.wav",
+    "se_lgods1.wav",
+    "se_lgods2.wav",
+    "se_lgods3.wav",
+    "se_lgods4.wav",
+    "se_lgodsget.wav",
+    "se_msl.wav",
+    "se_msl2.wav",
+    "se_pldead01.wav",
+    "se_heal.wav",
+    "se_msl3.wav",
+    "se_fault.wav",
+    "se_noise.wav",
+    "se_etbreak.wav",
+    "se_tan03.wav",
+    "se_wold.wav",
+    "se_bonus4.wav",
+    "se_big.wav",
+    "se_item01.wav",
+    "se_release.wav",
+    "se_changeitem.wav",
+    "se_trophy.wav",
+    "se_warpl.wav",
+    "se_warpr.wav",
+    "se_notice.wav"
+};
+
+// size: 0x14
+struct SoundData {
+    int32_t id; // 0x0
+    int32_t filename_index; // 0x4
+    unknown_fields(0x2); // 0x8
+    int16_t __short_A; // 0xA
+    unknown_fields(0x8); // 0xC
+};
+#pragma region // SoundData Validation
+ValidateFieldOffset32(0x0, SoundData, id);
+ValidateFieldOffset32(0x4, SoundData, filename_index);
+ValidateFieldOffset32(0xA, SoundData, __short_A);
+ValidateStructSize32(0x14, SoundData);
+#pragma endregion
+
+// size: 0x34
+struct ThBgmFormat {
+    char filename[0x10]; // 0x0
+    unknown_fields(0x4); // 0x10
+    int __dword_14; // 0x14
+    unknown_fields(0x1C); // 0x18
+};
+#pragma region // ThBgmFormat Validation
+ValidateFieldOffset32(0x0, ThBgmFormat, filename);
+ValidateFieldOffset32(0x14, ThBgmFormat, __dword_14);
+ValidateStructSize32(0x34, ThBgmFormat);
+#pragma endregion
+
+struct WavFileHeader {
+    char riff_text[4]; // 0x0
+    uint32_t remaining_file_size; // 0x4
+    char wave_text[4]; // 0x8
+};
+struct WavFileChunk {
+    char id[4]; // 0x0
+    uint32_t size; // 0x4
+    unsigned char data[]; // 0x8
+};
+
+// 0x476830
+dllexport gnu_noinline unsigned char* vectorcall get_wav_chunk_data(WavFileChunk* chunk, const char* chunk_id, int32_t* remaining_size_ptr, int32_t remaining_size) asm_symbol_rel(0x476830);
+dllexport gnu_noinline unsigned char* vectorcall get_wav_chunk_data(WavFileChunk* chunk, const char* chunk_id, int32_t* remaining_size_ptr, int32_t remaining_size) {
+    while (remaining_size) {
+        *remaining_size_ptr = chunk->size;
+        if (strncmp(chunk->id, chunk_id, sizeof(chunk->id)) == 0) {
+            return chunk->data;
+        }
+        int32_t chunk_size = *remaining_size_ptr;
+        chunk = pointer_raw_offset(chunk, sizeof(WavFileChunk) + chunk_size);
+        remaining_size -= sizeof(WavFileChunk) + chunk_size;
+    }
+    return NULL;
+}
+
+struct WavFile {
+    WavFileHeader header; // 0x0
+    WavFileChunk chunks[]; // 0xC
+};
+
+/*
+struct MMCKINFO {
+    FOURCC ckid; // 0x0
+    DWORD cksize; // 0x4
+    FOURCC fccType; // 0x8
+    DWORD dwDataOffset; // 0xC
+    DWORD dwFlags; // 0x10
+    // 0x14
+};
+
+class CWaveFile {
+    WAVEFORMATEX* m_pwfx; // 0x0
+    HMMIO m_hmmio; // 0x4
+    MMCKINFO m_ck; // 0x8
+    MMCKINFO m_ckRiff; // 0x1C
+    DWORD m_dwSize; // 0x30
+    MMIOINFO m_mmioinfoOut; // 0x34
+    DWORD m_dwFlags; // 0x48
+    BOOL m_bIsReadingFromMemory; // 0x4C
+    BYTE* m_pbData; // 0x50
+    BYTE* m_pbDataCur; // 0x54
+    ULONG m_ulDataSize; // 0x58
+    CHAR* m_pResourceBuffer; // 0x5C
+};
+*/
+
+struct SoundManagerUnknownA {
+
+};
+
+// size: 0x18
+struct SoundManagerUnknownB {
+    LPDIRECTSOUNDBUFFER sound_buffer; // 0x0
+    int32_t __int_4; // 0x4
+    SoundData* data; // 0x8
+    int32_t __int_C; // 0xC
+    int32_t __int_10; // 0x10
+    int __dword_14; // 0x14
+    // 0x18
+
+    // 0x4776F0
+    dllexport gnu_noinline ZUNResult thiscall __sub_4776F0(const char* filename) asm_symbol_rel(0x4776F0);
+};
+#pragma region // SoundManagerUnknownB Validation
+ValidateFieldOffset32(0x0, SoundManagerUnknownB, sound_buffer);
+ValidateFieldOffset32(0x4, SoundManagerUnknownB, __int_4);
+ValidateFieldOffset32(0x8, SoundManagerUnknownB, data);
+ValidateFieldOffset32(0xC, SoundManagerUnknownB, __int_C);
+ValidateFieldOffset32(0x10, SoundManagerUnknownB, __int_10);
+ValidateFieldOffset32(0x14, SoundManagerUnknownB, __dword_14);
+ValidateStructSize32(0x18, SoundManagerUnknownB);
+#pragma endregion
+
+// size: 0x10C
+struct SoundManagerUnknownD {
+    unknown_fields(0x10C); // 0x0
+};
+#pragma region // SoundManagerUnknownD Validation
+ValidateStructSize32(0x10C, SoundManagerUnknownD);
+#pragma endregion
+
+struct SoundManagerUnknownG {
+    unknown_fields(0x78); // 0x0
+    int __dword_78; // 0x78
+    unknown_fields(0x10); // 0x7C
+    HANDLE __handle_8C; // 0x8C
+    // 0x90
+};
+#pragma region // SoundManagerUnknownG Validation
+ValidateFieldOffset32(0x78, SoundManagerUnknownG, __dword_78);
+ValidateFieldOffset32(0x8C, SoundManagerUnknownG, __handle_8C);
+#pragma endregion
+
+// This seems to be another part of CSound that isn't in my version of it...
+struct SoundManagerUnknownE {
+
+    // vtable ptr
+    unknown_fields(0x4); // 0x4
+    LPDIRECTSOUNDBUFFER* sound_buffer_array; // 0x8
+    unknown_fields(0x4); // 0xC
+    SoundManagerUnknownG* __smg_ptr_10; // 0x10
+    uint32_t sound_buffer_count; // 0x14
+    unknown_fields(0x8); // 0x18
+    int __dword_20; // 0x20
+    unknown_fields(0x34); // 0x24
+    int __dword_58; // 0x58
+    int __dword_5C; // 0x5C
+    // 0x60
+
+    // 0x48A620
+    dllexport gnu_noinline HRESULT thiscall __sub_48A620(BOOL Arg1) asm_symbol_rel(0x48A620) {
+        if (!this->sound_buffer_array) {
+            return CO_E_NOTINITIALIZED;
+        }
+        this->__dword_58 = 0;
+        this->__dword_5C = 0;
+        HRESULT ret = 0;
+        for (size_t i = 0; i < this->sound_buffer_count; ++i) {
+            ret |= this->sound_buffer_array[i]->Stop();
+            ret |= this->sound_buffer_array[i]->SetCurrentPosition(0);
+        }
+        this->__dword_20 = 0;
+        if (Arg1) {
+            SoundManagerUnknownG* smg_ptr = this->__smg_ptr_10;
+            if (smg_ptr->__dword_78 == 1) {
+                CloseHandle(smg_ptr->__handle_8C);
+                smg_ptr->__handle_8C = INVALID_HANDLE_VALUE;
+            }
+        }
+        // TODO
+    }
+
+    // 0x48AF10
+    dllexport gnu_noinline void vectorcall __sub_48AF10(double arg1) asm_symbol_rel(0x48AF10) {
+        use_var(arg1);
+    }
+
+    // This is giga jank
+    virtual ~SoundManagerUnknownE() {}
+};
+#pragma region // SoundManagerUnknownE Validation
+ValidateVirtualFieldOffset32(0x8, SoundManagerUnknownE, sound_buffer_array);
+ValidateVirtualFieldOffset32(0x10, SoundManagerUnknownE, __smg_ptr_10);
+ValidateVirtualFieldOffset32(0x14, SoundManagerUnknownE, sound_buffer_count);
+ValidateVirtualFieldOffset32(0x20, SoundManagerUnknownE, __dword_20);
+ValidateVirtualFieldOffset32(0x58, SoundManagerUnknownE, __dword_58);
+ValidateVirtualFieldOffset32(0x5C, SoundManagerUnknownE, __dword_5C);
+#pragma endregion
+
+// size: 0x200
+struct SoundManagerUnknownF {
+    int32_t __int_array_0[60]; // 0x0
+    unknown_fields(0x110); // 0xF0
+};
+#pragma region // SoundManagerUnknownF Validation
+ValidateFieldOffset32(0x0, SoundManagerUnknownF, __int_array_0);
+ValidateStructSize32(0x200, SoundManagerUnknownF);
+#pragma endregion
+
+extern "C" {
+    // 0x4C9B80
+    extern SoundData SOUND_DATA[SOUND_EFFECT_COUNT] asm("_SOUND_DATA");
+}
+
+typedef struct SoundManager SoundManager;
+
+// size: 0x573C
+struct SoundManager {
+    LPDIRECTSOUND8 dsound; // 0x0
+    LPDIRECTSOUNDBUFFER sound_buffer_ptr; // 0x4
+    HWND timer_hwnd; // 0x8
+    CSoundManager* csound_manager_ptr; // 0xC
+    DWORD sound_thread_id; // 0x10
+    HANDLE __handle_14; // 0x14
+    unknown_fields(0x4); // 0x18
+    int32_t active_sound_ids[12]; // 0x1C
+    int32_t active_sound_id_counts[12]; // 0x4C
+    SoundManagerUnknownF __unknown_smf_array_7C[12]; // 0x7C
+    void* bgm_format_offsets[16]; // 0x187C
+    SoundManagerUnknownA* __unknown_sma_ptr_array_18BC[16]; // 0x18BC
+    SoundManagerUnknownA* __unknown_sma_ptr_array_18FC[16]; // 0x18FC
+    int __bgm_format_14_array_193C[16]; // 0x193C
+    int __dword_197C; // 0x197C
+    union {
+        void* bgm_format_file; // 0x1980
+        ThBgmFormat* bgm_formats;
+    };
+    char __text_buffer_1984[0x100]; // 0x1984
+    SoundManagerUnknownB __unknown_smb_array_1A84[SOUND_EFFECT_COUNT]; // 0x1A84
+    void* sound_effect_files[countof(SOUND_EFFECT_FILENAMES)]; // 0x2264
+    char __text_buffer_2384[0x100]; // 0x2384
+    SoundManagerUnknownD __unknown_smd_array_2484[32]; // 0x2484 (only 31 are used properly)
+    char __text_buffer_array_4604[16][0x100]; // 0x4604
+    char thbgm_filename[0x100]; // 0x5604
+    SoundManagerUnknownE* __unknown_sme_ptr_5704; // 0x5704
+    unknown_fields(0x4); // 0x5708
+    HANDLE __handle_570C; // 0x570C
+    unknown_fields(0x4); // 0x5710
+    int32_t file_pointer_offset; // 0x5714
+    HANDLE __thread_5718; // 0x5718
+    HANDLE __handle_571C; // 0x571C
+    DWORD __thread_id_5720; // 0x5720
+    int __dword_5724; // 0x5724
+    HWND main_window_hwnd; // 0x5728
+    int __dword_572C; // 0x572C
+    int __dword_5730; // 0x5730
+    int __dword_5734; // 0x5734
+    int __dword_5738; // 0x5738
+    // 0x573C
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline void copy_sound_data() {
+        SoundManagerUnknownB* unknown_b_ptr = this->__unknown_smb_array_1A84;
+        for (size_t i = 0; i < countof(this->__unknown_smb_array_1A84); ++unknown_b_ptr, ++i) {
+            unknown_b_ptr->__int_4 = -1;
+            SoundData* sound_data = SOUND_DATA;
+            while (sound_data->id != i) ++sound_data;
+            unknown_b_ptr->__int_C = i;
+            unknown_b_ptr->data = sound_data;
+        }
+    }
+
+    inline void free_bgm_format_file() {
+        SAFE_FREE_FAST(this->bgm_format_file);
+    }
+
+    inline void release_smb_array() {
+        SoundManagerUnknownB* smb_ptr = this->__unknown_smb_array_1A84;
+        for (size_t i = 0; i < countof(this->__unknown_smb_array_1A84); ++smb_ptr, ++i) {
+            SAFE_RELEASE(smb_ptr->sound_buffer);
+        }
+    }
+
+    inline void free_all_sound_effect_files() {
+        void** sound_file_pointer = this->sound_effect_files;
+        for (size_t i = 0; i < countof(this->sound_effect_files); ++sound_file_pointer, ++i) {
+            SAFE_FREE_FAST(*sound_file_pointer);
+        }
+    }
+
+    inline void free_first_sma_array() {
+        SoundManagerUnknownA** sma_ptr = this->__unknown_sma_ptr_array_18BC;
+        for (size_t i = 0; i < countof(this->__unknown_sma_ptr_array_18BC); ++sma_ptr, ++i) {
+            SAFE_FREE_FAST(*sma_ptr);
+        }
+    }
+
+    SoundManager() {
+        this->copy_sound_data();
+    }
+
+    // 0x476320
+    dllexport static gnu_noinline int32_t __wait_and_close_handles() asm_symbol_rel(0x476320);
+
+    // 0x4763D0
+    dllexport static gnu_noinline DWORD WINAPI sound_thread_func(void* self) asm_symbol_rel(0x4763D0);
+
+    // 0x476410
+    dllexport gnu_noinline ZUNResult thiscall __sub_476410(HWND window_hwnd_arg) asm_symbol_rel(0x476410);
+
+    // 0x4767B0
+    dllexport static gnu_noinline DWORD WINAPI load_sound_effects(void* self) asm_symbol_rel(0x4767B0);
+    
+    // 0x476890
+    dllexport gnu_noinline int32_t thiscall __sub_476890(const char* filename) asm_symbol_rel(0x476890) {
+        char buffer[128];
+        const char* path;
+        if (!(path = strrchr(filename, '/')) && !(path = strrchr(filename, '\\'))) {
+            byteloop_strcpy(buffer, filename);
+        } else {
+            byteloop_strcpy(buffer, path + 1);
+        }
+        ThBgmFormat* bgm_formats = this->bgm_formats;
+        size_t i = 0;
+        for (; bgm_formats[i].filename[0] != '\0';) {
+            // TODO
+        }
+    }
+    
+    // 0x476B40
+    dllexport gnu_noinline void thiscall __sub_476B40() asm_symbol_rel(0x476B40);
+
+    // 0x476BE0
+    dllexport static gnu_noinline void stdcall play_sound_centered(int32_t sound_id, float) asm_symbol_rel(0x476BE0);
+
+    // 0x476C70
+    dllexport static gnu_noinline void vectorcall play_sound_positioned(int32_t sound_id, float position) asm_symbol_rel(0x476C70);
+
+    static inline void play_sound(int32_t sound_id) {
+        SoundManager::play_sound_centered(sound_id, UNUSED_FLOAT);
+    }
+
+    static inline void play_sound_validate(int32_t sound_id) {
+        if (sound_id >= 0) SoundManager::play_sound(sound_id);
+    }
+
+    static inline void play_sound_positioned_validate(int32_t sound_id, const float& position) {
+        if (sound_id >= 0) SoundManager::play_sound_positioned(sound_id, position);
+    }
+
+    inline void cleanup() { // Might be destructor?
+        this->__wait_and_close_handles();
+        this->free_bgm_format_file();
+        this->release_smb_array();
+        this->free_all_sound_effect_files();
+        if (this->csound_manager_ptr) {
+            KillTimer(this->timer_hwnd, 1);
+            this->__sub_476B40();
+            this->dsound = NULL; // Isn't this supposed to be released though?
+            this->sound_buffer_ptr->Stop();
+            SAFE_RELEASE(this->sound_buffer_ptr);
+            SAFE_DELETE(this->__unknown_sme_ptr_5704);
+            SAFE_DELETE(this->csound_manager_ptr); // This destructor got inlined
+            this->free_first_sma_array();
+        }
+    }
+};
+#pragma region // SoundManager Validation
+ValidateFieldOffset32(0x0, SoundManager, dsound);
+ValidateFieldOffset32(0x4, SoundManager, sound_buffer_ptr);
+ValidateFieldOffset32(0x8, SoundManager, timer_hwnd);
+ValidateFieldOffset32(0xC, SoundManager, csound_manager_ptr);
+ValidateFieldOffset32(0x10, SoundManager, sound_thread_id);
+ValidateFieldOffset32(0x14, SoundManager, __handle_14);
+ValidateFieldOffset32(0x1C, SoundManager, active_sound_ids);
+ValidateFieldOffset32(0x4C, SoundManager, active_sound_id_counts);
+ValidateFieldOffset32(0x7C, SoundManager, __unknown_smf_array_7C);
+ValidateFieldOffset32(0x187C, SoundManager, bgm_format_offsets);
+ValidateFieldOffset32(0x18BC, SoundManager, __unknown_sma_ptr_array_18BC);
+ValidateFieldOffset32(0x18FC, SoundManager, __unknown_sma_ptr_array_18FC);
+ValidateFieldOffset32(0x193C, SoundManager, __bgm_format_14_array_193C);
+ValidateFieldOffset32(0x197C, SoundManager, __dword_197C);
+ValidateFieldOffset32(0x1980, SoundManager, bgm_format_file);
+ValidateFieldOffset32(0x1A84, SoundManager, __unknown_smb_array_1A84);
+ValidateFieldOffset32(0x2264, SoundManager, sound_effect_files);
+ValidateFieldOffset32(0x2384, SoundManager, __text_buffer_2384);
+ValidateFieldOffset32(0x2484, SoundManager, __unknown_smd_array_2484);
+ValidateFieldOffset32(0x5604, SoundManager, thbgm_filename);
+ValidateFieldOffset32(0x5704, SoundManager, __unknown_sme_ptr_5704);
+ValidateFieldOffset32(0x570C, SoundManager, __handle_570C);
+ValidateFieldOffset32(0x5714, SoundManager, file_pointer_offset);
+ValidateFieldOffset32(0x5718, SoundManager, __thread_5718);
+ValidateFieldOffset32(0x571C, SoundManager, __handle_571C);
+ValidateFieldOffset32(0x5720, SoundManager, __thread_id_5720);
+ValidateFieldOffset32(0x5724, SoundManager, __dword_5724);
+ValidateFieldOffset32(0x5728, SoundManager, main_window_hwnd);
+ValidateFieldOffset32(0x572C, SoundManager, __dword_572C);
+ValidateFieldOffset32(0x5730, SoundManager, __dword_5730);
+ValidateFieldOffset32(0x5734, SoundManager, __dword_5734);
+ValidateFieldOffset32(0x5738, SoundManager, __dword_5738);
+ValidateStructSize32(0x573C, SoundManager);
+#pragma endregion
+
+extern "C" {
+    // 0x56AD80
+    extern SoundManager SOUND_MANAGER asm("_SOUND_MANAGER");
+}
+
 inline uint32_t InputState::get_joypad(uint32_t buttons) {
     uint32_t prev_buttons = buttons;
     if (SUPERVISOR.joypad_devices[0]) {
@@ -3867,7 +4416,33 @@ static inline constexpr int32_t RANK_RANGE = RANK_BOUND * 2; // 2048
 // This is used as an index into the scorefile section B array
 static inline constexpr size_t SCOREFILE_TOTALS = SHOTTYPE_COUNT;
 
+static inline void __update_life_ui();
 static inline void __update_bomb_ui();
+
+// 0x4B3FF4
+static inline constexpr int32_t LIFE_FRAGMENT_COST_TABLE_EXTRA[10] = {
+    3, 3, 3,
+    3, 3, 3,
+    3, 3, 3,
+    99999999
+};
+
+// 0x4B40C8
+static inline constexpr int32_t LIFE_FRAGMENT_COST_TABLE[31] = {
+    3, 3, 3,
+    3, 3, 3,
+    3, 3, 3,
+    3, 3, 3,
+    3, 3, 3,
+    3, 3, 3,
+    3, 3, 3,
+    3, 3, 3,
+    3, 3, 3,
+    3, 3, 3,
+    99999999
+};
+
+static inline constexpr int32_t BOMB_FRAGMENT_COST = 3;
 
 // size: 0xFC
 struct Globals {
@@ -4031,13 +4606,65 @@ struct Globals {
         this->__int_90 += value;
     }
 
-    // 00439EC0
+    // 0x439EC0
     dllexport gnu_noinline void thiscall __add_to_int_8C(int32_t value) asm_symbol_rel(0x439EC0) {
         this->__int_8C += value;
     }
 
+    inline int32_t power_level() {
+        return this->current_power / this->power_per_level;
+    }
+
+    inline int32_t power_percent_to_next_level() {
+        return (this->current_power % this->power_per_level) * 100 / this->power_per_level;
+    }
+
+    inline int32_t power_level_max() {
+        return this->max_power / this->power_per_level;
+    }
+
     // 0x4573F0
-    dllexport gnu_noinline BOOL thiscall __add_power(int32_t value) asm_symbol_rel(0x4573F0);
+    dllexport gnu_noinline BOOL thiscall add_power(int32_t amount) asm_symbol_rel(0x4573F0);
+
+    // 0x457480
+    dllexport gnu_noinline BOOL thiscall subtract_power(int32_t amount) asm_symbol_rel(0x457480);
+
+    // 0x4574D0
+    dllexport gnu_noinline void thiscall subtract_bomb() asm_symbol_rel(0x4574D0) {
+        if (--this->bomb_stocks < 0) {
+            this->bomb_stocks = 0;
+        }
+        int32_t max_bombs = this->bomb_stock_max;
+        if (this->bomb_stocks > max_bombs) {
+            this->bomb_stocks = max_bombs;
+        }
+        __update_bomb_ui();
+    }
+
+    // 0x457520
+    dllexport gnu_noinline void thiscall set_bombs(int32_t bombs) asm_symbol_rel(0x457520) {
+        this->bomb_stocks = bombs;
+        if (bombs < 0) {
+            this->bomb_stocks = 0;
+            bombs = 0;
+        }
+
+        int32_t max_bombs = this->bomb_stock_max;
+        this->bomb_stocks = bombs <= max_bombs ? this->bomb_stocks : max_bombs;
+
+        __update_bomb_ui();
+    }
+
+private:
+    // 0x457570
+    dllexport gnu_noinline void thiscall add_life_fragments(int32_t) asm_symbol_rel(0x457570);
+public:
+    inline void add_life_fragment() {
+        return this->add_life_fragments(UNUSED_DWORD);
+    }
+
+    // 0x4575F0
+    dllexport gnu_noinline void thiscall add_life() asm_symbol_rel(0x4575F0);
 
 private:
     // 0x457690
@@ -4051,7 +4678,7 @@ private:
             }
         }
         else {
-            //SOUND_MANAGER.play_sound(46);
+            SOUND_MANAGER.play_sound(46);
         }
         __update_bomb_ui();
     }
@@ -4068,7 +4695,7 @@ private:
             return;
         }
         this->bomb_fragments += 1;
-        if (this->bomb_fragments >= 3) {
+        if (this->bomb_fragments >= BOMB_FRAGMENT_COST) {
             this->bomb_fragments = 0;
             this->add_bomb();
         }
@@ -4077,37 +4704,6 @@ private:
 public:
     inline void add_bomb_fragment() {
         return this->add_bomb_fragments(UNUSED_DWORD);
-    }
-
-    // 0x457480
-    dllexport gnu_noinline BOOL thiscall subtract_power(int32_t amount) asm_symbol_rel(0x457480) {
-        int32_t power = this->current_power;
-        int32_t min_power = this->power_per_level;
-        if (power <= min_power) {
-            return false;
-        }
-        power -= amount;
-        this->current_power = power;
-        if (power < min_power) {
-            this->current_power = min_power;
-            power = min_power;
-        }
-
-        int32_t prev_level = (power + amount) / min_power;
-        int32_t new_level = power / min_power;
-        return prev_level != new_level;
-    }
-
-    // 0x4574D0
-    dllexport gnu_noinline void thiscall __subtract_bomb() asm_symbol_rel(0x4574D0) {
-        if (--this->bomb_stocks < 0) {
-            this->bomb_stocks = 0;
-        }
-        int32_t max_bombs = this->bomb_stock_max;
-        if (this->bomb_stocks > max_bombs) {
-            this->bomb_stocks = max_bombs;
-        }
-        __update_bomb_ui();
     }
 
     inline void add_graze() {
@@ -5167,7 +5763,7 @@ struct MotionData {
                 float3A.as2() = this->position.as2();
                 this->position2 += this->axis_velocity;
                 floatB = this->ellipse_angle + HALF_PI_f;
-                float3B.make_from_vector(reduce_angle<NoInline>(floatB), this->orbit_radius * zsinf(this->__angle_30) * GAME_SPEED.value);
+                float3B.make_from_vector(reduce_angle<NoInline>(floatB), this->orbit_radius * zsinf(this->__angle_30) * GAME_SPEED);
                 this->position = this->position2 + float3B.as2();
                 float angle_temp = this->position.angle_to(float3A.as2());
                 clang_noinline this->angle = angle_temp;
@@ -5216,7 +5812,7 @@ struct MotionData {
                 this->position2.y += this->axis_velocity.y;
                 this->position2.z += this->axis_velocity.z;
                 Float2 offset;
-                offset.make_from_vector(reduce_angle(this->ellipse_angle + HALF_PI_f), this->orbit_radius * sinf(this->__angle_30) * GAME_SPEED.value);
+                offset.make_from_vector(reduce_angle(this->ellipse_angle + HALF_PI_f), this->orbit_radius * sinf(this->__angle_30) * GAME_SPEED);
                 this->position.x = this->position2.x + offset.x;
                 this->position.y = this->position2.y + offset.y;
                 this->position.z = this->position2.z;
@@ -6444,6 +7040,10 @@ struct EclContext {
 
     inline EclInstruction* get_instruction(int32_t sub_index, int32_t instruction_offset);
 
+    inline EclInstruction* get_instruction(const EclLocation& location) {
+        return this->get_instruction(location.sub_index, location.instruction_offset);
+    }
+
     // 0x48DBE0
     dllexport EclInstruction* thiscall EclContext::get_current_instruction() asm_symbol_rel(0x48DBE0) {
         int32_t instr_offset = this->location.instruction_offset;
@@ -6524,7 +7124,7 @@ public:
     }
 
 #if INCLUDE_PATCH_CODE
-    inline void basic_call(EclContext* new_context, EclInstruction* current_instruction);
+    inline void basic_call(EclContext* new_context, const char* sub_name);
 #endif
 };
 #pragma region // EclContext Validation
@@ -6660,6 +7260,7 @@ struct EnemyCallback {
     int32_t time; // 0x4
     EclSubName life_sub; // 0x8
     EclSubName time_sub; // 0x48
+    // 0x88
 
     inline void initialize() {
         this->life = -1;
@@ -6800,7 +7401,7 @@ struct BombBase : ZUNTask {
     dllexport gnu_noinline static void allocate();
 
     // 0x420040
-    dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) {
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) {
         BombBase* self = (BombBase*)ptr;
         if (!ABILITY_SHOP_PTR) {
             if (self->__timer_34 < 0) {
@@ -6818,7 +7419,7 @@ struct BombBase : ZUNTask {
     }
 
     // 0x420160
-    dllexport gnu_noinline static UpdateFuncRet fastcall on_draw(void* ptr) {
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) {
         BombBase* self = (BombBase*)ptr;
         self->on_draw_impl();
         if (self->__timer_7C <= 0) {
@@ -6875,7 +7476,7 @@ struct BombReimuA : BombBase {
     // 0x421420
     dllexport gnu_noinline virtual int thiscall activate() {
         // TODO
-        //SOUND_MANAGER.play_sound(49);
+        SOUND_MANAGER.play_sound(49);
         // TODO
         //++ENEMY_MANAGER_PTR->player_bomb_count;
         SAFE_FREE(this->__ptr_70);
@@ -7134,6 +7735,7 @@ typedef struct EnemyData EnemyData;
 
 typedef int32_t fastcall ExtraDamageFunc(EnemyData* enemy_data, int32_t prev_damage);
 typedef int32_t fastcall ExtraHitboxFunc(EnemyData* enemy_data);
+typedef ZUNResult fastcall FuncSetFunc(EnemyData* enemy_data);
 
 static inline constexpr size_t ENEMY_ANM_SLOTS = 16;
 static inline constexpr size_t ENEMY_SHOOTER_SLOTS = 16;
@@ -7235,7 +7837,8 @@ struct EnemyData {
             uint32_t : 1; // 2
             uint32_t __unknown_flag_P : 1; // 3
 #if INCLUDE_PATCH_CODE
-            uint32_t : 21; // padding
+            uint32_t : 13; // padding
+            uint32_t active_interrupt_slots : 8;
             uint32_t run_interrupt : 8;
 #endif
         };
@@ -7248,7 +7851,7 @@ struct EnemyData {
     EclVM* vm; // 0x5588, 0x67B4
     EnemyFog fog; // 0x558C, 0x67B8
     EclSubName death_callback_sub; // 0x55A8, 0x67D4
-    ZUNResult(thiscall *func_set_func)(EnemyData*); // 0x55E8, 0x6814
+    FuncSetFunc* func_set_func; // 0x55E8, 0x6814
     uint32_t __is_func_set_2; // 0x55EC, 0x6818
     ExtraDamageFunc* extra_damage_func; // 0x55F0, 0x681C
     ExtraHitboxFunc* extra_hitbox_func; // 0x55F4, 0x6820
@@ -7323,6 +7926,10 @@ struct EnemyData {
 
     inline bool has_active_hitbox() {
         return !(this->disable_hitbox | this->intangible);
+    }
+
+    inline bool hide_lifebar() {
+        return (this->disable_hitbox | this->invincible | this->intangible) || this->invulnerable_timer > 0;
     }
 
     inline bool has_active_collision() {
@@ -8196,76 +8803,76 @@ enum Var : int32_t {
 };
 enum Opcode : uint16_t {
     // Section A
-    nop = 0,
-    enemy_delete = 1,
-    ret = 10,
-    call = 11,
-    jump = 12,
-    jump_equ = 13,
-    jump_neq = 14,
-    async_call = 15,
-    async_call_id = 16,
-    async_stop_id = 17,
-    __async_unknown_flag_set = 18,
-    __async_unknown_flag_clear = 19,
-    __async_unknown_value = 20,
-    async_stop_all = 21,
-    __debug_unknown_A = 22,
-    ecl_time_sub = 23,
-    ecl_time_sub_float = 24,
-    debug_print = 30,
-    __debug_unknown_B = 31,
-    frame_enter = 40,
-    frame_leave = 41,
-    push_int = 42,
-    pop_int = 43,
-    push_float = 44,
-    pop_float = 45,
-    math_int_add = 50,
-    math_float_add = 51,
-    math_int_sub = 52,
-    math_float_sub = 53,
-    math_int_mul = 54,
-    math_float_mul = 55,
-    math_int_div = 56,
-    math_float_div = 57,
-    math_int_mod = 58,
-    cmp_int_equ = 59,
-    cmp_float_equ = 60,
-    cmp_int_neq = 61,
-    cmp_float_neq = 62,
-    cmp_int_les = 63,
-    cmp_float_les = 64,
-    cmp_int_leq = 65,
-    cmp_float_leq = 66,
-    cmp_int_gre = 67,
-    cmp_float_gre = 68,
-    cmp_int_geq = 69,
-    cmp_float_geq = 70,
-    cmp_int_not = 71,
-    cmp_float_not = 72,
-    cmp_or = 73,
-    cmp_and = 74,
-    math_bit_xor = 75,
-    math_bit_or = 76,
-    math_bit_and = 77,
-    math_post_dec = 78,
-    math_sin = 79,
-    math_cos = 80,
-    math_circle_pos = 81,
-    math_reduce_angle = 82,
-    math_int_neg = 83,
-    math_float_neg = 84,
-    math_hypot_squared = 85,
-    math_hypot = 86,
-    math_line_angle = 87,
-    math_sqrt = 88,
-    math_angle_diff = 89,
-    math_point_rotate = 90,
-    math_float_interp = 91,
-    math_float_interp_bezier = 92,
-    math_circle_pos_rand = 93,
-    math_ellipse_pos = 94,
+    nop = 0, // 0
+    enemy_delete, // 1
+    ret = 10, // 10
+    call, // 11
+    jump, // 12
+    jump_equ, // 13
+    jump_neq, // 14
+    async_call, // 15
+    async_call_id, // 16
+    async_stop_id, // 17
+    __async_unknown_flag_set, // 18
+    __async_unknown_flag_clear, // 19
+    __async_unknown_value, // 20
+    async_stop_all, // 21
+    __debug_unknown_A, // 22
+    ecl_time_sub, // 23
+    ecl_time_sub_float, // 24
+    debug_print = 30, // 30
+    __debug_unknown_B, // 31
+    frame_enter = 40, // 40
+    frame_leave, // 41
+    push_int, // 42
+    pop_int, // 43
+    push_float, // 44
+    pop_float, // 45
+    math_int_add = 50, // 50
+    math_float_add, // 51
+    math_int_sub, // 52
+    math_float_sub, // 53
+    math_int_mul, // 54
+    math_float_mul, // 55
+    math_int_div, // 56
+    math_float_div, // 57
+    math_int_mod, // 58
+    cmp_int_equ, // 59
+    cmp_float_equ, // 60
+    cmp_int_neq, // 61
+    cmp_float_neq, // 62
+    cmp_int_les, // 63
+    cmp_float_les, // 64
+    cmp_int_leq, // 65
+    cmp_float_leq, // 66
+    cmp_int_gre, // 67
+    cmp_float_gre, // 68
+    cmp_int_geq, // 69
+    cmp_float_geq, // 70
+    cmp_int_not, // 71
+    cmp_float_not, // 72
+    cmp_or, // 73
+    cmp_and, // 74
+    math_bit_xor, // 75
+    math_bit_or, // 76
+    math_bit_and, // 77
+    math_post_dec, // 78
+    math_sin, // 79
+    math_cos, // 80
+    math_circle_pos, // 81
+    math_reduce_angle, // 82
+    math_int_neg, // 83
+    math_float_neg, // 84
+    math_hypot_squared, // 85
+    math_hypot, // 86
+    math_line_angle, // 87
+    math_sqrt, // 88
+    math_angle_diff, // 89
+    math_point_rotate, // 90
+    math_float_interp, // 91
+    math_float_interp_bezier, // 92
+    math_circle_pos_rand, // 93
+    math_ellipse_pos, // 94
     __math_angle_95,
     __math_angle_96,
     __math_angle_97,
@@ -8552,7 +9159,7 @@ struct Enemy : EclVM {
             }
             return this->data.on_tick();
         } else {
-            float previous_gamespeed = GAME_SPEED.value;
+            float previous_gamespeed = GAME_SPEED;
             GAME_SPEED.value = confine_to_range(0.0f, previous_gamespeed - enemy_slowdown * previous_gamespeed, 1.0f);
             this->data.set_anm_vm_slowdowns(this->data.slowdown);
             ZUNResult ret = this->data.on_tick();
@@ -8739,13 +9346,133 @@ public:
     }
 };
 
+typedef struct EnemyManager EnemyManager;
 typedef struct Gui Gui;
+
 extern "C" {
     // 0x4CF2E0
     extern Gui* GUI_PTR asm("_GUI_PTR");
     // 0x570918
     extern void* CACHED_MSG_FILE_PTR asm("_CACHED_MSG_FILE_PTR");
+    // 0x57091C
+    extern BOOL FRONT_ANM_IS_LOADED asm("_FRONT_ANM_IS_LOADED");
+
+    // 0x4CF2D0
+    extern EnemyManager* ENEMY_MANAGER_PTR asm("_ENEMY_MANAGER_PTR");
 }
+
+
+
+enum ReplayMode {
+    __replay_recording = 0,
+    __replay_playback = 1,
+    __replay_mode_2 = 2
+};
+
+static inline bool is_replay();
+
+typedef struct GameThread GameThread;
+extern "C" {
+    // 0x4CF2E4
+    extern GameThread* GAME_THREAD_PTR asm("_GAME_THREAD_PTR");
+}
+
+// size: 0xD8
+struct GameThread : ZUNTask {
+    //ZUNTask base; // 0x0
+    Timer __timer_C; // 0xC
+    int32_t stage_number; // 0x20
+    int32_t chapter; // 0x24
+    Config config; // 0x28
+    union {
+        uint32_t flags; // 0xB0
+        struct {
+            uint32_t __unknown_flag_A : 1; // 1
+            uint32_t __unknown_flag_B : 1; // 2
+            uint32_t skip_flag : 1; // 3
+            uint32_t __unknown_flag_H : 1; // 4
+            uint32_t __unknown_flag_I : 1; // 5
+            uint32_t __unknown_flag_L : 1; // 6
+            uint32_t __unknown_flag_M : 1; // 7
+            uint32_t __unknown_flag_J : 1; // 8
+            uint32_t __unknown_flag_D : 1; // 9
+            uint32_t : 1; // 10
+            uint32_t __unknown_flag_C : 1; // 11
+            uint32_t __unknown_flag_K : 1; // 12
+            uint32_t : 2; // 13-14
+            uint32_t __unknown_flag_E : 1; // 15
+            uint32_t : 1; // 16
+            uint32_t __unknown_flag_F : 1; // 17
+            uint32_t __unknown_flag_G : 1; // 18
+        };
+    };
+    unknown_fields(0x4); // 0xB4
+    int __int_B8; // 0xB8
+    unknown_fields(0x14); // 0xBC
+    ReplayMode replay_mode; // 0xD0
+    int __int_D4; // 0xD4
+    // 0xD8
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline GameThread() {
+        this->zero_contents();
+    }
+
+    // 0x439E80
+    dllexport gnu_noinline void thiscall set_chapter(int32_t chapter) asm_symbol_rel(0x439E80) {
+        GAME_MANAGER.globals.chapter = chapter;
+        GAME_THREAD_PTR->chapter = chapter;
+    }
+
+    // 0x443860
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x443860);
+
+    // 0x443D70
+    dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) asm_symbol_rel(0x443D70) {
+        return ((GameThread*)ptr)->on_tick();
+    }
+
+    // 0x443D80
+    dllexport gnu_noinline static UpdateFuncRet fastcall on_draw(void* ptr) asm_symbol_rel(0x443D80);
+
+private:
+    inline unsigned thread_start_impl();
+public:
+    // 0x4424E0
+    dllexport gnu_noinline unsigned thiscall thread_start() {
+        return GAME_THREAD_PTR->thread_start_impl();
+    }
+
+    // 0x4432B0
+    dllexport static unsigned cdecl thread_start_stub(void*) {
+        return GAME_THREAD_PTR->thread_start();
+    }
+
+    // 0x443E60
+    dllexport gnu_noinline ZUNResult thiscall __sub_443E60() asm_symbol_rel(0x443E60) {
+
+    }
+
+    // 0x4443C0
+    dllexport gnu_noinline ZUNResult thiscall __sub_4443C0() asm_symbol_rel(0x4443C0) {
+
+    }
+
+    // 0x4437B0
+    dllexport gnu_noinline static GameThread* fastcall allocate(ReplayMode mode) asm_symbol_rel(0x4437B0) {
+        GameThread* game_thread = new GameThread();
+        WINDOW_DATA.__int_20D0 = 0;
+        SUPERVISOR.d3d_device->EvictManagedResources();
+        game_thread->skip_flag = true;
+        GAME_THREAD_PTR = game_thread;
+        game_thread->replay_mode = mode;
+        SUPERVISOR.__start_thread_A94((_beginthreadex_proc_type)&thread_start_stub);
+        return game_thread;
+    }
+};
 
 static inline constexpr int32_t MENU_STACK_DEPTH = 16;
 
@@ -8961,9 +9688,9 @@ struct MsgVM {
         uint32_t flags; // 0x19C
         struct {
             uint32_t __unknown_flag_B : 1; // 1
-            uint32_t __unknown_flag_C : 1; // 1
-            uint32_t : 4; // 3-6
-            uint32_t __unknown_flag_A : 1; // 7
+            uint32_t __unknown_flag_C : 1; // 2
+            uint32_t : 3; // 3-5
+            uint32_t __unknown_flag_A : 1; // 6
         };
     };
     int32_t next_text_line; // 0x1A0
@@ -8992,7 +9719,7 @@ public:
     }
 
     // 0x43E550
-    dllexport gnu_noinline int thiscall run_msg() {
+    dllexport gnu_noinline ZUNResult thiscall run_msg() {
         using namespace Msg;
 
         if (this->__enemy_appear_counter > 0) {
@@ -9066,7 +9793,21 @@ public:
         if (AnmVM* vm = this->__textbox_related.__wtf_child_list_jank_A(this->__int_1D4 + 170, 0)) {
             // TODO
         }
-        return 0;
+        return ZUN_SUCCESS;
+    }
+
+    inline ZUNResult on_tick() {
+        if (ABILITY_SHOP_PTR) {
+            this->__unknown_flag_A = false;
+            this->__int_1A8 = 2;
+        }
+        else {
+            if (ZUN_FAILED(this->run_msg())) {
+                return ZUN_ERROR;
+            }
+            this->__timer_4++;
+        }
+        return ZUN_SUCCESS;
     }
 };
 #pragma region // MsgVM Validation
@@ -9114,66 +9855,151 @@ struct LifebarMarker {
     D3DCOLOR section_color; // 0x4
     // 0x8
 };
+
+static inline constexpr int32_t MAX_LIFEBAR_MARKERS = 4;
+
 // size: 0x54
 struct Lifebar {
-    float bar_value; // 0x0
-    float life_percentage; // 0x4
-    int32_t current_life; // 0x8
-    unknown_fields(0x4); // 0xC
-    LifebarMarker markers[4]; // 0x10
-    AnmID main_vm; // 0x30
-    AnmID glowA_vm; // 0x34
-    AnmID glowB_vm; // 0x38
-    AnmID marker_vms[4]; // 0x3C
-    int32_t vms_initialized; // 0x4C
-    int __dword_50; // 0x50
+    float bar_value; // 0x0, 0x1C4
+    float life_percentage; // 0x4, 0x1C8
+    int32_t current_life; // 0x8, 0x1CC
+    unknown_fields(0x4); // 0xC, 0x1D0
+    LifebarMarker markers[MAX_LIFEBAR_MARKERS]; // 0x10, 0x1D4
+    AnmID main_vm; // 0x30, 0x1F4
+    AnmID glowA_vm; // 0x34, 0x1F8
+    AnmID glowB_vm; // 0x38, 0x1FC
+    AnmID marker_vms[MAX_LIFEBAR_MARKERS]; // 0x3C, 0x200
+    BOOL vms_initialized; // 0x4C, 0x210
+    int __dword_50; // 0x50, 0x214
     // 0x54
+
+    inline void zero_contents() {
+        zero_this_inline();
+    }
+
+    inline Lifebar() {
+        this->zero_contents();
+    }
+
+    inline void interrupt_vms(int32_t interrupt);
+
+    inline void delete_vms();
+
+    inline void clear() {
+        this->bar_value = 0.0f;
+        for (size_t i = 0; i < MAX_LIFEBAR_MARKERS; ++i) {
+            this->markers[i].bar_position = 0.0f;
+        }
+        this->delete_vms();
+    }
 };
 #pragma endregion
+
+static inline constexpr int32_t MAX_LIFEBARS_IN_GUI = 3;
+static inline constexpr uint32_t MAX_BOSS_LIFE_MARKERS = 10;
+
+static inline constexpr int32_t LIFE_ICONS_IN_GUI = 7;
+static inline constexpr int32_t BOMB_ICONS_IN_GUI = 7;
 
 // size: 0x2CC
 struct Gui : ZUNTask {
     // ZUNTask base; // 0x0
-    unknown_fields(0x5C); // 0xC
-    AnmVM* __anm_vm_ptr_array_68[7]; // 0x68
+    AnmID __anm_id_C; // 0xC
+    AnmID __anm_id_10; // 0x10
+    AnmID __anm_id_14; // 0x14
+    AnmID __anm_id_18; // 0x18
+    AnmID __anm_id_1C; // 0x1C
+    AnmID __anm_id_20; // 0x20
+    AnmID __anm_id_24; // 0x24
+    AnmID __anm_id_28; // 0x28
+    AnmID __anm_id_2C; // 0x2C
+    AnmID __anm_id_30; // 0x30
+    AnmID __anm_id_34; // 0x34
+    AnmID __anm_id_38; // 0x38
+    AnmID __anm_id_3C; // 0x3C
+    AnmID __anm_id_40; // 0x40
+    AnmID __anm_id_44; // 0x44
+    AnmID __anm_id_48; // 0x48
+    AnmVM* player_life_icons[LIFE_ICONS_IN_GUI]; // 0x4C
+    AnmVM* player_bomb_icons[BOMB_ICONS_IN_GUI]; // 0x68
     AnmVM* __anm_vm_84; // 0x84
     AnmVM* __anm_vm_88; // 0x88
     AnmID __anm_id_8C; // 0x8C
-    unknown_fields(0x28); // 0x90
+    AnmID __anm_id_90; // 0x90
+    AnmID __anm_id_94; // 0x94
+    AnmID __anm_id_98; // 0x98
+    AnmID __anm_id_9C; // 0x9C
+    AnmID __anm_id_A0; // 0xA0
+    AnmID __anm_id_A4; // 0xA4
+    AnmID __anm_id_A8; // 0xA8
+    AnmID __anm_id_AC; // 0xAC
+    AnmID __anm_id_B0; // 0xB0
+    AnmID __anm_id_B4; // 0xB4
     AnmID __anm_id_B8; // 0xB8
     AnmID __anm_id_BC; // 0xBC
-    unknown_fields(0x50); // 0xC0
+    AnmID __anm_id_C0; // 0xC0
+    AnmID __anm_id_C4; // 0xC4
+    AnmID __anm_id_C8; // 0xC8
+    AnmID __boss_life_markers[MAX_BOSS_LIFE_MARKERS]; // 0xCC
+    AnmID __anm_id_F4; // 0xF4
+    AnmID __anm_id_F8; // 0xF8
+    AnmID __anm_id_FC; // 0xFC
+    AnmID __anm_id_100; // 0x100
+    AnmID __anm_id_104; // 0x104
+    AnmID __anm_id_108; // 0x108
+    AnmID __anm_id_10C; // 0x10C
     AnmID __anm_id_110; // 0x110
-    unknown_fields(0x20); // 0x104
+    AnmID __anm_id_114; // 0x114
+    unknown_fields(0x4); // 0x118
+    float __float_11C; // 0x11C
+    float __float_120; // 0x120
+    int __int_124; // 0x124
+    int __int_128; // 0x128
+    int __int_12C; // 0x12C
+    unknown_fields(0x4); // 0x130
     int __int_134; // 0x134
-    unknown_fields(0x4); // 0x138
-    int32_t __int_13C; // 0x13C
-    Timer __timer_140; // 0x140
+    AnmID __anm_id_138; // 0x138
+    Timer __timer_13C; // 0x13C
+    UpdateFunc* on_draw_func_B; // 0x150
     unknown_fields(0x4); // 0x154
     int32_t __score; // 0x158
     int32_t __int_15C; // 0x15C
     AnmLoaded* stage_logo_anm; // 0x160
     unknown_fields(0xC); // 0x164
-    int __dword_170; // 0x170
+    int32_t __boss_life_count; // 0x170
     unknown_fields(0x20); // 0x174
     union {
         uint32_t flags; // 0x194
         struct {
-            uint32_t : 8; // 1-8
+            uint32_t : 1; // 1
+            uint32_t __unknown_field_C : 2; // 2-3
+            uint32_t : 5; // 4-8
             uint32_t __unknown_flag_A : 1; // 9
+            uint32_t __unknown_field_B : 2; // 10-11
+            uint32_t __unknown_field_A : 2; // 12-13
         };
     };
     Timer __timer_198; // 0x198
-    unknown_fields(0x4); // 0x1AC
+    int32_t __int_1AC; // 0x1AC
     MsgVM* msg_vm; // 0x1B0
     void* msg_file; // 0x1B4
     int32_t spell_timer_seconds; // 0x1B8
     int32_t spell_timer_hundredths; // 0x1BC
     int32_t __int_1C0; // 0x1C0
-    Lifebar lifebars[3]; // 0x1C4
+    Lifebar lifebars[MAX_LIFEBARS_IN_GUI]; // 0x1C4
     AnmLoaded* __anm_loaded_2C0; // 0x2C0
-    unknown_fields(0x8); // 0x2C4
+    int32_t __int_2C4; // 0x2C4
+    unknown_fields(0x4); // 0x2C8
     // 0x2CC
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline Gui() {
+        this->zero_contents();
+        this->__unknown_task_flag_A = true;
+    }
 
     inline void update_spell_timer(int32_t time) {
         // I'm only ~80% sure I got this math right
@@ -9187,12 +10013,18 @@ struct Gui : ZUNTask {
         this->spell_timer_hundredths = seconds > 99 ? hundredths : 99; // Is this a bug?
     }
 
+    // 0x441F10
+    dllexport gnu_noinline void thiscall __update_life_ui(int32_t life_count, int32_t life_fragments, int32_t life_max) asm_symbol_rel(0x441F10);
+
     // 0x4420E0
     dllexport gnu_noinline void thiscall __update_bomb_ui(int32_t bomb_count, int32_t bomb_fragments, int32_t bomb_max) asm_symbol_rel(0x4420E0);
 
+    // 0x4422C0
+    dllexport gnu_noinline void thiscall __sub_4422C0() asm_symbol_rel(0x4422C0);
+
     // 0x42D560
-    dllexport gnu_noinline void __set_field_170(int value) asm_symbol_rel(0x42D560) {
-        this->__dword_170 = value;
+    dllexport gnu_noinline void __set_boss_life_count(int value) asm_symbol_rel(0x42D560) {
+        this->__boss_life_count = value;
     }
 
     // 0x42D570
@@ -9208,7 +10040,7 @@ struct Gui : ZUNTask {
     }
 
     // 0x43A730
-    dllexport gnu_noinline ZUNResult thiscall __sub_43A730() asm_symbol_rel(0x43A730);
+    dllexport gnu_noinline ZUNResult thiscall __initialize() asm_symbol_rel(0x43A730);
 
     // 0x407D60
     dllexport bool thiscall msg_vm_active() {
@@ -9224,24 +10056,57 @@ struct Gui : ZUNTask {
 
     // 0x441ED0
     dllexport gnu_noinline void thiscall __display_stage_logo() asm_symbol_rel(0x441ED0);
+
+    // 0x43A8B0
+    dllexport gnu_noinline static void __sub_43A8B0() {
+
+    }
+
+    // 0x43BB70
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x43BB70);
+
+    // 0x43CD00
+    dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x43CD00);
+
+    // 0x43D6F0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x43D6F0) {
+        return ((Gui*)ptr)->on_tick();
+    }
+
+    // 0x43D700
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x43D700) {
+        return UpdateFuncNext;
+    }
+
+    // 0x43D710
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_B(void* ptr) asm_symbol_rel(0x43D710) {
+        return ((Gui*)ptr)->on_draw();
+    }
+
+    // 0x43B800
+    dllexport gnu_noinline static Gui* allocate() asm_symbol_rel(0x43B800);
 };
 #pragma region // Gui Validation
 ValidateFieldOffset32(0x0, Gui, task_flags);
 ValidateFieldOffset32(0x4, Gui, on_tick_func);
 ValidateFieldOffset32(0x8, Gui, on_draw_func);
-ValidateFieldOffset32(0x68, Gui, __anm_vm_ptr_array_68);
+ValidateFieldOffset32(0x4C, Gui, player_life_icons);
+ValidateFieldOffset32(0x68, Gui, player_bomb_icons);
 ValidateFieldOffset32(0x84, Gui, __anm_vm_84);
 ValidateFieldOffset32(0x88, Gui, __anm_vm_88);
 ValidateFieldOffset32(0x8C, Gui, __anm_id_8C);
 ValidateFieldOffset32(0xB8, Gui, __anm_id_B8);
 ValidateFieldOffset32(0xBC, Gui, __anm_id_BC);
+ValidateFieldOffset32(0x108, Gui, __anm_id_108);
+ValidateFieldOffset32(0x10C, Gui, __anm_id_10C);
 ValidateFieldOffset32(0x110, Gui, __anm_id_110);
 ValidateFieldOffset32(0x134, Gui, __int_134);
-ValidateFieldOffset32(0x13C, Gui, __int_13C);
-ValidateFieldOffset32(0x140, Gui, __timer_140);
+ValidateFieldOffset32(0x138, Gui, __anm_id_138);
+ValidateFieldOffset32(0x13C, Gui, __timer_13C);
+ValidateFieldOffset32(0x150, Gui, on_draw_func_B);
 ValidateFieldOffset32(0x158, Gui, __score);
 ValidateFieldOffset32(0x15C, Gui, __int_15C);
-ValidateFieldOffset32(0x170, Gui, __dword_170);
+ValidateFieldOffset32(0x170, Gui, __boss_life_count);
 ValidateFieldOffset32(0x194, Gui, flags);
 ValidateFieldOffset32(0x198, Gui, __timer_198);
 ValidateFieldOffset32(0x1B0, Gui, msg_vm);
@@ -9251,8 +10116,15 @@ ValidateFieldOffset32(0x1BC, Gui, spell_timer_hundredths);
 ValidateFieldOffset32(0x1C0, Gui, __int_1C0);
 ValidateFieldOffset32(0x1C4, Gui, lifebars);
 ValidateFieldOffset32(0x2C0, Gui, __anm_loaded_2C0);
+ValidateFieldOffset32(0x2C4, Gui, __int_2C4);
 ValidateStructSize32(0x2CC, Gui);
 #pragma endregion
+
+static inline void __update_life_ui() {
+    if (Gui* gui = GUI_PTR) {
+        gui->__update_life_ui(GAME_MANAGER.globals.life_stocks, GAME_MANAGER.globals.life_fragments, GAME_MANAGER.globals.life_stock_max);
+    }
+}
 
 static inline void __update_bomb_ui() {
     if (Gui* gui = GUI_PTR) {
@@ -9260,564 +10132,8 @@ static inline void __update_bomb_ui() {
     }
 }
 
-#define SOUND_EFFECT_COUNT 84
-
-// 0x4B47A0
-const char* SOUND_EFFECT_FILENAMES[] = {
-    "se_plst00.wav",
-    "se_enep00.wav",
-    "se_pldead00.wav",
-    "se_power0.wav",
-    "se_power1.wav",
-    "se_tan00.wav",
-    "se_tan01.wav",
-    "se_tan02.wav",
-    "se_ok00.wav",
-    "se_cancel00.wav",
-    "se_select00.wav",
-    "se_gun00.wav",
-    "se_cat00.wav",
-    "se_lazer00.wav",
-    "se_lazer01.wav",
-    "se_enep01.wav",
-    "se_damage00.wav",
-    "se_item00.wav",
-    "se_kira00.wav",
-    "se_kira01.wav",
-    "se_kira02.wav",
-    "se_timeout.wav",
-    "se_graze.wav",
-    "se_powerup.wav",
-    "se_pause.wav",
-    "se_cardget.wav",
-    "se_damage01.wav",
-    "se_timeout2.wav",
-    "se_invalid.wav",
-    "se_slash.wav",
-    "se_ch00.wav",
-    "se_ch01.wav",
-    "se_extend.wav",
-    "se_cardget.wav", // Yes, this is a duplicate
-    "se_nep00.wav",
-    "se_bonus.wav",
-    "se_bonus2.wav",
-    "se_enep02.wav",
-    "se_lazer02.wav",
-    "se_nodamage.wav",
-    "se_boon00.wav",
-    "se_don00.wav",
-    "se_boon01.wav",
-    "se_ch02.wav",
-    "se_ch03.wav",
-    "se_extend2.wav",
-    "se_pin00.wav",
-    "se_pin01.wav",
-    "se_lgods1.wav",
-    "se_lgods2.wav",
-    "se_lgods3.wav",
-    "se_lgods4.wav",
-    "se_lgodsget.wav",
-    "se_msl.wav",
-    "se_msl2.wav",
-    "se_pldead01.wav",
-    "se_heal.wav",
-    "se_msl3.wav",
-    "se_fault.wav",
-    "se_noise.wav",
-    "se_etbreak.wav",
-    "se_tan03.wav",
-    "se_wold.wav",
-    "se_bonus4.wav",
-    "se_big.wav",
-    "se_item01.wav",
-    "se_release.wav",
-    "se_changeitem.wav",
-    "se_trophy.wav",
-    "se_warpl.wav",
-    "se_warpr.wav",
-    "se_notice.wav"
-};
-
-// size: 0x14
-struct SoundData {
-    int32_t id; // 0x0
-    int32_t filename_index; // 0x4
-    unknown_fields(0x2); // 0x8
-    int16_t __short_A; // 0xA
-    unknown_fields(0x8); // 0xC
-};
-#pragma region // SoundData Validation
-ValidateFieldOffset32(0x0, SoundData, id);
-ValidateFieldOffset32(0x4, SoundData, filename_index);
-ValidateFieldOffset32(0xA, SoundData, __short_A);
-ValidateStructSize32(0x14, SoundData);
-#pragma endregion
-
-// size: 0x34
-struct ThBgmFormat {
-    char filename[0x10]; // 0x0
-    unknown_fields(0x4); // 0x10
-    int __dword_14; // 0x14
-    unknown_fields(0x1C); // 0x18
-};
-#pragma region // ThBgmFormat Validation
-ValidateFieldOffset32(0x0, ThBgmFormat, filename);
-ValidateFieldOffset32(0x14, ThBgmFormat, __dword_14);
-ValidateStructSize32(0x34, ThBgmFormat);
-#pragma endregion
-
-struct WavFileHeader {
-    char riff_text[4]; // 0x0
-    uint32_t remaining_file_size; // 0x4
-    char wave_text[4]; // 0x8
-};
-struct WavFileChunk {
-    char id[4]; // 0x0
-    uint32_t size; // 0x4
-    unsigned char data[]; // 0x8
-};
-
-// 0x476830
-dllexport gnu_noinline unsigned char* vectorcall get_wav_chunk_data(WavFileChunk* chunk, const char* chunk_id, int32_t* remaining_size_ptr, int32_t remaining_size) asm_symbol_rel(0x476830);
-dllexport gnu_noinline unsigned char* vectorcall get_wav_chunk_data(WavFileChunk* chunk, const char* chunk_id, int32_t* remaining_size_ptr, int32_t remaining_size) {
-    while (remaining_size) {
-        *remaining_size_ptr = chunk->size;
-        if (strncmp(chunk->id, chunk_id, sizeof(chunk->id)) == 0) {
-            return chunk->data;
-        }
-        int32_t chunk_size = *remaining_size_ptr;
-        chunk = pointer_raw_offset(chunk, sizeof(WavFileChunk) + chunk_size);
-        remaining_size -= sizeof(WavFileChunk) + chunk_size;
-    }
-    return NULL;
-}
-
-struct WavFile {
-    WavFileHeader header; // 0x0
-    WavFileChunk chunks[]; // 0xC
-};
-
-/*
-struct MMCKINFO {
-    FOURCC ckid; // 0x0
-    DWORD cksize; // 0x4
-    FOURCC fccType; // 0x8
-    DWORD dwDataOffset; // 0xC
-    DWORD dwFlags; // 0x10
-    // 0x14
-};
-
-class CWaveFile {
-    WAVEFORMATEX* m_pwfx; // 0x0
-    HMMIO m_hmmio; // 0x4
-    MMCKINFO m_ck; // 0x8
-    MMCKINFO m_ckRiff; // 0x1C
-    DWORD m_dwSize; // 0x30
-    MMIOINFO m_mmioinfoOut; // 0x34
-    DWORD m_dwFlags; // 0x48
-    BOOL m_bIsReadingFromMemory; // 0x4C
-    BYTE* m_pbData; // 0x50
-    BYTE* m_pbDataCur; // 0x54
-    ULONG m_ulDataSize; // 0x58
-    CHAR* m_pResourceBuffer; // 0x5C
-};
-*/
-
-struct SoundManagerUnknownA {
-
-};
-
-// size: 0x18
-struct SoundManagerUnknownB {
-    LPDIRECTSOUNDBUFFER sound_buffer; // 0x0
-    int32_t __int_4; // 0x4
-    SoundData* data; // 0x8
-    int32_t __int_C; // 0xC
-    int32_t __int_10; // 0x10
-    int __dword_14; // 0x14
-    // 0x18
-
-    // 0x4776F0
-    dllexport gnu_noinline ZUNResult thiscall __sub_4776F0(const char* filename) asm_symbol_rel(0x4776F0);
-};
-#pragma region // SoundManagerUnknownB Validation
-ValidateFieldOffset32(0x0, SoundManagerUnknownB, sound_buffer);
-ValidateFieldOffset32(0x4, SoundManagerUnknownB, __int_4);
-ValidateFieldOffset32(0x8, SoundManagerUnknownB, data);
-ValidateFieldOffset32(0xC, SoundManagerUnknownB, __int_C);
-ValidateFieldOffset32(0x10, SoundManagerUnknownB, __int_10);
-ValidateFieldOffset32(0x14, SoundManagerUnknownB, __dword_14);
-ValidateStructSize32(0x18, SoundManagerUnknownB);
-#pragma endregion
-
-// size: 0x10C
-struct SoundManagerUnknownD {
-    unknown_fields(0x10C); // 0x0
-};
-#pragma region // SoundManagerUnknownD Validation
-ValidateStructSize32(0x10C, SoundManagerUnknownD);
-#pragma endregion
-
-struct SoundManagerUnknownG {
-    unknown_fields(0x78); // 0x0
-    int __dword_78; // 0x78
-    unknown_fields(0x10); // 0x7C
-    HANDLE __handle_8C; // 0x8C
-    // 0x90
-};
-#pragma region // SoundManagerUnknownG Validation
-ValidateFieldOffset32(0x78, SoundManagerUnknownG, __dword_78);
-ValidateFieldOffset32(0x8C, SoundManagerUnknownG, __handle_8C);
-#pragma endregion
-
-// This seems to be another part of CSound that isn't in my version of it...
-struct SoundManagerUnknownE {
-
-    // vtable ptr
-    unknown_fields(0x4); // 0x4
-    LPDIRECTSOUNDBUFFER* sound_buffer_array; // 0x8
-    unknown_fields(0x4); // 0xC
-    SoundManagerUnknownG* __smg_ptr_10; // 0x10
-    uint32_t sound_buffer_count; // 0x14
-    unknown_fields(0x8); // 0x18
-    int __dword_20; // 0x20
-    unknown_fields(0x34); // 0x24
-    int __dword_58; // 0x58
-    int __dword_5C; // 0x5C
-    // 0x60
-
-    // 0x48A620
-    dllexport gnu_noinline HRESULT thiscall __sub_48A620(BOOL Arg1) asm_symbol_rel(0x48A620) {
-        if (!this->sound_buffer_array) {
-            return CO_E_NOTINITIALIZED;
-        }
-        this->__dword_58 = 0;
-        this->__dword_5C = 0;
-        HRESULT ret = 0;
-        for (size_t i = 0; i < this->sound_buffer_count; ++i) {
-            ret |= this->sound_buffer_array[i]->Stop();
-            ret |= this->sound_buffer_array[i]->SetCurrentPosition(0);
-        }
-        this->__dword_20 = 0;
-        if (Arg1) {
-            SoundManagerUnknownG* smg_ptr = this->__smg_ptr_10;
-            if (smg_ptr->__dword_78 == 1) {
-                CloseHandle(smg_ptr->__handle_8C);
-                smg_ptr->__handle_8C = INVALID_HANDLE_VALUE;
-            }
-        }
-        // TODO
-    }
-
-    // 0x48AF10
-    dllexport gnu_noinline void vectorcall __sub_48AF10(double arg1) asm_symbol_rel(0x48AF10) {
-        use_var(arg1);
-    }
-
-    // This is giga jank
-    virtual ~SoundManagerUnknownE() {}
-};
-#pragma region // SoundManagerUnknownE Validation
-ValidateVirtualFieldOffset32(0x8, SoundManagerUnknownE, sound_buffer_array);
-ValidateVirtualFieldOffset32(0x10, SoundManagerUnknownE, __smg_ptr_10);
-ValidateVirtualFieldOffset32(0x14, SoundManagerUnknownE, sound_buffer_count);
-ValidateVirtualFieldOffset32(0x20, SoundManagerUnknownE, __dword_20);
-ValidateVirtualFieldOffset32(0x58, SoundManagerUnknownE, __dword_58);
-ValidateVirtualFieldOffset32(0x5C, SoundManagerUnknownE, __dword_5C);
-#pragma endregion
-
-// size: 0x200
-struct SoundManagerUnknownF {
-    int32_t __int_array_0[60]; // 0x0
-    unknown_fields(0x110); // 0xF0
-};
-#pragma region // SoundManagerUnknownF Validation
-ValidateFieldOffset32(0x0, SoundManagerUnknownF, __int_array_0);
-ValidateStructSize32(0x200, SoundManagerUnknownF);
-#pragma endregion
-
-extern "C" {
-    // 0x4C9B80
-    extern SoundData SOUND_DATA[SOUND_EFFECT_COUNT] asm("_SOUND_DATA");
-}
-
-typedef struct SoundManager SoundManager;
-
-// 0x4B47A0
-static inline constexpr const char *const SoundEffectFilenames[] = {
-    "se_plst00.wav",
-    "se_enep00.wav",
-    "se_pldead00.wav",
-    "se_power0.wav",
-    "se_power1.wav",
-    "se_tan00.wav",
-    "se_tan01.wav",
-    "se_tan02.wav",
-    "se_ok00.wav",
-    "se_cancel00.wav",
-    "se_select00.wav",
-    "se_gun00.wav",
-    "se_cat00.wav",
-    "se_lazer00.wav",
-    "se_lazer01.wav",
-    "se_enep01.wav",
-    "se_damage00.wav",
-    "se_item00.wav",
-    "se_kira00.wav",
-    "se_kira01.wav",
-    "se_kira02.wav",
-    "se_timeout.wav",
-    "se_graze.wav",
-    "se_powerup.wav",
-    "se_pause.wav",
-    "se_cardget.wav",
-    "se_damage01.wav",
-    "se_timeout2.wav",
-    "se_invalid.wav",
-    "se_slash.wav",
-    "se_ch00.wav",
-    "se_ch01.wav",
-    "se_extend.wav",
-    "se_cardget.wav",
-    "se_nep00.wav",
-    "se_bonus.wav",
-    "se_bonus2.wav",
-    "se_enep02.wav",
-    "se_lazer02.wav",
-    "se_nodamage.wav",
-    "se_boon00.wav",
-    "se_don00.wav",
-    "se_boon01.wav",
-    "se_ch02.wav",
-    "se_ch03.wav",
-    "se_extend2.wav",
-    "se_pin00.wav",
-    "se_pin01.wav",
-    "se_lgods1.wav",
-    "se_lgods2.wav",
-    "se_lgods3.wav",
-    "se_lgods4.wav",
-    "se_lgodsget.wav",
-    "se_msl.wav",
-    "se_msl2.wav",
-    "se_pldead01.wav",
-    "se_heal.wav",
-    "se_msl3.wav",
-    "se_fault.wav",
-    "se_noise.wav",
-    "se_etbreak.wav",
-    "se_tan03.wav",
-    "se_wolf.wav",
-    "se_bonus4.wav",
-    "se_big.wav",
-    "se_item01.wav",
-    "se_release.wav",
-    "se_changeitem.wav",
-    "se_trophy.wav",
-    "se_warpl.wav",
-    "se_warpr.wav",
-    "se_notice.wav"
-};
-
-// size: 0x573C
-struct SoundManager {
-    LPDIRECTSOUND8 dsound; // 0x0
-    LPDIRECTSOUNDBUFFER sound_buffer_ptr; // 0x4
-    HWND timer_hwnd; // 0x8
-    CSoundManager* csound_manager_ptr; // 0xC
-    DWORD sound_thread_id; // 0x10
-    HANDLE __handle_14; // 0x14
-    unknown_fields(0x4); // 0x18
-    int32_t active_sound_ids[12]; // 0x1C
-    int32_t active_sound_id_counts[12]; // 0x4C
-    SoundManagerUnknownF __unknown_smf_array_7C[12]; // 0x7C
-    void* bgm_format_offsets[16]; // 0x187C
-    SoundManagerUnknownA* __unknown_sma_ptr_array_18BC[16]; // 0x18BC
-    SoundManagerUnknownA* __unknown_sma_ptr_array_18FC[16]; // 0x18FC
-    int __bgm_format_14_array_193C[16]; // 0x193C
-    int __dword_197C; // 0x197C
-    union {
-        void* bgm_format_file; // 0x1980
-        ThBgmFormat* bgm_formats;
-    };
-    char __text_buffer_1984[0x100]; // 0x1984
-    SoundManagerUnknownB __unknown_smb_array_1A84[SOUND_EFFECT_COUNT]; // 0x1A84
-    void* sound_effect_files[countof(SOUND_EFFECT_FILENAMES)]; // 0x2264
-    char __text_buffer_2384[0x100]; // 0x2384
-    SoundManagerUnknownD __unknown_smd_array_2484[32]; // 0x2484 (only 31 are used properly)
-    char __text_buffer_array_4604[16][0x100]; // 0x4604
-    char thbgm_filename[0x100]; // 0x5604
-    SoundManagerUnknownE* __unknown_sme_ptr_5704; // 0x5704
-    unknown_fields(0x4); // 0x5708
-    HANDLE __handle_570C; // 0x570C
-    unknown_fields(0x4); // 0x5710
-    int32_t file_pointer_offset; // 0x5714
-    HANDLE __thread_5718; // 0x5718
-    HANDLE __handle_571C; // 0x571C
-    DWORD __thread_id_5720; // 0x5720
-    int __dword_5724; // 0x5724
-    HWND main_window_hwnd; // 0x5728
-    int __dword_572C; // 0x572C
-    int __dword_5730; // 0x5730
-    int __dword_5734; // 0x5734
-    int __dword_5738; // 0x5738
-    // 0x573C
-
-    inline void zero_contents() {
-        zero_this();
-    }
-
-    inline void copy_sound_data() {
-        SoundManagerUnknownB* unknown_b_ptr = this->__unknown_smb_array_1A84;
-        for (size_t i = 0; i < countof(this->__unknown_smb_array_1A84); ++unknown_b_ptr, ++i) {
-            unknown_b_ptr->__int_4 = -1;
-            SoundData* sound_data = SOUND_DATA;
-            while (sound_data->id != i) ++sound_data;
-            unknown_b_ptr->__int_C = i;
-            unknown_b_ptr->data = sound_data;
-        }
-    }
-
-    inline void free_bgm_format_file() {
-        SAFE_FREE_FAST(this->bgm_format_file);
-    }
-
-    inline void release_smb_array() {
-        SoundManagerUnknownB* smb_ptr = this->__unknown_smb_array_1A84;
-        for (size_t i = 0; i < countof(this->__unknown_smb_array_1A84); ++smb_ptr, ++i) {
-            SAFE_RELEASE(smb_ptr->sound_buffer);
-        }
-    }
-
-    inline void free_all_sound_effect_files() {
-        void** sound_file_pointer = this->sound_effect_files;
-        for (size_t i = 0; i < countof(this->sound_effect_files); ++sound_file_pointer, ++i) {
-            SAFE_FREE_FAST(*sound_file_pointer);
-        }
-    }
-
-    inline void free_first_sma_array() {
-        SoundManagerUnknownA** sma_ptr = this->__unknown_sma_ptr_array_18BC;
-        for (size_t i = 0; i < countof(this->__unknown_sma_ptr_array_18BC); ++sma_ptr, ++i) {
-            SAFE_FREE_FAST(*sma_ptr);
-        }
-    }
-
-    SoundManager() {
-        this->copy_sound_data();
-    }
-
-    // 0x476320
-    dllexport static gnu_noinline int32_t __wait_and_close_handles() asm_symbol_rel(0x476320);
-
-    // 0x4763D0
-    dllexport static gnu_noinline DWORD WINAPI sound_thread_func(void* self) asm_symbol_rel(0x4763D0);
-
-    // 0x476410
-    dllexport gnu_noinline ZUNResult thiscall __sub_476410(HWND window_hwnd_arg) asm_symbol_rel(0x476410);
-
-    // 0x4767B0
-    dllexport static gnu_noinline DWORD WINAPI load_sound_effects(void* self) asm_symbol_rel(0x4767B0);
-    
-    // 0x476890
-    dllexport gnu_noinline int32_t thiscall __sub_476890(const char* filename) asm_symbol_rel(0x476890) {
-        char buffer[128];
-        const char* path;
-        if (!(path = strrchr(filename, '/')) && !(path = strrchr(filename, '\\'))) {
-            byteloop_strcpy(buffer, filename);
-        } else {
-            byteloop_strcpy(buffer, path + 1);
-        }
-        ThBgmFormat* bgm_formats = this->bgm_formats;
-        size_t i = 0;
-        for (; bgm_formats[i].filename[0] != '\0';) {
-            // TODO
-        }
-    }
-    
-    // 0x476B40
-    dllexport gnu_noinline void thiscall __sub_476B40() asm_symbol_rel(0x476B40);
-
-    // 0x476BE0
-    dllexport static gnu_noinline void stdcall play_sound_centered(int32_t sound_id, float) asm_symbol_rel(0x476BE0);
-
-    // 0x476C70
-    dllexport static gnu_noinline void vectorcall play_sound_positioned(int32_t sound_id, float position) asm_symbol_rel(0x476C70);
-
-    static inline void play_sound(int32_t sound_id) {
-        SoundManager::play_sound_centered(sound_id, UNUSED_FLOAT);
-    }
-
-    static inline void play_sound_validate(int32_t sound_id) {
-        if (sound_id >= 0) SoundManager::play_sound(sound_id);
-    }
-
-    static inline void play_sound_positioned_validate(int32_t sound_id, const float& position) {
-        if (sound_id >= 0) SoundManager::play_sound_positioned(sound_id, position);
-    }
-
-    inline void cleanup() { // Might be destructor?
-        this->__wait_and_close_handles();
-        this->free_bgm_format_file();
-        this->release_smb_array();
-        this->free_all_sound_effect_files();
-        if (this->csound_manager_ptr) {
-            KillTimer(this->timer_hwnd, 1);
-            this->__sub_476B40();
-            this->dsound = NULL; // Isn't this supposed to be released though?
-            this->sound_buffer_ptr->Stop();
-            SAFE_RELEASE(this->sound_buffer_ptr);
-            SAFE_DELETE(this->__unknown_sme_ptr_5704);
-            SAFE_DELETE(this->csound_manager_ptr); // This destructor got inlined
-            this->free_first_sma_array();
-        }
-    }
-};
-#pragma region // SoundManager Validation
-ValidateFieldOffset32(0x0, SoundManager, dsound);
-ValidateFieldOffset32(0x4, SoundManager, sound_buffer_ptr);
-ValidateFieldOffset32(0x8, SoundManager, timer_hwnd);
-ValidateFieldOffset32(0xC, SoundManager, csound_manager_ptr);
-ValidateFieldOffset32(0x10, SoundManager, sound_thread_id);
-ValidateFieldOffset32(0x14, SoundManager, __handle_14);
-ValidateFieldOffset32(0x1C, SoundManager, active_sound_ids);
-ValidateFieldOffset32(0x4C, SoundManager, active_sound_id_counts);
-ValidateFieldOffset32(0x7C, SoundManager, __unknown_smf_array_7C);
-ValidateFieldOffset32(0x187C, SoundManager, bgm_format_offsets);
-ValidateFieldOffset32(0x18BC, SoundManager, __unknown_sma_ptr_array_18BC);
-ValidateFieldOffset32(0x18FC, SoundManager, __unknown_sma_ptr_array_18FC);
-ValidateFieldOffset32(0x193C, SoundManager, __bgm_format_14_array_193C);
-ValidateFieldOffset32(0x197C, SoundManager, __dword_197C);
-ValidateFieldOffset32(0x1980, SoundManager, bgm_format_file);
-ValidateFieldOffset32(0x1A84, SoundManager, __unknown_smb_array_1A84);
-ValidateFieldOffset32(0x2264, SoundManager, sound_effect_files);
-ValidateFieldOffset32(0x2384, SoundManager, __text_buffer_2384);
-ValidateFieldOffset32(0x2484, SoundManager, __unknown_smd_array_2484);
-ValidateFieldOffset32(0x5604, SoundManager, thbgm_filename);
-ValidateFieldOffset32(0x5704, SoundManager, __unknown_sme_ptr_5704);
-ValidateFieldOffset32(0x570C, SoundManager, __handle_570C);
-ValidateFieldOffset32(0x5714, SoundManager, file_pointer_offset);
-ValidateFieldOffset32(0x5718, SoundManager, __thread_5718);
-ValidateFieldOffset32(0x571C, SoundManager, __handle_571C);
-ValidateFieldOffset32(0x5720, SoundManager, __thread_id_5720);
-ValidateFieldOffset32(0x5724, SoundManager, __dword_5724);
-ValidateFieldOffset32(0x5728, SoundManager, main_window_hwnd);
-ValidateFieldOffset32(0x572C, SoundManager, __dword_572C);
-ValidateFieldOffset32(0x5730, SoundManager, __dword_5730);
-ValidateFieldOffset32(0x5734, SoundManager, __dword_5734);
-ValidateFieldOffset32(0x5738, SoundManager, __dword_5738);
-ValidateStructSize32(0x573C, SoundManager);
-#pragma endregion
-
-extern "C" {
-    // 0x56AD80
-    extern SoundManager SOUND_MANAGER asm("_SOUND_MANAGER");
-}
-
-
-
 // 0x453640
-dllexport gnu_noinline ZUNResult fastcall Supervisor::on_registration(void* self) {
+dllexport gnu_noinline ZUNResult UpdateFuncCC Supervisor::on_registration(void* self) {
     if (THDAT_ARCFILE.__sub_46EB80()) {
         char ver_file_name[64];
         int32_t ver_file_size;
@@ -9858,13 +10174,13 @@ dllexport gnu_noinline DWORD WINAPI SoundManager::load_sound_effects(void* self)
         if (SOUND_MANAGER.__dword_5724 == 2) {
             return 1;
         }
-        void* sound_effect_file = read_file_to_buffer(SoundEffectFilenames[i], NULL, false);
+        void* sound_effect_file = read_file_to_buffer(SOUND_EFFECT_FILENAMES[i], NULL, false);
         SOUND_MANAGER.sound_effect_files[i] = sound_effect_file;
         if (!sound_effect_file) {
-            LOG_BUFFER.write(JpEnStr("", "error : Sound File cannot read Check data %s\r\n"), SoundEffectFilenames[i]);
+            LOG_BUFFER.write(JpEnStr("", "error : Sound File cannot read Check data %s\r\n"), SOUND_EFFECT_FILENAMES[i]);
             return 1;
         }
-    } while (++i < countof(SoundEffectFilenames));
+    } while (++i < countof(SOUND_EFFECT_FILENAMES));
     while (SOUND_MANAGER.__dword_5724 == 0) {
         Sleep(1);
     }
@@ -10106,121 +10422,9 @@ dllexport gnu_noinline void vectorcall SoundManager::play_sound_positioned(int32
     }
 }
 
-enum ReplayMode {
-    __replay_recording = 0,
-    __replay_playback = 1,
-    __replay_mode_2 = 2
-};
-
-static inline bool is_replay();
-
-typedef struct GameThread GameThread;
-extern "C" {
-    // 0x4CF2E4
-    extern GameThread* GAME_THREAD_PTR asm("_GAME_THREAD_PTR");
-}
-
-// size: 0xD8
-struct GameThread : ZUNTask {
-    //ZUNTask base; // 0x0
-    Timer __timer_C; // 0xC
-    int32_t stage_number; // 0x20
-    int32_t chapter; // 0x24
-    Config config; // 0x28
-    union {
-        uint32_t flags; // 0xB0
-        struct {
-            uint32_t __unknown_flag_A : 1; // 1
-            uint32_t __unknown_flag_B : 1; // 2
-            uint32_t skip_flag : 1; // 3
-            uint32_t __unknown_flag_H : 1; // 4
-            uint32_t __unknown_flag_I : 1; // 5
-            uint32_t __unknown_flag_L : 1; // 6
-            uint32_t __unknown_flag_M : 1; // 7
-            uint32_t __unknown_flag_J : 1; // 8
-            uint32_t __unknown_flag_D : 1; // 9
-            uint32_t : 1; // 10
-            uint32_t __unknown_flag_C : 1; // 11
-            uint32_t __unknown_flag_K : 1; // 12
-            uint32_t : 2; // 13-14
-            uint32_t __unknown_flag_E : 1; // 15
-            uint32_t : 1; // 16
-            uint32_t __unknown_flag_F : 1; // 17
-            uint32_t __unknown_flag_G : 1; // 18
-        };
-    };
-    unknown_fields(0x4); // 0xB4
-    int __int_B8; // 0xB8
-    unknown_fields(0x14); // 0xBC
-    ReplayMode replay_mode; // 0xD0
-    int __int_D4; // 0xD4
-    // 0xD8
-
-    inline void zero_contents() {
-        zero_this();
-    }
-
-    inline GameThread() {
-        this->zero_contents();
-    }
-
-    // 0x439E80
-    dllexport gnu_noinline void thiscall set_chapter(int32_t chapter) asm_symbol_rel(0x439E80) {
-        GAME_MANAGER.globals.chapter = chapter;
-        GAME_THREAD_PTR->chapter = chapter;
-    }
-
-    // 0x443860
-    dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x443860);
-
-    // 0x443D70
-    dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) asm_symbol_rel(0x443D70) {
-        return ((GameThread*)ptr)->on_tick();
-    }
-
-    // 0x443D80
-    dllexport gnu_noinline static UpdateFuncRet fastcall on_draw(void* ptr) asm_symbol_rel(0x443D80);
-
-private:
-    inline unsigned thread_start_impl();
-public:
-    // 0x4424E0
-    dllexport gnu_noinline unsigned thiscall thread_start() {
-        return GAME_THREAD_PTR->thread_start_impl();
-    }
-
-    // 0x4432B0
-    dllexport static unsigned cdecl thread_start_stub(void*) {
-        return GAME_THREAD_PTR->thread_start();
-    }
-
-    // 0x443E60
-    dllexport gnu_noinline ZUNResult thiscall __sub_443E60() asm_symbol_rel(0x443E60) {
-
-    }
-
-    // 0x4443C0
-    dllexport gnu_noinline ZUNResult thiscall __sub_4443C0() asm_symbol_rel(0x4443C0) {
-
-    }
-
-    // 0x4437B0
-    dllexport gnu_noinline static GameThread* fastcall allocate(ReplayMode mode) asm_symbol_rel(0x4437B0) {
-        GameThread* game_thread = new GameThread();
-        WINDOW_DATA.__int_20D0 = 0;
-        SUPERVISOR.d3d_device->EvictManagedResources();
-        game_thread->skip_flag = true;
-        GAME_THREAD_PTR = game_thread;
-        game_thread->replay_mode = mode;
-        SUPERVISOR.__start_thread_A94((_beginthreadex_proc_type)&thread_start_stub);
-        return game_thread;
-    }
-};
-
 typedef int32_t (*volatile fastcall AnmOnFunc)(AnmVM*);
 typedef int32_t (*volatile fastcall AnmOnFuncArg)(AnmVM*, int32_t);
 
-extern inline const AnmOnFunc ANM_ON_WAIT_FUNCS[];
 //extern inline const AnmOnFunc ANM_ON_TICK_FUNCS[];
 //extern inline const AnmOnFunc ANM_ON_DRAW_FUNCS[];
 //extern inline const AnmOnFunc ANM_ON_DESTROY_FUNCS[];
@@ -10229,6 +10433,7 @@ extern inline const AnmOnFunc ANM_ON_COPY_A_FUNCS[];
 extern inline const AnmOnFunc ANM_ON_COPY_B_FUNCS[];
 //extern inline const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[];
 extern "C" {
+    extern AnmOnFunc ANM_ON_WAIT_FUNCS[] asm("_ANM_ON_WAIT_FUNCS");
     extern AnmOnFunc ANM_ON_TICK_FUNCS[] asm("_ANM_ON_TICK_FUNCS");
     extern AnmOnFunc ANM_ON_DESTROY_FUNCS[] asm("_ANM_ON_DESTROY_FUNCS");
     extern AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[] asm("_ANM_ON_INTERRUPT_FUNCS");
@@ -10243,6 +10448,221 @@ extern "C" {
     extern Float3 UNKNOWN_FLOAT3_B asm("_UNKNOWN_FLOAT3_B");
     // 0x56AD78
     extern Float2 UNKNOWN_FLOAT2_A asm("_UNKNOWN_FLOAT2_A");
+}
+
+namespace Anm {
+enum Var : int32_t {
+    I0 = 10000, // 10000
+    I1, // 10001
+    I2, // 10002
+    I3, // 10003
+    F0, // 10004
+    F1, // 10005
+    F2, // 10006
+    F3, // 10007
+    IC0, // 10008
+    IC1, // 10009
+    RAND_ANGLE, // 10010
+    RAND_FLOAT, // 10011
+    RAND_FLOAT_SIGNED, // 10012
+    SELF_X, // 10013
+    SELF_Y, // 10014
+    SELF_Z, // 10015
+    CAMERA_POS_X, // 10016
+    CAMERA_POS_Y, // 10017
+    CAMERA_POS_Z, // 10018
+    CAMERA_FACING_X, // 10019
+    CAMERA_FACING_Y, // 10020
+    CAMERA_FACING_Z, // 10021
+    RAND_UINT, // 10022
+    SELF_X_ROT, // 10023
+    SELF_Y_ROT, // 10024
+    SELF_Z_ROT, // 10025
+    __CONTROLLER_Z_ROT, // 10026
+    RAND_SCALE, // 10027
+    RAND_ANGLE_SCALE, // 10028
+    RAND_UINT_RANGE, // 10029
+    RAND_ANGLE_REPLAY, // 10030
+    RAND_FLOAT_REPLAY, // 10031
+    RAND_FLOAT_SIGNED_REPLAY, // 10032
+    __UNKNOWN_X, // 10033
+    __UNKNOWN_Y, // 10034
+    __UNKNOWN_Z, // 10035
+};
+enum Opcode : int16_t {
+    // Section A
+    nop = 0, // 0
+    anm_delete, // 1
+    anm_static, // 2
+    anm_halt, // 3
+    anm_halt_invisible, // 4
+    interrupt_label, // 5
+    wait, // 6
+    interrupt_return, // 7
+
+    // Section B
+    set_int = 100, // 100
+    set_float, // 101
+    math_int_add_assign, // 102
+    math_float_add_assign, // 103
+    math_int_sub_assign, // 104
+    math_float_sub_assign, // 105
+    math_int_mul_assign, // 106
+    math_float_mul_assign, // 107
+    math_int_div_assign, // 108
+    math_float_div_assign, // 109
+    math_int_mod_assign, // 110
+    math_float_mod_assign, // 111
+    math_int_add, // 112
+    math_float_add, // 113
+    math_int_sub, // 114
+    math_float_sub, // 115
+    math_int_mul, // 116
+    math_float_mul, // 117
+    math_int_div, // 118
+    math_float_div, // 119
+    math_int_mod, // 120
+    math_float_mod, // 121
+    set_int_rand_bound, // 122
+    set_float_rand_bound, // 123
+    math_sin, // 124
+    math_cos, // 125
+    math_tan, // 126
+    math_acos, // 127
+    math_atan, // 128
+    math_reduce_angle, // 129
+    math_circle_pos_fast, // 130
+    math_circle_pos_rand, // 131
+
+    // Section C
+    jump = 200, // 200
+    loop, // 201
+    jump_int_equ, // 202
+    jump_float_equ, // 203
+    jump_int_neq, // 204
+    jump_float_neq, // 205
+    jump_int_les, // 206
+    jump_float_les, // 207
+    jump_int_leq, // 208
+    jump_float_leq, // 209
+    jump_int_gre, // 210
+    jump_float_gre, // 211
+    jump_int_geq, // 212
+    jump_float_geq, // 213
+
+    // Section D
+    sprite_set = 300, // 300
+    sprite_set_rand_bound, // 301
+    render_mode, // 302
+    blend_mode, // 303
+    layer, // 304
+    anm_flag_disable_z_write, // 305
+    __anm_flag_unknown_std_A, // 306
+    rand_mode, // 307
+    scale_flip_x, // 308
+    scale_flip_y, // 309
+    anm_flag_visible, // 310
+    resample_mode, // 311
+    scroll_mode, // 312
+    resolution_mode, // 313
+    anm_flag_inherit_rotation, // 314
+    anm_flag_color_children, // 315
+    __anm_flag_set_visible2, // 316
+    __anm_flag_clear_visible2, // 317
+    __anm_flag_unknown_V, // 318
+    __sprite_set_unknown, // 319
+
+    // Section E
+    move_position = 400, // 400
+    rotation, // 401
+    scale, // 402
+    alpha, // 403
+    color, // 404
+    alpha_gradient, // 405
+    color_gradient, // 406
+    move_position_interp, // 407
+    color_interp, // 408
+    alpha_interp, // 409
+    rotation_interp, // 410
+    spin_interp, // 411
+    scale_interp, // 412
+    color_gradient_interp, // 413
+    alpha_gradient_interp, // 414
+    rotation_speed, // 415
+    scale_speed, // 416
+    alpha_interp_linear, // 417
+    sprite_window, // 418
+    __anm_flag_unknown_Q, // 419
+    move_bezier, // 420
+    anchor_mode, // 421
+    position_inherit, // 422
+    color_mode, // 423
+    anm_flag_auto_rotate, // 424
+    scroll_speed_x, // 425
+    scroll_speed_y, // 426
+    scroll_speed_x_interp, // 427
+    scroll_speed_y_interp, // 428
+    uv_scale, // 429
+    uv_scale_interp, // 430
+    __anm_flag_unknown_T, // 431
+    anm_flag_slowdown_immune, // 432
+    move_velocity_interp, // 433
+    scale2, // 434
+    scale2_interp, // 435
+    anchor_offset, // 436
+    rotation_mode, // 437
+    origin_mode, // 438
+    camera_fade, // 439
+    scale_unflip, // 440
+
+    // Section F
+    anm_create_child_back = 500, // 500
+    anm_create_child_ui_back, // 501
+    anm_create_child_front, // 502
+    anm_create_child_ui_front, // 503
+    anm_create_back, // 504
+    anm_create_child_back_rel, // 505
+    anm_create_back_rel, // 506
+    __anm_flag_use_root_vm_slowdown, // 507
+    effect_create, // 508
+    copy_parent_context, // 509
+    anm_create_child_front_rel, // 510
+
+    // Section G
+    textured_ring = 600, // 600
+    textured_arc_A, // 601
+    textured_arc_B, // 602
+    polygon_rectangle, // 603
+    polygon, // 604
+    polygon_hollow, // 605
+    polygon_rectangle_gradient, // 606
+    polygon_rectangle_antialias, // 607
+    polygon_rectangle_gradient_antialias, // 608
+    textured_cylinder, // 609
+    textured_ring_3D, // 610
+    polygon_rectangle_hollow, // 611
+    polygon_line, // 612
+    __polygon_unknown_A, // 613
+    __polygon_ring_unknown_A, // 614
+    __polygon_ring_unknown_B, // 615
+    __polygon_unknown_B, // 616
+    __polygon_unknown_C, // 617
+    __polygon_unknown_D, // 618
+    __polygon_unknown_E, // 619
+    __polygon_unknown_F1, // 620
+    __polygon_unknown_F2, // 621
+    __polygon_unknown_F3, // 622
+    __polygon_unknown_G, // 623
+    __polygon_unknown_H, // 624
+    __polygon_unknown_I1, // 625
+    __polygon_unknown_I2, // 626
+    __polygon_unknown_I3, // 627
+    __polygon_unknown_J, // 628
+    __polygon_unknown_K, // 629
+    __polygon_unknown_L1, // 630
+    __polygon_unknown_L2, // 631
+    __polygon_unknown_L3, // 632
+};
 }
 
 // size: 0x8
@@ -10296,7 +10716,7 @@ enum AnmUVMode : uint8_t {
 
 // size: 0x60C
 struct AnmVM {
-    struct AnmContextVars {
+    struct AnmContext {
         int32_t int_vars[4]; // 0x0
         float float_vars[4]; // 0x10
         Float3 __float3_20; // 0x20
@@ -10346,7 +10766,7 @@ struct AnmVM {
         unknown_fields(0x4); // 0x49C
         uint16_t script_id2; // 0x4A0
         unknown_fields(0x2); // 0x4A2
-        AnmContextVars current_context_vars; // 0x4A4
+        AnmContext current_context; // 0x4A4
         Float3 __position_2; // 0x4E4
         Float3 __render_quad[4]; // 0x4F0
         AnmVMCreationFlags creation_flags; // 0x520
@@ -10360,18 +10780,18 @@ struct AnmVM {
             uint32_t flags_low; // 0x534
             struct {
                 uint32_t visible : 1; // 1
-                uint32_t __unknown_flag_J : 1; // 2
-                uint32_t __z_rotation : 1; // 3
-                uint32_t __scale_related_A : 1; // 4
+                uint32_t __visible2 : 1; // 2
+                uint32_t rotation_enabled : 1; // 3
+                uint32_t scale_enabled : 1; // 4
                 uint32_t : 1; // 5
                 uint32_t blend_mode : 4; // 6-9
                 uint32_t : 1; // 10
                 uint32_t position_mode : 1; // 11
                 uint32_t mirror_x : 1; // 12
                 uint32_t mirror_y : 1; // 13
-                uint32_t : 1; // 14
-                uint32_t disable_z_write : 1; // 15
-                uint32_t : 1; // 16
+                uint32_t disable_z_write : 1; // 14
+                uint32_t __visible3 : 1; // 15
+                uint32_t __unknown_flag_W : 1; // 16
                 uint32_t __unknown_std_flag_A : 1; // 17
                 uint32_t color_mode : 3; // 18-20
                 uint32_t : 1; // 21
@@ -10397,7 +10817,7 @@ struct AnmVM {
                 uint32_t : 1; // 15
                 uint32_t __unknown_flag_Q : 1; // 16
                 uint32_t __unknown_field_B : 2; // 17-18
-                uint32_t __use_root_vm_custom_slowdown : 1; // 19
+                uint32_t __treast_as_root : 1; // 19
                 uint32_t : 1; // 20
                 uint32_t origin_mode : 2; // 21-22
                 uint32_t resolution_mode : 3; // 23-25
@@ -10421,7 +10841,7 @@ struct AnmVM {
         Timer __timer_1C; // 0x1C (0x560)
         ZUNList<AnmVM> global_list_node; // 0x30 (0x574)
         ZUNList<AnmVM> child_list_node; // 0x40 (0x584)
-        ZUNList<AnmVM> child_list; // 0x50 (0x594)
+        ZUNListHead<AnmVM> child_list; // 0x50 (0x594)
         ZUNList<AnmVM> destroy_list_node; // 0x60 (0x5A4)
         AnmVM* next_in_layer; // 0x70 (0x5B4)
         AnmVM* prev_in_layer; // 0x74 (0x5B8)
@@ -10440,7 +10860,7 @@ struct AnmVM {
         uint32_t on_sprite_lookup_index; // 0xA8 (0x5EC)
         Float3 position; // 0xAC (0x5F0)
         void* associated_entity; // 0xB8 (0x5FC)
-        Float3 __rotation_related; // 0xBC (0x600)
+        Float3 rotation; // 0xBC (0x600)
 
         inline void zero_contents() {
             zero_this();
@@ -10468,7 +10888,22 @@ struct AnmVM {
     template <typename L>
     inline AnmVM* search_roots(L&& lambda) {
         AnmVM* search = this;
-        while ((search = search->controller.__root_vm) && !lambda(search));
+        //while ((search = search->controller.__root_vm) && !lambda(search));
+        for (
+            AnmVM* root = this->controller.__root_vm;
+            root != NULL && !lambda(root);
+            root = root->controller.__root_vm
+        ) search = root;
+        return search;
+    }
+
+    inline AnmVM* find_root_vm() {
+        AnmVM* search = this;
+        AnmVM* root;
+        while (
+            (root = search->controller.__root_vm) != NULL &&
+            !search->data.__treast_as_root
+        ) search = root;
         return search;
     }
     
@@ -10495,10 +10930,29 @@ struct AnmVM {
     }
 
     // 0x405BB0
-    dllexport gnu_noinline float vectorcall get_root_vm_custom_slowdown() asm_symbol_rel(0x405BB0) {
-        return this->search_roots([](AnmVM* vm) static_lambda {
-            return vm->data.__use_root_vm_custom_slowdown;
-        })->controller.slowdown;
+    dllexport gnu_noinline float vectorcall get_custom_slowdown() asm_symbol_rel(0x405BB0) {
+        return this->find_root_vm()->controller.slowdown;
+    }
+
+    // 0x4097D0
+    dllexport gnu_noinline Float3* thiscall get_controller_rotation() asm_symbol_rel(0x4097D0) {
+        Float3* controller_rotation = &this->controller.rotation;
+        *controller_rotation = this->data.rotation;
+        
+        AnmVM* root_vm = this->controller.__root_vm;
+        if (
+            root_vm &&
+            !this->data.__treast_as_root
+        ) {
+            *controller_rotation += *root_vm->get_controller_rotation();
+
+            // Is this supposed to be applied to controller rotation instead?
+            this->data.rotation.x = reduce_angle(this->data.rotation.x);
+            this->data.rotation.y = reduce_angle(this->data.rotation.y);
+            this->data.rotation.z = reduce_angle(this->data.rotation.z);
+        }
+
+        return controller_rotation;
     }
 
     // 0x429AD0
@@ -10541,6 +10995,7 @@ struct AnmVM {
 
     // 0x4890B0
     dllexport gnu_noinline AnmVM* thiscall __wtf_child_list_jank_A(int32_t script, uint32_t arg2) asm_symbol_rel(0x4890B0) {
+        // This iterates the child list as a normal list instead of a list head...?
         for (
             ZUNList<AnmVM>* node = &this->controller.child_list;
             node;
@@ -10568,15 +11023,6 @@ struct AnmVM {
             }
         }
         return NULL;
-    }
-
-    inline float get_custom_slowdown() {
-        AnmVM* root_vm = this->controller.__root_vm;
-        if (root_vm && this->data.__use_root_vm_custom_slowdown) {
-            return this->get_root_vm_custom_slowdown();
-        } else {
-            return this->controller.slowdown;
-        }
     }
 
     inline void set_custom_slowdown(float slowdown_value) {
@@ -10631,9 +11077,9 @@ struct AnmVM {
         this->data.u_scroll_speed_interp.end_time = 0;
         this->data.v_scroll_speed_interp.end_time = 0;
         this->data.__unknown_field_B = 1;
-        this->data.current_context_vars.rand_scale = 1.0f;
-        this->data.current_context_vars.rand_angle_scale = PI_f;
-        this->data.current_context_vars.rand_int_range = UINT16_MAX + 1;
+        this->data.current_context.rand_scale = 1.0f;
+        this->data.current_context.rand_angle_scale = PI_f;
+        this->data.current_context.rand_int_range = UINT16_MAX + 1;
         // Technically memset 0 isn't guaranteed to assign NULL to pointers
         // according to official C/C++ standards. Instead literal 0 is given
         // special meanings in the context of pointers.
@@ -10749,6 +11195,22 @@ struct AnmVM {
         this->data.angular_velocity.y = y;
         this->data.angular_velocity.z = z;
     }
+
+    inline uint8_t get_alpha() {
+        return ((uint8_t*)&this->data.color1)[3];
+    }
+
+    inline void set_alpha(uint8_t value) {
+        ((uint8_t*)&this->data.color1)[3] = value;
+    }
+
+    inline uint8_t get_alpha2() {
+        return ((uint8_t*)&this->data.color2)[3];
+    }
+
+    inline void set_alpha2(uint8_t value) {
+        ((uint8_t*)&this->data.color2)[3] = value;
+    }
     
     // 0x43A250
     dllexport float vectorcall get_scaled_sprite_x_size() asm_symbol_rel(0x43A250) {
@@ -10760,39 +11222,325 @@ struct AnmVM {
         return this->data.sprite_size.y * this->data.scale.y;
     }
 
+    // 0x47BCE0
+    dllexport gnu_noinline void thiscall __apply_deltas() asm_symbol_rel(0x47BCE0) {
+        float x_rotation_delta = this->data.angular_velocity.x;
+        if (x_rotation_delta != 0.0f) {
+            float new_rotation = reduce_angle(x_rotation_delta * GAME_SPEED + this->data.rotation.x);
+            this->data.rotation_enabled = true;
+            this->data.rotation.x = new_rotation;
+        }
+        float y_rotation_delta = this->data.angular_velocity.y;
+        if (y_rotation_delta != 0.0f) {
+            float new_rotation = reduce_angle(y_rotation_delta * GAME_SPEED + this->data.rotation.y);
+            this->data.rotation_enabled = true;
+            this->data.rotation.y = new_rotation;
+        }
+        float z_rotation_delta = this->data.angular_velocity.z;
+        if (z_rotation_delta != 0.0f) {
+            float new_rotation = reduce_angle(z_rotation_delta * GAME_SPEED + this->data.rotation.z);
+            this->data.rotation_enabled = true;
+            this->data.rotation.z = new_rotation;
+        }
+
+        float y_scale_delta = this->data.scale_delta.y;
+        if (y_scale_delta != 0.0f) {
+            y_scale_delta *= GAME_SPEED;
+            this->data.scale_enabled = true;
+            this->data.scale.y += y_scale_delta;
+        }
+        float x_scale_delta = this->data.scale_delta.x;
+        if (x_scale_delta != 0.0f) {
+            x_scale_delta *= GAME_SPEED;
+            this->data.scale_enabled = true;
+            this->data.scale.x += x_scale_delta;
+        }
+
+        float x_scroll_delta = this->data.uv_scroll_speed.x;
+        if (x_scroll_delta != 0.0f) {
+            float new_scroll = x_scroll_delta * GAME_SPEED + this->data.uv_scroll.x;
+            this->data.uv_scroll.x = new_scroll;
+            if (new_scroll >= 2.0f) {
+                this->data.uv_scroll.x = new_scroll - 2.0f;
+            } else if (new_scroll < 0.0f) {
+                this->data.uv_scroll.x = new_scroll + 2.0f;
+            }
+        }
+
+        float y_scroll_delta = this->data.uv_scroll_speed.y;
+        if (y_scroll_delta != 0.0f) {
+            float new_scroll = x_scroll_delta * GAME_SPEED + this->data.uv_scroll.y;
+            this->data.uv_scroll.y = new_scroll;
+            if (new_scroll >= 2.0f) {
+                this->data.uv_scroll.y = new_scroll - 2.0f;
+            } else if (new_scroll < 0.0f) {
+                this->data.uv_scroll.y = new_scroll + 2.0f;
+            }
+        }
+    }
+
+private:
+    // 0x477EA0
+    dllexport gnu_noinline float vectorcall get_float_var(float, float index) asm_symbol_rel(0x477EA0) {
+        using namespace Anm;
+        switch ((int32_t)index) {
+            case I0: // 10000
+                return this->data.current_context.int_vars[0];
+            case I1: // 10001
+                return this->data.current_context.int_vars[1];
+            case I2: // 10002
+                return this->data.current_context.int_vars[2];
+            case I3: // 10003
+                return this->data.current_context.int_vars[3];
+            case F0: // 10004
+                return this->data.current_context.float_vars[0];
+            case F1: // 10005
+                return this->data.current_context.float_vars[1];
+            case F2: // 10006
+                return this->data.current_context.float_vars[2];
+            case F3: // 10007
+                return this->data.current_context.float_vars[3];
+            case __UNKNOWN_X: // 10033
+                return this->data.current_context.__float3_20.x;
+            case __UNKNOWN_Y: // 10034
+                return this->data.current_context.__float3_20.y;
+            case __UNKNOWN_Z: // 10035
+                return this->data.current_context.__float3_20.z;
+            case IC0: // 10008
+                return this->data.current_context.counter_vars[0];
+            case IC1: // 10009
+                return this->data.current_context.counter_vars[1];
+            case RAND_FLOAT: // 10011
+                return RNG.rand_float_range(this->data.current_context.rand_scale);
+            case RAND_FLOAT_SIGNED: // 10012
+                return RNG.rand_float_signed_range(this->data.current_context.rand_scale);
+            case RAND_ANGLE: // 10010
+                return RNG.rand_float_signed_range(this->data.current_context.rand_angle_scale);
+            case SELF_X: // 10013
+                return this->data.position.x;
+            case SELF_Y: // 10014
+                return this->data.position.x;
+            case SELF_Z: // 10015
+                return this->data.position.x;
+            case SELF_X_ROT: // 10023
+                return this->data.rotation.x;
+            case SELF_Y_ROT: // 10024
+                return this->data.rotation.y;
+            case SELF_Z_ROT: // 10025
+                return this->data.rotation.z;
+            case __CONTROLLER_Z_ROT: // 10026
+                return this->get_controller_rotation()->z;
+            case CAMERA_POS_X: // 10016
+                return SUPERVISOR.cameras[3].position.x + SUPERVISOR.cameras[3].__shaking_float3_A.x;
+            case CAMERA_POS_Y: // 10017
+                return SUPERVISOR.cameras[3].position.y + SUPERVISOR.cameras[3].__shaking_float3_A.y;
+            case CAMERA_POS_Z: // 10018
+                return SUPERVISOR.cameras[3].position.z + SUPERVISOR.cameras[3].__shaking_float3_A.z;
+            case CAMERA_FACING_X: // 10019
+                return SUPERVISOR.cameras[3].facing_normalized.x;
+            case CAMERA_FACING_Y: // 10020
+                return SUPERVISOR.cameras[3].facing_normalized.x;
+            case CAMERA_FACING_Z: // 10021
+                return SUPERVISOR.cameras[3].facing_normalized.x;
+            case RAND_SCALE: // 10027
+                return this->data.current_context.rand_scale;
+            case RAND_ANGLE_SCALE: // 10028
+                return this->data.current_context.rand_angle_scale;
+            case RAND_UINT_RANGE: // 10029
+                return this->data.current_context.rand_int_range;
+            case RAND_UINT: // 10022
+                return RNG.rand_uint_range(this->data.current_context.rand_int_range);
+            case RAND_FLOAT_REPLAY: // 10031
+                return REPLAY_RNG.rand_float_range(this->data.current_context.rand_scale);
+            case RAND_FLOAT_SIGNED_REPLAY: // 10032
+                return REPLAY_RNG.rand_float_signed_range(this->data.current_context.rand_scale);
+            case RAND_ANGLE_REPLAY: // 10030
+                return REPLAY_RNG.rand_float_signed_range(this->data.current_context.rand_angle_scale);
+            default:
+                return index;
+        }
+    }
+public:
+    inline float get_float_var(float index) {
+        return this->get_float_var(UNUSED_FLOAT, index);
+    }
+
+    // 0x4781E0
+    dllexport gnu_noinline int32_t thiscall get_int_var(int32_t index) asm_symbol_rel(0x4781E0) {
+        using namespace Anm;
+        switch (index) {
+            case I0: // 10000
+                return this->data.current_context.int_vars[0];
+            case I1: // 10001
+                return this->data.current_context.int_vars[1];
+            case I2: // 10002
+                return this->data.current_context.int_vars[2];
+            case I3: // 10003
+                return this->data.current_context.int_vars[3];
+            case F0: // 10004
+                return this->data.current_context.float_vars[0];
+            case F1: // 10005
+                return this->data.current_context.float_vars[1];
+            case F2: // 10006
+                return this->data.current_context.float_vars[2];
+            case F3: // 10007
+                return this->data.current_context.float_vars[3];
+            case __UNKNOWN_X: // 10033
+                return this->data.current_context.__float3_20.x;
+            case __UNKNOWN_Y: // 10034
+                return this->data.current_context.__float3_20.y;
+            case __UNKNOWN_Z: // 10035
+                return this->data.current_context.__float3_20.z;
+            case IC0: // 10008
+                return this->data.current_context.counter_vars[0];
+            case IC1: // 10009
+                return this->data.current_context.counter_vars[1];
+            case RAND_SCALE: // 10027
+                return this->data.current_context.rand_scale;
+            case RAND_ANGLE_SCALE: // 10028
+                return this->data.current_context.rand_angle_scale;
+            case RAND_UINT_RANGE: // 10029
+                return this->data.current_context.rand_int_range;
+            case RAND_UINT: // 10022
+                return RNG.rand_uint_range(this->data.current_context.rand_int_range);
+            default:
+                return index;
+        }
+    }
+
+    inline float* get_float_ptr(int32_t index) {
+        using namespace Anm;
+        switch ((int32_t)index) {
+            case F0: // 10004
+                return &this->data.current_context.float_vars[0];
+            case F1: // 10005
+                return &this->data.current_context.float_vars[1];
+            case F2: // 10006
+                return &this->data.current_context.float_vars[2];
+            case F3: // 10007
+                return &this->data.current_context.float_vars[3];
+            case SELF_X: // 10013
+                return &this->data.position.x;
+            case SELF_Y: // 10014
+                return &this->data.position.x;
+            case SELF_Z: // 10015
+                return &this->data.position.x;
+            case SELF_X_ROT: // 10023
+                return &this->data.rotation.x;
+            case SELF_Y_ROT: // 10024
+                return &this->data.rotation.y;
+            case SELF_Z_ROT: // 10025
+                return &this->data.rotation.z;
+            case __UNKNOWN_X: // 10033
+                return &this->data.current_context.__float3_20.x;
+            case __UNKNOWN_Y: // 10034
+                return &this->data.current_context.__float3_20.y;
+            case __UNKNOWN_Z: // 10035
+                return &this->data.current_context.__float3_20.z;
+            case RAND_SCALE: // 10027
+                return &this->data.current_context.rand_scale;
+            case RAND_ANGLE_SCALE: // 10028
+                return &this->data.current_context.rand_angle_scale;
+            default:
+                return NULL;
+        }
+    }
+
+    inline int32_t* get_int_ptr(int32_t index) {
+        using namespace Anm;
+        switch (index) {
+            case I0: // 10000
+                return &this->data.current_context.int_vars[0];
+            case I1: // 10001
+                return &this->data.current_context.int_vars[1];
+            case I2: // 10002
+                return &this->data.current_context.int_vars[2];
+            case I3: // 10003
+                return &this->data.current_context.int_vars[3];
+            case IC0: // 10008
+                return &this->data.current_context.counter_vars[0];
+            case IC1: // 10009
+                return &this->data.current_context.counter_vars[1];
+            case RAND_UINT_RANGE: // 10029
+                return &this->data.current_context.rand_int_range;
+            default:
+                return NULL;
+        }
+    }
+
+    inline float get_float_arg(float& value, uint16_t param_mask, int32_t index) {
+        if (param_mask & 1 << index) {
+            return this->get_float_var(value);
+        } else {
+            return value;
+        }
+    }
+
+    inline int32_t get_int_arg(int32_t& value, uint16_t param_mask, int32_t index) {
+        if (param_mask & 1 << index) {
+            return this->get_int_var(value);
+        } else {
+            return value;
+        }
+    }
+
+    // 0x478340
+    dllexport gnu_noinline float* thiscall get_float_ptr_arg(float* value, uint16_t param_mask, int32_t index) {
+        float* ret;
+        if (
+            !(param_mask & 1 << index) ||
+            !(ret = this->get_float_ptr(*value))
+        ) {
+            ret = value;
+        }
+        return ret;
+    }
+
+    // 0x478480
+    dllexport gnu_noinline int32_t* thiscall get_int_ptr_arg(int32_t* value, uint16_t param_mask, int32_t index = 0) {
+        int32_t* ret;
+        if (
+            !(param_mask & 1) ||
+            !(ret = this->get_int_ptr(*value))
+        ) {
+            ret = value;
+        }
+        return ret;
+    }
+
     // 0x478580
     dllexport gnu_noinline int32_t run_anm() asm_symbol_rel(0x478580);
 
     // 0x488EF0
-    dllexport void __unknown_tree_set_J() asm_symbol_rel(0x488EF0) {
-        this->data.__unknown_flag_J = true;
-        this->controller.child_list.as_head().for_each([](AnmVM* vm) gnu_always_inline static_lambda {
-            clang_noinline vm->__unknown_tree_set_J();
+    dllexport void __tree_set_visible2() asm_symbol_rel(0x488EF0) {
+        this->data.__visible2 = true;
+        this->controller.child_list.for_each([](AnmVM* vm) gnu_always_inline static_lambda {
+            clang_noinline vm->__tree_set_visible2();
         });
     }
 
     // 0x488F20
-    dllexport void __unknown_tree_clear_J() asm_symbol_rel(0x488F20) {
-        this->data.__unknown_flag_J = false;
-        this->controller.child_list.as_head().for_each([](AnmVM* vm) gnu_always_inline static_lambda {
-            clang_noinline vm->__unknown_tree_clear_J();
+    dllexport void __tree_clear_visible2() asm_symbol_rel(0x488F20) {
+        this->data.__visible2 = false;
+        this->controller.child_list.for_each([](AnmVM* vm) gnu_always_inline static_lambda {
+            clang_noinline vm->__tree_clear_visible2();
         });
     }
     
     // 0x4892E0
     dllexport gnu_noinline void vectorcall set_z_rotation(float value) asm_symbol_rel(0x4892E0) {
-        this->data.__z_rotation = true;
+        this->data.rotation_enabled = true;
         this->data.rotation.z = value;
     }
 
     inline void set_scale(float x, float y) {
-        this->data.__scale_related_A = true;
+        this->data.scale_enabled = true;
         this->data.scale.x = x;
         this->data.scale.y = y;
     }
 
     inline void set_scale2(float x, float y) {
-        this->data.__scale_related_A = true;
+        this->data.scale_enabled = true;
         this->data.scale2.x = x;
         this->data.scale2.y = y;
     }
@@ -10923,7 +11671,7 @@ ValidateFieldOffset32(0x40, AnmEntry, data);
 ValidateStructSize32(0x40, AnmEntry);
 #pragma endregion
 
-inline const AnmOnFunc ANM_ON_WAIT_FUNCS[] = { NULL, NULL };
+//inline const AnmOnFunc ANM_ON_WAIT_FUNCS[] = { NULL, NULL };
 //inline const AnmOnFunc ANM_ON_TICK_FUNCS[] = { NULL, NULL };
 //inline const AnmOnFunc ANM_ON_DRAW_FUNCS[] = { NULL, NULL };
 //inline const AnmOnFunc ANM_ON_DESTROY_FUNCS[] = { NULL, NULL };
@@ -11513,66 +12261,63 @@ struct AnmManager {
     }
 
     // 0x488220
-    dllexport static gnu_noinline UpdateFuncRet fastcall pre_tick_world(void* self) asm_symbol_rel(0x488220) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC pre_tick_world(void* self) asm_symbol_rel(0x488220) {
     }
     // 0x488250
-    dllexport static gnu_noinline UpdateFuncRet fastcall pre_tick_ui(void* self) asm_symbol_rel(0x488250) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC pre_tick_ui(void* self) asm_symbol_rel(0x488250) {
     }
 
-#define simple_draw_layer(address, index) \
-    /* // address */ dllexport static gnu_noinline UpdateFuncRet fastcall MACRO_CAT(draw_layer_, index)(void* self) asm_symbol_rel(address) { return ((AnmManager*)self)->render_layer(index); }
-
-    /* // 0x487670 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_0(void* self) asm_symbol_rel(0x487670) { return ((AnmManager*)self)->render_layer(0); }
-    /* // 0x487680 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_1(void* self) asm_symbol_rel(0x487680) { return ((AnmManager*)self)->render_layer(1); }
-    /* // 0x487690 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_2(void* self) asm_symbol_rel(0x487690) { return ((AnmManager*)self)->render_layer(2); }
-    /* // 0x4876A0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_4(void* self) asm_symbol_rel(0x4876A0) { return ((AnmManager*)self)->render_layer(4); }
+    /* // 0x487670 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_0(void* self) asm_symbol_rel(0x487670) { return ((AnmManager*)self)->render_layer(0); }
+    /* // 0x487680 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_1(void* self) asm_symbol_rel(0x487680) { return ((AnmManager*)self)->render_layer(1); }
+    /* // 0x487690 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_2(void* self) asm_symbol_rel(0x487690) { return ((AnmManager*)self)->render_layer(2); }
+    /* // 0x4876A0 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_4(void* self) asm_symbol_rel(0x4876A0) { return ((AnmManager*)self)->render_layer(4); }
     // 0x4876B0
-    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_3(void* self) asm_symbol_rel(0x4876B0) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_3(void* self) asm_symbol_rel(0x4876B0) {
         Supervisor::__sub_454950(&SUPERVISOR.cameras[3]);
         SUPERVISOR.set_camera_by_index_disable_fog(3);
         return ((AnmManager*)self)->render_layer(3);
     }
-    /* // 0x487770 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_5(void* self) asm_symbol_rel(0x487770) { return ((AnmManager*)self)->render_layer(5); }
-    /* // 0x487780 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_6(void* self) asm_symbol_rel(0x487780) { return ((AnmManager*)self)->render_layer(6); }
-    /* // 0x487790 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_7(void* self) asm_symbol_rel(0x487790) { return ((AnmManager*)self)->render_layer(7); }
-    /* // 0x4877A0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_8(void* self) asm_symbol_rel(0x4877A0) { return ((AnmManager*)self)->render_layer(8); }
-    /* // 0x4877B0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_9(void* self) asm_symbol_rel(0x4877B0) { return ((AnmManager*)self)->render_layer(9); }
-    /* // 0x4877C0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_10(void* self) asm_symbol_rel(0x4877C0) { return ((AnmManager*)self)->render_layer(10); }
-    /* // 0x4877D0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_11(void* self) asm_symbol_rel(0x4877D0) { return ((AnmManager*)self)->render_layer(11); }
-    /* // 0x4877E0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_13(void* self) asm_symbol_rel(0x4877E0) { return ((AnmManager*)self)->render_layer(13); }
-    /* // 0x4877F0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_14(void* self) asm_symbol_rel(0x4877F0) { return ((AnmManager*)self)->render_layer(14); }
-    /* // 0x487800 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_15(void* self) asm_symbol_rel(0x487800) { return ((AnmManager*)self)->render_layer(15); }
-    /* // 0x487810 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_16(void* self) asm_symbol_rel(0x487810) { return ((AnmManager*)self)->render_layer(16); }
-    /* // 0x487820 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_17(void* self) asm_symbol_rel(0x487820) { return ((AnmManager*)self)->render_layer(17); }
-    /* // 0x487830 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_18(void* self) asm_symbol_rel(0x487830) { return ((AnmManager*)self)->render_layer(18); }
-    /* // 0x487840 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_12(void* self) asm_symbol_rel(0x487840) { return ((AnmManager*)self)->render_layer(12); }
-    /* // 0x487850 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_19(void* self) asm_symbol_rel(0x487850) { return ((AnmManager*)self)->render_layer(19); }
-    /* // 0x487860 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_21(void* self) asm_symbol_rel(0x487860) { return ((AnmManager*)self)->render_layer(21); }
-    /* // 0x487870 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_22(void* self) asm_symbol_rel(0x487870) { return ((AnmManager*)self)->render_layer(22); }
-    /* // 0x487880 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_31(void* self) asm_symbol_rel(0x487880) { return ((AnmManager*)self)->render_layer(31); }
-    /* // 0x487890 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_32(void* self) asm_symbol_rel(0x487890) { return ((AnmManager*)self)->render_layer(32); }
-    /* // 0x4878A0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_30(void* self) asm_symbol_rel(0x4878A0) { return ((AnmManager*)self)->render_layer(30); }
-    /* // 0x4878B0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_26(void* self) asm_symbol_rel(0x4878B0) { return ((AnmManager*)self)->render_layer(26); }
-    /* // 0x4878C0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_27(void* self) asm_symbol_rel(0x4878C0) { return ((AnmManager*)self)->render_layer(27); }
-    /* // 0x4878D0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_25(void* self) asm_symbol_rel(0x4878D0) { return ((AnmManager*)self)->render_layer(25); }
-    /* // 0x4878E0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_38(void* self) asm_symbol_rel(0x4878E0) { return ((AnmManager*)self)->render_layer(38); }
-    /* // 0x4878F0 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_39(void* self) asm_symbol_rel(0x4878F0) { return ((AnmManager*)self)->render_layer(39); }
-    /* // 0x487900 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_40(void* self) asm_symbol_rel(0x487900) { return ((AnmManager*)self)->render_layer(40); }
-    /* // 0x487910 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_43(void* self) asm_symbol_rel(0x487910) { return ((AnmManager*)self)->render_layer(43); }
-    /* // 0x487920 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_44(void* self) asm_symbol_rel(0x487920) { return ((AnmManager*)self)->render_layer(44); }
-    /* // 0x487930 */ dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_45(void* self) asm_symbol_rel(0x487930) { return ((AnmManager*)self)->render_layer(45); }
+    /* // 0x487770 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_5(void* self) asm_symbol_rel(0x487770) { return ((AnmManager*)self)->render_layer(5); }
+    /* // 0x487780 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_6(void* self) asm_symbol_rel(0x487780) { return ((AnmManager*)self)->render_layer(6); }
+    /* // 0x487790 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_7(void* self) asm_symbol_rel(0x487790) { return ((AnmManager*)self)->render_layer(7); }
+    /* // 0x4877A0 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_8(void* self) asm_symbol_rel(0x4877A0) { return ((AnmManager*)self)->render_layer(8); }
+    /* // 0x4877B0 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_9(void* self) asm_symbol_rel(0x4877B0) { return ((AnmManager*)self)->render_layer(9); }
+    /* // 0x4877C0 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_10(void* self) asm_symbol_rel(0x4877C0) { return ((AnmManager*)self)->render_layer(10); }
+    /* // 0x4877D0 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_11(void* self) asm_symbol_rel(0x4877D0) { return ((AnmManager*)self)->render_layer(11); }
+    /* // 0x4877E0 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_13(void* self) asm_symbol_rel(0x4877E0) { return ((AnmManager*)self)->render_layer(13); }
+    /* // 0x4877F0 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_14(void* self) asm_symbol_rel(0x4877F0) { return ((AnmManager*)self)->render_layer(14); }
+    /* // 0x487800 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_15(void* self) asm_symbol_rel(0x487800) { return ((AnmManager*)self)->render_layer(15); }
+    /* // 0x487810 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_16(void* self) asm_symbol_rel(0x487810) { return ((AnmManager*)self)->render_layer(16); }
+    /* // 0x487820 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_17(void* self) asm_symbol_rel(0x487820) { return ((AnmManager*)self)->render_layer(17); }
+    /* // 0x487830 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_18(void* self) asm_symbol_rel(0x487830) { return ((AnmManager*)self)->render_layer(18); }
+    /* // 0x487840 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_12(void* self) asm_symbol_rel(0x487840) { return ((AnmManager*)self)->render_layer(12); }
+    /* // 0x487850 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_19(void* self) asm_symbol_rel(0x487850) { return ((AnmManager*)self)->render_layer(19); }
+    /* // 0x487860 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_21(void* self) asm_symbol_rel(0x487860) { return ((AnmManager*)self)->render_layer(21); }
+    /* // 0x487870 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_22(void* self) asm_symbol_rel(0x487870) { return ((AnmManager*)self)->render_layer(22); }
+    /* // 0x487880 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_31(void* self) asm_symbol_rel(0x487880) { return ((AnmManager*)self)->render_layer(31); }
+    /* // 0x487890 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_32(void* self) asm_symbol_rel(0x487890) { return ((AnmManager*)self)->render_layer(32); }
+    /* // 0x4878A0 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_30(void* self) asm_symbol_rel(0x4878A0) { return ((AnmManager*)self)->render_layer(30); }
+    /* // 0x4878B0 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_26(void* self) asm_symbol_rel(0x4878B0) { return ((AnmManager*)self)->render_layer(26); }
+    /* // 0x4878C0 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_27(void* self) asm_symbol_rel(0x4878C0) { return ((AnmManager*)self)->render_layer(27); }
+    /* // 0x4878D0 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_25(void* self) asm_symbol_rel(0x4878D0) { return ((AnmManager*)self)->render_layer(25); }
+    /* // 0x4878E0 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_38(void* self) asm_symbol_rel(0x4878E0) { return ((AnmManager*)self)->render_layer(38); }
+    /* // 0x4878F0 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_39(void* self) asm_symbol_rel(0x4878F0) { return ((AnmManager*)self)->render_layer(39); }
+    /* // 0x487900 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_40(void* self) asm_symbol_rel(0x487900) { return ((AnmManager*)self)->render_layer(40); }
+    /* // 0x487910 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_43(void* self) asm_symbol_rel(0x487910) { return ((AnmManager*)self)->render_layer(43); }
+    /* // 0x487920 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_44(void* self) asm_symbol_rel(0x487920) { return ((AnmManager*)self)->render_layer(44); }
+    /* // 0x487930 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_45(void* self) asm_symbol_rel(0x487930) { return ((AnmManager*)self)->render_layer(45); }
     // 0x487940
-    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_20(void* self) asm_symbol_rel(0x487940) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_20(void* self) asm_symbol_rel(0x487940) {
         SUPERVISOR.set_camera_by_index_disable_zwrite(1);
         return ((AnmManager*)self)->render_layer(20);
     }
     // 0x487A10
-    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_23(void* self) asm_symbol_rel(0x487A10) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_23(void* self) asm_symbol_rel(0x487A10) {
         SUPERVISOR.set_camera_by_index_disable_zwrite(1);
         return ((AnmManager*)self)->render_layer(23);
     }
     // 0x487AE0
-    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_24(void* self) asm_symbol_rel(0x487AE0) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_24(void* self) asm_symbol_rel(0x487AE0) {
         SUPERVISOR.set_camera_by_index_disable_zwrite(2);
         AnmManager* anm_manager = (AnmManager*)self;
         anm_manager->__int2_D0.x = 0;
@@ -11580,7 +12325,7 @@ struct AnmManager {
         return anm_manager->render_layer(24);
     }
     // 0x487BC0
-    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_28(void* self) asm_symbol_rel(0x487BC0) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_28(void* self) asm_symbol_rel(0x487BC0) {
         AnmManager* anm_manager = (AnmManager*)self;
         SUPERVISOR.set_camera2_alt();
         UpdateFuncRet ret = anm_manager->render_layer(28);
@@ -11588,7 +12333,7 @@ struct AnmManager {
         return ret;
     }
     // 0x487C50
-    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_29(void* self) asm_symbol_rel(0x487C50) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_29(void* self) asm_symbol_rel(0x487C50) {
         AnmManager* anm_manager = (AnmManager*)self;
         SUPERVISOR.set_camera2_alt();
         UpdateFuncRet ret = anm_manager->render_layer(29);
@@ -11596,12 +12341,12 @@ struct AnmManager {
         return ret;
     }
     // 0x487CE0
-    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_37(void* self) asm_symbol_rel(0x487CE0) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_37(void* self) asm_symbol_rel(0x487CE0) {
         SUPERVISOR.set_camera_by_index_disable_zwrite(2);
         return ((AnmManager*)self)->render_layer(37);
     }
     // 0x487DB0
-    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_41A(void* self) asm_symbol_rel(0x487DB0) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_41A(void* self) asm_symbol_rel(0x487DB0) {
         AnmManager* anm_manager = (AnmManager*)self;
         SUPERVISOR.set_camera2_alt();
         UpdateFuncRet ret = anm_manager->render_layer(41);
@@ -11610,7 +12355,7 @@ struct AnmManager {
     }
     // Was this supposed to be 42?
     // 0x487E40
-    dllexport static gnu_noinline UpdateFuncRet fastcall draw_layer_41B(void* self) asm_symbol_rel(0x487E40) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_41B(void* self) asm_symbol_rel(0x487E40) {
         AnmManager* anm_manager = (AnmManager*)self;
         SUPERVISOR.set_camera2_alt();
         UpdateFuncRet ret = anm_manager->render_layer(41);
@@ -11947,7 +12692,7 @@ struct AnmManager {
     dllexport static void interrupt_tree(const AnmID& id, int32_t interrupt_index) asm_symbol_rel(0x488BE0) {
         if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(id)) {
             vm->interrupt(interrupt_index);
-            vm->controller.child_list.as_head().for_each([=](AnmVM* vm) {
+            vm->controller.child_list.for_each([=](AnmVM* vm) {
                 vm->interrupt(interrupt_index);
             });
         }
@@ -11958,7 +12703,7 @@ struct AnmManager {
         if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(id)) {
             vm->interrupt(interrupt_index);
             vm->run_anm();
-            vm->controller.child_list.as_head().for_each([=](AnmVM*& vm) {
+            vm->controller.child_list.for_each([=](AnmVM*& vm) {
                 vm->interrupt(interrupt_index);
                 vm->run_anm();
             });
@@ -11969,7 +12714,7 @@ struct AnmManager {
     dllexport void thiscall mark_tree_for_delete(AnmVM* vm) asm_symbol_rel(0x488D50) {
         if (vm && !vm->data.__unknown_flag_F) {
             vm->data.__vm_state = AnmVMState::MarkedForDelete;
-            vm->controller.child_list.as_head().for_each([=](AnmVM* vm) gnu_always_inline {
+            vm->controller.child_list.for_each([=](AnmVM* vm) gnu_always_inline {
                 clang_noinline this->mark_tree_for_delete(vm);
             });
         }
@@ -12011,7 +12756,7 @@ struct AnmManager {
 
     // 0x488110
     dllexport gnu_noinline void thiscall __recursive_remove(AnmVM* vm, ZUNList<AnmVM>* list_node) asm_symbol_rel(0x488110) {
-        vm->controller.child_list.as_head().for_each_safe([=](AnmVM* current_vm) gnu_always_inline {
+        vm->controller.child_list.for_each_safe([=](AnmVM* current_vm) gnu_always_inline {
             clang_noinline this->__recursive_remove(current_vm, list_node);
         });
         if (vm->data.__vm_state != AnmVMState::Deleted) {
@@ -12278,11 +13023,107 @@ dllexport gnu_noinline UpdateFuncRet fastcall GameThread::on_draw(void* ptr) {
     return UpdateFuncNext;
 }
 
+inline void Lifebar::interrupt_vms(int32_t interrupt) {
+    AnmID* anm_id = &this->main_vm;
+    nounroll for (size_t i = 0; i < 3 + MAX_LIFEBAR_MARKERS; ++i) {
+        anm_id++->interrupt_tree(interrupt);
+    }
+}
+
+inline void Lifebar::delete_vms() {
+    if (this->vms_initialized) {
+        AnmID* anm_id = &this->main_vm;
+        nounroll for (size_t i = 0; i < 3 + MAX_LIFEBAR_MARKERS; ++i) {
+            anm_id++->mark_tree_for_delete();
+        }
+        this->vms_initialized = FALSE;
+    }
+}
+
+// 0x4422C0
+dllexport gnu_noinline void thiscall Gui::__sub_4422C0() {
+    if (!this->__anm_id_C8.get_vm_ptr()) {
+        int32_t script;
+
+        StageData* stage_data = STAGE_DATA_PTR;
+        if (GAME_MANAGER.globals.chapter >= 41) {
+            script = stage_data->innner[0].__anm_script_24;
+        }
+        else {
+            script = stage_data->__anm_script_80;
+        }
+
+        if (script >= 0) {
+            script += 154;
+            if (script >= 0) {
+                this->__anm_id_C8 = this->__anm_loaded_2C0->instantiate_vm_to_world_list_back(script);
+            }
+        }
+    }
+}
+
 // 0x441ED0
 dllexport gnu_noinline void thiscall Gui::__display_stage_logo() {
     if (SUPERVISOR.gamemode_switch != 8 && GAME_MANAGER.__unknown_flag_E) {
         GUI_PTR->stage_logo_anm->instantiate_vm_to_world_list_back(0);
     }
+}
+
+// 0x457570
+dllexport gnu_noinline void thiscall Globals::add_life_fragments(int32_t) {
+    if (this->life_stocks >= this->life_stock_max) {
+        this->life_fragments = 0;
+        return;
+    }
+    int32_t life_fragments = this->life_fragments + 1;
+    int32_t life_cost_index = this->lives_added;
+    this->life_fragments = life_fragments;
+
+    int32_t fragment_cost;
+    if (GAME_MANAGER.globals.difficulty == EXTRA) {
+        fragment_cost = LIFE_FRAGMENT_COST_TABLE_EXTRA[life_cost_index];
+    } else {
+        fragment_cost = LIFE_FRAGMENT_COST_TABLE[life_cost_index];
+    }
+
+    if (life_fragments >= fragment_cost) {
+        do {
+            this->life_fragments -= fragment_cost;
+            this->add_life();
+        } while (this->life_fragments >= fragment_cost);
+    }
+
+    __update_life_ui();
+}
+
+// 0x4575F0
+dllexport gnu_noinline void thiscall Globals::add_life() {
+    int32_t lives = this->life_stocks;
+    int32_t max_lives = this->life_stock_max;
+    if (lives >= max_lives) {
+        this->life_fragments = 0;
+    }
+    ++lives;
+    this->life_stocks = lives;
+    if (lives > max_lives) {
+        this->life_stocks = max_lives;
+        this->life_fragments = 0;
+    }
+
+    Gui* gui = GUI_PTR;
+    if (gui) {
+        gui->__update_life_ui(GAME_MANAGER.globals.life_stocks, GAME_MANAGER.globals.life_fragments, GAME_MANAGER.globals.life_stock_max);
+        gui = GUI_PTR;
+    }
+    
+    SOUND_MANAGER.play_sound(17);
+
+    if (gui) {
+        gui->__anm_id_BC.mark_tree_for_delete();
+        gui->__anm_id_BC = gui->__anm_loaded_2C0->instantiate_vm_to_world_list_back(53);
+    }
+
+    ++this->lives_added;
 }
 
 // 0x488FA0
@@ -12375,7 +13216,7 @@ struct EffectManager : ZUNTask {
     }
 
     // 0x42AF30
-    dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) {
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) {
         EffectManager* self = (EffectManager*)ptr;
         for (size_t i = 0; i < MAX_EFFECTS; ++i) {
             (void)self->vm_slots[i].get_vm_ptr();
@@ -12384,7 +13225,7 @@ struct EffectManager : ZUNTask {
     }
 
     // 0x42AF60
-    dllexport gnu_noinline static UpdateFuncRet fastcall on_draw(void* ptr) {
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) {
         return UpdateFuncNext;
     }
 
@@ -13052,26 +13893,26 @@ dllexport void AnmID::interrupt_tree(int32_t interrupt_index) {
     AnmManager::interrupt_tree(*this, interrupt_index);
 }
 
-inline void AnmID::__unknown_tree_set_J(AnmManager* anm_manager) {
+inline void AnmID::__tree_set_visible2(AnmManager* anm_manager) {
     if (AnmVM* vm = anm_manager->get_vm_with_id(*this)) {
-        vm->data.__unknown_flag_J = true;
-        vm->controller.child_list.as_head().for_each([](AnmVM* vm) static_lambda {
-            vm->__unknown_tree_set_J();
+        vm->data.__visible2 = true;
+        vm->controller.child_list.for_each([](AnmVM* vm) static_lambda {
+            vm->__tree_set_visible2();
         });
     }
 }
 
 // 0x488E70
-dllexport void AnmID::__unknown_tree_set_J() {
-    this->__unknown_tree_set_J(ANM_MANAGER_PTR);
+dllexport void AnmID::__tree_set_visible2() {
+    this->__tree_set_visible2(ANM_MANAGER_PTR);
 }
 
 // 0x488EB0
-dllexport void AnmID::__unknown_tree_clear_J() {
+dllexport void AnmID::__tree_clear_visible2() {
     if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this)) {
-        vm->data.__unknown_flag_J = false;
-        vm->controller.child_list.as_head().for_each([](AnmVM* vm) static_lambda {
-            vm->__unknown_tree_clear_J();
+        vm->data.__visible2 = false;
+        vm->controller.child_list.for_each([](AnmVM* vm) static_lambda {
+            vm->__tree_clear_visible2();
         });
     }
 }
@@ -13168,50 +14009,515 @@ dllexport void AnmLoaded::__sub_477D60(AnmVM* vm, int32_t script_id) {
     }
 }
 
+#define IntArg(number) \
+(((int32_t*)current_instruction->args)[(number)])
+
+#define ParseIntArg(number) \
+this->get_int_arg(IntArg(number), current_instruction->param_mask, number)
+
+#define ParseIntPtrArg(number) \
+this->get_int_ptr_arg(&IntArg(number), current_instruction->param_mask, number)
+
+#define ParseFloatArg(number) \
+this->get_float_arg(FloatArg(number), current_instruction->param_mask, number)
+
+#define ParseFloatPtrArg(number) \
+this->get_float_ptr_arg(&FloatArg(number), current_instruction->param_mask, number)
+
 // 0x478580
 dllexport gnu_noinline int32_t AnmVM::run_anm() {
-    /*
-    float previous_gamespeed = GAME_SPEED.value;
+    using namespace Anm;
+
+    float previous_gamespeed = GAME_SPEED; // ESP+1C
     if (this->data.slowdown_immune) {
         GAME_SPEED.value = 1.0f;
     }
     if (this->get_custom_slowdown() > 0.0f) {
         float new_gamespeed = previous_gamespeed - (this->get_custom_slowdown() * previous_gamespeed);
         GAME_SPEED.value = new_gamespeed;
-        if (0.0f > new_gamespeed) {
+        if (new_gamespeed < 0.0f) {
             GAME_SPEED.value = 0.0f;
         }
     }
-    if (this->run_on_tick()) {
-        GAME_SPEED.set(previous_gamespeed);
-        return 1;
+    if (ZUN_FAILED(this->run_on_tick())) {
+        goto return_delete;
     }
-    if (this->data.current_instruction_offset < 0 || this->data.__unknown_flag_O) {
-        GAME_SPEED.set(previous_gamespeed);
-        return 0;
+    if (
+        this->data.current_instruction_offset < 0 ||
+        this->data.__unknown_flag_O
+    ) {
+        goto return_static;
     }
-    this->controller.__timer_1C.increment_anm();
+    clang_noinline ++this->controller.__timer_1C;
+
     AnmInstruction* current_instruction;
     if (this->data.run_interrupt) {
         current_instruction = this->get_current_instruction();
-        goto RunInterrupt;
+        goto run_interrupt;
     }
-    if (this->data.__unknown_field_B == 1) if (GameThread* game_thread = GAME_THREAD_PTR; !game_thread->__unknown_flag_B) {
+    if (this->data.__unknown_field_B == 1) {
+        GameThread* game_thread = GAME_THREAD_PTR;
+        if (
+            game_thread && game_thread->__unknown_flag_B
+        ) {
+            goto return_static;
+        }
+    }
+    for (;;) {
+        current_instruction = this->get_current_instruction();
+        if ((int32_t)current_instruction->time > this->controller.script_time) break;
+        switch (current_instruction->opcode) {
+            case jump: // 200
+                clang_noinline this->controller.script_time.set(IntArg(1));
+                this->data.current_instruction_offset = IntArg(0);
+                continue;
+            case loop: { // 201
+                int32_t* write = ParseIntPtrArg(0);
+                *write--;
+                if (ParseIntArg(0) <= 0) {
+                    break;
+                }
+                clang_noinline this->controller.script_time.set(IntArg(2));
+                this->data.current_instruction_offset = IntArg(1);
+                continue;
+            }
+            case wait: // 6
+                this->controller.script_time.add_raw(-ParseIntArg(0));
+                break;
+            case anm_halt_invisible: // 4
+                this->data.visible = false;
+            case anm_halt: // 3
+                // Volatile read to force the compiler to emit
+                // the code rather than optimizing it out based
+                // on the earlier check of this same variable.
+                if (*(volatile int32_t*)&this->data.run_interrupt) {
+            run_interrupt:
+                    int32_t search_offset = 0; // ESP+18
+                    int32_t last_good_offset = 0; // ESP+14
+                    AnmInstruction* last_good_instruction = NULL; // ESP+20
+                    AnmInstruction* search_instruction = this->get_anm_loaded()->get_script(this->data.script_id);
+                    for (;;) {
+                        switch ((uint16_t)search_instruction->opcode) {
+                            case interrupt_label: { // 5
+                                int32_t interrupt_number = *(int32_t*)&search_instruction->args[0];
+                                if (this->data.run_interrupt == interrupt_number) {
+                                    goto end_interrupt_search;
+                                }
+                                if (interrupt_number == -1) {
+                                    uint32_t offset_to_next = search_instruction->offset_to_next;
+                                    last_good_offset = search_offset;
+                                    search_offset += offset_to_next;
+                                    last_good_instruction = search_instruction;
+                                    search_instruction = pointer_raw_offset(search_instruction, offset_to_next);
+                                    continue;
+                                }
+                                break;
+                            }
+                            case 0xFFFF:
+                                goto end_interrupt_search;
+                        }
+                        uint32_t offset_to_next = search_instruction->offset_to_next;
+                        search_offset += offset_to_next;
+                        search_instruction = pointer_raw_offset(search_instruction, offset_to_next);
+                    }
+            end_interrupt_search:
+                    this->data.__visible3 = false;
+                    this->data.run_interrupt = 0;
+
+                    if (search_instruction->opcode != interrupt_label) {
+                        if (!last_good_instruction) {
+                            // Is this bugged because it's not
+                            // checking for anm_halt_invisible?
+                            if (current_instruction->opcode != anm_halt) {
+                                continue;
+                            }
+                            goto interrupt_fail;
+                        }
+                        current_instruction = last_good_instruction;
+                        search_offset = last_good_offset;
+                    } else {
+                        current_instruction = search_instruction;
+                    }
+
+                    this->data.interrupt_return_time.set_from_timer(this->controller.script_time);
+                    this->data.interrupt_return_offset = this->data.current_instruction_offset;
+                    search_offset += current_instruction->offset_to_next;
+                    clang_noinline this->controller.script_time.set(current_instruction->time);
+                    this->data.visible = true;
+                    this->data.current_instruction_offset = search_offset;
+                    continue;
+                }
+                else {
+                    this->data.__visible3 = true;
+                }
+            interrupt_fail:
+                clang_noinline this->controller.script_time--;
+                goto anm_break;
+            case interrupt_return: // 7
+                this->controller.script_time.set_from_timer(this->data.interrupt_return_time);
+                this->data.current_instruction_offset = this->data.interrupt_return_offset;
+                continue;
+            case set_int: { // 100
+                int32_t value = ParseIntArg(1);
+                int32_t* write = ParseIntPtrArg(0);
+                *write = value;
+                break;
+            }
+            case set_float: { // 101
+                float value = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write = value;
+                break;
+            }
+            case math_int_add: { // 112
+                int32_t lhs = ParseIntArg(1);
+                int32_t rhs = ParseIntArg(2);
+                int32_t* write = ParseIntPtrArg(0);
+                *write = lhs + rhs;
+                break;
+            }
+            case math_float_add: { // 113
+                float lhs = ParseFloatArg(1);
+                float rhs = ParseFloatArg(2);
+                float* write = ParseFloatPtrArg(0);
+                *write = lhs + rhs;
+                break;
+            }
+            case math_int_sub: { // 114
+                int32_t lhs = ParseIntArg(1);
+                int32_t rhs = ParseIntArg(2);
+                int32_t* write = ParseIntPtrArg(0);
+                *write = lhs - rhs;
+                break;
+            }
+            case math_float_sub: { // 115
+                float lhs = ParseFloatArg(1);
+                float rhs = ParseFloatArg(2);
+                float* write = ParseFloatPtrArg(0);
+                *write = lhs - rhs;
+                break;
+            }
+            case math_int_mul: { // 116
+                int32_t lhs = ParseIntArg(1);
+                int32_t rhs = ParseIntArg(2);
+                int32_t* write = ParseIntPtrArg(0);
+                *write = lhs * rhs;
+                break;
+            }
+            case math_float_mul: { // 117
+                float lhs = ParseFloatArg(1);
+                float rhs = ParseFloatArg(2);
+                float* write = ParseFloatPtrArg(0);
+                *write = lhs * rhs;
+                break;
+            }
+            case math_int_div: { // 118
+                int32_t lhs = ParseIntArg(1);
+                int32_t rhs = ParseIntArg(2);
+                int32_t* write = ParseIntPtrArg(0);
+                *write = lhs / rhs;
+                break;
+            }
+            case math_float_div: { // 119
+                float lhs = ParseFloatArg(1);
+                float rhs = ParseFloatArg(2);
+                float* write = ParseFloatPtrArg(0);
+                *write = lhs / rhs;
+                break;
+            }
+            case math_int_mod: { // 120
+                int32_t lhs = ParseIntArg(1);
+                int32_t rhs = ParseIntArg(2);
+                int32_t* write = ParseIntPtrArg(0);
+                *write = lhs % rhs;
+                break;
+            }
+            case math_float_mod: { // 121
+                float rhs = ParseFloatArg(2);
+                float lhs = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write = zfmodf(lhs, rhs);
+                break;
+            }
+            case math_int_add_assign: { // 102
+                int32_t value = ParseIntArg(1);
+                int32_t* write = ParseIntPtrArg(0);
+                *write += value;
+                break;
+            }
+            case math_float_add_assign: { // 103
+                float value = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write += value;
+                break;
+            }
+            case math_int_sub_assign: { // 104
+                int32_t value = ParseIntArg(1);
+                int32_t* write = ParseIntPtrArg(0);
+                *write -= value;
+                break;
+            }
+            case math_float_sub_assign: { // 105
+                float value = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write -= value;
+                break;
+            }
+            case math_int_mul_assign: { // 106
+                int32_t value = ParseIntArg(1);
+                int32_t* write = ParseIntPtrArg(0);
+                *write *= value;
+                break;
+            }
+            case math_float_mul_assign: { // 107
+                float value = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write *= value;
+                break;
+            }
+            case math_int_div_assign: { // 108
+                int32_t value = ParseIntArg(1);
+                int32_t* write = ParseIntPtrArg(0);
+                *write /= value;
+                break;
+            }
+            case math_float_div_assign: { // 109
+                float value = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write /= value;
+                break;
+            }
+            case math_int_mod_assign: { // 110
+                int32_t value = ParseIntArg(1);
+                int32_t* write = ParseIntPtrArg(0);
+                *write %= value;
+                break;
+            }
+            case math_float_mod_assign: { // 111
+                float rhs = ParseFloatArg(1);
+                float lhs = ParseFloatArg(0);
+                float* write = ParseFloatPtrArg(0);
+                *write = zfmodf(lhs, rhs);
+                break;
+            }
+            case set_int_rand_bound: { // 122
+                int32_t range = ParseIntArg(1);
+                int32_t* write = ParseIntPtrArg(0);
+                *write = RNG.rand_uint_range(range);
+                break;
+            }
+            case set_float_rand_bound: { // 123
+                float range = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write = RNG.rand_float_range(range);
+                break;
+            }
+            case math_sin: { // 124
+                float angle = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write = zsinf(angle);
+                break;
+            }
+            case math_cos: { // 125
+                float angle = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write = zcosf(angle);
+                break;
+            }
+            case math_tan: { // 126
+                float angle = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write = ztanf(angle);
+                break;
+            }
+            case math_acos: { // 127
+                float angle = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write = zacosf(angle);
+                break;
+            }
+            case math_atan: { // 128
+                float angle = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write = zatanf(angle);
+                break;
+            }
+            case math_reduce_angle: { // 129
+                float value = ParseFloatArg(0);
+                float* write = ParseFloatPtrArg(0);
+                *write = reduce_angle_add(value, 0.0f); // This looks a *lot* like old engine code
+                break;
+            }
+            case math_circle_pos_fast: { // 130
+                float radius = ParseFloatArg(3);
+                float angle = ParseFloatArg(2);
+                float* y = ParseFloatPtrArg(1);
+                float* x = ParseFloatPtrArg(0);
+                circle_pos(x, y, angle, radius);
+                break;
+            }
+            case math_circle_pos_rand: { // 131
+                Float3 position;
+                float min = ParseFloatArg(2);
+                float max = ParseFloatArg(3);
+                float rand = RNG.rand_float_signed();
+                float radius = lerp(min, max, rand);
+                float angle = RNG.rand_angle();
+                position.make_from_vector(angle, radius);
+                float* x = ParseFloatPtrArg(0);
+                *x = position.x;
+                float* y = ParseFloatPtrArg(1);
+                *y = position.y;
+                break;
+            }
+            case jump_int_equ: { // 202
+                int32_t lhs = ParseIntArg(0);
+                int32_t rhs = ParseIntArg(1);
+                if (lhs == rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_float_equ: { // 203
+                float lhs = ParseFloatArg(0);
+                float rhs = ParseFloatArg(1);
+                if (lhs == rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_int_neq: { // 204
+                int32_t lhs = ParseIntArg(0);
+                int32_t rhs = ParseIntArg(1);
+                if (lhs != rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_float_neq: { // 205
+                float lhs = ParseFloatArg(0);
+                float rhs = ParseFloatArg(1);
+                if (lhs != rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_int_les: { // 206
+                int32_t lhs = ParseIntArg(0);
+                int32_t rhs = ParseIntArg(1);
+                if (lhs < rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_float_les: { // 207
+                float lhs = ParseFloatArg(0);
+                float rhs = ParseFloatArg(1);
+                if (lhs < rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_int_leq: { // 208
+                int32_t lhs = ParseIntArg(0);
+                int32_t rhs = ParseIntArg(1);
+                if (lhs <= rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_float_leq: { // 209
+                float lhs = ParseFloatArg(0);
+                float rhs = ParseFloatArg(1);
+                if (lhs <= rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }          
+            case jump_int_gre: { // 210
+                int32_t lhs = ParseIntArg(0);
+                int32_t rhs = ParseIntArg(1);
+                if (lhs > rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_float_gre: { // 211
+                float lhs = ParseFloatArg(0);
+                float rhs = ParseFloatArg(1);
+                if (lhs > rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_int_geq: { // 212
+                int32_t lhs = ParseIntArg(0);
+                int32_t rhs = ParseIntArg(1);
+                if (lhs >= rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_float_geq: { // 213
+                float lhs = ParseFloatArg(0);
+                float rhs = ParseFloatArg(1);
+                if (lhs >= rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            // TODO
+        }
+
+        this->data.current_instruction_offset += current_instruction->offset_to_next;
+    }
+
+anm_break:
+    if (this->data.__unknown_flag_U) {
+        this->__apply_deltas();
+    }
+    if (this->data.__unknown_flag_W) {
+        this->controller.position += SUPERVISOR.cameras[3].__float3_13C;
+    }
+    if (this->data.__unknown_flag_Q) {
+        // TODO: horrible
+    }
+    // TODO: more horrible
+
+    if (ZUN_FAILED(this->run_on_wait())) {
+return_delete:
+        GAME_SPEED.set(previous_gamespeed);
+        return 1;
+    }
+    else {
+return_static:
         GAME_SPEED.set(previous_gamespeed);
         return 0;
     }
-    //for (;;) {
-        current_instruction = this->get_current_instruction();
-        //if (!(current_instruction->time <= this->controller.script_time.current)) break;
-        switch (current_instruction->opcode) {
-
-        }
-    //}
-RunInterrupt:
-    */
-    use_var(this);
-    return rand();
-    //return 0;
 }
 
 //template<size_t initial_size, size_t batch_size>
@@ -13251,84 +14557,175 @@ RunInterrupt:
 //dllexport AnmVMIDHack<0x8000, 0x100> anm_hack;
 
 // 0x4573F0
-dllexport gnu_noinline BOOL thiscall Globals::__add_power(int32_t value) {
-    int32_t& A = this->current_power;
-    int32_t B = this->max_power;
-    if (A >= B) {
+dllexport gnu_noinline BOOL thiscall Globals::add_power(int32_t amount) {
+    int32_t power = this->current_power;
+    int32_t max_power = this->max_power;
+    if (power >= max_power) {
         return false;
     }
-    A += value;
-    if (A > B) {
-        A = B;
+    power += amount;
+    this->current_power = power;
+    if (power > max_power) {
+        this->current_power = max_power;
         Gui* gui = GUI_PTR;
-        AnmManager::mark_tree_id_for_delete(gui->__anm_id_BC);
-        gui->__anm_id_BC = 0;
+        gui->__anm_id_BC.mark_tree_for_delete();
         gui->__anm_id_BC = gui->__anm_loaded_2C0->instantiate_vm_to_world_list_back(33);
+        power = this->current_power;
     }
-    int32_t C = (A - value) / this->power_per_level;
-    int32_t D = A / this->power_per_level;
-    return C != D;
+    int32_t prev_level = (power - amount) / this->power_per_level;
+    int32_t new_level = power / this->power_per_level;
+    return prev_level != new_level;
 }
+
+// 0x457480
+dllexport gnu_noinline BOOL thiscall Globals::subtract_power(int32_t amount) {
+    int32_t power = this->current_power;
+    int32_t min_power = this->power_per_level;
+    if (power <= min_power) {
+        return false;
+    }
+    power -= amount;
+    this->current_power = power;
+    if (power < min_power) {
+        this->current_power = min_power;
+        power = min_power;
+    }
+    int32_t prev_level = (power + amount) / min_power; // power_per_level
+    int32_t new_level = power / min_power; // power_per_level
+    return prev_level != new_level;
+}
+
+// 0x4B660C
+static inline constexpr int32_t LIFE_FRAGMENT_INTERRUPT_TABLE[] = {
+    0, 1, 2, 0, 0
+};
+
+// 0x441F10
+dllexport gnu_noinline void thiscall Gui::__update_life_ui(int32_t life_count, int32_t life_fragments, int32_t life_max) {
+    AnmVM* life_icon0 = this->player_life_icons[0];
+    
+    AnmVM** life_vms = this->player_life_icons;
+    if (life_icon0) {
+        float offset = (LIFE_ICONS_IN_GUI - life_max) * 28.0f;
+
+        Float3 position(offset, 0.0f, 0.0f);
+
+        int32_t final_life_index = 0;
+
+        life_icon0->controller.position = position;
+        for (size_t i = 1; i < LIFE_ICONS_IN_GUI; ++i) {
+            this->player_life_icons[i]->controller.position = position;
+        }
+
+        if (life_count > 0) {
+            final_life_index = life_count;
+            do {
+                (*life_vms++)->interrupt(2);
+            } while (--life_count);
+        }
+        if (final_life_index < life_max) {
+            AnmVM* partial_life_vm = this->player_life_icons[final_life_index];
+
+            partial_life_vm->interrupt(7 + LIFE_FRAGMENT_INTERRUPT_TABLE[life_fragments]);
+
+            ++final_life_index;
+
+            if (final_life_index < life_max) {
+                AnmVM** empty_life_vms = &this->player_life_icons[final_life_index];
+
+                uint32_t empty_life_icons = life_max - final_life_index;
+                do {
+                    (*empty_life_vms++)->interrupt(3);
+                } while (--empty_life_icons);
+            }
+        }
+
+        if (final_life_index < (uint32_t)LIFE_ICONS_IN_GUI) {
+            life_vms = this->player_life_icons;
+
+            AnmVM** empty_life_vms = &this->player_life_icons[final_life_index];
+
+            uint32_t empty_life_icons = LIFE_ICONS_IN_GUI - final_life_index;
+            do {
+                (*empty_life_vms++)->interrupt(5);
+            } while (--empty_life_icons);
+        }
+    }
+}
+
+// 0x4B6600
+static inline constexpr int32_t BOMB_FRAGMENT_INTERRUPT_TABLE[] = {
+    0, 1, 2
+};
 
 // 0x4420E0
 dllexport gnu_noinline void thiscall Gui::__update_bomb_ui(int32_t bomb_count, int32_t bomb_fragments, int32_t bomb_max) {
-    AnmVM* vm = this->__anm_vm_ptr_array_68[0];
-    if (vm) {
-        float A = (7 - bomb_max) * 28.0f;
-        Float3 B(A, A, 0.0f);
-        int32_t C = 0;
-        vm->controller.position = B;
-        this->__anm_vm_ptr_array_68[1]->controller.position = B;
-        this->__anm_vm_ptr_array_68[2]->controller.position = B;
-        this->__anm_vm_ptr_array_68[3]->controller.position = B;
-        this->__anm_vm_ptr_array_68[4]->controller.position = B;
-        this->__anm_vm_ptr_array_68[5]->controller.position = B;
-        this->__anm_vm_ptr_array_68[6]->controller.position = B;
+    AnmVM* bomb_icon0 = this->player_bomb_icons[0];
+    
+    AnmVM** bomb_vms = this->player_bomb_icons;
+    if (bomb_icon0) {
+        float offset = (BOMB_ICONS_IN_GUI - bomb_max) * 28.0f;
+
+        Float3 position(offset, 0.0f, 0.0f);
+
+        int32_t final_bomb_index = 0;
+
+        bomb_icon0->controller.position = position;
+        for (size_t i = 1; i < BOMB_ICONS_IN_GUI; ++i) {
+            this->player_bomb_icons[i]->controller.position = position;
+        }
+
         if (bomb_count > 0) {
-            C = bomb_count;
-            AnmVM** vm_ptrs = &this->__anm_vm_ptr_array_68[0];
+            final_bomb_index = bomb_count;
             do {
-                vm_ptrs[bomb_count]->interrupt(2);
+                (*bomb_vms++)->interrupt(2);
             } while (--bomb_count);
         }
-        if (C < bomb_max) {
-            // 0x4B6600
-            static constexpr int32_t UnknownAnmInterruptTableA[] = { 0, 1, 2 };
-            this->__anm_vm_ptr_array_68[0]->interrupt(UnknownAnmInterruptTableA[bomb_fragments]);
-            if (++C < bomb_max) {
-                bomb_count = bomb_max - C;
-                AnmVM** vm_ptrs = &this->__anm_vm_ptr_array_68[0];
+        if (final_bomb_index < bomb_max) {
+            AnmVM* partial_bomb_vm = this->player_bomb_icons[final_bomb_index];
+
+            partial_bomb_vm->interrupt(7 + BOMB_FRAGMENT_INTERRUPT_TABLE[bomb_fragments]);
+
+            ++final_bomb_index;
+
+            if (final_bomb_index < bomb_max) {
+                AnmVM** empty_bomb_vms = &this->player_bomb_icons[final_bomb_index];
+
+                uint32_t empty_bomb_icons = bomb_max - final_bomb_index;
                 do {
-                    vm_ptrs[bomb_count]->interrupt(3);
-                } while (--bomb_count);
+                    (*empty_bomb_vms++)->interrupt(3);
+                } while (--empty_bomb_icons);
             }
         }
-        if (C < countof(this->__anm_vm_ptr_array_68)) {
-            bomb_count = countof(this->__anm_vm_ptr_array_68) - C;
-            AnmVM** vm_ptrs = &this->__anm_vm_ptr_array_68[0];
+
+        if (final_bomb_index < (uint32_t)BOMB_ICONS_IN_GUI) {
+            bomb_vms = this->player_bomb_icons;
+
+            AnmVM** empty_bomb_vms = &this->player_bomb_icons[final_bomb_index];
+
+            uint32_t empty_bomb_icons = BOMB_ICONS_IN_GUI - final_bomb_index;
             do {
-                vm_ptrs[bomb_count]->interrupt(5);
-            } while (--bomb_count);
+                (*empty_bomb_vms++)->interrupt(5);
+            } while (--empty_bomb_icons);
         }
     }
 }
 
 // 0x43A730
-dllexport gnu_noinline ZUNResult thiscall Gui::__sub_43A730() {
+dllexport gnu_noinline ZUNResult thiscall Gui::__initialize() {
     AnmLoaded* stage_logo_anm = AnmManager::preload_anm(STAGE_LOGO_ANM_INDEX, STAGE_DATA_PTR->logo_anm_filename);
     this->stage_logo_anm = stage_logo_anm;
     if (!stage_logo_anm) goto corrupted_data_error;
     if (void* cached_msg_file = CACHED_MSG_FILE_PTR) {
         this->msg_file = cached_msg_file;
-        DebugLogger::__debug_log_stub_8("%s load Skip\n", STAGE_DATA_PTR->msg_filenames[GAME_MANAGER.globals.character + GAME_MANAGER.globals.shottype]);
+        DebugLogger::__debug_log_stub_8("%s load Skip\n", STAGE_DATA_PTR->msg_filenames[GAME_MANAGER.globals.shottype_index()]);
         CACHED_MSG_FILE_PTR = NULL;
     } else {
-        void* msg_file = read_file_from_dat(STAGE_DATA_PTR->msg_filenames[GAME_MANAGER.globals.character + GAME_MANAGER.globals.shottype]);
+        void* msg_file = read_file_from_dat(STAGE_DATA_PTR->msg_filenames[GAME_MANAGER.globals.shottype_index()]);
         this->msg_file = msg_file;
         if (!msg_file) goto corrupted_data_error;
     }
-    this->__timer_140.reset();
-    this->__int_13C = -1;
+    this->__timer_13C.reset();
     this->__score = GAME_MANAGER.globals.score;
     this->spell_timer_seconds = -1;
     this->spell_timer_hundredths = -1;
@@ -13336,6 +14733,40 @@ dllexport gnu_noinline ZUNResult thiscall Gui::__sub_43A730() {
 corrupted_data_error:
     LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
     return ZUN_ERROR;
+}
+
+// 0x43B800
+dllexport gnu_noinline Gui* Gui::allocate() {
+    Gui* gui = new Gui();
+    GUI_PTR = gui;
+
+    while (!FRONT_ANM_IS_LOADED) {
+        Sleep(10);
+    }
+
+    AnmLoaded* anm_loaded = ANM_MANAGER_PTR->preload_anm(5, "fronttr.anm");
+    gui->__anm_loaded_2C0 = anm_loaded;
+
+    if (
+        !anm_loaded ||
+        ZUN_FAILED(gui->__initialize())
+    ) {
+        LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
+        delete gui;
+        return NULL;
+    }
+
+    UpdateFunc* update_func = new UpdateFunc(&on_tick, false, gui);
+    UpdateFuncRegistry::register_on_tick(update_func, 33);
+    gui->on_tick_func = update_func;
+    update_func = new UpdateFunc(&on_draw, false, gui);
+    UpdateFuncRegistry::register_on_draw(update_func, 53);
+    gui->on_draw_func = update_func;
+    update_func = new UpdateFunc(&on_draw_B, false, gui);
+    UpdateFuncRegistry::register_on_draw(update_func, 49);
+    gui->on_draw_func_B = update_func;
+
+    return gui;
 }
 
 typedef struct AsciiManager AsciiManager;
@@ -13444,7 +14875,7 @@ struct AsciiManager : ZUNTask {
 
     // Yes, the original code was something terrible like this
     // 0x4198B0
-    dllexport static UpdateFuncRet fastcall on_tick(void* ptr) {
+    dllexport static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) {
         AsciiManager* self = (AsciiManager*)ptr;
         int32_t live_index = 0;
         AsciiString* cur_string = self->strings;
@@ -13464,12 +14895,12 @@ struct AsciiManager : ZUNTask {
     }
 
     // 0x419940
-    dllexport static UpdateFuncRet fastcall on_draw_group_0(void* ptr) {
+    dllexport static UpdateFuncRet UpdateFuncCC on_draw_group_0(void* ptr) {
         return ((AsciiManager*)ptr)->draw_group(0);
     }
 
     // 0x419950
-    dllexport static UpdateFuncRet fastcall on_draw_group_1(void* ptr) {
+    dllexport static UpdateFuncRet UpdateFuncCC on_draw_group_1(void* ptr) {
         AsciiManager* self = (AsciiManager*)ptr;
         SUPERVISOR.set_camera_by_index(0);
         ANM_MANAGER_PTR->flush_sprites();
@@ -13481,7 +14912,7 @@ struct AsciiManager : ZUNTask {
     }
 
     // 0x419A80
-    dllexport static UpdateFuncRet fastcall on_draw_group_2(void* ptr) {
+    dllexport static UpdateFuncRet UpdateFuncCC on_draw_group_2(void* ptr) {
         AsciiManager* self = (AsciiManager*)ptr;
         SUPERVISOR.set_camera2_alt();
         UpdateFuncRet ret = self->draw_group(2);
@@ -13490,7 +14921,7 @@ struct AsciiManager : ZUNTask {
     }
 
     // 0x419B10
-    dllexport static UpdateFuncRet fastcall on_draw_group_3(void* ptr) {
+    dllexport static UpdateFuncRet UpdateFuncCC on_draw_group_3(void* ptr) {
         AsciiManager* self = (AsciiManager*)ptr;
         SUPERVISOR.set_camera_by_index(2);
         return self->draw_group(3);
@@ -13596,7 +15027,7 @@ private:
     }
 public:
     // 0x419DD0
-    dllexport gnu_noinline static void stdcall print_number(Float3* position, uint32_t number) asm_symbol_rel(0x419DD0) {
+    dllexport gnu_noinline void thiscall print_number(Float3* position, uint32_t number) asm_symbol_rel(0x419DD0) {
         ASCII_MANAGER_PTR->print_number_impl(position, number);
     }
     
@@ -13789,6 +15220,22 @@ public:
     // 0x416AE0
     dllexport gnu_noinline static void set_defaults() {
         ASCII_MANAGER_PTR->set_defaults_impl();
+    }
+
+    inline uint8_t get_alpha() {
+        return ((uint8_t*)&this->color)[3];
+    }
+
+    inline void set_alpha(uint8_t value) {
+        ((uint8_t*)&this->color)[3] = value;
+    }
+
+    inline uint8_t get_alpha2() {
+        return ((uint8_t*)&this->color2)[3];
+    }
+
+    inline void set_alpha2(uint8_t value) {
+        ((uint8_t*)&this->color2)[3] = value;
     }
 
     // 0x42CB60
@@ -14843,8 +16290,8 @@ dllexport gnu_noinline int32_t fastcall PlayerDamageSource::__unknown_func_3(Pla
     Float2 idk;
     idk.make_from_vector(A, 6.5f);
 
-    vm->data.current_context_vars.__float3_20.x = idk.x;
-    vm->data.current_context_vars.__float3_20.y = idk.y;
+    vm->data.current_context.__float3_20.x = idk.x;
+    vm->data.current_context.__float3_20.y = idk.y;
 
     return -1;
 }
@@ -14897,11 +16344,6 @@ struct PopupManager : ZUNTask {
         return UpdateFuncNext;
     }
 
-    // 0x4645D0
-    dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) {
-        return ((PopupManager*)ptr)->on_tick();
-    }
-
     // 0x464180
     dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x464180) {
         Popup* popup = this->popups;
@@ -14914,13 +16356,18 @@ struct PopupManager : ZUNTask {
         return UpdateFuncNext;
     }
 
+    // 0x4645D0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) {
+        return ((PopupManager*)ptr)->on_tick();
+    }
+
     // 0x4645E0
-    dllexport gnu_noinline static UpdateFuncRet fastcall on_draw(void* ptr) {
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) {
         return ((PopupManager*)ptr)->on_draw();
     }
 
     // 0x463DD0
-    dllexport gnu_noinline PopupManager* allocate() {
+    dllexport gnu_noinline static PopupManager* allocate() {
         PopupManager* popup_manager = new PopupManager();
         POPUP_MANAGER_PTR = popup_manager;
         popup_manager->ascii_anm = ASCII_MANAGER_PTR->ascii_anm;
@@ -14986,8 +16433,6 @@ typedef struct AbilityManager AbilityManager;
 typedef struct AbilityTextData AbilityTextData;
 typedef struct AbilityMenu AbilityMenu;
 
-typedef struct EnemyManager EnemyManager;
-
 extern "C" {
     // 0x4CF298
     extern AbilityManager* ABILITY_MANAGER_PTR asm("_ABILITY_MANAGER_PTR");
@@ -14997,9 +16442,6 @@ extern "C" {
     extern AbilityMenu* ABILITY_MENU_PTR asm("_ABILITY_MENU_PTR");
     // 0x4CF2D4
     extern int32_t UNKNOWN_COUNTER_A asm("_UNKNOWN_COUNTER_A");
-
-    // 0x4CF2D0
-    extern EnemyManager* ENEMY_MANAGER_PTR asm("_ENEMY_MANAGER_PTR");
 }
 
 static inline bool enemies_are_alive();
@@ -15264,7 +16706,7 @@ struct CardMamizou : CardBase {
     // 0x40D390
     dllexport gnu_noinline virtual int thiscall __method_4() {
         if (GAME_THREAD_PTR && this->__unknown_flag_B) {
-            BOOL A = GAME_MANAGER.globals.__add_power(100);
+            BOOL A = GAME_MANAGER.globals.add_power(100);
             this->__unknown_flag_B = false;
             if (A) {
                 if (Player* player = PLAYER_PTR) {
@@ -16385,7 +17827,7 @@ struct CardMegumu : CardBase {
                 SOUND_MANAGER.play_sound_positioned(13, PLAYER_PTR->data.position.x);
             }
             else {
-                if (GAME_MANAGER.globals.__add_power(100)) {
+                if (GAME_MANAGER.globals.add_power(100)) {
                     PLAYER_PTR->data.__sub_45D5E0();
                     POPUP_MANAGER_PTR->create_popup(&PLAYER_PTR->data.position, -1, PackD3DCOLOR(64, 255, 255, 255));
                     SOUND_MANAGER.play_sound_positioned(13, PLAYER_PTR->data.position.x);
@@ -16536,7 +17978,7 @@ struct AbilityTextData {
         size_t i = countof(ability_text_data->__vm_id_array_63C0);
         AnmID* current_vm_id = ability_text_data->__vm_id_array_63C0;
         do {
-            current_vm_id++->__unknown_tree_set_J(anm_manager);
+            current_vm_id++->__tree_set_visible2(anm_manager);
         } while (--i);
         ability_text_data->__sub_416940(arg1, 0);
     }
@@ -16887,7 +18329,7 @@ struct AbilityManager : ZUNTask {
     }
 
     // 0x408A90
-    dllexport static gnu_noinline UpdateFuncRet fastcall pre_on_tick(void* self) asm_symbol_rel(0x408A90) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC on_tick(void* self) asm_symbol_rel(0x408A90) {
         if (ABILITY_SHOP_PTR) {
             return UpdateFuncNext;
         }
@@ -16895,7 +18337,7 @@ struct AbilityManager : ZUNTask {
     }
 
     // 0x408AB0
-    dllexport static gnu_noinline UpdateFuncRet fastcall on_draw(void* self) asm_symbol_rel(0x408AB0) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC on_draw(void* self) asm_symbol_rel(0x408AB0) {
         ((AbilityManager*)self)->card_list.for_each([](CardBase* card) static_lambda {
 
         });
@@ -16903,17 +18345,17 @@ struct AbilityManager : ZUNTask {
     }
 
     // 0x4082B0
-    dllexport static gnu_noinline AbilityManager* create() asm_symbol_rel(0x4082B0) {
+    dllexport static gnu_noinline AbilityManager* allocate() asm_symbol_rel(0x4082B0) {
         AbilityManager* ability_manager = new AbilityManager();
         ABILITY_MANAGER_PTR = ability_manager;
         ability_manager->card_list.initialize_with((CardBase*)ability_manager);
         ability_manager->load_files();
-        UpdateFunc* on_tick = new UpdateFunc(&AbilityManager::pre_on_tick, false, ability_manager);
-        UpdateFuncRegistry::register_on_tick(on_tick, 22);
-        ability_manager->on_tick_func = on_tick;
-        UpdateFunc* on_draw = new UpdateFunc(&AbilityManager::on_draw, false, ability_manager);
-        UpdateFuncRegistry::register_on_draw(on_draw, 51);
-        ability_manager->on_draw_func = on_draw;
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, ability_manager);
+        UpdateFuncRegistry::register_on_tick(update_func, 22);
+        ability_manager->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, false, ability_manager);
+        UpdateFuncRegistry::register_on_draw(update_func, 51);
+        ability_manager->on_draw_func = update_func;
         return ability_manager;
     }
 
@@ -17246,7 +18688,7 @@ struct EnemyManager : ZUNTask {
     }
 
     // 0x42D7D0
-    dllexport void allocate_new_enemy(const char* sub_name, EnemyInitData* data, int32_t = UNUSED_DWORD) asm_symbol_rel(0x42D7D0) {
+    dllexport gnu_noinline Enemy* allocate_new_enemy(const char* sub_name, EnemyInitData* data, int32_t = UNUSED_DWORD) asm_symbol_rel(0x42D7D0) {
         Enemy* enemy = new Enemy(sub_name);
         enemy->data.motion.absolute.position = data->position;
         enemy->data.score = data->score;
@@ -17267,6 +18709,46 @@ struct EnemyManager : ZUNTask {
         }
         enemy->data.chapter = GAME_MANAGER.globals.chapter;
 
+        // Nothing checks the result here...?
+        enemy->on_tick();
+
+        // Presumably this is supposed to be a slight randomization
+        enemy->data.death_sound = 3 + (enemy->id & 1);
+
+        if (!enemy->data.death_anm_script) {
+            enemy->data.death_anm_script = 44;
+            if (
+                enemy->data.anm_slot_0_source_index == 2
+            ) {
+                switch (enemy->data.anm_slot_0_script) {
+                    case 5: case 25: case 53: case 91:
+                        enemy->data.death_anm_script = 40;
+                        break;
+                    case 15: case 103:
+                        enemy->data.death_anm_script = 52;
+                        break;
+                    case 10: case 56: case 95:
+                        enemy->data.death_anm_script = 48;
+                        break;
+                    case 30:
+                        enemy->data.death_anm_script = 58;
+                        break;
+                    case 35:
+                        enemy->data.death_anm_script = 57;
+                        break;
+                    case 40:
+                        enemy->data.death_anm_script = 56;
+                        break;
+                }
+            }
+            enemy->data.death_anm_index = 1;
+        }
+
+        this->enemy_list.append(&enemy->data.global_list_node);
+
+        ++this->enemy_count;
+
+        return enemy;
     }
 
     // 0x42D440
@@ -17307,10 +18789,8 @@ struct EnemyManager : ZUNTask {
         return ENEMY_MANAGER_PTR->get_enemy_by_id_impl(enemy_id);
     }
 
-    // 0x4237F0
-    dllexport gnu_noinline Enemy* get_boss_by_index(int32_t index) asm_symbol_rel(0x4237F0) {
-        EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
-        return enemy_manager->get_enemy_by_id_impl(enemy_manager->boss_ids[index]);
+    forceinline Enemy* get_boss_by_index(int32_t index) {
+        return ::get_boss_by_index(index);
     }
 
     // 0x409990
@@ -17418,7 +18898,7 @@ public:
     }
 
     // 0x42DF50
-    dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) {
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) {
         GameThread* game_thread_ptr = GAME_THREAD_PTR;
         if (
             game_thread_ptr &&
@@ -17433,7 +18913,7 @@ public:
     }
 
     // 0x42E0B0
-    dllexport gnu_noinline static UpdateFuncRet fastcall on_draw(void* ptr) {
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) {
         return UpdateFuncNext;
     }
 
@@ -17604,14 +19084,7 @@ dllexport gnu_noinline Enemy::Enemy(const char* sub_name) {
 // 0x4237F0
 dllexport gnu_noinline Enemy* get_boss_by_index(int32_t boss_index) {
     EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
-    int32_t boss_id = enemy_manager->boss_ids[boss_index];
-    if (!boss_id) {
-        return NULL;
-    } else {
-        enemy_manager->enemy_list.find_if([=](Enemy* enemy) {
-            return enemy->id == boss_id;
-        });
-    }
+    return enemy_manager->get_enemy_by_id_impl(enemy_manager->boss_ids[boss_index]);
 }
 
 // 0x42D220
@@ -17868,7 +19341,9 @@ struct Spellcard : ZUNTask {
     int32_t time; // 0x84
     unknown_fields(0x4); // 0x88
     int __int_8C; // 0x8C
-    unknown_fields(0x1C); // 0x90
+    int32_t __int_90; // 0x90
+    unknown_fields(0x14); // 0x94
+    int32_t __int_A8; // 0xA8
     Float3 __float3_AC; // 0xAC
     unknown_fields(0x8); // 0xB8
     // 0xC0
@@ -17975,8 +19450,8 @@ struct Spellcard : ZUNTask {
         this->__float3_AC = boss->data.current_motion.position;
         this->__vm_id_1C.set_controller_position(&boss->data.current_motion.position);
 
-        this->__vm_id_1C.__wtf_child_list_jank_A(11, 0)->data.current_context_vars.int_vars[2] = time;
-        this->__vm_id_1C.__wtf_child_list_jank_A(13, 0)->data.current_context_vars.int_vars[2] = time;
+        this->__vm_id_1C.__wtf_child_list_jank_A(11, 0)->data.current_context.int_vars[2] = time;
+        this->__vm_id_1C.__wtf_child_list_jank_A(13, 0)->data.current_context.int_vars[2] = time;
 
         this->time = time;
 
@@ -18087,6 +19562,8 @@ ValidateFieldOffset32(0x7C, Spellcard, __bonus_A);
 ValidateFieldOffset32(0x80, Spellcard, __bonus_B);
 ValidateFieldOffset32(0x84, Spellcard, time);
 ValidateFieldOffset32(0x8C, Spellcard, __int_8C);
+ValidateFieldOffset32(0x90, Spellcard, __int_90);
+ValidateFieldOffset32(0xA8, Spellcard, __int_A8);
 ValidateFieldOffset32(0xAC, Spellcard, __float3_AC);
 ValidateStructSize32(0xC0, Spellcard);
 #pragma endregion
@@ -18452,7 +19929,7 @@ struct Bullet {
             // item spawning stuff
         }
         this->state = 4;
-        this->position += this->velocity * GAME_SPEED.value * 0.5f;
+        this->position += this->velocity * GAME_SPEED * 0.5f;
         this->__timer_F6C.reset();
         return 0;
     }
@@ -18812,7 +20289,7 @@ struct LaserLine : LaserData {
     dllexport virtual gnu_noinline int thiscall on_draw() override asm_symbol_rel(0x44AB60) {
         this->__vm_BE8.data.position = this->position;
         this->__vm_BE8.data.rotation.z = reduce_angle_add(this->angle, HALF_PI_f);
-        this->__vm_BE8.data.__z_rotation = true;
+        this->__vm_BE8.data.rotation_enabled = true;
         ANM_MANAGER_PTR->draw_vm(&this->__vm_BE8);
         this->__vm_1800.data.position.make_from_vector(this->angle, this->length);
         this->__vm_1800.data.position.x += this->position.x;
@@ -19466,14 +20943,14 @@ public:
     }
 
     // 0x448870
-    dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) {
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) {
         LaserManager* laser_manager = (LaserManager*)ptr;
         if (
             !(GAME_THREAD_PTR->skip_flag | GAME_THREAD_PTR->__unknown_flag_A) &&
             !GAME_THREAD_PTR->__unknown_flag_C
         ) {
             if (GAME_THREAD_PTR->__unknown_flag_B) {
-                float prev_game_speed = GAME_SPEED.value;
+                float prev_game_speed = GAME_SPEED;
                 GAME_SPEED.value = 0.0f;
                 UpdateFuncRet ret = laser_manager->on_tick();
                 GAME_SPEED.value = prev_game_speed;
@@ -19489,7 +20966,7 @@ public:
     }
 
     // 0x4488E0
-    dllexport gnu_noinline static UpdateFuncRet fastcall on_draw(void* ptr) {
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) {
         LaserManager* laser_manager = (LaserManager*)ptr;
         if (!GAME_THREAD_PTR->skip_flag) {
             laser_manager->list_head().for_each_safe([](LaserData* laser) {
@@ -20774,7 +22251,7 @@ dllexport gnu_noinline void thiscall EnemyData::anm_set_slot_impl() {
             this->final_sprite_size.y = vm->get_scaled_sprite_x_size();
         }
         if (this->intangible) {
-            id.__unknown_tree_clear_J();
+            id.__tree_clear_visible2();
         }
     }
 }
@@ -20791,7 +22268,7 @@ inline void thiscall EnemyData::anm_set_slot_main_impl() {
         this->final_sprite_size.y = vm->get_scaled_sprite_x_size();
     }
     if (this->intangible) {
-        id.__unknown_tree_clear_J();
+        id.__tree_clear_visible2();
     }
     if (slot == 0) {
         this->__unknown_flag_I = true;
@@ -20875,14 +22352,14 @@ dllexport gnu_noinline void thiscall EnemyData::ecl_set_anm_data() {
             }
             case anm_alpha_slot: { // 327
                 int32_t alpha = this->vm->current_context->get_int_arg(1);
-                ((uint8_t*)&vm->data.color1)[3] = alpha;
+                vm->set_alpha(alpha);
                 break;
             }
             case anm_alpha_slot_interp: { // 328
                 uint32_t alpha = this->vm->current_context->get_int_arg(3);
                 int32_t mode = this->vm->current_context->get_int_arg(2);
                 int32_t end_time = this->vm->current_context->get_int_arg(1);
-                vm->data.alpha_interp.initial_value = ((uint8_t*)&vm->data.color1)[3];
+                vm->data.alpha_interp.initial_value = vm->get_alpha();
                 vm->data.alpha_interp.bezier1 = 0;
                 vm->data.alpha_interp.bezier2 = 0;
                 vm->data.alpha_interp.mode = mode;
@@ -20952,7 +22429,7 @@ inline void thiscall EnemyData::anm_play_attack_impl() {
         this->final_sprite_size.y = vm->get_scaled_sprite_x_size();
     }
     if (this->intangible) {
-        this->anm_vms[slot].__unknown_tree_clear_J();
+        this->anm_vms[slot].__tree_clear_visible2();
     }
 }
 
@@ -20972,7 +22449,7 @@ inline void thiscall EnemyData::anm_play_attack_ex_impl() {
         this->final_sprite_size.y = vm->get_scaled_sprite_x_size();
     }
     if (this->intangible) {
-        this->anm_vms[slot].__unknown_tree_clear_J();
+        this->anm_vms[slot].__tree_clear_visible2();
     }
 }
 
@@ -21071,32 +22548,28 @@ dllexport gnu_noinline ZUNResult thiscall EclContext::call(EclContext* new_conte
 }
 
 #if INCLUDE_PATCH_CODE
-inline void EclContext::basic_call(EclContext* new_context, EclInstruction* current_instruction) {
+inline void EclContext::basic_call(EclContext* new_context, const char* sub_name) {
     int32_t stack_pointer = new_context->stack.pointer; // EBP-14 (LOCAL.5)
-    int32_t new_stack_pointer; // EBP-C (LOCAL.3)
-    if (!stack_pointer) {
-        new_stack_pointer = sizeof(int32_t[5]);
-        new_context->stack.push(0);
-    } else {
-        new_stack_pointer = stack_pointer + sizeof(int32_t[4]);
-    }
-    int32_t current_stack_pointer = new_context->stack.pointer; // EBP-14 (LOCAL.5)
     if (stack_pointer) {
         int32_t idk_what = new_context->stack.pop<int32_t>();
         new_context->stack.pointer = stack_pointer;
         new_context->stack.write_temp(-1, idk_what);
-        new_context->stack.write_temp(-2, current_stack_pointer);
+        new_context->stack.write_temp(-2, stack_pointer);
         new_context->stack.push(this->time);
         new_context->stack.push(this->location.instruction_offset);
         new_context->stack.push(this->location.sub_index);
     } else {
+        new_context->stack.push(0);
         new_context->stack.pointer = sizeof(int32_t);
-        new_context->stack.write_temp(0, current_stack_pointer);
+        new_context->stack.write_temp(0, stack_pointer);
         new_context->stack.push(-1);
         new_context->stack.push(-1);
         new_context->stack.push(-1);
     }
     new_context->stack.pointer += sizeof(int32_t);
+
+    //int32_t stack_pointer = new_context->stack.pointer;
+
 }
 #endif
 
@@ -22333,7 +23806,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->flags_low |= this->get_int_arg(0);
             if (this->intangible) {
                 for (size_t i = 0; i < ENEMY_ANM_SLOTS; ++i) {
-                    this->anm_vms[i].__unknown_tree_clear_J();
+                    this->anm_vms[i].__tree_clear_visible2();
                 }
             }
             break;
@@ -22341,7 +23814,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->flags_low &= ~this->get_int_arg(0);
             if (this->intangible) {
                 for (size_t i = 0; i < ENEMY_ANM_SLOTS; ++i) {
-                    this->anm_vms[i].__unknown_tree_set_J();
+                    this->anm_vms[i].__tree_set_visible2();
                 }
             }
             break;
@@ -23279,7 +24752,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
         }
         case boss_set_life_count: { // 540
             int32_t lives = this->get_int_arg(0);
-            GUI_PTR->__set_field_170(lives);
+            GUI_PTR->__set_boss_life_count(lives);
             break;
         }
         case laser_clear_all: // 545
@@ -23851,7 +25324,7 @@ struct ReplayManager : ZUNTask {
         this->zero_contents();
     }
 
-    dllexport static UpdateFuncRet fastcall on_tick_A1(void* ptr) {
+    dllexport static UpdateFuncRet UpdateFuncCC on_tick_A1(void* ptr) {
         ReplayManager* self = (ReplayManager*)ptr;
         if (GAME_THREAD_PTR) {
             INPUT_STATES[0].inputs_previous = INPUT_STATES[0].inputs_current;
@@ -23880,7 +25353,7 @@ struct ReplayManager : ZUNTask {
         return UpdateFuncNext;
     }
 
-    dllexport static UpdateFuncRet fastcall on_tick_A2(void* ptr) {
+    dllexport static UpdateFuncRet UpdateFuncCC on_tick_A2(void* ptr) {
         ReplayManager* self = (ReplayManager*)ptr;
         if (GAME_THREAD_PTR && !self->__unknown_flag_A) {
             if (self->stage_data[self->stage_number].current_frame < 0) {
@@ -23931,7 +25404,7 @@ struct ReplayManager : ZUNTask {
     }
 
     // 0x461DB0
-    dllexport gnu_noinline UpdateFuncRet thiscall on_tick_B_impl() asm_symbol_rel(0x461DB0) {
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick_B() asm_symbol_rel(0x461DB0) {
         if (
             GAME_THREAD_PTR && this->mode == __replay_playback
         ) {
@@ -23951,16 +25424,16 @@ struct ReplayManager : ZUNTask {
     }
 
     // 0x462C30
-    dllexport static UpdateFuncRet fastcall on_tick_B(void* ptr) asm_symbol_rel(0x462C30) {
+    dllexport static UpdateFuncRet UpdateFuncCC on_tick_B(void* ptr) asm_symbol_rel(0x462C30) {
         GameThread* game_thread_ptr = GAME_THREAD_PTR;
         if (game_thread_ptr && game_thread_ptr->skip_flag) {
             return UpdateFuncNext;
         }
-        return ((ReplayManager*)ptr)->on_tick_B_impl();
+        return ((ReplayManager*)ptr)->on_tick_B();
     }
 
     // 0x462C50
-    dllexport static UpdateFuncRet fastcall on_draw(void* ptr) asm_symbol_rel(0x462C50) {
+    dllexport static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x462C50) {
         ReplayManager* self = (ReplayManager*)ptr;
 
         GameThread* game_thread_ptr = GAME_THREAD_PTR;
@@ -24120,10 +25593,8 @@ struct ReplayManager : ZUNTask {
     dllexport gnu_noinline ZUNResult thiscall __write_to_path(const char* path, const char* name, bool arg3, bool arg4) asm_symbol_rel(0x461E90);
 
     // 0x461CF0
-    dllexport static gnu_noinline ReplayManager* fastcall __make_manager_for_path(const char* path) asm_symbol_rel(0x461CF0) {
-        int32_t intA = 0; // WTF is this?
+    dllexport static gnu_noinline ReplayManager* fastcall allocate(const char* path) asm_symbol_rel(0x461CF0) {
         ReplayManager* replay_manager = new ReplayManager();
-        intA = -1;
         replay_manager->mode = __replay_mode_2;
         if (ZUN_FAILED(replay_manager->__load_from_path(path))) {
             delete replay_manager;
@@ -24227,6 +25698,692 @@ ValidateFieldOffset32(0x3F0, PauseMenu, __flags_3F0);
 ValidateFieldOffset32(0x3F4, PauseMenu, __anm_loaded_3F4);
 ValidateStructSize32(0x3F8, PauseMenu);
 #pragma endregion
+
+// 0x43BB70
+dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
+    if (this->__unknown_flag_A) {
+        this->__timer_198++;
+    }
+
+    if (this->__unknown_field_A) {
+        this->__timer_198++;
+        if (
+            this->__unknown_field_A == 1 &&
+            this->__timer_198 >= 90
+        ) {
+            if (this->__float_11C < 0.0f) {
+                if (this->__timer_198.is_multiple_of(4)) {
+                    SOUND_MANAGER.play_sound(39);
+                }
+                this->__int_128 += this->__int_12C;
+                this->__float_11C -= 1.0f;
+            }
+            else {
+                if (this->__timer_198 != 90) {
+                    SOUND_MANAGER.play_sound(47);
+                }
+                this->__float_11C = this->__float_120;
+                this->__int_12C = 0;
+                this->__int_128 = this->__int_124;
+                this->__unknown_field_A = 2;
+            }
+        }
+    }
+
+    if (this->__timer_198 >= this->__int_1AC) {
+        this->__anm_id_114.interrupt_tree(1);
+        this->__unknown_field_A = 1;
+        this->__timer_198.reset();
+        this->__unknown_field_A = 0; // why?
+    }
+
+    if (this->__int_134) {
+        AnmVM* vm = this->__anm_id_110.get_vm_ptr();
+        if (!vm) {
+            this->__int_134 = 0;
+        }
+    }
+
+    EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
+    if (
+        enemy_manager &&
+        this->spell_timer_seconds >= 0 &&
+        get_boss_by_index(0) != NULL &&
+        !enemy_manager->__unknown_flag_A &&
+        !this->msg_vm &&
+        !GAME_THREAD_PTR->__unknown_flag_F
+    ) {
+        this->__anm_vm_84->__tree_set_visible2();
+        this->__anm_vm_88->__tree_set_visible2();
+
+        int32_t state = this->__unknown_field_B;
+        if (state == 0) {
+            Player* player = PLAYER_PTR;
+            bool spell_flag = SPELLCARD_PTR->__unknown_flag_H;
+            if (
+                (!spell_flag && player->data.position.y < 128.0f) ||
+                (spell_flag && player->data.position.y > 320.0f)
+            ) {
+                this->__unknown_field_B = 1;
+                this->__anm_vm_84->interrupt(5);
+                this->__anm_vm_88->interrupt(5);
+            }
+        }
+        else {
+            Spellcard* spellcard = SPELLCARD_PTR;
+            if (state == 1) {
+                Player* player = PLAYER_PTR;
+                bool spell_flag = spellcard->__unknown_flag_H;
+                if (
+                    (!spell_flag && player->data.position.y < 160.0f) ||
+                    (spell_flag && player->data.position.y > 288.0f)
+                ) {
+                    this->__anm_vm_84->interrupt(4);
+                    this->__anm_vm_88->interrupt(4);
+                }
+            }
+            else {
+                if (spellcard->__unknown_flag_H) {
+                    this->__anm_vm_84->interrupt_and_run(2);
+                    this->__anm_vm_88->interrupt_and_run(2);
+                }
+                else {
+                    this->__anm_vm_84->interrupt_and_run(3);
+                    this->__anm_vm_88->interrupt_and_run(3);
+                    this->__anm_vm_84->interrupt_and_run(4);
+                    this->__anm_vm_88->interrupt_and_run(4);
+                }
+            }
+            this->__unknown_field_B = 0;
+        }
+
+        int32_t spell_seconds = this->spell_timer_seconds;
+        int32_t A = this->__int_1C0;
+        if (spell_seconds < A) {
+            if (spell_seconds < 2) {
+                this->__anm_vm_84->interrupt(9);
+                this->__anm_vm_88->interrupt(9);
+                SOUND_MANAGER.play_sound(12);
+            }
+            else if (spell_seconds < 5) {
+                this->__anm_vm_84->interrupt(8);
+                this->__anm_vm_88->interrupt(8);
+                SOUND_MANAGER.play_sound(11);
+            }
+        }
+        else if (spell_seconds > A) {
+            this->__anm_vm_84->interrupt(7);
+            this->__anm_vm_88->interrupt(7);
+        }
+
+        spell_seconds = this->spell_timer_seconds;
+        if (spell_seconds != this->__int_1C0) {
+            this->__anm_vm_84->set_sprite(spell_seconds / 10 + 239);
+            this->__anm_vm_88->set_sprite(this->spell_timer_seconds % 10 + 239);
+            spell_seconds = this->spell_timer_seconds;
+        }
+        this->__int_1C0 = spell_seconds;
+    }
+    else {
+        this->__anm_vm_84->__tree_clear_visible2();
+        this->__anm_vm_88->__tree_clear_visible2();
+    }
+
+    enemy_manager = ENEMY_MANAGER_PTR;
+    if (
+        enemy_manager &&
+        !enemy_manager->__unknown_flag_A
+    ) {
+        for (int32_t i = 0; i < MAX_LIFEBARS_IN_GUI; ++i) {
+            Enemy* boss = NULL;
+            clang_forceinline boss = get_boss_by_index(i);
+            if (boss) {
+                int32_t life = boss->data.life.current;
+                if (
+                    life < 100000 &&
+                    !boss->data.hide_lifebar() &&
+                    !this->msg_vm
+                ) {
+                    Lifebar& lifebar = this->lifebars[i];
+                    lifebar.current_life = life;
+                    float percentage = (float)life / (float)boss->data.life.maximum;
+                    lifebar.life_percentage = percentage;
+
+                    float current_value = lifebar.bar_value;
+                    if (current_value < percentage) {
+                        current_value += 0.025f; // 1/40
+                        lifebar.bar_value = current_value;
+                    }
+                    if (current_value > percentage) {
+                        lifebar.bar_value = percentage;
+                    }
+
+                    if (!lifebar.vms_initialized) {
+                        lifebar.main_vm = this->__anm_loaded_2C0->instantiate_vm_to_world_list_back(378);
+                        lifebar.glowA_vm = this->__anm_loaded_2C0->instantiate_vm_to_world_list_back(379);
+                        lifebar.glowB_vm = this->__anm_loaded_2C0->instantiate_vm_to_world_list_back(380);
+                        for (size_t j = 0; j < MAX_LIFEBAR_MARKERS; ++j) {
+                            lifebar.marker_vms[j] = this->__anm_loaded_2C0->instantiate_vm_to_world_list_back(381);
+                        }
+                        lifebar.vms_initialized = TRUE;
+                    }
+
+                    this->__sub_4422C0();
+
+                    AnmVM* main_vm = lifebar.main_vm.get_vm_ptr();
+
+                    main_vm->data.rotation_enabled = true;
+                    main_vm->data.rotation.x = -lifebar.bar_value * TWO_PI_f;
+
+                    Float3 position = boss->data.current_motion.position;
+                    position.as2() *= 2.0f; // EBP-2C, EBP-30, EBP-50
+
+                    main_vm->controller.position = position;
+
+                    lifebar.glowA_vm.get_vm_ptr()->controller.position = position;
+                    lifebar.glowB_vm.get_vm_ptr()->controller.position = position;
+
+                    float offset = 0.0f; // EBP-20
+
+                    LifebarMarker* markers = lifebar.markers;
+                    AnmID* marker_vms = lifebar.marker_vms;
+                    nounroll for (size_t j = 0; j < MAX_LIFEBAR_MARKERS; ++j, ++markers, ++marker_vms) {
+                        AnmVM* marker_vm = marker_vms->get_vm_ptr();
+
+                        float marker_position = markers->bar_position;
+                        if (
+                            !(marker_position == 0.0f) &&
+                            !(marker_position >= lifebar.bar_value)
+                        ) {
+                            marker_vm->__tree_set_visible2();
+
+                            float angle = reduce_angle(NPI_f - markers->bar_position * TWO_PI_f);
+                            marker_vm->data.rotation_enabled = true;
+                            main_vm->data.rotation.z = angle;
+
+                            constexpr Float2 offset = { 0.0f, 112.0f };
+
+                            marker_vm->controller.position = position + offset.rotate_around_origin(angle);
+                        }
+                        else {
+                            marker_vm->__tree_clear_visible2();
+                        }
+                    }
+
+                    if (lifebar.__dword_50) {
+                        float distance_squared = get_boss_by_index(i)->data.current_motion.position.distance_squared(&PLAYER_PTR->data.position);
+                        if (distance_squared >= 9216.0f) { // 96 squared
+                            lifebar.interrupt_vms(2);
+                        }
+                    }
+                    else {
+                        float distance_squared = get_boss_by_index(i)->data.current_motion.position.distance_squared(&PLAYER_PTR->data.position);
+                        if (distance_squared < 6400.0f) { // 80 squared
+                            lifebar.interrupt_vms(3);
+                        }
+                    }
+                }
+                else {
+                    this->lifebars[i].delete_vms();
+                }
+            }
+            else {
+                this->lifebars[i].clear();
+            }
+        }
+    }
+
+    for (size_t i = 0; i < MAX_BOSS_LIFE_MARKERS; ++i) {
+        if (i < this->__boss_life_count) {
+            if (!this->__boss_life_markers[i]) {
+                this->__boss_life_markers[i] = this->__anm_loaded_2C0->instantiate_vm_to_world_list_back(i + 58);
+            }
+        }
+        else {
+            if (this->__boss_life_markers[i]) {
+                this->__boss_life_markers[i].interrupt_tree(1);
+            }
+        }
+    }
+
+    if (MsgVM* msg_vm = this->msg_vm) {
+        if (ZUN_FAILED(msg_vm->on_tick())) {
+            SAFE_DELETE(this->msg_vm);
+        }
+    }
+
+    enemy_manager = ENEMY_MANAGER_PTR;
+    if (
+        enemy_manager
+    ) {
+        Enemy* boss = NULL;
+        clang_forceinline boss = enemy_manager->get_boss_by_index(0);
+        if (
+            boss != NULL &&
+            !boss->data.intangible &&
+            !boss->data.disable_hitbox
+        ) {
+            AnmVM* vm = this->__anm_id_8C.get_vm_ptr();
+            vm->__tree_set_visible2();
+
+            int32_t state = this->__unknown_field_C;
+            if (SPELLCARD_PTR->__unknown_flag_A) {
+                switch (state) {
+                    case 0:
+                        if (boss->data.life.remaining_current_attack < 2000) {
+                            vm->interrupt(7);
+                            this->__unknown_field_C = 1;
+                        }
+                        break;
+                    case 1:
+                        if (boss->data.life.remaining_current_attack < 1000) {
+                            vm->interrupt(8);
+                            this->__unknown_field_C = 2;
+                        }
+                        break;
+                    case 2:
+                        if (boss->data.life.remaining_current_attack < 400) {
+                            vm->interrupt(9);
+                            this->__unknown_field_C = 3;
+                        }
+                        break;
+                    case 3:
+                        if (boss->data.life.remaining_current_attack >= 400) {
+                            vm->interrupt(10);
+                            this->__unknown_field_C = 0;
+                        }
+                        break;
+                }
+            }
+            else {
+                switch (state) {
+                    case 0:
+                        if (boss->data.life.remaining_current_attack < 700) {
+                            vm->interrupt(7);
+                            this->__unknown_field_C = 1;
+                        }
+                        break;
+                    case 1:
+                        if (boss->data.life.remaining_current_attack < 400) {
+                            vm->interrupt(8);
+                            this->__unknown_field_C = 2;
+                        }
+                        break;
+                    case 2:
+                        if (boss->data.life.remaining_current_attack < 200) {
+                            vm->interrupt(9);
+                            this->__unknown_field_C = 3;
+                        }
+                        break;
+                    case 3:
+                        if (boss->data.life.remaining_current_attack >= 200) {
+                            vm->interrupt(10);
+                            this->__unknown_field_C = 0;
+                        }
+                        break;
+                }
+            }
+
+            vm->controller.position.x = boss->data.current_motion.position.x + 32.0f + 192.0f;
+            vm->controller.position.y = 960.0f;
+
+            float x_diff = zfabsf(boss->data.current_motion.position.x - PLAYER_PTR->data.position.x);
+
+            uint8_t alpha;
+            if (x_diff >= 64.0f) {
+                alpha = 255;
+            }
+            else {
+                x_diff *= 191.0f;
+                x_diff *= (1.0f / 64.0f);
+                alpha = (int32_t)x_diff + 64;
+            }
+
+            vm->set_alpha(alpha);
+
+            float X = boss->data.current_motion.position.x;
+            if (
+                X < -192.0f || X > 192.0f
+            ) {
+                vm->set_alpha(0);
+            }
+        }
+        else {
+            this->__anm_id_8C.__tree_clear_visible2();
+        }
+    }
+
+    this->__timer_13C++;
+
+    return UpdateFuncNext;
+}
+
+// 0x43CD00
+dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
+    Float3 position; // LOCAL 8
+
+    AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
+
+    AnmVM* vm = this->__anm_id_108.get_vm_ptr();
+
+    float offset = 0.0f; // LOCAL 4
+
+    if (vm) {
+        position.x = 224.0f;
+        position.y = 200.0f;
+        position.z = 0.0f;
+
+        vm = this->__anm_id_108.get_vm_ptr();
+
+        ascii_manager->set_alpha(vm->get_alpha());
+        ascii_manager->group = 2;
+        ascii_manager->font_id = 4;
+        ascii_manager->__horizontal_positioning_mode = 0;
+        ascii_manager->__vertical_positioning_mode = 0;
+        ascii_manager->print_number(&position, this->__int_2C4);
+
+        ascii_manager = ASCII_MANAGER_PTR;
+        ascii_manager->set_alpha(255);
+        ascii_manager->font_id = 0;
+        ascii_manager->group = 0;
+        ascii_manager->__horizontal_positioning_mode = 1;
+        ascii_manager->__vertical_positioning_mode = 1;
+    }
+
+    if (this->__int_134) {
+        position.x = 224.0f;
+        position.y = 144.0f;
+        position.z = 0.0f;
+
+        AnmVM* vm = this->__anm_id_110.get_vm_ptr();
+
+        Spellcard* spellcard = SPELLCARD_PTR;
+        if (!spellcard) {
+            this->__int_134 = 0;
+            this->__anm_id_110.mark_tree_for_delete();
+        }
+        else if (!vm) {
+            this->__int_134 = 0;
+        }
+        else {
+            ascii_manager->set_alpha(vm->get_alpha());
+            ascii_manager->group = 2;
+            ascii_manager->font_id = 4;
+
+            int32_t value = spellcard->__int_90 / 60;
+            if (value >= 1000) {
+                value = 999;
+            }
+
+            ascii_manager->printf(&position, "%3d.", value);
+
+            ascii_manager = ASCII_MANAGER_PTR;
+            spellcard = SPELLCARD_PTR;
+            position.x = 268.0f;
+            position.y = 150.0f;
+            ascii_manager->scale.x = 0.6f;
+            ascii_manager->scale.y = 0.6f;
+
+            value = spellcard->__int_90 % 60 * 100 / 60;
+            ascii_manager->printf(&position, "%.2ds", value);
+
+            ascii_manager = ASCII_MANAGER_PTR;
+            position.x = 224.0f;
+            ascii_manager->color = PackD3DCOLOR(255, 128, 128, 128);
+            ascii_manager->set_alpha(vm->get_alpha());
+            spellcard = SPELLCARD_PTR;
+            ascii_manager->scale.x = 1.0f;
+            ascii_manager->scale.y = 1.0f;
+            position.y = 160.0f;
+
+            int32_t A = spellcard->__int_A8;
+            int32_t B = A % 100;
+            value = (B % 1000 + 934) % 1000;
+            int32_t C = (B + 67) % 100;
+            int32_t D = A / 100000 - 22;
+            
+            if (D != value + C) {
+                value = 999;
+                D = 99;
+            }
+
+            ASCII_MANAGER_PTR->printf(&position, "%3d.", value);
+
+            ascii_manager = ASCII_MANAGER_PTR;
+            ascii_manager->scale.x = 0.6f;
+            ascii_manager->scale.y = 0.6f;
+            position.x = 268.0f;
+            position.y = 166.0f;
+
+            ascii_manager->printf(&position, "%.2ds", D);
+
+            ascii_manager = ASCII_MANAGER_PTR;
+            ascii_manager->set_alpha(255);
+            ascii_manager->scale.x = 1.0f;
+            ascii_manager->scale.y = 1.0f;
+            ascii_manager->font_id = 0;
+            ascii_manager->group = 0;
+            ascii_manager->color = PackD3DCOLOR(255, 255, 255, 255);
+        }
+    }
+
+    // ====================
+    // High score
+    // ====================
+
+    ascii_manager->color = PackD3DCOLOR(255, 112, 112, 112);
+    ascii_manager->color2 = PackD3DCOLOR(128, 255, 255, 255);
+    ascii_manager->font_id = 10;
+    ascii_manager->group = 3;
+
+    position.x = 620.0f;
+    position.y = 42.0f;
+    position.z = 0.0f;
+
+    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha2());
+    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha2());
+    ascii_manager->__horizontal_positioning_mode = 2;
+    ascii_manager->__vertical_positioning_mode = 1;
+
+    ascii_manager->print_score(&position, GAME_MANAGER.__high_score, GAME_MANAGER.__high_score_continues);
+
+    // ====================
+    // Current score
+    // ====================
+
+    ascii_manager = ASCII_MANAGER_PTR;
+
+    position.y = 64.0f;
+
+    ascii_manager->color = PackD3DCOLOR(255, 0, 16, 128);
+    ascii_manager->color2 = PackD3DCOLOR(208, 255, 255, 255);
+    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha2());
+    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha2());
+
+    ascii_manager->print_score(&position, this->__score, GAME_MANAGER.globals.continues);
+
+    // ====================
+    // Life fragments for next life
+    // ====================
+
+    ascii_manager = ASCII_MANAGER_PTR;
+    ascii_manager->__horizontal_positioning_mode = 1;
+    ascii_manager->__vertical_positioning_mode = 1;
+
+    if (LIFE_FRAGMENT_COST_TABLE[GAME_MANAGER.globals.lives_added] >= 100u) {
+        offset = 7.0f;
+    }
+
+    float life_fragment_position = 576.0f - offset;
+
+    ascii_manager->color = PackD3DCOLOR(255, 0, 0, 0);
+    ascii_manager->color2 = PackD3DCOLOR(255, 255, 255, 255);
+    ascii_manager->scale.x = 0.6f;
+    ascii_manager->scale.y = 0.6f;
+
+    position.x = life_fragment_position;
+    position.y = 120.0f;
+
+    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha2());
+    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha2());
+
+    if (LIFE_FRAGMENT_COST_TABLE[GAME_MANAGER.globals.lives_added] < 999999u) {
+        ascii_manager->printf(&position, "%3d", GAME_MANAGER.globals.life_fragments);
+
+        position.x = life_fragment_position + 21.0f;
+
+        ASCII_MANAGER_PTR->printf(&position, "/%d", LIFE_FRAGMENT_COST_TABLE[GAME_MANAGER.globals.lives_added]);
+    }
+    else {
+        ascii_manager->printf(&position, "---/---");
+    }
+
+    // ====================
+    // Bomb fragments for next bomb
+    // ====================
+
+    ascii_manager = ASCII_MANAGER_PTR;
+
+    position.x = 576.0f;
+    position.y = 158.0f;
+
+    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha2());
+    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha2());
+    ascii_manager->scale.x = 0.6f;
+    ascii_manager->scale.y = 0.6f;
+
+    ascii_manager->printf(&position, "%3d", GAME_MANAGER.globals.bomb_fragments);
+
+    position.x = 597.0f;
+
+    ASCII_MANAGER_PTR->printf(&position, "/%d", BOMB_FRAGMENT_COST); // Yes, this is a constant 3
+
+    // ====================
+    // Power
+    // ====================
+
+    ascii_manager = ASCII_MANAGER_PTR;
+
+    position.x = 540.0f;
+    position.y = 182.0f;
+
+    ascii_manager->color = PackD3DCOLOR(255, 128, 0, 0);
+    ascii_manager->color2 = PackD3DCOLOR(128, 255, 208, 208);
+    ascii_manager->scale.x = 1.0f;
+    ascii_manager->scale.y = 1.0f;
+    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha2());
+    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha2());
+
+    ascii_manager->printf(&position, "%d.", GAME_MANAGER.globals.power_level());
+
+    ascii_manager = ASCII_MANAGER_PTR;
+
+    position.x = 560.0f;
+    position.y = 189.0f;
+
+    ascii_manager->scale.x = 0.6f;
+    ascii_manager->scale.y = 0.6f;
+
+    ascii_manager->printf(&position, "%.2d", GAME_MANAGER.globals.power_percent_to_next_level());
+
+    ascii_manager = ASCII_MANAGER_PTR;
+
+    position.y = 182.0f;
+    position.x = 574.0f;
+
+    ascii_manager->scale.x = 1.0f;
+    ascii_manager->scale.y = 1.0f;
+
+    ascii_manager->printf(&position, "/%d.", GAME_MANAGER.globals.power_level_max());
+
+    ascii_manager = ASCII_MANAGER_PTR;
+
+    position.x = 606.0f;
+    position.y = 189.0f;
+
+    ascii_manager->scale.x = 0.6f;
+    ascii_manager->scale.y = 0.6f;
+
+    ascii_manager->printf(&position, "00");
+
+    // ====================
+    // Money
+    // ====================
+
+    ascii_manager = ASCII_MANAGER_PTR;
+
+    position.x = 620.0f;
+    position.y = 204.0f;
+
+    ascii_manager->color = PackD3DCOLOR(255, 128, 128, 0);
+    ascii_manager->color2 = PackD3DCOLOR(128, 255, 255, 208);
+    ascii_manager->scale.x = 1.0f;
+    ascii_manager->scale.y = 1.0f;
+    ascii_manager->__horizontal_positioning_mode = 2;
+    ascii_manager->__vertical_positioning_mode = 1;
+    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha2());
+    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha2());
+
+    ascii_manager->print_number(&position, GAME_MANAGER.globals.current_money);
+
+    // ====================
+    // Spell timer stuff
+    // ====================
+
+    ascii_manager = ASCII_MANAGER_PTR;
+
+    ascii_manager->color = PackD3DCOLOR(255, 255, 255, 255);
+    ascii_manager->__horizontal_positioning_mode = 1;
+    ascii_manager->__vertical_positioning_mode = 1;
+    ascii_manager->scale.x = 1.0f;
+    ascii_manager->scale.y = 1.0f;
+    ascii_manager->color2 = PackD3DCOLOR(255, 0, 0, 0);
+    ascii_manager->set_alpha(255);
+    ascii_manager->font_id = 0;
+    ascii_manager->group = 0;
+
+    if (
+        ENEMY_MANAGER_PTR &&
+        this->spell_timer_seconds >= 0 &&
+        get_boss_by_index(0) != NULL &&
+        !ENEMY_MANAGER_PTR->__unknown_flag_A &&
+        !this->msg_vm &&
+        !PAUSE_MENU_PTR->__dword_1EC &&
+        !GAME_THREAD_PTR->__unknown_flag_F
+    ) {
+        vm = this->__anm_vm_84;
+
+        position.z = 0.0f;
+        float X = vm->data.position.x + 16.0f;
+        position.x = X;
+        ascii_manager->color = vm->data.color1;
+        ascii_manager->font_id = 4;
+        float Y = vm->data.position.y - 7.0f;
+        position.y = Y;
+        ascii_manager->group = 2;
+
+        ascii_manager->printf(&position, ".");
+
+        ascii_manager = ASCII_MANAGER_PTR;
+
+        position.x = X + 8.0f;
+        ascii_manager->scale.x = 0.6f;
+        ascii_manager->scale.y = 0.6f;
+        position.y = Y + 6.0f;
+
+        ascii_manager->printf(&position, "%.2d", this->spell_timer_hundredths);
+
+        ascii_manager = ASCII_MANAGER_PTR;
+
+        ascii_manager->scale.x = 1.0f;
+        ascii_manager->scale.y = 1.0f;
+        ascii_manager->color = PackD3DCOLOR(255, 255, 255, 255);
+        ascii_manager->group = 0;
+        ascii_manager->font_id = 0;
+    }
+
+    return UpdateFuncNext;
+}
 
 // 0x401860
 dllexport gnu_noinline uint32_t get_hardware_xinput() asm_symbol_rel(0x401860);

@@ -132,10 +132,10 @@ struct Float2 : Float1 {
     inline float distance(const Float2* value) {
         float x_diff = this->x - value->x;
         float y_diff = this->y - value->y;
-        return sqrtf(x_diff * x_diff + y_diff * y_diff);
+        return zsqrtf(x_diff * x_diff + y_diff * y_diff);
     }
 
-    inline Float2 rotate_around_origin(float angle) {
+    inline Float2 rotate_around_origin(float angle) const {
         float y_unit = zsinf(angle);
         float x_unit = zcosf(angle);
         return {

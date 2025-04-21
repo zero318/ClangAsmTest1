@@ -749,6 +749,15 @@ static forceinline float reduced_angle_diff(float angle, float value) {
     }
 }
 
+static forceinline std::pair<float, float> rotate_around_origin(float X, float Y, float angle) {
+    float y_unit = zsinf(angle);
+    float x_unit = zcosf(angle);
+    return {
+        (x_unit * X) - (y_unit * Y),
+        (x_unit * Y) + (y_unit * X)
+    };
+}
+
 } // inline namespace ZUN
 
 #endif
