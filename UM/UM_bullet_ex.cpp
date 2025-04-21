@@ -120,6 +120,25 @@ dllexport gnu_noinline void* cdecl memset_force(void* dst, int val, size_t size)
 
 #define zero_this_inline() __builtin_memset(this, 0, sizeof(*this));
 
+static inline uint8_t& BLUE(D3DCOLOR& color) {
+    return ((uint8_t*)&color)[0];
+}
+static inline uint8_t& GREEN(D3DCOLOR& color) {
+    return ((uint8_t*)&color)[1];
+}
+static inline uint8_t& RED(D3DCOLOR& color) {
+    return ((uint8_t*)&color)[2];
+}
+static inline uint8_t& ALPHA(D3DCOLOR& color) {
+    return ((uint8_t*)&color)[3];
+}
+// Just make these macro colored
+// to indicate there's BS going on
+#define BLUE(...) BLUE(__VA_ARGS__)
+#define GREEN(...) GREEN(__VA_ARGS__)
+#define RED(...) RED(__VA_ARGS__)
+#define ALPHA(...) ALPHA(__VA_ARGS__)
+
 struct D3DMATRIXZ : D3DMATRIX {
     // D3DXMatrixIdentity
     inline void set_identity() {
@@ -2028,7 +2047,7 @@ struct Rng {
         return temp / (float)INT32_MAX - 1.0f; // float jank rounds this to INT32_MAX+1
     }
     // 0x405B90
-    dllexport gnu_noinline float vectorcall rand_angle() asm_symbol_rel(0x405B90) {
+    dllexport float vectorcall rand_angle() asm_symbol_rel(0x405B90) {
         return this->rand_float_signed() * PI_f;
     }
     // 0x402850
@@ -3086,6 +3105,7 @@ struct StageSky {
     float end_distance; // 0x4
     D3DCOLORVALUE color_components; // 0x8
     D3DCOLOR color; // 0x18
+    // 0x1C
 
 private:
     // 0x41F830
@@ -6661,6 +6681,7 @@ struct EnemyInitData {
     int32_t int_vars[4]; // 0x20
     float float_vars[8]; // 0x30
     int32_t parent_id; // 0x50
+    // 0x54
 };
 #pragma region // EnemyInitData Validation
 ValidateFieldOffset32(0x0, EnemyInitData, position);
@@ -7720,8 +7741,16 @@ struct EnemyLife {
 };
 
 // size: 0x1C
+struct EnemyFogImpl {
+    unknown_fields(0x8); // 0x0
+    AnmID __anm_id_8; // 0x8
+    unknown_fields(0x10); // 0xC
+    // 0x1C
+};
+
+// size: 0x1C
 struct EnemyFog {
-    void* fog_ptr; // 0x0
+    EnemyFogImpl* fog_ptr; // 0x0
     unknown_fields(0x4); // 0x4
     float radius; // 0x8
     float __float_C; // 0xC
@@ -8108,6 +8137,18 @@ public:
         this->callbacks[LAST_CALLBACK_INDEX - (slot >> 1)].get_interrupt(inner_index);
     }
 #endif
+
+    // 0x438D90
+    dllexport gnu_noinline static ZUNResult fastcall __func_set_1_6bs(EnemyData* enemy_data) asm_symbol_rel(0x438D90);
+
+    // 0x439020
+    dllexport gnu_noinline static ZUNResult fastcall __func_call_2_ex(EnemyData* enemy_data) asm_symbol_rel(0x439020);
+
+    // 0x4391A0
+    dllexport gnu_noinline static ZUNResult fastcall __func_call_3_ex(EnemyData* enemy_data) asm_symbol_rel(0x4391A0);
+
+    // 0x439320
+    dllexport gnu_noinline static ZUNResult fastcall __func_set_4_ex(EnemyData* enemy_data) asm_symbol_rel(0x439320);
 };
 #pragma region // EnemyData Field Validation
 ValidateFieldOffset32(0x0, EnemyData, previous_motion);
@@ -8176,14 +8217,23 @@ ValidateFieldOffset32(0x55FC, EnemyData, chapter_spawn_weight);
 ValidateStructSize32(0x5600, EnemyData);
 #pragma endregion
 
+// 0x4B3FE0
+static const FuncSetFunc *const ECL_FUNC_CALL_TABLE[5] = {
+    NULL,
+    &EnemyData::__func_set_1_6bs,
+    &EnemyData::__func_call_2_ex,
+    &EnemyData::__func_call_3_ex,
+    &EnemyData::__func_set_4_ex
+};
+
 // 0x4B36E4
-static ExtraDamageFunc* EXTRA_DAMAGE_FUNC_TABLE[] = {
+static const ExtraDamageFunc *const EXTRA_DAMAGE_FUNC_TABLE[] = {
     NULL,
     &EnemyData::extra_damage_func1,
     &EnemyData::extra_damage_func2,
 };
 // 0x4CF2D8
-static ExtraHitboxFunc* EXTRA_HITBOX_FUNC_TABLE[] = {
+static const ExtraHitboxFunc *const EXTRA_HITBOX_FUNC_TABLE[] = {
     NULL
 };
 
@@ -10434,12 +10484,16 @@ extern inline const AnmOnFunc ANM_ON_COPY_B_FUNCS[];
 //extern inline const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[];
 extern "C" {
     extern AnmOnFunc ANM_ON_WAIT_FUNCS[] asm("_ANM_ON_WAIT_FUNCS");
-    extern AnmOnFunc ANM_ON_TICK_FUNCS[] asm("_ANM_ON_TICK_FUNCS");
-    extern AnmOnFunc ANM_ON_DESTROY_FUNCS[] asm("_ANM_ON_DESTROY_FUNCS");
-    extern AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[] asm("_ANM_ON_INTERRUPT_FUNCS");
-    extern AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[] asm("_ANM_ON_SPRITE_LOOKUP_FUNCS");
+    //extern AnmOnFunc ANM_ON_TICK_FUNCS[] asm("_ANM_ON_TICK_FUNCS");
     extern AnmOnFunc ANM_ON_DRAW_FUNCS[] asm("_ANM_ON_DRAW_FUNCS");
+    //extern AnmOnFunc ANM_ON_DESTROY_FUNCS[] asm("_ANM_ON_DESTROY_FUNCS");
+    //extern AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[] asm("_ANM_ON_INTERRUPT_FUNCS");
+    extern AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[] asm("_ANM_ON_SPRITE_LOOKUP_FUNCS");
 }
+
+extern inline const AnmOnFunc ANM_ON_TICK_FUNCS[6];
+extern inline const AnmOnFunc ANM_ON_DESTROY_FUNCS[5];
+extern inline const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[5];
 
 extern "C" {
     // 0x5217D0
@@ -11146,29 +11200,96 @@ struct AnmVM {
         this->run_anm();
     }
 
-    // 0x406AD0
-    dllexport gnu_noinline static int fastcall __on_create_1(AnmVM* vm, void* arg) asm_symbol_rel(0x406AD0) {
+    // ====================
+    // Special data funcs
+    // ====================
 
-    }
+    // 0x406AD0
+    dllexport gnu_noinline static int fastcall on_create_special_dataA(AnmVM* vm, void* arg) asm_symbol_rel(0x406AD0);
+
+    // 0x406C80
+    dllexport gnu_noinline static int fastcall on_tick_special_dataA(AnmVM* vm) asm_symbol_rel(0x406C80);
+
+    // 0x406D00
+    dllexport gnu_noinline static int fastcall on_draw_special_dataA(AnmVM* vm) asm_symbol_rel(0x406D00);
+
+    // 0x4072A0
+    dllexport gnu_noinline static int fastcall on_destroy_special_dataA(AnmVM* vm) asm_symbol_rel(0x4072A0);
+
+    // 0x4072B0
+    dllexport gnu_noinline static int fastcall on_interrupt_special_dataA(AnmVM* vm, int32_t interrupt) asm_symbol_rel(0x4072B0);
 
     // 0x404FC0
-    dllexport gnu_noinline static int fastcall __on_create_2(AnmVM* vm, void* arg) asm_symbol_rel(0x404FC0) {
+    dllexport gnu_noinline static int fastcall on_create_special_dataB(AnmVM* vm, void* arg) asm_symbol_rel(0x404FC0);
 
-    }
+    // 0x405030
+    dllexport gnu_noinline static int fastcall on_tick_special_dataB(AnmVM* vm) asm_symbol_rel(0x405030);
+
+    // 0x4058B0
+    dllexport gnu_noinline static int fastcall on_draw_special_dataB(AnmVM* vm) asm_symbol_rel(0x4058B0);
+
+    // 0x4058C0
+    dllexport gnu_noinline static int fastcall on_destroy_special_dataB(AnmVM* vm) asm_symbol_rel(0x4058C0);
+
+    // 0x405910
+    dllexport gnu_noinline static int fastcall on_interrupt_special_dataB(AnmVM* vm, int32_t interrupt) asm_symbol_rel(0x405910);
 
     // 0x405D70
-    dllexport gnu_noinline static int fastcall __on_create_3(AnmVM* vm, void* arg) asm_symbol_rel(0x405D70) {
+    dllexport gnu_noinline static int fastcall on_create_special_dataC1(AnmVM* vm, void* arg) asm_symbol_rel(0x405D70);
 
-    }
+    // 0x405ED0
+    dllexport gnu_noinline static int fastcall on_tick_special_dataC(AnmVM* vm) asm_symbol_rel(0x405ED0);
+
+    // 0x406090
+    dllexport gnu_noinline static int fastcall on_draw_special_dataC(AnmVM* vm) asm_symbol_rel(0x406090);
+
+    // 0x406290
+    dllexport gnu_noinline static int fastcall on_destroy_special_dataC(AnmVM* vm) asm_symbol_rel(0x406290);
+
+    // 0x4062A0
+    dllexport gnu_noinline static int fastcall on_interrupt_special_dataC(AnmVM* vm, int32_t interrupt) asm_symbol_rel(0x4062A0);
 
     // 0x4062B0
-    dllexport gnu_noinline static int fastcall __on_create_4(AnmVM* vm, void* arg) asm_symbol_rel(0x4062B0) {
-
-    }
+    dllexport gnu_noinline static int fastcall on_create_special_dataC2(AnmVM* vm, void* arg) asm_symbol_rel(0x4062B0);
 
     // 0x407590
-    dllexport gnu_noinline static int fastcall __on_create_5(AnmVM* vm, void* arg) asm_symbol_rel(0x407590) {
+    dllexport gnu_noinline static int fastcall on_create_special_dataD(AnmVM* vm, void* arg) asm_symbol_rel(0x407590);
 
+    // 0x4078D0
+    dllexport gnu_noinline static int fastcall on_tick_special_dataD(AnmVM* vm) asm_symbol_rel(0x4078D0);
+
+    // 0x407C90
+    dllexport gnu_noinline static int fastcall on_draw_special_dataD(AnmVM* vm) asm_symbol_rel(0x407C90);
+
+    // 0x407D30
+    dllexport gnu_noinline static int fastcall on_destroy_special_dataD(AnmVM* vm) asm_symbol_rel(0x407D30);
+    
+    // 0x407D40
+    dllexport gnu_noinline static int fastcall on_interrupt_special_dataD(AnmVM* vm, int32_t interrupt) asm_symbol_rel(0x407D40);
+
+    // ====================
+    // Other funcs
+    // ====================
+
+    // 0x483560
+    dllexport gnu_noinline static int fastcall on_tick_4(AnmVM* vm) asm_symbol_rel(0x483560) {
+        // TODO
+    }
+
+    // 0x42B1E0
+    dllexport gnu_noinline static int fastcall on_draw_4(AnmVM* vm) asm_symbol_rel(0x42B1E0) {
+        // TODO
+        return 0;
+    }
+
+    // 0x441130
+    dllexport gnu_noinline static int fastcall on_draw_5(AnmVM* vm) asm_symbol_rel(0x441130) {
+        MsgVM* msg_vm = GUI_PTR->msg_vm;
+        AnmVM* vm2 = msg_vm->__textbox_related.__wtf_child_list_jank_A(msg_vm->__int_1D4 + 170, 0);
+        if (vm2) {
+
+        }
+        return 0;
     }
     
     // 0x488FA0
@@ -11197,19 +11318,19 @@ struct AnmVM {
     }
 
     inline uint8_t get_alpha() {
-        return ((uint8_t*)&this->data.color1)[3];
+        return ALPHA(this->data.color1);
     }
 
     inline void set_alpha(uint8_t value) {
-        ((uint8_t*)&this->data.color1)[3] = value;
+        ALPHA(this->data.color1) = value;
     }
 
     inline uint8_t get_alpha2() {
-        return ((uint8_t*)&this->data.color2)[3];
+        return ALPHA(this->data.color2);
     }
 
     inline void set_alpha2(uint8_t value) {
-        ((uint8_t*)&this->data.color2)[3] = value;
+        ALPHA(this->data.color2) = value;
     }
     
     // 0x43A250
@@ -11547,7 +11668,7 @@ public:
 };
 ValidateStructSize32(0x60C, AnmVM);
 
-using AnmVMOnCreateFunc = decltype(AnmVM::__on_create_1);
+using AnmVMOnCreateFunc = decltype(AnmVM::on_create_special_dataA);
 
 // size: 0x624
 struct FastAnmVM : AnmVM {
@@ -11672,10 +11793,29 @@ ValidateStructSize32(0x40, AnmEntry);
 #pragma endregion
 
 //inline const AnmOnFunc ANM_ON_WAIT_FUNCS[] = { NULL, NULL };
-//inline const AnmOnFunc ANM_ON_TICK_FUNCS[] = { NULL, NULL };
+inline const AnmOnFunc ANM_ON_TICK_FUNCS[6] = {
+    NULL,
+    &AnmVM::on_tick_special_dataA,
+    &AnmVM::on_tick_special_dataB,
+    &AnmVM::on_tick_special_dataC,
+    &AnmVM::on_tick_4,
+    &AnmVM::on_tick_special_dataD
+};
 //inline const AnmOnFunc ANM_ON_DRAW_FUNCS[] = { NULL, NULL };
-//inline const AnmOnFunc ANM_ON_DESTROY_FUNCS[] = { NULL, NULL };
-//inline const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[] = { NULL, NULL };
+inline const AnmOnFunc ANM_ON_DESTROY_FUNCS[] = { 
+    NULL,
+    &AnmVM::on_destroy_special_dataA,
+    &AnmVM::on_destroy_special_dataB,
+    &AnmVM::on_destroy_special_dataC,
+    &AnmVM::on_destroy_special_dataD
+};
+inline const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[] = {
+    NULL,
+    &AnmVM::on_interrupt_special_dataA,
+    &AnmVM::on_interrupt_special_dataB,
+    &AnmVM::on_interrupt_special_dataC,
+    &AnmVM::on_interrupt_special_dataD
+};
 inline const AnmOnFunc ANM_ON_COPY_A_FUNCS[] = { NULL, NULL };
 inline const AnmOnFunc ANM_ON_COPY_B_FUNCS[] = { NULL, NULL };
 //inline const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[] = { NULL, NULL };
@@ -11788,13 +11928,18 @@ struct AnmLoaded {
         return vm->run_anm();
     }
 
+private:
     // 0x4894E0
-    dllexport gnu_noinline void thiscall __copy_data_to_vm_unknown_A(AnmVM* vm) asm_symbol_rel(0x4894E0) {
+    dllexport gnu_noinline void thiscall __copy_data_to_vm_unknown_A(AnmVM* vm, int32_t index) asm_symbol_rel(0x4894E0) {
         Float3 position = vm->data.position;
         this->__copy_data_to_vm(vm, 7);
         vm->data.position = position;
         vm->controller.__timer_1C.reset();
         vm->controller.script_time.reset();
+    }
+public:
+    inline void __copy_data_to_vm_unknown_A(AnmVM* vm) {
+        return this->__copy_data_to_vm_unknown_A(vm, UNUSED_DWORD);
     }
 
 private:
@@ -13164,10 +13309,59 @@ ValidateFieldOffset32(0x1C, EffectData, on_copyB_index);
 ValidateStructSize32(0x20, EffectData);
 #pragma endregion
 
-extern "C" {
-    // 0x4CCBF8
-    extern EffectData EFFECT_DATA_TABLE[5] asm("_EFFECT_DATA_TABLE");
-}
+// 0x4CCBF8
+static inline const EffectData EFFECT_DATA_TABLE[5] = {
+    { 
+        .__effect_anm_file_index = 0,
+        .on_create_func = &AnmVM::on_create_special_dataA,
+        .on_tick_index = 1,
+        .on_draw_index = 1,
+        .on_destroy_index = 1,
+        .on_interrupt_index = 1,
+        .on_copyA_index = 0,
+        .on_copyB_index = 0
+    },
+    {
+        .__effect_anm_file_index = 0,
+        .on_create_func = &AnmVM::on_create_special_dataB,
+        .on_tick_index = 2,
+        .on_draw_index = 2,
+        .on_destroy_index = 2,
+        .on_interrupt_index = 2,
+        .on_copyA_index = 1,
+        .on_copyB_index = 1,
+    },
+    {
+        .__effect_anm_file_index = 0,
+        .on_create_func = &AnmVM::on_create_special_dataC1,
+        .on_tick_index = 3,
+        .on_draw_index = 3,
+        .on_destroy_index = 3,
+        .on_interrupt_index = 3,
+        .on_copyA_index = 0,
+        .on_copyB_index = 0
+    },
+    {
+        .__effect_anm_file_index = 0,
+        .on_create_func = &AnmVM::on_create_special_dataC2,
+        .on_tick_index = 3,
+        .on_draw_index = 3,
+        .on_destroy_index = 3,
+        .on_interrupt_index = 3,
+        .on_copyA_index = 0,
+        .on_copyB_index = 0
+    },
+    {
+        .__effect_anm_file_index = 0,
+        .on_create_func = &AnmVM::on_create_special_dataD,
+        .on_tick_index = 5,
+        .on_draw_index = 7,
+        .on_destroy_index = 4,
+        .on_interrupt_index = 4,
+        .on_copyA_index = 0,
+        .on_copyB_index = 0
+    }
+};
 
 typedef struct Effect Effect;
 
@@ -13306,7 +13500,7 @@ private:
     // 0x42AF70
     dllexport gnu_noinline AnmID& thiscall instantiate_effect_vm_to_world_list_back(AnmID& out, int32_t type, void* on_create_arg, AnmVM* vm) asm_symbol_rel(0x42AF70) {
         out = 0;
-        EffectData& effect_data = EFFECT_DATA_TABLE[type];
+        const EffectData& effect_data = EFFECT_DATA_TABLE[type];
         int32_t script = effect_data.__script_id;
         if (script >= 0) {
             if (!vm) {
@@ -14490,7 +14684,10 @@ dllexport gnu_noinline int32_t AnmVM::run_anm() {
                 }
                 break;
             }
-            // TODO
+            
+            case sprite_set: { // 300
+
+            }
         }
 
         this->data.current_instruction_offset += current_instruction->offset_to_next;
@@ -15223,19 +15420,19 @@ public:
     }
 
     inline uint8_t get_alpha() {
-        return ((uint8_t*)&this->color)[3];
+        return ALPHA(this->color);
     }
 
     inline void set_alpha(uint8_t value) {
-        ((uint8_t*)&this->color)[3] = value;
+        ALPHA(this->color) = value;
     }
 
     inline uint8_t get_alpha2() {
-        return ((uint8_t*)&this->color2)[3];
+        return ALPHA(this->color2);
     }
 
     inline void set_alpha2(uint8_t value) {
-        ((uint8_t*)&this->color2)[3] = value;
+        ALPHA(this->color2) = value;
     }
 
     // 0x42CB60
@@ -15333,17 +15530,22 @@ enum DamageSourceHitboxType {
 struct RectPoints {
     Float2 points[4];
 
+    inline void offset(float X, float Y) {
+        for (size_t i = 0; i < countof(this->points); ++i) {
+            this->points[i].x += X;
+            this->points[i].y += Y;
+        }
+    }
+
     inline void rotate_around_origin(float angle) {
-        if (angle != 0.0f) {
-            float y_unit = zsin(angle);
-            float x_unit = zcos(angle);
-            // repeated rotate_around_origin
-            for (size_t i = 0; i < countof(this->points); ++i) {
-                float y = this->points[i].y;
-                float x = this->points[i].x;
-                this->points[i].y = (x_unit * y) + (y_unit * x);
-                this->points[i].x = (x_unit * x) - (y_unit * y);
-            }
+        float y_unit = zsin(angle);
+        float x_unit = zcos(angle);
+        // repeated rotate_around_origin
+        for (size_t i = 0; i < countof(this->points); ++i) {
+            float y = this->points[i].y;
+            float x = this->points[i].x;
+            this->points[i].y = (x_unit * y) + (y_unit * x);
+            this->points[i].x = (x_unit * x) - (y_unit * y);
         }
     }
 
@@ -15359,7 +15561,9 @@ private:
         rect.points[2] = this->points[2] - position;
         rect.points[3] = this->points[3] - position;
 
-        rect.rotate_around_origin(-angle);
+        if (angle != 0.0f) {
+            rect.rotate_around_origin(-angle);
+        }
 
         float half_height = height * 0.5f;
         float half_width = width * 0.5f;
@@ -15409,6 +15613,266 @@ private:
         return zsqrt(distance_squared(x1, y1, x2, y2));
     }
 
+    static forceinline BOOL __inline_sub_A(
+        float A1x, float A1y,
+        float A2x, float A2y,
+        float B1x, float B1y,
+        float B2x, float B2y
+    ) {
+        float C = (A1x - B1x) * (A1y - A2y) + (B1y - A1y) * (A1x - A2x);
+        float D = (A1x - B2x) * (A1y - A2y) + (B2y - A1y) * (A1x - A2x);
+        if (!(C * D > 0.0f)) {
+            if (C == 0.0f && D == 0.0f) {
+                if (A1x > A2x) {
+                    std::swap(A1x, A2x);
+                    std::swap(A1y, A2y);
+                }
+                if (B1x > B2x) {
+                    std::swap(B1x, B2x);
+                    std::swap(B1y, B2y);
+                }
+                if (
+                    B2x >= A1x &&
+                    B2y >= A1y &&
+                    A2x >= B1x &&
+                    A2y >= B1y
+                ) {
+                    return TRUE;
+                }
+            }
+            else {
+                C = (B1x - A1x) * (B1y - B2y) + (A1y - B1y) * (B1x - B2x);
+                D = (B1x - A2x) * (B1y - B2y) + (A2y - B1y) * (B1x - B2x);
+                if (!(C * D > 0.0f)) {
+                    return TRUE;
+                }
+            }
+        }
+        return FALSE;
+    }
+
+private:
+    static forceinline BOOL vectorcall __sub_4038A0_impl(
+        float* x_out, float* y_out, // ECX, EDX,
+        float x1, float y1,         // XMM2, XMM3,
+        float x2, float y2,         // 
+        float x3, float y3,         // 
+        float x4, float y4          // 
+    ) {
+
+        if (__inline_sub_A(
+            x1, y1, x2, y2,
+            x3, y3, x4, y4
+        )) {
+            BOOL A;
+            float B = x2 - x1;
+            float C;
+            if (zfabsf(B) < 0.01f) {
+                A = true;
+                B = 0.0f;
+                C = x1;
+            } else {
+                A = false;
+                B = (y2 - y1) / (x2 - x1);
+                C = y1 - ((y2 - y1) * x1 / (x2 - x1));
+            }
+
+            BOOL D;
+            float E = x4 - x3;
+            float F;
+            if (zfabsf(E) < 0.01f) {
+                D = true;
+                E = 0.0f;
+                F = x3;
+            } else {
+                D = false;
+                E = (y4 - y3) / (x4 - x3);
+                F = y3 - ((y4 - y3) * x3 / (x4 - x3));
+            }
+
+            if (!A) {
+                if (!D) {
+                    *x_out = (F - C) / (B - E);
+                    *y_out = C + ((F - C) * B / (B - E));
+                    return TRUE;
+                } else {
+                    *x_out = x3;
+                    *y_out = B * x3 + C;
+                    return TRUE;
+                }
+            } else {
+                if (D) {
+                    if (zfabsf(x1 - x3) < 0.001f) {
+                        *x_out = x1;
+                        *y_out = y1;
+                        return TRUE;
+                    }
+                } else {
+                    *x_out = x1;
+                    *y_out = E * x1 + F;
+                    return TRUE;
+                }
+            }
+        }
+        return FALSE;
+    }
+    // 0x4038A0
+    dllexport gnu_noinline static BOOL vectorcall __sub_4038A0(
+        float* x_out, float* y_out,
+        float x1, float y1,
+        uint32_t x2, uint32_t y2,
+        uint32_t x3, uint32_t y3,
+        uint32_t x4, uint32_t y4
+    ) {
+        return __sub_4038A0_impl(
+            x_out, y_out,
+            x1, y1,
+            bitcast<float>(x2), bitcast<float>(y2),
+            bitcast<float>(x3), bitcast<float>(y3),
+            bitcast<float>(x4), bitcast<float>(y4)
+        );
+    }
+public:
+    static forceinline BOOL __sub_4038A0(
+        float* x_out, float* y_out,
+        float x1, float y1,
+        float x2, float y2,
+        float x3, float y3,
+        float x4, float y4
+    ) {
+        return __sub_4038A0(
+            x_out, y_out,
+            x1, y1,
+            bitcast<uint32_t>(x2), bitcast<uint32_t>(y2),
+            bitcast<uint32_t>(x3), bitcast<uint32_t>(y3),
+            bitcast<uint32_t>(x4), bitcast<uint32_t>(y4)
+        );
+    }
+
+private:
+    static forceinline BOOL __sub_404080_impl(
+        Float2* pointA, Float2* pointB, // ECX, EDX,        (ESP+10, ESP+14)
+        Float2* position1,              // EBP+8,
+        float rotation1,                // XMM3,
+        float x2, float y2,             // EBP+C,  EBP+10,
+        float width2, float height2,    // EBP+14, EBP+18,
+        float rotation2                 // EBP+1C
+    ) {
+        float half_width2 = width2 * 0.5f;
+        float half_height2 = height2 * 0.5f;
+        float neg_half_width2 = -width2 * 0.5f;
+        float neg_half_height2 = -height2 * 0.5f;
+
+        RectPoints rectA; // ESP+24
+        rectA.points[0] = { neg_half_width2, neg_half_height2 };
+        rectA.points[1] = { neg_half_width2, half_height2 };
+        rectA.points[2] = { half_width2, half_height2 };
+        rectA.points[3] = { half_width2, neg_half_height2 };
+
+        if (rotation1 != 0.0f) {
+            rectA.rotate_around_origin(rotation2);
+        }
+
+        rectA.offset(x2, y2);
+
+        constexpr Float2 offset_source = { 1000.0f, 0.0f };
+        Float2 offset = offset_source.rotate_around_origin(rotation1);
+
+        float x1 = position1->x;
+        float y1 = position1->y;
+
+        Float2 A1; // ESP+18, ESP+C
+
+        float A2x = x1 + offset.x; // ESP+1C
+        A1.x = x1 - offset.x; // ESP+18
+        float A2y = y1 + offset.y; // ESP+20
+        A1.y = y1 - offset.y; // ESP+C
+
+        int32_t successes = 0;
+
+        Float3 points[2]; // ESP+44
+
+        nounroll for (size_t i = 0; i < 4; ++i) {
+            int32_t B2 = AWFUL_RECTANGLE_INDEX_TABLE[i * 2 + 1];
+            int32_t B1 = AWFUL_RECTANGLE_INDEX_TABLE[i * 2];
+
+            float B2y = rectA.points[B2].y;
+            float B2x = rectA.points[B2].x;
+            float B1y = rectA.points[B1].y;
+            float B1x = rectA.points[B1].x;
+
+            if (__sub_4038A0(
+                &points[successes].x, &points[successes].y,
+                A1.x, A1.y, A2x, A2y,
+                B1x, B1y, B2x, B2y
+            )) {
+                if (++successes >= countof(points)) {
+                    break;
+                }
+            }
+        }
+
+        switch (successes) {
+            case 0:
+                return FALSE;
+            case 2: {
+                if (A1.distance_squared(&points[0]) < A1.distance_squared(&points[1])) {
+                    *pointA = points[0];
+                    *pointB = points[1];
+                } else {
+                    *pointA = points[1];
+                    *pointB = points[0];
+                }
+                return TRUE;
+            }
+            default: {
+                float X = points[0].x;
+                float Y = points[0].y;
+                *pointA = { X, Y };
+                *pointB = { X, Y };
+                return TRUE;
+            }
+        }
+    }
+    // 0x404080
+    dllexport gnu_noinline static BOOL vectorcall __sub_404080(
+        float, float, float,
+        Float2* pointA, Float2* pointB,
+        Float2* position1,
+        float rotation1,
+        uint32_t x2, uint32_t y2,
+        uint32_t width2, uint32_t height2,
+        uint32_t rotation2
+    ) {
+        return __sub_404080_impl(
+            pointA, pointB,
+            position1,
+            rotation1,
+            bitcast<float>(x2), bitcast<float>(y2),
+            bitcast<float>(width2), bitcast<float>(height2),
+            bitcast<float>(rotation2)
+        );
+    }
+public:
+    static forceinline BOOL __sub_404080(
+        Float2* pointA, Float2* pointB,
+        Float2* position1,
+        float rotation1,
+        float x2, float y2,
+        float width2, float height2,
+        float rotation2
+    ) {
+        return __sub_404080(
+            UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT,
+            pointA, pointB,
+            position1,
+            rotation1,
+            bitcast<uint32_t>(x2), bitcast<uint32_t>(y2),
+            bitcast<uint32_t>(width2), bitcast<uint32_t>(height2),
+            bitcast<uint32_t>(rotation2)
+        );
+    }
+
 private:
     static forceinline BOOL collision_rectangle_rectangle_impl(
         float x1, float y1,             // XMM0,   XMM1,    (ESP+C,  ESP+14)
@@ -15439,7 +15903,9 @@ private:
             rectA.points[2] = { half_width1, half_height1 };
             rectA.points[3] = { half_width1, neg_half_height1 };
 
-            rectA.rotate_around_origin(rotation1);
+            if (rotation1 != 0.0f) {
+                rectA.rotate_around_origin(rotation1);
+            }
 
             float neg_half_width2 = -width2 * 0.5f;
             float neg_half_height2 = -height2 * 0.5f;
@@ -15450,7 +15916,9 @@ private:
             rectB.points[2] = { half_width2, half_height2 };
             rectB.points[3] = { half_width2, neg_half_height2 };
 
-            rectB.rotate_around_origin(rotation2);
+            if (rotation2 != 0.0f) {
+                rectB.rotate_around_origin(rotation2);
+            }
 
             if (
                 rectA.__sub_403660(x1, y1, width1, height1, rotation1) ||
@@ -15475,34 +15943,11 @@ private:
                     float B2x = rectB.points[B2].x;
                     float B2y = rectB.points[B2].y;
 
-                    float C = (A1x - B1x) * (A1y - A2y) + (B1y - A1y) * (A1x - A2x);
-                    float D = (A1x - B2x) * (A1y - A2y) + (B2y - A1y) * (A1x - A2x);
-                    if (!(C * D > 0.0f)) {
-                        if (C == 0.0f && D == 0.0f) {
-                            if (A1x > A2x) {
-                                std::swap(A1x, A2x);
-                                std::swap(A1y, A2y);
-                            }
-                            if (B1x > B2x) {
-                                std::swap(B1x, B2x);
-                                std::swap(B1y, B2y);
-                            }
-                            if (
-                                B2x >= A1x &&
-                                B2y >= A1y &&
-                                A2x >= B1x &&
-                                A2y >= B1y
-                            ) {
-                                return TRUE;
-                            }
-                        }
-                        else {
-                            C = (B1x - A1x) * (B1y - B2y) + (A1y - B1y) * (B1x - B2x);
-                            D = (B1x - A2x) * (B1y - B2y) + (A2y - B1y) * (B1x - B2x);
-                            if (!(C * D > 0.0f)) {
-                                return TRUE;
-                            }
-                        }
+                    if (__inline_sub_A(
+                        A1x, A1y, A2x, A2y,
+                        B1x, B1y, B2x, B2y
+                    )) {
+                        return TRUE;
                     }
                 }
             }
@@ -16806,7 +17251,7 @@ struct CardYachie : CardBase {
     // Method 30
     // 0x40D630
     dllexport gnu_noinline virtual int thiscall recharge(int, int) {
-        float A = REPLAY_RNG.rand_float_signed() * PI_f;
+        float A = REPLAY_RNG.rand_angle();
         // TODO
         return 0;
     }
@@ -18606,30 +19051,9 @@ dllexport gnu_noinline float vectorcall Float3::__bullet_effect_angle_jank(float
     return angle;
 }
 
-// I completely forget if this was going to be EnemyInitData or something else
-struct EnemyAllocationData {
-    
-};
-
-typedef int32_t(fastcall UnknownSFunc)(int, int);
-
-// size: 0x20
-struct UnknownS {
-    int16_t __sshort_0; // 0x0
-    int16_t __sshort_2; // 0x2
-    UnknownSFunc* __func_4; // 0x4
-    uint32_t on_tick_index; // 0x8
-    uint32_t on_draw_index; // 0xC
-    uint32_t on_destroy_index; // 0x10
-    uint32_t on_interrupt_index; // 0x14
-    uint32_t on_copy_A_index; // 0x18
-    uint32_t on_copy_B_index; // 0x1C
-    // 0x20
-};
-
 // size: 0x1A0
 struct EnemyManager : ZUNTask {
-    //ZUNTask base; // 0x0
+    // ZUNTask base; // 0x0
     int32_t int_vars[4]; // 0xC
     float float_vars[8]; // 0x1C
     int32_t player_death_count; // 0x3C
@@ -19133,6 +19557,373 @@ dllexport gnu_noinline int thiscall Enemy::kill() {
     }
 
     return 1;
+}
+
+
+
+// size: 0x1E48
+struct AnmVMSpecialDataA {
+    AnmVM __vm_array_0[4]; // 0x0
+    AnmVM __anm_vm_1830; // 0x1830
+    int __int_1E3C; // 0x1E3C
+    int __int_1E40; // 0x1E40
+    int32_t __int_1E44; // 0x1E44
+    // 0x1E48
+};
+#pragma region // AnmVMSpecialDataA Validation
+ValidateFieldOffset32(0x0, AnmVMSpecialDataA, __vm_array_0);
+ValidateFieldOffset32(0x1830, AnmVMSpecialDataA, __anm_vm_1830);
+ValidateFieldOffset32(0x1E3C, AnmVMSpecialDataA, __int_1E3C);
+ValidateFieldOffset32(0x1E40, AnmVMSpecialDataA, __int_1E40);
+ValidateFieldOffset32(0x1E44, AnmVMSpecialDataA, __int_1E44);
+ValidateStructSize32(0x1E48, AnmVMSpecialDataA);
+#pragma endregion
+
+// 0x406AD0
+dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataA(AnmVM* vm, void* arg) {
+    vm->controller.special_data_size = sizeof(AnmVMSpecialDataA);
+    AnmVMSpecialDataA* special_data = (AnmVMSpecialDataA*)malloc(sizeof(AnmVMSpecialDataA));
+    vm->controller.special_data = special_data;
+    memset(special_data, 0, sizeof(AnmVMSpecialDataA));
+
+    vm->data.origin_mode = 0;
+    vm->data.layer = 0;
+
+    Float3 position;
+    position.x = 320.0f;
+    position.y = 240.0f;
+    position.z = 0.0f;
+
+    nounroll for (int32_t i = 0; i < countof(special_data->__vm_array_0); ++i) {
+        AnmVM* vm = &special_data->__vm_array_0[i];
+
+        clang_forceinline EFFECT_MANAGER_PTR->effect_anm->__copy_data_to_vm_and_run(vm, i + 3);
+        vm->controller.position = position;
+    }
+
+    special_data->__int_1E3C = 0;
+    vm->data.layer = 43;
+    vm->data.origin_mode = 0;
+    vm->data.resolution_mode = 1;
+
+    for (size_t i = 0; i < countof(special_data->__vm_array_0); ++i) {
+        special_data->__vm_array_0[i].controller.position = { 320.0f, 240.0f, 0.0f };
+    }
+
+    clang_forceinline EFFECT_MANAGER_PTR->effect_anm->__copy_data_to_vm_and_run(&special_data->__anm_vm_1830, 194);
+
+    return 0;
+}
+
+// 0x406C80
+dllexport gnu_noinline int fastcall AnmVM::on_tick_special_dataA(AnmVM* vm) {
+    AnmVMSpecialDataA* special_data = (AnmVMSpecialDataA*)vm->controller.special_data;
+
+    int32_t total = 0;
+    for (size_t i = 0; i < countof(special_data->__vm_array_0); ++i) {
+        if (special_data->__vm_array_0[i].run_anm()) {
+            ++total;
+        }
+    }
+
+    if (total < 4) {
+        special_data->__anm_vm_1830.run_anm();
+        int32_t A = special_data->__int_1E40++;
+        if (
+            !special_data->__int_1E44 ||
+            A < 60
+        ) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+// 0x406D00
+dllexport gnu_noinline int fastcall AnmVM::on_draw_special_dataA(AnmVM* vm) {
+    // TODO
+}
+
+// 0x4072A0
+dllexport gnu_noinline int fastcall AnmVM::on_destroy_special_dataA(AnmVM* vm) {
+    return 0;
+}
+
+// 0x4072B0
+dllexport gnu_noinline int fastcall AnmVM::on_interrupt_special_dataA(AnmVM* vm, int32_t interrupt) {
+    AnmVMSpecialDataA* special_data = (AnmVMSpecialDataA*)vm->controller.special_data;
+    switch (interrupt) {
+        case 1:
+            nounroll for (int32_t i = 0; i < countof(special_data->__vm_array_0); ++i) {
+                clang_forceinline EFFECT_MANAGER_PTR->effect_anm->__copy_data_to_vm_and_run(&special_data->__vm_array_0[i], i + 7);
+            }
+            special_data->__int_1E44 = 1;
+            special_data->__int_1E40 = 0;
+        default:
+            return 0;
+        case 7:
+            special_data->__int_1E3C = 0;
+            break;
+        case 8:
+            special_data->__int_1E3C = 1;
+            vm->data.origin_mode = 1;
+            vm->data.resolution_mode = 1;
+            break;
+        case 9:
+            special_data->__int_1E3C = 0;
+            vm->data.layer = 37;
+            break;
+        case 10:
+            special_data->__int_1E3C = 3;
+            vm->data.layer = 31;
+            vm->data.origin_mode = 0;
+            vm->data.resolution_mode = 1;
+            break;
+    }
+    for (size_t i = 0; i < countof(special_data->__vm_array_0); ++i) {
+        special_data->__vm_array_0[i].controller.position = { 320.0f, 240.0f, 0.0f };
+    }
+    return 0;
+}
+
+// size: 0x193C
+struct AnmVMSpecialDataB {
+    AnmID __anm_id_array_0[200]; // 0x0
+    unknown_fields(0x1608); // 0x320
+    Timer __timer_1928; // 0x1928
+    // 0x193C
+};
+#pragma region // AnmVMSpecialDataB Validation
+ValidateFieldOffset32(0x0, AnmVMSpecialDataB, __anm_id_array_0);
+ValidateFieldOffset32(0x1928, AnmVMSpecialDataB, __timer_1928);
+ValidateStructSize32(0x193C, AnmVMSpecialDataB);
+#pragma endregion
+
+// 0x404FC0
+dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataB(AnmVM* vm, void* arg) {
+    vm->controller.special_data_size = sizeof(AnmVMSpecialDataB);
+    AnmVMSpecialDataB* special_data = (AnmVMSpecialDataB*)malloc(sizeof(AnmVMSpecialDataB));
+    vm->controller.special_data = special_data;
+    memset(special_data, 0, sizeof(AnmVMSpecialDataB));
+
+    special_data->__timer_1928.reset();
+
+    return 0;
+}
+
+// 0x405030
+dllexport gnu_noinline int fastcall AnmVM::on_tick_special_dataB(AnmVM* vm) {
+    AnmVMSpecialDataB* special_data = (AnmVMSpecialDataB*)vm->controller.special_data;
+
+    // TODO
+}
+
+// 0x4058B0
+dllexport gnu_noinline int fastcall AnmVM::on_draw_special_dataB(AnmVM* vm) {
+    return 0;
+}
+
+// 0x4058C0
+dllexport gnu_noinline int fastcall AnmVM::on_destroy_special_dataB(AnmVM* vm) {
+    AnmVMSpecialDataB* special_data = (AnmVMSpecialDataB*)vm->controller.special_data;
+    nounroll for (size_t i = 0; i < countof(special_data->__anm_id_array_0); ++i) {
+        if (AnmVM* vm = special_data->__anm_id_array_0[i].get_vm_ptr()) {
+            vm->data.visible = false;
+            vm->data.current_instruction_offset = -1;
+        }
+    }
+    return 0;
+}
+
+// 0x405910
+dllexport gnu_noinline int fastcall AnmVM::on_interrupt_special_dataB(AnmVM* vm, int32_t interrupt) {
+    if (interrupt == 1) {
+        AnmVMSpecialDataB* special_data = (AnmVMSpecialDataB*)vm->controller.special_data;
+        special_data->__timer_1928++;
+    }
+    return 0;
+}
+
+// size: 0x318
+struct AnmVMSpecialDataC {
+    Float2 position_array[64]; // 0x0
+    D3DCOLOR __color_array_200[64]; // 0x200
+    float __angle_300; // 0x300
+    Timer __timer_304; // 0x304
+    // 0x318
+};
+#pragma region // AnmVMSpecialDataC Validation
+ValidateFieldOffset32(0x0, AnmVMSpecialDataC, position_array);
+ValidateFieldOffset32(0x200, AnmVMSpecialDataC, __color_array_200);
+ValidateFieldOffset32(0x300, AnmVMSpecialDataC, __angle_300);
+ValidateFieldOffset32(0x304, AnmVMSpecialDataC, __timer_304);
+ValidateStructSize32(0x318, AnmVMSpecialDataC);
+#pragma endregion
+
+// 0x405D70
+dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC1(AnmVM* vm, void* arg) {
+    vm->controller.special_data_size = sizeof(AnmVMSpecialDataC);
+    AnmVMSpecialDataC* special_data = (AnmVMSpecialDataC*)malloc(sizeof(AnmVMSpecialDataC));
+    vm->controller.special_data = special_data;
+    memset(special_data, 0, sizeof(AnmVMSpecialDataC));
+
+    Float3* position = (Float3*)arg;
+
+    float X = position->x;
+    special_data->position_array[0].x = X;
+    float Y = position->y;
+    X += 320.0f;
+    Y += 16.0f;
+    special_data->position_array[0].x = X;
+    special_data->position_array[0].y = Y;
+
+    special_data->__angle_300 = RNG.rand_angle();
+    special_data->__timer_304.set(1);
+
+    uint32_t j = 0;
+    for (int32_t i = 0; i < countof(special_data->__color_array_200); ++i) {
+        special_data->__color_array_200[i] = PackD3DCOLOR(255, 0, 128, 255);
+        if (i < 8u) {
+            RED(special_data->__color_array_200[i]) = ~(i << 5);
+        }
+        else if (i >= 32u) {
+            ALPHA(special_data->__color_array_200[i]) = ~(j++ << 4);
+        }
+    }
+
+    vm->controller.position = *position;
+    vm->data.layer = 15;
+    vm->data.origin_mode = 1;
+    vm->data.blend_mode = 1;
+
+    vm->initialize_alpha_interp(64, 0, 255, 0);
+
+    return 0;
+}
+
+// 0x405ED0
+dllexport gnu_noinline int fastcall AnmVM::on_tick_special_dataC(AnmVM* vm) {
+    AnmVMSpecialDataC* special_data = (AnmVMSpecialDataC*)vm->controller.special_data;
+
+    int32_t time = special_data->__timer_304;
+    if (time < 64) {
+        if (time != special_data->__timer_304.previous) {
+            for (int32_t i = time; i > 0; --i) {
+                uint8_t alpha = ALPHA(special_data->__color_array_200[i]);
+                ALPHA(special_data->__color_array_200[i]) = alpha >= 16 ? alpha - 16 : 0;
+            }
+
+            Float2* position = &special_data->position_array[time];
+
+            position[0].make_from_vector(special_data->__angle_300, RNG.rand_float() * 5.0f + 4.0f);
+            position[0] += position[-1];
+
+            float angle = special_data->__angle_300 + RNG.rand_angle() / 5.0f;
+            special_data->__angle_300 = reduce_angle(angle);
+        }
+        special_data->__timer_304++;
+        return 0;
+    }
+    return 1;
+}
+
+// 0x406090
+dllexport gnu_noinline int fastcall AnmVM::on_draw_special_dataC(AnmVM* vm) {
+    // TODO
+}
+
+// 0x406290
+dllexport gnu_noinline int fastcall AnmVM::on_destroy_special_dataC(AnmVM* vm) {
+    return 0;
+}
+
+// 0x4062A0
+dllexport gnu_noinline int fastcall AnmVM::on_interrupt_special_dataC(AnmVM* vm, int32_t interrupt) {
+    return 0;
+}
+
+// 0x4062B0
+dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC2(AnmVM* vm, void* arg) {
+    vm->controller.special_data_size = sizeof(AnmVMSpecialDataC);
+    AnmVMSpecialDataC* special_data = (AnmVMSpecialDataC*)malloc(sizeof(AnmVMSpecialDataC));
+    vm->controller.special_data = special_data;
+    memset(special_data, 0, sizeof(AnmVMSpecialDataC));
+
+    special_data->__angle_300 = RNG.rand_angle();
+    special_data->__timer_304.set(1);
+
+    uint32_t j = 0;
+    for (int32_t i = 0; i < countof(special_data->__color_array_200); ++i) {
+        special_data->__color_array_200[i] = PackD3DCOLOR(255, 80, 80, 80);
+        if (i < 8u) {
+            RED(special_data->__color_array_200[i]) = ~(i << 5);
+        } else if (i >= 32u) {
+            ALPHA(special_data->__color_array_200[i]) = ~(j++ << 4);
+        }
+    }
+
+    vm->controller.position = *(Float3*)arg;
+    vm->data.blend_mode = 0;
+    vm->data.layer = 19;
+    vm->data.origin_mode = 1;
+
+    return 0;
+}
+
+// size: 0x97C
+struct AnmVMSpecialDataD {
+    unknown_fields(0x900); // 0x0
+    ZUNInterp<Float3> __float3_interp_900; // 0x900
+    unknown_fields(0x10); // 0x10
+    Timer __timer_968; // 0x968
+    // 0x97C
+};
+#pragma region // AnmVMSpecialDataD Validation
+ValidateFieldOffset32(0x900, AnmVMSpecialDataD, __float3_interp_900);
+ValidateFieldOffset32(0x968, AnmVMSpecialDataD, __timer_968);
+ValidateStructSize32(0x97C, AnmVMSpecialDataD);
+#pragma endregion
+
+// 0x407590
+dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataD(AnmVM* vm, void* arg) {
+
+    
+    AnmLoaded* anm_loaded = ENEMY_MANAGER_PTR->enemy_anms[3];
+    anm_loaded->__copy_data_to_vm_unknown_A(vm);
+
+    vm->data.slot = anm_loaded->slot_index;
+    vm->data.slot2 = anm_loaded->slot_index;
+
+    vm->controller.special_data_size = sizeof(AnmVMSpecialDataD);
+    AnmVMSpecialDataD* special_data = (AnmVMSpecialDataD*)malloc(sizeof(AnmVMSpecialDataD));
+    vm->controller.special_data = special_data;
+    memset(special_data, 0, sizeof(AnmVMSpecialDataD));
+
+    special_data->__timer_968.set(1);
+
+    // TODO
+
+    return 0;
+}
+
+// 0x4078D0
+dllexport gnu_noinline int fastcall AnmVM::on_tick_special_dataD(AnmVM* vm) {
+    // TODO
+}
+
+// 0x407C90
+dllexport gnu_noinline int fastcall AnmVM::on_draw_special_dataD(AnmVM* vm) {
+    // TODO
+}
+
+// 0x407D30
+dllexport gnu_noinline int fastcall AnmVM::on_destroy_special_dataD(AnmVM* vm) {
+    return 0;
+}
+
+// 0x407D40
+dllexport gnu_noinline int fastcall AnmVM::on_interrupt_special_dataD(AnmVM* vm, int32_t interrupt) {
+    return 0;
 }
 
 typedef struct Stage Stage;
@@ -21073,6 +21864,86 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
     // TODO: FINISH THIS
 }
 
+// 0x438D90
+dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_set_1_6bs(EnemyData* enemy_data) {
+    // TODO
+}
+
+// 0x439020
+dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_call_2_ex(EnemyData* enemy_data) {
+    Float3 A; // ESP+1C
+    Float3 B; // ESP+28
+    Float3 unit_vec; // ESP+34
+
+    LASER_MANAGER_PTR->for_each_laser_but_stupid([&](LaserData* laser) {
+        if (HitboxManager::__sub_404080(
+            &A, &B,
+            &laser->position,
+            laser->angle,
+            0.0f, 224.0f,
+            384.0f, 448.0f,
+            0.0f
+        )) {
+            unit_vec.make_from_vector(laser->angle, 1.0f);
+
+            Float3 C = (A - laser->position) * unit_vec;
+            if (C.x + C.y + C.z >= 1.0f) {
+                B = A;
+            } else {
+                A = B;
+            }
+
+            EnemyInitData enemy_init = {};
+            enemy_init.position = A;
+            enemy_init.life = 10000;
+            enemy_init.score = 0;
+            enemy_init.item_drop = 0;
+            ENEMY_MANAGER_PTR->allocate_new_enemy("BossCard6_et", &enemy_init);
+        }
+    });
+    return ZUN_SUCCESS;
+}
+
+// 0x4391A0
+dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_call_3_ex(EnemyData* enemy_data) {
+    Float3 A; // ESP+1C
+    Float3 B; // ESP+28
+    Float3 unit_vec; // ESP+34
+    
+    LASER_MANAGER_PTR->for_each_laser_but_stupid([&](LaserData* laser) {
+        if (HitboxManager::__sub_404080(
+            &A, &B,
+            &laser->position,
+            laser->angle,
+            0.0f, 224.0f,
+            384.0f, 448.0f,
+            0.0f
+        )) {
+            unit_vec.make_from_vector(laser->angle, 1.0f);
+
+            Float3 C = (A - laser->position) * unit_vec;
+            if (C.x + C.y + C.z >= 1.0f) {
+                B = A;
+            } else {
+                A = B;
+            }
+
+            EnemyInitData enemy_init = {};
+            enemy_init.position = A;
+            enemy_init.life = 10000;
+            enemy_init.score = 0;
+            enemy_init.item_drop = 0;
+            ENEMY_MANAGER_PTR->allocate_new_enemy("BossCard6_et2", &enemy_init);
+        }
+    });
+    return ZUN_SUCCESS;
+}
+
+// 0x439320
+dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_set_4_ex(EnemyData* enemy_data) {
+
+}
+
 #pragma push_macro("IntArg")
 #pragma push_macro("ShortArg")
 #pragma push_macro("WordArg")
@@ -22324,9 +23195,9 @@ dllexport gnu_noinline void thiscall EnemyData::ecl_set_anm_data() {
                 int B = this->vm->current_context->get_int_arg(3);
                 int G = this->vm->current_context->get_int_arg(2);
                 int R = this->vm->current_context->get_int_arg(1);
-                ((uint8_t*)&vm->data.color1)[2] = R;
-                ((uint8_t*)&vm->data.color1)[1] = G;
-                ((uint8_t*)&vm->data.color1)[0] = B;
+                RED(vm->data.color1) = R;
+                GREEN(vm->data.color1) = G;
+                BLUE(vm->data.color1) = B;
                 break;
             }
             case anm_color_slot_interp: { // 326
@@ -22341,9 +23212,9 @@ dllexport gnu_noinline void thiscall EnemyData::ecl_set_anm_data() {
                 vm->data.color_interp.bezier2 = color;
                 color = { R, G, B };
                 vm->data.color_interp.initial_value = {
-                    ((uint8_t*)&vm->data.color1)[2],
-                    ((uint8_t*)&vm->data.color1)[1],
-                    ((uint8_t*)&vm->data.color1)[0],
+                    RED(vm->data.color1),
+                    GREEN(vm->data.color1),
+                    BLUE(vm->data.color1)
                 };
                 vm->data.color_interp.mode = mode;
                 vm->data.color_interp.final_value = color;
@@ -22979,7 +23850,7 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
                 case math_circle_pos_rand: { // 93
                     float min_radius = this->get_float_arg(0);
                     float max_radius = this->get_float_arg(1);
-                    float angle = REPLAY_RNG.rand_float_signed() * PI_f;
+                    float angle = REPLAY_RNG.rand_angle();
                     float percent = REPLAY_RNG.rand_float_signed();
                     float radius = lerp(min_radius, max_radius, percent);
                     Float2 position;
@@ -23736,13 +24607,13 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
         case ex_ins_repeat: { // 632
             int32_t index = this->get_int_arg(0);
             this->__is_func_set_2 = FALSE;
-            //this->func_set_func = ECL_FUNC_CALL_TABLE[index];
+            this->func_set_func = ECL_FUNC_CALL_TABLE[index];
             break;
         }
         case __ex_ins_repeat2: { // 639
             int32_t index = this->get_int_arg(0);
             this->__is_func_set_2 = TRUE;
-            //this->func_set_func = ECL_FUNC_CALL_TABLE[index];
+            this->func_set_func = ECL_FUNC_CALL_TABLE[index];
             break;
         }
         case enemy_damage_ex: { // 633
@@ -23757,7 +24628,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
         }
         case ex_ins_call: { // 637
             int32_t index = this->get_int_arg(0);
-            //ECL_FUNC_CALL_TABLE[index](this);
+            ECL_FUNC_CALL_TABLE[index](this);
             break;
         }
         case enemy_set_hitbox: // 500
@@ -28036,46 +28907,13 @@ dllexport gnu_noinline ZUNResult __make_mutex_and_test_path() {
     return MUTEX_DATA.handle != NULL ? ZUN_SUCCESS : ZUN_ERROR;
 }
 
-
-#ifdef CHEAT_THE_LOADER
-
-dllexport volatile char backing_memory[0x200000];
-
-struct StaticCtorsDtors {
-
-#define static_construct(global) new(&global) decltype(global)()
-
-#define original_addr(addr) ((void*)((uintptr_t)original_game + ((uintptr_t)(addr) - 0x400000)))
-
-    template<typename T>
-    static inline void copy_from_original_game(T& value, HMODULE original_game) {
-        __builtin_memcpy(&value, original_addr(&value), sizeof(value));
-    }
-
-    StaticCtorsDtors() {
-        HMODULE original_game = LoadLibraryExA("F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18.exe.unvlv.exe", NULL, 0);
-
-        copy_from_original_game(SOUND_DATA, original_game);
-
-        static_construct(LOG_BUFFER);
-        static_construct(SOUND_MANAGER);
-    }
-    ~StaticCtorsDtors() {
-
-    }
-};
-
-static StaticCtorsDtors fake_static_data;
-
-#endif
-
 extern "C" {
     // 0x5705F0
     extern JOYCAPSA JOYCAPS_GLOBAL asm("_JOYCAPS");
 }
 
 // 0x4B4280
-static int ResolutionDialogButtonIDs[] = {
+static const int ResolutionDialogButtonIDs[] = {
     0xD3,
     0xD2,
     0xD1,
@@ -28089,7 +28927,7 @@ static int ResolutionDialogButtonIDs[] = {
 };
 
 // 0x4B7FF0
-static int ResolutionDialogButtonIDsB[] = {
+static const int ResolutionDialogButtonIDsB[] = {
     0xCF,
     0xD0,
     0xD1,
@@ -28103,7 +28941,7 @@ static int ResolutionDialogButtonIDsB[] = {
 };
 
 // 0x4B7FBC
-static uint8_t ResolutionConfigValues[] = {
+static const uint8_t ResolutionConfigValues[] = {
     0, 0, 0, 0, 1, 0, 0, 0, 2, 0
 };
 
@@ -28693,8 +29531,11 @@ dinput_init_success:
 
 extern "C" {
 
+
+
 // 0x471270
-gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow) {
+dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow);
+dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow) asm_symbol_rel(0x471270) {
     HINSTANCE current_instance = hInstance;
     int local_dword_18 = 0;
     WINDOW_DATA.current_instance = hInstance;
@@ -28927,3 +29768,36 @@ loop_break:;
 }
 
 }
+
+
+#ifdef CHEAT_THE_LOADER
+
+dllexport volatile char backing_memory[0x200000];
+
+struct StaticCtorsDtors {
+
+#define static_construct(global) new(&global) decltype(global)()
+
+#define original_addr(addr) ((void*)((uintptr_t)original_game + ((uintptr_t)(addr) - 0x400000)))
+
+    template<typename T>
+    static inline void copy_from_original_game(T& value, HMODULE original_game) {
+        __builtin_memcpy(&value, original_addr(&value), sizeof(value));
+    }
+
+    StaticCtorsDtors() {
+        HMODULE original_game = LoadLibraryExA("F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18.exe.unvlv.exe", NULL, 0);
+
+        copy_from_original_game(SOUND_DATA, original_game);
+
+        static_construct(LOG_BUFFER);
+        static_construct(SOUND_MANAGER);
+    }
+    ~StaticCtorsDtors() {
+
+    }
+};
+
+static StaticCtorsDtors fake_static_data;
+
+#endif

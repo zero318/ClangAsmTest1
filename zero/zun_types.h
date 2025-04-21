@@ -123,6 +123,17 @@ struct Float2 : Float1 {
         return ret;
     }
 
+    inline float length_squared() {
+        float x = this->x;
+        float y = this->y;
+        return x * x + y * y;
+    }
+    inline float length() {
+        float x = this->x;
+        float y = this->y;
+        return zsqrtf(x * x + y * y);
+    }
+
     inline float distance_squared(const Float2* value) {
         float x_diff = this->x - value->x;
         float y_diff = this->y - value->y;
@@ -254,6 +265,35 @@ struct Float3 : Float2 {
             this->set(*src);
         }
     }
+
+    /*
+    inline float length_squared() {
+        float x = this->x;
+        float y = this->y;
+        float z = this->z;
+        return x * x + y * y + z * z;
+    }
+    inline float length() {
+        float x = this->x;
+        float y = this->y;
+        float z = this->z;
+        return zsqrtf(x * x + y * y + z * z);
+    }
+
+    inline float distance_squared(const Float3* value) {
+        float x_diff = this->x - value->x;
+        float y_diff = this->y - value->y;
+        float z_diff = this->z - value->z;
+        return x_diff * x_diff + y_diff * y_diff + z_diff * z_diff;
+    }
+
+    inline float distance(const Float3* value) {
+        float x_diff = this->x - value->x;
+        float y_diff = this->y - value->y;
+        float z_diff = this->z - value->z;
+        return zsqrtf(x_diff * x_diff + y_diff * y_diff + z_diff * z_diff);
+    }
+    */
 
 #pragma region // Float3 Operators
 

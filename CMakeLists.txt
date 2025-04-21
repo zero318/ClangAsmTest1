@@ -947,6 +947,7 @@ target_link_options(UMTest1 PRIVATE
 	"LINKER:/subsystem:windows"
 	"LINKER:/fixed"
 	"LINKER:/base:0x400000"
+	#"LINKER:/base:0x800000"
 	#/VERBOSE:LIB
 )
 
