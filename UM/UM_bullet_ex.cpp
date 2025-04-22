@@ -1422,10 +1422,13 @@ extern "C" {
     // 0x570EA0
     extern char PATH_BUFFER[MAX_PATH] asm("_PATH_BUFFER");
 }
-inline void* read_file_from_dat(const char* path) {
+inline void* read_file_from_dat(const char* path, int32_t* size_out) {
     PATH_BUFFER[0] = '\0';
     byteloop_strcat(PATH_BUFFER, path);
-    return read_file_to_buffer(PATH_BUFFER, NULL, false);
+    return read_file_to_buffer(PATH_BUFFER, size_out, false);
+}
+inline void* read_file_from_dat(const char* path) {
+    return read_file_from_dat(path, NULL);
 }
 
 // 0x402220
@@ -1843,9 +1846,8 @@ struct UpdateFuncRegistry {
         }
     }
 
-#if GAME_VERSION == UDoALG_VER
     // 0x401650
-    dllexport gnu_noinline void thiscall delete_func_locked(UpdateFunc* update_func) asm_symbol_rel(0x401650) {
+    inline void thiscall delete_func_locked(UpdateFunc* update_func) {
         if (update_func) {
             CRITICAL_SECTION_MANAGER.enter_section(UpdateFuncRegistry_CS);
             {
@@ -1854,7 +1856,6 @@ struct UpdateFuncRegistry {
             CRITICAL_SECTION_MANAGER.leave_section(UpdateFuncRegistry_CS);
         }
     }
-#endif
 
     // 0x4012E0
     dllexport gnu_noinline int32_t thiscall run_all_on_tick() asm_symbol_rel(0x4012E0) {
@@ -3339,14 +3340,35 @@ struct ZUNTask {
     UpdateFunc* on_draw_func; // 0x8
     // 0xC
 
-    // 0x42A9A0
-    dllexport void enable_funcs() {
+    inline void enable_tick_unsafe() {
+        this->on_tick_func->run_on_update = true;
+    }
+
+    inline void enable_draw_unsafe() {
+        this->on_draw_func->run_on_update = true;
+    }
+
+    inline void enable_funcs_unsafe() {
+        this->enable_tick_unsafe();
+        this->enable_draw_unsafe();
+    }
+
+    inline void enable_tick() {
         if (UpdateFunc* on_tick = this->on_tick_func) {
             on_tick->run_on_update = true;
         }
+    }
+
+    inline void enable_draw() {
         if (UpdateFunc* on_draw = this->on_draw_func) {
             on_draw->run_on_update = true;
         }
+    }
+
+    // 0x42A9A0
+    dllexport void enable_funcs() {
+        this->enable_tick();
+        this->enable_draw();
     }
 
     inline BOOL on_tick_enabled() {
@@ -3373,6 +3395,16 @@ extern "C" {
 
 static constexpr LONG JOYPAD_MIN_RANGE = -1000;
 static constexpr LONG JOYPAD_MAX_RANGE = 1000;
+
+typedef struct FpsCounter FpsCounter;
+typedef struct TickCounter TickCounter;
+
+extern "C" {
+    // 0x4CF2DC
+    extern FpsCounter* FPS_COUNTER_PTR asm("_FPS_COUNTER_PTR");
+    // 0x507644
+    extern TickCounter* TICK_COUNTER_PTR asm("_TICK_COUNTER_PTR");
+}
 
 // size: 0x38
 struct FpsCounter : ZUNTask {
@@ -3403,12 +3435,6 @@ struct FpsCounter : ZUNTask {
     dllexport gnu_noinline FpsCounter* stdcall destroy() asm_symbol_rel(0x43A2D0);
 };
 
-extern "C" {
-    // 0x4CF2DC
-    extern FpsCounter* FPS_COUNTER_PTR asm("_FPS_COUNTER_PTR");
-    // 0x507644
-}
-
 // 0x43A2D0
 dllexport gnu_noinline FpsCounter* stdcall FpsCounter::destroy() {
     UpdateFuncRegistry* update_func_registry = UPDATE_FUNC_REGISTRY_PTR;
@@ -3421,6 +3447,48 @@ dllexport gnu_noinline FpsCounter* stdcall FpsCounter::destroy() {
     delete this;
     return this;
 }
+
+// size: 0x10
+struct TickCounter : ZUNTask {
+    // ZUNTask base; // 0x0
+    size_t ticks; // 0xC
+    // 0x10
+
+    inline void zero_contents() {
+        zero_this_inline();
+    }
+
+    inline TickCounter() {
+        this->zero_contents();
+        TICK_COUNTER_PTR = this;
+        this->__unknown_task_flag_A = true;
+    }
+
+    // 0x475440
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x475440) {
+        ((TickCounter*)ptr)->ticks++;
+        return UpdateFuncNext;
+    }
+
+    inline TickCounter* allocate() {
+        TickCounter* tick_counter = new TickCounter;
+
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, true, tick_counter);
+        UpdateFuncRegistry::register_on_tick(update_func, 2);
+        tick_counter->on_tick_func = update_func;
+
+        TICK_COUNTER_PTR = tick_counter;
+
+        return tick_counter;
+    }
+};
+#pragma region // TickCounter Validation
+ValidateFieldOffset32(0x0, TickCounter, task_flags);
+ValidateFieldOffset32(0x4, TickCounter, on_tick_func);
+ValidateFieldOffset32(0x8, TickCounter, on_draw_func);
+ValidateFieldOffset32(0xC, TickCounter, ticks);
+ValidateStructSize32(0x10, TickCounter);
+#pragma endregion
 
 static inline constexpr size_t msg_variant_count = 4;
 
@@ -3597,7 +3665,9 @@ struct Supervisor {
             uint32_t : 1; // 6
             uint32_t __unknown_flag_A : 1; // 7
             uint32_t __unknown_bitfield_A : 2; // 8-9
-            uint32_t : 4; // 10-13
+            uint32_t : 2; // 10-11
+            uint32_t __unknown_flag_G : 1; // 12
+            uint32_t : 1; // 13
             uint32_t __unknown_flag_B : 1; // 14
         };
     };
@@ -7384,7 +7454,10 @@ struct BombBase : ZUNTask {
         this->__vm_id_5C.mark_tree_for_delete();
         this->__vm_id_60.mark_tree_for_delete();
         this->__vm_id_64.mark_tree_for_delete();
-        // TODO
+        
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
         SAFE_FREE(this->__ptr_70);
     }
 
@@ -7742,11 +7815,38 @@ struct EnemyLife {
 
 // size: 0x1C
 struct EnemyFogImpl {
-    unknown_fields(0x8); // 0x0
+    int32_t __int_0; // 0x0
+    unknown_fields(0x4); // 0x4
     AnmID __anm_id_8; // 0x8
-    unknown_fields(0x10); // 0xC
+    AnmID* __anm_id_array_C; // 0xC
+    void* __ptr_10; // 0x10
+    void* __ptr_14; // 0x14
+    void* __ptr_18; // 0x18
     // 0x1C
+
+    // 0x41BE50
+    dllexport gnu_noinline ~EnemyFogImpl() {
+        this->__anm_id_8.mark_tree_for_delete();
+        SAFE_FREE(this->__ptr_14);
+        SAFE_FREE(this->__ptr_18);
+
+        for (int32_t i = 0; i < this->__int_0 - 1; ++i) {
+            this->__anm_id_array_C[i].mark_tree_for_delete();
+        }
+
+        SAFE_FREE(this->__anm_id_array_C);
+        SAFE_FREE(this->__ptr_10);
+    }
 };
+#pragma region // EnemyFogImpl Field Validation
+ValidateFieldOffset32(0x0, EnemyFogImpl, __int_0);
+ValidateFieldOffset32(0x8, EnemyFogImpl, __anm_id_8);
+ValidateFieldOffset32(0xC, EnemyFogImpl, __anm_id_array_C);
+ValidateFieldOffset32(0x10, EnemyFogImpl, __ptr_10);
+ValidateFieldOffset32(0x14, EnemyFogImpl, __ptr_14);
+ValidateFieldOffset32(0x18, EnemyFogImpl, __ptr_18);
+ValidateStructSize32(0x1C, EnemyFogImpl);
+#pragma endregion
 
 // size: 0x1C
 struct EnemyFog {
@@ -9539,6 +9639,14 @@ struct MenuSelect {
     int32_t disabled_selections_count; // 0xD4
     // 0xD8
 
+    inline MenuSelect() {
+        this->stack_index = 0;
+        this->current_selection = 0;
+        this->disabled_selections_count = 0;
+        this->enable_wrap = TRUE;
+        this->menu_length = 999;
+    }
+
     // 0x402940
     dllexport gnu_noinline void thiscall push_state() asm_symbol_rel(0x402940) {
         this->selection_stack[this->stack_index] = this->current_selection;
@@ -10753,9 +10861,9 @@ static inline constexpr AnmVMCreationFlags UI_LIST_BACK = { .list_type = UiListB
 static inline constexpr AnmVMCreationFlags UI_LIST_FRONT = { .list_type = UiListFront };
 
 enum AnmVMState {
-    Normal = 0,
-    MarkedForDelete,
-    Deleted
+    Normal = 0, // 0
+    MarkedForDelete, // 1
+    Deleted // 2
 };
 
 enum AnmBlendMode : uint8_t {
@@ -11716,6 +11824,11 @@ struct AnmImage {
         };
     };
     // 0x18
+
+    inline void cleanup() {
+        SAFE_RELEASE(this->d3d_texture);
+        SAFE_FREE(this->file);
+    }
 };
 #pragma region // AnmImage Validation
 ValidateFieldOffset32(0x0, AnmImage, d3d_texture);
@@ -11844,7 +11957,7 @@ struct AnmLoaded {
     unknown_fields(0x4); // 0x12C
     int32_t total_image_sizes; // 0x130
     int32_t __counter_134; // 0x134
-    unknown_fields(0x4); // 0x138
+    void* __ptr_138; // 0x138
     // 0x13C
 
     inline void zero_contents() {
@@ -11854,6 +11967,12 @@ struct AnmLoaded {
     inline AnmLoaded() {
         this->zero_contents();
     }
+
+    inline ~AnmLoaded() {
+        this->cleanup();
+    }
+
+    inline void cleanup();
 
     // 0x47D8F0
     dllexport gnu_noinline AnmInstruction* thiscall get_script(int32_t index) asm_symbol_rel(0x47D8F0) {
@@ -13086,7 +13205,7 @@ public:
     }
 
     // 0x488DA0
-    dllexport gnu_noinline void thiscall __set_state1_for_all_vms_from_loaded(AnmLoaded* anm_loaded) asm_symbol_rel(0x488DA0) {
+    dllexport gnu_noinline void thiscall mark_all_vms_from_loaded_for_delete(AnmLoaded* anm_loaded) asm_symbol_rel(0x488DA0) {
         if (anm_loaded) {
             auto set_state1_if_slot_matches = [=](AnmVM* vm) {
                 int32_t slot = anm_loaded->slot_index;
@@ -13102,8 +13221,17 @@ public:
         }
     }
 
-    inline void __set_state1_for_all_vms_from_loaded_slot(int32_t slot) {
-        this->__set_state1_for_all_vms_from_loaded(this->loaded_anm_files[slot]);
+    inline void mark_all_vms_from_loaded_slot_for_delete(int32_t slot) {
+        this->mark_all_vms_from_loaded_for_delete(this->loaded_anm_files[slot]);
+    }
+
+    // 0x486FC0
+    dllexport gnu_noinline void thiscall unload_anm(int32_t slot) asm_symbol_rel(0x486FC0) {
+        if (
+            slot >= 0 && slot < countof(this->loaded_anm_files)
+        ) {
+            SAFE_DELETE(this->loaded_anm_files[slot]);
+        }
     }
 };
 #pragma region // AnmManager Validation
@@ -13157,6 +13285,23 @@ ValidateFieldOffset32(0x39724AC, AnmManager, prev_slow_id);
 ValidateFieldOffset32(0x39724B0, AnmManager, __color_39724B0);
 ValidateStructSize32(0x39724B8, AnmManager);
 #pragma endregion
+
+inline void AnmLoaded::cleanup() {
+    if (this->anm_file) {
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_for_delete(this);
+
+        for (int32_t i = 0; i < this->entry_count; ++i) {
+            this->images[i].cleanup();
+        }
+
+        SAFE_FREE(this->images);
+        SAFE_FREE(this->sprites);
+        SAFE_FREE(this->scripts);
+        SAFE_FREE(this->__ptr_138);
+        SAFE_FREE(this->anm_file);
+        SAFE_FREE(this->__vm_array); // Shouldn't this be a delete?
+    }
+}
 
 // 0x443D80
 dllexport gnu_noinline UpdateFuncRet fastcall GameThread::on_draw(void* ptr) {
@@ -15052,6 +15197,18 @@ struct AsciiManager : ZUNTask {
         this->__vertical_positioning_mode = 1;
     }
 
+    // 0x419690
+    dllexport gnu_noinline ~AsciiManager() {
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func_group_1);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func_group_2);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func_group_3);
+
+        ANM_MANAGER_PTR->unload_anm(2);
+        ANM_MANAGER_PTR->unload_anm(3);
+    }
+
     // This functions is disgusting
     // 0x41A2B0
     dllexport gnu_noinline void thiscall draw_string(AsciiString* string) asm_symbol_rel(0x41A2B0) {
@@ -15356,7 +15513,7 @@ public:
     }
 
     // 0x419390
-    dllexport gnu_noinline static AsciiManager* allocate() {
+    dllexport gnu_noinline static AsciiManager* allocate() asm_symbol_rel(0x419390) {
         AsciiManager* ascii_manager = new AsciiManager();
 
         const char* ascii_filename;
@@ -16380,6 +16537,62 @@ struct Player : ZUNTask {
     }
 
 private:
+    inline CollisionResult __check_collision_rectangle_impl(Float2* position, Float2* size, BOOL graze_only) {
+        Float2 A = this->data.position;
+        Float2 B;
+        if (this->data.focused) {
+            B = this->__float2_479B0;
+        } else {
+            B = this->__float2_479A4;
+        }
+        Float2 min = A - B;
+        Float2 max = A + B;
+
+        Float2 test_size = *size * 0.5f;
+        Float2 test_pos = *position;
+        Float2 test_min = test_pos - test_size;
+        Float2 test_max = test_pos + test_size;
+        if (
+            !(min.x > test_max.x) &&
+            !(min.y > test_max.y) &&
+            !(max.x > test_min.x) &&
+            !(max.y > test_min.y)
+        ) {
+            if (!Gui::msg_is_active()) {
+                if (graze_only) {
+                    return GrazeCollision;
+                }
+                switch (this->data.state) {
+                    case 2: case 3: case 4:
+                        return NoCollision;
+                }
+                if (this->data.__timer_47154 <= 0) {
+                    this->die();
+                }
+                return DeathCollision;
+            }
+        }
+        else {
+            test_max -= 24.0f;
+            test_min += 24.0f;
+            if (
+                !(min.x > test_max.x) &&
+                !(min.y > test_max.y) &&
+                !(max.x > test_min.x) &&
+                !(max.y > test_min.y)
+            ) {
+                return GrazeCollision;
+            }
+        }
+        return NoCollision;
+    }
+public:
+    // 0x45CC20
+    dllexport gnu_noinline static CollisionResult __check_collision_rectangle(Float2* position, Float2* size, BOOL graze_only) asm_symbol_rel(0x45CC20) {
+        return PLAYER_PTR->__check_collision_rectangle_impl(position, size, graze_only);
+    }
+
+private:
     // Implementation may not actually use Float2 judging by how the compiler is using the stack
     inline CollisionResult __check_collision_rotated_rectangle_impl(Float2* position, float angle, float width, float length, BOOL graze_only) {
         Float2 A = (this->data.position - *position).rotate_around_origin(-angle);
@@ -16421,7 +16634,7 @@ private:
                             return NoCollision;
                     }
                     if (this->data.__timer_47154 > 0) {
-                        return NoCollision;
+                        return NoCollision; // Bug? Inconsistent with other types
                     }
                     this->die();
                     return DeathCollision;
@@ -18567,6 +18780,21 @@ struct AbilityManager : ZUNTask {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
     }
+    
+    // 0x4084C0
+    dllexport gnu_noinline ~AbilityManager() {
+        this->__thread_C68.stop_and_cleanup();
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+        this->__sub_407DA0(0);
+        ANM_MANAGER_PTR->unload_anm(30);
+        ANM_MANAGER_PTR->unload_anm(31);
+        ANM_MANAGER_PTR->unload_anm(32);
+
+        if (ABILITY_MANAGER_PTR) {
+            SAFE_DELETE(ABILITY_TEXT_DATA_PTR);
+        }
+    }
 
     inline void load_files() {
         if (
@@ -18744,9 +18972,9 @@ struct AbilityManager : ZUNTask {
         this->passive_card_count = 0;
         this->__float_C58 = 1.0f;
         this->selected_active_card = NULL;
-        ANM_MANAGER_PTR->__set_state1_for_all_vms_from_loaded_slot(30);
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(30);
         this->__anm_id_3C.mark_tree_for_delete();
-        ANM_MANAGER_PTR->__set_state1_for_all_vms_from_loaded_slot(31);
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(31);
 
         for (size_t i = 0; i < countof(this->__anm_id_array_58); ++i) {
             this->__anm_id_array_58[i].mark_tree_for_delete();
@@ -18923,16 +19151,49 @@ static inline AnmLoaded* ability_manager_get_ability_anm() {
 struct AbilityShop : ZUNTask {
     // ZUNTask base; // 0x0
     MenuSelect __menu_select_C; // 0xC
-    // 0xE4
+    MenuSelect __menu_select_E4; // 0xE4
+    Timer __timer_1BC; // 0x1BC
+    Float3 __float3_1D0; // 0x1D0
+    unknown_fields(0x18); // 0x1DC
+    Timer __timer_1F4; // 0x1F4
+    Timer __timer_208; // 0x208
+    unknown_fields(0xC); // 0x21C
+    AnmID __anm_id_228; // 0x228
+    AnmID __anm_id_array_22C[256]; // 0x22C
+    AnmID __anm_id_array_62C[256]; // 0x62C
+    int32_t __int_A2C; // 0xA2C
+    unknown_fields(0x40C); // 0xA30
+    // 0xE3C
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline AbilityShop() {
+        this->zero_contents();
+        ABILITY_SHOP_PTR = this;
+        this->__unknown_task_flag_A = true;
+    }
+
+    // 0x4176E0
+    dllexport gnu_noinline ~AbilityShop() {
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
+        if (ANM_MANAGER_PTR) {
+            ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(32);
+        }
+
+        this->__anm_id_228.mark_tree_for_delete();
+
+        nounroll for (size_t i = 0; i < countof(__anm_id_array_22C); ++i) {
+            this->__anm_id_array_22C[i].mark_tree_for_delete();
+        }
+    }
 
     // 0x417CC0
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x417CC0) {
 
-    }
-
-    // 0x418C20
-    dllexport gnu_noinline static UpdateFuncRet fastcall on_tick__jump(void* ptr) {
-        return ((AbilityShop*)ptr)->on_tick();
     }
 
     // 0x418990
@@ -18940,18 +19201,181 @@ struct AbilityShop : ZUNTask {
 
     }
 
+    // 0x418C20
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x418C20) {
+        return ((AbilityShop*)ptr)->on_tick();
+    }
+
     // 0x418C30
-    dllexport gnu_noinline static UpdateFuncRet fastcall on_draw__jump(void* ptr) {
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x418C30) {
         return ((AbilityShop*)ptr)->on_draw();
     }
 
     // 0x4171B0
     dllexport gnu_noinline ZUNResult thiscall initialize(Float3* arg1) asm_symbol_rel(0x4171B0) {
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
+        UpdateFuncRegistry::register_on_tick(update_func, 12);
+        this->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, true, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 81);
+        this->on_draw_func = update_func;
 
+        this->enable_funcs_unsafe();
+
+        this->__timer_1BC.reset();
+        this->__timer_1F4.reset();
+        this->__timer_208.reset();
+
+        this->__float3_1D0 = *arg1;
+
+        // TODO
+    }
+
+    inline static AbilityShop* allocate(Float3* arg1) {
+        AbilityShop* ability_shop = new AbilityShop();
+        if (Player* player = PLAYER_PTR) {
+            // player->__sub_416CD0();
+        }
+        if (ZUN_FAILED(ability_shop->initialize(arg1))) {
+            delete ability_shop;
+            return NULL;
+        }
+        return ability_shop;
     }
 };
 #pragma region // AbilityShop Validation
+ValidateFieldOffset32(0x0, AbilityShop, task_flags);
+ValidateFieldOffset32(0x4, AbilityShop, on_tick_func);
+ValidateFieldOffset32(0x8, AbilityShop, on_draw_func);
+ValidateFieldOffset32(0xC, AbilityShop, __menu_select_C);
+ValidateFieldOffset32(0xE4, AbilityShop, __menu_select_E4);
+ValidateFieldOffset32(0x1BC, AbilityShop, __timer_1BC);
+ValidateFieldOffset32(0x1D0, AbilityShop, __float3_1D0);
+ValidateFieldOffset32(0x1F4, AbilityShop, __timer_1F4);
+ValidateFieldOffset32(0x208, AbilityShop, __timer_208);
+ValidateFieldOffset32(0x228, AbilityShop, __anm_id_228);
+ValidateFieldOffset32(0x22C, AbilityShop, __anm_id_array_22C);
+ValidateFieldOffset32(0x62C, AbilityShop, __anm_id_array_62C);
+ValidateFieldOffset32(0xA2C, AbilityShop, __int_A2C);
+ValidateStructSize32(0xE3C, AbilityShop);
+#pragma endregion
 
+// size: 0x13FC
+struct AbilityMenu : ZUNTask {
+    // ZUNTask base; // 0x0
+    MenuSelect __menu_select_C; // 0xC
+    MenuSelect __menu_select_E4; // 0xE4
+    MenuSelect __menu_select_1BC; // 0x1BC
+    Timer __timer_294; // 0x294
+    Float3 __float3_2A8; // 0x2A8
+    unknown_fields(0x18); // 0x2B4
+    Timer __timer_2CC; // 0x2CC
+    Timer __timer_2E0; // 0x2E0
+    unknown_fields(0xF0); // 0x2F4
+    int32_t __int_3E4; // 0x3E4
+    unknown_fields(0x4); // 0x3E8
+    AnmID __anm_id_array_3EC[256]; // 0x3EC
+    AnmID __anm_id_array_7EC[256]; // 0x7EC
+    AnmID __anm_id_array_BEC[256]; // 0xBEC
+    unknown_fields(0x410); // 0xFEC
+    // 0x13FC
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline AbilityMenu() {
+        this->zero_contents();
+        ABILITY_MENU_PTR = this;
+        this->__unknown_task_flag_A = true;
+    }
+
+    // 0x413950
+    dllexport gnu_noinline ~AbilityMenu() {
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
+        if (ABILITY_MANAGER_PTR) {
+            ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(32);
+        }
+
+        nounroll for (size_t i = 0; i < countof(this->__anm_id_array_3EC); ++i) {
+            this->__anm_id_array_3EC[i].mark_tree_for_delete();
+        }
+
+        ABILITY_MENU_PTR = NULL;
+
+        if (SCOREFILE_MANAGER_PTR) {
+            SCOREFILE_MANAGER_PTR->save_files();
+        }
+    }
+
+    // 0x413AF0
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x413AF0) {
+        // TODO
+    }
+
+    // 0x415E00
+    dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x415E00) {
+        // TODO
+    }
+
+    // 0x416090
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x416090) {
+        return ((AbilityMenu*)ptr)->on_tick();
+    }
+
+    // 0x4160A0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x4160A0) {
+        return ((AbilityMenu*)ptr)->on_draw();
+    }
+
+    // 0x413650
+    dllexport gnu_noinline ZUNResult thiscall initialize(Float3* arg1, int arg2) asm_symbol_rel(0x413650) {
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
+        UpdateFuncRegistry::register_on_tick(update_func, 7);
+        this->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, true, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 80);
+        this->on_draw_func = update_func;
+
+        this->enable_funcs_unsafe();
+
+        this->__timer_294.reset();
+        this->__timer_2CC.reset();
+        this->__timer_2E0.reset();
+
+        this->__float3_2A8 = *arg1;
+
+        // TODO
+    }
+
+    // 0x413810
+    dllexport gnu_noinline static AbilityMenu* fastcall allocate(Float3* arg1, int arg2) asm_symbol_rel(0x413810) {
+        AbilityMenu* ability_menu = new AbilityMenu();
+        if (ZUN_FAILED(ability_menu->initialize(arg1, arg2))) {
+            delete ability_menu;
+            return NULL;
+        }
+        return ability_menu;
+    }
+};
+#pragma region // AbilityMenu Validation
+ValidateFieldOffset32(0x0, AbilityMenu, task_flags);
+ValidateFieldOffset32(0x4, AbilityMenu, on_tick_func);
+ValidateFieldOffset32(0x8, AbilityMenu, on_draw_func);
+ValidateFieldOffset32(0xC, AbilityMenu, __menu_select_C);
+ValidateFieldOffset32(0xE4, AbilityMenu, __menu_select_E4);
+ValidateFieldOffset32(0x1BC, AbilityMenu, __menu_select_1BC);
+ValidateFieldOffset32(0x294, AbilityMenu, __timer_294);
+ValidateFieldOffset32(0x2A8, AbilityMenu, __float3_2A8);
+ValidateFieldOffset32(0x2CC, AbilityMenu, __timer_2CC);
+ValidateFieldOffset32(0x2E0, AbilityMenu, __timer_2E0);
+ValidateFieldOffset32(0x3E4, AbilityMenu, __int_3E4);
+ValidateFieldOffset32(0x3EC, AbilityMenu, __anm_id_array_3EC);
+ValidateFieldOffset32(0x7EC, AbilityMenu, __anm_id_array_7EC);
+ValidateFieldOffset32(0xBEC, AbilityMenu, __anm_id_array_BEC);
+ValidateStructSize32(0x13FC, AbilityMenu);
 #pragma endregion
 
 #if INCLUDE_PATCH_CODE
@@ -19936,20 +20360,10 @@ extern "C" {
 
 // size: 0x30
 struct StdDistortion {
-    unknown_fields(0x2C); // 0x0
+    EnemyFogImpl* fog_ptr; // 0x0
+    unknown_fields(0x28); // 0x4
     int32_t enabled; // 0x2C
     // 0x30
-};
-
-// size: 0x90
-struct StdHeader {
-    int16_t entry_count; // 0x0
-    int16_t face_count; // 0x2
-    uint32_t faces_offset; // 0x4
-    uint32_t script_offset; // 0x8
-    unknown_fields(0x4); // 0xC
-    char anm_name[128]; // 0x10
-    // 0x90
 };
 
 // size: 0x1C
@@ -19978,6 +20392,26 @@ struct StdEntry {
     StdQuad quads[0]; // 0x1C
 };
 
+// size: 0x90
+struct StdHeader {
+    int16_t entry_count; // 0x0
+    int16_t face_count; // 0x2
+    uint32_t faces_offset; // 0x4
+    uint32_t script_offset; // 0x8
+    unknown_fields(0x4); // 0xC
+    char anm_name[128]; // 0x10
+    StdEntry* entries[]; // 0x90 stored as offsets
+};
+#pragma region // StdHeader Validation
+ValidateFieldOffset32(0x0, StdHeader, entry_count);
+ValidateFieldOffset32(0x2, StdHeader, face_count);
+ValidateFieldOffset32(0x4, StdHeader, faces_offset);
+ValidateFieldOffset32(0x8, StdHeader, script_offset);
+ValidateFieldOffset32(0x10, StdHeader, anm_name);
+ValidateFieldOffset32(0x90, StdHeader, entries);
+ValidateStructSize32(0x90, StdHeader);
+#pragma endregion
+
 // size: 0x10
 struct StdFace {
     int16_t entry_id; // 0x0
@@ -19990,6 +20424,12 @@ struct StdFace {
     Float3 position; // 0x4
     // 0x10
 };
+#pragma region // StdFace Validation
+ValidateFieldOffset32(0x0, StdFace, entry_id);
+ValidateFieldOffset32(0x2, StdFace, flags);
+ValidateFieldOffset32(0x4, StdFace, position);
+ValidateStructSize32(0x10, StdFace);
+#pragma endregion
 
 // size: 0x8+
 struct StdInstruction {
@@ -20003,23 +20443,23 @@ struct StdInstruction {
 // is this actually the whole thing?
 // size: 0x3444
 struct StdVM {
-    Timer script_time; // 0x0
-    int32_t current_instruction_offset; // 0x14
-    int32_t shaking_mode; // 0x18
-    Timer shaking_timer; // 0x1C
-    Timer __shaking_6_timer; // 0x30
-    ZUNInterp<Float3> camera_facing_interp; // 0x44
-    ZUNInterp<Float3> camera_position_interp; // 0x9C
-    ZUNInterp<Float3> camera_rotation_interp; // 0xF4
-    ZUNInterp<StageSky> sky_data_interp; // 0x14C
-    ZUNInterp<float> camera_fov_interp; // 0x1F4
-    StageCamera camera; // 0x224
-    Stage* full_stage; // 0x388
-    AnmVM vms[8]; // 0x38C
-    int32_t anm_layers[8]; // 0x33EC
-    float draw_distance_squared; // 0x340C
-    StdDistortion distortion; // 0x3410
-    D3DCOLOR __color_3440; // 0x3440
+    Timer script_time; // 0x0, 0xC
+    int32_t current_instruction_offset; // 0x14, 0x20
+    int32_t shaking_mode; // 0x18, 0x24
+    Timer shaking_timer; // 0x1C, 0x28
+    Timer __shaking_6_timer; // 0x30, 0x3C
+    ZUNInterp<Float3> camera_facing_interp; // 0x44, 0x50
+    ZUNInterp<Float3> camera_position_interp; // 0x9C, 0xA8
+    ZUNInterp<Float3> camera_rotation_interp; // 0xF4, 0x100
+    ZUNInterp<StageSky> sky_data_interp; // 0x14C, 0x158
+    ZUNInterp<float> camera_fov_interp; // 0x1F4, 0x200
+    StageCamera camera; // 0x224, 0x230
+    Stage* full_stage; // 0x388, 0x394
+    AnmVM slot_vms[8]; // 0x38C, 0x398
+    int32_t slot_layers[8]; // 0x33EC, 0x33F8
+    float draw_distance_squared; // 0x340C, 0x3418
+    StdDistortion distortion; // 0x3410, 0x341C
+    D3DCOLOR __color_3440; // 0x3440, 0x344C
     // 0x3444
 };
 #pragma region // StdVM Validation
@@ -20035,34 +20475,41 @@ ValidateFieldOffset32(0x14C, StdVM, sky_data_interp);
 ValidateFieldOffset32(0x1F4, StdVM, camera_fov_interp);
 ValidateFieldOffset32(0x224, StdVM, camera);
 ValidateFieldOffset32(0x388, StdVM, full_stage);
-ValidateFieldOffset32(0x38C, StdVM, vms);
-ValidateFieldOffset32(0x33EC, StdVM, anm_layers);
+ValidateFieldOffset32(0x38C, StdVM, slot_vms);
+ValidateFieldOffset32(0x33EC, StdVM, slot_layers);
 ValidateFieldOffset32(0x340C, StdVM, draw_distance_squared);
 ValidateFieldOffset32(0x3410, StdVM, distortion);
 ValidateFieldOffset32(0x3440, StdVM, __color_3440);
 ValidateStructSize32(0x3444, StdVM);
 #pragma endregion
 
-// size: 0x3A40
+// size: 0x34A0
 struct Stage : ZUNTask {
     // ZUNTask base; // 0x0
     StdVM std_vm; // 0xC
     AnmVM* face_vms; // 0x3450
     StdHeader* std_file; // 0x3454
-    StdEntry* entries; // 0x3458
+    StdEntry** entries; // 0x3458
     StdFace* faces; // 0x345C
     StdInstruction* script; // 0x3460
     AnmLoaded* stage_anm; // 0x3464
-    // 0x3464
-
+    unknown_fields(0xC); // 0x3468
     union {
         uint32_t flags; // 0x3474
         struct {
-            uint32_t : 2; // 1-2
+            uint32_t __unknown_flag_C : 1; // 1
+            uint32_t : 1; // 2
             uint32_t __unknown_flag_B : 1; // 3
             uint32_t __unknown_flag_A : 1; // 4
         };
     };
+    Timer __timer_3478; // 0x3478
+    int32_t stage_number; // 0x348C
+    int __dword_3490; // 0x3490
+    void* std_file_buffer; // 0x3494
+    int32_t std_file_size; // 0x3498
+    UpdateFunc* on_draw_func_B; // 0x349C
+    // 0x34A0
 
     inline void zero_contents() {
         zero_this();
@@ -20073,9 +20520,142 @@ struct Stage : ZUNTask {
         this->__unknown_task_flag_A = true;
     }
 
+    // 0x41BB50
+    dllexport gnu_noinline ~Stage() {
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func_B);
+
+        if (AnmVM* face_vms = this->face_vms) {
+            for (int32_t i = 0; i < this->std_file->face_count; ++i) {
+                face_vms[i].cleanup();
+            }
+            SAFE_FREE(this->face_vms);
+        }
+
+        for (int32_t i = 0; i < countof(this->std_vm.slot_vms); ++i) {
+            this->std_vm.slot_vms[i].cleanup();
+        }
+
+        SAFE_FREE(this->std_file);
+        SAFE_FREE(this->std_file_buffer);
+
+        SAFE_DELETE(this->std_vm.distortion.fog_ptr);
+
+        if (!GAME_MANAGER.__unknown_flag_A) {
+            ANM_MANAGER_PTR->unload_anm(3 + (this->stage_number & 1));
+        }
+
+        if (STAGE_PTR == this) {
+            STAGE_PTR = NULL;
+        }
+        if (STAGE_B_PTR == this) {
+            STAGE_B_PTR = NULL;
+        }
+    }
+
+    // 0x41C0A0
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x41C0A0) {
+        // TODO
+    }
+
+    // 0x41C290
+    dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x41C290) {
+        // TODO
+    }
+
+    // 0x41C700
+    dllexport gnu_noinline UpdateFuncRet thiscall on_draw_B() asm_symbol_rel(0x41C700) {
+        // TODO
+    }
+
+    // 0x41CA60
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x41CA60) {
+        return ((Stage*)ptr)->on_tick();
+    }
+
+    // 0x41CA70
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x41CA70) {
+        return ((Stage*)ptr)->on_draw();
+    }
+
+    // 0x41CA80
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_B(void* ptr) asm_symbol_rel(0x41CA80) {
+        return ((Stage*)ptr)->on_draw_B();
+    }
+
     // 0x41B850
     dllexport gnu_noinline ZUNResult thiscall initialize(const char* std_filename) asm_symbol_rel(0x41B850) {
+        STAGE_PTR = this;
+        this->stage_number = GAME_MANAGER.globals.current_stage;
 
+        if (!this->std_file_buffer) {
+            void* file_buffer = read_file_from_dat(std_filename, &this->std_file_size);
+            this->std_file_buffer = file_buffer;
+            if (!file_buffer) {
+                goto corrupted_data;
+            }
+        }
+        StdHeader* std_file = (StdHeader*)malloc(this->std_file_size);
+        this->std_file = std_file;
+        memcpy(std_file, this->std_file_buffer, this->std_file_size);
+
+        AnmLoaded* stage_anm = ANM_MANAGER_PTR->preload_anm(3 + (this->stage_number & 1), this->std_file->anm_name);
+        this->stage_anm = stage_anm;
+        if (!stage_anm) {
+            LOG_BUFFER.write(JpEnStr("", "No stage data found. data is corrupted\r\n"));
+corrupted_data:
+            LOG_BUFFER.write_error(JpEnStr("", "Unable to read stage data. data is corrupted\r\n"));
+            return ZUN_ERROR;
+        }
+
+        std_file = this->std_file;
+
+        this->entries = std_file->entries;
+        this->faces = based_pointer<StdFace>(std_file, std_file->faces_offset);
+        this->script = based_pointer<StdInstruction>(std_file, std_file->script_offset);
+
+        // Adjust the entry offsets
+        for (
+            int32_t i = 0;
+            i < std_file->entry_count;
+            ++i, std_file = this->std_file
+        ) {
+            this->entries[i] = based_pointer<StdEntry>(this->entries[i], this->std_file);
+        }
+
+        AnmVM* face_vms = (AnmVM*)malloc(sizeof(AnmVM) * std_file->face_count);
+        this->face_vms = face_vms;
+        memset(face_vms, 0, sizeof(AnmVM) * std_file->face_count);
+
+        this->std_vm.full_stage = this;
+
+        this->std_vm.camera = SUPERVISOR.cameras[3];
+
+        this->std_vm.camera.position = { 0.0f, 0.0f, -600.0f };
+        this->std_vm.camera.facing = { 0.0f, 300.0f, 600.0f };
+        this->std_vm.camera.rotation = { 0.0f, 1.0f, 0.0f };
+        this->std_vm.camera.__shaking_float3_A = { 0.0f, 0.0f, 0.0f };
+        this->std_vm.camera.__shaking_float3_B = { 0.0f, 0.0f, 0.0f };
+        this->std_vm.draw_distance_squared = 9610000.0f; // 3100 squared
+
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
+        UpdateFuncRegistry::register_on_tick(update_func, 18);
+        this->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, false, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 3);
+        this->on_draw_func = update_func;
+        update_func = new UpdateFunc(&on_draw_B, false, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 6);
+        this->on_draw_func_B = update_func;
+
+        this->__dword_3490 = 0;
+        this->std_vm.script_time.reset();
+        this->__unknown_flag_C = true;
+        this->std_vm.camera_facing_interp.end_time = 0;
+        this->std_vm.camera_position_interp.end_time = 0;
+
+        return ZUN_SUCCESS;
     }
 
     // 0x41BF90
@@ -20092,7 +20672,21 @@ struct Stage : ZUNTask {
 ValidateFieldOffset32(0x0, Stage, task_flags);
 ValidateFieldOffset32(0x4, Stage, on_tick_func);
 ValidateFieldOffset32(0x8, Stage, on_draw_func);
-ValidateStructSize32(0x3444, StdVM);
+ValidateFieldOffset32(0xC, Stage, std_vm);
+ValidateFieldOffset32(0x3450, Stage, face_vms);
+ValidateFieldOffset32(0x3454, Stage, std_file);
+ValidateFieldOffset32(0x3458, Stage, entries);
+ValidateFieldOffset32(0x345C, Stage, faces);
+ValidateFieldOffset32(0x3460, Stage, script);
+ValidateFieldOffset32(0x3464, Stage, stage_anm);
+ValidateFieldOffset32(0x3474, Stage, flags);
+ValidateFieldOffset32(0x3478, Stage, __timer_3478);
+ValidateFieldOffset32(0x348C, Stage, stage_number);
+ValidateFieldOffset32(0x3490, Stage, __dword_3490);
+ValidateFieldOffset32(0x3494, Stage, std_file_buffer);
+ValidateFieldOffset32(0x3498, Stage, std_file_size);
+ValidateFieldOffset32(0x349C, Stage, on_draw_func_B);
+ValidateStructSize32(0x34A0, Stage);
 #pragma endregion
 
 typedef struct Spellcard Spellcard;
@@ -20646,14 +21240,16 @@ struct Bullet {
     union {
         uint32_t flags; // 0x20
         struct {
-            uint32_t : 2;
-            uint32_t grazed : 1;
-            uint32_t : 1;
-            uint32_t __unknown_flag_A : 1;
-            uint32_t : 1;
-            uint32_t __unknown_flag_B : 1;
-            uint32_t : 2;
-            uint32_t disable_cancel_items : 1;
+            uint32_t __unknown_flag_E : 1; // 1
+            uint32_t __unknown_flag_F : 1; // 2
+            uint32_t grazed : 1; // 3
+            uint32_t __unknown_flag_D : 1; // 4
+            uint32_t __circular_hitbox : 1; // 5
+            uint32_t : 1; // 6
+            uint32_t __unknown_flag_B : 1; // 7
+            uint32_t : 1; // 8
+            uint32_t __unknown_flag_C : 1; // 9
+            uint32_t __delay_flag : 1; // 10
         };
     };
     int32_t invulnerable_time; // 0x24
@@ -20663,20 +21259,22 @@ struct Bullet {
     Float3 velocity; // 0x644
     float speed; // 0x650
     ZUNAngle angle; // 0x654
-    float hitbox_radius; // 0x658
-    float __hitbox_radius_copy; // 0x65C
+    union {
+        float hitbox_radius; // 0x658
+        Float2 hitbox_size; // 0x658
+    };
     int32_t bullet_manager_index; // 0x660
     int32_t __ex_func_a; // 0x664
     unknown_fields(0x8); // 0x668
-    int __dword_670; // 0x670
+    int32_t __int_670; // 0x670
     int32_t __cancel_script_id; // 0x674
-    unknown_fields(0x4); // 0x678
+    int __int_678; // 0x678
     int32_t effect_index; // 0x67C
     int32_t effect_loop_index; // 0x680
     uint32_t active_effects; // 0x684
     uint32_t initial_effects; // 0x688
     Bullet* next_in_layer; // 0x68C
-    unknown_fields(0x4); // 0x690
+    int __dword_690; // 0x690
     int32_t transform_sound; // 0x694
     int32_t layer; // 0x698
     BulletEffectArgs effects[24]; // 0x69C
@@ -20711,12 +21309,36 @@ struct Bullet {
     unknown_fields(0x4); // 0xF9C
     // 0xFA0
 
+    // 0x423880
+    //dllexport Bullet() = default;
+
+    // 0x423970
+    //dllexport ~Bullet() = default;
+
+    inline bool effects_active(uint32_t mask) {
+        return this->active_effects & mask;
+    }
+
+    inline void enable_effects(uint32_t mask) {
+        this->active_effects |= mask;
+    }
+
+    inline void toggle_effects(uint32_t mask) {
+        this->active_effects ^= mask;
+    }
+
+    inline void disable_effects(uint32_t mask) {
+        this->active_effects &= ~mask;
+    }
+
+    // 0x424AD0
+    dllexport gnu_noinline void cleanup() asm_symbol_rel(0x424AD0);
+
     // 0x428E90
     dllexport int32_t cancel(int) asm_symbol_rel(0x428E90) {
-        this->vm.run_on_interrupt(1);
-        this->vm.run_anm();
-        AnmManager::interrupt_tree(this->__anm_tree_id, 1);
-        if (!this->disable_cancel_items) {
+        this->vm.interrupt_and_run(1);
+        this->__anm_tree_id.interrupt_tree(1);
+        if (!this->__delay_flag) {
             // item spawning stuff
         }
         this->state = 4;
@@ -20725,8 +21347,351 @@ struct Bullet {
         return 0;
     }
 
+    // 0x4248A0
+    dllexport gnu_noinline CollisionResult thiscall __check_collision(BOOL graze_only) asm_symbol_rel(0x4248A0);
+
     // 0x425C60
     dllexport void run_effects() asm_symbol_rel(0x425C60);
+
+    inline int thiscall run_effect_speedup() {
+        if (this->effect_speedup.timer <= 16) {
+
+            float A = 5.0f - (float)this->effect_speedup.timer * 5.0f * (1.0f / 16.0f);
+
+            this->velocity.make_from_vector(this->angle, this->speed + A);
+
+            this->effect_speedup.timer++;
+            return 0;
+        }
+        else {
+            this->disable_effects(EX_DIST);
+            return 1;
+        }
+    }
+
+    // 0x427930
+    dllexport gnu_noinline int thiscall run_effect_accel() asm_symbol_rel(0x427930) {
+        if (this->effect_accel.timer >= this->effect_accel.duration) {
+            this->disable_effects(EX_ACCEL);
+            return 1;
+        }
+
+        this->speed += this->effect_accel.acceleration * GAME_SPEED;
+        this->velocity += this->effect_accel.acceleration_vec * GAME_SPEED;
+
+        if (
+            zfabsf(this->velocity.x) > 0.0001f ||
+            zfabsf(this->velocity.y) > 0.0001f
+        ) {
+            this->angle = this->velocity.as2().direction();
+        }
+        this->speed = this->velocity.as2().length();
+
+        this->effect_accel.timer++;
+        return 0;
+    }
+
+    // are these literally the same or am I blind
+
+    // 0x427B60
+    dllexport gnu_noinline int thiscall run_effect_veltime() asm_symbol_rel(0x427B60) {
+        if (this->effect_veltime.timer >= this->effect_veltime.duration) {
+            this->disable_effects(EX_VELTIME);
+            return 1;
+        }
+
+        this->speed += this->effect_veltime.acceleration * GAME_SPEED;
+        this->velocity += this->effect_veltime.acceleration_vec * GAME_SPEED;
+
+        if (
+            zfabsf(this->velocity.x) > 0.0001f ||
+            zfabsf(this->velocity.y) > 0.0001f
+        ) {
+            this->angle = this->velocity.as2().direction();
+        }
+        this->speed = this->velocity.as2().length();
+
+        this->effect_veltime.timer++;
+        return 0;
+    }
+
+    inline int thiscall run_effect_angle_accel() {
+        if (this->effect_angle_accel.timer >= this->effect_angle_accel.duration) {
+            this->disable_effects(EX_ANGLE_ACCEL);
+            return 1;
+        }
+        
+        this->angle += this->effect_angle_accel.angular_velocity * GAME_SPEED;
+        this->speed += this->effect_angle_accel.acceleration * GAME_SPEED;
+
+        this->velocity.make_from_vector(this->angle, this->speed);
+
+        this->effect_angle_accel.timer++;
+        return 0;
+    }
+
+    // 0x427D50
+    dllexport gnu_noinline int thiscall run_effect_angle() asm_symbol_rel(0x427D50) {
+        float speed;
+        
+        int32_t end_time = this->effect_angle.duration;
+        if (this->effect_angle.timer >= end_time) {
+            SOUND_MANAGER.play_sound_validate(this->transform_sound);
+
+            ++this->effect_angle.count;
+
+            switch (this->effect_angle.type) {
+                case 0: case 5:
+                    this->angle += this->effect_angle.angle;
+                    break;
+                case 1: case 6:
+                    this->angle += this->effect_angle.angle + PLAYER_PTR->angle_to_player_from_point(&this->position);
+                    break;
+                case 2: case 3: case 4:
+                    this->angle = this->effect_angle.angle;
+                    break;
+            }
+            speed = this->effect_angle.speed;
+            this->speed = speed;
+
+            this->effect_angle.timer.reset();
+
+            if (this->effect_angle.count >= this->effect_angle.max_count) {
+                this->velocity.make_from_vector(this->angle, speed);
+                this->disable_effects(EX_ANGLE);
+                return 1;
+            }
+        }
+        else {
+            speed = this->speed - ((float)this->effect_angle.timer * this->speed / (float)end_time);
+        }
+        this->velocity.make_from_vector(this->angle, speed);
+
+        this->effect_angle.timer++;
+        return 0;
+    }
+
+    // 0x427F40
+    dllexport gnu_noinline int thiscall run_effect_bounce() asm_symbol_rel(0x427F40) {
+        // uuuuuuugh
+
+        return 0;
+    }
+
+    // 0x428460
+    dllexport gnu_noinline int thiscall run_effect_homing() asm_symbol_rel(0x428460) {
+        if (this->effect_homing.timer >= this->effect_homing.duration) {
+            this->disable_effects(EX_HOMING);
+            return 1;
+        }
+
+        Float2 A = PLAYER_PTR->data.position.as2() - this->position.as2();
+
+        float angle;
+        if (A.y == 0.0f && A.x == 0.0f) {
+            angle = HALF_PI_f;
+        } else {
+            angle = A.direction();
+        }
+
+        A.make_from_vector(reduce_angle(angle + this->effect_homing.angle), this->effect_homing.speed);
+
+        this->velocity += (A - this->velocity) * this->effect_homing.target.x;
+
+        this->speed = this->velocity.as2().length();
+
+        this->angle = this->velocity.as2().direction();
+
+        this->effect_homing.timer++;
+        return 0;
+    }
+
+    // 0x428710
+    dllexport gnu_noinline int thiscall run_effect_move() asm_symbol_rel(0x428710) {
+        int32_t effect_time = this->effect_move.timer;
+        if (effect_time >= this->effect_move.duration) {
+            this->disable_effects(EX_MOVE);
+
+            this->position = this->effect_move.position;
+            float speed = this->effect_move.speed;
+            this->speed = speed;
+            this->velocity.make_from_vector(this->angle, speed);
+            this->velocity.z = 0.0f;
+            return 1;
+        }
+
+        if (!effect_time) {
+            this->effect_move_interp.initial_value = this->position;
+        }
+        this->velocity = this->effect_move_interp.step() - this->position;
+        if (
+            zfabsf(this->velocity.x) > 0.0001f ||
+            zfabsf(this->velocity.y) > 0.0001f
+        ) {
+            this->angle = this->velocity.as2().direction();
+        }
+        this->velocity.z = 0.0f;
+
+        this->effect_move.timer++;
+        return 0;
+    }
+
+    inline int thiscall run_effect_veladd() {
+        if (this->effect_veladd.timer >= this->effect_veladd.duration) {
+            this->disable_effects(EX_VELADD);
+            return 1;
+        }
+
+        this->position += this->effect_veladd.velocity;
+
+        this->effect_veladd.timer.reset(); // is this bugged?
+        return 0;
+    }
+
+    // 0x428970
+    dllexport gnu_noinline int thiscall run_effect_offscreen() asm_symbol_rel(0x428970) {
+        this->effect_offscreen.timer--;
+
+        if (this->effect_offscreen.__offscreen_unknown) {
+            // TODO: nastiness
+        }
+        if (this->effect_offscreen.timer <= 0) {
+            this->toggle_effects(EX_OFFSCREEN);
+            return 1;
+        }
+        return 0;
+    }
+
+    inline int thiscall run_effect_wait() {
+        if (this->effect_wait.timer <= 0) {
+            this->disable_effects(EX_WAIT);
+            return 1;
+        }
+
+        this->effect_wait.timer--;
+        return 0;
+    }
+
+    inline int thiscall run_effect_delay() {
+        if (this->effect_delay.timer <= 0) {
+            this->disable_effects(EX_DELAY);
+            this->__delay_flag = false;
+            return 1;
+        }
+
+        this->__delay_flag = true;
+        this->effect_delay.timer--;
+        return 0;
+    }
+
+    // 0x423E10
+    dllexport gnu_noinline ZUNResult thiscall on_tick() asm_symbol_rel(0x423E10) {
+        this->__timer_F80++;
+
+        if (!this->__unknown_flag_D) {
+
+            if (this->effects_active(EX_SIZE)) {
+                float scale = this->scale_interp.step();
+                this->scale = scale;
+                if (!this->scale_interp.end_time) {
+                    this->disable_effects(EX_SIZE);
+                    if (scale == 1.0f) {
+                        this->__unknown_flag_B = false;
+                    }
+                }
+            }
+
+            switch (this->state) {
+                case 3:
+                    this->position += (this->velocity * GAME_SPEED) * 0.5f;
+                    break;
+                case 2:
+                    this->position += (this->velocity * GAME_SPEED) * 0.5f;
+                    if (this->__timer_F6C >= 8) {
+                        if (
+                            this->__check_collision(false) == DeathCollision
+                        ) {
+                            break;
+                        }
+                    }
+                    // wtf is this ZUN
+                    if (this->vm.data.current_context.int_vars[0]) {
+                        this->state = 1;
+                case 1:
+                    rerun_effects:
+                        if (!this->effects_active(EX_DELAY)) {
+                            this->run_effects();
+                        }
+
+                        if (this->active_effects) {
+                            int32_t disabled_effects = 0;
+
+                            if (this->effects_active(EX_DIST)) {
+                                disabled_effects += this->run_effect_speedup();
+                            }
+                            if (this->effects_active(EX_ACCEL)) {
+                                disabled_effects += this->run_effect_accel();
+                            }
+                            if (this->effects_active(EX_VELTIME)) {
+                                disabled_effects += this->run_effect_veltime();
+                            }
+                            if (this->effects_active(EX_ANGLE_ACCEL)) {
+                                disabled_effects += this->run_effect_angle_accel();
+                            }
+                            if (this->effects_active(EX_ANGLE)) {
+                                disabled_effects += this->run_effect_angle();
+                            }
+                            if (this->effects_active(EX_BOUNCE)) {
+                                disabled_effects += this->run_effect_bounce();
+                            }
+                            if (this->effects_active(EX_HOMING)) {
+                                disabled_effects += this->run_effect_homing();
+                            }
+                            if (this->effects_active(EX_MOVE)) {
+                                disabled_effects += this->run_effect_move();
+                            }
+                            if (this->effects_active(EX_VELADD)) {
+                                disabled_effects += this->run_effect_veladd();
+                            }
+                            if (this->effects_active(EX_OFFSCREEN)) {
+                                disabled_effects += this->run_effect_offscreen();
+                            }
+                            if (this->effects_active(EX_WAIT)) {
+                                disabled_effects += this->run_effect_wait();
+                            }
+                            if (this->effects_active(EX_DELAY)) {
+                                disabled_effects += this->run_effect_delay();
+                            }
+                            if (disabled_effects) {
+                                goto rerun_effects;
+                            }
+                        }
+
+                        if (!this->__delay_flag) {
+                            this->position += this->velocity * GAME_SPEED;
+                            this->__check_collision(false);
+                        }
+                    }
+                    break;
+            }
+
+            // TODO
+
+            if (this->invulnerable_time) {
+                this->invulnerable_time--;
+            }
+            if (this->__int_670 >= 0) {
+                this->__int_670--;
+            }
+            if (!this->__delay_flag) {
+                if (ZUN_FAILED(this->vm.run_anm())) {
+                    return ZUN_ERROR;
+                }
+            }
+            return ZUN_SUCCESS;
+        }
+        return ZUN_ERROR;
+    }
 };
 
 enum LaserType {
@@ -20740,8 +21705,6 @@ typedef struct LaserData LaserData;
 // size: 0x788
 struct LaserData {
     // void* vtable; // 0x0
-    //LaserData* next_piss; // 0x4
-    //LaserData* prev; // 0x8
     ZUNEmbeddedListR<LaserData> embedded_node; // 0x4
     union {
         uint32_t __flags_C; // 0xC
@@ -21390,39 +22353,59 @@ struct BulletIters {
     // 0x10
 };
 
+static inline constexpr int32_t MAX_BULLETS = 2000;
+
 // size: 0x7A41F8
 struct BulletManager : ZUNTask {
     // ZUNTask base; // 0x0
-    unknown_fields(0x4); // 0xC
-    Bullet* __bullet_cache_pointers[12]; // 0x10
+    Bullet* __bullet_ptr_C; // 0xC
+    Bullet* __bullet_cache_A[6]; // 0x10
+    Bullet* __bullet_cache_B[6]; // 0x28
+    //Bullet* __bullet_cache_pointers[12]; // 0x10
     int32_t __int_40; // 0x40 (ECL variable -9898)
     float player_protect_radius; // 0x44
     Float2 __bounce_bounds; // 0x48
     unknown_fields(0x8); // 0x50
     int __graze_array[20]; // 0x58
     int __int_A8; // 0xA8
-    ZUNList<void> __unknown_list_AC; // 0xAC
+    ZUNList<Bullet> __unknown_list_AC; // 0xAC
     ZUNListHead<Bullet> bullet_tick_list; // 0xBC
     unknown_fields(0x20); // 0xCC
-    Bullet dummy_bullet; // 0xEC
-    Bullet bullets[2000]; // 0x108C
-    int32_t anm_ids[2001]; // 0x7A228C
+    Bullet bullets[MAX_BULLETS + 1]; // 0xEC
+    int32_t anm_ids[MAX_BULLETS + 1]; // 0x7A228C
     int32_t __cancel_counter; // 0x7A41D0
     int32_t __int_7A41D4; // 0x7A41D4
-    //ZUNList<Bullet>* bullet_iter_current; // 0x7A41D8
-    //ZUNList<Bullet>* bullet_iter_current2; // 0x7A41DC
-    //ZUNList<Bullet>* bullet_iter_next; // 0x7A41E0
-    //ZUNList<Bullet>* bullet_iter_next2; // 0x7A41E4
     BulletIters bullet_iter; // 0x7A41D8
     int32_t __cancel_counter2; // 0x7A41E8
     AnmLoaded* bullet_anm; // 0x7A41EC
     int32_t __unknown_counter_flag; // 0x7A41F0
     int32_t __unknown_counter; // 0x7A41F4
     // 0x7A41F8
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline BulletManager() {
+        this->zero_contents();
+    }
     
     // 0x409940
-    dllexport gnu_noinline Bullet* thiscall start_bullet_iter(uint32_t index) asm_symbol_rel(0x409940) {
+    dllexport Bullet* thiscall start_bullet_iter(uint32_t index) asm_symbol_rel(0x409940) {
         ZUNList<Bullet>* node = this->bullet_tick_list.next;
+        this->bullet_iter.current[index] = node;
+        if (node) {
+            this->bullet_iter.next[index] = node->next;
+            return node->data;
+        }
+        else {
+            this->bullet_iter.next[index] = NULL;
+            return NULL;
+        }
+    }
+
+    inline Bullet* thiscall next_bullet_iter(uint32_t index) {
+        ZUNList<Bullet>* node = this->bullet_iter.next[index];
         this->bullet_iter.current[index] = node;
         if (node) {
             this->bullet_iter.next[index] = node->next;
@@ -21495,37 +22478,70 @@ public:
     }
     
     // 0x424C50
-    dllexport gnu_noinline UpdateFuncRet thiscall on_tick__impl() asm_symbol_rel(0x424C50) {
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x424C50) {
         for (size_t i = countof(this->__graze_array) - 1; i; --i) {
             this->__graze_array[i] = this->__graze_array[i - 1];
         }
         this->__graze_array[0] = 0;
         
-        Bullet* cur_bullet = this->start_bullet_iter(0);
+        Bullet* bullet = this->start_bullet_iter(0);
 
         this->__int_40 = 0;
-        this->__bullet_cache_pointers[5] = NULL;
-        this->__bullet_cache_pointers[4] = NULL;
-        this->__bullet_cache_pointers[3] = NULL;
-        this->__bullet_cache_pointers[2] = NULL;
-        this->__bullet_cache_pointers[1] = NULL;
-        this->__bullet_cache_pointers[0] = NULL;
-        this->__bullet_cache_pointers[11] = NULL;
-        this->__bullet_cache_pointers[10] = NULL;
-        this->__bullet_cache_pointers[9] = NULL;
-        this->__bullet_cache_pointers[8] = NULL;
-        this->__bullet_cache_pointers[7] = NULL;
-        this->__bullet_cache_pointers[6] = NULL;
+        for (int32_t i = countof(this->__bullet_cache_A) - 1; i; --i) {
+            this->__bullet_cache_A[i] = NULL;
+        }
+        for (int32_t i = countof(this->__bullet_cache_B) - 1; i; --i) {
+            this->__bullet_cache_B[i] = NULL;
+        }
 
-        while (cur_bullet) {
+        for (
+            ;
+            bullet;
+            bullet = this->next_bullet_iter(0)
+        ) {
+            GameThread* game_thread_ptr = GAME_THREAD_PTR;
+            if (
+                !(game_thread_ptr && game_thread_ptr->__unknown_flag_C)
+            ) {
+                if (bullet->__unknown_flag_C) {
+                    switch (bullet->state) {
+                        case 2:
+                            if (bullet->__timer_F6C < 8) {
+                                break;
+                            }
+                        case 1:
+                            bullet->__check_collision(true);
+                            goto idkA;
+                    }
+                }
 
+                if (ZUN_FAILED(bullet->on_tick())) {
+                    continue;
+                }
+            }
+        idkA:
+
+            if (!bullet->__delay_flag) {
+                int32_t layer = bullet->layer;
+                if (!this->__bullet_cache_A[layer]) {
+                    this->__bullet_cache_A[layer] = bullet;
+                }
+                else if (this->__bullet_cache_B[layer]) {
+                    this->__bullet_cache_B[layer]->next_in_layer = bullet;
+                }
+                this->__bullet_cache_B[layer] = bullet;
+                bullet->next_in_layer = NULL;
+            }
+            
+            this->__int_40++;
+            bullet->__timer_F6C++;
         }
 
         return UpdateFuncNext;
     }
     
     // 0x424E70
-    dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) asm_symbol_rel(0x424E70) {
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x424E70) {
         GameThread* game_thread_ptr = GAME_THREAD_PTR;
         if (
             (game_thread_ptr && (game_thread_ptr->__unknown_flag_A | game_thread_ptr->skip_flag)) ||
@@ -21533,9 +22549,145 @@ public:
         ) {
             return UpdateFuncNext;
         }
-        return ((BulletManager*)ptr)->on_tick__impl();
+        return ((BulletManager*)ptr)->on_tick();
+    }
+
+    // 0x424EB0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x424EB0) {
+
+    }
+
+    inline ZUNResult initialize() {
+        AnmLoaded* bullet_anm = ANM_MANAGER_PTR->preload_anm(7, "bullet.anm");
+        this->bullet_anm = bullet_anm;
+        if (!bullet_anm) {
+            LOG_BUFFER.write(JpEnStr("", "Enemy bullet data not found. data is corrupted\r\n"));
+            return ZUN_ERROR;
+        }
+
+        this->__bullet_ptr_C = this->bullets;
+        this->bullets[MAX_BULLETS].state = 5;
+
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
+        UpdateFuncRegistry::register_on_tick(update_func, 29);
+        this->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, false, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 38);
+        this->on_draw_func = update_func;
+
+        for (int32_t i = 0; i < MAX_BULLETS; ++i) {
+            Bullet* bullet = &this->bullets[i];
+
+            bullet->__list_0.initialize_with(NULL);
+            bullet->__list_10.initialize_with(bullet);
+            bullet->bullet_manager_index = i;
+
+            // This may be the wrong list op, IDK
+            this->__unknown_list_AC.append(&bullet->__list_10);
+        }
+
+        this->bullet_tick_list.initialize_with(NULL);
+
+        return ZUN_SUCCESS;
+    }
+
+    // 0x423AF0
+    dllexport gnu_noinline static BulletManager* allocate() asm_symbol_rel(0x423AF0) {
+        BulletManager* bullet_manager = new BulletManager();
+        BULLET_MANAGER_PTR = bullet_manager;
+        if (ZUN_FAILED(bullet_manager->initialize())) {
+            delete bullet_manager;
+            return NULL;
+        }
+        return bullet_manager;
     }
 };
+
+// 0x424AD0
+dllexport gnu_noinline void Bullet::cleanup() {
+    if (this->state != 0) {
+        this->state = 0;
+        this->__timer_F6C.reset();
+        this->__timer_F80.reset();
+        this->__timer_F3C.reset();
+        this->__timer_F50.reset();
+        this->__unknown_flag_E = false;
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = false;
+        this->__delay_flag = false;
+        this->__dword_690 = 0;
+        this->__ex_func_a = 0;
+        BULLET_MANAGER_PTR->__unknown_list_AC.append(&this->__list_0);
+        this->__list_10.unlink();
+    }
+}
+
+// 0x4248A0
+dllexport gnu_noinline CollisionResult thiscall Bullet::__check_collision(BOOL graze_only) {
+    CollisionResult result = NoCollision;
+
+    this->vm.data.color_mode = 0; // why is this *here* of all places
+    this->vm.data.position = UNKNOWN_FLOAT3_B;
+
+    if (
+        this->__unknown_flag_F &&
+        this->hitbox_radius > 0.0f // aliases hitbox_size.x
+    ) {
+        if (!this->__unknown_flag_B) {
+            if (!this->__circular_hitbox) {
+                result = PLAYER_PTR->__check_collision_rectangle(&this->position, &this->hitbox_size, graze_only);
+            } else {
+                result = PLAYER_PTR->check_collision_circle(&this->position, this->hitbox_radius, graze_only);
+            }
+        } else {
+            float scale = this->scale;
+            if (!this->__circular_hitbox) {
+                Float2 scaled_hitbox = this->hitbox_size * scale;
+                result = PLAYER_PTR->__check_collision_rectangle(&this->position, &scaled_hitbox, graze_only);
+            } else {
+                result = PLAYER_PTR->check_collision_circle(&this->position, this->hitbox_radius * scale, graze_only);
+            }
+        }
+        switch (result) {
+            case DeathCollision:
+                if (!this->invulnerable_time) {
+                    break;
+                }
+                goto spawn_graze_effects;
+            case GrazeCollision:
+                if (!this->grazed) {
+                    PLAYER_PTR->do_graze(&this->position);
+                    this->grazed = true;
+
+                    BulletManager* bullet_manager = BULLET_MANAGER_PTR;
+                    ++bullet_manager->__graze_array[0];
+                    if (bullet_manager->__unknown_counter_flag) {
+                        ++bullet_manager->__unknown_counter;
+                        if (!(bullet_manager->__unknown_counter % 6)) {
+            spawn_graze_effects:
+                            this->__int_678 = 1;
+                            this->state = 3;
+                            this->vm.interrupt(1);
+                            this->__anm_tree_id.interrupt_tree(1);
+
+                            int32_t script = this->__cancel_script_id;
+                            if (script >= 0) {
+                                AnmID anm_id = BULLET_MANAGER_PTR->bullet_anm->instantiate_vm_to_world_list_back(script, &this->position, 0.0f, -1, NULL);
+                                AnmVM* vm = anm_id.get_vm_ptr();
+                                if (this->__int_678) {
+                                    vm->interrupt(3);
+                                }
+                                Float3 end = (this->velocity * GAME_SPEED) * 10.0f;
+                                vm->initialize_position_interp(30, 6, &UNKNOWN_FLOAT3_B, &end);
+                            }
+                        }
+                    }
+                }
+                break;
+        }
+    }
+    return result;
+}
 
 static inline constexpr int32_t MAX_LASER_COUNT = 512;
 
@@ -22226,8 +23378,8 @@ dllexport void Bullet::run_effects() {
                 this->sprite = IntArg(0);
                 this->color = WordArg(1) & INT16_MAX;
                 BulletSpriteData& bullet_sprite_data = BULLET_SPRITE_DATA[IntArg(0)];
-                this->hitbox_radius = bullet_sprite_data.hitbox_size;
-                this->__hitbox_radius_copy = bullet_sprite_data.hitbox_size;
+                this->hitbox_size.x = bullet_sprite_data.hitbox_size;
+                this->hitbox_size.y = bullet_sprite_data.hitbox_size;
                 this->layer = bullet_sprite_data.layer;
                 this->vm.reset();
                 this->vm.controller.on_sprite_lookup_index = 1;
@@ -22248,7 +23400,7 @@ dllexport void Bullet::run_effects() {
                         break;
                     case 2:
                         this->__cancel_script_id = -1;
-                        this->__unknown_flag_A = true;
+                        this->__circular_hitbox = true;
                         break;
                     case 3:
                         this->__cancel_script_id = 16;
@@ -22261,23 +23413,23 @@ dllexport void Bullet::run_effects() {
                         break;
                     case 6:
                         this->__cancel_script_id = BULLET_SPRITE_DATA[this->sprite].color_data[this->color + 1].sprite_id;
-                        this->__unknown_flag_A = true;
+                        this->__circular_hitbox = true;
                         break;
                     case 7:
                         this->__cancel_script_id = 260;
-                        this->__unknown_flag_A = true;
+                        this->__circular_hitbox = true;
                         break;
                     case 8:
                         this->__cancel_script_id = 263;
-                        this->__unknown_flag_A = true;
+                        this->__circular_hitbox = true;
                         break;
                     case 9:
                         this->__cancel_script_id = 266;
-                        this->__unknown_flag_A = true;
+                        this->__circular_hitbox = true;
                         break;
                     case 10:
                         this->__cancel_script_id = 275;
-                        this->__unknown_flag_A = true;
+                        this->__circular_hitbox = true;
                         break;
                 }
                 if (IntArg(2) & 0x8000) {
@@ -22610,8 +23762,8 @@ dllexport void Bullet::run_effects() {
                 if (0.0f > hitbox_size) {
                     hitbox_size = BULLET_SPRITE_DATA[this->sprite].hitbox_size;
                 }
-                this->__hitbox_radius_copy = hitbox_size;
-                this->hitbox_radius = hitbox_size;
+                this->hitbox_size.y = hitbox_size;
+                this->hitbox_size.x = hitbox_size;
                 break;
             }
             case EX_WAIT:
@@ -26568,6 +27720,105 @@ ValidateFieldOffset32(0x2E0, PauseMenu, __float_2E0);
 ValidateFieldOffset32(0x3F0, PauseMenu, __flags_3F0);
 ValidateFieldOffset32(0x3F4, PauseMenu, __anm_loaded_3F4);
 ValidateStructSize32(0x3F8, PauseMenu);
+#pragma endregion
+
+typedef struct MainMenu MainMenu;
+
+extern "C" {
+    // 0x4CF43C
+    extern MainMenu* MAIN_MENU_PTR asm("_MAIN_MENU_PTR");
+    // 0x507648
+    extern int UNKNOWN_INT_H asm("_UNKNOWN_INT_H");
+}
+
+// size: 0x5D98
+struct MainMenu : ZUNTask {
+    // void* vftable; // 0x0
+    // ZUNTask base; // 0x4
+    AnmLoaded* title_anm; // 0x10
+    AnmLoaded* title_v_anm; // 0x14
+    // 0x18
+
+    ZUNThread __thread_5D7C; // 0x5D7C
+    // 0x5D98
+
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    // 0x464970
+    gnu_noinline MainMenu() {
+        this->zero_contents();
+        MAIN_MENU_PTR = this;
+        this->__unknown_task_flag_A = true;
+    }
+
+    // 0x4646D0
+    // Method 0
+    dllexport gnu_noinline virtual size_t __method_0() asm_symbol_rel(0x4646D0) {
+        return sizeof(MainMenu); // why tho
+    }
+
+    // 0x464ED0
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x464ED0) {
+
+    }
+
+    // 0x465870
+    dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x465870) {
+
+    }
+
+    // 0x465A80
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x465A80) {
+        return ((MainMenu*)ptr)->on_tick();
+    }
+
+    // 0x465A90
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x465A90) {
+        return ((MainMenu*)ptr)->on_draw();
+    }
+
+    // 0x464B80
+    dllexport gnu_noinline static unsigned stdcall thread_start(void* arg) asm_symbol_rel(0x464B80) {
+        MainMenu* main_menu = MAIN_MENU_PTR;
+
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, main_menu);
+        UpdateFuncRegistry::register_on_tick(update_func, 8);
+        main_menu->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, false, main_menu);
+        UpdateFuncRegistry::register_on_draw(update_func, 75);
+        main_menu->on_draw_func = update_func;
+
+        if (
+            (main_menu->title_anm = ANM_MANAGER_PTR->preload_anm(16, "title.anm")) &&
+            (main_menu->title_v_anm = ANM_MANAGER_PTR->preload_anm(17, "title_v.anm"))
+        ) {
+
+        }
+        else {
+            LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
+            SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_G ? 2 : 3;
+        }
+        return 0;
+    }
+
+    // 0x464CB0
+    dllexport gnu_noinline static MainMenu* allocate() asm_symbol_rel(0x464CB0) {
+        MainMenu* main_menu = new MainMenu();
+        WINDOW_DATA.__int_20D0 = 0;
+        main_menu->__thread_5D7C.start(&thread_start, main_menu);
+        return main_menu;
+    }
+};
+#pragma region // MainMenu Verification
+ValidateVirtualFieldOffset32(0x4, MainMenu, task_flags);
+ValidateVirtualFieldOffset32(0x8, MainMenu, on_tick_func);
+ValidateVirtualFieldOffset32(0xC, MainMenu, on_draw_func);
+ValidateVirtualFieldOffset32(0x10, MainMenu, title_anm);
+ValidateVirtualFieldOffset32(0x14, MainMenu, title_v_anm);
+//ValidateStructSize32(0x5D98, MainMenu);
 #pragma endregion
 
 // 0x43BB70

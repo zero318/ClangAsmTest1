@@ -1338,8 +1338,8 @@ public:
         return for_each_safeB_impl(lambda, (N*)this);
     }
     template <typename L>
-    inline void for_each_safe_saved(N*& next_node, const L& lamda) {
-        return for_each_safe_saved_impl(next_node, lamda, (N*)this);
+    inline void for_each_safe_saved(N*& next_node, const L& lambda) {
+        return for_each_safe_saved_impl(next_node, lambda, (N*)this);
     }
     template <typename L>
     inline bool do_while(const L& lambda) {
@@ -1354,8 +1354,8 @@ public:
         return do_while_safeB_impl(lambda, (N*)this);
     }
     template <typename L>
-    inline bool do_while_safe_saved(N*& next_node, const L& lamda) {
-        return do_while_safe_saved_impl(next_node, lamda, (N*)this);
+    inline bool do_while_safe_saved(N*& next_node, const L& lambda) {
+        return do_while_safe_saved_impl(next_node, lambda, (N*)this);
     }
     template <typename L>
     inline T* find_if(const L& lambda) {
@@ -1446,8 +1446,8 @@ struct ZUNListHeadBase : ZUNListBase<T, has_idk> {
         return for_each_safeB_impl(lambda, this->next);
     }
     template <typename L>
-    inline void for_each_safe_saved(N*& next_node, const L& lamda) {
-        return for_each_safe_saved_impl(next_node, lamda, this->next);
+    inline void for_each_safe_saved(N*& next_node, const L& lambda) {
+        return for_each_safe_saved_impl(next_node, lambda, this->next);
     }
     template <typename L>
     inline bool do_while(const L& lambda) {
@@ -1458,8 +1458,8 @@ struct ZUNListHeadBase : ZUNListBase<T, has_idk> {
         return do_while_safe_impl(lambda, this->next);
     }
     template <typename L>
-    inline bool do_while_safe_saved(N*& next_node, const L& lamda) {
-        return do_while_safe_saved_impl(next_node, lamda, this->next);
+    inline bool do_while_safe_saved(N*& next_node, const L& lambda) {
+        return do_while_safe_saved_impl(next_node, lambda, this->next);
     }
     template <typename L>
     inline bool do_while_safeB(const L& lambda) {
@@ -1569,7 +1569,7 @@ struct ZUNListIterBase {
         return false;
     }
     template <typename L>
-    inline bool for_each_safe_saved(N*& next_node, const L& lamda) {
+    inline bool for_each_safe_saved(N*& next_node, const L& lambda) {
         if (N* node = this->node) {
             node->for_each_safe_saved(next_node, lambda);
             return true;
@@ -1765,7 +1765,7 @@ struct ZUNListEndsBase {
         return true;
     }
     template <typename L>
-    inline bool do_while_safe_saved(N*& next_node, const L& lamda) {
+    inline bool do_while_safe_saved(N*& next_node, const L& lambda) {
         if (N* node = this->head) {
             return node->do_while_safe_saved(next_node, lambda);
         }
