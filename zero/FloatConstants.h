@@ -21,6 +21,9 @@ static inline constexpr const float NONE_OVER_TWO_PI_f = -1.0f / (2.0f * M_PI);
 static inline constexpr const float REASONABLY_ABOVE_NPI_f = -3.141592;
 static inline constexpr const float RECIP_TWO_PI_f = 1.0f / (2.0f * M_PI);
 
+static inline constexpr const float QUARTER_PI_f = M_PI_4;
+static inline constexpr const float EIGHTH_PI_f = M_PI / 8.0;
+
 static inline constexpr const float HALF_POW_IDK asm("{(<codecave:float_constants> + 0x0)}") = 0x1p-32f;
 
 static inline constexpr const float POINT_NINE_NINE asm("{(<codecave:float_constants> + 0x4)}") = 0.99f;

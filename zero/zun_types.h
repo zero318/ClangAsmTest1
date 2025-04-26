@@ -242,6 +242,11 @@ struct Float3 : Float2 {
     inline Float2& as2() {
         return *(Float2*)this;
     }
+
+    inline Float3& thiscall make_from_vector3(float angle, float magnitude) {
+        this->make_from_vector(angle, magnitude);
+        this->z = 0.0f;
+    }
     
     // 0x425B40
 #if GAME_VERSION == UM_VER

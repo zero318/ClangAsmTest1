@@ -39,6 +39,8 @@ using ZUNListIter = ZUNListIterBase<T, true>;
 template <typename T>
 using ZUNListEnds = ZUNListEndsBase<T, true>;
 
+#define USE_EXTERN_STATICS 1
+
 #define GAME_VERSION UM_VER
 
 #define ENGLISH_STRINGS
@@ -49,7 +51,7 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define JpEnStr(jstring, estring) estring
 #endif
 
-#define INCLUDE_PATCH_CODE 1
+#define INCLUDE_PATCH_CODE 0
 
 //#define USE_VOLATILES_AND_BARRIERS_FOR_ORIGINAL_CODEGEN 1
 
@@ -81,7 +83,6 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 
 #pragma comment (lib, "wbemuuid.lib")
 #pragma comment (lib, "Xinput9_1_0.lib")
-
 
 #ifndef SAFE_FREE
 #define SAFE_FREE(p)       { if (p) { free ((void*)p);     (p)=NULL; } }
@@ -116,9 +117,24 @@ dllexport gnu_noinline void* cdecl memset_force(void* dst, int val, size_t size)
     gnu_attr(musttail) return memset(dst, val, size);
 }
 
-#define zero_this() memset_force(this, 0, sizeof(*this));
+/*
+inline void* cdecl memset_force(void* dst, int val, size_t size) {
+    void* ret;
+    clang_noinline ret = memset(dst, val, size);
+    return ret;
+}
+*/
 
+#define zero_pointer_contents(ptr) memset_force(ptr, 0, sizeof(*ptr))
+#define zero_pointer_contents_inline(ptr) __builtin_memset(ptr, 0, sizeof(*ptr))
+#define zero_array(arr) memset_force(arr, 0, sizeof(arr))
+#define zero_array_inline(arr) __builtin_memset(arr, 0, sizeof(arr))
+#define zero_this() memset_force(this, 0, sizeof(*this));
 #define zero_this_inline() __builtin_memset(this, 0, sizeof(*this));
+
+static inline consteval float DEGREES(float degrees) {
+    return degrees * PI_f / 180.0f;
+}
 
 static inline uint8_t& BLUE(D3DCOLOR& color) {
     return ((uint8_t*)&color)[0];
@@ -310,7 +326,7 @@ dllexport float& vectorcall reduce_angle_diff_write(float& angle_ref, float& out
 struct ZUNAngle {
     float value; // 0x0
 
-    inline constexpr ZUNAngle() {}
+    inline ZUNAngle() {}
 
 private:
     // 0x404C20
@@ -436,91 +452,6 @@ public:
         return this->div(dummy, value);
     }
 };
-
-struct DUMB_FUNCTIONS {
-private:
-    // 0x403BC0
-    dllexport static gnu_noinline int32_t vectorcall __sub_403BC0(float* arg1, float* arg2, float, float, float arg3, float arg4, float, float, float arg5, float arg6, float arg7, float arg8) {
-        float A = reduce_angle(arg5);
-        float B = reduce_angle(arg8);
-        float C = reduced_angle_diff(A, B);
-        float D = reduce_angle(C);
-        if (!(zfabsf(D) < 0.001f)) {
-            float E = reduce_angle(__angle_diffB(A, B, C));
-            float F = reduce_angle(reduced_angle_diff(E, PI_f));
-            if (!(zfabsf(F) < 0.001f)) {
-                Float2 G;
-                G.make_from_vector(arg5, 10.0f);
-                float H = G.x;
-                float I;
-                float J;
-                float K = 0.0f;
-                BOOL L;
-                if (zfabsf(H) < 0.01f) {
-                    I = arg3;
-                    J = 0.0f;
-                    L = true;
-                } else {
-                    L = false;
-                    J = G.y / H;
-                    I = arg4 - J * arg3;
-                }
-                G.make_from_vector(arg8, 10.0f);
-                H = G.x;
-                float M;
-                BOOL N;
-                if (zfabsf(H) < 0.01f) {
-                    M = arg6;
-                    N = true;
-                } else {
-                    N = false;
-                    K = G.y / H;
-                    M = arg7 - K * arg6;
-                }
-                float O;
-                float P;
-                if (!L) {
-                    if (!N) {
-                        O = M - I;
-                        float Q = J - K;
-                        P = O * J / Q + I;
-                        O /= Q;
-                    } else {
-                        O = arg6;
-                        P = J * arg6 + I;
-                    }
-                } else {
-                    if (!N) {
-                        P = K * arg3 + M;
-                        O = arg3;
-                    } else {
-                        P = arg3;
-                        if (zfabsf(P - arg6) < 0.001f) {
-                            return 0;
-                        }
-                        *arg2 = arg4;
-                        *arg1 = P;
-                        return 1;
-                    }
-                }
-                *arg1 = O;
-                *arg2 = P;
-                return 1;
-            }
-        }
-        *arg2 = arg4;
-        *arg1 = arg3;
-        return 0;
-    }
-public:
-    forceinline static int32_t __sub_403BC0(float* arg1, float* arg2, float arg3, float arg4, float arg5, float arg6, float arg7, float arg8) {
-        return __sub_403BC0(arg1, arg2, UNUSED_FLOAT, UNUSED_FLOAT, arg3, arg4, UNUSED_FLOAT, UNUSED_FLOAT, arg5, arg6, arg7, arg8);
-    }
-};
-
-forceinline int32_t __sub_403BC0(float* arg1, float* arg2, float arg3, float arg4, float arg5, float arg6, float arg7, float arg8) {
-    return DUMB_FUNCTIONS::__sub_403BC0(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
-}
 
 enum CriticalSectionIndex {
     UpdateFuncRegistry_CS = 0,
@@ -2072,7 +2003,7 @@ public:
         return this->rand_float_signed() * range;
     }
     // 0x4615A0
-    dllexport gnu_noinline uint32_t thiscall rand_uint_range(uint32_t range) asm_symbol_rel(0x4615A0) {
+    dllexport uint32_t thiscall rand_uint_range(uint32_t range) asm_symbol_rel(0x4615A0) {
         if (range != 0) {
             return this->rand_uint() % range;
         } else {
@@ -2704,8 +2635,8 @@ struct InputState {
 
     // 0x418CE0
     dllexport gnu_noinline void thiscall __reset_inputs() asm_symbol_rel(0x418CE0) {
-        memset(this->inputs_held_for_repeat, 0, sizeof(this->inputs_held_for_repeat));
-        memset(this->inputs_held, 0, sizeof(this->inputs_held));
+        zero_array(this->inputs_held_for_repeat);
+        zero_array(this->inputs_held);
         this->__dword_214 = 0;
         this->inputs_current = 0;
         this->inputs_previous = 0;
@@ -3353,6 +3284,18 @@ struct ZUNTask {
         this->enable_draw_unsafe();
     }
 
+    inline void disable_tick() {
+        if (UpdateFunc* on_tick = this->on_tick_func) {
+            on_tick->run_on_update = false;
+        }
+    }
+
+    inline void disable_draw() {
+        if (UpdateFunc* on_draw = this->on_draw_func) {
+            on_draw->run_on_update = false;
+        }
+    }
+
     inline void enable_tick() {
         if (UpdateFunc* on_tick = this->on_tick_func) {
             on_tick->run_on_update = true;
@@ -3369,6 +3312,11 @@ struct ZUNTask {
     dllexport void enable_funcs() {
         this->enable_tick();
         this->enable_draw();
+    }
+
+    inline void disable_funcs() {
+        this->disable_tick();
+        this->disable_draw();
     }
 
     inline BOOL on_tick_enabled() {
@@ -3607,6 +3555,10 @@ ValidateStructSize32(0x4, AnmID);
 extern "C" {
     // 0x4C5F90
     extern int32_t ACHIEVEMENT_MODE_STATE asm("_ACHIEVEMENT_MODE_STATE");
+    // 0x4CF3FC
+    extern void (*UNKNOWN_FUNC_PTR_B)() asm("_UNKNOWN_FUNC_PTR_B");
+    // 0x4CF400
+    extern void (*UNKNOWN_FUNC_PTR_A)() asm("_UNKNOWN_FUNC_PTR_A");
 }
 
 // size: 0xB60
@@ -4344,6 +4296,8 @@ struct SoundManager {
     // 0x476C70
     dllexport static gnu_noinline void vectorcall play_sound_positioned(int32_t sound_id, float position) asm_symbol_rel(0x476C70);
 
+    static inline void stop_sound(int32_t sound_id);
+
     static inline void play_sound(int32_t sound_id) {
         SoundManager::play_sound_centered(sound_id, UNUSED_FLOAT);
     }
@@ -4533,6 +4487,8 @@ static inline constexpr int32_t LIFE_FRAGMENT_COST_TABLE[31] = {
 };
 
 static inline constexpr int32_t BOMB_FRAGMENT_COST = 3;
+static inline constexpr int32_t MAX_CONTINUES = 9; // increasing this will break score rendering, so DO NOT
+static inline constexpr int32_t DEFAULT_POWER_PER_LEVEL = 100;
 
 // size: 0xFC
 struct Globals {
@@ -4663,6 +4619,18 @@ struct Globals {
         this->__dword_F4 = rhs.__dword_F4;
         this->flags = rhs.flags;
         return *this;
+    }
+
+    inline void add_continue() {
+        int32_t continues = this->continues + 1;
+        this->continues = __min(continues, MAX_CONTINUES);
+    }
+
+    inline void add_death() {
+        int32_t deaths = this->miss_count_in_game;
+        if (deaths < 999999) {
+            this->miss_count_in_game = deaths + 1;
+        }
     }
 
     // 0x412FA0
@@ -4874,6 +4842,13 @@ extern "C" {
     // 0x4CCCC0
     extern GameManager GAME_MANAGER asm("_GAME_MANAGER");
 }
+
+static inline constexpr float SCREEN_LEFT_EDGE = -192.0f;
+static inline constexpr float SCREEN_RIGHT_EDGE = 192.0f;
+static inline constexpr float SCREEN_BOTTOM_EDGE = 0.0f;
+static inline constexpr float SCREEN_TOP_EDGE = 448.0f;
+static inline constexpr float SCREEN_WIDTH = 384.0f;
+static inline constexpr float SCREEN_HEIGHT = 448.0f;
 
 // size: 0x2108
 struct WindowData {
@@ -5190,7 +5165,7 @@ struct ScorefileHeader {
     // 0x18
 
     inline void zero_contents() {
-        zero_this();
+        zero_this_inline();
     }
 };
 #pragma region // ScorefileHeader Validation
@@ -5798,8 +5773,11 @@ struct MotionData {
     Float3 position2; // 0xC
     float speed; // 0x18
     ZUNAngle angle; // 0x1C
-    float orbit_radius; // 0x20
-    float orbit_velocity; // 0x24
+    float radius; // 0x20
+    union {
+        float radius_delta; // 0x24
+        float __angle_30_delta; // 0x24
+    };
     ZUNAngle ellipse_angle; // 0x28
     float ellipse_ratio; // 0x2C
     float __angle_30; // 0x30
@@ -5821,97 +5799,39 @@ struct MotionData {
     
     // 0x402CC0
     dllexport gnu_noinline void update() asm_symbol_rel(0x402CC0) {
-        Float3 float3B; // EBP-20, EBP-1C, EBP-18
-        Float3 float3A; // EBP-14, EBP-10, EBP-C
-        float floatA; // EBP-8
-        float floatB; // EBP-4
-        float floatC;
         switch (this->mode) {
             case AxisVelocityMovement:
                 this->position += this->axis_velocity;
                 break;
-            case OrbitMovement:
-                float3A.make_from_vector(this->angle, this->orbit_radius);
-                this->position = this->orbit_origin + float3A.as2();
+            case OrbitMovement: {
+                Float3 offset;
+                offset.make_from_vector(this->angle, this->radius);
+                this->position = this->orbit_origin + offset.as2();
                 break;
+            }
             case EllipseMovement: {
-                ZUNAngle angle_temp = this->ellipse_angle;
-                float3A.make_from_vector(reduce_angle<NoInline>(this->angle - angle_temp), this->orbit_radius);
-                floatB = this->ellipse_ratio * float3A.x;
-                floatA = zsinf(angle_temp);
-                floatC = zcosf(angle_temp);
-                Float2 float2A = { floatB, float3A.y };
-                Float2 float2B = float2A;
-                float2B *= floatA;
-                float2A *= floatC;
-                float2A.x -= float2B.y;
-                float2A.y += float2B.x;
-                this->position = this->orbit_origin + float2A;
+                float angle = this->angle - this->ellipse_angle;
+                Float3 offset;
+                offset.make_from_vector(reduce_angle<NoInline>(angle), this->radius);
+                offset.x *= this->ellipse_ratio;
+                offset.rotate_around_origin(this->ellipse_angle);
+                this->position = this->orbit_origin + offset.as2();
                 break;
             }
             case UnknownMovement: {
-                float3A.as2() = this->position.as2();
+                Float2 prev_position = this->position;
                 this->position2 += this->axis_velocity;
-                floatB = this->ellipse_angle + HALF_PI_f;
-                float3B.make_from_vector(reduce_angle<NoInline>(floatB), this->orbit_radius * zsinf(this->__angle_30) * GAME_SPEED);
-                this->position = this->position2 + float3B.as2();
-                float angle_temp = this->position.angle_to(float3A.as2());
-                clang_noinline this->angle = angle_temp;
+                float angle = this->ellipse_angle + HALF_PI_f;
+                Float3 offset;
+                offset.make_from_vector(reduce_angle<NoInline>(angle), this->radius * zsinf(this->__angle_30) * GAME_SPEED);
+                this->position = this->position2 + offset;
+                float angle_to_prev = this->position.angle_to(&prev_position);
+                clang_noinline this->angle = angle_to_prev;
                 break;
             }
         }
         this->position.x = zfloorf(this->position.x * 100.0f) / 100.0f;
         this->position.y = zfloorf(this->position.y * 100.0f) / 100.0f;
-    }
-
-    // This function doesn't exist, I merely wanted to write a simplified version
-    inline void update_readable() {
-        switch (this->mode) {
-            case AxisVelocityMovement:
-                this->position.x += this->axis_velocity.x;
-                this->position.y += this->axis_velocity.y;
-                this->position.z += this->axis_velocity.z;
-                break;
-            case OrbitMovement: {
-                Float2 circle_pos;
-                circle_pos.make_from_vector(this->angle, this->orbit_radius);
-                this->position.x = this->orbit_origin.x + circle_pos.x;
-                this->position.y = this->orbit_origin.y + circle_pos.y;
-                this->position.z = this->orbit_origin.z;
-                break;
-            }
-            case EllipseMovement: {
-                Float2 ellipse_pos;
-                ellipse_pos.make_from_vector(reduce_angle(this->angle - this->ellipse_angle), this->orbit_radius);
-                ellipse_pos.x *= this->ellipse_ratio;
-                Float2 temp_pos = ellipse_pos;
-                ellipse_pos.x *= cosf(this->ellipse_angle);
-                ellipse_pos.y *= cosf(this->ellipse_angle);
-                temp_pos.x *= sinf(this->ellipse_angle);
-                temp_pos.y *= sinf(this->ellipse_angle);
-                ellipse_pos.x -= temp_pos.y;
-                ellipse_pos.y += temp_pos.x;
-                this->position.x = this->orbit_origin.x + ellipse_pos.x;
-                this->position.y = this->orbit_origin.y + ellipse_pos.y;
-                this->position.z = this->orbit_origin.z;
-                break;
-            }
-            case UnknownMovement: {
-                Float2 prev_position = this->position;
-                this->position2.x += this->axis_velocity.x;
-                this->position2.y += this->axis_velocity.y;
-                this->position2.z += this->axis_velocity.z;
-                Float2 offset;
-                offset.make_from_vector(reduce_angle(this->ellipse_angle + HALF_PI_f), this->orbit_radius * sinf(this->__angle_30) * GAME_SPEED);
-                this->position.x = this->position2.x + offset.x;
-                this->position.y = this->position2.y + offset.y;
-                this->position.z = this->position2.z;
-                this->angle = this->position.angle_to(prev_position); // wrapper function for atan2
-                break;
-            }
-        }
-        this->position.x = floorf(this->position.x * 100.0f) / 100.0f;
-        this->position.y = floorf(this->position.y * 100.0f) / 100.0f;
     }
 
     // 0x402F90
@@ -5920,6 +5840,23 @@ struct MotionData {
             this->position2 = this->position;
         }
         this->update();
+    }
+
+    // 0x402BF0
+    dllexport gnu_noinline void update3() asm_symbol_rel(0x402BF0) {
+        switch (this->mode) {
+            case AxisVelocityMovement:
+                this->axis_velocity.make_from_vector(this->angle, this->speed * GAME_SPEED);
+                break;
+            case OrbitMovement: case EllipseMovement:
+                this->radius += this->radius_delta * GAME_SPEED;
+                this->angle += this->speed * GAME_SPEED;
+                break;
+            case UnknownMovement:
+                this->__angle_30 += this->__angle_30_delta * GAME_SPEED;
+                this->axis_velocity.make_from_vector3(this->ellipse_angle, this->speed * GAME_SPEED);
+                break;
+        }
     }
     
     // 0x412F60
@@ -5942,13 +5879,13 @@ struct MotionData {
     }
     
     // 0x422530
-    dllexport gnu_noinline void vectorcall set_orbit_velocity(float value) asm_symbol_rel(0x422530) {
-        this->orbit_velocity = value;
+    dllexport gnu_noinline void vectorcall set_orbit_radius_delta(float value) asm_symbol_rel(0x422530) {
+        this->radius_delta = value;
     }
     
     // 0x422540
     dllexport gnu_noinline void vectorcall set_orbit_radius(float value) asm_symbol_rel(0x422540) {
-        this->orbit_radius = value;
+        this->radius = value;
     }
     
     // 0x422550
@@ -6062,12 +5999,12 @@ struct MotionData {
     
     // 0x439FC0
     dllexport gnu_noinline float vectorcall get_orbit_radius() asm_symbol_rel(0x439FC0) {
-        return this->orbit_radius;
+        return this->radius;
     }
     
     // 0x439FD0
-    dllexport gnu_noinline float vectorcall get_orbit_velocity() asm_symbol_rel(0x439FD0) {
-        return this->orbit_velocity;
+    dllexport gnu_noinline float vectorcall get_orbit_radius_delta() asm_symbol_rel(0x439FD0) {
+        return this->radius_delta;
     }
     
     // 0x43A270
@@ -6082,8 +6019,8 @@ ValidateFieldOffset32(0x0, MotionData, position);
 ValidateFieldOffset32(0xC, MotionData, position2);
 ValidateFieldOffset32(0x18, MotionData, speed);
 ValidateFieldOffset32(0x1C, MotionData, angle);
-ValidateFieldOffset32(0x20, MotionData, orbit_radius);
-ValidateFieldOffset32(0x24, MotionData, orbit_velocity);
+ValidateFieldOffset32(0x20, MotionData, radius);
+ValidateFieldOffset32(0x24, MotionData, radius_delta);
 ValidateFieldOffset32(0x28, MotionData, ellipse_angle);
 ValidateFieldOffset32(0x2C, MotionData, ellipse_ratio);
 ValidateFieldOffset32(0x30, MotionData, __angle_30);
@@ -7422,13 +7359,14 @@ struct BombBase : ZUNTask {
     Float3 __float3_14; // 0x14
     unknown_fields(0x4); // 0x20
     Float3 __float3_24; // 0x24 (only 0x2C is know so far, but it's Z rotation)
-    BOOL bomb_active; // 0x30
+    BOOL active; // 0x30
     Timer __timer_34; // 0x34
     unknown_fields(0x14); // 0x48
     AnmID __vm_id_5C; // 0x5C
     AnmID __vm_id_60; // 0x60
     AnmID __vm_id_64; // 0x64
-    unknown_fields(0x8); // 0x68
+    int __int_68; // 0x68
+    unknown_fields(0x4); // 0x6C
     void* __ptr_70; // 0x70
     float __float_74; // 0x74
     float __float_78; // 0x78
@@ -7446,6 +7384,44 @@ struct BombBase : ZUNTask {
     inline BombBase() {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
+    }
+
+    inline bool is_active() {
+        return this->active == TRUE;
+    }
+
+    // 0x420360
+    dllexport gnu_noinline static ZUNResult start_bomb() asm_symbol_rel(0x420360);
+
+    // 0x420420
+    dllexport gnu_noinline static BOOL bomb_allowed() asm_symbol_rel(0x420420);
+
+
+    // These probably weren't inline functions,
+    // especially since it's just slightly different
+    // statement ordering. But this makes the code
+    // easier to read anyway.
+    inline static bool check_for_bomb() {
+        if (
+            BOMB_PTR &&
+            BOMB_PTR->bomb_allowed() &&
+            INPUT_STATES[0].check_inputs_no_repeat(BUTTON_BOMB)
+        ) {
+            BOMB_PTR->start_bomb();
+            return true;
+        }
+        return false;
+    }
+    inline static bool check_for_deathbomb() {
+        if (
+            BOMB_PTR &&
+            INPUT_STATES[0].check_inputs_no_repeat(BUTTON_BOMB) &&
+            BOMB_PTR->bomb_allowed()
+        ) {
+            BOMB_PTR->start_bomb();
+            return true;
+        }
+        return false;
     }
 
     // Method 0
@@ -7501,9 +7477,9 @@ struct BombBase : ZUNTask {
             if (self->__timer_34 < 0) {
                 ++self->__timer_34;
             }
-            if (self->bomb_active) {
+            if (self->active) {
                 if (!self->on_tick_impl()) {
-                    self->bomb_active = FALSE;
+                    self->active = FALSE;
                     return UpdateFuncNext;
                 }
                 ++self->__timer_34;
@@ -7527,9 +7503,26 @@ struct BombBase : ZUNTask {
         return UpdateFuncNext;
     }
 };
-
 #pragma region // BombBase Validation
-ValidateVirtualFieldOffset32(0x30, BombBase, bomb_active);
+ValidateVirtualFieldOffset32(0x4, BombBase, task_flags);
+ValidateVirtualFieldOffset32(0x8, BombBase, on_tick_func);
+ValidateVirtualFieldOffset32(0xC, BombBase, on_draw_func);
+ValidateVirtualFieldOffset32(0x14, BombBase, __float3_14);
+ValidateVirtualFieldOffset32(0x24, BombBase, __float3_24);
+ValidateVirtualFieldOffset32(0x30, BombBase, active);
+ValidateVirtualFieldOffset32(0x34, BombBase, __timer_34);
+ValidateVirtualFieldOffset32(0x5C, BombBase, __vm_id_5C);
+ValidateVirtualFieldOffset32(0x60, BombBase, __vm_id_60);
+ValidateVirtualFieldOffset32(0x64, BombBase, __vm_id_64);
+ValidateVirtualFieldOffset32(0x68, BombBase, __int_68);
+ValidateVirtualFieldOffset32(0x70, BombBase, __ptr_70);
+ValidateVirtualFieldOffset32(0x74, BombBase, __float_74);
+ValidateVirtualFieldOffset32(0x78, BombBase, __float_78);
+ValidateVirtualFieldOffset32(0x7C, BombBase, __timer_7C);
+ValidateVirtualFieldOffset32(0x90, BombBase, __int_90);
+ValidateVirtualFieldOffset32(0x94, BombBase, __float3_94);
+ValidateVirtualFieldOffset32(0xA0, BombBase, __dword_A0);
+ValidateVirtualFieldOffset32(0xA4, BombBase, __int_A4);
 ValidateStructSize32(0xA8, BombBase);
 #pragma endregion
 
@@ -7544,7 +7537,7 @@ struct BombReimuAInner {
     EnemyID __enemy_id_C4; // 0xC4
     Enemy* __enemy_C8; // 0xC8
     int __object_index; // 0xCC
-    int32_t __damage_source_index_D0; // 0xD0 // PlayerDamageSource
+    int32_t __damage_source_index_D0; // 0xD0
     // 0xD4
     float __float_D8; // 0xD8
     // 0xDC
@@ -7612,7 +7605,7 @@ struct BombReimuA : BombBase {
         this->__vm_id_64.interrupt_tree(1);
         SAFE_FREE(this->__ptr_70);
         // TODO
-        this->bomb_active = FALSE;
+        this->active = FALSE;
     }
 };
 
@@ -7659,6 +7652,32 @@ dllexport gnu_noinline void BombBase::allocate() {
     bomb_ptr->__int_A4 = 0;
     BOMB_PTR = bomb_ptr;
 }
+
+enum ItemID : int32_t {
+    InvalidItem = 0,
+    PowerItem = 1,
+    PointItem = 2,
+    BigPowerItem = 3,
+    LifeFragmentItem = 4,
+    LifeItem = 5,
+    BombFragmentItem = 6,
+    BombItem = 7,
+    FItem = 8,
+    Piv5Item = 9,
+    Piv10Item = 10,
+    Piv20Item = 11,
+    Piv30Item = 12,
+    Piv40Item = 13,
+    Piv50Item = 14,
+    Item15 = 15,
+    Item16 = 16,
+    Item17 = 17,
+    Item18 = 18,
+    Item19 = 19
+};
+
+typedef struct Item Item;
+static inline Item* spawn_item(int32_t item_id, Float3* position, float angle, float speed, int32_t arg6);
 
 // size: 0xC4
 struct EnemyDrops {
@@ -7708,10 +7727,18 @@ public:
     }
 
     // 0x430510
-    dllexport gnu_noinline void spawn_extra_items(Float3* position) asm_symbol_rel(0x430510);
+    dllexport gnu_noinline void spawn_extra_items(Float3* position) asm_symbol_rel(0x430510) {
+
+    }
 
     // 0x42D0C0
-    dllexport void spawn_items(Float3* position) asm_symbol_rel(0x42D0C0);
+    dllexport void spawn_items(Float3* position) asm_symbol_rel(0x42D0C0) {
+        if (int32_t main_drop = this->main_id) {
+            spawn_item(main_drop, position, -HALF_PI_f, 2.2f, 0);
+        }
+        this->spawn_extra_items(position);
+        this->main_id = 0;
+    }
 
     // 0x42D110
     dllexport gnu_noinline void initialize() asm_symbol_rel(0x42D110) {
@@ -8332,10 +8359,12 @@ static const ExtraDamageFunc *const EXTRA_DAMAGE_FUNC_TABLE[] = {
     &EnemyData::extra_damage_func1,
     &EnemyData::extra_damage_func2,
 };
-// 0x4CF2D8
-static const ExtraHitboxFunc *const EXTRA_HITBOX_FUNC_TABLE[] = {
-    NULL
-};
+
+extern "C" {
+    // Table is *not* const
+    // 0x4CF2D8
+    extern ExtraHitboxFunc* EXTRA_HITBOX_FUNC_TABLE[] asm("_EXTRA_HITBOX_FUNC_TABLE");
+}
 
 #pragma region // IMPORTED_FROM_MOF_DATA_NEEDS_VALIDATION
 
@@ -9571,6 +9600,18 @@ struct GameThread : ZUNTask {
         this->zero_contents();
     }
 
+    // 0x4432C0
+    dllexport gnu_noinline ~GameThread();
+
+    // 0x443830
+    dllexport static void cleanup() asm_symbol_rel(0x443830) {
+        GameThread* game_thread = GAME_THREAD_PTR;
+        WINDOW_DATA.__int_20D0 = 0;
+        if (game_thread) {
+            delete game_thread;
+        }
+    }
+
     // 0x439E80
     dllexport gnu_noinline void thiscall set_chapter(int32_t chapter) asm_symbol_rel(0x439E80) {
         GAME_MANAGER.globals.chapter = chapter;
@@ -10212,6 +10253,13 @@ struct Gui : ZUNTask {
         return false;
     }
 
+    static inline bool msg_is_inactive() {
+        if (Gui* gui = GUI_PTR) {
+            return !gui->msg_vm_active();
+        }
+        return false;
+    }
+
     // 0x441ED0
     dllexport gnu_noinline void thiscall __display_stage_logo() asm_symbol_rel(0x441ED0);
 
@@ -10580,6 +10628,21 @@ dllexport gnu_noinline void vectorcall SoundManager::play_sound_positioned(int32
     }
 }
 
+inline void SoundManager::stop_sound(int32_t sound_id) {
+    nounroll for (size_t i = 0; i < countof(SOUND_MANAGER.active_sound_ids); ++i) {
+        int32_t active_sound_id = SOUND_MANAGER.active_sound_ids[i];
+        if (active_sound_id < 0) {
+            SOUND_MANAGER.active_sound_ids[i] = sound_id;
+            SOUND_MANAGER.active_sound_id_counts[i] = -1;
+            return;
+        }
+        if (active_sound_id == sound_id) {
+            SOUND_MANAGER.active_sound_id_counts[i] = -1;
+            return;
+        }
+    }
+}
+
 typedef int32_t (*volatile fastcall AnmOnFunc)(AnmVM*);
 typedef int32_t (*volatile fastcall AnmOnFuncArg)(AnmVM*, int32_t);
 
@@ -10591,6 +10654,7 @@ extern inline const AnmOnFunc ANM_ON_COPY_A_FUNCS[];
 extern inline const AnmOnFunc ANM_ON_COPY_B_FUNCS[];
 //extern inline const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[];
 extern "C" {
+    // the wait func table isn't const
     extern AnmOnFunc ANM_ON_WAIT_FUNCS[] asm("_ANM_ON_WAIT_FUNCS");
     //extern AnmOnFunc ANM_ON_TICK_FUNCS[] asm("_ANM_ON_TICK_FUNCS");
     extern AnmOnFunc ANM_ON_DRAW_FUNCS[] asm("_ANM_ON_DRAW_FUNCS");
@@ -11285,23 +11349,54 @@ struct AnmVM {
         this->cleanup();
     }
 
-#define declare_on_func(func_name, index_var, func_table, ...) \
-    inline int32_t func_name(MACRO_FIRST_EVAL(__VA_ARGS__) MACRO_SECOND_EVAL(__VA_ARGS__,)) { \
-        if (uint32_t index = this->controller.index_var) { \
-            return (func_table[index])(this __VA_OPT__(,) MACRO_SECOND_EVAL(__VA_ARGS__,)); \
-        } else return 0; \
+    inline int32_t run_on_wait() {
+        if (uint32_t index = this->controller.on_wait_index) {
+            return ANM_ON_WAIT_FUNCS[index](this);
+        }
+        return 0;
     }
-
-    declare_on_func(run_on_wait, on_wait_index, ANM_ON_WAIT_FUNCS);
-    declare_on_func(run_on_tick, on_tick_index, ANM_ON_TICK_FUNCS);
-    declare_on_func(run_on_draw, on_draw_index, ANM_ON_DRAW_FUNCS);
-    declare_on_func(run_on_destroy, on_destroy_index, ANM_ON_DESTROY_FUNCS);
-    declare_on_func(run_on_interrupt, on_interrupt_index, ANM_ON_INTERRUPT_FUNCS, int32_t, interrupt);
-    declare_on_func(run_on_copy_A, on_copy_A_index, ANM_ON_COPY_A_FUNCS);
-    declare_on_func(run_on_copy_B, on_copy_B_index, ANM_ON_COPY_B_FUNCS);
-    declare_on_func(run_on_sprite_lookup, on_sprite_lookup_index, ANM_ON_SPRITE_LOOKUP_FUNCS, int32_t, sprite);
-
-#undef declare_on_func
+    inline int32_t run_on_tick() {
+        if (uint32_t index = this->controller.on_tick_index) {
+            return ANM_ON_TICK_FUNCS[index](this);
+        }
+        return 0;
+    }
+    inline int32_t run_on_draw() {
+        if (uint32_t index = this->controller.on_draw_index) {
+            return ANM_ON_DRAW_FUNCS[index](this);
+        }
+        return 0;
+    }
+    inline int32_t run_on_destroy() {
+        if (uint32_t index = this->controller.on_destroy_index) {
+            return ANM_ON_DESTROY_FUNCS[index](this);
+        }
+        return 0;
+    }
+    inline int32_t run_on_interrupt(int32_t interrupt) {
+        if (uint32_t index = this->controller.on_interrupt_index) {
+            return ANM_ON_INTERRUPT_FUNCS[index](this, interrupt);
+        }
+        return 0;
+    }
+    inline int32_t run_on_copy_A() {
+        if (uint32_t index = this->controller.on_copy_A_index) {
+            return ANM_ON_COPY_A_FUNCS[index](this);
+        }
+        return 0;
+    }
+    inline int32_t run_on_copy_B() {
+        if (uint32_t index = this->controller.on_copy_B_index) {
+            return ANM_ON_COPY_B_FUNCS[index](this);
+        }
+        return 0;
+    }
+    inline int32_t run_on_sprite_lookup(int32_t sprite) {
+        if (uint32_t index = this->controller.on_sprite_lookup_index) {
+            return ANM_ON_SPRITE_LOOKUP_FUNCS[index](this, sprite);
+        }
+        return 0;
+    }
 
     inline void interrupt_and_run(int32_t interrupt) {
         this->run_on_interrupt(interrupt);
@@ -11455,34 +11550,24 @@ struct AnmVM {
     dllexport gnu_noinline void thiscall __apply_deltas() asm_symbol_rel(0x47BCE0) {
         float x_rotation_delta = this->data.angular_velocity.x;
         if (x_rotation_delta != 0.0f) {
-            float new_rotation = reduce_angle(x_rotation_delta * GAME_SPEED + this->data.rotation.x);
-            this->data.rotation_enabled = true;
-            this->data.rotation.x = new_rotation;
+            this->set_x_rotation(reduce_angle(this->data.rotation.x + x_rotation_delta * GAME_SPEED));
         }
         float y_rotation_delta = this->data.angular_velocity.y;
         if (y_rotation_delta != 0.0f) {
-            float new_rotation = reduce_angle(y_rotation_delta * GAME_SPEED + this->data.rotation.y);
-            this->data.rotation_enabled = true;
-            this->data.rotation.y = new_rotation;
+            this->set_y_rotation(reduce_angle(this->data.rotation.y + y_rotation_delta * GAME_SPEED));
         }
         float z_rotation_delta = this->data.angular_velocity.z;
         if (z_rotation_delta != 0.0f) {
-            float new_rotation = reduce_angle(z_rotation_delta * GAME_SPEED + this->data.rotation.z);
-            this->data.rotation_enabled = true;
-            this->data.rotation.z = new_rotation;
+            this->set_z_rotation(reduce_angle(this->data.rotation.z + z_rotation_delta * GAME_SPEED));
         }
 
         float y_scale_delta = this->data.scale_delta.y;
         if (y_scale_delta != 0.0f) {
-            y_scale_delta *= GAME_SPEED;
-            this->data.scale_enabled = true;
-            this->data.scale.y += y_scale_delta;
+            this->set_y_scale(this->data.scale.y + y_scale_delta * GAME_SPEED);
         }
         float x_scale_delta = this->data.scale_delta.x;
         if (x_scale_delta != 0.0f) {
-            x_scale_delta *= GAME_SPEED;
-            this->data.scale_enabled = true;
-            this->data.scale.x += x_scale_delta;
+            this->set_x_scale(this->data.scale.x + x_scale_delta * GAME_SPEED);
         }
 
         float x_scroll_delta = this->data.uv_scroll_speed.x;
@@ -11578,7 +11663,8 @@ private:
             case RAND_UINT_RANGE: // 10029
                 return this->data.current_context.rand_int_range;
             case RAND_UINT: // 10022
-                return RNG.rand_uint_range(this->data.current_context.rand_int_range);
+                // BUG: Range variable is not applied here
+                return RNG.rand_uint();
             case RAND_FLOAT_REPLAY: // 10031
                 return REPLAY_RNG.rand_float_range(this->data.current_context.rand_scale);
             case RAND_FLOAT_SIGNED_REPLAY: // 10032
@@ -11631,7 +11717,7 @@ public:
             case RAND_UINT_RANGE: // 10029
                 return this->data.current_context.rand_int_range;
             case RAND_UINT: // 10022
-                return RNG.rand_uint_range(this->data.current_context.rand_int_range);
+                clang_noinline return RNG.rand_uint_range(this->data.current_context.rand_int_range);
             default:
                 return index;
         }
@@ -11755,11 +11841,36 @@ public:
             clang_noinline vm->__tree_clear_visible2();
         });
     }
+
+    inline void set_x_rotation(float value) {
+        this->data.rotation_enabled = true;
+        this->data.rotation.x = value;
+    }
+
+    inline void set_y_rotation(float value) {
+        this->data.rotation_enabled = true;
+        this->data.rotation.y = value;
+    }
     
+private:
     // 0x4892E0
-    dllexport gnu_noinline void vectorcall set_z_rotation(float value) asm_symbol_rel(0x4892E0) {
+    dllexport void vectorcall set_z_rotation(float, float value) asm_symbol_rel(0x4892E0) {
         this->data.rotation_enabled = true;
         this->data.rotation.z = value;
+    }
+public:
+    inline void set_z_rotation(float value) {
+        return this->set_z_rotation(UNUSED_FLOAT, value);
+    }
+
+    inline void set_x_scale(float value) {
+        this->data.scale_enabled = true;
+        this->data.scale.x = value;
+    }
+
+    inline void set_y_scale(float value) {
+        this->data.scale_enabled = true;
+        this->data.scale.y = value;
     }
 
     inline void set_scale(float x, float y) {
@@ -11768,10 +11879,28 @@ public:
         this->data.scale.y = y;
     }
 
+    inline void set_scale(float value) {
+        this->set_scale(value, value);
+    }
+
+    inline void set_x_scale2(float value) {
+        this->data.scale_enabled = true;
+        this->data.scale2.x = value;
+    }
+
+    inline void set_y_scale2(float value) {
+        this->data.scale_enabled = true;
+        this->data.scale2.y = value;
+    }
+
     inline void set_scale2(float x, float y) {
         this->data.scale_enabled = true;
         this->data.scale2.x = x;
         this->data.scale2.y = y;
+    }
+
+    inline void set_scale2(float value) {
+        this->set_scale2(value, value);
     }
 };
 ValidateStructSize32(0x60C, AnmVM);
@@ -13699,13 +13828,20 @@ public:
     }
 
     // 0x422D70
-    dllexport gnu_noinline static int32_t stdcall create_effect(int32_t type, Float3* position, int) {
+    dllexport gnu_noinline static int32_t stdcall create_effect(int32_t type, Float3* position, int = UNUSED_DWORD) {
         EffectManager* effect_manager = EFFECT_MANAGER_PTR;
         int32_t slot = effect_manager->find_available_slot();
         if (slot != -1 && slot < MAX_EFFECTS) {
             effect_manager->vm_slots[slot] = effect_manager->instantiate_effect_vm_to_world_list_back(type, position, NULL);
         }
         return 0;
+    }
+
+    inline void instantiate_effect_vm_to_world_list_back(int32_t script, Float3* position) {
+        int32_t slot = this->find_available_slot();
+        if (slot != -1 && slot < MAX_EFFECTS) {
+            this->vm_slots[slot] = this->effect_anm->instantiate_vm_to_world_list_back(script, position);
+        }
     }
 };
 #pragma region // EffectManager Validation
@@ -15599,13 +15735,18 @@ public:
         anm_id = 0;
     }
 
+private:
     // 0x42CB90
-    dllexport gnu_noinline static void vectorcall __instantiate_vm_id_19268(float x, float y) {
+    dllexport gnu_noinline static void vectorcall __instantiate_vm_id_19268(float, float x, float y) {
         AsciiManager* ascii_manager_ptr = ASCII_MANAGER_PTR;
         Float3 position = { x + x, y + y, 0.0f };
         if (!ascii_manager_ptr->__vm_id_19268) {
             ascii_manager_ptr->__vm_id_19268 = ascii_manager_ptr->ascii_anm->instantiate_vm_to_world_list_back(17, &position);
         }
+    }
+public:
+    inline static void __instantiate_vm_id_19268(float x, float y) {
+        return __instantiate_vm_id_19268(UNUSED_FLOAT, x, y);
     }
 };
 #pragma region // AsciiManager Validation
@@ -15636,22 +15777,112 @@ ValidateFieldOffset32(0x19274, AsciiManager, on_draw_func_group_3);
 ValidateStructSize32(0x19278, AsciiManager);
 #pragma endregion
 
+enum CancelType : int32_t {
+    CancelType0 = 0,
+    CancelType1 = 1,
+    CancelType2 = 2,
+    CancelType3 = 3,
+    CancelType4 = 4
+};
 
+static inline int bullet_cancel_radius(Float3* position, float radius, CancelType cancel_type);
+static inline int bullet_cancel_radius_as_bomb(Float2* position, float radius, CancelType cancel_type, int32_t max_count, int arg5);
+static inline int laser_cancel_radius(Float3* position, float radius, int arg3, int arg4);
+
+
+
+typedef struct PlayerDamageSource PlayerDamageSource;
+typedef struct PlayerBullet PlayerBullet;
+
+using DamageSourceFunc = int32_t fastcall(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius);
+using BulletDamageFunc = int32_t fastcall(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius);
+using BulletInitFunc = int32_t fastcall(PlayerBullet* self, PlayerDamageSource* damage_source);
 
 typedef struct ShtFile ShtFile;
 extern "C" {
     // 0x570920
     extern ShtFile* CACHED_SHT_FILE_PTR asm("_CACHED_SHT_FILE_PTR");
+
+    // 0x4B4230
+    extern BulletInitFunc *const PLAYER_BULLET_INIT_FUNCS[8] asm("_PLAYER_BULLET_INIT_FUNCS");
+    // 0x4B4210
+    extern void *const PLAYER_FUNC_TABLE_B[8] asm("_PLAYER_FUNC_TABLE_B");
+    // 0x4CF414
+    extern void* PLAYER_FUNC_TABLE_C[1] asm("_PLAYER_FUNC_TABLE_C"); // No, the missing const isn't a typo
+    // 0x4B41F0
+    extern BulletDamageFunc *const PLAYER_BULLET_DAMAGE_FUNCS[8] asm("_PLAYER_BULLET_DAMAGE_FUNCS");
 }
+
+// size: 0x5C
+struct ShtFileUnknownA {
+    union {
+        int32_t __int_0; // 0x0
+        struct {
+            int8_t __byte_0; // 0x0
+            int8_t __sbyte_1; // 0x1
+            int16_t __anm_script; // 0x2
+        };
+    };
+    Float2 position; // 0x4
+    Float2 size; // 0xC
+    float angle; // 0x14
+    float speed; // 0x18
+    unknown_fields(0x4);
+    int8_t __option_index; // 0x20
+    uint8_t __byte_21; // 0x21
+    int16_t sound_id; // 0x22
+    unknown_fields(0x6); // 0x24
+    int8_t __sbyte_2A; // 0x2A
+    int8_t __sbyte_2B; // 0x2B
+    union {
+        BulletInitFunc* __init_func; // 0x2C
+        uint32_t __init_func_index; // 0x2C
+    };
+    union {
+        void* __unknown_func_B; // 0x30
+        uint32_t __unknown_func_B_index; // 0x30
+    };
+    union {
+        void* __unknown_func_C; // 0x34
+        uint32_t __unknown_func_C_index; // 0x34
+    };
+    union {
+        BulletDamageFunc* __damage_func; // 0x38
+        uint32_t __damage_func_index; // 0x38
+    };
+    unknown_fields(0x20); // 0x3C
+    // 0x5C
+};
+#pragma region // ShtFileUnknownA Validation
+ValidateFieldOffset32(0x0, ShtFileUnknownA, __int_0);
+ValidateFieldOffset32(0x4, ShtFileUnknownA, position);
+ValidateFieldOffset32(0xC, ShtFileUnknownA, size);
+ValidateFieldOffset32(0x14, ShtFileUnknownA, angle);
+ValidateFieldOffset32(0x18, ShtFileUnknownA, speed);
+ValidateFieldOffset32(0x20, ShtFileUnknownA, __option_index);
+ValidateFieldOffset32(0x21, ShtFileUnknownA, __byte_21);
+ValidateFieldOffset32(0x22, ShtFileUnknownA, sound_id);
+ValidateFieldOffset32(0x2A, ShtFileUnknownA, __sbyte_2A);
+ValidateFieldOffset32(0x2B, ShtFileUnknownA, __sbyte_2B);
+ValidateFieldOffset32(0x2C, ShtFileUnknownA, __init_func);
+ValidateFieldOffset32(0x30, ShtFileUnknownA, __unknown_func_B);
+ValidateFieldOffset32(0x34, ShtFileUnknownA, __unknown_func_C);
+ValidateFieldOffset32(0x38, ShtFileUnknownA, __damage_func);
+ValidateStructSize32(0x5C, ShtFileUnknownA);
+#pragma endregion
 
 // size: 
 struct ShtFile {
     unknown_fields(0x2); // 0x0
     uint16_t __word_2; // 0x2
-    unknown_fields(0xDC); // 0x4
-    void* __ptr_array_E0[]; // 0xE0
-
-
+    unknown_fields(0xC); // 0x4
+    float __float_array_10[4]; // 0x10
+    int32_t max_level; // 0x20
+    int32_t power_per_level; // 0x24
+    unknown_fields(0xB8); // 0x28
+    ShtFileUnknownA* __unknownA_ptr_array_E0[1]; // 0xE0
+    unknown_fields(0x9C); // 0xE4
+    ShtFileUnknownA __unknownA_array_180[]; // 0x180
 };
 
 typedef struct Player Player;
@@ -15678,6 +15909,10 @@ enum CollisionResult : int32_t {
     GrazeCollision = 2
 };
 
+enum CollisionTestType : int32_t {
+    LethalCollisionTest = 0,
+    GrazeCollisionTest = 1
+};
 
 enum DamageSourceHitboxType {
     RectangleHitbox = 0,
@@ -15751,26 +15986,26 @@ static const int32_t AWFUL_RECTANGLE_INDEX_TABLE[] = {
     3, 0
 };
 
-struct HitboxManager {
+inline namespace HitboxManager {
 
-private:
-    static forceinline float squared(float value) {
+namespace Impl {
+    forceinline float squared(float value) {
         return value * value;
     }
-    static forceinline float hypot_squared(float x, float y) {
+    forceinline float hypot_squared(float x, float y) {
         return squared(x) + squared(y);
     }
-    static forceinline float hypot(float x, float y) {
+    forceinline float hypot(float x, float y) {
         return zsqrt(hypot_squared(x, y));
     }
-    static forceinline float distance_squared(float x1, float y1, float x2, float y2) {
+    forceinline float distance_squared(float x1, float y1, float x2, float y2) {
         return hypot_squared(x1 - x2, y1 - y2);
     }
-    static forceinline float distance(float x1, float y1, float x2, float y2) {
+    forceinline float distance(float x1, float y1, float x2, float y2) {
         return zsqrt(distance_squared(x1, y1, x2, y2));
     }
 
-    static forceinline BOOL __inline_sub_A(
+    forceinline BOOL __inline_sub_A(
         float A1x, float A1y,
         float A2x, float A2y,
         float B1x, float B1y,
@@ -15807,9 +16042,10 @@ private:
         }
         return FALSE;
     }
+}
 
-private:
-    static forceinline BOOL vectorcall __sub_4038A0_impl(
+namespace Impl {
+    forceinline BOOL vectorcall __sub_4038A0(
         float* x_out, float* y_out, // ECX, EDX,
         float x1, float y1,         // XMM2, XMM3,
         float x2, float y2,         // 
@@ -15874,14 +16110,14 @@ private:
         return FALSE;
     }
     // 0x4038A0
-    dllexport gnu_noinline static BOOL vectorcall __sub_4038A0(
+    dllexport gnu_noinline BOOL vectorcall __sub_4038A0(
         float* x_out, float* y_out,
         float x1, float y1,
         uint32_t x2, uint32_t y2,
         uint32_t x3, uint32_t y3,
         uint32_t x4, uint32_t y4
-    ) {
-        return __sub_4038A0_impl(
+    ) asm_symbol_rel(0x4038A0) {
+        return Impl::__sub_4038A0(
             x_out, y_out,
             x1, y1,
             bitcast<float>(x2), bitcast<float>(y2),
@@ -15889,15 +16125,15 @@ private:
             bitcast<float>(x4), bitcast<float>(y4)
         );
     }
-public:
-    static forceinline BOOL __sub_4038A0(
+}
+    forceinline BOOL __sub_4038A0(
         float* x_out, float* y_out,
         float x1, float y1,
         float x2, float y2,
         float x3, float y3,
         float x4, float y4
     ) {
-        return __sub_4038A0(
+        return Impl::__sub_4038A0(
             x_out, y_out,
             x1, y1,
             bitcast<uint32_t>(x2), bitcast<uint32_t>(y2),
@@ -15906,8 +16142,142 @@ public:
         );
     }
 
-private:
-    static forceinline BOOL __sub_404080_impl(
+namespace Impl {
+    forceinline BOOL __sub_403BC0(
+        float* x_out, float* y_out,
+        float x1, float y1,
+        float rotation1,
+        float x2, float y2,
+        float rotation2
+    ) {
+        float angle1 = reduce_angle(rotation1);
+        float angle2 = reduce_angle(rotation2);
+        float angle_diff1 = reduced_angle_diff(angle1, angle2);
+        float reduced_angle_diff1 = reduce_angle(angle_diff1);
+        if (
+            // Angles are not almost the same
+            !(zfabsf(reduced_angle_diff1) < 0.001f)
+        ) {
+            float angle_diff2 = reduce_angle(__angle_diffB(angle1, angle2, angle_diff1));
+            float reduced_angle_diff2 = reduce_angle(reduced_angle_diff(angle_diff2, PI_f));
+            if (
+                // Angles are not almost opposite?
+                !(zfabsf(reduced_angle_diff2) < 0.001f)
+            ) {
+                Float2 pos;
+                pos.make_from_vector(rotation1, 10.0f);
+
+                float A1;
+                float B1;
+                BOOL C1;
+                if (
+                    // Rotation1 is almost vertical
+                    zfabsf(pos.x) < 0.01f
+                ) {
+                    A1 = x1;
+                    B1 = 0.0f;
+                    C1 = true;
+                } else {
+                    B1 = pos.y / pos.x;
+                    A1 = y1 - B1 * x1;
+                    C1 = false;
+                }
+
+                pos.make_from_vector(rotation2, 10.0f);
+
+                float A2;
+                float B2;
+                BOOL C2;
+                if (
+                    // Rotation2 is almost vertical
+                    zfabsf(pos.x) < 0.01f
+                ) {
+                    A2 = x2;
+                    B2 = 0.0f;
+                    C2 = true;
+                } else {
+                    B2 = pos.y / pos.x;
+                    A2 = y2 - B2 * x2;
+                    C2 = false;
+                }
+
+                float X;
+                float Y;
+                if (!C1) {
+                    if (!C2) {
+                        float A_diff = A2 - A1;
+                        float B_diff = B1 - B2;
+                        X = A_diff / B_diff;
+                        Y = A_diff * B1 / B_diff + A1;
+                    }
+                    else {
+                        X = x2;
+                        Y = B1 * x2 + A1;
+                    }
+                }
+                else {
+                    if (!C2) {
+                        X = x1;
+                        Y = B2 * x1 + A2;
+                    }
+                    else {
+                        if (zfabsf(x1 - x2) < 0.001f) {
+                            *y_out = y1;
+                            *x_out = x1;
+                            return true;
+                        }
+                        else {
+                            // Does not write to out?
+                            return false;
+                        }
+                    }
+                }
+                *x_out = X;
+                *y_out = Y;
+                return true;
+            }
+        }
+        *y_out = y1;
+        *x_out = x1;
+        return false;
+    }
+    // 0x403BC0
+    dllexport gnu_noinline BOOL vectorcall __sub_403BC0(
+        float, float,
+        float* x_out, float* y_out,
+        float x1, float y1,
+        uint32_t rotation1,
+        uint32_t x2, uint32_t y2,
+        uint32_t rotation2
+    ) asm_symbol_rel(0x403BC0) {
+        return Impl::__sub_403BC0(
+            x_out, y_out,
+            x1, y1,
+            bitcast<float>(rotation1),
+            bitcast<float>(x2), bitcast<float>(y2),
+            bitcast<float>(rotation2)
+        );
+    }
+}
+    forceinline BOOL __sub_403BC0(
+        float* x_out, float* y_out,
+        float x1, float y1,
+        float rotation1,
+        float x2, float y2,
+        float rotation2
+    ) {
+        return Impl::__sub_403BC0(
+            UNUSED_FLOAT, UNUSED_FLOAT,
+            x_out, y_out,
+            x1, y1,
+            bitcast<uint32_t>(rotation1),
+            bitcast<uint32_t>(x2), bitcast<uint32_t>(y2),
+            bitcast<uint32_t>(rotation2)
+        );
+    }
+
+namespace Impl {
+    forceinline BOOL __sub_404080(
         Float2* pointA, Float2* pointB, // ECX, EDX,        (ESP+10, ESP+14)
         Float2* position1,              // EBP+8,
         float rotation1,                // XMM3,
@@ -15992,7 +16362,7 @@ private:
         }
     }
     // 0x404080
-    dllexport gnu_noinline static BOOL vectorcall __sub_404080(
+    dllexport gnu_noinline BOOL vectorcall __sub_404080(
         float, float, float,
         Float2* pointA, Float2* pointB,
         Float2* position1,
@@ -16001,7 +16371,7 @@ private:
         uint32_t width2, uint32_t height2,
         uint32_t rotation2
     ) {
-        return __sub_404080_impl(
+        return Impl::__sub_404080(
             pointA, pointB,
             position1,
             rotation1,
@@ -16010,8 +16380,8 @@ private:
             bitcast<float>(rotation2)
         );
     }
-public:
-    static forceinline BOOL __sub_404080(
+}
+    forceinline BOOL __sub_404080(
         Float2* pointA, Float2* pointB,
         Float2* position1,
         float rotation1,
@@ -16019,7 +16389,7 @@ public:
         float width2, float height2,
         float rotation2
     ) {
-        return __sub_404080(
+        return Impl::__sub_404080(
             UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT,
             pointA, pointB,
             position1,
@@ -16030,8 +16400,8 @@ public:
         );
     }
 
-private:
-    static forceinline BOOL collision_rectangle_rectangle_impl(
+namespace Impl {
+    forceinline BOOL collision_rectangle_rectangle(
         float x1, float y1,             // XMM0,   XMM1,    (ESP+C,  ESP+14)
         float width1, float height1,    // XMM2,   XMM3,    (ESP+24, ESP+20)
         float rotation1,                // EBP+8,
@@ -16114,7 +16484,7 @@ private:
     }
 
     // 0x404440
-    static dllexport gnu_noinline BOOL vectorcall collision_rectangle_rectangle(
+    dllexport gnu_noinline BOOL vectorcall collision_rectangle_rectangle(
         int, int,
         float x1, float y1,
         float width1, float height1,
@@ -16123,12 +16493,17 @@ private:
         uint32_t width2, uint32_t height2,
         uint32_t rotation2
     ) asm_symbol_rel(0x404440) {
-        return collision_rectangle_rectangle_impl(x1, y1, width1, height1,
-                                                  bitcast<float>(rotation1), bitcast<float>(x2), bitcast<float>(y2),
-                                                  bitcast<float>(width2), bitcast<float>(height2), bitcast<float>(rotation2));
+        return Impl::collision_rectangle_rectangle(
+            x1, y1,
+            width1, height1,
+            bitcast<float>(rotation1),
+            bitcast<float>(x2), bitcast<float>(y2),
+            bitcast<float>(width2), bitcast<float>(height2),
+            bitcast<float>(rotation2)
+        );
     }
-public:
-    static forceinline BOOL collision_rectangle_rectangle(
+}
+    forceinline BOOL collision_rectangle_rectangle(
         float x1, float y1,
         float width1, float height1,
         float rotation1,
@@ -16136,12 +16511,18 @@ public:
         float width2, float height2,
         float rotation2
     ) {
-        return collision_rectangle_rectangle(UNUSED_DWORD, UNUSED_DWORD, x1, y1, width1, height1,
-                                             bitcast<uint32_t>(rotation1), bitcast<uint32_t>(x2), bitcast<uint32_t>(y2),
-                                             bitcast<uint32_t>(width2), bitcast<uint32_t>(height2), bitcast<uint32_t>(rotation2));
+        return Impl::collision_rectangle_rectangle(
+            UNUSED_DWORD, UNUSED_DWORD,
+            x1, y1,
+            width1, height1,
+            bitcast<uint32_t>(rotation1),
+            bitcast<uint32_t>(x2), bitcast<uint32_t>(y2),
+            bitcast<uint32_t>(width2), bitcast<uint32_t>(height2),
+            bitcast<uint32_t>(rotation2)
+        );
     }
 
-    static forceinline BOOL collision_rectangle_circle(
+    forceinline BOOL collision_rectangle_circle(
         float x1, float y1,
         float width1, float height1,
         float rotation1,
@@ -16161,10 +16542,10 @@ public:
             (!(half_width1 >= zfabsf(position.x)) || !(half_height1 + radius2 >= zfabsf(position.y)))
         ) {
             if (
-                !(hypot_squared(position.y - half_height1, position.x - half_width1) < squared(radius2)) &&
-                !(hypot_squared(position.y - half_height1, position.x + half_width1) < squared(radius2)) &&
-                !(hypot_squared(position.y + half_height1, position.x - half_width1) < squared(radius2)) &&
-                !(hypot_squared(position.y + half_height1, position.x + half_width1) < squared(radius2))
+                !(Impl::hypot_squared(position.y - half_height1, position.x - half_width1) < Impl::squared(radius2)) &&
+                !(Impl::hypot_squared(position.y - half_height1, position.x + half_width1) < Impl::squared(radius2)) &&
+                !(Impl::hypot_squared(position.y + half_height1, position.x - half_width1) < Impl::squared(radius2)) &&
+                !(Impl::hypot_squared(position.y + half_height1, position.x + half_width1) < Impl::squared(radius2))
             ) {
                 return FALSE;
             }
@@ -16172,7 +16553,7 @@ public:
         return TRUE;
     }
 
-    static forceinline BOOL collision_circle_circle(
+    forceinline BOOL collision_circle_circle(
         float x1, float y1,
         float radius1,
         float x2, float y2,
@@ -16183,49 +16564,51 @@ public:
         float max_distance = radius1 + radius2;
 
         if (
-            !(hypot_squared(x_diff, y_diff) < squared(max_distance))
+            !(Impl::hypot_squared(x_diff, y_diff) < Impl::squared(max_distance))
         ) {
             return FALSE;
         }
         return TRUE;
     }
 
-private:
+namespace Impl {
     // 0x45F0F0
-    static dllexport gnu_noinline int32_t vectorcall enm_compute_damage_sources(int32_t, int32_t, float, float, float, Float3* position, Float2* size, float rotation, float radius, int32_t* arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) asm_symbol_rel(0x45F0F0);
-public:
-    static forceinline int32_t HitboxManager::enm_compute_damage_sources(Float3* position, Float2* size, float rotation, float radius, int32_t* arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) {
-        return enm_compute_damage_sources(UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT, position, size, rotation, radius, arg5, hit_position_out, arg7, enemy_id);
+    dllexport gnu_noinline int32_t vectorcall enm_compute_damage_sources(int32_t, int32_t, float, float, float, Float3* position, Float2* size, float rotation, float radius, int32_t* arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) asm_symbol_rel(0x45F0F0);
+}
+    forceinline int32_t enm_compute_damage_sources(Float3* position, Float2* size, float rotation, float radius, int32_t* arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) {
+        return Impl::enm_compute_damage_sources(UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT, position, size, rotation, radius, arg5, hit_position_out, arg7, enemy_id);
+    }
+
+namespace Impl {
+    // 0x45CBA0
+    dllexport gnu_noinline float vectorcall angle_to_player_from_point(int, int, Float2* position) asm_symbol_rel(0x45CBA0);
+}
+    inline float angle_to_player_from_point(Float2* position) {
+        return Impl::angle_to_player_from_point(UNUSED_DWORD, UNUSED_DWORD, position);
     }
 };
-
-typedef struct PlayerDamageSource PlayerDamageSource;
-typedef struct PlayerBullet PlayerBullet;
-
-using DamageSourceFunc = int32_t fastcall (PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius);
-using BulletDamageFunc = int32_t fastcall (PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius);
 
 // size: 0x9C
 struct PlayerDamageSource {
     union {
         uint32_t flags; // 0x0, 0x20574
         struct {
-            uint32_t __active : 1; // 1
+            uint32_t active : 1; // 1
             uint32_t hitbox_type : 1; // 2
             uint32_t __unknown_flag_A : 1; // 3
         };
     };
     float radius; // 0x4
-    float __float_8; // 0x8
-    float rotation; // 0xC
-    ZUNAngle __angle_10; // 0x10
+    float radius_delta; // 0x8
+    ZUNAngle angle; // 0xC
+    ZUNAngle angular_velocity; // 0x10
     Float2 size; // 0x14
     MotionData motion; // 0x1C
-    Timer __timer_60; // 0x60
+    Timer duration; // 0x60
     int32_t __int_74; // 0x74
     int __int_78; // 0x78
     int32_t __int_7C; // 0x7C
-    int32_t __int_80; // 0x80
+    int32_t __hit_frequency; // 0x80
     EnemyID __enemy_id_84; // 0x84
     int32_t __int_88; // 0x88
     int __int_8C; // 0x8C
@@ -16233,6 +16616,20 @@ struct PlayerDamageSource {
     EnemyID __enemy_id_94; // 0x94
     int32_t __unknown_func_index; // 0x98
     // 0x9C
+
+    inline void on_tick() {
+        if (this->active) {
+            this->motion.update3();
+            this->motion.update();
+
+            this->radius += this->radius_delta;
+            this->angle += this->angular_velocity;
+
+            if (--this->duration <= 0) {
+                this->active = false;
+            }
+        }
+    }
 
     inline bool check_collision(Float3* position, Float2* size, float rotation, float radius) {
         switch (this->hitbox_type) {
@@ -16243,7 +16640,7 @@ struct PlayerDamageSource {
                     return HitboxManager::collision_rectangle_rectangle(
                         this->motion.position.x, this->motion.position.y,
                         this->size.x, this->size.y,
-                        this->rotation,
+                        this->angle,
                         position->x, position->y,
                         size->x, size->y,
                         rotation
@@ -16252,7 +16649,7 @@ struct PlayerDamageSource {
                     return HitboxManager::collision_rectangle_circle(
                         this->motion.position.x, this->motion.position.y,
                         this->size.x, this->size.y,
-                        this->rotation,
+                        this->angle,
                         position->x, position->y,
                         radius
                     );
@@ -16289,16 +16686,16 @@ struct PlayerDamageSource {
 #pragma region // PlayerDamageSource Validation
 ValidateFieldOffset32(0x0, PlayerDamageSource, flags);
 ValidateFieldOffset32(0x4, PlayerDamageSource, radius);
-ValidateFieldOffset32(0x8, PlayerDamageSource, __float_8);
-ValidateFieldOffset32(0xC, PlayerDamageSource, rotation);
-ValidateFieldOffset32(0x10, PlayerDamageSource, __angle_10);
+ValidateFieldOffset32(0x8, PlayerDamageSource, radius_delta);
+ValidateFieldOffset32(0xC, PlayerDamageSource, angle);
+ValidateFieldOffset32(0x10, PlayerDamageSource, angular_velocity);
 ValidateFieldOffset32(0x14, PlayerDamageSource, size);
 ValidateFieldOffset32(0x1C, PlayerDamageSource, motion);
-ValidateFieldOffset32(0x60, PlayerDamageSource, __timer_60);
+ValidateFieldOffset32(0x60, PlayerDamageSource, duration);
 ValidateFieldOffset32(0x74, PlayerDamageSource, __int_74);
 ValidateFieldOffset32(0x78, PlayerDamageSource, __int_78);
 ValidateFieldOffset32(0x7C, PlayerDamageSource, __int_7C);
-ValidateFieldOffset32(0x80, PlayerDamageSource, __int_80);
+ValidateFieldOffset32(0x80, PlayerDamageSource, __hit_frequency);
 ValidateFieldOffset32(0x84, PlayerDamageSource, __enemy_id_84);
 ValidateFieldOffset32(0x88, PlayerDamageSource, __int_88);
 ValidateFieldOffset32(0x8C, PlayerDamageSource, __int_8C);
@@ -16317,17 +16714,45 @@ static const DamageSourceFunc *const PLAYER_DAMAGE_SOURCE_UNKNOWN_FUNCS[] = {
 };
 
 static inline PlayerDamageSource* get_damage_source_by_index(int32_t index);
+
+// size: 0xF0
+struct PlayerOption {
+    int __dword_0; // 0x0
+    unknown_fields(0x50); // 0x4
+    Int2 position; // 0x54
+    Int2 internal_position; // 0x5C
+    unknown_fields(0x4C); // 0x64
+    AnmID __anm_id_B0; // 0xB0
+    AnmID __anm_id_B4; // 0xB4
+    unknown_fields(0x1C); // 0xB8
+    int __int_D4; // 0xD4
+    unknown_fields(0x18); // 0xD8
+    // 0xF0
+};
+#pragma region // PlayerOption Validation
+ValidateFieldOffset32(0x0, PlayerOption, __dword_0);
+ValidateFieldOffset32(0x54, PlayerOption, position);
+ValidateFieldOffset32(0x5C, PlayerOption, internal_position);
+ValidateFieldOffset32(0xB0, PlayerOption, __anm_id_B0);
+ValidateFieldOffset32(0xB4, PlayerOption, __anm_id_B4);
+ValidateFieldOffset32(0xD4, PlayerOption, __int_D4);
+ValidateStructSize32(0xF0, PlayerOption);
+#pragma endregion
+
 static inline PlayerBullet* get_player_bullet_by_index(int32_t index);
+
+using PlayerBulletFuncA = ZUNResult fastcall(PlayerBullet* bullet);
 
 // size: 0xF8
 struct PlayerBullet {
     union {
         uint32_t flags; // 0x0
         struct {
-            uint32_t __unknown_flag_A : 1;
+            uint32_t __unknown_flag_A : 1; // 1
+            uint32_t __focused : 1; // 2
         };
     };
-    unknown_fields(0x4); // 0x0
+    int32_t __bullet_index; // 0x4
     AnmID __vm_id_8; // 0x8
     Timer __timer_C; // 0xC
     unknown_fields(0x28);// 0x20
@@ -16335,14 +16760,31 @@ struct PlayerBullet {
     int state; // 0x8C
     unknown_fields(0xC); // 0x90
     int __int_9C; // 0x9C
-    unknown_fields(0xC); // 0xA0
-    int __dword_AC; // 0xAC
+    Float2 size; // 0xA0
+    unknown_fields(0x4); // 0xA8
+    union {
+        int32_t __sht_unknownA_index; // 0xAC
+        struct {
+            uint32_t __sht_unknownA_index2 : 8;
+            int32_t __sht_unknownA_index1 : 24;
+        };
+    };
     int32_t damage_source_index; // 0xB0
-    unknown_fields(0x38); // 0xB4
+    unknown_fields(0x24); // 0xB4
+    PlayerBulletFuncA* __func_ptr_D8; // 0xD8
+    unknown_fields(0x4); // 0xDC
+    AnmLoaded* bullet_anm; // 0xE0
+    PlayerOption* option; // 0xE4
+    BulletInitFunc* __init_func; // 0xE8
     void* __func_ptr_EC; // 0xEC
-    unknown_fields(0x4); // 0xF0
+    void* __func_ptr_F0; // 0xF0
     BulletDamageFunc* __damage_func; // 0xF4
     // 0xF8
+
+    inline void on_tick();
+
+    // 0x45E320
+    dllexport gnu_noinline ZUNResult thiscall shoot(int32_t unknownA_index, int32_t time, Float3* position, PlayerOption* option) asm_symbol_rel(0x45E320);
 
     // 0x45F6F0
     dllexport gnu_noinline int32_t thiscall __sub_45F6F0() asm_symbol_rel(0x45F6F0) {
@@ -16354,7 +16796,7 @@ struct PlayerBullet {
         vm->controller.position = this->motion.position;
 
         if (PlayerDamageSource* damage_source = get_damage_source_by_index(this->damage_source_index)) {
-            damage_source->__active = false;
+            damage_source->active = false;
         }
 
         int32_t ret = this->__int_9C;
@@ -16364,42 +16806,47 @@ struct PlayerBullet {
 };
 #pragma region // PlayerBullet Validation
 ValidateFieldOffset32(0x0, PlayerBullet, flags);
+ValidateFieldOffset32(0x4, PlayerBullet, __bullet_index);
 ValidateFieldOffset32(0x8, PlayerBullet, __vm_id_8);
 ValidateFieldOffset32(0xC, PlayerBullet, __timer_C);
 ValidateFieldOffset32(0x48, PlayerBullet, motion);
 ValidateFieldOffset32(0x8C, PlayerBullet, state);
 ValidateFieldOffset32(0x9C, PlayerBullet, __int_9C);
-ValidateFieldOffset32(0xAC, PlayerBullet, __dword_AC);
+ValidateFieldOffset32(0xA0, PlayerBullet, size);
+ValidateFieldOffset32(0xAC, PlayerBullet, __sht_unknownA_index);
 ValidateFieldOffset32(0xB0, PlayerBullet, damage_source_index);
+ValidateFieldOffset32(0xD8, PlayerBullet, __func_ptr_D8);
+ValidateFieldOffset32(0xE0, PlayerBullet, bullet_anm);
+ValidateFieldOffset32(0xE4, PlayerBullet, option);
+ValidateFieldOffset32(0xE8, PlayerBullet, __init_func);
 ValidateFieldOffset32(0xEC, PlayerBullet, __func_ptr_EC);
+ValidateFieldOffset32(0xF0, PlayerBullet, __func_ptr_F0);
 ValidateFieldOffset32(0xF4, PlayerBullet, __damage_func);
 ValidateStructSize32(0xF8, PlayerBullet);
 #pragma endregion
 
-// size: 0xF0
-struct PlayerOption {
-    unknown_fields(0x54); // 0x0
-    uint32_t position_x; // 0x54
-    uint32_t position_y; // 0x58
-    unknown_fields(0x94); // 0x5C
-    // 0xF0
-};
+static inline constexpr size_t PLAYER_OPTION_COUNT = 4;
+static inline constexpr size_t PLAYER_EQUIPMENT_OPTION_COUNT = 12;
 
+static inline constexpr size_t PLAYER_TOTAL_OPTION_COUNT = PLAYER_OPTION_COUNT + PLAYER_EQUIPMENT_OPTION_COUNT;
+static inline constexpr size_t PLAYER_TOTAL_OPTION_COUNT_BIT_WIDTH = std::bit_width(PLAYER_TOTAL_OPTION_COUNT - 1);
+
+static inline constexpr size_t PLAYER_BULLET_COUNT = 0x200;
 static inline constexpr size_t PLAYER_DAMAGE_SOURCE_COUNT = 0x400;
 
 // size: 0x47308
 struct PlayerData {
     Float3 position; // 0x0, 0x620
     Int2 internal_position; // 0xC, 0x62C
-    Timer __timer_14; // 0x14, 0x634
+    Timer __death_timer; // 0x14, 0x634
     Timer __timer_28; // 0x28, 0x648
     Timer __timer_3C; // 0x3C, 0x65C
-    PlayerOption options[4]; // 0x50, 0x670
-    PlayerOption equipment[12]; // 0x410, 0xA30
-    PlayerBullet bullets[0x200]; // 0xF50, 0x1570
+    PlayerOption options[PLAYER_OPTION_COUNT]; // 0x50, 0x670
+    PlayerOption equipment[PLAYER_EQUIPMENT_OPTION_COUNT]; // 0x410, 0xA30
+    PlayerBullet bullets[PLAYER_BULLET_COUNT]; // 0xF50, 0x1570
     int32_t last_created_damage_source_index; // 0x1FF50, 0x20570
     PlayerDamageSource damage_sources[PLAYER_DAMAGE_SOURCE_COUNT + 1]; // 0x1FF54, 0x20574
-    PlayerDamageSource __damage_source_46FF0; // 0x46FF0, 0x47610
+    PlayerDamageSource __dummy_damage_source; // 0x46FF0, 0x47610
     int32_t state; // 0x4708C, 0x476AC
     AnmID __vm_id_47090; // 0x47090, 0x476B0
     AnmID __vm_id_47094; // 0x47094, 0x476B4
@@ -16408,7 +16855,7 @@ struct PlayerData {
     Timer shoot_key_short_timer; // 0x470B0, 0x476D0
     Timer shoot_key_long_timer; // 0x470C4, 0x476E4
     int power; // 0x470D8, 0x476F8
-    int __dword_array_470DC[30]; // 0x470DC, 0x476FC
+    int32_t __level_array_470DC[30]; // 0x470DC, 0x476FC
     Timer __timer_47154; // 0x47154, 0x47774
     Timer __timer_47168; // 0x47168, 0x47788
     union {
@@ -16416,23 +16863,23 @@ struct PlayerData {
         struct {
             uint32_t __unknown_flag_A : 1; // 1
             uint32_t __unknown_flag_C : 1; // 2
-            uint32_t : 1; // 3
+            uint32_t __unknown_flag_H : 1; // 3
             uint32_t __unknown_flag_B : 1; // 4
-            uint32_t __unknown_flag_F : 1; // 5
+            uint32_t scale_enabled : 1; // 5
             uint32_t __unknown_flag_E : 1; // 6
             uint32_t __unknown_flag_G : 1; // 7
             uint32_t __unknown_field_A : 2; // 8-9
             uint32_t __unknown_flag_D : 1; // 10
         };
     };
-    Timer __timer_477A0; // 0x47180, 0x477A0
+    Timer __timer_47180; // 0x47180, 0x477A0
     int32_t __unfocused_linear_speed; // 0x47194, 0x477B4
     int32_t __focused_linear_speed; // 0x47198, 0x477B8
     int32_t __unfocused_diagonal_speed; // 0x4719C, 0x477BC
     int32_t __focused_diagonal_speed; // 0x471A0, 0x477C0
     Float3 velocity; // 0x471A4, 0x477C4
     Float3 __last_movement_velocity; // 0x471B0, 0x477D0
-    Int3 __internal_velocity; // 0x471BC, 0x477DC
+    Int2 __internal_velocity; // 0x471BC, 0x477DC
     int32_t __int_471C4; // 0x471C4, 0x477E4
     int32_t __int_471C8; // 0x471C8, 0x477E8
     float __speed_modifier; // 0x471CC, 0x477EC
@@ -16440,10 +16887,13 @@ struct PlayerData {
     unknown_fields(0x4); // 0x471DC, 0x477FC
     Int2 previous_positions[33]; // 0x471E0, 0x47800
     int32_t num_deathbomb_frames; // 0x472E8, 0x47908
-    float __float_472EC; // 0x472EC, 0x4790C
-    float __float_472F0; // 0x472F0, 0x47910
+    ZUNAngle __shot_tilt_angle; // 0x472EC, 0x4790C
+    float __shot_spread; // 0x472F0, 0x47910
     Timer __timer_472F4; // 0x472F4, 0x47914
     // 0x47308, 0x47928
+
+    // 0x45A690
+    dllexport gnu_noinline PlayerData() = default;
 
 private:
     // 0x45D5E0
@@ -16455,18 +16905,76 @@ public:
         return this->__sub_45D5E0(UNUSED_DWORD);
     }
 };
+#pragma region // PlayerData Validation
+ValidateFieldOffset32(0x0, PlayerData, position);
+ValidateFieldOffset32(0xC, PlayerData, internal_position);
+ValidateFieldOffset32(0x14, PlayerData, __death_timer);
+ValidateFieldOffset32(0x28, PlayerData, __timer_28);
+ValidateFieldOffset32(0x3C, PlayerData, __timer_3C);
+ValidateFieldOffset32(0x50, PlayerData, options);
+ValidateFieldOffset32(0x410, PlayerData, equipment);
+ValidateFieldOffset32(0xF50, PlayerData, bullets);
+ValidateFieldOffset32(0x1FF50, PlayerData, last_created_damage_source_index);
+ValidateFieldOffset32(0x1FF54, PlayerData, damage_sources);
+ValidateFieldOffset32(0x46FF0, PlayerData, __dummy_damage_source);
+ValidateFieldOffset32(0x4708C, PlayerData, state);
+ValidateFieldOffset32(0x47090, PlayerData, __vm_id_47090);
+ValidateFieldOffset32(0x47094, PlayerData, __vm_id_47094);
+ValidateFieldOffset32(0x47098, PlayerData, __timer_47098);
+ValidateFieldOffset32(0x470AC, PlayerData, focused);
+ValidateFieldOffset32(0x470B0, PlayerData, shoot_key_short_timer);
+ValidateFieldOffset32(0x470C4, PlayerData, shoot_key_long_timer);
+ValidateFieldOffset32(0x470D8, PlayerData, power);
+ValidateFieldOffset32(0x470DC, PlayerData, __level_array_470DC);
+ValidateFieldOffset32(0x47154, PlayerData, __timer_47154);
+ValidateFieldOffset32(0x47168, PlayerData, __timer_47168);
+ValidateFieldOffset32(0x4717C, PlayerData, flags);
+ValidateFieldOffset32(0x47180, PlayerData, __timer_47180);
+ValidateFieldOffset32(0x47194, PlayerData, __unfocused_linear_speed);
+ValidateFieldOffset32(0x47198, PlayerData, __focused_linear_speed);
+ValidateFieldOffset32(0x4719C, PlayerData, __unfocused_diagonal_speed);
+ValidateFieldOffset32(0x471A0, PlayerData, __focused_diagonal_speed);
+ValidateFieldOffset32(0x471A4, PlayerData, velocity);
+ValidateFieldOffset32(0x471B0, PlayerData, __last_movement_velocity);
+ValidateFieldOffset32(0x471BC, PlayerData, __internal_velocity);
+ValidateFieldOffset32(0x471C4, PlayerData, __int_471C4);
+ValidateFieldOffset32(0x471C8, PlayerData, __int_471C8);
+ValidateFieldOffset32(0x471CC, PlayerData, __speed_modifier);
+ValidateFieldOffset32(0x471D0, PlayerData, __base_axis_speed);
+ValidateFieldOffset32(0x471E0, PlayerData, previous_positions);
+ValidateFieldOffset32(0x472E8, PlayerData, num_deathbomb_frames);
+ValidateFieldOffset32(0x472EC, PlayerData, __shot_tilt_angle);
+ValidateFieldOffset32(0x472F0, PlayerData, __shot_spread);
+ValidateFieldOffset32(0x472F4, PlayerData, __timer_472F4);
+ValidateStructSize32(0x47308, PlayerData);
+#pragma endregion
+
+// 0x4B7088
+static inline constexpr const char *const PLAYER_SHT_FILENAMES[] = {
+    "pl00.sht",
+    "pl01.sht",
+    "pl02.sht",
+    "pl03.sht"
+};
+// 0x4B7098
+static inline constexpr const char *const PLAYER_ANM_FILENAMES[] = {
+    "pl00.anm",
+    "pl01.anm",
+    "pl02.anm",
+    "pl03.anm"
+};
 
 // size: 0x479D4
 struct Player : ZUNTask {
     // ZUNTask base; // 0x0
     AnmLoaded* player_anm; // 0xC
-    AnmLoaded* __player_anm_copy; // 0x10
+    AnmLoaded* bullet_anm; // 0x10
     AnmVM __vm_14; // 0x14
     PlayerData data; // 0x620
     Float3 __float3_47928; // 0x47928
     Int2 __base_movement_velocity; // 0x47934
     MovementDirection movement_direction; // 0x4793C
-    void* __ptr_47940; // 0x47940 (Sht file?)
+    ShtFile* sht_file; // 0x47940
     int __dword_47944; // 0x47944
     char __byte_47948; // 0x47948
     unknown_fields(0x3); // 0x47949
@@ -16479,11 +16987,11 @@ struct Player : ZUNTask {
     float item_attract_radius_focused; // 0x47990
     float item_attract_radius_unfocused; // 0x47994
     float poc_height; // 0x47998
-    float __float_4799C; // 0x4799C
-    float __float_479A0; // 0x479A0
-    Float2 __float2_479A4; // 0x479A4
+    float __hitbox_radius_unfocused; // 0x4799C
+    float __hitbox_radius_focused; // 0x479A0
+    Float2 __hitbox_size_unfocused; // 0x479A4 Float3?
     float __float_479AC; // 0x479AC
-    Float2 __float2_479B0; // 0x479B0
+    Float2 __hitbox_size_focused; // 0x479B0 Float3?
     float __float_479B8; // 0x479B8
     unknown_fields(0x10); // 0x479BC
     float __float_479CC; // 0x479CC
@@ -16497,9 +17005,62 @@ struct Player : ZUNTask {
         this->zero_contents();
     }
 
+    // 0x45B020
+    dllexport gnu_noinline ~Player() {
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
+        PLAYER_PTR = NULL;
+
+        AnmManager* anm_manager = ANM_MANAGER_PTR;
+        if (GAME_MANAGER.__unknown_flag_A) {
+            anm_manager->mark_all_vms_from_loaded_slot_for_delete(9);
+            CACHED_SHT_FILE_PTR = this->sht_file;
+        } else {
+            anm_manager->unload_anm(9);
+            SAFE_FREE(this->sht_file);
+            CACHED_SHT_FILE_PTR = NULL;
+        }
+    }
+
     // 0x407D50
     dllexport gnu_noinline Float3* thiscall get_position() asm_symbol_rel(0x407D50) {
         return &this->data.position;
+    }
+
+    inline void set_position_internal(int32_t x, int32_t y) {
+        this->data.internal_position.x = x;
+        this->data.internal_position.y = y;
+        this->data.position.x = x * (1.0f / 128.0f);
+        this->data.position.y = y * (1.0f / 128.0f);
+    }
+
+    inline void set_x_position_internal(int32_t x) {
+        this->data.internal_position.x = x;
+        this->data.position.x = x * (1.0f / 128.0f);
+    }
+
+    inline void set_y_position_internal(int32_t y) {
+        this->data.internal_position.y = y;
+        this->data.position.y = y * (1.0f / 128.0f);
+    }
+
+    inline void set_position(float x, float y) {
+        return this->set_position(x * 128.0f, y * 128.0f);
+    }
+
+    inline void set_x_position(float x) {
+        return this->set_x_position_internal(x * 128.0f);
+    }
+
+    inline void set_y_position(float y) {
+        return this->set_y_position_internal(y * 128.0f);
+    }
+
+    inline void reset_previous_positions() {
+        nounroll for (size_t i = 0; i < countof(this->data.previous_positions); ++i) {
+            this->data.previous_positions[i] = this->data.internal_position;
+        }
     }
 
     // 0x4099D0
@@ -16507,25 +17068,38 @@ struct Player : ZUNTask {
         PLAYER_PTR->data.__timer_47154.initialize_and_set(time);
     }
 
-    // 0x45CBA0
-    dllexport static float angle_to_player_from_point(Float3* position) asm_symbol_rel(0x45CBA0) {
-        Player* player = PLAYER_PTR;
-        float y_pos = player->data.position.y - position->y;
-        float x_pos = player->data.position.x - position->x;
-        if (y_pos == 0.0f && x_pos == 0.0f) {
+    // 0x45B170
+    dllexport gnu_noinline void thiscall __sub_45B170() asm_symbol_rel(0x45B170) {
+        // TODO: the entire player movement code
+    }
+
+private:
+    // 0x45CB20
+    dllexport float vectorcall angle_from_point(int, Float2* position) asm_symbol_rel(0x45CB20) {
+        float y = this->data.position.y - position->y;
+        float x = this->data.position.x - position->x;
+        if (y == 0.0f && x == 0.0f) {
             return HALF_PI_f;
         } else {
-            clang_forceinline return zatan2f(y_pos, x_pos);
+            clang_forceinline return zatan2f(y, x);
         }
+    }
+public:
+    inline float angle_from_point(Float2* position) {
+        return this->angle_from_point(UNUSED_DWORD, position);
+    }
+
+    // 0x45D090
+    dllexport gnu_noinline void thiscall death() asm_symbol_rel(0x45D090);
+
+    // 0x45D590
+    dllexport gnu_noinline void thiscall cancel_impending_death() asm_symbol_rel(0x45D590) {
+        this->data.__death_timer.set(60);
+        this->data.state = 1;
     }
 
     // 0x45D3A0
-    dllexport gnu_noinline void thiscall die() asm_symbol_rel(0x45D3A0) {
-        if (!this->data.__unknown_flag_A) {
-            SoundManager::play_sound(2);
-        }
-        // TODO
-    }
+    dllexport gnu_noinline void thiscall start_dying() asm_symbol_rel(0x45D3A0);
 
     inline void __reset_damage_multiplier() {
         if (this->damage_multiplier < 1.01f) {
@@ -16537,17 +17111,233 @@ struct Player : ZUNTask {
     }
 
 private:
-    inline CollisionResult __check_collision_rectangle_impl(Float2* position, Float2* size, BOOL graze_only) {
+    inline void do_graze_impl(Float2* position) {
+        GAME_MANAGER.globals.add_graze();
+
+        Float3 graze_position = *position + this->data.position * 0.5f;
+
+        EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(24, &graze_position);
+
+        SOUND_MANAGER.play_sound_positioned(42, position->x);
+    }
+public:
+    // 0x45E160
+    dllexport gnu_noinline static void do_graze(Float2* position) asm_symbol_rel(0x45E160) {
+        return PLAYER_PTR->do_graze_impl(position);
+    }
+
+private:
+    // 0x45A5A0
+    dllexport gnu_noinline void vectorcall __set_position_and_all_option_D4_to_1(float, float x, float y) asm_symbol_rel(0x45A5A0) {
+        this->set_position(x, y);
+        this->__set_all_option_D4_to_1();
+    }
+public:
+    inline void __set_position_and_all_option_D4_to_1(float x, float y) {
+        return this->__set_position_and_all_option_D4_to_1(UNUSED_FLOAT, x, y);
+    }
+
+    // 0x45A600
+    dllexport gnu_noinline void thiscall __set_all_option_D4_to_1(int32_t value = UNUSED_DWORD) asm_symbol_rel(0x45A600) {
+        for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i) {
+            this->data.options[i].__int_D4 = 1;
+        }
+        nounroll for (size_t i = 0; i < PLAYER_EQUIPMENT_OPTION_COUNT; ++i) {
+            this->data.equipment[i].__int_D4 = 1;
+        }
+    }
+
+    // 0x45E930
+    dllexport gnu_noinline ZUNResult thiscall shoot_one_bullet(int32_t unknownA_index, int32_t time, Float3* position, PlayerOption* option) asm_symbol_rel(0x45E930) {
+        uint8_t index2 = unknownA_index;
+        int32_t index1 = unknownA_index >> 8;
+        ShtFileUnknownA* unknownA_ptr = &this->sht_file->__unknownA_ptr_array_E0[index1][index2];
+
+        if (unknownA_ptr->__byte_21 == 2) {
+            int32_t option_index = unknownA_ptr->__option_index;
+            
+            int32_t option_index_low = option_index % PLAYER_TOTAL_OPTION_COUNT;
+            int32_t option_index_high = option_index >> PLAYER_TOTAL_OPTION_COUNT_BIT_WIDTH;
+
+            int32_t index = option_index < PLAYER_TOTAL_OPTION_COUNT ? option_index_low : option_index_high;
+
+            if (this->data.__level_array_470DC[index] != 0) {
+                return ZUN_SUCCESS;
+            }
+        }
+
+        for (int32_t i = 0; i < PLAYER_BULLET_COUNT; ++i) {
+            PlayerBullet* bullet = &this->data.bullets[i];
+            if (bullet->state == 0) {
+                if (ZUN_FAILED(bullet->shoot(unknownA_index, time, position, option))) {
+                    return ZUN_ERROR;
+                }
+                break;
+            }
+        }
+        return ZUN_SUCCESS;
+    }
+
+    // 0x45EA00
+    dllexport gnu_noinline int thiscall tick_shooting_state() asm_symbol_rel(0x45EA00);
+
+    // 0x45EDB0
+    dllexport gnu_noinline int thiscall tick_bullets() asm_symbol_rel(0x45EDB0) {
+        for (size_t i = 0; i < PLAYER_BULLET_COUNT; ++i) {
+            this->data.bullets[i].on_tick();
+        }
+        PLAYER_PTR->data.__unknown_flag_G = false;
+        return 0;
+    }
+
+    // 0x45BE90
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x45BE90);
+
+    // 0x45CAA0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x45CAA0) {
+        if (ABILITY_SHOP_PTR) {
+            return UpdateFuncNext;
+        }
+        return ((Player*)ptr)->on_tick();
+    }
+
+    // 0x45CAC0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x45CAC0) {
+        Player* self = (Player*)ptr;
+        if (self->data.state != 2) {
+            self->__vm_14.controller.position = self->data.position;
+            self->__vm_14.data.origin_mode = 1;
+            ANM_MANAGER_PTR->draw_vm(&self->__vm_14);
+        }
+        return UpdateFuncNext;
+    }
+
+    // 0x45A7A0
+    dllexport gnu_noinline ZUNResult thiscall initialize() {
+        
+        AnmLoaded* player_anm = ANM_MANAGER_PTR->preload_anm(9, PLAYER_ANM_FILENAMES[GAME_MANAGER.globals.character]);
+        this->player_anm = player_anm;
+        if (player_anm) {
+            this->bullet_anm = player_anm;
+
+            if (ShtFile* cached_sht_file = CACHED_SHT_FILE_PTR) {
+                this->sht_file = cached_sht_file;
+                CACHED_SHT_FILE_PTR = NULL;
+            }
+            else {
+                ShtFile* sht_file = (ShtFile*)read_file_to_buffer(PLAYER_SHT_FILENAMES[GAME_MANAGER.globals.shottype_index()], NULL, false);
+                this->sht_file = sht_file;
+                if (!sht_file) {
+                    goto error;
+                }
+
+                int32_t i = 0;
+                if ((uint32_t)i < sht_file->__word_2) {
+                    do {
+                        sht_file = this->sht_file;
+
+                        sht_file->__unknownA_ptr_array_E0[i] = pointer_raw_offset(sht_file->__unknownA_ptr_array_E0[i], &sht_file->__unknownA_array_180[0]);
+
+                        for (
+                            ShtFileUnknownA* unknownA_ptr = sht_file->__unknownA_ptr_array_E0[i];
+                            unknownA_ptr->__int_0 >= 0;
+                            ++unknownA_ptr
+                        ) {
+                            unknownA_ptr->__init_func = PLAYER_BULLET_INIT_FUNCS[unknownA_ptr->__init_func_index];
+                            unknownA_ptr->__unknown_func_B = PLAYER_FUNC_TABLE_B[unknownA_ptr->__unknown_func_B_index];
+                            unknownA_ptr->__unknown_func_C = PLAYER_FUNC_TABLE_C[unknownA_ptr->__unknown_func_C_index];
+                            unknownA_ptr->__damage_func = PLAYER_BULLET_DAMAGE_FUNCS[unknownA_ptr->__damage_func_index];
+                        }
+
+                        sht_file = this->sht_file;
+                    } while (++i < sht_file->__word_2);
+                }
+            }
+
+            UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
+            UpdateFuncRegistry::register_on_tick(update_func, 23);
+            this->on_tick_func = update_func;
+            update_func = new UpdateFunc(&on_draw, false, this);
+            UpdateFuncRegistry::register_on_draw(update_func, 29);
+            this->on_draw_func;
+
+            this->player_anm->__copy_data_to_vm_and_run(&this->__vm_14, 0);
+
+            this->data.internal_position.x = 0;
+            this->data.internal_position.y = 51200;
+            this->data.position.x = 0.0f;
+            this->data.position.y = 400.0f;
+
+            this->__set_all_option_D4_to_1();
+
+            // this looks *very* wrong, but
+            // is somehow matching the codegen
+            for (int32_t i = 0; i < 4; ++i) {
+                ((int32_t*)&this->data.__timer_47180.current)[i] = this->sht_file->__float_array_10[i] * 128.0f;
+            }
+
+            this->sht_file->power_per_level = DEFAULT_POWER_PER_LEVEL;
+
+            GAME_MANAGER.globals.max_power = this->sht_file->power_per_level * this->sht_file->max_level;
+            GAME_MANAGER.globals.power_per_level = this->sht_file->power_per_level;
+
+            this->data.shoot_key_short_timer.set(-1);
+            this->data.shoot_key_long_timer.set(-1);
+            this->data.__death_timer.reset();
+            this->data.__timer_3C.reset();
+            this->data.__timer_47154.reset();
+            this->data.__timer_47168.reset();
+
+            this->data.__int_471C4 = 30;
+            this->data.power = 0;
+            this->data.__speed_modifier = 1.0f;
+
+            for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i) {
+                this->data.options[i].internal_position.y = -51200;
+            }
+            nounroll for (size_t i = 0; i < PLAYER_EQUIPMENT_OPTION_COUNT; ++i) {
+                this->data.equipment[i].internal_position.y = -51200;
+            }
+
+            this->data.__unknown_flag_H = false;
+
+            this->scale_interp.end_time = 0;
+            this->scale = 1.0f;
+
+            nounroll for (int32_t i = 0; i < PLAYER_BULLET_COUNT; ++i) {
+                this->data.bullets[i].__bullet_index = i;
+            }
+
+            return ZUN_SUCCESS;
+        }
+    error:
+        LOG_BUFFER.write(JpEnStr("", "Machine data not found. data is corrupted\r\n"));
+        return ZUN_ERROR;
+    }
+
+    // 0x45AF20
+    dllexport gnu_noinline static Player* allocate() {
+        Player* player = new Player();
+        PLAYER_PTR = player;
+        if (ZUN_FAILED(player->initialize())) {
+            delete player;
+            return NULL;
+        }
+        return player;
+    }
+
+private:
+    inline CollisionResult __check_collision_rectangle_impl(Float2* position, Float2* size, CollisionTestType test_type) {
         Float2 A = this->data.position;
         Float2 B;
         if (this->data.focused) {
-            B = this->__float2_479B0;
+            B = this->__hitbox_size_focused;
         } else {
-            B = this->__float2_479A4;
+            B = this->__hitbox_size_unfocused;
         }
         Float2 min = A - B;
         Float2 max = A + B;
-
+        // TODO: Verify this math isn't complete BS
         Float2 test_size = *size * 0.5f;
         Float2 test_pos = *position;
         Float2 test_min = test_pos - test_size;
@@ -16559,7 +17349,7 @@ private:
             !(max.y > test_min.y)
         ) {
             if (!Gui::msg_is_active()) {
-                if (graze_only) {
+                if (test_type != LethalCollisionTest) {
                     return GrazeCollision;
                 }
                 switch (this->data.state) {
@@ -16567,7 +17357,7 @@ private:
                         return NoCollision;
                 }
                 if (this->data.__timer_47154 <= 0) {
-                    this->die();
+                    this->start_dying();
                 }
                 return DeathCollision;
             }
@@ -16588,20 +17378,20 @@ private:
     }
 public:
     // 0x45CC20
-    dllexport gnu_noinline static CollisionResult __check_collision_rectangle(Float2* position, Float2* size, BOOL graze_only) asm_symbol_rel(0x45CC20) {
-        return PLAYER_PTR->__check_collision_rectangle_impl(position, size, graze_only);
+    dllexport gnu_noinline static CollisionResult __check_collision_rectangle(Float2* position, Float2* size, CollisionTestType test_type) asm_symbol_rel(0x45CC20) {
+        return PLAYER_PTR->__check_collision_rectangle_impl(position, size, test_type);
     }
 
 private:
     // Implementation may not actually use Float2 judging by how the compiler is using the stack
-    inline CollisionResult __check_collision_rotated_rectangle_impl(Float2* position, float angle, float width, float length, BOOL graze_only) {
+    inline CollisionResult __check_collision_rotated_rectangle_impl(Float2* position, float angle, float width, float length, CollisionTestType test_type) {
         Float2 A = (this->data.position - *position).rotate_around_origin(-angle);
         BOOL focused = this->data.focused;
         Float2 B;
         if (focused) {
-            B = this->__float2_479B0;
+            B = this->__hitbox_size_focused;
         } else {
-            B = this->__float2_479A4;
+            B = this->__hitbox_size_unfocused;
         }
         B *= 16.0f;
         Float2 min = A - B;
@@ -16613,9 +17403,9 @@ private:
             !(max.y > -width * 0.5f)
         ) {
             if (focused) {
-                B = this->__float2_479B0;
+                B = this->__hitbox_size_focused;
             } else {
-                B = this->__float2_479A4;
+                B = this->__hitbox_size_unfocused;
             }
             min = A - B;
             max = A + B;
@@ -16626,7 +17416,7 @@ private:
                 !(max.y > -width * 0.5f)
             ) {
                 if (!Gui::msg_is_active()) {
-                    if (graze_only) {
+                    if (test_type != LethalCollisionTest) {
                         return GrazeCollision;
                     }
                     switch (this->data.state) {
@@ -16636,7 +17426,7 @@ private:
                     if (this->data.__timer_47154 > 0) {
                         return NoCollision; // Bug? Inconsistent with other types
                     }
-                    this->die();
+                    this->start_dying();
                     return DeathCollision;
                 }
             } else {
@@ -16647,7 +17437,7 @@ private:
     }
 
     /*
-    inline CollisionResult __check_collision_rotated_rectangle_impl(Float2* position, float angle, float width, float length, BOOL graze_only) {
+    inline CollisionResult __check_collision_rotated_rectangle_impl(Float2* position, float angle, float width, float length, CollisionTestType test_type) {
         angle = -angle;
         float x = this->data.position.x - position->x;
         float y = this->data.position.y - position->y;
@@ -16659,11 +17449,11 @@ private:
         float BX;
         float BY;
         if (focused) {
-            BX = this->__float2_479B0.x;
-            BY = this->__float2_479B0.y;
+            BX = this->__hitbox_size_focused.x;
+            BY = this->__hitbox_size_focused.y;
         } else {
-            BX = this->__float2_479A4.x;
-            BY = this->__float2_479A4.y;
+            BX = this->__hitbox_size_unfocused.x;
+            BY = this->__hitbox_size_unfocused.y;
         }
         BX *= 16.0f;
         BY *= 16.0f;
@@ -16678,11 +17468,11 @@ private:
             !(y_max > -width * 0.5f)
         ) {
             if (focused) {
-                BX = this->__float2_479B0.x;
-                BY = this->__float2_479B0.y;
+                BX = this->__hitbox_size_focused.x;
+                BY = this->__hitbox_size_focused.y;
             } else {
-                BX = this->__float2_479A4.x;
-                BY = this->__float2_479A4.y;
+                BX = this->__hitbox_size_unfocused.x;
+                BY = this->__hitbox_size_unfocused.y;
             }
             x_min = AX - BX;
             x_max = AX + BX;
@@ -16695,7 +17485,7 @@ private:
                 !(y_max > -width * 0.5f)
             ) {
                 if (!Gui::msg_is_active()) {
-                    if (graze_only) {
+                    if (test_type != LethalCollisionTest) {
                         return GrazeCollision;
                     }
                     switch (this->data.state) {
@@ -16705,7 +17495,7 @@ private:
                     if (this->data.__timer_47154 > 0) {
                         return NoCollision;
                     }
-                    this->die();
+                    this->start_dying();
                     return DeathCollision;
                 }
             } else {
@@ -16717,40 +17507,24 @@ private:
     */
 
     // 0x45CEA0
-    dllexport gnu_noinline static CollisionResult vectorcall __check_collision_rotated_rectangle(int, int, float, float, Float2* position, float angle, float width, float length, BOOL graze_only) asm_symbol_rel(0x45CEA0) {
-        return PLAYER_PTR->__check_collision_rotated_rectangle_impl(position, angle, width, length, graze_only);
+    dllexport gnu_noinline static CollisionResult vectorcall __check_collision_rotated_rectangle(int, int, float, float, Float2* position, float angle, float width, float length, CollisionTestType test_type) asm_symbol_rel(0x45CEA0) {
+        return PLAYER_PTR->__check_collision_rotated_rectangle_impl(position, angle, width, length, test_type);
     }
 public:
-    static inline CollisionResult __check_collision_rotated_rectangle(Float2* position, float angle, float width, float length, BOOL graze_only) {
-        return Player::__check_collision_rotated_rectangle(UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, position, angle, width, length, graze_only);
+    static inline CollisionResult __check_collision_rotated_rectangle(Float2* position, float angle, float width, float length, CollisionTestType test_type) {
+        return Player::__check_collision_rotated_rectangle(UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, position, angle, width, length, test_type);
     }
 
 private:
-    inline void do_graze_impl(Float2* position) {
-        GAME_MANAGER.globals.add_graze();
-
-        Float3 graze_position = *position + this->data.position * 0.5f;
-
-        EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(24, &graze_position);
-
-        SOUND_MANAGER.play_sound_positioned(42, position->x);
-    }
-public:
-    // 0x45E160
-    dllexport gnu_noinline static void do_graze(Float2* position) asm_symbol_rel(0x45E160) {
-        return PLAYER_PTR->do_graze_impl(position);
-    }
-
-private:
-    inline CollisionResult check_collision_circle_impl(Float2* position, float radius, BOOL graze_only) {
+    inline CollisionResult check_collision_circle_impl(Float2* position, float radius, CollisionTestType test_type) {
         float distance_squared = this->data.position.distance_squared(position);
         float player_radius;
         if (this->data.focused) {
-            player_radius = this->__float_479A0;
+            player_radius = this->__hitbox_radius_focused;
         } else {
-            player_radius = this->__float_4799C;
+            player_radius = this->__hitbox_radius_unfocused;
         }
-        if (this->data.__unknown_flag_F) {
+        if (this->data.scale_enabled) {
             player_radius *= this->scale * 3.6f;
         }
         float radius_squared = radius * radius;
@@ -16765,7 +17539,7 @@ private:
         if (Gui::msg_is_active()) {
             return NoCollision;
         }
-        if (graze_only) {
+        if (test_type != LethalCollisionTest) {
             return GrazeCollision;
         }
         switch (this->data.state) {
@@ -16773,47 +17547,146 @@ private:
                 return NoCollision;
         }
         if (this->data.__timer_47154 <= 0) {
-            this->die();
+            this->start_dying();
         }
         return DeathCollision;
     }
 
     // 0x45CD90
-    dllexport static gnu_noinline CollisionResult vectorcall check_collision_circle(int, int, float, float, Float2* position, float radius, BOOL graze_only) asm_symbol_rel(0x45CD90) {
-        return PLAYER_PTR->check_collision_circle_impl(position, radius, graze_only);
+    dllexport static gnu_noinline CollisionResult vectorcall check_collision_circle(int, int, float, float, Float2* position, float radius, CollisionTestType test_type) asm_symbol_rel(0x45CD90) {
+        return PLAYER_PTR->check_collision_circle_impl(position, radius, test_type);
     }
 
 public:
-    static inline CollisionResult check_collision_circle(Float2* position, float radius, BOOL graze_only) {
-        return check_collision_circle(UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, position, radius, graze_only);
+    static inline CollisionResult check_collision_circle(Float2* position, float radius, CollisionTestType test_type) {
+        return check_collision_circle(UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, position, radius, test_type);
     }
 
-    // 0x45A7A0
-    dllexport gnu_noinline ZUNResult thiscall initialize() {
-        // TODO
-        return ZUN_SUCCESS;
-    }
+private:
+    // 0x45DE40
+    dllexport gnu_noinline int32_t vectorcall create_damage_source_circle(int, float, float, Float3* position, float radius, float radius_delta, int32_t duration, int32_t arg5) {
+        int32_t index = this->data.last_created_damage_source_index;
 
-    // 0x45AF20
-    dllexport gnu_noinline static Player* allocate() {
-        Player* player = new Player();
-        PLAYER_PTR = player;
-        if (ZUN_FAILED(player->initialize())) {
-            delete player;
-            return NULL;
+        for (int32_t i = 0; i < PLAYER_DAMAGE_SOURCE_COUNT; ++i) {
+            ++index;
+            if (index > PLAYER_DAMAGE_SOURCE_COUNT) {
+                index = 0;
+            }
+
+            PlayerDamageSource* damage_source = &this->data.damage_sources[index];
+            if (!damage_source->active) {
+                damage_source->active = true;
+                damage_source->hitbox_type = CircleHitbox;
+                damage_source->__unknown_flag_A = false;
+
+                damage_source->motion.zero_contents();
+                damage_source->motion.position = *position;
+                damage_source->radius = radius;
+                damage_source->radius_delta = radius_delta;
+                damage_source->duration.set(duration);
+                damage_source->__int_74 = arg5;
+                damage_source->__int_78 = 0;
+                damage_source->__int_7C = 9999999;
+                damage_source->__hit_frequency = 1;
+                damage_source->__unknown_func_index = 0;
+                damage_source->__enemy_id_84 = 0;
+                damage_source->__int_88 = 0;
+                damage_source->__int_8C = 0;
+                break;
+            }
         }
-        return player;
+
+        this->data.last_created_damage_source_index = index;
+        return index + 1;
+    }
+public:
+    inline int32_t create_damage_source_circle(Float3* position, float radius, float radius_delta, int32_t duration, int32_t arg5) {
+        return this->create_damage_source_circle(UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, position, radius, radius_delta, duration, arg5);
+    }
+
+private:
+    inline int32_t create_damage_source_rotated_rectangle_impl(
+        Float3* position,
+        float width, float height,
+        float rotation,
+        int32_t duration, int32_t arg6
+    ) {
+        int32_t index = this->data.last_created_damage_source_index;
+
+        for (int32_t i = 0; i < PLAYER_DAMAGE_SOURCE_COUNT; ++i) {
+            ++index;
+            if (index > PLAYER_DAMAGE_SOURCE_COUNT) {
+                index = 0;
+            }
+
+            PlayerDamageSource* damage_source = &this->data.damage_sources[index];
+            if (!damage_source->active) {
+                damage_source->active = true;
+                damage_source->hitbox_type = RectangleHitbox;
+                damage_source->__unknown_flag_A = false;
+
+                damage_source->motion.zero_contents();
+                damage_source->motion.position = *position;
+                damage_source->size.x = width;
+                damage_source->size.y = height;
+                damage_source->angle = rotation;
+                damage_source->angular_velocity.value = 0.0f;
+                damage_source->duration.set(duration);
+                damage_source->__int_74 = arg6;
+                damage_source->__int_78 = 0;
+                damage_source->__int_7C = 9999999;
+                damage_source->__hit_frequency = 1;
+                damage_source->__unknown_func_index = 0;
+                damage_source->__enemy_id_84 = 0;
+                damage_source->__int_88 = 0;
+                damage_source->__int_8C = 0;
+                break;
+            }
+        }
+
+        this->data.last_created_damage_source_index = index;
+        return index + 1;
+    }
+    // 0x45DFA0
+    static dllexport gnu_noinline int32_t vectorcall create_damage_source_rotated_rectangle(
+        int, int, float, float,
+        Float3* position,
+        float width, float height,
+        uint32_t rotation,
+        int32_t duration, int32_t arg6
+    ) asm_symbol_rel(0x45DFA0) {
+        return PLAYER_PTR->create_damage_source_rotated_rectangle_impl(
+            position,
+            width, height,
+            bitcast<float>(rotation),
+            duration, arg6
+        );
+    }
+public:
+    static inline int32_t create_damage_source_rotated_rectangle(
+        Float3* position,
+        float width, float height,
+        float rotation,
+        int32_t duration, int32_t arg6
+    ) {
+        return create_damage_source_rotated_rectangle(
+            UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT,
+            position,
+            width, height,
+            bitcast<uint32_t>(rotation),
+            duration, arg6
+        );
     }
 
     inline int32_t compute_damage_sources(Float3* position, Float2* size, float rotation, float radius, int32_t* arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) {
-        if (this->data.__timer_14.__is_paused()) {
+        if (this->data.__death_timer.__is_paused()) {
             return 0;
         }
 
         int32_t A; // LOCAL 17
 
         BombBase* bomb = BOMB_PTR;
-        if (!bomb->bomb_active) {
+        if (!bomb->active) {
             A = 0;
         } else {
             // Nothing uses this... >_>
@@ -16835,8 +17708,8 @@ public:
             ++i, ++damage_source_ptr
         ) {
             if (
-                damage_source_ptr->__active &&
-                damage_source_ptr->__timer_60.__is_multiple_of_not_paused(damage_source_ptr->__int_80) &&
+                damage_source_ptr->active &&
+                damage_source_ptr->duration.__is_multiple_of_not_paused(damage_source_ptr->__hit_frequency) &&
                 damage_source_ptr->__int_88 <= 0
             ) {
                 if (damage_source_ptr->check_collision(position, size, rotation, radius)) {
@@ -16882,7 +17755,7 @@ public:
                         G < 9999999 &&
                         G <= damage_source_ptr->__int_78
                     ) {
-                        damage_source_ptr->__active = false;
+                        damage_source_ptr->active = false;
                         damage_source_ptr->__int_74 = 0;
                     }
                 }
@@ -16901,15 +17774,52 @@ public:
         return A;
     }
 };
+#pragma region // Player Validation
+ValidateFieldOffset32(0x0, Player, task_flags);
+ValidateFieldOffset32(0x4, Player, on_tick_func);
+ValidateFieldOffset32(0x8, Player, on_draw_func);
+ValidateFieldOffset32(0xC, Player, player_anm);
+ValidateFieldOffset32(0x10, Player, bullet_anm);
+ValidateFieldOffset32(0x14, Player, __vm_14);
+ValidateFieldOffset32(0x620, Player, data);
+ValidateFieldOffset32(0x47928, Player, __float3_47928);
+ValidateFieldOffset32(0x47934, Player, __base_movement_velocity);
+ValidateFieldOffset32(0x4793C, Player, movement_direction);
+ValidateFieldOffset32(0x47940, Player, sht_file);
+ValidateFieldOffset32(0x47944, Player, __dword_47944);
+ValidateFieldOffset32(0x47948, Player, __byte_47948);
+ValidateFieldOffset32(0x4794C, Player, scale_interp);
+ValidateFieldOffset32(0x4797C, Player, scale);
+ValidateFieldOffset32(0x47980, Player, damage_multiplier);
+ValidateFieldOffset32(0x47984, Player, __int_47984);
+ValidateFieldOffset32(0x47988, Player, __item_attract_speed);
+ValidateFieldOffset32(0x4798C, Player, item_collect_radius);
+ValidateFieldOffset32(0x47990, Player, item_attract_radius_focused);
+ValidateFieldOffset32(0x47994, Player, item_attract_radius_unfocused);
+ValidateFieldOffset32(0x47998, Player, poc_height);
+ValidateFieldOffset32(0x4799C, Player, __hitbox_radius_unfocused);
+ValidateFieldOffset32(0x479A0, Player, __hitbox_radius_focused);
+ValidateFieldOffset32(0x479A4, Player, __hitbox_size_unfocused);
+ValidateFieldOffset32(0x479AC, Player, __float_479AC);
+ValidateFieldOffset32(0x479B0, Player, __hitbox_size_focused);
+ValidateFieldOffset32(0x479B8, Player, __float_479B8);
+ValidateFieldOffset32(0x479CC, Player, __float_479CC);
+ValidateStructSize32(0x479D0, Player);
+#pragma endregion
 
 // 0x45F0F0
-dllexport gnu_noinline int32_t vectorcall HitboxManager::enm_compute_damage_sources(int32_t, int32_t, float, float, float, Float3* position, Float2* size, float rotation, float radius, int32_t* arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) {
+dllexport gnu_noinline int32_t vectorcall HitboxManager::Impl::enm_compute_damage_sources(int32_t, int32_t, float, float, float, Float3* position, Float2* size, float rotation, float radius, int32_t* arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) {
     return PLAYER_PTR->compute_damage_sources(position, size, rotation, radius, arg5, hit_position_out, arg7, enemy_id);
+}
+
+// 0x45CBA0
+dllexport gnu_noinline float vectorcall HitboxManager::Impl::angle_to_player_from_point(int, int, Float2* position) {
+    clang_forceinline return PLAYER_PTR->angle_from_point(position);
 }
 
 static inline PlayerDamageSource* get_damage_source_by_index(int32_t index) {
     if (!index) {
-        return &PLAYER_PTR->data.__damage_source_46FF0;
+        return &PLAYER_PTR->data.__dummy_damage_source;
     }
     else {
         return &PLAYER_PTR->data.damage_sources[index - 1];
@@ -16952,6 +17862,54 @@ dllexport gnu_noinline int32_t fastcall PlayerDamageSource::__unknown_func_3(Pla
     vm->data.current_context.__float3_20.y = idk.y;
 
     return -1;
+}
+
+inline void PlayerBullet::on_tick() {
+    if (this->state) {
+
+        ShtFileUnknownA* unknownA_ptr = &PLAYER_PTR->sht_file->__unknownA_ptr_array_E0[this->__sht_unknownA_index1][this->__sht_unknownA_index2];
+
+        if (auto func_ptr = this->__func_ptr_D8) {
+            if (ZUN_FAILED(func_ptr(this))) {
+                return;
+            }
+        }
+
+        this->motion.update3();
+        this->motion.update();
+
+        AnmVM* vm = this->__vm_id_8.get_vm_ptr();
+        if (!vm) {
+            this->__int_9C = 0;
+            if (int32_t damage_source_index = this->damage_source_index) {
+                PLAYER_PTR->data.damage_sources[damage_source_index - 1].active = false;
+            }
+            return;
+        }
+
+        if (unknownA_ptr->__byte_21 != 2) {
+            //vm->__sub_481D20(idk);
+            if (this->__timer_C >= 15) {
+                // TODO: probably check for offscreen position
+            }
+        }
+
+        if (int32_t damage_source_index = this->damage_source_index) {
+            PlayerDamageSource* damage_source = &PLAYER_PTR->data.damage_sources[damage_source_index - 1];
+
+            damage_source->motion.position = this->motion.position;
+            damage_source->angle = this->motion.angle;
+            damage_source->size = this->size;
+            damage_source->__int_74 = this->__int_9C;
+        }
+
+        vm->controller.position = this->motion.position;
+        if (vm->data.auto_rotate) {
+            vm->set_z_rotation(this->motion.angle);
+        }
+
+        this->__timer_C++;
+    }
 }
 
 typedef struct PopupManager PopupManager;
@@ -17159,17 +18117,17 @@ struct CardBase {
     }
     // Method C
     // 0x413040
-    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb(int) {
-        return 0;
+    dllexport gnu_noinline virtual BOOL thiscall on_player_death(BOOL already_prevented_death) {
+        return FALSE;
     }
     // Method 10
     // 0x413050
-    dllexport gnu_noinline virtual int thiscall on_player_death_pre_deathbomb() {
+    dllexport gnu_noinline virtual int thiscall on_player_start_dying() {
         return 0;
     }
     // Method 14
     // 0x413060
-    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb_frame_2() {
+    dllexport gnu_noinline virtual int thiscall on_player_death_power_loss() {
         return 0;
     }
     // Method 18
@@ -17179,7 +18137,7 @@ struct CardBase {
     }
     // Method 1C
     // 0x413080
-    dllexport gnu_noinline virtual int thiscall on_shoot(int, int) {
+    dllexport gnu_noinline virtual int thiscall on_shoot(int32_t short_time, int32_t long_time) {
         return 0;
     }
     // Method 20
@@ -17194,7 +18152,7 @@ struct CardBase {
     }
     // Method 28
     // 0x4130B0
-    dllexport gnu_noinline virtual int thiscall __on_bullet_init(int) {
+    dllexport gnu_noinline virtual int thiscall __on_bullet_init(PlayerBullet* bullet) {
         return 0;
     }
     // Method 2C
@@ -17281,29 +18239,20 @@ struct CardKoishi : CardBase {
 
     // Method C
     // 0x40D4E0
-    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb(int) {
+    dllexport gnu_noinline virtual BOOL thiscall on_player_death(BOOL already_prevented_death) {
         this->power = GAME_MANAGER.globals.current_power;
-        return 0;
+        return FALSE;
     }
     // Method 14
     // 0x40D4F0
-    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb_frame_2() {
+    dllexport gnu_noinline virtual int thiscall on_player_death_power_loss() {
         this->power -= 50;
         int32_t new_power = this->power;
-        if (new_power < 100) {
-            this->power = 100;
-            new_power = 100;
+        if (new_power < DEFAULT_POWER_PER_LEVEL) {
+            this->power = DEFAULT_POWER_PER_LEVEL;
+            new_power = DEFAULT_POWER_PER_LEVEL;
         }
-        int32_t max_power = GAME_MANAGER.globals.max_power;
-        if (new_power > max_power) {
-            GAME_MANAGER.globals.current_power = max_power;
-        }
-        else {
-            if (new_power < GAME_MANAGER.globals.power_per_level) {
-                new_power = GAME_MANAGER.globals.power_per_level;
-            }
-            GAME_MANAGER.globals.current_power = new_power;
-        }
+        clang_forceinline GAME_MANAGER.globals.set_power(new_power);
         return 0;
     }
     // Method 2C
@@ -17340,8 +18289,9 @@ struct CardKaguya : CardBase {
 
     // Method 14
     // 0x40D2E0
-    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb_frame_2() {
-        //ITEM_MANAGER_PTR->spawn_item(7, )
+    dllexport gnu_noinline virtual int thiscall on_player_death_power_loss() {
+        spawn_item(BombItem, &PLAYER_PTR->data.position, -HALF_PI_f, 3.2f, 3);
+        return 0;
     }
 };
 
@@ -17364,7 +18314,7 @@ struct CardMamizou : CardBase {
     // 0x40D390
     dllexport gnu_noinline virtual int thiscall __method_4() {
         if (GAME_THREAD_PTR && this->__unknown_flag_B) {
-            BOOL A = GAME_MANAGER.globals.add_power(100);
+            BOOL A = GAME_MANAGER.globals.add_power(DEFAULT_POWER_PER_LEVEL);
             this->__unknown_flag_B = false;
             if (A) {
                 if (Player* player = PLAYER_PTR) {
@@ -17378,13 +18328,13 @@ struct CardMamizou : CardBase {
     }
     // Method C
     // 0x40D400
-    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb(int) {
+    dllexport gnu_noinline virtual BOOL thiscall on_player_death(BOOL already_prevented_death) {
         this->power = GAME_MANAGER.globals.current_power;
-        return 0;
+        return FALSE;
     }
     // Method 14
     // 0x40D410
-    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb_frame_2() {
+    dllexport gnu_noinline virtual int thiscall on_player_death_power_loss() {
         int32_t A = GAME_MANAGER.globals.power_per_level;
         int32_t new_power = this->power;
         
@@ -17517,14 +18467,16 @@ struct CardShikiEiki : CardBase {
     }
     // Method C
     // 0x40DA10
-    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb(int) {
+    dllexport gnu_noinline virtual BOOL thiscall on_player_death(BOOL already_prevented_death) {
         if (GAME_MANAGER.globals.current_money >= 200) {
             this->__sub_40D840();
-            PLAYER_PTR->data.__timer_14.set(60);
+
+            // This is an inlined version of cancel_impending_death
+            PLAYER_PTR->data.__death_timer.set(60);
             PLAYER_PTR->data.state = 1;
-            return 1;
+            return TRUE;
         }
-        return 0;
+        return FALSE;
     }
     // Method 24
     // 0x40DA80
@@ -17625,10 +18577,10 @@ struct CardShinmyoumaru : CardBase {
     }
     // Method C
     // 0x40F0D0
-    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb(int) {
+    dllexport gnu_noinline virtual BOOL thiscall on_player_death(BOOL already_prevented_death) {
         this->__int_54 = 0;
         this->effect_vm_id.mark_tree_for_delete();
-        return 0;
+        return FALSE;
     }
     // Method 2C
     // 0x40EED0
@@ -18004,10 +18956,10 @@ struct CardRemilia : CardBase {
     }
     // Method C
     // 0x40F650
-    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb(int) {
+    dllexport gnu_noinline virtual BOOL thiscall on_player_death(BOOL already_prevented_death) {
         this->__int_54 = 0;
         this->effect_vm_id.mark_tree_for_delete();
-        return 0;
+        return FALSE;
     }
     // Method 2C
     // 0x40F3A0
@@ -18109,10 +19061,10 @@ struct CardUtsuho : CardBase {
     }
     // Method C
     // 0x40FB40
-    dllexport gnu_noinline virtual int thiscall on_player_death_after_deathbomb(int) {
+    dllexport gnu_noinline virtual BOOL thiscall on_player_death(BOOL already_prevented_death) {
         this->__int_54 = 0;
         this->effect_vm_id.mark_tree_for_delete();
-        return 0;
+        return FALSE;
     }
     // Method 2C
     // 0x40F920
@@ -18427,13 +19379,13 @@ struct CardTsukasa : CardBase {
                 SOUND_MANAGER.play_sound(16);
                 return 0;
             }
-            BombBase* bomb_ptr = BOMB_PTR;
-            if (!bomb_ptr->bomb_active && !bomb_ptr->__dword_A0) {
-                bomb_ptr->bomb_active = TRUE;
-                bomb_ptr->__timer_34.reset();
+            BombBase* bomb = BOMB_PTR;
+            if (!bomb->active && !bomb->__dword_A0) {
+                bomb->active = TRUE;
+                bomb->__timer_34.reset();
                 // TODO
                 SOUND_MANAGER.play_sound_positioned(44, PLAYER_PTR->data.position.x);
-                bomb_ptr->activate();
+                bomb->activate();
                 UNKNOWN_COUNTER_A = 0;
                 // ENEMY_MANAGER_PTR->can_capture_spell = FALSE;
                 GAME_MANAGER.globals.subtract_power(GAME_MANAGER.globals.power_per_level);
@@ -18485,7 +19437,7 @@ struct CardMegumu : CardBase {
                 SOUND_MANAGER.play_sound_positioned(13, PLAYER_PTR->data.position.x);
             }
             else {
-                if (GAME_MANAGER.globals.add_power(100)) {
+                if (GAME_MANAGER.globals.add_power(DEFAULT_POWER_PER_LEVEL)) {
                     PLAYER_PTR->data.__sub_45D5E0();
                     POPUP_MANAGER_PTR->create_popup(&PLAYER_PTR->data.position, -1, PackD3DCOLOR(64, 255, 255, 255));
                     SOUND_MANAGER.play_sound_positioned(13, PLAYER_PTR->data.position.x);
@@ -18540,7 +19492,7 @@ struct CardMomoyo : CardBase {
 
     // Method 28
     // 0x411010
-    dllexport gnu_noinline virtual int thiscall __on_bullet_init(int) {
+    dllexport gnu_noinline virtual int thiscall __on_bullet_init(PlayerBullet* bullet) {
         // TODO
     }
     // Method 2C
@@ -18812,6 +19764,84 @@ struct AbilityManager : ZUNTask {
         LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
     }
 
+    // 0x408020
+    dllexport gnu_noinline static void __cleanup_all_anms() asm_symbol_rel(0x408020) {
+        AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
+
+        ability_manager->__anm_id_3C.mark_tree_for_delete();
+
+        nounroll for (size_t i = 0; i < countof(ability_manager->__anm_id_array_58); ++i) {
+            ability_manager->__anm_id_array_58[i].mark_tree_for_delete();
+        }
+
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(30);
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(31);
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(32);
+    }
+
+    // 0x4080E0
+    dllexport gnu_noinline static void __sub_4080E0() asm_symbol_rel(0x4080E0) {
+        AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
+
+        ability_manager->active_card_count = 0;
+        ability_manager->equipment_card_count = 0;
+        ability_manager->passive_card_count = 0;
+
+        ability_manager->card_list.for_each_safeB([=](CardBase* card) {
+            if (card->__unknown_flag_F) {
+                card->list_node.unlink();
+                delete card;
+                --ability_manager->card_count;
+            } else {
+                card->__method_4C();
+                if (card->__is_active_card) {
+                    ++ability_manager->active_card_count;
+                } else if (card->__is_equipment_card) {
+                    ++ability_manager->equipment_card_count;
+                } else {
+                    ++ability_manager->passive_card_count;
+                }
+            }
+        });
+
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(30);
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(31);
+
+        ability_manager->selected_active_card = NULL;
+
+        ZUNList<CardBase>* end_node = ability_manager->card_list.find_end_node();
+        for (
+            size_t card_count = ability_manager->card_count;
+            card_count;
+            --card_count
+        ) {
+            // wtf is this
+            if (
+                !end_node || end_node == &ability_manager->card_list
+            ) {
+                end_node = ability_manager->card_list.find_end_node();
+            }
+            CardBase* card = end_node->data;
+            if (card->__is_active_card) {
+                if (card) {
+                    ability_manager->selected_active_card = card;
+                    const CardData* card_data = card->data;
+
+                    ability_manager->__anm_id_3C.__tree_set_visible2();
+                    if (AnmVM* vm = ability_manager->__anm_id_3C.__wtf_child_list_jank_A(4, 0)) {
+                        vm->set_sprite(card_data->sprite_small);
+                    }
+                    if (AnmVM* vm = ability_manager->__anm_id_3C.__wtf_child_list_jank_A(3, 0)) {
+                        vm->set_sprite(card_data->sprite_small);
+                    }
+                }
+                break;
+            }
+        }
+
+        zero_array(ability_manager->__anm_id_array_58);
+    }
+
     inline void wait_for_ability_data_to_load() {
         while (!this->__ability_data_loaded) {
             Sleep(1);
@@ -18976,13 +20006,13 @@ struct AbilityManager : ZUNTask {
         this->__anm_id_3C.mark_tree_for_delete();
         ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(31);
 
-        for (size_t i = 0; i < countof(this->__anm_id_array_58); ++i) {
+        nounroll for (size_t i = 0; i < countof(this->__anm_id_array_58); ++i) {
             this->__anm_id_array_58[i].mark_tree_for_delete();
         }
 
         if (arg1) {
             // Do these REP STOS memsets correspond to std::array = {}?
-            memset(this->__int_array_C84, 0, sizeof(this->__int_array_C84));
+            zero_array(this->__int_array_C84);
 
             ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
             for (
@@ -18992,6 +20022,27 @@ struct AbilityManager : ZUNTask {
             ) {
                 int32_t card_id = scorefile_manager->primary_file.__sectionA.__card_ids_150[this->__int_C5C][i];
                 this->allocate_new_card(card_id, 1);
+            }
+        }
+    }
+
+    inline void check_for_card_activation() {
+        Gui* gui = GUI_PTR;
+        if (gui && !gui->msg_vm) {
+            if (enemies_are_alive()) {
+                if (INPUT_STATES[0].check_inputs_no_repeat(BUTTON_USE_CARD)) {
+                    if (CardBase* selected_card = this->selected_active_card) {
+                        selected_card->on_activate();
+                    }
+                }
+            }
+        }
+    }
+
+    static inline void check_for_card_switch() {
+        if (INPUT_STATES[0].check_inputs_no_repeat(BUTTON_SWITCH_CARD)) {
+            if (ABILITY_MANAGER_PTR->__sub_408B00(-1)) {
+                SOUND_MANAGER.play_sound(78);
             }
         }
     }
@@ -19035,6 +20086,77 @@ struct AbilityManager : ZUNTask {
     // 0x408BA0
     dllexport static gnu_noinline int __sub_408BA0(int32_t* ptr) asm_symbol_rel(0x408BA0) {
 
+    }
+
+    // 0x408C30
+    dllexport gnu_noinline void thiscall __sub_408C30() asm_symbol_rel(0x408C30) {
+        CardBase* card = this->selected_active_card;
+        if (!card) {
+            this->__anm_id_3C.__tree_clear_visible2();
+        }
+        else {
+            const CardData* card_data = card->data;
+
+            this->__anm_id_3C.__tree_set_visible2();
+
+            if (AnmVM* vm = this->__anm_id_3C.__wtf_child_list_jank_A(4, 0)) {
+                vm->set_sprite(card_data->sprite_small);
+            }
+            if (AnmVM* vm = this->__anm_id_3C.__wtf_child_list_jank_A(3, 0)) {
+                vm->set_sprite(card_data->sprite_small);
+            }
+        }
+    }
+
+    // 0x408B00
+    dllexport gnu_noinline int thiscall __sub_408B00(int32_t card_id) asm_symbol_rel(0x408B00) {
+        ZUNList<CardBase>* list_node;
+        if (card_id == -1) {
+            CardBase* card = this->selected_active_card;
+            if (!card) {
+                list_node = this->card_list.find_end_node();
+            }
+            else {
+                list_node = card->list_node.prev;
+            }
+        }
+        else {
+            list_node = this->card_list.next;
+        }
+
+        for (
+            size_t card_count = this->card_count;
+            card_count;
+            --card_count
+        ) {
+            if (
+                !list_node || list_node == &this->card_list
+            ) {
+                list_node = this->card_list.find_end_node();
+            }
+            CardBase* card = list_node->data;
+
+            // TODO: untangle mess
+            if (card_id < 0) {
+                if (card->__is_active_card) {
+                    if (this->selected_active_card == card) {
+                        break;
+                    }
+            idk:
+                    this->selected_active_card = card;
+                    this->__sub_408C30();
+                    return 1;
+                }
+            }
+            else if (card->id == card_id) {
+                goto idk;
+            }
+
+            list_node = list_node->prev;
+        }
+
+
+        return 0;
     }
 
 #if INCLUDE_PATCH_CODE
@@ -19091,16 +20213,11 @@ private:
         });
         return ret;
     }
-
-    // 0x418C70
-    dllexport gnu_noinline static int32_t stdcall equipped_cards_get_ids(int32_t* card_ids_out, int) {
-        return ABILITY_MANAGER_PTR->equipped_cards_get_ids_impl(card_ids_out);
-    }
 public:
 
-    // Wrapper to get rid of dummy arg when calling
-    inline int32_t equipped_cards_get_ids(int32_t* card_ids_out) {
-        return equipped_cards_get_ids(card_ids_out, UNUSED_DWORD);
+    // 0x418C70
+    dllexport gnu_noinline static int32_t stdcall equipped_cards_get_ids(int32_t* card_ids_out, int = UNUSED_DWORD) {
+        return ABILITY_MANAGER_PTR->equipped_cards_get_ids_impl(card_ids_out);
     }
 
     // 0x408BA0
@@ -19147,6 +20264,272 @@ static inline AnmLoaded* ability_manager_get_ability_anm() {
     return ABILITY_MANAGER_PTR->ability_anm;
 }
 
+// 0x45E320
+dllexport gnu_noinline ZUNResult thiscall PlayerBullet::shoot(int32_t unknownA_index, int32_t time, Float3* position, PlayerOption* option) {
+    uint8_t index2 = unknownA_index;
+    int32_t index1 = unknownA_index >> 8;
+    ShtFileUnknownA* unknownA_ptr = &PLAYER_PTR->sht_file->__unknownA_ptr_array_E0[index1][index2];
+
+    this->state = 1;
+    this->__sht_unknownA_index = unknownA_index;
+    this->__timer_C.reset();
+    this->__int_9C = unknownA_ptr->__anm_script;
+    this->size = unknownA_ptr->size;
+    this->option = option;
+    this->__focused = PLAYER_PTR->data.focused;
+    this->__init_func = unknownA_ptr->__init_func;
+    this->__func_ptr_EC = unknownA_ptr->__unknown_func_B;
+    this->__func_ptr_F0 = unknownA_ptr->__unknown_func_C;
+    this->__damage_func = unknownA_ptr->__damage_func;
+    this->motion.zero_contents();
+
+    int8_t option_index = unknownA_ptr->__option_index % PLAYER_TOTAL_OPTION_COUNT;
+    if (!option_index) {
+        this->motion.position = *position;
+    } else {
+        PlayerOption* option = &PLAYER_PTR->data.options[option_index - 1];
+        this->motion.position = {
+            option->internal_position.x * (1.0f / 128.0f),
+            option->internal_position.y * (1.0f / 128.0f),
+            0.0f
+        };
+    }
+
+    if (unknownA_ptr->__byte_21 == 2) {
+
+        int32_t level = GAME_MANAGER.globals.power_level();
+
+        int32_t option_index = unknownA_ptr->__option_index;
+        int32_t option_index_low = option_index % PLAYER_TOTAL_OPTION_COUNT;
+        int32_t option_index_high = option_index >> PLAYER_TOTAL_OPTION_COUNT_BIT_WIDTH;
+
+        int32_t index = option_index < PLAYER_TOTAL_OPTION_COUNT ? option_index_low : option_index_high;
+
+        PLAYER_PTR->data.__level_array_470DC[index] = level;
+    }
+
+    this->motion.speed = unknownA_ptr->speed;
+
+    float angle = unknownA_ptr->angle;
+    if (angle >= 1000.0f) {
+        // TODO: RNG
+    }
+    else if (angle >= 995.0f) {
+        // TODO: RNG
+    }
+    else {
+        this->motion.angle = angle;
+    }
+
+    this->motion.update3();
+
+    switch (unknownA_ptr->__byte_21) {
+        default:
+            this->motion.position.as2() += unknownA_ptr->position - this->motion.misc_float3.as2();
+            break;
+        case 4: case 5: case 6:
+            this->motion.position.as2() += unknownA_ptr->position;
+            break;
+    }
+
+
+    AnmLoaded* bullet_anm = PLAYER_PTR->bullet_anm;
+    this->bullet_anm = bullet_anm;
+
+    Float3 zero = {};
+
+    this->__vm_id_8 = bullet_anm->instantiate_vm_to_world_list_back(unknownA_ptr->__anm_script, &zero);
+
+    ABILITY_MANAGER_PTR->card_list.for_each([=](CardBase* card) {
+        card->__on_bullet_init(this);
+    });
+
+    AnmVM* vm = this->__vm_id_8.get_vm_ptr();
+
+    if (vm->data.auto_rotate) {
+        // BUG:
+        // this doesn't account for the RNG
+        // special cases of the angle value
+        vm->set_z_rotation(unknownA_ptr->angle);
+    }
+
+    int32_t damage_source_index = PLAYER_PTR->create_damage_source_rotated_rectangle(&this->motion.position, this->size.x, this->size.y, this->motion.angle, 9999999, this->__int_9C);
+    this->damage_source_index = damage_source_index;
+
+    PlayerDamageSource* damage_source = get_damage_source_by_index(damage_source_index);
+    damage_source->__unknown_func_index = 1;
+    damage_source->__int_7C = 10000000;
+    damage_source->__player_bullet_index = this->__bullet_index;
+
+    this->__unknown_flag_A = true;
+
+    auto* init_func = this->__init_func;
+    if (
+        init_func &&
+        ZUN_FAILED(init_func(this, damage_source))
+    ) {
+        this->state = 0;
+        this->__vm_id_8.mark_tree_for_delete();
+        this->__unknown_flag_A = false;
+        return ZUN_ERROR;
+    }
+
+    SOUND_MANAGER.play_sound_positioned_validate(unknownA_ptr->sound_id, this->motion.position.x);
+
+    vm->controller.position = this->motion.position;
+
+    return ZUN_SUCCESS;
+}
+
+// 0x45EA00
+dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
+    if (INPUT_STATES[0].check_inputs(BUTTON_SHOOT)) {
+        this->data.__unknown_flag_D = true;
+    }
+    if (!this->data.focused) {
+        if (INPUT_STATES[0].check_inputs(BUTTON_LEFT)) {
+            float angle = this->data.__shot_tilt_angle;
+            if (
+                angle > DEGREES(-135.0f)
+            ) {
+                this->data.__shot_tilt_angle += (DEGREES(-135.0f) - angle) * 0.08f;
+            }
+        }
+        else if (INPUT_STATES[0].check_inputs(BUTTON_RIGHT)) {
+            float angle = this->data.__shot_tilt_angle;
+            if (
+                angle < -QUARTER_PI_f
+            ) {
+                this->data.__shot_tilt_angle += (-QUARTER_PI_f - angle) * 0.08f;
+            }
+        }
+        else if (INPUT_STATES[0].check_inputs(BUTTON_DOWN)) {
+            float angle = this->data.__shot_tilt_angle;
+            this->data.__shot_tilt_angle += (-HALF_PI_f - angle) * 0.08f;
+
+            if (this->data.__shot_spread < 1.0f) {
+                this->data.__shot_spread += 0.05f;
+            }
+        }
+        else if (INPUT_STATES[0].check_inputs(BUTTON_UP)) {
+            float angle = this->data.__shot_tilt_angle;
+            this->data.__shot_tilt_angle += (-HALF_PI_f - angle) * 0.08f;
+
+            if (this->data.__shot_spread > 0.3f) {
+                this->data.__shot_spread -= 0.05f;
+            }
+        }
+        else {
+            float angle = this->data.__shot_tilt_angle;
+            this->data.__shot_tilt_angle += (-HALF_PI_f - angle) * 0.05f;
+        }
+
+        if (INPUT_STATES[0].check_inputs(BUTTON_UP | BUTTON_DOWN)) {
+            this->data.__shot_spread *= 0.9f;
+        }
+    }
+
+    if (this->data.state == 1) {
+        if (this->data.shoot_key_short_timer < 0) {
+            if (!INPUT_STATES[0].check_inputs(BUTTON_SHOOT)) {
+                // TODO
+            }
+
+            if (this->data.shoot_key_long_timer < 0) {
+                this->data.shoot_key_long_timer.reset();
+            }
+            this->data.shoot_key_short_timer.reset(); // technically this is its own function, but screw that
+        }
+
+        if (!this->data.shoot_key_short_timer.__is_paused()) {
+
+            int32_t A = this->data.shoot_key_long_timer;
+            int32_t B = this->data.shoot_key_short_timer;
+
+            int32_t sht_index = GAME_MANAGER.globals.power_level();
+
+            ShtFile* sht_file = this->sht_file;
+
+            uint32_t i = 0;
+            if (this->data.focused) {
+                sht_index += sht_file->max_level + 1;
+            }
+
+            ShtFileUnknownA* unknownA_ptr = sht_file->__unknownA_ptr_array_E0[sht_index];
+
+            int8_t C = unknownA_ptr->__byte_0;
+            if (C >= 0) {
+                do {
+                    if (C) {
+                        int32_t D = unknownA_ptr->__sbyte_2A;
+                        int32_t E;
+                        int32_t F;
+                        if (!D) {
+                            E = B % C;
+                            F = unknownA_ptr->__sbyte_1;
+                        } else {
+                            E = A % D;
+                            F = unknownA_ptr->__sbyte_2B;
+                        }
+                        if (E != F) {
+                            continue;
+                        }
+                    }
+
+                    PlayerOption* option = NULL;
+                    if (int8_t option_index = unknownA_ptr->__option_index) {
+                        int32_t index = option_index % PLAYER_TOTAL_OPTION_COUNT;
+                        option = &this->data.options[index - 1];
+                    }
+
+                    int32_t unknownA_index = i | sht_index << 8;
+                    this->shoot_one_bullet(unknownA_index, B, &this->data.position, option);
+                        
+                } while (
+                    // This was probably a for loop,
+                    // but whatever I wanted to use continue
+                    ++i,
+                    (C = ++unknownA_ptr->__byte_0) >= 0
+                );
+                // this is probably just spilled values
+                A = this->data.shoot_key_long_timer;
+                B = this->data.shoot_key_short_timer;
+            }
+
+            ABILITY_MANAGER_PTR->card_list.for_each([=](CardBase* card) {
+                card->on_shoot(B, A);
+            });
+        }
+
+
+        if (this->data.shoot_key_short_timer >= 15) {
+            if (INPUT_STATES[0].check_inputs(BUTTON_SHOOT)) {
+                this->data.shoot_key_short_timer -= 15;
+            } else {
+                this->data.shoot_key_short_timer.set(-1);
+            }
+        } else {
+            this->data.shoot_key_short_timer++;
+            int32_t long_timer = this->data.shoot_key_long_timer;
+            if (long_timer < 0) {
+                return 0;
+            }
+            if (long_timer >= 119) {
+                if (INPUT_STATES[0].check_inputs(BUTTON_SHOOT)) {
+                    this->data.shoot_key_long_timer -= 119;
+                } else {
+                    this->data.shoot_key_long_timer.set(-1);
+                }
+            }
+            return 0;
+        }
+    }
+
+    this->__dword_47944 = 0;
+    this->__byte_47948 = 0;
+    return 0;
+}
+
 // size: 0xE3C
 struct AbilityShop : ZUNTask {
     // ZUNTask base; // 0x0
@@ -19190,6 +20573,9 @@ struct AbilityShop : ZUNTask {
             this->__anm_id_array_22C[i].mark_tree_for_delete();
         }
     }
+
+    // 0x417880
+    dllexport gnu_noinline void thiscall cleanup() asm_symbol_rel(0x417880);
 
     // 0x417CC0
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x417CC0) {
@@ -19459,10 +20845,10 @@ dllexport gnu_noinline void fastcall thcrap_print(EclContext* self_in, int, cons
 dllexport gnu_noinline float vectorcall Float3::__bullet_effect_angle_jank(float angle, float arg2, float arg3) {
     if (!(arg2 <= -999990.0f)) {
         if (arg2 >= 999990.0f && arg2 < 1999990.0f) {
-            return arg3 + Player::angle_to_player_from_point(this);
+            return arg3 + angle_to_player_from_point(this);
         }
         if (arg2 >= 2999990.0f && arg2 < 3999990.0f) {
-            return REPLAY_RNG.rand_float_signed_range(arg3) + Player::angle_to_player_from_point(this);
+            return REPLAY_RNG.rand_float_signed_range(arg3) + angle_to_player_from_point(this);
         }
         if (arg2 >= 3999990.0f && arg2 < 4999990.0f) {
             return REPLAY_RNG.rand_float_signed_range(arg3) + angle;
@@ -19475,6 +20861,8 @@ dllexport gnu_noinline float vectorcall Float3::__bullet_effect_angle_jank(float
     return angle;
 }
 
+static inline constexpr size_t MAX_BOSS_COUNT = 16; // I'm just guessing here
+
 // size: 0x1A0
 struct EnemyManager : ZUNTask {
     // ZUNTask base; // 0x0
@@ -19483,8 +20871,7 @@ struct EnemyManager : ZUNTask {
     int32_t player_death_count; // 0x3C
     int32_t player_bomb_count; // 0x40
     int32_t can_capture_spell; // 0x44
-    int32_t boss_ids[4]; // 0x48
-    unknown_fields(0x30); // 0x58
+    int32_t boss_ids[MAX_BOSS_COUNT]; // 0x48
     union {
         uint32_t flags; // 0x88
         struct {
@@ -19514,6 +20901,20 @@ struct EnemyManager : ZUNTask {
     inline EnemyManager() {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
+    }
+
+    // 0x42AB40
+    dllexport gnu_noinline void thiscall destroy_all() asm_symbol_rel(0x42AB40) {
+        AnmManager* anm_manager = ANM_MANAGER_PTR;
+        for (size_t i = 0; i < 10; ++i) {
+            anm_manager->mark_all_vms_from_loaded_slot_for_delete(i + 10);
+        }
+
+        this->enemy_list.delete_each_data();
+
+        zero_array_inline(this->boss_ids);
+        
+        this->disable_funcs();
     }
 
     forceinline bool is_below_enemy_limit() {
@@ -19815,6 +21216,13 @@ ValidateFieldOffset32(0x19C, EnemyManager, __angle_19C);
 ValidateStructSize32(0x1A0, EnemyManager);
 #pragma endregion
 
+static inline bool enemies_are_alive() {
+    if (EnemyManager* enemy_manager = ENEMY_MANAGER_PTR) {
+        return enemy_manager->enemy_count != 0;
+    }
+    return false;
+}
+
 // 0x42DA90
 // Method 4
 dllexport gnu_noinline ZUNResult thiscall EclController::load_imports(EclIncludes* includes) {
@@ -19864,13 +21272,6 @@ dllexport gnu_noinline Enemy* thiscall EnemyID::get_enemy_ptr() {
         return NULL;
     }
     return ENEMY_MANAGER_PTR->get_enemy_by_id_impl(raw_id);
-}
-
-static inline bool enemies_are_alive() {
-    if (EnemyManager* enemy_manager = ENEMY_MANAGER_PTR) {
-        return enemy_manager->enemy_count != 0;
-    }
-    return false;
 }
 
 inline void EnemyData::set_anm_vm_slowdowns(const float& slowdown_value) {
@@ -20741,6 +22142,13 @@ struct Spellcard : ZUNTask {
         this->zero_contents();
     }
 
+    // 0x429D80
+    dllexport gnu_noinline ~Spellcard() {
+        this->__vm_id_10.mark_tree_for_delete();
+        this->__vm_id_14.mark_tree_for_delete();
+        this->__vm_id_18.mark_tree_for_delete();
+    }
+
     // 0x409B10
     dllexport gnu_noinline BOOL thiscall __get_flag_A() asm_symbol_rel(0x409B10) {
         return this->__unknown_flag_A;
@@ -20786,14 +22194,14 @@ struct Spellcard : ZUNTask {
                 this->__bonus_A = 0;
                 this->__unknown_flag_B = false;
                 this->__unknown_flag_E = false;
-            } else if (BOMB_PTR->bomb_active == TRUE) {
+            } else if (BOMB_PTR->is_active()) {
                 this->__unknown_flag_E = true;
             }
         }
     }
 
     // 0x409AD0
-    dllexport gnu_noinline static void __sub_409AD0() asm_symbol_rel(0x409AD0) {
+    static dllexport gnu_noinline void __sub_409AD0() asm_symbol_rel(0x409AD0) {
         SPELLCARD_PTR->__inline_sub_409AD0();
     }
 
@@ -20953,34 +22361,338 @@ ValidateFieldOffset32(0xAC, Spellcard, __float3_AC);
 ValidateStructSize32(0xC0, Spellcard);
 #pragma endregion
 
+// 0x420360
+dllexport gnu_noinline ZUNResult BombBase::start_bomb() {
+    BombBase* bomb = BOMB_PTR;
+    if (
+        !bomb->active && !bomb->__dword_A0
+    ) {
+        bomb->active = TRUE;
+        bomb->__timer_34.reset();
+        GAME_MANAGER.globals.subtract_bomb();
+
+        Spellcard* spellcard = SPELLCARD_PTR;
+        if (
+            spellcard->__unknown_flag_A &&
+            spellcard->__timer_20 >= 60
+        ) {
+            bomb->__int_68 = 1;
+        }
+
+        SOUND_MANAGER.play_sound_positioned(44, PLAYER_PTR->data.position.x);
+
+        bomb->activate();
+
+        UNKNOWN_COUNTER_A = 0;
+
+        ENEMY_MANAGER_PTR->can_capture_spell = false;
+
+        return ZUN_SUCCESS;
+    }
+    return ZUN_ERROR;
+}
+
+// 0x420420
+dllexport gnu_noinline BOOL BombBase::bomb_allowed() {
+    if (GAME_MANAGER.globals.bomb_stocks > 0) {
+        BombBase* bomb = BOMB_PTR;
+        if (
+            (bomb && bomb->active != TRUE) &&
+            GUI_PTR->msg_is_inactive() &&
+            enemies_are_alive()
+        ) {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+// 0x45BE90
+dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
+    switch (this->data.state) {
+        case 0: { // Respawning?
+            int32_t A = 61440 - this->data.__death_timer * 10240 / 60;
+            this->data.__death_timer.previous = A;
+            this->set_y_position_internal(A);
+            this->__set_all_option_D4_to_1();
+            this->reset_previous_positions();
+            int32_t B = this->data.__death_timer;
+            float radius;
+            if (B >= 30) {
+                Spellcard* spellcard = SPELLCARD_PTR;
+                if (
+                    spellcard->__unknown_flag_A &&
+                    spellcard->id == 96
+                ) {
+                    bullet_cancel_radius(&this->data.position, 128.0f, CancelType0);
+                }
+                bullet_cancel_radius_as_bomb(&this->data.position, 640.0f, CancelType0, 99999, 0);
+                radius = 640.0f;
+            } else {
+                radius = (float)B * 512.0f / 30.f + 64.0f;
+                laser_cancel_radius(&this->data.position, radius, 0, 1);
+                radius *= 0.25f;
+            }
+            laser_cancel_radius(&this->data.position, radius, 0, 0);
+
+            if (this->data.__death_timer < 60) {
+                break;
+            }
+
+            this->data.__death_timer.reset();
+        }
+        case 1: // Normal
+            BOMB_PTR->check_for_bomb();
+            ABILITY_MANAGER_PTR->check_for_card_activation();
+            ABILITY_MANAGER_PTR->check_for_card_switch();
+            if (!ABILITY_SHOP_PTR) {
+                this->__sub_45B170();
+            }
+            ABILITY_MANAGER_PTR->card_list.for_each([](CardBase* card) {
+                card->on_tick();
+            });
+            break;
+        case 4: // Dying?
+            if (this->data.__death_timer >= this->data.num_deathbomb_frames) {
+                BOOL prevent_death = FALSE;
+                ABILITY_MANAGER_PTR->card_list.for_each([&](CardBase* card) {
+                    prevent_death |= card->on_player_death(prevent_death);
+                });
+                if (prevent_death) {
+                    break;
+                }
+                this->death();
+            } else {
+                if (BOMB_PTR->check_for_deathbomb()) {
+                    this->cancel_impending_death();
+                }
+                break;
+            }
+        case 2: {
+            int32_t current_death_timer = this->data.__death_timer;
+            if (current_death_timer == 3) {
+                GAME_MANAGER.globals.subtract_power(GAME_MANAGER.globals.power_per_level);
+                
+                Float3 position = { 0.0f, this->data.position.y - 224.0f, 0.0f };
+                float base_angle = this->angle_from_point(&position);
+
+                // Gotta love old code that does literally nothing
+                int32_t item_ids[] = {
+                    PowerItem, PowerItem, PowerItem, PowerItem, PowerItem, PowerItem, PowerItem
+                };
+
+                nounroll for (int32_t i = 0; i < 7; ++i) {
+                    float angle = base_angle + (float)i * PI_f / 28.0f - EIGHTH_PI_f;
+                    spawn_item(item_ids[i], &this->data.position, angle, 3.0f, 0);
+                }
+
+                int32_t current_money = GAME_MANAGER.globals.current_money;
+                int32_t money_loss = current_money / 3;
+                money_loss = __min(money_loss, 100);
+
+                ABILITY_MANAGER_PTR->card_list.for_each([](CardBase* card) {
+                    card->on_player_death_power_loss();
+                });
+
+                this->data.__sub_45D5E0();
+
+                current_death_timer = this->data.__death_timer;
+            }
+            if (current_death_timer < 60) {
+                break;
+            }
+
+            if (
+                GAME_MANAGER.globals.life_stocks < 0 &&
+                current_death_timer == 60
+            ) {
+                if (!is_replay()) {
+                    //PAUSE_MENU_PTR->__sub_458A30();
+                }
+                this->data.__death_timer++;
+            }
+            else {
+                this->data.state = 0;
+                GAME_SPEED.value = 1.0f;
+                this->create_damage_source_circle(&this->data.position, 32.0f, 16.0f, 30, 150);
+                this->__float3_47928 = this->data.position;
+                this->__set_position_and_all_option_D4_to_1(0.0f, SCREEN_HEIGHT + 38.0f);
+                this->data.__timer_47154.set(280);
+                this->data.__death_timer.reset();
+            }
+        }
+    }
+
+    for (size_t i = 0; i < PLAYER_DAMAGE_SOURCE_COUNT; ++i) {
+        this->data.damage_sources[i].on_tick();
+    }
+
+    this->data.__timer_47168--;
+
+    if (this->data.__timer_47154 > 0) {
+        this->data.__timer_47154--;
+
+        if (this->data.__death_timer.__is_multiple_of_not_paused(3)) {
+            this->__vm_14.data.color2 = PackD3DCOLOR(255, 0, 0, 255);
+            this->__vm_14.data.color_mode = 1;
+        } else {
+            this->__vm_14.data.color_mode = 0;
+        }
+    }
+    else {
+        this->__vm_14.data.color_mode = 0;
+
+        if (this->data.__unknown_flag_E) {
+            if (this->data.__death_timer % 8 < 4) {
+                this->__vm_14.data.color2 = PackD3DCOLOR(255, 255, 0, 0);
+                this->__vm_14.data.color_mode = 1;
+            }
+        }
+        else {
+            if (
+                this->data.__speed_modifier > 1.01f &&
+                this->data.__death_timer % 8 < 4
+            ) {
+                this->__vm_14.set_alpha2(0);
+                this->__vm_14.data.color_mode = 1;
+            }
+        }
+    }
+
+    this->data.__speed_modifier = 1.0f;
+    this->data.__base_axis_speed = UNKNOWN_FLOAT3_B;
+
+    this->__vm_14.run_anm();
+
+    if (this->data.scale_enabled) {
+        float scale = this->scale;
+        if (this->scale_interp.end_time) {
+            scale = this->scale_interp.step();
+            this->scale = scale;
+            if (
+                !this->scale_interp.end_time ||
+                !this->data.__death_timer.is_multiple_of(3)
+            ) {
+                scale = 1.0f;
+            }
+        }
+        this->__vm_14.set_scale(scale);
+    }
+    else {
+        this->__vm_14.set_scale(1.0f);
+    }
+
+    this->data.__death_timer++;
+    this->data.__timer_28++;
+    this->data.__timer_3C++;
+
+    this->data.__unknown_flag_D = false;
+
+    if (
+        !GUI_PTR->msg_vm &&
+        enemies_are_alive() &&
+        !GAME_THREAD_PTR->__unknown_flag_C &&
+        this->data.__timer_3C >= 20 &&
+        !this->data.__unknown_flag_H &&
+        this->data.__unknown_field_A &&
+        !this->data.scale_enabled
+    ) {
+        this->tick_shooting_state();
+    }
+    else {
+        this->data.shoot_key_short_timer.set(-1);
+        this->data.shoot_key_long_timer.set(-1);
+        SOUND_MANAGER.stop_sound(30);
+        SOUND_MANAGER.stop_sound(55);
+    }
+
+    this->tick_bullets();
+
+    return UpdateFuncNext;
+}
+
+// 0x45D090
+dllexport gnu_noinline void thiscall Player::death() {
+    EFFECT_MANAGER_PTR->instantiate_effect_vm_to_world_list_back(28, &this->data.position);
+
+    // probably an inlined subtract_life function here
+    int32_t life_count = --GAME_MANAGER.globals.life_stocks;
+    if (life_count >= 0) {
+        GUI_PTR->__update_life_ui(life_count, GAME_MANAGER.globals.life_fragments, GAME_MANAGER.globals.life_stock_max);
+        life_count = GAME_MANAGER.globals.life_stocks;
+    }
+    if (life_count >= 0) {
+        GAME_MANAGER.globals.set_bombs(GAME_MANAGER.globals.bomb_stocks_for_new_life);
+        __update_bomb_ui();
+    }
+
+    this->data.__death_timer.reset();
+    this->data.__timer_47154.set(180);
+
+    this->player_anm->__copy_data_to_vm_and_run(&this->__vm_14, 0);
+
+    nounroll for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i) {
+        PlayerOption* option = &this->data.options[i];
+        option->__dword_0 = 0;
+        option->__anm_id_B0.interrupt_tree(1);
+        option->__anm_id_B4.interrupt_tree(1);
+    }
+
+    this->data.power = 0;
+
+    nounroll for (size_t i = 0; i < PLAYER_EQUIPMENT_OPTION_COUNT; ++i) {
+        PlayerOption* option = &this->data.equipment[i];
+        option->__dword_0 = 0;
+        option->__anm_id_B0.interrupt_tree(1);
+        option->__anm_id_B4.interrupt_tree(1);
+    }
+
+    Spellcard* spellcard = SPELLCARD_PTR;
+    if (spellcard->__unknown_flag_A) {
+        if (spellcard->__timer_20 >= 60) {
+            spellcard->__unknown_flag_B = false;
+            spellcard->__unknown_flag_E = false;
+        }
+        else if (BOMB_PTR->is_active()) {
+            spellcard->__unknown_flag_E = true;
+        }
+    }
+
+    UNKNOWN_COUNTER_A = 0;
+
+    EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
+    ++enemy_manager->player_death_count;
+    enemy_manager->can_capture_spell = FALSE;
+
+    GAME_MANAGER.globals.add_death();
+}
+
+// 0x45D3A0
+dllexport gnu_noinline void thiscall Player::start_dying() {
+    if (!this->data.__unknown_flag_B) {
+        SOUND_MANAGER.play_sound(2);
+    }
+    
+    EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(29, &this->data.position);
+
+    SPELLCARD_PTR->__inline_sub_409AD0();
+
+    this->data.__death_timer.reset();
+    this->data.state = 4;
+    this->data.__timer_47154.set(6);
+
+    this->player_anm->__copy_data_to_vm_and_run(&this->__vm_14, 0);
+
+    ABILITY_MANAGER_PTR->card_list.for_each([](CardBase* card) {
+        card->on_player_start_dying();
+    });
+}
+
 // size: 0x8
 struct ItemSpriteData {
     int32_t __id_0; // 0x0
     int32_t __id_4; // 0x4
     // 0x8
-};
-
-enum ItemID : int32_t {
-    InvalidItem = 0,
-    PowerItem = 1,
-    PointItem = 2,
-    BigPowerItem = 3,
-    LifeFragmentItem = 4,
-    LifeItem = 5,
-    BombFragmentItem = 6,
-    BombItem = 7,
-    FItem = 8,
-    Piv5Item = 9,
-    Piv10Item = 10,
-    Piv20Item = 11,
-    Piv30Item = 12,
-    Piv40Item = 13,
-    Piv50Item = 14,
-    Item15 = 15,
-    Item16 = 16,
-    Item17 = 17,
-    Item18 = 18,
-    Item19 = 19
 };
 
 // size: 0xC94
@@ -21049,12 +22761,16 @@ extern "C" {
     // 0x4CF2EC
     dllexport extern ItemManager* ITEM_MANAGER_PTR asm("_ITEM_MANAGER_PTR");
 }
+
+static inline constexpr size_t MAX_ITEM_COUNT = 600;
+static inline constexpr size_t MAX_CANCEL_ITEM_COUNT = 0x1000;
+
 // size: 0xE6BB28
 struct ItemManager : ZUNTask {
     //ZUNTask base; // 0x0
     unknown_fields(0x8); // 0xC
-    Item items[600]; // 0x14
-    Item cancel_items[0x1000]; // 0x1D7AF4
+    Item items[MAX_ITEM_COUNT]; // 0x14
+    Item cancel_items[MAX_CANCEL_ITEM_COUNT]; // 0x1D7AF4
     ZUNListHead<Item> items_freelist; // 0xE6BAF4
     ZUNListHead<Item> cancel_items_freelist; // 0xE6BB04
     float slowdown_factor; // 0xE6BB14
@@ -21063,9 +22779,32 @@ struct ItemManager : ZUNTask {
     unknown_fields(0x8); // 0xE6BB20
     // 0xE6BB28
 
+    // 0x42AA30
+    dllexport gnu_noinline void thiscall destroy_all() {
+        memset(&this->items, 0, sizeof(Item[MAX_ITEM_COUNT + MAX_CANCEL_ITEM_COUNT]));
+
+        this->items_freelist.initialize_with(NULL);
+
+        for (size_t i = 0; i < MAX_ITEM_COUNT; ++i) {
+            Item* item = &this->items[i];
+            item->__list_node_0.initialize_with(item);
+            this->items_freelist.append(&item->__list_node_0);
+        }
+
+        this->cancel_items_freelist.initialize_with(NULL);
+
+        for (size_t i = 0; i < MAX_CANCEL_ITEM_COUNT; ++i) {
+            Item* item = &this->cancel_items[i];
+            item->__list_node_0.initialize_with(item);
+            this->cancel_items_freelist.append(&item->__list_node_0);
+        }
+
+        this->slowdown_factor = 1.0f;
+    }
+
 private:
     // 0x446F40
-    dllexport gnu_noinline Item* spawn_item(int32_t item_id, Float3* position, float, float angle, float speed, int32_t arg6) asm_symbol_rel(0x446F40) {
+    dllexport gnu_noinline Item* thiscall spawn_item(int32_t item_id, Float3* position, float, float angle, float speed, int32_t arg6, int, int) asm_symbol_rel(0x446F40) {
         if (item_id > 20) {
             return NULL;
         }
@@ -21089,7 +22828,7 @@ private:
     }
 public:
     inline Item* spawn_item(int32_t item_id, Float3* position, float angle, float speed, int32_t arg6) {
-        return this->spawn_item(item_id, position, UNUSED_FLOAT, angle, speed, arg6);
+        return this->spawn_item(item_id, position, UNUSED_FLOAT, angle, speed, arg6, UNUSED_DWORD, UNUSED_DWORD);
     }
 };
 #pragma region // ItemManager Validation
@@ -21106,19 +22845,8 @@ ValidateFieldOffset32(0xE6BB1C, ItemManager, item_count);
 ValidateStructSize32(0xE6BB28, ItemManager);
 #pragma endregion
 
-// 0x430510
-dllexport gnu_noinline void EnemyDrops::spawn_extra_items(Float3* position) {
-
-}
-
-// 0x42D0C0
-dllexport void EnemyDrops::spawn_items(Float3* position) {
-    int32_t main_drop = this->main_id;
-    if (main_drop) {
-        ITEM_MANAGER_PTR->spawn_item(main_drop, position, -HALF_PI_f, 2.2f, 0);
-    }
-    this->spawn_extra_items(position);
-    this->main_id = 0;
+static inline Item* spawn_item(int32_t item_id, Float3* position, float angle, float speed, int32_t arg6) {
+    return ITEM_MANAGER_PTR->spawn_item(item_id, position, angle, speed, arg6);
 }
 
 // size: 0x10
@@ -21142,7 +22870,7 @@ struct BulletSpriteData {
 };
 
 extern "C" {
-    // 0x4C5F8C
+    // 0x4C5F90
     extern BulletSpriteData BULLET_SPRITE_DATA[48] asm("_BULLET_SPRITE_DATA");
     // 0x4B36F0
     extern int32_t BULLET_IDK_DATA[8] asm("_BULLET_IDK_DATA");
@@ -21217,6 +22945,7 @@ struct BulletEffectData {
     union { // 0x34
         int32_t duration;
         int32_t __offscreen_unknown;
+        int32_t wrap_count;
     };
     union { // 0x38
         int32_t max_count;
@@ -21233,6 +22962,14 @@ struct BulletEffectData {
     inline BulletEffectData() {}
 };
 
+enum BulletState {
+    BulletState0,
+    BulletState1,
+    BulletState2,
+    BulletState3,
+    CanceledBullet = 4
+};
+
 // size: 0xFA0
 struct Bullet {
     ZUNList<Bullet> __list_0; // 0x0
@@ -21246,7 +22983,7 @@ struct Bullet {
             uint32_t __unknown_flag_D : 1; // 4
             uint32_t __circular_hitbox : 1; // 5
             uint32_t : 1; // 6
-            uint32_t __unknown_flag_B : 1; // 7
+            uint32_t __scale_enabled : 1; // 7
             uint32_t : 1; // 8
             uint32_t __unknown_flag_C : 1; // 9
             uint32_t __delay_flag : 1; // 10
@@ -21266,8 +23003,8 @@ struct Bullet {
     int32_t bullet_manager_index; // 0x660
     int32_t __ex_func_a; // 0x664
     unknown_fields(0x8); // 0x668
-    int32_t __int_670; // 0x670
-    int32_t __cancel_script_id; // 0x674
+    int32_t offscreen_time; // 0x670
+    int32_t cancel_script_id; // 0x674
     int __int_678; // 0x678
     int32_t effect_index; // 0x67C
     int32_t effect_loop_index; // 0x680
@@ -21335,20 +23072,44 @@ struct Bullet {
     dllexport gnu_noinline void cleanup() asm_symbol_rel(0x424AD0);
 
     // 0x428E90
-    dllexport int32_t cancel(int) asm_symbol_rel(0x428E90) {
-        this->vm.interrupt_and_run(1);
-        this->__anm_tree_id.interrupt_tree(1);
-        if (!this->__delay_flag) {
-            // item spawning stuff
+    dllexport gnu_noinline int32_t thiscall cancel(CancelType cancel_type) asm_symbol_rel(0x428E90);
+
+    inline AnmSprite* get_sprite() {
+        return &ANM_MANAGER_PTR->loaded_anm_files[this->vm.data.slot2]->sprites[this->vm.data.sprite_id];
+    }
+
+    inline bool is_offscreen() {
+        float scale = this->scale;
+        
+        float X = this->position.x;
+
+        float sprite_width = this->get_sprite()->__size_x * scale;
+        float half_width = sprite_width * 0.5f;
+
+        if (
+            (X + half_width <= SCREEN_LEFT_EDGE) ||
+            (X - half_width >= SCREEN_RIGHT_EDGE)
+        ) {
+            return true;
         }
-        this->state = 4;
-        this->position += this->velocity * GAME_SPEED * 0.5f;
-        this->__timer_F6C.reset();
-        return 0;
+
+        float Y = this->position.y;
+
+        float sprite_height = this->get_sprite()->__size_y * scale;
+        float half_height = sprite_height * 0.5f;
+
+        if (
+            (Y + half_height <= -64.0f) || // bit of extra tolerance off the bottom I guess
+            (Y - half_height >= SCREEN_TOP_EDGE)
+        ) {
+            return true;
+        }
+
+        return false;
     }
 
     // 0x4248A0
-    dllexport gnu_noinline CollisionResult thiscall __check_collision(BOOL graze_only) asm_symbol_rel(0x4248A0);
+    dllexport gnu_noinline CollisionResult thiscall __check_collision(CollisionTestType test_type) asm_symbol_rel(0x4248A0);
 
     // 0x425C60
     dllexport void run_effects() asm_symbol_rel(0x425C60);
@@ -21445,7 +23206,7 @@ struct Bullet {
                     this->angle += this->effect_angle.angle;
                     break;
                 case 1: case 6:
-                    this->angle += this->effect_angle.angle + PLAYER_PTR->angle_to_player_from_point(&this->position);
+                    this->angle += this->effect_angle.angle + angle_to_player_from_point(&this->position);
                     break;
                 case 2: case 3: case 4:
                     this->angle = this->effect_angle.angle;
@@ -21515,8 +23276,7 @@ struct Bullet {
             this->position = this->effect_move.position;
             float speed = this->effect_move.speed;
             this->speed = speed;
-            this->velocity.make_from_vector(this->angle, speed);
-            this->velocity.z = 0.0f;
+            this->velocity.make_from_vector3(this->angle, speed);
             return 1;
         }
 
@@ -21584,6 +23344,62 @@ struct Bullet {
         return 0;
     }
 
+    inline void thiscall run_effect_wrap(float sprite_width, float sprite_height) {
+        float X = this->position.x;
+        float half_width = sprite_width * 0.5f;
+        if (
+            !(X + half_width <= SCREEN_LEFT_EDGE) &&
+            !(X - half_width >= SCREEN_RIGHT_EDGE)
+        ) {
+            float Y = this->position.y;
+            float half_height = sprite_height * 0.5f;
+            if (
+                !(Y + half_height <= SCREEN_BOTTOM_EDGE) &&
+                !(Y - half_height >= SCREEN_TOP_EDGE)
+            ) {
+                return;
+            }
+        }
+
+        if (
+            (this->effect_wrap.flags & 0b0001) &&
+            this->position.y < SCREEN_BOTTOM_EDGE
+        ) {
+            this->position.y += sprite_height + SCREEN_HEIGHT;
+        }
+        else if (
+            (this->effect_wrap.flags & 0b0010) &&
+            this->position.y > SCREEN_TOP_EDGE
+        ) {
+            this->position.y -= sprite_height + SCREEN_HEIGHT;
+        }
+        else if (
+            (this->effect_wrap.flags & 0b0100) &&
+            X < SCREEN_LEFT_EDGE
+        ) {
+            X += sprite_width + SCREEN_WIDTH;
+            this->position.x = X;
+        }
+        else if (
+            (this->effect_wrap.flags & 0b1000) &&
+            X > SCREEN_RIGHT_EDGE
+        ) {
+            X -= sprite_width + SCREEN_WIDTH;
+            this->position.x = X;
+        }
+        else {
+            return;
+        }
+
+        ++this->effect_wrap.wrap_count;
+
+        SOUND_MANAGER.play_sound_validate(this->transform_sound);
+
+        if (this->effect_wrap.wrap_count >= this->effect_wrap.max_count) {
+            this->disable_effects(EX_WRAP);
+        }
+    }
+
     // 0x423E10
     dllexport gnu_noinline ZUNResult thiscall on_tick() asm_symbol_rel(0x423E10) {
         this->__timer_F80++;
@@ -21596,7 +23412,7 @@ struct Bullet {
                 if (!this->scale_interp.end_time) {
                     this->disable_effects(EX_SIZE);
                     if (scale == 1.0f) {
-                        this->__unknown_flag_B = false;
+                        this->__scale_enabled = false;
                     }
                 }
             }
@@ -21609,7 +23425,7 @@ struct Bullet {
                     this->position += (this->velocity * GAME_SPEED) * 0.5f;
                     if (this->__timer_F6C >= 8) {
                         if (
-                            this->__check_collision(false) == DeathCollision
+                            this->__check_collision(LethalCollisionTest) == DeathCollision
                         ) {
                             break;
                         }
@@ -21669,30 +23485,110 @@ struct Bullet {
 
                         if (!this->__delay_flag) {
                             this->position += this->velocity * GAME_SPEED;
-                            this->__check_collision(false);
+                            this->__check_collision(LethalCollisionTest);
                         }
                     }
                     break;
             }
 
-            // TODO
+            // this condition can't fail because of how the sprite
+            // is actually obtained from the anm manager.
+            if (AnmSprite* sprite = this->get_sprite()) {
+                if (this->effects_active(EX_WRAP)) {
+                    this->run_effect_wrap(sprite->__size_x, sprite->__size_y);
+                }
+                if (
+                    !this->effects_active(EX_OFFSCREEN) &&
+                    this->offscreen_time < 1
+                ) {
+                    if (this->is_offscreen()) {
+                        goto cleanup_bullet;
+                    }
+                }
+            }
 
             if (this->invulnerable_time) {
                 this->invulnerable_time--;
             }
-            if (this->__int_670 >= 0) {
-                this->__int_670--;
+            if (this->offscreen_time > 0) {
+                this->offscreen_time--;
             }
             if (!this->__delay_flag) {
                 if (ZUN_FAILED(this->vm.run_anm())) {
-                    return ZUN_ERROR;
+                    goto cleanup_bullet;
                 }
             }
             return ZUN_SUCCESS;
         }
+    cleanup_bullet:
+        this->cleanup();
         return ZUN_ERROR;
     }
+
+    inline void on_draw() {
+        this->vm.controller.position = this->position;
+        if (this->vm.data.auto_rotate) {
+            this->vm.set_z_rotation(reduce_angle_add(this->angle, HALF_PI_f));
+        }
+        if (this->__scale_enabled) {
+            this->vm.set_scale2(this->scale);
+        }
+        ANM_MANAGER_PTR->draw_vm(&this->vm);
+    }
 };
+#pragma region // Bullet Validation
+ValidateFieldOffset32(0x0, Bullet, __list_0);
+ValidateFieldOffset32(0x10, Bullet, __list_10);
+ValidateFieldOffset32(0x20, Bullet, flags);
+ValidateFieldOffset32(0x24, Bullet, invulnerable_time);
+ValidateFieldOffset32(0x28, Bullet, vm);
+ValidateFieldOffset32(0x634, Bullet, __anm_tree_id);
+ValidateFieldOffset32(0x638, Bullet, position);
+ValidateFieldOffset32(0x644, Bullet, velocity);
+ValidateFieldOffset32(0x650, Bullet, speed);
+ValidateFieldOffset32(0x654, Bullet, angle);
+ValidateFieldOffset32(0x658, Bullet, hitbox_size);
+ValidateFieldOffset32(0x660, Bullet, bullet_manager_index);
+ValidateFieldOffset32(0x664, Bullet, __ex_func_a);
+ValidateFieldOffset32(0x670, Bullet, offscreen_time);
+ValidateFieldOffset32(0x674, Bullet, cancel_script_id);
+ValidateFieldOffset32(0x678, Bullet, __int_678);
+ValidateFieldOffset32(0x67C, Bullet, effect_index);
+ValidateFieldOffset32(0x680, Bullet, effect_loop_index);
+ValidateFieldOffset32(0x684, Bullet, active_effects);
+ValidateFieldOffset32(0x688, Bullet, initial_effects);
+ValidateFieldOffset32(0x68C, Bullet, next_in_layer);
+ValidateFieldOffset32(0x690, Bullet, __dword_690);
+ValidateFieldOffset32(0x694, Bullet, transform_sound);
+ValidateFieldOffset32(0x698, Bullet, layer);
+ValidateFieldOffset32(0x69C, Bullet, effects);
+ValidateFieldOffset32(0xABC, Bullet, effect_speedup);
+ValidateFieldOffset32(0xB04, Bullet, effect_accel);
+ValidateFieldOffset32(0xB4C, Bullet, effect_angle_accel);
+ValidateFieldOffset32(0xB94, Bullet, effect_angle);
+ValidateFieldOffset32(0xBDC, Bullet, effect_bounce);
+ValidateFieldOffset32(0xC24, Bullet, effect_wait);
+ValidateFieldOffset32(0xC6C, Bullet, effect_wrap);
+ValidateFieldOffset32(0xCB4, Bullet, effect_homing);
+ValidateFieldOffset32(0xCFC, Bullet, effect_move);
+ValidateFieldOffset32(0xD44, Bullet, effect_veladd);
+ValidateFieldOffset32(0xD8C, Bullet, effect_veltime);
+ValidateFieldOffset32(0xDD4, Bullet, effect_offscreen);
+ValidateFieldOffset32(0xE1C, Bullet, effect_saveangle);
+ValidateFieldOffset32(0xE64, Bullet, effect_delay);
+ValidateFieldOffset32(0xEB0, Bullet, effect_move_interp);
+ValidateFieldOffset32(0xF08, Bullet, scale_interp);
+ValidateFieldOffset32(0xF38, Bullet, scale);
+ValidateFieldOffset32(0xF3C, Bullet, __timer_F3C);
+ValidateFieldOffset32(0xF50, Bullet, __timer_F50);
+ValidateFieldOffset32(0xF68, Bullet, state);
+ValidateFieldOffset32(0xF6C, Bullet, __timer_F6C);
+ValidateFieldOffset32(0xF80, Bullet, __timer_F80);
+ValidateFieldOffset32(0xF94, Bullet, sprite_data);
+ValidateFieldOffset32(0xF98, Bullet, sprite);
+ValidateFieldOffset32(0xF9A, Bullet, color);
+ValidateStructSize32(0xFA0, Bullet);
+#pragma endregion
 
 enum LaserType {
     LineLaser = 0,
@@ -21858,12 +23754,12 @@ public:
     }
     // 0x448050
     // Method 0x20
-    dllexport virtual gnu_noinline int thiscall cancel_as_bomb_rectangle(Float3* arg1, Float3* arg2, float arg3, int arg4, int32_t arg5) asm_symbol_rel(0x448050) {
+    dllexport virtual gnu_noinline int thiscall cancel_in_rectangle(Float3* position, Float3* size, float rotation, int arg4, int32_t arg5) asm_symbol_rel(0x448050) {
         return 0;
     }
     // 0x448060
     // Method 0x24
-    dllexport virtual gnu_noinline int thiscall cancel_as_bomb_circle(Float3* arg1, float arg2, int arg3, int arg4) asm_symbol_rel(0x448060) {
+    dllexport virtual gnu_noinline int thiscall cancel_in_radius(Float3* position, float radius, int arg3, int arg4) asm_symbol_rel(0x448060) {
         return 0;
     }
     // 0x448070
@@ -21883,7 +23779,7 @@ public:
     }
     // 0x4480A0
     // Method 0x34
-    dllexport virtual gnu_noinline int thiscall check_graze_or_kill(BOOL arg1) asm_symbol_rel(0x4480A0) {
+    dllexport virtual gnu_noinline int thiscall check_collision(CollisionTestType test_type) asm_symbol_rel(0x4480A0) {
         return 0;
     }
     // 0x4480B0
@@ -21955,7 +23851,7 @@ public:
 
     inline int on_tick_common() {
         if (this->__unknown_flag_B) {
-            this->check_graze_or_kill(TRUE);
+            this->check_collision(GrazeCollisionTest);
         }
         else {
             if (this->on_tick()) {
@@ -22042,13 +23938,10 @@ struct LaserLine : LaserData {
     // Method 0x14
     dllexport virtual gnu_noinline int thiscall on_draw() override asm_symbol_rel(0x44AB60) {
         this->__vm_BE8.data.position = this->position;
-        this->__vm_BE8.data.rotation.z = reduce_angle_add(this->angle, HALF_PI_f);
-        this->__vm_BE8.data.rotation_enabled = true;
+        this->__vm_BE8.set_z_rotation(reduce_angle_add(this->angle, HALF_PI_f));
         ANM_MANAGER_PTR->draw_vm(&this->__vm_BE8);
         this->__vm_1800.data.position.make_from_vector(this->angle, this->length);
-        this->__vm_1800.data.position.x += this->position.x;
-        this->__vm_1800.data.position.y += this->position.y;
-        this->__vm_1800.data.position.z = 0.0f;
+        this->__vm_1800.data.position += this->position.as2();
         ANM_MANAGER_PTR->draw_vm(&this->__vm_1800);
         if (this->__float_7C == 0.0f) {
             this->__vm_11F4.data.position = this->position;
@@ -22071,13 +23964,13 @@ struct LaserLine : LaserData {
 
     // 0x44ACA0
     // Method 0x20
-    dllexport virtual gnu_noinline int thiscall cancel_as_bomb_rectangle(Float3* arg1, Float3* arg2, float arg3, int arg4, int32_t arg5) override asm_symbol_rel(0x44ACA0) {
+    dllexport virtual gnu_noinline int thiscall cancel_in_rectangle(Float3* position, Float3* size, float rotation, int arg4, int32_t arg5) override asm_symbol_rel(0x44ACA0) {
         // TODO
     }
 
     // 0x44BD00
     // Method 0x24
-    dllexport virtual gnu_noinline int thiscall cancel_as_bomb_circle(Float3* arg1, float arg2, int arg3, int arg4) override asm_symbol_rel(0x44BD00) {
+    dllexport virtual gnu_noinline int thiscall cancel_in_radius(Float3* position, float radius, int arg3, int arg4) override asm_symbol_rel(0x44BD00) {
         // TODO
     }
 
@@ -22116,7 +24009,7 @@ struct LaserLine : LaserData {
 
     // 0x44A950
     // Method 0x34
-    dllexport virtual gnu_noinline int thiscall check_graze_or_kill(BOOL graze_only) override asm_symbol_rel(0x44A950) {
+    dllexport virtual gnu_noinline int thiscall check_collision(CollisionTestType test_type) override asm_symbol_rel(0x44A950) {
         float length = this->length;
         if (length > 16.0f) {
             float width = this->width;
@@ -22137,13 +24030,13 @@ struct LaserLine : LaserData {
                 } else {
                     width -= (width + 16.0f) * 0.5f;
                 }
-                int32_t result = Player::__check_collision_rotated_rectangle(&position, this->angle, width, length, graze_only);
-                if (result == 1) {
+                CollisionResult result = PLAYER_PTR->__check_collision_rotated_rectangle(&position, this->angle, width, length, test_type);
+                if (result == DeathCollision) {
                     Float3 B(32.0f, 32.0f, 0.0f);
-                    this->cancel_as_bomb_rectangle(&PLAYER_PTR->data.position, &B, UNUSED_DWORD, 0, result);
+                    this->cancel_in_rectangle(&PLAYER_PTR->data.position, &B, UNUSED_FLOAT, 0, result);
                     return 0;
                 }
-                if (result == 2) {
+                if (result == GrazeCollision) {
                     if (this->graze_timer.is_multiple_of(3)) {
                         float C = this->angle;
                         float D;
@@ -22361,7 +24254,6 @@ struct BulletManager : ZUNTask {
     Bullet* __bullet_ptr_C; // 0xC
     Bullet* __bullet_cache_A[6]; // 0x10
     Bullet* __bullet_cache_B[6]; // 0x28
-    //Bullet* __bullet_cache_pointers[12]; // 0x10
     int32_t __int_40; // 0x40 (ECL variable -9898)
     float player_protect_radius; // 0x44
     Float2 __bounce_bounds; // 0x48
@@ -22372,7 +24264,7 @@ struct BulletManager : ZUNTask {
     ZUNListHead<Bullet> bullet_tick_list; // 0xBC
     unknown_fields(0x20); // 0xCC
     Bullet bullets[MAX_BULLETS + 1]; // 0xEC
-    int32_t anm_ids[MAX_BULLETS + 1]; // 0x7A228C
+    AnmID anm_ids[MAX_BULLETS + 1]; // 0x7A228C
     int32_t __cancel_counter; // 0x7A41D0
     int32_t __int_7A41D4; // 0x7A41D4
     BulletIters bullet_iter; // 0x7A41D8
@@ -22449,7 +24341,7 @@ public:
     }
 
     // 0x4297A0
-    dllexport gnu_noinline void thiscall cancel_all(int32_t = UNUSED_DWORD) asm_symbol_rel(0x4297A0) {
+    dllexport gnu_noinline void thiscall cancel_all(int = UNUSED_DWORD) asm_symbol_rel(0x4297A0) {
         for (int32_t i = countof(this->bullets); i; --i) {
 
         }
@@ -22463,7 +24355,7 @@ public:
     // 0x427810
     dllexport gnu_noinline int32_t thiscall shoot_bullets(ShooterData* shooter) asm_symbol_rel(0x427810) {
         BulletManager* bullet_manager = BULLET_MANAGER_PTR;
-        float angle_to_player = Player::angle_to_player_from_point(&shooter->position);
+        float angle_to_player = angle_to_player_from_point(&shooter->position);
         for (int32_t i = 0; i < shooter->count2; ++i) {
             for (int32_t j = 0; j < shooter->count1; ++j) {
                 int32_t result = bullet_manager->shoot_one_bullet(shooter, j, i, angle_to_player);
@@ -22475,6 +24367,97 @@ public:
             SOUND_MANAGER.play_sound_positioned(shooter->shoot_sound, shooter->position.x);
         }
         return 0;
+    }
+
+private:
+    // 0x429250
+    dllexport gnu_noinline int vectorcall cancel_radius(int, float, float, Float2* position, float radius, CancelType cancel_type) asm_symbol_rel(0x429250) {
+        BulletManager* bullet_manager = BULLET_MANAGER_PTR;
+        for (
+            Bullet* bullet = bullet_manager->start_bullet_iter(0);
+            bullet;
+            bullet = BULLET_MANAGER_PTR->next_bullet_iter(0)
+        ) {
+            switch (bullet->state) {
+                case 2: case 1: {
+                    // Yes, this aliases the normal radius field.
+                    // But the math is written in a way that makes more sense
+                    // for this to be reading the square size.
+                    float bullet_radius = bullet->hitbox_size.x * 0.5f;
+                    bool in_cancel_radius = bullet->position.distance_squared(position) <= bullet_radius * bullet_radius;
+                    if (in_cancel_radius) {
+                        bullet->cancel(cancel_type);
+                        ++bullet_manager->__cancel_counter2;
+
+                    }
+                }
+                    
+            }
+        }
+    }
+public:
+    inline int cancel_radius(Float3* position, float radius, CancelType cancel_type) {
+        return this->cancel_radius(UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, position, radius, cancel_type);
+    }
+
+private:
+    // 0x429370
+    dllexport gnu_noinline int vectorcall cancel_radius_as_bomb(int, float, float, Float2* position, float radius, CancelType cancel_type, int32_t max_count, int arg5) asm_symbol_rel(0x429370) {
+        BulletManager* bullet_manager = BULLET_MANAGER_PTR;
+        for (
+            Bullet* bullet = bullet_manager->start_bullet_iter(0);
+            bullet;
+            bullet = BULLET_MANAGER_PTR->next_bullet_iter(0)
+        ) {
+            switch (bullet->state) {
+                case 2: case 1:
+                    if (!bullet->invulnerable_time) {
+                        // Yes, this aliases the normal radius field.
+                        // But the math is written in a way that makes more sense
+                        // for this to be reading the square size.
+                        float bullet_radius = bullet->hitbox_size.x * 0.5f;
+                        bool in_cancel_radius = bullet->position.distance_squared(position) <= bullet_radius * bullet_radius;
+                        if (in_cancel_radius) {
+                            bullet->__int_678 = arg5;
+                            bullet->cancel(cancel_type);
+                            ++bullet_manager->__cancel_counter2;
+                            if (--max_count <= 0) {
+                                goto stop;
+                            }
+                        }
+                    }
+            }
+        }
+    stop:
+        return 0;
+    }
+public:
+    inline int cancel_radius_as_bomb(Float2* position, float radius, CancelType cancel_type, int32_t max_count, int arg5) {
+        return this->cancel_radius_as_bomb(UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, position, radius, cancel_type, max_count, arg5);
+    }
+
+private:
+    // 0x4294B0
+    dllexport gnu_noinline int vectorcall cancel_rotated_rectangle_as_bomb(int, float, float, float, Float2* position, Float2* size, float rotation, CancelType cancel_type, int arg5) asm_symbol_rel(0x4294B0) {
+        BulletManager* bullet_manager = BULLET_MANAGER_PTR;
+        Bullet* bullet = bullet_manager->bullets;
+        for (
+            size_t i = 0;
+            i < MAX_BULLETS;
+            ++i, ++bullet
+        ) {
+            switch (bullet->state) {
+                case 2: case 1:
+                    if (!bullet->invulnerable_time) {
+                        // TODO
+                    }
+            }
+        }
+        return 0;
+    }
+public:
+    inline int cancel_rotated_rectangle_as_bomb(Float2* position, Float2* size, float rotation, CancelType cancel_type, int arg5) {
+        return this->cancel_rotated_rectangle_as_bomb(UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT, position, size, rotation, cancel_type, arg5);
     }
     
     // 0x424C50
@@ -22510,7 +24493,7 @@ public:
                                 break;
                             }
                         case 1:
-                            bullet->__check_collision(true);
+                            bullet->__check_collision(GrazeCollisionTest);
                             goto idkA;
                     }
                 }
@@ -22539,6 +24522,22 @@ public:
 
         return UpdateFuncNext;
     }
+
+    inline UpdateFuncRet thiscall on_draw() {
+        Bullet** draw_list = this->__bullet_cache_A;
+        size_t i = countof(this->__bullet_cache_A);
+        nounroll do {
+            for (
+                Bullet* bullet = *draw_list;
+                bullet != NULL;
+                bullet = bullet->next_in_layer
+            ) {
+                bullet->on_draw();
+            }
+            ++draw_list;
+        } while (--i);
+        return UpdateFuncNext;
+    }
     
     // 0x424E70
     dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x424E70) {
@@ -22554,7 +24553,13 @@ public:
 
     // 0x424EB0
     dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x424EB0) {
-
+        GameThread* game_thread_ptr = GAME_THREAD_PTR;
+        if (
+            game_thread_ptr && game_thread_ptr->skip_flag
+        ) {
+            return UpdateFuncNext;
+        }
+        return ((BulletManager*)ptr)->on_draw();
     }
 
     inline ZUNResult initialize() {
@@ -22602,6 +24607,39 @@ public:
         return bullet_manager;
     }
 };
+#pragma region // BulletManager Validation
+ValidateFieldOffset32(0x0, BulletManager, task_flags);
+ValidateFieldOffset32(0x4, BulletManager, on_tick_func);
+ValidateFieldOffset32(0x8, BulletManager, on_draw_func);
+ValidateFieldOffset32(0xC, BulletManager, __bullet_ptr_C);
+ValidateFieldOffset32(0x10, BulletManager, __bullet_cache_A);
+ValidateFieldOffset32(0x28, BulletManager, __bullet_cache_B);
+ValidateFieldOffset32(0x40, BulletManager, __int_40);
+ValidateFieldOffset32(0x44, BulletManager, player_protect_radius);
+ValidateFieldOffset32(0x48, BulletManager, __bounce_bounds);
+ValidateFieldOffset32(0x58, BulletManager, __graze_array);
+ValidateFieldOffset32(0xA8, BulletManager, __int_A8);
+ValidateFieldOffset32(0xAC, BulletManager, __unknown_list_AC);
+ValidateFieldOffset32(0xBC, BulletManager, bullet_tick_list);
+ValidateFieldOffset32(0xEC, BulletManager, bullets);
+ValidateFieldOffset32(0x7A228C, BulletManager, anm_ids);
+ValidateFieldOffset32(0x7A41D0, BulletManager, __cancel_counter);
+ValidateFieldOffset32(0x7A41D4, BulletManager, __int_7A41D4);
+ValidateFieldOffset32(0x7A41D8, BulletManager, bullet_iter);
+ValidateFieldOffset32(0x7A41E8, BulletManager, __cancel_counter2);
+ValidateFieldOffset32(0x7A41EC, BulletManager, bullet_anm);
+ValidateFieldOffset32(0x7A41F0, BulletManager, __unknown_counter_flag);
+ValidateFieldOffset32(0x7A41F4, BulletManager, __unknown_counter);
+ValidateStructSize32(0x7A41F8, BulletManager);
+#pragma endregion
+
+static inline int bullet_cancel_radius(Float3* position, float radius, CancelType cancel_type) {
+    return BULLET_MANAGER_PTR->cancel_radius(position, radius, cancel_type);
+}
+
+static inline int bullet_cancel_radius_as_bomb(Float2* position, float radius, CancelType cancel_type, int32_t max_count, int arg5) {
+    return BULLET_MANAGER_PTR->cancel_radius_as_bomb(position, radius, cancel_type, max_count, arg5);
+}
 
 // 0x424AD0
 dllexport gnu_noinline void Bullet::cleanup() {
@@ -22612,7 +24650,7 @@ dllexport gnu_noinline void Bullet::cleanup() {
         this->__timer_F3C.reset();
         this->__timer_F50.reset();
         this->__unknown_flag_E = false;
-        this->__unknown_flag_B = false;
+        this->__scale_enabled = false;
         this->__unknown_flag_C = false;
         this->__delay_flag = false;
         this->__dword_690 = 0;
@@ -22622,8 +24660,72 @@ dllexport gnu_noinline void Bullet::cleanup() {
     }
 }
 
+// 0x4290E0
+dllexport gnu_noinline void fastcall spawn_bullet_cancel_items(Float3* position, CancelType cancel_type) {
+    if (cancel_type != CancelType0) {
+        float x = position->x;
+        if (
+            !(x + 32.0f <= SCREEN_LEFT_EDGE) &&
+            !(x - 32.0f >= SCREEN_RIGHT_EDGE)
+        ) {
+            float y = position->y;
+            if (
+                !(y + 32.0f <= SCREEN_BOTTOM_EDGE) &&
+                !(y - 32.0f >= SCREEN_TOP_EDGE)
+            ) {
+                int32_t cancel_counter = ++BULLET_MANAGER_PTR->__cancel_counter;
+
+                switch (cancel_type) {
+                    case CancelType1: cancel_type_1: {
+                        float angle = REPLAY_RNG.rand_float_signed_range(DEGREES(10.0f)) - HALF_PI_f;
+                        ITEM_MANAGER_PTR->spawn_item(Piv5Item, position, angle, 2.2f, 0);
+                        return;
+                    }
+                    case CancelType4:
+                        switch (cancel_counter % 5) {
+                            case 2:
+                                if (REPLAY_RNG.rand_uint() & 1) {
+                            default:
+                                    if (
+                                        (BULLET_MANAGER_PTR->__cancel_counter % 5) != 4 ||
+                                        REPLAY_RNG.rand_uint_range(3) != 0
+                                    ) {
+                                        goto cancel_type_1;
+                                    }
+                                }
+                            case 0:
+                                ITEM_MANAGER_PTR->spawn_item(PointItem, position, -HALF_PI_f, 2.2f, 0);
+                        }
+                        break;
+                }
+            }
+        }
+    }
+}
+
+// 0x428E90
+dllexport gnu_noinline int32_t thiscall Bullet::cancel(CancelType cancel_type) {
+    this->vm.interrupt_and_run(1);
+    this->__anm_tree_id.interrupt_tree(1);
+    if (!this->__delay_flag) {
+        int32_t cancel_script = this->cancel_script_id;
+        if (cancel_script >= 0) {
+            BULLET_MANAGER_PTR->anm_ids[this->bullet_manager_index] = BULLET_MANAGER_PTR->bullet_anm->instantiate_vm_to_world_list_back(cancel_script, &this->position);
+            if (this->__int_678) {
+                BULLET_MANAGER_PTR->anm_ids[this->bullet_manager_index].interrupt_tree(3);
+            }
+        }
+        SOUND_MANAGER.play_sound_positioned(71, this->position.x);
+        spawn_bullet_cancel_items(&this->position, cancel_type);
+    }
+    this->state = CanceledBullet;
+    this->position += this->velocity * GAME_SPEED * 0.5f;
+    this->__timer_F6C.reset();
+    return 0;
+}
+
 // 0x4248A0
-dllexport gnu_noinline CollisionResult thiscall Bullet::__check_collision(BOOL graze_only) {
+dllexport gnu_noinline CollisionResult thiscall Bullet::__check_collision(CollisionTestType test_type) {
     CollisionResult result = NoCollision;
 
     this->vm.data.color_mode = 0; // why is this *here* of all places
@@ -22633,19 +24735,19 @@ dllexport gnu_noinline CollisionResult thiscall Bullet::__check_collision(BOOL g
         this->__unknown_flag_F &&
         this->hitbox_radius > 0.0f // aliases hitbox_size.x
     ) {
-        if (!this->__unknown_flag_B) {
+        if (!this->__scale_enabled) {
             if (!this->__circular_hitbox) {
-                result = PLAYER_PTR->__check_collision_rectangle(&this->position, &this->hitbox_size, graze_only);
+                result = PLAYER_PTR->__check_collision_rectangle(&this->position, &this->hitbox_size, test_type);
             } else {
-                result = PLAYER_PTR->check_collision_circle(&this->position, this->hitbox_radius, graze_only);
+                result = PLAYER_PTR->check_collision_circle(&this->position, this->hitbox_radius, test_type);
             }
         } else {
             float scale = this->scale;
             if (!this->__circular_hitbox) {
                 Float2 scaled_hitbox = this->hitbox_size * scale;
-                result = PLAYER_PTR->__check_collision_rectangle(&this->position, &scaled_hitbox, graze_only);
+                result = PLAYER_PTR->__check_collision_rectangle(&this->position, &scaled_hitbox, test_type);
             } else {
-                result = PLAYER_PTR->check_collision_circle(&this->position, this->hitbox_radius * scale, graze_only);
+                result = PLAYER_PTR->check_collision_circle(&this->position, this->hitbox_radius * scale, test_type);
             }
         }
         switch (result) {
@@ -22670,7 +24772,7 @@ dllexport gnu_noinline CollisionResult thiscall Bullet::__check_collision(BOOL g
                             this->vm.interrupt(1);
                             this->__anm_tree_id.interrupt_tree(1);
 
-                            int32_t script = this->__cancel_script_id;
+                            int32_t script = this->cancel_script_id;
                             if (script >= 0) {
                                 AnmID anm_id = BULLET_MANAGER_PTR->bullet_anm->instantiate_vm_to_world_list_back(script, &this->position, 0.0f, -1, NULL);
                                 AnmVM* vm = anm_id.get_vm_ptr();
@@ -22827,17 +24929,17 @@ struct LaserManager : ZUNTask {
 
 private:
     // 0x448F10
-    dllexport gnu_noinline static int vectorcall cancel_in_rectangle(int, int, float, float, float, Float3* arg1, Float3* arg2, float arg3, int arg4 = UNUSED_DWORD, int arg5 = 0) {
+    dllexport gnu_noinline static int vectorcall cancel_in_rectangle(int, int, float, float, float, Float3* position, Float3* size, float rotation, int arg4 = UNUSED_DWORD, int arg5 = 0) {
         LaserManager* laser_manager = LASER_MANAGER_PTR;
         int ret = 0;
-        laser_manager->__float3_7A0 = *arg1;
-        laser_manager->__float3_7AC = *arg2;
+        laser_manager->__float3_7A0 = *position;
+        laser_manager->__float3_7AC = *size;
         laser_manager->list_head().for_each_safe([&](LaserData* laser) {
             if (
                 laser->state != 1 &&
                 laser->__unknown_flag_A
             ) {
-                ret += laser->cancel_as_bomb_rectangle(arg1, arg2, arg3, 0, arg5);
+                ret += laser->cancel_in_rectangle(position, size, rotation, 0, arg5);
             }
         });
         return ret;
@@ -22849,20 +24951,20 @@ public:
 
 private:
     // 0x449010
-    dllexport gnu_noinline static int vectorcall cancel_in_radius(int, int, float, float, Float3* arg1, float arg2, int arg3, int arg4) {
+    dllexport gnu_noinline static int vectorcall cancel_in_radius(int, int, float, float, Float3* position, float radius, int arg3, int arg4) {
         LaserManager* laser_manager = LASER_MANAGER_PTR;
         int ret = 0;
-        laser_manager->__float3_7A0 = *arg1;
+        laser_manager->__float3_7A0 = *position;
         laser_manager->list_head().for_each_safe([&](LaserData* laser) {
             if (laser->state != 1) {
-                ret += laser->cancel_as_bomb_circle(arg1, arg2, arg3, arg4);
+                ret += laser->cancel_in_radius(position, radius, arg3, arg4);
             }
         });
         return ret;
     }
 public:
-    inline static int cancel_in_radius(Float3* arg1, float arg2, int arg3, int arg4) {
-        return cancel_in_radius(UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, arg1, arg2, arg3, arg4);
+    inline static int cancel_in_radius(Float3* position, float radius, int arg3, int arg4) {
+        return cancel_in_radius(UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, position, radius, arg3, arg4);
     }
 
     // 0x448760
@@ -22971,6 +25073,10 @@ public:
         });
     }
 };
+
+static inline int laser_cancel_radius(Float3* position, float radius, int arg3, int arg4) {
+
+}
 
 // 0x4490D0
 // Method 0xC
@@ -23142,7 +25248,7 @@ dllexport gnu_noinline void thiscall LaserLine::run_effects() {
                     angle_arg = this->angle;
                 }
                 else if (angle_arg >= 990.0f) {
-                    angle_arg = Player::angle_to_player_from_point(&this->position);
+                    angle_arg = angle_to_player_from_point(&this->position);
                 }
                 effect_data.angle = angle_arg;
                 effect_data.timer.reset();
@@ -23310,7 +25416,7 @@ dllexport void Bullet::run_effects() {
                 float angle_arg = this->position.__bullet_effect_angle_jank(this->angle, FloatArg(0), FloatArg(2));
                 switch (IntArg(2)) {
                     case 2:
-                        effect_data.angle = reduce_angle(angle_arg + Player::angle_to_player_from_point(&this->effect_saveangle.position));
+                        effect_data.angle = reduce_angle(angle_arg + angle_to_player_from_point(&this->effect_saveangle.position));
                         break;
                     case 3:
                         effect_data.angle = reduce_angle(this->effect_saveangle.angle + angle_arg);
@@ -23327,7 +25433,7 @@ dllexport void Bullet::run_effects() {
                             angle_arg = this->angle;
                         }
                         if (angle_arg >= 990.0f) {
-                            angle_arg = Player::angle_to_player_from_point(&this->position);
+                            angle_arg = angle_to_player_from_point(&this->position);
                         }
                         effect_data.angle = reduce_angle(angle_arg);
                         effect_data.speed = this->speed + REPLAY_RNG.rand_float_signed_range(FloatArg(1));
@@ -23370,9 +25476,9 @@ dllexport void Bullet::run_effects() {
                 break;
             case EX_DELETE:
                 if (IntArg(0) == true) {
-                    this->__cancel_script_id = -1;
+                    this->cancel_script_id = -1;
                 }
-                this->cancel(0);
+                this->cancel(CancelType0);
                 break;
             case EX_SETSPRITE: {
                 this->sprite = IntArg(0);
@@ -23393,42 +25499,42 @@ dllexport void Bullet::run_effects() {
                 }
                 switch (BULLET_SPRITE_DATA[this->sprite].__int_10C) {
                     case 0:
-                        this->__cancel_script_id = this->color * 2 + 4;
+                        this->cancel_script_id = this->color * 2 + 4;
                         break;
                     case 1:
-                        this->__cancel_script_id = BULLET_IDK_DATA[this->color];
+                        this->cancel_script_id = BULLET_IDK_DATA[this->color];
                         break;
                     case 2:
-                        this->__cancel_script_id = -1;
+                        this->cancel_script_id = -1;
                         this->__circular_hitbox = true;
                         break;
                     case 3:
-                        this->__cancel_script_id = 16;
+                        this->cancel_script_id = 16;
                         break;
                     case 4:
-                        this->__cancel_script_id = 6;
+                        this->cancel_script_id = 6;
                         break;
                     case 5:
-                        this->__cancel_script_id = 12;
+                        this->cancel_script_id = 12;
                         break;
                     case 6:
-                        this->__cancel_script_id = BULLET_SPRITE_DATA[this->sprite].color_data[this->color + 1].sprite_id;
+                        this->cancel_script_id = BULLET_SPRITE_DATA[this->sprite].color_data[this->color + 1].sprite_id;
                         this->__circular_hitbox = true;
                         break;
                     case 7:
-                        this->__cancel_script_id = 260;
+                        this->cancel_script_id = 260;
                         this->__circular_hitbox = true;
                         break;
                     case 8:
-                        this->__cancel_script_id = 263;
+                        this->cancel_script_id = 263;
                         this->__circular_hitbox = true;
                         break;
                     case 9:
-                        this->__cancel_script_id = 266;
+                        this->cancel_script_id = 266;
                         this->__circular_hitbox = true;
                         break;
                     case 10:
-                        this->__cancel_script_id = 275;
+                        this->cancel_script_id = 275;
                         this->__circular_hitbox = true;
                         break;
                 }
@@ -23441,7 +25547,7 @@ dllexport void Bullet::run_effects() {
                 this->active_effects |= EX_WRAP;
                 BulletEffectData& effect_data = this->effect_wrap;
                 effect_data.max_count = IntArg(0);
-                effect_data.duration = 0;
+                effect_data.wrap_count = 0;
                 effect_data.flags = IntArg(1);
                 break;
             }
@@ -23464,7 +25570,7 @@ dllexport void Bullet::run_effects() {
                 }
                 else if (999990.0f < angle_arg && angle_arg < 1999990.0f) {
                     // Somehow this can end up only running half of an angle reduce? WTF?
-                    angle = Player::angle_to_player_from_point(&this->position);
+                    angle = angle_to_player_from_point(&this->position);
                 }
                 else {
                     angle = angle_arg;
@@ -23485,7 +25591,7 @@ dllexport void Bullet::run_effects() {
                 BULLET_MANAGER_PTR->shoot_bullets(&bullet_shooter);
                 ++effect_index;
                 if (cancel_current_bullet) {
-                    this->cancel(0);
+                    this->cancel(CancelType0);
                 }
                 continue;
             }
@@ -23513,8 +25619,7 @@ dllexport void Bullet::run_effects() {
             case EX_VELADD: {
                 this->active_effects |= EX_VELADD;
                 BulletEffectData& effect_data = this->effect_veladd;
-                effect_data.velocity.make_from_vector(FloatArg(0), FloatArg(1));
-                effect_data.velocity.z = 0.0f;
+                effect_data.velocity.make_from_vector3(FloatArg(0), FloatArg(1));
                 effect_data.angle = FloatArg(0);
                 effect_data.speed = FloatArg(1);
                 effect_data.duration = IntArg(0);
@@ -23525,7 +25630,7 @@ dllexport void Bullet::run_effects() {
                 float angle_arg = FloatArg(0);
                 if (angle_arg >= 990.0f) {
                     angle_arg -= 999.0f;
-                    angle_arg += Player::angle_to_player_from_point(&this->position);
+                    angle_arg += angle_to_player_from_point(&this->position);
                     this->angle = reduce_angle(angle_arg);
                 }
                 else if (angle_arg >= -990.0f) {
@@ -23590,7 +25695,7 @@ dllexport void Bullet::run_effects() {
                 this->scale_interp.end_time = IntArg(0);
                 this->scale_interp.mode = IntArg(1);
                 this->scale_interp.time.reset();
-                this->__unknown_flag_B = true;
+                this->__scale_enabled = true;
                 break;
             }
             case EX_VELTIME: {
@@ -23664,7 +25769,7 @@ dllexport void Bullet::run_effects() {
                             angle = this->angle;
                         } else if (999990.0f < angle_arg && angle_arg < 1999990.0f) {
                             // Somehow this can end up only running half of an angle reduce? WTF?
-                            clang_forceinline angle = Player::angle_to_player_from_point(&this->position);
+                            clang_forceinline angle = angle_to_player_from_point(&this->position);
                         } else {
                             angle = angle_arg;
                         }
@@ -23687,7 +25792,7 @@ dllexport void Bullet::run_effects() {
                         LASER_MANAGER_PTR->allocate_new_laser(1, &laser_params);
                         ++effect_index;
                         if (flags & 0x10000) {
-                            this->cancel(0);
+                            this->cancel(CancelType0);
                         }
                         continue;
                     }
@@ -23715,7 +25820,7 @@ dllexport void Bullet::run_effects() {
                             angle = this->angle;
                         } else if (999990.0f < angle_arg && angle_arg < 1999990.0f) {
                             // Somehow this can end up only running half of an angle reduce? WTF?
-                            clang_forceinline angle = Player::angle_to_player_from_point(&this->position);
+                            clang_forceinline angle = angle_to_player_from_point(&this->position);
                         } else {
                             angle = angle_arg;
                         }
@@ -23738,7 +25843,7 @@ dllexport void Bullet::run_effects() {
                         LASER_MANAGER_PTR->allocate_new_laser(0, &laser_params);
                         ++effect_index;
                         if (cancel_current_bullet) {
-                            this->cancel(0);
+                            this->cancel(CancelType0);
                         }
                         continue;
                     }
@@ -23868,9 +25973,9 @@ inline const char* Enemy::check_life_callbacks() {
 
 // 0x42ED40
 dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
-    BombBase* bomb_ptr = BOMB_PTR;
+    BombBase* bomb = BOMB_PTR;
     if (this->bomb_shield) {
-        if (bomb_ptr->bomb_active && !this->bomb_shield_active) {
+        if (bomb->active && !this->bomb_shield_active) {
             this->anm_vms[0].__sub_488FD0(this->current_anm_script = this->bombshield_on_anm);
             this->disable_hitbox = true;
             this->bomb_shield_active = true;
@@ -23965,7 +26070,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
                 ENEMY_MANAGER_PTR->__int_B0 += damage;
             }
         }
-        if (BOMB_PTR->bomb_active == TRUE) {
+        if (BOMB_PTR->is_active()) {
             float bomb_multiplier = this->bomb_damage_multiplier;
             if (bomb_multiplier < 1.0f) {
                 if (damage && bomb_multiplier <= 0.0f) {
@@ -24017,7 +26122,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
         else {
             CollisionResult result;
             if (!this->rectangular_hitbox) {
-                result = PLAYER_PTR->check_collision_circle(&this->current_motion.position, this->collision_size.x, FALSE);
+                result = PLAYER_PTR->check_collision_circle(&this->current_motion.position, this->collision_size.x, LethalCollisionTest);
             }
             else {
                 AnmVM* main_vm = this->anm_vms[0].get_vm_ptr();
@@ -24041,7 +26146,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
                 position.y = this->current_motion.position.y + Y;
                 position.z = this->current_motion.position.z + Z;
                 float length = this->collision_size.x;
-                result = PLAYER_PTR->__check_collision_rotated_rectangle(&position, rotation, width, length, FALSE);
+                result = PLAYER_PTR->__check_collision_rotated_rectangle(&position, rotation, width, length, LethalCollisionTest);
             }
             if (
                 this->grazable &&
@@ -24139,7 +26244,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::on_tick() {
                     vm->set_controller_position(&new_position);
                     if (vm->data.auto_rotate) {
                         float movement_angle = this->current_motion.axis_velocity.direction();
-                        clang_forceinline vm->set_z_rotation(movement_angle);
+                        vm->set_z_rotation(movement_angle);
                         this->hitbox_rotation = movement_angle;
                     }
                 }
@@ -25231,7 +27336,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             AnmVM* vm = id.get_vm_ptr();
             if (vm) {
                 vm->set_controller_position(&this->get_position());
-                vm->set_z_rotation(this->get_float_arg(2));
+                clang_noinline vm->set_z_rotation(this->get_float_arg(2));
             }
             EFFECT_MANAGER_PTR->fill_available_slot(id);
             break;
@@ -25566,7 +27671,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             float angle = this->get_float_arg(0);
             float speed = this->get_float_arg(1);
             float orbit_radius = this->get_float_arg(2);
-            float orbit_velocity = this->get_float_arg(3);
+            float orbit_radius_delta = this->get_float_arg(3);
             if (motion.mode_is_orbit()) {
                 motion.set_orbit_origin(motion.get_position());
             }
@@ -25579,8 +27684,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             if (orbit_radius > -999999.0) {
                 motion.set_orbit_radius(orbit_radius);
             }
-            if (orbit_velocity > -999999.0) {
-                motion.set_orbit_velocity(orbit_velocity);
+            if (orbit_radius_delta > -999999.0) {
+                motion.set_orbit_radius_delta(orbit_radius_delta);
             }
             motion.set_orbit_mode();
             motion.update2();
@@ -25593,20 +27698,20 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             ZUNInterp<Float2>& orbit_radius_interp = (opcode == move_orbit_abs_interp) ? this->orbit_radius_interp.absolute : this->orbit_radius_interp.relative;
             float speed = this->get_float_arg(2);
             float orbit_radius = this->get_float_arg(3);
-            float orbit_velocity = this->get_float_arg(4);
+            float orbit_radius_delta = this->get_float_arg(4);
             if (!(speed > -999999.0)) {
                 speed = motion.get_speed();
             }
             Float2 final_speed = Float2(0.0f, speed);
             Float2 initial_speed = Float2(0.0f, motion.get_speed());
-            if (!(orbit_velocity > -999999.0)) {
-                orbit_velocity = motion.get_orbit_velocity();
+            if (!(orbit_radius_delta > -999999.0)) {
+                orbit_radius_delta = motion.get_orbit_radius_delta();
             }
             if (!(orbit_radius > -999999.0)) {
                 orbit_radius = motion.get_orbit_radius();
             }
-            Float2 final_orbit = Float2(orbit_radius, orbit_velocity);
-            Float2 initial_orbit = Float2(motion.get_orbit_radius(), motion.get_orbit_velocity());
+            Float2 final_orbit = Float2(orbit_radius, orbit_radius_delta);
+            Float2 initial_orbit = Float2(motion.get_orbit_radius(), motion.get_orbit_radius_delta());
             int32_t end_time = this->get_int_arg(0);
             int32_t interp_mode = this->get_int_arg(1);
             if (end_time <= 0) {
@@ -25640,7 +27745,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             float angle = this->get_float_arg(0);
             float speed = this->get_float_arg(1);
             float orbit_radius = this->get_float_arg(2);
-            float orbit_velocity = this->get_float_arg(3);
+            float orbit_radius_delta = this->get_float_arg(3);
             float ellipse_angle = this->get_float_arg(4);
             float ellipse_ratio = this->get_float_arg(5);
             if (motion.mode_is_orbit()) {
@@ -25655,8 +27760,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             if (orbit_radius > -999999.0) {
                 motion.set_orbit_radius(orbit_radius);
             }
-            if (orbit_velocity > -999999.0) {
-                motion.set_orbit_velocity(orbit_velocity);
+            if (orbit_radius_delta > -999999.0) {
+                motion.set_orbit_radius_delta(orbit_radius_delta);
             }
             if (ellipse_angle > -999999.0) {
                 motion.set_ellipse_angle(ellipse_angle);
@@ -25677,7 +27782,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             ZUNInterp<Float2>& ellipse_interp = (opcode == move_ellipse_abs_interp) ? this->ellipse_interp.absolute : this->ellipse_interp.relative;
             float speed = this->get_float_arg(2);
             float orbit_radius = this->get_float_arg(3);
-            float orbit_velocity = this->get_float_arg(4);
+            float orbit_radius_delta = this->get_float_arg(4);
             float ellipse_angle = this->get_float_arg(5);
             float ellipse_ratio = this->get_float_arg(6);
             if (!(speed > -999999.0)) {
@@ -25685,14 +27790,14 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             }
             Float2 final_speed = Float2(0.0f, speed);
             Float2 initial_speed = Float2(0.0f, motion.get_speed());
-            if (!(orbit_velocity > -999999.0)) {
-                orbit_velocity = motion.get_orbit_velocity();
+            if (!(orbit_radius_delta > -999999.0)) {
+                orbit_radius_delta = motion.get_orbit_radius_delta();
             }
             if (!(orbit_radius > -999999.0)) {
                 orbit_radius = motion.get_orbit_radius();
             }
-            Float2 final_orbit = Float2(orbit_radius, orbit_velocity);
-            Float2 initial_orbit = Float2(motion.get_orbit_radius(), motion.get_orbit_velocity());
+            Float2 final_orbit = Float2(orbit_radius, orbit_radius_delta);
+            Float2 initial_orbit = Float2(motion.get_orbit_radius(), motion.get_orbit_radius_delta());
             if (!(ellipse_ratio > -999999.0)) {
                 ellipse_ratio = motion.get_ellipse_ratio();
             }
@@ -26452,7 +28557,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             break;
         }
         case bullet_cancel: // 613
-            BULLET_MANAGER_PTR->cancel_all(0);
+            BULLET_MANAGER_PTR->cancel_all(CancelType0);
             LASER_MANAGER_PTR->cancel_all(1, 0);
             break;
         case effect_sound: { // 516
@@ -26662,9 +28767,9 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
                 laser->__method_8(state);
             }
             break;
-        case bullet_cancel_radius: { // 615
+        case Opcode::bullet_cancel_radius: { // 615
             float radius = this->get_float_arg(0);
-            //BULLET_MANAGER_PTR->canel_radius(&this->get_position(), radius, 1, 0);
+            BULLET_MANAGER_PTR->cancel_radius(&this->get_position(), radius, CancelType1);
             LASER_MANAGER_PTR->cancel_in_radius(&this->get_position(), radius, 1, 1);
             break;
         }
@@ -26673,24 +28778,24 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             size.x = this->get_float_arg(0);
             size.y = this->get_float_arg(1);
             float rotation = this->anm_vms[0].get_vm_ptr()->get_z_rotation();
-            //BULLET_MANAGER_PTR->canel_bullets_in_rectangle_as_bomb(&this->get_position(), &size, rotation, 1, 0);
+            BULLET_MANAGER_PTR->cancel_rotated_rectangle_as_bomb(&this->get_position(), &size, rotation, CancelType1, 0);
             break;
         }
         case bullet_clear_radius: { // 615
             float radius = this->get_float_arg(0);
-            //BULLET_MANAGER_PTR->canel_radius(&this->get_position(), radius, 0, 0);
+            BULLET_MANAGER_PTR->cancel_radius(&this->get_position(), radius, CancelType0);
             LASER_MANAGER_PTR->cancel_in_radius(&this->get_position(), radius, 0, 1);
             break;
         }
         case bullet_cancel_weak_radius: { // 635
             float radius = this->get_float_arg(0);
-            //BULLET_MANAGER_PTR->canel_radius_as_bomb(&this->get_position(), radius, 1, 99999, 0);
+            BULLET_MANAGER_PTR->cancel_radius_as_bomb(&this->get_position(), radius, CancelType1, 99999, 0);
             LASER_MANAGER_PTR->cancel_in_radius(&this->get_position(), radius, 1, 1);
             break;
         }
         case bullet_clear_weak_radius: { // 636
             float radius = this->get_float_arg(0);
-            //BULLET_MANAGER_PTR->canel_radius_as_bomb(&this->get_position(), radius, 0, 99999, 0);
+            BULLET_MANAGER_PTR->cancel_radius_as_bomb(&this->get_position(), radius, CancelType0, 99999, 0);
             LASER_MANAGER_PTR->cancel_in_radius(&this->get_position(), radius, 0, 1);
             break;
         }
@@ -27069,11 +29174,11 @@ struct ReplayGamestate {
     int __dword_array_18[20]; // 0x18
     Globals globals; // 0x68
     int32_t cards_owned[0x100]; // 0x164
-    int32_t card_cooldowns[0x100]; // 0x564
+    int32_t card_replay_states[0x100]; // 0x564
     int32_t card_selected; // 0x964
     Globals __globalsB; // 0x968
     int32_t __cards_ownedB[0x100]; // 0xA64
-    int32_t __card_cooldownsB[0x100]; // 0xE64
+    int32_t __card_replay_statesB[0x100]; // 0xE64
     int32_t __card_selectedB; // 0x1264
     union {
         uint32_t flags; // 0x1268
@@ -27101,11 +29206,11 @@ ValidateFieldOffset32(0x10, ReplayGamestate, __dword_10);
 ValidateFieldOffset32(0x18, ReplayGamestate, __dword_array_18);
 ValidateFieldOffset32(0x68, ReplayGamestate, globals);
 ValidateFieldOffset32(0x164, ReplayGamestate, cards_owned);
-ValidateFieldOffset32(0x564, ReplayGamestate, card_cooldowns);
+ValidateFieldOffset32(0x564, ReplayGamestate, card_replay_states);
 ValidateFieldOffset32(0x964, ReplayGamestate, card_selected);
 ValidateFieldOffset32(0x968, ReplayGamestate, __globalsB);
 ValidateFieldOffset32(0xA64, ReplayGamestate, __cards_ownedB);
-ValidateFieldOffset32(0xE64, ReplayGamestate, __card_cooldownsB);
+ValidateFieldOffset32(0xE64, ReplayGamestate, __card_replay_statesB);
 ValidateFieldOffset32(0x1264, ReplayGamestate, __card_selectedB);
 ValidateFieldOffset32(0x1268, ReplayGamestate, flags);
 ValidateFieldOffset32(0x126C, ReplayGamestate, extra);
@@ -27343,8 +29448,34 @@ struct ReplayManager : ZUNTask {
         zero_this();
     }
 
-    ReplayManager() {
+    inline ReplayManager() {
         this->zero_contents();
+    }
+
+    // 0x461AD0
+    dllexport gnu_noinline ~ReplayManager() {
+        delete this->header;
+
+        this->chunk_lists->for_each_safe([](ReplayChunk* chunk) {
+            chunk->list_node.unlink();
+            delete chunk;
+        });
+
+        delete this->info;
+        this->info = NULL;
+
+        for (size_t i = 0; i < STAGE_COUNT; ++i) {
+            delete this->game_states[i];
+            this->game_states[i] = NULL;
+        }
+
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func_B);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
+        if (REPLAY_MANAGER_PTR == this) {
+            REPLAY_MANAGER_PTR = NULL;
+        }
     }
 
     dllexport static UpdateFuncRet UpdateFuncCC on_tick_A1(void* ptr) {
@@ -27651,6 +29782,58 @@ ValidateStructSize32(0x31C, ReplayManager);
 
 static inline bool is_replay() {
     return REPLAY_MANAGER_PTR->mode == __replay_playback;
+}
+
+// 0x417880
+dllexport gnu_noinline void thiscall AbilityShop::cleanup() {
+    // how did you do this zun
+    if (this) {
+        INPUT_STATES[0].__reset_inputs();
+        INPUT_STATES[1].__reset_inputs();
+        INPUT_STATES[2].__reset_inputs();
+
+        ReplayManager* replay_manager = REPLAY_MANAGER_PTR;
+        if (replay_manager) {
+            if (!GAME_MANAGER.globals.__timer_C4) {
+                ReplayGamestate* game_state = replay_manager->game_states[GAME_MANAGER.globals.current_stage];
+
+                ABILITY_MANAGER_PTR->equipped_cards_get_ids(game_state->__cards_ownedB);
+                ABILITY_MANAGER_PTR->__equipped_cards_get_replay_states(game_state->__card_replay_statesB);
+                game_state->globals = GAME_MANAGER.globals;
+                ABILITY_MANAGER_PTR->equipped_cards_run_on_load();
+            }
+            else {
+                uint32_t current_stage = GAME_MANAGER.globals.current_stage;
+                ReplayGamestate* game_state = replay_manager->stage_data[current_stage].gamestate_start;
+                if (game_state->__globalsB.current_stage == current_stage) {
+                    ABILITY_MANAGER_PTR->__sub_407DA0(FALSE);
+
+                    for (int32_t i = 0; i < countof(game_state->__cards_ownedB); ++i) {
+                        int32_t id = game_state->__cards_ownedB[i];
+                        if (id < 0) {
+                            break;
+                        }
+                        ABILITY_MANAGER_PTR->allocate_new_card(id, 3);
+                    }
+
+                    ABILITY_MANAGER_PTR->__sub_408B00(game_state->__card_selectedB);
+
+                    int32_t* card_replay_states = game_state->__card_replay_statesB;
+                    ABILITY_MANAGER_PTR->card_list.for_each([&](CardBase* card) {
+                        card->__set_replay_state(*card_replay_states++);
+                    });
+
+                    GAME_MANAGER.globals = game_state->globals;
+
+                    ABILITY_MANAGER_PTR->card_list.for_each([](CardBase* card) {
+                        card->on_load();
+                    });
+
+
+                }
+            }
+        }
+    }
 }
 
 typedef struct PauseMenu PauseMenu;
@@ -27994,8 +30177,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 
                     AnmVM* main_vm = lifebar.main_vm.get_vm_ptr();
 
-                    main_vm->data.rotation_enabled = true;
-                    main_vm->data.rotation.x = -lifebar.bar_value * TWO_PI_f;
+                    main_vm->set_x_rotation(-lifebar.bar_value * TWO_PI_f);
 
                     Float3 position = boss->data.current_motion.position;
                     position.as2() *= 2.0f; // EBP-2C, EBP-30, EBP-50
@@ -28020,8 +30202,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
                             marker_vm->__tree_set_visible2();
 
                             float angle = reduce_angle(NPI_f - markers->bar_position * TWO_PI_f);
-                            marker_vm->data.rotation_enabled = true;
-                            main_vm->data.rotation.z = angle;
+                            marker_vm->set_z_rotation(angle);
 
                             constexpr Float2 offset = { 0.0f, 112.0f };
 
@@ -29351,6 +31532,107 @@ static const int32_t CONTINUE_CREDITS_TABLE[DIFFICULTY_COUNT] = {
     5, 5, 5, 5,
     0, 0
 };
+
+// 0x4432C0
+dllexport gnu_noinline GameThread::~GameThread() {
+    SCOREFILE_MANAGER_PTR->save_files();
+    GAME_MANAGER.__unknown_flag_A = false;
+    GAME_MANAGER.__unknown_flag_B = false;
+    GAME_SPEED.set(1.0f);
+    UNKNOWN_FUNC_PTR_A = NULL;
+    UNKNOWN_FUNC_PTR_B = NULL;
+    
+    switch (SUPERVISOR.gamemode_switch) {
+        case 12:
+            ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
+            GAME_MANAGER.__unknown_flag_B = true;
+            break;
+        case 4: case 16:
+            ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
+            ABILITY_MANAGER_PTR->__cleanup_all_anms();
+            break;
+        case 14:
+            ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
+            if (GAME_MANAGER.globals.__stage_number_related_4 == GAME_MANAGER.globals.current_stage) {
+                GAME_MANAGER.globals.add_continue();
+                GAME_MANAGER.__unknown_flag_D = true;
+            }
+            else {
+                GAME_MANAGER.__unknown_flag_A = true;
+            }
+            break;
+        case 2:
+            ABILITY_MANAGER_PTR->__cleanup_all_anms();
+            break;
+        case 10: case 11:
+            ABILITY_MANAGER_PTR->__sub_4080E0();
+            ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
+            if (GAME_MANAGER.globals.__stage_number_related_4 == GAME_MANAGER.globals.current_stage) {
+                GAME_MANAGER.__unknown_flag_A = true;
+            }
+            break;
+    }
+
+    if (!GAME_MANAGER.__unknown_flag_B) {
+        switch (SUPERVISOR.gamemode_switch) {
+            default:
+                delete REPLAY_MANAGER_PTR;
+            case 15: case 16:;
+        }
+        delete STAGE_PTR;
+        delete STAGE_B_PTR;
+        delete PAUSE_MENU_PTR;
+        delete GUI_PTR;
+        delete PLAYER_PTR;
+        delete BULLET_MANAGER_PTR;
+        delete ITEM_MANAGER_PTR;
+        delete LASER_MANAGER_PTR;
+        delete POPUP_MANAGER_PTR;
+    }
+    else {
+        Gui* gui = GUI_PTR;
+        SAFE_DELETE(gui->msg_vm);
+        if (
+            !GAME_MANAGER.__unknown_flag_A &&
+            !GAME_MANAGER.__unknown_flag_D
+        ) {
+            ANM_MANAGER_PTR->unload_anm(6);
+            gui->stage_logo_anm = NULL;
+            SAFE_FREE(gui->msg_file);
+        }
+        delete STAGE_B_PTR;
+        STAGE_B_PTR = STAGE_PTR;
+        PAUSE_MENU_PTR->disable_funcs();
+        BULLET_MANAGER_PTR->disable_funcs();
+        REPLAY_MANAGER_PTR->disable_funcs();
+        ITEM_MANAGER_PTR->destroy_all();
+    }
+
+    EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
+    if (
+        !GAME_MANAGER.__unknown_flag_A &&
+        !GAME_MANAGER.__unknown_flag_D
+    ) {
+        delete enemy_manager;
+    }
+    else {
+        enemy_manager->destroy_all();
+    }
+
+    AnmManager* anm_manager = ANM_MANAGER_PTR;
+    anm_manager->mark_all_vms_from_loaded_slot_for_delete(8);
+    anm_manager->mark_all_vms_from_loaded_slot_for_delete(7);
+
+    SAFE_DELETE(BOMB_PTR);
+    delete SPELLCARD_PTR;
+
+    UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+    UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
+    GAME_THREAD_PTR = NULL;
+
+
+}
 
 inline unsigned GameThread::thread_start_impl() {
     GameThread* game_thread = GAME_THREAD_PTR;
