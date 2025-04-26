@@ -975,7 +975,6 @@ dllexport gnu_noinline void* fastcall __compress_buffer(void* buffer_in, int32_t
 }
 
 // 0x46F840
-// This function looks like handwritten assembly. Compilers don't emit shift instructions that modify flags like this, right?
 dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32_t buffer_size, void* out_buffer, int32_t out_buffer_size) asm_symbol_rel(0x46F840);
 dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32_t buffer_size, void* out_buffer, int32_t out_buffer_size) {
     codegen_barrier();
