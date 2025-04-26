@@ -15876,7 +15876,7 @@ struct ShtFile {
     unknown_fields(0x2); // 0x0
     uint16_t __word_2; // 0x2
     unknown_fields(0xC); // 0x4
-    float __float_array_10[4]; // 0x10
+    float movement_speeds[4]; // 0x10
     int32_t max_level; // 0x20
     int32_t power_per_level; // 0x24
     unknown_fields(0xB8); // 0x28
@@ -17270,10 +17270,8 @@ public:
 
             this->__set_all_option_D4_to_1();
 
-            // this looks *very* wrong, but
-            // is somehow matching the codegen
             for (int32_t i = 0; i < 4; ++i) {
-                ((int32_t*)&this->data.__timer_47180.current)[i] = this->sht_file->__float_array_10[i] * 128.0f;
+                ((int32_t*)&this->data.__unfocused_linear_speed)[i] = this->sht_file->movement_speeds[i] * 128.0f;
             }
 
             this->sht_file->power_per_level = DEFAULT_POWER_PER_LEVEL;
