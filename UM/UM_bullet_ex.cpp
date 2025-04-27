@@ -41,6 +41,8 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 
 #define USE_EXTERN_STATICS 1
 
+#define USE_EXTERN_FOR_CODEGEN 1
+
 #define GAME_VERSION UM_VER
 
 #define ENGLISH_STRINGS
@@ -61,6 +63,12 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #else
 #define codegen_volatile
 #define codegen_barrier() do {} while(false)
+#endif
+
+#if USE_EXTERN_FOR_CODEGEN
+#define externcg extern
+#else
+#define externcg
 #endif
 
 #define CHEAT_THE_LOADER
@@ -465,8 +473,8 @@ enum CriticalSectionIndex {
     __unused_cs_4 = 8,
     AnmList_CS = 9,
     RNG_CS = 10,
-    __unknown_cs_2 = 11,
-    __unknown_cs_3 = 12,
+    SoundManagerA_CS = 11,
+    SoundManagerB_CS = 12,
     __unused_cs_5 = 13,
 };
 
@@ -504,7 +512,7 @@ ValidateStructSize32(0x1D0, CriticalSectionManager);
 
 extern "C" {
     // 0x521660
-    extern CriticalSectionManager CRITICAL_SECTION_MANAGER asm("_CRITICAL_SECTION_MANAGER");
+    externcg CriticalSectionManager CRITICAL_SECTION_MANAGER asm("_CRITICAL_SECTION_MANAGER");
 }
 
 // 0x404F60
@@ -594,10 +602,10 @@ struct DebugLogger {
 
 extern "C" {
     // 0x4CF290
-    extern DebugLogger* DEBUG_LOG_PTR asm("_DEBUG_LOG_PTR");
+    externcg DebugLogger* DEBUG_LOG_PTR asm("_DEBUG_LOG_PTR");
 
     // 0x4CF2F0
-    extern char UNKNOWN_TEXT_BUFFER_A[MAX_PATH] asm("_UNKNOWN_TEXT_BUFFER_A");
+    externcg char UNKNOWN_TEXT_BUFFER_A[MAX_PATH] asm("_UNKNOWN_TEXT_BUFFER_A");
 }
 
 namespace Pbg {
@@ -797,7 +805,7 @@ namespace Pbg {
 
 };
 
-// size: 0x10(?)
+// size: 0x10
 struct ArcFileInner {
     char* __string_0; // 0x0
     int __dword_4; // 0x4
@@ -824,13 +832,6 @@ struct UnknownP {
     int32_t __int_8; // 0x8
     // 0xC
 };
-
-/*
-extern "C" {
-    // 0x4C5360
-    extern UnknownP UNKNOWN_P[] asm("_UNKNOWN_P");
-}
-*/
 
 // 0x4C5360
 static UnknownP UNKNOWN_P[] = {
@@ -962,7 +963,7 @@ dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buf
 
 extern "C" {
     // 0x51F660
-    extern uint8_t DECOMPRESS_BUFFER[0x2000] asm("_DECOMPRESS_BUFFER");
+    externcg uint8_t DECOMPRESS_BUFFER[0x2000] asm("_DECOMPRESS_BUFFER");
 }
 
 // 0x46F5B0
@@ -1164,7 +1165,7 @@ error_free:
 };
 extern "C" {
     // 0x5217C0
-    extern ArcFile THDAT_ARCFILE asm("_THDAT_ARCFILE");
+    externcg ArcFile THDAT_ARCFILE asm("_THDAT_ARCFILE");
 }
 
 // size: 0x10
@@ -1285,7 +1286,7 @@ struct ArcFileEx : ArcFile {
 
 extern "C" {
     // 0x568AF0
-    extern ArcFileEx ARCFILE_ARRAY[20] asm("_ARCFILE_ARRAY");
+    externcg ArcFileEx ARCFILE_ARRAY[20] asm("_ARCFILE_ARRAY");
 }
 
 // 0x402060
@@ -1350,7 +1351,7 @@ decode_file:
 
 extern "C" {
     // 0x570EA0
-    extern char PATH_BUFFER[MAX_PATH] asm("_PATH_BUFFER");
+    externcg char PATH_BUFFER[MAX_PATH] asm("_PATH_BUFFER");
 }
 inline void* read_file_from_dat(const char* path, int32_t* size_out) {
     PATH_BUFFER[0] = '\0';
@@ -1434,7 +1435,7 @@ dllexport gnu_noinline ZUNResult fastcall __zun_create_new_file_from_buffer(cons
 
 extern "C" {
     // 0x4CA96C
-    extern HANDLE STATIC_FILE_HANDLE asm("_STATIC_FILE_HANDLE");
+    externcg HANDLE STATIC_FILE_HANDLE asm("_STATIC_FILE_HANDLE");
 }
 
 inline ZUNResult __zun_open_file(const char* filename) {
@@ -1612,7 +1613,7 @@ struct LogBuffer {
 };
 extern "C" {
     // 0x4CABE8
-    extern LogBuffer<0x2000> LOG_BUFFER asm("_LOG_BUFFER");
+    externcg LogBuffer<0x2000> LOG_BUFFER asm("_LOG_BUFFER");
 }
 
 enum UpdateFuncRet : int32_t {
@@ -1704,7 +1705,7 @@ ValidateStructSize32(0x28, UpdateFunc);
 typedef struct UpdateFuncRegistry UpdateFuncRegistry;
 extern "C" {
     // 0x4CF294
-    extern UpdateFuncRegistry* UPDATE_FUNC_REGISTRY_PTR asm("_UPDATE_FUNC_REGISTRY_PTR");
+    externcg UpdateFuncRegistry* UPDATE_FUNC_REGISTRY_PTR asm("_UPDATE_FUNC_REGISTRY_PTR");
 }
 // size: 0x58
 struct UpdateFuncRegistry {
@@ -2018,9 +2019,9 @@ ValidateStructSize32(0x8, Rng);
 
 extern "C" {
     // 0x4CF280
-    extern Rng RNG asm("_RNG");
+    externcg Rng RNG asm("_RNG");
     // 0x4CF288
-    extern Rng REPLAY_RNG asm("_REPLAY_RNG");
+    externcg Rng REPLAY_RNG asm("_REPLAY_RNG");
 }
 
 enum Difficulty {
@@ -2059,7 +2060,7 @@ ValidateStructSize32(0x8, GameSpeed);
 
 extern "C" {
     // 0x4CCBF0
-    extern GameSpeed GAME_SPEED asm("_GAME_SPEED");
+    externcg GameSpeed GAME_SPEED asm("_GAME_SPEED");
 }
 // 0x43A200
 dllexport gnu_noinline void vectorcall GameSpeed::set(float new_speed) {
@@ -2921,7 +2922,7 @@ ValidateStructSize32(0x274, InputState);
 
 extern "C" {
     // 0x4CA210
-    extern InputState INPUT_STATES[3] asm("_INPUT_STATES");
+    externcg InputState INPUT_STATES[3] asm("_INPUT_STATES");
 }
 
 // 0x42ABC0
@@ -3252,9 +3253,9 @@ ValidateStructSize32(0x58, D3DThread);
 
 extern "C" {
     // 0x4CD950
-    extern D3DThread D3D_THREAD_A asm("_D3D_THREAD_A");
+    externcg D3DThread D3D_THREAD_A asm("_D3D_THREAD_A");
     // 0x4CDAE0
-    extern ZUNThread UNKNOWN_THREAD_A asm("_UNKNOWN_THREAD_A");
+    externcg ZUNThread UNKNOWN_THREAD_A asm("_UNKNOWN_THREAD_A");
 }
 
 // size: 0xC
@@ -3337,7 +3338,7 @@ struct ZUNTask {
 
 extern "C" {
     // 0x57095C
-    extern size_t JOYPAD_INDEX asm("_JOYPAD_INDEX");
+    externcg size_t JOYPAD_INDEX asm("_JOYPAD_INDEX");
 }
 
 static constexpr LONG JOYPAD_MIN_RANGE = -1000;
@@ -3348,9 +3349,9 @@ typedef struct TickCounter TickCounter;
 
 extern "C" {
     // 0x4CF2DC
-    extern FpsCounter* FPS_COUNTER_PTR asm("_FPS_COUNTER_PTR");
+    externcg FpsCounter* FPS_COUNTER_PTR asm("_FPS_COUNTER_PTR");
     // 0x507644
-    extern TickCounter* TICK_COUNTER_PTR asm("_TICK_COUNTER_PTR");
+    externcg TickCounter* TICK_COUNTER_PTR asm("_TICK_COUNTER_PTR");
 }
 
 // size: 0x38
@@ -3372,6 +3373,11 @@ struct FpsCounter : ZUNTask {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
 
+    }
+
+    inline void reset() {
+        this->__double_20 = 0.0;
+        this->__double_28 = 0.0;
     }
 
     inline float calc_slowdown_rate() {
@@ -3475,7 +3481,7 @@ struct StageData {
 
 extern "C" {
     // 0x4CF428
-    extern StageData* STAGE_DATA_PTR asm("_STAGE_DATA_PTR");
+    externcg StageData* STAGE_DATA_PTR asm("_STAGE_DATA_PTR");
 }
 
 typedef struct AnmManager AnmManager;
@@ -3507,6 +3513,11 @@ union AnmID {
 
     // 0x488E50
     dllexport void interrupt_tree(int32_t interrupt_index) asm_symbol_rel(0x488E50);
+
+    inline void interrupt_and_orphan_tree(int32_t interrupt_index) {
+        this->interrupt_tree(interrupt_index);
+        *this = 0;
+    }
 
     // 0x488E70
     dllexport void __tree_set_visible2() asm_symbol_rel(0x488E70);
@@ -3553,11 +3564,18 @@ ValidateStructSize32(0x4, AnmID);
 
 extern "C" {
     // 0x4C5F90
-    extern int32_t ACHIEVEMENT_MODE_STATE asm("_ACHIEVEMENT_MODE_STATE");
+    externcg int32_t ACHIEVEMENT_MODE_STATE asm("_ACHIEVEMENT_MODE_STATE");
     // 0x4CF3FC
-    extern void (*UNKNOWN_FUNC_PTR_B)() asm("_UNKNOWN_FUNC_PTR_B");
+    externcg void (*UNKNOWN_FUNC_PTR_B)() asm("_UNKNOWN_FUNC_PTR_B");
     // 0x4CF400
-    extern void (*UNKNOWN_FUNC_PTR_A)() asm("_UNKNOWN_FUNC_PTR_A");
+    externcg void (*UNKNOWN_FUNC_PTR_A)() asm("_UNKNOWN_FUNC_PTR_A");
+
+    // 0x5217D0
+    externcg AnmID UNKNOWN_ANM_ID_A asm("_UNKNOWN_ANM_ID_A");
+    // 0x5217D4
+    externcg AnmID UNKNOWN_ANM_ID_B asm("_UNKNOWN_ANM_ID_B");
+    // 0x5217D8
+    externcg AnmID UNKNOWN_ANM_ID_C asm("_UNKNOWN_ANM_ID_C");
 }
 
 // size: 0xB60
@@ -3628,7 +3646,7 @@ struct Supervisor {
     ScreenshotManager screenshot_manager; // 0x970
     ZUNThread __thread_A94; // 0xA94
     ZUNThread __thread_AB0; // 0xAB0
-    unknown_fields(0x4); // 0xACC
+    int __int_ACC; // 0xACC
     int32_t __int_AD0; // 0xAD0
     unknown_fields(0x54); // 0xAD4
     BOOL fog_enabled; // 0xB28
@@ -3645,59 +3663,64 @@ struct Supervisor {
 
     // 0x456180
     dllexport static gnu_noinline void __release_rendering_surfaces() asm_symbol_rel(0x456180);
-    
-    // 0x453460
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_tick_A(void* self) asm_symbol_rel(0x453460) {
 
+    // 0x454950
+    dllexport gnu_noinline int thiscall __sub_454950() asm_symbol_rel(0x454950);
+    
+    inline UpdateFuncRet thiscall on_tick();
+
+    // 0x453460
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x453460) {
+        return ((Supervisor*)ptr)->on_tick();
     }
 
     // 0x4553B0
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_A(void* self) asm_symbol_rel(0x4553B0) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_A(void* ptr) asm_symbol_rel(0x4553B0) {
 
     }
 
     // 0x455610
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_B(void* self) asm_symbol_rel(0x455610) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_B(void* ptr) asm_symbol_rel(0x455610) {
 
     }
 
     // 0x455530
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_C(void* self) asm_symbol_rel(0x455530) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_C(void* ptr) asm_symbol_rel(0x455530) {
 
     }
 
     // 0x455A70
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_D(void* self) asm_symbol_rel(0x455A70) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_D(void* ptr) asm_symbol_rel(0x455A70) {
 
     }
 
     // 0x4559A0
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_E(void* self) asm_symbol_rel(0x4559A0) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_E(void* ptr) asm_symbol_rel(0x4559A0) {
 
     }
     
     // 0x455BC0
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_F(void* self) asm_symbol_rel(0x455BC0) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_F(void* ptr) asm_symbol_rel(0x455BC0) {
 
     }
 
     // 0x455B10
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_G(void* self) asm_symbol_rel(0x455B10) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_G(void* ptr) asm_symbol_rel(0x455B10) {
 
     }
 
     // 0x455CF0
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_H(void* self) asm_symbol_rel(0x455CF0) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_H(void* ptr) asm_symbol_rel(0x455CF0) {
 
     }
 
     // 0x455C90
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_I(void* self) asm_symbol_rel(0x455C90) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_I(void* ptr) asm_symbol_rel(0x455C90) {
 
     }
 
     // 0x455D40
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_J(void* self) asm_symbol_rel(0x455D40) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_J(void* ptr) asm_symbol_rel(0x455D40) {
 
     }
 
@@ -3815,6 +3838,7 @@ ValidateFieldOffset32(0x840, Supervisor, d3dcaps);
 ValidateFieldOffset32(0x970, Supervisor, screenshot_manager);
 ValidateFieldOffset32(0xA94, Supervisor, __thread_A94);
 ValidateFieldOffset32(0xAB0, Supervisor, __thread_AB0);
+ValidateFieldOffset32(0xACC, Supervisor, __int_ACC);
 ValidateFieldOffset32(0xAD0, Supervisor, __int_AD0);
 ValidateFieldOffset32(0xB28, Supervisor, fog_enabled);
 ValidateFieldOffset32(0xB2C, Supervisor, zwrite_enabled);
@@ -3829,7 +3853,7 @@ ValidateStructSize32(0xB60, Supervisor);
 
 extern "C" {
     // 0x4CCDF0
-    extern Supervisor SUPERVISOR asm("_SUPERVISOR");
+    externcg Supervisor SUPERVISOR asm("_SUPERVISOR");
 }
 
 // 0x456180
@@ -3845,7 +3869,7 @@ dllexport gnu_noinline ZUNResult Supervisor::initialize() {
     SUPERVISOR.gamemode_current = -2;
     SUPERVISOR.gamemode_switch = 0;
     SUPERVISOR.__dword_800 = 0;
-    UpdateFunc* update_func = new UpdateFunc(&Supervisor::__unknown_on_tick_A, true, &SUPERVISOR);
+    UpdateFunc* update_func = new UpdateFunc(&Supervisor::on_tick, true, &SUPERVISOR);
     update_func->on_init_func = &Supervisor::on_registration;
     ZUNResult ret = UpdateFuncRegistry::register_on_tick(update_func, 1);
     if (ZUN_SUCCEEDED(ret)) {
@@ -3884,8 +3908,6 @@ dllexport gnu_noinline int32_t Supervisor::__start_thread_A94(_beginthreadex_pro
     CRITICAL_SECTION_MANAGER.leave_section(__supervisor_thread_cs_1);
     return 0;
 }
-
-
 
 #define SOUND_EFFECT_COUNT 84
 
@@ -4079,9 +4101,12 @@ ValidateStructSize32(0x18, SoundManagerUnknownB);
 
 // size: 0x10C
 struct SoundManagerUnknownD {
-    unknown_fields(0x10C); // 0x0
+    int __dword_0; // 0x0
+    unknown_fields(0x108); // 0x4
+    // 0x10C
 };
 #pragma region // SoundManagerUnknownD Validation
+ValidateFieldOffset32(0x0, SoundManagerUnknownD, __dword_0);
 ValidateStructSize32(0x10C, SoundManagerUnknownD);
 #pragma endregion
 
@@ -4165,7 +4190,7 @@ ValidateStructSize32(0x200, SoundManagerUnknownF);
 
 extern "C" {
     // 0x4C9B80
-    extern SoundData SOUND_DATA[SOUND_EFFECT_COUNT] asm("_SOUND_DATA");
+    externcg SoundData SOUND_DATA[SOUND_EFFECT_COUNT] asm("_SOUND_DATA");
 }
 
 typedef struct SoundManager SoundManager;
@@ -4297,6 +4322,9 @@ struct SoundManager {
 
     static inline void stop_sound(int32_t sound_id);
 
+    // 0x444D80
+    dllexport static gnu_noinline void __stop_all() asm_symbol_rel(0x444D80);
+
     static inline void play_sound(int32_t sound_id) {
         SoundManager::play_sound_centered(sound_id, UNUSED_FLOAT);
     }
@@ -4364,8 +4392,11 @@ ValidateStructSize32(0x573C, SoundManager);
 
 extern "C" {
     // 0x56AD80
-    extern SoundManager SOUND_MANAGER asm("_SOUND_MANAGER");
+    externcg SoundManager SOUND_MANAGER asm("_SOUND_MANAGER");
 }
+
+// 0x401C50
+dllexport gnu_noinline uint32_t get_hardware_inputs() asm_symbol_rel(0x401C50);
 
 inline uint32_t InputState::get_joypad(uint32_t buttons) {
     uint32_t prev_buttons = buttons;
@@ -4451,6 +4482,13 @@ static inline constexpr size_t SHOTTYPE_COUNT = CHARACTER_COUNT * SHOTTYPES_PER_
 static inline constexpr size_t DIFFICULTY_COUNT = 6;
 static inline constexpr int32_t STAGE_COUNT = 8;
 
+enum CharacterID : int32_t {
+    Reimu = 0,
+    Marisa = 1,
+    Sakuya = 2,
+    Sanae = 3,
+};
+
 static inline constexpr int32_t RANK_BOUND = 1024;
 static inline constexpr int32_t MAX_RANK = +RANK_BOUND; // 1024
 static inline constexpr int32_t MIN_RANK = -RANK_BOUND; // -1024
@@ -4488,6 +4526,8 @@ static inline constexpr int32_t LIFE_FRAGMENT_COST_TABLE[31] = {
 static inline constexpr int32_t BOMB_FRAGMENT_COST = 3;
 static inline constexpr int32_t MAX_CONTINUES = 9; // increasing this will break score rendering, so DO NOT
 static inline constexpr int32_t DEFAULT_POWER_PER_LEVEL = 100;
+static inline constexpr int32_t DEFAULT_MAX_POWER_LEVEL = 4;
+static inline constexpr int32_t MAX_ALLOWED_POWER_LEVEL = 8;
 
 // size: 0xFC
 struct Globals {
@@ -4839,7 +4879,7 @@ struct GameManager {
 
 extern "C" {
     // 0x4CCCC0
-    extern GameManager GAME_MANAGER asm("_GAME_MANAGER");
+    externcg GameManager GAME_MANAGER asm("_GAME_MANAGER");
 }
 
 static inline constexpr float SCREEN_LEFT_EDGE = -192.0f;
@@ -4989,7 +5029,7 @@ ValidateFieldOffset32(0x20D4, WindowData, __dword_array_20D4);
 
 extern "C" {
     // 0x568C30
-    extern WindowData WINDOW_DATA asm("_WINDOW_DATA");
+    externcg WindowData WINDOW_DATA asm("_WINDOW_DATA");
 }
 
 // Yes, I know I don't need explicit enum values. But it makes a quick lookup table visually.
@@ -5089,7 +5129,7 @@ ValidateStructSize32(0x34, CardData);
 
 extern "C" {
     // 0x4C53C0
-    extern CardData CARD_DATA_TABLE[INTERNAL_CARD_COUNT] asm("_CARD_DATA_TABLE");
+    externcg CardData CARD_DATA_TABLE[INTERNAL_CARD_COUNT] asm("_CARD_DATA_TABLE");
 }
 
 template <typename L>
@@ -5617,7 +5657,7 @@ typedef struct ScorefileManager ScorefileManager;
 
 extern "C" {
     // 0x4CF41C
-    extern ScorefileManager* SCOREFILE_MANAGER_PTR asm("_SCOREFILE_MANAGER_PTR");
+    externcg ScorefileManager* SCOREFILE_MANAGER_PTR asm("_SCOREFILE_MANAGER_PTR");
 }
 
 // size: 0xBF158
@@ -7341,13 +7381,13 @@ struct EnemyCallback {
 typedef struct AbilityShop AbilityShop;
 extern "C" {
     // 0x4CF2A4
-    extern AbilityShop* ABILITY_SHOP_PTR asm("_ABILITY_SHOP_PTR");
+    externcg AbilityShop* ABILITY_SHOP_PTR asm("_ABILITY_SHOP_PTR");
 }
 
 typedef struct BombBase BombBase;
 extern "C" {
     // 0x4CF2B8
-    extern BombBase* BOMB_PTR asm("_BOMB_PTR");
+    externcg BombBase* BOMB_PTR asm("_BOMB_PTR");
 }
 
 // size: 0xA8
@@ -7467,7 +7507,7 @@ struct BombBase : ZUNTask {
     }
 
     // 0x41FD40
-    dllexport gnu_noinline static void allocate();
+    dllexport gnu_noinline static BombBase* allocate() asm_symbol_rel(0x41FD40);
 
     // 0x420040
     dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) {
@@ -7621,7 +7661,7 @@ struct BombSanaeA : BombBase {
 };
 
 // 0x41FD40
-dllexport gnu_noinline void BombBase::allocate() {
+dllexport gnu_noinline BombBase* BombBase::allocate() {
     BombBase* bomb_ptr;
     switch (GAME_MANAGER.globals.shottype_index()) {
         default:
@@ -7650,6 +7690,7 @@ dllexport gnu_noinline void BombBase::allocate() {
     bomb_ptr->__dword_A0 = 0;
     bomb_ptr->__int_A4 = 0;
     BOMB_PTR = bomb_ptr;
+    return bomb_ptr;
 }
 
 enum ItemID : int32_t {
@@ -8362,7 +8403,7 @@ static const ExtraDamageFunc *const EXTRA_DAMAGE_FUNC_TABLE[] = {
 extern "C" {
     // Table is *not* const
     // 0x4CF2D8
-    extern ExtraHitboxFunc* EXTRA_HITBOX_FUNC_TABLE[] asm("_EXTRA_HITBOX_FUNC_TABLE");
+    externcg ExtraHitboxFunc* EXTRA_HITBOX_FUNC_TABLE[] asm("_EXTRA_HITBOX_FUNC_TABLE");
 }
 
 #pragma region // IMPORTED_FROM_MOF_DATA_NEEDS_VALIDATION
@@ -9529,14 +9570,14 @@ typedef struct Gui Gui;
 
 extern "C" {
     // 0x4CF2E0
-    extern Gui* GUI_PTR asm("_GUI_PTR");
+    externcg Gui* GUI_PTR asm("_GUI_PTR");
     // 0x570918
-    extern void* CACHED_MSG_FILE_PTR asm("_CACHED_MSG_FILE_PTR");
+    externcg void* CACHED_MSG_FILE_PTR asm("_CACHED_MSG_FILE_PTR");
     // 0x57091C
-    extern BOOL FRONT_ANM_IS_LOADED asm("_FRONT_ANM_IS_LOADED");
+    externcg BOOL FRONT_ANM_IS_LOADED asm("_FRONT_ANM_IS_LOADED");
 
     // 0x4CF2D0
-    extern EnemyManager* ENEMY_MANAGER_PTR asm("_ENEMY_MANAGER_PTR");
+    externcg EnemyManager* ENEMY_MANAGER_PTR asm("_ENEMY_MANAGER_PTR");
 }
 
 
@@ -9552,7 +9593,7 @@ static inline bool is_replay();
 typedef struct GameThread GameThread;
 extern "C" {
     // 0x4CF2E4
-    extern GameThread* GAME_THREAD_PTR asm("_GAME_THREAD_PTR");
+    externcg GameThread* GAME_THREAD_PTR asm("_GAME_THREAD_PTR");
 }
 
 // size: 0xD8
@@ -10642,6 +10683,20 @@ inline void SoundManager::stop_sound(int32_t sound_id) {
     }
 }
 
+// 0x444D80
+dllexport gnu_noinline void SoundManager::__stop_all() {
+    SOUND_MANAGER.active_sound_ids[0] = -1;
+    for (size_t i = 0; i < countof(SOUND_MANAGER.__unknown_smb_array_1A84); ++i) {
+        SOUND_MANAGER.__unknown_smb_array_1A84[i].__dword_14 = 0;
+        if (LPDIRECTSOUNDBUFFER sound_buffer = SOUND_MANAGER.__unknown_smb_array_1A84[i].sound_buffer) {
+            DWORD status;
+            sound_buffer->GetStatus(&status);
+            SOUND_MANAGER.__unknown_smb_array_1A84[i].__dword_14 = status & 1;
+            sound_buffer->Stop();
+        }
+    }
+}
+
 typedef int32_t (*volatile fastcall AnmOnFunc)(AnmVM*);
 typedef int32_t (*volatile fastcall AnmOnFuncArg)(AnmVM*, int32_t);
 
@@ -10654,12 +10709,12 @@ extern inline const AnmOnFunc ANM_ON_COPY_B_FUNCS[];
 //extern inline const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[];
 extern "C" {
     // the wait func table isn't const
-    extern AnmOnFunc ANM_ON_WAIT_FUNCS[] asm("_ANM_ON_WAIT_FUNCS");
-    //extern AnmOnFunc ANM_ON_TICK_FUNCS[] asm("_ANM_ON_TICK_FUNCS");
-    extern AnmOnFunc ANM_ON_DRAW_FUNCS[] asm("_ANM_ON_DRAW_FUNCS");
-    //extern AnmOnFunc ANM_ON_DESTROY_FUNCS[] asm("_ANM_ON_DESTROY_FUNCS");
-    //extern AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[] asm("_ANM_ON_INTERRUPT_FUNCS");
-    extern AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[] asm("_ANM_ON_SPRITE_LOOKUP_FUNCS");
+    externcg AnmOnFunc ANM_ON_WAIT_FUNCS[] asm("_ANM_ON_WAIT_FUNCS");
+    //externcg AnmOnFunc ANM_ON_TICK_FUNCS[] asm("_ANM_ON_TICK_FUNCS");
+    externcg AnmOnFunc ANM_ON_DRAW_FUNCS[] asm("_ANM_ON_DRAW_FUNCS");
+    //externcg AnmOnFunc ANM_ON_DESTROY_FUNCS[] asm("_ANM_ON_DESTROY_FUNCS");
+    //externcg AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[] asm("_ANM_ON_INTERRUPT_FUNCS");
+    externcg AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[] asm("_ANM_ON_SPRITE_LOOKUP_FUNCS");
 }
 
 extern inline const AnmOnFunc ANM_ON_TICK_FUNCS[6];
@@ -10667,12 +10722,10 @@ extern inline const AnmOnFunc ANM_ON_DESTROY_FUNCS[5];
 extern inline const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[5];
 
 extern "C" {
-    // 0x5217D0
-    extern Float3 UNKNOWN_FLOAT3_A asm("_UNKNOWN_FLOAT3_A");
     // 0x5217DC
-    extern Float3 UNKNOWN_FLOAT3_B asm("_UNKNOWN_FLOAT3_B");
+    externcg Float3 UNKNOWN_FLOAT3_A asm("_UNKNOWN_FLOAT3_A");
     // 0x56AD78
-    extern Float2 UNKNOWN_FLOAT2_A asm("_UNKNOWN_FLOAT2_A");
+    externcg Float2 UNKNOWN_FLOAT2_A asm("_UNKNOWN_FLOAT2_A");
 }
 
 namespace Anm {
@@ -11183,8 +11236,8 @@ struct AnmVM {
     // 0x429AD0
     dllexport gnu_noinline void thiscall initialize_position_interp(int32_t end_time, int32_t mode, Float3* initial_pos, Float3* final_pos) asm_symbol_rel(0x429AD0) {
         this->data.position_interp.end_time = end_time;
-        this->data.position_interp.bezier1 = UNKNOWN_FLOAT3_B;
-        this->data.position_interp.bezier2 = UNKNOWN_FLOAT3_B;
+        this->data.position_interp.bezier1 = UNKNOWN_FLOAT3_A;
+        this->data.position_interp.bezier2 = UNKNOWN_FLOAT3_A;
         this->data.position_interp.mode = mode;
         this->data.position_interp.initial_value = *initial_pos;
         this->data.position_interp.final_value = *final_pos;
@@ -12082,7 +12135,7 @@ struct AnmLoaded {
     AnmInstruction* (*scripts)[]; // 0x120
     AnmImage* images; // 0x124
     int32_t __load_wait; // 0x128
-    unknown_fields(0x4); // 0x12C
+    BOOL __unload_flag; // 0x12C
     int32_t total_image_sizes; // 0x130
     int32_t __counter_134; // 0x134
     void* __ptr_138; // 0x138
@@ -12212,6 +12265,14 @@ public:
     }
 
 private:
+    inline AnmID& thiscall instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, int32_t layer);
+public:
+    inline AnmID instantiate_vm_to_world_list_back(int32_t script_index, int32_t layer) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_vm_to_world_list_back(dummy, script_index, layer);
+    }
+
+private:
     inline AnmID& thiscall instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position, AnmVM** raw_out);
 public:
     inline AnmID instantiate_vm_to_world_list_back(int32_t script_index, Float3* position, AnmVM** raw_out) {
@@ -12251,6 +12312,22 @@ public:
     inline AnmID instantiate_vm_to_world_list_back(int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVM** raw_out) {
         AnmID dummy{ GARBAGE_VALUE(int) };
         return this->instantiate_vm_to_world_list_back(dummy, script_index, position, z_rotation, layer, raw_out);
+    }
+
+private:
+    inline AnmID& thiscall instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index);
+public:
+    inline AnmID instantiate_vm_to_world_list_front(int32_t script_index) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_vm_to_world_list_front(dummy, script_index);
+    }
+
+private:
+    inline AnmID& thiscall instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, Float3* position);
+public:
+    inline AnmID instantiate_vm_to_world_list_front(int32_t script_index, Float3* position) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_vm_to_world_list_front(dummy, script_index, position);
     }
 
 private:
@@ -12388,6 +12465,24 @@ public:
         return ZUN_SUCCESS;
     }
 };
+#pragma region // AnmLoaded Validation
+ValidateFieldOffset32(0x0, AnmLoaded, slot_index);
+ValidateFieldOffset32(0x4, AnmLoaded, anm_path);
+ValidateFieldOffset32(0x108, AnmLoaded, anm_file);
+ValidateFieldOffset32(0x10C, AnmLoaded, __vm_array);
+ValidateFieldOffset32(0x110, AnmLoaded, entry_count);
+ValidateFieldOffset32(0x114, AnmLoaded, script_count);
+ValidateFieldOffset32(0x118, AnmLoaded, sprite_count);
+ValidateFieldOffset32(0x11C, AnmLoaded, sprites);
+ValidateFieldOffset32(0x120, AnmLoaded, scripts);
+ValidateFieldOffset32(0x124, AnmLoaded, images);
+ValidateFieldOffset32(0x128, AnmLoaded, __load_wait);
+ValidateFieldOffset32(0x12C, AnmLoaded, __unload_flag);
+ValidateFieldOffset32(0x130, AnmLoaded, total_image_sizes);
+ValidateFieldOffset32(0x134, AnmLoaded, __counter_134);
+ValidateFieldOffset32(0x138, AnmLoaded, __ptr_138);
+ValidateStructSize32(0x13C, AnmLoaded);
+#pragma endregion
 
 // size: 0x14
 // D3DFVF_XYZRHW | D3DFVF_DIFFUSE (0x44)
@@ -12448,13 +12543,13 @@ struct UnknownVertexB {
 
 extern "C" {
     // 0x51F65C
-    extern AnmManager* ANM_MANAGER_PTR asm("_ANM_MANAGER_PTR");
+    externcg AnmManager* ANM_MANAGER_PTR asm("_ANM_MANAGER_PTR");
     // 0x5704C0
-    extern SpriteVertexB SPRITE_VERTEX_BUFFER_B[4] asm("_SPRITE_VERTEX_BUFFER_B");
+    externcg SpriteVertexB SPRITE_VERTEX_BUFFER_B[4] asm("_SPRITE_VERTEX_BUFFER_B");
     // 0x570520
-    extern SpriteVertex SPRITE_VERTEX_BUFFER_A[4] asm("_SPRITE_VERTEX_BUFFER_A");
+    externcg SpriteVertex SPRITE_VERTEX_BUFFER_A[4] asm("_SPRITE_VERTEX_BUFFER_A");
     // 0x570590
-    extern SpriteVertexC SPRITE_VERTEX_BUFFER_C[4] asm("_SPRITE_VERTEX_BUFFER_C");
+    externcg SpriteVertexC SPRITE_VERTEX_BUFFER_C[4] asm("_SPRITE_VERTEX_BUFFER_C");
 }
 
 enum AnmFileIndex {
@@ -13414,6 +13509,49 @@ ValidateFieldOffset32(0x39724B0, AnmManager, __color_39724B0);
 ValidateStructSize32(0x39724B8, AnmManager);
 #pragma endregion
 
+inline UpdateFuncRet thiscall Supervisor::on_tick() {
+    if (this->__unknown_bitfield_A == 1) {
+        if (!this->__thread_A94.__bool_10) {
+            SUPERVISOR.gamemode_switch = 3;
+        }
+    }
+    //SOUND_MANAGER.__sub_476D20();
+    if (SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704) {
+        // TODO
+    }
+
+    get_hardware_inputs();
+
+    AnmManager* anm_manager = ANM_MANAGER_PTR;
+
+    nounroll for (size_t i = 0; i < countof(anm_manager->loaded_anm_files); ++i) {
+        if (AnmLoaded* anm_loaded = anm_manager->loaded_anm_files[i]) {
+            if (anm_loaded->__unload_flag) {
+                anm_manager->unload_anm(i);
+                anm_loaded->__unload_flag = false;
+            } else if (anm_loaded->__load_wait) {
+                if (anm_manager->__sub_486920(anm_loaded)) {
+                    break;
+                }
+                return UpdateFuncEnd0;
+            }
+        }
+    }
+
+    if (uint32_t counter = WINDOW_DATA.__counter_2044) {
+        WINDOW_DATA.__counter_2044 = counter - 1;
+    }
+
+    switch (this->__int_ACC) {
+        case 2:
+            return UpdateFuncEnd0;
+        case 0:
+            //this->__sub_454950();
+    }
+
+    return UpdateFuncNext;
+}
+
 inline void AnmLoaded::cleanup() {
     if (this->anm_file) {
         ANM_MANAGER_PTR->mark_all_vms_from_loaded_for_delete(this);
@@ -13556,6 +13694,89 @@ dllexport gnu_noinline AnmLoaded* thiscall AnmVM::get_anm_loaded() {
     return ANM_MANAGER_PTR->loaded_anm_files[this->data.slot];
 }
 
+typedef struct LoadingThread LoadingThread;
+
+extern "C" {
+    // 0x4CF3F8
+    externcg LoadingThread* LOADING_THREAD_PTR asm("_LOADING_THREAD_PTR");
+}
+
+// size: 0x64C
+struct LoadingThread : ZUNTask {
+    // ZUNTask base; // 0x0
+    ZUNThread __thread_C; // 0xC
+    unknown_fields(0x4); // 0x28
+    AnmVM __vm_2C; // 0x2C
+    AnmID __anm_id_638; // 0x638
+    AnmLoaded* __anm_loaded; // 0x63C
+    int __int_640; // 0x640
+    int __int_644; // 0x644
+    int __int_648; // 0x648
+    // 0x64C
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline LoadingThread() {
+        this->zero_contents();
+        this->__unknown_task_flag_A = true;
+    }
+
+    inline UpdateFuncRet on_tick();
+
+    inline UpdateFuncRet on_draw();
+
+    // 0x453380
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x453380) {
+        return ((LoadingThread*)ptr)->on_tick();
+    }
+
+    // 0x4533F0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x4533F0) {
+        return ((LoadingThread*)ptr)->on_draw();
+    }
+
+    inline ZUNResult initialize() {
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
+        UpdateFuncRegistry::register_on_tick(update_func, 4);
+        this->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, true, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 74);
+        this->on_draw_func = update_func;
+
+        clang_forceinline this->__thread_C.stop_and_cleanup();
+
+
+
+        return ZUN_SUCCESS;
+    }
+
+    // 0x4531B0
+    dllexport gnu_noinline static LoadingThread* allocate() asm_symbol_rel(0x4531B0) {
+        LoadingThread* loading_thread = new LoadingThread();
+        LOADING_THREAD_PTR = loading_thread;
+        if (ZUN_FAILED(loading_thread->initialize())) {
+            delete loading_thread;
+            return NULL;
+        }
+        return loading_thread;
+    }
+};
+#pragma region // LoadingThread Validation
+ValidateFieldOffset32(0x0, LoadingThread, task_flags);
+ValidateFieldOffset32(0x4, LoadingThread, on_tick_func);
+ValidateFieldOffset32(0x8, LoadingThread, on_draw_func);
+ValidateFieldOffset32(0xC, LoadingThread, __thread_C);
+ValidateFieldOffset32(0x2C, LoadingThread, __vm_2C);
+ValidateFieldOffset32(0x638, LoadingThread, __anm_id_638);
+ValidateFieldOffset32(0x63C, LoadingThread, __anm_loaded);
+ValidateFieldOffset32(0x640, LoadingThread, __int_640);
+ValidateFieldOffset32(0x644, LoadingThread, __int_644);
+ValidateFieldOffset32(0x648, LoadingThread, __int_648);
+ValidateStructSize32(0x64C, LoadingThread);
+#pragma endregion
+
 // size: 0x20
 struct EffectData {
     int16_t __effect_anm_file_index; // 0x0
@@ -13649,7 +13870,7 @@ ValidateStructSize32(0x39724B8, AnmManager);
 typedef struct EffectManager EffectManager;
 extern "C" {
     // 0x4CF2C8
-    extern EffectManager* EFFECT_MANAGER_PTR asm("_EFFECT_MANAGER_PTR");
+    externcg EffectManager* EFFECT_MANAGER_PTR asm("_EFFECT_MANAGER_PTR");
 }
 
 static inline constexpr int32_t MAX_EFFECTS = 0x400;
@@ -13697,7 +13918,7 @@ struct EffectManager : ZUNTask {
     }
 
     // 0x42AC70
-    dllexport gnu_noinline EffectManager* allocate() {
+    dllexport gnu_noinline static EffectManager* allocate() asm_symbol_rel(0x42AC70) {
         EffectManager* effect_manager = new EffectManager();
         EFFECT_MANAGER_PTR = effect_manager;
         if (
@@ -13708,6 +13929,7 @@ struct EffectManager : ZUNTask {
         }
         else {
             LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
+            // no return here?
         }
 
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, effect_manager);
@@ -14051,6 +14273,29 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, 
     return out;
 }
 
+inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, int32_t layer) {
+    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
+    {
+        this->__counter_134++;
+        AnmVM* vm = AnmManager::allocate_new_vm();
+        this->__copy_data_to_vm(vm, script_index);
+        vm->data.use_animation_rng = true;
+        if (layer >= 0) {
+            vm->data.layer = layer;
+            if (layer < 23) {
+                vm->data.origin_mode = 1;
+            }
+        }
+        vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
+        vm->data.rotation.z = 0.0f;
+        vm->run_anm();
+        vm->data.creation_flags = WORLD_LIST_BACK;
+        out = AnmManager::add_vm_to_world_list_back(vm);
+    }
+    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
+    return out;
+}
+
 inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position, AnmVM** raw_out) {
     CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
     {
@@ -14167,6 +14412,42 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& ou
         vm->data.creation_flags = WORLD_LIST_BACK;
         out = 0;
         out = AnmManager::add_vm_to_world_list_back(vm);
+    }
+    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
+    return out;
+}
+
+inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index) {
+    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
+    {
+        this->__counter_134++;
+        AnmVM* vm = AnmManager::allocate_new_vm();
+        this->__copy_data_to_vm(vm, script_index);
+        vm->data.use_animation_rng = true;
+        vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
+        vm->data.rotation.z = 0.0f;
+        vm->run_anm();
+        vm->data.creation_flags = WORLD_LIST_FRONT;
+        out = 0;
+        out = AnmManager::add_vm_to_world_list_front(vm);
+    }
+    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
+    return out;
+}
+
+inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, Float3* position) {
+    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
+    {
+        this->__counter_134++;
+        AnmVM* vm = AnmManager::allocate_new_vm();
+        this->__copy_data_to_vm(vm, script_index);
+        vm->data.use_animation_rng = true;
+        vm->controller.position.safe_copy(position);
+        vm->data.rotation.z = 0.0f;
+        vm->run_anm();
+        vm->data.creation_flags = WORLD_LIST_FRONT;
+        out = 0;
+        out = AnmManager::add_vm_to_world_list_front(vm);
     }
     CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
     return out;
@@ -15280,7 +15561,7 @@ ValidateStructSize32(0x138, AsciiString);
 
 extern "C" {
     // 0x4CF2AC
-    extern AsciiManager* ASCII_MANAGER_PTR asm("_ASCII_MANAGER_PTR");
+    externcg AsciiManager* ASCII_MANAGER_PTR asm("_ASCII_MANAGER_PTR");
 }
 
 #if INCLUDE_PATCH_CODE
@@ -15776,6 +16057,38 @@ ValidateFieldOffset32(0x19274, AsciiManager, on_draw_func_group_3);
 ValidateStructSize32(0x19278, AsciiManager);
 #pragma endregion
 
+inline UpdateFuncRet LoadingThread::on_tick() {
+    if (this->__unknown_task_flag_A) {
+        //SUPERVISOR.__sub_455EC0();
+
+        AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
+        WINDOW_DATA.__int_20D0 = 1;
+        ascii_manager->enable_tick_unsafe();
+        ascii_manager->enable_draw_unsafe();
+        ascii_manager->on_draw_func_group_1->run_on_update = true;
+        ascii_manager->on_draw_func_group_2->run_on_update = true;
+        ascii_manager->on_draw_func_group_3->run_on_update = true;
+
+        SUPERVISOR.__unknown_flag_G = false;
+        SUPERVISOR.gamemode_switch = 4;
+        this->__unknown_task_flag_A = false;
+    }
+    return UpdateFuncNext;
+}
+
+inline UpdateFuncRet LoadingThread::on_draw() {
+    if (this->__int_640 == 1) {
+        this->__anm_id_638 = this->__anm_loaded->instantiate_vm_to_world_list_back(0, -1, NULL);
+        ++this->__int_640;
+    }
+    if (this->__int_644 == 1) {
+        ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
+        ++this->__int_644;
+    }
+    ++this->__int_648;
+    return UpdateFuncNext;
+}
+
 enum CancelType : int32_t {
     CancelType0 = 0,
     CancelType1 = 1,
@@ -15800,17 +16113,19 @@ using BulletInitFunc = int32_t fastcall(PlayerBullet* self, PlayerDamageSource* 
 typedef struct ShtFile ShtFile;
 extern "C" {
     // 0x570920
-    extern ShtFile* CACHED_SHT_FILE_PTR asm("_CACHED_SHT_FILE_PTR");
+    externcg ShtFile* CACHED_SHT_FILE_PTR asm("_CACHED_SHT_FILE_PTR");
 
     // 0x4B4230
-    extern BulletInitFunc *const PLAYER_BULLET_INIT_FUNCS[8] asm("_PLAYER_BULLET_INIT_FUNCS");
+    externcg BulletInitFunc *const PLAYER_BULLET_INIT_FUNCS[8] asm("_PLAYER_BULLET_INIT_FUNCS");
     // 0x4B4210
-    extern void *const PLAYER_FUNC_TABLE_B[8] asm("_PLAYER_FUNC_TABLE_B");
+    externcg void *const PLAYER_FUNC_TABLE_B[8] asm("_PLAYER_FUNC_TABLE_B");
     // 0x4CF414
-    extern void* PLAYER_FUNC_TABLE_C[1] asm("_PLAYER_FUNC_TABLE_C"); // No, the missing const isn't a typo
+    externcg void* PLAYER_FUNC_TABLE_C[1] asm("_PLAYER_FUNC_TABLE_C"); // No, the missing const isn't a typo
     // 0x4B41F0
-    extern BulletDamageFunc *const PLAYER_BULLET_DAMAGE_FUNCS[8] asm("_PLAYER_BULLET_DAMAGE_FUNCS");
+    externcg BulletDamageFunc *const PLAYER_BULLET_DAMAGE_FUNCS[8] asm("_PLAYER_BULLET_DAMAGE_FUNCS");
 }
+
+static inline constexpr size_t MAX_SHT_UNKNOWN_A_COUNT = 40;
 
 // size: 0x5C
 struct ShtFileUnknownA {
@@ -15873,22 +16188,27 @@ ValidateStructSize32(0x5C, ShtFileUnknownA);
 // size: 
 struct ShtFile {
     unknown_fields(0x2); // 0x0
-    uint16_t __word_2; // 0x2
-    unknown_fields(0xC); // 0x4
+    uint16_t __unknownA_count; // 0x2
+    float __float_4; // 0x4
+    float __float_8; // 0x8
+    float __float_C; // 0xC
     float movement_speeds[4]; // 0x10
     int32_t max_level; // 0x20
     int32_t power_per_level; // 0x24
-    unknown_fields(0xB8); // 0x28
-    ShtFileUnknownA* __unknownA_ptr_array_E0[1]; // 0xE0
-    unknown_fields(0x9C); // 0xE4
+    unknown_fields(0x18); // 0x28
+    Float2 __float2_array_40[10]; // 0x40
+    Float2 __float2_array_90[10]; // 0x90
+    ShtFileUnknownA* __unknownA_ptr_array_E0[MAX_SHT_UNKNOWN_A_COUNT]; // 0xE0
     ShtFileUnknownA __unknownA_array_180[]; // 0x180
 };
 
 typedef struct Player Player;
 extern "C" {
     // 0x4CF410
-    extern Player* PLAYER_PTR asm("_PLAYER_PTR");
+    externcg Player* PLAYER_PTR asm("_PLAYER_PTR");
 }
+
+static inline constexpr float INTERNAL_POSITION_RATIO = 128.0f;
 
 enum MovementDirection : int32_t {
     MovementNone = 0,
@@ -16716,25 +17036,45 @@ static inline PlayerDamageSource* get_damage_source_by_index(int32_t index);
 
 // size: 0xF0
 struct PlayerOption {
-    int __dword_0; // 0x0
+    int __int_0; // 0x0
     unknown_fields(0x50); // 0x4
     Int2 position; // 0x54
     Int2 internal_position; // 0x5C
-    unknown_fields(0x4C); // 0x64
+    Int2 __unfocused_offset; // 0x64
+    Int2 __focused_offset; // 0x6C
+    unknown_fields(0x34); // 0x74
+    ZUNAngle __angle_A8; // 0xA8
+    float __float_AC; // 0xAC
     AnmID __anm_id_B0; // 0xB0
     AnmID __anm_id_B4; // 0xB4
-    unknown_fields(0x1C); // 0xB8
+    unknown_fields(0x18); // 0xB8
+    int32_t __option_index; // 0xD0
     int __int_D4; // 0xD4
-    unknown_fields(0x18); // 0xD8
+    union {
+        uint32_t flags; // 0xD8
+        struct {
+            uint32_t : 1; // 1
+            uint32_t __unknown_flag_A : 1; // 2
+        };
+    };
+    int __dword_DC; // 0xDC
+    unknown_fields(0x10); // 0xE0
     // 0xF0
 };
 #pragma region // PlayerOption Validation
-ValidateFieldOffset32(0x0, PlayerOption, __dword_0);
+ValidateFieldOffset32(0x0, PlayerOption, __int_0);
 ValidateFieldOffset32(0x54, PlayerOption, position);
 ValidateFieldOffset32(0x5C, PlayerOption, internal_position);
+ValidateFieldOffset32(0x64, PlayerOption, __unfocused_offset);
+ValidateFieldOffset32(0x6C, PlayerOption, __focused_offset);
+ValidateFieldOffset32(0xA8, PlayerOption, __angle_A8);
+ValidateFieldOffset32(0xAC, PlayerOption, __float_AC);
 ValidateFieldOffset32(0xB0, PlayerOption, __anm_id_B0);
 ValidateFieldOffset32(0xB4, PlayerOption, __anm_id_B4);
+ValidateFieldOffset32(0xD0, PlayerOption, __option_index);
 ValidateFieldOffset32(0xD4, PlayerOption, __int_D4);
+ValidateFieldOffset32(0xD8, PlayerOption, flags);
+ValidateFieldOffset32(0xDC, PlayerOption, __dword_DC);
 ValidateStructSize32(0xF0, PlayerOption);
 #pragma endregion
 
@@ -16853,7 +17193,7 @@ struct PlayerData {
     BOOL focused; // 0x470AC, 0x476CC
     Timer shoot_key_short_timer; // 0x470B0, 0x476D0
     Timer shoot_key_long_timer; // 0x470C4, 0x476E4
-    int power; // 0x470D8, 0x476F8
+    int __option_count; // 0x470D8, 0x476F8
     int32_t __level_array_470DC[30]; // 0x470DC, 0x476FC
     Timer __timer_47154; // 0x47154, 0x47774
     Timer __timer_47168; // 0x47168, 0x47788
@@ -16883,7 +17223,7 @@ struct PlayerData {
     int32_t __int_471C8; // 0x471C8, 0x477E8
     float __speed_modifier; // 0x471CC, 0x477EC
     Float3 __base_axis_speed; // 0x471D0, 0x477F0
-    unknown_fields(0x4); // 0x471DC, 0x477FC
+    int32_t power_level; // 0x471DC, 0x477FC
     Int2 previous_positions[33]; // 0x471E0, 0x47800
     int32_t num_deathbomb_frames; // 0x472E8, 0x47908
     ZUNAngle __shot_tilt_angle; // 0x472EC, 0x4790C
@@ -16894,15 +17234,8 @@ struct PlayerData {
     // 0x45A690
     dllexport gnu_noinline PlayerData() = default;
 
-private:
     // 0x45D5E0
-    dllexport gnu_noinline void thiscall __sub_45D5E0(int) {
-
-    }
-public:
-    inline void __sub_45D5E0() {
-        return this->__sub_45D5E0(UNUSED_DWORD);
-    }
+    dllexport gnu_noinline void thiscall __update_option_power_levels(int = UNUSED_DWORD) asm_symbol_rel(0x45D5E0);
 };
 #pragma region // PlayerData Validation
 ValidateFieldOffset32(0x0, PlayerData, position);
@@ -16923,7 +17256,7 @@ ValidateFieldOffset32(0x47098, PlayerData, __timer_47098);
 ValidateFieldOffset32(0x470AC, PlayerData, focused);
 ValidateFieldOffset32(0x470B0, PlayerData, shoot_key_short_timer);
 ValidateFieldOffset32(0x470C4, PlayerData, shoot_key_long_timer);
-ValidateFieldOffset32(0x470D8, PlayerData, power);
+ValidateFieldOffset32(0x470D8, PlayerData, __option_count);
 ValidateFieldOffset32(0x470DC, PlayerData, __level_array_470DC);
 ValidateFieldOffset32(0x47154, PlayerData, __timer_47154);
 ValidateFieldOffset32(0x47168, PlayerData, __timer_47168);
@@ -16940,6 +17273,7 @@ ValidateFieldOffset32(0x471C4, PlayerData, __int_471C4);
 ValidateFieldOffset32(0x471C8, PlayerData, __int_471C8);
 ValidateFieldOffset32(0x471CC, PlayerData, __speed_modifier);
 ValidateFieldOffset32(0x471D0, PlayerData, __base_axis_speed);
+ValidateFieldOffset32(0x471DC, PlayerData, power_level);
 ValidateFieldOffset32(0x471E0, PlayerData, previous_positions);
 ValidateFieldOffset32(0x472E8, PlayerData, num_deathbomb_frames);
 ValidateFieldOffset32(0x472EC, PlayerData, __shot_tilt_angle);
@@ -17030,30 +17364,30 @@ struct Player : ZUNTask {
     inline void set_position_internal(int32_t x, int32_t y) {
         this->data.internal_position.x = x;
         this->data.internal_position.y = y;
-        this->data.position.x = x * (1.0f / 128.0f);
-        this->data.position.y = y * (1.0f / 128.0f);
+        this->data.position.x = x * (1.0f / INTERNAL_POSITION_RATIO);
+        this->data.position.y = y * (1.0f / INTERNAL_POSITION_RATIO);
     }
 
     inline void set_x_position_internal(int32_t x) {
         this->data.internal_position.x = x;
-        this->data.position.x = x * (1.0f / 128.0f);
+        this->data.position.x = x * (1.0f / INTERNAL_POSITION_RATIO);
     }
 
     inline void set_y_position_internal(int32_t y) {
         this->data.internal_position.y = y;
-        this->data.position.y = y * (1.0f / 128.0f);
+        this->data.position.y = y * (1.0f / INTERNAL_POSITION_RATIO);
     }
 
     inline void set_position(float x, float y) {
-        return this->set_position(x * 128.0f, y * 128.0f);
+        return this->set_position(x * INTERNAL_POSITION_RATIO, y * INTERNAL_POSITION_RATIO);
     }
 
     inline void set_x_position(float x) {
-        return this->set_x_position_internal(x * 128.0f);
+        return this->set_x_position_internal(x * INTERNAL_POSITION_RATIO);
     }
 
     inline void set_y_position(float y) {
-        return this->set_y_position_internal(y * 128.0f);
+        return this->set_y_position_internal(y * INTERNAL_POSITION_RATIO);
     }
 
     inline void reset_previous_positions() {
@@ -17065,6 +17399,20 @@ struct Player : ZUNTask {
     // 0x4099D0
     dllexport static gnu_noinline void stdcall __set_data_timer_47154(int32_t time) asm_symbol_rel(0x4099D0) {
         PLAYER_PTR->data.__timer_47154.initialize_and_set(time);
+    }
+
+    // 0x416D50
+    dllexport gnu_noinline void thiscall __sub_416D50() asm_symbol_rel(0x416D50) {
+        this->data.__unknown_flag_C = false;
+        nounroll for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i) {
+            this->data.options[i].__anm_id_B0.interrupt_tree(2);
+            this->data.options[i].__anm_id_B4.interrupt_tree(2);
+        }
+        nounroll for (size_t i = 0; i < PLAYER_EQUIPMENT_OPTION_COUNT; ++i) {
+            this->data.equipment[i].__anm_id_B0.interrupt_tree(2);
+            this->data.equipment[i].__anm_id_B4.interrupt_tree(2);
+        }
+        this->data.__int_471C8 = 0;
     }
 
     // 0x45B170
@@ -17231,7 +17579,7 @@ public:
                 }
 
                 int32_t i = 0;
-                if ((uint32_t)i < sht_file->__word_2) {
+                if ((uint32_t)i < sht_file->__unknownA_count) {
                     do {
                         sht_file = this->sht_file;
 
@@ -17249,7 +17597,7 @@ public:
                         }
 
                         sht_file = this->sht_file;
-                    } while (++i < sht_file->__word_2);
+                    } while (++i < sht_file->__unknownA_count);
                 }
             }
 
@@ -17270,7 +17618,7 @@ public:
             this->__set_all_option_D4_to_1();
 
             for (int32_t i = 0; i < 4; ++i) {
-                ((int32_t*)&this->data.__unfocused_linear_speed)[i] = this->sht_file->movement_speeds[i] * 128.0f;
+                ((int32_t*)&this->data.__unfocused_linear_speed)[i] = this->sht_file->movement_speeds[i] * INTERNAL_POSITION_RATIO;
             }
 
             this->sht_file->power_per_level = DEFAULT_POWER_PER_LEVEL;
@@ -17286,7 +17634,7 @@ public:
             this->data.__timer_47168.reset();
 
             this->data.__int_471C4 = 30;
-            this->data.power = 0;
+            this->data.__option_count = 0;
             this->data.__speed_modifier = 1.0f;
 
             for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i) {
@@ -17301,7 +17649,11 @@ public:
             this->scale_interp.end_time = 0;
             this->scale = 1.0f;
 
-            nounroll for (int32_t i = 0; i < PLAYER_BULLET_COUNT; ++i) {
+            // BUG: This overflows the bullet array and writes over
+            // random following memory. The effects of this are currently
+            // unknown, but it's *probably* fine since it'll just write
+            // into the damage sources array and that won't explode.
+            nounroll for (int32_t i = 0; i < PLAYER_BULLET_COUNT * 2; ++i) {
                 this->data.bullets[i].__bullet_index = i;
             }
 
@@ -17912,7 +18264,7 @@ inline void PlayerBullet::on_tick() {
 typedef struct PopupManager PopupManager;
 extern "C" {
     // 0x4CF420
-    extern PopupManager* POPUP_MANAGER_PTR asm("_POPUP_MANAGER_PTR");
+    externcg PopupManager* POPUP_MANAGER_PTR asm("_POPUP_MANAGER_PTR");
 }
 
 // size: 0x48
@@ -17954,6 +18306,10 @@ struct PopupManager : ZUNTask {
     // 0x464020
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x464020) {
 
+        for (size_t i = 0; i < 13; ++i) {
+
+        }
+
         return UpdateFuncNext;
     }
 
@@ -17970,34 +18326,13 @@ struct PopupManager : ZUNTask {
     }
 
     // 0x4645D0
-    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) {
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x4645D0) {
         return ((PopupManager*)ptr)->on_tick();
     }
 
     // 0x4645E0
-    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) {
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x4645E0) {
         return ((PopupManager*)ptr)->on_draw();
-    }
-
-    // 0x463DD0
-    dllexport gnu_noinline static PopupManager* allocate() {
-        PopupManager* popup_manager = new PopupManager();
-        POPUP_MANAGER_PTR = popup_manager;
-        popup_manager->ascii_anm = ASCII_MANAGER_PTR->ascii_anm;
-
-        UpdateFunc* update_func = new UpdateFunc(&PopupManager::on_tick, false, popup_manager);
-        UpdateFuncRegistry::register_on_tick(update_func, 21);
-        popup_manager->on_tick_func = update_func;
-        update_func = new UpdateFunc(&PopupManager::on_draw, false, popup_manager);
-        UpdateFuncRegistry::register_on_draw(update_func, 48);
-        popup_manager->on_draw_func = update_func;
-
-        AnmLoaded* ascii_anm = popup_manager->ascii_anm;
-        popup_manager->__vm_18.reset();
-        ascii_anm->set_sprite(&popup_manager->__vm_18, 289);
-        popup_manager->__vm_18.data.origin_mode = 2;
-        popup_manager->__vm_18.data.resolution_mode = 3;
-        return popup_manager;
     }
 
     // 0x4645F0
@@ -18037,6 +18372,38 @@ struct PopupManager : ZUNTask {
 
         ++popup_manager->__index_10;
     }
+
+    inline ZUNResult initialize() {
+        this->ascii_anm = ASCII_MANAGER_PTR->ascii_anm;
+
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
+        UpdateFuncRegistry::register_on_tick(update_func, 21);
+        this->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, false, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 48);
+        this->on_draw_func = update_func;
+
+        AnmLoaded* ascii_anm = this->ascii_anm;
+        this->__vm_18.reset();
+        this->__vm_18.data.slot2 = ascii_anm->slot_index;
+        ascii_anm->set_sprite(&this->__vm_18, 289);
+
+        this->__vm_18.data.origin_mode = 2;
+        this->__vm_18.data.resolution_mode = 3;
+
+        return ZUN_SUCCESS;
+    }
+
+    // 0x463DD0
+    dllexport gnu_noinline static PopupManager* allocate() asm_symbol_rel(0x463DD0) {
+        PopupManager* popup_manager = new PopupManager();
+        POPUP_MANAGER_PTR = popup_manager;
+        if (ZUN_FAILED(popup_manager->initialize())) {
+            delete popup_manager;
+            return NULL;
+        }
+        return popup_manager;
+    }
 };
 #pragma region // PopupManager Validation
 
@@ -18048,13 +18415,13 @@ typedef struct AbilityMenu AbilityMenu;
 
 extern "C" {
     // 0x4CF298
-    extern AbilityManager* ABILITY_MANAGER_PTR asm("_ABILITY_MANAGER_PTR");
+    externcg AbilityManager* ABILITY_MANAGER_PTR asm("_ABILITY_MANAGER_PTR");
     // 0x4CF29C
-    extern AbilityTextData* ABILITY_TEXT_DATA_PTR asm("_ABILITY_TEXT_DATA_PTR");
+    externcg AbilityTextData* ABILITY_TEXT_DATA_PTR asm("_ABILITY_TEXT_DATA_PTR");
     // 0x4CF2A0
-    extern AbilityMenu* ABILITY_MENU_PTR asm("_ABILITY_MENU_PTR");
+    externcg AbilityMenu* ABILITY_MENU_PTR asm("_ABILITY_MENU_PTR");
     // 0x4CF2D4
-    extern int32_t UNKNOWN_COUNTER_A asm("_UNKNOWN_COUNTER_A");
+    externcg int32_t UNKNOWN_COUNTER_A asm("_UNKNOWN_COUNTER_A");
 }
 
 static inline bool enemies_are_alive();
@@ -18315,7 +18682,7 @@ struct CardMamizou : CardBase {
             this->__unknown_flag_B = false;
             if (A) {
                 if (Player* player = PLAYER_PTR) {
-                    player->data.__sub_45D5E0();
+                    player->data.__update_option_power_levels();
                     POPUP_MANAGER_PTR->create_popup(&PLAYER_PTR->data.position, -1, PackD3DCOLOR(64, 255, 255, 255));
                     SOUND_MANAGER.play_sound_positioned(13, PLAYER_PTR->data.position.x);
                 }
@@ -19097,7 +19464,7 @@ struct CardUtsuho : CardBase {
                     this->__timer_20.is_multiple_of(6) &&
                     GAME_MANAGER.globals.subtract_power(1)
                 ) {
-                    PLAYER_PTR->data.__sub_45D5E0();
+                    PLAYER_PTR->data.__update_option_power_levels();
                 }
                 break;
             }
@@ -19386,7 +19753,7 @@ struct CardTsukasa : CardBase {
                 UNKNOWN_COUNTER_A = 0;
                 // ENEMY_MANAGER_PTR->can_capture_spell = FALSE;
                 GAME_MANAGER.globals.subtract_power(GAME_MANAGER.globals.power_per_level);
-                PLAYER_PTR->data.__sub_45D5E0();
+                PLAYER_PTR->data.__update_option_power_levels();
                 this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
             }
         }
@@ -19435,7 +19802,7 @@ struct CardMegumu : CardBase {
             }
             else {
                 if (GAME_MANAGER.globals.add_power(DEFAULT_POWER_PER_LEVEL)) {
-                    PLAYER_PTR->data.__sub_45D5E0();
+                    PLAYER_PTR->data.__update_option_power_levels();
                     POPUP_MANAGER_PTR->create_popup(&PLAYER_PTR->data.position, -1, PackD3DCOLOR(64, 255, 255, 255));
                     SOUND_MANAGER.play_sound_positioned(13, PLAYER_PTR->data.position.x);
                 }
@@ -20286,8 +20653,8 @@ dllexport gnu_noinline ZUNResult thiscall PlayerBullet::shoot(int32_t unknownA_i
     } else {
         PlayerOption* option = &PLAYER_PTR->data.options[option_index - 1];
         this->motion.position = {
-            option->internal_position.x * (1.0f / 128.0f),
-            option->internal_position.y * (1.0f / 128.0f),
+            option->internal_position.x * (1.0f / INTERNAL_POSITION_RATIO),
+            option->internal_position.y * (1.0f / INTERNAL_POSITION_RATIO),
             0.0f
         };
     }
@@ -20376,6 +20743,132 @@ dllexport gnu_noinline ZUNResult thiscall PlayerBullet::shoot(int32_t unknownA_i
     vm->controller.position = this->motion.position;
 
     return ZUN_SUCCESS;
+}
+
+extern "C" {
+    // 0x4CDB60
+    // For all characters: 0, 1, 3, 6, 10, 11, 13, 16
+    externcg int32_t UNKNOWN_W[SHOTTYPE_COUNT][MAX_ALLOWED_POWER_LEVEL] asm("_UNKNOWN_W")
+#if !USE_EXTERN_FOR_CODEGEN
+    = {
+        { 0, 1, 3, 6, 10, 11, 13, 16 },
+        { 0, 1, 3, 6, 10, 11, 13, 16 },
+        { 0, 1, 3, 6, 10, 11, 13, 16 },
+        { 0, 1, 3, 6, 10, 11, 13, 16 }
+    }
+#endif
+    ;
+}
+
+// 0x4B7020
+static inline constexpr int32_t PLAYER_OPTION_ANM_SCRIPTS_B[CHARACTER_COUNT] = {
+    15, 17, 12, 10
+};
+// 0x4B7030
+static inline constexpr int32_t PLAYER_OPTION_ANM_SCRIPTS_A[CHARACTER_COUNT] = {
+    16, 18, 13, 12
+};
+
+// 0x45D5E0
+dllexport gnu_noinline void thiscall PlayerData::__update_option_power_levels(int) {
+    // this; // ESP+24
+    int32_t* unknownW_ptr = UNKNOWN_W[GAME_MANAGER.globals.shottype_index()]; // ESP+18
+
+    int32_t power_level = GAME_MANAGER.globals.power_level(); // ESP+10
+    this->power_level = power_level;
+
+    PlayerOption* options = this->options; // ESP+14
+
+    // this feels a bit backwards...?
+    if (GAME_MANAGER.globals.current_power >= GAME_MANAGER.globals.max_power) {
+        PlayerOption* option_iter = options;
+        for (
+            int32_t i = power_level;
+            i;
+            --i, ++option_iter
+        ) {
+            option_iter->__anm_id_B4.mark_tree_for_delete();
+            option_iter->__anm_id_B4 = PLAYER_PTR->player_anm->instantiate_vm_to_world_list_front(PLAYER_OPTION_ANM_SCRIPTS_A[GAME_MANAGER.globals.character]);
+            option_iter->__anm_id_B4.get_vm_ptr()->controller.position.y = -999.0f;
+        }
+    }
+    else {
+        PlayerOption* option_iter = options;
+        for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i, ++option_iter) {
+            option_iter->__anm_id_B4.interrupt_and_orphan_tree(1);
+        }
+    }
+
+    Player* player = PLAYER_PTR;
+    if (player->data.__option_count != power_level) {
+        PlayerOption* option_iter = options;
+        int32_t i = 0; // ESP+1C
+        if (power_level > 0) {
+            do {
+                option_iter->__anm_id_B0.mark_tree_for_delete();
+                option_iter->__option_index = i;
+
+                ShtFile* sht_file;
+                int32_t sht_index;
+
+                sht_file = player->sht_file;
+                sht_index = i + unknownW_ptr[power_level - 1];
+                option_iter->__unfocused_offset = (Int2)(sht_file->__float2_array_40[sht_index] * INTERNAL_POSITION_RATIO);
+
+                sht_file = player->sht_file;
+                sht_index = i + unknownW_ptr[power_level - 1];
+                option_iter->__focused_offset = (Int2)(sht_file->__float2_array_90[sht_index] * INTERNAL_POSITION_RATIO);
+
+                option_iter->internal_position = option_iter->position = player->data.internal_position + (player->data.focused ? option_iter->__focused_offset : option_iter->__unfocused_offset);
+
+                option_iter->__anm_id_B0 = player->player_anm->instantiate_vm_to_world_list_back(PLAYER_OPTION_ANM_SCRIPTS_B[GAME_MANAGER.globals.character], 15);
+                option_iter->__anm_id_B0.get_vm_ptr()->controller.position.y = -999.0f;
+
+                option_iter->__unknown_flag_A = false;
+                option_iter->__int_0 = 2;
+                option_iter->__dword_DC = 0;
+                player = PLAYER_PTR;
+
+                if (GAME_MANAGER.globals.character == Sakuya) {
+                    sht_file = player->sht_file;
+                    sht_index = i + unknownW_ptr[power_level - 1];
+                    option_iter->__angle_A8 = sht_file->__float2_array_40[sht_index].x;
+
+                    sht_file = player->sht_file;
+                    sht_index = i + unknownW_ptr[power_level - 1];
+                    option_iter->__float_AC = sht_file->__float2_array_40[sht_index].y;
+                }
+                ++option_iter;
+            } while (++i < power_level);
+        }
+
+        if (i < PLAYER_OPTION_COUNT) {
+            for (
+                size_t j = PLAYER_OPTION_COUNT - i;
+                j;
+                --j, ++option_iter
+            ) {
+                option_iter->__int_0 = 0;
+                option_iter->__dword_DC = 0;
+                option_iter->__anm_id_B0.interrupt_tree(1);
+            }
+            player = PLAYER_PTR;
+        }
+
+        player->data.__option_count = power_level;
+        player->__set_all_option_D4_to_1();
+    }
+
+    for (size_t i = 0; i < PLAYER_EQUIPMENT_OPTION_COUNT; ++i) {
+        PlayerOption* equipment = &this->equipment[i];
+        equipment->__unknown_flag_A = false;
+        equipment->__int_0 = 0;
+        equipment->__dword_DC = 0;
+    }
+
+    ABILITY_MANAGER_PTR->card_list.for_each([](CardBase* card) {
+        card->on_power_level_change();
+    });
 }
 
 // 0x45EA00
@@ -20797,7 +21290,6 @@ dllexport gnu_noinline void count_cards_of_type2(EnemyData* self) {
     }
     clang_forceinline *self->get_int_ptr_arg() = count;
 }
-#endif
 
 dllexport gnu_noinline void stdcall log_vprintf(const char* format, va_list va) {
     vprintf(format, va);
@@ -20837,6 +21329,7 @@ dllexport gnu_noinline void fastcall thcrap_print(EclContext* self_in, int, cons
     log_vprintf(StringArg(4), (va_list)print_args_mem);
     //free(print_args);
 }
+#endif
 
 // 0x425B40
 dllexport gnu_noinline float vectorcall Float3::__bullet_effect_angle_jank(float angle, float arg2, float arg3) {
@@ -20898,6 +21391,12 @@ struct EnemyManager : ZUNTask {
     inline EnemyManager() {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
+    }
+
+    inline void reset() {
+        this->__timer_98.reset();
+        this->enemy_list.head = NULL;
+        this->enemy_list.tail = NULL;
     }
 
     // 0x42AB40
@@ -21751,9 +22250,9 @@ dllexport gnu_noinline int fastcall AnmVM::on_interrupt_special_dataD(AnmVM* vm,
 typedef struct Stage Stage;
 extern "C" {
     // 0x4CF2B4
-    extern Stage* STAGE_PTR asm("_STAGE_PTR");
+    externcg Stage* STAGE_PTR asm("_STAGE_PTR");
     // 0x4CF2B8
-    extern Stage* STAGE_B_PTR asm("_STAGE_B_PTR");
+    externcg Stage* STAGE_B_PTR asm("_STAGE_B_PTR");
 }
 
 // size: 0x30
@@ -22090,7 +22589,7 @@ ValidateStructSize32(0x34A0, Stage);
 typedef struct Spellcard Spellcard;
 extern "C" {
     // 0x4CF2C0
-    extern Spellcard* SPELLCARD_PTR asm("_SPELLCARD_PTR");
+    externcg Spellcard* SPELLCARD_PTR asm("_SPELLCARD_PTR");
 }
 
 // size: 0xC0
@@ -22137,6 +22636,7 @@ struct Spellcard : ZUNTask {
 
     inline Spellcard() {
         this->zero_contents();
+        this->__unknown_task_flag_A = true;
     }
 
     // 0x429D80
@@ -22329,9 +22829,45 @@ struct Spellcard : ZUNTask {
         }
     }
 
+    // 0x429EB0
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x429EB0) {
+
+    }
+
+    inline UpdateFuncRet thiscall on_draw() {
+
+    }
+
+    // 0x42A160
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x42A160) {
+        return ((Spellcard*)ptr)->on_tick();
+    }
+
+    // 0x42A170
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x42A170) {
+        return ((Spellcard*)ptr)->on_draw();
+    }
+
+    inline ZUNResult initialize() {
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
+        UpdateFuncRegistry::register_on_tick(update_func, 31);
+        this->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, false, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 12);
+        this->on_draw_func = update_func;
+
+        this->__timer_20.reset();
+        
+        return ZUN_SUCCESS;
+    }
+
     static inline Spellcard* allocate() {
         Spellcard* spellcard = new Spellcard();
-
+        SPELLCARD_PTR = spellcard;
+        if (ZUN_FAILED(spellcard->initialize())) {
+            delete spellcard;
+            return NULL;
+        }
         return spellcard;
     }
 };
@@ -22491,7 +23027,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
                     card->on_player_death_power_loss();
                 });
 
-                this->data.__sub_45D5E0();
+                this->data.__update_option_power_levels();
 
                 current_death_timer = this->data.__death_timer;
             }
@@ -22557,7 +23093,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
     }
 
     this->data.__speed_modifier = 1.0f;
-    this->data.__base_axis_speed = UNKNOWN_FLOAT3_B;
+    this->data.__base_axis_speed = UNKNOWN_FLOAT3_A;
 
     this->__vm_14.run_anm();
 
@@ -22630,16 +23166,16 @@ dllexport gnu_noinline void thiscall Player::death() {
 
     nounroll for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i) {
         PlayerOption* option = &this->data.options[i];
-        option->__dword_0 = 0;
+        option->__int_0 = 0;
         option->__anm_id_B0.interrupt_tree(1);
         option->__anm_id_B4.interrupt_tree(1);
     }
 
-    this->data.power = 0;
+    this->data.__option_count = 0;
 
     nounroll for (size_t i = 0; i < PLAYER_EQUIPMENT_OPTION_COUNT; ++i) {
         PlayerOption* option = &this->data.equipment[i];
-        option->__dword_0 = 0;
+        option->__int_0 = 0;
         option->__anm_id_B0.interrupt_tree(1);
         option->__anm_id_B4.interrupt_tree(1);
     }
@@ -22714,6 +23250,12 @@ struct Item {
     int32_t sound_id; // 0xC90
     // 0xC94
 
+    // 0x4456B0
+    dllexport Item() = default;
+
+    // 0x445800
+    dllexport ~Item() = default;
+
     // 0x4472B0
     dllexport gnu_noinline int thiscall __sub_4472B0() asm_symbol_rel(0x4472B0) {
         switch (this->id) {
@@ -22756,7 +23298,7 @@ ValidateStructSize32(0xC94, Item);
 typedef struct ItemManager ItemManager;
 extern "C" {
     // 0x4CF2EC
-    dllexport extern ItemManager* ITEM_MANAGER_PTR asm("_ITEM_MANAGER_PTR");
+    externcg ItemManager* ITEM_MANAGER_PTR asm("_ITEM_MANAGER_PTR");
 }
 
 static inline constexpr size_t MAX_ITEM_COUNT = 600;
@@ -22765,7 +23307,8 @@ static inline constexpr size_t MAX_CANCEL_ITEM_COUNT = 0x1000;
 // size: 0xE6BB28
 struct ItemManager : ZUNTask {
     //ZUNTask base; // 0x0
-    unknown_fields(0x8); // 0xC
+    unknown_fields(0x4); // 0xC
+    UpdateFunc* on_draw_func_B; // 0x10
     Item items[MAX_ITEM_COUNT]; // 0x14
     Item cancel_items[MAX_CANCEL_ITEM_COUNT]; // 0x1D7AF4
     ZUNListHead<Item> items_freelist; // 0xE6BAF4
@@ -22775,6 +23318,23 @@ struct ItemManager : ZUNTask {
     int32_t item_count; // 0xE6BB1C
     unknown_fields(0x8); // 0xE6BB20
     // 0xE6BB28
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline ItemManager() {
+        this->zero_contents();
+        this->__unknown_task_flag_A = true;
+    }
+
+    // 0x445920
+    dllexport gnu_noinline ~ItemManager() {
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func_B);
+        ITEM_MANAGER_PTR = NULL;
+    }
 
     // 0x42AA30
     dllexport gnu_noinline void thiscall destroy_all() {
@@ -22827,11 +23387,64 @@ public:
     inline Item* spawn_item(int32_t item_id, Float3* position, float angle, float speed, int32_t arg6) {
         return this->spawn_item(item_id, position, UNUSED_FLOAT, angle, speed, arg6, UNUSED_DWORD, UNUSED_DWORD);
     }
+
+    // 0x445A80
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x445A80) {
+
+    }
+
+    // 0x446D60
+    dllexport gnu_noinline UpdateFuncRet thiscall on_draw(BOOL arg1) asm_symbol_rel(0x446D60) {
+
+    }
+
+    // 0x446EC0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x446EC0) {
+
+    }
+
+    // 0x446F00
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_A(void* ptr) asm_symbol_rel(0x446F00) {
+
+    }
+
+    // 0x446F20
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_B(void* ptr) asm_symbol_rel(0x446F20) {
+
+    }
+
+    inline ZUNResult initialize() {
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
+        UpdateFuncRegistry::register_on_tick(update_func, 30);
+        this->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw_A, false, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 33);
+        this->on_draw_func = update_func;
+        update_func = new UpdateFunc(&on_draw_B, false, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 19);
+        this->on_draw_func_B = update_func;
+
+        this->destroy_all();
+
+        return ZUN_SUCCESS;
+    }
+
+    // 0x445820
+    dllexport gnu_noinline static ItemManager* allocate() asm_symbol_rel(0x445820) {
+        ItemManager* item_manager = new ItemManager();
+        ITEM_MANAGER_PTR = item_manager;
+        if (ZUN_FAILED(item_manager->initialize())) {
+            delete item_manager;
+            return NULL;
+        }
+        return item_manager;
+    }
 };
 #pragma region // ItemManager Validation
 ValidateFieldOffset32(0x0, ItemManager, task_flags);
 ValidateFieldOffset32(0x4, ItemManager, on_tick_func);
 ValidateFieldOffset32(0x8, ItemManager, on_draw_func);
+ValidateFieldOffset32(0x10, ItemManager, on_draw_func_B);
 ValidateFieldOffset32(0x14, ItemManager, items);
 ValidateFieldOffset32(0x1D7AF4, ItemManager, cancel_items);
 ValidateFieldOffset32(0xE6BAF4, ItemManager, items_freelist);
@@ -22868,9 +23481,9 @@ struct BulletSpriteData {
 
 extern "C" {
     // 0x4C5F90
-    extern BulletSpriteData BULLET_SPRITE_DATA[48] asm("_BULLET_SPRITE_DATA");
+    externcg BulletSpriteData BULLET_SPRITE_DATA[48] asm("_BULLET_SPRITE_DATA");
     // 0x4B36F0
-    extern int32_t BULLET_IDK_DATA[8] asm("_BULLET_IDK_DATA");
+    externcg int32_t BULLET_IDK_DATA[8] asm("_BULLET_IDK_DATA");
 }
 
 
@@ -22878,9 +23491,9 @@ typedef struct BulletManager BulletManager;
 typedef struct LaserManager LaserManager;
 extern "C" {
     // 0x4CF2BC
-    extern BulletManager* BULLET_MANAGER_PTR asm("_BULLET_MANAGER_PTR");
+    externcg BulletManager* BULLET_MANAGER_PTR asm("_BULLET_MANAGER_PTR");
     // 0x4CF3F4
-    extern LaserManager* LASER_MANAGER_PTR asm("_LASER_MANAGER_PTR");
+    externcg LaserManager* LASER_MANAGER_PTR asm("_LASER_MANAGER_PTR");
 }
 
 enum BulletEffectType : uint32_t {
@@ -24726,7 +25339,7 @@ dllexport gnu_noinline CollisionResult thiscall Bullet::__check_collision(Collis
     CollisionResult result = NoCollision;
 
     this->vm.data.color_mode = 0; // why is this *here* of all places
-    this->vm.data.position = UNKNOWN_FLOAT3_B;
+    this->vm.data.position = UNKNOWN_FLOAT3_A;
 
     if (
         this->__unknown_flag_F &&
@@ -24777,7 +25390,7 @@ dllexport gnu_noinline CollisionResult thiscall Bullet::__check_collision(Collis
                                     vm->interrupt(3);
                                 }
                                 Float3 end = (this->velocity * GAME_SPEED) * 10.0f;
-                                vm->initialize_position_interp(30, 6, &UNKNOWN_FLOAT3_B, &end);
+                                vm->initialize_position_interp(30, 6, &UNKNOWN_FLOAT3_A, &end);
                             }
                         }
                     }
@@ -25020,24 +25633,33 @@ public:
         return UpdateFuncNext;
     }
 
+    inline ZUNResult initialize() {
+        AnmLoaded* bullet_anm = ANM_MANAGER_PTR->preload_anm(7, "bullet.anm");
+        this->bullet_anm = bullet_anm;
+        if (!bullet_anm) {
+            LOG_BUFFER.write(JpEnStr("", "Enemy bullet data not found. Data is corrupted\r\n"));
+            return ZUN_ERROR;
+        }
+
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
+        UpdateFuncRegistry::register_on_tick(update_func, 28);
+        this->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, false, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 36);
+        this->on_draw_func = update_func;
+
+        this->list_tail = &this->dummy_laser;
+
+        return ZUN_SUCCESS;
+    }
+
     static inline LaserManager* allocate() {
         LaserManager* laser_manager = new LaserManager();
         LASER_MANAGER_PTR = laser_manager;
-        laser_manager->bullet_anm = ANM_MANAGER_PTR->preload_anm(7, "bullet.anm");
-        if (!laser_manager->bullet_anm) {
-            LOG_BUFFER.write(JpEnStr("", "Enemy bullet data not found. Data is corrupted\r\n"));
+        if (ZUN_FAILED(laser_manager->initialize())) {
             delete laser_manager;
             return NULL;
         }
-
-        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, laser_manager);
-        UpdateFuncRegistry::register_on_tick(update_func, 28);
-        laser_manager->on_tick_func = update_func;
-        update_func = new UpdateFunc(&on_draw, false, laser_manager);
-        UpdateFuncRegistry::register_on_draw(update_func, 36);
-
-        laser_manager->list_tail = &laser_manager->dummy_laser;
-
         return laser_manager;
     }
 
@@ -25656,8 +26278,8 @@ dllexport void Bullet::run_effects() {
                 effect_data.timer.reset();
                 this->effect_move_interp.initial_value = this->position;
                 this->effect_move_interp.final_value = effect_data.target;
-                this->effect_move_interp.bezier1 = UNKNOWN_FLOAT3_B;
-                this->effect_move_interp.bezier2 = UNKNOWN_FLOAT3_B;
+                this->effect_move_interp.bezier1 = UNKNOWN_FLOAT3_A;
+                this->effect_move_interp.bezier2 = UNKNOWN_FLOAT3_A;
                 this->effect_move_interp.end_time = IntArg(0);
                 this->effect_move_interp.mode = IntArg(1);
                 this->effect_move_interp.time.reset();
@@ -27363,11 +27985,11 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             MotionData& motion_rel = this->motion.relative;
             MotionData& motion_abs = this->motion.absolute;
             motion_abs.get_position() += motion_rel.get_position();
-            motion_rel.position = UNKNOWN_FLOAT3_B;
+            motion_rel.position = UNKNOWN_FLOAT3_A;
             motion_rel.set_speed(0.0f);
             motion_abs.set_speed(0.0f);
-            motion_rel.set_orbit_origin(UNKNOWN_FLOAT3_B);
-            motion_abs.set_orbit_origin(UNKNOWN_FLOAT3_B);
+            motion_rel.set_orbit_origin(UNKNOWN_FLOAT3_A);
+            motion_abs.set_orbit_origin(UNKNOWN_FLOAT3_A);
             motion_rel.set_axis_velocity_mode();
             motion_abs.set_axis_velocity_mode();
             this->position_interp.absolute.reset_end_time();
@@ -27428,8 +28050,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
                 Y = motion.get_position_y() + Y;
             }
             position_interp.set_end_time(this->get_int_arg(0));
-            position_interp.set_bezier1(UNKNOWN_FLOAT3_B);
-            position_interp.set_bezier2(UNKNOWN_FLOAT3_B);
+            position_interp.set_bezier1(UNKNOWN_FLOAT3_A);
+            position_interp.set_bezier2(UNKNOWN_FLOAT3_A);
             position_interp.set_combined_mode(this->get_int_arg(1));
             position_interp.set_initial_value(motion.get_position());
             if (!(Y > -999999.0f)) {
@@ -27463,8 +28085,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
                 Y = motion.get_position_y() + Y;
             }
             position_interp.set_end_time(this->get_int_arg(0));
-            position_interp.set_bezier1(UNKNOWN_FLOAT3_B);
-            position_interp.set_bezier2(UNKNOWN_FLOAT3_B);
+            position_interp.set_bezier1(UNKNOWN_FLOAT3_A);
+            position_interp.set_bezier2(UNKNOWN_FLOAT3_A);
             position_interp.set_axis_mode(0, this->get_int_arg(1));
             position_interp.set_axis_mode(1, this->get_int_arg(2));
             position_interp.set_initial_value(motion.get_position());
@@ -29410,7 +30032,7 @@ ValidateStructSize32(0x18B4, ReplayChunk);
 typedef struct ReplayManager ReplayManager;
 extern "C" {
     // 0x4CF40C
-    extern ReplayManager* REPLAY_MANAGER_PTR asm("_REPLAY_MANAGER_PTR");
+    externcg ReplayManager* REPLAY_MANAGER_PTR asm("_REPLAY_MANAGER_PTR");
 }
 
 // size: 0x31C
@@ -29475,7 +30097,54 @@ struct ReplayManager : ZUNTask {
         }
     }
 
-    dllexport static UpdateFuncRet UpdateFuncCC on_tick_A1(void* ptr) {
+    // 0x462D20
+    dllexport static void __sub_462D20() asm_symbol_rel(0x462D20) {
+        ReplayManager* replay_manager = REPLAY_MANAGER_PTR;
+
+        replay_manager->enable_tick();
+        if (UpdateFunc* on_tick_B = replay_manager->on_tick_func_B) {
+            on_tick_B->run_on_update = true;
+        }
+        replay_manager->enable_draw();
+
+        INPUT_STATES[0].__reset_inputs();
+
+        switch (replay_manager->mode) {
+            case __replay_recording: {
+                int32_t stage_number = GAME_MANAGER.globals.current_stage;
+                ReplayGamestate* game_state = replay_manager->game_states[stage_number];
+                replay_manager->delete_chunk_list(stage_number);
+                replay_manager->current_chunk_node = replay_manager->allocate_chunk(GAME_MANAGER.globals.current_stage);
+                replay_manager->stage_number = GAME_MANAGER.globals.current_stage;
+                ABILITY_MANAGER_PTR->equipped_cards_get_ids(game_state->cards_owned);
+                ABILITY_MANAGER_PTR->__equipped_cards_get_replay_states(game_state->card_replay_states);
+                break;
+            }
+            case __replay_playback: {
+                int32_t stage_number = GAME_MANAGER.globals.current_stage;
+                replay_manager->stage_number = stage_number;
+                ReplayGamestate* game_state = replay_manager->stage_data[stage_number].gamestate_start;
+                ABILITY_MANAGER_PTR->__sub_407DA0(FALSE);
+                for (size_t i = 0; i < countof(game_state->cards_owned); ++i) {
+                    int32_t card_id = game_state->cards_owned[i];
+                    if (card_id < 0) {
+                        break;
+                    }
+                    ABILITY_MANAGER_PTR->allocate_new_card(card_id, 1);
+                }
+                ABILITY_MANAGER_PTR->__sub_408B00(game_state->card_selected);
+                int32_t* card_replay_states = game_state->card_replay_states;
+                ABILITY_MANAGER_PTR->card_list.for_each([&](CardBase* card) {
+                    card->__set_replay_state(*card_replay_states++);
+                });
+                break;
+            }
+        }
+        replay_manager->__int_20C = 0;
+    }
+
+    // 0x462940
+    dllexport static UpdateFuncRet UpdateFuncCC on_tick_A1(void* ptr) asm_symbol_rel(0x462940) {
         ReplayManager* self = (ReplayManager*)ptr;
         if (GAME_THREAD_PTR) {
             INPUT_STATES[0].inputs_previous = INPUT_STATES[0].inputs_current;
@@ -29504,7 +30173,8 @@ struct ReplayManager : ZUNTask {
         return UpdateFuncNext;
     }
 
-    dllexport static UpdateFuncRet UpdateFuncCC on_tick_A2(void* ptr) {
+    // 0x462A50
+    dllexport static UpdateFuncRet UpdateFuncCC on_tick_A2(void* ptr) asm_symbol_rel(0x462A50) {
         ReplayManager* self = (ReplayManager*)ptr;
         if (GAME_THREAD_PTR && !self->__unknown_flag_A) {
             if (self->stage_data[self->stage_number].current_frame < 0) {
@@ -29630,6 +30300,31 @@ struct ReplayManager : ZUNTask {
         return &chunk->list_node;
     }
 
+    inline void __inline_sub_A() {
+        switch (this->mode) {
+            case __replay_recording: {
+                this->game_states[GAME_MANAGER.globals.current_stage] = new ReplayGamestate();
+                ReplayGamestate* game_state = this->game_states[GAME_MANAGER.globals.current_stage];
+                game_state->stage_number = GAME_MANAGER.globals.current_stage;
+                game_state->rng = REPLAY_RNG.value;
+                REPLAY_RNG.index = 0;
+                game_state->__unknown_flag_A = SUPERVISOR.__int_804;
+                break;
+            }
+            case __replay_playback: {
+                ReplayStageData* stage_data = &this->stage_data[GAME_MANAGER.globals.current_stage];
+                ReplayGamestate* game_state = stage_data->gamestate_start;
+                stage_data->inputs_current = stage_data->input_start;
+                stage_data->fps_counts_current = stage_data->fps_counts_start;
+                stage_data->current_frame = -1;
+                REPLAY_RNG.value = game_state->rng;
+                RNG.value = game_state->rng;
+                REPLAY_RNG.index = 0;
+                break;
+            }
+        }
+    }
+
     // 0x4615E0
     dllexport gnu_noinline ZUNResult thiscall initialize(ReplayMode mode, const char* path) asm_symbol_rel(0x4615E0) {
         this->mode = mode;
@@ -29654,7 +30349,7 @@ struct ReplayManager : ZUNTask {
                 game_state->stage_number = GAME_MANAGER.globals.current_stage;
                 game_state->rng = REPLAY_RNG.value;
                 REPLAY_RNG.index = 0;
-                game_state->__unknown_flag_A = SUPERVISOR.__int_804 & 1;
+                game_state->__unknown_flag_A = SUPERVISOR.__int_804;
                 if (SUPERVISOR.__int_804) {
                     game_state->__dword_C = 0;
                     game_state->__dword_10 = 0;
@@ -29826,17 +30521,26 @@ dllexport gnu_noinline void thiscall AbilityShop::cleanup() {
                         card->on_load();
                     });
 
+                    PLAYER_PTR->__sub_416D50();
 
+                    // Yes, this is called twice. No, IDK why
+                    PLAYER_PTR->data.__update_option_power_levels();
+                    PLAYER_PTR->data.__update_option_power_levels();
+
+                    __update_life_ui();
+                    __update_bomb_ui();
                 }
             }
         }
+
+        delete this;
     }
 }
 
 typedef struct PauseMenu PauseMenu;
 extern "C" {
     // 0x4CF40C
-    extern PauseMenu* PAUSE_MENU_PTR asm("_PAUSE_MENU_PTR");
+    externcg PauseMenu* PAUSE_MENU_PTR asm("_PAUSE_MENU_PTR");
 }
 
 // size: 0x3F8
@@ -29869,7 +30573,6 @@ struct PauseMenu : ZUNTask {
     AnmLoaded* __anm_loaded_3F4; // 0x3F4
     // 0x3F8
 
-
     inline void zero_contents() {
         zero_this();
     }
@@ -29877,6 +30580,50 @@ struct PauseMenu : ZUNTask {
     inline PauseMenu() {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
+    }
+
+    // 0x457A60
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x457A60) {
+
+    }
+
+    // 0x458090
+    dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x458090) {
+
+    }
+
+    // 0x457BE0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x457BE0) {
+        return ((PauseMenu*)ptr)->on_tick();
+    }
+
+    // 0x458470
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x458470) {
+        return ((PauseMenu*)ptr)->on_draw();
+    }
+
+    inline ZUNResult initialize() {
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
+        UpdateFuncRegistry::register_on_tick(update_func, 12);
+        this->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, false, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 81);
+        this->on_draw_func = update_func;
+
+        this->__timer_C.reset();
+        this->__timer_20.reset();
+
+        return ZUN_SUCCESS;
+    }
+
+    static inline PauseMenu* allocate() {
+        PauseMenu* pause_menu = new PauseMenu();
+        PAUSE_MENU_PTR = pause_menu;
+        if (ZUN_FAILED(pause_menu->initialize())) {
+            delete pause_menu;
+            return NULL;
+        }
+        return pause_menu;
     }
 };
 #pragma region // PauseMenu Verification
@@ -29906,9 +30653,9 @@ typedef struct MainMenu MainMenu;
 
 extern "C" {
     // 0x4CF43C
-    extern MainMenu* MAIN_MENU_PTR asm("_MAIN_MENU_PTR");
+    externcg MainMenu* MAIN_MENU_PTR asm("_MAIN_MENU_PTR");
     // 0x507648
-    extern int UNKNOWN_INT_H asm("_UNKNOWN_INT_H");
+    externcg int UNKNOWN_INT_H asm("_UNKNOWN_INT_H");
 }
 
 // size: 0x5D98
@@ -30697,8 +31444,6 @@ dllexport gnu_noinline uint32_t get_joypad_input(uint32_t buttons) {
     return INPUT_STATES[0].get_joypad(buttons);
 }
 
-// 0x401C50
-dllexport gnu_noinline uint32_t get_hardware_inputs() asm_symbol_rel(0x401C50);
 dllexport gnu_noinline uint32_t get_hardware_inputs() {
     uint32_t buttons = get_hardware_xinput();
     if (WINDOW_DATA.window_active) {
@@ -31329,6 +32074,27 @@ dllexport gnu_noinline double vectorcall get_runtime() {
     }
 }
 
+// 0x454950
+dllexport gnu_noinline int thiscall Supervisor::__sub_454950() {
+    if (this->gamemode_current != this->gamemode_switch) {
+        CRITICAL_SECTION_MANAGER.enter_section(Menu_CS);
+
+
+        int32_t prev_gamemode = this->gamemode_current;
+        int32_t new_gamemode = this->gamemode_switch;
+        this->gamemode_previous = prev_gamemode;
+
+        switch (new_gamemode) {
+            case 0:
+                this->gamemode_switch = 1;
+        }
+
+
+        CRITICAL_SECTION_MANAGER.leave_section(Menu_CS);
+    }
+    return 1;
+}
+
 // 0x443860
 dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
     if (SUPERVISOR.__unknown_bitfield_A != 0) {
@@ -31628,7 +32394,23 @@ dllexport gnu_noinline GameThread::~GameThread() {
 
     GAME_THREAD_PTR = NULL;
 
+    if (AbilityShop* ability_shop = ABILITY_SHOP_PTR) {
+        ability_shop->cleanup();
+    }
 
+    if (
+        (GAME_MANAGER.__unknown_field_A != 2 || !GAME_MANAGER.__unknown_flag_A) &&
+        !GAME_MANAGER.__unknown_flag_B &&
+        !GAME_MANAGER.__unknown_flag_E
+    ) {
+        // TODO something in sound manager
+    }
+
+    SOUND_MANAGER.__stop_all();
+
+    UNKNOWN_INT_H = 1;
+
+    SUPERVISOR.background_color = GAME_MANAGER.__unknown_flag_A ? PackD3DCOLOR(0, 0, 0, 0) : PackD3DCOLOR(255, 0, 0, 0);
 }
 
 inline unsigned GameThread::thread_start_impl() {
@@ -31784,7 +32566,7 @@ inline unsigned GameThread::thread_start_impl() {
         }
 
         if (GAME_MANAGER.__unknown_field_A == 2) {
-            clang_forceinline GAME_MANAGER.globals.set_power(GAME_MANAGER.globals.power_per_level * 4);
+            clang_forceinline GAME_MANAGER.globals.set_power(GAME_MANAGER.globals.power_per_level * DEFAULT_MAX_POWER_LEVEL);
         }
         else {
             int32_t power;
@@ -31796,7 +32578,7 @@ inline unsigned GameThread::thread_start_impl() {
                 power = GAME_MANAGER.globals.power_per_level;
             }
             else {
-                power = GAME_MANAGER.globals.power_per_level * 4;
+                power = GAME_MANAGER.globals.power_per_level * DEFAULT_MAX_POWER_LEVEL;
             }
             GAME_MANAGER.globals.set_power(power);
         }
@@ -31822,7 +32604,150 @@ inline unsigned GameThread::thread_start_impl() {
     else {
         GAME_MANAGER.__high_score = __max(GAME_MANAGER.globals.score, GAME_MANAGER.__high_score);
     }
+
+    UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
+    UpdateFuncRegistry::register_on_tick(update_func, 16);
+    this->on_tick_func = update_func;
+    update_func = new UpdateFunc(&on_draw, false, this);
+    UpdateFuncRegistry::register_on_draw(update_func, 2);
+    this->on_draw_func = update_func;
+
+    this->config = SUPERVISOR.config;
+
+    this->stage_number = STAGE_DATA_PTR->stage_number;
+
+    if (!GAME_MANAGER.__unknown_flag_B) {
+        if (!ReplayManager::allocate(UNKNOWN_TEXT_BUFFER_A)) {
+            goto thread_start_important_label;
+        }
+        REPLAY_MANAGER_PTR->__sub_462D20();
+
+        if (
+            !Stage::allocate(STAGE_DATA_PTR->std_filename) ||
+            !Gui::allocate() ||
+            !BulletManager::allocate() ||
+            !ItemManager::allocate() ||
+            !LaserManager::allocate() ||
+            !PopupManager::allocate()
+        ) {
+            goto thread_start_important_label;
+        }
+    }
+    else {
+        REPLAY_MANAGER_PTR->__inline_sub_A();
+        REPLAY_MANAGER_PTR->__sub_462D20();
+        GUI_PTR->__initialize();
+        if (!Stage::allocate(STAGE_DATA_PTR->std_filename)) {
+            goto thread_start_important_label;
+        }
+    }
+
+    AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
+    ability_manager->__float_C58 = 1.0f;
+    ability_manager->card_list.for_each([](CardBase* card) {
+        card->__on_load_2();
+    });
+    ABILITY_MANAGER_PTR->card_list.for_each_safeB([](CardBase* card) {
+        card->initializeA();
+    });
+
+    if (
+        !GAME_MANAGER.__unknown_flag_A &&
+        !GAME_MANAGER.__unknown_flag_D
+    ) {
+        if (!EnemyManager::allocate(STAGE_DATA_PTR->ecl_filename)) {
+            goto thread_start_important_label;
+        }
+    }
+    else {
+        ENEMY_MANAGER_PTR->reset();
+    }
+
+    if (
+        !BombBase::allocate() ||
+        !Spellcard::allocate()
+    ) {
+        goto thread_start_important_label;
+    }
+
+    SCOREFILE_MANAGER_PTR->save_files();
+
+    if (GAME_MANAGER.__unknown_field_A == 2) {
+        //SOUND_MANAGER.__sub_4546F0();
+    }
+
+    //SOUND_MANAGER.__sub_454620(0, STAGE_DATA_PTR->__string_array_C[0]);
+    //SOUND_MANAGER.__sub_454620(1, STAGE_DATA_PTR->__string_array_C[1]);
+
+    FPS_COUNTER_PTR->reset();
+
+    clang_noinline this->__timer_C.set(0);
+
+    while (SOUND_MANAGER.__unknown_smd_array_2484[0].__dword_0) {
+        Sleep(16);
+    }
+
+    EffectManager* effect_manager = EFFECT_MANAGER_PTR;
+    while (!effect_manager->__done_loading) {
+        Sleep(1);
+    }
+
+    PLAYER_PTR->data.__update_option_power_levels();
+
+    this->__int_B8 = 60;
+
+    if (SUPERVISOR.__int_AD0 == 1) {
+        UNKNOWN_ANM_ID_A.interrupt_tree(2);
+        UNKNOWN_ANM_ID_B.interrupt_tree(2);
+        UNKNOWN_ANM_ID_C.interrupt_tree(2);
+        UNKNOWN_ANM_ID_A = 0;
+        UNKNOWN_ANM_ID_B = 0;
+        UNKNOWN_ANM_ID_C = 0;
+        SUPERVISOR.__int_AD0 = 0;
+    }
+
+    this->__unknown_flag_H = false;
+
+    SUPERVISOR.__thread_A94.__bool_10 = false;
+    SUPERVISOR.__thread_A94.__bool_C = true;
+
+    UNKNOWN_INT_H = 0;
+    UNKNOWN_FUNC_PTR_A = NULL;
+    UNKNOWN_FUNC_PTR_B = NULL;
+
+    SUPERVISOR.__arcade_vm_ptr_A->interrupt(2);
+    SUPERVISOR.__arcade_vm_ptr_B->interrupt(2);
+    SUPERVISOR.__arcade_vm_ptr_C->interrupt(2);
+    SUPERVISOR.__arcade_vm_ptr_D->interrupt(2);
+
+    if (GAME_THREAD_PTR->replay_mode == __replay_recording) {
+        GAME_MANAGER.game_time_double = get_runtime();
+    }
+
+    this->enable_funcs();
+
+    return ZUN_SUCCESS;
+
 thread_start_important_label:
+
+    this->__unknown_flag_H = true;
+
+    if (SUPERVISOR.__int_AD0 == 1) {
+        UNKNOWN_ANM_ID_A.interrupt_tree(2);
+        UNKNOWN_ANM_ID_B.interrupt_tree(2);
+        UNKNOWN_ANM_ID_C.interrupt_tree(2);
+        UNKNOWN_ANM_ID_A = 0;
+        UNKNOWN_ANM_ID_B = 0;
+        UNKNOWN_ANM_ID_C = 0;
+        SUPERVISOR.__int_AD0 = 2;
+    }
+
+    SUPERVISOR.__thread_A94.__bool_10 = false;
+    SUPERVISOR.__thread_A94.__bool_C = true;
+
+    this->enable_funcs();
+
+    return ZUN_ERROR;
 }
 
 // 0x4726A0
@@ -32378,7 +33303,7 @@ struct MutexData {
 };
 extern "C" {
     // 0x570C98
-    extern MutexData MUTEX_DATA asm("_MUTEX_DATA");
+    externcg MutexData MUTEX_DATA asm("_MUTEX_DATA");
 }
 
 #include <ShObjIdl.h>
@@ -32439,7 +33364,7 @@ dllexport gnu_noinline ZUNResult __make_mutex_and_test_path() {
 
 extern "C" {
     // 0x5705F0
-    extern JOYCAPSA JOYCAPS_GLOBAL asm("_JOYCAPS");
+    externcg JOYCAPSA JOYCAPS_GLOBAL asm("_JOYCAPS");
 }
 
 // 0x4B4280

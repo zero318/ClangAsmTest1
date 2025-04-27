@@ -9,30 +9,6 @@
 
 #define DECLARED_FLOAT_STUCTS 1
 
-// size: 0x4
-struct Int1 {
-    int32_t x; // 0x0
-    // 0x4
-};
-
-// size: 0x8
-struct Int2 : Int1 {
-    int32_t y; // 0x4
-    // 0x8
-};
-
-// size: 0xC
-struct Int3 : Int2 {
-    int32_t z; // 0x8
-    // 0xC
-};
-
-// size: 0x10
-struct Int4 : Int3 {
-    int32_t w; // 0xC
-    // 0x10
-};
-
 #if GAME_VERSION == EoSD_VER
 #define zun_operator_inline forceinline
 #define zun_make_from_vector_inline forceinline
@@ -43,6 +19,263 @@ struct Int4 : Int3 {
 #define zun_operator_inline inline
 #define zun_make_from_vector_inline gnu_noinline
 #endif
+
+struct Int1;
+struct Int2;
+struct Int3;
+struct Int4;
+struct Float1;
+struct Float2;
+struct Float3;
+struct Float4;
+
+// size: 0x4
+struct Int1 {
+    int32_t x; // 0x0
+    // 0x4
+
+    inline Int1() = default;
+    inline constexpr Int1(const int32_t& X) : x(X) {}
+};
+
+// size: 0x8
+struct Int2 : Int1 {
+    int32_t y; // 0x4
+    // 0x8
+
+    using Int1::Int1;
+    inline Int2() = default;
+    inline constexpr Int2(const int32_t& X, const int32_t& Y) : Int1(X), y(Y) {}
+
+#pragma region // Int2 Operators
+
+    explicit inline operator Float2() const;
+
+#define Int2BinOp(op) \
+    zun_operator_inline Int2 operator op(const Int2& value) const { \
+        return { \
+            this->x op value.x, \
+            this->y op value.y \
+        }; \
+    }
+    Int2BinOp(+);
+    Int2BinOp(-);
+    Int2BinOp(*);
+    Int2BinOp(/);
+    Int2BinOp(%);
+    Int2BinOp(<<);
+    Int2BinOp(>>);
+    Int2BinOp(&);
+    Int2BinOp(|);
+    Int2BinOp(^);
+#undef Int2BinOp
+#define Int2BinOpScalar(op) \
+    zun_operator_inline Int2 operator op(int32_t value) const { \
+        return { \
+            this->x op value, \
+            this->y op value \
+        }; \
+    } \
+    friend zun_operator_inline Int2 operator op(int32_t lhs, const Int2& rhs) { \
+        return { \
+            lhs op rhs.x, \
+            lhs op rhs.y \
+        }; \
+    }
+    Int2BinOpScalar(+);
+    Int2BinOpScalar(-);
+    Int2BinOpScalar(*);
+    Int2BinOpScalar(/);
+    Int2BinOpScalar(%);
+    Int2BinOpScalar(<<);
+    Int2BinOpScalar(>>);
+    Int2BinOpScalar(&);
+    Int2BinOpScalar(|);
+    Int2BinOpScalar(^);
+#undef Int2BinOpScalar
+#define Int2UnOp(op) \
+    zun_operator_inline Int2 operator op() const { \
+        return { \
+            op this->x, \
+            op this->y \
+        }; \
+    }
+    Int2UnOp(+);
+    Int2UnOp(-);
+    Int2UnOp(~);
+#undef Int2UnOp
+#define Int2AssignOp(op) \
+    zun_operator_inline Int2& operator op(const Int2& value) {\
+        this->x op value.x; \
+        this->y op value.y; \
+        return *this; \
+    }
+    Int2AssignOp(+=);
+    Int2AssignOp(-=);
+    Int2AssignOp(*=);
+    Int2AssignOp(/=);
+    Int2AssignOp(%=);
+    Int2AssignOp(<<=);
+    Int2AssignOp(>>=);
+    Int2AssignOp(&=);
+    Int2AssignOp(|=);
+    Int2AssignOp(^=);
+#undef Int2AssignOp
+#define Int2AssignOpScalar(op) \
+    zun_operator_inline Int2& operator op(int32_t value) {\
+        this->x op value; \
+        this->y op value; \
+        return *this; \
+    }
+    Int2AssignOpScalar(+=);
+    Int2AssignOpScalar(-=);
+    Int2AssignOpScalar(*=);
+    Int2AssignOpScalar(/=);
+    Int2AssignOpScalar(%=);
+    Int2AssignOpScalar(<<=);
+    Int2AssignOpScalar(>>=);
+    Int2AssignOpScalar(&=);
+    Int2AssignOpScalar(|=);
+    Int2AssignOpScalar(^=);
+#undef Int2AssignOpScalar
+
+#pragma endregion
+};
+
+// size: 0xC
+struct Int3 : Int2 {
+    int32_t z; // 0x8
+    // 0xC
+
+    using Int2::Int2;
+    inline Int3() = default;
+    inline constexpr Int3(const Int2& v) : Int2(v), z(0.0f) {}
+    inline constexpr Int3(const Int2& v, int32_t Z) : Int2(v), z(Z) {}
+    inline constexpr Int3(const int32_t& X, const int32_t& Y, const int32_t& Z) : Int2(X, Y), z(Z) {}
+
+    inline Int2& as2() {
+        return *(Int2*)this;
+    }
+
+#pragma region // Int3 Operators
+
+    explicit inline operator Float3() const;
+
+#define Int3BinOp(op) \
+    zun_operator_inline Int3 operator op(const Int3& value) const { \
+        return { \
+            this->x op value.x, \
+            this->y op value.y, \
+            this->z op value.z \
+        }; \
+    } \
+    zun_operator_inline Int3 operator op(const Int2& value) const { \
+        return { \
+            this->x op value.x, \
+            this->y op value.y, \
+            this->z op 0 \
+        }; \
+    }
+    Int3BinOp(+);
+    Int3BinOp(-);
+    Int3BinOp(*);
+    Int3BinOp(/);
+    Int3BinOp(%);
+    Int3BinOp(<<);
+    Int3BinOp(>>);
+    Int3BinOp(&);
+    Int3BinOp(|);
+    Int3BinOp(^);
+#undef Int3BinOp
+#define Int3BinOpScalar(op) \
+    zun_operator_inline Int3 operator op(int32_t value) const { \
+        return { \
+            this->x op value, \
+            this->y op value, \
+            this->z op value \
+        }; \
+    } \
+    friend zun_operator_inline Int3 operator op(int32_t lhs, const Int3& rhs) { \
+        return { \
+            lhs op rhs.x, \
+            lhs op rhs.y, \
+            lhs op rhs.z \
+        }; \
+    }
+    Int3BinOpScalar(+);
+    Int3BinOpScalar(-);
+    Int3BinOpScalar(*);
+    Int3BinOpScalar(/);
+    Int3BinOpScalar(%);
+    Int3BinOpScalar(<<);
+    Int3BinOpScalar(>>);
+    Int3BinOpScalar(&);
+    Int3BinOpScalar(|);
+    Int3BinOpScalar(^);
+#undef Int3BinOpScalar
+#define Int3UnOp(op) \
+    zun_operator_inline Int3 operator op() const { \
+        return { \
+            op this->x, \
+            op this->y, \
+            op this->z \
+        }; \
+    }
+    Int3UnOp(+);
+    Int3UnOp(-);
+    Int3UnOp(~);
+#undef Int3UnOp
+#define Int3AssignOp(op) \
+    zun_operator_inline Int3& operator op(const Int3& value) {\
+        this->x op value.x; \
+        this->y op value.y; \
+        this->z op value.z; \
+        return *this; \
+    } \
+    zun_operator_inline Int3& operator op(const Int2& value) {\
+        this->x op value.x; \
+        this->y op value.y; \
+        this->z op 0; \
+        return *this; \
+    }
+    Int3AssignOp(+=);
+    Int3AssignOp(-=);
+    Int3AssignOp(*=);
+    Int3AssignOp(/=);
+    Int3AssignOp(%=);
+    Int3AssignOp(<<=);
+    Int3AssignOp(>>=);
+    Int3AssignOp(&=);
+    Int3AssignOp(|=);
+    Int3AssignOp(^=);
+#undef Int3AssignOp
+#define Int3AssignOpScalar(op) \
+    zun_operator_inline Int3& operator op(int32_t value) {\
+        this->x op value; \
+        this->y op value; \
+        this->z op value; \
+        return *this; \
+    }
+    Int3AssignOpScalar(+=);
+    Int3AssignOpScalar(-=);
+    Int3AssignOpScalar(*=);
+    Int3AssignOpScalar(/=);
+    Int3AssignOpScalar(%=);
+    Int3AssignOpScalar(<<=);
+    Int3AssignOpScalar(>>=);
+    Int3AssignOpScalar(&=);
+    Int3AssignOpScalar(|=);
+    Int3AssignOpScalar(^=);
+#undef Int3AssignOpScalar
+
+#pragma endregion
+};
+
+// size: 0x10
+struct Int4 : Int3 {
+    int32_t w; // 0xC
+    // 0x10
+};
 
 // size: 0x4
 struct Float1 {
@@ -156,6 +389,8 @@ struct Float2 : Float1 {
     }
     
 #pragma region // Float2 Operators
+
+    explicit inline operator Int2() const;
 
 #define Float2BinOp(op) \
     zun_operator_inline Float2 operator op(const Float2& value) const { \
@@ -302,6 +537,8 @@ struct Float3 : Float2 {
 
 #pragma region // Float3 Operators
 
+    explicit inline operator Int3() const;
+
 #define Float3BinOp(op) \
     zun_operator_inline Float3 operator op(const Float3& value) const { \
         return { \
@@ -410,6 +647,36 @@ ValidateFieldOffset32(0x8, Float4, z);
 ValidateFieldOffset32(0xC, Float4, w);
 ValidateStructSize32(0x10, Float4);
 #pragma endregion
+
+inline Int2::operator Float2() const {
+    return {
+        this->x,
+        this->y
+    };
+}
+
+inline Float2::operator Int2() const {
+    return {
+        this->x,
+        this->y
+    };
+}
+
+inline Int3::operator Float3() const {
+    return {
+        this->x,
+        this->y,
+        this->z
+    };
+}
+
+inline Float3::operator Int3() const {
+    return {
+        this->x,
+        this->y,
+        this->z
+    };
+}
 
 #if 0 && GAME_VERSION >= MoF_VER
 
