@@ -1,0 +1,4074 @@
+type 0 BulletSpriteData {
+  int32_t script_id = 35
+  BulletSpriteColorData[16] color_data = *004C5F94
+  float hitbox_size = 2.400000
+  int32_t layer = 5
+  int __int_10C = 6
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 0
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 161
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 1
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 164
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 2
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 167
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 3
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 170
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 4
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 173
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 5
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 176
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 6
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 179
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 7
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 182
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 8
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 185
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 9
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 188
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 10
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 191
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 11
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 194
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 12
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 197
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 13
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 200
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 14
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 203
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 15
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 206
+}
+type 1 BulletSpriteData {
+  int32_t script_id = 36
+  BulletSpriteColorData[16] color_data = *004C60AC
+  float hitbox_size = 2.400000
+  int32_t layer = 5
+  int __int_10C = 6
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 0
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 161
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 1
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 164
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 2
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 167
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 3
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 170
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 4
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 173
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 5
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 176
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 6
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 179
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 7
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 182
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 8
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 185
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 9
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 188
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 10
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 191
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 11
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 194
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 12
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 197
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 13
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 200
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 14
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 203
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 15
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 206
+}
+type 2 BulletSpriteData {
+  int32_t script_id = 37
+  BulletSpriteColorData[16] color_data = *004C61C4
+  float hitbox_size = 2.400000
+  int32_t layer = 5
+  int __int_10C = 6
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 16
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 17
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 18
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 19
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 20
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 21
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 22
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 23
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 24
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 25
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 26
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 27
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 28
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 29
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 30
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 31
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 3 BulletSpriteData {
+  int32_t script_id = 38
+  BulletSpriteColorData[16] color_data = *004C62DC
+  float hitbox_size = 2.000000
+  int32_t layer = 5
+  int __int_10C = 6
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 48
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 49
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 50
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 51
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 52
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 53
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 54
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 55
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 56
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 57
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 58
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 59
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 60
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 61
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 62
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 63
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 4 BulletSpriteData {
+  int32_t script_id = 39
+  BulletSpriteColorData[16] color_data = *004C63F4
+  float hitbox_size = 4.000000
+  int32_t layer = 3
+  int __int_10C = 6
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 64
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 65
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 66
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 67
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 68
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 69
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 70
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 71
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 72
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 73
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 74
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 75
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 76
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 77
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 78
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 79
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 5 BulletSpriteData {
+  int32_t script_id = 40
+  BulletSpriteColorData[16] color_data = *004C650C
+  float hitbox_size = 4.000000
+  int32_t layer = 3
+  int __int_10C = 6
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 80
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 81
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 82
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 83
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 84
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 85
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 86
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 87
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 88
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 89
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 90
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 91
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 92
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 93
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 94
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 95
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 6 BulletSpriteData {
+  int32_t script_id = 41
+  BulletSpriteColorData[16] color_data = *004C6624
+  float hitbox_size = 4.000000
+  int32_t layer = 3
+  int __int_10C = 6
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 96
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 97
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 98
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 99
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 100
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 101
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 102
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 103
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 104
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 105
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 106
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 107
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 108
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 109
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 110
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 111
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 7 BulletSpriteData {
+  int32_t script_id = 42
+  BulletSpriteColorData[16] color_data = *004C673C
+  float hitbox_size = 4.000000
+  int32_t layer = 3
+  int __int_10C = 6
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 112
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 113
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 114
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 115
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 116
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 117
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 118
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 119
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 120
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 121
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 122
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 123
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 124
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 125
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 126
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 127
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 8 BulletSpriteData {
+  int32_t script_id = 43
+  BulletSpriteColorData[16] color_data = *004C6854
+  float hitbox_size = 2.400000
+  int32_t layer = 4
+  int __int_10C = 6
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 128
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 129
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 130
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 131
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 132
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 133
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 134
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 135
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 136
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 137
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 138
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 139
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 140
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 141
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 142
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 143
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 9 BulletSpriteData {
+  int32_t script_id = 44
+  BulletSpriteColorData[16] color_data = *004C696C
+  float hitbox_size = 2.400000
+  int32_t layer = 4
+  int __int_10C = 6
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 160
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 161
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 162
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 163
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 164
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 165
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 166
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 167
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 168
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 169
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 170
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 171
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 172
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 173
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 174
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 175
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 10 BulletSpriteData {
+  int32_t script_id = 45
+  BulletSpriteColorData[16] color_data = *004C6A84
+  float hitbox_size = 2.400000
+  int32_t layer = 4
+  int __int_10C = 6
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 176
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 177
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 178
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 179
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 180
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 181
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 182
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 183
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 184
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 185
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 186
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 187
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 188
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 189
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 190
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 191
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 11 BulletSpriteData {
+  int32_t script_id = 46
+  BulletSpriteColorData[16] color_data = *004C6B9C
+  float hitbox_size = 2.800000
+  int32_t layer = 3
+  int __int_10C = 6
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 208
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 209
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 210
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 211
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 212
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 213
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 214
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 215
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 216
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 217
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 218
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 219
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 220
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 221
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 222
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 223
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 12 BulletSpriteData {
+  int32_t script_id = 47
+  BulletSpriteColorData[16] color_data = *004C6CB4
+  float hitbox_size = 2.400000
+  int32_t layer = 4
+  int __int_10C = 6
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 224
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 225
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 226
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 227
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 228
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 229
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 230
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 231
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 232
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 233
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 234
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 235
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 236
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 237
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 238
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 239
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 13 BulletSpriteData {
+  int32_t script_id = 48
+  BulletSpriteColorData[16] color_data = *004C6DCC
+  float hitbox_size = 2.400000
+  int32_t layer = 4
+  int __int_10C = 6
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 240
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 241
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 242
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 243
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 244
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 245
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 246
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 247
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 248
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 249
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 250
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 251
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 252
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 253
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 254
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 255
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 14 BulletSpriteData {
+  int32_t script_id = 49
+  BulletSpriteColorData[16] color_data = *004C6EE4
+  float hitbox_size = 2.400000
+  int32_t layer = 4
+  int __int_10C = 6
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 256
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 257
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 258
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 259
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 260
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 261
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 262
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 263
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 264
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 265
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 266
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 267
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 268
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 269
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 270
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 271
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 15 BulletSpriteData {
+  int32_t script_id = 50
+  BulletSpriteColorData[16] color_data = *004C6FFC
+  float hitbox_size = 2.400000
+  int32_t layer = 4
+  int __int_10C = 6
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 272
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 273
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 274
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 275
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 276
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 277
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 278
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 279
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 280
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 281
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 282
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 283
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 284
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 285
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 286
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 287
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 16 BulletSpriteData {
+  int32_t script_id = 51
+  BulletSpriteColorData[16] color_data = *004C7114
+  float hitbox_size = 4.000000
+  int32_t layer = 3
+  int __int_10C = 6
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 288
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 289
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 290
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 291
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 292
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 293
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 294
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 295
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 296
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 297
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 298
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 299
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 300
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 301
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 302
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 303
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 17 BulletSpriteData {
+  int32_t script_id = 52
+  BulletSpriteColorData[16] color_data = *004C722C
+  float hitbox_size = 4.000000
+  int32_t layer = 3
+  int __int_10C = 0
+  int __int_110 = 6
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 320
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 321
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 322
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+type 18 BulletSpriteData {
+  int32_t script_id = 72
+  BulletSpriteColorData[16] color_data = *004C7344
+  float hitbox_size = 8.500000
+  int32_t layer = 1
+  int __int_10C = 6
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 368
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 257
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 369
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 260
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 370
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 263
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 371
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 266
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 372
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 269
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 373
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 272
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 374
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 275
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 375
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 278
+}
+type 19 BulletSpriteData {
+  int32_t script_id = 73
+  BulletSpriteColorData[16] color_data = *004C745C
+  float hitbox_size = 8.500000
+  int32_t layer = 1
+  int __int_10C = 6
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 376
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 257
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 377
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 260
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 378
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 263
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 379
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 266
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 380
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 269
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 381
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 272
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 382
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 275
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 383
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 278
+}
+type 20 BulletSpriteData {
+  int32_t script_id = 74
+  BulletSpriteColorData[16] color_data = *004C7574
+  float hitbox_size = 7.000000
+  int32_t layer = 2
+  int __int_10C = 6
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 392
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 257
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 393
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 260
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 394
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 263
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 395
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 266
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 396
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 269
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 397
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 272
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 398
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 275
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 399
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 278
+}
+type 21 BulletSpriteData {
+  int32_t script_id = 75
+  BulletSpriteColorData[16] color_data = *004C768C
+  float hitbox_size = 6.000000
+  int32_t layer = 2
+  int __int_10C = 6
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 400
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 257
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 401
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 260
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 402
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 263
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 403
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 266
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 404
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 269
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 405
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 272
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 406
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 275
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 407
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 278
+}
+type 22 BulletSpriteData {
+  int32_t script_id = 76
+  BulletSpriteColorData[16] color_data = *004C77A4
+  float hitbox_size = 7.000000
+  int32_t layer = 2
+  int __int_10C = 6
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 408
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 257
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 409
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 260
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 410
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 263
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 411
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 266
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 412
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 269
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 413
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 272
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 414
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 275
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 415
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 278
+}
+type 23 BulletSpriteData {
+  int32_t script_id = 77
+  BulletSpriteColorData[16] color_data = *004C78BC
+  float hitbox_size = 7.000000
+  int32_t layer = 1
+  int __int_10C = 6
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 416
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 257
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 417
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 260
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 418
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 263
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 419
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 266
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 420
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 269
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 421
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 272
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 422
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 275
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 423
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 278
+}
+type 24 BulletSpriteData {
+  int32_t script_id = 78
+  BulletSpriteColorData[16] color_data = *004C79D4
+  float hitbox_size = 7.000000
+  int32_t layer = 1
+  int __int_10C = 6
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 424
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 257
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 425
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 260
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 426
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 263
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 427
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 266
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 428
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 269
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 429
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 272
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 430
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 275
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 431
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 278
+}
+type 25 BulletSpriteData {
+  int32_t script_id = 108
+  BulletSpriteColorData[16] color_data = *004C7AEC
+  float hitbox_size = 6.000000
+  int32_t layer = 2
+  int __int_10C = 7
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 263
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+type 26 BulletSpriteData {
+  int32_t script_id = 109
+  BulletSpriteColorData[16] color_data = *004C7C04
+  float hitbox_size = 6.000000
+  int32_t layer = 2
+  int __int_10C = 8
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 260
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+type 27 BulletSpriteData {
+  int32_t script_id = 110
+  BulletSpriteColorData[16] color_data = *004C7D1C
+  float hitbox_size = 4.000000
+  int32_t layer = 2
+  int __int_10C = 9
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 266
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+type 28 BulletSpriteData {
+  int32_t script_id = 111
+  BulletSpriteColorData[16] color_data = *004C7E34
+  float hitbox_size = 4.000000
+  int32_t layer = 2
+  int __int_10C = 10
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 275
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+type 29 BulletSpriteData {
+  int32_t script_id = 81
+  BulletSpriteColorData[16] color_data = *004C7F4C
+  float hitbox_size = 10.000000
+  int32_t layer = 1
+  int __int_10C = 6
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 444
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 257
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 445
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 260
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 446
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 263
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 447
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 266
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 448
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 269
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 449
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 272
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 450
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 275
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 451
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 278
+}
+type 30 BulletSpriteData {
+  int32_t script_id = 79
+  BulletSpriteColorData[16] color_data = *004C8064
+  float hitbox_size = 7.000000
+  int32_t layer = 1
+  int __int_10C = 6
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 384
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 257
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 385
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 260
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 386
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 263
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 387
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 266
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 388
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 269
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 389
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 272
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 390
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 275
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 391
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 278
+}
+type 31 BulletSpriteData {
+  int32_t script_id = 82
+  BulletSpriteColorData[16] color_data = *004C817C
+  float hitbox_size = 4.000000
+  int32_t layer = 3
+  int __int_10C = 6
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 452
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 257
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 453
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 260
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 454
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 263
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 455
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 266
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 456
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 269
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 457
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 272
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 458
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 275
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 459
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 278
+}
+type 32 BulletSpriteData {
+  int32_t script_id = 80
+  BulletSpriteColorData[16] color_data = *004C8294
+  float hitbox_size = 14.000000
+  int32_t layer = 0
+  int __int_10C = 6
+  int __int_110 = 60
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 432
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 281
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 433
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 284
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 434
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 287
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 435
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 290
+}
+type 33 BulletSpriteData {
+  int32_t script_id = 315
+  BulletSpriteColorData[16] color_data = *004C83AC
+  float hitbox_size = 12.000000
+  int32_t layer = 2
+  int __int_10C = 6
+  int __int_110 = 60
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 548
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 257
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 549
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 260
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 550
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 263
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 551
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 266
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 552
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 269
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 553
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 272
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 554
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 275
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 555
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 278
+}
+type 34 BulletSpriteData {
+  int32_t script_id = 107
+  BulletSpriteColorData[16] color_data = *004C84C4
+  float hitbox_size = 2.400000
+  int32_t layer = 5
+  int __int_10C = 6
+  int __int_110 = 8
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 468
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 469
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 470
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 471
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 472
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 473
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 474
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 475
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 476
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 477
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 478
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 479
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 480
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 481
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 482
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 483
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 35 BulletSpriteData {
+  int32_t script_id = 53
+  BulletSpriteColorData[16] color_data = *004C85DC
+  float hitbox_size = 3.200000
+  int32_t layer = 4
+  int __int_10C = 6
+  int __int_110 = 8
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 144
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 145
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 146
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 147
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 148
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 149
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 150
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 151
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 152
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 153
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 154
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 155
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 156
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 157
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 158
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 159
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 36 BulletSpriteData {
+  int32_t script_id = 54
+  BulletSpriteColorData[16] color_data = *004C86F4
+  float hitbox_size = 3.200000
+  int32_t layer = 4
+  int __int_10C = 6
+  int __int_110 = 8
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 192
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 193
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 194
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 195
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 196
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 197
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 198
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 199
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 200
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 201
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 202
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 203
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 204
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 205
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 206
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 207
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 37 BulletSpriteData {
+  int32_t script_id = 55
+  BulletSpriteColorData[16] color_data = *004C880C
+  float hitbox_size = 4.000000
+  int32_t layer = 3
+  int __int_10C = 6
+  int __int_110 = 8
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 304
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 305
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 306
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 307
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 308
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 309
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 310
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 311
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 312
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 313
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 314
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 315
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 316
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 317
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 318
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 319
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 38 BulletSpriteData {
+  int32_t script_id = 158
+  BulletSpriteColorData[16] color_data = *004C8924
+  float hitbox_size = 4.000000
+  int32_t layer = 2
+  int __int_10C = 6
+  int __int_110 = 30
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 352
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 336
+  int32_t cancel_script = 209
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 353
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 337
+  int32_t cancel_script = 212
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 354
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 338
+  int32_t cancel_script = 215
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 355
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 339
+  int32_t cancel_script = 218
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 356
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 340
+  int32_t cancel_script = 221
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 357
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 341
+  int32_t cancel_script = 224
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 358
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 342
+  int32_t cancel_script = 227
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 359
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 343
+  int32_t cancel_script = 230
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = 360
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 344
+  int32_t cancel_script = 233
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = 361
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 345
+  int32_t cancel_script = 236
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = 362
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 346
+  int32_t cancel_script = 239
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = 363
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 347
+  int32_t cancel_script = 242
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = 364
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 348
+  int32_t cancel_script = 245
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = 365
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 349
+  int32_t cancel_script = 248
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = 366
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 350
+  int32_t cancel_script = 251
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = 367
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 351
+  int32_t cancel_script = 254
+}
+type 39 BulletSpriteData {
+  int32_t script_id = 317
+  BulletSpriteColorData[16] color_data = *004C8A3C
+  float hitbox_size = 4.000000
+  int32_t layer = 3
+  int __int_10C = 6
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 260
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+type 40 BulletSpriteData {
+  int32_t script_id = 318
+  BulletSpriteColorData[16] color_data = *004C8B54
+  float hitbox_size = 4.000000
+  int32_t layer = 3
+  int __int_10C = 6
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 266
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+type 41 BulletSpriteData {
+  int32_t script_id = 319
+  BulletSpriteColorData[16] color_data = *004C8C6C
+  float hitbox_size = 4.000000
+  int32_t layer = 3
+  int __int_10C = 6
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 275
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+type 42 BulletSpriteData {
+  int32_t script_id = 320
+  BulletSpriteColorData[16] color_data = *004C8D84
+  float hitbox_size = 4.000000
+  int32_t layer = 3
+  int __int_10C = 6
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 263
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 8 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 9 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 10 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 11 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 12 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 13 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 14 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+color 15 BulletSpriteColorData {
+  int32_t sprite_id = -1
+  int32_t spawn_effect_id = -1
+  int32_t cancel_effect_id = -1
+  int32_t cancel_script = 0
+}
+type 43 BulletSpriteData {
+  int32_t script_id = 321
+  BulletSpriteColorData[16] color_data = *004C8E9C
+  float hitbox_size = 5.000000
+  int32_t layer = 2
+  int __int_10C = 6
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 568
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 257
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 569
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 260
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 570
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 263
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 571
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 266
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 572
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 269
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 573
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 272
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 574
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 275
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 575
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 278
+}
+type 44 BulletSpriteData {
+  int32_t script_id = 324
+  BulletSpriteColorData[16] color_data = *004C8FB4
+  float hitbox_size = 10.000000
+  int32_t layer = 1
+  int __int_10C = 6
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 580
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 257
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 581
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 260
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 582
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 263
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 583
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 266
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 584
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 269
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 585
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 272
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 586
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 275
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 587
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 278
+}
+type 45 BulletSpriteData {
+  int32_t script_id = 325
+  BulletSpriteColorData[16] color_data = *004C90CC
+  float hitbox_size = 10.000000
+  int32_t layer = 1
+  int __int_10C = 6
+  int __int_110 = 12
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 588
+  int32_t spawn_effect_id = 323
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 257
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 589
+  int32_t spawn_effect_id = 324
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 260
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 590
+  int32_t spawn_effect_id = 325
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 263
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 591
+  int32_t spawn_effect_id = 326
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 266
+}
+color 4 BulletSpriteColorData {
+  int32_t sprite_id = 592
+  int32_t spawn_effect_id = 327
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 269
+}
+color 5 BulletSpriteColorData {
+  int32_t sprite_id = 593
+  int32_t spawn_effect_id = 328
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 272
+}
+color 6 BulletSpriteColorData {
+  int32_t sprite_id = 594
+  int32_t spawn_effect_id = 329
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 275
+}
+color 7 BulletSpriteColorData {
+  int32_t sprite_id = 595
+  int32_t spawn_effect_id = 330
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 278
+}
+type 46 BulletSpriteData {
+  int32_t script_id = 326
+  BulletSpriteColorData[16] color_data = *004C91E4
+  float hitbox_size = 28.000000
+  int32_t layer = 0
+  int __int_10C = 6
+  int __int_110 = 60
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 596
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 281
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 597
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 284
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 598
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 287
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 599
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 290
+}
+type 47 BulletSpriteData {
+  int32_t script_id = 327
+  BulletSpriteColorData[16] color_data = *004C92FC
+  float hitbox_size = 28.000000
+  int32_t layer = 0
+  int __int_10C = 6
+  int __int_110 = 60
+  int32_t __anm_script_114 = 0
+}
+color 0 BulletSpriteColorData {
+  int32_t sprite_id = 596
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 281
+}
+color 1 BulletSpriteColorData {
+  int32_t sprite_id = 597
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 284
+}
+color 2 BulletSpriteColorData {
+  int32_t sprite_id = 598
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 287
+}
+color 3 BulletSpriteColorData {
+  int32_t sprite_id = 599
+  int32_t spawn_effect_id = 0
+  int32_t cancel_effect_id = 0
+  int32_t cancel_script = 290
+}
