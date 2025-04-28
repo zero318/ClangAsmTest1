@@ -39,7 +39,7 @@ using ZUNListIter = ZUNListIterBase<T, true>;
 template <typename T>
 using ZUNListEnds = ZUNListEndsBase<T, true>;
 
-#define USE_EXTERN_STATICS 0
+#define FIX_REALLY_BAD_BUGS 1
 
 #define USE_EXTERN_FOR_CODEGEN 0
 
@@ -3388,7 +3388,12 @@ struct FpsCounter : ZUNTask {
     inline FpsCounter() {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
+    }
 
+    // 0x43A2D0
+    dllexport gnu_noinline ~FpsCounter() {
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+        FPS_COUNTER_PTR = NULL;
     }
 
     inline void reset() {
@@ -3400,22 +3405,29 @@ struct FpsCounter : ZUNTask {
         return 100.0f - (float)(this->__double_20 / this->__double_28) * 100.0f;
     }
 
-    // 0x43A2D0
-    dllexport gnu_noinline FpsCounter* stdcall destroy() asm_symbol_rel(0x43A2D0);
-};
+    // 0x43A340
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x43A340) {
 
-// 0x43A2D0
-dllexport gnu_noinline FpsCounter* stdcall FpsCounter::destroy() {
-    UpdateFuncRegistry* update_func_registry = UPDATE_FUNC_REGISTRY_PTR;
-    if (UpdateFunc* update_func = this->on_draw_func) {
-        CRITICAL_SECTION_MANAGER.enter_section(UpdateFuncRegistry_CS);
-        update_func_registry->delete_func(update_func);
-        CRITICAL_SECTION_MANAGER.leave_section(UpdateFuncRegistry_CS);
     }
-    FPS_COUNTER_PTR = NULL;
-    delete this;
-    return this;
-}
+
+    inline ZUNResult initialize() {
+        UpdateFunc* update_func = new UpdateFunc(&on_draw, true, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 82);
+        this->on_draw_func = update_func;
+
+        return ZUN_SUCCESS;
+    }
+
+    static inline FpsCounter* allocate() {
+        FpsCounter* fps_counter = new FpsCounter();
+        FPS_COUNTER_PTR = fps_counter;
+        if (ZUN_FAILED(fps_counter->initialize())) {
+            delete fps_counter;
+            return NULL;
+        }
+        return fps_counter;
+    }
+};
 
 // size: 0x10
 struct TickCounter : ZUNTask {
@@ -3429,7 +3441,6 @@ struct TickCounter : ZUNTask {
 
     inline TickCounter() {
         this->zero_contents();
-        TICK_COUNTER_PTR = this;
         this->__unknown_task_flag_A = true;
     }
 
@@ -3445,15 +3456,21 @@ struct TickCounter : ZUNTask {
         return UpdateFuncNext;
     }
 
-    inline TickCounter* allocate() {
-        TickCounter* tick_counter = new TickCounter;
-
-        UpdateFunc* update_func = new UpdateFunc(&on_tick, true, tick_counter);
+    inline ZUNResult initialize() {
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
         UpdateFuncRegistry::register_on_tick(update_func, 2);
-        tick_counter->on_tick_func = update_func;
+        this->on_tick_func = update_func;
 
+        return ZUN_SUCCESS;
+    }
+
+    static inline TickCounter* allocate() {
+        TickCounter* tick_counter = new TickCounter;
         TICK_COUNTER_PTR = tick_counter;
-
+        if (ZUN_FAILED(tick_counter->initialize())) {
+            delete tick_counter;
+            return NULL;
+        }
         return tick_counter;
     }
 };
@@ -5724,7 +5741,7 @@ struct ScorefileManager {
         zero_this();
     }
 
-    ScorefileManager() {
+    inline ScorefileManager() {
         this->zero_contents();
         this->initialize();
     }
@@ -10432,41 +10449,6 @@ static inline void __update_bomb_ui() {
     }
 }
 
-// 0x453640
-dllexport gnu_noinline ZUNResult UpdateFuncCC Supervisor::on_registration(void* self) {
-    if (THDAT_ARCFILE.__sub_46EB80()) {
-        char ver_file_name[64];
-        int32_t ver_file_size;
-        sprintf(ver_file_name, "th18_%.4x%c.ver", 100, 'a');
-        void* ver_file = read_file_to_buffer(ver_file_name, &ver_file_size, false);
-        SUPERVISOR.ver_file_buffer = ver_file;
-        if (!ver_file) {
-            LOG_BUFFER.write_error(JpEnStr("", "error : Wrong data version\r\n"));
-        }
-    }
-    else {
-        LOG_BUFFER.write_error(JpEnStr("", "error : data file does not exist\r\n"));
-    }
-    GAME_SPEED.value = 1.0f;
-    SUPERVISOR.background_color = PackD3DCOLOR(255, 0, 0, 0);
-    SUPERVISOR.__initialize_cameras();
-    SUPERVISOR.__camera2_sub_454F50();
-    DWORD time = timeGetTime();
-    SUPERVISOR.initial_rng_seed = time;
-    REPLAY_RNG.value = time;
-    RNG.value = time;
-    DWORD thread_id;
-    SOUND_MANAGER.__handle_571C = CreateThread(
-        NULL,
-        0,
-        &SoundManager::load_sound_effects,
-        &SOUND_MANAGER,
-        0,
-        &thread_id
-    );
-    // TODO
-}
-
 // 0x4767B0
 dllexport gnu_noinline DWORD WINAPI SoundManager::load_sound_effects(void* self) {
     int32_t i = 0;
@@ -10500,9 +10482,9 @@ dllexport gnu_noinline ZUNResult thiscall SoundManagerUnknownB::__sub_4776F0(con
                 return ZUN_SUCCESS;
             }
         }
-        while (!SOUND_MANAGER.sound_effect_files[this->data->filename_index]) {
-            Sleep(10);
-        }
+        //while (!SOUND_MANAGER.sound_effect_files[this->data->filename_index]) {
+            //Sleep(10);
+        //}
         const char* error_text;
         if (WavFile* sound_file = (WavFile*)SOUND_MANAGER.sound_effect_files[this->data->filename_index]) {
             if (!strncmp(sound_file->header.riff_text, "RIFF", sizeof(sound_file->header.riff_text))) {
@@ -10598,7 +10580,7 @@ dllexport gnu_noinline ZUNResult SoundManager::__sub_476410(HWND window_hwnd_arg
         this->dsound = dsound;
         LPDIRECTSOUNDBUFFER* buffer_ptr_ptr = &this->sound_buffer_ptr;
         WAVEFORMATEX sound_format = {
-            .wFormatTag = WAVE_FORMAT_1S08,
+            .wFormatTag = WAVE_FORMAT_1M08,
             .nChannels = 2,
             .nSamplesPerSec = 44100,
             .nAvgBytesPerSec = 176400,
@@ -10748,6 +10730,237 @@ dllexport gnu_noinline void SoundManager::__stop_all() {
             SOUND_MANAGER.__unknown_smb_array_1A84[i].__dword_14 = status & 1;
             sound_buffer->Stop();
         }
+    }
+}
+
+// size: 0x34
+struct FontBlock {
+    HANDLE handles[12]; // 0x0
+    BOOL found_meiryo; // 0x30
+    // 0x34
+};
+
+// size: 0x18
+struct FontData {
+    D3DFORMAT format; // 0x0
+    int32_t bits_per_pixel; // 0x4
+    uint32_t alpha_mask; // 0x8
+    uint32_t red_mask; // 0xC
+    uint32_t green_mask; // 0x10
+    uint32_t blue_mask; // 0x14
+    // 0x18
+};
+
+// size: 0x10
+struct ZUN_RGBAQUAD {
+    uint32_t red_mask; // 0x0
+    uint32_t green_mask; // 0x4
+    uint32_t blue_mask; // 0x8
+    uint32_t alpha_mask; // 0xC
+    // 0x10
+};
+
+// size: 0x6C
+struct ZUN_BITMAPINFO {
+    BITMAPINFOHEADER bmiHeader; // 0x0
+    ZUN_RGBAQUAD bmiColors[1]; // 0x28
+    unknown_fields(0x34); // 0x38
+    // 0x6C
+};
+
+// size: 0x124
+struct GdiManager {
+    char junk_buffer[0x100]; // 0x0
+    D3DFORMAT format = (D3DFORMAT)-1; // 0x100
+    int32_t width; // 0x104
+    int32_t height; // 0x108
+    int32_t bitmap_size; // 0x10C
+    int32_t stride; // 0x110
+    HDC device_context; // 0x114
+    HGDIOBJ screen_bitmap_object; // 0x118
+    HBITMAP bitmap_handle; // 0x11C
+    void* bitmap_data; // 0x120
+    // 0x124
+
+    inline ~GdiManager() {
+        this->cleanup();
+    }
+
+    // 0x46FE00
+    dllexport gnu_noinline bool thiscall cleanup() asm_symbol_rel(0x46FE000) {
+        if (HDC device_context = this->device_context) {
+
+            SelectObject(device_context, this->screen_bitmap_object);
+            DeleteDC(this->device_context);
+            DeleteObject(this->bitmap_handle);
+            this->format = (D3DFORMAT)-1;
+            this->width = 0;
+            this->height = 0;
+            this->device_context = NULL;
+            this->bitmap_handle = NULL;
+            this->screen_bitmap_object = NULL;
+            this->bitmap_data = NULL;
+            return true;
+        }
+        return false;
+    }
+
+private:
+    // 0x46FE80
+    dllexport gnu_noinline static bool stdcall __sub_46FE80(UNUSED_ARG(int32_t _width), UNUSED_ARG(int32_t _height), D3DFORMAT format) asm_symbol_rel(0x46FE80);
+public:
+    static inline bool __sub_46FE80(D3DFORMAT format) {
+        return __sub_46FE80(UNUSED_DWORD, UNUSED_DWORD, format);
+    }
+
+    inline void fill_junk_buffer() {
+        for (size_t i = 0; i < countof(this->junk_buffer); ++i) {
+            clang_forceinline this->junk_buffer[i] = RNG.rand_ushort() >> 9;
+        }
+    }
+};
+
+extern "C" {
+    // 0x4C9AD0
+    externcg FontData FONT_DATA[7] asm("_FONT_DATA");
+    // 0x570928
+    externcg FontBlock FONT_BLOCK asm("_FONT_BLOCK");
+    // 0x4CD9B0
+    externcg GdiManager GDI_MANAGER asm("_GDI_MANAGER");
+};
+
+// 0x46FE80
+dllexport gnu_noinline bool stdcall GdiManager::__sub_46FE80(UNUSED_ARG(int32_t _width), UNUSED_ARG(int32_t _height), D3DFORMAT format) {
+
+    constexpr int32_t width = 1024;
+    constexpr int32_t height = 128;
+
+    GDI_MANAGER.cleanup();
+
+    ZUN_BITMAPINFO bitmap_info = {};
+
+    int32_t i = 0;
+    for (
+        FontData* font_data = FONT_DATA;
+        font_data->format != -1;
+        ++i, ++font_data
+    ) {
+        if (font_data->format == format) {
+            break;
+        }
+    }
+
+    if (format != -1) {
+        FontData* font_data = &FONT_DATA[i];
+        if (font_data) {
+            int32_t bits_per_pixel = font_data->bits_per_pixel;
+
+            int32_t stride = dword_align(width * bits_per_pixel / CHAR_BIT);;
+
+            bitmap_info.bmiHeader.biSize = sizeof(bitmap_info);
+            bitmap_info.bmiHeader.biWidth = width;
+            bitmap_info.bmiHeader.biHeight = -(height + 1);
+            bitmap_info.bmiHeader.biBitCount = bits_per_pixel;
+            bitmap_info.bmiHeader.biPlanes = 1;
+            bitmap_info.bmiHeader.biSizeImage = height * stride;
+            if (format != D3DFMT_X1R5G5B5 && format != D3DFMT_X8R8G8B8) {
+                bitmap_info.bmiHeader.biCompression = BI_BITFIELDS;
+                bitmap_info.bmiColors[0].red_mask = font_data->red_mask;
+                bitmap_info.bmiColors[0].green_mask = font_data->green_mask;
+                bitmap_info.bmiColors[0].blue_mask = font_data->blue_mask;
+                bitmap_info.bmiColors[0].alpha_mask = font_data->alpha_mask;
+            }
+            void* bitmap_data;
+            HBITMAP bitmap_handle = CreateDIBSection(NULL, (BITMAPINFO*)&bitmap_info, DIB_RGB_COLORS, &bitmap_data, NULL, 0);
+            if (bitmap_handle) {
+                memset(bitmap_data, 0, bitmap_info.bmiHeader.biSizeImage);
+                HDC device_context = CreateCompatibleDC(NULL);
+                HGDIOBJ screen_bitmap_object = SelectObject(device_context, bitmap_handle);
+                GDI_MANAGER.bitmap_handle = bitmap_handle;
+                GDI_MANAGER.screen_bitmap_object = screen_bitmap_object;
+                GDI_MANAGER.format = format;
+                GDI_MANAGER.bitmap_data = bitmap_data;
+                GDI_MANAGER.device_context = device_context;
+                GDI_MANAGER.stride = stride;
+                GDI_MANAGER.bitmap_size = bitmap_info.bmiHeader.biSizeImage;
+                GDI_MANAGER.width = width;
+                GDI_MANAGER.height = height;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+#define SJIS_MEIRYO "\x83\x81\x83\x43\x83\x8A\x83\x49"
+#define SJIS_MS_GOTHIC "\x82\x6C\x82\x72 \x83\x53\x83\x56\x83\x62\x83\x4E"
+#define JSIS_MS_MINCHO "\x82\x6C\x82\x72 \x96\xBE\x92\xA9"
+
+// 0x470470
+dllexport gnu_noinline int CALLBACK EnumFontFamiliesExACallback(const LOGFONTA* lpelfe, const TEXTMETRICA* lpntme, DWORD font_type, LPARAM lparam) asm_symbol_rel(0x470470);
+dllexport gnu_noinline int CALLBACK EnumFontFamiliesExACallback(const LOGFONTA* lpelfe, const TEXTMETRICA* lpntme, DWORD font_type, LPARAM lparam) {
+    if (!byteloop_strcmp(lpelfe->lfFaceName, SJIS_MEIRYO)) {
+        FONT_BLOCK.found_meiryo = true;
+        return 0;
+    }
+    return 1;
+}
+
+// 0x4704C0
+dllexport gnu_noinline void __initialize_fonts() asm_symbol_rel(0x4704C0);
+dllexport gnu_noinline void __initialize_fonts() {
+    HDC hdc = GetDC(NULL);
+
+    LOGFONTA log_font;
+    log_font.lfWeight = 0;
+    log_font.lfHeight = 0;
+    log_font.lfWidth = 0;
+    log_font.lfEscapement = 0;
+    log_font.lfOrientation = 0;
+    strncpy(log_font.lfFaceName, SJIS_MEIRYO, LF_FACESIZE);
+    log_font.lfItalic = false;
+    log_font.lfUnderline = false;
+    log_font.lfStrikeOut = false;
+    log_font.lfCharSet = DEFAULT_CHARSET;
+    log_font.lfOutPrecision = 0;
+    log_font.lfClipPrecision = 0;
+    log_font.lfQuality = 0;
+    log_font.lfPitchAndFamily = 0;
+
+    EnumFontFamiliesExA(hdc, &log_font, &EnumFontFamiliesExACallback, NULL, 0);
+
+    if (!GDI_MANAGER.__sub_46FE80(D3DFMT_A4R4G4B4)) {
+        GDI_MANAGER.__sub_46FE80(D3DFMT_A8R8G8B8);
+    }
+
+    GDI_MANAGER.fill_junk_buffer();
+
+    if (!FONT_BLOCK.found_meiryo) {
+        FONT_BLOCK.handles[0] = CreateFontA(24, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, SJIS_MS_GOTHIC);
+        FONT_BLOCK.handles[1] = CreateFontA(28, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, SJIS_MS_GOTHIC);
+        FONT_BLOCK.handles[2] = CreateFontA(32, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, SJIS_MS_GOTHIC);
+        FONT_BLOCK.handles[6] = CreateFontA(40, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, SJIS_MS_GOTHIC);
+        FONT_BLOCK.handles[10] = CreateFontA(64, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, SJIS_MS_GOTHIC);
+        FONT_BLOCK.handles[11] = CreateFontA(64, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, JSIS_MS_MINCHO);
+        FONT_BLOCK.handles[3] = CreateFontA(32, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, JSIS_MS_MINCHO);
+        FONT_BLOCK.handles[7] = CreateFontA(40, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, JSIS_MS_MINCHO);
+        FONT_BLOCK.handles[4] = CreateFontA(15, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, SJIS_MS_GOTHIC);
+        FONT_BLOCK.handles[5] = CreateFontA(15, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, JSIS_MS_MINCHO);
+        FONT_BLOCK.handles[8] = CreateFontA(15, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, SJIS_MS_GOTHIC);
+        FONT_BLOCK.handles[9] = CreateFontA(15, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, JSIS_MS_MINCHO);
+    } else {
+        FONT_BLOCK.handles[0] = CreateFontA(36, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_DONTCARE, SJIS_MEIRYO);
+        FONT_BLOCK.handles[1] = CreateFontA(42, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_DONTCARE, SJIS_MEIRYO);
+        FONT_BLOCK.handles[2] = CreateFontA(48, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_DONTCARE, SJIS_MEIRYO);
+        FONT_BLOCK.handles[6] = CreateFontA(60, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_DONTCARE, SJIS_MEIRYO);
+        FONT_BLOCK.handles[3] = CreateFontA(32, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, JSIS_MS_MINCHO);
+        FONT_BLOCK.handles[7] = CreateFontA(40, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, JSIS_MS_MINCHO);
+        FONT_BLOCK.handles[4] = CreateFontA(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_DONTCARE, SJIS_MEIRYO);
+        FONT_BLOCK.handles[5] = CreateFontA(15, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, JSIS_MS_MINCHO);
+        FONT_BLOCK.handles[4] = CreateFontA(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_DONTCARE, SJIS_MEIRYO);
+        FONT_BLOCK.handles[5] = CreateFontA(15, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, JSIS_MS_MINCHO);
+        FONT_BLOCK.handles[10] = CreateFontA(96, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_DONTCARE, SJIS_MEIRYO);
+        FONT_BLOCK.handles[11] = CreateFontA(64, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, JSIS_MS_MINCHO);
     }
 }
 
@@ -12556,6 +12769,9 @@ struct PrimitiveVertex {
     // 0x14
 
     static constexpr DWORD FVF_TYPE = D3DFVF_XYZRHW | D3DFVF_DIFFUSE;
+    static inline constexpr size_t buffer_size(size_t count) {
+        return count * sizeof(PrimitiveVertex);
+    }
 };
 // size: 0x14
 // D3DFVF_XYZ | D3DFVF_TEX1 (0x102)
@@ -12565,6 +12781,9 @@ struct UnknownVertexA {
     // 0x14
 
     static constexpr DWORD FVF_TYPE = D3DFVF_XYZ | D3DFVF_TEX1;
+    static inline constexpr size_t buffer_size(size_t count) {
+        return count * sizeof(UnknownVertexA);
+    }
 };
 // size: 0x18
 // D3DFVF_XYZRHW | D3DFVF_TEX1 (0x104)
@@ -12574,6 +12793,9 @@ struct SpriteVertexB {
     // 0x18
 
     static constexpr DWORD FVF_TYPE = D3DFVF_XYZRHW | D3DFVF_TEX1;
+    static inline constexpr size_t buffer_size(size_t count) {
+        return count * sizeof(SpriteVertexB);
+    }
 };
 // size: 0x18
 // D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1 (0x142)
@@ -12584,6 +12806,9 @@ struct SpriteVertexC {
     // 0x18
 
     static constexpr DWORD FVF_TYPE = D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1;
+    static inline constexpr size_t buffer_size(size_t count) {
+        return count * sizeof(SpriteVertexC);
+    }
 };
 // size: 0x1C
 // D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1 (0x144)
@@ -12594,6 +12819,9 @@ struct SpriteVertex {
     // 0x1C
 
     static constexpr DWORD FVF_TYPE = D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1;
+    static inline constexpr size_t buffer_size(size_t count) {
+        return count * sizeof(SpriteVertex);
+    }
 };
 // size: 0x10
 // D3DFVF_XYZ | D3DFVF_DIFFUSE (0x42)
@@ -12603,6 +12831,9 @@ struct UnknownVertexB {
     // 0x10
 
     static constexpr DWORD FVF_TYPE = D3DFVF_XYZ | D3DFVF_DIFFUSE;
+    static inline constexpr size_t buffer_size(size_t count) {
+        return count * sizeof(UnknownVertexB);
+    }
 };
 
 extern "C" {
@@ -12805,6 +13036,105 @@ struct AnmManager {
                 }
             }
         }
+    }
+
+    // 0x485110
+    dllexport gnu_noinline static void __sub_485110() asm_symbol_rel(0x485110) {
+        AnmManager* anm_manager = ANM_MANAGER_PTR;
+
+        anm_manager->__vertex_array_3120E1C[0].position = { -128.0f, -128.0f, 0.0f };
+        anm_manager->__vertex_array_3120E1C[0].texture_uv = { 0.0f, 0.0f };
+        anm_manager->__vertex_array_3120E1C[1].position = { 128.0f, -128.0f, 0.0f };
+        anm_manager->__vertex_array_3120E1C[1].texture_uv = { 1.0f, 0.0f };
+        anm_manager->__vertex_array_3120E1C[2].position = { -128.0f, 128.0f, 0.0f };
+        anm_manager->__vertex_array_3120E1C[2].texture_uv = { 0.0f, 1.0f };
+        anm_manager->__vertex_array_3120E1C[3].position = { 128.0f, 128.0f, 0.0f };
+        anm_manager->__vertex_array_3120E1C[3].texture_uv = { 1.0f, 1.0f };
+
+        SPRITE_VERTEX_BUFFER_C[0].position = anm_manager->__vertex_array_3120E1C[0].position;
+        SPRITE_VERTEX_BUFFER_C[1].position = anm_manager->__vertex_array_3120E1C[1].position;
+        SPRITE_VERTEX_BUFFER_C[2].position = anm_manager->__vertex_array_3120E1C[2].position;
+        SPRITE_VERTEX_BUFFER_C[3].position = anm_manager->__vertex_array_3120E1C[3].position;
+
+        SPRITE_VERTEX_BUFFER_C[0].texture_uv = anm_manager->__vertex_array_3120E1C[0].texture_uv;
+        SPRITE_VERTEX_BUFFER_C[1].texture_uv = anm_manager->__vertex_array_3120E1C[1].texture_uv;
+        SPRITE_VERTEX_BUFFER_C[2].texture_uv = anm_manager->__vertex_array_3120E1C[2].texture_uv;
+        SPRITE_VERTEX_BUFFER_C[3].texture_uv = anm_manager->__vertex_array_3120E1C[3].texture_uv;
+
+        SUPERVISOR.d3d_device->CreateVertexBuffer(UnknownVertexA::buffer_size(36), 0, UnknownVertexA::FVF_TYPE, D3DPOOL_MANAGED, &anm_manager->__d3d_vertex_buffer_3120E18, NULL);
+
+        UnknownVertexA* vertices;
+        anm_manager->__d3d_vertex_buffer_3120E18->Lock(0, 0, (void**)&vertices, 0);
+
+        memcpy(&vertices[0], anm_manager->__vertex_array_3120E1C, sizeof(UnknownVertexA[4])); // 0x000
+
+        anm_manager->__vertex_array_3120E1C[0].position.y += 128.0f;
+        anm_manager->__vertex_array_3120E1C[1].position.y += 128.0f;
+        anm_manager->__vertex_array_3120E1C[2].position.y += 128.0f;
+        anm_manager->__vertex_array_3120E1C[3].position.y += 128.0f;
+
+        memcpy(&vertices[12], anm_manager->__vertex_array_3120E1C, sizeof(UnknownVertexA[4])); // 0x0F0
+
+        anm_manager->__vertex_array_3120E1C[0].position.y -= 256.0f;
+        anm_manager->__vertex_array_3120E1C[1].position.y -= 256.0f;
+        anm_manager->__vertex_array_3120E1C[2].position.y -= 256.0f;
+        anm_manager->__vertex_array_3120E1C[3].position.y -= 256.0f;
+
+        memcpy(&vertices[24], anm_manager->__vertex_array_3120E1C, sizeof(UnknownVertexA[4])); // 0x1E0
+
+        anm_manager->__vertex_array_3120E1C[0].position.x += 128.0f;
+        anm_manager->__vertex_array_3120E1C[1].position.x += 128.0f;
+        anm_manager->__vertex_array_3120E1C[2].position.x += 128.0f;
+        anm_manager->__vertex_array_3120E1C[3].position.x += 128.0f;
+        anm_manager->__vertex_array_3120E1C[0].position.y += 128.0f;
+        anm_manager->__vertex_array_3120E1C[1].position.y += 128.0f;
+        anm_manager->__vertex_array_3120E1C[2].position.y += 128.0f;
+        anm_manager->__vertex_array_3120E1C[3].position.y += 128.0f;
+
+        memcpy(&vertices[4], anm_manager->__vertex_array_3120E1C, sizeof(UnknownVertexA[4])); // 0x050
+
+        anm_manager->__vertex_array_3120E1C[0].position.y += 128.0f;
+        anm_manager->__vertex_array_3120E1C[1].position.y += 128.0f;
+        anm_manager->__vertex_array_3120E1C[2].position.y += 128.0f;
+        anm_manager->__vertex_array_3120E1C[3].position.y += 128.0f;
+
+        memcpy(&vertices[16], anm_manager->__vertex_array_3120E1C, sizeof(UnknownVertexA[4])); // 0x140
+
+        anm_manager->__vertex_array_3120E1C[0].position.y -= 256.0f;
+        anm_manager->__vertex_array_3120E1C[1].position.y -= 256.0f;
+        anm_manager->__vertex_array_3120E1C[2].position.y -= 256.0f;
+        anm_manager->__vertex_array_3120E1C[3].position.y -= 256.0f;
+
+        memcpy(&vertices[28], anm_manager->__vertex_array_3120E1C, sizeof(UnknownVertexA[4])); // 0x230
+
+        anm_manager->__vertex_array_3120E1C[0].position.x -= 256.0f;
+        anm_manager->__vertex_array_3120E1C[1].position.x -= 256.0f;
+        anm_manager->__vertex_array_3120E1C[2].position.x -= 256.0f;
+        anm_manager->__vertex_array_3120E1C[3].position.x -= 256.0f;
+        anm_manager->__vertex_array_3120E1C[0].position.y += 128.0f;
+        anm_manager->__vertex_array_3120E1C[1].position.y += 128.0f;
+        anm_manager->__vertex_array_3120E1C[2].position.y += 128.0f;
+        anm_manager->__vertex_array_3120E1C[3].position.y += 128.0f;
+
+        memcpy(&vertices[8], anm_manager->__vertex_array_3120E1C, sizeof(UnknownVertexA[4])); // 0x0A0
+
+        anm_manager->__vertex_array_3120E1C[0].position.y += 128.0f;
+        anm_manager->__vertex_array_3120E1C[1].position.y += 128.0f;
+        anm_manager->__vertex_array_3120E1C[2].position.y += 128.0f;
+        anm_manager->__vertex_array_3120E1C[3].position.y += 128.0f;
+
+        memcpy(&vertices[20], anm_manager->__vertex_array_3120E1C, sizeof(UnknownVertexA[4])); // 0x190
+
+        anm_manager->__vertex_array_3120E1C[0].position.y -= 256.0f;
+        anm_manager->__vertex_array_3120E1C[1].position.y -= 256.0f;
+        anm_manager->__vertex_array_3120E1C[2].position.y -= 256.0f;
+        anm_manager->__vertex_array_3120E1C[3].position.y -= 256.0f;
+
+        memcpy(&vertices[32], anm_manager->__vertex_array_3120E1C, sizeof(UnknownVertexA[4])); // 0x280
+
+        anm_manager->__d3d_vertex_buffer_3120E18->Unlock();
+
+        SUPERVISOR.d3d_device->SetStreamSource(0, anm_manager->__d3d_vertex_buffer_3120E18, 0, sizeof(UnknownVertexA));
     }
 
     // 0x481210
@@ -13610,6 +13940,55 @@ ValidateFieldOffset32(0x39724AC, AnmManager, prev_slow_id);
 ValidateFieldOffset32(0x39724B0, AnmManager, __color_39724B0);
 ValidateStructSize32(0x39724B8, AnmManager);
 #pragma endregion
+
+// 0x453640
+dllexport gnu_noinline ZUNResult UpdateFuncCC Supervisor::on_registration(void* self) {
+    if (THDAT_ARCFILE.__sub_46EB80()) {
+        char ver_file_name[64];
+        int32_t ver_file_size;
+        sprintf(ver_file_name, "th18_%.4x%c.ver", 100, 'a');
+        void* ver_file = read_file_to_buffer(ver_file_name, &ver_file_size, false);
+        SUPERVISOR.ver_file_buffer = ver_file;
+        if (!ver_file) {
+            LOG_BUFFER.write_error(JpEnStr("", "error : Wrong data version\r\n"));
+        }
+    }
+    else {
+        LOG_BUFFER.write_error(JpEnStr("", "error : data file does not exist\r\n"));
+    }
+    GAME_SPEED.value = 1.0f;
+    SUPERVISOR.background_color = PackD3DCOLOR(255, 0, 0, 0);
+    SUPERVISOR.__initialize_cameras();
+    SUPERVISOR.__camera2_sub_454F50();
+    DWORD time = timeGetTime();
+    SUPERVISOR.initial_rng_seed = time;
+    REPLAY_RNG.value = time;
+    RNG.value = time;
+    DWORD thread_id;
+    SOUND_MANAGER.__handle_571C = CreateThread(
+        NULL,
+        0,
+        &SoundManager::load_sound_effects,
+        &SOUND_MANAGER,
+        0,
+        &thread_id
+    );
+    // TODO
+
+    FpsCounter::allocate();
+    TICK_COUNTER_PTR = TickCounter::allocate();
+
+    ANM_MANAGER_PTR->__sub_485110();
+    __initialize_fonts();
+
+    SUPERVISOR.__arcade_vm_ptr_A = new AnmVM();
+    SUPERVISOR.__arcade_vm_ptr_B = new AnmVM();
+    SUPERVISOR.__arcade_vm_ptr_C = new AnmVM();
+    SUPERVISOR.__arcade_vm_ptr_D = new AnmVM();
+
+    UNKNOWN_FUNC_PTR_A = NULL;
+    UNKNOWN_FUNC_PTR_B = NULL;
+}
 
 inline UpdateFuncRet thiscall Supervisor::on_tick() {
     if (this->__unknown_bitfield_A == 1) {
@@ -33694,7 +34073,7 @@ dllexport gnu_noinline BOOL WindowData::__create_window(HINSTANCE instance) {
     class_def.lpszClassName = "BASE";
     RegisterClassA(&class_def);
     this->__unknown_bitfield_A = SUPERVISOR.config.__ubyte_47;
-    SUPERVISOR.present_parameters.Windowed = this->__unknown_bitfield_A > 12;
+    SUPERVISOR.present_parameters.Windowed = this->__unknown_bitfield_A >= 3;
     if (SUPERVISOR.config.__ubyte_48 && SUPERVISOR.config.__byte_4D == 2) {
         this->__unknown_flag_C = true;
     } else {
@@ -34084,8 +34463,8 @@ dllexport gnu_noinline ZUNResult fastcall __sub_473B20(BOOL arg1) {
         size_t i = 0;
         do {
             if (
-                i == 0 ||
-                (WINDOW_DATA.__unknown_bitfield_A != 8 && WINDOW_DATA.__unknown_bitfield_A != 9)
+                i == 0 &&
+                (WINDOW_DATA.__unknown_bitfield_A == 8 || WINDOW_DATA.__unknown_bitfield_A == 9)
             ) {
                 present_parameters.BackBufferWidth = WINDOW_DATA.__int_2068;
                 present_parameters.BackBufferHeight = WINDOW_DATA.__int_206C;
@@ -34568,7 +34947,11 @@ winmain_load_config:
         goto winmain_important_label;
     }
     WINDOW_DATA.__unknown_bitfield_A = SUPERVISOR.config.__ubyte_47;
-    char module_name[8]; 
+#if FIX_REALLY_BAD_BUGS
+    char module_name[MAX_PATH + 1];
+#else
+    char module_name[8];
+#endif
     if (GetModuleFileNameA(NULL, module_name, MAX_PATH + 1)) { // But why is the size wrong...?
         int32_t exe_file_size;
         if (void* module_file_buffer = read_file_to_buffer(module_name, &exe_file_size, true)) {
@@ -34611,6 +34994,7 @@ winmain_d3d_create_success:
     __initialize_dinput();
     UNKNOWN_THREAD_A.stop_and_cleanup();
     SOUND_MANAGER.zero_contents();
+    SOUND_MANAGER.main_window_hwnd = WINDOW_DATA.window;
     SOUND_MANAGER.__thread_5718 = CreateThread(
         NULL,
         0,
@@ -34775,7 +35159,6 @@ winmain_weird_local_not_2:
     char config_filename[0x1000];
     byteloop_strcpy(config_filename, WINDOW_DATA.appdata_path);
     byteloop_strcat(config_filename, "th18.cfg");
-    //sizeof(Config)
     __zun_create_new_file_from_buffer(config_filename, &SUPERVISOR.config, sizeof(Config));
     timeEndPeriod(1);
     char log_filename[0x1000];
@@ -34822,6 +35205,9 @@ struct StaticCtorsDtors {
         HMODULE original_game = LoadLibraryExA("F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18.exe.unvlv.exe", NULL, 0);
 
         copy_from_original_game(SOUND_DATA, 0x4C9B80, original_game);
+        copy_from_original_game(BULLET_SPRITE_DATA, 0x4C5F90, original_game);
+        copy_from_original_game(BULLET_IDK_DATA, 0x4B36F0, original_game);
+        copy_from_original_game(FONT_DATA, 0x4C9AD0, original_game);
 
         //static_construct(LOG_BUFFER);
         //static_construct(SOUND_MANAGER);
