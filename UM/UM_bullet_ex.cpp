@@ -1730,8 +1730,8 @@ struct UpdateFuncRegistry {
     int __dword_54; // 0x54
     // 0x58
 
-    UpdateFuncRegistry() : on_tick_funcs(NULL), on_draw_funcs(NULL) {
-        this->__next_node->data = NULL;
+    inline UpdateFuncRegistry() : on_tick_funcs(NULL), on_draw_funcs(NULL) {
+        this->__next_node = NULL;
     }
 
     inline ~UpdateFuncRegistry();
@@ -13988,6 +13988,8 @@ dllexport gnu_noinline ZUNResult UpdateFuncCC Supervisor::on_registration(void* 
 
     UNKNOWN_FUNC_PTR_A = NULL;
     UNKNOWN_FUNC_PTR_B = NULL;
+
+    return ZUN_SUCCESS;
 }
 
 inline UpdateFuncRet thiscall Supervisor::on_tick() {
@@ -34622,7 +34624,7 @@ dllexport gnu_noinline int32_t __initialize_d3d() {
     present_parameters.Flags = D3DPRESENTFLAG_LOCKABLE_BACKBUFFER;
     SUPERVISOR.__dword_824 = 1;
     SUPERVISOR.present_parameters = present_parameters;
-    if (ZUN_SUCCEEDED(__sub_473B20(false))) {
+    if (ZUN_FAILED(__sub_473B20(false))) {
         return boolA;
     }
     SUPERVISOR.d3d_device->GetDeviceCaps(&SUPERVISOR.d3dcaps);
