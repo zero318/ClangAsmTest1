@@ -3189,7 +3189,7 @@ inline char* byteloop_strcat(char* restrict dst, T src) {
     size_t src_length = PtrDiffStrlen(src, original_src);
     char* dst_end = dst - 1;
     while (*++dst_end);
-    __builtin_memcpy(dst_end, src, src_length);
+    __builtin_memcpy(dst_end, original_src, src_length);
     return dst;
 }
 

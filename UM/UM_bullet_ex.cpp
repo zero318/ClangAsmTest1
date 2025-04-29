@@ -693,7 +693,7 @@ namespace Pbg {
             else {
                 GetModuleFileNameA(NULL, path_buffer, MAX_PATH);
                 char* filename = strrchr(path_buffer, '\\');
-                path_buffer[0] = filename ? '\0' : path_buffer[0];
+                path_buffer[0] = filename ? path_buffer[0] : '\0';
                 filename[1] = '\0';
                 byteloop_strcat(path_buffer, path_in);
             }
@@ -1129,7 +1129,7 @@ struct ArcFile {
         DebugLogger::__debug_log_stub_2("info : %s error\r\n", this->__string_8);
         return NULL;
 found_in_cache:
-        int32_t new_file_size = (intptr_t)(ptrA + 1)->__string_0 - ptrA->__dword_4;
+        int32_t new_file_size = ptrA[1].__dword_4 - ptrA->__dword_4;
         size_t cached_file_size = ptrA->file_size;
         void* cached_file_buffer;
         if (new_file_size == cached_file_size && file_buffer) {
@@ -1140,7 +1140,7 @@ found_in_cache:
         if (!cached_file_buffer) {
             goto error_free;
         }
-        if (!this->file->set_file_pointer(this->__int_4, FILE_BEGIN)) {
+        if (!this->file->set_file_pointer(ptrA->__dword_4, FILE_BEGIN)) {
             goto error_free;
         }
         if (!this->file->read_file_to_buffer(cached_file_buffer, new_file_size)) {
@@ -1732,6 +1732,7 @@ struct UpdateFuncRegistry {
 
     inline UpdateFuncRegistry() : on_tick_funcs(NULL), on_draw_funcs(NULL) {
         this->__next_node = NULL;
+        this->__dword_54 = 0;
     }
 
     inline ~UpdateFuncRegistry();
@@ -1743,7 +1744,7 @@ struct UpdateFuncRegistry {
         CRITICAL_SECTION_MANAGER.enter_section(UpdateFuncRegistry_CS);
         {
             update_tick->priority = new_func_priority;
-            auto* prev_priority_node = update_func_registry->on_tick_funcs.list_node.as_head().find_node_before([=](UpdateFunc* update_func) {
+            auto* prev_priority_node = update_func_registry->on_tick_funcs.list_node.find_node_before([=](UpdateFunc* update_func) {
                 return update_func->priority >= new_func_priority;
             });
             prev_priority_node->append(&update_tick->list_node);
@@ -1759,7 +1760,7 @@ struct UpdateFuncRegistry {
         CRITICAL_SECTION_MANAGER.enter_section(UpdateFuncRegistry_CS);
         {
             update_draw->priority = new_func_priority;
-            auto* prev_priority_node = update_func_registry->on_draw_funcs.list_node.as_head().find_node_before([=](UpdateFunc* update_func) {
+            auto* prev_priority_node = update_func_registry->on_draw_funcs.list_node.find_node_before([=](UpdateFunc* update_func) {
                 return update_func->priority >= new_func_priority;
             });
             prev_priority_node->append(&update_draw->list_node);
@@ -10482,9 +10483,9 @@ dllexport gnu_noinline ZUNResult thiscall SoundManagerUnknownB::__sub_4776F0(con
                 return ZUN_SUCCESS;
             }
         }
-        //while (!SOUND_MANAGER.sound_effect_files[this->data->filename_index]) {
-            //Sleep(10);
-        //}
+        while (!SOUND_MANAGER.sound_effect_files[this->data->filename_index]) {
+            Sleep(10);
+        }
         const char* error_text;
         if (WavFile* sound_file = (WavFile*)SOUND_MANAGER.sound_effect_files[this->data->filename_index]) {
             if (!strncmp(sound_file->header.riff_text, "RIFF", sizeof(sound_file->header.riff_text))) {
@@ -33768,11 +33769,11 @@ dllexport gnu_noinline int32_t thiscall WindowData::update_window__normal_versio
             B = this->__double_20A8;
             B += 1.0 / 60.0;
             this->__double_20A8 = B;
-        } while (A < B);
+        } while (A > B);
 
         return this->update_window_common([=]() {
             this->__sub_4731B0();
-            if (SUCCEEDED(SUPERVISOR.d3d_device->Present(NULL, NULL, NULL, NULL))) {
+            if (FAILED(SUPERVISOR.d3d_device->Present(NULL, NULL, NULL, NULL))) {
                 SUPERVISOR.__release_rendering_surfaces();
                 ANM_MANAGER_PTR->__release_render_targets();
                 SUPERVISOR.d3d_device->Reset(&SUPERVISOR.present_parameters);
@@ -33815,7 +33816,7 @@ dllexport gnu_noinline int32_t thiscall WindowData::update_window__alt_version()
             this->__double_20C0 = get_runtime();
 
             this->__sub_4731B0();
-            if (SUCCEEDED(SUPERVISOR.d3d_device->Present(NULL, NULL, NULL, NULL))) {
+            if (FAILED(SUPERVISOR.d3d_device->Present(NULL, NULL, NULL, NULL))) {
                 SUPERVISOR.__release_rendering_surfaces();
                 ANM_MANAGER_PTR->__release_render_targets();
                 SUPERVISOR.d3d_device->Reset(&SUPERVISOR.present_parameters);
@@ -34130,8 +34131,8 @@ dllexport gnu_noinline BOOL WindowData::__create_window(HINSTANCE instance) {
             WS_OVERLAPPED | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_SYSMENU | WS_CAPTION | WS_VISIBLE,
             SUPERVISOR.config.window_x,
             SUPERVISOR.config.window_y,
-            rect.left - rect.right,
-            rect.top - rect.bottom,
+            rect.right - rect.left,
+            rect.bottom - rect.top,
             NULL,
             NULL,
             instance,
