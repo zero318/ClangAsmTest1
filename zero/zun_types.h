@@ -29,6 +29,10 @@ struct Float2;
 struct Float3;
 struct Float4;
 
+struct D3DXVECTOR2;
+struct D3DXVECTOR3;
+struct D3DXVECTOR4;
+
 // size: 0x4
 struct Int1 {
     int32_t x; // 0x0
@@ -293,6 +297,10 @@ struct Float2 : Float1 {
     using Float1::Float1;
     inline Float2() = default;
     inline constexpr Float2(const float& X, const float& Y) : Float1(X), y(Y) {}
+
+    inline D3DXVECTOR2& D3DX() {
+        return *(D3DXVECTOR2*)this;
+    }
     
     // th18 A: 0x404DD0
     // th18 H: 0x429BC0
@@ -379,13 +387,17 @@ struct Float2 : Float1 {
         return zsqrtf(x_diff * x_diff + y_diff * y_diff);
     }
 
-    inline Float2 rotate_around_origin(float angle) const {
-        float y_unit = zsinf(angle);
-        float x_unit = zcosf(angle);
+    inline Float2 rotate_around_origin_unit(float x_unit, float y_unit) const {
         return {
             (x_unit * this->x) - (y_unit * this->y),
             (x_unit * this->y) + (y_unit * this->x)
         };
+    }
+
+    inline Float2 rotate_around_origin(float angle) const {
+        float y_unit = zsinf(angle);
+        float x_unit = zcosf(angle);
+        return this->rotate_around_origin_unit(x_unit, y_unit);
     }
     
 #pragma region // Float2 Operators
@@ -478,6 +490,10 @@ struct Float3 : Float2 {
         return *(Float2*)this;
     }
 
+    inline D3DXVECTOR3& D3DX() {
+        return *(D3DXVECTOR3*)this;
+    }
+
     inline Float3& thiscall make_from_vector3(float angle, float magnitude) {
         this->make_from_vector(angle, magnitude);
         this->z = 0.0f;
@@ -506,34 +522,32 @@ struct Float3 : Float2 {
         }
     }
 
-    /*
-    inline float length_squared() {
+    inline float length_squared3() {
         float x = this->x;
         float y = this->y;
         float z = this->z;
         return x * x + y * y + z * z;
     }
-    inline float length() {
+    inline float length3() {
         float x = this->x;
         float y = this->y;
         float z = this->z;
         return zsqrtf(x * x + y * y + z * z);
     }
 
-    inline float distance_squared(const Float3* value) {
+    inline float distance_squared3(const Float3* value) {
         float x_diff = this->x - value->x;
         float y_diff = this->y - value->y;
         float z_diff = this->z - value->z;
         return x_diff * x_diff + y_diff * y_diff + z_diff * z_diff;
     }
 
-    inline float distance(const Float3* value) {
+    inline float distance3(const Float3* value) {
         float x_diff = this->x - value->x;
         float y_diff = this->y - value->y;
         float z_diff = this->z - value->z;
         return zsqrtf(x_diff * x_diff + y_diff * y_diff + z_diff * z_diff);
     }
-    */
 
 #pragma region // Float3 Operators
 
@@ -631,14 +645,143 @@ ValidateFieldOffset32(0x8, Float3, z);
 ValidateStructSize32(0xC, Float3);
 #pragma endregion
 
-#undef zun_operator_inline
-
 // size: 0x10
-struct Float4 {
-    float x; // 0x0
-    float y; // 0x4
-    float z; // 0x8
+struct Float4 : Float3 {
     float w; // 0xC
+
+    using Float3::Float3;
+    inline Float4() = default;
+    inline constexpr Float4(const Float2& v) : Float3(v), w(0.0f) {}
+    inline constexpr Float4(const Float3& v) : Float3(v), w(0.0f) {}
+    inline constexpr Float4(const Float2& v, float Z) : Float3(v, Z), w(0.0f) {}
+    inline constexpr Float4(const Float3& v, float W) : Float3(v), w(W) {}
+    inline constexpr Float4(const float& X, const float& Y, const float& Z) : Float3(X, Y, Z), w(0.0f) {}
+    inline constexpr Float4(const float& X, const float& Y, const float& Z, const float& W) : Float3(X, Y, Z), w(W) {}
+
+    inline Float3& as3() {
+        return *(Float3*)this;
+    }
+
+    inline Float2& low2() {
+        return *(Float2*)this;
+    }
+
+    inline Float2& high2() {
+        return *(Float2*)&this->z;
+    }
+
+    inline D3DXVECTOR4& D3DX() {
+        return *(D3DXVECTOR4*)this;
+    }
+
+#pragma region // Float4 Operators
+
+#define Float4BinOp(op) \
+    zun_operator_inline Float4 operator op(const Float4& value) const { \
+        return { \
+            this->x op value.x, \
+            this->y op value.y, \
+            this->z op value.z, \
+            this->w op value.w \
+        }; \
+    } \
+    zun_operator_inline Float4 operator op(const Float3& value) const { \
+        return { \
+            this->x op value.x, \
+            this->y op value.y, \
+            this->z op value.z, \
+            this->w op 0.0f \
+        }; \
+    } \
+    zun_operator_inline Float4 operator op(const Float2& value) const { \
+        return { \
+            this->x op value.x, \
+            this->y op value.y, \
+            this->z op 0.0f, \
+            this->w op 0.0f \
+        }; \
+    }
+    Float4BinOp(+);
+    Float4BinOp(-);
+    Float4BinOp(*);
+    Float4BinOp(/);
+#undef Float4BinOp
+#define Float4BinOpScalar(op) \
+    zun_operator_inline Float4 operator op(float value) const { \
+        return { \
+            this->x op value, \
+            this->y op value, \
+            this->z op value, \
+            this->w op value \
+        }; \
+    } \
+    friend zun_operator_inline Float4 operator op(float lhs, const Float4& rhs) { \
+        return { \
+            lhs op rhs.x, \
+            lhs op rhs.y, \
+            lhs op rhs.z, \
+            lhs op rhs.w \
+        }; \
+    }
+    Float4BinOpScalar(+);
+    Float4BinOpScalar(-);
+    Float4BinOpScalar(*);
+    Float4BinOpScalar(/);
+#undef Float4BinOpScalar
+#define Float4UnOp(op) \
+    zun_operator_inline Float4 operator op() const { \
+        return { \
+            op this->x, \
+            op this->y, \
+            op this->z, \
+            op this->w \
+        }; \
+    }
+    Float4UnOp(+);
+    Float4UnOp(-);
+#undef Float4UnOp
+#define Float4AssignOp(op) \
+    zun_operator_inline Float4& operator op(const Float4& value) {\
+        this->x op value.x; \
+        this->y op value.y; \
+        this->z op value.z; \
+        this->w op value.w; \
+        return *this; \
+    } \
+    zun_operator_inline Float4& operator op(const Float3& value) {\
+        this->x op value.x; \
+        this->y op value.y; \
+        this->z op value.z; \
+        this->w op 0.0f; \
+        return *this; \
+    } \
+    zun_operator_inline Float4& operator op(const Float2& value) {\
+        this->x op value.x; \
+        this->y op value.y; \
+        this->z op 0.0f; \
+        this->w op 0.0f; \
+        return *this; \
+    }
+    Float4AssignOp(+=);
+    Float4AssignOp(-=);
+    Float4AssignOp(*=);
+    Float4AssignOp(/=);
+#undef Float4AssignOp
+#define Float4AssignOpScalar(op) \
+    zun_operator_inline Float4& operator op(float value) {\
+        this->x op value; \
+        this->y op value; \
+        this->z op value; \
+        this->w op value; \
+        return *this; \
+    }
+    Float4AssignOpScalar(+=);
+    Float4AssignOpScalar(-=);
+    Float4AssignOpScalar(*=);
+    Float4AssignOpScalar(/=);
+#undef Float4AssignOpScalar
+
+#pragma endregion
 };
 #pragma region // Float4 Validation
 ValidateFieldOffset32(0x0, Float4, x);
@@ -677,6 +820,8 @@ inline Float3::operator Int3() const {
         this->z
     };
 }
+
+#undef zun_operator_inline
 
 #if 0 && GAME_VERSION >= MoF_VER
 

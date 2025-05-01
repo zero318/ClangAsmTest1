@@ -169,6 +169,12 @@ static inline uint8_t& ALPHA(D3DCOLOR& color) {
 #define ALPHA(...) ALPHA(__VA_ARGS__)
 
 struct D3DMATRIXZ : D3DMATRIX {
+
+
+    inline D3DXMATRIX& D3DX() {
+        return *(D3DXMATRIX*)this;
+    }
+
     // D3DXMatrixIdentity
     inline void set_identity() {
         this->m[0][0] = 1.0f;
@@ -207,6 +213,30 @@ struct D3DMATRIXZ : D3DMATRIX {
         this->m[3][1] = 0.0f;
         this->m[3][2] = 0.0f;
         this->m[3][3] = 1.0f;
+    }
+
+    inline void rotate_x(float rotation) {
+        if (rotation != 0.0f) {
+            D3DXMATRIX temp;
+            D3DXMatrixRotationX(&temp, rotation);
+            D3DXMatrixMultiply(&this->D3DX(), &this->D3DX(), &temp);
+        }
+    }
+
+    inline void rotate_y(float rotation) {
+        if (rotation != 0.0f) {
+            D3DXMATRIX temp;
+            D3DXMatrixRotationY(&temp, rotation);
+            D3DXMatrixMultiply(&this->D3DX(), &this->D3DX(), &temp);
+        }
+    }
+
+    inline void rotate_z(float rotation) {
+        if (rotation != 0.0f) {
+            D3DXMATRIX temp;
+            D3DXMatrixRotationZ(&temp, rotation);
+            D3DXMatrixMultiply(&this->D3DX(), &this->D3DX(), &temp);
+        }
     }
 };
 #pragma region // D3DMATRIXZ Validation
@@ -3047,12 +3077,20 @@ ValidateFieldOffset32(0x58, Config, window_y);
 ValidateStructSize32(0x88, Config);
 #pragma endregion
 
+// size: 0x10
+struct ZUN_COLORVALUE {
+    float b; // 0x0
+    float g; // 0x4
+    float r; // 0x8
+    float a; // 0xC
+    // 0x10
+};
 
 // size: 0x1C
 struct StageSky {
     float begin_distance; // 0x0
     float end_distance; // 0x4
-    D3DCOLORVALUE color_components; // 0x8
+    ZUN_COLORVALUE color_components; // 0x8
     D3DCOLOR color; // 0x18
     // 0x1C
 
@@ -3061,9 +3099,9 @@ private:
     dllexport gnu_noinline StageSky& add(StageSky& out, const StageSky& value) asm_symbol_rel(0x41F830) {
         out.begin_distance = this->begin_distance + value.begin_distance;
         out.begin_distance = this->begin_distance + value.end_distance;
-        out.color_components.r = this->color_components.r + value.color_components.r;
-        out.color_components.g = this->color_components.g + value.color_components.g;
         out.color_components.b = this->color_components.b + value.color_components.b;
+        out.color_components.g = this->color_components.g + value.color_components.g;
+        out.color_components.r = this->color_components.r + value.color_components.r;
         out.color_components.a = this->color_components.a + value.color_components.a;
         for (size_t i = 0; i < 4; ++i) {
             ((int8_t*)&out.color)[i] = ((float*)&out.color_components)[i];
@@ -3080,9 +3118,9 @@ private:
     inline StageSky& sub(StageSky& out, const StageSky& value) {
         out.begin_distance = this->begin_distance - value.begin_distance;
         out.begin_distance = this->begin_distance - value.end_distance;
-        out.color_components.r = this->color_components.r - value.color_components.r;
-        out.color_components.g = this->color_components.g - value.color_components.g;
         out.color_components.b = this->color_components.b - value.color_components.b;
+        out.color_components.g = this->color_components.g - value.color_components.g;
+        out.color_components.r = this->color_components.r - value.color_components.r;
         out.color_components.a = this->color_components.a - value.color_components.a;
         for (size_t i = 0; i < 4; ++i) {
             ((int8_t*)&out.color)[i] = ((float*)&this->color_components)[i] - ((float*)&out.color_components)[i];
@@ -3099,9 +3137,9 @@ private:
     inline StageSky& mul(StageSky& out, const float value) {
         out.begin_distance = this->begin_distance * value;
         out.begin_distance = this->begin_distance * value;
-        out.color_components.r = this->color_components.r * value;
-        out.color_components.g = this->color_components.g * value;
         out.color_components.b = this->color_components.b * value;
+        out.color_components.g = this->color_components.g * value;
+        out.color_components.r = this->color_components.r * value;
         out.color_components.a = this->color_components.a * value;
         for (size_t i = 0; i < 4; ++i) {
             ((int8_t*)&out.color)[i] = ((float*)&this->color_components)[i] * value;
@@ -3137,7 +3175,7 @@ struct StageCamera {
     D3DMATRIXZ projection_matrix; // 0xA0
     D3DVIEWPORT9 viewport; // 0xE0
     int32_t camera_index; // 0xF8
-    Int2 __int2_FC; // 0xFC
+    Float2 __float2_FC; // 0xFC
     Int2 __int2_104; // 0x104
     D3DVIEWPORT9 __viewport_10C; // 0x10C
     D3DVIEWPORT9 __viewport_124; // 0x124
@@ -3161,7 +3199,7 @@ ValidateFieldOffset32(0x60, StageCamera, view_matrix);
 ValidateFieldOffset32(0xA0, StageCamera, projection_matrix);
 ValidateFieldOffset32(0xE0, StageCamera, viewport);
 ValidateFieldOffset32(0xF8, StageCamera, camera_index);
-ValidateFieldOffset32(0xFC, StageCamera, __int2_FC);
+ValidateFieldOffset32(0xFC, StageCamera, __float2_FC);
 ValidateFieldOffset32(0x104, StageCamera, __int2_104);
 ValidateFieldOffset32(0x10C, StageCamera, __viewport_10C);
 ValidateFieldOffset32(0x124, StageCamera, __viewport_124);
@@ -3519,7 +3557,12 @@ struct StageData {
     // 0x84
 };
 
+
+static inline constexpr int32_t STAGE_COUNT = 8;
+
 extern "C" {
+    // 0x4C9410
+    externcg StageData STAGE_DATA[STAGE_COUNT] asm("_STAGE_DATA");
     // 0x4CF428
     externcg StageData* STAGE_DATA_PTR asm("_STAGE_DATA_PTR");
 }
@@ -3618,6 +3661,8 @@ extern "C" {
     externcg AnmID UNKNOWN_ANM_ID_C asm("_UNKNOWN_ANM_ID_C");
 }
 
+typedef struct LoadingThread LoadingThread;
+
 // size: 0xB60
 struct Supervisor {
     HINSTANCE current_instance; // 0x0
@@ -3655,7 +3700,8 @@ struct Supervisor {
     int32_t gamemode_previous; // 0x7FC
     int __dword_800; // 0x800
     int32_t __int_804; // 0x804
-    unknown_fields(0x10); // 0x808
+    int __dword_808; // 0x808
+    unknown_fields(0xC); // 0x80C
     int __int_818; // 0x818
     unknown_fields(0x4); // 0x81C
     BOOL disable_vsync; // 0x820
@@ -3695,7 +3741,8 @@ struct Supervisor {
     int32_t game_exe_file_size; // 0xB34
     int32_t ver_file_size; // 0xB38
     void* ver_file_buffer; // 0xB3C
-    unknown_fields(0x10); // 0xB40
+    LoadingThread* __loading_thread_B40; // 0xB40
+    unknown_fields(0xC); // 0xB44
     double __double_B50; // 0xB50
     D3DCOLOR background_color; // 0xB58
     probably_padding_bytes(0x4); // 0xB5C
@@ -3706,6 +3753,9 @@ struct Supervisor {
 
     // 0x454950
     dllexport gnu_noinline int thiscall __sub_454950() asm_symbol_rel(0x454950);
+
+    // 0x455040
+    dllexport gnu_noinline UpdateFuncRet thiscall __sub_455040() asm_symbol_rel(0x455040);
     
     inline UpdateFuncRet thiscall on_tick();
 
@@ -3825,9 +3875,9 @@ public:
         at.x = x;
         at.y = y;
         at.z = 0.0f;
-        D3DXMatrixLookAtLH((D3DXMATRIX*)&camera->view_matrix, &eye, &at, &up);
+        D3DXMatrixLookAtLH(&camera->view_matrix.D3DX(), &eye, &at, &up);
         float aspect = (float)camera->viewport.Width / (float)camera->viewport.Height;
-        D3DXMatrixPerspectiveFovLH((D3DXMATRIX*)&camera->projection_matrix, camera->fov, aspect, 1.0f, 10000.0f);
+        D3DXMatrixPerspectiveFovLH(&camera->projection_matrix.D3DX(), camera->fov, aspect, 1.0f, 10000.0f);
     }
 
     // 0x454B20
@@ -3876,6 +3926,7 @@ ValidateFieldOffset32(0x7F8, Supervisor, gamemode_switch);
 ValidateFieldOffset32(0x7FC, Supervisor, gamemode_previous);
 ValidateFieldOffset32(0x800, Supervisor, __dword_800);
 ValidateFieldOffset32(0x804, Supervisor, __int_804);
+ValidateFieldOffset32(0x808, Supervisor, __dword_808);
 ValidateFieldOffset32(0x818, Supervisor, __int_818);
 ValidateFieldOffset32(0x820, Supervisor, disable_vsync);
 ValidateFieldOffset32(0x824, Supervisor, __dword_824);
@@ -3895,6 +3946,7 @@ ValidateFieldOffset32(0xB30, Supervisor, game_exe_checksum);
 ValidateFieldOffset32(0xB34, Supervisor, game_exe_file_size);
 ValidateFieldOffset32(0xB38, Supervisor, ver_file_size);
 ValidateFieldOffset32(0xB3C, Supervisor, ver_file_buffer);
+ValidateFieldOffset32(0xB40, Supervisor, __loading_thread_B40);
 ValidateFieldOffset32(0xB50, Supervisor, __double_B50);
 ValidateFieldOffset32(0xB58, Supervisor, background_color);
 ValidateStructSize32(0xB60, Supervisor);
@@ -4549,7 +4601,6 @@ static inline constexpr size_t CHARACTER_COUNT = 4;
 static inline constexpr size_t SHOTTYPES_PER_CHARACTER = 1;
 static inline constexpr size_t SHOTTYPE_COUNT = CHARACTER_COUNT * SHOTTYPES_PER_CHARACTER;
 static inline constexpr size_t DIFFICULTY_COUNT = 6;
-static inline constexpr int32_t STAGE_COUNT = 8;
 
 enum CharacterID : int32_t {
     Reimu = 0,
@@ -4990,15 +5041,15 @@ struct WindowData {
     };
     uint32_t __counter_2044; // 0x2044
     unknown_fields(0x8); // 0x2048
-    int32_t __int_2050; // 0x2050 scaled_width
-    int32_t __int_2054; // 0x2054 scaled_height
+    int32_t __scaled_width; // 0x2050
+    int32_t __scaled_height; // 0x2054
     int32_t window_width; // 0x2058
     int32_t window_height; // 0x205C
-    int __dword_2060; // 0x2060 display_width
-    int __dword_2064; // 0x2064 display_height
-    int32_t __int_2068; // 0x2068 backbuffer_width
-    int32_t __int_206C; // 0x206C backbuffer_height
-    float __float_2070; // 0x2070 game_scale
+    int32_t __display_width; // 0x2060
+    int32_t __display_height; // 0x2064
+    int32_t __backbuffer_width; // 0x2068
+    int32_t __backbuffer_height; // 0x206C
+    float __game_scale; // 0x2070
     int32_t __int_2074; // 0x2074
     int32_t __int_2078; // 0x2078
     int32_t __int_207C; // 0x207C
@@ -5069,15 +5120,15 @@ ValidateFieldOffset32(0x203C, WindowData, screen_saver_power_off_active);
 ValidateFieldOffset32(0x2040, WindowData, flags);
 ValidateFieldOffset32(0x2044, WindowData, __counter_2044);
 
-ValidateFieldOffset32(0x2050, WindowData, __int_2050);
-ValidateFieldOffset32(0x2054, WindowData, __int_2054);
+ValidateFieldOffset32(0x2050, WindowData, __scaled_width);
+ValidateFieldOffset32(0x2054, WindowData, __scaled_height);
 ValidateFieldOffset32(0x2058, WindowData, window_width);
 ValidateFieldOffset32(0x205C, WindowData, window_height);
-ValidateFieldOffset32(0x2060, WindowData, __dword_2060);
-ValidateFieldOffset32(0x2064, WindowData, __dword_2064);
-ValidateFieldOffset32(0x2068, WindowData, __int_2068);
-ValidateFieldOffset32(0x206C, WindowData, __int_206C);
-ValidateFieldOffset32(0x2070, WindowData, __float_2070);
+ValidateFieldOffset32(0x2060, WindowData, __display_width);
+ValidateFieldOffset32(0x2064, WindowData, __display_height);
+ValidateFieldOffset32(0x2068, WindowData, __backbuffer_width);
+ValidateFieldOffset32(0x206C, WindowData, __backbuffer_height);
+ValidateFieldOffset32(0x2070, WindowData, __game_scale);
 ValidateFieldOffset32(0x2074, WindowData, __int_2074);
 ValidateFieldOffset32(0x2078, WindowData, __int_2078);
 ValidateFieldOffset32(0x207C, WindowData, __int_207C);
@@ -10996,6 +11047,92 @@ extern "C" {
     externcg Float2 UNKNOWN_FLOAT2_A asm("_UNKNOWN_FLOAT2_A");
 }
 
+// size: 0x14
+// D3DFVF_XYZRHW | D3DFVF_DIFFUSE (0x44)
+struct PrimitiveVertex {
+    Float4 position; // 0x0
+    D3DCOLOR diffuse; // 0x10
+    // 0x14
+
+    static constexpr DWORD FVF_TYPE = D3DFVF_XYZRHW | D3DFVF_DIFFUSE;
+    static inline constexpr size_t buffer_size(size_t count) {
+        return count * sizeof(PrimitiveVertex);
+    }
+};
+// size: 0x14
+// D3DFVF_XYZ | D3DFVF_TEX1 (0x102)
+struct UnknownVertexA {
+    Float3 position; // 0x0
+    Float2 texture_uv; // 0xC
+    // 0x14
+
+    static constexpr DWORD FVF_TYPE = D3DFVF_XYZ | D3DFVF_TEX1;
+    static inline constexpr size_t buffer_size(size_t count) {
+        return count * sizeof(UnknownVertexA);
+    }
+};
+// size: 0x18
+// D3DFVF_XYZRHW | D3DFVF_TEX1 (0x104)
+struct SpriteVertexB {
+    Float4 position; // 0x0
+    Float2 texture_uv; // 0x10
+    // 0x18
+
+    static constexpr DWORD FVF_TYPE = D3DFVF_XYZRHW | D3DFVF_TEX1;
+    static inline constexpr size_t buffer_size(size_t count) {
+        return count * sizeof(SpriteVertexB);
+    }
+};
+// size: 0x18
+// D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1 (0x142)
+struct SpriteVertexC {
+    Float3 position; // 0x0
+    D3DCOLOR diffuse; // 0xC
+    Float2 texture_uv; // 0x10
+    // 0x18
+
+    static constexpr DWORD FVF_TYPE = D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1;
+    static inline constexpr size_t buffer_size(size_t count) {
+        return count * sizeof(SpriteVertexC);
+    }
+};
+// size: 0x1C
+// D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1 (0x144)
+struct SpriteVertex {
+    Float4 position; // 0x0
+    D3DCOLOR diffuse; // 0x10
+    Float2 texture_uv; // 0x14
+    // 0x1C
+
+    static constexpr DWORD FVF_TYPE = D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1;
+    static inline constexpr size_t buffer_size(size_t count) {
+        return count * sizeof(SpriteVertex);
+    }
+};
+// size: 0x10
+// D3DFVF_XYZ | D3DFVF_DIFFUSE (0x42)
+struct UnknownVertexB {
+    Float3 position; // 0x0
+    D3DCOLOR diffuse; // 0xC
+    // 0x10
+
+    static constexpr DWORD FVF_TYPE = D3DFVF_XYZ | D3DFVF_DIFFUSE;
+    static inline constexpr size_t buffer_size(size_t count) {
+        return count * sizeof(UnknownVertexB);
+    }
+};
+
+extern "C" {
+    // 0x51F65C
+    externcg AnmManager* ANM_MANAGER_PTR asm("_ANM_MANAGER_PTR");
+    // 0x5704C0
+    externcg SpriteVertexB SPRITE_VERTEX_BUFFER_B[4] asm("_SPRITE_VERTEX_BUFFER_B");
+    // 0x570520
+    externcg SpriteVertex SPRITE_VERTEX_BUFFER_A[4] asm("_SPRITE_VERTEX_BUFFER_A");
+    // 0x570590
+    externcg SpriteVertexC SPRITE_VERTEX_BUFFER_C[4] asm("_SPRITE_VERTEX_BUFFER_C");
+}
+
 namespace Anm {
 enum Var : int32_t {
     I0 = 10000, // 10000
@@ -11235,6 +11372,20 @@ union AnmVMCreationFlags {
     };
 };
 
+// 0x4CDB00
+static Float4 ANCHOR_X_TABLE[3] = {
+    { -0.5f, 0.5f, -0.5f, 0.5f },
+    { 0.0f, 0.5f, 0.0f, 0.5f },
+    { -0.5f, 0.0f, -0.5f, 0.0f }
+};
+
+// 0x4CDB30
+static Float4 ANCHOR_Y_TABLE[3] = {
+    { -0.5f, -0.5f, 0.5f, 0.5f },
+    { 0.0f, 0.0f, 0.5f, 0.5f },
+    { -0.5f, -0.5f, 0.0f, 0.0f }
+};
+
 // 0x0
 static inline constexpr AnmVMCreationFlags WORLD_LIST_BACK = { .list_type = WorldListBack };
 // 0x2
@@ -11363,7 +11514,7 @@ struct AnmVM {
                 uint32_t : 1; // 15
                 uint32_t __unknown_flag_Q : 1; // 16
                 uint32_t __unknown_field_B : 2; // 17-18
-                uint32_t __treast_as_root : 1; // 19
+                uint32_t __treat_as_root : 1; // 19
                 uint32_t : 1; // 20
                 uint32_t origin_mode : 2; // 21-22
                 uint32_t resolution_mode : 3; // 23-25
@@ -11376,7 +11527,8 @@ struct AnmVM {
                 uint32_t : 1; // 32
             };
         };
-        Float2 __float2_53C; // 0x53C
+        float __float_53C; // 0x53C
+        float __float_540; // 0x540
         // 0x544
     };
     static_assert(sizeof(AnmVMData) == 0x544);
@@ -11448,7 +11600,7 @@ struct AnmVM {
         AnmVM* root;
         while (
             (root = search->controller.__root_vm) != NULL &&
-            !search->data.__treast_as_root
+            !search->data.__treat_as_root
         ) search = root;
         return search;
     }
@@ -11480,6 +11632,56 @@ struct AnmVM {
         return this->find_root_vm()->controller.slowdown;
     }
 
+    // 0x4063D0
+    dllexport gnu_noinline Float3* thiscall __adjust_position_for_resolution_and_origin_modes(Float3* out) asm_symbol_rel(0x4063D0) {
+        
+        switch (this->data.resolution_mode) {
+            case 1: case 3:
+                *out *= WINDOW_DATA.__game_scale;
+                break;
+            case 2: case 4:
+                *out *= WINDOW_DATA.__game_scale * 0.5f;
+                break;
+        }
+
+        AnmVM* root_vm = this->controller.__root_vm;
+        if (
+            root_vm &&
+            !this->data.__treat_as_root
+        ) {
+            if (this->data.inherit_rotation) {
+                out->rotate_around_origin(root_vm->data.rotation.z);
+                root_vm = this->controller.parent;
+            }
+            Float3 offset;
+            root_vm->get_render_position(&offset);
+            *out += offset;
+            return out;
+        }
+
+        switch (this->data.origin_mode) {
+            case 0:
+                break;
+            case 1:
+                out->x += WINDOW_DATA.__int_208C;
+                out->y += WINDOW_DATA.__int_2090;
+                break;
+            default:
+                out->x += WINDOW_DATA.__int_2084;
+                out->y += WINDOW_DATA.__int_2088;
+                break;
+        }
+
+        return out;
+    }
+
+    // 0x4065A0
+    dllexport gnu_noinline Float3* thiscall get_render_position(Float3* out) asm_symbol_rel(0x4065A0) {
+        *out = this->data.position + this->controller.position + this->data.__position_2;
+        this->__adjust_position_for_resolution_and_origin_modes(out);
+        return out;
+    }
+
     // 0x4097D0
     dllexport gnu_noinline Float3* thiscall get_controller_rotation() asm_symbol_rel(0x4097D0) {
         Float3* controller_rotation = &this->controller.rotation;
@@ -11488,7 +11690,7 @@ struct AnmVM {
         AnmVM* root_vm = this->controller.__root_vm;
         if (
             root_vm &&
-            !this->data.__treast_as_root
+            !this->data.__treat_as_root
         ) {
             *controller_rotation += *root_vm->get_controller_rotation();
 
@@ -11598,6 +11800,272 @@ struct AnmVM {
     // 0x406730
     dllexport gnu_noinline void set_controller_position(Float3* position) asm_symbol_rel(0x406730) {
         this->controller.position = *position;
+    }
+
+    // 0x47E8F0
+    dllexport gnu_noinline void stdcall __get_vertex_positions(Float3* vert0, Float3* vert1, Float3* vert2, Float3* vert3) asm_symbol_rel(0x47E8F0) {
+        Float4* anchor_offset_x = &ANCHOR_X_TABLE[this->data.x_anchor_mode];
+        vert0->x = anchor_offset_x->x;
+        vert1->x = anchor_offset_x->y;
+        vert2->x = anchor_offset_x->z;
+        vert3->x = anchor_offset_x->w;
+
+        Float4* anchor_offset_y = &ANCHOR_Y_TABLE[this->data.y_anchor_mode];
+        vert0->y = anchor_offset_y->x;
+        vert1->y = anchor_offset_y->y;
+        vert2->y = anchor_offset_y->z;
+        vert3->y = anchor_offset_y->w;
+
+        vert0->as2() *= this->data.sprite_size;
+        vert1->as2() *= this->data.sprite_size;
+        vert2->as2() *= this->data.sprite_size;
+        vert3->as2() *= this->data.sprite_size;
+
+        vert0->as2() -= this->data.anchor_offset;
+        vert1->as2() -= this->data.anchor_offset;
+        vert2->as2() -= this->data.anchor_offset;
+        vert3->as2() -= this->data.anchor_offset;
+
+        switch (this->data.resolution_mode) {
+            case 1:
+                vert0->as2() *= WINDOW_DATA.__game_scale;
+                vert1->as2() *= WINDOW_DATA.__game_scale;
+                vert2->as2() *= WINDOW_DATA.__game_scale;
+                vert3->as2() *= WINDOW_DATA.__game_scale;
+                break;
+            case 2:
+                vert0->as2() *= WINDOW_DATA.__game_scale * 0.5f;
+                vert1->as2() *= WINDOW_DATA.__game_scale * 0.5f;
+                vert2->as2() *= WINDOW_DATA.__game_scale * 0.5f;
+                vert3->as2() *= WINDOW_DATA.__game_scale * 0.5f;
+                break;
+        }
+
+        Float2 scale = this->data.scale * this->data.scale2;
+
+        AnmVM* parent = this->controller.parent;
+        if (
+            parent &&
+            !this->data.__treat_as_root
+        ) {
+            scale *= parent->data.scale * parent->data.scale2;
+        }
+
+        vert0->as2() *= scale;
+        vert1->as2() *= scale;
+        vert2->as2() *= scale;
+        vert3->as2() *= scale;
+
+        Float3 position;
+        this->get_render_position(&position);
+
+        *vert0 += position;
+        *vert1 += position;
+        *vert2 += position;
+        *vert3 += position;
+
+        float z_offset = this->data.position.z + this->controller.position.z + this->data.__position_2.z;
+        vert0->z = z_offset;
+        vert1->z = z_offset;
+        vert2->z = z_offset;
+        vert3->z = z_offset;
+    }
+
+    // 0x47ED50
+    dllexport gnu_noinline void stdcall __get_rotated_vertex_positions(
+        Float3* vert0, // EDI
+        Float3* vert1, // ESP+14
+        Float3* vert2, // ESP+18
+        Float3* vert3  // ESP+1C
+    ) asm_symbol_rel(0x47ED50) {
+        // this; // ESI
+
+        auto __temp = CRT::sincos_asm(this->get_controller_rotation()->z); // ESP+8 for rotation
+        float unit_x = __temp[0]; // ESP+C
+        float unit_y = __temp[1]; // ESP+10
+
+        Float4 offset_x = ANCHOR_X_TABLE[this->data.x_anchor_mode]; // ESP+40
+        Float4 offset_y = ANCHOR_Y_TABLE[this->data.y_anchor_mode]; // ESP+30
+
+        offset_x *= this->data.sprite_size.x;
+        offset_x -= this->data.anchor_offset.x;
+        offset_y *= this->data.sprite_size.y;
+        offset_y -= this->data.anchor_offset.y;
+
+        switch (this->data.resolution_mode) {
+            case 1: {
+                float scale = WINDOW_DATA.__game_scale;
+                offset_x *= scale;
+                offset_y *= scale;
+                break;
+            }
+            case 2: {
+                float scale = WINDOW_DATA.__game_scale * 0.5f;
+                offset_x *= scale;
+                offset_y *= scale;
+                break;
+            }
+        }
+
+        // offset_x // ESP+30
+        // offset_y // ESP+20
+
+        Float3 position; // ESP+40
+        clang_forceinline this->get_render_position(&position);
+
+        Float2 scale = this->data.scale * this->data.scale2;
+
+        AnmVM* parent = this->controller.parent;
+        if (
+            parent &&
+            !this->data.__treat_as_root
+        ) {
+            scale *= parent->data.scale * parent->data.scale2;
+        }
+
+        offset_y *= scale.y;
+        offset_x *= scale.x;
+
+        vert0->x = (offset_x.x * unit_x - offset_y.x * unit_y) + position.x;
+        vert0->y = (offset_y.x * unit_y + offset_x.x * unit_x) + position.y;
+
+        vert1->x = (offset_x.y * unit_x - offset_y.y * unit_y) + position.x;
+        vert1->y = (offset_y.y * unit_y + offset_x.y * unit_x) + position.y;
+
+        vert2->x = (offset_x.z * unit_x - offset_y.z * unit_y) + position.x;
+        vert2->y = (offset_y.z * unit_y + offset_x.z * unit_x) + position.y;
+        
+        vert3->x = (offset_x.w * unit_x - offset_y.w * unit_y) + position.x;
+        vert3->y = (offset_y.w * unit_y + offset_x.w * unit_x) + position.y;
+
+        float z_offset = this->data.position.z + this->controller.position.z + this->data.__position_2.z;
+        vert0->z = z_offset;
+        vert1->z = z_offset;
+        vert2->z = z_offset;
+        vert3->z = z_offset;
+    }
+
+    // 0x47F090
+    dllexport gnu_noinline ZUNResult stdcall __sub_47F090() asm_symbol_rel(0x47F090) {
+        // this; // ESI
+
+        float rotation_z = this->get_controller_rotation()->z; // ESP+8
+        auto __temp = CRT::sincos_asm(rotation_z);
+        float unit_x = __temp[0]; // ESP+20
+        float unit_y = __temp[1]; // ESP+4
+
+        StageCamera* camera = SUPERVISOR.current_camera_ptr;
+
+        Float3 projectedA; // ESP+24
+        Float3 pV = { 0.0f, 0.0f, 0.0f };
+        D3DMATRIXZ pWorld;
+        pWorld.set_identity();
+        pWorld.m[3][0] = this->data.position.x + this->controller.position.x + this->data.__position_2.x;
+        pWorld.m[3][1] = this->data.position.y + this->controller.position.y + this->data.__position_2.y;
+        pWorld.m[3][2] = this->data.position.z + this->controller.position.z + this->data.__position_2.z;
+        D3DXVec3Project(&projectedA.D3DX(), &pV.D3DX(), &camera->viewport, &camera->projection_matrix.D3DX(), &camera->view_matrix.D3DX(), &pWorld.D3DX());
+
+        if (
+            !(projectedA.z < 0.0f) &&
+            !(projectedA.z > 1.0f)
+        ) {
+            camera = SUPERVISOR.current_camera_ptr;
+
+            Float3 projectedB; // ESP+3C
+            D3DXVec3Project(&projectedB.D3DX(), &camera->__float3_30.D3DX(), &camera->viewport, &camera->projection_matrix.D3DX(), &camera->view_matrix.D3DX(), &pWorld.D3DX());
+
+            float scale = projectedB.distance(&projectedA) * 0.5f;
+
+            Float2 size = this->data.sprite_size * scale * this->data.scale * this->data.scale2;
+
+            SPRITE_VERTEX_BUFFER_A[3].position.z = projectedA.z;
+            SPRITE_VERTEX_BUFFER_A[2].position.z = projectedA.z;
+            SPRITE_VERTEX_BUFFER_A[1].position.z = projectedA.z;
+            SPRITE_VERTEX_BUFFER_A[0].position.z = projectedA.z;
+
+            // Yup, we're just doing this again for no reason
+            __temp = CRT::sincos_asm(rotation_z); // ESP+8 for rotation
+            unit_x = __temp[0]; // ESP+20
+            unit_y = __temp[1]; // ESP+4
+
+            float X0, X1, X2, X3;
+            switch (this->data.x_anchor_mode) {
+                case 0:
+                    X0 = -size.x * 0.5f;
+                    X1 = size.x * 0.5f;
+                    X2 = -size.x * 0.5f;
+                    X3 = size.x * 0.5f;
+                    break;
+                case 1:
+                    X0 = 0.0f;
+                    X1 = size.x;
+                    X2 = 0.0f;
+                    X3 = size.x;
+                    break;
+                case 2:
+                    X0 = -size.x;
+                    X1 = 0.0f;
+                    X2 = -size.x;
+                    X3 = 0.0f;
+                    break;
+                default:
+                    X0 = unit_y; // XMM1, ESP+14
+                    X1 = unit_y; // ESP+C
+                    X2 = unit_y; // XMM6
+                    X3 = unit_y; // XMM4
+                    break;
+            }
+            float Y0, Y1, Y2, Y3;
+            switch (this->data.y_anchor_mode) {
+                case 0:
+                    Y0 = -size.y * 0.5f;
+                    Y1 = size.y * 0.5f;
+                    Y2 = -size.y * 0.5f;
+                    Y3 = size.y * 0.5f;
+                    break;
+                case 1:
+                    Y0 = 0.0f;
+                    Y1 = size.y;
+                    Y2 = 0.0f;
+                    Y3 = size.y;
+                    break;
+                case 2:
+                    Y0 = -size.y;
+                    Y1 = 0.0f;
+                    Y2 = -size.y;
+                    Y3 = 0.0f;
+                    break;
+                default:
+                    Y0 = unit_y; // XMM2, ESP+8
+                    Y1 = unit_y; // XMM7
+                    Y2 = unit_y; // ESP+10
+                    Y3 = unit_y; // XMM5
+                    break;
+            }
+
+            SPRITE_VERTEX_BUFFER_A[0].position.x = (X0 * unit_x - Y0 * unit_y) + projectedA.x;
+            SPRITE_VERTEX_BUFFER_A[0].position.y = (X0 * unit_y + Y0 * unit_x) + projectedA.y;
+            SPRITE_VERTEX_BUFFER_A[1].position.x = (X1 * unit_x - Y1 * unit_y) + projectedA.x;
+            SPRITE_VERTEX_BUFFER_A[1].position.y = (X1 * unit_y + Y1 * unit_x) + projectedA.y;
+            SPRITE_VERTEX_BUFFER_A[2].position.x = (X2 * unit_x - Y2 * unit_y) + projectedA.x;
+            SPRITE_VERTEX_BUFFER_A[2].position.y = (X2 * unit_y + Y2 * unit_x) + projectedA.y;
+            SPRITE_VERTEX_BUFFER_A[3].position.x = (X3 * unit_x - Y3 * unit_y) + projectedA.x;
+            SPRITE_VERTEX_BUFFER_A[3].position.y = (X3 * unit_y + Y3 * unit_x) + projectedA.y;
+            return ZUN_SUCCESS;
+        }
+        return ZUN_ERROR;
+    }
+
+    // 0x481D20
+    dllexport gnu_noinline void thiscall __get_vertex_quad(Float3* out) asm_symbol_rel(0x481D20) {
+        switch (this->data.type) {
+            case 1:
+                this->__get_rotated_vertex_positions(&out[0], &out[1], &out[2], &out[3]);
+                break;
+            case 0: case 2: case 3:
+                this->__get_vertex_positions(&out[0], &out[1], &out[2], &out[3]);
+                break;
+        }
     }
 
     // 0x41B430
@@ -12343,7 +12811,9 @@ ValidateStructSize32(0x18, AnmImage);
 
 // size: 0x44
 struct AnmSprite {
-    unknown_fields(0x1C); // 0x0
+    unknown_fields(0x8); // 0x0
+    int32_t __index_8; // 0x8
+    unknown_fields(0x10); // 0xC
     float __float_1C; // 0x1C
     float __float_20; // 0x20
     float __uv_related_24[4]; // 0x24
@@ -12354,6 +12824,7 @@ struct AnmSprite {
     // 0x44
 };
 #pragma region // AnmSprite Validation
+ValidateFieldOffset32(0x8, AnmSprite, __index_8);
 ValidateFieldOffset32(0x1C, AnmSprite, __float_1C);
 ValidateFieldOffset32(0x20, AnmSprite, __float_20);
 ValidateFieldOffset32(0x24, AnmSprite, __uv_related_24);
@@ -12762,92 +13233,6 @@ ValidateFieldOffset32(0x138, AnmLoaded, __ptr_138);
 ValidateStructSize32(0x13C, AnmLoaded);
 #pragma endregion
 
-// size: 0x14
-// D3DFVF_XYZRHW | D3DFVF_DIFFUSE (0x44)
-struct PrimitiveVertex {
-    Float4 position; // 0x0
-    D3DCOLOR diffuse; // 0x10
-    // 0x14
-
-    static constexpr DWORD FVF_TYPE = D3DFVF_XYZRHW | D3DFVF_DIFFUSE;
-    static inline constexpr size_t buffer_size(size_t count) {
-        return count * sizeof(PrimitiveVertex);
-    }
-};
-// size: 0x14
-// D3DFVF_XYZ | D3DFVF_TEX1 (0x102)
-struct UnknownVertexA {
-    Float3 position; // 0x0
-    Float2 texture_uv; // 0xC
-    // 0x14
-
-    static constexpr DWORD FVF_TYPE = D3DFVF_XYZ | D3DFVF_TEX1;
-    static inline constexpr size_t buffer_size(size_t count) {
-        return count * sizeof(UnknownVertexA);
-    }
-};
-// size: 0x18
-// D3DFVF_XYZRHW | D3DFVF_TEX1 (0x104)
-struct SpriteVertexB {
-    Float4 position; // 0x0
-    Float2 texture_uv; // 0x10
-    // 0x18
-
-    static constexpr DWORD FVF_TYPE = D3DFVF_XYZRHW | D3DFVF_TEX1;
-    static inline constexpr size_t buffer_size(size_t count) {
-        return count * sizeof(SpriteVertexB);
-    }
-};
-// size: 0x18
-// D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1 (0x142)
-struct SpriteVertexC {
-    Float3 position; // 0x0
-    D3DCOLOR diffuse; // 0xC
-    Float2 texture_uv; // 0x10
-    // 0x18
-
-    static constexpr DWORD FVF_TYPE = D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1;
-    static inline constexpr size_t buffer_size(size_t count) {
-        return count * sizeof(SpriteVertexC);
-    }
-};
-// size: 0x1C
-// D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1 (0x144)
-struct SpriteVertex {
-    Float4 position; // 0x0
-    D3DCOLOR diffuse; // 0x10
-    Float2 texture_uv; // 0x14
-    // 0x1C
-
-    static constexpr DWORD FVF_TYPE = D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1;
-    static inline constexpr size_t buffer_size(size_t count) {
-        return count * sizeof(SpriteVertex);
-    }
-};
-// size: 0x10
-// D3DFVF_XYZ | D3DFVF_DIFFUSE (0x42)
-struct UnknownVertexB {
-    Float3 position; // 0x0
-    D3DCOLOR diffuse; // 0xC
-    // 0x10
-
-    static constexpr DWORD FVF_TYPE = D3DFVF_XYZ | D3DFVF_DIFFUSE;
-    static inline constexpr size_t buffer_size(size_t count) {
-        return count * sizeof(UnknownVertexB);
-    }
-};
-
-extern "C" {
-    // 0x51F65C
-    externcg AnmManager* ANM_MANAGER_PTR asm("_ANM_MANAGER_PTR");
-    // 0x5704C0
-    externcg SpriteVertexB SPRITE_VERTEX_BUFFER_B[4] asm("_SPRITE_VERTEX_BUFFER_B");
-    // 0x570520
-    externcg SpriteVertex SPRITE_VERTEX_BUFFER_A[4] asm("_SPRITE_VERTEX_BUFFER_A");
-    // 0x570590
-    externcg SpriteVertexC SPRITE_VERTEX_BUFFER_C[4] asm("_SPRITE_VERTEX_BUFFER_C");
-}
-
 enum AnmFileIndex {
     TEXT_ANM_INDEX = 0,
     SIG_ANM_INDEX = 1,
@@ -12922,8 +13307,8 @@ struct AnmManager {
     int __dword_C0; // 0xC0
     int __dword_C4; // 0xC4
     int __dword_C8; // 0xC8
-    int __dword_CC; // 0xCC
-    Int2 __int2_D0; // 0xD0
+    int __int_CC; // 0xCC
+    Float2 __float2_D0; // 0xD0
     Float2 __float2_D8; // 0xD8
     unknown_fields(0x4); // 0xE0
     AnmVM __vm_E4; // 0xE4
@@ -12953,7 +13338,7 @@ struct AnmManager {
     AnmUVMode current_u_sample_mode; // 0x3120E10
     AnmUVMode current_v_sample_mode; // 0x3120E11
     probably_padding_bytes(0x2); // 0x3120E12
-    int __current_dword_3120E14; // 0x3120E14
+    AnmSprite* __current_sprite; // 0x3120E14
     LPDIRECT3DVERTEXBUFFER9 __d3d_vertex_buffer_3120E18; // 0x3120E18
     UnknownVertexA __vertex_array_3120E1C[4]; // 0x3120E1C
     int32_t unrendered_sprite_count; // 0x3120E6C
@@ -12967,7 +13352,7 @@ struct AnmManager {
     AnmVM layer_heads[WORLD_LAYER_COUNT + UI_LAYER_COUNT]; // 0x3960E84
     uint32_t prev_slow_id; // 0x39724AC
     D3DCOLOR __color_39724B0; // 0x39724B0
-    unknown_fields(0x4); // 0x39724B4
+    int __int_39724B4; // 0x39724B4
     // 0x39724B8
 
     inline void zero_contents() {
@@ -12996,7 +13381,7 @@ struct AnmManager {
             SUPERVISOR.d3d_device->SetFVF(SpriteVertex::FVF_TYPE);
             SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLELIST, this->unrendered_sprite_count * 2, this->sprite_render_cursor, sizeof(SpriteVertex));
             this->sprite_render_cursor = this->sprite_write_cursor;
-            ++this->__dword_CC;
+            ++this->__int_CC;
             this->unrendered_sprite_count = 0;
         }
     }
@@ -13138,9 +13523,854 @@ struct AnmManager {
         SUPERVISOR.d3d_device->SetStreamSource(0, anm_manager->__d3d_vertex_buffer_3120E18, 0, sizeof(UnknownVertexA));
     }
 
-    // 0x481210
-    dllexport gnu_noinline int32_t thiscall draw_vm(AnmVM* vm) asm_symbol_rel(0x481210) {
+    // 0x47D910
+    dllexport gnu_noinline void thiscall setup_render_state_for_vm(AnmVM* vm) asm_symbol_rel(0x47D910) {
+        if (this->current_blend_mode != vm->data.blend_mode) {
+            this->flush_sprites();
+            this->current_blend_mode = (AnmBlendMode)vm->data.blend_mode;
 
+            // Set default states
+            SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
+            SUPERVISOR.d3d_device->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, TRUE);
+            SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_ONE);
+            SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ZERO);
+            SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
+
+            switch (this->current_blend_mode) {
+                case 0:
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+                    break;
+                case 1:
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+                    break;
+                case 2:
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_REVSUBTRACT);
+                    break;
+                case 3:
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ZERO);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+                    break;
+                case 4:
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_INVDESTCOLOR);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+                    break;
+                case 6: // why are 5 and 6 swapped?
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_INVSRCCOLOR);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+                    break;
+                case 5:
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_DESTCOLOR);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ZERO);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+                    break;
+                case 7:
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_DESTALPHA);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVDESTALPHA);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+                    break;
+                case 8:
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_MIN);
+                    break;
+                case 9:
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+                    SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_MAX);
+                    break;
+            }
+        }
+
+        if (this->currently_using_point_filtering != vm->data.nearest_neighbor) {
+            this->flush_sprites();
+            this->currently_using_point_filtering = vm->data.nearest_neighbor;
+            if (!this->currently_using_point_filtering) {
+                SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+                SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+            } else {
+                SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
+                SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+            }
+        }
+
+        if (this->current_u_sample_mode != vm->data.u_scroll_mode) {
+            this->flush_sprites();
+            this->current_u_sample_mode = (AnmUVMode)vm->data.u_scroll_mode;
+            switch (this->current_u_sample_mode) {
+                case Wrap: // 0
+                    SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
+                    break;
+                case Clamp: // 1
+                    SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+                    break;
+                case Mirror: // 2
+                    SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_MIRROR);
+                    break;
+            }
+        }
+
+        if (this->current_v_sample_mode != vm->data.v_scroll_mode) {
+            this->flush_sprites();
+            this->current_v_sample_mode = (AnmUVMode)vm->data.v_scroll_mode;
+            switch (this->current_v_sample_mode) {
+                case Wrap: // 0
+                    SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_WRAP);
+                    break;
+                case Clamp: // 1
+                    SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+                    break;
+                case Mirror: // 2
+                    SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_MIRROR);
+                    break;
+            }
+        }
+    }
+
+    // 0x47FEB0
+    dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_5_7(AnmVM* vm) asm_symbol_rel(0x47FEB0) {
+        if (!vm->data.__unknown_std_flag_A) {
+            vm->data.scale_enabled = false;
+            vm->data.__matrix_414 = vm->data.__matrix_3D4;
+            vm->data.__matrix_414.m[0][0] *= vm->data.scale.x * vm->data.scale2.x;
+            vm->data.__matrix_414.m[1][1] *= vm->data.scale.y * vm->data.scale2.y;
+
+            Float3 rotation = *vm->get_controller_rotation();
+
+            vm->data.__matrix_414.rotate_x(rotation.x);
+            vm->data.__matrix_414.rotate_y(rotation.y);
+            vm->data.__matrix_414.rotate_z(rotation.z);
+
+            vm->data.rotation_enabled = false;
+        }
+
+        D3DMATRIXZ matrix = vm->data.__matrix_414;
+        matrix.m[0][0] += vm->data.position.x + vm->controller.position.x + vm->data.__position_2.x;
+        if (
+            vm->data.origin_mode != 0 &&
+            !vm->controller.parent
+        ) {
+            matrix.m[0][0] += WINDOW_DATA.__scaled_width * 0.5f;
+            matrix.m[0][1] += (WINDOW_DATA.__scaled_height - 448.0f) * 0.5f;
+        }
+        matrix.m[0][1] += vm->data.position.y + vm->controller.position.y + vm->data.__position_2.y;
+        matrix.m[0][2] += vm->data.position.z + vm->controller.position.z + vm->data.__position_2.z;
+
+        AnmVM* parent = vm->controller.parent;
+        if (
+            !parent &&
+            !vm->data.__treat_as_root
+        ) {
+            matrix.m[0][0] += parent->data.position.x + parent->controller.position.x + parent->data.__position_2.x;
+            matrix.m[0][1] += parent->data.position.y + parent->controller.position.y + parent->data.__position_2.y;
+            matrix.m[0][2] += parent->data.position.z + parent->controller.position.z + parent->data.__position_2.z;
+        }
+
+        this->__matrix_31207B0 = matrix;
+
+        return ZUN_SUCCESS;
+    }
+
+    // 0x47E800
+    dllexport gnu_noinline int32_t thiscall write_sprite(SpriteVertex* vertices) asm_symbol_rel(0x47E800) {
+        SpriteVertex* sprite_write_cursor = this->sprite_write_cursor;
+        
+        // 6 because 2 triangles
+        if (sprite_write_cursor + 6 >= array_end_addr(this->sprite_vertex_data)) {
+            return 1;
+        }
+
+        sprite_write_cursor[0] = vertices[0];
+        sprite_write_cursor[1] = vertices[1];
+        sprite_write_cursor[2] = vertices[2];
+
+        sprite_write_cursor[3] = vertices[1];
+        sprite_write_cursor[4] = vertices[2];
+        sprite_write_cursor[5] = vertices[3];
+
+        this->sprite_write_cursor += 6;
+
+        ++this->unrendered_sprite_count;
+
+        return 0;
+    }
+
+#if INCLUDE_PATCH_CODE
+    dllexport gnu_noinline int32_t thiscall write_rainbow_sprite(SpriteVertex* vertices) {
+        SpriteVertex* sprite_write_cursor = this->sprite_write_cursor;
+
+        // 6 because 2 triangles
+        if (sprite_write_cursor + 6 >= array_end_addr(this->sprite_vertex_data)) {
+            return 1;
+        }
+        rand_s((unsigned int*)&sprite_write_cursor[0].diffuse);
+        rand_s((unsigned int*)&sprite_write_cursor[1].diffuse);
+        rand_s((unsigned int*)&sprite_write_cursor[2].diffuse);
+        rand_s((unsigned int*)&sprite_write_cursor[5].diffuse);
+        
+        ALPHA(sprite_write_cursor[0].diffuse) = ALPHA(vertices[0].diffuse);
+        ALPHA(sprite_write_cursor[1].diffuse) = ALPHA(vertices[1].diffuse);
+        ALPHA(sprite_write_cursor[2].diffuse) = ALPHA(vertices[2].diffuse);
+        ALPHA(sprite_write_cursor[5].diffuse) = ALPHA(vertices[3].diffuse);
+
+        sprite_write_cursor[0].position = vertices[0].position;
+        sprite_write_cursor[0].texture_uv = vertices[0].texture_uv;
+        sprite_write_cursor[1].position = vertices[1].position;
+        sprite_write_cursor[1].texture_uv = vertices[1].texture_uv;
+        sprite_write_cursor[2].position = vertices[2].position;
+        sprite_write_cursor[2].texture_uv = vertices[2].texture_uv;
+
+        sprite_write_cursor[3].position = vertices[1].position;
+        sprite_write_cursor[3].texture_uv = vertices[1].texture_uv;
+        sprite_write_cursor[3].diffuse = sprite_write_cursor[1].diffuse;
+        sprite_write_cursor[4].position = vertices[2].position;
+        sprite_write_cursor[4].texture_uv = vertices[2].texture_uv;
+        sprite_write_cursor[4].diffuse = sprite_write_cursor[2].diffuse;
+        sprite_write_cursor[5].position = vertices[3].position;
+        sprite_write_cursor[5].texture_uv = vertices[3].texture_uv;
+        
+
+        this->sprite_write_cursor += 6;
+
+        ++this->unrendered_sprite_count;
+
+        return 0;
+    }
+#endif
+
+#define RENDER_VERTICES_DEFAULT 0
+#define RENDER_VERTICES_ROUND_INPUTS 0x01
+#define RENDER_VERTICES_IGNORE_COLORS 0x02
+
+    // 0x47DCE0
+    dllexport gnu_noinline ZUNResult thiscall __render_vertices(AnmVM* vm, uint32_t flags) asm_symbol_rel(0x47DCE0) {
+        SPRITE_VERTEX_BUFFER_A[0].position.as2() += this->__float2_D0;
+        SPRITE_VERTEX_BUFFER_A[1].position.as2() += this->__float2_D0;
+        SPRITE_VERTEX_BUFFER_A[2].position.as2() += this->__float2_D0;
+        SPRITE_VERTEX_BUFFER_A[3].position.as2() += this->__float2_D0;
+        SPRITE_VERTEX_BUFFER_A[0].position.as2() += this->__float2_D8;
+        SPRITE_VERTEX_BUFFER_A[1].position.as2() += this->__float2_D8;
+        SPRITE_VERTEX_BUFFER_A[2].position.as2() += this->__float2_D8;
+        SPRITE_VERTEX_BUFFER_A[3].position.as2() += this->__float2_D8;
+        if (flags & RENDER_VERTICES_ROUND_INPUTS) {
+            long double A = CRT::rint_asm(SPRITE_VERTEX_BUFFER_A[0].position.x) - 0.5f;
+            long double B = CRT::rint_asm(SPRITE_VERTEX_BUFFER_A[1].position.x) - 0.5f;
+            long double C = CRT::rint_asm(SPRITE_VERTEX_BUFFER_A[0].position.y) - 0.5f;
+            long double D = CRT::rint_asm(SPRITE_VERTEX_BUFFER_A[2].position.y) - 0.5f;
+            SPRITE_VERTEX_BUFFER_A[2].position.y = D;
+            SPRITE_VERTEX_BUFFER_A[3].position.y = D;
+            SPRITE_VERTEX_BUFFER_A[0].position.y = C;
+            SPRITE_VERTEX_BUFFER_A[1].position.y = C;
+            SPRITE_VERTEX_BUFFER_A[1].position.x = B;
+            SPRITE_VERTEX_BUFFER_A[3].position.x = B;
+            SPRITE_VERTEX_BUFFER_A[0].position.x = A;
+            SPRITE_VERTEX_BUFFER_A[2].position.x = A;
+        }
+        vm->data.__render_quad[0] = SPRITE_VERTEX_BUFFER_A[0].position.as3();
+        vm->data.__render_quad[1] = SPRITE_VERTEX_BUFFER_A[1].position.as3();
+        vm->data.__render_quad[2] = SPRITE_VERTEX_BUFFER_A[2].position.as3();
+        vm->data.__render_quad[3] = SPRITE_VERTEX_BUFFER_A[3].position.as3();
+
+        SPRITE_VERTEX_BUFFER_A[0].texture_uv.x = vm->data.sprite_uv_quad[0].x + vm->data.uv_scroll.x;
+        SPRITE_VERTEX_BUFFER_A[0].texture_uv.y = vm->data.sprite_uv_quad[0].y + vm->data.uv_scroll.y;
+        SPRITE_VERTEX_BUFFER_A[1].texture_uv.x = vm->data.sprite_uv_quad[0].x + vm->data.uv_scroll.x + (vm->data.sprite_uv_quad[1].x - vm->data.sprite_uv_quad[0].x) * vm->data.uv_scale.x;
+        SPRITE_VERTEX_BUFFER_A[1].texture_uv.y = vm->data.sprite_uv_quad[1].y + vm->data.uv_scroll.y;
+        SPRITE_VERTEX_BUFFER_A[2].texture_uv.x = vm->data.sprite_uv_quad[2].x + vm->data.uv_scroll.x;
+        SPRITE_VERTEX_BUFFER_A[2].texture_uv.y = vm->data.sprite_uv_quad[0].y + vm->data.uv_scroll.y + (vm->data.sprite_uv_quad[2].y - vm->data.sprite_uv_quad[0].y) * vm->data.uv_scale.y;
+        SPRITE_VERTEX_BUFFER_A[3].texture_uv.x = vm->data.sprite_uv_quad[2].x + vm->data.uv_scroll.x + (vm->data.sprite_uv_quad[3].x - vm->data.sprite_uv_quad[2].x) * vm->data.uv_scale.x;
+        SPRITE_VERTEX_BUFFER_A[3].texture_uv.y = vm->data.sprite_uv_quad[1].y + vm->data.uv_scroll.y + (vm->data.sprite_uv_quad[3].y - vm->data.sprite_uv_quad[1].y) * vm->data.uv_scale.y;
+
+        StageCamera* camera = SUPERVISOR.current_camera_ptr;
+
+        float max_x = __max(__max(__max(SPRITE_VERTEX_BUFFER_A[0].position.x, SPRITE_VERTEX_BUFFER_A[1].position.x), SPRITE_VERTEX_BUFFER_A[2].position.x), SPRITE_VERTEX_BUFFER_A[3].position.x);
+        if (
+            !(max_x < camera->__viewport_10C.X)
+        ) {
+            float max_y = __max(__max(__max(SPRITE_VERTEX_BUFFER_A[0].position.y, SPRITE_VERTEX_BUFFER_A[1].position.y), SPRITE_VERTEX_BUFFER_A[2].position.y), SPRITE_VERTEX_BUFFER_A[3].position.y);
+            if (
+                !(max_y < camera->__viewport_10C.Y)
+            ) {
+                float min_x = __min(__min(__min(SPRITE_VERTEX_BUFFER_A[0].position.x, SPRITE_VERTEX_BUFFER_A[1].position.x), SPRITE_VERTEX_BUFFER_A[2].position.x), SPRITE_VERTEX_BUFFER_A[3].position.x);
+                if (
+                    !(min_x > (camera->__viewport_10C.X + camera->__viewport_10C.Width))
+                ) {
+                    float min_y = __min(__min(__min(SPRITE_VERTEX_BUFFER_A[0].position.y, SPRITE_VERTEX_BUFFER_A[1].position.y), SPRITE_VERTEX_BUFFER_A[2].position.y), SPRITE_VERTEX_BUFFER_A[3].position.y);
+                    if (
+                        !(min_y > (camera->__viewport_10C.Y + camera->__viewport_10C.Height))
+                    ) {
+
+                        int32_t sprite_index = ANM_MANAGER_PTR->loaded_anm_files[vm->data.slot2]->sprites[vm->data.sprite_id].__index_8;
+                        if (this->__index_3120E04 != sprite_index) {
+                            this->__index_3120E04 = sprite_index;
+                            this->flush_sprites();
+                            sprite_index = this->__index_3120E04;
+                            SUPERVISOR.d3d_device->SetTexture(0, this->loaded_anm_files[sprite_index >> 8]->images[(uint8_t)sprite_index].d3d_texture);
+                        }
+
+                        if (!this->__sbyte_3120E0A) {
+                            this->flush_sprites();
+                            this->__sbyte_3120E0A = 1;
+                        }
+
+                        if (!(flags & RENDER_VERTICES_IGNORE_COLORS)) {
+                            uint32_t color_mode = vm->data.color_mode;
+                            switch (color_mode) {
+                                case 0: case 1: {
+                                    uint8_t r, g, b, a;
+                                    D3DCOLOR color = color_mode == 0 ? vm->data.color1 : vm->data.color2;
+                                    if (
+                                        vm->data.colorize_children &&
+                                        vm->controller.parent
+                                    ) {
+                                        D3DCOLOR parent_color = vm->controller.parent->data.mixed_inherited_color;
+                                        r = std::max(RED(color) * RED(parent_color) >> 7, 0xFF);
+                                        g = std::max(GREEN(color) * GREEN(parent_color) >> 7, 0xFF);
+                                        b = std::max(BLUE(color) * BLUE(parent_color) >> 7, 0xFF);
+                                        a = std::max(ALPHA(color) * ALPHA(parent_color) >> 7, 0xFF);
+                                        color = PackD3DCOLOR(a, r, g, b);
+                                    } else {
+                                        a = ALPHA(color);
+                                        r = RED(color);
+                                        g = GREEN(color);
+                                        b = BLUE(color);
+                                    }
+                                    vm->data.mixed_inherited_color = color;
+                                    if (this->__int_39724B4) {
+                                        r = std::max(r * RED(this->__color_39724B0) >> 7, 0xFF);
+                                        g = std::max(g * GREEN(this->__color_39724B0) >> 7, 0xFF);
+                                        b = std::max(b * BLUE(this->__color_39724B0) >> 7, 0xFF);
+                                        a = std::max(a * ALPHA(this->__color_39724B0) >> 7, 0xFF);
+                                        color = PackD3DCOLOR(a, r, g, b);
+                                    }
+                                    SPRITE_VERTEX_BUFFER_A[0].diffuse = color;
+                                    SPRITE_VERTEX_BUFFER_A[1].diffuse = color;
+                                    SPRITE_VERTEX_BUFFER_A[3].diffuse = color;
+                                    SPRITE_VERTEX_BUFFER_A[2].diffuse = color;
+                                    break;
+                                }
+                                case 2: case 3: {
+                                    uint8_t r1, g1, b1, a1;
+                                    uint8_t r2, g2, b2, a2;
+                                    D3DCOLOR color1 = vm->data.color1;
+                                    D3DCOLOR color2 = vm->data.color2;
+                                    if (this->__int_39724B4) {
+                                        r1 = std::max(RED(color1) * RED(this->__color_39724B0) >> 7, 0xFF);
+                                        g1 = std::max(GREEN(color1) * GREEN(this->__color_39724B0) >> 7, 0xFF);
+                                        b1 = std::max(BLUE(color1) * BLUE(this->__color_39724B0) >> 7, 0xFF);
+                                        a1 = std::max(ALPHA(color1) * ALPHA(this->__color_39724B0) >> 7, 0xFF);
+                                        r2 = std::max(RED(color2) * RED(this->__color_39724B0) >> 7, 0xFF);
+                                        g2 = std::max(GREEN(color2) * GREEN(this->__color_39724B0) >> 7, 0xFF);
+                                        b2 = std::max(BLUE(color2) * BLUE(this->__color_39724B0) >> 7, 0xFF);
+                                        a2 = std::max(ALPHA(color2) * ALPHA(this->__color_39724B0) >> 7, 0xFF);
+                                        color1 = PackD3DCOLOR(a1, r1, g1, b1);
+                                        color2 = PackD3DCOLOR(a2, r2, g2, b2);
+                                    }
+                                    SPRITE_VERTEX_BUFFER_A[0].diffuse = color1;
+                                    SPRITE_VERTEX_BUFFER_A[3].diffuse = color2;
+                                    if (color_mode == 2) {
+                                        SPRITE_VERTEX_BUFFER_A[1].diffuse = color2;
+                                        SPRITE_VERTEX_BUFFER_A[2].diffuse = color1;
+                                    } else {
+                                        SPRITE_VERTEX_BUFFER_A[1].diffuse = color1;
+                                        SPRITE_VERTEX_BUFFER_A[2].diffuse = color2;
+                                    }
+                                    break;
+                                }
+                                case 4: {
+                                    uint8_t r, g, b, a;
+                                    D3DCOLOR color = vm->data.color1;
+                                    r = RED(color) * RED(vm->data.color2) / 0xFF;
+                                    g = GREEN(color) * GREEN(vm->data.color2) / 0xFF;
+                                    b = BLUE(color) * BLUE(vm->data.color2) / 0xFF;
+                                    a = ALPHA(color) * ALPHA(vm->data.color2) / 0xFF;
+                                    if (
+                                        vm->data.colorize_children &&
+                                        vm->controller.parent
+                                    ) {
+                                        D3DCOLOR parent_color = vm->controller.parent->data.mixed_inherited_color;
+                                        r = std::max(r * RED(parent_color) >> 7, 0xFF);
+                                        g = std::max(g * GREEN(parent_color) >> 7, 0xFF);
+                                        parent_color = vm->controller.parent->data.mixed_inherited_color; // why tho
+                                        b = std::max(b * BLUE(parent_color) >> 7, 0xFF);
+                                        a = std::max(a * ALPHA(parent_color) >> 7, 0xFF);
+                                    }
+                                    color = PackD3DCOLOR(a, r, g, b);
+                                    vm->data.mixed_inherited_color = color;
+                                    if (this->__int_39724B4) {
+                                        r = std::max(r * RED(this->__color_39724B0) >> 7, 0xFF);
+                                        g = std::max(g * GREEN(this->__color_39724B0) >> 7, 0xFF);
+                                        b = std::max(b * BLUE(this->__color_39724B0) >> 7, 0xFF);
+                                        a = std::max(a * ALPHA(this->__color_39724B0) >> 7, 0xFF);
+                                        color = PackD3DCOLOR(a, r, g, b);
+                                    }
+                                    SPRITE_VERTEX_BUFFER_A[0].diffuse = color;
+                                    SPRITE_VERTEX_BUFFER_A[1].diffuse = color;
+                                    SPRITE_VERTEX_BUFFER_A[3].diffuse = color;
+                                    SPRITE_VERTEX_BUFFER_A[2].diffuse = color;
+                                    break;
+                                }
+                                case 5: case 6: case 7: // no, these don't just use default. It's actually empty cases
+                                    break;
+                            }
+                        }
+
+                        this->setup_render_state_for_vm(vm);
+                        this->write_sprite(SPRITE_VERTEX_BUFFER_A);
+                    }
+                }
+            }
+        }
+        return ZUN_SUCCESS;
+    }
+
+    // 0x47F530
+    dllexport gnu_noinline ZUNResult thiscall __sub_47F530(AnmVM* vm) asm_symbol_rel(0x47F530) {
+        if (ZUN_SUCCEEDED(vm->__sub_47F090())) {
+
+            Float3 position = vm->data.position + vm->controller.position + vm->data.__position_2;
+
+            StageCamera* camera = SUPERVISOR.current_camera_ptr;
+
+            position.as2() -= camera->position.as2();
+
+            float draw_begin = camera->sky.begin_distance;
+            float draw_distance = draw_begin - camera->sky.end_distance;
+
+            if (
+                vm->data.origin_mode != 0 &&
+                !vm->controller.parent
+            ) {
+                position.x += WINDOW_DATA.__scaled_width * 0.5f;
+                position.y += (WINDOW_DATA.__scaled_height - 448.0f) * 0.5f;
+            }
+
+            float length = position.length();
+
+            int32_t color_mode = vm->data.color_mode;
+            switch (color_mode) {
+                case 0: case 1: {
+                    uint8_t r, g, b, a;
+                    D3DCOLOR color = color_mode == 0 ? vm->data.color1 : vm->data.color2;
+                    r = RED(color);
+                    g = GREEN(color);
+                    b = BLUE(color);
+                    a = ALPHA(color);
+                    if (this->__int_39724B4) {
+                        r = std::max(r * RED(this->__color_39724B0) >> 7, 0xFF);
+                        g = std::max(g * GREEN(this->__color_39724B0) >> 7, 0xFF);
+                        b = std::max(b * BLUE(this->__color_39724B0) >> 7, 0xFF);
+                        a = std::max(a * ALPHA(this->__color_39724B0) >> 7, 0xFF);
+                        color = PackD3DCOLOR(a, r, g, b);
+                    }
+                    if (length < draw_begin) {
+                        float E = (draw_begin - length) / draw_distance;
+                        if (E >= 1.0f) {
+                            return ZUN_ERROR;
+                        }
+                        BLUE(SPRITE_VERTEX_BUFFER_A[0].diffuse) = b - (int32_t)((b - (int32_t)camera->sky.color_components.b) * E);
+                        GREEN(SPRITE_VERTEX_BUFFER_A[0].diffuse) = g - (int32_t)((g - (int32_t)camera->sky.color_components.g) * E);
+                        RED(SPRITE_VERTEX_BUFFER_A[0].diffuse) = r - (int32_t)((r - (int32_t)camera->sky.color_components.r) * E);
+                        ALPHA(SPRITE_VERTEX_BUFFER_A[0].diffuse) = a * (1.0f - E * E * E);
+                        color = SPRITE_VERTEX_BUFFER_A[0].diffuse;
+                    } else {
+                        SPRITE_VERTEX_BUFFER_A[0].diffuse = color;
+                    }
+                    if (vm->data.enable_camera_fade) {
+                        float F = vm->data.__float_540;
+                        if (F >= length) {
+                            return ZUN_ERROR;
+                        }
+                        float G = vm->data.__float_53C;
+                        if (G > length) {
+                            ALPHA(SPRITE_VERTEX_BUFFER_A[0].diffuse) = ALPHA(color) * (1.0f - (G - length) / (G - F));
+                            color = SPRITE_VERTEX_BUFFER_A[0].diffuse;
+                        }
+                    }
+                    SPRITE_VERTEX_BUFFER_A[3].diffuse = color;
+                    SPRITE_VERTEX_BUFFER_A[2].diffuse = color;
+                    SPRITE_VERTEX_BUFFER_A[1].diffuse = color;
+                    break;
+                }
+                case 2: case 3: {
+                    uint8_t r1, g1, b1, a1;
+                    uint8_t r2, g2, b2, a2;
+                    D3DCOLOR color1 = vm->data.color1;
+                    D3DCOLOR color2 = vm->data.color2;
+                    if (this->__int_39724B4) {
+                        r1 = std::max(RED(color1) * RED(this->__color_39724B0) >> 7, 0xFF);
+                        g1 = std::max(GREEN(color1) * GREEN(this->__color_39724B0) >> 7, 0xFF);
+                        b1 = std::max(BLUE(color1) * BLUE(this->__color_39724B0) >> 7, 0xFF);
+                        a1 = std::max(ALPHA(color1) * ALPHA(this->__color_39724B0) >> 7, 0xFF);
+                        r2 = std::max(RED(color2) * RED(this->__color_39724B0) >> 7, 0xFF);
+                        g2 = std::max(GREEN(color2) * GREEN(this->__color_39724B0) >> 7, 0xFF);
+                        b2 = std::max(BLUE(color2) * BLUE(this->__color_39724B0) >> 7, 0xFF);
+                        a2 = std::max(ALPHA(color2) * ALPHA(this->__color_39724B0) >> 7, 0xFF);
+                        color1 = PackD3DCOLOR(a1, r1, g1, b1);
+                        color2 = PackD3DCOLOR(a2, r2, g2, b2);
+                    }
+                    if (length > draw_begin) {
+                        float E = (draw_begin - length) / draw_distance;
+                        if (E >= 1.0f) {
+                            return ZUN_ERROR;
+                        }
+                        float F = 1.0f - E;
+                        BLUE(SPRITE_VERTEX_BUFFER_A[0].diffuse) = b1 - (int32_t)((b1 - (int32_t)camera->sky.color_components.b) * E);
+                        GREEN(SPRITE_VERTEX_BUFFER_A[0].diffuse) = g1 - (int32_t)((g1 - (int32_t)camera->sky.color_components.g) * E);
+                        RED(SPRITE_VERTEX_BUFFER_A[0].diffuse) = r1 - (int32_t)((r1 - (int32_t)camera->sky.color_components.r) * E);
+                        ALPHA(SPRITE_VERTEX_BUFFER_A[0].diffuse) = a1 * F;
+                        BLUE(SPRITE_VERTEX_BUFFER_A[3].diffuse) = b2 - (int32_t)((b2 - (int32_t)camera->sky.color_components.b) * E);
+                        GREEN(SPRITE_VERTEX_BUFFER_A[3].diffuse) = g2 - (int32_t)((g2 - (int32_t)camera->sky.color_components.g) * E);
+                        RED(SPRITE_VERTEX_BUFFER_A[3].diffuse) = r2 - (int32_t)((r2 - (int32_t)camera->sky.color_components.r) * E);
+                        ALPHA(SPRITE_VERTEX_BUFFER_A[3].diffuse) = a2 * F;
+                        color1 = SPRITE_VERTEX_BUFFER_A[0].diffuse;
+                        color2 = SPRITE_VERTEX_BUFFER_A[3].diffuse;
+                    }
+                    else {
+                        SPRITE_VERTEX_BUFFER_A[0].diffuse = color1;
+                        SPRITE_VERTEX_BUFFER_A[3].diffuse = color2;
+                    }
+                    if (vm->data.color_mode == 2) {
+                        SPRITE_VERTEX_BUFFER_A[1].diffuse = color2;
+                        SPRITE_VERTEX_BUFFER_A[2].diffuse = color1;
+                    } else {
+                        SPRITE_VERTEX_BUFFER_A[1].diffuse = color1;
+                        SPRITE_VERTEX_BUFFER_A[2].diffuse = color2;
+                    }
+                    break;
+                }
+                case 4: {
+                    uint8_t r, g, b, a;
+                    D3DCOLOR color = vm->data.color1;
+                    r = RED(color) * RED(vm->data.color2) / 0xFF;
+                    g = GREEN(color) * GREEN(vm->data.color2) / 0xFF;
+                    b = BLUE(color) * BLUE(vm->data.color2) / 0xFF;
+                    a = ALPHA(color) * ALPHA(vm->data.color2) / 0xFF;
+                    if (this->__int_39724B4) {
+                        r = std::max(r * RED(this->__color_39724B0) >> 7, 0xFF);
+                        g = std::max(g * GREEN(this->__color_39724B0) >> 7, 0xFF);
+                        b = std::max(b * BLUE(this->__color_39724B0) >> 7, 0xFF);
+                        a = std::max(a * ALPHA(this->__color_39724B0) >> 7, 0xFF);
+                        color = PackD3DCOLOR(a, r, g, b);
+                    }
+                    if (length > draw_begin) {
+                        float E = (draw_begin - length) / draw_distance;
+                        if (E >= 1.0f) {
+                            return ZUN_ERROR;
+                        }
+                        BLUE(SPRITE_VERTEX_BUFFER_A[0].diffuse) = b - (int32_t)((b - (int32_t)camera->sky.color_components.b) * E);
+                        GREEN(SPRITE_VERTEX_BUFFER_A[0].diffuse) = g - (int32_t)((g - (int32_t)camera->sky.color_components.g) * E);
+                        RED(SPRITE_VERTEX_BUFFER_A[0].diffuse) = r - (int32_t)((r - (int32_t)camera->sky.color_components.r) * E);
+                        ALPHA(SPRITE_VERTEX_BUFFER_A[0].diffuse) = a * (1.0f - E * E * E);
+                        color = SPRITE_VERTEX_BUFFER_A[0].diffuse;
+                    } else {
+                        SPRITE_VERTEX_BUFFER_A[0].diffuse = color;
+                    }
+                    SPRITE_VERTEX_BUFFER_A[3].diffuse = color;
+                    SPRITE_VERTEX_BUFFER_A[2].diffuse = color;
+                    SPRITE_VERTEX_BUFFER_A[1].diffuse = color;
+                    break;
+                }
+            }
+            return this->__render_vertices(vm, RENDER_VERTICES_IGNORE_COLORS);
+        }
+        return ZUN_ERROR;
+    }
+
+    // 0x480160
+    dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_8_F(AnmVM* vm) asm_symbol_rel(0x480160) {
+        if (
+            vm->data.visible &&
+            vm->data.__visible2 &&
+            vm->get_alpha()
+        ) {
+            if (this->unrendered_sprite_count) {
+                this->flush_sprites();
+            }
+            if (vm->data.disable_z_write) {
+                SUPERVISOR.d3d_disable_zwrite();
+            } else {
+                SUPERVISOR.d3d_enable_zwrite();
+            }
+            if (!vm->data.__unknown_std_flag_A) {
+                vm->data.scale_enabled = false;
+                vm->data.__matrix_414 = vm->data.__matrix_3D4;
+                vm->data.__matrix_414.m[0][0] *= vm->data.scale.x * vm->data.scale2.x;
+                vm->data.__matrix_414.m[1][1] *= vm->data.scale.y * vm->data.scale2.y;
+
+                switch (vm->data.resolution_mode) {
+                    case 1:
+                        vm->data.__matrix_414.m[0][0] * WINDOW_DATA.__game_scale;
+                        vm->data.__matrix_414.m[1][1] * WINDOW_DATA.__game_scale;
+                        break;
+                    case 2:
+                        vm->data.__matrix_414.m[0][0] * WINDOW_DATA.__game_scale * 0.5f;
+                        vm->data.__matrix_414.m[1][1] * WINDOW_DATA.__game_scale * 0.5f;
+                        break;
+                }
+
+                Float3 rotation = *vm->get_controller_rotation();
+
+                switch (vm->data.rotation_mode) {
+                    case 0:
+                        vm->data.__matrix_414.rotate_x(rotation.x);
+                        vm->data.__matrix_414.rotate_y(rotation.y);
+                        vm->data.__matrix_414.rotate_z(rotation.z);
+                        break;
+                    case 1:
+                        vm->data.__matrix_414.rotate_x(rotation.x);
+                        vm->data.__matrix_414.rotate_z(rotation.z);
+                        vm->data.__matrix_414.rotate_y(rotation.y);
+                        break;
+                    case 2:
+                        vm->data.__matrix_414.rotate_y(rotation.y);
+                        vm->data.__matrix_414.rotate_x(rotation.x);
+                        vm->data.__matrix_414.rotate_z(rotation.z);
+                        break;
+                    case 3:
+                        vm->data.__matrix_414.rotate_y(rotation.y);
+                        vm->data.__matrix_414.rotate_z(rotation.z);
+                        vm->data.__matrix_414.rotate_x(rotation.x);
+                        break;
+                    case 4:
+                        vm->data.__matrix_414.rotate_z(rotation.z);
+                        vm->data.__matrix_414.rotate_x(rotation.x);
+                        vm->data.__matrix_414.rotate_y(rotation.y);
+                        break;
+                    case 5:
+                        vm->data.__matrix_414.rotate_z(rotation.z);
+                        vm->data.__matrix_414.rotate_y(rotation.y);
+                        vm->data.__matrix_414.rotate_z(rotation.z);
+                        break;
+                }
+                vm->data.rotation_enabled = false;
+            }
+
+            D3DMATRIXZ matrix = vm->data.__matrix_414;
+
+            Float3 position;
+            clang_forceinline vm->get_render_position(&position);
+
+            this->setup_render_state_for_vm(vm);
+
+            D3DCOLOR color = vm->data.color_mode == 0 ? vm->data.color1 : vm->data.color2;
+
+            if (this->__int_39724B4) {
+                uint8_t r, g, b, a;
+                r = std::max(r * RED(this->__color_39724B0) >> 7, 0xFF);
+                g = std::max(g * GREEN(this->__color_39724B0) >> 7, 0xFF);
+                b = std::max(b * BLUE(this->__color_39724B0) >> 7, 0xFF);
+                a = std::max(a * ALPHA(this->__color_39724B0) >> 7, 0xFF);
+                color = PackD3DCOLOR(a, r, g, b);
+            }
+
+            if (this->current_texture_blend_color != color) {
+                this->flush_sprites();
+                this->current_texture_blend_color = color;
+                SUPERVISOR.d3d_device->SetRenderState(D3DRS_TEXTUREFACTOR, color);
+            }
+
+            matrix.m[3][2] += vm->data.position.z + vm->controller.position.z + vm->data.__position_2.z;
+            
+            SUPERVISOR.d3d_device->SetTransform(D3DTS_WORLDMATRIX(0), &matrix.D3DX());
+
+            AnmSprite* sprite = &ANM_MANAGER_PTR->loaded_anm_files[vm->data.slot2]->sprites[vm->data.sprite_id];
+            int32_t sprite_index = sprite->__index_8;
+            if (this->__index_3120E04 != sprite_index) {
+                this->__index_3120E04 = sprite_index;
+                this->flush_sprites();
+                sprite_index = this->__index_3120E04;
+                SUPERVISOR.d3d_device->SetTexture(0, this->loaded_anm_files[sprite_index >> 8]->images[(uint8_t)sprite_index].d3d_texture);
+            }
+
+            if (
+                this->__current_sprite != sprite ||
+                vm->data.uv_scroll.x != 0.0f ||
+                vm->data.uv_scroll.y != 1.0f ||
+                vm->data.uv_scale.y != 1.0f
+            ) {
+                this->__current_sprite = sprite;
+
+                D3DMATRIXZ temp = vm->data.__matrix_454;
+                *(Float2*)&temp.m[2][0] = vm->data.sprite_uv_quad[0] + vm->data.uv_scroll;
+                temp.m[0][0] *= vm->data.uv_scale.x;
+                temp.m[1][1] *= vm->data.uv_scale.y;
+                SUPERVISOR.d3d_device->SetTransform(D3DTS_TEXTURE0, &temp.D3DX());
+            }
+
+            if (this->__sbyte_3120E0A != 2) {
+                SUPERVISOR.d3d_device->SetStreamSource(0, this->__d3d_vertex_buffer_3120E18, 0, sizeof(UnknownVertexA));
+                SUPERVISOR.d3d_device->SetFVF(UnknownVertexA::FVF_TYPE);
+                SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+                SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+                this->__sbyte_3120E0A = 2;
+            }
+
+            this->set_modulate_op();
+
+            SUPERVISOR.d3d_device->DrawPrimitive(D3DPT_TRIANGLESTRIP, (vm->data.y_anchor_mode * 3 + vm->data.x_anchor_mode) * 4, 2);
+            return ZUN_SUCCESS;
+        }
+        return ZUN_ERROR;
+    }
+
+    // 0x480F70
+    dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_9_C_D_E(AnmVM* vm, void* special_data, int32_t arg3) asm_symbol_rel(0x480F70) {
+        // TODO
+    }
+
+    // 0x4810D0
+    dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_B(AnmVM* vm, void* special_data, int32_t arg3) asm_symbol_rel(0x4810D0) {
+        // TODO
+    }
+
+    // 0x480A50
+    dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_18_19(AnmVM* vm, void* special_data, int32_t arg3) asm_symbol_rel(0x480A50) {
+        // TODO
+    }
+
+    // 0x481210
+    dllexport gnu_noinline ZUNResult thiscall draw_vm(AnmVM* vm) asm_symbol_rel(0x481210) {
+        vm->run_on_draw();
+        if (
+            !vm->data.visible ||
+            !vm->data.__visible2 ||
+            vm->data.__vm_state != Normal
+        ) {
+            return ZUN_ERROR;
+        }
+
+        SUPERVISOR.d3d_disable_zwrite();
+
+        switch (vm->data.type) {
+            case 0:
+                if (!vm->get_alpha() && !vm->get_alpha2()) {
+                    return ZUN_ERROR;
+                }
+                vm->__get_vertex_positions(&SPRITE_VERTEX_BUFFER_A[0].position, &SPRITE_VERTEX_BUFFER_A[1].position, &SPRITE_VERTEX_BUFFER_A[2].position, &SPRITE_VERTEX_BUFFER_A[3].position);
+                return this->__render_vertices(vm, RENDER_VERTICES_ROUND_INPUTS);
+            case 1: case 3:
+                if (!vm->get_alpha() && !vm->get_alpha2()) {
+                    return ZUN_ERROR;
+                }
+                vm->__get_rotated_vertex_positions(&SPRITE_VERTEX_BUFFER_A[0].position, &SPRITE_VERTEX_BUFFER_A[1].position, &SPRITE_VERTEX_BUFFER_A[2].position, &SPRITE_VERTEX_BUFFER_A[3].position);
+                return this->__render_vertices(vm, RENDER_VERTICES_DEFAULT);
+            case 4:
+                if (!vm->get_alpha() && !vm->get_alpha2()) {
+                    return ZUN_ERROR;
+                }
+                vm->__sub_47F090();
+                return this->__render_vertices(vm, RENDER_VERTICES_DEFAULT);
+            case 5: {
+                if (!vm->get_alpha() && !vm->get_alpha2()) {
+                    return ZUN_ERROR;
+                }
+                this->__draw_vm_type_5_7(vm);
+                ZUNResult ret = this->__render_vertices(vm, RENDER_VERTICES_DEFAULT);
+                SPRITE_VERTEX_BUFFER_A[3].position.w = 1.0f;
+                SPRITE_VERTEX_BUFFER_A[2].position.w = 1.0f;
+                SPRITE_VERTEX_BUFFER_A[1].position.w = 1.0f;
+                SPRITE_VERTEX_BUFFER_A[0].position.w = 1.0f;
+                return ret;
+            }
+            case 6:
+                if (!vm->get_alpha() && !vm->get_alpha2()) {
+                    return ZUN_ERROR;
+                }
+                return this->__sub_47F530(vm);
+            case 7: {
+                if (!vm->get_alpha() && !vm->get_alpha2()) {
+                    return ZUN_ERROR;
+                }
+                this->__draw_vm_type_5_7(vm);
+
+                StageCamera* camera = SUPERVISOR.current_camera_ptr;
+                float draw_diff = camera->sky.begin_distance - camera->sky.end_distance;
+
+                D3DCOLOR color = vm->data.color_mode == 0 ? vm->data.color1 : vm->data.color2;
+
+                Float4 float4_array[4];
+
+                Float4* float4_ptr = float4_array;
+                SpriteVertex* sprite_vertex_ptr = SPRITE_VERTEX_BUFFER_A;
+                UnknownVertexA* vertexA_ptr = this->__vertex_array_3120E1C;
+                nounroll for (
+                    size_t i = 0;
+                    i < 4;
+                    ++i, ++sprite_vertex_ptr, ++vertexA_ptr, ++float4_ptr
+                ) {
+                    D3DXVec3Transform(&float4_ptr->D3DX(), &vertexA_ptr->position.D3DX(), &this->__matrix_31207B0.D3DX());
+                    camera = SUPERVISOR.current_camera_ptr;
+                    float length = float4_ptr->distance3(&camera->position);
+                    float draw_begin = camera->sky.begin_distance;
+                    if (length > draw_begin) {
+                        float E = (draw_begin - length) / draw_diff;
+                        if (E >= 1.0f) {
+                            sprite_vertex_ptr->diffuse = camera->sky.color;
+                            ALPHA(sprite_vertex_ptr->diffuse) = ALPHA(color);
+                        } else {
+                            uint8_t b = BLUE(color);
+                            uint8_t g = GREEN(color);
+                            uint8_t r = RED(color);
+                            uint8_t a = ALPHA(color);
+                            BLUE(sprite_vertex_ptr->diffuse) = b - (int32_t)((b - camera->sky.color_components.b) * E);
+                            camera = SUPERVISOR.current_camera_ptr; // why
+                            GREEN(sprite_vertex_ptr->diffuse) = g - (int32_t)((g - camera->sky.color_components.g) * E);
+                            RED(sprite_vertex_ptr->diffuse) = r - (int32_t)((r - camera->sky.color_components.r) * E);
+                            ALPHA(sprite_vertex_ptr->diffuse) = a;
+                        }
+                    } else {
+                        sprite_vertex_ptr->diffuse = color;
+                    }
+                }
+
+                ZUNResult ret = this->__render_vertices(vm, RENDER_VERTICES_IGNORE_COLORS);
+                SPRITE_VERTEX_BUFFER_A[3].position.w = 1.0f;
+                SPRITE_VERTEX_BUFFER_A[2].position.w = 1.0f;
+                SPRITE_VERTEX_BUFFER_A[1].position.w = 1.0f;
+                SPRITE_VERTEX_BUFFER_A[0].position.w = 1.0f;
+                return ret;
+            }
+            case 8:
+                if (!vm->get_alpha() && !vm->get_alpha2()) {
+                    return ZUN_ERROR;
+                }
+                return this->__draw_vm_type_8_F(vm);
+            case 15: {
+                if (!vm->get_alpha() && !vm->get_alpha2()) {
+                    return ZUN_ERROR;
+                }
+                SUPERVISOR.d3d_enable_fog();
+                ZUNResult ret = this->__draw_vm_type_8_F(vm);
+                SUPERVISOR.d3d_disable_fog();
+                return ret;
+            }
+            case 9: case 12: case 13: case 14:
+                return this->__draw_vm_type_9_C_D_E(vm, vm->controller.special_data, vm->data.current_context.int_vars[0]);
+            case 11:
+                return this->__draw_vm_type_B(vm, vm->controller.special_data, vm->data.current_context.int_vars[0]);
+            case 24: case 25:
+                return this->__draw_vm_type_18_19(vm, vm->controller.special_data, vm->data.current_context.int_vars[0]);
+            case 2:
+                if (!vm->get_alpha() && !vm->get_alpha2()) {
+                    return ZUN_ERROR;
+                }
+                vm->__get_vertex_positions(&SPRITE_VERTEX_BUFFER_A[0].position, &SPRITE_VERTEX_BUFFER_A[1].position, &SPRITE_VERTEX_BUFFER_A[2].position, &SPRITE_VERTEX_BUFFER_A[3].position);
+                return this->__render_vertices(vm, RENDER_VERTICES_DEFAULT);
+            case 16: case 20: case 21: case 22: case 26: case 27:
+
+            case 17: case 18: case 19:
+
+
+        }
     }
 
     // 0x488260
@@ -13240,8 +14470,8 @@ struct AnmManager {
     dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_24(void* self) asm_symbol_rel(0x487AE0) {
         SUPERVISOR.set_camera_by_index_disable_zwrite(2);
         AnmManager* anm_manager = (AnmManager*)self;
-        anm_manager->__int2_D0.x = 0;
-        anm_manager->__int2_D0.y = 0;
+        anm_manager->__float2_D0.x = 0.0f;
+        anm_manager->__float2_D0.y = 0.0f;
         return anm_manager->render_layer(24);
     }
     // 0x487BC0
@@ -13899,8 +15129,8 @@ ValidateFieldOffset32(0x98, AnmManager, __dword_98);
 ValidateFieldOffset32(0xC0, AnmManager, __dword_C0);
 ValidateFieldOffset32(0xC4, AnmManager, __dword_C4);
 ValidateFieldOffset32(0xC8, AnmManager, __dword_C8);
-ValidateFieldOffset32(0xCC, AnmManager, __dword_CC);
-ValidateFieldOffset32(0xD0, AnmManager, __int2_D0);
+ValidateFieldOffset32(0xCC, AnmManager, __int_CC);
+ValidateFieldOffset32(0xD0, AnmManager, __float2_D0);
 ValidateFieldOffset32(0xD8, AnmManager, __float2_D8);
 ValidateFieldOffset32(0xE4, AnmManager, __vm_E4);
 ValidateFieldOffset32(0x6F0, AnmManager, world_list);
@@ -13925,7 +15155,7 @@ ValidateFieldOffset32(0x3120E0E, AnmManager, currently_using_point_filtering);
 ValidateFieldOffset32(0x3120E0F, AnmManager, currently_using_modulate_op);
 ValidateFieldOffset32(0x3120E10, AnmManager, current_u_sample_mode);
 ValidateFieldOffset32(0x3120E11, AnmManager, current_v_sample_mode);
-ValidateFieldOffset32(0x3120E14, AnmManager, __current_dword_3120E14);
+ValidateFieldOffset32(0x3120E14, AnmManager, __current_sprite);
 ValidateFieldOffset32(0x3120E18, AnmManager, __d3d_vertex_buffer_3120E18);
 ValidateFieldOffset32(0x3120E1C, AnmManager, __vertex_array_3120E1C);
 ValidateFieldOffset32(0x3120E6C, AnmManager, unrendered_sprite_count);
@@ -13939,6 +15169,7 @@ ValidateFieldOffset32(0x3960E80, AnmManager, primitive_render_cursor);
 ValidateFieldOffset32(0x3960E84, AnmManager, layer_heads);
 ValidateFieldOffset32(0x39724AC, AnmManager, prev_slow_id);
 ValidateFieldOffset32(0x39724B0, AnmManager, __color_39724B0);
+ValidateFieldOffset32(0x39724B4, AnmManager, __int_39724B4);
 ValidateStructSize32(0x39724B8, AnmManager);
 #pragma endregion
 
@@ -14026,14 +15257,19 @@ inline UpdateFuncRet thiscall Supervisor::on_tick() {
         WINDOW_DATA.__counter_2044 = counter - 1;
     }
 
+    UpdateFuncRet ret = UpdateFuncNext;
     switch (this->__int_ACC) {
         case 2:
             return UpdateFuncEnd0;
         case 0:
-            //this->__sub_454950();
+            ret = this->__sub_455040();
+            if (ret == UpdateFuncNext) {
+                WINDOW_DATA.__int_208C = WINDOW_DATA.__scaled_width / 2;
+                WINDOW_DATA.__int_2090 = (WINDOW_DATA.__scaled_height - 448) / 2;
+            }
     }
 
-    return UpdateFuncNext;
+    return ret;
 }
 
 // 0x455EC0
@@ -14050,7 +15286,7 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_455EC0() {
 
         AnmVM* arcade_vmA = this->__arcade_vm_ptr_A;
         if (arcade_vmA->data.visible) {
-            switch (WINDOW_DATA.__int_2050) {
+            switch (WINDOW_DATA.__scaled_width) {
                 case 640:
                     this->text_anm->__copy_data_to_vm_and_run(arcade_vmA, 66);
                     this->text_anm->__copy_data_to_vm_and_run(this->__arcade_vm_ptr_B, 72);
@@ -14071,7 +15307,7 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_455EC0() {
                     break;
             }
         }
-        if (WINDOW_DATA.__float_2070 == 1.5f) {
+        if (WINDOW_DATA.__game_scale == 1.5f) {
             this->__arcade_vm_ptr_C->data.nearest_neighbor = false;
         }
     }
@@ -14103,7 +15339,7 @@ dllexport gnu_noinline UpdateFuncRet fastcall GameThread::on_draw(void* ptr) {
     anm_manager->__dword_C4 = 0;
     anm_manager->__dword_C8 = 0;
     anm_manager->__dword_C0 = 0;
-    anm_manager->__dword_CC = 0;
+    anm_manager->__int_CC = 0;
     return UpdateFuncNext;
 }
 
@@ -14222,8 +15458,6 @@ dllexport gnu_noinline AnmLoaded* thiscall AnmVM::get_anm_loaded() {
     return ANM_MANAGER_PTR->loaded_anm_files[this->data.slot];
 }
 
-typedef struct LoadingThread LoadingThread;
-
 extern "C" {
     // 0x4CF3F8
     externcg LoadingThread* LOADING_THREAD_PTR asm("_LOADING_THREAD_PTR");
@@ -14275,7 +15509,7 @@ struct LoadingThread : ZUNTask {
 
         clang_forceinline this->__thread_C.stop_and_cleanup();
 
-
+        // TODO
 
         return ZUN_SUCCESS;
     }
@@ -14445,28 +15679,37 @@ struct EffectManager : ZUNTask {
         return UpdateFuncNext;
     }
 
-    // 0x42AC70
-    dllexport gnu_noinline static EffectManager* allocate() asm_symbol_rel(0x42AC70) {
-        EffectManager* effect_manager = new EffectManager();
-        EFFECT_MANAGER_PTR = effect_manager;
+    inline ZUNResult initialize() {
         if (
-            (effect_manager->bullet_anm = ANM_MANAGER_PTR->preload_anm(7, "bullet.anm")) &&
-            (effect_manager->effect_anm = ANM_MANAGER_PTR->preload_anm(8, "effect.anm"))
+            (this->bullet_anm = ANM_MANAGER_PTR->preload_anm(7, "bullet.anm")) &&
+            (this->effect_anm = ANM_MANAGER_PTR->preload_anm(8, "effect.anm"))
         ) {
-            effect_manager->__done_loading = 1;
+            this->__done_loading = 1;
         }
         else {
             LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
             // no return here?
         }
 
-        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, effect_manager);
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
         UpdateFuncRegistry::register_on_tick(update_func, 32);
-        effect_manager->on_tick_func = update_func;
-        update_func = new UpdateFunc(&on_draw, false, effect_manager);
+        this->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, false, this);
         UpdateFuncRegistry::register_on_draw(update_func, 39);
-        effect_manager->on_draw_func = update_func;
-        effect_manager->enable_funcs();
+        this->on_draw_func = update_func;
+        this->enable_funcs();
+
+        return ZUN_SUCCESS;
+    }
+
+    // 0x42AC70
+    dllexport gnu_noinline static EffectManager* allocate() asm_symbol_rel(0x42AC70) {
+        EffectManager* effect_manager = new EffectManager();
+        EFFECT_MANAGER_PTR = effect_manager;
+        if (ZUN_FAILED(effect_manager->initialize())) {
+            delete effect_manager;
+            return NULL;
+        }
         return effect_manager;
     }
 
@@ -14610,8 +15853,8 @@ ValidateStructSize32(0x2040, EffectManager);
 
 inline void StageCamera::__copy_int2_FC_to_anm_manager() {
     if (AnmManager* anm_manager = ANM_MANAGER_PTR) {
-        anm_manager->__int2_D0.x = this->__int2_FC.x;
-        anm_manager->__int2_D0.y = this->__int2_FC.y;
+        anm_manager->__float2_D0.x = this->__float2_FC.x;
+        anm_manager->__float2_D0.y = this->__float2_FC.y;
     }
 }
 
@@ -16234,7 +17477,7 @@ struct AsciiManager : ZUNTask {
 
             byteloop_strcpy(string.text, str);
             string.position = *position;
-            string.position *= WINDOW_DATA.__float_2070;
+            string.position *= WINDOW_DATA.__game_scale;
             string.group = this->group;
             string.color = this->color;
             string.scale = this->scale; // Copied as integers
@@ -16461,10 +17704,10 @@ public:
         AsciiManager* ascii_manager = new AsciiManager();
 
         const char* ascii_filename;
-        if (WINDOW_DATA.__float_2070 <= 1.1f) {
+        if (WINDOW_DATA.__game_scale <= 1.1f) {
             ascii_filename = "ascii.anm";
         }
-        else if (WINDOW_DATA.__float_2070 <= 1.6f) {
+        else if (WINDOW_DATA.__game_scale <= 1.6f) {
             ascii_filename = "ascii_960.anm";
         }
         else {
@@ -18777,7 +20020,8 @@ inline void PlayerBullet::on_tick() {
         }
 
         if (unknownA_ptr->__byte_21 != 2) {
-            //vm->__sub_481D20(idk);
+            Float3 vertex_positions[4];
+            vm->__get_vertex_quad(vertex_positions);
             if (this->__timer_C >= 15) {
                 // TODO: probably check for offscreen position
             }
@@ -32284,7 +33528,7 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__sub_486140(AnmImage* image
     D3DSURFACE_DESC surface_desc;
     surface->GetDesc(&surface_desc);
     this->__screw_with_texture_bits(texture);
-    float floatA = WINDOW_DATA.__float_2070;
+    float floatA = WINDOW_DATA.__game_scale;
     if (
         surface_desc.Width == width && surface_desc.Height == height &&
         (!image->entry->low_res_scale || !(floatA < 2.0f))
@@ -32318,7 +33562,7 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__sub_486140(AnmImage* image
         src_rect.right = offset_x + right;
         src_rect.top = offset_y;
         src_rect.bottom = offset_y + bottom;
-        DWORD filter = !image->entry->low_res_scale || !(WINDOW_DATA.__float_2070 < 2.0f) ? D3DX_FILTER_NONE : D3DX_FILTER_TRIANGLE | D3DX_FILTER_MIRROR_U | D3DX_FILTER_MIRROR_V;
+        DWORD filter = !image->entry->low_res_scale || !(WINDOW_DATA.__game_scale < 2.0f) ? D3DX_FILTER_NONE : D3DX_FILTER_TRIANGLE | D3DX_FILTER_MIRROR_U | D3DX_FILTER_MIRROR_V;
         D3DXLoadSurfaceFromSurface(
             surface2, NULL, NULL,
             surface, NULL, &src_rect, filter, 0
@@ -32352,7 +33596,7 @@ dllexport gnu_noinline int32_t stdcall __sub_486390(AnmImage* image, AnmTexture*
         .right = texture_width,
         .bottom = texture_width
     };
-    float floatA = WINDOW_DATA.__float_2070;
+    float floatA = WINDOW_DATA.__game_scale;
     if (entry->low_res_scale && floatA < 2.0f) {
         rectB.right = (float)texture_width * floatA * 0.5f;
     }
@@ -32401,9 +33645,9 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__sub_486BC0(AnmLoaded* anm_
         const char* image_filename = based_pointer<const char>(entry, entry->image_path_offset);
         if (image_filename[0] == '@') {
             if (image_filename[1] == 'R') {
-                entry->width = WINDOW_DATA.__int_2050;
-                entry->height = WINDOW_DATA.__int_2054;
-                __create_render_target_texture(&anm_loaded->images[entry_index], WINDOW_DATA.__int_2050, WINDOW_DATA.__int_2054);
+                entry->width = WINDOW_DATA.__scaled_width;
+                entry->height = WINDOW_DATA.__scaled_height;
+                __create_render_target_texture(&anm_loaded->images[entry_index], WINDOW_DATA.__scaled_width, WINDOW_DATA.__scaled_height);
                 goto skip_adding_image_size;
             }
             image_size = __create_normal_texture(&anm_loaded->images[entry_index], entry->format, entry->width, entry->height);
@@ -32442,8 +33686,8 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
     camera2->facing.z = dumb_local;
     dumb_local = 0.0f;
     camera2->rotation.z = dumb_local;
-    camera2->viewport.Width = WINDOW_DATA.__int_2050;
-    camera2->viewport.Height = WINDOW_DATA.__int_2054;
+    camera2->viewport.Width = WINDOW_DATA.__scaled_width;
+    camera2->viewport.Height = WINDOW_DATA.__scaled_height;
     camera2->__shaking_float3_A.x = 0.0f;
     camera2->__shaking_float3_A.y = 0.0f;
     camera2->viewport.MinZ = 0.0f;
@@ -32455,27 +33699,27 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
     camera2->__shaking_float3_B.y = 0.0f;
     dumb_local = 0.0f;
     camera2->__shaking_float3_B.z = dumb_local;
-    camera2->window_resolution.x = WINDOW_DATA.__int_2050;
-    camera2->window_resolution.y = WINDOW_DATA.__int_2054;
+    camera2->window_resolution.x = WINDOW_DATA.__scaled_width;
+    camera2->window_resolution.y = WINDOW_DATA.__scaled_height;
     camera2->__viewport_10C = camera2->viewport;
     camera2->__int2_104.x = 0;
     camera2->__int2_104.y = 0;
     camera2->__viewport_10C.X = 0;
     camera2->__viewport_10C.Y = 0;
-    camera2->__viewport_10C.Width = WINDOW_DATA.__int_2050;
-    camera2->__viewport_10C.Height = WINDOW_DATA.__int_2054;
-    camera2->__viewport_124.X = WINDOW_DATA.__float_2070 * 32.0f;
-    camera2->__viewport_124.Y = WINDOW_DATA.__float_2070 * 16.0f;
-    camera2->__viewport_124.Width = WINDOW_DATA.__float_2070 * 384.0f;
-    camera2->__viewport_124.Height = WINDOW_DATA.__float_2070 * 448.0f;
+    camera2->__viewport_10C.Width = WINDOW_DATA.__scaled_width;
+    camera2->__viewport_10C.Height = WINDOW_DATA.__scaled_height;
+    camera2->__viewport_124.X = WINDOW_DATA.__game_scale * 32.0f;
+    camera2->__viewport_124.Y = WINDOW_DATA.__game_scale * 16.0f;
+    camera2->__viewport_124.Width = WINDOW_DATA.__game_scale * 384.0f;
+    camera2->__viewport_124.Height = WINDOW_DATA.__game_scale * 448.0f;
     this->__sub_454950(camera2);
     StageCamera* camera0 = &this->cameras[0];
     *camera0 = *camera2;
     camera0->camera_index = 0;
-    camera0->viewport.X = WINDOW_DATA.__float_2070 * 32.0f;
-    camera0->viewport.Y = WINDOW_DATA.__float_2070 * 16.0f;
-    camera0->viewport.Width = WINDOW_DATA.__float_2070 * 384.0f;
-    camera0->viewport.Height = WINDOW_DATA.__float_2070 * 448.0f;
+    camera0->viewport.X = WINDOW_DATA.__game_scale * 32.0f;
+    camera0->viewport.Y = WINDOW_DATA.__game_scale * 16.0f;
+    camera0->viewport.Width = WINDOW_DATA.__game_scale * 384.0f;
+    camera0->viewport.Height = WINDOW_DATA.__game_scale * 448.0f;
     camera0->__int2_104.x = 0;
     camera0->__int2_104.y = 0;
     camera0->__viewport_10C = camera0->viewport;
@@ -32483,10 +33727,10 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
     StageCamera* camera1 = &this->cameras[1];
     *camera1 = *camera0;
     camera1->camera_index = 1;
-    camera1->viewport.X = WINDOW_DATA.__float_2070 * 128.0f;
-    camera1->viewport.Y = WINDOW_DATA.__float_2070 * 16.0f;
-    camera1->viewport.Width = WINDOW_DATA.__float_2070 * 384.0f;
-    camera1->viewport.Height = WINDOW_DATA.__float_2070 * 448.0f;
+    camera1->viewport.X = WINDOW_DATA.__game_scale * 128.0f;
+    camera1->viewport.Y = WINDOW_DATA.__game_scale * 16.0f;
+    camera1->viewport.Width = WINDOW_DATA.__game_scale * 384.0f;
+    camera1->viewport.Height = WINDOW_DATA.__game_scale * 448.0f;
     camera1->__int2_104.x = 0;
     camera1->__int2_104.y = 0;
     camera1->__viewport_10C = camera1->viewport;
@@ -32494,26 +33738,26 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
     StageCamera* camera3 = &this->cameras[3];
     *camera3 = *camera0;
     camera3->camera_index = 3;
-    camera3->viewport.X = ((float)WINDOW_DATA.__int_2050 - 408.0f) * 0.5f;
+    camera3->viewport.X = ((float)WINDOW_DATA.__scaled_width - 408.0f) * 0.5f;
     camera3->viewport.Width = 408;
     camera3->viewport.Width = 472;
     camera3->__int2_104.x = 0;
     camera3->__int2_104.y = 0;
-    camera3->viewport.Y = ((float)WINDOW_DATA.__int_2054 - 472.0f) * 0.5f;
+    camera3->viewport.Y = ((float)WINDOW_DATA.__scaled_height - 472.0f) * 0.5f;
     camera3->__viewport_10C = camera3->viewport;
     this->__sub_454950(camera3);
-    WINDOW_DATA.__int_2084 = WINDOW_DATA.__int_2050 / 2;
-    WINDOW_DATA.__int_2088 = WINDOW_DATA.__float_2070 * 16.0f;
+    WINDOW_DATA.__int_2084 = WINDOW_DATA.__scaled_width / 2;
+    WINDOW_DATA.__int_2088 = WINDOW_DATA.__game_scale * 16.0f;
 }
 
 // 0x454F50
 dllexport gnu_noinline void Supervisor::__camera2_sub_454F50() {
-    int32_t intA = WINDOW_DATA.__int_2050;
-    int32_t intB = (float)(WINDOW_DATA.__int_2068 - intA) * 0.5f;
-    float floatA = WINDOW_DATA.__float_2070;
+    int32_t intA = WINDOW_DATA.__scaled_width;
+    int32_t intB = (float)(WINDOW_DATA.__backbuffer_width - intA) * 0.5f;
+    float floatA = WINDOW_DATA.__game_scale;
     SUPERVISOR.cameras[2].__int2_104.x = intB;
-    int32_t intC = WINDOW_DATA.__int_2054;
-    int32_t intD = (float)(WINDOW_DATA.__int_206C - intC) * 0.5f;
+    int32_t intC = WINDOW_DATA.__scaled_height;
+    int32_t intD = (float)(WINDOW_DATA.__backbuffer_height - intC) * 0.5f;
     SUPERVISOR.cameras[2].__int2_104.y = intD;
     SUPERVISOR.cameras[2].__viewport_10C = SUPERVISOR.cameras[2].viewport;
     SUPERVISOR.cameras[2].__viewport_10C.X = intB;
@@ -32889,12 +34133,167 @@ dllexport gnu_noinline int thiscall Supervisor::__sub_454950() {
         switch (new_gamemode) {
             case 0:
                 this->gamemode_switch = 1;
+                // TODO
         }
 
 
         CRITICAL_SECTION_MANAGER.leave_section(Menu_CS);
     }
     return 1;
+}
+
+extern "C" {
+    // 0x4CF438
+    externcg int32_t UNKNOWN_INT32_C asm("_UNKNOWN_INT32_C");
+}
+
+// 0x455040
+dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__sub_455040() {
+    if (this->gamemode_current != this->gamemode_switch) {
+        CRITICAL_SECTION_MANAGER.enter_section(Menu_CS);
+        {
+
+            int32_t prev_gamemode = this->gamemode_current;
+            int32_t new_gamemode = this->gamemode_switch;
+            this->gamemode_previous = prev_gamemode;
+
+            this->background_color = PackD3DCOLOR(255, 0, 0, 0);
+
+            switch (new_gamemode) {
+                case 0: {
+                    this->gamemode_switch = 1;
+                    LoadingThread* loading_thread = LoadingThread::allocate();
+                    this->__loading_thread_B40 = loading_thread;
+                    if (loading_thread) {
+                        break;
+                    }
+                    this->gamemode_switch = 3;
+                }
+                case 3:
+                    this->__sub_453C70();
+                    CRITICAL_SECTION_MANAGER.leave_section(Menu_CS);
+                    return UpdateFuncEnd0;
+                case 4: {
+                    AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
+                    ability_manager->__int_C5C = 0;
+                    ability_manager->__sub_407DA0(TRUE);
+                    switch (this->gamemode_current) {
+                        default:
+                            goto finalize_gamemode_switch;
+                        case 7:
+                            GAME_THREAD_PTR->cleanup();
+                            break;
+                        case 15:
+                            //ENDING_PTR->cleanup();
+                            break;
+                        case 1: case 2:
+                            break;
+                    }
+                    MainMenu::allocate();
+                    break;
+                }
+                case 16: {
+                    AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
+                    ability_manager->__int_C5C = 0;
+                    ability_manager->__sub_407DA0(TRUE);
+                    switch (this->gamemode_current) {
+                        default:
+                            goto finalize_gamemode_switch;
+                        case 7:
+                            GAME_THREAD_PTR->cleanup();
+                            break;
+                        case 15:
+                            //ENDING_PTR->cleanup();
+                            break;
+                        case 2:
+                            break;
+                    }
+                    this->gamemode_switch = 4;
+                    UNKNOWN_INT32_C = 3;
+                    MainMenu::allocate();
+                    break;
+                }
+                case 7:
+                    if (prev_gamemode == 4) {
+                        //MAIN_MENU_PTR->cleanup();
+                    }
+                    this->__int_804 = 1;
+                    GameThread::allocate(__replay_recording);
+                    break;
+                case 13:
+                    if (prev_gamemode == 4) {
+                        //MAIN_MENU_PTR->cleanup();
+                    }
+                    this->gamemode_switch = 7;
+                    this->__int_804 = 1;
+                    GameThread::allocate(__replay_playback);
+                    break;
+                case 12: {
+                    ReplayMode replay_mode = GAME_THREAD_PTR->replay_mode;
+                    this->__int_804 = 0;
+                    if (prev_gamemode == 7) {
+                        GAME_THREAD_PTR->cleanup();
+                    }
+                    this->gamemode_switch = 7;
+                    GameThread::allocate(replay_mode);
+                    break;
+                }
+                case 10: {
+                    GAME_THREAD_PTR->cleanup();
+                    this->__int_804 = 1;
+                    this->__dword_808 = 0;
+                    this->gamemode_switch = 7;
+                    int32_t stage_number = GAME_MANAGER.globals.__stage_number_related_4;
+                    GAME_MANAGER.globals.current_stage = stage_number;
+                    STAGE_DATA_PTR = &STAGE_DATA[stage_number];
+                    GameThread::allocate(__replay_recording);
+                    break;
+                }
+                case 11: {
+                    GAME_THREAD_PTR->cleanup();
+                    this->__int_804 = 1;
+                    this->__dword_808 = 0;
+                    this->gamemode_switch = 7;
+                    int32_t stage_number = GAME_MANAGER.globals.__stage_number_related_4;
+                    GAME_MANAGER.globals.current_stage = stage_number;
+                    STAGE_DATA_PTR = &STAGE_DATA[stage_number];
+                    GameThread::allocate(__replay_playback);
+                    break;
+                }
+                case 19: {
+                    GAME_THREAD_PTR->cleanup();
+                    this->__int_804 = 1;
+                    this->__dword_808 = 1;
+                    this->gamemode_switch = 7;
+                    int32_t stage_number = GAME_MANAGER.globals.__stage_number_related_4;
+                    GAME_MANAGER.globals.current_stage = stage_number;
+                    STAGE_DATA_PTR = &STAGE_DATA[stage_number];
+                    GameThread::allocate(__replay_recording);
+                    break;
+                }
+                case 14:
+                    GAME_THREAD_PTR->cleanup();
+                    this->__int_804 = 1;
+                    this->gamemode_switch = 7;
+                    GameThread::allocate(__replay_recording);
+                    break;
+                case 15:
+                    if (prev_gamemode == 7) {
+                        GAME_THREAD_PTR->cleanup();
+                    }
+                    //Ending::allocate();
+                    break;
+                case 17:
+                    this->__sub_453C70();
+                    CRITICAL_SECTION_MANAGER.leave_section(Menu_CS);
+                    return UpdateFuncEndN1;
+            }
+    finalize_gamemode_switch:
+            this->gamemode_current = this->gamemode_switch;
+        }
+        CRITICAL_SECTION_MANAGER.leave_section(Menu_CS);
+    }
+    return UpdateFuncNext;
 }
 
 // 0x453C70
@@ -33991,68 +35390,68 @@ dllexport gnu_noinline void WindowData::__sub_4734E0(int arg1) {
     int32_t width;
     switch (int32_t intA = WINDOW_DATA.__unknown_bitfield_A) {
         case 7:
-            WINDOW_DATA.__float_2070 = floatA = 2.0f;
+            WINDOW_DATA.__game_scale = floatA = 2.0f;
             WINDOW_DATA.window_width = 2560;
             WINDOW_DATA.window_height = 1920;
             break;
         case 6:
-            WINDOW_DATA.__float_2070 = floatA = 2.0f;
+            WINDOW_DATA.__game_scale = floatA = 2.0f;
             WINDOW_DATA.window_width = 1920;
             WINDOW_DATA.window_height = 1440;
             break;
         default:
-            WINDOW_DATA.__float_2070 = floatA = 1.0f;
+            WINDOW_DATA.__game_scale = floatA = 1.0f;
             WINDOW_DATA.window_width = 640;
             WINDOW_DATA.window_height = 480;
             break;
         case 1: case 4:
-            WINDOW_DATA.__float_2070 = floatA = 1.5f;
+            WINDOW_DATA.__game_scale = floatA = 1.5f;
             WINDOW_DATA.window_width = 960;
             WINDOW_DATA.window_height = 720;
             break;
         case 2: case 5:
-            WINDOW_DATA.__float_2070 = floatA = 2.0f;
+            WINDOW_DATA.__game_scale = floatA = 2.0f;
             WINDOW_DATA.window_width = 1280;
             WINDOW_DATA.window_height = 960;
             break;
         case 8: case 9:
             if (arg1) {
-                height = WINDOW_DATA.__dword_2064;
-                width = WINDOW_DATA.__dword_2060;
+                height = WINDOW_DATA.__display_height;
+                width = WINDOW_DATA.__display_width;
                 WINDOW_DATA.window_width = width;
                 WINDOW_DATA.window_height = height;
                 if (width >= 2560 && height >= 1920) {
-                    WINDOW_DATA.__float_2070 = floatA = 2.0f;
+                    WINDOW_DATA.__game_scale = floatA = 2.0f;
                     SUPERVISOR.config.__ubyte_4E = 4;
                 }
                 else if (width >= 1920 && height >= 1440) {
-                    WINDOW_DATA.__float_2070 = floatA = 2.0f;
+                    WINDOW_DATA.__game_scale = floatA = 2.0f;
                     SUPERVISOR.config.__ubyte_4E = 3;
                 }
                 else if (width >= 1280 && height >= 960) {
-                    WINDOW_DATA.__float_2070 = floatA = 2.0f;
+                    WINDOW_DATA.__game_scale = floatA = 2.0f;
                     SUPERVISOR.config.__ubyte_4E = 2;
                 }
                 else if (width >= 960 && height >= 720) {
-                    WINDOW_DATA.__float_2070 = floatA = 1.5f;
+                    WINDOW_DATA.__game_scale = floatA = 1.5f;
                     SUPERVISOR.config.__ubyte_4E = 1;
                 }
                 else {
                     floatA = 1.0f;
                     SUPERVISOR.config.__ubyte_4E = 0;
-                    WINDOW_DATA.__float_2070 = floatA;
+                    WINDOW_DATA.__game_scale = floatA;
                 }
             } else {
-                floatA = WINDOW_DATA.__float_2070;
+                floatA = WINDOW_DATA.__game_scale;
             }
             // Screw this crap
     }
     height = floatA * 480.0f;
     width = floatA * 640.0f;
-    WINDOW_DATA.__int_2054 = height;
-    WINDOW_DATA.__int_2050 = width;
+    WINDOW_DATA.__scaled_height = height;
+    WINDOW_DATA.__scaled_width = width;
     this->__int_2074 = (int32_t)(width - 384.0f) / 2;
-    this->__int_2078 = (int32_t)(WINDOW_DATA.__int_2054 - 448.0f) / 2;
+    this->__int_2078 = (int32_t)(WINDOW_DATA.__scaled_height - 448.0f) / 2;
 }
 
 // 0x473890
@@ -34469,13 +35868,13 @@ dllexport gnu_noinline ZUNResult fastcall __sub_473B20(BOOL arg1) {
                 i == 0 &&
                 (WINDOW_DATA.__unknown_bitfield_A == 8 || WINDOW_DATA.__unknown_bitfield_A == 9)
             ) {
-                present_parameters.BackBufferWidth = WINDOW_DATA.__int_2068;
-                present_parameters.BackBufferHeight = WINDOW_DATA.__int_206C;
+                present_parameters.BackBufferWidth = WINDOW_DATA.__backbuffer_width;
+                present_parameters.BackBufferHeight = WINDOW_DATA.__backbuffer_height;
             } else {
                 int32_t width = RESOLUTIONS[i].x;
-                if (width < WINDOW_DATA.__int_2050) continue;
+                if (width < WINDOW_DATA.__scaled_width) continue;
                 int32_t height = RESOLUTIONS[i].y;
-                if (height < WINDOW_DATA.__int_2054) continue;
+                if (height < WINDOW_DATA.__scaled_height) continue;
                 present_parameters.BackBufferWidth = width;
                 present_parameters.BackBufferHeight = height;
             }
@@ -34987,9 +36386,9 @@ winmain_d3d_create_success:
     EnumDisplaySettingsA(NULL, ENUM_CURRENT_SETTINGS, &dev_mode);
     DWORD window_width = dev_mode.dmPelsWidth;
     DWORD window_height = dev_mode.dmPelsHeight;
-    WINDOW_DATA.__dword_2060 = window_width;
+    WINDOW_DATA.__display_width = window_width;
     WINDOW_DATA.window_width = window_width;
-    WINDOW_DATA.__dword_2064 = window_height;
+    WINDOW_DATA.__display_height = window_height;
     WINDOW_DATA.window_height = window_height;
     if (WINDOW_DATA.__create_window(current_instance)) {
         goto winmain_important_label;
@@ -35102,8 +36501,8 @@ winmain_d3d_create_success:
                                     break;
                                 }
                                 case 0: case 1: case 2: {
-                                    int32_t width = WINDOW_DATA.__int_2050;
-                                    int32_t height = WINDOW_DATA.__int_2054;
+                                    int32_t width = WINDOW_DATA.__scaled_width;
+                                    int32_t height = WINDOW_DATA.__scaled_height;
                                     SetWindowLongA(WINDOW_DATA.window, GWL_STYLE, WS_POPUP | WS_VISIBLE);
                                     SetWindowPos(
                                         WINDOW_DATA.window, HWND_TOP,
@@ -35211,6 +36610,7 @@ struct StaticCtorsDtors {
         copy_from_original_game(BULLET_SPRITE_DATA, 0x4C5F90, original_game);
         copy_from_original_game(BULLET_IDK_DATA, 0x4B36F0, original_game);
         copy_from_original_game(FONT_DATA, 0x4C9AD0, original_game);
+        copy_from_original_game(STAGE_DATA, 0x4C9410, original_game);
 
         //static_construct(LOG_BUFFER);
         //static_construct(SOUND_MANAGER);
