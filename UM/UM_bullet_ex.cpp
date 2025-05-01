@@ -3597,6 +3597,8 @@ union AnmID {
     // 0x488E50
     dllexport void interrupt_tree(int32_t interrupt_index) asm_symbol_rel(0x488E50);
 
+    inline void interrupt_and_run_tree(int32_t interrupt_index);
+
     inline void interrupt_and_orphan_tree(int32_t interrupt_index) {
         this->interrupt_tree(interrupt_index);
         *this = 0;
@@ -5225,9 +5227,11 @@ static inline constexpr size_t CARD_COUNT = INTERNAL_CARD_COUNT - 1;
 struct CardData {
     const char* name; // 0x0
     CardId id; // 0x4
-    unknown_fields(0x10); // 0x8
-    int __int_18; // 0x18
-    unknown_fields(0x4); // 0x1C
+    unknown_fields(0x8); // 0x8
+    int __type; // 0x10
+    int __weight; // 0x14
+    int __availability; // 0x18
+    BOOL __allow_duplicates; // 0x1C
     uint8_t __byte_20; // 0x20
     unknown_fields(0x7); // 0x21
     BOOL __render_passive_in_hud; // 0x28
@@ -5236,12 +5240,15 @@ struct CardData {
     // 0x34
 
     // 0x416E10
-    dllexport gnu_noinline int thiscall __sub_416E10() asm_symbol_rel(0x416E10);
+    dllexport gnu_noinline int thiscall __check_availability() const asm_symbol_rel(0x416E10);
 };
 #pragma region // CardData Validation
 ValidateFieldOffset32(0x0, CardData, name);
 ValidateFieldOffset32(0x4, CardData, id);
-ValidateFieldOffset32(0x18, CardData, __int_18);
+ValidateFieldOffset32(0x10, CardData, __type);
+ValidateFieldOffset32(0x14, CardData, __weight);
+ValidateFieldOffset32(0x18, CardData, __availability);
+ValidateFieldOffset32(0x1C, CardData, __allow_duplicates);
 ValidateFieldOffset32(0x20, CardData, __byte_20);
 ValidateFieldOffset32(0x28, CardData, __render_passive_in_hud);
 ValidateFieldOffset32(0x2C, CardData, sprite_large);
@@ -5843,8 +5850,8 @@ ValidateStructSize32(0xBF158, ScorefileManager);
 #pragma endregion
 
 // 0x416E10
-dllexport gnu_noinline int thiscall CardData::__sub_416E10() {
-    switch (this->__int_18) {
+dllexport gnu_noinline int thiscall CardData::__check_availability() const {
+    switch (this->__availability) {
         case 0:
             return 1;
         case 1:
@@ -16419,6 +16426,10 @@ dllexport void AnmID::interrupt_tree(int32_t interrupt_index) {
     AnmManager::interrupt_tree(*this, interrupt_index);
 }
 
+inline void AnmID::interrupt_and_run_tree(int32_t interrupt_index) {
+    AnmManager::interrupt_and_run_tree(*this, interrupt_index);
+}
+
 inline void AnmID::__tree_set_visible2(AnmManager* anm_manager) {
     if (AnmVM* vm = anm_manager->get_vm_with_id(*this)) {
         vm->data.__visible2 = true;
@@ -20055,7 +20066,7 @@ extern "C" {
 struct Popup {
     uint8_t digits[12]; // 0x0
     Float3 position; // 0xC
-    float __float_18; // 0x18
+    float __speed; // 0x18
     D3DCOLOR color; // 0x1C
     Timer __timer_20; // 0x20
     unknown_fields(0x8); // 0x34
@@ -20063,6 +20074,20 @@ struct Popup {
     uint8_t digit_count; // 0x3D
     unknown_fields(0xA); // 0x3E
     // 0x48
+
+    inline bool on_tick() {
+        if (this->alive) {
+            float position = this->position.y;
+            float speed = this->__speed;
+            this->position.y -= speed * GAME_SPEED;
+            this->__speed = speed * 0.95f;
+            if (++this->__timer_20 <= 60) {
+                return true;
+            }
+            this->alive = false;
+        }
+        return false;
+    }
 };
 #pragma region // Popup Validation
 
@@ -20091,7 +20116,20 @@ struct PopupManager : ZUNTask {
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x464020) {
 
         for (size_t i = 0; i < 13; ++i) {
-
+            this->popups[i].on_tick();
+        }
+        for (size_t i = 0; i < 5; ++i) {
+            Popup* popup = &this->popups[i + 13];
+            if (popup->on_tick()) {
+                D3DCOLOR color = popup->color;
+                int32_t alpha = color >> 18;
+                alpha -= 4;
+                if (alpha <= 0) {
+                    popup->alive = false;
+                } else {
+                    popup->color = (color & 0xFFFFFF) | alpha << 18;
+                }
+            }
         }
 
         return UpdateFuncNext;
@@ -20152,7 +20190,7 @@ struct PopupManager : ZUNTask {
         popup->color = color;
         popup->__timer_20.reset();
         popup->position = *position;
-        popup->__float_18 = 1.0f;
+        popup->__speed = 1.0f;
 
         ++popup_manager->__index_10;
     }
@@ -21858,7 +21896,7 @@ struct AbilityManager : ZUNTask {
     int32_t passive_card_count; // 0x34
     CardBase* selected_active_card; // 0x38
     AnmID __anm_id_3C; // 0x3C
-    unknown_fields(0x4); // 0x40
+    BOOL __selected_card_hidden; // 0x40
     Timer __timer_44; // 0x44
     AnmID __anm_id_array_58[0x100]; // 0x58
     AnmID __anm_id_array_458[0x100]; // 0x458
@@ -22140,6 +22178,52 @@ struct AbilityManager : ZUNTask {
         return -1;
     }
 
+    // 0x416F50
+    dllexport gnu_noinline static uint32_t fastcall __pick_random_cardA(const CardData*& out, int32_t search_type_low, int32_t search_type_high, const CardData* card_data[], int32_t card_data_count) asm_symbol_rel(0x416F50) {
+        const CardData* weighted_array[countof(AbilityManager::__int_array_C84) * 10] = {};
+        uint32_t weighted_array_size = 0;
+
+        for (int32_t i = 0; i < countof(AbilityManager::__int_array_C84); ++i) {
+            if (ABILITY_MANAGER_PTR->__int_array_C84[i]) {
+                if (!find_id_in_card_data(i).__allow_duplicates) {
+                    continue;
+                }
+            }
+            if (
+                find_id_in_card_data(i).__check_availability() == 1 &&
+                find_id_in_card_data(i).__type >= search_type_low &&
+                find_id_in_card_data(i).__type <= search_type_high &&
+                find_id_in_card_data(i).__weight != 0 &&
+                find_id_in_card_data(i).__weight != 6
+            ) {
+                for (int32_t j = 0; j < card_data_count; ++j) {
+                    if (card_data[j]->id == i) {
+                        goto continue_outer;
+                    }
+                }
+                const CardData* card = &find_id_in_card_data(i);
+                int32_t weight = card->__weight;
+                for (int32_t j = 0; j < weight; ++j) {
+                    weighted_array[weighted_array_size + j] = card;
+                }
+                weighted_array_size += weight;
+                if (!SCOREFILE_MANAGER_PTR->primary_file.__sectionA.__byte_array_D0[i]) {
+                    for (int32_t j = 0; j < 5; ++j) {
+                        weighted_array[weighted_array_size + j] = card;
+                    }
+                    weighted_array_size += 5;
+                }
+            }
+        continue_outer:;
+        }
+
+        if (weighted_array_size) {
+            out = weighted_array[RNG.rand_uint_range(weighted_array_size)];
+        }
+
+        return weighted_array_size;
+    }
+
     // 0x407DA0
     dllexport gnu_noinline void thiscall __sub_407DA0(BOOL arg1) {
         this->card_list.delete_each_data();
@@ -22195,9 +22279,88 @@ struct AbilityManager : ZUNTask {
         }
     }
 
+    // 0x408890
+    dllexport gnu_noinline void thiscall __sub_408890(AnmID id, int32_t scriptA, int32_t scriptB, CardBase* card, int arg5) asm_symbol_rel(0x408890) {
+        AnmVM* vmA = id.__wtf_child_list_jank_A(scriptA, 0);
+        AnmVM* vmB = id.__wtf_child_list_jank_A(scriptB, 0);
+
+        // TODO
+
+        if (card->__get_unknown_flag_A()) {
+
+        }
+        else if (!this->selected_active_card) {
+
+        }
+        else {
+
+        }
+
+    }
+
     // 0x408640
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x408640) {
+        GameThread* game_thread = GAME_THREAD_PTR;
+        if (
+            game_thread &&
+            game_thread->on_tick_enabled() && // ???
+            this->__ability_data_loaded
+        ) {
+            this->card_list.for_each([](CardBase* card) {
+                card->__on_tick_2();
+            });
+            this->__anm_id_3C.get_vm_ptr();
+            if (
+                this->__anm_id_3C &&
+                this->selected_active_card
+            ) {
+                Player* player = PLAYER_PTR;
+                if (!this->__selected_card_hidden) {
+                    if (
+                        player &&
+                        player->data.position.y > 368.0f &&
+                        player->data.position.x < -64.0f
+                    ) {
+                        this->__anm_id_3C.interrupt_and_run_tree(5);
+                        this->__selected_card_hidden = true;
+                    }
+                } else {
+                    if (
+                        player && (
+                            player->data.position.y < 352.0f ||
+                            player->data.position.x > -48.0f
+                        )
+                    ) {
+                        this->__anm_id_3C.interrupt_and_run_tree(4);
+                        this->__selected_card_hidden = false;
+                    }
+                }
 
+                Float3 position = { 0.0f, -4.0f, 0.0f };
+
+                this->__sub_408890(this->__anm_id_3C, 2, 3, this->selected_active_card, false);
+
+                for (int32_t i = 0; i < this->active_card_count; ++i) {
+                    if (CardBase* card = this->__card_array_858[i]) {
+                        this->__sub_408890(this->__anm_id_array_458[i], 9, 7, card, true);
+                        this->__anm_id_array_458[i].get_vm_ptr()->data.__position_2 = UNKNOWN_FLOAT3_A;
+                        if (
+                            this->selected_active_card == this->__card_array_858[i] &&
+                            this->__timer_44 >= 80
+                        ) {
+                            AnmVM* vmA = this->__anm_id_array_458[i].get_vm_ptr();
+                            vmA->data.__position_2 = position;
+                            vmA->__wtf_child_list_jank_A(11, 0)->data.color1 = PackD3DCOLOR(208, 128, 192, 128);
+                            AnmVM* vmB = vmA->__wtf_child_list_jank_A(6, 0);
+                            AnmVM* vmC = vmA->__wtf_child_list_jank_A(11, 0);
+                            vmC->set_alpha(vmB->get_alpha());
+                        }
+                    }
+                }
+            }
+            this->__timer_44++;
+        }
+        return UpdateFuncNext;
     }
 
     // 0x408A90
@@ -22323,10 +22486,15 @@ struct AbilityManager : ZUNTask {
 #endif
 
     // 0x412FE0
-    dllexport gnu_noinline static BOOL stdcall card_equipped(int32_t id) {
+    inline static BOOL card_equipped_inline(int32_t id) {
         return (bool)ABILITY_MANAGER_PTR->card_list.find_if([=](CardBase* card) {
             return card->id == id;
         });
+    }
+
+    // 0x412FE0
+    dllexport gnu_noinline static BOOL stdcall card_equipped(int32_t id) asm_symbol_rel(0x412FE0) {
+        return card_equipped_inline(id);
     }
 
 private:
@@ -22392,6 +22560,7 @@ ValidateFieldOffset32(0x30, AbilityManager, equipment_card_count);
 ValidateFieldOffset32(0x34, AbilityManager, passive_card_count);
 ValidateFieldOffset32(0x38, AbilityManager, selected_active_card);
 ValidateFieldOffset32(0x3C, AbilityManager, __anm_id_3C);
+ValidateFieldOffset32(0x40, AbilityManager, __selected_card_hidden);
 ValidateFieldOffset32(0x44, AbilityManager, __timer_44);
 ValidateFieldOffset32(0x58, AbilityManager, __anm_id_array_58);
 ValidateFieldOffset32(0x458, AbilityManager, __anm_id_array_458);
@@ -22818,8 +22987,11 @@ struct AbilityShop : ZUNTask {
     AnmID __anm_id_228; // 0x228
     AnmID __anm_id_array_22C[256]; // 0x22C
     AnmID __anm_id_array_62C[256]; // 0x62C
-    int32_t __int_A2C; // 0xA2C
-    unknown_fields(0x40C); // 0xA30
+    int32_t card_count; // 0xA2C
+    const CardData* card_array[256]; // 0xA30
+    unknown_fields(0x4); // 0xE30
+    BOOL __has_blank_card_already; // 0xE34
+    unknown_fields(0x4); // 0xE38
     // 0xE3C
 
     inline void zero_contents() {
@@ -22888,7 +23060,95 @@ struct AbilityShop : ZUNTask {
 
         this->__float3_1D0 = *arg1;
 
-        // TODO
+        //this->__menu_select_C.__sub_416BA0(0);
+        this->__menu_select_C.enable_wrap = true;
+
+        int32_t& card_array_size = this->card_count;
+
+        const CardData* new_card_array[countof(AbilityManager::__int_array_C84)];
+        card_array_size = 0;
+        if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[0], 10, 15, new_card_array, 0)) {
+            ++card_array_size;
+        }
+
+        if (ABILITY_MANAGER_PTR->card_equipped_inline(MANEKI_CARD)) {
+            if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], 1, 15, new_card_array, card_array_size)) {
+                ++card_array_size;
+            }
+        }
+        if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], 7, 9, new_card_array, card_array_size)) {
+            ++card_array_size;
+        }
+
+        if (ABILITY_MANAGER_PTR->card_equipped_inline(MANEKI_CARD)) {
+            if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], 1, 15, new_card_array, card_array_size)) {
+                ++card_array_size;
+            }
+        }
+        if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], 1, 6, new_card_array, card_array_size)) {
+            ++card_array_size;
+        }
+
+        if (ABILITY_MANAGER_PTR->card_equipped_inline(MANEKI_CARD)) {
+            if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], 1, 15, new_card_array, card_array_size)) {
+                ++card_array_size;
+            }
+        }
+        for (int32_t i = 0; i < countof(AbilityManager::__int_array_C84); ++i) {
+            if (ABILITY_MANAGER_PTR->__int_array_C84[i]) {
+                if (!find_id_in_card_data(i).__allow_duplicates) {
+                    continue;
+                }
+            }
+            if (
+                find_id_in_card_data(i).__check_availability() == 1 &&
+                find_id_in_card_data(i).__weight == 0
+            ) {
+                new_card_array[card_array_size++] = &find_id_in_card_data(i);
+            }
+        }
+
+        for (int32_t i = 0; i < countof(AbilityManager::__int_array_C84); ++i) {
+            if (ABILITY_MANAGER_PTR->__int_array_C84[i]) {
+                if (!find_id_in_card_data(i).__allow_duplicates) {
+                    continue;
+                }
+            }
+            if (
+                find_id_in_card_data(i).__check_availability() == 2
+            ) {
+                new_card_array[card_array_size++] = &find_id_in_card_data(i);
+            }
+        }
+
+        int32_t total_cards = 0;
+        for (int32_t i = 0; i < card_array_size; ++i) {
+            const CardData* new_card = new_card_array[i];
+            if (i > 0) {
+                const CardData* current = this->card_array[i];
+                for (int32_t j = 0; j < i; ++j) { // yes this is a pointless loop
+                    if (current == new_card) {
+                        goto skip_adding_card;
+                    }
+                }
+            }
+            ++total_cards;
+            this->card_array[i] = new_card;
+    skip_adding_card:;
+        }
+
+        this->card_count = total_cards;
+        this->__menu_select_E4.menu_length = total_cards;
+        //this->__menu_select_E4.__sub_416BA0(0);
+        this->__menu_select_E4.enable_wrap = false;
+
+        if (!ABILITY_MANAGER_PTR->card_equipped(BLANK_CARD)) {
+            this->__has_blank_card_already = FALSE;
+        } else {
+            this->__has_blank_card_already = TRUE;
+        }
+        
+        return ZUN_SUCCESS;
     }
 
     inline static AbilityShop* allocate(Float3* arg1) {
@@ -22916,7 +23176,9 @@ ValidateFieldOffset32(0x208, AbilityShop, __timer_208);
 ValidateFieldOffset32(0x228, AbilityShop, __anm_id_228);
 ValidateFieldOffset32(0x22C, AbilityShop, __anm_id_array_22C);
 ValidateFieldOffset32(0x62C, AbilityShop, __anm_id_array_62C);
-ValidateFieldOffset32(0xA2C, AbilityShop, __int_A2C);
+ValidateFieldOffset32(0xA2C, AbilityShop, card_count);
+ValidateFieldOffset32(0xA30, AbilityShop, card_array);
+ValidateFieldOffset32(0xE34, AbilityShop, __has_blank_card_already);
 ValidateStructSize32(0xE3C, AbilityShop);
 #pragma endregion
 
@@ -24837,6 +25099,14 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
                 this->data.__timer_47154.set(280);
                 this->data.__death_timer.reset();
             }
+            break;
+        }
+        case 3: {
+            int32_t A = this->data.__death_timer;
+            if (A != 4 && A == 15) {
+                //LASER_MANAGER_PTR->cancel_all(1);
+            }
+            break;
         }
     }
 
