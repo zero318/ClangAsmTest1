@@ -496,6 +496,8 @@ template<typename> inline constexpr bool dependent_false_v = false;
 
 #define SFINAE_FAIL() static_assert(dependent_false_v<T>)
 
+#if !DISABLE_ALL_VALIDATION_MACROS
+
 #define LogValidationOffsetFails 1
 
 #if !LogValidationOffsetFails || COMPILER_IS_GCC || (COMPILER_IS_CLANG && __clang_major__ >= 16)
@@ -632,6 +634,12 @@ struct MACRO_CAT(vfo,__COUNTER__) { \
 }
 #endif
 
+#endif
+
+#else
+#define ValidateFieldOffset(offset, struct_type, member_name)
+#define ValidateStructSize(size, ...)
+#define ValidateStructAlignment(align, ...)
 #endif
 
 #if !__INTELLISENSE__

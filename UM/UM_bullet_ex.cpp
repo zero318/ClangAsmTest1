@@ -40,6 +40,8 @@ template <typename T>
 using ZUNListEnds = ZUNListEndsBase<T, true>;
 
 #define FIX_REALLY_BAD_BUGS 1
+#define PROTECT_ORIGINAL_FILES 1
+#define IGNORE_HASH_CHECKS 1
 
 #define USE_EXTERN_FOR_CODEGEN 0
 
@@ -2529,6 +2531,15 @@ ValidateFieldOffset32(0x12, InputMapping, switch_card);
 ValidateStructSize32(0x14, InputMapping);
 #pragma endregion
 
+extern "C" {
+    // 0x4CABA8
+    externcg InputMapping DEFAULT_JOYPAD_MAPPINGS asm("_DEFAULT_JOYPAD_MAPPINGS");
+    // 0x4CABBC
+    externcg InputMapping DEFAULT_XINPUT_MAPPINGS asm("_DEFAULT_XINPUT_MAPPINGS");
+    // 0x4CABD0
+    externcg InputMapping DEFAULT_KEYBOARD_MAPPINGS asm("_DEFAULT_KEYBOARD_MAPPINGS");
+}
+
 static inline constexpr size_t BUTTON_COUNT = 32;
 
 static inline constexpr uint32_t BUTTON_SHOOT       = 0x00000001; // 'Z'
@@ -3183,7 +3194,18 @@ struct StageCamera {
     StageSky sky; // 0x148
     // 0x164
 
-    inline void __copy_int2_FC_to_anm_manager();
+    inline void __copy_float2_FC_to_anm_manager();
+
+    inline D3DRECT get_viewport_d3d_rect() {
+        int32_t X = this->viewport.X;
+        int32_t W = this->viewport.Width;
+        int32_t Y = this->viewport.Y;
+        int32_t H = this->viewport.Height;
+        return {
+            X, Y,
+            X + W, Y + H
+        };
+    }
 };
 #pragma region // StageCamera Validation
 ValidateFieldOffset32(0x0, StageCamera, position);
@@ -3416,7 +3438,7 @@ struct FpsCounter : ZUNTask {
     unknown_fields(0x10); // 0x10
     double __double_20; // 0x20
     double __double_28; // 0x28
-    float __float_30; // 0x30
+    float __fps; // 0x30
     unknown_fields(0x4); // 0x34
     // 0x38
 
@@ -3445,9 +3467,7 @@ struct FpsCounter : ZUNTask {
     }
 
     // 0x43A340
-    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x43A340) {
-
-    }
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x43A340);
 
     inline ZUNResult initialize() {
         UpdateFunc* update_func = new UpdateFunc(&on_draw, true, this);
@@ -3767,54 +3787,34 @@ struct Supervisor {
     }
 
     // 0x4553B0
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_A(void* ptr) asm_symbol_rel(0x4553B0) {
-
-    }
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC on_draw_A(void* ptr) asm_symbol_rel(0x4553B0);
 
     // 0x455610
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_B(void* ptr) asm_symbol_rel(0x455610) {
-
-    }
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_B(void* ptr) asm_symbol_rel(0x455610);
 
     // 0x455530
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_C(void* ptr) asm_symbol_rel(0x455530) {
-
-    }
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC on_draw_arcade_vm_A(void* ptr) asm_symbol_rel(0x455530);
 
     // 0x455A70
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_D(void* ptr) asm_symbol_rel(0x455A70) {
-
-    }
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC on_draw_D(void* ptr) asm_symbol_rel(0x455A70);
 
     // 0x4559A0
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_E(void* ptr) asm_symbol_rel(0x4559A0) {
-
-    }
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC on_draw_arcade_vm_B(void* ptr) asm_symbol_rel(0x4559A0);
     
     // 0x455BC0
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_F(void* ptr) asm_symbol_rel(0x455BC0) {
-
-    }
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC on_draw_F(void* ptr) asm_symbol_rel(0x455BC0);
 
     // 0x455B10
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_G(void* ptr) asm_symbol_rel(0x455B10) {
-
-    }
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC on_draw_arcade_vm_C(void* ptr) asm_symbol_rel(0x455B10);
 
     // 0x455CF0
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_H(void* ptr) asm_symbol_rel(0x455CF0) {
-
-    }
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC on_draw_H(void* ptr) asm_symbol_rel(0x455CF0);
 
     // 0x455C90
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_I(void* ptr) asm_symbol_rel(0x455C90) {
-
-    }
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC on_draw_arcade_vm_D(void* ptr) asm_symbol_rel(0x455C90);
 
     // 0x455D40
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_J(void* ptr) asm_symbol_rel(0x455D40) {
-
-    }
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC on_draw_J(void* ptr) asm_symbol_rel(0x455D40);
 
     // 0x453640
     dllexport static gnu_noinline ZUNResult UpdateFuncCC on_registration(void* self) asm_symbol_rel(0x453640);
@@ -3836,6 +3836,10 @@ struct Supervisor {
 
     // 0x454820
     dllexport HRESULT thiscall d3d_disable_zwrite() asm_symbol_rel(0x454820);
+
+    inline HRESULT d3d_zfunc_always();
+
+    inline HRESULT d3d_zfunc_lessequal();
 
 private:
     // 0x454860
@@ -3894,7 +3898,6 @@ public:
     dllexport static gnu_noinline void stdcall set_camera2_alt(uint32_t = UNUSED_DWORD) asm_symbol_rel(0x41B3B0);
 
     inline void thiscall set_camera_by_index_disable_fog(uint32_t index);
-    inline void thiscall set_camera_by_index_disable_zwrite(uint32_t index);
 };
 #pragma region // Supervisor Validation
 ValidateFieldOffset32(0x0, Supervisor, current_instance);
@@ -3996,25 +3999,25 @@ dllexport gnu_noinline ZUNResult Supervisor::initialize() {
     update_func->on_init_func = &Supervisor::on_registration;
     ZUNResult ret = UpdateFuncRegistry::register_on_tick(update_func, 1);
     if (ZUN_SUCCEEDED(ret)) {
-        update_func = new UpdateFunc(&Supervisor::__unknown_on_draw_A, true, &SUPERVISOR);
+        update_func = new UpdateFunc(&Supervisor::on_draw_A, true, &SUPERVISOR);
         UpdateFuncRegistry::register_on_draw(update_func, 1);
         update_func = new UpdateFunc(&Supervisor::__unknown_on_draw_B, true, &SUPERVISOR);
         UpdateFuncRegistry::register_on_draw(update_func, 14);
-        update_func = new UpdateFunc(&Supervisor::__unknown_on_draw_C, true, &SUPERVISOR);
+        update_func = new UpdateFunc(&Supervisor::on_draw_arcade_vm_A, true, &SUPERVISOR);
         UpdateFuncRegistry::register_on_draw(update_func, 15);
-        update_func = new UpdateFunc(&Supervisor::__unknown_on_draw_D, true, &SUPERVISOR);
+        update_func = new UpdateFunc(&Supervisor::on_draw_D, true, &SUPERVISOR);
         UpdateFuncRegistry::register_on_draw(update_func, 25);
-        update_func = new UpdateFunc(&Supervisor::__unknown_on_draw_E, true, &SUPERVISOR);
+        update_func = new UpdateFunc(&Supervisor::on_draw_arcade_vm_B, true, &SUPERVISOR);
         UpdateFuncRegistry::register_on_draw(update_func, 26);
-        update_func = new UpdateFunc(&Supervisor::__unknown_on_draw_F, true, &SUPERVISOR);
+        update_func = new UpdateFunc(&Supervisor::on_draw_F, true, &SUPERVISOR);
         UpdateFuncRegistry::register_on_draw(update_func, 44);
-        update_func = new UpdateFunc(&Supervisor::__unknown_on_draw_G, true, &SUPERVISOR);
+        update_func = new UpdateFunc(&Supervisor::on_draw_arcade_vm_C, true, &SUPERVISOR);
         UpdateFuncRegistry::register_on_draw(update_func, 45);
-        update_func = new UpdateFunc(&Supervisor::__unknown_on_draw_H, true, &SUPERVISOR);
+        update_func = new UpdateFunc(&Supervisor::on_draw_H, true, &SUPERVISOR);
         UpdateFuncRegistry::register_on_draw(update_func, 58);
-        update_func = new UpdateFunc(&Supervisor::__unknown_on_draw_I, true, &SUPERVISOR);
+        update_func = new UpdateFunc(&Supervisor::on_draw_arcade_vm_D, true, &SUPERVISOR);
         UpdateFuncRegistry::register_on_draw(update_func, 59);
-        update_func = new UpdateFunc(&Supervisor::__unknown_on_draw_J, true, &SUPERVISOR);
+        update_func = new UpdateFunc(&Supervisor::on_draw_J, true, &SUPERVISOR);
         UpdateFuncRegistry::register_on_draw(update_func, 92);
         SUPERVISOR.d3d_device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &SUPERVISOR.back_buffer);
         ret = ZUN_SUCCESS;
@@ -4131,6 +4134,7 @@ struct ThBgmFormat {
     unknown_fields(0x4); // 0x10
     int __dword_14; // 0x14
     unknown_fields(0x1C); // 0x18
+    // 0x34
 };
 #pragma region // ThBgmFormat Validation
 ValidateFieldOffset32(0x0, ThBgmFormat, filename);
@@ -4281,7 +4285,7 @@ struct SoundManagerUnknownE {
                 smg_ptr->__handle_8C = INVALID_HANDLE_VALUE;
             }
         }
-        // TODO
+        return ret;
     }
 
     // 0x48AF10
@@ -4429,9 +4433,13 @@ struct SoundManager {
         }
         ThBgmFormat* bgm_formats = this->bgm_formats;
         size_t i = 0;
-        for (; bgm_formats[i].filename[0] != '\0';) {
-            // TODO
+        while (bgm_formats[i].filename[0] != '\0') {
+            if (strcmp_asm(bgm_formats[i].filename, buffer)) {
+                break;
+            }
+            ++i;
         }
+        return bgm_formats[i].filename[0] ? i : 0;
     }
     
     // 0x476B40
@@ -5836,11 +5844,16 @@ struct ScorefileManager {
 
     // 0x413510
     dllexport gnu_noinline static ZUNResult save_files() {
+#if !PROTECT_ORIGINAL_FILES
         ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
         int32_t ret = scorefile_manager->backup_file.save_to_file("scoreth18bak.dat");
         ret |= scorefile_manager->primary_file.save_to_file("scoreth18.dat");
         scorefile_manager->copy_primary_to_backup();
         return (ZUNResult)ret;
+#else
+        SCOREFILE_MANAGER_PTR->copy_primary_to_backup();
+        return ZUN_SUCCESS;
+#endif
     }
 };
 #pragma region // ScorefileManager Validation
@@ -8515,7 +8528,7 @@ ValidateStructSize32(0x5600, EnemyData);
 #pragma endregion
 
 // 0x4B3FE0
-static const FuncSetFunc *const ECL_FUNC_CALL_TABLE[5] = {
+static constexpr FuncSetFunc *const ECL_FUNC_CALL_TABLE[5] = {
     NULL,
     &EnemyData::__func_set_1_6bs,
     &EnemyData::__func_call_2_ex,
@@ -8524,7 +8537,7 @@ static const FuncSetFunc *const ECL_FUNC_CALL_TABLE[5] = {
 };
 
 // 0x4B36E4
-static const ExtraDamageFunc *const EXTRA_DAMAGE_FUNC_TABLE[] = {
+static constexpr ExtraDamageFunc *const EXTRA_DAMAGE_FUNC_TABLE[] = {
     NULL,
     &EnemyData::extra_damage_func1,
     &EnemyData::extra_damage_func2,
@@ -8535,8 +8548,6 @@ extern "C" {
     // 0x4CF2D8
     externcg ExtraHitboxFunc* EXTRA_HITBOX_FUNC_TABLE[1] asm("_EXTRA_HITBOX_FUNC_TABLE");
 }
-
-#pragma region // IMPORTED_FROM_MOF_DATA_NEEDS_VALIDATION
 
 static inline constexpr uint32_t ECL_FILE_MAGIC = PackUInt('S', 'C', 'P', 'T');
 static inline constexpr uint32_t ANM_INCLUDE_MAGIC = PackUInt('A', 'N', 'I', 'M');
@@ -8589,7 +8600,6 @@ struct EclFile {
     EclFileHeader header; // 0x0
     unsigned char data[]; // 0x24
 };
-#pragma endregion
 
 struct SptResource {
     //void* vtable; // 0x0
@@ -9686,7 +9696,10 @@ public:
 
 private:
     inline RGB& mul(RGB& out, const float value) {
-        
+        out.r = this->r * value;
+        out.g = this->g * value;
+        out.b = this->b * value;
+        return out;
     }
 public:
     inline RGB operator*(const float value) {
@@ -10901,7 +10914,7 @@ dllexport gnu_noinline bool stdcall GdiManager::__sub_46FE80(UNUSED_ARG(int32_t 
     int32_t i = 0;
     for (
         FontData* font_data = FONT_DATA;
-        font_data->format != -1;
+        font_data->format != (D3DFORMAT)-1;
         ++i, ++font_data
     ) {
         if (font_data->format == format) {
@@ -10909,7 +10922,7 @@ dllexport gnu_noinline bool stdcall GdiManager::__sub_46FE80(UNUSED_ARG(int32_t 
         }
     }
 
-    if (format != -1) {
+    if (format != (D3DFORMAT)-1) {
         FontData* font_data = &FONT_DATA[i];
         if (font_data) {
             int32_t bits_per_pixel = font_data->bits_per_pixel;
@@ -12805,6 +12818,19 @@ struct AnmImage {
         AnmEntry* entry = this->entry;
         clang_forceinline __create_render_target_texture(this, entry->width, entry->height);
     }
+
+    // 0x489030
+    dllexport gnu_noinline void thiscall __sub_489030() asm_symbol_rel(0x489030) {
+        LPDIRECT3DSURFACE9 surface;
+        this->d3d_texture->GetSurfaceLevel(0, &surface);
+        D3DSURFACE_DESC surface_desc;
+        surface->GetDesc(&surface_desc);
+        D3DLOCKED_RECT rect;
+        surface->LockRect(&rect, NULL, 0);
+        memset(rect.pBits, 0, rect.Pitch * surface_desc.Height);
+        surface->UnlockRect();
+        SAFE_RELEASE(surface);
+    }
 };
 #pragma region // AnmImage Validation
 ValidateFieldOffset32(0x0, AnmImage, d3d_texture);
@@ -13340,8 +13366,8 @@ struct AnmManager {
     char __byte_3120E0B; // 0x3120E0B
     char __byte_3120E0C; // 0x3120E0C
     unknown_fields(0x1); // 0x3120E0D
-    bool currently_using_point_filtering; // 0x3120E0E
-    bool currently_using_modulate_op; // 0x3120E0F
+    int8_t current_filtering_mode; // 0x3120E0E
+    int8_t current_texture_op; // 0x3120E0F
     AnmUVMode current_u_sample_mode; // 0x3120E10
     AnmUVMode current_v_sample_mode; // 0x3120E11
     probably_padding_bytes(0x2); // 0x3120E12
@@ -13598,10 +13624,10 @@ struct AnmManager {
             }
         }
 
-        if (this->currently_using_point_filtering != vm->data.nearest_neighbor) {
+        if (this->current_filtering_mode != vm->data.nearest_neighbor) {
             this->flush_sprites();
-            this->currently_using_point_filtering = vm->data.nearest_neighbor;
-            if (!this->currently_using_point_filtering) {
+            this->current_filtering_mode = vm->data.nearest_neighbor;
+            if (!this->current_filtering_mode) {
                 SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
                 SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
             } else {
@@ -14115,12 +14141,12 @@ struct AnmManager {
 
                 switch (vm->data.resolution_mode) {
                     case 1:
-                        vm->data.__matrix_414.m[0][0] * WINDOW_DATA.__game_scale;
-                        vm->data.__matrix_414.m[1][1] * WINDOW_DATA.__game_scale;
+                        vm->data.__matrix_414.m[0][0] *= WINDOW_DATA.__game_scale;
+                        vm->data.__matrix_414.m[1][1] *= WINDOW_DATA.__game_scale;
                         break;
                     case 2:
-                        vm->data.__matrix_414.m[0][0] * WINDOW_DATA.__game_scale * 0.5f;
-                        vm->data.__matrix_414.m[1][1] * WINDOW_DATA.__game_scale * 0.5f;
+                        vm->data.__matrix_414.m[0][0] *= WINDOW_DATA.__game_scale * 0.5f;
+                        vm->data.__matrix_414.m[1][1] *= WINDOW_DATA.__game_scale * 0.5f;
                         break;
                 }
 
@@ -14171,11 +14197,10 @@ struct AnmManager {
             D3DCOLOR color = vm->data.color_mode == 0 ? vm->data.color1 : vm->data.color2;
 
             if (this->__int_39724B4) {
-                uint8_t r, g, b, a;
-                r = std::max(r * RED(this->__color_39724B0) >> 7, 0xFF);
-                g = std::max(g * GREEN(this->__color_39724B0) >> 7, 0xFF);
-                b = std::max(b * BLUE(this->__color_39724B0) >> 7, 0xFF);
-                a = std::max(a * ALPHA(this->__color_39724B0) >> 7, 0xFF);
+                uint8_t r = std::max(RED(color) * RED(this->__color_39724B0) >> 7, 0xFF);
+                uint8_t g = std::max(GREEN(color) * GREEN(this->__color_39724B0) >> 7, 0xFF);
+                uint8_t b = std::max(BLUE(color) * BLUE(this->__color_39724B0) >> 7, 0xFF);
+                uint8_t a = std::max(ALPHA(color) * ALPHA(this->__color_39724B0) >> 7, 0xFF);
                 color = PackD3DCOLOR(a, r, g, b);
             }
 
@@ -14418,10 +14443,20 @@ struct AnmManager {
     }
 
     // 0x488220
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC pre_tick_world(void* self) asm_symbol_rel(0x488220) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC on_tick_world(void* ptr) asm_symbol_rel(0x488220) {
+        GameThread* game_thread_ptr = GAME_THREAD_PTR;
+        if (
+            game_thread_ptr &&
+            (game_thread_ptr->__unknown_flag_A | game_thread_ptr->skip_flag) &&
+            game_thread_ptr->__unknown_flag_B
+        ) {
+            return UpdateFuncNext;
+        }
+        return ((AnmManager*)ptr)->on_tick_world();
     }
     // 0x488250
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC pre_tick_ui(void* self) asm_symbol_rel(0x488250) {
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC on_tick_ui(void* ptr) asm_symbol_rel(0x488250) {
+        return ((AnmManager*)ptr)->on_tick_ui();
     }
 
     /* // 0x487670 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_0(void* self) asm_symbol_rel(0x487670) { return ((AnmManager*)self)->render_layer(0); }
@@ -14465,17 +14500,20 @@ struct AnmManager {
     /* // 0x487930 */ dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_45(void* self) asm_symbol_rel(0x487930) { return ((AnmManager*)self)->render_layer(45); }
     // 0x487940
     dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_20(void* self) asm_symbol_rel(0x487940) {
-        SUPERVISOR.set_camera_by_index_disable_zwrite(1);
+        SUPERVISOR.set_camera_by_index_disable_fog(1);
+        SUPERVISOR.d3d_zfunc_always();
         return ((AnmManager*)self)->render_layer(20);
     }
     // 0x487A10
     dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_23(void* self) asm_symbol_rel(0x487A10) {
-        SUPERVISOR.set_camera_by_index_disable_zwrite(1);
+        SUPERVISOR.set_camera_by_index_disable_fog(1);
+        SUPERVISOR.d3d_zfunc_always();
         return ((AnmManager*)self)->render_layer(23);
     }
     // 0x487AE0
     dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_24(void* self) asm_symbol_rel(0x487AE0) {
-        SUPERVISOR.set_camera_by_index_disable_zwrite(2);
+        SUPERVISOR.set_camera_by_index_disable_fog(2);
+        SUPERVISOR.d3d_zfunc_always();
         AnmManager* anm_manager = (AnmManager*)self;
         anm_manager->__float2_D0.x = 0.0f;
         anm_manager->__float2_D0.y = 0.0f;
@@ -14499,7 +14537,8 @@ struct AnmManager {
     }
     // 0x487CE0
     dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC draw_layer_37(void* self) asm_symbol_rel(0x487CE0) {
-        SUPERVISOR.set_camera_by_index_disable_zwrite(2);
+        SUPERVISOR.set_camera_by_index_disable_fog(2);
+        SUPERVISOR.d3d_zfunc_always();
         return ((AnmManager*)self)->render_layer(37);
     }
     // 0x487DB0
@@ -14571,9 +14610,9 @@ struct AnmManager {
         } while (i < countof(this->fast_array));
         this->next_snapshot_fast_id = 0;
         UpdateFunc* update_func;
-        update_func = new UpdateFunc(&AnmManager::pre_tick_world, true, this);
+        update_func = new UpdateFunc(&AnmManager::on_tick_world, true, this);
         UpdateFuncRegistry::register_on_tick(update_func, 34);
-        update_func = new UpdateFunc(&AnmManager::pre_tick_ui, true, this);
+        update_func = new UpdateFunc(&AnmManager::on_tick_ui, true, this);
         UpdateFuncRegistry::register_on_tick(update_func, 11);
         update_func = new UpdateFunc(&AnmManager::draw_layer_0, true, this);
         UpdateFuncRegistry::register_on_draw(update_func, 5);
@@ -14662,7 +14701,6 @@ struct AnmManager {
         SUPERVISOR.d3d_device->SetVertexShader(NULL);
         this->next_snapshot_discriminator = 0;
     }
-
 
     // 0x4867E0
     dllexport gnu_noinline AnmLoaded* thiscall create_anm_loaded(int32_t file_index, const char* filename) asm_symbol_rel(0x4867E0) {
@@ -14771,6 +14809,20 @@ struct AnmManager {
         }
         surface->UnlockRect();
         surface->Release();
+    }
+
+    // 0x4860C0
+    dllexport gnu_noinline static int stdcall __sub_4860C0(AnmImage* image, LPCVOID image_data, UINT image_size, int = UNUSED_DWORD, int = UNUSED_DWORD, int = UNUSED_DWORD) asm_symbol_rel(0x4860C0) {
+        AnmManager* anm_manager = ANM_MANAGER_PTR;
+        image->__unknown_flag_A = false;
+        image->file_size = image_size;
+        LPDIRECT3DSURFACE9 surface = NULL;
+        image->d3d_texture->GetSurfaceLevel(0, &surface);
+        D3DXLoadSurfaceFromFileInMemory(surface, NULL, NULL, image_data, image_size, NULL, D3DX_FILTER_NONE, 0, NULL);
+        surface->Release();
+        anm_manager->__screw_with_texture_bits(image->d3d_texture);
+        image->bytes_per_pixel = 4;
+        return 0;
     }
 
     // 0x486140
@@ -14953,7 +15005,7 @@ struct AnmManager {
     }
 
     // 0x487ED0
-    dllexport int32_t thiscall on_tick_world() asm_symbol_rel(0x487ED0) {
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick_world() asm_symbol_rel(0x487ED0) {
         CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
         {
             ZUNListHead<AnmVM> destroy_list;
@@ -14966,6 +15018,7 @@ struct AnmManager {
                 //layer_lists[i] = &layer_heads[i];
                 layer_heads[i].controller.next_in_layer = NULL;
             } while (++i < WORLD_LAYER_COUNT);
+
             this->world_list.for_each([&, this](AnmVM* vm) {
                 vm->controller.next_in_layer = NULL;
                 vm->controller.prev_in_layer = NULL;
@@ -14977,16 +15030,17 @@ struct AnmManager {
                         }
                 }
             });
+
             destroy_list.for_each([this](AnmVM* vm) {
                 this->destroy_possibly_managed_vm(vm);
             });
         }
         CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
-        return 1;
+        return UpdateFuncNext;
     }
 
     // 0x487FE0
-    dllexport int32_t thiscall on_tick_ui() asm_symbol_rel(0x487FE0) {
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick_ui() asm_symbol_rel(0x487FE0) {
         CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
         {
             ZUNListHead<AnmVM> destroy_list;
@@ -14999,6 +15053,7 @@ struct AnmManager {
                 //layer_lists[i] = &layer_heads[i];
                 layer_heads[i].controller.next_in_layer = NULL;
             } while (++i < UI_LAYER_COUNT);
+
             this->ui_list.for_each([&, this](AnmVM* vm) {
                 vm->controller.next_in_layer = NULL;
                 vm->controller.prev_in_layer = NULL;
@@ -15010,12 +15065,13 @@ struct AnmManager {
                         }
                 }
             });
+
             destroy_list.for_each([this](AnmVM* vm) {
                 this->destroy_possibly_managed_vm(vm);
             });
         }
         CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
-        return 1;
+        return UpdateFuncNext;
     }
 
     forceinline void assign_next_id_to_ref(AnmID& out, AnmVM* vm) {
@@ -15158,8 +15214,8 @@ ValidateFieldOffset32(0x3120E09, AnmManager, __byte_3120E09);
 ValidateFieldOffset32(0x3120E0A, AnmManager, __sbyte_3120E0A);
 ValidateFieldOffset32(0x3120E0B, AnmManager, __byte_3120E0B);
 ValidateFieldOffset32(0x3120E0C, AnmManager, __byte_3120E0C);
-ValidateFieldOffset32(0x3120E0E, AnmManager, currently_using_point_filtering);
-ValidateFieldOffset32(0x3120E0F, AnmManager, currently_using_modulate_op);
+ValidateFieldOffset32(0x3120E0E, AnmManager, current_filtering_mode);
+ValidateFieldOffset32(0x3120E0F, AnmManager, current_texture_op);
 ValidateFieldOffset32(0x3120E10, AnmManager, current_u_sample_mode);
 ValidateFieldOffset32(0x3120E11, AnmManager, current_v_sample_mode);
 ValidateFieldOffset32(0x3120E14, AnmManager, __current_sprite);
@@ -15179,6 +15235,218 @@ ValidateFieldOffset32(0x39724B0, AnmManager, __color_39724B0);
 ValidateFieldOffset32(0x39724B4, AnmManager, __int_39724B4);
 ValidateStructSize32(0x39724B8, AnmManager);
 #pragma endregion
+
+// 0x4553B0
+dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_A(void* ptr) {
+    if (SUPERVISOR.__surface_1AC) {
+        SUPERVISOR.d3d_device->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, PackD3DCOLOR(255, 255, 255, 255), 1.0f, 0);
+        SUPERVISOR.d3d_device->SetRenderTarget(0, SUPERVISOR.__surface_1AC);
+        D3DRECT rect = SUPERVISOR.cameras[3].get_viewport_d3d_rect();
+        SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, SUPERVISOR.background_color, 1.0f, 0);
+
+        WINDOW_DATA.__int_2080 = 384;
+        WINDOW_DATA.__int_208C = WINDOW_DATA.__scaled_width / 2;
+        WINDOW_DATA.__int_207C = 448;
+        WINDOW_DATA.__int_2090 = (int32_t)(WINDOW_DATA.__scaled_height - 448.0f) / 2;
+    } else {
+        SUPERVISOR.d3d_device->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, SUPERVISOR.background_color, 1.0f, 0);
+    }
+
+    AnmManager* anm_manager = ANM_MANAGER_PTR;
+    anm_manager->__current_sprite = NULL;
+    anm_manager->__index_3120E04 = -1;
+    anm_manager->current_blend_mode = (AnmBlendMode)-1;
+    anm_manager->__byte_3120E09 = -1;
+    anm_manager->__byte_3120E0B = -1;
+    anm_manager->__byte_3120E0C = -1;
+    anm_manager->__int_39724B4 = FALSE;
+    anm_manager->__color_39724B0 = PackD3DCOLOR(128, 128, 128, 128);
+    anm_manager->current_filtering_mode = -1;
+    anm_manager->current_texture_op = -1;
+    anm_manager->__float2_D0.y = 0.0f;
+    anm_manager->__float2_D0.x = 0.0f;
+    anm_manager->__sbyte_3120E0A = -1;
+
+    ((Supervisor*)ptr)->set_camera_by_index(2);
+
+    return UpdateFuncNext;
+}
+
+// 0x455610
+dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::__unknown_on_draw_B(void* ptr) {
+    if (SUPERVISOR.__surface_1AC) {
+        SUPERVISOR.d3d_zfunc_always();
+        ANM_MANAGER_PTR->flush_sprites();
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, TRUE);
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ZERO);
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_ONE);
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ONE);
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
+
+        // TODO: setup buffer
+        PrimitiveVertex verts[6];
+
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
+
+        SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+        SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, &verts, sizeof(PrimitiveVertex));
+
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+
+        ANM_MANAGER_PTR->current_blend_mode = (AnmBlendMode)11;
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_SRCALPHA);
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ONE);
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
+
+        ANM_MANAGER_PTR->flush_sprites();
+        SUPERVISOR.d3d_device->SetRenderTarget(0, SUPERVISOR.__surface_1B0);
+        D3DRECT rect = SUPERVISOR.cameras[3].get_viewport_d3d_rect();
+        SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_ZBUFFER, SUPERVISOR.background_color, 1.0f, 0);
+    }
+    return UpdateFuncNext;
+}
+
+// 0x455530
+dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_A(void* ptr) {
+    if (SUPERVISOR.__surface_1AC) {
+        auto* unknown_func_A = UNKNOWN_FUNC_PTR_A;
+        if (!unknown_func_A) {
+            SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+            SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+
+            SUPERVISOR.d3d_disable_zwrite();
+            SUPERVISOR.set_camera_by_index(3);
+
+            ANM_MANAGER_PTR->draw_vm(SUPERVISOR.__arcade_vm_ptr_A);
+            SUPERVISOR.__arcade_vm_ptr_A->data.color1 = PackD3DCOLOR(255, 255, 255, 255);
+
+            ANM_MANAGER_PTR->render_layer(35);
+            ANM_MANAGER_PTR->flush_sprites();
+
+            SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
+        }
+        else {
+            unknown_func_A();
+        }
+    }
+    return UpdateFuncNext;
+}
+
+// 0x455A70
+dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_D(void* ptr) {
+    if (SUPERVISOR.__surface_1AC) {
+        ANM_MANAGER_PTR->flush_sprites();
+        SUPERVISOR.d3d_device->SetRenderTarget(0, SUPERVISOR.__surface_1AC);
+
+        D3DRECT rect = SUPERVISOR.cameras[3].get_viewport_d3d_rect();
+        SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_ZBUFFER, SUPERVISOR.background_color, 1.0f, 0);
+    }
+    return UpdateFuncNext;
+}
+
+// 0x4559A0
+dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_B(void* ptr) {
+    if (SUPERVISOR.__surface_1AC) {
+        auto* unknown_func_B = UNKNOWN_FUNC_PTR_B;
+        if (!unknown_func_B) {
+            SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+            SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+
+            SUPERVISOR.d3d_disable_zwrite();
+            SUPERVISOR.set_camera_by_index(3);
+
+            ANM_MANAGER_PTR->draw_vm(SUPERVISOR.__arcade_vm_ptr_B);
+            SUPERVISOR.__arcade_vm_ptr_B->data.color1 = PackD3DCOLOR(255, 255, 255, 255);
+
+            ANM_MANAGER_PTR->flush_sprites();
+
+            SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
+        }
+        else {
+            unknown_func_B();
+        }
+    }
+    return UpdateFuncNext;
+}
+
+// 0x455BC0
+dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_F(void* ptr) {
+    if (SUPERVISOR.__surface_1AC) {
+        ANM_MANAGER_PTR->flush_sprites();
+        SUPERVISOR.d3d_device->SetRenderTarget(0, SUPERVISOR.__surface_1B0);
+
+        D3DRECT rect = SUPERVISOR.cameras[1].get_viewport_d3d_rect();
+        SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_ZBUFFER, SUPERVISOR.background_color, 1.0f, 0);
+
+        float scale = WINDOW_DATA.__game_scale;
+        float height = SCREEN_HEIGHT * scale;
+        float width = SCREEN_WIDTH * scale;
+        WINDOW_DATA.__int_2080 = width;
+        WINDOW_DATA.__int_207C = height;
+    }
+    return UpdateFuncNext;
+}
+
+// 0x455B10
+dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_C(void* ptr) {
+    if (SUPERVISOR.__surface_1AC) {
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+
+        SUPERVISOR.d3d_disable_zwrite();
+
+        ANM_MANAGER_PTR->draw_vm(SUPERVISOR.__arcade_vm_ptr_C);
+
+        ANM_MANAGER_PTR->flush_sprites();
+
+        SUPERVISOR.__arcade_vm_ptr_C->data.color1 = PackD3DCOLOR(255, 255, 255, 255);
+
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
+    }
+    return UpdateFuncNext;
+}
+
+// 0x455CF0
+dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_H(void* ptr) {
+    ANM_MANAGER_PTR->flush_sprites();
+    SUPERVISOR.d3d_device->SetRenderTarget(0, SUPERVISOR.back_buffer);
+    SUPERVISOR.d3d_device->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, PackD3DCOLOR(255, 0, 0, 0), 1.0f, 0);
+    return UpdateFuncNext;
+}
+
+// 0x455C90
+dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_D(void* ptr) {
+    if (SUPERVISOR.__surface_1AC) {
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+
+        ANM_MANAGER_PTR->draw_vm(SUPERVISOR.__arcade_vm_ptr_D);
+        SUPERVISOR.__arcade_vm_ptr_D->data.color1 = PackD3DCOLOR(255, 255, 255, 255);
+
+        ANM_MANAGER_PTR->flush_sprites();
+
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
+    }
+    return UpdateFuncNext;
+}
+
+// 0x455D40
+dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_J(void* ptr) {
+    ANM_MANAGER_PTR->flush_sprites();
+    SUPERVISOR.cameras[3].__float2_FC = { 0.0f, 0.0f };
+    SUPERVISOR.cameras[1].__float2_FC = { 0.0f, 0.0f };
+    return UpdateFuncNext;
+}
 
 // 0x453640
 dllexport gnu_noinline ZUNResult UpdateFuncCC Supervisor::on_registration(void* self) {
@@ -15858,10 +16126,9 @@ ValidateFieldOffset32(0x203C, EffectManager, __done_loading);
 ValidateStructSize32(0x2040, EffectManager);
 #pragma endregion
 
-inline void StageCamera::__copy_int2_FC_to_anm_manager() {
+inline void StageCamera::__copy_float2_FC_to_anm_manager() {
     if (AnmManager* anm_manager = ANM_MANAGER_PTR) {
-        anm_manager->__float2_D0.x = this->__float2_FC.x;
-        anm_manager->__float2_D0.y = this->__float2_FC.y;
+        anm_manager->__float2_D0 = this->__float2_FC;
     }
 }
 
@@ -15905,6 +16172,16 @@ dllexport HRESULT thiscall Supervisor::d3d_disable_zwrite() {
     return D3D_OK;
 }
 
+inline HRESULT Supervisor::d3d_zfunc_always() {
+    ANM_MANAGER_PTR->flush_sprites();
+    return this->d3d_device->SetRenderState(D3DRS_ZFUNC, D3DCMP_ALWAYS);
+}
+
+inline HRESULT Supervisor::d3d_zfunc_lessequal() {
+    ANM_MANAGER_PTR->flush_sprites();
+    return this->d3d_device->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
+}
+
 // 0x41B330
 dllexport void thiscall Supervisor::set_camera_by_index(uint32_t index) {
     StageCamera* camera = &this->cameras[index];
@@ -15912,8 +16189,7 @@ dllexport void thiscall Supervisor::set_camera_by_index(uint32_t index) {
     this->__sub_4548E0(camera);
     this->d3d_device->SetViewport(&this->current_camera_ptr->__viewport_10C);
     AnmManager* anm_manager = ANM_MANAGER_PTR;
-    anm_manager->__float2_D8.x = this->current_camera_ptr->__int2_104.x;
-    anm_manager->__float2_D8.y = this->current_camera_ptr->__int2_104.y;
+    anm_manager->__float2_D8 = (Float2)this->current_camera_ptr->__int2_104;
     this->current_camera_index = index;
 }
 // 0x41B3B0
@@ -15923,8 +16199,7 @@ dllexport gnu_noinline void stdcall Supervisor::set_camera2_alt(uint32_t) {
     SUPERVISOR.__sub_4548E0(camera);
     SUPERVISOR.d3d_device->SetViewport(&SUPERVISOR.current_camera_ptr->__viewport_124);
     AnmManager* anm_manager = ANM_MANAGER_PTR;
-    anm_manager->__float2_D8.x = SUPERVISOR.current_camera_ptr->__int2_104.x;
-    anm_manager->__float2_D8.y = SUPERVISOR.current_camera_ptr->__int2_104.y;
+    anm_manager->__float2_D8 = (Float2)SUPERVISOR.current_camera_ptr->__int2_104;
     SUPERVISOR.current_camera_index = 2;
 }
 
@@ -15934,40 +16209,20 @@ inline void thiscall Supervisor::set_camera_by_index_disable_fog(uint32_t index)
     this->__sub_4548E0(camera);
     this->d3d_device->SetViewport(&this->current_camera_ptr->__viewport_10C);
     AnmManager* anm_manager = ANM_MANAGER_PTR;
-    anm_manager->__float2_D8.x = this->current_camera_ptr->__int2_104.x;
-    anm_manager->__float2_D8.y = this->current_camera_ptr->__int2_104.y;
-    this->current_camera_index = index;
-    if (this->zwrite_enabled != FALSE) {
-        anm_manager->flush_sprites();
-        this->zwrite_enabled = FALSE;
-        this->d3d_device->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
-    }
-}
-
-inline void thiscall Supervisor::set_camera_by_index_disable_zwrite(uint32_t index) {
-    StageCamera* camera = &this->cameras[index];
-    this->current_camera_ptr = camera;
-    this->__sub_4548E0(camera);
-    this->d3d_device->SetViewport(&this->current_camera_ptr->__viewport_10C);
-    AnmManager* anm_manager = ANM_MANAGER_PTR;
-    anm_manager->__float2_D8.x = this->current_camera_ptr->__int2_104.x;
-    anm_manager->__float2_D8.y = this->current_camera_ptr->__int2_104.y;
+    anm_manager->__float2_D8 = (Float2)this->current_camera_ptr->__int2_104;
     this->current_camera_index = index;
     if (this->fog_enabled != FALSE) {
         anm_manager->flush_sprites();
         this->fog_enabled = FALSE;
         this->d3d_device->SetRenderState(D3DRS_FOGENABLE, FALSE);
     }
-    anm_manager = ANM_MANAGER_PTR;
-    anm_manager->flush_sprites();
-    this->d3d_device->SetRenderState(D3DRS_ZFUNC, D3DCMP_ALWAYS);
 }
 
 inline void AnmManager::set_modulate_op() {
-    if (!ANM_MANAGER_PTR->currently_using_modulate_op) {
+    if (!ANM_MANAGER_PTR->current_texture_op) {
         SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
         SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-        ANM_MANAGER_PTR->currently_using_modulate_op = true;
+        ANM_MANAGER_PTR->current_texture_op = 1;
     }
 }
 
@@ -15978,7 +16233,7 @@ dllexport gnu_noinline void stdcall Supervisor::__sub_4548E0(StageCamera* camera
     }
     SUPERVISOR.d3d_device->SetTransform(D3DTS_VIEW, &camera->view_matrix);
     SUPERVISOR.d3d_device->SetTransform(D3DTS_PROJECTION, &camera->projection_matrix);
-    camera->__copy_int2_FC_to_anm_manager();
+    camera->__copy_float2_FC_to_anm_manager();
 }
 
 #pragma region // AnmLoaded instantiate funcs
@@ -16610,7 +16865,7 @@ dllexport gnu_noinline int32_t AnmVM::run_anm() {
                 continue;
             case loop: { // 201
                 int32_t* write = ParseIntPtrArg(0);
-                *write--;
+                (*write)--;
                 if (ParseIntArg(0) <= 0) {
                     break;
                 }
@@ -17839,6 +18094,35 @@ ValidateFieldOffset32(0x19274, AsciiManager, on_draw_func_group_3);
 ValidateStructSize32(0x19278, AsciiManager);
 #pragma endregion
 
+// 0x43A340
+dllexport gnu_noinline UpdateFuncRet UpdateFuncCC FpsCounter::on_draw(void* ptr) {
+    switch (SUPERVISOR.gamemode_switch) {
+        default: {
+            float fps = ((FpsCounter*)ptr)->__fps;
+            if (AsciiManager* ascii_manager = ASCII_MANAGER_PTR) {
+
+                D3DCOLOR color;
+                if (fps < 30.0f) {
+                    color = PackD3DCOLOR(255, 80, 80, 255);
+                } else if (fps < 40.0f) {
+                    color = PackD3DCOLOR(255, 160, 160, 255);
+                } else {
+                    color = PackD3DCOLOR(255, 255, 255, 255);
+                }
+                ascii_manager->color = color;
+
+                Float3 position = { 588.0f, 470.0f, 0.0f };
+
+                ascii_manager->debugf(&position, "%2.1ffps", fps + 0.05);
+
+                ASCII_MANAGER_PTR->color = PackD3DCOLOR(255, 255, 255, 255);
+            }
+        }
+        case 4: case 15:
+            return UpdateFuncNext;
+    }
+}
+
 inline UpdateFuncRet LoadingThread::on_tick() {
     if (this->__unknown_task_flag_A) {
         SUPERVISOR.__sub_455EC0();
@@ -18819,7 +19103,7 @@ ValidateStructSize32(0x9C, PlayerDamageSource);
 #pragma endregion
 
 // 0x4B4270
-static const DamageSourceFunc *const PLAYER_DAMAGE_SOURCE_UNKNOWN_FUNCS[] = {
+static constexpr DamageSourceFunc *const PLAYER_DAMAGE_SOURCE_UNKNOWN_FUNCS[] = {
     NULL,
     &PlayerDamageSource::__unknown_func_1,
     &PlayerDamageSource::__unknown_func_2,
@@ -19173,7 +19457,7 @@ struct Player : ZUNTask {
     }
 
     inline void set_position(float x, float y) {
-        return this->set_position(x * INTERNAL_POSITION_RATIO, y * INTERNAL_POSITION_RATIO);
+        return this->set_position_internal(x * INTERNAL_POSITION_RATIO, y * INTERNAL_POSITION_RATIO);
     }
 
     inline void set_x_position(float x) {
@@ -19400,7 +19684,7 @@ public:
             this->on_tick_func = update_func;
             update_func = new UpdateFunc(&on_draw, false, this);
             UpdateFuncRegistry::register_on_draw(update_func, 29);
-            this->on_draw_func;
+            this->on_draw_func = update_func;
 
             this->player_anm->__copy_data_to_vm_and_run(&this->__vm_14, 0);
 
@@ -21704,7 +21988,7 @@ struct CardMomoyo : CardBase {
     }
     // Method 44
     // 0x413050
-    dllexport gnu_noinline virtual int thiscall on_anm_id_assigned_to_hud(uint32_t id) {
+    dllexport gnu_noinline virtual int thiscall on_anm_id_assigned_to_hud(AnmID id) {
         this->__vm_id_58 = id;
         return 0;
     }
@@ -22379,18 +22663,27 @@ struct AbilityManager : ZUNTask {
         return UpdateFuncNext;
     }
 
+    inline ZUNResult initialize() {
+        this->card_list.initialize_with((CardBase*)this);
+        this->load_files();
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
+        UpdateFuncRegistry::register_on_tick(update_func, 22);
+        this->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, false, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 51);
+        this->on_draw_func = update_func;
+
+        return ZUN_SUCCESS;
+    }
+
     // 0x4082B0
     dllexport static gnu_noinline AbilityManager* allocate() asm_symbol_rel(0x4082B0) {
         AbilityManager* ability_manager = new AbilityManager();
         ABILITY_MANAGER_PTR = ability_manager;
-        ability_manager->card_list.initialize_with((CardBase*)ability_manager);
-        ability_manager->load_files();
-        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, ability_manager);
-        UpdateFuncRegistry::register_on_tick(update_func, 22);
-        ability_manager->on_tick_func = update_func;
-        update_func = new UpdateFunc(&on_draw, false, ability_manager);
-        UpdateFuncRegistry::register_on_draw(update_func, 51);
-        ability_manager->on_draw_func = update_func;
+        if (ZUN_FAILED(ability_manager->initialize())) {
+            delete ability_manager;
+            return NULL;
+        }
         return ability_manager;
     }
 
@@ -23025,12 +23318,12 @@ struct AbilityShop : ZUNTask {
 
     // 0x417CC0
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x417CC0) {
-
+        // TODO
     }
 
     // 0x418990
     dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x418990) {
-
+        // TODO
     }
 
     // 0x418C20
@@ -23199,7 +23492,11 @@ struct AbilityMenu : ZUNTask {
     AnmID __anm_id_array_3EC[256]; // 0x3EC
     AnmID __anm_id_array_7EC[256]; // 0x7EC
     AnmID __anm_id_array_BEC[256]; // 0xBEC
-    unknown_fields(0x410); // 0xFEC
+    unknown_fields(0x400); // 0xFEC
+    int __int_13EC; // 0x13EC
+    int __int_13F0; // 0x13F0
+    int __int_13F4; // 0x13F4
+    unknown_fields(0x4); // 0x13F8
     // 0x13FC
 
     inline void zero_contents() {
@@ -23269,7 +23566,15 @@ struct AbilityMenu : ZUNTask {
 
         this->__float3_2A8 = *arg1;
 
+        this->__int_13EC = arg2;
         // TODO
+
+        arg2 = this->__int_13EC;
+
+        this->__int_13F0 = !arg2;
+        this->__int_13F4 = arg2 == 2 ? 0 : 11;
+
+        return ZUN_SUCCESS;
     }
 
     // 0x413810
@@ -23297,6 +23602,9 @@ ValidateFieldOffset32(0x3E4, AbilityMenu, __int_3E4);
 ValidateFieldOffset32(0x3EC, AbilityMenu, __anm_id_array_3EC);
 ValidateFieldOffset32(0x7EC, AbilityMenu, __anm_id_array_7EC);
 ValidateFieldOffset32(0xBEC, AbilityMenu, __anm_id_array_BEC);
+ValidateFieldOffset32(0x13EC, AbilityMenu, __int_13EC);
+ValidateFieldOffset32(0x13F0, AbilityMenu, __int_13F0);
+ValidateFieldOffset32(0x13F4, AbilityMenu, __int_13F4);
 ValidateStructSize32(0x13FC, AbilityMenu);
 #pragma endregion
 
@@ -23544,7 +23852,7 @@ struct EnemyManager : ZUNTask {
 
     // 0x42D440
     dllexport static gnu_noinline int32_t count_killable_enemies() asm_symbol_rel(0x42D440) {
-        ENEMY_MANAGER_PTR->enemy_list.count_if_not([](Enemy* enemy) {
+        return ENEMY_MANAGER_PTR->enemy_list.count_if_not([](Enemy* enemy) {
             return !enemy->data.has_active_hitbox() || enemy->data.is_invulnerable();
             //return enemy->data.disable_hitbox || enemy->data.invincible || enemy->data.intangible || enemy->data.invulnerable_timer > 0;
         });
@@ -24327,12 +24635,17 @@ struct StdEntry {
     union {
         uint8_t flags; // 0x3
         struct {
-
+            uint8_t __unknown_flag_A : 1; // 1
         };
     };
     Float3 position; // 0x4
     Float3 size; // 0x10
     StdQuad quads[0]; // 0x1C
+
+    // 0x41CA90
+    dllexport gnu_noinline int thiscall __sub_41CA90(Float3* arg1, StageCamera* camera) asm_symbol_rel(0x41CA90) {
+        // TODO
+    }
 };
 
 // size: 0x90
@@ -24382,8 +24695,6 @@ struct StdInstruction {
     unsigned char args[]; // 0x8
 };
 
-// It's been too long since I looked at stage stuff,
-// is this actually the whole thing?
 // size: 0x3444
 struct StdVM {
     Timer script_time; // 0x0, 0xC
@@ -24404,6 +24715,11 @@ struct StdVM {
     StdDistortion distortion; // 0x3410, 0x341C
     D3DCOLOR __color_3440; // 0x3440, 0x344C
     // 0x3444
+
+    // 0x41D260
+    dllexport gnu_noinline ZUNResult thiscall run_std() asm_symbol_rel(0x41D260) {
+        // TODO
+    }
 };
 #pragma region // StdVM Validation
 ValidateFieldOffset32(0x0, StdVM, script_time);
@@ -24448,7 +24764,7 @@ struct Stage : ZUNTask {
     };
     Timer __timer_3478; // 0x3478
     int32_t stage_number; // 0x348C
-    int __dword_3490; // 0x3490
+    int __int_3490; // 0x3490
     void* std_file_buffer; // 0x3494
     int32_t std_file_size; // 0x3498
     UpdateFunc* on_draw_func_B; // 0x349C
@@ -24499,7 +24815,52 @@ struct Stage : ZUNTask {
 
     // 0x41C0A0
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x41C0A0) {
-        // TODO
+        if (
+            !this->__unknown_flag_A &&
+            (!this->__unknown_flag_B || this->__timer_3478 < 60)
+        ) {
+            this->std_vm.camera.__float2_FC = {};
+            this->std_vm.camera.__float3_13C = {};
+
+            Float3 A = this->std_vm.camera.facing + this->std_vm.camera.__shaking_float3_B;
+            D3DXVec3Normalize(&this->std_vm.camera.facing_normalized.D3DX(), &A.D3DX());
+
+            this->std_vm.__color_3440 = PackD3DCOLOR(0, 128, 128, 128);
+
+            if (!this->__unknown_flag_B || this->__timer_3478 < 30) {
+                for (int32_t i = 0; i < this->std_file->entry_count; ++i) {
+                    StdEntry* entry = this->entries[i];
+                    if (entry->__unknown_flag_A) {
+                        uint32_t vms_alive = 0;
+                        for (
+                            StdQuad* quad = entry->quads;
+                            quad->type >= 0;
+                            quad = pointer_raw_offset(quad, quad->offset_to_next)
+                        ) {
+                            AnmVM* vm = &this->face_vms[quad->face_vm_index];
+                            vm->run_anm();
+                            vms_alive += vm->data.current_instruction_offset >= 0;
+                        }
+                        if (!vms_alive) {
+                            entry->__unknown_flag_A = false;
+                        }
+                    }
+                }
+                this->std_vm.run_std();
+            }
+            SUPERVISOR.cameras[3] = this->std_vm.camera;
+            nounroll for (size_t i = 0; i < countof(this->std_vm.slot_vms); ++i) {
+                this->std_vm.slot_vms[i].run_anm();
+            }
+            this->__on_tick_B();
+            ++this->__int_3490;
+        }
+        return UpdateFuncNext;
+    }
+
+    // 0x41E760
+    dllexport gnu_noinline void thiscall __on_tick_B() asm_symbol_rel(0x41E760) {
+
     }
 
     // 0x41C290
@@ -24592,7 +24953,7 @@ corrupted_data:
         UpdateFuncRegistry::register_on_draw(update_func, 6);
         this->on_draw_func_B = update_func;
 
-        this->__dword_3490 = 0;
+        this->__int_3490 = 0;
         this->std_vm.script_time.reset();
         this->__unknown_flag_C = true;
         this->std_vm.camera_facing_interp.end_time = 0;
@@ -24625,7 +24986,7 @@ ValidateFieldOffset32(0x3464, Stage, stage_anm);
 ValidateFieldOffset32(0x3474, Stage, flags);
 ValidateFieldOffset32(0x3478, Stage, __timer_3478);
 ValidateFieldOffset32(0x348C, Stage, stage_number);
-ValidateFieldOffset32(0x3490, Stage, __dword_3490);
+ValidateFieldOffset32(0x3490, Stage, __int_3490);
 ValidateFieldOffset32(0x3494, Stage, std_file_buffer);
 ValidateFieldOffset32(0x3498, Stage, std_file_size);
 ValidateFieldOffset32(0x349C, Stage, on_draw_func_B);
@@ -25358,6 +25719,8 @@ extern "C" {
 static inline constexpr size_t MAX_ITEM_COUNT = 600;
 static inline constexpr size_t MAX_CANCEL_ITEM_COUNT = 0x1000;
 
+static inline constexpr size_t TOTAL_ITEM_COUNT = MAX_ITEM_COUNT + MAX_CANCEL_ITEM_COUNT;
+
 // size: 0xE6BB28
 struct ItemManager : ZUNTask {
     //ZUNTask base; // 0x0
@@ -25444,27 +25807,58 @@ public:
 
     // 0x445A80
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x445A80) {
-
+        // TODO
+        return UpdateFuncNext;
     }
 
     // 0x446D60
     dllexport gnu_noinline UpdateFuncRet thiscall on_draw(BOOL arg1) asm_symbol_rel(0x446D60) {
+        Item* item = this->items;
+        for (size_t i = 0; i < TOTAL_ITEM_COUNT; ++i, ++item) {
+            if (
+                item->state != 0 &&
+                (item->__vm_10.controller.fast_id & 1) && // this has to be wrong...
+                item->__int_C84 <= 0 &&
+                arg1
+            ) {
 
+            }
+        }
+        return UpdateFuncNext;
     }
 
     // 0x446EC0
     dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x446EC0) {
-
+        GameThread* game_thread = GAME_THREAD_PTR;
+        if (
+            (game_thread && ((game_thread->__unknown_flag_A | game_thread->skip_flag) || game_thread->__unknown_flag_C)) ||
+            ABILITY_SHOP_PTR
+        ) {
+            return UpdateFuncNext;
+        }
+        return ((ItemManager*)ptr)->on_tick();
     }
 
     // 0x446F00
     dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_A(void* ptr) asm_symbol_rel(0x446F00) {
-
+        GameThread* game_thread = GAME_THREAD_PTR;
+        if (
+            (game_thread && game_thread->skip_flag)
+        ) {
+            return UpdateFuncNext;
+        }
+        return ((ItemManager*)ptr)->on_draw(true);
     }
 
     // 0x446F20
     dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_B(void* ptr) asm_symbol_rel(0x446F20) {
-
+        GameThread* game_thread = GAME_THREAD_PTR;
+        if (
+            (game_thread && game_thread->skip_flag)
+        ) {
+            return UpdateFuncNext;
+        }
+        return ((ItemManager*)ptr)->on_draw(false);
     }
 
     inline ZUNResult initialize() {
@@ -32476,7 +32870,7 @@ struct ReplayManager : ZUNTask {
             }
             if (self->__int_20C >= 0 && !ABILITY_SHOP_PTR) {
                 if (!(self->__int_20C % 30)) {
-                    float fps_count_f = FPS_COUNTER_PTR->__float_30 + 0.5f;
+                    float fps_count_f = FPS_COUNTER_PTR->__fps + 0.5f;
                     int32_t fps_count = fps_count_f < 256.0f ? fps_count_f : 255;
                     ReplayChunk* cur_chunk = self->current_chunk_node->data;
                     *cur_chunk->next_fps_count_write_pos++ = fps_count;
@@ -32796,7 +33190,9 @@ static inline bool is_replay() {
 // 0x417880
 dllexport gnu_noinline void thiscall AbilityShop::cleanup() {
     // how did you do this zun
-    if (this) {
+    AbilityShop* ability_shop = this;
+    __asm__ volatile ("":"+c"(ability_shop));
+    if (ability_shop) {
         INPUT_STATES[0].__reset_inputs();
         INPUT_STATES[1].__reset_inputs();
         INPUT_STATES[2].__reset_inputs();
@@ -32849,10 +33245,363 @@ dllexport gnu_noinline void thiscall AbilityShop::cleanup() {
                 }
             }
         }
-
-        delete this;
+        delete ability_shop;
     }
 }
+
+typedef struct HelpMenu HelpMenu;
+
+extern "C" {
+    // 0x4CF2E8
+    externcg HelpMenu* HELP_MENU_PTR asm("_HELP_MENU_PTR");
+}
+
+// size: 0x1BC
+struct HelpMenu : ZUNTask {
+    // ZUNTask base; // 0x0
+    int __int_C; // 0xC
+    Timer __timer_10; // 0x10
+    MenuSelect __menu_select_24; // 0x24
+    AnmID __anm_id_array_FC[7]; // 0xFC
+    unknown_fields(0x8); // 0x118
+    AnmID __anm_id_120; // 0x120
+    int __int_124; // 0x124
+    float __float_128; // 0x128
+    AnmLoaded* help_anm; // 0x12C
+    void* file_buffer; // 0x130
+    int __int_134; // 0x134
+    char filename_buffer[128]; // 0x138
+    int32_t __int_1B8; // 0x1B8
+    // 0x1BC
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline HelpMenu() {
+        this->zero_contents();
+        this->__unknown_task_flag_A = true;
+    }
+
+    // 0x4450B0
+    dllexport gnu_noinline ~HelpMenu() {
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
+        ANM_MANAGER_PTR->unload_anm(19);
+
+        HELP_MENU_PTR = NULL;
+    }
+
+    // 0x4451C0
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x4451C0) {
+
+    }
+
+    // 0x445690
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x445690) {
+        return ((HelpMenu*)ptr)->on_tick();
+    }
+
+    // 0x4456A0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x4456A0) {
+        return UpdateFuncNext;
+    }
+
+    // 0x444EC0
+    dllexport gnu_noinline static void cdecl thread_func_load_file(void* arg) asm_symbol_rel(0x444EC0) {
+        HelpMenu* help_menu = HELP_MENU_PTR;
+        void* file = read_file_to_buffer(help_menu->filename_buffer, &help_menu->__int_1B8, false);
+        help_menu = HELP_MENU_PTR;
+        help_menu->file_buffer = file;
+        help_menu->__int_134 = 3;
+        SUPERVISOR.__thread_A94.__bool_10 = FALSE;
+        SUPERVISOR.__thread_A94.__bool_C = TRUE;
+    }
+
+    // 0x444E60
+    dllexport gnu_noinline static void cdecl thread_func_load_anm(void* arg) asm_symbol_rel(0x444E60) {
+        AnmLoaded* anm_loaded = ANM_MANAGER_PTR->preload_anm(19, "help.anm");
+        HelpMenu* help_menu = HELP_MENU_PTR;
+        help_menu->help_anm = anm_loaded;
+        if (!anm_loaded) {
+            LOG_BUFFER.write(JpEnStr("", "Screen configuration data not found. data is corrupted\r\n"));
+        }
+        else {
+            SUPERVISOR.__thread_A94.__bool_10 = FALSE;
+            SUPERVISOR.__thread_A94.__bool_C = TRUE;
+            help_menu->enable_funcs_unsafe();
+        }
+    }
+
+    inline ZUNResult initialize() {
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
+        UpdateFuncRegistry::register_on_tick(update_func, 13);
+        this->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, false, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 78);
+        this->on_draw_func = update_func;
+
+        SUPERVISOR.__start_thread_A94((_beginthreadex_proc_type)&thread_func_load_anm);
+
+        this->__timer_10.reset();
+        this->__int_C = 0;
+
+        return ZUN_SUCCESS;
+    }
+
+    dllexport gnu_noinline HelpMenu* allocate() {
+        HelpMenu* help_menu = new HelpMenu();
+        HELP_MENU_PTR = help_menu;
+        if (ZUN_FAILED(help_menu->initialize())) {
+            delete help_menu;
+            return NULL;
+        }
+        return help_menu;
+    }
+};
+#pragma region // HelpMenu Verification
+ValidateFieldOffset32(0x0, HelpMenu, task_flags);
+ValidateFieldOffset32(0x4, HelpMenu, on_tick_func);
+ValidateFieldOffset32(0x8, HelpMenu, on_draw_func);
+ValidateFieldOffset32(0xC, HelpMenu, __int_C);
+ValidateFieldOffset32(0x10, HelpMenu, __timer_10);
+ValidateFieldOffset32(0x24, HelpMenu, __menu_select_24);
+ValidateFieldOffset32(0xFC, HelpMenu, __anm_id_array_FC);
+ValidateFieldOffset32(0x120, HelpMenu, __anm_id_120);
+ValidateFieldOffset32(0x124, HelpMenu, __int_124);
+ValidateFieldOffset32(0x128, HelpMenu, __float_128);
+ValidateFieldOffset32(0x12C, HelpMenu, help_anm);
+ValidateFieldOffset32(0x130, HelpMenu, file_buffer);
+ValidateFieldOffset32(0x134, HelpMenu, __int_134);
+ValidateFieldOffset32(0x138, HelpMenu, filename_buffer);
+ValidateFieldOffset32(0x1B8, HelpMenu, __int_1B8);
+ValidateStructSize32(0x1BC, HelpMenu);
+#pragma endregion
+
+// 0x4B6700
+static inline constexpr const char *const KEY_CONFIG_MENU_ENTRIES[] = {
+    "Shot",
+    "Bomb",
+    "Slow",
+    "Item",
+    "Change",
+    "Pause",
+    "Default",
+    "Quit"
+};
+
+typedef struct KeyConfigMenu KeyConfigMenu;
+extern "C" {
+    // 0x4CF3F0
+    externcg KeyConfigMenu* KEY_CONFIG_MENU_PTR asm("_KEY_CONFIG_MENU_PTR");
+}
+
+// size: 0x180
+struct KeyConfigMenu : ZUNTask {
+    // ZUNTask base; // 0x0
+    unknown_fields(0x4); // 0xC
+    MenuSelect menu_select; // 0x10
+    InputMapping joypad_mapping; // 0xE8
+    unknown_fields(0xC); // 0xFC
+    InputMapping xinput_mapping; // 0x108
+    unknown_fields(0xC); // 0x11C
+    InputMapping keyboard_mapping; // 0x128
+    unknown_fields(0xC); // 0x13C
+    Timer __timer_148; // 0x148
+    Float3 __float3_15C; // 0x15C
+    Timer __timer_168; // 0x168
+    int __int_17C; // 0x17C
+    // 0x180
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline KeyConfigMenu() {
+        this->zero_contents();
+        this->__unknown_task_flag_A = true;
+    }
+
+    // 0x447630
+    dllexport gnu_noinline ~KeyConfigMenu() {
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
+        KEY_CONFIG_MENU_PTR = NULL;
+
+        //__save_config_file();
+    }
+
+    // 0x447450
+    dllexport gnu_noinline void thiscall __sub_447450(int arg1) asm_symbol_rel(0x447450) {
+        this->__int_17C = arg1;
+        this->__timer_148.reset();
+    }
+
+    // 0x447700
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x447700) {
+
+    }
+
+    // 0x447CF0
+    dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x447CF0) {
+
+    }
+
+    // 0x447FA0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x447FA0) {
+        return ((KeyConfigMenu*)ptr)->on_tick();
+    }
+
+    // 0x447FB0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x447FB0) {
+        return ((KeyConfigMenu*)ptr)->on_draw();
+    }
+
+    inline ZUNResult initialize(Float3* arg1) {
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
+        UpdateFuncRegistry::register_on_tick(update_func, 7);
+        this->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, true, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 80);
+        this->on_draw_func = update_func;
+        this->enable_funcs_unsafe();
+
+        // TODO
+
+        this->__timer_148.reset();
+        this->__float3_15C = *arg1;
+
+        return ZUN_SUCCESS;
+    }
+
+    // 0x4474A0
+    dllexport gnu_noinline static KeyConfigMenu* fastcall allocate(Float3* arg1) asm_symbol_rel(0x4474A0) {
+        KeyConfigMenu* key_config_menu = new KeyConfigMenu();
+        KEY_CONFIG_MENU_PTR = key_config_menu;
+        if (ZUN_FAILED(key_config_menu->initialize(arg1))) {
+            delete key_config_menu;
+            return NULL;
+        }
+        return key_config_menu;
+    }
+};
+#pragma region // KeyConfigMenu Verification
+ValidateFieldOffset32(0x0, KeyConfigMenu, task_flags);
+ValidateFieldOffset32(0x4, KeyConfigMenu, on_tick_func);
+ValidateFieldOffset32(0x8, KeyConfigMenu, on_draw_func);
+ValidateFieldOffset32(0x10, KeyConfigMenu, menu_select);
+ValidateFieldOffset32(0xE8, KeyConfigMenu, joypad_mapping);
+ValidateFieldOffset32(0x108, KeyConfigMenu, xinput_mapping);
+ValidateFieldOffset32(0x128, KeyConfigMenu, keyboard_mapping);
+ValidateFieldOffset32(0x148, KeyConfigMenu, __timer_148);
+ValidateFieldOffset32(0x15C, KeyConfigMenu, __float3_15C);
+ValidateFieldOffset32(0x168, KeyConfigMenu, __timer_168);
+ValidateFieldOffset32(0x17C, KeyConfigMenu, __int_17C);
+ValidateStructSize32(0x180, KeyConfigMenu);
+#pragma endregion
+
+typedef struct OptionsMenu OptionsMenu;
+extern "C" {
+    // 0x4CF408
+    externcg OptionsMenu* OPTIONS_MENU_PTR asm("_OPTIONS_MENU_PTR");
+}
+
+// size: 0x138
+struct OptionsMenu : ZUNTask {
+    // ZUNTask base; // 0x0
+    unknown_fields(0x4); // 0xC
+    MenuSelect menu_select; // 0x10
+    Timer __timer_E8; // 0xE8
+    Float3 __float3_FC; // 0xFC
+    Timer __timer_108; // 0x108
+    Timer __timer_11C; // 0x11C
+    int __dword_130; // 0x130
+    int __int_134; // 0x134
+    // 0x138
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline OptionsMenu() {
+        this->zero_contents();
+        this->__unknown_task_flag_A = true;
+    }
+
+    // 0x456A90
+    dllexport gnu_noinline ~OptionsMenu() {
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
+        OPTIONS_MENU_PTR = NULL;
+
+        //__save_config_file();
+    }
+
+
+    // 0x456B60
+    dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x456B60) {
+
+    }
+
+    inline UpdateFuncRet on_draw() {
+
+    }
+
+    // 0x457190
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x457190) {
+        return ((OptionsMenu*)ptr)->on_tick();
+    }
+
+    // 0x4571A0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x4571A0) {
+        return ((OptionsMenu*)ptr)->on_draw();
+    }
+
+    inline ZUNResult initialize(Float3* arg1) {
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
+        UpdateFuncRegistry::register_on_tick(update_func, 7);
+        this->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, true, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 80);
+        this->on_draw_func = update_func;
+        this->enable_funcs_unsafe();
+
+        // TODO
+
+        this->__timer_E8.reset();
+        this->__timer_108.reset();
+        this->__timer_11C.reset();
+        this->__float3_FC = *arg1;
+
+        return ZUN_SUCCESS;
+    }
+
+    // 0x456880
+    dllexport gnu_noinline static OptionsMenu* fastcall allocate(Float3* arg1) asm_symbol_rel(0x456880) {
+        OptionsMenu* options_menu = new OptionsMenu();
+        OPTIONS_MENU_PTR = options_menu;
+        if (ZUN_FAILED(options_menu->initialize(arg1))) {
+            delete options_menu;
+            return NULL;
+        }
+        return options_menu;
+    }
+};
+#pragma region // OptionsMenu Verification
+ValidateFieldOffset32(0x0, OptionsMenu, task_flags);
+ValidateFieldOffset32(0x4, OptionsMenu, on_tick_func);
+ValidateFieldOffset32(0x8, OptionsMenu, on_draw_func);
+ValidateFieldOffset32(0x10, OptionsMenu, menu_select);
+ValidateFieldOffset32(0xE8, OptionsMenu, __timer_E8);
+ValidateFieldOffset32(0xFC, OptionsMenu, __float3_FC);
+ValidateFieldOffset32(0x108, OptionsMenu, __timer_108);
+ValidateFieldOffset32(0x11C, OptionsMenu, __timer_11C);
+ValidateFieldOffset32(0x134, OptionsMenu, __int_134);
+ValidateStructSize32(0x138, OptionsMenu);
+#pragma endregion
 
 typedef struct PauseMenu PauseMenu;
 extern "C" {
@@ -32897,6 +33646,18 @@ struct PauseMenu : ZUNTask {
     inline PauseMenu() {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
+    }
+
+    // 0x457960
+    dllexport gnu_noinline ~PauseMenu() {
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
+        for (size_t i = 0; i < countof(this->__replay_manager_array_20C); ++i) {
+            delete this->__replay_manager_array_20C[i];
+        }
+
+        PAUSE_MENU_PTR = NULL;
     }
 
     // 0x457A60
@@ -34572,15 +35333,15 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_453C70() {
         SUPERVISOR.__unknown_bitfield_A = 1;
     }
 
-    //delete KEY_CONFIG_MENU_PTR;
-    //delete OPTIONS_MENU_PTR;
+    delete KEY_CONFIG_MENU_PTR;
+    delete OPTIONS_MENU_PTR;
     delete GAME_THREAD_PTR;
     //MAIN_MENU_PTR->cleanup();
     delete LOADING_THREAD_PTR;
     //delete ENDING_PTR;
     delete REPLAY_MANAGER_PTR;
     SAFE_DELETE(EFFECT_MANAGER_PTR);
-    //delete HELP_MENU_PTR;
+    delete HELP_MENU_PTR;
     delete ABILITY_MANAGER_PTR;
     delete ABILITY_MENU_PTR;
     ABILITY_SHOP_PTR->cleanup();
@@ -36873,14 +37634,29 @@ struct StaticCtorsDtors {
         __builtin_memcpy(&value, original_addr(addr), sizeof(value));
     }
 
-    StaticCtorsDtors() {
-        HMODULE original_game = LoadLibraryExA("F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18.exe.unvlv.exe", NULL, 0);
+    gnu_noinline StaticCtorsDtors() {
+        _chdir("F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\");
+        HMODULE original_game = LoadLibraryExA("th18.exe.unvlv.exe", NULL, 0);
 
         copy_from_original_game(SOUND_DATA, 0x4C9B80, original_game);
         copy_from_original_game(BULLET_SPRITE_DATA, 0x4C5F90, original_game);
         copy_from_original_game(BULLET_IDK_DATA, 0x4B36F0, original_game);
         copy_from_original_game(FONT_DATA, 0x4C9AD0, original_game);
         copy_from_original_game(STAGE_DATA, 0x4C9410, original_game);
+        copy_from_original_game(DEFAULT_JOYPAD_MAPPINGS, 0x4CABA8, original_game);
+        copy_from_original_game(DEFAULT_XINPUT_MAPPINGS, 0x4CABBC, original_game);
+        copy_from_original_game(DEFAULT_KEYBOARD_MAPPINGS, 0x4CABD0, original_game);
+
+        FreeLibrary(original_game);
+
+        /*
+        FILE* card_dump = fopen("card_dump", "wb");
+        auto* original_card_table = (CardData*)original_addr(0x4C53C0);
+        for (size_t i = 0; i < countof(CARD_DATA_TABLE); ++i) {
+            __builtin_dump_struct(&original_card_table[i], &fprintf, card_dump);
+        }
+        fclose(card_dump);
+        */
 
         //static_construct(LOG_BUFFER);
         //static_construct(SOUND_MANAGER);

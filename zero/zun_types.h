@@ -183,8 +183,8 @@ struct Int3 : Int2 {
     Int3BinOp(+);
     Int3BinOp(-);
     Int3BinOp(*);
-    Int3BinOp(/);
-    Int3BinOp(%);
+    //Int3BinOp(/);
+    //Int3BinOp(%);
     Int3BinOp(<<);
     Int3BinOp(>>);
     Int3BinOp(&);
@@ -209,8 +209,8 @@ struct Int3 : Int2 {
     Int3BinOpScalar(+);
     Int3BinOpScalar(-);
     Int3BinOpScalar(*);
-    Int3BinOpScalar(/);
-    Int3BinOpScalar(%);
+    //Int3BinOpScalar(/);
+    //Int3BinOpScalar(%);
     Int3BinOpScalar(<<);
     Int3BinOpScalar(>>);
     Int3BinOpScalar(&);
@@ -245,8 +245,8 @@ struct Int3 : Int2 {
     Int3AssignOp(+=);
     Int3AssignOp(-=);
     Int3AssignOp(*=);
-    Int3AssignOp(/=);
-    Int3AssignOp(%=);
+    //Int3AssignOp(/=);
+    //Int3AssignOp(%=);
     Int3AssignOp(<<=);
     Int3AssignOp(>>=);
     Int3AssignOp(&=);
@@ -263,8 +263,8 @@ struct Int3 : Int2 {
     Int3AssignOpScalar(+=);
     Int3AssignOpScalar(-=);
     Int3AssignOpScalar(*=);
-    Int3AssignOpScalar(/=);
-    Int3AssignOpScalar(%=);
+    //Int3AssignOpScalar(/=);
+    //Int3AssignOpScalar(%=);
     Int3AssignOpScalar(<<=);
     Int3AssignOpScalar(>>=);
     Int3AssignOpScalar(&=);
@@ -497,6 +497,7 @@ struct Float3 : Float2 {
     inline Float3& thiscall make_from_vector3(float angle, float magnitude) {
         this->make_from_vector(angle, magnitude);
         this->z = 0.0f;
+        return *this;
     }
     
     // 0x425B40
