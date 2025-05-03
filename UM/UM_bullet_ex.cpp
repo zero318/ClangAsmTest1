@@ -3216,6 +3216,20 @@ struct StageCamera {
             X + W, Y + H
         };
     }
+
+    inline Float2 get_viewport_position() {
+        return {
+            this->viewport.X,
+            this->viewport.Y
+        };
+    }
+
+    inline Float2 get_viewport_size() {
+        return {
+            this->viewport.Width,
+            this->viewport.Height
+        };
+    }
 };
 #pragma region // StageCamera Validation
 ValidateFieldOffset32(0x0, StageCamera, position);
@@ -3800,7 +3814,7 @@ struct Supervisor {
     dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC on_draw_A(void* ptr) asm_symbol_rel(0x4553B0);
 
     // 0x455610
-    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC __unknown_on_draw_B(void* ptr) asm_symbol_rel(0x455610);
+    dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC on_draw_B(void* ptr) asm_symbol_rel(0x455610);
 
     // 0x455530
     dllexport static gnu_noinline UpdateFuncRet UpdateFuncCC on_draw_arcade_vm_A(void* ptr) asm_symbol_rel(0x455530);
@@ -4011,7 +4025,7 @@ dllexport gnu_noinline ZUNResult Supervisor::initialize() {
     if (ZUN_SUCCEEDED(ret)) {
         update_func = new UpdateFunc(&Supervisor::on_draw_A, true, &SUPERVISOR);
         UpdateFuncRegistry::register_on_draw(update_func, 1);
-        update_func = new UpdateFunc(&Supervisor::__unknown_on_draw_B, true, &SUPERVISOR);
+        update_func = new UpdateFunc(&Supervisor::on_draw_B, true, &SUPERVISOR);
         UpdateFuncRegistry::register_on_draw(update_func, 14);
         update_func = new UpdateFunc(&Supervisor::on_draw_arcade_vm_A, true, &SUPERVISOR);
         UpdateFuncRegistry::register_on_draw(update_func, 15);
@@ -5675,6 +5689,11 @@ struct Scorefile {
     ScorefileSectionB shottypes[SHOTTYPE_COUNT + 1]; // 0x8, 0x130F8, 0x251E8, 0x392D8, 0x4C3C8
     ScorefileSectionA __sectionA; // 0x5F4B8
     // 0x5F888
+
+    inline ~Scorefile() {
+        SAFE_FREE(this->buffer);
+        SAFE_FREE(this->decompressed_buffer);
+    }
 
 private:
     // 0x463B30
@@ -7639,7 +7658,7 @@ struct BombBase : ZUNTask {
 
     // Method 0
     // 0x41FC10
-    virtual ~BombBase() {
+    dllexport gnu_noinline virtual ~BombBase() {
         this->__vm_id_5C.mark_tree_for_delete();
         this->__vm_id_60.mark_tree_for_delete();
         this->__vm_id_64.mark_tree_for_delete();
@@ -8632,11 +8651,14 @@ struct EclFile {
     unsigned char data[]; // 0x24
 };
 
+static inline constexpr size_t MAX_ECL_FILE_COUNT = 32;
+static inline constexpr size_t MAX_ECL_ANM_FILES = 8;
+
 struct SptResource {
     //void* vtable; // 0x0
     int32_t file_count; // 0x4
     int32_t sub_count; // 0x8
-    EclFile* files[32]; // 0xC
+    EclFile* files[MAX_ECL_FILE_COUNT]; // 0xC
     EclSubHeader* subs; // 0x8C
     // 0x90
 
@@ -8734,7 +8756,7 @@ ValidateStructSize32(0x90, SptResource);
 #pragma endregion
 
 // size: 0x1098
-struct EclController : SptResource {
+struct EclManager : SptResource {
     // SptResource base; // 0x0
     EclStack __wtf_stack_maybe; // 0x90
     // 0x1098
@@ -8743,8 +8765,16 @@ struct EclController : SptResource {
         zero_this();
     }
 
-    inline EclController() {
+    inline EclManager() {
         this->zero_contents();
+    }
+
+    inline ~EclManager() {
+        nounroll for (size_t i = 0; i < MAX_ECL_FILE_COUNT; ++i) {
+            if (void* file = this->files[i]) {
+                free(file);
+            }
+        }
     }
 
     // 0x42D3E0
@@ -8759,13 +8789,13 @@ struct EclController : SptResource {
     // Method 4
     dllexport virtual gnu_noinline ZUNResult thiscall load_imports(EclIncludes* includes) asm_symbol_rel(0x42DA90);
 };
-#pragma region // EclController Validation
-ValidateVirtualFieldOffset32(0x4, EclController, file_count);
-ValidateVirtualFieldOffset32(0x8, EclController, sub_count);
-ValidateVirtualFieldOffset32(0xC, EclController, files);
-ValidateVirtualFieldOffset32(0x8C, EclController, subs);
-//ValidateVirtualFieldOffset32(0x90, EclController, __wtf_stack_maybe);
-ValidateStructSize32(0x1098, EclController);
+#pragma region // EclManager Validation
+ValidateVirtualFieldOffset32(0x4, EclManager, file_count);
+ValidateVirtualFieldOffset32(0x8, EclManager, sub_count);
+ValidateVirtualFieldOffset32(0xC, EclManager, files);
+ValidateVirtualFieldOffset32(0x8C, EclManager, subs);
+//ValidateVirtualFieldOffset32(0x90, EclManager, __wtf_stack_maybe);
+ValidateStructSize32(0x1098, EclManager);
 #pragma endregion
 
 // size: 0x122C
@@ -8775,7 +8805,7 @@ struct EclVM {
     EclContext* prev_context; // 0x8
     EclContext* current_context; // 0xC
     EclContext context; // 0x10
-    EclController* controller; // 0x1218
+    EclManager* controller; // 0x1218
     ZUNList<EclContext> context_list; // 0x121C
     // 0x122C
 
@@ -8892,12 +8922,12 @@ public:
 
     // 0x48D920
     dllexport gnu_noinline void thiscall locate_sub(const char* sub_name) asm_symbol_rel(0x48D920) {
-        EclController* ecl_controller = this->controller;
+        EclManager* ecl_manager = this->controller;
         int32_t left_index = 0;
         assume(sub_name[0] != '\0');
-        int32_t right_index = ecl_controller->sub_count - 1;
+        int32_t right_index = ecl_manager->sub_count - 1;
         if (expect(right_index >= 0, true)) {
-            EclSubHeader* subs = ecl_controller->subs;
+            EclSubHeader* subs = ecl_manager->subs;
             do {
                 int32_t index = right_index - left_index;
                 const char* name = sub_name;
@@ -10070,6 +10100,9 @@ dllexport gnu_noinline const char* fastcall __decrypt_related(const char* str) {
     return MSG_DECRYPT_BUFFER;
 }
 
+static inline constexpr size_t MAX_PORTRAIT_COUNT = 4;
+static inline constexpr size_t MAX_DIALOG_LINE_COUNT = 2;
+
 // 0x4B6620
 static int32_t PLAYER_PORTRAIT_SCRIPT_TABLE[] = {
     40, 46, 29, 28
@@ -10081,16 +10114,14 @@ struct MsgVM {
     Timer __timer_4; // 0x4
     Timer script_time; // 0x18
     Timer pause_timer; // 0x2C
-    AnmID player_portraits[2]; // 0x40
-    AnmID enemy_portraits[4]; // 0x48
-    AnmID __vm_id_58; // 0x58
-    int __dword_5C; // 0x5C
-    unknown_fields(0x4); // 0x60
-    AnmID dialogue_lines[2]; // 0x64
-    AnmID furigana_lines[2]; // 0x6C
+    AnmID player_portraits[MAX_PORTRAIT_COUNT]; // 0x40
+    AnmID enemy_portraits[MAX_PORTRAIT_COUNT]; // 0x50
+    AnmID __anm_id_60; // 0x60
+    AnmID dialogue_lines[MAX_DIALOG_LINE_COUNT]; // 0x64
+    AnmID furigana_lines[MAX_DIALOG_LINE_COUNT]; // 0x6C
     AnmID intro; // 0x74
     AnmID __textbox_related; // 0x78
-    AnmID __vm_id_7C; // 0x7C
+    AnmID __anm_id_7C; // 0x7C
     int32_t menu_time; // 0x80
     int32_t menu_state; // 0x84
     MenuSelect menu_controller; // 0x88
@@ -10123,6 +10154,9 @@ struct MsgVM {
     unknown_fields(0x4); // 0x1D0
     int32_t __int_1D4; // 0x1D4
     // 0x1D8
+
+    // 0x43A3F0
+    dllexport gnu_noinline ~MsgVM();
     
 private:
     // 0x4416D0
@@ -10232,14 +10266,13 @@ ValidateFieldOffset32(0x4, MsgVM, __timer_4);
 ValidateFieldOffset32(0x18, MsgVM, script_time);
 ValidateFieldOffset32(0x2C, MsgVM, pause_timer);
 ValidateFieldOffset32(0x40, MsgVM, player_portraits);
-ValidateFieldOffset32(0x48, MsgVM, enemy_portraits);
-ValidateFieldOffset32(0x58, MsgVM, __vm_id_58);
-ValidateFieldOffset32(0x5C, MsgVM, __dword_5C);
+ValidateFieldOffset32(0x50, MsgVM, enemy_portraits);
+ValidateFieldOffset32(0x60, MsgVM, __anm_id_60);
 ValidateFieldOffset32(0x64, MsgVM, dialogue_lines);
 ValidateFieldOffset32(0x6C, MsgVM, furigana_lines);
 ValidateFieldOffset32(0x74, MsgVM, intro);
 ValidateFieldOffset32(0x78, MsgVM, __textbox_related);
-ValidateFieldOffset32(0x7C, MsgVM, __vm_id_7C);
+ValidateFieldOffset32(0x7C, MsgVM, __anm_id_7C);
 ValidateFieldOffset32(0x80, MsgVM, menu_time);
 ValidateFieldOffset32(0x84, MsgVM, menu_state);
 ValidateFieldOffset32(0x88, MsgVM, menu_controller);
@@ -10342,16 +10375,7 @@ struct Gui : ZUNTask {
     AnmVM* __anm_vm_84; // 0x84
     AnmVM* __anm_vm_88; // 0x88
     AnmID __anm_id_8C; // 0x8C
-    AnmID __anm_id_90; // 0x90
-    AnmID __anm_id_94; // 0x94
-    AnmID __anm_id_98; // 0x98
-    AnmID __anm_id_9C; // 0x9C
-    AnmID __anm_id_A0; // 0xA0
-    AnmID __anm_id_A4; // 0xA4
-    AnmID __anm_id_A8; // 0xA8
-    AnmID __anm_id_AC; // 0xAC
-    AnmID __anm_id_B0; // 0xB0
-    AnmID __anm_id_B4; // 0xB4
+    AnmID __anm_id_array_90[10]; // 0x90
     AnmID __anm_id_B8; // 0xB8
     AnmID __anm_id_BC; // 0xBC
     AnmID __anm_id_C0; // 0xC0
@@ -10390,7 +10414,8 @@ struct Gui : ZUNTask {
         struct {
             uint32_t : 1; // 1
             uint32_t __unknown_field_C : 2; // 2-3
-            uint32_t : 5; // 4-8
+            uint32_t : 2; // 4-5
+            uint32_t __unknown_field_D : 3; // 6-8
             uint32_t __unknown_flag_A : 1; // 9
             uint32_t __unknown_field_B : 2; // 10-11
             uint32_t __unknown_field_A : 2; // 12-13
@@ -10417,6 +10442,12 @@ struct Gui : ZUNTask {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
     }
+
+    // 0x43B350
+    dllexport gnu_noinline void thiscall cleanup() asm_symbol_rel(0x43B350);
+
+    // 0x43B560
+    dllexport gnu_noinline ~Gui();
 
     inline void update_spell_timer(int32_t time) {
         // I'm only ~80% sure I got this math right
@@ -10518,6 +10549,7 @@ ValidateFieldOffset32(0x4C, Gui, player_life_icons);
 ValidateFieldOffset32(0x68, Gui, player_bomb_icons);
 ValidateFieldOffset32(0x84, Gui, __anm_vm_84);
 ValidateFieldOffset32(0x88, Gui, __anm_vm_88);
+ValidateFieldOffset32(0x90, Gui, __anm_id_array_90);
 ValidateFieldOffset32(0x8C, Gui, __anm_id_8C);
 ValidateFieldOffset32(0xB8, Gui, __anm_id_B8);
 ValidateFieldOffset32(0xBC, Gui, __anm_id_BC);
@@ -15537,7 +15569,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_A(void* pt
 }
 
 // 0x455610
-dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::__unknown_on_draw_B(void* ptr) {
+dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_B(void* ptr) {
     if (SUPERVISOR.__surface_1AC) {
         SUPERVISOR.d3d_zfunc_always();
         ANM_MANAGER_PTR->flush_sprites();
@@ -15550,8 +15582,31 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::__unknown_on_draw_
         SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ONE);
         SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
 
-        // TODO: setup buffer
-        PrimitiveVertex verts[6];
+        PrimitiveVertex verts[4];
+
+        Float2 viewport_position = SUPERVISOR.cameras[3].get_viewport_position();
+        
+        verts[3].position.z = 0.0f;
+        verts[2].position.z = 0.0f;
+        verts[1].position.z = 0.0f;
+        verts[3].position.as2() = viewport_position;
+        verts[2].position.as2() = viewport_position;
+        verts[1].position.as2() = viewport_position;
+        verts[0].position.as2() = viewport_position;
+        verts[0].position.z = 0.0f;
+        verts[3].position.w = 1.0f;
+        verts[2].position.w = 1.0f;
+        verts[1].position.w = 1.0f;
+        verts[0].position.w = 1.0f;
+        verts[0].diffuse = PackD3DCOLOR(255, 0, 0, 0);
+        verts[1].diffuse = PackD3DCOLOR(255, 0, 0, 0);
+        verts[2].diffuse = PackD3DCOLOR(255, 0, 0, 0);
+        verts[3].diffuse = PackD3DCOLOR(255, 0, 0, 0);
+
+        Float2 viewport_size = SUPERVISOR.cameras[3].get_viewport_size();
+        verts[1].position.x += viewport_size.x;
+        verts[3].position.as2() += viewport_size;
+        verts[2].position.y += viewport_size.y;
 
         SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
         SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
@@ -15882,6 +15937,87 @@ dllexport gnu_noinline UpdateFuncRet fastcall GameThread::on_draw(void* ptr) {
     return UpdateFuncNext;
 }
 
+// 0x43A3F0
+dllexport gnu_noinline MsgVM::~MsgVM() {
+    nounroll for (size_t i = 0; i < MAX_PORTRAIT_COUNT; ++i) {
+        this->player_portraits[i].mark_tree_for_delete();
+        this->enemy_portraits[i].mark_tree_for_delete();
+    }
+    this->__anm_id_60.mark_tree_for_delete();
+    for (size_t i = 0; i < MAX_DIALOG_LINE_COUNT; ++i) {
+        this->dialogue_lines[i].mark_tree_for_delete();
+    }
+    for (size_t i = 0; i < MAX_DIALOG_LINE_COUNT; ++i) {
+        this->furigana_lines[i].mark_tree_for_delete();
+    }
+    this->intro.mark_tree_for_delete();
+    this->__textbox_related.mark_tree_for_delete();
+    // doesn't delete id 7C?
+}
+
+// 0x43B350
+dllexport gnu_noinline void thiscall Gui::cleanup() {
+    AnmManager* anm_manager = ANM_MANAGER_PTR;
+    if (!(GAME_MANAGER.__unknown_flag_A | GAME_MANAGER.__unknown_flag_D)) {
+        anm_manager->unload_anm(6);
+    } else {
+        anm_manager->mark_all_vms_from_loaded_slot_for_delete(6);
+    }
+
+    SAFE_DELETE(this->msg_vm);
+
+    void* msg_file = this->msg_file;
+    if (!(GAME_MANAGER.__unknown_flag_A | GAME_MANAGER.__unknown_flag_D)) {
+        SAFE_FREE(this->msg_file);
+        msg_file = NULL;
+    }
+    CACHED_MSG_FILE_PTR = msg_file;
+
+    this->disable_tick();
+
+    this->__anm_id_B8.mark_tree_for_delete();
+    this->__anm_id_BC.mark_tree_for_delete();
+    this->__anm_id_C8.mark_tree_for_delete();
+
+    // this doesn't look like a good idea
+    for (size_t i = 0; i < MAX_BOSS_LIFE_MARKERS; ++i) {
+        this->__boss_life_markers[i] = 0;
+    }
+    nounroll for (size_t i = 0; i < countof(this->__anm_id_array_90); ++i) {
+        this->__anm_id_array_90[i].mark_tree_for_delete();
+    }
+
+    this->__unknown_field_D = -1;
+    this->__boss_life_count = 0;
+
+    // this looks like a worse idea
+    for (size_t i = 0; i < MAX_LIFEBARS_IN_GUI; ++i) {
+        this->lifebars[i].vms_initialized = false;
+    }
+}
+
+// 0x43B560
+dllexport gnu_noinline Gui::~Gui() {
+    this->cleanup();
+
+    UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+    UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+    UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func_B);
+    this->on_tick_func = NULL; // ???
+
+    this->__anm_id_F4.mark_tree_for_delete();
+    this->__anm_id_10C.mark_tree_for_delete();
+    nounroll for (size_t i = 0; i < countof(this->__anm_id_array_90); ++i) {
+        this->__anm_id_array_90[i].mark_tree_for_delete();
+    }
+    this->__anm_id_44.mark_tree_for_delete();
+    this->__anm_id_48.mark_tree_for_delete();
+
+    ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(5);
+
+    GUI_PTR = NULL;
+}
+
 inline void Lifebar::interrupt_vms(int32_t interrupt) {
     AnmID* anm_id = &this->main_vm;
     nounroll for (size_t i = 0; i < 3 + MAX_LIFEBAR_MARKERS; ++i) {
@@ -16023,6 +16159,9 @@ struct LoadingThread : ZUNTask {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
     }
+
+    // 0x452F80
+    dllexport gnu_noinline ~LoadingThread();
 
     inline UpdateFuncRet on_tick();
 
@@ -16203,6 +16342,22 @@ struct EffectManager : ZUNTask {
     inline EffectManager() {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
+    }
+
+    // 0x42ADD0
+    dllexport gnu_noinline ~EffectManager() {
+        this->__thread_2020.stop_and_cleanup();
+        AnmManager* anm_manager = ANM_MANAGER_PTR;
+        anm_manager->mark_all_vms_from_loaded_slot_for_delete(8);
+        anm_manager->mark_all_vms_from_loaded_slot_for_delete(7);
+
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
+        ANM_MANAGER_PTR->unload_anm(8);
+        ANM_MANAGER_PTR->unload_anm(7);
+
+        EFFECT_MANAGER_PTR = NULL;
     }
 
     // 0x42AF30
@@ -17411,7 +17566,9 @@ struct AsciiManager : ZUNTask {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func_group_3);
 
         ANM_MANAGER_PTR->unload_anm(2);
-        ANM_MANAGER_PTR->unload_anm(3);
+        ANM_MANAGER_PTR->unload_anm(0);
+
+        ASCII_MANAGER_PTR = NULL;
     }
 
     // This functions is disgusting
@@ -17717,10 +17874,7 @@ public:
         this->strings[this->string_count - 1].font_id = 1;
     }
 
-    // 0x419390
-    dllexport gnu_noinline static AsciiManager* allocate() asm_symbol_rel(0x419390) {
-        AsciiManager* ascii_manager = new AsciiManager();
-
+    inline ZUNResult initialize() {
         const char* ascii_filename;
         if (WINDOW_DATA.__game_scale <= 1.1f) {
             ascii_filename = "ascii.anm";
@@ -17731,31 +17885,43 @@ public:
         else {
             ascii_filename = "ascii1280.anm";
         }
+
         AnmLoaded* ascii_anm = ANM_MANAGER_PTR->preload_anm(2, ascii_filename);
-        ascii_manager->ascii_anm = ascii_anm;
+        this->ascii_anm = ascii_anm;
         if (!ascii_anm) {
             LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
+            return ZUN_ERROR;
+        }
+
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
+        UpdateFuncRegistry::register_on_tick(update_func, 5);
+        this->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw_group_0, false, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 88);
+        this->on_draw_func = update_func;
+        update_func = new UpdateFunc(&on_draw_group_1, false, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 55);
+        this->on_draw_func_group_1 = update_func;
+        update_func = new UpdateFunc(&on_draw_group_2, false, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 72);
+        this->on_draw_func_group_2 = update_func;
+        update_func = new UpdateFunc(&on_draw_group_3, false, this);
+        UpdateFuncRegistry::register_on_draw(update_func, 63);
+        this->on_draw_func_group_3 = update_func;
+
+        this->ascii_anm->__set_initial_sprite(&this->__vm_C, 0);
+        this->ascii_anm->__set_initial_sprite(&this->__vm_618, 98);
+        return ZUN_SUCCESS;
+    }
+
+    // 0x419390
+    dllexport gnu_noinline static AsciiManager* allocate() asm_symbol_rel(0x419390) {
+        AsciiManager* ascii_manager = new AsciiManager();
+        ASCII_MANAGER_PTR = ascii_manager;
+        if (ZUN_FAILED(ascii_manager->initialize())) {
             delete ascii_manager;
             return NULL;
         }
-        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, ascii_manager);
-        UpdateFuncRegistry::register_on_tick(update_func, 5);
-        ascii_manager->on_tick_func = update_func;
-        update_func = new UpdateFunc(&on_draw_group_0, false, ascii_manager);
-        UpdateFuncRegistry::register_on_draw(update_func, 88);
-        ascii_manager->on_draw_func = update_func;
-        update_func = new UpdateFunc(&on_draw_group_1, false, ascii_manager);
-        UpdateFuncRegistry::register_on_draw(update_func, 55);
-        ascii_manager->on_draw_func_group_1 = update_func;
-        update_func = new UpdateFunc(&on_draw_group_2, false, ascii_manager);
-        UpdateFuncRegistry::register_on_draw(update_func, 72);
-        ascii_manager->on_draw_func_group_2 = update_func;
-        update_func = new UpdateFunc(&on_draw_group_3, false, ascii_manager);
-        UpdateFuncRegistry::register_on_draw(update_func, 63);
-        ascii_manager->on_draw_func_group_3 = update_func;
-
-        ascii_manager->ascii_anm->__set_initial_sprite(&ascii_manager->__vm_C, 0);
-        ascii_manager->ascii_anm->__set_initial_sprite(&ascii_manager->__vm_618, 98);
         return ascii_manager;
     }
 
@@ -21214,6 +21380,14 @@ struct PopupManager : ZUNTask {
         this->__unknown_task_flag_A = true;
     }
 
+    // 0x463F50
+    dllexport gnu_noinline ~PopupManager() {
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
+        POPUP_MANAGER_PTR = NULL;
+    }
+
     // 0x464020
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x464020) {
 
@@ -23031,7 +23205,9 @@ struct AbilityManager : ZUNTask {
         ANM_MANAGER_PTR->unload_anm(31);
         ANM_MANAGER_PTR->unload_anm(32);
 
-        if (ABILITY_MANAGER_PTR) {
+        ABILITY_MANAGER_PTR = NULL;
+
+        if (this->__created_ability_data) {
             SAFE_DELETE(ABILITY_TEXT_DATA_PTR);
         }
     }
@@ -23692,6 +23868,29 @@ static inline AnmLoaded* ability_manager_get_ability_anm() {
     return ABILITY_MANAGER_PTR->ability_anm;
 }
 
+// 0x452F80
+dllexport gnu_noinline LoadingThread::~LoadingThread() {
+    this->__thread_C.stop_and_cleanup();
+    UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+    UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
+    delete ABILITY_MANAGER_PTR;
+    UNKNOWN_THREAD_A.stop_and_cleanup();
+    ANM_MANAGER_PTR->unload_anm(5);
+    SAFE_DELETE(EFFECT_MANAGER_PTR);
+    // delete TROPHY_MANAGER_B_PTR;
+    ANM_MANAGER_PTR->unload_anm(27);
+    ANM_MANAGER_PTR->unload_anm(1);
+
+    LOADING_THREAD_PTR = NULL;
+
+    delete ASCII_MANAGER_PTR;
+    ANM_MANAGER_PTR->unload_anm(0);
+
+    SCOREFILE_MANAGER_PTR->save_files();
+    SAFE_DELETE(SCOREFILE_MANAGER_PTR);
+}
+
 // 0x45E320
 dllexport gnu_noinline ZUNResult thiscall PlayerBullet::shoot(int32_t unknownA_index, int32_t time, Float3* position, PlayerOption* option) {
     uint8_t index2 = unknownA_index;
@@ -24129,6 +24328,8 @@ struct AbilityShop : ZUNTask {
         nounroll for (size_t i = 0; i < countof(__anm_id_array_22C); ++i) {
             this->__anm_id_array_22C[i].mark_tree_for_delete();
         }
+
+        ABILITY_SHOP_PTR = NULL;
     }
 
     // 0x417880
@@ -24548,8 +24749,8 @@ struct EnemyManager : ZUNTask {
     int32_t __int_B0; // 0xB0
     unknown_fields(0xB0); // 0xB4
     int __int_164; // 0x164
-    AnmLoaded* enemy_anms[8]; // 0x168
-    EclController* ecl_controller; // 0x188
+    AnmLoaded* enemy_anms[MAX_ECL_ANM_FILES]; // 0x168
+    EclManager* ecl_manager; // 0x188
     ZUNListEnds<Enemy> enemy_list; // 0x18C
     ZUNList<Enemy>* __unknown_enemy_list; // 0x194
     int32_t enemy_count; // 0x198
@@ -24563,6 +24764,22 @@ struct EnemyManager : ZUNTask {
     inline EnemyManager() {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
+    }
+
+    // 0x42DDC0
+    dllexport gnu_noinline ~EnemyManager() {
+        this->destroy_all();
+
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
+        SAFE_DELETE(this->ecl_manager);
+
+        nounroll for (size_t i = 0; i < MAX_ECL_ANM_FILES; ++i) {
+            ANM_MANAGER_PTR->unload_anm(i + 10);
+        }
+
+        ENEMY_MANAGER_PTR = NULL;
     }
 
     inline void reset() {
@@ -24840,10 +25057,10 @@ public:
         enemy_manager->index_next_enemy_id();
         ENEMY_MANAGER_PTR = enemy_manager;
 
-        EclController* ecl_controller = new EclController();
-        enemy_manager->ecl_controller = ecl_controller;
+        EclManager* ecl_manager = new EclManager();
+        enemy_manager->ecl_manager = ecl_manager;
 
-        ecl_controller->add_ecl_file(ecl_filename);
+        ecl_manager->add_ecl_file(ecl_filename);
 
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, enemy_manager);
         UpdateFuncRegistry::register_on_tick(update_func, 27);
@@ -24876,7 +25093,7 @@ ValidateFieldOffset32(0xAC, EnemyManager, __int_AC);
 ValidateFieldOffset32(0xB0, EnemyManager, __int_B0);
 ValidateFieldOffset32(0x164, EnemyManager, __int_164);
 ValidateFieldOffset32(0x168, EnemyManager, enemy_anms);
-ValidateFieldOffset32(0x188, EnemyManager, ecl_controller);
+ValidateFieldOffset32(0x188, EnemyManager, ecl_manager);
 ValidateFieldOffset32(0x18C, EnemyManager, enemy_list);
 ValidateFieldOffset32(0x194, EnemyManager, __unknown_enemy_list);
 ValidateFieldOffset32(0x198, EnemyManager, enemy_count);
@@ -24893,7 +25110,7 @@ static inline bool enemies_are_alive() {
 
 // 0x42DA90
 // Method 4
-dllexport gnu_noinline ZUNResult thiscall EclController::load_imports(EclIncludes* includes) {
+dllexport gnu_noinline ZUNResult thiscall EclManager::load_imports(EclIncludes* includes) {
     if (
         includes->magic.as_uint == ANM_INCLUDE_MAGIC
     ) {
@@ -24987,7 +25204,7 @@ dllexport gnu_noinline Enemy::Enemy(const char* sub_name) {
     this->data.death_callback_sub[0] = '\0';
     this->id = enemy_manager->get_next_enemy_id();
     this->data.slowdown = 0.0f;
-    this->controller = enemy_manager->ecl_controller;
+    this->controller = enemy_manager->ecl_manager;
     this->locate_sub((char*)sub_name);
     this->current_context->location.instruction_offset = 0;
     this->current_context->time = 0.0f;
@@ -25869,6 +26086,11 @@ struct Spellcard : ZUNTask {
         this->__vm_id_10.mark_tree_for_delete();
         this->__vm_id_14.mark_tree_for_delete();
         this->__vm_id_18.mark_tree_for_delete();
+
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
+        SPELLCARD_PTR = NULL;
     }
 
     // 0x409B10
@@ -28170,6 +28392,16 @@ struct BulletManager : ZUNTask {
     inline BulletManager() {
         this->zero_contents();
     }
+
+    // 0x423CE0
+    dllexport gnu_noinline ~BulletManager() {
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(7);
+
+        BULLET_MANAGER_PTR = NULL;
+    }
     
     // 0x409940
     dllexport Bullet* thiscall start_bullet_iter(uint32_t index) asm_symbol_rel(0x409940) {
@@ -28952,13 +29184,23 @@ struct LaserManager : ZUNTask {
         zero_this();
     }
 
-    inline ZUNEmbeddedListRHead<LaserData>& list_head() {
-        return *(ZUNEmbeddedListRHead<LaserData>*)&this->dummy_laser.embedded_node;
-    }
-
     inline LaserManager() {
         this->zero_contents();
         this->__prev_laser_id = 0x10000;
+    }
+
+    // 0x448650
+    dllexport gnu_noinline ~LaserManager() {
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
+        this->destroy_all();
+
+        LASER_MANAGER_PTR = NULL;
+    }
+
+    inline ZUNEmbeddedListRHead<LaserData>& list_head() {
+        return *(ZUNEmbeddedListRHead<LaserData>*) & this->dummy_laser.embedded_node;
     }
 
     inline void __increment_laser_id() {
@@ -34560,8 +34802,20 @@ struct MainMenu : ZUNTask {
     // ZUNTask base; // 0x4
     AnmLoaded* title_anm; // 0x10
     AnmLoaded* title_v_anm; // 0x14
-    // 0x18
+    unknown_fields(0xC); // 0x18
+    MenuSelect __menu_select_24; // 0x24
+    MenuSelect __menu_select_FC; // 0xFC
+    MenuSelect __menu_select_1D4; // 0x1D4
+    MenuSelect __menu_select_2AC; // 0x2AC
+    Timer __timer_384; // 0x384
+    // 0x398
 
+    AnmID __anm_id_650; // 0x650
+    // 0x654
+
+    ReplayManager* __replay_manager_array_5AB4[100];
+    void* __ptr_5C44; // 0x5C44
+    // 0x5C48
     ZUNThread __thread_5D7C; // 0x5D7C
     // 0x5D98
 
@@ -34571,12 +34825,40 @@ struct MainMenu : ZUNTask {
     }
 
     // 0x464970
-    gnu_noinline MainMenu() {
+    dllexport gnu_noinline MainMenu() {
         this->zero_contents();
         MAIN_MENU_PTR = this;
         this->__unknown_task_flag_A = true;
     }
 
+    inline ~MainMenu() {
+        this->__thread_5D7C.stop_and_cleanup();
+
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+
+        ANM_MANAGER_PTR->unload_anm(16);
+        ANM_MANAGER_PTR->unload_anm(17);
+
+        nounroll for (size_t i = 0; i < countof(this->__replay_manager_array_5AB4); ++i) {
+            delete this->__replay_manager_array_5AB4[i];
+        }
+
+        this->__anm_id_650.interrupt_tree(1);
+
+        SAFE_FREE(this->__ptr_5C44);
+
+        //SUPERVISOR.__sub_475380();
+
+        MAIN_MENU_PTR = NULL;
+    }
+
+    // 0x464D20
+    dllexport gnu_noinline static void cleanup() asm_symbol_rel(0x464D20) {
+        delete MAIN_MENU_PTR;
+    }
+
+    // This can't actually be called because the memset at the start nukes it
     // 0x4646D0
     // Method 0
     dllexport gnu_noinline virtual size_t __method_0() asm_symbol_rel(0x4646D0) {
@@ -34641,6 +34923,11 @@ ValidateVirtualFieldOffset32(0x8, MainMenu, on_tick_func);
 ValidateVirtualFieldOffset32(0xC, MainMenu, on_draw_func);
 ValidateVirtualFieldOffset32(0x10, MainMenu, title_anm);
 ValidateVirtualFieldOffset32(0x14, MainMenu, title_v_anm);
+ValidateVirtualFieldOffset32(0x24, MainMenu, __menu_select_24);
+ValidateVirtualFieldOffset32(0xFC, MainMenu, __menu_select_FC);
+ValidateVirtualFieldOffset32(0x1D4, MainMenu, __menu_select_1D4);
+ValidateVirtualFieldOffset32(0x2AC, MainMenu, __menu_select_2AC);
+ValidateVirtualFieldOffset32(0x384, MainMenu, __timer_384);
 //ValidateStructSize32(0x5D98, MainMenu);
 #pragma endregion
 
