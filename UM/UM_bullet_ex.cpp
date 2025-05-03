@@ -170,6 +170,16 @@ static inline uint8_t& ALPHA(D3DCOLOR& color) {
 #define RED(...) RED(__VA_ARGS__)
 #define ALPHA(...) ALPHA(__VA_ARGS__)
 
+// I don't even want to know how this is a thing
+// 0x47D870
+dllexport gnu_noinline D3DCOLOR& thiscall pack_rgb(D3DCOLOR& self, uint8_t r, uint8_t g, uint8_t b) asm_symbol_rel(0x47D870);
+dllexport gnu_noinline D3DCOLOR& thiscall pack_rgb(D3DCOLOR& self, uint8_t r, uint8_t g, uint8_t b) {
+    BLUE(self) = b;
+    GREEN(self) = g;
+    RED(self) = r;
+    return self;
+}
+
 struct D3DMATRIXZ : D3DMATRIX {
 
 
@@ -5019,6 +5029,24 @@ static inline constexpr float SCREEN_TOP_EDGE = 448.0f;
 static inline constexpr float SCREEN_WIDTH = 384.0f;
 static inline constexpr float SCREEN_HEIGHT = 448.0f;
 
+static inline constexpr float LOGICAL_WINDOW_WIDTH = 640.0f;
+static inline constexpr float LOGICAL_WINDOW_HEIGHT = 480.0f;
+
+// 0x478540
+dllexport gnu_noinline void fastcall __convert_position_to_window_uv(Float2* out, Float2* position) asm_symbol_rel(0x478540);
+dllexport gnu_noinline void fastcall __convert_position_to_window_uv(Float2* out, Float2* position) {
+    float x = position->x / LOGICAL_WINDOW_WIDTH;
+    out->x = x;
+    float y = position->y / LOGICAL_WINDOW_HEIGHT;
+    out->y = y;
+    if (x < 0.0f) {
+        out->x = 0.0f;
+    }
+    if (y < 0.0f) {
+        out->y = 0.0f;
+    }
+}
+
 // size: 0x2108
 struct WindowData {
     HWND window; // 0x0
@@ -6831,6 +6859,9 @@ SetInstr((intptr_t)current_instruction + (offset))
 
 #define ShortArg(number) \
 (((int16_t*)current_instruction->args)[(number)])
+
+#define UShortArg(number) \
+(((uint16_t*)current_instruction->args)[(number)])
 
 #define RawArg(number) \
 (((EclArg*)current_instruction->args)[(number)])
@@ -9669,42 +9700,46 @@ struct RGB {
     // 0xC
 
 private:
-    inline RGB& add(RGB& out, const RGB& value) {
+    inline RGB& add(RGB& out, const RGB& value) const {
         out.r = this->r + value.r;
         out.g = this->g + value.g;
         out.b = this->b + value.b;
         return out;
     }
 public:
-    inline RGB operator+(const RGB& value) {
+    inline RGB operator+(const RGB& value) const {
         RGB dummy;
         return this->add(dummy, value);
     }
 
 private:
-    inline RGB& sub(RGB& out, const RGB& value) {
+    inline RGB& sub(RGB& out, const RGB& value) const {
         out.r = this->r - value.r;
         out.g = this->g - value.g;
         out.b = this->b - value.b;
         return out;
     }
 public:
-    inline RGB operator-(const RGB& value) {
+    inline RGB operator-(const RGB& value) const {
         RGB dummy;
         return this->sub(dummy, value);
     }
 
 private:
-    inline RGB& mul(RGB& out, const float value) {
+    inline RGB& mul(RGB& out, const float value) const {
         out.r = this->r * value;
         out.g = this->g * value;
         out.b = this->b * value;
         return out;
     }
 public:
-    inline RGB operator*(const float value) {
+    inline RGB operator*(const float value) const {
         RGB dummy;
         return this->mul(dummy, value);
+    }
+    friend inline RGB operator*(const float value, const RGB& rhs) {
+        RGB dummy;
+        return rhs.mul(dummy, value);
     }
 };
 
@@ -11295,7 +11330,7 @@ enum Opcode : int16_t {
     scale_speed, // 416
     alpha_interp_linear, // 417
     sprite_window, // 418
-    __anm_flag_unknown_Q, // 419
+    __anm_flag_continual_sprite_window, // 419
     move_bezier, // 420
     anchor_mode, // 421
     position_inherit, // 422
@@ -11326,7 +11361,7 @@ enum Opcode : int16_t {
     anm_create_back, // 504
     anm_create_child_back_rel, // 505
     anm_create_back_rel, // 506
-    __anm_flag_use_root_vm_slowdown, // 507
+    __anm_flag_treat_as_root, // 507
     effect_create, // 508
     copy_parent_context, // 509
     anm_create_child_front_rel, // 510
@@ -11343,12 +11378,12 @@ enum Opcode : int16_t {
     polygon_rectangle_gradient_antialias, // 608
     textured_cylinder, // 609
     textured_ring_3D, // 610
-    polygon_rectangle_hollow, // 611
-    polygon_line, // 612
-    __polygon_unknown_A, // 613
-    __polygon_ring_unknown_A, // 614
-    __polygon_ring_unknown_B, // 615
-    __polygon_unknown_B, // 616
+    polygon_ring, // 611
+    polygon_rectangle_hollow, // 612
+    polygon_line, // 613
+    __polygon_unknown_A, // 614
+    __polygon_ring_unknown_A, // 615
+    __polygon_ring_unknown_B, // 616
     __polygon_unknown_C, // 617
     __polygon_unknown_D, // 618
     __polygon_unknown_E, // 619
@@ -11431,6 +11466,11 @@ enum AnmUVMode : uint8_t {
     Mirror = 2
 };
 
+enum AnmRNGMode : uint8_t {
+    ReplayRNG = 0,
+    NormalRNG = 1,
+};
+
 // size: 0x60C
 struct AnmVM {
     struct AnmContext {
@@ -11465,7 +11505,7 @@ struct AnmVM {
         ZUNInterp<RGB> color_interp; // 0xE8
         ZUNInterp<int32_t> alpha_interp; // 0x140
         ZUNInterp<Float3> rotation_interp; // 0x170
-        ZUNInterp<ZUNAngle> angular_velocity_interp; // 0x1C8
+        ZUNInterp<ZUNAngle> spin_interp; // 0x1C8
         ZUNInterp<Float2> scale_interp; // 0x1F8
         ZUNInterp<Float2> scale2_interp; // 0x23C
         ZUNInterp<Float2> uv_scale_interp; // 0x280
@@ -11500,7 +11540,7 @@ struct AnmVM {
                 uint32_t __visible2 : 1; // 2
                 uint32_t rotation_enabled : 1; // 3
                 uint32_t scale_enabled : 1; // 4
-                uint32_t : 1; // 5
+                uint32_t uv_scale_enabled : 1; // 5
                 uint32_t blend_mode : 4; // 6-9
                 uint32_t : 1; // 10
                 uint32_t position_mode : 1; // 11
@@ -11515,7 +11555,7 @@ struct AnmVM {
                 uint32_t __unknown_flag_O : 1; // 22
                 uint32_t x_anchor_mode : 2; // 23-24
                 uint32_t y_anchor_mode : 2; // 25-26
-                uint32_t type : 5; // 27-31
+                uint32_t render_mode : 5; // 27-31
                 uint32_t : 1; // 32
             };
         };
@@ -11529,17 +11569,17 @@ struct AnmVM {
                 uint32_t auto_rotate : 1; // 10
                 uint32_t __unknown_flag_T : 1; // 11
                 uint32_t slowdown_immune : 1; // 12
-                uint32_t use_animation_rng : 1; // 13
-                uint32_t nearest_neighbor : 1; // 14
+                uint32_t rand_mode : 1; // 13
+                uint32_t resample_mode : 1; // 14
                 uint32_t : 1; // 15
-                uint32_t __unknown_flag_Q : 1; // 16
+                uint32_t __continual_sprite_window : 1; // 16
                 uint32_t __unknown_field_B : 2; // 17-18
                 uint32_t __treat_as_root : 1; // 19
                 uint32_t : 1; // 20
                 uint32_t origin_mode : 2; // 21-22
                 uint32_t resolution_mode : 3; // 23-25
                 uint32_t inherit_rotation : 1; // 26
-                uint32_t __unknown_flag_U : 1; // 27
+                uint32_t __deltas_enabled : 1; // 27
                 uint32_t colorize_children : 1; // 28
                 uint32_t __unknown_flag_F : 1; // 29
                 uint32_t : 1; // 30
@@ -11547,8 +11587,8 @@ struct AnmVM {
                 uint32_t : 1; // 32
             };
         };
-        float __float_53C; // 0x53C
-        float __float_540; // 0x540
+        float camera_near_fade_end; // 0x53C
+        float camera_near_clip; // 0x540
         // 0x544
     };
     static_assert(sizeof(AnmVMData) == 0x544);
@@ -11723,6 +11763,11 @@ struct AnmVM {
         return controller_rotation;
     }
 
+    // 0x405CE0
+    dllexport gnu_noinline float vectorcall get_z_rotation() asm_symbol_rel(0x405CE0) {
+        return this->data.rotation.z;
+    }
+
     // 0x429AD0
     dllexport gnu_noinline void thiscall initialize_position_interp(int32_t end_time, int32_t mode, Float3* initial_pos, Float3* final_pos) asm_symbol_rel(0x429AD0) {
         this->data.position_interp.end_time = end_time;
@@ -11745,9 +11790,15 @@ struct AnmVM {
         this->data.position_interp.time.reset();
     }
 
-    // 0x405CE0
-    dllexport gnu_noinline float vectorcall get_z_rotation() asm_symbol_rel(0x405CE0) {
-        return this->data.rotation.z;
+    // 0x47D790
+    dllexport gnu_noinline void thiscall initialize_color_interp(int32_t end_time, int32_t mode, D3DCOLOR& initial_color, D3DCOLOR& final_color) asm_symbol_rel(0x47D790) {
+        this->data.color_interp.end_time = end_time;
+        this->data.color_interp.bezier1 = {};
+        this->data.color_interp.bezier2 = {};
+        this->data.color_interp.mode = mode;
+        this->data.color_interp.initial_value = { RED(initial_color), GREEN(initial_color), BLUE(initial_color) };
+        this->data.color_interp.final_value = { RED(final_color), GREEN(final_color), BLUE(final_color) };
+        this->data.color_interp.time.reset();
     }
 
     // 0x406630
@@ -11755,10 +11806,71 @@ struct AnmVM {
         this->data.alpha_interp.end_time = end_time;
         this->data.alpha_interp.mode = mode;
         this->data.alpha_interp.initial_value = initial_alpha;
-        this->data.alpha_interp.final_value = final_alpha;
         this->data.alpha_interp.bezier1 = 0;
         this->data.alpha_interp.bezier2 = 0;
+        this->data.alpha_interp.final_value = final_alpha;
         this->data.alpha_interp.time.reset();
+    }
+
+    // 0x47D690
+    dllexport gnu_noinline void thiscall initialize_color2_interp(int32_t end_time, int32_t mode, D3DCOLOR& initial_color, D3DCOLOR& final_color) asm_symbol_rel(0x47D790) {
+        this->data.color2_interp.end_time = end_time;
+        this->data.color2_interp.bezier1 = {};
+        this->data.color2_interp.bezier2 = {};
+        this->data.color2_interp.mode = mode;
+        this->data.color2_interp.initial_value = { RED(initial_color), GREEN(initial_color), BLUE(initial_color) };
+        this->data.color2_interp.final_value = { RED(final_color), GREEN(final_color), BLUE(final_color) };
+        this->data.color2_interp.time.reset();
+        if (this->data.color_mode == 0) {
+            this->data.color_mode = 1;
+        }
+    }
+
+    // 0x406630
+    dllexport gnu_noinline void thiscall initialize_alpha2_interp(int32_t end_time, int32_t mode, uint8_t initial_alpha, uint8_t final_alpha) asm_symbol_rel(0x406630) {
+        this->data.alpha2_interp.end_time = end_time;
+        this->data.alpha2_interp.mode = mode;
+        this->data.alpha2_interp.initial_value = initial_alpha;
+        this->data.alpha2_interp.final_value = final_alpha;
+        //this->data.alpha2_interp.bezier1 = 0;
+        //this->data.alpha2_interp.bezier2 = 0;
+        this->data.alpha2_interp.time.reset();
+        if (this->data.color_mode == 0) {
+            this->data.color_mode = 1;
+        }
+    }
+    
+    // 0x4614B0
+    dllexport gnu_noinline void thiscall initialize_scale_interp(int32_t end_time, int32_t mode, Float2* initial_scale, Float2* final_scale) asm_symbol_rel(0x4614B0) {
+        this->data.scale_interp.end_time = end_time;
+        this->data.scale_interp.mode = mode;
+        this->data.scale_interp.initial_value = *initial_scale;
+        this->data.scale_interp.final_value = *final_scale;
+        //this->data.scale_interp.bezier1 = UNKNOWN_FLOAT2_A;
+        //this->data.scale_interp.bezier2 = UNKNOWN_FLOAT2_A;
+        this->data.scale_interp.time.reset();
+    }
+
+    // 0x47D580
+    dllexport gnu_noinline void thiscall initialize_scale2_interp(int32_t end_time, int32_t mode, Float2* initial_scale, Float2* final_scale) asm_symbol_rel(0x47D580) {
+        this->data.scale2_interp.end_time = end_time;
+        this->data.scale2_interp.mode = mode;
+        this->data.scale2_interp.initial_value = *initial_scale;
+        this->data.scale2_interp.final_value = *final_scale;
+        //this->data.scale2_interp.bezier1 = UNKNOWN_FLOAT2_A;
+        //this->data.scale2_interp.bezier2 = UNKNOWN_FLOAT2_A;
+        this->data.scale2_interp.time.reset();
+    }
+
+    // 0x47D500
+    dllexport gnu_noinline void thiscall initialize_uv_scale_interp(int32_t end_time, int32_t mode, Float2* initial_scale, Float2* final_scale) asm_symbol_rel(0x47D500) {
+        this->data.uv_scale_interp.end_time = end_time;
+        this->data.uv_scale_interp.mode = mode;
+        this->data.uv_scale_interp.initial_value = *initial_scale;
+        this->data.uv_scale_interp.final_value = *final_scale;
+        //this->data.uv_scale_interp.bezier1 = UNKNOWN_FLOAT2_A;
+        //this->data.uv_scale_interp.bezier2 = UNKNOWN_FLOAT2_A;
+        this->data.uv_scale_interp.time.reset();
     }
 
     // 0x4890B0
@@ -12078,7 +12190,7 @@ struct AnmVM {
 
     // 0x481D20
     dllexport gnu_noinline void thiscall __get_vertex_quad(Float3* out) asm_symbol_rel(0x481D20) {
-        switch (this->data.type) {
+        switch (this->data.render_mode) {
             case 1:
                 this->__get_rotated_vertex_positions(&out[0], &out[1], &out[2], &out[3]);
                 break;
@@ -12102,7 +12214,7 @@ struct AnmVM {
         //this->data.color_interp.end_time = 0;
         this->data.alpha_interp.end_time = 0;
         this->data.rotation_interp.end_time = 0;
-        this->data.angular_velocity_interp.end_time = 0;
+        this->data.spin_interp.end_time = 0;
         //this->data.scale_interp.end_time = 0;
         this->data.scale2_interp.end_time = 0;
         this->data.uv_scale_interp.end_time = 0;
@@ -12282,6 +12394,18 @@ struct AnmVM {
     // Other funcs
     // ====================
 
+    // 0x405D40
+    dllexport gnu_noinline void thiscall allocate_special_vertex_buffer(size_t buffer_size) asm_symbol_rel(0x405D40) {
+        this->controller.special_data_size = buffer_size;
+        this->controller.special_data = malloc(buffer_size);
+    }
+
+    // 0x4832F0
+    dllexport gnu_noinline int thiscall __sub_4832F0() asm_symbol_rel(0x4832F0) {
+        // TODO: this creates the data for on tick 4
+        return 0;
+    }
+
     // 0x483560
     dllexport gnu_noinline static int fastcall on_tick_4(AnmVM* vm) asm_symbol_rel(0x483560) {
         // TODO
@@ -12316,13 +12440,13 @@ struct AnmVM {
 
     // 0x47D8B0
     dllexport gnu_noinline void vectorcall set_scale_delta(float x, float y) asm_symbol_rel(0x47D8B0) {
-        this->data.__unknown_flag_U = true;
+        this->data.__deltas_enabled = true;
         this->data.scale_delta.x = x;
         this->data.scale_delta.y = y;
     }
     // 0x47D8D0
     dllexport gnu_noinline void vectorcall set_angular_velocity(float x, float y, float z) asm_symbol_rel(0x47D8D0) {
-        this->data.__unknown_flag_U = true;
+        this->data.__deltas_enabled = true;
         this->data.angular_velocity.x = x;
         this->data.angular_velocity.y = y;
         this->data.angular_velocity.z = z;
@@ -12332,12 +12456,24 @@ struct AnmVM {
         return ALPHA(this->data.color1);
     }
 
+    inline uint8_t get_alpha2() {
+        return ALPHA(this->data.color2);
+    }
+
+    inline void set_rgb(const RGB& colors) {
+        RED(this->data.color1) = colors.r;
+        GREEN(this->data.color1) = colors.g;
+        BLUE(this->data.color1) = colors.b;
+    }
+
     inline void set_alpha(uint8_t value) {
         ALPHA(this->data.color1) = value;
     }
 
-    inline uint8_t get_alpha2() {
-        return ALPHA(this->data.color2);
+    inline void set_rgb2(const RGB& colors) {
+        RED(this->data.color2) = colors.r;
+        GREEN(this->data.color2) = colors.g;
+        BLUE(this->data.color2) = colors.b;
     }
 
     inline void set_alpha2(uint8_t value) {
@@ -12632,7 +12768,68 @@ public:
     }
 
     // 0x478580
-    dllexport gnu_noinline int32_t run_anm() asm_symbol_rel(0x478580);
+    dllexport gnu_noinline int32_t thiscall run_anm() asm_symbol_rel(0x478580);
+
+    // 0x47C750
+    dllexport gnu_noinline void thiscall step_interps() asm_symbol_rel(0x47C750) {
+        if (this->data.position_interp.end_time) {
+            if (this->data.position_mode == 0) {
+                this->data.position = this->data.position_interp.step();
+            } else {
+                this->data.__position_2 = this->data.position_interp.step();
+            }
+        }
+
+        if (this->data.color_interp.end_time) {
+            this->set_rgb(this->data.color_interp.step());
+        }
+        if (this->data.alpha_interp.end_time) {
+            this->set_alpha(this->data.alpha_interp.step());
+        }
+
+        // TODO: double check if these are really normal float2 interps,
+        // they call a separate function than the uv_scale right below.
+        if (this->data.scale_interp.end_time) {
+            this->set_scale(this->data.scale_interp.step());
+        }
+        if (this->data.scale2_interp.end_time) {
+            this->set_scale2(this->data.scale2_interp.step());
+        }
+
+        if (this->data.uv_scale_interp.end_time) {
+            this->set_uv_scale(this->data.uv_scale_interp.step());
+        }
+
+        if (this->data.rotation_interp.end_time) {
+            this->set_rotation(this->data.rotation_interp.step());
+        }
+        if (this->data.spin_interp.end_time) {
+            this->set_z_rotation(this->data.spin_interp.step());
+        }
+
+        if (this->data.color2_interp.end_time) {
+            this->set_rgb2(this->data.color2_interp.step());
+        }
+        if (this->data.alpha2_interp.end_time) {
+            this->set_alpha2(this->data.alpha2_interp.step());
+        }
+
+        if (this->data.u_scroll_speed_interp.end_time) {
+            this->set_x_scroll_speed(this->data.u_scroll_speed_interp.step());
+        }
+        if (this->data.v_scroll_speed_interp.end_time) {
+            this->set_y_scroll_speed(this->data.v_scroll_speed_interp.step());
+        }
+    }
+
+    // 0x47BEF0
+    dllexport gnu_noinline void thiscall __update_polygons() asm_symbol_rel(0x47BEF0) {
+        switch (this->data.render_mode) {
+            case 9:
+            case 13: case 14:
+            case 18: case 19:
+        }
+    }
 
     // 0x488EF0
     dllexport void __tree_set_visible2() asm_symbol_rel(0x488EF0) {
@@ -12671,6 +12868,17 @@ public:
         return this->set_z_rotation(UNUSED_FLOAT, value);
     }
 
+    inline void set_rotation(float x, float y, float z) {
+        this->data.rotation.x = x;
+        this->data.rotation.y = y;
+        this->data.rotation.z = z;
+        this->data.rotation_enabled = true;
+    }
+
+    inline void set_rotation(const Float3& values) {
+        this->set_rotation(values.x, values.y, values.z);
+    }
+
     inline void set_x_scale(float value) {
         this->data.scale_enabled = true;
         this->data.scale.x = value;
@@ -12685,6 +12893,10 @@ public:
         this->data.scale_enabled = true;
         this->data.scale.x = x;
         this->data.scale.y = y;
+    }
+
+    inline void set_scale(const Float2& values) {
+        this->set_scale(values.x, values.y);
     }
 
     inline void set_scale(float value) {
@@ -12707,8 +12919,60 @@ public:
         this->data.scale2.y = y;
     }
 
+    inline void set_scale2(const Float2& values) {
+        this->set_scale2(values.x, values.y);
+    }
+
     inline void set_scale2(float value) {
         this->set_scale2(value, value);
+    }
+
+    inline void set_u_scale(float value) {
+        this->data.uv_scale_enabled = true;
+        this->data.uv_scale.x = value;
+    }
+
+    inline void set_v_scale(float value) {
+        this->data.uv_scale_enabled = true;
+        this->data.uv_scale.y = value;
+    }
+
+    inline void set_uv_scale(float u, float v) {
+        this->data.uv_scale_enabled = true;
+        this->data.uv_scale.x = u;
+        this->data.uv_scale.y = v;
+    }
+
+    inline void set_uv_scale(const Float2& values) {
+        this->set_uv_scale(values.x, values.y);
+    }
+
+    inline void set_uv_scale(float value) {
+        this->set_uv_scale(value, value);
+    }
+
+    inline void set_x_scroll_speed(float value) {
+        this->data.__deltas_enabled = true;
+        this->data.uv_scroll_speed.x = value;
+    }
+
+    inline void set_y_scroll_speed(float value) {
+        this->data.__deltas_enabled = true;
+        this->data.uv_scroll_speed.y = value;
+    }
+
+    inline void set_scroll_speed(float x, float y) {
+        this->data.__deltas_enabled = true;
+        this->data.uv_scroll_speed.x = x;
+        this->data.uv_scroll_speed.y = y;
+    }
+
+    inline void set_scroll_speed(const Float2& values) {
+        this->set_scroll_speed(values.x, values.y);
+    }
+
+    inline void set_scroll_speed(float value) {
+        this->set_scroll_speed(value, value);
     }
 };
 ValidateStructSize32(0x60C, AnmVM);
@@ -13366,7 +13630,7 @@ struct AnmManager {
     char __byte_3120E0B; // 0x3120E0B
     char __byte_3120E0C; // 0x3120E0C
     unknown_fields(0x1); // 0x3120E0D
-    int8_t current_filtering_mode; // 0x3120E0E
+    int8_t current_resample_mode; // 0x3120E0E
     int8_t current_texture_op; // 0x3120E0F
     AnmUVMode current_u_sample_mode; // 0x3120E10
     AnmUVMode current_v_sample_mode; // 0x3120E11
@@ -13624,10 +13888,10 @@ struct AnmManager {
             }
         }
 
-        if (this->current_filtering_mode != vm->data.nearest_neighbor) {
+        if (this->current_resample_mode != vm->data.resample_mode) {
             this->flush_sprites();
-            this->current_filtering_mode = vm->data.nearest_neighbor;
-            if (!this->current_filtering_mode) {
+            this->current_resample_mode = vm->data.resample_mode;
+            if (!this->current_resample_mode) {
                 SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
                 SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
             } else {
@@ -14018,11 +14282,11 @@ struct AnmManager {
                         SPRITE_VERTEX_BUFFER_A[0].diffuse = color;
                     }
                     if (vm->data.enable_camera_fade) {
-                        float F = vm->data.__float_540;
+                        float F = vm->data.camera_near_clip;
                         if (F >= length) {
                             return ZUN_ERROR;
                         }
-                        float G = vm->data.__float_53C;
+                        float G = vm->data.camera_near_fade_end;
                         if (G > length) {
                             ALPHA(SPRITE_VERTEX_BUFFER_A[0].diffuse) = ALPHA(color) * (1.0f - (G - length) / (G - F));
                             color = SPRITE_VERTEX_BUFFER_A[0].diffuse;
@@ -14282,7 +14546,7 @@ struct AnmManager {
 
         SUPERVISOR.d3d_disable_zwrite();
 
-        switch (vm->data.type) {
+        switch (vm->data.render_mode) {
             case 0:
                 if (!vm->get_alpha() && !vm->get_alpha2()) {
                     return ZUN_ERROR;
@@ -15214,7 +15478,7 @@ ValidateFieldOffset32(0x3120E09, AnmManager, __byte_3120E09);
 ValidateFieldOffset32(0x3120E0A, AnmManager, __sbyte_3120E0A);
 ValidateFieldOffset32(0x3120E0B, AnmManager, __byte_3120E0B);
 ValidateFieldOffset32(0x3120E0C, AnmManager, __byte_3120E0C);
-ValidateFieldOffset32(0x3120E0E, AnmManager, current_filtering_mode);
+ValidateFieldOffset32(0x3120E0E, AnmManager, current_resample_mode);
 ValidateFieldOffset32(0x3120E0F, AnmManager, current_texture_op);
 ValidateFieldOffset32(0x3120E10, AnmManager, current_u_sample_mode);
 ValidateFieldOffset32(0x3120E11, AnmManager, current_v_sample_mode);
@@ -15261,7 +15525,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_A(void* pt
     anm_manager->__byte_3120E0C = -1;
     anm_manager->__int_39724B4 = FALSE;
     anm_manager->__color_39724B0 = PackD3DCOLOR(128, 128, 128, 128);
-    anm_manager->current_filtering_mode = -1;
+    anm_manager->current_resample_mode = -1;
     anm_manager->current_texture_op = -1;
     anm_manager->__float2_D0.y = 0.0f;
     anm_manager->__float2_D0.x = 0.0f;
@@ -15583,7 +15847,7 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_455EC0() {
             }
         }
         if (WINDOW_DATA.__game_scale == 1.5f) {
-            this->__arcade_vm_ptr_C->data.nearest_neighbor = false;
+            this->__arcade_vm_ptr_C->data.resample_mode = false;
         }
     }
     else {
@@ -15841,7 +16105,8 @@ ValidateStructSize32(0x20, EffectData);
 #pragma endregion
 
 // 0x4CCBF8
-static inline const EffectData EFFECT_DATA_TABLE[5] = {
+// this isn't marked const again...
+static EffectData EFFECT_DATA_TABLE[5] = {
     { 
         .__effect_anm_file_index = 0,
         .on_create_func = &AnmVM::on_create_special_dataA,
@@ -16045,7 +16310,7 @@ private:
         int32_t script = effect_data.__script_id;
         if (script >= 0) {
             if (!vm) {
-                out = this->anm_loaded_array[effect_data.__effect_anm_file_index]->instantiate_vm_to_world_list_back(script, -1, (AnmVM**)vm);
+                out = this->anm_loaded_array[effect_data.__effect_anm_file_index]->instantiate_vm_to_world_list_back(script, -1, NULL);
                 vm = out.get_vm_ptr();
             }
             if (AnmVMOnCreateFunc* create_func = effect_data.on_create_func) {
@@ -16247,7 +16512,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm(AnmID& out, int32_t script_i
             *raw_out = vm;
         }
         this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
+        vm->data.rand_mode = NormalRNG;
         if (layer >= 0) {
             vm->data.layer = layer;
             if (layer < 23) {
@@ -16295,7 +16560,7 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, 
         this->__counter_134++;
         AnmVM* vm = AnmManager::allocate_new_vm();
         this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
+        vm->data.rand_mode = NormalRNG;
         vm->controller.position.safe_copy(position);
         vm->data.rotation.z = 0.0f;
         vm->run_anm();
@@ -16312,7 +16577,7 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, 
         this->__counter_134++;
         AnmVM* vm = AnmManager::allocate_new_vm();
         this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
+        vm->data.rand_mode = NormalRNG;
         if (layer >= 0) {
             vm->data.layer = layer;
             if (layer < 23) {
@@ -16338,7 +16603,7 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, 
             *raw_out = vm;
         }
         this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
+        vm->data.rand_mode = NormalRNG;
         vm->controller.position.safe_copy(position);
         vm->data.rotation.z = 0.0f;
         vm->run_anm();
@@ -16355,7 +16620,7 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, 
         this->__counter_134++;
         AnmVM* vm = AnmManager::allocate_new_vm();
         this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
+        vm->data.rand_mode = NormalRNG;
         if (layer >= 0) {
             vm->data.layer = layer;
             if (layer < 23) {
@@ -16382,7 +16647,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& ou
             *raw_out = vm;
         }
         this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
+        vm->data.rand_mode = NormalRNG;
         if (layer >= 0) {
             vm->data.layer = layer;
             if (layer < 23) {
@@ -16405,7 +16670,7 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, 
     {
         this->__counter_134++;
         AnmVM* vm = AnmManager::allocate_new_vm();
-        vm->data.use_animation_rng = true;
+        vm->data.rand_mode = NormalRNG;
         if (layer >= 0) {
             vm->data.layer = layer;
             if (layer < 23) {
@@ -16432,7 +16697,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& ou
         if (raw_out) {
             *raw_out = vm;
         }
-        vm->data.use_animation_rng = true;
+        vm->data.rand_mode = NormalRNG;
         if (layer >= 0) {
             vm->data.layer = layer;
             if (layer < 23) {
@@ -16456,7 +16721,7 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& out,
         this->__counter_134++;
         AnmVM* vm = AnmManager::allocate_new_vm();
         this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
+        vm->data.rand_mode = NormalRNG;
         vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
         vm->data.rotation.z = 0.0f;
         vm->run_anm();
@@ -16474,7 +16739,7 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& out,
         this->__counter_134++;
         AnmVM* vm = AnmManager::allocate_new_vm();
         this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
+        vm->data.rand_mode = NormalRNG;
         vm->controller.position.safe_copy(position);
         vm->data.rotation.z = 0.0f;
         vm->run_anm();
@@ -16493,7 +16758,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& o
         this->__counter_134++;
         AnmVM* vm = AnmManager::allocate_new_vm();
         this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
+        vm->data.rand_mode = NormalRNG;
         if (layer >= 0) {
             vm->data.layer = layer;
             if (layer < 23) {
@@ -16518,7 +16783,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& o
         this->__counter_134++;
         AnmVM* vm = AnmManager::allocate_new_vm();
         this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
+        vm->data.rand_mode = NormalRNG;
         vm->controller.position.safe_copy(position);
         vm->data.rotation.z = z_rotation;
         vm->run_anm();
@@ -16537,7 +16802,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, 
         this->__counter_134++;
         AnmVM* vm = AnmManager::allocate_new_vm();
         this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
+        vm->data.rand_mode = NormalRNG;
         vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
         vm->data.rotation.z = 0.0f;
         vm->run_anm();
@@ -16557,7 +16822,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, 
         this->__counter_134++;
         AnmVM* vm = AnmManager::allocate_new_vm();
         this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
+        vm->data.rand_mode = NormalRNG;
         vm->controller.position.safe_copy(position);
         vm->data.rotation.z = 0.0f;
         vm->run_anm();
@@ -16577,7 +16842,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_front(AnmID& out,
         this->__counter_134++;
         AnmVM* vm = AnmManager::allocate_new_vm();
         this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
+        vm->data.rand_mode = NormalRNG;
         vm->controller.position.safe_copy(position);
         vm->data.rotation.z = 0.0f;
         vm->run_anm();
@@ -16596,13 +16861,14 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_child_vm(AnmID& out, int32_t sc
     {
         this->__counter_134++;
         AnmVM* vm = AnmManager::allocate_new_vm();
-        vm->data.use_animation_rng = true;
+        vm->data.rand_mode = NormalRNG;
         vm->data.layer = parent->data.layer;
         vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
         this->__copy_data_to_vm(vm, script_index);
-        vm->data.colorize_children ^= parent->data.colorize_children;
+        vm->data.colorize_children = parent->data.colorize_children;
         vm->controller.parent = parent;
-        vm->controller.__root_vm = parent->controller.__root_vm ? : parent;
+        AnmVM* root = parent->controller.__root_vm;
+        vm->controller.__root_vm = root ? root : parent;
         vm->run_anm();
         vm->data.creation_flags = flags;
         out = 0;
@@ -16633,9 +16899,9 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_orphan_vm_to_world_list_back(An
         this->__counter_134++;
         AnmVM* vm = AnmManager::allocate_new_vm();
         this->__copy_data_to_vm(vm, script_index);
-        vm->data.use_animation_rng = true;
+        vm->data.rand_mode = NormalRNG;
         vm->data.layer = parent->data.layer;
-        vm->data.colorize_children ^= parent->data.colorize_children;
+        vm->data.colorize_children = parent->data.colorize_children;
         vm->controller.position = parent->controller.position;
         vm->data.rotation = parent->data.rotation;
         vm->data.__position_2 = parent->data.position;
@@ -16798,520 +17064,6 @@ dllexport void AnmLoaded::__sub_477D60(AnmVM* vm, int32_t script_id) {
         }
     } else {
         vm->zero_contents();
-    }
-}
-
-#define IntArg(number) \
-(((int32_t*)current_instruction->args)[(number)])
-
-#define ParseIntArg(number) \
-this->get_int_arg(IntArg(number), current_instruction->param_mask, number)
-
-#define ParseIntPtrArg(number) \
-this->get_int_ptr_arg(&IntArg(number), current_instruction->param_mask, number)
-
-#define ParseFloatArg(number) \
-this->get_float_arg(FloatArg(number), current_instruction->param_mask, number)
-
-#define ParseFloatPtrArg(number) \
-this->get_float_ptr_arg(&FloatArg(number), current_instruction->param_mask, number)
-
-// 0x478580
-dllexport gnu_noinline int32_t AnmVM::run_anm() {
-    using namespace Anm;
-
-    float previous_gamespeed = GAME_SPEED; // ESP+1C
-    if (this->data.slowdown_immune) {
-        GAME_SPEED.value = 1.0f;
-    }
-    if (this->get_custom_slowdown() > 0.0f) {
-        float new_gamespeed = previous_gamespeed - (this->get_custom_slowdown() * previous_gamespeed);
-        GAME_SPEED.value = new_gamespeed;
-        if (new_gamespeed < 0.0f) {
-            GAME_SPEED.value = 0.0f;
-        }
-    }
-    if (ZUN_FAILED(this->run_on_tick())) {
-        goto return_delete;
-    }
-    if (
-        this->data.current_instruction_offset < 0 ||
-        this->data.__unknown_flag_O
-    ) {
-        goto return_static;
-    }
-    clang_noinline ++this->controller.__timer_1C;
-
-    AnmInstruction* current_instruction;
-    if (this->data.run_interrupt) {
-        current_instruction = this->get_current_instruction();
-        goto run_interrupt;
-    }
-    if (this->data.__unknown_field_B == 1) {
-        GameThread* game_thread = GAME_THREAD_PTR;
-        if (
-            game_thread && game_thread->__unknown_flag_B
-        ) {
-            goto return_static;
-        }
-    }
-    for (;;) {
-        current_instruction = this->get_current_instruction();
-        if ((int32_t)current_instruction->time > this->controller.script_time) break;
-        switch (current_instruction->opcode) {
-            case jump: // 200
-                clang_noinline this->controller.script_time.set(IntArg(1));
-                this->data.current_instruction_offset = IntArg(0);
-                continue;
-            case loop: { // 201
-                int32_t* write = ParseIntPtrArg(0);
-                (*write)--;
-                if (ParseIntArg(0) <= 0) {
-                    break;
-                }
-                clang_noinline this->controller.script_time.set(IntArg(2));
-                this->data.current_instruction_offset = IntArg(1);
-                continue;
-            }
-            case wait: // 6
-                this->controller.script_time.add_raw(-ParseIntArg(0));
-                break;
-            case anm_halt_invisible: // 4
-                this->data.visible = false;
-            case anm_halt: // 3
-                // Volatile read to force the compiler to emit
-                // the code rather than optimizing it out based
-                // on the earlier check of this same variable.
-                if (*(volatile int32_t*)&this->data.run_interrupt) {
-            run_interrupt:
-                    int32_t search_offset = 0; // ESP+18
-                    int32_t last_good_offset = 0; // ESP+14
-                    AnmInstruction* last_good_instruction = NULL; // ESP+20
-                    AnmInstruction* search_instruction = this->get_anm_loaded()->get_script(this->data.script_id);
-                    for (;;) {
-                        switch ((uint16_t)search_instruction->opcode) {
-                            case interrupt_label: { // 5
-                                int32_t interrupt_number = *(int32_t*)&search_instruction->args[0];
-                                if (this->data.run_interrupt == interrupt_number) {
-                                    goto end_interrupt_search;
-                                }
-                                if (interrupt_number == -1) {
-                                    uint32_t offset_to_next = search_instruction->offset_to_next;
-                                    last_good_offset = search_offset;
-                                    search_offset += offset_to_next;
-                                    last_good_instruction = search_instruction;
-                                    search_instruction = pointer_raw_offset(search_instruction, offset_to_next);
-                                    continue;
-                                }
-                                break;
-                            }
-                            case 0xFFFF:
-                                goto end_interrupt_search;
-                        }
-                        uint32_t offset_to_next = search_instruction->offset_to_next;
-                        search_offset += offset_to_next;
-                        search_instruction = pointer_raw_offset(search_instruction, offset_to_next);
-                    }
-            end_interrupt_search:
-                    this->data.__visible3 = false;
-                    this->data.run_interrupt = 0;
-
-                    if (search_instruction->opcode != interrupt_label) {
-                        if (!last_good_instruction) {
-                            // Is this bugged because it's not
-                            // checking for anm_halt_invisible?
-                            if (current_instruction->opcode != anm_halt) {
-                                continue;
-                            }
-                            goto interrupt_fail;
-                        }
-                        current_instruction = last_good_instruction;
-                        search_offset = last_good_offset;
-                    } else {
-                        current_instruction = search_instruction;
-                    }
-
-                    this->data.interrupt_return_time.set_from_timer(this->controller.script_time);
-                    this->data.interrupt_return_offset = this->data.current_instruction_offset;
-                    search_offset += current_instruction->offset_to_next;
-                    clang_noinline this->controller.script_time.set(current_instruction->time);
-                    this->data.visible = true;
-                    this->data.current_instruction_offset = search_offset;
-                    continue;
-                }
-                else {
-                    this->data.__visible3 = true;
-                }
-            interrupt_fail:
-                clang_noinline this->controller.script_time--;
-                goto anm_break;
-            case interrupt_return: // 7
-                this->controller.script_time.set_from_timer(this->data.interrupt_return_time);
-                this->data.current_instruction_offset = this->data.interrupt_return_offset;
-                continue;
-            case set_int: { // 100
-                int32_t value = ParseIntArg(1);
-                int32_t* write = ParseIntPtrArg(0);
-                *write = value;
-                break;
-            }
-            case set_float: { // 101
-                float value = ParseFloatArg(1);
-                float* write = ParseFloatPtrArg(0);
-                *write = value;
-                break;
-            }
-            case math_int_add: { // 112
-                int32_t lhs = ParseIntArg(1);
-                int32_t rhs = ParseIntArg(2);
-                int32_t* write = ParseIntPtrArg(0);
-                *write = lhs + rhs;
-                break;
-            }
-            case math_float_add: { // 113
-                float lhs = ParseFloatArg(1);
-                float rhs = ParseFloatArg(2);
-                float* write = ParseFloatPtrArg(0);
-                *write = lhs + rhs;
-                break;
-            }
-            case math_int_sub: { // 114
-                int32_t lhs = ParseIntArg(1);
-                int32_t rhs = ParseIntArg(2);
-                int32_t* write = ParseIntPtrArg(0);
-                *write = lhs - rhs;
-                break;
-            }
-            case math_float_sub: { // 115
-                float lhs = ParseFloatArg(1);
-                float rhs = ParseFloatArg(2);
-                float* write = ParseFloatPtrArg(0);
-                *write = lhs - rhs;
-                break;
-            }
-            case math_int_mul: { // 116
-                int32_t lhs = ParseIntArg(1);
-                int32_t rhs = ParseIntArg(2);
-                int32_t* write = ParseIntPtrArg(0);
-                *write = lhs * rhs;
-                break;
-            }
-            case math_float_mul: { // 117
-                float lhs = ParseFloatArg(1);
-                float rhs = ParseFloatArg(2);
-                float* write = ParseFloatPtrArg(0);
-                *write = lhs * rhs;
-                break;
-            }
-            case math_int_div: { // 118
-                int32_t lhs = ParseIntArg(1);
-                int32_t rhs = ParseIntArg(2);
-                int32_t* write = ParseIntPtrArg(0);
-                *write = lhs / rhs;
-                break;
-            }
-            case math_float_div: { // 119
-                float lhs = ParseFloatArg(1);
-                float rhs = ParseFloatArg(2);
-                float* write = ParseFloatPtrArg(0);
-                *write = lhs / rhs;
-                break;
-            }
-            case math_int_mod: { // 120
-                int32_t lhs = ParseIntArg(1);
-                int32_t rhs = ParseIntArg(2);
-                int32_t* write = ParseIntPtrArg(0);
-                *write = lhs % rhs;
-                break;
-            }
-            case math_float_mod: { // 121
-                float rhs = ParseFloatArg(2);
-                float lhs = ParseFloatArg(1);
-                float* write = ParseFloatPtrArg(0);
-                *write = zfmodf(lhs, rhs);
-                break;
-            }
-            case math_int_add_assign: { // 102
-                int32_t value = ParseIntArg(1);
-                int32_t* write = ParseIntPtrArg(0);
-                *write += value;
-                break;
-            }
-            case math_float_add_assign: { // 103
-                float value = ParseFloatArg(1);
-                float* write = ParseFloatPtrArg(0);
-                *write += value;
-                break;
-            }
-            case math_int_sub_assign: { // 104
-                int32_t value = ParseIntArg(1);
-                int32_t* write = ParseIntPtrArg(0);
-                *write -= value;
-                break;
-            }
-            case math_float_sub_assign: { // 105
-                float value = ParseFloatArg(1);
-                float* write = ParseFloatPtrArg(0);
-                *write -= value;
-                break;
-            }
-            case math_int_mul_assign: { // 106
-                int32_t value = ParseIntArg(1);
-                int32_t* write = ParseIntPtrArg(0);
-                *write *= value;
-                break;
-            }
-            case math_float_mul_assign: { // 107
-                float value = ParseFloatArg(1);
-                float* write = ParseFloatPtrArg(0);
-                *write *= value;
-                break;
-            }
-            case math_int_div_assign: { // 108
-                int32_t value = ParseIntArg(1);
-                int32_t* write = ParseIntPtrArg(0);
-                *write /= value;
-                break;
-            }
-            case math_float_div_assign: { // 109
-                float value = ParseFloatArg(1);
-                float* write = ParseFloatPtrArg(0);
-                *write /= value;
-                break;
-            }
-            case math_int_mod_assign: { // 110
-                int32_t value = ParseIntArg(1);
-                int32_t* write = ParseIntPtrArg(0);
-                *write %= value;
-                break;
-            }
-            case math_float_mod_assign: { // 111
-                float rhs = ParseFloatArg(1);
-                float lhs = ParseFloatArg(0);
-                float* write = ParseFloatPtrArg(0);
-                *write = zfmodf(lhs, rhs);
-                break;
-            }
-            case set_int_rand_bound: { // 122
-                int32_t range = ParseIntArg(1);
-                int32_t* write = ParseIntPtrArg(0);
-                *write = RNG.rand_uint_range(range);
-                break;
-            }
-            case set_float_rand_bound: { // 123
-                float range = ParseFloatArg(1);
-                float* write = ParseFloatPtrArg(0);
-                *write = RNG.rand_float_range(range);
-                break;
-            }
-            case math_sin: { // 124
-                float angle = ParseFloatArg(1);
-                float* write = ParseFloatPtrArg(0);
-                *write = zsinf(angle);
-                break;
-            }
-            case math_cos: { // 125
-                float angle = ParseFloatArg(1);
-                float* write = ParseFloatPtrArg(0);
-                *write = zcosf(angle);
-                break;
-            }
-            case math_tan: { // 126
-                float angle = ParseFloatArg(1);
-                float* write = ParseFloatPtrArg(0);
-                *write = ztanf(angle);
-                break;
-            }
-            case math_acos: { // 127
-                float angle = ParseFloatArg(1);
-                float* write = ParseFloatPtrArg(0);
-                *write = zacosf(angle);
-                break;
-            }
-            case math_atan: { // 128
-                float angle = ParseFloatArg(1);
-                float* write = ParseFloatPtrArg(0);
-                *write = zatanf(angle);
-                break;
-            }
-            case math_reduce_angle: { // 129
-                float value = ParseFloatArg(0);
-                float* write = ParseFloatPtrArg(0);
-                *write = reduce_angle_add(value, 0.0f); // This looks a *lot* like old engine code
-                break;
-            }
-            case math_circle_pos_fast: { // 130
-                float radius = ParseFloatArg(3);
-                float angle = ParseFloatArg(2);
-                float* y = ParseFloatPtrArg(1);
-                float* x = ParseFloatPtrArg(0);
-                circle_pos(x, y, angle, radius);
-                break;
-            }
-            case math_circle_pos_rand: { // 131
-                Float3 position;
-                float min = ParseFloatArg(2);
-                float max = ParseFloatArg(3);
-                float rand = RNG.rand_float_signed();
-                float radius = lerp(min, max, rand);
-                float angle = RNG.rand_angle();
-                position.make_from_vector(angle, radius);
-                float* x = ParseFloatPtrArg(0);
-                *x = position.x;
-                float* y = ParseFloatPtrArg(1);
-                *y = position.y;
-                break;
-            }
-            case jump_int_equ: { // 202
-                int32_t lhs = ParseIntArg(0);
-                int32_t rhs = ParseIntArg(1);
-                if (lhs == rhs) {
-                    clang_noinline this->controller.script_time.set(IntArg(3));
-                    this->data.current_instruction_offset = IntArg(2);
-                    continue;
-                }
-                break;
-            }
-            case jump_float_equ: { // 203
-                float lhs = ParseFloatArg(0);
-                float rhs = ParseFloatArg(1);
-                if (lhs == rhs) {
-                    clang_noinline this->controller.script_time.set(IntArg(3));
-                    this->data.current_instruction_offset = IntArg(2);
-                    continue;
-                }
-                break;
-            }
-            case jump_int_neq: { // 204
-                int32_t lhs = ParseIntArg(0);
-                int32_t rhs = ParseIntArg(1);
-                if (lhs != rhs) {
-                    clang_noinline this->controller.script_time.set(IntArg(3));
-                    this->data.current_instruction_offset = IntArg(2);
-                    continue;
-                }
-                break;
-            }
-            case jump_float_neq: { // 205
-                float lhs = ParseFloatArg(0);
-                float rhs = ParseFloatArg(1);
-                if (lhs != rhs) {
-                    clang_noinline this->controller.script_time.set(IntArg(3));
-                    this->data.current_instruction_offset = IntArg(2);
-                    continue;
-                }
-                break;
-            }
-            case jump_int_les: { // 206
-                int32_t lhs = ParseIntArg(0);
-                int32_t rhs = ParseIntArg(1);
-                if (lhs < rhs) {
-                    clang_noinline this->controller.script_time.set(IntArg(3));
-                    this->data.current_instruction_offset = IntArg(2);
-                    continue;
-                }
-                break;
-            }
-            case jump_float_les: { // 207
-                float lhs = ParseFloatArg(0);
-                float rhs = ParseFloatArg(1);
-                if (lhs < rhs) {
-                    clang_noinline this->controller.script_time.set(IntArg(3));
-                    this->data.current_instruction_offset = IntArg(2);
-                    continue;
-                }
-                break;
-            }
-            case jump_int_leq: { // 208
-                int32_t lhs = ParseIntArg(0);
-                int32_t rhs = ParseIntArg(1);
-                if (lhs <= rhs) {
-                    clang_noinline this->controller.script_time.set(IntArg(3));
-                    this->data.current_instruction_offset = IntArg(2);
-                    continue;
-                }
-                break;
-            }
-            case jump_float_leq: { // 209
-                float lhs = ParseFloatArg(0);
-                float rhs = ParseFloatArg(1);
-                if (lhs <= rhs) {
-                    clang_noinline this->controller.script_time.set(IntArg(3));
-                    this->data.current_instruction_offset = IntArg(2);
-                    continue;
-                }
-                break;
-            }          
-            case jump_int_gre: { // 210
-                int32_t lhs = ParseIntArg(0);
-                int32_t rhs = ParseIntArg(1);
-                if (lhs > rhs) {
-                    clang_noinline this->controller.script_time.set(IntArg(3));
-                    this->data.current_instruction_offset = IntArg(2);
-                    continue;
-                }
-                break;
-            }
-            case jump_float_gre: { // 211
-                float lhs = ParseFloatArg(0);
-                float rhs = ParseFloatArg(1);
-                if (lhs > rhs) {
-                    clang_noinline this->controller.script_time.set(IntArg(3));
-                    this->data.current_instruction_offset = IntArg(2);
-                    continue;
-                }
-                break;
-            }
-            case jump_int_geq: { // 212
-                int32_t lhs = ParseIntArg(0);
-                int32_t rhs = ParseIntArg(1);
-                if (lhs >= rhs) {
-                    clang_noinline this->controller.script_time.set(IntArg(3));
-                    this->data.current_instruction_offset = IntArg(2);
-                    continue;
-                }
-                break;
-            }
-            case jump_float_geq: { // 213
-                float lhs = ParseFloatArg(0);
-                float rhs = ParseFloatArg(1);
-                if (lhs >= rhs) {
-                    clang_noinline this->controller.script_time.set(IntArg(3));
-                    this->data.current_instruction_offset = IntArg(2);
-                    continue;
-                }
-                break;
-            }
-            
-            case sprite_set: { // 300
-
-            }
-        }
-
-        this->data.current_instruction_offset += current_instruction->offset_to_next;
-    }
-
-anm_break:
-    if (this->data.__unknown_flag_U) {
-        this->__apply_deltas();
-    }
-    if (this->data.__unknown_flag_W) {
-        this->controller.position += SUPERVISOR.cameras[3].__float3_13C;
-    }
-    if (this->data.__unknown_flag_Q) {
-        // TODO: horrible
-    }
-    // TODO: more horrible
-
-    if (ZUN_FAILED(this->run_on_wait())) {
-return_delete:
-        GAME_SPEED.set(previous_gamespeed);
-        return 1;
-    }
-    else {
-return_static:
-        GAME_SPEED.set(previous_gamespeed);
-        return 0;
     }
 }
 
@@ -18094,6 +17846,1074 @@ ValidateFieldOffset32(0x19274, AsciiManager, on_draw_func_group_3);
 ValidateStructSize32(0x19278, AsciiManager);
 #pragma endregion
 
+#define ParseIntArg(number) \
+this->get_int_arg(IntArg(number), current_instruction->param_mask, number)
+
+#define ParseIntPtrArg(number) \
+this->get_int_ptr_arg(&IntArg(number), current_instruction->param_mask, number)
+
+#define ParseFloatArg(number) \
+this->get_float_arg(FloatArg(number), current_instruction->param_mask, number)
+
+#define ParseFloatPtrArg(number) \
+this->get_float_ptr_arg(&FloatArg(number), current_instruction->param_mask, number)
+
+// 0x478580
+dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
+    using namespace Anm;
+
+    float previous_gamespeed = GAME_SPEED; // ESP+1C
+    if (this->data.slowdown_immune) {
+        GAME_SPEED.value = 1.0f;
+    }
+    if (this->get_custom_slowdown() > 0.0f) {
+        float new_gamespeed = previous_gamespeed - (this->get_custom_slowdown() * previous_gamespeed);
+        GAME_SPEED.value = new_gamespeed;
+        if (new_gamespeed < 0.0f) {
+            GAME_SPEED.value = 0.0f;
+        }
+    }
+    if (ZUN_FAILED(this->run_on_tick())) {
+        goto return_delete;
+    }
+    if (
+        this->data.current_instruction_offset < 0 ||
+        this->data.__unknown_flag_O
+    ) {
+        goto return_static;
+    }
+    clang_noinline ++this->controller.__timer_1C;
+
+    AnmInstruction* current_instruction;
+    if (this->data.run_interrupt) {
+        current_instruction = this->get_current_instruction();
+        goto run_interrupt;
+    }
+    if (this->data.__unknown_field_B == 1) {
+        GameThread* game_thread = GAME_THREAD_PTR;
+        if (
+            game_thread && game_thread->__unknown_flag_B
+        ) {
+            goto return_static;
+        }
+    }
+    for (;;) {
+        current_instruction = this->get_current_instruction();
+        if ((int32_t)current_instruction->time > this->controller.script_time) break;
+        switch (current_instruction->opcode) {
+            case jump: // 200
+                clang_noinline this->controller.script_time.set(IntArg(1));
+                this->data.current_instruction_offset = IntArg(0);
+                continue;
+            case loop: { // 201
+                int32_t* write = ParseIntPtrArg(0);
+                *write -= 1;
+                if (ParseIntArg(0) <= 0) {
+                    break;
+                }
+                clang_noinline this->controller.script_time.set(IntArg(2));
+                this->data.current_instruction_offset = IntArg(1);
+                continue;
+            }
+            case wait: // 6
+                this->controller.script_time.add_raw(-ParseIntArg(0));
+                break;
+            case anm_halt_invisible: // 4
+                this->data.visible = false;
+            case anm_halt: // 3
+                // Volatile read to force the compiler to emit
+                // the code rather than optimizing it out based
+                // on the earlier check of this same variable.
+                if (*(volatile int32_t*)&this->data.run_interrupt) {
+            run_interrupt:
+                    int32_t search_offset = 0; // ESP+18
+                    int32_t last_good_offset = 0; // ESP+14
+                    AnmInstruction* last_good_instruction = NULL; // ESP+20
+                    AnmInstruction* search_instruction = this->get_anm_loaded()->get_script(this->data.script_id);
+                    for (;;) {
+                        switch ((uint16_t)search_instruction->opcode) {
+                            case interrupt_label: { // 5
+                                int32_t interrupt_number = *(int32_t*)&search_instruction->args[0];
+                                if (this->data.run_interrupt == interrupt_number) {
+                                    goto end_interrupt_search;
+                                }
+                                if (interrupt_number == -1) {
+                                    uint32_t offset_to_next = search_instruction->offset_to_next;
+                                    last_good_offset = search_offset;
+                                    search_offset += offset_to_next;
+                                    last_good_instruction = search_instruction;
+                                    search_instruction = pointer_raw_offset(search_instruction, offset_to_next);
+                                    continue;
+                                }
+                                break;
+                            }
+                            case 0xFFFF:
+                                goto end_interrupt_search;
+                        }
+                        uint32_t offset_to_next = search_instruction->offset_to_next;
+                        search_offset += offset_to_next;
+                        search_instruction = pointer_raw_offset(search_instruction, offset_to_next);
+                    }
+            end_interrupt_search:
+                    this->data.__visible3 = false;
+                    this->data.run_interrupt = 0;
+
+                    if (search_instruction->opcode != interrupt_label) {
+                        if (!last_good_instruction) {
+                            // Is this bugged because it's not
+                            // checking for anm_halt_invisible?
+                            if (current_instruction->opcode != anm_halt) {
+                                continue;
+                            }
+                            goto interrupt_fail;
+                        }
+                        current_instruction = last_good_instruction;
+                        search_offset = last_good_offset;
+                    } else {
+                        current_instruction = search_instruction;
+                    }
+
+                    this->data.interrupt_return_time.set_from_timer(this->controller.script_time);
+                    this->data.interrupt_return_offset = this->data.current_instruction_offset;
+                    search_offset += current_instruction->offset_to_next;
+                    clang_noinline this->controller.script_time.set(current_instruction->time);
+                    this->data.visible = true;
+                    this->data.current_instruction_offset = search_offset;
+                    continue;
+                }
+                else {
+                    this->data.__visible3 = true;
+                }
+            interrupt_fail:
+                clang_noinline this->controller.script_time--;
+                goto anm_break;
+            case interrupt_return: // 7
+                this->controller.script_time.set_from_timer(this->data.interrupt_return_time);
+                this->data.current_instruction_offset = this->data.interrupt_return_offset;
+                continue;
+            case set_int: { // 100
+                int32_t value = ParseIntArg(1);
+                int32_t* write = ParseIntPtrArg(0);
+                *write = value;
+                break;
+            }
+            case set_float: { // 101
+                float value = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write = value;
+                break;
+            }
+            case math_int_add: { // 112
+                int32_t lhs = ParseIntArg(1);
+                int32_t rhs = ParseIntArg(2);
+                int32_t* write = ParseIntPtrArg(0);
+                *write = lhs + rhs;
+                break;
+            }
+            case math_float_add: { // 113
+                float lhs = ParseFloatArg(1);
+                float rhs = ParseFloatArg(2);
+                float* write = ParseFloatPtrArg(0);
+                *write = lhs + rhs;
+                break;
+            }
+            case math_int_sub: { // 114
+                int32_t lhs = ParseIntArg(1);
+                int32_t rhs = ParseIntArg(2);
+                int32_t* write = ParseIntPtrArg(0);
+                *write = lhs - rhs;
+                break;
+            }
+            case math_float_sub: { // 115
+                float lhs = ParseFloatArg(1);
+                float rhs = ParseFloatArg(2);
+                float* write = ParseFloatPtrArg(0);
+                *write = lhs - rhs;
+                break;
+            }
+            case math_int_mul: { // 116
+                int32_t lhs = ParseIntArg(1);
+                int32_t rhs = ParseIntArg(2);
+                int32_t* write = ParseIntPtrArg(0);
+                *write = lhs * rhs;
+                break;
+            }
+            case math_float_mul: { // 117
+                float lhs = ParseFloatArg(1);
+                float rhs = ParseFloatArg(2);
+                float* write = ParseFloatPtrArg(0);
+                *write = lhs * rhs;
+                break;
+            }
+            case math_int_div: { // 118
+                int32_t lhs = ParseIntArg(1);
+                int32_t rhs = ParseIntArg(2);
+                int32_t* write = ParseIntPtrArg(0);
+                *write = lhs / rhs;
+                break;
+            }
+            case math_float_div: { // 119
+                float lhs = ParseFloatArg(1);
+                float rhs = ParseFloatArg(2);
+                float* write = ParseFloatPtrArg(0);
+                *write = lhs / rhs;
+                break;
+            }
+            case math_int_mod: { // 120
+                int32_t lhs = ParseIntArg(1);
+                int32_t rhs = ParseIntArg(2);
+                int32_t* write = ParseIntPtrArg(0);
+                *write = lhs % rhs;
+                break;
+            }
+            case math_float_mod: { // 121
+                float rhs = ParseFloatArg(2);
+                float lhs = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write = zfmodf(lhs, rhs);
+                break;
+            }
+            case math_int_add_assign: { // 102
+                int32_t value = ParseIntArg(1);
+                int32_t* write = ParseIntPtrArg(0);
+                *write += value;
+                break;
+            }
+            case math_float_add_assign: { // 103
+                float value = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write += value;
+                break;
+            }
+            case math_int_sub_assign: { // 104
+                int32_t value = ParseIntArg(1);
+                int32_t* write = ParseIntPtrArg(0);
+                *write -= value;
+                break;
+            }
+            case math_float_sub_assign: { // 105
+                float value = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write -= value;
+                break;
+            }
+            case math_int_mul_assign: { // 106
+                int32_t value = ParseIntArg(1);
+                int32_t* write = ParseIntPtrArg(0);
+                *write *= value;
+                break;
+            }
+            case math_float_mul_assign: { // 107
+                float value = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write *= value;
+                break;
+            }
+            case math_int_div_assign: { // 108
+                int32_t value = ParseIntArg(1);
+                int32_t* write = ParseIntPtrArg(0);
+                *write /= value;
+                break;
+            }
+            case math_float_div_assign: { // 109
+                float value = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write /= value;
+                break;
+            }
+            case math_int_mod_assign: { // 110
+                int32_t value = ParseIntArg(1);
+                int32_t* write = ParseIntPtrArg(0);
+                *write %= value;
+                break;
+            }
+            case math_float_mod_assign: { // 111
+                float rhs = ParseFloatArg(1);
+                float lhs = ParseFloatArg(0);
+                float* write = ParseFloatPtrArg(0);
+                *write = zfmodf(lhs, rhs);
+                break;
+            }
+            case set_int_rand_bound: { // 122
+                int32_t range = ParseIntArg(1);
+                int32_t* write = ParseIntPtrArg(0);
+                *write = RNG.rand_uint_range(range);
+                break;
+            }
+            case set_float_rand_bound: { // 123
+                float range = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write = RNG.rand_float_range(range);
+                break;
+            }
+            case math_sin: { // 124
+                float angle = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write = zsinf(angle);
+                break;
+            }
+            case math_cos: { // 125
+                float angle = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write = zcosf(angle);
+                break;
+            }
+            case math_tan: { // 126
+                float angle = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write = ztanf(angle);
+                break;
+            }
+            case math_acos: { // 127
+                float angle = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write = zacosf(angle);
+                break;
+            }
+            case math_atan: { // 128
+                float angle = ParseFloatArg(1);
+                float* write = ParseFloatPtrArg(0);
+                *write = zatanf(angle);
+                break;
+            }
+            case math_reduce_angle: { // 129
+                float value = ParseFloatArg(0);
+                float* write = ParseFloatPtrArg(0);
+                *write = reduce_angle_add(value, 0.0f); // This looks a *lot* like old engine code
+                break;
+            }
+            case math_circle_pos_fast: { // 130
+                float radius = ParseFloatArg(3);
+                float angle = ParseFloatArg(2);
+                float* y = ParseFloatPtrArg(1);
+                float* x = ParseFloatPtrArg(0);
+                circle_pos(x, y, angle, radius);
+                break;
+            }
+            case math_circle_pos_rand: { // 131
+                Float3 position;
+                float min = ParseFloatArg(2);
+                float max = ParseFloatArg(3);
+                float rand = RNG.rand_float_signed();
+                float radius = lerp(min, max, rand);
+                float angle = RNG.rand_angle();
+                position.make_from_vector(angle, radius);
+                float* x = ParseFloatPtrArg(0);
+                *x = position.x;
+                float* y = ParseFloatPtrArg(1);
+                *y = position.y;
+                break;
+            }
+            case jump_int_equ: { // 202
+                int32_t lhs = ParseIntArg(0);
+                int32_t rhs = ParseIntArg(1);
+                if (lhs == rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_float_equ: { // 203
+                float lhs = ParseFloatArg(0);
+                float rhs = ParseFloatArg(1);
+                if (lhs == rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_int_neq: { // 204
+                int32_t lhs = ParseIntArg(0);
+                int32_t rhs = ParseIntArg(1);
+                if (lhs != rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_float_neq: { // 205
+                float lhs = ParseFloatArg(0);
+                float rhs = ParseFloatArg(1);
+                if (lhs != rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_int_les: { // 206
+                int32_t lhs = ParseIntArg(0);
+                int32_t rhs = ParseIntArg(1);
+                if (lhs < rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_float_les: { // 207
+                float lhs = ParseFloatArg(0);
+                float rhs = ParseFloatArg(1);
+                if (lhs < rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_int_leq: { // 208
+                int32_t lhs = ParseIntArg(0);
+                int32_t rhs = ParseIntArg(1);
+                if (lhs <= rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_float_leq: { // 209
+                float lhs = ParseFloatArg(0);
+                float rhs = ParseFloatArg(1);
+                if (lhs <= rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }          
+            case jump_int_gre: { // 210
+                int32_t lhs = ParseIntArg(0);
+                int32_t rhs = ParseIntArg(1);
+                if (lhs > rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_float_gre: { // 211
+                float lhs = ParseFloatArg(0);
+                float rhs = ParseFloatArg(1);
+                if (lhs > rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_int_geq: { // 212
+                int32_t lhs = ParseIntArg(0);
+                int32_t rhs = ParseIntArg(1);
+                if (lhs >= rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            case jump_float_geq: { // 213
+                float lhs = ParseFloatArg(0);
+                float rhs = ParseFloatArg(1);
+                if (lhs >= rhs) {
+                    clang_noinline this->controller.script_time.set(IntArg(3));
+                    this->data.current_instruction_offset = IntArg(2);
+                    continue;
+                }
+                break;
+            }
+            
+            case sprite_set: { // 300
+                this->data.visible = true;
+
+                int32_t sprite;
+                if (int32_t index = this->controller.on_sprite_lookup_index) {
+                    sprite = ANM_ON_SPRITE_LOOKUP_FUNCS[index](this, ParseIntArg(0));
+                } else {
+                    sprite = ParseIntArg(0);
+                }
+
+                AnmLoaded* anm_loaded;
+                if (sprite < 0) { // why is this here?
+                    sprite = 288;
+                    anm_loaded = ASCII_MANAGER_PTR->ascii_anm;
+                } else {
+                    // this doesn't check if the slot is actually loaded...
+                    anm_loaded = ANM_MANAGER_PTR->loaded_anm_files[this->data.slot];
+                }
+
+                anm_loaded->set_sprite(this, sprite);
+
+                this->data.__last_sprite_set_time = this->controller.script_time;
+                break;
+            }
+            case anm_flag_slowdown_immune: // 432
+                this->data.slowdown_immune = ParseIntArg(0);
+                break;
+            case anm_create_child_back: { // 500
+                int32_t script = ParseIntArg(0);
+                ANM_MANAGER_PTR->loaded_anm_files[this->data.slot]->instantiate_child_vm(script, this, WORLD_LIST_BACK);
+                break;
+            }
+            case anm_create_child_back_rel: { // 505
+                int32_t script = ParseIntArg(0);
+                AnmID child = ANM_MANAGER_PTR->loaded_anm_files[this->data.slot]->instantiate_child_vm(script, this, WORLD_LIST_BACK);
+                AnmVM* child_vm = child.get_vm_ptr();
+                child_vm->data.__position_2.x = ParseFloatArg(1);
+                child_vm->data.__position_2.y = ParseFloatArg(2);
+                break;
+            }
+            case anm_create_child_front: { // 502
+                int32_t script = ParseIntArg(0);
+                ANM_MANAGER_PTR->loaded_anm_files[this->data.slot]->instantiate_child_vm(script, this, WORLD_LIST_FRONT);
+                break;
+            }
+            case anm_create_child_ui_back: { // 501
+                int32_t script = ParseIntArg(0);
+                ANM_MANAGER_PTR->loaded_anm_files[this->data.slot]->instantiate_child_vm(script, this, UI_LIST_BACK);
+                break;
+            }
+            case anm_create_child_ui_front: { // 503
+                int32_t script = ParseIntArg(0);
+                ANM_MANAGER_PTR->loaded_anm_files[this->data.slot]->instantiate_child_vm(script, this, UI_LIST_FRONT);
+                break;
+            }
+            case copy_parent_context: // 509
+                if (AnmVM* parent = this->controller.parent) {
+                    this->data.current_context = parent->data.current_context;
+                }
+                break;
+            case anm_create_back_rel: { // 506
+                int32_t script = ParseIntArg(0);
+                AnmID orphan = ANM_MANAGER_PTR->loaded_anm_files[this->data.slot]->instantiate_orphan_vm_to_world_list_back(script, this, WORLD_LIST_BACK);
+                AnmVM* orphan_vm = orphan.get_vm_ptr();
+                orphan_vm->data.__position_2.x = ParseFloatArg(1);
+                orphan_vm->data.__position_2.y = ParseFloatArg(2);
+                break;
+            }
+            case anm_create_back: { // 504
+                int32_t script = ParseIntArg(0);
+                ANM_MANAGER_PTR->loaded_anm_files[this->data.slot]->instantiate_orphan_vm_to_world_list_back(script, this, WORLD_LIST_BACK);
+                break;
+            }
+            case effect_create: { // 508
+                // this effectively overrides the current VM state
+                int32_t type = ParseIntArg(0);
+                EFFECT_MANAGER_PTR->instantiate_effect_vm_to_world_list_back(type, this, this);
+                break;
+            }
+            case sprite_set_rand_bound: { // 301
+                this->data.visible = true;
+
+                int32_t sprite;
+                if (int32_t index = this->controller.on_sprite_lookup_index) {
+                    int32_t min_sprite = ParseIntArg(0);
+                    int32_t range = ParseIntArg(1);
+                    sprite = min_sprite + RNG.rand_uint_range(range);
+                    sprite = ANM_ON_SPRITE_LOOKUP_FUNCS[index](this, ParseIntArg(0));
+                } else {
+                    int32_t min_sprite = ParseIntArg(0);
+                    int32_t range = ParseIntArg(1);
+                    sprite = min_sprite + RNG.rand_uint_range(range);
+                }
+
+                AnmLoaded* anm_loaded;
+                if (sprite < 0) { // why is this here?
+                    sprite = 288;
+                    anm_loaded = ASCII_MANAGER_PTR->ascii_anm;
+                } else {
+                    // this doesn't check if the slot is actually loaded...
+                    anm_loaded = ANM_MANAGER_PTR->loaded_anm_files[this->data.slot];
+                }
+
+                anm_loaded->set_sprite(this, sprite);
+
+                this->data.__last_sprite_set_time = this->controller.script_time;
+                break;
+            }
+            case scale: // 402
+                this->data.scale.x = ParseFloatArg(0);
+                this->set_y_scale(ParseFloatArg(1));
+                break;
+            case scale2: // 434
+                this->data.scale2.x = ParseFloatArg(0);
+                this->set_y_scale2(ParseFloatArg(1));
+                break;
+            case uv_scale: // 429
+                this->data.uv_scale.x = ParseFloatArg(0);
+                this->set_v_scale(ParseFloatArg(1));
+                break;
+            case alpha: // 403
+                this->set_alpha(ParseIntArg(0));
+                break;
+            case color: // 404
+                RED(this->data.color1) = ParseIntArg(0);
+                GREEN(this->data.color1) = ParseIntArg(1);
+                BLUE(this->data.color1) = ParseIntArg(2);
+                break;
+            case alpha_gradient: // 405
+                this->set_alpha2(ParseIntArg(0));
+                break;
+            case color_gradient: // 406
+                RED(this->data.color2) = ParseIntArg(0);
+                GREEN(this->data.color2) = ParseIntArg(1);
+                BLUE(this->data.color2) = ParseIntArg(2);
+                break;
+            case scale_flip_x: // 308
+                this->data.mirror_x ^= true;
+                this->data.scale_enabled = true;
+                this->data.scale.x *= -1.0f;
+                break;
+            case scale_flip_y: // 309
+                this->data.mirror_y ^= true;
+                this->data.scale_enabled = true;
+                this->data.scale.y *= -1.0f;
+                break;
+            case anm_flag_color_children: // 315
+                this->data.colorize_children = IntArg(0); // IMMEDIATE ARGUMENT
+                break;
+            case __anm_flag_set_visible2: // 316
+                this->data.__visible2 = true;
+                break;
+            case __anm_flag_clear_visible2: // 317
+                this->data.__visible2 = false;
+                break;
+            case camera_fade: // 439
+                this->data.enable_camera_fade = IntArg(0); // IMMEDIATE ARGUMENT
+                this->data.camera_near_fade_end = FloatArg(1); // IMMEDIATE ARGUMENT
+                this->data.camera_near_clip = FloatArg(2); // IMMEDIATE ARGUMENT
+                break;
+            case rotation: // 401
+                this->data.rotation.x = ParseFloatArg(0);
+                this->data.rotation.y = ParseFloatArg(1);
+                this->set_z_rotation(ParseFloatArg(2));
+                break;
+            case rotation_speed: { // 415
+                float velocity_z = ParseFloatArg(2);
+                float velocity_y = ParseFloatArg(1);
+                float velocity_x = ParseFloatArg(0);
+                this->set_angular_velocity(velocity_x, velocity_y, velocity_z);
+                break;
+            }
+            case scale_speed: { // 416
+                float velocity_y = ParseFloatArg(1);
+                float velocity_x = ParseFloatArg(0);
+                this->set_scale_delta(velocity_x, velocity_y);
+                break;
+            }
+            case alpha_interp_linear: { // 417
+                int32_t end_time = ParseIntArg(1);
+                uint8_t final_alpha = IntArg(0); // IMMEDIATE ARGUMENT
+                this->initialize_alpha_interp(end_time, Linear, this->get_alpha(), final_alpha);
+                break;
+            }
+            case blend_mode: // 303
+                this->data.blend_mode = IntArg(0); // IMMEDIATE_ARGUMENT
+                break;
+            case move_position: // 400
+                if (this->data.position_mode == 0) {
+                    float position_z = ParseFloatArg(2);
+                    float position_y = ParseFloatArg(1);
+                    float position_x = ParseFloatArg(0);
+                    this->data.position = { position_x, position_y, position_z };
+                } else {
+                    float position_z = ParseFloatArg(2);
+                    float position_y = ParseFloatArg(1);
+                    float position_x = ParseFloatArg(0);
+                    this->data.__position_2 = { position_x, position_y, position_z };
+                }
+                break;
+            case anchor_offset: // 436
+                this->data.anchor_offset.x = ParseFloatArg(0);
+                this->data.anchor_offset.y = ParseFloatArg(1);
+                break;
+            case rotation_mode: // 437
+                this->data.rotation_mode = ParseIntArg(0);
+                break;
+            case anm_flag_visible: // 310
+                this->data.visible = IntArg(0); // IMMEDIATE ARGUMENT
+                break;
+            case anchor_mode: // 421
+                this->data.x_anchor_mode = UShortArg(0); // IMMEDIATE ARGUMENT
+                this->data.y_anchor_mode = UShortArg(1); // IMMEDIATE ARGUMENT
+                break;
+            case scroll_speed_x: // 425
+                this->set_x_scroll_speed(ParseFloatArg(0));
+                break;
+            case scroll_speed_y: // 426
+                this->set_y_scroll_speed(ParseFloatArg(0));
+                break;
+            case anm_flag_disable_z_write: // 305
+                this->data.disable_z_write = IntArg(0); // IMMEDIATE ARGUMENT
+                break;
+            case __anm_flag_unknown_std_A: // 306
+                this->data.__unknown_std_flag_A = IntArg(0); // IMMEDIATE ARGUMENT
+                break;
+            case resample_mode: // 311
+                this->data.resample_mode = IntArg(0); // IMMEDIATE ARGUMENT
+                break;
+            case move_position_interp: { // 407
+                int32_t end_time = ParseIntArg(0);
+                this->data.position_interp.set_end_time(end_time);
+                this->data.position_interp.set_bezier1(UNKNOWN_FLOAT3_A);
+                this->data.position_interp.set_bezier2(UNKNOWN_FLOAT3_A);
+                int32_t mode = IntArg(1); // IMMEDIATE ARGUMENT
+                this->data.position_interp.set_mode(mode);
+                this->data.position_interp.set_initial_value(this->data.position_mode == 0 ? this->data.position : this->data.__position_2);
+                float position_z = ParseFloatArg(4);
+                float position_y = ParseFloatArg(3);
+                float position_x = ParseFloatArg(2);
+                Float3 position = { position_x, position_y, position_z };
+                this->data.position_interp.set_final_value(position);
+                this->data.position_interp.reset_timer();
+                break;
+            }
+            case move_velocity_interp: { // 433
+                int32_t end_time = ParseIntArg(0);
+                this->data.position_interp.set_end_time(end_time);
+                this->data.position_interp.set_bezier1(UNKNOWN_FLOAT3_A);
+                this->data.position_interp.set_bezier2(UNKNOWN_FLOAT3_A);
+                int32_t mode = IntArg(1); // IMMEDIATE ARGUMENT
+                this->data.position_interp.set_mode(mode);
+                this->data.position_interp.set_initial_value(this->data.position_mode == 0 ? this->data.position : this->data.__position_2);
+                Float3 position;
+                float magnitude = ParseFloatArg(3);
+                float angle = ParseFloatArg(2);
+                position.make_from_vector3(angle, magnitude);
+                this->data.position_interp.set_final_value(position);
+                this->data.position_interp.reset_timer();
+                break;
+            }
+            case move_bezier: { // 420
+                Float3 bezier1; // ESP+88
+                Float3 bezier2; // ESP+94
+                bezier1.x = ParseFloatArg(1);
+                bezier1.y = ParseFloatArg(2);
+                bezier1.z = ParseFloatArg(3);
+                bezier2.x = ParseFloatArg(7);
+                bezier2.y = ParseFloatArg(8);
+                bezier2.z = ParseFloatArg(9);
+                int32_t end_time = ParseIntArg(0);
+                this->data.position_interp.set_end_time(end_time);
+                this->data.position_interp.set_bezier1(bezier1);
+                this->data.position_interp.set_bezier2(bezier2);
+                this->data.position_interp.set_mode(Bezier);
+                this->data.position_interp.set_initial_value(this->data.position_mode == 0 ? this->data.position : this->data.__position_2);
+                float position_z = ParseFloatArg(6);
+                float position_y = ParseFloatArg(5);
+                float position_x = ParseFloatArg(4);
+                Float3 position = { position_x, position_y, position_z };
+                this->data.position_interp.set_final_value(position);
+                this->data.position_interp.reset_timer();
+                break;
+            }
+            case color_interp: { // 408
+                D3DCOLOR initial_color;
+                pack_rgb(initial_color, RED(this->data.color1), GREEN(this->data.color1), BLUE(this->data.color1));
+                int32_t b = ParseIntArg(4);
+                int32_t g = ParseIntArg(3);
+                int32_t r = ParseIntArg(2);
+                D3DCOLOR final_color;
+                pack_rgb(final_color, r, g, b);
+                int32_t end_time = ParseIntArg(0);
+                uint8_t mode = ByteArg(4); // IMMEDIATE ARGUMENT
+                this->initialize_color_interp(end_time, mode, initial_color, final_color);
+                break;
+            }
+            case alpha_interp: { // 409
+                int32_t final_alpha = ParseIntArg(2);
+                int32_t end_time = ParseIntArg(0);
+                uint8_t mode = ByteArg(4); // IMMEDIATE ARGUMENT
+                this->initialize_alpha_interp(end_time, mode, this->get_alpha(), final_alpha);
+                break;
+            }
+            case color_gradient_interp: { // 413
+                D3DCOLOR initial_color;
+                pack_rgb(initial_color, RED(this->data.color1), GREEN(this->data.color1), BLUE(this->data.color1));
+                int32_t b = ParseIntArg(4);
+                int32_t g = ParseIntArg(3);
+                int32_t r = ParseIntArg(2);
+                D3DCOLOR final_color;
+                pack_rgb(final_color, r, g, b);
+                int32_t end_time = ParseIntArg(0);
+                uint8_t mode = ByteArg(4); // IMMEDIATE ARGUMENT
+                this->initialize_color2_interp(end_time, mode, initial_color, final_color);
+                break;
+            }
+            case alpha_gradient_interp: { // 414
+                int32_t final_alpha = ParseIntArg(2);
+                int32_t end_time = ParseIntArg(0);
+                uint8_t mode = ByteArg(4); // IMMEDIATE ARGUMENT
+                this->initialize_alpha2_interp(end_time, mode, this->get_alpha2(), final_alpha);
+                break;
+            }
+            case rotation_interp: { // 410
+                float rotation_z = ParseFloatArg(4);
+                float rotation_y = ParseFloatArg(3);
+                float rotation_x = ParseFloatArg(2);
+                Float3 rotation = { rotation_x, rotation_y, rotation_z };
+                int32_t end_time = ParseIntArg(0);
+                this->data.rotation_interp.set_end_time(end_time);
+                this->data.rotation_interp.set_bezier1(UNKNOWN_FLOAT3_A);
+                this->data.rotation_interp.set_bezier2(UNKNOWN_FLOAT3_A);
+                int32_t mode = IntArg(1); // IMMEDIATE ARGUMENT
+                this->data.rotation_interp.set_mode(mode);
+                this->data.rotation_interp.set_initial_value(this->data.rotation);
+                this->data.rotation_interp.set_final_value(rotation);
+                this->data.rotation_interp.reset_timer();
+                this->data.rotation_enabled = true;
+                break;
+            }
+            case spin_interp: { // 411
+                float angle = ParseFloatArg(2);
+                ZUNAngle final_angle = angle;
+                ZUNAngle initial_angle = this->data.rotation.z;
+                ZUNAngle zero_angle = 0.0f;
+                int32_t end_time = ParseIntArg(0);
+                this->data.spin_interp.set_end_time(end_time);
+                this->data.spin_interp.set_bezier1(zero_angle);
+                this->data.spin_interp.set_bezier2(zero_angle);
+                int32_t mode = IntArg(1); // IMMEDIATE ARGUMENT
+                this->data.spin_interp.set_mode(mode);
+                this->data.spin_interp.set_initial_value(initial_angle);
+                this->data.spin_interp.set_final_value(final_angle);
+                this->data.spin_interp.reset_timer();
+                this->data.rotation_enabled = true;
+                break;
+            }
+            case scale_interp: { // 412
+                float scale_y = ParseFloatArg(3);
+                float scale_x = ParseFloatArg(2);
+                Float2 scale = { scale_x, scale_y };
+                int32_t end_time = ParseIntArg(0);
+                uint8_t mode = ByteArg(4); // IMMEDIATE ARGUMENT
+                this->initialize_scale_interp(end_time, mode, &this->data.scale, &scale);
+                this->data.scale_enabled = true;
+                break;
+            }
+            case scale2_interp: { // 435
+                float scale_y = ParseFloatArg(3);
+                float scale_x = ParseFloatArg(2);
+                Float2 scale = { scale_x, scale_y };
+                int32_t end_time = ParseIntArg(0);
+                uint8_t mode = ByteArg(4); // IMMEDIATE ARGUMENT
+                this->initialize_scale2_interp(end_time, mode, &this->data.scale, &scale);
+                this->data.scale_enabled = true;
+                break;
+            }
+            case uv_scale_interp: { // 430
+                float scale_v = ParseFloatArg(3);
+                float scale_u = ParseFloatArg(2);
+                Float2 scale = { scale_u, scale_v };
+                int32_t end_time = ParseIntArg(0);
+                uint8_t mode = ByteArg(4); // IMMEDIATE ARGUMENT
+                this->initialize_uv_scale_interp(end_time, mode, &this->data.uv_scale, &scale);
+                this->data.uv_scale_enabled = true;
+                break;
+            }
+            case scroll_speed_x_interp: { // 427
+                float scroll_speed_x = ParseFloatArg(2);
+                float zero = 0.0f;
+                int32_t end_time = ParseIntArg(0);
+                this->data.u_scroll_speed_interp.set_end_time(end_time);
+                this->data.u_scroll_speed_interp.set_bezier1(zero);
+                this->data.u_scroll_speed_interp.set_bezier2(zero);
+                int32_t mode = IntArg(1); // IMMEDIATE ARGUMENT
+                this->data.u_scroll_speed_interp.set_mode(mode);
+                this->data.u_scroll_speed_interp.set_initial_value(this->data.uv_scroll_speed.x);
+                this->data.u_scroll_speed_interp.set_final_value(scroll_speed_x);
+                this->data.u_scroll_speed_interp.reset_timer();
+                break;
+            }
+            case scroll_speed_y_interp: { // 428
+                float scroll_speed_y = ParseFloatArg(2);
+                float zero = 0.0f;
+                int32_t end_time = ParseIntArg(0);
+                this->data.v_scroll_speed_interp.set_end_time(end_time);
+                this->data.v_scroll_speed_interp.set_bezier1(zero);
+                this->data.v_scroll_speed_interp.set_bezier2(zero);
+                int32_t mode = IntArg(1); // IMMEDIATE ARGUMENT
+                this->data.v_scroll_speed_interp.set_mode(mode);
+                this->data.v_scroll_speed_interp.set_initial_value(this->data.uv_scroll_speed.y);
+                this->data.v_scroll_speed_interp.set_final_value(scroll_speed_y);
+                this->data.v_scroll_speed_interp.reset_timer();
+                break;
+            }
+            case render_mode: // 302
+                this->data.render_mode = IntArg(0); // IMMEDIATE ARGUMENT
+                if (this->data.render_mode == 10) {
+                    this->__sub_4832F0();
+                }
+                break;
+            case position_inherit: // 422
+                this->data.position = this->controller.position;
+                this->controller.position = {};
+                break;
+            case textured_ring: { // 600
+                this->data.render_mode = 9;
+                int32_t max_count = ParseIntArg(0);
+                this->allocate_special_vertex_buffer(max_count * 0x38); // TODO: convert to vertex type
+                break;
+            }
+            case textured_arc_A: { // 601
+                this->data.render_mode = 13;
+                int32_t max_count = ParseIntArg(0);
+                this->allocate_special_vertex_buffer(max_count * 0x38); // TODO: convert to vertex type
+                break;
+            }
+            case textured_arc_B: { // 602
+                this->data.render_mode = 14;
+                int32_t max_count = ParseIntArg(0);
+                this->allocate_special_vertex_buffer(max_count * 0x38); // TODO: convert to vertex type
+                break;
+            }
+            case textured_cylinder: { // 609
+                this->data.render_mode = 24;
+                int32_t max_count = ParseIntArg(0);
+                this->allocate_special_vertex_buffer(max_count * 0x30); // TODO: convert to vertex type
+                break;
+            }
+            case textured_ring_3D: { // 609
+                this->data.render_mode = 25;
+                int32_t max_count = ParseIntArg(0);
+                this->allocate_special_vertex_buffer(max_count * 0x30); // TODO: convert to vertex type
+                break;
+            }
+            case sprite_window: { // 418
+                Float3 quad_positions[4];
+                this->__get_vertex_quad(quad_positions);
+                __convert_position_to_window_uv(&this->data.sprite_uv_quad[0], &quad_positions[0]);
+                __convert_position_to_window_uv(&this->data.sprite_uv_quad[1], &quad_positions[1]);
+                __convert_position_to_window_uv(&this->data.sprite_uv_quad[2], &quad_positions[2]);
+                __convert_position_to_window_uv(&this->data.sprite_uv_quad[3], &quad_positions[3]);
+                break;
+            }
+            case __anm_flag_continual_sprite_window: // 419
+                this->data.__continual_sprite_window = ParseIntArg(0);
+                break;
+            case polygon_rectangle: // 603
+                this->data.render_mode = 16;
+                this->data.sprite_size.x = ParseFloatArg(0);
+                this->data.sprite_size.y = ParseFloatArg(1);
+                break;
+            case polygon_rectangle_gradient: // 606
+                this->data.render_mode = 20;
+                this->data.sprite_size.x = ParseFloatArg(0);
+                this->data.sprite_size.y = ParseFloatArg(1);
+                break;
+            case polygon_rectangle_antialias: // 607
+                this->data.render_mode = 21;
+                this->data.sprite_size.x = ParseFloatArg(0);
+                this->data.sprite_size.y = ParseFloatArg(1);
+                break;
+            case polygon_rectangle_gradient_antialias: // 608
+                this->data.render_mode = 22;
+                this->data.sprite_size.x = ParseFloatArg(0);
+                this->data.sprite_size.y = ParseFloatArg(1);
+                break;
+            case polygon_line: // 613
+                this->data.render_mode = 26;
+                this->data.sprite_size.x = ParseFloatArg(0);
+                this->data.sprite_size.y = ParseFloatArg(1);
+                break;
+            case polygon_rectangle_hollow: // 612
+                this->data.render_mode = 27;
+                this->data.sprite_size.x = ParseFloatArg(0);
+                this->data.sprite_size.y = ParseFloatArg(1);
+                break;
+            case polygon: // 604
+                this->data.render_mode = 17;
+                this->data.sprite_size.x = ParseFloatArg(0);
+                this->data.current_context.int_vars[0] = ParseIntArg(1);
+                break;
+            case polygon_hollow: // 605
+                this->data.render_mode = 18;
+                this->data.sprite_size.x = ParseFloatArg(0);
+                this->data.current_context.int_vars[0] = ParseIntArg(1);
+                break;
+            case polygon_ring: // 611
+                this->data.render_mode = 19;
+                this->data.sprite_size.x = ParseFloatArg(0);
+                this->data.sprite_size.y = ParseFloatArg(1);
+                this->data.current_context.int_vars[0] = ParseIntArg(2);
+                break;
+            case __polygon_unknown_A: // 614
+                this->data.render_mode = 28;
+                this->data.sprite_size.x = ParseFloatArg(0);
+                this->data.sprite_size.y = ParseFloatArg(1);
+                break;
+            case __anm_flag_treat_as_root: // 507
+                this->data.__treat_as_root = ParseIntArg(0);
+                break;
+            case scroll_mode: // 312
+                this->data.u_scroll_mode = ParseIntArg(0);
+                this->data.v_scroll_mode = ParseIntArg(1);
+                break;
+            case resolution_mode: // 313
+                this->data.resolution_mode = ParseIntArg(0);
+                break;
+            case anm_flag_inherit_rotation: // 314
+                this->data.inherit_rotation = ParseIntArg(0);
+                break;
+            case origin_mode: // 438
+                this->data.origin_mode = ByteArg(0); // IMMEDIATE ARGUMENT
+                break;
+            case __anm_flag_unknown_T: // 431
+                this->data.__unknown_flag_T = ByteArg(0); // IMMEDIATE ARGUMENT
+                break;
+            case layer: { // 304
+                uint8_t layer = ByteArg(0); // IMMEDIATE ARGUMENT
+                this->set_layer(layer);
+                break;
+            }
+            case color_mode: // 423
+                this->data.color_mode = ByteArg(0); // IMMEDIATE ARGUMENT
+                break;
+            case anm_flag_auto_rotate: // 424
+                this->data.auto_rotate = ByteArg(0); // IMMEDIATE ARGUMENT
+                break;
+            case rand_mode: // 307
+                this->data.rand_mode = ByteArg(0); // IMMEDIATE ARGUMENT
+                break;
+            case nop: // 0
+                break;
+        }
+
+        this->data.current_instruction_offset += current_instruction->offset_to_next;
+    }
+
+anm_break:
+    if (this->data.__deltas_enabled) {
+        this->__apply_deltas();
+    }
+    if (this->data.__unknown_flag_W) {
+        this->controller.position += SUPERVISOR.cameras[3].__float3_13C;
+    }
+    if (this->data.__continual_sprite_window) {
+        Float3 quad_positions[4];
+        this->__get_vertex_quad(quad_positions);
+        __convert_position_to_window_uv(&this->data.sprite_uv_quad[0], &quad_positions[0]);
+        __convert_position_to_window_uv(&this->data.sprite_uv_quad[1], &quad_positions[1]);
+        __convert_position_to_window_uv(&this->data.sprite_uv_quad[2], &quad_positions[2]);
+        __convert_position_to_window_uv(&this->data.sprite_uv_quad[3], &quad_positions[3]);
+    }
+    this->step_interps();
+    this->__update_polygons();
+
+    if (ZUN_FAILED(this->run_on_wait())) {
+return_delete:
+        GAME_SPEED.set(previous_gamespeed);
+        return 1;
+    }
+    else {
+return_static:
+        GAME_SPEED.set(previous_gamespeed);
+        return 0;
+    }
+}
+
 // 0x43A340
 dllexport gnu_noinline UpdateFuncRet UpdateFuncCC FpsCounter::on_draw(void* ptr) {
     switch (SUPERVISOR.gamemode_switch) {
@@ -18166,8 +18986,6 @@ enum CancelType : int32_t {
 static inline int bullet_cancel_radius(Float3* position, float radius, CancelType cancel_type);
 static inline int bullet_cancel_radius_as_bomb(Float2* position, float radius, CancelType cancel_type, int32_t max_count, int arg5);
 static inline int laser_cancel_radius(Float3* position, float radius, int arg3, int arg4);
-
-
 
 typedef struct PlayerDamageSource PlayerDamageSource;
 typedef struct PlayerBullet PlayerBullet;
@@ -28426,7 +29244,7 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
     vm->data.blend_mode = 1;
     vm->data.x_anchor_mode = 0;
     vm->data.y_anchor_mode = 2;
-    vm->data.type = 1;
+    vm->data.render_mode = 1;
     vm->data.origin_mode = 1;
 
     vm = &this->__vm_11F4;
@@ -28434,7 +29252,7 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
     vm->run_on_interrupt(2);
     vm->run_anm();
     vm->data.blend_mode = 1;
-    vm->data.type = 1;
+    vm->data.render_mode = 1;
     vm->data.origin_mode = 1;
 
     if (this->sprite > 17 && this->sprite != 38) {
@@ -36477,12 +37295,12 @@ dllexport gnu_noinline void WindowData::__sub_4734E0(int arg1) {
             }
             // Screw this crap
     }
-    height = floatA * 480.0f;
-    width = floatA * 640.0f;
+    height = floatA * LOGICAL_WINDOW_HEIGHT;
+    width = floatA * LOGICAL_WINDOW_WIDTH;
     WINDOW_DATA.__scaled_height = height;
     WINDOW_DATA.__scaled_width = width;
-    this->__int_2074 = (int32_t)(width - 384.0f) / 2;
-    this->__int_2078 = (int32_t)(WINDOW_DATA.__scaled_height - 448.0f) / 2;
+    this->__int_2074 = (int32_t)(width - SCREEN_WIDTH) / 2;
+    this->__int_2078 = (int32_t)(WINDOW_DATA.__scaled_height - SCREEN_HEIGHT) / 2;
 }
 
 // 0x473890
