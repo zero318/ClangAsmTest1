@@ -13,6 +13,7 @@ add_executable(PCBTest1)
 add_executable(INTest1)
 add_executable(MoFTest1)
 add_executable(UMTest1)
+add_executable(FWTest1)
 add_executable(FourOfAKind1)
 add_executable(tts_test1)
 add_executable(print_copypasta)
@@ -42,6 +43,7 @@ add_executable(ttt_no_mem)
 add_executable(libm_testing)
 add_executable(vpatch)
 add_executable(heroes_calculator)
+add_executable(vec3_testing)
 add_library(z8086 SHARED)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
@@ -72,6 +74,7 @@ PCBTest1
 INTest1
 MoFTest1
 UMTest1
+FWTest1
 FourOfAKind1
 CSoundLib
 tts_test1
@@ -122,6 +125,7 @@ _dbghelp
 vpatch
 vpatch_dll
 heroes_calculator
+vec3_testing
 )
 
 enable_language(ASM-ATT)
@@ -296,7 +300,7 @@ target_compile_options(${EXE} PRIVATE
 	-Wno-bitfield-width
 	-Wno-pointer-to-int-cast
 	-Wno-int-to-pointer-cast
-	-Wno-format-security
+	#-Wno-format-security
 	-Wno-shift-op-parentheses
 	-Wno-gnu-alignof-expression
 	-Wno-microsoft-goto
@@ -307,6 +311,8 @@ target_compile_options(${EXE} PRIVATE
 	-Wno-microsoft-extra-qualification
 	#-Wno-dynamic-class-memaccess
 	-Wno-inline-namespace-reopened-noninline
+	-Wno-address-of-packed-member
+	-Wno-invalid-offsetof
 )
 
 # Output Flags
@@ -444,7 +450,7 @@ endif()
 #else()
 target_compile_options(${EXE} PRIVATE
 	#-flto=thin
-	-flto=full
+	#-flto=full
 )
 #endif()
 
@@ -455,8 +461,13 @@ target_compile_options(${EXE} PRIVATE
 	${SLASH_CLANG_ARG}-fno-fine-grained-bitfield-accesses
 	#"SHELL:-Xclang -fslp-vectorize"
 
+	#"SHELL:-mllvm -slp-vectorize-hor=true"
 	#"SHELL:-mllvm -slp-vectorize-hor-store=true"
 	#"SHELL:-mllvm -slp-threshold=-1"
+	"SHELL:-mllvm -slp-min-reg-size=64"
+	#"SHELL:-mllvm -slp-vectorize-non-power-of-2=true"
+	#"SHELL:-mllvm -slp-revec=true"
+	#"SHELL:-mllvm -slp-skip-early-profitability-check=true"
 
 	# Recognize more loop things I guess?
 	"SHELL:-mllvm -lv-strided-pointer-ivs=true"
@@ -956,13 +967,48 @@ if(NOT STATIC_CSOUND)
 target_link_libraries(UMTest1 CSoundLib)
 endif()
 
+add_library(UDoALGAsm OBJECT
+	"UDoaLG/render_turbo_udoalg.asm"
+)
+target_compile_options(UDoALGAsm PRIVATE
+	-march=znver2
+)
 target_sources(udoalg_test PRIVATE
 	#"dummy_main.cpp"
+	$<TARGET_OBJECTS:UDoALGAsm>
 	"UDoaLG/udoalg_test.cpp"
 )
 target_compile_options(udoalg_test PRIVATE
 	#"-mno-avx"
 	#"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	-Rpass=.*vectorize.*
+	-Rpass-missed=.*vectorize.*
+	-Rpass-analysis=.*vectorize.*
+)
+
+
+add_library(FWAsm OBJECT
+	"FW/render_turbo.asm"
+	"FW/render_turbo_avx2.asm"
+)
+target_compile_options(FWAsm PRIVATE
+	-march=znver2
+)
+target_sources(FWTest1 PRIVATE
+	$<TARGET_OBJECTS:FWAsm>
+	"FW/fw_test.cpp"
+)
+target_compile_options(FWTest1 PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-sse3"
+	"-mno-ssse3"
+	"-mno-sse4.1"
+	"-mno-sse4.2"
 	"-mno-xop"
 	"-mno-tbm"
 	"-mno-sse4a"
@@ -1781,6 +1827,26 @@ target_compile_options(vpatch_dll PRIVATE
 
 target_sources(heroes_calculator PRIVATE
 	"heroes_calculator.cpp"
+)
+
+target_sources(vec3_testing PRIVATE
+	"vec3_testing.cpp"
+)
+target_compile_options(vec3_testing PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-sse3"
+	"-mno-ssse3"
+	"-mno-sse4.1"
+	"-mno-sse4.2"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	${SLASH_CLANG_ARG}-fno-pic
+)
+target_link_options(vec3_testing PRIVATE
+	/DYNAMICBASE:NO
 )
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")

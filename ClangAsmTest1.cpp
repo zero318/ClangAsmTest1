@@ -3431,6 +3431,137 @@ struct ZUNRng {
 
 gnu_noinline void test_token_parsing();
 
+gnu_noinline void vec3_testing() {
+
+	
+	//_aligned_malloc()
+
+
+	constexpr uint64_t loop_iters = 1000000000ULL;
+	constexpr uint64_t counter_add = UINT64_MAX / loop_iters;
+
+	uint64_t counter;
+
+	builtin_start_time = rdtsc();
+	counter = 0;
+	do {
+		long double ld_value = counter;
+		__asm volatile ("":"+t"(ld_value));
+	} while (!add_overflow(counter, counter_add));
+	builtin_end_time = rdtsc();
+
+	custom1_start_time = rdtsc();
+	counter = 0;
+	do {
+		/*
+		long double ld_value = (int64_t)counter;
+		if (counter >> 63) {
+			ld_value += MAGIC_VALUE_A;
+		}
+		__asm__ volatile ("":"+t"(ld_value));
+		*/
+		long double ld_value;
+		uint64_t yeet = counter;
+		__asm__ volatile (
+			"fildq %[yeet] \n"
+			//"fldt st \n"
+			".byte 0xD9, 0xC0 \n"
+			"fadds %[MAGIC_VALUE_A] \n"
+			"bt $0x3F, %[counter] \n"
+			//"fcmovnb st(1), st \n"
+			".byte 0xDB, 0xC1 \n"
+			//"fstpt st(1) \n"
+			".byte 0xDD, 0xD9 \n"
+			: asm_arg("=t", ld_value)
+			: asm_arg("m", yeet), asm_arg("r", counter), asm_arg("m", MAGIC_VALUE_A)
+			);
+	} while (!add_overflow(counter, counter_add));
+	custom1_end_time = rdtsc();
+
+	custom2_start_time = rdtsc();
+	counter = 0;
+	do {
+		long double ld_value = (int64_t)counter;
+		ld_value += MAGIC_VALUE_A_ARRAY[counter >> 63];
+		__asm volatile ("":"+t"(ld_value));
+	} while (!add_overflow(counter, counter_add));
+	custom2_end_time = rdtsc();
+
+	custom3_start_time = rdtsc();
+	counter = 0;
+	do {
+		long double ld_value = (int64_t)counter;
+		//ld_value += MAGIC_VALUE_A_ARRAY[__bextri_u64(counter, 0x13F)];
+		__asm__ volatile ("":"+t"(ld_value));
+	} while (!add_overflow(counter, counter_add));
+	custom3_end_time = rdtsc();
+
+	custom4_start_time = rdtsc();
+	counter = 0;
+	do {
+		long double ld_value = (int64_t)counter;
+		int64_t yeet;
+		__asm__ volatile (
+			"BT $0x3F, %[counter] \n"
+			"SBB %[yeet], %[yeet] \n"
+			: asm_arg("=r", yeet)
+			: asm_arg("r", counter)
+			);
+		ld_value += MAGIC_VALUE_A_ARRAY2[1 + yeet];
+		__asm__ volatile ("":"+t"(ld_value));
+	} while (!add_overflow(counter, counter_add));
+	custom4_end_time = rdtsc();
+
+	custom5_start_time = rdtsc();
+	counter = 0;
+	do {
+		long double ld_value = (int64_t)counter;
+		int64_t yeet = counter;
+		__asm__ volatile (
+			"ADD %[yeet], %[yeet] \n"
+			"SBB %[yeet], %[yeet] \n"
+			: asm_arg("+r", yeet)
+			);
+		ld_value += MAGIC_VALUE_A_ARRAY2[1 + yeet];
+		__asm__ volatile ("":"+t"(ld_value));
+	} while (!add_overflow(counter, counter_add));
+	custom5_end_time = rdtsc();
+
+	custom6_start_time = rdtsc();
+	counter = 0;
+	do {
+		uint64_t yeet = counter;
+		long double ld_value;
+		__asm__ volatile (
+			"FILDQ %[yeet] \n"
+			"TEST %[counter], %[counter] \n"
+			"JNS 1f \n"
+			"FADDS %[MAGIC_VALUE_A] \n"
+			"1: \n"
+			: asm_arg("=t", ld_value)
+			: asm_arg("m", yeet), asm_arg("r", counter), asm_arg("m", MAGIC_VALUE_A)
+			);
+	} while (!add_overflow(counter, counter_add));
+	custom6_end_time = rdtsc();
+
+	printf(
+		"Builtin Time: %llu\n"
+		"Custom1 Time: %llu\n"
+		"Custom2 Time: %llu\n"
+		"Custom3 Time: %llu\n"
+		"Custom4 Time: %llu\n"
+		"Custom5 Time: %llu\n"
+		"Custom6 Time: %llu\n"
+		, builtin_end_time - builtin_start_time
+		, custom1_end_time - custom1_start_time
+		, custom2_end_time - custom2_start_time
+		, custom3_end_time - custom3_start_time
+		, custom4_end_time - custom4_start_time
+		, custom5_end_time - custom5_start_time
+		, custom6_end_time - custom6_start_time
+	);
+}
+
 int stdcall main(int argc, char* argv[]) {
 
 	//test_token_parsing();
@@ -8250,4 +8381,76 @@ gnu_noinline void test_token_parsing() {
 
 	find_shortest_patterns("(B)(A)", ">~>,+(>~,),~(>,),,<");
 	//find_shortest_patterns("(A)", "+-+");
+}
+
+
+dllexport __attribute__((noinline)) void* cdecl read_file_to_buffer_test(char* filename, int* file_size, bool IsNotInDat) {
+	static volatile auto wkjrbkr = filename;
+	static volatile auto webewq = file_size;
+	static volatile auto wkjeb = IsNotInDat;
+	return (void*)rand();
+}
+
+dllexport void* cdecl text_file_strlen_fix(char* filename, int* file_size, bool IsNotInDat) {
+	uint8_t* buffer = (uint8_t*)read_file_to_buffer_test(filename, file_size, IsNotInDat);
+	if (buffer) {
+		size_t size = _msize(buffer);
+		if (uint8_t* new_buffer = (uint8_t*)realloc(buffer, size + 1)) {
+			buffer = new_buffer;
+			buffer[size] = '\0';
+		}
+	}
+	return buffer;
+}
+
+#define LZSS_DICTSIZE 0x2000
+#define LZSS_DICTSIZE_MASK (LZSS_DICTSIZE - 1)
+#define LZSS_MIN_MATCH 3
+
+// Based on thtk's thlzss.c and https://fgiesen.wordpress.com/2018/02/20/reading-bits-in-far-too-many-ways-part-2/
+dllexport uint8_t* cdecl unlzss_fast(uint8_t* __restrict src, size_t src_len, uint8_t* __restrict dst, size_t dst_len) {
+	if (!dst) {
+		dst = (uint8_t*)malloc(dst_len);
+		if (!dst)
+			return nullptr;
+	}
+
+	size_t src_pos = 0;
+	size_t dst_pos = 0;
+	uint32_t bit_buf = 0;
+	uint8_t bit_count = 0;
+
+	auto refill = [&](uint8_t count) __attribute__((always_inline)) {
+		while (bit_count < count) {
+			bit_buf |= (uint32_t)(__builtin_expect(src_pos == src_len, false) ? 0 : src[src_pos++]) << (24 - bit_count);
+			bit_count += 8;
+		}
+	};
+	auto get_bits = [&](uint8_t count) __attribute__((always_inline)) {
+		uint32_t ret = bit_buf >> (32 - count);
+		bit_buf <<= count;
+		bit_count -= count;
+		return ret;
+	};
+
+	while (true) {
+		refill(1 + 13 + 4);
+		if (get_bits(1)) {
+			uint8_t c = get_bits(8);
+			dst[dst_pos++] = c;
+		} else {
+			uint32_t match_offset = get_bits(13);
+			if (__builtin_expect(!match_offset, false))
+				break;
+
+			uint32_t match_len = get_bits(4) + LZSS_MIN_MATCH;
+			for (uint32_t i = 0; i < match_len; i++) {
+				uint32_t dict_offset = (match_offset + i - 1) & LZSS_DICTSIZE_MASK;
+				uint8_t c = dst[(dst_pos & ~LZSS_DICTSIZE_MASK) + dict_offset - (dict_offset >= (dst_pos & LZSS_DICTSIZE_MASK) ? LZSS_DICTSIZE : 0)];
+				dst[dst_pos++] = c;
+			}
+		}
+	}
+
+	return dst;
 }

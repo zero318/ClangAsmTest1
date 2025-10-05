@@ -13,11 +13,15 @@
 
 #include <bit>
 
+#define _MACRO_CAT(arg1, arg2) arg1 ## arg2
+#define MACRO_CAT(arg1, arg2) _MACRO_CAT(arg1, arg2)
 #define _MACRO_STR(arg) #arg
 #define MACRO_STR(arg) _MACRO_STR(arg)
 
+#define cdecl __cdecl
 #define vectorcall __vectorcall
 #define dllexport __declspec(dllexport)
+#define forceinline __forceinline
 #define gnu_noinline __attribute__((noinline))
 
 #define shufflevec __builtin_shufflevector

@@ -183,9 +183,11 @@ DWORD64 __stdcall SymLoadModuleExW_shim(
                 uint32_t crc32 = crc32_impl(buffer, size);
                 _mm_free(buffer);
 
-                char crc32_buf[8];
+                char crc32_buf[9] = {};
 
                 size_t length = uint32_to_hex_strbuf(crc32, crc32_buf);
+
+                MessageBoxA(NULL, crc32_buf, "", 0);
 
                 json_t* filename = json_object_getn(module_versions, crc32_buf, length);
                 if (filename) {

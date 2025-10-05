@@ -364,7 +364,7 @@ dllexport gnu_noinline void fastcall circle_pos(float* x, float* y, float angle,
 // 0x46F150
 dllexport char* stdcall pbg_strdup(const char* str) asm_symbol_rel(0x46F150);
 dllexport char* stdcall pbg_strdup(const char* str) {
-    char* ret = (char*)malloc(byteloop_strlen(str));
+    char* ret = (char*)malloc(byteloop_strlen(str) + 1);
     if (ret) {
         byteloop_strcpy(ret, str);
     }
@@ -1055,7 +1055,11 @@ dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32
         nounroll do {
             if (byteA == 0x80) {
                 uintA = *buffer_read;
+#if FIX_REALLY_BAD_BUGS
+                if (sizeA >= buffer_size - 1) {
+#else
                 if (sizeA >= buffer_size) {
+#endif
                     uintA = 0;
                 } else {
                     ++buffer_read;
@@ -1083,7 +1087,11 @@ dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32
             uintA = *buffer_read;
             sizeA = buffer_read - buffer;
             byteA = byteB;
+#if FIX_REALLY_BAD_BUGS
+            if (sizeA >= buffer_size - 1) {
+#else
             if (sizeA >= buffer_size) {
+#endif
                 uintA = 0;
                 uintB = 0;
                 // the compiler figured out that the uintB != 0 branch
@@ -15779,7 +15787,7 @@ dllexport gnu_noinline ZUNResult UpdateFuncCC Supervisor::on_registration(void* 
     if (THDAT_ARCFILE.__sub_46EB80()) {
         char ver_file_name[64];
         int32_t ver_file_size;
-        sprintf(ver_file_name, "th18_%.4x%c.ver", 100, 'a');
+        sprintf(ver_file_name, "th18_%.4x%c.ver", 0x100, 'a');
         void* ver_file = read_file_to_buffer(ver_file_name, &ver_file_size, false);
         SUPERVISOR.ver_file_buffer = ver_file;
         if (!ver_file) {
@@ -26127,7 +26135,7 @@ struct Spellcard : ZUNTask {
     union {
         uint32_t flags; // 0x78
         struct {
-            uint32_t __unknown_flag_A : 1; // 1
+            uint32_t __unknown_flag_A : 1; // 1 spell_active
             uint32_t __unknown_flag_B : 1; // 2
             uint32_t : 1; // 3
             uint32_t __timeout_spell : 1; // 4
@@ -26773,7 +26781,7 @@ struct Item {
     float speed; // 0xC44
     ZUNAngle angle; // 0xC48
     Timer __timer_C4C; // 0xC4C
-    unknown_fields(0x14); // 0xC60
+    unknown_fields(0x14); // 0xC60 (unused timer according to FW)
     uint32_t state; // 0xC74
     ItemID id; // 0xC78
     int __dword_C7C; // 0xC7C
@@ -31438,6 +31446,11 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
                         return lhs | rhs;
                     });
                     goto skip_stack_adjust;
+                case math_bit_and: // 77
+                    this->stack.binary_op([](int32_t lhs, int32_t rhs) {
+                        return lhs & rhs;
+                    });
+                    goto skip_stack_adjust;
                 case math_int_neg: // 83
                     this->stack.unary_op([](int32_t value) {
                         return -value;
@@ -35880,7 +35893,7 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__sub_486BC0(AnmLoaded* anm_
             return -1;
         }
     }
-    // TODO
+    // TODO: REALLY DO THIS SOONER
 skip_adding_image_size:
 }
 

@@ -1,0 +1,130 @@
+Tick:
+0x07	LoadingThread::on_tick
+0x08	AsciiManager::on_tick
+0x0A	KeyConfigMenu::on_tick, OptionsMenu::on_tick
+0x0B	MainMenu::on_tick
+0x0E	AnmManager::on_tick_ui
+0x0F	PauseMenu::on_tick
+0x10	HelpMenu::on_tick, NoticeManager::on_tick
+0x11	TrophyManager::on_tick
+0x13	GameThread::on_tick
+0x15	ReplayManager::on_tick_A1, ReplayManager::on_tick_A2
+0x16	Stage::on_tick (STAGE_A)
+0x17	Stage::on_tick (STAGE_B) (unused)
+0x18	ScreenEffect::on_tick
+0x19	PopupManager::on_tick
+0x1B	StoneMenu::on_tick, PlayerStoneManager::on_tick
+0x1C	HitboxManager::on_tick
+0x1D	Player::on_tick
+0x21	BombManager::on_tick
+0x24	EnemyManager::on_tick
+0x25	LaserManager::on_tick
+0x26	BulletManager::on_tick
+0x27	ItemManager::on_tick
+0x28	Spellcard::on_tick
+0x29	EffectManager::on_tick
+0x2A	Gui::on_tick
+0x2C	AnmManager::on_tick_world
+0x2D	StageClear::on_tick
+0x2E	ReplayManager::on_tick_B
+0x2F	Ending::on_tick
+
+Draw:
+#	= Calls AnmManager::draw_vm
+!	= Draws stuff without VMs
+X	= Definitely doesn't draw stuff directly
+
+0x00		ScreenEffect1::on_draw (when created from ANM)
+0x01	X	Supervisor::on_draw_A
+0x02	X	GameThread::on_draw
+0x03	#	Stage::on_draw (STAGE_A)
+0x04	X	Stage::on_draw (STAGE_B) (unused)
+0x05	#	AnmManager::draw_layer_0
+0x06	#	Stage::on_draw_B (STAGE_A)
+0x07	#	AnmManager::draw_layer_1, Stage::on_draw_B (STAGE_B) (unused)
+0x09	#	AnmManager::draw_layer_2
+0x0A	#	AnmManager::draw_layer_3, ScreenEffect2::on_draw, ScreenEffect3::on_draw
+0x0B	#	AnmManager::draw_layer_4
+0x0C	!	Spellcard::on_draw
+0x0D	#	AnmManager::draw_layer_5
+0x0E	X	Supervisor::on_draw_B
+0x0F	#	Supervisor::on_draw_arcade_vm_A
+0x10	#	AnmManager::draw_layer_6
+0x12	#	AnmManager::draw_layer_7
+0x13	#	ItemManager::on_draw_B
+0x14	#	AnmManager::draw_layer_8
+0x15	#	AnmManager::draw_layer_9
+0x16	#	AnmManager::draw_layer_10
+0x17	!	EnemyManager::on_draw
+0x18	#	AnmManager::draw_layer_11
+0x19	X	Supervisor::on_draw_D
+0x1A	#	Supervisor::on_draw_arcade_vm_B
+0x1B	#	AnmManager::draw_layer_12
+0x1C	#	AnmManager::draw_layer_13
+0x1E	#	Player::on_draw
+0x21	#	AnmManager::draw_layer_14
+0x22	#	AnmManager::draw_layer_15
+0x23	#	ItemManager::on_draw_A
+0x25	#	AnmManager::draw_layer_16
+0x27		LaserManager::on_draw
+0x28		AnmManager::draw_layer_17
+0x29		BulletManager::on_draw
+0x2A		EffectManager::on_draw (dummy)
+0x2B		AnmManager::draw_layer_18
+0x2C		BombManager::on_draw
+0x2E		AnmManager::draw_layer_19
+0x2F		Supervisor::on_draw_F
+0x30		Supervisor::on_draw_arcade_vm_C
+0x31		AnmManager::draw_layer_20
+0x32		AnmManager::draw_layer_21
+0x33		PopupManager::on_draw
+0x34		Gui::on_draw_B
+0x37		StoneMenu::on_draw, PlayerStoneManager::on_draw (dummy)
+0x3A		Gui::on_draw
+0x3C		AnmManager::draw_layer_22
+0x3D		AsciiManager::on_draw_group_1
+0x3E		AnmManager::draw_layer_23
+0x3F		AnmManager::draw_layer_45
+0x40		AnmManager::draw_layer_24
+0x41		AnmManager::draw_layer_25
+0x42		Supervisor::on_draw_H
+0x43		Supervisor::on_draw_arcade_vm_D
+0x44		AnmManager::draw_layer_27
+0x45		AnmManager::draw_layer_28
+0x48		AnmManager::draw_layer_26
+0x49		AnmManager::draw_layer_29
+0x4A		AnmManager::draw_layer_46
+0x4B		AsciiManager::on_draw_group_3
+0x4C		AnmManager::draw_layer_30
+0x4D		AnmManager::draw_layer_47
+0x4E		AnmManager::draw_layer_31
+0x4F		AnmManager::draw_layer_48
+0x50		AnmManager::draw_layer_49
+0x51		AnmManager::draw_layer_32
+0x52		AnmManager::draw_layer_50
+0x53		AnmManager::draw_layer_33
+0x54		AsciiManager::on_draw_group_2
+0x55		AsciiManager::on_draw_group_4
+0x56		StageClear::on_draw
+0x57		Ending::on_draw (dummy)
+0x58		LoadingThread::on_draw
+0x59		MainMenu::on_draw
+0x5B		ReplayManager::on_draw
+0x5C		HelpMenu::on_draw (dummy), NoticeManager::on_draw (dummy)
+0x5D		TrophyManager::on_draw (dummy)
+0x5E		KeyConfigMenu::on_draw, OptionsMenu::on_draw
+0x5F		PauseMenu::on_draw
+0x60		FpsCounter::on_draw
+0x62		AnmManager::draw_layer_34
+0x63		AnmManager::draw_layer_51
+0x64		AnmManager::draw_layer_35
+0x65		AnmManager::draw_layer_52
+0x66		AsciiManager::on_draw
+0x67		AnmManager::draw_layer_36, ScreenEffect5::on_draw (when created from GameThread)
+0x68		AnmManager::draw_layer_53
+0x69		AnmManager::draw_layer_37
+0x6A		AnmManager::draw_layer_54
+0x6B		AnmManager::draw_layer_38
+0x6C		AnmManager::draw_layer_55
+0x6D		ScreenEffect0::on_draw, ScreenEffect1::on_draw, ScreenEffect5::on_draw, ScreenEffect8::on_draw, ScreenEffect9::on_draw
+0x6E		Supervisor::on_draw_J

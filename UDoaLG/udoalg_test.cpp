@@ -28,6 +28,10 @@
 #endif
 #include <mutex>
 
+#define OffsetTypePtr(ptr, type, base)      based_pointer<type>((ptr),-offsetof(type,base))
+#define OffsetPtr(ptr, type, field, base)   based_pointer<typeof(type::field)>((ptr),offsetof(type,field)-offsetof(type,base))
+#define OffsetField(ptr, type, field, base) (*OffsetPtr(ptr,type,field,base))
+
 #include "../zero/FloatConstants.h"
 
 #include "../zero/util.h"
@@ -57,6 +61,11 @@ using ZUNListHead = ZUNListHeadBase<T, true>;
 #define codegen_barrier() do {} while(false)
 #endif
 
+dllexport gnu_noinline void* cdecl memset_dumb(void* dest, int32_t arg, size_t count) {
+    void* ret = memset(dest, arg, count);
+    __asm__ volatile ("":"+r"(ret));
+    return ret;
+}
 
 #undef WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -96,14 +105,102 @@ dllexport gnu_noinline void* cdecl memset_force(void* dst, int val, size_t size)
 #define UNUSED_DWORD (GARBAGE_ARG(int32_t))
 #define UNUSED_FLOAT (GARBAGE_ARG(float))
 
+struct Timer {
+    int32_t previous; // 0x0
+    int32_t current; // 0x4
+    float current_f; // 0x8
+    uint32_t scale_table_index; // 0xC
+    union {
+        uint32_t flags; // 0x10
+        struct {
+            uint32_t initialized : 1;
+        };
+    };
+    // 0x14
+};
+
+// size: 0xC
+struct RGB {
+    int32_t r; // 0x0
+    int32_t g; // 0x4
+    int32_t b; // 0x8
+    // 0xC
+};
+
+template <typename T>
+struct ZUNInterp { //       0x58    0x44    0x30
+    //                      T3      T2      T1
+    T initial_value; //     0x0     0x0     0x0
+    T final_value; //       0xC     0x8     0x4
+    T bezier1; //           0x18    0x10    0x8
+    T bezier2; //           0x24    0x18    0xC
+    T current; //           0x30    0x20    0x10
+    Timer time; //          0x3C    0x28    0x14
+    int32_t end_time; //    0x50    0x3C    0x28
+    int32_t mode; //        0x54    0x40    0x2C
+};
+
 typedef struct AnmManager AnmManager;
+typedef struct AnmLists AnmLists;
 
 #define ANM_FULL_ID_BITS (32)
 #define ANM_FAST_ID_BITS (15)
 #define ANM_SLOW_ID_BITS (ANM_FULL_ID_BITS - ANM_FAST_ID_BITS)
 #define INVALID_FAST_ID uint_width_max(ANM_FAST_ID_BITS)
 
+dllexport gnu_noinline void lock_anm_mutex() {
+    rand();
+}
+dllexport gnu_noinline void unlock_anm_mutex() {
+    rand();
+}
 
+struct GameThread {
+    unknown_fields(0x140);
+    union {
+        uint32_t flags; // 0x140
+        struct {
+            uint8_t __unknown_flag_A : 1; // 1
+            uint8_t __unknown_flag_B : 1; // 2
+            uint8_t skip_flag : 1; // 3
+            uint8_t __unknown_flag_H : 1; // 4
+            uint8_t __unknown_flag_I : 1; // 5
+            uint8_t __unknown_flag_L : 1; // 6
+            uint8_t __unknown_flag_M : 1; // 7
+            uint8_t __unknown_flag_J : 1; // 8
+            uint8_t __unknown_flag_D : 1; // 9
+            uint8_t : 1; // 10
+            uint8_t __unknown_flag_C : 1; // 11
+            uint8_t __unknown_flag_K : 1; // 12
+            uint8_t : 2; // 13-14
+            uint8_t __unknown_flag_E : 1; // 15
+            uint8_t : 1; // 16
+            uint8_t __unknown_flag_F : 1; // 17
+            uint8_t __unknown_flag_G : 1; // 18
+        };
+    };
+    // 0x144
+
+    inline bool __is_paused() {
+        return this->__unknown_flag_A | this->skip_flag;
+    }
+
+    bool __get_unknown_flag_B() {
+        return this->__unknown_flag_B;
+    }
+};
+
+dllexport GameThread* GAME_THREAD_PTR;
+
+inline bool __game_thread_not_paused_and_flag_B_is_not_true() {
+    GameThread* game_thread = GAME_THREAD_PTR;
+    return !(game_thread && game_thread->__is_paused() && game_thread->__get_unknown_flag_B());
+}
+
+inline bool __game_thread_flag_B_is_not_true() {
+    GameThread* game_thread = GAME_THREAD_PTR;
+    return !(game_thread && game_thread->__get_unknown_flag_B());
+}
 
 // size: 0x4
 union AnmID {
@@ -129,11 +226,94 @@ union AnmID {
 
 // size: 0x634
 struct AnmVM {
+    // size: 0x40
+    struct AnmContext {
+        int32_t int_vars[4]; // 0x0
+        float float_vars[4]; // 0x10
+        Float3 __float3_20; // 0x20
+        int32_t counter_vars[2]; // 0x2C
+        float rand_scale; // 0x34
+        float rand_angle_scale; // 0x38
+        int32_t rand_int_range; // 0x3C
+        // 0x40
+    };
     // size: 0x4D8
     struct AnmVMData {
-        dummy_fields(0x18);
+        Timer interrupt_return_time; // 0x0
+        int32_t interrupt_return_offset; // 0x14
         uint32_t layer; // 0x18
-        dummy_fields(0x4BC);
+        int32_t anm_loaded_index; // 0x1C
+        int32_t anm_loaded_index2; // 0x20
+        int32_t sprite_id; // 0x24
+        int32_t script_id; // 0x28
+        int32_t current_instruction_offset; // 0x2C
+        Float3 position; // 0x30
+        Float3 rotation; // 0x3C
+        Float3 angular_velocity; // 0x48
+        Float2 scale; // 0x54
+        Float2 scale2; // 0x5C
+        Float2 scale_delta; // 0x64
+        Float2 uv_scale; // 0x6C
+        Float2 sprite_size; // 0x74
+        Float2 uv_scroll; // 0x7C
+        Float2 anchor_offset; // 0x84
+        unused_bytes(0x4); // 0x8C (z coord of anchor offset)
+        ZUNInterp<Float3> position_interp; // 0x90
+        ZUNInterp<RGB> color_interp; // 0xE8
+        ZUNInterp<int32_t> alpha_interp; // 0x140
+        ZUNInterp<Float3> rotation_interp; // 0x170
+        ZUNInterp<float> spin_interp; // 0x1C8 (ZUNAngle)
+        ZUNInterp<Float2> scale_interp; // 0x1F8
+        ZUNInterp<Float2> scale2_interp; // 0x23C
+        ZUNInterp<Float2> uv_scale_interp; // 0x280
+        ZUNInterp<RGB> color2_interp; // 0x2C4
+        ZUNInterp<int32_t> alpha2_interp; // 0x31C
+        ZUNInterp<float> u_scroll_speed_interp; // 0x34C
+        ZUNInterp<float> v_scroll_speed_interp; // 0x37C
+        Float2 sprite_uv_quad[4]; // 0x3AC
+        Float2 uv_scroll_speed; // 0x3CC
+        D3DMATRIX __matrix_3D4; // 0x3D4
+        D3DMATRIX __matrix_414; // 0x414
+        int32_t pending_interrupt; // 0x454
+        int32_t __last_sprite_set_time; // 0x458
+        uint16_t script_id2; // 0x45C
+        alignment_bytes(0x2); // 0x45E
+        AnmContext current_context; // 0x460
+        Float3 __position_2; // 0x4A0
+        D3DCOLOR color1; // 0x4AC
+        D3DCOLOR color2; // 0x4B0
+        uint8_t visible; // 0x4B4
+        uint8_t visible2; // 0x4B5
+        unused_bytes(0x1); // 0x4B6
+        uint8_t render_mode; // 0x4B7
+        uint8_t rotation_enabled; // 0x4B8
+        uint8_t scale_enabled; // 0x4B9
+        uint8_t uv_scale_enabled; // 0x4BA
+        uint8_t blend_mode; // 0x4BB
+        union {
+            uint32_t flags; // 0x4BC
+            struct {
+            };
+        };
+        uint8_t __is_dead; // 0x4C0
+        uint8_t resample_mode; // 0x4C1
+        uint8_t __render_mode; // 0x4C2
+        uint8_t mirror_state; // 0x4C3
+        uint8_t __visible3; // 0x4C4
+        uint8_t __unknown_std_flag_A; // 0x4C5
+        uint8_t color_mode; // 0x4C6
+        uint8_t x_anchor_mode; // 0x4C7
+        uint8_t y_anchor_mode; // 0x4C8
+        uint8_t v_scroll_mode; // 0x4C9
+        uint8_t u_scroll_mode; // 0x4CA
+        uint8_t rotation_mode; // 0x4CB
+        uint8_t auto_rotate; // 0x4CC
+        uint8_t origin_mode; // 0x4CD
+        uint8_t resolution_mode; // 0x4CE
+        uint8_t side; // 0x4CF
+        float camera_near_fade_end; // 0x4D0
+        float camera_near_clip; // 0x4D4
+        // 0x4D8
     };
     ValidateStructSize(0x4D8, AnmVMData);
 
@@ -141,27 +321,82 @@ struct AnmVM {
     struct AnmVMController {
         AnmID id = {}; // 0x0, 0x4D8
         uint32_t fast_id; // 0x4, 0x4DC
-        dummy_fields(0x2C); // 0x8, 0x4E0
-        ZUNList<AnmVM> global_list_node; // 0x34
-        ZUNList<AnmVM> __draw_list_node; // 0x44
-        ZUNList<AnmVM> child_list_node; // 0x54
-        ZUNList<AnmVM> child_list_head; // 0x64
-        ZUNList<AnmVM> destroy_list_node; // 0x74
-        AnmVM* next_in_layer; // 0x84
-        AnmVM* prev_in_layer; // 0x88
-        AnmVM* root_vm; // 0x8C
-        AnmVM* parent; // 0x90
-        float slowdown; // 0x94
-        void* special_data; // 0x98
-        uint32_t special_data_size; // 0x9C
-        uint32_t __vm_state; // 0xA0
-        dummy_fields(0xB8);
+        Timer script_time; // 0x8, 0x4E0
+        Timer __timer_1C; // 0x1C, 0x4F4
+        AnmLists* global_list_base; // 0x30, 0x508
+        ZUNList<AnmVM> global_list_node; // 0x34, 0x50C
+        ZUNList<AnmVM> __draw_list_node; // 0x44, 0x51C
+        ZUNList<AnmVM> child_list_node; // 0x54, 0x52C
+        ZUNList<AnmVM> child_list_head; // 0x64, 0x53C
+        ZUNList<AnmVM> destroy_list_node; // 0x74, 0x54C
+        AnmVM* next_in_layer; // 0x84, 0x55C
+        AnmVM* prev_in_layer; // 0x88, 0x560
+        AnmVM* root_vm; // 0x8C, 0x564
+        AnmVM* parent; // 0x90, 0x568
+        float slowdown; // 0x94, 0x56C
+        void* special_data; // 0x98, 0x570
+        uint32_t special_data_size; // 0x9C, 0x574
+        union {
+            uint32_t __vm_state; // 0xA0, 0x578
+            uint8_t __vm_state_fast;
+        };
+        uint32_t instantiation_flags; // 0xA4, 0x57C
+        uint8_t __byte_A8; // 0xA8, 0x580
+        uint8_t __byte_A9; // 0xA9, 0x581
+        alignment_bytes(0x2); // 0xAA, 0x582
+        Float3 sprite_vertex_positions[4]; // 0xAC, 0x584
+        D3DMATRIX __matrix_DC; // 0xDC, 0x5B4
+        uint32_t on_wait_index; // 0x11C
+        uint32_t on_tick_index; // 0x120
+        uint32_t on_draw_index; // 0x124
+        uint32_t on_destroy_index; // 0x128
+        uint32_t on_interrupt_index; // 0x12C
+        uint32_t on_copyA_index; // 0x130
+        uint32_t on_copyB_index; // 0x134
+        uint32_t on_sprite_lookup_index; // 0x138
+        Float3 position; // 0x13C
+        void* associated_entity; // 0x140
+        D3DCOLOR __color_14C; // 0x14C
+        Float3 rotation; // 0x150
+        // 0x15C
     };
     ValidateStructSize(0x15C, AnmVMController);
 
     AnmVMData data; // 0x0
     AnmVMController controller; // 0x4D8
     // 0x634
+
+    dllexport void reset_fast() {
+        uint32_t fast_id = this->controller.fast_id;
+        __builtin_memset(this, 0, sizeof(*this));
+        this->data.scale = { 1.0f, 1.0f };
+        this->data.scale2 = { 1.0f, 1.0f };
+        this->data.uv_scale = { 1.0f, 1.0f };
+        this->data.__matrix_3D4.m[0][0] = 1.0f;
+        this->data.__matrix_3D4.m[1][1] = 1.0f;
+        this->data.__matrix_3D4.m[2][2] = 1.0f;
+        this->data.__matrix_3D4.m[3][3] = 1.0f;
+        this->data.current_context.rand_scale = 1.0f;
+        this->data.current_context.rand_angle_scale = PI_f;
+        this->data.current_context.rand_int_range = UINT16_MAX + 1;
+        this->data.color1 = PackD3DCOLOR(255, 255, 255, 255);
+        this->data.visible = true;
+        this->data.visible2 = true;
+        this->data.__is_dead = true;
+        this->controller.fast_id = fast_id;
+        this->controller.script_time.previous = -999999;
+        this->controller.__timer_1C.previous = -999999;
+        this->controller.global_list_node.data = this;
+        this->controller.__draw_list_node.data = this;
+        this->controller.child_list_node.data = this;
+        this->controller.child_list_head.data = this;
+        this->controller.destroy_list_node.data = this;
+    }
+
+    dllexport gnu_noinline int run_anm() {
+        use_var(this);
+        return rand();
+    }
 };
 ValidateStructSize(0x634, AnmVM);
 
@@ -178,7 +413,39 @@ ValidateStructSize(0x64C, AnmFastVM);
 // Rx22AEC8
 static std::mutex ANM_LIST_MUTEX;
 
+typedef struct AnmManager AnmManager;
+typedef struct AnmManagerC AnmManagerC;
+
+dllexport AnmManagerC* ANM_MANAGER_PTR;
+
+// size: 0x8
+struct AnmListEnd {
+    ZUNList<AnmVM>* head; // 0x0
+    ZUNList<AnmVM>* tail; // 0x4
+    // 0x8
+};
+
+// size: 0x20
+struct AnmLists {
+    AnmListEnd world_list; // 0x0
+    AnmListEnd ui_list; // 0x8
+    union {
+        ZUNList<AnmVM> current_layer_list; // 0x10
+        struct {
+            uint32_t vm_count;
+            uint32_t array_size;
+            void* array_ptr;
+            AnmVM** vm_array_ptr;
+        };
+    };
+    // 0x20
+
+    dllexport void destroy_all_vms();
+};
+ValidateStructSize(0x20, AnmLists);
+
 struct AnmManager {
+    /*
     // size: 0x20
     struct AnmListEnds {
         // size: 0x10
@@ -196,6 +463,7 @@ struct AnmManager {
         // 0x20
     };
     ValidateStructSize(0x20, AnmListEnds);
+    */
 
     unknown_fields(0x1C); // 0x0
     int __dword_1C; // 0x1C
@@ -211,13 +479,7 @@ struct AnmManager {
     AnmVM root_vm; // 0xE8
     int __int_71C; // 0x71C
     int32_t __current_side; // 0x720
-    union {
-        AnmListEnds lists[2]; // 0x724
-        struct {
-            AnmListEnds world_list; // 0x724
-            AnmListEnds ui_list; // 0x744
-        };
-    };
+    AnmLists lists[2]; // 0x724
     AnmFastVM fast_array[uint_width_max(ANM_FAST_ID_BITS)]; // 0x764
     AnmFastVM fast_array_end;
     int32_t next_snapshot_fast_id; // 0x3260764
@@ -233,7 +495,7 @@ struct AnmManager {
             if (id.fast_id == INVALID_FAST_ID) {
                 for (size_t i = 0; i < countof(this->lists); ++i) {
                     for (
-                        ZUNList<AnmVM>* node = this->lists[i].head.__ptr_0;
+                        ZUNList<AnmVM>* node = this->lists[i].world_list.head;
                         node;
                         node = node->next
                     ) {
@@ -243,7 +505,7 @@ struct AnmManager {
                         }
                     }
                     for (
-                        ZUNList<AnmVM>* node = this->lists[i].head.__ptr_8;
+                        ZUNList<AnmVM>* node = this->lists[i].ui_list.head;
                         node;
                         node = node->next
                     ) {
@@ -269,7 +531,7 @@ struct AnmManager {
             if (expect(id.fast_id == INVALID_FAST_ID, false)) {
                 for (size_t i = 0; i < countof(this->lists); ++i) {
                     for (
-                        ZUNList<AnmVM>* node = this->lists[i].head.__ptr_0;
+                        ZUNList<AnmVM>* node = this->lists[i].world_list.head;
                         node;
                         node = node->next
                     ) {
@@ -279,7 +541,7 @@ struct AnmManager {
                         }
                     }
                     for (
-                        ZUNList<AnmVM>* node = this->lists[i].head.__ptr_8;
+                        ZUNList<AnmVM>* node = this->lists[i].ui_list.head;
                         node;
                         node = node->next
                     ) {
@@ -301,24 +563,10 @@ struct AnmManager {
     }
 };
 
-struct AnmManagerC {
-    // size: 0x20
-    struct AnmListEnds {
-        // size: 0x10
-        struct AnmListEnd {
-            ZUNList<AnmVM>* __ptr_0; // 0x0
-            ZUNList<AnmVM>* __ptr_4; // 0x4
-            ZUNList<AnmVM>* __ptr_8; // 0x8
-            ZUNList<AnmVM>* __ptr_C; // 0xC
-            // 0x10
-        };
-        ValidateStructSize(0x10, AnmListEnd);
+typedef int cdecl DestroyFunc(AnmVM*);
+dllexport DestroyFunc * ANM_ON_DESTROY_FUNCS[7] = {};
 
-        AnmListEnd head; // 0x0
-        AnmListEnd tail; // 0x10
-        // 0x20
-    };
-    ValidateStructSize(0x20, AnmListEnds);
+struct AnmManagerC {
 
     unknown_fields(0xC); // 0x0
     int __dword_1C; // 0x1C
@@ -334,13 +582,7 @@ struct AnmManagerC {
     AnmVM root_vm; // 0xE8
     int __int_71C; // 0x71C
     int32_t __current_side; // 0x720
-    union {
-        AnmListEnds lists[2]; // 0x724
-        struct {
-            AnmListEnds world_list; // 0x724
-            AnmListEnds ui_list; // 0x744
-        };
-    };
+    AnmLists lists[2]; // 0x724
     AnmFastVM fast_array[uint_width_max(ANM_FAST_ID_BITS)]; // 0x764
     AnmFastVM fast_array_end;
     int32_t next_snapshot_fast_id; // 0x3260764
@@ -366,16 +608,11 @@ struct AnmManagerC {
 
         for (size_t i = 0; i < countof(this->lists); ++i) {
 
-            this->lists[i].tail = {
-                (ZUNList<AnmVM>*)&this->lists[i].head,
-                NULL,
-                NULL,
-                NULL
-            };
+            this->lists[i].current_layer_list.initialize_with((AnmVM*)&this->lists[i].current_layer_list);
 
-            ZUNList<AnmVM>* tail_node = (ZUNList<AnmVM>*)&this->lists[i].tail;
+            ZUNList<AnmVM>* tail_node = (ZUNList<AnmVM>*)&this->lists[i].current_layer_list;
 
-            ZUNList<AnmVM>* cur_node = this->lists[i].head.__ptr_0;
+            ZUNList<AnmVM>* cur_node = this->lists[i].world_list.head;
 
             bool found_data = false;
 
@@ -421,7 +658,7 @@ struct AnmManagerC {
 
         for (uint8_t i = 0; i < countof(this->lists); ++i) {
 
-            ZUNList<AnmVM>* cur_node = this->lists[i].head.__ptr_0;
+            ZUNList<AnmVM>* cur_node = this->lists[i].world_list.head;
 
             uint8_t d3d_unconfigured = true;
 
@@ -450,7 +687,7 @@ struct AnmManagerC {
                 cur_node = cur_node->next;
             }
 
-            cur_node = this->lists[i].head.__ptr_8;
+            cur_node = this->lists[i].ui_list.head;
 
             while (expect(cur_node != NULL, true)) {
                 const uint32_t* vm_state_ptr = based_pointer<uint32_t>(cur_node, 0x6C);
@@ -489,7 +726,7 @@ struct AnmManagerC {
 
         for (uint8_t i = 0; i < countof(this->lists); ++i) {
 
-            ZUNList<AnmVM>* cur_node = this->lists[i].head.__ptr_0;
+            ZUNList<AnmVM>* cur_node = this->lists[i].world_list.head;
 
             uint8_t d3d_unconfigured = true;
 
@@ -515,7 +752,7 @@ struct AnmManagerC {
                 cur_node = cur_node->next;
             }
 
-            cur_node = this->lists[i].head.__ptr_8;
+            cur_node = this->lists[i].ui_list.head;
 
             while (expect(cur_node != NULL, true)) {
                 if (!*based_pointer<uint32_t>(cur_node, 0x6C)) {
@@ -545,7 +782,433 @@ struct AnmManagerC {
 
         return 1;
     }
+
+    static constexpr uint8_t world_layer_lookup[] = {
+        26,
+        29, 30, 31, 32, 33, 34, 35, 36
+    };
+    static constexpr uint8_t ui_layer_lookup[] = {
+        43,
+        45, 45,
+        44, 45, 46, 47, 48, 49, 50, 51
+    };
+
+    dllexport static int cdecl preprocess_vm_list_to_make_rendering_suck_less(AnmManager* self) {
+
+        // Align up to 16 while making sure to round up 0 to a non-zero value
+        //size_t vm_count0 = AlignUpToMultipleOf2(self->lists[0].vm_count, 16) + 16;
+        size_t vm_count0 = (self->lists[0].vm_count & -16) + 16;
+        size_t size0 = vm_count0 * (sizeof(AnmVM*) + sizeof(uint8_t));
+
+        //size_t vm_count1 = AlignUpToMultipleOf2(self->lists[1].vm_count, 16) + 16;
+        size_t vm_count1 = (self->lists[1].vm_count & -16) + 16;
+        size_t size1 = vm_count1 * (sizeof(AnmVM*) + sizeof(uint8_t));
+
+        size_t min_alloc_size = size0 + size1;
+
+        size_t cur_array_size = self->lists[0].array_size;
+        void* turbo_array = self->lists[0].array_ptr;
+        if (cur_array_size < min_alloc_size) {
+            self->lists[0].array_size = min_alloc_size;
+            turbo_array = self->lists[0].array_ptr = _aligned_realloc(turbo_array, min_alloc_size, 16);
+        }
+
+        uint32_t memset_size = min_alloc_size;
+
+        uint8_t* layer_array1 = based_pointer<uint8_t>(turbo_array, size0);
+        self->lists[1].array_ptr = (void*)layer_array1;
+        AnmVM** vm_array1 = based_pointer<AnmVM*>(layer_array1, vm_count1);
+
+        turbo_array = memset_dumb(turbo_array, -1, memset_size);
+
+        uint8_t* layer_array = (uint8_t*)turbo_array;
+        AnmVM** vm_array = based_pointer<AnmVM*>(turbo_array, vm_count0);
+
+        auto parse_world_list = [&](ZUNList<AnmVM>* cur_node) {
+            while (expect(cur_node != NULL, true)) {
+                uint32_t vm_state = OffsetField(cur_node, AnmVM, controller.__vm_state, controller.global_list_node);
+                if (!vm_state) {
+                    uint32_t layer = OffsetField(cur_node, AnmVM, data.layer, controller.global_list_node);
+                    uint32_t temp = layer - 43;
+                    if (
+                        expect((expect(temp < countof(world_layer_lookup), false) ? (layer = world_layer_lookup[temp]), true : layer < UINT8_MAX), true)
+                    ) {
+                        *layer_array++ = layer;
+                        *vm_array++ = OffsetTypePtr(cur_node, AnmVM, controller.global_list_node);
+                    }
+                }
+                cur_node = cur_node->next;
+            }
+        };
+        auto parse_ui_list = [&](ZUNList<AnmVM>* cur_node) {
+            while (expect(cur_node != NULL, true)) {
+                uint32_t vm_state = OffsetField(cur_node, AnmVM, controller.__vm_state, controller.global_list_node);
+                if (!vm_state) {
+                    uint32_t layer = OffsetField(cur_node, AnmVM, data.layer, controller.global_list_node);
+                    uint32_t temp = layer - 26;
+                    if (expect_chance(temp < countof(ui_layer_lookup), true, 0.99)) {
+                        layer = ui_layer_lookup[temp];
+                    } else {
+                        layer = 45;
+                    }
+                    *layer_array++ = layer;
+                    *vm_array++ = OffsetTypePtr(cur_node, AnmVM, controller.global_list_node);
+                }
+                cur_node = cur_node->next;
+            }
+        };
+
+        parse_world_list(self->lists[0].world_list.head);
+        parse_ui_list(self->lists[0].ui_list.head);
+
+        layer_array = layer_array1;
+        vm_array = vm_array1;
+
+        /*
+        layer_array = (uint8_t*)turbo_array1;
+        self->lists[1].array_ptr = layer_array;
+        vm_array = based_pointer<AnmVM*>(layer_array, vm_count1);
+        */
+
+        parse_world_list(self->lists[1].world_list.head);
+        parse_ui_list(self->lists[1].ui_list.head);
+
+        return 1;
+    }
+
+    dllexport static int cdecl preprocess_vm_list_to_make_rendering_suck_less2(AnmManager* self) {
+
+        lock_anm_mutex();
+        
+        // Align up to 16 while making sure to round up 0 to a non-zero value
+        size_t vm_count0 = AlignUpToMultipleOf2(self->lists[0].vm_count, 16);
+        size_t size0 = vm_count0 * (sizeof(AnmVM*) + sizeof(uint8_t));
+
+        size_t vm_count1 = AlignUpToMultipleOf2(self->lists[1].vm_count, 16);
+        size_t size1 = vm_count1 * (sizeof(AnmVM*) + sizeof(uint8_t));
+
+        size_t min_alloc_size = size0 + size1;
+
+        //__asm__ volatile ("":"+b"(min_alloc_size), "+S"(vm_count1), "+D"(vm_count0), "+r"(self));
+
+        size_t cur_array_size = self->lists[0].array_size;
+        void* turbo_array = self->lists[0].array_ptr;
+        if (cur_array_size < min_alloc_size) {
+            self->lists[0].array_size = min_alloc_size;
+            turbo_array = self->lists[0].array_ptr = _aligned_realloc(turbo_array, min_alloc_size, 16);
+        }
+
+        uint32_t memset_size = min_alloc_size;
+
+        turbo_array = memset_dumb(turbo_array, -1, memset_size);
+
+        uint8_t* layer_array = (uint8_t*)turbo_array;
+        AnmVM** vm_array = based_pointer<AnmVM*>(turbo_array, vm_count0);
+        self->lists[0].vm_array_ptr = vm_array;
+
+        uint8_t* layer_array1 = based_pointer<uint8_t>(turbo_array, size0);
+        self->lists[1].array_ptr = (void*)layer_array1;
+        AnmVM** vm_array1 = based_pointer<AnmVM*>(layer_array1, vm_count1);
+        self->lists[1].vm_array_ptr = vm_array1;
+
+        auto parse_world_list = [&](ZUNList<AnmVM>* cur_node) {
+            while (expect(cur_node != NULL, true)) {
+                uint32_t vm_state = OffsetField(cur_node, AnmVM, controller.__vm_state, controller.global_list_node);
+                if (!vm_state) {
+                    uint32_t layer = OffsetField(cur_node, AnmVM, data.layer, controller.global_list_node);
+                    uint32_t temp = layer - 43;
+                    if (
+                        expect((expect(temp < countof(world_layer_lookup), false) ? (layer = world_layer_lookup[temp]), true : layer < UINT8_MAX), true)
+                    ) {
+                        *layer_array++ = layer;
+                        *vm_array++ = OffsetTypePtr(cur_node, AnmVM, controller.global_list_node);
+                    }
+                }
+                cur_node = cur_node->next;
+            }
+        };
+        auto parse_ui_list = [&](ZUNList<AnmVM>* cur_node) {
+            while (expect(cur_node != NULL, true)) {
+                uint32_t vm_state = OffsetField(cur_node, AnmVM, controller.__vm_state, controller.global_list_node);
+                if (!vm_state) {
+                    uint32_t layer = OffsetField(cur_node, AnmVM, data.layer, controller.global_list_node);
+                    uint32_t temp = layer - 26;
+                    if (expect_chance(temp < countof(ui_layer_lookup), true, 0.99)) {
+                        layer = ui_layer_lookup[temp];
+                    } else {
+                        layer = 45;
+                    }
+                    *layer_array++ = layer;
+                    *vm_array++ = OffsetTypePtr(cur_node, AnmVM, controller.global_list_node);
+                }
+                cur_node = cur_node->next;
+            }
+        };
+
+        parse_world_list(self->lists[0].world_list.head);
+        parse_ui_list(self->lists[0].ui_list.head);
+
+        layer_array = layer_array1;
+        vm_array = vm_array1;
+
+        /*
+        layer_array = (uint8_t*)turbo_array1;
+        self->lists[1].array_ptr = layer_array;
+        vm_array = based_pointer<AnmVM*>(layer_array, vm_count1);
+        */
+
+        parse_world_list(self->lists[1].world_list.head);
+        parse_ui_list(self->lists[1].ui_list.head);
+
+        unlock_anm_mutex();
+
+        return 1;
+    }
+
+    //dllexport static std::pair<ZUNList<AnmVM>*, ZUNList<AnmVM>*> regcall __recursive_remove_faster(ZUNList<AnmVM>* child_list_node, ZUNList<AnmVM>* destroy_list_end) asm_symbol_rel(codecave:recursive_remove_fast) {
+    dllexport static uint128_t regcall __recursive_remove_faster(ZUNList<AnmVM>* child_list_node, int dummyA, int dummyB, ZUNList<AnmVM>* destroy_list_end) asm_symbol_rel(codecave:recursive_remove_fast) {
+        ZUNList<AnmVM>* child_node = OffsetField(child_list_node, AnmVM, controller.child_list_head.next, controller.child_list_node);
+        while (child_node != NULL) {
+            //auto [next_child, _1, _2, temp_destroy] = __recursive_remove_faster(child_node, UNUSED_DWORD, UNUSED_DWORD, destroy_list_end);
+            uint128_t temp = __recursive_remove_faster(child_node, UNUSED_DWORD, UNUSED_DWORD, destroy_list_end);
+            child_node = (ZUNList<AnmVM>*)temp;
+            dummyA = (int32_t)(temp >> 32);
+            dummyB = (int32_t)(temp >> 64);
+            destroy_list_end = (ZUNList<AnmVM>*)(temp >> 96);
+        }
+        OffsetField(child_list_node, AnmVM, controller.__vm_state_fast, controller.child_list_node) = 2; // AnmVMState::Deleted
+
+        OffsetField(child_list_node, AnmVM, controller.destroy_list_node.next, controller.child_list_node) = destroy_list_end;
+        destroy_list_end = OffsetPtr(child_list_node, AnmVM, controller.destroy_list_node, controller.child_list_node);
+
+        ZUNList<AnmVM>* next_node = child_list_node->next;
+        ZUNList<AnmVM>* prev_node = child_list_node->prev;
+        if (prev_node) {
+            prev_node->next = next_node;
+        }
+        if (next_node) {
+            next_node->prev = prev_node;
+        }
+
+        auto ret = std::tuple(destroy_list_end, dummyB, prev_node, next_node);
+        return *(uint128_t*)&ret;
+    }
+
+    dllexport gnu_noinline static void regparm(3) on_tick_list_fast(uintptr_t field_offset, AnmLists* lists, AnmManagerC* self) {
+        //lock_mutex(ANM_LIST_MUTEX);
+
+         //= based_pointer<AnmLists>(self, list_offset);
+        ZUNList<AnmVM>* node = *based_pointer<ZUNList<AnmVM>*>(lists, field_offset);
+
+        if (expect(node != NULL, true)) {
+            ZUNList<AnmVM>* destroy_list_end = NULL;
+            do {
+                uint32_t vm_state = OffsetField(node, AnmVM, controller.__vm_state_fast, controller.global_list_node);
+
+                if (expect(vm_state == 0, true)) {
+                    AnmVM* vm = OffsetTypePtr(node, AnmVM, controller.global_list_node);
+                    vm_state = vm->run_anm();
+                }
+                if (vm_state == 1) {
+                    uint128_t temp = __recursive_remove_faster(OffsetPtr(node, AnmVM, controller.child_list_node, controller.global_list_node), UNUSED_DWORD, UNUSED_DWORD, destroy_list_end);
+                    destroy_list_end = (ZUNList<AnmVM>*)(temp >> 96);
+                }
+
+                /*
+                uint8_t temp;
+                if (expect(__builtin_sub_overflow((uint8_t)vm_state, (uint8_t)1, &temp), false)) {
+                    vm = OffsetTypePtr(node, AnmVM, controller.global_list_node);
+                    if (expect(ZUN_FAILED(vm->run_anm()), false)) {
+                        goto pending_delete;
+                    }
+                }
+                else if (expect(!temp, false)) {
+                pending_delete:
+                    auto [_, new_destroy] = __recursive_remove_faster(OffsetPtr(node, AnmVM, controller.child_list_node, controller.global_list_node), destroy_list_end);
+                    destroy_list_end = new_destroy;
+                }
+                */
+                
+                /*
+                switch (expect(vm_state, 0)) {
+                    default:
+                        unreachable;
+                    case 0:
+                        vm = OffsetTypePtr(node, AnmVM, controller.global_list_node);
+                        if (expect(ZUN_FAILED(vm->run_anm()), false)) {
+                    case 1:
+                            //auto [_1, _2, _3, new_destroy] = __recursive_remove_faster(OffsetPtr(node, AnmVM, controller.child_list_node, controller.global_list_node), UNUSED_DWORD, UNUSED_DWORD, destroy_list_end);
+                            uint128_t temp = __recursive_remove_faster(OffsetPtr(node, AnmVM, controller.child_list_node, controller.global_list_node), UNUSED_DWORD, UNUSED_DWORD, destroy_list_end);
+                            destroy_list_end = (ZUNList<AnmVM>*)(temp >> 96);
+                        }
+                    case 2:;
+                }
+                */
+
+                node = node->next;
+            } while (expect(node != NULL, true));
+            if (expect(destroy_list_end != NULL, false)) {
+                ZUNList<AnmFastVM>* free_list = (ZUNList<AnmFastVM>*)&self->free_list_head;
+                __asm__ volatile ("":"+S"(free_list));
+                do {
+                    //--OffsetField(free_list, AnmManager, lists_raw.vm_count, free_list_head);
+                    --lists->vm_count;
+
+                    int32_t on_destroy_index = OffsetField(destroy_list_end, AnmVM, controller.on_destroy_index, controller.destroy_list_node);
+                    if (expect(on_destroy_index != 0, false)) {
+                        ANM_ON_DESTROY_FUNCS[on_destroy_index](OffsetTypePtr(destroy_list_end, AnmVM, controller.destroy_list_node));
+                    }
+
+                    ZUNList<AnmVM>* global_node = OffsetPtr(destroy_list_end, AnmVM, controller.global_list_node, controller.destroy_list_node);
+                    ZUNList<AnmVM>* next_global_node = OffsetField(destroy_list_end, AnmVM, controller.global_list_node.next, controller.destroy_list_node);
+                    ZUNList<AnmVM>* prev_global_node = OffsetField(destroy_list_end, AnmVM, controller.global_list_node.prev, controller.destroy_list_node);
+                    if (expect(global_node == lists->world_list.tail, false)) {
+                        lists->world_list.tail = prev_global_node;
+                    }
+                    if (expect(global_node == lists->world_list.head, false)) {
+                        lists->world_list.head = next_global_node;
+                    }
+                    if (expect(global_node == lists->ui_list.tail, false)) {
+                        lists->ui_list.tail = prev_global_node;
+                    }
+                    if (expect(global_node == lists->ui_list.head, false)) {
+                        lists->ui_list.head = next_global_node;
+                    }
+
+                    /*
+                    ZUNList<AnmVM>* list = OffsetField(destroy_list_end, AnmVM, controller.global_list_node.idk, controller.destroy_list_node);
+                    if (list != NULL) {
+                        if (list[1].data == (AnmVM*)global_node) {
+                            list[1].data = (AnmVM*)prev_global_node;
+                        }
+                    }
+                    */
+                    if (next_global_node) {
+                        next_global_node->prev = prev_global_node;
+                    }
+                    if (prev_global_node) {
+                        prev_global_node->next = next_global_node;
+                    }
+                    
+                    
+                    void* special_data = OffsetField(destroy_list_end, AnmVM, controller.special_data, controller.destroy_list_node);
+                    if (expect(special_data != NULL, false)) {
+                        OffsetField(destroy_list_end, AnmVM, controller.special_data, controller.destroy_list_node) = NULL;
+                        OffsetField(destroy_list_end, AnmVM, controller.special_data_size, controller.destroy_list_node) = 0;
+                        free(special_data);
+                        //MEM_ALLOC_LOG->free_mem_static(special_data);
+                    }
+                    //OffsetPtr(destroy_list_end, AnmVM, controller.global_list_node, controller.destroy_list_node)->unlink_fast_no_clear();
+                    //OffsetPtr(destroy_list_end, AnmVM, controller.child_list_node, controller.destroy_list_node)->unlink_fast_no_clear_no_tail();
+                    uint32_t fast_id = OffsetField(destroy_list_end, AnmVM, controller.fast_id, controller.destroy_list_node);
+                    ZUNList<AnmVM>* destroy_list_next = destroy_list_end->next;
+                    if (
+                        expect(fast_id != INVALID_FAST_ID, true)
+                    ) {
+                        OffsetField(destroy_list_end, AnmVM, controller.id.full, controller.destroy_list_node) = 0;
+                        OffsetField(destroy_list_end, AnmVM, data.current_instruction_offset, controller.destroy_list_node) = -1;
+                        OffsetField(destroy_list_end, AnmFastVM, alive, controller.destroy_list_node) = false;
+                        //free_list->append_fast(OffsetPtr(destroy_list_end, FastAnmVM, fast_node, controller.destroy_list_node));
+                        ZUNList<AnmFastVM>* fast_node = OffsetPtr(destroy_list_end, AnmFastVM, fast_node, controller.destroy_list_node);
+                        ZUNList<AnmFastVM>* next_node = free_list->next;
+                        free_list->next = fast_node;
+                        if (next_node) {
+                            next_node->prev = fast_node;
+                            fast_node->next = next_node;
+                        }
+                        fast_node->prev = free_list;
+                    } else {
+                        free(OffsetTypePtr(destroy_list_end, AnmVM, controller.destroy_list_node));
+                        //MEM_ALLOC_LOG->delete_mem_static(OffsetTypePtr(destroy_list_end, AnmVM, controller.destroy_list_node));
+                    }
+                    destroy_list_end = destroy_list_next;
+                } while (expect(destroy_list_end != NULL, true));
+            }
+        }
+
+        //unlock_mutex(ANM_LIST_MUTEX);
+    }
+
+    /*
+    dllexport UpdateFuncRet thiscall on_tick_ui_fast() {
+        lock_mutex(CRITICAL_SECTION_MANAGER.get_mutex(AnmList_CS));
+
+        this->on_tick_list_fast(this->lists[0].ui_list.next);
+
+        unlock_mutex(CRITICAL_SECTION_MANAGER.get_mutex(AnmList_CS));
+        return UpdateFuncNext;
+    }
+    */
+
+    dllexport static int cdecl on_tick_world_fast(AnmManagerC* self) {
+        if (expect(__game_thread_not_paused_and_flag_B_is_not_true(), true)) {
+            // offsetof(AnmManager, lists[0].world_list.next) = 0x6CC
+            lock_anm_mutex();
+            on_tick_list_fast(0, &self->lists[0], self);
+            on_tick_list_fast(0, &self->lists[1], self);
+            unlock_anm_mutex();
+        }
+        return 1;
+    }
+    dllexport static int cdecl on_tick_ui_fast(AnmManagerC* self) {
+        // offsetof(AnmManager, lists[0].ui_list.next) = 0x6E4
+        lock_anm_mutex();
+        on_tick_list_fast(8, &self->lists[0], self);
+        on_tick_list_fast(8, &self->lists[1], self);
+        unlock_anm_mutex();
+        return 1;
+    }
 };
+
+dllexport void AnmLists::destroy_all_vms() {
+    this->vm_count = 0;
+
+    ZUNList<AnmFastVM>* free_list = (ZUNList<AnmFastVM>*)&ANM_MANAGER_PTR->free_list_head;
+
+    for (size_t i = 0; i < 2; ++i) {
+        ZUNList<AnmVM>* cur_node = (&this->world_list)[i].head;
+        (&this->world_list)[i] = {};
+
+        while (cur_node != NULL) {
+
+            int32_t on_destroy_index = OffsetField(cur_node, AnmVM, controller.on_destroy_index, controller.global_list_node);
+            if (expect(on_destroy_index != 0, false)) {
+                ANM_ON_DESTROY_FUNCS[on_destroy_index](OffsetTypePtr(cur_node, AnmVM, controller.global_list_node));
+            }
+            void* special_data = OffsetField(cur_node, AnmVM, controller.special_data, controller.global_list_node);
+            if (expect(special_data != NULL, false)) {
+                OffsetField(cur_node, AnmVM, controller.special_data, controller.global_list_node) = NULL;
+                OffsetField(cur_node, AnmVM, controller.special_data_size, controller.global_list_node) = 0;
+                free(special_data);
+                //MEM_ALLOC_LOG->free_mem_static(special_data);
+            }
+            //OffsetPtr(destroy_list_end, AnmVM, controller.global_list_node, controller.destroy_list_node)->unlink_fast_no_clear();
+            //OffsetPtr(destroy_list_end, AnmVM, controller.child_list_node, controller.destroy_list_node)->unlink_fast_no_clear_no_tail();
+            uint32_t fast_id = OffsetField(cur_node, AnmVM, controller.fast_id, controller.global_list_node);
+            ZUNList<AnmVM>* next_node = cur_node->next;
+            if (
+                expect(fast_id != INVALID_FAST_ID, true)
+            ) {
+                OffsetField(cur_node, AnmVM, controller.id.full, controller.global_list_node) = 0;
+                OffsetField(cur_node, AnmVM, data.current_instruction_offset, controller.global_list_node) = -1;
+                OffsetField(cur_node, AnmFastVM, alive, controller.global_list_node) = false;
+                //free_list->append_fast(OffsetPtr(destroy_list_end, FastAnmVM, fast_node, controller.destroy_list_node));
+                ZUNList<AnmFastVM>* fast_node = OffsetPtr(cur_node, AnmFastVM, fast_node, controller.global_list_node);
+                ZUNList<AnmFastVM>* next_node = free_list->next;
+                free_list->next = fast_node;
+                if (next_node) {
+                    next_node->prev = fast_node;
+                    fast_node->next = next_node;
+                }
+                fast_node->prev = free_list;
+            } else {
+                free(OffsetTypePtr(cur_node, AnmVM, controller.global_list_node));
+                //MEM_ALLOC_LOG->delete_mem_static(OffsetTypePtr(destroy_list_end, AnmVM, controller.destroy_list_node));
+            }
+            cur_node = next_node;
+        }
+    }
+}
 
 dllexport gnu_noinline long double vectorcall zsinB(double value) {
     use_var(value);

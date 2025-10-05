@@ -245,7 +245,7 @@ static gnu_noinline double vectorcall libm_sse2_tan_precise(double value) {
 namespace ZCRT {
 
 static forceinline double fabs(double value) {
-    if constexpr (game_version == EoSD) {
+    if constexpr (game_version == EoSD || game_version == FW) {
         return CRT::fabs(value);
     } else if constexpr (game_version >= PCB && game_version <= TD) {
         return __builtin_fabsl(value);
@@ -255,7 +255,7 @@ static forceinline double fabs(double value) {
 }
 
 static forceinline double acos(double value) {
-    if constexpr (game_version == EoSD) {
+    if constexpr (game_version == EoSD || game_version == FW) {
         return CRT::acos(value); // Not present
     } else if constexpr (game_version >= PCB && game_version <= TD) {
         return CRT::acosl(value);
@@ -264,7 +264,7 @@ static forceinline double acos(double value) {
     }
 }
 static forceinline double atan(double value) {
-    if constexpr (game_version == EoSD) {
+    if constexpr (game_version == EoSD || game_version == FW) {
         return CRT::atan(value); // Not present
     } else if constexpr (game_version == PCB || game_version == IN || game_version == StB || (game_version >= SA && game_version <= TD)) {
         return CRT::atanl(value);
@@ -275,7 +275,7 @@ static forceinline double atan(double value) {
     }
 }
 static forceinline double atan2(double Y, double X) {
-    if constexpr (game_version == EoSD) {
+    if constexpr (game_version == EoSD || game_version == FW) {
         return CRT::atan2(Y, X);
     } else if constexpr (game_version == PCB || game_version == IN || game_version == StB || game_version >= SA) {
         return CRT::atan2l(Y, X);
@@ -284,7 +284,7 @@ static forceinline double atan2(double Y, double X) {
     }
 }
 static forceinline double cos(double value) {
-    if constexpr (game_version == EoSD) {
+    if constexpr (game_version == EoSD || game_version == FW) {
         return CRT::cos(value);
     } else if constexpr (game_version == PCB || game_version == IN || game_version == StB || (game_version >= SA && game_version <= TD)) {
         return CRT::cosl(value);
@@ -298,14 +298,14 @@ static forceinline double floor(double value) {
     return CRT::floor(value);
 }
 static forceinline double fmod(double X, double Y) {
-    if constexpr (game_version == EoSD) {
+    if constexpr (game_version == EoSD || game_version == FW) {
         return CRT::fmod(X, Y);
     } else {
         return CRT::fmodl(X, Y);
     }
 }
 static forceinline double sin(double value) {
-    if constexpr (game_version == EoSD) {
+    if constexpr (game_version == EoSD || game_version == FW) {
         return CRT::sin(value);
     } else if constexpr (game_version == PCB || game_version == IN || game_version == StB || (game_version >= SA && game_version <= TD)) {
         return CRT::sinl(value);
@@ -316,7 +316,7 @@ static forceinline double sin(double value) {
     }
 }
 static forceinline double sqrt(double value) {
-    if constexpr (game_version == EoSD) {
+    if constexpr (game_version == EoSD || game_version == FW) {
         return CRT::sqrt(value);
     } else if constexpr (game_version == PCB || game_version == IN || game_version == StB || (game_version >= SA && game_version <= TD)) {
         return CRT::sqrtl(value);
@@ -333,7 +333,7 @@ static forceinline double sqrt(double value) {
     }
 }
 static forceinline double tan(double value) {
-    if constexpr (game_version == EoSD || game_version == DDC) {
+    if constexpr (game_version == EoSD || game_version == DDC || game_version == FW) {
         return CRT::tan(value);
     } else if constexpr (game_version == PCB || game_version == IN || game_version == StB || (game_version >= SA && game_version <= TD)) {
         return CRT::tanl(value);
@@ -348,26 +348,37 @@ static forceinline double tan(double value) {
 #define float_inline_state ForceInline
 #define float_volatile /*volatile*/
 #define float_convention stdcall
+#define float_linkage static
 #elif GAME_VERSION == PCB_VER || (GAME_VERSION >= StB_VER && GAME_VERSION <= UB_VER)
 #define float_inline_state ForceInline
 #define float_volatile
 #define float_convention stdcall
+#define float_linkage static
 #elif GAME_VERSION == IN_VER || GAME_VERSION == PoFV_VER
 #define float_inline_state NoInline
 #define float_volatile
 #define float_convention stdcall
+#define float_linkage static
 #elif GAME_VERSION >= SA_VER && GAME_VERSION <= TD_VER
 #define float_inline_state DefaultInline
 #define float_volatile /*volatile*/
 #define float_convention stdcall
-#elif GAME_VERSION >= DDC_VER
+#define float_linkage static
+#elif GAME_VERSION >= DDC_VER && GAME_VERSION <= UDoALG_VER
 #define float_inline_state NoInline
 #define float_volatile
 #define float_convention vectorcall
+#define float_linkage static
+#elif GAME_VERSION == FW_VER
+#define float_inline_state NoInline
+#define float_volatile
+#define float_convention cdecl
+#define float_linkage dllexport
 #else
 #define float_inline_state DefaultInline
 #define float_volatile
 #define float_convention
+#define float_linkage static
 #endif
 
 static forceinline float float_convention fabsf(float value) {
@@ -384,47 +395,47 @@ static forceinline void dumb_float(long double value) {
     __asm__ volatile ("fsts %[dumb]" : asm_arg("=m", dumb) : asm_arg("t", value));
 }
 
-static float float_convention acosf(float value) {
+float_linkage float float_convention acosf(float value) {
     float_volatile float ret = ZCRT::acos(value);
     if constexpr (has_dumb_float) ZCRT::dumb_float(ret);
     return ret;
 }
-static float float_convention atanf(float value) {
+float_linkage float float_convention atanf(float value) {
     float_volatile float ret = ZCRT::atan(value);
     if constexpr (has_dumb_float) ZCRT::dumb_float(ret);
     return ret;
 }
-static float float_convention atan2f(float Y, float X) {
+float_linkage float float_convention atan2f(float Y, float X) {
     float_volatile float ret = ZCRT::atan2(Y, X);
     if constexpr (has_dumb_float) ZCRT::dumb_float(ret);
     return ret;
 }
-static float float_convention cosf(float value) {
+float_linkage float float_convention cosf(float value) {
     float_volatile float ret = ZCRT::cos(value);
     if constexpr (has_dumb_float) ZCRT::dumb_float(ret);
     return ret;
 }
-static float float_convention floorf(float value) {
+float_linkage float float_convention floorf(float value) {
     float_volatile float ret = ZCRT::floor(value);
     if constexpr (has_dumb_float) ZCRT::dumb_float(ret);
     return ret;
 }
-static float float_convention fmodf(float X, float Y) {
+float_linkage float float_convention fmodf(float X, float Y) {
     float_volatile float ret = ZCRT::fmod(X, Y);
     if constexpr (has_dumb_float) ZCRT::dumb_float(ret);
     return ret;
 }
-static float float_convention sinf(float value) {
+float_linkage float float_convention sinf(float value) {
     float_volatile float ret = ZCRT::sin(value);
     if constexpr (has_dumb_float) ZCRT::dumb_float(ret);
     return ret;
 }
-static float float_convention sqrtf(float value) {
+float_linkage float float_convention sqrtf(float value) {
     float_volatile float ret = ZCRT::sqrt(value);
     if constexpr (has_dumb_float) ZCRT::dumb_float(ret);
     return ret;
 }
-static float float_convention tanf(float value) {
+float_linkage float float_convention tanf(float value) {
     float_volatile float ret = ZCRT::tan(value);
     if constexpr (has_dumb_float) ZCRT::dumb_float(ret);
     return ret;
@@ -616,27 +627,34 @@ namespace ZUN::impl {
 #define reduce_angle_add_convention     cdecl
 #define reduced_angle_diff_linkage      static forceinline
 #define reduced_angle_diff_convention   
-#elif GAME_VERSION >= PCB && GAME_VERSION <= PoFV
+#elif GAME_VERSION >= PCB_VER && GAME_VERSION <= PoFV_VER
 #define reduce_angle_linkage            static forceinline
 #define reduce_angle_convention     
 #define reduce_angle_add_linkage        dllexport gnu_noinline
 #define reduce_angle_add_convention     stdcall
 #define reduced_angle_diff_linkage      static forceinline
 #define reduced_angle_diff_convention   
-#elif GAME_VERSION == StB
+#elif GAME_VERSION == StB_VER
 #define reduce_angle_linkage            dllexport gnu_noinline
 #define reduce_angle_convention         stdcall
 #define reduce_angle_add_linkage        dllexport gnu_noinline
 #define reduce_angle_add_convention     stdcall
 #define reduced_angle_diff_linkage      static forceinline
 #define reduced_angle_diff_convention   
-#elif GAME_VERSION == MoF
+#elif GAME_VERSION == MoF_VER
 #define reduce_angle_linkage            dllexport
 #define reduce_angle_convention         stdcall
 #define reduce_angle_add_linkage        dllexport
 #define reduce_angle_add_convention     stdcall
 #define reduced_angle_diff_linkage      dllexport
 #define reduced_angle_diff_convention   stdcall
+#elif GAME_VERSION == FW_VER
+#define reduce_angle_linkage            dllexport gnu_noinline
+#define reduce_angle_convention         cdecl
+#define reduce_angle_add_linkage        dllexport gnu_noinline
+#define reduce_angle_add_convention     cdecl
+#define reduced_angle_diff_linkage      dllexport gnu_noinline
+#define reduced_angle_diff_convention   cdecl
 #else
 #define reduce_angle_linkage            static
 #define reduce_angle_convention         

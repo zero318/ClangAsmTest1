@@ -247,6 +247,7 @@ static inline constexpr SseTier_t SSE_TIER = IA32;
 #define ethis_template()
 #define ethis_params(...) __VA_ARGS__
 #define ethis_args(...) __VA_ARGS__
+#define ethis_arg(...) __VA_ARGS__
 #define ethis_type std::remove_cvref_t<std::remove_pointer_t<decltype(this)>>
 #define ethis (*this)
 #else
@@ -258,6 +259,7 @@ static inline constexpr SseTier_t SSE_TIER = IA32;
 #define ethis_template() template <typename Self>
 #define ethis_params(...) __VA_ARGS__ __VA_OPT__(,) typename Self = void
 #define ethis_args(...) this Self&& self __VA_OPT__(,) __VA_ARGS__
+#define ethis_arg(...) this const auto& self __VA_OPT__(,) __VA_ARGS__
 #define ethis_type Self
 #define ethis self
 #endif
@@ -338,7 +340,9 @@ static inline constexpr SseTier_t SSE_TIER = IA32;
 // UDoALG
 #define MACRO_TWENTY_FIRST(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18, arg19, arg20, arg21, ...) arg21
 #define MACRO_TWENTY_FIRST_EVAL(...) MACRO_EVAL(MACRO_TWENTY_FIRST(__VA_ARGS__))
-
+// FW
+#define MACRO_TWENTY_SECOND(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18, arg19, arg20, arg21, arg22, ...) arg22
+#define MACRO_TWENTY_SECOND_EVAL(...) MACRO_EVAL(MACRO_TWENTY_SECOND(__VA_ARGS__))
 
 //#define MACRO_DEFAULT_ARG(default_arg, ...) MACRO_SECOND(__VA_OPT__(,) __VA_ARGS__, (default_arg))
 
@@ -835,11 +839,12 @@ static inline constexpr T garbage_value(void) {
 #define ISC_VER 143
 #define LoLK_VER 150
 #define HSiFS_VER 160
-#define VS_VER 165
+#define VD_VER 165
 #define WBaWC_VER 170
 #define UM_VER 180
 #define HBM_VER 185
 #define UDoALG_VER 190
+#define FW_VER 200
 enum GameVersion : size_t {
     EoSD = EoSD_VER,
     PCB = PCB_VER,
@@ -857,11 +862,12 @@ enum GameVersion : size_t {
     ISC = ISC_VER,
     LoLK = LoLK_VER,
     HSiFS = HSiFS_VER,
-    VD = VS_VER,
+    VD = VD_VER,
     WBaWC = WBaWC_VER,
     UM = UM_VER,
     HBM = HBM_VER,
-    UDoALG = UDoALG_VER
+    UDoALG = UDoALG_VER,
+    FW = FW_VER
 };
 
 #define IN
@@ -1972,7 +1978,7 @@ static inline P* pointer_raw_offset(P* pointer, O offset) {
 #undef pascal
 #endif
 #define pascalcall gnu_attr(pascal)
-#define preserve_none gnu_attr(preserve_none)
+#define preserve_none [[clang::preserve_none]]
 #define preserve_most gnu_attr(preserve_most)
 #define preserve_all gnu_attr(preserve_all)
 

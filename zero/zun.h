@@ -38,6 +38,7 @@ static inline constexpr size_t game_version = GAME_VERSION;
 #define PER_GAME_UM(...) MACRO_DEFAULT_ARG(PER_GAME_WBaWC(__VA_ARGS__), MACRO_NINETEENTH(__VA_ARGS__))
 #define PER_GAME_HBM(...) MACRO_DEFAULT_ARG(PER_GAME_UM(__VA_ARGS__), MACRO_TWENTIETH(__VA_ARGS__))
 #define PER_GAME_UDoALG(...) MACRO_DEFAULT_ARG(PER_GAME_HBM(__VA_ARGS__), MACRO_TWENTY_FIRST(__VA_ARGS__))
+#define PER_GAME_FW(...) MACRO_DEFAULT_ARG(PER_GAME_UDoALG(__VA_ARGS__), MACRO_TWENTY_SECOND(__VA_ARGS__))
 
 #if GAME_VERSION == EoSD_VER
 #define PER_GAME(...) PER_GAME_EoSD(__VA_ARGS__)
@@ -81,6 +82,8 @@ static inline constexpr size_t game_version = GAME_VERSION;
 #define PER_GAME(...) PER_GAME_HBM(__VA_ARGS__)
 #elif GAME_VERSION == UDoALG_VER
 #define PER_GAME(...) PER_GAME_UDoALG(__VA_ARGS__)
+#elif GAME_VERSION == FW_VER
+#define PER_GAME(...) PER_GAME_FW(__VA_ARGS__)
 #else
 #error "GAME_VERSION not set"
 #endif

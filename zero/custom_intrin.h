@@ -676,6 +676,29 @@ static inline bool repne_scasd(const uint32_t value, const uint32_t* array_ref) 
     return repne_scasd(value, array_ref, fake_length);
 }
 
+template<typename T = void>
+static inline bool repe_scasb(T *restrict dst, int val, size_t byte_len) {
+    bool ret;
+    __asm__ volatile (
+        "repe scasb"
+        : "=c"(byte_len), "+D"(dst), asm_flags(z, ret)
+        : "0"(byte_len), "a"(val)
+        : "memory"
+    );
+    return ret;
+}
+template<typename T = void>
+static inline bool repne_scasb(T *restrict dst, int val, size_t byte_len) {
+    bool ret;
+    __asm__ volatile (
+        "repne scasb"
+        : "=c"(byte_len), "+D"(dst), asm_flags(nz, ret)
+        : "0"(byte_len), "a"(val)
+        : "memory"
+    );
+    return ret;
+}
+
 static inline void rep_movsd(void *restrict dst, const void *restrict src, size_t dword_len) {
     __asm__ volatile (
         "rep movsl"
@@ -728,23 +751,62 @@ static inline T *restrict rep_stosb(T *restrict dst, uint8_t value, size_t byte_
     //assume(byte_len == 0);
     return dst;
 }
+
 template<typename T = void>
-static inline bool repe_cmpsb(T *restrict dst, T *restrict src, size_t byte_len) {
+static inline bool repe_cmpsd(T *restrict dst, T *restrict src, size_t byte_len) {
+    bool ret;
     __asm__ volatile (
-        "repe cmpsb"
-        : "=c"(byte_len), "+D"(dst), "+S"(src)
+        "repe cmpsl"
+        : "=c"(byte_len), "+D"(dst), "+S"(src), asm_flags(z, ret)
         : "0"(byte_len)
         : "memory"
     );
+    return ret;
 }
 template<typename T = void>
-static inline bool repne_scasb(T *restrict dst, int val, size_t byte_len) {
+static inline bool repne_cmpsd(T *restrict dst, T *restrict src, size_t byte_len) {
+    bool ret;
     __asm__ volatile (
-        "repne scasb"
-        : "=c"(byte_len), "+D"(dst)
-        : "0"(byte_len), "a"(val)
+        "repne cmpsl"
+        : "=c"(byte_len), "+D"(dst), "+S"(src), asm_flags(nz, ret)
+        : "0"(byte_len)
         : "memory"
     );
+    return ret;
+}
+
+template<typename T = void>
+static inline bool repe_cmpsb(T *restrict dst, T *restrict src, size_t byte_len) {
+    bool ret;
+    __asm__ volatile (
+        "repe cmpsb"
+        : "=c"(byte_len), "+D"(dst), "+S"(src), asm_flags(z, ret)
+        : "0"(byte_len)
+        : "memory"
+    );
+    return ret;
+}
+template<typename T = void>
+static inline bool repne_cmpsb(T *restrict dst, T *restrict src, size_t byte_len) {
+    bool ret;
+    __asm__ volatile (
+        "repne cmpsb"
+        : "=c"(byte_len), "+D"(dst), "+S"(src), asm_flags(nz, ret)
+        : "0"(byte_len)
+        : "memory"
+    );
+    return ret;
+}
+
+template<typename T = void>
+static inline uint8_t rep_lodsb(T *restrict src, size_t byte_len) {
+    uint8_t ret;
+    __asm__ volatile (
+        "rep lodsb"
+        : "=c"(byte_len), "=a"(ret), "+S"(src)
+        : "0"(byte_len)
+    );
+    return ret;
 }
 
 static inline dreg_t pack_dreg(const sreg_t low, const sreg_t high) {

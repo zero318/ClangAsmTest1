@@ -5,7 +5,41 @@
 // Prefer the double->float or float->float versions
 // and leave this off. Effects on double->double with
 // non-float arguments is unverified.
-#define CONFORM_TO_TRASH_ABI 0
+
+// double to double
+#define CONFORM_TO_TRASH_ABI 1
+// double to float
+#define CONFORM_TO_TRASH_ABI2 1
+// float to float
+#define CONFORM_TO_TRASH_ABI3 1
+
+// Fallback to the double->float calls instead of double->double
+#define LOWER_PRECISION_DOUBLES 1
+
+#define USE_CDECL_CONVENTION 1
+#define USE_VECTORS_FOR_DOUBLES 1
+
+#define INLINE_NON_FLOAT_ARGS 1
+
+#if USE_CDECL_CONVENTION
+#define libmcc cdecl
+#else
+#define libmcc vectorcall
+#endif
+
+#if USE_VECTORS_FOR_DOUBLES
+#define doublev_arg(name) vec<double, 1> MACRO_CAT(name,_v)
+#define doublev_param(val) (vec<double,1>){val}
+#else
+#define doublev_arg(name) double name
+#define doublev_param(val) val
+#endif
+
+#if INLINE_NON_FLOAT_ARGS
+#define double_inline forceinline
+#else
+#define double_inline gnu_noinline
+#endif
 
 #if __AVX__
 #define CVTSS2SI(ret, flt) __asm__("VCVTSS2SI %[val], %[out]" : [out]"=r"(ret) : [val]"x"(flt))
@@ -426,11 +460,17 @@ alignas(16) static const vec<double, 2, true> sinf_cosf_ptable[2] = {
 /// ====================
 
 #if CONFORM_TO_TRASH_ABI
-dllexport gnu_noinline long double vectorcall sin_sse2(double x) {
+dllexport double_inline long double libmcc sin_sse2(doublev_arg(x)) asm("sin_sse2_DtoD");
+dllexport double_inline long double libmcc sin_sse2(doublev_arg(x)) {
 #else
-dllexport gnu_noinline double vectorcall sin_sse2(double x) {
+dllexport double_inline double libmcc sin_sse2(doublev_arg(x)) asm("sin_sse2_DtoD");
+dllexport double_inline double libmcc sin_sse2(doublev_arg(x)) {
 #endif
 #pragma clang fp contract(off)
+
+#if USE_VECTORS_FOR_DOUBLES
+    double x = x_v[0];
+#endif
 
     vec<uint16_t, 4> tempA = std::bit_cast<vec<uint16_t, 4>>(x);
     uint32_t exp = tempA[3];
@@ -586,11 +626,16 @@ dllexport gnu_noinline double vectorcall sin_sse2(double x) {
 }
 
 #if CONFORM_TO_TRASH_ABI
-dllexport gnu_noinline long double vectorcall cos_sse2(double x) {
+dllexport double_inline long double libmcc cos_sse2(doublev_arg(x)) asm("cos_sse2_DtoD");
+dllexport double_inline long double libmcc cos_sse2(doublev_arg(x)) {
 #else
-dllexport gnu_noinline double vectorcall cos_sse2(double x) {
+dllexport double_inline double libmcc cos_sse2(doublev_arg(x)) asm("cos_sse2_DtoD");
+dllexport double_inline double libmcc cos_sse2(doublev_arg(x)) {
 #endif
 #pragma clang fp contract(off)
+#if USE_VECTORS_FOR_DOUBLES
+    double x = x_v[0];
+#endif
 
     vec<uint16_t, 4> tempA = std::bit_cast<vec<uint16_t, 4>>(x);
     uint32_t exp = tempA[3];
@@ -734,11 +779,16 @@ dllexport gnu_noinline double vectorcall cos_sse2(double x) {
 }
 
 #if CONFORM_TO_TRASH_ABI
-dllexport gnu_noinline vec<long double, 2> vectorcall sincos_sse2(double x) {
+dllexport double_inline vec<long double, 2> libmcc sincos_sse2(doublev_arg(x)) asm("sincos_sse2_DtoD");
+dllexport double_inline vec<long double, 2> libmcc sincos_sse2(doublev_arg(x)) {
 #else
-dllexport gnu_noinline vec<double, 2> vectorcall sincos_sse2(double x) {
+dllexport double_inline vec<double, 2> libmcc sincos_sse2(doublev_arg(x)) asm("sincos_sse2_DtoD");
+dllexport double_inline vec<double, 2> libmcc sincos_sse2(doublev_arg(x)) {
 #endif
 #pragma clang fp contract(off)
+#if USE_VECTORS_FOR_DOUBLES
+    double x = x_v[0];
+#endif
 
     vec<uint16_t, 4> tempA = std::bit_cast<vec<uint16_t, 4>>(x);
     uint32_t exp = tempA[3];
@@ -931,8 +981,17 @@ dllexport gnu_noinline vec<double, 2> vectorcall sincos_sse2(double x) {
 /// float trigf_sse2(double)
 /// ====================
 
-dllexport gnu_noinline float vectorcall sinf_sse2(double x) {
+#if CONFORM_TO_TRASH_ABI2
+dllexport double_inline long double libmcc sinf_sse2(doublev_arg(x)) asm("sinf_sse2_DtoF");
+dllexport double_inline long double libmcc sinf_sse2(doublev_arg(x)) {
+#else
+dllexport double_inline float libmcc sinf_sse2(doublev_arg(x)) asm("sinf_sse2_DtoF");
+dllexport double_inline float libmcc sinf_sse2(doublev_arg(x)) {
+#endif
 #pragma clang fp contract(on)
+#if USE_VECTORS_FOR_DOUBLES
+    double x = x_v[0];
+#endif
 
     vec<uint16_t, 4> tempA = std::bit_cast<vec<uint16_t, 4>>(x);
     uint32_t exp = tempA[3];
@@ -955,7 +1014,11 @@ dllexport gnu_noinline float vectorcall sinf_sse2(double x) {
             ret *= std::bit_cast<double>(0x3C80000000000000);
             return ret;
         }
+#if !CONFORM_TO_TRASH_ABI2
         return sinf_x87(x);
+#else
+        return sinl_x87(x);
+#endif
     }
 
     // XMM1
@@ -971,7 +1034,7 @@ dllexport gnu_noinline float vectorcall sinf_sse2(double x) {
     CVTSD2SI(lookup_index, A);
 
 #if __SSE4_1__
-    A __builtin_roundeven(A);
+    A = __builtin_roundeven(A);
 #else
     // 0x4338000000000000
     double SHIFTER = 6755399441055744.0;
@@ -1085,8 +1148,17 @@ dllexport gnu_noinline float vectorcall sinf_sse2(double x) {
     return A;
 }
 
-dllexport gnu_noinline float vectorcall cosf_sse2(double x) {
+#if CONFORM_TO_TRASH_ABI2
+dllexport double_inline long double libmcc cosf_sse2(doublev_arg(x)) asm("cosf_sse2_DtoF");
+dllexport double_inline long double libmcc cosf_sse2(doublev_arg(x)) {
+#else
+dllexport double_inline float libmcc cosf_sse2(doublev_arg(x)) asm("cosf_sse2_DtoF");
+dllexport double_inline float libmcc cosf_sse2(doublev_arg(x)) {
+#endif
 #pragma clang fp contract(on)
+#if USE_VECTORS_FOR_DOUBLES
+    double x = x_v[0];
+#endif
 
     vec<uint16_t, 4> tempA = std::bit_cast<vec<uint16_t, 4>>(x);
     uint32_t exp = tempA[3];
@@ -1097,7 +1169,11 @@ dllexport gnu_noinline float vectorcall cosf_sse2(double x) {
         if ((int16_t)exp <= 0x10C5) {
             return 1.0 - fabs(x);
         }
+#if !CONFORM_TO_TRASH_ABI2
         return cosf_x87(x);
+#else
+        return cosl_x87(x);
+#endif
     }
 
     // XMM1
@@ -1113,7 +1189,7 @@ dllexport gnu_noinline float vectorcall cosf_sse2(double x) {
     CVTSD2SI(lookup_index, A);
 
 #if __SSE4_1__
-    A __builtin_roundeven(A);
+    A = __builtin_roundeven(A);
 #else
     // 0x4338000000000000
     double SHIFTER = 6755399441055744.0;
@@ -1228,8 +1304,17 @@ dllexport gnu_noinline float vectorcall cosf_sse2(double x) {
     return A;
 }
 
-dllexport gnu_noinline vec<float, 2> vectorcall sincosf_sse2(double x) {
+#if CONFORM_TO_TRASH_ABI2
+dllexport double_inline vec<long double, 2> libmcc sincosf_sse2(doublev_arg(x)) asm("sincosf_sse2_DtoF");
+dllexport double_inline vec<long double, 2> libmcc sincosf_sse2(doublev_arg(x)) {
+#else
+dllexport double_inline vec<float, 2> libmcc sincosf_sse2(doublev_arg(x)) asm("sincosf_sse2_DtoF");
+dllexport double_inline vec<float, 2> libmcc sincosf_sse2(doublev_arg(x)) {
+#endif
 #pragma clang fp contract(on)
+#if USE_VECTORS_FOR_DOUBLES
+    double x = x_v[0];
+#endif
 
     vec<uint16_t, 4> tempA = std::bit_cast<vec<uint16_t, 4>>(x);
     uint32_t exp = tempA[3];
@@ -1256,10 +1341,19 @@ dllexport gnu_noinline vec<float, 2> vectorcall sincosf_sse2(double x) {
                 // Value is 1/2**55
                 sin_ret *= std::bit_cast<double>(0x3C80000000000000);
             }
+#if !CONFORM_TO_TRASH_ABI2
             vec<double, 2> ret = { sin_ret, cos_ret };
             return convertvec(ret, vec<float, 2>);
+#else
+            vec<long double, 2> ret = { sin_ret, cos_ret };
+            return ret;
+#endif
         }
+#if !CONFORM_TO_TRASH_ABI2
         return sincosf_x87(x);
+#else
+        return sincosl_x87(x);
+#endif
     }
 
     // XMM1
@@ -1407,15 +1501,26 @@ dllexport gnu_noinline vec<float, 2> vectorcall sincosf_sse2(double x) {
 
     N += FL;
 
+#if !CONFORM_TO_TRASH_ABI2
     return convertvec(N, vec<float, 2>);
+#else
+    return convertvec(N, vec<long double, 2>);
+#endif
 }
 
 /// ====================
 /// float trigf_sse2(float)
 /// ====================
 
-dllexport gnu_noinline float vectorcall sinf_sse2(float x) {
+#if CONFORM_TO_TRASH_ABI3
+dllexport gnu_noinline long double libmcc sinf_sse2(float x) asm("sinf_sse2_FtoF");
+dllexport gnu_noinline long double libmcc sinf_sse2(float x) {
+#else
+dllexport gnu_noinline float libmcc sinf_sse2(float x) asm("sinf_sse2_FtoF");
+dllexport gnu_noinline float libmcc sinf_sse2(float x) {
+#endif
 #pragma clang fp contract(off)
+    __asm__ volatile ("":"+Yz"(x));
 
     uint32_t int_x = std::bit_cast<uint32_t>(x);
 
@@ -1425,7 +1530,13 @@ dllexport gnu_noinline float vectorcall sinf_sse2(float x) {
         if ((int16_t)(exp >> 16) <= 0x457F) {
             // Value named ONE_M230
             // Value is ~0.9999999990686774
-            return x * std::bit_cast<double>(0x3FEFFFFFFF800000);
+            float ret = x * std::bit_cast<double>(0x3FEFFFFFFF800000);
+            {
+#if CONFORM_TO_TRASH_ABI3
+#pragma clang fp exceptions(strict)
+#endif
+                return ret;
+            }
         }
         if (expect((~int_x & 0x7F800000) != 0, true)) {
 #if !CONFORM_TO_TRASH_ABI
@@ -1437,8 +1548,13 @@ dllexport gnu_noinline float vectorcall sinf_sse2(float x) {
                 return std::bit_cast<float>(0x3F2A4A27 | (~int_x & 0x80000000));
             }
 #endif
-            return sin_sse2(x);
+#if !LOWER_PRECISION_DOUBLES
+            return sin_sse2(doublev_param(x));
+#else
+            return sinf_sse2(doublev_param(x));
+#endif
         }
+#if !CONFORM_TO_TRASH_ABI3
         // Original code always gives -NaN here?
         // But it uses SUBSS?
         //return std::bit_cast<float>(0xFFC00000);
@@ -1449,6 +1565,9 @@ dllexport gnu_noinline float vectorcall sinf_sse2(float x) {
             // instead of reading uncached memory
             return x - x;
         }
+#else
+        return (long double)std::bit_cast<float>(0xFFC00000);
+#endif
     }
 
     // Value named PI_32_RECIP.
@@ -1519,11 +1638,24 @@ dllexport gnu_noinline float vectorcall sinf_sse2(float x) {
 
     J[0] += J[1];
 
-    return J[0];
+    float ret = J[0];
+    {
+#if CONFORM_TO_TRASH_ABI3
+#pragma clang fp exceptions(strict)
+#endif
+        return ret;
+    }
 }
 
-dllexport gnu_noinline float vectorcall cosf_sse2(float x) {
+#if CONFORM_TO_TRASH_ABI3
+dllexport gnu_noinline long double libmcc cosf_sse2(float x) asm("cosf_sse2_FtoF");
+dllexport gnu_noinline long double libmcc cosf_sse2(float x) {
+#else
+dllexport gnu_noinline float libmcc cosf_sse2(float x) asm("cosf_sse2_FtoF");
+dllexport gnu_noinline float libmcc cosf_sse2(float x) {
+#endif
 #pragma clang fp contract(off)
+    __asm__ volatile ("":"+Yz"(x));
 
     uint32_t int_x = std::bit_cast<uint32_t>(x);
 
@@ -1532,11 +1664,22 @@ dllexport gnu_noinline float vectorcall cosf_sse2(float x) {
     if (expect((uint16_t)(exp >> 16) > 0x457F, false)) {
         if ((int16_t)(exp >> 16) <= 0x457F) {
             double dbl_x = x;
-            return 1.0 - (dbl_x * dbl_x);
+            float ret = 1.0 - (dbl_x * dbl_x);
+            {
+#if CONFORM_TO_TRASH_ABI3
+#pragma clang fp exceptions(strict)
+#endif
+                return ret;
+            }
         }
         if (expect((int_x & 0x7F800000) != 0x7F800000, true)) {
-            return cos_sse2(x);
+#if !LOWER_PRECISION_DOUBLES
+            return cos_sse2(doublev_param(x));
+#else
+            return cosf_sse2(doublev_param(x));
+#endif
         }
+#if !CONFORM_TO_TRASH_ABI3
         // Original code always gives -NaN here?
         // But it uses SUBSS?
         //return std::bit_cast<float>(0xFFC00000);
@@ -1547,6 +1690,9 @@ dllexport gnu_noinline float vectorcall cosf_sse2(float x) {
             // instead of reading uncached memory
             return x - x;
         }
+#else
+        return (long double)std::bit_cast<float>(0xFFC00000);
+#endif
     }
 
     // Value named PI_32_RECIP.
@@ -1617,11 +1763,24 @@ dllexport gnu_noinline float vectorcall cosf_sse2(float x) {
 
     J[0] += J[1];
 
-    return J[0];
+    float ret = J[0];
+    {
+#if CONFORM_TO_TRASH_ABI3
+#pragma clang fp exceptions(strict)
+#endif
+        return ret;
+    }
 }
 
-dllexport gnu_noinline vec<float, 2> vectorcall sincosf_sse2(float x) {
+#if CONFORM_TO_TRASH_ABI3
+dllexport gnu_noinline vec<long double, 2> libmcc sincosf_sse2(float x) asm("sincosf_sse2_FtoF");
+dllexport gnu_noinline vec<long double, 2> libmcc sincosf_sse2(float x) {
+#else
+dllexport gnu_noinline vec<float, 2> libmcc sincosf_sse2(float x) asm("sincosf_sse2_FtoF");
+dllexport gnu_noinline vec<float, 2> libmcc sincosf_sse2(float x) {
+#endif
 #pragma clang fp contract(off)
+    __asm__ volatile ("":"+Yz"(x));
 
     uint32_t int_x = std::bit_cast<uint32_t>(x);
 
@@ -1634,8 +1793,17 @@ dllexport gnu_noinline vec<float, 2> vectorcall sincosf_sse2(float x) {
             double dbl_x = x;
             double sine_x = dbl_x * std::bit_cast<double>(0x3FEFFFFFFF800000);
             dbl_x = 1.0 - (dbl_x * dbl_x);
+#if !CONFORM_TO_TRASH_ABI3
             vec<double, 2> dbl_vec = { sine_x, dbl_x };
             return convertvec(dbl_vec, vec<float, 2>);
+#else
+            float ret1 = sine_x;
+            float ret2 = dbl_x;
+            {
+#pragma clang fp exceptions(strict)
+                return { ret1, ret2 };
+            }
+#endif
         }
         if (expect((~int_x & 0x7F800000) != 0, true)) {
 #if !CONFORM_TO_TRASH_ABI
@@ -1647,8 +1815,21 @@ dllexport gnu_noinline vec<float, 2> vectorcall sincosf_sse2(float x) {
                 return { std::bit_cast<float>(0x3F2A4A27 | (~int_x & 0x80000000)), std::bit_cast<float>(0x3F3F25CD) };
             }
 #endif
-            return convertvec(sincos_sse2(x), vec<float, 2>);
+#if !LOWER_PRECISION_DOUBLES
+#if !CONFORM_TO_TRASH_ABI3
+            return convertvec(sincos_sse2(doublev_param(x)), vec<float, 2>);
+#else
+            return sincos_sse2(doublev_param(x));
+#endif
+#else
+#if !CONFORM_TO_TRASH_ABI3
+            return convertvec(sincosf_sse2(doublev_param(x)), vec<float, 2>);
+#else
+            return sincosf_sse2(doublev_param(x));
+#endif
+#endif
         }
+#if !CONFORM_TO_TRASH_ABI3
         // Original code always gives -NaN here?
         // But it uses SUBSS?
         //return { std::bit_cast<float>(0xFFC00000), std::bit_cast<float>(0xFFC00000) };
@@ -1660,6 +1841,9 @@ dllexport gnu_noinline vec<float, 2> vectorcall sincosf_sse2(float x) {
             x -= x;
         }
         return { x, x };
+#else
+        return { (long double)std::bit_cast<float>(0xFFC00000), (long double)std::bit_cast<float>(0xFFC00000) };
+#endif
     }
 
     // Value named PI_32_RECIP.
@@ -1739,7 +1923,16 @@ dllexport gnu_noinline vec<float, 2> vectorcall sincosf_sse2(float x) {
 
     ret += add;
 
+#if !CONFORM_TO_TRASH_ABI3
     return convertvec(ret, vec<float, 2>);
+#else
+    {
+#pragma clang fp exceptions(strict)
+        float ret1 = ret[0];
+        float ret2 = ret[1];
+        return { ret1, ret2 };
+    }
+#endif
 }
 
 /// ====================
@@ -1771,16 +1964,16 @@ int main() {
 
 // Test the correctness of individual functions
 // by comparing them to the library equivalents
-#define TEST_SINF 0
-#define TEST_COSF 0
-#define TEST_SIN 1
-#define TEST_COS 1
+#define TEST_SINF 1
+#define TEST_COSF 1
+#define TEST_SIN 0
+#define TEST_COS 0
 #define TEST_SIND 0
 #define TEST_COSD 0
 // Test the correctness of combined functions by
 // comparing them to the implementations of the
 // separate functions (not library equivalents)
-#define TEST_SINCOSF 0
+#define TEST_SINCOSF 1
 #define TEST_SINCOS 0
 #define TEST_SINCOSD 0
 
@@ -1832,11 +2025,15 @@ int main() {
 #if TEST_COSF
         float lib_cosf = libm_sse2_cosf(x);
         uint32_t lib_cosf_bits = std::bit_cast<uint32_t>(lib_cosf);
-        //if (lib_cosf_bits != test_cosf_bits) __asm int3
+        if (lib_cosf_bits != test_cosf_bits) __asm int3
         correct_cosf += lib_cosf_bits == test_cosf_bits;
 #endif
 #if TEST_SINCOSF
+#if !CONFORM_TO_TRASH_ABI3
         vec<float, 2> test_sincosf = sincosf_sse2(x);
+#else
+        vec<float, 2> test_sincosf = convertvec(sincosf_sse2(x), vec<float, 2>);
+#endif
         uint64_t test_sincosf_bitsA = std::bit_cast<uint64_t>(test_sincosf);
         uint64_t test_sincosf_bitsB = (uint64_t)test_sinf_bits | (uint64_t)test_cosf_bits << 32;
         if (test_sincosf_bitsA != test_sincosf_bitsB) __asm int3
@@ -1883,7 +2080,11 @@ int main() {
         correct_cosd += lib_cos_bits == test_cosd_bits;
 #endif
 #if TEST_SINCOS
+#if !CONFORM_TO_TRASH_ABI2
         vec<float, 2> test_sincos = sincosf_sse2((double)x);
+#else
+        vec<float, 2> test_sincos = convertvec(sincosf_sse2((double)x), vec<float, 2>)
+#endif
         uint64_t test_sincos_bitsA = std::bit_cast<uint64_t>(test_sincos);
         uint64_t test_sincos_bitsB = (uint64_t)test_sin_bits | (uint64_t)test_cos_bits << 32;
         //if (test_sincos_bitsA != test_sincos_bitsB) __asm int3

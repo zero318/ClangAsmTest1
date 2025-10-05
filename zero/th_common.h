@@ -35,6 +35,7 @@
 #define UM_VER 180
 #define HBM_VER 185
 #define UDoALG_VER 190
+#define FW_VER 200
 
 
 #define _MACRO_CAT(arg1, arg2) arg1 ## arg2
@@ -106,8 +107,8 @@
 #define _THV_125 DS_VER
 #define _THV_GFW GFW_VER
 #define _THV_gfw GFW_VER
-#define _THV_FW GFW_VER
-#define _THV_fw GFW_VER
+//#define _THV_FW GFW_VER
+//#define _THV_fw GFW_VER
 #define _THV_th128 GFW_VER
 #define _THV_128 GFW_VER
 #define _THV_TD TD_VER
@@ -157,6 +158,10 @@
 #define _THV_udoalg UDoALG_VER
 #define _THV_th19 UDoALG_VER
 #define _THV_19 UDoALG_VER
+#define _THV_FW FW_VER
+#define _THV_fw FW_VER
+#define _THV_th20 FW_VER
+#define _THV_20 FW_VER
 
 #define PARSE_TH_VER(...) MACRO_EVAL(MACRO_CAT(_THV_,__VA_ARGS__))
 
@@ -223,6 +228,9 @@
 #elif PARSE_TH_VER(TH_VER) == UDoALG_VER
 #undef TH_VER
 #define TH_VER UDoALG_VER
+#elif PARSE_TH_VER(TH_VER) == FW_VER
+#undef TH_VER
+#define TH_VER FW_VER
 #else
 #error Unrecognized version
 #endif
@@ -233,14 +241,18 @@
 #define OLD_ENGINE 1
 #elif TH_VER < LoLK_VER
 #define NEW_ENGINE 1
-#define NEW_ENGINE_A 1
+#define NEW_ENGINE_VER 1
+#elif TH_VER < FW_VER
+#define NEW_ENGINE 1
+#define NEW_ENGINE_VER 2
 #else
 #define NEW_ENGINE 1
-#define NEW_ENGINE_B 1
+#define NEW_ENGINE_VER 3
 #endif
 
 #define sfinae_enable(...) std::enable_if_t<(__VA_ARGS__), bool> = true
 
+#if !ZUN_RESULT_DEFINED
 enum ZUNResult : int32_t {
     ZUN_SUCCESS2 = 1,
     ZUN_SUCCESS = 0,
@@ -250,6 +262,7 @@ enum ZUNResult : int32_t {
 
 #define ZUN_SUCCEEDED(result) (((ZUNResult)(result)) >= ZUN_SUCCESS)
 #define ZUN_FAILED(result) (((ZUNResult)(result)) < ZUN_SUCCESS)
+#endif
 
 // Packs the bytes [c1], [c2], [c3], and [c4] together as a 32 bit little endian unsigned integer
 static inline constexpr uint32_t PackUInt32(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0) {
@@ -265,6 +278,9 @@ static inline constexpr uint32_t PackD3DCOLOR(uint8_t a, uint8_t r, uint8_t g, u
 #define vectorcall __vectorcall
 #define fastcall __fastcall
 #define regcall gnu_attr(regcall)
+//#define vectorcall __thiscall
+//#define fastcall __thiscall
+//#define regcall __thiscall
 
 #define shufflevec __builtin_shufflevector
 #define convertvec __builtin_convertvector
@@ -276,6 +292,7 @@ static inline constexpr uint32_t PackD3DCOLOR(uint8_t a, uint8_t r, uint8_t g, u
 
 #define forceinline [[clang::always_inline]]
 
+#if !VEC_DEFINED
 template <typename T, size_t count, bool is_aligned>
 struct _vec_impl {
     using type gnu_attr(__vector_size__(count * sizeof(T)), __aligned__(alignof(T))) = T;
@@ -330,6 +347,7 @@ struct vector_length<T, std::void_t<decltype(std::declval<T>()[0])>> {
 
 template <typename T>
 inline constexpr size_t vector_length_v = vector_length<T>::value;
+#endif
 
 #if __SSSE3__
 static inline constexpr bool has_ssse3 = true;
@@ -763,6 +781,19 @@ forceinline constexpr regcall UInt2::operator Int2() const {
 #undef Int2ShiftAssignOp
 #undef Int2Abs
 
+/*
+#define VEC3_MODE_SHUFFLE 0
+#define VEC3_MODE_OVERWIDE 1
+#define VEC3_MODE_TWO_OPS 2
+
+#if !defined(VEC3_MODE) || (VEC3_MODE != VEC3_MODE_SHUFFLE && VEC3_MODE != VEC3_MODE_OVERWIDE && VEC3_MODE != VEC3_MODE_TWO_OPS)
+#undef VEC3_MODE
+#define VEC3_MODE VEC3_MODE_TWO_OPS
+#endif
+
+static inline constexpr uint8_t vec3_mode = VEC3_MODE;
+*/
+
 // size: 0xC
 struct Float3 : Float2 {
     float z; // 0x8
@@ -773,17 +804,30 @@ struct Float3 : Float2 {
     inline constexpr Float3(const Float2& v, float Z) : Float2(v), z(Z) {}
     inline constexpr Float3(const vec<float, 2>& v) : Float2(v), z(0.0f) {}
     inline constexpr Float3(const vec<float, 2>& v, float Z) : Float2(v), z(Z) {}
+#if !VEC3_ALLOW_OVERREAD
     template<typename T, sfinae_enable(is_vector_v<T> && std::is_same_v<float, vector_type_t<T>> && vector_length_v<T> >= 3)>
     inline constexpr Float3(const T& v) : Float2(v), z(v[2]) {}
+#else
+    inline constexpr Float3(const vec<float, 4>& v) {
+        vec<float, 4> temp = shufflevec(v, v, 0, 1, 1, 2);
+        this->x = temp[0];
+        this->y = temp[2];
+        this->z = temp[3];
+    }
+#endif
 
     inline constexpr Float2& regcall as2() const {
         return *(Float2*)this;
     }
 
     forceinline constexpr vec<float, 4> regcall as_vec4() const {
+#if !VEC3_ALLOW_OVERREAD
         vec<float, 4> temp1 = { this->x, this->y };
         vec<float, 4> temp2 = { this->z, 0.0f };
         return shufflevec(temp1, temp2, 0, 1, 4, 5);
+#else
+        return *(vec<float, 4>*)this;
+#endif
     }
     
     inline constexpr float regcall dot_product(const Float3& value) const {
@@ -964,9 +1008,10 @@ struct Float3 : Float2 {
         if constexpr (has_sse41) { \
             return this->as_vec4() op value; \
         } else { \
+            vec<float, 2> temp = { value, value }; \
             return { \
-                this->as_vec2() op value, \
-                this->z op value \
+                this->as_vec2() op temp, \
+                this->z op temp[0] \
             }; \
         } \
     }
@@ -1008,8 +1053,9 @@ struct Float3 : Float2 {
         if constexpr (has_sse41) { \
             return *this = this->as_vec4() op2 value; \
         } else { \
-            this->as_vec2() op1 value; \
-            this->z op1 value; \
+            vec<float, 2> temp = { value, value }; \
+            this->as_vec2() op1 temp; \
+            this->z op1 temp[0]; \
             return *this; \
         } \
     }
@@ -1314,10 +1360,12 @@ __asm__(
 "_GAME_SPEED = 0x4D0FE0"
 #elif TH_VER == UDoALG_VER
 ""
+#elif TH_VER == FW_VER
+""
 #endif
 );
 extern "C" {
-#if TH_VER != UDoALG_VER
+#if TH_VER != UDoALG_VER && TH_VER != FW_VER
     extern float GAME_SPEED asm("_GAME_SPEED");
 #endif
 #if TH_VER == EoSD_VER
@@ -1334,6 +1382,9 @@ extern "C" {
 #if TH_VER == UDoALG_VER
 // Janky way of parsing a base relocation
 static inline float& GAME_SPEED = *(float*)(((uintptr_t* gnu_attr(address_space(257))*)0)[12][2] + 0x1A356C);
+#elif TH_VER == FW_VER
+// Janky way of parsing a base relocation
+static inline float& GAME_SPEED = *(float*)(((uintptr_t * gnu_attr(address_space(257))*)0)[12][2] + 0x1AEFE4);
 #endif
 
 #if __SSE4_1__
@@ -1372,15 +1423,18 @@ struct Timer {
     int32_t previous; // 0x0
     int32_t current; // 0x4
     float current_f; // 0x8
-#if NEW_ENGINE_A
+#if NEW_ENGINE_VER == 1
     float* time_scale; // 0xC
-#elif NEW_ENGINE_B
+#elif NEW_ENGINE_VER == 2
     uint32_t scale_table_index; // 0xC
 #endif
     union {
         uint32_t flags; // 0x10
         struct {
             uint32_t initialized : 1;
+#if NEW_ENGINE_VER == 3
+            uint32_t scale_table_index : 2;
+#endif
         };
     };
     // 0x14
@@ -1393,20 +1447,20 @@ struct Timer {
     {}
     inline constexpr Timer(int32_t time) {
         this->set_raw(time);
-#if NEW_ENGINE_A
+#if NEW_ENGINE_VER == 1
         this->time_scale = &GAME_SPEED;
         this->initialized = true;
-#elif NEW_ENGINE_B
+#elif NEW_ENGINE_VER >= 2
         this->scale_table_index = 0;
         this->initialized = true;
 #endif
     }
     inline constexpr Timer(float time) {
         this->set_raw(time);
-#if NEW_ENGINE_A
+#if NEW_ENGINE_VER == 1
         this->time_scale = &GAME_SPEED;
         this->initialized = true;
-#elif NEW_ENGINE_B
+#elif NEW_ENGINE_VER >= 2
         this->scale_table_index = 0;
         this->initialized = true;
 #endif
@@ -1431,10 +1485,10 @@ struct Timer {
 #else
         if (!this->initialized) {
             this->previous = -999999;
-#if NEW_ENGINE_A
+#if NEW_ENGINE_VER == 1
             this->time_scale = &GAME_SPEED;
             this->initialized = true;
-#elif NEW_ENGINE_B
+#elif NEW_ENGINE_VER >= 2
             this->scale_table_index = 0;
             this->initialized = true;
 #endif
@@ -1444,10 +1498,10 @@ struct Timer {
     }
 
     inline constexpr Timer& regcall initialize_important() {
-#if NEW_ENGINE_A
+#if NEW_ENGINE_VER == 1
         this->time_scale = &GAME_SPEED;
         this->initialized = true;
-#elif NEW_ENGINE_B
+#elif NEW_ENGINE_VER >= 2
         this->scale_table_index = 0;
         this->initialized = true;
 #endif
@@ -1785,6 +1839,7 @@ public:
 // Interpolator structs didn't exist in old engine games, but this should work anyway
 //#if NEW_ENGINE
 
+#if !INTERP_MODES_DEFINED
 enum InterpMode : int32_t {
     Linear = 0,
     AccelerateSlow = 1,
@@ -1819,10 +1874,13 @@ enum InterpMode : int32_t {
     DecelParabolaD = 30,
     DecelParabolaE = 31
 };
+#endif
 
+#if !ANGLE_CONSTS_DEFINED
 static inline constexpr const float PI_f = M_PI;
 static inline constexpr const float HALF_PI_f = M_PI_2;
 static inline constexpr const float TWO_PI_f = M_PI * 2.0;
+#endif
 
 static
 #if __cpp_constexpr >= 202110L
