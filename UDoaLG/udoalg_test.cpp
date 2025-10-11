@@ -148,6 +148,11 @@ typedef struct AnmLists AnmLists;
 #define ANM_SLOW_ID_BITS (ANM_FULL_ID_BITS - ANM_FAST_ID_BITS)
 #define INVALID_FAST_ID uint_width_max(ANM_FAST_ID_BITS)
 
+#define ANM_FULL_ID_BITS_C (32)
+#define ANM_FAST_ID_BITS_C (16)
+#define ANM_SLOW_ID_BITS_C (ANM_FULL_ID_BITS_C - ANM_FAST_ID_BITS_C)
+#define INVALID_FAST_ID_C uint_width_max(ANM_FAST_ID_BITS_C)
+
 dllexport gnu_noinline void lock_anm_mutex() {
     rand();
 }
@@ -202,6 +207,12 @@ inline bool __game_thread_flag_B_is_not_true() {
     return !(game_thread && game_thread->__get_unknown_flag_B());
 }
 
+struct AnmLoaded {
+    dllexport gnu_noinline void thiscall cleanup() {
+        use_var(this);
+    }
+};
+
 // size: 0x4
 union AnmID {
     uint32_t full;
@@ -218,7 +229,29 @@ union AnmID {
         return this->full;
     }
     template<typename T> requires(std::is_integral_v<T>)
-       inline constexpr AnmID& operator=(const T& raw) {
+    inline constexpr AnmID& operator=(const T& raw) {
+        this->full = raw;
+        return *this;
+    }
+};
+
+// size: 0x4
+union AnmIDC {
+    uint32_t full;
+    struct {
+        uint32_t fast_id : ANM_FAST_ID_BITS_C;
+        uint32_t slow_id : ANM_SLOW_ID_BITS_C;
+    };
+
+    inline AnmIDC() : full(0) {}
+
+    inline AnmIDC(AnmIDC& id) : full(id.full) {}
+
+    inline constexpr operator uint32_t() const {
+        return this->full;
+    }
+    template<typename T> requires(std::is_integral_v<T>)
+    inline constexpr AnmIDC& operator=(const T& raw) {
         this->full = raw;
         return *this;
     }
@@ -583,13 +616,26 @@ struct AnmManagerC {
     int __int_71C; // 0x71C
     int32_t __current_side; // 0x720
     AnmLists lists[2]; // 0x724
-    AnmFastVM fast_array[uint_width_max(ANM_FAST_ID_BITS)]; // 0x764
+    AnmFastVM fast_array[uint_width_max(ANM_FAST_ID_BITS_C)]; // 0x764
     AnmFastVM fast_array_end;
     int32_t next_snapshot_fast_id; // 0x3260764
     int32_t next_snapshot_discriminator; // 0x3260768
     ZUNList<AnmVM> snapshot_list_head; // 0x326076C
     ZUNList<AnmVM> free_list_head; // 0x326077C
     int __dword_326078C; // 0x326078C
+
+
+    std::atomic<AnmLoaded*> loaded_anm_files[64];
+
+    dllexport void thiscall __cleanup_anm_loaded(uint32_t index) {
+        if (index < countof(this->loaded_anm_files)) {
+            AnmLoaded* loaded = loaded_anm_files[index].exchange(NULL);
+            if (loaded) {
+                loaded->cleanup();
+                free(loaded);
+            }
+        }
+    }
 
     // This looks like it's just D3D config, hopefully it can be called less
     dllexport gnu_noinline void thiscall __sub_rCC030(int32_t layer_index, size_t list_index) {

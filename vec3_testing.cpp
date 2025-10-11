@@ -72,8 +72,11 @@ Variant F1: Half vector PS (low2 + high)
 Variant F2: Half vector SD (low2 + high)
 Variant G1: Half vector PS (low + high2)
 Variant H1: Direct vector PS (low + high2)
-Variant I1: Masked vector MMA
-Variant I2: Masked vector MA
+
+Variant 
+
+Variant R1: Masked vector MMA
+Variant R2: Masked vector MA
 */
 
 #define for_each_vec_type_no_avx512(...) \
@@ -96,8 +99,8 @@ __VA_ARGS__(G1) \
 __VA_ARGS__(H1)
 
 #define for_each_vec_type_avx512(...) \
-__VA_ARGS__(I1) \
-__VA_ARGS__(I2)
+__VA_ARGS__(R1) \
+__VA_ARGS__(R2)
 
 #define for_each_vec_type(...) \
 for_each_vec_type_no_avx512(__VA_ARGS__) \
@@ -727,8 +730,86 @@ test_export test_inline uint128_t regcall test_vec3_H1(Float3* out, const Float3
     PACK_RETURNS;
 }
 
-// Variant I1: Masked vector MMA
-test_export test_inline uint128_t regcall test_vec3_I1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+// Variant I1: Overread RW SS shuffle
+dllexport test_inline uint128_t regcall test_vec3_I1(Float4* out, const Float4* lhs, const Float4* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+#if TEST_USE_ASM
+    __asm__(
+        "MOVUPS %[lhs], %%XMM0 \n"
+        "MOVUPS %[rhs], %%XMM1 \n"
+        "ADDPS %%XMM0, %%XMM1 \n"
+        "MOVSS %[outW], %%XMM0 \n"
+        "SHUFPS $0xE4, %%XMM1, %%XMM0 \n"
+        "SHUFPS $0x24, %%XMM0, %%XMM1 \n"
+        "MOVUPS %%XMM1, %[out]"
+        : [out]"=m"(*out)
+        : [lhs]"m"(*lhs), [rhs]"m"(*rhs),
+          [outW]"m"(out->w)
+        : clobber_list("xmm0", "xmm1")
+    );
+#else
+    vec<float, 4> left = *(vec<float, 4>*)lhs;
+    left += *(vec<float, 4>*)rhs;
+    left[3] = out->w;
+    *(vec<float, 4>*)out = left;
+#endif
+    PACK_RETURNS;
+}
+
+// Variant I2: Overread RW PS shuffle
+dllexport test_inline uint128_t regcall test_vec3_I2(Float4* out, const Float4* lhs, const Float4* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+#if TEST_USE_ASM
+    __asm__(
+        "MOVUPS %[lhs], %%XMM0 \n"
+        "MOVUPS %[rhs], %%XMM1 \n"
+        "ADDPS %%XMM0, %%XMM1 \n"
+        "MOVUPS %[out], %%XMM0 \n"
+        "SHUFPS $0x23, %%XMM1, %%XMM0 \n"
+        "SHUFPS $0x24, %%XMM0, %%XMM1 \n"
+        "MOVUPS %%XMM1, %[out]"
+        : [out]"+m"(*out)
+        : [lhs]"m"(*lhs), [rhs]"m"(*rhs)
+        : clobber_list("xmm0", "xmm1")
+    );
+#else
+    vec<float, 4> left = *(vec<float, 4>*)lhs;
+    left += *(vec<float, 4>*)rhs;
+    left[3] = out->w;
+    *(vec<float, 4>*)out = shufflevec(left, *(vec<float, 4>*)out, 0, 1, 2, 7);
+#endif
+    PACK_RETURNS;
+}
+
+// Variant I3: Overread RW PS bitmask
+dllexport test_inline uint128_t regcall test_vec3_I3(Float4* out, const Float4* lhs, const Float4* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+    static constexpr vec<uint32_t, 4, true> mask_raw = { 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0 };
+#if TEST_USE_ASM
+    __asm__(
+        "MOVUPS %[lhs], %%XMM0 \n"
+        "MOVUPS %[rhs], %%XMM1 \n"
+        "ADDPS %%XMM0, %%XMM1 \n"
+        "MOVUPS %[out], %%XMM0 \n"
+        "MOVAPS %[mask], %%XMM2 \n"
+        "ANDPS %%XMM2, %%XMM1 \n"
+        "ANDNPS %%XMM0, %%XMM2 \n"
+        "ORPS %%XMM2, %%XMM1 \n"
+        "MOVUPS %%XMM1, %[out] \n"
+        : [out]"+m"(*out)
+        : [lhs]"m"(*lhs), [rhs]"m"(*rhs), [mask]"m"(mask_raw)
+        : clobber_list("xmm0", "xmm1", "xmm2")
+    );
+#else
+    vec<float, 4> left = *(vec<float, 4>*)lhs;
+    left += *(vec<float, 4>*)rhs;
+    vec<float, 4> temp = *(vec<float, 4>*)out;
+
+    vec<float, 4> mask = (vec<float, 4>)mask_raw;
+    *(vec<float, 4>*)out = vec_or(vec_and(left, mask), vec_andnot(mask, temp));
+#endif
+    PACK_RETURNS;
+}
+
+// Variant R1: Masked vector MMA
+test_export test_inline uint128_t regcall test_vec3_R1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
     __asm__(
         "VMOVUPS %[lhs], %%XMM0%{%%k1%} \n"
         "VMOVUPS %[rhs], %%XMM1%{%%k1%} \n"
@@ -741,8 +822,8 @@ test_export test_inline uint128_t regcall test_vec3_I1(Float3* out, const Float3
     PACK_RETURNS;
 }
 
-// Variant I2: Masked vector MA
-test_export test_inline uint128_t regcall test_vec3_I2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+// Variant R2: Masked vector MA
+test_export test_inline uint128_t regcall test_vec3_R2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
     __asm__(
         "VMOVUPS %[lhs], %%XMM0%{%%k1%} \n"
         "VADDPS %[rhs], %%XMM0, %%XMM0%{%%k1%}%{z%} \n"
@@ -772,9 +853,13 @@ test_export test_inline uint128_t regcall test_vec3_V1(Float3* out, const Float3
         : clobber_list("xmm0")
     );
 #else
+    MEM_BARRIER;
     float val = lhs->x;
+    MEM_BARRIER;
     val += rhs->x;
+    MEM_BARRIER;
     out->x = val;
+    MEM_BARRIER;
 #endif
     PACK_RETURNS;
 }
@@ -792,10 +877,15 @@ test_export test_inline uint128_t regcall test_vec3_V2(Float3* out, const Float3
         : clobber_list("xmm0", "xmm1")
     );
 #else
+    MEM_BARRIER;
     vec<float, 2> left = *(vec<float, 2>*)lhs;
+    MEM_BARRIER;
     vec<float, 2> right = *(vec<float, 2>*)rhs;
+    MEM_BARRIER;
     left += right;
+    MEM_BARRIER;
     *(vec<float, 2>*)out = left;
+    MEM_BARRIER;
 #endif
     PACK_RETURNS;
 }
@@ -812,10 +902,15 @@ test_export test_inline uint128_t regcall test_vec3_V4(Float3* out, const Float3
         : clobber_list("xmm0")
     );
 #else
+    MEM_BARRIER;
     vec<float, 4> left = *(vec<float, 4>*)lhs;
+    MEM_BARRIER;
     vec<float, 4> right = *(vec<float, 4>*)rhs;
+    MEM_BARRIER;
     left += right;
+    MEM_BARRIER;
     *(vec<float, 4>*)out = left;
+    MEM_BARRIER;
 #endif
     PACK_RETURNS;
 }
@@ -1350,6 +1445,8 @@ int main(int argc, char* argv[]) {
     test_start = rdtsc_max_serialize();
 #endif
 
+    startup_cache_touch();
+
 #if TEST_CONTROLS_FIRST
     for_each_vec_type_control(test_vec3);
 #endif
@@ -1465,8 +1562,8 @@ int main(int argc, char* argv[]) {
 #define desc_F2 "Half vector SD L2H:      "
 #define desc_G1 "Half vector PS LH2:      "
 #define desc_H1 "Direct vector PS LH2:    "
-#define desc_I1 "Masked vector MMA:       "
-#define desc_I2 "Masked vector MA:        "
+#define desc_R1 "Masked vector MMA:       "
+#define desc_R2 "Masked vector MA:        "
 #define desc_V1 "Float1 reference:        "
 #define desc_V2 "Float2 reference:        "
 #define desc_V4 "Float4 reference:        "

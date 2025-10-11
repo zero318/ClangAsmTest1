@@ -16,6 +16,8 @@
 #include <thread>
 #include <random>
 
+#include <memory_resource>
+
 #undef _HAS_CXX20
 #define _HAS_CXX20 1
 #include <memory>
@@ -233,6 +235,18 @@ dllexport uint64_t regparm(3) aullshr_fast(uint64_t value, uint8_t count) {
     return 0;
 }
 */
+
+struct debug_memory_resource : std::pmr::memory_resource {
+    virtual void* do_allocate(std::size_t bytes, std::size_t alignment) {
+
+    }
+    virtual void do_deallocate(void* p, std::size_t bytes, std::size_t alignment) {
+
+    }
+    virtual bool do_is_equal(const std::pmr::memory_resource& other) const noexcept {
+        return true;
+    }
+};
 
 struct MemAllocLog {
     dllexport gnu_noinline void* thiscall allocate(const char* str = "whatever") {
@@ -486,6 +500,41 @@ struct Timer {
     // Rx29400
     dllexport int32_t thiscall operator++() {
         return this->tick_new();
+    }
+
+    // Rx5C2E0
+    dllexport int32_t thiscall operator*(int32_t value) {
+        return this->current * value;
+    }
+    // Rx72040
+    dllexport int32_t thiscall operator%(int32_t value) {
+        return this->current % value;
+    }
+
+    // Rx23560
+    dllexport bool thiscall operator<(int32_t time) {
+        return this->current < time;
+    }
+    // Rx23590
+    dllexport bool thiscall operator<=(int32_t time) {
+        return this->current <= time;
+    }
+    // Rx235C0
+    dllexport bool thiscall operator>=(int32_t time) {
+        return this->current >= time;
+    }
+    // Rx61070
+    dllexport bool thiscall operator>(int32_t time) {
+        return this->current > time;
+    }
+
+    // Rx785E0
+    dllexport bool thiscall operator==(int32_t time) {
+        return this->current == time;
+    }
+    // Rx785E0
+    dllexport bool thiscall operator!=(int32_t time) {
+        return this->current != time;
     }
 };
 
@@ -941,6 +990,10 @@ struct ZUNListIterable : ZUNList<T> {
     ZUNListIterable() : tail(this) {
         this->tail = this;
     }
+
+    ZUNList<T>* get_head() {
+        return this->get_next();
+    }
     
     // Rx4A640
     void initialize(T* data) {
@@ -965,7 +1018,10 @@ struct ZUNListIterable : ZUNList<T> {
         iter.set_faster(this->next, NULL);
     }
     inline ZUNListIter<T> begin_fast() {
-        return { this->next, NULL };
+        //return { this->next, NULL };
+        ZUNListIter<T> iter;
+        iter.set_fast(this->next, NULL);
+        return iter;
     }
 #endif
     
@@ -1870,6 +1926,19 @@ struct ZUNInterp { //       0x54    0x40    0x2C
     int32_t end_time; //    0x4C    0x38    0x24
     int32_t mode; //        0x50    0x3C    0x28
 
+    dllexport gnu_noinline void thiscall initialize(int32_t end_time, int32_t mode, const T& initial_value, const T& final_value) {
+        this->end_time = end_time;
+        this->mode = mode;
+        this->initial_value = initial_value;
+        this->final_value = final_value;
+        this->current = initial_value;
+        this->time = 0;
+    }
+
+    dllexport gnu_noinline bool thiscall __running() {
+        return this->time < this->end_time;
+    }
+
     /*
     template <typename T>
     T Interp<T>::step() {
@@ -1926,13 +1995,75 @@ struct ZUNInterp { //       0x54    0x40    0x2C
     }
     */
 
-    T cdecl step() {
+    dllexport gnu_noinline T cdecl recalculate_current_instead_of_just_reading_the_current_field() {
+        if (this->mode == ConstantVelocity) {
+            this->initial_value = this->initial_value + this->final_value;
+            this->current = this->initial_value;
+        } else if (this->mode == ConstantAccel) {
+            this->initial_value = this->initial_value + this->bezier2;
+            this->bezier2 = this->bezier2 + this->final_value;
+            this->current = this->initial_value;
+        } else if (this->mode == Bezier) {
+            float t = this->time.current_f / this->end_time;
+            float a = pow_2(t - 1.0f) * (2.0f * t + 1.0f);
+            float b = pow_2(t) * (3.0f - 2.0f * t);
+            float c = pow_2(1.0f - t) * t;
+            float d = (t - 1.0f) * pow_2(t);
+            this->current = this->initial_value * a + this->final_value * b + this->bezier1 * c + this->bezier2 * d;
+        } else {
+            float interp_value = __interp_inner_thing(this->mode, this->time.current_f, (float)this->end_time);
+            this->current = (this->final_value - this->initial_value) * interp_value + this->initial_value;
+        }
+
+        return this->current;
+    }
+
+    dllexport gnu_noinline T cdecl step() {
         if (this->end_time > 0) {
             ++this->time;
             if (this->time >= this->end_time) {
                 this->time = this->end_time;
+
+                this->end_time = 0;
+
+                if (this->mode != ConstantVelocity && this->mode != ConstantAccel) {
+                    return this->final_value;
+                } else {
+                    return this->initial_value;
+                }
             }
         }
+        else if (this->end_time == 0) {
+            if (this->mode != ConstantVelocity && this->mode != ConstantAccel) {
+                return this->final_value;
+            } else {
+                return this->initial_value;
+            }
+        }
+
+        if (this->mode == ConstantVelocity) {
+            this->initial_value = this->initial_value + this->final_value;
+            this->current = this->initial_value;
+        }
+        else if (this->mode == ConstantAccel) {
+            this->initial_value = this->initial_value + this->bezier2;
+            this->bezier2 = this->bezier2 + this->final_value;
+            this->current = this->initial_value;
+        }
+        else if (this->mode == Bezier) {
+            float t = this->time.current_f / this->end_time;
+            float a = pow_2(t - 1.0f) * (2.0f * t + 1.0f);
+            float b = pow_2(t) * (3.0f - 2.0f * t);
+            float c = pow_2(1.0f - t) * t;
+            float d = (t - 1.0f) * pow_2(t);
+            this->current = this->initial_value * a + this->final_value * b + this->bezier1 * c + this->bezier2 * d;
+        }
+        else {
+            float interp_value = __interp_inner_thing(this->mode, this->time.current_f, (float)this->end_time);
+            this->current = (this->final_value - this->initial_value) * interp_value + this->initial_value;
+        }
+
+        return this->current;
     }
 
 #if INCLUDE_REPLACEMENT_CODE
@@ -2404,8 +2535,10 @@ dllexport Rng REPLAY_RNG = Rng(1);
 dllexport Rng RNG = Rng(1);
 
 typedef struct GameThread GameThread;
+typedef struct Gui Gui;
 
 dllexport GameThread* GAME_THREAD_PTR;
+dllexport Gui* GUI_PTR;
 
 // size: 0xB0
 struct Config {
@@ -2463,6 +2596,23 @@ inline bool __game_thread_flag_B_is_not_true() {
     return !(game_thread && game_thread->__get_unknown_flag_B());
 }
 
+// size: 0x140
+struct MsgVM {
+
+};
+
+
+struct Gui {
+    unknown_fields(0x1BC); // 0x0
+    MsgVM* msg_vm; // 0x1BC
+    // 0x1C0
+
+    // Rx78160
+    dllexport gnu_noinline BOOL thiscall msg_vm_active() {
+        return this->msg_vm != NULL;
+    }
+};
+
 typedef struct BulletManager BulletManager;
 typedef struct Player Player;
 typedef struct EnemyManager EnemyManager;
@@ -2474,6 +2624,14 @@ typedef struct PopupManager PopupManager;
 typedef struct EffectManager EffectManager;
 typedef struct HitboxManager HitboxManager;
 typedef struct PlayerStoneManager PlayerStoneManager;
+typedef struct StoneManager StoneManager;
+
+enum StoneColor {
+    RedStone = 0,
+    BlueStone = 1,
+    YellowStone = 2,
+    GreenStone = 3
+};
 
 /*
 struct CPlayerStats // sizeof=0xF0
@@ -2705,6 +2863,14 @@ struct GameManager {
 
 dllexport GameManager GAME_MANAGER;
 
+// Rx78040
+dllexport gnu_noinline BombManager* cdecl get_bomb_manager(int32_t side) {
+    return GAME_MANAGER.get_game_side(side)->bomb_manager_ptr;
+}
+// Rx78060
+dllexport gnu_noinline EnemyManager* cdecl get_enemy_manager(int32_t side) {
+    return GAME_MANAGER.get_game_side(side)->enemy_manager_ptr;
+}
 // Rx78E80
 dllexport gnu_noinline BulletManager* cdecl get_bullet_manager(int32_t side) {
     return GAME_MANAGER.get_game_side(side)->bullet_manager_ptr;
@@ -5644,6 +5810,20 @@ return_delete:
 }
 #endif
 
+// size: 0x38
+struct EffectInitData {
+    Float3 position; // 0x0
+    Float3 __float3_C; // 0xC
+    float __float_18; // 0x18
+    float __float_1C; // 0x1C
+    D3DCOLOR color; // 0x20
+    float __float_24; // 0x24
+    uint8_t __byte_28; // 0x28
+    padding_bytes(0x3); // 0x29
+    Float3 __float3_2C; // 0x2C
+    // 0x38
+};
+
 // size: 0x48
 struct MotionData {
     Float3 position; // 0x0
@@ -5675,10 +5855,18 @@ struct MotionData {
     }
 };
 
+typedef struct Enemy Enemy;
+
 // size: 0x4
 struct EnemyID {
     uint32_t full; // 0x0
     // 0x4
+
+    // RxAAAC0
+    dllexport gnu_noinline Enemy* thiscall __get_enemy_from_sides();
+
+    // RxAADB0
+    dllexport gnu_noinline Float3* thiscall get_position();
 };
 
 typedef struct PlayerDamageArea PlayerDamageArea;
@@ -7150,7 +7338,7 @@ struct EnemyData {
     Float2 hitbox_size; // 0x5C
     Float2 collision_size; // 0x64
     Float3 __float3_6C; // 0x6C
-    EnemyEclVariables variables; // 0x88
+    EnemyEclVariables variables; // 0x78
     Timer ecl_time; // 0xA8
     Timer boss_timer; // 0xB8
     MotionData previous_motion; // 0xC8
@@ -7310,6 +7498,486 @@ struct EnemyManager : ZUNTask {
     void kill_all() {
         
         //this->data.__timer_8C++;
+    }
+
+    // Rx98A80
+    dllexport gnu_noinline Enemy* thiscall get_enemy_with_id(uint32_t id) {
+        // TODO
+        use_var(this);
+        use_var(id);
+        return (Enemy*)rand();
+    }
+
+    // Rx9BE20
+    dllexport gnu_noinline bool thiscall __boss_is_active() {
+        // TODO
+        use_var(this);
+        return (bool)rand();
+    }
+
+    // RxA8920
+    dllexport gnu_noinline Enemy* thiscall allocate_new_enemy(const char* sub_name, EnemyInitData* data, Enemy* parent) {
+        use_var(this);
+        use_var(sub_name);
+        use_var(data);
+        use_var(parent);
+        return (Enemy*)rand();
+    }
+
+    // RxAAE10
+    dllexport gnu_noinline AnmLoaded* thiscall anm_file_lookup(int32_t index) {
+        use_var(this);
+        use_var(index);
+        return (AnmLoaded*)rand();
+    }
+};
+
+// RxAAAC0
+dllexport gnu_noinline Enemy* thiscall EnemyID::__get_enemy_from_sides() {
+    Enemy* ret = NULL;
+    if (get_enemy_manager(0)) {
+        ret = get_enemy_manager(0)->get_enemy_with_id(this->full);
+    }
+    return ret;
+}
+
+// RxAADB0
+dllexport gnu_noinline Float3* thiscall EnemyID::get_position() {
+    if (this->__get_enemy_from_sides()) {
+        return &this->__get_enemy_from_sides()->data.current_motion.position;
+    }
+    static Float3 DUMMY_FLOAT3 = {};
+    return &DUMMY_FLOAT3;
+}
+
+// Rx173FF0
+int32_t STONE_LIFE_LOOKUP[4][5] = {
+    { 3200, 3400, 3700, 3900, 4000 },
+    { 3200, 3400, 3700, 3900, 4000 },
+    { 3200, 3400, 3700, 3900, 4000 },
+    { 3200, 3400, 3700, 3900, 4000 }
+};
+// Rx1B09D8
+char* STONE_SUB_NAMES[4] = {
+    "StoneR",
+    "StoneB",
+    "StoneY",
+    "StoneG"
+};
+// Rx1B09E8
+char* STONE_ATTACK_SUB_NAMES[4][5] = {
+    { "StoneAttackLevel_R1", "StoneAttackLevel_R2", "StoneAttackLevel_R3", "StoneAttackLevel_R4", "StoneAttackLevel_R5" },
+    { "StoneAttackLevel_B1", "StoneAttackLevel_B2", "StoneAttackLevel_B3", "StoneAttackLevel_B4", "StoneAttackLevel_B5" },
+    { "StoneAttackLevel_Y1", "StoneAttackLevel_Y2", "StoneAttackLevel_Y3", "StoneAttackLevel_Y4", "StoneAttackLevel_Y5" },
+    { "StoneAttackLevel_G1", "StoneAttackLevel_G2", "StoneAttackLevel_G3", "StoneAttackLevel_G4", "StoneAttackLevel_G5" }
+};
+// Rx1B0A38
+D3DCOLOR STONE_COLOR_LOOKUP[4] = {
+    PackD3DCOLOR(0xFF, 0xFF, 0x40, 0x40),
+    PackD3DCOLOR(0xFF, 0x40, 0x40, 0xFF),
+    PackD3DCOLOR(0xFF, 0xF0, 0xF0, 0x40),
+    PackD3DCOLOR(0xFF, 0x40, 0xFF, 0x40)
+};
+
+// size: 0x34
+struct StoneEnemy {
+    ZUNList<StoneEnemy> list_node; // 0x0
+    EnemyID parent_id; // 0x14
+    AnmID __anm_id_18; // 0x18
+    Timer ticks_alive; // 0x1C
+    int32_t color; // 0x2C
+    int32_t level; // 0x30
+    // 0x34
+
+    // Rx112F30
+    dllexport gnu_noinline void thiscall cleanup() {
+        this->list_node.unlink();
+        //this->__anm_id_18.mark_tree_for_delete();
+        MEM_ALLOC_LOG->delete_mem(this);
+    }
+
+    // Rx112FB0
+    dllexport gnu_noinline void thiscall initialize(EnemyID parent_id, int32_t stone_type) {
+        this->parent_id = parent_id;
+        this->ticks_alive = 0;
+        this->color = stone_type;
+
+        AnmLoaded* first_ecl_anm = get_enemy_manager(0)->anm_file_lookup(2);
+
+        Float3 positionA = { 0.0f, 0.0f, 0.0f };
+        // This script ID corresponds to some random fairy...?
+        //this->__anm_id_18 = first_ecl_anm->instantiate_vm_to_world_list_back2("enemy", 319 + stone_type, &position, 0.0f, -1, NULL);
+
+        // something with spawning an effect
+
+        Enemy* enemy = this->parent_id.__get_enemy_from_sides();
+        EnemyInitData enemy_init_data = {};
+        enemy_init_data.position = { 0.0f, 0.0f, 0.0f };
+        if (enemy) {
+            enemy_init_data.variables = enemy->data.variables;
+        }
+
+        int32_t stone_levels[4] = {
+            get_globals_side(0)->stone_level_red,
+            get_globals_side(0)->stone_level_blue,
+            get_globals_side(0)->stone_level_yellow,
+            get_globals_side(0)->stone_level_green
+        };
+
+        this->level = stone_levels[stone_type];
+
+        enemy = get_enemy_manager(0)->allocate_new_enemy(STONE_ATTACK_SUB_NAMES[stone_type][this->level], &enemy_init_data, enemy);
+
+        switch (get_globals_side(0)->stone_enemy_count_total % 3) {
+            case 0:
+                enemy->data.drops.main_id = BombFragmentItem;
+                break;
+            case 1:
+                enemy->data.drops.main_id = BombFragmentItem;
+                break;
+            case 2:
+                enemy->data.drops.main_id = LifeFragmentItem;
+                break;
+        }
+
+        switch (this->level) {
+            case 0:
+                enemy->data.drops.extra_ids[0] = 31;
+                enemy->data.drops.extra_ids[1] = 31;
+                enemy->data.drops.width = 64.0f;
+                enemy->data.drops.height = 64.0f;
+                break;
+            case 1:
+                enemy->data.drops.extra_ids[0] = 33;
+                enemy->data.drops.extra_ids[1] = 33;
+                enemy->data.drops.width = 80.0f;
+                enemy->data.drops.height = 80.0f;
+                break;
+            case 2:
+                enemy->data.drops.extra_ids[0] = 36;
+                enemy->data.drops.extra_ids[1] = 36;
+                enemy->data.drops.width = 88.0f;
+                enemy->data.drops.height = 88.0f;
+                break;
+            case 3:
+                enemy->data.drops.extra_ids[0] = 39;
+                enemy->data.drops.extra_ids[1] = 39;
+                enemy->data.drops.width = 96.0f;
+                enemy->data.drops.height = 96.0f;
+                break;
+            case 4:
+                enemy->data.drops.extra_ids[0] = 42;
+                enemy->data.drops.extra_ids[1] = 42;
+                enemy->data.drops.width = 112.0f;
+                enemy->data.drops.height = 112.0f;
+                break;
+        }
+        switch (stone_type) {
+            case RedStone: // 0
+                get_globals_side(0)->stone_enemy_count_red += 1;
+                break;
+            case BlueStone: // 1
+                get_globals_side(0)->stone_enemy_count_blue += 1;
+                break;
+            case YellowStone: // 2
+                get_globals_side(0)->stone_enemy_count_yellow += 1;
+                break;
+            case GreenStone: // 3
+                get_globals_side(0)->stone_enemy_count_green += 1;
+                break;
+        }
+        get_globals_side(0)->stone_enemy_count_total += 1;
+    }
+
+    // Rx112990
+    dllexport gnu_noinline BOOL thiscall on_tick() {
+        Enemy* parent = this->parent_id.__get_enemy_from_sides();
+        if (!parent) {
+            // The main enemy died
+            return true;
+        }
+
+        if (this->ticks_alive > 60) {
+
+            EffectInitData effect_init_data = {};
+
+            effect_init_data.color = STONE_COLOR_LOOKUP[this->color];
+            RED(effect_init_data.color) -= REPLAY_RNG.rand_uint() % 64;
+            GREEN(effect_init_data.color) -= REPLAY_RNG.rand_uint() % 64;
+            BLUE(effect_init_data.color) -= REPLAY_RNG.rand_uint() % 64;
+
+            effect_init_data.position = *this->parent_id.get_position();
+
+            //get_effect_manager(0)->instantiate_effect_vm_to_world_list_back(10, &effect_init_data, NULL);
+        }
+        this->ticks_alive++;
+
+        return false;
+    }
+};
+
+// size: 0xB4
+struct StoneManager {
+    ZUNListIterable<StoneEnemy> stone_list; // 0x0
+    Timer summon_timer; // 0x18
+    Timer passive_boss_meter_timer; // 0x28
+    ZUNInterp<float> summon_text_scale_interp; // 0x38
+    ZUNInterp<uint8_t> summon_text_alpha_interp; // 0x64
+    ZUNInterp<float> summon_meter_drain_interp; // 0x84
+    bool summon_active; // 0xB0
+    padding_bytes(0x3); // 0xB1
+    // 0xB4
+
+    // Invoked from EnemyManager::on_tick
+    // Rx1120D0
+    dllexport gnu_noinline void thiscall on_tick() {
+        if (GAME_MANAGER.__int_70 == 2) {
+            get_globals_side(0)->summon_meter = 0;
+        }
+        if (
+            get_enemy_manager(0) &&
+            get_enemy_manager(0)->__boss_is_active() &&
+            !this->summon_active &&
+            !GUI_PTR->msg_vm_active()
+        ) {
+            if (this->passive_boss_meter_timer % 3 <= 1) {
+                get_globals_side(0)->summon_meter += 1;
+            }
+            this->passive_boss_meter_timer++;
+        }
+        if (
+            !this->summon_active &&
+            get_globals_side(0)->summon_meter >= get_globals_side(0)->summon_meter_max &&
+            !GUI_PTR->msg_vm_active() //&&
+            //STAGE_CLEAR_PTR == NULL
+        ) {
+            EnemyInitData enemy_init_data = {}; // -0x74
+
+            int32_t stone_type = 0; // -0x80
+            int32_t priority = -1; // -0x84
+            int32_t stone_level = 0; // -0x7C
+
+            if (get_globals_side(0)->next_stone_enemy_type >= 0) {
+                stone_type = get_globals_side(0)->next_stone_enemy_type;
+                switch (stone_type) {
+                    default:
+                    case RedStone: // 0
+                        stone_level = get_globals_side(0)->stone_level_red;
+                        break;
+                    case BlueStone: // 1
+                        stone_level = get_globals_side(0)->stone_level_blue;
+                        break;
+                    case YellowStone: // 2
+                        stone_level = get_globals_side(0)->stone_level_yellow;
+                        break;
+                    case GreenStone: // 3
+                        stone_level = get_globals_side(0)->stone_level_green;
+                        break;
+                }
+                get_globals_side(0)->next_stone_enemy_type = -1;
+            }
+            else {
+                if (get_globals_side(0)->stone_priority_red >= priority) {
+                    priority = get_globals_side(0)->stone_priority_red;
+                    stone_level = get_globals_side(0)->stone_level_red;
+                    stone_type = RedStone;
+                }
+                if (get_globals_side(0)->stone_priority_blue >= priority) {
+                    priority = get_globals_side(0)->stone_priority_blue;
+                    stone_level = get_globals_side(0)->stone_level_blue;
+                    stone_type = BlueStone;
+                }
+                if (get_globals_side(0)->stone_priority_yellow >= priority) {
+                    priority = get_globals_side(0)->stone_priority_yellow;
+                    stone_level = get_globals_side(0)->stone_level_yellow;
+                    stone_type = YellowStone;
+                }
+                if (get_globals_side(0)->stone_priority_green >= priority) {
+                    priority = get_globals_side(0)->stone_priority_green;
+                    stone_level = get_globals_side(0)->stone_level_green;
+                    stone_type = GreenStone;
+                }
+            }
+
+            Float3 position = { REPLAY_RNG.rand_float_signed() * 144.0f, 120.0f, 0.0f };
+            enemy_init_data.position = position;
+            enemy_init_data.life = STONE_LIFE_LOOKUP[stone_type][stone_level];
+            this->summon_active = true;
+            get_enemy_manager(0)->allocate_new_enemy(STONE_SUB_NAMES[stone_type], &enemy_init_data, NULL);
+
+            switch (stone_type) {
+                case RedStone: // 0
+                    get_globals_side(0)->stone_priority_red = 0;
+                    break;
+                case BlueStone: // 1
+                    get_globals_side(0)->stone_priority_blue = 0;
+                    break;
+                case YellowStone: // 2
+                    get_globals_side(0)->stone_priority_yellow = 0;
+                    break;
+                case GreenStone: // 3
+                    get_globals_side(0)->stone_priority_green = 0;
+                    break;
+            }
+
+            get_globals_side(0)->summon_meter -= get_globals_side(0)->summon_meter_max / 3;
+            this->summon_timer = 0;
+
+            this->summon_text_scale_interp.initialize(60, DecelerateSlow, 1.0f, 0.0f);
+            this->summon_text_alpha_interp.initialize(120, DecelerateSlow, 255, 0);
+            this->summon_meter_drain_interp.initialize(1320, Decelerate, 1.0f, 0.0f);
+        }
+
+        size_t stone_count = 0;
+        for (ZUNList<StoneEnemy>* node : this->stone_list) {
+            ++stone_count;
+            if (node->get_data()->on_tick()) {
+                node->get_data()->cleanup();
+                this->summon_active = false;
+            }
+        }
+
+        if (this->summon_active) {
+            if (
+                this->summon_timer > 10 &&
+                stone_count == 0
+            ) {
+                this->summon_active = false;
+            }
+
+            get_globals_side(0)->summon_meter = get_globals_side(0)->summon_meter_max * this->summon_meter_drain_interp.recalculate_current_instead_of_just_reading_the_current_field();
+            this->summon_timer++;
+
+            this->summon_text_scale_interp.step();
+            this->summon_text_alpha_interp.step();
+            this->summon_meter_drain_interp.step();
+
+            __asm nop // why is there a nop here
+
+            if (
+                !this->summon_meter_drain_interp.__running() ||
+                this->summon_timer >= 1800
+            ) {
+                this->summon_active = false;
+                this->summon_timer = 0;
+                for (ZUNList<StoneEnemy>* node : this->stone_list) {
+                    node->get_data()->cleanup();
+                }
+            }
+        }
+    }
+
+    // invoked from EnemyManager::on_draw
+    // Rx112AA0
+    dllexport gnu_noinline void thiscall on_draw() {
+        if (
+            this->summon_active &&
+            this->stone_list.get_head() && // stone list not empty
+            this->summon_timer < 200
+        ) {
+            StoneEnemy* stone = this->stone_list.get_head()->get_data();
+            
+            //ASCII_MANAGER_PTR->__sub_rB8620(0, 0);
+            //ASCII_MANAGER_PTR->__sub_r88B00(12);
+
+            D3DCOLOR colors[4] = {
+                PackD3DCOLOR(0xFF, 0xFF, 0x40, 0x40),
+                PackD3DCOLOR(0xFF, 0x40, 0x40, 0xFF),
+                PackD3DCOLOR(0xFF, 0xFF, 0xFF, 0x00),
+                PackD3DCOLOR(0xFF, 0x40, 0xFF, 0x40)
+            };
+
+            if (this->summon_timer % 8 <= 5) {
+                //ASCII_MANAGER_PTR->set_color(colors[stone->color]);
+            }
+            else {
+                //ASCII_MANAGER_PTR->set_color(PackD3DCOLOR(0xFF, 0xFF, 0xFF, 0xFF));
+            }
+
+            Float3 position = { 224.0f, 160.0f, 0.0f };
+
+            Float3 parent_position;
+            //parent_position = get_enemy_manager(0)->get_enemy_with_id(stone->parent_id.full)->get_current_motion().position;
+            if (parent_position.x < -112.0f) {
+                parent_position.x = -112.0f;
+            }
+            else if (parent_position.x > 112.0f) {
+                parent_position.x = 112.0f;
+            }
+            position.x = parent_position.x;
+            position.x += 224.0f;
+
+            //ASCII_MANAGER_PTR->add_string(&position, std::string_view("Wonder Stone Appeared!"));
+            position.y += 16.0f;
+            //ASCII_MANAGER_PTR->add_string(&position, std::string_view("Level "), stone->level);
+            position.y -= 16.0f;
+
+            float scale = this->summon_text_scale_interp.recalculate_current_instead_of_just_reading_the_current_field();
+
+            //ASCII_MANAGER_PTR->__sub_rE6920(1);
+            //ASCII_MANAGER_PTR->set_scale(scale + 1.0f, scale + 1.0f);
+            //ASCII_MANAGER_PTR->set_alpha(this->summon_text_alpha_interp.recalculate_current_instead_of_just_reading_the_current_field());
+            
+            //ASCII_MANAGER_PTR->add_string(&position, std::string_view("Wonder Stone Appeared!"));
+            position.y += 16.0f;
+            //ASCII_MANAGER_PTR->add_string(&position, std::string_view("Level "), stone->level);
+            position.y -= 16.0f;
+
+            //ASCII_MANAGER_PTR->set_scale(scale * 0.66f + 1.0f, scale * 0.66f + 1.0f);
+
+            //ASCII_MANAGER_PTR->add_string(&position, std::string_view("Wonder Stone Appeared!"));
+            position.y += 16.0f;
+            //ASCII_MANAGER_PTR->add_string(&position, std::string_view("Level "), stone->level);
+            position.y -= 16.0f;
+
+            //ASCII_MANAGER_PTR->set_scale(scale * 0.33f + 1.0f, scale * 0.33f + 1.0f);
+
+            //ASCII_MANAGER_PTR->add_string(&position, std::string_view("Wonder Stone Appeared!"));
+            position.y += 16.0f;
+            //ASCII_MANAGER_PTR->add_string(&position, std::string_view("Level "), stone->level);
+            position.y -= 16.0f;
+
+            //ASCII_MANAGER_PTR->__reset_properties();
+        }
+    }
+
+    // Rx113F70
+    dllexport gnu_noinline int32_t thiscall __get_summon_color() {
+        if (
+            this->summon_active &&
+            this->stone_list.get_head() // stone list not empty
+        ) {
+            return this->stone_list.get_head()->get_data()->color;
+        }
+
+        int32_t priority = -1;
+        int32_t stone_type = 0;
+        if (get_globals_side(0)->stone_priority_red > priority) {
+            priority = get_globals_side(0)->stone_priority_red;
+            stone_type = RedStone;
+        }
+        if (get_globals_side(0)->stone_priority_blue > priority) {
+            priority = get_globals_side(0)->stone_priority_blue;
+            stone_type = BlueStone;
+        }
+        if (get_globals_side(0)->stone_priority_yellow > priority) {
+            priority = get_globals_side(0)->stone_priority_yellow;
+            stone_type = YellowStone;
+        }
+        if (get_globals_side(0)->stone_priority_green > priority) {
+            priority = get_globals_side(0)->stone_priority_green;
+            stone_type = GreenStone;
+        }
+
+        return stone_type;
+    }
+
+    // Invoked from the __stone_enemy_spawn ECL instruction
+    // Rx112F60
+    dllexport gnu_noinline void thiscall allocate_new_stone_enemy(EnemyID parent_id, int32_t stone_type) {
+        StoneEnemy* stone_enemy = MEM_ALLOC_LOG->allocate_new<StoneEnemy>();
+        this->stone_list.append(&stone_enemy->list_node);
+        stone_enemy->initialize(parent_id, stone_type);
     }
 };
 
