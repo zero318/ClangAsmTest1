@@ -7604,11 +7604,28 @@ struct StoneEnemy {
 
         AnmLoaded* first_ecl_anm = get_enemy_manager(0)->anm_file_lookup(2);
 
-        Float3 positionA = { 0.0f, 0.0f, 0.0f };
+        Float3 position = { 0.0f, 0.0f, 0.0f };
         // This script ID corresponds to some random fairy...?
         //this->__anm_id_18 = first_ecl_anm->instantiate_vm_to_world_list_back2("enemy", 319 + stone_type, &position, 0.0f, -1, NULL);
 
-        // something with spawning an effect
+        EffectInitData effect_init_data = {};
+        effect_init_data.position = *this->parent_id.get_position();
+        effect_init_data.__float_18 = 0.06f;
+        effect_init_data.__float_1C = 128.0f;
+
+        D3DCOLOR colors[4] = {
+            PackD3DCOLOR(0xFF, 0xFF, 0x00, 0x00),
+            PackD3DCOLOR(0xFF, 0x00, 0x00, 0xFF),
+            PackD3DCOLOR(0xFF, 0xFF, 0xFF, 0x00),
+            PackD3DCOLOR(0xFF, 0x00, 0xFF, 0x00)
+        };
+
+        effect_init_data.color = colors[stone_type];
+
+        //get_effect_manager(0)->instantiate_effect_vm_to_world_list_back(11, &effect_init_data, NULL);
+
+        //this->__anm_id_18.set_associated_entity(this);
+        //this->__anm_id_18.set_on_tick2_func(__on_tick_for_stone_enemy);
 
         Enemy* enemy = this->parent_id.__get_enemy_from_sides();
         EnemyInitData enemy_init_data = {};
