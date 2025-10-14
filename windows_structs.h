@@ -2166,8 +2166,14 @@ ValidateStructAlignment(0x4, RTL_USER_PROCESS_PARAMETERSX<32>);
 ValidateStructSize(0x400, RTL_USER_PROCESS_PARAMETERSX<64>);
 ValidateStructAlignment(0x8, RTL_USER_PROCESS_PARAMETERSX<64>);
 
+template<size_t bits = native_bits>
+using PRTL_USER_PROCESS_PARAMETERSX = PTRZX<bits, RTL_USER_PROCESS_PARAMETERSX<bits>>;
+
 __if_not_exists(RTL_USER_PROCESS_PARAMETERS) {
     using RTL_USER_PROCESS_PARAMETERS = RTL_USER_PROCESS_PARAMETERSX<>;
+}
+__if_not_exists(PRTL_USER_PROCESS_PARAMETERS) {
+    using PRTL_USER_PROCESS_PARAMETERS = PRTL_USER_PROCESS_PARAMETERSX<>;
 }
 
 template<size_t bits = native_bits>
@@ -2877,6 +2883,9 @@ ValidateStructAlignment(0x8, OBJECT_ATTRIBUTESX<64>);
 template<size_t bits = native_bits>
 using POBJECT_ATTRIBUTESX = PTRZX<bits, OBJECT_ATTRIBUTESX<bits>>;
 
+__if_not_exists(OBJECT_ATTRIBUTES) {
+    using OBJECT_ATTRIBUTES = OBJECT_ATTRIBUTESX<>;
+}
 __if_not_exists(POBJECT_ATTRIBUTES) {
     using POBJECT_ATTRIBUTES = POBJECT_ATTRIBUTESX<>;
 }
@@ -2918,8 +2927,14 @@ ValidateStructAlignment(0x4, CLIENT_IDX<32>);
 ValidateStructSize(0x10, CLIENT_IDX<64>);
 ValidateStructAlignment(0x8, CLIENT_IDX<64>);
 
+template<size_t bits = native_bits>
+using PCLIENT_IDX = PTRZX<bits, CLIENT_IDX<bits>>;
+
 __if_not_exists(CLIENT_ID) {
     using CLIENT_ID = CLIENT_IDX<>;
+}
+__if_not_exists(PCLIENT_ID) {
+    using PCLIENT_ID = PCLIENT_IDX<>;
 }
 
 template<size_t bits = native_bits>
@@ -3352,6 +3367,28 @@ static inline constexpr auto cteb = cteb32;
 static inline constexpr auto teb = teb64;
 static inline constexpr auto cteb = cteb64;
 #endif
+
+template<size_t bits = native_bits>
+struct INITIAL_TEBX {
+    struct {
+        PTRZX<bits> OldStackBase; // 0x0, 0x0
+        PTRZX<bits> OldStackLimit; // 0x4, 0x8
+    } OldInitialTeb;
+    PTRZX<bits> StackBase; // 0x8, 0x10
+    PTRZX<bits> StackLimit; // 0xC, 0x18
+    PTRZX<bits> StackAllocationBase; // 0x10, 0x20
+    // 0x14, 0x28
+};
+
+template<size_t bits = native_bits>
+using PINITIAL_TEBX = PTRZX<bits, INITIAL_TEBX<bits>>;
+
+__if_not_exists(INITIAL_TEB) {
+    using INITIAL_TEB = INITIAL_TEBX<>;
+}
+__if_not_exists(PINITIAL_TEB) {
+    using PINITIAL_TEB = PINITIAL_TEBX<>;
+}
 
 #define peb32 (teb32->ProcessEnvironmentBlock)
 #define peb64 (teb64->ProcessEnvironmentBlock)
@@ -4260,9 +4297,347 @@ extern "C" {
     extern const KUSER_SHARED_DATAX<> USER_SHARED_DATA asm("_USER_SHARED_DATA");
 }
 
-#define USER_SHARED_DATAR(bits) (*(const KUSER_SHARED_DATAX<bits>*)0x7FFE0000)
+#define _USER_SHARED_DATAR(bits) (*(const KUSER_SHARED_DATAX<bits>*)0x7FFE0000)
+#define USER_SHARED_DATAR(...) _USER_SHARED_DATAR(MACRO_DEFAULT_ARG(native_bits,__VA_ARGS__))
 
 //static inline const KUSER_SHARED_DATAX<>& USER_SHARED_DATAR = *(const KUSER_SHARED_DATAX<>*)0x7FFE0000;
+
+/*========================================
+    Other Stuff idk
+========================================*/
+
+struct PROCESS_PRIORITY_CLASSX {
+    BOOLEAN Foreground; // 0x0
+    UCHAR PriorityClass; // 0x1
+    // 0x2
+};
+ValidateStructSize(0x2, PROCESS_PRIORITY_CLASSX);
+
+template<size_t bits = native_bits>
+using PPROCESS_PRIORITY_CLASSX = PTRZX<bits, PROCESS_PRIORITY_CLASSX>;
+
+__if_not_exists(PROCESS_PRIORITY_CLASS) {
+    using PROCESS_PRIORITY_CLASS = PROCESS_PRIORITY_CLASSX;
+}
+__if_not_exists(PPROCESS_PRIORITY_CLASS) {
+    using PPROCESS_PRIORITY_CLASS = PPROCESS_PRIORITY_CLASSX<>;
+}
+
+template<size_t bits = native_bits>
+struct RTL_RELATIVE_NAMEX {
+    UNICODE_STRINGX<bits> RelativeName;
+    HANDLEX<bits> ContainingDirectory;
+    PTRZX<bits> CurDirRef;
+};
+template<size_t bits = native_bits>
+using PRTL_RELATIVE_NAMEX = PTRZX<bits, RTL_RELATIVE_NAMEX<bits>>;
+
+__if_not_exists(RTL_RELATIVE_NAME) {
+    using RTL_RELATIVE_NAME = RTL_RELATIVE_NAMEX<>;
+}
+__if_not_exists(PRTL_RELATIVE_NAME) {
+    using PRTL_RELATIVE_NAME = PRTL_RELATIVE_NAMEX<>;
+}
+
+template<size_t bits = native_bits>
+struct IO_STATUS_BLOCKX {
+    union {
+        NTSTATUS Status;
+        PTRZX<bits> Pointer;
+    };
+    uintptr_tx<bits> Information;
+};
+template<size_t bits = native_bits>
+using PIO_STATUS_BLOCKX = PTRZX<bits, IO_STATUS_BLOCKX<bits>>;
+
+__if_not_exists(IO_STATUS_BLOCK) {
+    using IO_STATUS_BLOCK = IO_STATUS_BLOCKX<>;
+}
+__if_not_exists(PIO_STATUS_BLOCK) {
+    using PIO_STATUS_BLOCK = PIO_STATUS_BLOCKX<>;
+}
+
+template<size_t bits = native_bits>
+struct SECTION_IMAGE_INFORMATIONX {
+    PTRZX<bits> TransferAddress; // 0x0, 0x0
+    uint32_t ZeroBits; // 0x04, 0x8
+    __x64_padding(0x4);
+    uintptr_tx<bits> MaximumStackSize; // 0x8, 0x10
+    uintptr_tx<bits> CommittedStackSize; // 0xC, 0x18
+    uint32_t SubSystemType; // 0x10, 0x20
+    union {
+        struct {
+            uint16_t SubSystemMinorVersion; // 0x14, 0x24
+            uint16_t SubSystemMajorVersion; // 0x16, 0x26
+        };
+        uint32_t SubSystemVersion; // 0x14, 0x24
+    };
+    uint32_t GpValue; // 0x18, 0x28
+    uint16_t ImageCharacteristics; // 0x1C, 0x2C
+    uint16_t DllCharacteristics; // 0x1E, 0x2E
+    uint16_t Machine; // 0x20, 0x30
+    uint8_t ImageContainsCode; // 0x22, 0x32
+    union {
+        uint8_t ImageFlags; // 0x23, 0x33
+        struct {
+            uint8_t ComPlusNativeReady : 1;
+            uint8_t ComPlusILOnly : 1;
+            uint8_t ImageDynamicallyRelocated : 1;
+            uint8_t ImageMappedFlat : 1;
+            uint8_t BaseBelow4gb : 1;
+            uint8_t ComPlusPrefer32bit : 1;
+        };
+    };
+    uint32_t LoaderFlags; // 0x24, 0x34
+    uint32_t ImageFileSize; // 0x28, 0x38
+    uint32_t CheckSum; // 0x2C, 0x3C
+    // 0x30, 0x40
+};
+
+template<size_t bits = native_bits>
+using PSECTION_IMAGE_INFORMATIONX = PTRZX<bits, SECTION_IMAGE_INFORMATIONX<bits>>;
+
+__if_not_exists(SECTION_IMAGE_INFORMATION) {
+    using SECTION_IMAGE_INFORMATION = SECTION_IMAGE_INFORMATIONX<>;
+}
+__if_not_exists(PSECTION_IMAGE_INFORMATION) {
+    using PSECTION_IMAGE_INFORMATION = PSECTION_IMAGE_INFORMATIONX<>;
+}
+
+enum SECTION_INFORMATION_CLASSX : int32_t {
+    SectionBasicInformationX = 0,
+    SectionImageInformationX = 1,
+    SectionRelocationInformationX = 2,
+    SectionOriginalBaseInformationX = 3,
+    SectionInternalImageInformationX = 4
+};
+__if_not_exists(SECTION_INFORMATION_CLASS) {
+    using SECTION_INFORMATION_CLASS = SECTION_INFORMATION_CLASSX;
+}
+__if_not_exists(SectionBasicInformation) {
+    static constexpr auto SectionBasicInformation = (SECTION_INFORMATION_CLASS)SectionBasicInformationX;
+}
+__if_not_exists(SectionImageInformation) {
+    static constexpr auto SectionImageInformation = (SECTION_INFORMATION_CLASS)SectionImageInformationX;
+}
+__if_not_exists(SectionRelocationInformation) {
+    static constexpr auto SectionRelocationInformation = (SECTION_INFORMATION_CLASS)SectionRelocationInformationX;
+}
+__if_not_exists(SectionOriginalBaseInformation) {
+    static constexpr auto SectionOriginalBaseInformation = (SECTION_INFORMATION_CLASS)SectionOriginalBaseInformationX;
+}
+__if_not_exists(SectionInternalImageInformation) {
+    static constexpr auto SectionInternalImageInformation = (SECTION_INFORMATION_CLASS)SectionInternalImageInformationX;
+}
+
+template<size_t bits = native_bits>
+struct RTL_USER_PROCESS_INFORMATIONX {
+    uint32_t Size; // 0x0, 0x0
+    __x64_padding(0x4);
+    HANDLEX<bits> ProcessHandle; // 0x4, 0x8
+    HANDLEX<bits> ThreadHandle; // 0x8, 0x10
+    CLIENT_IDX<bits> ClientId; // 0xC, 0x18
+    SECTION_IMAGE_INFORMATIONX<bits> ImageInformation; // 0x14, 0x28
+};
+
+template<size_t bits = native_bits>
+using PRTL_USER_PROCESS_INFORMATIONX = PTRZX<bits, RTL_USER_PROCESS_INFORMATIONX<bits>>;
+
+__if_not_exists(RTL_USER_PROCESS_INFORMATION) {
+    using RTL_USER_PROCESS_INFORMATION = RTL_USER_PROCESS_INFORMATIONX<>;
+}
+__if_not_exists(PRTL_USER_PROCESS_INFORMATION) {
+    using PRTL_USER_PROCESS_INFORMATION = PRTL_USER_PROCESS_INFORMATIONX<>;
+}
+
+/*========================================
+    CSR Stuff
+========================================*/
+
+template<size_t bits = native_bits>
+struct PORT_MESSAGEX {
+    uint32_t u1; // 0x0, 0x0
+    uint32_t u2; // 0x4, 0x4
+    union {
+        CLIENT_IDX<bits> ClientId; // 0x8, 0x8
+        float DoNotUseThisField;
+    };
+    uint32_t MessageId; // 0x10, 0x18
+    union {
+        uint32_t ClientViewSize; // 0x14, 0x1C
+        uint32_t CallbackId;
+    };
+    __x64_padding(0x4);
+    // 0x18, 0x20
+};
+
+template<size_t bits = native_bits>
+using PPORT_MESSAGEX = PTRZX<bits, PORT_MESSAGEX<>>;
+
+__if_not_exists(PORT_MESSAGE) {
+    using PORT_MESSAGE = PORT_MESSAGEX<>;
+}
+__if_not_exists(PPORT_MESSAGE) {
+    using PPORT_MESSAGE = PPORT_MESSAGEX<>;
+}
+
+template<size_t bits = native_bits>
+struct BASE_MSG_SXS_STREAMX {
+    uint8_t FileType; // 0x0, 0x0
+    uint8_t PathType; // 0x1, 0x1
+    uint8_t HandleType; // 0x2, 0x2
+    __padding(0x1);
+    __x64_padding(0x4);
+    UNICODE_STRINGX<bits> Path; // 0x4, 0x8
+    HANDLEX<bits> FileHandle; // 0xC, 0x18
+    HANDLEX<bits> Handle; // 0x10, 0x20
+    uint64_tx<bits> Offset ide_packed_field; // 0x14, 0x28
+    size_t Size; // 0x1C, 0x30
+    // 0x20, 0x38
+};
+ValidateStructSize(0x20, BASE_MSG_SXS_STREAMX<32>);
+ValidateStructAlignment(0x4, BASE_MSG_SXS_STREAMX<32>);
+ValidateStructSize(0x38, BASE_MSG_SXS_STREAMX<64>);
+ValidateStructAlignment(0x8, BASE_MSG_SXS_STREAMX<64>);
+
+template<size_t bits = native_bits>
+using PBASE_MSG_SXS_STREAMX = PTRZX<bits, BASE_MSG_SXS_STREAMX<bits>>;
+
+__if_not_exists(BASE_MSG_SXS_STREAM) {
+    using BASE_MSG_SXS_STREAM = BASE_MSG_SXS_STREAMX<>;
+}
+__if_not_exists(PBASE_MSG_SXS_STREAM) {
+    using PBASE_MSG_SXS_STREAM = PBASE_MSG_SXS_STREAMX<>;
+}
+
+template<size_t bits = native_bits>
+struct BASE_SXS_CREATEPROCESS_MSGX {
+    uint32_t Flags; // 0x0, 0x0
+    __x64_padding(0x4);
+    BASE_MSG_SXS_STREAMX<bits> Manifest; // 0x4, 0x8
+    BASE_MSG_SXS_STREAMX<bits> Policy; // 0x24, 0x40
+    UNICODE_STRINGX<bits> AssemblyDirectory; // 0x44, 0x78
+    // 0x4C, 0x88
+};
+ValidateStructSize(0x4C, BASE_SXS_CREATEPROCESS_MSGX<32>);
+ValidateStructAlignment(0x4, BASE_SXS_CREATEPROCESS_MSGX<32>);
+ValidateStructSize(0x88, BASE_SXS_CREATEPROCESS_MSGX<64>);
+ValidateStructAlignment(0x8, BASE_SXS_CREATEPROCESS_MSGX<64>);
+
+template<size_t bits = native_bits>
+using PBASE_SXS_CREATEPROCESS_MSGX = PTRZX<bits, BASE_SXS_CREATEPROCESS_MSGX<bits>>;
+
+__if_not_exists(BASE_SXS_CREATEPROCESS_MSG) {
+    using BASE_SXS_CREATEPROCESS_MSG = BASE_SXS_CREATEPROCESS_MSGX<>;
+}
+__if_not_exists(PBASE_SXS_CREATEPROCESS_MSG) {
+    using PBASE_SXS_CREATEPROCESS_MSG = PBASE_SXS_CREATEPROCESS_MSGX<>;
+}
+
+template<size_t bits = native_bits>
+struct BASE_CREATEPROCESS_MSGX {
+    HANDLEX<bits> ProcessHandle; // 0x0, 0x0
+    HANDLEX<bits> ThreadHandle; // 0x4, 0x8
+    CLIENT_IDX<bits> ClientId;  // 0x8, 0x10
+    uint32_t CreationFlags; // 0x10, 0x20
+    uint32_t VdmBinaryType; // 0x14, 0x24
+    uint32_t VdmTask; // 0x18, 0x28
+    __x64_padding(0x4);
+    HANDLEX<bits> hVDM; // 0x1C, 0x30
+    BASE_SXS_CREATEPROCESS_MSGX<bits> Sxs; // 0x20, 0x38
+    uint64_tx<bits> Peb ide_packed_field; // 0x6C, 0xC0
+    uintptr_tx<bits> RealPeb; // 0x74, 0xC8
+    uint16_t ProcessorArchitecture; // 0x78, 0xD0
+    __padding(0x2);
+    __x64_padding(0x4);
+    // 0x7C, 0xD8
+};
+ValidateStructSize(0x7C, BASE_CREATEPROCESS_MSGX<32>);
+ValidateStructAlignment(0x4, BASE_CREATEPROCESS_MSGX<32>);
+ValidateStructSize(0xD8, BASE_CREATEPROCESS_MSGX<64>);
+ValidateStructAlignment(0x8, BASE_CREATEPROCESS_MSGX<64>);
+
+template<size_t bits = native_bits>
+using PBASE_CREATEPROCESS_MSGX = PTRZX<bits, BASE_CREATEPROCESS_MSGX<bits>>;
+
+__if_not_exists(BASE_CREATEPROCESS_MSG) {
+    using BASE_CREATEPROCESS_MSG = BASE_CREATEPROCESS_MSGX<>;
+}
+__if_not_exists(PBASE_CREATEPROCESS_MSG) {
+    using PBASE_CREATEPROCESS_MSG = PBASE_CREATEPROCESS_MSGX<>;
+}
+
+template<size_t bits = native_bits>
+struct CSR_CAPTURE_HEADERX {
+    uint32_t Length; // 0x0, 0x0
+    __x64_padding(0x4);
+    PTRZX<bits, CSR_CAPTURE_HEADERX<bits>> RelatedCaptureBuffer; // 0x4, 0x8
+    uint32_t CountMessagePointers; // 0x8, 0x10
+    __x64_padding(0x4);
+    PTRZX<bits, char> FreeSpace; // 0xC, 0x18
+    uintptr_tx<bits> MessagePointerOffsets[1]; // 0x10, 0x20
+    // 0x14, 0x28
+};
+
+template<size_t bits = native_bits>
+using PCSR_CAPTURE_HEADERX = PTRZX<bits, CSR_CAPTURE_HEADERX<bits>>;
+
+__if_not_exists(CSR_CAPTURE_HEADER) {
+    using CSR_CAPTURE_HEADER = CSR_CAPTURE_HEADERX<>;
+}
+__if_not_exists(PCSR_CAPTURE_HEADER) {
+    using PCSR_CAPTURE_HEADER = PCSR_CAPTURE_HEADERX<>;
+}
+
+using CSR_API_NUMBERX = uint32_t;
+
+__if_not_exists(CSR_API_NUMBER) {
+    using CSR_API_NUMBER = CSR_API_NUMBERX;
+}
+
+#ifdef CreateProcess
+#pragma push_macro("CreateProcess")
+#undef CreateProcess
+#endif
+
+template<size_t bits = native_bits>
+struct BASE_API_MSGX {
+    PORT_MESSAGEX<bits> h; // 0x0, 0x0
+    PCSR_CAPTURE_HEADERX<bits> CaptureBuffer; // 0x18, 0x20
+    CSR_API_NUMBER ApiNumber; // 0x1C, 0x28
+    uint32_t ReturnValue; // 0x20, 0x2C
+    uint32_t Reserved; // 0x24, 0x30
+    __x64_padding(0x4);
+    union {
+        BASE_CREATEPROCESS_MSGX<bits> CreateProcess; // 0x28, 0x38
+    } u;
+};
+
+#pragma pop_macro("CreateProcess")
+
+template<size_t bits = native_bits>
+using PBASE_API_MSGX = PTRZX<bits, BASE_API_MSGX<bits>>;
+
+__if_not_exists(BASE_API_MSG) {
+    using BASE_API_MSG = BASE_API_MSGX<>;
+}
+__if_not_exists(PBASE_API_MSG) {
+    using PBASE_API_MSG = PBASE_API_MSGX<>;
+}
+
+enum BASESRV_API_NUMBERX : int32_t {
+    BasepCreateProcessX = 0,
+    BasepCreateThreadX
+};
+__if_not_exists(BASESRV_API_NUMBER) {
+    using BASESRV_API_NUMBER = BASESRV_API_NUMBERX;
+}
+__if_not_exists(BasepCreateProcess) {
+    static constexpr auto BasepCreateProcess = (BASESRV_API_NUMBER)BasepCreateProcessX;
+}
+__if_not_exists(BasepCreateThread) {
+    static constexpr auto BasepCreateThread = (BASESRV_API_NUMBER)BasepCreateThreadX;
+}
 
 /*========================================
     Kernel Mode Stuff

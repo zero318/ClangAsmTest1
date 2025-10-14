@@ -15,6 +15,7 @@
 #include <mutex>
 #include <thread>
 #include <random>
+#include <functional>
 
 #include <memory_resource>
 
@@ -7410,7 +7411,9 @@ struct EnemyData {
             uint32_t __anm_slowdown_immune : 1; // 17
             uint32_t : 1; // 18
             uint32_t __unknown_flag_P : 1; // 19
-            uint32_t : 12; // 20-30
+            uint32_t : 9; // 20-27
+            uint32_t __skip_kill_function : 1; // 28
+            uint32_t : 2; // 29-30
             uint32_t __is_stone_enemy : 1; // 31
             uint32_t : 1; // 32
         };
@@ -7421,7 +7424,8 @@ struct EnemyData {
             uint32_t stone_color : 2; // 1-2
             uint32_t __can_have_children : 1; // 3
             uint32_t __parent_movement_related : 1; // 4
-            uint32_t : 2; // 5-6
+            uint32_t __unknown_flag_R : 1; // 5
+            uint32_t : 1; // 6
             uint32_t __unknown_flag_Q : 1; // 7
         };
     };
@@ -7434,6 +7438,8 @@ struct EnemyData {
     // 0x2F0
 };
 
+typedef int cdecl EnemyKillFunc(Enemy*&);
+
 // size: 0x428
 struct Enemy : EclVM {
     //EclVM base; // 0x0
@@ -7443,11 +7449,15 @@ struct Enemy : EclVM {
     EnemyInitData init_data; // 0x378
     ZUNListIterable<void> child_list; // 0x3CC
     ZUNList<void> child_list_node; // 0x3E4
-    // 0x3F8
-    
+    std::function<EnemyKillFunc> on_kill_func; // 0x3F8
     uint32_t side_index; // 0x420
     GameSide* game_side; // 0x424
     // 0x428
+
+    // Rx1140B0
+    dllexport gnu_noinline void thiscall set_on_kill_func(std::function<EnemyKillFunc> func) {
+        this->on_kill_func = func;
+    }
 };
 
 static inline constexpr size_t MAX_BOSS_COUNT = 16;
@@ -7596,6 +7606,35 @@ struct StoneEnemy {
         MEM_ALLOC_LOG->delete_mem(this);
     }
 
+    // Rx111F00
+    dllexport gnu_noinline int thiscall on_kill(Enemy* enemy) & {
+        // cancel bullets
+        // cancel lasers
+
+        switch (this->color) {
+            case RedStone: // 0
+                get_globals_side(0)->stone_level_red += 1;
+                break;
+            case BlueStone: // 1
+                get_globals_side(0)->stone_level_blue += 1;
+                break;
+            case YellowStone: // 2
+                get_globals_side(0)->stone_level_yellow += 1;
+                break;
+            case GreenStone: // 3
+                get_globals_side(0)->stone_level_green += 1;
+                break;
+        }
+
+        if (get_globals_side(0)->summon_meter >= get_globals_side(0)->summon_meter_max / 2) {
+            get_globals_side(0)->summon_meter = get_globals_side(0)->summon_meter_max / 2;
+        }
+
+        get_globals_side(0)->summon_meter_max += 150;
+
+        return 0;
+    }
+
     // Rx112FB0
     dllexport gnu_noinline void thiscall initialize(EnemyID parent_id, int32_t stone_type) {
         this->parent_id = parent_id;
@@ -7704,6 +7743,10 @@ struct StoneEnemy {
                 break;
         }
         get_globals_side(0)->stone_enemy_count_total += 1;
+
+        enemy->set_on_kill_func([this](Enemy*& enemy) {
+            return this->on_kill(enemy);
+        });
     }
 
     // Rx112990

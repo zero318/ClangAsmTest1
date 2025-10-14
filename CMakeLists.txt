@@ -44,6 +44,7 @@ add_executable(libm_testing)
 add_executable(vpatch)
 add_executable(heroes_calculator)
 add_executable(vec3_testing)
+add_executable(create_process_test)
 add_library(z8086 SHARED)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
@@ -126,6 +127,7 @@ vpatch
 vpatch_dll
 heroes_calculator
 vec3_testing
+create_process_test
 )
 
 enable_language(ASM-ATT)
@@ -1847,6 +1849,27 @@ target_compile_options(vec3_testing PRIVATE
 )
 target_link_options(vec3_testing PRIVATE
 	/DYNAMICBASE:NO
+	/LARGEADDRESSAWARE
+)
+
+target_sources(create_process_test PRIVATE
+	"create_process_test.cpp"
+)
+target_compile_options(create_process_test PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-sse3"
+	"-mno-ssse3"
+	"-mno-sse4.1"
+	"-mno-sse4.2"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	${SLASH_CLANG_ARG}-fno-pic
+)
+target_link_options(create_process_test PRIVATE
+	/LARGEADDRESSAWARE
 )
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")
