@@ -707,7 +707,7 @@ CreateProcessW_test(
 
                 // just pretend the no isolation flag is set because it can skip stuff
 
-                BASE_API_MSG csr_message;
+                BASE_API_MSG csr_message ;
 
                 switch (image_info.Machine) {
                     default:
@@ -815,8 +815,7 @@ CreateProcessW_test(
                                     if (NT_SUCCESS(RtlCreateProcessParameters(
                                         &process_parameters,
                                         (PUNICODE_STRING)&image,
-                                        //(PUNICODE_STRING)&peb->ProcessParameters->DllPath,
-                                        (PUNICODE_STRING)&directory,
+                                        (PUNICODE_STRING)&directory, // this isn't how this parameter is supposed to work
                                         (PUNICODE_STRING)&directory,
                                         (PUNICODE_STRING)&cmdline,
                                         (PWSTR)lpEnvironment,
@@ -970,6 +969,7 @@ CreateProcessW_test(
                                                         
                                                         CsrClientCallServer(&csr_message, NULL, CSR_MAKE_API_NUMBER(BASESRV_SERVERDLL_INDEX, BasepCreateProcess), sizeof(csr_message.u.CreateProcess));
 
+                                                        // This is wrong somehow, the struct def is bad
                                                         if (NT_SUCCESS((NTSTATUS)csr_message.ReturnValue)) {
                                                             if (!(dwCreationFlags & CREATE_SUSPENDED)) {
                                                                 NtResumeThread(thread, NULL);
