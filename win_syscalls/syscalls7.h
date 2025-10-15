@@ -81,6 +81,8 @@ enum SyscallIndex : uint32_t {
 	NtUserPeekMessageID = 0x1001,
 	NtUserCallOneParamID = 0x1002,
 	NtUserGetKeyStateID = 0x1003,
+
+	NtWow64CsrBasepCreateProcessID = 0x3003,
 };
 
 template<typename R = uint64_t>
@@ -274,6 +276,49 @@ static inline R syscall(SyscallIndex index, Args... args) {
 	}
 }
 
+template<SyscallIndex index, uint32_t wow_table, typename R = uint32_t>
+naked static gnu_noinline R stdcall syscallWoW() {
+	__asm__(
+		"CALLL *%%FS:0xC0 \n"
+		"ADDL $4, %%ESP \n"
+		"RETL \n"
+		:
+		: "a"(index), "c"(wow_table), "d"(esp_reg + 4)
+	);
+	/*
+	__asm__(
+		"PUSHL $1f \n"
+		"JMPL *%%FS:0xC0 \n"
+		"1: \n"
+		"ADDL $4, %%ESP \n"
+		"RETL \n"
+		:
+		: "a"(index), "c"(wow_table), "d"(esp_reg + 4)
+	);
+	*/
+}
+
+template<SyscallIndex index, uint32_t wow_table, typename R = uint32_t, typename ... Args>
+naked static gnu_noinline R stdcall syscallWoW(gnu_used Args... args) {
+	__asm__(
+		"CALLL *%%FS:0xC0 \n"
+		"ADDL $4, %%ESP \n"
+		"RETL %[ret_size] \n"
+		:
+		: "a"(index), "c"(wow_table), "d"(esp_reg + 4), [ret_size]"i"(sizeof_pack<Args...>())
+	);
+	/*
+	__asm__(
+		"PUSHL $1f \n"
+		"JMPL *%%FS:0xC0 \n"
+	"1: \n"
+		"ADDL $4, %%ESP \n"
+		"RETL %[ret_size] \n"
+		:
+		: "a"(index), "c"(wow_table), "d"(esp_reg + 4), [ret_size]"i"(sizeof_pack<Args...>())
+	);
+	*/
+}
 
 #include "common.h"
 

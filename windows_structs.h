@@ -3088,6 +3088,8 @@ __if_not_exists(WX86TIB) {
     TEB
 ========================================*/
 
+typedef uint32_t regparm(3) WoW64FarCall(uint32_t syscall_number, void* args, uint32_t thunk_type);
+
 #define STATIC_UNICODE_BUFFER_LENGTH 261
 #define WIN32_CLIENT_INFO_LENGTH 62
 template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING>
@@ -3112,6 +3114,7 @@ struct TEBX<32, T> {
     uint32_t UserReserved[5]; // 0xAC (Winsrv SwitchStack)
     union {
         PTRZX<32, UNKNOWN_TYPE> WOW32Reserved; // 0xC0
+        PTRZX<32, WoW64FarCall> WoW64Syscall;
     };
     LCID CurrentLocale; // 0xC4
     uint32_t FpSoftwareStatusRegister; // 0xC8
@@ -4312,6 +4315,7 @@ struct PROCESS_PRIORITY_CLASSX {
     // 0x2
 };
 ValidateStructSize(0x2, PROCESS_PRIORITY_CLASSX);
+ValidateStructAlignment(0x1, PROCESS_PRIORITY_CLASSX);
 
 template<size_t bits = native_bits>
 using PPROCESS_PRIORITY_CLASSX = PTRZX<bits, PROCESS_PRIORITY_CLASSX>;
@@ -4325,10 +4329,16 @@ __if_not_exists(PPROCESS_PRIORITY_CLASS) {
 
 template<size_t bits = native_bits>
 struct RTL_RELATIVE_NAMEX {
-    UNICODE_STRINGX<bits> RelativeName;
-    HANDLEX<bits> ContainingDirectory;
-    PTRZX<bits> CurDirRef;
+    UNICODE_STRINGX<bits> RelativeName; // 0x0, 0x0
+    HANDLEX<bits> ContainingDirectory; // 0x8, 0x10
+    PTRZX<bits> CurDirRef; // 0xC, 0x18
+    // 0x10, 0x20
 };
+ValidateStructSize(0x10, RTL_RELATIVE_NAMEX<32>);
+ValidateStructAlignment(0x4, RTL_RELATIVE_NAMEX<32>);
+ValidateStructSize(0x20, RTL_RELATIVE_NAMEX<64>);
+ValidateStructAlignment(0x8, RTL_RELATIVE_NAMEX<64>);
+
 template<size_t bits = native_bits>
 using PRTL_RELATIVE_NAMEX = PTRZX<bits, RTL_RELATIVE_NAMEX<bits>>;
 
@@ -4342,11 +4352,17 @@ __if_not_exists(PRTL_RELATIVE_NAME) {
 template<size_t bits = native_bits>
 struct IO_STATUS_BLOCKX {
     union {
-        NTSTATUS Status;
-        PTRZX<bits> Pointer;
+        NTSTATUS Status; // 0x0, 0x0
+        PTRZX<bits> Pointer; // 0x0, 0x0
     };
-    uintptr_tx<bits> Information;
+    uintptr_tx<bits> Information; // 0x4, 0x8
+    // 0x8, 0x10
 };
+ValidateStructSize(0x8, IO_STATUS_BLOCKX<32>);
+ValidateStructAlignment(0x4, IO_STATUS_BLOCKX<32>);
+ValidateStructSize(0x10, IO_STATUS_BLOCKX<64>);
+ValidateStructAlignment(0x8, IO_STATUS_BLOCKX<64>);
+
 template<size_t bits = native_bits>
 using PIO_STATUS_BLOCKX = PTRZX<bits, IO_STATUS_BLOCKX<bits>>;
 
@@ -4393,6 +4409,10 @@ struct SECTION_IMAGE_INFORMATIONX {
     uint32_t CheckSum; // 0x2C, 0x3C
     // 0x30, 0x40
 };
+ValidateStructSize(0x30, SECTION_IMAGE_INFORMATIONX<32>);
+ValidateStructAlignment(0x4, SECTION_IMAGE_INFORMATIONX<32>);
+ValidateStructSize(0x40, SECTION_IMAGE_INFORMATIONX<64>);
+ValidateStructAlignment(0x8, SECTION_IMAGE_INFORMATIONX<64>);
 
 template<size_t bits = native_bits>
 using PSECTION_IMAGE_INFORMATIONX = PTRZX<bits, SECTION_IMAGE_INFORMATIONX<bits>>;
@@ -4438,7 +4458,12 @@ struct RTL_USER_PROCESS_INFORMATIONX {
     HANDLEX<bits> ThreadHandle; // 0x8, 0x10
     CLIENT_IDX<bits> ClientId; // 0xC, 0x18
     SECTION_IMAGE_INFORMATIONX<bits> ImageInformation; // 0x14, 0x28
+    // 0x44, 0x68
 };
+ValidateStructSize(0x44, RTL_USER_PROCESS_INFORMATIONX<32>);
+ValidateStructAlignment(0x4, RTL_USER_PROCESS_INFORMATIONX<32>);
+ValidateStructSize(0x68, RTL_USER_PROCESS_INFORMATIONX<64>);
+ValidateStructAlignment(0x8, RTL_USER_PROCESS_INFORMATIONX<64>);
 
 template<size_t bits = native_bits>
 using PRTL_USER_PROCESS_INFORMATIONX = PTRZX<bits, RTL_USER_PROCESS_INFORMATIONX<bits>>;
@@ -4460,16 +4485,20 @@ struct PORT_MESSAGEX {
     uint32_t u2; // 0x4, 0x4
     union {
         CLIENT_IDX<bits> ClientId; // 0x8, 0x8
-        float DoNotUseThisField;
+        float DoNotUseThisField; // 0x8, 0x8
     };
     uint32_t MessageId; // 0x10, 0x18
     union {
         uint32_t ClientViewSize; // 0x14, 0x1C
-        uint32_t CallbackId;
+        uint32_t CallbackId; // 0x14, 0x1C
     };
     __x64_padding(0x4);
     // 0x18, 0x20
 };
+ValidateStructSize(0x18, PORT_MESSAGEX<32>);
+ValidateStructAlignment(0x4, PORT_MESSAGEX<32>);
+ValidateStructSize(0x20, PORT_MESSAGEX<64>);
+ValidateStructAlignment(0x8, PORT_MESSAGEX<64>);
 
 template<size_t bits = native_bits>
 using PPORT_MESSAGEX = PTRZX<bits, PORT_MESSAGEX<>>;
@@ -4578,6 +4607,10 @@ struct CSR_CAPTURE_HEADERX {
     uintptr_tx<bits> MessagePointerOffsets[1]; // 0x10, 0x20
     // 0x14, 0x28
 };
+ValidateStructSize(0x14, CSR_CAPTURE_HEADERX<32>);
+ValidateStructAlignment(0x4, CSR_CAPTURE_HEADERX<32>);
+ValidateStructSize(0x28, CSR_CAPTURE_HEADERX<64>);
+ValidateStructAlignment(0x8, CSR_CAPTURE_HEADERX<64>);
 
 template<size_t bits = native_bits>
 using PCSR_CAPTURE_HEADERX = PTRZX<bits, CSR_CAPTURE_HEADERX<bits>>;
@@ -4595,6 +4628,34 @@ __if_not_exists(CSR_API_NUMBER) {
     using CSR_API_NUMBER = CSR_API_NUMBERX;
 }
 
+template<size_t bits = native_bits>
+struct CSR_API_CONNECTINFOX {
+    HANDLEX<bits> ObjectDirectory; // 0x0, 0x0
+    PTRZX<bits> SharedSectionBase; // 0x4, 0x8
+    PTRZX<bits> SharedStaticServerData; // 0x8, 0x10
+    PTRZX<bits> SharedSectionHeap; // 0xC, 0x18
+    uint32_t DebugFlags; // 0x10, 0x20
+    uint32_t SizeOfPebData; // 0x14, 0x24
+    uint32_t SizeOfTebData; // 0x18, 0x28
+    uint32_t NumberOfServerDllNames; // 0x1C, 0x2C
+    HANDLEX<bits> ServerProcessId; // 0x20, 0x30
+    // 0x24, 0x38
+};
+ValidateStructSize(0x24, CSR_API_CONNECTINFOX<32>);
+ValidateStructAlignment(0x4, CSR_API_CONNECTINFOX<32>);
+ValidateStructSize(0x38, CSR_API_CONNECTINFOX<64>);
+ValidateStructAlignment(0x8, CSR_API_CONNECTINFOX<64>);
+
+template<size_t bits = native_bits>
+using PCSR_API_CONNECTINFOX = PTRZX<bits, CSR_API_CONNECTINFOX<bits>>;
+
+__if_not_exists(CSR_API_CONNECTINFO) {
+    using CSR_API_CONNECTINFO = CSR_API_CONNECTINFOX<>;
+}
+__if_not_exists(PCSR_API_CONNECTINFO) {
+    using PCSR_API_CONNECTINFO = PCSR_API_CONNECTINFOX<>;
+}
+
 #ifdef CreateProcess
 #pragma push_macro("CreateProcess")
 #undef CreateProcess
@@ -4610,8 +4671,13 @@ struct BASE_API_MSGX {
     __x64_padding(0x4);
     union {
         BASE_CREATEPROCESS_MSGX<bits> CreateProcess; // 0x28, 0x38
+        // TODO: more message types
     } u;
 };
+//ValidateStructSize(0x24, BASE_API_MSGX<32>);
+ValidateStructAlignment(0x4, BASE_API_MSGX<32>);
+//ValidateStructSize(0x38, BASE_API_MSGX<64>);
+ValidateStructAlignment(0x8, BASE_API_MSGX<64>);
 
 #pragma pop_macro("CreateProcess")
 
@@ -4637,6 +4703,33 @@ __if_not_exists(BasepCreateProcess) {
 }
 __if_not_exists(BasepCreateThread) {
     static constexpr auto BasepCreateThread = (BASESRV_API_NUMBER)BasepCreateThreadX;
+}
+
+template<size_t bits = native_bits>
+struct CSR_API_MSGX {
+    PORT_MESSAGEX<bits> h; // 0x0, 0x0
+    union {
+        CSR_API_CONNECTINFOX<bits> ConnectionRequest; // 0x18, 0x20
+        struct {
+            PTRZX<bits, CSR_CAPTURE_HEADERX<bits>> CaptureBuffer; // 0x18, 0x20
+            CSR_API_NUMBER ApiNumber; // 0x1C, 0x28
+            uint32_t ReturnValue; // 0x20, 0x30
+            uint32_t Reserved; // 0x24, 0x34
+            union {
+                uintptr_tx<bits> ApiMessageData[39]; // 0x28, 0x38
+            } u;
+        };
+    };
+};
+
+template<size_t bits = native_bits>
+using PCSR_API_MSGX = PTRZX<bits, CSR_API_MSGX<bits>>;
+
+__if_not_exists(CSR_API_MSG) {
+    using CSR_API_MSG = CSR_API_MSGX<>;
+}
+__if_not_exists(PCSR_API_MSG) {
+    using PCSR_API_MSG = PCSR_API_MSGX<>;
 }
 
 /*========================================

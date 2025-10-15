@@ -448,7 +448,7 @@ static NTSTATUS NTAPI NtResumeThreadShim(
 }
 
 static NTSTATUS NTAPI CsrClientCallServerShim(
-    void* ApiMsg,
+    PCSR_API_MSG ApiMsg,
     PVOID CaptureBuffer,
     ULONG ApiNumber,
     LONG ApiMessageDataSize
@@ -456,7 +456,7 @@ static NTSTATUS NTAPI CsrClientCallServerShim(
 typedef decltype(&CsrClientCallServerShim) CsrClientCallServerPtr;
 static CsrClientCallServerPtr CsrClientCallServer = &CsrClientCallServerShim;
 static NTSTATUS NTAPI CsrClientCallServerShim(
-    void* ApiMsg,
+    PCSR_API_MSG ApiMsg,
     PVOID CaptureBuffer,
     ULONG ApiNumber,
     LONG ApiMessageDataSize
@@ -468,6 +468,49 @@ static NTSTATUS NTAPI CsrClientCallServerShim(
 static VOID RtlUserThreadStartShim();
 typedef decltype(&RtlUserThreadStartShim) RtlUserThreadStartPtr;
 static RtlUserThreadStartPtr RtlUserThreadStart = NULL;
+
+static BOOL WINAPI IsWow64ProcessShim(
+    HANDLE hProcess,
+    PBOOL Wow64Process
+);
+typedef decltype(&IsWow64ProcessShim) IsWow64ProcessPtr;
+static IsWow64ProcessPtr IsWow64ProcessFunc = &IsWow64ProcessShim;
+static BOOL WINAPI IsWow64ProcessShim(
+    HANDLE hProcess,
+    PBOOL Wow64Process
+) {
+    resolve_nt_funcs();
+    return IsWow64ProcessFunc(hProcess, Wow64Process);
+}
+static BOOL WINAPI IsWow64ProcessFalse(
+    HANDLE hProcess,
+    PBOOL Wow64Process
+) {
+    *Wow64Process = FALSE;
+    return TRUE;
+}
+
+/*
+static NTSTATUS NTAPI NtWow64CsrBasepCreateProcessShim(
+    PBASE_CREATEPROCESS_MSG a
+);
+typedef decltype(&NtWow64CsrBasepCreateProcessShim) NtWow64CsrBasepCreateProcessPtr;
+static NtWow64CsrBasepCreateProcessPtr NtWow64CsrBasepCreateProcess = &NtWow64CsrBasepCreateProcessShim;
+static NTSTATUS NTAPI NtWow64CsrBasepCreateProcessShim(
+    PBASE_CREATEPROCESS_MSG a
+) {
+    resolve_nt_funcs();
+    return NtWow64CsrBasepCreateProcess(a);
+}
+*/
+
+static bool is_wow64_process() {
+    BOOL ret;
+    if (IsWow64ProcessFunc((HANDLE)-1, &ret)) {
+        return ret;
+    }
+    return false;
+}
 
 static void resolve_nt_funcs() {
     HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
@@ -491,7 +534,15 @@ static void resolve_nt_funcs() {
     NtResumeThread = (NtResumeThreadPtr)GetProcAddress(ntdll, "NtResumeThread");
     CsrClientCallServer = (CsrClientCallServerPtr)GetProcAddress(ntdll, "CsrClientCallServer");
     RtlUserThreadStart = (RtlUserThreadStartPtr)GetProcAddress(ntdll, "RtlUserThreadStart");
+
+    HMODULE kernel32 = GetModuleHandleW(L"kernel32.dll");
+    IsWow64ProcessPtr is_wow64 = (IsWow64ProcessPtr)GetProcAddress(kernel32, "IsWow64Process");
+    IsWow64ProcessFunc = is_wow64 ? is_wow64 : &IsWow64ProcessFalse;
+    //NtWow64CsrBasepCreateProcess = (NtWow64CsrBasepCreateProcessPtr)GetProcAddress(kernel32, "_NtWow64CsrBasepCreateProcess@4");
 }
+
+#include "win_syscalls/syscalls7.h"
+#include "win_syscalls/common.h"
 
 dllexport
 gnu_noinline
@@ -651,7 +702,7 @@ CreateProcessW_test(
             cmdline.MaximumLength = command_line_length + sizeof(wchar_t);
         }
     }
-    else if (lpCommandLine || !*lpCommandLine) {
+    else if (!lpCommandLine || !*lpCommandLine) {
         //flags = QUOTE_CMDLINE;
         //lpCommandLine = (LPWSTR)lpApplicationName;
         size_t command_line_length = byteloop_wcslen(lpApplicationName);
@@ -707,7 +758,9 @@ CreateProcessW_test(
 
                 // just pretend the no isolation flag is set because it can skip stuff
 
-                BASE_API_MSG csr_message ;
+                bool is_wow64 = is_wow64_process();
+
+                BASE_API_MSGX<64> csr_message;
 
                 switch (image_info.Machine) {
                     default:
@@ -718,7 +771,7 @@ CreateProcessW_test(
                     case IMAGE_FILE_MACHINE_I386:
                         //csr_message.u.CreateProcess.ProcessorArchitecture = PROCESSOR_ARCHITECTURE_INTEL;
                         //csr_message.u.CreateProcess.ProcessorArchitecture = PROCESSOR_ARCHITECTURE_IA32_ON_WIN64;
-                        csr_message.u.CreateProcess.ProcessorArchitecture = PROCESSOR_ARCHITECTURE_AMD64;
+                        csr_message.u.CreateProcess.ProcessorArchitecture = is_wow64 ? PROCESSOR_ARCHITECTURE_IA32_ON_WIN64 : PROCESSOR_ARCHITECTURE_INTEL;
                         break;
                 }
                 csr_message.u.CreateProcess.ProcessHandle = NULL;
@@ -832,21 +885,22 @@ CreateProcessW_test(
                                             while (environment[environment_length] || environment[environment_length + 1]) ++environment_length;
                                             environment_length += sizeof(wchar_t);
 
+                                            region_size_environment = environment_length;
                                             if (
                                                 !NT_SUCCESS(NtAllocateVirtualMemory(process, (PVOID*)&process_parameters->Environment, 0, &region_size_environment, MEM_COMMIT, PAGE_READWRITE))
                                             ) {
-                                                if (lpEnvironment) goto error_close_process;
+                                                if (lpEnvironment) goto error_destroy_parameters;
                                                 goto error_release_peb_lock;
                                             }
                                             if (
                                                 !NT_SUCCESS(NtWriteVirtualMemory(process, process_parameters->Environment, (PVOID)environment, environment_length, NULL))
                                             ) {
                                                 NtFreeVirtualMemory(process, (PVOID*)process_parameters->Environment, &region_size_environment, MEM_RELEASE);
-                                                if (lpEnvironment) goto error_close_process;
+                                                if (lpEnvironment) goto error_destroy_parameters;
                                                 goto error_release_peb_lock;
                                             }
                                         }
-                                        if (lpEnvironment) {
+                                        if (!lpEnvironment) {
                                             RtlReleasePebLock();
                                         }
 
@@ -874,7 +928,7 @@ CreateProcessW_test(
                                         process_parameters->Flags |= (peb->ProcessParameters->Flags & RTL_USER_PROC_DISABLE_HEAP_DECOMMIT);
                                         SIZE_T region_size = process_parameters->Length;
 
-                                        PRTL_USER_PROCESS_PARAMETERS new_params;
+                                        PRTL_USER_PROCESS_PARAMETERS new_params = NULL;
                                         if (NT_SUCCESS(NtAllocateVirtualMemory(process, (PVOID*)&new_params, 0, &region_size, MEM_COMMIT, PAGE_READWRITE))) {
                                             process_parameters->MaximumLength = region_size;
                                             if (
@@ -898,7 +952,7 @@ CreateProcessW_test(
                                                 }
                                                 stack_commit = AlignUpToMultipleOf2(stack_commit, 4096);
 
-                                                uint8_t* stack_top;
+                                                uint8_t* stack_top = NULL;
                                                 if (NT_SUCCESS(NtAllocateVirtualMemory(process, (PVOID*)&stack_top, 0, &stack_max, MEM_RESERVE, PAGE_READWRITE))) {
                                                     uint8_t* stack = stack_top;
                                                     uint8_t* stack_base = stack_top + stack_max;
@@ -963,14 +1017,22 @@ CreateProcessW_test(
                                                         csr_message.u.CreateProcess.RealPeb = (uint32_t)NULL;
                                                         csr_message.u.CreateProcess.ProcessHandle = (void*)((uintptr_t)csr_message.u.CreateProcess.ProcessHandle | (uintptr_t)process);
                                                         csr_message.u.CreateProcess.ThreadHandle = thread;
-                                                        csr_message.u.CreateProcess.ClientId = client_id;
+                                                        //csr_message.u.CreateProcess.ClientId = client_id;
+                                                        csr_message.u.CreateProcess.ClientId.UniqueProcess = client_id.UniqueProcess;
+                                                        csr_message.u.CreateProcess.ClientId.UniqueThread = client_id.UniqueThread;
                                                         csr_message.u.CreateProcess.CreationFlags = dwCreationFlags;
                                                         csr_message.u.CreateProcess.VdmBinaryType = 0;
                                                         
-                                                        CsrClientCallServer(&csr_message, NULL, CSR_MAKE_API_NUMBER(BASESRV_SERVERDLL_INDEX, BasepCreateProcess), sizeof(csr_message.u.CreateProcess));
-
+                                                        
+                                                        //if (!is_wow64) {
+                                                            CsrClientCallServer((PCSR_API_MSG)&csr_message, NULL, CSR_MAKE_API_NUMBER(BASESRV_SERVERDLL_INDEX, BasepCreateProcess), sizeof(csr_message.u.CreateProcess));
+                                                        //} else {
+                                                            //csr_message.ReturnValue = NtWow64CsrBasepCreateProcess(&csr_message.u.CreateProcess);
+                                                        //}
+                                                        
                                                         // This is wrong somehow, the struct def is bad
-                                                        if (NT_SUCCESS((NTSTATUS)csr_message.ReturnValue)) {
+                                                        if (NT_SUCCESS((NTSTATUS)csr_message.ReturnValue))
+                                                        {
                                                             if (!(dwCreationFlags & CREATE_SUSPENDED)) {
                                                                 NtResumeThread(thread, NULL);
                                                             }
@@ -1006,6 +1068,7 @@ CreateProcessW_test(
                                     else if (0) {
                                 error_release_peb_lock:
                                         RtlReleasePebLock();
+                                error_destroy_parameters:
                                         RtlDestroyProcessParameters(process_parameters);
                                     }
                                 }

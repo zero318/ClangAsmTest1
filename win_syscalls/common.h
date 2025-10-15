@@ -22,6 +22,7 @@
 
 //extern "C" {
 
+__if_not_exists(NtCallbackReturn) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtCallbackReturnID) {
 	// 0x0002
@@ -35,7 +36,9 @@ __if_not_exists(NtCallbackReturnID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtSetInformationThread) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtSetInformationThreadID) {
 	// 0x000A
@@ -49,7 +52,9 @@ __if_not_exists(NtSetInformationThreadID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtClose) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtCloseID) {
 	// 0x000C
@@ -63,7 +68,9 @@ __if_not_exists(NtCloseID) {
 #if INLINE_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtOpenKey) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtOpenKeyID) {
 	// 0x000F
@@ -77,7 +84,9 @@ __if_not_exists(NtOpenKeyID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtEnumerateValueKey) {
 #if INLINE_LONG_SYSCALLS
 __if_exists(NtEnumerateValueKeyID) {
 	// 0x0010
@@ -91,7 +100,9 @@ __if_not_exists(NtEnumerateValueKeyID) {
 #if INLINE_LONG_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtQueryKey) {
 #if INLINE_LONG_SYSCALLS
 __if_exists(NtQueryKeyID) {
 	// 0x0014
@@ -105,7 +116,9 @@ __if_not_exists(NtQueryKeyID) {
 #if INLINE_LONG_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtQueryValueKey) {
 #if INLINE_LONG_SYSCALLS
 __if_exists(NtQueryValueKeyID) {
 	// 0x0014
@@ -119,7 +132,9 @@ __if_not_exists(NtQueryValueKeyID) {
 #if INLINE_LONG_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtAllocateVirtualMemory) {
 #if INLINE_LONG_SYSCALLS
 __if_exists(NtAllocateVirtualMemoryID) {
 	// 0x0015
@@ -133,7 +148,9 @@ __if_not_exists(NtAllocateVirtualMemoryID) {
 #if INLINE_LONG_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtQueryInformationProcess) {
 #if INLINE_LONG_SYSCALLS
 __if_exists(NtQueryInformationProcessID) {
 	// 0x0016
@@ -147,7 +164,9 @@ __if_not_exists(NtQueryInformationProcessID) {
 #if INLINE_LONG_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtWaitForMultipleObjects32) {
 #if INLINE_LONG_SYSCALLS
 __if_exists(NtWaitForMultipleObjects32ID) {
 	// 0x0017
@@ -161,7 +180,9 @@ __if_not_exists(NtWaitForMultipleObjects32ID) {
 #if INLINE_LONG_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtCreateKey) {
 #if INLINE_LONG_SYSCALLS
 __if_exists(NtCreateKeyID) {
 	// 0x001A
@@ -175,7 +196,9 @@ __if_not_exists(NtCreateKeyID) {
 #if INLINE_LONG_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtFreeVirtualMemory) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtFreeVirtualMemoryID) {
 	// 0x001B
@@ -189,7 +212,9 @@ __if_not_exists(NtFreeVirtualMemoryID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtQueryVirtualMemory) {
 #if INLINE_LONG_SYSCALLS
 __if_exists(NtQueryVirtualMemoryID) {
 	// 0x0020
@@ -203,7 +228,9 @@ __if_not_exists(NtQueryVirtualMemoryID) {
 #if INLINE_LONG_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtQueryInformationThread) {
 #if INLINE_LONG_SYSCALLS
 __if_exists(NtQueryInformationThreadID) {
 	// 0x0022
@@ -217,7 +244,9 @@ __if_not_exists(NtQueryInformationThreadID) {
 #if INLINE_LONG_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtTerminateProcess) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtTerminateProcessID) {
 	// 0x0029
@@ -231,7 +260,9 @@ __if_not_exists(NtTerminateProcessID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtEnumerateKey) {
 #if INLINE_LONG_SYSCALLS
 __if_exists(NtEnumerateKeyID) {
 	// 0x002F
@@ -245,7 +276,9 @@ __if_not_exists(NtEnumerateKeyID) {
 #if INLINE_LONG_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtQuerySystemInformation) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtQuerySystemInformationID) {
 	// 0x0033
@@ -259,7 +292,9 @@ __if_not_exists(NtQuerySystemInformationID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtWriteVirtualMemory) {
 #if INLINE_LONG_SYSCALLS
 __if_exists(NtWriteVirtualMemoryID) {
 	// 0x0037
@@ -273,7 +308,9 @@ __if_not_exists(NtWriteVirtualMemoryID) {
 #if INLINE_LONG_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtContinue) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtContinueID) {
 	// 0x0040
@@ -287,7 +324,9 @@ __if_not_exists(NtContinueID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtAddAtom) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtAddAtomID) {
 	// 0x0044
@@ -301,7 +340,9 @@ __if_not_exists(NtAddAtomID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtProtectVirtualMemory) {
 #if INLINE_LONG_SYSCALLS
 __if_exists(NtProtectVirtualMemoryID) {
 	// 0x004D
@@ -315,7 +356,9 @@ __if_not_exists(NtProtectVirtualMemoryID) {
 #if INLINE_LONG_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtSetValueKey) {
 #if INLINE_LONG_SYSCALLS
 __if_exists(NtSetValueKeyID) {
 	// 0x005D
@@ -329,7 +372,9 @@ __if_not_exists(NtSetValueKeyID) {
 #if INLINE_LONG_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtCompactKeys) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtCompactKeysID) {
 	// 0x008B
@@ -343,7 +388,9 @@ __if_not_exists(NtCompactKeysID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtCompressKey) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtCompressKeyID) {
 	// 0x008E
@@ -357,7 +404,9 @@ __if_not_exists(NtCompressKeyID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtCreateProcess) {
 #if INLINE_LONG_SYSCALLS
 __if_exists(NtCreateProcessID) {
 	// 0x009F
@@ -371,7 +420,9 @@ __if_not_exists(NtCreateProcessID) {
 #if INLINE_LONG_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtDeleteKey) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtDeleteKeyID) {
 	// 0x00B3
@@ -385,7 +436,9 @@ __if_not_exists(NtDeleteKeyID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtDeleteValueKey) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtDeleteValueKeyID) {
 	// 0x00B6
@@ -399,7 +452,9 @@ __if_not_exists(NtDeleteValueKeyID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtFlushInstructionCache) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtFlushInstructionCacheID) {
 	// 0x00C2
@@ -413,7 +468,9 @@ __if_not_exists(NtFlushInstructionCacheID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtFlushKey) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtFlushKeyID) {
 	// 0x00C3
@@ -427,7 +484,9 @@ __if_not_exists(NtFlushKeyID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtLoadKey) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtLoadKeyID) {
 	// 0x00DD
@@ -441,7 +500,9 @@ __if_not_exists(NtLoadKeyID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtLoadKey2) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtLoadKey2ID) {
 	// 0x00DE
@@ -455,7 +516,9 @@ __if_not_exists(NtLoadKeyID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtLockVirtualMemory) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtLockVirtualMemoryID) {
 	// 0x00E3
@@ -469,7 +532,9 @@ __if_not_exists(NtLockVirtualMemoryID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtOpenKeyEx) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtOpenKeyExID) {
 	// 0x00F2
@@ -483,7 +548,9 @@ __if_not_exists(NtOpenKeyExID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtRenameKey) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtRenameKeyID) {
 	// 0x013D
@@ -497,7 +564,9 @@ __if_not_exists(NtRenameKeyID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtReplaceKey) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtReplaceKeyID) {
 	// 0x013D
@@ -511,7 +580,9 @@ __if_not_exists(NtReplaceKeyID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtRestoreKey) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtRestoreKeyID) {
 	// 0x0143
@@ -525,7 +596,9 @@ __if_not_exists(NtRestoreKeyID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtSaveKey) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtSaveKeyID) {
 	// 0x0149
@@ -539,7 +612,9 @@ __if_not_exists(NtSaveKeyID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtSaveKeyEx) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtSaveKeyExID) {
 	// 0x014A
@@ -553,7 +628,9 @@ __if_not_exists(NtSaveKeyExID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtSaveMergedKeys) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtSaveMergedKeysID) {
 	// 0x014B
@@ -567,7 +644,9 @@ __if_not_exists(NtSaveMergedKeysID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtSetInformationKey) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtSetInformationKeyID) {
 	// 0x015C
@@ -581,7 +660,9 @@ __if_not_exists(NtSetInformationKeyID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtUnloadKey) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtUnloadKeyID) {
 	// 0x0185
@@ -595,7 +676,9 @@ __if_not_exists(NtUnloadKeyID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtUnloadKey2) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtUnloadKey2ID) {
 	// 0x0186
@@ -609,7 +692,9 @@ __if_not_exists(NtUnloadKey2ID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtUnloadKeyEx) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtUnloadKeyExID) {
 	// 0x0187
@@ -623,7 +708,9 @@ __if_not_exists(NtUnloadKeyExID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtUnlockVirtualMemory) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtUnlockVirtualMemoryID) {
 	// 0x0189
@@ -637,7 +724,9 @@ __if_not_exists(NtUnlockVirtualMemoryID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtUserGetThreadState) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtUserGetThreadStateID) {
 	// 0x1000
@@ -651,7 +740,9 @@ __if_not_exists(NtUserGetThreadStateID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtUserPeekMessage) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtUserPeekMessageID) {
 	// 0x1001
@@ -665,7 +756,9 @@ __if_not_exists(NtUserPeekMessageID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtUserCallOneParam) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtUserCallOneParamID) {
 	// 0x1002
@@ -679,7 +772,9 @@ __if_not_exists(NtUserCallOneParamID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
 
+__if_not_exists(NtUserGetKeyState) {
 #if INLINE_SHORT_SYSCALLS
 __if_exists(NtUserGetKeyStateID) {
 	// 0x1003
@@ -693,6 +788,23 @@ __if_not_exists(NtUserGetKeyStateID) {
 #if INLINE_SHORT_SYSCALLS
 }
 #endif
+}
+
+__if_not_exists(NtWow64CsrBasepCreateProcess) {
+#if INLINE_SHORT_SYSCALLS
+__if_exists(NtWow64CsrBasepCreateProcessID) {
+	// 0x3003
+	inline NTSTATUS NtWow64CsrBasepCreateProcess(PBASE_CREATEPROCESS_MSGX<32> a) {
+		return syscallWoW<NtWow64CsrBasepCreateProcessID, 0, NTSTATUS>(a);
+	}
+}
+__if_not_exists(NtWow64CsrBasepCreateProcessID) {
+#endif
+	dll_import NTSTATUS NtWow64CsrBasepCreateProcess(PBASE_CREATEPROCESS_MSGX<32> a);
+#if INLINE_SHORT_SYSCALLS
+}
+#endif
+}
 
 //}
 

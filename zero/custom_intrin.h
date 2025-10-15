@@ -389,6 +389,23 @@ using hlf_uint_t = std::tuple_element_t<find_type_in_tuple_v<T, uint_types_ex>, 
 template <typename T>
 using hlf_int_t = std::conditional_t<std::is_unsigned_v<T>, hlf_uint_t<make_unsigned_ex_t<T>>, hlf_sint_t<make_signed_ex_t<T>>>;
 
+template <typename T = void, typename ... Args>
+constexpr size_t sizeof_pack() {
+    if constexpr (std::is_same_v<T, void>) {
+        if constexpr (sizeof...(Args)) {
+            return sizeof_pack<Args...>();
+        } else {
+            return 0;
+        }
+    } else {
+        if constexpr (sizeof...(Args)) {
+            return sizeof_pack<Args...>() + sizeof(T);
+        } else {
+            return sizeof(T);
+        }
+    }
+}
+
 static forceinline void* alloc_vla(size_t size) {
     rsp_reg -= AlignUpToMultipleOf2(size, 16);
     return (void*)rsp_reg;
