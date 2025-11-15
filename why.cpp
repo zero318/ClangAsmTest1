@@ -93,14 +93,21 @@ static __forceinline uint64_t rdtsc(void) {
 	return tick;
 }
 
-WorstZUNRng worst_rng;
+//WorstZUNRng worst_rng;
 
 
 int yeet() {
-	worst_rng.seed = (uint16_t)rdtsc();
-	return worst_rng.this_is_awful();
+	//worst_rng.seed = (uint16_t)rdtsc();
+	//return worst_rng.this_is_awful();
 	//return (int)text;
 	//return 0;
+	/*
+	__asm__(
+		"1: \n"
+			"JMP 1b \n"
+	);
+	*/
+	return 0x69;
 }
 
 

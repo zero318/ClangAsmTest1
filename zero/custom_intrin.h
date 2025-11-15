@@ -769,8 +769,8 @@ static inline T *restrict rep_stosb(T *restrict dst, uint8_t value, size_t byte_
     return dst;
 }
 
-template<typename T = void>
-static inline bool repe_cmpsd(T *restrict dst, T *restrict src, size_t byte_len) {
+template<typename T = void, typename T2 = T>
+static inline bool repe_cmpsd(T *restrict dst, T2 *restrict src, size_t byte_len) {
     bool ret;
     __asm__ volatile (
         "repe cmpsl"
@@ -780,8 +780,8 @@ static inline bool repe_cmpsd(T *restrict dst, T *restrict src, size_t byte_len)
     );
     return ret;
 }
-template<typename T = void>
-static inline bool repne_cmpsd(T *restrict dst, T *restrict src, size_t byte_len) {
+template<typename T = void, typename T2 = T>
+static inline bool repne_cmpsd(T *restrict dst, T2 *restrict src, size_t byte_len) {
     bool ret;
     __asm__ volatile (
         "repne cmpsl"
@@ -792,8 +792,31 @@ static inline bool repne_cmpsd(T *restrict dst, T *restrict src, size_t byte_len
     return ret;
 }
 
-template<typename T = void>
-static inline bool repe_cmpsb(T *restrict dst, T *restrict src, size_t byte_len) {
+template<typename T = void, typename T2 = T>
+static inline bool repe_cmpsw(T *restrict dst, T2 *restrict src, size_t byte_len) {
+    bool ret;
+    __asm__ volatile (
+        "repe cmpsw"
+        : "=c"(byte_len), "+D"(dst), "+S"(src), asm_flags(z, ret)
+        : "0"(byte_len)
+        : "memory"
+    );
+    return ret;
+}
+template<typename T = void, typename T2 = T>
+static inline bool repne_cmpsw(T *restrict dst, T2 *restrict src, size_t byte_len) {
+    bool ret;
+    __asm__ volatile (
+        "repne cmpsw"
+        : "=c"(byte_len), "+D"(dst), "+S"(src), asm_flags(nz, ret)
+        : "0"(byte_len)
+        : "memory"
+    );
+    return ret;
+}
+
+template<typename T = void, typename T2 = T>
+static inline bool repe_cmpsb(T *restrict dst, T2 *restrict src, size_t byte_len) {
     bool ret;
     __asm__ volatile (
         "repe cmpsb"
@@ -803,8 +826,8 @@ static inline bool repe_cmpsb(T *restrict dst, T *restrict src, size_t byte_len)
     );
     return ret;
 }
-template<typename T = void>
-static inline bool repne_cmpsb(T *restrict dst, T *restrict src, size_t byte_len) {
+template<typename T = void, typename T2 = T>
+static inline bool repne_cmpsb(T *restrict dst, T2 *restrict src, size_t byte_len) {
     bool ret;
     __asm__ volatile (
         "repne cmpsb"

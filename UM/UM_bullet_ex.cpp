@@ -863,18 +863,18 @@ namespace Pbg {
 
 // size: 0x10
 struct ArcFileInner {
-    char* __string_0; // 0x0
-    int __dword_4; // 0x4
-    int32_t file_size; // 0x8
-    int __dword_C; // 0xC
+    char* filename; // 0x0
+    uint32_t __offset; // 0x4
+    int32_t decompressed_size; // 0x8
+    int32_t compressed_size; // 0xC
     // 0x10
 
     // 0x46F1C0
-    ArcFileInner() : __string_0(NULL) {}
+    ArcFileInner() : filename(NULL) {}
 
     // 0x46F1A0
     ~ArcFileInner() {
-        SAFE_FREE(this->__string_0);
+        SAFE_FREE(this->filename);
     }
 };
 
@@ -1141,22 +1141,22 @@ dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32
 
 // size: 0x10
 struct ArcFile {
-    ArcFileInner* __pointer_0; // 0x0
-    int32_t __int_4; // 0x4
-    char* __string_8; // 0x8
+    ArcFileInner* contents; // 0x0
+    int32_t file_count; // 0x4
+    char* archive_filename; // 0x8
     Pbg::File* file; // 0xC
     // 0x10
 
     // 0x46EC50
     ~ArcFile() {
-        if (char* str = this->__string_8) {
+        if (char* str = this->archive_filename) {
             DebugLogger::__debug_log_stub_2("info : %s close arcfile\r\n", str);
-            free(this->__string_8);
+            free(this->archive_filename);
         }
-        this->__string_8 = NULL;
-        SAFE_DELETE_ARRAY(this->__pointer_0);
+        this->archive_filename = NULL;
+        SAFE_DELETE_ARRAY(this->contents);
         SAFE_DELETE(this->file);
-        this->__int_4 = 0;
+        this->file_count = 0;
     }
 
     // 0x46EB80
@@ -1170,18 +1170,18 @@ struct ArcFile {
         if (!this->file) {
             return NULL;
         }
-        ArcFileInner* ptrA = this->__pointer_0;
+        ArcFileInner* ptrA = this->contents;
         if (ptrA) {
-            for (int32_t i = this->__int_4; i > 0; --i, ++ptrA) {
-                if (!stricmp(filename, ptrA->__string_0)) {
+            for (int32_t i = this->file_count; i > 0; --i, ++ptrA) {
+                if (!stricmp(filename, ptrA->filename)) {
                     goto found_in_cache;
                 }
             }
         }
-        DebugLogger::__debug_log_stub_2("info : %s error\r\n", this->__string_8);
+        DebugLogger::__debug_log_stub_2("info : %s error\r\n", this->archive_filename);
         return NULL;
 found_in_cache:
-        int32_t new_file_size = ptrA[1].__dword_4 - ptrA->__dword_4;
+        int32_t new_file_size = ptrA[1].__offset - ptrA->__offset;
         size_t cached_file_size = ptrA->file_size;
         void* cached_file_buffer;
         if (new_file_size == cached_file_size && file_buffer) {
@@ -1192,13 +1192,13 @@ found_in_cache:
         if (!cached_file_buffer) {
             goto error_free;
         }
-        if (!this->file->set_file_pointer(ptrA->__dword_4, FILE_BEGIN)) {
+        if (!this->file->set_file_pointer(ptrA->__offset, FILE_BEGIN)) {
             goto error_free;
         }
         if (!this->file->read_file_to_buffer(cached_file_buffer, new_file_size)) {
             goto error_free;
         }
-        const char* strA = ptrA->__string_0;
+        const char* strA = ptrA->filename;
         uint8_t string_sum = 0;
         for (
             size_t string_length = byteloop_strlen(strA);
@@ -1220,7 +1220,7 @@ found_in_cache:
         }
         return ret;
 error_free:
-        DebugLogger::__debug_log_stub_2("info : %s error\r\n", this->__string_8);
+        DebugLogger::__debug_log_stub_2("info : %s error\r\n", this->archive_filename);
         if (cached_file_buffer) {
             free(cached_file_buffer);
         }
@@ -1237,14 +1237,14 @@ struct DatFileHeader {
     ZUNMagic magic; // 0x0
     uint32_t decompressed_size; // 0x4
     uint32_t compressed_size; // 0x8
-    int __dword_C; // 0xC
+    uint32_t file_count; // 0xC
     // 0x10
 };
 #pragma region // DatFileHeader Validation
 ValidateFieldOffset32(0x0, DatFileHeader, magic);
 ValidateFieldOffset32(0x4, DatFileHeader, decompressed_size);
 ValidateFieldOffset32(0x8, DatFileHeader, compressed_size);
-ValidateFieldOffset32(0xC, DatFileHeader, __dword_C);
+ValidateFieldOffset32(0xC, DatFileHeader, file_count);
 ValidateStructSize32(0x10, DatFileHeader);
 #pragma endregion
 
@@ -1256,10 +1256,10 @@ dllexport gnu_noinline bool stdcall ArcFile::__sub_46EE90(int32_t) {
             if (THDAT_ARCFILE.file->read_file_to_buffer(&dat_header, sizeof(DatFileHeader))) {
                 __decrypt_buffer(&dat_header, sizeof(DatFileHeader), 0x1B, 0x37, 0x10, 0x10);
                 if (dat_header.magic.as_uint == PackUInt('T', 'H', 'A', '1')) {
-                    uint32_t uintA = dat_header.__dword_C + 0xF7E7F8AC; // IDK what this value is
+                    uint32_t file_count = dat_header.file_count + 0xF7E7F8AC; // IDK what this value is
                     dat_header.decompressed_size -= 123456789;
                     dat_header.compressed_size -= 987654321;
-                    THDAT_ARCFILE.__int_4 = uintA;
+                    THDAT_ARCFILE.file_count = file_count;
                     int32_t data_offset = THDAT_ARCFILE.file->get_file_size() - dat_header.compressed_size;
                     THDAT_ARCFILE.file->set_file_pointer(data_offset, FILE_BEGIN);
                     size_t compressed_size = dat_header.compressed_size;
@@ -1269,31 +1269,31 @@ dllexport gnu_noinline bool stdcall ArcFile::__sub_46EE90(int32_t) {
                             __decrypt_buffer(compressed_buffer, compressed_size, 0x3E, 0x9B, 0x80, compressed_size);
                             buffer = __decompress_buffer(compressed_buffer, compressed_size, buffer, dat_header.decompressed_size);
                             if (buffer) {
-                                int32_t intA = THDAT_ARCFILE.__int_4;
-                                ArcFileInner* arcfile_inner_array = new ArcFileInner[intA + 1];
+                                int32_t file_count = THDAT_ARCFILE.file_count;
+                                ArcFileInner* arcfile_inner_array = new ArcFileInner[file_count + 1];
                                 if (!arcfile_inner_array) {
-                                    THDAT_ARCFILE.__pointer_0 = NULL;
+                                    THDAT_ARCFILE.contents = NULL;
                                     free(compressed_buffer);
                                     goto free_buffer;
                                 }
                                 char* buffer_read = (char*)buffer;
                                 ArcFileInner* arcfile_inner_array_write = arcfile_inner_array;
-                                for (int32_t i = intA; i > 0; --i) {
-                                    arcfile_inner_array_write->__string_0 = pbg_strdup(buffer_read);
+                                for (int32_t i = file_count; i > 0; --i) {
+                                    arcfile_inner_array_write->filename = pbg_strdup(buffer_read);
                                     int32_t length = byteloop_strlen(buffer_read) + 1;
                                     if (int32_t temp = length % 4) {
                                         length += 4 - temp;
                                     }
                                     buffer_read += length;
-                                    arcfile_inner_array_write->__dword_4 = ((uint32_t*)buffer_read)[0];
-                                    arcfile_inner_array_write->file_size = ((uint32_t*)buffer_read)[1];
-                                    arcfile_inner_array_write->__dword_C = ((uint32_t*)buffer_read)[2];
+                                    arcfile_inner_array_write->__offset = ((uint32_t*)buffer_read)[0];
+                                    arcfile_inner_array_write->decompressed_size = ((uint32_t*)buffer_read)[1];
+                                    arcfile_inner_array_write->compressed_size = ((uint32_t*)buffer_read)[2];
                                     buffer_read += sizeof(uint32_t[3]);
                                     ++arcfile_inner_array_write;
                                 }
-                                arcfile_inner_array[intA].__dword_4 = data_offset;
-                                arcfile_inner_array[intA].file_size = 0;
-                                THDAT_ARCFILE.__pointer_0 = arcfile_inner_array;
+                                arcfile_inner_array[file_count].__offset = data_offset;
+                                arcfile_inner_array[file_count].decompressed_size = 0;
+                                THDAT_ARCFILE.contents = arcfile_inner_array;
                                 free(compressed_buffer);
                                 free(buffer);
                                 return true;
@@ -1324,7 +1324,7 @@ dllexport gnu_noinline bool stdcall ArcFile::__sub_46EB80(int32_t) {
     if (ArcFile::__sub_46EE90()) {
         char* str;
         clang_noinline str = pbg_strdup("th18.dat");
-        THDAT_ARCFILE.__string_8 = str;
+        THDAT_ARCFILE.archive_filename = str;
         if (str) {
             THDAT_ARCFILE.file->open_file(str, "r");
             return true;
@@ -1338,9 +1338,9 @@ dllexport gnu_noinline bool stdcall ArcFile::__sub_46EB80(int32_t) {
 struct ArcFileEx : ArcFile {
     // 0x46EB50
     dllexport gnu_noinline ArcFileEx() {
-        this->__pointer_0 = NULL;
-        this->__int_4 = 0;
-        this->__string_8 = NULL;
+        this->contents = NULL;
+        this->file_count = 0;
+        this->archive_filename = NULL;
         this->file = NULL;
     }
 
@@ -1362,10 +1362,10 @@ dllexport gnu_noinline void* fastcall read_file_to_buffer(const char* path, int3
         const char* filename = strrchr(path, '\\');
         filename = strrchr(filename ? ++filename : path, '/');
         filename = filename ? ++filename : path;
-        if (ArcFileInner* ptrA = THDAT_ARCFILE.__pointer_0) {
-            for (int32_t i = THDAT_ARCFILE.__int_4; i > 0; --i, ++ptrA) {
-                if (!stricmp(filename, ptrA->__string_0)) {
-                    file_size = ptrA->file_size;
+        if (ArcFileInner* ptrA = THDAT_ARCFILE.contents) {
+            for (int32_t i = THDAT_ARCFILE.file_count; i > 0; --i, ++ptrA) {
+                if (!stricmp(filename, ptrA->filename)) {
+                    file_size = ptrA->decompressed_size;
                     goto decode_file;
                 }
             }
@@ -12366,7 +12366,7 @@ struct AnmVM {
     }
 
     inline void interrupt_and_run(int32_t interrupt) {
-        this->run_on_interrupt(interrupt);
+        this->interrupt(interrupt);
         this->run_anm();
     }
 
@@ -25817,11 +25817,39 @@ struct StdInstruction {
     unsigned char args[]; // 0x8
 };
 
+namespace Std {
+enum Opcode : int32_t {
+    std_halt = 0,
+    jump = 1,
+    camera_position = 2,
+    camera_position_interp = 3,
+    camera_facing = 4,
+    camera_facing_interp = 5,
+    camera_rotation = 6,
+    camera_fov = 7,
+    fog = 8,
+    fog_interp = 9,
+    camera_position_interp_bezier = 10,
+    camera_facing_interp_bezier = 11,
+    __shaking_mode = 12,
+    background_fill_color = 13,
+    __background_sprite = 14,
+    nop = 15,
+    interrupt_label = 16,
+    distortion = 17,
+    camera_rotation_interp = 18,
+    __anm_interrupt_all = 19,
+    draw_distance = 20,
+    camera_fov_interp = 21
+};
+}
+
 // size: 0x3444
 struct StdVM {
     Timer script_time; // 0x0, 0xC
     int32_t current_instruction_offset; // 0x14, 0x20
-    int32_t shaking_mode; // 0x18, 0x24
+    uint8_t shaking_mode; // 0x18, 0x24
+    padding_bytes(0x3); // 0x19, 0x25
     Timer shaking_timer; // 0x1C, 0x28
     Timer __shaking_6_timer; // 0x30, 0x3C
     ZUNInterp<Float3> camera_facing_interp; // 0x44, 0x50
@@ -25838,10 +25866,21 @@ struct StdVM {
     D3DCOLOR __color_3440; // 0x3440, 0x344C
     // 0x3444
 
-    // 0x41D260
-    dllexport gnu_noinline ZUNResult thiscall run_std() asm_symbol_rel(0x41D260) {
-        // TODO
+    inline StdInstruction* get_current_instruction();
+
+    inline StdInstruction* get_current_instruction(int32_t offset);
+
+    // 0x41B7A0
+    dllexport gnu_noinline void thiscall initialize_sky_interp(int32_t end_time, int32_t mode, StageSky* final_sky) asm_symbol_rel(0x41B7A0) {
+        this->sky_data_interp.end_time = end_time;
+        this->sky_data_interp.mode = mode;
+        this->sky_data_interp.initial_value = this->camera.sky;
+        this->sky_data_interp.final_value = *final_sky;
+        this->sky_data_interp.time.reset();
     }
+
+    // 0x41D260
+    dllexport gnu_noinline ZUNResult thiscall run_std() asm_symbol_rel(0x41D260);
 };
 #pragma region // StdVM Validation
 ValidateFieldOffset32(0x0, StdVM, script_time);
@@ -25932,6 +25971,23 @@ struct Stage : ZUNTask {
         }
         if (STAGE_B_PTR == this) {
             STAGE_B_PTR = NULL;
+        }
+    }
+
+    // 0x42D7B0
+    dllexport gnu_noinline void thiscall initialize_sky_interp(int32_t end_time, int32_t mode, StageSky* final_sky) asm_symbol_rel(0x42D7B0) {
+        return this->std_vm.initialize_sky_interp(end_time, mode, final_sky);
+    }
+
+    inline void interrupt_all_anms(int32_t interrupt) {
+        AnmVM* face_vm = this->face_vms;
+        if (face_vm) {
+            for (int32_t i = 0; i < this->std_file->face_count; ++i, ++face_vm) {
+                face_vm->interrupt_and_run(interrupt);
+            }
+        }
+        for (size_t i = 0; i < countof(this->std_vm.slot_vms); ++i) {
+            this->std_vm.slot_vms[i].interrupt_and_run(interrupt);
         }
     }
 
@@ -26114,6 +26170,235 @@ ValidateFieldOffset32(0x3498, Stage, std_file_size);
 ValidateFieldOffset32(0x349C, Stage, on_draw_func_B);
 ValidateStructSize32(0x34A0, Stage);
 #pragma endregion
+
+inline StdInstruction* StdVM::get_current_instruction() {
+    StdInstruction* current_instruction = this->full_stage->script;
+    return IndexInstr(this->current_instruction_offset);
+}
+inline StdInstruction* StdVM::get_current_instruction(int32_t offset) {
+    StdInstruction* current_instruction = this->full_stage->script;
+    return IndexInstr(offset);
+}
+
+// 0x41D260
+dllexport gnu_noinline ZUNResult thiscall StdVM::run_std() {
+    using namespace Std;
+
+    StdInstruction* current_instruction = this->get_current_instruction();
+    while (current_instruction->time <= this->script_time) {
+        switch (current_instruction->opcode) {
+            case std_halt: // 0
+                goto std_end;
+            case jump: // 1
+                this->script_time.set(IntArg(1));
+                current_instruction = this->get_current_instruction(IntArg(0));
+                continue;
+            case camera_position: // 2
+                this->camera.__float3_13C = this->camera.position;
+                this->camera.position.x = FloatArg(0);
+                this->camera.position.y = FloatArg(1);
+                this->camera.position.z = FloatArg(2);
+                this->camera.__float3_13C = this->camera.position - this->camera.__float3_13C;
+                break;
+            case Opcode::camera_position_interp: { // 3
+                float z = FloatArg(4);
+                float x = FloatArg(2);
+                float y = FloatArg(3);
+                this->camera_position_interp.end_time = IntArg(0);
+                this->camera_position_interp.mode = IntArg(1);
+                this->camera_position_interp.initial_value = this->camera.position;
+                this->camera_position_interp.final_value = { x, y, z };
+                this->camera_position_interp.time.reset();
+                break;
+            }
+            case camera_facing: // 4
+                this->camera.facing.x = FloatArg(0);
+                this->camera.facing.y = FloatArg(1);
+                this->camera.facing.z = FloatArg(2);
+                break;
+            case Opcode::camera_facing_interp: { // 5
+                float z = FloatArg(4);
+                float x = FloatArg(2);
+                float y = FloatArg(3);
+                this->camera_facing_interp.end_time = IntArg(0);
+                this->camera_facing_interp.mode = IntArg(1);
+                this->camera_facing_interp.initial_value = this->camera.facing;
+                this->camera_facing_interp.final_value = { x, y, z };
+                this->camera_facing_interp.time.reset();
+                break;
+            }
+            case camera_rotation: // 6
+                this->camera.rotation.x = FloatArg(0);
+                this->camera.rotation.y = FloatArg(1);
+                this->camera.rotation.z = FloatArg(2);
+                break;
+            case Opcode::camera_rotation_interp: { // 18
+                float z = FloatArg(4);
+                float x = FloatArg(2);
+                float y = FloatArg(3);
+                this->camera_rotation_interp.end_time = IntArg(0);
+                this->camera_rotation_interp.mode = IntArg(1);
+                this->camera_rotation_interp.initial_value = this->camera.rotation;
+                this->camera_rotation_interp.final_value = { x, y, z };
+                this->camera_rotation_interp.time.reset();
+                break;
+            }
+            case camera_fov: // 7
+                this->camera.fov = FloatArg(0);
+                break;
+            case Opcode::camera_fov_interp: // 21
+                this->camera_fov_interp.end_time = IntArg(0);
+                this->camera_fov_interp.mode = IntArg(1);
+                this->camera_fov_interp.initial_value = this->camera.fov;
+                this->camera_fov_interp.final_value = FloatArg(2);
+                this->camera_fov_interp.time.reset();
+                break;
+            case fog: { // 8
+                D3DCOLOR color = IntArg(0);
+                this->camera.sky.color = color;
+                this->camera.sky.color_components.b = BLUE(color);
+                this->camera.sky.color_components.g = GREEN(color);
+                this->camera.sky.color_components.r = RED(color);
+                this->camera.sky.color_components.a = ALPHA(color);
+                this->camera.sky.begin_distance = FloatArg(1);
+                this->camera.sky.end_distance = FloatArg(2);
+                break;
+            }
+            case fog_interp: { // 9
+                StageSky sky;
+                sky.begin_distance = FloatArg(3);
+                sky.end_distance = FloatArg(4);
+                sky.color_components.b = ByteArg(8);
+                sky.color_components.g = ByteArg(9);
+                sky.color_components.r = ByteArg(10);
+                sky.color_components.a = ByteArg(11);
+                for (int32_t i = 0; i < 4; ++i) {
+                    ((int8_t*)&sky.color)[i] = ((float*)&sky.color_components)[i];
+                }
+                this->initialize_sky_interp(IntArg(0), IntArg(1), &sky);
+                break;
+            }
+            case camera_position_interp_bezier: { // 10
+                float bezier1_z = FloatArg(4);
+                float bezier1_x = FloatArg(2);
+                float bezier1_y = FloatArg(3);
+                float final_x = FloatArg(5);
+                float final_y = FloatArg(6);
+                float bezier2_x = FloatArg(8);
+                float bezier2_y = FloatArg(9);
+                int32_t end_time = IntArg(0);
+                float final_z = FloatArg(7);
+                float bezier2_z = FloatArg(10);
+                this->camera_position_interp.end_time = end_time;
+                this->camera_position_interp.initial_value = this->camera.position;
+                this->camera_position_interp.bezier1 = { bezier1_x, bezier1_y, bezier1_z };
+                this->camera_position_interp.final_value = { final_x, final_y, final_z };
+                this->camera_position_interp.bezier2 = { bezier2_x, bezier2_y, bezier2_z };
+                this->camera_position_interp.mode = Bezier;
+                this->camera_position_interp.time.reset();
+                break;
+            }
+            case camera_facing_interp_bezier: { // 11
+                float bezier1_z = FloatArg(4);
+                float bezier1_x = FloatArg(2);
+                float bezier1_y = FloatArg(3);
+                float final_x = FloatArg(5);
+                float final_y = FloatArg(6);
+                float bezier2_x = FloatArg(8);
+                float bezier2_y = FloatArg(9);
+                int32_t end_time = IntArg(0);
+                float final_z = FloatArg(7);
+                float bezier2_z = FloatArg(10);
+                this->camera_facing_interp.end_time = end_time;
+                this->camera_facing_interp.initial_value = this->camera.facing;
+                this->camera_facing_interp.bezier1 = { bezier1_x, bezier1_y, bezier1_z };
+                this->camera_facing_interp.final_value = { final_x, final_y, final_z };
+                this->camera_facing_interp.bezier2 = { bezier2_x, bezier2_y, bezier2_z };
+                this->camera_facing_interp.mode = Bezier;
+                this->camera_facing_interp.time.reset();
+                break;
+            }
+            case __shaking_mode: { // 12
+                uint8_t mode = ByteArg(0);
+                this->shaking_mode = mode;
+                if (mode == 0) {
+                    this->camera.__shaking_float3_A.x = 0.0f;
+                    this->camera.__shaking_float3_A.y = 0.0f;
+                    this->camera.__shaking_float3_A.z = 0.0f;
+                }
+                if (mode != 6) {
+                    this->shaking_timer.reset();
+                } else {
+                    this->__shaking_6_timer.reset();
+                }
+                if (mode == 2) {
+                    this->shaking_timer.set(200);
+                }
+                break;
+            }
+            case background_fill_color: // 13
+                SUPERVISOR.background_color = IntArg(0);
+                break;
+            case __background_sprite: { // 14
+                int32_t script = IntArg(1);
+                if (script >= 0) {
+                    this->slot_vms[IntArg(0)].cleanup();
+                    clang_forceinline this->full_stage->stage_anm->__copy_data_to_vm_and_run(&this->slot_vms[IntArg(0)], IntArg(1));
+                    this->slot_layers[IntArg(0)] = IntArg(2);
+                }
+                else if (script == -2) {
+                    this->slot_vms[IntArg(0)].data.visible = false;
+                    this->slot_layers[IntArg(0)] = IntArg(2);
+                }
+                else if (script == -1) {
+                    AnmVM* vm = &this->slot_vms[IntArg(0)];
+                    vm->data.current_instruction_offset = -1;
+                    vm->data.visible = false;
+                    this->slot_layers[IntArg(0)] = IntArg(2);
+                }
+                break;
+            }
+            case Opcode::distortion: { // 17
+                // TODO
+                break;
+            }
+            case draw_distance: { // 20
+                float distance = FloatArg(0);
+                this->draw_distance_squared = distance * distance;
+                break;
+            }
+            case __anm_interrupt_all: // 19
+                this->full_stage->interrupt_all_anms(IntArg(0) + 7);
+                break;
+        }
+        this->current_instruction_offset += current_instruction->size;
+        current_instruction = this->get_current_instruction();
+    }
+    this->script_time++;
+std_end:
+    if (this->camera_facing_interp.end_time) {
+        this->camera.facing = this->camera_facing_interp.step();
+    }
+    if (this->camera_position_interp.end_time) {
+        this->camera.position = this->camera_position_interp.step();
+    }
+    if (this->sky_data_interp.end_time) {
+        this->camera.sky = this->sky_data_interp.step();
+    }
+    if (this->camera_rotation_interp.end_time) {
+        this->camera.rotation = this->camera_rotation_interp.step();
+    }
+    if (this->camera_fov_interp.end_time) {
+        this->camera.fov = this->camera_fov_interp.step();
+    }
+    uint8_t shaking_mode = this->shaking_mode;
+    if (shaking_mode) {
+        switch (shaking_mode) {
+            // TODO
+        }
+    }
+    return ZUN_SUCCESS;
+}
 
 typedef struct Spellcard Spellcard;
 extern "C" {
@@ -34413,7 +34698,7 @@ struct HelpMenu : ZUNTask {
     // ZUNTask base; // 0x0
     int __int_C; // 0xC
     Timer __timer_10; // 0x10
-    MenuSelect __menu_select_24; // 0x24
+    MenuSelect menu_select; // 0x24
     AnmID __anm_id_array_FC[7]; // 0xFC
     unknown_fields(0x8); // 0x118
     AnmID __anm_id_120; // 0x120
@@ -34518,7 +34803,7 @@ ValidateFieldOffset32(0x4, HelpMenu, on_tick_func);
 ValidateFieldOffset32(0x8, HelpMenu, on_draw_func);
 ValidateFieldOffset32(0xC, HelpMenu, __int_C);
 ValidateFieldOffset32(0x10, HelpMenu, __timer_10);
-ValidateFieldOffset32(0x24, HelpMenu, __menu_select_24);
+ValidateFieldOffset32(0x24, HelpMenu, menu_select);
 ValidateFieldOffset32(0xFC, HelpMenu, __anm_id_array_FC);
 ValidateFieldOffset32(0x120, HelpMenu, __anm_id_120);
 ValidateFieldOffset32(0x124, HelpMenu, __int_124);

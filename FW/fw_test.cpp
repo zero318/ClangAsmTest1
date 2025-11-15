@@ -16,6 +16,7 @@
 #include <thread>
 #include <random>
 #include <functional>
+#include <atomic>
 
 #include <memory_resource>
 
@@ -537,6 +538,21 @@ struct Timer {
     dllexport bool thiscall operator!=(int32_t time) {
         return this->current != time;
     }
+};
+
+// size: 0x14
+struct InputMapping {
+    int16_t shoot; // 0x0
+    int16_t bomb; // 0x2
+    int16_t focus; // 0x4
+    int16_t pause; // 0x6
+    int16_t __button4; // 0x8
+    int16_t __button5; // 0xA
+    int16_t __button6; // 0xC
+    int16_t __button7; // 0xE
+    int16_t __button8; // 0x10
+    int16_t __button9; // 0x12
+    // 0x14
 };
 
 // size: 0x10
@@ -2597,6 +2613,20 @@ inline bool __game_thread_flag_B_is_not_true() {
     return !(game_thread && game_thread->__get_unknown_flag_B());
 }
 
+// size: 0x4C
+struct MenuSelect {
+    int32_t current_selection; // 0x0
+    int32_t previous_selection; // 0x4
+    int32_t menu_length; // 0x8
+    int32_t selection_stack[MENU_STACK_DEPTH]; // 0xC
+    int32_t menu_length_stack[MENU_STACK_DEPTH]; // 0x4C
+    int32_t stack_index; // 0x8C
+    int32_t disabled_selections[MENU_STACK_DEPTH]; // 0x90
+    BOOL enable_wrap; // 0xD0
+    int32_t disabled_selections_count; // 0xD4
+    // 0xD8
+};
+
 // size: 0x140
 struct MsgVM {
 
@@ -3688,13 +3718,66 @@ union AnmVMCreationFlags {
     };
 };
 
+
+// size: ???
+struct AnmEntry {
+
+};
+
+// size: 0x18
+struct AnmImage {
+    LPDIRECT3DTEXTURE9 d3d_texture; // 0x0
+    void* file; // 0x4
+    int32_t file_size; // 0x8
+    uint32_t bytes_per_pixel; // 0xC
+    AnmEntry* entry; // 0x10
+    union {
+        uint32_t flags; // 0x14
+        struct {
+            uint32_t __unknown_flag_A : 1;
+            uint32_t : 31;
+        };
+    };
+    // 0x18
+
+    // Rx49D80
+    void thiscall __sub_r49D80() {
+        LPDIRECT3DSURFACE9 surface;
+        this->d3d_texture->GetSurfaceLevel(0, &surface);
+        if (!surface) {
+            return;
+        }
+        D3DSURFACE_DESC surface_desc;
+        surface->GetDesc(&surface_desc);
+        D3DLOCKED_RECT rect;
+        surface->LockRect(&rect, NULL, 0);
+        memset(rect.pBits, 0, rect.Pitch * surface_desc.Height);
+        surface->UnlockRect();
+        SAFE_RELEASE(surface);
+    }
+};
+
 // size: 0x70
 struct AnmLoaded {
     unknown_fields(0x54); // 0x0
     AnmInstruction* (*scripts)[]; // 0x54
+    AnmImage* images; // 0x58
+    std::atomic<int> __atomic_int_5C; // 0x5C
+    // 0x60
 
+    // Rx37490
     AnmInstruction* thiscall get_script(int32_t index) {
         return (*this->scripts)[index];
+    }
+
+    // RxBFAE0
+    AnmImage* thiscall get_image(int32_t index) {
+        return &this->images[index];
+    }
+
+    // RxBFB00
+    LPDIRECT3DTEXTURE9 thiscall get_texture(int32_t index) {
+        return this->images[index].d3d_texture;
     }
 };
 
@@ -8386,6 +8469,47 @@ struct Spellcard : ZUNTask {
             this->__bonus_B = 1000000000;
         }
     }
+};
+
+// size: 0x140
+struct HelpMenu : ZUNTask {
+    //ZUNTask base; // 0x0
+    int __int_10; // 0x10
+    Timer __timer_14; // 0x14
+    MenuSelect menu_select; // 0x24
+    AnmID __anm_id_array_70[14]; // 0x70
+    int __int_A8; // 0xA8
+    float __float_AC; // 0xAC
+    AnmLoaded* help_anm; // 0xB0
+    void* file_buffer; // 0xB4
+    int __int_B8; // 0xB8
+    char filename_buffer[128]; // 0xBC
+    int32_t __int_1B8; // 0x13C
+    // 0x140
+};
+
+// size: 0x114
+struct KeyConfigMenu : ZUNTask {
+    //ZUNTask base; // 0x0
+    int __dword_10; // 0x10
+    MenuSelect menu_select; // 0x14
+    InputMapping joypad_mapping; // 0x60
+    unknown_fields(0xC); // 0x74
+    InputMapping xinput_mapping; // 0x80
+    unknown_fields(0xC); // 0x94
+    InputMapping keyboard_mapping; // 0xA0
+    unknown_fields(0xC); // 0xB4
+    Timer __timer_C0; // 0xC0
+    Timer __timer_D0; // 0xD0
+    Float3 __float3_E0; // 0xE0
+    Timer __timer_EC; // 0xEC
+    int __dword_FC; // 0xFC
+    int __dword_100; // 0x100
+    int __dword_104; // 0x104
+    int __dword_108; // 0x108
+    int __dword_10C; // 0x10C
+    int __dword_110; // 0x110
+    // 0x114
 };
 
 

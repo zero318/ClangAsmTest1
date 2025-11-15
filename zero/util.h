@@ -1944,7 +1944,8 @@ static inline P* pointer_raw_offset(P* pointer, O offset) {
 #define gnu_forceinline gnu_always_inline
 #define restrict __restrict
 
-#define naked __declspec(naked)
+//#define naked __declspec(naked)
+#define naked gnu_attr(naked)
 
 //#define fastcall __fastcall
 #define fastcall gnu_attr(fastcall)
@@ -2222,9 +2223,21 @@ static inline constexpr int16_t PackSInt16(uint8_t c1, uint8_t c2 = 0) {
 static inline constexpr int32_t PackSInt32(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0) {
     return c4 << 24 | c3 << 16 | c2 << 8 | c1;
 }
+// Packs the little endian words [c1] and [c2] together as a 32 bit little endian signed integer
+static inline constexpr int32_t PackSInt32W(uint16_t c1, uint16_t c2 = 0) {
+    return c2 << 16 | c1;
+}
 // Packs the bytes [c1], [c2], [c3], [c4], [c5], [c6], [c7], and [c8] together as a 64 bit little endian signed integer
 static inline constexpr int64_t PackSInt64(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0, uint8_t c5 = 0, uint8_t c6 = 0, uint8_t c7 = 0, uint8_t c8 = 0) {
     return (uint64_t)c8 << 56 | (uint64_t)c7 << 48 | (uint64_t)c6 << 40 | (uint64_t)c5 << 32 | c4 << 24 | c3 << 16 | c2 << 8 | c1;
+}
+// Packs the little endian words [c1], [c2], [c3], and [c4] together as a 64 bit little endian signed integer
+static inline constexpr int64_t PackSInt64W(uint16_t c1, uint16_t c2 = 0, uint16_t c3 = 0, uint16_t c4 = 0) {
+    return (uint64_t)c4 << 48 | (uint64_t)c3 << 32 | c2 << 16 | c1;
+}
+// Packs the little endian dwords [c1] and [c2] together as a 64 bit little endian signed integer
+static inline constexpr int64_t PackSInt64D(uint32_t c1, uint32_t c2 = 0) {
+    return (uint64_t)c2 << 32 | c1;
 }
 // Packs the bytes [c1] and [c2] together as a 16 bit little endian unsigned integer
 static inline constexpr uint16_t PackUInt16(uint8_t c1, uint8_t c2 = 0) {
@@ -2234,9 +2247,21 @@ static inline constexpr uint16_t PackUInt16(uint8_t c1, uint8_t c2 = 0) {
 static inline constexpr uint32_t PackUInt32(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0) {
     return c4 << 24 | c3 << 16 | c2 << 8 | c1;
 }
+// Packs the little endian words [c1] and [c2] together as a 32 bit little endian unsigned integer
+static inline constexpr uint32_t PackUInt32W(uint16_t c1, uint16_t c2 = 0) {
+    return c2 << 16 | c1;
+}
 // Packs the bytes [c1], [c2], [c3], [c4], [c5], [c6], [c7], and [c8] together as a 64 bit little endian unsigned integer
 static inline constexpr uint64_t PackUInt64(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0, uint8_t c5 = 0, uint8_t c6 = 0, uint8_t c7 = 0, uint8_t c8 = 0) {
     return (uint64_t)c8 << 56 | (uint64_t)c7 << 48 | (uint64_t)c6 << 40 | (uint64_t)c5 << 32 | c4 << 24 | c3 << 16 | c2 << 8 | c1;
+}
+// Packs the little endian words [c1], [c2], [c3], and [c4] together as a 64 bit little endian unsigned integer
+static inline constexpr uint64_t PackUInt64W(uint16_t c1, uint16_t c2 = 0, uint16_t c3 = 0, uint16_t c4 = 0) {
+    return (uint64_t)c4 << 48 | (uint64_t)c3 << 32 | c2 << 16 | c1;
+}
+// Packs the little endian dwords [c1] and [c2] together as a 64 bit little endian unsigned integer
+static inline constexpr uint64_t PackUInt64D(uint32_t c1, uint32_t c2 = 0) {
+    return (uint64_t)c2 << 32 | c1;
 }
 // Packs the bytes [c1] and [c2] together as a 16 bit little endian signed integer
 static inline constexpr int16_t PackInt16(uint8_t c1, uint8_t c2 = 0) {
@@ -2246,17 +2271,37 @@ static inline constexpr int16_t PackInt16(uint8_t c1, uint8_t c2 = 0) {
 static inline constexpr int32_t PackInt32(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0) {
     return PackSInt32(c1, c2, c3, c4);
 }
+// Packs the little endian words [c1] and [c2] together as a 32 bit little endian signed integer
+static inline constexpr int32_t PackInt32W(uint16_t c1, uint16_t c2 = 0) {
+    return PackSInt32W(c1, c2);
+}
 // Packs the bytes [c1], [c2], [c3], [c4], [c5], [c6], [c7], and [c8] together as a 64 bit little endian signed integer
 static inline constexpr int64_t PackInt64(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0, uint8_t c5 = 0, uint8_t c6 = 0, uint8_t c7 = 0, uint8_t c8 = 0) {
     return PackSInt64(c1, c2, c3, c4, c5, c6, c7, c8);
+}
+// Packs the little endian words [c1], [c2], [c3], and [c4] together as a 64 bit little endian signed integer
+static inline constexpr int64_t PackInt64W(uint16_t c1, uint16_t c2 = 0, uint16_t c3 = 0, uint16_t c4 = 0) {
+    return PackSInt64W(c1, c2, c3, c4);
+}
+// Packs the little endian dwords [c1] and [c2] together as a 64 bit little endian signed integer
+static inline constexpr int64_t PackInt64D(uint32_t c1, uint32_t c2 = 0) {
+    return PackSInt64D(c1, c2);
 }
 // Packs the bytes [c1], [c2], [c3], and [c4] together as a 32 bit little endian signed integer
 static inline constexpr int32_t PackInt(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0) {
     return PackSInt32(c1, c2, c3, c4);
 }
+// Packs the little endian words [c1] and [c2] together as a 32 bit little endian signed integer
+static inline constexpr int32_t PackInt(uint16_t c1, uint16_t c2 = 0) {
+    return PackSInt32W(c1, c2);
+}
 // Packs the bytes [c1], [c2], [c3], and [c4] together as a 32 bit little endian unsigned integer
 static inline constexpr uint32_t PackUInt(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0) {
     return PackUInt32(c1, c2, c3, c4);
+}
+// Packs the little endian words [c1] and [c2] together as a 32 bit little endian unsigned integer
+static inline constexpr uint32_t PackUIntW(uint16_t c1, uint16_t c2 = 0) {
+    return PackUInt32W(c1, c2);
 }
 
 // Packs the nibbles [n1], [n2], [n3], [n4], [n5], [n6], [n7], and [n8] together as a 32 bit little endian unsigned integer

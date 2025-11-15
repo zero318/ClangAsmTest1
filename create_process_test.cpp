@@ -544,6 +544,32 @@ static void resolve_nt_funcs() {
 #include "win_syscalls/syscalls7.h"
 #include "win_syscalls/common.h"
 
+typedef enum {
+    BasepSearchPathEnd,         // end of path
+    BasepSearchPathDlldir,      // use the dll dir; fallback to nothing
+    BasepSearchPathAppdir,      // use the exe dir; fallback to base exe dir
+    BasepSearchPathDefaultDirs, // use the default system dirs
+    BasepSearchPathEnvPath,     // use %PATH%
+    BasepSearchPathCurdir,      // use "."
+    MaxBasepSearchPath
+} BASEP_SEARCH_PATH_ELEMENT;
+
+dllexport
+gnu_noinline
+BOOL
+WINAPI
+CreateProcessW_test(
+    LPCWSTR lpApplicationName,
+    LPWSTR lpCommandLine,
+    LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    BOOL bInheritHandles,
+    DWORD dwCreationFlags,
+    LPVOID lpEnvironment,
+    LPCWSTR lpCurrentDirectory,
+    LPSTARTUPINFOW lpStartupInfo,
+    LPPROCESS_INFORMATION lpProcessInformation
+) asm("CreateProcessW_test");
 dllexport
 gnu_noinline
 BOOL
@@ -757,10 +783,11 @@ CreateProcessW_test(
             ) {
 
                 // just pretend the no isolation flag is set because it can skip stuff
+                // CRAP that doesn't work
 
                 bool is_wow64 = is_wow64_process();
 
-                BASE_API_MSGX<64> csr_message;
+                BASE_API_MSGX<32> csr_message;
 
                 switch (image_info.Machine) {
                     default:
@@ -826,250 +853,345 @@ CreateProcessW_test(
                                 ))) {
                                     PEB* new_peb = process_info.PebBaseAddress;
 
-                                    UNICODE_STRINGX<> title;
-                                    if (wchar_t* title_str = lpStartupInfo->lpTitle) {
-                                        size_t title_length = byteloop_wcslen(title_str);
-                                        title.Buffer = title_str;
-                                        title.Length = title_length * sizeof(wchar_t);
-                                        title.MaximumLength = (title_length + 1) * sizeof(wchar_t);
-                                    } else {
-                                        title = image;
+                                    wchar_t* windows_folder_ptr;
+                                    wchar_t* system32_folder_ptr;
+                                    size_t windows_folder_length;
+                                    size_t system32_folder_length;
+                                    // Default directory
+#if !_WIN64
+                                    if (USER_SHARED_DATAR().ImageNumberLow != 0x8664) {
+                                        const UNICODE_STRINGX<32>* system_paths = (UNICODE_STRINGX<32>*)peb->ReadOnlyStaticServerData;
+                                        const UNICODE_STRINGX<32>& windows_folder = system_paths[0];
+                                        const UNICODE_STRINGX<32>& system32_folder = system_paths[1];
+                                        windows_folder_length = windows_folder.Length;
+                                        windows_folder_ptr = windows_folder.Buffer;
+                                        system32_folder_length = system32_folder.Length;
+                                        system32_folder_ptr = system32_folder.Buffer;
                                     }
+                                    else
+#endif
+                                    {
+                                        const UNICODE_STRINGX<64>* system_paths = (UNICODE_STRINGX<64>*)based_pointer(peb->ReadOnlyStaticServerData, 0x30);
+                                        const UNICODE_STRINGX<64>& windows_folder = system_paths[0];
+                                        const UNICODE_STRINGX<64>& system32_folder = system_paths[1];
+                                        windows_folder_length = windows_folder.Length;
+                                        windows_folder_ptr = windows_folder.Buffer;
+                                        system32_folder_length = system32_folder.Length;
+                                        system32_folder_ptr = system32_folder.Buffer;
+                                    }
+
+                                    size_t dll_search_length =
+                                        //image.Length + sizeof(L';') + // App directory
+                                        system32_folder_length + sizeof(L';') + // system32
+                                        windows_folder_length + sizeof(L"\\system") + sizeof(L';') + // system
+                                        windows_folder_length + sizeof(L';') +
+                                        sizeof(L'.'); // Current directory
+                                        // Environment (skip for now?)
+
+                                    wchar_t* dll_search_buffer = (wchar_t*)malloc(dll_search_length + sizeof(wchar_t));
+                                    if (dll_search_buffer) {
+                                        wchar_t* dll_search_write = dll_search_buffer;
+
+                                        /*
+                                        *based_pointer(dll_search_write, image.Length) = L';';
+                                        memcpy(dll_search_write, image.Buffer, image.Length);
+                                        dll_search_write = based_pointer(dll_search_write, image.Length + sizeof(L';'));
+                                        */
+
+                                        *based_pointer(dll_search_write, system32_folder_length) = L';';
+                                        memcpy(dll_search_write, system32_folder_ptr, system32_folder_length);
+                                        dll_search_write = based_pointer(dll_search_write, system32_folder_length + sizeof(L';'));
+
+                                        memcpy(dll_search_write, windows_folder_ptr, windows_folder_length);
+                                        dll_search_write = based_pointer(dll_search_write, windows_folder_length);
+                                        memcpy(dll_search_write, L"\\system;", sizeof(L"\\system;") - sizeof(L'\0'));
+                                        dll_search_write = based_pointer(dll_search_write, sizeof(L"\\system;") - sizeof(L'\0'));
+
+                                        memcpy(dll_search_write, windows_folder_ptr, windows_folder_length);
+                                        dll_search_write = based_pointer(dll_search_write, windows_folder_length);
+
+                                        *dll_search_write++ = L';';
+                                        *dll_search_write++ = L'.';
+                                        *dll_search_write++ = L'\0';
+
+                                        wprintf(
+                                            L"DLL:  %s\n"
+                                            , dll_search_buffer
+                                        );
+
+                                        UNICODE_STRINGX<> dll_search_path;
+                                        dll_search_path.Buffer = dll_search_buffer;
+                                        dll_search_path.Length = dll_search_length;
+                                        dll_search_path.MaximumLength = dll_search_length + sizeof(wchar_t);
+
+                                        UNICODE_STRINGX<> title;
+                                        if (wchar_t* title_str = lpStartupInfo->lpTitle) {
+                                            size_t title_length = byteloop_wcslen(title_str);
+                                            title.Buffer = title_str;
+                                            title.Length = title_length * sizeof(wchar_t);
+                                            title.MaximumLength = (title_length + 1) * sizeof(wchar_t);
+                                        } else {
+                                            title = image;
+                                        }
                                     
-                                    UNICODE_STRINGX<> desktop;
-                                    desktop.Buffer = (wchar_t*)L"";
-                                    desktop.Length = 0;
-                                    desktop.MaximumLength = sizeof(wchar_t);
-                                    if (wchar_t* desktop_str = lpStartupInfo->lpDesktop) {
-                                        size_t desktop_length = byteloop_wcslen(desktop_str);
-                                        desktop.Buffer = desktop_str;
-                                        desktop.Length = desktop_length * sizeof(wchar_t);
-                                        desktop.MaximumLength = (desktop_length + 1) * sizeof(wchar_t);
-                                    }
-
-                                    UNICODE_STRINGX<> shell;
-                                    shell.Buffer = (wchar_t*)L"";
-                                    shell.Length = 0;
-                                    shell.MaximumLength = sizeof(wchar_t);
-                                    if (wchar_t* shell_str = lpStartupInfo->lpReserved) {
-                                        size_t shell_length = byteloop_wcslen(shell_str);
-                                        shell.Buffer = shell_str;
-                                        shell.Length = shell_length * sizeof(wchar_t);
-                                        shell.MaximumLength = (shell_length + 1) * sizeof(wchar_t);
-                                    }
-
-                                    UNICODE_STRINGX<> runtime;
-                                    runtime.Buffer = (PWSTR)lpStartupInfo->lpReserved2;
-                                    runtime.MaximumLength = runtime.Length = lpStartupInfo->cbReserved2;
-
-                                    // Assume no manifest
-
-                                    PRTL_USER_PROCESS_PARAMETERS process_parameters;
-                                    if (NT_SUCCESS(RtlCreateProcessParameters(
-                                        &process_parameters,
-                                        (PUNICODE_STRING)&image,
-                                        (PUNICODE_STRING)&directory, // this isn't how this parameter is supposed to work
-                                        (PUNICODE_STRING)&directory,
-                                        (PUNICODE_STRING)&cmdline,
-                                        (PWSTR)lpEnvironment,
-                                        (PUNICODE_STRING)&title,
-                                        (PUNICODE_STRING)&desktop,
-                                        (PUNICODE_STRING)&shell,
-                                        (PUNICODE_STRING)&runtime
-                                    ))) {
-                                        const wchar_t* environment = (wchar_t*)(lpEnvironment ? process_parameters->Environment : (RtlAcquirePebLock(), peb->ProcessParameters->Environment));
-                                        process_parameters->Environment = NULL;
-                                        SIZE_T region_size_environment;
-                                        if (environment) {
-                                            size_t environment_length = 0;
-                                            while (environment[environment_length] || environment[environment_length + 1]) ++environment_length;
-                                            environment_length += sizeof(wchar_t);
-
-                                            region_size_environment = environment_length;
-                                            if (
-                                                !NT_SUCCESS(NtAllocateVirtualMemory(process, (PVOID*)&process_parameters->Environment, 0, &region_size_environment, MEM_COMMIT, PAGE_READWRITE))
-                                            ) {
-                                                if (lpEnvironment) goto error_destroy_parameters;
-                                                goto error_release_peb_lock;
-                                            }
-                                            if (
-                                                !NT_SUCCESS(NtWriteVirtualMemory(process, process_parameters->Environment, (PVOID)environment, environment_length, NULL))
-                                            ) {
-                                                NtFreeVirtualMemory(process, (PVOID*)process_parameters->Environment, &region_size_environment, MEM_RELEASE);
-                                                if (lpEnvironment) goto error_destroy_parameters;
-                                                goto error_release_peb_lock;
-                                            }
-                                        }
-                                        if (!lpEnvironment) {
-                                            RtlReleasePebLock();
+                                        UNICODE_STRINGX<> desktop;
+                                        desktop.Buffer = (wchar_t*)L"";
+                                        desktop.Length = 0;
+                                        desktop.MaximumLength = sizeof(wchar_t);
+                                        if (wchar_t* desktop_str = lpStartupInfo->lpDesktop) {
+                                            size_t desktop_length = byteloop_wcslen(desktop_str);
+                                            desktop.Buffer = desktop_str;
+                                            desktop.Length = desktop_length * sizeof(wchar_t);
+                                            desktop.MaximumLength = (desktop_length + 1) * sizeof(wchar_t);
                                         }
 
-                                        if (!bInheritHandles) {
-                                            process_parameters->CurrentDirectory.Handle = NULL;
+                                        UNICODE_STRINGX<> shell;
+                                        shell.Buffer = (wchar_t*)L"";
+                                        shell.Length = 0;
+                                        shell.MaximumLength = sizeof(wchar_t);
+                                        if (wchar_t* shell_str = lpStartupInfo->lpReserved) {
+                                            size_t shell_length = byteloop_wcslen(shell_str);
+                                            shell.Buffer = shell_str;
+                                            shell.Length = shell_length * sizeof(wchar_t);
+                                            shell.MaximumLength = (shell_length + 1) * sizeof(wchar_t);
                                         }
-                                        process_parameters->StartingX = lpStartupInfo->dwX;
-                                        process_parameters->StartingY = lpStartupInfo->dwY;
-                                        process_parameters->CountX = lpStartupInfo->dwXSize;
-                                        process_parameters->CountY = lpStartupInfo->dwYSize;
-                                        process_parameters->CountCharsX = lpStartupInfo->dwXCountChars;
-                                        process_parameters->CountCharsY = lpStartupInfo->dwYCountChars;
-                                        process_parameters->FillAttribute = lpStartupInfo->dwFillAttribute;
-                                        process_parameters->WindowFlags = lpStartupInfo->dwFlags;
-                                        process_parameters->ShowWindowFlags = lpStartupInfo->wShowWindow;
 
-                                        process_parameters->ConsoleHandle = peb->ProcessParameters->ConsoleHandle;
-                                        if (lpStartupInfo->dwFlags & STARTF_USESTDHANDLES) {
-                                            process_parameters->StandardInput = lpStartupInfo->hStdInput;
-                                            process_parameters->StandardOutput = lpStartupInfo->hStdOutput;
-                                            process_parameters->StandardError = lpStartupInfo->hStdError;
-                                        }
-                                        // doesn't deal with console handles
+                                        UNICODE_STRINGX<> runtime;
+                                        runtime.Buffer = (PWSTR)lpStartupInfo->lpReserved2;
+                                        runtime.MaximumLength = runtime.Length = lpStartupInfo->cbReserved2;
 
-                                        process_parameters->Flags |= (peb->ProcessParameters->Flags & RTL_USER_PROC_DISABLE_HEAP_DECOMMIT);
-                                        SIZE_T region_size = process_parameters->Length;
+                                        // Assume no manifest
 
-                                        PRTL_USER_PROCESS_PARAMETERS new_params = NULL;
-                                        if (NT_SUCCESS(NtAllocateVirtualMemory(process, (PVOID*)&new_params, 0, &region_size, MEM_COMMIT, PAGE_READWRITE))) {
-                                            process_parameters->MaximumLength = region_size;
-                                            if (
-                                                NT_SUCCESS(NtWriteVirtualMemory(process, new_params, process_parameters, process_parameters->Length, NULL)) &&
-                                                NT_SUCCESS(NtWriteVirtualMemory(process, &new_peb->ProcessParameters, &new_params, sizeof(new_params), NULL))
-                                            ) {
+                                        PRTL_USER_PROCESS_PARAMETERS process_parameters;
+                                        if (NT_SUCCESS(RtlCreateProcessParameters(
+                                            &process_parameters,
+                                            (PUNICODE_STRING)&image,
+                                            //(PUNICODE_STRING)&dll_search_path, // this isn't how this parameter is supposed to work
+                                            (PUNICODE_STRING)&directory,
+                                            (PUNICODE_STRING)&directory,
+                                            (PUNICODE_STRING)&cmdline,
+                                            (PWSTR)lpEnvironment,
+                                            (PUNICODE_STRING)&title,
+                                            (PUNICODE_STRING)&desktop,
+                                            (PUNICODE_STRING)&shell,
+                                            (PUNICODE_STRING)&runtime
+                                        ))) {
+                                            const wchar_t* environment = (wchar_t*)(lpEnvironment ? process_parameters->Environment : (RtlAcquirePebLock(), peb->ProcessParameters->Environment));
+                                            process_parameters->Environment = NULL;
+                                            SIZE_T region_size_environment;
+                                            if (environment) {
+                                                size_t environment_length = 0;
+                                                while (environment[environment_length] || environment[environment_length + 1]) ++environment_length;
+                                                environment_length += sizeof(wchar_t);
 
-                                                SIZE_T stack_commit = image_info.CommittedStackSize;
-                                                SIZE_T stack_max = std::max(image_info.MaximumStackSize, UINT32_C(0x40000));
-                                                if (!stack_commit) {
-                                                    void* self_image_base = peb->ImageBaseAddress;
-                                                    stack_commit = based_pointer<IMAGE_NT_HEADERS>(self_image_base, ((PIMAGE_DOS_HEADER)self_image_base)->e_lfanew)->OptionalHeader.SizeOfStackCommit;
-                                                    stack_commit = std::max(stack_commit, (SIZE_T)peb->MinimumStackCommit);
-                                                    stack_max = AlignUpToMultipleOf2(stack_max, 4096);
+                                                region_size_environment = environment_length;
+                                                if (
+                                                    !NT_SUCCESS(NtAllocateVirtualMemory(process, (PVOID*)&process_parameters->Environment, 0, &region_size_environment, MEM_COMMIT, PAGE_READWRITE))
+                                                ) {
+                                                    if (lpEnvironment) goto error_destroy_parameters;
+                                                    goto error_release_peb_lock;
                                                 }
-                                                else {
-                                                    stack_commit = std::max(stack_commit, (SIZE_T)peb->MinimumStackCommit);
-                                                    if (stack_commit >= stack_max) {
-                                                        stack_max = AlignUpToMultipleOf2(stack_commit, 1048576);
-                                                    }
+                                                if (
+                                                    !NT_SUCCESS(NtWriteVirtualMemory(process, process_parameters->Environment, (PVOID)environment, environment_length, NULL))
+                                                ) {
+                                                    NtFreeVirtualMemory(process, (PVOID*)process_parameters->Environment, &region_size_environment, MEM_RELEASE);
+                                                    if (lpEnvironment) goto error_destroy_parameters;
+                                                    goto error_release_peb_lock;
                                                 }
-                                                stack_commit = AlignUpToMultipleOf2(stack_commit, 4096);
+                                            }
+                                            if (!lpEnvironment) {
+                                                RtlReleasePebLock();
+                                            }
 
-                                                uint8_t* stack_top = NULL;
-                                                if (NT_SUCCESS(NtAllocateVirtualMemory(process, (PVOID*)&stack_top, 0, &stack_max, MEM_RESERVE, PAGE_READWRITE))) {
-                                                    uint8_t* stack = stack_top;
-                                                    uint8_t* stack_base = stack_top + stack_max;
-                                                    uint8_t* stack_limit;
-                                                    stack += stack_max - stack_commit;
-                                                    if (stack_max > stack_commit) {
-                                                        stack -= 4096;
-                                                        stack_commit += 4096;
-                                                        if (!NT_SUCCESS(NtAllocateVirtualMemory(process, (PVOID*)&stack, 0, &stack_commit, MEM_COMMIT, PAGE_READWRITE))) {
-                                                            goto stack_fail;
-                                                        }
-                                                        stack_limit = stack;
-                                                        SIZE_T size = 4096;
-                                                        static ULONG idgaf;
-                                                        if (NT_SUCCESS(NtProtectVirtualMemory(process, (PVOID*)&stack, &size, PAGE_GUARD | PAGE_READWRITE, &idgaf))) {
-                                                            stack_limit += size;
-                                                        }
-                                                    } else {
-                                                        if (!NT_SUCCESS(NtAllocateVirtualMemory(process, (PVOID*)&stack, 0, &stack_commit, MEM_COMMIT, PAGE_READWRITE))) {
-                                                            goto stack_fail;
-                                                        }
-                                                        stack_limit = stack;
+                                            if (!bInheritHandles) {
+                                                process_parameters->CurrentDirectory.Handle = NULL;
+                                            }
+                                            process_parameters->StartingX = lpStartupInfo->dwX;
+                                            process_parameters->StartingY = lpStartupInfo->dwY;
+                                            process_parameters->CountX = lpStartupInfo->dwXSize;
+                                            process_parameters->CountY = lpStartupInfo->dwYSize;
+                                            process_parameters->CountCharsX = lpStartupInfo->dwXCountChars;
+                                            process_parameters->CountCharsY = lpStartupInfo->dwYCountChars;
+                                            process_parameters->FillAttribute = lpStartupInfo->dwFillAttribute;
+                                            process_parameters->WindowFlags = lpStartupInfo->dwFlags;
+                                            process_parameters->ShowWindowFlags = lpStartupInfo->wShowWindow;
+
+                                            process_parameters->ConsoleHandle = peb->ProcessParameters->ConsoleHandle;
+                                            if (lpStartupInfo->dwFlags & STARTF_USESTDHANDLES) {
+                                                process_parameters->StandardInput = lpStartupInfo->hStdInput;
+                                                process_parameters->StandardOutput = lpStartupInfo->hStdOutput;
+                                                process_parameters->StandardError = lpStartupInfo->hStdError;
+                                            }
+                                            // doesn't deal with console handles
+
+                                            process_parameters->Flags |= (peb->ProcessParameters->Flags & RTL_USER_PROC_DISABLE_HEAP_DECOMMIT);
+                                            SIZE_T region_size = process_parameters->Length;
+
+                                            PRTL_USER_PROCESS_PARAMETERS new_params = NULL;
+                                            if (NT_SUCCESS(NtAllocateVirtualMemory(process, (PVOID*)&new_params, 0, &region_size, MEM_COMMIT, PAGE_READWRITE))) {
+                                                process_parameters->MaximumLength = region_size;
+                                                if (
+                                                    NT_SUCCESS(NtWriteVirtualMemory(process, new_params, process_parameters, process_parameters->Length, NULL)) &&
+                                                    NT_SUCCESS(NtWriteVirtualMemory(process, &new_peb->ProcessParameters, &new_params, sizeof(new_params), NULL))
+                                                ) {
+
+                                                    SIZE_T stack_commit = image_info.CommittedStackSize;
+                                                    SIZE_T stack_max = std::max((uintptr_t)image_info.MaximumStackSize, (uintptr_t)0x40000);
+                                                    if (!stack_commit) {
+                                                        void* self_image_base = peb->ImageBaseAddress;
+                                                        stack_commit = based_pointer<IMAGE_NT_HEADERS>(self_image_base, ((PIMAGE_DOS_HEADER)self_image_base)->e_lfanew)->OptionalHeader.SizeOfStackCommit;
+                                                        stack_commit = std::max(stack_commit, (SIZE_T)peb->MinimumStackCommit);
+                                                        stack_max = AlignUpToMultipleOf2(stack_max, 4096);
                                                     }
-
-                                                    CONTEXT context = {};
-                                                    context.Eax = (DWORD)image_info.TransferAddress;
-                                                    context.Ebx = (DWORD)new_peb;
-                                                    context.SegCs = 0x23;
-                                                    context.SegDs = context.SegEs = context.SegSs = context.SegGs = 0x2B;
-                                                    context.SegFs = 0x53;
-                                                    context.ContextFlags = CONTEXT_FULL;
-                                                    context.EFlags = 0x3000;
-                                                    context.Esp = (DWORD)stack_base - sizeof(uintptr_t);
-                                                    context.Eip = (DWORD)&RtlUserThreadStart;
-
-                                                    if (lpThreadAttributes) {
-                                                        InitializeObjectAttributes(&object_attr, NULL, lpThreadAttributes->bInheritHandle ? OBJ_INHERIT : 0, NULL, lpThreadAttributes->lpSecurityDescriptor);
-                                                        lpThreadAttributes = (LPSECURITY_ATTRIBUTES)&object_attr;
+                                                    else {
+                                                        stack_commit = std::max(stack_commit, (SIZE_T)peb->MinimumStackCommit);
+                                                        if (stack_commit >= stack_max) {
+                                                            stack_max = AlignUpToMultipleOf2(stack_commit, 1048576);
+                                                        }
                                                     }
-                                                            
-                                                    INITIAL_TEB initial_teb;
-                                                    initial_teb.OldInitialTeb = {};
-                                                    initial_teb.StackBase = stack_base;
-                                                    initial_teb.StackLimit = stack_limit;
-                                                    initial_teb.StackAllocationBase = stack_top;
+                                                    stack_commit = AlignUpToMultipleOf2(stack_commit, 4096);
 
-                                                    HANDLE thread;
-                                                    CLIENT_ID client_id;
-                                                    if (NT_SUCCESS(NtCreateThread(
-                                                        &thread,
-                                                        THREAD_ALL_ACCESS,
-                                                        (POBJECT_ATTRIBUTES)lpThreadAttributes,
-                                                        process,
-                                                        &client_id,
-                                                        &context,
-                                                        &initial_teb,
-                                                        TRUE
-                                                    ))) {
-
-                                                        csr_message.u.CreateProcess.Sxs = {};
-                                                        csr_message.u.CreateProcess.Peb = (uint64_t)new_peb;
-                                                        csr_message.u.CreateProcess.RealPeb = (uint32_t)NULL;
-                                                        csr_message.u.CreateProcess.ProcessHandle = (void*)((uintptr_t)csr_message.u.CreateProcess.ProcessHandle | (uintptr_t)process);
-                                                        csr_message.u.CreateProcess.ThreadHandle = thread;
-                                                        //csr_message.u.CreateProcess.ClientId = client_id;
-                                                        csr_message.u.CreateProcess.ClientId.UniqueProcess = client_id.UniqueProcess;
-                                                        csr_message.u.CreateProcess.ClientId.UniqueThread = client_id.UniqueThread;
-                                                        csr_message.u.CreateProcess.CreationFlags = dwCreationFlags;
-                                                        csr_message.u.CreateProcess.VdmBinaryType = 0;
-                                                        
-                                                        
-                                                        //if (!is_wow64) {
-                                                            CsrClientCallServer((PCSR_API_MSG)&csr_message, NULL, CSR_MAKE_API_NUMBER(BASESRV_SERVERDLL_INDEX, BasepCreateProcess), sizeof(csr_message.u.CreateProcess));
-                                                        //} else {
-                                                            //csr_message.ReturnValue = NtWow64CsrBasepCreateProcess(&csr_message.u.CreateProcess);
-                                                        //}
-                                                        
-                                                        // This is wrong somehow, the struct def is bad
-                                                        if (NT_SUCCESS((NTSTATUS)csr_message.ReturnValue))
-                                                        {
-                                                            if (!(dwCreationFlags & CREATE_SUSPENDED)) {
-                                                                NtResumeThread(thread, NULL);
+                                                    uint8_t* stack_top = NULL;
+                                                    if (NT_SUCCESS(NtAllocateVirtualMemory(process, (PVOID*)&stack_top, 0, &stack_max, MEM_RESERVE, PAGE_READWRITE))) {
+                                                        uint8_t* stack = stack_top;
+                                                        uint8_t* stack_base = stack_top + stack_max;
+                                                        uint8_t* stack_limit;
+                                                        stack += stack_max - stack_commit;
+                                                        if (stack_max > stack_commit) {
+                                                            stack -= 4096;
+                                                            stack_commit += 4096;
+                                                            if (!NT_SUCCESS(NtAllocateVirtualMemory(process, (PVOID*)&stack, 0, &stack_commit, MEM_COMMIT, PAGE_READWRITE))) {
+                                                                goto stack_fail;
                                                             }
-
-                                                            lpProcessInformation->hProcess = process;
-                                                            lpProcessInformation->hThread = thread;
-                                                            lpProcessInformation->dwProcessId = (ULONG)client_id.UniqueProcess;
-                                                            lpProcessInformation->dwThreadId = (ULONG)client_id.UniqueThread;
-
-
-                                                            RtlDestroyProcessParameters(process_parameters);
-                                                            NtClose(file);
-                                                            NtClose(section);
-                                                            free(command_line);
-                                                            free(wbuffer);
-                                                            free((void*)lpCurrentDirectory);
-                                                            return TRUE;
+                                                            stack_limit = stack;
+                                                            SIZE_T size = 4096;
+                                                            static ULONG idgaf;
+                                                            if (NT_SUCCESS(NtProtectVirtualMemory(process, (PVOID*)&stack, &size, PAGE_GUARD | PAGE_READWRITE, &idgaf))) {
+                                                                stack_limit += size;
+                                                            }
+                                                        } else {
+                                                            if (!NT_SUCCESS(NtAllocateVirtualMemory(process, (PVOID*)&stack, 0, &stack_commit, MEM_COMMIT, PAGE_READWRITE))) {
+                                                                goto stack_fail;
+                                                            }
+                                                            stack_limit = stack;
                                                         }
-                                                        NtTerminateProcess(process, (NTSTATUS)csr_message.ReturnValue);
-                                                        NtClose(thread);
+
+                                                        CONTEXT context = {};
+                                                        context.ContextFlags = CONTEXT_FULL;
+                                                        context.EFlags = 0x3000;
+                                                        context.SegDs = context.SegEs = context.SegSs = context.SegGs = 0x2B;
+                                                        context.SegFs = 0x53;
+    #if _WIN64
+                                                        context.Rcx = (DWORD64)image_info.TransferAddress;
+                                                        context.Rdx = (DWORD64)new_peb;
+                                                        context.SegCs = 0x33;
+                                                        context.Rsp = (DWORD64)stack_base - sizeof(uintptr_t);
+                                                        context.Rip = (DWORD64)&RtlUserThreadStart;
+    #else
+                                                        context.Eax = (DWORD)image_info.TransferAddress;
+                                                        context.Ebx = (DWORD)new_peb;
+                                                        context.SegCs = 0x23;
+                                                        context.Esp = (DWORD)stack_base - sizeof(uintptr_t);
+                                                        context.Eip = (DWORD)&RtlUserThreadStart;
+    #endif
+
+                                                        if (lpThreadAttributes) {
+                                                            InitializeObjectAttributes(&object_attr, NULL, lpThreadAttributes->bInheritHandle ? OBJ_INHERIT : 0, NULL, lpThreadAttributes->lpSecurityDescriptor);
+                                                            lpThreadAttributes = (LPSECURITY_ATTRIBUTES)&object_attr;
+                                                        }
+                                                            
+                                                        INITIAL_TEB initial_teb;
+                                                        initial_teb.OldInitialTeb = {};
+                                                        initial_teb.StackBase = stack_base;
+                                                        initial_teb.StackLimit = stack_limit;
+                                                        initial_teb.StackAllocationBase = stack_top;
+
+                                                        HANDLE thread;
+                                                        CLIENT_ID client_id;
+                                                        if (NT_SUCCESS(NtCreateThread(
+                                                            &thread,
+                                                            THREAD_ALL_ACCESS,
+                                                            (POBJECT_ATTRIBUTES)lpThreadAttributes,
+                                                            process,
+                                                            &client_id,
+                                                            &context,
+                                                            &initial_teb,
+                                                            TRUE
+                                                        ))) {
+
+                                                            csr_message.u.CreateProcess.Sxs = {};
+                                                            csr_message.u.CreateProcess.Peb = (uint64_t)new_peb;
+#if _WIN64
+                                                            csr_message.u.CreateProcess.RealPeb = (uint64_t)new_peb;
+#else
+                                                            csr_message.u.CreateProcess.RealPeb = (uint32_t)NULL;
+#endif
+                                                            csr_message.u.CreateProcess.ProcessHandle = (void*)((uintptr_t)csr_message.u.CreateProcess.ProcessHandle | (uintptr_t)process);
+                                                            csr_message.u.CreateProcess.ThreadHandle = thread;
+                                                            //csr_message.u.CreateProcess.ClientId = client_id;
+                                                            csr_message.u.CreateProcess.ClientId.UniqueProcess = client_id.UniqueProcess;
+                                                            csr_message.u.CreateProcess.ClientId.UniqueThread = client_id.UniqueThread;
+                                                            csr_message.u.CreateProcess.CreationFlags = dwCreationFlags;
+                                                            csr_message.u.CreateProcess.VdmBinaryType = 0;
+                                                        
+                                                            constexpr auto wkjrbkwrjb32 = sizeof(BASE_CREATEPROCESS_MSGX<32>);
+                                                            constexpr auto wkjrbkwrjb64 = sizeof(BASE_CREATEPROCESS_MSGX<64>);
+                                                            constexpr auto wkjrbkwrjbRY = 0x110;
+                                                            if (!is_wow64) {
+                                                                CsrClientCallServer(
+                                                                    (PCSR_API_MSG)&csr_message,
+                                                                    NULL,
+                                                                    CSR_MAKE_API_NUMBER(BASESRV_SERVERDLL_INDEX, BasepCreateProcess),
+                                                                    sizeof(csr_message.u.CreateProcess)
+                                                                );
+                                                            } else {
+                                                                csr_message.ReturnValue = NtWow64CsrBasepCreateProcess(&csr_message.u.CreateProcess);
+                                                            }
+                                                        
+                                                            // This is wrong somehow, the struct def is bad
+                                                            if (NT_SUCCESS((NTSTATUS)csr_message.ReturnValue))
+                                                            {
+                                                            
+                                                                if (!(dwCreationFlags & CREATE_SUSPENDED)) {
+                                                                    NtResumeThread(thread, NULL);
+                                                                }
+
+                                                                lpProcessInformation->hProcess = process;
+                                                                lpProcessInformation->hThread = thread;
+                                                                lpProcessInformation->dwProcessId = (ULONG)client_id.UniqueProcess;
+                                                                lpProcessInformation->dwThreadId = (ULONG)client_id.UniqueThread;
+
+
+                                                                RtlDestroyProcessParameters(process_parameters);
+                                                                NtClose(file);
+                                                                NtClose(section);
+                                                                free(dll_search_buffer);
+                                                                free(command_line);
+                                                                free(wbuffer);
+                                                                free((void*)lpCurrentDirectory);
+                                                                return TRUE;
+                                                            }
+                                                            NtTerminateProcess(process, (NTSTATUS)csr_message.ReturnValue);
+                                                            NtClose(thread);
+                                                        }
                                                     }
+                                                stack_fail:
+                                                    NtFreeVirtualMemory(process, (PVOID*)&stack_top, &stack_max, MEM_RELEASE);
                                                 }
-                                            stack_fail:
-                                                NtFreeVirtualMemory(process, (PVOID*)&stack_top, &stack_max, MEM_RELEASE);
+                                                NtFreeVirtualMemory(process, (PVOID*)new_params, &region_size, MEM_RELEASE);
                                             }
-                                            NtFreeVirtualMemory(process, (PVOID*)new_params, &region_size, MEM_RELEASE);
+                                            if (process_parameters->Environment) {
+                                                NtFreeVirtualMemory(process, (PVOID*)process_parameters->Environment, &region_size_environment, MEM_RELEASE);
+                                            }
+                                            RtlDestroyProcessParameters(process_parameters);
                                         }
-                                        if (process_parameters->Environment) {
-                                            NtFreeVirtualMemory(process, (PVOID*)process_parameters->Environment, &region_size_environment, MEM_RELEASE);
+                                        else if (0) {
+                                    error_release_peb_lock:
+                                            RtlReleasePebLock();
+                                    error_destroy_parameters:
+                                            RtlDestroyProcessParameters(process_parameters);
                                         }
-                                        RtlDestroyProcessParameters(process_parameters);
-                                    }
-                                    else if (0) {
-                                error_release_peb_lock:
-                                        RtlReleasePebLock();
-                                error_destroy_parameters:
-                                        RtlDestroyProcessParameters(process_parameters);
+                                        free(dll_search_buffer);
                                     }
                                 }
                             }
@@ -1094,17 +1216,81 @@ invalid_parameter:
     return FALSE;
 }
 
+#define HARDCODE_PATH 1
 
 int main(int argc, char* argv[]) {
 
-    STARTUPINFOW si = { .cb = sizeof(STARTUPINFOW) };
-    PROCESS_INFORMATION pi;
+    int ret = EXIT_FAILURE;
+#if !HARDCODE_PATH
+    if (argc > 1)
+#endif
+    {
+        const char* path;
+#if !HARDCODE_PATH
+        path = argv[1];
+#else
+        if constexpr (sizeof(void*) == 8) {
+            path = "F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\out\\build\\x64-Clang-Release\\smallest_pe_file.exe";
+        }
+        else {
+            //path = "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18.exe.unvlv.exe";
+            path = "F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\out\\build\\x86-Clang-Release\\smallest_pe_file.exe";
+        }
+#endif
 
-    if (CreateProcessW_test(L"F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18.exe.unvlv.exe", NULL, NULL, NULL, FALSE, 0, NULL, L"F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\", &si, &pi)) {
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-        return 0;
+        size_t path_len = strlen(path);
+        wchar_t* wpath = (wchar_t*)malloc(sizeof(wchar_t) * path_len * 2);
+        if (wpath) {
+
+            int length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, path, -1, wpath, path_len * 4);
+            wchar_t* directory_end = NULL;
+            wchar_t* temp = wpath;
+            do {
+                switch (*temp) {
+                    case L'/':
+                        *temp = L'\\';
+                    case L'\\':
+                        directory_end = temp;
+                }
+                ++temp;
+            } while (--length);
+            if (!directory_end) {
+                directory_end = temp;
+            }
+
+            size_t directory_length = directory_end - wpath + 1;
+            wchar_t* directory = (wchar_t*)malloc((directory_length + 1) * sizeof(wchar_t));
+            if (directory) {
+                directory[directory_length] = L'\0';
+                memcpy(directory, wpath, directory_length * sizeof(wchar_t));
+
+                wprintf(
+                    L"Exe:  %s\n"
+                    L"Path: %s\n"
+                    , wpath
+                    , directory
+                );
+
+                STARTUPINFOW si = { .cb = sizeof(STARTUPINFOW) };
+                PROCESS_INFORMATION pi;
+
+                if (CreateProcessW_test(wpath, NULL, NULL, NULL, FALSE, 0, NULL, directory, &si, &pi)) {
+                    WaitForSingleObject(pi.hProcess, INFINITE);
+                    DWORD exit_code;
+                    GetExitCodeProcess(pi.hProcess, &exit_code);
+                    printf(
+                        "Exit: %X\n"
+                        , exit_code
+                    );
+                    CloseHandle(pi.hProcess);
+                    CloseHandle(pi.hThread);
+                    ret = EXIT_SUCCESS;
+                }
+                free(directory);
+            }
+            free(wpath);
+        }
     }
 
-	return 1;
+    return ret;
 }

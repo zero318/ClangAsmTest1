@@ -45,6 +45,7 @@ add_executable(vpatch)
 add_executable(heroes_calculator)
 add_executable(vec3_testing)
 add_executable(create_process_test)
+add_executable(totallylegit2husourceleak)
 add_library(z8086 SHARED)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
@@ -128,6 +129,7 @@ vpatch_dll
 heroes_calculator
 vec3_testing
 create_process_test
+totallylegit2husourceleak
 )
 
 enable_language(ASM-ATT)
@@ -1870,6 +1872,36 @@ target_compile_options(create_process_test PRIVATE
 )
 target_link_options(create_process_test PRIVATE
 	/LARGEADDRESSAWARE
+)
+
+target_sources(totallylegit2husourceleak PRIVATE
+	"totallylegit2husourceleak.cpp"
+)
+target_compile_options(totallylegit2husourceleak PRIVATE
+	${SLASH_CLANG_ARG}-fno-pic
+	#${SLASH_CLANG_ARG}-fno-PIE
+	${SLASH_CLANG_ARG}-mtune=haswell
+	#${SLASH_CLANG_ARG}-mx32
+	${SLASH_CLANG_ARG}-falign-loops=1
+	${SLASH_CLANG_ARG}-fno-async-exceptions
+	${SLASH_CLANG_ARG}-fno-cxx-exceptions
+	${SLASH_CLANG_ARG}-fno-exceptions
+	${SLASH_CLANG_ARG}-fno-unwind-tables
+	${SLASH_CLANG_ARG}-mkernel
+	#${SLASH_CLANG_ARG}-falign-functions=1
+	"SHELL:-Xclang -Oz"
+)
+target_link_options(totallylegit2husourceleak PRIVATE
+	/LARGEADDRESSAWARE:NO
+	/DYNAMICBASE:NO
+	/HIGHENTROPYVA:NO
+	/CETCOMPAT:NO
+	/ENTRY:yeet
+	/MANIFEST:NO
+	/BASE:0x690000
+	/SECTION:LeSanae,RWE
+	"/STUB:F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\empty_dos_stub.exe"
+	-nodefaultlib
 )
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")

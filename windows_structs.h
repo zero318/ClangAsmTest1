@@ -4481,23 +4481,35 @@ __if_not_exists(PRTL_USER_PROCESS_INFORMATION) {
 
 template<size_t bits = native_bits>
 struct PORT_MESSAGEX {
-    uint32_t u1; // 0x0, 0x0
-    uint32_t u2; // 0x4, 0x4
+    union {
+        uint32_t Length; // 0x0, 0x0
+        struct {
+            uint16_t DataLength; // 0x0, 0x0
+            uint16_t TotalLength; // 0x2, 0x2
+        };
+    } u1;
+    union {
+        uint32_t ZeroInit; // 0x4, 0x4
+        struct {
+            uint16_t Type; // 0x4, 0x4
+            uint16_t DataInfoOffset; // 0x6, 0x6
+        };
+    } u2;
     union {
         CLIENT_IDX<bits> ClientId; // 0x8, 0x8
-        float DoNotUseThisField; // 0x8, 0x8
+        double DoNotUseThisField; // 0x8, 0x8
     };
     uint32_t MessageId; // 0x10, 0x18
-    union {
-        uint32_t ClientViewSize; // 0x14, 0x1C
-        uint32_t CallbackId; // 0x14, 0x1C
-    };
     __x64_padding(0x4);
-    // 0x18, 0x20
+    union {
+        size_tx<bits> ClientViewSize; // 0x14, 0x20
+        uint32_t CallbackId; // 0x14, 0x20
+    };
+    // 0x18, 0x28
 };
 ValidateStructSize(0x18, PORT_MESSAGEX<32>);
-ValidateStructAlignment(0x4, PORT_MESSAGEX<32>);
-ValidateStructSize(0x20, PORT_MESSAGEX<64>);
+ValidateStructAlignment(0x8, PORT_MESSAGEX<32>);
+ValidateStructSize(0x28, PORT_MESSAGEX<64>);
 ValidateStructAlignment(0x8, PORT_MESSAGEX<64>);
 
 template<size_t bits = native_bits>
@@ -4521,7 +4533,7 @@ struct BASE_MSG_SXS_STREAMX {
     HANDLEX<bits> FileHandle; // 0xC, 0x18
     HANDLEX<bits> Handle; // 0x10, 0x20
     uint64_tx<bits> Offset ide_packed_field; // 0x14, 0x28
-    size_t Size; // 0x1C, 0x30
+    size_tx<bits> Size; // 0x1C, 0x30
     // 0x20, 0x38
 };
 ValidateStructSize(0x20, BASE_MSG_SXS_STREAMX<32>);
@@ -4539,6 +4551,38 @@ __if_not_exists(PBASE_MSG_SXS_STREAM) {
     using PBASE_MSG_SXS_STREAM = PBASE_MSG_SXS_STREAMX<>;
 }
 
+// Does this even exist?
+template<size_t bits = native_bits>
+struct BASE_SXS_STREAMX {
+    uint8_t FileType; // 0x0, 0x0
+    uint8_t PathType; // 0x1, 0x1
+    uint8_t HandleType; // 0x2, 0x2
+    __padding(0x1);
+    __x64_padding(0x4);
+    uint64_tx<bits> DUMMY ide_packed_field; // 0x4, 0x8
+    uintptr_tx<bits> ManifestAddress; // 0xC, 0x10
+    size_tx<bits> ManifestSize; // 0x10, 0x18
+    HANDLEX<bits> SectionHandle; // 0x14, 0x20
+    uint64_tx<bits> Offset ide_packed_field; // 0x18, 0x28
+    size_tx<bits> Size; // 0x1C, 0x30
+    // 0x24, 0x38
+};
+ValidateStructSize(0x24, BASE_SXS_STREAMX<32>);
+ValidateStructAlignment(0x4, BASE_SXS_STREAMX<32>);
+ValidateStructSize(0x38, BASE_SXS_STREAMX<64>);
+ValidateStructAlignment(0x8, BASE_SXS_STREAMX<64>);
+
+template<size_t bits = native_bits>
+using PBASE_SXS_STREAMX = PTRZX<bits, BASE_SXS_STREAMX<bits>>;
+
+__if_not_exists(BASE_MSG_SXS_STREAM) {
+    using BASE_SXS_STREAM = BASE_SXS_STREAMX<>;
+}
+__if_not_exists(PBASE_MSG_SXS_STREAM) {
+    using PBASE_SXS_STREAM = BASE_SXS_STREAMX<>;
+}
+
+/*
 template<size_t bits = native_bits>
 struct BASE_SXS_CREATEPROCESS_MSGX {
     uint32_t Flags; // 0x0, 0x0
@@ -4552,6 +4596,58 @@ ValidateStructSize(0x4C, BASE_SXS_CREATEPROCESS_MSGX<32>);
 ValidateStructAlignment(0x4, BASE_SXS_CREATEPROCESS_MSGX<32>);
 ValidateStructSize(0x88, BASE_SXS_CREATEPROCESS_MSGX<64>);
 ValidateStructAlignment(0x8, BASE_SXS_CREATEPROCESS_MSGX<64>);
+*/
+/*
+template<size_t bits = native_bits>
+struct BASE_SXS_CREATEPROCESS_MSGX {
+    uint32_t Flags; // 0x0, 0x0
+    uint32_t ProcessParameterFlags; // 0x4, 0x4
+    HANDLEX<bits> FileHandle; // 0x8, 0x8
+    UNICODE_STRINGX<bits> SxsWin32ExePath; // 0xC, 0x10
+    UNICODE_STRINGX<bits> SxsNtExePath; // 0x14, 0x20
+    size_tx<bits> OverrideManifestOffset; // 0x1C, 0x30
+    uint32_t OverrideManifestSize; // 0x20, 0x38
+    __x64_padding(0x4);
+    size_tx<bits> OverridePolicyOffset; // 0x24, 0x40
+    uint32_t OverridePolicySize; // 0x28, 0x48
+    __x64_padding(0x4);
+    PTRZX<bits> PEManifestAddress; // 0x2C, 0x50
+    uint32_t PEManifestSize; // 0x30, 0x58
+    __x64_padding(0x4);
+    UNICODE_STRINGX<bits> CultureFallbacks; // 0x34, 0x60
+    unknown_fields(0x1C); // 0x38, 0x70
+    __x64_padding(0x4);
+    UNICODE_STRINGX<bits> AssemblyName; // 0x54, 0x90
+    // 0x5C, 0xA0
+};
+ValidateStructSize(0x5C, BASE_SXS_CREATEPROCESS_MSGX<32>);
+ValidateStructAlignment(0x4, BASE_SXS_CREATEPROCESS_MSGX<32>);
+ValidateStructSize(0xA0, BASE_SXS_CREATEPROCESS_MSGX<64>);
+ValidateStructAlignment(0x8, BASE_SXS_CREATEPROCESS_MSGX<64>);
+*/
+
+template<size_t bits = native_bits>
+struct BASE_SXS_CREATEPROCESS_MSGX {
+    uint32_t Flags; // 0x0, 0x0
+    uint32_t ProcessParameterFlags; // 0x4, 0x4
+    HANDLEX<bits> FileHandle; // 0x8, 0x8
+    UNICODE_STRINGX<bits> SxsWin32ExePath; // 0xC, 0x10
+    UNICODE_STRINGX<bits> SxsNtExePath; // 0x14, 0x20
+    size_tx<bits> OverrideManifestOffset; // 0x1C, 0x30
+    uint32_t OverrideManifestSize; // 0x20, 0x38
+    __x64_padding(0x4);
+    BASE_SXS_STREAMX<bits> PolicyStream; // 0x24, 0x40
+    UNICODE_STRINGX<bits> AssemblyDirectory; // 0x58, 0x78
+    UNICODE_STRINGX<bits> Filename3; // 0x60, 0x88
+    unknown_fields(0x10); // 0x68, 0x98
+    UNICODE_STRINGX<bits> Filename4; // 0x78, 0xA8
+    unknown_fields(0x110); // 0x80, 0xB8
+    // 0x190, 0x1C8
+};
+//ValidateStructSize(0x190, BASE_SXS_CREATEPROCESS_MSGX<32>);
+ValidateStructAlignment(0x4, BASE_SXS_CREATEPROCESS_MSGX<32>);
+ValidateStructSize(0x1C8, BASE_SXS_CREATEPROCESS_MSGX<64>);
+ValidateStructAlignment(0x8, BASE_SXS_CREATEPROCESS_MSGX<64>);
 
 template<size_t bits = native_bits>
 using PBASE_SXS_CREATEPROCESS_MSGX = PTRZX<bits, BASE_SXS_CREATEPROCESS_MSGX<bits>>;
@@ -4563,6 +4659,7 @@ __if_not_exists(PBASE_SXS_CREATEPROCESS_MSG) {
     using PBASE_SXS_CREATEPROCESS_MSG = PBASE_SXS_CREATEPROCESS_MSGX<>;
 }
 
+/*
 template<size_t bits = native_bits>
 struct BASE_CREATEPROCESS_MSGX {
     HANDLEX<bits> ProcessHandle; // 0x0, 0x0
@@ -4584,6 +4681,30 @@ struct BASE_CREATEPROCESS_MSGX {
 ValidateStructSize(0x7C, BASE_CREATEPROCESS_MSGX<32>);
 ValidateStructAlignment(0x4, BASE_CREATEPROCESS_MSGX<32>);
 ValidateStructSize(0xD8, BASE_CREATEPROCESS_MSGX<64>);
+ValidateStructAlignment(0x8, BASE_CREATEPROCESS_MSGX<64>);
+*/
+
+template<size_t bits = native_bits>
+struct BASE_CREATEPROCESS_MSGX {
+    HANDLEX<bits> ProcessHandle; // 0x0, 0x0
+    HANDLEX<bits> ThreadHandle; // 0x4, 0x8
+    CLIENT_IDX<bits> ClientId;  // 0x8, 0x10
+    uint32_t CreationFlags; // 0x10, 0x20
+    uint32_t VdmBinaryType; // 0x14, 0x24
+    uint32_t VdmTask; // 0x18, 0x28
+    __x64_padding(0x4);
+    HANDLEX<bits> hVDM; // 0x1C, 0x30
+    BASE_SXS_CREATEPROCESS_MSGX<bits> Sxs; // 0x20, 0x38
+    uint64_tx<bits> Peb ide_packed_field; // 0x6C, 0xC0
+    uintptr_tx<bits> RealPeb; // 0x74, 0xC8
+    uint16_t ProcessorArchitecture; // 0x78, 0xD0
+    __padding(0x2);
+    __x64_padding(0x4);
+    // 0x7C, 0xD8
+};
+//ValidateStructSize(0x7C, BASE_CREATEPROCESS_MSGX<32>);
+ValidateStructAlignment(0x4, BASE_CREATEPROCESS_MSGX<32>);
+//ValidateStructSize(0xD8, BASE_CREATEPROCESS_MSGX<64>);
 ValidateStructAlignment(0x8, BASE_CREATEPROCESS_MSGX<64>);
 
 template<size_t bits = native_bits>
@@ -4664,18 +4785,18 @@ __if_not_exists(PCSR_API_CONNECTINFO) {
 template<size_t bits = native_bits>
 struct BASE_API_MSGX {
     PORT_MESSAGEX<bits> h; // 0x0, 0x0
-    PCSR_CAPTURE_HEADERX<bits> CaptureBuffer; // 0x18, 0x20
-    CSR_API_NUMBER ApiNumber; // 0x1C, 0x28
-    uint32_t ReturnValue; // 0x20, 0x2C
-    uint32_t Reserved; // 0x24, 0x30
+    PCSR_CAPTURE_HEADERX<bits> CaptureBuffer; // 0x18, 0x28
+    CSR_API_NUMBER ApiNumber; // 0x1C, 0x30
+    uint32_t ReturnValue; // 0x20, 0x34
+    uint32_t Reserved; // 0x24, 0x38
     __x64_padding(0x4);
     union {
-        BASE_CREATEPROCESS_MSGX<bits> CreateProcess; // 0x28, 0x38
+        BASE_CREATEPROCESS_MSGX<bits> CreateProcess; // 0x28, 0x40
         // TODO: more message types
     } u;
 };
 //ValidateStructSize(0x24, BASE_API_MSGX<32>);
-ValidateStructAlignment(0x4, BASE_API_MSGX<32>);
+ValidateStructAlignment(0x8, BASE_API_MSGX<32>);
 //ValidateStructSize(0x38, BASE_API_MSGX<64>);
 ValidateStructAlignment(0x8, BASE_API_MSGX<64>);
 
@@ -4693,7 +4814,36 @@ __if_not_exists(PBASE_API_MSG) {
 
 enum BASESRV_API_NUMBERX : int32_t {
     BasepCreateProcessX = 0,
-    BasepCreateThreadX
+    BasepCreateThreadX = 1,
+    BasepGetTempFileX = 2,
+    BasepExitProcessX = 3,
+    BasepDebugProcessX = 4,
+    BasepCheckVDMX = 5,
+    BasepUpdateVDMEntryX = 6,
+    BasepGetNextVDMCommandX = 7,
+    BasepExitVDMX = 8,
+    BasepIsFirstVDMX = 9,
+    BasepGetVDMExitCodeX = 10,
+    BasepSetReenterCountX = 11,
+    BasepSetProcessShutdownParamX = 12,
+    BasepGetProcessShutdownParamX = 13,
+    BasepNlsSetUserInfoX = 14,
+    BasepNlsSetMultipleUserInfoX = 15,
+    BasepNlsCreateSectionX = 16,
+    BasepSetVDMCurDirsX = 17,
+    BasepGetVDMCurDirsX = 18,
+    BasepBatNotificationX = 19,
+    BasepRegisterWowExecX = 20,
+    BasepSoundSentryNotificationX = 21,
+    BasepRefreshIniFileMappingX = 22,
+    BasepDefineDosDeviceX = 23,
+    BasepSetTermsrvAppInstallModeX = 24,
+    BasepNlsUpdateCacheCountX = 25,
+    BasepSetTermsrvClientTimeZoneX = 26,
+    BasepSxsCreateActivationContextX = 27,
+    BasepDebugProcessStopX = 28,
+    BasepRegisterThreadX = 29,
+    BasepNlsGetUserInfoX = 30
 };
 __if_not_exists(BASESRV_API_NUMBER) {
     using BASESRV_API_NUMBER = BASESRV_API_NUMBERX;
