@@ -3872,8 +3872,13 @@ struct Supervisor {
     dllexport HRESULT thiscall d3d_disable_zwrite() asm_symbol_rel(0x454820);
 
     inline HRESULT d3d_zfunc_always();
-
     inline HRESULT d3d_zfunc_lessequal();
+
+    inline HRESULT d3d_fog_color(D3DCOLOR color);
+    inline HRESULT d3d_fog_start(float start);
+    inline HRESULT d3d_fog_end(float start);
+
+    //inline HRESULT 
 
 private:
     // 0x454860
@@ -11224,6 +11229,8 @@ struct UnknownVertexB {
     }
 };
 
+typedef struct AnmSprite AnmSprite;
+
 extern "C" {
     // 0x51F65C
     externcg AnmManager* ANM_MANAGER_PTR cgasm("_ANM_MANAGER_PTR");
@@ -11689,6 +11696,8 @@ struct AnmVM {
 
     // 0x4894D0
     dllexport gnu_noinline AnmLoaded* thiscall get_anm_loaded() asm_symbol_rel(0x4894D0);
+
+    inline AnmSprite* get_sprite();
 
     template <typename L>
     inline AnmVM* search_roots(L&& lambda) {
@@ -16148,6 +16157,10 @@ dllexport gnu_noinline AnmLoaded* thiscall AnmVM::get_anm_loaded() {
     return ANM_MANAGER_PTR->loaded_anm_files[this->data.slot];
 }
 
+inline AnmSprite* AnmVM::get_sprite() {
+    return &ANM_MANAGER_PTR->loaded_anm_files[this->data.slot2]->sprites[this->data.sprite_id];
+}
+
 extern "C" {
     // 0x4CF3F8
     externcg LoadingThread* LOADING_THREAD_PTR cgasm("_LOADING_THREAD_PTR");
@@ -16629,6 +16642,21 @@ inline HRESULT Supervisor::d3d_zfunc_always() {
 inline HRESULT Supervisor::d3d_zfunc_lessequal() {
     ANM_MANAGER_PTR->flush_sprites();
     return this->d3d_device->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
+}
+
+inline HRESULT Supervisor::d3d_fog_color(D3DCOLOR color) {
+    ANM_MANAGER_PTR->flush_sprites();
+    return this->d3d_device->SetRenderState(D3DRS_FOGCOLOR, color);
+}
+
+inline HRESULT Supervisor::d3d_fog_start(float start) {
+    ANM_MANAGER_PTR->flush_sprites();
+    return this->d3d_device->SetRenderState(D3DRS_FOGSTART, bitcast<DWORD>(start));
+}
+
+inline HRESULT Supervisor::d3d_fog_end(float end) {
+    ANM_MANAGER_PTR->flush_sprites();
+    return this->d3d_device->SetRenderState(D3DRS_FOGEND, bitcast<DWORD>(end));
 }
 
 // 0x41B330
@@ -25744,69 +25772,77 @@ struct StdQuad {
     int16_t type; // 0x0
     int16_t offset_to_next; // 0x2
     uint16_t anm_script; // 0x4
-    int16_t face_vm_index; // 0x6
+    int16_t instance_vm_index; // 0x6
     Float3 position; // 0x8
     Float2 size; // 0x14
     // 0x1C
 };
 
 // size: 0x1C+
-struct StdEntry {
+struct StdObject {
     int16_t id; // 0x0
     int8_t layer; // 0x2
     union {
         uint8_t flags; // 0x3
         struct {
             uint8_t __unknown_flag_A : 1; // 1
+            uint8_t __unknown_flag_B : 1; // 2
         };
     };
     Float3 position; // 0x4
     Float3 size; // 0x10
     StdQuad quads[0]; // 0x1C
 
+private:
     // 0x41CA90
-    dllexport gnu_noinline int thiscall __sub_41CA90(Float3* arg1, StageCamera* camera) asm_symbol_rel(0x41CA90) {
+    dllexport gnu_noinline int vectorcall __sub_41CA90(int, Float3* arg1, float, float, float arg2, StageCamera* camera) asm_symbol_rel(0x41CA90) {
         // TODO
+    }
+
+public:
+    // 0x41CA90
+    inline int __sub_41CA90(Float3* arg1, float arg2, StageCamera* camera) {
+        return this->__sub_41CA90(UNUSED_DWORD, arg1, UNUSED_FLOAT, UNUSED_FLOAT, arg2, camera);
     }
 };
 
 // size: 0x90
 struct StdHeader {
-    int16_t entry_count; // 0x0
-    int16_t face_count; // 0x2
-    uint32_t faces_offset; // 0x4
+    int16_t object_count; // 0x0
+    int16_t instance_count; // 0x2
+    uint32_t instances_offset; // 0x4
     uint32_t script_offset; // 0x8
     unknown_fields(0x4); // 0xC
     char anm_name[128]; // 0x10
-    StdEntry* entries[]; // 0x90 stored as offsets
+    StdObject* objects[]; // 0x90 stored as offsets
 };
 #pragma region // StdHeader Validation
-ValidateFieldOffset32(0x0, StdHeader, entry_count);
-ValidateFieldOffset32(0x2, StdHeader, face_count);
-ValidateFieldOffset32(0x4, StdHeader, faces_offset);
+ValidateFieldOffset32(0x0, StdHeader, object_count);
+ValidateFieldOffset32(0x2, StdHeader, instance_count);
+ValidateFieldOffset32(0x4, StdHeader, instances_offset);
 ValidateFieldOffset32(0x8, StdHeader, script_offset);
 ValidateFieldOffset32(0x10, StdHeader, anm_name);
-ValidateFieldOffset32(0x90, StdHeader, entries);
+ValidateFieldOffset32(0x90, StdHeader, objects);
 ValidateStructSize32(0x90, StdHeader);
 #pragma endregion
 
 // size: 0x10
-struct StdFace {
-    int16_t entry_id; // 0x0
+struct StdInstance {
+    int16_t object_id; // 0x0
     union {
         uint16_t flags; // 0x2
         struct {
-
+            uint16_t __unknown_flag_A : 1; // 1
         };
     };
     Float3 position; // 0x4
     // 0x10
 };
-#pragma region // StdFace Validation
-ValidateFieldOffset32(0x0, StdFace, entry_id);
-ValidateFieldOffset32(0x2, StdFace, flags);
-ValidateFieldOffset32(0x4, StdFace, position);
-ValidateStructSize32(0x10, StdFace);
+#pragma region // StdInstance Validation
+ValidateFieldOffset32(0x0, StdInstance, object_id);
+ValidateFieldOffset32(0x2, StdInstance, flags);
+ValidateFieldOffset32(0x4, StdInstance, position);
+ValidateStructSize32(0x10, StdInstance);
 #pragma endregion
 
 // size: 0x8+
@@ -25881,6 +25917,25 @@ struct StdVM {
 
     // 0x41D260
     dllexport gnu_noinline ZUNResult thiscall run_std() asm_symbol_rel(0x41D260);
+
+    // 0x41E760
+    dllexport gnu_noinline void thiscall update_distortion() asm_symbol_rel(0x41E760) {
+        // TODO
+    }
+
+    // 0x41E350
+    dllexport gnu_noinline void thiscall __draw_vms(int32_t layer) asm_symbol_rel(0x41E350) {
+        AnmVM* slot_vm = this->slot_vms;
+        int32_t* slot_layer = this->slot_layers;
+        for (size_t i = 0; i != countof(this->slot_vms); ++i, ++slot_layer, ++slot_vm) {
+            if (
+                slot_vm->get_sprite() &&
+                *slot_layer == layer
+            ) {
+                // TODO: probably draw the VMs
+            }
+        }
+    }
 };
 #pragma region // StdVM Validation
 ValidateFieldOffset32(0x0, StdVM, script_time);
@@ -25907,25 +25962,27 @@ ValidateStructSize32(0x3444, StdVM);
 struct Stage : ZUNTask {
     // ZUNTask base; // 0x0
     StdVM std_vm; // 0xC
-    AnmVM* face_vms; // 0x3450
+    AnmVM* instance_vms; // 0x3450
     StdHeader* std_file; // 0x3454
-    StdEntry** entries; // 0x3458
-    StdFace* faces; // 0x345C
+    StdObject** objects; // 0x3458
+    StdInstance* instances; // 0x345C
     StdInstruction* script; // 0x3460
     AnmLoaded* stage_anm; // 0x3464
-    unknown_fields(0xC); // 0x3468
+    int __int_3468; // 0x3468
+    int __int_346C; // 0x346C
+    int __int_3470; // 0x3470
     union {
         uint32_t flags; // 0x3474
         struct {
             uint32_t __unknown_flag_C : 1; // 1
-            uint32_t : 1; // 2
+            uint32_t __unknown_flag_D : 1; // 2
             uint32_t __unknown_flag_B : 1; // 3
             uint32_t __unknown_flag_A : 1; // 4
         };
     };
     Timer __timer_3478; // 0x3478
     int32_t stage_number; // 0x348C
-    int __int_3490; // 0x3490
+    int32_t __int_3490; // 0x3490
     void* std_file_buffer; // 0x3494
     int32_t std_file_size; // 0x3498
     UpdateFunc* on_draw_func_B; // 0x349C
@@ -25946,11 +26003,11 @@ struct Stage : ZUNTask {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func_B);
 
-        if (AnmVM* face_vms = this->face_vms) {
-            for (int32_t i = 0; i < this->std_file->face_count; ++i) {
-                face_vms[i].cleanup();
+        if (AnmVM* instance_vms = this->instance_vms) {
+            for (int32_t i = 0; i < this->std_file->instance_count; ++i) {
+                instance_vms[i].cleanup();
             }
-            SAFE_FREE(this->face_vms);
+            SAFE_FREE(this->instance_vms);
         }
 
         for (int32_t i = 0; i < countof(this->std_vm.slot_vms); ++i) {
@@ -25974,21 +26031,105 @@ struct Stage : ZUNTask {
         }
     }
 
+    // 0x41E2D0
+    dllexport gnu_noinline void thiscall std_interrupt(int32_t interrupt) asm_symbol_rel(0x41E2D0) {
+        using namespace Std;
+
+        Stage* stage = STAGE_PTR;
+        StdInstruction* current_instruction = stage->script;
+        while (current_instruction->time >= 0) {
+            if (
+                current_instruction->opcode == interrupt_label &&
+                IntArg(0) == interrupt
+            ) {
+                stage->std_vm.current_instruction_offset = current_instruction - stage->script;
+                stage->std_vm.script_time.set(current_instruction->time);
+                return;
+            }
+            IndexInstr(current_instruction->size);
+        }
+    }
+
     // 0x42D7B0
     dllexport gnu_noinline void thiscall initialize_sky_interp(int32_t end_time, int32_t mode, StageSky* final_sky) asm_symbol_rel(0x42D7B0) {
         return this->std_vm.initialize_sky_interp(end_time, mode, final_sky);
     }
 
     inline void interrupt_all_anms(int32_t interrupt) {
-        AnmVM* face_vm = this->face_vms;
-        if (face_vm) {
-            for (int32_t i = 0; i < this->std_file->face_count; ++i, ++face_vm) {
-                face_vm->interrupt_and_run(interrupt);
+        if (AnmVM* instance_vms = this->instance_vms) {
+            for (int32_t i = 0; i < this->std_file->instance_count; ++i) {
+                instance_vms[i].interrupt_and_run(interrupt);
             }
         }
         for (size_t i = 0; i < countof(this->std_vm.slot_vms); ++i) {
             this->std_vm.slot_vms[i].interrupt_and_run(interrupt);
         }
+    }
+
+    // 0x41CEE0
+    dllexport gnu_noinline void thiscall __draw_vms(int32_t layer) asm_symbol_rel(0x41CEE0) {
+        
+        StdInstance* instance = this->instances;
+        this->std_vm.__draw_vms(layer);
+        SUPERVISOR.d3d_enable_fog();
+        // SUPERVISOR.__sub_41F950();
+        ANM_MANAGER_PTR->__byte_3120E0C = 1;
+
+        while (instance->object_id >= 0) {
+            StdObject* object = this->objects[instance->object_id];
+            if (object->layer == layer) {
+                Float3 position = object->position;
+                if (object->__sub_41CA90(&position, this->std_vm.draw_distance_squared, &SUPERVISOR.cameras[3])) {
+                    ++this->__int_346C;
+                    instance->__unknown_flag_A = false;
+                }
+                else {
+                    for (
+                        StdQuad* quad = object->quads;
+                        quad->type >= 0;
+                        quad = pointer_raw_offset(quad, quad->offset_to_next)
+                    ) {
+                        AnmVM* vm = &this->instance_vms[quad->instance_vm_index];
+                        switch (quad->type) {
+                            case 0: {
+                                switch (vm->data.render_mode) {
+                                    case 0: case 1: case 2: case 3:
+                                        vm->controller.position = quad->position + instance->position;
+                                        if (quad->size.x != 0.0f) {
+                                            vm->set_x_scale(quad->size.x / vm->get_sprite()->__size_x);
+                                        }
+                                        if (quad->size.y != 0.0f) {
+                                            vm->set_y_scale(quad->size.y / vm->get_sprite()->__size_y);
+                                        }
+                                        break;
+                                }
+                                switch (vm->data.render_mode) {
+                                    default:
+                                        SUPERVISOR.d3d_disable_fog();
+                                        break;
+                                    case 8: case 18:
+                                        SUPERVISOR.d3d_enable_fog();
+                                        break;
+                                }
+                                if (vm->data.disable_z_write) {
+                                    SUPERVISOR.d3d_disable_zwrite();
+                                } else {
+                                    SUPERVISOR.d3d_enable_zwrite();
+                                }
+                                ANM_MANAGER_PTR->draw_vm(vm);
+                                ++this->__int_3470;
+                                break;
+                            }
+                        }
+                    }
+                    instance->__unknown_flag_A = true;
+                    ++this->__int_3468;
+                }
+            }
+            ++instance;
+        }
+
+        SUPERVISOR.d3d_disable_zwrite();
     }
 
     // 0x41C0A0
@@ -26006,21 +26147,21 @@ struct Stage : ZUNTask {
             this->std_vm.__color_3440 = PackD3DCOLOR(0, 128, 128, 128);
 
             if (!this->__unknown_flag_B || this->__timer_3478 < 30) {
-                for (int32_t i = 0; i < this->std_file->entry_count; ++i) {
-                    StdEntry* entry = this->entries[i];
-                    if (entry->__unknown_flag_A) {
+                for (int32_t i = 0; i < this->std_file->object_count; ++i) {
+                    StdObject* object = this->objects[i];
+                    if (object->__unknown_flag_A) {
                         uint32_t vms_alive = 0;
                         for (
-                            StdQuad* quad = entry->quads;
+                            StdQuad* quad = object->quads;
                             quad->type >= 0;
                             quad = pointer_raw_offset(quad, quad->offset_to_next)
                         ) {
-                            AnmVM* vm = &this->face_vms[quad->face_vm_index];
+                            AnmVM* vm = &this->instance_vms[quad->instance_vm_index];
                             vm->run_anm();
                             vms_alive += vm->data.current_instruction_offset >= 0;
                         }
                         if (!vms_alive) {
-                            entry->__unknown_flag_A = false;
+                            object->__unknown_flag_A = false;
                         }
                     }
                 }
@@ -26030,25 +26171,145 @@ struct Stage : ZUNTask {
             nounroll for (size_t i = 0; i < countof(this->std_vm.slot_vms); ++i) {
                 this->std_vm.slot_vms[i].run_anm();
             }
-            this->__on_tick_B();
+            this->std_vm.update_distortion();
             ++this->__int_3490;
         }
         return UpdateFuncNext;
     }
 
-    // 0x41E760
-    dllexport gnu_noinline void thiscall __on_tick_B() asm_symbol_rel(0x41E760) {
-
-    }
-
     // 0x41C290
     dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x41C290) {
-        // TODO
+        if (
+            !this->__unknown_flag_A &&
+            (!this->__unknown_flag_B || this->__timer_3478 < 60)
+        ) {
+            ANM_MANAGER_PTR->flush_sprites();
+            this->std_vm.camera.__float2_FC.x = SUPERVISOR.cameras[3].__float2_FC.x;
+            this->std_vm.camera.__float2_FC.y = SUPERVISOR.cameras[3].__float2_FC.y;
+            SUPERVISOR.cameras[3] = this->std_vm.camera;
+            //SUPERVISOR.__sub_41F950();
+
+            SUPERVISOR.d3d_enable_zwrite();
+            SUPERVISOR.d3d_zfunc_lessequal();
+
+            SUPERVISOR.d3d_fog_color(this->std_vm.camera.sky.color);
+            SUPERVISOR.d3d_fog_start(this->std_vm.camera.sky.begin_distance);
+            SUPERVISOR.d3d_fog_end(this->std_vm.camera.sky.end_distance);
+
+            if (this->__unknown_flag_B && this->__int_3490 < 34) {
+                D3DRECT rect = SUPERVISOR.cameras[3].get_viewport_d3d_rect();
+                SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, PackD3DCOLOR(255, 0, 0, 0), 1.0f, 0);
+            } else {
+                D3DRECT rect = SUPERVISOR.cameras[3].get_viewport_d3d_rect();
+                SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, this->std_vm.camera.sky.color, 1.0f, 0);
+            }
+
+            if (this->__unknown_flag_B) {
+                if (this->__timer_3478 < 30) {
+                    // TODO: allocate a screen effect
+                    this->__unknown_flag_C = true;
+                    this->__timer_3478.reset();
+                }
+                else {
+                    ALPHA(this->std_vm.__color_3440) = 0;
+                    this->__unknown_flag_C = false;
+                }
+            }
+
+            AnmManager* anm_manager_ptr = ANM_MANAGER_PTR;
+            if (ALPHA(this->std_vm.__color_3440)) {
+                anm_manager_ptr->__int_39724B4 = 1;
+                anm_manager_ptr->__color_39724B0 = this->std_vm.__color_3440;
+                ALPHA(this->std_vm.__color_3440) = 0;
+            }
+
+            this->__int_3468 = 0;
+            this->__int_346C = 0;
+            this->__int_3470 = 0;
+
+            if (this->__unknown_flag_C) {
+                SUPERVISOR.d3d_enable_fog();
+                this->__draw_vms(0);
+                this->__draw_vms(1);
+                this->__draw_vms(2);
+                this->__draw_vms(3);
+                this->__draw_vms(4);
+                this->__draw_vms(5);
+                this->__draw_vms(6);
+                this->__draw_vms(7);
+                ANM_MANAGER_PTR->flush_sprites();
+                anm_manager_ptr = ANM_MANAGER_PTR;
+            }
+            
+            anm_manager_ptr->__int_39724B4 = 0;
+            anm_manager_ptr->__color_39724B0 = PackD3DCOLOR(128, 128, 128, 128);
+            SUPERVISOR.d3d_disable_zwrite();
+            SUPERVISOR.d3d_zfunc_always();
+        }
+        return UpdateFuncNext;
     }
 
     // 0x41C700
     dllexport gnu_noinline UpdateFuncRet thiscall on_draw_B() asm_symbol_rel(0x41C700) {
-        // TODO
+        if (
+            !this->__unknown_flag_A &&
+            (!this->__unknown_flag_B || this->__timer_3478 < 60)
+        ) {
+            ANM_MANAGER_PTR->flush_sprites();
+            this->std_vm.camera.__float2_FC.x = SUPERVISOR.cameras[3].__float2_FC.x;
+            this->std_vm.camera.__float2_FC.y = SUPERVISOR.cameras[3].__float2_FC.y;
+            SUPERVISOR.cameras[3] = this->std_vm.camera;
+            //SUPERVISOR.__sub_41F950();
+
+            SUPERVISOR.d3d_disable_fog();
+            SUPERVISOR.d3d_disable_zwrite();
+            SUPERVISOR.d3d_zfunc_always();
+
+            ANM_MANAGER_PTR->render_layer(33);
+
+            SUPERVISOR.d3d_zfunc_lessequal();
+
+            ANM_MANAGER_PTR->render_layer(34);
+
+            SUPERVISOR.d3d_zfunc_lessequal();
+
+            SUPERVISOR.d3d_fog_color(this->std_vm.camera.sky.color);
+            SUPERVISOR.d3d_fog_start(this->std_vm.camera.sky.begin_distance);
+            SUPERVISOR.d3d_fog_end(this->std_vm.camera.sky.end_distance);
+
+            if (this->__unknown_flag_B && this->__int_3490 >= 30) {
+                ALPHA(this->std_vm.__color_3440) = 0;
+            }
+
+            if (this->__unknown_flag_C) {
+                SUPERVISOR.d3d_disable_zwrite();
+                SUPERVISOR.d3d_enable_fog();
+                this->__draw_vms(8);
+                this->__draw_vms(9);
+                this->__draw_vms(10);
+                this->__draw_vms(11);
+                ANM_MANAGER_PTR->flush_sprites();
+            }
+
+            AnmManager* anm_manager_ptr = ANM_MANAGER_PTR;
+            anm_manager_ptr->__int_39724B4 = 0;
+            anm_manager_ptr->__color_39724B0 = PackD3DCOLOR(128, 128, 128, 128);
+
+            if (this->__timer_3478 > 0) {
+                this->__timer_3478--;
+                if (this->__timer_3478 <= 0) {
+                    this->std_vm.__color_3440 = PackD3DCOLOR(0, 255, 255, 255);
+                    this->__unknown_flag_B |= this->__unknown_flag_D;
+                    this->__unknown_flag_D = false;
+                    this->__unknown_flag_A = false;
+                }
+            }
+
+            SUPERVISOR.d3d_disable_zwrite();
+            SUPERVISOR.d3d_zfunc_always();
+            SUPERVISOR.d3d_disable_fog();
+        }
+        return UpdateFuncNext;
     }
 
     // 0x41CA60
@@ -26093,22 +26354,22 @@ corrupted_data:
 
         std_file = this->std_file;
 
-        this->entries = std_file->entries;
-        this->faces = based_pointer<StdFace>(std_file, std_file->faces_offset);
+        this->objects = std_file->objects;
+        this->instances = based_pointer<StdInstance>(std_file, std_file->instances_offset);
         this->script = based_pointer<StdInstruction>(std_file, std_file->script_offset);
 
         // Adjust the entry offsets
         for (
             int32_t i = 0;
-            i < std_file->entry_count;
+            i < std_file->object_count;
             ++i, std_file = this->std_file
         ) {
-            this->entries[i] = based_pointer<StdEntry>(this->entries[i], this->std_file);
+            this->objects[i] = based_pointer<StdObject>(this->objects[i], this->std_file);
         }
 
-        AnmVM* face_vms = (AnmVM*)malloc(sizeof(AnmVM) * std_file->face_count);
-        this->face_vms = face_vms;
-        memset(face_vms, 0, sizeof(AnmVM) * std_file->face_count);
+        AnmVM* instance_vms = (AnmVM*)malloc(sizeof(AnmVM) * std_file->instance_count);
+        this->instance_vms = instance_vms;
+        memset(instance_vms, 0, sizeof(AnmVM) * std_file->instance_count);
 
         this->std_vm.full_stage = this;
 
@@ -26155,12 +26416,15 @@ ValidateFieldOffset32(0x0, Stage, task_flags);
 ValidateFieldOffset32(0x4, Stage, on_tick_func);
 ValidateFieldOffset32(0x8, Stage, on_draw_func);
 ValidateFieldOffset32(0xC, Stage, std_vm);
-ValidateFieldOffset32(0x3450, Stage, face_vms);
+ValidateFieldOffset32(0x3450, Stage, instance_vms);
 ValidateFieldOffset32(0x3454, Stage, std_file);
-ValidateFieldOffset32(0x3458, Stage, entries);
-ValidateFieldOffset32(0x345C, Stage, faces);
+ValidateFieldOffset32(0x3458, Stage, objects);
+ValidateFieldOffset32(0x345C, Stage, instances);
 ValidateFieldOffset32(0x3460, Stage, script);
 ValidateFieldOffset32(0x3464, Stage, stage_anm);
+ValidateFieldOffset32(0x3468, Stage, __int_3468);
+ValidateFieldOffset32(0x346C, Stage, __int_346C);
+ValidateFieldOffset32(0x3470, Stage, __int_3470);
 ValidateFieldOffset32(0x3474, Stage, flags);
 ValidateFieldOffset32(0x3478, Stage, __timer_3478);
 ValidateFieldOffset32(0x348C, Stage, stage_number);
@@ -33700,7 +33964,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
         }
         case std_interrupt: { // 630
             int32_t interrupt = this->get_int_arg(0);
-            // STAGE_PTR->std_interrupt(interrupt);
+            STAGE_PTR->std_interrupt(interrupt);
             break;
         }
         case std_fog_interp: { // 557
