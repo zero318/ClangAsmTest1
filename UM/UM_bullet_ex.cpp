@@ -1182,7 +1182,7 @@ struct ArcFile {
         return NULL;
 found_in_cache:
         int32_t new_file_size = ptrA[1].__offset - ptrA->__offset;
-        size_t cached_file_size = ptrA->file_size;
+        size_t cached_file_size = ptrA->decompressed_size;
         void* cached_file_buffer;
         if (new_file_size == cached_file_size && file_buffer) {
             cached_file_buffer = file_buffer;
@@ -3127,7 +3127,7 @@ struct StageSky {
 
 private:
     // 0x41F830
-    dllexport gnu_noinline StageSky& add(StageSky& out, const StageSky& value) asm_symbol_rel(0x41F830) {
+    dllexport gnu_noinline StageSky& add(StageSky& out, const StageSky& value) const asm_symbol_rel(0x41F830) {
         out.begin_distance = this->begin_distance + value.begin_distance;
         out.begin_distance = this->begin_distance + value.end_distance;
         out.color_components.b = this->color_components.b + value.color_components.b;
@@ -3140,13 +3140,13 @@ private:
         return out;
     }
 public:
-    inline StageSky operator+(const StageSky& value) {
+    inline StageSky operator+(const StageSky& value) const {
         StageSky dummy;
         return this->add(dummy, value);
     }
 
 private:
-    inline StageSky& sub(StageSky& out, const StageSky& value) {
+    inline StageSky& sub(StageSky& out, const StageSky& value) const {
         out.begin_distance = this->begin_distance - value.begin_distance;
         out.begin_distance = this->begin_distance - value.end_distance;
         out.color_components.b = this->color_components.b - value.color_components.b;
@@ -3159,13 +3159,13 @@ private:
         return out;
     }
 public:
-    inline StageSky operator-(const StageSky& value) {
+    inline StageSky operator-(const StageSky& value) const {
         StageSky dummy;
         return this->sub(dummy, value);
     }
 
 private:
-    inline StageSky& mul(StageSky& out, const float value) {
+    inline StageSky& mul(StageSky& out, const float value) const {
         out.begin_distance = this->begin_distance * value;
         out.begin_distance = this->begin_distance * value;
         out.color_components.b = this->color_components.b * value;
@@ -3178,9 +3178,12 @@ private:
         return out;
     }
 public:
-    inline StageSky operator*(const float value) {
+    inline StageSky operator*(const float value) const {
         StageSky dummy;
         return this->mul(dummy, value);
+    }
+    inline friend StageSky operator*(const float lhs, const StageSky& rhs) {
+        return rhs * lhs;
     }
 };
 #pragma region // StageSky Validation
@@ -3381,6 +3384,19 @@ struct ZUNTask {
     UpdateFunc* on_tick_func; // 0x4
     UpdateFunc* on_draw_func; // 0x8
     // 0xC
+
+    inline void disable_tick_unsafe() {
+        this->on_tick_func->run_on_update = false;
+    }
+
+    inline void disable_draw_unsafe() {
+        this->on_draw_func->run_on_update = false;
+    }
+
+    inline void disable_funcs_unsafe() {
+        this->disable_tick_unsafe();
+        this->disable_draw_unsafe();
+    }
 
     inline void enable_tick_unsafe() {
         this->on_tick_func->run_on_update = true;
@@ -3592,16 +3608,17 @@ struct StageDataInner {
     // 0x28
 };
 
+static inline constexpr size_t MUSIC_PER_STAGE = 2;
+
 // size: 0xD4
 struct StageData {
     int32_t stage_number; // 0x0
     const char* std_filename; // 0x4
     const char* ecl_filename; // 0x8
-    const char* __string_array_C[2]; // 0xC
+    const char* bgm_filenames[MUSIC_PER_STAGE]; // 0xC
     const char* msg_filenames[msg_variant_count]; // 0x14
     const char* logo_anm_filename; // 0x24
-    unknown_fields(0x4); // 0x28
-    int32_t music_index; // 0x2C
+    int32_t bgm_indices[MUSIC_PER_STAGE]; // 0x28
     unknown_fields(0x4); // 0x30
     StageDataInner innner[1]; // 0x34 this may actually be shifted up by 1 dword
 
@@ -4009,10 +4026,10 @@ inline UpdateFuncRegistry::~UpdateFuncRegistry() {
 
     this->on_tick_funcs.list_node.as_head().for_each_safeB([=](UpdateFunc* func) {
         this->delete_func_locked(func);
-                                                           });
+    });
     this->on_draw_funcs.list_node.as_head().for_each_safeB([=](UpdateFunc* func) {
         this->delete_func_locked(func);
-                                                           });
+    });
     this->on_draw_funcs.on_update_func = NULL;
     this->on_draw_funcs.on_init_func = NULL;
     this->on_draw_funcs.on_cleanup_func = NULL;
@@ -4170,14 +4187,29 @@ ValidateStructSize32(0x14, SoundData);
 // size: 0x34
 struct ThBgmFormat {
     char filename[0x10]; // 0x0
-    unknown_fields(0x4); // 0x10
-    int __dword_14; // 0x14
-    unknown_fields(0x1C); // 0x18
+    int32_t offset; // 0x10
+    uint32_t size; // 0x14
+    int32_t __int_18; // 0x18
+    int32_t __int_1C; // 0x1C
+    unknown_fields(0x2); // 0x20
+    uint16_t __ushort_22; // 0x22
+    uint32_t __uint_24; // 0x24
+    unknown_fields(0x4); // 0x28
+    uint16_t __ushort_2C; // 0x2C
+    uint16_t __ushort_2E; // 0x2E
+    unknown_fields(0x4); // 0x30
     // 0x34
 };
 #pragma region // ThBgmFormat Validation
 ValidateFieldOffset32(0x0, ThBgmFormat, filename);
-ValidateFieldOffset32(0x14, ThBgmFormat, __dword_14);
+ValidateFieldOffset32(0x10, ThBgmFormat, offset);
+ValidateFieldOffset32(0x14, ThBgmFormat, size);
+ValidateFieldOffset32(0x18, ThBgmFormat, __int_18);
+ValidateFieldOffset32(0x1C, ThBgmFormat, __int_1C);
+ValidateFieldOffset32(0x22, ThBgmFormat, __ushort_22);
+ValidateFieldOffset32(0x24, ThBgmFormat, __uint_24);
+ValidateFieldOffset32(0x2C, ThBgmFormat, __ushort_2C);
+ValidateFieldOffset32(0x2E, ThBgmFormat, __ushort_2E);
 ValidateStructSize32(0x34, ThBgmFormat);
 #pragma endregion
 
@@ -4238,10 +4270,6 @@ class CWaveFile {
 };
 */
 
-struct SoundManagerUnknownA {
-
-};
-
 // size: 0x18
 struct SoundManagerUnknownB {
     LPDIRECTSOUNDBUFFER sound_buffer; // 0x0
@@ -4265,61 +4293,93 @@ ValidateFieldOffset32(0x14, SoundManagerUnknownB, __dword_14);
 ValidateStructSize32(0x18, SoundManagerUnknownB);
 #pragma endregion
 
+enum SoundCommandType : int32_t {
+    SndCmdEmpty = 0,
+    SndCmd1 = 1,
+    SndCmd2 = 2,
+    SndCmd3 = 3,
+    SndCmd4 = 4,
+    SndCmd5 = 5,
+    SndCmd6 = 6,
+    SndCmd7 = 7,
+    SndCmd8 = 8,
+    SndCmd9 = 9
+};
+
 // size: 0x10C
-struct SoundManagerUnknownD {
-    int __dword_0; // 0x0
-    unknown_fields(0x108); // 0x4
+struct SoundCommand {
+    SoundCommandType type; // 0x0
+    int32_t arg; /// 0x4
+    int32_t iter; // 0x8
+    char text_buffer[0x100]; // 0xC
     // 0x10C
 };
-#pragma region // SoundManagerUnknownD Validation
-ValidateFieldOffset32(0x0, SoundManagerUnknownD, __dword_0);
-ValidateStructSize32(0x10C, SoundManagerUnknownD);
+#pragma region // SoundCommand Validation
+ValidateFieldOffset32(0x0, SoundCommand, type);
+ValidateFieldOffset32(0x4, SoundCommand, arg);
+ValidateFieldOffset32(0x8, SoundCommand, iter);
+ValidateFieldOffset32(0xC, SoundCommand, text_buffer);
+ValidateStructSize32(0x10C, SoundCommand);
 #pragma endregion
 
 struct SoundManagerUnknownG {
     unknown_fields(0x78); // 0x0
-    int __dword_78; // 0x78
+    int __int_78; // 0x78
     unknown_fields(0x10); // 0x7C
     HANDLE __handle_8C; // 0x8C
-    // 0x90
+    ThBgmFormat* bgm_format; // 0x90
+    unknown_fields(0x4); // 0x94
+    int __int_98; // 0x98
+    // 0x9C
 };
 #pragma region // SoundManagerUnknownG Validation
-ValidateFieldOffset32(0x78, SoundManagerUnknownG, __dword_78);
+ValidateFieldOffset32(0x78, SoundManagerUnknownG, __int_78);
 ValidateFieldOffset32(0x8C, SoundManagerUnknownG, __handle_8C);
+ValidateFieldOffset32(0x90, SoundManagerUnknownG, bgm_format);
+ValidateFieldOffset32(0x98, SoundManagerUnknownG, __int_98);
 #pragma endregion
 
 // This seems to be another part of CSound that isn't in my version of it...
 struct SoundManagerUnknownE {
 
     // vtable ptr
-    unknown_fields(0x4); // 0x4
+    //alignment_padding(0x4); // 0x4
     LPDIRECTSOUNDBUFFER* sound_buffer_array; // 0x8
     unknown_fields(0x4); // 0xC
     SoundManagerUnknownG* __smg_ptr_10; // 0x10
     uint32_t sound_buffer_count; // 0x14
-    unknown_fields(0x8); // 0x18
-    int __dword_20; // 0x20
-    unknown_fields(0x34); // 0x24
-    int __dword_58; // 0x58
-    int __dword_5C; // 0x5C
-    // 0x60
+    int32_t __int_18; // 0x18
+    int32_t __int_1C; // 0x1C
+    int __int_20; // 0x20
+    int __int_24; // 0x24
+    int __int_28; // 0x28
+    unknown_fields(0xC); // 0x2C
+    double __double_38; // 0x38
+    double __double_40; // 0x40
+    double __double_48; // 0x48
+    unknown_fields(0x8); // 0x50
+    int __int_58; // 0x58
+    int __int_5C; // 0x5C
+    unknown_fields(0x4C); // 0x60
+    int __dword_AC; // 0xAC
+    // 0xB0
 
     // 0x48A620
     dllexport gnu_noinline HRESULT thiscall __sub_48A620(BOOL Arg1) asm_symbol_rel(0x48A620) {
         if (!this->sound_buffer_array) {
             return CO_E_NOTINITIALIZED;
         }
-        this->__dword_58 = 0;
-        this->__dword_5C = 0;
+        this->__int_58 = 0;
+        this->__int_5C = 0;
         HRESULT ret = 0;
         for (size_t i = 0; i < this->sound_buffer_count; ++i) {
             ret |= this->sound_buffer_array[i]->Stop();
             ret |= this->sound_buffer_array[i]->SetCurrentPosition(0);
         }
-        this->__dword_20 = 0;
+        this->__int_20 = 0;
         if (Arg1) {
             SoundManagerUnknownG* smg_ptr = this->__smg_ptr_10;
-            if (smg_ptr->__dword_78 == 1) {
+            if (smg_ptr->__int_78 == 1) {
                 CloseHandle(smg_ptr->__handle_8C);
                 smg_ptr->__handle_8C = INVALID_HANDLE_VALUE;
             }
@@ -4339,9 +4399,17 @@ struct SoundManagerUnknownE {
 ValidateVirtualFieldOffset32(0x8, SoundManagerUnknownE, sound_buffer_array);
 ValidateVirtualFieldOffset32(0x10, SoundManagerUnknownE, __smg_ptr_10);
 ValidateVirtualFieldOffset32(0x14, SoundManagerUnknownE, sound_buffer_count);
-ValidateVirtualFieldOffset32(0x20, SoundManagerUnknownE, __dword_20);
-ValidateVirtualFieldOffset32(0x58, SoundManagerUnknownE, __dword_58);
-ValidateVirtualFieldOffset32(0x5C, SoundManagerUnknownE, __dword_5C);
+ValidateVirtualFieldOffset32(0x18, SoundManagerUnknownE, __int_18);
+ValidateVirtualFieldOffset32(0x1C, SoundManagerUnknownE, __int_1C);
+ValidateVirtualFieldOffset32(0x20, SoundManagerUnknownE, __int_20);
+ValidateVirtualFieldOffset32(0x24, SoundManagerUnknownE, __int_24);
+ValidateVirtualFieldOffset32(0x28, SoundManagerUnknownE, __int_28);
+ValidateVirtualFieldOffset32(0x38, SoundManagerUnknownE, __double_38);
+ValidateVirtualFieldOffset32(0x40, SoundManagerUnknownE, __double_40);
+ValidateVirtualFieldOffset32(0x48, SoundManagerUnknownE, __double_48);
+ValidateVirtualFieldOffset32(0x58, SoundManagerUnknownE, __int_58);
+ValidateVirtualFieldOffset32(0x5C, SoundManagerUnknownE, __int_5C);
+ValidateVirtualFieldOffset32(0xAC, SoundManagerUnknownE, __dword_AC);
 #pragma endregion
 
 // size: 0x200
@@ -4362,6 +4430,11 @@ extern "C" {
 typedef struct SoundManager SoundManager;
 
 static inline constexpr size_t MAX_ACTIVE_SOUNDS = 12;
+static inline constexpr size_t MAX_LOADED_MUSIC = 16;
+static inline constexpr int32_t SOUND_COMMAND_QUEUE_LENGTH = 31;
+
+static inline constexpr auto MIN_VOLUME = DSBVOLUME_MIN / 2;
+static inline constexpr auto SILENT_VOLUME = DSBVOLUME_MIN;
 
 // size: 0x573C
 struct SoundManager {
@@ -4375,11 +4448,11 @@ struct SoundManager {
     int32_t active_sound_ids[MAX_ACTIVE_SOUNDS]; // 0x1C
     int32_t active_sound_id_counts[MAX_ACTIVE_SOUNDS]; // 0x4C
     SoundManagerUnknownF __unknown_smf_array_7C[MAX_ACTIVE_SOUNDS]; // 0x7C
-    void* bgm_format_offsets[16]; // 0x187C
-    SoundManagerUnknownA* __unknown_sma_ptr_array_18BC[16]; // 0x18BC
-    SoundManagerUnknownA* __unknown_sma_ptr_array_18FC[16]; // 0x18FC
-    int __bgm_format_14_array_193C[16]; // 0x193C
-    int __dword_197C; // 0x197C
+    ThBgmFormat* loaded_bgm_formats[MAX_LOADED_MUSIC]; // 0x187C
+    void* __loaded_bgm_buffers_A[MAX_LOADED_MUSIC]; // 0x18BC
+    void* __loaded_bgm_buffers_B[MAX_LOADED_MUSIC]; // 0x18FC
+    uint32_t loaded_bgm_lengths[MAX_LOADED_MUSIC]; // 0x193C
+    int __bgm_index_197C; // 0x197C
     union {
         void* bgm_format_file; // 0x1980
         ThBgmFormat* bgm_formats;
@@ -4388,8 +4461,8 @@ struct SoundManager {
     SoundManagerUnknownB __unknown_smb_array_1A84[SOUND_EFFECT_COUNT]; // 0x1A84
     void* sound_effect_files[countof(SOUND_EFFECT_FILENAMES)]; // 0x2264
     char __text_buffer_2384[0x100]; // 0x2384
-    SoundManagerUnknownD __unknown_smd_array_2484[32]; // 0x2484 (only 31 are used properly)
-    char __text_buffer_array_4604[16][0x100]; // 0x4604
+    SoundCommand sound_command_queue[SOUND_COMMAND_QUEUE_LENGTH + 1]; // 0x2484 (yes there's an extra dummy slot)
+    char loaded_bgm_filenames[MAX_LOADED_MUSIC][0x100]; // 0x4604
     char thbgm_filename[0x100]; // 0x5604
     SoundManagerUnknownE* __unknown_sme_ptr_5704; // 0x5704
     unknown_fields(0x4); // 0x5708
@@ -4404,7 +4477,7 @@ struct SoundManager {
     int __dword_572C; // 0x572C
     int32_t __int_5730; // 0x5730
     int32_t __int_5734; // 0x5734
-    int __dword_5738; // 0x5738
+    int32_t __int_5738; // 0x5738
     // 0x573C
 
     inline void zero_contents() {
@@ -4440,16 +4513,19 @@ struct SoundManager {
         }
     }
 
-    inline void free_first_sma_array() {
-        SoundManagerUnknownA** sma_ptr = this->__unknown_sma_ptr_array_18BC;
-        for (size_t i = 0; i < countof(this->__unknown_sma_ptr_array_18BC); ++sma_ptr, ++i) {
-            SAFE_FREE_FAST(*sma_ptr);
+    inline void free_bgm_data_array_A() {
+        void** bgm_data_ptr = this->__loaded_bgm_buffers_A;
+        for (size_t i = 0; i < countof(this->__loaded_bgm_buffers_A); ++bgm_data_ptr, ++i) {
+            SAFE_FREE_FAST(*bgm_data_ptr);
         }
     }
 
     SoundManager() {
         this->copy_sound_data();
     }
+
+    // 0x476D20
+    dllexport gnu_noinline SoundCommandType thiscall __on_tick() asm_symbol_rel(0x475D20);
 
     // 0x476320
     dllexport static gnu_noinline int32_t __wait_and_close_handles() asm_symbol_rel(0x476320);
@@ -4462,9 +4538,12 @@ struct SoundManager {
 
     // 0x4767B0
     dllexport static gnu_noinline DWORD WINAPI load_sound_effects(void* self) asm_symbol_rel(0x4767B0);
+
+    // 0x476970
+    dllexport gnu_noinline ZUNResult thiscall __sub_476970(size_t index, const char* filename) asm_symbol_rel(0x476970);
     
     // 0x476890
-    dllexport gnu_noinline int32_t thiscall __sub_476890(const char* filename) asm_symbol_rel(0x476890) {
+    dllexport gnu_noinline int32_t thiscall __get_bgm_format_index(const char* filename) asm_symbol_rel(0x476890) {
         char buffer[128];
         const char* path;
         if (!(path = strrchr(filename, '/')) && !(path = strrchr(filename, '\\'))) {
@@ -4522,9 +4601,50 @@ struct SoundManager {
             SAFE_RELEASE(this->sound_buffer_ptr);
             SAFE_DELETE(this->__unknown_sme_ptr_5704);
             SAFE_DELETE(this->csound_manager_ptr); // This destructor got inlined
-            this->free_first_sma_array();
+            this->free_bgm_data_array_A();
         }
     }
+
+    // 0x477A50
+    dllexport gnu_noinline void thiscall queue_sound_command(SoundCommandType type, int arg, const char* filename) asm_symbol_rel(0x477A50) {
+        CRITICAL_SECTION_MANAGER.enter_section(SoundManagerA_CS);
+        nounroll for (int32_t i = 0; i < SOUND_COMMAND_QUEUE_LENGTH; ++i) {
+            if (!this->sound_command_queue[i].type) {
+                SoundCommand* snd_cmd = &this->sound_command_queue[i];
+                snd_cmd->type = type;
+                snd_cmd->arg = arg;
+                byteloop_strcpy(snd_cmd->text_buffer, filename);
+                snd_cmd->iter = 0;
+                break;
+            }
+        }
+        CRITICAL_SECTION_MANAGER.leave_section(SoundManagerA_CS);
+    }
+
+    // 0x454620
+    dllexport gnu_noinline static int stdcall __load_wav_slot(int32_t slot, const char* name) asm_symbol_rel(0x454620);
+
+    // 0x4546A0
+    dllexport gnu_noinline static ZUNResult stdcall __play_music_with_unlock(int32_t slot, int32_t music_room_index) asm_symbol_rel(0x4546A0);
+
+    inline static ZUNResult __load_and_play_music_with_unlock(int32_t slot, int32_t music_room_index, const char* name) {
+        SoundManager::__load_wav_slot(slot, name);
+        return SoundManager::__play_music_with_unlock(slot, music_room_index);
+    }
+
+    // 0x4546F0
+    dllexport gnu_noinline static ZUNResult __sub_4546F0() asm_symbol_rel(0x4546F0);
+
+private:
+    // 0x454720
+    dllexport gnu_noinline static ZUNResult vectorcall __sub_454720(float, float arg1) asm_symbol_rel(0x454720);
+public:
+    inline ZUNResult __sub_454720(float arg1) {
+        return SoundManager::__sub_454720(UNUSED_FLOAT, arg1);
+    }
+
+    // 0x457100
+    dllexport gnu_noinline static void __sub_457100() asm_symbol_rel(0x457100);
 };
 #pragma region // SoundManager Validation
 ValidateFieldOffset32(0x0, SoundManager, dsound);
@@ -4536,16 +4656,16 @@ ValidateFieldOffset32(0x14, SoundManager, __handle_14);
 ValidateFieldOffset32(0x1C, SoundManager, active_sound_ids);
 ValidateFieldOffset32(0x4C, SoundManager, active_sound_id_counts);
 ValidateFieldOffset32(0x7C, SoundManager, __unknown_smf_array_7C);
-ValidateFieldOffset32(0x187C, SoundManager, bgm_format_offsets);
-ValidateFieldOffset32(0x18BC, SoundManager, __unknown_sma_ptr_array_18BC);
-ValidateFieldOffset32(0x18FC, SoundManager, __unknown_sma_ptr_array_18FC);
-ValidateFieldOffset32(0x193C, SoundManager, __bgm_format_14_array_193C);
-ValidateFieldOffset32(0x197C, SoundManager, __dword_197C);
+ValidateFieldOffset32(0x187C, SoundManager, loaded_bgm_formats);
+ValidateFieldOffset32(0x18BC, SoundManager, __loaded_bgm_buffers_A);
+ValidateFieldOffset32(0x18FC, SoundManager, __loaded_bgm_buffers_B);
+ValidateFieldOffset32(0x193C, SoundManager, loaded_bgm_lengths);
+ValidateFieldOffset32(0x197C, SoundManager, __bgm_index_197C);
 ValidateFieldOffset32(0x1980, SoundManager, bgm_format_file);
 ValidateFieldOffset32(0x1A84, SoundManager, __unknown_smb_array_1A84);
 ValidateFieldOffset32(0x2264, SoundManager, sound_effect_files);
 ValidateFieldOffset32(0x2384, SoundManager, __text_buffer_2384);
-ValidateFieldOffset32(0x2484, SoundManager, __unknown_smd_array_2484);
+ValidateFieldOffset32(0x2484, SoundManager, sound_command_queue);
 ValidateFieldOffset32(0x5604, SoundManager, thbgm_filename);
 ValidateFieldOffset32(0x5704, SoundManager, __unknown_sme_ptr_5704);
 ValidateFieldOffset32(0x570C, SoundManager, __handle_570C);
@@ -4558,13 +4678,442 @@ ValidateFieldOffset32(0x5728, SoundManager, main_window_hwnd);
 ValidateFieldOffset32(0x572C, SoundManager, __dword_572C);
 ValidateFieldOffset32(0x5730, SoundManager, __int_5730);
 ValidateFieldOffset32(0x5734, SoundManager, __int_5734);
-ValidateFieldOffset32(0x5738, SoundManager, __dword_5738);
+ValidateFieldOffset32(0x5738, SoundManager, __int_5738);
 ValidateStructSize32(0x573C, SoundManager);
 #pragma endregion
 
 extern "C" {
     // 0x56AD80
     externcg SoundManager SOUND_MANAGER cgasm("_SOUND_MANAGER");
+}
+
+// 0x473390
+dllexport gnu_noinline double vectorcall get_runtime() asm_symbol_rel(0x473390);
+
+// 0x476970
+dllexport gnu_noinline ZUNResult thiscall SoundManager::__sub_476970(size_t index, const char* filename) {
+    if (
+        !SOUND_MANAGER.__loaded_bgm_buffers_A[index] ||
+        strcmp_asm(filename, SOUND_MANAGER.loaded_bgm_filenames[index]) != 0
+    ) {
+        byteloop_strcpy(SOUND_MANAGER.loaded_bgm_filenames[index], filename);
+        if (
+            SUPERVISOR.config.preload_bgm &&
+            SOUND_MANAGER.csound_manager_ptr
+        ) {
+            SAFE_FREE(SOUND_MANAGER.__loaded_bgm_buffers_A[index]);
+
+            CRITICAL_SECTION_MANAGER.enter_section(FileIO_CS);
+            HANDLE file_handle = CreateFileA(
+                SOUND_MANAGER.thbgm_filename, // lpFileName
+                GENERIC_READ, // dwDesiredAccess
+                FILE_SHARE_READ, // dwShareMode
+                NULL, // lpSecurityFeatures
+                OPEN_EXISTING, // dwCreationDisposition
+                FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, // dwFlagsAndAttributes
+                NULL // hTemplateFile
+            );
+            if (file_handle == INVALID_HANDLE_VALUE) {
+                DebugLogger::__debug_log_stub_10("error : bgmfile is not find %s\r\n", SOUND_MANAGER.thbgm_filename);
+                CRITICAL_SECTION_MANAGER.leave_section(FileIO_CS);
+                return ZUN_ERROR;
+            }
+            int32_t format_index = SOUND_MANAGER.__get_bgm_format_index(filename);
+            SetFilePointer(file_handle, SOUND_MANAGER.bgm_formats[format_index].offset, NULL, FILE_BEGIN);
+            void* bgm_data = malloc(SOUND_MANAGER.bgm_formats[format_index].size);
+            if (!bgm_data) {
+                CloseHandle(file_handle);
+                DebugLogger::__debug_log_stub_10("error : bgmfile is not find %s\r\n", SOUND_MANAGER.thbgm_filename);
+                CRITICAL_SECTION_MANAGER.leave_section(FileIO_CS);
+                return ZUN_ERROR;
+            }
+            DWORD bytes_read;
+            ReadFile(file_handle, bgm_data, SOUND_MANAGER.bgm_formats[format_index].size, &bytes_read, NULL);
+            CloseHandle(file_handle);
+            CRITICAL_SECTION_MANAGER.leave_section(FileIO_CS);
+
+            SOUND_MANAGER.loaded_bgm_formats[index] = &SOUND_MANAGER.bgm_formats[format_index];
+            SOUND_MANAGER.__loaded_bgm_buffers_A[index] = bgm_data;
+            SOUND_MANAGER.__loaded_bgm_buffers_B[index] = bgm_data;
+            SOUND_MANAGER.loaded_bgm_lengths[index] = SOUND_MANAGER.bgm_formats[format_index].size;
+        }
+    }
+    return ZUN_SUCCESS;
+}
+
+// 0x4779A0
+dllexport gnu_noinline DWORD WINAPI __sound_thread_4779A0(LPVOID) asm_symbol_rel(0x4779A0);
+dllexport gnu_noinline DWORD WINAPI __sound_thread_4779A0(LPVOID) {
+    // TODO
+    return 0;
+}
+
+// 0x476D20
+dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
+    CRITICAL_SECTION_MANAGER.enter_section(SoundManagerA_CS);
+    CSoundManager* csound = SOUND_MANAGER.csound_manager_ptr;
+    if (!csound) {
+        CRITICAL_SECTION_MANAGER.leave_section(SoundManagerA_CS);
+        return SndCmdEmpty;
+    }
+
+    SoundCommand* snd_cmd = SOUND_MANAGER.sound_command_queue;
+    
+    BOOL wtf;
+    do {
+        wtf = false;
+        switch (snd_cmd->type) {
+            case SndCmd8: // 8
+                if (SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704) {
+                    LPDIRECTSOUNDBUFFER* sound_buffers = sme_ptr->sound_buffer_array;
+                    int32_t A = SOUND_MANAGER.__int_5730;
+                    if (A) {
+                        float volume = 1.0f - (float)A / 100.f;
+                        (*sound_buffers)->SetVolume(MIN_VOLUME - (int32_t)((float)MIN_VOLUME * (1.0f - volume * volume)));
+                    } else {
+                        (*sound_buffers)->SetVolume(SILENT_VOLUME);
+                    }
+                }
+                break;
+            case SndCmd1: // 1
+                if (SUPERVISOR.config.preload_bgm) {
+                    if (snd_cmd->iter != 0) {
+                        ++snd_cmd->iter;
+                        goto end_snd_cmd_loop;
+                    }
+                    SOUND_MANAGER.__sub_476B40();
+                }
+                SOUND_MANAGER.__sub_476970(snd_cmd->arg, snd_cmd->text_buffer);
+                wtf = true;
+                break;
+            case SndCmd2: // 2
+                if (SUPERVISOR.config.preload_bgm) {
+                    int32_t index = snd_cmd->arg;
+                    if (index >= 0) {
+                        switch (int32_t iter = snd_cmd->iter) {
+                            case 0:
+                                if (
+                                    SOUND_MANAGER.csound_manager_ptr &&
+                                    SUPERVISOR.config.__ubyte_45 &&
+                                    SOUND_MANAGER.dsound &&
+                                    SOUND_MANAGER.__loaded_bgm_buffers_A[index]
+                                ) {
+                                    byteloop_strcpy(SOUND_MANAGER.__text_buffer_1984, SOUND_MANAGER.loaded_bgm_filenames[index]);
+                                    ThBgmFormat* bgm_format = SOUND_MANAGER.loaded_bgm_formats[index];
+                                    uint32_t A = bgm_format->__ushort_2C;
+                                    uint32_t B = (bgm_format->__uint_24 * A) << 2 >> 3;
+                                    SOUND_MANAGER.__handle_570C = CreateEventA(NULL, FALSE, FALSE, NULL);
+                                    SOUND_MANAGER.__handle_14 = CreateThread(NULL, 0, &__sound_thread_4779A0, NULL, 0, &SOUND_MANAGER.sound_thread_id);
+                                    /*
+                                    if (SUCCEEDED(CSoundManager::__sub_4898F0(
+                                        SOUND_MANAGER.__unknown_sme_ptr_5704,
+                                        SOUND_MANAGER.__loaded_bgm_buffers_B[index],
+                                        SOUND_MANAGER.loaded_bgm_lengths[index],
+                                        SOUND_MANAGER.loaded_bgm_formats[index],
+                                        UNUSED_DWORD,
+                                        0, 0, 0, 0,
+                                        B - B % A,
+                                        SOUND_MANAGER.__handle_570C
+                                    ))) {
+                                        ++snd_cmd->iter;
+                                        goto end_snd_cmd_loop;
+                                    }
+                                    */
+                                }
+                                break;
+                            case 2: {
+                                SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704;
+                                /*
+                                if (
+                                    !sme_ptr ||
+                                    SUCCEEDED(sme_ptr->__sub_48AAC0(0))
+                                ) {
+                                    ++snd_cmd->iter;
+                                    goto end_snd_cmd_loop;
+                                }
+                                */
+                                break;
+                            }
+                            case 5: {
+                                SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704;
+                                LPDIRECTSOUNDBUFFER sound_buffer = NULL;
+                                if (sme_ptr->sound_buffer_array && sme_ptr->sound_buffer_count >= 0) {
+                                    sound_buffer = *sme_ptr->sound_buffer_array;
+                                }
+                                /*
+                                if (SUCCEEDED(SOUND_MANAGER.__unknown_sme_ptr_5704->__sub_48A1A0(
+                                    sound_buffer,
+                                    sme_ptr->__smg_ptr_10->bgm_format->__dword_1C != 0,
+                                    0
+                                ))) {
+                                    ++snd_cmd->iter;
+                                    goto end_snd_cmd_loop;
+                                }
+                                */
+                                break;
+                            }
+                            case 7:
+                                //SOUND_MANAGER.__unknown_sme_ptr_5704->__sub_48A440(0, 1, 0);
+                                ++snd_cmd->iter;
+                                goto end_snd_cmd_loop;
+                            default:
+                                if (iter < 14) {
+                                    ++snd_cmd->iter;
+                                    goto end_snd_cmd_loop;
+                                }
+                                break;
+                        }
+                        break;
+                    }
+                }
+                if (SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704) {
+                    switch (int32_t iter = snd_cmd->iter) {
+                        case 0:
+                            sme_ptr->__sub_48A620(FALSE);
+                            ++snd_cmd->iter;
+                            goto end_snd_cmd_loop;
+                        case 1:
+                            if (!sme_ptr->__dword_AC) {
+                                int32_t index = snd_cmd->arg;
+                                const char* filename = index >= 0 ? SOUND_MANAGER.loaded_bgm_filenames[index] : snd_cmd->text_buffer;
+                                byteloop_strcpy(SOUND_MANAGER.__text_buffer_2384, filename);
+                                int32_t format_index = SOUND_MANAGER.__get_bgm_format_index(filename);
+                                snd_cmd->arg = format_index;
+                                //SOUND_MANAGER.__unknown_sme_ptr_5704->__sub_489E90(SOUND_MANAGER.bgm_formats[format_index]);
+                                ++snd_cmd->iter;
+                                goto end_snd_cmd_loop;
+                            }
+                            break;
+                        case 2:
+                            //sme_ptr->__sub_48ADC0(SOUND_MANAGER.bgm_formats[snd_cmd->arg], 0);
+                            ++snd_cmd->iter;
+                            goto end_snd_cmd_loop;
+                        case 3: {
+                            LPDIRECTSOUNDBUFFER sound_buffer = NULL;
+                            if (sme_ptr->sound_buffer_array && sme_ptr->sound_buffer_count >= 0) {
+                                sound_buffer = *sme_ptr->sound_buffer_array;
+                            }
+                            //sme_ptr->__sub_48AAC0(0);
+                            /*
+                            if (SUCCEEDED(SOUND_MANAGER.__unknown_sme_ptr_5704->__sub_48A1A0(
+                                sound_buffer,
+                                sme_ptr->__smg_ptr_10->bgm_format->__int_1C != 0,
+                                0
+                            ))) {
+                                ++snd_cmd->iter;
+                                goto end_snd_cmd_loop;
+                            }
+                            */
+                            break;
+                        }
+                        case 4:
+                            //sme_ptr->__sub_48A440(0, 1, 0);
+                            ++snd_cmd->iter;
+                            goto end_snd_cmd_loop;
+                        default:
+                            if (iter < 7) {
+                                ++snd_cmd->iter;
+                                goto end_snd_cmd_loop;
+                            }
+                            break;
+                    }
+                }
+                break;
+            case SndCmd4: // 4
+                if (SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704) {                    
+                    switch (int32_t iter = snd_cmd->iter) {
+                        case 0:
+                            sme_ptr->__sub_48A620(TRUE);
+                            ++snd_cmd->iter;
+                            goto end_snd_cmd_loop;
+                        case 1:
+                            if (SOUND_MANAGER.__handle_14) {
+                                PostThreadMessageA(SOUND_MANAGER.sound_thread_id, WM_QUIT, 0, 0);
+                                ++snd_cmd->iter;
+                                goto end_snd_cmd_loop;
+                            }
+                            break;
+                        case 2:
+                            if (WaitForSingleObject(SOUND_MANAGER.__handle_14, 256) != WAIT_OBJECT_0) {
+                                PostThreadMessageA(SOUND_MANAGER.sound_thread_id, WM_QUIT, 0, 0);
+                                --snd_cmd->iter;
+                            }
+                            else {
+                                SOUND_MANAGER.__handle_14 = NULL;
+                            }
+                            ++snd_cmd->iter;
+                            goto end_snd_cmd_loop;
+                        case 3:
+                            CloseHandle(SOUND_MANAGER.__handle_14);
+                            CloseHandle(SOUND_MANAGER.__handle_570C);
+                            SAFE_DELETE(SOUND_MANAGER.__unknown_sme_ptr_5704);
+                            ++snd_cmd->iter;
+                            goto end_snd_cmd_loop;
+                        default:
+                            ++snd_cmd->iter;
+                            goto end_snd_cmd_loop;
+                        case 10:
+                            break;
+                    }
+                }
+                break;
+            case SndCmd3: // 3
+                if (SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704) {
+                    switch (int32_t iter = snd_cmd->iter) {
+                        case 0:
+                            sme_ptr->__sub_48A620(TRUE);
+                            ++snd_cmd->iter;
+                            goto end_snd_cmd_loop;
+                        default:
+                            ++snd_cmd->iter;
+                            goto end_snd_cmd_loop;
+                        case 1:
+                            break;
+                    }
+                }
+                break;
+            case SndCmd5: { // 5
+                float A = snd_cmd->arg;
+                if (SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704) {
+                    sme_ptr->__int_20 = 1;
+                    A *= 60.0f;
+                    sme_ptr->__int_18 = A;
+                    sme_ptr->__int_1C = A;
+                }
+                break;
+            }
+            case SndCmd6: // 6
+                if (SUPERVISOR.config.__ubyte_45 == 1) {
+                    if (SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704) {
+                        if (sme_ptr->__dword_AC) {
+                            ++snd_cmd->iter;
+                            goto end_snd_cmd_loop;
+                        }
+                        // this feels like an inlined SME function
+                        if (LPDIRECTSOUNDBUFFER* sound_buffer_array = sme_ptr->sound_buffer_array) {
+                            if (!sme_ptr->__int_58) {
+                                sme_ptr->__int_5C = 0;
+                            } else {
+                                sme_ptr->__int_58 = 0;
+                                sme_ptr->__int_5C = 1;
+                                (*sound_buffer_array)->Stop();
+                                sme_ptr->__double_40 = get_runtime();
+                                DWORD offset = SetFilePointer(sme_ptr->__smg_ptr_10->__handle_8C, 0, NULL, FILE_CURRENT);
+                                SoundManagerUnknownG* smg_ptr = sme_ptr->__smg_ptr_10;
+                                smg_ptr->__int_98 = offset - smg_ptr->bgm_format->offset;
+                                smg_ptr = sme_ptr->__smg_ptr_10;
+                                if (smg_ptr->__int_78 == 1) {
+                                    CloseHandle(smg_ptr->__handle_8C);
+                                    smg_ptr->__handle_8C = INVALID_HANDLE_VALUE;
+                                }
+                            }
+                        }
+                    }
+                }
+                break;
+            case SndCmd7: // 7
+                if (SUPERVISOR.config.__ubyte_45 == 1) {
+                    if (SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704) {
+                        if (sme_ptr->__dword_AC) {
+                            ++snd_cmd->iter;
+                            goto end_snd_cmd_loop;
+                        }
+                        // this feels like an inlined SME function
+                        if (
+                            sme_ptr->sound_buffer_array &&
+                            sme_ptr->__int_5C != 0
+                        ) {
+                            SoundManagerUnknownG* smg_ptr = sme_ptr->__smg_ptr_10;
+                            sme_ptr->__int_5C = 0;
+                            //sme_ptr->__sub_48ADC0(smg_ptr->bgm_format, smg_ptr->__int_98);
+                            LPDIRECTSOUNDBUFFER sound_buffer = *sme_ptr->sound_buffer_array;
+                            sme_ptr->__int_58 = 1;
+                            sme_ptr->__double_48 += get_runtime() - sme_ptr->__double_40;
+                            sound_buffer->Play(0, sme_ptr->__int_24, sme_ptr->__int_28);
+                        }
+                    }
+                }
+                break;
+            case SndCmd9: // 9
+                if (SOUND_MANAGER.__unknown_sme_ptr_5704) {
+                    // this feels like an inlined SME function
+                    int32_t format_index = SOUND_MANAGER.__get_bgm_format_index(snd_cmd->text_buffer);
+                    SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704;
+                    ThBgmFormat* new_format = &SOUND_MANAGER.bgm_formats[format_index];
+                    double A = get_runtime() - (sme_ptr->__double_48 + sme_ptr->__double_38);
+                    SoundManagerUnknownG* smg_ptr = sme_ptr->__smg_ptr_10;
+                    ThBgmFormat* format = smg_ptr->bgm_format;
+                    double B = format->__int_1C;
+                    double C = format->__uint_24;
+                    double D = format->__ushort_2E;
+                    double E = format->__ushort_22;
+                    double F = ((B / (C * 0.125)) / D) / E;
+                    double G = (((B - format->__int_18) / C) / (D * 0.125)) / E;
+                    while (A >= F) {
+                        A -= G;
+                    }
+                    smg_ptr->bgm_format = new_format;
+                    sme_ptr->__sub_48AF10(A);
+                }
+                break;
+        }
+        nounroll for (int32_t i = 0; i < SOUND_COMMAND_QUEUE_LENGTH; ++i) {
+            if (snd_cmd->type != SndCmdEmpty) {
+                *snd_cmd = *(snd_cmd + 1);
+                ++snd_cmd;
+                break;
+            }
+        }
+    } while (wtf);
+end_snd_cmd_loop:
+
+    if (SUPERVISOR.config.__ubyte_46) {
+        // TODO: sound effect code bug idc right now
+    }
+
+
+    CRITICAL_SECTION_MANAGER.leave_section(SoundManagerA_CS);
+
+    return SOUND_MANAGER.sound_command_queue->type;
+}
+
+// 0x454620
+dllexport gnu_noinline int stdcall SoundManager::__load_wav_slot(int32_t slot, const char* name) {
+    char buffer[0x100];
+    byteloop_strcpy(buffer, name);
+    byteloop_strcat(buffer, ".wav");
+    SOUND_MANAGER.queue_sound_command(SndCmd1, slot, buffer);
+    return 1;
+}
+
+// 0x4546F0
+dllexport gnu_noinline ZUNResult SoundManager::__sub_4546F0() {
+    SOUND_MANAGER.queue_sound_command(SUPERVISOR.config.preload_bgm ? SndCmd4 : SndCmd3, 0, "dummy");
+    return ZUN_SUCCESS;
+}
+
+// 0x454720
+dllexport gnu_noinline ZUNResult vectorcall SoundManager::__sub_454720(float, float arg1) {
+    float game_speed = GAME_SPEED;
+    if (!(game_speed == 0.0f || game_speed <= 1.0f)) {
+        arg1 /= game_speed;
+    }
+    SOUND_MANAGER.queue_sound_command(SndCmd5, arg1, "");
+    return ZUN_SUCCESS;
+}
+
+// 0x457100
+dllexport gnu_noinline void SoundManager::__sub_457100() {
+    SOUND_MANAGER.__int_5730 = SUPERVISOR.config.__sbyte_4A;
+    SOUND_MANAGER.queue_sound_command(SndCmd8, 0, "SetVol");
+    int32_t A = SUPERVISOR.config.__sbyte_4B;
+    SOUND_MANAGER.__int_5734 = A;
+    if (A) {
+        float volume = 1.0f - (float)SOUND_MANAGER.__int_5730 / 100.f;
+        SOUND_MANAGER.__int_5738 = (int32_t)((float)MIN_VOLUME * (1.0f - volume * volume));
+    } else {
+        SOUND_MANAGER.__int_5738 = SILENT_VOLUME;
+    }
 }
 
 // 0x401C50
@@ -5629,7 +6178,9 @@ static inline constexpr uint16_t SCOREFILE_SECTION_A_VERSION_NUMBER = 6;
 struct ScorefileSectionA : ScorefileSectionHeader {
     // ScorefileSectionHeader base; // 0x0, 0x5F4B8
     char __text_buffer_C[10]; // 0xC, 0x5F4C4
-    unknown_fields(0x32); // 0x16, 0x5F4CE
+    unknown_fields(0x10); // 0x16, 0x5F4CE
+    bool unlocked_music[18]; // 0x26, 0x5F4DE
+    unknown_fields(0x10); // 0x38, 0x5F4F0
     uint64_t __ulonglong_48; // 0x48, 0x5F500
     bool trophies[30]; // 0x50, 0x5F508
     unknown_fields(0x62); // 0x6E, 0x5F526
@@ -5685,6 +6236,7 @@ ValidateFieldOffset32(0x2, ScorefileSectionA, __version_number);
 ValidateFieldOffset32(0x4, ScorefileSectionA, checksum);
 ValidateFieldOffset32(0x8, ScorefileSectionA, size);
 ValidateFieldOffset32(0xC, ScorefileSectionA, __text_buffer_C);
+ValidateFieldOffset32(0x26, ScorefileSectionA, unlocked_music);
 ValidateFieldOffset32(0x48, ScorefileSectionA, __ulonglong_48);
 ValidateFieldOffset32(0x50, ScorefileSectionA, trophies);
 ValidateFieldOffset32(0xD0, ScorefileSectionA, __byte_array_D0);
@@ -5922,12 +6474,25 @@ struct ScorefileManager {
         return ZUN_SUCCESS;
 #endif
     }
+
+    inline void unlock_music(int32_t index) {
+        this->primary_file.__sectionA.unlocked_music[index] = true;
+    }
 };
 #pragma region // ScorefileManager Validation
 ValidateFieldOffset32(0x0, ScorefileManager, primary_file);
 ValidateFieldOffset32(0x5F888, ScorefileManager, backup_file);
 ValidateStructSize32(0xBF158, ScorefileManager);
 #pragma endregion
+
+// 0x4546A0
+dllexport gnu_noinline ZUNResult stdcall SoundManager::__play_music_with_unlock(int32_t slot, int32_t music_room_index) {
+    if (SUPERVISOR.config.preload_bgm) {
+        SOUND_MANAGER.queue_sound_command(SndCmd4, 0, "dummy");
+    }
+    SOUND_MANAGER.queue_sound_command(SndCmd2, slot, "dummy");
+    SCOREFILE_MANAGER_PTR->unlock_music(music_room_index);
+}
 
 // 0x416E10
 dllexport gnu_noinline int thiscall CardData::__check_availability() const {
@@ -9912,13 +10477,11 @@ public:
 
     // 0x443E60
     dllexport gnu_noinline ZUNResult thiscall __sub_443E60() asm_symbol_rel(0x443E60) {
-
+        // TODO-EMPTY: important function, allocates main enemy
     }
 
     // 0x4443C0
-    dllexport gnu_noinline ZUNResult thiscall __sub_4443C0() asm_symbol_rel(0x4443C0) {
-
-    }
+    dllexport gnu_noinline ZUNResult thiscall __sub_4443C0() asm_symbol_rel(0x4443C0);
 
     // 0x4437B0
     dllexport gnu_noinline static GameThread* fastcall allocate(ReplayMode mode) asm_symbol_rel(0x4437B0) {
@@ -10534,7 +11097,7 @@ struct Gui : ZUNTask {
 
     // 0x43A8B0
     dllexport gnu_noinline static void __sub_43A8B0() {
-
+        // TODO: lots of anm allocations
     }
 
     // 0x43BB70
@@ -13610,7 +14173,7 @@ enum AnmFileIndex {
     ABMENU_ANM_INDEX = 32,
 
 
-    ENUM_MAX_VALUE_DECLARE(CmdType)
+    ENUM_MAX_VALUE_DECLARE(AnmFileIndex)
 };
 
 // 0x4B4920
@@ -15848,7 +16411,10 @@ inline UpdateFuncRet thiscall Supervisor::on_tick() {
             SUPERVISOR.gamemode_switch = 3;
         }
     }
-    //SOUND_MANAGER.__sub_476D20();
+
+    // TODO: uncommenting this segfaults clang because ???
+    //SOUND_MANAGER.__on_tick();
+
     if (SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704) {
         // TODO
     }
@@ -15983,9 +16549,9 @@ dllexport gnu_noinline MsgVM::~MsgVM() {
 dllexport gnu_noinline void thiscall Gui::cleanup() {
     AnmManager* anm_manager = ANM_MANAGER_PTR;
     if (!(GAME_MANAGER.__unknown_flag_A | GAME_MANAGER.__unknown_flag_D)) {
-        anm_manager->unload_anm(6);
+        anm_manager->unload_anm(STAGE_LOGO_ANM_INDEX);
     } else {
-        anm_manager->mark_all_vms_from_loaded_slot_for_delete(6);
+        anm_manager->mark_all_vms_from_loaded_slot_for_delete(STAGE_LOGO_ANM_INDEX);
     }
 
     SAFE_DELETE(this->msg_vm);
@@ -16037,7 +16603,7 @@ dllexport gnu_noinline Gui::~Gui() {
     this->__anm_id_44.mark_tree_for_delete();
     this->__anm_id_48.mark_tree_for_delete();
 
-    ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(5);
+    ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(FRONT_ANM_INDEX);
 
     GUI_PTR = NULL;
 }
@@ -16390,14 +16956,14 @@ struct EffectManager : ZUNTask {
     dllexport gnu_noinline ~EffectManager() {
         this->__thread_2020.stop_and_cleanup();
         AnmManager* anm_manager = ANM_MANAGER_PTR;
-        anm_manager->mark_all_vms_from_loaded_slot_for_delete(8);
-        anm_manager->mark_all_vms_from_loaded_slot_for_delete(7);
+        anm_manager->mark_all_vms_from_loaded_slot_for_delete(EFFECT_ANM_INDEX);
+        anm_manager->mark_all_vms_from_loaded_slot_for_delete(BULLET_ANM_INDEX);
 
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
-        ANM_MANAGER_PTR->unload_anm(8);
-        ANM_MANAGER_PTR->unload_anm(7);
+        ANM_MANAGER_PTR->unload_anm(EFFECT_ANM_INDEX);
+        ANM_MANAGER_PTR->unload_anm(BULLET_ANM_INDEX);
 
         EFFECT_MANAGER_PTR = NULL;
     }
@@ -17624,8 +18190,8 @@ struct AsciiManager : ZUNTask {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func_group_2);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func_group_3);
 
-        ANM_MANAGER_PTR->unload_anm(2);
-        ANM_MANAGER_PTR->unload_anm(0);
+        ANM_MANAGER_PTR->unload_anm(ASCII_ANM_INDEX);
+        ANM_MANAGER_PTR->unload_anm(TEXT_ANM_INDEX);
 
         ASCII_MANAGER_PTR = NULL;
     }
@@ -20447,7 +21013,10 @@ struct Player : ZUNTask {
     float __float_479AC; // 0x479AC
     Float2 __hitbox_size_focused; // 0x479B0 Float3?
     float __float_479B8; // 0x479B8
-    unknown_fields(0x10); // 0x479BC
+    int __dword_479BC; // 0x479BC
+    int __dword_479C0; // 0x479C0
+    int __dword_479C4; // 0x479C4
+    unknown_fields(0x4); // 0x479C8
     float __float_479CC; // 0x479CC
     // 0x479D0
 
@@ -20468,18 +21037,30 @@ struct Player : ZUNTask {
 
         AnmManager* anm_manager = ANM_MANAGER_PTR;
         if (GAME_MANAGER.__unknown_flag_A) {
-            anm_manager->mark_all_vms_from_loaded_slot_for_delete(9);
+            anm_manager->mark_all_vms_from_loaded_slot_for_delete(PLAYER_ANM_INDEX);
             CACHED_SHT_FILE_PTR = this->sht_file;
         } else {
-            anm_manager->unload_anm(9);
+            anm_manager->unload_anm(PLAYER_ANM_INDEX);
             SAFE_FREE(this->sht_file);
             CACHED_SHT_FILE_PTR = NULL;
         }
     }
 
+private:
+    inline void reset_impl();
+public:
+    // 0x45ABB0
+    dllexport gnu_noinline static void reset() asm_symbol_rel(0x45ABB0) {
+        PLAYER_PTR->reset_impl();
+    }
+
     // 0x407D50
     dllexport gnu_noinline Float3* thiscall get_position() asm_symbol_rel(0x407D50) {
         return &this->data.position;
+    }
+
+    inline void set_position_internal(const Int2& position) {
+        return this->set_position_internal(position.x, position.y);
     }
 
     inline void set_position_internal(int32_t x, int32_t y) {
@@ -20497,6 +21078,10 @@ struct Player : ZUNTask {
     inline void set_y_position_internal(int32_t y) {
         this->data.internal_position.y = y;
         this->data.position.y = y * (1.0f / INTERNAL_POSITION_RATIO);
+    }
+
+    inline void set_position(const Float2& position) {
+        return this->set_position(position.x, position.y);
     }
 
     inline void set_position(float x, float y) {
@@ -21273,6 +21858,9 @@ ValidateFieldOffset32(0x479A4, Player, __hitbox_size_unfocused);
 ValidateFieldOffset32(0x479AC, Player, __float_479AC);
 ValidateFieldOffset32(0x479B0, Player, __hitbox_size_focused);
 ValidateFieldOffset32(0x479B8, Player, __float_479B8);
+ValidateFieldOffset32(0x479BC, Player, __dword_479BC);
+ValidateFieldOffset32(0x479C0, Player, __dword_479C0);
+ValidateFieldOffset32(0x479C4, Player, __dword_479C4);
 ValidateFieldOffset32(0x479CC, Player, __float_479CC);
 ValidateStructSize32(0x479D0, Player);
 #pragma endregion
@@ -23261,15 +23849,41 @@ struct AbilityManager : ZUNTask {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
         this->__sub_407DA0(0);
-        ANM_MANAGER_PTR->unload_anm(30);
-        ANM_MANAGER_PTR->unload_anm(31);
-        ANM_MANAGER_PTR->unload_anm(32);
+        ANM_MANAGER_PTR->unload_anm(ABILITY_ANM_INDEX);
+        ANM_MANAGER_PTR->unload_anm(ABCARD_ANM_INDEX);
+        ANM_MANAGER_PTR->unload_anm(ABMENU_ANM_INDEX);
 
         ABILITY_MANAGER_PTR = NULL;
 
         if (this->__created_ability_data) {
             SAFE_DELETE(ABILITY_TEXT_DATA_PTR);
         }
+    }
+
+private:
+    inline void __sub_407F10_impl() {
+        this->enable_funcs_unsafe();
+        this->__anm_id_3C.mark_tree_for_delete();
+
+        this->__anm_id_3C = this->abcard_anm->instantiate_vm_to_world_list_back(0);
+
+        // wtf is this
+        this->card_list.for_each_safe([=](CardBase* card) {
+            if (card->id == NULL_CARD) {
+                SAFE_DELETE(card);
+                --this->card_count;
+                --this->passive_card_count;
+            }
+        });
+
+        this->__sub_408C30();
+        this->create_all_card_lists_for_hud(true);
+    }
+
+public:
+    // 0x407F10
+    dllexport gnu_noinline static void __sub_407F10() {
+        ABILITY_MANAGER_PTR->__sub_407F10_impl();
     }
 
     inline void load_files() {
@@ -23297,10 +23911,10 @@ struct AbilityManager : ZUNTask {
         nounroll for (size_t i = 0; i < countof(ability_manager->__anm_id_array_58); ++i) {
             ability_manager->__anm_id_array_58[i].mark_tree_for_delete();
         }
-
-        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(30);
-        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(31);
-        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(32);
+        
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABILITY_ANM_INDEX);
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABCARD_ANM_INDEX);
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABMENU_ANM_INDEX);
     }
 
     // 0x4080E0
@@ -23328,8 +23942,8 @@ struct AbilityManager : ZUNTask {
             }
         });
 
-        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(30);
-        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(31);
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABILITY_ANM_INDEX);
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABCARD_ANM_INDEX);
 
         ability_manager->selected_active_card = NULL;
 
@@ -23572,9 +24186,9 @@ struct AbilityManager : ZUNTask {
         this->passive_card_count = 0;
         this->__float_C58 = 1.0f;
         this->selected_active_card = NULL;
-        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(30);
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABILITY_ANM_INDEX);
         this->__anm_id_3C.mark_tree_for_delete();
-        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(31);
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABCARD_ANM_INDEX);
 
         nounroll for (size_t i = 0; i < countof(this->__anm_id_array_58); ++i) {
             this->__anm_id_array_58[i].mark_tree_for_delete();
@@ -23936,16 +24550,16 @@ dllexport gnu_noinline LoadingThread::~LoadingThread() {
 
     delete ABILITY_MANAGER_PTR;
     UNKNOWN_THREAD_A.stop_and_cleanup();
-    ANM_MANAGER_PTR->unload_anm(5);
+    ANM_MANAGER_PTR->unload_anm(FRONT_ANM_INDEX);
     SAFE_DELETE(EFFECT_MANAGER_PTR);
     // delete TROPHY_MANAGER_B_PTR;
-    ANM_MANAGER_PTR->unload_anm(27);
-    ANM_MANAGER_PTR->unload_anm(1);
+    ANM_MANAGER_PTR->unload_anm(TROPHY_ANM_INDEX);
+    ANM_MANAGER_PTR->unload_anm(SIG_ANM_INDEX);
 
     LOADING_THREAD_PTR = NULL;
 
     delete ASCII_MANAGER_PTR;
-    ANM_MANAGER_PTR->unload_anm(0);
+    ANM_MANAGER_PTR->unload_anm(TEXT_ANM_INDEX);
 
     SCOREFILE_MANAGER_PTR->save_files();
     SAFE_DELETE(SCOREFILE_MANAGER_PTR);
@@ -24249,6 +24863,66 @@ dllexport gnu_noinline void thiscall PlayerData::__update_option_power_levels(in
     });
 }
 
+inline void Player::reset_impl() {
+    this->data.state = 1;
+    this->data.shoot_key_short_timer.set(-1);
+    this->data.shoot_key_long_timer.set(-1);
+    this->data.__death_timer.reset();
+    this->data.__timer_28.reset();
+    this->data.__timer_3C.reset();
+
+    this->data.__unknown_flag_A = false;
+    this->data.__unknown_flag_B = false;
+
+    this->data.__vm_id_47090.mark_tree_for_delete();
+    this->data.__vm_id_47094.mark_tree_for_delete();
+
+    GUI_PTR->__update_life_ui(GAME_MANAGER.globals.life_stocks, GAME_MANAGER.globals.life_fragments, GAME_MANAGER.globals.life_stock_max);
+
+    this->__sub_416D50();
+    this->data.__update_option_power_levels();
+
+    this->data.__unknown_flag_H = false;
+    zero_array(this->data.__level_array_470DC);
+
+    this->__dword_479BC = 0;
+    this->__dword_479C0 = 0;
+    this->__dword_479C4 = 0;
+
+    this->data.last_created_damage_source_index = 0;
+    this->scale_interp.end_time = 0;
+    this->scale = 1.0f;
+    this->damage_multiplier = 1.0f;
+    this->reset_previous_positions();
+    this->data.num_deathbomb_frames = 8;
+    this->data.__shot_tilt_angle = -HALF_PI_f;
+    this->data.__shot_spread = 0.0f;
+    this->data.__timer_472F4.reset();
+
+    for (int32_t i = 0; i < 4; ++i) {
+        ((int32_t*)&this->data.__unfocused_linear_speed)[i] = this->sht_file->movement_speeds[i] * INTERNAL_POSITION_RATIO;
+    }
+
+    this->__item_attract_speed = 5.0f;
+    this->item_collect_radius = 30.0f;
+    this->item_attract_radius_focused = 70.0f;
+    this->item_attract_radius_unfocused = 70.0f;
+    this->poc_height = 128.0f;
+    this->__hitbox_radius_unfocused = 3.0f;
+    this->__hitbox_radius_focused = 3.0f;
+    this->__hitbox_size_unfocused.y = 1.5f;
+    this->__hitbox_size_unfocused.x = 1.5f;
+    this->__float_479AC = 5.0f;
+    this->__hitbox_size_focused.y = 1.5f;
+    this->__hitbox_size_focused.x = 1.5f;
+    this->__float_479B8 = 5.0f;
+    this->data.num_deathbomb_frames = 8;
+
+    ABILITY_MANAGER_PTR->card_list.for_each([](CardBase* card) {
+        card->on_load();
+    });
+}
+
 // 0x45EA00
 dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
     if (INPUT_STATES[0].check_inputs(BUTTON_SHOOT)) {
@@ -24435,7 +25109,7 @@ struct AbilityShop : ZUNTask {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
         if (ANM_MANAGER_PTR) {
-            ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(32);
+            ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABMENU_ANM_INDEX);
         }
 
         this->__anm_id_228.mark_tree_for_delete();
@@ -24649,7 +25323,7 @@ struct AbilityMenu : ZUNTask {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
         if (ABILITY_MANAGER_PTR) {
-            ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(32);
+            ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABMENU_ANM_INDEX);
         }
 
         nounroll for (size_t i = 0; i < countof(this->__anm_id_array_3EC); ++i) {
@@ -26020,7 +26694,7 @@ struct Stage : ZUNTask {
         SAFE_DELETE(this->std_vm.distortion.fog_ptr);
 
         if (!GAME_MANAGER.__unknown_flag_A) {
-            ANM_MANAGER_PTR->unload_anm(3 + (this->stage_number & 1));
+            ANM_MANAGER_PTR->unload_anm(STAGE_ANM_INDEX_A + (this->stage_number & 1));
         }
 
         if (STAGE_PTR == this) {
@@ -27419,6 +28093,34 @@ struct ItemManager : ZUNTask {
     inline ItemManager() {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
+    }
+
+    inline void enable_funcs() {
+        this->enable_tick();
+        this->enable_draw();
+        if (UpdateFunc* on_draw_B = this->on_draw_func_B) {
+            on_draw_B->run_on_update = true;
+        }
+    }
+
+    inline void enable_funcs_unsafe() {
+        this->enable_tick_unsafe();
+        this->enable_draw_unsafe();
+        this->on_draw_func_B->run_on_update = true;
+    }
+
+    inline void disable_funcs() {
+        this->disable_tick();
+        this->disable_draw();
+        if (UpdateFunc* on_draw_B = this->on_draw_func_B) {
+            on_draw_B->run_on_update = false;
+        }
+    }
+
+    inline void disable_funcs_unsafe() {
+        this->disable_tick();
+        this->disable_draw();
+        this->on_draw_func_B->run_on_update = false;
     }
 
     // 0x445920
@@ -29034,9 +29736,47 @@ struct BulletManager : ZUNTask {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
-        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(7);
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(BULLET_ANM_INDEX);
 
         BULLET_MANAGER_PTR = NULL;
+    }
+
+private:
+    inline void thiscall destroy_all_impl() {
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(BULLET_ANM_INDEX);
+
+        zero_array(this->bullets);
+        this->__bullet_ptr_C = this->bullets;
+        this->bullets[MAX_BULLETS].state = 5;
+        zero_array(this->anm_ids);
+
+        this->bullet_free_list.initialize_with(NULL);
+
+        for (int32_t i = 0; i < MAX_BULLETS; ++i) {
+            Bullet* bullet = &this->bullets[i];
+
+            bullet->free_list_node.initialize_with(NULL);
+            bullet->tick_list_node.initialize_with(bullet);
+            bullet->bullet_manager_index = i;
+
+            // This may be the wrong list op, IDK
+            this->bullet_free_list.append(&bullet->tick_list_node);
+        }
+
+        this->bullet_tick_list.initialize_with(NULL);
+
+        this->__bounce_bounds.x = 0.0f;
+        this->__bounce_bounds.y = 0.0f;
+        this->__cancel_counter = 0;
+        zero_array(this->__graze_array);
+        this->__unknown_counter_flag = 0;
+        this->__unknown_counter = 0;
+    }
+
+public:
+    // 0x423980
+    dllexport gnu_noinline static void destroy_all() asm_symbol_rel(0x423980) {
+        BULLET_MANAGER_PTR->destroy_all_impl();
     }
     
     // 0x409940
@@ -34199,9 +34939,8 @@ struct ReplayGamestate {
     uint16_t rng; // 0x2
     uint32_t input_count; // 0x4
     uint32_t extra_size; // 0x8
-    int __dword_C; // 0xC
-    int __dword_10; // 0x10
-    unknown_fields(0x4); // 0x14
+    Int2 player_position; // 0xC
+    BOOL player_focused; // 0x14
     int __dword_array_18[20]; // 0x18
     Globals globals; // 0x68
     int32_t cards_owned[0x100]; // 0x164
@@ -34232,8 +34971,8 @@ ValidateFieldOffset32(0x0, ReplayGamestate, stage_number);
 ValidateFieldOffset32(0x2, ReplayGamestate, rng);
 ValidateFieldOffset32(0x4, ReplayGamestate, input_count);
 ValidateFieldOffset32(0x8, ReplayGamestate, extra_size);
-ValidateFieldOffset32(0xC, ReplayGamestate, __dword_C);
-ValidateFieldOffset32(0x10, ReplayGamestate, __dword_10);
+ValidateFieldOffset32(0xC, ReplayGamestate, player_position);
+ValidateFieldOffset32(0x14, ReplayGamestate, player_focused);
 ValidateFieldOffset32(0x18, ReplayGamestate, __dword_array_18);
 ValidateFieldOffset32(0x68, ReplayGamestate, globals);
 ValidateFieldOffset32(0x164, ReplayGamestate, cards_owned);
@@ -34483,6 +35222,34 @@ struct ReplayManager : ZUNTask {
         this->zero_contents();
     }
 
+    inline void enable_funcs() {
+        this->enable_tick();
+        if (UpdateFunc* on_tick_B = this->on_tick_func_B) {
+            on_tick_B->run_on_update = true;
+        }
+        this->enable_draw();
+    }
+
+    inline void enable_funcs_unsafe() {
+        this->enable_tick_unsafe();
+        this->on_tick_func_B->run_on_update = true;
+        this->enable_draw_unsafe();
+    }
+
+    inline void disable_funcs() {
+        this->disable_tick();
+        if (UpdateFunc* on_tick_B = this->on_tick_func_B) {
+            on_tick_B->run_on_update = false;
+        }
+        this->disable_draw();
+    }
+
+    inline void disable_funcs_unsafe() {
+        this->disable_tick_unsafe();
+        this->on_tick_func_B->run_on_update = false;
+        this->disable_draw_unsafe();
+    }
+
     // 0x461AD0
     dllexport gnu_noinline ~ReplayManager() {
         delete this->header;
@@ -34509,15 +35276,57 @@ struct ReplayManager : ZUNTask {
         }
     }
 
+private:
+    inline void __sub_462EA0_impl() {
+        this->enable_funcs();
+
+        INPUT_STATES[0].__reset_inputs();
+
+        switch (this->mode) {
+            case __replay_recording: {
+                int32_t stage_number = GAME_MANAGER.globals.current_stage;
+                ReplayGamestate* game_state = this->game_states[stage_number];
+                this->delete_chunk_list(stage_number);
+                this->current_chunk_node = this->allocate_chunk(GAME_MANAGER.globals.current_stage);
+                game_state->globals = GAME_MANAGER.globals;
+                Player* player = PLAYER_PTR;
+                game_state->player_position = player->data.internal_position;
+                game_state->player_focused = player->data.focused;
+                break;
+            }
+            case __replay_playback: {
+                int32_t stage_number = GAME_MANAGER.globals.current_stage;
+                Player* player = PLAYER_PTR;
+                ReplayGamestate* game_state = this->stage_data[stage_number].gamestate_start;
+                this->stage_number = stage_number;
+
+                player->set_position_internal(game_state->player_position);
+                player->__set_all_option_D4_to_1();
+                player->data.focused = game_state->player_focused;
+                player->reset_previous_positions();
+
+                stage_number = GAME_MANAGER.globals.current_stage;
+                this->stage_data[stage_number].inputs_current = this->stage_data[stage_number].input_start;
+                this->stage_data[stage_number].fps_counts_current = this->stage_data[stage_number].fps_counts_start;
+
+                GAME_MANAGER.globals = game_state->globals;
+                this->__unknown_flag_A = false;
+                break;
+            }
+        }
+        this->__int_20C = 0;
+    }
+public:
+    // 0x462EA0
+    dllexport gnu_noinline static void __sub_462EA0() asm_symbol_rel(0x462EA0) {
+        REPLAY_MANAGER_PTR->__sub_462EA0_impl();
+    }
+
     // 0x462D20
     dllexport static void __sub_462D20() asm_symbol_rel(0x462D20) {
         ReplayManager* replay_manager = REPLAY_MANAGER_PTR;
 
-        replay_manager->enable_tick();
-        if (UpdateFunc* on_tick_B = replay_manager->on_tick_func_B) {
-            on_tick_B->run_on_update = true;
-        }
-        replay_manager->enable_draw();
+        replay_manager->enable_funcs();
 
         INPUT_STATES[0].__reset_inputs();
 
@@ -34763,8 +35572,7 @@ struct ReplayManager : ZUNTask {
                 REPLAY_RNG.index = 0;
                 game_state->__unknown_flag_A = SUPERVISOR.__int_804;
                 if (SUPERVISOR.__int_804) {
-                    game_state->__dword_C = 0;
-                    game_state->__dword_10 = 0;
+                    game_state->player_position = { 0, 0 };
                 }
                 game_state->globals = GAME_MANAGER.globals;
 
@@ -34989,7 +35797,7 @@ struct HelpMenu : ZUNTask {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
-        ANM_MANAGER_PTR->unload_anm(19);
+        ANM_MANAGER_PTR->unload_anm(HELP_ANM_INDEX);
 
         HELP_MENU_PTR = NULL;
     }
@@ -35478,8 +36286,8 @@ struct MainMenu : ZUNTask {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
-        ANM_MANAGER_PTR->unload_anm(16);
-        ANM_MANAGER_PTR->unload_anm(17);
+        ANM_MANAGER_PTR->unload_anm(TITLE_ANM_INDEX);
+        ANM_MANAGER_PTR->unload_anm(TITLEV_ANM_INDEX);
 
         nounroll for (size_t i = 0; i < countof(this->__replay_manager_array_5AB4); ++i) {
             delete this->__replay_manager_array_5AB4[i];
@@ -36870,7 +37678,6 @@ dllexport gnu_noinline ZUNResult thiscall Supervisor::load_config_file(int) {
 }
 
 // 0x473390
-dllexport gnu_noinline double vectorcall get_runtime() asm_symbol_rel(0x473390);
 dllexport gnu_noinline double vectorcall get_runtime() {
     CRITICAL_SECTION_MANAGER.enter_section(Menu_CS);
     double current_time;
@@ -37097,7 +37904,7 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_453C70() {
 
 // 0x453A70
 dllexport gnu_noinline void thiscall Supervisor::__sub_453A70() {
-    //while (SOUND_MANAGER.__sub_476D20());
+    while (SOUND_MANAGER.__on_tick() != SndCmdEmpty);
 
     SUPERVISOR.__thread_AB0.stop_and_cleanup();
     SUPERVISOR.__thread_A94.stop_and_cleanup();
@@ -37131,6 +37938,56 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_453A70() {
     SAFE_DELETE(this->__arcade_vm_ptr_B);
     SAFE_DELETE(this->__arcade_vm_ptr_C);
     SAFE_DELETE(this->__arcade_vm_ptr_D);
+}
+
+// 0x4443C0
+dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_4443C0() {
+    // TODO-MOVE
+    // TODO 2: what did I mean when I wrote "MOVE" here
+    if (this->__unknown_flag_K) {
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABILITY_ANM_INDEX);
+        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABCARD_ANM_INDEX);
+        this->__unknown_flag_K = false;
+        BULLET_MANAGER_PTR->destroy_all();
+        PLAYER_PTR->reset();
+        ITEM_MANAGER_PTR->destroy_all();
+        ENEMY_MANAGER_PTR->destroy_all();
+        LASER_MANAGER_PTR->destroy_all();
+        GAME_MANAGER.globals.__counter_C = 0;
+        GAME_MANAGER.globals.__counter_10 = 0;
+        GAME_MANAGER.globals.__counter_14 = 0;
+        REPLAY_MANAGER_PTR->__sub_462EA0();
+
+        EnemyInitData init_data = {};
+        ENEMY_MANAGER_PTR->allocate_new_enemy("main", &init_data);
+        Gui::__sub_43A8B0();
+
+        PAUSE_MENU_PTR->enable_funcs();
+
+        Player* player = PLAYER_PTR;
+        player->enable_funcs_unsafe();
+        player->data.__update_option_power_levels();
+
+        BULLET_MANAGER_PTR->enable_funcs();
+        ENEMY_MANAGER_PTR->enable_funcs();
+        ITEM_MANAGER_PTR->enable_funcs();
+        LASER_MANAGER_PTR->enable_funcs();
+        EFFECT_MANAGER_PTR->enable_funcs();
+        BOMB_PTR->enable_funcs();
+        POPUP_MANAGER_PTR->enable_funcs_unsafe();
+        SPELLCARD_PTR->enable_funcs();
+        ABILITY_MANAGER_PTR->__sub_407F10();
+
+        clang_forceinline SOUND_MANAGER.__sub_4546F0();
+        clang_forceinline SOUND_MANAGER.__play_music_with_unlock(0, STAGE_DATA_PTR->bgm_indices[0]);
+        
+        AsciiManager* ascii_manager_ptr = ASCII_MANAGER_PTR;
+        ascii_manager_ptr->__vm_id_19268.interrupt_tree(1);
+        ascii_manager_ptr->__vm_id_19268 = 0;
+
+        this->__timer_C.reset();
+    }
+    return ZUN_SUCCESS;
 }
 
 // 0x443860
@@ -37397,7 +38254,7 @@ dllexport gnu_noinline GameThread::~GameThread() {
             !GAME_MANAGER.__unknown_flag_A &&
             !GAME_MANAGER.__unknown_flag_D
         ) {
-            ANM_MANAGER_PTR->unload_anm(6);
+            ANM_MANAGER_PTR->unload_anm(STAGE_LOGO_ANM_INDEX);
             gui->stage_logo_anm = NULL;
             SAFE_FREE(gui->msg_file);
         }
@@ -37421,8 +38278,8 @@ dllexport gnu_noinline GameThread::~GameThread() {
     }
 
     AnmManager* anm_manager = ANM_MANAGER_PTR;
-    anm_manager->mark_all_vms_from_loaded_slot_for_delete(8);
-    anm_manager->mark_all_vms_from_loaded_slot_for_delete(7);
+    anm_manager->mark_all_vms_from_loaded_slot_for_delete(EFFECT_ANM_INDEX);
+    anm_manager->mark_all_vms_from_loaded_slot_for_delete(BULLET_ANM_INDEX);
 
     SAFE_DELETE(BOMB_PTR);
     delete SPELLCARD_PTR;
@@ -37711,17 +38568,18 @@ inline unsigned GameThread::thread_start_impl() {
     SCOREFILE_MANAGER_PTR->save_files();
 
     if (GAME_MANAGER.__unknown_field_A == 2) {
-        //SOUND_MANAGER.__sub_4546F0();
+        SOUND_MANAGER.__sub_4546F0();
     }
 
-    //SOUND_MANAGER.__sub_454620(0, STAGE_DATA_PTR->__string_array_C[0]);
-    //SOUND_MANAGER.__sub_454620(1, STAGE_DATA_PTR->__string_array_C[1]);
+    SOUND_MANAGER.__load_wav_slot(0, STAGE_DATA_PTR->bgm_filenames[0]);
+    SOUND_MANAGER.__load_wav_slot(1, STAGE_DATA_PTR->bgm_filenames[1]);
 
     FPS_COUNTER_PTR->reset();
 
     clang_noinline this->__timer_C.set(0);
 
-    while (SOUND_MANAGER.__unknown_smd_array_2484[0].__dword_0) {
+    // Wait for the sound command queue to empty
+    while (SOUND_MANAGER.sound_command_queue[0].type != SndCmdEmpty) {
         Sleep(16);
     }
 

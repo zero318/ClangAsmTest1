@@ -633,7 +633,7 @@ struct MACRO_CAT(val,__COUNTER__) { \
 #if __INTELLISENSE__
 #define ValidateVirtualFieldOffset(offset, struct_type, member_name) \
 struct MACRO_CAT(vfo,__COUNTER__) { \
-    static inline constexpr bool vvfo = validate_impl<(offset) - sizeof(void*), __builtin_offsetof(struct_type, member_name)>(); \
+    static inline constexpr bool vvfo = validate_impl<(offset) - (sizeof(void*) >= alignof(struct_type) ? sizeof(void*) : alignof(struct_type)), __builtin_offsetof(struct_type, member_name)>(); \
     static_assert(vvfo, "Incorrect struct offset! Offset of " MACRO_STR(struct_type) "."#member_name" is not "#offset); \
 }
 #endif
