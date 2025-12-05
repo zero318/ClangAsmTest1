@@ -934,7 +934,7 @@ target_sources(UMTest1 PRIVATE
 	#"dummy_main.cpp"
 	$<TARGET_OBJECTS:UMAsm>
 	"UM/UM_bullet_ex.cpp"
-	"UM/new_header_test.cpp"
+	#"UM/new_header_test.cpp"
 )
 target_compile_definitions(UMTest1 PRIVATE
 	NO_ASM_SYMBOLS

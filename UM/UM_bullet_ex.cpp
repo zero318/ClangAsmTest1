@@ -91,9 +91,22 @@ extern StaticCtorsDtors fake_static_data;
 #include <d3d9.h>
 #include <dinput.h>
 #include <dsound.h>
+#include <mmiscapi.h>
+#include <mmiscapi2.h>
 #define UNICODE
 #include <Core/DXUT.h>
+
+#define CSoundManager CSoundManagerOld
+#define CWaveFile CWaveFileOld
+#define CSound CSoundOld
+#define CStreamingSound CStreamingSoundOld
 #include <Optional/SDKsound.h>
+#include <Optional/SDKwavefile.h>
+#undef CSoundManager
+#undef CWaveFile
+#undef CSound
+#undef CStreamingSound
+
 #undef UNICODE
 
 #include "../zero/zun.h"
@@ -654,6 +667,12 @@ struct DebugLogger {
 
     // 0x48B020
     dllexport static gnu_noinline void cdecl __debug_log_stub_5(const char* format, ...) asm_symbol_rel(0x48B020) {}
+
+#if NDEBUG
+    static void cdecl debug_print(const char* format, ...) {
+
+    }
+#endif
 };
 
 extern "C" {
@@ -663,6 +682,12 @@ extern "C" {
     // 0x4CF2F0
     externcg char UNKNOWN_TEXT_BUFFER_A[MAX_PATH] cgasm("_UNKNOWN_TEXT_BUFFER_A");
 }
+
+#if NDEBUG
+#define DEBUG_PRINT(fmt, ...)
+#else
+#define DEBUG_PRINT(fmt, ...) DebugLogger::debug_print(fmt, __VA_ARGS__)
+#endif
 
 namespace Pbg {
 
@@ -3015,6 +3040,19 @@ dllexport gnu_noinline BOOL stdcall __hardware_input0_pressed_or_held(uint32_t m
     return INPUT_STATES[0].check_hardware_inputs_repeating(mask);
 }
 
+enum BgmType : uint8_t {
+    BgmOff = 0,
+    BgmWav = 1,
+    BgmMidi = 2,
+    ENUM_MAX_VALUE_DECLARE(BgmType)
+};
+
+enum SfxType : uint8_t {
+    SfxOff = 0,
+    SfxOn = 1,
+    ENUM_MAX_VALUE_DECLARE(SfxType)
+};
+
 // size : 0x88
 struct Config {
     int __dword_0; // 0x0
@@ -3024,8 +3062,8 @@ struct Config {
     int16_t deadzone_x; // 0x40
     int16_t deadzone_y; // 0x42
     uint8_t __ubyte_44; // 0x44
-    uint8_t __ubyte_45; // 0x45
-    uint8_t __ubyte_46; // 0x46
+    uint8_t bgm_type; // 0x45
+    uint8_t sfx_type; // 0x46
     uint8_t __ubyte_47; // 0x47
     uint8_t __ubyte_48; // 0x48
     uint8_t __ubyte_49; // 0x49
@@ -3065,14 +3103,14 @@ struct Config {
         this->__dword_0 = 0x180002;
         this->deadzone_x = 0x258;
         this->deadzone_y = 0x258;
-        this->__ubyte_45 = 1;
-        this->__ubyte_46 = 1;
+        this->bgm_type = BgmWav;
+        this->sfx_type = SfxOn;
         this->__ubyte_47 = 8;
         this->joypad_mapping = INPUT_STATES[0].joypad_mapping;
         this->xinput_mapping = INPUT_STATES[0].xinput_mapping;
         this->keyboard_mapping = INPUT_STATES[0].keyboard_mapping;
         this->__ubyte_49 = 2;
-        this->__sbyte_4A = 0x64;
+        this->__sbyte_4A = 100;
         this->__byte_4C = 0;
         this->__byte_4D = 2;
         this->__sbyte_4B = 50;
@@ -3092,8 +3130,8 @@ ValidateFieldOffset32(0x2C, Config, keyboard_mapping);
 ValidateFieldOffset32(0x40, Config, deadzone_x);
 ValidateFieldOffset32(0x42, Config, deadzone_y);
 ValidateFieldOffset32(0x44, Config, __ubyte_44);
-ValidateFieldOffset32(0x45, Config, __ubyte_45);
-ValidateFieldOffset32(0x46, Config, __ubyte_46);
+ValidateFieldOffset32(0x45, Config, bgm_type);
+ValidateFieldOffset32(0x46, Config, sfx_type);
 ValidateFieldOffset32(0x47, Config, __ubyte_47);
 ValidateFieldOffset32(0x48, Config, __ubyte_48);
 ValidateFieldOffset32(0x49, Config, __ubyte_49);
@@ -3736,6 +3774,9 @@ extern "C" {
 
 typedef struct LoadingThread LoadingThread;
 
+// 0x473390
+dllexport gnu_noinline double vectorcall get_runtime() asm_symbol_rel(0x473390);
+
 // size: 0xB60
 struct Supervisor {
     HINSTANCE current_instance; // 0x0
@@ -4184,32 +4225,26 @@ ValidateFieldOffset32(0xA, SoundData, __short_A);
 ValidateStructSize32(0x14, SoundData);
 #pragma endregion
 
+ValidateStructSize32(0x12, WAVEFORMATEX);
+
 // size: 0x34
 struct ThBgmFormat {
     char filename[0x10]; // 0x0
     int32_t offset; // 0x10
-    uint32_t size; // 0x14
-    int32_t __int_18; // 0x18
-    int32_t __int_1C; // 0x1C
-    unknown_fields(0x2); // 0x20
-    uint16_t __ushort_22; // 0x22
-    uint32_t __uint_24; // 0x24
-    unknown_fields(0x4); // 0x28
-    uint16_t __ushort_2C; // 0x2C
-    uint16_t __ushort_2E; // 0x2E
-    unknown_fields(0x4); // 0x30
+    uint32_t buffer_size; // 0x14
+    int32_t pre_loop_length; // 0x18
+    int32_t length; // 0x1C
+    WAVEFORMATEX wave_format; // 0x20
+    padding_bytes(0x2); // 0x32
     // 0x34
 };
 #pragma region // ThBgmFormat Validation
 ValidateFieldOffset32(0x0, ThBgmFormat, filename);
 ValidateFieldOffset32(0x10, ThBgmFormat, offset);
-ValidateFieldOffset32(0x14, ThBgmFormat, size);
-ValidateFieldOffset32(0x18, ThBgmFormat, __int_18);
-ValidateFieldOffset32(0x1C, ThBgmFormat, __int_1C);
-ValidateFieldOffset32(0x22, ThBgmFormat, __ushort_22);
-ValidateFieldOffset32(0x24, ThBgmFormat, __uint_24);
-ValidateFieldOffset32(0x2C, ThBgmFormat, __ushort_2C);
-ValidateFieldOffset32(0x2E, ThBgmFormat, __ushort_2E);
+ValidateFieldOffset32(0x14, ThBgmFormat, buffer_size);
+ValidateFieldOffset32(0x18, ThBgmFormat, pre_loop_length);
+ValidateFieldOffset32(0x1C, ThBgmFormat, length);
+ValidateFieldOffset32(0x20, ThBgmFormat, wave_format);
 ValidateStructSize32(0x34, ThBgmFormat);
 #pragma endregion
 
@@ -4295,14 +4330,14 @@ ValidateStructSize32(0x18, SoundManagerUnknownB);
 
 enum SoundCommandType : int32_t {
     SndCmdEmpty = 0,
-    SndCmd1 = 1,
-    SndCmd2 = 2,
-    SndCmd3 = 3,
-    SndCmd4 = 4,
-    SndCmd5 = 5,
-    SndCmd6 = 6,
-    SndCmd7 = 7,
-    SndCmd8 = 8,
+    SndPreloadBgm = 1,
+    SndLoadBgm = 2,
+    SndStopA = 3,
+    SndStopB = 4,
+    SndFadeOut = 5,
+    SndPause = 6,
+    SndUnpause = 7,
+    SndVolume = 8,
     SndCmd9 = 9
 };
 
@@ -4322,69 +4357,481 @@ ValidateFieldOffset32(0xC, SoundCommand, text_buffer);
 ValidateStructSize32(0x10C, SoundCommand);
 #pragma endregion
 
-struct SoundManagerUnknownG {
-    unknown_fields(0x78); // 0x0
-    int __int_78; // 0x78
-    unknown_fields(0x10); // 0x7C
-    HANDLE __handle_8C; // 0x8C
+// size: 0xA0
+struct CWaveFile {
+    HMMIO m_hmmio; // 0x0
+    MMCKINFO m_ck; // 0x4
+    MMCKINFO m_ckRiff; // 0x18
+    DWORD m_dwSize; // 0x2C
+    unknown_fields(0x48); // 0x30
+    BOOL __wave_handle_valid; // 0x78
+    BOOL m_bIsReadingFromMemory; // 0x7C
+    BYTE* m_pbData; // 0x80
+    BYTE* m_pbDataCur; // 0x84
+    ULONG m_ulDataSize; // 0x88
+    HANDLE wave_file_handle; // 0x8C
     ThBgmFormat* bgm_format; // 0x90
-    unknown_fields(0x4); // 0x94
+    const char* wave_filename; // 0x94
     int __int_98; // 0x98
-    // 0x9C
+    BOOL __loop; // 0x9C
+    // 0xA0
+
+    inline ~CWaveFile() {
+        this->close_handle();
+    }
+
+    inline DWORD current_offset() {
+        return SetFilePointer(this->wave_file_handle, 0, NULL, FILE_CURRENT);
+    }
+
+    inline ZUNResult close_handle() {
+        if (this->__wave_handle_valid == TRUE) {
+            CloseHandle(this->wave_file_handle);
+            this->wave_file_handle = INVALID_HANDLE_VALUE;
+        }
+        return ZUN_SUCCESS;
+    }
+
+    // 0x48ABA0
+    dllexport gnu_noinline HRESULT thiscall Open(LPSTR strFileName, ThBgmFormat* bgm_format, DWORD dwFlags = UNUSED_DWORD) {
+        if (!strFileName) {
+            return E_INVALIDARG;
+        }
+
+        DebugLogger::__debug_log_stub_9("Streaming File Open %s\r\n", strFileName);
+
+        // This looks like copy/paste from ZUN's generic file functions...?
+
+        HANDLE file_handle = CreateFileA(
+            strFileName, // lpFileName
+            GENERIC_READ, // dwDesiredAccess
+            FILE_SHARE_READ, // dwShareMode
+            NULL, // lpSecurityFeatures
+            OPEN_EXISTING, // dwCreationDisposition
+            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, // dwFlagsAndAttributes
+            NULL // hTemplateFile
+        );
+        this->wave_file_handle = file_handle;
+        if (file_handle == INVALID_HANDLE_VALUE) {
+            char* message;
+            FormatMessageA(
+                FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_FROM_SYSTEM, // dwFlags
+                NULL, // lpSource
+                GetLastError(), // dwMessageId,
+                LANG_USER_DEFAULT, // dwLanguageId,
+                (LPSTR)&message, // lpBuffer
+                0, // nSize
+                NULL // Arguments
+            );
+            DebugLogger::__debug_log_stub_9(message);
+            LocalFree((HLOCAL)message);
+            return E_FAIL;
+        }
+
+        this->wave_filename = strFileName;
+        this->bgm_format = bgm_format;
+        this->ResetFile(false, 0);
+        this->m_dwSize = this->m_ck.cksize;
+
+        return S_OK;
+    }
+
+    inline HRESULT Read() {
+        if (this->m_bIsReadingFromMemory) {
+
+        }
+        else {
+
+        }
+    }
+
+    inline HRESULT OpenFromMemory(BYTE* pbData, ULONG ulDataSize, ThBgmFormat* pzwf, DWORD dwFlags) {
+        this->bgm_format = pzwf;
+        this->m_ulDataSize = ulDataSize;
+        this->m_pbDataCur = this->m_pbData = pbData;
+        this->m_bIsReadingFromMemory = TRUE;
+
+        if (dwFlags != WAVEFILE_READ) {
+            return E_NOTIMPL;
+        }
+
+        return S_OK;
+    }
+
+    // 0x48ACC0
+    dllexport inline HRESULT ResetFile(bool loop, uint32_t arg2) asm_symbol_rel(0x48ACC0);
 };
-#pragma region // SoundManagerUnknownG Validation
-ValidateFieldOffset32(0x78, SoundManagerUnknownG, __int_78);
-ValidateFieldOffset32(0x8C, SoundManagerUnknownG, __handle_8C);
-ValidateFieldOffset32(0x90, SoundManagerUnknownG, bgm_format);
-ValidateFieldOffset32(0x98, SoundManagerUnknownG, __int_98);
+#pragma region // CWaveFile Validation
+ValidateFieldOffset32(0x0, CWaveFile, m_hmmio);
+ValidateFieldOffset32(0x4, CWaveFile, m_ck);
+ValidateFieldOffset32(0x18, CWaveFile, m_ckRiff);
+ValidateFieldOffset32(0x2C, CWaveFile, m_dwSize);
+ValidateFieldOffset32(0x78, CWaveFile, __wave_handle_valid);
+ValidateFieldOffset32(0x7C, CWaveFile, m_bIsReadingFromMemory);
+ValidateFieldOffset32(0x80, CWaveFile, m_pbData);
+ValidateFieldOffset32(0x84, CWaveFile, m_pbDataCur);
+ValidateFieldOffset32(0x88, CWaveFile, m_ulDataSize);
+ValidateFieldOffset32(0x8C, CWaveFile, wave_file_handle);
+ValidateFieldOffset32(0x90, CWaveFile, bgm_format);
+ValidateFieldOffset32(0x94, CWaveFile, wave_filename);
+ValidateFieldOffset32(0x98, CWaveFile, __int_98);
+ValidateFieldOffset32(0x9C, CWaveFile, __loop);
+ValidateStructSize32(0xA0, CWaveFile);
 #pragma endregion
 
-// This seems to be another part of CSound that isn't in my version of it...
-struct SoundManagerUnknownE {
+enum FadeType : int32_t {
+    FadeNone = 0,
+    FadeOut = 1,
+    FadeIn = 2,
+    FadeInShort = 3,
+    FadeOutShort = 4
+};
 
+// size: 0x88
+struct CSound {
     // vtable ptr
     //alignment_padding(0x4); // 0x4
     LPDIRECTSOUNDBUFFER* sound_buffer_array; // 0x8
-    unknown_fields(0x4); // 0xC
-    SoundManagerUnknownG* __smg_ptr_10; // 0x10
+    uint32_t __dsound_buffer_size; // 0xC
+    CWaveFile* cwave_ptr; // 0x10
     uint32_t sound_buffer_count; // 0x14
-    int32_t __int_18; // 0x18
-    int32_t __int_1C; // 0x1C
-    int __int_20; // 0x20
-    int __int_24; // 0x24
-    int __int_28; // 0x28
+    int32_t __fade_progress; // 0x18
+    int32_t __fade_length; // 0x1C
+    int32_t __fade_type; // 0x20
+    uint32_t priority; // 0x24
+    uint32_t play_flags; // 0x28
     unknown_fields(0xC); // 0x2C
     double __double_38; // 0x38
     double __double_40; // 0x40
     double __double_48; // 0x48
     unknown_fields(0x8); // 0x50
-    int __int_58; // 0x58
-    int __int_5C; // 0x5C
-    unknown_fields(0x4C); // 0x60
-    int __dword_AC; // 0xAC
-    // 0xB0
+    BOOL __playing; // 0x58
+    BOOL __paused; // 0x5C
+    unknown_fields(0x28); // 0x60
+    // 0x88
+
+    // 0x489C00
+    dllexport gnu_noinline CSound(
+        LPDIRECTSOUNDBUFFER* apDSBuffer,
+        DWORD dwDSBufferSize,
+        DWORD _dwNumBuffers, // unused
+        CWaveFile* pWaveFile
+    ) {
+        static constexpr DWORD dwNumBuffers = 1;
+
+        LPDIRECTSOUNDBUFFER* sound_buffer_array = new LPDIRECTSOUNDBUFFER[dwNumBuffers];
+        this->sound_buffer_array = sound_buffer_array;
+        sound_buffer_array[0] = apDSBuffer[0];
+
+        this->__dsound_buffer_size = dwDSBufferSize;
+        this->cwave_ptr = pWaveFile;
+        this->sound_buffer_count = dwNumBuffers;
+
+        // TODO
+    }
+
+    // 0x48A0E0
+    dllexport gnu_noinline virtual ~CSound() asm("CSoundDestructor") {
+        for (size_t i = 0; i < this->sound_buffer_count; i++) {
+            SAFE_RELEASE(this->sound_buffer_array[i]);
+        }
+        SAFE_DELETE_ARRAY(this->sound_buffer_array);
+        SAFE_DELETE(this->cwave_ptr);
+    }
+
+    inline HRESULT RestoreBuffer(
+        LPDIRECTSOUNDBUFFER pDSB,
+        BOOL* pbWasRestored
+    ) {
+        if (pDSB) {
+            if (pbWasRestored) {
+                *pbWasRestored = FALSE;
+            }
+
+            DWORD dwStatus;
+            HRESULT hr = pDSB->GetStatus(&dwStatus);
+            if (FAILED(hr)) {
+                return hr;
+            }
+
+            if (dwStatus & DSBSTATUS_BUFFERLOST) {
+                do {
+                    if (pDSB->Restore() == DSERR_BUFFERLOST) {
+                        Sleep(10);
+                    }
+                } while (pDSB->Restore() != S_OK);
+
+                if (pbWasRestored != NULL) {
+                    *pbWasRestored = TRUE;
+                }
+
+                return S_OK;
+            }
+            return S_FALSE;
+        }
+        return CO_E_NOTINITIALIZED;
+    }
+
+    inline HRESULT FillBufferWithSound(LPDIRECTSOUNDBUFFER pDSB, BOOL bRepeatWavIfBufferLarger, int arg3) {
+        
+        if (!pDSB) {
+            return CO_E_NOTINITIALIZED;
+        }
+        
+        DWORD dwDSLockedBufferSize = 0;
+        VOID* pDSLockedBuffer = NULL;
+        DWORD dwWavDataRead = 0;
+
+        HRESULT hr;
+        if (
+            FAILED(hr = RestoreBuffer(pDSB, NULL)) ||
+            FAILED(hr = pDSB->Lock(0, this->__dsound_buffer_size, &pDSLockedBuffer, &dwDSLockedBufferSize, NULL, NULL, 0L))
+        ) {
+            return hr;
+        }
+
+        this->cwave_ptr->ResetFile(FALSE, arg3);
+
+        /*
+        if (FAILED(hr = m_pWaveFile->Read((BYTE *)pDSLockedBuffer, dwDSLockedBufferSize, &dwWavDataRead))) {
+            return hr;
+        }
+
+        if (dwWavDataRead == 0)
+        {
+            // Wav is blank, so just fill with silence
+            FillMemory((BYTE *)pDSLockedBuffer, dwDSLockedBufferSize,
+                       (BYTE)(m_pWaveFile->m_pzwf->format.wBitsPerSample == 8 ? 128 : 0));
+        }
+        else if (dwWavDataRead < dwDSLockedBufferSize)
+        {
+            // If the wav file was smaller than the DirectSound buffer,
+            // we need to fill the remainder of the buffer with data
+            if (bRepeatWavIfBufferLarger)
+            {
+                // Reset the file and fill the buffer with wav data
+                DWORD dwReadSoFar = dwWavDataRead; // From previous call above.
+                while (dwReadSoFar < dwDSLockedBufferSize)
+                {
+                    // This will keep reading in until the buffer is full
+                    // for very short files
+                    if (FAILED(hr = m_pWaveFile->ResetFile(false)))
+                        return DXTRACE_ERR(TEXT("ResetFile"), hr);
+
+                    hr = m_pWaveFile->Read((BYTE *)pDSLockedBuffer + dwReadSoFar, dwDSLockedBufferSize - dwReadSoFar,
+                                           &dwWavDataRead);
+                    if (FAILED(hr))
+                        return DXTRACE_ERR(TEXT("Read"), hr);
+
+                    dwReadSoFar += dwWavDataRead;
+                }
+            }
+            else
+            {
+                // Don't repeat the wav file, just fill in silence
+                FillMemory((BYTE *)pDSLockedBuffer + dwWavDataRead, dwDSLockedBufferSize - dwWavDataRead,
+                           (BYTE)(m_pWaveFile->m_pzwf->format.wBitsPerSample == 8 ? 128 : 0));
+            }
+        }
+
+        // Unlock the buffer, we don't need it anymore.
+        pDSB->Unlock(pDSLockedBuffer, dwDSLockedBufferSize, NULL, 0);
+        */
+        return S_OK;
+    }
+
+    inline HRESULT SetVolume(int32_t volume = 0);
+
+    inline void StartFadeOut(float seconds) {
+        this->__fade_type = FadeOut;
+        this->__fade_length = this->__fade_progress = seconds * 60.0f;
+    }
+
+    inline HRESULT Pause() {
+        if (LPDIRECTSOUNDBUFFER* sound_buffer_array = this->sound_buffer_array) {
+            if (!this->__playing) {
+                this->__paused = FALSE;
+            }
+            else {
+                this->__playing = FALSE;
+                this->__paused = TRUE;
+                HRESULT ret = sound_buffer_array[0]->Stop();
+                this->__double_40 = get_runtime();
+                DWORD offset = this->cwave_ptr->current_offset();
+                CWaveFile* cwave_ptr = this->cwave_ptr;
+                cwave_ptr->__int_98 = offset - cwave_ptr->bgm_format->offset;
+                this->cwave_ptr->close_handle();
+                return ret;
+            }
+        }
+        return CO_E_NOTINITIALIZED;
+    }
+
+    inline HRESULT Unpause() {
+        if (
+            !this->sound_buffer_array ||
+            this->__paused == FALSE
+        ) {
+            return CO_E_NOTINITIALIZED;
+        }
+
+        CWaveFile* cwave_ptr = this->cwave_ptr;
+        this->__paused = FALSE;
+        //this->__sub_48ADC0(cwave_ptr->bgm_format, cwave_ptr->__int_98);
+        LPDIRECTSOUNDBUFFER sound_buffer = *this->sound_buffer_array;
+        this->__playing = TRUE;
+        this->__double_48 += get_runtime() - this->__double_40;
+        return sound_buffer->Play(0, this->priority, this->play_flags);
+    }
 
     // 0x48A620
-    dllexport gnu_noinline HRESULT thiscall __sub_48A620(BOOL Arg1) asm_symbol_rel(0x48A620) {
+    dllexport gnu_noinline HRESULT thiscall Stop(BOOL close_handle) asm_symbol_rel(0x48A620) {
         if (!this->sound_buffer_array) {
             return CO_E_NOTINITIALIZED;
         }
-        this->__int_58 = 0;
-        this->__int_5C = 0;
+        this->__playing = 0;
+        this->__paused = 0;
         HRESULT ret = 0;
         for (size_t i = 0; i < this->sound_buffer_count; ++i) {
             ret |= this->sound_buffer_array[i]->Stop();
             ret |= this->sound_buffer_array[i]->SetCurrentPosition(0);
         }
-        this->__int_20 = 0;
-        if (Arg1) {
-            SoundManagerUnknownG* smg_ptr = this->__smg_ptr_10;
-            if (smg_ptr->__int_78 == 1) {
-                CloseHandle(smg_ptr->__handle_8C);
-                smg_ptr->__handle_8C = INVALID_HANDLE_VALUE;
-            }
+        this->__fade_type = FadeNone;
+        if (close_handle) {
+            this->cwave_ptr->close_handle();
         }
         return ret;
+    }
+};
+#pragma region // CSound Validation
+ValidateVirtualFieldOffset32(0x8, CSound, sound_buffer_array);
+ValidateVirtualFieldOffset32(0xC, CSound, __dsound_buffer_size);
+ValidateVirtualFieldOffset32(0x10, CSound, cwave_ptr);
+ValidateVirtualFieldOffset32(0x14, CSound, sound_buffer_count);
+ValidateVirtualFieldOffset32(0x18, CSound, __fade_progress);
+ValidateVirtualFieldOffset32(0x1C, CSound, __fade_length);
+ValidateVirtualFieldOffset32(0x20, CSound, __fade_type);
+ValidateVirtualFieldOffset32(0x24, CSound, priority);
+ValidateVirtualFieldOffset32(0x28, CSound, play_flags);
+ValidateVirtualFieldOffset32(0x38, CSound, __double_38);
+ValidateVirtualFieldOffset32(0x40, CSound, __double_40);
+ValidateVirtualFieldOffset32(0x48, CSound, __double_48);
+ValidateVirtualFieldOffset32(0x58, CSound, __playing);
+ValidateVirtualFieldOffset32(0x5C, CSound, __paused);
+ValidateStructSize32(0x88, CSound);
+#pragma endregion
+
+// size: 0xA8
+struct CStreamingSound : CSound {
+    //CSound base; // 0x0
+    DWORD m_dwLastPlayPos; // 0x88
+    DWORD m_dwPlayProgress; // 0x8C
+    DWORD m_dwNextWriteOffset; // 0x90
+    int __dword_94; // 0x94
+    BOOL m_bFillNextNotificationWithSilence; // 0x98
+    DWORD m_dwNotifySize; // 0x9C
+    HANDLE m_hNotifyEvent; // 0xA0
+    BOOL __locked; // 0xA4
+    // 0xA8
+
+    // 0x48A6A0
+    dllexport gnu_noinline CStreamingSound(LPDIRECTSOUNDBUFFER pDSBuffer, DWORD dwDSBufferSize, CWaveFile* pWaveFile, DWORD dwNotifySize)
+        : CSound(&pDSBuffer, dwDSBufferSize, UNUSED_DWORD, pWaveFile)
+    {
+        
+    }
+
+    // 0x48AAC0
+    dllexport gnu_noinline HRESULT Reset(int arg1) {
+        if (LPDIRECTSOUNDBUFFER* sound_buffer_array = this->sound_buffer_array) {
+            if (this->cwave_ptr) {
+                this->m_dwLastPlayPos = 0;
+                this->m_dwPlayProgress = 0;
+                this->m_dwNextWriteOffset = 0;
+                this->__dword_94 = 0;
+                this->m_bFillNextNotificationWithSilence = FALSE;
+
+                BOOL restored;
+                if (SUCCEEDED(this->RestoreBuffer(sound_buffer_array[0], &restored))) {
+                    if (restored) {
+                        if (FAILED(this->FillBufferWithSound(this->sound_buffer_array[0], FALSE, arg1))) {
+                            return CO_E_NOTINITIALIZED;
+                        }
+                    }
+                    CWaveFile* cwave_ptr = this->cwave_ptr;
+                    cwave_ptr->ResetFile(cwave_ptr->__loop == TRUE, arg1);
+                    return this->sound_buffer_array[0]->SetCurrentPosition(0L);
+                }
+            }
+        }
+        return CO_E_NOTINITIALIZED;
+    }
+
+    // 0x48A730
+    dllexport gnu_noinline HRESULT thiscall HandleWaveStreamNotification(BOOL bLoopedPlay) asm_symbol_rel(0x48A730) {
+        if (
+            this->sound_buffer_array &&
+            this->cwave_ptr
+        ) {
+            CRITICAL_SECTION_MANAGER.enter_section(SoundManagerB_CS);
+
+            DWORD play_cursor;
+            DWORD write_cursor;
+            this->sound_buffer_array[0]->GetCurrentPosition(&play_cursor, &write_cursor);
+
+            HRESULT ret;
+
+            // there's definitely an "in range" sort of helper function here
+            DWORD notify_size = this->m_dwNotifySize;
+            DWORD next_write_offset = this->m_dwNextWriteOffset;
+            DWORD write_cursor_min = write_cursor - notify_size;
+
+            if (
+                (next_write_offset >= write_cursor && next_write_offset < write_cursor_min) ||
+                ((int32_t)write_cursor >= 0 && next_write_offset >= this->__dsound_buffer_size - notify_size)
+            ) {
+                ret = CO_E_NOTINITIALIZED;
+                goto end;
+            }
+
+            BOOL restored;
+            if (FAILED(this->RestoreBuffer(this->sound_buffer_array[0], &restored))) {
+                ret = CO_E_NOTINITIALIZED;
+                goto end;
+            }
+
+            if (restored) {
+                ret = this->FillBufferWithSound(this->sound_buffer_array[0], FALSE, 0);
+                goto end;
+            }
+
+            VOID* pDSLockedBuffer1;
+            VOID* pDSLockedBuffer2;
+            DWORD dwDSLockedBufferSize1;
+            DWORD dwDSLockedBufferSize2;
+            if (SUCCEEDED(ret = this->sound_buffer_array[0]->Lock(
+                this->m_dwNextWriteOffset,
+                this->m_dwNotifySize,
+                &pDSLockedBuffer1, &dwDSLockedBufferSize1,
+                &pDSLockedBuffer2, &dwDSLockedBufferSize2,
+                0
+            ))) {
+                if (pDSLockedBuffer2) {
+                    // BUG: Leaves the mutex locked
+                    return E_UNEXPECTED;
+                }
+
+                CWaveFile* cwave_ptr = this->cwave_ptr;
+                if (!this->m_bFillNextNotificationWithSilence) {
+
+                }
+            }
+
+        end:
+            CRITICAL_SECTION_MANAGER.leave_section(SoundManagerB_CS);
+            return ret;
+        }
+        return CO_E_NOTINITIALIZED;
     }
 
     // 0x48AF10
@@ -4392,30 +4839,24 @@ struct SoundManagerUnknownE {
         use_var(arg1);
     }
 
-    // This is giga jank
-    virtual ~SoundManagerUnknownE() {}
 };
-#pragma region // SoundManagerUnknownE Validation
-ValidateVirtualFieldOffset32(0x8, SoundManagerUnknownE, sound_buffer_array);
-ValidateVirtualFieldOffset32(0x10, SoundManagerUnknownE, __smg_ptr_10);
-ValidateVirtualFieldOffset32(0x14, SoundManagerUnknownE, sound_buffer_count);
-ValidateVirtualFieldOffset32(0x18, SoundManagerUnknownE, __int_18);
-ValidateVirtualFieldOffset32(0x1C, SoundManagerUnknownE, __int_1C);
-ValidateVirtualFieldOffset32(0x20, SoundManagerUnknownE, __int_20);
-ValidateVirtualFieldOffset32(0x24, SoundManagerUnknownE, __int_24);
-ValidateVirtualFieldOffset32(0x28, SoundManagerUnknownE, __int_28);
-ValidateVirtualFieldOffset32(0x38, SoundManagerUnknownE, __double_38);
-ValidateVirtualFieldOffset32(0x40, SoundManagerUnknownE, __double_40);
-ValidateVirtualFieldOffset32(0x48, SoundManagerUnknownE, __double_48);
-ValidateVirtualFieldOffset32(0x58, SoundManagerUnknownE, __int_58);
-ValidateVirtualFieldOffset32(0x5C, SoundManagerUnknownE, __int_5C);
-ValidateVirtualFieldOffset32(0xAC, SoundManagerUnknownE, __dword_AC);
+#pragma region // CStreamingSound Validation
+ValidateVirtualFieldOffset32(0x88, CStreamingSound, m_dwLastPlayPos);
+ValidateVirtualFieldOffset32(0x8C, CStreamingSound, m_dwPlayProgress);
+ValidateVirtualFieldOffset32(0x90, CStreamingSound, m_dwNextWriteOffset);
+ValidateVirtualFieldOffset32(0x94, CStreamingSound, __dword_94);
+ValidateVirtualFieldOffset32(0x98, CStreamingSound, m_bFillNextNotificationWithSilence);
+ValidateVirtualFieldOffset32(0x9C, CStreamingSound, m_dwNotifySize);
+ValidateVirtualFieldOffset32(0xA0, CStreamingSound, m_hNotifyEvent);
+ValidateVirtualFieldOffset32(0xA4, CStreamingSound, __locked);
+ValidateStructSize(0xA8, CStreamingSound);
 #pragma endregion
 
 // size: 0x200
 struct SoundManagerUnknownF {
     int32_t __int_array_0[60]; // 0x0
     unknown_fields(0x110); // 0xF0
+    // 0x200
 };
 #pragma region // SoundManagerUnknownF Validation
 ValidateFieldOffset32(0x0, SoundManagerUnknownF, __int_array_0);
@@ -4433,8 +4874,85 @@ static inline constexpr size_t MAX_ACTIVE_SOUNDS = 12;
 static inline constexpr size_t MAX_LOADED_MUSIC = 16;
 static inline constexpr int32_t SOUND_COMMAND_QUEUE_LENGTH = 31;
 
+// Default values
+static inline constexpr size_t BGM_CHANNELS = 2;
+static inline constexpr size_t BGM_SAMPLE_RATE = 44100;
+static inline constexpr size_t BGM_SAMPLE_BITS = 16;
+static inline constexpr size_t BGM_SAMPLE_BYTES = BGM_SAMPLE_BITS / CHAR_BIT;
+static inline constexpr size_t BGM_BLOCK_ALIGN = BGM_SAMPLE_BYTES * BGM_CHANNELS;
+
 static inline constexpr auto MIN_VOLUME = DSBVOLUME_MIN / 2;
 static inline constexpr auto SILENT_VOLUME = DSBVOLUME_MIN;
+
+// size: 0x4
+struct CSoundManager : CSoundManagerOld {
+    //IDirectSound8* m_pDS; // 0x0
+    // 0x4
+
+    // 0x4898F0
+    dllexport gnu_noinline HRESULT thiscall CreateStreamingFromMemory(
+        CStreamingSound** ppStreamingSound,
+        BYTE* pbData,
+        ULONG ulDataSize,
+        ThBgmFormat* bgm_format,
+        DWORD _dwCreationFlags, // unused
+        GUID guid3DAlgorithm,
+        DWORD _dwNotifyCount, // unused
+        DWORD dwNotifySize,
+        HANDLE hNotifyEvent
+    ) asm_symbol_rel(0x4898F0)
+    {
+        static constexpr DWORD dwNotifyCount = 8;
+
+        DEBUG_PRINT("StreamingSound Create \r\n");
+
+        if (!this->m_pDS) {
+            return CO_E_NOTINITIALIZED;
+        }
+
+        LPDIRECTSOUNDBUFFER pDSBuffer = NULL;
+        LPDIRECTSOUNDNOTIFY pDSNotify = NULL;
+
+        // This pointer gets leaked on error paths
+        CWaveFile* pWaveFile = new CWaveFile();
+        pWaveFile->OpenFromMemory(pbData, ulDataSize, bgm_format, 0);
+
+        DWORD dwDSBufferSize = dwNotifySize * dwNotifyCount;
+
+        DSBUFFERDESC dsbd;
+        dsbd.dwReserved = 0;
+        dsbd.dwBufferBytes = ulDataSize;
+        dsbd.dwSize = sizeof(DSBUFFERDESC);
+        dsbd.dwFlags = DSBCAPS_CTRLPOSITIONNOTIFY | DSBCAPS_GLOBALFOCUS | DSBCAPS_GETCURRENTPOSITION2 | DSBCAPS_CTRLVOLUME | DSBCAPS_LOCSOFTWARE;
+        dsbd.guid3DAlgorithm = guid3DAlgorithm;
+        dsbd.lpwfxFormat = &pWaveFile->bgm_format->wave_format;
+
+        if (
+            FAILED(this->m_pDS->CreateSoundBuffer(&dsbd, &pDSBuffer, NULL)) ||
+            FAILED(pDSBuffer->QueryInterface(IID_IDirectSoundNotify, (LPVOID*)&pDSNotify))
+        ) {
+            return E_FAIL;
+        }
+
+        // yes this is incorrectly freed with delete instead of delete[]
+        DSBPOSITIONNOTIFY* aPosNotify = new DSBPOSITIONNOTIFY[dwNotifyCount];
+        
+        // MSVC actually vectorized this with a runtime
+        // check for SSE4.1 for some reason
+        for (size_t i = 0; i < dwNotifyCount; ++i) {
+            aPosNotify[i].dwOffset = (dwNotifySize * i) + dwNotifySize - 1;
+            aPosNotify[i].hEventNotify = hNotifyEvent;
+        }
+
+        if (FAILED(pDSNotify->SetNotificationPositions(dwNotifyCount, aPosNotify))) {
+            SAFE_RELEASE(pDSNotify);
+            SAFE_DELETE(aPosNotify);
+            return E_FAIL;
+        }
+
+        *ppStreamingSound = new CStreamingSound(pDSBuffer, dwDSBufferSize, pWaveFile, dwNotifySize);
+    }
+};
 
 // size: 0x573C
 struct SoundManager {
@@ -4451,7 +4969,7 @@ struct SoundManager {
     ThBgmFormat* loaded_bgm_formats[MAX_LOADED_MUSIC]; // 0x187C
     void* __loaded_bgm_buffers_A[MAX_LOADED_MUSIC]; // 0x18BC
     void* __loaded_bgm_buffers_B[MAX_LOADED_MUSIC]; // 0x18FC
-    uint32_t loaded_bgm_lengths[MAX_LOADED_MUSIC]; // 0x193C
+    uint32_t loaded_bgm_buffer_sizes[MAX_LOADED_MUSIC]; // 0x193C
     int __bgm_index_197C; // 0x197C
     union {
         void* bgm_format_file; // 0x1980
@@ -4464,7 +4982,7 @@ struct SoundManager {
     SoundCommand sound_command_queue[SOUND_COMMAND_QUEUE_LENGTH + 1]; // 0x2484 (yes there's an extra dummy slot)
     char loaded_bgm_filenames[MAX_LOADED_MUSIC][0x100]; // 0x4604
     char thbgm_filename[0x100]; // 0x5604
-    SoundManagerUnknownE* __unknown_sme_ptr_5704; // 0x5704
+    CStreamingSound* cstreaming_sound_ptr; // 0x5704
     unknown_fields(0x4); // 0x5708
     HANDLE __handle_570C; // 0x570C
     unknown_fields(0x4); // 0x5710
@@ -4475,8 +4993,8 @@ struct SoundManager {
     int __dword_5724; // 0x5724
     HWND main_window_hwnd; // 0x5728
     int __dword_572C; // 0x572C
-    int32_t __int_5730; // 0x5730
-    int32_t __int_5734; // 0x5734
+    int32_t bgm_volume; // 0x5730
+    int32_t sound_volume; // 0x5734
     int32_t __int_5738; // 0x5738
     // 0x573C
 
@@ -4540,7 +5058,9 @@ struct SoundManager {
     dllexport static gnu_noinline DWORD WINAPI load_sound_effects(void* self) asm_symbol_rel(0x4767B0);
 
     // 0x476970
-    dllexport gnu_noinline ZUNResult thiscall __sub_476970(size_t index, const char* filename) asm_symbol_rel(0x476970);
+    dllexport static gnu_noinline ZUNResult thiscall preload_bgm(int32_t index, const char* filename) asm_symbol_rel(0x476970);
+
+    static inline ZUNResult load_bgm(int32_t index);
     
     // 0x476890
     dllexport gnu_noinline int32_t thiscall __get_bgm_format_index(const char* filename) asm_symbol_rel(0x476890) {
@@ -4563,7 +5083,7 @@ struct SoundManager {
     }
     
     // 0x476B40
-    dllexport gnu_noinline void thiscall __sub_476B40() asm_symbol_rel(0x476B40);
+    dllexport gnu_noinline void thiscall stop_bgm() asm_symbol_rel(0x476B40);
 
     // 0x476BE0
     dllexport static gnu_noinline void stdcall play_sound_centered(int32_t sound_id, float) asm_symbol_rel(0x476BE0);
@@ -4595,11 +5115,11 @@ struct SoundManager {
         this->free_all_sound_effect_files();
         if (this->csound_manager_ptr) {
             KillTimer(this->timer_hwnd, 1);
-            this->__sub_476B40();
+            this->stop_bgm();
             this->dsound = NULL; // Isn't this supposed to be released though?
             this->sound_buffer_ptr->Stop();
             SAFE_RELEASE(this->sound_buffer_ptr);
-            SAFE_DELETE(this->__unknown_sme_ptr_5704);
+            SAFE_DELETE(this->cstreaming_sound_ptr);
             SAFE_DELETE(this->csound_manager_ptr); // This destructor got inlined
             this->free_bgm_data_array_A();
         }
@@ -4645,6 +5165,12 @@ public:
 
     // 0x457100
     dllexport gnu_noinline static void __sub_457100() asm_symbol_rel(0x457100);
+
+    inline void __start_fade_out(float seconds) {
+        if (CStreamingSound* cstreaming_sound_ptr = this->cstreaming_sound_ptr) {
+            cstreaming_sound_ptr->StartFadeOut(seconds);
+        }
+    }
 };
 #pragma region // SoundManager Validation
 ValidateFieldOffset32(0x0, SoundManager, dsound);
@@ -4659,7 +5185,7 @@ ValidateFieldOffset32(0x7C, SoundManager, __unknown_smf_array_7C);
 ValidateFieldOffset32(0x187C, SoundManager, loaded_bgm_formats);
 ValidateFieldOffset32(0x18BC, SoundManager, __loaded_bgm_buffers_A);
 ValidateFieldOffset32(0x18FC, SoundManager, __loaded_bgm_buffers_B);
-ValidateFieldOffset32(0x193C, SoundManager, loaded_bgm_lengths);
+ValidateFieldOffset32(0x193C, SoundManager, loaded_bgm_buffer_sizes);
 ValidateFieldOffset32(0x197C, SoundManager, __bgm_index_197C);
 ValidateFieldOffset32(0x1980, SoundManager, bgm_format_file);
 ValidateFieldOffset32(0x1A84, SoundManager, __unknown_smb_array_1A84);
@@ -4667,7 +5193,7 @@ ValidateFieldOffset32(0x2264, SoundManager, sound_effect_files);
 ValidateFieldOffset32(0x2384, SoundManager, __text_buffer_2384);
 ValidateFieldOffset32(0x2484, SoundManager, sound_command_queue);
 ValidateFieldOffset32(0x5604, SoundManager, thbgm_filename);
-ValidateFieldOffset32(0x5704, SoundManager, __unknown_sme_ptr_5704);
+ValidateFieldOffset32(0x5704, SoundManager, cstreaming_sound_ptr);
 ValidateFieldOffset32(0x570C, SoundManager, __handle_570C);
 ValidateFieldOffset32(0x5714, SoundManager, file_pointer_offset);
 ValidateFieldOffset32(0x5718, SoundManager, __thread_5718);
@@ -4676,8 +5202,8 @@ ValidateFieldOffset32(0x5720, SoundManager, __thread_id_5720);
 ValidateFieldOffset32(0x5724, SoundManager, __dword_5724);
 ValidateFieldOffset32(0x5728, SoundManager, main_window_hwnd);
 ValidateFieldOffset32(0x572C, SoundManager, __dword_572C);
-ValidateFieldOffset32(0x5730, SoundManager, __int_5730);
-ValidateFieldOffset32(0x5734, SoundManager, __int_5734);
+ValidateFieldOffset32(0x5730, SoundManager, bgm_volume);
+ValidateFieldOffset32(0x5734, SoundManager, sound_volume);
 ValidateFieldOffset32(0x5738, SoundManager, __int_5738);
 ValidateStructSize32(0x573C, SoundManager);
 #pragma endregion
@@ -4687,11 +5213,64 @@ extern "C" {
     externcg SoundManager SOUND_MANAGER cgasm("_SOUND_MANAGER");
 }
 
-// 0x473390
-dllexport gnu_noinline double vectorcall get_runtime() asm_symbol_rel(0x473390);
+// 0x48ACC0
+dllexport inline HRESULT CWaveFile::ResetFile(bool loop, uint32_t arg2) {
+    if (this->m_bIsReadingFromMemory) {
+        ThBgmFormat* bgm_format = this->bgm_format;
+        BYTE* data = this->m_pbData;
+        this->m_pbDataCur = data;
+        int32_t length = bgm_format->length;
+        if (length > 0) {
+            this->m_ulDataSize = length;
+        }
+        if (loop) {
+            int32_t pre_loop_length = bgm_format->pre_loop_length;
+            if (pre_loop_length > 0) {
+                this->m_pbDataCur = data + pre_loop_length;
+            }
+        }
+    }
+    else {
+        HANDLE wave_file_handle = this->wave_file_handle;
+        if (
+            wave_file_handle == INVALID_HANDLE_VALUE ||
+            wave_file_handle == NULL
+        ) {
+            return CO_E_NOTINITIALIZED;
+        }
+        if (loop) {
+            ThBgmFormat* bgm_format = this->bgm_format;
+            int32_t pre_loop_length = bgm_format->pre_loop_length;
+            if (pre_loop_length > 0) {
+                SetFilePointer(wave_file_handle, bgm_format->offset + pre_loop_length + SOUND_MANAGER.file_pointer_offset, NULL, FILE_BEGIN);
+                bgm_format = this->bgm_format;
+                this->m_ck.cksize = bgm_format->length - bgm_format->pre_loop_length;
+                return S_OK;
+            }
+        }
+        ThBgmFormat* bgm_format = this->bgm_format;
+        if (arg2 >= bgm_format->length) {
+            arg2 += (bgm_format->pre_loop_length - bgm_format->length);
+        }
+        SetFilePointer(wave_file_handle, bgm_format->offset + SOUND_MANAGER.file_pointer_offset + arg2, NULL, FILE_BEGIN);
+        this->m_ck.cksize = this->bgm_format->length - arg2;
+    }
+    return S_OK;
+}
+
+inline HRESULT CSound::SetVolume(int32_t volume) {
+    LPDIRECTSOUNDBUFFER* sound_buffers = this->sound_buffer_array;
+    int32_t bgm_volume = SOUND_MANAGER.bgm_volume;
+    if (bgm_volume) {
+        float fvolume = 1.0f - (float)bgm_volume / 100.f;
+        return sound_buffers[0]->SetVolume(MIN_VOLUME - (int32_t)((float)MIN_VOLUME * (1.0f - fvolume * fvolume)));
+    } else {
+        return sound_buffers[0]->SetVolume(SILENT_VOLUME);
+    }
+}
 
 // 0x476970
-dllexport gnu_noinline ZUNResult thiscall SoundManager::__sub_476970(size_t index, const char* filename) {
+dllexport gnu_noinline ZUNResult thiscall SoundManager::preload_bgm(int32_t index, const char* filename) {
     if (
         !SOUND_MANAGER.__loaded_bgm_buffers_A[index] ||
         strcmp_asm(filename, SOUND_MANAGER.loaded_bgm_filenames[index]) != 0
@@ -4704,6 +5283,7 @@ dllexport gnu_noinline ZUNResult thiscall SoundManager::__sub_476970(size_t inde
             SAFE_FREE(SOUND_MANAGER.__loaded_bgm_buffers_A[index]);
 
             CRITICAL_SECTION_MANAGER.enter_section(FileIO_CS);
+            DEBUG_PRINT("Streming BGM PreLoad %d\r\n", index);
             HANDLE file_handle = CreateFileA(
                 SOUND_MANAGER.thbgm_filename, // lpFileName
                 GENERIC_READ, // dwDesiredAccess
@@ -4720,7 +5300,7 @@ dllexport gnu_noinline ZUNResult thiscall SoundManager::__sub_476970(size_t inde
             }
             int32_t format_index = SOUND_MANAGER.__get_bgm_format_index(filename);
             SetFilePointer(file_handle, SOUND_MANAGER.bgm_formats[format_index].offset, NULL, FILE_BEGIN);
-            void* bgm_data = malloc(SOUND_MANAGER.bgm_formats[format_index].size);
+            void* bgm_data = malloc(SOUND_MANAGER.bgm_formats[format_index].buffer_size);
             if (!bgm_data) {
                 CloseHandle(file_handle);
                 DebugLogger::__debug_log_stub_10("error : bgmfile is not find %s\r\n", SOUND_MANAGER.thbgm_filename);
@@ -4728,17 +5308,49 @@ dllexport gnu_noinline ZUNResult thiscall SoundManager::__sub_476970(size_t inde
                 return ZUN_ERROR;
             }
             DWORD bytes_read;
-            ReadFile(file_handle, bgm_data, SOUND_MANAGER.bgm_formats[format_index].size, &bytes_read, NULL);
+            ReadFile(file_handle, bgm_data, SOUND_MANAGER.bgm_formats[format_index].buffer_size, &bytes_read, NULL);
             CloseHandle(file_handle);
             CRITICAL_SECTION_MANAGER.leave_section(FileIO_CS);
 
             SOUND_MANAGER.loaded_bgm_formats[index] = &SOUND_MANAGER.bgm_formats[format_index];
             SOUND_MANAGER.__loaded_bgm_buffers_A[index] = bgm_data;
             SOUND_MANAGER.__loaded_bgm_buffers_B[index] = bgm_data;
-            SOUND_MANAGER.loaded_bgm_lengths[index] = SOUND_MANAGER.bgm_formats[format_index].size;
+            SOUND_MANAGER.loaded_bgm_buffer_sizes[index] = SOUND_MANAGER.bgm_formats[format_index].buffer_size;
         }
     }
     return ZUN_SUCCESS;
+}
+
+inline ZUNResult SoundManager::load_bgm(int32_t index) {
+    if (
+        SOUND_MANAGER.csound_manager_ptr &&
+        SUPERVISOR.config.bgm_type != BgmOff &&
+        SOUND_MANAGER.dsound &&
+        SOUND_MANAGER.__loaded_bgm_buffers_A[index]
+    ) {
+        byteloop_strcpy(SOUND_MANAGER.__text_buffer_1984, SOUND_MANAGER.loaded_bgm_filenames[index]);
+        DEBUG_PRINT("Streming BGM Load no %d\r\n", index);
+        ThBgmFormat* bgm_format = SOUND_MANAGER.loaded_bgm_formats[index];
+        uint32_t align = bgm_format->wave_format.nBlockAlign;
+        uint32_t B = (bgm_format->wave_format.nSamplesPerSec * align) * BGM_CHANNELS / CHAR_BIT;
+        SOUND_MANAGER.__handle_570C = CreateEventA(NULL, FALSE, FALSE, NULL);
+        //SOUND_MANAGER.__handle_14 = CreateThread(NULL, 0, &__sound_thread_4779A0, NULL, 0, &SOUND_MANAGER.sound_thread_id);
+        /*
+        if (SUCCEEDED(CSoundManager::__sub_4898F0(
+            SOUND_MANAGER.cstreaming_sound_ptr,
+            SOUND_MANAGER.__loaded_bgm_buffers_B[index],
+            SOUND_MANAGER.loaded_bgm_buffer_sizes[index],
+            SOUND_MANAGER.loaded_bgm_formats[index],
+            UNUSED_DWORD,
+            0, 0, 0, 0,
+            B - B % align,
+            SOUND_MANAGER.__handle_570C
+        ))) {
+            BREAK_NEXT_CMD_ITER();
+        }
+        */
+    }
+    return ZUN_ERROR;
 }
 
 // 0x4779A0
@@ -4751,42 +5363,40 @@ dllexport gnu_noinline DWORD WINAPI __sound_thread_4779A0(LPVOID) {
 // 0x476D20
 dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
     CRITICAL_SECTION_MANAGER.enter_section(SoundManagerA_CS);
-    CSoundManager* csound = SOUND_MANAGER.csound_manager_ptr;
-    if (!csound) {
+    CSoundManager* csound_manager_ptr = SOUND_MANAGER.csound_manager_ptr;
+    if (!csound_manager_ptr) {
         CRITICAL_SECTION_MANAGER.leave_section(SoundManagerA_CS);
         return SndCmdEmpty;
     }
 
     SoundCommand* snd_cmd = SOUND_MANAGER.sound_command_queue;
+
+// A macro is the only reason I can think of for that -- nonsense...
+#define BREAK_NEXT_CMD_ITER() { ++snd_cmd->iter; goto end_snd_cmd_loop; }
     
-    BOOL wtf;
+    BOOL run_next_cmd;
     do {
-        wtf = false;
+        run_next_cmd = false;
         switch (snd_cmd->type) {
-            case SndCmd8: // 8
-                if (SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704) {
-                    LPDIRECTSOUNDBUFFER* sound_buffers = sme_ptr->sound_buffer_array;
-                    int32_t A = SOUND_MANAGER.__int_5730;
-                    if (A) {
-                        float volume = 1.0f - (float)A / 100.f;
-                        (*sound_buffers)->SetVolume(MIN_VOLUME - (int32_t)((float)MIN_VOLUME * (1.0f - volume * volume)));
-                    } else {
-                        (*sound_buffers)->SetVolume(SILENT_VOLUME);
-                    }
+            case SndVolume: // 8
+                if (CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr) {
+                    cstreaming_sound_ptr->SetVolume();
                 }
                 break;
-            case SndCmd1: // 1
+            case SndPreloadBgm: // 1
                 if (SUPERVISOR.config.preload_bgm) {
+                    DEBUG_PRINT("Sound : PreLoad Stage\r\n");
                     if (snd_cmd->iter != 0) {
-                        ++snd_cmd->iter;
-                        goto end_snd_cmd_loop;
+                        BREAK_NEXT_CMD_ITER();
                     }
-                    SOUND_MANAGER.__sub_476B40();
+                    SOUND_MANAGER.stop_bgm();
+                } else {
+                    DEBUG_PRINT("Sound : PreLoad Stage\r\n");
                 }
-                SOUND_MANAGER.__sub_476970(snd_cmd->arg, snd_cmd->text_buffer);
-                wtf = true;
+                SOUND_MANAGER.preload_bgm(snd_cmd->arg, snd_cmd->text_buffer);
+                run_next_cmd = true;
                 break;
-            case SndCmd2: // 2
+            case SndLoadBgm: // 2
                 if (SUPERVISOR.config.preload_bgm) {
                     int32_t index = snd_cmd->arg;
                     if (index >= 0) {
@@ -4794,143 +5404,130 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
                             case 0:
                                 if (
                                     SOUND_MANAGER.csound_manager_ptr &&
-                                    SUPERVISOR.config.__ubyte_45 &&
+                                    SUPERVISOR.config.bgm_type != BgmOff &&
                                     SOUND_MANAGER.dsound &&
                                     SOUND_MANAGER.__loaded_bgm_buffers_A[index]
                                 ) {
                                     byteloop_strcpy(SOUND_MANAGER.__text_buffer_1984, SOUND_MANAGER.loaded_bgm_filenames[index]);
                                     ThBgmFormat* bgm_format = SOUND_MANAGER.loaded_bgm_formats[index];
-                                    uint32_t A = bgm_format->__ushort_2C;
-                                    uint32_t B = (bgm_format->__uint_24 * A) << 2 >> 3;
+                                    uint32_t align = bgm_format->wave_format.nBlockAlign;
+                                    uint32_t B = (bgm_format->wave_format.nSamplesPerSec * align) * BGM_CHANNELS / CHAR_BIT;
                                     SOUND_MANAGER.__handle_570C = CreateEventA(NULL, FALSE, FALSE, NULL);
                                     SOUND_MANAGER.__handle_14 = CreateThread(NULL, 0, &__sound_thread_4779A0, NULL, 0, &SOUND_MANAGER.sound_thread_id);
                                     /*
                                     if (SUCCEEDED(CSoundManager::__sub_4898F0(
-                                        SOUND_MANAGER.__unknown_sme_ptr_5704,
+                                        SOUND_MANAGER.cstreaming_sound_ptr,
                                         SOUND_MANAGER.__loaded_bgm_buffers_B[index],
-                                        SOUND_MANAGER.loaded_bgm_lengths[index],
+                                        SOUND_MANAGER.loaded_bgm_buffer_sizes[index],
                                         SOUND_MANAGER.loaded_bgm_formats[index],
                                         UNUSED_DWORD,
                                         0, 0, 0, 0,
-                                        B - B % A,
+                                        B - B % align,
                                         SOUND_MANAGER.__handle_570C
                                     ))) {
-                                        ++snd_cmd->iter;
-                                        goto end_snd_cmd_loop;
+                                        BREAK_NEXT_CMD_ITER();
                                     }
                                     */
                                 }
                                 break;
                             case 2: {
-                                SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704;
+                                CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr;
                                 /*
                                 if (
-                                    !sme_ptr ||
-                                    SUCCEEDED(sme_ptr->__sub_48AAC0(0))
+                                    !cstreaming_sound_ptr ||
+                                    SUCCEEDED(cstreaming_sound_ptr->__sub_48AAC0(0))
                                 ) {
-                                    ++snd_cmd->iter;
-                                    goto end_snd_cmd_loop;
+                                    BREAK_NEXT_CMD_ITER();
                                 }
                                 */
                                 break;
                             }
                             case 5: {
-                                SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704;
+                                CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr;
                                 LPDIRECTSOUNDBUFFER sound_buffer = NULL;
-                                if (sme_ptr->sound_buffer_array && sme_ptr->sound_buffer_count >= 0) {
-                                    sound_buffer = *sme_ptr->sound_buffer_array;
+                                if (cstreaming_sound_ptr->sound_buffer_array && cstreaming_sound_ptr->sound_buffer_count >= 0) {
+                                    sound_buffer = *cstreaming_sound_ptr->sound_buffer_array;
                                 }
                                 /*
-                                if (SUCCEEDED(SOUND_MANAGER.__unknown_sme_ptr_5704->__sub_48A1A0(
+                                if (SUCCEEDED(SOUND_MANAGER.cstreaming_sound_ptr->__sub_48A1A0(
                                     sound_buffer,
-                                    sme_ptr->__smg_ptr_10->bgm_format->__dword_1C != 0,
+                                    cstreaming_sound_ptr->cwave_ptr->bgm_format->__dword_1C != 0,
                                     0
                                 ))) {
-                                    ++snd_cmd->iter;
-                                    goto end_snd_cmd_loop;
+                                    BREAK_NEXT_CMD_ITER();
                                 }
                                 */
                                 break;
                             }
                             case 7:
-                                //SOUND_MANAGER.__unknown_sme_ptr_5704->__sub_48A440(0, 1, 0);
-                                ++snd_cmd->iter;
-                                goto end_snd_cmd_loop;
+                                //SOUND_MANAGER.cstreaming_sound_ptr->__sub_48A440(0, 1, 0);
+                                BREAK_NEXT_CMD_ITER();
                             default:
                                 if (iter < 14) {
-                                    ++snd_cmd->iter;
-                                    goto end_snd_cmd_loop;
+                                    BREAK_NEXT_CMD_ITER();
                                 }
                                 break;
                         }
                         break;
                     }
                 }
-                if (SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704) {
+                if (CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr) {
                     switch (int32_t iter = snd_cmd->iter) {
                         case 0:
-                            sme_ptr->__sub_48A620(FALSE);
-                            ++snd_cmd->iter;
-                            goto end_snd_cmd_loop;
+                            cstreaming_sound_ptr->Stop(FALSE);
+                            BREAK_NEXT_CMD_ITER();
                         case 1:
-                            if (!sme_ptr->__dword_AC) {
+                            if (!cstreaming_sound_ptr->__locked) {
                                 int32_t index = snd_cmd->arg;
                                 const char* filename = index >= 0 ? SOUND_MANAGER.loaded_bgm_filenames[index] : snd_cmd->text_buffer;
                                 byteloop_strcpy(SOUND_MANAGER.__text_buffer_2384, filename);
                                 int32_t format_index = SOUND_MANAGER.__get_bgm_format_index(filename);
                                 snd_cmd->arg = format_index;
-                                //SOUND_MANAGER.__unknown_sme_ptr_5704->__sub_489E90(SOUND_MANAGER.bgm_formats[format_index]);
-                                ++snd_cmd->iter;
-                                goto end_snd_cmd_loop;
+                                //SOUND_MANAGER.cstreaming_sound_ptr->__sub_489E90(SOUND_MANAGER.bgm_formats[format_index]);
+                                BREAK_NEXT_CMD_ITER();
                             }
                             break;
                         case 2:
-                            //sme_ptr->__sub_48ADC0(SOUND_MANAGER.bgm_formats[snd_cmd->arg], 0);
-                            ++snd_cmd->iter;
-                            goto end_snd_cmd_loop;
+                            //cstreaming_sound_ptr->__sub_48ADC0(SOUND_MANAGER.bgm_formats[snd_cmd->arg], 0);
+                            BREAK_NEXT_CMD_ITER();
                         case 3: {
                             LPDIRECTSOUNDBUFFER sound_buffer = NULL;
-                            if (sme_ptr->sound_buffer_array && sme_ptr->sound_buffer_count >= 0) {
-                                sound_buffer = *sme_ptr->sound_buffer_array;
+                            if (cstreaming_sound_ptr->sound_buffer_array && cstreaming_sound_ptr->sound_buffer_count >= 0) {
+                                sound_buffer = *cstreaming_sound_ptr->sound_buffer_array;
                             }
-                            //sme_ptr->__sub_48AAC0(0);
+                            //cstreaming_sound_ptr->__sub_48AAC0(0);
                             /*
-                            if (SUCCEEDED(SOUND_MANAGER.__unknown_sme_ptr_5704->__sub_48A1A0(
+                            if (SUCCEEDED(SOUND_MANAGER.cstreaming_sound_ptr->__sub_48A1A0(
                                 sound_buffer,
-                                sme_ptr->__smg_ptr_10->bgm_format->__int_1C != 0,
+                                cstreaming_sound_ptr->cwave_ptr->bgm_format->__fade_length != 0,
                                 0
                             ))) {
-                                ++snd_cmd->iter;
-                                goto end_snd_cmd_loop;
+                                BREAK_NEXT_CMD_ITER();
                             }
                             */
                             break;
                         }
                         case 4:
-                            //sme_ptr->__sub_48A440(0, 1, 0);
-                            ++snd_cmd->iter;
-                            goto end_snd_cmd_loop;
+                            //cstreaming_sound_ptr->__sub_48A440(0, 1, 0);
+                            BREAK_NEXT_CMD_ITER();
                         default:
                             if (iter < 7) {
-                                ++snd_cmd->iter;
-                                goto end_snd_cmd_loop;
+                                BREAK_NEXT_CMD_ITER();
                             }
                             break;
                     }
                 }
                 break;
-            case SndCmd4: // 4
-                if (SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704) {                    
+            case SndStopB: // 4
+                if (CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr) {                    
                     switch (int32_t iter = snd_cmd->iter) {
                         case 0:
-                            sme_ptr->__sub_48A620(TRUE);
-                            ++snd_cmd->iter;
-                            goto end_snd_cmd_loop;
+                            cstreaming_sound_ptr->Stop(TRUE);
+                            BREAK_NEXT_CMD_ITER();
                         case 1:
                             if (SOUND_MANAGER.__handle_14) {
                                 PostThreadMessageA(SOUND_MANAGER.sound_thread_id, WM_QUIT, 0, 0);
-                                ++snd_cmd->iter;
-                                goto end_snd_cmd_loop;
+                                BREAK_NEXT_CMD_ITER();
                             }
                             break;
                         case 2:
@@ -4941,119 +5538,75 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
                             else {
                                 SOUND_MANAGER.__handle_14 = NULL;
                             }
-                            ++snd_cmd->iter;
-                            goto end_snd_cmd_loop;
+                            BREAK_NEXT_CMD_ITER();
                         case 3:
                             CloseHandle(SOUND_MANAGER.__handle_14);
                             CloseHandle(SOUND_MANAGER.__handle_570C);
-                            SAFE_DELETE(SOUND_MANAGER.__unknown_sme_ptr_5704);
-                            ++snd_cmd->iter;
-                            goto end_snd_cmd_loop;
+                            SAFE_DELETE(SOUND_MANAGER.cstreaming_sound_ptr);
+                            BREAK_NEXT_CMD_ITER();
                         default:
-                            ++snd_cmd->iter;
-                            goto end_snd_cmd_loop;
+                            BREAK_NEXT_CMD_ITER();
                         case 10:
                             break;
                     }
                 }
                 break;
-            case SndCmd3: // 3
-                if (SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704) {
+            case SndStopA: // 3
+                if (CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr) {
                     switch (int32_t iter = snd_cmd->iter) {
                         case 0:
-                            sme_ptr->__sub_48A620(TRUE);
-                            ++snd_cmd->iter;
-                            goto end_snd_cmd_loop;
+                            cstreaming_sound_ptr->Stop(TRUE);
+                            BREAK_NEXT_CMD_ITER();
                         default:
-                            ++snd_cmd->iter;
-                            goto end_snd_cmd_loop;
+                            BREAK_NEXT_CMD_ITER();
                         case 1:
                             break;
                     }
                 }
                 break;
-            case SndCmd5: { // 5
-                float A = snd_cmd->arg;
-                if (SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704) {
-                    sme_ptr->__int_20 = 1;
-                    A *= 60.0f;
-                    sme_ptr->__int_18 = A;
-                    sme_ptr->__int_1C = A;
-                }
+            case SndFadeOut: // 5
+                SOUND_MANAGER.__start_fade_out(snd_cmd->arg);
                 break;
-            }
-            case SndCmd6: // 6
-                if (SUPERVISOR.config.__ubyte_45 == 1) {
-                    if (SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704) {
-                        if (sme_ptr->__dword_AC) {
-                            ++snd_cmd->iter;
-                            goto end_snd_cmd_loop;
+            case SndPause: // 6
+                if (SUPERVISOR.config.bgm_type == BgmWav) {
+                    if (CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr) {
+                        if (cstreaming_sound_ptr->__locked) {
+                            BREAK_NEXT_CMD_ITER();
                         }
-                        // this feels like an inlined SME function
-                        if (LPDIRECTSOUNDBUFFER* sound_buffer_array = sme_ptr->sound_buffer_array) {
-                            if (!sme_ptr->__int_58) {
-                                sme_ptr->__int_5C = 0;
-                            } else {
-                                sme_ptr->__int_58 = 0;
-                                sme_ptr->__int_5C = 1;
-                                (*sound_buffer_array)->Stop();
-                                sme_ptr->__double_40 = get_runtime();
-                                DWORD offset = SetFilePointer(sme_ptr->__smg_ptr_10->__handle_8C, 0, NULL, FILE_CURRENT);
-                                SoundManagerUnknownG* smg_ptr = sme_ptr->__smg_ptr_10;
-                                smg_ptr->__int_98 = offset - smg_ptr->bgm_format->offset;
-                                smg_ptr = sme_ptr->__smg_ptr_10;
-                                if (smg_ptr->__int_78 == 1) {
-                                    CloseHandle(smg_ptr->__handle_8C);
-                                    smg_ptr->__handle_8C = INVALID_HANDLE_VALUE;
-                                }
-                            }
-                        }
+                        cstreaming_sound_ptr->Pause();
                     }
                 }
                 break;
-            case SndCmd7: // 7
-                if (SUPERVISOR.config.__ubyte_45 == 1) {
-                    if (SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704) {
-                        if (sme_ptr->__dword_AC) {
-                            ++snd_cmd->iter;
-                            goto end_snd_cmd_loop;
+            case SndUnpause: // 7
+                if (SUPERVISOR.config.bgm_type == BgmWav) {
+                    if (CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr) {
+                        if (cstreaming_sound_ptr->__locked) {
+                            BREAK_NEXT_CMD_ITER();
                         }
-                        // this feels like an inlined SME function
-                        if (
-                            sme_ptr->sound_buffer_array &&
-                            sme_ptr->__int_5C != 0
-                        ) {
-                            SoundManagerUnknownG* smg_ptr = sme_ptr->__smg_ptr_10;
-                            sme_ptr->__int_5C = 0;
-                            //sme_ptr->__sub_48ADC0(smg_ptr->bgm_format, smg_ptr->__int_98);
-                            LPDIRECTSOUNDBUFFER sound_buffer = *sme_ptr->sound_buffer_array;
-                            sme_ptr->__int_58 = 1;
-                            sme_ptr->__double_48 += get_runtime() - sme_ptr->__double_40;
-                            sound_buffer->Play(0, sme_ptr->__int_24, sme_ptr->__int_28);
-                        }
+                        cstreaming_sound_ptr->Unpause();
                     }
                 }
                 break;
             case SndCmd9: // 9
-                if (SOUND_MANAGER.__unknown_sme_ptr_5704) {
+                if (SOUND_MANAGER.cstreaming_sound_ptr) {
                     // this feels like an inlined SME function
                     int32_t format_index = SOUND_MANAGER.__get_bgm_format_index(snd_cmd->text_buffer);
-                    SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704;
+                    CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr;
                     ThBgmFormat* new_format = &SOUND_MANAGER.bgm_formats[format_index];
-                    double A = get_runtime() - (sme_ptr->__double_48 + sme_ptr->__double_38);
-                    SoundManagerUnknownG* smg_ptr = sme_ptr->__smg_ptr_10;
-                    ThBgmFormat* format = smg_ptr->bgm_format;
-                    double B = format->__int_1C;
-                    double C = format->__uint_24;
-                    double D = format->__ushort_2E;
-                    double E = format->__ushort_22;
-                    double F = ((B / (C * 0.125)) / D) / E;
-                    double G = (((B - format->__int_18) / C) / (D * 0.125)) / E;
+                    double A = get_runtime() - (cstreaming_sound_ptr->__double_48 + cstreaming_sound_ptr->__double_38);
+                    CWaveFile* cwave_ptr = cstreaming_sound_ptr->cwave_ptr;
+                    ThBgmFormat* format = cwave_ptr->bgm_format;
+                    double bgm_length = format->length;
+                    double samples_per_second = format->wave_format.nSamplesPerSec;
+                    double bits_per_sample = format->wave_format.wBitsPerSample;
+                    double channels = format->wave_format.nChannels;
+                    double F = bgm_length / (samples_per_second / CHAR_BIT) / bits_per_sample / channels;
+                    double G = (bgm_length - format->pre_loop_length) / samples_per_second / (bits_per_sample / CHAR_BIT) / channels;
                     while (A >= F) {
                         A -= G;
                     }
-                    smg_ptr->bgm_format = new_format;
-                    sme_ptr->__sub_48AF10(A);
+                    cwave_ptr->bgm_format = new_format;
+                    cstreaming_sound_ptr->__sub_48AF10(A);
                 }
                 break;
         }
@@ -5064,10 +5617,10 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
                 break;
             }
         }
-    } while (wtf);
+    } while (run_next_cmd);
 end_snd_cmd_loop:
 
-    if (SUPERVISOR.config.__ubyte_46) {
+    if (SUPERVISOR.config.sfx_type != SfxOff) {
         // TODO: sound effect code bug idc right now
     }
 
@@ -5082,13 +5635,13 @@ dllexport gnu_noinline int stdcall SoundManager::__load_wav_slot(int32_t slot, c
     char buffer[0x100];
     byteloop_strcpy(buffer, name);
     byteloop_strcat(buffer, ".wav");
-    SOUND_MANAGER.queue_sound_command(SndCmd1, slot, buffer);
+    SOUND_MANAGER.queue_sound_command(SndPreloadBgm, slot, buffer);
     return 1;
 }
 
 // 0x4546F0
 dllexport gnu_noinline ZUNResult SoundManager::__sub_4546F0() {
-    SOUND_MANAGER.queue_sound_command(SUPERVISOR.config.preload_bgm ? SndCmd4 : SndCmd3, 0, "dummy");
+    SOUND_MANAGER.queue_sound_command(SUPERVISOR.config.preload_bgm ? SndStopB : SndStopA, 0, "dummy");
     return ZUN_SUCCESS;
 }
 
@@ -5098,18 +5651,18 @@ dllexport gnu_noinline ZUNResult vectorcall SoundManager::__sub_454720(float, fl
     if (!(game_speed == 0.0f || game_speed <= 1.0f)) {
         arg1 /= game_speed;
     }
-    SOUND_MANAGER.queue_sound_command(SndCmd5, arg1, "");
+    SOUND_MANAGER.queue_sound_command(SndFadeOut, arg1, "");
     return ZUN_SUCCESS;
 }
 
 // 0x457100
 dllexport gnu_noinline void SoundManager::__sub_457100() {
-    SOUND_MANAGER.__int_5730 = SUPERVISOR.config.__sbyte_4A;
-    SOUND_MANAGER.queue_sound_command(SndCmd8, 0, "SetVol");
+    SOUND_MANAGER.bgm_volume = SUPERVISOR.config.__sbyte_4A;
+    SOUND_MANAGER.queue_sound_command(SndVolume, 0, "SetVol");
     int32_t A = SUPERVISOR.config.__sbyte_4B;
-    SOUND_MANAGER.__int_5734 = A;
+    SOUND_MANAGER.sound_volume = A;
     if (A) {
-        float volume = 1.0f - (float)SOUND_MANAGER.__int_5730 / 100.f;
+        float volume = 1.0f - (float)SOUND_MANAGER.bgm_volume / 100.f;
         SOUND_MANAGER.__int_5738 = (int32_t)((float)MIN_VOLUME * (1.0f - volume * volume));
     } else {
         SOUND_MANAGER.__int_5738 = SILENT_VOLUME;
@@ -6488,9 +7041,9 @@ ValidateStructSize32(0xBF158, ScorefileManager);
 // 0x4546A0
 dllexport gnu_noinline ZUNResult stdcall SoundManager::__play_music_with_unlock(int32_t slot, int32_t music_room_index) {
     if (SUPERVISOR.config.preload_bgm) {
-        SOUND_MANAGER.queue_sound_command(SndCmd4, 0, "dummy");
+        SOUND_MANAGER.queue_sound_command(SndStopB, 0, "dummy");
     }
-    SOUND_MANAGER.queue_sound_command(SndCmd2, slot, "dummy");
+    SOUND_MANAGER.queue_sound_command(SndLoadBgm, slot, "dummy");
     SCOREFILE_MANAGER_PTR->unlock_music(music_room_index);
 }
 
@@ -11297,17 +11850,17 @@ dllexport gnu_noinline ZUNResult SoundManager::__sub_476410(HWND window_hwnd_arg
     CSoundManager* csound_manager_ptr = new CSoundManager();
     this->csound_manager_ptr = csound_manager_ptr;
     if (SUCCEEDED(csound_manager_ptr->Initialize(window_hwnd, DSSCL_PRIORITY))) {
-        csound_manager_ptr->SetPrimaryBufferFormat(2, 44100, 16);
+        csound_manager_ptr->SetPrimaryBufferFormat(BGM_CHANNELS, BGM_SAMPLE_RATE, BGM_SAMPLE_BITS);
         LPDIRECTSOUND8 dsound = this->csound_manager_ptr->GetDirectSound();
         this->dsound = dsound;
         LPDIRECTSOUNDBUFFER* buffer_ptr_ptr = &this->sound_buffer_ptr;
         WAVEFORMATEX sound_format = {
             .wFormatTag = WAVE_FORMAT_1M08,
-            .nChannels = 2,
-            .nSamplesPerSec = 44100,
-            .nAvgBytesPerSec = 176400,
-            .nBlockAlign = 4,
-            .wBitsPerSample = 16,
+            .nChannels = BGM_CHANNELS,
+            .nSamplesPerSec = BGM_SAMPLE_RATE,
+            .nAvgBytesPerSec = BGM_SAMPLE_RATE * BGM_SAMPLE_BYTES * BGM_CHANNELS,
+            .nBlockAlign = BGM_BLOCK_ALIGN,
+            .wBitsPerSample = BGM_SAMPLE_BITS,
             .cbSize = 0
         };
         DSBUFFERDESC buffer_desc = {
@@ -11331,8 +11884,8 @@ dllexport gnu_noinline ZUNResult SoundManager::__sub_476410(HWND window_hwnd_arg
         memset(buffer_contents_ptr_A, 0, buffer_contents_size_A);
         (*buffer_ptr_ptr)->Unlock(buffer_contents_ptr_A, buffer_contents_size_A, buffer_contents_ptr_B, buffer_contents_size_B);
         (*buffer_ptr_ptr)->Play(0, 0, DSBPLAY_LOOPING);
-        this->__int_5730 = 100;
-        this->__int_5734 = 100;
+        this->bgm_volume = 100;
+        this->sound_volume = 100;
         SetTimer(window_hwnd, 0, 250, NULL);
         this->timer_hwnd = window_hwnd;
         window_hwnd = NULL;
@@ -11362,19 +11915,23 @@ dllexport gnu_noinline ZUNResult SoundManager::__sub_476410(HWND window_hwnd_arg
 }
 
 // 0x476B40
-dllexport gnu_noinline void thiscall SoundManager::__sub_476B40() {
-    if (SoundManagerUnknownE* sme_ptr = this->__unknown_sme_ptr_5704) {
-        sme_ptr->__sub_48A620(true);
+dllexport gnu_noinline void thiscall SoundManager::stop_bgm() {
+    if (CStreamingSound* cstreaming_sound_ptr = this->cstreaming_sound_ptr) {
+        DEBUG_PRINT("Streming BGM stop\r\n");
+        cstreaming_sound_ptr->Stop(true);
         if (this->__handle_14) {
-            do {
+            PostThreadMessageA(this->sound_thread_id, WM_QUIT, 0, 0);
+            DEBUG_PRINT("stop m_dwNotifyThreadID\r\n");
+            while (WaitForSingleObject(this->__handle_14, 256)) {
                 PostThreadMessageA(this->sound_thread_id, WM_QUIT, 0, 0);
-            } while (WaitForSingleObject(this->__handle_14, 256));
+            }
+            DEBUG_PRINT("stop comp\r\n");
             CloseHandle(this->__handle_14);
             CloseHandle(this->__handle_570C);
             this->__handle_14 = 0;
         }
     }
-    SAFE_DELETE(this->__unknown_sme_ptr_5704);
+    SAFE_DELETE(this->cstreaming_sound_ptr);
 }
 
 // 0x476BE0
@@ -16415,7 +16972,7 @@ inline UpdateFuncRet thiscall Supervisor::on_tick() {
     // TODO: uncommenting this segfaults clang because ???
     //SOUND_MANAGER.__on_tick();
 
-    if (SoundManagerUnknownE* sme_ptr = SOUND_MANAGER.__unknown_sme_ptr_5704) {
+    if (CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr) {
         // TODO
     }
 
@@ -24594,8 +25151,8 @@ dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
                 ) {
                     int32_t A = SUPERVISOR.config.__sbyte_4B;
                     int32_t B = SUPERVISOR.config.__sbyte_4A;
-                    SOUND_MANAGER.__int_5730 = B;
-                    SOUND_MANAGER.__int_5734 = A;
+                    SOUND_MANAGER.bgm_volume = B;
+                    SOUND_MANAGER.sound_volume = A;
                     // TODO
                 }
                 if (zun_file_exists("thbgm.dat")) {
@@ -35452,7 +36009,7 @@ public:
         ) {
             if (!INPUT_STATES[0].check_hardware_inputs(BUTTON_SHOOT | BUTTON_DOWN)) {
                 if (!this->__dword_10) {
-                    SOUND_MANAGER.__unknown_sme_ptr_5704->__sub_48AF10(GAME_MANAGER.globals.__counter_14 / 60.0);
+                    SOUND_MANAGER.cstreaming_sound_ptr->__sub_48AF10(GAME_MANAGER.globals.__counter_14 / 60.0);
                 }
                 this->__dword_10 = 0;
             }
@@ -37624,8 +38181,8 @@ dllexport gnu_noinline ZUNResult thiscall Supervisor::load_config_file(int) {
         free(config_file);
         if (
             SUPERVISOR.config.__ubyte_44 < 2 &&
-            SUPERVISOR.config.__ubyte_45 < 3 &&
-            SUPERVISOR.config.__ubyte_46 < 2 &&
+            SUPERVISOR.config.bgm_type < ENUM_MAX_VALUE(BgmType) + 1 &&
+            SUPERVISOR.config.sfx_type < ENUM_MAX_VALUE(SfxType) + 1 &&
             SUPERVISOR.config.__ubyte_47 < 10 &&
             SUPERVISOR.config.__ubyte_48 < 3 &&
             SUPERVISOR.config.__ubyte_49 < 3 &&
