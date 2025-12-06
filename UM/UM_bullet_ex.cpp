@@ -3067,8 +3067,8 @@ struct Config {
     uint8_t __ubyte_47; // 0x47
     uint8_t __ubyte_48; // 0x48
     uint8_t __ubyte_49; // 0x49
-    int8_t __sbyte_4A; // 0x4A
-    int8_t __sbyte_4B; // 0x4B
+    int8_t bgm_volume; // 0x4A
+    int8_t sound_volume; // 0x4B
     char __byte_4C; // 0x4C
     char __byte_4D; // 0x4D
     uint8_t __ubyte_4E; // 0x4E
@@ -3110,10 +3110,10 @@ struct Config {
         this->xinput_mapping = INPUT_STATES[0].xinput_mapping;
         this->keyboard_mapping = INPUT_STATES[0].keyboard_mapping;
         this->__ubyte_49 = 2;
-        this->__sbyte_4A = 100;
+        this->bgm_volume = 100;
         this->__byte_4C = 0;
         this->__byte_4D = 2;
-        this->__sbyte_4B = 50;
+        this->sound_volume = 50;
         this->window_x = INT32_MIN;
         this->window_y = INT32_MIN;
     }
@@ -3135,8 +3135,8 @@ ValidateFieldOffset32(0x46, Config, sfx_type);
 ValidateFieldOffset32(0x47, Config, __ubyte_47);
 ValidateFieldOffset32(0x48, Config, __ubyte_48);
 ValidateFieldOffset32(0x49, Config, __ubyte_49);
-ValidateFieldOffset32(0x4A, Config, __sbyte_4A);
-ValidateFieldOffset32(0x4B, Config, __sbyte_4B);
+ValidateFieldOffset32(0x4A, Config, bgm_volume);
+ValidateFieldOffset32(0x4B, Config, sound_volume);
 ValidateFieldOffset32(0x4C, Config, __byte_4C);
 ValidateFieldOffset32(0x4D, Config, __byte_4D);
 ValidateFieldOffset32(0x4E, Config, __ubyte_4E);
@@ -5165,8 +5165,9 @@ static inline constexpr size_t BGM_SAMPLE_BYTES = SAMPLE_BYTES(BGM_SAMPLE_BITS);
 static inline constexpr size_t BGM_BLOCK_ALIGN = SAMPLE_BLOCK_ALIGN(BGM_SAMPLE_BITS, BGM_CHANNELS);
 static inline constexpr size_t BGM_SAMPLE_THROUGHPUT = SAMPLE_THROUGHPUT(BGM_SAMPLE_BITS, BGM_CHANNELS, BGM_SAMPLE_RATE);
 
-static inline constexpr auto MIN_VOLUME = DSBVOLUME_MIN / 2;
+static inline constexpr auto MAX_VOLUME = DSBVOLUME_MIN / 2;
 static inline constexpr auto SILENT_VOLUME = DSBVOLUME_MIN;
+static inline constexpr auto VOLUME_RANGE = SILENT_VOLUME - MAX_VOLUME;
 
 // 0x4898F0
 dllexport gnu_noinline HRESULT thiscall CSoundManager::CreateStreamingFromMemory(
@@ -5282,7 +5283,7 @@ struct SoundManager {
     int __dword_572C; // 0x572C
     int32_t bgm_volume; // 0x5730
     int32_t sound_volume; // 0x5734
-    int32_t __int_5738; // 0x5738
+    int32_t __csound_volume; // 0x5738
     // 0x573C
 
     inline void zero_contents() {
@@ -5353,7 +5354,10 @@ struct SoundManager {
     dllexport gnu_noinline int32_t thiscall __get_bgm_format_index(const char* filename) asm_symbol_rel(0x476890) {
         char buffer[128];
         const char* path;
-        if (!(path = strrchr(filename, '/')) && !(path = strrchr(filename, '\\'))) {
+        if (
+            !(path = strrchr(filename, '/')) &&
+            !(path = strrchr(filename, '\\'))
+        ) {
             byteloop_strcpy(buffer, filename);
         } else {
             byteloop_strcpy(buffer, path + 1);
@@ -5440,18 +5444,18 @@ struct SoundManager {
     }
 
     // 0x4546F0
-    dllexport gnu_noinline static ZUNResult __sub_4546F0() asm_symbol_rel(0x4546F0);
+    dllexport gnu_noinline static ZUNResult __queue_bgm_stop() asm_symbol_rel(0x4546F0);
 
 private:
     // 0x454720
-    dllexport gnu_noinline static ZUNResult vectorcall __sub_454720(float, float arg1) asm_symbol_rel(0x454720);
+    dllexport gnu_noinline static ZUNResult vectorcall __queue_fade_out(float, float arg1) asm_symbol_rel(0x454720);
 public:
-    inline ZUNResult __sub_454720(float arg1) {
-        return SoundManager::__sub_454720(UNUSED_FLOAT, arg1);
+    static inline ZUNResult __queue_fade_out(float arg1) {
+        return SoundManager::__queue_fade_out(UNUSED_FLOAT, arg1);
     }
 
     // 0x457100
-    dllexport gnu_noinline static void __sub_457100() asm_symbol_rel(0x457100);
+    dllexport gnu_noinline static void update_volume() asm_symbol_rel(0x457100);
 
     inline void __start_fade_out(float seconds) {
         if (CStreamingSound* cstreaming_sound_ptr = this->cstreaming_sound_ptr) {
@@ -5491,7 +5495,7 @@ ValidateFieldOffset32(0x5728, SoundManager, main_window_hwnd);
 ValidateFieldOffset32(0x572C, SoundManager, __dword_572C);
 ValidateFieldOffset32(0x5730, SoundManager, bgm_volume);
 ValidateFieldOffset32(0x5734, SoundManager, sound_volume);
-ValidateFieldOffset32(0x5738, SoundManager, __int_5738);
+ValidateFieldOffset32(0x5738, SoundManager, __csound_volume);
 ValidateStructSize32(0x573C, SoundManager);
 #pragma endregion
 
@@ -5551,7 +5555,7 @@ dllexport inline HRESULT CSound::SetVolume(int32_t volume) {
     int32_t bgm_volume = SOUND_MANAGER.bgm_volume;
     if (bgm_volume) {
         float fvolume = 1.0f - (float)bgm_volume / 100.f;
-        return sound_buffers[0]->SetVolume(MIN_VOLUME - (int32_t)((float)MIN_VOLUME * (1.0f - fvolume * fvolume)));
+        return sound_buffers[0]->SetVolume(MAX_VOLUME - (int32_t)((float)VOLUME_RANGE * (1.0f - fvolume * fvolume)));
     } else {
         return sound_buffers[0]->SetVolume(SILENT_VOLUME);
     }
@@ -5892,13 +5896,13 @@ dllexport gnu_noinline int stdcall SoundManager::__load_wav_slot(int32_t slot, c
 }
 
 // 0x4546F0
-dllexport gnu_noinline ZUNResult SoundManager::__sub_4546F0() {
+dllexport gnu_noinline ZUNResult SoundManager::__queue_bgm_stop() {
     SOUND_MANAGER.queue_sound_command(SUPERVISOR.config.preload_bgm ? SndStopB : SndStopA, 0, "dummy");
     return ZUN_SUCCESS;
 }
 
 // 0x454720
-dllexport gnu_noinline ZUNResult vectorcall SoundManager::__sub_454720(float, float arg1) {
+dllexport gnu_noinline ZUNResult vectorcall SoundManager::__queue_fade_out(float, float arg1) {
     float game_speed = GAME_SPEED;
     if (!(game_speed == 0.0f || game_speed <= 1.0f)) {
         arg1 /= game_speed;
@@ -5908,16 +5912,16 @@ dllexport gnu_noinline ZUNResult vectorcall SoundManager::__sub_454720(float, fl
 }
 
 // 0x457100
-dllexport gnu_noinline void SoundManager::__sub_457100() {
-    SOUND_MANAGER.bgm_volume = SUPERVISOR.config.__sbyte_4A;
+dllexport gnu_noinline void SoundManager::update_volume() {
+    SOUND_MANAGER.bgm_volume = SUPERVISOR.config.bgm_volume;
     SOUND_MANAGER.queue_sound_command(SndVolume, 0, "SetVol");
-    int32_t A = SUPERVISOR.config.__sbyte_4B;
-    SOUND_MANAGER.sound_volume = A;
-    if (A) {
+    int32_t sound_volume = SUPERVISOR.config.sound_volume;
+    SOUND_MANAGER.sound_volume = sound_volume;
+    if (sound_volume) {
         float volume = 1.0f - (float)SOUND_MANAGER.bgm_volume / 100.f;
-        SOUND_MANAGER.__int_5738 = (int32_t)((float)MIN_VOLUME * (1.0f - volume * volume));
+        SOUND_MANAGER.__csound_volume = MAX_VOLUME - (int32_t)((float)VOLUME_RANGE * (1.0f - volume * volume));
     } else {
-        SOUND_MANAGER.__int_5738 = SILENT_VOLUME;
+        SOUND_MANAGER.__csound_volume = SILENT_VOLUME;
     }
 }
 
@@ -25401,11 +25405,16 @@ dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
                     SOUND_MANAGER.csound_manager_ptr &&
                     SOUND_MANAGER.dsound
                 ) {
-                    int32_t A = SUPERVISOR.config.__sbyte_4B;
-                    int32_t B = SUPERVISOR.config.__sbyte_4A;
-                    SOUND_MANAGER.bgm_volume = B;
-                    SOUND_MANAGER.sound_volume = A;
-                    // TODO
+                    int32_t sound_volume = SUPERVISOR.config.sound_volume;
+                    int32_t bgm_volume = SUPERVISOR.config.bgm_volume;
+                    SOUND_MANAGER.bgm_volume = bgm_volume;
+                    SOUND_MANAGER.sound_volume = sound_volume;
+                    if (sound_volume) {
+                        float volume = 1.0f - (float)bgm_volume / 100.f;
+                        SOUND_MANAGER.__csound_volume = MAX_VOLUME - (int32_t)((float)VOLUME_RANGE * (1.0f - volume * volume));
+                    } else {
+                        SOUND_MANAGER.__csound_volume = SILENT_VOLUME;
+                    }
                 }
                 if (zun_file_exists("thbgm.dat")) {
                     if (!SUPERVISOR.config.preload_bgm) {
@@ -25415,7 +25424,7 @@ dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
                             SOUND_MANAGER.dsound
                         ) {
                             SOUND_MANAGER.stop_bgm();
-                            
+                            // TODO: Yet another sound thread setup thing
                         }
                     }
                     else {
@@ -38799,7 +38808,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_4443C0() {
         SPELLCARD_PTR->enable_funcs();
         ABILITY_MANAGER_PTR->__sub_407F10();
 
-        clang_forceinline SOUND_MANAGER.__sub_4546F0();
+        clang_forceinline SOUND_MANAGER.__queue_bgm_stop();
         clang_forceinline SOUND_MANAGER.__play_music_with_unlock(0, STAGE_DATA_PTR->bgm_indices[0]);
         
         AsciiManager* ascii_manager_ptr = ASCII_MANAGER_PTR;
@@ -39389,7 +39398,7 @@ inline unsigned GameThread::thread_start_impl() {
     SCOREFILE_MANAGER_PTR->save_files();
 
     if (GAME_MANAGER.__unknown_field_A == 2) {
-        SOUND_MANAGER.__sub_4546F0();
+        SOUND_MANAGER.__queue_bgm_stop();
     }
 
     SOUND_MANAGER.__load_wav_slot(0, STAGE_DATA_PTR->bgm_filenames[0]);
