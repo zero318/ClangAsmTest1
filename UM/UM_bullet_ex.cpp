@@ -14564,6 +14564,18 @@ ValidateFieldOffset32(0x40, AnmSprite, __float_40);
 ValidateStructSize32(0x44, AnmSprite);
 #pragma endregion
 
+// size: 0x8
+struct AnmScriptHeader {
+    uint32_t script_offset; // 0x0
+    unknown_fields(0x4); // 0x4
+    // 0x8
+};
+#pragma region // AnmScriptHeader Validation
+ValidateFieldOffset32(0x0, AnmScriptHeader, script_offset);
+ValidateStructSize32(0x8, AnmScriptHeader);
+#pragma endregion
+
+
 //inline const AnmOnFunc ANM_ON_WAIT_FUNCS[] = { NULL, NULL };
 inline const AnmOnFunc ANM_ON_TICK_FUNCS[6] = {
     NULL,
@@ -17199,7 +17211,6 @@ dllexport gnu_noinline ZUNResult UpdateFuncCC Supervisor::on_registration(void* 
         0,
         &thread_id
     );
-    // TODO
 
     FpsCounter::allocate();
     TICK_COUNTER_PTR = TickCounter::allocate();
@@ -17225,7 +17236,6 @@ inline UpdateFuncRet thiscall Supervisor::on_tick() {
         }
     }
 
-    // TODO: uncommenting this segfaults clang because ???
     SOUND_MANAGER.__on_tick();
 
     if (CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr) {
@@ -28303,7 +28313,7 @@ struct Spellcard : ZUNTask {
         this->__unknown_flag_D = false;
         if (!is_replay()) {
             byteloop_strcpy(SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].spells[id].name, name);
-
+            // TODO
         }
         Gui* gui = GUI_PTR;
         gui->__anm_vm_84->interrupt_and_run(2);
@@ -37993,29 +38003,71 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__sub_486140(AnmImage* image
 }
 
 // 0x486390
-dllexport gnu_noinline int32_t stdcall __sub_486390(AnmImage* image, AnmTexture* texture, uint32_t format_index, uint32_t width, uint32_t height) asm_symbol_rel(0x486390);
-dllexport gnu_noinline int32_t stdcall __sub_486390(AnmImage* image, AnmTexture* texture, uint32_t format_index, uint32_t width, uint32_t height) {
+dllexport gnu_noinline int32_t stdcall __sub_486390(AnmImage* image, AnmTexture* texture, uint32_t format_index, int32_t width, int32_t height) asm_symbol_rel(0x486390);
+dllexport gnu_noinline int32_t stdcall __sub_486390(AnmImage* image, AnmTexture* texture, uint32_t format_index, int32_t width, int32_t height) {
     image->__unknown_flag_A = false;
     AnmEntry* entry = image->entry;
     int32_t texture_width = texture->width;
     int32_t texture_height = texture->height;
-    RECT rectA = {
+
+    LPDIRECT3DSURFACE9 surface = NULL;
+
+    RECT src_rect = {
         .left = 0,
         .top = 0,
         .right = texture_width,
-        .bottom = texture_width
+        .bottom = texture_height
     };
-    RECT rectB = {
+    RECT dst_rect = {
         .left = 0,
         .top = 0,
         .right = texture_width,
-        .bottom = texture_width
+        .bottom = texture_height
     };
-    float floatA = WINDOW_DATA.__game_scale;
-    if (entry->low_res_scale && floatA < 2.0f) {
-        rectB.right = (float)texture_width * floatA * 0.5f;
+    float scale = WINDOW_DATA.__game_scale;
+    if (entry->low_res_scale && scale < 2.0f) {
+        dst_rect.right = (float)texture_width * scale * 0.5f;
+        dst_rect.bottom = (float)texture_height * scale * 0.5f;
+        width = (float)width * scale * 0.5f;
+        height = (float)height * scale * 0.5f;
     }
-    // TODO
+    if (D3DXCreateTexture(
+        SUPERVISOR.d3d_device,
+        width, height,
+        1, 0,
+        D3DFORMAT_TABLE[format_index], D3DPOOL_MANAGED,
+        &image->d3d_texture
+    ) != D3D_OK) {
+        SAFE_RELEASE(surface);
+        return -1;
+    }
+
+    image->d3d_texture->GetSurfaceLevel(0, &surface);
+
+    DWORD filter = D3DX_FILTER_NONE;
+    if (image->entry->low_res_scale && WINDOW_DATA.__game_scale < 2.0f) {
+        filter = D3DX_FILTER_TRIANGLE | D3DX_FILTER_MIRROR_U | D3DX_FILTER_MIRROR_V;
+    }
+
+    uint32_t texture_format_index = texture->format;
+    D3DXLoadSurfaceFromMemory(
+        surface,
+        NULL,
+        &dst_rect,
+        texture->data,
+        D3DFORMAT_TABLE[texture_format_index],
+        texture->width * D3DFORMAT_SIZES_TABLE[texture_format_index],
+        NULL,
+        &src_rect,
+        filter,
+        0
+    );
+
+    image->bytes_per_pixel = D3DFORMAT_SIZES_TABLE[format_index];
+
+    SAFE_RELEASE(surface);
+
+    return width * D3DFORMAT_SIZES_TABLE[format_index];
 }
 
 // 0x486560
@@ -38080,8 +38132,21 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__sub_486BC0(AnmLoaded* anm_
             return -1;
         }
     }
-    // TODO: REALLY DO THIS SOONER
+    anm_loaded->total_image_sizes += image_size;
 skip_adding_image_size:
+    D3DSURFACE_DESC desc;
+    anm_loaded->images[entry_index].d3d_texture->GetLevelDesc(0, &desc);
+
+    AnmSprite* sprite_ptr = (AnmSprite*)entry->data;
+    for (int32_t i = 0; i < entry->sprite_count; ++i) {
+        // TODO: REALLY DO THIS SOONER
+        sprite_ptr++;
+    }
+    AnmScriptHeader* script_ptr = (AnmScriptHeader*)sprite_ptr;
+    for (int32_t i = 0; i < entry->script_count; ++i) {
+        (*anm_loaded->scripts)[i] = based_pointer<AnmInstruction>(entry, script_ptr++->script_offset);
+    }
+    return 1;
 }
 
 // 0x454B20
