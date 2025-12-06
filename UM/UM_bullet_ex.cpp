@@ -4357,6 +4357,91 @@ ValidateFieldOffset32(0xC, SoundCommand, text_buffer);
 ValidateStructSize32(0x10C, SoundCommand);
 #pragma endregion
 
+#define SAMPLE_BYTES(bits) ((bits) / CHAR_BIT)
+#define SAMPLE_BLOCK_ALIGN(bits, channels) (SAMPLE_BYTES(bits) * (channels))
+#define SAMPLE_THROUGHPUT(bits, channels, rate) ((rate) * SAMPLE_BYTES(bits) * (channels))
+
+typedef struct CWaveFile CWaveFile;
+typedef struct CSound CSound;
+typedef struct CStreamingSound CStreamingSound;
+
+// size: 0x4
+struct CSoundManager {
+    LPDIRECTSOUND8 dsound; // 0x0
+    // 0x4
+
+    friend struct CStreamingSound;
+
+    inline HRESULT Initialize(HWND hWnd, DWORD dwCoopLevel) {
+
+        SAFE_RELEASE(this->dsound);
+
+        HRESULT hr;
+        if (
+            FAILED(hr = DirectSoundCreate8(NULL, &this->dsound, NULL)) ||
+            FAILED(hr = this->dsound->SetCooperativeLevel(hWnd, dwCoopLevel))
+        ) {
+            return hr;
+        }
+
+        return S_OK;
+    }
+
+    inline HRESULT SetPrimaryBufferFormat(DWORD dwPrimaryChannels, DWORD dwPrimaryFreq, DWORD dwPrimaryBitRate) {
+        LPDIRECTSOUNDBUFFER pDSBPrimary = NULL;
+
+        if (this->dsound) {
+            DSBUFFERDESC dsbd;
+            dsbd.lpwfxFormat = NULL;
+            dsbd.guid3DAlgorithm = GUID_NULL;
+            dsbd.dwSize = sizeof(DSBUFFERDESC);
+            dsbd.dwFlags = DSBCAPS_PRIMARYBUFFER;
+            dsbd.dwBufferBytes = 0;
+            dsbd.dwReserved = 0;
+
+            HRESULT hr;
+            if (FAILED(hr = this->dsound->CreateSoundBuffer(&dsbd, &pDSBPrimary, NULL))) {
+                return hr;
+            }
+
+            WAVEFORMATEX wfx;
+            wfx.wBitsPerSample = (WORD)dwPrimaryBitRate;
+            wfx.cbSize = 0;
+            wfx.nBlockAlign = SAMPLE_BLOCK_ALIGN(dwPrimaryBitRate, dwPrimaryChannels);
+            wfx.wFormatTag = WAVE_FORMAT_PCM;
+            wfx.nChannels = dwPrimaryChannels;
+            wfx.nSamplesPerSec = dwPrimaryFreq;
+            wfx.nAvgBytesPerSec = SAMPLE_THROUGHPUT(dwPrimaryBitRate, dwPrimaryChannels, dwPrimaryFreq);
+
+            if (FAILED(hr = pDSBPrimary->SetFormat(&wfx))) {
+                return hr;
+            }
+
+            SAFE_RELEASE(pDSBPrimary);
+
+            return S_OK;
+        }
+        return CO_E_NOTINITIALIZED;
+    }
+
+    // 0x4898F0
+    dllexport gnu_noinline HRESULT thiscall CreateStreamingFromMemory(
+        CStreamingSound** ppStreamingSound,
+        BYTE* pbData,
+        ULONG ulDataSize,
+        ThBgmFormat* bgm_format,
+        DWORD _dwCreationFlags, // unused
+        GUID guid3DAlgorithm,
+        DWORD _dwNotifyCount, // unused
+        DWORD dwNotifySize,
+        HANDLE hNotifyEvent
+    ) asm_symbol_rel(0x4898F0);
+};
+#pragma region // CSoundManager Validation
+ValidateFieldOffset32(0x0, CSoundManager, dsound);
+ValidateStructSize32(0x4, CSoundManager);
+#pragma endregion
+
 // size: 0xA0
 struct CWaveFile {
     HMMIO m_hmmio; // 0x0
@@ -4376,6 +4461,14 @@ struct CWaveFile {
     BOOL __loop; // 0x9C
     // 0xA0
 
+    inline CWaveFile(ThBgmFormat* bgm_format) 
+        : bgm_format(bgm_format)
+    {
+        this->m_hmmio = NULL;
+        this->m_dwSize = 0;
+        this->m_bIsReadingFromMemory = FALSE;
+    }
+
     inline ~CWaveFile() {
         this->close_handle();
     }
@@ -4393,7 +4486,7 @@ struct CWaveFile {
     }
 
     // 0x48ABA0
-    dllexport gnu_noinline HRESULT thiscall Open(LPSTR strFileName, ThBgmFormat* bgm_format, DWORD dwFlags = UNUSED_DWORD) {
+    dllexport gnu_noinline HRESULT thiscall Open(const char* strFileName, ThBgmFormat* bgm_format, DWORD dwFlags = UNUSED_DWORD) {
         if (!strFileName) {
             return E_INVALIDARG;
         }
@@ -4436,17 +4529,65 @@ struct CWaveFile {
         return S_OK;
     }
 
-    inline HRESULT Read() {
+    inline HRESULT Reopen(ThBgmFormat* bgm_format, int arg2) {
         if (this->m_bIsReadingFromMemory) {
-
+            return E_FAIL;
         }
-        else {
-
+        HANDLE wave_file_handle = this->wave_file_handle;
+        if (wave_file_handle == INVALID_HANDLE_VALUE) {
+            this->Open(this->wave_filename, bgm_format);
+            wave_file_handle = this->wave_file_handle;
+            if (wave_file_handle == INVALID_HANDLE_VALUE) {
+                return E_FAIL;
+            }
         }
+        this->__loop = FALSE;
+        this->bgm_format = bgm_format;
+        DebugLogger::__debug_log_stub_9("%s %d %d\n", bgm_format->filename, bgm_format->pre_loop_length, bgm_format->length);
+        this->ResetFile(FALSE, arg2);
+        this->m_dwSize = this->m_ck.cksize;
+        return S_OK;
     }
 
-    inline HRESULT OpenFromMemory(BYTE* pbData, ULONG ulDataSize, ThBgmFormat* pzwf, DWORD dwFlags) {
-        this->bgm_format = pzwf;
+    inline HRESULT Read(BYTE* pBuffer, DWORD dwSizeToRead, DWORD* pdwSizeRead) {
+        if (this->m_bIsReadingFromMemory) {
+            BYTE* current = this->m_pbDataCur;
+            if (current) {
+                if (pdwSizeRead) {
+                    *pdwSizeRead = 0;
+                }
+                BYTE* read_end = current + dwSizeToRead;
+                current = this->m_pbDataCur;
+                if (read_end > this->m_pbData + this->m_ulDataSize) {
+                    dwSizeToRead = this->m_pbData - current + this->m_ulDataSize;
+                }
+                memcpy(pBuffer, current, dwSizeToRead);
+                this->m_pbDataCur += dwSizeToRead;
+                if (pdwSizeRead) {
+                    *pdwSizeRead = dwSizeToRead;
+                }
+                return S_OK;
+            }
+        }
+        else {
+            if (this->wave_file_handle) {
+                if (!pBuffer || !pdwSizeRead) {
+                    return E_INVALIDARG;
+                }
+                dwSizeToRead = __min2(dwSizeToRead, m_ck.cksize);
+                m_ck.cksize -= dwSizeToRead;
+                ReadFile(this->wave_file_handle, pBuffer, dwSizeToRead, &dwSizeToRead, NULL);
+                if (pdwSizeRead) {
+                    *pdwSizeRead = dwSizeToRead;
+                }
+                return S_OK;
+            }
+        }
+        return CO_E_NOTINITIALIZED;
+    }
+
+    inline HRESULT OpenFromMemory(BYTE* pbData, ULONG ulDataSize, ThBgmFormat* bgm_format, DWORD dwFlags) {
+        this->bgm_format = bgm_format;
         this->m_ulDataSize = ulDataSize;
         this->m_pbDataCur = this->m_pbData = pbData;
         this->m_bIsReadingFromMemory = TRUE;
@@ -4500,14 +4641,17 @@ struct CSound {
     int32_t __fade_type; // 0x20
     uint32_t priority; // 0x24
     uint32_t play_flags; // 0x28
-    unknown_fields(0xC); // 0x2C
+    unknown_fields(0x4); // 0x2C
+    int __dword_30; // 0x30
+    unknown_fields(0x4); // 0x34
     double __double_38; // 0x38
     double __double_40; // 0x40
     double __double_48; // 0x48
-    unknown_fields(0x8); // 0x50
+    double __double_50; // 0x50
     BOOL __playing; // 0x58
     BOOL __paused; // 0x5C
-    unknown_fields(0x28); // 0x60
+    DSBUFFERDESC buffer_description; // 0x60
+    CSoundManager* csound_manager_ptr; // 0x84
     // 0x88
 
     // 0x489C00
@@ -4527,16 +4671,66 @@ struct CSound {
         this->cwave_ptr = pWaveFile;
         this->sound_buffer_count = dwNumBuffers;
 
-        // TODO
+        // I have no idea if this last argument is actually 0, I'm just guessing
+        this->FillBufferWithSound(this->sound_buffer_array[0], FALSE, 0);
+
+        this->sound_buffer_array[0]->SetCurrentPosition(0);
+
+        this->__playing = FALSE;
+        this->__paused = FALSE;
     }
 
-    // 0x48A0E0
-    dllexport gnu_noinline virtual ~CSound() asm("CSoundDestructor") {
+    inline void FreeSoundBuffers() {
         for (size_t i = 0; i < this->sound_buffer_count; i++) {
             SAFE_RELEASE(this->sound_buffer_array[i]);
         }
         SAFE_DELETE_ARRAY(this->sound_buffer_array);
+    }
+
+    // 0x48A0E0
+    dllexport gnu_noinline virtual ~CSound() {
+        this->FreeSoundBuffers();
         SAFE_DELETE(this->cwave_ptr);
+    }
+
+    inline LPDIRECTSOUNDBUFFER GetBuffer(DWORD index = 0) {
+        LPDIRECTSOUNDBUFFER sound_buffer = NULL;
+        if (this->sound_buffer_array && this->sound_buffer_count >= index) {
+            sound_buffer = this->sound_buffer_array[index];
+        }
+        return sound_buffer;
+    }
+
+    inline LPDIRECTSOUNDBUFFER GetFreeBuffer() {
+        if (!this->sound_buffer_array) {
+            return NULL;
+        }
+        size_t i;
+        for (i = 0; i < this->sound_buffer_count; ++i) {
+            if (LPDIRECTSOUNDBUFFER sound_buffer = this->sound_buffer_array[i]) {
+                DWORD status = 0;
+                sound_buffer->GetStatus(&status);
+                if (!(status & DSBSTATUS_PLAYING)) {
+                    break;
+                }
+            }
+        }
+        if (i != this->sound_buffer_count) {
+            return this->sound_buffer_array[i];
+        } else {
+            return this->sound_buffer_array[(uint32_t)rand() % this->sound_buffer_count];
+        }
+    }
+
+    inline HRESULT Reset() {
+        if (!this->sound_buffer_array) {
+            return CO_E_NOTINITIALIZED;
+        }
+        HRESULT ret;
+        for (size_t i = 0; i < this->sound_buffer_count; ++i) {
+            ret |= this->sound_buffer_array[i]->SetCurrentPosition(0);
+        }
+        return ret;
     }
 
     inline HRESULT RestoreBuffer(
@@ -4572,75 +4766,106 @@ struct CSound {
         return CO_E_NOTINITIALIZED;
     }
 
-    inline HRESULT FillBufferWithSound(LPDIRECTSOUNDBUFFER pDSB, BOOL bRepeatWavIfBufferLarger, int arg3) {
+    // 0x48A440
+    dllexport gnu_noinline HRESULT thiscall Play(DWORD dwPriority, DWORD dwFlags, int arg3) asm_symbol_rel(0x48A440) {
+        if (!this->sound_buffer_array) {
+            return CO_E_NOTINITIALIZED;
+        }
+
+        LPDIRECTSOUNDBUFFER sound_buffer = this->GetFreeBuffer();
+        if (!sound_buffer) {
+            return E_FAIL;
+        }
+
+        BOOL restored;
+        HRESULT hr;
+        if (FAILED(hr = this->RestoreBuffer(sound_buffer, &restored))) {
+            return hr;
+        }
+
+        if (restored) {
+            if (FAILED(hr = this->FillBufferWithSound(sound_buffer, FALSE, arg3))) {
+                return hr;
+            }
+            this->Reset();
+        }
+
+        this->__fade_type = FadeNone;
+        this->__fade_progress = 0;
+        this->__fade_length = 0;
+        this->SetVolume(0);
+        this->__playing = TRUE;
+        this->priority = dwPriority;
+        this->play_flags = dwFlags;
+        this->__dword_30 = 0;
+
+        this->__double_38 = get_runtime();
+        this->__double_48 = 0.0;
+        this->__double_50 = 0.0;
+        this->__double_40 = 0.0;
+
+        return sound_buffer->Play(0, dwPriority, dwFlags);
+    }
+
+    // 0x48A1A0
+    dllexport inline HRESULT FillBufferWithSound(LPDIRECTSOUNDBUFFER pDSB, BOOL bRepeatWavIfBufferLarger, int arg3) asm_symbol_rel(0x48A1A0) {
         
         if (!pDSB) {
             return CO_E_NOTINITIALIZED;
         }
         
         DWORD dwDSLockedBufferSize = 0;
-        VOID* pDSLockedBuffer = NULL;
+        BYTE* pDSLockedBuffer = NULL;
         DWORD dwWavDataRead = 0;
 
         HRESULT hr;
         if (
-            FAILED(hr = RestoreBuffer(pDSB, NULL)) ||
-            FAILED(hr = pDSB->Lock(0, this->__dsound_buffer_size, &pDSLockedBuffer, &dwDSLockedBufferSize, NULL, NULL, 0L))
+            FAILED(hr = this->RestoreBuffer(pDSB, NULL)) ||
+            FAILED(hr = pDSB->Lock(0, this->__dsound_buffer_size, (LPVOID*)&pDSLockedBuffer, &dwDSLockedBufferSize, NULL, NULL, 0L))
         ) {
             return hr;
         }
 
         this->cwave_ptr->ResetFile(FALSE, arg3);
 
-        /*
-        if (FAILED(hr = m_pWaveFile->Read((BYTE *)pDSLockedBuffer, dwDSLockedBufferSize, &dwWavDataRead))) {
+        if (FAILED(hr = this->cwave_ptr->Read(pDSLockedBuffer, dwDSLockedBufferSize, &dwWavDataRead))) {
             return hr;
         }
 
-        if (dwWavDataRead == 0)
-        {
-            // Wav is blank, so just fill with silence
-            FillMemory((BYTE *)pDSLockedBuffer, dwDSLockedBufferSize,
-                       (BYTE)(m_pWaveFile->m_pzwf->format.wBitsPerSample == 8 ? 128 : 0));
+        // I couldn't resist the lambda temptation
+        auto fill_silence = [=](uint8_t* ptr, size_t length) {
+            uint32_t silence = this->cwave_ptr->bgm_format->wave_format.wBitsPerSample == CHAR_BIT ? 0x80 : 0x0;
+            memset((ptr), silence, (length));
+        };
+
+        if (!dwWavDataRead) {
+            fill_silence(pDSLockedBuffer, dwDSLockedBufferSize);
         }
-        else if (dwWavDataRead < dwDSLockedBufferSize)
-        {
-            // If the wav file was smaller than the DirectSound buffer,
-            // we need to fill the remainder of the buffer with data
-            if (bRepeatWavIfBufferLarger)
-            {
-                // Reset the file and fill the buffer with wav data
-                DWORD dwReadSoFar = dwWavDataRead; // From previous call above.
-                while (dwReadSoFar < dwDSLockedBufferSize)
-                {
-                    // This will keep reading in until the buffer is full
-                    // for very short files
-                    if (FAILED(hr = m_pWaveFile->ResetFile(false)))
-                        return DXTRACE_ERR(TEXT("ResetFile"), hr);
-
-                    hr = m_pWaveFile->Read((BYTE *)pDSLockedBuffer + dwReadSoFar, dwDSLockedBufferSize - dwReadSoFar,
-                                           &dwWavDataRead);
-                    if (FAILED(hr))
-                        return DXTRACE_ERR(TEXT("Read"), hr);
-
+        else if (dwWavDataRead < dwDSLockedBufferSize) {
+            if (bRepeatWavIfBufferLarger) {
+                DWORD dwReadSoFar = dwWavDataRead;
+                do {
+                    if (
+                        FAILED(hr = this->cwave_ptr->ResetFile(true, 0)) ||
+                        FAILED(hr = this->cwave_ptr->Read(pDSLockedBuffer + dwReadSoFar, dwDSLockedBufferSize - dwWavDataRead, &dwWavDataRead))
+                    ) {
+                        return hr;
+                    }
                     dwReadSoFar += dwWavDataRead;
-                }
+                } while (dwReadSoFar < dwDSLockedBufferSize);
             }
-            else
-            {
-                // Don't repeat the wav file, just fill in silence
-                FillMemory((BYTE *)pDSLockedBuffer + dwWavDataRead, dwDSLockedBufferSize - dwWavDataRead,
-                           (BYTE)(m_pWaveFile->m_pzwf->format.wBitsPerSample == 8 ? 128 : 0));
+            else {
+                fill_silence(pDSLockedBuffer + dwWavDataRead, dwDSLockedBufferSize - dwWavDataRead);
             }
         }
 
-        // Unlock the buffer, we don't need it anymore.
         pDSB->Unlock(pDSLockedBuffer, dwDSLockedBufferSize, NULL, 0);
-        */
+
         return S_OK;
     }
 
-    inline HRESULT SetVolume(int32_t volume = 0);
+    // 0x48A5A0
+    dllexport inline HRESULT SetVolume(int32_t volume = 0) asm_symbol_rel(0x48A5A0);
 
     inline void StartFadeOut(float seconds) {
         this->__fade_type = FadeOut;
@@ -4667,6 +4892,11 @@ struct CSound {
         return CO_E_NOTINITIALIZED;
     }
 
+    // 0x48ADC0
+    dllexport gnu_noinline HRESULT thiscall Reopen(ThBgmFormat* bgm_format, int arg2) asm_symbol_rel(0x48ADC0) {
+        return this->cwave_ptr->Reopen(bgm_format, arg2);
+    }
+
     inline HRESULT Unpause() {
         if (
             !this->sound_buffer_array ||
@@ -4677,8 +4907,8 @@ struct CSound {
 
         CWaveFile* cwave_ptr = this->cwave_ptr;
         this->__paused = FALSE;
-        //this->__sub_48ADC0(cwave_ptr->bgm_format, cwave_ptr->__int_98);
-        LPDIRECTSOUNDBUFFER sound_buffer = *this->sound_buffer_array;
+        this->Reopen(cwave_ptr->bgm_format, cwave_ptr->__int_98);
+        LPDIRECTSOUNDBUFFER sound_buffer = this->sound_buffer_array[0];
         this->__playing = TRUE;
         this->__double_48 += get_runtime() - this->__double_40;
         return sound_buffer->Play(0, this->priority, this->play_flags);
@@ -4713,11 +4943,15 @@ ValidateVirtualFieldOffset32(0x1C, CSound, __fade_length);
 ValidateVirtualFieldOffset32(0x20, CSound, __fade_type);
 ValidateVirtualFieldOffset32(0x24, CSound, priority);
 ValidateVirtualFieldOffset32(0x28, CSound, play_flags);
+ValidateVirtualFieldOffset32(0x30, CSound, __dword_30);
 ValidateVirtualFieldOffset32(0x38, CSound, __double_38);
 ValidateVirtualFieldOffset32(0x40, CSound, __double_40);
 ValidateVirtualFieldOffset32(0x48, CSound, __double_48);
+ValidateVirtualFieldOffset32(0x50, CSound, __double_50);
 ValidateVirtualFieldOffset32(0x58, CSound, __playing);
 ValidateVirtualFieldOffset32(0x5C, CSound, __paused);
+ValidateVirtualFieldOffset32(0x60, CSound, buffer_description);
+ValidateVirtualFieldOffset32(0x84, CSound, csound_manager_ptr);
 ValidateStructSize32(0x88, CSound);
 #pragma endregion
 
@@ -4737,12 +4971,16 @@ struct CStreamingSound : CSound {
     // 0x48A6A0
     dllexport gnu_noinline CStreamingSound(LPDIRECTSOUNDBUFFER pDSBuffer, DWORD dwDSBufferSize, CWaveFile* pWaveFile, DWORD dwNotifySize)
         : CSound(&pDSBuffer, dwDSBufferSize, UNUSED_DWORD, pWaveFile)
+        , m_dwNotifySize(dwNotifySize)
     {
-        
+        this->m_dwLastPlayPos = 0;
+        this->m_dwPlayProgress = 0;
+        this->m_dwNextWriteOffset = 0;
+        this->m_bFillNextNotificationWithSilence = FALSE;
     }
 
     // 0x48AAC0
-    dllexport gnu_noinline HRESULT Reset(int arg1) {
+    dllexport gnu_noinline HRESULT thiscall Reset(int arg1) {
         if (LPDIRECTSOUNDBUFFER* sound_buffer_array = this->sound_buffer_array) {
             if (this->cwave_ptr) {
                 this->m_dwLastPlayPos = 0;
@@ -4839,6 +5077,51 @@ struct CStreamingSound : CSound {
         use_var(arg1);
     }
 
+    // 0x489E90
+    dllexport gnu_noinline HRESULT thiscall InitSoundBuffers(ThBgmFormat* bgm_format) asm_symbol_rel(0x489E90) {
+        static constexpr DWORD dwNotifyCount = 8;
+        
+        this->__playing = FALSE;
+        this->FreeSoundBuffers();
+
+        LPDIRECTSOUNDNOTIFY pDSNotify = NULL;
+
+        this->sound_buffer_array = new LPDIRECTSOUNDBUFFER[this->sound_buffer_count];
+
+        DSBUFFERDESC dsbd = this->buffer_description;
+        dsbd.lpwfxFormat = &bgm_format->wave_format;
+
+        for (size_t i = 0; i < this->sound_buffer_count; ++i) {
+            if (
+                FAILED(this->csound_manager_ptr->dsound->CreateSoundBuffer(&dsbd, &this->sound_buffer_array[i], NULL)) ||
+                FAILED(this->sound_buffer_array[i]->QueryInterface(IID_IDirectSoundNotify, (LPVOID*)&pDSNotify))
+            ) {
+                return E_FAIL;
+            }
+
+            // Despite looking like exact copy/paste of CreateStreamingFromMemory
+            // this version correctly uses delete[] for this pointer
+            DSBPOSITIONNOTIFY* aPosNotify = new DSBPOSITIONNOTIFY[dwNotifyCount];
+
+            // Instead of vectorizing like with CreateStreamingFromMemory
+            // MSVC decided to unroll this loop... with redundant field reads
+            for (size_t i = 0; i < dwNotifyCount; ++i) {
+                aPosNotify[i].dwOffset = (this->m_dwNotifySize * i) + this->m_dwNotifySize - 1;
+                aPosNotify[i].hEventNotify = this->m_hNotifyEvent;
+            }
+
+            if (FAILED(pDSNotify->SetNotificationPositions(dwNotifyCount, aPosNotify))) {
+                SAFE_RELEASE(pDSNotify);
+                SAFE_DELETE_ARRAY(aPosNotify);
+                return E_FAIL;
+            }
+
+            SAFE_RELEASE(pDSNotify);
+            SAFE_DELETE_ARRAY(aPosNotify);
+        }
+
+        return S_OK;
+    }
 };
 #pragma region // CStreamingSound Validation
 ValidateVirtualFieldOffset32(0x88, CStreamingSound, m_dwLastPlayPos);
@@ -4878,81 +5161,85 @@ static inline constexpr int32_t SOUND_COMMAND_QUEUE_LENGTH = 31;
 static inline constexpr size_t BGM_CHANNELS = 2;
 static inline constexpr size_t BGM_SAMPLE_RATE = 44100;
 static inline constexpr size_t BGM_SAMPLE_BITS = 16;
-static inline constexpr size_t BGM_SAMPLE_BYTES = BGM_SAMPLE_BITS / CHAR_BIT;
-static inline constexpr size_t BGM_BLOCK_ALIGN = BGM_SAMPLE_BYTES * BGM_CHANNELS;
+static inline constexpr size_t BGM_SAMPLE_BYTES = SAMPLE_BYTES(BGM_SAMPLE_BITS);
+static inline constexpr size_t BGM_BLOCK_ALIGN = SAMPLE_BLOCK_ALIGN(BGM_SAMPLE_BITS, BGM_CHANNELS);
+static inline constexpr size_t BGM_SAMPLE_THROUGHPUT = SAMPLE_THROUGHPUT(BGM_SAMPLE_BITS, BGM_CHANNELS, BGM_SAMPLE_RATE);
 
 static inline constexpr auto MIN_VOLUME = DSBVOLUME_MIN / 2;
 static inline constexpr auto SILENT_VOLUME = DSBVOLUME_MIN;
 
-// size: 0x4
-struct CSoundManager : CSoundManagerOld {
-    //IDirectSound8* m_pDS; // 0x0
-    // 0x4
+// 0x4898F0
+dllexport gnu_noinline HRESULT thiscall CSoundManager::CreateStreamingFromMemory(
+    CStreamingSound** ppStreamingSound,
+    BYTE* pbData,
+    ULONG ulDataSize,
+    ThBgmFormat* bgm_format,
+    DWORD _dwCreationFlags, // unused
+    GUID guid3DAlgorithm,
+    DWORD _dwNotifyCount, // unused
+    DWORD dwNotifySize,
+    HANDLE hNotifyEvent
+) {
+    static constexpr DWORD dwNotifyCount = 8;
 
-    // 0x4898F0
-    dllexport gnu_noinline HRESULT thiscall CreateStreamingFromMemory(
-        CStreamingSound** ppStreamingSound,
-        BYTE* pbData,
-        ULONG ulDataSize,
-        ThBgmFormat* bgm_format,
-        DWORD _dwCreationFlags, // unused
-        GUID guid3DAlgorithm,
-        DWORD _dwNotifyCount, // unused
-        DWORD dwNotifySize,
-        HANDLE hNotifyEvent
-    ) asm_symbol_rel(0x4898F0)
-    {
-        static constexpr DWORD dwNotifyCount = 8;
+    DEBUG_PRINT("StreamingSound Create \r\n");
 
-        DEBUG_PRINT("StreamingSound Create \r\n");
-
-        if (!this->m_pDS) {
-            return CO_E_NOTINITIALIZED;
-        }
-
-        LPDIRECTSOUNDBUFFER pDSBuffer = NULL;
-        LPDIRECTSOUNDNOTIFY pDSNotify = NULL;
-
-        // This pointer gets leaked on error paths
-        CWaveFile* pWaveFile = new CWaveFile();
-        pWaveFile->OpenFromMemory(pbData, ulDataSize, bgm_format, 0);
-
-        DWORD dwDSBufferSize = dwNotifySize * dwNotifyCount;
-
-        DSBUFFERDESC dsbd;
-        dsbd.dwReserved = 0;
-        dsbd.dwBufferBytes = ulDataSize;
-        dsbd.dwSize = sizeof(DSBUFFERDESC);
-        dsbd.dwFlags = DSBCAPS_CTRLPOSITIONNOTIFY | DSBCAPS_GLOBALFOCUS | DSBCAPS_GETCURRENTPOSITION2 | DSBCAPS_CTRLVOLUME | DSBCAPS_LOCSOFTWARE;
-        dsbd.guid3DAlgorithm = guid3DAlgorithm;
-        dsbd.lpwfxFormat = &pWaveFile->bgm_format->wave_format;
-
-        if (
-            FAILED(this->m_pDS->CreateSoundBuffer(&dsbd, &pDSBuffer, NULL)) ||
-            FAILED(pDSBuffer->QueryInterface(IID_IDirectSoundNotify, (LPVOID*)&pDSNotify))
-        ) {
-            return E_FAIL;
-        }
-
-        // yes this is incorrectly freed with delete instead of delete[]
-        DSBPOSITIONNOTIFY* aPosNotify = new DSBPOSITIONNOTIFY[dwNotifyCount];
-        
-        // MSVC actually vectorized this with a runtime
-        // check for SSE4.1 for some reason
-        for (size_t i = 0; i < dwNotifyCount; ++i) {
-            aPosNotify[i].dwOffset = (dwNotifySize * i) + dwNotifySize - 1;
-            aPosNotify[i].hEventNotify = hNotifyEvent;
-        }
-
-        if (FAILED(pDSNotify->SetNotificationPositions(dwNotifyCount, aPosNotify))) {
-            SAFE_RELEASE(pDSNotify);
-            SAFE_DELETE(aPosNotify);
-            return E_FAIL;
-        }
-
-        *ppStreamingSound = new CStreamingSound(pDSBuffer, dwDSBufferSize, pWaveFile, dwNotifySize);
+    if (!this->dsound) {
+        return CO_E_NOTINITIALIZED;
     }
-};
+
+    LPDIRECTSOUNDBUFFER pDSBuffer = NULL;
+    LPDIRECTSOUNDNOTIFY pDSNotify = NULL;
+
+    // This pointer gets leaked on error paths
+    CWaveFile* pWaveFile = new CWaveFile(bgm_format);
+    pWaveFile->OpenFromMemory(pbData, ulDataSize, bgm_format, 0);
+
+    DWORD dwDSBufferSize = dwNotifySize * dwNotifyCount;
+
+    DSBUFFERDESC dsbd;
+    dsbd.dwReserved = 0;
+    dsbd.dwBufferBytes = ulDataSize;
+    dsbd.dwSize = sizeof(DSBUFFERDESC);
+    dsbd.dwFlags = DSBCAPS_CTRLPOSITIONNOTIFY | DSBCAPS_GLOBALFOCUS | DSBCAPS_GETCURRENTPOSITION2 | DSBCAPS_CTRLVOLUME | DSBCAPS_LOCSOFTWARE;
+    dsbd.guid3DAlgorithm = guid3DAlgorithm;
+    dsbd.lpwfxFormat = &pWaveFile->bgm_format->wave_format;
+
+    if (
+        FAILED(this->dsound->CreateSoundBuffer(&dsbd, &pDSBuffer, NULL)) ||
+        FAILED(pDSBuffer->QueryInterface(IID_IDirectSoundNotify, (LPVOID*)&pDSNotify))
+    ) {
+        return E_FAIL;
+    }
+
+    // yes this is incorrectly freed with delete instead of delete[]
+    DSBPOSITIONNOTIFY* aPosNotify = new DSBPOSITIONNOTIFY[dwNotifyCount];
+
+    // MSVC actually vectorized this with a runtime
+    // check for SSE4.1 for some reason
+    for (size_t i = 0; i < dwNotifyCount; ++i) {
+        aPosNotify[i].dwOffset = (dwNotifySize * i) + dwNotifySize - 1;
+        aPosNotify[i].hEventNotify = hNotifyEvent;
+    }
+
+    if (FAILED(pDSNotify->SetNotificationPositions(dwNotifyCount, aPosNotify))) {
+        SAFE_RELEASE(pDSNotify);
+        SAFE_DELETE(aPosNotify);
+        return E_FAIL;
+    }
+
+    SAFE_RELEASE(pDSNotify);
+    SAFE_DELETE(aPosNotify);
+
+    CStreamingSound* cstreaming_sound_ptr = new CStreamingSound(pDSBuffer, dwDSBufferSize, pWaveFile, dwNotifySize);
+    *ppStreamingSound = cstreaming_sound_ptr;
+
+    cstreaming_sound_ptr->buffer_description = dsbd;
+    (*ppStreamingSound)->csound_manager_ptr = this;
+    (*ppStreamingSound)->m_hNotifyEvent = hNotifyEvent;
+    (*ppStreamingSound)->__locked = FALSE;
+    return S_OK;
+}
 
 // size: 0x573C
 struct SoundManager {
@@ -5258,7 +5545,8 @@ dllexport inline HRESULT CWaveFile::ResetFile(bool loop, uint32_t arg2) {
     return S_OK;
 }
 
-inline HRESULT CSound::SetVolume(int32_t volume) {
+// 0x48A5A0
+dllexport inline HRESULT CSound::SetVolume(int32_t volume) {
     LPDIRECTSOUNDBUFFER* sound_buffers = this->sound_buffer_array;
     int32_t bgm_volume = SOUND_MANAGER.bgm_volume;
     if (bgm_volume) {
@@ -5332,23 +5620,23 @@ inline ZUNResult SoundManager::load_bgm(int32_t index) {
         DEBUG_PRINT("Streming BGM Load no %d\r\n", index);
         ThBgmFormat* bgm_format = SOUND_MANAGER.loaded_bgm_formats[index];
         uint32_t align = bgm_format->wave_format.nBlockAlign;
-        uint32_t B = (bgm_format->wave_format.nSamplesPerSec * align) * BGM_CHANNELS / CHAR_BIT;
+        uint32_t notify_size = (bgm_format->wave_format.nSamplesPerSec * align) * BGM_BLOCK_ALIGN / CHAR_BIT;
         SOUND_MANAGER.__handle_570C = CreateEventA(NULL, FALSE, FALSE, NULL);
         //SOUND_MANAGER.__handle_14 = CreateThread(NULL, 0, &__sound_thread_4779A0, NULL, 0, &SOUND_MANAGER.sound_thread_id);
-        /*
-        if (SUCCEEDED(CSoundManager::__sub_4898F0(
-            SOUND_MANAGER.cstreaming_sound_ptr,
-            SOUND_MANAGER.__loaded_bgm_buffers_B[index],
+        if (SUCCEEDED(SOUND_MANAGER.csound_manager_ptr->CreateStreamingFromMemory(
+            &SOUND_MANAGER.cstreaming_sound_ptr,
+            (BYTE*)SOUND_MANAGER.__loaded_bgm_buffers_B[index],
             SOUND_MANAGER.loaded_bgm_buffer_sizes[index],
             SOUND_MANAGER.loaded_bgm_formats[index],
             UNUSED_DWORD,
-            0, 0, 0, 0,
-            B - B % align,
+            GUID_NULL,
+            UNUSED_DWORD,
+            notify_size - notify_size % align,
             SOUND_MANAGER.__handle_570C
         ))) {
-            BREAK_NEXT_CMD_ITER();
+            SOUND_MANAGER.__bgm_index_197C = index;
+            return ZUN_SUCCESS;
         }
-        */
     }
     return ZUN_ERROR;
 }
@@ -5402,65 +5690,34 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
                     if (index >= 0) {
                         switch (int32_t iter = snd_cmd->iter) {
                             case 0:
-                                if (
-                                    SOUND_MANAGER.csound_manager_ptr &&
-                                    SUPERVISOR.config.bgm_type != BgmOff &&
-                                    SOUND_MANAGER.dsound &&
-                                    SOUND_MANAGER.__loaded_bgm_buffers_A[index]
-                                ) {
-                                    byteloop_strcpy(SOUND_MANAGER.__text_buffer_1984, SOUND_MANAGER.loaded_bgm_filenames[index]);
-                                    ThBgmFormat* bgm_format = SOUND_MANAGER.loaded_bgm_formats[index];
-                                    uint32_t align = bgm_format->wave_format.nBlockAlign;
-                                    uint32_t B = (bgm_format->wave_format.nSamplesPerSec * align) * BGM_CHANNELS / CHAR_BIT;
-                                    SOUND_MANAGER.__handle_570C = CreateEventA(NULL, FALSE, FALSE, NULL);
-                                    SOUND_MANAGER.__handle_14 = CreateThread(NULL, 0, &__sound_thread_4779A0, NULL, 0, &SOUND_MANAGER.sound_thread_id);
-                                    /*
-                                    if (SUCCEEDED(CSoundManager::__sub_4898F0(
-                                        SOUND_MANAGER.cstreaming_sound_ptr,
-                                        SOUND_MANAGER.__loaded_bgm_buffers_B[index],
-                                        SOUND_MANAGER.loaded_bgm_buffer_sizes[index],
-                                        SOUND_MANAGER.loaded_bgm_formats[index],
-                                        UNUSED_DWORD,
-                                        0, 0, 0, 0,
-                                        B - B % align,
-                                        SOUND_MANAGER.__handle_570C
-                                    ))) {
-                                        BREAK_NEXT_CMD_ITER();
-                                    }
-                                    */
+                                if (ZUN_SUCCEEDED(SOUND_MANAGER.load_bgm(index))) {
+                                    BREAK_NEXT_CMD_ITER();
                                 }
                                 break;
                             case 2: {
                                 CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr;
-                                /*
                                 if (
                                     !cstreaming_sound_ptr ||
-                                    SUCCEEDED(cstreaming_sound_ptr->__sub_48AAC0(0))
+                                    SUCCEEDED(cstreaming_sound_ptr->Reset(0))
                                 ) {
                                     BREAK_NEXT_CMD_ITER();
                                 }
-                                */
                                 break;
                             }
                             case 5: {
                                 CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr;
-                                LPDIRECTSOUNDBUFFER sound_buffer = NULL;
-                                if (cstreaming_sound_ptr->sound_buffer_array && cstreaming_sound_ptr->sound_buffer_count >= 0) {
-                                    sound_buffer = *cstreaming_sound_ptr->sound_buffer_array;
-                                }
-                                /*
-                                if (SUCCEEDED(SOUND_MANAGER.cstreaming_sound_ptr->__sub_48A1A0(
+                                LPDIRECTSOUNDBUFFER sound_buffer = cstreaming_sound_ptr->GetBuffer();
+                                if (SUCCEEDED(SOUND_MANAGER.cstreaming_sound_ptr->FillBufferWithSound(
                                     sound_buffer,
-                                    cstreaming_sound_ptr->cwave_ptr->bgm_format->__dword_1C != 0,
+                                    cstreaming_sound_ptr->cwave_ptr->bgm_format->length != 0,
                                     0
                                 ))) {
                                     BREAK_NEXT_CMD_ITER();
                                 }
-                                */
                                 break;
                             }
                             case 7:
-                                //SOUND_MANAGER.cstreaming_sound_ptr->__sub_48A440(0, 1, 0);
+                                SOUND_MANAGER.cstreaming_sound_ptr->Play(0, DSBPLAY_LOOPING, 0);
                                 BREAK_NEXT_CMD_ITER();
                             default:
                                 if (iter < 14) {
@@ -5483,32 +5740,27 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
                                 byteloop_strcpy(SOUND_MANAGER.__text_buffer_2384, filename);
                                 int32_t format_index = SOUND_MANAGER.__get_bgm_format_index(filename);
                                 snd_cmd->arg = format_index;
-                                //SOUND_MANAGER.cstreaming_sound_ptr->__sub_489E90(SOUND_MANAGER.bgm_formats[format_index]);
+                                SOUND_MANAGER.cstreaming_sound_ptr->InitSoundBuffers(&SOUND_MANAGER.bgm_formats[format_index]);
                                 BREAK_NEXT_CMD_ITER();
                             }
                             break;
                         case 2:
-                            //cstreaming_sound_ptr->__sub_48ADC0(SOUND_MANAGER.bgm_formats[snd_cmd->arg], 0);
+                            cstreaming_sound_ptr->Reopen(&SOUND_MANAGER.bgm_formats[snd_cmd->arg], 0);
                             BREAK_NEXT_CMD_ITER();
                         case 3: {
-                            LPDIRECTSOUNDBUFFER sound_buffer = NULL;
-                            if (cstreaming_sound_ptr->sound_buffer_array && cstreaming_sound_ptr->sound_buffer_count >= 0) {
-                                sound_buffer = *cstreaming_sound_ptr->sound_buffer_array;
-                            }
-                            //cstreaming_sound_ptr->__sub_48AAC0(0);
-                            /*
-                            if (SUCCEEDED(SOUND_MANAGER.cstreaming_sound_ptr->__sub_48A1A0(
+                            LPDIRECTSOUNDBUFFER sound_buffer = cstreaming_sound_ptr->GetBuffer();
+                            cstreaming_sound_ptr->Reset(0);
+                            if (SUCCEEDED(SOUND_MANAGER.cstreaming_sound_ptr->FillBufferWithSound(
                                 sound_buffer,
-                                cstreaming_sound_ptr->cwave_ptr->bgm_format->__fade_length != 0,
+                                cstreaming_sound_ptr->cwave_ptr->bgm_format->length != 0,
                                 0
                             ))) {
                                 BREAK_NEXT_CMD_ITER();
                             }
-                            */
                             break;
                         }
                         case 4:
-                            //cstreaming_sound_ptr->__sub_48A440(0, 1, 0);
+                            cstreaming_sound_ptr->Play(0, DSBPLAY_LOOPING, 0);
                             BREAK_NEXT_CMD_ITER();
                         default:
                             if (iter < 7) {
@@ -5601,7 +5853,7 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
                     double bits_per_sample = format->wave_format.wBitsPerSample;
                     double channels = format->wave_format.nChannels;
                     double F = bgm_length / (samples_per_second / CHAR_BIT) / bits_per_sample / channels;
-                    double G = (bgm_length - format->pre_loop_length) / samples_per_second / (bits_per_sample / CHAR_BIT) / channels;
+                    double G = (bgm_length - format->pre_loop_length) / samples_per_second / SAMPLE_BYTES(bits_per_sample) / channels;
                     while (A >= F) {
                         A -= G;
                     }
@@ -11851,14 +12103,14 @@ dllexport gnu_noinline ZUNResult SoundManager::__sub_476410(HWND window_hwnd_arg
     this->csound_manager_ptr = csound_manager_ptr;
     if (SUCCEEDED(csound_manager_ptr->Initialize(window_hwnd, DSSCL_PRIORITY))) {
         csound_manager_ptr->SetPrimaryBufferFormat(BGM_CHANNELS, BGM_SAMPLE_RATE, BGM_SAMPLE_BITS);
-        LPDIRECTSOUND8 dsound = this->csound_manager_ptr->GetDirectSound();
+        LPDIRECTSOUND8 dsound = this->csound_manager_ptr->dsound;
         this->dsound = dsound;
         LPDIRECTSOUNDBUFFER* buffer_ptr_ptr = &this->sound_buffer_ptr;
         WAVEFORMATEX sound_format = {
-            .wFormatTag = WAVE_FORMAT_1M08,
+            .wFormatTag = WAVE_FORMAT_PCM,
             .nChannels = BGM_CHANNELS,
             .nSamplesPerSec = BGM_SAMPLE_RATE,
-            .nAvgBytesPerSec = BGM_SAMPLE_RATE * BGM_SAMPLE_BYTES * BGM_CHANNELS,
+            .nAvgBytesPerSec = BGM_SAMPLE_THROUGHPUT,
             .nBlockAlign = BGM_BLOCK_ALIGN,
             .wBitsPerSample = BGM_SAMPLE_BITS,
             .cbSize = 0
@@ -16970,7 +17222,7 @@ inline UpdateFuncRet thiscall Supervisor::on_tick() {
     }
 
     // TODO: uncommenting this segfaults clang because ???
-    //SOUND_MANAGER.__on_tick();
+    SOUND_MANAGER.__on_tick();
 
     if (CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr) {
         // TODO
@@ -25156,7 +25408,19 @@ dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
                     // TODO
                 }
                 if (zun_file_exists("thbgm.dat")) {
-                    // TODO
+                    if (!SUPERVISOR.config.preload_bgm) {
+                        byteloop_strcpy(SOUND_MANAGER.thbgm_filename, "thbgm.dat");
+                        if (
+                            SOUND_MANAGER.csound_manager_ptr &&
+                            SOUND_MANAGER.dsound
+                        ) {
+                            SOUND_MANAGER.stop_bgm();
+                            
+                        }
+                    }
+                    else {
+                        memcpy(SOUND_MANAGER.thbgm_filename, "thbgm.dat", sizeof("thbgm.dat"));
+                    }
                 }
                 UNKNOWN_THREAD_A.start(thread_func_load_front_anm, NULL);
                 if (

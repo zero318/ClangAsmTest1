@@ -968,7 +968,7 @@ target_link_options(UMTest1 PRIVATE
 
 target_link_libraries(UMTest1 "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\dsound.lib")
 if(NOT STATIC_CSOUND)
-target_link_libraries(UMTest1 CSoundLib)
+#target_link_libraries(UMTest1 CSoundLib)
 endif()
 
 add_library(UDoALGAsm OBJECT
