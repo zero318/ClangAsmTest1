@@ -75,6 +75,8 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define cgasm(...)
 #endif
 
+#define GAME_FOLDER_PATH "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\"
+
 #define CHEAT_THE_LOADER 1
 
 #if CHEAT_THE_LOADER
@@ -668,7 +670,7 @@ struct DebugLogger {
     // 0x48B020
     dllexport static gnu_noinline void cdecl __debug_log_stub_5(const char* format, ...) asm_symbol_rel(0x48B020) {}
 
-#if NDEBUG
+#if !NDEBUG
     static void cdecl debug_print(const char* format, ...) {
 
     }
@@ -14538,40 +14540,65 @@ ValidateFieldOffset32(0x14, AnmImage, flags);
 ValidateStructSize32(0x18, AnmImage);
 #pragma endregion
 
+// size: 0x14
+struct AnmSpriteData {
+    int32_t id; // 0x0
+    Float2 position; // 0x4
+    Float2 size; // 0xC
+    // 0x14
+};
+#pragma region // AnmSpriteData Validation
+ValidateFieldOffset32(0x0, AnmSpriteData, id);
+ValidateFieldOffset32(0x4, AnmSpriteData, position);
+ValidateFieldOffset32(0xC, AnmSpriteData, size);
+ValidateStructSize32(0x14, AnmSpriteData);
+#pragma endregion
+
 // size: 0x44
 struct AnmSprite {
-    unknown_fields(0x8); // 0x0
+    int32_t slot; // 0x0
+    int32_t __index_4; // 0x4
     int32_t __index_8; // 0x8
-    unknown_fields(0x10); // 0xC
-    float __float_1C; // 0x1C
-    float __float_20; // 0x20
+    float __float_C; // 0xC
+    float __float_10; // 0x10
+    float __float_14; // 0x14
+    float __float_18; // 0x18
+    float __surface_height; // 0x1C
+    float __surface_width; // 0x20
     float __uv_related_24[4]; // 0x24
     float __size_y; // 0x34
     float __size_x; // 0x38
-    float __float_3C; // 0x3C
-    float __float_40; // 0x40
+    float __entry_width_frac; // 0x3C
+    float __entry_height_frac; // 0x40
     // 0x44
 };
 #pragma region // AnmSprite Validation
+ValidateFieldOffset32(0x0, AnmSprite, slot);
+ValidateFieldOffset32(0x4, AnmSprite, __index_4);
 ValidateFieldOffset32(0x8, AnmSprite, __index_8);
-ValidateFieldOffset32(0x1C, AnmSprite, __float_1C);
-ValidateFieldOffset32(0x20, AnmSprite, __float_20);
+ValidateFieldOffset32(0xC, AnmSprite, __float_C);
+ValidateFieldOffset32(0x10, AnmSprite, __float_10);
+ValidateFieldOffset32(0x14, AnmSprite, __float_14);
+ValidateFieldOffset32(0x18, AnmSprite, __float_18);
+ValidateFieldOffset32(0x1C, AnmSprite, __surface_height);
+ValidateFieldOffset32(0x20, AnmSprite, __surface_width);
 ValidateFieldOffset32(0x24, AnmSprite, __uv_related_24);
 ValidateFieldOffset32(0x34, AnmSprite, __size_y);
 ValidateFieldOffset32(0x38, AnmSprite, __size_x);
-ValidateFieldOffset32(0x3C, AnmSprite, __float_3C);
-ValidateFieldOffset32(0x40, AnmSprite, __float_40);
+ValidateFieldOffset32(0x3C, AnmSprite, __entry_width_frac);
+ValidateFieldOffset32(0x40, AnmSprite, __entry_height_frac);
 ValidateStructSize32(0x44, AnmSprite);
 #pragma endregion
 
 // size: 0x8
 struct AnmScriptHeader {
-    uint32_t script_offset; // 0x0
-    unknown_fields(0x4); // 0x4
+    uint32_t script_id; // 0x0
+    uint32_t script_offset; // 0x4
     // 0x8
 };
 #pragma region // AnmScriptHeader Validation
-ValidateFieldOffset32(0x0, AnmScriptHeader, script_offset);
+ValidateFieldOffset32(0x0, AnmScriptHeader, script_id);
+ValidateFieldOffset32(0x4, AnmScriptHeader, script_offset);
 ValidateStructSize32(0x8, AnmScriptHeader);
 #pragma endregion
 
@@ -14677,8 +14704,8 @@ struct AnmLoaded {
             sizeY * scale_factor
         );
         vm->data.__matrix_454.set_scaled(
-            sizeX / sprite->__float_20 * sprite->__float_3C,
-            sizeY / sprite->__float_1C * sprite->__float_40
+            sizeX / sprite->__surface_width * sprite->__entry_width_frac,
+            sizeY / sprite->__surface_height * sprite->__entry_height_frac
         );
         vm->data.__matrix_414 = vm->data.__matrix_3D4;
 
@@ -38137,14 +38164,37 @@ skip_adding_image_size:
     D3DSURFACE_DESC desc;
     anm_loaded->images[entry_index].d3d_texture->GetLevelDesc(0, &desc);
 
-    AnmSprite* sprite_ptr = (AnmSprite*)entry->data;
-    for (int32_t i = 0; i < entry->sprite_count; ++i) {
-        // TODO: REALLY DO THIS SOONER
-        sprite_ptr++;
+    uint32_t* sprite_offsets_ptr = (uint32_t*)entry->data;
+    for (int32_t i = 0; i < entry->sprite_count; ++i, ++sprite_offsets_ptr, ++sprite_count) {
+        AnmSprite sprite;
+        int32_t slot_index = anm_loaded->slot_index;
+        sprite.slot = slot_index;
+        AnmSpriteData* sprite_data = based_pointer<AnmSpriteData>(entry, *sprite_offsets_ptr);
+        sprite.__index_8 = slot_index << 8 | entry_index;
+        sprite.__index_4 = entry_index;
+        float surface_width = desc.Width;
+        sprite.__surface_width = surface_width;
+        float entry_width_frac = surface_width / (float)entry->width;
+        sprite.__entry_width_frac = entry_width_frac;
+        float surface_height = desc.Height;
+        sprite.__surface_height = surface_height;
+        float entry_height_frac = surface_height / (float)entry->height;
+        sprite.__entry_height_frac = entry_height_frac;
+        sprite.__float_C = sprite_data->position.x * entry_width_frac;
+        sprite.__float_10 = sprite_data->position.y * entry_height_frac;
+        sprite.__float_14 = (sprite_data->position.x + sprite_data->size.x) * entry_width_frac;
+        sprite.__float_18 = (sprite_data->position.y + sprite_data->size.y) * entry_height_frac;
+        anm_loaded->sprites[sprite_count] = sprite;
+        anm_loaded->sprites[sprite_count].__uv_related_24[0] = anm_loaded->sprites[sprite_count].__float_C / anm_loaded->sprites[sprite_count].__surface_width;
+        anm_loaded->sprites[sprite_count].__uv_related_24[2] = anm_loaded->sprites[sprite_count].__float_14 / anm_loaded->sprites[sprite_count].__surface_width;
+        anm_loaded->sprites[sprite_count].__uv_related_24[1] = anm_loaded->sprites[sprite_count].__float_10 / anm_loaded->sprites[sprite_count].__surface_height;
+        anm_loaded->sprites[sprite_count].__uv_related_24[3] = anm_loaded->sprites[sprite_count].__float_18 / anm_loaded->sprites[sprite_count].__surface_height;
+        anm_loaded->sprites[sprite_count].__size_x = (anm_loaded->sprites[sprite_count].__float_14 - anm_loaded->sprites[sprite_count].__float_C) / entry_width_frac;
+        anm_loaded->sprites[sprite_count].__size_y = (anm_loaded->sprites[sprite_count].__float_18 - anm_loaded->sprites[sprite_count].__float_10) / entry_height_frac;
     }
-    AnmScriptHeader* script_ptr = (AnmScriptHeader*)sprite_ptr;
-    for (int32_t i = 0; i < entry->script_count; ++i) {
-        (*anm_loaded->scripts)[i] = based_pointer<AnmInstruction>(entry, script_ptr++->script_offset);
+    AnmScriptHeader* script_ptr = (AnmScriptHeader*)sprite_offsets_ptr;
+    for (int32_t i = 0; i < entry->script_count; ++i, ++script_ptr, ++script_count) {
+        (*anm_loaded->scripts)[script_count] = based_pointer<AnmInstruction>(entry, script_ptr->script_offset);
     }
     return 1;
 }
@@ -40882,7 +40932,7 @@ winmain_load_config:
 #if FIX_REALLY_BAD_BUGS
     char module_name[MAX_PATH + 1];
 #else
-    char module_name[8];
+    char module_name[sizeof("th18.exe") - 1];
 #endif
     if (GetModuleFileNameA(NULL, module_name, MAX_PATH + 1)) { // But why is the size wrong...?
         int32_t exe_file_size;
@@ -41134,7 +41184,7 @@ struct StaticCtorsDtors {
     }
 
     gnu_noinline StaticCtorsDtors() {
-        _chdir("F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\");
+        _chdir(GAME_FOLDER_PATH);
         HMODULE original_game = LoadLibraryExA("th18.exe.unvlv.exe", NULL, 0);
 
         copy_from_original_game(SOUND_DATA, 0x4C9B80, original_game);
