@@ -12879,15 +12879,15 @@ union AnmVMCreationFlags {
 // 0x4CDB00
 static Float4 ANCHOR_X_TABLE[3] = {
     { -0.5f, 0.5f, -0.5f, 0.5f },
-    { 0.0f, 0.5f, 0.0f, 0.5f },
-    { -0.5f, 0.0f, -0.5f, 0.0f }
+    { 0.0f, 1.0f, 0.0f, 1.0f },
+    { -1.0f, 0.0f, -1.0f, 0.0f }
 };
 
 // 0x4CDB30
 static Float4 ANCHOR_Y_TABLE[3] = {
     { -0.5f, -0.5f, 0.5f, 0.5f },
-    { 0.0f, 0.0f, 0.5f, 0.5f },
-    { -0.5f, -0.5f, 0.0f, 0.0f }
+    { 0.0f, 0.0f, 1.0f, 1.0f },
+    { -1.0f, -1.0f, 0.0f, 0.0f }
 };
 
 // 0x0
