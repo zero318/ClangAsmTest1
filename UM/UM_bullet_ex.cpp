@@ -15107,7 +15107,7 @@ struct AnmManager {
     int __int_CC; // 0xCC
     Float2 __float2_D0; // 0xD0
     Float2 __float2_D8; // 0xD8
-    unknown_fields(0x4); // 0xE0
+    int __int_E0; // 0xE0
     AnmVM __vm_E4; // 0xE4
     ZUNListEnds<AnmVM> world_list; // 0x6F0
     ZUNListEnds<AnmVM> ui_list; // 0x6F8
@@ -16213,7 +16213,7 @@ struct AnmManager {
                     vm_layer = (vm_layer - WORLD_LAYER_COUNT) >= UI_LAYER_COUNT ? vm_layer : vm_layer - WORLD_LAYER_B_COUNT;
                     if (vm_layer == layer_index) {
                         this->draw_vm(vm);
-                        ++vm->data.position_interp.end_time;
+                        ++this->__int_E0;
                     }
                 }
             });
@@ -16231,7 +16231,7 @@ struct AnmManager {
                     }
                     if (vm_layer == layer_index) {
                         this->draw_vm(vm);
-                        ++vm->data.position_interp.end_time;
+                        ++this->__int_E0;
                     }
                 }
             });
@@ -16990,6 +16990,7 @@ ValidateFieldOffset32(0xC8, AnmManager, __dword_C8);
 ValidateFieldOffset32(0xCC, AnmManager, __int_CC);
 ValidateFieldOffset32(0xD0, AnmManager, __float2_D0);
 ValidateFieldOffset32(0xD8, AnmManager, __float2_D8);
+ValidateFieldOffset32(0xE0, AnmManager, __int_E0);
 ValidateFieldOffset32(0xE4, AnmManager, __vm_E4);
 ValidateFieldOffset32(0x6F0, AnmManager, world_list);
 ValidateFieldOffset32(0x6F8, AnmManager, ui_list);
