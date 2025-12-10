@@ -1818,12 +1818,12 @@ struct UpdateFuncRegistry {
     UpdateFunc on_tick_funcs; // 0x0
     UpdateFunc on_draw_funcs; // 0x28
     ZUNList<UpdateFunc>* __next_node; // 0x50
-    int __dword_54; // 0x54
+    int __int_54; // 0x54
     // 0x58
 
     inline UpdateFuncRegistry() : on_tick_funcs(NULL), on_draw_funcs(NULL) {
         this->__next_node = NULL;
-        this->__dword_54 = 0;
+        this->__int_54 = 0;
     }
 
     inline ~UpdateFuncRegistry();
@@ -1914,7 +1914,7 @@ RestartOnTick:
                 }
                 if (update_tick->run_on_update) {
                     do {
-                        if (this->__dword_54) {
+                        if (this->__int_54) {
                             goto CleanupThenNext;
                         }
                         int32_t update_ret;
@@ -1983,7 +1983,7 @@ EndOnTick:
                 }
                 if (update_draw->run_on_update) {
                     do {
-                        /*if (update_func_registry->__dword_54) {
+                        /*if (update_func_registry->__int_54) {
                             goto CleanupThenNext;
                         }*/
                         int32_t update_ret;
@@ -2037,7 +2037,7 @@ EndOnDraw:
 ValidateFieldOffset32(0x0, UpdateFuncRegistry, on_tick_funcs);
 ValidateFieldOffset32(0x28, UpdateFuncRegistry, on_draw_funcs);
 ValidateFieldOffset32(0x50, UpdateFuncRegistry, __next_node);
-ValidateFieldOffset32(0x54, UpdateFuncRegistry, __dword_54);
+ValidateFieldOffset32(0x54, UpdateFuncRegistry, __int_54);
 ValidateStructSize32(0x58, UpdateFuncRegistry);
 #pragma endregion
 
@@ -3673,11 +3673,12 @@ struct StageData {
     int32_t bgm_indices[MUSIC_PER_STAGE]; // 0x28
     unknown_fields(0x4); // 0x30
     StageDataInner innner[1]; // 0x34 this may actually be shifted up by 1 dword
-
+    unknown_fields(0x1C);
     int32_t __anm_file_index_78; // 0x78
     int32_t __anm_script_7C; // 0x7C
     int32_t __anm_script_80; // 0x80
-    // 0x84
+    unknown_fields(0x50); // 0x84
+    // 0xD4
 };
 
 
@@ -3829,7 +3830,7 @@ struct Supervisor {
     int32_t gamemode_previous; // 0x7FC
     int __dword_800; // 0x800
     int32_t __int_804; // 0x804
-    int __dword_808; // 0x808
+    int __int_808; // 0x808
     unknown_fields(0xC); // 0x80C
     int __int_818; // 0x818
     unknown_fields(0x4); // 0x81C
@@ -4043,7 +4044,7 @@ ValidateFieldOffset32(0x7F8, Supervisor, gamemode_switch);
 ValidateFieldOffset32(0x7FC, Supervisor, gamemode_previous);
 ValidateFieldOffset32(0x800, Supervisor, __dword_800);
 ValidateFieldOffset32(0x804, Supervisor, __int_804);
-ValidateFieldOffset32(0x808, Supervisor, __dword_808);
+ValidateFieldOffset32(0x808, Supervisor, __int_808);
 ValidateFieldOffset32(0x818, Supervisor, __int_818);
 ValidateFieldOffset32(0x820, Supervisor, disable_vsync);
 ValidateFieldOffset32(0x824, Supervisor, __dword_824);
@@ -4076,7 +4077,7 @@ extern "C" {
 
 inline UpdateFuncRegistry::~UpdateFuncRegistry() {
     SUPERVISOR.__thread_A94.stop_and_cleanup();
-    this->__dword_54 = 1;
+    this->__int_54 = 1;
 
     this->run_all_on_tick(); // this seems very bad
 
@@ -10169,7 +10170,7 @@ ValidateStructSize32(0x90, SptResource);
 #pragma endregion
 
 // size: 0x1098
-struct EclManager : SptResource {
+struct EclResource : SptResource {
     // SptResource base; // 0x0
     EclStack __wtf_stack_maybe; // 0x90
     // 0x1098
@@ -10178,9 +10179,18 @@ struct EclManager : SptResource {
         zero_this();
     }
 
-    inline EclManager() {
+    inline EclResource() {
         this->zero_contents();
     }
+};
+
+// TODO: This directly inherits from SptResource but IDK how
+// to make the constructor memset the entire size but still
+// write the vtable pointer correctly
+// size: 0x1098
+struct EclManager : EclResource {
+    // EclResource base; // 0x0
+    // 0x1098
 
     inline ~EclManager() {
         nounroll for (size_t i = 0; i < MAX_ECL_FILE_COUNT; ++i) {
@@ -11246,7 +11256,7 @@ struct GameThread : ZUNTask {
             uint32_t __unknown_flag_G : 1; // 18
         };
     };
-    unknown_fields(0x4); // 0xB4
+    int __int_B4; // 0xB4
     int __int_B8; // 0xB8
     unknown_fields(0x14); // 0xBC
     ReplayMode replay_mode; // 0xD0
@@ -11303,10 +11313,10 @@ public:
         return GAME_THREAD_PTR->thread_start();
     }
 
+    inline void __start_stage();
+
     // 0x443E60
-    dllexport gnu_noinline ZUNResult thiscall __sub_443E60() asm_symbol_rel(0x443E60) {
-        // TODO-EMPTY: important function, allocates main enemy
-    }
+    dllexport gnu_noinline ZUNResult thiscall __sub_443E60() asm_symbol_rel(0x443E60);
 
     // 0x4443C0
     dllexport gnu_noinline ZUNResult thiscall __sub_4443C0() asm_symbol_rel(0x4443C0);
@@ -20754,7 +20764,7 @@ extern "C" {
 #endif
     ;
     // 0x4CF414
-    externcg void* PLAYER_FUNC_TABLE_C[1] cgasm("_PLAYER_FUNC_TABLE_C"); // No, the missing const isn't a typo
+    void* PLAYER_FUNC_TABLE_C[1] cgasm("_PLAYER_FUNC_TABLE_C") = {}; // No, the missing const isn't a typo
     // 0x4B41F0
     externcg BulletDamageFunc *const PLAYER_BULLET_DAMAGE_FUNCS[8] cgasm("_PLAYER_BULLET_DAMAGE_FUNCS")
 #if !USE_EXTERN_FOR_CODEGEN
@@ -20833,7 +20843,8 @@ struct ShtFile {
     float movement_speeds[4]; // 0x10
     int32_t max_level; // 0x20
     int32_t power_per_level; // 0x24
-    unknown_fields(0x18); // 0x28
+    int __dword_28; // 0x28
+    unknown_fields(0x14); // 0x2C
     Float2 __float2_array_40[10]; // 0x40
     Float2 __float2_array_90[10]; // 0x90
     ShtFileUnknownA* __unknownA_ptr_array_E0[MAX_SHT_UNKNOWN_A_COUNT]; // 0xE0
@@ -22241,10 +22252,11 @@ public:
                         sht_file = this->sht_file;
 
                         sht_file->__unknownA_ptr_array_E0[i] = pointer_raw_offset(sht_file->__unknownA_ptr_array_E0[i], &sht_file->__unknownA_array_180[0]);
-
+                        // TODO: This crashes for some reason even though it looks correct?
+                        /*
                         for (
                             ShtFileUnknownA* unknownA_ptr = sht_file->__unknownA_ptr_array_E0[i];
-                            unknownA_ptr->__int_0 >= 0;
+                            unknownA_ptr->__byte_0 >= 0;
                             ++unknownA_ptr
                         ) {
                             unknownA_ptr->__init_func = PLAYER_BULLET_INIT_FUNCS[unknownA_ptr->__init_func_index];
@@ -22252,7 +22264,7 @@ public:
                             unknownA_ptr->__unknown_func_C = PLAYER_FUNC_TABLE_C[unknownA_ptr->__unknown_func_C_index];
                             unknownA_ptr->__damage_func = PLAYER_BULLET_DAMAGE_FUNCS[unknownA_ptr->__damage_func_index];
                         }
-
+                        */
                         sht_file = this->sht_file;
                     } while (++i < sht_file->__unknownA_count);
                 }
@@ -25519,7 +25531,7 @@ dllexport gnu_noinline LoadingThread::~LoadingThread() {
 // 0x452CB0
 dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
     LoadingThread* loading_thread = LOADING_THREAD_PTR;
-    AnmLoaded* anm_loaded = ANM_MANAGER_PTR->preload_anm(1, "sig.anm");
+    AnmLoaded* anm_loaded = ANM_MANAGER_PTR->preload_anm(SIG_ANM_INDEX, "sig.anm");
     loading_thread->sig_anm = anm_loaded;
     if (anm_loaded) {
         loading_thread->enable_draw_unsafe();
@@ -25527,7 +25539,7 @@ dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
         loading_thread->sig_loaded = 1;
         if (AsciiManager::allocate()) {
             loading_thread->__ascii_manager_loaded = 1;
-            anm_loaded = ANM_MANAGER_PTR->preload_anm(0, "text.anm");
+            anm_loaded = ANM_MANAGER_PTR->preload_anm(TEXT_ANM_INDEX, "text.anm");
             SUPERVISOR.text_anm = anm_loaded;
             if (anm_loaded) {
                 void* bgm_format = read_file_to_buffer("../../bgm/thbgm.fmt", NULL, false);
@@ -27413,7 +27425,7 @@ struct StdDistortion {
 struct StdQuad {
     int16_t type; // 0x0
     int16_t offset_to_next; // 0x2
-    uint16_t anm_script; // 0x4
+    int16_t anm_script; // 0x4
     int16_t instance_vm_index; // 0x6
     Float3 position; // 0x8
     Float2 size; // 0x14
@@ -27634,6 +27646,34 @@ struct Stage : ZUNTask {
         zero_this();
     }
 
+    inline void enable_funcs() {
+        this->enable_tick();
+        this->enable_draw();
+        if (UpdateFunc* on_draw_B = this->on_draw_func_B) {
+            on_draw_B->run_on_update = true;
+        }
+    }
+
+    inline void enable_funcs_unsafe() {
+        this->enable_tick_unsafe();
+        this->enable_draw_unsafe();
+        this->on_draw_func_B->run_on_update = true;
+    }
+
+    inline void disable_funcs() {
+        this->disable_tick();
+        this->disable_draw();
+        if (UpdateFunc* on_draw_B = this->on_draw_func_B) {
+            on_draw_B->run_on_update = false;
+        }
+    }
+
+    inline void disable_funcs_unsafe() {
+        this->disable_tick();
+        this->disable_draw();
+        this->on_draw_func_B->run_on_update = false;
+    }
+
     inline Stage() {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
@@ -27706,6 +27746,24 @@ struct Stage : ZUNTask {
         for (size_t i = 0; i < countof(this->std_vm.slot_vms); ++i) {
             this->std_vm.slot_vms[i].interrupt_and_run(interrupt);
         }
+    }
+
+    inline void __start() {
+        this->enable_funcs_unsafe();
+
+        size_t vm_index = 0;
+        for (int32_t i = 0; i < this->std_file->object_count; ++i) {
+            this->objects[i]->flags = 1;
+            for (
+                StdQuad* quad = this->objects[i]->quads;
+                quad->type >= 0;
+                quad = pointer_raw_offset(quad, quad->offset_to_next)
+            ) {
+                clang_forceinline this->stage_anm->__copy_data_to_vm_and_run(&this->instance_vms[vm_index], quad->anm_script);
+                quad->instance_vm_index = vm_index++;
+            }
+        }
+        this->std_vm.current_instruction_offset = 0;
     }
 
     // 0x41CEE0
@@ -36626,15 +36684,19 @@ public:
     // 0x461E90
     dllexport gnu_noinline ZUNResult thiscall __write_to_path(const char* path, const char* name, bool arg3, bool arg4) asm_symbol_rel(0x461E90);
 
-    // 0x461CF0
-    dllexport static gnu_noinline ReplayManager* fastcall allocate(const char* path) asm_symbol_rel(0x461CF0) {
+
+    static inline ReplayManager* allocate(ReplayMode mode, const char* path) {
         ReplayManager* replay_manager = new ReplayManager();
-        replay_manager->mode = __replay_mode_2;
-        if (ZUN_FAILED(replay_manager->__load_from_path(path))) {
+        if (ZUN_FAILED(replay_manager->initialize(mode, path))) {
             delete replay_manager;
             return NULL;
         }
         return replay_manager;
+    }
+
+    // 0x461CF0
+    dllexport static gnu_noinline ReplayManager* fastcall allocate_mode2(const char* path) asm_symbol_rel(0x461CF0) {
+        return allocate(__replay_mode_2, path);
     }
 };
 #pragma region // ReplayManager Verification
@@ -37284,12 +37346,12 @@ struct MainMenu : ZUNTask {
 
     // 0x464ED0
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x464ED0) {
-
+        // TODO: anything
     }
 
     // 0x465870
     dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x465870) {
-
+        // TODO: anything
     }
 
     // 0x465A80
@@ -37314,10 +37376,26 @@ struct MainMenu : ZUNTask {
         main_menu->on_draw_func = update_func;
 
         if (
-            (main_menu->title_anm = ANM_MANAGER_PTR->preload_anm(16, "title.anm")) &&
-            (main_menu->title_v_anm = ANM_MANAGER_PTR->preload_anm(17, "title_v.anm"))
+            (main_menu->title_anm = ANM_MANAGER_PTR->preload_anm(TITLE_ANM_INDEX, "title.anm")) &&
+            (main_menu->title_v_anm = ANM_MANAGER_PTR->preload_anm(TITLEV_ANM_INDEX, "title_v.anm"))
         ) {
+            main_menu->__menu_select_24.enable_wrap = true;
+            UNKNOWN_INT_H = 0;
+            //SUPERVISOR.__sub_475380();
+            if (LoadingThread* loading_thread = LOADING_THREAD_PTR) {
+                if (loading_thread->__int_648 < 180) {
+                    do {
+                        Sleep(16);
+                    } while (LOADING_THREAD_PTR->__int_648 < 180);
+                }
+                ANM_MANAGER_PTR->unload_anm(SIG_ANM_INDEX);
 
+                // DEBUG: Try to directly start a game?
+                //SUPERVISOR.gamemode_switch = 10;
+                //GAME_MANAGER.globals.__stage_number_related_4 = 1;
+            }
+            //main_menu->enable_draw_unsafe(); // this crashes without the menu code
+            WINDOW_DATA.__int_20D0 = 1;
         }
         else {
             LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
@@ -38750,28 +38828,6 @@ dllexport gnu_noinline double vectorcall get_runtime() {
     }
 }
 
-// 0x454950
-dllexport gnu_noinline int thiscall Supervisor::__sub_454950() {
-    if (this->gamemode_current != this->gamemode_switch) {
-        CRITICAL_SECTION_MANAGER.enter_section(Menu_CS);
-
-
-        int32_t prev_gamemode = this->gamemode_current;
-        int32_t new_gamemode = this->gamemode_switch;
-        this->gamemode_previous = prev_gamemode;
-
-        switch (new_gamemode) {
-            case 0:
-                this->gamemode_switch = 1;
-                // TODO
-        }
-
-
-        CRITICAL_SECTION_MANAGER.leave_section(Menu_CS);
-    }
-    return 1;
-}
-
 extern "C" {
     // 0x4CF438
     externcg int32_t UNKNOWN_INT32_C cgasm("_UNKNOWN_INT32_C");
@@ -38845,14 +38901,14 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__sub_455040() {
                 }
                 case 7:
                     if (prev_gamemode == 4) {
-                        //MAIN_MENU_PTR->cleanup();
+                        MAIN_MENU_PTR->cleanup();
                     }
                     this->__int_804 = 1;
                     GameThread::allocate(__replay_recording);
                     break;
                 case 13:
                     if (prev_gamemode == 4) {
-                        //MAIN_MENU_PTR->cleanup();
+                        MAIN_MENU_PTR->cleanup();
                     }
                     this->gamemode_switch = 7;
                     this->__int_804 = 1;
@@ -38871,7 +38927,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__sub_455040() {
                 case 10: {
                     GAME_THREAD_PTR->cleanup();
                     this->__int_804 = 1;
-                    this->__dword_808 = 0;
+                    this->__int_808 = 0;
                     this->gamemode_switch = 7;
                     int32_t stage_number = GAME_MANAGER.globals.__stage_number_related_4;
                     GAME_MANAGER.globals.current_stage = stage_number;
@@ -38882,7 +38938,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__sub_455040() {
                 case 11: {
                     GAME_THREAD_PTR->cleanup();
                     this->__int_804 = 1;
-                    this->__dword_808 = 0;
+                    this->__int_808 = 0;
                     this->gamemode_switch = 7;
                     int32_t stage_number = GAME_MANAGER.globals.__stage_number_related_4;
                     GAME_MANAGER.globals.current_stage = stage_number;
@@ -38893,7 +38949,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__sub_455040() {
                 case 19: {
                     GAME_THREAD_PTR->cleanup();
                     this->__int_804 = 1;
-                    this->__dword_808 = 1;
+                    this->__int_808 = 1;
                     this->gamemode_switch = 7;
                     int32_t stage_number = GAME_MANAGER.globals.__stage_number_related_4;
                     GAME_MANAGER.globals.current_stage = stage_number;
@@ -38935,7 +38991,7 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_453C70() {
     delete KEY_CONFIG_MENU_PTR;
     delete OPTIONS_MENU_PTR;
     delete GAME_THREAD_PTR;
-    //MAIN_MENU_PTR->cleanup();
+    MAIN_MENU_PTR->cleanup();
     delete LOADING_THREAD_PTR;
     //delete ENDING_PTR;
     delete REPLAY_MANAGER_PTR;
@@ -38986,50 +39042,90 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_453A70() {
     SAFE_DELETE(this->__arcade_vm_ptr_D);
 }
 
+inline void GameThread::__start_stage() {
+    ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABILITY_ANM_INDEX);
+    ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABCARD_ANM_INDEX);
+    this->__unknown_flag_K = false;
+    BULLET_MANAGER_PTR->destroy_all();
+    PLAYER_PTR->reset();
+    ITEM_MANAGER_PTR->destroy_all();
+    ENEMY_MANAGER_PTR->destroy_all();
+    LASER_MANAGER_PTR->destroy_all();
+    GAME_MANAGER.globals.__counter_C = 0;
+    GAME_MANAGER.globals.__counter_10 = 0;
+    GAME_MANAGER.globals.__counter_14 = 0;
+    REPLAY_MANAGER_PTR->__sub_462EA0();
+
+    EnemyInitData init_data = {};
+    ENEMY_MANAGER_PTR->allocate_new_enemy("main", &init_data);
+    Gui::__sub_43A8B0();
+
+    PAUSE_MENU_PTR->enable_funcs();
+
+    Player* player = PLAYER_PTR;
+    player->enable_funcs_unsafe();
+    player->data.__update_option_power_levels();
+
+    BULLET_MANAGER_PTR->enable_funcs();
+    ENEMY_MANAGER_PTR->enable_funcs();
+    ITEM_MANAGER_PTR->enable_funcs();
+    LASER_MANAGER_PTR->enable_funcs();
+    EFFECT_MANAGER_PTR->enable_funcs();
+    BOMB_PTR->enable_funcs();
+    POPUP_MANAGER_PTR->enable_funcs_unsafe();
+    SPELLCARD_PTR->enable_funcs();
+    ABILITY_MANAGER_PTR->__sub_407F10();
+}
+
+// 0x443E60
+dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_443E60() {
+    Gui* gui_ptr = GUI_PTR;
+    gui_ptr->__anm_id_108.interrupt_tree(1);
+    gui_ptr->__anm_id_10C.interrupt_tree(1);
+    gui_ptr->__unknown_flag_A = false;
+    gui_ptr->__timer_198.reset();
+
+    if (this->__unknown_flag_H) {
+        SUPERVISOR.__thread_A94.stop_and_cleanup();
+        SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_G ? 2 : 3;
+        return ZUN_SUCCESS2;
+    }
+
+    STAGE_PTR->__start();
+    if (STAGE_B_PTR) {
+        // TODO: screen effect
+        this->__unknown_flag_K = true;
+        GUI_PTR->__anm_id_B8.interrupt_tree(1);
+        return ZUN_SUCCESS;
+    }
+
+    this->__start_stage();
+
+    if (
+        GAME_MANAGER.__unknown_field_A != 2 &&
+        GAME_MANAGER.__unknown_flag_E
+    ) {
+        SOUND_MANAGER.__play_music_with_unlock(0, STAGE_DATA_PTR->bgm_indices[0]);
+    }
+
+    ASCII_MANAGER_PTR->__vm_id_19264.interrupt_tree(1);
+    ASCII_MANAGER_PTR->__vm_id_19268.interrupt_and_orphan_tree(1);
+    SUPERVISOR.__vm_id_1D0.interrupt_tree(1);
+
+    return ZUN_SUCCESS;
+}
+
 // 0x4443C0
 dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_4443C0() {
     // TODO-MOVE
     // TODO 2: what did I mean when I wrote "MOVE" here
     if (this->__unknown_flag_K) {
-        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABILITY_ANM_INDEX);
-        ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABCARD_ANM_INDEX);
-        this->__unknown_flag_K = false;
-        BULLET_MANAGER_PTR->destroy_all();
-        PLAYER_PTR->reset();
-        ITEM_MANAGER_PTR->destroy_all();
-        ENEMY_MANAGER_PTR->destroy_all();
-        LASER_MANAGER_PTR->destroy_all();
-        GAME_MANAGER.globals.__counter_C = 0;
-        GAME_MANAGER.globals.__counter_10 = 0;
-        GAME_MANAGER.globals.__counter_14 = 0;
-        REPLAY_MANAGER_PTR->__sub_462EA0();
-
-        EnemyInitData init_data = {};
-        ENEMY_MANAGER_PTR->allocate_new_enemy("main", &init_data);
-        Gui::__sub_43A8B0();
-
-        PAUSE_MENU_PTR->enable_funcs();
-
-        Player* player = PLAYER_PTR;
-        player->enable_funcs_unsafe();
-        player->data.__update_option_power_levels();
-
-        BULLET_MANAGER_PTR->enable_funcs();
-        ENEMY_MANAGER_PTR->enable_funcs();
-        ITEM_MANAGER_PTR->enable_funcs();
-        LASER_MANAGER_PTR->enable_funcs();
-        EFFECT_MANAGER_PTR->enable_funcs();
-        BOMB_PTR->enable_funcs();
-        POPUP_MANAGER_PTR->enable_funcs_unsafe();
-        SPELLCARD_PTR->enable_funcs();
-        ABILITY_MANAGER_PTR->__sub_407F10();
+        this->__start_stage();
 
         clang_forceinline SOUND_MANAGER.__queue_bgm_stop();
         clang_forceinline SOUND_MANAGER.__play_music_with_unlock(0, STAGE_DATA_PTR->bgm_indices[0]);
         
-        AsciiManager* ascii_manager_ptr = ASCII_MANAGER_PTR;
-        ascii_manager_ptr->__vm_id_19268.interrupt_tree(1);
-        ascii_manager_ptr->__vm_id_19268 = 0;
+        ASCII_MANAGER_PTR->__vm_id_19268.interrupt_and_orphan_tree(1);
 
         this->__timer_C.reset();
     }
@@ -39080,24 +39176,23 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 
     Gui* gui = GUI_PTR;
     if (
-        !gui->__unknown_flag_A ||
-        gui->__timer_198 >= 120
-        ) {
-        if (!this->__unknown_flag_I) {
-            return UpdateFuncNext;
-        }
+        gui->__unknown_flag_A &&
+        gui->__timer_198 < 120 &&
+        !this->__unknown_flag_I
+    ) {
+        return UpdateFuncNext;
+    }
 
-        // These both allocate the "main" enemy
-        switch (this->__timer_C.current) {
-            case 0:
-                if (ZUN_FAILED(this->__sub_443E60())) {
-                    return UpdateFuncNext;
-                }
-                break;
-            case 30:
-                this->__sub_4443C0();
-                break;
-        }
+    // These both allocate the "main" enemy
+    switch (this->__timer_C.current) {
+        case 0:
+            if (ZUN_FAILED(this->__sub_443E60())) {
+                return UpdateFuncNext;
+            }
+            break;
+        case 30:
+            this->__sub_4443C0();
+            break;
     }
 
     Stage* stageB = STAGE_B_PTR;
@@ -39116,7 +39211,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
         return UpdateFuncNext;
     }
 
-    if (!GAME_MANAGER.__unknown_flag_E) {
+    if (GAME_MANAGER.__unknown_flag_E) {
         if (
             INPUT_STATES[0].check_hardware_inputs(BUTTON_SHOOT | BUTTON_BOMB | BUTTON_PAUSE | BUTTON_ENTER) ||
             (this->__unknown_flag_I | this->__unknown_flag_L | this->__unknown_flag_M)
@@ -39208,6 +39303,62 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
         GAME_MANAGER.__high_score_continues = continues;
     }
 #endif
+
+    if (this->__unknown_flag_G) {
+        Float3 A = { 448.0f, 32.0f, 0.0f };
+        AbilityShop::allocate(&A);
+        this->__unknown_flag_G = false;
+    }
+
+    if (this->__unknown_flag_J) {
+        return UpdateFuncEnd1;
+    }
+
+    if (this->__unknown_flag_F) {
+        if (!this->__int_B4) {
+            if (GAME_MANAGER.globals.chapter < 43) {
+                SOUND_MANAGER.__queue_bgm_stop();
+            }
+            SUPERVISOR.__vm_id_1D0.interrupt_tree(1);
+        }
+        int32_t A = ++this->__int_B4;
+        if (A < this->__int_B8) {
+            if (A > 1) {
+                return UpdateFuncEnd1;
+            }
+        }
+        else {
+            if (GAME_MANAGER.globals.chapter < 43) {
+                SOUND_MANAGER.__play_music_with_unlock(0, STAGE_DATA_PTR->bgm_indices[0]);
+                while (SOUND_MANAGER.__on_tick() != SndCmdEmpty);
+                if (GAME_MANAGER.globals.chapter < 43) {
+                    SOUND_MANAGER.cstreaming_sound_ptr->__sub_48AF10(GAME_MANAGER.globals.__counter_C / 60.0);
+                }
+            }
+        }
+        this->__unknown_flag_F = false;
+        this->__int_B4 = 0;
+    }
+
+    SUPERVISOR.__arcade_vm_ptr_A->run_anm();
+    SUPERVISOR.__arcade_vm_ptr_B->run_anm();
+    SUPERVISOR.__arcade_vm_ptr_C->run_anm();
+    SUPERVISOR.__arcade_vm_ptr_D->run_anm();
+    ++GAME_MANAGER.globals.__counter_C;
+    ++GAME_MANAGER.globals.__counter_14;
+    ++GAME_MANAGER.globals.__counter_10;
+
+    if (Player* player_ptr = PLAYER_PTR) {
+        player_ptr->__int_47984 = player_ptr->sht_file->__dword_28;
+    }
+
+    if (int A = UNKNOWN_INT_H) {
+        UNKNOWN_INT_H = A - 1;
+    }
+
+    ++this->__timer_C;
+
+    return UpdateFuncNext;
 }
 
 // All values are stored / 100
@@ -39558,7 +39709,7 @@ inline unsigned GameThread::thread_start_impl() {
     this->stage_number = STAGE_DATA_PTR->stage_number;
 
     if (!GAME_MANAGER.__unknown_flag_B) {
-        if (!ReplayManager::allocate(UNKNOWN_TEXT_BUFFER_A)) {
+        if (!ReplayManager::allocate(this->replay_mode, UNKNOWN_TEXT_BUFFER_A)) {
             goto thread_start_important_label;
         }
         REPLAY_MANAGER_PTR->__sub_462D20();
@@ -41391,7 +41542,7 @@ struct StaticCtorsDtors {
 
 #define static_construct(global) new(&global) decltype(global)()
 
-#define original_addr(addr) ((void*)((uintptr_t)original_game + ((uintptr_t)(addr) - 0x400000)))
+#define original_addr(addr) ((char*)((uintptr_t)original_game + ((uintptr_t)(addr) - 0x400000)))
 
     template<typename T>
     static inline void copy_from_original_game(T& value, HMODULE original_game) {
@@ -41412,6 +41563,17 @@ struct StaticCtorsDtors {
         copy_from_original_game(BULLET_IDK_DATA, 0x4B36F0, original_game);
         copy_from_original_game(FONT_DATA, 0x4C9AD0, original_game);
         copy_from_original_game(STAGE_DATA, 0x4C9410, original_game);
+        for (size_t i = 0; i != countof(STAGE_DATA); ++i) {
+            STAGE_DATA[i].std_filename = strdup(original_addr(STAGE_DATA[i].std_filename));
+            STAGE_DATA[i].ecl_filename = strdup(original_addr(STAGE_DATA[i].ecl_filename));
+            for (size_t j = 0; j != countof(STAGE_DATA[i].bgm_filenames); ++j) {
+                STAGE_DATA[i].bgm_filenames[j] = strdup(original_addr(STAGE_DATA[i].bgm_filenames[j]));
+            }
+            for (size_t j = 0; j != countof(STAGE_DATA[i].msg_filenames); ++j) {
+                STAGE_DATA[i].msg_filenames[j] = strdup(original_addr(STAGE_DATA[i].msg_filenames[j]));
+            }
+            STAGE_DATA[i].logo_anm_filename = strdup(original_addr(STAGE_DATA[i].logo_anm_filename));
+        }
         copy_from_original_game(DEFAULT_JOYPAD_MAPPINGS, 0x4CABA8, original_game);
         copy_from_original_game(DEFAULT_XINPUT_MAPPINGS, 0x4CABBC, original_game);
         copy_from_original_game(DEFAULT_KEYBOARD_MAPPINGS, 0x4CABD0, original_game);
