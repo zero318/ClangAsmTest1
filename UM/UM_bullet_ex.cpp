@@ -14706,10 +14706,10 @@ struct AnmLoaded {
         AnmSprite* sprite = &this->sprites[sprite_id];
         vm->data.sprite_uv_quad[2].x = sprite->__uv_related_24[0];
         vm->data.sprite_uv_quad[0].x = sprite->__uv_related_24[0];
-        vm->data.sprite_uv_quad[3].x = sprite->__uv_related_24[1];
-        vm->data.sprite_uv_quad[1].x = sprite->__uv_related_24[1];
-        vm->data.sprite_uv_quad[1].y = sprite->__uv_related_24[2];
-        vm->data.sprite_uv_quad[0].y = sprite->__uv_related_24[2];
+        vm->data.sprite_uv_quad[3].x = sprite->__uv_related_24[2];
+        vm->data.sprite_uv_quad[1].x = sprite->__uv_related_24[2];
+        vm->data.sprite_uv_quad[1].y = sprite->__uv_related_24[1];
+        vm->data.sprite_uv_quad[0].y = sprite->__uv_related_24[1];
         vm->data.sprite_uv_quad[3].y = sprite->__uv_related_24[3];
         vm->data.sprite_uv_quad[2].y = sprite->__uv_related_24[3];
         
