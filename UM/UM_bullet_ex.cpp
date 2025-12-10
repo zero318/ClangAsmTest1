@@ -13654,6 +13654,9 @@ struct AnmVM {
     // 0x41B430
     dllexport gnu_noinline void reset() asm_symbol_rel(0x41B430) {
         this->clear_all();
+        this->data.visible = true;
+        this->data.__visible2 = true;
+        this->data.rotation_enabled = true;
         this->data.scale = { 1.0f, 1.0f };
         this->data.scale2 = { 1.0f, 1.0f };
         this->data.uv_scale = { 1.0f, 1.0f };
@@ -16068,8 +16071,8 @@ struct AnmManager {
     dllexport gnu_noinline ZUNResult thiscall draw_vm(AnmVM* vm) asm_symbol_rel(0x481210) {
         vm->run_on_draw();
         if (
-            //!vm->data.visible ||
-            //!vm->data.__visible2 ||
+            !vm->data.visible ||
+            !vm->data.__visible2 ||
             vm->data.__vm_state != Normal
         ) {
             return ZUN_ERROR;
