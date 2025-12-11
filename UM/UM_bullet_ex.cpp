@@ -2097,7 +2097,7 @@ struct Rng {
     dllexport gnu_noinline float thiscall rand_angle_2() asm_symbol_rel(0x402850) {
         __asm FINIT;
         float temp = this->rand_uint();
-        return temp / TWO_PI_f - PI_f;
+        return temp / (INT32_MAX / PI_f) - PI_f;
     }
     
 private:
@@ -2148,7 +2148,7 @@ typedef struct Float3 Float3;
 typedef struct Enemy Enemy;
 
 // 0x4237F0
-dllexport gnu_noinline Enemy* get_boss_by_index(int32_t boss_id) asm_symbol_rel(0x4237F0);
+dllexport gnu_noinline Enemy* stdcall get_boss_by_index(int32_t boss_id) asm_symbol_rel(0x4237F0);
 
 // size: 0x8
 struct GameSpeed {
@@ -10682,13 +10682,121 @@ enum Var : int32_t {
     SELF_Y_ABS = -9994,
     SELF_X_REL = -9993,
     SELF_Y_REL = -9992,
-
+    PLAYER_X = -9991,
+    PLAYER_Y = -9990,
+    PLAYER_ANGLE = -9989,
+    BOSS_TIMER = -9988,
+    RAND_FLOAT_SIGNED = -9987,
+    SPELL_TIMEOUT = -9986,
+    EI0 = -9985,
+    EI1 = -9984,
+    EI2 = -9983,
+    EI3 = -9982,
+    EF0 = -9981,
+    EF1 = -9980,
+    EF2 = -9979,
+    EF3 = -9978,
     SELF_X2 = -9977,
     SELF_Y2 = -9976,
     SELF_X2_ABS = -9975,
     SELF_Y2_ABS = -9974,
     SELF_X2_REL = -9973,
-    SELF_Y2_REL = -9972
+    SELF_Y2_REL = -9972,
+    SELF_ANGLE_ABS = -9971,
+    SELF_ANGLE_REL = -9970,
+    SELF_SPEED_ABS = -9969,
+    SELF_SPEED_REL = -9968,
+    SELF_ORBIT_RADIUS_ABS = -9967,
+    SELF_ORBIT_RADIUS_REL = -9966,
+    PLAYER_X2 = -9965,
+    PLAYER_Y2 = -9964,
+    BOSS0_X = -9963,
+    BOSS0_Y = -9962,
+    ANM_SLOT0_SCRIPT_ID = -9961,
+    RANK = -9960,
+    DIFFICULTY = -9959,
+    SELF_ORBIT = -9958,
+    TRUE_VAR = -9957,
+    PLAYER_ANGLE_ABS = -9956,
+    PLAYER_ANGLE_REL = -9955,
+    SELF_LIFE = -9954,
+    EASY_VAR = -9953,
+    NORMAL_VAR = -9952,
+    HARD_VAR = -9951,
+    LUNATIC_VAR = -9950,
+    PLAYER_DEATHS = -9949,
+    PLAYER_BOMBS_USED = -9948,
+    SPELL_CAPTURE = -9947,
+    ENEMY_COUNT = -9946,
+    PLAYER_SHOT = -9945,
+    PLAYER_DISTANCE = -9944,
+    BOSS0_EI0 = -9943,
+    BOSS0_EI1 = -9942,
+    BOSS0_EI2 = -9941,
+    BOSS0_EI3 = -9940,
+    BOSS0_EF0 = -9939,
+    BOSS0_EF1 = -9938,
+    BOSS0_EF2 = -9937,
+    BOSS0_EF3 = -9936,
+    EF4 = -9935,
+    EF5 = -9934,
+    EF6 = -9933,
+    EF7 = -9932,
+    PREV_ENEMY_ID = -9931,
+    PLAYER_POWER = -9930,
+    __PLAYER_UNKNOWN_A = -9929,
+    __PLAYER_UNKNOWN_B = -9928,
+    __REPLAY_UNKNOWN_A = -9927,
+    GI0 = -9926,
+    GI1 = -9925,
+    GI2 = -9924,
+    GI3 = -9923,
+    GF0 = -9922,
+    GF1 = -9921,
+    GF2 = -9920,
+    GF3 = -9919,
+    GF4 = -9918,
+    GF5 = -9917,
+    GF6 = -9916,
+    GF7 = -9915,
+    SELF_ENEMY_ID = -9914,
+    PHOTOS_TAKEN = -9913,
+    __PLAYER_UNKNOWN_C = -9912,
+    BOSS0_ORBIT = -9911,
+    BOSS0_SPEED_ABS = -9910,
+    PARENT_ENEMY_ID = -9909,
+    ENEMY_COUNT_KILLABLE = -9908,
+    SPELL_ID = -9907,
+    SELF_MIRROR = -9906,
+    CHAPTER = -9905,
+    PLAYER_DEATHS_GLOBAL = -9904,
+    __BULLET_MANAGER_UNKNOWN_B = -9902,
+    ACHIEVEMENT_MODE = -9899,
+    __BULLET_COUNT_UNKNOWN_A = -9898,
+/*
+    __ENEMY_MANAGER_UNKNOWN_F = -9896,
+    WI0 = -9895,
+    WI1 = -9894,
+    WI2 = -9893,
+    WI3 = -9892,
+    __ABILITY_MANAGER_UNKNOWN_A = -9891,
+    __ENEMY_COUNT_UNKNOWN_FLAG_D = -9889,
+    __GLOBAL_SIDE_UNKNOWN_A = -9888,
+    STORY_BOSS_DIFFICULTY = -9887,
+    STORY_BOSS_FINAL_PHASE = -9886,
+    DIFFICULTY_GLOBAL = -9885,
+    OPPOSITE_PLAYER_X = -9884,
+    OPPOSITE_PLAYER_Y = -9883,
+    SELF_GAME_SIDE = -9882,
+    PLAYER_SUMMON_METER = -9881,
+    PLAYER_STORY_STONE_COLOR = -9880,
+    __ENEMY_OFFSCREEN_RELATED_WTF_IDK = -9879,
+    RAND_SIGNED_ONE = -9878,
+    __BULLET_COUNT_UNKNOWN_A2 = -9877,
+    SPELL_ACTIVE = -9876,
+    BOSS_ALIVE = -9875,
+    BOSS_DISTANCE = -9874
+*/
 };
 enum Opcode : uint16_t {
     // Section A
@@ -11108,40 +11216,16 @@ struct Enemy : EclVM {
     }
 
     // 0x437360
-    dllexport gnu_noinline virtual int32_t get_int_var(int32_t index) asm_symbol_rel(0x437360) {
-        switch (index) {
-
-            default:
-                return 0;
-        }
-    }
+    dllexport gnu_noinline virtual int32_t get_int_var(int32_t index) asm_symbol_rel(0x437360);
 
     // 0x437B20
-    dllexport gnu_noinline virtual int32_t* get_int_ptr(int32_t index) asm_symbol_rel(0x437B20) {
-        switch (index) {
-
-            default:
-                return NULL;
-        }
-    }
+    dllexport gnu_noinline virtual int32_t* get_int_ptr(int32_t index) asm_symbol_rel(0x437B20);
 
     // 0x437C90
-    dllexport gnu_noinline virtual float get_float_var(int32_t index) asm_symbol_rel(0x437C90) {
-        switch (index) {
-
-            default:
-                return 0.0f;
-        }
-    }
+    dllexport gnu_noinline virtual float get_float_var(int32_t index) asm_symbol_rel(0x437C90);
 
     // 0x4387E0
-    dllexport gnu_noinline virtual float* get_float_ptr(int32_t index) asm_symbol_rel(0x4387E0) {
-        switch (index) {
-
-            default:
-                return NULL;
-        }
-    }
+    dllexport gnu_noinline virtual float* get_float_ptr(int32_t index) asm_symbol_rel(0x4387E0);
 
     // 0x430240
     dllexport gnu_noinline int thiscall kill() asm_symbol_rel(0x430240);
@@ -13031,7 +13115,7 @@ struct AnmVM {
         int32_t run_interrupt; // 0x494
         int32_t __last_sprite_set_time; // 0x498
         unknown_fields(0x4); // 0x49C
-        uint16_t script_id2; // 0x4A0
+        int16_t script_id2; // 0x4A0
         unknown_fields(0x2); // 0x4A2
         AnmContext current_context; // 0x4A4
         Float3 __position_2; // 0x4E4
@@ -13407,7 +13491,7 @@ struct AnmVM {
                     }
                 }
                 if (
-                    this->data.script_id2 == (uint16_t)-2 &&
+                    (uint16_t)this->data.script_id2 == (uint16_t)-2 &&
                     !node->next
                 ) {
                     return node->data;
@@ -22317,6 +22401,10 @@ public:
         return this->angle_from_point(UNUSED_DWORD, position);
     }
 
+    inline float distance_from_point(Float2* position) {
+        return zsqrtf<ForceInline>(position->distance_squared(&this->data.position));
+    }
+
     // 0x45D090
     dllexport gnu_noinline void thiscall death() asm_symbol_rel(0x45D090);
 
@@ -26720,7 +26808,7 @@ struct EnemyManager : ZUNTask {
     };
     int32_t enemy_limit; // 0x8C
     int32_t next_enemy_id; // 0x90
-    int32_t prev_enemy_id; // 0x94
+    uint32_t prev_enemy_id; // 0x94
     Timer __timer_98; // 0x98
     int32_t __int_AC; // 0xAC
     int32_t __int_B0; // 0xB0
@@ -27193,7 +27281,7 @@ dllexport gnu_noinline Enemy::Enemy(const char* sub_name) {
 }
 
 // 0x4237F0
-dllexport gnu_noinline Enemy* get_boss_by_index(int32_t boss_index) {
+dllexport gnu_noinline Enemy* stdcall get_boss_by_index(int32_t boss_index) {
     EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
     return enemy_manager->get_enemy_by_id_impl(enemy_manager->boss_ids[boss_index]);
 }
@@ -33828,6 +33916,593 @@ inline void EclContext::basic_call(EclContext* new_context, const char* sub_name
 
 }
 #endif
+
+// 0x437360
+dllexport gnu_noinline int32_t Enemy::get_int_var(int32_t index) {
+    using namespace Ecl;
+    switch (index) {
+        case RAND_INT: // -10000
+            return REPLAY_RNG.rand_uint() & 0x7FFFFFFF;
+        case RAND_FLOAT: // -9999
+            return REPLAY_RNG.rand_float();
+        case RAND_FLOAT_SIGNED: // -9987
+            return REPLAY_RNG.rand_float_signed();
+            /*
+        case RAND_ANGLE: // -9998
+            return REPLAY_RNG.rand_angle();
+        case PLAYER_ANGLE: // -9989
+            return angle_to_player_from_point(&this->data.current_motion.position);
+            */
+        case BOSS_TIMER: // -9988
+            return this->data.ecl_time;
+        case SPELL_TIMEOUT: // -9986
+            return SPELLCARD_PTR->__timeout_spell;
+        case SELF_X: // -9997
+        case SELF_X2: // -9977
+            return this->data.current_motion.position.x;
+        case SELF_Y: // -9996
+        case SELF_Y2: // -9976
+            return this->data.current_motion.position.y;
+        case SELF_X_ABS: // -9995
+        case SELF_X2_ABS: // -9975
+            return this->data.motion.absolute.position.x;
+        case SELF_Y_ABS: // -9994
+        case SELF_Y2_ABS: // -9974
+            return this->data.motion.absolute.position.y;
+        case SELF_X_REL: // -9993
+        case SELF_X2_REL: // -9973
+            return this->data.motion.relative.position.x;
+        case SELF_Y_REL: // -9992
+        case SELF_Y2_REL: // -9972
+            return this->data.motion.relative.position.y;
+        case SELF_ANGLE_ABS: // -9971
+            return this->data.motion.absolute.angle;
+        case SELF_ANGLE_REL: // -9970
+            return this->data.motion.relative.angle;
+        case SELF_ORBIT: // -9958
+            // WARNING: This reads the multi-purpose float3 fields
+            return zatan2f(this->data.current_motion.orbit_origin.y, this->data.current_motion.orbit_origin.x);
+        case SELF_SPEED_ABS: // -9969
+            return this->data.motion.absolute.speed;
+        case SELF_SPEED_REL: // -9968
+            return this->data.motion.relative.speed;
+        case SELF_ORBIT_RADIUS_ABS: // -9967
+            return this->data.motion.absolute.radius;
+        case SELF_ORBIT_RADIUS_REL: // -9966
+            return this->data.motion.relative.radius;
+        case PLAYER_X: // -9991
+        case PLAYER_X2: // -9965
+            return PLAYER_PTR->data.position.x;
+        case PLAYER_Y: // -9990
+        case PLAYER_Y2: // -9964
+            return PLAYER_PTR->data.position.y;
+        case BOSS0_X: // -9963
+            return ENEMY_MANAGER_PTR->get_boss_by_index(0)->data.current_motion.position.x;
+        case BOSS0_Y: // -9962
+            return ENEMY_MANAGER_PTR->get_boss_by_index(0)->data.current_motion.position.y;
+        case ANM_SLOT0_SCRIPT_ID: // -9961
+            return this->data.anm_vms[0].get_vm_ptr()->data.script_id2;
+        case RANK: // -9960
+            return GAME_MANAGER.globals.rank;
+        case DIFFICULTY: // -9959
+            return GAME_MANAGER.globals.difficulty;
+            /*
+        case PLAYER_ANGLE_ABS: // -9956
+            return angle_to_player_from_point(&this->data.motion.absolute.position);
+        case PLAYER_ANGLE_REL: // -9955
+            return angle_to_player_from_point(&this->data.motion.relative.position);
+            */
+        case SELF_LIFE: // -9954
+            return this->data.life.current;
+        case EASY_VAR: // -9953
+            return GAME_MANAGER.globals.difficulty == EASY;
+        case NORMAL_VAR: // -9952
+            return GAME_MANAGER.globals.difficulty == NORMAL;
+        case HARD_VAR: // -9951
+            return GAME_MANAGER.globals.difficulty == HARD;
+        case LUNATIC_VAR: // -9950
+            return GAME_MANAGER.globals.difficulty == LUNATIC;
+        case PLAYER_DEATHS: // -9949
+            return ENEMY_MANAGER_PTR->player_death_count;
+        case PLAYER_BOMBS_USED: // -9948
+            return ENEMY_MANAGER_PTR->player_bomb_count;
+        case SPELL_CAPTURE: // -9947
+            return ENEMY_MANAGER_PTR->can_capture_spell;
+        case ENEMY_COUNT: // -9946
+            return ENEMY_MANAGER_PTR->enemy_count;
+        case ENEMY_COUNT_KILLABLE: // -9908
+            return ENEMY_MANAGER_PTR->count_killable_enemies();
+        case PLAYER_SHOT: // -9945
+            return GAME_MANAGER.globals.shottype_index();
+        case PLAYER_DISTANCE: // -9944
+            return PLAYER_PTR->distance_from_point(&this->data.current_motion.position);
+        case PREV_ENEMY_ID: // -9931
+            return ENEMY_MANAGER_PTR->prev_enemy_id;
+        case PLAYER_POWER: // -9930
+            return GAME_MANAGER.globals.current_power;
+        case __REPLAY_UNKNOWN_A: // -9927
+            if (
+                GAME_THREAD_PTR->replay_mode == __replay_recording &&
+                SUPERVISOR.__int_804
+            ) {
+        case TRUE_VAR: // -9957
+                return true;
+            }
+            return false;
+        case BOSS0_EI0: // -9943
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.int_vars[0];
+            }
+            return 0;
+        case BOSS0_EI1: // -9942
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.int_vars[1];
+            }
+            return 0;
+        case BOSS0_EI2: // -9941
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.int_vars[2];
+            }
+            return 0;
+        case BOSS0_EI3: // -9940
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.int_vars[3];
+            }
+            return 0;
+        case BOSS0_EF0: // -9939
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.float_vars[0];
+            }
+            return 0;
+        case BOSS0_EF1: // -9938
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.float_vars[1];
+            }
+            return 0;
+        case BOSS0_EF2: // -9937
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.float_vars[2];
+            }
+            return 0;
+        case BOSS0_EF3: // -9936
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.float_vars[3];
+            }
+            return 0;
+        case BOSS0_ORBIT: // -9911
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                // WARNING: This reads the multi-purpose float3 fields
+                return zatan2f(boss->data.current_motion.orbit_origin.y, boss->data.current_motion.orbit_origin.x);
+            }
+            return 0;
+        case BOSS0_SPEED_ABS: // -9910
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.motion.absolute.speed;
+            }
+            return 0;
+        case PARENT_ENEMY_ID: // -9909
+            return this->parent_id;
+        case EI0: // -9985
+            return this->data.int_vars[0];
+        case EI1: // -9984
+            return this->data.int_vars[1];
+        case EI2: // -9983
+            return this->data.int_vars[2];
+        case EI3: // -9982
+            return this->data.int_vars[3];
+        case EF0: // -9981
+            return this->data.float_vars[0];
+        case EF1: // -9980
+            return this->data.float_vars[1];
+        case EF2: // -9979
+            return this->data.float_vars[2];
+        case EF3: // -9978
+            return this->data.float_vars[3];
+        case EF4: // -9935
+            return this->data.float_vars[4];
+        case EF5: // -9934
+            return this->data.float_vars[5];
+        case EF6: // -9933
+            return this->data.float_vars[6];
+        case EF7: // -9932
+            return this->data.float_vars[7];
+        case GI0: // -9926
+            return ENEMY_MANAGER_PTR->int_vars[0];
+        case GI1: // -9925
+            return ENEMY_MANAGER_PTR->int_vars[1];
+        case GI2: // -9924
+            return ENEMY_MANAGER_PTR->int_vars[2];
+        case GI3: // -9923
+            return ENEMY_MANAGER_PTR->int_vars[3];
+        case GF0: // -9922
+            return ENEMY_MANAGER_PTR->float_vars[0];
+        case GF1: // -9921
+            return ENEMY_MANAGER_PTR->float_vars[1];
+        case GF2: // -9920
+            return ENEMY_MANAGER_PTR->float_vars[2];
+        case GF3: // -9919
+            return ENEMY_MANAGER_PTR->float_vars[3];
+        case GF4: // -9918
+            return ENEMY_MANAGER_PTR->float_vars[4];
+        case GF5: // -9917
+            return ENEMY_MANAGER_PTR->float_vars[5];
+        case GF6: // -9916
+            return ENEMY_MANAGER_PTR->float_vars[6];
+        case GF7: // -9915
+            return ENEMY_MANAGER_PTR->float_vars[7];
+        case SELF_ENEMY_ID: // -9914
+            return this->id;
+        case SPELL_ID: // -9907
+            return GAME_MANAGER.globals.__ecl_var_9907;
+        case SELF_MIRROR: // -9906
+            return this->data.mirrored;
+        case CHAPTER: // -9905
+            return GAME_MANAGER.globals.chapter;
+        case PLAYER_DEATHS_GLOBAL: // -9904
+            return GAME_MANAGER.globals.miss_count_in_game;
+        case __BULLET_MANAGER_UNKNOWN_B: // -9902
+            return BULLET_MANAGER_PTR->__count_graze_array();
+        case ACHIEVEMENT_MODE: // -9899
+            return ACHIEVEMENT_MODE_STATE;
+        case __BULLET_COUNT_UNKNOWN_A: // -9898
+            return BULLET_MANAGER_PTR->__int_40;
+        default:
+            return 0;
+    }
+}
+
+// 0x437B20
+dllexport gnu_noinline int32_t* Enemy::get_int_ptr(int32_t index) {
+    using namespace Ecl;
+    Enemy* enemy = this;
+    switch (index) {
+        case EI0: // -9985
+            return &this->data.int_vars[0];
+        case PLAYER_DEATHS: // -9949
+            return &ENEMY_MANAGER_PTR->player_death_count;
+        case PLAYER_BOMBS_USED: // -9948
+            return &ENEMY_MANAGER_PTR->player_bomb_count;
+        case SPELL_CAPTURE: // -9947
+            return &ENEMY_MANAGER_PTR->can_capture_spell;
+        case BOSS0_EI0: // -9943
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                enemy = boss;
+            }
+            return &enemy->data.int_vars[0];
+        case BOSS0_EI1: // -9942
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                enemy = boss;
+            }
+        case EI1: // -9984
+            return &enemy->data.int_vars[1];
+        case BOSS0_EI2: // -9941
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                enemy = boss;
+            }
+        case EI2: // -9983
+            return &enemy->data.int_vars[2];
+        case BOSS0_EI3: // -9940
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                enemy = boss;
+            }
+        case EI3: // -9982
+            return &enemy->data.int_vars[3];
+        case GI0: // -9926
+            return &ENEMY_MANAGER_PTR->int_vars[0];
+        case GI1: // -9925
+            return &ENEMY_MANAGER_PTR->int_vars[1];
+        case GI2: // -9924
+            return &ENEMY_MANAGER_PTR->int_vars[2];
+        case GI3: // -9923
+            return &ENEMY_MANAGER_PTR->int_vars[3];
+        default:
+            return NULL;
+    }
+}
+
+// 0x437C90
+dllexport gnu_noinline float Enemy::get_float_var(int32_t index) {
+    using namespace Ecl;
+    switch (index) {
+        case RAND_INT: // -10000
+            return REPLAY_RNG.rand_uint() & 0x7FFFFFFF;
+        case RAND_FLOAT: // -9999
+            return REPLAY_RNG.rand_float();
+        case RAND_FLOAT_SIGNED: // -9987
+            return REPLAY_RNG.rand_float_signed();
+        case RAND_ANGLE: // -9998
+            return REPLAY_RNG.rand_angle();
+        case PLAYER_ANGLE: // -9989
+            return angle_to_player_from_point(&this->data.current_motion.position);
+        case BOSS_TIMER: // -9988
+            return this->data.ecl_time;
+        case SPELL_TIMEOUT: // -9986
+            return SPELLCARD_PTR->__timeout_spell;
+        case EI0: // -9985
+            return this->data.int_vars[0];
+        case EI1: // -9984
+            return this->data.int_vars[1];
+        case EI2: // -9983
+            return this->data.int_vars[2];
+        case EI3: // -9982
+            return this->data.int_vars[3];
+        case EF0: // -9981
+            return this->data.float_vars[0];
+        case EF1: // -9980
+            return this->data.float_vars[1];
+        case EF2: // -9979
+            return this->data.float_vars[2];
+        case EF3: // -9978
+            return this->data.float_vars[3];
+        case EF4: // -9935
+            return this->data.float_vars[4];
+        case EF5: // -9934
+            return this->data.float_vars[5];
+        case EF6: // -9933
+            return this->data.float_vars[6];
+        case EF7: // -9932
+            return this->data.float_vars[7];
+        case BOSS0_EI0: // -9943
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.int_vars[0];
+            }
+            return 0;
+        case BOSS0_EI1: // -9942
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.int_vars[1];
+            }
+            return 0;
+        case BOSS0_EI2: // -9941
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.int_vars[2];
+            }
+            return 0;
+        case BOSS0_EI3: // -9940
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.int_vars[3];
+            }
+            return 0;
+        case BOSS0_EF0: // -9939
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.float_vars[0];
+            }
+            return 0;
+        case BOSS0_EF1: // -9938
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.float_vars[1];
+            }
+            return 0;
+        case BOSS0_EF2: // -9937
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.float_vars[2];
+            }
+            return 0;
+        case BOSS0_EF3: // -9936
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.float_vars[3];
+            }
+            return 0;
+        case BOSS0_ORBIT: // -9911
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                // WARNING: This reads the multi-purpose float3 fields
+                return zatan2f(boss->data.current_motion.orbit_origin.y, boss->data.current_motion.orbit_origin.x);
+            }
+            return 0;
+        case BOSS0_SPEED_ABS: // -9910
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                return boss->data.motion.absolute.speed;
+            }
+            return 0;
+        case SELF_X: // -9997
+        case SELF_X2: // -9977
+            return this->data.current_motion.position.x;
+        case SELF_Y: // -9996
+        case SELF_Y2: // -9976
+            return this->data.current_motion.position.y;
+        case SELF_X_ABS: // -9995
+        case SELF_X2_ABS: // -9975
+            return this->data.motion.absolute.position.x;
+        case SELF_Y_ABS: // -9994
+        case SELF_Y2_ABS: // -9974
+            return this->data.motion.absolute.position.y;
+        case SELF_X_REL: // -9993
+        case SELF_X2_REL: // -9973
+            return this->data.motion.relative.position.x;
+        case SELF_Y_REL: // -9992
+        case SELF_Y2_REL: // -9972
+            return this->data.motion.relative.position.y;
+        case SELF_ANGLE_ABS: // -9971
+            return this->data.motion.absolute.angle;
+        case SELF_ANGLE_REL: // -9970
+            return this->data.motion.relative.angle;
+        case SELF_ORBIT: // -9958
+            // WARNING: This reads the multi-purpose float3 fields
+            return zatan2f(this->data.current_motion.orbit_origin.y, this->data.current_motion.orbit_origin.x);
+        case SELF_SPEED_ABS: // -9969
+            return this->data.motion.absolute.speed;
+        case SELF_SPEED_REL: // -9968
+            return this->data.motion.relative.speed;
+        case SELF_ORBIT_RADIUS_ABS: // -9967
+            return this->data.motion.absolute.radius;
+        case SELF_ORBIT_RADIUS_REL: // -9966
+            return this->data.motion.relative.radius;
+        case PLAYER_X: // -9991
+        case PLAYER_X2: // -9965
+            return PLAYER_PTR->data.position.x;
+        case PLAYER_Y: // -9990
+        case PLAYER_Y2: // -9964
+            return PLAYER_PTR->data.position.y;
+        case BOSS0_X: // -9963
+            return ENEMY_MANAGER_PTR->get_boss_by_index(0)->data.current_motion.position.x;
+        case BOSS0_Y: // -9962
+            return ENEMY_MANAGER_PTR->get_boss_by_index(0)->data.current_motion.position.y;
+            /*
+        case ANM_SLOT0_SCRIPT_ID: // -9961
+            return this->data.anm_vms[0].get_vm_ptr()->data.script_id2;
+            */
+        case RANK: // -9960
+            return GAME_MANAGER.globals.rank;
+        case DIFFICULTY: // -9959
+            return GAME_MANAGER.globals.difficulty;
+        case TRUE_VAR: // -9957
+            return true;
+        case PLAYER_ANGLE_ABS: // -9956
+            return angle_to_player_from_point(&this->data.motion.absolute.position);
+        case PLAYER_ANGLE_REL: // -9955
+            return angle_to_player_from_point(&this->data.motion.relative.position);
+        case SELF_LIFE: // -9954
+            return this->data.life.current;
+            // WHY ARE THERE FLOAT CASTS ON THESE ZUN
+        case EASY_VAR: // -9953
+            return (float)GAME_MANAGER.globals.difficulty == EASY;
+        case NORMAL_VAR: // -9952
+            return (float)GAME_MANAGER.globals.difficulty == NORMAL;
+        case HARD_VAR: // -9951
+            return (float)GAME_MANAGER.globals.difficulty == HARD;
+        case LUNATIC_VAR: // -9950
+            return (float)GAME_MANAGER.globals.difficulty == LUNATIC;
+        case PLAYER_DEATHS: // -9949
+            return ENEMY_MANAGER_PTR->player_death_count;
+        case PLAYER_BOMBS_USED: // -9948
+            return ENEMY_MANAGER_PTR->player_bomb_count;
+        case SPELL_CAPTURE: // -9947
+            return ENEMY_MANAGER_PTR->can_capture_spell;
+        case ENEMY_COUNT: // -9946
+            return ENEMY_MANAGER_PTR->enemy_count;
+        case ENEMY_COUNT_KILLABLE: // -9908
+            return ENEMY_MANAGER_PTR->count_killable_enemies();
+        case PLAYER_SHOT: // -9945
+            return GAME_MANAGER.globals.shottype_index();
+        case PLAYER_DISTANCE: // -9944
+            return PLAYER_PTR->distance_from_point(&this->data.current_motion.position);
+        case PREV_ENEMY_ID: // -9931
+            return ENEMY_MANAGER_PTR->prev_enemy_id;
+        case PLAYER_POWER: // -9930
+            return GAME_MANAGER.globals.current_power;
+        case __REPLAY_UNKNOWN_A: // -9927
+            if (
+                // WTF?
+                !((float)(GAME_THREAD_PTR->replay_mode == __replay_recording) == 0.0f) &&
+                SUPERVISOR.__int_804
+            ) {
+                return true;
+            }
+            return false;
+        case PARENT_ENEMY_ID: // -9909
+            return this->parent_id;
+        case GI0: // -9926
+            return ENEMY_MANAGER_PTR->int_vars[0];
+        case GI1: // -9925
+            return ENEMY_MANAGER_PTR->int_vars[1];
+        case GI2: // -9924
+            return ENEMY_MANAGER_PTR->int_vars[2];
+        case GI3: // -9923
+            return ENEMY_MANAGER_PTR->int_vars[3];
+        case GF0: // -9922
+            return ENEMY_MANAGER_PTR->float_vars[0];
+        case GF1: // -9921
+            return ENEMY_MANAGER_PTR->float_vars[1];
+        case GF2: // -9920
+            return ENEMY_MANAGER_PTR->float_vars[2];
+        case GF3: // -9919
+            return ENEMY_MANAGER_PTR->float_vars[3];
+        case GF4: // -9918
+            return ENEMY_MANAGER_PTR->float_vars[4];
+        case GF5: // -9917
+            return ENEMY_MANAGER_PTR->float_vars[5];
+        case GF6: // -9916
+            return ENEMY_MANAGER_PTR->float_vars[6];
+        case GF7: // -9915
+            return ENEMY_MANAGER_PTR->float_vars[7];
+        case SELF_ENEMY_ID: // -9914
+            return this->id;
+        case SPELL_ID: // -9907
+            return GAME_MANAGER.globals.__ecl_var_9907;
+        case SELF_MIRROR: // -9906
+            return this->data.mirrored;
+        case CHAPTER: // -9905
+            return GAME_MANAGER.globals.chapter;
+            /*
+        case PLAYER_DEATHS_GLOBAL: // -9904
+            return GAME_MANAGER.globals.miss_count_in_game;
+            */
+        case __BULLET_MANAGER_UNKNOWN_B: // -9902
+            return BULLET_MANAGER_PTR->__count_graze_array();
+        case ACHIEVEMENT_MODE: // -9899
+            return ACHIEVEMENT_MODE_STATE;
+        case __BULLET_COUNT_UNKNOWN_A: // -9898
+            return BULLET_MANAGER_PTR->__int_40;
+        default:
+            return 0;
+    }
+}
+
+// 0x4387E0
+dllexport gnu_noinline float* Enemy::get_float_ptr(int32_t index) {
+    using namespace Ecl;
+    Enemy* enemy = this;
+    switch (index) {
+        case EF0: // -9981
+            return &this->data.float_vars[0];
+        case EF4: // -9935
+            return &this->data.float_vars[4];
+        case EF5: // -9934
+            return &this->data.float_vars[5];
+        case EF6: // -9933
+            return &this->data.float_vars[6];
+        case EF7: // -9932
+            return &this->data.float_vars[7];
+        case BOSS0_EF0: // -9939
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                enemy = boss;
+            }
+            return &enemy->data.float_vars[0];
+        case BOSS0_EF1: // -9938
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                enemy = boss;
+            }
+        case EF1: // -9980
+            return &enemy->data.float_vars[1];
+        case BOSS0_EF2: // -9937
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                enemy = boss;
+            }
+        case EF2: // -9979
+            return &enemy->data.float_vars[2];
+        case BOSS0_EF3: // -9936
+            if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+                enemy = boss;
+            }
+        case EF3: // -9978
+            return &enemy->data.float_vars[3];
+        case GF0: // -9922
+            return &ENEMY_MANAGER_PTR->float_vars[0];
+        case GF1: // -9921
+            return &ENEMY_MANAGER_PTR->float_vars[1];
+        case GF2: // -9920
+            return &ENEMY_MANAGER_PTR->float_vars[2];
+        case GF3: // -9919
+            return &ENEMY_MANAGER_PTR->float_vars[3];
+        case GF4: // -9918
+            return &ENEMY_MANAGER_PTR->float_vars[4];
+        case GF5: // -9917
+            return &ENEMY_MANAGER_PTR->float_vars[5];
+        case GF6: // -9916
+            return &ENEMY_MANAGER_PTR->float_vars[6];
+        case GF7: // -9915
+            return &ENEMY_MANAGER_PTR->float_vars[7];
+        case SELF_X_ABS: // -9995
+            return &this->data.motion.absolute.position.x;
+        case SELF_Y_ABS: // -9994
+            return &this->data.motion.absolute.position.y;
+        case SELF_X_REL: // -9993
+            return &this->data.motion.relative.position.x;
+        case SELF_Y_REL: // -9992
+            return &this->data.motion.relative.position.y;
+        default:
+            return NULL;
+    }
+}
 
 // 0x48B3A0
 dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float current_gamespeed) {
