@@ -1926,7 +1926,7 @@ static consteval size_t sizeof_template_impl() {
 
 template <typename P, typename O>
 static inline P* pointer_raw_offset(P* pointer, O offset) {
-    return (P*)(((intptr_t)pointer) + offset);
+    return (P*)(((intptr_t)pointer) + (intptr_t)offset);
 }
 
 #define _identifier(name) __identifier(MACRO_STR(name))
