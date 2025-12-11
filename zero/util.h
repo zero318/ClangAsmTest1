@@ -3194,7 +3194,7 @@ inline int byteloop_strcmp_fancy(const uint8_t* restrict strA, const uint8_t* re
 
 inline int8_t strcmp_asm(const char* restrict strA, const char* restrict strB) {
     int32_t ret;
-    int8_t carry, zero;
+    /*
     __asm__(
         ".align 16 \n"
         "0: \n"
@@ -3207,7 +3207,7 @@ inline int8_t strcmp_asm(const char* restrict strA, const char* restrict strB) {
         "   INC %[strB] \n"
         //"   LEA 1(%[strB]), %[strB] \n"
         "   TEST %h[ret], %h[ret] \n"
-        "   JE 0b \n"
+        "   JNZ 0b \n"
         //"strcmp_break_label2: \n"
         //"   SBB %[ret], %[ret] \n"
         //"   OR $1, %[ret] \n"
@@ -3216,6 +3216,33 @@ inline int8_t strcmp_asm(const char* restrict strA, const char* restrict strB) {
         : asm_arg("=&Q", ret), asm_arg("+r", strA), asm_arg("+r", strB)
     );
     return ret;
+    */
+    int8_t zero;
+    do {
+        __asm__(
+            "MOVZB (%[strA]), %[ret] \n"
+            "MOVB (%[strB]), %h[ret] \n"
+            "SUBB %h[ret], %b[ret] \n"
+            //"JNE %l[ret_nonzero] \n"
+            : asm_arg("=&Q", ret), asm_flags(z, zero)
+            : asm_arg("r", strA), asm_arg("r", strB)
+        );
+        if (!zero) {
+            assume(ret != 0);
+            return ret;
+        }
+        ++strA;
+        ++strB;
+        __asm__(
+            //"INC %[strA] \n"
+            //"INC %[strB] \n"
+            "TEST %h[ret], %h[ret] \n"
+            //"JNZ %l[next_char] \n"
+            : asm_flags(z, zero)
+            : asm_arg("Q", ret)
+        );
+    } while (!zero);
+    return 0;
 }
 
 inline bool byteloop_strucmp(const volatile uint8_t* restrict strA, const volatile uint8_t* restrict strB) {

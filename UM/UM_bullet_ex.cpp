@@ -8637,7 +8637,8 @@ struct EclStack {
 
     template<typename T>
     forceinline T pop_cast(int32_t& starting_offset) {
-        return EclValue::cast_to<T>(this->pop<int32_t>(), this->pop<char>());
+        int32_t value = this->pop<int32_t>();
+        return EclValue::cast_to<T>(value, this->pop<char>());
     }
     template<typename T>
     forceinline T pop_cast() {
@@ -34624,10 +34625,10 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
                     this->stack.leave_frame();
                     break;
                 case push_int: // 42
-                    this->stack.push(this->get_int_arg_pop(0));
+                    this->stack.push_cast(this->get_int_arg_pop(0));
                     goto skip_stack_adjust;
                 case push_float: // 44
-                    this->stack.push(this->get_float_arg_pop(0));
+                    this->stack.push_cast(this->get_float_arg_pop(0));
                     goto skip_stack_adjust;
                 case pop_int: { // 43
                     int32_t* write = this->get_int_ptr_arg(0);
@@ -34793,7 +34794,7 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
                     int32_t value = this->get_int_arg(0);
                     int32_t* write = this->get_int_ptr_arg(0);
                     *write = value - 1;
-                    this->stack.push(value);
+                    this->stack.push_cast(value);
                     goto skip_stack_adjust;
                 }
                 case math_sin: // 79
