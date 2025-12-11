@@ -42,6 +42,8 @@ using ZUNListIter = ZUNListIterBase<T, true>;
 template <typename T>
 using ZUNListEnds = ZUNListEndsBase<T, true>;
 
+#define DEBUG_SKIP_MENUS 1
+
 #define FIX_REALLY_BAD_BUGS 1
 #define PROTECT_ORIGINAL_FILES 1
 #define IGNORE_HASH_CHECKS 1
@@ -540,6 +542,62 @@ struct ZUNRect {
 ValidateStructSize32(0x10, ZUNRect);
 #pragma endregion
 
+// I got tired of casting for each individual call
+
+static inline Float2* WINAPI D3DXVec2Normalize(Float2* pOut, CONST Float2* pV) {
+    return (Float2*)D3DXVec2Normalize((D3DXVECTOR2*)pOut, (CONST D3DXVECTOR2*)pV);
+}
+// Transform (x, y, z, 1) by matrix.
+static inline Float4* WINAPI D3DXVec3Transform(Float4* pOut, CONST Float3* pV, CONST D3DMATRIX* pM) {
+    return (Float4*)D3DXVec3Transform((D3DXVECTOR4*)pOut, (CONST D3DXVECTOR3*)pV, (CONST D3DXMATRIX*)pM);
+}
+static inline Float3* WINAPI D3DXVec3Normalize(Float3* pOut, CONST Float3* pV) {
+    return (Float3*)D3DXVec3Normalize((D3DXVECTOR3*)pOut, (CONST D3DXVECTOR3*)pV);
+}
+// Project vector from object space into screen space
+static inline Float3* WINAPI D3DXVec3Project(
+    Float3* pOut, CONST Float3* pV, CONST D3DVIEWPORT9* pViewport,
+    CONST D3DMATRIX* pProjection, CONST D3DMATRIX* pView, CONST D3DMATRIX* pWorld
+) {
+    return (Float3*)D3DXVec3Project((D3DXVECTOR3*)pOut, (CONST D3DXVECTOR3*)pV, pViewport, (CONST D3DXMATRIX*)pProjection, (CONST D3DXMATRIX*)pView, (CONST D3DXMATRIX*)pWorld);
+}
+// Project vector Array from object space into screen space
+static inline Float3* WINAPI D3DXVec3ProjectArray(
+    Float3* pOut, UINT OutStride, CONST Float3* pV, UINT VStride, CONST D3DVIEWPORT9* pViewport,
+    CONST D3DMATRIX* pProjection, CONST D3DMATRIX* pView, CONST D3DMATRIX* pWorld, UINT n
+) {
+    return (Float3*)D3DXVec3ProjectArray((D3DXVECTOR3*)pOut, OutStride, (CONST D3DXVECTOR3*)pV, VStride, pViewport, (CONST D3DXMATRIX*)pProjection, (CONST D3DXMATRIX*)pView, (CONST D3DXMATRIX*)pWorld, n);
+}
+// Build a matrix which translates by (x, y, z)
+static inline D3DMATRIXZ* WINAPI D3DXMatrixTranslation(D3DMATRIX* pOut, FLOAT x, FLOAT y, FLOAT z) {
+    return (D3DMATRIXZ*)D3DXMatrixTranslation((D3DXMATRIX*)pOut, x, y, z);
+}
+// Build a matrix which rotates around the X axis
+static inline D3DMATRIXZ* WINAPI D3DXMatrixRotationX(D3DMATRIX* pOut, FLOAT Angle) {
+    return (D3DMATRIXZ*)D3DXMatrixRotationX((D3DXMATRIX*)pOut, Angle);
+}
+// Build a matrix which rotates around the Y axis
+static inline D3DMATRIXZ* WINAPI D3DXMatrixRotationY(D3DMATRIX* pOut, FLOAT Angle) {
+    return (D3DMATRIXZ*)D3DXMatrixRotationY((D3DXMATRIX*)pOut, Angle);
+}
+// Build a matrix which rotates around the Z axis
+static inline D3DMATRIXZ* WINAPI D3DXMatrixRotationZ(D3DMATRIX* pOut, FLOAT Angle) {
+    return (D3DMATRIXZ*)D3DXMatrixRotationZ((D3DXMATRIX*)pOut, Angle);
+}
+// Matrix multiplication.  The result represents the transformation M2
+// followed by the transformation M1.  (Out = M1 * M2)
+static inline D3DMATRIXZ* WINAPI D3DXMatrixMultiply(D3DMATRIX* pOut, CONST D3DMATRIX* pM1, CONST D3DMATRIX* pM2) {
+    return (D3DMATRIXZ*)D3DXMatrixMultiply((D3DXMATRIX*)pOut, (CONST D3DXMATRIX*)pM1, (CONST D3DXMATRIX*)pM2);
+}
+// Build a lookat matrix. (left-handed)
+static inline D3DMATRIXZ* WINAPI D3DXMatrixLookAtLH(D3DMATRIX* pOut, CONST Float3* pEye, CONST Float3* pAt, CONST Float3* pUp) {
+    return (D3DMATRIXZ*)D3DXMatrixLookAtLH((D3DXMATRIX*)pOut, (CONST D3DXVECTOR3*)pEye, (CONST D3DXVECTOR3*)pAt, (CONST D3DXVECTOR3*)pUp);
+}
+// Build a perspective projection matrix. (left-handed)
+static inline D3DMATRIXZ* WINAPI D3DXMatrixPerspectiveFovLH(D3DMATRIX* pOut, FLOAT fovy, FLOAT Aspect, FLOAT zn, FLOAT zf) {
+    return (D3DMATRIXZ*)D3DXMatrixPerspectiveFovLH((D3DXMATRIX*)pOut, fovy, Aspect, zn, zf);
+}
+
 enum CriticalSectionIndex {
     UpdateFuncRegistry_CS = 0,
     __unused_cs_1 = 1,
@@ -637,8 +695,6 @@ struct ScopedCriticalSection {
         CRITICAL_SECTION_MANAGER.leave_section(index);
     }
 };
-
-static constexpr auto wkrwjher = sizeof(ScopedCriticalSection<UpdateFuncRegistry_CS>);
 
 #define UniqueCriticalSectionLock(index) auto unique_name(critical_section_scope_guard_) = ScopedCriticalSection<index>()
 #define CriticalSectionBlock(index) switch (UniqueCriticalSectionLock(index); 0) default:
@@ -3985,9 +4041,9 @@ public:
         height /= 2;
         float y = (float)camera->viewport.Y + viewport_height * 0.5f;
         float eye_z = (float)height / ztanf(camera->fov * 0.5f);
-        D3DXVECTOR3 eye;
-        D3DXVECTOR3 at;
-        D3DXVECTOR3 up;
+        Float3 eye;
+        Float3 at;
+        Float3 up;
         up.x = 0.0f;
         up.y = -1.0f;
         up.z = 0.0f;
@@ -3997,10 +4053,13 @@ public:
         at.x = x;
         at.y = y;
         at.z = 0.0f;
-        D3DXMatrixLookAtLH(&camera->view_matrix.D3DX(), &eye, &at, &up);
+        D3DXMatrixLookAtLH(&camera->view_matrix, &eye, &at, &up);
         float aspect = (float)camera->viewport.Width / (float)camera->viewport.Height;
-        D3DXMatrixPerspectiveFovLH(&camera->projection_matrix.D3DX(), camera->fov, aspect, 1.0f, 10000.0f);
+        D3DXMatrixPerspectiveFovLH(&camera->projection_matrix, camera->fov, aspect, 1.0f, 10000.0f);
     }
+
+    // 0x41F950
+    dllexport gnu_noinline void thiscall __sub_41F950() asm_symbol_rel(0x41F950);
 
     // 0x454B20
     dllexport gnu_noinline void thiscall __initialize_cameras() asm_symbol_rel(0x454B20);
@@ -6431,11 +6490,17 @@ extern "C" {
 }
 
 static inline constexpr float SCREEN_LEFT_EDGE = -192.0f;
+static inline constexpr float SCREEN_CENTER_X = 0.0f;
 static inline constexpr float SCREEN_RIGHT_EDGE = 192.0f;
 static inline constexpr float SCREEN_BOTTOM_EDGE = 0.0f;
+static inline constexpr float SCREEN_CENTER_Y = 224.0f;
 static inline constexpr float SCREEN_TOP_EDGE = 448.0f;
+
 static inline constexpr float SCREEN_WIDTH = 384.0f;
 static inline constexpr float SCREEN_HEIGHT = 448.0f;
+
+static inline constexpr float SCREEN_HALF_WIDTH = 192.0f;
+static inline constexpr float SCREEN_HALF_HEIGHT = 224.0f;
 
 static inline constexpr float LOGICAL_WINDOW_WIDTH = 640.0f;
 static inline constexpr float LOGICAL_WINDOW_HEIGHT = 480.0f;
@@ -10115,21 +10180,39 @@ struct EclFile {
 static inline constexpr size_t MAX_ECL_FILE_COUNT = 32;
 static inline constexpr size_t MAX_ECL_ANM_FILES = 8;
 
+// size: 0x1098
 struct SptResource {
     //void* vtable; // 0x0
     int32_t file_count; // 0x4
     int32_t sub_count; // 0x8
     EclFile* files[MAX_ECL_FILE_COUNT]; // 0xC
     EclSubHeader* subs; // 0x8C
-    // 0x90
+    EclStack __unused_stack; // 0x90
+    // 0x1098
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline SptResource() {
+        this->zero_contents();
+    }
 
     inline ~SptResource() {
         SAFE_FREE(this->subs);
     }
 
+    inline void free_files() {
+        nounroll for (size_t i = 0; i < MAX_ECL_FILE_COUNT; ++i) {
+            if (void* file = this->files[i]) {
+                free(file);
+            }
+        }
+    }
+
     // 0x48D9D0
     // Method 0
-    dllexport virtual gnu_noinline int32_t thiscall add_ecl_file(const char* file_buffer) asm_symbol_rel(0x48D9D0) {
+    dllexport gnu_noinline virtual int32_t thiscall add_ecl_file(const char* file_buffer) asm_symbol_rel(0x48D9D0) {
         this->files[this->file_count] = (EclFile*)file_buffer;
         EclFile* ecl_file = this->files[this->file_count];
         if (
@@ -10204,7 +10287,7 @@ struct SptResource {
 
     // 0x42CCB0
     // Method 4
-    dllexport virtual gnu_noinline ZUNResult thiscall load_imports(EclIncludes* includes) asm_symbol_rel(0x42CCB0) {
+    dllexport gnu_noinline virtual ZUNResult thiscall load_imports(EclIncludes* includes) asm_symbol_rel(0x42CCB0) {
         return ZUN_SUCCESS;
     }
 };
@@ -10213,58 +10296,35 @@ ValidateVirtualFieldOffset32(0x4, SptResource, file_count);
 ValidateVirtualFieldOffset32(0x8, SptResource, sub_count);
 ValidateVirtualFieldOffset32(0xC, SptResource, files);
 ValidateVirtualFieldOffset32(0x8C, SptResource, subs);
-ValidateStructSize32(0x90, SptResource);
+ValidateVirtualFieldOffset32(0x90, SptResource, __unused_stack);
+ValidateStructSize32(0x1098, SptResource);
 #pragma endregion
 
 // size: 0x1098
-struct EclResource : SptResource {
+struct EclManager : SptResource {
     // SptResource base; // 0x0
-    EclStack __wtf_stack_maybe; // 0x90
     // 0x1098
 
-    inline void zero_contents() {
-        zero_this();
+    inline EclManager() {
     }
-
-    inline EclResource() {
-        this->zero_contents();
-    }
-};
-
-// TODO: This directly inherits from SptResource but IDK how
-// to make the constructor memset the entire size but still
-// write the vtable pointer correctly
-// size: 0x1098
-struct EclManager : EclResource {
-    // EclResource base; // 0x0
-    // 0x1098
 
     inline ~EclManager() {
-        nounroll for (size_t i = 0; i < MAX_ECL_FILE_COUNT; ++i) {
-            if (void* file = this->files[i]) {
-                free(file);
-            }
-        }
+        this->free_files();
     }
 
     // 0x42D3E0
     // Method 0
-    dllexport virtual gnu_noinline int32_t thiscall add_ecl_file(const char* file_name) asm_symbol_rel(0x42D3E0) {
+    dllexport gnu_noinline virtual int32_t thiscall add_ecl_file(const char* file_name) asm_symbol_rel(0x42D3E0) {
         const char* ecl_file = (const char*)read_file_from_dat(file_name);
-        int32_t index = __super::add_ecl_file(ecl_file);
+        int32_t index = this->SptResource::add_ecl_file(ecl_file);
         return index >= 0 ? ZUN_SUCCESS : ZUN_ERROR;
     }
 
     // 0x42DA90
     // Method 4
-    dllexport virtual gnu_noinline ZUNResult thiscall load_imports(EclIncludes* includes) asm_symbol_rel(0x42DA90);
+    dllexport gnu_noinline virtual ZUNResult thiscall load_imports(EclIncludes* includes) asm_symbol_rel(0x42DA90);
 };
 #pragma region // EclManager Validation
-ValidateVirtualFieldOffset32(0x4, EclManager, file_count);
-ValidateVirtualFieldOffset32(0x8, EclManager, sub_count);
-ValidateVirtualFieldOffset32(0xC, EclManager, files);
-ValidateVirtualFieldOffset32(0x8C, EclManager, subs);
-//ValidateVirtualFieldOffset32(0x90, EclManager, __wtf_stack_maybe);
 ValidateStructSize32(0x1098, EclManager);
 #pragma endregion
 
@@ -12377,7 +12437,7 @@ dllexport gnu_noinline void stdcall SoundManager::play_sound_centered(int32_t so
 // 0x476C70
 dllexport gnu_noinline void vectorcall SoundManager::play_sound_positioned(int32_t sound_id, float position) {
     int32_t idk = SOUND_DATA[sound_id].__short_A;
-    int32_t idk2 = (int32_t)(position * 1000.0f / 192.0f);
+    int32_t idk2 = (int32_t)(position * 1000.0f / SCREEN_HALF_WIDTH);
     nounroll for (size_t i = 0; i < countof(SOUND_MANAGER.active_sound_ids); ++i) {
         int32_t active_sound_id = SOUND_MANAGER.active_sound_ids[i];
         if (active_sound_id < 0) {
@@ -13692,7 +13752,7 @@ struct AnmVM {
         pWorld.m[3][0] = this->data.position.x + this->controller.position.x + this->data.__position_2.x;
         pWorld.m[3][1] = this->data.position.y + this->controller.position.y + this->data.__position_2.y;
         pWorld.m[3][2] = this->data.position.z + this->controller.position.z + this->data.__position_2.z;
-        D3DXVec3Project(&projectedA.D3DX(), &pV.D3DX(), &camera->viewport, &camera->projection_matrix.D3DX(), &camera->view_matrix.D3DX(), &pWorld.D3DX());
+        D3DXVec3Project(&projectedA, &pV, &camera->viewport, &camera->projection_matrix, &camera->view_matrix, &pWorld);
 
         if (
             !(projectedA.z < 0.0f) &&
@@ -13701,7 +13761,7 @@ struct AnmVM {
             camera = SUPERVISOR.current_camera_ptr;
 
             Float3 projectedB; // ESP+3C
-            D3DXVec3Project(&projectedB.D3DX(), &camera->__float3_30.D3DX(), &camera->viewport, &camera->projection_matrix.D3DX(), &camera->view_matrix.D3DX(), &pWorld.D3DX());
+            D3DXVec3Project(&projectedB, &camera->__float3_30, &camera->viewport, &camera->projection_matrix, &camera->view_matrix, &pWorld);
 
             float scale = projectedB.distance(&projectedA) * 0.5f;
 
@@ -15639,7 +15699,7 @@ struct AnmManager {
             !vm->controller.parent
         ) {
             matrix.m[0][0] += WINDOW_DATA.__scaled_width * 0.5f;
-            matrix.m[0][1] += (WINDOW_DATA.__scaled_height - 448.0f) * 0.5f;
+            matrix.m[0][1] += (WINDOW_DATA.__scaled_height - SCREEN_HEIGHT) * 0.5f;
         }
         matrix.m[0][1] += vm->data.position.y + vm->controller.position.y + vm->data.__position_2.y;
         matrix.m[0][2] += vm->data.position.z + vm->controller.position.z + vm->data.__position_2.z;
@@ -15929,7 +15989,7 @@ struct AnmManager {
                 !vm->controller.parent
             ) {
                 position.x += WINDOW_DATA.__scaled_width * 0.5f;
-                position.y += (WINDOW_DATA.__scaled_height - 448.0f) * 0.5f;
+                position.y += (WINDOW_DATA.__scaled_height - SCREEN_HEIGHT) * 0.5f;
             }
 
             float length = position.length();
@@ -16160,7 +16220,7 @@ struct AnmManager {
 
             matrix.m[3][2] += vm->data.position.z + vm->controller.position.z + vm->data.__position_2.z;
             
-            SUPERVISOR.d3d_device->SetTransform(D3DTS_WORLDMATRIX(0), &matrix.D3DX());
+            SUPERVISOR.d3d_device->SetTransform(D3DTS_WORLDMATRIX(0), &matrix);
 
             AnmSprite* sprite = &ANM_MANAGER_PTR->loaded_anm_files[vm->data.slot2]->sprites[vm->data.sprite_id];
             int32_t sprite_index = sprite->__index_8;
@@ -16183,7 +16243,7 @@ struct AnmManager {
                 *(Float2*)&temp.m[2][0] = vm->data.sprite_uv_quad[0] + vm->data.uv_scroll;
                 temp.m[0][0] *= vm->data.uv_scale.x;
                 temp.m[1][1] *= vm->data.uv_scale.y;
-                SUPERVISOR.d3d_device->SetTransform(D3DTS_TEXTURE0, &temp.D3DX());
+                SUPERVISOR.d3d_device->SetTransform(D3DTS_TEXTURE0, &temp);
             }
 
             if (this->__sbyte_3120E0A != 2) {
@@ -16304,7 +16364,7 @@ struct AnmManager {
             matrix.m[3][1] = vm->controller.position.y + vm->data.position.y + +vm->data.__position_2.y;
             matrix.m[3][2] = vm->controller.position.z + vm->data.position.z + +vm->data.__position_2.z;
 
-            SUPERVISOR.d3d_device->SetTransform(D3DTS_WORLDMATRIX(0), &matrix.D3DX());
+            SUPERVISOR.d3d_device->SetTransform(D3DTS_WORLDMATRIX(0), &matrix);
 
             this->setup_render_state_for_vm(vm);
 
@@ -16327,7 +16387,7 @@ struct AnmManager {
                 *(Float2*)&temp.m[2][0] = vm->data.sprite_uv_quad[0] + vm->data.uv_scroll;
                 temp.m[0][0] *= vm->data.uv_scale.x;
                 temp.m[1][1] *= vm->data.uv_scale.y;
-                SUPERVISOR.d3d_device->SetTransform(D3DTS_TEXTURE0, &temp.D3DX());
+                SUPERVISOR.d3d_device->SetTransform(D3DTS_TEXTURE0, &temp);
             }
 
             if (this->__sbyte_3120E0A != 5) {
@@ -16415,7 +16475,7 @@ struct AnmManager {
                     i < 4;
                     ++i, ++sprite_vertex_ptr, ++vertexA_ptr, ++float4_ptr
                 ) {
-                    D3DXVec3Transform(&float4_ptr->D3DX(), &vertexA_ptr->position.D3DX(), &this->__matrix_31207B0.D3DX());
+                    D3DXVec3Transform(float4_ptr, &vertexA_ptr->position, &this->__matrix_31207B0);
                     camera = SUPERVISOR.current_camera_ptr;
                     float length = float4_ptr->distance3(&camera->position);
                     float draw_begin = camera->sky.begin_distance;
@@ -17318,10 +17378,10 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_A(void* pt
         D3DRECT rect = SUPERVISOR.cameras[3].get_viewport_d3d_rect();
         SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, SUPERVISOR.background_color, 1.0f, 0);
 
-        WINDOW_DATA.__width_related_2080 = 384;
+        WINDOW_DATA.__width_related_2080 = (int32_t)SCREEN_WIDTH;
         WINDOW_DATA.__width_related_208C = WINDOW_DATA.__scaled_width / 2;
-        WINDOW_DATA.__height_related_207C = 448;
-        WINDOW_DATA.__height_related_2090 = (int32_t)(WINDOW_DATA.__scaled_height - 448.0f) / 2;
+        WINDOW_DATA.__height_related_207C = (int32_t)SCREEN_HEIGHT;
+        WINDOW_DATA.__height_related_2090 = (int32_t)(WINDOW_DATA.__scaled_height - SCREEN_HEIGHT) / 2;
     } else {
         SUPERVISOR.d3d_device->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, SUPERVISOR.background_color, 1.0f, 0);
     }
@@ -17638,7 +17698,7 @@ inline UpdateFuncRet thiscall Supervisor::on_tick() {
             ret = this->__sub_455040();
             if (ret == UpdateFuncNext) {
                 WINDOW_DATA.__width_related_208C = WINDOW_DATA.__scaled_width / 2;
-                WINDOW_DATA.__height_related_2090 = (WINDOW_DATA.__scaled_height - 448) / 2;
+                WINDOW_DATA.__height_related_2090 = (WINDOW_DATA.__scaled_height - (int32_t)SCREEN_HEIGHT) / 2;
             }
     }
 
@@ -17687,6 +17747,39 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_455EC0() {
     else {
         this->cameras[0] = this->cameras[3];
     }
+}
+
+// 0x41F950
+dllexport gnu_noinline void thiscall Supervisor::__sub_41F950() {
+    StageCamera* camera = &this->cameras[3];
+    this->current_camera_ptr = camera;
+    if (AnmManager* anm_manager = ANM_MANAGER_PTR) {
+        anm_manager->flush_sprites();
+    }
+    Float3 facing = camera->facing_normalized;
+    Float3 eye = camera->__shaking_float3_A + camera->position;
+    Float3 at = eye + facing;
+    D3DXMatrixLookAtLH(&camera->view_matrix, &eye, &at, &camera->rotation);
+
+    float aspect_ratio = (float)camera->viewport.Width / (float)camera->viewport.Height;
+    D3DXMatrixPerspectiveFovLH(&camera->projection_matrix, camera->fov, aspect_ratio, 30.0f, 8000.0f);
+
+    SUPERVISOR.d3d_device->SetTransform(D3DTS_VIEW, &camera->view_matrix);
+    SUPERVISOR.d3d_device->SetTransform(D3DTS_PROJECTION, &camera->projection_matrix);
+
+    Float3 rotation = camera->rotation;
+    camera->__float3_30.x = rotation.z * facing.y - rotation.y * facing.z;
+    camera->__float3_30.y = rotation.x * facing.z - rotation.z * facing.x;
+    camera->__float3_30.z = rotation.y * facing.x - rotation.x * facing.y;
+    D3DXVec3Normalize(&camera->__float3_30, &camera->__float3_30);
+
+    camera->__copy_float2_FC_to_anm_manager();
+
+    this->d3d_device->SetViewport(&camera->__viewport_10C);
+
+    AnmManager* anm_manager = ANM_MANAGER_PTR;
+    anm_manager->__float2_D8 = (Float2)this->current_camera_ptr->__int2_104;
+    this->current_camera_index = 3;
 }
 
 inline void AnmLoaded::cleanup() {
@@ -27762,14 +27855,111 @@ struct StdObject {
 
 private:
     // 0x41CA90
-    dllexport gnu_noinline int vectorcall __sub_41CA90(int, Float3* arg1, float, float, float arg2, StageCamera* camera) asm_symbol_rel(0x41CA90) {
-        // TODO
+    dllexport gnu_noinline BOOL vectorcall __sub_41CA90(int, Float3* offset, float, float, float draw_distance_squared, StageCamera* camera) asm_symbol_rel(0x41CA90) {
+        Float3 position = this->position;
+        Float3 A = (position + *offset) - (camera->position + camera->__shaking_float3_A);
+        if (
+            !(A.length_squared3() > draw_distance_squared)
+        ) {
+            constexpr size_t COORD_COUNT = 16;
+            D3DMATRIXZ matrix; // EBP-1C8
+            Float3 float3_array_out[COORD_COUNT]; // EBP-188
+            Float3 float3_array_in[COORD_COUNT]; // EBP-C8
+
+            matrix.set_identity();
+
+            Float3 half_size = this->size * 0.5f;
+
+            // idc what the original code looked like for
+            // this I'm just directly copying the assembly
+            float3_array_in[12].z = position.z;
+            float3_array_in[13].z = position.z;
+            float3_array_in[0].x = position.x + half_size.x;
+            float3_array_in[1].x = position.x + half_size.x;
+            float3_array_in[2].x = position.x + half_size.x;
+            float3_array_in[3].x = position.x + half_size.x;
+            float3_array_in[8].x = position.x;
+            float3_array_in[9].x = position.x;
+            float3_array_in[10].x = position.x;
+            float3_array_in[11].x = position.x;
+            float3_array_in[12].x = position.x;
+            float3_array_in[13].x = position.x;
+            float3_array_in[14].x = position.x;
+            float3_array_in[4].x = position.x - half_size.x;
+            float3_array_in[5].x = position.x - half_size.x;
+            float3_array_in[6].x = position.x - half_size.x;
+            float3_array_in[7].x = position.x - half_size.x;
+            float3_array_in[2].y = position.y - half_size.y;
+            float3_array_in[3].y = position.y - half_size.y;
+            float3_array_in[6].y = position.y - half_size.y;
+            float3_array_in[7].y = position.y - half_size.y;
+            float3_array_in[8].y = position.y - half_size.y;
+            float3_array_in[10].y = position.y - half_size.y;
+            float3_array_in[12].y = position.y - half_size.y;
+            float3_array_in[14].y = position.y - half_size.y;
+            float3_array_in[0].y = position.y + half_size.y;
+            float3_array_in[0].z = position.z + half_size.z;
+            float3_array_in[1].y = position.y + half_size.y;
+            float3_array_in[1].z = position.z - half_size.z;
+            float3_array_in[2].z = position.z + half_size.z;
+            float3_array_in[3].z = position.z - half_size.z;
+            float3_array_in[4].y = position.y + half_size.y;
+            float3_array_in[4].z = position.z + half_size.z;
+            float3_array_in[5].y = position.y + half_size.y;
+            float3_array_in[5].z = position.z - half_size.z;
+            float3_array_in[6].z = position.z + half_size.z;
+            float3_array_in[7].z = position.z - half_size.z;
+            float3_array_in[8].z = position.z - half_size.z;
+            float3_array_in[9].y = position.y + half_size.y;
+            float3_array_in[9].z = position.z - half_size.z;
+            float3_array_in[10].z = position.z + half_size.z;
+            float3_array_in[11].y = position.y + half_size.y;
+            float3_array_in[11].z = position.z + half_size.z;
+            float3_array_in[13].y = position.y + half_size.y;
+            float3_array_in[14].z = position.z - half_size.z * 0.5f;
+            float3_array_in[15].x = position.x;
+            float3_array_in[15].y = position.y + half_size.y;
+            float3_array_in[15].z = position.z + half_size.z * 0.5f;
+
+            D3DXMatrixTranslation(&matrix, offset->x, offset->y, offset->z);
+            D3DXVec3ProjectArray(float3_array_out, sizeof(Float3), float3_array_in, sizeof(Float3), &camera->viewport, &camera->projection_matrix, &camera->view_matrix, &matrix, COORD_COUNT);
+
+            float X = WINDOW_DATA.__width_related_2074;
+            float Y = WINDOW_DATA.__height_related_2078;
+
+            float max_X = X + SCREEN_WIDTH + 8.0f;
+            float max_Y = Y + SCREEN_HEIGHT + 8.0f;
+            float min_X = X - 8.0f;
+            float min_Y = Y - 8.0f;
+
+            nounroll for (size_t i = 0; i != COORD_COUNT; ++i) {
+                if (
+                    float3_array_out[i].z >= 0.0f &&
+                    float3_array_out[i].z <= 1.0f
+                ) {
+                    min_X = __max(float3_array_out[i].x, min_X);
+                    max_X = __min(float3_array_out[i].x, max_X);
+                    min_Y = __max(float3_array_out[i].y, min_Y);
+                    max_Y = __min(float3_array_out[i].y, max_Y);
+                }
+            }
+
+            if (
+                min_X >= WINDOW_DATA.__width_related_2074 &&
+                max_X <= X + SCREEN_WIDTH &&
+                min_Y >= WINDOW_DATA.__height_related_2078 &&
+                max_Y <= Y + SCREEN_WIDTH
+            ) {
+                return false;
+            }
+        }
+        return true;
     }
 
 public:
     // 0x41CA90
-    inline int __sub_41CA90(Float3* arg1, float arg2, StageCamera* camera) {
-        return this->__sub_41CA90(UNUSED_DWORD, arg1, UNUSED_FLOAT, UNUSED_FLOAT, arg2, camera);
+    inline BOOL __sub_41CA90(Float3* offset, float draw_distance_squared, StageCamera* camera) {
+        return this->__sub_41CA90(UNUSED_DWORD, offset, UNUSED_FLOAT, UNUSED_FLOAT, draw_distance_squared, camera);
     }
 };
 
@@ -28085,7 +28275,7 @@ struct Stage : ZUNTask {
         StdInstance* instance = this->instances;
         this->std_vm.__draw_vms(layer);
         SUPERVISOR.d3d_enable_fog();
-        // SUPERVISOR.__sub_41F950();
+        SUPERVISOR.__sub_41F950();
         ANM_MANAGER_PTR->__byte_3120E0C = 1;
 
         while (instance->object_id >= 0) {
@@ -28155,7 +28345,7 @@ struct Stage : ZUNTask {
             this->std_vm.camera.__float3_13C = {};
 
             Float3 A = this->std_vm.camera.facing + this->std_vm.camera.__shaking_float3_B;
-            D3DXVec3Normalize(&this->std_vm.camera.facing_normalized.D3DX(), &A.D3DX());
+            D3DXVec3Normalize(&this->std_vm.camera.facing_normalized, &A);
 
             this->std_vm.__color_3440 = PackD3DCOLOR(0, 128, 128, 128);
 
@@ -28200,7 +28390,7 @@ struct Stage : ZUNTask {
             this->std_vm.camera.__float2_FC.x = SUPERVISOR.cameras[3].__float2_FC.x;
             this->std_vm.camera.__float2_FC.y = SUPERVISOR.cameras[3].__float2_FC.y;
             SUPERVISOR.cameras[3] = this->std_vm.camera;
-            //SUPERVISOR.__sub_41F950();
+            SUPERVISOR.__sub_41F950();
 
             SUPERVISOR.d3d_enable_zwrite();
             SUPERVISOR.d3d_zfunc_lessequal();
@@ -28272,7 +28462,7 @@ struct Stage : ZUNTask {
             this->std_vm.camera.__float2_FC.x = SUPERVISOR.cameras[3].__float2_FC.x;
             this->std_vm.camera.__float2_FC.y = SUPERVISOR.cameras[3].__float2_FC.y;
             SUPERVISOR.cameras[3] = this->std_vm.camera;
-            //SUPERVISOR.__sub_41F950();
+            SUPERVISOR.__sub_41F950();
 
             SUPERVISOR.d3d_disable_fog();
             SUPERVISOR.d3d_disable_zwrite();
@@ -29191,7 +29381,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
             if (current_death_timer == 3) {
                 GAME_MANAGER.globals.subtract_power(GAME_MANAGER.globals.power_per_level);
                 
-                Float3 position = { 0.0f, this->data.position.y - 224.0f, 0.0f };
+                Float3 position = { 0.0f, this->data.position.y - SCREEN_CENTER_Y, 0.0f };
                 float base_angle = this->angle_from_point(&position);
 
                 // Gotta love old code that does literally nothing
@@ -32359,8 +32549,8 @@ dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_call_2_ex(EnemyData*
             &A, &B,
             &laser->position,
             laser->angle,
-            0.0f, 224.0f,
-            384.0f, 448.0f,
+            SCREEN_CENTER_X, SCREEN_CENTER_Y,
+            SCREEN_WIDTH, SCREEN_HEIGHT,
             0.0f
         )) {
             unit_vec.make_from_vector(laser->angle, 1.0f);
@@ -32394,8 +32584,8 @@ dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_call_3_ex(EnemyData*
             &A, &B,
             &laser->position,
             laser->angle,
-            0.0f, 224.0f,
-            384.0f, 448.0f,
+            SCREEN_CENTER_X, SCREEN_CENTER_Y,
+            SCREEN_WIDTH, SCREEN_HEIGHT,
             0.0f
         )) {
             unit_vec.make_from_vector(laser->angle, 1.0f);
@@ -32672,7 +32862,7 @@ dllexport void Bullet::run_effects() {
                 if (IntArg(1) & 0x20) {
                     effect_data.size = { FloatArg(1), FloatArg(2) };
                 } else {
-                    effect_data.size = { 384.0f, 448.0f };
+                    effect_data.size = { SCREEN_WIDTH, SCREEN_HEIGHT };
                 }
                 effect_data.max_count = IntArg(0);
                 effect_data.duration = 0;
@@ -38401,11 +38591,15 @@ struct MainMenu : ZUNTask {
                 }
                 ANM_MANAGER_PTR->unload_anm(SIG_ANM_INDEX);
 
+#if DEBUG_SKIP_MENUS
                 // DEBUG: Try to directly start a game?
-                //SUPERVISOR.gamemode_switch = 10;
-                //GAME_MANAGER.globals.__stage_number_related_4 = 1;
+                SUPERVISOR.gamemode_switch = 10;
+                GAME_MANAGER.globals.__stage_number_related_4 = 1;
+#endif
             }
-            //main_menu->enable_draw_unsafe(); // this crashes without the menu code
+#if !DEBUG_SKIP_MENUS
+            main_menu->enable_draw_unsafe(); // this crashes without the menu code
+#endif
             WINDOW_DATA.__int_20D0 = 1;
         }
         else {
@@ -38779,7 +38973,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 
             float X = boss->data.current_motion.position.x;
             if (
-                X < -192.0f || X > 192.0f
+                X < SCREEN_LEFT_EDGE || X > SCREEN_RIGHT_EDGE
             ) {
                 vm->set_alpha(0);
             }
@@ -39430,16 +39624,16 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
     camera2->__viewport_10C.Height = WINDOW_DATA.__scaled_height;
     camera2->__viewport_124.X = WINDOW_DATA.__game_scale * 32.0f;
     camera2->__viewport_124.Y = WINDOW_DATA.__game_scale * 16.0f;
-    camera2->__viewport_124.Width = WINDOW_DATA.__game_scale * 384.0f;
-    camera2->__viewport_124.Height = WINDOW_DATA.__game_scale * 448.0f;
+    camera2->__viewport_124.Width = WINDOW_DATA.__game_scale * SCREEN_WIDTH;
+    camera2->__viewport_124.Height = WINDOW_DATA.__game_scale * SCREEN_HEIGHT;
     this->__sub_454950(camera2);
     StageCamera* camera0 = &this->cameras[0];
     *camera0 = *camera2;
     camera0->camera_index = 0;
     camera0->viewport.X = WINDOW_DATA.__game_scale * 32.0f;
     camera0->viewport.Y = WINDOW_DATA.__game_scale * 16.0f;
-    camera0->viewport.Width = WINDOW_DATA.__game_scale * 384.0f;
-    camera0->viewport.Height = WINDOW_DATA.__game_scale * 448.0f;
+    camera0->viewport.Width = WINDOW_DATA.__game_scale * SCREEN_WIDTH;
+    camera0->viewport.Height = WINDOW_DATA.__game_scale * SCREEN_HEIGHT;
     camera0->__int2_104.x = 0;
     camera0->__int2_104.y = 0;
     camera0->__viewport_10C = camera0->viewport;
@@ -39449,8 +39643,8 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
     camera1->camera_index = 1;
     camera1->viewport.X = WINDOW_DATA.__game_scale * 128.0f;
     camera1->viewport.Y = WINDOW_DATA.__game_scale * 16.0f;
-    camera1->viewport.Width = WINDOW_DATA.__game_scale * 384.0f;
-    camera1->viewport.Height = WINDOW_DATA.__game_scale * 448.0f;
+    camera1->viewport.Width = WINDOW_DATA.__game_scale * SCREEN_WIDTH;
+    camera1->viewport.Height = WINDOW_DATA.__game_scale * SCREEN_HEIGHT;
     camera1->__int2_104.x = 0;
     camera1->__int2_104.y = 0;
     camera1->__viewport_10C = camera1->viewport;
@@ -39458,12 +39652,12 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
     StageCamera* camera3 = &this->cameras[3];
     *camera3 = *camera0;
     camera3->camera_index = 3;
-    camera3->viewport.X = ((float)WINDOW_DATA.__scaled_width - 408.0f) * 0.5f;
+    camera3->viewport.X = ((float)WINDOW_DATA.__scaled_width - (SCREEN_WIDTH + 24.0f)) * 0.5f;
     camera3->viewport.Width = 408;
     camera3->viewport.Width = 472;
     camera3->__int2_104.x = 0;
     camera3->__int2_104.y = 0;
-    camera3->viewport.Y = ((float)WINDOW_DATA.__scaled_height - 472.0f) * 0.5f;
+    camera3->viewport.Y = ((float)WINDOW_DATA.__scaled_height - (SCREEN_HEIGHT + 24.0f)) * 0.5f;
     camera3->__viewport_10C = camera3->viewport;
     this->__sub_454950(camera3);
     WINDOW_DATA.__width_related_2084 = WINDOW_DATA.__scaled_width / 2;
@@ -39486,8 +39680,8 @@ dllexport gnu_noinline void Supervisor::__camera2_sub_454F50() {
     SUPERVISOR.cameras[2].__viewport_10C.Height = intC;
     SUPERVISOR.cameras[2].__viewport_124.X = floatA * -32.0f;
     SUPERVISOR.cameras[2].__viewport_124.Y = floatA * -16.0f;
-    SUPERVISOR.cameras[2].__viewport_124.Width = floatA * 384.0f;
-    SUPERVISOR.cameras[2].__viewport_124.Width = floatA * 448.0f;
+    SUPERVISOR.cameras[2].__viewport_124.Width = floatA * SCREEN_WIDTH;
+    SUPERVISOR.cameras[2].__viewport_124.Width = floatA * SCREEN_HEIGHT;
 }
 
 // 0x462680
@@ -41397,8 +41591,8 @@ dllexport gnu_noinline void WindowData::__sub_4734E0(int arg1) {
     width = floatA * LOGICAL_WINDOW_WIDTH;
     WINDOW_DATA.__scaled_height = height;
     WINDOW_DATA.__scaled_width = width;
-    this->__width_related_2074 = (int32_t)(width - SCREEN_WIDTH) / 2;
-    this->__height_related_2078 = (int32_t)(WINDOW_DATA.__scaled_height - SCREEN_HEIGHT) / 2;
+    this->__width_related_2074 = (int32_t)(width - (float)SCREEN_WIDTH) / 2;
+    this->__height_related_2078 = (int32_t)(WINDOW_DATA.__scaled_height - (float)SCREEN_HEIGHT) / 2;
 }
 
 // 0x473890
