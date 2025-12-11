@@ -40731,6 +40731,7 @@ inline unsigned GameThread::thread_start_impl() {
             !BulletManager::allocate() ||
             !ItemManager::allocate() ||
             !LaserManager::allocate() ||
+            !PauseMenu::allocate() ||
             !PopupManager::allocate()
         ) {
             goto thread_start_important_label;
