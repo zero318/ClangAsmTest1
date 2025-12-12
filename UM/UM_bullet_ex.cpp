@@ -3108,8 +3108,8 @@ dllexport gnu_noinline void __update_input0() {
 }
 
 // 0x416B70
-dllexport gnu_noinline BOOL stdcall __hardware_input0_pressed_or_held(uint32_t mask) asm_symbol_rel(0x416B70);
-dllexport gnu_noinline BOOL stdcall __hardware_input0_pressed_or_held(uint32_t mask) {
+dllexport gnu_noinline BOOL stdcall check_hardware_inputs_repeating(uint32_t mask) asm_symbol_rel(0x416B70);
+dllexport gnu_noinline BOOL stdcall check_hardware_inputs_repeating(uint32_t mask) {
     return INPUT_STATES[0].check_hardware_inputs_repeating(mask);
 }
 
@@ -3823,7 +3823,15 @@ union AnmID {
         return *this;
     }
 
-    AnmID thiscall __sub_489140();
+private:
+    // 0x489140
+    dllexport gnu_noinline AnmID& thiscall __wtf_child_list_jank_A_ID(AnmID& out, int32_t script, uint32_t arg2 = UNUSED_DWORD);
+public:
+
+    inline AnmID __wtf_child_list_jank_A_ID(int32_t script) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->__wtf_child_list_jank_A_ID(dummy, script);
+    }
 };
 #pragma region // AnmID Validation
 ValidateFieldOffset32(0x0, AnmID, full);
@@ -3848,7 +3856,7 @@ extern "C" {
 
 typedef struct LoadingThread LoadingThread;
 
-// According to FW this is belongs to WindowData
+// According to FW this belongs to WindowData
 // 0x473390
 dllexport gnu_noinline double vectorcall get_runtime() asm_symbol_rel(0x473390);
 
@@ -6105,7 +6113,9 @@ static inline constexpr int32_t RANK_RANGE = RANK_BOUND * 2; // 2048
 static inline constexpr size_t SCOREFILE_TOTALS = SHOTTYPE_COUNT;
 
 static inline void __update_life_ui();
+static inline void __update_life_ui_unsafe();
 static inline void __update_bomb_ui();
+static inline void __update_bomb_ui_unsafe();
 
 // 0x4B3FF4
 static inline constexpr int32_t LIFE_FRAGMENT_COST_TABLE_EXTRA[10] = {
@@ -11575,7 +11585,7 @@ struct MenuSelect {
     }
 
     // 0x4029E0
-    dllexport gnu_noinline int32_t thiscall __move_selection(int32_t offset) asm_symbol_rel(0x4029E0) {
+    dllexport gnu_noinline int32_t thiscall move_selection(int32_t offset) asm_symbol_rel(0x4029E0) {
         int32_t selection = this->current_selection;
         int32_t menu_length = this->menu_length;
 
@@ -11616,6 +11626,55 @@ struct MenuSelect {
         }
 
         return selection;
+    }
+
+    // 0x41B2D0
+    dllexport BOOL thiscall __is_index_disabled(int32_t index) asm_symbol_rel(0x41B2D0) {
+        int32_t disabled_selections_count = this->disabled_selections_count;
+        for (int32_t i = 0; i < disabled_selections_count; ++i) {
+            if (this->disabled_selections[i] == index) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // TODO: better name
+    inline void __deselect_disabled_selections() {
+        while (this->__is_index_disabled(this->current_selection)) {
+            if (++this->current_selection >= this->menu_length) {
+                this->current_selection = 0;
+            }
+        }
+    }
+
+    // 0x45A4D0
+    dllexport gnu_noinline void thiscall disable_selection(int32_t index) asm_symbol_rel(0x45A4D0) {
+        if (this->__is_index_disabled(index)) {
+            return;
+        }
+        this->disabled_selections[disabled_selections_count] = index;
+        ++this->disabled_selections_count;
+
+        this->__deselect_disabled_selections();
+    }
+
+    // 0x416BA0
+    dllexport gnu_noinline void thiscall set_selection(int32_t index) asm_symbol_rel(0x416BA0) {
+        int32_t menu_length = this->menu_length;
+        if (menu_length) {
+            if (index >= menu_length) {
+                index = menu_length - 1;
+            }
+            else if (index < 0) {
+                index = 0;
+            }
+            this->current_selection = index;
+            this->__deselect_disabled_selections();
+        }
+        else {
+            this->current_selection = 0;
+        }
     }
 };
 #pragma region // MenuSelect Verification
@@ -12194,10 +12253,18 @@ static inline void __update_life_ui() {
     }
 }
 
+static inline void __update_life_ui_unsafe() {
+    GUI_PTR->__update_life_ui(GAME_MANAGER.globals.life_stocks, GAME_MANAGER.globals.life_fragments, GAME_MANAGER.globals.life_stock_max);
+}
+
 static inline void __update_bomb_ui() {
     if (Gui* gui = GUI_PTR) {
         gui->__update_bomb_ui(GAME_MANAGER.globals.bomb_stocks, GAME_MANAGER.globals.bomb_fragments, GAME_MANAGER.globals.bomb_stock_max);
     }
+}
+
+static inline void __update_bomb_ui_unsafe() {
+    GUI_PTR->__update_bomb_ui(GAME_MANAGER.globals.bomb_stocks, GAME_MANAGER.globals.bomb_fragments, GAME_MANAGER.globals.bomb_stock_max);
 }
 
 // 0x4767B0
@@ -17167,7 +17234,7 @@ struct AnmManager {
                 }
             });
 
-            destroy_list.for_each([this](AnmVM* vm) {
+            destroy_list.for_each([=](AnmVM* vm) {
                 this->destroy_possibly_managed_vm(vm);
             });
         }
@@ -17202,7 +17269,7 @@ struct AnmManager {
                 }
             });
 
-            destroy_list.for_each([this](AnmVM* vm) {
+            destroy_list.for_each([=](AnmVM* vm) {
                 this->destroy_possibly_managed_vm(vm);
             });
         }
@@ -19098,6 +19165,18 @@ dllexport gnu_noinline AnmVM* thiscall AnmID::__wtf_child_list_jank_A(int32_t sc
     // zun, you literally just checked the ID
     // why
     return this->get_vm_ptr()->__wtf_child_list_jank_A(script, arg2);
+}
+
+// 0x489140
+dllexport gnu_noinline AnmID& thiscall AnmID::__wtf_child_list_jank_A_ID(AnmID& out, int32_t script, uint32_t arg3) {
+    AnmVM* vm;
+    clang_forceinline vm = this->__wtf_child_list_jank_A(script, 0);
+    if (vm) {
+        out = vm->controller.id;
+        return out;
+    }
+    out = 0;
+    return out;
 }
 
 inline void AnmLoaded::__prepare_vm_data(AnmVM* vm, int32_t script_id) {
@@ -26460,7 +26539,7 @@ struct AbilityShop : ZUNTask {
     const CardData* card_array[256]; // 0xA30
     unknown_fields(0x4); // 0xE30
     BOOL __has_blank_card_already; // 0xE34
-    unknown_fields(0x4); // 0xE38
+    int __dword_E38; // 0xE38
     // 0xE3C
 
     inline void zero_contents() {
@@ -26650,6 +26729,7 @@ ValidateFieldOffset32(0x62C, AbilityShop, __anm_id_array_62C);
 ValidateFieldOffset32(0xA2C, AbilityShop, card_count);
 ValidateFieldOffset32(0xA30, AbilityShop, card_array);
 ValidateFieldOffset32(0xE34, AbilityShop, __has_blank_card_already);
+ValidateFieldOffset32(0xE38, AbilityShop, __dword_E38);
 ValidateStructSize32(0xE3C, AbilityShop);
 #pragma endregion
 
@@ -38090,7 +38170,7 @@ struct HelpMenu : ZUNTask {
         return ZUN_SUCCESS;
     }
 
-    dllexport gnu_noinline HelpMenu* allocate() {
+    dllexport gnu_noinline static HelpMenu* allocate() {
         HelpMenu* help_menu = new HelpMenu();
         HELP_MENU_PTR = help_menu;
         if (ZUN_FAILED(help_menu->initialize())) {
@@ -38257,7 +38337,7 @@ struct OptionsMenu : ZUNTask {
     Float3 __float3_FC; // 0xFC
     Timer __timer_108; // 0x108
     Timer __timer_11C; // 0x11C
-    int __dword_130; // 0x130
+    int __int_130; // 0x130
     int __int_134; // 0x134
     // 0x138
 
@@ -38339,6 +38419,7 @@ ValidateFieldOffset32(0xE8, OptionsMenu, __timer_E8);
 ValidateFieldOffset32(0xFC, OptionsMenu, __float3_FC);
 ValidateFieldOffset32(0x108, OptionsMenu, __timer_108);
 ValidateFieldOffset32(0x11C, OptionsMenu, __timer_11C);
+ValidateFieldOffset32(0x130, OptionsMenu, __int_130);
 ValidateFieldOffset32(0x134, OptionsMenu, __int_134);
 ValidateStructSize32(0x138, OptionsMenu);
 #pragma endregion
@@ -38349,6 +38430,14 @@ extern "C" {
     externcg PauseMenu* PAUSE_MENU_PTR cgasm("_PAUSE_MENU_PTR");
 }
 
+// 0x4B6D50
+static const char KEYBOARD_STRING[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=.,!?@:;[]()_/{}|~^#$%&*   ";
+static inline constexpr int32_t KEYBOARD_STRING_TOTAL_KEY_COUNT = countof(KEYBOARD_STRING) - 1;
+static inline constexpr int32_t KEYBOARD_STRING_NORMAL_KEY_COUNT = KEYBOARD_STRING_TOTAL_KEY_COUNT - 3; // 3 special keys
+static inline constexpr int32_t KEYBOARD_STRING_SPACE = KEYBOARD_STRING_NORMAL_KEY_COUNT;
+static inline constexpr int32_t KEYBOARD_STRING_BACK = KEYBOARD_STRING_NORMAL_KEY_COUNT + 1;
+static inline constexpr int32_t KEYBOARD_STRING_CONFIRM = KEYBOARD_STRING_NORMAL_KEY_COUNT + 2;
+
 // size: 0x3F8
 struct PauseMenu : ZUNTask {
     //ZUNTask base; // 0x0
@@ -38358,17 +38447,22 @@ struct PauseMenu : ZUNTask {
     MenuSelect __menu_select_10C; // 0x10C
     AnmID __vm_id_1E4; // 0x1E4
     AnmID __vm_id_1E8; // 0x1E8
-    int __dword_1EC; // 0x1EC
-    int __dword_1F0; // 0x1F0
-    int __dword_1F4; // 0x1F4
-    int __dword_1F8; // 0x1F8
+    int __int_1EC; // 0x1EC
+    int __int_1F0; // 0x1F0
+    int __int_1F4; // 0x1F4
+    int __int_1F8; // 0x1F8
     int __dword_1FC; // 0x1FC
-    unknown_fields(0x8); // 0x200
-    int __dword_208; // 0x208
+    int __dword_200; // 0x200
+    int __dword_204; // 0x204
+    int __int_208; // 0x208
     ReplayManager* __replay_manager_array_20C[25]; // 0x20C
-    unknown_fields(0x70); // 0x270
+    unknown_fields(0x64); // 0x270
+    char __text_buffer_2D4[9]; // 0x2D4
+    unknown_fields(0x3); // 0x2DD
     float __float_2E0; // 0x2E0
-    unknown_fields(0x10C); // 0x2E4
+    unknown_fields(0x4); // 0x2E4
+    double __double_2E8; // 0x2E8
+    char __text_buffer_2F0[256]; // 0x2F0
     union {
         uint32_t __flags_3F0; // 0x3F0
         struct {
@@ -38402,12 +38496,40 @@ struct PauseMenu : ZUNTask {
 
     // 0x457A60
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x457A60) {
-        // TODO
+        switch (this->__int_1EC) {
+            case 0:
+                if (
+                    !GAME_MANAGER.__unknown_flag_E &&
+                    !GAME_THREAD_PTR->__unknown_flag_F &&
+                    ACHIEVEMENT_MODE_STATE < 0 &&
+                    (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_PAUSE) || SUPERVISOR.__unknown_flag_F) &&
+                    GAME_THREAD_PTR->on_tick_enabled() &&
+                    this->__timer_C >= 30
+                ) {
+                    this->__sub_458680();
+                }
+                if (
+                    ACHIEVEMENT_MODE_STATE >= 0 &&
+                    INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_PAUSE)
+                ) {
+                    ACHIEVEMENT_MODE_STATE = -1;
+                    SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_G ? 2 : 4;
+                }
+                break;
+            case 1: case 2: case 3:
+                this->__sub_458E40();
+            default:
+                ++this->__timer_C;
+                ++this->__timer_20;
+                break;
+        }
+        return UpdateFuncNext;
     }
 
     // 0x458090
     dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x458090) {
         // TODO
+        return UpdateFuncNext;
     }
 
     // 0x457BE0
@@ -38418,6 +38540,655 @@ struct PauseMenu : ZUNTask {
     // 0x458470
     dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x458470) {
         return ((PauseMenu*)ptr)->on_draw();
+    }
+
+    // 0x457740
+    dllexport gnu_noinline void thiscall __sub_457740(int32_t arg1) asm_symbol_rel(0x457740) {
+        this->__int_1F0 = this->__int_1EC;
+        this->__int_1EC = arg1;
+        this->__timer_C.reset();
+        this->__timer_20.reset();
+        this->__menu_select_34.disabled_selections_count = 0;
+    }
+
+    // 0x4577D0
+    dllexport gnu_noinline void thiscall __sub_4577D0(int32_t arg1) asm_symbol_rel(0x4577D0) {
+        this->__int_1F4 = arg1;
+        this->__timer_C.reset();
+    }
+
+    // 0x458680
+    dllexport gnu_noinline void thiscall __sub_458680() asm_symbol_rel(0x458680) {
+        //GAME_MANAGER.__sub_443DC0();
+        this->__sub_457740(1);
+        GAME_THREAD_PTR->__unknown_flag_I = true;
+        this->__anm_loaded_3F4 = GUI_PTR->__anm_loaded_2C0;
+        this->__vm_id_1E4.mark_tree_for_delete();
+
+        if (GAME_THREAD_PTR->replay_mode != __replay_recording) {
+            this->__vm_id_1E4 = this->__anm_loaded_3F4->instantiate_vm_to_ui_list_back(149);
+        } else {
+            this->__vm_id_1E4 = this->__anm_loaded_3F4->instantiate_vm_to_ui_list_back(148);
+        }
+
+        this->__vm_id_1E4.interrupt_tree(3);
+        SOUND_MANAGER.__stop_all();
+        SOUND_MANAGER.play_sound(14);
+
+        if (GAME_MANAGER.__unknown_field_A == 2) {
+            SOUND_MANAGER.queue_sound_command(SndPause, 0, "Pause");
+        }
+        while (SOUND_MANAGER.__on_tick() != SndCmdEmpty);
+        //this->__sub_458480();
+        this->__float_2E0 = GAME_SPEED;
+        GAME_SPEED.set(1.0f);
+        this->__int_208 = WINDOW_DATA.__int_20D0;
+        WINDOW_DATA.__int_20D0 = 0;
+
+        if (MsgVM* msg_vm = GUI_PTR->msg_vm) {
+            //msg_vm->__sub_4412B0();
+        }
+        GUI_PTR->__anm_id_114.__tree_clear_visible2();
+        //GUI_PTR->__sub_457810();
+        if (AbilityShop* ability_shop = ABILITY_SHOP_PTR) {
+            // TODO
+        }
+        this->__unknown_flag_B = false;
+    }
+
+    // 0x458E40
+    dllexport gnu_noinline void thiscall __sub_458E40() asm_symbol_rel(0x458E40) {
+        char buffer[60];
+        switch (this->__int_1F4) {
+            case 0:
+                if (this->__timer_C >= 10) {
+                    this->__sub_4577D0(6);
+                    this->__menu_select_34.menu_length = 7;
+                    if (GAME_THREAD_PTR->replay_mode != __replay_recording) {
+                        this->__menu_select_34.disable_selection(2);
+                        this->__menu_select_34.disable_selection(4);
+                    }
+                    if (GAME_MANAGER.globals.continues > 0) {
+                        this->__menu_select_34.disable_selection(2);
+                        this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 7);
+                        this->__vm_id_1E4.__wtf_child_list_jank_A_ID(121).interrupt_tree(5);
+                        this->__vm_id_1E4.__wtf_child_list_jank_A_ID(128).interrupt_tree(5);
+                        this->__vm_id_1E4.__wtf_child_list_jank_A_ID(141).interrupt_tree(5);
+                    }
+                    this->__menu_select_34.enable_wrap = true;
+                    this->__menu_select_34.set_selection(0);
+                    this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 7);
+                    this->__dword_204 = 0;
+                }
+                break;
+            case 1:
+                if (this->__timer_C >= 10) {
+                    this->__sub_4577D0(6);
+                    this->__menu_select_34.menu_length = 7;
+                    this->__menu_select_34.disable_selection(4);
+                    this->__menu_select_34.disable_selection(2);
+                    this->__menu_select_34.disable_selection(0);
+                    this->__menu_select_34.disable_selection(3);
+                    this->__menu_select_34.disable_selection(5);
+                    this->__menu_select_34.enable_wrap = true;
+                    this->__menu_select_34.set_selection(1);
+                    this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 7);
+                    this->__dword_204 = 1;
+                }
+                break;
+            case 2: case 3: case 4: case 5:
+                if (this->__timer_C >= 10) {
+                    // TODO: scorefile stuff
+                    this->__menu_select_34.menu_length = 25;
+                    this->__menu_select_34.enable_wrap = true;
+                    //this->__menu_select_34.set_selection()
+                    this->__menu_select_10C.set_selection(0);
+                    // TODO: scorefile stuff
+                    if (strcmp_asm(this->__text_buffer_2D4, "        ")) {
+                        this->__menu_select_10C.move_selection(-1);
+                    }
+                    int32_t i = countof(this->__text_buffer_2D4) - 1;
+                    while (this->__text_buffer_2D4[i] == ' ' && --i > 0);
+                    this->__int_1F8 = i;
+                    this->__dword_200 = 0;
+                    this->__sub_4577D0(15);
+                    this->__vm_id_1E4.__tree_clear_visible2();
+                }
+                break;
+            case 6:
+                if (
+                    this->__timer_C <= 1 &&
+                    this->__int_1EC == 2 &&
+                    GAME_MANAGER.continue_credits <= 0
+                ) {
+                    this->__menu_select_34.disable_selection(0);
+                }
+                this->__menu_select_34.previous_selection = this->__menu_select_34.current_selection;
+                if (check_hardware_inputs_repeating(BUTTON_UP)) {
+                    this->__menu_select_34.move_selection(-1);
+                }
+                if (check_hardware_inputs_repeating(BUTTON_DOWN)) {
+                    this->__menu_select_34.move_selection(1);
+                }
+                if (this->__menu_select_34.current_selection != this->__menu_select_34.previous_selection) {
+                    this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 7);
+                    SOUND_MANAGER.play_sound(10);
+                }
+                if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+                    SOUND_MANAGER.play_sound(7);
+                    switch (this->__menu_select_34.current_selection) {
+                        case 0:
+                            this->__vm_id_1E8.interrupt_tree(1);
+                            this->__vm_id_1E4.interrupt_tree(1);
+                            this->__sub_4577D0(18);
+                            break;
+                        case 1:
+                            this->__vm_id_1E4.__wtf_child_list_jank_A_ID(120).interrupt_tree(6);
+                            this->__vm_id_1E4.__wtf_child_list_jank_A_ID(127).interrupt_tree(6);
+                            this->__vm_id_1E4.__wtf_child_list_jank_A_ID(134).interrupt_tree(6);
+                            this->__vm_id_1E4.__wtf_child_list_jank_A_ID(138).interrupt_tree(6);
+                            this->__vm_id_1E4.__wtf_child_list_jank_A_ID(140).interrupt_tree(6);
+                            if (
+                                GAME_THREAD_PTR->replay_mode == __replay_recording &&
+                                this->__int_1EC == 1
+                            ) {
+                                this->__sub_4577D0(7);
+                            } else {
+                                this->__sub_4577D0(18);
+                            }
+                            break;
+                        case 2:
+                            this->__vm_id_1E4.__wtf_child_list_jank_A_ID(121).interrupt_tree(6);
+                            this->__vm_id_1E4.__wtf_child_list_jank_A_ID(128).interrupt_tree(6);
+                            this->__vm_id_1E4.__wtf_child_list_jank_A_ID(141).interrupt_tree(6);
+                            this->__vm_id_1E4.__wtf_child_list_jank_A_ID(141).interrupt_tree(6);
+                            this->__sub_4577D0(this->__int_1EC == 1 ? 9 : 10);
+                            break;
+                        case 4:
+                            this->__vm_id_1E4.__wtf_child_list_jank_A_ID(123).interrupt_tree(6);
+                            this->__vm_id_1E4.__wtf_child_list_jank_A_ID(130).interrupt_tree(6);
+                            this->__sub_4577D0(14);
+                            break;
+                        case 5:
+                            this->__vm_id_1E4.__wtf_child_list_jank_A_ID(124).interrupt_tree(6);
+                            this->__vm_id_1E4.__wtf_child_list_jank_A_ID(131).interrupt_tree(6);
+                            this->__sub_4577D0(16);
+                            break;
+                        case 3:
+                            this->__vm_id_1E4.__wtf_child_list_jank_A_ID(122).interrupt_tree(6);
+                            this->__vm_id_1E4.__wtf_child_list_jank_A_ID(129).interrupt_tree(6);
+                            this->__sub_4577D0(17);
+                            break;
+                        default:
+                            break;
+                        case 6:
+                            goto restart_case;
+                    }
+                    this->__timer_C.reset();
+                }
+                if (!this->__dword_204) {
+                    if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_RESTART)) {
+                        if (!this->__menu_select_34.__is_index_disabled(6)) {
+            restart_case:
+                            SOUND_MANAGER.play_sound(7);
+                            this->__vm_id_1E4.__wtf_child_list_jank_A_ID(125).interrupt_tree(6);
+                            this->__menu_select_34.set_selection(6);
+                            if (
+                                GAME_THREAD_PTR->replay_mode == __replay_recording &&
+                                this->__int_1EC == 1
+                            ) {
+                                this->__sub_4577D0(7);
+                            }
+                            else {
+                                this->__vm_id_1E8.mark_tree_for_delete();
+                                this->__sub_4577D0(18);
+                            }
+                            break;
+                        }
+                    }
+                    if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_PAUSE)) {
+                        this->__vm_id_1E8.interrupt_tree(1);
+                        this->__vm_id_1E4.interrupt_tree(1);
+                        this->__menu_select_34.set_selection(0);
+                        this->__sub_4577D0(18);
+                        break;
+                    }
+                }
+                if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_UNKNOWN_A)) {
+                    SOUND_MANAGER.play_sound(7);
+                    this->__vm_id_1E4.__wtf_child_list_jank_A_ID(120).interrupt_tree(6);
+                    this->__menu_select_34.set_selection(1);
+                    this->__sub_4577D0(18);
+                }
+                break;
+            case 7: case 9:
+                if (this->__timer_C >= 20) {
+                    if (this->__timer_C == 20) {
+                        this->__menu_select_34.push_state();
+                        this->__menu_select_34.menu_length = 2;
+                        this->__menu_select_34.enable_wrap = true;
+                        this->__menu_select_34.set_selection(1);
+                        this->__vm_id_1E4.interrupt_tree(14);
+                    }
+                    if (this->__timer_C >= 30) {
+                        if (this->__timer_C == 30) {
+                            this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 15);
+                        }
+                        this->__menu_select_34.previous_selection = this->__menu_select_34.current_selection;
+                        if (check_hardware_inputs_repeating(BUTTON_UP)) {
+                            this->__menu_select_34.move_selection(-1);
+                        }
+                        if (check_hardware_inputs_repeating(BUTTON_DOWN)) {
+                            this->__menu_select_34.move_selection(1);
+                        }
+                        if (this->__menu_select_34.current_selection != this->__menu_select_34.previous_selection) {
+                            this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 15);
+                            SOUND_MANAGER.play_sound(10);
+                        }
+                        if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+                            switch (this->__menu_select_34.current_selection) {
+                                case 0:
+                                    this->__vm_id_1E4.__wtf_child_list_jank_A_ID(146).interrupt_tree(6);
+                                    this->__sub_4577D0(this->__int_1F4 == 9 ? 10 : 8);
+                                    SOUND_MANAGER.play_sound(7);
+                                    break;
+                                case 1:
+                                    this->__vm_id_1E4.__wtf_child_list_jank_A_ID(147).interrupt_tree(6);
+                                    this->__sub_4577D0(8);
+                                    SOUND_MANAGER.play_sound(9);
+                                    break;
+                            }
+                        }
+                        if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_CANCEL | BUTTON_PAUSE)) {
+                            SOUND_MANAGER.play_sound(9);
+                            switch (this->__menu_select_34.current_selection) {
+                                case 0:
+                                    this->__menu_select_34.set_selection(1);
+                                    this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 15);
+                                    break;
+                                case 1:
+                                    this->__vm_id_1E4.__wtf_child_list_jank_A_ID(147).interrupt_tree(6);
+                                    this->__sub_4577D0(8);
+                                    break;
+                            }
+                        }
+                        if (
+                            INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_PAUSE) &&
+                            this->__int_1EC == 1
+                        ) {
+                            this->__vm_id_1E8.interrupt_tree(1);
+                            this->__vm_id_1E4.interrupt_tree(1);
+                            this->__menu_select_34.set_selection(0);
+                            this->__sub_4577D0(18);
+                        }
+                    }
+                }
+                break;
+            case 8:
+                if (this->__timer_C >= 20) {
+                    switch (this->__menu_select_34.current_selection) {
+                        case 0:
+                            this->__vm_id_1E4.interrupt_tree(1);
+                            this->__menu_select_34.pop_state();
+                            this->__sub_4577D0(18);
+                            break;
+                        case 1:
+                            this->__menu_select_34.pop_state();
+                            if (GAME_MANAGER.globals.continues > 0) {
+                                this->__menu_select_34.disable_selection(2);
+                            }
+                            this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 7);
+                            this->__sub_4577D0(6);
+                            break;
+                    }
+                }
+                break;
+            case 10:
+                if (this->__timer_C >= 20) {
+                    this->__unknown_bitfield_A = 1;
+                    this->__sub_4577D0(11);
+                    this->__vm_id_1E4.__tree_clear_visible2();
+                    this->__menu_select_34.push_state();
+                    this->__menu_select_34.menu_length = 25;
+                    this->__menu_select_34.enable_wrap = true;
+                    this->__menu_select_34.set_selection(0);
+                    for (int32_t i = 1; i <= countof(this->__replay_manager_array_20C); ++i) {
+                        sprintf(buffer, "th18_%.2d.rpy", i);
+                        this->__replay_manager_array_20C[i - 1] = ReplayManager::allocate_mode2(buffer);
+                    }
+                }
+                break;
+            case 12: case 15:
+                if (this->__timer_C >= 10) {
+                    this->__menu_select_10C.previous_selection = this->__menu_select_10C.current_selection;
+                    if (check_hardware_inputs_repeating(BUTTON_UP)) {
+                        this->__menu_select_10C.move_selection(-13);
+                    }
+                    if (check_hardware_inputs_repeating(BUTTON_DOWN)) {
+                        this->__menu_select_10C.move_selection(13);
+                    }
+                    if (check_hardware_inputs_repeating(BUTTON_LEFT)) {
+                        if ((this->__menu_select_10C.current_selection % 13) != 0) {
+                            this->__menu_select_10C.move_selection(-1);
+                        } else {
+                            this->__menu_select_10C.move_selection(12);
+                        }
+                    }
+                    if (check_hardware_inputs_repeating(BUTTON_RIGHT)) {
+                        if ((this->__menu_select_10C.current_selection % 13) != 12) {
+                            this->__menu_select_10C.move_selection(1);
+                        } else {
+                            this->__menu_select_10C.move_selection(-12);
+                        }
+                    }
+                    if (this->__menu_select_10C.current_selection != this->__menu_select_10C.previous_selection) {
+                        SOUND_MANAGER.play_sound(10);
+                    }
+                    if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+                        int32_t key = this->__menu_select_10C.current_selection;
+                        if (key <= KEYBOARD_STRING_NORMAL_KEY_COUNT) {
+                            char c = KEYBOARD_STRING[key];
+                            int32_t index = this->__int_1F8;
+                            if (index < countof(this->__text_buffer_2D4) - 1) {
+                                this->__text_buffer_2D4[index] = c;
+                                if (++this->__int_1F8 >= countof(this->__text_buffer_2D4) - 1) {
+                                    this->__menu_select_10C.set_selection(KEYBOARD_STRING_CONFIRM);
+                                }
+                            } else {
+                                this->__text_buffer_2D4[index - 1] = c;
+                            }
+                            SOUND_MANAGER.play_sound(7);
+                        }
+                        else if (key == KEYBOARD_STRING_SPACE) {
+                            int32_t index = this->__int_1F8;
+                            if (index < countof(this->__text_buffer_2D4) - 1) {
+                                this->__text_buffer_2D4[index] = ' ';
+                                if (++this->__int_1F8 >= countof(this->__text_buffer_2D4) - 1) {
+                                    this->__menu_select_10C.set_selection(KEYBOARD_STRING_CONFIRM);
+                                }
+                            } else {
+                                this->__text_buffer_2D4[index - 1] = ' ';
+                            }
+                            SOUND_MANAGER.play_sound(7);
+                        }
+                        else if (key == KEYBOARD_STRING_BACK) {
+                            int32_t index = this->__int_1F8;
+                            if (index) {
+                                this->__int_1F8 = --index;
+                                this->__text_buffer_2D4[index] = ' ';
+                                SOUND_MANAGER.play_sound(9);
+                            }
+                        }
+                        else if (key == KEYBOARD_STRING_CONFIRM) {
+                            if (this->__int_1F4 == 12) {
+                                this->__unknown_bitfield_A = 1;
+                                SOUND_MANAGER.play_sound(17);
+                                sprintf(buffer, "th18_%.2d.rpy", this->__menu_select_34.current_selection + 1);
+                                SAFE_DELETE(this->__replay_manager_array_20C[this->__menu_select_34.current_selection]);
+                                REPLAY_MANAGER_PTR->__write_to_path(buffer, this->__text_buffer_2D4, false, true);
+                                this->__replay_manager_array_20C[this->__menu_select_34.current_selection] = ReplayManager::allocate_mode2(buffer);
+                                this->__sub_4577D0(11);
+                                // TODO: scorefile
+                                SOUND_MANAGER.play_sound(7);
+                            }
+                            else {
+                                SOUND_MANAGER.play_sound(7);
+                                // TODO: scorefile
+                                this->__sub_4577D0(6);
+                                this->__menu_select_34.menu_length = 7;
+                                this->__menu_select_34.enable_wrap = true;
+                                if (
+                                    !this->__unknown_flag_B &&
+                                    !GAME_MANAGER.__unknown_field_A
+                                ) {
+                                    this->__vm_id_1E4 = this->__anm_loaded_3F4->instantiate_vm_to_ui_list_back(151);
+                                    if (GAME_MANAGER.globals.continues > 0) {
+                                        this->__menu_select_34.disable_selection(2);
+                                    }
+                                    if (GAME_MANAGER.continue_credits <= 0) {
+                                        this->__menu_select_34.disable_selection(0);
+                                        this->__menu_select_34.set_selection(1);
+                                    }
+                                    else {
+                                        this->__menu_select_34.set_selection(0);
+                                    }
+                                }
+                                else {
+                                    this->__vm_id_1E4 = this->__anm_loaded_3F4->instantiate_vm_to_ui_list_back(152);
+                                    this->__menu_select_34.disable_selection(0);
+                                    this->__menu_select_34.disable_selection(4);
+                                    this->__menu_select_34.set_selection(0);
+                                    if (!this->__unknown_flag_B) {
+                                        this->__menu_select_34.set_selection(6);
+                                    }
+                                }
+                                this->__vm_id_1E4.interrupt_and_run_tree(3);
+                                this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 7);
+                            }
+                        }
+                    }
+                    else if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_CANCEL | BUTTON_PAUSE)) {
+                        SOUND_MANAGER.play_sound(9);
+                        int32_t index = this->__int_1F8;
+                        if (!index) {
+                            if (this->__int_1F4 == 12) {
+                                this->__unknown_bitfield_A = 1;
+                                this->__sub_4577D0(11);
+                            }
+                        }
+                        else {
+                            this->__int_1F4 = --index;
+                            this->__text_buffer_2D4[index] = ' ';
+                        }
+                    }
+                }
+                break;
+            case 11:
+                if (this->__timer_C >= 10) {
+                    this->__menu_select_34.previous_selection = this->__menu_select_34.current_selection;
+                    if (check_hardware_inputs_repeating(BUTTON_UP)) {
+                        this->__menu_select_34.move_selection(-1);
+                    }
+                    if (check_hardware_inputs_repeating(BUTTON_DOWN)) {
+                        this->__menu_select_34.move_selection(1);
+                    }
+                    if (this->__menu_select_34.current_selection != this->__menu_select_34.previous_selection) {
+                        SOUND_MANAGER.play_sound(10);
+                    }
+                    if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+                        this->__unknown_bitfield_A = 2;
+                        this->__sub_4577D0(12);
+                        this->__menu_select_10C.set_selection(0);
+                        this->__menu_select_10C.menu_length = KEYBOARD_STRING_TOTAL_KEY_COUNT;
+                        this->__menu_select_10C.enable_wrap = true;
+                        if (
+                            this->__dword_1FC &&
+                            !GAME_MANAGER.__unknown_field_A
+                        ) {
+                            //REPLAY_MANAGER_PTR->__sub_461E40(1);
+                        } else {
+                            //REPLAY_MANAGER_PTR->__sub_461E40(0);
+                        }
+                        // TODO: scorefile
+                        this->__int_1F8 = 0;
+                        if (strcmp_asm(this->__text_buffer_2D4, "        ")) {
+                            this->__menu_select_10C.move_selection(-1);
+                        }
+                        int32_t i = countof(this->__text_buffer_2D4) - 1;
+                        while (this->__text_buffer_2D4[i] == ' ' && --i > 0);
+                        this->__int_1F8 = i;
+                        SOUND_MANAGER.play_sound(7);
+                    }
+                    else if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_CANCEL | BUTTON_PAUSE)) {
+                        this->__unknown_bitfield_A = 0;
+                        this->__menu_select_34.pop_state();
+                        this->__menu_select_34.menu_length = 7;
+                        this->__menu_select_34.enable_wrap = true;
+                        this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 7);
+                        for (size_t i = 0; i != countof(this->__replay_manager_array_20C); ++i) {
+                            SAFE_DELETE(this->__replay_manager_array_20C[i]);
+                        }
+                        if (this->__int_1EC == 1) {
+                            this->__sub_4577D0(18);
+                            this->__menu_select_34.set_selection(1);
+                        }
+                        else {
+                            this->__sub_4577D0(6);
+                            this->__vm_id_1E4.__tree_set_visible2();
+                            if (GAME_MANAGER.__unknown_field_A) {
+                                this->__menu_select_34.disable_selection(0);
+                                this->__menu_select_34.disable_selection(4);
+                            }
+                        }
+                        SOUND_MANAGER.play_sound(9);
+                    }
+                }
+                break;
+            case 14: {
+                HelpMenu* help_menu;
+                if (this->__timer_C == 20) {
+                    this->__vm_id_1E4.__tree_clear_visible2();
+                    HelpMenu::allocate();
+                    help_menu = HELP_MENU_PTR;
+                    help_menu->__float_128 = 32.0f;
+                } else {
+                    help_menu = HELP_MENU_PTR;
+                }
+                if (
+                    help_menu &&
+                    help_menu->__int_124
+                ) {
+                    delete help_menu;
+                    this->__sub_4577D0(6);
+                    this->__vm_id_1E4.__tree_set_visible2();
+                }
+                break;
+            }
+            case 16: {
+                OptionsMenu* options_menu;
+                if (this->__timer_C == 20) {
+                    this->__vm_id_1E4.__tree_clear_visible2();
+                    Float3 A = { 60.0f, 100.0f };
+                    OptionsMenu::allocate(&A);
+                    options_menu = OPTIONS_MENU_PTR;
+                    options_menu->__int_130 = 1;
+                } else {
+                    options_menu = OPTIONS_MENU_PTR;
+                }
+                if (
+                    this->__timer_C > 20 &&
+                    !options_menu
+                ) {
+                    this->__sub_4577D0(6);
+                    this->__vm_id_1E4.__tree_set_visible2();
+                }
+                break;
+            }
+            case 17:
+                if (this->__timer_C == 20) {
+                    this->__vm_id_1E4.__tree_clear_visible2();
+                    Float3 A = { 448.0f, 100.0f };
+                    AbilityMenu::allocate(&A, 0);
+                }
+                if (
+                    this->__timer_C > 20 &&
+                    !ABILITY_MENU_PTR
+                ) {
+                    this->__sub_4577D0(6);
+                    this->__vm_id_1E4.__tree_set_visible2();
+                }
+                break;
+            case 18:
+                if (this->__timer_C >= 12) {
+                    switch (this->__int_1EC) {
+                        case 1:
+                            if (GAME_THREAD_PTR->replay_mode == __replay_recording) {
+                                GAME_MANAGER.game_time_double = get_runtime();
+                            }
+                            GAME_THREAD_PTR->__unknown_flag_I = false;
+                            GAME_SPEED.set(this->__float_2E0);
+                            if (MsgVM* msg_vm = GUI_PTR->msg_vm) {
+                                //msg_vm->__sub_4414C0();
+                            }
+                            GUI_PTR->__anm_id_114.__tree_set_visible2();
+                            WINDOW_DATA.__int_20D0 = this->__int_208;
+                            break;
+                        case 2: case 3:
+                            if (GAME_THREAD_PTR->replay_mode == __replay_recording) {
+                                GAME_MANAGER.game_time_double = get_runtime();
+                            }
+                            this->__vm_id_1E8.interrupt_tree(1);
+                            this->__vm_id_1E4.interrupt_tree(1);
+                            GAME_SPEED.set(this->__float_2E0);
+                            break;
+                    }
+                    switch (this->__menu_select_34.current_selection) {
+                        case 0:
+                            switch (this->__int_1EC) {
+                                case 1:
+                                    //SOUND_MANAGER.__sub_45A4A0();
+                                    SOUND_MANAGER.queue_sound_command(SndUnpause, 0, "UnPause");
+                                    if (AbilityShop* ability_shop = ABILITY_SHOP_PTR) {
+                                        ability_shop->__dword_E38 = 0;
+                                        ability_shop->__timer_1BC.reset();
+                                    }
+                                    break;
+                                case 2:
+                                    if (this->__dword_1FC) {
+                                        SUPERVISOR.gamemode_switch = 10;
+                                    }
+                                    else if (GAME_MANAGER.globals.current_stage == 7) {
+                                        SUPERVISOR.gamemode_switch = 14;
+                                    }
+                                    else {
+                                        GAME_MANAGER.globals.life_stocks = 2;
+                                        GAME_MANAGER.globals.life_fragments = 0;
+                                        GAME_MANAGER.globals.set_bombs(3);
+                                        GAME_MANAGER.globals.bomb_fragments = 0;
+                                        GAME_MANAGER.globals.set_power(0);
+                                        GAME_MANAGER.globals.add_power(GAME_MANAGER.globals.power_per_level * 4);
+                                        PLAYER_PTR->data.__update_option_power_levels();
+                                        __update_life_ui_unsafe();
+                                        __update_bomb_ui_unsafe();
+                                        int32_t continues_used = GAME_MANAGER.globals.continues + 1;
+                                        GAME_MANAGER.globals.score = 0;
+                                        --GAME_MANAGER.continue_credits;
+                                        GAME_MANAGER.globals.continues = __min(continues_used, 9);
+                                        GAME_THREAD_PTR->__unknown_flag_I = false;
+                                        //SOUND_MANAGER.__sub_45A4A0();
+                                        SOUND_MANAGER.queue_sound_command(SndLoadBgm, -1, this->__text_buffer_2F0);
+                                        while (SOUND_MANAGER.__on_tick() != SndCmdEmpty);
+                                        SOUND_MANAGER.cstreaming_sound_ptr->__sub_48AF10(this->__double_2E8);
+                                        GAME_SPEED.set(this->__float_2E0);
+                                        if (MsgVM* msg_vm = GUI_PTR->msg_vm) {
+                                            //msg_vm->__sub_4414C0();
+                                        }
+                                        //GUI_PTR->__sub_442370();
+                                        WINDOW_DATA.__int_20D0 = this->__int_208;
+                                    }
+                                    break;
+                            }
+                            break;
+                        case 1:
+                            this->__vm_id_1E8.interrupt_tree(1);
+                            this->__vm_id_1E4.interrupt_tree(1);
+                            SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_G ? 2 : 4;
+                            break;
+                        case 6:
+                            this->__vm_id_1E8.mark_tree_for_delete();
+                            this->__vm_id_1E4.mark_tree_for_delete();
+                            if (GAME_THREAD_PTR->replay_mode != __replay_recording) {
+                                SUPERVISOR.gamemode_switch = 11;
+                            }
+                            else {
+                                SUPERVISOR.gamemode_switch = 10;
+                            }
+                            break;
+                    }
+                    this->__sub_457740(0);
+                }
+                break;
+        }
     }
 
     inline ZUNResult initialize() {
@@ -38454,14 +39225,19 @@ ValidateFieldOffset32(0x34, PauseMenu, __menu_select_34);
 ValidateFieldOffset32(0x10C, PauseMenu, __menu_select_10C);
 ValidateFieldOffset32(0x1E4, PauseMenu, __vm_id_1E4);
 ValidateFieldOffset32(0x1E8, PauseMenu, __vm_id_1E8);
-ValidateFieldOffset32(0x1EC, PauseMenu, __dword_1EC);
-ValidateFieldOffset32(0x1F0, PauseMenu, __dword_1F0);
-ValidateFieldOffset32(0x1F4, PauseMenu, __dword_1F4);
-ValidateFieldOffset32(0x1F8, PauseMenu, __dword_1F8);
+ValidateFieldOffset32(0x1EC, PauseMenu, __int_1EC);
+ValidateFieldOffset32(0x1F0, PauseMenu, __int_1F0);
+ValidateFieldOffset32(0x1F4, PauseMenu, __int_1F4);
+ValidateFieldOffset32(0x1F8, PauseMenu, __int_1F8);
 ValidateFieldOffset32(0x1FC, PauseMenu, __dword_1FC);
-ValidateFieldOffset32(0x208, PauseMenu, __dword_208);
+ValidateFieldOffset32(0x200, PauseMenu, __dword_200);
+ValidateFieldOffset32(0x204, PauseMenu, __dword_204);
+ValidateFieldOffset32(0x208, PauseMenu, __int_208);
 ValidateFieldOffset32(0x20C, PauseMenu, __replay_manager_array_20C);
+ValidateFieldOffset32(0x2D4, PauseMenu, __text_buffer_2D4);
 ValidateFieldOffset32(0x2E0, PauseMenu, __float_2E0);
+ValidateFieldOffset32(0x2E8, PauseMenu, __double_2E8);
+ValidateFieldOffset32(0x2F0, PauseMenu, __text_buffer_2F0);
 ValidateFieldOffset32(0x3F0, PauseMenu, __flags_3F0);
 ValidateFieldOffset32(0x3F4, PauseMenu, __anm_loaded_3F4);
 ValidateStructSize32(0x3F8, PauseMenu);
@@ -39278,7 +40054,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
         get_boss_by_index(0) != NULL &&
         !ENEMY_MANAGER_PTR->__unknown_flag_A &&
         !this->msg_vm &&
-        !PAUSE_MENU_PTR->__dword_1EC &&
+        !PAUSE_MENU_PTR->__int_1EC &&
         !GAME_THREAD_PTR->__unknown_flag_F
     ) {
         vm = this->__anm_vm_84;
