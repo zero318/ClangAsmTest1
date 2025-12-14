@@ -3869,7 +3869,7 @@ struct AnmVM {
                 uint32_t __unknown_flag_T : 1; // 8
                 uint32_t slowdown_immune : 1; // 9
                 uint32_t rand_mode : 1; // 10
-                uint32_t : 1; // 11
+                uint32_t __unknown_flag_Y : 1; // 11
                 uint32_t __continual_sprite_window : 1; // 12
                 uint32_t __treat_as_root : 1; // 13
                 uint32_t : 6; // 14-19

@@ -3193,8 +3193,8 @@ inline int byteloop_strcmp_fancy(const uint8_t* restrict strA, const uint8_t* re
 }
 
 inline int8_t strcmp_asm(const char* restrict strA, const char* restrict strB) {
-    int32_t ret;
     /*
+    int32_t ret;
     __asm__(
         ".align 16 \n"
         "0: \n"
@@ -3217,6 +3217,8 @@ inline int8_t strcmp_asm(const char* restrict strA, const char* restrict strB) {
     );
     return ret;
     */
+    /*
+    int8_t ret;
     int8_t zero;
     do {
         __asm__(
@@ -3228,8 +3230,8 @@ inline int8_t strcmp_asm(const char* restrict strA, const char* restrict strB) {
             : asm_arg("r", strA), asm_arg("r", strB)
         );
         if (!zero) {
-            assume(ret != 0);
-            return ret;
+            //assume(ret != 0);
+            return ret < 0 ? -1 : 1;
         }
         ++strA;
         ++strB;
@@ -3243,7 +3245,42 @@ inline int8_t strcmp_asm(const char* restrict strA, const char* restrict strB) {
         );
     } while (!zero);
     return 0;
+    */
+
+    int8_t temp;
+    int8_t zero;
+    int8_t carry;
+    do {
+        temp = *strA;
+        __asm__ (
+            "CMPB (%[strB]), %[temp] \n"
+            : asm_flags(z, zero), asm_flags(c, carry)
+            : asm_arg("r", temp), asm_arg("r", strB)
+        );
+        if (!zero) return carry ? -1 : 1;
+        ++strA;
+        ++strB;
+    } while (temp);
+    return 0;
+    
+    /*
+    const uint8_t* restrict strA_read = (const uint8_t* restrict)strA;
+    const uint8_t* restrict strB_read = (const uint8_t* restrict)strB;
+    uint8_t temp, c;
+    do {
+        c = *strA_read;
+        bool carry = __builtin_sub_overflow(c, *strB_read, &temp);
+        if (temp) {
+            return carry ? -1 : 1;
+        }
+        ++strA_read;
+        ++strB_read;
+    } while (c);
+    return 0;
+    */
 }
+
+
 
 inline bool byteloop_strucmp(const volatile uint8_t* restrict strA, const volatile uint8_t* restrict strB) {
     for (uint8_t c; (c = *strA++) == *strB++;) if (!c) return false;

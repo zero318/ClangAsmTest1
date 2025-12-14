@@ -849,6 +849,18 @@ static inline uint8_t rep_lodsb(T *restrict src, size_t byte_len) {
     return ret;
 }
 
+static inline int8_t strcmpsb(const char* lhs, const char* rhs) {
+    int8_t zero, less;
+    intptr_t byte_len = -1;
+    __asm__ volatile (
+        "repe cmpsb"
+        : "=c"(byte_len), "+S"(lhs), "+D"(rhs), asm_flags(z, zero), asm_flags(l, less)
+        : "0"(byte_len)
+    );
+    if (zero) return 0;
+    return less ? -1 : 1;
+}
+
 static inline dreg_t pack_dreg(const sreg_t low, const sreg_t high) {
     dreg_t ret;
     __asm__(
