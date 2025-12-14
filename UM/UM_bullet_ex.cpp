@@ -13041,13 +13041,14 @@ extern "C" {
     // the wait func table isn't const
     externcg AnmOnFunc ANM_ON_WAIT_FUNCS[1] cgasm("_ANM_ON_WAIT_FUNCS");
     //externcg AnmOnFunc ANM_ON_TICK_FUNCS[] cgasm("_ANM_ON_TICK_FUNCS");
-    externcg AnmOnFunc ANM_ON_DRAW_FUNCS[8] cgasm("_ANM_ON_DRAW_FUNCS");
+    //externcg AnmOnFunc ANM_ON_DRAW_FUNCS[8] cgasm("_ANM_ON_DRAW_FUNCS");
     //externcg AnmOnFunc ANM_ON_DESTROY_FUNCS[] cgasm("_ANM_ON_DESTROY_FUNCS");
     //externcg AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[] cgasm("_ANM_ON_INTERRUPT_FUNCS");
     externcg AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[4] cgasm("_ANM_ON_SPRITE_LOOKUP_FUNCS");
 }
 
 extern inline const AnmOnFunc ANM_ON_TICK_FUNCS[6];
+extern inline const AnmOnFunc ANM_ON_DRAW_FUNCS[8];
 extern inline const AnmOnFunc ANM_ON_DESTROY_FUNCS[5];
 extern inline const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[5];
 
@@ -14395,6 +14396,9 @@ struct AnmVM {
         }
         return 0;
     }
+
+    // 0x4837E0
+    dllexport gnu_noinline static int fastcall on_draw_6(AnmVM* vm) asm_symbol_rel(0x4837E0);
     
     // 0x488FA0
     dllexport void thiscall set_sprite(int32_t sprite_id) asm_symbol_rel(0x488FA0);
@@ -15141,7 +15145,16 @@ inline const AnmOnFunc ANM_ON_TICK_FUNCS[6] = {
     &AnmVM::on_tick_4,
     &AnmVM::on_tick_special_dataD
 };
-//inline const AnmOnFunc ANM_ON_DRAW_FUNCS[] = { NULL, NULL };
+inline const AnmOnFunc ANM_ON_DRAW_FUNCS[8] = {
+    NULL,
+    &AnmVM::on_draw_special_dataA,
+    &AnmVM::on_draw_special_dataB,
+    &AnmVM::on_draw_special_dataC,
+    &AnmVM::on_draw_4,
+    &AnmVM::on_draw_5,
+    &AnmVM::on_draw_6,
+    &AnmVM::on_draw_special_dataD
+};
 inline const AnmOnFunc ANM_ON_DESTROY_FUNCS[] = { 
     NULL,
     &AnmVM::on_destroy_special_dataA,
@@ -28683,7 +28696,7 @@ dllexport gnu_noinline ZUNResult thiscall EclManager::load_imports(EclIncludes* 
         }
 
         int32_t includes_align = (anm_names - (char*)includes) % 4;
-        if (!includes_align) {
+        if (includes_align) {
             anm_names += 4 - includes_align;
         }
 
@@ -28821,7 +28834,11 @@ dllexport gnu_noinline int thiscall Enemy::kill() {
     return 1;
 }
 
-
+// 0x4837E0
+dllexport gnu_noinline int fastcall AnmVM::on_draw_6(AnmVM* vm) {
+    ANM_MANAGER_PTR->__draw_vm_type_B(vm, vm->controller.special_data, 33);
+    return 0;
+}
 
 // size: 0x1E48
 struct AnmVMSpecialDataA {
