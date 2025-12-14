@@ -32366,8 +32366,8 @@ dllexport gnu_noinline int32_t fastcall AnmVM::sprite_lookup_2(AnmVM* vm, int32_
 
 // 0x4527B0
 dllexport gnu_noinline int32_t fastcall AnmVM::sprite_lookup_3(AnmVM* vm, int32_t sprite) {
-    Bullet* bullet = (Bullet*)vm->controller.associated_entity;
-    return 524 + bullet->color;
+    LaserData* laser = (LaserData*)vm->controller.associated_entity;
+    return 524 + laser->color;
 }
 
 // size: 0x460
