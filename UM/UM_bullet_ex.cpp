@@ -13044,13 +13044,14 @@ extern "C" {
     //externcg AnmOnFunc ANM_ON_DRAW_FUNCS[8] cgasm("_ANM_ON_DRAW_FUNCS");
     //externcg AnmOnFunc ANM_ON_DESTROY_FUNCS[] cgasm("_ANM_ON_DESTROY_FUNCS");
     //externcg AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[] cgasm("_ANM_ON_INTERRUPT_FUNCS");
-    externcg AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[4] cgasm("_ANM_ON_SPRITE_LOOKUP_FUNCS");
+    //externcg AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[4] cgasm("_ANM_ON_SPRITE_LOOKUP_FUNCS");
 }
 
 extern inline const AnmOnFunc ANM_ON_TICK_FUNCS[6];
 extern inline const AnmOnFunc ANM_ON_DRAW_FUNCS[8];
 extern inline const AnmOnFunc ANM_ON_DESTROY_FUNCS[5];
 extern inline const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[5];
+extern inline const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[4];
 
 extern "C" {
     // 0x5217DC
@@ -14403,6 +14404,15 @@ struct AnmVM {
     // 0x488FA0
     dllexport void thiscall set_sprite(int32_t sprite_id) asm_symbol_rel(0x488FA0);
 
+    // 0x429A20
+    dllexport gnu_noinline static int32_t fastcall sprite_lookup_1(AnmVM* vm, int32_t sprite) asm_symbol_rel(0x429A20);
+
+    // 0x4494B0
+    dllexport gnu_noinline static int32_t fastcall sprite_lookup_2(AnmVM* vm, int32_t sprite) asm_symbol_rel(0x4494B0);
+
+    // 0x4527B0
+    dllexport gnu_noinline static int32_t fastcall sprite_lookup_3(AnmVM* vm, int32_t sprite) asm_symbol_rel(0x4527B0);
+
     // 0x412F20
     dllexport inline void thiscall interrupt(int32_t interrupt_index) asm_symbol_rel(0x412F20) {
         this->run_on_interrupt(interrupt_index);
@@ -15137,7 +15147,7 @@ ValidateStructSize32(0x8, AnmScriptHeader);
 
 
 //inline const AnmOnFunc ANM_ON_WAIT_FUNCS[] = { NULL, NULL };
-inline const AnmOnFunc ANM_ON_TICK_FUNCS[6] = {
+inline const AnmOnFunc ANM_ON_TICK_FUNCS[] = {
     NULL,
     &AnmVM::on_tick_special_dataA,
     &AnmVM::on_tick_special_dataB,
@@ -15145,7 +15155,7 @@ inline const AnmOnFunc ANM_ON_TICK_FUNCS[6] = {
     &AnmVM::on_tick_4,
     &AnmVM::on_tick_special_dataD
 };
-inline const AnmOnFunc ANM_ON_DRAW_FUNCS[8] = {
+inline const AnmOnFunc ANM_ON_DRAW_FUNCS[] = {
     NULL,
     &AnmVM::on_draw_special_dataA,
     &AnmVM::on_draw_special_dataB,
@@ -15171,7 +15181,12 @@ inline const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[] = {
 };
 inline const AnmOnFunc ANM_ON_COPY_A_FUNCS[] = { NULL, NULL };
 inline const AnmOnFunc ANM_ON_COPY_B_FUNCS[] = { NULL, NULL };
-//inline const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[] = { NULL, NULL };
+inline const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[] = {
+    NULL,
+    &AnmVM::sprite_lookup_1,
+    &AnmVM::sprite_lookup_2,
+    &AnmVM::sprite_lookup_3
+};
 
 enum AnmListEnd {
     AnmListBack,
@@ -32328,6 +32343,32 @@ public:
         return 0;
     }
 };
+
+// 0x429A20
+dllexport gnu_noinline int32_t fastcall AnmVM::sprite_lookup_1(AnmVM* vm, int32_t sprite) {
+    Bullet* bullet = (Bullet*)vm->controller.associated_entity;
+    int32_t bullet_sprite = bullet->sprite;
+    if (BULLET_SPRITE_DATA[bullet_sprite].color_data[0].sprite_id >= 0) {
+        return BULLET_SPRITE_DATA[bullet_sprite].color_data[bullet->color].sprite_id;
+    }
+    return sprite;
+}
+
+// 0x4494B0
+dllexport gnu_noinline int32_t fastcall AnmVM::sprite_lookup_2(AnmVM* vm, int32_t sprite) {
+    LaserData* laser = (LaserData*)vm->controller.associated_entity;
+    int32_t laser_sprite = laser->sprite;
+    if (BULLET_SPRITE_DATA[laser_sprite].color_data[0].sprite_id >= 0) {
+        return BULLET_SPRITE_DATA[laser_sprite].color_data[laser->color].sprite_id;
+    }
+    return sprite;
+}
+
+// 0x4527B0
+dllexport gnu_noinline int32_t fastcall AnmVM::sprite_lookup_3(AnmVM* vm, int32_t sprite) {
+    Bullet* bullet = (Bullet*)vm->controller.associated_entity;
+    return 524 + bullet->color;
+}
 
 // size: 0x460
 struct LaserLineParams {
