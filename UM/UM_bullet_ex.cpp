@@ -734,6 +734,10 @@ struct ScopedCriticalSection {
 #define DEBUG_SPRINT(buf, fmt, ...) DebugLogger::debug_sprint(buf, fmt, __VA_ARGS__)
 #define DEBUG_VSPRINT(buf, fmt) { va_list va; va_start(va, fmt); DebugLogger::debug_vsprint(buf, fmt, va); va_end(va); }
 #endif
+#define ZDEBUG_PRINT(fmt, ...) DEBUG_PRINT(fmt, __VA_ARGS__)
+#define ZDEBUG_VPRINT(fmt) DEBUG_VPRINT(fmt)
+#define ZDEBUG_SPRINT(buf, fmt, ...) DEBUG_SPRINT(buf, fmt, __VA_ARGS__)
+#define ZDEBUG_VSPRINT(buf, fmt) DEBUG_VSPRINT(buf, fmt)
 
 // size: 0x4
 struct DebugLogger {
@@ -10686,7 +10690,7 @@ public:
 
     // 0x48DC20
     dllexport gnu_noinline int32_t thiscall set_context_to_sub(const char* sub_name) asm_symbol_rel(0x48DC20) {
-        DEBUG_PRINT("Setting context to sub %s\n", sub_name);
+        ZDEBUG_PRINT("Setting context to sub %s\n", sub_name);
         this->locate_sub(sub_name);
         this->current_context->location.instruction_offset = 0;
         this->current_context->time = 0.0f;
@@ -18336,7 +18340,7 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_455EC0() {
         this->text_anm->images[3].d3d_texture->GetSurfaceLevel(0, &this->__surface_1B0);
 
         AnmVM* arcade_vmA = this->__arcade_vm_ptr_A;
-        if (arcade_vmA->data.visible) {
+        if (!arcade_vmA->data.visible) {
             switch (WINDOW_DATA.__scaled_width) {
                 case 640:
                     this->text_anm->__copy_data_to_vm_and_run(arcade_vmA, 66);
@@ -28552,7 +28556,7 @@ struct EnemyManager : ZUNTask {
 
     // 0x42D7D0
     dllexport gnu_noinline Enemy* allocate_new_enemy(const char* sub_name, EnemyInitData* data, int32_t = UNUSED_DWORD) asm_symbol_rel(0x42D7D0) {
-        DEBUG_PRINT("Creating enemy with sub %s\n", sub_name);
+        ZDEBUG_PRINT("Creating enemy with sub %s\n", sub_name);
         Enemy* enemy = new Enemy(sub_name);
         enemy->data.motion.absolute.position = data->position;
         enemy->data.score = data->score;
@@ -28794,8 +28798,10 @@ public:
 
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, enemy_manager);
         UpdateFuncRegistry::register_on_tick(update_func, TickPriority::EnemyManager); // 27
+        enemy_manager->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw, false, enemy_manager);
         UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::EnemyManager); // 23
+        enemy_manager->on_draw_func = update_func;
 
         enemy_manager->__timer_98.initialize_and_reset();
         enemy_manager->enemy_limit = 99999;
