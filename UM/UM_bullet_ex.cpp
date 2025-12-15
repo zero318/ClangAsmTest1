@@ -3088,8 +3088,22 @@ struct InputState {
         return TRUE;
     }
 
+    inline BOOL check_inputs_all(uint32_t mask) {
+        if ((this->inputs_current & mask) != mask) {
+            return FALSE;
+        }
+        return TRUE;
+    }
+
     inline BOOL check_inputs_no_repeat(uint32_t mask) {
         if (!(this->inputs_rising_edge & mask)) {
+            return FALSE;
+        }
+        return TRUE;
+    }
+
+    inline BOOL check_inputs_all_no_repeat(uint32_t mask) {
+        if ((this->inputs_rising_edge & mask) != mask) {
             return FALSE;
         }
         return TRUE;
@@ -3112,8 +3126,22 @@ struct InputState {
         return TRUE;
     }
 
+    inline BOOL check_hardware_inputs_all(uint32_t mask) {
+        if ((this->hardware_inputs_current & mask) != mask) {
+            return FALSE;
+        }
+        return TRUE;
+    }
+
     inline BOOL check_hardware_inputs_no_repeat(uint32_t mask) {
         if (!(this->hardware_inputs_rising_edge & mask)) {
+            return FALSE;
+        }
+        return TRUE;
+    }
+
+    inline BOOL check_hardware_inputs_all_no_repeat(uint32_t mask) {
+        if ((this->hardware_inputs_rising_edge & mask) != mask) {
             return FALSE;
         }
         return TRUE;
@@ -6696,18 +6724,18 @@ extern "C" {
     externcg GameManager GAME_MANAGER cgasm("_GAME_MANAGER");
 }
 
-static inline constexpr float SCREEN_LEFT_EDGE = -192.0f;
-static inline constexpr float SCREEN_CENTER_X = 0.0f;
-static inline constexpr float SCREEN_RIGHT_EDGE = 192.0f;
-static inline constexpr float SCREEN_BOTTOM_EDGE = 0.0f;
-static inline constexpr float SCREEN_CENTER_Y = 224.0f;
-static inline constexpr float SCREEN_TOP_EDGE = 448.0f;
-
 static inline constexpr float SCREEN_WIDTH = 384.0f;
 static inline constexpr float SCREEN_HEIGHT = 448.0f;
 
-static inline constexpr float SCREEN_HALF_WIDTH = 192.0f;
-static inline constexpr float SCREEN_HALF_HEIGHT = 224.0f;
+static inline constexpr float SCREEN_HALF_WIDTH = SCREEN_WIDTH / 2.0f;
+static inline constexpr float SCREEN_HALF_HEIGHT = SCREEN_HEIGHT / 2.0f;
+
+static inline constexpr float SCREEN_LEFT_EDGE = -SCREEN_HALF_WIDTH;
+static inline constexpr float SCREEN_CENTER_X = 0.0f;
+static inline constexpr float SCREEN_RIGHT_EDGE = SCREEN_HALF_WIDTH;
+static inline constexpr float SCREEN_BOTTOM_EDGE = 0.0f;
+static inline constexpr float SCREEN_CENTER_Y = SCREEN_HALF_HEIGHT;
+static inline constexpr float SCREEN_TOP_EDGE = SCREEN_HEIGHT;
 
 static inline constexpr float LOGICAL_WINDOW_WIDTH = 640.0f;
 static inline constexpr float LOGICAL_WINDOW_HEIGHT = 480.0f;
@@ -9342,7 +9370,7 @@ struct BombBase : ZUNTask {
     Timer __timer_7C; // 0x7C
     int __int_90; // 0x90
     Float3 __float3_94; // 0x94
-    int __dword_A0; // 0xA0
+    int __int_A0; // 0xA0
     int __int_A4; // 0xA4
     // 0xA8
 
@@ -9490,7 +9518,7 @@ ValidateVirtualFieldOffset32(0x78, BombBase, __float_78);
 ValidateVirtualFieldOffset32(0x7C, BombBase, __timer_7C);
 ValidateVirtualFieldOffset32(0x90, BombBase, __int_90);
 ValidateVirtualFieldOffset32(0x94, BombBase, __float3_94);
-ValidateVirtualFieldOffset32(0xA0, BombBase, __dword_A0);
+ValidateVirtualFieldOffset32(0xA0, BombBase, __int_A0);
 ValidateVirtualFieldOffset32(0xA4, BombBase, __int_A4);
 ValidateStructSize32(0xA8, BombBase);
 #pragma endregion
@@ -9617,7 +9645,7 @@ dllexport gnu_noinline BombBase* BombBase::allocate() {
     bomb_ptr->__timer_7C.reset();
     bomb_ptr->__float_78 = -1.0f;
     bomb_ptr->__float_74 = 0.0f;
-    bomb_ptr->__dword_A0 = 0;
+    bomb_ptr->__int_A0 = 0;
     bomb_ptr->__int_A4 = 0;
     BOMB_PTR = bomb_ptr;
     return bomb_ptr;
@@ -22419,7 +22447,24 @@ extern "C" {
     externcg Player* PLAYER_PTR cgasm("_PLAYER_PTR");
 }
 
+static inline bool enemies_are_alive();
+
 static inline constexpr float INTERNAL_POSITION_RATIO = 128.0f;
+
+#define INTERNAL_POSITION_ADJUST(val) (int32_t)((val) * INTERNAL_POSITION_RATIO)
+
+static inline constexpr int32_t INTERNAL_POSITION_SCREEN_LEFT_EDGE = SCREEN_LEFT_EDGE * INTERNAL_POSITION_RATIO;
+static inline constexpr int32_t INTERNAL_POSITION_SCREEN_CENTER_X = SCREEN_CENTER_X * INTERNAL_POSITION_RATIO;
+static inline constexpr int32_t INTERNAL_POSITION_SCREEN_RIGHT_EDGE = SCREEN_RIGHT_EDGE * INTERNAL_POSITION_RATIO;
+static inline constexpr int32_t INTERNAL_POSITION_SCREEN_BOTTOM_EDGE = SCREEN_BOTTOM_EDGE * INTERNAL_POSITION_RATIO;
+static inline constexpr int32_t INTERNAL_POSITION_SCREEN_CENTER_Y = SCREEN_CENTER_Y * INTERNAL_POSITION_RATIO;
+static inline constexpr int32_t INTERNAL_POSITION_SCREEN_TOP_EDGE = SCREEN_TOP_EDGE * INTERNAL_POSITION_RATIO;
+
+static inline constexpr int32_t INTERNAL_POSITION_SCREEN_WIDTH = SCREEN_WIDTH * INTERNAL_POSITION_RATIO;
+static inline constexpr int32_t INTERNAL_POSITION_SCREEN_HEIGHT = SCREEN_HEIGHT * INTERNAL_POSITION_RATIO;
+
+static inline constexpr int32_t INTERNAL_POSITION_SCREEN_HALF_WIDTH = SCREEN_HALF_WIDTH * INTERNAL_POSITION_RATIO;
+static inline constexpr int32_t INTERNAL_POSITION_SCREEN_HALF_HEIGHT = SCREEN_HALF_HEIGHT * INTERNAL_POSITION_RATIO;
 
 enum MovementDirection : int32_t {
     MovementNone = 0,
@@ -22447,6 +22492,19 @@ enum CollisionTestType : int32_t {
 enum DamageSourceHitboxType {
     RectangleHitbox = 0,
     CircleHitbox = 1
+};
+
+// 0x4B7040
+static inline const Int2 MOVEMENT_DIRECTIONS_LOOKUP[] = {
+    { 0, 0 }, // MovementNone
+    { 0, -1 }, // MovementUp
+    { 0, 1 }, // MovementDown
+    { -1, 0 }, // MovementLeft
+    { 1, 0 }, // MovementRight
+    { -1, -1 }, // MovementUpLeft
+    { 1, -1 }, // MovementUpRight
+    { -1, 1 }, // MovementDownLeft
+    { 1, 1 }, // MovementDownRight
 };
 
 struct RectPoints {
@@ -23269,7 +23327,9 @@ struct PlayerOption {
         };
     };
     int __dword_DC; // 0xDC
-    unknown_fields(0x10); // 0xE0
+    unknown_fields(0x8); // 0xE0
+    void (*__func_ptr_E8)(); // 0xE8
+    unknown_fields(0x4); // 0xEC
     // 0xF0
 };
 #pragma region // PlayerOption Validation
@@ -23286,6 +23346,7 @@ ValidateFieldOffset32(0xD0, PlayerOption, __option_index);
 ValidateFieldOffset32(0xD4, PlayerOption, __int_D4);
 ValidateFieldOffset32(0xD8, PlayerOption, flags);
 ValidateFieldOffset32(0xDC, PlayerOption, __dword_DC);
+ValidateFieldOffset32(0xE8, PlayerOption, __func_ptr_E8);
 ValidateStructSize32(0xF0, PlayerOption);
 #pragma endregion
 
@@ -23516,7 +23577,7 @@ struct Player : ZUNTask {
     AnmVM __vm_14; // 0x14
     PlayerData data; // 0x620
     Float3 __float3_47928; // 0x47928
-    Int2 __base_movement_velocity; // 0x47934
+    Int2 __base_movement; // 0x47934
     MovementDirection movement_direction; // 0x4793C
     ShtFile* sht_file; // 0x47940
     int __dword_47944; // 0x47944
@@ -23626,9 +23687,30 @@ public:
         }
     }
 
+    inline void update_previous_positions() {
+        nounroll for (int32_t i = countof(this->data.previous_positions) - 1; i > 0; --i) {
+            this->data.previous_positions[i] = this->data.previous_positions[i - 1];
+        }
+        this->data.previous_positions[0] = this->data.internal_position;
+    }
+
     // 0x4099D0
     dllexport gnu_noinline static void stdcall __set_data_timer_47154(int32_t time) asm_symbol_rel(0x4099D0) {
         PLAYER_PTR->data.__timer_47154.initialize_and_set(time);
+    }
+
+    // 0x416CD0
+    dllexport gnu_noinline void thiscall __sub_416CD0() asm_symbol_rel(0x416CD0) {
+        this->data.__unknown_flag_C = true;
+        nounroll for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i) {
+            this->data.options[i].__anm_id_B0.interrupt_tree(3);
+            this->data.options[i].__anm_id_B4.interrupt_tree(3);
+        }
+        nounroll for (size_t i = 0; i < PLAYER_EQUIPMENT_OPTION_COUNT; ++i) {
+            this->data.equipment[i].__anm_id_B0.interrupt_tree(3);
+            this->data.equipment[i].__anm_id_B4.interrupt_tree(3);
+        }
+        this->data.__int_471C8 = 0;
     }
 
     // 0x416D50
@@ -23645,9 +23727,222 @@ public:
         this->data.__int_471C8 = 0;
     }
 
+    // 0x409A60
+    dllexport gnu_noinline uint32_t thiscall __sub_409A60(uint32_t arg1) asm_symbol_rel(0x409A60) {
+        this->data.__timer_47180.reset();
+        this->data.__unknown_field_A = arg1;
+        return this->data.__unknown_field_A;
+    }
+
+    inline bool is_movement_direction_diagonal() {
+        return this->movement_direction >= MovementUpLeft;
+    }
+
     // 0x45B170
-    dllexport gnu_noinline void thiscall __sub_45B170() asm_symbol_rel(0x45B170) {
-        // TODO: the entire player movement code
+    dllexport gnu_noinline void thiscall __move() asm_symbol_rel(0x45B170) {
+        Int2 movement;
+        if (this->data.__unknown_field_A) {
+            if (!this->data.__timer_47180) {
+                this->__sub_416CD0();
+            }
+            ++this->data.__timer_47180;
+            if (this->data.__unknown_field_A == 1) {
+                if (this->data.__timer_47180 == 1) {
+                    SOUND_MANAGER.play_sound(81);
+                }
+                movement.x = -256;
+                if (this->data.__timer_47180 == 8) {
+                    movement.x = INTERNAL_POSITION_SCREEN_WIDTH;
+                    this->__set_all_option_D4_to_1();
+                    this->__set_all_equipment_option_D4_to_1();
+                }
+            }
+            else {
+                if (this->data.__timer_47180 == 1) {
+                    SOUND_MANAGER.play_sound(80);
+                }
+                movement.x = 256;
+                if (this->data.__timer_47180 == 8) {
+                    movement.x = -INTERNAL_POSITION_SCREEN_WIDTH;
+                    this->__set_all_option_D4_to_1();
+                    this->__set_all_equipment_option_D4_to_1();
+                }
+            }
+            movement.y = 0;
+            if (this->data.__timer_47180 >= 16) {
+                this->__sub_416D50();
+                this->__sub_409A60(0);
+            }
+            else {
+                goto skip_movement_keys;
+            }
+        }
+
+        MovementDirection movement_direction;
+        if (INPUT_STATES[0].check_inputs_all(BUTTON_UP | BUTTON_LEFT)) {
+            this->movement_direction = movement_direction = MovementUpLeft;
+        }
+        else if (INPUT_STATES[0].check_inputs_all(BUTTON_DOWN | BUTTON_LEFT)) {
+            this->movement_direction = movement_direction = MovementDownLeft;
+        }
+        else if (INPUT_STATES[0].check_inputs_all(BUTTON_UP | BUTTON_RIGHT)) {
+            this->movement_direction = movement_direction = MovementUpRight;
+        }
+        else if (INPUT_STATES[0].check_inputs_all(BUTTON_DOWN | BUTTON_RIGHT)) {
+            this->movement_direction = movement_direction = MovementDownRight;
+        }
+        else if (INPUT_STATES[0].check_inputs(BUTTON_DOWN)) {
+            this->movement_direction = movement_direction = MovementDown;
+        }
+        else if (INPUT_STATES[0].check_inputs(BUTTON_UP)) {
+            this->movement_direction = movement_direction = MovementUp;
+        }
+        else if (INPUT_STATES[0].check_inputs(BUTTON_LEFT)) {
+            this->movement_direction = movement_direction = MovementLeft;
+        }
+        else if (INPUT_STATES[0].check_inputs(BUTTON_RIGHT)) {
+            this->movement_direction = movement_direction = MovementRight;
+        }
+        else {
+            this->movement_direction = movement_direction = MovementNone;
+        }
+
+        if (enemies_are_alive() && this->data.__timer_28 >= 4) {
+            this->data.focused = INPUT_STATES[0].check_inputs(BUTTON_FOCUS);
+        }
+        else {
+            this->data.__int_471C4 = 30;
+            this->data.focused = false;
+        }
+
+        movement = MOVEMENT_DIRECTIONS_LOOKUP[movement_direction];
+
+        int32_t speed;
+        if (this->data.focused) {
+            if (!this->data.__vm_id_47090) {
+                this->data.__vm_id_47090 = EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(26, 14);
+            }
+            if (AnmVM* vm = this->data.__vm_id_47090.get_vm_ptr()) {
+                if (this->data.scale_enabled) {
+                    vm->set_scale2((this->scale - 1.0f) * 2.0f + 1.0f);
+                } else {
+                    vm->set_scale2(1.0f);
+                }
+            }
+            if (this->is_movement_direction_diagonal()) {
+                speed = this->data.__focused_diagonal_speed;
+            } else {
+                speed = this->data.__focused_linear_speed;
+            }
+        }
+        else {
+            this->data.__vm_id_47090.interrupt_and_orphan_tree(1);
+            if (this->is_movement_direction_diagonal()) {
+                speed = this->data.__unfocused_diagonal_speed;
+            } else {
+                speed = this->data.__unfocused_linear_speed;
+            }
+        }
+
+        Int2 __base_axis_speed = (Int2)(this->data.__base_axis_speed.as2() * -INTERNAL_POSITION_RATIO);
+
+        movement = (Int2)((Float2)(movement * speed - __base_axis_speed) * this->data.__speed_modifier);
+
+skip_movement_keys:;
+
+        // MSVC got *very* confused here, this is very confusing to read
+        if (movement.x < 0) {
+            if (this->__base_movement.x >= 0) {
+                this->player_anm->__copy_data_to_vm_and_run(&this->__vm_14, 1);
+            }
+            if (movement.x == 0) {
+                if (this->__base_movement.x > 0) {
+                    this->player_anm->__copy_data_to_vm_and_run(&this->__vm_14, 4);
+                }
+            }
+        }
+        else if (movement.x == 0) {
+            if (this->__base_movement.x < 0) {
+                this->player_anm->__copy_data_to_vm_and_run(&this->__vm_14, 2);
+            }
+            if (this->__base_movement.x > 0) {
+                this->player_anm->__copy_data_to_vm_and_run(&this->__vm_14, 4);
+            }
+        }
+        else if (movement.x > 0) {
+            if (this->__base_movement.x <= 0) {
+                this->player_anm->__copy_data_to_vm_and_run(&this->__vm_14, 3);
+            }
+        }
+        else if (movement.x == 0) {
+            if (this->__base_movement.x > 0) {
+                this->player_anm->__copy_data_to_vm_and_run(&this->__vm_14, 4);
+            }
+        }
+
+        this->__base_movement = movement;
+        Float2 velocity = (Float2)movement * GAME_SPEED;
+        this->data.velocity.as2() = velocity;
+        if (this->movement_direction != MovementNone) {
+            this->data.__last_movement_velocity = this->data.velocity;
+        }
+
+        Int2 internal_velocity = (Int2)velocity;
+        this->data.__internal_velocity = internal_velocity;
+        Int2 internal_position = this->data.internal_position;
+        internal_position += internal_velocity;
+        this->data.internal_position = internal_position;
+
+        if (!this->data.__unknown_field_A) {
+            if (internal_position.x < INTERNAL_POSITION_SCREEN_LEFT_EDGE) {
+                this->data.internal_position.x = INTERNAL_POSITION_SCREEN_LEFT_EDGE;
+                internal_position.x = INTERNAL_POSITION_SCREEN_LEFT_EDGE;
+            }
+            else if (internal_position.x > INTERNAL_POSITION_SCREEN_RIGHT_EDGE) {
+                this->data.internal_position.x = INTERNAL_POSITION_SCREEN_RIGHT_EDGE;
+                internal_position.x = INTERNAL_POSITION_SCREEN_RIGHT_EDGE;
+            }
+            if (internal_position.y < INTERNAL_POSITION_SCREEN_BOTTOM_EDGE + INTERNAL_POSITION_ADJUST(32)) {
+                this->data.internal_position.y = INTERNAL_POSITION_SCREEN_BOTTOM_EDGE + INTERNAL_POSITION_ADJUST(32);
+                internal_position.y = INTERNAL_POSITION_SCREEN_BOTTOM_EDGE + INTERNAL_POSITION_ADJUST(32);
+            }
+            else if (internal_position.y > INTERNAL_POSITION_SCREEN_TOP_EDGE - INTERNAL_POSITION_ADJUST(16)) {
+                this->data.internal_position.y = INTERNAL_POSITION_SCREEN_TOP_EDGE - INTERNAL_POSITION_ADJUST(16);
+                internal_position.y = INTERNAL_POSITION_SCREEN_TOP_EDGE - INTERNAL_POSITION_ADJUST(16);
+            }
+        }
+
+        this->set_position_internal(internal_position);
+
+
+        if (this->data.__vm_id_47090.get_vm_ptr()) {
+            this->data.__vm_id_47090.set_controller_position(&this->data.position);
+        }
+
+        if (internal_velocity.y || internal_velocity.x) {
+            this->update_previous_positions();
+        }
+
+        if (this->data.__unknown_flag_C) {
+            ++this->data.__int_471C8;
+        }
+
+        this->__update_option_positions();
+
+        if (this->data.__int_471C8 >= 30) {
+            this->data.__option_count = 0;
+        }
+
+        if (this->data.__timer_47098 > 0) {
+            if (!this->data.__vm_id_47094.get_vm_ptr()) {
+                this->data.__vm_id_47094 = EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(27, 14);
+            }
+            this->data.__vm_id_47094.set_controller_position(&this->data.position);
+            if (--this->data.__timer_47098 <= 0) {
+                this->data.__vm_id_47094.interrupt_tree(1);
+                this->data.__timer_47098.reset();
+            }
+        }
     }
 
 private:
@@ -23718,6 +24013,13 @@ public:
         return this->__set_position_and_all_option_D4_to_1(UNUSED_FLOAT, x, y);
     }
 
+    // 0x45A660
+    dllexport gnu_noinline void thiscall __set_all_equipment_option_D4_to_1(int32_t value = UNUSED_DWORD) asm_symbol_rel(0x45A660) {
+        nounroll for (size_t i = 0; i < PLAYER_EQUIPMENT_OPTION_COUNT; ++i) {
+            this->data.equipment[i].__int_D4 = 1;
+        }
+    }
+
     // 0x45A600
     dllexport gnu_noinline void thiscall __set_all_option_D4_to_1(int32_t value = UNUSED_DWORD) asm_symbol_rel(0x45A600) {
         for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i) {
@@ -23726,6 +24028,55 @@ public:
         nounroll for (size_t i = 0; i < PLAYER_EQUIPMENT_OPTION_COUNT; ++i) {
             this->data.equipment[i].__int_D4 = 1;
         }
+    }
+
+    // 0x45BC90
+    dllexport gnu_noinline void thiscall __update_option_positions(PlayerOption* options, int32_t count) asm_symbol_rel(0x45BC90) {
+        for (int32_t i = 0; i < count; ++i, ++options) {
+            if (options->__int_0) {
+                if (!this->data.__unknown_flag_C) {
+                    if (options->__unknown_flag_A) {
+                        options->position = this->data.internal_position + (this->data.focused ? options->__focused_offset : options->__unfocused_offset);
+                    }
+                    if (auto func = options->__func_ptr_E8) {
+                        func();
+                    }
+                }
+                else {
+                    options->position = this->data.internal_position;
+                    if (this->data.__int_471C8 >= 30) {
+                        options->__int_0 = 0;
+                        options->__anm_id_B0.interrupt_tree(1);
+                        options->__anm_id_B4.interrupt_tree(1);
+                        continue;
+                    }
+                }
+                if (!options->__int_D4) {
+                    int32_t A = this->data.__int_471C8;
+                    if (A >= 30) {
+                        Int2 B = (options->position - options->internal_position) / 100;
+                        if (!B.x && !B.y) {
+                            options->internal_position = options->position;
+                        } else {
+                            options->internal_position += B;
+                        }
+                    }
+                } else {
+                    options->__int_D4 = 0;
+                    options->internal_position = options->position;
+                }
+                Float3 position;
+                position.as2() = (Float2)options->internal_position * (1.0f / INTERNAL_POSITION_RATIO);
+                position.z = 0.0f;
+                options->__anm_id_B0.set_controller_position(&position);
+                options->__anm_id_B4.set_controller_position(&position);
+            }
+        }
+    }
+
+    inline void __update_option_positions() {
+        this->__update_option_positions(this->data.options, countof(this->data.options));
+        this->__update_option_positions(this->data.equipment, countof(this->data.equipment));
     }
 
     // 0x45E930
@@ -24234,7 +24585,7 @@ private:
         return index + 1;
     }
     // 0x45DFA0
-    static dllexport gnu_noinline int32_t vectorcall create_damage_source_rotated_rectangle(
+    dllexport gnu_noinline static int32_t vectorcall create_damage_source_rotated_rectangle(
         int, int, float, float,
         Float3* position,
         float width, float height,
@@ -24369,7 +24720,7 @@ ValidateFieldOffset32(0x10, Player, bullet_anm);
 ValidateFieldOffset32(0x14, Player, __vm_14);
 ValidateFieldOffset32(0x620, Player, data);
 ValidateFieldOffset32(0x47928, Player, __float3_47928);
-ValidateFieldOffset32(0x47934, Player, __base_movement_velocity);
+ValidateFieldOffset32(0x47934, Player, __base_movement);
 ValidateFieldOffset32(0x4793C, Player, movement_direction);
 ValidateFieldOffset32(0x47940, Player, sht_file);
 ValidateFieldOffset32(0x47944, Player, __dword_47944);
@@ -25097,7 +25448,6 @@ extern "C" {
     externcg int32_t UNKNOWN_COUNTER_A cgasm("_UNKNOWN_COUNTER_A");
 }
 
-static inline bool enemies_are_alive();
 static inline float ability_manager_get_float_C58();
 static inline AnmLoaded* ability_manager_get_ability_anm();
 
@@ -25491,13 +25841,14 @@ struct CardShikiEiki : CardBase {
     dllexport gnu_noinline int thiscall __sub_40D840() asm_symbol_rel(0x40D840) {
         ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(41, &PLAYER_PTR->data.position);
         SOUND_MANAGER.play_sound(44);
-        // TODO
+        Player* player_ptr = PLAYER_PTR;
+        player_ptr->create_damage_source_circle(&player_ptr->data.position, 8.0f, 0.0f, 40, 5);
         //SPELLCARD_PTR->__sub_409AD0();
         GAME_MANAGER.globals.current_money -= 200;
         PLAYER_PTR->data.__timer_47154.set(60);
         // ++ENEMY_MANAGER_PTR->player_bomb_count;
         // ENEMY_MANAGER_PTR->can_capture_spell = FALSE;
-        // TODO
+        BOMB_PTR->__int_A0 = 1;
         this->__timer_20.reset();
         this->__int_54 = 1;
         return 0;
@@ -25523,7 +25874,7 @@ struct CardShikiEiki : CardBase {
                 // TODO
                 if (this->__timer_20 >= 60) {
                     this->__int_54 = 0;
-                    BOMB_PTR->__dword_A0 = 0;
+                    BOMB_PTR->__int_A0 = 0;
                 }
                 break;
         }
@@ -26417,7 +26768,7 @@ struct CardTsukasa : CardBase {
                 return 0;
             }
             BombBase* bomb = BOMB_PTR;
-            if (!bomb->active && !bomb->__dword_A0) {
+            if (!bomb->active && !bomb->__int_A0) {
                 bomb->active = TRUE;
                 bomb->__timer_34.reset();
                 // TODO
@@ -28196,7 +28547,7 @@ struct AbilityShop : ZUNTask {
     inline static AbilityShop* allocate(Float3* arg1) {
         AbilityShop* ability_shop = new AbilityShop();
         if (Player* player = PLAYER_PTR) {
-            // player->__sub_416CD0();
+            player->__sub_416CD0();
         }
         if (ZUN_FAILED(ability_shop->initialize(arg1))) {
             delete ability_shop;
@@ -30561,7 +30912,7 @@ struct Spellcard : ZUNTask {
     }
 
     // 0x409AD0
-    static dllexport gnu_noinline void __sub_409AD0() asm_symbol_rel(0x409AD0) {
+    dllexport gnu_noinline static void __sub_409AD0() asm_symbol_rel(0x409AD0) {
         SPELLCARD_PTR->__inline_sub_409AD0();
     }
 
@@ -30852,7 +31203,7 @@ ValidateStructSize32(0xC0, Spellcard);
 dllexport gnu_noinline ZUNResult BombBase::start_bomb() {
     BombBase* bomb = BOMB_PTR;
     if (
-        !bomb->active && !bomb->__dword_A0
+        !bomb->active && !bomb->__int_A0
     ) {
         bomb->active = TRUE;
         bomb->__timer_34.reset();
@@ -30933,7 +31284,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
             ABILITY_MANAGER_PTR->check_for_card_activation();
             ABILITY_MANAGER_PTR->check_for_card_switch();
             if (!ABILITY_SHOP_PTR) {
-                this->__sub_45B170();
+                this->__move();
             }
             ABILITY_MANAGER_PTR->card_list.for_each([](CardBase* card) {
                 card->on_tick();
@@ -31506,8 +31857,13 @@ extern "C" {
     // 0x4C5F90
     externcg BulletSpriteData BULLET_SPRITE_DATA[48] cgasm("_BULLET_SPRITE_DATA");
     // 0x4B36F0
-    externcg int32_t BULLET_IDK_DATA[8] cgasm("_BULLET_IDK_DATA");
+    //externcg int32_t BULLET_IDK_DATA[8] cgasm("_BULLET_IDK_DATA");
 }
+
+// 0x4B36F0
+static inline const int32_t BULLET_IDK_DATA[8] = {
+    4, 8, 12, 16, 20, 24, 28, 34
+};
 
 
 typedef struct BulletManager BulletManager;
@@ -41121,6 +41477,7 @@ struct MainMenu : ZUNTask {
                 SUPERVISOR.gamemode_switch = 10;
                 GAME_MANAGER.globals.__stage_number_related_4 = 1;
                 GAME_MANAGER.globals.__ecl_var_9907 = -1;
+                GAME_MANAGER.globals.character = Reimu;
 #endif
             }
 #if !DEBUG_SKIP_MENUS
@@ -45302,7 +45659,7 @@ struct StaticCtorsDtors {
 
         copy_from_original_game(SOUND_DATA, 0x4C9B80, original_game);
         copy_from_original_game(BULLET_SPRITE_DATA, 0x4C5F90, original_game);
-        copy_from_original_game(BULLET_IDK_DATA, 0x4B36F0, original_game);
+        //copy_from_original_game(BULLET_IDK_DATA, 0x4B36F0, original_game);
         copy_from_original_game(FONT_DATA, 0x4C9AD0, original_game);
         copy_from_original_game(STAGE_DATA, 0x4C9410, original_game);
         for (size_t i = 0; i != countof(STAGE_DATA); ++i) {
