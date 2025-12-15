@@ -10146,12 +10146,7 @@ public:
     dllexport gnu_noinline int32_t thiscall ecl_enm_create() asm_symbol_rel(0x4369E0);
 
     // 0x42E5A0
-    dllexport gnu_noinline ZUNResult thiscall __move() asm_symbol_rel(0x42E5A0) {
-        clang_noinline this->previous_motion = this->current_motion;
-        // TODO: Finish this function and all the giga-jank in it
-
-        return ZUN_SUCCESS;
-    }
+    dllexport gnu_noinline ZUNResult thiscall __move() asm_symbol_rel(0x42E5A0);
 
     forceinline ZUNResult thiscall update();
 
@@ -23787,15 +23782,18 @@ public:
         return ((Player*)ptr)->on_tick();
     }
 
-    // 0x45CAC0
-    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x45CAC0) {
-        Player* self = (Player*)ptr;
-        if (self->data.state != 2) {
-            self->__vm_14.controller.position = self->data.position;
-            self->__vm_14.data.origin_mode = 1;
-            ANM_MANAGER_PTR->draw_vm(&self->__vm_14);
+    inline UpdateFuncRet on_draw() {
+        if (this->data.state != 2) {
+            this->__vm_14.controller.position = this->data.position;
+            this->__vm_14.data.origin_mode = 1;
+            ANM_MANAGER_PTR->draw_vm(&this->__vm_14);
         }
         return UpdateFuncNext;
+    }
+
+    // 0x45CAC0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x45CAC0) {
+        return ((Player*)ptr)->on_draw();
     }
 
     // 0x45A7A0
@@ -34983,6 +34981,131 @@ inline const char* Enemy::check_life_callbacks() {
         }
     }
     return NULL;
+}
+
+// 0x42E5A0
+dllexport gnu_noinline ZUNResult thiscall EnemyData::__move() {
+    clang_noinline this->previous_motion = this->current_motion;
+    if (this->angle_interp_absolute.end_time) {
+        switch (this->motion.absolute.mode) {
+            case OrbitMovement: // 2
+            case EllipseMovement: // 3
+                break;
+            default:
+                this->motion.absolute.angle = reduce_angle(this->angle_interp_absolute.step());
+        }
+    }
+    if (this->speed_interp_absolute.end_time) {
+        this->motion.absolute.speed = this->speed_interp_absolute.step();
+    }
+    if (this->angle_interp_relative.end_time) {
+        switch (this->motion.relative.mode) {
+            case OrbitMovement: // 2
+            case EllipseMovement: // 3
+                break;
+            default:
+                this->motion.relative.angle = reduce_angle(this->angle_interp_relative.step());
+        }
+    }
+    if (this->speed_interp_relative.end_time) {
+        this->motion.relative.speed = this->speed_interp_relative.step();
+    }
+    if (this->orbit_radius_interp.absolute.end_time) {
+        Float2 values = this->orbit_radius_interp.absolute.step();
+        this->motion.absolute.radius = values.x;
+        this->motion.absolute.radius_delta = values.y;
+    }
+    if (this->orbit_radius_interp.relative.end_time) {
+        Float2 values = this->orbit_radius_interp.relative.step();
+        this->motion.relative.radius = values.x;
+        this->motion.relative.radius_delta = values.y;
+    }
+    if (this->position_interp.absolute.end_time) {
+        this->motion.absolute.axis_velocity = this->position_interp.absolute.step() - this->motion.absolute.position;
+    } else {
+        this->motion.absolute.update3();
+    }
+    if (this->position_interp.relative.end_time) {
+        this->motion.relative.axis_velocity = this->position_interp.relative.step() - this->motion.relative.position;
+    } else {
+        this->motion.relative.update3();
+    }
+    this->motion.absolute.update();
+    if (this->__basic_anm_update) {
+        this->motion.relative.position += SUPERVISOR.cameras[0].__float3_13C;
+    }
+    this->motion.relative.update();
+    this->update_current_motion();
+    if (this->__unknown_flag_I) {
+        float velocity_x = this->current_motion.axis_velocity.x;
+        int32_t script = 0;
+        int32_t rel = velocity_x < -0.03f ? -1 :
+                        velocity_x > 0.03f ? 1 : 0;
+
+        int32_t current_pose = this->current_anm_pose;
+        if (current_pose != rel) {
+            switch (current_pose) {
+                case 1:
+                    script = rel != 0 ? 1 : 4;
+                    break;
+                case 0:
+                    script = rel != -1 ? 2 : 1;
+                    break;
+                case -1:
+                    script = rel != 0 ? 3 : 2;
+                    break;
+            }
+            AnmVM* vm = this->anm_vms[0].get_vm_ptr();
+            AnmLoaded* anm_loaded;
+            Float3 position;
+            if (!vm) {
+                anm_loaded = anm_file_lookup(this->anm_slot_0_source_index);
+                position = {};
+            }
+            else {
+                anm_loaded = anm_file_lookup(this->anm_slot_0_source_index);
+                position = vm->data.position;
+                this->anm_vms[0].mark_tree_for_delete();
+            }
+            int32_t layer = 7 + this->anm_base_layer;
+            script += this->current_anm_script;
+            this->anm_vms[0] = anm_loaded->instantiate_vm_to_world_list_back(script, &position, layer);
+            this->current_anm_pose = rel;
+        }
+    }
+
+    AnmVM* vm = this->anm_vms[0].get_vm_ptr();
+    if (vm) {
+        this->final_sprite_size = vm->data.sprite_size * vm->data.scale;
+    }
+
+    float position_x = this->current_motion.position.x;
+    float half_sprite_size_x = this->final_sprite_size.x * 0.5f;
+    if (
+        !(position_x + half_sprite_size_x < SCREEN_LEFT_EDGE) &&
+        !(position_x - half_sprite_size_x > SCREEN_RIGHT_EDGE)
+    ) {
+        float position_y = this->current_motion.position.y;
+        float half_sprite_size_y = this->final_sprite_size.y * 0.5f;
+        if (
+            !(position_y + half_sprite_size_y < SCREEN_BOTTOM_EDGE) &&
+            !(position_y - half_sprite_size_y > SCREEN_TOP_EDGE)
+        ) {
+            this->__unknown_flag_G = true;
+        }
+        else {
+            if (this->__unknown_flag_G && !this->offscreen_immune_vertical) {
+                return ZUN_ERROR;
+            }
+        }
+    }
+    else {
+        if (this->__unknown_flag_G & !this->offscreen_immune_horizontal) {
+            return ZUN_ERROR;
+        }
+    }
+
+    return ZUN_SUCCESS;
 }
 
 // 0x42ED40
