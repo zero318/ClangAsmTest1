@@ -13906,6 +13906,20 @@ struct AnmVM {
         return controller_rotation;
     }
 
+    inline Float2 get_render_scale() {
+        Float2 scale = this->data.scale * this->data.scale2;
+
+        AnmVM* parent = this->controller.parent;
+        if (
+            parent &&
+            !this->data.__treat_as_root
+        ) {
+            scale *= parent->data.scale * parent->data.scale2;
+        }
+
+        return scale;
+    }
+
     // 0x405CE0
     dllexport gnu_noinline float vectorcall get_z_rotation() asm_symbol_rel(0x405CE0) {
         return this->data.rotation.z;
@@ -14116,15 +14130,7 @@ struct AnmVM {
                 break;
         }
 
-        Float2 scale = this->data.scale * this->data.scale2;
-
-        AnmVM* parent = this->controller.parent;
-        if (
-            parent &&
-            !this->data.__treat_as_root
-        ) {
-            scale *= parent->data.scale * parent->data.scale2;
-        }
+        Float2 scale = this->get_render_scale();
 
         vert0->as2() *= scale;
         vert1->as2() *= scale;
@@ -14188,30 +14194,22 @@ struct AnmVM {
         Float3 position; // ESP+40
         clang_forceinline this->get_render_position(&position);
 
-        Float2 scale = this->data.scale * this->data.scale2;
-
-        AnmVM* parent = this->controller.parent;
-        if (
-            parent &&
-            !this->data.__treat_as_root
-        ) {
-            scale *= parent->data.scale * parent->data.scale2;
-        }
+        Float2 scale = this->get_render_scale();
 
         offset_y *= scale.y;
         offset_x *= scale.x;
 
         vert0->x = (offset_x.x * unit_x - offset_y.x * unit_y) + position.x;
-        vert0->y = (offset_y.x * unit_y + offset_x.x * unit_x) + position.y;
+        vert0->y = (offset_y.x * unit_x + offset_x.x * unit_y) + position.y;
 
         vert1->x = (offset_x.y * unit_x - offset_y.y * unit_y) + position.x;
-        vert1->y = (offset_y.y * unit_y + offset_x.y * unit_x) + position.y;
+        vert1->y = (offset_y.y * unit_x + offset_x.y * unit_y) + position.y;
 
         vert2->x = (offset_x.z * unit_x - offset_y.z * unit_y) + position.x;
-        vert2->y = (offset_y.z * unit_y + offset_x.z * unit_x) + position.y;
+        vert2->y = (offset_y.z * unit_x + offset_x.z * unit_y) + position.y;
         
         vert3->x = (offset_x.w * unit_x - offset_y.w * unit_y) + position.x;
-        vert3->y = (offset_y.w * unit_y + offset_x.w * unit_x) + position.y;
+        vert3->y = (offset_y.w * unit_x + offset_x.w * unit_y) + position.y;
 
         float z_offset = this->data.position.z + this->controller.position.z + this->data.__position_2.z;
         vert0->z = z_offset;
