@@ -44,6 +44,7 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 
 #define DEBUG_SKIP_MENUS 1
 #define INCLUDE_EXTRA_DEBUG_STUFF 1 && !NDEBUG
+#define ZUN_DEBUG_CODE 1
 
 #define FIX_REALLY_BAD_BUGS 1
 #define PROTECT_ORIGINAL_FILES 1
@@ -723,11 +724,15 @@ struct ScopedCriticalSection {
 #define CriticalSectionBlock(index) switch (UniqueCriticalSectionLock(index); 0) default:
 
 #if NDEBUG
-#define DEBUG_PRINT(fmt, ...)
+#define DEBUG_PRINT(fmt, ...) 0
 #define DEBUG_VPRINT(fmt)
+#define DEBUG_SPRINT(buf, fmt, ...) 0
+#define DEBUG_VSPRINT(buf, fmt)
 #else
 #define DEBUG_PRINT(fmt, ...) DebugLogger::debug_print(fmt, __VA_ARGS__)
 #define DEBUG_VPRINT(fmt) { va_list va; va_start(va, fmt); DebugLogger::debug_vprint(fmt, va); va_end(va); }
+#define DEBUG_SPRINT(buf, fmt, ...) DebugLogger::debug_sprint(buf, fmt, __VA_ARGS__)
+#define DEBUG_VSPRINT(buf, fmt) { va_list va; va_start(va, fmt); DebugLogger::debug_vsprint(buf, fmt, va); va_end(va); }
 #endif
 
 // size: 0x4
@@ -798,11 +803,25 @@ struct DebugLogger {
     }
 
 #if !NDEBUG
-    static inline void debug_vprint(const char* format, va_list va) {
-        vprintf(format, va);
+    static inline int debug_vprint(const char* format, va_list va) {
+        return vprintf(format, va);
     }
-    static void cdecl debug_print(const char* format, ...) {
-        DEBUG_VPRINT(format);
+    static int cdecl debug_print(const char* format, ...) {
+        va_list va;
+        va_start(va, format);
+        int ret = debug_vprint(format, va);
+        //va_end(va);
+        return ret;
+    }
+    static inline int debug_vsprint(char* buffer, const char* format, va_list va) {
+        return vsprintf(buffer, format, va);
+    }
+    static int cdecl debug_sprint(char* buffer, const char* format, ...) {
+        va_list va;
+        va_start(va, format);
+        int ret = debug_vsprint(buffer, format, va);
+        //va_end(va);
+        return ret;
     }
 #endif
 };
@@ -1922,6 +1941,135 @@ extern "C" {
     // 0x4CF294
     externcg UpdateFuncRegistry* UPDATE_FUNC_REGISTRY_PTR cgasm("_UPDATE_FUNC_REGISTRY_PTR");
 }
+
+namespace TickPriority {
+enum : int32_t {
+    Supervisor = 1,
+    TickCounter = 2,
+    LoadingThread = 4,
+    AsciiManager = 5,
+    AbilityMenu = 7,
+    KeyConfigMenu = 7,
+    OptionsMenu = 7,
+    MainMenu = 8,
+    AnmManager_on_tick_ui = 11,
+    PauseMenu = 12,
+    AbilityShop = 12,
+    HelpMenu = 13,
+    NoticeManager = 13,
+    TrophyManager = 14,
+    GameThread = 16,
+    ReplayManager_A = 17,
+    Stage = 18,
+    ScreenEffect = 20,
+    PopupManager = 21,
+    AbilityManager = 22,
+    Player = 23,
+    BombBase = 25,
+    EnemyManager = 27,
+    LaserManager = 28,
+    BulletManager = 29,
+    ItemManager = 30,
+    Spellcard = 31,
+    EffectManager = 32,
+    Gui = 33,
+    AnmManager_on_tick_world = 34,
+    ReplayManager_B = 35,
+    Ending = 36
+};
+}
+namespace DrawPriority {
+enum : int32_t {
+    Supervisor_A = 1,
+    GameThread = 2,
+    Stage_A = 3,
+    AnmManager_draw_layer_0 = 5,
+    Stage_B = 6,
+    AnmManager_draw_layer_1 = 7,
+    AnmManager_draw_layer_2 = 9,
+    AnmManager_draw_layer_3 = 10,
+    ScreenEffect = 10,
+    AnmManager_draw_layer_4 = 11,
+    Spellcard = 12,
+    AnmManager_draw_layer_5 = 13,
+    Supervisor_B = 14,
+    Supervisor_arcade_vm_A = 15,
+    AnmManager_draw_layer_6 = 16,
+    AnmManager_draw_layer_7 = 18,
+    ItemManager_B = 19,
+    AnmManager_draw_layer_8 = 20,
+    AnmManager_draw_layer_9 = 21,
+    AnmManager_draw_layer_10 = 22,
+    EnemyManager = 23,
+    AnmManager_draw_layer_11 = 24,
+    Supervisor_D = 25,
+    Supervisor_arcade_vm_B = 26,
+    AnmManager_draw_layer_12 = 27,
+    AnmManager_draw_layer_13 = 28,
+    Player = 29,
+    AnmManager_draw_layer_14 = 31,
+    AnmManager_draw_layer_15 = 32,
+    ItemManager_A = 33,
+    AnmManager_draw_layer_16 = 35,
+    LaserManager = 36,
+    AnmManager_draw_layer_17 = 37,
+    BulletManager = 38,
+    EffectManager = 39,
+    AnmManager_draw_layer_18 = 40,
+    BombBase = 41,
+    AnmManager_draw_layer_19 = 43,
+    Supervisor_F = 44,
+    Supervisor_arcade_vm_C = 45,
+    AnmManager_draw_layer_20 = 46,
+    AnmManager_draw_layer_21 = 47,
+    PopupManager = 48,
+    Gui_B = 49,
+    AbilityManager = 51,
+    Gui_A = 53,
+    AnmManager_draw_layer_22 = 54,
+    AsciiManager_draw_group_1 = 55,
+    AnmManager_draw_layer_23 = 56,
+    AnmManager_draw_layer_37 = 57,
+    Supervisor_H = 58,
+    Supervisor_arcade_vm_D = 59,
+    AnmManager_draw_layer_24 = 60,
+    AnmManager_draw_layer_25 = 61,
+    AnmManager_draw_layer_38 = 62,
+    AsciiManager_draw_group_3 = 63,
+    AnmManager_draw_layer_26 = 64,
+    AnmManager_draw_layer_39 = 65,
+    AnmManager_draw_layer_27 = 66,
+    AnmManager_draw_layer_40 = 67,
+    AnmManager_draw_layer_41A = 68,
+    AnmManager_draw_layer_28 = 69,
+    AnmManager_draw_layer_41B = 70,
+    AnmManager_draw_layer_29 = 71,
+    AsciiManager_draw_group_2 = 72,
+    Ending = 73,
+    LoadingThread = 74,
+    MainMenu = 75,
+    ReplayManager = 77,
+    HelpMenu = 78,
+    NoticeManager = 78,
+    TrophyManager = 79,
+    AbilityMenu = 80,
+    KeyConfigMenu = 80,
+    OptionsMenu = 80,
+    PauseMenu = 81,
+    AbilityShop = 81,
+    FpsCounter = 82,
+    AnmManager_draw_layer_30 = 84,
+    AnmManager_draw_layer_43 = 85,
+    AnmManager_draw_layer_31 = 86,
+    AnmManager_draw_layer_44 = 87,
+    AsciiManager_draw_group_0 = 88,
+    AnmManager_draw_layer_32 = 89,
+    AnmManager_draw_layer_45 = 90,
+    Supervisor_J = 92
+};
+}
+
+
 // size: 0x58
 struct UpdateFuncRegistry {
     UpdateFunc on_tick_funcs; // 0x0
@@ -3682,7 +3830,7 @@ struct FpsCounter : ZUNTask {
 
     inline ZUNResult initialize() {
         UpdateFunc* update_func = new UpdateFunc(&on_draw, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 82);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::FpsCounter); // 82
         this->on_draw_func = update_func;
 
         return ZUN_SUCCESS;
@@ -3728,7 +3876,7 @@ struct TickCounter : ZUNTask {
 
     inline ZUNResult initialize() {
         UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 2);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::TickCounter); // 2
         this->on_tick_func = update_func;
 
         return ZUN_SUCCESS;
@@ -4225,28 +4373,28 @@ dllexport gnu_noinline ZUNResult Supervisor::initialize() {
     SUPERVISOR.__dword_800 = 0;
     UpdateFunc* update_func = new UpdateFunc(&Supervisor::on_tick, true, &SUPERVISOR);
     update_func->on_init_func = &Supervisor::on_registration;
-    ZUNResult ret = UpdateFuncRegistry::register_on_tick(update_func, 1);
+    ZUNResult ret = UpdateFuncRegistry::register_on_tick(update_func, TickPriority::Supervisor); // 1
     if (ZUN_SUCCEEDED(ret)) {
         update_func = new UpdateFunc(&Supervisor::on_draw_A, true, &SUPERVISOR);
-        UpdateFuncRegistry::register_on_draw(update_func, 1);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::Supervisor_A); // 1
         update_func = new UpdateFunc(&Supervisor::on_draw_B, true, &SUPERVISOR);
-        UpdateFuncRegistry::register_on_draw(update_func, 14);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::Supervisor_B); // 14
         update_func = new UpdateFunc(&Supervisor::on_draw_arcade_vm_A, true, &SUPERVISOR);
-        UpdateFuncRegistry::register_on_draw(update_func, 15);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::Supervisor_arcade_vm_A); // 15
         update_func = new UpdateFunc(&Supervisor::on_draw_D, true, &SUPERVISOR);
-        UpdateFuncRegistry::register_on_draw(update_func, 25);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::Supervisor_D); // 25
         update_func = new UpdateFunc(&Supervisor::on_draw_arcade_vm_B, true, &SUPERVISOR);
-        UpdateFuncRegistry::register_on_draw(update_func, 26);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::Supervisor_arcade_vm_B); // 26
         update_func = new UpdateFunc(&Supervisor::on_draw_F, true, &SUPERVISOR);
-        UpdateFuncRegistry::register_on_draw(update_func, 44);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::Supervisor_F); // 44
         update_func = new UpdateFunc(&Supervisor::on_draw_arcade_vm_C, true, &SUPERVISOR);
-        UpdateFuncRegistry::register_on_draw(update_func, 45);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::Supervisor_arcade_vm_C); // 45
         update_func = new UpdateFunc(&Supervisor::on_draw_H, true, &SUPERVISOR);
-        UpdateFuncRegistry::register_on_draw(update_func, 58);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::Supervisor_H); // 58
         update_func = new UpdateFunc(&Supervisor::on_draw_arcade_vm_D, true, &SUPERVISOR);
-        UpdateFuncRegistry::register_on_draw(update_func, 59);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::Supervisor_arcade_vm_D); // 59
         update_func = new UpdateFunc(&Supervisor::on_draw_J, true, &SUPERVISOR);
-        UpdateFuncRegistry::register_on_draw(update_func, 92);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::Supervisor_J); // 92
         SUPERVISOR.d3d_device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &SUPERVISOR.back_buffer);
         ret = ZUN_SUCCESS;
     }
@@ -9456,10 +9604,10 @@ dllexport gnu_noinline BombBase* BombBase::allocate() {
             break;
     }
     UpdateFunc* update_func = new UpdateFunc(&on_tick, true, bomb_ptr);
-    UpdateFuncRegistry::register_on_tick(update_func, 25);
+    UpdateFuncRegistry::register_on_tick(update_func, TickPriority::BombBase); // 25
     bomb_ptr->on_tick_func = update_func;
     update_func = new UpdateFunc(&on_draw, true, bomb_ptr);
-    UpdateFuncRegistry::register_on_draw(update_func, 41);
+    UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::BombBase); // 41
     bomb_ptr->on_draw_func = update_func;
     bomb_ptr->__timer_34.reset();
     bomb_ptr->__timer_7C.reset();
@@ -10538,6 +10686,7 @@ public:
 
     // 0x48DC20
     dllexport gnu_noinline int32_t thiscall set_context_to_sub(const char* sub_name) asm_symbol_rel(0x48DC20) {
+        DEBUG_PRINT("Setting context to sub %s\n", sub_name);
         this->locate_sub(sub_name);
         this->current_context->location.instruction_offset = 0;
         this->current_context->time = 0.0f;
@@ -11231,8 +11380,8 @@ enum Opcode : uint16_t {
     boss_callback,
 
     // Section H
-    __debug_unknown_C = 901,
-    __debug_unknown_D = 902,
+    __debug_skip_start = 901,
+    __debug_skip_stop = 902,
 
     // Section I
     __globals_flag_unknown_A = 1001
@@ -17101,93 +17250,93 @@ struct AnmManager {
         this->next_snapshot_fast_id = 0;
         UpdateFunc* update_func;
         update_func = new UpdateFunc(&AnmManager::on_tick_world, true, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 34);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::AnmManager_on_tick_world); // 34
         update_func = new UpdateFunc(&AnmManager::on_tick_ui, true, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 11);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::AnmManager_on_tick_ui); // 11
         update_func = new UpdateFunc(&AnmManager::draw_layer_0, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 5);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_0); // 5
         update_func = new UpdateFunc(&AnmManager::draw_layer_1, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 7);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_1); // 7
         update_func = new UpdateFunc(&AnmManager::draw_layer_2, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 9);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_2); // 9
         update_func = new UpdateFunc(&AnmManager::draw_layer_4, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 11);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_4); // 11
         update_func = new UpdateFunc(&AnmManager::draw_layer_3, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 10);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_3); // 10
         update_func = new UpdateFunc(&AnmManager::draw_layer_5, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 13);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_5); // 13
         update_func = new UpdateFunc(&AnmManager::draw_layer_6, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 16);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_6); // 16
         update_func = new UpdateFunc(&AnmManager::draw_layer_7, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 18);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_7); // 18
         update_func = new UpdateFunc(&AnmManager::draw_layer_8, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 20);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_8); // 20
         update_func = new UpdateFunc(&AnmManager::draw_layer_9, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 21);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_9); // 21
         update_func = new UpdateFunc(&AnmManager::draw_layer_10, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 22);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_10); // 22
         update_func = new UpdateFunc(&AnmManager::draw_layer_11, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 24);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_11); // 24
         update_func = new UpdateFunc(&AnmManager::draw_layer_12, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 27);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_12); // 27
         update_func = new UpdateFunc(&AnmManager::draw_layer_13, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 28);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_13); // 28
         update_func = new UpdateFunc(&AnmManager::draw_layer_14, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 31);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_14); // 31
         update_func = new UpdateFunc(&AnmManager::draw_layer_15, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 32);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_15); // 32
         update_func = new UpdateFunc(&AnmManager::draw_layer_16, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 35);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_16); // 35
         update_func = new UpdateFunc(&AnmManager::draw_layer_17, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 37);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_17); // 37
         update_func = new UpdateFunc(&AnmManager::draw_layer_18, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 40);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_18); // 40
         update_func = new UpdateFunc(&AnmManager::draw_layer_19, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 43);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_19); // 43
         update_func = new UpdateFunc(&AnmManager::draw_layer_20, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 46);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_20); // 46
         update_func = new UpdateFunc(&AnmManager::draw_layer_21, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 47);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_21); // 47
         update_func = new UpdateFunc(&AnmManager::draw_layer_22, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 54);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_22); // 54
         update_func = new UpdateFunc(&AnmManager::draw_layer_23, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 56);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_23); // 56
         update_func = new UpdateFunc(&AnmManager::draw_layer_26, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 64);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_26); // 64
         update_func = new UpdateFunc(&AnmManager::draw_layer_27, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 66);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_27); // 66
         update_func = new UpdateFunc(&AnmManager::draw_layer_30, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 84);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_30); // 30
         update_func = new UpdateFunc(&AnmManager::draw_layer_31, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 86);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_31); // 86
         update_func = new UpdateFunc(&AnmManager::draw_layer_32, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 89);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_32); // 89
         update_func = new UpdateFunc(&AnmManager::draw_layer_25, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 61);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_25); // 61
         update_func = new UpdateFunc(&AnmManager::draw_layer_24, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 60);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_24); // 60
         update_func = new UpdateFunc(&AnmManager::draw_layer_28, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 69);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_28); // 69
         update_func = new UpdateFunc(&AnmManager::draw_layer_29, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 71);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_29); // 71
         update_func = new UpdateFunc(&AnmManager::draw_layer_37, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 57);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_37); // 57
         update_func = new UpdateFunc(&AnmManager::draw_layer_38, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 62);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_38); // 62
         update_func = new UpdateFunc(&AnmManager::draw_layer_39, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 65);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_39); // 65
         update_func = new UpdateFunc(&AnmManager::draw_layer_40, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 67);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_40); // 67
         update_func = new UpdateFunc(&AnmManager::draw_layer_41A, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 68);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_41A); // 68
         update_func = new UpdateFunc(&AnmManager::draw_layer_41B, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 70);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_41B); // 70
         update_func = new UpdateFunc(&AnmManager::draw_layer_43, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 85);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_43); // 85
         update_func = new UpdateFunc(&AnmManager::draw_layer_44, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 87);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_44); // 87
         update_func = new UpdateFunc(&AnmManager::draw_layer_45, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 90);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_45); // 90
         SUPERVISOR.d3d_device->SetVertexShader(NULL);
         this->next_snapshot_discriminator = 0;
     }
@@ -18562,10 +18711,10 @@ struct LoadingThread : ZUNTask {
 
     inline ZUNResult initialize() {
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 4);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::LoadingThread); // 4
         this->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 74);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::LoadingThread); // 74
         this->on_draw_func = update_func;
 
         clang_forceinline this->__thread_C.stop_and_cleanup();
@@ -18770,10 +18919,10 @@ struct EffectManager : ZUNTask {
         }
 
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 32);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::EffectManager); // 32
         this->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw, false, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 39);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::EffectManager); // 39
         this->on_draw_func = update_func;
         this->enable_funcs();
 
@@ -19878,13 +20027,13 @@ dllexport gnu_noinline Gui* Gui::allocate() {
     }
 
     UpdateFunc* update_func = new UpdateFunc(&on_tick, false, gui);
-    UpdateFuncRegistry::register_on_tick(update_func, 33);
+    UpdateFuncRegistry::register_on_tick(update_func, TickPriority::Gui); // 33
     gui->on_tick_func = update_func;
     update_func = new UpdateFunc(&on_draw, false, gui);
-    UpdateFuncRegistry::register_on_draw(update_func, 53);
+    UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::Gui_A); // 53
     gui->on_draw_func = update_func;
     update_func = new UpdateFunc(&on_draw_B, false, gui);
-    UpdateFuncRegistry::register_on_draw(update_func, 49);
+    UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::Gui_B); // 49
     gui->on_draw_func_B = update_func;
 
     return gui;
@@ -20357,19 +20506,19 @@ public:
         }
 
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 5);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::AsciiManager); // 5
         this->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw_group_0, false, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 88);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AsciiManager_draw_group_0); // 88
         this->on_draw_func = update_func;
         update_func = new UpdateFunc(&on_draw_group_1, false, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 55);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AsciiManager_draw_group_1); // 55
         this->on_draw_func_group_1 = update_func;
         update_func = new UpdateFunc(&on_draw_group_2, false, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 72);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AsciiManager_draw_group_2); // 72
         this->on_draw_func_group_2 = update_func;
         update_func = new UpdateFunc(&on_draw_group_3, false, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 63);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AsciiManager_draw_group_3); // 63
         this->on_draw_func_group_3 = update_func;
 
         this->ascii_anm->__set_initial_sprite(&this->__vm_C, 0);
@@ -20722,10 +20871,10 @@ struct Ending : ZUNTask {
     // 0x42B650
     dllexport gnu_noinline ZUNResult initialize() asm_symbol_rel(0x42B650) {
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 36);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::Ending); // 36
         this->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 73);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::Ending); // 73
         this->on_draw_func = update_func;
 
         ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
@@ -23688,10 +23837,10 @@ public:
             }
 
             UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
-            UpdateFuncRegistry::register_on_tick(update_func, 23);
+            UpdateFuncRegistry::register_on_tick(update_func, TickPriority::Player); // 23
             this->on_tick_func = update_func;
             update_func = new UpdateFunc(&on_draw, false, this);
-            UpdateFuncRegistry::register_on_draw(update_func, 29);
+            UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::Player); // 29
             this->on_draw_func = update_func;
 
             this->player_anm->__copy_data_to_vm_and_run(&this->__vm_14, 0);
@@ -24899,10 +25048,10 @@ struct PopupManager : ZUNTask {
         this->ascii_anm = ASCII_MANAGER_PTR->ascii_anm;
 
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 21);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::PopupManager); // 21
         this->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw, false, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 48);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::PopupManager); // 48
         this->on_draw_func = update_func;
 
         AnmLoaded* ascii_anm = this->ascii_anm;
@@ -27113,10 +27262,10 @@ public:
         this->card_list.initialize_with((CardBase*)this);
         this->load_files();
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 22);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::AbilityManager); // 22
         this->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw, false, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 51);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AbilityManager); // 51
         this->on_draw_func = update_func;
 
         return ZUN_SUCCESS;
@@ -27937,10 +28086,10 @@ struct AbilityShop : ZUNTask {
     // 0x4171B0
     dllexport gnu_noinline ZUNResult thiscall initialize(Float3* arg1) asm_symbol_rel(0x4171B0) {
         UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 12);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::AbilityShop); // 12
         this->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 81);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AbilityShop); // 81
         this->on_draw_func = update_func;
 
         this->enable_funcs_unsafe();
@@ -28151,10 +28300,10 @@ struct AbilityMenu : ZUNTask {
     // 0x413650
     dllexport gnu_noinline ZUNResult thiscall initialize(Float3* arg1, int arg2) asm_symbol_rel(0x413650) {
         UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 7);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::AbilityShop); // 7
         this->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 80);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AbilityShop); // 80
         this->on_draw_func = update_func;
 
         this->enable_funcs_unsafe();
@@ -28403,6 +28552,7 @@ struct EnemyManager : ZUNTask {
 
     // 0x42D7D0
     dllexport gnu_noinline Enemy* allocate_new_enemy(const char* sub_name, EnemyInitData* data, int32_t = UNUSED_DWORD) asm_symbol_rel(0x42D7D0) {
+        DEBUG_PRINT("Creating enemy with sub %s\n", sub_name);
         Enemy* enemy = new Enemy(sub_name);
         enemy->data.motion.absolute.position = data->position;
         enemy->data.score = data->score;
@@ -28643,9 +28793,9 @@ public:
         ecl_manager->add_ecl_file(ecl_filename);
 
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, enemy_manager);
-        UpdateFuncRegistry::register_on_tick(update_func, 27);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::EnemyManager); // 27
         update_func = new UpdateFunc(&on_draw, false, enemy_manager);
-        UpdateFuncRegistry::register_on_draw(update_func, 23);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::EnemyManager); // 23
 
         enemy_manager->__timer_98.initialize_and_reset();
         enemy_manager->enemy_limit = 99999;
@@ -28701,7 +28851,7 @@ dllexport gnu_noinline ZUNResult thiscall EclManager::load_imports(EclIncludes* 
             do {
                 AnmLoaded* anm_loaded;
                 clang_forceinline anm_loaded = ANM_MANAGER_PTR->preload_anm(i + ECL_ANM_INDEX_A, anm_names);
-                enemy_manager->enemy_anms[i] = anm_loaded;
+                enemy_manager->enemy_anms[i + 2] = anm_loaded;
                 if (!anm_loaded) {
                     LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
                     return ZUN_ERROR;
@@ -30011,13 +30161,13 @@ corrupted_data:
         this->std_vm.draw_distance_squared = 9610000.0f; // 3100 squared
 
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 18);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::Stage); // 18
         this->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw, false, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 3);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::Stage_A); // 3
         this->on_draw_func = update_func;
         update_func = new UpdateFunc(&on_draw_B, false, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 6);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::Stage_B); // 6
         this->on_draw_func_B = update_func;
 
         this->__int_3490 = 0;
@@ -30652,10 +30802,10 @@ struct Spellcard : ZUNTask {
 
     inline ZUNResult initialize() {
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 31);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::Spellcard); // 31
         this->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw, false, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 12);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::Spellcard); // 12
         this->on_draw_func = update_func;
 
         this->__timer_20.reset();
@@ -31284,13 +31434,13 @@ public:
 
     inline ZUNResult initialize() {
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 30);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::ItemManager); // 30
         this->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw_A, false, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 33);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::ItemManager_A); // 33
         this->on_draw_func = update_func;
         update_func = new UpdateFunc(&on_draw_B, false, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 19);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::ItemManager_B); // 19
         this->on_draw_func_B = update_func;
 
         this->destroy_all();
@@ -32349,7 +32499,7 @@ dllexport gnu_noinline int32_t fastcall AnmVM::sprite_lookup_1(AnmVM* vm, int32_
     Bullet* bullet = (Bullet*)vm->controller.associated_entity;
     int32_t bullet_sprite = bullet->sprite;
     if (BULLET_SPRITE_DATA[bullet_sprite].color_data[0].sprite_id >= 0) {
-        return BULLET_SPRITE_DATA[bullet_sprite].color_data[bullet->color].sprite_id;
+        return ((int32_t*)&BULLET_SPRITE_DATA[bullet_sprite].color_data[bullet->color].sprite_id)[sprite];
     }
     return sprite;
 }
@@ -32359,7 +32509,7 @@ dllexport gnu_noinline int32_t fastcall AnmVM::sprite_lookup_2(AnmVM* vm, int32_
     LaserData* laser = (LaserData*)vm->controller.associated_entity;
     int32_t laser_sprite = laser->sprite;
     if (BULLET_SPRITE_DATA[laser_sprite].color_data[0].sprite_id >= 0) {
-        return BULLET_SPRITE_DATA[laser_sprite].color_data[laser->color].sprite_id;
+        return ((int32_t*)&BULLET_SPRITE_DATA[laser_sprite].color_data[laser->color].sprite_id)[sprite];
     }
     return sprite;
 }
@@ -33391,10 +33541,10 @@ public:
         this->bullets[MAX_BULLETS].state = 5;
 
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 29);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::BulletManager); // 29
         this->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw, false, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 38);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::BulletManager); // 38
         this->on_draw_func = update_func;
 
         for (int32_t i = 0; i < MAX_BULLETS; ++i) {
@@ -33859,10 +34009,10 @@ public:
         }
 
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 28);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::LaserManager); // 28
         this->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw, false, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 36);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::LaserManager); // 36
         this->on_draw_func = update_func;
 
         this->list_tail = &this->dummy_laser;
@@ -36155,7 +36305,7 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
         return ZUN_ERROR;
     }
     float& current_time = this->time;
-    while (current_time <= (float)current_instruction->time) {
+    while (current_time >= (float)current_instruction->time) {
         if (current_instruction->difficulty_mask & this->difficulty_mask) {
             int32_t opcode = current_instruction->opcode;
             switch (opcode) {
@@ -36639,11 +36789,73 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
                             goto skip_stack_adjust;
                     }
                     break;
-                case nop:
-                case __debug_unknown_A:
-                case debug_print:
-                case __debug_unknown_B:
-                    // These don't go to the default case
+                // These don't go to the default case
+                case nop: // 0
+                    break;
+                case __debug_unknown_A: { // 22
+#if ZUN_DEBUG_CODE
+                    // change this in the watch window
+                    static int32_t ZUN_ECL_DEBUG_CONST = 0;
+                    if (this->get_int_arg(0) == ZUN_ECL_DEBUG_CONST) {
+                        current_instruction->stack_adjust = 0; // Evil hack by ZUN
+                        if (ZUN_FAILED(this->call(this, 1))) {
+                            goto delete_enemy;
+                        }
+                        current_instruction = this->get_current_instruction();
+                        continue;
+                    }
+#endif
+                    break;
+                }
+                case debug_print: { // 30
+#if ZUN_DEBUG_CODE
+                    // Assuming this hasn't changed since MoF...
+                    // though it's kinda broken.
+                    // Just including it because why not
+                    const char* format = StringArg(4);
+                    char* buffer = (char*)malloc(1024);
+                    buffer[0] = '\0';
+                    if (format) {
+                        int32_t va_index = 1;
+                        const EclRawValue* print_args_ptr = based_pointer<EclRawValue>(StringArg(4), IntArg(0) + sizeof(int32_t));
+                        do {
+                            const char* specifier = strchr(format, '%');
+                            if (!specifier) {
+                                break;
+                            }
+                            byteloop_strcpy(buffer, format);
+                            size_t write_offset = PtrDiffStrlen(specifier, format);
+                            buffer[write_offset] = '\0';
+                            switch (specifier[1]) {
+                                case '%':
+                                    break;
+                                case 'd': case 'f':
+                                    switch (print_args_ptr->type) {
+                                        default:
+                                        {
+                                            int32_t value = this->parse_int_as_arg_pop(va_index, IntArg((&print_args_ptr->integer - &IntArg(0)) + 1));
+                                            DEBUG_SPRINT(&buffer[write_offset], "%d", value);
+                                            break;
+                                        }
+                                        case 'f': case 'g':
+                                        {
+                                            float value = this->parse_float_as_arg_pop(va_index, FloatArg((&print_args_ptr->real - &FloatArg(0)) + 1));
+                                            DEBUG_SPRINT(&buffer[write_offset], "%f", value);
+                                            break;
+                                        }
+                                    }
+                                    print_args_ptr += 2;
+                                    ++va_index;
+                            }
+                            format = specifier + 2;
+                        } while (format);
+                    }
+                    DEBUG_PRINT("%s", buffer);
+                    free(buffer);
+#endif
+                    break;
+                }
+                case __debug_unknown_B: // 31
                     break;
             }
             if (uint8_t stack_adjust = current_instruction->stack_adjust) {
@@ -38497,6 +38709,11 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             }
             break;
         }
+#if ZUN_DEBUG_CODE
+        case __debug_skip_start: // 901
+        case __debug_skip_stop: // 902
+            break;
+#endif
         case __globals_flag_unknown_A: { // 1001
             int32_t state = this->get_int_arg(0);
             GAME_MANAGER.globals.__set_unknown_flag_A(state);
@@ -39297,13 +39514,13 @@ public:
                 this->info->__int_BC = GAME_MANAGER.globals.continues;
 
                 UpdateFunc* update_func = new UpdateFunc(&on_tick_A1, false, this);
-                UpdateFuncRegistry::register_on_tick(update_func, 17);
+                UpdateFuncRegistry::register_on_tick(update_func, TickPriority::ReplayManager_A); // 17
                 this->on_tick_func = update_func;
                 update_func = new UpdateFunc(&on_tick_B, false, this);
-                UpdateFuncRegistry::register_on_tick(update_func, 35);
+                UpdateFuncRegistry::register_on_tick(update_func, TickPriority::ReplayManager_B); // 35
                 this->on_tick_func_B = update_func;
                 update_func = new UpdateFunc(&on_draw, false, this);
-                UpdateFuncRegistry::register_on_draw(update_func, 77);
+                UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::ReplayManager); // 77
                 this->on_draw_func = update_func;
 
                 this->stage_number = GAME_MANAGER.globals.current_stage;
@@ -39340,13 +39557,13 @@ public:
                     GAME_MANAGER.globals.__ecl_var_9907 = A;
 
                     UpdateFunc* update_func = new UpdateFunc(&on_tick_A2, false, this);
-                    UpdateFuncRegistry::register_on_tick(update_func, 17);
+                    UpdateFuncRegistry::register_on_tick(update_func, TickPriority::ReplayManager_A); // 17
                     this->on_tick_func = update_func;
                     update_func = new UpdateFunc(&on_tick_B, false, this);
-                    UpdateFuncRegistry::register_on_tick(update_func, 35);
+                    UpdateFuncRegistry::register_on_tick(update_func, TickPriority::ReplayManager_B); // 35
                     this->on_tick_func_B = update_func;
                     update_func = new UpdateFunc(&on_draw, false, this);
-                    UpdateFuncRegistry::register_on_draw(update_func, 77);
+                    UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::ReplayManager); // 77
                     this->on_draw_func = update_func;
 
                     this->stage_number = -1;
@@ -39561,10 +39778,10 @@ struct HelpMenu : ZUNTask {
 
     inline ZUNResult initialize() {
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 13);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::HelpMenu); // 13
         this->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw, false, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 78);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::HelpMenu); // 78
         this->on_draw_func = update_func;
 
         SUPERVISOR.__start_thread_A94((_beginthreadex_proc_type)&thread_func_load_anm);
@@ -39686,10 +39903,10 @@ struct KeyConfigMenu : ZUNTask {
 
     inline ZUNResult initialize(Float3* arg1) {
         UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 7);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::KeyConfigMenu); // 7
         this->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 80);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::KeyConfigMenu); // 80
         this->on_draw_func = update_func;
         this->enable_funcs_unsafe();
 
@@ -39787,10 +40004,10 @@ struct OptionsMenu : ZUNTask {
 
     inline ZUNResult initialize(Float3* arg1) {
         UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 7);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::OptionsMenu); // 7
         this->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw, true, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 80);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::OptionsMenu); // 80
         this->on_draw_func = update_func;
         this->enable_funcs_unsafe();
 
@@ -40598,10 +40815,10 @@ struct PauseMenu : ZUNTask {
 
     inline ZUNResult initialize() {
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
-        UpdateFuncRegistry::register_on_tick(update_func, 12);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::PauseMenu); // 12
         this->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw, false, this);
-        UpdateFuncRegistry::register_on_draw(update_func, 81);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::PauseMenu); // 81
         this->on_draw_func = update_func;
 
         this->__timer_C.reset();
@@ -40749,10 +40966,10 @@ struct MainMenu : ZUNTask {
         MainMenu* main_menu = MAIN_MENU_PTR;
 
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, main_menu);
-        UpdateFuncRegistry::register_on_tick(update_func, 8);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::MainMenu); // 8
         main_menu->on_tick_func = update_func;
         update_func = new UpdateFunc(&on_draw, false, main_menu);
-        UpdateFuncRegistry::register_on_draw(update_func, 75);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::MainMenu); // 75
         main_menu->on_draw_func = update_func;
 
         if (
@@ -40774,6 +40991,7 @@ struct MainMenu : ZUNTask {
                 // DEBUG: Try to directly start a game?
                 SUPERVISOR.gamemode_switch = 10;
                 GAME_MANAGER.globals.__stage_number_related_4 = 1;
+                GAME_MANAGER.globals.__ecl_var_9907 = -1;
 #endif
             }
 #if !DEBUG_SKIP_MENUS
@@ -43082,10 +43300,10 @@ inline unsigned GameThread::thread_start_impl() {
     }
 
     UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
-    UpdateFuncRegistry::register_on_tick(update_func, 16);
+    UpdateFuncRegistry::register_on_tick(update_func, TickPriority::GameThread); // 16
     this->on_tick_func = update_func;
     update_func = new UpdateFunc(&on_draw, false, this);
-    UpdateFuncRegistry::register_on_draw(update_func, 2);
+    UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::GameThread); // 2
     this->on_draw_func = update_func;
 
     this->config = SUPERVISOR.config;
@@ -43184,7 +43402,7 @@ inline unsigned GameThread::thread_start_impl() {
         SUPERVISOR.__int_AD0 = 0;
     }
 
-    this->__unknown_flag_H = false;
+    this->skip_flag = false;
 
     SUPERVISOR.__thread_A94.__bool_10 = false;
     SUPERVISOR.__thread_A94.__bool_C = true;
