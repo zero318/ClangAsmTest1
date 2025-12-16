@@ -10,6 +10,8 @@
 #define _HAS_CXX20 0
 #endif
 
+#define SHARD WINAPI_SHARD
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <limits.h>
@@ -22,6 +24,7 @@
 #define _USE_MATH_DEFINES 1
 #include <math.h>
 
+#include <array>
 #include <bit>
 
 #include "../zero/FloatConstants.h"
@@ -84,7 +87,7 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 
 #define GAME_FOLDER_PATH "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\"
 
-#define CHEAT_THE_LOADER 1
+#define CHEAT_THE_LOADER 0
 
 #if CHEAT_THE_LOADER
 typedef struct StaticCtorsDtors StaticCtorsDtors;
@@ -122,6 +125,8 @@ extern StaticCtorsDtors fake_static_data;
 
 #pragma comment (lib, "wbemuuid.lib")
 #pragma comment (lib, "Xinput9_1_0.lib")
+
+#undef SHARD
 
 #ifndef SAFE_FREE
 #define SAFE_FREE(p)       { if (p) { free ((void*)p);     (p)=NULL; } }
@@ -2853,11 +2858,11 @@ ValidateStructSize32(0x14, InputMapping);
 
 extern "C" {
     // 0x4CABA8
-    externcg InputMapping DEFAULT_JOYPAD_MAPPINGS cgasm("_DEFAULT_JOYPAD_MAPPINGS");
+    //externcg InputMapping DEFAULT_JOYPAD_MAPPINGS cgasm("_DEFAULT_JOYPAD_MAPPINGS");
     // 0x4CABBC
-    externcg InputMapping DEFAULT_XINPUT_MAPPINGS cgasm("_DEFAULT_XINPUT_MAPPINGS");
+    //externcg InputMapping DEFAULT_XINPUT_MAPPINGS cgasm("_DEFAULT_XINPUT_MAPPINGS");
     // 0x4CABD0
-    externcg InputMapping DEFAULT_KEYBOARD_MAPPINGS cgasm("_DEFAULT_KEYBOARD_MAPPINGS");
+    //externcg InputMapping DEFAULT_KEYBOARD_MAPPINGS cgasm("_DEFAULT_KEYBOARD_MAPPINGS");
 }
 
 static inline constexpr size_t BUTTON_COUNT = 32;
@@ -2918,6 +2923,49 @@ static inline constexpr uint32_t XINPUT_PAD_MAPPINGS[] = {
     XINPUT_GAMEPAD_RIGHT_THUMB,
     XINPUT_GAMEPAD_START,
     XINPUT_GAMEPAD_BACK
+};
+static inline constexpr uint32_t XINPUT_GAMEPAD_A_INDEX = 0;
+static inline constexpr uint32_t XINPUT_GAMEPAD_B_INDEX = 1;
+static inline constexpr uint32_t XINPUT_GAMEPAD_X_INDEX = 2;
+static inline constexpr uint32_t XINPUT_GAMEPAD_Y_INDEX = 3;
+static inline constexpr uint32_t XINPUT_GAMEPAD_LEFT_SHOULDER_INDEX = 4;
+static inline constexpr uint32_t XINPUT_GAMEPAD_RIGHT_SHOULDER_INDEX = 5;
+static inline constexpr uint32_t XINPUT_GAMEPAD_LEFT_TRIGGER_INDEX = 6;
+static inline constexpr uint32_t XINPUT_GAMEPAD_RIGHT_TRIGGER_INDEX = 7;
+static inline constexpr uint32_t XINPUT_GAMEPAD_LEFT_THUMB_INDEX = 8;
+static inline constexpr uint32_t XINPUT_GAMEPAD_RIGHT_THUMB_INDEX = 9;
+static inline constexpr uint32_t XINPUT_GAMEPAD_START_INDEX = 10;
+static inline constexpr uint32_t XINPUT_GAMEPAD_BACK_INDEX = 11;
+
+// 0x4CABA8
+static InputMapping DEFAULT_JOYPAD_MAPPINGS = {
+    .shoot = 0, // BUTTON_0
+    .bomb = 1, // BUTTON_1
+    .focus = 2, // BUTTON_2
+    .pause = 5, // BUTTON_5
+    .__button4 = -1, .__button5 = -1, .__button6 = -1, .__button7 = -1,
+    .use_card = 3, // BUTTON_3
+    .switch_card = 4 // BUTTON_4
+};
+// 0x4CABBC
+static InputMapping DEFAULT_XINPUT_MAPPINGS = {
+    .shoot = XINPUT_GAMEPAD_A_INDEX,
+    .bomb = XINPUT_GAMEPAD_B_INDEX,
+    .focus = XINPUT_GAMEPAD_RIGHT_SHOULDER_INDEX,
+    .pause = XINPUT_GAMEPAD_START_INDEX,
+    .__button4 = -1, .__button5 = -1, .__button6 = -1, .__button7 = -1,
+    .use_card = XINPUT_GAMEPAD_X_INDEX,
+    .switch_card = XINPUT_GAMEPAD_Y_INDEX
+};
+// 0x4CABD0
+static InputMapping DEFAULT_KEYBOARD_MAPPINGS = {
+    .shoot = 'Z',
+    .bomb = 'X',
+    .focus = VK_SHIFT,
+    .pause = VK_ESCAPE,
+    .__button4 = -1, .__button5 = -1, .__button6 = -1, .__button7 = -1,
+    .use_card = 'C',
+    .switch_card = 'D'
 };
 
 enum InputMode : int32_t {
@@ -3932,6 +3980,18 @@ ValidateFieldOffset32(0xC, TickCounter, ticks);
 ValidateStructSize32(0x10, TickCounter);
 #pragma endregion
 
+// Indices used with anm_file_lookup to retrieve ANM files loaded from ECL
+enum EclAnmSourceIndex {
+    ECL_BULLET_ANM_INDEX = 0,
+    ECL_EFFECT_ANM_INDEX = 1,
+    ECL_INCLUDE_ANM_INDEX_0 = 2,
+    ECL_INCLUDE_ANM_INDEX_1 = 3,
+    ECL_INCLUDE_ANM_INDEX_2 = 4,
+    ECL_INCLUDE_ANM_INDEX_3 = 5,
+    ECL_INCLUDE_ANM_INDEX_4 = 6,
+    ECL_STAGE_ANM_INDEX = 7
+};
+
 static inline constexpr size_t msg_variant_count = 4;
 
 // size: 0x28
@@ -3942,10 +4002,10 @@ struct StageDataInner {
     int32_t __spell_flag_state; // 0xC (0x3C)
     int32_t __spell_anm_indexB; // 0x10 (0x40)
     int32_t __spell_anm_scriptB; // 0x14 (0x44)
-    int32_t __intro_anm_index; // 0x18 (0x48)
-    int32_t __intro_anm_script; // 0x1C (0x4C)
-    int32_t __portrait_anm_index; // 0x20 (0x50)
-    int32_t __portrait_anm_script; // 0x24 (0x54)
+    int32_t intro_anm_index; // 0x18 (0x48)
+    int32_t intro_anm_script; // 0x1C (0x4C)
+    int32_t portrait_anm_index; // 0x20 (0x50)
+    int32_t portrait_anm_script; // 0x24 (0x54)
     // 0x28
 };
 
@@ -3960,20 +4020,281 @@ struct StageData {
     const char* msg_filenames[msg_variant_count]; // 0x14
     const char* logo_anm_filename; // 0x24
     int32_t bgm_indices[MUSIC_PER_STAGE]; // 0x28
-    StageDataInner inner[3]; // 0x30
-    unknown_fields(0x2C); // 0xA8
+    StageDataInner inner[4]; // 0x30
+    int __int_D0; // 0xD0
     // 0xD4
 };
-
 
 static inline constexpr int32_t STAGE_COUNT = 8;
 
 extern "C" {
     // 0x4C9410
-    externcg StageData STAGE_DATA[STAGE_COUNT] cgasm("_STAGE_DATA");
+    //externcg StageData STAGE_DATA[STAGE_COUNT] cgasm("_STAGE_DATA");
     // 0x4CF428
     externcg StageData* STAGE_DATA_PTR cgasm("_STAGE_DATA_PTR");
 }
+
+// 0x4C9410
+static StageData STAGE_DATA[STAGE_COUNT] = {
+    {
+        .stage_number = 0,
+        .std_filename = "st01.std",
+        .ecl_filename = "st00.ecl",
+        .bgm_filenames = { "th18_03", "th17_04" },
+        .msg_filenames = { "st01a.msg", "st01b.msg", "st01c.msg", "st01d.msg" },
+        .logo_anm_filename = "st01logo.anm",
+        .bgm_indices = { 1, 2 },
+        .inner = {
+            {
+                .__anm_script_0 = 0,
+                .__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 10,
+                .__spell_flag_state = false,
+                .__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 18,
+                .intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 15,
+                .portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
+            }
+        },
+        .__int_D0 = 0
+    },
+    {
+        .stage_number = 1,
+        .std_filename = "st01.std",
+        .ecl_filename = "st01.ecl",
+        .bgm_filenames = { "th18_03", "th18_04" },
+        .msg_filenames = { "st01a.msg", "st01b.msg", "st01c.msg", "st01d.msg" },
+        .logo_anm_filename = "st01logo.anm",
+        .bgm_indices = { 1, 2 },
+        .inner = {
+            {
+                .__anm_script_0 = 0,
+                .__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 10,
+                .__spell_flag_state = false,
+                .__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 18,
+                .intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 15,
+                .portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
+            },
+            {
+                .__anm_script_0 = 0,
+                .__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 10,
+                .__spell_flag_state = false,
+                .__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 18,
+                .intro_anm_index = -1, .intro_anm_script = -1,
+                .portrait_anm_index = -1, .portrait_anm_script = -1
+            },
+            {
+                .__anm_script_0 = -1
+            }
+        },
+        .__int_D0 = 0
+    },
+    {
+        .stage_number = 2,
+        .std_filename = "st02.std",
+        .ecl_filename = "st02.ecl",
+        .bgm_filenames = { "th18_06", "th18_06" },
+        .msg_filenames = { "st02a.msg", "st02b.msg", "st02c.msg", "st02d.msg" },
+        .logo_anm_filename = "st02logo.anm",
+        .bgm_indices = { 3, 4 },
+        .inner = {
+            {
+                .__anm_script_0 = 0,
+                .__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 11,
+                .__spell_flag_state = false,
+                .__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 18,
+                .intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 15,
+                .portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 10
+            },
+            {
+                .__anm_script_0 = 1,
+                .__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 11,
+                .__spell_flag_state = false,
+                .__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 18,
+                .intro_anm_index = -1, .intro_anm_script = -1,
+                .portrait_anm_index = -1, .portrait_anm_script = -1
+            },
+            {
+                .__anm_script_0 = -1
+            }
+        },
+        .__int_D0 = 0
+    },
+    {
+        .stage_number = 3,
+        .std_filename = "st03.std",
+        .ecl_filename = "st03.ecl",
+        .bgm_filenames = { "th18_07", "th18_08" },
+        .msg_filenames = { "st03a.msg", "st03b.msg", "st03c.msg", "st03d.msg" },
+        .logo_anm_filename = "st03logo.anm",
+        .bgm_indices = { 5, 6 },
+        .inner = {
+            {
+                .__anm_script_0 = 0,
+                .__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 10,
+                .__spell_flag_state = false,
+                .__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 17,
+                .intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 14,
+                .portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
+            },
+            {
+                .__anm_script_0 = 2,
+                .__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 10,
+                .__spell_flag_state = false,
+                .__spell_anm_indexB = -1, .__spell_anm_scriptB = -1,
+                .intro_anm_index = -1, .intro_anm_script = -1,
+                .portrait_anm_index = -1, .portrait_anm_script = -1
+            },
+            {
+                .__anm_script_0 = -1
+            }
+        },
+        .__int_D0 = 0
+    },
+    {
+        .stage_number = 4,
+        .std_filename = "st04.std",
+        .ecl_filename = "st04.ecl",
+        .bgm_filenames = { "th18_09", "th18_10" },
+        .msg_filenames = { "st04a.msg", "st04b.msg", "st04c.msg", "st04d.msg" },
+        .logo_anm_filename = "st04logo.anm",
+        .bgm_indices = { 7, 8 },
+        .inner = {
+            {
+                .__anm_script_0 = 0,
+                .__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 12,
+                .__spell_flag_state = false,
+                .__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 19,
+                .intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 16,
+                .portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 8
+            },
+            {
+                .__anm_script_0 = 3,
+                .__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 12,
+                .__spell_flag_state = false,
+                .__spell_anm_indexB = -1, .__spell_anm_scriptB = -1,
+                .intro_anm_index = -1, .intro_anm_script = -1,
+                .portrait_anm_index = -1, .portrait_anm_script = -1
+            },
+            {
+                .__anm_script_0 = -1
+            }
+        },
+        .__int_D0 = 0
+    },
+    {
+        .stage_number = 5,
+        .std_filename = "st05.std",
+        .ecl_filename = "st05.ecl",
+        .bgm_filenames = { "th18_11", "th18_12" },
+        .msg_filenames = { "st05a.msg", "st05b.msg", "st05c.msg", "st05d.msg" },
+        .logo_anm_filename = "st05logo.anm",
+        .bgm_indices = { 9, 10 },
+        .inner = {
+            {
+                .__anm_script_0 = 0,
+                .__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 9,
+                .__spell_flag_state = false,
+                .__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 18,
+                .intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 15,
+                .portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 8
+            },
+            {
+                .__anm_script_0 = 5,
+                .__spell_anm_indexA = -1, .__spell_anm_scriptA = -1,
+                .__spell_flag_state = false,
+                .__spell_anm_indexB = -1, .__spell_anm_scriptB = -1,
+                .intro_anm_index = ECL_INCLUDE_ANM_INDEX_2, .intro_anm_script = 9,
+                .portrait_anm_index = ECL_INCLUDE_ANM_INDEX_2, .portrait_anm_script = 8
+            },
+            {
+                .__anm_script_0 = -1
+            }
+        },
+        .__int_D0 = 0
+    },
+    {
+        .stage_number = 6,
+        .std_filename = "st06.std",
+        .ecl_filename = "st06.ecl",
+        .bgm_filenames = { "th18_13", "th18_14" },
+        .msg_filenames = { "st06a.msg", "st06b.msg", "st06c.msg", "st06d.msg" },
+        .logo_anm_filename = "st06logo.anm",
+        .bgm_indices = { 11, 12 },
+        .inner = {
+            {
+                .__anm_script_0 = 0,
+                .__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 13,
+                .__spell_flag_state = false,
+                .__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 21,
+                .intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 18,
+                .portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 12
+            },
+            {
+                .__anm_script_0 = 6,
+                .__spell_anm_indexA = -1, .__spell_anm_scriptA = -1,
+                .__spell_flag_state = false,
+                .__spell_anm_indexB = -1, .__spell_anm_scriptB = -1,
+                .intro_anm_index = ECL_INCLUDE_ANM_INDEX_2, .intro_anm_script = 9,
+                .portrait_anm_index = ECL_INCLUDE_ANM_INDEX_2, .portrait_anm_script = 8
+            },
+            {
+                .__anm_script_0 = 4,
+                .__spell_anm_indexA = -1, .__spell_anm_scriptA = 0,
+                .__spell_flag_state = true,
+                .__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 21,
+                .intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 18,
+                .portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 12
+            },
+            {
+                .__anm_script_0 = 4
+            }
+        },
+        .__int_D0 = 0
+    },
+    {
+        .stage_number = 7,
+        .std_filename = "st07.std",
+        .ecl_filename = "st07.ecl",
+        .bgm_filenames = { "th18_17", "th18_18" },
+        .msg_filenames = { "st07a.msg", "st07b.msg", "st07c.msg", "st07d.msg" },
+        .logo_anm_filename = "st07logo.anm",
+        .bgm_indices = { 13, 14 },
+        .inner = {
+            {
+                .__anm_script_0 = 0,
+                .__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 10,
+                .__spell_flag_state = false,
+                .__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 19,
+                .intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 16,
+                .portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
+            },
+            {
+                .__anm_script_0 = 7,
+                .__spell_anm_indexA = -1, .__spell_anm_scriptA = 0,
+                .__spell_flag_state = true,
+                .__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_2, .__spell_anm_scriptB = 12,
+                .intro_anm_index = -1, .intro_anm_script = -1,
+                .portrait_anm_index = ECL_INCLUDE_ANM_INDEX_2, .portrait_anm_script = 8
+            },
+            {
+                .__anm_script_0 = 4,
+                .__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_3, .__spell_anm_scriptA = 12,
+                .__spell_flag_state = true,
+                .__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_3, .__spell_anm_scriptB = 19,
+                .intro_anm_index = ECL_INCLUDE_ANM_INDEX_3, .intro_anm_script = 16,
+                .portrait_anm_index = ECL_INCLUDE_ANM_INDEX_3, .portrait_anm_script = 11
+            },
+            {
+                .__anm_script_0 = 3,
+                .__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_3, .__spell_anm_scriptA = 12,
+                .__spell_flag_state = true,
+                .__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_3, .__spell_anm_scriptB = 19,
+                .intro_anm_index = ECL_INCLUDE_ANM_INDEX_3, .intro_anm_script = 16,
+                .portrait_anm_index = ECL_INCLUDE_ANM_INDEX_3, .portrait_anm_script = 8
+            }
+        },
+        .__int_D0 = 3
+    }
+};
 
 typedef struct AnmManager AnmManager;
 
@@ -4521,18 +4842,96 @@ static inline constexpr const char *const SOUND_EFFECT_FILENAMES[] = {
     "se_notice.wav"
 };
 
+#define SE_PLST 0
+#define SE_ENEP00 1
+#define SE_PLDEAD00 2
+#define SE_POWER0 3
+#define SE_POWER1 4
+#define SE_TAN00 5
+#define SE_TAN01 6
+#define SE_TAN02 7
+#define SE_OK00 8
+#define SE_CANCEL00 9
+#define SE_SELECT00 10
+#define SE_GUN00 11
+#define SE_CAT00 12
+#define SE_LAZER00 13
+#define SE_LAZER01 14
+#define SE_ENEP01 15
+#define SE_DAMAGE00 16
+#define SE_ITEM00 17
+#define SE_KIRA00 18
+#define SE_KIRA01 19
+#define SE_KIRA02 20
+#define SE_TIMEOUT 21
+#define SE_GRAZE 22
+#define SE_POWERUP 23
+#define SE_PAUSE 24
+#define SE_CARDGET 25
+#define SE_DAMAGE01 26
+#define SE_TIMEOUT2 27
+#define SE_INVALID 28
+#define SE_SLASH 29
+#define SE_CH00 30
+#define SE_CH01 31
+#define SE_EXTEND 32
+#define SE_CARDGET_DUPE 33
+#define SE_NEP00 34
+#define SE_BONUS 35
+#define SE_BONUS2 36
+#define SE_ENEP02 37
+#define SE_LAZER02 38
+#define SE_NODAMAGE 39
+#define SE_BOON00 40
+#define SE_DON00 41
+#define SE_BOON01 42
+#define SE_CH02 43
+#define SE_CH03 44
+#define SE_EXTEND2 45
+#define SE_PIN00 46
+#define SE_PIN01 47
+#define SE_LGODS1 48
+#define SE_LGODS2 49
+#define SE_LGODS3 50
+#define SE_LGODS4 51
+#define SE_LGODSGET 52
+#define SE_MSL 53
+#define SE_MSL2 54
+#define SE_PLDEAD01 55
+#define SE_HEAL 56
+#define SE_MSL3 57
+#define SE_FAULT 58
+#define SE_NOISE 59
+#define SE_ETBREAK 60
+#define SE_TAN03 61
+#define SE_WOLD 62
+#define SE_BONUS4 63
+#define SE_BIG 64
+#define SE_ITEM01 65
+#define SE_RELEASE 66
+#define SE_CHANGEITEM 67
+#define SE_TROPHY 68
+#define SE_WARPL 69
+#define SE_WARPR 70
+#define SE_NOTICE 71
+
 // size: 0x14
 struct SoundData {
     int32_t id; // 0x0
     int32_t filename_index; // 0x4
-    unknown_fields(0x2); // 0x8
+    int16_t volume; // 0x8
     int16_t __short_A; // 0xA
-    unknown_fields(0x8); // 0xC
+    uint32_t play_flags; // 0xC
+    //unknown_fields(0x4); // 0x10
+    int __dword_10;
+    // 0x14
 };
 #pragma region // SoundData Validation
 ValidateFieldOffset32(0x0, SoundData, id);
 ValidateFieldOffset32(0x4, SoundData, filename_index);
+ValidateFieldOffset32(0x8, SoundData, volume);
 ValidateFieldOffset32(0xA, SoundData, __short_A);
+ValidateFieldOffset32(0xC, SoundData, play_flags);
 ValidateStructSize32(0x14, SoundData);
 #pragma endregion
 
@@ -4622,8 +5021,8 @@ struct SoundManagerUnknownB {
     int32_t __int_4; // 0x4
     SoundData* data; // 0x8
     int32_t __int_C; // 0xC
-    int32_t __int_10; // 0x10
-    int __dword_14; // 0x14
+    int32_t __pan; // 0x10
+    BOOL __playing; // 0x14
     // 0x18
 
     // 0x4776F0
@@ -4634,8 +5033,8 @@ ValidateFieldOffset32(0x0, SoundManagerUnknownB, sound_buffer);
 ValidateFieldOffset32(0x4, SoundManagerUnknownB, __int_4);
 ValidateFieldOffset32(0x8, SoundManagerUnknownB, data);
 ValidateFieldOffset32(0xC, SoundManagerUnknownB, __int_C);
-ValidateFieldOffset32(0x10, SoundManagerUnknownB, __int_10);
-ValidateFieldOffset32(0x14, SoundManagerUnknownB, __dword_14);
+ValidateFieldOffset32(0x10, SoundManagerUnknownB, __pan);
+ValidateFieldOffset32(0x14, SoundManagerUnknownB, __playing);
 ValidateStructSize32(0x18, SoundManagerUnknownB);
 #pragma endregion
 
@@ -5459,8 +5858,518 @@ ValidateStructSize32(0x200, SoundManagerUnknownF);
 
 extern "C" {
     // 0x4C9B80
-    externcg SoundData SOUND_DATA[SOUND_EFFECT_COUNT] cgasm("_SOUND_DATA");
+    //externcg SoundData SOUND_DATA[SOUND_EFFECT_COUNT] cgasm("_SOUND_DATA");
 }
+
+// 0x4C9B80
+static SoundData SOUND_DATA[SOUND_EFFECT_COUNT] = {
+    { // 0
+        .id = 0, .filename_index = SE_PLST,
+        .volume = -1900,
+        .__short_A = 0,
+        .__dword_10 = 0
+    },
+    { // 1
+        .id = 1, .filename_index = SE_PLST,
+        .volume = -200,
+        .__short_A = 0,
+        .__dword_10 = 0
+    },
+    { // 2
+        .id = 3, .filename_index = SE_ENEP00,
+        .volume = -1200,
+        .__short_A = 5,
+        .__dword_10 = 1
+    },
+    { // 3
+        .id = 4, .filename_index = SE_ENEP00,
+        .volume = -1500,
+        .__short_A = 5,
+        .__dword_10 = 1
+    },
+    { // 4
+        .id = 2, .filename_index = SE_PLDEAD00,
+        .volume = -1100,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 5
+        .id = 28, .filename_index = SE_POWER0,
+        .volume = -700,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 6
+        .id = 29, .filename_index = SE_POWER1,
+        .volume = -700,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 7
+        .id = 21, .filename_index = SE_TAN00,
+        .volume = -1900,
+        .__short_A = 50,
+        .__dword_10 = 1
+    },
+    { // 8
+        .id = 22, .filename_index = SE_TAN01,
+        .volume = -2200,
+        .__short_A = 50,
+        .__dword_10 = 1
+    },
+    { // 9
+        .id = 23, .filename_index = SE_TAN02,
+        .volume = -2400,
+        .__short_A = 50,
+        .__dword_10 = 1
+    },
+    { // 10
+        .id = 7, .filename_index = SE_OK00,
+        .volume = -500,
+        .__short_A = 100,
+        .__dword_10 = 0
+    },
+    { // 11
+        .id = 9, .filename_index = SE_CANCEL00,
+        .volume = -400,
+        .__short_A = 100,
+        .__dword_10 = 0
+    },
+    { // 12
+        .id = 10, .filename_index = SE_SELECT00,
+        .volume = -800,
+        .__short_A = 10,
+        .__dword_10 = 0
+    },
+    { // 13
+        .id = 32, .filename_index = SE_GUN00,
+        .volume = -1500,
+        .__short_A = 10,
+        .__dword_10 = 1
+    },
+    { // 14
+        .id = 33, .filename_index = SE_CAT00,
+        .volume = -300,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 15
+        .id = 27, .filename_index = SE_TAN00,
+        .volume = -1100,
+        .__short_A = 50,
+        .__dword_10 = 1
+    },
+    { // 16
+        .id = 18, .filename_index = SE_LAZER00,
+        .volume = -1300,
+        .__short_A = 50,
+        .__dword_10 = 1
+    },
+    { // 17
+        .id = 19, .filename_index = SE_LAZER01,
+        .volume = -1400,
+        .__short_A = 50,
+        .__dword_10 = 1
+    },
+    { // 18
+        .id = 5, .filename_index = SE_ENEP01,
+        .volume = -900,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 19
+        .id = 34, .filename_index = SE_DAMAGE00,
+        .volume = -880,
+        .__short_A = 0,
+        .__dword_10 = 1
+    },
+    { // 20
+        .id = 36, .filename_index = SE_NODAMAGE,
+        .volume = -880,
+        .__short_A = 0,
+        .__dword_10 = 1
+    },
+    { // 21
+        .id = 37, .filename_index = SE_ITEM00,
+        .volume = -1500,
+        .__short_A = 0,
+        .__dword_10 = 1
+    },
+    { // 22
+        .id = 24, .filename_index = SE_TAN00,
+        .volume = -300,
+        .__short_A = 20,
+        .__dword_10 = 1
+    },
+    { // 23
+        .id = 25, .filename_index = SE_TAN01,
+        .volume = -1800,
+        .__short_A = 20,
+        .__dword_10 = 1
+    },
+    { // 24
+        .id = 26, .filename_index = SE_TAN02,
+        .volume = -1800,
+        .__short_A = 20,
+        .__dword_10 = 1
+    },
+    { // 25
+        .id = 38, .filename_index = SE_KIRA00,
+        .volume = -1100,
+        .__short_A = 50,
+        .__dword_10 = 1
+    },
+    { // 26
+        .id = 39, .filename_index = SE_KIRA01,
+        .volume = -1300,
+        .__short_A = 50,
+        .__dword_10 = 1
+    },
+    { // 27
+        .id = 40, .filename_index = SE_KIRA02,
+        .volume = -1500,
+        .__short_A = 50,
+        .__dword_10 = 1
+    },
+    { // 28
+        .id = 11, .filename_index = SE_TIMEOUT,
+        .volume = -500,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 29
+        .id = 42, .filename_index = SE_GRAZE,
+        .volume = -600,
+        .__short_A = 20,
+        .__dword_10 = 1
+    },
+    { // 30
+        .id = 43, .filename_index = SE_GRAZE,
+        .volume = -700,
+        .__short_A = 20,
+        .__dword_10 = 1
+    },
+    { // 31
+        .id = 76, .filename_index = SE_ITEM01,
+        .volume = 0,
+        .__short_A = 20,
+        .__dword_10 = 1
+    },
+    { // 32
+        .id = 13, .filename_index = SE_POWERUP,
+        .volume = -100,
+        .__short_A = 90,
+        .__dword_10 = 1
+    },
+    { // 33
+        .id = 41, .filename_index = SE_KIRA00,
+        .volume = -500,
+        .__short_A = 50,
+        .__dword_10 = 1
+    },
+    { // 34
+        .id = 14, .filename_index = SE_PAUSE,
+        .volume = -800,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 35
+        .id = 15, .filename_index = SE_CARDGET,
+        .volume = -800,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 36
+        .id = 35, .filename_index = SE_DAMAGE01,
+        .volume = -500,
+        .__short_A = 0,
+        .__dword_10 = 1
+    },
+    { // 37
+        .id = 12, .filename_index = SE_TIMEOUT2,
+        .volume = -300,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 38
+        .id = 16, .filename_index = SE_INVALID,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 39
+        .id = 44, .filename_index = SE_SLASH,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 40
+        .id = 45, .filename_index = SE_SLASH,
+        .volume = -600,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 41
+        .id = 8, .filename_index = SE_OK00,
+        .volume = -300,
+        .__short_A = 100,
+        .__dword_10 = 0
+    },
+    { // 42
+        .id = 30, .filename_index = SE_CH00,
+        .volume = -300,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 43
+        .id = 31, .filename_index = SE_CH01,
+        .volume = -300,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 44
+        .id = 17, .filename_index = SE_EXTEND,
+        .volume = -100,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 45
+        .id = 46, .filename_index = SE_CARDGET_DUPE, // why is this used
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 46
+        .id = 49, .filename_index = SE_NEP00,
+        .volume = -200,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 47
+        .id = 47, .filename_index = SE_BONUS,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 48
+        .id = 48, .filename_index = SE_BONUS2,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 49
+        .id = 6, .filename_index = SE_ENEP02,
+        .volume = -500,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 50
+        .id = 20, .filename_index = SE_LAZER02,
+        .volume = -3000,
+        .__short_A = 0,
+        .play_flags = DSBPLAY_LOOPING,
+        .__dword_10 = 1
+    },
+    { // 51
+        .id = 50, .filename_index = SE_BOON00,
+        .volume = -500,
+        .__short_A = 0,
+        .__dword_10 = 1
+    },
+    { // 52
+        .id = 51, .filename_index = SE_DON00,
+        .volume = 0,
+        .__short_A = 0,
+        .__dword_10 = 1
+    },
+    { // 53
+        .id = 52, .filename_index = SE_BOON01,
+        .volume = 0,
+        .__short_A = 0,
+        .__dword_10 = 1
+    },
+    { // 54
+        .id = 53, .filename_index = SE_BOON01,
+        .volume = -300,
+        .__short_A = 0,
+        .__dword_10 = 1
+    },
+    { // 55
+        .id = 54, .filename_index = SE_CH02,
+        .volume = -300,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 56
+        .id = 55, .filename_index = SE_CH03,
+        .volume = -1500,
+        .__short_A = 0,
+        .play_flags = DSBPLAY_LOOPING,
+        .__dword_10 = 1
+    },
+    { // 57
+        .id = 56, .filename_index = SE_EXTEND2,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 58
+        .id = 57, .filename_index = SE_PIN00,
+        .volume = -200,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 59
+        .id = 58, .filename_index = SE_PIN01,
+        .volume = -200,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 60
+        .id = 59, .filename_index = SE_LGODS1,
+        .volume = -500,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 61
+        .id = 60, .filename_index = SE_LGODS2,
+        .volume = -500,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 62
+        .id = 61, .filename_index = SE_LGODS3,
+        .volume = -500,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 63
+        .id = 62, .filename_index = SE_LGODS4,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 64
+        .id = 63, .filename_index = SE_LGODSGET,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 65
+        .id = 64, .filename_index = SE_MSL,
+        .volume = -900,
+        .__short_A = 5,
+        .__dword_10 = 1
+    },
+    { // 66
+        .id = 65, .filename_index = SE_MSL2,
+        .volume = -900,
+        .__short_A = 5,
+        .__dword_10 = 1
+    },
+    { // 67
+        .id = 66, .filename_index = SE_PLDEAD01,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 68
+        .id = 67, .filename_index = SE_HEAL,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 69
+        .id = 68, .filename_index = SE_MSL3,
+        .volume = -2500,
+        .__short_A = 5,
+        .__dword_10 = 1
+    },
+    { // 70
+        .id = 69, .filename_index = SE_FAULT,
+        .volume = -500,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 71
+        .id = 70, .filename_index = SE_NOISE,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 72
+        .id = 71, .filename_index = SE_ETBREAK,
+        .volume = -400,
+        .__short_A = 0,
+        .__dword_10 = 1
+    },
+    { // 73
+        .id = 72, .filename_index = SE_TAN03,
+        .volume = -500,
+        .__short_A = 0,
+        .__dword_10 = 1
+    },
+    { // 74
+        .id = 73, .filename_index = SE_WOLD,
+        .volume = -500,
+        .__short_A = 0,
+        .__dword_10 = 1
+    },
+    { // 75
+        .id = 74, .filename_index = SE_BONUS4,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 76
+        .id = 75, .filename_index = SE_BIG,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 77
+        .id = 77, .filename_index = SE_RELEASE,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 78
+        .id = 78, .filename_index = SE_CHANGEITEM,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 79
+        .id = 79, .filename_index = SE_TROPHY,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 80
+        .id = 80, .filename_index = SE_WARPR,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 81
+        .id = 81, .filename_index = SE_WARPL,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 82
+        .id = 82, .filename_index = SE_TROPHY,
+        .volume = -500,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+    { // 83
+        .id = 83, .filename_index = SE_NOTICE,
+        .volume = 0,
+        .__short_A = 100,
+        .__dword_10 = 1
+    },
+};
 
 typedef struct SoundManager SoundManager;
 
@@ -5696,7 +6605,9 @@ struct SoundManager {
     static inline void stop_sound(int32_t sound_id);
 
     // 0x444D80
-    dllexport gnu_noinline static void __stop_all() asm_symbol_rel(0x444D80);
+    dllexport gnu_noinline static void __stop_all_sfx() asm_symbol_rel(0x444D80);
+
+    static inline void __stop_smb(int32_t index);
 
     static inline void play_sound(int32_t sound_id) {
         SoundManager::play_sound_centered(sound_id, UNUSED_FLOAT);
@@ -6188,7 +7099,50 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 end_snd_cmd_loop:
 
     if (SUPERVISOR.config.sfx_type != SfxOff) {
-        // TODO: sound effect code bug idc right now
+        for (size_t i = 0; i != MAX_ACTIVE_SOUNDS; ++i) {
+            int32_t sound_id = SOUND_MANAGER.active_sound_ids[i];
+            if (sound_id < 0) {
+                break;
+            }
+            int32_t active_count = SOUND_MANAGER.active_sound_id_counts[i];
+            SOUND_MANAGER.active_sound_ids[i] = -1;
+            if (active_count < 0) {
+                SOUND_MANAGER.__stop_smb(sound_id);
+                SOUND_MANAGER.active_sound_id_counts[i] = 0;
+            }
+            else {
+                int32_t pan = 0;
+                if (active_count > 0) {
+                    int32_t* smf_array_read = SOUND_MANAGER.__unknown_smf_array_7C[i].__int_array_0;
+                    do {
+                        pan += *smf_array_read++;
+                    } while (--active_count);
+                    pan /= active_count;
+                }
+                SOUND_MANAGER.active_sound_id_counts[i] = 0;
+                if (LPDIRECTSOUNDBUFFER sound_buffer = SOUND_MANAGER.__unknown_smb_array_1A84[i].sound_buffer) {
+                    sound_buffer->Stop();
+                    SOUND_MANAGER.__unknown_smb_array_1A84[i].sound_buffer->SetCurrentPosition(0);
+                    SOUND_MANAGER.__unknown_smb_array_1A84[i].sound_buffer->SetPan(pan);
+                    SOUND_MANAGER.__unknown_smb_array_1A84[i].__pan = pan;
+                    if (int32_t sound_volume = SOUND_MANAGER.sound_volume) {
+                        float sound_volume_f = 1.0f - (float)sound_volume / 100.0f;
+                        sound_volume_f = sound_volume_f * sound_volume_f * sound_volume_f;
+                        sound_volume_f = 1.0f - sound_volume_f;
+
+                        int32_t volume = SOUND_MANAGER.__unknown_smb_array_1A84[i].data->volume;
+                        volume -= MAX_VOLUME;
+                        volume = volume * sound_volume_f;
+                        volume += MAX_VOLUME;
+                        SOUND_MANAGER.__unknown_smb_array_1A84[i].sound_buffer->SetVolume(volume);
+                    }
+                    else {
+                        SOUND_MANAGER.__unknown_smb_array_1A84[i].sound_buffer->SetVolume(SILENT_VOLUME);
+                    }
+                    SOUND_MANAGER.__unknown_smb_array_1A84[i].sound_buffer->Play(0, 0, SOUND_MANAGER.__unknown_smb_array_1A84[i].data->play_flags);
+                }
+            }
+        }
     }
 
 
@@ -12675,7 +13629,7 @@ dllexport gnu_noinline void stdcall SoundManager::play_sound_centered(int32_t so
         if (active_sound_id == sound_id) {
             int32_t active_sound_id_count = SOUND_MANAGER.active_sound_id_counts[i];
             int32_t* active_sound_id_count_ptr = &SOUND_MANAGER.active_sound_id_counts[i];
-            if (active_sound_id_count < 60 && active_sound_id_count >= 0) {
+            if (active_sound_id_count < countof(SoundManagerUnknownF::__int_array_0) && active_sound_id_count >= 0) {
                 SOUND_MANAGER.__unknown_smf_array_7C[i].__int_array_0[active_sound_id_count] = 0;
                 ++*active_sound_id_count_ptr;
             }
@@ -12700,7 +13654,7 @@ dllexport gnu_noinline void vectorcall SoundManager::play_sound_positioned(int32
         if (active_sound_id == sound_id) {
             int32_t active_sound_id_count = SOUND_MANAGER.active_sound_id_counts[i];
             int32_t* active_sound_id_count_ptr = &SOUND_MANAGER.active_sound_id_counts[i];
-            if (active_sound_id_count < 60 && active_sound_id_count >= 0) {
+            if (active_sound_id_count < countof(SoundManagerUnknownF::__int_array_0) && active_sound_id_count >= 0) {
                 SOUND_MANAGER.__unknown_smf_array_7C[i].__int_array_0[active_sound_id_count] = idk2;
                 ++*active_sound_id_count_ptr;
             }
@@ -12725,16 +13679,20 @@ inline void SoundManager::stop_sound(int32_t sound_id) {
 }
 
 // 0x444D80
-dllexport gnu_noinline void SoundManager::__stop_all() {
+dllexport gnu_noinline void SoundManager::__stop_all_sfx() {
     SOUND_MANAGER.active_sound_ids[0] = -1;
     for (size_t i = 0; i < countof(SOUND_MANAGER.__unknown_smb_array_1A84); ++i) {
-        SOUND_MANAGER.__unknown_smb_array_1A84[i].__dword_14 = 0;
-        if (LPDIRECTSOUNDBUFFER sound_buffer = SOUND_MANAGER.__unknown_smb_array_1A84[i].sound_buffer) {
-            DWORD status;
-            sound_buffer->GetStatus(&status);
-            SOUND_MANAGER.__unknown_smb_array_1A84[i].__dword_14 = status & 1;
-            sound_buffer->Stop();
-        }
+        SOUND_MANAGER.__stop_smb(i);
+    }
+}
+
+inline void SoundManager::__stop_smb(int32_t index) {
+    SOUND_MANAGER.__unknown_smb_array_1A84[index].__playing = FALSE;
+    if (LPDIRECTSOUNDBUFFER sound_buffer = SOUND_MANAGER.__unknown_smb_array_1A84[index].sound_buffer) {
+        DWORD status;
+        sound_buffer->GetStatus(&status);
+        SOUND_MANAGER.__unknown_smb_array_1A84[index].__playing = status & DSBSTATUS_PLAYING;
+        SOUND_MANAGER.__unknown_smb_array_1A84[index].sound_buffer->Stop();
     }
 }
 
@@ -12746,7 +13704,7 @@ struct FontBlock {
 };
 
 // size: 0x18
-struct FontData {
+struct D3DFormatData {
     D3DFORMAT format; // 0x0
     int32_t bits_per_pixel; // 0x4
     uint32_t alpha_mask; // 0x8
@@ -12754,6 +13712,18 @@ struct FontData {
     uint32_t green_mask; // 0x10
     uint32_t blue_mask; // 0x14
     // 0x18
+
+    template<typename T>
+    static inline constexpr D3DFormatData make_for() {
+        return {
+            T::format,
+            bitsof(T),
+            T::a_mask,
+            T::r_mask,
+            T::g_mask,
+            T::b_mask
+        };
+    }
 };
 
 // size: 0x10
@@ -12839,11 +13809,22 @@ public:
 
 extern "C" {
     // 0x4C9AD0
-    externcg FontData FONT_DATA[7] cgasm("_FONT_DATA");
+    //externcg D3DFormatData D3DFORMAT_DATA_TABLE[7] cgasm("_FONT_DATA");
     // 0x570928
     externcg FontBlock FONT_BLOCK cgasm("_FONT_BLOCK");
     // 0x4CD9B0
     externcg GdiManager GDI_MANAGER cgasm("_GDI_MANAGER");
+};
+
+// 0x4C9AD0
+static D3DFormatData D3DFORMAT_DATA_TABLE[7] = {
+    D3DFormatData::make_for<PixelX8R8G8B8>(),
+    D3DFormatData::make_for<PixelA8R8G8B8>(),
+    D3DFormatData::make_for<PixelX1R5G5B5>(),
+    D3DFormatData::make_for<PixelR5G6B5>(),
+    D3DFormatData::make_for<PixelA1R5G5B5>(),
+    D3DFormatData::make_for<PixelA4R4G4B4>(),
+    { .format = (D3DFORMAT)-1 }
 };
 
 // 0x4703A0
@@ -13080,19 +14061,19 @@ dllexport gnu_noinline bool stdcall GdiManager::__sub_46FE80(UNUSED_ARG(int32_t 
 
     int32_t i = 0;
     for (
-        FontData* font_data = FONT_DATA;
-        font_data->format != (D3DFORMAT)-1;
-        ++i, ++font_data
+        D3DFormatData* format_data = D3DFORMAT_DATA_TABLE;
+        format_data->format != (D3DFORMAT)-1;
+        ++i, ++format_data
     ) {
-        if (font_data->format == format) {
+        if (format_data->format == format) {
             break;
         }
     }
 
     if (format != (D3DFORMAT)-1) {
-        FontData* font_data = &FONT_DATA[i];
-        if (font_data) {
-            int32_t bits_per_pixel = font_data->bits_per_pixel;
+        D3DFormatData* format_data = &D3DFORMAT_DATA_TABLE[i];
+        if (format_data) {
+            int32_t bits_per_pixel = format_data->bits_per_pixel;
 
             int32_t stride = dword_align(width * bits_per_pixel / CHAR_BIT);;
 
@@ -13104,10 +14085,10 @@ dllexport gnu_noinline bool stdcall GdiManager::__sub_46FE80(UNUSED_ARG(int32_t 
             bitmap_info.bmiHeader.biSizeImage = height * stride;
             if (format != D3DFMT_X1R5G5B5 && format != D3DFMT_X8R8G8B8) {
                 bitmap_info.bmiHeader.biCompression = BI_BITFIELDS;
-                bitmap_info.bmiColors[0].red_mask = font_data->red_mask;
-                bitmap_info.bmiColors[0].green_mask = font_data->green_mask;
-                bitmap_info.bmiColors[0].blue_mask = font_data->blue_mask;
-                bitmap_info.bmiColors[0].alpha_mask = font_data->alpha_mask;
+                bitmap_info.bmiColors[0].red_mask = format_data->red_mask;
+                bitmap_info.bmiColors[0].green_mask = format_data->green_mask;
+                bitmap_info.bmiColors[0].blue_mask = format_data->blue_mask;
+                bitmap_info.bmiColors[0].alpha_mask = format_data->alpha_mask;
             }
             void* bitmap_data;
             HBITMAP bitmap_handle = CreateDIBSection(NULL, (BITMAPINFO*)&bitmap_info, DIB_RGB_COLORS, &bitmap_data, NULL, 0);
@@ -25004,14 +25985,14 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
                 }
                 else {
                     StageData* stage_data = STAGE_DATA_PTR;
-                    this->player_portraits[who] = anm_file_lookup(stage_data->inner[who].__portrait_anm_index)->instantiate_vm_to_world_list_back(stage_data->inner[who].__portrait_anm_script);
+                    this->player_portraits[who] = anm_file_lookup(stage_data->inner[who].portrait_anm_index)->instantiate_vm_to_world_list_back(stage_data->inner[who].portrait_anm_script);
                 }
                 break;
             }
             case initialize_boss: { // 2
                 int32_t who = IntArg(0);
                 StageData* stage_data = STAGE_DATA_PTR;
-                this->enemy_portraits[who] = anm_file_lookup(stage_data->inner[who].__portrait_anm_index)->instantiate_vm_to_world_list_back(stage_data->inner[who].__portrait_anm_script);
+                this->enemy_portraits[who] = anm_file_lookup(stage_data->inner[who].portrait_anm_index)->instantiate_vm_to_world_list_back(stage_data->inner[who].portrait_anm_script);
                 this->__dword_1D0 = 0;
                 break;
             }
@@ -25019,7 +26000,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
             case __unknown_B: { // 31
                 int32_t who = 1;
                 StageData* stage_data = STAGE_DATA_PTR;
-                this->enemy_portraits[who] = anm_file_lookup(stage_data->inner[who].__portrait_anm_index)->instantiate_vm_to_world_list_back(stage_data->inner[who].__portrait_anm_script);
+                this->enemy_portraits[who] = anm_file_lookup(stage_data->inner[who].portrait_anm_index)->instantiate_vm_to_world_list_back(stage_data->inner[who].portrait_anm_script);
                 this->__dword_1D0 = 0;
                 break;
             }
@@ -25189,7 +26170,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
             case text_intro: { // 20
                 int32_t who = IntArg(0);
                 StageData* stage_data = STAGE_DATA_PTR;
-                this->intro = anm_file_lookup(stage_data->inner[who].__intro_anm_index)->instantiate_vm_to_world_list_back(stage_data->inner[who].__intro_anm_script);
+                this->intro = anm_file_lookup(stage_data->inner[who].intro_anm_index)->instantiate_vm_to_world_list_back(stage_data->inner[who].intro_anm_script);
                 GUI_PTR->__sub_4422C0();
                 break;
             }
@@ -29204,7 +30185,7 @@ dllexport gnu_noinline ZUNResult thiscall EclManager::load_imports(EclIncludes* 
             do {
                 AnmLoaded* anm_loaded;
                 clang_forceinline anm_loaded = ANM_MANAGER_PTR->preload_anm(i + ECL_ANM_INDEX_A, anm_names);
-                enemy_manager->enemy_anms[i + 2] = anm_loaded;
+                enemy_manager->enemy_anms[i + ECL_INCLUDE_ANM_INDEX_0] = anm_loaded;
                 if (!anm_loaded) {
                     LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
                     return ZUN_ERROR;
@@ -31831,6 +32812,105 @@ static inline Item* spawn_item(int32_t item_id, Float3* position, float angle, f
     return ITEM_MANAGER_PTR->spawn_item(item_id, position, angle, speed, arg6);
 }
 
+enum BulletColor16 : int32_t {
+    Gray16 = 0,
+    DarkRed16 = 1,
+    Red16 = 2,
+    DarkPurple16 = 3,
+    Purple16 = 4,
+    DarkBlue16 = 5,
+    Blue16 = 6,
+    DarkCyan16 = 7,
+    Cyan16 = 8,
+    DarkGreen16 = 9,
+    Green16 = 10,
+    Lime16 = 11,
+    DarkYellow16 = 12,
+    Yellow16 = 13,
+    Orange16 = 14,
+    White16 = 15
+};
+enum BulletColor8 : int32_t {
+    Gray8 = 0,
+    Red8 = 1,
+    Purple8 = 2,
+    Blue8 = 3,
+    Cyan8 = 4,
+    Green8 = 5,
+    Yellow8 = 6,
+    White8 = 7
+};
+enum BulletColor4 : int32_t {
+    Red4 = 0,
+    Blue4 = 1,
+    Green4 = 2,
+    Yellow4 = 3
+};
+enum BulletColorCoin : int32_t {
+    GoldCoin = 0,
+    SilverCoin = 1,
+    BronzeCoin = 2
+};
+
+enum BulletColorType {
+    SixteenColors,
+    EightColors,
+    FourColors,
+    CoinColors,
+    FixedColor
+};
+
+enum BulletSpriteID : int32_t {
+    PELLET = 0,
+    PELLET2 = 1,
+    INVERT_POPCORN = 2,
+    POPCORN = 3,
+    BALL = 4,
+    BALL2 = 5,
+    RING_BALL = 6,
+    RING_BALL2 = 7,
+    RICE = 8,
+    KUNAI = 9,
+    SHARD = 10,
+    TALISMAN = 11,
+    ARROWHEAD = 12,
+    BULLET = 13,
+    LUMPY_BALL = 14,
+    INVERT_RICE = 15,
+    STAR_R = 16,
+    COIN = 17,
+    BIG_BALL = 18,
+    BIG_BALL2 = 19,
+    OVAL = 20,
+    DAGGER = 21,
+    BUTTERFLY = 22,
+    BIG_STAR_R = 23,
+    BIG_STAR_L = 24,
+    FIREBALL_RED = 25,
+    FIREBALL_PURPLE = 26,
+    FIREBALL_BLUE = 27,
+    FIREBALL_YELLOW = 28,
+    HEART = 29,
+    PULSE_BALL = 30,
+    ARROW = 31,
+    BUBBLE = 32,
+    GLOW_BALL = 33,
+    DROPLET = 34,
+    SPIN_RICE = 35,
+    SPIN_SHARD = 36,
+    STAR_L = 37,
+    LASER_CHUNK = 38,
+    NOTE_RED = 39,
+    NOTE_BLUE = 40,
+    NOTE_YELLOW = 41,
+    NOTE_PURPLE = 42,
+    REST = 43,
+    YIN_YANG_R = 44,
+    YIN_YANG_L = 45,
+    BIG_YIN_YANG_R = 46,
+    BIG_YIN_YANG_L = 47
+};
+
 // size: 0x10
 struct BulletSpriteColorData {
     int32_t sprite_id; // 0x0
@@ -31842,7 +32922,7 @@ struct BulletSpriteColorData {
 // size: 0x118
 struct BulletSpriteData {
     int32_t anm_script; // 0x0
-    BulletSpriteColorData color_data[16]; // 0x4
+    std::array<BulletSpriteColorData, 16> color_data; // 0x4
     float hitbox_size; // 0x104
     int32_t layer; // 0x108
     int __int_10C; // 0x10C
@@ -31851,12 +32931,569 @@ struct BulletSpriteData {
     // 0x118
 };
 
+static inline constexpr std::array<BulletSpriteColorData, 16>
+make_bullet_colors_16(int32_t sprite_id, int32_t spawn_effect_id, int32_t cancel_effect_id, int32_t cancel_script) {
+    std::array<BulletSpriteColorData, 16> colors = {};
+    constexpr int32_t CONVERT_TO_COLOR8[16] = {
+        Gray8,
+        Red8, Red8,
+        Purple8, Purple8,
+        Blue8, Blue8,
+        Cyan8, Cyan8,
+        Green8, Green8, Green8,
+        Yellow8, Yellow8, Yellow8,
+        White8
+    };
+    for (int32_t i = 0; i < 16; ++i) {
+        colors[i] = {
+            .sprite_id = sprite_id + i,
+            .spawn_effect_id = spawn_effect_id + CONVERT_TO_COLOR8[i],
+            .cancel_effect_id = cancel_effect_id + i,
+            .cancel_script = cancel_script + i * 3
+        };
+    }
+    return colors;
+}
+
+static inline constexpr std::array<BulletSpriteColorData, 16>
+make_bullet_colors_16(int32_t sprite_id, int32_t cancel_effect_id, int32_t cancel_script) {
+    std::array<BulletSpriteColorData, 16> colors = {};
+    for (int32_t i = 0; i < 16; ++i) {
+        colors[i] = {
+            .sprite_id = sprite_id + i,
+            .spawn_effect_id = -1,
+            .cancel_effect_id = cancel_effect_id + i,
+            .cancel_script = cancel_script + i * 3
+        };
+    }
+    return colors;
+}
+
+static inline constexpr std::array<BulletSpriteColorData, 16>
+make_bullet_colors_8(int32_t sprite_id, int32_t spawn_effect_id, int32_t cancel_script) {
+    std::array<BulletSpriteColorData, 16> colors = {};
+    for (int32_t i = 0; i < 8; ++i) {
+        colors[i] = {
+            .sprite_id = sprite_id + i,
+            .spawn_effect_id = spawn_effect_id + i,
+            .cancel_effect_id = 0,
+            .cancel_script = cancel_script + i * 3
+        };
+    }
+    return colors;
+}
+
+static inline constexpr std::array<BulletSpriteColorData, 16>
+make_bullet_colors_8(int32_t sprite_id, int32_t cancel_script) {
+    std::array<BulletSpriteColorData, 16> colors = {};
+    for (int32_t i = 0; i < 8; ++i) {
+        colors[i] = {
+            .sprite_id = sprite_id + i,
+            .spawn_effect_id = 0,
+            .cancel_effect_id = 0,
+            .cancel_script = cancel_script + i * 3
+        };
+    }
+    return colors;
+}
+
+static inline constexpr std::array<BulletSpriteColorData, 16>
+make_bullet_colors_4(int32_t sprite_id, int32_t cancel_script) {
+    std::array<BulletSpriteColorData, 16> colors = {};
+    for (int32_t i = 0; i < 4; ++i) {
+        colors[i] = {
+            .sprite_id = sprite_id + i,
+            .spawn_effect_id = 0,
+            .cancel_effect_id = 0,
+            .cancel_script = cancel_script + i * 3
+        };
+    }
+    return colors;
+}
+
+static inline constexpr std::array<BulletSpriteColorData, 16>
+make_bullet_colors_coin(int32_t sprite_id) {
+    std::array<BulletSpriteColorData, 16> colors = {};
+    colors[GoldCoin] = {
+        .sprite_id = sprite_id + GoldCoin,
+        .spawn_effect_id = 329,
+        .cancel_effect_id = 340,
+        .cancel_script = 221
+    };
+    colors[SilverCoin] = {
+        .sprite_id = sprite_id + SilverCoin,
+        .spawn_effect_id = 330,
+        .cancel_effect_id = 336,
+        .cancel_script = 209
+    };
+    colors[BronzeCoin] = {
+        .sprite_id = sprite_id + BronzeCoin,
+        .spawn_effect_id = 324,
+        .cancel_effect_id = 337,
+        .cancel_script = 212
+    };
+    return colors;
+}
+
+static inline constexpr std::array<BulletSpriteColorData, 16>
+make_bullet_colors_fixed(int32_t cancel_script) {
+    std::array<BulletSpriteColorData, 16> colors = {};
+    for (int32_t i = 0; i < 16; ++i) {
+        colors[i] = {
+            .sprite_id = -1,
+            .spawn_effect_id = -1,
+            .cancel_effect_id = -1,
+            .cancel_script = 0
+        };
+    }
+    colors[0].cancel_effect_id = 0;
+    colors[0].cancel_script = cancel_script;
+    return colors;
+}
+
 extern "C" {
     // 0x4C5F90
-    externcg BulletSpriteData BULLET_SPRITE_DATA[48] cgasm("_BULLET_SPRITE_DATA");
+    //externcg BulletSpriteData BULLET_SPRITE_DATA[48] cgasm("_BULLET_SPRITE_DATA");
     // 0x4B36F0
     //externcg int32_t BULLET_IDK_DATA[8] cgasm("_BULLET_IDK_DATA");
 }
+
+// 0x4C5F90
+// This is *not* marked const for some reason
+static BulletSpriteData BULLET_SPRITE_DATA[48] = {
+    { // 0, PELLET
+        .anm_script = 35,
+        .color_data = make_bullet_colors_16(0, 323, 336, 161),
+        .hitbox_size = 2.4f,
+        .layer = 5,
+        .__int_10C = 6,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 1, PELLET2
+        .anm_script = 36,
+        .color_data = make_bullet_colors_16(0, 323, 336, 161),
+        .hitbox_size = 2.4f,
+        .layer = 5,
+        .__int_10C = 6,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 2, INVERT_POPCORN
+        .anm_script = 37,
+        .color_data = make_bullet_colors_16(16, 323, 336, 209),
+        .hitbox_size = 2.4f,
+        .layer = 5,
+        .__int_10C = 6,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 3, POPCORN
+        .anm_script = 38,
+        .color_data = make_bullet_colors_16(48, 323, 336, 209),
+        .hitbox_size = 2.0f,
+        .layer = 5,
+        .__int_10C = 6,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 4, BALL
+        .anm_script = 39,
+        .color_data = make_bullet_colors_16(64, 323, 336, 209),
+        .hitbox_size = 4.0f,
+        .layer = 3,
+        .__int_10C = 6,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 5, BALL2
+        .anm_script = 40,
+        .color_data = make_bullet_colors_16(80, 323, 336, 209),
+        .hitbox_size = 4.0f,
+        .layer = 3,
+        .__int_10C = 6,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 6, RING_BALL
+        .anm_script = 41,
+        .color_data = make_bullet_colors_16(96, 323, 336, 209),
+        .hitbox_size = 4.0f,
+        .layer = 3,
+        .__int_10C = 6,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 7, RING_BALL2
+        .anm_script = 42,
+        .color_data = make_bullet_colors_16(112, 323, 336, 209),
+        .hitbox_size = 4.0f,
+        .layer = 3,
+        .__int_10C = 6,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 8, RICE
+        .anm_script = 43,
+        .color_data = make_bullet_colors_16(128, 323, 336, 209),
+        .hitbox_size = 2.4f,
+        .layer = 4,
+        .__int_10C = 6,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 9, KUNAI
+        .anm_script = 44,
+        .color_data = make_bullet_colors_16(160, 323, 336, 209),
+        .hitbox_size = 2.4f,
+        .layer = 4,
+        .__int_10C = 6,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 10, SHARD
+        .anm_script = 45,
+        .color_data = make_bullet_colors_16(176, 323, 336, 209),
+        .hitbox_size = 2.4f,
+        .layer = 4,
+        .__int_10C = 6,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 11, TALISMAN
+        .anm_script = 46,
+        .color_data = make_bullet_colors_16(208, 323, 336, 209),
+        .hitbox_size = 2.8f,
+        .layer = 3,
+        .__int_10C = 6,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 12, ARROWHEAD
+        .anm_script = 47,
+        .color_data = make_bullet_colors_16(224, 323, 336, 209),
+        .hitbox_size = 2.4f,
+        .layer = 4,
+        .__int_10C = 6,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 13, BULLET
+        .anm_script = 48,
+        .color_data = make_bullet_colors_16(240, 323, 336, 209),
+        .hitbox_size = 2.4f,
+        .layer = 4,
+        .__int_10C = 6,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 14, LUMPY_BALL
+        .anm_script = 49,
+        .color_data = make_bullet_colors_16(256, 323, 336, 209),
+        .hitbox_size = 2.4f,
+        .layer = 4,
+        .__int_10C = 6,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 15, INVERT_RICE
+        .anm_script = 50,
+        .color_data = make_bullet_colors_16(272, 323, 336, 209),
+        .hitbox_size = 2.4f,
+        .layer = 4,
+        .__int_10C = 6,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 16, STAR_R
+        .anm_script = 51,
+        .color_data = make_bullet_colors_16(288, 323, 336, 209),
+        .hitbox_size = 4.0f,
+        .layer = 3,
+        .__int_10C = 6,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 17, COIN
+        .anm_script = 52,
+        .color_data = make_bullet_colors_coin(320),
+        .hitbox_size = 4.0f,
+        .layer = 3,
+        .__int_10C = 0,
+        .__int_110 = 6,
+        .__anm_script_114 = 0
+    },
+    { // 18, BIG_BALL
+        .anm_script = 72,
+        .color_data = make_bullet_colors_8(368, 323, 257),
+        .hitbox_size = 8.5f,
+        .layer = 1,
+        .__int_10C = 6,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 19, BIG_BALL2
+        .anm_script = 73,
+        .color_data = make_bullet_colors_8(376, 323, 257),
+        .hitbox_size = 8.5f,
+        .layer = 1,
+        .__int_10C = 6,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 20, OVAL
+        .anm_script = 74,
+        .color_data = make_bullet_colors_8(392, 323, 257),
+        .hitbox_size = 7.0f,
+        .layer = 2,
+        .__int_10C = 6,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 21, DAGGER
+        .anm_script = 75,
+        .color_data = make_bullet_colors_8(400, 323, 257),
+        .hitbox_size = 6.0f,
+        .layer = 2,
+        .__int_10C = 6,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 22, BUTTERFLY
+        .anm_script = 76,
+        .color_data = make_bullet_colors_8(408, 323, 257),
+        .hitbox_size = 7.0f,
+        .layer = 2,
+        .__int_10C = 6,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 23, BIG_STAR_R
+        .anm_script = 77,
+        .color_data = make_bullet_colors_8(416, 323, 257),
+        .hitbox_size = 7.0f,
+        .layer = 1,
+        .__int_10C = 6,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 24, BIG_STAR_L
+        .anm_script = 78,
+        .color_data = make_bullet_colors_8(424, 323, 257),
+        .hitbox_size = 7.0f,
+        .layer = 1,
+        .__int_10C = 6,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 25, FIREBALL_RED
+        .anm_script = 108,
+        .color_data = make_bullet_colors_fixed(263),
+        .hitbox_size = 6.0f,
+        .layer = 2,
+        .__int_10C = 7,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 26, FIREBALL_PURPLE
+        .anm_script = 109,
+        .color_data = make_bullet_colors_fixed(260),
+        .hitbox_size = 6.0f,
+        .layer = 2,
+        .__int_10C = 8,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 27, FIREBALL_BLUE
+        .anm_script = 110,
+        .color_data = make_bullet_colors_fixed(266),
+        .hitbox_size = 4.0f,
+        .layer = 2,
+        .__int_10C = 9,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 28, FIREBALL_YELLOW
+        .anm_script = 111,
+        .color_data = make_bullet_colors_fixed(275),
+        .hitbox_size = 4.0f,
+        .layer = 2,
+        .__int_10C = 10,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 29, HEART
+        .anm_script = 81,
+        .color_data = make_bullet_colors_8(444, 323, 257),
+        .hitbox_size = 10.0f,
+        .layer = 1,
+        .__int_10C = 6,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 30, PULSE_BALL
+        .anm_script = 79,
+        .color_data = make_bullet_colors_8(384, 323, 257),
+        .hitbox_size = 7.0f,
+        .layer = 1,
+        .__int_10C = 6,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 31, ARROW
+        .anm_script = 82,
+        .color_data = make_bullet_colors_8(452, 323, 257),
+        .hitbox_size = 4.0f,
+        .layer = 3,
+        .__int_10C = 6,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 32, BUBBLE
+        .anm_script = 80,
+        .color_data = make_bullet_colors_4(432, 281),
+        .hitbox_size = 14.0f,
+        .layer = 0,
+        .__int_10C = 6,
+        .__int_110 = 60,
+        .__anm_script_114 = 0
+    },
+    { // 33, GLOW_BALL
+        .anm_script = 315,
+        .color_data = make_bullet_colors_8(548, 257),
+        .hitbox_size = 12.0f,
+        .layer = 2,
+        .__int_10C = 6,
+        .__int_110 = 60,
+        .__anm_script_114 = 0
+    },
+    { // 34, DROPLET
+        .anm_script = 107,
+        .color_data = make_bullet_colors_16(468, 323, 336, 209),
+        .hitbox_size = 2.4f,
+        .layer = 5,
+        .__int_10C = 6,
+        .__int_110 = 8,
+        .__anm_script_114 = 0
+    },
+    { // 35, SPIN_RICE
+        .anm_script = 53,
+        .color_data = make_bullet_colors_16(144, 323, 336, 209),
+        .hitbox_size = 3.2f,
+        .layer = 4,
+        .__int_10C = 6,
+        .__int_110 = 8,
+        .__anm_script_114 = 0
+    },
+    { // 36, SPIN_SHARD
+        .anm_script = 54,
+        .color_data = make_bullet_colors_16(192, 323, 336, 209),
+        .hitbox_size = 3.2f,
+        .layer = 4,
+        .__int_10C = 6,
+        .__int_110 = 8,
+        .__anm_script_114 = 0
+    },
+    { // 37, STAR_L
+        .anm_script = 55,
+        .color_data = make_bullet_colors_16(304, 323, 336, 209),
+        .hitbox_size = 4.0f,
+        .layer = 3,
+        .__int_10C = 6,
+        .__int_110 = 8,
+        .__anm_script_114 = 0
+    },
+    { // 38, LASER_CHUNK
+        .anm_script = 158,
+        .color_data = make_bullet_colors_16(352, 336, 209),
+        .hitbox_size = 4.0f,
+        .layer = 2,
+        .__int_10C = 6,
+        .__int_110 = 30,
+        .__anm_script_114 = 0
+    },
+    { // 39, NOTE_RED
+        .anm_script = 317,
+        .color_data = make_bullet_colors_fixed(260),
+        .hitbox_size = 4.0f,
+        .layer = 3,
+        .__int_10C = 6,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 40, NOTE_BLUE
+        .anm_script = 318,
+        .color_data = make_bullet_colors_fixed(266),
+        .hitbox_size = 4.0f,
+        .layer = 3,
+        .__int_10C = 6,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 41, NOTE_YELLOW
+        .anm_script = 319,
+        .color_data = make_bullet_colors_fixed(275),
+        .hitbox_size = 4.0f,
+        .layer = 3,
+        .__int_10C = 6,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 42, NOTE_PURPLE
+        .anm_script = 320,
+        .color_data = make_bullet_colors_fixed(263),
+        .hitbox_size = 4.0f,
+        .layer = 3,
+        .__int_10C = 6,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 43, REST
+        .anm_script = 321,
+        .color_data = make_bullet_colors_8(568, 323, 257),
+        .hitbox_size = 5.0f,
+        .layer = 2,
+        .__int_10C = 6,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 44, YIN_YANG_R
+        .anm_script = 324,
+        .color_data = make_bullet_colors_8(580, 323, 257),
+        .hitbox_size = 10.0f,
+        .layer = 1,
+        .__int_10C = 6,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 45, YIN_YANG_L
+        .anm_script = 325,
+        .color_data = make_bullet_colors_8(588, 323, 257),
+        .hitbox_size = 10.0f,
+        .layer = 1,
+        .__int_10C = 6,
+        .__int_110 = 12,
+        .__anm_script_114 = 0
+    },
+    { // 46, BIG_YIN_YANG_R
+        .anm_script = 326,
+        .color_data = make_bullet_colors_4(596, 281),
+        .hitbox_size = 28.0f,
+        .layer = 0,
+        .__int_10C = 6,
+        .__int_110 = 60,
+        .__anm_script_114 = 0
+    },
+    { // 47, BIG_YIN_YANG_L
+        .anm_script = 327,
+        .color_data = make_bullet_colors_4(596, 281),
+        .hitbox_size = 28.0f,
+        .layer = 0,
+        .__int_10C = 6,
+        .__int_110 = 60,
+        .__anm_script_114 = 0
+    },
+};
 
 // 0x4B36F0
 static inline const int32_t BULLET_IDK_DATA[8] = {
@@ -34704,11 +36341,11 @@ dllexport gnu_noinline void thiscall LaserLine::run_effects() {
 
 // 0x438D40
 dllexport AnmLoaded* stdcall anm_file_lookup(int32_t file_index) {
-    if (file_index == 7) {
+    if (file_index == ECL_STAGE_ANM_INDEX) { // 7
         return STAGE_PTR->stage_anm;
-    } else if (file_index == 0) {
+    } else if (file_index == ECL_BULLET_ANM_INDEX) { // 0
         return BULLET_MANAGER_PTR->bullet_anm;
-    } else if (file_index == 1) {
+    } else if (file_index == ECL_EFFECT_ANM_INDEX) { // 1
         return EFFECT_MANAGER_PTR->effect_anm;
     } else {
         return ENEMY_MANAGER_PTR->enemy_anms[file_index];
@@ -40677,7 +42314,7 @@ struct PauseMenu : ZUNTask {
         }
 
         this->__vm_id_1E4.interrupt_tree(3);
-        SOUND_MANAGER.__stop_all();
+        SOUND_MANAGER.__stop_all_sfx();
         SOUND_MANAGER.play_sound(14);
 
         if (GAME_MANAGER.__unknown_field_A == 2) {
@@ -41475,6 +43112,7 @@ struct MainMenu : ZUNTask {
                 SUPERVISOR.gamemode_switch = 10;
                 GAME_MANAGER.globals.__stage_number_related_4 = 1;
                 GAME_MANAGER.globals.__ecl_var_9907 = -1;
+                GAME_MANAGER.globals.difficulty = NORMAL;
                 GAME_MANAGER.globals.character = Reimu;
 #endif
             }
@@ -43584,7 +45222,7 @@ dllexport gnu_noinline GameThread::~GameThread() {
         // TODO something in sound manager
     }
 
-    SOUND_MANAGER.__stop_all();
+    SOUND_MANAGER.__stop_all_sfx();
 
     UNKNOWN_INT_H = 1;
 
@@ -45631,7 +47269,7 @@ winmain_weird_local_not_2:
 }
 
 
-#ifdef CHEAT_THE_LOADER
+#if CHEAT_THE_LOADER
 
 //dllexport volatile char backing_memory[0x200000];
 
@@ -45655,10 +47293,8 @@ struct StaticCtorsDtors {
         _chdir(GAME_FOLDER_PATH);
         HMODULE original_game = LoadLibraryExA("th18.exe.unvlv.exe", NULL, 0);
 
-        copy_from_original_game(SOUND_DATA, 0x4C9B80, original_game);
-        copy_from_original_game(BULLET_SPRITE_DATA, 0x4C5F90, original_game);
-        //copy_from_original_game(BULLET_IDK_DATA, 0x4B36F0, original_game);
-        copy_from_original_game(FONT_DATA, 0x4C9AD0, original_game);
+        //copy_from_original_game(SOUND_DATA, 0x4C9B80, original_game);
+        /*
         copy_from_original_game(STAGE_DATA, 0x4C9410, original_game);
         for (size_t i = 0; i != countof(STAGE_DATA); ++i) {
             STAGE_DATA[i].std_filename = strdup(original_addr(STAGE_DATA[i].std_filename));
@@ -45671,9 +47307,10 @@ struct StaticCtorsDtors {
             }
             STAGE_DATA[i].logo_anm_filename = strdup(original_addr(STAGE_DATA[i].logo_anm_filename));
         }
-        copy_from_original_game(DEFAULT_JOYPAD_MAPPINGS, 0x4CABA8, original_game);
-        copy_from_original_game(DEFAULT_XINPUT_MAPPINGS, 0x4CABBC, original_game);
-        copy_from_original_game(DEFAULT_KEYBOARD_MAPPINGS, 0x4CABD0, original_game);
+        */
+        //copy_from_original_game(DEFAULT_JOYPAD_MAPPINGS, 0x4CABA8, original_game);
+        //copy_from_original_game(DEFAULT_XINPUT_MAPPINGS, 0x4CABBC, original_game);
+        //copy_from_original_game(DEFAULT_KEYBOARD_MAPPINGS, 0x4CABD0, original_game);
 
         FreeLibrary(original_game);
 

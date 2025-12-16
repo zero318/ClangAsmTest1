@@ -133,6 +133,25 @@ union PixelA8R8G8B8 {
     static inline constexpr uint8_t a_shift = 24, r_shift = 16, g_shift = 8, b_shift = 0;
 };
 
+// size: 0x4
+union PixelX8R8G8B8 {
+    uint32_t raw; // 0x0
+    struct {
+        uint8_t b; // 0x0
+        uint8_t g; // 0x1
+        uint8_t r; // 0x2
+        // 0x3
+    };
+
+    static inline constexpr D3DFORMAT format = D3DFMT_X8R8G8B8;
+    static inline constexpr bool has_a         = false, has_r         = true,  has_g         = true,  has_b         = true;
+    static inline constexpr bool a_is_bitfield = false, r_is_bitfield = false, g_is_bitfield = false, b_is_bitfield = false;
+    static inline constexpr uint8_t a_bits = 0, r_bits = 8, g_bits = 8, b_bits = 8;
+    static inline constexpr uint32_t a_mask = 0, r_mask = 0x00FF0000, g_mask = 0x0000FF00, b_mask = 0x000000FF;
+    static inline constexpr uint8_t a_mask_shifted = 0, r_mask_shifted = 0xFF, g_mask_shifted = 0xFF, b_mask_shifted = 0xFF;
+    static inline constexpr uint8_t a_shift = 0, r_shift = 16, g_shift = 8, b_shift = 0;
+};
+
 // size: 0x2
 union PixelA1R5G5B5 {
     uint16_t raw; // 0x0
@@ -150,6 +169,25 @@ union PixelA1R5G5B5 {
     static inline constexpr uint16_t a_mask = 0x8000, r_mask = 0x7C00, g_mask = 0x03E0, b_mask = 0x001F;
     static inline constexpr uint8_t a_mask_shifted = 0x1, r_mask_shifted = 0x1F, g_mask_shifted = 0x1F, b_mask_shifted = 0x1F;
     static inline constexpr uint8_t a_shift = 11, r_shift = 10, g_shift = 5, b_shift = 0;
+};
+
+// size: 0x2
+union PixelX1R5G5B5 {
+    uint16_t raw; // 0x0
+    struct {
+        uint16_t b : 5;
+        uint16_t g : 5;
+        uint16_t r : 5;
+        uint16_t : 1;
+    };
+
+    static inline constexpr D3DFORMAT format = D3DFMT_X1R5G5B5;
+    static inline constexpr bool has_a         = false, has_r         = true, has_g         = true, has_b         = true;
+    static inline constexpr bool a_is_bitfield = false, r_is_bitfield = true, g_is_bitfield = true, b_is_bitfield = true;
+    static inline constexpr uint8_t a_bits = 0, r_bits = 5, g_bits = 5, b_bits = 5;
+    static inline constexpr uint16_t a_mask = 0, r_mask = 0x7C00, g_mask = 0x03E0, b_mask = 0x001F;
+    static inline constexpr uint8_t a_mask_shifted = 0, r_mask_shifted = 0x1F, g_mask_shifted = 0x1F, b_mask_shifted = 0x1F;
+    static inline constexpr uint8_t a_shift = 0, r_shift = 10, g_shift = 5, b_shift = 0;
 };
 
 // size: 0x2
