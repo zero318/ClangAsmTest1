@@ -7114,9 +7114,10 @@ end_snd_cmd_loop:
                 int32_t pan = 0;
                 if (active_count > 0) {
                     int32_t* smf_array_read = SOUND_MANAGER.__unknown_smf_array_7C[i].__int_array_0;
+                    int32_t j = active_count;
                     do {
                         pan += *smf_array_read++;
-                    } while (--active_count);
+                    } while (--j);
                     pan /= active_count;
                 }
                 SOUND_MANAGER.active_sound_id_counts[i] = 0;
@@ -37777,19 +37778,18 @@ dllexport gnu_noinline ZUNResult thiscall EclContext::call(EclContext* new_conte
     if (stack_pointer) {
         int32_t idk_what = new_context->stack.pop<int32_t>();
         new_context->stack.pointer = stack_pointer;
-        new_context->stack.write_temp(-1, idk_what);
-        new_context->stack.write_temp(-2, current_stack_pointer);
+        new_context->stack.write_temp(1, idk_what);
+        new_context->stack.push(current_stack_pointer);
         new_context->stack.push(this->time);
         new_context->stack.push(this->location.instruction_offset);
         new_context->stack.push(this->location.sub_index);
     } else {
         new_context->stack.pointer = sizeof(int32_t);
-        new_context->stack.write_temp(0, current_stack_pointer);
+        new_context->stack.push(current_stack_pointer);
         new_context->stack.push(-1);
         new_context->stack.push(-1);
         new_context->stack.push(-1);
     }
-    new_context->stack.pointer += sizeof(int32_t);
     std::swap(new_context, this->vm->current_context);
     const char* sub_name = StringArg(4);
     clang_forceinline this->vm->set_context_to_sub(sub_name);
@@ -38425,7 +38425,7 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
         return ZUN_ERROR;
     }
     float& current_time = this->time;
-    while (current_time >= (float)current_instruction->time) {
+    while (expect(current_time >= (float)current_instruction->time, true)) {
         if (current_instruction->difficulty_mask & this->difficulty_mask) {
             int32_t opcode = current_instruction->opcode;
             switch (opcode) {
@@ -38437,6 +38437,7 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
                         this->stack.pointer = this->stack.pop<int32_t>();
                         current_instruction = this->get_current_instruction();
                         if (this->location.instruction_offset >= 0) {
+                            ZDEBUG_PRINT("Returning from sub\n");
                             break;
                         }
                     }
@@ -38913,7 +38914,7 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
                 case nop: // 0
                     break;
                 case __debug_unknown_A: { // 22
-#if ZUN_DEBUG_CODE
+#if ZUN_DEBUG_CODE && 0
                     // change this in the watch window
                     static int32_t ZUN_ECL_DEBUG_CONST = 0;
                     if (this->get_int_arg(0) == ZUN_ECL_DEBUG_CONST) {
@@ -38928,7 +38929,7 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
                     break;
                 }
                 case debug_print: { // 30
-#if ZUN_DEBUG_CODE
+#if ZUN_DEBUG_CODE && 0
                     // Assuming this hasn't changed since MoF...
                     // though it's kinda broken.
                     // Just including it because why not
