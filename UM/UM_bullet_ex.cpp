@@ -34975,7 +34975,7 @@ private:
             bullet->bullet_manager_index = i;
 
             // This may be the wrong list op, IDK
-            this->bullet_free_list.append(&bullet->tick_list_node);
+            this->bullet_free_list.append(&bullet->free_list_node);
         }
 
         this->bullet_tick_list.initialize_with(NULL);
@@ -35055,7 +35055,7 @@ public:
     // 0x4297A0
     dllexport gnu_noinline void thiscall cancel_all(int = UNUSED_DWORD) asm_symbol_rel(0x4297A0) {
         for (int32_t i = countof(this->bullets); i; --i) {
-
+            // TODO
         }
     }
 
@@ -35543,6 +35543,8 @@ public:
         UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::BulletManager); // 38
         this->on_draw_func = update_func;
 
+        this->bullet_free_list.initialize_with(NULL);
+
         for (int32_t i = 0; i < MAX_BULLETS; ++i) {
             Bullet* bullet = &this->bullets[i];
 
@@ -35551,7 +35553,7 @@ public:
             bullet->bullet_manager_index = i;
 
             // This may be the wrong list op, IDK
-            this->bullet_free_list.append(&bullet->tick_list_node);
+            this->bullet_free_list.append(&bullet->free_list_node);
         }
 
         this->bullet_tick_list.initialize_with(NULL);
