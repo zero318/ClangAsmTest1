@@ -806,7 +806,7 @@ enum InlineState {
 #pragma clang diagnostic ignored "-Wuninitialized"
 
 template <typename T>
-static inline constexpr T garbage_value(void) {
+static __forceinline constexpr T garbage_value(void) {
     T garbage;
     return garbage;
 }

@@ -105,19 +105,13 @@ extern StaticCtorsDtors fake_static_data;
 #include <dsound.h>
 #include <mmiscapi.h>
 #include <mmiscapi2.h>
-#define UNICODE
-#include <Core/DXUT.h>
 
-#define CSoundManager CSoundManagerOld
-#define CWaveFile CWaveFileOld
-#define CSound CSoundOld
-#define CStreamingSound CStreamingSoundOld
-#include <Optional/SDKsound.h>
-#include <Optional/SDKwavefile.h>
-#undef CSoundManager
-#undef CWaveFile
-#undef CSound
-#undef CStreamingSound
+#define UNICODE
+#include "d3dx9.h"
+#include "Xinput.h"
+
+#define WAVEFILE_READ   1
+#define WAVEFILE_WRITE  2
 
 #undef UNICODE
 
@@ -21661,9 +21655,11 @@ static inline constexpr const char *const ENDING_FILENAMES[] = {
 namespace End {
 enum Opcode : uint8_t {
     end_delete = 0,
-    __wait_A = 5,
-    __wait_B = 6,
-    __anm_load = 7,
+    text_dialogue = 3,
+    text_clear = 4,
+    wait = 5,
+    __wait_clear = 6,
+    anm_source_load = 7,
     anm_set_slot = 8,
     text_color = 9,
     music = 10,
@@ -21968,7 +21964,7 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
             this->current_instr = IndexInstr(sizeof(MsgInstruction) + this->current_instr->args_size)
         ) {
             switch (current_instruction->opcode) {
-                case 3: { // 3
+                case text_dialogue: { // 3
                     int index = this->__int_78;
                     if (!index) {
                         for (size_t i = 0; i != countof(this->__vm_id_array_40); ++i) {
@@ -21994,12 +21990,12 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
                     }
                     break;
                 }
-                case 4:
+                case text_clear: // 4
                     for (size_t i = 0; i != countof(this->__vm_id_array_40); ++i) {
                         this->__vm_id_array_40[i].interrupt_tree(3);
                     }
                     break;
-                case __wait_A: // 5
+                case wait: // 5
                     if (this->pause_timer <= 0) {
                         this->pause_timer.set(IntArg(0));
                     }
@@ -22028,7 +22024,7 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
                     }
                     this->pause_timer.reset();
                     break;
-                case __wait_B: // 6
+                case __wait_clear: // 6
                     if (this->pause_timer <= 0) {
                         this->pause_timer.set(IntArg(0));
                     }
@@ -22131,7 +22127,7 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
                     this->__color_7C = PackD3DCOLOR(0, 255, 255, 255);
                     break;
                 }
-                case __anm_load: // 7
+                case anm_source_load: // 7
                     ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
                     ANM_MANAGER_PTR->unload_anm(END_ANM_INDEX_A + IntArg(0));
                     this->__unknown_flag_C = true;
@@ -24933,7 +24929,7 @@ private:
         if (y == 0.0f && x == 0.0f) {
             return HALF_PI_f;
         } else {
-            clang_forceinline return zatan2f(y, x);
+            return zatan2f<ForceInline>(y, x);
         }
     }
 public:
@@ -35319,7 +35315,7 @@ public:
     // 0x427810
     dllexport gnu_noinline int32_t thiscall shoot_bullets(ShooterData* shooter) asm_symbol_rel(0x427810) {
         BulletManager* bullet_manager = BULLET_MANAGER_PTR;
-        float angle_to_player = angle_to_player_from_point(&shooter->position);
+        float angle_to_player = PLAYER_PTR->angle_from_point(&shooter->position);
         for (int32_t i = 0; i < shooter->count2; ++i) {
             for (int32_t j = 0; j < shooter->count1; ++j) {
                 int32_t result = bullet_manager->shoot_one_bullet(shooter, j, i, angle_to_player);
