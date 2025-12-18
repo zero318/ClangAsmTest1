@@ -24974,7 +24974,7 @@ private:
     inline void do_graze_impl(Float2* position) {
         GAME_MANAGER.globals.add_graze();
 
-        Float3 graze_position = *position + this->data.position * 0.5f;
+        Float3 graze_position = (*position + this->data.position) * 0.5f;
 
         EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(24, &graze_position);
 
@@ -25049,9 +25049,7 @@ public:
                     options->__int_D4 = 0;
                     options->internal_position = options->position;
                 }
-                Float3 position;
-                position.as2() = (Float2)options->internal_position * (1.0f / INTERNAL_POSITION_RATIO);
-                position.z = 0.0f;
+                Float3 position = (Float2)options->internal_position * (1.0f / INTERNAL_POSITION_RATIO);
                 options->__anm_id_B0.set_controller_position(&position);
                 options->__anm_id_B4.set_controller_position(&position);
             }
@@ -32230,9 +32228,7 @@ dllexport gnu_noinline BOOL BombBase::bomb_allowed() {
 dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
     switch (this->data.state) {
         case 0: { // Respawning?
-            int32_t A = 61440 - this->data.__death_timer * 10240 / 60;
-            this->data.__death_timer.previous = A;
-            this->set_y_position_internal(A);
+            this->set_y_position_internal(61440 - this->data.__death_timer * 10240 / 60);
             this->__set_all_option_D4_to_1();
             this->reset_previous_positions();
             int32_t B = this->data.__death_timer;
@@ -32257,7 +32253,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
             if (this->data.__death_timer < 60) {
                 break;
             }
-
+            this->data.state = 1;
             this->data.__death_timer.reset();
         }
         case 1: // Normal
@@ -32335,7 +32331,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
                 GAME_SPEED.value = 1.0f;
                 this->create_damage_source_circle(&this->data.position, 32.0f, 16.0f, 30, 150);
                 this->__float3_47928 = this->data.position;
-                this->__set_position_and_all_option_D4_to_1(0.0f, SCREEN_HEIGHT + 38.0f);
+                this->__set_position_and_all_option_D4_to_1(0.0f, SCREEN_HEIGHT + 32.0f);
                 this->data.__timer_47154.set(280);
                 this->data.__death_timer.reset();
             }
@@ -32453,6 +32449,7 @@ dllexport gnu_noinline void thiscall Player::death() {
         __update_bomb_ui();
     }
 
+    this->data.state = 2;
     this->data.__death_timer.reset();
     this->data.__timer_47154.set(180);
 
