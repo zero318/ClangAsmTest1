@@ -152,6 +152,37 @@ dllexport gnu_noinline const char* fastcall eval_expr(const char* expr, char end
 #define cdecl __cdecl
 */
 
+template<int key>
+struct LockKey {
+    static inline constexpr size_t DEFAULT_DELAY = 1000;
+    static inline bool on() {
+        return GetKeyState(key) & 1;
+    }
+    static inline void toggle() {
+        static constexpr std::array<INPUT, 2> buttons = []() {
+            std::array<INPUT, 2> ret;
+            ret[0].type = INPUT_KEYBOARD;
+            ret[0].ki = { .wVk = key, .wScan = 0x45, .dwFlags = KEYEVENTF_EXTENDEDKEY };
+            ret[1].type = INPUT_KEYBOARD;
+            ret[1].ki = { .wVk = key, .wScan = 0x45, .dwFlags = KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP };
+            return ret;
+        }();
+        SendInput(countof(buttons), (LPINPUT)&buttons[0], sizeof(INPUT));
+    }
+    static inline void set(bool state) {
+        if (on() != state) toggle();
+    }
+    static inline void wait_for_state(bool state, size_t delay = DEFAULT_DELAY) {
+        while (on() != state) Sleep(delay);
+    }
+    static inline void wait_for_press(size_t delay = DEFAULT_DELAY) {
+        wait_for_state(!on(), delay);
+        toggle();
+    }
+};
+using NumLock = LockKey<VK_NUMLOCK>;
+using CapsLock = LockKey<VK_CAPITAL>;
+using ScrollLock = LockKey<VK_SCROLL>;
 
 dllexport gnu_noinline void* cdecl memset_force(void* dst, int val, size_t size) {
     gnu_attr(musttail) return memset(dst, val, size);
@@ -172,7 +203,7 @@ inline void* cdecl memset_force(void* dst, int val, size_t size) {
 #define zero_this() memset_force(this, 0, sizeof(*this));
 #define zero_this_inline() __builtin_memset(this, 0, sizeof(*this));
 
-static inline consteval float DEGREES(float degrees) {
+static inline constexpr float DEGREES(float degrees) {
     return degrees * PI_f / 180.0f;
 }
 
@@ -23315,11 +23346,7 @@ extern "C" {
     externcg ShtFile* CACHED_SHT_FILE_PTR cgasm("_CACHED_SHT_FILE_PTR");
 
     // 0x4B4230
-    externcg BulletInitFunc *const PLAYER_BULLET_INIT_FUNCS[8] cgasm("_PLAYER_BULLET_INIT_FUNCS")
-#if !USE_EXTERN_FOR_CODEGEN
-    = {}
-#endif
-    ;
+    //externcg BulletInitFunc *const PLAYER_BULLET_INIT_FUNCS[8] cgasm("_PLAYER_BULLET_INIT_FUNCS");
     // 0x4B4210
     externcg void *const PLAYER_FUNC_TABLE_B[8] cgasm("_PLAYER_FUNC_TABLE_B")
 #if !USE_EXTERN_FOR_CODEGEN
@@ -23342,7 +23369,7 @@ static inline constexpr size_t MAX_SHT_UNKNOWN_A_COUNT = 40;
 struct ShtFileUnknownA {
     int8_t __byte_0; // 0x0
     int8_t __sbyte_1; // 0x1
-    int16_t __anm_script; // 0x2
+    int16_t __sshort_2; // 0x2
     Float2 position; // 0x4
     Float2 size; // 0xC
     float angle; // 0x14
@@ -23350,8 +23377,9 @@ struct ShtFileUnknownA {
     unknown_fields(0x4);
     int8_t __option_index; // 0x20
     uint8_t __byte_21; // 0x21
-    int16_t sound_id; // 0x22
-    unknown_fields(0x6); // 0x24
+    int16_t anm_script; // 0x22
+    int16_t sound_id; // 0x24
+    unknown_fields(0x4); // 0x26
     int8_t __sbyte_2A; // 0x2A
     int8_t __sbyte_2B; // 0x2B
     union {
@@ -23370,26 +23398,30 @@ struct ShtFileUnknownA {
         BulletDamageFunc* __damage_func; // 0x38
         uint32_t __damage_func_index; // 0x38
     };
-    unknown_fields(0x20); // 0x3C
+    unknown_fields(0x10); // 0x3C
+    float __float_4C; // 0x4C
+    unknown_fields(0xC); // 0x50
     // 0x5C
 };
 #pragma region // ShtFileUnknownA Validation
 ValidateFieldOffset32(0x0, ShtFileUnknownA, __byte_0);
 ValidateFieldOffset32(0x1, ShtFileUnknownA, __sbyte_1);
-ValidateFieldOffset32(0x2, ShtFileUnknownA, __anm_script);
+ValidateFieldOffset32(0x2, ShtFileUnknownA, __sshort_2);
 ValidateFieldOffset32(0x4, ShtFileUnknownA, position);
 ValidateFieldOffset32(0xC, ShtFileUnknownA, size);
 ValidateFieldOffset32(0x14, ShtFileUnknownA, angle);
 ValidateFieldOffset32(0x18, ShtFileUnknownA, speed);
 ValidateFieldOffset32(0x20, ShtFileUnknownA, __option_index);
 ValidateFieldOffset32(0x21, ShtFileUnknownA, __byte_21);
-ValidateFieldOffset32(0x22, ShtFileUnknownA, sound_id);
+ValidateFieldOffset32(0x22, ShtFileUnknownA, anm_script);
+ValidateFieldOffset32(0x24, ShtFileUnknownA, sound_id);
 ValidateFieldOffset32(0x2A, ShtFileUnknownA, __sbyte_2A);
 ValidateFieldOffset32(0x2B, ShtFileUnknownA, __sbyte_2B);
 ValidateFieldOffset32(0x2C, ShtFileUnknownA, __init_func);
 ValidateFieldOffset32(0x30, ShtFileUnknownA, __unknown_func_B);
 ValidateFieldOffset32(0x34, ShtFileUnknownA, __unknown_func_C);
 ValidateFieldOffset32(0x38, ShtFileUnknownA, __damage_func);
+ValidateFieldOffset32(0x4C, ShtFileUnknownA, __float_4C);
 ValidateStructSize32(0x5C, ShtFileUnknownA);
 #pragma endregion
 
@@ -24345,6 +24377,7 @@ struct PlayerBullet {
         struct {
             uint32_t __unknown_flag_A : 1; // 1
             uint32_t __focused : 1; // 2
+            uint32_t __unknown_field_A : 4; // 3-6
         };
     };
     int32_t __bullet_index; // 0x4
@@ -24353,7 +24386,8 @@ struct PlayerBullet {
     unknown_fields(0x28);// 0x20
     MotionData motion; // 0x48
     int state; // 0x8C
-    unknown_fields(0xC); // 0x90
+    int __dword_90; // 0x90
+    unknown_fields(0x8); // 0x94
     int __int_9C; // 0x9C
     Float2 size; // 0xA0
     unknown_fields(0x4); // 0xA8
@@ -24398,6 +24432,31 @@ struct PlayerBullet {
         this->damage_source_index = 0;
         return ret;
     }
+
+    // 0x45F7B0
+    dllexport gnu_noinline static int32_t fastcall __init_func_1(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x45F7B0) {
+        self->__dword_90 = 0;
+        return 0;
+    }
+    // 0x45FC20
+    dllexport gnu_noinline static int32_t fastcall __init_func_2(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x45FC20);
+    // 0x460B60
+    dllexport gnu_noinline static int32_t fastcall __init_func_3(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x460B60);
+    // 0x460DA0
+    dllexport gnu_noinline static int32_t fastcall __init_func_4(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x460DA0) {
+        self->__unknown_field_A = 0;
+        self->__dword_90 = 0;
+        return 0;
+    }
+    // 0x4612D0
+    dllexport gnu_noinline static int32_t fastcall __init_func_5(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x4612D0);
+    // 0x461330
+    dllexport gnu_noinline static int32_t fastcall __init_func_6(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x461330) {
+        self->motion.angle = REPLAY_RNG.rand_angle_2() * 0.5f - HALF_PI_f;
+        return 0;
+    }
+    // 0x4613B0
+    dllexport gnu_noinline static int32_t fastcall __init_func_7(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x4613B0);
 };
 #pragma region // PlayerBullet Validation
 ValidateFieldOffset32(0x0, PlayerBullet, flags);
@@ -24406,6 +24465,7 @@ ValidateFieldOffset32(0x8, PlayerBullet, __vm_id_8);
 ValidateFieldOffset32(0xC, PlayerBullet, __timer_C);
 ValidateFieldOffset32(0x48, PlayerBullet, motion);
 ValidateFieldOffset32(0x8C, PlayerBullet, state);
+ValidateFieldOffset32(0x90, PlayerBullet, __dword_90);
 ValidateFieldOffset32(0x9C, PlayerBullet, __int_9C);
 ValidateFieldOffset32(0xA0, PlayerBullet, size);
 ValidateFieldOffset32(0xAC, PlayerBullet, __sht_unknownA_index);
@@ -24419,6 +24479,18 @@ ValidateFieldOffset32(0xF0, PlayerBullet, __func_ptr_F0);
 ValidateFieldOffset32(0xF4, PlayerBullet, __damage_func);
 ValidateStructSize32(0xF8, PlayerBullet);
 #pragma endregion
+
+// 0x4B4230
+static BulletInitFunc *const PLAYER_BULLET_INIT_FUNCS[8] = {
+    NULL,
+    &PlayerBullet::__init_func_1,
+    &PlayerBullet::__init_func_2,
+    &PlayerBullet::__init_func_3,
+    &PlayerBullet::__init_func_4,
+    &PlayerBullet::__init_func_5,
+    &PlayerBullet::__init_func_6,
+    &PlayerBullet::__init_func_7
+};
 
 static inline constexpr size_t PLAYER_OPTION_COUNT = 4;
 static inline constexpr size_t PLAYER_EQUIPMENT_OPTION_COUNT = 12;
@@ -25130,7 +25202,7 @@ public:
     }
 
     // 0x45A7A0
-    dllexport gnu_noinline ZUNResult thiscall initialize() {
+    dllexport gnu_noinline ZUNResult thiscall initialize() asm_symbol_rel(0x45A7A0) {
         
         AnmLoaded* player_anm = ANM_MANAGER_PTR->preload_anm(PLAYER_ANM_INDEX, PLAYER_ANM_FILENAMES[GAME_MANAGER.globals.character]);
         this->player_anm = player_anm;
@@ -25813,7 +25885,42 @@ inline void PlayerBullet::on_tick() {
             Float3 vertex_positions[4];
             vm->__get_vertex_quad(vertex_positions);
             if (this->__timer_C >= 15) {
-                // TODO: probably check for offscreen position
+                // it really does redundantly cast from an int for each vertex...
+                float windowX = WINDOW_DATA.__width_related_2074;
+                int32_t windowY = WINDOW_DATA.__height_related_2078;
+                if (
+                    !(
+                        vertex_positions[0].x <= windowX ||
+                        vertex_positions[0].x >= windowX + SCREEN_WIDTH ||
+                        vertex_positions[0].y <= windowY ||
+                        vertex_positions[0].y >= windowY + SCREEN_HEIGHT
+                    ) &&
+                    !(
+                        vertex_positions[1].x <= windowX ||
+                        vertex_positions[1].x >= windowX + SCREEN_WIDTH ||
+                        vertex_positions[1].y <= windowY ||
+                        vertex_positions[1].y >= windowY + SCREEN_HEIGHT
+                    ) &&
+                    !(
+                        vertex_positions[2].x <= windowX ||
+                        vertex_positions[2].x >= windowX + SCREEN_WIDTH ||
+                        vertex_positions[2].y <= windowY ||
+                        vertex_positions[2].y >= windowY + SCREEN_HEIGHT
+                    ) &&
+                    !(
+                        vertex_positions[3].x <= windowX ||
+                        vertex_positions[3].x >= windowX + SCREEN_WIDTH ||
+                        vertex_positions[3].y <= windowY ||
+                        vertex_positions[3].y >= windowY + SCREEN_HEIGHT
+                    )
+                ) {
+                    this->__vm_id_8.mark_tree_for_delete();
+                    this->state = 0;
+                    if (int32_t damage_source_index = this->damage_source_index) {
+                        get_damage_source_by_index(damage_source_index)->active = false;
+                    }
+                    return;
+                }
             }
         }
 
@@ -25833,6 +25940,48 @@ inline void PlayerBullet::on_tick() {
 
         this->__timer_C++;
     }
+}
+
+// 0x45FC20
+dllexport gnu_noinline int32_t fastcall PlayerBullet::__init_func_2(PlayerBullet* self, PlayerDamageSource* damage_source) {
+    Player* player = PLAYER_PTR;
+    self->size.x = 0.0f;
+    SOUND_MANAGER.play_sound_positioned(20, player->data.position.x);
+    // THERE'S LITERALLY A DAMAGE SOURCE ARGUMENT ZUN
+    damage_source = get_damage_source_by_index(self->damage_source_index);
+    damage_source->__hit_frequency = 1;
+    damage_source->size.x = 0.0f;
+    self->__unknown_flag_A = false;
+    return 0;
+}
+
+// 0x460B60
+dllexport gnu_noinline int32_t fastcall PlayerBullet::__init_func_3(PlayerBullet* self, PlayerDamageSource* damage_source) {
+    Player* player = PLAYER_PTR;
+
+    ShtFileUnknownA* unknownA_ptr = &player->sht_file->__unknownA_ptr_array_E0[self->__sht_unknownA_index1][self->__sht_unknownA_index2];
+
+    self->motion.position = (Float2)self->option->internal_position * (1.0f / INTERNAL_POSITION_RATIO);
+
+    self->motion.angle = player->data.__shot_spread * unknownA_ptr->__float_4C + player->data.__shot_tilt_angle + unknownA_ptr->angle;
+    return 0;
+}
+
+// 0x4612D0
+dllexport gnu_noinline int32_t fastcall PlayerBullet::__init_func_5(PlayerBullet* self, PlayerDamageSource* damage_source) {
+    self->motion.angle = PLAYER_PTR->__float_479CC;
+    return 0;
+}
+
+// 0x4613B0
+dllexport gnu_noinline int32_t fastcall PlayerBullet::__init_func_7(PlayerBullet* self, PlayerDamageSource* damage_source) {
+
+    float angle_to_player = PLAYER_PTR->angle_from_point(&self->motion.position);
+
+    // ???
+    self->motion.angle = DEGREES(REPLAY_RNG.rand_float_signed()) * 2 + angle_to_player;
+    self->motion.speed = 16.0f;
+    return 0;
 }
 
 // 0x43E550
@@ -28903,7 +29052,7 @@ dllexport gnu_noinline ZUNResult thiscall PlayerBullet::shoot(int32_t unknownA_i
     this->state = 1;
     this->__sht_unknownA_index = unknownA_index;
     this->__timer_C.reset();
-    this->__int_9C = unknownA_ptr->__anm_script;
+    this->__int_9C = unknownA_ptr->__sshort_2;
     this->size = unknownA_ptr->size;
     this->option = option;
     this->__focused = PLAYER_PTR->data.focused;
@@ -28942,12 +29091,27 @@ dllexport gnu_noinline ZUNResult thiscall PlayerBullet::shoot(int32_t unknownA_i
 
     float angle = unknownA_ptr->angle;
     if (angle >= 1000.0f) {
-        // TODO: RNG
+        int8_t option_index = unknownA_ptr->__option_index;
+        if (!(option_index % PLAYER_TOTAL_OPTION_COUNT)) {
+            goto normal_angle;
+        }
+        option_index = option_index % PLAYER_TOTAL_OPTION_COUNT;
+        PlayerOption* option = &PLAYER_PTR->data.options[option_index - 1];
+        angle = option->__angle_A8;
+        angle += REPLAY_RNG.rand_angle() / 12.0f;
+        this->motion.angle = angle;
+        this->motion.speed = unknownA_ptr->speed + REPLAY_RNG.rand_float_signed_range(2.0f);
     }
     else if (angle >= 995.0f) {
-        // TODO: RNG
+        int8_t option_index = unknownA_ptr->__option_index;
+        if (!(option_index % PLAYER_TOTAL_OPTION_COUNT)) {
+            goto normal_angle;
+        }
+        option_index = option_index % PLAYER_TOTAL_OPTION_COUNT;
+        this->motion.angle = reduce_angle(PLAYER_PTR->data.options[option_index - 1].__angle_A8);
     }
     else {
+normal_angle:
         this->motion.angle = angle;
     }
 
@@ -28968,7 +29132,7 @@ dllexport gnu_noinline ZUNResult thiscall PlayerBullet::shoot(int32_t unknownA_i
 
     Float3 zero = {};
 
-    this->__vm_id_8 = bullet_anm->instantiate_vm_to_world_list_back(unknownA_ptr->__anm_script, &zero);
+    this->__vm_id_8 = bullet_anm->instantiate_vm_to_world_list_back(unknownA_ptr->anm_script, &zero);
 
     ABILITY_MANAGER_PTR->card_list.for_each([=](CardBase* card) {
         card->__on_bullet_init(this);
@@ -29248,7 +29412,7 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
     if (this->data.state == 1) {
         if (this->data.shoot_key_short_timer < 0) {
             if (!INPUT_STATES[0].check_inputs(BUTTON_SHOOT)) {
-                // TODO
+                goto not_shooting;
             }
 
             if (this->data.shoot_key_long_timer < 0) {
@@ -29277,7 +29441,7 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
             if (C >= 0) {
                 do {
                     if (C) {
-                        int32_t D = unknownA_ptr->__sbyte_2A;
+                        int8_t D = unknownA_ptr->__sbyte_2A;
                         int32_t E;
                         int32_t F;
                         if (!D) {
@@ -29305,7 +29469,7 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
                     // This was probably a for loop,
                     // but whatever I wanted to use continue
                     ++i,
-                    (C = ++unknownA_ptr->__byte_0) >= 0
+                    (C = (++unknownA_ptr)->__byte_0) >= 0
                 );
                 // this is probably just spilled values
                 A = this->data.shoot_key_long_timer;
@@ -29326,6 +29490,7 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
             }
         } else {
             this->data.shoot_key_short_timer++;
+    not_shooting:
             int32_t long_timer = this->data.shoot_key_long_timer;
             if (long_timer < 0) {
                 return 0;
@@ -32417,7 +32582,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
         !GAME_THREAD_PTR->__unknown_flag_C &&
         this->data.__timer_3C >= 20 &&
         !this->data.__unknown_flag_H &&
-        this->data.__unknown_field_A &&
+        !this->data.__unknown_field_A &&
         !this->data.scale_enabled
     ) {
         this->tick_shooting_state();
@@ -45231,6 +45396,7 @@ dllexport gnu_noinline GameThread::~GameThread() {
 }
 
 inline unsigned GameThread::thread_start_impl() {
+    //ScrollLock::wait_for_press();
     GameThread* game_thread = GAME_THREAD_PTR;
     
     this->skip_flag = true;
