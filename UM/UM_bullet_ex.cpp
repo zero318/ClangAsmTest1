@@ -46,8 +46,10 @@ template <typename T>
 using ZUNListEnds = ZUNListEndsBase<T, true>;
 
 #define DEBUG_SKIP_MENUS 1
-#define INCLUDE_EXTRA_DEBUG_STUFF 1 && !NDEBUG
-#define ZUN_DEBUG_CODE 1
+#define INCLUDE_EXTRA_DEBUG_STUFF (1 && !NDEBUG)
+#define ZUN_DEBUG_CODE 0
+
+#define ALLOCATE_CONSOLE 1
 
 #define FIX_REALLY_BAD_BUGS 1
 #define PROTECT_ORIGINAL_FILES 1
@@ -722,7 +724,7 @@ struct ScopedCriticalSection {
 #define UniqueCriticalSectionLock(index) auto unique_name(critical_section_scope_guard_) = ScopedCriticalSection<index>()
 #define CriticalSectionBlock(index) switch (UniqueCriticalSectionLock(index); 0) default:
 
-#if NDEBUG
+#if !INCLUDE_EXTRA_DEBUG_STUFF
 #define DEBUG_PRINT(fmt, ...) 0
 #define DEBUG_VPRINT(fmt)
 #define DEBUG_SPRINT(buf, fmt, ...) 0
@@ -788,7 +790,7 @@ struct DebugLogger {
     }
 
     // 0x489590
-#if NDEBUG
+#if !INCLUDE_EXTRA_DEBUG_STUFF
     [[gnu::no_caller_saved_registers]]
 #endif
     dllexport gnu_noinline static void cdecl __debug_log_stub_6(const char* format, ...) asm_symbol_rel(0x489590) {
@@ -805,7 +807,7 @@ struct DebugLogger {
         DEBUG_VPRINT(format);
     }
 
-#if !NDEBUG
+#if INCLUDE_EXTRA_DEBUG_STUFF
     static inline int debug_vprint(const char* format, va_list va) {
         return vprintf(format, va);
     }
@@ -8679,7 +8681,7 @@ struct MotionData {
     };
     ZUNAngle ellipse_angle; // 0x28
     float ellipse_ratio; // 0x2C
-    float __angle_30; // 0x30
+    ZUNAngle __angle_30; // 0x30
     union {
         Float3 misc_float3; // 0x34
         Float3 axis_velocity; // 0x34
@@ -13671,6 +13673,10 @@ inline void SoundManager::stop_sound(int32_t sound_id) {
             return;
         }
     }
+}
+
+dllexport void fastcall stop_sound_export(int32_t sound_id) {
+    SOUND_MANAGER.stop_sound(sound_id);
 }
 
 // 0x444D80
@@ -25839,7 +25845,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
     if (this->__int_1A8 > 0) {
         --this->__int_1A8;
     } else {
-        if (INPUT_STATES[0].check_inputs_no_repeat(BUTTON_SHOOT | BUTTON_SKIP)) {
+        if (INPUT_STATES[0].check_inputs_no_repeat(BUTTON_SELECT)) {
             this->__unknown_flag_A = true;
         }
     }
@@ -29911,7 +29917,7 @@ struct EnemyManager : ZUNTask {
         if (!enemy->data.death_anm_script) {
             enemy->data.death_anm_script = 44;
             if (
-                enemy->data.anm_slot_0_source_index == 2
+                enemy->data.anm_slot_0_source_index == ECL_INCLUDE_ANM_INDEX_0 // 2
             ) {
                 switch (enemy->data.anm_slot_0_script) {
                     case 5: case 25: case 53: case 91:
@@ -29934,7 +29940,7 @@ struct EnemyManager : ZUNTask {
                         break;
                 }
             }
-            enemy->data.death_anm_index = 1;
+            enemy->data.death_anm_index = ECL_EFFECT_ANM_INDEX; // 1
         }
 
         this->enemy_list.append(&enemy->data.global_list_node);
@@ -38912,7 +38918,7 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
                 case nop: // 0
                     break;
                 case __debug_unknown_A: { // 22
-#if ZUN_DEBUG_CODE && 0
+#if ZUN_DEBUG_CODE
                     // change this in the watch window
                     static int32_t ZUN_ECL_DEBUG_CONST = 0;
                     if (this->get_int_arg(0) == ZUN_ECL_DEBUG_CONST) {
@@ -38927,7 +38933,7 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
                     break;
                 }
                 case debug_print: { // 30
-#if ZUN_DEBUG_CODE && 0
+#if ZUN_DEBUG_CODE
                     // Assuming this hasn't changed since MoF...
                     // though it's kinda broken.
                     // Just including it because why not
@@ -46223,7 +46229,7 @@ dllexport gnu_noinline BOOL WindowData::__create_window(HINSTANCE instance) {
             SW_SHOW
         );
     }
-#if INCLUDE_EXTRA_DEBUG_STUFF
+#if ALLOCATE_CONSOLE
     if (SUPERVISOR.present_parameters.Windowed) {
         AllocConsole();
         (void)freopen("CONIN$", "r", stdin);

@@ -88,7 +88,23 @@ static forceinline long double atanl(long double value) {
     return CRT::CIatan(value);
 }
 static forceinline long double atan2l(long double Y, long double X) {
-    return CRT::CIatan2(X, Y);
+    //return CRT::CIatan2(X, Y);
+    /*
+        NOTE: For some stupid reason clang is blatantly
+        ignoring that the argument order is supposed to be
+        swapped when calling the CI function in relase builds.
+        This seems likely to be a bug with tailcalling a
+        vectorcall function that has long double arguments
+        in x87 registers. The inline asm block fixes the issue.
+    */
+    long double ret;
+    __asm__ volatile (
+        "call __CIatan2"
+        : asm_arg("=t", ret)
+        : asm_arg("0", X), asm_arg("u", Y)
+        : clobber_list("st(1)")
+    );
+    return ret;
 }
 static forceinline long double cosl(long double value) {
     return CRT::CIcos(value);
@@ -100,7 +116,15 @@ static forceinline long double expl(long double value) {
     return CRT::CIexp(value);
 }
 static forceinline long double fmodl(long double X, long double Y) {
-    return CRT::CIfmod(Y, X);
+    //return CRT::CIfmod(Y, X);
+    long double ret;
+    __asm__ volatile (
+        "call __CIfmod"
+        : asm_arg("=t", ret)
+        : asm_arg("0", Y), asm_arg("u", X)
+        : clobber_list("st(1)")
+    );
+    return ret;
 }
 static forceinline long double logl(long double value) {
     return CRT::CIlog(value);
@@ -109,7 +133,15 @@ static forceinline long double log10l(long double value) {
     return CRT::CIlog10(value);
 }
 static forceinline long double powl(long double base, long double exponent) {
-    return CRT::CIpow(exponent, base);
+    //return CRT::CIpow(exponent, base);
+    long double ret;
+    __asm__ volatile (
+        "call __CIpow"
+        : asm_arg("=t", ret)
+        : asm_arg("0", exponent), asm_arg("u", base)
+        : clobber_list("st(1)")
+    );
+    return ret;
 }
 static forceinline long double sinl(long double value) {
     return CRT::CIsin(value);
