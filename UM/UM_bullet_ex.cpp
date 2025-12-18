@@ -9903,7 +9903,8 @@ struct EclStack {
     template<typename L> requires(FunctionTraitsType<L>::arg_count == 1)
     void unary_op(const L& func) {
         using T = typename FunctionTraitsType<L>::template nth_arg_type<0>;
-        using P = typename FunctionTraitsType<L>::ret_type;
+        using R = typename FunctionTraitsType<L>::ret_type;
+        using P = std::conditional_t<std::is_same_v<R, bool>, int32_t, R>;
         this->push_cast<P>(func(this->pop_cast<T>()));
     }
 
@@ -9911,7 +9912,8 @@ struct EclStack {
     void binary_op(const L& func) {
         using T1 = typename FunctionTraitsType<L>::template nth_arg_type<0>;
         using T2 = typename FunctionTraitsType<L>::template nth_arg_type<1>;
-        using P = typename FunctionTraitsType<L>::ret_type;
+        using R = typename FunctionTraitsType<L>::ret_type;
+        using P = std::conditional_t<std::is_same_v<R, bool>, int32_t, R>;
         T1 right = this->pop_cast<T1>();
         T2 left = this->pop_cast<T2>();
         this->push_cast<P>(func(left, right));
@@ -30069,7 +30071,7 @@ public:
         enemy_manager->__timer_98++;
     }
 
-    inline UpdateFuncRet thiscall on_tick_impl() {
+    inline UpdateFuncRet thiscall on_tick() {
         this->__int_AC = 0;
         this->__int_B0 = 0;
 
@@ -30106,7 +30108,7 @@ public:
             !game_thread_ptr->__unknown_flag_B &&
             !ABILITY_SHOP_PTR
         ) {
-            return ((EnemyManager*)ptr)->on_tick_impl();
+            return ((EnemyManager*)ptr)->on_tick();
         }
         return UpdateFuncNext;
     }
@@ -30309,10 +30311,7 @@ dllexport gnu_noinline Enemy::~Enemy() {
             }
         }
     }
-    if (void* fog_ptr = this->data.fog.fog_ptr) {
-        // __sub_41BE50(fog_ptr);
-    }
-    this->data.fog.fog_ptr = NULL;
+    SAFE_DELETE(this->data.fog.fog_ptr);
 }
 
 // 0x430240
