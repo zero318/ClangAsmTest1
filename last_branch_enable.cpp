@@ -490,12 +490,15 @@ __declspec(naked) static void initialize_wow_exception_hooks() {
         MOV ESI, OFFSET WOW64_NAME
         REPE CMPSB
         JNE next_module
+        REX_W MOV RAX, QWORD PTR [RDX+0x30]
+        REX_WRB TEST R8, R8
+        JZ next_module
     both_modules_found:
         MOV ECX, DWORD PTR [RAX+0x3C]
-        REX_R MOV R9D, DWORD PTR [RAX*1+RCX+0x88]
-        REX_B MOV EDX, DWORD PTR [RAX*1+R9+0x18]
-        REX_RB MOV R10D, DWORD PTR [RAX*1+R9+0x20]
-        REX_WB ADD R10, RAX
+        REX_R MOV R9D, DWORD PTR [RCX+RAX+0x88]
+        REX_B MOV EDX, DWORD PTR [R9+RAX+0x18]
+        REX_RB MOV R10D, DWORD PTR [R9+RAX+0x20]
+        REX_WR ADD R10, RAX
     next_wow64_export:
         SUB EDX, 1
         JC initialize_hook_fail
@@ -505,18 +508,18 @@ __declspec(naked) static void initialize_wow_exception_hooks() {
         MOV ESI, OFFSET PREPARE_EXCEPTION_NAME
         REPE CMPSB
         JNE next_wow64_export
-        REX_B MOV ECX, DWORD PTR [RAX*1+R9+0x1C]
-        REX_B MOV ESI, DWORD PTR [RAX*1+R9+0x24]
+        REX_B MOV ECX, DWORD PTR [R9+RAX+0x1C]
+        REX_B MOV ESI, DWORD PTR [R9+RAX+0x24]
         REX_W ADD RSI, RAX
         MOVZX EDX, WORD PTR [RDX*2+RSI]
         REX_W ADD RCX, RAX
         MOV EDI, DWORD PTR [RDX*4+RCX]
         REX_W ADD RAX, RDI
         REX_B MOV EDX, DWORD PTR [R8+0x3C]
-        REX_RX MOV R9D, DWORD PTR [R8*1+RDX+0x88]
-        REX_WR ADD RDX, R8
-        REX_RXB MOV R11D, DWORD PTR [R8*1+R9+0x18]
-        REX_RXB MOV R10D, DWORD PTR [R8*1+R9+0x20]
+        REX_RX MOV R9D, DWORD PTR [RDX+R8+0x88]
+        REX_WB ADD RDX, R8
+        REX_RXB MOV R11D, DWORD PTR [R9+R8+0x18]
+        REX_RXB MOV R10D, DWORD PTR [R9+R8+0x20]
         REX_WRB ADD R10, R8
         _emit 0x66
         _emit 0x0F
@@ -534,16 +537,16 @@ __declspec(naked) static void initialize_wow_exception_hooks() {
         REX_B SUB R11D, 1
         JC initialize_hook_fail
         REX_XB MOV EDI, DWORD PTR [R11*4+R10]
-        REX_WR ADD RDI, R8
+        REX_WB ADD RDI, R8
         MOV ECX, 23
         MOV ESI, OFFSET PROTECT_MEMORY_NAME
         REPE CMPSB
         JNE next_ntdll_export
-        REX_XB MOV ECX, DWORD PTR [R8*1+R9+0x1C]
-        REX_XB MOV EDI, DWORD PTR [R8*1+R9+0x24]
-        REX_WR ADD RDI, R8
+        REX_XB MOV ECX, DWORD PTR [R9+R8+0x1C]
+        REX_XB MOV EDI, DWORD PTR [R9+R8*1+0x24]
+        REX_WB ADD RDI, R8
         REX_X MOVZX ESI, WORD PTR [R11*2+RDI]
-        REX_WR ADD RCX, R8
+        REX_WB ADD RCX, R8
         REX_R MOV R9D, DWORD PTR [RSI*4+RCX]
         REX_WRB ADD R9, R8
         MOVZX ESI, WORD PTR [RDX+0x14]
@@ -568,7 +571,7 @@ __declspec(naked) static void initialize_wow_exception_hooks() {
         JNE next_section
         MOV ECX, DWORD PTR [RSI+0x20]
         MOV EDI, DWORD PTR [RSI+0x24]
-        REX_WR ADD RDI, R8
+        REX_WB ADD RDI, R8
         SHR ECX, 3
         _emit 0xF2
         _emit 0x48
