@@ -91,11 +91,11 @@ static uint64_t ntdll_pointer_addr = 0;
 #define r11 " %%ebx "
 #define r11d " %%ebx "
 __attribute__((naked)) static void prepare_for_exception_hook() {
-	__asm__ volatile(
+    __asm__ volatile(
         ".byte 0x8B, 0x04, 0x25 \n .int %c[except_to_slot]\n"
         REX_R "movl 0x4C0(" rdx ")," r8d "\n"
         "cmpl $0x40," eax "\n"
-		"jnb 1f\n"
+        "jnb 1f\n"
         FS_OVERRIDE REX_R "movl" r8d ",0xE10(," rax ",4)\n"
         "jmp 2f\n"
     "1:\n"
@@ -105,7 +105,7 @@ __attribute__((naked)) static void prepare_for_exception_hook() {
         ".byte 0x8B, 0x04, 0x25 \n .int %c[except_from_slot]\n"
         REX_R "movl 0x4C8(" rdx ")," r8d "\n"
         "cmpl $0x40," eax "\n"
-		"jnb 1f\n"
+        "jnb 1f\n"
         FS_OVERRIDE REX_R "movl" r8d ", 0xE10(," rax ",4)\n"
         "jmp 2f\n"
     "1:\n"
@@ -114,144 +114,144 @@ __attribute__((naked)) static void prepare_for_exception_hook() {
     "2: \n"
         ".byte 0xFF, 0x24, 0x25 \n .int %c[func_ptr] \n"
         "int3 \n"
-		:
-		:
-		[except_to_slot]"i"(&exception_to_tls),
-		[except_from_slot]"i"(&exception_from_tls),
-		[func_ptr]"i"(&original_prepare_addr)
-	);
+        :
+        :
+        [except_to_slot]"i"(&exception_to_tls),
+        [except_from_slot]"i"(&exception_from_tls),
+        [func_ptr]"i"(&original_prepare_addr)
+    );
 }
 __attribute__((naked)) static void initialize_wow_exception_hooks() {
     __asm__ volatile (
-		GS_OVERRIDE REX_W ".byte 0x8B, 0x04, 0x25 \n .int 0x60\n"
+        GS_OVERRIDE REX_W ".byte 0x8B, 0x04, 0x25 \n .int 0x60\n"
         REX_WR "movl 0x18(" rax ")," r9 "\n"
-		REX_WB "movl 0x10(" r9 ")," rdx "\n"
-		REX_WB "addl $0x10," r9 "\n"
-		"xorl" eax "," eax "\n"
-		REX_RB "xorl" r8d "," r8d "\n"
-		REX_RB "xorl" r11d "," r11d "\n"
-		"jmp 1f\n"
-		"int3\n"
-	"3:\n"
+        REX_WB "movl 0x10(" r9 ")," rdx "\n"
+        REX_WB "addl $0x10," r9 "\n"
+        "xorl" eax "," eax "\n"
+        REX_RB "xorl" r8d "," r8d "\n"
+        REX_RB "xorl" r11d "," r11d "\n"
+        "jmp 1f\n"
+        "int3\n"
+    "3:\n"
         REX_W "movl 0x60(" rdx ")," rdi "\n"
-		"movl $18," ecx "\n"
-		"movl %[ntdll_name]," esi "\n"
-		"repe cmpsb\n"
-		"jne 3f\n"
+        "movl $18," ecx "\n"
+        "movl %[ntdll_name]," esi "\n"
+        "repe cmpsb\n"
+        "jne 3f\n"
         REX_WR "movl 0x30(" rdx ")," r8 "\n"
-		REX_W "testl" rax "," rax "\n"
-		"jnz 4f\n"
-	".nops 5\n"
-	"2:\n"
-        REX_W "movl (" rdx ")," rdx "\n"
-		REX_WR "cmpl" r9 "," rdx "\n"
-		"je 9f\n"
-	"1:\n"
-        "cmpw $18, 0x58(" rdx ")\n"
-		"jne 2b\n"
-        REX_WRB "testl" r8 "," r8 "\n"
-		"jz 3b\n"
-	"3:\n"
         REX_W "testl" rax "," rax "\n"
-		"jnz 2b\n"
+        "jnz 4f\n"
+    ".nops 5\n"
+    "2:\n"
+        REX_W "movl (" rdx ")," rdx "\n"
+        REX_WR "cmpl" r9 "," rdx "\n"
+        "je 9f\n"
+    "1:\n"
+        "cmpw $18, 0x58(" rdx ")\n"
+        "jne 2b\n"
+        REX_WRB "testl" r8 "," r8 "\n"
+        "jz 3b\n"
+    "3:\n"
+        REX_W "testl" rax "," rax "\n"
+        "jnz 2b\n"
         REX_W "movl 0x60(" rdx ")," rdi "\n"
-		"movl $18," ecx "\n"
-		"movl %[wow64_name]," esi "\n"
-		"repe cmpsb\n"
-		"jne 2b\n"
+        "movl $18," ecx "\n"
+        "movl %[wow64_name]," esi "\n"
+        "repe cmpsb\n"
+        "jne 2b\n"
         REX_W "movl 0x30(" rdx ")," rax "\n"
-		REX_WRB "testl" r8 "," r8 "\n"
-		"jz 2b\n"
-	"4:\n"
+        REX_WRB "testl" r8 "," r8 "\n"
+        "jz 2b\n"
+    "4:\n"
         "movl 0x3C(" rax ")," ecx "\n"
-		REX_R "movl 0x88(" rcx "," rax ")," r9d "\n"
-		REX_B "movl 0x18(" r9 "," rax ")," edx "\n"
-		REX_RB "movl 0x20(" r9 "," rax ")," r10d "\n"
-		REX_WB "addl" rax "," r10 "\n"
-	"1:\n"
+        REX_R "movl 0x88(" rcx "," rax ")," r9d "\n"
+        REX_B "movl 0x18(" r9 "," rax ")," edx "\n"
+        REX_RB "movl 0x20(" r9 "," rax ")," r10d "\n"
+        REX_WB "addl" rax "," r10 "\n"
+    "1:\n"
         "subl $1," edx "\n"
-		"jb 9f\n"
+        "jb 9f\n"
         REX_B "movl (" r10 "," rdx ",4)," edi "\n"
-		REX_W "addl" rax "," rdi "\n"
-		"movl $25," ecx "\n"
-		"movl %[prepare_exception_name]," esi "\n"
-		"repe cmpsb\n"
-		"jne 1b\n"
+        REX_W "addl" rax "," rdi "\n"
+        "movl $25," ecx "\n"
+        "movl %[prepare_exception_name]," esi "\n"
+        "repe cmpsb\n"
+        "jne 1b\n"
         REX_B "movl 0x1C(" r9 "," rax ")," ecx "\n"
-		REX_B "movl 0x24(" r9 "," rax ")," esi "\n"
-		REX_W "addl" rax "," rsi "\n"
-		"movzwl (" rsi "," rdx ",2)," edx "\n"
-		REX_W "addl" rax "," rcx "\n"
-		"movl (" rcx "," rdx ",4)," edi "\n"
-		REX_W "addl" rdi "," rax "\n"
+        REX_B "movl 0x24(" r9 "," rax ")," esi "\n"
+        REX_W "addl" rax "," rsi "\n"
+        "movzwl (" rsi "," rdx ",2)," edx "\n"
+        REX_W "addl" rax "," rcx "\n"
+        "movl (" rcx "," rdx ",4)," edi "\n"
+        REX_W "addl" rdi "," rax "\n"
         REX_B "movl 0x3C(" r8 ")," edx "\n"
-		REX_RX "movl 0x88(" rdx "," r8 ")," r9d "\n"
-		REX_WR "addl" r8 "," rdx "\n"
-		REX_RXB "movl 0x18(" r9 "," r8 ")," r11d "\n"
-		REX_RXB "movl 0x20(" r9 "," r8 ")," r10d "\n"
-		REX_WRB "addl" r8 "," r10 "\n"
-	".nops 6\n"
-	".nops 6\n"
-	"1:\n"
+        REX_RX "movl 0x88(" rdx "," r8 ")," r9d "\n"
+        REX_WR "addl" r8 "," rdx "\n"
+        REX_RXB "movl 0x18(" r9 "," r8 ")," r11d "\n"
+        REX_RXB "movl 0x20(" r9 "," r8 ")," r10d "\n"
+        REX_WRB "addl" r8 "," r10 "\n"
+    ".nops 6\n"
+    ".nops 6\n"
+    "1:\n"
         REX_B "subl $1," r11d "\n"
-		"jb 9f\n"
+        "jb 9f\n"
         REX_XB "movl (" r10 "," r11 ",4)," edi "\n"
-		REX_WR "addl" r8 "," rdi "\n"
-		"movl $23," ecx "\n"
-		"movl %[protect_memory_name]," esi "\n"
-		"repe cmpsb\n"
-		"jne 1b\n"
+        REX_WR "addl" r8 "," rdi "\n"
+        "movl $23," ecx "\n"
+        "movl %[protect_memory_name]," esi "\n"
+        "repe cmpsb\n"
+        "jne 1b\n"
         REX_XB "movl 0x1C(" r9 "," r8 ")," ecx "\n"
-		REX_XB "movl 0x24(" r9 "," r8 ")," edi "\n"
-		REX_WR "addl" r8 "," rdi "\n"
-		REX_X "movzwl (" rdi "," r11 ",2)," esi "\n"
-		REX_WR "addl" r8 "," rcx "\n"
-		REX_R "movl (" rcx "," rsi ",4)," r9d "\n"
-		REX_WRB "addl" r8 "," r9 "\n"
+        REX_XB "movl 0x24(" r9 "," r8 ")," edi "\n"
+        REX_WR "addl" r8 "," rdi "\n"
+        REX_X "movzwl (" rdi "," r11 ",2)," esi "\n"
+        REX_WR "addl" r8 "," rcx "\n"
+        REX_R "movl (" rcx "," rsi ",4)," r9d "\n"
+        REX_WRB "addl" r8 "," r9 "\n"
         "movzwl 0x14(" rdx ")," esi "\n"
-		REX_W "addl" rdx "," rsi "\n"
-		"movzwl 0x6(" rdx ")," edx "\n"
-		REX_RB "xorl" r11d "," r11d "\n"
-		"jmp 1f\n"
-		"int3\n"
-		"int3\n"
-		"int3\n"
-		"int3\n"
-		"int3\n"
-	"2:\n"
+        REX_W "addl" rdx "," rsi "\n"
+        "movzwl 0x6(" rdx ")," edx "\n"
+        REX_RB "xorl" r11d "," r11d "\n"
+        "jmp 1f\n"
+        "int3\n"
+        "int3\n"
+        "int3\n"
+        "int3\n"
+        "int3\n"
+    "2:\n"
         REX_W "addl $0x28," rsi "\n"
-		".byte 0xFF, 0xCA \n"
-		"jz 9f\n"
-	"1:\n"
+        ".byte 0xFF, 0xCA \n"
+        "jz 9f\n"
+    "1:\n"
         "movzbl 0x3F(" rsi ")," ecx "\n"
         "andb $0x60," cl "\n"
-		"cmpb $0x40," cl "\n"
-		"jne 2b\n"
+        "cmpb $0x40," cl "\n"
+        "jne 2b\n"
         "movl 0x20(" rsi ")," ecx "\n"
-		"movl 0x24(" rsi ")," edi "\n"
-		REX_WR "addl" r8 "," rdi "\n"
-		"shrl $3," ecx "\n"
-		".byte 0xF2, 0x48, 0xAF\n"
-		"jne 2b\n"
+        "movl 0x24(" rsi ")," edi "\n"
+        REX_WR "addl" r8 "," rdi "\n"
+        "shrl $3," ecx "\n"
+        ".byte 0xF2, 0x48, 0xAF\n"
+        "jne 2b\n"
         REX_W ".byte 0x89, 0x04, 0x25 \n .int %c[prepare_addr]\n"
-		REX_WR ".byte 0x89, 0x0C, 0x25 \n .int %c[protect_addr]\n"
-		REX_W "addl $-8," rdi "\n"
-		REX_W ".byte 0x89, 0x3C, 0x25 \n .int %c[func_ptr_addr]\n"
-		REX_B "movl $1," r11d "\n"
-	"9: \n"
+        REX_WR ".byte 0x89, 0x0C, 0x25 \n .int %c[protect_addr]\n"
+        REX_W "addl $-8," rdi "\n"
+        REX_W ".byte 0x89, 0x3C, 0x25 \n .int %c[func_ptr_addr]\n"
+        REX_B "movl $1," r11d "\n"
+    "9: \n"
         REX_R "movl" r11d "," eax "\n"
-		"lret\n"
+        "lret\n"
         "int3\n"
-		:
-		:
-		[ntdll_name]"i"(&NTDLL_NAME),
-		[wow64_name]"i"(&WOW64_NAME),
-		[prepare_exception_name]"i"(&PREPARE_EXCEPTION_NAME),
-		[protect_memory_name]"i"(&PROTECT_MEMORY_NAME),
-		[prepare_addr]"i"(&original_prepare_addr),
-		[protect_addr]"i"(&nt_virtual_protect_addr),
-		[func_ptr_addr]"i"(&ntdll_pointer_addr)
-	);
+        :
+        :
+        [ntdll_name]"i"(&NTDLL_NAME),
+        [wow64_name]"i"(&WOW64_NAME),
+        [prepare_exception_name]"i"(&PREPARE_EXCEPTION_NAME),
+        [protect_memory_name]"i"(&PROTECT_MEMORY_NAME),
+        [prepare_addr]"i"(&original_prepare_addr),
+        [protect_addr]"i"(&nt_virtual_protect_addr),
+        [func_ptr_addr]"i"(&ntdll_pointer_addr)
+    );
 }
 __attribute__((always_inline)) static inline int32_t initialize_wow_exception_hooks_thunk() {
     int32_t ret;
@@ -265,9 +265,9 @@ __attribute__((always_inline)) static inline int32_t initialize_wow_exception_ho
 }
 __attribute__((naked)) static void hook_prepare_pointer() {
     __asm__ volatile(
-		"movl" esp "," ebx "\n"
-		"subl $0x40," esp "\n"
-		"andl $-0x10," esp "\n"
+        "movl" esp "," ebx "\n"
+        "subl $0x40," esp "\n"
+        "andl $-0x10," esp "\n"
         REX_W ".byte 0x8B, 0x3C, 0x25 \n .int %c[func_ptr_addr]\n"
         REX_W "movl" rdi ", 0x38(" rsp ")\n"
         REX_W "movl $8, 0x30(" rsp ")\n"
@@ -297,9 +297,9 @@ __attribute__((naked)) static void hook_prepare_pointer() {
         "int3\n"
         :
         :
-		[func_ptr_addr]"i"(&ntdll_pointer_addr),
+        [func_ptr_addr]"i"(&ntdll_pointer_addr),
         [protect_addr]"i"(&nt_virtual_protect_addr),
-		[new_func]"i"(&prepare_for_exception_hook)
+        [new_func]"i"(&prepare_for_exception_hook)
     );
 }
 __attribute__((always_inline)) static inline int32_t hook_prepare_pointer_thunk() {
@@ -314,9 +314,9 @@ __attribute__((always_inline)) static inline int32_t hook_prepare_pointer_thunk(
 }
 __attribute__((naked)) static void unhook_prepare_pointer() {
     __asm__ volatile(
-		"movl" esp "," ebx "\n"
-		"subl $0x40," esp "\n"
-		"andl $-0x10," esp "\n"
+        "movl" esp "," ebx "\n"
+        "subl $0x40," esp "\n"
+        "andl $-0x10," esp "\n"
         REX_W ".byte 0x8B, 0x3C, 0x25 \n .int %c[func_ptr_addr]\n"
         REX_W "movl" rdi ", 0x38(" rsp ")\n"
         REX_W "movl $8, 0x30(" rsp ")\n"
@@ -346,9 +346,9 @@ __attribute__((naked)) static void unhook_prepare_pointer() {
         "int3\n"
         :
         :
-		[func_ptr_addr]"i"(&ntdll_pointer_addr),
+        [func_ptr_addr]"i"(&ntdll_pointer_addr),
         [protect_addr]"i"(&nt_virtual_protect_addr),
-		[original_func]"i"(&original_prepare_addr)
+        [original_func]"i"(&original_prepare_addr)
     );
 }
 __attribute__((always_inline)) static inline int32_t unhook_prepare_pointer_thunk() {
