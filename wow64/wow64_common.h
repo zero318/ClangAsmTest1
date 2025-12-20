@@ -77,6 +77,14 @@ struct WOW64_TEMP_DATA {
 	void* allocate(size_t size, WOW64_TEMP_LIST<WOW64_TEMP_DATA>* temp_list);
 };
 
+typedef struct WOW64_CALLBACK_DATA WOW64_CALLBACK_DATA;
+
+struct WOW64_CALLBACK_DATA {
+	JUMP_BUFFERX<64> jump_buffer; // 0x0
+	WOW64_CALLBACK_DATA* prev_callback_data; // 0x100
+	// 0x108
+};
+
 #define CURRENT_PROCESS_HANDLE ((HANDLE)~(uintptr_t)0)
 #define CURRENT_THREAD_HANDLE ((HANDLE)~(uintptr_t)1)
 #define CURRENT_HEAP_HANDLE (peb->ProcessHeap)
@@ -106,11 +114,13 @@ enum Wow64TLSSlot {
 #define SAVED_RSP_FOR_TEB(teb_arg) (*(void**)&(teb_arg)->TlsSlots[WOW64_TLS_STACKPTR64])
 #define CPUCONTEXT_FOR_TEB(teb_arg) (*(CPUCONTEXT**)&(teb_arg)->TlsSlots[WOW64_TLS_CPURESERVED])
 #define TEMPDATA_FOR_TEB(teb_arg) (*(WOW64_TEMP_LIST<WOW64_TEMP_DATA>**)&(teb_arg)->TlsSlots[WOW64_TLS_TEMPLIST])
+#define USERCALLBACKDATA_FOR_REB(teb_arg) (*(WOW64_CALLBACK_DATA**)&(teb_arg)->TlsSlots[WOW64_TLS_USERCALLBACKDATA])
 #define WOW64INFO_FOR_TEB(teb_arg) (*(WOW64INFO**)&(teb_arg)->TlsSlots[WOW64_TLS_WOW64INFO])
 
 #define TEB_SAVED_RSP (*(void* GS_RELATIVE*)&teb->TlsSlots[WOW64_TLS_STACKPTR64])
 #define TEB_CPUCONTEXT (*(CPUCONTEXT* GS_RELATIVE*)&teb->TlsSlots[WOW64_TLS_CPURESERVED])
 #define TEB_TEMPDATA (*(WOW64_TEMP_LIST<WOW64_TEMP_DATA>* GS_RELATIVE*)&teb->TlsSlots[WOW64_TLS_TEMPLIST])
+#define TEB_USERCALLBACKDATA (*(WOW64_CALLBACK_DATA* GS_RELATIVE*)&teb->TlsSlots[WOW64_TLS_USERCALLBACKDATA])
 #define TEB_WOW64INFO (*(WOW64INFO* GS_RELATIVE*)&teb->TlsSlots[WOW64_TLS_WOW64INFO])
 
 enum WOW64_FLUSH_REASON : int32_t {

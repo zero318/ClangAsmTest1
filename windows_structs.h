@@ -2799,6 +2799,62 @@ __if_not_exists(XSTATE_CONFIGURATION) {
 }
 
 template<size_t bits = native_bits>
+struct JUMP_BUFFERX;
+
+template<>
+struct JUMP_BUFFERX<32> {
+    uint32_t Ebp; // 0x0
+    uint32_t Ebx; // 0x4
+    uint32_t Edi; // 0x8
+    uint32_t Esi; // 0xC
+    uint32_t Esp; // 0x10
+    uint32_t Eip; // 0x14
+    uint32_t Registration; // 0x18
+    uint32_t TryLevel; // 0x1C
+    uint32_t Cookie; // 0x20
+    uint32_t UnwindFunc; // 0x24
+    uint32_t UnwindData[6]; // 0x28
+    // 0x40
+};
+ValidateStructSize(0x40, JUMP_BUFFERX<32>);
+ValidateStructAlignment(0x4, JUMP_BUFFERX<32>);
+
+template<>
+struct alignas(16) JUMP_BUFFERX<64> {
+    uint64_t Frame; // 0x0
+    uint64_t Rbx; // 0x8
+    uint64_t Rsp; // 0x10
+    uint64_t Rbp; // 0x18
+    uint64_t Rsi; // 0x20
+    uint64_t Rdi; // 0x28
+    uint64_t R12; // 0x30
+    uint64_t R13; // 0x38
+    uint64_t R14; // 0x40
+    uint64_t R15; // 0x48
+    uint64_t Rip; // 0x50
+    uint32_t MxCsr; // 0x58
+    uint16_t FpCsr; // 0x5C
+    uint16_t Spare; // 0x5E
+    __m128 Xmm6; // 0x60
+    __m128 Xmm7; // 0x70
+    __m128 Xmm8; // 0x80
+    __m128 Xmm9; // 0x90
+    __m128 Xmm10; // 0xA0
+    __m128 Xmm11; // 0xB0
+    __m128 Xmm12; // 0xC0
+    __m128 Xmm13; // 0xD0
+    __m128 Xmm14; // 0xE0
+    __m128 Xmm15; // 0xF0
+    // 0x100
+};
+ValidateStructSize(0x100, JUMP_BUFFERX<64>);
+ValidateStructAlignment(0x10, JUMP_BUFFERX<64>);
+
+__if_not_exists(JUMP_BUFFER) {
+    using JUMP_BUFFER = JUMP_BUFFERX<>;
+}
+
+template<size_t bits = native_bits>
 struct EXCEPTION_RECORDX {
     int32_t ExceptionCode; // 0x0, 0x0
     union {
@@ -3154,7 +3210,7 @@ struct TEBX<32, T> {
     PTRZX<32, UNKNOWN_TYPE> EtwLocalData; // 0xF64
     PTRZX<32, UNKNOWN_TYPE> EtwTraceData; // 0xF68
     PTRZX<32, UNKNOWN_TYPE> WinSockData; // 0xF6C
-    uint32_t GdiBatchCount; // 0xF70
+    uint32_t GdiBatchCount; // 0xF70 This field is definitely a pointer of some kind, though maybe only for WoW64...?
     union {
         PROCESSOR_NUMBER CurrentIdealProcessor; // 0xF74
         uint32_t IdealProcessorValue; // 0xF74
@@ -3358,6 +3414,20 @@ __if_not_exists(TEB) {
     using TEB = TEBX<>;
 }
 
+using FSTEB32 = TEBX<32> FS_RELATIVE*;
+using GSTEB64 = TEBX<64> GS_RELATIVE*;
+using CFSTEB32 = const TEBX<32> FS_RELATIVE*;
+using CGSTEB64 = const TEBX<64> GS_RELATIVE*;
+
+#if NATIVE_BITS == 32
+using SEGTEB = FSTEB32;
+using CSEGTEB = CFSTEB32;
+#else
+using SEGTEB = GSTEB64;
+using CSEGTEB = CGSTEB64;
+#endif
+
+/*
 static inline constexpr auto teb32 = (TEBX<32> FS_RELATIVE*)0;
 static inline constexpr auto teb64 = (TEBX<64> GS_RELATIVE*)0;
 static inline constexpr auto cteb32 = (const TEBX<32> FS_RELATIVE*)0;
@@ -3370,6 +3440,14 @@ static inline constexpr auto cteb = cteb32;
 static inline constexpr auto teb = teb64;
 static inline constexpr auto cteb = cteb64;
 #endif
+*/
+
+static inline constexpr FSTEB32 teb32 = 0;
+static inline constexpr GSTEB64 teb64 = 0;
+static inline constexpr CFSTEB32 cteb32 = 0;
+static inline constexpr CGSTEB64 cteb64 = 0;
+static inline constexpr SEGTEB teb = 0;
+static inline constexpr CSEGTEB cteb = 0;
 
 template<size_t bits = native_bits>
 struct INITIAL_TEBX {

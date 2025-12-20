@@ -152,28 +152,30 @@ dllexport gnu_noinline const char* fastcall eval_expr(const char* expr, char end
 #define cdecl __cdecl
 */
 
-template<int key>
+template<int key> requires(key == VK_NUMLOCK || key == VK_CAPITAL || key == VK_SCROLL)
 struct LockKey {
     static inline constexpr size_t DEFAULT_DELAY = 1000;
+    static inline constexpr WORD SCAN = key == VK_NUMLOCK ? 69 :
+                                        key == VK_CAPITAL ? 58 :
+                                        70;
     static inline bool on() {
-        return GetKeyState(key) & 1;
+        return GetAsyncKeyState(key) & 1;
+    }
+    static inline bool is(bool state) {
+        return on() == state;
     }
     static inline void toggle() {
-        static constexpr std::array<INPUT, 2> buttons = []() {
-            std::array<INPUT, 2> ret;
-            ret[0].type = INPUT_KEYBOARD;
-            ret[0].ki = { .wVk = key, .wScan = 0x45, .dwFlags = KEYEVENTF_EXTENDEDKEY };
-            ret[1].type = INPUT_KEYBOARD;
-            ret[1].ki = { .wVk = key, .wScan = 0x45, .dwFlags = KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP };
-            return ret;
-        }();
-        SendInput(countof(buttons), (LPINPUT)&buttons[0], sizeof(INPUT));
+        static constexpr INPUT buttons[] = {
+            { .type = INPUT_KEYBOARD, (KEYBDINPUT){ .wVk = key, .wScan = SCAN, .dwFlags = KEYEVENTF_EXTENDEDKEY } },
+            { .type = INPUT_KEYBOARD, (KEYBDINPUT){ .wVk = key, .wScan = SCAN, .dwFlags = KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP } }
+        };
+        SendInput(countof(buttons), (LPINPUT)buttons, sizeof(INPUT));
     }
     static inline void set(bool state) {
-        if (on() != state) toggle();
+        if (!is(state)) toggle();
     }
     static inline void wait_for_state(bool state, size_t delay = DEFAULT_DELAY) {
-        while (on() != state) Sleep(delay);
+        while (!is(state)) Sleep(delay);
     }
     static inline void wait_for_press(size_t delay = DEFAULT_DELAY) {
         wait_for_state(!on(), delay);
@@ -43279,7 +43281,7 @@ struct MainMenu : ZUNTask {
                 GAME_MANAGER.globals.__stage_number_related_4 = 1;
                 GAME_MANAGER.globals.__ecl_var_9907 = -1;
                 GAME_MANAGER.globals.difficulty = NORMAL;
-                GAME_MANAGER.globals.character = Reimu;
+                GAME_MANAGER.globals.character = Marisa;
 #endif
             }
 #if !DEBUG_SKIP_MENUS

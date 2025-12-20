@@ -770,7 +770,7 @@ static inline T *restrict rep_stosb(T *restrict dst, uint8_t value, size_t byte_
 }
 
 template<typename T = void, typename T2 = T>
-static inline bool repe_cmpsd(T *restrict dst, T2 *restrict src, size_t byte_len) {
+static inline bool repe_cmpsd(T *restrict dst, T2 *restrict src, size_t dword_len) {
     bool ret;
     __asm__ volatile (
         "repe cmpsl"
@@ -781,7 +781,7 @@ static inline bool repe_cmpsd(T *restrict dst, T2 *restrict src, size_t byte_len
     return ret;
 }
 template<typename T = void, typename T2 = T>
-static inline bool repne_cmpsd(T *restrict dst, T2 *restrict src, size_t byte_len) {
+static inline bool repne_cmpsd(T *restrict dst, T2 *restrict src, size_t dword_len) {
     bool ret;
     __asm__ volatile (
         "repne cmpsl"
@@ -793,7 +793,7 @@ static inline bool repne_cmpsd(T *restrict dst, T2 *restrict src, size_t byte_le
 }
 
 template<typename T = void, typename T2 = T>
-static inline bool repe_cmpsw(T *restrict dst, T2 *restrict src, size_t byte_len) {
+static inline bool repe_cmpsw(T *restrict dst, T2 *restrict src, size_t word_len) {
     bool ret;
     __asm__ volatile (
         "repe cmpsw"
@@ -804,7 +804,7 @@ static inline bool repe_cmpsw(T *restrict dst, T2 *restrict src, size_t byte_len
     return ret;
 }
 template<typename T = void, typename T2 = T>
-static inline bool repne_cmpsw(T *restrict dst, T2 *restrict src, size_t byte_len) {
+static inline bool repne_cmpsw(T *restrict dst, T2 *restrict src, size_t word_len) {
     bool ret;
     __asm__ volatile (
         "repne cmpsw"

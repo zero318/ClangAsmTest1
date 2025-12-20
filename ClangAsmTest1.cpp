@@ -3253,7 +3253,8 @@ LONG WINAPI log_branch_records(LPEXCEPTION_POINTERS lpEI) {
 
 	lpEI->ContextRecord->Rip += 7;
 #else
-	CONTEXTX<64> x64_context;
+	/*
+	CONTEXTX<64> x64_context = {};
 	x64_context.ContextFlags = 0x0010001F;
 	NtGetContextThread_ptr(GetCurrentThread(), (PCONTEXT)&x64_context);
 
@@ -3261,6 +3262,12 @@ LONG WINAPI log_branch_records(LPEXCEPTION_POINTERS lpEI) {
 	last_branch_from = x64_context.LastBranchFromRip;
 	last_exception_to = x64_context.LastExceptionToRip;
 	last_exception_from = x64_context.LastExceptionFromRip;
+	*/
+	CONTEXTX<64>* x64_context = (CONTEXTX<64>*)0x731B4690;
+	last_branch_to = x64_context->LastBranchToRip;
+	last_branch_from = x64_context->LastBranchFromRip;
+	last_exception_to = x64_context->LastExceptionToRip;
+	last_exception_from = x64_context->LastExceptionFromRip;
 
 	lpEI->ContextRecord->Eip += 7;
 #endif
@@ -3562,8 +3569,38 @@ gnu_noinline void vec3_testing() {
 	);
 }
 
-int stdcall main(int argc, char* argv[]) {
+void last_branch_testing() {
+	AddVectoredExceptionHandler(0, log_branch_records);
 
+	NtGetContextThread_ptr = (NtGetContextThread_t*)GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtGetContextThread");
+
+	CONTEXT context;
+	context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+	GetThreadContext(GetCurrentThread(), &context);
+
+	printf("Testing without DR7 bits... %zX\n", context.Dr7);
+	debug_test_func();
+
+
+	context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+	context.Dr7 |= 0x100;
+
+	SetThreadContext(GetCurrentThread(), &context);
+
+	context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+	GetThreadContext(GetCurrentThread(), &context);
+
+	if (context.Dr7 & 0x100) {
+		printf("\nTesting with DR7 bits... %zX\n", context.Dr7);
+		debug_test_func();
+	}
+	else {
+		printf("\nSetting DR7 failed %zX", context.Dr7);
+	}
+}
+
+int stdcall main(int argc, char* argv[]) {
+	last_branch_testing();
 	//test_token_parsing();
 	return 0;
 
@@ -3595,35 +3632,7 @@ int stdcall main(int argc, char* argv[]) {
 	return 0;
 
 
-	AddVectoredExceptionHandler(0, log_branch_records);
-
-	NtGetContextThread_ptr = (NtGetContextThread_t*)GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtGetContextThread");
-
-	CONTEXT context;
-	context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-	GetThreadContext(GetCurrentThread(), &context);
-
-	printf("Testing without DR7 bits... %zX\n", context.Dr7);
-	debug_test_func();
-
-
-	context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-	context.Dr7 |= 0x100;
-
-	SetThreadContext(GetCurrentThread(), &context);
-
-	context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-	GetThreadContext(GetCurrentThread(), &context);
-
-	if (context.Dr7 & 0x100) {
-
-		printf("\nTesting with DR7 bits... %zX\n", context.Dr7);
-		debug_test_func();
-
-	}
-	else {
-		printf("\nSetting DR7 failed %zX", context.Dr7);
-	}
+	
 
 	return 0;
 
