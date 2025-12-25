@@ -56,8 +56,10 @@ static NtQueryInformationThread_t* NtQueryInformationThread_ptr = NULL;
 static PVOID vector_handle;
 LONG WINAPI log_branch_records(LPEXCEPTION_POINTERS lpEI) {
     PCONTEXT context = lpEI->ContextRecord;
-    TlsSetValue(exception_to_tls, (LPVOID)context->LastExceptionToRip);
-    TlsSetValue(exception_from_tls, (LPVOID)context->LastExceptionFromRip);
+    LPVOID exception_to = (LPVOID)context->LastExceptionToRip;
+    LPVOID exception_from = (LPVOID)context->LastExceptionFromRip;
+    TlsSetValue(exception_to_tls, exception_to);
+    TlsSetValue(exception_from_tls, exception_from);
     return EXCEPTION_CONTINUE_SEARCH;
 }
 #else
