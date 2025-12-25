@@ -14,8 +14,9 @@ typedef struct LastBranchPair_t {
 
 bool last_branch_tracking_hook();
 bool last_branch_tracking_unhook();
-bool last_branch_tracking_start();
-bool last_branch_tracking_stop();
+
+bool last_branch_tracking_start(HANDLE thread);
+bool last_branch_tracking_stop(HANDLE thread);
 
 uintptr_t last_branch_exception_to(HANDLE thread);
 uintptr_t last_branch_exception_from(HANDLE thread);

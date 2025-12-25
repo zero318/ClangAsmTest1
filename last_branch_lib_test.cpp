@@ -38,8 +38,8 @@ bs_label_testB:
     printf(
         //"BranchTo:   %llX\n"
         //"BranchFrom: %llX\n"
-        "ExceptTo:   %lX\n"
-        "ExceptFrom: %lX\n"
+        "ExceptTo:   %zX\n"
+        "ExceptFrom: %zX\n"
         "LabelTestA: %zX\n"
         "LabelTestB: %zX\n"
         //, last_branch_to
@@ -54,7 +54,7 @@ bs_label_testB:
 int main() {
     AddVectoredExceptionHandler(0, just_dont_actually_crash);
     last_branch_tracking_hook();
-    last_branch_tracking_start();
+    last_branch_tracking_start(GetCurrentThread());
     last_branch_testing();
     return 0;
 }

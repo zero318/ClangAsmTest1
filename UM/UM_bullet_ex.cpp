@@ -11205,7 +11205,7 @@ public:
     inline void thiscall anm_play_attack_ex_impl();
 
     template <bool sanity_check_script>
-    inline float kill_effects();
+    forceinline float kill_effects();
 
     template <bool inline_calls = true>
     inline void add_spawn_weight_to_chapter_destroy() {

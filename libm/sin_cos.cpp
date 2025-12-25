@@ -61,7 +61,7 @@
         "FLDT %[trig_reduce] \n" \
         "FXCH %%ST(1) \n" \
         ASM_FPREM1_LOOP \
-        "FSTP %%ST(1) \n" \
+        "FFREE %%ST(1) \n" \
     "2: \n"
 
 // Value is 2**63.
@@ -271,7 +271,7 @@ vec<double, 2> vectorcall sincos_x87(double x) {
 /// long double trigl_x87(long double)
 /// ====================
 
-long double vectorcall sinl_x87(long double x) {
+long double regcall sinl_x87(long double x) {
 #pragma clang fp exceptions(ignore)
     long double ret;
     __asm__(
@@ -284,7 +284,7 @@ long double vectorcall sinl_x87(long double x) {
     return ret;
 }
 
-long double vectorcall cosl_x87(long double x) {
+long double regcall cosl_x87(long double x) {
 #pragma clang fp exceptions(ignore)
     long double ret;
     __asm__(
@@ -297,7 +297,7 @@ long double vectorcall cosl_x87(long double x) {
     return ret;
 }
 
-vec<long double, 2> vectorcall sincosl_x87(long double x) {
+vec<long double, 2> regcall sincosl_x87(long double x) {
 #pragma clang fp exceptions(ignore)
     long double sin_ret;
     long double cos_ret;

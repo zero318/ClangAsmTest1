@@ -1,119 +1,206 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <wchar.h>
+
 #include "windows.h"
 
 #include "last_branch_enable.h"
+
+// The DDK also defines these as macros, so they're likely to remain stable
+#define CURRENT_PROCESS_HANDLE ((HANDLE)(intptr_t)-1)
+#define CURRENT_THREAD_HANDLE ((HANDLE)(intptr_t)-2)
 
 static const wchar_t NTDLL_NAME[] = L"ntdll.dll";
 static bool last_branch_initialized = false;
 static bool last_branch_functional = false;
 
-#if !_M_X64 && !__x86_64__
-static const wchar_t WOW64_NAME[] = L"wow64.dll";
-static const char PREPARE_EXCEPTION_NAME[] = "Wow64PrepareForException";
-static const char PROTECT_MEMORY_NAME[] = "NtProtectVirtualMemory";
-
-#define static
 struct TEB_dummy_t {
+#if _M_X64 || __x86_64__
+    unsigned char pad0[0x1480];
+    uint64_t TlsSlots[64];
+    unsigned char pad1[0x100];
+    uint64_t* TlsExpansionSlots;
+#else
     unsigned char pad0[0xE10];
-    uint32_t TlsSlots[32];
+    uint32_t TlsSlots[64];
     unsigned char pad1[0x84];
     uint32_t* TlsExpansionSlots;
+#endif
 };
-inline static uintptr_t get_tls_slot(struct TEB_dummy_t* teb, DWORD slot) {
+
+inline static uintptr_t get_tls_slot(struct TEB_dummy_t* teb, uint32_t slot) {
     if (slot < 64u) {
         return teb->TlsSlots[slot];
     } else {
         return teb->TlsExpansionSlots[slot];
     }
 }
+
 struct THREAD_BASIC_INFORMATION_t {
-    LONG ExitStatus;
+    int32_t ExitStatus;
     struct TEB_dummy_t* TebBaseAddress;
-    HANDLE UniqueProcess;
-    HANDLE UniqueThread;
-    SIZE_T AffinityMask;
-    LONG Priority;
-    LONG BasePriority;
+    void* UniqueProcess;
+    void* UniqueThread;
+    size_t AffinityMask;
+    int32_t Priority;
+    int32_t BasePriority;
 };
+
 typedef LONG WINAPI NtQueryInformationThread_t(HANDLE ThreadHandle, int ThreadInformationClass, PVOID ThreadInformation, ULONG ThreadInformationLength, PULONG ReturnLength);
 
 static uint32_t exception_to_tls = 0;
 static uint32_t exception_from_tls = 0;
 static NtQueryInformationThread_t* NtQueryInformationThread_ptr = NULL;
+
+#if _M_X64 || __x86_64__
+static PVOID vector_handle;
+LONG WINAPI log_branch_records(LPEXCEPTION_POINTERS lpEI) {
+    PCONTEXT context = lpEI->ContextRecord;
+    TlsSetValue(exception_to_tls, (LPVOID)context->LastExceptionToRip);
+    TlsSetValue(exception_from_tls, (LPVOID)context->LastExceptionFromRip);
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+#else
+static const wchar_t WOW64_NAME[] = L"wow64.dll";
+static const char PREPARE_EXCEPTION_NAME[] = "Wow64PrepareForException";
+static const char PROTECT_MEMORY_NAME[] = "NtProtectVirtualMemory";
+
 static uint64_t original_prepare_addr = 0;
 static uint64_t nt_virtual_protect_addr = 0;
 static uint64_t ntdll_pointer_addr = 0;
 
+#define EMIT2(b1,b2) EB(b1) EB(b2)
+#define EMIT3(b1,b2,b3) EMIT2(b1,b2) EB(b3)
+#define EMIT4(b1,b2,b3,b4) EMIT3(b1,b2,b3) EB(b4)
+#define EMIT5(b1,b2,b3,b4,b5) EMIT4(b1,b2,b3,b4) EB(b5)
+#define EMIT6(b1,b2,b3,b4,b5,b6) EMIT5(b1,b2,b3,b4,b5) EB(b6)
+#define EMIT7(b1,b2,b3,b4,b5,b6,b7) EMIT6(b1,b2,b3,b4,b5,b6) EB(b7)
+
+#define FS_OVERRIDE EB(0x64)
+#define GS_OVERRIDE EB(0x65)
+#define DATASIZE EB(0x66)
+#define ADDRSIZE EB(0x67)
+#define REPNE EB(0xF2)
+#define REX EB(0x40)
+#define REX_B EB(0x41)
+#define REX_X EB(0x42)
+#define REX_XB EB(0x43)
+#define REX_R EB(0x44)
+#define REX_RB EB(0x45)
+#define REX_RX EB(0x46)
+#define REX_RXB EB(0x47)
+#define REX_W EB(0x48)
+#define REX_WB EB(0x49)
+#define REX_WX EB(0x4A)
+#define REX_WXB EB(0x4B)
+#define REX_WR EB(0x4C)
+#define REX_WRB EB(0x4D)
+#define REX_WRX EB(0x4E)
+#define REX_WRXB EB(0x4F)
+
 #if __GNUC__ || __clang__
-#define FS_OVERRIDE ".byte 0x64\n "
-#define GS_OVERRIDE ".byte 0x65\n "
-#define DATASIZE ".byte 0x66\n"
-#define ADDRSIZE ".byte 0x67\n"
-#define REX "incl %%eax\n"
-#define REX_B "incl %%ecx\n"
-#define REX_X "incl %%edx\n"
-#define REX_XB "incl %%ebx\n"
-#define REX_R "incl %%esp\n"
-#define REX_RB "incl %%ebp\n"
-#define REX_RX "incl %%esi\n"
-#define REX_RXB "incl %%edi\n"
-#define REX_W "decl %%eax\n"
-#define REX_WB "decl %%ecx\n"
-#define REX_WX "decl %%edx\n"
-#define REX_WXB "decl %%ebx\n"
-#define REX_WR "decl %%esp\n"
-#define REX_WRB "decl %%ebp\n"
-#define REX_WRX "decl %%esi\n"
-#define REX_WRXB "decl %%edi\n"
-#define rax " %%eax "
-#define eax " %%eax "
-#define rcx " %%ecx "
-#define ecx " %%ecx "
-#define cl " %%cl "
-#define rdx " %%edx "
-#define edx " %%edx "
-#define rbx " %%ebx "
-#define ebx " %%ebx "
-#define rsp " %%esp "
-#define esp " %%esp "
-#define rsi " %%esi "
-#define esi " %%esi "
-#define rdi " %%edi "
-#define edi " %%edi "
-#define r8 " %%eax "
-#define r8d " %%eax "
-#define r9 " %%ecx "
-#define r9d " %%ecx "
-#define r10 " %%edx "
-#define r10d " %%edx "
-#define r11 " %%ebx "
-#define r11d " %%ebx "
+#define EB(b) ".byte " #b "\n"
+
+#define eax " eax "
+#define rax eax
+#define ecx " ecx "
+#define rcx ecx
+#define cl " cl "
+#define edx " edx "
+#define rdx edx
+#define ebx " ebx "
+#define rbx ebx
+#define esp " esp "
+#define rsp esp
+#define esi " esi "
+#define rsi esi
+#define edi " edi "
+#define rdi edi
+#define r8 eax
+#define r8d eax
+#define r9 ecx
+#define r9d ecx
+#define r10 edx
+#define r10d edx
+#define r11 ebx
+#define r11d ebx
+
+#define AR(r) "%%" r
+#define IR(r) r
+#define AI(i) "$" #i
+#define II(i) #i
+#define AO(a) #a
+#define IO(a) "OFFSET " #a
+#define AMOBIS(o,b,i,s) #o "(%%" b ",%%" i "," #s ")"
+#define IMOBIS(o,b,i,s) "[" i "*" #s "+" b "+" #o "]"
+#define AMOIS(o,i,s) #o "(,%%" i "," #s ")"
+#define IMOIS(o,i,s) "[" i "*" #s "+" #o "]" 
+#define AMOBI(o,b,i) #o "(%%" b ",%%" i ")"
+#define IMOBI(o,b,i) "[" i "+" b "+" #o "]"
+#define AMBIS(b,i,s) "(%%" b ",%%" i "," #s ")"
+#define IMBIS(b,i,s) "[" i "*" #s "+" b "]"
+#define AMOB(o,b) #o "(%%" b ")"
+#define IMOB(o,b) "[" b "+" #o "]"
+#define AMB(b) "(%%" b ")"
+#define IMB(b) "[" b "]"
+#define B(s,d) " {" A##s "," A##d "|" I##d "," I##s "}\n"
+#define BBS(s,d) " {" A##s "," A##d "|" I##d ",BYTE PTR " I##s "}\n"
+#define BBD(s,d) " {" A##s "," A##d "|BYTE PTR " I##d "," I##s "}\n"
+#define BWS(s,d) " {" A##s "," A##d "|" I##d ",WORD PTR " I##s "}\n"
+#define BWD(s,d) " {" A##s "," A##d "|WORD PTR " I##d "," I##s "}\n"
+#define BLS(s,d) " {" A##s "," A##d "|" I##d ",DWORD PTR " I##s "}\n"
+#define BLD(s,d) " {" A##s "," A##d "|DWORD PTR " I##d "," I##s "}\n"
+#define BQS BLS
+#define BQD BLD
+
+#define mov_absmem_eax(addr) EMIT3(0x8B,0x04,0x25)".int " #addr "\n"
+#define mov_eax_absmem(addr) EMIT3(0x89,0x04,0x25)".int " #addr "\n"
+#define mov_absmem_rax(addr) REX_W mov_absmem_eax(addr)
+#define mov_rax_absmem(addr) REX_W mov_eax_absmem(addr)
+#define mov_absmem_ecx(addr) EMIT3(0x8B,0x0C,0x25)".int " #addr "\n"
+#define mov_ecx_absmem(addr) EMIT3(0x89,0x0C,0x25)".int " #addr "\n"
+#define mov_absmem_esi(addr) EMIT3(0x8B,0x34,0x25)".int " #addr "\n"
+#define mov_esi_absmem(addr) EMIT3(0x89,0x0C,0x25)".int " #addr "\n"
+#define mov_absmem_rsi(addr) REX_W mov_absmem_esi(addr)
+#define mov_rsi_absmem(addr) REX_W mov_esi_absmem(addr)
+#define mov_absmem_edi(addr) EMIT3(0x8B,0x3C,0x25)".int " #addr "\n"
+#define mov_edi_absmem(addr) EMIT3(0x89,0x3C,0x25)".int " #addr "\n"
+#define mov_absmem_rdi(addr) REX_W mov_absmem_edi(addr)
+#define mov_rdi_absmem(addr) REX_W mov_edi_absmem(addr)
+#define mov_absmem_r9d(addr) REX_R mov_absmem_ecx(addr)
+#define mov_r9d_absmem(addr) REX_R mov_ecx_absmem(addr)
+#define mov_absmem_r9(addr) REX_WR mov_absmem_ecx(addr)
+#define mov_r9_absmem(addr) REX_WR mov_ecx_absmem(addr)
+#define jmp_absmem(addr) EMIT3(0xFF,0x24,0x25)".int " #addr "\n"
+#define mov_neg1_rcx REX_W EMIT2(0xC7,0xC1)".int -1\n"
+#define call_x64_abs(addr) EB(0x9A) ".int " #addr "\n" EMIT2(0x33,0x0)
+
 __attribute__((naked)) static void prepare_for_exception_hook() {
     __asm__ volatile(
-        ".byte 0x8B, 0x04, 0x25 \n .int %c[except_to_slot]\n"
-        REX_R "movl 0x4C0(" rdx ")," r8d "\n"
-        "cmpl $0x40," eax "\n"
-        "jnb 1f\n"
-        FS_OVERRIDE REX_R "movl" r8d ",0xE10(," rax ",4)\n"
+        mov_absmem_eax(%c[except_to_slot])
+        REX_R "mov" B(MOB(0x4C0,rdx), R(r8d))
+        "cmp" B(I(0x40), R(eax))
+        "jnb 1f \n"
+        FS_OVERRIDE REX_R "mov" B(R(r8d), MOIS(0xE10,rax,4))
         "jmp 2f\n"
     "1:\n"
-        FS_OVERRIDE REX_R ".byte 0x8B, 0x0C, 0x25 \n .int 0x0F94\n"
-        REX_RB "movl" r8d ", -0x100(" r9 "," rax ",4)\n"
+        FS_OVERRIDE mov_absmem_r9d(0xF94)
+        REX_RB "mov" B(MOBIS(-0x100,r9,rax,4), R(r8d))
     "2:\n"
-        ".byte 0x8B, 0x04, 0x25 \n .int %c[except_from_slot]\n"
-        REX_R "movl 0x4C8(" rdx ")," r8d "\n"
-        "cmpl $0x40," eax "\n"
+        mov_absmem_eax(%c[except_from_slot])
+        REX_R "mov" B(MOB(0x4C8,rdx), R(r8d))
+        "cmp" B(I(0x40), R(eax))
         "jnb 1f\n"
-        FS_OVERRIDE REX_R "movl" r8d ", 0xE10(," rax ",4)\n"
+        FS_OVERRIDE REX_R "mov" B(R(r8d), MOIS(0xE10,rax,4))
         "jmp 2f\n"
     "1:\n"
-        FS_OVERRIDE REX_R ".byte 0x8B, 0x0C, 0x25 \n .int 0x0F94\n"
-        REX_RB "movl" r8d ", -0x100(" r9 "," rax ",4)\n"
-    "2: \n"
-        ".byte 0xFF, 0x24, 0x25 \n .int %c[func_ptr] \n"
-        "int3 \n"
+        FS_OVERRIDE mov_absmem_r9d(0xF94)
+        REX_RB "mov" B(MOBIS(-0x100,r9,rax,4), R(r8d))
+    "2:\n"
+        jmp_absmem(%c[func_ptr])
+#if !__clang__
+        "int3\n"
+#endif
         :
         :
         [except_to_slot]"i"(&exception_to_tls),
@@ -123,125 +210,123 @@ __attribute__((naked)) static void prepare_for_exception_hook() {
 }
 __attribute__((naked)) static void initialize_wow_exception_hooks() {
     __asm__ volatile (
-        GS_OVERRIDE REX_W ".byte 0x8B, 0x04, 0x25 \n .int 0x60\n"
-        REX_WR "movl 0x18(" rax ")," r9 "\n"
-        REX_WB "movl 0x10(" r9 ")," rdx "\n"
-        REX_WB "addl $0x10," r9 "\n"
-        "xorl" eax "," eax "\n"
-        REX_RB "xorl" r8d "," r8d "\n"
-        REX_RB "xorl" r11d "," r11d "\n"
+        GS_OVERRIDE mov_absmem_rax(0x60)
+        REX_WR "mov" B(MOB(0x18,rax), R(r9))
+        REX_WB "mov" B(MOB(0x10,r9), R(rdx))
+        REX_WB "add" B(I(0x10), R(r9))
+        "xor" B(R(eax), R(eax))
+        REX_RB "xor" B(R(r8d), R(r8d))
+        REX_RB "xor" B(R(r11d), R(r11d))
         "jmp 1f\n"
         "int3\n"
     "3:\n"
-        REX_W "movl 0x60(" rdx ")," rdi "\n"
-        "movl $18," ecx "\n"
-        "movl %[ntdll_name]," esi "\n"
+        REX_W "mov" B(MOB(0x60,rdx), R(rdi))
+        "mov" B(I(18), R(ecx))
+        "mov" B(O(%[ntdll_name]), R(esi))
         "repe cmpsb\n"
         "jne 3f\n"
-        REX_WR "movl 0x30(" rdx ")," r8 "\n"
-        REX_W "testl" rax "," rax "\n"
+        REX_WR "mov" B(MOB(0x30,rdx), R(r8))
+        REX_W "test" B(R(rax), R(rax))
         "jnz 4f\n"
     ".nops 5\n"
     "2:\n"
-        REX_W "movl (" rdx ")," rdx "\n"
-        REX_WR "cmpl" r9 "," rdx "\n"
+        REX_W "mov" B(MB(rdx), R(rdx))
+        REX_WR "cmp" B(R(r9), R(rdx))
         "je 9f\n"
     "1:\n"
-        "cmpw $18, 0x58(" rdx ")\n"
+        "cmp{w|}" BWD(I(18), MOB(0x58,rdx))
         "jne 2b\n"
-        REX_WRB "testl" r8 "," r8 "\n"
+        REX_WRB "test" B(R(r8), R(r8))
         "jz 3b\n"
     "3:\n"
-        REX_W "testl" rax "," rax "\n"
+        REX_W "test" B(R(rax), R(rax))
         "jnz 2b\n"
-        REX_W "movl 0x60(" rdx ")," rdi "\n"
-        "movl $18," ecx "\n"
-        "movl %[wow64_name]," esi "\n"
+        REX_W "mov" B(MOB(0x60,rdx), R(rdi))
+        "mov" B(I(18), R(ecx))
+        "mov" B(O(%[wow64_name]), R(esi))
         "repe cmpsb\n"
         "jne 2b\n"
-        REX_W "movl 0x30(" rdx ")," rax "\n"
-        REX_WRB "testl" r8 "," r8 "\n"
+        REX_W "mov" B(MOB(0x30,rdx), R(rax))
+        REX_WRB "test" B(R(r8), R(r8))
         "jz 2b\n"
     "4:\n"
-        "movl 0x3C(" rax ")," ecx "\n"
-        REX_R "movl 0x88(" rcx "," rax ")," r9d "\n"
-        REX_B "movl 0x18(" r9 "," rax ")," edx "\n"
-        REX_RB "movl 0x20(" r9 "," rax ")," r10d "\n"
-        REX_WB "addl" rax "," r10 "\n"
+        "mov" B(MOB(0x3C,rax), R(ecx))
+        REX_R "mov" B(MOBI(0x88,rcx,rax), R(r9d))
+        REX_B "mov" B(MOBI(0x18,r9,rax), R(edx))
+        REX_RB "mov" B(MOBI(0x20,r9,rax), R(r10d))
+        REX_WB EMIT2(0x01,0xC2) // add %%rax, %%r10
     "1:\n"
-        "subl $1," edx "\n"
+        "sub" B(I(1), R(edx))
         "jb 9f\n"
-        REX_B "movl (" r10 "," rdx ",4)," edi "\n"
-        REX_W "addl" rax "," rdi "\n"
-        "movl $25," ecx "\n"
-        "movl %[prepare_exception_name]," esi "\n"
+        REX_B "mov" B(MBIS(r10,rdx,4), R(edi))
+        REX_W "add" B(R(rax), R(rdi))
+        "mov" B(I(25), R(ecx))
+        "mov" B(O(%[prepare_exception_name]), R(esi))
         "repe cmpsb\n"
         "jne 1b\n"
-        REX_B "movl 0x1C(" r9 "," rax ")," ecx "\n"
-        REX_B "movl 0x24(" r9 "," rax ")," esi "\n"
-        REX_W "addl" rax "," rsi "\n"
-        "movzwl (" rsi "," rdx ",2)," edx "\n"
-        REX_W "addl" rax "," rcx "\n"
-        "movl (" rcx "," rdx ",4)," edi "\n"
-        REX_W "addl" rdi "," rax "\n"
-        REX_B "movl 0x3C(" r8 ")," edx "\n"
-        REX_RX "movl 0x88(" rdx "," r8 ")," r9d "\n"
-        REX_WR "addl" r8 "," rdx "\n"
-        REX_RXB "movl 0x18(" r9 "," r8 ")," r11d "\n"
-        REX_RXB "movl 0x20(" r9 "," r8 ")," r10d "\n"
-        REX_WRB "addl" r8 "," r10 "\n"
+        REX_B "mov" B(MOBI(0x1C,r9,rax), R(ecx))
+        REX_B "mov" B(MOBI(0x24,r9,rax), R(esi))
+        REX_W "add" B(R(rax), R(rsi))
+        "movz{w|x}" BWS(MBIS(rsi,rdx,2), R(edx))
+        REX_W "add" B(R(rax), R(rcx))
+        "mov" B(MBIS(rcx,rdx,4), R(edi))
+        REX_W "add" B(R(rdi), R(rax))
+        REX_B "mov" B(MOB(0x3C,r8), R(edx))
+        REX_RX "mov" B(MOBI(0x88,rdx,r8), R(r9d))
+        REX_WR EMIT2(0x01,0xC2) // add %%r8, %%rdx
+        REX_RXB "mov" B(MOBI(0x18,r9,r8), R(r11d))
+        REX_RXB "mov" B(MOBI(0x20,r9,r8), R(r10d))
+        REX_WRB "add" B(R(r8), R(r10))
     ".nops 6\n"
     ".nops 6\n"
     "1:\n"
-        REX_B "subl $1," r11d "\n"
+        REX_B "sub" B(I(1), R(r11d))
         "jb 9f\n"
-        REX_XB "movl (" r10 "," r11 ",4)," edi "\n"
-        REX_WR "addl" r8 "," rdi "\n"
-        "movl $23," ecx "\n"
-        "movl %[protect_memory_name]," esi "\n"
+        REX_XB "mov" B(MBIS(r10,r11,4), R(edi))
+        REX_WR EMIT2(0x01,0xC7) // add %%r8, %%rdi
+        "mov" B(I(23), R(ecx))
+        "mov" B(O(%[protect_memory_name]), R(esi))
         "repe cmpsb\n"
         "jne 1b\n"
-        REX_XB "movl 0x1C(" r9 "," r8 ")," ecx "\n"
-        REX_XB "movl 0x24(" r9 "," r8 ")," edi "\n"
-        REX_WR "addl" r8 "," rdi "\n"
-        REX_X "movzwl (" rdi "," r11 ",2)," esi "\n"
-        REX_WR "addl" r8 "," rcx "\n"
-        REX_R "movl (" rcx "," rsi ",4)," r9d "\n"
-        REX_WRB "addl" r8 "," r9 "\n"
-        "movzwl 0x14(" rdx ")," esi "\n"
-        REX_W "addl" rdx "," rsi "\n"
-        "movzwl 0x6(" rdx ")," edx "\n"
-        REX_RB "xorl" r11d "," r11d "\n"
+        REX_XB "mov" B(MOBI(0x1C,r9,r8), R(ecx))
+        REX_XB "mov" B(MOBI(0x24,r9,r8), R(edi))
+        REX_WR EMIT2(0x01,0xC7) // add %%r8, %%rdi
+        REX_X "movz{w|x}" BWS(MBIS(rdi,r11,2), R(esi))
+        REX_WR EMIT2(0x01,0xC1) // add %%r8, %%rcx
+        REX_R "mov" B(MBIS(rcx,rsi,4), R(r9d))
+        REX_WRB "add" B(R(r8), R(r9))
+        "movz{w|x}" BWS(MOB(0x14,rdx), R(esi))
+        REX_W "add" B(R(rdx), R(rsi))
+        "movz{w|x}" BWS(MOB(0x6,rdx), R(edx))
+        REX_RB "xor" B(R(r11d), R(r11d))
         "jmp 1f\n"
-        "int3\n"
-        "int3\n"
-        "int3\n"
-        "int3\n"
-        "int3\n"
+        "int3\nint3\nint3\nint3\nint3\n"
     "2:\n"
-        REX_W "addl $0x28," rsi "\n"
-        ".byte 0xFF, 0xCA \n"
+        REX_W "add" B(I(0x28), R(rsi))
+        EMIT2(0xFF,0xCA) // dec %%edx
         "jz 9f\n"
     "1:\n"
-        "movzbl 0x3F(" rsi ")," ecx "\n"
-        "andb $0x60," cl "\n"
-        "cmpb $0x40," cl "\n"
+        "movz{b|x}" BBS(MOB(0x3F,rsi), R(ecx))
+        "and" B(I(0x60), R(cl))
+        "cmp" B(I(0x40), R(cl))
         "jne 2b\n"
-        "movl 0x20(" rsi ")," ecx "\n"
-        "movl 0x24(" rsi ")," edi "\n"
-        REX_WR "addl" r8 "," rdi "\n"
-        "shrl $3," ecx "\n"
-        ".byte 0xF2, 0x48, 0xAF\n"
+        "mov" B(MOB(0x20,rsi), R(ecx))
+        "mov" B(MOB(0x24,rsi), R(edi))
+        REX_WR EMIT2(0x01,0xC7) // add %%r8, %%rdi
+        "shr" B(I(3), R(ecx))
+        REPNE REX_W "scas{l|d}\n"
         "jne 2b\n"
-        REX_W ".byte 0x89, 0x04, 0x25 \n .int %c[prepare_addr]\n"
-        REX_WR ".byte 0x89, 0x0C, 0x25 \n .int %c[protect_addr]\n"
-        REX_W "addl $-8," rdi "\n"
-        REX_W ".byte 0x89, 0x3C, 0x25 \n .int %c[func_ptr_addr]\n"
-        REX_B "movl $1," r11d "\n"
-    "9: \n"
-        REX_R "movl" r11d "," eax "\n"
+        mov_rax_absmem(%c[prepare_addr])
+        mov_r9_absmem(%c[protect_addr])
+        REX_W "add" B(I(-8), R(rdi))
+        mov_rdi_absmem(%c[func_ptr_addr])
+        REX_B "mov" B(I(1), R(r11d))
+    "9:\n"
+        REX_R "mov" B(R(r11d), R(eax))
         "lret\n"
+#if !__clang__
         "int3\n"
+#endif
         :
         :
         [ntdll_name]"i"(&NTDLL_NAME),
@@ -256,45 +341,47 @@ __attribute__((naked)) static void initialize_wow_exception_hooks() {
 __attribute__((always_inline)) static inline int32_t initialize_wow_exception_hooks_thunk() {
     int32_t ret;
     __asm__ volatile (
-        "lcall %[Seg],%[Addr]"
+        call_x64_abs(%c[Addr])
         : "=a"(ret), "=m"(original_prepare_addr), "=m"(nt_virtual_protect_addr), "=m"(ntdll_pointer_addr)
-        : [Seg]"i"(0x33), [Addr]"i"(&initialize_wow_exception_hooks)
+        : [Addr]"i"(&initialize_wow_exception_hooks)
         : "ecx", "edx", "esi", "edi", "flags"
     );
     return ret;
 }
 __attribute__((naked)) static void hook_prepare_pointer() {
     __asm__ volatile(
-        "movl" esp "," ebx "\n"
-        "subl $0x40," esp "\n"
-        "andl $-0x10," esp "\n"
-        REX_W ".byte 0x8B, 0x3C, 0x25 \n .int %c[func_ptr_addr]\n"
-        REX_W "movl" rdi ", 0x38(" rsp ")\n"
-        REX_W "movl $8, 0x30(" rsp ")\n"
-        REX_W ".byte 0x8B, 0x34, 0x25 \n .int %c[protect_addr]\n"
-        "leal 0x2C(" rsp ")," eax "\n"
-        REX_W "movl" rax ", 0x20(" rsp ")\n"
-        "leal 0x38(" rsp ")," edx "\n"
-        REX_R "leal 0x30(" rsp ")," r8d "\n"
-        REX_W ".byte 0xC7, 0xC1 \n .int -1\n"
-        REX_B "movl $4," rcx "\n"
-        "calll *" rsi "\n"
-        "testl" eax "," eax "\n"
+        "mov" B(R(esp), R(ebx))
+        "sub" B(I(0x40), R(esp))
+        "and" B(I(-0x10), R(esp))
+        mov_absmem_rdi(%c[func_ptr_addr])
+        REX_W "mov" B(R(rdi), MOB(0x38,rsp))
+        REX_W "mov{l|}" BQD(I(8), MOB(0x30,rsp))
+        mov_absmem_rsi(%c[protect_addr])
+        "lea" B(MOB(0x2C,rsp), R(eax))
+        REX_W "mov" B(R(rax), MOB(0x20,rsp))
+        "lea" B(MOB(0x38,rsp), R(edx))
+        REX_R "lea" B(MOB(0x30,rsp), R(r8d))
+        mov_neg1_rcx
+        REX_B "mov" B(I(4), R(r9d))
+        "call{ *%%|} " rsi "\n"
+        "test" B(R(eax), R(eax))
         "js 1f\n"
-        "movl %[new_func]," eax "\n"
-        REX_W "xchgl" rax ", (" rdi ")\n"
-        REX_R "movl 0x2C(" rsp ")," r9d "\n"
-        "leal 0x2C(" rsp ")," eax "\n"
-        REX_W "movl" rax ", 0x20(" rsp ")\n"
-        "leal 0x38(" rsp ")," edx "\n"
-        REX_R "leal 0x30(" rsp ")," r8d "\n"
-        REX_W ".byte 0xC7, 0xC1 \n .int -1\n"
-        "calll *" rsi "\n"
-        "xorl" eax "," eax "\n"
+        "mov" B(O(%[new_func]), R(eax))
+        REX_W "xchg" B(R(rax), MB(rdi))
+        REX_R "mov" B(MOB(0x2C,rsp), R(r9d))
+        "lea" B(MOB(0x2C,rsp), R(eax))
+        REX_W "mov" B(R(rax), MOB(0x20,rsp))
+        "lea" B(MOB(0x30,rsp), R(edx))
+        REX_R "lea" B(MOB(0x30,rsp), R(r8d))
+        mov_neg1_rcx
+        "call{ *%%|} " rsi "\n"
+        "xor" B(R(eax), R(eax))
     "1:\n"
-        "movl" ebx "," esp "\n"
+        "mov" B(R(ebx), R(esp))
         "lret\n"
+#if !__clang__
         "int3\n"
+#endif
         :
         :
         [func_ptr_addr]"i"(&ntdll_pointer_addr),
@@ -305,45 +392,47 @@ __attribute__((naked)) static void hook_prepare_pointer() {
 __attribute__((always_inline)) static inline int32_t hook_prepare_pointer_thunk() {
     int32_t ret;
     __asm__ volatile (
-        "lcall %[Seg],%[Addr]"
+        call_x64_abs(%c[Addr])
         : "=a"(ret)
-        : [Seg]"i"(0x33), [Addr]"i"(&hook_prepare_pointer)
+        : [Addr]"i"(&hook_prepare_pointer)
         : "ecx", "edx", "ebx", "esi", "edi", "flags"
     );
     return ret;
 }
 __attribute__((naked)) static void unhook_prepare_pointer() {
     __asm__ volatile(
-        "movl" esp "," ebx "\n"
-        "subl $0x40," esp "\n"
-        "andl $-0x10," esp "\n"
-        REX_W ".byte 0x8B, 0x3C, 0x25 \n .int %c[func_ptr_addr]\n"
-        REX_W "movl" rdi ", 0x38(" rsp ")\n"
-        REX_W "movl $8, 0x30(" rsp ")\n"
-        REX_W ".byte 0x8B, 0x34, 0x25 \n .int %c[protect_addr]\n"
-        "leal 0x2C(" rsp ")," eax "\n"
-        REX_W "movl" rax ", 0x20(" rsp ")\n"
-        "leal 0x38(" rsp ")," edx "\n"
-        REX_R "leal 0x30(" rsp ")," r8d "\n"
-        REX_W ".byte 0xC7, 0xC1 \n .int -1\n"
-        REX_B "movl $4," r9d "\n"
-        "calll *" rsi "\n"
-        "testl" eax "," eax "\n"
+        "mov" B(R(esp), R(ebx))
+        "sub" B(I(0x40), R(esp))
+        "and" B(I(-0x10), R(esp))
+        mov_absmem_rdi(%c[func_ptr_addr])
+        REX_W "mov" B(R(rdi), MOB(0x38,rsp))
+        REX_W "mov{l|}" BQD(I(8), MOB(0x30,rsp))
+        mov_absmem_rsi(%c[protect_addr])
+        "lea" B(MOB(0x2C,rsp), R(eax))
+        REX_W "mov" B(R(rax), MOB(0x20,rsp))
+        "lea" B(MOB(0x38,rsp), R(edx))
+        REX_R "lea" B(MOB(0x30,rsp), R(r8d))
+        mov_neg1_rcx
+        REX_B "mov" B(I(4), R(r9d))
+        "call{ *%%|} " rsi "\n"
+        "test" B(R(eax), R(eax))
         "js 1f\n"
-        ".byte 0x8B, 0x04, 0x25 \n .int %c[original_func]\n"
-        REX_W "xchgl" rax ", (" rdi ")\n"
-        REX_R "movl 0x2C(" rsp ")," r9d "\n"
-        "leal 0x2C(" rsp ")," eax "\n"
-        REX_W "movl" rax ", 0x20(" rsp ")\n"
-        "leal 0x38(" rsp ")," edx "\n"
-        REX_R "leal 0x30(" rsp ")," r8d "\n"
-        REX_W ".byte 0xC7, 0xC1 \n .int -1\n"
-        "calll *" rsi "\n"
-        "xorl" eax "," eax "\n"
+        mov_absmem_rax(%c[original_func])
+        REX_W "xchg" B(R(rax), MB(rdi))
+        REX_R "mov" B(MOB(0x2C,rsp), R(r9d))
+        "lea" B(MOB(0x2C,rsp), R(eax))
+        REX_W "mov" B(R(rax), MOB(0x20,rsp))
+        "lea" B(MOB(0x38,rsp), R(edx))
+        REX_R "lea" B(MOB(0x30,rsp), R(r8d))
+        mov_neg1_rcx
+        "call{ *%%|} " rsi "\n"
+        "xor" B(R(eax), R(eax))
     "1:\n"
-        "movl" ebx "," esp "\n"
+        "mov" B(R(ebx), R(esp))
         "lret\n"
+#if !__clang__
         "int3\n"
+#endif
         :
         :
         [func_ptr_addr]"i"(&ntdll_pointer_addr),
@@ -354,9 +443,9 @@ __attribute__((naked)) static void unhook_prepare_pointer() {
 __attribute__((always_inline)) static inline int32_t unhook_prepare_pointer_thunk() {
     int32_t ret;
     __asm__ volatile (
-        "lcall %[Seg],%[Addr]"
+        call_x64_abs(%c[Addr])
         : "=a"(ret)
-        : [Seg]"i"(0x33), [Addr]"i"(&unhook_prepare_pointer)
+        : [Addr]"i"(&unhook_prepare_pointer)
         : "ecx", "edx", "ebx", "esi", "edi", "flags"
     );
     return ret;
@@ -366,26 +455,7 @@ struct FarPointer {
     void* addr;
     uint16_t segment;
 };
-#define FS_OVERRIDE __asm _emit 0x64 __asm
-#define GS_OVERRIDE __asm _emit 0x65 __asm
-#define DATASIZE __asm _emit 0x66 __asm
-#define ADDRSIZE __asm _emit 0x67 __asm
-#define REX __asm INC EAX __asm
-#define REX_B __asm INC ECX __asm
-#define REX_X __asm INC EDX __asm
-#define REX_XB __asm INC EBX __asm
-#define REX_R __asm INC ESP __asm
-#define REX_RB __asm INC EBP __asm
-#define REX_RX __asm INC ESI __asm
-#define REX_RXB __asm INC EDI __asm
-#define REX_W __asm DEC EAX __asm
-#define REX_WB __asm DEC ECX __asm
-#define REX_WX __asm DEC EDX __asm
-#define REX_WXB __asm DEC EBX __asm
-#define REX_WR __asm DEC ESP __asm
-#define REX_WRB __asm DEC EBP __asm
-#define REX_WRX __asm DEC ESI __asm
-#define REX_WRXB __asm DEC EDI __asm
+#define EB(b) __asm _emit b
 #define RAX EAX
 #define RCX ECX
 #define RDX EDX
@@ -410,14 +480,7 @@ __declspec(naked) static void prepare_for_exception_hook() {
         FS_OVERRIDE REX_R MOV DWORD PTR [RAX*4+0xE10], R8D
         JMP tls_except_from
     ext_tls_except_to:
-        FS_OVERRIDE REX_R
-        _emit 0x8B
-        _emit 0x0C
-        _emit 0x25
-        _emit 0x94
-        _emit 0x0F
-        _emit 0x00
-        _emit 0x00
+        FS_OVERRIDE REX_R EMIT7(0x8B,0x0C,0x25,0x94,0x0F,0x00,0x00) // MOV R9D, DWORD PTR [0xF94]
         REX_RB MOV DWORD PTR [RAX*4+R9-0x100], R8D
     tls_except_from:
         ADDRSIZE MOV EAX, DWORD PTR [exception_from_tls]
@@ -427,14 +490,7 @@ __declspec(naked) static void prepare_for_exception_hook() {
         FS_OVERRIDE REX_R MOV DWORD PTR [RAX*4+0xE10], R8D
         JMP call_original_prepare
     ext_tls_except_from:
-        FS_OVERRIDE REX_R
-        _emit 0x8B
-        _emit 0x0C
-        _emit 0x25
-        _emit 0x94
-        _emit 0x0F
-        _emit 0x00
-        _emit 0x00
+        FS_OVERRIDE REX_R EMIT7(0x8B,0x0C,0x25,0x94,0x0F,0x00,0x00) // MOV R9D, DWORD PTR [0xF94]
         REX_RB MOV DWORD PTR [RAX*4+R9-0x100], R8D
     call_original_prepare:
         ADDRSIZE REX_W MOV RAX, QWORD PTR [original_prepare_addr]
@@ -443,14 +499,7 @@ __declspec(naked) static void prepare_for_exception_hook() {
 }
 __declspec(naked) static void initialize_wow_exception_hooks() {
     __asm {
-        GS_OVERRIDE REX_W
-        _emit 0x8B
-        _emit 0x04
-        _emit 0x25
-        _emit 0x60
-        _emit 0x00
-        _emit 0x00
-        _emit 0x00
+        GS_OVERRIDE REX_W EMIT7(0x8B,0x04,0x25,0x60,0x00,0x00,0x00) // MOV RAX, QWORD PTR GS:[0x60]
         REX_WR MOV R9, QWORD PTR [RAX+0x18]
         REX_WB MOV RDX, QWORD PTR [R9+0x10]
         REX_WB ADD R9, 0x10
@@ -468,11 +517,7 @@ __declspec(naked) static void initialize_wow_exception_hooks() {
         REX_WR MOV R8, QWORD PTR [RDX+0x30]
         REX_W TEST RAX, RAX
         JNZ both_modules_found
-        _emit 0x0F
-        _emit 0x1F
-        _emit 0x44
-        _emit 0x00
-        _emit 0x00
+        EMIT5(0x0F,0x1F,0x44,0x00,0x00) // NOP
     next_module:
         REX_W MOV RDX, QWORD PTR [RDX]
         REX_WR CMP RDX, R9
@@ -495,58 +540,48 @@ __declspec(naked) static void initialize_wow_exception_hooks() {
         JZ next_module
     both_modules_found:
         MOV ECX, DWORD PTR [RAX+0x3C]
-        REX_R MOV R9D, DWORD PTR [RCX+RAX+0x88]
-        REX_B MOV EDX, DWORD PTR [R9+RAX+0x18]
-        REX_RB MOV R10D, DWORD PTR [R9+RAX+0x20]
-        REX_WR ADD R10, RAX
+        REX_R EMIT7(0x8B,0x8C,0x01,0x88,0x00,0x00,0x00) // MOV R9D, DWORD PTR [RAX*1+RCX+0x88]
+        REX_B EMIT4(0x8B,0x54,0x01,0x18) // MOV EDX, DWORD PTR [RAX*1+R9+0x18]
+        REX_RB EMIT4(0x8B,0x54,0x01,0x20) // MOV R10D, DWORD PTR [RAX*1+R9+0x20]
+        REX_WB EMIT2(0x01,0xC2) // ADD R10, RAX
     next_wow64_export:
         SUB EDX, 1
         JC initialize_hook_fail
-        REX_B MOV EDI, DWORD PTR [RDX*4+R10]
+        REX_B EMIT3(0x8B,0x3C,0x92) // MOV EDI, DWORD PTR [RDX*4+R10]
         REX_W ADD RDI, RAX
         MOV ECX, 25
         MOV ESI, OFFSET PREPARE_EXCEPTION_NAME
         REPE CMPSB
         JNE next_wow64_export
-        REX_B MOV ECX, DWORD PTR [R9+RAX+0x1C]
-        REX_B MOV ESI, DWORD PTR [R9+RAX+0x24]
+        REX_B EMIT4(0x8B,0x4C,0x01,0x1C) // MOV ECX, DWORD PTR [RAX*1+R9+0x1C]
+        REX_B EMIT4(0x8B,0x74,0x01,0x24) // MOV ESI, DWORD PTR [RAX*1+R9+0x1C]
         REX_W ADD RSI, RAX
         MOVZX EDX, WORD PTR [RDX*2+RSI]
         REX_W ADD RCX, RAX
         MOV EDI, DWORD PTR [RDX*4+RCX]
         REX_W ADD RAX, RDI
         REX_B MOV EDX, DWORD PTR [R8+0x3C]
-        REX_RX MOV R9D, DWORD PTR [RDX+R8+0x88]
-        REX_WB ADD RDX, R8
-        REX_RXB MOV R11D, DWORD PTR [R9+R8+0x18]
-        REX_RXB MOV R10D, DWORD PTR [R9+R8+0x20]
+        REX_RX EMIT7(0x8B,0x8C,0x02,0x88,0x00,0x00,0x00) // MOV R9D, DWORD PTR [R8*1+RDX+0x88]
+        REX_WB EMIT2(0x01,0xC2) // ADD RDX, R8
+        REX_RXB EMIT4(0x8B,0x5C,0x01,0x18) // MOV R11D, DWORD PTR [R8*1+R9+0x18]
+        REX_RXB EMIT4(0x8B,0x54,0x01,0x20) // MOV R10D, DWORD PTR [R8*1+R9+0x20]
         REX_WRB ADD R10, R8
-        _emit 0x66
-        _emit 0x0F
-        _emit 0x1F
-        _emit 0x44
-        _emit 0x00
-        _emit 0x00
-        _emit 0x66
-        _emit 0x0F
-        _emit 0x1F
-        _emit 0x44
-        _emit 0x00
-        _emit 0x00
+        EMIT6(0x66,0x0F,0x1F,0x44,0x00,0x00) // NOP
+        EMIT6(0x66,0x0F,0x1F,0x44,0x00,0x00) // NOP
     next_ntdll_export:
         REX_B SUB R11D, 1
         JC initialize_hook_fail
         REX_XB MOV EDI, DWORD PTR [R11*4+R10]
-        REX_WB ADD RDI, R8
+        REX_WR EMIT2(0x01,0xC7) // ADD RDI, R8
         MOV ECX, 23
         MOV ESI, OFFSET PROTECT_MEMORY_NAME
         REPE CMPSB
         JNE next_ntdll_export
-        REX_XB MOV ECX, DWORD PTR [R9+R8+0x1C]
-        REX_XB MOV EDI, DWORD PTR [R9+R8*1+0x24]
-        REX_WB ADD RDI, R8
+        REX_XB EMIT4(0x8B,0x4C,0x01,0x1C) // MOV ECX, DWORD PTR [R8*1+R9+0x1C]
+        REX_XB EMIT4(0x8B,0x7C,0x01,0x24) // MOV EDI, DWORD PTR [R8*1+R9+0x24]
+        REX_WR EMIT2(0x01,0xC7) // ADD RDI, R8
         REX_X MOVZX ESI, WORD PTR [R11*2+RDI]
-        REX_WB ADD RCX, R8
+        REX_WB EMIT2(0x01,0xC1) // ADD RCX, R8
         REX_R MOV R9D, DWORD PTR [RSI*4+RCX]
         REX_WRB ADD R9, R8
         MOVZX ESI, WORD PTR [RDX+0x14]
@@ -561,8 +596,7 @@ __declspec(naked) static void initialize_wow_exception_hooks() {
         INT 3
     next_section:
         REX_W ADD RSI, 0x28
-        _emit 0xFF
-        _emit 0xCA
+        EMIT2(0xFF,0xCA) // DEC EDX
         JZ initialize_hook_fail
     start_section_loop:
         MOVZX ECX, BYTE PTR [RSI+0x3F]
@@ -573,9 +607,7 @@ __declspec(naked) static void initialize_wow_exception_hooks() {
         MOV EDI, DWORD PTR [RSI+0x24]
         REX_WB ADD RDI, R8
         SHR ECX, 3
-        _emit 0xF2
-        _emit 0x48
-        _emit 0xAF
+        REPNE REX_W SCASD
         JNE next_section
         MOV EDX, OFFSET original_prepare_addr
         REX_W MOV QWORD PTR [RDX], RAX
@@ -613,13 +645,7 @@ __declspec(naked) static void hook_prepare_pointer() {
         REX_W MOV QWORD PTR [RSP+0x20], RAX
         LEA EDX, [RSP+0x38]
         REX_R LEA R8D, [RSP+0x30]
-        REX_W
-        _emit 0xC7
-        _emit 0xC1
-        _emit 0xFF
-        _emit 0xFF
-        _emit 0xFF
-        _emit 0xFF
+        REX_W EMIT6(0xC7,0xC1,0xFF,0xFF,0xFF,0xFF) // MOV RCX, -1
         REX_B MOV R9D, 4
         CALL RSI
         TEST EAX, EAX
@@ -631,13 +657,7 @@ __declspec(naked) static void hook_prepare_pointer() {
         REX_W MOV QWORD PTR [RSP+0x20], RAX
         LEA EDX, [RSP+0x38]
         REX_R LEA R8D, [RSP+0x30]
-        REX_W
-        _emit 0xC7
-        _emit 0xC1
-        _emit 0xFF
-        _emit 0xFF
-        _emit 0xFF
-        _emit 0xFF
+        REX_W EMIT6(0xC7,0xC1,0xFF,0xFF,0xFF,0xFF) // MOV RCX, -1
         CALL RSI
         XOR EAX, EAX
     hook_fail:
@@ -669,13 +689,7 @@ __declspec(naked) static void unhook_prepare_pointer() {
         REX_W MOV QWORD PTR [RSP+0x20], RAX
         LEA EDX, [RSP+0x38]
         REX_R LEA R8D, [RSP+0x30]
-        REX_W
-        _emit 0xC7
-        _emit 0xC1
-        _emit 0xFF
-        _emit 0xFF
-        _emit 0xFF
-        _emit 0xFF
+        REX_W EMIT6(0xC7,0xC1,0xFF,0xFF,0xFF,0xFF) // MOV RCX, -1
         REX_B MOV R9D, 4
         CALL RSI
         TEST EAX, EAX
@@ -687,13 +701,7 @@ __declspec(naked) static void unhook_prepare_pointer() {
         REX_W MOV QWORD PTR [RSP+0x20], RAX
         LEA EDX, [RSP+0x38]
         REX_R LEA R8D, [RSP+0x30]
-        REX_W
-        _emit 0xC7
-        _emit 0xC1
-        _emit 0xFF
-        _emit 0xFF
-        _emit 0xFF
-        _emit 0xFF
+        REX_W EMIT6(0xC7,0xC1,0xFF,0xFF,0xFF,0xFF) // MOV RCX, -1
         CALL RSI
         XOR EAX, EAX
     hook_fail:
@@ -727,82 +735,90 @@ static bool initialize_last_branch_tracking() {
         BOOL is_wow64;
         if (
             IsWow64Process_ptr &&
-            IsWow64Process_ptr((HANDLE)~(uintptr_t)0, &is_wow64) &&
+            IsWow64Process_ptr(CURRENT_PROCESS_HANDLE, &is_wow64) &&
             is_wow64
-        ) {
+        )
+#endif
+        {
             NtQueryInformationThread_t* NtQueryInformationThread_temp = (NtQueryInformationThread_t*)GetProcAddress(ntdll, "NtQueryInformationThread");
             if (NtQueryInformationThread_temp) {
                 NtQueryInformationThread_ptr = NtQueryInformationThread_temp;
-                DWORD exception_to_tls_temp = TlsAlloc();
+                uint32_t exception_to_tls_temp = TlsAlloc();
                 if (exception_to_tls_temp != TLS_OUT_OF_INDEXES) {
-                    DWORD exception_from_tls_temp = TlsAlloc();
+                    uint32_t exception_from_tls_temp = TlsAlloc();
                     if (exception_from_tls_temp != TLS_OUT_OF_INDEXES) {
-                        if (initialize_wow_exception_hooks_thunk() > 0) {
+#if !_M_X64 && !__x86_64__
+                        if (initialize_wow_exception_hooks_thunk() > 0)
+#endif
+                        {
                             exception_to_tls = exception_to_tls_temp;
                             exception_from_tls = exception_from_tls_temp;
-#endif
-                            {
-                                last_branch_functional = true;
-                                return true;
-                            }
-#if !_M_X64 && !__x86_64__
+                            last_branch_functional = true;
+                            return true;
                         }
+#if !_M_X64 && !__x86_64__
                         TlsFree(exception_from_tls_temp);
+#endif
                     }
                     TlsFree(exception_to_tls_temp);
                 }
             }
         }
-#endif
     }
     return false;
+}
+
+static inline bool hook_exceptions() {
+#if _M_X64 || __x86_64__
+    PVOID handle = AddVectoredExceptionHandler(1, log_branch_records);
+    vector_handle = handle;
+    return handle != NULL;
+#else
+    return hook_prepare_pointer_thunk() >= 0;
+#endif
 }
 
 bool last_branch_tracking_hook() {
-    if (initialize_last_branch_tracking()) {
-#if !_M_X64 && !__x86_64__
-        if (hook_prepare_pointer_thunk() >= 0)
+    return initialize_last_branch_tracking() &&
+           hook_exceptions();
+}
+
+static inline bool unhook_exceptions() {
+#if _M_X64 || __x86_64__
+    PVOID handle = vector_handle;
+    vector_handle = NULL;
+    return RemoveVectoredExceptionHandler(handle) != 0;
+#else
+    return hook_prepare_pointer_thunk() >= 0;
 #endif
-        {
-            return true;
-        }
-    }
-    return false;
 }
 
 bool last_branch_tracking_unhook() {
-    if (last_branch_functional) {
-#if !_M_X64 && !__x86_64__
-        if (unhook_prepare_pointer_thunk() >= 0)
-#endif
-        {
-            return true;
-        }
-    }
-    return false;
+    return last_branch_functional &&
+           unhook_exceptions();
 }
 
-bool last_branch_tracking_start() {
+bool last_branch_tracking_start(HANDLE thread) {
     if (last_branch_functional) {
         CONTEXT context;
         context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-        GetThreadContext((HANDLE)~(uintptr_t)1, &context);
+        GetThreadContext(thread, &context);
         context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
         context.Dr7 |= 0x100;
-        SetThreadContext((HANDLE)~(uintptr_t)1, &context);
+        SetThreadContext(thread, &context);
         return true;
     }
     return false;
 }
 
-bool last_branch_tracking_stop() {
+bool last_branch_tracking_stop(HANDLE thread) {
     if (last_branch_functional) {
         CONTEXT context;
         context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-        GetThreadContext((HANDLE)~(uintptr_t)1, &context);
+        GetThreadContext(thread, &context);
         context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
         context.Dr7 &= ~0x100;
-        SetThreadContext((HANDLE)~(uintptr_t)1, &context);
+        SetThreadContext(thread, &context);
         return true;
     }
     return false;
@@ -810,49 +826,26 @@ bool last_branch_tracking_stop() {
 
 uintptr_t last_branch_exception_to(HANDLE thread) {
     if (last_branch_functional) {
-#if _M_X64 || __x86_64__
-        CONTEXT context;
-        context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-        GetThreadContext(thread, &context);
-        return context.LastExceptionToRip;
-#else
         struct THREAD_BASIC_INFORMATION_t thread_info;
         if (NtQueryInformationThread_ptr(thread, 0, &thread_info, sizeof(thread_info), NULL) >= 0) {
             return get_tls_slot(thread_info.TebBaseAddress, exception_to_tls);
         }
-#endif
     }
     return 0;
 }
 
 uintptr_t last_branch_exception_from(HANDLE thread) {
     if (last_branch_functional) {
-#if _M_X64 || __x86_64__
-        CONTEXT context;
-        context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-        GetThreadContext(thread, &context);
-        return context.LastExceptionFromRip;
-#else
         struct THREAD_BASIC_INFORMATION_t thread_info;
         if (NtQueryInformationThread_ptr(thread, 0, &thread_info, sizeof(thread_info), NULL) >= 0) {
             return get_tls_slot(thread_info.TebBaseAddress, exception_from_tls);
         }
-#endif
     }
     return 0;
 }
 
 LastBranchPair_t last_branch_get_exceptions(HANDLE thread) {
     if (last_branch_functional) {
-#if _M_X64 || __x86_64__
-        CONTEXT context;
-        context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-        GetThreadContext(thread, &context);
-        return {
-            context.LastExceptionToRip,
-            context.LastExceptionFromRip
-        };
-#else
         struct THREAD_BASIC_INFORMATION_t thread_info;
         if (NtQueryInformationThread_ptr(thread, 0, &thread_info, sizeof(thread_info), NULL) >= 0) {
             return {
@@ -860,7 +853,6 @@ LastBranchPair_t last_branch_get_exceptions(HANDLE thread) {
                 get_tls_slot(thread_info.TebBaseAddress, exception_from_tls)
             };
         }
-#endif
     }
     return { 0, 0 };
 }

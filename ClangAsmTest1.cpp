@@ -73,6 +73,7 @@ static inline constexpr const float NTWO_PI_f = -2.0f * M_PI;
 static inline constexpr float RECIP_TWO_PI_f = 1.0f / (2.0f * M_PI);
 
 static inline constexpr double TWO_PI_d = 2.0 * M_PI;
+static inline constexpr double RECIP_TWO_PI_d = 1.0 / (2.0 * M_PI);
 
 //#if !__has_builtin(__builtin_bit_cast)
 //#define __builtin_bit_cast(type, value) ((type)value)
@@ -410,7 +411,7 @@ static constexpr MXCSR mxcsr_table[countof(rounding_table)] = {
 	0x00001F80, 0x00003F80, 0x00005F80, 0x00007F80
 };
 
-#if !IS_X64
+#if !IS_X64 && 0
 
 template<typename T, typename L1, typename L2>
 dllexport gnu_noinline void vectorcall ultimate_float_reduce_test(T& success_counts, long double divisor, L1 funcA, L2 funcB) {
@@ -1244,9 +1245,10 @@ dllexport gnu_noinline void cdecl EoSDMultiFuncs::eosd_multi_setup_patch_init() 
 #ifndef __x86_64__
 	GetProcAddressPtr get_proc_address_shim;
 	asm(
-		"MOVL %1, %[get_proc_address_shim]"
+		//"MOVL %1, %[get_proc_address_shim]"
+		""
 		: asm_arg("=r", get_proc_address_shim)
-		: "i"(&th_GetProcAddress)
+		//: "i"(&th_GetProcAddress)
 	);
 #else
 	GetProcAddressPtr get_proc_address_shim = &th_GetProcAddress;
@@ -1308,9 +1310,10 @@ dllexport gnu_noinline void cdecl EoSDMultiFuncs::eosd_multi_setup_patch_init2()
 #ifndef __x86_64__
 	GetProcAddressPtr get_proc_address_shim;
 	asm(
-		"MOVL %1, %[get_proc_address_shim]"
+		//"MOVL %1, %[get_proc_address_shim]"
+		""
 		: asm_arg("=r", get_proc_address_shim)
-		: "i"(&th_GetProcAddress)
+		//: "i"(&th_GetProcAddress)
 	);
 #else
 	GetProcAddressPtr get_proc_address_shim = &th_GetProcAddress;
@@ -1440,9 +1443,10 @@ dllexport gnu_noinline void cdecl EoSDMultiFuncs::eosd_multi_setup_patch_init3()
 #ifndef __x86_64__
 	GetProcAddressPtr get_proc_address_shim;
 	asm(
-		"MOVL %1, %[get_proc_address_shim]"
+		//"MOVL %1, %[get_proc_address_shim]"
+		""
 		: asm_arg("=r", get_proc_address_shim)
-		: "i"(&th_GetProcAddress)
+		//: "i"(&th_GetProcAddress)
 	);
 #else
 	GetProcAddressPtr get_proc_address_shim = &th_GetProcAddress;
@@ -1533,9 +1537,10 @@ dllexport gnu_noinline void cdecl EoSDMultiFuncs::eosd_multi_setup_patch_init4()
 #ifndef __x86_64__
 	GetProcAddressPtr get_proc_address_shim;
 	asm(
-		"MOVL %1, %[get_proc_address_shim]"
+		//"MOVL %1, %[get_proc_address_shim]"
+		""
 		: asm_arg("=r", get_proc_address_shim)
-		: "i"(&th_GetProcAddress)
+		//: "i"(&th_GetProcAddress)
 	);
 #else
 	GetProcAddressPtr get_proc_address_shim = &th_GetProcAddress;
@@ -2913,7 +2918,7 @@ dllexport gnu_noinline void __fastcall time_fix_test2(uint8_t* str) {
 	strftime((char*)str, 9, "", &time);
 }
 
-#if !IS_X64
+#if !IS_X64 && 0
 dllexport gnu_noinline void __fastcall time_fix_test3(uint8_t* str) {
 	tm time = {};
 	time.tm_mon = aad_math(PackUInt16(str[1], str[0]) - PackUInt16('0', '0'));
@@ -3599,8 +3604,111 @@ void last_branch_testing() {
 	}
 }
 
+#define FLOAT_PI_HI 0xC90FDAA22168C234u
+#define FLOAT_PI_LO 0xC000000000000000u
+
+// 403E 80000000 00000000
+
+uint128_t regcall manual_fprem1_pi(uint128_t value) {
+
+}
+
+// Value is 2**63.
+// Running FSIN with a values >= 2**63
+// or <= -2**63 causes it to give up
+// and do nothing.
+static const uint32_t trig_limit = 0x5F000000;
+
+// Value is Pi * 2**62
+static const uint64_t trig_reduce[2] = { 0xC90FDAA22168C235, 0x403E };
+
+#define CVTSD2SI(ret, dbl) __asm__("CVTSD2SI %[val], %[out]" : [out]"=r"(ret) : [val]"x"(dbl))
+
+gnu_noinline float vectorcall x87_trig_reduce_emulate(float value) {
+#pragma clang fp exceptions(strict)
+	uint32_t ivalue = bitcast<uint32_t>(value);
+	int32_t exponent = (int32_t)(ivalue >> 23 & 0xFF) - 127;
+	//if (exponent < 63 && exponent > -63) {
+		double dvalue = value;
+		return dvalue - (double)_mm_cvtsd_si32((__m128d) { dvalue / TWO_PI_d }) * TWO_PI_d;
+	//}
+	return value;
+}
+
+gnu_noinline float vectorcall x87_trig_reduce_original(float x) {
+#pragma clang fp exceptions(ignore)
+	float ret;
+#if !__x86_64__
+	__asm__(
+		"PUSH %%EAX \n"
+		"MOVSS %[x], (%%ESP) \n"
+        "FLDT %[trig_reduce] \n"
+		"FLDS (%%ESP) \n"
+	//"1: \n"
+		"FPREM1 \n"
+		//"FNSTSW %%AX \n"
+		//"TEST $4, %%AH \n"
+		//"JNZ 1b \n"
+        "FFREE %%ST(1) \n"
+		"FSTPS (%%ESP) \n"
+		"MOVSS (%%ESP), %[ret] \n"
+		"POP %%EAX \n"
+		: [ret]"=x"(ret)
+		: [x]"x"(x), [trig_reduce]"m"(trig_reduce)
+		: "st", "st(1)", "st(2)"
+	);
+#endif
+	return ret;
+}
+
+long double manual_fsin(long double value) {
+	//UBitInt(66) pi = 0xC90FDAA22168C234C;
+}
+
+void test_fprem1_floats() {
+	size_t correct_reduce = 0;
+	auto test_float = [&](uint32_t value) {
+		float x = bitcast<float>(value);
+		float test_reduce = x87_trig_reduce_emulate(x);
+		uint32_t test_bits = bitcast<uint32_t>(test_reduce);
+		float reduce = x87_trig_reduce_original(x);
+		uint32_t reduce_bits = bitcast<uint32_t>(reduce);
+		if (test_bits != reduce_bits) __asm int3
+		correct_reduce += reduce_bits == test_bits;
+	};
+	for (
+        uint32_t value = bitcast<uint32_t>(minimum_negative_float_value);
+        value >= bitcast<uint32_t>(maximum_negative_float_value);
+        --value
+    ) {
+        test_float(value);
+    }
+    for (
+        uint32_t value = bitcast<uint32_t>(minimum_positive_float_value);
+        value <= bitcast<uint32_t>(maximum_positive_float_value);
+        ++value
+    ) {
+        test_float(value);
+    }
+	printf(
+		"%zu / 4278190080\n"
+		, correct_reduce
+	);
+}
+
+float vectorcall x87_fsin_float_emulate(float value) {
+	uint32_t ivalue = bitcast<uint32_t>(value);
+	int32_t exponent = (int32_t)(ivalue >> 23 & 0xFF) - 127;
+	if (exponent < 63 && exponent > -63) {
+		double dvalue = value;
+		double quotient = round(dvalue / M_PI);
+	}
+	return value;
+}
+
 int stdcall main(int argc, char* argv[]) {
-	last_branch_testing();
+	test_fprem1_floats();
+	//last_branch_testing();
 	//test_token_parsing();
 	return 0;
 
@@ -7319,6 +7427,7 @@ dec_loop:
 		: [counter]"+c"(sub_counter)
 	);
 	*/
+	/*
 loop_loop:
 	__asm__ volatile goto (
 		//"TEST %[x], %[x] \n"
@@ -7328,6 +7437,7 @@ loop_loop:
 		:
 		: loop_loop
 	);
+	*/
 	loop_end_time = rdtsc();
 
 	printf(

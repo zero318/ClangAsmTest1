@@ -20,6 +20,7 @@
 
 #define cdecl __cdecl
 #define vectorcall __vectorcall
+#define regcall __attribute__((regcall))
 #define dllexport __declspec(dllexport)
 #define forceinline __forceinline
 #define gnu_noinline __attribute__((noinline))
