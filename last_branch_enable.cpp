@@ -1,44 +1,230 @@
 #include <stdint.h>
 #include <stdbool.h>
-#include <wchar.h>
-
-#include "windows.h"
 
 #include "last_branch_enable.h"
 
-// The DDK also defines these as macros, so they're likely to remain stable
-#define CURRENT_PROCESS_HANDLE ((HANDLE)(intptr_t)-1)
-#define CURRENT_THREAD_HANDLE ((HANDLE)(intptr_t)-2)
+#if !__clang__ && !__GNUC__ && !_MSC_VER
+#error "Unrecognized compiler!"
+#endif
 
-static const wchar_t NTDLL_NAME[] = L"ntdll.dll";
+// Include code for targetting wine from an exe
+#define WINE_SUPPORT 0
+
+// Include code that can run outside of WoW64
+#define WIN32_NOWOW_SUPPORT 0
+
+#define COMPILE_WITH_MSVC !(__GNUC__ || __clang__)
+#define X64_IMPL (_M_X64 || __x86_64__)
+#define LINUX_IMPL (!_WIN32 || WINE_SUPPORT)
+#define WINE_IMPL (_WIN32 && WINE_SUPPORT)
+#define NOWOW_IMPL (_WIN32 && WIN32_NOWOW_SUPPORT && !X64_IMPL)
+
+#if _WIN32
+#include <intrin.h>
+#endif
+
+#if __clang__ || __GNUC__
+#define expect(exp,c) __builtin_expect((exp),(c))
+#else
+#define expect(exp,c) (exp)
+#endif
+
+#if LINUX_IMPL
+
+static uint32_t last_exception_from_msr = 0x1DD;
+static uint32_t last_exception_to_msr = 0x1DE;
+
+#if !COMPILE_WITH_MSVC
+__attribute__((always_inline)) static inline void get_cpuid(uint32_t page_num, uint32_t* eax_out, uint32_t* ebx_out, uint32_t* ecx_out, uint32_t* edx_out) {
+    uint32_t eax_val;
+    uint32_t ebx_val;
+    uint32_t ecx_val;
+    uint32_t edx_val;
+    __asm__ volatile (
+        "cpuid"
+        : "=a"(eax_val), "=b"(ebx_val), "=c"(ecx_val), "=d"(edx_val)
+        : "a"(page_num)
+    );
+    if (eax_out) *eax_out = eax_val;
+    if (ebx_out) *ebx_out = ebx_val;
+    if (ecx_out) *ecx_out = ecx_val;
+    if (edx_out) *edx_out = edx_val;
+}
+#else
+static __forceinline void get_cpuid(uint32_t page_num, uint32_t* eax_out, uint32_t* ebx_out, uint32_t* ecx_out, uint32_t* edx_out) {
+    int vals[4];
+    __cpuid(vals, page_num);
+    if (eax_out) *eax_out = vals[0];
+    if (ebx_out) *ebx_out = vals[1];
+    if (ecx_out) *ecx_out = vals[2];
+    if (edx_out) *edx_out = vals[3];
+}
+#endif
+
+static inline bool setup_exception_msrs() {
+    uint32_t brand1;
+    uint32_t brand2;
+    uint32_t brand3;
+    get_cpuid(0, NULL, &brand1, &brand3, &brand2);
+    if (
+        brand1 != 0x756E6547 ||
+        brand2 != 0x49656E69 ||
+        brand3 != 0x6C65746E
+    ) {
+        // AMD's exception MSRs seem weirdly unreliable
+        // to read from the standard MSR tools...?
+        return false;
+    }
+    uint32_t version_info;
+    get_cpuid(1, &version_info, NULL, NULL, NULL);
+    uint32_t family = (version_info >> 8) & 0xF;
+    if (family == 15) {
+        family += (version_info >> 20) & 0xFF;
+    }
+    switch (family) {
+        case 15:
+            last_exception_from_msr = 0x1D7;
+            last_exception_to_msr = 0x1D8;
+            break;
+        case 6:
+            if (
+                (
+                    ((version_info >> 4) & 0xF) | // model
+                    ((version_info >> 12) & 0xF0) // extended model
+                ) == 9
+            ) {
+                last_exception_from_msr = 0x1DE;
+                last_exception_to_msr = 0x1DD;
+            }
+            break;
+    }
+    return true;
+}
+
+#endif
+
 static bool last_branch_initialized = false;
 static bool last_branch_functional = false;
 
+#if _WIN32
+#include <wchar.h>
+#include "windows.h"
+
+#if WINE_SUPPORT
+static bool is_wine = false;
+#endif
+
+// The DDK also defines this as a macro, so it's likely to remain stable
+#define CURRENT_PROCESS ((HANDLE)(intptr_t)-1)
+
+static const wchar_t NTDLL_NAME[] = L"ntdll.dll";
+
+typedef struct TEB_dummy_t TEB_dummy_t;
 struct TEB_dummy_t {
-#if _M_X64 || __x86_64__
-    unsigned char pad0[0x1480];
+#if X64_IMPL
+    unsigned char pad0[0x30];
+    TEB_dummy_t* self;
+    unsigned char pad1[0x1448];
     uint64_t TlsSlots[64];
-    unsigned char pad1[0x100];
+    unsigned char pad2[0x100];
     uint64_t* TlsExpansionSlots;
 #else
-    unsigned char pad0[0xE10];
+    unsigned char pad0[0x18];
+    TEB_dummy_t* self;
+    unsigned char pad1[0xDF4];
     uint32_t TlsSlots[64];
-    unsigned char pad1[0x84];
+    unsigned char pad2[0x84];
     uint32_t* TlsExpansionSlots;
 #endif
 };
 
-inline static uintptr_t get_tls_slot(struct TEB_dummy_t* teb, uint32_t slot) {
-    if (slot < 64u) {
-        return teb->TlsSlots[slot];
+#ifndef __has_attribute
+#define __has_attribute(attr) 0
+#endif
+
+#if X64_IMPL
+#if __clang__
+typedef TEB_dummy_t __attribute__((address_space(256)))* TEB_seg_ptr;
+#define current_teb() ((TEB_seg_ptr)0)
+#define current_teb_addr() (current_teb()->self)
+#elif __GNUC__
+#if __cplusplus
+typedef TEB_dummy_t* TEB_seg_ptr;
+__attribute__((always_inline)) static inline TEB_seg_ptr current_teb(void) {
+    TEB_seg_ptr ret;
+    __asm__ volatile(
+        "mov %%gs:0x30, %[ret]"
+        : [ret]"=r"(ret)
+    );
+    return ret;
+}
+#define current_teb_addr() current_teb()
+#else
+typedef __seg_gs TEB_dummy_t* TEB_seg_ptr;
+#define current_teb() ((TEB_seg_ptr)0)
+#define current_teb_addr() (current_teb()->self)
+#endif
+#else
+typedef TEB_dummy_t* TEB_seg_ptr;
+__forceinline static TEB_seg_ptr current_teb(void) {
+    return (TEB_seg_ptr)__readgsqword(0x30);
+}
+#define current_teb_addr() current_teb()
+#endif
+#else
+#if __clang__
+typedef TEB_dummy_t __attribute__((address_space(257)))* TEB_seg_ptr;
+#define current_teb() ((TEB_seg_ptr)0)
+#define current_teb_addr() (current_teb()->self)
+#elif __GNUC__
+#if __cplusplus
+typedef TEB_dummy_t* TEB_seg_ptr;
+__attribute__((always_inline)) static inline TEB_seg_ptr current_teb(void) {
+    TEB_seg_ptr ret;
+    __asm__ volatile(
+        "mov %%fs:0x18, %[ret]"
+        : [ret]"=r"(ret)
+    );
+    return ret;
+}
+#define current_teb_addr() current_teb()
+#else
+typedef __seg_fs TEB_dummy_t* TEB_seg_ptr;
+#define current_teb() ((TEB_seg_ptr)0)
+#define current_teb_addr() (current_teb()->self)
+#endif
+#else
+typedef TEB_dummy_t* TEB_seg_ptr;
+__forceinline static TEB_seg_ptr current_teb(void) {
+    return (TEB_seg_ptr)__readfsdword(0x18);
+}
+#define current_teb_addr() current_teb()
+#endif
+#endif
+
+inline static uintptr_t get_tls_slot(TEB_dummy_t* teb, uint32_t slot) {
+    uintptr_t ret;
+    uint32_t high_slot = slot - 64;
+    if (slot < high_slot) {
+        ret = teb->TlsSlots[slot];
     } else {
-        return teb->TlsExpansionSlots[slot];
+        ret = teb->TlsExpansionSlots[high_slot];
+    }
+    return ret;
+}
+
+inline static void set_tls_slot(TEB_seg_ptr teb, uint32_t slot, uintptr_t value) {
+    uint32_t high_slot = slot - 64;
+    if (slot < high_slot) {
+        teb->TlsSlots[slot] = value;
+    } else {
+        teb->TlsExpansionSlots[high_slot] = value;
     }
 }
 
 struct THREAD_BASIC_INFORMATION_t {
     int32_t ExitStatus;
-    struct TEB_dummy_t* TebBaseAddress;
+    TEB_dummy_t* TebBaseAddress;
     void* UniqueProcess;
     void* UniqueThread;
     size_t AffinityMask;
@@ -52,14 +238,15 @@ static uint32_t exception_to_tls = 0;
 static uint32_t exception_from_tls = 0;
 static NtQueryInformationThread_t* NtQueryInformationThread_ptr = NULL;
 
-#if _M_X64 || __x86_64__
+#if X64_IMPL
 static PVOID vector_handle;
 LONG WINAPI log_branch_records(LPEXCEPTION_POINTERS lpEI) {
     PCONTEXT context = lpEI->ContextRecord;
-    LPVOID exception_to = (LPVOID)context->LastExceptionToRip;
-    LPVOID exception_from = (LPVOID)context->LastExceptionFromRip;
-    TlsSetValue(exception_to_tls, exception_to);
-    TlsSetValue(exception_from_tls, exception_from);
+    uintptr_t exception_to = context->LastExceptionToRip;
+    uintptr_t exception_from = context->LastExceptionFromRip;
+    TEB_seg_ptr teb = current_teb();
+    set_tls_slot(teb, exception_to_tls, exception_to);
+    set_tls_slot(teb, exception_from_tls, exception_from);
     return EXCEPTION_CONTINUE_SEARCH;
 }
 #else
@@ -100,7 +287,7 @@ static uint64_t ntdll_pointer_addr = 0;
 #define REX_WRX EB(0x4E)
 #define REX_WRXB EB(0x4F)
 
-#if __GNUC__ || __clang__
+#if !COMPILE_WITH_MSVC
 #define EB(b) ".byte " #b "\n"
 
 #define eax " eax "
@@ -452,12 +639,12 @@ __attribute__((always_inline)) static inline int32_t unhook_prepare_pointer_thun
     );
     return ret;
 }
-#elif _MSC_VER
+#else
 struct FarPointer {
     void* addr;
     uint16_t segment;
 };
-#define EB(b) __asm _emit b
+#define EB(b) __asm _emit b __asm
 #define RAX EAX
 #define RCX ECX
 #define RDX EDX
@@ -564,7 +751,7 @@ __declspec(naked) static void initialize_wow_exception_hooks() {
         REX_W ADD RAX, RDI
         REX_B MOV EDX, DWORD PTR [R8+0x3C]
         REX_RX EMIT7(0x8B,0x8C,0x02,0x88,0x00,0x00,0x00) // MOV R9D, DWORD PTR [R8*1+RDX+0x88]
-        REX_WB EMIT2(0x01,0xC2) // ADD RDX, R8
+        REX_WR EMIT2(0x01,0xC2) // ADD RDX, R8
         REX_RXB EMIT4(0x8B,0x5C,0x01,0x18) // MOV R11D, DWORD PTR [R8*1+R9+0x18]
         REX_RXB EMIT4(0x8B,0x54,0x01,0x20) // MOV R10D, DWORD PTR [R8*1+R9+0x20]
         REX_WRB ADD R10, R8
@@ -583,7 +770,7 @@ __declspec(naked) static void initialize_wow_exception_hooks() {
         REX_XB EMIT4(0x8B,0x7C,0x01,0x24) // MOV EDI, DWORD PTR [R8*1+R9+0x24]
         REX_WR EMIT2(0x01,0xC7) // ADD RDI, R8
         REX_X MOVZX ESI, WORD PTR [R11*2+RDI]
-        REX_WB EMIT2(0x01,0xC1) // ADD RCX, R8
+        REX_WR EMIT2(0x01,0xC1) // ADD RCX, R8
         REX_R MOV R9D, DWORD PTR [RSI*4+RCX]
         REX_WRB ADD R9, R8
         MOVZX ESI, WORD PTR [RDX+0x14]
@@ -607,7 +794,7 @@ __declspec(naked) static void initialize_wow_exception_hooks() {
         JNE next_section
         MOV ECX, DWORD PTR [RSI+0x20]
         MOV EDI, DWORD PTR [RSI+0x24]
-        REX_WB ADD RDI, R8
+        REX_WR EMIT2(0x01,0xC7) // ADD RDI, R8
         SHR ECX, 3
         REPNE REX_W SCASD
         JNE next_section
@@ -722,22 +909,27 @@ __forceinline static int32_t unhook_prepare_pointer_thunk() {
 }
 #endif
 #endif
+#endif
 
 static bool initialize_last_branch_tracking() {
-    if (last_branch_initialized) {
+    if (expect(last_branch_initialized, true)) {
         return last_branch_functional;
     }
     last_branch_initialized = true;
+#if _WIN32
     HMODULE ntdll = GetModuleHandleW(NTDLL_NAME);
     // Wine does not support the necessary undocumented behavior of DR7 bits
-    if (!GetProcAddress(ntdll, "wine_get_version")) {
-#if !_M_X64 && !__x86_64__
+    if (expect(!GetProcAddress(ntdll, "wine_get_version"), true)) {
+#if WINE_SUPPORT
+wine_support:
+#endif
+#if !X64_IMPL
         typedef BOOL WINAPI IsWow64Process_t(HANDLE hProcess, PBOOL Wow64Process);
         IsWow64Process_t* IsWow64Process_ptr = (IsWow64Process_t*)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "IsWow64Process");
         BOOL is_wow64;
         if (
             IsWow64Process_ptr &&
-            IsWow64Process_ptr(CURRENT_PROCESS_HANDLE, &is_wow64) &&
+            IsWow64Process_ptr(CURRENT_PROCESS, &is_wow64) &&
             is_wow64
         )
 #endif
@@ -749,7 +941,7 @@ static bool initialize_last_branch_tracking() {
                 if (exception_to_tls_temp != TLS_OUT_OF_INDEXES) {
                     uint32_t exception_from_tls_temp = TlsAlloc();
                     if (exception_from_tls_temp != TLS_OUT_OF_INDEXES) {
-#if !_M_X64 && !__x86_64__
+#if !X64_IMPL
                         if (initialize_wow_exception_hooks_thunk() > 0)
 #endif
                         {
@@ -758,7 +950,7 @@ static bool initialize_last_branch_tracking() {
                             last_branch_functional = true;
                             return true;
                         }
-#if !_M_X64 && !__x86_64__
+#if !X64_IMPL
                         TlsFree(exception_from_tls_temp);
 #endif
                     }
@@ -767,94 +959,186 @@ static bool initialize_last_branch_tracking() {
             }
         }
     }
-    return false;
-}
-
-static inline bool hook_exceptions() {
-#if _M_X64 || __x86_64__
-    PVOID handle = AddVectoredExceptionHandler(1, log_branch_records);
-    vector_handle = handle;
-    return handle != NULL;
-#else
-    return hook_prepare_pointer_thunk() >= 0;
+    else
 #endif
-}
-
-bool last_branch_tracking_hook() {
-    return initialize_last_branch_tracking() &&
-           hook_exceptions();
-}
-
-static inline bool unhook_exceptions() {
-#if _M_X64 || __x86_64__
-    PVOID handle = vector_handle;
-    vector_handle = NULL;
-    return RemoveVectoredExceptionHandler(handle) != 0;
+    {
+#if LINUX_IMPL
+        if (setup_exception_msrs()) {
+#if _WIN32
+            is_wine = true;
+            goto wine_support;
 #else
-    return hook_prepare_pointer_thunk() >= 0;
+            // TODO: linux
 #endif
-}
-
-bool last_branch_tracking_unhook() {
-    return last_branch_functional &&
-           unhook_exceptions();
-}
-
-bool last_branch_tracking_start(HANDLE thread) {
-    if (last_branch_functional) {
-        CONTEXT context;
-        context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-        GetThreadContext(thread, &context);
-        context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-        context.Dr7 |= 0x100;
-        SetThreadContext(thread, &context);
-        return true;
-    }
-    return false;
-}
-
-bool last_branch_tracking_stop(HANDLE thread) {
-    if (last_branch_functional) {
-        CONTEXT context;
-        context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-        GetThreadContext(thread, &context);
-        context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-        context.Dr7 &= ~0x100;
-        SetThreadContext(thread, &context);
-        return true;
-    }
-    return false;
-}
-
-uintptr_t last_branch_exception_to(HANDLE thread) {
-    if (last_branch_functional) {
-        struct THREAD_BASIC_INFORMATION_t thread_info;
-        if (NtQueryInformationThread_ptr(thread, 0, &thread_info, sizeof(thread_info), NULL) >= 0) {
-            return get_tls_slot(thread_info.TebBaseAddress, exception_to_tls);
         }
+#endif
     }
+    return false;
+}
+
+bool last_branch_tracking_hook(void) {
+    if (expect(initialize_last_branch_tracking(), true)) {
+#if _WIN32
+#if WINE_SUPPORT
+        if (expect(!is_wine, true))
+#endif
+        {
+#if X64_IMPL
+            PVOID handle = AddVectoredExceptionHandler(1, log_branch_records);
+            vector_handle = handle;
+            return handle != NULL;
+#else
+            return hook_prepare_pointer_thunk() >= 0;
+#endif
+        }
+#endif
+#if LINUX_IMPL
+        // TODO: wine/linux
+#endif
+    }
+    return false;
+}
+
+bool last_branch_tracking_unhook(void) {
+    if (expect(last_branch_functional, true)) {
+#if _WIN32
+#if WINE_SUPPORT
+        if (expect(!is_wine, true))
+#endif
+        {
+#if X64_IMPL
+            PVOID handle = vector_handle;
+            vector_handle = NULL;
+            return RemoveVectoredExceptionHandler(handle) != 0;
+#else
+            return hook_prepare_pointer_thunk() >= 0;
+#endif
+        }
+#endif
+#if LINUX_IMPL
+        // TODO: wine/linux
+#endif
+    }
+    return false;
+}
+
+bool last_branch_tracking_start(thread_id_t thread) {
+    if (expect(last_branch_functional, true)) {
+#if _WIN32
+#if WINE_SUPPORT
+        if (expect(!is_wine, true))
+#endif
+        {
+            CONTEXT context;
+            context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+            GetThreadContext(thread, &context);
+            context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+            context.Dr7 |= 0x100;
+            SetThreadContext(thread, &context);
+            return true;
+        }
+#endif
+#if LINUX_IMPL
+        // TODO: wine/linux
+#endif
+    }
+    return false;
+}
+
+bool last_branch_tracking_stop(thread_id_t thread) {
+    if (expect(last_branch_functional, true)) {
+#if _WIN32
+#if WINE_SUPPORT
+        if (expect(!is_wine, true))
+#endif
+        {
+            CONTEXT context;
+            context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+            GetThreadContext(thread, &context);
+            context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+            context.Dr7 &= ~0x100;
+            SetThreadContext(thread, &context);
+            return true;
+        }
+#endif
+#if LINUX_IMPL
+        // TODO: wine/linux
+#endif
+    }
+    return false;
+}
+
+uintptr_t last_branch_exception_to(thread_id_t thread) {
+    if (expect(last_branch_functional, true)) {
+#if _WIN32
+        TEB_dummy_t* teb_ptr;
+        if (expect(thread == CURRENT_THREAD, true)) {
+            teb_ptr = current_teb_addr();
+        }
+        else {
+            struct THREAD_BASIC_INFORMATION_t thread_info;
+            if (expect(NtQueryInformationThread_ptr(thread, 0, &thread_info, sizeof(thread_info), NULL) >= 0, true)) {
+                teb_ptr = thread_info.TebBaseAddress;
+            } else {
+                goto fail;
+            }
+        }
+        return get_tls_slot(teb_ptr, exception_to_tls);
+#else
+        // TODO: linux
+#endif
+    }
+fail:
     return 0;
 }
 
-uintptr_t last_branch_exception_from(HANDLE thread) {
-    if (last_branch_functional) {
-        struct THREAD_BASIC_INFORMATION_t thread_info;
-        if (NtQueryInformationThread_ptr(thread, 0, &thread_info, sizeof(thread_info), NULL) >= 0) {
-            return get_tls_slot(thread_info.TebBaseAddress, exception_from_tls);
+uintptr_t last_branch_exception_from(thread_id_t thread) {
+    if (expect(last_branch_functional, true)) {
+#if _WIN32
+        TEB_dummy_t* teb_ptr;
+        if (expect(thread == CURRENT_THREAD, true)) {
+            teb_ptr = current_teb_addr();
         }
+        else {
+            struct THREAD_BASIC_INFORMATION_t thread_info;
+            if (expect(NtQueryInformationThread_ptr(thread, 0, &thread_info, sizeof(thread_info), NULL) >= 0, true)) {
+                teb_ptr = thread_info.TebBaseAddress;
+            } else {
+                goto fail;
+            }
+        }
+        return get_tls_slot(teb_ptr, exception_from_tls);
+#else
+        // TODO: linux
+#endif
     }
+fail:
     return 0;
 }
 
-LastBranchPair_t last_branch_get_exceptions(HANDLE thread) {
-    if (last_branch_functional) {
-        struct THREAD_BASIC_INFORMATION_t thread_info;
-        if (NtQueryInformationThread_ptr(thread, 0, &thread_info, sizeof(thread_info), NULL) >= 0) {
-            return {
-                get_tls_slot(thread_info.TebBaseAddress, exception_to_tls),
-                get_tls_slot(thread_info.TebBaseAddress, exception_from_tls)
-            };
+LastBranchPair_t last_branch_get_exceptions(thread_id_t thread) {
+    if (expect(last_branch_functional, true)) {
+#if _WIN32
+        TEB_dummy_t* teb_ptr;
+        if (expect(thread == CURRENT_THREAD, true)) {
+            teb_ptr = current_teb_addr();
         }
+        else {
+            struct THREAD_BASIC_INFORMATION_t thread_info;
+            if (expect(NtQueryInformationThread_ptr(thread, 0, &thread_info, sizeof(thread_info), NULL) >= 0, true)) {
+                teb_ptr = thread_info.TebBaseAddress;
+            } else {
+                goto fail;
+            }
+        }
+        return {
+            get_tls_slot(teb_ptr, exception_to_tls),
+            get_tls_slot(teb_ptr, exception_from_tls)
+        };
+#else
+        // TODO: linux
+#endif
     }
+fail:
     return { 0, 0 };
 }

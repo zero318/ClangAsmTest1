@@ -16,13 +16,13 @@ LONG WINAPI just_dont_actually_crash(LPEXCEPTION_POINTERS lpEI) {
 }
 
 __declspec(noinline) void last_branch_testing() {
-bs_label_testA:
+label_testA:
     __asm__ volatile(
         "jmp 0f \n"
         "int3 \n"
     "0: \n"
     );
-bs_label_testB:
+label_testB:
     __asm {
         _emit 0x8B
         _emit 0x04
@@ -33,7 +33,7 @@ bs_label_testB:
         _emit 0
     }
 
-    auto [last_exception_to, last_exception_from] = last_branch_get_exceptions(GetCurrentThread());
+    auto [last_exception_to, last_exception_from] = last_branch_get_exceptions();
 
     printf(
         //"BranchTo:   %llX\n"
@@ -46,15 +46,15 @@ bs_label_testB:
         //, last_branch_from
         , last_exception_to
         , last_exception_from
-        , &&bs_label_testA
-        , &&bs_label_testB
+        , &&label_testA
+        , &&label_testB
     );
 }
 
 int main() {
     AddVectoredExceptionHandler(0, just_dont_actually_crash);
     last_branch_tracking_hook();
-    last_branch_tracking_start(GetCurrentThread());
+    last_branch_tracking_start();
     last_branch_testing();
     return 0;
 }
