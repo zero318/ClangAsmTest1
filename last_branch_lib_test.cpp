@@ -52,6 +52,8 @@ label_testB:
 }
 
 int main() {
+    SetProcessAffinityMask(GetCurrentProcess(), 1);
+    Sleep(1000);
     AddVectoredExceptionHandler(0, just_dont_actually_crash);
     last_branch_tracking_hook();
     last_branch_tracking_start();
