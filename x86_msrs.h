@@ -203,6 +203,14 @@ struct MSR_DBG_CTL : MSR<0x1D9, MSR_DBG_CTL> {
 	};
 };
 
+struct MSR_LER_FROM_LIP : MSR<0x1DD, MSR_LER_FROM_LIP> {
+	uint64_t addr;
+};
+
+struct MSR_LER_TO_LIP : MSR<0x1DE, MSR_LER_TO_LIP> {
+	uint64_t addr;
+};
+
 // Instr_Retired.Any
 struct MSR_IA32_FIXED_CTR0 : MSR<0x309, MSR_IA32_FIXED_CTR0> {
 	uint64_t count;
@@ -304,10 +312,14 @@ struct MSR_EFER : MSR<0xC0000080, MSR_EFER> {
 			uint64_t SVMEnable : 1; // 12
 			uint64_t LongModeSegmentLimit : 1; // 13
 			uint64_t FastFXSEnable : 1; // 14
-			uint64_t TCE : 1; // 15
+			uint64_t TranslationCacheExtension : 1; // 15
 			uint64_t : 1; // 16
-			uint64_t MCOM : 1; // 17
-			uint64_t : 46; // 18-63
+			uint64_t EnableMcommit : 1; // 17
+			uint64_t InterruptableWbinvdEnable : 1; // 18
+			uint64_t : 1; // 19
+			uint64_t UpperAddressIgnoreEnable : 1; // 20
+			uint64_t AutomaticIBRSEnable : 1; // 21
+			uint64_t : 42; // 12-63
 		};
 	};
 };
@@ -357,6 +369,16 @@ struct MSR_TSC_AUX : MSR<0xC0000103, MSR_TSC_AUX> {
 	};
 };
 
+struct MSR_TSC_RATIO : MSR<0xC0000104, MSR_TSC_RATIO> {
+	union {
+		uint64_t raw;
+		struct {
+			uint32_t fraction;
+			uint8_t integer;
+		};
+	};
+};
+
 struct MSR_LWP_CFG : MSR<0xC0000105, MSR_LWP_CFG> {
 	union {
 		uint64_t raw;
@@ -381,6 +403,35 @@ struct MSR_LWP_CFG : MSR<0xC0000105, MSR_LWP_CFG> {
 
 struct MSR_LWP_CBADDR : MSR<0xC0000106, MSR_LWP_CBADDR> {
 	uint64_t address;
+};
+
+struct MSR_AMD_LBR_SELECT : MSR<0xC000010E, MSR_AMD_LBR_SELECT> {
+	union {
+		uint64_t raw;
+		struct {
+			uint64_t IgnoreRing0 : 1; // 0
+			uint64_t IgnoreRingNon0 : 1; // 1
+			uint64_t IgnoreJcc : 1; // 2
+			uint64_t IgnoreRelCall : 1; // 3
+			uint64_t IgnoreIndCall : 1; // 4
+			uint64_t IgnoreRet : 1; // 5
+			uint64_t IgnoreIndJmp : 1; // 6
+			uint64_t IgnoreRelJmp : 1; // 7
+			uint64_t IgnoreFar : 1; // 8
+			uint64_t : 55; // 9-63
+		};
+	};
+};
+
+struct MSR_DBG_EXT_CTL : MSR<0xC000010F, MSR_DBG_EXT_CTL> {
+	union {
+		uint64_t raw;
+		struct {
+			uint64_t : 6; // 0-5
+			uint64_t LBRStackEnable : 1; // 6
+			uint64_t : 57; // 7-63
+		};
+	};
 };
 
 struct MSR_HWCR : MSR<0xC0010015, MSR_HWCR> {

@@ -35,6 +35,7 @@ __declspec(allocate(MACRO_STR(.name))) __attribute__((used,retain)) volatile con
 
 
 #pragma section("yeet",read,write,shared)
+#pragma comment(linker, "/SECTION:yeet,RWS")
 
 __declspec(allocate("yeet")) __attribute__((used, retain))
 std::atomic<HANDLE> waiting_on_pid;

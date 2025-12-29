@@ -8,7 +8,7 @@
 #endif
 
 // Include code for targetting wine from an exe
-#define WINE_SUPPORT 0
+#define WINE_SUPPORT 1
 
 // Include code that can run outside of WoW64
 #define WIN32_NOWOW_SUPPORT 0
@@ -20,7 +20,16 @@
 #define NOWOW_IMPL (_WIN32 && WIN32_NOWOW_SUPPORT && !X64_IMPL)
 
 #if _WIN32
+#include <stdio.h>
 #include <intrin.h>
+#else
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#include <fcntl.h>
+#include <unistd.h>
+#include <sched.h>
+#include <sys/ucontext.h>
 #endif
 
 #if __clang__ || __GNUC__
@@ -33,6 +42,9 @@
 
 static uint32_t last_exception_from_msr = 0x1DD;
 static uint32_t last_exception_to_msr = 0x1DE;
+
+#define OPEN_READ_ONLY 0
+#define OPEN_READ_WRITE 2
 
 #if !COMPILE_WITH_MSVC
 __attribute__((always_inline)) static inline void get_cpuid(uint32_t page_num, uint32_t* eax_out, uint32_t* ebx_out, uint32_t* ecx_out, uint32_t* edx_out) {
@@ -50,6 +62,106 @@ __attribute__((always_inline)) static inline void get_cpuid(uint32_t page_num, u
     if (ecx_out) *ecx_out = ecx_val;
     if (edx_out) *edx_out = edx_val;
 }
+#if _WIN32
+__attribute__((always_inline)) static inline int open(const char* path, int flags) {
+    int ret;
+#if X64_IMPL
+    __asm__ volatile (
+        "syscall"
+        : "=a"(ret)
+        : "a"(2), "D"(path), "S"(flags)
+        : "rcx", "r11"
+    );
+#else
+    __asm__ volatile (
+        "int {$|}0x80"
+        : "=a"(ret)
+        : "a"(5), "b"(path), "c"(flags)
+    );
+#endif
+    return ret;
+}
+__attribute__((always_inline)) static inline int close(int fd) {
+    int ret;
+#if X64_IMPL
+    __asm__ volatile (
+        "syscall"
+        : "=a"(ret)
+        : "a"(3), "D"(fd)
+        : "rcx", "r11"
+    );
+#else
+    __asm__ volatile (
+        "int {$|}0x80"
+        : "=a"(ret)
+        : "a"(6), "b"(fd)
+    );
+#endif
+    return ret;
+}
+__attribute__((always_inline)) static inline int getcpu(unsigned int* Cpu, unsigned int* Node) {
+    int ret;
+#if X64_IMPL
+    __asm__ volatile (
+        "syscall"
+        : "=a"(ret), "=m"(*Cpu)
+        : "a"(309), "D"(Cpu), "S"(Node)
+        : "rcx", "r11"
+    );
+#else
+    __asm__ volatile (
+        "int {$|}0x80"
+        : "=a"(ret), "=m"(*Cpu)
+        : "a"(345), "b"(Cpu), "c"(Node)
+    );
+#endif
+    return ret;
+}
+__attribute__((always_inline)) static inline intptr_t pread64(int fd, uint64_t* buf, size_t count, int64_t offset) {
+    intptr_t ret;
+#if X64_IMPL
+    register intptr_t offset_local asm("r10");
+    offset_local = offset;
+    __asm__ volatile (
+        "syscall"
+        : "=a"(ret), "=m"(*buf)
+        : "a"(17), "D"(fd), "S"(buf), "d"(count), "r"(offset_local)
+        : "rcx", "r11"
+    );
+#else
+    uint32_t offset_low = (uint32_t)offset;
+    uint32_t offset_high = (uint32_t)((uint64_t)offset >> 32);
+    __asm__ volatile (
+        "int {$|}0x80"
+        : "=a"(ret), "=m"(*buf)
+        : "a"(180), "b"(fd), "c"(buf), "d"(count), "S"(offset_low), "D"(offset_high)
+    );
+#endif
+    return ret;
+}
+__attribute__((always_inline)) static inline intptr_t pwrite64(int fd, const uint64_t* buf, size_t count, int64_t offset) {
+    intptr_t ret;
+#if X64_IMPL
+    register intptr_t offset_local asm("r10");
+    offset_local = offset;
+    __asm__ volatile (
+        "syscall"
+        : "=a"(ret)
+        : "a"(18), "D"(fd), "S"(buf), "d"(count), "r"(offset_local)
+        : "rcx", "r11"
+    );
+#else
+    uint32_t offset_low = (uint32_t)offset;
+    uint32_t offset_high = (uint32_t)((uint64_t)offset >> 32);
+    __asm__ volatile (
+        "int {$|}0x80"
+        : "=a"(ret)
+        : "a"(181), "b"(fd), "c"(buf), "d"(count), "S"(offset_low), "D"(offset_high)
+    );
+#endif
+    return ret;
+}
+#endif
 #else
 static __forceinline void get_cpuid(uint32_t page_num, uint32_t* eax_out, uint32_t* ebx_out, uint32_t* ecx_out, uint32_t* edx_out) {
     int vals[4];
@@ -59,48 +171,60 @@ static __forceinline void get_cpuid(uint32_t page_num, uint32_t* eax_out, uint32
     if (ecx_out) *ecx_out = vals[2];
     if (edx_out) *edx_out = vals[3];
 }
-#endif
-
-static inline bool setup_exception_msrs() {
-    uint32_t brand1;
-    uint32_t brand2;
-    uint32_t brand3;
-    get_cpuid(0, NULL, &brand1, &brand3, &brand2);
-    if (
-        brand1 != 0x756E6547 ||
-        brand2 != 0x49656E69 ||
-        brand3 != 0x6C65746E
-    ) {
-        // AMD's exception MSRs seem weirdly unreliable
-        // to read from the standard MSR tools...?
-        return false;
+#if X64_IMPL
+// TODO: Win64 linux syscalls
+#else
+__forceinline static int open(const char* path, int flags) {
+    __asm {
+        MOV ECX, flags
+        MOV EBX, path
+        MOV EAX, 5
+        INT 0x80
     }
-    uint32_t version_info;
-    get_cpuid(1, &version_info, NULL, NULL, NULL);
-    uint32_t family = (version_info >> 8) & 0xF;
-    if (family == 15) {
-        family += (version_info >> 20) & 0xFF;
-    }
-    switch (family) {
-        case 15:
-            last_exception_from_msr = 0x1D7;
-            last_exception_to_msr = 0x1D8;
-            break;
-        case 6:
-            if (
-                (
-                    ((version_info >> 4) & 0xF) | // model
-                    ((version_info >> 12) & 0xF0) // extended model
-                ) == 9
-            ) {
-                last_exception_from_msr = 0x1DE;
-                last_exception_to_msr = 0x1DD;
-            }
-            break;
-    }
-    return true;
 }
-
+__forceinline static int close(int fd) {
+    __asm {
+        MOV EBX, fd
+        MOV EAX, 6
+        INT 0x80
+    }
+}
+__forceinline static int getcpu(unsigned int* Cpu, unsigned int* Node) {
+    __asm {
+        MOV ECX, Node
+        MOV EBX, Cpu
+        MOV EAX, 345
+        INT 0x80
+    }
+}
+__forceinline static intptr_t pread64(int fd, void* buf, size_t count, int64_t offset) {
+    uint32_t offset_low = (uint32_t)offset;
+    uint32_t offset_high = (uint32_t)((uint64_t)offset >> 32);
+    __asm {
+        MOV EDI, offset_high
+        MOV ESI, offset_low
+        MOV EDX, count
+        MOV ECX, buf
+        MOV EBX, fd
+        MOV EAX, 180
+        INT 0x80
+    }
+}
+__forceinline static intptr_t pwrite64(int fd, const void* buf, size_t count, int64_t offset) {
+    uint32_t offset_low = (uint32_t)offset;
+    uint32_t offset_high = (uint32_t)((uint64_t)offset >> 32);
+    __asm {
+        MOV EDI, offset_high
+        MOV ESI, offset_low
+        MOV EDX, count
+        MOV ECX, buf
+        MOV EBX, fd
+        MOV EAX, 181
+        INT 0x80
+    }
+}
+#endif
+#endif
 #endif
 
 static bool last_branch_initialized = false;
@@ -112,6 +236,7 @@ static bool last_branch_functional = false;
 
 #if WINE_SUPPORT
 static bool is_wine = false;
+static uint32_t processor_count = 0;
 #endif
 
 // The DDK also defines this as a macro, so it's likely to remain stable
@@ -238,9 +363,68 @@ static uint32_t exception_to_tls = 0;
 static uint32_t exception_from_tls = 0;
 static NtQueryInformationThread_t* NtQueryInformationThread_ptr = NULL;
 
+#if WINE_SUPPORT
+
+LONG WINAPI log_branch_records_wine_intel(LPEXCEPTION_POINTERS lpEI) {
+    unsigned int Cpu;
+    getcpu(&Cpu, NULL);
+    char msr_path[32];
+    sprintf(msr_path, "/dev/cpu/%u/msr", Cpu);
+    int fd = open(msr_path, OPEN_READ_ONLY);
+    if (fd >= 0) {
+        TEB_seg_ptr teb = current_teb();
+        uintptr_t addr;
+        pread64(fd, &addr, 8, last_exception_to_msr);
+        set_tls_slot(teb, exception_to_tls, addr);
+        pread64(fd, &addr, 8, last_exception_from_msr);
+        set_tls_slot(teb, exception_from_tls, addr);
+        close(fd);
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+LONG WINAPI log_branch_records_wine_amd(LPEXCEPTION_POINTERS lpEI) {
+    if (expect(lpEI->ExceptionRecord->ExceptionCode != STATUS_SINGLE_STEP, true)) {
+#if !COMPILER_IS_MSVC
+        __asm__ volatile (".byte 0xF1":);
+#else
 #if X64_IMPL
+        __writeeflags(__readeflags() | 0x100);
+#else
+        __asm _emit 0xF1
+#endif
+#endif
+        unsigned int Cpu;
+        getcpu(&Cpu, NULL);
+        char msr_path[32];
+        sprintf(msr_path, "/dev/cpu/%u/msr", Cpu);
+        int fd = open(msr_path, OPEN_READ_WRITE);
+        if (fd >= 0) {
+            TEB_seg_ptr teb = current_teb();
+            uintptr_t value;
+            pread64(fd, &value, 8, last_exception_to_msr);
+            set_tls_slot(teb, exception_to_tls, value);
+            pread64(fd, &value, 8, last_exception_from_msr);
+            set_tls_slot(teb, exception_from_tls, value);
+            pread64(fd, &value, 8, 0x1D9);
+            value |= 1;
+            pwrite64(fd, &value, 8, 0x1D9);
+            close(fd);
+        }
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+    return EXCEPTION_CONTINUE_EXECUTION;
+}
+
+static PVECTORED_EXCEPTION_HANDLER wine_handler = &log_branch_records_wine_intel;
+
+#endif
+
+#if X64_IMPL || WINE_SUPPORT
 static PVOID vector_handle;
-LONG WINAPI log_branch_records(LPEXCEPTION_POINTERS lpEI) {
+#endif
+
+#if X64_IMPL
+LONG WINAPI log_branch_records_win64(LPEXCEPTION_POINTERS lpEI) {
     PCONTEXT context = lpEI->ContextRecord;
     uintptr_t exception_to = context->LastExceptionToRip;
     uintptr_t exception_from = context->LastExceptionFromRip;
@@ -963,14 +1147,66 @@ wine_support:
 #endif
     {
 #if LINUX_IMPL
-        if (setup_exception_msrs()) {
+        uint32_t brand1;
+        uint32_t brand2;
+        uint32_t brand3;
+        get_cpuid(0, NULL, &brand1, &brand3, &brand2);
+        switch (brand1) {
+            default:
+                goto fail;
+            case 0x756E6547: // Genu
+                if (
+                    brand2 == 0x49656E60 && // ineI
+                    brand3 == 0x6C65746E // ntel
+                ) {
+                    uint32_t version_info;
+                    get_cpuid(1, &version_info, NULL, NULL, NULL);
+                    uint32_t family = (version_info >> 8) & 0xF;
+                    if (family == 15) {
+                        family += (version_info >> 20) & 0xFF;
+                    }
+                    switch (family) {
+                        case 15:
+                            last_exception_from_msr = 0x1D7;
+                            last_exception_to_msr = 0x1D8;
+                            break;
+                        case 6:
+                            if (
+                                (
+                                    ((version_info >> 4) & 0xF) | // model
+                                    ((version_info >> 12) & 0xF0) // extended model
+                                ) == 9
+                            ) {
+                                last_exception_from_msr = 0x1DE;
+                                last_exception_to_msr = 0x1DD;
+                            }
+                            break;
+                    }
+                    // TODO: intel linux
+                    break;
+                }
+                goto fail;
+            case 0x68747541: // Auth
+                if (
+                    brand2 == 0x69746E65 && // enti
+                    brand3 == 0x444D4163 // cAMD
+                ) {
 #if _WIN32
-            is_wine = true;
-            goto wine_support;
-#else
-            // TODO: linux
+                    wine_handler = &log_branch_records_wine_amd;
 #endif
+                    // TODO: AMD linux
+                    break;
+                }
+                goto fail;
         }
+#if _WIN32
+        is_wine = true;
+        SYSTEM_INFO sysinfo;
+        GetSystemInfo(&sysinfo);
+        processor_count = sysinfo.dwNumberOfProcessors;
+        goto wine_support;
+#endif
+fail:;
 #endif
     }
     return false;
@@ -979,21 +1215,35 @@ wine_support:
 bool last_branch_tracking_hook(void) {
     if (expect(initialize_last_branch_tracking(), true)) {
 #if _WIN32
+#if !X64_IMPL
 #if WINE_SUPPORT
         if (expect(!is_wine, true))
 #endif
         {
-#if X64_IMPL
-            PVOID handle = AddVectoredExceptionHandler(1, log_branch_records);
-            vector_handle = handle;
-            return handle != NULL;
-#else
             return hook_prepare_pointer_thunk() >= 0;
-#endif
         }
 #endif
-#if LINUX_IMPL
-        // TODO: wine/linux
+#if X64_IMPL || WINE_SUPPORT
+        PVOID handle = AddVectoredExceptionHandler(1,
+#if X64_IMPL
+#if WINE_SUPPORT
+            expect(!is_wine, true) ?
+#endif
+            &log_branch_records_win64
+#if WINE_SUPPORT
+            :
+#endif
+#endif
+#if WINE_SUPPORT
+            wine_handler
+#endif
+        );
+        vector_handle = handle;
+        return handle != NULL;
+
+#endif
+#else
+        // TODO: linux
 #endif
     }
     return false;
@@ -1002,21 +1252,22 @@ bool last_branch_tracking_hook(void) {
 bool last_branch_tracking_unhook(void) {
     if (expect(last_branch_functional, true)) {
 #if _WIN32
+
+#if !X64_IMPL
 #if WINE_SUPPORT
         if (expect(!is_wine, true))
 #endif
         {
-#if X64_IMPL
-            PVOID handle = vector_handle;
-            vector_handle = NULL;
-            return RemoveVectoredExceptionHandler(handle) != 0;
-#else
-            return hook_prepare_pointer_thunk() >= 0;
-#endif
+            return unhook_prepare_pointer_thunk() >= 0;
         }
 #endif
-#if LINUX_IMPL
-        // TODO: wine/linux
+#if X64_IMPL || WINE_SUPPORT
+        PVOID handle = vector_handle;
+        vector_handle = NULL;
+        return RemoveVectoredExceptionHandler(handle) != 0;
+#endif
+#else
+        // TODO: linux
 #endif
     }
     return false;
@@ -1037,14 +1288,28 @@ bool last_branch_tracking_start(thread_id_t thread) {
             SetThreadContext(thread, &context);
             return true;
         }
+#if WINE_SUPPORT
+        char msr_path[32];
+        uint32_t cpu_count = processor_count;
+        for (uint32_t i = 0; i != cpu_count; ++i) {
+            sprintf(msr_path, "/dev/cpu/%u/msr", i);
+            int fd = open(msr_path, OPEN_READ_WRITE);
+            if (fd >= 0) {
+                uint64_t value;
+                pread64(fd, &value, 8, 0x1D9);
+                value |= 1;
+                pwrite64(fd, &value, 8, 0x1D9);
+                close(fd);
+            }
+        }
 #endif
-#if LINUX_IMPL
-        // TODO: wine/linux
+#else
+        // TODO: linux
 #endif
     }
     return false;
 }
-
+#include <limits>
 bool last_branch_tracking_stop(thread_id_t thread) {
     if (expect(last_branch_functional, true)) {
 #if _WIN32
@@ -1060,8 +1325,22 @@ bool last_branch_tracking_stop(thread_id_t thread) {
             SetThreadContext(thread, &context);
             return true;
         }
+#if WINE_SUPPORT
+        char msr_path[32];
+        uint32_t cpu_count = processor_count;
+        for (uint32_t i = 0; i != cpu_count; ++i) {
+            sprintf(msr_path, "/dev/cpu/%u/msr", i);
+            int fd = open(msr_path, OPEN_READ_WRITE);
+            if (fd >= 0) {
+                uint64_t value;
+                pread64(fd, &value, 8, 0x1D9);
+                value &= 0xFFFFFFFFFFFFFFFE;
+                pwrite64(fd, &value, 8, 0x1D9);
+                close(fd);
+            }
+        }
 #endif
-#if LINUX_IMPL
+#else
         // TODO: wine/linux
 #endif
     }
