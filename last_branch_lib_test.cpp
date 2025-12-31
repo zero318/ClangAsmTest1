@@ -23,6 +23,11 @@ label_testA:
     "0: \n"
     );
 label_testB:
+    __asm__ volatile (
+        "NOP \n"
+        ".byte 0x8B,0x04,0x25,0,0,0,0" // MOV EAX, [0]
+    );
+    /*
     __asm {
         _emit 0x8B
         _emit 0x04
@@ -32,6 +37,7 @@ label_testB:
         _emit 0
         _emit 0
     }
+    */
 
     auto [last_exception_to, last_exception_from] = last_branch_get_exceptions();
 
