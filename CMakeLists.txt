@@ -667,6 +667,13 @@ target_link_directories(${EXE} PRIVATE "C:\\Program Files (x86)\\Windows Kits\\1
 endif()
 
 if (NOT NO_STDLIB)
+if (IS_X64)
+target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x64\\dsound.lib")
+target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x64\\dinput8.lib")
+target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x64\\dxguid.lib")
+target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x64\\d3d9.lib")
+target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x64\\d3dx9.lib")
+else()
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\dsound.lib")
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\dinput8.lib")
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\dxguid.lib")
@@ -674,6 +681,7 @@ target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\d3dx9.lib")
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\8.0a\\lib\\d3d8.lib")
 #target_link_libraries(${EXE} DummyDLL)
+endif()
 endif()
 
 # Add source to this project's executable.
