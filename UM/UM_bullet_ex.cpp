@@ -28,6 +28,8 @@
 
 #include <array>
 #include <bit>
+#include <memory>
+#include <new>
 
 #include "../zero/FloatConstants.h"
 
@@ -126,12 +128,66 @@ extern StaticCtorsDtors fake_static_data;
 
 #undef SHARD
 
+extern "C" {
+    // This is the mangled name of the global operator delete.
+    // By default delete is supposed to *always* be noexcept,
+    // but MSVC frequently omits the EH frame setup for cases
+    // it knows won't actually throw. Clang doesn't trust any
+    // instance of delete and almost always makes an EH frame
+    // without the terrible hack to trick it into thinking
+    // delete is an arbitrary function. Yuck.
+    void __cdecl delete_no_eh_impl(void* ptr) asm("??3@YAXPAX@Z");
+}
+
+template <typename T>
+static inline constexpr void destroy_at_without_noexcept(T* p) {
+    if constexpr (std::is_array_v<T>) {
+        for (auto& elem : *p) {
+            destroy_at_without_noexcept(&elem);
+        }
+    }
+    else {
+        p->~T();
+    }
+}
+
+template <typename T, typename ... Args>
+static forceinline T* new_no_eh(Args&&... args) {
+    return new (new unsigned char[sizeof(T)]) T(args...);
+}
+template <typename T>
+static forceinline void delete_no_eh_nonnull(T* ptr) noexcept(false) {
+    destroy_at_without_noexcept(ptr);
+    delete_no_eh_impl((void*)ptr);
+}
+template <typename T>
+static forceinline void delete_no_eh(T* ptr) noexcept(false) {
+    if (ptr) {
+        delete_no_eh_nonnull(ptr);
+    }
+}
+
+#define NO_EH_TERMINATE noexcept(false)
+#define NO_EH_FRAME noexcept(false)
+
+#define MATCH_EH_FRAMES 1
+
+#if MATCH_EH_FRAMES
+#define EH_TERMINATE noexcept(true)
+#else
+#define EH_TERMINATE noexcept(false)
+#endif
+
 #ifndef SAFE_FREE
 #define SAFE_FREE(p)       { if (p) { free ((void*)p);     (p)=NULL; } }
 #endif
 
 #ifndef SAFE_FREE_FAST
 #define SAFE_FREE_FAST(p)       { if (auto ptr = (p)) { free ((void*)ptr);     (p)=NULL; } }
+#endif
+
+#ifndef SAFE_DELETE_NO_EH
+#define SAFE_DELETE_NO_EH(p)       { if (p) { delete_no_eh_nonnull(p);     (p)=NULL; } }
 #endif
 
 #if INCLUDE_PATCH_CODE
@@ -894,7 +950,7 @@ namespace Pbg {
         virtual gnu_noinline bool thiscall set_file_pointer(LONG offset, DWORD origin) = 0;
         
         // 0x46F580
-        virtual ~IFile() {}
+        virtual ~IFile() NO_EH_TERMINATE {}
     };
 
     // size: 0xC
@@ -1036,7 +1092,7 @@ namespace Pbg {
 
         // 0x46F1E0
         // Method 1C
-        virtual ~File() {
+        virtual ~File() NO_EH_TERMINATE {
             HANDLE file_handle = this->handle;
             if (file_handle != INVALID_HANDLE_VALUE) {
                 CloseHandle(file_handle);
@@ -1083,7 +1139,7 @@ struct ArcFileInner {
     ArcFileInner() : filename(NULL) {}
 
     // 0x46F1A0
-    ~ArcFileInner() {
+    ~ArcFileInner() NO_EH_TERMINATE {
         SAFE_FREE(this->filename);
     }
 };
@@ -1358,7 +1414,8 @@ struct ArcFile {
     // 0x10
 
     // 0x46EC50
-    ~ArcFile() {
+    // EH frame terminate
+    dllexport gnu_noinline ~ArcFile() EH_TERMINATE {
         if (char* str = this->archive_filename) {
             DebugLogger::__debug_log_stub_2("info : %s close arcfile\r\n", str);
             free(this->archive_filename);
@@ -1373,6 +1430,7 @@ struct ArcFile {
     dllexport gnu_noinline static bool stdcall __sub_46EB80(int32_t = UNUSED_DWORD) asm_symbol_rel(0x46EB80);
 
     // 0x46EE90
+    // EH frame (free something)
     dllexport gnu_noinline static bool stdcall __sub_46EE90(int32_t = UNUSED_DWORD) asm_symbol_rel(0x46EE90);
 
     // 0x46ED10
@@ -1459,6 +1517,7 @@ ValidateStructSize32(0x10, DatFileHeader);
 #pragma endregion
 
 // 0x46EE90
+// EH frame (free something)
 dllexport gnu_noinline bool stdcall ArcFile::__sub_46EE90(int32_t) {
     if (Pbg::File* pbg_file = THDAT_ARCFILE.file) {
         if (pbg_file->open_file("th18.dat", "r")) {
@@ -1555,7 +1614,7 @@ struct ArcFileEx : ArcFile {
     }
 
     // 0x46EB70
-    dllexport gnu_noinline ~ArcFileEx() asm_symbol_rel(0x46EB70) {}
+    dllexport gnu_noinline ~ArcFileEx() NO_EH_TERMINATE asm_symbol_rel(0x46EB70) {}
 };
 
 extern "C" {
@@ -2123,7 +2182,7 @@ struct UpdateFuncRegistry {
         this->__int_54 = 0;
     }
 
-    inline ~UpdateFuncRegistry();
+    inline ~UpdateFuncRegistry() NO_EH_TERMINATE;
 
     // 0x401180
     dllexport gnu_noinline static ZUNResult stdcall register_on_tick(UpdateFunc* update_tick, int32_t new_func_priority) asm_symbol_rel(0x401180) {
@@ -3746,7 +3805,7 @@ struct ZUNThread {
         this->thread = (HANDLE)_beginthreadex(NULL, 0, func, arg_list, 0, &this->tid);
     }
 
-    virtual ~ZUNThread() {
+    virtual ~ZUNThread() NO_EH_TERMINATE {
         this->stop_and_cleanup();
     }
 };
@@ -3777,7 +3836,7 @@ struct D3DThread : ZUNThread {
     // 0x58
 
     // 0x46FDD0
-    virtual ~D3DThread() {
+    virtual ~D3DThread() NO_EH_TERMINATE {
 
     }
 };
@@ -3922,7 +3981,7 @@ struct FpsCounter : ZUNTask {
     }
 
     // 0x43A2D0
-    dllexport gnu_noinline ~FpsCounter() {
+    dllexport gnu_noinline ~FpsCounter() NO_EH_TERMINATE {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
         FPS_COUNTER_PTR = NULL;
     }
@@ -3974,7 +4033,7 @@ struct TickCounter : ZUNTask {
     }
 
     // 0x475310
-    dllexport gnu_noinline ~TickCounter() {
+    dllexport gnu_noinline ~TickCounter() NO_EH_TERMINATE {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         TICK_COUNTER_PTR = NULL;
     }
@@ -4724,7 +4783,7 @@ extern "C" {
     externcg Supervisor SUPERVISOR cgasm("_SUPERVISOR");
 }
 
-inline UpdateFuncRegistry::~UpdateFuncRegistry() {
+inline UpdateFuncRegistry::~UpdateFuncRegistry() NO_EH_TERMINATE {
     SUPERVISOR.__thread_A94.stop_and_cleanup();
     this->__int_54 = 1;
 
@@ -5168,6 +5227,7 @@ struct CSoundManager {
     }
 
     // 0x4898F0
+    // EH frame (free something)
     dllexport gnu_noinline HRESULT thiscall CreateStreamingFromMemory(
         CStreamingSound** ppStreamingSound,
         BYTE* pbData,
@@ -5212,7 +5272,7 @@ struct CWaveFile {
         this->m_bIsReadingFromMemory = FALSE;
     }
 
-    inline ~CWaveFile() {
+    inline ~CWaveFile() NO_EH_TERMINATE {
         this->close_handle();
     }
 
@@ -5431,6 +5491,7 @@ struct CSound {
     }
 
     // 0x48A0E0
+    // EH frame (empty???)
     dllexport gnu_noinline virtual ~CSound() {
         this->FreeSoundBuffers();
         SAFE_DELETE(this->cwave_ptr);
@@ -6423,6 +6484,7 @@ static inline constexpr auto SILENT_VOLUME = DSBVOLUME_MIN;
 static inline constexpr auto VOLUME_RANGE = SILENT_VOLUME - MAX_VOLUME;
 
 // 0x4898F0
+// EH frame (free something)
 dllexport gnu_noinline HRESULT thiscall CSoundManager::CreateStreamingFromMemory(
     CStreamingSound** ppStreamingSound,
     BYTE* pbData,
@@ -6593,7 +6655,8 @@ struct SoundManager {
     dllexport gnu_noinline static DWORD WINAPI sound_thread_func(void* self) asm_symbol_rel(0x4763D0);
 
     // 0x476410
-    dllexport gnu_noinline ZUNResult thiscall __sub_476410(HWND window_hwnd_arg) asm_symbol_rel(0x476410);
+    // EH frame (terminate)
+    dllexport gnu_noinline ZUNResult thiscall __sub_476410(HWND window_hwnd_arg) EH_TERMINATE asm_symbol_rel(0x476410);
 
     // 0x4767B0
     dllexport gnu_noinline static DWORD WINAPI load_sound_effects(void* self) asm_symbol_rel(0x4767B0);
@@ -8383,7 +8446,7 @@ struct Scorefile {
     ScorefileSectionA __sectionA; // 0x5F4B8
     // 0x5F888
 
-    inline ~Scorefile() {
+    inline ~Scorefile() NO_EH_TERMINATE {
         SAFE_FREE(this->buffer);
         SAFE_FREE(this->decompressed_buffer);
     }
@@ -8579,6 +8642,7 @@ struct ScorefileManager {
     }
 
     // 0x4637D0
+    // EH frame (free the main pointer but don't run contents destructors?)
     dllexport gnu_noinline static ScorefileManager* allocate() {
         ScorefileManager* scorefile_manager = new ScorefileManager();
         SCOREFILE_MANAGER_PTR = scorefile_manager;
@@ -10425,6 +10489,7 @@ struct BombBase : ZUNTask {
 
     // Method 0
     // 0x41FC10
+    // EH frame (empty???)
     dllexport gnu_noinline virtual ~BombBase() {
         this->__vm_id_5C.mark_tree_for_delete();
         this->__vm_id_60.mark_tree_for_delete();
@@ -11014,7 +11079,8 @@ struct EnemyFogImpl {
     // 0x1C
 
     // 0x41BE50
-    dllexport gnu_noinline ~EnemyFogImpl() {
+    // EH frame (terminate)
+    dllexport gnu_noinline ~EnemyFogImpl() EH_TERMINATE {
         this->__anm_id_8.mark_tree_for_delete();
         SAFE_FREE(this->__ptr_14);
         SAFE_FREE(this->__ptr_18);
@@ -11302,6 +11368,7 @@ struct EnemyData {
     inline ZUNResult run_ecl();
 
     // 0x430D40
+    // EH frame (free something)
     dllexport gnu_noinline int32_t thiscall high_ecl_run() asm_symbol_rel(0x430D40);
 
     // 0x438AA0
@@ -11596,7 +11663,7 @@ struct SptResource {
         this->zero_contents();
     }
 
-    inline ~SptResource() {
+    inline ~SptResource() NO_EH_TERMINATE {
         SAFE_FREE(this->subs);
     }
 
@@ -11706,7 +11773,7 @@ struct EclManager : SptResource {
     inline EclManager() {
     }
 
-    inline ~EclManager() {
+    inline ~EclManager() NO_EH_TERMINATE {
         this->free_files();
     }
 
@@ -11798,7 +11865,7 @@ public:
     }
 
     // 0x42CF50
-    dllexport inline virtual ~EclVM() asm_symbol_rel(0x42CF50) {
+    dllexport inline virtual ~EclVM() NO_EH_TERMINATE asm_symbol_rel(0x42CF50) {
         clang_forceinline this->cleanup_vm();
     }
 
@@ -12605,7 +12672,8 @@ struct Enemy : EclVM {
     }
 
     // 0x42D220
-    dllexport gnu_noinline virtual ~Enemy() asm_symbol_rel(0x42D220);
+    // EH frame (terminate)
+    dllexport gnu_noinline virtual ~Enemy() EH_TERMINATE asm_symbol_rel(0x42D220);
 
     // 0x42FE80
     dllexport gnu_noinline ZUNResult thiscall on_tick() asm_symbol_rel(0x42FE80) {
@@ -12862,6 +12930,7 @@ struct GameThread : ZUNTask {
     }
 
     // 0x4432C0
+    // EH frame (empty???)
     dllexport gnu_noinline ~GameThread();
 
     // 0x443830
@@ -12894,6 +12963,7 @@ private:
     inline unsigned thread_start_impl();
 public:
     // 0x4424E0
+    // EH frame (free something)
     dllexport gnu_noinline unsigned thiscall thread_start() {
         return GAME_THREAD_PTR->thread_start_impl();
     }
@@ -12913,7 +12983,7 @@ public:
 
     // 0x4437B0
     dllexport gnu_noinline static GameThread* fastcall allocate(ReplayMode mode) asm_symbol_rel(0x4437B0) {
-        GameThread* game_thread = new GameThread();
+        GameThread* game_thread = new_no_eh<GameThread>();
         WINDOW_DATA.__int_20D0 = 0;
         SUPERVISOR.d3d_device->EvictManagedResources();
         game_thread->skip_flag = true;
@@ -13238,6 +13308,7 @@ struct MsgVM {
     // 0x1D8
 
     // 0x43A3F0
+    // EH frame (empty???)
     dllexport gnu_noinline ~MsgVM();
 
     inline void __inline_textbox_sub_A(float arg1);
@@ -13465,6 +13536,7 @@ struct Gui : ZUNTask {
     dllexport gnu_noinline void thiscall cleanup() asm_symbol_rel(0x43B350);
 
     // 0x43B560
+    // EH frame (empty???)
     dllexport gnu_noinline ~Gui();
 
     inline void update_spell_timer(int32_t time) {
@@ -13733,7 +13805,8 @@ dllexport gnu_noinline DWORD WINAPI SoundManager::sound_thread_func(void* self) 
 }
 
 // 0x476410
-dllexport gnu_noinline ZUNResult thiscall SoundManager::__sub_476410(HWND window_hwnd_arg) {
+// EH frame (terminate)
+dllexport gnu_noinline ZUNResult thiscall SoundManager::__sub_476410(HWND window_hwnd_arg) EH_TERMINATE {
     HWND window_hwnd = window_hwnd_arg;
     this->copy_sound_data();
     memset(this->active_sound_ids, -1, sizeof(this->active_sound_ids));
@@ -13971,7 +14044,7 @@ struct GdiManager {
     void* bitmap_data; // 0x120
     // 0x124
 
-    inline ~GdiManager() {
+    inline ~GdiManager() NO_EH_TERMINATE {
         this->cleanup();
     }
 
@@ -15605,7 +15678,7 @@ struct AnmVM {
     }
 
     // 0x41B750
-    inline ~AnmVM() {
+    inline ~AnmVM() NO_EH_TERMINATE {
         this->cleanup();
     }
 
@@ -15659,9 +15732,9 @@ struct AnmVM {
         return 0;
     }
 
-    forceinline void interrupt_and_run(int32_t interrupt) {
+    forceinline int32_t interrupt_and_run(int32_t interrupt) {
         this->interrupt(interrupt);
-        this->run_anm();
+        return this->run_anm();
     }
 
     // ====================
@@ -16599,7 +16672,7 @@ struct AnmLoaded {
         this->zero_contents();
     }
 
-    inline ~AnmLoaded() {
+    inline ~AnmLoaded() NO_EH_TERMINATE {
         this->cleanup();
     }
 
@@ -18434,6 +18507,7 @@ struct AnmManager {
     }
 
     // 0x483820
+    // EH frame
     dllexport gnu_noinline AnmManager() : prev_slow_id(0) {
         this->zero_contents();
         SPRITE_VERTEX_BUFFER_B[3].position.w = 1.0f;
@@ -18702,7 +18776,7 @@ struct AnmManager {
         this->loaded_anm_files[file_index] = anm_loaded;
         anm_loaded->slot_index = file_index;
         if (ZUN_FAILED(anm_loaded->preload(filename))) {
-            delete anm_loaded;
+            delete_no_eh(anm_loaded);
             return NULL;
         }
         return anm_loaded;
@@ -18899,11 +18973,9 @@ struct AnmManager {
     // 0x488C60
     dllexport static void interrupt_and_run_tree(const AnmID& id, int32_t interrupt_index) asm_symbol_rel(0x488C60) {
         if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(id)) {
-            vm->interrupt(interrupt_index);
-            vm->run_anm();
+            vm->interrupt_and_run(interrupt_index);
             vm->controller.child_list.for_each([=](AnmVM*& vm) {
-                vm->interrupt(interrupt_index);
-                vm->run_anm();
+                vm->interrupt_and_run(interrupt_index);
             });
         }
     }
@@ -18971,14 +19043,14 @@ struct AnmManager {
     }
 
     // 0x4885D0
-    dllexport int32_t thiscall destroy_possibly_managed_vm(AnmVM* vm) asm_symbol_rel(0x4885D0) {
+    dllexport gnu_noinline int32_t thiscall destroy_possibly_managed_vm(AnmVM* vm) asm_symbol_rel(0x4885D0) {
         this->unlink_node_from_list_ends(&vm->controller.global_list_node);
         vm->run_on_destroy();
         vm->controller.global_list_node.unlink();
         vm->controller.destroy_list_node.unlink();
         vm->controller.__root_vm = NULL;
         vm->controller.parent = NULL;
-        if (vm >= this->fast_array && vm < array_end_addr(this->fast_array)) {
+        if (pointer_in_array(vm, this->fast_array)) {
             FastAnmVM* fast_vm = &this->fast_array[vm->controller.fast_id];
             fast_vm->alive = false;
             this->free_list_head.append(&fast_vm->fast_node);
@@ -18987,8 +19059,7 @@ struct AnmManager {
             return 0;
         }
         else {
-            vm->cleanup();
-            delete vm;
+            delete_no_eh(vm);
             return 0;
         }
     }
@@ -19008,7 +19079,7 @@ struct AnmManager {
                 layer_heads[i].controller.next_in_layer = NULL;
             } while (++i < WORLD_LAYER_COUNT);
 
-            this->world_list.for_each([&, this](AnmVM* vm) {
+            this->world_list.for_each_safe([&, this](AnmVM* vm) {
                 vm->controller.next_in_layer = NULL;
                 vm->controller.prev_in_layer = NULL;
                 switch (vm->data.__vm_state) {
@@ -19020,7 +19091,7 @@ struct AnmManager {
                 }
             });
 
-            destroy_list.for_each([=](AnmVM* vm) {
+            destroy_list.for_each_safeB([=](AnmVM* vm) {
                 this->destroy_possibly_managed_vm(vm);
             });
         }
@@ -19043,7 +19114,7 @@ struct AnmManager {
                 layer_heads[i].controller.next_in_layer = NULL;
             } while (++i < UI_LAYER_COUNT);
 
-            this->ui_list.for_each([&, this](AnmVM* vm) {
+            this->ui_list.for_each_safe([&, this](AnmVM* vm) {
                 vm->controller.next_in_layer = NULL;
                 vm->controller.prev_in_layer = NULL;
                 switch (vm->data.__vm_state) {
@@ -19055,7 +19126,7 @@ struct AnmManager {
                 }
             });
 
-            destroy_list.for_each([=](AnmVM* vm) {
+            destroy_list.for_each_safeB([=](AnmVM* vm) {
                 this->destroy_possibly_managed_vm(vm);
             });
         }
@@ -19168,7 +19239,7 @@ public:
         if (
             slot >= 0 && slot < countof(this->loaded_anm_files)
         ) {
-            SAFE_DELETE(this->loaded_anm_files[slot]);
+            SAFE_DELETE_NO_EH(this->loaded_anm_files[slot]);
         }
     }
 };
@@ -19914,6 +19985,7 @@ struct LoadingThread : ZUNTask {
     }
 
     // 0x452F80
+    // EH frame (empty???)
     dllexport gnu_noinline ~LoadingThread();
 
     inline UpdateFuncRet on_tick();
@@ -19944,7 +20016,7 @@ struct LoadingThread : ZUNTask {
     // 0x452CB0
     dllexport gnu_noinline static unsigned cdecl thread_func_A(void* arg) asm_symbol_rel(0x452CB0);
 
-    inline ZUNResult initialize() {
+    forceinline ZUNResult initialize() {
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
         UpdateFuncRegistry::register_on_tick(update_func, TickPriority::LoadingThread); // 4
         this->on_tick_func = update_func;
@@ -19961,7 +20033,7 @@ struct LoadingThread : ZUNTask {
 
     // 0x4531B0
     dllexport gnu_noinline static LoadingThread* allocate() asm_symbol_rel(0x4531B0) {
-        LoadingThread* loading_thread = new LoadingThread();
+        LoadingThread* loading_thread = new_no_eh<LoadingThread>();
         LOADING_THREAD_PTR = loading_thread;
         if (ZUN_FAILED(loading_thread->initialize())) {
             delete loading_thread;
@@ -20112,7 +20184,8 @@ struct EffectManager : ZUNTask {
     }
 
     // 0x42ADD0
-    dllexport gnu_noinline ~EffectManager() {
+    // EH frame (terminate)
+    dllexport gnu_noinline ~EffectManager() EH_TERMINATE {
         this->__thread_2020.stop_and_cleanup();
         AnmManager* anm_manager = ANM_MANAGER_PTR;
         anm_manager->mark_all_vms_from_loaded_slot_for_delete(EFFECT_ANM_INDEX);
@@ -21428,7 +21501,8 @@ struct AsciiManager : ZUNTask {
     }
 
     // 0x419690
-    dllexport gnu_noinline ~AsciiManager() {
+    // EH frame (terminate)
+    dllexport gnu_noinline ~AsciiManager() EH_TERMINATE {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func_group_1);
@@ -21786,10 +21860,10 @@ public:
 
     // 0x419390
     dllexport gnu_noinline static AsciiManager* allocate() asm_symbol_rel(0x419390) {
-        AsciiManager* ascii_manager = new AsciiManager();
+        AsciiManager* ascii_manager = new_no_eh<AsciiManager>();
         ASCII_MANAGER_PTR = ascii_manager;
         if (ZUN_FAILED(ascii_manager->initialize())) {
-            delete ascii_manager;
+            delete_no_eh(ascii_manager);
             return NULL;
         }
         return ascii_manager;
@@ -21964,6 +22038,7 @@ struct EndVM {
     }
 
     // 0x42BC60
+    // EH frame (run destructor)
     dllexport gnu_noinline EndVM(MsgInstruction* script) {
         this->zero_contents();
 
@@ -21984,7 +22059,7 @@ struct EndVM {
         this->__color_7C = PackD3DCOLOR(0, 255, 255, 255);
     }
 
-    inline ~EndVM() {
+    inline ~EndVM() NO_EH_TERMINATE {
         this->__thread_D0.stop_and_cleanup();
         for (size_t i = 0; i != countof(this->__vm_id_array_40); ++i) {
             this->__vm_id_array_40[i].mark_tree_for_delete();
@@ -22039,7 +22114,8 @@ struct Ending : ZUNTask {
     }
 
     // 0x42B8B0
-    dllexport gnu_noinline ~Ending() {
+    // EH frame (terminate)
+    dllexport gnu_noinline ~Ending() EH_TERMINATE {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
@@ -22129,6 +22205,7 @@ struct Ending : ZUNTask {
     }
 
     // 0x42B650
+    // EH frame (free end vm)
     dllexport gnu_noinline ZUNResult initialize() asm_symbol_rel(0x42B650) {
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
         UpdateFuncRegistry::register_on_tick(update_func, TickPriority::Ending); // 36
@@ -24999,12 +25076,13 @@ struct Player : ZUNTask {
         zero_this();
     }
 
-    inline Player() {
+    forceinline Player() {
         this->zero_contents();
     }
 
     // 0x45B020
-    dllexport gnu_noinline ~Player() {
+    // EH frame (terminate)
+    dllexport gnu_noinline ~Player() EH_TERMINATE {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
@@ -25651,10 +25729,10 @@ public:
 
     // 0x45AF20
     dllexport gnu_noinline static Player* allocate() {
-        Player* player = new Player();
+        Player* player = new_no_eh<Player>();
         PLAYER_PTR = player;
         if (ZUN_FAILED(player->initialize())) {
-            delete player;
+            delete_no_eh(player);
             return NULL;
         }
         return player;
@@ -26948,7 +27026,7 @@ struct PopupManager : ZUNTask {
     }
 
     // 0x463F50
-    dllexport gnu_noinline ~PopupManager() {
+    dllexport gnu_noinline ~PopupManager() NO_EH_TERMINATE {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
@@ -27038,7 +27116,7 @@ struct PopupManager : ZUNTask {
         ++popup_manager->__index_10;
     }
 
-    inline ZUNResult initialize() {
+    forceinline ZUNResult initialize() {
         this->ascii_anm = ASCII_MANAGER_PTR->ascii_anm;
 
         UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
@@ -27061,10 +27139,10 @@ struct PopupManager : ZUNTask {
 
     // 0x463DD0
     dllexport gnu_noinline static PopupManager* allocate() asm_symbol_rel(0x463DD0) {
-        PopupManager* popup_manager = new PopupManager();
+        PopupManager* popup_manager = new_no_eh<PopupManager>();
         POPUP_MANAGER_PTR = popup_manager;
         if (ZUN_FAILED(popup_manager->initialize())) {
-            delete popup_manager;
+            delete_no_eh(popup_manager);
             return NULL;
         }
         return popup_manager;
@@ -27229,7 +27307,7 @@ struct CardBase {
     }
     // Method 50
     // 0x412ED0
-    virtual ~CardBase() {
+    virtual ~CardBase() NO_EH_TERMINATE {
         this->list_node.unlink();
     }
 
@@ -28671,7 +28749,7 @@ struct AbilityTextData {
 
     // 0x4160B0
     dllexport gnu_noinline void thiscall initialize() asm_symbol_rel(0x4160B0) {
-        return;
+        return; // TODO: remove BUG
         char buffer[0x100];
         int32_t ability_txt_count;
         void* ability_txt_file = read_file_to_buffer("ability.txt", &ability_txt_count, false);
@@ -28765,7 +28843,8 @@ struct AbilityManager : ZUNTask {
     }
     
     // 0x4084C0
-    dllexport gnu_noinline ~AbilityManager() {
+    // EH frame (terminate)
+    dllexport gnu_noinline ~AbilityManager() EH_TERMINATE {
         this->__thread_C68.stop_and_cleanup();
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
@@ -29266,6 +29345,7 @@ public:
     }
 
     // 0x4082B0
+    // EH frame (free text data)
     dllexport gnu_noinline static AbilityManager* allocate() asm_symbol_rel(0x4082B0) {
         AbilityManager* ability_manager = new AbilityManager();
         ABILITY_MANAGER_PTR = ability_manager;
@@ -30053,7 +30133,8 @@ struct AbilityShop : ZUNTask {
     }
 
     // 0x4176E0
-    dllexport gnu_noinline ~AbilityShop() {
+    // EH frame (terminate)
+    dllexport gnu_noinline ~AbilityShop() EH_TERMINATE {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
@@ -30268,7 +30349,8 @@ struct AbilityMenu : ZUNTask {
     }
 
     // 0x413950
-    dllexport gnu_noinline ~AbilityMenu() {
+    // EH frame (terminate)
+    dllexport gnu_noinline ~AbilityMenu() EH_TERMINATE {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
@@ -30506,7 +30588,8 @@ struct EnemyManager : ZUNTask {
     }
 
     // 0x42DDC0
-    dllexport gnu_noinline ~EnemyManager() {
+    // EH frame (terminate)
+    dllexport gnu_noinline ~EnemyManager() EH_TERMINATE {
         this->destroy_all();
 
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
@@ -30563,7 +30646,7 @@ struct EnemyManager : ZUNTask {
     // 0x42D7D0
     dllexport gnu_noinline Enemy* allocate_new_enemy(const char* sub_name, EnemyInitData* data, int32_t = UNUSED_DWORD) asm_symbol_rel(0x42D7D0) {
         ZDEBUG_PRINT("Creating enemy with sub %s\n", sub_name);
-        Enemy* enemy = new Enemy(sub_name);
+        Enemy* enemy = new_no_eh<Enemy>(sub_name);
         enemy->data.motion.absolute.position = data->position;
         enemy->data.score = data->score;
         enemy->data.life.current = data->life;
@@ -30964,7 +31047,8 @@ dllexport gnu_noinline Enemy* stdcall get_boss_by_index(int32_t boss_index) {
 }
 
 // 0x42D220
-dllexport gnu_noinline Enemy::~Enemy() {
+// EH frame (terminate)
+dllexport gnu_noinline Enemy::~Enemy() EH_TERMINATE {
     EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
     this->data.global_list_node.unlink_from_head(enemy_manager->enemy_list.head);
     this->data.global_list_node.unlink_from_tail(enemy_manager->enemy_list.tail);
@@ -31657,6 +31741,7 @@ struct StdVM {
     }
 
     // 0x41D260
+    // EH frame (???)
     dllexport gnu_noinline ZUNResult thiscall run_std() asm_symbol_rel(0x41D260);
 
     // 0x41E760
@@ -31767,7 +31852,8 @@ struct Stage : ZUNTask {
     }
 
     // 0x41BB50
-    dllexport gnu_noinline ~Stage() {
+    // EH frame (terminate)
+    dllexport gnu_noinline ~Stage() EH_TERMINATE {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func_B);
@@ -32189,6 +32275,7 @@ corrupted_data:
     }
 
     // 0x41BF90
+    // EH frame (???)
     dllexport gnu_noinline static Stage* fastcall allocate(const char* std_filename) asm_symbol_rel(0x41BF90) {
         Stage* stage = new Stage();
         if (ZUN_FAILED(stage->initialize(std_filename))) {
@@ -32232,6 +32319,7 @@ inline StdInstruction* StdVM::get_current_instruction(int32_t offset) {
 }
 
 // 0x41D260
+// EH frame (???)
 dllexport gnu_noinline ZUNResult thiscall StdVM::run_std() {
     using namespace Std;
 
@@ -32503,7 +32591,8 @@ struct Spellcard : ZUNTask {
     }
 
     // 0x429D80
-    dllexport gnu_noinline ~Spellcard() {
+    // EH frame (terminate)
+    dllexport gnu_noinline ~Spellcard() EH_TERMINATE {
         this->__vm_id_array_10[0].mark_tree_for_delete();
         this->__vm_id_array_10[1].mark_tree_for_delete();
         this->__vm_id_array_10[2].mark_tree_for_delete();
@@ -33220,7 +33309,7 @@ struct Item {
     dllexport Item() = default;
 
     // 0x445800
-    dllexport ~Item() = default;
+    dllexport ~Item() NO_EH_TERMINATE = default;
 
     // 0x4472B0
     dllexport gnu_noinline int thiscall __sub_4472B0() asm_symbol_rel(0x4472B0) {
@@ -33325,7 +33414,8 @@ struct ItemManager : ZUNTask {
     }
 
     // 0x445920
-    dllexport gnu_noinline ~ItemManager() {
+    // EH frame (terminate)
+    dllexport gnu_noinline ~ItemManager() EH_TERMINATE {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func_B);
@@ -33457,6 +33547,7 @@ public:
     }
 
     // 0x445820
+    // EH frame (free)
     dllexport gnu_noinline static ItemManager* allocate() asm_symbol_rel(0x445820) {
         ItemManager* item_manager = new ItemManager();
         ITEM_MANAGER_PTR = item_manager;
@@ -34353,7 +34444,7 @@ struct Bullet {
     dllexport Bullet() = default;
 
     // 0x423970
-    dllexport ~Bullet() = default;
+    dllexport ~Bullet() NO_EH_TERMINATE = default;
 
     inline bool effects_active(uint32_t mask) {
         return this->active_effects & mask;
@@ -35189,7 +35280,7 @@ public:
     }
     // 0x4481E0
     // Method 0x68
-    virtual ~LaserData() {
+    virtual ~LaserData() NO_EH_TERMINATE {
     }
 
 #pragma endregion // LaserData method stubs
@@ -35480,9 +35571,14 @@ struct LaserLine : LaserData {
     // 0x448280
     // Method 0x64
     dllexport virtual gnu_noinline LaserData* thiscall duplicate() override asm_symbol_rel(0x448280) {
-        LaserLine* new_laser = new LaserLine();
+        LaserLine* new_laser = new_no_eh<LaserLine>();
         memcpy(new_laser, this, sizeof(LaserLine));
         return new_laser;
+    }
+
+    // 0x4484B0
+    // Method 0x68
+    virtual ~LaserLine() NO_EH_TERMINATE {
     }
 };
 
@@ -35662,6 +35758,11 @@ struct LaserInfinite : LaserData {
                 }
         }
         return 0;
+    }
+
+    // 0x448E50
+    // Method 0x68
+    virtual ~LaserInfinite() NO_EH_TERMINATE {
     }
 };
 
@@ -35929,6 +36030,11 @@ struct LaserCurve : LaserData {
         }
         return 0;
     }
+
+    // 0x448ED0
+    // Method 0x68
+    virtual ~LaserCurve() NO_EH_TERMINATE {
+    }
 };
 
 // size: 0x45C
@@ -36081,6 +36187,11 @@ struct LaserBeam : LaserData {
     dllexport virtual gnu_noinline int thiscall __method_30(Float2* arg1, float arg2) override asm_symbol_rel(0x452BD0) {
         return 0;
     }
+
+    // 0x448E90
+    // Method 0x68
+    virtual ~LaserBeam() NO_EH_TERMINATE {
+    }
 };
 
 // size: 0x10
@@ -36134,12 +36245,13 @@ struct BulletManager : ZUNTask {
         zero_this();
     }
 
-    inline BulletManager() {
+    inline BulletManager() EH_TERMINATE {
         this->zero_contents();
     }
 
     // 0x423CE0
-    dllexport gnu_noinline ~BulletManager() {
+    // EH frame (terminate)
+    dllexport gnu_noinline ~BulletManager() EH_TERMINATE {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
@@ -36754,6 +36866,7 @@ public:
     }
 
     // 0x423AF0
+    // EH frame (free, terminate)
     dllexport gnu_noinline static BulletManager* allocate() asm_symbol_rel(0x423AF0) {
         BulletManager* bullet_manager = new BulletManager();
         BULLET_MANAGER_PTR = bullet_manager;
@@ -36974,7 +37087,8 @@ struct LaserManager : ZUNTask {
     }
 
     // 0x448650
-    dllexport gnu_noinline ~LaserManager() {
+    // EH frame (terminate)
+    dllexport gnu_noinline ~LaserManager() EH_TERMINATE {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
@@ -36995,7 +37109,7 @@ struct LaserManager : ZUNTask {
     inline void allocate_new_line_laser(LaserLineParams* data) {
         if (this->laser_count < MAX_LASER_COUNT) {
             this->__increment_laser_id();
-            LaserLine* laser = new LaserLine();
+            LaserLine* laser = new_no_eh<LaserLine>();
             laser->id = this->__prev_laser_id;
             this->list_tail->embedded_node.append(laser);
             ++this->laser_count;
@@ -37013,7 +37127,7 @@ struct LaserManager : ZUNTask {
         laser_manager->__increment_laser_id();
         switch (laser_type) {
             case LineLaser: {
-                LaserLine* laser = new LaserLine();
+                LaserLine* laser = new_no_eh<LaserLine>();
                 laser->id = laser_manager->__prev_laser_id;
                 laser_manager->list_tail->embedded_node.append(laser);
                 ++laser_manager->laser_count;
@@ -37022,7 +37136,7 @@ struct LaserManager : ZUNTask {
                 break;
             }
             case InfiniteLaser: {
-                LaserInfinite* laser = new LaserInfinite();
+                LaserInfinite* laser = new_no_eh<LaserInfinite>();
                 laser->id = laser_manager->__prev_laser_id;
                 laser_manager->list_tail->embedded_node.append(laser);
                 ++laser_manager->laser_count;
@@ -37031,7 +37145,7 @@ struct LaserManager : ZUNTask {
                 break;
             }
             case BeamLaser: {
-                LaserBeam* laser = new LaserBeam();
+                LaserBeam* laser = new_no_eh<LaserBeam>();
                 laser->id = laser_manager->__prev_laser_id;
                 laser_manager->list_tail->embedded_node.append(laser);
                 ++laser_manager->laser_count;
@@ -37040,7 +37154,7 @@ struct LaserManager : ZUNTask {
                 break;
             }
             case CurvyLaser: {
-                LaserCurve* laser = new LaserCurve();
+                LaserCurve* laser = new_no_eh<LaserCurve>();
                 laser->id = laser_manager->__prev_laser_id;
                 laser_manager->list_tail->embedded_node.append(laser);
                 ++laser_manager->laser_count;
@@ -37265,8 +37379,7 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
     AnmVM* vm = &this->__vm_BE8;
     vm->reset();
     LASER_MANAGER_PTR->bullet_anm->__sub_477D60(vm, BULLET_SPRITE_DATA[this->sprite].color_data[0].sprite_id);
-    vm->run_on_interrupt(2);
-    vm->run_anm();
+    vm->interrupt_and_run(2);
     vm->data.blend_mode = 1;
     vm->data.x_anchor_mode = 0;
     vm->data.y_anchor_mode = 2;
@@ -37275,8 +37388,7 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
 
     vm = &this->__vm_11F4;
     clang_forceinline LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, this->params.color + 56);
-    vm->run_on_interrupt(2);
-    vm->run_anm();
+    vm->interrupt_and_run(2);
     vm->data.blend_mode = 1;
     vm->data.render_mode = 1;
     vm->data.origin_mode = 1;
@@ -37336,8 +37448,7 @@ dllexport gnu_noinline int thiscall LaserInfinite::initialize(void* data) {
     AnmVM* vm = &this->__vm_C0C;
     vm->reset();
     LASER_MANAGER_PTR->bullet_anm->__sub_477D60(vm, BULLET_SPRITE_DATA[this->sprite].color_data[0].sprite_id);
-    vm->run_on_interrupt(2);
-    vm->run_anm();
+    vm->interrupt_and_run(2);
 
     this->__vm_C0C.data.blend_mode = 1;
     this->__vm_C0C.data.x_anchor_mode = 0;
@@ -37347,8 +37458,7 @@ dllexport gnu_noinline int thiscall LaserInfinite::initialize(void* data) {
 
     vm = &this->__vm_1218;
     LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, 56 + this->params.color);
-    vm->run_on_interrupt(2);
-    vm->run_anm();
+    vm->interrupt_and_run(2);
 
     this->__vm_1218.data.blend_mode = 1;
     this->__vm_1218.data.render_mode = 1;
@@ -37400,8 +37510,7 @@ dllexport gnu_noinline int thiscall LaserCurve::initialize(void* data) {
         sprite = this->sprite + 142;
     }
     LASER_MANAGER_PTR->bullet_anm->__sub_477D60(vm, sprite);
-    vm->run_on_interrupt(2);
-    vm->run_anm();
+    vm->interrupt_and_run(2);
 
     // why???
     vm->data.blend_mode = 1;
@@ -37412,8 +37521,7 @@ dllexport gnu_noinline int thiscall LaserCurve::initialize(void* data) {
 
     vm = &this->__vm_11F4;
     LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, 56 + this->params.color);
-    vm->run_on_interrupt(2);
-    vm->run_anm();
+    vm->interrupt_and_run(2);
 
     vm->data.blend_mode = 1;
     this->__vm_11F4.data.render_mode = 1;
@@ -40496,6 +40604,7 @@ step_interps:
 }
 
 // 0x430D40
+// EH frame (free something)
 dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
     using namespace Ecl;
 
@@ -42649,7 +42758,7 @@ struct ReplayStageData {
     }
 
     // 0x463220
-    ~ReplayStageData() {
+    ~ReplayStageData() NO_EH_TERMINATE {
         this->list_node.unlink();
     }
 };
@@ -42803,7 +42912,8 @@ struct ReplayManager : ZUNTask {
     }
 
     // 0x461AD0
-    dllexport gnu_noinline ~ReplayManager() {
+    // EH frame (terminate)
+    dllexport gnu_noinline ~ReplayManager() EH_TERMINATE {
         delete this->header;
 
         this->chunk_lists->for_each_safe([](ReplayChunk* chunk) {
@@ -43106,9 +43216,9 @@ public:
                 REPLAY_MANAGER_PTR = this;
                 this->delete_chunk_list(GAME_MANAGER.globals.current_stage);
                 this->current_chunk_node = this->allocate_chunk(GAME_MANAGER.globals.current_stage);
-                this->header = new ReplayHeader(REPLAY_MAGIC, REPLAY_VERSION_NUMBER);
-                this->info = new ReplayInfo();
-                this->game_states[GAME_MANAGER.globals.current_stage] = new ReplayGamestate();
+                this->header = new_no_eh<ReplayHeader>(REPLAY_MAGIC, REPLAY_VERSION_NUMBER);
+                this->info = new_no_eh<ReplayInfo>();
+                this->game_states[GAME_MANAGER.globals.current_stage] = new_no_eh<ReplayGamestate>();
                 ReplayGamestate* game_state = this->game_states[GAME_MANAGER.globals.current_stage];
                 this->info->character = GAME_MANAGER.globals.character;
                 this->info->shottype = GAME_MANAGER.globals.shottype;
@@ -43221,6 +43331,7 @@ public:
     }
 
     // 0x461CF0
+    // EH frame (free)
     dllexport gnu_noinline static ReplayManager* fastcall allocate_mode2(const char* path) asm_symbol_rel(0x461CF0) {
         return allocate(__replay_mode_2, path);
     }
@@ -43349,7 +43460,8 @@ struct HelpMenu : ZUNTask {
     }
 
     // 0x4450B0
-    dllexport gnu_noinline ~HelpMenu() {
+    // EH frame (terminate)
+    dllexport gnu_noinline ~HelpMenu() EH_TERMINATE {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
@@ -43489,7 +43601,7 @@ struct KeyConfigMenu : ZUNTask {
     }
 
     // 0x447630
-    dllexport gnu_noinline ~KeyConfigMenu() {
+    dllexport gnu_noinline ~KeyConfigMenu() NO_EH_TERMINATE {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
@@ -43590,13 +43702,13 @@ struct OptionsMenu : ZUNTask {
         zero_this();
     }
 
-    inline OptionsMenu() {
+    forceinline OptionsMenu() {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
     }
 
     // 0x456A90
-    dllexport gnu_noinline ~OptionsMenu() {
+    dllexport gnu_noinline ~OptionsMenu() NO_EH_TERMINATE {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
@@ -43625,7 +43737,7 @@ struct OptionsMenu : ZUNTask {
         return ((OptionsMenu*)ptr)->on_draw();
     }
 
-    inline ZUNResult initialize(Float3* arg1) {
+    forceinline ZUNResult initialize(Float3* arg1) {
         UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
         UpdateFuncRegistry::register_on_tick(update_func, TickPriority::OptionsMenu); // 7
         this->on_tick_func = update_func;
@@ -43646,10 +43758,10 @@ struct OptionsMenu : ZUNTask {
 
     // 0x456880
     dllexport gnu_noinline static OptionsMenu* fastcall allocate(Float3* arg1) asm_symbol_rel(0x456880) {
-        OptionsMenu* options_menu = new OptionsMenu();
+        OptionsMenu* options_menu = new_no_eh<OptionsMenu>();
         OPTIONS_MENU_PTR = options_menu;
         if (ZUN_FAILED(options_menu->initialize(arg1))) {
-            delete options_menu;
+            delete_no_eh(options_menu);
             return NULL;
         }
         return options_menu;
@@ -43728,7 +43840,7 @@ struct PauseMenu : ZUNTask {
     }
 
     // 0x457960
-    dllexport gnu_noinline ~PauseMenu() {
+    dllexport gnu_noinline ~PauseMenu() NO_EH_TERMINATE {
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
@@ -44530,7 +44642,7 @@ struct MainMenu : ZUNTask {
         this->__unknown_task_flag_A = true;
     }
 
-    inline ~MainMenu() {
+    inline ~MainMenu() EH_TERMINATE {
         this->__thread_5D7C.stop_and_cleanup();
 
         UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
@@ -44553,6 +44665,7 @@ struct MainMenu : ZUNTask {
     }
 
     // 0x464D20
+    // EH frame (terminate)
     dllexport gnu_noinline static void cleanup() asm_symbol_rel(0x464D20) {
         delete MAIN_MENU_PTR;
     }
@@ -44633,7 +44746,7 @@ struct MainMenu : ZUNTask {
 
     // 0x464CB0
     dllexport gnu_noinline static MainMenu* allocate() asm_symbol_rel(0x464CB0) {
-        MainMenu* main_menu = new MainMenu();
+        MainMenu* main_menu = new_no_eh<MainMenu>();
         WINDOW_DATA.__int_20D0 = 0;
         main_menu->__thread_5D7C.start(&thread_start, main_menu);
         return main_menu;
@@ -46215,20 +46328,20 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_453C70() {
         SUPERVISOR.__unknown_bitfield_A = 1;
     }
 
-    delete KEY_CONFIG_MENU_PTR;
-    delete OPTIONS_MENU_PTR;
-    delete GAME_THREAD_PTR;
+    delete_no_eh(KEY_CONFIG_MENU_PTR);
+    delete_no_eh(OPTIONS_MENU_PTR);
+    delete_no_eh(GAME_THREAD_PTR);
     MAIN_MENU_PTR->cleanup();
-    delete LOADING_THREAD_PTR;
-    delete ENDING_PTR;
-    delete REPLAY_MANAGER_PTR;
-    SAFE_DELETE(EFFECT_MANAGER_PTR);
-    delete HELP_MENU_PTR;
-    delete ABILITY_MANAGER_PTR;
-    delete ABILITY_MENU_PTR;
+    delete_no_eh(LOADING_THREAD_PTR);
+    delete_no_eh(ENDING_PTR);
+    delete_no_eh(REPLAY_MANAGER_PTR);
+    SAFE_DELETE_NO_EH(EFFECT_MANAGER_PTR);
+    delete_no_eh(HELP_MENU_PTR);
+    delete_no_eh(ABILITY_MANAGER_PTR);
+    delete_no_eh(ABILITY_MENU_PTR);
     ABILITY_SHOP_PTR->cleanup();
-    //delete TROPHY_MANAGER_A;
-    //delete NOTICE_MANAGER;
+    //delete_no_eh(TROPHY_MANAGER_A_PTR);
+    //delete_no_eh(NOTICE_MANAGER_PTR);
 }
 
 // 0x453A70
@@ -46242,8 +46355,8 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_453A70() {
 
     this->__sub_453C70();
 
-    delete FPS_COUNTER_PTR;
-    delete TICK_COUNTER_PTR;
+    delete_no_eh(FPS_COUNTER_PTR);
+    delete_no_eh(TICK_COUNTER_PTR);
 
     SAFE_RELEASE(ANM_MANAGER_PTR->__d3d_vertex_buffer_3120E18);
 
@@ -46261,12 +46374,12 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_453A70() {
 
     SAFE_RELEASE(this->dinput);
 
-    //THDAT_ARCFILE.~ArcFile();
+    THDAT_ARCFILE.~ArcFile();
 
-    SAFE_DELETE(this->__arcade_vm_ptr_A);
-    SAFE_DELETE(this->__arcade_vm_ptr_B);
-    SAFE_DELETE(this->__arcade_vm_ptr_C);
-    SAFE_DELETE(this->__arcade_vm_ptr_D);
+    SAFE_DELETE_NO_EH(this->__arcade_vm_ptr_A);
+    SAFE_DELETE_NO_EH(this->__arcade_vm_ptr_B);
+    SAFE_DELETE_NO_EH(this->__arcade_vm_ptr_C);
+    SAFE_DELETE_NO_EH(this->__arcade_vm_ptr_D);
 }
 
 inline void GameThread::__start_stage() {
@@ -48437,8 +48550,9 @@ dinput_init_success:
 extern "C" {
 
 // 0x471270
-dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow);
-dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow) asm_symbol_rel(0x471270) {
+// EH frame (terminate)
+dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow) EH_TERMINATE;
+dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow) EH_TERMINATE asm_symbol_rel(0x471270) {
     HINSTANCE current_instance = hInstance;
     int local_int_18 = 0;
     WINDOW_DATA.current_instance = hInstance;

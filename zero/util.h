@@ -1879,6 +1879,9 @@ union ZUNMagic16 {
 #define array_end_addr(array_var) \
 (&((array_var)[countof(array_var)]))
 
+#define pointer_in_array(ptr, array_var) \
+((ptr) >= (array_var) && (ptr) < array_end_addr(array_var))
+
 template<typename T, size_t size>
 constexpr size_t GetArrLength(T(&)[size]) { return size; }
 
