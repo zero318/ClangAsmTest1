@@ -134,7 +134,7 @@ extern "C" {
     // but MSVC frequently omits the EH frame setup for cases
     // it knows won't actually throw. Clang doesn't trust any
     // instance of delete and almost always makes an EH frame
-    // without the terrible hack to trick it into thinking
+    // without this terrible hack to trick it into thinking
     // delete is an arbitrary function. Yuck.
     void __cdecl delete_no_eh_impl(void* ptr) asm("??3@YAXPAX@Z");
 }
@@ -170,7 +170,7 @@ static forceinline void delete_no_eh(T* ptr) noexcept(false) {
 #define NO_EH_TERMINATE noexcept(false)
 #define NO_EH_FRAME noexcept(false)
 
-#define MATCH_EH_FRAMES 1
+#define MATCH_EH_FRAMES 0
 
 #if MATCH_EH_FRAMES
 #define EH_TERMINATE noexcept(true)
@@ -25520,7 +25520,7 @@ public:
                     }
                 }
                 if (!options->__int_D4) {
-                    int32_t A = this->data.__int_471C8;
+                    int32_t A = this->data.__int_471C4;
                     if (A >= 30) {
                         Int2 B = ((options->position - options->internal_position) * A) / 100;
                         if (!B.x && !B.y) {
@@ -44729,7 +44729,7 @@ struct MainMenu : ZUNTask {
                 GAME_MANAGER.globals.__stage_number_related_4 = 1;
                 GAME_MANAGER.globals.__ecl_var_9907 = -1;
                 GAME_MANAGER.globals.difficulty = NORMAL;
-                GAME_MANAGER.globals.character = Reimu;
+                GAME_MANAGER.globals.character = Sakuya;
 #endif
             }
 #if !DEBUG_SKIP_MENUS
