@@ -4,6 +4,8 @@
 #pragma clang diagnostic ignored "-Wignored-attributes"
 #pragma clang diagnostic ignored "-Wdll-attribute-on-redeclaration"
 #pragma clang diagnostic ignored "-Winconsistent-dllimport"
+#pragma clang diagnostic ignored "-Wdeprecated-enum-float-conversion"
+#pragma clang diagnostic ignored "-Wswitch"
 
 #if !CLANG_CL && __INTELLISENSE__
 #define _HAS_CXX17 1
@@ -14396,8 +14398,8 @@ dllexport gnu_noinline void __initialize_fonts() {
     }
 }
 
-typedef int32_t (*volatile fastcall AnmOnFunc)(AnmVM*);
-typedef int32_t (*volatile fastcall AnmOnFuncArg)(AnmVM*, int32_t);
+typedef int32_t (*fastcall AnmOnFunc)(AnmVM*);
+typedef int32_t (*fastcall AnmOnFuncArg)(AnmVM*, int32_t);
 
 //extern inline const AnmOnFunc ANM_ON_TICK_FUNCS[];
 //extern inline const AnmOnFunc ANM_ON_DRAW_FUNCS[];
@@ -14408,7 +14410,7 @@ extern inline const AnmOnFunc ANM_ON_COPY_B_FUNCS[];
 //extern inline const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[];
 extern "C" {
     // the wait func table isn't const
-    externcg AnmOnFunc ANM_ON_WAIT_FUNCS[1] cgasm("_ANM_ON_WAIT_FUNCS");
+    //externcg AnmOnFunc ANM_ON_WAIT_FUNCS[1] cgasm("_ANM_ON_WAIT_FUNCS");
     //externcg AnmOnFunc ANM_ON_TICK_FUNCS[] cgasm("_ANM_ON_TICK_FUNCS");
     //externcg AnmOnFunc ANM_ON_DRAW_FUNCS[8] cgasm("_ANM_ON_DRAW_FUNCS");
     //externcg AnmOnFunc ANM_ON_DESTROY_FUNCS[] cgasm("_ANM_ON_DESTROY_FUNCS");
@@ -14416,11 +14418,12 @@ extern "C" {
     //externcg AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[4] cgasm("_ANM_ON_SPRITE_LOOKUP_FUNCS");
 }
 
-extern inline const AnmOnFunc ANM_ON_TICK_FUNCS[7];
-extern inline const AnmOnFunc ANM_ON_DRAW_FUNCS[8];
-extern inline const AnmOnFunc ANM_ON_DESTROY_FUNCS[6];
-extern inline const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[6];
-extern inline const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[4];
+extern inline AnmOnFunc ANM_ON_WAIT_FUNCS[]; // 1
+extern inline const AnmOnFunc ANM_ON_TICK_FUNCS[]; // 7
+extern inline const AnmOnFunc ANM_ON_DRAW_FUNCS[]; // 8
+extern inline const AnmOnFunc ANM_ON_DESTROY_FUNCS[]; // 6
+extern inline const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[]; // 6
+extern inline const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[]; // 4
 
 extern "C" {
     // 0x5217DC
@@ -15606,56 +15609,57 @@ struct AnmVM {
         this->cleanup();
     }
 
-    inline int32_t run_on_wait() {
-        if (uint32_t index = this->controller.on_wait_index) {
-            return ANM_ON_WAIT_FUNCS[index](this);
+    // Yes this one does actually test *after* indexing the table
+    forceinline int32_t run_on_wait() {
+        if (AnmOnFunc func = ANM_ON_WAIT_FUNCS[this->controller.on_wait_index]) {
+            return func(this);
         }
         return 0;
     }
-    inline int32_t run_on_tick() {
+    forceinline int32_t run_on_tick() {
         if (uint32_t index = this->controller.on_tick_index) {
             return ANM_ON_TICK_FUNCS[index](this);
         }
         return 0;
     }
-    inline int32_t run_on_draw() {
+    forceinline int32_t run_on_draw() {
         if (uint32_t index = this->controller.on_draw_index) {
             return ANM_ON_DRAW_FUNCS[index](this);
         }
         return 0;
     }
-    inline int32_t run_on_destroy() {
+    forceinline int32_t run_on_destroy() {
         if (uint32_t index = this->controller.on_destroy_index) {
             return ANM_ON_DESTROY_FUNCS[index](this);
         }
         return 0;
     }
-    inline int32_t run_on_interrupt(int32_t interrupt) {
+    forceinline int32_t run_on_interrupt(int32_t interrupt) {
         if (uint32_t index = this->controller.on_interrupt_index) {
             return ANM_ON_INTERRUPT_FUNCS[index](this, interrupt);
         }
         return 0;
     }
-    inline int32_t run_on_copy_A() {
+    forceinline int32_t run_on_copy_A() {
         if (uint32_t index = this->controller.on_copy_A_index) {
             return ANM_ON_COPY_A_FUNCS[index](this);
         }
         return 0;
     }
-    inline int32_t run_on_copy_B() {
+    forceinline int32_t run_on_copy_B() {
         if (uint32_t index = this->controller.on_copy_B_index) {
             return ANM_ON_COPY_B_FUNCS[index](this);
         }
         return 0;
     }
-    inline int32_t run_on_sprite_lookup(int32_t sprite) {
+    forceinline int32_t run_on_sprite_lookup(int32_t sprite) {
         if (uint32_t index = this->controller.on_sprite_lookup_index) {
             return ANM_ON_SPRITE_LOOKUP_FUNCS[index](this, sprite);
         }
         return 0;
     }
 
-    inline void interrupt_and_run(int32_t interrupt) {
+    forceinline void interrupt_and_run(int32_t interrupt) {
         this->interrupt(interrupt);
         this->run_anm();
     }
@@ -16513,7 +16517,9 @@ ValidateStructSize32(0x8, AnmScriptHeader);
 #pragma endregion
 
 
-//inline const AnmOnFunc ANM_ON_WAIT_FUNCS[] = { NULL, NULL };
+inline AnmOnFunc ANM_ON_WAIT_FUNCS[] = {
+    NULL
+};
 inline const AnmOnFunc ANM_ON_TICK_FUNCS[] = {
     NULL,
     &AnmVM::on_tick_special_dataA,
@@ -22463,6 +22469,11 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
         current_instruction = this->get_current_instruction();
         if ((int32_t)current_instruction->time > this->controller.script_time) break;
         switch (current_instruction->opcode) {
+            case -1: // script terminator
+            case anm_delete:
+                goto return_delete;
+            case anm_static:
+                goto return_static;
             case jump: // 200
                 clang_noinline this->controller.script_time.set(IntArg(1));
                 this->data.current_instruction_offset = IntArg(0);
@@ -23470,6 +23481,7 @@ return_delete:
         return 1;
     }
     else {
+        this->controller.script_time++;
 return_static:
         GAME_SPEED.set(previous_gamespeed);
         return 0;
@@ -23581,7 +23593,7 @@ struct ShtFileUnknownA {
         uint32_t __init_func_index; // 0x2C
     };
     union {
-        void* __unknown_func_B; // 0x30
+        BulletFuncB* __unknown_func_B; // 0x30
         uint32_t __unknown_func_B_index; // 0x30
     };
     union {
@@ -24663,7 +24675,7 @@ struct PlayerBullet {
     AnmLoaded* bullet_anm; // 0xE0
     PlayerOption* option; // 0xE4
     BulletInitFunc* __init_func; // 0xE8
-    void* __func_ptr_EC; // 0xEC
+    BulletFuncB* __func_ptr_EC; // 0xEC
     void* __func_ptr_F0; // 0xF0
     BulletDamageFunc* __damage_func; // 0xF4
     // 0xF8
@@ -25413,7 +25425,7 @@ public:
         for (int32_t i = 0; i < count; ++i, ++options) {
             if (options->__int_0) {
                 if (!this->data.__unknown_flag_C) {
-                    if (options->__unknown_flag_A) {
+                    if (!options->__unknown_flag_A) {
                         options->position = this->data.internal_position + (this->data.focused ? options->__focused_offset : options->__unfocused_offset);
                     }
                     if (auto func = options->__func_ptr_E8) {
@@ -25432,7 +25444,7 @@ public:
                 if (!options->__int_D4) {
                     int32_t A = this->data.__int_471C8;
                     if (A >= 30) {
-                        Int2 B = (options->position - options->internal_position) / 100;
+                        Int2 B = ((options->position - options->internal_position) * A) / 100;
                         if (!B.x && !B.y) {
                             options->internal_position = options->position;
                         } else {
@@ -35873,13 +35885,13 @@ struct LaserCurve : LaserData {
 
     // 0x448560
     // Method 0x2C
-    dllexport virtual gnu_noinline int thiscall __method_2C(int, int, int, int) asm_symbol_rel(0x448560) {
+    dllexport virtual gnu_noinline int thiscall __method_2C(int, int, int, int) override asm_symbol_rel(0x448560) {
         return 0;
     }
 
     // 0x4526D0
     // Method 0x30
-    dllexport virtual gnu_noinline int thiscall __method_30(Float2* arg1, float arg2) asm_symbol_rel(0x4526D0) {
+    dllexport virtual gnu_noinline int thiscall __method_30(Float2* arg1, float arg2) override asm_symbol_rel(0x4526D0) {
         // TODO
     }
 
@@ -35891,19 +35903,19 @@ struct LaserCurve : LaserData {
 
     // 0x451560
     // Method 0x3C
-    dllexport virtual gnu_noinline int thiscall run_effect_accel() asm_symbol_rel(0x451560) {
+    dllexport virtual gnu_noinline int thiscall run_effect_accel() override asm_symbol_rel(0x451560) {
         // TODO
     }
 
     // 0x451410
     // Method 0x40
-    dllexport virtual gnu_noinline int thiscall run_effect_angle_accel() asm_symbol_rel(0x451410) {
+    dllexport virtual gnu_noinline int thiscall run_effect_angle_accel() override asm_symbol_rel(0x451410) {
         // TODO
     }
 
     // 0x451290
     // Method 0x44
-    dllexport virtual gnu_noinline int thiscall __run_effect_angle_type_0() asm_symbol_rel(0x451290) {
+    dllexport virtual gnu_noinline int thiscall __run_effect_angle_type_0() override asm_symbol_rel(0x451290) {
         // TODO
     }
     
@@ -44604,7 +44616,7 @@ struct MainMenu : ZUNTask {
                 GAME_MANAGER.globals.__stage_number_related_4 = 1;
                 GAME_MANAGER.globals.__ecl_var_9907 = -1;
                 GAME_MANAGER.globals.difficulty = NORMAL;
-                GAME_MANAGER.globals.character = Sakuya;
+                GAME_MANAGER.globals.character = Reimu;
 #endif
             }
 #if !DEBUG_SKIP_MENUS
