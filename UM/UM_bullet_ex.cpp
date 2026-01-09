@@ -5226,6 +5226,19 @@ struct CSoundManager {
         return CO_E_NOTINITIALIZED;
     }
 
+    // 0x4895A0
+    // EH frame (free something)
+    dllexport gnu_noinline HRESULT thiscall CreateStreaming(
+        CStreamingSound** ppStreamingSound,
+        LPSTR _strWaveFileName, // unused
+        DWORD _dwCreationFlags, // unused
+        GUID guid3DAlgorithm,
+        DWORD _dwNotifyCount, // unused
+        DWORD dwNotifySize,
+        HANDLE hNotifyEvent,
+        ThBgmFormat* bgm_format
+    ) asm_symbol_rel(0x4895A0);
+
     // 0x4898F0
     // EH frame (free something)
     dllexport gnu_noinline HRESULT thiscall CreateStreamingFromMemory(
@@ -5272,7 +5285,8 @@ struct CWaveFile {
         this->m_bIsReadingFromMemory = FALSE;
     }
 
-    inline ~CWaveFile() NO_EH_TERMINATE {
+    // 0x4898B0
+    dllexport inline ~CWaveFile() NO_EH_TERMINATE {
         this->close_handle();
     }
 
@@ -5810,7 +5824,7 @@ struct CStreamingSound : CSound {
     }
 
     // 0x48A730
-    dllexport gnu_noinline HRESULT thiscall HandleWaveStreamNotification(BOOL bLoopedPlay) asm_symbol_rel(0x48A730) {
+    dllexport gnu_noinline HRESULT thiscall HandleWaveStreamNotification(BOOL bLoopedPlay = UNUSED_DWORD) asm_symbol_rel(0x48A730) {
         if (
             this->sound_buffer_array &&
             this->cwave_ptr
@@ -6483,6 +6497,81 @@ static inline constexpr auto MAX_VOLUME = DSBVOLUME_MIN / 2;
 static inline constexpr auto SILENT_VOLUME = DSBVOLUME_MIN;
 static inline constexpr auto VOLUME_RANGE = SILENT_VOLUME - MAX_VOLUME;
 
+// 0x4895A0
+// EH frame (free something)
+dllexport gnu_noinline HRESULT thiscall CSoundManager::CreateStreaming(
+    CStreamingSound** ppStreamingSound,
+    LPSTR _strWaveFileName, // unused
+    DWORD _dwCreationFlags, // unused
+    GUID guid3DAlgorithm,
+    DWORD _dwNotifyCount, // unused
+    DWORD dwNotifySize,
+    HANDLE hNotifyEvent,
+    ThBgmFormat* bgm_format
+) {
+    static constexpr DWORD dwNotifyCount = 8;
+    static constexpr LPSTR strWaveFileName = "thbgm.dat";
+
+    if (!this->dsound) {
+        return CO_E_NOTINITIALIZED;
+    }
+
+    LPDIRECTSOUNDBUFFER pDSBuffer = NULL;
+    LPDIRECTSOUNDNOTIFY pDSNotify = NULL;
+
+    // This pointer gets leaked on error paths
+    CWaveFile* pWaveFile = new CWaveFile(bgm_format);
+    if (pWaveFile->Open(strWaveFileName, bgm_format) != S_OK) {
+        delete pWaveFile;
+        return E_FAIL;
+    }
+
+    DWORD dwDSBufferSize = dwNotifySize * dwNotifyCount;
+
+    DSBUFFERDESC dsbd;
+    dsbd.dwReserved = 0;
+    dsbd.dwBufferBytes = dwDSBufferSize;
+    dsbd.dwSize = sizeof(DSBUFFERDESC);
+    dsbd.dwFlags = DSBCAPS_CTRLPOSITIONNOTIFY | DSBCAPS_GLOBALFOCUS | DSBCAPS_GETCURRENTPOSITION2 | DSBCAPS_CTRLVOLUME | DSBCAPS_LOCSOFTWARE;
+    dsbd.guid3DAlgorithm = guid3DAlgorithm;
+    dsbd.lpwfxFormat = &pWaveFile->bgm_format->wave_format;
+
+    if (
+        FAILED(this->dsound->CreateSoundBuffer(&dsbd, &pDSBuffer, NULL)) ||
+        FAILED(pDSBuffer->QueryInterface(IID_IDirectSoundNotify, (LPVOID*)&pDSNotify))
+    ) {
+        return E_FAIL;
+    }
+
+    // yes this is incorrectly freed with delete instead of delete[]
+    DSBPOSITIONNOTIFY* aPosNotify = new DSBPOSITIONNOTIFY[dwNotifyCount];
+
+    // MSVC actually vectorized this with a runtime
+    // check for SSE4.1 for some reason
+    for (size_t i = 0; i < dwNotifyCount; ++i) {
+        aPosNotify[i].dwOffset = (dwNotifySize * i) + dwNotifySize - 1;
+        aPosNotify[i].hEventNotify = hNotifyEvent;
+    }
+
+    if (FAILED(pDSNotify->SetNotificationPositions(dwNotifyCount, aPosNotify))) {
+        SAFE_RELEASE(pDSNotify);
+        SAFE_DELETE(aPosNotify);
+        return E_FAIL;
+    }
+
+    SAFE_RELEASE(pDSNotify);
+    SAFE_DELETE(aPosNotify);
+
+    CStreamingSound* cstreaming_sound_ptr = new CStreamingSound(pDSBuffer, dwDSBufferSize, pWaveFile, dwNotifySize);
+    *ppStreamingSound = cstreaming_sound_ptr;
+
+    cstreaming_sound_ptr->buffer_description = dsbd;
+    (*ppStreamingSound)->csound_manager_ptr = this;
+    (*ppStreamingSound)->m_hNotifyEvent = hNotifyEvent;
+    (*ppStreamingSound)->__locked = FALSE;
+    return S_OK;
+}
+
 // 0x4898F0
 // EH frame (free something)
 dllexport gnu_noinline HRESULT thiscall CSoundManager::CreateStreamingFromMemory(
@@ -6587,7 +6676,7 @@ struct SoundManager {
     char thbgm_filename[0x100]; // 0x5604
     CStreamingSound* cstreaming_sound_ptr; // 0x5704
     unknown_fields(0x4); // 0x5708
-    HANDLE __handle_570C; // 0x570C
+    HANDLE __notify_event; // 0x570C
     unknown_fields(0x4); // 0x5710
     int32_t file_pointer_offset; // 0x5714
     HANDLE __thread_5718; // 0x5718
@@ -6807,7 +6896,7 @@ ValidateFieldOffset32(0x2384, SoundManager, __text_buffer_2384);
 ValidateFieldOffset32(0x2484, SoundManager, sound_command_queue);
 ValidateFieldOffset32(0x5604, SoundManager, thbgm_filename);
 ValidateFieldOffset32(0x5704, SoundManager, cstreaming_sound_ptr);
-ValidateFieldOffset32(0x570C, SoundManager, __handle_570C);
+ValidateFieldOffset32(0x570C, SoundManager, __notify_event);
 ValidateFieldOffset32(0x5714, SoundManager, file_pointer_offset);
 ValidateFieldOffset32(0x5718, SoundManager, __thread_5718);
 ValidateFieldOffset32(0x571C, SoundManager, __handle_571C);
@@ -6935,6 +7024,38 @@ dllexport gnu_noinline ZUNResult thiscall SoundManager::preload_bgm(int32_t inde
     return ZUN_SUCCESS;
 }
 
+// 0x4779A0
+dllexport gnu_noinline DWORD WINAPI __sound_thread_4779A0(LPVOID) asm_symbol_rel(0x4779A0);
+dllexport gnu_noinline DWORD WINAPI __sound_thread_4779A0(LPVOID) {
+    BOOL stop = false;
+    do {
+        DWORD wait_object = MsgWaitForMultipleObjects(1, &SOUND_MANAGER.__notify_event, FALSE, INFINITE, QS_ALLEVENTS);
+        CStreamingSound* streaming_sound = SOUND_MANAGER.cstreaming_sound_ptr;
+        if (!streaming_sound) {
+            stop = true;
+        }
+        switch (wait_object) {
+            case WAIT_OBJECT_0 + 1: {
+                MSG msg;
+                while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
+                    if (msg.message == WM_QUIT) {
+                        stop = true;
+                    }
+                }
+                break;
+            }
+            case WAIT_OBJECT_0:
+                if (streaming_sound && streaming_sound->__playing) {
+                    streaming_sound->__locked = true;
+                    SOUND_MANAGER.cstreaming_sound_ptr->HandleWaveStreamNotification();
+                    SOUND_MANAGER.cstreaming_sound_ptr->__locked = false;
+                }
+        }
+    } while (!stop);
+
+    return 0;
+}
+
 inline ZUNResult SoundManager::load_bgm(int32_t index) {
     if (
         SOUND_MANAGER.csound_manager_ptr &&
@@ -6947,8 +7068,8 @@ inline ZUNResult SoundManager::load_bgm(int32_t index) {
         ThBgmFormat* bgm_format = SOUND_MANAGER.loaded_bgm_formats[index];
         uint32_t align = bgm_format->wave_format.nBlockAlign;
         uint32_t notify_size = (bgm_format->wave_format.nSamplesPerSec * align) * BGM_BLOCK_ALIGN / CHAR_BIT;
-        SOUND_MANAGER.__handle_570C = CreateEventA(NULL, FALSE, FALSE, NULL);
-        //SOUND_MANAGER.__handle_14 = CreateThread(NULL, 0, &__sound_thread_4779A0, NULL, 0, &SOUND_MANAGER.sound_thread_id);
+        SOUND_MANAGER.__notify_event = CreateEventA(NULL, FALSE, FALSE, NULL);
+        SOUND_MANAGER.__handle_14 = CreateThread(NULL, 0, &__sound_thread_4779A0, NULL, 0, &SOUND_MANAGER.sound_thread_id);
         if (SUCCEEDED(SOUND_MANAGER.csound_manager_ptr->CreateStreamingFromMemory(
             &SOUND_MANAGER.cstreaming_sound_ptr,
             (BYTE*)SOUND_MANAGER.__loaded_bgm_buffers_B[index],
@@ -6958,20 +7079,13 @@ inline ZUNResult SoundManager::load_bgm(int32_t index) {
             GUID_NULL,
             UNUSED_DWORD,
             notify_size - notify_size % align,
-            SOUND_MANAGER.__handle_570C
+            SOUND_MANAGER.__notify_event
         ))) {
             SOUND_MANAGER.__bgm_index_197C = index;
             return ZUN_SUCCESS;
         }
     }
     return ZUN_ERROR;
-}
-
-// 0x4779A0
-dllexport gnu_noinline DWORD WINAPI __sound_thread_4779A0(LPVOID) asm_symbol_rel(0x4779A0);
-dllexport gnu_noinline DWORD WINAPI __sound_thread_4779A0(LPVOID) {
-    // TODO
-    return 0;
 }
 
 // 0x476D20
@@ -7119,7 +7233,7 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
                             BREAK_NEXT_CMD_ITER();
                         case 3:
                             CloseHandle(SOUND_MANAGER.__handle_14);
-                            CloseHandle(SOUND_MANAGER.__handle_570C);
+                            CloseHandle(SOUND_MANAGER.__notify_event);
                             SAFE_DELETE(SOUND_MANAGER.cstreaming_sound_ptr);
                             BREAK_NEXT_CMD_ITER();
                         default:
@@ -7381,7 +7495,7 @@ enum CharacterID : int32_t {
     Reimu = 0,
     Marisa = 1,
     Sakuya = 2,
-    Sanae = 3,
+    Sanae = 3
 };
 
 static inline constexpr int32_t RANK_BOUND = 1024;
@@ -13895,7 +14009,7 @@ dllexport gnu_noinline void thiscall SoundManager::stop_bgm() {
             }
             DEBUG_PRINT("stop comp\r\n");
             CloseHandle(this->__handle_14);
-            CloseHandle(this->__handle_570C);
+            CloseHandle(this->__notify_event);
             this->__handle_14 = 0;
         }
     }
@@ -23629,11 +23743,15 @@ inline UpdateFuncRet LoadingThread::on_draw() {
 
 typedef struct PlayerDamageSource PlayerDamageSource;
 typedef struct PlayerBullet PlayerBullet;
+typedef struct PlayerOption PlayerOption;
 
 using DamageSourceFunc = int32_t fastcall(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius);
 using BulletDamageFunc = int32_t fastcall(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius);
 using BulletInitFunc = int32_t fastcall(PlayerBullet* self, PlayerDamageSource* damage_source);
 using BulletFuncB = int32_t fastcall(PlayerBullet* self);
+using PlayerBulletFuncA = ZUNResult fastcall(PlayerBullet* bullet);
+using OptionPositionFunc = int32_t fastcall(PlayerOption* self);
+
 
 typedef struct ShtFile ShtFile;
 extern "C" {
@@ -23654,8 +23772,8 @@ static inline constexpr size_t MAX_SHT_UNKNOWN_A_COUNT = 40;
 
 // size: 0x5C
 struct ShtFileUnknownA {
-    int8_t __byte_0; // 0x0
-    int8_t __sbyte_1; // 0x1
+    int8_t __short_timer_modulo; // 0x0
+    int8_t __short_timer_value; // 0x1
     int16_t damage; // 0x2
     Float2 position; // 0x4
     Float2 size; // 0xC
@@ -23668,8 +23786,8 @@ struct ShtFileUnknownA {
     int16_t sound_id; // 0x24
     int16_t __anm_scriptB; // 0x26
     unknown_fields(0x2); // 0x28
-    int8_t __sbyte_2A; // 0x2A
-    int8_t __sbyte_2B; // 0x2B
+    int8_t __long_timer_modulo; // 0x2A
+    int8_t __long_timer_value; // 0x2B
     union {
         BulletInitFunc* __init_func; // 0x2C
         uint32_t __init_func_index; // 0x2C
@@ -23692,8 +23810,8 @@ struct ShtFileUnknownA {
     // 0x5C
 };
 #pragma region // ShtFileUnknownA Validation
-ValidateFieldOffset32(0x0, ShtFileUnknownA, __byte_0);
-ValidateFieldOffset32(0x1, ShtFileUnknownA, __sbyte_1);
+ValidateFieldOffset32(0x0, ShtFileUnknownA, __short_timer_modulo);
+ValidateFieldOffset32(0x1, ShtFileUnknownA, __short_timer_value);
 ValidateFieldOffset32(0x2, ShtFileUnknownA, damage);
 ValidateFieldOffset32(0x4, ShtFileUnknownA, position);
 ValidateFieldOffset32(0xC, ShtFileUnknownA, size);
@@ -23704,8 +23822,8 @@ ValidateFieldOffset32(0x21, ShtFileUnknownA, __byte_21);
 ValidateFieldOffset32(0x22, ShtFileUnknownA, anm_script);
 ValidateFieldOffset32(0x24, ShtFileUnknownA, sound_id);
 ValidateFieldOffset32(0x26, ShtFileUnknownA, __anm_scriptB);
-ValidateFieldOffset32(0x2A, ShtFileUnknownA, __sbyte_2A);
-ValidateFieldOffset32(0x2B, ShtFileUnknownA, __sbyte_2B);
+ValidateFieldOffset32(0x2A, ShtFileUnknownA, __long_timer_modulo);
+ValidateFieldOffset32(0x2B, ShtFileUnknownA, __long_timer_value);
 ValidateFieldOffset32(0x2C, ShtFileUnknownA, __init_func);
 ValidateFieldOffset32(0x30, ShtFileUnknownA, __unknown_func_B);
 ValidateFieldOffset32(0x34, ShtFileUnknownA, __unknown_func_C);
@@ -24683,7 +24801,8 @@ struct PlayerOption {
     float __float_AC; // 0xAC
     AnmID __anm_id_B0; // 0xB0
     AnmID __anm_id_B4; // 0xB4
-    unknown_fields(0x18); // 0xB8
+    unknown_fields(0x14); // 0xB8
+    BOOL focused; // 0xCC
     int32_t __option_index; // 0xD0
     int __int_D4; // 0xD4
     union {
@@ -24695,9 +24814,15 @@ struct PlayerOption {
     };
     int __dword_DC; // 0xDC
     unknown_fields(0x8); // 0xE0
-    void (*__func_ptr_E8)(); // 0xE8
+    OptionPositionFunc* __func_ptr_E8; // 0xE8
     unknown_fields(0x4); // 0xEC
     // 0xF0
+
+    // 0x45DD10
+    dllexport gnu_noinline static int32_t fastcall __position_func_card_sakuya1(PlayerOption* self) asm_symbol_rel(0x45DD10);
+
+    // 0x45DDE0
+    dllexport gnu_noinline static int32_t fastcall __position_func_card_youmu(PlayerOption* self) asm_symbol_rel(0x45DDE0);
 };
 #pragma region // PlayerOption Validation
 ValidateFieldOffset32(0x0, PlayerOption, __int_0);
@@ -24709,6 +24834,7 @@ ValidateFieldOffset32(0xA8, PlayerOption, __angle_A8);
 ValidateFieldOffset32(0xAC, PlayerOption, __float_AC);
 ValidateFieldOffset32(0xB0, PlayerOption, __anm_id_B0);
 ValidateFieldOffset32(0xB4, PlayerOption, __anm_id_B4);
+ValidateFieldOffset32(0xCC, PlayerOption, focused);
 ValidateFieldOffset32(0xD0, PlayerOption, __option_index);
 ValidateFieldOffset32(0xD4, PlayerOption, __int_D4);
 ValidateFieldOffset32(0xD8, PlayerOption, flags);
@@ -24718,8 +24844,6 @@ ValidateStructSize32(0xF0, PlayerOption);
 #pragma endregion
 
 static inline PlayerBullet* get_player_bullet_by_index(int32_t index);
-
-using PlayerBulletFuncA = ZUNResult fastcall(PlayerBullet* bullet);
 
 // size: 0xF8
 struct PlayerBullet {
@@ -25512,7 +25636,7 @@ public:
                         options->position = this->data.internal_position + (this->data.focused ? options->__focused_offset : options->__unfocused_offset);
                     }
                     if (auto func = options->__func_ptr_E8) {
-                        func();
+                        func(options);
                     }
                 }
                 else {
@@ -25655,7 +25779,7 @@ public:
                         
                         for (
                             ShtFileUnknownA* unknownA_ptr = sht_file->__unknownA_ptr_array_E0[i];
-                            unknownA_ptr->__byte_0 >= 0;
+                            unknownA_ptr->__short_timer_modulo >= 0;
                             ++unknownA_ptr
                         ) {
                             unknownA_ptr->__init_func = PLAYER_BULLET_INIT_FUNCS[unknownA_ptr->__init_func_index];
@@ -26248,6 +26372,28 @@ static inline PlayerDamageSource* get_damage_source_by_index(int32_t index) {
 
 static inline PlayerBullet* get_player_bullet_by_index(int32_t index) {
     return &PLAYER_PTR->data.bullets[index];
+}
+
+// 0x45DD10
+dllexport gnu_noinline int32_t fastcall PlayerOption::__position_func_card_sakuya1(PlayerOption* self) {
+    Float2 position;
+    position.make_from_vector(PLAYER_PTR->data.__shot_tilt_angle + self->__angle_A8, self->__float_AC);
+    self->position = PLAYER_PTR->data.internal_position - (Int2)(position * -INTERNAL_POSITION_RATIO);
+    return 0;
+}
+
+// 0x45DDE0
+dllexport gnu_noinline int32_t fastcall PlayerOption::__position_func_card_youmu(PlayerOption* self) {
+    Player* player = PLAYER_PTR;
+    BOOL focused = player->data.focused;
+    Int2 position = player->data.previous_positions[31];
+    self->position = position;
+    if (!focused) {
+        self->__unfocused_offset = position - player->data.internal_position;
+    }
+    self->position = self->__unfocused_offset + player->data.internal_position;
+    self->focused = focused;
+    return 0;
 }
 
 // 0x45F6A0
@@ -29615,7 +29761,21 @@ dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
                             SOUND_MANAGER.dsound
                         ) {
                             SOUND_MANAGER.stop_bgm();
-                            // TODO: Yet another sound thread setup thing
+                            ThBgmFormat* bgm_format = &SOUND_MANAGER.bgm_formats[0];
+                            uint32_t align = bgm_format->wave_format.nBlockAlign;
+                            uint32_t notify_size = (bgm_format->wave_format.nSamplesPerSec * align) * BGM_BLOCK_ALIGN / CHAR_BIT;
+                            SOUND_MANAGER.__notify_event = CreateEventA(NULL, FALSE, FALSE, NULL);
+                            SOUND_MANAGER.__handle_14 = CreateThread(NULL, 0, &__sound_thread_4779A0, NULL, 0, &SOUND_MANAGER.sound_thread_id);
+                            SOUND_MANAGER.csound_manager_ptr->CreateStreaming(
+                                &SOUND_MANAGER.cstreaming_sound_ptr,
+                                UNUSED_STRING,
+                                UNUSED_DWORD,
+                                GUID_NULL,
+                                UNUSED_DWORD,
+                                notify_size - notify_size % align,
+                                SOUND_MANAGER.__notify_event,
+                                bgm_format
+                            );
                         }
                     }
                     else {
@@ -29865,6 +30025,8 @@ dllexport gnu_noinline void thiscall PlayerData::__update_option_power_levels(in
                     sht_file = player->sht_file;
                     sht_index = i + unknownW_ptr[power_level - 1];
                     option_iter->__float_AC = sht_file->__float2_array_40[sht_index].y;
+
+                    option_iter->__func_ptr_E8 = &PlayerOption::__position_func_card_sakuya1;
                 }
                 ++option_iter;
             } while (++i < power_level);
@@ -30021,8 +30183,8 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
 
         if (!this->data.shoot_key_short_timer.__is_paused()) {
 
-            int32_t A = this->data.shoot_key_long_timer;
-            int32_t B = this->data.shoot_key_short_timer;
+            int32_t long_timer = this->data.shoot_key_long_timer;
+            int32_t short_timer = this->data.shoot_key_short_timer;
 
             int32_t sht_index = GAME_MANAGER.globals.power_level();
 
@@ -30035,19 +30197,19 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
 
             ShtFileUnknownA* unknownA_ptr = sht_file->__unknownA_ptr_array_E0[sht_index];
 
-            int8_t C = unknownA_ptr->__byte_0;
-            if (C >= 0) {
+            int8_t short_modulo = unknownA_ptr->__short_timer_modulo;
+            if (short_modulo >= 0) {
                 do {
-                    if (C) {
-                        int8_t D = unknownA_ptr->__sbyte_2A;
+                    if (short_modulo != 0) {
+                        int8_t long_modulo = unknownA_ptr->__long_timer_modulo;
                         int32_t E;
                         int32_t F;
-                        if (!D) {
-                            E = B % C;
-                            F = unknownA_ptr->__sbyte_1;
+                        if (!long_modulo) {
+                            E = short_timer % short_modulo;
+                            F = unknownA_ptr->__short_timer_value;
                         } else {
-                            E = A % D;
-                            F = unknownA_ptr->__sbyte_2B;
+                            E = long_timer % long_modulo;
+                            F = unknownA_ptr->__long_timer_value;
                         }
                         if (E != F) {
                             continue;
@@ -30061,21 +30223,21 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
                     }
 
                     int32_t unknownA_index = i | sht_index << 8;
-                    this->shoot_one_bullet(unknownA_index, B, &this->data.position, option);
+                    this->shoot_one_bullet(unknownA_index, short_timer, &this->data.position, option);
                         
                 } while (
                     // This was probably a for loop,
                     // but whatever I wanted to use continue
                     ++i,
-                    (C = (++unknownA_ptr)->__byte_0) >= 0
+                    (short_modulo = (++unknownA_ptr)->__short_timer_modulo) >= 0
                 );
                 // this is probably just spilled values
-                A = this->data.shoot_key_long_timer;
-                B = this->data.shoot_key_short_timer;
+                long_timer = this->data.shoot_key_long_timer;
+                short_timer = this->data.shoot_key_short_timer;
             }
 
             ABILITY_MANAGER_PTR->card_list.for_each([=](CardBase* card) {
-                card->on_shoot(B, A);
+                card->on_shoot(short_timer, long_timer);
             });
         }
 
@@ -30090,14 +30252,15 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
             this->data.shoot_key_short_timer++;
     not_shooting:
             int32_t long_timer = this->data.shoot_key_long_timer;
-            if (long_timer < 0) {
-                return 0;
-            }
-            if (long_timer >= 119) {
-                if (INPUT_STATES[0].check_inputs(BUTTON_SHOOT)) {
-                    this->data.shoot_key_long_timer -= 119;
+            if (long_timer >= 0) {
+                if (long_timer >= 119) {
+                    if (INPUT_STATES[0].check_inputs(BUTTON_SHOOT)) {
+                        this->data.shoot_key_long_timer -= 119;
+                    } else {
+                        this->data.shoot_key_long_timer.set(-1);
+                    }
                 } else {
-                    this->data.shoot_key_long_timer.set(-1);
+                    this->data.shoot_key_long_timer++;
                 }
             }
             return 0;
@@ -44744,7 +44907,7 @@ struct MainMenu : ZUNTask {
                 GAME_MANAGER.globals.__stage_number_related_4 = 1;
                 GAME_MANAGER.globals.__ecl_var_9907 = -1;
                 GAME_MANAGER.globals.difficulty = NORMAL;
-                GAME_MANAGER.globals.character = Sakuya;
+                GAME_MANAGER.globals.character = Reimu;
 #endif
             }
 #if !DEBUG_SKIP_MENUS

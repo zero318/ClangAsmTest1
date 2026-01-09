@@ -11,6 +11,8 @@
 
 #define UNUSED_DWORD (GARBAGE_ARG(int32_t))
 #define UNUSED_FLOAT (GARBAGE_ARG(float))
+#define UNUSED_POINTER (GARBAGE_ARG(void*))
+#define UNUSED_STRING (GARBAGE_ARG(char*))
 
 static inline constexpr size_t game_version = GAME_VERSION;
 
