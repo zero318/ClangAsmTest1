@@ -41471,7 +41471,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
                     angle = -HALF_PI_f + 0.05f;
                 }
             }
-            else if ((double)zfabsf<NoInline>(angle + HALF_PI_f) < 0.05) {
+            else if ((double)zfabsf<NoInline>(angle - HALF_PI_f) < 0.05) {
                 if (angle < HALF_PI_f) {
                     angle = HALF_PI_f - 0.05f;
                 } else {
