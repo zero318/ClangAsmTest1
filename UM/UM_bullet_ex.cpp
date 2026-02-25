@@ -41480,20 +41480,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             }
             int32_t interp_mode = this->get_int_arg(1);
             float speed = this->get_float_arg(2);
-            angle_interp->set_end_time(this->get_int_arg(0));
-            angle_interp->set_mode(interp_mode);
-            angle_interp->set_bezier1(0.0f);
-            angle_interp->set_bezier2(0.0f);
-            angle_interp->set_initial_value(angle);
-            angle_interp->set_final_value(angle);
-            angle_interp->reset_timer();
-            speed_interp->set_end_time(this->get_int_arg(0));
-            speed_interp->set_mode(interp_mode);
-            speed_interp->set_bezier1(0.0f);
-            speed_interp->set_bezier2(0.0f);
-            speed_interp->set_initial_value(speed);
-            speed_interp->set_final_value(0.0f);
-            speed_interp->reset_timer();
+            angle_interp->initialize(this->get_int_arg(0), interp_mode, angle, angle);
+            speed_interp->initialize(this->get_int_arg(0), interp_mode, speed, 0.0f);
             motion->set_axis_velocity_mode();
             break;
         }
