@@ -41461,7 +41461,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             if (this->move_bounds_center.y - this->move_bounds_size.y * 0.25f > this->get_current_motion().position.y) {
                 angle = zfabsf<NoInline>(angle);
             }
-            else if (this->move_bounds_center.y - this->move_bounds_size.y * 0.25f < this->get_current_motion().position.y) {
+            else if (this->move_bounds_center.y + this->move_bounds_size.y * 0.25f < this->get_current_motion().position.y) {
                 angle = -zfabsf<NoInline>(angle);
             }
             if (zfabsf<NoInline>(angle + HALF_PI_f) < 0.05f) {
