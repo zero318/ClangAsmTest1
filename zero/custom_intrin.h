@@ -519,63 +519,732 @@ static forceinline uint32_t push_cs() {
 }
 #endif
 
-static forceinline void read_cs(uint16_t& out) {
-    __asm__ volatile(
-        "MOV %[out], CS"
-        : asm_arg("=rm", out)
-    );
+template<typename T = uint32_t>
+static forceinline void store_cs(T& out) {
+    if constexpr (std::is_same_v<T, uint16_t>) {
+        __asm__ volatile(
+            "MOV %%CS, %[out]"
+            : [out]"=rm"(out)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "MOV %%CS, %[out]"
+            : [out]"=r"(out)
+        );
+    }
 }
-static forceinline uint16_t read_cs() {
-    uint16_t temp;
-    read_cs(temp);
+template<typename T = uint32_t>
+static forceinline T read_cs() {
+    T temp;
+    store_cs(temp);
     return temp;
 }
-
-static forceinline void write_ss(const uint32_t& value) {
-    __asm__ volatile(
-        "MOV %[value], %%SS"
-        :
-        : [value]"r,m"(value)
-    );
+template<typename T = uint32_t>
+static forceinline void store_ss(T& out) {
+    if constexpr (std::is_same_v<T, uint16_t>) {
+        __asm__ volatile(
+            "MOV %%SS, %[out]"
+            : [out]"=rm"(out)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "MOV %%SS, %[out]"
+            : [out]"=r"(out)
+        );
+    }
 }
-static forceinline void store_ss(uint32_t& value) {
-    __asm__ volatile(
-        "MOV %%SS, %[value]"
-        : [value]"=r"(value)
-    );
-}
-static forceinline uint32_t store_ss() {
-    uint32_t temp;
+template<typename T = uint32_t>
+static forceinline T read_ss() {
+    T temp;
     store_ss(temp);
     return temp;
 }
-static forceinline void write_ds(const uint16_t& value) {
+template<typename T = uint32_t>
+static forceinline void write_ss(const T& value) {
+    if constexpr (std::is_same_v<T, uint16_t>) {
+        __asm__ volatile(
+            "MOV %[value], %%SS"
+            :
+            : [value]"r,m"(value)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "MOV %[value], %%SS"
+            :
+            : [value]"r"(value)
+        );
+    }
+}
+template<typename T = uint32_t>
+static forceinline void store_ds(T& out) {
+    if constexpr (std::is_same_v<T, uint16_t>) {
+        __asm__ volatile(
+            "MOV %%DS, %[out]"
+            : [out]"=rm"(out)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "MOV %%DS, %[out]"
+            : [out]"=r"(out)
+        );
+    }
+}
+template<typename T = uint32_t>
+static forceinline T read_ds() {
+    T temp;
+    store_ds(temp);
+    return temp;
+}
+template<typename T = uint32_t>
+static forceinline void write_ds(const T& value) {
+    if constexpr (std::is_same_v<T, uint16_t>) {
+        __asm__ volatile(
+            "MOV %[value], %%DS"
+            :
+            : [value]"r,m"(value)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "MOV %[value], %%DS"
+            :
+            : [value]"r"(value)
+        );
+    }
+}
+template<typename T = uint32_t>
+static forceinline void store_es(T& out) {
+    if constexpr (std::is_same_v<T, uint16_t>) {
+        __asm__ volatile(
+            "MOV %%ES, %[out]"
+            : [out]"=rm"(out)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "MOV %%ES, %[out]"
+            : [out]"=r"(out)
+        );
+    }
+}
+template<typename T = uint32_t>
+static forceinline T read_es() {
+    T temp;
+    store_es(temp);
+    return temp;
+}
+template<typename T = uint32_t>
+static forceinline void write_es(const T& value) {
+    if constexpr (std::is_same_v<T, uint16_t>) {
+        __asm__ volatile(
+            "MOV %[value], %%ES"
+            :
+            : [value]"r,m"(value)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "MOV %[value], %%ES"
+            :
+            : [value]"r"(value)
+        );
+    }
+}
+template<typename T = uint32_t>
+static forceinline void store_fs(T& out) {
+    if constexpr (std::is_same_v<T, uint16_t>) {
+        __asm__ volatile(
+            "MOV %%FS, %[out]"
+            : [out]"=rm"(out)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "MOV %%FS, %[out]"
+            : [out]"=r"(out)
+        );
+    }
+}
+template<typename T = uint32_t>
+static forceinline T read_fs() {
+    T temp;
+    store_fs(temp);
+    return temp;
+}
+template<typename T = uint32_t>
+static forceinline void write_fs(const T& value) {
+    if constexpr (std::is_same_v<T, uint16_t>) {
+        __asm__ volatile(
+            "MOV %[value], %%FS"
+            :
+            : [value]"r,m"(value)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "MOV %[value], %%FS"
+            :
+            : [value]"r"(value)
+        );
+    }
+}
+template<typename T = uint32_t>
+static forceinline void store_gs(T& out) {
+    if constexpr (std::is_same_v<T, uint16_t>) {
+        __asm__ volatile(
+            "MOV %%GS, %[out]"
+            : [out]"=rm"(out)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "MOV %%GS, %[out]"
+            : [out]"=r"(out)
+        );
+    }
+}
+template<typename T = uint32_t>
+static forceinline T read_gs() {
+    T temp;
+    store_gs(temp);
+    return temp;
+}
+template<typename T = uint32_t>
+static forceinline void write_gs(const T& value) {
+    if constexpr (std::is_same_v<T, uint16_t>) {
+        __asm__ volatile(
+            "MOV %[value], %%GS"
+            :
+            : [value]"r,m"(value)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "MOV %[value], %%GS"
+            :
+            : [value]"r"(value)
+        );
+    }
+}
+
+template<typename T = uintptr_t>
+struct DescriptorTableData {
+    uint16_t limit;
+    T addr;
+} gnu_packed;
+template<>
+struct DescriptorTableData<int16_t> {
+    uint16_t limit;
+    int32_t addr;
+} gnu_packed;
+template<>
+struct DescriptorTableData<uint16_t> {
+    uint16_t limit;
+    uint32_t addr;
+} gnu_packed;
+
+template<typename T>
+static forceinline void store_gdtr(DescriptorTableData<T>& out) {
+    if constexpr (sizeof(T) == sizeof(uint16_t)) {
+        __asm__ volatile(
+            DATASIZE "SGDT %[out]"
+            : [out]"=m"(out)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "SGDT %[out]"
+            : [out]"=m"(out)
+        );
+    }
+    
+}
+template<typename T = uintptr_t>
+static forceinline void store_gdtr(uint16_t* ptr) {
+    store_gdtr<T>(*(DescriptorTableData<T>*)ptr);
+}
+template<typename T>
+static forceinline DescriptorTableData<T> read_gdtr() {
+    DescriptorTableData<T> temp;
+    store_gdtr(temp);
+    return temp;
+}
+template<typename T>
+static forceinline void write_gdtr(const DescriptorTableData<T>& value) {
+    if constexpr (sizeof(T) == sizeof(uint16_t)) {
+        __asm__ volatile(
+            DATASIZE "LGDT %[out]"
+            : [value]"=m"(value)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "LGDT %[out]"
+            : [value]"=m"(value)
+        );
+    }
+}
+template<typename T = uintptr_t>
+static forceinline void write_gdtr(const uint16_t* ptr) {
+    write_gdtr<T>(*(const DescriptorTableData<T>*)ptr);
+}
+template<typename T>
+static forceinline void store_idtr(DescriptorTableData<T>& out) {
+    if constexpr (sizeof(T) == sizeof(uint16_t)) {
+        __asm__ volatile(
+            DATASIZE "SIDT %[out]"
+            : [out]"=m"(out)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "SIDT %[out]"
+            : [out]"=m"(out)
+        );
+    }
+    
+}
+template<typename T = uintptr_t>
+static forceinline void store_idtr(uint16_t* ptr) {
+    store_idtr<T>(*(DescriptorTableData<T>*)ptr);
+}
+template<typename T>
+static forceinline DescriptorTableData<T> read_idtr() {
+    DescriptorTableData<T> temp;
+    store_idtr(temp);
+    return temp;
+}
+template<typename T>
+static forceinline void write_idtr(const DescriptorTableData<T>& value) {
+    if constexpr (sizeof(T) == sizeof(uint16_t)) {
+        __asm__ volatile(
+            DATASIZE "LIDT %[out]"
+            : [value]"=m"(value)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "LIDT %[out]"
+            : [value]"=m"(value)
+        );
+    }
+}
+template<typename T = uintptr_t>
+static forceinline void write_idtr(const uint16_t* ptr) {
+    write_idtr<T>(*(const DescriptorTableData<T>*)ptr);
+}
+template<typename T = uint32_t>
+static forceinline void store_ldtr(T& out) {
+    if constexpr (std::is_same_v<T, uint16_t>) {
+        __asm__ volatile(
+            "SLDT %[out]"
+            : [out]"=rm"(out)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "SLDT %[out]"
+            : [out]"=r"(out)
+        );
+    }
+}
+template<typename T = uint32_t>
+static forceinline T read_ldtr() {
+    T temp;
+    store_ldtr(temp);
+    return temp;
+}
+template<typename T = uint32_t>
+static forceinline void write_ldtr(T selector) {
+    if constexpr (std::is_same_v<T, uint16_t>) {
+        __asm__ volatile(
+            "LLDT %[selector]"
+            :
+            : [selector]"r,m"(selector)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "LLDT %w[selector]"
+            :
+            : [selector]"r"(selector)
+        );
+    }
+}
+template<typename T = uint32_t>
+static forceinline void store_tr(T& out) {
+    if constexpr (std::is_same_v<T, uint16_t>) {
+        __asm__ volatile(
+            "STR %[out]"
+            : [out]"=rm"(out)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "STR %[out]"
+            : [out]"=r"(out)
+        );
+    }
+}
+template<typename T = uint32_t>
+static forceinline T read_tr() {
+    T temp;
+    store_tr(temp);
+    return temp;
+}
+template<typename T = uint32_t>
+static forceinline void write_tr(T selector) {
+    if constexpr (std::is_same_v<T, uint16_t>) {
+        __asm__ volatile(
+            "LTR %[selector]"
+            :
+            : [selector]"r,m"(selector)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "LTR %w[selector]"
+            :
+            : [selector]"r"(selector)
+        );
+    }
+}
+
+template<typename T = uint32_t>
+static forceinline void store_msw(T& out) {
+    if constexpr (std::is_same_v<T, uint16_t>) {
+        __asm__ volatile(
+            "SMSW %[out]"
+            : [out]"=rm"(out)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "SMSW %[out]"
+            : [out]"=r"(out)
+        );
+    }
+}
+template<typename T = uint32_t>
+static forceinline T read_msw() {
+    T temp;
+    store_msw(temp);
+    return temp;
+}
+template<typename T = uint32_t>
+static forceinline void write_msw(const T& value) {
+    if constexpr (std::is_same_v<T, uint16_t>) {
+        __asm__ volatile(
+            "LMSW %[value]"
+            :
+            : [value]"r,m"(value)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "LMSW %w[value]"
+            :
+            : [value]"r"(value)
+        );
+    }
+}
+
+static forceinline uintptr_t read_cr0() {
+    uintptr_t temp;
     __asm__ volatile(
-        "MOV DS, %[value]"
+        "MOV %%CR0, %[temp]"
+        : [temp]"=r"(temp)
+    );
+    return temp;
+}
+static forceinline void store_cr0(uintptr_t& out) {
+    out = read_cr0();
+}
+static forceinline void write_cr0(uintptr_t value) {
+    __asm__ volatile(
+        "MOV %[value], %%CR0"
         :
-        : [value] "r,m"((uint32_t)value)
+        : [value]"r"(value)
     );
 }
-static forceinline void write_es(const uint16_t& value) {
+static forceinline uintptr_t read_cr2() {
+    uintptr_t temp;
     __asm__ volatile(
-        "MOV ES, %[value]"
+        "MOV %%CR2, %[temp]"
+        : [temp]"=r"(temp)
+    );
+    return temp;
+}
+static forceinline void store_cr2(uintptr_t& out) {
+    out = read_cr2();
+}
+static forceinline void write_cr2(uintptr_t value) {
+    __asm__ volatile(
+        "MOV %[value], %%CR2"
         :
-        : [value] "r,m"((uint32_t)value)
+        : [value]"r"(value)
     );
 }
-static forceinline void write_fs(const uint16_t& value) {
+static forceinline uintptr_t read_cr3() {
+    uintptr_t temp;
     __asm__ volatile(
-        "MOV FS, %[value]"
+        "MOV %%CR3, %[temp]"
+        : [temp]"=r"(temp)
+    );
+    return temp;
+}
+static forceinline void store_cr3(uintptr_t& out) {
+    out = read_cr3();
+}
+static forceinline void write_cr3(uintptr_t value) {
+    __asm__ volatile(
+        "MOV %[value], %%CR3"
         :
-        : [value] "r,m"((uint32_t)value)
+        : [value]"r"(value)
+        : "memory"
     );
 }
-static forceinline void write_gs(const uint16_t& value) {
+static forceinline uintptr_t read_cr4() {
+    uintptr_t temp;
     __asm__ volatile(
-        "MOV GS, %[value]"
-        :
-        : [value] "r,m"((uint32_t)value)
+        "MOV %%CR4, %[temp]"
+        : [temp]"=r"(temp)
     );
+    return temp;
+}
+static forceinline void store_cr4(uintptr_t& out) {
+    out = read_cr4();
+}
+static forceinline void write_cr4(uintptr_t value) {
+    __asm__ volatile(
+        "MOV %[value], %%CR4"
+        :
+        : [value]"r"(value)
+    );
+}
+static forceinline uintptr_t read_cr8() {
+    uintptr_t temp;
+    __asm__ volatile(
+#if __x86_64__
+        "MOV %%CR8, %[temp]"
+#else
+        ".byte 0xF0 \n"
+        "MOV %%CR0, %[temp]"
+#endif
+        : [temp]"=r"(temp)
+    );
+    return temp;
+}
+static forceinline void store_cr8(uintptr_t& out) {
+    out = read_cr8();
+}
+static forceinline void write_cr8(uintptr_t value) {
+    __asm__ volatile(
+#if __x86_64__
+        "MOV %[value], %%CR8"
+#else
+        ".byte 0xF0 \n"
+        "MOV %[value], %%CR0"
+#endif
+        :
+        : [value]"r"(value)
+    );
+}
+
+static forceinline uintptr_t read_dr0() {
+    uintptr_t temp;
+    __asm__ volatile(
+        "MOV %%DR0, %[temp]"
+        : [temp]"=r"(temp)
+    );
+    return temp;
+}
+static forceinline void store_dr0(uintptr_t& out) {
+    out = read_dr0();
+}
+static forceinline void write_dr0(uintptr_t value) {
+    __asm__ volatile(
+        "MOV %[value], %%DR0"
+        :
+        : [value]"r"(value)
+    );
+}
+static forceinline uintptr_t read_dr1() {
+    uintptr_t temp;
+    __asm__ volatile(
+        "MOV %%DR1, %[temp]"
+        : [temp]"=r"(temp)
+    );
+    return temp;
+}
+static forceinline void store_dr1(uintptr_t& out) {
+    out = read_dr1();
+}
+static forceinline void write_dr1(uintptr_t value) {
+    __asm__ volatile(
+        "MOV %[value], %%DR1"
+        :
+        : [value]"r"(value)
+    );
+}
+static forceinline uintptr_t read_dr2() {
+    uintptr_t temp;
+    __asm__ volatile(
+        "MOV %%DR2, %[temp]"
+        : [temp]"=r"(temp)
+    );
+    return temp;
+}
+static forceinline void store_dr2(uintptr_t& out) {
+    out = read_dr2();
+}
+static forceinline void write_dr2(uintptr_t value) {
+    __asm__ volatile(
+        "MOV %[value], %%DR2"
+        :
+        : [value]"r"(value)
+    );
+}
+static forceinline uintptr_t read_dr3() {
+    uintptr_t temp;
+    __asm__ volatile(
+        "MOV %%DR3, %[temp]"
+        : [temp]"=r"(temp)
+    );
+    return temp;
+}
+static forceinline void store_dr3(uintptr_t& out) {
+    out = read_dr3();
+}
+static forceinline void write_dr3(uintptr_t value) {
+    __asm__ volatile(
+        "MOV %[value], %%DR3"
+        :
+        : [value]"r"(value)
+    );
+}
+static forceinline uintptr_t read_dr6() {
+    uintptr_t temp;
+    __asm__ volatile(
+        "MOV %%DR6, %[temp]"
+        : [temp]"=r"(temp)
+    );
+    return temp;
+}
+static forceinline void store_dr6(uintptr_t& out) {
+    out = read_dr6();
+}
+static forceinline void write_dr6(uintptr_t value) {
+    __asm__ volatile(
+        "MOV %[value], %%DR6"
+        :
+        : [value]"r"(value)
+    );
+}
+static forceinline uintptr_t read_dr7() {
+    uintptr_t temp;
+    __asm__ volatile(
+        "MOV %%DR7, %[temp]"
+        : [temp]"=r"(temp)
+    );
+    return temp;
+}
+static forceinline void store_dr7(uintptr_t& out) {
+    out = read_dr7();
+}
+static forceinline void write_dr7(uintptr_t value) {
+    __asm__ volatile(
+        "MOV %[value], %%DR7"
+        :
+        : [value]"r"(value)
+    );
+}
+
+template<typename T>
+static forceinline void port_out(T value, uint_fast16_t port) {
+    if constexpr (sizeof(T) <= sizeof(uint16_t)) {
+        __asm__ volatile(
+            "OUT %[value], %w[port]"
+            :
+            : [value]"a"(value), [port]"d"(port)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "OUT %k[value], %w[port]"
+            :
+            : [value]"a"(value), [port]"d"(port)
+        );
+    }
+}
+template<typename T, uint16_t port>
+static forceinline void port_out(T value) {
+    if constexpr (port <= 0xFF) {
+        if constexpr (sizeof(T) <= sizeof(uint16_t)) {
+            __asm__ volatile(
+                "OUT %[value], %[port]"
+                :
+                : [value]"a"(value), [port]"N"(port)
+            );
+        }
+        else {
+            __asm__ volatile(
+                "OUT %k[value], %[port]"
+                :
+                : [value]"a"(value), [port]"N"(port)
+            );
+        }
+    }
+    else {
+        return port_out(value, port);
+    }
+}
+template<typename T>
+static forceinline T port_in(uint_fast16_t port) {
+    T ret;
+    if constexpr (sizeof(T) <= sizeof(uint16_t)) {
+        __asm__ volatile(
+            "IN %w[port], %[value]"
+            : [value]"=a"(ret)
+            : [port]"d"(port)
+        );
+    }
+    else {
+        __asm__ volatile(
+            "IN %w[port], %k[value]"
+            : [value]"=a"(ret)
+            : [port]"d"(port)
+        );
+    }
+    return ret;
+}
+template<typename T, uint16_t port>
+static forceinline T port_in() {
+    if constexpr (port <= 0xFF) {
+        T ret;
+        if constexpr (sizeof(T) <= sizeof(uint16_t)) {
+            __asm__ volatile(
+                "IN %[port], %[value]"
+                : [value]"=a"(ret)
+                : [port]"N"(port)
+            );
+        }
+        else {
+            __asm__ volatile(
+                "IN %w[port], %k[value]"
+                : [value]"=a"(ret)
+                : [port]"N"(port)
+            );
+        }
+        return ret;
+    }
+    else {
+        return port_in<T>(port);
+    }
 }
 
 #pragma clang diagnostic push
@@ -1937,6 +2606,10 @@ static inline void load_mxcsr(const MXCSR& mxcsr) {
         );
     }
 }
+template <VexState encoding = default_mxcsr_encoding>
+static inline void load_mxcsr(const uint32_t& mxcsr) {
+    load_mxcsr<encoding>(bitcast<MXCSR>(mxcsr));
+}
 
 static inline void load_x87_env(void* env) {
     __asm__ volatile (
@@ -2056,8 +2729,8 @@ struct MSR {
 #ifndef __x86_64__
         uint64_t ret;
 #else
-        uint32_t ret_low;
-        uint32_t ret_high;
+        uint64_t ret_low;
+        uint64_t ret_high;
 #endif
         __asm__ volatile (
             "rdmsr"
@@ -2071,7 +2744,9 @@ struct MSR {
 #ifndef __x86_64__
         return ret;
 #else
-        return (uint64_t)ret_low + ((uint64_t)ret_high << 32);
+        __assume(ret_low <= 0xFFFFFFFFu);
+        __assume(ret_high <= 0xFFFFFFFFu);
+        return ret_low | (ret_high << 32);
 #endif
     }
 

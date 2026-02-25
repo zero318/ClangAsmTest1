@@ -10241,7 +10241,7 @@ struct EclContext {
     }
 
     // 0x48DBE0
-    dllexport EclInstruction* thiscall EclContext::get_current_instruction() asm_symbol_rel(0x48DBE0) {
+    dllexport EclInstruction* thiscall get_current_instruction() asm_symbol_rel(0x48DBE0) {
         int32_t instr_offset = this->location.instruction_offset;
         if (instr_offset != -1) {
             int32_t sub_index = this->location.sub_index;
@@ -26430,6 +26430,7 @@ dllexport gnu_noinline int32_t fastcall PlayerDamageSource::__unknown_func_3(Pla
     return -1;
 }
 
+// Inlined in Player::tick_bullets at 0x45EDB0
 forceinline void PlayerBullet::on_tick() {
     if (this->state) {
 
@@ -41424,7 +41425,76 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             break;
         }
         case move_rand_interp_abs: case move_rand_interp_rel: { // 412, 413
-            // nooooo this one sucks, I'll do it later
+            MotionData* motion;
+            ZUNInterp<float>* angle_interp;
+            ZUNInterp<float>* speed_interp;
+            if (opcode == move_ellipse_abs_interp) {
+                angle_interp = &this->angle_interp_absolute;
+                speed_interp = &this->speed_interp_absolute;
+                motion = &this->motion.absolute;
+            } else {
+                speed_interp = &this->speed_interp_relative;
+                angle_interp = &this->angle_interp_relative;
+                motion = &this->motion.relative;
+            }
+            float angle;
+            if (this->move_bounds_center.x - this->move_bounds_size.x * 0.25f > this->get_current_motion().position.x) {
+                angle = REPLAY_RNG.rand_angle() / 3.0f;
+            }
+            else if (this->move_bounds_center.x + this->move_bounds_size.x * 0.25f < this->get_current_motion().position.x) {
+                angle = reduce_angle(REPLAY_RNG.rand_angle() / 3.0f + PI_f);
+            }
+            else {
+                if (PLAYER_PTR->get_position()->x > this->get_current_motion().position.x) {
+                    angle = REPLAY_RNG.rand_angle() * 0.25f;
+                    if (!(REPLAY_RNG.rand_ushort() % 3)) {
+                        angle += PI_f;
+                    }
+                }
+                else {
+                    angle = REPLAY_RNG.rand_angle() * 0.25f;
+                    if (REPLAY_RNG.rand_ushort() % 3) {
+                        angle += PI_f;
+                    }
+                }
+            }
+            if (this->move_bounds_center.y - this->move_bounds_size.y * 0.25f > this->get_current_motion().position.y) {
+                angle = zfabsf<NoInline>(angle);
+            }
+            else if (this->move_bounds_center.y - this->move_bounds_size.y * 0.25f < this->get_current_motion().position.y) {
+                angle = -zfabsf<NoInline>(angle);
+            }
+            if (zfabsf<NoInline>(angle + HALF_PI_f) < 0.05f) {
+                if (angle < -HALF_PI_f) {
+                    angle = -HALF_PI_f - 0.05f;
+                } else {
+                    angle = -HALF_PI_f + 0.05f;
+                }
+            }
+            else if ((double)zfabsf<NoInline>(angle + HALF_PI_f) < 0.05) {
+                if (angle < HALF_PI_f) {
+                    angle = HALF_PI_f - 0.05f;
+                } else {
+                    angle = HALF_PI_f + 0.05f;
+                }
+            }
+            int32_t interp_mode = this->get_int_arg(1);
+            float speed = this->get_float_arg(2);
+            angle_interp->set_end_time(this->get_int_arg(0));
+            angle_interp->set_mode(interp_mode);
+            angle_interp->set_bezier1(0.0f);
+            angle_interp->set_bezier2(0.0f);
+            angle_interp->set_initial_value(angle);
+            angle_interp->set_final_value(angle);
+            angle_interp->reset_timer();
+            speed_interp->set_end_time(this->get_int_arg(0));
+            speed_interp->set_mode(interp_mode);
+            speed_interp->set_bezier1(0.0f);
+            speed_interp->set_bezier2(0.0f);
+            speed_interp->set_initial_value(speed);
+            speed_interp->set_final_value(0.0f);
+            speed_interp->reset_timer();
+            motion->set_axis_velocity_mode();
             break;
         }
         case enemy_lifebar_color: { // 527

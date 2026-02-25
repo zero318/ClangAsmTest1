@@ -3042,10 +3042,12 @@ static inline constexpr auto vec_movmsk(T vec) {
 
     if constexpr (sizeof(V) == sizeof(int8_t)) {
         if constexpr (vec_length <= 16) {
-            return _mm_movemask_epi8((__m128i)vec);
+            using U = std::make_unsigned_t<decltype(_mm_movemask_epi8((__m128i)vec))>;
+            return (U)_mm_movemask_epi8((__m128i)vec);
         }
         else if constexpr (vec_length <= 32) {
-            return _mm256_movemask_epi8((__m256i)vec);
+            using U = std::make_unsigned_t<decltype(_mm256_movemask_epi8((__m256i)vec))>;
+            return (U)_mm256_movemask_epi8((__m256i)vec);
         }
         else {
             static_assert(false);
@@ -3053,10 +3055,12 @@ static inline constexpr auto vec_movmsk(T vec) {
     }
     else if constexpr (sizeof(V) == sizeof(int32_t)) {
         if constexpr (vec_length <= 4) {
-            return _mm_movemask_ps((__m128)vec);
+            using U = std::make_unsigned_t<decltype(_mm_movemask_ps((__m128)vec))>;
+            return (U)_mm_movemask_ps((__m128)vec);
         }
         else if constexpr (vec_length <= 8) {
-            return _mm256_movemask_ps((__m256)vec);
+            using U = std::make_unsigned_t<decltype(_mm256_movemask_ps((__m256)vec))>;
+            return (U)_mm256_movemask_ps((__m256)vec);
         }
         else {
             static_assert(false);
@@ -3064,10 +3068,12 @@ static inline constexpr auto vec_movmsk(T vec) {
     }
     else if constexpr (sizeof(V) == sizeof(int64_t)) {
         if constexpr (vec_length <= 2) {
-            return _mm_movemask_pd((__m128d)vec);
+            using U = std::make_unsigned_t<decltype(_mm_movemask_pd((__m128d)vec))>;
+            return (U)_mm_movemask_pd((__m128d)vec);
         }
         else if constexpr (vec_length <= 4) {
-            return _mm256_movemask_pd((__m256d)vec);
+            using U = std::make_unsigned_t<decltype(_mm256_movemask_pd((__m256d)vec))>;
+            return (U)_mm256_movemask_pd((__m256d)vec);
         }
         else {
             static_assert(false);

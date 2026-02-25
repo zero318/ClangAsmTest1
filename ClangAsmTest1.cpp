@@ -3706,8 +3706,13 @@ float vectorcall x87_fsin_float_emulate(float value) {
 	return value;
 }
 
+//void generate_trig_table();
+//dllexport void fine_tangent_test();
+
 int stdcall main(int argc, char* argv[]) {
-	test_fprem1_floats();
+	//fine_tangent_test();
+	//generate_trig_table();
+	//test_fprem1_floats();
 	//last_branch_testing();
 	//test_token_parsing();
 	return 0;
@@ -7188,7 +7193,7 @@ gnu_noinline void segment_jank_test() {
 	custom1_start_time = rdtsc();
 	counter = 0;
 	do {
-		if (store_ss() != ss_segment) {
+		if (read_ss() != ss_segment) {
 			write_ss(ss_segment);
 		}
 	} while (!__builtin_add_overflow(counter, counter_add, &counter));
@@ -8573,3 +8578,323 @@ dllexport uint8_t* cdecl unlzss_fast(uint8_t* __restrict src, size_t src_len, ui
 
 	return dst;
 }
+
+dllexport int32_t fixeddiv32() {
+	int32_t A, B;
+	__asm__("":"=a"(A), "=c"(B));
+
+	if (std::abs(A) >> 14 < std::abs(B)) {
+		int64_t temp = ((int64_t)A << 16) / B;
+		return temp;
+	}
+	return (A ^ B) < 0 ? INT32_MIN : INT32_MAX;
+}
+
+union LargeUInt64 {
+	uint64_t full;
+	struct {
+		uint32_t low;
+		uint32_t high;
+	};
+
+	inline LargeUInt64() {}
+	inline LargeUInt64(uint64_t value) : full(value) {}
+	inline LargeUInt64& operator=(uint64_t value) {
+		this->full = value;
+		return *this;
+	}
+	inline operator uint64_t() const {
+		return this->full;
+	}
+	inline LargeUInt64& operator>>=(size_t count) {
+		this->full >>= count;
+		return *this;
+	}
+	inline LargeUInt64& shr1() {
+		__asm__(
+			"shr $1, %[high] \n"
+			"rcr $1, %[low]"
+			: [low]"+r"(low), [high]"+r"(high)
+		);
+		return *this;
+	}
+	inline uint32_t abs() {
+		uint32_t temp = this->high;
+		bool carry;
+		__asm__(
+			"shl $1, %[temp]"
+			: [temp]"+r"(temp), "=@ccc"(carry)
+		);
+		uint32_t mask = carry ? -1 : 0;
+		this->low ^= mask;
+		this->high ^= mask;
+		carry = __builtin_sub_overflow(this->low, mask, &this->low);
+		this->high = carry_sub(this->high, mask, &carry);
+		return mask;
+	}
+};
+union LargeUInt32 {
+	uint32_t full;
+	struct {
+		uint16_t low;
+		uint16_t high;
+	};
+
+	inline LargeUInt32() {}
+	inline LargeUInt32(uint64_t value) : full(value) {}
+	inline LargeUInt32& operator=(uint32_t value) {
+		this->full = value;
+		return *this;
+	}
+	inline operator uint32_t() const {
+		return this->full;
+	}
+	inline LargeUInt32& operator>>=(size_t count) {
+		this->full >>= count;
+		return *this;
+	}
+	inline LargeUInt32& shr1() {
+		__asm__(
+			"shr $1, %[high] \n"
+			"rcr $1, %[low]"
+			: [low]"+r"(low), [high]"+r"(high)
+		);
+		return *this;
+	}
+};
+
+dllexport int64_t alldiv_msvc(int64_t paramA, int64_t paramB) {
+	
+	bool negate_result = (paramA ^ paramB) < 0;
+
+	LargeUInt64 A = paramA;
+	if (paramA < 0) {
+		A = -paramA;
+	}
+	LargeUInt64 B = paramB;
+	if (paramB < 0) {
+		B = -paramB;
+	}
+
+	LargeUInt64 ret;
+	if (!B.high) {
+		ret.high = A.high / B.low;
+		A.high %= B.low;
+		__asm__(
+			"DIV %[divisor]"
+			: "+A"(A.full)
+			: [divisor] "r"(B.low)
+		);
+		ret.low = A.low;
+	} else {
+		LargeUInt64 shiftedB = B;
+		LargeUInt64 shiftedA = A;
+		do {
+			shiftedA.shr1();
+		} while (shiftedB.shr1().high);
+
+		//ret.low = shiftedA / shiftedB.low; // Directly uses DIV with both EDX:EAX
+		__asm__(
+			"DIV %[divisor]"
+			: "+A"(shiftedA.full)
+			: [divisor]"r"(shiftedB.low)
+		);
+		ret = shiftedA.low;
+
+		B * ret.low;
+
+
+		uint32_t C = B.high * ret.low;
+		LargeUInt64 D = (uint64_t)B.low * ret.low;
+		uint32_t E = D.high + C;
+		if (
+			(E < D.high || E > A.high) ||
+			!(E < A.high || D.low <= A.low)
+		) {
+			--ret.low;
+		}
+		ret.high = 0;
+	}
+
+	if (negate_result) {
+		ret.full = -ret.full;
+	}
+	return ret.full;
+}
+
+
+
+dllexport int64_t alldiv_msvc_fake_reg_test() {
+	uint32_t lowA, highA;
+	uint32_t lowB, highB;
+	__asm__("":"=a"(lowA), "=d"(highA), "=b"(lowB), "=c"(highB));
+	int64_t paramA = (uint64_t)highA << 32 | lowA;
+	int64_t paramB = (uint64_t)highB << 32 | lowB;
+
+	bool negate_result = (paramA ^ paramB) < 0;
+
+	LargeUInt64 A = paramA;
+	uint32_t maskA = A.abs();
+	LargeUInt64 B = paramB;
+	uint32_t maskB = B.abs();
+
+	//bool negate_result = (int32_t)(maskA ^ maskB) < 0;
+
+	LargeUInt64 ret;
+	if (expect_chance(!B.high, true, 0.6)) {
+		ret.high = A.high / B.low;
+		A.high %= B.low;
+		__asm__(
+			"DIV %[divisor]"
+			: "+A"(A.full)
+			: [divisor]"r"(B.low)
+		);
+		ret.low = A.low;
+	} else {
+		LargeUInt64 shiftedB = B;
+		LargeUInt64 shiftedA = A;
+		do {
+			shiftedA.shr1();
+		} while (shiftedB.shr1().high);
+		__asm__(
+			"DIV %[divisor]"
+			: "+A"(shiftedA.full)
+			: [divisor]"r"(shiftedB.low)
+		);
+		ret = shiftedA.low;
+
+		ret.low -= (B * ret.low > A);
+		/*
+		uint32_t C = B.high * ret.low;
+		LargeUInt64 D = (uint64_t)B.low * ret.low;
+		uint32_t E = D.high;
+
+		ret.high = 0;
+		__asm__("":"+r"(ret.high));
+
+		D.high += C;
+
+		if (
+			//(D.high < E || D.high > A.high) ||
+			//!(D.high < A.high || D.low <= A.low)
+			D.high < E || D > A
+			//D.high > A.high ||
+			//(D.high == A.high && D.low > A.low)
+		) {
+			--ret.low;
+		}
+		*/
+	}
+
+	if (negate_result) {
+		ret.full = -ret.full;
+	}
+	return ret.full;
+}
+
+dllexport int32_t regparm(3) fixeddiv_ref(int32_t A, int, int32_t B) {
+	/*
+	uint16_t lowA, highA;
+	uint16_t lowB, highB;
+	__asm__("":"=a"(lowA), "=d"(highA), "=b"(lowB), "=c"(highB));
+	int32_t A = (uint32_t)highA << 16 | lowA;
+	int32_t B = (uint32_t)highB << 16 | lowB;
+	*/
+	return ((int64_t)A << 16) / B;
+}
+
+#define DIV(a,d,c) __asm__("DIV %[divisor]":"+a"(a),"+d"(d):[divisor]"r"(c))
+#define DIV16(a,d,c) __asm__("DIV %[divisor]":"+a"(a),"+d"(d):[divisor]"r"((uint16_t)(c)))
+
+dllexport int32_t regparm(3) alldiv_msvc_fast(int32_t paramA, int, int32_t paramB) {
+	/*
+	uint16_t lowA, highA;
+	uint16_t lowB, highB;
+	__asm__("":"=a"(lowA), "=d"(highA), "=b"(lowB), "=c"(highB));
+	int32_t paramA = (uint32_t)highA << 16 | lowA;
+	int32_t paramB = (uint32_t)highB << 16 | lowB;
+	*/
+
+	bool negate_result = (paramA ^ paramB) < 0;
+
+	LargeUInt32 A = paramA;
+	if (paramA < 0) {
+		A = -paramA;
+	}
+	LargeUInt32 B = paramB;
+	if (paramB < 0) {
+		B = -paramB;
+	}
+
+	LargeUInt32 ret;
+	if (!B.high) {
+
+	}
+	else {
+
+	}
+
+	ret.high = A.high / B.low;
+	ret.low = A.low << 16 / B.low;
+
+	if (negate_result) {
+		ret.full = -ret.full;
+	}
+	return ret.full;
+}
+
+dllexport int64_t alldiv_test() {
+	int64_t A;
+	int32_t B;
+	__asm__("":"=A"(A), "=c"(B));
+
+	int64_t tempA = A;
+	int32_t tempB = B;
+	int64_t ret;
+
+	if (A < 0) {
+		A = -A;
+	}
+	if (B < 0) {
+		B = -B;
+	}
+	uint32_t highA = A >> 32;
+	highA /= B;
+	uint32_t lowA = A;
+	lowA /= B;
+	ret = (uint64_t)highA << 32 | lowA;
+	if ((tempA < 0) != (tempB < 0)) {
+		ret = -ret;
+	}
+	return ret;
+}
+
+/*
+dllexport int64_t regcall alldivW_test(int64_t lowA, int32_t highA, int64_t B) {
+
+	//int128_t tempA = A;
+	int64_t tempB = B;
+	int64_t ret;
+
+	if (highA < 0) {
+		lowA = -lowA;
+	}
+	if (B < 0) {
+		B = -B;
+	}
+	//uint64_t highA = A >> 64;
+	//highA /= B;
+	lowA /= B;
+	//ret = (uint64_t)highA << 64 | lowA;
+
+	if ((highA < 0) != (tempB < 0)) {
+		lowA = -lowA;
+	}
+	return lowA;
+}
+*/
+
+int64_t regcall wide_div_test(int128_t A, int64_t B) {
+	return A / B;
+}
+

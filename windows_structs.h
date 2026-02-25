@@ -171,6 +171,35 @@ __if_not_exists(KAFFINITY) {
     using KAFFINITY = KAFFINITYX<>;
 }
 
+template<size_t bits = native_bits>
+struct KAFFINITY_EXX;
+
+template<>
+struct KAFFINITY_EXX<32> {
+    uint16_t Count; // 0x0
+    uint16_t Size; // 0x2
+    uint32_t Reserved; // 0x4
+    uint32_t Bitmap[1]; // 0x8
+    // 0xC
+};
+ValidateStructSize(0xC, KAFFINITY_EXX<32>);
+ValidateStructAlignment(0x4, KAFFINITY_EXX<32>);
+
+template<>
+struct KAFFINITY_EXX<64> {
+    uint16_t Count; // 0x0
+    uint16_t Size; // 0x2
+    uint32_t Reserved; // 0x4
+    uint64_t Bitmap[4]; // 0x8
+    // 0x28
+};
+ValidateStructSize(0x28, KAFFINITY_EXX<64>);
+ValidateStructAlignment(0x8, KAFFINITY_EXX<64>);
+
+__if_not_exists(KAFFINITY_EX) {
+    using KAFFINITY_EX = KAFFINITY_EXX<>;
+}
+
 using KIRQLX = uint8_t;
 __if_not_exists(KIRQL) {
     using KIRQL = KIRQLX;
@@ -498,6 +527,53 @@ ValidateStructAlignment(0x4, KSYSTEM_TIMEX<64>);
 
 __if_not_exists(KSYSTEM_TIME) {
     using KSYSTEM_TIME = KSYSTEM_TIMEX<>;
+}
+
+template<size_t bits = native_bits>
+struct GROUP_AFFINITYX {
+    uintptr_tx<bits> Mask; // 0x0, 0x0
+    uint16_t Group; // 0x4, 0x8
+    uint16_t Reserved[3]; // 0x6, 0xA
+    // 0xC, 0x10
+};
+ValidateStructSize(0xC, GROUP_AFFINITYX<32>);
+ValidateStructAlignment(0x4, GROUP_AFFINITYX<32>);
+ValidateStructSize(0x10, GROUP_AFFINITYX<64>);
+ValidateStructAlignment(0x8, GROUP_AFFINITYX<64>);
+
+__if_not_exists(GROUP_AFFINITY) {
+    using GROUP_AFFINITY = GROUP_AFFINITYX<>;
+}
+
+enum HARDWARE_COUNTER_TYPEX : int32_t {
+    PMCCounterX = 0,
+    MaxHardwareCounterTypeX = 1
+};
+__if_not_exists(HARDWARE_COUNTER_TYPE) {
+    using HARDWARE_COUNTER_TYPE = HARDWARE_COUNTER_TYPEX;
+}
+__if_not_exists(PMCCounter) {
+    static constexpr auto PMCCounter = (HARDWARE_COUNTER_TYPE)PMCCounterX;
+}
+__if_not_exists(MaxHardwareCounterType) {
+    static constexpr auto MaxHardwareCounterType = (HARDWARE_COUNTER_TYPE)MaxHardwareCounterTypeX;
+}
+
+template<size_t bits = native_bits>
+struct COUNTER_READINGX {
+    HARDWARE_COUNTER_TYPE Type; // 0x0, 0x0
+    uint32_t Index; // 0x4, 0x4
+    uint64_t Start; // 0x8, 0x8
+    uint64_t Total; // 0x10, 0x10
+    // 0x18, 0x18
+};
+ValidateStructSize(0x18, COUNTER_READINGX<32>);
+ValidateStructAlignment(0x8, COUNTER_READINGX<32>);
+ValidateStructSize(0x18, COUNTER_READINGX<64>);
+ValidateStructAlignment(0x8, COUNTER_READINGX<64>);
+
+__if_not_exists(COUNTER_READING) {
+    using COUNTER_READING = COUNTER_READINGX<>;
 }
 
 enum OBJECT_WAIT_TYPEX : int32_t {
@@ -988,6 +1064,70 @@ ValidateStructAlignment(0x8, LIST_ENTRYX<64>);
 
 __if_not_exists(LIST_ENTRY) {
     using LIST_ENTRY = LIST_ENTRYX<>;
+}
+
+template<size_t bits = native_bits, typename T = void>
+struct SINGLE_LIST_ENTRYX {
+    PTRZX<bits, T> Next; // 0x0, 0x0
+    // 0x4, 0x8
+};
+ValidateStructSize(0x4, SINGLE_LIST_ENTRYX<32>);
+ValidateStructAlignment(0x4, SINGLE_LIST_ENTRYX<32>);
+ValidateStructSize(0x8, SINGLE_LIST_ENTRYX<64>);
+ValidateStructAlignment(0x8, SINGLE_LIST_ENTRYX<64>);
+
+__if_not_exists(SINGLE_LIST_ENTRY) {
+    using SINGLE_LIST_ENTRY = SINGLE_LIST_ENTRYX<>;
+}
+
+template<size_t bits = native_bits, typename T = void>
+struct SLIST_HEADERX;
+
+template<typename T>
+struct alignas(8) SLIST_HEADERX<32, T> {
+    SINGLE_LIST_ENTRYX<32> Next; // 0x0
+    uint16_t Depth; // 0x4
+    uint16_t Sequence; // 0x6
+    // 0x8
+};
+ValidateStructSize(0x8, SLIST_HEADERX<32>);
+ValidateStructAlignment(0x8, SLIST_HEADERX<32>);
+
+template<typename T>
+struct SLIST_HEADERX<64, T> {
+    union {
+        uint64_t Region; // 0x0
+        struct {
+            uint64_t Depth : 16;
+            uint64_t Sequence : 9;
+            uint64_t NextEntry : 39;
+            uint64_t HeaderType : 1;
+            uint64_t Init : 1;
+            uint64_t Reserved : 59;
+            uint64_t Region : 3;
+        } Header8;
+        struct {
+            uint64_t Depth : 16;
+            uint64_t Sequence : 48;
+            uint64_t HeaderType : 1;
+            uint64_t Init : 1;
+            uint64_t Reserved : 2;
+            uint64_t NextEntry : 60;
+        } Header16;
+        struct {
+            uint64_t Depth : 16;
+            uint64_t Sequence : 48;
+            uint64_t HeaderType : 1;
+            uint64_t Reserved : 3;
+            uint64_t NextEntry : 60;
+        } HeaderX64;
+    };
+};
+ValidateStructSize(0x10, SLIST_HEADERX<64>);
+ValidateStructAlignment(0x8, SLIST_HEADERX<64>);
+
+__if_not_exists(SLIST_HEADER) {
+    using SLIST_HEADER = SLIST_HEADERX<>;
 }
 
 template<size_t bits = native_bits>
@@ -2698,6 +2838,9 @@ struct CONTEXTX<32, T> {
     XSAVE_FORMATX<32, T, false> ExtendedRegisters; // 0xCC
     // 0x2CC
 };
+ValidateStructSize(0x2CC, CONTEXTX<32>);
+ValidateStructAlignment(0x4, CONTEXTX<32>);
+
 template<typename T>
 struct alignas(16) CONTEXTX<64, T> {
     uint64_t P1Home; // 0x0
@@ -2748,8 +2891,6 @@ struct alignas(16) CONTEXTX<64, T> {
     uint64_t LastExceptionFromRip; // 0x4C8
     // 0x4D0
 };
-ValidateStructSize(0x2CC, CONTEXTX<32>);
-ValidateStructAlignment(0x4, CONTEXTX<32>);
 ValidateStructSize(0x4D0, CONTEXTX<64>);
 ValidateStructAlignment(0x10, CONTEXTX<64>);
 
@@ -4996,10 +5137,37 @@ __if_not_exists(DBGKD_GET_VERSION64) {
 }
 
 template<size_t bits = native_bits>
+struct KDESCRIPTORX;
+
+template<>
+struct KDESCRIPTORX<32> {
+    uint16_t Pad[1]; // 0x0
+    uint16_t Limit; // 0x2
+    PTR32Z<> Base; // 0x4
+    // 0x8
+};
+ValidateStructSize(0x8, KDESCRIPTORX<32>);
+ValidateStructAlignment(0x4, KDESCRIPTORX<32>);
+
+template<>
+struct KDESCRIPTORX<64> {
+    uint16_t Pad[3]; // 0x0
+    uint16_t Limit; // 0x6
+    PTR64Z<> Base; // 0x8
+    // 0x10
+};
+ValidateStructSize(0x10, KDESCRIPTORX<64>);
+ValidateStructAlignment(0x8, KDESCRIPTORX<64>);
+
+__if_not_exists(KDESCRIPTOR) {
+    using KDESCRIPTOR = KDESCRIPTORX<>;
+}
+
+template<size_t bits = native_bits>
 struct KIDTENTRYX;
 
 template<>
-struct alignas(8) KIDTENTRYX<32> {
+struct alignas(4) KIDTENTRYX<32> {
     uint16_t OffsetLow; // 0x0
     uint16_t Selector; // 0x2
     union {
@@ -5016,7 +5184,7 @@ struct alignas(8) KIDTENTRYX<32> {
     // 0x8
 };
 ValidateStructSize(0x8, KIDTENTRYX<32>);
-ValidateStructAlignment(0x8, KIDTENTRYX<32>);
+ValidateStructAlignment(0x4, KIDTENTRYX<32>);
 
 template<>
 struct alignas(16) KIDTENTRYX<64> {
@@ -5051,7 +5219,7 @@ template<size_t bits = native_bits>
 struct KGDTENTRYX;
 
 template<>
-struct alignas(8) KGDTENTRYX<32> {
+struct alignas(4) KGDTENTRYX<32> {
     uint16_t LimitLow; // 0x0
     uint16_t BaseLow; // 0x2
     uint8_t BaseMiddle; // 0x4
@@ -5075,9 +5243,15 @@ struct alignas(8) KGDTENTRYX<32> {
     };
     uint8_t BaseHigh; // 0x7
     // 0x8
+
+    void set_base(uint32_t address) {
+        this->BaseLow = address;
+        this->BaseMiddle = address >> 16;
+        this->BaseHigh = address >> 24;
+    }
 };
 ValidateStructSize(0x8, KGDTENTRYX<32>);
-ValidateStructAlignment(0x8, KGDTENTRYX<32>);
+ValidateStructAlignment(0x4, KGDTENTRYX<32>);
 
 template<>
 struct alignas(8) KGDTENTRYX<64> {
@@ -5106,6 +5280,17 @@ struct alignas(8) KGDTENTRYX<64> {
     uint32_t BaseUpper; // 0x8
     uint32_t MustBeZero; // 0xC
     // 0x10
+
+    void set_base(uint32_t address) {
+        this->BaseLow = address;
+        this->BaseMiddle = address >> 16;
+        this->BaseHigh = address >> 24;
+    }
+    void set_base(uint64_t address) {
+        this->BaseLow = address;
+        this->BaseMiddle = address >> 16;
+        this->BaseHigh = address >> 24;
+    }
 };
 ValidateStructSize(0x10, KGDTENTRYX<64>);
 ValidateStructAlignment(0x8, KGDTENTRYX<64>);
@@ -5192,9 +5377,185 @@ __if_not_exists(KTSS64) {
 }
 
 template<size_t bits = native_bits>
+struct KTRAP_FRAMEX;
+
+template<>
+struct KTRAP_FRAMEX<32> {
+    uint32_t DbgEbp; // 0x0
+    uint32_t DbgEip; // 0x4
+    uint32_t DbgArgMark; // 0x8
+    uint32_t DbgArgPointer; // 0xC
+    uint16_t TempSegCs; // 0x10
+    uint8_t Logging; // 0x12
+    uint8_t Reserved; // 0x13
+    uint32_t TempEsp; // 0x14
+    uint32_t Dr0; // 0x18
+    uint32_t Dr1; // 0x1C
+    uint32_t Dr2; // 0x20
+    uint32_t Dr3; // 0x24
+    uint32_t Dr6; // 0x28
+    uint32_t Dr7; // 0x2C
+    uint32_t SegGs; // 0x30
+    uint32_t SegEs; // 0x34
+    uint32_t SegDs; // 0x38
+    uint32_t Edx; // 0x3C
+    uint32_t Ecx; // 0x40
+    uint32_t Eax; // 0x44
+    uint32_t PreviousPreviousMode; // 0x48
+    PTR32Z<EXCEPTION_REGISTRATION_RECORDX<32>> ExceptionList; // 0x4C
+    uint32_t SegFs; // 0x50
+    uint32_t Edi; // 0x54
+    uint32_t Esi; // 0x58
+    uint32_t Ebx; // 0x5C
+    uint32_t Ebp; // 0x60
+    uint32_t ErrCode; // 0x64
+    uint32_t Eip; // 0x68
+    uint32_t SegCs; // 0x6C
+    uint32_t EFlags; // 0x70
+    uint32_t HardwareEsp; // 0x74
+    uint32_t HardwareSegSs; // 0x78
+    uint32_t V86Es; // 0x7C
+    uint32_t V86Ds; // 0x80
+    uint32_t V86Fs; // 0x84
+    uint32_t V86Gs; // 0x88
+    // 0x8C
+};
+ValidateStructSize(0x8C, KTRAP_FRAMEX<32>);
+ValidateStructAlignment(0x4, KTRAP_FRAMEX<32>);
+
+template<>
+struct alignas(16) KTRAP_FRAMEX<64> {
+    uint64_t P1Home; // 0x0
+    uint64_t P2Home; // 0x8
+    uint64_t P3Home; // 0x10
+    uint64_t P4Home; // 0x18
+    uint64_t P5; // 0x20
+    int8_t PreviousMode; // 0x28
+    uint8_t PreviousIrql; // 0x29
+    uint8_t FaultIndicator; // 0x2A
+    uint8_t ExceptionActive; // 0x2B
+    uint32_t MxCsr; // 0x2C
+    uint64_t Rax; // 0x30
+    uint64_t Rcx; // 0x38
+    uint64_t Rdx; // 0x40
+    uint64_t R8; // 0x48
+    uint64_t R9; // 0x50
+    uint64_t R10; // 0x58
+    uint64_t R11; // 0x60
+    union {
+        uint64_t GsBase; // 0x68
+        uint64_t GsSwap; // 0x68
+    };
+    __m128 Xmm0; // 0x70
+    __m128 Xmm1; // 0x80
+    __m128 Xmm2; // 0x90
+    __m128 Xmm3; // 0xA0
+    __m128 Xmm4; // 0xB0
+    __m128 Xmm5; // 0xC0
+    union {
+        uint64_t FaultAddress; // 0xD0
+        uint64_t ContextRecord; // 0xD0
+        uint64_t TimeStampCKCL; // 0xD0
+    };
+    uint64_t Dr0; // 0xD8
+    uint64_t Dr1; // 0xE0
+    uint64_t Dr2; // 0xE8
+    uint64_t Dr3; // 0xF0
+    uint64_t Dr6; // 0xF8
+    uint64_t Dr7; // 0x100
+    union {
+        struct {
+            uint64_t DebugControl; // 0x108
+            uint64_t LastBranchToRip; // 0x110
+            uint64_t LastBranchFromRip; // 0x118
+            uint64_t LastExceptionToRip; // 0x120
+            uint64_t LastExceptionFromRip; // 0x128
+        };
+        struct {
+            uint64_t LastBranchControl; // 0x108
+            uint32_t LastBranchMSR; // 0x110
+        };
+    };
+    uint16_t SegDs; // 0x130
+    uint16_t SegEs; // 0x132
+    uint16_t SegFs; // 0x134
+    uint16_t SegGs; // 0x136
+    uint64_t TrapFrame; // 0x138
+    uint64_t Rbx; // 0x140
+    uint64_t Rdi; // 0x148
+    uint64_t Rsi; // 0x150
+    uint64_t Rbp; // 0x158
+    union {
+        uint64_t ErrorCode; // 0x160
+        uint64_t ExceptionFrame; // 0x160
+        uint64_t TimeStampKlog; // 0x160
+    };
+    uint64_t Rip; // 0x168
+    uint16_t SegCs; // 0x170
+    uint8_t Fill0; // 0x172
+    uint8_t Logging; // 0x173
+    uint16_t Fill1[2]; // 0x174
+    uint32_t EFlags; // 0x178
+    uint32_t Fill2; // 0x17C
+    uint64_t Rsp; // 0x180
+    uint16_t SegSs; // 0x188
+    uint16_t Fill3; // 0x18A
+    int32_t CodePatchCycle; // 0x18C
+    // 0x190
+};
+ValidateStructSize(0x190, KTRAP_FRAMEX<64>);
+ValidateStructAlignment(0x10, KTRAP_FRAMEX<64>);
+
+__if_not_exists(KTRAP_FRAME) {
+    using KTRAP_FRAME = KTRAP_FRAMEX<>;
+}
+
+// No 32 bit?
+template<size_t bits = native_bits>
+struct KEXCEPTION_FRAMEX {
+    uint64_t P1Home; // 0x0
+    uint64_t P2Home; // 0x8
+    uint64_t P3Home; // 0x10
+    uint64_t P4Home; // 0x18
+    uint64_t P5; // 0x20
+    uint64_t InitialStack; // 0x28
+    __m128 Xmm6; // 0x30
+    __m128 Xmm7; // 0x40
+    __m128 Xmm8; // 0x50
+    __m128 Xmm9; // 0x60
+    __m128 Xmm10; // 0x70
+    __m128 Xmm11; // 0x80
+    __m128 Xmm12; // 0x90
+    __m128 Xmm13; // 0xA0
+    __m128 Xmm14; // 0xB0
+    __m128 Xmm15; // 0xC0
+    uint64_t TrapFrame; // 0xD0
+    uint64_t CallbackStack; // 0xD8
+    uint64_t OutputBuffer; // 0xE0
+    uint64_t OutputLength; // 0xE8
+    uint64_t MxCsr; // 0xF0
+    uint64_t Rbp; // 0xF8
+    uint64_t Rbx; // 0x100
+    uint64_t Rdi; // 0x108
+    uint64_t Rsi; // 0x110
+    uint64_t R12; // 0x118
+    uint64_t R13; // 0x120
+    uint64_t R14; // 0x128
+    uint64_t R15; // 0x130
+    uint64_t Return; // 0x138
+    // 0x140
+};
+ValidateStructSize(0x190, KTRAP_FRAMEX<64>);
+ValidateStructAlignment(0x10, KTRAP_FRAMEX<64>);
+
+__if_not_exists(KEXCEPTION_FRAME) {
+    using KEXCEPTION_FRAME = KEXCEPTION_FRAMEX<>;
+}
+
+template<size_t bits = native_bits>
 struct KSPIN_LOCK_QUEUEX {
     volatile PTRZX<bits, KSPIN_LOCK_QUEUEX<bits>> Next; // 0x0, 0x0
-    volatile PTRZX<bits, uint32_t> Lock; // 0x4, 0x8
+    volatile PTRZX<bits, uintptr_tx<bits>> Lock; // 0x4, 0x8
     // 0x8, 0x10
 };
 ValidateStructSize(0x8, KSPIN_LOCK_QUEUEX<32>);
@@ -5207,11 +5568,1967 @@ __if_not_exists(KSPIN_LOCK_QUEUE) {
 }
 
 template<size_t bits = native_bits>
-struct KTHREADX {
+struct DISPATCHER_HEADERX {
+    union {
+        struct {
+            uint8_t Type; // 0x0, 0x0
+            union {
+                uint8_t TimerControlFlags; // 0x1, 0x1
+                struct {
+                    uint8_t Absolute : 1;
+                    uint8_t Coalescable : 1;
+                    uint8_t KeepShifting : 1;
+                    uint8_t EncodedTolerableDelay : 5;
+                };
+                uint8_t Abandoned; // 0x1, 0x1
+                uint8_t Signalling; // 0x1, 0x1
+            };
+            union {
+                uint8_t ThreadControlFlags; // 0x2, 0x2
+                struct {
+                    uint8_t CpuThrottled : 1;
+                    uint8_t CycleProfiling : 1;
+                    uint8_t CounterProfiling : 1;
+                    uint8_t Reserved : 5;
+                };
+                uint8_t Hand; // 0x2, 0x2
+                uint8_t Size; // 0x2, 0x2
+            };
+            union {
+                uint8_t TimerMiscFlags; // 0x3, 0x3
+                struct {
+                    uint8_t ActiveDR7 : 1;
+                    uint8_t Instrumented : 1;
+                    uint8_t Reserved2 : 4;
+                    uint8_t UmsScheduled : 1;
+                    uint8_t UmsPrimary : 1;
+                };
+                uint8_t DpcActive; // 0x3, 0x3
+            };
+            // 0x4, 0x4
+        };
+        volatile int32_t Lock; // 0x0, 0x0
+    };
+    int32_t SignalState; // 0x4, 0x4
+    LIST_ENTRYX<bits> WaitListHead; // 0x8, 0x8
+    // 0x10, 0x18
 };
+ValidateStructSize(0x10, DISPATCHER_HEADERX<32>);
+ValidateStructAlignment(0x4, DISPATCHER_HEADERX<32>);
+ValidateStructSize(0x18, DISPATCHER_HEADERX<64>);
+ValidateStructAlignment(0x8, DISPATCHER_HEADERX<64>);
+
+__if_not_exists(DISPATCHER_HEADER) {
+    using DISPATCHER_HEADER = DISPATCHER_HEADERX<>;
+}
+
+template<size_t bits = native_bits>
+struct KGATEX {
+    DISPATCHER_HEADERX<bits> Header; // 0x0, 0x0
+    // 0x10, 0x18
+};
+ValidateStructSize(0x10, KGATEX<32>);
+ValidateStructAlignment(0x4, KGATEX<32>);
+ValidateStructSize(0x18, KGATEX<64>);
+ValidateStructAlignment(0x8, KGATEX<64>);
+
+__if_not_exists(KGATE) {
+    using KGATE = KGATEX<>;
+}
+
+template<size_t bits = native_bits>
+struct KEVENTX {
+    DISPATCHER_HEADERX<bits> Header; // 0x0, 0x0
+    // 0x10, 0x18
+};
+ValidateStructSize(0x10, KEVENTX<32>);
+ValidateStructAlignment(0x4, KEVENTX<32>);
+ValidateStructSize(0x18, KEVENTX<64>);
+ValidateStructAlignment(0x8, KEVENTX<64>);
+
+__if_not_exists(KEVENT) {
+    using KEVENT = KEVENTX<>;
+}
+
+template<size_t bits = native_bits>
+struct KSEMAPHOREX {
+    DISPATCHER_HEADERX<bits> Header; // 0x0, 0x0
+    int32_t Limit; // 0x10, 0x18
+    __x64_padding(0x4); // 0x1C
+    // 0x14, 0x20
+};
+ValidateStructSize(0x14, KSEMAPHOREX<32>);
+ValidateStructAlignment(0x4, KSEMAPHOREX<32>);
+ValidateStructSize(0x20, KSEMAPHOREX<64>);
+ValidateStructAlignment(0x8, KSEMAPHOREX<64>);
+
+__if_not_exists(KSEMAPHORE) {
+    using KSEMAPHORE = KSEMAPHOREX<>;
+}
+
+template<size_t bits = native_bits>
+struct KQUEUEX {
+    DISPATCHER_HEADERX<bits> Header; // 0x0, 0x0
+    LIST_ENTRYX<bits> EntryListHead; // 0x10, 0x18
+    volatile uint32_t CurrentCount; // 0x18, 0x28
+    uint32_t MaximumCount; // 0x1C, 0x2C
+    LIST_ENTRYX<bits> ThreadListHead; // 0x20, 0x30
+    // 0x28, 0x40
+};
+ValidateStructSize(0x28, KQUEUEX<32>);
+ValidateStructAlignment(0x4, KQUEUEX<32>);
+ValidateStructSize(0x40, KQUEUEX<64>);
+ValidateStructAlignment(0x8, KQUEUEX<64>);
+
+__if_not_exists(KQUEUE) {
+    using KQUEUE = KQUEUEX<>;
+}
+
+template<size_t bits = native_bits>
+struct KDPCX;
+
+template<size_t bits = native_bits>
+using KDPC_FUNCX = void(KDPCX<bits>,
+                        PTRZX<bits>,
+                        PTRZX<bits>,
+                        PTRZX<bits>
+                        );
+
+__if_not_exists(KDPC_FUNC) {
+    using KDPC_FUNC = KDPC_FUNCX<>;
+}
+
+template<size_t bits>
+struct KDPCX {
+    uint8_t Type; // 0x0, 0x0
+    uint8_t Importance; // 0x1, 0x1
+    volatile uint16_t Number; // 0x2, 0x2
+    __x64_padding(0x4); // 0x4
+    LIST_ENTRYX<bits> DpcListEntry; // 0x4, 0x8
+    PTRZX<bits, KDPC_FUNCX<bits>> DeferredRoutine; // 0xC, 0x18
+    PTRZX<bits> DeferredContext; // 0x10, 0x20
+    PTRZX<bits> SystemArgument1; // 0x14, 0x28
+    PTRZX<bits> SystemArgument2; // 0x18, 0x30
+    PTRZX<bits> DpcData; // 0x1C, 0x38
+    // 0x20, 0x40
+};
+ValidateStructSize(0x20, KDPCX<32>);
+ValidateStructAlignment(0x4, KDPCX<32>);
+ValidateStructSize(0x40, KDPCX<64>);
+ValidateStructAlignment(0x8, KDPCX<64>);
+
+__if_not_exists(KDPC) {
+    using KDPC = KDPCX<>;
+}
+
+template<size_t bits = native_bits>
+struct KDPC_DATAX {
+    LIST_ENTRYX<bits> DpcListHead; // 0x0, 0x0
+    uintptr_tx<bits> DpcLock; // 0x8, 0x10
+    volatile int32_t DpcQueueDepth; // 0xC, 0x18
+    uint32_t DpcCount; // 0x10, 0x1C
+    // 0x14, 0x20
+};
+ValidateStructSize(0x14, KDPC_DATAX<32>);
+ValidateStructAlignment(0x4, KDPC_DATAX<32>);
+ValidateStructSize(0x20, KDPC_DATAX<64>);
+ValidateStructAlignment(0x8, KDPC_DATAX<64>);
+
+__if_not_exists(KDPC_DATA) {
+    using KDPC_DATA = KDPC_DATAX<>;
+}
+
+template<size_t bits = native_bits>
+struct KTIMERX;
+
+template<>
+struct alignas(8) KTIMERX<32> {
+    DISPATCHER_HEADERX<32> Header; // 0x0
+    ULARGE_INTEGERX<32> DueTime; // 0x10
+    LIST_ENTRYX<32> TimerListEntry; // 0x18
+    PTR32Z<KDPCX<32>> Dpc; // 0x20
+    uint32_t Period; // 0x24
+    // 0x28
+};
+ValidateStructSize(0x28, KTIMERX<32>);
+ValidateStructAlignment(0x8, KTIMERX<32>);
+
+template<>
+struct KTIMERX<64> {
+    DISPATCHER_HEADERX<64> Header; // 0x0
+    ULARGE_INTEGERX<64> DueTime; // 0x18
+    LIST_ENTRYX<64> TimerListEntry; // 0x20
+    PTR64Z<KDPCX<64>> Dpc; // 0x30
+    uint32_t Processor; // 0x38
+    uint32_t Period; // 0x3C
+    // 0x40
+};
+ValidateStructSize(0x40, KTIMERX<64>);
+ValidateStructAlignment(0x8, KTIMERX<64>);
+
+__if_not_exists(KTIMER) {
+    using KTIMER = KTIMERX<>;
+}
+
+template<size_t bits = native_bits>
+struct KTHREADX;
+
+template<size_t bits = native_bits>
+struct KGUARDED_MUTEXX {
+    volatile int32_t Count; // 0x0, 0x0
+    __x64_padding(0x4); // 0x4
+    PTRZX<bits, KTHREADX<bits>> Owner; // 0x4, 0x8
+    uint32_t Contention; // 0x8, 0x10
+    __x64_padding(0x4); // 0x14
+    KGATEX<bits> Gate; // 0xC, 0x18
+    union {
+        uint32_t CombinedApcDisable; // 0x1C, 0x30
+        struct {
+            int16_t KernelApcDisable; // 0x1C, 0x30
+            int16_t SpecialApcDisable; // 0x1E, 0x32
+        };
+    };
+    __x64_padding(0x4); // 0x34
+    // 0x20, 0x38
+};
+ValidateStructSize(0x20, KGUARDED_MUTEXX<32>);
+ValidateStructAlignment(0x4, KGUARDED_MUTEXX<32>);
+ValidateStructSize(0x38, KGUARDED_MUTEXX<64>);
+ValidateStructAlignment(0x8, KGUARDED_MUTEXX<64>);
+
+__if_not_exists(KGUARDED_MUTEX) {
+    using KGUARDED_MUTEX = KGUARDED_MUTEXX<>;
+}
+
+template<size_t bits = native_bits>
+struct KEXECUTE_OPTIONSX {
+    union {
+        volatile uint8_t ExecuteOptions; // 0x0, 0x0
+        struct {
+            uint8_t ExecuteDisable : 1;
+            uint8_t ExecuteEnable : 1;
+            uint8_t DisableThunkEmulation : 1;
+            uint8_t Permanent : 1;
+            uint8_t ExecuteDispatchEnable : 1;
+            uint8_t ImageDispatchEnable : 1;
+            uint8_t DisableExceptionChainValidation : 1;
+            uint8_t Spare : 1;
+        };
+    };
+    // 0x1, 0x1
+};
+ValidateStructSize(0x1, KEXECUTE_OPTIONSX<32>);
+ValidateStructAlignment(0x1, KEXECUTE_OPTIONSX<32>);
+ValidateStructSize(0x1, KEXECUTE_OPTIONSX<64>);
+ValidateStructAlignment(0x1, KEXECUTE_OPTIONSX<64>);
+
+__if_not_exists(KEXECUTE_OPTIONS) {
+    using KEXECUTE_OPTIONS = KEXECUTE_OPTIONSX<>;
+}
+
+template<size_t bits = native_bits>
+struct KSTACK_COUNTX {
+    union {
+        volatile int32_t Value; // 0x0, 0x0
+        struct {
+            volatile uint32_t State : 3;
+            uint32_t StackCount : 29;
+        };
+    };
+    // 0x4, 0x4
+};
+ValidateStructSize(0x4, KSTACK_COUNTX<32>);
+ValidateStructAlignment(0x4, KSTACK_COUNTX<32>);
+ValidateStructSize(0x4, KSTACK_COUNTX<64>);
+ValidateStructAlignment(0x4, KSTACK_COUNTX<64>);
+
+__if_not_exists(KSTACK_COUNT) {
+    using KSTACK_COUNT = KSTACK_COUNTX<>;
+}
+
+template<size_t bits = native_bits>
+struct KPROCESSX;
+
+template<>
+struct KPROCESSX<32> {
+    DISPATCHER_HEADERX<32> Header; // 0x0
+    LIST_ENTRYX<32> ProfileListHead; // 0x10
+    uintptr_tx<32> DirectoryTableBase; // 0x18
+    KGDTENTRYX<32> LdtDescriptor; // 0x1C
+    KIDTENTRYX<32> Int21Descriptor; // 0x24
+    LIST_ENTRYX<32> ThreadListHead; // 0x2C
+    uint32_t ProcessLock; // 0x34
+    KAFFINITY_EXX<32> Affinity; // 0x38
+    LIST_ENTRYX<32> ReadyListHead; // 0x44
+    SINGLE_LIST_ENTRYX<32> SwapListEntry; // 0x4C
+    volatile KAFFINITY_EXX<32> ActiveProcessors; // 0x50
+    union {
+        volatile int32_t ProcessFlags; // 0x5C
+        struct {
+            volatile int32_t AutoAlignment : 1;
+            volatile int32_t DisableBoost : 1;
+            volatile int32_t DisableQuantum : 1;
+            volatile uint32_t ActiveGroupsMask : 1;
+            volatile int32_t ReservedFlags : 28;
+        };
+    };
+    int8_t BasePriority; // 0x60
+    int8_t QuantumReset; // 0x61
+    uint8_t Visited; // 0x62
+    uint8_t Unused3; // 0x63
+    uint32_t ThreadSeed[1]; // 0x64
+    uint16_t IdealNode[1]; // 0x68
+    uint16_t IdealGlobalNode; // 0x6A
+    KEXECUTE_OPTIONSX<32> Flags; // 0x6C
+    uint8_t Unused1; // 0x6D
+    uint16_t IopmOffset; // 0x6E
+    uint32_t Unused4; // 0x70
+    KSTACK_COUNTX<32> StackCount; // 0x74
+    LIST_ENTRYX<32> ProcessListEntry; // 0x78
+    volatile uint64_t CycleTime; // 0x80
+    uint32_t KernelTime; // 0x88
+    uint32_t UserTime; // 0x8C
+    PTR32Z<> VdmTrapcHandler; // 0x90
+    __x86_padding(0x4); // 0x94
+    // 0x98
+};
+ValidateStructSize(0x98, KPROCESSX<32>);
+ValidateStructAlignment(0x8, KPROCESSX<32>);
+
+template<>
+struct KPROCESSX<64> {
+    DISPATCHER_HEADERX<64> Header; // 0x0
+    LIST_ENTRYX<64> ProfileListHead; // 0x18
+    uintptr_tx<64> DirectoryTableBase; // 0x28
+    LIST_ENTRYX<64> ThreadListHead; // 0x30
+    uint64_t ProcessLock; // 0x40
+    KAFFINITY_EXX<64> Affinity; // 0x48
+    LIST_ENTRYX<64> ReadyListHead; // 0x70
+    SINGLE_LIST_ENTRYX<64> SwapListEntry; // 0x80
+    volatile KAFFINITY_EXX<64> ActiveProcessors; // 0x88
+    union {
+        volatile int32_t ProcessFlags; // 0xB0
+        struct {
+            volatile int32_t AutoAlignment : 1;
+            volatile int32_t DisableBoost : 1;
+            volatile int32_t DisableQuantum : 1;
+            volatile uint32_t ActiveGroupsMask : 4;
+            volatile int32_t ReservedFlags : 25;
+        };
+    };
+    int8_t BasePriority; // 0xB4
+    int8_t QuantumReset; // 0xB5
+    uint8_t Visited; // 0xB6
+    uint8_t Unused3; // 0xB7
+    uint32_t ThreadSeed[4]; // 0xB8
+    uint16_t IdealNode[4]; // 0xC8
+    uint16_t IdealGlobalNode; // 0xD0
+    KEXECUTE_OPTIONSX<64> Flags; // 0xD2
+    uint8_t Unused1; // 0xD3
+    uint32_t Unused2; // 0xD4
+    uint32_t Unused4; // 0xD8
+    KSTACK_COUNTX<64> StackCount; // 0xDC
+    LIST_ENTRYX<64> ProcessListEntry; // 0xE0
+    volatile uint64_t CycleTime; // 0xF0
+    uint32_t KernelTime; // 0xF8
+    uint32_t UserTime; // 0xFC
+    PTR64Z<> InstrumentationCallback; // 0x100
+    // WARNING: Field changes from 1803
+    union {
+        struct {
+            uint16_t LdtFreeSelectorHint; // 0x108
+            uint16_t LdtTableLength; // 0x10A
+            KGDTENTRYX<64> LdtSystemDescriptor; // 0x110
+            PTR64Z<> LdtBaseAddress; // 0x120
+            KGUARDED_MUTEXX<64> LdtProcessLock; // 0x128
+            __x64_padding(0x4); // 0x15C
+        };
+        // WARNING: New fields
+        struct {
+            uint8_t Spare2[4]; // 0x108
+            uintptr_tx<64> UserDirectoryTableBase; // 0x110
+            union {
+                uint8_t AddressPolicy; // 0x118
+                struct {
+                    uint8_t __flip_shadow_flags : 1; 
+                };
+            };
+            uint8_t Spare3[0x47]; // 0x119
+        };
+    };
+    // 0x160
+};
+ValidateStructSize(0x160, KPROCESSX<64>);
+ValidateStructAlignment(0x8, KPROCESSX<64>);
+
+__if_not_exists(KPROCESS) {
+    using KPROCESS = KPROCESSX<>;
+}
+
+template<size_t bits = native_bits>
+struct KWAIT_STATUS_REGISTERX {
+    union {
+        uint8_t Flags; // 0x0, 0x0
+        struct {
+            uint8_t State : 2;
+            uint8_t Affinity : 1;
+            uint8_t Priority : 1;
+            uint8_t Apc : 1;
+            uint8_t UserApc : 1;
+            uint8_t Alert : 1;
+            uint8_t Unused : 1;
+        };
+    };
+};
+ValidateStructSize(0x1, KWAIT_STATUS_REGISTERX<32>);
+ValidateStructAlignment(0x1, KWAIT_STATUS_REGISTERX<32>);
+ValidateStructSize(0x1, KWAIT_STATUS_REGISTERX<64>);
+ValidateStructAlignment(0x1, KWAIT_STATUS_REGISTERX<64>);
+
+__if_not_exists(KWAIT_STATUS_REGISTER) {
+    using KWAIT_STATUS_REGISTER = KWAIT_STATUS_REGISTERX<>;
+}
+
+template<size_t bits = native_bits>
+struct KAPC_STATEX {
+    LIST_ENTRYX<bits> ApcListHead[2]; // 0x0, 0x0
+    PTRZX<bits, KPROCESSX<bits>> Process; // 0x10, 0x20
+    uint8_t KernelApcInProgress; // 0x14, 0x28
+    uint8_t KernelApcPending; // 0x15, 0x29
+    uint8_t UserApcPending; // 0x16, 0x2A
+    __padding(0x1); // 0x17, 0x2B
+    __x64_padding(0x4); // 0x2C
+    // 0x18, 0x30
+};
+ValidateStructSize(0x18, KAPC_STATEX<32>);
+ValidateStructAlignment(0x4, KAPC_STATEX<32>);
+ValidateStructSize(0x30, KAPC_STATEX<64>);
+ValidateStructAlignment(0x8, KAPC_STATEX<64>);
+
+__if_not_exists(KAPC_STATE) {
+    using KAPC_STATE = KAPC_STATEX<>;
+}
+
+template<size_t bits = native_bits>
+struct KAPCX;
+
+template<size_t bits = native_bits>
+using KAPC_NORMAL_FUNCX = void(PTRZX<bits>,
+                               PTRZX<bits>,
+                               PTRZX<bits>
+                               );
+
+__if_not_exists(KAPC_NORMAL_FUNC) {
+    using KAPC_NORMAL_FUNC = KAPC_NORMAL_FUNCX<>;
+}
+
+template<size_t bits = native_bits>
+using KAPC_KERNEL_FUNCX = void(PTRZX<bits, KAPCX<bits>>,
+                               PTRZX<bits, KAPC_NORMAL_FUNCX<bits>>,
+                               PTRZX<bits, PTRZX<bits>>,
+                               PTRZX<bits, PTRZX<bits>>,
+                               PTRZX<bits, PTRZX<bits>>
+                               );
+
+__if_not_exists(KAPC_KERNEL_FUNC) {
+    using KAPC_KERNEL_FUNC = KAPC_KERNEL_FUNCX<>;
+}
+
+template<size_t bits = native_bits>
+using KAPC_RUNDOWN_FUNCX = void(PTRZX<bits, KAPCX<bits>>);
+
+__if_not_exists(KAPC_RUNDOWN_FUNC) {
+    using KAPC_RUNDOWN_FUNC = KAPC_RUNDOWN_FUNCX<>;
+}
+
+template<size_t bits>
+struct KAPCX {
+    uint8_t Type; // 0x0, 0x0
+    uint8_t SpareByte0; // 0x1, 0x1
+    uint8_t Size; // 0x2, 0x2
+    uint8_t SpareByte1; // 0x3, 0x3
+    uint32_t SpareLong0; // 0x4, 0x4
+    PTRZX<bits, KTHREADX<bits>> Thread; // 0x8, 0x8
+    LIST_ENTRYX<bits> ApcListEntry; // 0xC, 0x10
+    PTRZX<bits, KAPC_KERNEL_FUNCX<bits>> KernelRoutine; // 0x14, 0x20
+    PTRZX<bits, KAPC_RUNDOWN_FUNCX<bits>> RundownRoutine; // 0x18, 0x28
+    PTRZX<bits, KAPC_NORMAL_FUNCX<bits>> NormalRoutine; // 0x1C, 0x30
+    PTRZX<bits> NormalContext; // 0x20, 0x38
+    PTRZX<bits> SystemArgument1; // 0x24, 0x40
+    PTRZX<bits> SystemArgument2; // 0x28, 0x48
+    int8_t ApcStateIndex; // 0x2C, 0x50
+    int8_t ApcMode; // 0x2D, 0x51
+    uint8_t Inserted; // 0x2E, 0x52
+    __padding(0x1); // 0x2F, 0x53
+    __x64_padding(0x4); // 0x54
+    // 0x30, 0x58
+};
+ValidateStructSize(0x30, KAPCX<32>);
+ValidateStructAlignment(0x4, KAPCX<32>);
+ValidateStructSize(0x58, KAPCX<64>);
+ValidateStructAlignment(0x8, KAPCX<64>);
+
+__if_not_exists(KAPC) {
+    using KAPC = KAPCX<>;
+}
+
+template<size_t bits = native_bits>
+struct KWAIT_BLOCKX;
+
+template<>
+struct KWAIT_BLOCKX<32> {
+    LIST_ENTRYX<32> WaitListEntry; // 0x0
+    PTR32Z<KTHREADX<32>> Thread; // 0x8
+    PTR32Z<> Object; // 0xC
+    PTR32Z<KWAIT_BLOCKX<32>> NextWaitBlock; // 0x10
+    uint16_t WaitKey; // 0x14
+    uint8_t WaitType; // 0x16
+    volatile uint8_t BlockState; // 0x17
+    // 0x18
+};
+ValidateStructSize(0x18, KWAIT_BLOCKX<32>);
+ValidateStructAlignment(0x4, KWAIT_BLOCKX<32>);
+
+template<>
+struct KWAIT_BLOCKX<64> {
+    LIST_ENTRYX<64> WaitListEntry; // 0x0
+    PTR64Z<KTHREADX<64>> Thread; // 0x10
+    PTR64Z<> Object; // 0x18
+    PTR64Z<KWAIT_BLOCKX<64>> NextWaitBlock; // 0x20
+    uint16_t WaitKey; // 0x28
+    uint8_t WaitType; // 0x2A
+    volatile uint8_t BlockState; // 0x2B
+    int32_t SpareLong; // 0x2C
+    // 0x30
+};
+ValidateStructSize(0x30, KWAIT_BLOCKX<64>);
+ValidateStructAlignment(0x8, KWAIT_BLOCKX<64>);
+
+__if_not_exists(KWAIT_BLOCK) {
+    using KWAIT_BLOCK = KWAIT_BLOCKX<>;
+}
+
+template<size_t bits = native_bits>
+struct THREAD_PERFORMANCE_DATAX {
+    uint16_t Size; // 0x0, 0x0
+    uint16_t Version; // 0x2, 0x2
+    PROCESSOR_NUMBER ProcessorNumber; // 0x4, 0x4
+    uint32_t ContextSwitches; // 0x8, 0x8
+    uint32_t HwCountersCount; // 0xC, 0xC
+    volatile uint64_t UpdateCount; // 0x10, 0x10
+    uint64_t WaitReasonBitmap; // 0x18, 0x18
+    uint64_t HardwareCounters; // 0x20, 0x20
+    COUNTER_READING CycleTime; // 0x28, 0x28
+    COUNTER_READING HwCounters[16]; // 0x40, 0x40
+    // 0x1C0, 0x1C0
+};
+ValidateStructSize(0x1C0, THREAD_PERFORMANCE_DATAX<32>);
+ValidateStructAlignment(0x8, THREAD_PERFORMANCE_DATAX<32>);
+ValidateStructSize(0x1C0, THREAD_PERFORMANCE_DATAX<64>);
+ValidateStructAlignment(0x8, THREAD_PERFORMANCE_DATAX<64>);
+
+__if_not_exists(THREAD_PERFORMANCE_DATA) {
+    using THREAD_PERFORMANCE_DATA = THREAD_PERFORMANCE_DATAX<>;
+}
+
+template<size_t bits = native_bits>
+struct KTHREAD_COUNTERSX {
+    uint64_t WaitReasonBitmap; // 0x0, 0x0
+    PTRZX<bits, THREAD_PERFORMANCE_DATAX<bits>> UserData; // 0x8, 0x8
+    uint32_t Flags; // 0xC, 0x10
+    uint32_t ContextSwitches; // 0x10, 0x14
+    __x86_padding(0x4); // 0x14
+    uint64_t CycleTimeBias; // 0x18, 0x18
+    uint64_t HardwareCounters; // 0x20, 0x20
+    COUNTER_READINGX<bits> HwCounter[16]; // 0x28, 0x28
+    // 0x1A8, 0x1A8
+};
+ValidateStructSize(0x1A8, KTHREAD_COUNTERSX<32>);
+ValidateStructAlignment(0x8, KTHREAD_COUNTERSX<32>);
+ValidateStructSize(0x1A8, KTHREAD_COUNTERSX<64>);
+ValidateStructAlignment(0x8, KTHREAD_COUNTERSX<64>);
+
+__if_not_exists(KTHREAD_COUNTERS) {
+    using KTHREAD_COUNTERS = KTHREAD_COUNTERSX<>;
+}
+
+template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING, bool align = true>
+struct XSTATE_SAVEX;
+
+template<typename T, bool align>
+struct XSTATE_SAVEX<32, T, align> {
+    union {
+        XSTATE_CONTEXTX<32, T, align> XStateContext; // 0x0
+        struct {
+            int64_t Reserved1; // 0x0
+            uint32_t Reserved2; // 0x8
+            PTR32Z<XSTATE_SAVEX<32, T, align>> Prev; // 0xC
+            PTR32Z<XSAVE_AREAX<32, T, align>> Reserved3; // 0x10
+            PTR32Z<KTHREADX<32>> Thread; // 0x14
+            PTR32Z<> Reserved4; // 0x18
+            uint8_t Level; // 0x1C
+            __x86_padding(0x3); // 0x1D
+            // 0x20
+        };
+    };
+};
+ValidateStructSize(0x20, XSTATE_SAVEX<32>);
+ValidateStructAlignment(0x8, XSTATE_SAVEX<32>);
+
+template<typename T, bool align>
+struct XSTATE_SAVEX<64, T, align> {
+    PTR64Z<XSTATE_SAVEX<64, T, align>> Prev; // 0x0
+    PTR64Z<KTHREADX<64>> Thread; // 0x8
+    uint8_t Level; // 0x10
+    __x64_padding(0x7); // 0x11
+    XSTATE_CONTEXTX<64, T, align> XStateContext; // 0x18
+    // 0x38
+};
+ValidateStructSize(0x38, XSTATE_SAVEX<64>);
+ValidateStructAlignment(0x8, XSTATE_SAVEX<64>);
+
+__if_not_exists(XSTATE_SAVE) {
+    using XSTATE_SAVE = XSTATE_SAVEX<>;
+}
+
+template<size_t bits = native_bits>
+struct RTL_UMS_CONTEXTX;
+
+template<>
+struct RTL_UMS_CONTEXTX<64> {
+    SINGLE_LIST_ENTRYX<64> Link; // 0x0
+    CONTEXTX<64> Context; // 0x10
+    PTR64Z<> Teb; // 0x4E0
+    PTR64Z<> UserContext; // 0x4E8
+    union {
+        volatile int32_t Flags; // 0x4F0
+        struct {
+            volatile uint32_t ScheduledThread : 1;
+            volatile uint32_t HasQuantumReq : 1;
+            volatile uint32_t HasAffinityReq : 1;
+            volatile uint32_t HasPriorityReq : 1;
+            volatile uint32_t Suspended : 1;
+            volatile uint32_t VolatileContext : 1;
+            volatile uint32_t Terminated : 1;
+            volatile uint32_t DebugActive : 1;
+            volatile uint32_t RunningOnSelfThread : 1;
+            volatile uint32_t DenyRunningOnSelfThread : 1;
+            volatile uint32_t ReservedFlags : 22;
+        };
+    };
+    union {
+        volatile uint64_t ContextLock; // 0x4F8
+        struct {
+            volatile uint64_t KernelUpdateLock : 1;
+            volatile uint64_t Reserved : 1;
+            volatile uint64_t PrimaryClientID : 62;
+        };
+    };
+    uint64_t QuantumValue; // 0x500
+    GROUP_AFFINITYX<64> AffinityMask; // 0x508
+    int32_t Priority; // 0x518
+    __x64_padding(0x4); // 0x51C
+    PTR64Z<RTL_UMS_CONTEXTX<64>> PrimaryUmsContext; // 0x520
+    uint32_t SwitchCount; // 0x528
+    uint32_t KernelYieldCount; // 0x52C
+    uint32_t MixedYieldCount; // 0x530
+    uint32_t YieldCount; // 0x534
+    __x64_padding(0x8); // 0x538
+    // 0x540
+};
+ValidateStructSize(0x540, RTL_UMS_CONTEXTX<64>);
+ValidateStructAlignment(0x10, RTL_UMS_CONTEXTX<64>);
+
+__if_not_exists(RTL_UMS_CONTEXT) {
+    using RTL_UMS_CONTEXT = RTL_UMS_CONTEXTX<>;
+}
+
+template<size_t bits = native_bits>
+struct KUMS_CONTEXT_HEADERX {
+    uint64_t P1Home; // 0x0
+    uint64_t P2Home; // 0x8
+    uint64_t P3Home; // 0x10
+    uint64_t P4Home; // 0x18
+    PTR64Z<> StackTop; // 0x20
+    uint64_t StackSize; // 0x28
+    uint64_t RspOffset; // 0x30
+    uint64_t Rip; // 0x38
+    PTR64Z<XSAVE_FORMATX<64>> FltSave; // 0x40
+    union {
+        uint64_t Flags; // 0x48
+        struct {
+            uint64_t Volatile : 1;
+            uint64_t Reserved : 63;
+        };
+    };
+    PTR64Z<KTRAP_FRAMEX<64>> TrapFrame; // 0x50
+    PTR64Z<KEXCEPTION_FRAMEX<64>> ExceptionFrame; // 0x58
+    PTR64Z<KTHREADX<64>> SourceThread; // 0x60
+    uint64_t Return; // 0x68
+    // 0x70
+};
+ValidateStructSize(0x70, KUMS_CONTEXT_HEADERX<64>);
+ValidateStructAlignment(0x8, KUMS_CONTEXT_HEADERX<64>);
+
+__if_not_exists(KUMS_CONTEXT_HEADER) {
+    using KUMS_CONTEXT_HEADER = KUMS_CONTEXT_HEADERX<>;
+}
+
+template<size_t bits = native_bits>
+struct UMS_CONTROL_BLOCKX;
+
+template<>
+struct UMS_CONTROL_BLOCKX<64> {
+    PTR64Z<RTL_UMS_CONTEXTX<64>> UmsContext; // 0x0
+    SINGLE_LIST_ENTRYX<64> CompletionListEntry; // 0x8
+    PTR64Z<KEVENTX<64>> CompletionListEvent; // 0x10
+    uint32_t ServiceSequenceNumber; // 0x18
+    __x64_padding(0x4); // 0x1C
+    union {
+        struct {
+            KQUEUEX<64> UmsQueue; // 0x20
+            LIST_ENTRYX<64> QueueEntry; // 0x60
+            volatile PTR64Z<RTL_UMS_CONTEXTX<64>> YieldingUmsContext; // 0x70
+            volatile PTR64Z<> YieldingParam; // 0x78
+            PTR64Z<> UmsTeb; // 0x80
+            union {
+                uint32_t PrimaryFlags; // 0x88
+                struct {
+                    uint32_t UmsContextHeaderReadOnly : 1;
+                };
+            };
+        };
+        struct {
+            PTR64Z<KQUEUEX<64>> UmsAssociatedQueue; // 0x20
+            PTR64Z<LIST_ENTRYX<64>> UmsQueueListEntry; // 0x28
+            PTR64Z<KUMS_CONTEXT_HEADERX<64>> UmsContextHeader; // 0x30
+            KGATEX<64> UmsWaitGate; // 0x38
+            PTR64Z<> StagingArea; // 0x50
+            union {
+                volatile int32_t Flags; // 0x58
+                struct {
+                    volatile uint32_t UmsForceQueueTermination : 1;
+                    volatile uint32_t UmsAssociatedQueueUsed : 1;
+                    volatile uint32_t UmsThreadParked : 1;
+                    volatile uint32_t UmsPrimaryDeliveredContext : 1;
+                    volatile uint32_t UmsPerformingSingleStep : 1;
+                };
+            };
+        };
+    };
+    uint16_t TebSelector; // 0x90
+    __x64_padding(0x6); // 0x92
+    // 0x98
+};
+ValidateStructSize(0x98, UMS_CONTROL_BLOCKX<64>);
+ValidateStructAlignment(0x8, UMS_CONTROL_BLOCKX<64>);
+
+__if_not_exists(UMS_CONTROL_BLOCK) {
+    using UMS_CONTROL_BLOCK = UMS_CONTROL_BLOCKX<>;
+}
 
 template<size_t bits = native_bits>
 struct KPRCBX;
+
+template<>
+struct KTHREADX<32> {
+    DISPATCHER_HEADERX<32> Header; // 0x0
+    volatile uint64_t CycleTime; // 0x10
+    volatile uint32_t HighCycleTime; // 0x18
+    __x86_padding(0x4); // 0x1C
+    uint64_t QuantumTarget; // 0x20
+    PTR32Z<> InitialStack; // 0x28
+    volatile PTR32Z<> StackLimit; // 0x2C
+    PTR32Z<> KernelStack; // 0x30
+    uint32_t ThreadLock; // 0x34
+    KWAIT_STATUS_REGISTERX<32> WaitRegister; // 0x38
+    volatile uint8_t Running; // 0x39
+    uint8_t Alerted[2]; // 0x3A
+    union {
+        int32_t MiscFlags; // 0x3C
+        struct {
+            uint32_t KernelStackResident : 1;
+            uint32_t ReadyTransition : 1;
+            uint32_t ProcessReadyQueue : 1;
+            uint32_t WaitNext : 1;
+            uint32_t SystemAffinityActive : 1;
+            uint32_t Alertable : 1;
+            uint32_t GdiFlushActive : 1;
+            uint32_t UserStackWalkActive : 1;
+            uint32_t ApcInterruptRequest : 1;
+            uint32_t ForceDeferSchedule : 1;
+            uint32_t QuantumEndMigrate : 1;
+            uint32_t UmsDirectedSwitchEnable : 1;
+            uint32_t TimerActive : 1;
+            uint32_t SystemThread : 1;
+            uint32_t Reserved : 18;
+        };
+    };
+    union {
+        KAPC_STATEX<32> ApcState; // 0x40
+        struct {
+            uint8_t ApcStateFill[0x17]; // 0x40
+            int8_t Priority; // 0x57
+        };
+    };
+    volatile uint32_t NextProcessor; // 0x58
+    volatile uint32_t DeferredProcessor; // 0x5C
+    uint32_t ApcQueueLock; // 0x60
+    uint32_t ContextSwitches; // 0x64
+    volatile uint8_t State; // 0x68
+    int8_t NpxState; // 0x69
+    uint8_t WaitIrql; // 0x6A
+    int8_t WaitMode; // 0x6B
+    volatile int32_t WaitStatus; // 0x6C
+    PTR32Z<KWAIT_BLOCKX<32>> WaitBlockList; // 0x70
+    union {
+        LIST_ENTRYX<32> WaitListEntry; // 0x74
+        SINGLE_LIST_ENTRYX<32> SwapListEntry; // 0x74
+    };
+    volatile PTR32Z<KQUEUEX<32>> Queue; // 0x7C
+    uint32_t WaitTime; // 0x80
+    union {
+        uint32_t CombinedApcDisable; // 0x84
+        struct {
+            int16_t KernelApcDisable; // 0x84
+            int16_t SpecialApcDisable; // 0x86
+        };
+    };
+    PTR32Z<> Teb; // 0x88
+    __x86_padding(0x4); // 0x8C
+    KTIMERX<32> Timer; // 0x90
+    union {
+        volatile int32_t ThreadFlags; // 0xB8
+        struct {
+            volatile uint32_t AutoAlignment : 1;
+            volatile uint32_t DisableBoost : 1;
+            volatile uint32_t EtwStackTraceApc1Inserted : 1;
+            volatile uint32_t EtwStackTraceApc2Inserted : 1;
+            volatile uint32_t CalloutActive : 1;
+            volatile uint32_t ApcQueueable : 1;
+            volatile uint32_t EnableStackSwap : 1;
+            volatile uint32_t GuiThread : 1;
+            volatile uint32_t UmsPerformingSyscall : 1;
+            volatile uint32_t VdmSafe : 1;
+            volatile uint32_t UmsDispatched : 1;
+            volatile uint32_t ReservedFlags : 21;
+        };
+    };
+    PTR32Z<> ServiceTable; // 0xBC
+    KWAIT_BLOCKX<32> WaitBlock[4]; // 0xC0
+    LIST_ENTRYX<32> QueueListEntry; // 0x120
+    PTR32Z<KTRAP_FRAMEX<32>> TrapFrame; // 0x128
+    PTR32Z<> FirstArgument; // 0x12C
+    union {
+        PTR32Z<> CallbackStack; // 0x130
+        uint32_t CallbackDepth; // 0x130
+    };
+    uint8_t ApcStateIndex; // 0x134
+    int8_t BasePriority; // 0x135
+    union {
+        int8_t PriorityDecrement; // 0x136
+        struct {
+            uint8_t ForegroundBoost : 4;
+            uint8_t UnusualBoost : 4;
+        };
+    };
+    uint8_t Preempted; // 0x137
+    uint8_t AdjustReason; // 0x138
+    int8_t AdjustIncrement; // 0x139
+    int8_t PreviousMode; // 0x13A
+    int8_t Saturation; // 0x13B
+    uint32_t SystemCallNumber; // 0x13C
+    uint32_t FreezeCount; // 0x140
+    volatile GROUP_AFFINITYX<32> UserAffinity; // 0x144
+    PTR32Z<KPROCESSX<32>> Process; // 0x150
+    volatile GROUP_AFFINITYX<32> Affinity; // 0x154
+    uint32_t IdealProcessor; // 0x160
+    uint32_t UserIdealProcessor; // 0x164
+    PTR32Z<KAPC_STATEX<32>> ApcStatePointer[2]; // 0x168
+    union {
+        KAPC_STATEX<32> SavedApcState; // 0x170
+        struct {
+            uint8_t SavedApcStateFill[0x17]; // 0x170
+            uint8_t WaitReason; // 0x187
+        };
+    };
+    int8_t SuspendCount; // 0x188
+    int8_t Spare1; // 0x189
+    uint8_t OtherPlatformFill; // 0x18A
+    volatile PTR32Z<> Win32Thread; // 0x18C
+    PTR32Z<> StackBase; // 0x190
+    union {
+        KAPCX<32> SuspendApc; // 0x194
+        struct {
+            uint8_t SuspendApcFill0[1]; // 0x194
+            uint8_t ResourceIndex; // 0x195
+            uint8_t SuspendApcFill1[1]; // 0x196
+            uint8_t QuantumReset; // 0x197
+            uint32_t KernelTime; // 0x198
+            uint8_t SuspendApcFill3[0x1C]; // 0x19C
+            volatile PTR32Z<KPRCBX<32>> WaitPrcb; // 0x1B8
+            PTR32Z<> LegoData; // 0x1BC ???
+            uint8_t SuspendApcFill5[3]; // 0x1C0
+            uint8_t LargeStack; // 0x1C3
+        };
+    };
+    uint32_t UserTime; // 0x1C4
+    KSEMAPHOREX<32> SuspendSemaphore; // 0x1C8
+    uint32_t SListFaultCount; // 0x1DC
+    LIST_ENTRYX<32> ThreadListEntry; // 0x1E0
+    LIST_ENTRYX<32> MutantListHead; // 0x1E8
+    PTR32Z<> SListFaultAddress; // 0x1F0
+    PTR32Z<KTHREAD_COUNTERSX<32>> ThreadCounters; // 0x1F4
+    PTR32Z<XSTATE_SAVEX<32>> XStateSave; // 0x1F8
+    __x86_padding(0x4); // 0x1FC
+    // 0x200
+};
+ValidateStructSize(0x200, KTHREADX<32>);
+ValidateStructAlignment(0x8, KTHREADX<32>);
+
+template<>
+struct KTHREADX<64> {
+    DISPATCHER_HEADERX<64> Header; // 0x0
+    volatile uint64_t CycleTime; // 0x18
+    uint64_t QuantumTarget; // 0x20
+    PTR64Z<> InitialStack; // 0x28
+    volatile PTR64Z<> StackLimit; // 0x30
+    PTR64Z<> KernelStack; // 0x38
+    uint64_t ThreadLock; // 0x40
+    KWAIT_STATUS_REGISTERX<64> WaitRegister; // 0x48
+    volatile uint8_t Running; // 0x49
+    uint8_t Alerted[2]; // 0x4A
+    union {
+        int32_t MiscFlags; // 0x4C
+        struct {
+            uint32_t KernelStackResident : 1;
+            uint32_t ReadyTransition : 1;
+            uint32_t ProcessReadyQueue : 1;
+            uint32_t WaitNext : 1;
+            uint32_t SystemAffinityActive : 1;
+            uint32_t Alertable : 1;
+            uint32_t GdiFlushActive : 1;
+            uint32_t UserStackWalkActive : 1;
+            uint32_t ApcInterruptRequest : 1;
+            uint32_t ForceDeferSchedule : 1;
+            uint32_t QuantumEndMigrate : 1;
+            uint32_t UmsDirectedSwitchEnable : 1;
+            uint32_t TimerActive : 1;
+            uint32_t SystemThread : 1;
+            uint32_t Reserved : 18;
+        };
+    };
+    union {
+        KAPC_STATEX<64> ApcState; // 0x50
+        struct {
+            uint8_t ApcStateFill[0x2B]; // 0x50
+            int8_t Priority; // 0x7B
+            volatile uint32_t NextProcessor; // 0x7C
+        };
+    };
+    volatile uint32_t DeferredProcessor; // 0x80
+    __x64_padding(0x4); // 0x84
+    uint64_t ApcQueueLock; // 0x88
+    volatile uint64_t WaitStatus; // 0x90
+    PTR64Z<KWAIT_BLOCKX<64>> WaitBlockList; // 0x98
+    union {
+        LIST_ENTRYX<64> WaitListEntry; // 0xA0
+        SINGLE_LIST_ENTRYX<64> SwapListEntry; // 0xA0
+    };
+    volatile PTR64Z<KQUEUEX<64>> Queue; // 0xB0
+    PTR64Z<> Teb; // 0xB8
+    KTIMERX<64> Timer; // 0xC0
+    union {
+        volatile int32_t ThreadFlags; // 0x100
+        struct {
+            volatile uint32_t AutoAlignment : 1;
+            volatile uint32_t DisableBoost : 1;
+            volatile uint32_t EtwStackTraceApc1Inserted : 1;
+            volatile uint32_t EtwStackTraceApc2Inserted : 1;
+            volatile uint32_t CalloutActive : 1;
+            volatile uint32_t ApcQueueable : 1;
+            volatile uint32_t EnableStackSwap : 1;
+            volatile uint32_t GuiThread : 1;
+            volatile uint32_t UmsPerformingSyscall : 1;
+            volatile uint32_t VdmSafe : 1;
+            volatile uint32_t UmsDispatched : 1;
+            volatile uint32_t ReservedFlags : 21;
+        };
+    };
+    uint32_t Spare0; // 0x104
+    union {
+        KWAIT_BLOCKX<64> WaitBlock[4]; // 0x108
+        struct {
+            uint8_t WaitBlockFill4[0x2C]; // 0x108
+            uint32_t ContextSwitches; // 0x134
+            uint8_t WaitBlockFill5[0x2C]; // 0x138
+            volatile uint8_t State; // 0x164
+            int8_t NpxState; // 0x165
+            uint8_t WaitIrql; // 0x166
+            int8_t WaitMode; // 0x167
+            uint8_t WaitBlockFill6[0x2C]; // 0x168
+            uint32_t WaitTime; // 0x194
+            uint8_t WaitBlockFill7[0x18]; // 0x198
+            PTR64Z<> TebMappedLowVa; // 0x1B0
+            PTR64Z<UMS_CONTROL_BLOCKX<64>> Ucb; // 0x1B8
+            uint8_t WaitBlockFill8[4]; // 0x1C0
+            union {
+                uint32_t CombinedApcDisable; // 0x1C4
+                struct {
+                    int16_t KernelApcDisable; // 0x1C4
+                    int16_t SpecialApcDisable; // 0x1C6
+                };
+            };
+        };
+    };
+    LIST_ENTRYX<64> QueueListEntry; // 0x1C8
+    PTR64Z<KTRAP_FRAMEX<64>> TrapFrame; // 0x1D8
+    PTR64Z<> FirstArgument; // 0x1E0
+    union {
+        PTR64Z<> CallbackStack; // 0x1E8
+        uint64_t CallbackDepth; // 0x1E8
+    };
+    uint8_t ApcStateIndex; // 0x1F0
+    int8_t BasePriority; // 0x1F1
+    union {
+        int8_t PriorityDecrement; // 0x1F2
+        struct {
+            uint8_t ForegroundBoost : 4;
+            uint8_t UnusualBoost : 4;
+        };
+    };
+    uint8_t Preempted; // 0x1F3
+    uint8_t AdjustReason; // 0x1F4
+    int8_t AdjustIncrement; // 0x1F5
+    int8_t PreviousMode; // 0x1F6
+    int8_t Saturation; // 0x1F7
+    uint32_t SystemCallNumber; // 0x1F8
+    uint32_t FreezeCount; // 0x1FC
+    volatile GROUP_AFFINITYX<64> UserAffinity; // 0x200
+    PTR64Z<KPROCESSX<64>> Process; // 0x210
+    volatile GROUP_AFFINITYX<64> Affinity; // 0x218
+    uint32_t IdealProcessor; // 0x228
+    uint32_t UserIdealProcessor; // 0x22C
+    PTR64Z<KAPC_STATEX<64>> ApcStatePointer[2]; // 0x230
+    union {
+        KAPC_STATEX<64> SavedApcState; // 0x240
+        struct {
+            uint8_t SavedApcFill[0x2B]; // 0x240
+            uint8_t WaitReason; // 0x26B
+            int8_t SuspendCount; // 0x26C
+            int8_t Spare1; // 0x26D
+            uint8_t CodePatchInProgress; // 0x26E
+        };
+    };
+    volatile PTR64Z<> Win32Thread; // 0x270
+    PTR64Z<> StackBase; // 0x278
+    union {
+        KAPCX<64> SuspendApc; // 0x280
+        struct {
+            uint8_t SuspendApcFill0[1]; // 0x280
+            uint8_t ResourceIndex; // 0x281
+            uint8_t SuspendApcFill1[1]; // 0x282
+            uint8_t QuantumReset; // 0x283
+            uint32_t KernelTime; // 0x284
+            uint8_t SuspendApcFill3[0x38]; // 0x288
+            volatile PTR64Z<KPRCBX<64>> WaitPrcb; // 0x2C0
+            PTR64Z<> LegoData; // 0x2C8 ??
+            uint8_t SuspendApcFill5[3]; // 0x2D0
+            uint8_t LargeStack; // 0x2D3
+            uint32_t UserTime; // 0x2D4
+        };
+    };
+    union {
+        KSEMAPHOREX<64> SuspendSemaphore; // 0x2D8
+        struct {
+            uint8_t SuspendSemaphoreFill[0x1C]; // 0x2D8
+            uint32_t SListFaultCount; // 0x2F4
+        };
+    };
+    LIST_ENTRYX<64> ThreadListEntry; // 0x2F8
+    LIST_ENTRYX<64> MutantListHead; // 0x308
+    PTR64Z<> SListFaultAddress; // 0x318
+    int64_t ReadOperationCount; // 0x320
+    int64_t WriteOperationCount; // 0x328
+    int64_t OtherOperationCount; // 0x330
+    int64_t ReadTransferCount; // 0x338
+    int64_t WriteTransferCount; // 0x340
+    int64_t OtherTransferCount; // 0x348
+    PTR64Z<KTHREAD_COUNTERSX<64>> ThreadCounters; // 0x350
+    // WARNING: New field
+    PTR64Z<XSAVE_FORMATX<64>> StateSaveArea; // 0x358
+    PTR64Z<XSTATE_SAVEX<64>> XStateSave; // 0x360
+    // 0x368
+};
+ValidateStructSize(0x368, KTHREADX<64>);
+ValidateStructAlignment(0x8, KTHREADX<64>);
+
+__if_not_exists(KTHREAD) {
+    using KTHREAD = KTHREADX<>;
+}
+
+template<size_t bits = native_bits>
+struct KSPECIAL_REGISTERSX;
+
+template<>
+struct KSPECIAL_REGISTERSX<32> {
+    uint32_t Cr0; // 0x0
+    uint32_t Cr2; // 0x4
+    uint32_t Cr3; // 0x8
+    uint32_t Cr4; // 0xC
+    uint32_t KernelDr0; // 0x10
+    uint32_t KernelDr1; // 0x14
+    uint32_t KernelDr2; // 0x18
+    uint32_t KernelDr3; // 0x1C
+    uint32_t KernelDr6; // 0x20
+    uint32_t KernelDr7; // 0x24
+    KDESCRIPTORX<32> Gdtr; // 0x28
+    KDESCRIPTORX<32> Idtr; // 0x30
+    uint16_t Tr; // 0x38
+    uint16_t Ldtr; // 0x3A
+    uint64_tx<32> Xcr0 ide_packed_field; // 0x3C
+    uint32_t ExceptionList; // 0x44
+    uint32_t Reserved[3]; // 0x48
+    // 0x54
+};
+ValidateStructSize(0x54, KSPECIAL_REGISTERSX<32>);
+ValidateStructAlignment(0x4, KSPECIAL_REGISTERSX<32>);
+
+template<>
+struct KSPECIAL_REGISTERSX<64> {
+    uint64_t Cr0; // 0x0
+    uint64_t Cr2; // 0x8
+    uint64_t Cr3; // 0x10
+    uint64_t Cr4; // 0x18
+    uint64_t KernelDr0; // 0x20
+    uint64_t KernelDr1; // 0x28
+    uint64_t KernelDr2; // 0x30
+    uint64_t KernelDr3; // 0x38
+    uint64_t KernelDr6; // 0x40
+    uint64_t KernelDr7; // 0x48
+    KDESCRIPTORX<64> Gdtr; // 0x50
+    KDESCRIPTORX<64> Idtr; // 0x60
+    uint16_t Tr; // 0x70
+    uint16_t Ldtr; // 0x72
+    uint32_t MxCsr; // 0x74
+    uint64_t DebugControl; // 0x78
+    uint64_t LastBranchToRip; // 0x80
+    uint64_t LastBranchFromRip; // 0x88
+    uint64_t LastExceptionToRip; // 0x90
+    uint64_t LastExceptionFromRip; // 0x98
+    uint64_t Cr8; // 0xA0
+    uint64_t MsrGsBase; // 0xA8
+    uint64_t MsrGsSwap; // 0xB0
+    uint64_t MsrStar; // 0xB8
+    uint64_t MsrLStar; // 0xC0
+    uint64_t MsrCStar; // 0xC8
+    uint64_t MsrSyscallMask; // 0xD0
+    // Begin Windows 8.1+
+    uint64_t Xcr0; // 0xD8
+    // End Windows 8.1+
+    // 0xE0
+};
+ValidateStructSize(0xE0, KSPECIAL_REGISTERSX<64>);
+ValidateStructAlignment(0x8, KSPECIAL_REGISTERSX<64>);
+
+__if_not_exists(KSPECIAL_REGISTERS) {
+    using KSPECIAL_REGISTERS = KSPECIAL_REGISTERSX<>;
+}
+
+template<size_t bits = native_bits>
+struct KPROCESSOR_STATEX;
+
+template<>
+struct KPROCESSOR_STATEX<32> {
+    CONTEXTX<32> ContextFrame; // 0x0
+    KSPECIAL_REGISTERSX<32> SpecialRegisters; // 0x2CC
+    // 0x320
+};
+ValidateStructSize(0x320, KPROCESSOR_STATEX<32>);
+ValidateStructAlignment(0x4, KPROCESSOR_STATEX<32>);
+
+template<>
+struct KPROCESSOR_STATEX<64> {
+    KSPECIAL_REGISTERSX<64> SpecialRegisters; // 0x0
+    CONTEXTX<64> ContextFrame; // 0xE0
+    // 0x5B0
+};
+ValidateStructSize(0x5B0, KPROCESSOR_STATEX<64>);
+ValidateStructAlignment(0x10, KPROCESSOR_STATEX<64>);
+
+__if_not_exists(KPROCESSOR_STATE) {
+    using KPROCESSOR_STATE = KPROCESSOR_STATEX<>;
+}
+
+#define POOL_TYPE_NON_PAGED 0
+#define POOL_TYPE_PAGED 1
+#define POOL_TYPE_MUST_SUCCEED 2
+#define POOL_TYPE_CACHE_ALIGN 4
+#define POOL_TYPE_SESSION 32
+
+enum POOL_TYPEX : int32_t {
+    NonPagedPoolX = POOL_TYPE_NON_PAGED,
+    PagedPoolX = POOL_TYPE_PAGED,
+    NonPagedPoolMustSucceedX = POOL_TYPE_NON_PAGED | POOL_TYPE_MUST_SUCCEED,
+    //DontUseThisTypeX = POOL_TYPE_PAGED | POOL_TYPE_MUST_SUCCEED,
+    NonPagedPoolCacheAlignedX = POOL_TYPE_NON_PAGED | POOL_TYPE_CACHE_ALIGN,
+    PagePoolCacheAlignedX = POOL_TYPE_PAGED | POOL_TYPE_CACHE_ALIGN,
+    NonPagedPoolCacheAlignedMustSX = POOL_TYPE_NON_PAGED | POOL_TYPE_CACHE_ALIGN | POOL_TYPE_MUST_SUCCEED,
+    MaxPoolTypeX = 7,
+    NonPagedPoolSessionX = POOL_TYPE_NON_PAGED | POOL_TYPE_SESSION,
+    PagedPoolSessionX = POOL_TYPE_PAGED | POOL_TYPE_SESSION,
+    NonPagedPoolMustSucceedSessionX = POOL_TYPE_NON_PAGED | POOL_TYPE_MUST_SUCCEED | POOL_TYPE_SESSION,
+    //DontUseThisTypeSessionX = POOL_TYPE_PAGED | POOL_TYPE_MUST_SUCCEED | POOL_TYPE_SESSION,
+    NonPagedPoolCacheAlignedSessionX = POOL_TYPE_NON_PAGED | POOL_TYPE_CACHE_ALIGN | POOL_TYPE_SESSION,
+    PagedPoolCacheAlignedSessionX = POOL_TYPE_PAGED | POOL_TYPE_CACHE_ALIGN | POOL_TYPE_SESSION,
+    NonPagedPoolCacheAlignedMustSSessionX = POOL_TYPE_NON_PAGED | POOL_TYPE_CACHE_ALIGN | POOL_TYPE_MUST_SUCCEED | POOL_TYPE_SESSION
+};
+__if_not_exists(POOL_TYPE) {
+    using POOL_TYPE = POOL_TYPEX;
+}
+__if_not_exists(NonPagedPool) {
+    static constexpr auto NonPagedPool = (POOL_TYPE)NonPagedPoolX;
+}
+__if_not_exists(PagedPool) {
+    static constexpr auto PagedPool = (POOL_TYPE)PagedPoolX;
+}
+__if_not_exists(NonPagedPoolMustSucceed) {
+    static constexpr auto NonPagedPoolMustSucceed = (POOL_TYPE)NonPagedPoolMustSucceedX;
+}
+__if_not_exists(NonPagedPoolCacheAligned) {
+    static constexpr auto NonPagedPoolCacheAligned = (POOL_TYPE)NonPagedPoolCacheAlignedX;
+}
+__if_not_exists(PagePoolCacheAligned) {
+    static constexpr auto PagePoolCacheAligned = (POOL_TYPE)PagePoolCacheAlignedX;
+}
+__if_not_exists(NonPagedPoolCacheAlignedMustS) {
+    static constexpr auto NonPagedPoolCacheAlignedMustS = (POOL_TYPE)NonPagedPoolCacheAlignedMustSX;
+}
+__if_not_exists(MaxPoolType) {
+    static constexpr auto MaxPoolType = (POOL_TYPE)MaxPoolTypeX;
+}
+__if_not_exists(NonPagedPoolSession) {
+    static constexpr auto NonPagedPoolSession = (POOL_TYPE)NonPagedPoolSessionX;
+}
+__if_not_exists(PagedPoolSession) {
+    static constexpr auto PagedPoolSession = (POOL_TYPE)PagedPoolSessionX;
+}
+__if_not_exists(NonPagedPoolMustSucceedSession) {
+    static constexpr auto NonPagedPoolMustSucceedSession = (POOL_TYPE)NonPagedPoolMustSucceedSessionX;
+}
+__if_not_exists(NonPagedPoolCacheAlignedSession) {
+    static constexpr auto NonPagedPoolCacheAlignedSession = (POOL_TYPE)NonPagedPoolCacheAlignedSessionX;
+}
+__if_not_exists(PagePoolCacheAlignedSession) {
+    static constexpr auto PagePoolCacheAlignedSession = (POOL_TYPE)PagedPoolCacheAlignedSessionX;
+}
+__if_not_exists(NonPagedPoolCacheAlignedMustSSession) {
+    static constexpr auto NonPagedPoolCacheAlignedMustSSession = (POOL_TYPE)NonPagedPoolCacheAlignedMustSSessionX;
+}
+
+template<size_t bits = native_bits>
+struct LOOKASIDE_LIST_EXX;
+
+template<size_t bits = native_bits>
+using LOOKASIDE_ALLOCATE_EX_FUNCX = PTRZX<bits>(POOL_TYPE,
+                                                size_tx<bits>,
+                                                size_tx<bits>,
+                                                PTRZX<bits, LOOKASIDE_LIST_EXX<bits>>
+                                                );
+template<size_t bits = native_bits>
+using LOOKASIDE_ALLOCATE_FUNCX = PTRZX<bits>(POOL_TYPE,
+                                             size_tx<bits>,
+                                             size_tx<bits>
+                                             );
+
+template<size_t bits = native_bits>
+using LOOKASIDE_FREE_EX_FUNCX = void(PTRZX<bits>,
+                                     PTRZX<bits, LOOKASIDE_LIST_EXX<bits>>
+                                     );
+
+template<size_t bits = native_bits>
+using LOOKASIDE_FREE_FUNCX = void(PTRZX<bits>
+                                  );
+
+template<size_t bits = native_bits>
+struct GENERAL_LOOKASIDE_POOLX {
+    union {
+        SLIST_HEADERX<bits> ListHead; // 0x0, 0x0
+        SINGLE_LIST_ENTRYX<bits> SingleListHead; // 0x0, 0x0
+    };
+    uint16_t Depth; // 0x8, 0x10
+    uint16_t MaximumDepth; // 0xA, 0x12
+    uint32_t TotalAllocates; // 0xC, 0x14
+    union {
+        uint32_t AllocateMisses; // 0x10, 0x18
+        uint32_t AllocateHits; // 0x10, 0x18
+    };
+    uint32_t TotalFrees; // 0x14, 0x1C
+    union {
+        uint32_t FreeMisses; // 0x18, 0x20
+        uint32_t FreeHits; // 0x18, 0x24
+    };
+    POOL_TYPE Type; // 0x1C, 0x24
+    uint32_t Tag; // 0x20, 0x28
+    uint32_t Size; // 0x24, 0x2C
+    union {
+        PTRZX<bits, LOOKASIDE_ALLOCATE_EX_FUNCX<bits>> AllocateEx; // 0x28, 0x30
+        PTRZX<bits, LOOKASIDE_ALLOCATE_FUNCX<bits>> Allocate; // 0x28, 0x30
+    };
+    union {
+        PTRZX<bits, LOOKASIDE_FREE_EX_FUNCX<bits>> FreeEx; // 0x2C, 0x38
+        PTRZX<bits, LOOKASIDE_FREE_FUNCX<bits>> Free; // 0x2C, 0x38
+    };
+    LIST_ENTRYX<bits> ListEntry; // 0x30, 0x40
+    uint32_t LastTotalAllocates; // 0x38, 0x50
+    union {
+        uint32_t LastAllocateMisses; // 0x3C, 0x54
+        uint32_t LastAllocateHits; // 0x3C, 0x54
+    };
+    uint32_t Future[2]; // 0x40, 0x58
+    // 0x48, 0x60
+};
+ValidateStructSize(0x48, GENERAL_LOOKASIDE_POOLX<32>);
+ValidateStructAlignment(0x8, GENERAL_LOOKASIDE_POOLX<32>);
+ValidateStructSize(0x60, GENERAL_LOOKASIDE_POOLX<64>);
+ValidateStructAlignment(0x8, GENERAL_LOOKASIDE_POOLX<64>);
+
+__if_not_exists(GENERAL_LOOKASIDE_POOL) {
+    using GENERAL_LOOKASIDE_POOL = GENERAL_LOOKASIDE_POOLX<>;
+}
+
+template<size_t bits>
+struct LOOKASIDE_LIST_EXX {
+    GENERAL_LOOKASIDE_POOLX<bits> L; // 0x0, 0x0
+    // 0x48, 0x60
+};
+ValidateStructSize(0x48, LOOKASIDE_LIST_EXX<32>);
+ValidateStructAlignment(0x8, LOOKASIDE_LIST_EXX<32>);
+ValidateStructSize(0x60, LOOKASIDE_LIST_EXX<64>);
+ValidateStructAlignment(0x8, LOOKASIDE_LIST_EXX<64>);
+
+__if_not_exists(LOOKASIDE_LIST_EX) {
+    using LOOKASIDE_LIST_EX = LOOKASIDE_LIST_EXX<>;
+}
+
+template<size_t bits = native_bits>
+struct GENERAL_LOOKASIDEX {
+    union {
+        SLIST_HEADERX<bits> ListHead; // 0x0, 0x0
+        SINGLE_LIST_ENTRYX<bits> SingleListHead; // 0x0, 0x0
+    };
+    uint16_t Depth; // 0x8, 0x10
+    uint16_t MaximumDepth; // 0xA, 0x12
+    uint32_t TotalAllocates; // 0xC, 0x14
+    union {
+        uint32_t AllocateMisses; // 0x10, 0x18
+        uint32_t AllocateHits; // 0x10, 0x18
+    };
+    uint32_t TotalFrees; // 0x14, 0x1C
+    union {
+        uint32_t FreeMisses; // 0x18, 0x20
+        uint32_t FreeHits; // 0x18, 0x24
+    };
+    POOL_TYPE Type; // 0x1C, 0x24
+    uint32_t Tag; // 0x20, 0x28
+    uint32_t Size; // 0x24, 0x2C
+    union {
+        PTRZX<bits, LOOKASIDE_ALLOCATE_EX_FUNCX<bits>> AllocateEx; // 0x28, 0x30
+        PTRZX<bits, LOOKASIDE_ALLOCATE_FUNCX<bits>> Allocate; // 0x28, 0x30
+    };
+    union {
+        PTRZX<bits, LOOKASIDE_FREE_EX_FUNCX<bits>> FreeEx; // 0x2C, 0x38
+        PTRZX<bits, LOOKASIDE_FREE_FUNCX<bits>> Free; // 0x2C, 0x38
+    };
+    LIST_ENTRYX<bits> ListEntry; // 0x30, 0x40
+    uint32_t LastTotalAllocates; // 0x38, 0x50
+    union {
+        uint32_t LastAllocateMisses; // 0x3C, 0x54
+        uint32_t LastAllocateHits; // 0x3C, 0x54
+    };
+    uint32_t Future[2]; // 0x40, 0x58
+    // 0x48, 0x60
+};
+ValidateStructSize(0x48, GENERAL_LOOKASIDEX<32>);
+ValidateStructAlignment(0x8, GENERAL_LOOKASIDEX<32>);
+ValidateStructSize(0x60, GENERAL_LOOKASIDEX<64>);
+ValidateStructAlignment(0x8, GENERAL_LOOKASIDEX<64>);
+
+__if_not_exists(GENERAL_LOOKASIDE) {
+    using GENERAL_LOOKASIDE = GENERAL_LOOKASIDEX<>;
+}
+
+template<size_t bits = native_bits>
+struct PP_LOOKASIDE_LISTX {
+    PTRZX<bits, GENERAL_LOOKASIDEX<bits>> P; // 0x0, 0x0
+    PTRZX<bits, GENERAL_LOOKASIDEX<bits>> L; // 0x4, 0x8
+    // 0x8, 0x10
+};
+ValidateStructSize(0x8, PP_LOOKASIDE_LISTX<32>);
+ValidateStructAlignment(0x4, PP_LOOKASIDE_LISTX<32>);
+ValidateStructSize(0x10, PP_LOOKASIDE_LISTX<64>);
+ValidateStructAlignment(0x8, PP_LOOKASIDE_LISTX<64>);
+
+__if_not_exists(PP_LOOKASIDE_LIST) {
+    using PP_LOOKASIDE_LIST = PP_LOOKASIDE_LISTX<>;
+}
+
+template<size_t bits = native_bits>
+struct KTIMER_TABLE_ENTRYX {
+    uintptr_tx<bits> Lock; // 0x0, 0x0
+    LIST_ENTRYX<bits> Entry; // 0x4, 0x8
+    __x86_padding(0x4); // 0xC
+    alignas(8) ULARGE_INTEGERX<bits> Time; // 0x10, 0x18
+    // 0x18, 0x20
+};
+ValidateStructSize(0x18, KTIMER_TABLE_ENTRYX<32>);
+ValidateStructAlignment(0x8, KTIMER_TABLE_ENTRYX<32>);
+ValidateStructSize(0x20, KTIMER_TABLE_ENTRYX<64>);
+ValidateStructAlignment(0x8, KTIMER_TABLE_ENTRYX<64>);
+
+__if_not_exists(KTIMER_TABLE_ENTRY) {
+    using KTIMER_TABLE_ENTRY = KTIMER_TABLE_ENTRYX<>;
+}
+
+template<size_t bits = native_bits>
+struct KTIMER_TABLEX;
+
+template<>
+struct KTIMER_TABLEX<32> {
+    PTR32Z<KTIMERX<32>> TimerExpiry[16]; // 0x0
+    KTIMER_TABLE_ENTRYX<32> TimerEntries[256]; // 0x40
+    // 0x1840
+};
+ValidateStructSize(0x1840, KTIMER_TABLEX<32>);
+ValidateStructAlignment(0x8, KTIMER_TABLEX<32>);
+
+template<>
+struct KTIMER_TABLEX<64> {
+    PTR64Z<KTIMERX<64>> TimerExpiry[64]; // 0x0
+    KTIMER_TABLE_ENTRYX<64> TimerEntries[256]; // 0x200
+    // 0x2200
+};
+ValidateStructSize(0x2200, KTIMER_TABLEX<64>);
+ValidateStructAlignment(0x8, KTIMER_TABLEX<64>);
+
+__if_not_exists(KTIMER_TABLE) {
+    using KTIMER_TABLE = KTIMER_TABLEX<>;
+}
+
+template<size_t bits = native_bits>
+struct CACHED_KSTACK_LISTX {
+    SLIST_HEADERX<bits> SListHead; // 0x0, 0x0
+    int32_t MinimumFree; // 0x8, 0x10
+    uint32_t Misses; // 0xC, 0x14
+    uint32_t MissesLast; // 0x10, 0x18
+    uint32_t Pad0; // 0x14, 0x1C
+    // 0x18, 0x20
+};
+ValidateStructSize(0x18, CACHED_KSTACK_LISTX<32>);
+ValidateStructAlignment(0x8, CACHED_KSTACK_LISTX<32>);
+ValidateStructSize(0x20, CACHED_KSTACK_LISTX<64>);
+ValidateStructAlignment(0x8, CACHED_KSTACK_LISTX<64>);
+
+__if_not_exists(CACHED_KSTACK_LIST) {
+    using CACHED_KSTACK_LIST = CACHED_KSTACK_LISTX<>;
+}
+
+template<size_t bits = native_bits>
+struct KNODEX;
+
+template<>
+struct KNODEX<32> {
+    SLIST_HEADERX<32> PagedPoolSListHead; // 0x0
+    SLIST_HEADERX<32> NonPagedPoolSListHead[3]; // 0x8
+    GROUP_AFFINITYX<32> Affinity; // 0x20
+    uint32_t ProximityId; // 0x2C
+    uint16_t NodeNumber; // 0x30
+    uint16_t PrimaryNodeNumber; // 0x32
+    uint8_t MaximumProcessors; // 0x34
+    uint8_t Color; // 0x35
+    union {
+        uint8_t Flags; // 0x36
+        struct {
+            uint8_t Removable : 1;
+            uint8_t GroupAssigned : 1;
+            uint8_t GroupCommitted : 1;
+            uint8_t GroupAssignmentFixed : 1;
+            uint8_t Fill : 4;
+        };
+    };
+    uint8_t NodePad0; // 0x37
+    uint32_t Seed; // 0x38
+    uint32_t MmShiftedColor; // 0x3C
+    volatile uint32_t FreeCount[2]; // 0x40
+    CACHED_KSTACK_LISTX<32> CachedKernelStacks; // 0x48
+    int32_t ParkLock; // 0x60
+    uint32_t NodePad1; // 0x64
+    // 0x68
+};
+ValidateStructSize(0x68, KNODEX<32>);
+ValidateStructAlignment(0x8, KNODEX<32>);
+
+template<>
+struct KNODEX<64> {
+    SLIST_HEADERX<64> PagedPoolSListHead; // 0x0
+    SLIST_HEADERX<64> NonPagedPoolSListHead[3]; // 0x10
+    GROUP_AFFINITYX<64> Affinity; // 0x40
+    uint32_t ProximityId; // 0x50
+    uint16_t NodeNumber; // 0x54
+    uint16_t PrimaryNodeNumber; // 0x56
+    uint8_t MaximumProcessors; // 0x58
+    uint8_t Color; // 0x59
+    union {
+        uint8_t Flags; // 0x5A
+        struct {
+            uint8_t Removable : 1;
+            uint8_t GroupAssigned : 1;
+            uint8_t GroupCommitted : 1;
+            uint8_t GroupAssignmentFixed : 1;
+            uint8_t Fill : 4;
+        };
+    };
+    uint8_t NodePad0; // 0x5B
+    uint32_t Seed; // 0x5C
+    uint32_t MmShiftedColor; // 0x60
+    __x64_padding(0x4); // 0x64
+    volatile uint64_t FreeCount[2]; // 0x68
+    uint32_t Right; // 0x78
+    uint32_t Left; // 0x7C
+    CACHED_KSTACK_LISTX<64> CachedKernelStacks; // 0x80
+    int32_t ParkLock; // 0xA0
+    uint32_t NodePad1; // 0xA4
+    // 0xA8
+};
+ValidateStructSize(0xA8, KNODEX<64>);
+ValidateStructAlignment(0x8, KNODEX<64>);
+
+__if_not_exists(KNODE) {
+    using KNODE = KNODEX<>;
+}
+
+template<size_t bits = native_bits>
+using PPM_IDLE_STATE_CHECK_FUNCX = int32_t(PTRZX<bits>
+                                           );
+
+template<size_t bits = native_bits>
+using PPM_IDLE_STATE_HANDLER_FUNCX = int32_t(PTRZX<bits>
+                                             );
+
+template<size_t bits = native_bits>
+struct PPM_IDLE_STATEX {
+    KAFFINITY_EXX<bits> DomainMembers; // 0x0, 0x0
+    PTRZX<bits, PPM_IDLE_STATE_CHECK_FUNCX<bits>> IdleCheck; // 0xC, 0x28
+    PTRZX<bits, PPM_IDLE_STATE_HANDLER_FUNCX<bits>> IdleHandler; // 0x10, 0x30
+    __x86_padding(0x4); // 0x14
+    uint64_t HvConfig; // 0x18, 0x38
+    PTRZX<bits> Context; // 0x20, 0x40
+    uint32_t Latency; // 0x24, 0x48
+    uint32_t Power; // 0x28, 0x4C
+    uint32_t TimeCheck; // 0x2C, 0x50
+    uint32_t StateFlags; // 0x30, 0x54
+    uint8_t PromotePercent; // 0x34, 0x58
+    uint8_t DemotePercent; // 0x35, 0x59
+    uint8_t PromotePercentBase; // 0x36, 0x5A
+    uint8_t DemotePercentBase; // 0x37, 0x5B
+    uint8_t StateType; // 0x38, 0x5C
+    __padding(0x3); // 0x39, 0x5D
+    __x86_padding(0x4); // 0x3C
+    // 0x40, 0x60
+};
+ValidateStructSize(0x40, PPM_IDLE_STATEX<32>);
+ValidateStructAlignment(0x8, PPM_IDLE_STATEX<32>);
+ValidateStructSize(0x60, PPM_IDLE_STATEX<64>);
+ValidateStructAlignment(0x8, PPM_IDLE_STATEX<64>);
+
+__if_not_exists(PPM_IDLE_STATE) {
+    using PPM_IDLE_STATE = PPM_IDLE_STATEX<>;
+}
+
+template<size_t bits = native_bits>
+struct PPM_IDLE_STATESX {
+    uint32_t Count; // 0x0, 0x0
+    union {
+        uint32_t Flags; // 0x4, 0x4
+        struct {
+            uint32_t AllowScaling : 1;
+            uint32_t Disabled : 1;
+            uint32_t HvMaxCState : 4;
+            uint32_t Reserved : 26;
+        };
+    };
+    uint32_t TargetState; // 0x8, 0x8
+    uint32_t ActualState; // 0xC, 0xC
+    uint32_t OldState; // 0x10, 0x10
+    __x64_padding(0x4); // 0x14
+    KAFFINITY_EXX<bits> TargetProcessors; // 0x14, 0x18
+    PPM_IDLE_STATEX<bits> State[1]; // 0x20, 0x40
+    // 0x60, 0xA0
+};
+ValidateStructSize(0x60, PPM_IDLE_STATESX<32>);
+ValidateStructAlignment(0x8, PPM_IDLE_STATESX<32>);
+ValidateStructSize(0xA0, PPM_IDLE_STATESX<64>);
+ValidateStructAlignment(0x8, PPM_IDLE_STATESX<64>);
+
+__if_not_exists(PPM_IDLE_STATES) {
+    using PPM_IDLE_STATES = PPM_IDLE_STATESX<>;
+}
+
+template<size_t bits = native_bits>
+struct PROC_IDLE_STATE_BUCKETX {
+    uint64_t TotalTime; // 0x0, 0x0
+    uint64_t MinTime; // 0x8, 0x8
+    uint64_t MaxTime; // 0x10, 0x10
+    uint32_t Count; // 0x18, 0x18
+    __padding(0x4); // 0x1C, 0x1C
+    // 0x20, 0x20
+};
+ValidateStructSize(0x20, PROC_IDLE_STATE_BUCKETX<32>);
+ValidateStructAlignment(0x8, PROC_IDLE_STATE_BUCKETX<32>);
+ValidateStructSize(0x20, PROC_IDLE_STATE_BUCKETX<64>);
+ValidateStructAlignment(0x8, PROC_IDLE_STATE_BUCKETX<64>);
+
+__if_not_exists(PROC_IDLE_STATE_BUCKET) {
+    using PROC_IDLE_STATE_BUCKET = PROC_IDLE_STATE_BUCKETX<>;
+}
+
+template<size_t bits = native_bits>
+struct PROC_IDLE_STATE_ACCOUNTINGX {
+    uint64_t TotalTime; // 0x0, 0x0
+    uint32_t IdleTransitions; // 0x8, 0x8
+    uint32_t FailedTransitions; // 0xC, 0xC
+    uint32_t InvalidBucketIndex; // 0x10, 0x10
+    __padding(0x4); // 0x14, 0x14
+    uint64_t MinTime; // 0x18, 0x18
+    uint64_t MaxTime; // 0x20, 0x20
+    PROC_IDLE_STATE_BUCKETX<bits> IdleTimeBuckets[16]; // 0x28, 0x28
+    // 0x228, 0x228
+};
+ValidateStructSize(0x228, PROC_IDLE_STATE_ACCOUNTINGX<32>);
+ValidateStructAlignment(0x8, PROC_IDLE_STATE_ACCOUNTINGX<32>);
+ValidateStructSize(0x228, PROC_IDLE_STATE_ACCOUNTINGX<64>);
+ValidateStructAlignment(0x8, PROC_IDLE_STATE_ACCOUNTINGX<64>);
+
+__if_not_exists(PROC_IDLE_STATE_ACCOUNTING) {
+    using PROC_IDLE_STATE_ACCOUNTING = PROC_IDLE_STATE_ACCOUNTINGX<>;
+}
+
+template<size_t bits = native_bits>
+struct PROC_IDLE_ACCOUNTINGX {
+    uint32_t StateCount; // 0x0, 0x0
+    uint32_t TotalTransitions; // 0x4, 0x4
+    uint32_t ResetCount; // 0x8, 0x8
+    __padding(0x4); // 0xC, 0xC
+    uint64_t StartTime; // 0x10, 0x10
+    uint64_t BucketLimits[16]; // 0x18, 0x18
+    PROC_IDLE_STATE_ACCOUNTINGX<bits> State[1]; // 0x98, 0x98
+    // 0x2C0, 0x2C0
+};
+ValidateStructSize(0x2C0, PROC_IDLE_ACCOUNTINGX<32>);
+ValidateStructAlignment(0x8, PROC_IDLE_ACCOUNTINGX<32>);
+ValidateStructSize(0x2C0, PROC_IDLE_ACCOUNTINGX<64>);
+ValidateStructAlignment(0x8, PROC_IDLE_ACCOUNTINGX<64>);
+
+__if_not_exists(PROC_IDLE_ACCOUNTING) {
+    using PROC_IDLE_ACCOUNTING = PROC_IDLE_ACCOUNTINGX<>;
+}
+
+enum PROC_HYPERVISOR_STATEX : int32_t {
+    ProcHypervisorNoneX = 0,
+    ProcHypervisorPresentX = 1,
+    ProcHypervisorPowerX = 2
+};
+__if_not_exists(PROC_HYPERVISOR_STATE) {
+    using PROC_HYPERVISOR_STATE = PROC_HYPERVISOR_STATEX;
+}
+__if_not_exists(ProcHypervisorNone) {
+    static constexpr auto ProcHypervisorNone = (PROC_HYPERVISOR_STATE)ProcHypervisorNoneX;
+}
+__if_not_exists(ProcHypervisorPresent) {
+    static constexpr auto ProcHypervisorPresent = (PROC_HYPERVISOR_STATE)ProcHypervisorPresentX;
+}
+__if_not_exists(ProcHypervisorPower) {
+    static constexpr auto ProcHypervisorPower = (PROC_HYPERVISOR_STATE)ProcHypervisorPowerX;
+}
+
+template<size_t bits = native_bits>
+struct PPM_FFH_THROTTLE_STATE_INFOX {
+    uint8_t EnableLogging; // 0x0, 0x0
+    __padding(0x3); // 0x1, 0x1
+    uint32_t MismatchCount; // 0x4, 0x4
+    uint32_t Initialized; // 0x8, 0x8
+    __x86_padding(0x4); // 0xC
+    uint64_t LastValue; // 0x10, 0x10
+    LARGE_INTEGERX<bits> LastLogTickCount; // 0x18, 0x18
+    // 0x20, 0x20
+};
+ValidateStructSize(0x20, PPM_FFH_THROTTLE_STATE_INFOX<32>);
+ValidateStructAlignment(0x8, PPM_FFH_THROTTLE_STATE_INFOX<32>);
+ValidateStructSize(0x20, PPM_FFH_THROTTLE_STATE_INFOX<64>);
+ValidateStructAlignment(0x8, PPM_FFH_THROTTLE_STATE_INFOX<64>);
+
+__if_not_exists(PPM_FFH_THROTTLE_STATE_INFO) {
+    using PPM_FFH_THROTTLE_STATE_INFO = PPM_FFH_THROTTLE_STATE_INFOX<>;
+}
+
+template<size_t bits = native_bits>
+struct PROC_IDLE_SNAPX {
+    uint64_t Time; // 0x0, 0x0
+    uint64_t Idle; // 0x8, 0x8
+    // 0x10, 0x10
+};
+ValidateStructSize(0x10, PROC_IDLE_SNAPX<32>);
+ValidateStructAlignment(0x8, PROC_IDLE_SNAPX<32>);
+ValidateStructSize(0x10, PROC_IDLE_SNAPX<64>);
+ValidateStructAlignment(0x8, PROC_IDLE_SNAPX<64>);
+
+__if_not_exists(PROC_IDLE_SNAP) {
+    using PROC_IDLE_SNAP = PROC_IDLE_SNAPX<>;
+}
+
+template<size_t bits = native_bits>
+struct PROC_PERF_CONSTRAINTX {
+    PTRZX<bits, KPRCBX<bits>> Prcb; // 0x0, 0x0
+    uintptr_tx<bits> PerfContext; // 0x4, 0x8
+    uint32_t PercentageCap; // 0x8, 0x10
+    uint32_t ThermalCap; // 0xC, 0x14
+    uint32_t TargetFrequency; // 0x10, 0x18
+    uint32_t AcumulatedFullFrequency; // 0x14, 0x1C
+    uint32_t AcumulatedZeroFrequency; // 0x18, 0x20
+    uint32_t FrequencyHistoryTotal; // 0x1C, 0x24
+    uint32_t AverageFrequency; // 0x20, 0x28
+    __x64_padding(0x4); // 0x2C
+    // 0x24, 0x30
+};
+ValidateStructSize(0x24, PROC_PERF_CONSTRAINTX<32>);
+ValidateStructAlignment(0x4, PROC_PERF_CONSTRAINTX<32>);
+ValidateStructSize(0x30, PROC_PERF_CONSTRAINTX<64>);
+ValidateStructAlignment(0x8, PROC_PERF_CONSTRAINTX<64>);
+
+__if_not_exists(PROC_PERF_CONSTRAINT) {
+    using PROC_PERF_CONSTRAINT = PROC_PERF_CONSTRAINTX<>;
+}
+
+template<size_t bits = native_bits>
+using PROC_PERF_DOMAIN_FEEDBACK_HANDLER_FUNCX = uint8_t(PTRZX<bits, uint32_t>,
+                                                        uintptr_tx<bits>,
+                                                        uint8_t
+                                                        );
+template<size_t bits = native_bits>
+using PROC_PERF_DOMAIN_GET_THROTTLE_STATE_FUNCX = void(PTRZX<bits, uint64_t>
+                                                       );
+template<size_t bits = native_bits>
+using PROC_PERF_DOMAIN_BOOST_POLICY_HANDLER_FUNCX = void(uint32_t
+                                                         );
+template<size_t bits = native_bits>
+using PROC_PERF_DOMAIN_SELECTION_HANDLER_FUNCX = uint32_t(uintptr_tx<bits>,
+                                                          uint32_t,
+                                                          uint32_t,
+                                                          uint32_t,
+                                                          uint32_t,
+                                                          PTRZX<bits, uint32_t>,
+                                                          PTRZX<bits, uint32_t>
+                                                          );
+template<size_t bits = native_bits>
+using PROC_PERF_DOMAIN_PERF_HANDLER_FUNCX = void(uintptr_tx<bits>,
+                                                 uint32_t
+                                                 );
+
+template<size_t bits = native_bits>
+struct PROC_PERF_DOMAINX {
+    LIST_ENTRYX<bits> Link; // 0x0, 0x0
+    PTRZX<bits, KPRCBX<bits>> Master; // 0x8, 0x10
+    KAFFINITY_EXX<bits> Members; // 0xC, 0x18
+    PTRZX<bits, PROC_PERF_DOMAIN_FEEDBACK_HANDLER_FUNCX<bits>> FeedbackHandler; // 0x18, 0x40
+    PTRZX<bits, PROC_PERF_DOMAIN_GET_THROTTLE_STATE_FUNCX<bits>> GetFFHThrottleState; // 0x1C, 0x48
+    PTRZX<bits, PROC_PERF_DOMAIN_BOOST_POLICY_HANDLER_FUNCX<bits>> BoostPolicyHandler; // 0x20, 0x50
+    PTRZX<bits, PROC_PERF_DOMAIN_SELECTION_HANDLER_FUNCX<bits>> PerfSelectionHandler; // 0x24, 0x58
+    PTRZX<bits, PROC_PERF_DOMAIN_PERF_HANDLER_FUNCX<bits>> PerfHandler; // 0x28, 0x60
+    PTRZX<bits, PROC_PERF_CONSTRAINTX<bits>> Processors; // 0x2C, 0x68
+    uint64_t PerfChangeTime; // 0x30, 0x70
+    uint32_t ProcessorCount; // 0x38, 0x78
+    uint32_t PreviousFrequencyMhz; // 0x3C, 0x7C
+    uint32_t CurrentFrequencyMhz; // 0x40, 0x80
+    uint32_t PreviousFrequency; // 0x44, 0x84
+    uint32_t CurrentFrequency; // 0x48, 0x88
+    uint32_t CurrentPerfContext; // 0x4C, 0x8C
+    uint32_t DesiredFrequency; // 0x50, 0x90
+    uint32_t MaxFrequency; // 0x54, 0x94
+    uint32_t MinPerfPercent; // 0x58, 0x98
+    uint32_t MinThrottlePercent; // 0x5C, 0x9C
+    uint32_t MaxPercent; // 0x60, 0xA0
+    uint32_t MinPercent; // 0x64, 0xA4
+    uint32_t ConstrainedMaxPercent; // 0x68, 0xA8
+    uint32_t ConstrainedMinPercent; // 0x6C, 0xAC
+    uint8_t Coordination; // 0x70, 0xB0
+    __padding(0x3); // 0x71, 0xB1
+    volatile int32_t PerfChangeIntervalCount; // 0x74, 0xB4
+    // 0x78, 0xB8
+};
+ValidateStructSize(0x78, PROC_PERF_DOMAINX<32>);
+ValidateStructAlignment(0x8, PROC_PERF_DOMAINX<32>);
+ValidateStructSize(0xB8, PROC_PERF_DOMAINX<64>);
+ValidateStructAlignment(0x8, PROC_PERF_DOMAINX<64>);
+
+__if_not_exists(PROC_PERF_DOMAIN) {
+    using PROC_PERF_DOMAIN = PROC_PERF_DOMAINX<>;
+}
+
+template<size_t bits = native_bits>
+struct PROC_PERF_LOADX {
+    uint8_t BusyPercentage; // 0x0, 0x0
+    uint8_t FrequencyPercentage; // 0x1, 0x1
+    // 0x2, 0x2
+};
+ValidateStructSize(0x2, PROC_PERF_LOADX<32>);
+ValidateStructAlignment(0x1, PROC_PERF_LOADX<32>);
+ValidateStructSize(0x2, PROC_PERF_LOADX<64>);
+ValidateStructAlignment(0x1, PROC_PERF_LOADX<64>);
+
+__if_not_exists(PROC_PERF_LOAD) {
+    using PROC_PERF_LOAD = PROC_PERF_LOADX<>;
+}
+
+template<size_t bits = native_bits>
+struct PROC_HISTORY_ENTRYX {
+    uint16_t Utility; // 0x0, 0x0
+    uint8_t Frquency; // 0x2, 0x2
+    uint8_t Reserved; // 0x3, 0x3
+    // 0x4, 0x4
+};
+ValidateStructSize(0x4, PROC_HISTORY_ENTRYX<32>);
+ValidateStructAlignment(0x2, PROC_HISTORY_ENTRYX<32>);
+ValidateStructSize(0x4, PROC_HISTORY_ENTRYX<64>);
+ValidateStructAlignment(0x2, PROC_HISTORY_ENTRYX<64>);
+
+__if_not_exists(PROC_HISTORY_ENTRY) {
+    using PROC_HISTORY_ENTRY = PROC_HISTORY_ENTRYX<>;
+}
+
+template<size_t bits = native_bits>
+struct PROCESSOR_POWER_STATEX {
+    PTRZX<bits, PPM_IDLE_STATESX<bits>> IdleStates; // 0x0, 0x0
+    __x86_padding(0x4); // 0x4
+    uint64_t IdleTimeLast; // 0x8, 0x8
+    uint64_t IdleTimeTotal; // 0x10, 0x10
+    uint64_t IdleTimeEntry; // 0x18, 0x18
+    PTRZX<bits, PROC_IDLE_ACCOUNTINGX<bits>> IdleAccounting; // 0x20, 0x20
+    PROC_HYPERVISOR_STATE Hypervisor; // 0x24, 0x28
+    uint32_t PerfHistoryTotal; // 0x28, 0x2C
+    uint8_t ThermalConstraint; // 0x2C, 0x30
+    uint8_t PerfHistoryCount; // 0x2D, 0x31
+    uint8_t PerfHistorySlot; // 0x2E, 0x32
+    uint8_t Reserved; // 0x2F, 0x33
+    uint32_t LastSysTime; // 0x30, 0x34
+    uintptr_tx<bits> WmiDispatchPtr; // 0x34, 0x38
+    int32_t WmiInterfaceEnabled; // 0x38, 0x40
+    __x86_padding(0x4); // 0x3C
+    PPM_FFH_THROTTLE_STATE_INFOX<bits> FFHThrottleStateInfo; // 0x40, 0x48
+    KDPCX<bits> PerfActionDpc; // 0x60, 0x68
+    volatile int32_t PerfActionMask; // 0x80, 0xA8
+    PROC_IDLE_SNAPX<bits> IdleCheck; // 0x88, 0xB0
+    PROC_IDLE_SNAPX<bits> PerfCheck; // 0x98, 0xC0
+    PTRZX<bits, PROC_PERF_DOMAINX<bits>> Domain; // 0xA8, 0xD0
+    PTRZX<bits, PROC_PERF_CONSTRAINTX<bits>> PerfConstraint; // 0xAC, 0xD8
+    PTRZX<bits, PROC_PERF_LOADX<bits>> Load; // 0xB0, 0xE0
+    PTRZX<bits, PROC_HISTORY_ENTRYX<bits>> PerfHistory; // 0xB4, 0xE8
+    uint32_t Utility; // 0xB8, 0xF0
+    uint32_t OverUtilizedHistory; // 0xBC, 0xF4
+    volatile uint32_t AffinityCount; // 0xC0, 0xF8
+    uint32_t AffinityHistory; // 0xC4, 0xFC
+    // 0xC8, 0x100
+};
+ValidateStructSize(0xC8, PROCESSOR_POWER_STATEX<32>);
+ValidateStructAlignment(0x8, PROCESSOR_POWER_STATEX<32>);
+ValidateStructSize(0x100, PROCESSOR_POWER_STATEX<64>);
+ValidateStructAlignment(0x8, PROCESSOR_POWER_STATEX<64>);
+
+__if_not_exists(PROCESSOR_POWER_STATE) {
+    using PROCESSOR_POWER_STATE = PROCESSOR_POWER_STATEX<>;
+}
+
+enum PROCESSOR_CACHE_TYPEX : int32_t {
+    CacheUnifiedX = 0,
+    CacheInstructionX = 1,
+    CacheDataX = 2,
+    CacheTraceX = 3
+};
+__if_not_exists(PROCESSOR_CACHE_TYPE) {
+    using PROCESSOR_CACHE_TYPE = PROCESSOR_CACHE_TYPEX;
+}
+__if_not_exists(CacheUnified) {
+    static constexpr auto CacheUnified = (PROCESSOR_CACHE_TYPE)CacheUnifiedX;
+}
+__if_not_exists(CacheInstruction) {
+    static constexpr auto CacheInstruction = (PROCESSOR_CACHE_TYPE)CacheInstructionX;
+}
+__if_not_exists(CacheData) {
+    static constexpr auto CacheData = (PROCESSOR_CACHE_TYPE)CacheDataX;
+}
+__if_not_exists(CacheTrace) {
+    static constexpr auto CacheTrace = (PROCESSOR_CACHE_TYPE)CacheTraceX;
+}
+
+template<size_t bits = native_bits>
+struct CACHE_DESCRIPTORX {
+    uint8_t Level; // 0x0, 0x0
+    uint8_t Associativity; // 0x1, 0x1
+    uint16_t LineSize; // 0x2, 0x2
+    uint32_t Size; // 0x4, 0x4
+    PROCESSOR_CACHE_TYPE Type; // 0x8, 0x8
+    // 0xC, 0xC
+};
+ValidateStructSize(0xC, CACHE_DESCRIPTORX<32>);
+ValidateStructAlignment(0x4, CACHE_DESCRIPTORX<32>);
+ValidateStructSize(0xC, CACHE_DESCRIPTORX<64>);
+ValidateStructAlignment(0x4, CACHE_DESCRIPTORX<64>);
+
+__if_not_exists(CACHE_DESCRIPTOR) {
+    using CACHE_DESCRIPTOR = CACHE_DESCRIPTORX<>;
+}
+
+template<size_t bits = native_bits>
+using KREQUEST_PACKET_WORKER_FUNCX = void(PTRZX<bits>,
+                                          PTRZX<bits>,
+                                          PTRZX<bits>,
+                                          PTRZX<bits>
+                                          );
+
+template<size_t bits = native_bits>
+struct KREQUEST_PACKETX;
+
+template<>
+struct KREQUEST_PACKETX<64> {
+    PTR64Z<> CurrentPacket[3]; // 0x0
+    PTR64Z<KREQUEST_PACKET_WORKER_FUNCX<64>> WorkerRoutine; // 0x18
+    // 0x20
+};
+ValidateStructSize(0x20, KREQUEST_PACKETX<64>);
+ValidateStructAlignment(0x8, KREQUEST_PACKETX<64>);
+
+__if_not_exists(KREQUEST_PACKET) {
+    using KREQUEST_PACKET = KREQUEST_PACKETX<>;
+}
+
+template<size_t bits = native_bits>
+struct REQUEST_MAILBOXX;
+
+template<>
+struct REQUEST_MAILBOXX<64> {
+    PTR64Z<REQUEST_MAILBOXX<64>> Next; // 0x0
+    int64_t RequestSummary; // 0x8
+    KREQUEST_PACKETX<64> RequestPacket; // 0x10
+    // 0x30
+};
+ValidateStructSize(0x30, REQUEST_MAILBOXX<64>);
+ValidateStructAlignment(0x8, REQUEST_MAILBOXX<64>);
+
+__if_not_exists(REQUEST_MAILBOX) {
+    using REQUEST_MAILBOX = REQUEST_MAILBOXX<>;
+}
+
+template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING>
+struct KPCRX;
 
 template<>
 struct KPRCBX<32> {
@@ -5223,20 +7540,392 @@ struct KPRCBX<32> {
     uint8_t LegacyNumber; // 0x10
     uint8_t NestingLevel; // 0x11
     uint16_t BuildType; // 0x12
+
+    inline PTR32Z<KPCRX<32>> kpcr();
 };
+
+// WARNING:
+// Some fields don't seem to be documented
+// anywhere online but definitely match my
+// kernel and show up in windbg when using
+// dt _KPRCB.
 
 template<>
 struct KPRCBX<64> {
     uint32_t MxCsr; // 0x0
     uint8_t LegacyNumber; // 0x4
-    uint8_t NestingLevel; // 0x5
-    bool InterruptRequest; // 0x6
+    uint8_t ReservedMustBeZero; // 0x5
+    uint8_t InterruptRequest; // 0x6
     bool IdleHalt; // 0x7
+    PTR64Z<KTHREADX<64>> CurrentThread; // 0x8
+    PTR64Z<KTHREADX<64>> NextThread; // 0x10
+    PTR64Z<KTHREADX<64>> IdleThread; // 0x18
+    uint8_t NestingLevel; // 0x20
+    // Begin Windows 8+
+    bool ClockOwner; // 0x21
+    // Begin Windows 8.1+
+    union {
+        uint8_t PendingTickFlags; // 0x22
+        struct {
+            uint8_t PendingTick : 1;
+            uint8_t PendingBackupTick : 1;
+        };
+    };
+    // Begin Windows 10+
+    uint8_t IdleState; // 0x23
+    // End Windows 10+
+    // End Windows 8.1+
+    // End Windows 8+
+    uint32_t Number; // 0x24
+    uint64_t RspBase; // 0x28
+    uint64_t PrcbLock; // 0x30
+    // Begin Windows 8.1+
+    PTR64Z<> PriorityState; // 0x38
+    // End Windows 8.1+
 
+    alignas(64) // CACHE_ALIGN
+    KPROCESSOR_STATEX<64> ProcessorState; // 0x40
+    int8_t CpuType; // 0x5F0
+    bool CpuId; // 0x5F1
+    union {
+        uint16_t CpuStep; // 0x5F2
+        struct {
+            uint8_t CpuStepping; // 0x5F2
+            uint8_t CpuModel; // 0x5F3
+        };
+    };
+    uint32_t MHz; // 0x5F4
+    uint64_t HalReserved[8]; // 0x5F8
+    uint16_t MinorVersion; // 0x638
+    uint16_t MajorVersion; // 0x63A
+    uint8_t BuildType; // 0x63C
+    uint8_t CpuVendor; // 0x63D
+    uint8_t CoresPerPhysicalProcessor; // 0x63E
+    uint8_t LogicalProcessorsPerCore; // 0x63F
+    uint32_t ApicMask; // 0x640
+    uint32_t CFlushSize; // 0x644
+    PTR64Z<> AcpiReserved; // 0x648
+    uint32_t InitialApicId; // 0x650
+    uint32_t Stride; // 0x654
+    uint16_t Group; // 0x658
+    __x64_padding(0x6); // 0x65A
+    KAFFINITYX<64> GroupSetMember; // 0x660
+    uint8_t GroupIndex; // 0x668
+    __x64_padding(0x7); // 0x669
+    KSPIN_LOCK_QUEUEX<64> LockQueue[17]; // 0x670
+    PP_LOOKASIDE_LISTX<64> PPLookasideList[16]; // 0x780
+    GENERAL_LOOKASIDE_POOLX<64> PPNPagedLookasideList[32]; // 0x880
+    GENERAL_LOOKASIDE_POOLX<64> PPPagedLookasideList[32]; // 0x1480
+    volatile uint64_t PacketBarrier; // 0x2080
+    SINGLE_LIST_ENTRYX<64> DeferredReadyListHead; // 0x2088
+    volatile int32_t MmPageFaultCount; // 0x2090
+    volatile int32_t MmCopyOnWriteCount; // 0x2094
+    volatile int32_t MmTransitionCount; // 0x2098
+    volatile int32_t MmDemandZeroCount; // 0x209C
+    volatile int32_t MmPageReadCount; // 0x20A0
+    volatile int32_t MmPageReadIoCount; // 0x20A4
+    volatile int32_t MmDirtyPagesWriteCount; // 0x20A8
+    volatile int32_t MmDirtyWriteIoCount; // 0x20AC
+    volatile int32_t MmMappedPagesWriteCount; // 0x20B0
+    volatile int32_t MmMappedWriteIoCount; // 0x20B4
+    uint32_t KeSystemCalls; // 0x20B8
+    uint32_t KeContextSwitches; // 0x20BC
+    uint32_t CcFastReadNoWait; // 0x20C0
+    uint32_t CcFastReadWait; // 0x20C4
+    uint32_t CcFastReadNotPossible; // 0x20C8
+    uint32_t CcCopyReadNoWait; // 0x20CC
+    uint32_t CcCopyReadWait; // 0x20D0
+    uint32_t CcCopyReadNoWaitMiss; // 0x20D4
+    int32_t LookasideIrpFloat; // 0x20D8
+    volatile int32_t IoReadOperationCount; // 0x20DC
+    volatile int32_t IoWriteOperationCount; // 0x20E0
+    volatile int32_t IoOtherOperationCount; // 0x20E4
+    LARGE_INTEGERX<64> IoReadTransferCount; // 0x20E8
+    LARGE_INTEGERX<64> IoWriteTransferCount; // 0x20F0
+    LARGE_INTEGERX<64> IoOtherTransferCount; // 0x20F8
+    volatile int32_t TargetCount; // 0x2100
+    volatile uint32_t IpiFrozen; // 0x2104
+    __x64_padding(0x78); // 0x2108
+
+    alignas(128) // Really big cache align? Offset 0x2300 in KPCR
+    KDPC_DATAX<64> DpcData[2]; // 0x2180
+    PTR64Z<> DpcStack; // 0x21C0
+    int32_t MaximumDpcQueueDepth; // 0x21C8
+    uint32_t DpcRequestRate; // 0x21CC
+    uint32_t MinimumDpcRate; // 0x21D0
+    uint32_t DpcLastCount; // 0x21D4
+    bool ThreadDpcEnable; // 0x21D8
+    volatile bool QuantumEnd; // 0x21D9
+    volatile bool DpcRoutineActive; // 0x21DA
+    volatile bool IdleSchedule; // 0x21DB
+    union {
+        int32_t DpcRequestSummary; // 0x21DC
+        int16_t DpcRequestSlot[2]; // 0x21DC
+        struct {
+            int16_t NormalDpcState; // 0x21DC
+            union {
+                int16_t ThreadDpcState; // 0x21DE
+                volatile uint16_t DpcThreadActive : 1;
+            };
+        };
+    };
+    volatile uint32_t TimerHand; // 0x21E0
+    int32_t MasterOffset; // 0x21E4
+    uint32_t LastTick; // 0x21E8
+    uint32_t UnusedPad; // 0x21EC
+
+    // WARNING: New fields
+    uint64_t TrappedSecurityDomain; // 0x21F0
+    union {
+        uint8_t BpbState; // 0x21F8
+        struct {
+            uint8_t BpbCpuIdle : 1;
+            uint8_t BpbFlushRsbOnTrap : 1;
+            uint8_t BpbIbpbOnReturn : 1;
+            uint8_t BpbIbpbOnTrap : 1;
+            uint8_t BpbStateReserved : 4;
+        };
+    };
+    union {
+        uint8_t BpbFeatures; // 0x21F9
+        struct {
+            uint8_t BpbClearOnIdle : 1;
+            uint8_t BpbEnabled : 1;
+            uint8_t BpbSmep : 1;
+            uint8_t BpbFeaturesReserved : 5;
+        };
+    };
+    uint8_t BpbCurrentSpecCtrl; // 0x21FA
+    uint8_t BpbKernelSpecCtrl; // 0x21FB
+    uint8_t BpbNmiSpecCtrl; // 0x21FC
+    uint8_t BpbUserSpecCtrl; // 0x21FD
+    uint8_t BpbPad[2]; // 0x21FE
+
+    // WARNING: New field
+    // Supposedly this was added for win10,
+    // so why TF is it in my win7 kernel?
+    alignas(64) // CACHE_ALIGN
+    PTR64Z<> InterruptObject[256]; // 0x2200
+
+    alignas(64) // CACHE_ALIGN
+    KTIMER_TABLEX<64> TimerTable; // 0x2A00
+
+    alignas(64) // CACHE_ALIGN
+    KGATEX<64> DpcGate; // 0x4C00
+    PTR64Z<> PrcbPad52; // 0x4C18
+    KDPCX<64> CallDpc; // 0x4C20
+    int32_t ClockKeepAlive; // 0x4C60
+    uint8_t ClockCheckSlot; // 0x4C64
+    uint8_t ClockPollCycle; // 0x4C65
+    uint16_t NmiActive; // 0x4C66
+    int32_t DpcWatchdogPeriod; // 0x4C68
+    int32_t DpcWatchdogCount; // 0x4C6C
+    uint64_t TickOffset; // 0x4C70
+    volatile int32_t KeSpinLockOrdering; // 0x4C78
+    uint32_t PrcbPad70; // 0x4C7C
+
+    alignas(64) // CACHE_ALIGN
+    LIST_ENTRYX<64> WaitListHead; // 0x4C80
+    uintptr_tx<64> WaitLock; // 0x4C90
+    uint32_t ReadySummary; // 0x4C98
+    uint32_t QueueIndex; // 0x4C9C
+    KDPCX<64> TimerExpirationDpc; // 0x4CA0
+    // WARNING: New field
+    uint64_t MsrIa32TsxCtrl; // 0x4CE0
+    uint64_t PrcbPad72[3]; // 0x4CE8
+
+    alignas(64) // CACHE_ALIGN
+    LIST_ENTRYX<64> DispatcherReadyListHead[32]; // 0x4D00
+
+    alignas(64) // CACHE_ALIGN
+    uint32_t InterruptCount; // 0x4F00
+    uint32_t KernelTime; // 0x4F04
+    uint32_t UserTime; // 0x4F08
+    uint32_t DpcTime; // 0x4F0C
+    uint32_t InterruptTime; // 0x4F10
+    uint32_t AdjustDpcThreshold; // 0x4F14
+    uint8_t DebuggerSavedIRQL; // 0x4F18
+    uint8_t PrcbPad80[7]; // 0x4F19
+    uint32_t DpcTimeCount; // 0x4F20
+    uint32_t DpcTimeLimit; // 0x4F24
+    uint32_t PeriodicCount; // 0x4F28
+    uint32_t PeriodicBias; // 0x4F2C
+    uint32_t AvailableTime; // 0x4F30
+    uint32_t KeExceptionDispatchCount; // 0x4F34
+    PTR64Z<KNODEX<64>> ParentNode; // 0x4F38
+    uint64_t StartCycles; // 0x4F40
+    uint64_t PrcbPad82[3]; // 0x4F48
+    volatile int32_t MmSpinLockOrdering; // 0x4F60
+    uint32_t PageColor; // 0x4F64
+    uint32_t NodeColor; // 0x4F68
+    uint32_t NodeShiftedColor; // 0x4F6C
+    uint32_t SecondaryColorMask; // 0x4F70
+    uint32_t PrcbPad83; // 0x4F74
+    uint64_t CycleTime; // 0x4F78
+    uint32_t CcFastMdlReadNoWait; // 0x4F80
+    uint32_t CcFastMdlReadWait; // 0x4F84
+    uint32_t CcFastMdlReadNotPossible; // 0x4F88
+    uint32_t CcMapDataNoWait; // 0x4F8C
+    uint32_t CcMapDataWait; // 0x4F90
+    uint32_t CcPinMappedDataCount; // 0x4F94
+    uint32_t CcPinReadNoWait; // 0x4F98
+    uint32_t CcPinReadWait; // 0x4F9C
+    uint32_t CcMdlReadNoWait; // 0x4FA0
+    uint32_t CcMdlReadWait; // 0x4FA4
+    uint32_t CcLazyWriteHotSpots; // 0x4FA8
+    uint32_t CcLazyWriteIos; // 0x4FAC
+    uint32_t CcLazyWritePages; // 0x4FB0
+    uint32_t CcDataFlushes; // 0x4FB4
+    uint32_t CcDataPages; // 0x4FB8
+    uint32_t CcLostDelayedWrites; // 0x4FBC
+    uint32_t CcFastReadResourceMiss; // 0x4FC0
+    uint32_t CcCopyReadWaitMiss; // 0x4FC4
+    uint32_t CcFastMdlReadResourceMiss; // 0x4FC8
+    uint32_t CcMapDataNoWaitMiss; // 0x4FCC
+    uint32_t CcMapDataWaitMiss; // 0x4FD0
+    uint32_t CcPinReadNoWaitMiss; // 0x4FD4
+    uint32_t CcPinReadWaitMiss; // 0x4FD8
+    uint32_t CcMdlReadNoWaitMiss; // 0x4FDC
+    uint32_t CcMdlReadWaitMiss; // 0x4FE0
+    uint32_t CcReadAheadIos; // 0x4FE4
+    uint32_t MmCacheTransitionCount; // 0x4FE8
+    uint32_t MmCacheReadCount; // 0x4FEC
+    uint32_t MmCacheIoCount; // 0x4FF0
+    uint32_t PrcbPad91[1]; // 0x4FF4
+    uint64_t RuntimeAccumulation; // 0x4FF8
+
+    alignas(64) // CACHE_ALIGN
+    PROCESSOR_POWER_STATEX<64> PowerState; // 0x5000
+    uint8_t PrcbPad92[0x10]; // 0x5100
+    uint32_t KeAlignmentFixupCount; // 0x5110
+    KDPCX<64> DpcWatchdogDpc; // 0x5118
+    KTIMERX<64> DpcWatchdogTimer; // 0x5158
+    CACHE_DESCRIPTORX<64> Cache[5]; // 0x5198
+    uint32_t CacheCount; // 0x51D4
+    volatile uint32_t CachedCommit; // 0x51D8
+    volatile uint32_t CachedResidentAvailable; // 0x51DC
+    PTR64Z<> HyperPte; // 0x51E0
+    PTR64Z<> WheaInfo; // 0x51E8
+    PTR64Z<> EtwSupport; // 0x51F0
+    __x64_padding(0x8); // 0x51F8
+    
+    alignas(64) // CACHE_ALIGN
+    SLIST_HEADERX<64> InterruptObjectPool; // 0x5200
+    SLIST_HEADERX<64> HypercallPageList; // 0x5210
+    PTR64Z<> HypercallPageVirtual; // 0x5220
+    PTR64Z<> VirtualApicAssist; // 0x5228
+    PTR64Z<uint64_t> StatisticsPage; // 0x5230
+    PTR64Z<> RateControl; // 0x5238
+    uint64_t CacheProcessorMask[5]; // 0x5240
+    KAFFINITY_EXX<64> PackageProcessorSet; // 0x5268
+    KAFFINITYX<64> CoreProcessorSet; // 0x5290
+    PTR64Z<> PebsIndexAddress; // 0x5298
+    uint64_t PrcbPad93[0xC]; // 0x52A0
+
+    alignas(64) // CACHE_ALIGN
+    uint32_t SpinLockAcquireCount; // 0x5300
+    uint32_t SpinLockContentionCount; // 0x5304
+    uint32_t SpinLockSpinCount; // 0x5308
+    uint32_t IpiSendRequestBroadcastCount; // 0x530C
+    uint32_t IpiSendRequestRoutineCount; // 0x5310
+    uint32_t IpiSendSoftwareInterruptCount; // 0x5314
+    uint32_t ExInitializeResourceCount; // 0x5318
+    uint32_t ExReInitializeResourceCount; // 0x531C
+    uint32_t ExDeleteResourceCount; // 0x5320
+    uint32_t ExecutiveResourceAcquiresCount; // 0x5324
+    uint32_t ExecutiveResourceContentionsCount; // 0x5328
+    uint32_t ExecutiveResourceReleaseExclusiveCount; // 0x532C
+    uint32_t ExecutiveResourceReleaseSharedCount; // 0x5330
+    uint32_t ExecutiveResourceConvertsCount; // 0x5334
+    uint32_t ExAcqResExclusiveAttempts; // 0x5338
+    uint32_t ExAcqResExclusiveAcquiresExclusive; // 0x533C
+    uint32_t ExAcqResExclusiveAcquiresExclusiveRecursive; // 0x5340
+    uint32_t ExAcqResExclusiveWaits; // 0x5344
+    uint32_t ExAcqResExclusiveNotAcquires; // 0x5348
+    uint32_t ExAcqResSharedAttempts; // 0x534C
+    uint32_t ExAcqResSharedAcquiresExclusive; // 0x5350
+    uint32_t ExAcqResSharedAcquiresShared; // 0x5354
+    uint32_t ExAcqResSharedAcquiresSharedRecursive; // 0x5358
+    uint32_t ExAcqResSharedWaits; // 0x535C
+    uint32_t ExAcqResSharedNotAcquires; // 0x5360
+    uint32_t ExAcqResSharedStarveExclusiveAttempts; // 0x5364
+    uint32_t ExAcqResSharedStarveExclusiveAcquiresExclusive; // 0x5368
+    uint32_t ExAcqResSharedStarveExclusiveAcquiresShared; // 0x536C
+    uint32_t ExAcqResSharedStarveExclusiveAcquiresSharedRecursive; // 0x5370
+    uint32_t ExAcqResSharedStarveExclusiveWaits; // 0x5374
+    uint32_t ExAcqResSharedStarveExclusiveNotAcquires; // 0x5378
+    uint32_t ExAcqResSharedWaitForExclusiveAttempts; // 0x537C
+    uint32_t ExAcqResSharedWaitForExclusiveAcquiresExclusive; // 0x5380
+    uint32_t ExAcqResSharedWaitForExclusiveAcquiresShared; // 0x5384
+    uint32_t ExAcqResSharedWaitForExclusiveAcquiresSharedRecursive; // 0x5388
+    uint32_t ExAcqResSharedWaitForExclusiveWaits; // 0x538C
+    uint32_t ExAceResSharedWaitForExclusiveNotAcquires; // 0x5390
+    uint32_t ExSetResOwnerPointerExclusive; // 0x5394
+    uint32_t ExSetResOwnerPointerSharedNew; // 0x5398
+    uint32_t ExSetResOwnerPointerSharedOld; // 0x539C
+    uint32_t ExTryToAcqExclusiveAttempts; // 0x53A0
+    uint32_t ExTryToAcqExclusiveAcquires; // 0x53A4
+    uint32_t ExBoostExclusiveOwner; // 0x53A8
+    uint32_t ExBoostSharedOwners; // 0x53AC
+    uint32_t ExEtwSynchTrackingNotificationsCount; // 0x53B0
+    uint32_t ExEtwSynchTrackingNotificationsAccountedCount; // 0x53B4
+    unsigned char VendorString[13]; // 0x53B8
+    uint8_t PrcbPad10[3]; // 0x53C5
+
+    // WARNING: Most definitions have this as u32 until Win8.1
+    uint64_t FeatureBits; // 0x53C8
+    uint32_t PrcbPad11; // 0x53D0
+    __x64_padding(0x4); // 0x54D4
+
+    LARGE_INTEGERX<64> UpdateSignature; // 0x53D8
+    PTR64Z<CONTEXTX<64>> Context; // 0x53E0
+    uint32_t ContextFlags; // 0x53E8
+    __x64_padding(0x4); // 0x53EC
+    PTR64Z<XSAVE_AREAX<64>> ExtendedState; // 0x53F0
+    // WARNING: New explicit padding (that's too small for some reason???)
+    uint64_t PrcbPad112[7]; // 0x53F8
+    __x64_padding(0x50); // 0x5430
+
+    alignas(128) // Really big cache align? 0x5600 in KPCR
+    PTR64Z<REQUEST_MAILBOXX<64>> Mailbox; // 0x5480
+
+    // WARNING: Smaller padding
+    uint64_t PrcbPad130[7]; // 0x5488
+    // WARNING: New fields
+    // Supposedly only added with Win10 1809
+    uint32_t ProcessorSignature; // 0x54C0
+    uint8_t PrcbPad135[0x9BC]; // 0x54C4
+
+    alignas(64) // PAGE_ALIGN relative to KPCR (0x6000)
+    uint64_t KernelDirectoryTableBase; // 0x5E80
+    uint64_t RspBaseShadow; // 0x5E88
+    uint64_t UserRspShadow; // 0x5E90
+    union {
+        uint32_t ShadowFlags; // 0x5E98
+        uint8_t ShadowFlagsByte;
+        struct {
+            uint32_t __shadow_flag_A : 1;
+            uint32_t __shadow_flag_B : 1;
+        };
+    };
+    uint16_t VerwSelector; // 0x5E9C
+    uint16_t PrcbPad139; // 0x5E9E
+    uint64_t PrcbPad140[0x1FC]; // 0x5EA0
+    // 0x609C
+
+    alignas(64) // PAGE_ALIGN relative to KPCR (0x7000)
+    REQUEST_MAILBOXX<64> RequestMailbox[1]; // 0x6E80
+    __x64_padding(0x60); // 0x6EA0
+    // 0x6F00
+
+    inline PTR64Z<KPCRX<64>> kpcr();
 };
+ValidateStructSize(0x6F00, KPRCBX<64>);
+ValidateStructAlignment(0x80, KPRCBX<64>);
 
-template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING>
-struct KPCRX;
+__if_not_exists(KREQUEST_PACKET) {
+    using KREQUEST_PACKET = KREQUEST_PACKETX<>;
+}
 
 template<size_t bits = native_bits, typename T = FXSAVE_DEFAULT_PADDING>
 struct KPCRX_base;
@@ -5299,7 +7988,10 @@ struct alignas(64) KPCRX_base<64, T> {
         NT_TIBX<64, T> NtTib; // 0x0
         uint8_t arbitrary_offset[0]; // 0x0
         struct {
-            PTR64Z<KGDTENTRYX<64>> GdtBase; // 0x0
+            union {
+                PTR64Z<KGDTENTRYX<64>> GdtBase; // 0x0
+                PTR64Z<KGDTENTRYX<32>> Gdt32Base; // 0x0
+            };
             PTR64Z<KTSSX<64>> TssBase; // 0x8
             uint64_t UserRsp; // 0x10
             PTR64Z<KPCRX<64, T>> Self; // 0x18
@@ -5343,6 +8035,582 @@ struct KPCRX<64, T> : KPCRX_base<64, T> {
 
 __if_not_exists(KPCR) {
     using KPCR = KPCRX<>;
+}
+
+inline PTR32Z<KPCRX<32>> KPRCBX<32>::kpcr() {
+    return (PTR32Z<KPCRX<32>>)based_pointer(this, -offsetof(KPCRX<32>, PrcbData));
+}
+inline PTR64Z<KPCRX<64>> KPRCBX<64>::kpcr() {
+    return (PTR64Z<KPCRX<64>>)based_pointer(this, -offsetof(KPCRX<64>, Prcb));
+}
+
+using FSKPCR32 = KPCRX<32> FS_RELATIVE*;
+using GSKPCR64 = KPCRX<64> GS_RELATIVE*;
+using CFSKPCR32 = const KPCRX<32> FS_RELATIVE*;
+using CGSKPCR64 = const KPCRX<64> GS_RELATIVE*;
+
+#if NATIVE_BITS == 32
+using SEGKPCR = FSKPCR32;
+using CSEGKPCR = CFSKPCR32;
+#else
+using SEGKPCR = GSKPCR64;
+using CSEGKPCR = CGSKPCR64;
+#endif
+
+static inline constexpr FSKPCR32 kpcr32 = 0;
+static inline constexpr GSKPCR64 kpcr64 = 0;
+static inline constexpr CFSKPCR32 ckpcr32 = 0;
+static inline constexpr CGSKPCR64 ckpcr64 = 0;
+static inline constexpr SEGKPCR kpcr = 0;
+static inline constexpr CSEGKPCR ckpcr = 0;
+
+#define kprcb32 (kpcr32->PrcbData)
+#define kprcb64 (kpcr64->Prcb)
+
+#if NATIVE_BITS == 32
+#define kprcb kprcb32
+#else
+#define kprcb kprcb64
+#endif
+
+template<size_t bits = native_bits, typename T = void>
+static inline void write_kpcr_offset(size_t offset, const T& value) {
+    if constexpr (bits == 32) {
+        *(T FS_RELATIVE*)&kpcr32->arbitrary_offset[offset] = value;
+    } else if constexpr (bits == 64) {
+        *(T GS_RELATIVE*)&kpcr64->arbitrary_offset[offset] = value;
+    }
+}
+
+template<typename T, size_t bits = native_bits>
+static inline T read_kpcr_offset(size_t offset) {
+    if constexpr (bits == 32) {
+        return *(T FS_RELATIVE*)&kpcr32->arbitrary_offset[offset];
+    } else if constexpr (bits == 64) {
+        return *(T GS_RELATIVE*)& kpcr64->arbitrary_offset[offset];
+    }
+}
+
+enum CONFIGURATION_CLASSX : int32_t {
+    SystemClassX = 0,
+    ProcessorClassX = 1,
+    CacheClassX = 2,
+    AdapterClassX = 3,
+    ControllerClassX = 4,
+    PeripheralClassX = 5,
+    MemoryClassX = 6,
+    MaximumClassX = 7
+};
+__if_not_exists(CONFIGURATION_CLASS) {
+    using CONFIGURATION_CLASS = CONFIGURATION_CLASSX;
+}
+__if_not_exists(SystemClass) {
+    static constexpr auto SystemClass = (CONFIGURATION_CLASS)SystemClassX;
+}
+__if_not_exists(ProcessorClass) {
+    static constexpr auto ProcessorClass = (CONFIGURATION_CLASS)ProcessorClassX;
+}
+__if_not_exists(CacheClass) {
+    static constexpr auto CacheClass = (CONFIGURATION_CLASS)CacheClassX;
+}
+__if_not_exists(AdapterClass) {
+    static constexpr auto AdapterClass = (CONFIGURATION_CLASS)AdapterClassX;
+}
+__if_not_exists(ControllerClass) {
+    static constexpr auto ControllerClass = (CONFIGURATION_CLASS)ControllerClassX;
+}
+__if_not_exists(PeripheralClass) {
+    static constexpr auto PeripheralClass = (CONFIGURATION_CLASS)PeripheralClassX;
+}
+__if_not_exists(MemoryClass) {
+    static constexpr auto MemoryClass = (CONFIGURATION_CLASS)MemoryClassX;
+}
+
+enum CONFIGURATION_TYPEX : int32_t {
+
+};
+__if_not_exists(CONFIGURATION_TYPE) {
+    using CONFIGURATION_TYPE = CONFIGURATION_TYPEX;
+}
+
+template<size_t bits = native_bits>
+struct CONFIGURATION_COMPONENTX {
+    CONFIGURATION_CLASS Class; // 0x0, 0x0
+    CONFIGURATION_TYPE Type; // 0x4, 0x4
+    union {
+        uint32_t Flags; // 0x8, 0x8
+        struct {
+            uint32_t Failed : 1;
+            uint32_t ReadOnly : 1;
+            uint32_t Removable : 1;
+            uint32_t ConsoleIn : 1;
+            uint32_t ConsoleOut : 1;
+            uint32_t Input : 1;
+            uint32_t Output : 1;
+        };
+    };
+    uint16_t Version; // 0xC, 0xC
+    uint16_t Revision; // 0xE, 0xE
+    uint32_t Key; // 0x10, 0x10
+    union {
+        uint32_t AffinityMask; // 0x14, 0x14
+        struct {
+            uint16_t Group; // 0x14, 0x14
+            uint16_t GroupIndex; // 0x16, 0x16
+        };
+    };
+    uint32_t ConfigurationLength; // 0x18, 0x18
+    uint32_t IdentifierLength; // 0x1C, 0x1C
+    PTRZX<bits, char> Identifier; // 0x20, 0x20
+    // 0x24, 0x28
+};
+ValidateStructSize(0x24, CONFIGURATION_COMPONENTX<32>);
+ValidateStructAlignment(0x4, CONFIGURATION_COMPONENTX<32>);
+ValidateStructSize(0x28, CONFIGURATION_COMPONENTX<64>);
+ValidateStructAlignment(0x8, CONFIGURATION_COMPONENTX<64>);
+
+__if_not_exists(CONFIGURATION_COMPONENT) {
+    using CONFIGURATION_COMPONENT = CONFIGURATION_COMPONENTX<>;
+}
+
+template<size_t bits = native_bits>
+struct CONFIGURATION_COMPONENT_DATAX {
+    PTRZX<bits, CONFIGURATION_COMPONENT_DATAX<bits>> Parent; // 0x0, 0x0
+    PTRZX<bits, CONFIGURATION_COMPONENT_DATAX<bits>> Child; // 0x4, 0x8
+    PTRZX<bits, CONFIGURATION_COMPONENT_DATAX<bits>> Sibling; // 0x8, 0x10
+    CONFIGURATION_COMPONENTX<bits> ComponentEntry; // 0xC, 0x18
+    PTRZX<bits> ConfigurationData; // 0x30, 0x40
+    // 0x34, 0x48
+};
+ValidateStructSize(0x34, CONFIGURATION_COMPONENT_DATAX<32>);
+ValidateStructAlignment(0x4, CONFIGURATION_COMPONENT_DATAX<32>);
+ValidateStructSize(0x48, CONFIGURATION_COMPONENT_DATAX<64>);
+ValidateStructAlignment(0x8, CONFIGURATION_COMPONENT_DATAX<64>);
+
+__if_not_exists(CONFIGURATION_COMPONENT_DATA) {
+    using CONFIGURATION_COMPONENT_DATA = CONFIGURATION_COMPONENT_DATAX<>;
+}
+
+template<size_t bits = native_bits>
+struct NLS_DATA_BLOCKX {
+    PTRZX<bits> AnsiCodePageData; // 0x0, 0x0
+    PTRZX<bits> OemCodePageData; // 0x4, 0x8
+    PTRZX<bits> UnicodeCaseTableData; // 0x8, 0x10
+    // 0xC, 0x18
+};
+ValidateStructSize(0xC, NLS_DATA_BLOCKX<32>);
+ValidateStructAlignment(0x4, NLS_DATA_BLOCKX<32>);
+ValidateStructSize(0x18, NLS_DATA_BLOCKX<64>);
+ValidateStructAlignment(0x8, NLS_DATA_BLOCKX<64>);
+
+__if_not_exists(NLS_DATA_BLOCK) {
+    using NLS_DATA_BLOCK = NLS_DATA_BLOCKX<>;
+}
+
+template<size_t bits = native_bits>
+struct ARC_DISK_INFORMATIONX {
+    LIST_ENTRYX<bits> DiskSignatures; // 0x0, 0x0
+    // 0x8, 0x10
+};
+ValidateStructSize(0x8, ARC_DISK_INFORMATIONX<32>);
+ValidateStructAlignment(0x4, ARC_DISK_INFORMATIONX<32>);
+ValidateStructSize(0x10, ARC_DISK_INFORMATIONX<64>);
+ValidateStructAlignment(0x8, ARC_DISK_INFORMATIONX<64>);
+
+__if_not_exists(ARC_DISK_INFORMATION) {
+    using ARC_DISK_INFORMATION = ARC_DISK_INFORMATIONX<>;
+}
+
+template<size_t bits = native_bits>
+struct PROFILE_PARAMETER_BLOCKX {
+    uint16_t Status; // 0x0, 0x0
+    uint16_t Reserved; // 0x2, 0x2
+    uint16_t DockingState; // 0x4, 0x4
+    uint16_t Capabilities; // 0x6, 0x6
+    uint32_t DockID; // 0x8, 0x8
+    uint32_t SerialNumber; // 0xC, 0xC
+    // 0x10, 0x10
+};
+ValidateStructSize(0x10, PROFILE_PARAMETER_BLOCKX<32>);
+ValidateStructAlignment(0x4, PROFILE_PARAMETER_BLOCKX<32>);
+ValidateStructSize(0x10, PROFILE_PARAMETER_BLOCKX<64>);
+ValidateStructAlignment(0x4, PROFILE_PARAMETER_BLOCKX<64>);
+
+__if_not_exists(PROFILE_PARAMETER_BLOCK) {
+    using PROFILE_PARAMETER_BLOCK = PROFILE_PARAMETER_BLOCKX<>;
+}
+
+template<size_t bits = native_bits>
+struct HEADLESS_LOADER_BLOCKX {
+    uint8_t UsedBiosSettings; // 0x0, 0x0
+    uint8_t DataBits; // 0x1, 0x1
+    uint8_t StopBits; // 0x2, 0x2
+    uint8_t Parity; // 0x3, 0x3
+    uint32_t BaudRate; // 0x4, 0x4
+    uint32_t PortNumber; // 0x8, 0x8
+    __x64_padding(0x4); // 0xC
+    PTRZX<bits, uint8_t> PortAddress; // 0xC, 0x10
+    uint16_t PciDeviceId; // 0x10, 0x18
+    uint16_t PciVendorId; // 0x12, 0x1A
+    uint8_t PciBusNumber; // 0x14, 0x1C
+    __padding(0x1); // 0x15, 0x1D
+    uint16_t PciBusSegment; // 0x16, 0x1E
+    uint8_t PciSlotNumber; // 0x18, 0x20
+    uint8_t PciFunctionNumber; // 0x19, 0x21
+    __padding(0x2); // 0x1A, 0x22
+    uint32_t PciFlags; // 0x1C, 0x24
+    GUID SystemGUID; // 0x20, 0x28
+    uint8_t IsMMIODevice; // 0x30, 0x38
+    uint8_t TerminalType; // 0x31, 0x39
+    __padding(0x2); // 0x32, 0x3A
+    __x64_padding(0x4); // 0x3C
+    // 0x34, 0x40
+};
+ValidateStructSize(0x34, HEADLESS_LOADER_BLOCKX<32>);
+ValidateStructAlignment(0x4, HEADLESS_LOADER_BLOCKX<32>);
+ValidateStructSize(0x40, HEADLESS_LOADER_BLOCKX<64>);
+ValidateStructAlignment(0x8, HEADLESS_LOADER_BLOCKX<64>);
+
+__if_not_exists(HEADLESS_LOADER_BLOCK) {
+    using HEADLESS_LOADER_BLOCK = HEADLESS_LOADER_BLOCKX<>;
+}
+
+template<size_t bits = native_bits>
+struct SMBIOS_TABLE_HEADERX {
+    // yup, it's empty
+};
+//ValidateStructSize(0x0, SMBIOS_TABLE_HEADERX<32>);
+//ValidateStructAlignment(0x4, SMBIOS_TABLE_HEADERX<32>);
+//ValidateStructSize(0x0, SMBIOS_TABLE_HEADERX<64>);
+//ValidateStructAlignment(0x8, SMBIOS_TABLE_HEADERX<64>);
+
+__if_not_exists(SMBIOS_TABLE_HEADER) {
+    using SMBIOS_TABLE_HEADER = SMBIOS_TABLE_HEADERX<>;
+}
+
+template<size_t bits = native_bits>
+struct NETWORK_LOADER_BLOCKX {
+    PTRZX<bits, uint8_t> DHCPServerACK; // 0x0, 0x0
+    uint32_t DHCPServerACKLength; // 0x4, 0x8
+    __x64_padding(0x4); // 0xC
+    PTRZX<bits, uint8_t> BootServerReplyPacket; // 0x8, 0x10
+    uint32_t BootServerReplyPacketLength; // 0xC, 0x18
+    __x64_padding(0x4); // 0x1C
+    // 0x10, 0x20
+};
+ValidateStructSize(0x10, NETWORK_LOADER_BLOCKX<32>);
+ValidateStructAlignment(0x4, NETWORK_LOADER_BLOCKX<32>);
+ValidateStructSize(0x20, NETWORK_LOADER_BLOCKX<64>);
+ValidateStructAlignment(0x8, NETWORK_LOADER_BLOCKX<64>);
+
+__if_not_exists(NETWORK_LOADER_BLOCK) {
+    using NETWORK_LOADER_BLOCK = NETWORK_LOADER_BLOCKX<>;
+}
+
+template<size_t bits = native_bits>
+struct LOADER_PERFORMANCE_DATAX {
+    uint64_t StartTime; // 0x0, 0x0
+    uint64_t EndTime; // 0x8, 0x8
+    // 0x10, 0x10
+};
+ValidateStructSize(0x10, LOADER_PERFORMANCE_DATAX<32>);
+ValidateStructAlignment(0x8, LOADER_PERFORMANCE_DATAX<32>);
+ValidateStructSize(0x10, LOADER_PERFORMANCE_DATAX<64>);
+ValidateStructAlignment(0x8, LOADER_PERFORMANCE_DATAX<64>);
+
+__if_not_exists(LOADER_PERFORMANCE_DATA) {
+    using LOADER_PERFORMANCE_DATA = LOADER_PERFORMANCE_DATAX<>;
+}
+
+enum TPM_BOOT_ENTROPY_RESULT_CODEX : int32_t {
+    TpmBootEntropyStructureUninitializedX = 0,
+    TpmBootEntropyDisabledByPolicyX = 1,
+    TpmBootEntropyNoTpmFoundX = 2,
+    TpmBootEntropyTpmErrorX = 3,
+    TpmBootEntropySuccessX = 4
+};
+__if_not_exists(TPM_BOOT_ENTROPY_RESULT_CODE) {
+    using TPM_BOOT_ENTROPY_RESULT_CODE = TPM_BOOT_ENTROPY_RESULT_CODEX;
+}
+__if_not_exists(TpmBootEntropyStructureUninitialized) {
+    static constexpr auto TpmBootEntropyStructureUninitialized = (TPM_BOOT_ENTROPY_RESULT_CODE)TpmBootEntropyStructureUninitializedX;
+}
+__if_not_exists(TpmBootEntropyDisabledByPolicy) {
+    static constexpr auto TpmBootEntropyDisabledByPolicy = (TPM_BOOT_ENTROPY_RESULT_CODE)TpmBootEntropyDisabledByPolicyX;
+}
+__if_not_exists(TpmBootEntropyNoTpmFound) {
+    static constexpr auto TpmBootEntropyNoTpmFound = (TPM_BOOT_ENTROPY_RESULT_CODE)TpmBootEntropyNoTpmFoundX;
+}
+__if_not_exists(TpmBootEntropyTpmError) {
+    static constexpr auto TpmBootEntropyTpmError = (TPM_BOOT_ENTROPY_RESULT_CODE)TpmBootEntropyTpmErrorX;
+}
+__if_not_exists(TpmBootEntropySuccess) {
+    static constexpr auto TpmBootEntropySuccess = (TPM_BOOT_ENTROPY_RESULT_CODE)TpmBootEntropySuccessX;
+}
+
+template<size_t bits = native_bits>
+struct TPM_BOOT_ENTROPY_LDR_RESULTX {
+    uint64_t Policy; // 0x0, 0x0
+    TPM_BOOT_ENTROPY_RESULT_CODE ResultCode; // 0x8, 0x8
+    int32_t ResultStatus; // 0xC, 0xC
+    uint64_t Time; // 0x10, 0x10
+    uint32_t EntropyLength; // 0x18, 0x18
+    uint8_t EntropyData[40]; // 0x1C, 0x1C
+    __padding(0x4); // 0x44, 0x44
+    // 0x48, 0x48
+};
+ValidateStructSize(0x48, TPM_BOOT_ENTROPY_LDR_RESULTX<32>);
+ValidateStructAlignment(0x8, TPM_BOOT_ENTROPY_LDR_RESULTX<32>);
+ValidateStructSize(0x48, TPM_BOOT_ENTROPY_LDR_RESULTX<64>);
+ValidateStructAlignment(0x8, TPM_BOOT_ENTROPY_LDR_RESULTX<64>);
+
+__if_not_exists(TPM_BOOT_ENTROPY_LDR_RESULT) {
+    using TPM_BOOT_ENTROPY_LDR_RESULT = TPM_BOOT_ENTROPY_LDR_RESULTX<>;
+}
+
+template<size_t bits = native_bits>
+struct LOADER_PARAMETER_EXTENSIONX;
+
+template<>
+struct LOADER_PARAMETER_EXTENSIONX<32> {
+    uint32_t Size; // 0x0
+    PROFILE_PARAMETER_BLOCKX<32> Profile; // 0x4
+    PTR32Z<> EmInfFileImage; // 0x14
+    uint32_t EmInfFileSize; // 0x18
+    PTR32Z<> TriageDumpBlock; // 0x1C
+    uint32_t LoaderPagesSpanned; // 0x20
+    PTR32Z<HEADLESS_LOADER_BLOCKX<32>> HeadlessLoaderBlock; // 0x24
+    PTR32Z<SMBIOS_TABLE_HEADERX<32>> SMBiosEPSHeader; // 0x28
+    PTR32Z<> DrvDBImage; // 0x2C
+    uint32_t DrvDBSize; // 0x30
+    PTR32Z<NETWORK_LOADER_BLOCKX<32>> NetworkLoaderBlock; // 0x34
+    PTR32Z<uint8_t> HalpIRQLToPR; // 0x38
+    PTR32Z<uint8_t> HalpVectorToIRQL; // 0x3C
+    LIST_ENTRYX<32> FirmwareDescriptorListHead; // 0x40
+    PTR32Z<> AcpiTable; // 0x48
+    uint32_t AcpiTableSize; // 0x4C
+    union {
+        uint32_t Flags; // 0x50
+        struct {
+            uint32_t LastBootSucceeded : 1;
+            uint32_t LastBootShutdown : 1;
+            uint32_t IoPortAccessSupported : 1;
+            uint32_t Reserved : 29;
+        };
+    };
+    PTR32Z<LOADER_PERFORMANCE_DATAX<32>> LoaderPerformanceData; // 0x54
+    LIST_ENTRYX<32> BootApplicationPersistentData; // 0x58
+    PTR32Z<> WmdTestResult; // 0x60
+    GUID BootIdentifier; // 0x64
+    uint32_t ResumePages; // 0x74
+    PTR32Z<> DumpHeader; // 0x78
+    PTR32Z<> BgContext; // 0x7C
+    PTR32Z<> NumaLocalityInfo; // 0x80
+    PTR32Z<> NumaGroupAssignment; // 0x84
+    LIST_ENTRYX<32> AttachedHives; // 0x88
+    uint32_t MemoryCachingRequirementsCount; // 0x90
+    PTR32Z<> MemoryCachingRequirements; // 0x94
+    TPM_BOOT_ENTROPY_LDR_RESULTX<32> TpmBootEntropyResult; // 0x98
+    uint64_t ProcessorCounterFrequency; // 0xE0
+    // 0xE8
+};
+ValidateStructSize(0xE8, LOADER_PARAMETER_EXTENSIONX<32>);
+ValidateStructAlignment(0x8, LOADER_PARAMETER_EXTENSIONX<32>);
+
+template<>
+struct LOADER_PARAMETER_EXTENSIONX<64> {
+    uint32_t Size; // 0x0
+    PROFILE_PARAMETER_BLOCKX<32> Profile; // 0x4
+    __x64_padding(0x4); // 0x14
+    PTR64Z<> EmInfFileImage; // 0x18
+    uint32_t EmInfFileSize; // 0x20
+    __x64_padding(0x4); // 0x24
+    PTR64Z<> TriageDumpBlock; // 0x28
+    uint64_t LoaderPagesSpanned; // 0x30
+    PTR64Z<HEADLESS_LOADER_BLOCKX<64>> HeadlessLoaderBlock; // 0x38
+    PTR64Z<SMBIOS_TABLE_HEADERX<64>> SMBiosEPSHeader; // 0x40
+    PTR64Z<> DrvDBImage; // 0x48
+    uint32_t DrvDBSize; // 0x50
+    __x64_padding(0x4); // 0x54
+    PTR64Z<NETWORK_LOADER_BLOCKX<64>> NetworkLoaderBlock; // 0x58
+    LIST_ENTRYX<64> FirmwareDescriptorListHead; // 0x60
+    PTR64Z<> AcpiTable; // 0x70
+    uint32_t AcpiTableSize; // 0x78
+    union {
+        uint32_t Flags; // 0x7C
+        struct {
+            uint32_t LastBootSucceeded : 1;
+            uint32_t LastBootShutdown : 1;
+            uint32_t IoPortAccessSupported : 1;
+            uint32_t Reserved : 29;
+        };
+    };
+    PTR64Z<LOADER_PERFORMANCE_DATAX<64>> LoaderPerformanceData; // 0x80
+    LIST_ENTRYX<64> BootApplicationPersistentData; // 0x88
+    PTR64Z<> WmdTestResult; // 0x98
+    GUID BootIdentifier; // 0xA0
+    uint32_t ResumePages; // 0xB0
+    __x64_padding(0x4); // 0xB4
+    PTR64Z<> DumpHeader; // 0xB8
+    PTR64Z<> BgContext; // 0xC0
+    PTR64Z<> NumaLocalityInfo; // 0xC8
+    PTR64Z<> NumaGroupAssignment; // 0xD0
+    LIST_ENTRYX<64> AttachedHives; // 0xD8
+    uint32_t MemoryCachingRequirementsCount; // 0xE8
+    __x64_padding(0x4); // 0xEC
+    PTR64Z<> MemoryCachingRequirements; // 0xF0
+    TPM_BOOT_ENTROPY_LDR_RESULTX<64> TpmBootEntropyResult; // 0xF8
+    uint64_t ProcessorCounterFrequency; // 0x140
+    // 0x148
+};
+ValidateStructSize(0x148, LOADER_PARAMETER_EXTENSIONX<64>);
+ValidateStructAlignment(0x8, LOADER_PARAMETER_EXTENSIONX<64>);
+
+__if_not_exists(LOADER_PARAMETER_EXTENSION) {
+    using LOADER_PARAMETER_EXTENSION = LOADER_PARAMETER_EXTENSIONX<>;
+}
+
+template<size_t bits = native_bits>
+struct I386_LOADER_BLOCKX {
+    PTRZX<bits> CommonDataArea; // 0x0, 0x0
+    uint32_t MachineType; // 0x4, 0x8
+    uint32_t VirtualBase; // 0x8, 0xC
+    // 0xC, 0x10
+};
+ValidateStructSize(0xC, I386_LOADER_BLOCKX<32>);
+ValidateStructAlignment(0x4, I386_LOADER_BLOCKX<32>);
+ValidateStructSize(0x10, I386_LOADER_BLOCKX<64>);
+ValidateStructAlignment(0x8, I386_LOADER_BLOCKX<64>);
+
+__if_not_exists(I386_LOADER_BLOCK) {
+    using I386_LOADER_BLOCK = I386_LOADER_BLOCKX<>;
+}
+
+template<size_t bits = native_bits>
+struct PCAT_FIRMWARE_INFORMATIONX {
+    uint32_t PlaceHolder; // 0x0, 0x0
+    // 0x4, 0x4
+};
+ValidateStructSize(0x4, PCAT_FIRMWARE_INFORMATIONX<32>);
+ValidateStructAlignment(0x4, PCAT_FIRMWARE_INFORMATIONX<32>);
+ValidateStructSize(0x4, PCAT_FIRMWARE_INFORMATIONX<64>);
+ValidateStructAlignment(0x4, PCAT_FIRMWARE_INFORMATIONX<64>);
+
+__if_not_exists(PCAT_FIRMWARE_INFORMATION) {
+    using PCAT_FIRMWARE_INFORMATION = PCAT_FIRMWARE_INFORMATIONX<>;
+}
+
+template<size_t bits = native_bits>
+struct VIRTUAL_EFI_RUNTIME_SERVICESX {
+    uintptr_tx<bits> GetTime; // 0x0, 0x0
+    uintptr_tx<bits> SetTime; // 0x4, 0x8
+    uintptr_tx<bits> GetWakeupTime; // 0x8, 0x10
+    uintptr_tx<bits> SetWakeupTime; // 0xC, 0x18
+    uintptr_tx<bits> SetVirtualAddressMap; // 0x10, 0x20
+    uintptr_tx<bits> ConvertPointer; // 0x14, 0x28
+    uintptr_tx<bits> GetVariable; // 0x18, 0x30
+    uintptr_tx<bits> GetNextVariableName; // 0x1C, 0x38
+    uintptr_tx<bits> SetVariable; // 0x20, 0x40
+    uintptr_tx<bits> GetNextHighMonotonicCount; // 0x24, 0x48
+    uintptr_tx<bits> ResetSystem; // 0x28, 0x50
+    uintptr_tx<bits> UpdateCapsule; // 0x2C, 0x58
+    uintptr_tx<bits> QueryCapsuleCapabilities; // 0x30, 0x60
+    uintptr_tx<bits> QueryVariableInfo; // 0x34, 0x68
+    // 0x38, 0x70
+};
+ValidateStructSize(0x38, VIRTUAL_EFI_RUNTIME_SERVICESX<32>);
+ValidateStructAlignment(0x4, VIRTUAL_EFI_RUNTIME_SERVICESX<32>);
+ValidateStructSize(0x70, VIRTUAL_EFI_RUNTIME_SERVICESX<64>);
+ValidateStructAlignment(0x8, VIRTUAL_EFI_RUNTIME_SERVICESX<64>);
+
+__if_not_exists(VIRTUAL_EFI_RUNTIME_SERVICES) {
+    using VIRTUAL_EFI_RUNTIME_SERVICES = VIRTUAL_EFI_RUNTIME_SERVICESX<>;
+}
+
+template<size_t bits = native_bits>
+struct EFI_FIRMWARE_INFORMATIONX {
+    uint32_t FirmwareVersion; // 0x0, 0x0
+    __x64_padding(0x4); // 0x4
+    PTRZX<bits, VIRTUAL_EFI_RUNTIME_SERVICESX<bits>> VirtualEfiRuntimeServices; // 0x4, 0x8
+    int32_t SetVirtualAddressMapStatus; // 0x8, 0xC
+    uint32_t MissedMappingsCount; // 0xC, 0x10
+    __x64_padding(0x4); // 0x14
+    // 0x10, 0x18
+};
+ValidateStructSize(0x10, EFI_FIRMWARE_INFORMATIONX<32>);
+ValidateStructAlignment(0x4, EFI_FIRMWARE_INFORMATIONX<32>);
+ValidateStructSize(0x18, EFI_FIRMWARE_INFORMATIONX<64>);
+ValidateStructAlignment(0x8, EFI_FIRMWARE_INFORMATIONX<64>);
+
+__if_not_exists(EFI_FIRMWARE_INFORMATION) {
+    using EFI_FIRMWARE_INFORMATION = EFI_FIRMWARE_INFORMATIONX<>;
+}
+
+template<size_t bits = native_bits>
+struct FIRMWARE_INFORMATION_LOADER_BLOCKX {
+    union {
+        uint32_t Flags; // 0x0, 0x0
+        struct {
+            uint32_t FirmwareTypeEfi : 1;
+            uint32_t Reserved : 31;
+        };
+    };
+    union {
+        PCAT_FIRMWARE_INFORMATIONX<bits> PcatInformation; // 0x4, 0x8
+        EFI_FIRMWARE_INFORMATIONX<bits> EfiInformation; // 0x4, 0x8
+    };
+    // 0x14, 0x20
+};
+ValidateStructSize(0x14, FIRMWARE_INFORMATION_LOADER_BLOCKX<32>);
+ValidateStructAlignment(0x4, FIRMWARE_INFORMATION_LOADER_BLOCKX<32>);
+ValidateStructSize(0x20, FIRMWARE_INFORMATION_LOADER_BLOCKX<64>);
+ValidateStructAlignment(0x8, FIRMWARE_INFORMATION_LOADER_BLOCKX<64>);
+
+__if_not_exists(FIRMWARE_INFORMATION_LOADER_BLOCK) {
+    using FIRMWARE_INFORMATION_LOADER_BLOCK = FIRMWARE_INFORMATION_LOADER_BLOCKX<>;
+}
+
+template<size_t bits = native_bits>
+struct LOADER_PARAMETER_BLOCKX {
+    uint32_t OsMajorVersion; // 0x0, 0x0
+    uint32_t OsMinorVersion; // 0x4, 0x4
+    uint32_t Size; // 0x8, 0x8
+    // Begin Windows 10 1511+
+    uint32_t OsLoaderSecurityVersion; // 0xC, 0xC
+    // End Windows 10 1511+
+    LIST_ENTRYX<bits> LoadOrderListHead; // 0x10, 0x10
+    LIST_ENTRYX<bits> MemoryDescriptorListHead; // 0x18, 0x20
+    LIST_ENTRYX<bits> BootDriverListHead; // 0x20, 0x30
+    uintptr_tx<bits> KernelStack; // 0x28, 0x40
+    uintptr_tx<bits> Prcb; // 0x2C, 0x48
+    uintptr_tx<bits> Process; // 0x30, 0x50
+    uintptr_tx<bits> Thread; // 0x34, 0x58
+    uint32_t RegistryLength; // 0x38, 0x60
+    __x64_padding(0x4); // 0x64
+    PTRZX<bits> RegistryBase; // 0x3C, 0x68
+    PTRZX<bits, CONFIGURATION_COMPONENT_DATAX<bits>> ConfigurationRoot; // 0x40, 0x70
+    PTRZX<bits, char> ArcBootDeviceName; // 0x44, 0x78
+    PTRZX<bits, char> ArcHalDeviceName; // 0x48, 0x80
+    PTRZX<bits, char> NtBootPathName; // 0x4C, 0x88
+    PTRZX<bits, char> NtHalPathName; // 0x50, 0x90
+    PTRZX<bits, char> LoadOptions; // 0x54, 0x98
+    PTRZX<bits, NLS_DATA_BLOCKX<bits>> NlsData; // 0x58, 0xA0
+    PTRZX<bits, ARC_DISK_INFORMATIONX<bits>> ArcDiskInformation; // 0x5C, 0xA8
+    PTRZX<bits> OemFontFile; // 0x60, 0xB0
+    PTRZX<bits, LOADER_PARAMETER_EXTENSIONX<bits>> Extension; // 0x64, 0xB8
+    union {
+        I386_LOADER_BLOCKX<bits> I386; // 0x68, 0xC0
+    };
+    FIRMWARE_INFORMATION_LOADER_BLOCKX<bits> FirmwareInformation; // 0x74, 0xD0
+    // 0x88, 0xF0
+};
+ValidateStructSize(0x88, LOADER_PARAMETER_BLOCKX<32>);
+ValidateStructAlignment(0x4, LOADER_PARAMETER_BLOCKX<32>);
+ValidateStructSize(0xF0, LOADER_PARAMETER_BLOCKX<64>);
+ValidateStructAlignment(0x8, LOADER_PARAMETER_BLOCKX<64>);
+
+__if_not_exists(LOADER_PARAMETER_BLOCK) {
+    using LOADER_PARAMETER_BLOCK = LOADER_PARAMETER_BLOCKX<>;
 }
 
 /*========================================
