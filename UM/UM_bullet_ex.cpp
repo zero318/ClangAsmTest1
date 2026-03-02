@@ -13563,27 +13563,13 @@ static inline constexpr int32_t BOMB_ICONS_IN_GUI = 7;
 // size: 0x2CC
 struct Gui : ZUNTask {
     // ZUNTask base; // 0x0
-    AnmID __anm_id_C; // 0xC
-    AnmID __anm_id_10; // 0x10
-    AnmID __anm_id_14; // 0x14
-    AnmID __anm_id_18; // 0x18
-    AnmID __anm_id_1C; // 0x1C
-    AnmID __anm_id_20; // 0x20
-    AnmID __anm_id_24; // 0x24
-    AnmID __anm_id_28; // 0x28
-    AnmID __anm_id_2C; // 0x2C
-    AnmID __anm_id_30; // 0x30
-    AnmID __anm_id_34; // 0x34
-    AnmID __anm_id_38; // 0x38
-    AnmID __anm_id_3C; // 0x3C
-    AnmID __anm_id_40; // 0x40
-    AnmID __anm_id_44; // 0x44
-    AnmID __anm_id_48; // 0x48
+    AnmID __player_life_icon_ids[LIFE_ICONS_IN_GUI]; // 0xC
+    AnmID __player_bomb_icon_ids[BOMB_ICONS_IN_GUI]; // 0x28
+    AnmID spell_timer_vm_ids[2]; // 0x44
     AnmVM* player_life_icons[LIFE_ICONS_IN_GUI]; // 0x4C
     AnmVM* player_bomb_icons[BOMB_ICONS_IN_GUI]; // 0x68
-    AnmVM* __anm_vm_84; // 0x84
-    AnmVM* __anm_vm_88; // 0x88
-    AnmID __anm_id_8C; // 0x8C
+    AnmVM* spell_timer_vms[2]; // 0x84
+    AnmID boss_indicator; // 0x8C
     AnmID __anm_id_array_90[10]; // 0x90
     AnmID __anm_id_B8; // 0xB8
     AnmID __anm_id_BC; // 0xBC
@@ -13591,9 +13577,9 @@ struct Gui : ZUNTask {
     AnmID __anm_id_C4; // 0xC4
     AnmID __anm_id_C8; // 0xC8
     AnmID __boss_life_markers[MAX_BOSS_LIFE_MARKERS]; // 0xCC
-    AnmID __anm_id_F4; // 0xF4
-    AnmID __anm_id_F8; // 0xF8
-    AnmID __anm_id_FC; // 0xFC
+    AnmID __difficulty_indicatorA; // 0xF4
+    AnmID __difficulty_indicatorB; // 0xF8
+    AnmID __shottype_indicator; // 0xFC
     AnmID __anm_id_100; // 0x100
     AnmID __anm_id_104; // 0x104
     AnmID __anm_id_108; // 0x108
@@ -13628,6 +13614,7 @@ struct Gui : ZUNTask {
             uint32_t __unknown_flag_A : 1; // 9
             uint32_t __unknown_field_B : 2; // 10-11
             uint32_t __unknown_field_A : 2; // 12-13
+            uint32_t __unknown_flag_B : 1; // 14
         };
     };
     Timer __timer_198; // 0x198
@@ -13638,13 +13625,41 @@ struct Gui : ZUNTask {
     int32_t spell_timer_hundredths; // 0x1BC
     int32_t __int_1C0; // 0x1C0
     Lifebar lifebars[MAX_LIFEBARS_IN_GUI]; // 0x1C4
-    AnmLoaded* __anm_loaded_2C0; // 0x2C0
+    AnmLoaded* __front_anm; // 0x2C0
     int32_t __int_2C4; // 0x2C4
     unknown_fields(0x4); // 0x2C8
     // 0x2CC
 
     inline void zero_contents() {
         zero_this();
+    }
+
+    inline void enable_funcs() {
+        this->enable_tick();
+        this->enable_draw();
+        if (UpdateFunc* on_draw_func_B = this->on_draw_func_B) {
+            on_draw_func_B->run_on_update = true;
+        }
+    }
+
+    inline void enable_funcs_unsafe() {
+        this->enable_tick_unsafe();
+        this->enable_draw_unsafe();
+        this->on_draw_func_B->run_on_update = true;
+    }
+
+    inline void disable_funcs() {
+        this->disable_tick();
+        this->disable_draw();
+        if (UpdateFunc* on_draw_func_B = this->on_draw_func_B) {
+            on_draw_func_B->run_on_update = false;
+        }
+    }
+
+    inline void disable_funcs_unsafe() {
+        this->disable_tick();
+        this->disable_draw();
+        this->on_draw_func_B->run_on_update = false;
     }
 
     inline Gui() {
@@ -13723,9 +13738,7 @@ struct Gui : ZUNTask {
     dllexport gnu_noinline void thiscall __display_stage_logo() asm_symbol_rel(0x441ED0);
 
     // 0x43A8B0
-    dllexport gnu_noinline static void __sub_43A8B0() {
-        // TODO: lots of anm allocations
-    }
+    dllexport gnu_noinline static void __allocate_hud() asm_symbol_rel(0x43A8B0);
 
     // 0x43BB70
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x43BB70);
@@ -13755,14 +13768,20 @@ struct Gui : ZUNTask {
 ValidateFieldOffset32(0x0, Gui, task_flags);
 ValidateFieldOffset32(0x4, Gui, on_tick_func);
 ValidateFieldOffset32(0x8, Gui, on_draw_func);
+ValidateFieldOffset32(0xC, Gui, __player_life_icon_ids);
+ValidateFieldOffset32(0x28, Gui, __player_bomb_icon_ids);
+ValidateFieldOffset32(0x44, Gui, spell_timer_vm_ids);
 ValidateFieldOffset32(0x4C, Gui, player_life_icons);
 ValidateFieldOffset32(0x68, Gui, player_bomb_icons);
-ValidateFieldOffset32(0x84, Gui, __anm_vm_84);
-ValidateFieldOffset32(0x88, Gui, __anm_vm_88);
+ValidateFieldOffset32(0x84, Gui, spell_timer_vms);
 ValidateFieldOffset32(0x90, Gui, __anm_id_array_90);
-ValidateFieldOffset32(0x8C, Gui, __anm_id_8C);
+ValidateFieldOffset32(0x8C, Gui, boss_indicator);
 ValidateFieldOffset32(0xB8, Gui, __anm_id_B8);
 ValidateFieldOffset32(0xBC, Gui, __anm_id_BC);
+ValidateFieldOffset32(0xCC, Gui, __boss_life_markers);
+ValidateFieldOffset32(0xF4, Gui, __difficulty_indicatorA);
+ValidateFieldOffset32(0xF8, Gui, __difficulty_indicatorB);
+ValidateFieldOffset32(0xFC, Gui, __shottype_indicator);
 ValidateFieldOffset32(0x108, Gui, __anm_id_108);
 ValidateFieldOffset32(0x10C, Gui, __anm_id_10C);
 ValidateFieldOffset32(0x110, Gui, __anm_id_110);
@@ -13781,7 +13800,7 @@ ValidateFieldOffset32(0x1B8, Gui, spell_timer_seconds);
 ValidateFieldOffset32(0x1BC, Gui, spell_timer_hundredths);
 ValidateFieldOffset32(0x1C0, Gui, __int_1C0);
 ValidateFieldOffset32(0x1C4, Gui, lifebars);
-ValidateFieldOffset32(0x2C0, Gui, __anm_loaded_2C0);
+ValidateFieldOffset32(0x2C0, Gui, __front_anm);
 ValidateFieldOffset32(0x2C4, Gui, __int_2C4);
 ValidateStructSize32(0x2CC, Gui);
 #pragma endregion
@@ -17018,6 +17037,14 @@ public:
     }
 
 private:
+    inline AnmID& thiscall instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, Float3* position, AnmVM** raw_out);
+public:
+    inline AnmID instantiate_vm_to_ui_list_back(int32_t script_index, Float3* position, AnmVM** raw_out) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return this->instantiate_vm_to_ui_list_back(dummy, script_index, position, raw_out);
+    }
+
+private:
     // 0x409590
     dllexport AnmID& thiscall instantiate_vm_to_ui_list_front(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(AnmVMCreationFlags flags)) asm_symbol_rel(0x409590);
 public:
@@ -19921,13 +19948,13 @@ dllexport gnu_noinline Gui::~Gui() {
     UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func_B);
     this->on_tick_func = NULL; // ???
 
-    this->__anm_id_F4.mark_tree_for_delete();
+    this->__difficulty_indicatorA.mark_tree_for_delete();
     this->__anm_id_10C.mark_tree_for_delete();
     nounroll for (size_t i = 0; i < countof(this->__anm_id_array_90); ++i) {
         this->__anm_id_array_90[i].mark_tree_for_delete();
     }
-    this->__anm_id_44.mark_tree_for_delete();
-    this->__anm_id_48.mark_tree_for_delete();
+    this->spell_timer_vm_ids[0].mark_tree_for_delete();
+    this->spell_timer_vm_ids[1].mark_tree_for_delete();
 
     ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(FRONT_ANM_INDEX);
 
@@ -19967,7 +19994,7 @@ dllexport gnu_noinline void thiscall Gui::__sub_4422C0() {
         if (script >= 0) {
             script += 154;
             if (script >= 0) {
-                this->__anm_id_C8 = this->__anm_loaded_2C0->instantiate_vm_to_world_list_back(script);
+                this->__anm_id_C8 = this->__front_anm->instantiate_vm_to_world_list_back(script);
             }
         }
     }
@@ -19998,7 +20025,7 @@ dllexport gnu_noinline void vectorcall MsgVM::__sub_4416D0(int, float, float x, 
     this->__callout_related.mark_tree_for_delete();
     
     Float3 position = { x, y };
-    this->__callout_related = GUI_PTR->__anm_loaded_2C0->instantiate_vm_to_world_list_back(274 + arg4, &position);
+    this->__callout_related = GUI_PTR->__front_anm->instantiate_vm_to_world_list_back(274 + arg4, &position);
 
     this->__inline_textbox_sub_A(arg3);
     this->__int_1D4 = arg4;
@@ -20055,7 +20082,7 @@ dllexport gnu_noinline void thiscall Globals::add_life() {
 
     if (gui) {
         gui->__anm_id_BC.mark_tree_for_delete();
-        gui->__anm_id_BC = gui->__anm_loaded_2C0->instantiate_vm_to_world_list_back(53);
+        gui->__anm_id_BC = gui->__front_anm->instantiate_vm_to_world_list_back(53);
     }
 
     ++this->lives_added;
@@ -20989,6 +21016,28 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, 
     return out;
 }
 
+inline AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, Float3* position, AnmVM** raw_out) {
+    CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
+    {
+        this->__counter_134++;
+        AnmVM* vm = AnmManager::allocate_new_vm();
+        if (raw_out) {
+            *raw_out = vm;
+        }
+        this->__copy_data_to_vm(vm, script_index);
+        vm->data.rand_mode = NormalRNG;
+        vm->controller.position.safe_copy(position);
+        vm->data.rotation.z = 0.0f;
+        vm->run_anm();
+        vm->data.creation_flags = UI_LIST_BACK;
+        out = 0;
+        out = AnmManager::add_vm_to_ui_list_back(vm);
+        vm->data.__unknown_field_B = 0;
+    }
+    CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
+    return out;
+}
+
 // 0x409590
 dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_front(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(AnmVMCreationFlags flags)) {
     CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
@@ -21290,7 +21339,7 @@ dllexport gnu_noinline BOOL thiscall Globals::add_power(int32_t amount) {
         this->current_power = max_power;
         Gui* gui = GUI_PTR;
         gui->__anm_id_BC.mark_tree_for_delete();
-        gui->__anm_id_BC = gui->__anm_loaded_2C0->instantiate_vm_to_world_list_back(33);
+        gui->__anm_id_BC = gui->__front_anm->instantiate_vm_to_world_list_back(33);
         power = this->current_power;
     }
     int32_t prev_level = (power - amount) / this->power_per_level;
@@ -21466,7 +21515,7 @@ dllexport gnu_noinline Gui* Gui::allocate() {
     }
 
     AnmLoaded* anm_loaded = ANM_MANAGER_PTR->preload_anm(FRONT_ANM_INDEX, "fronttr.anm");
-    gui->__anm_loaded_2C0 = anm_loaded;
+    gui->__front_anm = anm_loaded;
 
     if (
         !anm_loaded ||
@@ -27084,7 +27133,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
                 break;
             case __gui_overlay: { // 35
                 Gui* gui = GUI_PTR;
-                gui->__anm_id_100 = gui->__anm_loaded_2C0->instantiate_vm_to_world_list_back(48);
+                gui->__anm_id_100 = gui->__front_anm->instantiate_vm_to_world_list_back(48);
                 break;
             }
             case __store_open: // 36
@@ -32849,8 +32898,8 @@ struct Spellcard : ZUNTask {
             // TODO: scorefile stuff
         }
         Gui* gui = GUI_PTR;
-        gui->__anm_vm_84->interrupt_and_run(2);
-        gui->__anm_vm_88->interrupt_and_run(2);
+        gui->spell_timer_vms[0]->interrupt_and_run(2);
+        gui->spell_timer_vms[1]->interrupt_and_run(2);
 
         this->__int_8C = 1;
         this->__unknown_flag_E = false;
@@ -32933,9 +32982,9 @@ struct Spellcard : ZUNTask {
             else {
                 Gui* gui = GUI_PTR;
                 gui->__anm_id_B8.mark_tree_for_delete();
-                gui->__anm_id_B8 = gui->__anm_loaded_2C0->instantiate_vm_to_world_list_back(50);
+                gui->__anm_id_B8 = gui->__front_anm->instantiate_vm_to_world_list_back(50);
                 gui->__int_134 = 1;
-                gui->__anm_id_110 = gui->__anm_loaded_2C0->instantiate_vm_to_world_list_back(84);
+                gui->__anm_id_110 = gui->__front_anm->instantiate_vm_to_world_list_back(84);
             }
 
             if (this->__timeout_spell) {
@@ -44064,7 +44113,7 @@ struct PauseMenu : ZUNTask {
             uint32_t __unknown_flag_B : 1;
         };
     };
-    AnmLoaded* __anm_loaded_3F4; // 0x3F4
+    AnmLoaded* __front_anm; // 0x3F4
     // 0x3F8
 
     inline void zero_contents() {
@@ -44156,13 +44205,13 @@ struct PauseMenu : ZUNTask {
         //GAME_MANAGER.__sub_443DC0();
         this->__sub_457740(1);
         GAME_THREAD_PTR->__unknown_flag_I = true;
-        this->__anm_loaded_3F4 = GUI_PTR->__anm_loaded_2C0;
+        this->__front_anm = GUI_PTR->__front_anm;
         this->__vm_id_1E4.mark_tree_for_delete();
 
         if (GAME_THREAD_PTR->replay_mode != __replay_recording) {
-            this->__vm_id_1E4 = this->__anm_loaded_3F4->instantiate_vm_to_ui_list_back(149);
+            this->__vm_id_1E4 = this->__front_anm->instantiate_vm_to_ui_list_back(149);
         } else {
-            this->__vm_id_1E4 = this->__anm_loaded_3F4->instantiate_vm_to_ui_list_back(148);
+            this->__vm_id_1E4 = this->__front_anm->instantiate_vm_to_ui_list_back(148);
         }
 
         this->__vm_id_1E4.interrupt_tree(3);
@@ -44535,7 +44584,7 @@ struct PauseMenu : ZUNTask {
                                     !this->__unknown_flag_B &&
                                     !GAME_MANAGER.__unknown_field_A
                                 ) {
-                                    this->__vm_id_1E4 = this->__anm_loaded_3F4->instantiate_vm_to_ui_list_back(151);
+                                    this->__vm_id_1E4 = this->__front_anm->instantiate_vm_to_ui_list_back(151);
                                     if (GAME_MANAGER.globals.continues > 0) {
                                         this->__menu_select_34.disable_selection(2);
                                     }
@@ -44548,7 +44597,7 @@ struct PauseMenu : ZUNTask {
                                     }
                                 }
                                 else {
-                                    this->__vm_id_1E4 = this->__anm_loaded_3F4->instantiate_vm_to_ui_list_back(152);
+                                    this->__vm_id_1E4 = this->__front_anm->instantiate_vm_to_ui_list_back(152);
                                     this->__menu_select_34.disable_selection(0);
                                     this->__menu_select_34.disable_selection(4);
                                     this->__menu_select_34.set_selection(0);
@@ -44833,7 +44882,7 @@ ValidateFieldOffset32(0x2E0, PauseMenu, __float_2E0);
 ValidateFieldOffset32(0x2E8, PauseMenu, __double_2E8);
 ValidateFieldOffset32(0x2F0, PauseMenu, __text_buffer_2F0);
 ValidateFieldOffset32(0x3F0, PauseMenu, __flags_3F0);
-ValidateFieldOffset32(0x3F4, PauseMenu, __anm_loaded_3F4);
+ValidateFieldOffset32(0x3F4, PauseMenu, __front_anm);
 ValidateStructSize32(0x3F8, PauseMenu);
 #pragma endregion
 
@@ -45003,6 +45052,96 @@ ValidateVirtualFieldOffset32(0x384, MainMenu, __timer_384);
 //ValidateStructSize32(0x5D98, MainMenu);
 #pragma endregion
 
+// 0x43A8B0
+dllexport gnu_noinline void Gui::__allocate_hud() {
+    Gui* gui_ptr = GUI_PTR;
+    gui_ptr->enable_funcs();
+    if (!gui_ptr->__anm_id_138) {
+        gui_ptr->__anm_id_138 = gui_ptr->__front_anm->instantiate_vm_to_ui_list_back(0);
+    }
+
+    if (!gui_ptr->player_life_icons[0]) {
+        size_t i = 0;
+        Float3 zero = {};
+        AnmVM** life_icon_vms = gui_ptr->player_life_icons;
+        do {
+            gui_ptr->__player_life_icon_ids[i] = gui_ptr->__front_anm->instantiate_vm_to_ui_list_back(32 + i, &zero, life_icon_vms);
+            ++life_icon_vms;
+        } while (++i < countof(gui_ptr->player_life_icons));
+
+        i = 0;
+        zero = {};
+        AnmVM** bomb_icon_vms = gui_ptr->player_bomb_icons;
+        do {
+            gui_ptr->__player_bomb_icon_ids[i] = gui_ptr->__front_anm->instantiate_vm_to_ui_list_back(40 + i, &zero, bomb_icon_vms);
+            ++bomb_icon_vms;
+        } while (++i < countof(gui_ptr->player_bomb_icons));
+
+        i = 0;
+        zero = {};
+        AnmVM** spell_timer_vms = gui_ptr->spell_timer_vms;
+        do {
+            gui_ptr->spell_timer_vm_ids[i] = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(2 + i, &zero, spell_timer_vms);
+            (*spell_timer_vms)->__tree_clear_visible2();
+            (*spell_timer_vms)->data.origin_mode = 0;
+            ++spell_timer_vms;
+        } while (++i < 2);
+    }
+
+    gui_ptr->__update_life_ui(GAME_MANAGER.globals.life_stocks, GAME_MANAGER.globals.life_fragments, GAME_MANAGER.globals.life_stock_max);
+    gui_ptr->__update_bomb_ui(GAME_MANAGER.globals.bomb_stocks, GAME_MANAGER.globals.bomb_fragments, GAME_MANAGER.globals.bomb_stock_max);
+
+    if (
+        SUPERVISOR.gamemode_switch != 8 &&
+        !GAME_MANAGER.__unknown_flag_E &&
+        GAME_MANAGER.__unknown_field_A != 1
+    ) {
+        gui_ptr->stage_logo_anm->instantiate_vm_to_world_list_back(1);
+    }
+
+    if (GAME_MANAGER.__unknown_flag_E) {
+        gui_ptr->__front_anm->instantiate_vm_to_world_list_back(110);
+    }
+
+    if (!gui_ptr->boss_indicator) {
+        gui_ptr->boss_indicator = gui_ptr->__front_anm->instantiate_vm_to_world_list_back(100);
+    }
+
+    if (
+        (
+            GAME_MANAGER.globals.current_stage == 1 &&
+            GAME_THREAD_PTR->replay_mode == __replay_recording &&
+            GAME_MANAGER.globals.continues == 0
+        ) ||
+        gui_ptr->__unknown_flag_B
+    ) {
+        // Item Get Line notice
+        AnmID id = gui_ptr->__front_anm->instantiate_vm_to_world_list_back(57);
+        float poc_height = PLAYER_PTR->poc_height;
+        Float3 position = { 0.0f, poc_height + poc_height - 80.0f, 0.0f };
+        id.set_controller_position(&position);
+        gui_ptr->__unknown_flag_B = false;
+    }
+
+    if (SUPERVISOR.__int_804) {
+        AnmID id = gui_ptr->__front_anm->instantiate_vm_to_world_list_back(69 + GAME_MANAGER.globals.difficulty);
+        gui_ptr->__difficulty_indicatorA = id;
+        id.interrupt_tree(3);
+    }
+
+    gui_ptr->__difficulty_indicatorB = gui_ptr->__front_anm->instantiate_vm_to_world_list_back(75 + GAME_MANAGER.globals.difficulty);
+    gui_ptr->__shottype_indicator = gui_ptr->__front_anm->instantiate_vm_to_world_list_back(101 + GAME_MANAGER.globals.shottype_index());
+
+    for (size_t i = 0; i != MAX_LIFEBARS_IN_GUI; ++i) {
+        gui_ptr->lifebars[i].vms_initialized = false;
+    }
+    gui_ptr->__boss_life_count = 0;
+
+    if (gui_ptr->__anm_id_100) {
+        gui_ptr->__anm_id_100.interrupt_and_orphan_tree(1);
+    }
+}
+
 // 0x43BB70
 dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
     if (this->__unknown_flag_A) {
@@ -45057,8 +45196,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
         !this->msg_vm &&
         !GAME_THREAD_PTR->__unknown_flag_F
     ) {
-        this->__anm_vm_84->__tree_set_visible2();
-        this->__anm_vm_88->__tree_set_visible2();
+        this->spell_timer_vms[0]->__tree_set_visible2();
+        this->spell_timer_vms[1]->__tree_set_visible2();
 
         int32_t state = this->__unknown_field_B;
         if (state == 0) {
@@ -45069,8 +45208,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
                 (spell_flag && player->data.position.y > 320.0f)
             ) {
                 this->__unknown_field_B = 1;
-                this->__anm_vm_84->interrupt(5);
-                this->__anm_vm_88->interrupt(5);
+                this->spell_timer_vms[0]->interrupt(5);
+                this->spell_timer_vms[1]->interrupt(5);
             }
         }
         else {
@@ -45082,20 +45221,20 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
                     (!spell_flag && player->data.position.y < 160.0f) ||
                     (spell_flag && player->data.position.y > 288.0f)
                 ) {
-                    this->__anm_vm_84->interrupt(4);
-                    this->__anm_vm_88->interrupt(4);
+                    this->spell_timer_vms[0]->interrupt(4);
+                    this->spell_timer_vms[1]->interrupt(4);
                 }
             }
             else {
                 if (spellcard->__unknown_flag_H) {
-                    this->__anm_vm_84->interrupt_and_run(2);
-                    this->__anm_vm_88->interrupt_and_run(2);
+                    this->spell_timer_vms[0]->interrupt_and_run(2);
+                    this->spell_timer_vms[1]->interrupt_and_run(2);
                 }
                 else {
-                    this->__anm_vm_84->interrupt_and_run(3);
-                    this->__anm_vm_88->interrupt_and_run(3);
-                    this->__anm_vm_84->interrupt_and_run(4);
-                    this->__anm_vm_88->interrupt_and_run(4);
+                    this->spell_timer_vms[0]->interrupt_and_run(3);
+                    this->spell_timer_vms[1]->interrupt_and_run(3);
+                    this->spell_timer_vms[0]->interrupt_and_run(4);
+                    this->spell_timer_vms[1]->interrupt_and_run(4);
                 }
             }
             this->__unknown_field_B = 0;
@@ -45105,32 +45244,32 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
         int32_t A = this->__int_1C0;
         if (spell_seconds < A) {
             if (spell_seconds < 2) {
-                this->__anm_vm_84->interrupt(9);
-                this->__anm_vm_88->interrupt(9);
+                this->spell_timer_vms[0]->interrupt(9);
+                this->spell_timer_vms[1]->interrupt(9);
                 SOUND_MANAGER.play_sound(12);
             }
             else if (spell_seconds < 5) {
-                this->__anm_vm_84->interrupt(8);
-                this->__anm_vm_88->interrupt(8);
+                this->spell_timer_vms[0]->interrupt(8);
+                this->spell_timer_vms[1]->interrupt(8);
                 SOUND_MANAGER.play_sound(11);
             }
         }
         else if (spell_seconds > A) {
-            this->__anm_vm_84->interrupt(7);
-            this->__anm_vm_88->interrupt(7);
+            this->spell_timer_vms[0]->interrupt(7);
+            this->spell_timer_vms[1]->interrupt(7);
         }
 
         spell_seconds = this->spell_timer_seconds;
         if (spell_seconds != this->__int_1C0) {
-            this->__anm_vm_84->set_sprite(spell_seconds / 10 + 239);
-            this->__anm_vm_88->set_sprite(this->spell_timer_seconds % 10 + 239);
+            this->spell_timer_vms[0]->set_sprite(spell_seconds / 10 + 239);
+            this->spell_timer_vms[1]->set_sprite(this->spell_timer_seconds % 10 + 239);
             spell_seconds = this->spell_timer_seconds;
         }
         this->__int_1C0 = spell_seconds;
     }
     else {
-        this->__anm_vm_84->__tree_clear_visible2();
-        this->__anm_vm_88->__tree_clear_visible2();
+        this->spell_timer_vms[0]->__tree_clear_visible2();
+        this->spell_timer_vms[1]->__tree_clear_visible2();
     }
 
     enemy_manager = ENEMY_MANAGER_PTR;
@@ -45163,11 +45302,11 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
                     }
 
                     if (!lifebar.vms_initialized) {
-                        lifebar.main_vm = this->__anm_loaded_2C0->instantiate_vm_to_world_list_back(378);
-                        lifebar.glowA_vm = this->__anm_loaded_2C0->instantiate_vm_to_world_list_back(379);
-                        lifebar.glowB_vm = this->__anm_loaded_2C0->instantiate_vm_to_world_list_back(380);
+                        lifebar.main_vm = this->__front_anm->instantiate_vm_to_world_list_back(378);
+                        lifebar.glowA_vm = this->__front_anm->instantiate_vm_to_world_list_back(379);
+                        lifebar.glowB_vm = this->__front_anm->instantiate_vm_to_world_list_back(380);
                         for (size_t j = 0; j < MAX_LIFEBAR_MARKERS; ++j) {
-                            lifebar.marker_vms[j] = this->__anm_loaded_2C0->instantiate_vm_to_world_list_back(381);
+                            lifebar.marker_vms[j] = this->__front_anm->instantiate_vm_to_world_list_back(381);
                         }
                         lifebar.vms_initialized = TRUE;
                     }
@@ -45238,7 +45377,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
     for (size_t i = 0; i < MAX_BOSS_LIFE_MARKERS; ++i) {
         if (i < this->__boss_life_count) {
             if (!this->__boss_life_markers[i]) {
-                this->__boss_life_markers[i] = this->__anm_loaded_2C0->instantiate_vm_to_world_list_back(i + 58);
+                this->__boss_life_markers[i] = this->__front_anm->instantiate_vm_to_world_list_back(i + 58);
             }
         }
         else {
@@ -45265,7 +45404,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
             !boss->data.intangible &&
             !boss->data.disable_hitbox
         ) {
-            AnmVM* vm = this->__anm_id_8C.get_vm_ptr();
+            AnmVM* vm = this->boss_indicator.get_vm_ptr();
             vm->__tree_set_visible2();
 
             int32_t state = this->__unknown_field_C;
@@ -45351,7 +45490,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
             }
         }
         else {
-            this->__anm_id_8C.__tree_clear_visible2();
+            this->boss_indicator.__tree_clear_visible2();
         }
     }
 
@@ -45653,7 +45792,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
         !PAUSE_MENU_PTR->__int_1EC &&
         !GAME_THREAD_PTR->__unknown_flag_F
     ) {
-        vm = this->__anm_vm_84;
+        vm = this->spell_timer_vms[0];
 
         position.z = 0.0f;
         float X = vm->data.position.x + 16.0f;
@@ -46635,7 +46774,7 @@ inline void GameThread::__start_stage() {
 
     EnemyInitData init_data = {};
     ENEMY_MANAGER_PTR->allocate_new_enemy("main", &init_data);
-    Gui::__sub_43A8B0();
+    Gui::__allocate_hud();
 
     PAUSE_MENU_PTR->enable_funcs();
 
