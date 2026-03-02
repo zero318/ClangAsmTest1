@@ -59,6 +59,7 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define FIX_REALLY_BAD_BUGS 1
 #define PROTECT_ORIGINAL_FILES 1
 #define IGNORE_HASH_CHECKS 1
+#define OVERRIDE_PATH_CHECKS 1
 
 #define USE_EXTERN_FOR_CODEGEN 0
 
@@ -3495,6 +3496,27 @@ enum SfxType : uint8_t {
     ENUM_MAX_VALUE_DECLARE(SfxType)
 };
 
+enum WindowResolution : uint32_t {
+    Fullscreen640x480 = 0,
+    Fullscreen960x720 = 1,
+    Fullscreen1280x960 = 2,
+    Windowed640x480 = 3,
+    Windowed960x720 = 4,
+    Windowed1280x960 = 5,
+    Windowed1920x1440 = 6,
+    Windowed2560x1920 = 7,
+    BorderlessDotByDot = 8,
+    Borderless = 9,
+    ENUM_MAX_VALUE_DECLARE(WindowResolution)
+};
+
+enum InputConfig : uint8_t {
+    InputSafe = 0,
+    InputNormal = 1,
+    InputAuto = 2,
+    InputFast = 3
+};
+
 // size : 0x88
 struct Config {
     int __dword_0; // 0x0
@@ -3506,13 +3528,13 @@ struct Config {
     uint8_t __ubyte_44; // 0x44
     uint8_t bgm_type; // 0x45
     uint8_t sfx_type; // 0x46
-    uint8_t __ubyte_47; // 0x47
-    uint8_t __ubyte_48; // 0x48
+    uint8_t resolution; // 0x47
+    uint8_t frame_skip; // 0x48
     uint8_t __ubyte_49; // 0x49
     int8_t bgm_volume; // 0x4A
     int8_t sound_volume; // 0x4B
     char __byte_4C; // 0x4C
-    char __byte_4D; // 0x4D
+    uint8_t input_method; // 0x4D
     uint8_t __ubyte_4E; // 0x4E
     unknown_fields(0x1); // 0x4F
     union {
@@ -3547,14 +3569,14 @@ struct Config {
         this->deadzone_y = 0x258;
         this->bgm_type = BgmWav;
         this->sfx_type = SfxOn;
-        this->__ubyte_47 = 8;
+        this->resolution = BorderlessDotByDot;
         this->joypad_mapping = INPUT_STATES[0].joypad_mapping;
         this->xinput_mapping = INPUT_STATES[0].xinput_mapping;
         this->keyboard_mapping = INPUT_STATES[0].keyboard_mapping;
         this->__ubyte_49 = 2;
         this->bgm_volume = 100;
         this->__byte_4C = 0;
-        this->__byte_4D = 2;
+        this->input_method = InputAuto;
         this->sound_volume = 50;
         this->window_x = INT32_MIN;
         this->window_y = INT32_MIN;
@@ -3574,13 +3596,13 @@ ValidateFieldOffset32(0x42, Config, deadzone_y);
 ValidateFieldOffset32(0x44, Config, __ubyte_44);
 ValidateFieldOffset32(0x45, Config, bgm_type);
 ValidateFieldOffset32(0x46, Config, sfx_type);
-ValidateFieldOffset32(0x47, Config, __ubyte_47);
-ValidateFieldOffset32(0x48, Config, __ubyte_48);
+ValidateFieldOffset32(0x47, Config, resolution);
+ValidateFieldOffset32(0x48, Config, frame_skip);
 ValidateFieldOffset32(0x49, Config, __ubyte_49);
 ValidateFieldOffset32(0x4A, Config, bgm_volume);
 ValidateFieldOffset32(0x4B, Config, sound_volume);
 ValidateFieldOffset32(0x4C, Config, __byte_4C);
-ValidateFieldOffset32(0x4D, Config, __byte_4D);
+ValidateFieldOffset32(0x4D, Config, input_method);
 ValidateFieldOffset32(0x4E, Config, __ubyte_4E);
 ValidateFieldOffset32(0x50, Config, flags);
 ValidateFieldOffset32(0x54, Config, window_x);
@@ -7950,8 +7972,8 @@ struct WindowData {
         struct {
             uint32_t __unknown_flag_A : 1; // 1
             uint32_t __unknown_flag_B : 1; // 2
-            uint32_t __unknown_bitfield_A : 5; // 3-7
-            uint32_t __unknown_flag_C : 1; // 8
+            uint32_t config_resolution : 5; // 3-7
+            uint32_t __enable_vsync : 1; // 8
             uint32_t __unknown_bitfield_B : 2; // 9-10
         };
     };
@@ -8012,7 +8034,7 @@ struct WindowData {
     dllexport gnu_noinline void thiscall present__alt_version2() asm_symbol_rel(0x472B50);
     
     // 0x4734E0
-    dllexport gnu_noinline void __sub_4734E0(int arg1) asm_symbol_rel(0x4734E0);
+    dllexport gnu_noinline void __sub_4734E0(BOOL arg1) asm_symbol_rel(0x4734E0);
     
     // 0x473890
     dllexport gnu_noinline BOOL __create_window(HINSTANCE instance) asm_symbol_rel(0x473890);
@@ -44893,6 +44915,133 @@ extern "C" {
     externcg MainMenu* MAIN_MENU_PTR cgasm("_MAIN_MENU_PTR");
 }
 
+static int32_t DEBUG_STAGE = 1;
+static Difficulty DEBUG_DIFFICULTY = NORMAL;
+static CharacterID DEBUG_CHARACTER = Reimu;
+static char* DEBUG_PATH = NULL;
+
+#if TESTING_FEATURES
+template<size_t N>
+const wchar_t* get_arg(const wchar_t* arg, const wchar_t(&name)[N], int argc, int& i, wchar_t** argv) {
+    switch (*arg++) { // First char
+        case L'-': // linux arguments
+        case L'/': // windows arguments
+            if (*arg++ == name[0]) { // Second char
+                switch (*arg++) { // Third char
+                    default:
+                        if (wcscmp(arg - 1, &name[1])) {
+                            break;
+                        }
+                        arg += N - 2;
+                        switch (*arg++) {
+                            case L':':
+                            case L'=':
+                                goto arg_symbol;
+                            case L'\0':
+                                goto arg_end;
+                        }
+                        break;
+                    arg_symbol:
+                    case L':': // linux arguments
+                    case L'=': // windows arguments
+                        if (*arg == L'\0') {
+                    case L'\0': arg_end:
+                            if (++i >= argc) {
+                                break;
+                            }
+                            return argv[i];
+                        }
+                        return arg;
+                }
+            }
+    }
+    return NULL;
+}
+
+gnu_noinline void debug_command_line() {
+    int argc;
+    //const wchar_t* command_line = GetCommandLineW();
+    const wchar_t* command_line = L"pingas -p \"F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\"";
+    if (wchar_t** argv = CommandLineToArgvW(command_line, &argc)) {
+        if (argc > 1) {
+            for (int i = 1; i < argc; ++i) {
+                const wchar_t* arg = _wcslwr(argv[i]);
+                if (const wchar_t* path_arg = get_arg(arg, L"path", argc, i, argv)) {
+                    size_t path_length = wcslen(path_arg) + 1;
+                    int length = WideCharToMultiByte(CP_THREAD_ACP, 0, path_arg, path_length, NULL, 0, NULL, NULL);
+                    if (length > 0 && length < countof(WindowData::exe_path)) {
+                        SetCurrentDirectoryW(path_arg);
+                        char* path = DEBUG_PATH;
+                        if (path) {
+                            free(path);
+                        }
+                        path = (char*)malloc(length);
+                        WideCharToMultiByte(CP_THREAD_ACP, 0, path_arg, path_length, path, length, NULL, NULL);
+                        DEBUG_PATH = path;
+                    }
+                }
+                else if (const wchar_t* stage_arg = get_arg(arg, L"stage", argc, i, argv)) {
+                    switch (wchar_t c = stage_arg[0]) {
+                        case L'1' ... L'7':
+                            DEBUG_STAGE = c - L'0';
+                            break;
+                        case L'e': case L'x':
+                            DEBUG_STAGE = 7;
+                            break;
+                    }
+                } else if (const wchar_t* diff_arg = get_arg(arg, L"difficulty", argc, i, argv)) {
+                    switch (wchar_t c = diff_arg[0]) {
+                        case L'e':
+                            if (diff_arg[1] != L'x') {
+                        case L'0':
+                                DEBUG_DIFFICULTY = EASY;
+                            } else {
+                        case L'x': case L'4':
+                                DEBUG_DIFFICULTY = EXTRA;
+                            }
+                            break;
+                        case L'n': case L'1':
+                            DEBUG_DIFFICULTY = NORMAL;
+                            break;
+                        case L'h': case L'2':
+                            DEBUG_DIFFICULTY = HARD;
+                            break;
+                        case L'l': case L'3':
+                            DEBUG_DIFFICULTY = LUNATIC;
+                            break;
+                        case L'o': case L'5':
+                            DEBUG_DIFFICULTY = OVERDRIVE;
+                            break;
+                    }
+                } else if (const wchar_t* char_arg = get_arg(arg, L"character", argc, i, argv)) {
+                    switch (wchar_t c = char_arg[0]) {
+                        case L'r': case L'0':
+                            DEBUG_CHARACTER = Reimu;
+                            break;
+                        case L'm': case L'1':
+                            DEBUG_CHARACTER = Marisa;
+                            break;
+                        case L's':
+                            if (char_arg[1] == L'a') {
+                                if (char_arg[2] == L'k') {
+                        case L'2': case 'y':
+                                    DEBUG_CHARACTER = Sakuya;
+                                    break;
+                                } else if (char_arg[2] == L'n') {
+                        case L'3': case L'g': // green reimu
+                                    DEBUG_CHARACTER = Sanae;
+                                    break;
+                                }
+                            }
+                    }
+                }
+            }
+        }
+        LocalFree(argv);
+    }
+}
+#endif
+
 // size: 0x5D98
 struct MainMenu : ZUNTask {
     // void* vftable; // 0x0
@@ -45012,10 +45161,10 @@ struct MainMenu : ZUNTask {
 #if DEBUG_SKIP_MENUS
                 // DEBUG: Try to directly start a game?
                 SUPERVISOR.gamemode_switch = 10;
-                GAME_MANAGER.globals.__stage_number_related_4 = 1;
+                GAME_MANAGER.globals.__stage_number_related_4 = DEBUG_STAGE;
                 GAME_MANAGER.globals.__ecl_var_9907 = -1;
-                GAME_MANAGER.globals.difficulty = NORMAL;
-                GAME_MANAGER.globals.character = Reimu;
+                GAME_MANAGER.globals.difficulty = DEBUG_DIFFICULTY;
+                GAME_MANAGER.globals.character = DEBUG_CHARACTER;
 #endif
             }
 #if !DEBUG_SKIP_MENUS
@@ -46466,8 +46615,8 @@ dllexport gnu_noinline ZUNResult thiscall Supervisor::load_config_file(int) {
             SUPERVISOR.config.__ubyte_44 < 2 &&
             SUPERVISOR.config.bgm_type < ENUM_MAX_VALUE(BgmType) + 1 &&
             SUPERVISOR.config.sfx_type < ENUM_MAX_VALUE(SfxType) + 1 &&
-            SUPERVISOR.config.__ubyte_47 < 10 &&
-            SUPERVISOR.config.__ubyte_48 < 3 &&
+            SUPERVISOR.config.resolution < ENUM_MAX_VALUE(WindowResolution) + 1 &&
+            SUPERVISOR.config.frame_skip < 3 &&
             SUPERVISOR.config.__ubyte_49 < 3 &&
             SUPERVISOR.config.__dword_0 == 0x180002 &&
             file_size == 0x88
@@ -47605,6 +47754,11 @@ dllexport gnu_noinline ZUNResult WindowData::__save_properties_and_configure_pat
             *final_slash = '\0';
         }
         DebugLogger::__debug_log_stub_11("%d\n", exe_path);
+#if OVERRIDE_PATH_CHECKS
+        if (DEBUG_PATH) {
+            strcpy(this->exe_path, DEBUG_PATH);
+        }
+#endif
     }
     if (chdir(exe_path)) return ZUN_ERROR;
     return ZUN_SUCCESS;
@@ -47675,7 +47829,7 @@ inline int32_t WindowData::update_window_common(const L& lambda) {
     }
 
     ++this->__sbyte_1C;
-    if (SUPERVISOR.config.__ubyte_48 < this->__sbyte_1C) {
+    if (SUPERVISOR.config.frame_skip < this->__sbyte_1C) {
         SUPERVISOR.d3d_device->BeginScene();
         ANM_MANAGER_PTR->reset_vertex_buffers();
         SUPERVISOR.fog_enabled = 0xFF;
@@ -47750,7 +47904,7 @@ inline void WindowData::present__alt_version() {
     double A = get_runtime();
     this->__double_2098 = A;
 
-    if (SUPERVISOR.config.__byte_4D == 1) {
+    if (SUPERVISOR.config.input_method == InputNormal) { // 1
         double B = A;
         double C = this->__double_20B8;
         B -= C;
@@ -47930,15 +48084,16 @@ dllexport gnu_noinline LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wPa
         case WM_SIZE: // 0x5
             if (WINDOW_DATA.__unknown_flag_A && wParam == SIZE_MAXIMIZED) {
                 WINDOW_DATA.__unknown_flag_B = true;
-                switch (WINDOW_DATA.__unknown_bitfield_A) {
-                    case 3:
-                        WINDOW_DATA.__unknown_bitfield_A = 0;
+                switch (WINDOW_DATA.config_resolution) {
+                    case Windowed640x480: // 3
+                        WINDOW_DATA.config_resolution = Fullscreen640x480; // 0
                         return DefWindowProcA(hWnd, uMsg, wParam, lParam);
-                    case 4:
-                        WINDOW_DATA.__unknown_bitfield_A = 1;
+                    case Windowed960x720: // 4
+                        WINDOW_DATA.config_resolution = Fullscreen960x720; // 1
                         return DefWindowProcA(hWnd, uMsg, wParam, lParam);
-                    case 5: case 6:
-                        WINDOW_DATA.__unknown_bitfield_A = 2;
+                    case Windowed1280x960: // 5
+                    case Windowed1920x1440: // 6
+                        WINDOW_DATA.config_resolution = Fullscreen1280x960; // 2
                         return DefWindowProcA(hWnd, uMsg, wParam, lParam);
                 }
             }
@@ -47975,52 +48130,54 @@ dllexport gnu_noinline LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wPa
         case WM_SYSKEYDOWN: // 0x104
             if (wParam == VK_RETURN) {
                 WINDOW_DATA.__unknown_flag_B = true;
-                switch (WINDOW_DATA.__unknown_bitfield_A) {
-                    case 3:
-                        WINDOW_DATA.__unknown_bitfield_A = 0;
+                switch (WINDOW_DATA.config_resolution) {
+                    case Windowed640x480: // 3
+                        WINDOW_DATA.config_resolution = Fullscreen640x480; // 0
                         return DefWindowProcA(hWnd, uMsg, wParam, lParam);
-                    case 4:
-                        WINDOW_DATA.__unknown_bitfield_A = 1;
+                    case Windowed960x720: // 4
+                        WINDOW_DATA.config_resolution = Fullscreen960x720; // 1
                         return DefWindowProcA(hWnd, uMsg, wParam, lParam);
-                    case 5: case 6: case 7:
-                        WINDOW_DATA.__unknown_bitfield_A = 2;
+                    case Windowed1280x960: // 5
+                    case Windowed1920x1440: // 6
+                    case Windowed2560x1920: // 7
+                        WINDOW_DATA.config_resolution = Fullscreen1280x960; // 2
                         return DefWindowProcA(hWnd, uMsg, wParam, lParam);
-                    case 2:
+                    case Fullscreen1280x960: // 2
                         switch (SUPERVISOR.config.__ubyte_4E) {
                             case 4:
-                                WINDOW_DATA.__unknown_bitfield_A = 7;
+                                WINDOW_DATA.config_resolution = Windowed2560x1920; // 7
                                 return DefWindowProcA(hWnd, uMsg, wParam, lParam);
                             case 3:
-                                WINDOW_DATA.__unknown_bitfield_A = 6;
+                                WINDOW_DATA.config_resolution = Windowed1920x1440; // 6
                                 return DefWindowProcA(hWnd, uMsg, wParam, lParam);
                             default:
-                                WINDOW_DATA.__unknown_bitfield_A = 5;
+                                WINDOW_DATA.config_resolution = Windowed1280x960; // 5
                                 return DefWindowProcA(hWnd, uMsg, wParam, lParam);
                         }
                     case 8: case 9:
                         switch (SUPERVISOR.config.__ubyte_4E) {
                             case 4:
-                                WINDOW_DATA.__unknown_bitfield_A = 7;
+                                WINDOW_DATA.config_resolution = Windowed2560x1920; // 7
                                 return DefWindowProcA(hWnd, uMsg, wParam, lParam);
                             case 3:
-                                WINDOW_DATA.__unknown_bitfield_A = 6;
+                                WINDOW_DATA.config_resolution = Windowed1920x1440; // 6
                                 return DefWindowProcA(hWnd, uMsg, wParam, lParam);
                             case 2: case 5:
-                                WINDOW_DATA.__unknown_bitfield_A = 5;
+                                WINDOW_DATA.config_resolution = Windowed1280x960; // 5
                                 return DefWindowProcA(hWnd, uMsg, wParam, lParam);
                             case 0:
-                                WINDOW_DATA.__unknown_bitfield_A = 3;
+                                WINDOW_DATA.config_resolution = Windowed640x480; // 3
                                 return DefWindowProcA(hWnd, uMsg, wParam, lParam);
                             case 1:
-                                WINDOW_DATA.__unknown_bitfield_A = 4;
+                                WINDOW_DATA.config_resolution = Windowed960x720; // 4
                                 return DefWindowProcA(hWnd, uMsg, wParam, lParam);
                         }
                         break;
-                    case 0:
-                        WINDOW_DATA.__unknown_bitfield_A = 3;
+                    case Fullscreen640x480: // 0
+                        WINDOW_DATA.config_resolution = Windowed640x480; // 3
                         return DefWindowProcA(hWnd, uMsg, wParam, lParam);
-                    case 1:
-                        WINDOW_DATA.__unknown_bitfield_A = 4;
+                    case Fullscreen960x720: // 1
+                        WINDOW_DATA.config_resolution = Windowed960x720; // 4
                         return DefWindowProcA(hWnd, uMsg, wParam, lParam);
                 }
             }
@@ -48036,71 +48193,113 @@ dllexport gnu_noinline LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wPa
 }
 
 // 0x4734E0
-dllexport gnu_noinline void WindowData::__sub_4734E0(int arg1) {
-    float floatA;
+dllexport gnu_noinline void WindowData::__sub_4734E0(BOOL arg1) {
+    float scale;
     int32_t height;
     int32_t width;
-    switch (int32_t intA = WINDOW_DATA.__unknown_bitfield_A) {
-        case 7:
-            WINDOW_DATA.__game_scale = floatA = 2.0f;
+    switch (int32_t intA = WINDOW_DATA.config_resolution) {
+        case Windowed2560x1920: // 7
+            WINDOW_DATA.__game_scale = scale = 2.0f;
             WINDOW_DATA.window_width = 2560;
             WINDOW_DATA.window_height = 1920;
             break;
-        case 6:
-            WINDOW_DATA.__game_scale = floatA = 2.0f;
+        case Windowed1920x1440: // 6
+            WINDOW_DATA.__game_scale = scale = 2.0f;
             WINDOW_DATA.window_width = 1920;
             WINDOW_DATA.window_height = 1440;
             break;
         default:
-            WINDOW_DATA.__game_scale = floatA = 1.0f;
+            WINDOW_DATA.__game_scale = scale = 1.0f;
             WINDOW_DATA.window_width = 640;
             WINDOW_DATA.window_height = 480;
             break;
-        case 1: case 4:
-            WINDOW_DATA.__game_scale = floatA = 1.5f;
+        case Fullscreen960x720: // 1
+        case Windowed960x720: // 4
+            WINDOW_DATA.__game_scale = scale = 1.5f;
             WINDOW_DATA.window_width = 960;
             WINDOW_DATA.window_height = 720;
             break;
-        case 2: case 5:
-            WINDOW_DATA.__game_scale = floatA = 2.0f;
+        case Fullscreen1280x960: // 2
+        case Windowed1280x960: // 5
+            WINDOW_DATA.__game_scale = scale = 2.0f;
             WINDOW_DATA.window_width = 1280;
             WINDOW_DATA.window_height = 960;
             break;
-        case 8: case 9:
+        case BorderlessDotByDot: // 8
+        case Borderless: // 9
             if (arg1) {
                 height = WINDOW_DATA.__display_height;
                 width = WINDOW_DATA.__display_width;
                 WINDOW_DATA.window_width = width;
                 WINDOW_DATA.window_height = height;
                 if (width >= 2560 && height >= 1920) {
-                    WINDOW_DATA.__game_scale = floatA = 2.0f;
+                    WINDOW_DATA.__game_scale = scale = 2.0f;
                     SUPERVISOR.config.__ubyte_4E = 4;
                 }
                 else if (width >= 1920 && height >= 1440) {
-                    WINDOW_DATA.__game_scale = floatA = 2.0f;
+                    WINDOW_DATA.__game_scale = scale = 2.0f;
                     SUPERVISOR.config.__ubyte_4E = 3;
                 }
                 else if (width >= 1280 && height >= 960) {
-                    WINDOW_DATA.__game_scale = floatA = 2.0f;
+                    WINDOW_DATA.__game_scale = scale = 2.0f;
                     SUPERVISOR.config.__ubyte_4E = 2;
                 }
                 else if (width >= 960 && height >= 720) {
-                    WINDOW_DATA.__game_scale = floatA = 1.5f;
+                    WINDOW_DATA.__game_scale = scale = 1.5f;
                     SUPERVISOR.config.__ubyte_4E = 1;
                 }
                 else {
-                    floatA = 1.0f;
+                    scale = 1.0f;
                     SUPERVISOR.config.__ubyte_4E = 0;
-                    WINDOW_DATA.__game_scale = floatA;
+                    WINDOW_DATA.__game_scale = scale;
                 }
             } else {
-                floatA = WINDOW_DATA.__game_scale;
+                scale = WINDOW_DATA.__game_scale;
             }
-            // Screw this crap
-            __asm INT 3
+            float widthf = width;
+            int32_t logical_width = scale * LOGICAL_WINDOW_WIDTH;
+            int32_t logical_height = scale * LOGICAL_WINDOW_HEIGHT;
+            float logical_widthf = logical_width;
+            float logical_heightf = logical_height;
+            float logical_ratio = logical_widthf / logical_heightf;
+            if (intA == Borderless) {
+                float heightf = height;
+                float ratio = widthf / heightf;
+                if (ratio <= logical_ratio) {
+                    ratio * logical_heightf;
+                    WINDOW_DATA.__backbuffer_height = logical_height;
+                    WINDOW_DATA.__backbuffer_width = ratio;
+                } else {
+                    heightf /= widthf;
+                    WINDOW_DATA.__backbuffer_width = logical_width;
+                    heightf *= logical_widthf;
+                    WINDOW_DATA.__backbuffer_height = heightf;
+                }
+            }
+            else {
+                float heightf = height;
+                logical_heightf = logical_height;
+                float ratio = widthf / heightf;
+                if (ratio <= logical_ratio) {
+                    logical_height /= 2;
+                    int32_t new_height = logical_height;
+                    int32_t display_height = WINDOW_DATA.__display_height;
+                    while ((new_height += logical_height) < display_height);
+                    new_height = (heightf / new_height) * logical_heightf;
+                    WINDOW_DATA.__backbuffer_height = new_height;
+                    WINDOW_DATA.__backbuffer_width = new_height * ratio;
+                } else {
+                    logical_width /= 2;
+                    int32_t new_width = logical_width;
+                    heightf /= widthf;
+                    while ((new_width += logical_width) < width);
+                    WINDOW_DATA.__backbuffer_width = (widthf / new_width) * logical_heightf;
+                    WINDOW_DATA.__backbuffer_height *= heightf;
+                }
+            }
     }
-    height = floatA * LOGICAL_WINDOW_HEIGHT;
-    width = floatA * LOGICAL_WINDOW_WIDTH;
+    height = scale * LOGICAL_WINDOW_HEIGHT;
+    width = scale * LOGICAL_WINDOW_WIDTH;
     WINDOW_DATA.__scaled_height = height;
     WINDOW_DATA.__scaled_width = width;
     this->__width_related_2074 = (int32_t)(width - (float)SCREEN_WIDTH) / 2;
@@ -48127,12 +48326,12 @@ dllexport gnu_noinline BOOL WindowData::__create_window(HINSTANCE instance) {
     this->__dword_14 = 0;
     class_def.lpszClassName = "BASE";
     RegisterClassA(&class_def);
-    this->__unknown_bitfield_A = SUPERVISOR.config.__ubyte_47;
-    SUPERVISOR.present_parameters.Windowed = this->__unknown_bitfield_A >= 3;
-    if (SUPERVISOR.config.__ubyte_48 && SUPERVISOR.config.__byte_4D == 2) {
-        this->__unknown_flag_C = true;
+    this->config_resolution = SUPERVISOR.config.resolution;
+    SUPERVISOR.present_parameters.Windowed = this->config_resolution >= Windowed640x480; // 3
+    if (SUPERVISOR.config.frame_skip && SUPERVISOR.config.input_method == InputAuto) { // 2
+        this->__enable_vsync = true;
     } else {
-        this->__unknown_flag_C = false;
+        this->__enable_vsync = false;
     }
     this->__int3_array_20D4[0][0] = 15;
     this->__int3_array_20D4[0][1] = 15;
@@ -48164,7 +48363,10 @@ dllexport gnu_noinline BOOL WindowData::__create_window(HINSTANCE instance) {
             NULL
         );
     }
-    else if (WINDOW_DATA.__unknown_bitfield_A != 8 && WINDOW_DATA.__unknown_bitfield_A != 9) {
+    else if (
+        WINDOW_DATA.config_resolution != BorderlessDotByDot && // 8
+        WINDOW_DATA.config_resolution != Borderless // 9
+    ) {
         RECT rect;
         rect.right = this->window_width;
         rect.bottom = this->window_height;
@@ -48347,7 +48549,7 @@ dllexport gnu_noinline void set_selected_resolution() {
     }
     for (int32_t i = 0; i < countof(ResolutionDialogButtonIDs); ++i) {
         if (IsDlgButtonChecked(WINDOW_DATA.resolution_dialogue, ResolutionDialogButtonIDs[i]) == BST_CHECKED) {
-            SUPERVISOR.config.__ubyte_47 = i;
+            SUPERVISOR.config.resolution = i;
             SUPERVISOR.config.__ubyte_4E = ResolutionConfigValues[i];
             return;
         }
@@ -48369,7 +48571,7 @@ dllexport gnu_noinline INT_PTR CALLBACK ResolutionDlgProc(HWND hWnd, UINT uMsg, 
             if (SUPERVISOR.config.__unknown_flag_A) {
                 SendMessageA(GetDlgItem(hWnd, 0xCA), BM_SETCHECK, BST_CHECKED, 0);
             }
-            SendMessageA(GetDlgItem(hWnd, ResolutionDialogButtonIDs[SUPERVISOR.config.__ubyte_47]), BM_SETCHECK, BST_CHECKED, 0);
+            SendMessageA(GetDlgItem(hWnd, ResolutionDialogButtonIDs[SUPERVISOR.config.resolution]), BM_SETCHECK, BST_CHECKED, 0);
             WINDOW_DATA.__unknown_bitfield_B = 2;
             break;
         case WM_CLOSE: // 0x10
@@ -48518,8 +48720,8 @@ dllexport gnu_noinline ZUNResult fastcall __sub_473B20(BOOL arg1) asm_symbol_rel
 dllexport gnu_noinline ZUNResult fastcall __sub_473B20(BOOL arg1) {
     D3DPRESENT_PARAMETERS present_parameters = SUPERVISOR.present_parameters;
     BOOL is_second_iteration = false;
-    if (SUPERVISOR.config.__byte_4D == 3) {
-        WINDOW_DATA.__unknown_flag_C = false;
+    if (SUPERVISOR.config.input_method == InputFast) { // 3
+        WINDOW_DATA.__enable_vsync = false;
         present_parameters.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
     } else {
         present_parameters.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
@@ -48529,7 +48731,7 @@ dllexport gnu_noinline ZUNResult fastcall __sub_473B20(BOOL arg1) {
         do {
             if (
                 i == 0 &&
-                (WINDOW_DATA.__unknown_bitfield_A == 8 || WINDOW_DATA.__unknown_bitfield_A == 9)
+                (WINDOW_DATA.config_resolution == BorderlessDotByDot || WINDOW_DATA.config_resolution == Borderless)
             ) {
                 present_parameters.BackBufferWidth = WINDOW_DATA.__backbuffer_width;
                 present_parameters.BackBufferHeight = WINDOW_DATA.__backbuffer_height;
@@ -48606,7 +48808,7 @@ reset_success:
     int32_t refresh_rate = GetDeviceCaps(hdc, VREFRESH);
     ReleaseDC(WINDOW_DATA.window, hdc);
     if (refresh_rate != 60) {
-        WINDOW_DATA.__unknown_flag_C = false;
+        WINDOW_DATA.__enable_vsync = false;
         present_parameters.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
     }
     SUPERVISOR.present_parameters = present_parameters;
@@ -48640,7 +48842,7 @@ dllexport gnu_noinline int32_t __initialize_d3d() {
     display_mode.Format = d3d_format;
     SUPERVISOR.display_mode = display_mode;
     if (SUPERVISOR.present_parameters.Windowed && refresh_rate != 60) {
-        WINDOW_DATA.__unknown_flag_C = false;
+        WINDOW_DATA.__enable_vsync = false;
     }
     BOOL boolA = true;
     SUPERVISOR.disable_vsync = WINDOW_DATA.__bool_30 ? boolA : SUPERVISOR.disable_vsync;
@@ -48655,8 +48857,8 @@ dllexport gnu_noinline int32_t __initialize_d3d() {
         if (!SUPERVISOR.disable_vsync) {
             // IDK how this might've originally looked, so comma jank
             if (
-                WINDOW_DATA.__unknown_flag_C ||
-                ((present_parameters.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE), SUPERVISOR.config.__byte_4D != 3)
+                WINDOW_DATA.__enable_vsync ||
+                ((present_parameters.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE), SUPERVISOR.config.input_method != InputFast) // 3
             ) {
                 present_parameters.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
             }
@@ -48672,13 +48874,13 @@ dllexport gnu_noinline int32_t __initialize_d3d() {
         present_parameters.SwapEffect = D3DSWAPEFFECT_DISCARD;
         d3d_format = d3d_format == D3DFMT_X8R8G8B8 ? D3DFMT_A8R8G8B8 : d3d_format;
         present_parameters.BackBufferFormat = d3d_format;
-        if (SUPERVISOR.config.__byte_4D != 3 && refresh_rate == 60) {
-            if (WINDOW_DATA.__unknown_flag_C) {
+        if (SUPERVISOR.config.input_method != InputFast && refresh_rate == 60) {
+            if (WINDOW_DATA.__enable_vsync) {
                 present_parameters.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
             }
         }
         else {
-            WINDOW_DATA.__unknown_flag_C = false;
+            WINDOW_DATA.__enable_vsync = false;
             present_parameters.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
         }
         present_parameters.Windowed = true;
@@ -48929,6 +49131,11 @@ extern "C" {
 // EH frame (terminate)
 dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow) EH_TERMINATE;
 dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow) EH_TERMINATE asm_symbol_rel(0x471270) {
+
+#if TESTING_FEATURES
+    debug_command_line();
+#endif
+
     HINSTANCE current_instance = hInstance;
     int local_int_18 = 0;
     WINDOW_DATA.current_instance = hInstance;
@@ -49020,7 +49227,7 @@ winmain_load_config:
     if (WINDOW_DATA.__unknown_bitfield_B) {
         goto winmain_important_label;
     }
-    WINDOW_DATA.__unknown_bitfield_A = SUPERVISOR.config.__ubyte_47;
+    WINDOW_DATA.config_resolution = SUPERVISOR.config.resolution;
 #if FIX_REALLY_BAD_BUGS
     char module_name[MAX_PATH + 1];
 #else
@@ -49114,12 +49321,12 @@ winmain_d3d_create_success:
                 switch (SUPERVISOR.d3d_device->TestCooperativeLevel()) {
                     case D3D_OK:
                         if (!WINDOW_DATA.__unknown_flag_B) {
-                            if (WINDOW_DATA.__unknown_flag_C) {
+                            if (WINDOW_DATA.__enable_vsync) {
                                 local_int_18 = WINDOW_DATA.update_window__alt_version2();
                             }
                             else if (
-                                SUPERVISOR.present_parameters.PresentationInterval == 1 &&
-                                SUPERVISOR.config.__ubyte_48 == 0
+                                SUPERVISOR.present_parameters.PresentationInterval == D3DPRESENT_INTERVAL_ONE &&
+                                SUPERVISOR.config.frame_skip == 0
                             ) {
                                 local_int_18 = WINDOW_DATA.update_window__alt_version();
                             }
@@ -49136,7 +49343,7 @@ winmain_d3d_create_success:
                         WINDOW_DATA.__counter_2044 = 10;
                         if (!WINDOW_DATA.__unknown_flag_B) {
                             D3DFORMAT format;
-                            if (WINDOW_DATA.__unknown_bitfield_A <= 2) {
+                            if (WINDOW_DATA.config_resolution <= Fullscreen1280x960) { // 2
                                 GetWindowRect(WINDOW_DATA.window, &SUPERVISOR.window_rect);
                                 SUPERVISOR.present_parameters.Windowed = FALSE;
                                 format = SUPERVISOR.config.__ubyte_44 ? D3DFMT_R5G6B5 : D3DFMT_A8R8G8B8;
@@ -49147,7 +49354,7 @@ winmain_d3d_create_success:
                                 SUPERVISOR.present_parameters.Windowed = TRUE;
                             }
                             SUPERVISOR.present_parameters.BackBufferFormat = format;
-                            WINDOW_DATA.__sub_4734E0(0);
+                            WINDOW_DATA.__sub_4734E0(false);
                         }
                         SUPERVISOR.__release_rendering_surfaces();
                         ANM_MANAGER_PTR->__release_render_targets();
@@ -49160,7 +49367,7 @@ winmain_d3d_create_success:
                         SUPERVISOR.__int_818 = 3;
                         if (WINDOW_DATA.__unknown_flag_B) {
                             SUPERVISOR.__camera2_sub_454F50();
-                            switch (WINDOW_DATA.__unknown_bitfield_A) {
+                            switch (WINDOW_DATA.config_resolution) {
                                 default: {
                                     SetWindowLongA(WINDOW_DATA.window, GWL_STYLE, WS_OVERLAPPED | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_CAPTION | WS_SYSMENU | WS_VISIBLE);
                                     int32_t full_window_width = WINDOW_DATA.window_width + 2 * GetSystemMetrics(SM_CXFIXEDFRAME);
@@ -49176,7 +49383,10 @@ winmain_d3d_create_success:
                                     show_cursor();
                                     break;
                                 }
-                                case 0: case 1: case 2: {
+                                case Fullscreen640x480: // 0
+                                case Fullscreen960x720: // 1
+                                case Fullscreen1280x960: // 2
+                                {
                                     int32_t width = WINDOW_DATA.__scaled_width;
                                     int32_t height = WINDOW_DATA.__scaled_height;
                                     SetWindowLongA(WINDOW_DATA.window, GWL_STYLE, WS_POPUP | WS_VISIBLE);
@@ -49192,7 +49402,8 @@ winmain_d3d_create_success:
                                     WINDOW_DATA.__dword_14 = 0;
                                     break;
                                 }
-                                case 8: case 9:
+                                case BorderlessDotByDot: // 8
+                                case Borderless: // 9
                                     SetWindowLongA(WINDOW_DATA.window, GWL_STYLE, WS_OVERLAPPED);
                                     ShowWindow(WINDOW_DATA.window, SW_SHOW);
                                     SetWindowPos(
@@ -49220,7 +49431,7 @@ loop_break:;
     else {
         local_int_18 = 2;
     }
-    switch ((SUPERVISOR.config.__ubyte_47 = WINDOW_DATA.__unknown_bitfield_A)) {
+    switch ((SUPERVISOR.config.resolution = WINDOW_DATA.config_resolution)) {
         default:
             GetWindowRect(WINDOW_DATA.window, &SUPERVISOR.window_rect);
             SUPERVISOR.config.window_x = SUPERVISOR.window_rect.left;
