@@ -49,8 +49,10 @@ using ZUNListIter = ZUNListIterBase<T, true>;
 template <typename T>
 using ZUNListEnds = ZUNListEndsBase<T, true>;
 
+#define FORCE_DEBUG_LOGGING 1
+
 #define DEBUG_SKIP_MENUS 1
-#define INCLUDE_EXTRA_DEBUG_STUFF (1 && !NDEBUG)
+#define INCLUDE_EXTRA_DEBUG_STUFF (1 && (FORCE_DEBUG_LOGGING || !NDEBUG))
 #define ZUN_DEBUG_CODE 0
 
 #define ALLOCATE_CONSOLE 1
@@ -15214,6 +15216,8 @@ struct AnmVM {
     // 0x4894D0
     dllexport gnu_noinline AnmLoaded* thiscall get_anm_loaded() asm_symbol_rel(0x4894D0);
 
+    inline AnmLoaded* get_anm_loaded2();
+
     inline AnmSprite* get_sprite();
 
     template <typename L>
@@ -20122,8 +20126,12 @@ dllexport gnu_noinline AnmLoaded* thiscall AnmVM::get_anm_loaded() {
     return ANM_MANAGER_PTR->loaded_anm_files[this->data.slot];
 }
 
+inline AnmLoaded* AnmVM::get_anm_loaded2() {
+    return ANM_MANAGER_PTR->loaded_anm_files[this->data.slot2];
+}
+
 inline AnmSprite* AnmVM::get_sprite() {
-    return &ANM_MANAGER_PTR->loaded_anm_files[this->data.slot2]->sprites[this->data.sprite_id];
+    return &this->get_anm_loaded2()->sprites[this->data.sprite_id];
 }
 
 extern "C" {
@@ -21620,7 +21628,7 @@ struct AsciiManager : ZUNTask {
     int32_t duration; // 0x1924C
     int __horizontal_positioning_mode; // 0x19250
     int __vertical_positioning_mode; // 0x19254
-    int __character_spacing_for_font_0; // 0x19258
+    int32_t __character_spacing_for_font_0; // 0x19258
     int frame_count; // 0x1925C
     AnmLoaded* ascii_anm; // 0x19260
     AnmID __vm_id_19264; // 0x19264
@@ -21709,7 +21717,369 @@ struct AsciiManager : ZUNTask {
     // This functions is disgusting
     // 0x41A2B0
     dllexport gnu_noinline void thiscall draw_string(AsciiString* string) asm_symbol_rel(0x41A2B0) {
-        use_var(string);
+        int32_t length = byteloop_strlen(string->text);
+        this->__vm_C.data.resolution_mode = 0;
+        this->__vm_C.data.x_anchor_mode = 1;
+        this->__vm_C.data.y_anchor_mode = 1;
+        this->__vm_C.data.visible = true;
+        this->__vm_C.data.position = string->position;
+        this->__vm_C.set_scale(string->scale);
+
+        Float2 scale;
+        switch (string->font_id) {
+            case 1:
+                this->__vm_C.data.disable_z_write = false;
+                scale = this->__vm_C.data.scale;
+                scale.x *= 6.0f;
+                scale.y *= 9.0f;
+                break;
+            case 6: case 8:
+                this->__vm_C.data.disable_z_write = this->__vm_C.data.scale.x != 1.0f;
+                scale = this->__vm_C.data.scale;
+                scale.x *= 12.0f;
+                scale.y *= 15.0f;
+                break;
+            case 7: case 9:
+                this->__vm_C.data.disable_z_write = this->__vm_C.data.scale.x != 1.0f;
+                scale = this->__vm_C.data.scale;
+                scale.x *= 17.0f;
+                scale.y *= 23.0f;
+                break;
+            case 2:
+                this->__vm_C.data.disable_z_write = false;
+                scale = this->__vm_C.data.scale;
+                scale.x *= 7.0f;
+                scale.y *= 10.0f;
+                break;
+            case 3:
+                this->__vm_C.data.disable_z_write = true;
+                scale = this->__vm_C.data.scale;
+                scale.x *= 7.0f;
+                scale.y *= 10.0f;
+                break;
+            case 4: case 10: case 11:
+                this->__vm_C.data.disable_z_write = false;
+                scale = this->__vm_C.data.scale;
+                scale.x *= 12.0f;
+                scale.y *= 15.0f;
+                break;
+            case 5:
+                this->__vm_C.data.disable_z_write = true;
+                scale = this->__vm_C.data.scale;
+                scale.x *= 12.0f;
+                scale.y *= 15.0f;
+                break;
+            default:
+                this->__vm_C.data.disable_z_write = this->__vm_C.data.scale.x != 1.0f;
+                scale = this->__vm_C.data.scale;
+                scale.x *= this->__character_spacing_for_font_0;
+                scale.y *= 14.0f;
+                break;
+        }
+
+#define SET_UV_FROM_SPRITE() \
+    this->__vm_C.data.sprite_uv_quad[2].x = sprite->uv_bounds.left; \
+    this->__vm_C.data.sprite_uv_quad[0].x = sprite->uv_bounds.left; \
+    this->__vm_C.data.sprite_uv_quad[3].x = sprite->uv_bounds.right; \
+    this->__vm_C.data.sprite_uv_quad[1].x = sprite->uv_bounds.right; \
+    this->__vm_C.data.sprite_uv_quad[1].y = sprite->uv_bounds.top; \
+    this->__vm_C.data.sprite_uv_quad[0].y = sprite->uv_bounds.top; \
+    this->__vm_C.data.sprite_uv_quad[3].y = sprite->uv_bounds.bottom; \
+    this->__vm_C.data.sprite_uv_quad[2].y = sprite->uv_bounds.bottom;
+
+        // Technically the whole sub should be using this...
+        AnmManager* anm_manager_ptr = ANM_MANAGER_PTR;
+
+        switch (string->__horizontal_positioning_mode) {
+            case 2:
+                switch (int32_t font_id = string->font_id) {
+                    case 6: case 7: case 8: case 9: {
+                        int32_t sprite_id_base = font_id == 6 || font_id == 8 ? 288 : 484;
+                        float floatA = 0.0f;
+                        const uint8_t* str = (const uint8_t*)string->text;
+                        uint8_t c = *str;
+                        if (c) {
+                            AnmSprite* sprites = this->__vm_C.get_anm_loaded2()->sprites;
+                            do {
+                                int32_t sprite_id = sprite_id_base + c;
+                                this->__vm_C.data.sprite_id = sprite_id;
+                                AnmSprite* sprite = &sprites[sprite_id];
+                                SET_UV_FROM_SPRITE();
+                                sprites = this->__vm_C.get_anm_loaded2()->sprites;
+                                floatA += sprites[sprite_id].__size_x / (3.0f - WINDOW_DATA.__game_scale);
+                                c = *++str;
+                            } while (c);
+                        }
+                        this->__vm_C.data.position.x += -floatA * string->scale.x;
+                        break;
+                    }
+                    case 2: case 3: {
+                        const uint8_t* str = (const uint8_t*)string->text;
+                        uint8_t c = *str;
+                        if (c) {
+                            do {
+                                this->__vm_C.data.position.x += (c == '.' ? string->scale.x * 12.0f : -scale.x) * WINDOW_DATA.__game_scale;
+                                c = *++str;
+                            } while (c);
+                        }
+                        break;
+                    }
+                    case 4: case 5: case 10: case 11: {
+                        const uint8_t* str = (const uint8_t*)string->text;
+                        uint8_t c = *str;
+                        if (c) {
+                            do {
+                                this->__vm_C.data.position.x += (c == ',' ? string->scale.x * 12.0f : -scale.x) * WINDOW_DATA.__game_scale;
+                                c = *++str;
+                            } while (c);
+                        }
+                        break;
+                    }
+                }
+                break;
+            case 0:
+                switch (int32_t font_id = string->font_id) {
+                    case 6: case 7: case 8: case 9: {
+                        int32_t sprite_id_base = font_id == 6 || font_id == 8 ? 288 : 484;
+                        float floatA = 0.0f;
+                        const uint8_t* str = (const uint8_t*)string->text;
+                        uint8_t c = *str;
+                        if (c) {
+                            AnmSprite* sprites = this->__vm_C.get_anm_loaded2()->sprites;
+                            do {
+                                int32_t sprite_id = sprite_id_base + c;
+                                this->__vm_C.data.sprite_id = sprite_id;
+                                AnmSprite* sprite = &sprites[sprite_id];
+                                SET_UV_FROM_SPRITE();
+                                sprites = this->__vm_C.get_anm_loaded2()->sprites;
+                                floatA += sprites[sprite_id].__size_x / (3.0f - WINDOW_DATA.__game_scale);
+                                c = *++str;
+                            } while (c);
+                        }
+                        this->__vm_C.data.position.x += -floatA * string->scale.x * 0.5f;
+                        break;
+                    }
+                    case 2: case 3: {
+                        const uint8_t* str = (const uint8_t*)string->text;
+                        for (
+                            uint8_t c = *str;
+                            c;
+                            c = *++str
+                        ) {
+                            this->__vm_C.data.position.x += (c == '.' ? string->scale.x * 12.0f : -scale.x) * 0.5f * WINDOW_DATA.__game_scale;
+                        }
+                        break;
+                    }
+                    case 4: case 5: case 10: case 11: {
+                        const uint8_t* str = (const uint8_t*)string->text;
+                        for (
+                            uint8_t c = *str;
+                            c;
+                            c = *++str
+                        ) {
+                            this->__vm_C.data.position.x += (c == ',' ? string->scale.x * 12.0f : -scale.x) * 0.5f * WINDOW_DATA.__game_scale;
+                        }
+                        break;
+                    }
+                }
+                break;
+            default:
+                this->__vm_C.data.position.x += -length * scale.x * 0.5f * WINDOW_DATA.__game_scale;
+                break;
+        }
+
+        switch (string->__vertical_positioning_mode) {
+            case 2:
+                this->__vm_C.data.position.y += -scale.y * WINDOW_DATA.__game_scale;
+                break;
+            case 0:
+                this->__vm_C.data.position.y += -scale.y * 0.5f * WINDOW_DATA.__game_scale;
+                break;
+        }
+
+        const uint8_t* str = (const uint8_t*)string->text;
+
+        for (
+            uint8_t c = *str;
+            c;
+            c = *++str
+        ) {
+            switch (c) {
+                case '\n':
+                    this->__vm_C.data.position.y += string->scale.y * scale.y * WINDOW_DATA.__game_scale;
+                    this->__vm_C.data.position.x = string->position.x;
+                    continue;
+                case ' ':
+                    switch (string->font_id) {
+                        case 6: case 7: case 8: case 9:
+                            break;
+                        default:
+                            goto next_position;
+                    }
+                default:
+                    int32_t sprite_id;
+                    AnmSprite* sprite;
+                    switch (int32_t font_id = string->font_id) {
+                        default:
+                            goto sprite_uv_set;
+                        case 0:
+                            sprite_id = c - 32;
+                            break;
+                        case 1:
+                            sprite_id = c + 66;
+                            break;
+                        case 6:
+                            sprite_id = c + 288;
+                            break;
+                        case 7:
+                            sprite_id = c + 484;
+                            break;
+                        case 8:
+                            sprite_id = c + 386;
+                            break;
+                        case 9:
+                            sprite_id = c + 582;
+                            break;
+                        case 2: case 3: {
+                            scale.x = string->scale.x * 7.0f;
+                            if (c - 'a' <= 25) {
+                                sprite_id = c + 116;
+                            } else if (c - 'A' <= 25) {
+                                sprite_id = c + 148;
+                            } else {
+                                AnmSprite* sprites = this->__vm_C.get_anm_loaded2()->sprites;
+                                switch (c) {
+                                    case '/':
+                                        this->__vm_C.data.sprite_id = 206;
+                                        sprite = &sprites[206];
+                                        SET_UV_FROM_SPRITE();
+                                        goto sprite_uv_set;
+                                    case ':':
+                                        this->__vm_C.data.sprite_id = 207;
+                                        sprite = &sprites[207];
+                                        SET_UV_FROM_SPRITE();
+                                        goto sprite_uv_set;
+                                    case '-':
+                                        this->__vm_C.data.sprite_id = 208;
+                                        sprite = &sprites[208];
+                                        SET_UV_FROM_SPRITE();
+                                        goto sprite_uv_set;
+                                    case '*':
+                                        this->__vm_C.data.sprite_id = 209;
+                                        sprite = &sprites[209];
+                                        SET_UV_FROM_SPRITE();
+                                        goto sprite_uv_set;
+                                    case '%':
+                                        this->__vm_C.data.sprite_id = 210;
+                                        sprite = &sprites[210];
+                                        SET_UV_FROM_SPRITE();
+                                        goto sprite_uv_set;
+                                    case '$':
+                                        this->__vm_C.data.sprite_id = 287;
+                                        sprite = &sprites[287];
+                                        SET_UV_FROM_SPRITE();
+                                        goto sprite_uv_set;
+                                    case '.':
+                                        this->__vm_C.data.sprite_id = 211;
+                                        sprite = &sprites[211];
+                                        SET_UV_FROM_SPRITE();
+                                        scale.x = string->scale.x * 4.0f;
+                                        goto sprite_uv_set;
+                                    case '+':
+                                        this->__vm_C.data.sprite_id = 212;
+                                        sprite = &sprites[212];
+                                        SET_UV_FROM_SPRITE();
+                                        goto sprite_uv_set;
+                                    default:
+                                        sprite_id = c + 148;
+                                        break;
+                                }
+                            }
+                            break;
+                        }
+                        case 4: case 5: case 10: case 11: {
+                            if (font_id == 10) {
+                                sprite_id = 269;
+                            }
+                            else {
+                                sprite_id = font_id == 11 ? 254 : 239;
+                            }
+                            this->__vm_C.data.position.y = string->position.y;
+                            scale.x = string->scale.x * 12.0f;
+                            switch (c = str[0]) {
+                                case '/':
+                                    sprite_id += 10;
+                                    break;
+                                case '.':
+                                    sprite_id += 11;
+                                    break;
+                                case 's':
+                                    sprite_id += 12;
+                                    break;
+                                case '*':
+                                    sprite_id += 13;
+                                    break;
+                                case ',':
+                                    sprite_id += 14;
+                                    this->__vm_C.data.sprite_id = sprite_id;
+                                    sprite = &this->__vm_C.get_anm_loaded2()->sprites[sprite_id];
+                                    SET_UV_FROM_SPRITE();
+                                    this->__vm_C.data.position.y = string->position.y + WINDOW_DATA.__game_scale * 3.0f;
+                                    scale.x = string->scale.x * 4.0f;
+                                    goto sprite_uv_set;
+                                default:
+                                    sprite_id = c - 48;
+                                    break;
+                            }
+                            break;
+                        }
+                    }
+                    this->__vm_C.data.sprite_id = sprite_id;
+                    sprite = &this->__vm_C.get_anm_loaded2()->sprites[sprite_id];
+                    SET_UV_FROM_SPRITE();
+                sprite_uv_set:
+                    float size_x;
+                    float size_y;
+                    switch (string->font_id) {
+                        default:
+                            sprite = this->__vm_C.get_sprite();
+                            size_y = sprite->__size_y;
+                            size_x = sprite->__size_x;
+                            break;
+                        case 6: case 7: case 8: case 9: {
+                            float floatA = 3.0f - WINDOW_DATA.__game_scale;
+                            sprite = this->__vm_C.get_sprite();
+                            size_x = sprite->__size_x;
+                            size_y = sprite->__size_y;
+                            scale.x = size_x / floatA / WINDOW_DATA.__game_scale * string->scale.x;
+                            size_x = size_x * 0.5f * WINDOW_DATA.__game_scale;
+                            size_y = size_y * 0.5f * WINDOW_DATA.__game_scale;
+                            break;
+                        }
+                    }
+                    this->__vm_C.data.scale_enabled = true;
+                    this->__vm_C.data.sprite_size.x = size_x;
+                    this->__vm_C.data.sprite_size.y = size_y;
+                    if (string->enable_shadows) {
+                        this->__vm_C.data.color1 = string->color & 0xFF000000;
+                        ALPHA(this->__vm_C.data.color1) = string->color >> 25;
+                        this->__vm_C.data.position.x += WINDOW_DATA.__game_scale * 2.0f;
+                        this->__vm_C.data.position.y += WINDOW_DATA.__game_scale * 2.0f;
+                        this->__vm_C.data.disable_z_write = this->__vm_C.data.scale.x != 1.0f;
+                        this->__vm_C.__get_vertex_positions(&SPRITE_VERTEX_BUFFER_A[0].position, &SPRITE_VERTEX_BUFFER_A[1].position, &SPRITE_VERTEX_BUFFER_A[2].position, &SPRITE_VERTEX_BUFFER_A[3].position);
+                        anm_manager_ptr->__render_vertices(&this->__vm_C, RENDER_VERTICES_ROUND_INPUTS);
+                        anm_manager_ptr = ANM_MANAGER_PTR;
+                        this->__vm_C.data.position.x += WINDOW_DATA.__game_scale * -2.0f;
+                        this->__vm_C.data.position.y += WINDOW_DATA.__game_scale * -2.0f;
+                    }
+                    this->__vm_C.data.color1 = string->color;
+                    this->__vm_C.__get_vertex_positions(&SPRITE_VERTEX_BUFFER_A[0].position, &SPRITE_VERTEX_BUFFER_A[1].position, &SPRITE_VERTEX_BUFFER_A[2].position, &SPRITE_VERTEX_BUFFER_A[3].position);
+                    anm_manager_ptr->__render_vertices(&this->__vm_C, RENDER_VERTICES_ROUND_INPUTS);
+                    anm_manager_ptr = ANM_MANAGER_PTR;
+            }
+        next_position:
+            this->__vm_C.data.position.x += WINDOW_DATA.__game_scale * scale.x;
+        }
     }
 
     // 0x41A180
@@ -44965,7 +45335,10 @@ gnu_noinline void debug_command_line() {
     if (wchar_t** argv = CommandLineToArgvW(command_line, &argc)) {
         if (argc > 1) {
             for (int i = 1; i < argc; ++i) {
-                const wchar_t* arg = _wcslwr(argv[i]);
+                _wcslwr(argv[i]);
+            }
+            for (int i = 1; i < argc; ++i) {
+                const wchar_t* arg = argv[i];
                 if (const wchar_t* path_arg = get_arg(arg, L"path", argc, i, argv)) {
                     size_t path_length = wcslen(path_arg) + 1;
                     int length = WideCharToMultiByte(CP_THREAD_ACP, 0, path_arg, path_length, NULL, 0, NULL, NULL);
@@ -46658,7 +47031,11 @@ dllexport gnu_noinline ZUNResult thiscall Supervisor::load_config_file(int) {
         LOG_BUFFER.write(JpEnStr("文字描画の環境を自動検出しません\r\n", "Do not auto-detect character drawing environment\r\n"));
     }
     chdir(WINDOW_DATA.appdata_path);
+#if !PROTECT_ORIGINAL_FILES
     if (ZUN_FAILED(__zun_create_new_file_from_buffer("th18.cfg", &SUPERVISOR.config, sizeof(Config)))) {
+#else
+    if (false) {
+#endif
         LOG_BUFFER.write_error(JpEnStr("ファイルが書き出せません %s\r\n", "Unable to write file %s\r\n"), "th18.cfg");
         LOG_BUFFER.write_error(JpEnStr("フォルダが書込み禁止属性になっているか、ディスクがいっぱいいっぱいになってませんか？\r\n", "Is the folder write-protected or is the disk full?\r\n"));
         chdir(WINDOW_DATA.exe_path);
@@ -49456,7 +49833,9 @@ winmain_weird_local_not_2:
     char config_filename[0x1000];
     byteloop_strcpy(config_filename, WINDOW_DATA.appdata_path);
     byteloop_strcat(config_filename, "th18.cfg");
+#if !PROTECT_ORIGINAL_FILES
     __zun_create_new_file_from_buffer(config_filename, &SUPERVISOR.config, sizeof(Config));
+#endif
     timeEndPeriod(1);
     char log_filename[0x1000];
     byteloop_strcpy(log_filename, WINDOW_DATA.appdata_path);
