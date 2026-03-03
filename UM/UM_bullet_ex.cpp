@@ -44960,8 +44960,8 @@ const wchar_t* get_arg(const wchar_t* arg, const wchar_t(&name)[N], int argc, in
 
 gnu_noinline void debug_command_line() {
     int argc;
-    //const wchar_t* command_line = GetCommandLineW();
-    const wchar_t* command_line = L"pingas -p \"F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\"";
+    const wchar_t* command_line = GetCommandLineW();
+    //const wchar_t* command_line = L"pingas -p \"F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\"";
     if (wchar_t** argv = CommandLineToArgvW(command_line, &argc)) {
         if (argc > 1) {
             for (int i = 1; i < argc; ++i) {
@@ -44975,8 +44975,12 @@ gnu_noinline void debug_command_line() {
                         if (path) {
                             free(path);
                         }
-                        path = (char*)malloc(length);
+                        path = (char*)malloc(length + 1);
                         WideCharToMultiByte(CP_THREAD_ACP, 0, path_arg, path_length, path, length, NULL, NULL);
+                        if (path[length - 1] != '\\') {
+                            path[length] = '\\';
+                            path[length + 1] = '\0';
+                        }
                         DEBUG_PATH = path;
                     }
                 }
