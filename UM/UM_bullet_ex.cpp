@@ -1527,7 +1527,7 @@ dllexport gnu_noinline bool stdcall ArcFile::__sub_46EE90(int32_t) {
         if (pbg_file->open_file("th18.dat", "r")) {
             DatFileHeader dat_header;
             if (THDAT_ARCFILE.file->read_file_to_buffer(&dat_header, sizeof(DatFileHeader))) {
-                __decrypt_buffer(&dat_header, sizeof(DatFileHeader), 0x1B, 0x37, 0x10, 0x10);
+                __decrypt_buffer(&dat_header, sizeof(DatFileHeader), 0x1B, 0x37, 0x10, sizeof(DatFileHeader));
                 if (dat_header.magic.as_uint == PackUInt('T', 'H', 'A', '1')) {
                     uint32_t file_count = dat_header.file_count + 0xF7E7F8AC; // IDK what this value is
                     dat_header.decompressed_size -= 123456789;
@@ -8668,7 +8668,9 @@ private:
                             ScorefileSectionB* sectionB = (ScorefileSectionB*)section;
                             if (
                                 sectionB->__version_number == SCOREFILE_SECTION_B_VERSION_NUMBER &&
+#if !IGNORE_HASH_CHECKS
                                 sectionB->checksum == sectionB->calculate_checksum() &&
+#endif
                                 sectionB->size == sizeof(ScorefileSectionB)
                             ) {
                                 scorefile->shottypes[sectionB->index] = *sectionB;
@@ -8682,7 +8684,9 @@ private:
                             ScorefileSectionA* sectionA = (ScorefileSectionA*)section;
                             if (
                                 sectionA->__version_number == SCOREFILE_SECTION_A_VERSION_NUMBER &&
+#if !IGNORE_HASH_CHECKS
                                 sectionA->checksum == sectionA->calculate_checksum() &&
+#endif
                                 sectionA->size == sizeof(ScorefileSectionA)
                             ) {
                                 scorefile->__sectionA = *sectionA;
@@ -12088,7 +12092,7 @@ public:
 
     // 0x48DC20
     dllexport gnu_noinline int32_t thiscall set_context_to_sub(const char* sub_name) asm_symbol_rel(0x48DC20) {
-        ZDEBUG_PRINT("Setting context to sub %s\n", sub_name);
+        //ZDEBUG_PRINT("Setting context to sub %s\n", sub_name);
         this->locate_sub(sub_name);
         this->current_context->location.instruction_offset = 0;
         this->current_context->time = 0.0f;
@@ -19062,7 +19066,7 @@ struct AnmManager {
     }
 
     // 0x486140
-    dllexport gnu_noinline int32_t thiscall __sub_486140(AnmImage* image, uint32_t format_index, uint32_t entry_index, int32_t width, int32_t height, int32_t offset_x, int32_t offset_y) asm_symbol_rel(0x486140);
+    dllexport gnu_noinline int32_t thiscall __create_texture_from_file(AnmImage* image, uint32_t format_index, uint32_t entry_index, int32_t width, int32_t height, int32_t offset_x, int32_t offset_y) asm_symbol_rel(0x486140);
 
     // 0x486BC0
     dllexport gnu_noinline int32_t thiscall __sub_486BC0(AnmLoaded* anm_loaded, uint32_t entry_index, uint32_t sprite_count, uint32_t script_count, AnmEntry* anm_entry) asm_symbol_rel(0x486BC0);
@@ -31259,7 +31263,7 @@ struct EnemyManager : ZUNTask {
 
     // 0x42D7D0
     dllexport gnu_noinline Enemy* allocate_new_enemy(const char* sub_name, EnemyInitData* data, int32_t = UNUSED_DWORD) asm_symbol_rel(0x42D7D0) {
-        ZDEBUG_PRINT("Creating enemy with sub %s\n", sub_name);
+        //ZDEBUG_PRINT("Creating enemy with sub %s\n", sub_name);
         Enemy* enemy = new_no_eh<Enemy>(sub_name);
         enemy->data.motion.absolute.position = data->position;
         enemy->data.score = data->score;
@@ -34065,10 +34069,21 @@ private:
         if (item_id > 20) {
             return NULL;
         }
+        Item* item = NULL;
         ++this->item_count;
         switch (item_id) {
             default: // normal items
-
+                if ((item = (Item*)this->items_freelist.next)) {
+                    item->state = 1;
+                    item->position = *position;
+                    if (position->x <= SCREEN_LEFT_EDGE) {
+                        position->x = SCREEN_LEFT_EDGE;
+                    } else if (position->x >= SCREEN_RIGHT_EDGE) {
+                        position->x = SCREEN_RIGHT_EDGE;
+                    }
+                    // TODO
+                }
+                break;
             case Piv5Item: // 9
             case Piv10Item: // 10
             case Piv20Item: // 11
@@ -34077,6 +34092,7 @@ private:
             case Piv50Item: // 14
 
         }
+        return item;
         use_var(item_id);
         use_var(position);
         use_var(angle);
@@ -40668,7 +40684,7 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
                         this->stack.pointer = this->stack.pop<int32_t>();
                         current_instruction = this->get_current_instruction();
                         if (this->location.instruction_offset >= 0) {
-                            ZDEBUG_PRINT("Returning from sub\n");
+                            //ZDEBUG_PRINT("Returning from sub\n");
                             break;
                         }
                     }
@@ -46168,6 +46184,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
     ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha2());
 
     ascii_manager->print_score(&position, this->__score, GAME_MANAGER.globals.continues);
+    ZDEBUG_PRINT("Score: %u%u\n", this->__score, GAME_MANAGER.globals.continues);
 
     // ====================
     // Life fragments for next life
@@ -46377,7 +46394,7 @@ dllexport gnu_noinline uint32_t get_hardware_inputs() {
 }
 
 // 0x486140
-dllexport gnu_noinline int32_t thiscall AnmManager::__sub_486140(AnmImage* image, uint32_t format_index, uint32_t entry_index, int32_t width, int32_t height, int32_t offset_x, int32_t offset_y) {
+dllexport gnu_noinline int32_t thiscall AnmManager::__create_texture_from_file(AnmImage* image, uint32_t format_index, uint32_t entry_index, int32_t width, int32_t height, int32_t offset_x, int32_t offset_y) {
     image->__unknown_flag_A = false;
     LPDIRECT3DTEXTURE9 texture;
     if (D3DXCreateTextureFromFileInMemoryEx(
@@ -46451,8 +46468,8 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__sub_486140(AnmImage* image
 }
 
 // 0x486390
-dllexport gnu_noinline int32_t stdcall __sub_486390(AnmImage* image, AnmTexture* texture, uint32_t format_index, int32_t width, int32_t height) asm_symbol_rel(0x486390);
-dllexport gnu_noinline int32_t stdcall __sub_486390(AnmImage* image, AnmTexture* texture, uint32_t format_index, int32_t width, int32_t height) {
+dllexport gnu_noinline int32_t stdcall __create_texture_from_anm(AnmImage* image, AnmTexture* texture, uint32_t format_index, int32_t width, int32_t height) asm_symbol_rel(0x486390);
+dllexport gnu_noinline int32_t stdcall __create_texture_from_anm(AnmImage* image, AnmTexture* texture, uint32_t format_index, int32_t width, int32_t height) {
     image->__unknown_flag_A = false;
     AnmEntry* entry = image->entry;
     int32_t texture_width = texture->width;
@@ -46567,14 +46584,14 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__sub_486BC0(AnmLoaded* anm_
             }
             image_size = __create_normal_texture(&anm_loaded->images[entry_index], entry->format, entry->width, entry->height);
         } else {
-            image_size = this->__sub_486140(&anm_loaded->images[entry_index], entry->format, entry_index, entry->width, entry->height, entry->offset_x, entry->offset_y);
+            image_size = this->__create_texture_from_file(&anm_loaded->images[entry_index], entry->format, entry_index, entry->width, entry->height, entry->offset_x, entry->offset_y);
             if (image_size < 0) {
                 LOG_BUFFER.write_error(JpEnStr("", "Unable to create texture %s. data is lost or corrupted\r\n"), image_filename);
                 return -1;
             }
         }
     } else {
-        image_size = __sub_486390(&anm_loaded->images[entry_index], based_pointer<AnmTexture>(entry, entry->texture_data_offset), entry->format, entry->width, entry->height);
+        image_size = __create_texture_from_anm(&anm_loaded->images[entry_index], based_pointer<AnmTexture>(entry, entry->texture_data_offset), entry->format, entry->width, entry->height);
         if (image_size < 0) {
             LOG_BUFFER.write_error(JpEnStr("", "Unable to create texture. data is lost or corrupted\r\n"));
             return -1;
@@ -48842,6 +48859,7 @@ dllexport gnu_noinline ZUNResult __make_mutex_and_test_path() {
     GetModuleFileNameA(NULL, filename_buffer, sizeof(filename_buffer));
     GetConsoleTitleA(path_buffer, sizeof(path_buffer));
     GetStartupInfoA(&startup_info);
+    //infinite_loop();
     if (startup_info.lpTitle) {
         char* file_extension_str = strrchr(startup_info.lpTitle, '.');
         if (zun_file_exists(startup_info.lpTitle) && file_extension_str) {

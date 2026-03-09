@@ -5,6 +5,8 @@ cmake_minimum_required (VERSION 3.8)
 
 #set(CMAKE_CXX_STANDARD 23)
 
+set(CMAKE_IS_BROKEN TRUE)
+
 project ("ClangAsmTest1")
 
 add_executable(${PROJECT_NAME})
@@ -617,6 +619,7 @@ target_compile_options(${EXE} PRIVATE
 
 #set(CMAKE_LINKER "F:\\Program Files (x86)\\LLVM\\bin\\ld.lld.exe")
 
+if(CMAKE_IS_BROKEN)
 #include_directories("F:\\Program Files (x86)\\LLVM\\lib\\clang\\12.0.0\\include")
 #include_directories("F:\\Program Files\\LLVM\\lib\\clang\\13.0.0\\include")
 #include_directories("F:\\Program Files\\LLVM\\lib\\clang\\14.0.0\\include")
@@ -682,6 +685,8 @@ target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\8.0a\\lib\\d3d8.lib")
 #target_link_libraries(${EXE} DummyDLL)
 endif()
+endif()
+
 endif()
 
 # Add source to this project's executable.

@@ -8622,9 +8622,10 @@ template<size_t bits>
 static constexpr void RtlInitUnicodeString(UNICODE_STRINGX<bits>* unicode_string, const wchar_t* string) {
     if (expect(string != NULL, true)) {
         size_t length = byteloop_wcslen_raw(string);
-        if (length >= 0x7FFC) length = 0x7FFC;
+        if (length >= 0x7FFE) length = 0x7FFE;
+        length *= sizeof(wchar_t);
         unicode_string->Length = length;
-        unicode_string->MaximumLength = length + 2;
+        unicode_string->MaximumLength = length + sizeof(wchar_t);
         unicode_string->Buffer = (PTRZX<bits, wchar_t>)string;
     } else {
         __builtin_memset(unicode_string, 0, sizeof(*unicode_string));

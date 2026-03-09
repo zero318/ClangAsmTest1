@@ -16,6 +16,8 @@
 
 #include <stdnoreturn.h>
 
+#if __x86_64__
+
 
 extern "C" {
 
@@ -1529,3 +1531,5 @@ dllexport bool VgaIsPresent() {
 	port_out<uint8_t>(J, vga_register_base + 0x3C4);
 	return true;
 }
+
+#endif
