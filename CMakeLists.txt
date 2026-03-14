@@ -321,6 +321,7 @@ target_compile_options(${EXE} PRIVATE
 	-Wno-inline-namespace-reopened-noninline
 	-Wno-address-of-packed-member
 	-Wno-invalid-offsetof
+	-Wno-switch-bool
 )
 
 # Output Flags

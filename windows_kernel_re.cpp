@@ -1443,10 +1443,10 @@ dllexport void KiSystemStartup(
 		gdt_ptr[5].LimitLow = 0x3C00;
 	}
 
-	seg_t data_segment = 0x2B;
+	uint_fast16_t data_segment = 0x2B;
 	write_ds(data_segment);
 	write_es(data_segment);
-	seg_t tls_segment = 0x53;
+	uint_fast16_t tls_segment = 0x53;
 	write_fs(tls_segment);
 	write_ldtr(0);
 

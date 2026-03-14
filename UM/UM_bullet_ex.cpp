@@ -3527,7 +3527,7 @@ struct Config {
     InputMapping keyboard_mapping; // 0x2C
     int16_t deadzone_x; // 0x40
     int16_t deadzone_y; // 0x42
-    uint8_t __ubyte_44; // 0x44
+    uint8_t __color_mode; // 0x44
     uint8_t bgm_type; // 0x45
     uint8_t sfx_type; // 0x46
     uint8_t resolution; // 0x47
@@ -3595,7 +3595,7 @@ ValidateFieldOffset32(0x18, Config, xinput_mapping);
 ValidateFieldOffset32(0x2C, Config, keyboard_mapping);
 ValidateFieldOffset32(0x40, Config, deadzone_x);
 ValidateFieldOffset32(0x42, Config, deadzone_y);
-ValidateFieldOffset32(0x44, Config, __ubyte_44);
+ValidateFieldOffset32(0x44, Config, __color_mode);
 ValidateFieldOffset32(0x45, Config, bgm_type);
 ValidateFieldOffset32(0x46, Config, sfx_type);
 ValidateFieldOffset32(0x47, Config, resolution);
@@ -4603,7 +4603,7 @@ struct Supervisor {
     void* ver_file_buffer; // 0xB3C
     LoadingThread* __loading_thread_B40; // 0xB40
     unknown_fields(0xC); // 0xB44
-    double __double_B50; // 0xB50
+    double __frame_update_time; // 0xB50
     D3DCOLOR background_color; // 0xB58
     probably_padding_bytes(0x4); // 0xB5C
     // 0xB60
@@ -4798,7 +4798,7 @@ ValidateFieldOffset32(0xB34, Supervisor, game_exe_file_size);
 ValidateFieldOffset32(0xB38, Supervisor, ver_file_size);
 ValidateFieldOffset32(0xB3C, Supervisor, ver_file_buffer);
 ValidateFieldOffset32(0xB40, Supervisor, __loading_thread_B40);
-ValidateFieldOffset32(0xB50, Supervisor, __double_B50);
+ValidateFieldOffset32(0xB50, Supervisor, __frame_update_time);
 ValidateFieldOffset32(0xB58, Supervisor, background_color);
 ValidateStructSize32(0xB60, Supervisor);
 #pragma endregion
@@ -7999,12 +7999,12 @@ struct WindowData {
     int32_t __width_related_208C; // 0x208C
     int32_t __height_related_2090; // 0x2090
     probably_padding_bytes(0x4); // 0x2094
-    double __double_2098; // 0x2098
-    double __double_20A0; // 0x20A0
+    double __cur_frame_start; // 0x2098
+    double __prev_frame_start; // 0x20A0
     double __double_20A8; // 0x20A8
-    double __double_20B0; // 0x20B0
-    double __double_20B8; // 0x20B8
-    double __double_20C0; // 0x20C0
+    double __prev_runtime; // 0x20B0
+    double __prev_present_alt_end; // 0x20B8
+    double __cur_present_alt_start; // 0x20C0
     unknown_fields(0x4); // 0x20C8
     int32_t __int_20CC; // 0x20CC
     int __int_20D0; // 0x20D0
@@ -8081,12 +8081,12 @@ ValidateFieldOffset32(0x2084, WindowData, __width_related_2084);
 ValidateFieldOffset32(0x2088, WindowData, __height_related_2088);
 ValidateFieldOffset32(0x208C, WindowData, __width_related_208C);
 ValidateFieldOffset32(0x2090, WindowData, __height_related_2090);
-ValidateFieldOffset32(0x2098, WindowData, __double_2098);
-ValidateFieldOffset32(0x20A0, WindowData, __double_20A0);
+ValidateFieldOffset32(0x2098, WindowData, __cur_frame_start);
+ValidateFieldOffset32(0x20A0, WindowData, __prev_frame_start);
 ValidateFieldOffset32(0x20A8, WindowData, __double_20A8);
-ValidateFieldOffset32(0x20B0, WindowData, __double_20B0);
-ValidateFieldOffset32(0x20B8, WindowData, __double_20B8);
-ValidateFieldOffset32(0x20C0, WindowData, __double_20C0);
+ValidateFieldOffset32(0x20B0, WindowData, __prev_runtime);
+ValidateFieldOffset32(0x20B8, WindowData, __prev_present_alt_end);
+ValidateFieldOffset32(0x20C0, WindowData, __cur_present_alt_start);
 
 ValidateFieldOffset32(0x20CC, WindowData, __int_20CC);
 ValidateFieldOffset32(0x20D0, WindowData, __int_20D0);
@@ -24214,10 +24214,10 @@ extern "C" {
     //externcg BulletDamageFunc *const PLAYER_BULLET_DAMAGE_FUNCS[8] cgasm("_PLAYER_BULLET_DAMAGE_FUNCS");
 }
 
-static inline constexpr size_t MAX_SHT_UNKNOWN_A_COUNT = 40;
+static inline constexpr size_t MAX_SHT_ENTRY_COUNT = 40;
 
 // size: 0x5C
-struct ShtFileUnknownA {
+struct ShtEntry {
     int8_t __short_timer_modulo; // 0x0
     int8_t __short_timer_value; // 0x1
     int16_t damage; // 0x2
@@ -24255,33 +24255,33 @@ struct ShtFileUnknownA {
     unknown_fields(0xC); // 0x50
     // 0x5C
 };
-#pragma region // ShtFileUnknownA Validation
-ValidateFieldOffset32(0x0, ShtFileUnknownA, __short_timer_modulo);
-ValidateFieldOffset32(0x1, ShtFileUnknownA, __short_timer_value);
-ValidateFieldOffset32(0x2, ShtFileUnknownA, damage);
-ValidateFieldOffset32(0x4, ShtFileUnknownA, position);
-ValidateFieldOffset32(0xC, ShtFileUnknownA, size);
-ValidateFieldOffset32(0x14, ShtFileUnknownA, angle);
-ValidateFieldOffset32(0x18, ShtFileUnknownA, speed);
-ValidateFieldOffset32(0x20, ShtFileUnknownA, __option_index);
-ValidateFieldOffset32(0x21, ShtFileUnknownA, __byte_21);
-ValidateFieldOffset32(0x22, ShtFileUnknownA, anm_script);
-ValidateFieldOffset32(0x24, ShtFileUnknownA, sound_id);
-ValidateFieldOffset32(0x26, ShtFileUnknownA, __anm_scriptB);
-ValidateFieldOffset32(0x2A, ShtFileUnknownA, __long_timer_modulo);
-ValidateFieldOffset32(0x2B, ShtFileUnknownA, __long_timer_value);
-ValidateFieldOffset32(0x2C, ShtFileUnknownA, __init_func);
-ValidateFieldOffset32(0x30, ShtFileUnknownA, __unknown_func_B);
-ValidateFieldOffset32(0x34, ShtFileUnknownA, __unknown_func_C);
-ValidateFieldOffset32(0x38, ShtFileUnknownA, __damage_func);
-ValidateFieldOffset32(0x4C, ShtFileUnknownA, __float_4C);
-ValidateStructSize32(0x5C, ShtFileUnknownA);
+#pragma region // ShtEntry Validation
+ValidateFieldOffset32(0x0, ShtEntry, __short_timer_modulo);
+ValidateFieldOffset32(0x1, ShtEntry, __short_timer_value);
+ValidateFieldOffset32(0x2, ShtEntry, damage);
+ValidateFieldOffset32(0x4, ShtEntry, position);
+ValidateFieldOffset32(0xC, ShtEntry, size);
+ValidateFieldOffset32(0x14, ShtEntry, angle);
+ValidateFieldOffset32(0x18, ShtEntry, speed);
+ValidateFieldOffset32(0x20, ShtEntry, __option_index);
+ValidateFieldOffset32(0x21, ShtEntry, __byte_21);
+ValidateFieldOffset32(0x22, ShtEntry, anm_script);
+ValidateFieldOffset32(0x24, ShtEntry, sound_id);
+ValidateFieldOffset32(0x26, ShtEntry, __anm_scriptB);
+ValidateFieldOffset32(0x2A, ShtEntry, __long_timer_modulo);
+ValidateFieldOffset32(0x2B, ShtEntry, __long_timer_value);
+ValidateFieldOffset32(0x2C, ShtEntry, __init_func);
+ValidateFieldOffset32(0x30, ShtEntry, __unknown_func_B);
+ValidateFieldOffset32(0x34, ShtEntry, __unknown_func_C);
+ValidateFieldOffset32(0x38, ShtEntry, __damage_func);
+ValidateFieldOffset32(0x4C, ShtEntry, __float_4C);
+ValidateStructSize32(0x5C, ShtEntry);
 #pragma endregion
 
 // size: 
 struct ShtFile {
     unknown_fields(0x2); // 0x0
-    uint16_t __unknownA_count; // 0x2
+    uint16_t __entry_count; // 0x2
     float __float_4; // 0x4
     float __float_8; // 0x8
     float __float_C; // 0xC
@@ -24292,11 +24292,11 @@ struct ShtFile {
     unknown_fields(0x14); // 0x2C
     Float2 __float2_array_40[10]; // 0x40
     Float2 __float2_array_90[10]; // 0x90
-    ShtFileUnknownA* __unknownA_ptr_array_E0[MAX_SHT_UNKNOWN_A_COUNT]; // 0xE0
-    ShtFileUnknownA __unknownA_array_180[]; // 0x180
+    ShtEntry* __entry_ptr_array_E0[MAX_SHT_ENTRY_COUNT]; // 0xE0
+    ShtEntry __entry_array_180[]; // 0x180
 };
 #pragma region // ShtFile Validation
-ValidateFieldOffset32(0x2, ShtFile, __unknownA_count);
+ValidateFieldOffset32(0x2, ShtFile, __entry_count);
 ValidateFieldOffset32(0x4, ShtFile, __float_4);
 ValidateFieldOffset32(0x8, ShtFile, __float_8);
 ValidateFieldOffset32(0xC, ShtFile, __float_C);
@@ -24306,8 +24306,8 @@ ValidateFieldOffset32(0x24, ShtFile, power_per_level);
 ValidateFieldOffset32(0x28, ShtFile, damage_cap);
 ValidateFieldOffset32(0x40, ShtFile, __float2_array_40);
 ValidateFieldOffset32(0x90, ShtFile, __float2_array_90);
-ValidateFieldOffset32(0xE0, ShtFile, __unknownA_ptr_array_E0);
-ValidateFieldOffset32(0x180, ShtFile, __unknownA_array_180);
+ValidateFieldOffset32(0xE0, ShtFile, __entry_ptr_array_E0);
+ValidateFieldOffset32(0x180, ShtFile, __entry_array_180);
 #pragma endregion
 
 typedef struct Player Player;
@@ -25314,10 +25314,10 @@ struct PlayerBullet {
     Float2 size; // 0xA0
     unknown_fields(0x4); // 0xA8
     union {
-        int32_t __sht_unknownA_index; // 0xAC
+        int32_t __sht_entry_index; // 0xAC
         struct {
-            uint32_t __sht_unknownA_index2 : 8;
-            int32_t __sht_unknownA_index1 : 24;
+            uint32_t __sht_entry_index2 : 8;
+            int32_t __sht_entry_index1 : 24;
         };
     };
     int32_t damage_source_index; // 0xB0
@@ -25335,7 +25335,7 @@ struct PlayerBullet {
     forceinline void on_tick();
 
     // 0x45E320
-    dllexport gnu_noinline ZUNResult thiscall shoot(int32_t unknownA_index, int32_t time, Float3* position, PlayerOption* option) asm_symbol_rel(0x45E320);
+    dllexport gnu_noinline ZUNResult thiscall shoot(int32_t sht_entry_index, int32_t time, Float3* position, PlayerOption* option) asm_symbol_rel(0x45E320);
 
     // 0x45F6F0
     dllexport gnu_noinline int32_t thiscall __sub_45F6F0() asm_symbol_rel(0x45F6F0) {
@@ -25429,7 +25429,7 @@ ValidateFieldOffset32(0x94, PlayerBullet, __int_94);
 ValidateFieldOffset32(0x98, PlayerBullet, __int_98);
 ValidateFieldOffset32(0x9C, PlayerBullet, damage);
 ValidateFieldOffset32(0xA0, PlayerBullet, size);
-ValidateFieldOffset32(0xAC, PlayerBullet, __sht_unknownA_index);
+ValidateFieldOffset32(0xAC, PlayerBullet, __sht_entry_index);
 ValidateFieldOffset32(0xB0, PlayerBullet, damage_source_index);
 ValidateFieldOffset32(0xD8, PlayerBullet, __func_ptr_D8);
 ValidateFieldOffset32(0xE0, PlayerBullet, bullet_anm);
@@ -26121,13 +26121,13 @@ public:
     }
 
     // 0x45E930
-    dllexport gnu_noinline ZUNResult thiscall shoot_one_bullet(int32_t unknownA_index, int32_t time, Float3* position, PlayerOption* option) asm_symbol_rel(0x45E930) {
-        uint8_t index2 = unknownA_index;
-        int32_t index1 = unknownA_index >> 8;
-        ShtFileUnknownA* unknownA_ptr = &this->sht_file->__unknownA_ptr_array_E0[index1][index2];
+    dllexport gnu_noinline ZUNResult thiscall shoot_one_bullet(int32_t sht_entry_index, int32_t time, Float3* position, PlayerOption* option) asm_symbol_rel(0x45E930) {
+        uint8_t index2 = sht_entry_index;
+        int32_t index1 = sht_entry_index >> 8;
+        ShtEntry* entry_ptr = &this->sht_file->__entry_ptr_array_E0[index1][index2];
 
-        if (unknownA_ptr->__byte_21 == 2) {
-            int32_t option_index = unknownA_ptr->__option_index;
+        if (entry_ptr->__byte_21 == 2) {
+            int32_t option_index = entry_ptr->__option_index;
             
             int32_t option_index_low = option_index % PLAYER_TOTAL_OPTION_COUNT;
             int32_t option_index_high = option_index >> PLAYER_TOTAL_OPTION_COUNT_BIT_WIDTH;
@@ -26142,7 +26142,7 @@ public:
         for (int32_t i = 0; i < PLAYER_BULLET_COUNT; ++i) {
             PlayerBullet* bullet = &this->data.bullets[i];
             if (bullet->state == 0) {
-                if (ZUN_FAILED(bullet->shoot(unknownA_index, time, position, option))) {
+                if (ZUN_FAILED(bullet->shoot(sht_entry_index, time, position, option))) {
                     return ZUN_ERROR;
                 }
                 break;
@@ -26217,25 +26217,25 @@ public:
                 }
 
                 int32_t i = 0;
-                if ((uint32_t)i < sht_file->__unknownA_count) {
+                if ((uint32_t)i < sht_file->__entry_count) {
                     do {
                         sht_file = this->sht_file;
 
-                        sht_file->__unknownA_ptr_array_E0[i] = pointer_raw_offset(sht_file->__unknownA_ptr_array_E0[i], &sht_file->__unknownA_array_180[0]);
+                        sht_file->__entry_ptr_array_E0[i] = pointer_raw_offset(sht_file->__entry_ptr_array_E0[i], &sht_file->__entry_array_180[0]);
                         
                         for (
-                            ShtFileUnknownA* unknownA_ptr = sht_file->__unknownA_ptr_array_E0[i];
-                            unknownA_ptr->__short_timer_modulo >= 0;
-                            ++unknownA_ptr
+                            ShtEntry* entry_ptr = sht_file->__entry_ptr_array_E0[i];
+                            entry_ptr->__short_timer_modulo >= 0;
+                            ++entry_ptr
                         ) {
-                            unknownA_ptr->__init_func = PLAYER_BULLET_INIT_FUNCS[unknownA_ptr->__init_func_index];
-                            unknownA_ptr->__unknown_func_B = PLAYER_FUNC_TABLE_B[unknownA_ptr->__unknown_func_B_index];
-                            unknownA_ptr->__unknown_func_C = PLAYER_FUNC_TABLE_C[unknownA_ptr->__unknown_func_C_index];
-                            unknownA_ptr->__damage_func = PLAYER_BULLET_DAMAGE_FUNCS[unknownA_ptr->__damage_func_index];
+                            entry_ptr->__init_func = PLAYER_BULLET_INIT_FUNCS[entry_ptr->__init_func_index];
+                            entry_ptr->__unknown_func_B = PLAYER_FUNC_TABLE_B[entry_ptr->__unknown_func_B_index];
+                            entry_ptr->__unknown_func_C = PLAYER_FUNC_TABLE_C[entry_ptr->__unknown_func_C_index];
+                            entry_ptr->__damage_func = PLAYER_BULLET_DAMAGE_FUNCS[entry_ptr->__damage_func_index];
                         }
                         
                         sht_file = this->sht_file;
-                    } while (++i < sht_file->__unknownA_count);
+                    } while (++i < sht_file->__entry_count);
                 }
             }
 
@@ -26880,7 +26880,7 @@ dllexport gnu_noinline int32_t fastcall PlayerDamageSource::__unknown_func_3(Pla
 forceinline void PlayerBullet::on_tick() {
     if (this->state) {
 
-        ShtFileUnknownA* unknownA_ptr = &PLAYER_PTR->sht_file->__unknownA_ptr_array_E0[this->__sht_unknownA_index1][this->__sht_unknownA_index2];
+        ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->__entry_ptr_array_E0[this->__sht_entry_index1][this->__sht_entry_index2];
 
         if (auto func_ptr = this->__func_ptr_D8) {
             if (ZUN_FAILED(func_ptr(this))) {
@@ -26900,7 +26900,7 @@ forceinline void PlayerBullet::on_tick() {
             return;
         }
 
-        if (unknownA_ptr->__byte_21 != 2) {
+        if (entry_ptr->__byte_21 != 2) {
             Float3 vertex_positions[4];
             vm->__get_vertex_quad(vertex_positions);
             if (this->__timer_C >= 15) {
@@ -26981,11 +26981,11 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__init_func_2(PlayerBullet
 dllexport gnu_noinline int32_t fastcall PlayerBullet::__init_func_3(PlayerBullet* self, PlayerDamageSource* damage_source) {
     Player* player = PLAYER_PTR;
 
-    ShtFileUnknownA* unknownA_ptr = &player->sht_file->__unknownA_ptr_array_E0[self->__sht_unknownA_index1][self->__sht_unknownA_index2];
+    ShtEntry* entry_ptr = &player->sht_file->__entry_ptr_array_E0[self->__sht_entry_index1][self->__sht_entry_index2];
 
     self->motion.position = (Float2)self->option->internal_position * (1.0f / INTERNAL_POSITION_RATIO);
 
-    self->motion.angle = player->data.__shot_spread * unknownA_ptr->__float_4C + player->data.__shot_tilt_angle + unknownA_ptr->angle;
+    self->motion.angle = player->data.__shot_spread * entry_ptr->__float_4C + player->data.__shot_tilt_angle + entry_ptr->angle;
     return 0;
 }
 
@@ -27020,7 +27020,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_1(PlayerBull
 // 0x460320
 dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_2(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
     Player* player = PLAYER_PTR;
-    ShtFileUnknownA* unknownA_ptr = &player->sht_file->__unknownA_ptr_array_E0[self->__sht_unknownA_index1][self->__sht_unknownA_index2];
+    ShtEntry* entry_ptr = &player->sht_file->__entry_ptr_array_E0[self->__sht_entry_index1][self->__sht_entry_index2];
     self->__int_94 = 1;
     if (!self->__int_98) {
         self->__vm_id_8.interrupt_tree(2);
@@ -27086,7 +27086,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_2(PlayerBull
             G.z = 0.0f;
             E.z = 0.0f;
 
-            AnmID id = self->bullet_anm->instantiate_vm_to_world_list_back(unknownA_ptr->__anm_scriptB, &G);
+            AnmID id = self->bullet_anm->instantiate_vm_to_world_list_back(entry_ptr->__anm_scriptB, &G);
             EFFECT_MANAGER_PTR->fill_available_slot(id);
             float angle = self->motion.angle;
             id.set_z_rotation(angle);
@@ -27104,8 +27104,8 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_2(PlayerBull
 // 0x4609C0
 dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_3(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
     Player* player = PLAYER_PTR;
-    ShtFileUnknownA* unknownA_ptr = &player->sht_file->__unknownA_ptr_array_E0[self->__sht_unknownA_index1][self->__sht_unknownA_index2];
-    int32_t index = player->create_damage_source_circle(&self->motion.position, 24.0f, 1.0f, 10, unknownA_ptr->damage);
+    ShtEntry* entry_ptr = &player->sht_file->__entry_ptr_array_E0[self->__sht_entry_index1][self->__sht_entry_index2];
+    int32_t index = player->create_damage_source_circle(&self->motion.position, 24.0f, 1.0f, 10, entry_ptr->damage);
     PlayerDamageSource* new_damage_source = player->get_damage_source_by_index(index);
     new_damage_source->__hit_frequency = 4;
     new_damage_source->motion.speed = 0.3f;
@@ -27123,9 +27123,9 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_3(PlayerBull
 
 // 0x460CB0
 dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_4(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
-    ShtFileUnknownA* unknownA_ptr = &PLAYER_PTR->sht_file->__unknownA_ptr_array_E0[self->__sht_unknownA_index1][self->__sht_unknownA_index2];
+    ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->__entry_ptr_array_E0[self->__sht_entry_index1][self->__sht_entry_index2];
     Player* player = PLAYER_PTR;
-    int32_t index = player->create_damage_source_circle(&self->motion.position, 24.0f, unknownA_ptr->__float_4C, 20, unknownA_ptr->damage);
+    int32_t index = player->create_damage_source_circle(&self->motion.position, 24.0f, entry_ptr->__float_4C, 20, entry_ptr->damage);
     PlayerDamageSource* new_damage_source = player->get_damage_source_by_index(index);
     new_damage_source->__hit_frequency = 4;
     self->__vm_id_8.interrupt_tree(1);
@@ -30249,25 +30249,25 @@ end:
 }
 
 // 0x45E320
-dllexport gnu_noinline ZUNResult thiscall PlayerBullet::shoot(int32_t unknownA_index, int32_t time, Float3* position, PlayerOption* option) {
-    uint8_t index2 = unknownA_index;
-    int32_t index1 = unknownA_index >> 8;
-    ShtFileUnknownA* unknownA_ptr = &PLAYER_PTR->sht_file->__unknownA_ptr_array_E0[index1][index2];
+dllexport gnu_noinline ZUNResult thiscall PlayerBullet::shoot(int32_t sht_entry_index, int32_t time, Float3* position, PlayerOption* option) {
+    uint8_t index2 = sht_entry_index;
+    int32_t index1 = sht_entry_index >> 8;
+    ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->__entry_ptr_array_E0[index1][index2];
 
     this->state = 1;
-    this->__sht_unknownA_index = unknownA_index;
+    this->__sht_entry_index = sht_entry_index;
     this->__timer_C.reset();
-    this->damage = unknownA_ptr->damage;
-    this->size = unknownA_ptr->size;
+    this->damage = entry_ptr->damage;
+    this->size = entry_ptr->size;
     this->option = option;
     this->__focused = PLAYER_PTR->data.focused;
-    this->__init_func = unknownA_ptr->__init_func;
-    this->__func_ptr_EC = unknownA_ptr->__unknown_func_B;
-    this->__func_ptr_F0 = unknownA_ptr->__unknown_func_C;
-    this->__damage_func = unknownA_ptr->__damage_func;
+    this->__init_func = entry_ptr->__init_func;
+    this->__func_ptr_EC = entry_ptr->__unknown_func_B;
+    this->__func_ptr_F0 = entry_ptr->__unknown_func_C;
+    this->__damage_func = entry_ptr->__damage_func;
     this->motion.zero_contents();
 
-    int8_t option_index = unknownA_ptr->__option_index % PLAYER_TOTAL_OPTION_COUNT;
+    int8_t option_index = entry_ptr->__option_index % PLAYER_TOTAL_OPTION_COUNT;
     if (!option_index) {
         this->motion.position = *position;
     } else {
@@ -30279,11 +30279,11 @@ dllexport gnu_noinline ZUNResult thiscall PlayerBullet::shoot(int32_t unknownA_i
         };
     }
 
-    if (unknownA_ptr->__byte_21 == 2) {
+    if (entry_ptr->__byte_21 == 2) {
 
         int32_t level = GAME_MANAGER.globals.power_level();
 
-        int32_t option_index = unknownA_ptr->__option_index;
+        int32_t option_index = entry_ptr->__option_index;
         int32_t option_index_low = option_index % PLAYER_TOTAL_OPTION_COUNT;
         int32_t option_index_high = option_index >> PLAYER_TOTAL_OPTION_COUNT_BIT_WIDTH;
 
@@ -30292,11 +30292,11 @@ dllexport gnu_noinline ZUNResult thiscall PlayerBullet::shoot(int32_t unknownA_i
         PLAYER_PTR->data.__level_array_470DC[index] = level;
     }
 
-    this->motion.speed = unknownA_ptr->speed;
+    this->motion.speed = entry_ptr->speed;
 
-    float angle = unknownA_ptr->angle;
+    float angle = entry_ptr->angle;
     if (angle >= 1000.0f) {
-        int8_t option_index = unknownA_ptr->__option_index;
+        int8_t option_index = entry_ptr->__option_index;
         if (!(option_index % PLAYER_TOTAL_OPTION_COUNT)) {
             goto normal_angle;
         }
@@ -30305,10 +30305,10 @@ dllexport gnu_noinline ZUNResult thiscall PlayerBullet::shoot(int32_t unknownA_i
         angle = option->__angle_A8;
         angle += REPLAY_RNG.rand_angle() / 12.0f;
         this->motion.angle = angle;
-        this->motion.speed = unknownA_ptr->speed + REPLAY_RNG.rand_float_signed_range(2.0f);
+        this->motion.speed = entry_ptr->speed + REPLAY_RNG.rand_float_signed_range(2.0f);
     }
     else if (angle >= 995.0f) {
-        int8_t option_index = unknownA_ptr->__option_index;
+        int8_t option_index = entry_ptr->__option_index;
         if (!(option_index % PLAYER_TOTAL_OPTION_COUNT)) {
             goto normal_angle;
         }
@@ -30322,12 +30322,12 @@ normal_angle:
 
     this->motion.update3();
 
-    switch (unknownA_ptr->__byte_21) {
+    switch (entry_ptr->__byte_21) {
         default:
-            this->motion.position.as2() += unknownA_ptr->position - this->motion.misc_float3.as2();
+            this->motion.position.as2() += entry_ptr->position - this->motion.misc_float3.as2();
             break;
         case 4: case 5: case 6:
-            this->motion.position.as2() += unknownA_ptr->position;
+            this->motion.position.as2() += entry_ptr->position;
             break;
     }
 
@@ -30337,7 +30337,7 @@ normal_angle:
 
     Float3 zero = {};
 
-    this->__vm_id_8 = bullet_anm->instantiate_vm_to_world_list_back(unknownA_ptr->anm_script, &zero);
+    this->__vm_id_8 = bullet_anm->instantiate_vm_to_world_list_back(entry_ptr->anm_script, &zero);
 
     ABILITY_MANAGER_PTR->card_list.for_each([=](CardBase* card) {
         card->__on_bullet_init(this);
@@ -30349,7 +30349,7 @@ normal_angle:
         // BUG:
         // this doesn't account for the RNG
         // special cases of the angle value
-        vm->set_z_rotation(unknownA_ptr->angle);
+        vm->set_z_rotation(entry_ptr->angle);
     }
 
     int32_t damage_source_index = PLAYER_PTR->create_damage_source_rotated_rectangle(&this->motion.position, this->size.x, this->size.y, this->motion.angle, 9999999, this->damage);
@@ -30373,7 +30373,7 @@ normal_angle:
         return ZUN_ERROR;
     }
 
-    SOUND_MANAGER.play_sound_positioned_validate(unknownA_ptr->sound_id, this->motion.position.x);
+    SOUND_MANAGER.play_sound_positioned_validate(entry_ptr->sound_id, this->motion.position.x);
 
     vm->controller.position = this->motion.position;
 
@@ -30642,21 +30642,21 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
                 sht_index += sht_file->max_level + 1;
             }
 
-            ShtFileUnknownA* unknownA_ptr = sht_file->__unknownA_ptr_array_E0[sht_index];
+            ShtEntry* entry_ptr = sht_file->__entry_ptr_array_E0[sht_index];
 
-            int8_t short_modulo = unknownA_ptr->__short_timer_modulo;
+            int8_t short_modulo = entry_ptr->__short_timer_modulo;
             if (short_modulo >= 0) {
                 do {
                     if (short_modulo != 0) {
-                        int8_t long_modulo = unknownA_ptr->__long_timer_modulo;
+                        int8_t long_modulo = entry_ptr->__long_timer_modulo;
                         int32_t E;
                         int32_t F;
                         if (!long_modulo) {
                             E = short_timer % short_modulo;
-                            F = unknownA_ptr->__short_timer_value;
+                            F = entry_ptr->__short_timer_value;
                         } else {
                             E = long_timer % long_modulo;
-                            F = unknownA_ptr->__long_timer_value;
+                            F = entry_ptr->__long_timer_value;
                         }
                         if (E != F) {
                             continue;
@@ -30664,19 +30664,19 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
                     }
 
                     PlayerOption* option = NULL;
-                    if (int8_t option_index = unknownA_ptr->__option_index) {
+                    if (int8_t option_index = entry_ptr->__option_index) {
                         int32_t index = option_index % PLAYER_TOTAL_OPTION_COUNT;
                         option = &this->data.options[index - 1];
                     }
 
-                    int32_t unknownA_index = i | sht_index << 8;
-                    this->shoot_one_bullet(unknownA_index, short_timer, &this->data.position, option);
+                    int32_t sht_entry_index = i | sht_index << 8;
+                    this->shoot_one_bullet(sht_entry_index, short_timer, &this->data.position, option);
                         
                 } while (
                     // This was probably a for loop,
                     // but whatever I wanted to use continue
                     ++i,
-                    (short_modulo = (++unknownA_ptr)->__short_timer_modulo) >= 0
+                    (short_modulo = (++entry_ptr)->__short_timer_modulo) >= 0
                 );
                 // this is probably just spilled values
                 long_timer = this->data.shoot_key_long_timer;
@@ -47006,7 +47006,7 @@ dllexport gnu_noinline ZUNResult thiscall Supervisor::load_config_file(int) {
         SUPERVISOR.config = *(Config*)config_file;
         free(config_file);
         if (
-            SUPERVISOR.config.__ubyte_44 < 2 &&
+            SUPERVISOR.config.__color_mode < 2 &&
             SUPERVISOR.config.bgm_type < ENUM_MAX_VALUE(BgmType) + 1 &&
             SUPERVISOR.config.sfx_type < ENUM_MAX_VALUE(SfxType) + 1 &&
             SUPERVISOR.config.resolution < ENUM_MAX_VALUE(WindowResolution) + 1 &&
@@ -47073,17 +47073,17 @@ dllexport gnu_noinline double vectorcall get_runtime() {
         LARGE_INTEGER current_qpc_value;
         QueryPerformanceCounter(&current_qpc_value);
         current_time = (double)(current_qpc_value.QuadPart - WINDOW_DATA.startup_qpc_value.QuadPart) / (double)WINDOW_DATA.performance_counter_frequency.QuadPart;
-        prev_time = WINDOW_DATA.__double_20B0;
+        prev_time = WINDOW_DATA.__prev_runtime;
         if (current_time < prev_time) {
-            WINDOW_DATA.__double_20B0 = prev_time = current_time;
+            WINDOW_DATA.__prev_runtime = prev_time = current_time;
         }
         CRITICAL_SECTION_MANAGER.leave_section(Menu_CS);
-        return current_time - WINDOW_DATA.__double_20B0;
+        return current_time - WINDOW_DATA.__prev_runtime;
     } else {
         current_time = timeGetTime();
-        prev_time = WINDOW_DATA.__double_20B0;
+        prev_time = WINDOW_DATA.__prev_runtime;
         if (current_time < prev_time) {
-            WINDOW_DATA.__double_20B0 = prev_time = current_time;
+            WINDOW_DATA.__prev_runtime = prev_time = current_time;
         }
         current_time = (current_time - prev_time * 1000.0) / 1000.0;
         CRITICAL_SECTION_MANAGER.leave_section(Menu_CS);
@@ -48240,30 +48240,30 @@ inline int32_t WindowData::update_window_common(const L& lambda) {
 
         lambda();
     }
-    SUPERVISOR.__double_B50 = get_runtime() - this->__double_2098;
+    SUPERVISOR.__frame_update_time = get_runtime() - this->__cur_frame_start;
     return 0;
 }
 
 // 0x472DD0
 dllexport gnu_noinline int32_t thiscall WindowData::update_window__normal_version() {
     double A = get_runtime();
-    double B = this->__double_20A0;
-    this->__double_2098 = A;
+    double B = this->__prev_frame_start;
+    this->__cur_frame_start = A;
     if (A < B) {
         this->__double_20A8 = A;
         B = A;
     } else {
         B = this->__double_20A8;
     }
-    this->__double_20A0 = B;
-    A -= B;
-    A *= 1000.0;
-    if (A >= 1.5) {
+    this->__prev_frame_start = A;
+    B -= A;
+    B *= 1000.0;
+    if (B >= 1.5) {
         Sleep(1);
     }
 
-    if (this->__double_2098 > this->__double_20A8) {
-        A = this->__double_2098;
+    if (this->__cur_frame_start > this->__double_20A8) {
+        A = this->__cur_frame_start;
         do {
             B = this->__double_20A8;
             B += 1.0 / 60.0;
@@ -48300,11 +48300,11 @@ dllexport gnu_noinline int32_t thiscall WindowData::update_window__alt_version()
 
 inline void WindowData::present__alt_version() {
     double A = get_runtime();
-    this->__double_2098 = A;
+    this->__cur_frame_start = A;
 
     if (SUPERVISOR.config.input_method == InputNormal) { // 1
         double B = A;
-        double C = this->__double_20B8;
+        double C = this->__prev_present_alt_end;
         B -= C;
         if (
             B < 1.0 / 60.0 &&
@@ -48321,7 +48321,7 @@ inline void WindowData::present__alt_version() {
         }
     }
 
-    this->__double_20C0 = get_runtime();
+    this->__cur_present_alt_start = get_runtime();
 
     this->__present_setup();
     if (FAILED(SUPERVISOR.d3d_device->Present(NULL, NULL, NULL, NULL))) {
@@ -48333,17 +48333,19 @@ inline void WindowData::present__alt_version() {
         __set_default_d3d_states();
         SUPERVISOR.__int_818 = 2;
     }
-    this->__double_20B8 = get_runtime();
+    this->__prev_present_alt_end = get_runtime();
     // FPS_COUNTER_PTR->__sub_4728A0();
 }
 
 inline int32_t thiscall WindowData::update_window__alt_version2() {
-    double A = this->__double_2098;
+    double A = this->__cur_frame_start;
     double B = this->__double_20A8;
-    while (B < A) {
-        B += 1.0 / 60.0;
+    if (B < A) {
+        do {
+            B += 1.0 / 60.0;
+        } while (B < A);
+        this->__double_20A8 = B;
     }
-    this->__double_20A8 = B;
 
     return this->update_window_common([=]() {
         this->present__alt_version2();
@@ -48353,9 +48355,9 @@ inline int32_t thiscall WindowData::update_window__alt_version2() {
 // 0x472B50
 dllexport gnu_noinline void thiscall WindowData::present__alt_version2() {
     double A = get_runtime();
-    double B = this->__double_20B8 + (1.0 / 60.0);
+    double B = this->__prev_present_alt_end + (1.0 / 60.0);
     int32_t index = this->__int_20D0;
-    this->__double_2098 = A;
+    this->__cur_frame_start = A;
     int32_t D = (B - A) * 1000.0 - 2.5;
     this->__int_20CC = D;
     if (this->__int3_array_20D4[index][1] >= D) {
@@ -48379,9 +48381,9 @@ dllexport gnu_noinline void thiscall WindowData::present__alt_version2() {
     }
 
     double F = get_runtime();
-    double G = this->__double_20C0;
+    double G = this->__cur_present_alt_start;
     if (F < G) {
-        this->__double_20C0 = F;
+        this->__cur_present_alt_start = F;
         G = F;
     }
     F -= G;
@@ -48390,7 +48392,7 @@ dllexport gnu_noinline void thiscall WindowData::present__alt_version2() {
     if (F < 0.019) {
         if (!SUPERVISOR.present_parameters.Windowed) {
             // This constant doesn't make sense either
-            while (get_runtime() - this->__double_20C0 < 0.013) {
+            while (get_runtime() - this->__cur_present_alt_start < 0.013) {
                 Sleep(1);
             }
             D3DRASTER_STATUS status;
@@ -48412,7 +48414,7 @@ dllexport gnu_noinline void thiscall WindowData::present__alt_version2() {
         }
     }
 
-    this->__double_20C0 = get_runtime();
+    this->__cur_present_alt_start = get_runtime();
 
     this->__present_setup();
     if (FAILED(SUPERVISOR.d3d_device->Present(NULL, NULL, NULL, NULL))) {
@@ -48435,7 +48437,7 @@ dllexport gnu_noinline void thiscall WindowData::present__alt_version2() {
         Sleep(this->__int3_array_20D4[this->__int_20D0][1]);
         timeEndPeriod(1);
     }
-    this->__double_20B8 = get_runtime();
+    this->__prev_present_alt_end = get_runtime();
 }
 
 // 0x4731B0
@@ -48625,11 +48627,11 @@ dllexport gnu_noinline void WindowData::__sub_4734E0(BOOL arg1) {
             break;
         case BorderlessDotByDot: // 8
         case Borderless: // 9
+            height = WINDOW_DATA.__display_height;
+            width = WINDOW_DATA.__display_width;
+            WINDOW_DATA.window_width = width;
+            WINDOW_DATA.window_height = height;
             if (arg1) {
-                height = WINDOW_DATA.__display_height;
-                width = WINDOW_DATA.__display_width;
-                WINDOW_DATA.window_width = width;
-                WINDOW_DATA.window_height = height;
                 if (width >= 2560 && height >= 1920) {
                     WINDOW_DATA.__game_scale = scale = 2.0f;
                     SUPERVISOR.config.__ubyte_4E = 4;
@@ -48664,7 +48666,7 @@ dllexport gnu_noinline void WindowData::__sub_4734E0(BOOL arg1) {
                 float heightf = height;
                 float ratio = widthf / heightf;
                 if (ratio <= logical_ratio) {
-                    ratio * logical_heightf;
+                    ratio *= logical_heightf;
                     WINDOW_DATA.__backbuffer_height = logical_height;
                     WINDOW_DATA.__backbuffer_width = ratio;
                 } else {
@@ -48726,7 +48728,7 @@ dllexport gnu_noinline BOOL WindowData::__create_window(HINSTANCE instance) {
     RegisterClassA(&class_def);
     this->config_resolution = SUPERVISOR.config.resolution;
     SUPERVISOR.present_parameters.Windowed = this->config_resolution >= Windowed640x480; // 3
-    if (SUPERVISOR.config.frame_skip && SUPERVISOR.config.input_method == InputAuto) { // 2
+    if (!SUPERVISOR.config.frame_skip && SUPERVISOR.config.input_method == InputAuto) { // 2
         this->__enable_vsync = true;
     } else {
         this->__enable_vsync = false;
@@ -49246,20 +49248,22 @@ dllexport gnu_noinline int32_t __initialize_d3d() {
     BOOL boolA = true;
     SUPERVISOR.disable_vsync = WINDOW_DATA.__bool_30 ? boolA : SUPERVISOR.disable_vsync;
     if (!SUPERVISOR.present_parameters.Windowed) {
-        if (SUPERVISOR.config.__ubyte_44 == 255) {
+        if (SUPERVISOR.config.__color_mode == 255) {
             d3d_format = D3DFMT_A8R8G8B8;
             LOG_BUFFER.write(JpEnStr("èââÒãNìÆÅAâÊñ Ç 32Bits Ç≈èâä˙âªÇµÇ‹ÇµÇΩ\r\n", "First boot, screen initialized with 32Bits\r\n"));
         } else {
-            d3d_format = !SUPERVISOR.config.__ubyte_44 ? D3DFMT_R5G6B5 : D3DFMT_A8R8G8B8;
+            d3d_format = !SUPERVISOR.config.__color_mode ? D3DFMT_R5G6B5 : D3DFMT_A8R8G8B8;
             present_parameters.BackBufferFormat = d3d_format;
         }
         if (!SUPERVISOR.disable_vsync) {
-            // IDK how this might've originally looked, so comma jank
-            if (
-                WINDOW_DATA.__enable_vsync ||
-                ((present_parameters.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE), SUPERVISOR.config.input_method != InputFast) // 3
-            ) {
-                present_parameters.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
+            // IDK how this might've originally looked, so switch jank
+            switch ((bool)WINDOW_DATA.__enable_vsync) {
+                default:
+                    present_parameters.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
+                    if (SUPERVISOR.config.input_method != InputFast) {
+                case true:
+                        present_parameters.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
+                    }
             }
             present_parameters.SwapEffect = D3DSWAPEFFECT_DISCARD;
         }
@@ -49697,14 +49701,14 @@ winmain_d3d_create_success:
         hide_cursor();
         SetCursor(NULL);
     }
-    WINDOW_DATA.__double_20B0 = 0.0;
+    WINDOW_DATA.__prev_runtime = 0.0;
     double runtimeA = get_runtime();
     WINDOW_DATA.__double_20A8 = runtimeA;
-    WINDOW_DATA.__double_2098 = runtimeA;
-    WINDOW_DATA.__double_20A0 = runtimeA;
+    WINDOW_DATA.__cur_frame_start = runtimeA;
+    WINDOW_DATA.__prev_frame_start = runtimeA;
     runtimeA = get_runtime();
-    WINDOW_DATA.__double_20B8 = runtimeA;
-    WINDOW_DATA.__double_20C0 = runtimeA;
+    WINDOW_DATA.__prev_present_alt_end = runtimeA;
+    WINDOW_DATA.__cur_present_alt_start = runtimeA;
     SetForegroundWindow(WINDOW_DATA.window);
     ZUNResult result = SUPERVISOR.initialize();
     if (result == ZUN_SUCCESS) {
@@ -49745,7 +49749,7 @@ winmain_d3d_create_success:
                             if (WINDOW_DATA.config_resolution <= Fullscreen1280x960) { // 2
                                 GetWindowRect(WINDOW_DATA.window, &SUPERVISOR.window_rect);
                                 SUPERVISOR.present_parameters.Windowed = FALSE;
-                                format = SUPERVISOR.config.__ubyte_44 ? D3DFMT_R5G6B5 : D3DFMT_A8R8G8B8;
+                                format = SUPERVISOR.config.__color_mode ? D3DFMT_R5G6B5 : D3DFMT_A8R8G8B8;
                             }
                             else {
                                 format = SUPERVISOR.display_mode.Format;
