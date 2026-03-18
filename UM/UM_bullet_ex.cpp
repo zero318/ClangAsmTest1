@@ -8913,23 +8913,29 @@ enum MotionMode : int32_t {
     NoMovement = 1,
     OrbitMovement = 2,
     EllipseMovement = 3,
-    UnknownMovement = 4
+    SinusoidalMovement = 4
 };
 
 // size: 0x44
 struct MotionData {
     Float3 position; // 0x0
-    Float3 position2; // 0xC
+    Float3 base_position; // 0xC
     float speed; // 0x18
     ZUNAngle angle; // 0x1C
-    float radius; // 0x20
+    union {
+        float radius; // 0x20
+        float amplitude; // 0x20
+    };
     union {
         float radius_delta; // 0x24
-        float __angle_30_delta; // 0x24
+        float phase_delta; // 0x24
     };
-    ZUNAngle ellipse_angle; // 0x28
+    union {
+        ZUNAngle ellipse_angle; // 0x28
+        ZUNAngle base_angle; // 0x28
+    };
     float ellipse_ratio; // 0x2C
-    ZUNAngle __angle_30; // 0x30
+    ZUNAngle phase_angle; // 0x30
     union {
         Float3 misc_float3; // 0x34
         Float3 axis_velocity; // 0x34
@@ -8944,6 +8950,12 @@ struct MotionData {
 
     inline void zero_contents() {
         zero_this();
+    }
+
+    // exists in FW
+    forceinline void round_position_to_2_decimals() {
+        this->position.x = zfloorf(this->position.x * 100.0f) / 100.0f;
+        this->position.y = zfloorf(this->position.y * 100.0f) / 100.0f;
     }
     
     // 0x402CC0
@@ -8967,32 +8979,31 @@ struct MotionData {
                 this->position = this->orbit_origin + offset.as2();
                 break;
             }
-            case UnknownMovement: {
+            case SinusoidalMovement: {
                 Float2 prev_position = this->position;
-                this->position2 += this->axis_velocity;
-                float angle = this->ellipse_angle + HALF_PI_f;
+                this->base_position += this->axis_velocity;
+                float angle = this->base_angle + HALF_PI_f;
                 Float3 offset;
-                offset.make_from_vector(reduce_angle<NoInline>(angle), this->radius * zsinf(this->__angle_30) * GAME_SPEED);
-                this->position = this->position2 + offset;
+                offset.make_from_vector(reduce_angle<NoInline>(angle), this->amplitude * zsinf(this->phase_angle) * GAME_SPEED);
+                this->position = this->base_position + offset;
                 float angle_to_prev = this->position.angle_to(&prev_position);
                 clang_noinline this->angle = angle_to_prev;
                 break;
             }
         }
-        this->position.x = zfloorf(this->position.x * 100.0f) / 100.0f;
-        this->position.y = zfloorf(this->position.y * 100.0f) / 100.0f;
+        this->round_position_to_2_decimals();
     }
 
     // 0x402F90
-    dllexport gnu_noinline void update2() asm_symbol_rel(0x402F90) {
-        if (this->mode == UnknownMovement) {
-            this->position2 = this->position;
+    dllexport gnu_noinline void first_update() asm_symbol_rel(0x402F90) {
+        if (this->mode_is_sinusoidal()) {
+            this->base_position = this->position;
         }
         this->update();
     }
 
     // 0x402BF0
-    dllexport gnu_noinline void update3() asm_symbol_rel(0x402BF0) {
+    dllexport gnu_noinline void apply_deltas() asm_symbol_rel(0x402BF0) {
         switch (this->mode) {
             case AxisVelocityMovement:
                 this->axis_velocity.make_from_vector(this->angle, this->speed * GAME_SPEED);
@@ -9001,20 +9012,26 @@ struct MotionData {
                 this->radius += this->radius_delta * GAME_SPEED;
                 this->angle += this->speed * GAME_SPEED;
                 break;
-            case UnknownMovement:
-                this->__angle_30 += this->__angle_30_delta * GAME_SPEED;
-                this->axis_velocity.make_from_vector3(this->ellipse_angle, this->speed * GAME_SPEED);
+            case SinusoidalMovement:
+                this->phase_angle += this->phase_delta * GAME_SPEED;
+                this->axis_velocity.make_from_vector3(this->base_angle, this->speed * GAME_SPEED);
                 break;
         }
     }
+
+    // exists in FW
+    forceinline void apply_deltas_and_update() {
+        this->apply_deltas();
+        this->update();
+    }
     
     // 0x412F60
-    dllexport gnu_noinline void set_position(Float3* coord) asm_symbol_rel(0x412F60) {
-        this->position = *coord;
+    dllexport gnu_noinline void set_positionB(const Float3& coord) asm_symbol_rel(0x412F60) {
+        this->position = coord;
     }
     // 0x43A290
-    dllexport gnu_noinline void set_positionB(Float3* coord) asm_symbol_rel(0x43A290) {
-        this->position = *coord;
+    dllexport gnu_noinline void set_position(const Float3& coord) asm_symbol_rel(0x43A290) {
+        this->position = coord;
     }
     
     // 0x412FD0
@@ -9162,17 +9179,78 @@ struct MotionData {
     }
 
     inline MotionData() {};
+
+    // These functions don't seem to exist, but I'm including them anyway
+    // for the sake of convenience when making patches and such.
+
+    bool mode_is_axis_velocity() {
+        return this->mode == AxisVelocityMovement;
+    }
+
+    bool mode_is_ellipse() {
+        return this->mode == EllipseMovement;
+    }
+
+    // These all correspond to the unused sinusoidal mode.
+
+    void set_sinusoidal_mode() {
+        this->mode = SinusoidalMovement;
+    }
+
+    inline bool mode_is_sinusoidal() {
+        return this->mode == SinusoidalMovement;
+    }
+
+    void set_phase_angle(float angle) {
+        this->phase_angle = angle;
+    }
+
+    float get_phase_angle() {
+        return this->phase_angle;
+    }
+
+    forceinline void set_amplitude(float value) {
+        this->set_orbit_radius(value);
+    }
+
+    forceinline float get_amplitude() {
+        return this->get_orbit_radius();
+    }
+
+    forceinline void set_phase_delta(float value) {
+        this->set_orbit_radius_delta(value);
+    }
+
+    forceinline float get_phase_delta() {
+        return this->get_orbit_radius_delta();
+    }
+
+    forceinline void set_base_angle(float angle) {
+        this->set_ellipse_angle(angle);
+    }
+
+    forceinline float get_base_angle() {
+        return this->get_ellipse_angle();
+    }
+
+    forceinline void set_base_position(const Float3& value) {
+        this->base_position = value;
+    }
+
+    forceinline Float3& get_base_position() {
+        return this->base_position;
+    }
 };
 #pragma region // MotionData Validation
 ValidateFieldOffset32(0x0, MotionData, position);
-ValidateFieldOffset32(0xC, MotionData, position2);
+ValidateFieldOffset32(0xC, MotionData, base_position);
 ValidateFieldOffset32(0x18, MotionData, speed);
 ValidateFieldOffset32(0x1C, MotionData, angle);
 ValidateFieldOffset32(0x20, MotionData, radius);
 ValidateFieldOffset32(0x24, MotionData, radius_delta);
 ValidateFieldOffset32(0x28, MotionData, ellipse_angle);
 ValidateFieldOffset32(0x2C, MotionData, ellipse_ratio);
-ValidateFieldOffset32(0x30, MotionData, __angle_30);
+ValidateFieldOffset32(0x30, MotionData, phase_angle);
 ValidateFieldOffset32(0x34, MotionData, misc_float3);
 ValidateFieldOffset32(0x40, MotionData, flags);
 ValidateStructSize32(0x44, MotionData);
@@ -25138,8 +25216,7 @@ struct PlayerDamageSource {
 
     inline void on_tick() {
         if (this->active) {
-            this->motion.update3();
-            this->motion.update();
+            this->motion.apply_deltas_and_update();
 
             this->radius += this->radius_delta;
             this->angle += this->angular_velocity;
@@ -26888,8 +26965,7 @@ forceinline void PlayerBullet::on_tick() {
             }
         }
 
-        this->motion.update3();
-        this->motion.update();
+        this->motion.apply_deltas_and_update();
 
         AnmVM* vm = this->__vm_id_8.get_vm_ptr();
         if (!vm) {
@@ -30320,7 +30396,7 @@ normal_angle:
         this->motion.angle = angle;
     }
 
-    this->motion.update3();
+    this->motion.apply_deltas();
 
     switch (entry_ptr->__byte_21) {
         default:
@@ -39259,12 +39335,12 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__move() {
     if (this->position_interp.absolute.end_time) {
         this->motion.absolute.axis_velocity = this->position_interp.absolute.step() - this->motion.absolute.position;
     } else {
-        this->motion.absolute.update3();
+        this->motion.absolute.apply_deltas();
     }
     if (this->position_interp.relative.end_time) {
         this->motion.relative.axis_velocity = this->position_interp.relative.step() - this->motion.relative.position;
     } else {
-        this->motion.relative.update3();
+        this->motion.relative.apply_deltas();
     }
     this->motion.absolute.update();
     if (this->__basic_anm_update) {
@@ -41397,7 +41473,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             MotionData& motion_rel = this->motion.relative;
             MotionData& motion_abs = this->motion.absolute;
             motion_abs.get_position() += motion_rel.get_position();
-            motion_rel.position = UNKNOWN_FLOAT3_A;
+            motion_rel.set_positionB(UNKNOWN_FLOAT3_A);
             motion_rel.set_speed(0.0f);
             motion_abs.set_speed(0.0f);
             motion_rel.set_orbit_origin(UNKNOWN_FLOAT3_A);
@@ -41719,7 +41795,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
                 motion.set_orbit_radius_delta(orbit_radius_delta);
             }
             motion.set_orbit_mode();
-            motion.update2();
+            motion.first_update();
             this->update_current_motion();
             break;
         }
@@ -41753,7 +41829,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             speed_interp.initialize(end_time, interp_mode, initial_speed.y, final_speed.y);
             orbit_radius_interp.initialize_bezier(end_time, interp_mode, initial_orbit, final_orbit, UNKNOWN_FLOAT2_A, UNKNOWN_FLOAT2_A);
             motion.set_orbit_mode();
-            motion.update2();
+            motion.first_update();
             this->update_current_motion();
             break;
         }
@@ -41767,7 +41843,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             if (Y > -999999.0) {
                 motion.set_orbit_origin_y(Y);
             }
-            motion.update2();
+            motion.first_update();
             this->update_current_motion();
             // break; // Nice one ZUN
         }
@@ -41802,7 +41878,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             }
             motion.set_orbit_mode();
             motion.set_ellipse_mode();
-            motion.update2();
+            motion.first_update();
             this->update_current_motion();
             break;
         }
@@ -41851,21 +41927,21 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             motion.set_orbit_origin(motion.get_position());
             motion.set_orbit_mode();
             motion.set_ellipse_mode();
-            motion.update2();
+            motion.first_update();
             this->update_current_motion();
             break;
         }
         case move_to_boss0_abs: // 414
-            this->motion.absolute.set_positionB(&ENEMY_MANAGER_PTR->get_boss_by_index(0)->get_current_motion()->position);
+            this->motion.absolute.set_position(ENEMY_MANAGER_PTR->get_boss_by_index(0)->get_current_motion()->position);
             break;
         case move_to_boss0_rel: // 415
-            this->motion.relative.set_positionB(&ENEMY_MANAGER_PTR->get_boss_by_index(0)->get_current_motion()->position);
+            this->motion.relative.set_position(ENEMY_MANAGER_PTR->get_boss_by_index(0)->get_current_motion()->position);
             break;
         case move_to_enemy_id_abs: // 432
-            this->motion.absolute.set_positionB(&ENEMY_MANAGER_PTR->get_enemy_by_id(this->get_int_arg(0))->get_current_motion()->position);
+            this->motion.absolute.set_position(ENEMY_MANAGER_PTR->get_enemy_by_id(this->get_int_arg(0))->get_current_motion()->position);
             break;
         case move_to_enemy_id_rel: // 433
-            this->motion.relative.set_positionB(&ENEMY_MANAGER_PTR->get_enemy_by_id(this->get_int_arg(0))->get_current_motion()->position);
+            this->motion.relative.set_position(ENEMY_MANAGER_PTR->get_enemy_by_id(this->get_int_arg(0))->get_current_motion()->position);
             break;
         case move_bounds_set: // 504
             this->move_bounds_enable = true;
