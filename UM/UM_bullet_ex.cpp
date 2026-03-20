@@ -11390,8 +11390,8 @@ struct EnemyData {
     Float3 position_of_last_damage_source_to_hit; // 0x280, 0x14AC
     int32_t int_vars[4]; // 0x28C, 0x14B8
     float float_vars[8]; // 0x29C, 0x14C8
-    Timer ecl_time; // 0x2BC, 0x14E8
-    Timer boss_timer; // 0x2D0, 0x14FC
+    Timer phase_timer; // 0x2BC, 0x14E8
+    Timer __time_existed; // 0x2D0, 0x14FC
     float slowdown; // 0x2E4, 0x1510
     ZUNList<Enemy> global_list_node; // 0x2E8, 0x1514
     ZUNAbsRel<ZUNInterpEx<Float3>> position_interp; // 0x2F8, 0x1524
@@ -11766,8 +11766,8 @@ ValidateFieldOffset32(0x27C, EnemyData, anm_base_layer);
 ValidateFieldOffset32(0x280, EnemyData, position_of_last_damage_source_to_hit);
 ValidateFieldOffset32(0x28C, EnemyData, int_vars);
 ValidateFieldOffset32(0x29C, EnemyData, float_vars);
-ValidateFieldOffset32(0x2BC, EnemyData, ecl_time);
-ValidateFieldOffset32(0x2D0, EnemyData, boss_timer);
+ValidateFieldOffset32(0x2BC, EnemyData, phase_timer);
+ValidateFieldOffset32(0x2D0, EnemyData, __time_existed);
 ValidateFieldOffset32(0x2E4, EnemyData, slowdown);
 ValidateFieldOffset32(0x2E8, EnemyData, global_list_node);
 ValidateFieldOffset32(0x2F8, EnemyData, position_interp);
@@ -12213,7 +12213,7 @@ ValidateStructSize32(0x122C, EclVM);
 #pragma endregion
 
 inline ZUNResult EnemyData::run_ecl() {
-    return this->vm->run_ecl(this->ecl_time.get_scale_unsafe());
+    return this->vm->run_ecl(this->phase_timer.get_scale_unsafe());
 }
 
 inline void EnemyData::reinitialize_vm_with_sub(const char* sub_name) {
@@ -12457,7 +12457,7 @@ enum Var : int32_t {
     PLAYER_X = -9991,
     PLAYER_Y = -9990,
     PLAYER_ANGLE = -9989,
-    BOSS_TIMER = -9988,
+    PHASE_TIMER = -9988,
     RAND_FLOAT_SIGNED = -9987,
     SPELL_TIMEOUT = -9986,
     EI0 = -9985,
@@ -12753,7 +12753,7 @@ enum Opcode : uint16_t {
     item_reward_set,
     enemy_life_set,
     boss_set,
-    boss_timer_clear,
+    phase_timer_clear,
     callback_ex,
     enemy_invincible_timer,
     effect_sound,
@@ -31727,8 +31727,8 @@ inline void EnemyData::initialize(Enemy* enemy) {
     this->boss_id = -1;
     this->global_list_node.initialize_with(enemy);
     this->drops.initialize();
-    this->ecl_time.initialize_and_reset();
-    this->boss_timer.initialize_and_reset();
+    this->phase_timer.initialize_and_reset();
+    this->__time_existed.initialize_and_reset();
     this->invulnerable_timer.initialize_and_reset();
     this->no_collision_timer.initialize_and_reset();
     this->anm_base_layer = 1;
@@ -39249,7 +39249,7 @@ forceinline ZUNResult thiscall EnemyData::update() {
     if (ZUN_FAILED(this->__move())) {
         return ZUN_ERROR;
     }
-    if (ZUN_FAILED(this->vm->run_ecl(this->ecl_time.get_scale_unsafe()))) {
+    if (ZUN_FAILED(this->vm->run_ecl(this->phase_timer.get_scale_unsafe()))) {
         return ZUN_ERROR;
     }
     if (auto func_set_func = this->func_set_func) {
@@ -39266,12 +39266,12 @@ forceinline const char* Enemy::check_timer_callbacks() {
             int32_t time_threshold = this->data.callbacks[i].time;
             if (time_threshold > 0) {
                 if (this->data.is_boss) {
-                    GUI_PTR->update_spell_timer(time_threshold - this->data.ecl_time);
+                    GUI_PTR->update_spell_timer(time_threshold - this->data.phase_timer);
                 }
-                if (this->data.ecl_time >= this->data.callbacks[i].time) {
+                if (this->data.phase_timer >= this->data.callbacks[i].time) {
                     this->data.life.current = this->data.callbacks[i].life;
                     this->data.callbacks[i].life = -1;
-                    this->data.ecl_time.reset();
+                    this->data.phase_timer.reset();
                     this->data.__unknown_flag_L = true;
 
                     Spellcard* spellcard = SPELLCARD_PTR;
@@ -39305,7 +39305,7 @@ forceinline const char* Enemy::check_life_callbacks() {
             if (life <= life_threshold) {
                 this->data.add_spawn_weight_to_chapter_destroy();
                 this->data.callbacks[i].life = -1;
-                this->data.ecl_time.reset();
+                this->data.phase_timer.reset();
                 this->data.__unknown_flag_L = false;
                 return this->data.callbacks[i].life_sub;
             }
@@ -39485,7 +39485,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
         }
     }
     if (const char* timer_callback_to_run = this->enemy()->check_timer_callbacks()) {
-        this->ecl_time.reset();
+        this->phase_timer.reset();
         this->reinitialize_vm_with_sub(timer_callback_to_run);
         if (ZUN_FAILED(this->run_ecl())) {
             return ZUN_ERROR;
@@ -39560,7 +39560,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
             this->__recent_hit_timer.set(30);
 
             if (const char* life_callback_to_run = this->enemy()->check_life_callbacks()) {
-                this->ecl_time.set(0);
+                this->phase_timer.set(0);
                 this->reinitialize_vm_with_sub(life_callback_to_run);
                 if (ZUN_FAILED(this->run_ecl())) {
                     return ZUN_ERROR;
@@ -39623,7 +39623,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
             if (
                 this->grazable &&
                 result == GrazeCollision &&
-                this->ecl_time.is_multiple_of(6)
+                this->phase_timer.is_multiple_of(6)
             ) {
                 PLAYER_PTR->do_graze(&PLAYER_PTR->data.position);
             }
@@ -39633,7 +39633,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
     if (AnmVM* main_vm = this->anm_vms[0].get_vm_ptr()) {
         if (!this->__int_50E4) {
             if (this->__anm_related_flag_A) {
-                if (this->ecl_time.is_multiple_of(4)) {
+                if (this->phase_timer.is_multiple_of(4)) {
                     main_vm->data.color2 = PackD3DCOLOR(255, 255, 0, 255);
                     main_vm->data.color_mode = 1;
                 }
@@ -39666,7 +39666,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
                 }
             }
             else {
-                if (this->ecl_time.is_multiple_of(4)) {
+                if (this->phase_timer.is_multiple_of(4)) {
                     if (
                         (this->__is_chonky | this->is_boss) &&
                         SPELLCARD_PTR->__enemy_is_low_health(this, 100, 500)
@@ -39733,8 +39733,8 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::on_tick() {
         if (this->no_collision_timer > 0) {
             this->no_collision_timer--;
         }
-        this->boss_timer++;
-        this->ecl_time++;
+        this->__time_existed++;
+        this->phase_timer++;
     }
     return ZUN_SUCCESS;
 }
@@ -40188,8 +40188,8 @@ dllexport gnu_noinline int32_t Enemy::get_int_var(int32_t index) {
         case PLAYER_ANGLE: // -9989
             return angle_to_player_from_point(&this->data.current_motion.position);
             */
-        case BOSS_TIMER: // -9988
-            return this->data.ecl_time;
+        case PHASE_TIMER: // -9988
+            return this->data.phase_timer;
         case SPELL_TIMEOUT: // -9986
             return SPELLCARD_PTR->__timeout_spell;
         case SELF_X: // -9997
@@ -40469,8 +40469,8 @@ dllexport gnu_noinline float Enemy::get_float_var(int32_t index) {
             return REPLAY_RNG.rand_angle();
         case PLAYER_ANGLE: // -9989
             return angle_to_player_from_point(&this->data.current_motion.position);
-        case BOSS_TIMER: // -9988
-            return this->data.ecl_time;
+        case PHASE_TIMER: // -9988
+            return this->data.phase_timer;
         case SPELL_TIMEOUT: // -9986
             return SPELLCARD_PTR->__timeout_spell;
         case EI0: // -9985
@@ -42823,8 +42823,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->life.set_current_scaled(this->life.get_current());
             break;
         }
-        case boss_timer_clear: // 513
-            this->ecl_time.reset(); // This is definitely the right offset...
+        case phase_timer_clear: // 513
+            this->phase_timer.reset();
             break;
         case __enemy_flag_armored: // 568
             this->life.set_spell(this->get_int_arg(0));
