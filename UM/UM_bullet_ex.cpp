@@ -2983,6 +2983,7 @@ static inline constexpr uint32_t BUTTON_RESTART     = 0x00200000; // 'R', VK_END
 
 static inline constexpr uint32_t BUTTON_SELECT      = BUTTON_SHOOT | BUTTON_ENTER; // 'Z', VK_RETURN
 static inline constexpr uint32_t BUTTON_CANCEL      = BUTTON_BOMB; // 'X'
+static inline constexpr uint32_t BUTTON_ANY         = 0x0000FFFF;
 
 static inline constexpr uint32_t BUTTON_SHOOT_INDEX = 0;
 static inline constexpr uint32_t BUTTON_BOMB_INDEX = 1;
@@ -4744,6 +4745,9 @@ public:
     dllexport gnu_noinline static void stdcall set_camera2_alt(uint32_t = UNUSED_DWORD) asm_symbol_rel(0x41B3B0);
 
     inline void thiscall set_camera_by_index_disable_fog(uint32_t index);
+
+    // 0x475380
+    dllexport gnu_noinline static ZUNResult __sub_475380() asm_symbol_rel(0x475380);
 };
 #pragma region // Supervisor Validation
 ValidateFieldOffset32(0x0, Supervisor, current_instance);
@@ -7862,12 +7866,13 @@ struct GameManager {
             uint32_t __unknown_flag_D : 1; // 4
             uint32_t __unknown_field_A : 2; // 5-6
             uint32_t __unknown_flag_E : 1; // 7
+            uint32_t __unknown_flag_F : 1; // 8
         };
     };
-    int32_t __int_C; // 0xC
+    int32_t practice_mode_life_override; // 0xC
     int32_t continue_credits; // 0x10
-    int32_t __int_14; // 0x14
-    int32_t __int_18; // 0x18
+    int32_t __demo_timer; // 0x14
+    int32_t __demo_index; // 0x18
     Globals globals; // 0x1C
     int32_t __int_118; // 0x118
     probably_padding_bytes(0x4); // 0x11C
@@ -8096,6 +8101,20 @@ ValidateFieldOffset32(0x20D4, WindowData, __int3_array_20D4);
 extern "C" {
     // 0x568C30
     externcg WindowData WINDOW_DATA cgasm("_WINDOW_DATA");
+}
+
+// 0x467740
+dllexport gnu_noinline BOOL fastcall get_dinput_keyboard_state(BYTE keys[256]) asm_symbol_rel(0x467740);
+dllexport gnu_noinline BOOL fastcall get_dinput_keyboard_state(BYTE keys[256]) {
+    memset(keys, 0, sizeof(keys));
+    if (WINDOW_DATA.window_active) {
+        HRESULT result = SUPERVISOR.keyboard_device->GetDeviceState(sizeof(keys), keys);
+        if (result == DIERR_INPUTLOST || result != DI_OK) {
+            SUPERVISOR.keyboard_device->Acquire();
+        }
+        return true;
+    }
+    return false;
 }
 
 // Yes, I know I don't need explicit enum values. But it makes a quick lookup table visually.
@@ -22742,6 +22761,7 @@ struct Ending : ZUNTask {
             uint32_t __unknown_flag_B : 1; // 1
             uint32_t __unknown_flag_C : 1; // 2
             uint32_t __unknown_flag_A : 1; // 3
+            uint32_t __unknown_flag_D : 1; // 4
         };
     };
     int32_t __int_20; // 0x20
@@ -45372,6 +45392,14 @@ ValidateStructSize32(0x3F8, PauseMenu);
 
 typedef struct MainMenu MainMenu;
 
+// 0x4B7B18
+static const char* DEMO_REPLAY_FILENAMES[] = {
+    "demo/demo1.rpy",
+    "demo/demo2.rpy",
+    "demo/demo3.rpy",
+    "demo/demo4.rpy"
+};
+
 extern "C" {
     // 0x4CF43C
     externcg MainMenu* MAIN_MENU_PTR cgasm("_MAIN_MENU_PTR");
@@ -45511,26 +45539,132 @@ gnu_noinline void debug_command_line() {
 }
 #endif
 
+extern "C" {
+    // 0x4CF438
+    externcg int32_t UNKNOWN_INT32_C cgasm("_UNKNOWN_INT32_C");
+}
+
 // size: 0x5D98
 struct MainMenu : ZUNTask {
     // void* vftable; // 0x0
     // ZUNTask base; // 0x4
     AnmLoaded* title_anm; // 0x10
     AnmLoaded* title_v_anm; // 0x14
-    unknown_fields(0xC); // 0x18
+    int32_t current_state; // 0x18
+    int32_t previous_state; // 0x1C
+    int32_t __int_20; // 0x20
     MenuSelect __menu_select_24; // 0x24
     MenuSelect __menu_select_FC; // 0xFC
     MenuSelect __menu_select_1D4; // 0x1D4
     MenuSelect __menu_select_2AC; // 0x2AC
     Timer __timer_384; // 0x384
-    // 0x398
+
+    // this array is *at least* 109 long :KogasaGun:
+    AnmID __anm_id_array_398[1]; // 0x398
+    // 0x39C
+
+    AnmID __anm_id_3B4; // 0x3B4
+    // 0x3B8
+
+    AnmID __anm_id_3E8; // 0x3E8
+    // 0x3EC
+
+    AnmID __anm_id_420; // 0x420
+    // 0x424
+
+    AnmID __anm_id_42C; // 0x42C
+    AnmID __anm_id_430; // 0x430
+    // 0x434
+    AnmID __anm_id_438; // 0x438
+    AnmID __anm_id_43C; // 0x43C
+    // 0x440
+    AnmID __anm_id_444; // 0x444
+    AnmID __anm_id_448; // 0x448
+    AnmID __anm_id_44C; // 0x44C
+    AnmID __anm_id_450; // 0x450
+    AnmID __anm_id_454; // 0x454
+    AnmID __anm_id_458; // 0x458
+    // 0x45C
+
+    AnmID __anm_id_48C; // 0x48C
+    // 0x490
+
+    AnmID __anm_id_49C; // 0x49C
+    // 0x4A0
+
+    AnmID __anm_id_4B0; // 0x4B0
+    AnmID __anm_id_4B4; // 0x4B4
+    AnmID __anm_id_4B8; // 0x4B8
+    AnmID __anm_id_4BC; // 0x4BC
+    AnmID __anm_id_4C0; // 0x4C0
+    AnmID __anm_id_4C4; // 0x4C4
+    AnmID __anm_id_4C8; // 0x4C8
+    AnmID __anm_id_4CC; // 0x4CC
+    // 0x4D0
+
+    AnmID __anm_id_53C; // 0x53C
+    AnmID __anm_id_540; // 0x540
+    AnmID __anm_id_544; // 0x544
+    AnmID __anm_id_548; // 0x548
+    AnmID __anm_id_54C; // 0x54C
+    // 0x550
+
+    AnmID __anm_id_570; // 0x570
+    AnmID __anm_id_574; // 0x574
+    // 0x574
+
+    AnmID __anm_id_array_618[7]; // 0x618
+    // 0x634
+
+    AnmID __anm_id_644; // 0x644
+    // 0x648
 
     AnmID __anm_id_650; // 0x650
-    // 0x654
+    AnmID __anm_id_array_654[10]; // 0x654
+    // 0x67C
 
-    ReplayManager* __replay_manager_array_5AB4[100];
-    void* __ptr_5C44; // 0x5C44
-    // 0x5C48
+    AnmID __anm_id_array_694[1]; // 0x694 UNKNOWN BOUND
+    // 0x698
+
+    AnmID __anm_id_array_6E4[8]; // 0x6E4
+    AnmID __anm_id_704; // 0x704
+    int32_t __int_708; // 0x708
+    int32_t __int_70C; // 0x70C
+    int __int_710; // 0x710
+    int __int_714; // 0x714
+    // 0x718
+
+    int32_t __int_5958; // 0x5958
+    char __text_buffer_595C[12]; // 0x595C double check length, might be 10 or some such
+    int __int_5968; // 0x5968
+    int __dword_596C; // 0x596C
+    MenuSelect __menu_select_5970; // 0x5970
+    // 0x5A48
+
+    int __index_5AAC; // 0x5AAC
+    int __int_5AB0; // 0x5AB0
+    ReplayManager* __replay_manager_array_5AB4[100]; // 0x5AB4
+    void* musiccmt_file; // 0x5C44
+    int32_t __int_5C48; // 0x5C48
+    union {
+        uint32_t flags; // 0x5C4C
+        struct {
+            uint32_t __unknown_flag_A : 1; // 1
+            uint32_t __unknown_flag_B : 1; // 2
+            uint32_t __unknown_flag_C : 1; // 3
+            uint32_t __unknown_flag_D : 1; // 4
+        };
+    };
+    MenuSelect __menu_select_5C50; // 0x5C50
+    int32_t __int_5D28; // 0x5D28
+    int32_t __int_5D2C; // 0x5D2C
+    // 0x5D30
+    int32_t __int_array_5D34[5]; // 0x5D34
+    int __int_5D48; // 0x5D48
+    int32_t __int_5D4C; // 0x5D4C
+    int __int_5D50; // 0x5D50
+    Timer __timer_5D54; // 0x5D54
+    Timer __timer_5D68; // 0x5D68
     ZUNThread __thread_5D7C; // 0x5D7C
     // 0x5D98
 
@@ -45561,9 +45695,9 @@ struct MainMenu : ZUNTask {
 
         this->__anm_id_650.interrupt_tree(1);
 
-        SAFE_FREE(this->__ptr_5C44);
+        SAFE_FREE(this->musiccmt_file);
 
-        //SUPERVISOR.__sub_475380();
+        SUPERVISOR.__sub_475380();
 
         MAIN_MENU_PTR = NULL;
     }
@@ -45581,14 +45715,374 @@ struct MainMenu : ZUNTask {
         return sizeof(MainMenu); // why tho
     }
 
+    // 0x4646E0
+    dllexport gnu_noinline void thiscall change_state(int32_t new_state) asm_symbol_rel(0x4646E0) {
+        this->previous_state = this->current_state;
+        this->current_state = new_state;
+        this->__int_20 = 0;
+        this->__timer_384.reset();
+    }
+
+    // 0x464740
+    dllexport gnu_noinline void thiscall __set_int_20(int value) asm_symbol_rel(0x464740) {
+        this->__int_20 = value;
+        this->__timer_384.reset();
+    }
+
+    // 0x469C80
+    dllexport gnu_noinline int thiscall __state_15_handler() asm_symbol_rel(0x469C80) {
+        // TODO: complain about how much menu code sucks
+        return 1;
+    }
+
+    // 0x465AA0
+    dllexport gnu_noinline int thiscall __state_1_handler() asm_symbol_rel(0x465AA0) {
+        // TODO: yet another huge awful menu switch
+        return 1;
+    }
+
+    // 0x467B10
+    dllexport gnu_noinline int thiscall __state_12_handler() asm_symbol_rel(0x467B10) {
+        // TODO: HOW MANY OF THESE GIANT SWITCH FUNCTIONS ARE THERE ZUN
+        return 1;
+    }
+
+    // 0x46D320
+    dllexport gnu_noinline int thiscall __state_23_handler() asm_symbol_rel(0x46D320) {
+        // TODO: this is why I've kept putting off the menu code
+        return 1;
+    }
+
+    // 0x46BCA0
+    dllexport gnu_noinline int thiscall __state_18_handler() asm_symbol_rel(0x46BCA0) {
+        // TODO: figure out how to make someone else do this part
+        return 1;
+    }
+
+    // 0x466280
+    dllexport gnu_noinline int thiscall __state_5_handler() asm_symbol_rel(0x466280) {
+        // TODO: rethink the life choices that lead to wanting to RE this much menu code
+        return 1;
+    }
+
+    // 0x466740
+    dllexport gnu_noinline int thiscall __state_6_handler() asm_symbol_rel(0x466740) {
+        // TODO: fun fact, absolutely nothing uses these return values
+        return 1;
+    }
+
+    // 0x467320
+    dllexport gnu_noinline int thiscall __state_8_handler() asm_symbol_rel(0x467320) {
+        // TODO: weird mystery key checks in this one...?
+        return 1;
+    }
+
+    // 0x46AFF0
+    dllexport gnu_noinline int thiscall __state_14_handler() asm_symbol_rel(0x46AFF0) {
+        // TODO: is zun okay, this is getting ridiculous
+        return 1;
+    }
+
+    // 0x46C1D0
+    dllexport gnu_noinline int thiscall __state_19_handler() asm_symbol_rel(0x46C1D0) {
+        // TODO: despair
+        return 1;
+    }
+
+    // 0x46CD50
+    dllexport gnu_noinline int thiscall __state_20_handler() asm_symbol_rel(0x46CD50) {
+        // TODO: maybe this one first, it looks less painful
+        return 1;
+    }
+
+    // 0x4686E0
+    dllexport gnu_noinline int thiscall __state_10_handler() asm_symbol_rel(0x4686E0) {
+        // TODO: T_T
+        return 1;
+    }
+
+    // 0x468B10
+    dllexport gnu_noinline int thiscall __state_11_handler() asm_symbol_rel(0x468B10) {
+        // TODO: even more funny keyboard stuff
+        return 1;
+    }
+
+    // 0x46A5D0
+    dllexport gnu_noinline int thiscall __state_16_handler() asm_symbol_rel(0x46A5D0) {
+        
+        return 1;
+    }
+
     // 0x464ED0
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x464ED0) {
         // TODO: anything
+        Ending* ending = ENDING_PTR;
+        if (ending) {
+            if (ending->__unknown_flag_D) {
+                if (ending) {
+                    delete ending;
+                }
+                SOUND_MANAGER.__load_and_play_music_with_unlock(0, 0, "th18_01");
+                return UpdateFuncNext;
+            }
+        }
+        else {
+            if (this->current_state == 1) {
+
+                int32_t idle_time = ++GAME_MANAGER.__demo_timer;
+
+                if (INPUT_STATES[0].check_hardware_inputs(BUTTON_ANY)) {
+                    goto reset_demo_idle_timer;
+                }
+
+                if (idle_time >= 1800) {
+                    GAME_MANAGER.__unknown_flag_F = false;
+                    GAME_MANAGER.__unknown_flag_E = true;
+
+                    byteloop_strcpy(UNKNOWN_TEXT_BUFFER_A, DEMO_REPLAY_FILENAMES[GAME_MANAGER.__demo_index]);
+                    ReplayManager* replay_manager = ReplayManager::allocate_mode2(UNKNOWN_TEXT_BUFFER_A);
+                    GAME_MANAGER.__demo_index = (GAME_MANAGER.__demo_index + 1) % countof(DEMO_REPLAY_FILENAMES);
+
+                    int32_t stage_number = 0;
+                    do {
+                        if (!replay_manager->stage_data[stage_number].gamestate_start) {
+                            break;
+                        }
+                    } while (++stage_number < STAGE_COUNT);
+                    GAME_MANAGER.globals.current_stage = stage_number;
+                    GAME_MANAGER.globals.__stage_number_related_4 = stage_number;
+                    SUPERVISOR.gamemode_switch = 13;
+
+                    ReplayInfo* replay_info = replay_manager->info;
+
+                    STAGE_DATA_PTR = &STAGE_DATA[stage_number];
+
+                    GAME_MANAGER.globals.character = replay_info->character;
+                    GAME_MANAGER.globals.shottype = replay_info->shottype;
+                    GAME_MANAGER.__int_118 = GAME_MANAGER.globals.difficulty;
+                    GAME_MANAGER.globals.difficulty = replay_info->difficulty;
+
+                    delete replay_manager; // Really? We allocated it just to nuke it?
+
+                    UNKNOWN_INT32_C = 1;
+            reset_demo_idle_timer:
+                    GAME_MANAGER.__demo_timer = 0;
+                }
+            }
+
+            if (this->__unknown_flag_A) {
+                int32_t __delay = ++this->__int_5C48;
+                if (UNKNOWN_INT32_C == 1 || __delay >= 30) {
+                    SOUND_MANAGER.__load_and_play_music_with_unlock(0, 0, "th18_01");
+                    this->__unknown_flag_A = false;
+                    this->__int_5C48 = 0;
+                }
+            }
+
+            int32_t A;
+            switch (this->current_state) {
+                case 0:
+                    {
+                        AnmManager* anm_manager = ANM_MANAGER_PTR;
+                        anm_manager->mark_all_vms_from_loaded_slot_for_delete(FRONT_ANM_INDEX);
+                        anm_manager->mark_all_vms_from_loaded_slot_for_delete(BULLET_ANM_INDEX);
+                        anm_manager->mark_all_vms_from_loaded_slot_for_delete(ASCII_ANM_INDEX);
+                        anm_manager->mark_all_vms_from_loaded_slot_for_delete(TEXT_ANM_INDEX);
+                        ASCII_MANAGER_PTR->__interrupt_1_and_wipe_vm_id_19268();
+                    }
+
+                    A = UNKNOWN_INT32_C;
+                    if (A == 3) {
+                        this->__menu_select_24.menu_length = 10;
+                        this->__menu_select_24.set_selection(0);
+                        this->__menu_select_24.push_state();
+                        this->change_state(15);
+                        UNKNOWN_INT32_C = 1;
+                        this->enable_draw_unsafe();
+                case 15:
+                        this->__state_15_handler();
+                        break;
+                    }
+
+                    if (!GAME_MANAGER.__unknown_flag_E) {
+                        this->__int_5C48 = 0;
+                        this->__unknown_flag_A = true;
+                    } else {
+                        this->__unknown_flag_A = false;
+                    }
+
+                    GAME_MANAGER.globals.difficulty = GAME_MANAGER.__int_118;
+                    GAME_MANAGER.__unknown_flag_E = false;
+
+                    this->__unknown_flag_B = !A;
+
+                    if (A == 0) {
+                        this->change_state(1);
+                        UNKNOWN_INT32_C = 1;
+                        this->enable_draw_unsafe();
+                case 1: case1_label:
+                        this->__state_1_handler();
+                    }
+                    else if (A == 1) {
+                        if (GAME_MANAGER.globals.difficulty == EXTRA) {
+                            this->__menu_select_24.set_selection(1);
+                        }
+                        this->change_state(1);
+                        this->enable_draw_unsafe();
+                        this->__state_1_handler();
+                    }
+                    else if (A == 2) {
+                        GAME_MANAGER.__set_unknown_field_A(0);
+                        this->__menu_select_24.menu_length = 10;
+                        this->__menu_select_24.set_selection(4);
+                        this->__menu_select_24.push_state();
+                        this->change_state(12);
+                        UNKNOWN_INT32_C = 1;
+                        this->enable_draw_unsafe();
+                case 12:
+                        this->__state_12_handler();
+                    }
+                    else if (A == 6) {
+                        GAME_MANAGER.__set_unknown_field_A(0);
+                        this->__menu_select_24.menu_length = 10;
+                        this->__menu_select_24.set_selection(5);
+                        this->__menu_select_24.push_state();
+                        this->__menu_select_24.menu_length = 10;
+                        this->__menu_select_24.set_selection(2);
+                        this->__menu_select_24.push_state();
+                        // somehow this generates the 9 by subtracting 21 from 30
+                        // ScreenEffect::create(9, 30, 0, 0, 0, 0x5B);
+                        (this->__anm_id_3B4 = this->title_anm->instantiate_vm_to_world_list_back(7)).interrupt_and_run_tree(3);
+                        this->change_state(23);
+                        UNKNOWN_INT32_C = 1;
+                        this->enable_draw_unsafe();
+                case 23:
+                        this->__state_23_handler();
+                    }
+                    else if (A == 5) {
+                        // ScreenEffect::create(9, 30, 0, 0, 0, 0x5B);
+                        (this->__anm_id_3B4 = this->title_anm->instantiate_vm_to_world_list_back(7)).interrupt_and_run_tree(3);
+                        this->change_state(18);
+                        UNKNOWN_INT32_C = 1;
+                        this->enable_draw_unsafe();
+                case 18:
+                        this->__state_18_handler();
+                    }
+                    else if (A == 4) {
+                        // ScreenEffect::create(9, 30, 0, 0, 0, 0x5B);
+                        (this->__anm_id_3B4 = this->title_anm->instantiate_vm_to_world_list_back(7)).interrupt_and_run_tree(3);
+                        this->change_state(5);
+                        this->enable_draw_unsafe();
+                case 5:
+                        this->__state_5_handler();
+                    }
+                    else {
+                        goto case1_label;
+                    }
+                    break;
+                    
+                case 3: {
+                    Float3 position = { 140.0f, 80.0f };
+                    switch (this->__int_20) {
+                        case 1:
+                            if (OPTIONS_MENU_PTR) {
+                                this->change_state(1);
+                                this->__anm_id_3B4.interrupt_and_run_tree(2);
+                            }
+                            break;
+                        case 0:
+                            OptionsMenu::allocate(&position);
+                            clang_forceinline this->__set_int_20(1);
+                    }
+                    break;
+                }
+
+                case 2:
+                    SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_G ? 2 : 3;
+                case 9: case 13:
+                    SOUND_MANAGER.__queue_bgm_stop();
+                    break;
+
+                case 6:
+                    this->__state_6_handler();
+                    break;
+                case 8:
+                    this->__state_8_handler();
+                    break;
+                case 14:
+                    this->__state_14_handler();
+                    break;
+                case 19:
+                    this->__state_19_handler();
+                    break;
+                case 20:
+                    this->__state_20_handler();
+                    break;
+                case 10:
+                    this->__state_10_handler();
+                    break;
+                case 11:
+                    this->__state_11_handler();
+                    break;
+
+                case 17:
+                    switch (this->__int_20) {
+                        case 1:
+                            this->__anm_id_650.interrupt_and_orphan_tree(1);
+                            this->__anm_id_450.interrupt_and_orphan_tree(1);
+                            this->change_state(1);
+                            delete HELP_MENU_PTR;
+                            break;
+                        case 0:
+                            if (!this->__anm_id_650) {
+                                this->__anm_id_650 = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(19);
+                            }
+                            this->__anm_id_450 = this->title_anm->instantiate_vm_to_world_list_back(46);
+                            HelpMenu::allocate();
+                            clang_forceinline this->__set_int_20(1);
+                            HELP_MENU_PTR->__float_128 = 192.0f;
+                            break;
+                    }
+                    break;
+
+                case 16:
+                    this->__state_16_handler();
+                    break;
+
+                case 24: {
+                    Float3 position = { 640.0f, 60.0f };
+                    switch (this->__int_20) {
+                        case 1:
+                            if (!ABILITY_MENU_PTR) {
+                                this->change_state(10);
+                            }
+                            break;
+                        case 0:
+                            if (ABILITY_MANAGER_PTR->__ability_data_loaded) {
+                                AbilityMenu::allocate(&position, 1);
+                            }
+                            clang_forceinline this->__set_int_20(1);
+                            break;
+                    }
+                    break;
+                }
+
+            }
+        }
+        this->__timer_384++;
+        if (this->__timer_5D54 > 0) {
+            this->__timer_5D54--;
+        }
+        if (this->__timer_5D68 > 0) {
+            this->__timer_5D68--;
+        }
+        return UpdateFuncNext;
     }
 
     // 0x465870
     dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x465870) {
         // TODO: anything
+        return UpdateFuncNext;
     }
 
     // 0x465A80
@@ -45618,7 +46112,7 @@ struct MainMenu : ZUNTask {
         ) {
             main_menu->__menu_select_24.enable_wrap = true;
             UNKNOWN_INT_H = 0;
-            //SUPERVISOR.__sub_475380();
+            SUPERVISOR.__sub_475380();
             if (LoadingThread* loading_thread = LOADING_THREAD_PTR) {
                 if (loading_thread->__int_648 < 180) {
                     do {
@@ -45637,7 +46131,7 @@ struct MainMenu : ZUNTask {
 #endif
             }
 #if !DEBUG_SKIP_MENUS
-            main_menu->enable_draw_unsafe(); // this crashes without the menu code
+            main_menu->enable_tick_unsafe(); // this crashes without the menu code
 #endif
             WINDOW_DATA.__int_20D0 = 1;
         }
@@ -45662,6 +46156,9 @@ ValidateVirtualFieldOffset32(0x8, MainMenu, on_tick_func);
 ValidateVirtualFieldOffset32(0xC, MainMenu, on_draw_func);
 ValidateVirtualFieldOffset32(0x10, MainMenu, title_anm);
 ValidateVirtualFieldOffset32(0x14, MainMenu, title_v_anm);
+ValidateVirtualFieldOffset32(0x18, MainMenu, current_state);
+ValidateVirtualFieldOffset32(0x1C, MainMenu, previous_state);
+ValidateVirtualFieldOffset32(0x20, MainMenu, __int_20);
 ValidateVirtualFieldOffset32(0x24, MainMenu, __menu_select_24);
 ValidateVirtualFieldOffset32(0xFC, MainMenu, __menu_select_FC);
 ValidateVirtualFieldOffset32(0x1D4, MainMenu, __menu_select_1D4);
@@ -47167,11 +47664,6 @@ dllexport gnu_noinline double vectorcall get_runtime() {
     }
 }
 
-extern "C" {
-    // 0x4CF438
-    externcg int32_t UNKNOWN_INT32_C cgasm("_UNKNOWN_INT32_C");
-}
-
 // 0x455040
 dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__sub_455040() {
     if (this->gamemode_current != this->gamemode_switch) {
@@ -47952,7 +48444,7 @@ inline unsigned GameThread::thread_start_impl() {
         GAME_MANAGER.globals.__dword_F4 = 0;
         GAME_MANAGER.globals.max_point_item_value = max_item_value;
 
-        // why are you like this ZUN
+        // why are you like this ZUN *that's an int* you don't to round it
         int32_t item_value = min_item_value / 100.0f * 100.0f;
 
         if (item_value < max_item_value) {
@@ -47983,7 +48475,7 @@ inline unsigned GameThread::thread_start_impl() {
                 }
                 break;
             default: {
-                int32_t life_override = GAME_MANAGER.__int_C;
+                int32_t life_override = GAME_MANAGER.practice_mode_life_override;
                 if (!life_override) {
                     GAME_MANAGER.globals.bomb_stock_max = 7;
                     GAME_MANAGER.globals.life_stocks = 7;
@@ -49538,11 +50030,35 @@ dllexport gnu_noinline BOOL PASCAL EnumDeviceObjectsCallback(LPCDIDEVICEOBJECTIN
         range.diph.dwHow = DIPH_BYID;
         range.lMin = JOYPAD_MIN_RANGE;
         range.lMax = JOYPAD_MAX_RANGE;
-        if (SUCCEEDED(SUPERVISOR.joypad_devices[JOYPAD_INDEX]->SetProperty(DIPROP_RANGE, (LPCDIPROPHEADER)&range))) {
+        if (FAILED(SUPERVISOR.joypad_devices[JOYPAD_INDEX]->SetProperty(DIPROP_RANGE, (LPCDIPROPHEADER)&range))) {
             return DIENUM_STOP;
         }
     }
     return DIENUM_CONTINUE;
+}
+
+// 0x475380
+dllexport gnu_noinline ZUNResult Supervisor::__sub_475380() {
+    LPDIRECTINPUTDEVICE8 joypad = SUPERVISOR.joypad_devices[0];
+    if (!joypad) {
+        SUPERVISOR.dinput->EnumDevices(DI8DEVCLASS_GAMECTRL, &EnumDevicesCallback, NULL, DIEDFL_ATTACHEDONLY);
+        if ((joypad = SUPERVISOR.joypad_devices[0])) {
+            joypad->Acquire();
+            SUPERVISOR.joypad_devices[0]->SetDataFormat(&c_dfDIJoystick2);
+            SUPERVISOR.joypad_devices[0]->SetCooperativeLevel(WINDOW_DATA.window, DISCL_NONEXCLUSIVE | DISCL_BACKGROUND);
+            SUPERVISOR.__joypad_caps.dwSize = sizeof(DIDEVCAPS);
+            SUPERVISOR.joypad_devices[0]->GetCapabilities(&SUPERVISOR.__joypad_caps);
+            SUPERVISOR.joypad_devices[0]->EnumObjects(&EnumDeviceObjectsCallback, NULL, DIDFT_ALL);
+            return ZUN_SUCCESS;
+        }
+    }
+    else if (FAILED(joypad->Poll())) {
+        if ((joypad = SUPERVISOR.joypad_devices[0])) {
+            joypad->Unacquire();
+            SAFE_RELEASE(SUPERVISOR.joypad_devices[0]);
+        }
+    }
+    return ZUN_SUCCESS;
 }
 
 // 0x475050
@@ -49574,7 +50090,7 @@ dinput_init_success:
         LOG_BUFFER.write(JpEnStr("DirectInput SetDataFormat が使用できません\r\n", "DirectInput SetDataFormat not available\r\n"));
         return ZUN_ERROR;
     }
-    if (FAILED(SUPERVISOR.keyboard_device->SetCooperativeLevel(WINDOW_DATA.window, DISCL_NOWINKEY))) {
+    if (FAILED(SUPERVISOR.keyboard_device->SetCooperativeLevel(WINDOW_DATA.window, DISCL_NONEXCLUSIVE | DISCL_FOREGROUND | DISCL_NOWINKEY))) {
         SAFE_RELEASE(SUPERVISOR.keyboard_device);
         SAFE_RELEASE(SUPERVISOR.dinput);
         LOG_BUFFER.write(JpEnStr("DirectInput SetCooperativeLevel が使用できません\r\n", "DirectInput SetCooperativeLevel not available\r\n"));
