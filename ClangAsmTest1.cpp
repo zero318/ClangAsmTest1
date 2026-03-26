@@ -3315,11 +3315,11 @@ bs_label_testB:
 	);
 }
 
-template <bool is_rex>
+template <typename T>
 uint8_t get_random_shift_count(uint8_t count) {
 	unsigned int random;
 	rand_s(&random);
-	if constexpr (!is_rex) {
+	if constexpr (sizeof(T) != sizeof(int64_t)) {
 		return (random & 7) << 5 | count;
 	} else {
 		return (random & 3) << 6 | count;
@@ -3327,100 +3327,117 @@ uint8_t get_random_shift_count(uint8_t count) {
 }
 
 template <typename T>
+uint8_t get_random_rotate_count(uint8_t count) {
+	unsigned int random;
+	rand_s(&random);
+	if constexpr (sizeof(T) == sizeof(int8_t)) {
+		return (random & 31) << 3 | count;
+	}
+	else if constexpr (sizeof(T) == sizeof(int16_t)) {
+		return (random & 15) << 4 | count;
+	}
+	else if constexpr (sizeof(T) == sizeof(int32_t)) {
+		return (random & 7) << 5 | count;
+	}
+	else if constexpr (sizeof(T) == sizeof(int64_t)) {
+		return (random & 3) << 6 | count;
+	}
+}
+
+template <typename T>
+uint8_t get_random_shift_double_count(uint8_t count) {
+	unsigned int random;
+	rand_s(&random);
+	if constexpr (sizeof(T) != sizeof(int64_t)) {
+		return (random & 7) << 5 | count;
+	} else {
+		return (random & 3) << 6 | count;
+	}
+}
+
+template <typename T>
+uint8_t get_random_bit_test_index(uint8_t index) {
+	unsigned int random;
+	rand_s(&random);
+	if constexpr (sizeof(T) == sizeof(int16_t)) {
+		return (random & 15) << 4 | index;
+	}
+	else if constexpr (sizeof(T) == sizeof(int32_t)) {
+		return (random & 7) << 5 | index;
+	}
+	else if constexpr (sizeof(T) == sizeof(int64_t)) {
+		return (random & 3) << 6 | index;
+	}
+}
+
+enum OperatingMode : uint8_t {
+	ProtectedMode32,
+	ProtectedMode64,
+	RealMode386,
+	RealMode286,
+	RealMode8086
+};
+
+template <OperatingMode mode = ProtectedMode32, bool disable_prefix_spam = false, bool disable_alias_opcodes = false, typename T = void>
 gnu_noinline uint8_t* replace_imm_with_bs(T value, uint8_t* code);
 
 uint8_t giga_buffer[65500];
 
-template <typename T>
+template <OperatingMode mode = ProtectedMode32, bool disable_prefix_spam = false, bool disable_alias_opcodes = false, typename T = void>
 void print_imm_with_bs(T value) {
 	printf("\n.byte ");
 
-	uint8_t* code_ptr = replace_imm_with_bs(value, giga_buffer);
+	uint8_t* code_ptr = replace_imm_with_bs<mode, disable_prefix_spam, disable_alias_opcodes>(value, giga_buffer);
 	for (size_t i = 0; i < code_ptr - giga_buffer; ++i) {
 		printf("0x%02X,", giga_buffer[i]);
 	}
 }
 
+template <OperatingMode mode = ProtectedMode32, bool disable_prefix_spam = false, bool disable_alias_opcodes = false, typename T = void>
+int print_imm_with_bs_to_file(FILE* file, T value) {
+	int ret = fprintf(file, "\n.byte ");
 
-struct WorstZUNRng {
-	uint32_t seed;
-	uint32_t count;
-
-	dllexport gnu_noinline uint32_t __thiscall this_is_awful() {
-		uint32_t immediate4;
-		__asm__(
-			".byte 0x0F,0xA0,0xD9,0x3C,0x24,0x0F,0x77,0xDB,0xE2,0xDF,0xC6,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE3,0xD9,0x04,0x24,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE3,0xD8,0xE3,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0xDB,0xE2,0x0F,0x77,0xDD,0xC6,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0x0F,0x77,0xDB,0xE2,0xD9,0xED,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE3,0xDF,0xC5,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0xDB,0xE3,0xD9,0xDC,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE3,0xD9,0xF7,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0xDB,0xE3,0xDF,0xC2,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE3,0xD9,0xDA,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0xDB,0xE2,0x0F,0x77,0xD9,0xD8,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE2,0x0F,0x77,0xD9,0xD9,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0xDB,0xE3,0xDB,0xE0,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0xDB,0xE3,0xD9,0xE5,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE2,0x0F,0x77,0xDF,0xC2,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE3,0xD9,0xE9,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0xDB,0xE3,0xD9,0xDB,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0x0F,0x77,0xDB,0xE2,0xDF,0xC5,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE3,0xDD,0xC3,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE3,0xD9,0xDF,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0xDB,0xE3,0xDD,0xC5,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0x0F,0x77,0xDB,0xE2,0xDB,0xE4,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE3,0xD9,0xEA,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0x0F,0x77,0xDB,0xE2,0xDD,0xC2,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0xDB,0xE3,0xDF,0xC3,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0xDB,0xE2,0x0F,0x77,0xDD,0xC0,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0xDB,0xE3,0xDD,0xC3,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0x0F,0x77,0xDB,0xE2,0xD9,0xDB,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0x0F,0x77,0xDB,0xE2,0xDF,0xC2,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0xDB,0xE3,0xDF,0xC5,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0x0F,0x77,0xDB,0xE2,0xD9,0xE5,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0xDB,0xE3,0xD9,0xDF,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0x89,0xD0,0xD9,0x2C,0x24,0x5A"
-			: "=a"(immediate4)
-			:
-			: "edx"
-		);
-		uint32_t immediate2A;
-		__asm__(
-			".byte 0x0F,0xA0,0xD9,0x3C,0x24,0xDB,0xE3,0xDF,0xC5,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE2,0x0F,0x77,0xD8,0xD1,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0xDB,0xE3,0xDF,0xC4,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0xDB,0xE2,0x0F,0x77,0xD9,0xEB,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE3,0xDF,0xC1,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0xDB,0xE2,0x0F,0x77,0xD9,0xDC,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE3,0xDF,0xC6,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0x0F,0x77,0xDB,0xE2,0xD9,0x04,0x24,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0xDB,0xE3,0xDB,0xE4,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0x0F,0x77,0xDB,0xE2,0xDB,0xE1,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0xDB,0xE2,0x0F,0x77,0xDF,0xC6,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0x0F,0x77,0xDB,0xE2,0xD9,0xF7,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE3,0xDB,0x04,0x24,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0xDB,0xE2,0x0F,0x77,0xDD,0xC6,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0xDB,0xE3,0xD9,0xDE,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0x0F,0x77,0xDB,0xE2,0xD9,0xDD,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0x0F,0x77,0xDB,0xE2,0xDD,0xC2,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0x0F,0x77,0xDB,0xE2,0xD9,0x04,0x24,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0xDB,0xE2,0x0F,0x77,0xD9,0xD0,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0xDB,0xE2,0x0F,0x77,0xDD,0xC6,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0xDB,0xE3,0xDB,0xE4,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0x0F,0x77,0xDB,0xE2,0xDD,0xC5,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0xDB,0xE2,0x0F,0x77,0xD9,0xE9,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE3,0xDB,0xE0,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0xDB,0xE3,0xDF,0xC2,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0xDB,0xE2,0x0F,0x77,0xDB,0x04,0x24,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0xDB,0xE3,0xD9,0x04,0x24,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE3,0xD9,0xF6,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0x0F,0x77,0xDB,0xE2,0xD9,0x04,0x24,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0xDB,0xE2,0x0F,0x77,0xD9,0xDC,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE2,0x0F,0x77,0xD9,0xED,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0x0F,0x77,0xDB,0xE2,0xDF,0xC7,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0x89,0xD0,0xD9,0x2C,0x24,0x5A"
-			: "=a"(immediate2A)
-			:
-			: "edx"
-		);
-		*based_pointer<uint32_t>(this, immediate4) += immediate2A;
-		uint32_t rng_const1;
-		__asm__(
-			".byte 0x0F,0xA0,0xD9,0x3C,0x24,0x0F,0x77,0xDB,0xE2,0xDF,0xC3,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0xDB,0xE2,0x0F,0x77,0xDD,0xC7,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0xDB,0xE3,0xD9,0xD0,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0xDB,0xE2,0x0F,0x77,0xDF,0xC4,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0xDB,0xE2,0x0F,0x77,0xDC,0xE1,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0x0F,0x77,0xDB,0xE2,0xDB,0xF1,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0xDB,0xE3,0xDD,0xC2,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0xDB,0xE3,0xD9,0xE9,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0xDB,0xE3,0xDB,0xE1,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0x0F,0x77,0xDB,0xE2,0xD8,0x1C,0x24,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0xDB,0xE3,0xDE,0x24,0x24,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0xDB,0xE3,0xDF,0xC6,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE3,0xDA,0xC0,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE3,0xDD,0xC4,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0x0F,0x77,0xDB,0xE2,0xD9,0xD9,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0x0F,0x77,0xDB,0xE2,0xDF,0xD8,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE3,0xDC,0xD3,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0xDB,0xE3,0xDD,0xEA,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE2,0x0F,0x77,0xDE,0xF2,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE3,0xDC,0xFD,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0xDB,0xE3,0xDE,0xD3,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE3,0xDE,0xF0,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE3,0xDE,0xC6,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE3,0xD8,0xEE,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0xDB,0xE3,0xDA,0xC8,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE2,0x0F,0x77,0xDB,0xC8,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0x0F,0x77,0xDB,0xE2,0xDF,0xDC,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0xDB,0xE3,0xDE,0x0C,0x24,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0x0F,0x77,0xDB,0xE2,0xDC,0xED,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0xDB,0xE2,0x0F,0x77,0xDC,0xDD,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0x0F,0x77,0xDB,0xE2,0xDF,0xF1,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0x0F,0x77,0xDB,0xE2,0xDD,0xED,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0x89,0xD0,0xD9,0x2C,0x24,0x5A"
-			: "=a"(rng_const1)
-			:
-			: "edx"
-		);
-		rng_const1 ^= this->seed;
-		uint32_t rng_const2;
-		__asm__(
-			".byte 0x0F,0xA0,0xD9,0x3C,0x24,0x0F,0x77,0xDB,0xE2,0xD8,0xC7,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0xDB,0xE2,0x0F,0x77,0xD9,0xE5,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE3,0xDB,0xC0,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0xDB,0xE2,0x0F,0x77,0xD8,0xF2,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0x0F,0x77,0xDB,0xE2,0xD9,0xEE,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0xDB,0xE2,0x0F,0x77,0xDF,0xDD,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0xDB,0xE3,0xD9,0xEA,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0xDB,0xE3,0xDA,0xDB,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE2,0x0F,0x77,0xDB,0xE0,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0xDB,0xE3,0xDA,0xDC,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0xDB,0xE3,0xDF,0xC2,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0x0F,0x77,0xDB,0xE2,0xDA,0xC5,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0x0F,0x77,0xDB,0xE2,0xDC,0xE8,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE3,0xD9,0xDD,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0xDB,0xE2,0x0F,0x77,0xD9,0xE5,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0x0F,0x77,0xDB,0xE2,0xDC,0xE3,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0xDB,0xE3,0xD8,0xCD,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0xDB,0xE3,0xD8,0xF6,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE3,0xDB,0xC7,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0x0F,0x77,0xDB,0xE2,0xD9,0xCD,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0xDB,0xE3,0xD8,0xFB,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE3,0xDE,0xD4,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0xDB,0xE2,0x0F,0x77,0xDA,0xD8,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0xDB,0xE3,0xDA,0xCF,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0xDB,0xE2,0x0F,0x77,0xDD,0xE5,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0x0F,0x77,0xDB,0xE2,0xDE,0xCE,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE2,0x0F,0x77,0xDE,0xCA,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0xDB,0xE2,0x0F,0x77,0xD8,0xC7,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0xDB,0xE3,0xD8,0xCF,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE2,0x0F,0x77,0xD8,0xE2,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE3,0xDF,0xE8,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0xDB,0xE3,0xD8,0xD3,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0x89,0xD0,0xD9,0x2C,0x24,0x5A"
-			: "=a"(rng_const2)
-			:
-			: "edx"
-		);
-		rng_const1 += rng_const2;
-		uint8_t shift_const1;
-		__asm__(
-			".byte 0x0F,0xA0,0xD9,0x3C,0x24,0xDB,0xE3,0xDB,0xE0,0xDF,0xE0,0xC1,0xC8,0x41,0xDB,0xE3,0xDE,0xF3,0xDF,0xE0,0xC1,0xC8,0xC1,0xDB,0xE2,0x0F,0x77,0xDD,0xC3,0xDF,0xE0,0xC1,0xC8,0xA1,0xDB,0xE3,0xD9,0xE5,0xDF,0xE0,0xC1,0xC8,0x21,0xDB,0xE3,0xDF,0xC1,0xDF,0xE0,0xC1,0xC8,0xE1,0xDB,0xE2,0x0F,0x77,0xD9,0xF7,0xDF,0xE0,0xC1,0xC8,0xA1,0x0F,0x77,0xDB,0xE2,0xDF,0xC3,0xDF,0xE0,0xC1,0xC8,0xE1,0x0F,0x77,0xDB,0xE2,0xD9,0xDA,0xDF,0xE0,0xC1,0xC8,0xE1,0xC1,0xF8,0x98,0xD9,0x2C,0x24,0x5A"
-			: "=a"(shift_const1)
-			:
-			: "edx"
-		);
-		uint32_t temp1 = rng_const1;
-		*(uint16_t*)&temp1 = __rolw(temp1, shift_const1);
-		uint32_t rng_const3;
-		__asm__(
-			".byte 0x0F,0xA0,0xD9,0x3C,0x24,0xDB,0xE2,0x0F,0x77,0xDF,0xC6,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0xDB,0xE3,0xDD,0xC2,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0xDB,0xE3,0xD9,0xEB,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0xDB,0xE3,0xDF,0xC0,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE2,0x0F,0x77,0xDC,0xC6,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0x0F,0x77,0xDB,0xE2,0xDA,0xC5,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE2,0x0F,0x77,0xD9,0xED,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE2,0x0F,0x77,0xDF,0xC4,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE3,0xD9,0x04,0x24,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0xDB,0xE2,0x0F,0x77,0xDB,0xC0,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0x0F,0x77,0xDB,0xE2,0xDB,0xC4,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0xDB,0xE3,0xD9,0xD9,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0xDB,0xE3,0xD9,0xC4,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0x0F,0x77,0xDB,0xE2,0xD9,0xDE,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0xDB,0xE2,0x0F,0x77,0xDB,0x04,0x24,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE2,0x0F,0x77,0xDE,0x04,0x24,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0x0F,0x77,0xDB,0xE2,0xDC,0xC1,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE3,0xD9,0xCF,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE3,0xDE,0xF6,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0xDB,0xE3,0xD8,0xC2,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE3,0xDC,0xF5,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0x0F,0x77,0xDB,0xE2,0xDF,0xD9,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE2,0x0F,0x77,0xDC,0xF6,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0x0F,0x77,0xDB,0xE2,0xDA,0x34,0x24,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0x0F,0x77,0xDB,0xE2,0xDF,0xEA,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE3,0xDF,0xDD,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE2,0x0F,0x77,0xDC,0xD4,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0xDB,0xE3,0xDA,0xCF,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0x0F,0x77,0xDB,0xE2,0xD8,0xC9,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE3,0xDC,0xF5,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0xDB,0xE3,0xDB,0xC0,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0x0F,0x77,0xDB,0xE2,0xDB,0xEF,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0x89,0xD0,0xD9,0x2C,0x24,0x5A"
-			: "=a"(rng_const3)
-			:
-			: "edx"
-		);
-		temp1 ^= rng_const3;
-		uint32_t rng_const4;
-		__asm__(
-			".byte 0x0F,0xA0,0xD9,0x3C,0x24,0xDB,0xE2,0x0F,0x77,0xD9,0xCE,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0xDB,0xE3,0xD9,0xEC,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0xDB,0xE2,0x0F,0x77,0xDF,0xCF,0xDF,0xE0,0x0F,0xAC,0xC2,0xE1,0x0F,0x77,0xDB,0xE2,0xD8,0xC1,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0x0F,0x77,0xDB,0xE2,0xDF,0xC4,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0xDB,0xE3,0xDD,0xD6,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE2,0x0F,0x77,0xDF,0xC2,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE3,0xDB,0xD7,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0x0F,0x77,0xDB,0xE2,0xDF,0xC7,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE2,0x0F,0x77,0xDC,0xFD,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0xDB,0xE3,0xDF,0xC5,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE3,0xDE,0x2C,0x24,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE3,0xDC,0xC2,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0xDB,0xE3,0xD9,0xDD,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE2,0x0F,0x77,0xDF,0xC5,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE3,0xDA,0x34,0x24,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE3,0xDB,0xDD,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0x0F,0x77,0xDB,0xE2,0xDD,0xEF,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0xDB,0xE3,0xDA,0xC9,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0x0F,0x77,0xDB,0xE2,0xDB,0xC0,0xDF,0xE0,0x0F,0xAC,0xC2,0x61,0xDB,0xE3,0xDE,0xE2,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE3,0xDB,0xC4,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0xDB,0xE2,0x0F,0x77,0xDB,0xDD,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0xDB,0xE2,0x0F,0x77,0xD8,0xDF,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0x0F,0x77,0xDB,0xE2,0xD9,0xE1,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE3,0xDC,0xD2,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0x0F,0x77,0xDB,0xE2,0xDD,0xEA,0xDF,0xE0,0x0F,0xAC,0xC2,0xA1,0xDB,0xE3,0xDF,0xCF,0xDF,0xE0,0x0F,0xAC,0xC2,0x41,0x0F,0x77,0xDB,0xE2,0xDB,0xC1,0xDF,0xE0,0x0F,0xAC,0xC2,0x01,0x0F,0x77,0xDB,0xE2,0xDD,0xD5,0xDF,0xE0,0x0F,0xAC,0xC2,0x81,0xDB,0xE2,0x0F,0x77,0xDC,0xCE,0xDF,0xE0,0x0F,0xAC,0xC2,0xC1,0xDB,0xE3,0xD8,0xEB,0xDF,0xE0,0x0F,0xAC,0xC2,0x21,0x89,0xD0,0xD9,0x2C,0x24,0x5A"
-			: "=a"(rng_const4)
-			:
-			: "edx"
-		);
-		temp1 += rng_const4;
-		uint8_t shift_const2;
-		__asm__(
-			".byte 0x0F,0xA0,0xD9,0x3C,0x24,0xDB,0xE2,0x0F,0x77,0xD9,0xED,0xDF,0xE0,0xC1,0xC8,0x61,0xDB,0xE2,0x0F,0x77,0xDB,0xEE,0xDF,0xE0,0xC1,0xC8,0xC1,0x0F,0x77,0xDB,0xE2,0xDF,0xC5,0xDF,0xE0,0xC1,0xC8,0x81,0xDB,0xE2,0x0F,0x77,0xDF,0xC2,0xDF,0xE0,0xC1,0xC8,0x81,0xDB,0xE2,0x0F,0x77,0xDF,0xC6,0xDF,0xE0,0xC1,0xC8,0x61,0xDB,0xE2,0x0F,0x77,0xDF,0xDA,0xDF,0xE0,0xC1,0xC8,0x81,0xDB,0xE3,0xD8,0x2C,0x24,0xDF,0xE0,0xC1,0xC8,0xC1,0xDB,0xE3,0xD8,0xFE,0xDF,0xE0,0xC1,0xC8,0x21,0xC1,0xF8,0x58,0xD9,0x2C,0x24,0x5A"
-			: "=a"(shift_const2)
-			:
-			: "edx"
-		);
-		*(uint16_t*)&this->seed = __rolw(temp1, shift_const2);
-		uint8_t shift_const3;
-		__asm__(
-			".byte 0x0F,0xA0,0xD9,0x3C,0x24,0x0F,0x77,0xDB,0xE2,0xDF,0xC5,0xDF,0xE0,0xC1,0xC8,0xE1,0xDB,0xE3,0xD9,0xF6,0xDF,0xE0,0xC1,0xC8,0xA1,0xDB,0xE3,0xDD,0xC7,0xDF,0xE0,0xC1,0xC8,0xE1,0xDB,0xE3,0xDD,0xC0,0xDF,0xE0,0xC1,0xC8,0xC1,0xDB,0xE3,0xDE,0xC8,0xDF,0xE0,0xC1,0xC8,0x81,0xDB,0xE2,0x0F,0x77,0xDB,0x04,0x24,0xDF,0xE0,0xC1,0xC8,0x81,0xDB,0xE2,0x0F,0x77,0xDC,0xDB,0xDF,0xE0,0xC1,0xC8,0x41,0xDB,0xE2,0x0F,0x77,0xD9,0xEB,0xDF,0xE0,0xC1,0xC8,0x21,0xC1,0xF8,0x58,0xD9,0x2C,0x24,0x5A"
-			: "=a"(shift_const3)
-			:
-			: "edx"
-		);
-		return (uint16_t)temp1 | rng_const1 << shift_const3;
+	uint8_t* code_ptr = replace_imm_with_bs<mode, disable_prefix_spam, disable_alias_opcodes>(value, giga_buffer);
+	for (size_t i = 0; i < code_ptr - giga_buffer; ++i) {
+		ret += fprintf(file, "0x%02X,", giga_buffer[i]);
 	}
-};
+	return ret;
+}
+
+dllexport void print_hello_world() {
+	char string[] = "Hello world!";
+	__asm__("":"+m"(string));
+	puts(string);
+}
+
+dllexport void print_hello_world_but_worse() {
+	
+	/*
+retry:
+	FILE* file = fopen("terrible_hello_world.txt", "w");
+	int length = 0;
+	length += print_imm_with_bs_to_file<ProtectedMode64, uint8_t>(file, 0);
+	length += print_imm_with_bs_to_file<ProtectedMode64, uint32_t>(file, 0x21646C72);
+	length += print_imm_with_bs_to_file<ProtectedMode64, uint32_t>(file, 0x6F77206F);
+	length += print_imm_with_bs_to_file<ProtectedMode64, uint32_t>(file, 0x6C6C6548);
+	fclose(file);
+	if (length < 17500) goto retry;
+	return;
+	*/
+retry:
+	FILE* file = fopen("terrible_hello_world16.txt", "w");
+	int length = 0;
+	length += print_imm_with_bs_to_file<RealMode8086, true, true, uint8_t>(file, '$');
+	length += print_imm_with_bs_to_file<RealMode8086, true, true, uint16_t>(file, 0x2164);
+	length += print_imm_with_bs_to_file<RealMode8086, true, true, uint16_t>(file, 0x6C72);
+	length += print_imm_with_bs_to_file<RealMode8086, true, true, uint16_t>(file, 0x6F77);
+	length += print_imm_with_bs_to_file<RealMode8086, true, true, uint16_t>(file, 0x206F);
+	length += print_imm_with_bs_to_file<RealMode8086, true, true, uint16_t>(file, 0x6C6C);
+	length += print_imm_with_bs_to_file<RealMode8086, true, true, uint16_t>(file, 0x6548);
+	fclose(file);
+	//if (length < 17500) goto retry;
+	return;
+}
 
 struct ZUNRng {
 	uint16_t value; // 0x0
@@ -3710,7 +3727,13 @@ float vectorcall x87_fsin_float_emulate(float value) {
 //dllexport void fine_tangent_test();
 dllexport void find_u16_tangent();
 
+dllexport void print_hello_world_but_worse();
+
 int stdcall main(int argc, char* argv[]) {
+
+	print_hello_world_but_worse();
+	return 0;
+
 	//fine_tangent_test();
 	//generate_trig_table();
 	//test_fprem1_floats();
@@ -3727,20 +3750,6 @@ int stdcall main(int argc, char* argv[]) {
 	);
 	//infinite_loop();
 	return 0;
-
-
-	uint16_t timestamp = rdtsc();
-
-	ZUNRng zun_rng = {
-		.value = timestamp,
-		.index = 0
-	};
-	WorstZUNRng terrible_zun_rng = {
-		.seed = timestamp,
-		.count = 0
-	};
-
-	return zun_rng.rand_uint() == terrible_zun_rng.this_is_awful();
 
 	/*
 	print_imm_with_bs(4);
@@ -7576,223 +7585,2358 @@ void wtf_windows() {
 }
 */
 
-uint8_t* emit_IE_gen(uint8_t* dest) {
+uint8_t get_random_rex(bool b, bool x, bool r, bool w) {
 	unsigned int random;
 	rand_s(&random);
-	random %= 402;
-	switch (random) {
-		default: unreachable;
-		case 0 ... 63:
-			*dest++ = 0xD8;
-			*dest++ = 0xC0 + random;
-			break;
-		case 64 ... 79:
-			*dest++ = 0xD9;
-			*dest++ = 0xC0 + (random - 64);
-			break;
-		case 80: case 81:
-			*dest++ = 0xD9;
-			*dest++ = 0xE0 + (random - 80);
-			break;
-		case 82 ... 87:
-			*dest++ = 0xD9;
-			*dest++ = 0xF0 + (random - 82);
-			break;
-		case 88 ... 95:
-			*dest++ = 0xD9;
-			*dest++ = 0xF8 + (random - 88);
-			break;
-		case 96 ... 127:
-			*dest++ = 0xDA;
-			*dest++ = 0xC0 + (random - 96);
-			break;
-		case 128:
-			*dest++ = 0xDA;
-			*dest++ = 0xE9;
-			break;
-		case 129 ... 160:
-			*dest++ = 0xDB;
-			*dest++ = 0xC0 + (random - 129);
-			break;
-		case 161 ... 176:
-			*dest++ = 0xDB;
-			*dest++ = 0xE8 + (random - 161);
-			break;
-		case 177 ... 240:
-			*dest++ = 0xDC;
-			*dest++ = 0xC0 + (random - 177);
-			break;
-		case 241 ... 280:
-			*dest++ = 0xDD;
-			*dest++ = 0xC8 + (random - 241);
-			break;
-		case 281 ... 304:
-			*dest++ = 0xDE;
-			*dest++ = 0xC0 + (random - 281);
-			break;
-		case 305:
-			*dest++ = 0xDE;
-			*dest++ = 0xD9;
-			break;
-		case 306 ... 337:
-			*dest++ = 0xDE;
-			*dest++ = 0xE0 + (random - 306);
-			break;
-		case 338 ... 361:
-			*dest++ = 0xDF;
-			*dest++ = 0xC8 + (random - 338);
-			break;
-		case 362 ... 377:
-			*dest++ = 0xDF;
-			*dest++ = 0xE8 + (random - 362);
-			break;
-		case 378 ... 385:
-			*dest++ = 0xD8;
-			*dest++ = 0x04 + (random - 378 << 3);
-			*dest++ = 0x24;
-			break;
-		case 386 ... 393:
-			*dest++ = 0xDA;
-			*dest++ = 0x04 + (random - 386 << 3);
-			*dest++ = 0x24;
-			break;
-		case 394 ... 401:
-			*dest++ = 0xDE;
-			*dest++ = 0x04 + (random - 394 << 3);
-			*dest++ = 0x24;
-			break;
+
+	uint8_t ret = 0x40;
+	if (b) {
+		ret |= random & 1;
 	}
-	return dest;
+	if (x) {
+		ret |= random & 2;
+	}
+	if (r) {
+		ret |= random & 4;
+	}
+	if (w) {
+		ret |= random & 8;
+	}
+	return ret;
 }
 
-uint8_t* emit_IE_nop(uint8_t* dest) {
+bool get_random_bool() {
 	unsigned int random;
 	rand_s(&random);
-	random %= 41;
-	switch (random) {
-		default: unreachable;
-		case 0:
-			*dest++ = 0xD9;
-			*dest++ = 0xD0;
-			break;
-		case 1 ... 8:
-			*dest++ = 0xD9;
-			*dest++ = 0xD8 + (random - 1);
-			break;
-		case 9:
-			*dest++ = 0xD9;
-			*dest++ = 0xE5;
-			break;
-		case 10 ... 16:
-			*dest++ = 0xD9;
-			*dest++ = 0xE8 + (random - 10);
-			break;
-		case 17: case 18:
-			*dest++ = 0xD9;
-			*dest++ = 0xF6 + (random - 17);
-			break;
-		case 19: case 20:
-			*dest++ = 0xDB;
-			*dest++ = 0xE0 + (random - 19);
-			break;
-		case 21:
-			*dest++ = 0xDB;
-			*dest++ = 0xE4;
-			break;
-		case 22 ... 29:
-			*dest++ = 0xDD;
-			*dest++ = 0xC0 + (random - 22);
-			break;
-		case 30 ... 37:
-			*dest++ = 0xDF;
-			*dest++ = 0xC0 + (random - 30);
-			break;
-		case 38:
-			*dest++ = 0xD9;
-			*dest++ = 0x04;
-			*dest++ = 0x24;
-			break;
-		case 39:
-			*dest++ = 0xDB;
-			*dest++ = 0x04;
-			*dest++ = 0x24;
-			break;
-		case 40:
-			*dest++ = 0xDF;
-			*dest++ = 0x04;
-			*dest++ = 0x24;
-			break;
-	}
-	return dest;
+	return random & 1;
 }
 
-uint8_t* emit_fp_exception_clear(uint8_t* code) {
+uint32_t get_random_int() {
 	unsigned int random;
 	rand_s(&random);
-	if (random & 1) {
-		*code++ = 0xDB;
-		*code++ = 0xE3;
-	}
-	else {
-		if (random & 2) {
-			*code++ = 0xDB;
-			*code++ = 0xE2;
-			*code++ = 0x0F;
-			*code++ = 0x77;
-		}
-		else {
-			*code++ = 0x0F;
-			*code++ = 0x77;
-			*code++ = 0xDB;
-			*code++ = 0xE2;
-		}
-	}
-	return code;
+	return random;
 }
 
-uint8_t get_random_rexw() {
-	unsigned int random;
-	rand_s(&random);
-	return (random & 1) << 1 | 0x48;
+uint32_t get_random_int_range(uint32_t range) {
+	return get_random_int() % range;
 }
 
-template <typename T>
+template <OperatingMode mode, bool disable_prefix_spam, bool disable_alias_opcodes, typename T>
 gnu_noinline uint8_t* replace_imm_with_bs(T value, uint8_t* code) {
-	*code++ = 0x0F; *code++ = 0xA0; // PUSH FS
-	*code++ = 0xD9; *code++ = 0x3C; *code++ = 0x24; // FSTCW [ESP]
-	for (size_t i = 0; i < sizeof(T) * CHAR_BIT; ++i) {
-		code = emit_fp_exception_clear(code);
-		if (value >> i & 1) {
-			code = emit_IE_gen(code);
+
+	constexpr bool is_x64 = mode == ProtectedMode64;
+	constexpr bool is_x16 = mode == RealMode386 || mode == RealMode286 || mode == RealMode8086;
+	constexpr bool has_32_bit = mode != RealMode8086 && mode != RealMode286;
+	constexpr bool x87_is_coprocessor = is_x16;
+	constexpr bool has_mmx = !x87_is_coprocessor; // not quite accurate, but close enough
+
+	static_assert(sizeof(T) < sizeof(int32_t) || has_32_bit, "int32 needs x32!");
+	static_assert(sizeof(T) < sizeof(int64_t) || is_x64, "int64 needs x64!");
+
+	auto emit_random_rex = [&](bool force = false) {
+		if constexpr (is_x64) {
+			if constexpr (!disable_prefix_spam) {
+				if (force || get_random_bool()) {
+					*code++ = get_random_rex(true, true, true, true);
+				}
+			}
 		}
-		else {
-			code = emit_IE_nop(code);
+	};
+	auto emit_random_rexB = [&](bool b, bool force = false) {
+		if constexpr (is_x64) {
+			if (force || (!disable_prefix_spam && get_random_bool())) {
+				uint8_t rex = disable_prefix_spam ? 0x40 : get_random_rex(false, true, true, true);
+				if (b) {
+					rex |= 1;
+				}
+				*code++ = rex;
+			}
 		}
-		*code++ = 0xDF; *code++ = 0xE0; // FSTSW AX
-		if constexpr (sizeof(T) <= sizeof(int16_t)) {
-			*code++ = 0xC1; *code++ = 0xC8; *code++ = get_random_shift_count<false>(0x01); // ROR EAX, 1
+	};
+	auto emit_random_rexX = [&](bool x, bool force = false) {
+		if constexpr (is_x64) {
+			if (force || (!disable_prefix_spam && get_random_bool())) {
+				uint8_t rex = disable_prefix_spam ? 0x40 : get_random_rex(true, false, true, true);
+				if (x) {
+					rex |= 2;
+				}
+				*code++ = rex;
+			}
 		}
-		else if constexpr (sizeof(T) == sizeof(int32_t)) {
-			*code++ = 0x0F; *code++ = 0xAC; *code++ = 0xC2; *code++ = get_random_shift_count<false>(0x01); // SHRD EDX, EAX, 1
+	};
+	auto emit_random_rexR = [&](bool r, bool force = false) {
+		if constexpr (is_x64) {
+			if (force || (!disable_prefix_spam && get_random_bool())) {
+				uint8_t rex = disable_prefix_spam ? 0x40 : get_random_rex(true, true, false, true);
+				if (r) {
+					rex |= 4;
+				}
+				*code++ = rex;
+			}
+		}
+	};
+	auto emit_random_rexW = [&](bool w, bool force = false) {
+		if constexpr (is_x64) {
+			if (force || (!disable_prefix_spam && get_random_bool())) {
+				uint8_t rex = disable_prefix_spam ? 0x40 : get_random_rex(true, true, true, false);
+				if (w) {
+					rex |= 8;
+				}
+				*code++ = rex;
+			}
+		}
+	};
+	auto emit_random_rexXB = [&](bool x, bool b, bool force = false) {
+		if constexpr (is_x64) {
+			if (force || (!disable_prefix_spam && get_random_bool())) {
+				uint8_t rex = get_random_rex(false, false, true, true);
+				if (b) {
+					rex |= 1;
+				}
+				if (x) {
+					rex |= 2;
+				}
+				*code++ = rex;
+			}
+		}
+	};
+	auto emit_random_rexRB = [&](bool r, bool b, bool force = false) {
+		if constexpr (is_x64) {
+			if (force || (!disable_prefix_spam && get_random_bool())) {
+				uint8_t rex = disable_prefix_spam ? 0x40 : get_random_rex(false, true, false, true);
+				if (b) {
+					rex |= 1;
+				}
+				if (r) {
+					rex |= 4;
+				}
+				*code++ = rex;
+			}
+		}
+	};
+	auto emit_random_rexWB = [&](bool w, bool b, bool force = false) {
+		if constexpr (is_x64) {
+			if (force || (!disable_prefix_spam && get_random_bool())) {
+				uint8_t rex = disable_prefix_spam ? 0x40 : get_random_rex(false, true, true, false);
+				if (b) {
+					rex |= 1;
+				}
+				if (w) {
+					rex |= 8;
+				}
+				*code++ = rex;
+			}
+		}
+	};
+	auto emit_random_rexRX = [&](bool r, bool x, bool force = false) {
+		if constexpr (is_x64) {
+			if (force || (!disable_prefix_spam && get_random_bool())) {
+				uint8_t rex = disable_prefix_spam ? 0x40 : get_random_rex(true, false, false, true);
+				if (x) {
+					rex |= 2;
+				}
+				if (r) {
+					rex |= 4;
+				}
+				*code++ = rex;
+			}
+		}
+	};
+	auto emit_random_rexWX = [&](bool w, bool x, bool force = false) {
+		if constexpr (is_x64) {
+			if (force || (!disable_prefix_spam && get_random_bool())) {
+				uint8_t rex = disable_prefix_spam ? 0x40 : get_random_rex(true, false, true, false);
+				if (x) {
+					rex |= 2;
+				}
+				if (w) {
+					rex |= 8;
+				}
+				*code++ = rex;
+			}
+		}
+	};
+	auto emit_random_rexWR = [&](bool w, bool r, bool force = false) {
+		if constexpr (is_x64) {
+			if (force || (!disable_prefix_spam && get_random_bool())) {
+				uint8_t rex = disable_prefix_spam ? 0x40 : get_random_rex(true, true, false, false);
+				if (r) {
+					rex |= 4;
+				}
+				if (w) {
+					rex |= 8;
+				}
+				*code++ = rex;
+			}
+		}
+	};
+	auto emit_random_rexRXB = [&](bool r, bool x, bool b, bool force = false) {
+		if constexpr (is_x64) {
+			if (force || (!disable_prefix_spam && get_random_bool())) {
+				uint8_t rex = disable_prefix_spam ? 0x40 : get_random_rex(false, false, false, true);
+				if (b) {
+					rex |= 1;
+				}
+				if (x) {
+					rex |= 2;
+				}
+				if (r) {
+					rex |= 4;
+				}
+				*code++ = rex;
+			}
+		}
+	};
+	auto emit_random_rexWXB = [&](bool w, bool x, bool b, bool force = false) {
+		if constexpr (is_x64) {
+			if (force || (!disable_prefix_spam && get_random_bool())) {
+				uint8_t rex = disable_prefix_spam ? 0x40 : get_random_rex(false, false, true, false);
+				if (b) {
+					rex |= 1;
+				}
+				if (x) {
+					rex |= 2;
+				}
+				if (w) {
+					rex |= 8;
+				}
+				*code++ = rex;
+			}
+		}
+	};
+	auto emit_random_rexWRB = [&](bool w, bool r, bool b, bool force = false) {
+		if constexpr (is_x64) {
+			if (force || (!disable_prefix_spam && get_random_bool())) {
+				uint8_t rex = disable_prefix_spam ? 0x40 : get_random_rex(false, true, false, false);
+				if (b) {
+					rex |= 1;
+				}
+				if (r) {
+					rex |= 4;
+				}
+				if (w) {
+					rex |= 8;
+				}
+				*code++ = rex;
+			}
+		}
+	};
+	auto emit_random_rexWRX = [&](bool w, bool r, bool x, bool force = false) {
+		if constexpr (is_x64) {
+			if (force || (!disable_prefix_spam && get_random_bool())) {
+				uint8_t rex = disable_prefix_spam ? 0x40 : get_random_rex(true, false, false, false);
+				if (x) {
+					rex |= 2;
+				}
+				if (r) {
+					rex |= 4;
+				}
+				if (w) {
+					rex |= 8;
+				}
+				*code++ = rex;
+			}
+		}
+	};
+
+#define ALLOW_DATASIZE 0
+#define NO_DATASIZE 1
+#define FORCE_DATASIZE 2
+#define FORCE_DATASIZE16 (is_x16 ? NO_DATASIZE : FORCE_DATASIZE)
+#define FORCE_DATASIZE32 (is_x16 ? FORCE_DATASIZE : NO_DATASIZE)
+
+#define ALLOW_ADDRSIZE 0
+#define NO_ADDRSIZE 1
+#define FORCE_ADDRSIZE 2
+#define ALLOW_ADDRSIZE_ON_X64 (is_x64 ? ALLOW_ADDRSIZE : NO_ADDRSIZE)
+
+#define DO_NOT_LIMIT_SEGMENTS false
+#define LIMIT_SEGMENTS true
+
+#define NO_REP false
+#define ALLOW_REP true
+
+#define X87_PREFIXES ALLOW_DATASIZE, ALLOW_ADDRSIZE, DO_NOT_LIMIT_SEGMENTS, ALLOW_REP
+#define X87_MEM_ADDRSIZE (is_x16 ? FORCE_ADDRSIZE : ALLOW_ADDRSIZE_ON_X64)
+
+	auto emit_random_rep = [&](bool enable = false) {
+		if constexpr (!disable_prefix_spam) {
+			if (enable) {
+				switch (get_random_int_range(3)) {
+					default:
+						unreachable;
+					case 0:
+						break;
+					case 1: // REPNE
+						*code++ = 0xF2;
+						break;
+					case 2: // REPE
+						*code++ = 0xF3;
+						break;
+				}
+			}
+		}
+	};
+	auto emit_random_addrsize = [&](int type = ALLOW_ADDRSIZE) {
+		if constexpr (has_32_bit) {
+			switch (type) {
+				default:
+					unreachable;
+				case ALLOW_ADDRSIZE:
+					if (!disable_prefix_spam && get_random_bool()) {
+				case FORCE_ADDRSIZE:
+						*code++ = 0x67;
+					}
+				case NO_ADDRSIZE:;
+			}
+		}
+	};
+	auto emit_random_datasize = [&](int type = ALLOW_DATASIZE) {
+		if constexpr (has_32_bit) {
+			switch (type) {
+				default:
+					unreachable;
+				case ALLOW_DATASIZE:
+					if (!disable_prefix_spam && get_random_bool()) {
+				case FORCE_DATASIZE:
+						*code++ = 0x66;
+					}
+				case NO_DATASIZE:;
+			}
+		}
+	};
+	auto emit_random_seg_override = [&](bool limit = false) {
+		if constexpr (!disable_prefix_spam) {
+			uint32_t range = 5;
+			if (has_32_bit && !limit) {
+				range = 7;
+			}
+			switch (get_random_int_range(range)) {
+				case 0:
+					break;
+				case 1: // ES
+					*code++ = 0x26;
+					break;
+				case 2: // CS
+					*code++ = 0x2E;
+					break;
+				case 3: // SS
+					*code++ = 0x36;
+					break;
+				case 4: // DS
+					*code++ = 0x3E;
+					break;
+				case 5: // FS
+					*code++ = 0x64;
+					break;
+				case 6: // GS
+					*code++ = 0x65;
+					break;
+			}
+		}
+	};
+
+	auto emit_random_prefixes = [&](int datasize_type = ALLOW_DATASIZE, int addrsize_type = ALLOW_ADDRSIZE, bool limit_segments = false, bool allow_rep = false) {
+		switch (get_random_int_range(24)) {
+			case 0: // data, addr, seg, rep
+				emit_random_datasize(datasize_type);
+				emit_random_addrsize(addrsize_type);
+				emit_random_seg_override(limit_segments);
+				emit_random_rep(allow_rep);
+				break;
+			case 1: // data, seg, addr, rep
+				emit_random_datasize(datasize_type);
+				emit_random_seg_override(limit_segments);
+				emit_random_addrsize(addrsize_type);
+				emit_random_rep(allow_rep);
+				break;
+			case 2: // addr, data, seg, rep
+				emit_random_addrsize(addrsize_type);
+				emit_random_datasize(datasize_type);
+				emit_random_seg_override(limit_segments);
+				emit_random_rep(allow_rep);
+				break;
+			case 3: // addr, seg, data, rep
+				emit_random_addrsize(addrsize_type);
+				emit_random_seg_override(limit_segments);
+				emit_random_datasize(datasize_type);
+				emit_random_rep(allow_rep);
+				break;
+			case 4: // seg, addr, data, rep
+				emit_random_seg_override(limit_segments);
+				emit_random_addrsize(addrsize_type);
+				emit_random_datasize(datasize_type);
+				emit_random_rep(allow_rep);
+				break;
+			case 5: // seg, data, addr, rep
+				emit_random_seg_override(limit_segments);
+				emit_random_datasize(datasize_type);
+				emit_random_addrsize(addrsize_type);
+				emit_random_rep(allow_rep);
+				break;
+			
+			case 6: // data, addr, rep, seg
+				emit_random_datasize(datasize_type);
+				emit_random_addrsize(addrsize_type);
+				emit_random_rep(allow_rep);
+				emit_random_seg_override(limit_segments);
+				break;
+			case 7: // data, seg, rep, addr
+				emit_random_datasize(datasize_type);
+				emit_random_seg_override(limit_segments);
+				emit_random_rep(allow_rep);
+				emit_random_addrsize(addrsize_type);
+				break;
+			case 8: // addr, data, rep, seg
+				emit_random_addrsize(addrsize_type);
+				emit_random_datasize(datasize_type);
+				emit_random_rep(allow_rep);
+				emit_random_seg_override(limit_segments);
+				break;
+			case 9: // addr, seg, rep, data
+				emit_random_addrsize(addrsize_type);
+				emit_random_seg_override(limit_segments);
+				emit_random_rep(allow_rep);
+				emit_random_datasize(datasize_type);
+				break;
+			case 10: // seg, addr, rep, data
+				emit_random_seg_override(limit_segments);
+				emit_random_addrsize(addrsize_type);
+				emit_random_rep(allow_rep);
+				emit_random_datasize(datasize_type);
+				break;
+			case 11: // seg, data, rep, addr
+				emit_random_seg_override(limit_segments);
+				emit_random_datasize(datasize_type);
+				emit_random_rep(allow_rep);
+				emit_random_addrsize(addrsize_type);
+				break;
+
+			case 12: // data, rep, addr, seg
+				emit_random_datasize(datasize_type);
+				emit_random_rep(allow_rep);
+				emit_random_addrsize(addrsize_type);
+				emit_random_seg_override(limit_segments);
+				break;
+			case 13: // data, rep, seg, addr
+				emit_random_datasize(datasize_type);
+				emit_random_rep(allow_rep);
+				emit_random_seg_override(limit_segments);
+				emit_random_addrsize(addrsize_type);
+				break;
+			case 14: // addr, rep, data, seg
+				emit_random_addrsize(addrsize_type);
+				emit_random_rep(allow_rep);
+				emit_random_datasize(datasize_type);
+				emit_random_seg_override(limit_segments);
+				break;
+			case 15: // addr, rep, seg, data
+				emit_random_addrsize(addrsize_type);
+				emit_random_rep(allow_rep);
+				emit_random_seg_override(limit_segments);
+				emit_random_datasize(datasize_type);
+				break;
+			case 16: // seg, rep, addr, data
+				emit_random_seg_override(limit_segments);
+				emit_random_rep(allow_rep);
+				emit_random_addrsize(addrsize_type);
+				emit_random_datasize(datasize_type);
+				break;
+			case 17: // seg, rep, data, addr
+				emit_random_seg_override(limit_segments);
+				emit_random_rep(allow_rep);
+				emit_random_datasize(datasize_type);
+				emit_random_addrsize(addrsize_type);
+				break;
+
+			case 18: // rep, data, addr, seg
+				emit_random_rep(allow_rep);
+				emit_random_datasize(datasize_type);
+				emit_random_addrsize(addrsize_type);
+				emit_random_seg_override(limit_segments);
+				break;
+			case 19: // rep, data, seg, addr
+				emit_random_rep(allow_rep);
+				emit_random_datasize(datasize_type);
+				emit_random_seg_override(limit_segments);
+				emit_random_addrsize(addrsize_type);
+				break;
+			case 20: // rep, addr, data, seg
+				emit_random_rep(allow_rep);
+				emit_random_addrsize(addrsize_type);
+				emit_random_datasize(datasize_type);
+				emit_random_seg_override(limit_segments);
+				break;
+			case 21: // rep, addr, seg, data
+				emit_random_rep(allow_rep);
+				emit_random_addrsize(addrsize_type);
+				emit_random_seg_override(limit_segments);
+				emit_random_datasize(datasize_type);
+				break;
+			case 22: // rep, seg, addr, data
+				emit_random_rep(allow_rep);
+				emit_random_seg_override(limit_segments);
+				emit_random_addrsize(addrsize_type);
+				emit_random_datasize(datasize_type);
+				break;
+			case 23: // rep, seg, data, addr
+				emit_random_rep(allow_rep);
+				emit_random_seg_override(limit_segments);
+				emit_random_datasize(datasize_type);
+				emit_random_addrsize(addrsize_type);
+				break;
+		}
+	};
+
+	auto emit_random_wait = [&]() {
+		if (x87_is_coprocessor || (!disable_prefix_spam && get_random_bool())) {
+			emit_random_prefixes(X87_PREFIXES);
+			emit_random_rex();
+			*code++ = 0x9B;
+		}
+	};
+
+	auto next_range_pair = [](const std::pair<int32_t, int32_t>* ranges, int32_t i, int32_t count, bool include = true) constexpr -> std::pair<int32_t, int32_t> {
+		if (i--) {
+			do {
+				int32_t prev_end = ranges[i].second;
+				if ((prev_end >= 0) == include) {
+					return { prev_end + 1, prev_end + count };
+				}
+			} while (i--);
+		}
+		if (include) {
+			return { 0, count - 1 };
+		} else {
+			return { INT32_MIN, INT32_MIN + 1 };
+		}
+	};
+	auto range_count = [](const std::pair<int32_t, int32_t>* ranges, size_t i) constexpr -> uint32_t {
+		int32_t max = 0;
+		while (i--) {
+			max = std::max(max, ranges[i].second);
+		}
+		return max + 1;
+	};
+
+#define RANGE_NEXT(index, count, ...) next_range_pair(&range[0], index, count __VA_OPT__(,) __VA_ARGS__)
+#define RANGE_LOWER(index) range[index].first
+#define RANGE_UPPER(index) range[index].second
+#define RANGE_CASE(index) RANGE_LOWER(index) ... RANGE_UPPER(index)
+#define RANGE_COUNT() range_count(&range[0], countof(range))
+
+	auto emit_fp_exception_clear = [&]() {
+		if (!has_mmx || get_random_bool()) {
+			// FINIT
+			emit_random_wait();
+			emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+			*code++ = 0xDB; *code++ = 0xE3;
+		} else {
+			if (get_random_bool()) {
+				// FCLEX
+				emit_random_wait();
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDB; *code++ = 0xE2;
+				// EMMS
+				emit_random_prefixes(NO_DATASIZE);
+				*code++ = 0x0F; *code++ = 0x77;
+			} else {
+				// EMMS
+				emit_random_prefixes(NO_DATASIZE);
+				*code++ = 0x0F; *code++ = 0x77;
+				// FCLEX
+				emit_random_wait();
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDB; *code++ = 0xE2;
+			}
+		}
+	};
+
+	auto emit_IE_gen = [&]() {
+		constexpr std::pair<int32_t, int32_t> range[] = {
+			// FADD ST(0), ST(i)
+			// FMUL ST(0), ST(i)
+			// FCOM ST(0), ST(i)
+			// FCOMP ST(0), ST(i)
+			// FSUB ST(0), ST(i)
+			// FSUBR ST(0), ST(i)
+			// FDIV ST(0), ST(i)
+			// FDIVR ST(0), ST(i)
+			RANGE_NEXT(0, 64),
+			// FLD ST(i)
+			// FXCH ST(i)
+			RANGE_NEXT(1, 16),
+			// FCHS
+			// FABS
+			RANGE_NEXT(2, 2),
+			// FTST
+			RANGE_NEXT(3, 1),
+			// F2XM1
+			// FYL2X
+			// FPTAN
+			// FPATAN
+			// FXTRACT
+			RANGE_NEXT(4, 5),
+			// FPREM1 (387)
+			RANGE_NEXT(5, 1, has_32_bit),
+			// FPREM
+			// FYL2XP1
+			// FSQRT
+			RANGE_NEXT(6, 3),
+			// FSINCOS (387)
+			RANGE_NEXT(7, 1, has_32_bit),
+			// FRNDINT
+			// FSCALE
+			RANGE_NEXT(8, 2),
+			// FSIN (387)
+			// FCOS (387)
+			RANGE_NEXT(9, 2),
+			// FCMOVB ST(0), ST(i)
+			// FCMOVE ST(0), ST(i)
+			// FCMOVBE ST(0), ST(i)
+			// FCMOVU ST(0), ST(i)
+			RANGE_NEXT(10, 32, has_mmx),
+			// FUCOMPP
+			RANGE_NEXT(11, 1, has_32_bit),
+			// FCMOVNB ST(0), ST(i)
+			// FCMOVNE ST(0), ST(i)
+			// FCMOVNBE ST(0), ST(i)
+			// FCMOVNU ST(0), ST(i)
+			RANGE_NEXT(12, 32, has_mmx),
+			// FUCOMI ST(0), ST(i)
+			// FCOMI ST(0), ST(i)
+			RANGE_NEXT(13, 16, has_mmx),
+			// FADD ST(i), ST(0)
+			// FMUL ST(i), ST(0)
+			RANGE_NEXT(14, 16),
+			// FCOM2 ST(0), ST(i)
+			// FCOMP3 ST(0), ST(i)
+			RANGE_NEXT(15, 16, !disable_alias_opcodes),
+			// FSUB ST(i), ST(0)
+			// FSUBR ST(i), ST(0)
+			// FDIV ST(i), ST(0)
+			// FDIVR ST(i), ST(0)
+			RANGE_NEXT(16, 64),
+			// FXCH4 ST(i)
+			RANGE_NEXT(17, 8, !disable_alias_opcodes),
+			// FST ST(i)
+			// FSTP ST(i)
+			RANGE_NEXT(18, 24),
+			// FUCOM ST(i)
+			// FUCOMP ST(i)
+			RANGE_NEXT(19, 16, has_32_bit),
+			// FADDP ST(i), ST(0)
+			// FMULP ST(i), ST(0)
+			RANGE_NEXT(20, 16),
+			// FCOMP5 ST(i)
+			RANGE_NEXT(21, 8, !disable_alias_opcodes),
+			// FCOMPP
+			RANGE_NEXT(22, 1),
+			// FSUBRP ST(i), ST(0)
+			// FSUBP ST(i), ST(0)
+			// FDIVRP ST(i), ST(0)
+			// FDIVP ST(i), ST(0)
+			RANGE_NEXT(23, 32),
+			// FXCH7 ST(i)
+			// FSTP8 ST(i)
+			// FSTP9 ST(i)
+			RANGE_NEXT(24, 24, !disable_alias_opcodes),
+			// FUCOMIP ST(0), ST(i)
+			// FCOMIP ST(0), ST(i)
+			RANGE_NEXT(25, 16, has_mmx),
+			// FADD DWORD [ESP]
+			// FMUL DWORD [ESP]
+			// FCOM DWORD [ESP]
+			// FCOMP DWORD [ESP]
+			// FSUB DWORD [ESP]
+			// FSUBR DWORD [ESP]
+			// FDIV DWORD [ESP]
+			// FDIVR DWORD [ESP]
+			RANGE_NEXT(26, 8, has_32_bit),
+			// FIADD DWORD [ESP]
+			// FIMUL DWORD [ESP]
+			// FICOM DWORD [ESP]
+			// FICOMP DWORD [ESP]
+			// FISUB DWORD [ESP]
+			// FISUBR DWORD [ESP]
+			// FIDIV DWORD [ESP]
+			// FIDIVR DWORD [ESP]
+			RANGE_NEXT(27, 8, has_32_bit),
+			// FADD QWORD [ESP]
+			// FMUL QWORD [ESP]
+			// FCOM QWORD [ESP]
+			// FCOMP QWORD [ESP]
+			// FSUB QWORD [ESP]
+			// FSUBR QWORD [ESP]
+			// FDIV QWORD [ESP]
+			// FDIVR QWORD [ESP]
+			RANGE_NEXT(28, 8, has_32_bit),
+			// FIADD WORD [ESP]
+			// FIMUL WORD [ESP]
+			// FICOM WORD [ESP]
+			// FICOMP WORD [ESP]
+			// FISUB WORD [ESP]
+			// FISUBR WORD [ESP]
+			// FIDIV WORD [ESP]
+			// FIDIVR WORD [ESP]
+			RANGE_NEXT(29, 8, has_32_bit)
+		};
+
+		emit_random_wait();
+		uint32_t random = get_random_int_range(RANGE_COUNT());
+		switch (random) {
+			default: unreachable;
+			case RANGE_CASE(0): // 64
+				// FADD ST(0), ST(i)
+				// FMUL ST(0), ST(i)
+				// FCOM ST(0), ST(i)
+				// FCOMP ST(0), ST(i)
+				// FSUB ST(0), ST(i)
+				// FSUBR ST(0), ST(i)
+				// FDIV ST(0), ST(i)
+				// FDIVR ST(0), ST(i)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xD8; *code++ = 0xC0 + (random - RANGE_LOWER(0));
+				break;
+			case RANGE_CASE(1): // 16
+				// FLD ST(i)
+				// FXCH ST(i)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xD9; *code++ = 0xC0 + (random - RANGE_LOWER(1));
+				break;
+			case RANGE_CASE(2): // 2
+				// FCHS
+				// FABS
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xD9; *code++ = 0xE0 + (random - RANGE_LOWER(2));
+				break;
+			case RANGE_CASE(3): // 1
+				// FTST
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xD9; *code++ = 0xE4;
+				break;
+			case RANGE_CASE(4): // 5
+				// F2XM1
+				// FYL2X
+				// FPTAN
+				// FPATAN
+				// FXTRACT
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xD9; *code++ = 0xF0 + (random - RANGE_LOWER(4));
+				break;
+			case RANGE_CASE(5): // 1 (387)
+				// FPREM1
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xD9; *code++ = 0xF5;
+				break;
+			case RANGE_CASE(6): // 8
+				// FPREM
+				// FYL2XP1
+				// FSQRT
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xD9; *code++ = 0xF8 + (random - RANGE_LOWER(6));
+				break;
+			case RANGE_CASE(7): // 1 (387)
+				// FSINCOS
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xD9; *code++ = 0xFB;
+				break;
+			case RANGE_CASE(8): // 2
+				// FRNDINT
+				// FSCALE
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xD9; *code++ = 0xFC + (random - RANGE_LOWER(8));
+				break;
+			case RANGE_CASE(9): // 2 (387)
+				// FSIN
+				// FCOS
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xD9; *code++ = 0xFE + (random - RANGE_LOWER(9));
+				break;
+			case RANGE_CASE(10): // 32
+				// FCMOVB ST(0), ST(i)
+				// FCMOVE ST(0), ST(i)
+				// FCMOVBE ST(0), ST(i)
+				// FCMOVU ST(0), ST(i)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDA; *code++ = 0xC0 + (random - RANGE_LOWER(10));
+				break;
+			case RANGE_CASE(11): // 1 (387)
+				// FUCOMPP
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDA; *code++ = 0xE9;
+				break;
+			case RANGE_CASE(12): // 32
+				// FCMOVNB ST(0), ST(i)
+				// FCMOVNE ST(0), ST(i)
+				// FCMOVNBE ST(0), ST(i)
+				// FCMOVNU ST(0), ST(i)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDB; *code++ = 0xC0 + (random - RANGE_LOWER(12));
+				break;
+			case RANGE_CASE(13): // 16
+				// FUCOMI ST(0), ST(i)
+				// FCOMI ST(0), ST(i)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDB; *code++ = 0xE8 + (random - RANGE_LOWER(13));
+				break;
+			case RANGE_CASE(14): // 16
+				// FADD ST(i), ST(0)
+				// FMUL ST(i), ST(0)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDC; *code++ = 0xC0 + (random - RANGE_LOWER(14));
+				break;
+			case RANGE_CASE(15): // 16 (alias)
+				// FCOM2 ST(0), ST(i)
+				// FCOMP3 ST(0), ST(i)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDC; *code++ = 0xD0 + (random - RANGE_LOWER(15));
+				break;
+			case RANGE_CASE(16): // 32
+				// FSUB ST(i), ST(0)
+				// FSUBR ST(i), ST(0)
+				// FDIV ST(i), ST(0)
+				// FDIVR ST(i), ST(0)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDC; *code++ = 0xE0 + (random - RANGE_LOWER(16));
+				break;
+			case RANGE_CASE(17): // 8 (alias)
+				// FXCH4 ST(i)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDD; *code++ = 0xC8 + (random - RANGE_LOWER(17));
+				break;
+			case RANGE_CASE(18): // 16
+				// FST ST(i)
+				// FSTP ST(i)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDD; *code++ = 0xD0 + (random - RANGE_LOWER(18));
+				break;
+			case RANGE_CASE(19): // 16
+				// FUCOM ST(i)
+				// FUCOMP ST(i)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDD; *code++ = 0xE0 + (random - RANGE_LOWER(19));
+				break;
+			case RANGE_CASE(20): // 16
+				// FADDP ST(i), ST(0)
+				// FMULP ST(i), ST(0)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDE; *code++ = 0xC0 + (random - RANGE_LOWER(20));
+				break;
+			case RANGE_CASE(21): // 8 (alias)
+				// FCOMP5 ST(i)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDE; *code++ = 0xD0 + (random - RANGE_LOWER(21));
+				break;
+			case RANGE_CASE(22): // 1
+				// FCOMPP
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDE; *code++ = 0xD9;
+				break;
+			case RANGE_CASE(23): // 32
+				// FSUBRP ST(i), ST(0)
+				// FSUBP ST(i), ST(0)
+				// FDIVRP ST(i), ST(0)
+				// FDIVP ST(i), ST(0)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDE; *code++ = 0xE0 + (random - RANGE_LOWER(23));
+				break;
+			case RANGE_CASE(24): // 24
+				// FXCH7 ST(i)
+				// FSTP8 ST(i)
+				// FSTP9 ST(i)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDF; *code++ = 0xC8 + (random - RANGE_LOWER(24));
+				break;
+			case RANGE_CASE(25): // 16
+				// FUCOMIP ST(0), ST(i)
+				// FCOMIP ST(0), ST(i)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDF; *code++ = 0xE8 + (random - RANGE_LOWER(25));
+				break;
+			case RANGE_CASE(26): // 8
+				// FADD DWORD [ESP]
+				// FMUL DWORD [ESP]
+				// FCOM DWORD [ESP]
+				// FCOMP DWORD [ESP]
+				// FSUB DWORD [ESP]
+				// FSUBR DWORD [ESP]
+				// FDIV DWORD [ESP]
+				// FDIVR DWORD [ESP]
+				emit_random_prefixes(ALLOW_DATASIZE, X87_MEM_ADDRSIZE, true, ALLOW_REP);
+				emit_random_rexXB(false, false);
+				*code++ = 0xD8;
+				switch (get_random_int_range(3)) {
+					case 0: // [ESP]
+						*code++ = 0x04 + (random - RANGE_LOWER(26) << 3);
+						*code++ = 0x24;
+						break;
+					case 1: // [ESP+00]
+						*code++ = 0x44 + (random - RANGE_LOWER(26) << 3);
+						*code++ = 0x24;
+						*code++ = 0x00;
+						break;
+					case 2: // [ESP+00000000]
+						*code++ = 0x84 + (random - RANGE_LOWER(26) << 3);
+						*code++ = 0x24;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						break;
+				}
+				break;
+			case RANGE_CASE(27): // 8
+				// FIADD DWORD [ESP]
+				// FIMUL DWORD [ESP]
+				// FICOM DWORD [ESP]
+				// FICOMP DWORD [ESP]
+				// FISUB DWORD [ESP]
+				// FISUBR DWORD [ESP]
+				// FIDIV DWORD [ESP]
+				// FIDIVR DWORD [ESP]
+				emit_random_prefixes(ALLOW_DATASIZE, X87_MEM_ADDRSIZE, true, ALLOW_REP);
+				emit_random_rexXB(false, false);
+				*code++ = 0xDA;
+				switch (get_random_int_range(3)) {
+					case 0: // [ESP]
+						*code++ = 0x04 + (random - RANGE_LOWER(27) << 3);
+						*code++ = 0x24;
+						break;
+					case 1: // [ESP+00]
+						*code++ = 0x44 + (random - RANGE_LOWER(27) << 3);
+						*code++ = 0x24;
+						*code++ = 0x00;
+						break;
+					case 2: // [ESP+00000000]
+						*code++ = 0x84 + (random - RANGE_LOWER(27) << 3);
+						*code++ = 0x24;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						break;
+				}
+				break;
+			case RANGE_CASE(28): // 8
+				// FADD QWORD [ESP]
+				// FMUL QWORD [ESP]
+				// FCOM QWORD [ESP]
+				// FCOMP QWORD [ESP]
+				// FSUB QWORD [ESP]
+				// FSUBR QWORD [ESP]
+				// FDIV QWORD [ESP]
+				// FDIVR QWORD [ESP]
+				emit_random_prefixes(ALLOW_DATASIZE, X87_MEM_ADDRSIZE, true, ALLOW_REP);
+				emit_random_rexXB(false, false);
+				*code++ = 0xDC;
+				switch (get_random_int_range(3)) {
+					case 0: // [ESP]
+						*code++ = 0x04 + (random - RANGE_LOWER(28) << 3);
+						*code++ = 0x24;
+						break;
+					case 1: // [ESP+00]
+						*code++ = 0x44 + (random - RANGE_LOWER(28) << 3);
+						*code++ = 0x24;
+						*code++ = 0x00;
+						break;
+					case 2: // [ESP+00000000]
+						*code++ = 0x84 + (random - RANGE_LOWER(28) << 3);
+						*code++ = 0x24;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						break;
+				}
+				break;
+			case RANGE_CASE(29): // 8
+				// FIADD WORD [ESP]
+				// FIMUL WORD [ESP]
+				// FICOM WORD [ESP]
+				// FICOMP WORD [ESP]
+				// FISUB WORD [ESP]
+				// FISUBR WORD [ESP]
+				// FIDIV WORD [ESP]
+				// FIDIVR WORD [ESP]
+				emit_random_prefixes(ALLOW_DATASIZE, X87_MEM_ADDRSIZE, true, ALLOW_REP);
+				emit_random_rexXB(false, false);
+				*code++ = 0xDE;
+				switch (get_random_int_range(3)) {
+					case 0: // [ESP]
+						*code++ = 0x04 + (random - RANGE_LOWER(29) << 3);
+						*code++ = 0x24;
+						break;
+					case 1: // [ESP+00]
+						*code++ = 0x44 + (random - RANGE_LOWER(29) << 3);
+						*code++ = 0x24;
+						*code++ = 0x00;
+						break;
+					case 2: // [ESP+00000000]
+						*code++ = 0x84 + (random - RANGE_LOWER(29) << 3);
+						*code++ = 0x24;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						break;
+				}
+				break;
+		}
+	};
+
+	auto emit_IE_nop = [&]() {
+		constexpr std::pair<int32_t, int32_t> range[] = {
+			// FNOP
+			RANGE_NEXT(0, 1),
+			// FSTPNCE ST(i)
+			RANGE_NEXT(1, 8, !disable_alias_opcodes),
+			// FLD1
+			// FLDL2T
+			// FLDL2E
+			// FLDPI
+			// FLDLG2
+			// FLDLN2
+			// FLDZ
+			RANGE_NEXT(2, 7),
+			// FDECSTP
+			// FINCSTP
+			RANGE_NEXT(3, 2),
+			// FENI
+			// FDISI
+			RANGE_NEXT(4, 2, mode != RealMode8086),
+			// FSETPM
+			RANGE_NEXT(5, 1, has_32_bit),
+			// FFREE ST(i)
+			RANGE_NEXT(6, 8),
+			// FFREEP ST(i)
+			RANGE_NEXT(7, 8, !disable_alias_opcodes),
+			// FLD DWORD [ESP]
+			RANGE_NEXT(8, 1, has_32_bit),
+			// FILD DWORD [ESP]
+			RANGE_NEXT(9, 1, has_32_bit),
+			// FLD QWORD [ESP]
+			RANGE_NEXT(10, 1, has_32_bit),
+			// FILD WORD [ESP]
+			RANGE_NEXT(11, 1, has_32_bit),
+			// FILD QWORD [ESP]
+			RANGE_NEXT(12, 1, has_32_bit),
+			// FLD TBYTE [ESP]
+			RANGE_NEXT(13, 1, is_x64),
+			// FBLD TBYTE [ESP]
+			RANGE_NEXT(14, 1, is_x64)
+		};
+
+		emit_random_wait();
+		uint32_t random = get_random_int_range(RANGE_COUNT());
+		switch (random) {
+			default: unreachable;
+			case RANGE_CASE(0): // 1
+				// FNOP
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xD9; *code++ = 0xD0;
+				break;
+			case RANGE_CASE(1): // 8
+				// FSTPNCE ST(i)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xD9; *code++ = 0xD8 + (random - RANGE_LOWER(1));
+				break;
+			case RANGE_CASE(2): // 7
+				// FLD1
+				// FLDL2T
+				// FLDL2E
+				// FLDPI
+				// FLDLG2
+				// FLDLN2
+				// FLDZ
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xD9; *code++ = 0xE8 + (random - RANGE_LOWER(2));
+				break;
+			case RANGE_CASE(3): // 2
+				// FDECSTP
+				// FINCSTP
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xD9; *code++ = 0xF6 + (random - RANGE_LOWER(3));
+				break;
+			case RANGE_CASE(4): // 2
+				// FENI
+				// FDISI
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDB; *code++ = 0xE0 + (random - RANGE_LOWER(4));
+				break;
+			case RANGE_CASE(5): // 1
+				// FSETPM
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDB; *code++ = 0xE4;
+				break;
+			case RANGE_CASE(6): // 8
+				// FFREE ST(i)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDD; *code++ = 0xC0 + (random - RANGE_LOWER(6));
+				break;
+			case RANGE_CASE(7): // 8
+				// FFREEP ST(i)
+				emit_random_prefixes(X87_PREFIXES); emit_random_rex();
+				*code++ = 0xDF; *code++ = 0xC0 + (random - RANGE_LOWER(7));
+				break;
+			case RANGE_CASE(8): // 1
+				// FLD DWORD [ESP]
+				emit_random_prefixes(ALLOW_DATASIZE, X87_MEM_ADDRSIZE, true, ALLOW_REP);
+				emit_random_rexXB(false, false);
+				*code++ = 0xD9;
+				switch (get_random_int_range(3)) {
+					case 0: // [ESP]
+						*code++ = 0x04;
+						*code++ = 0x24;
+						break;
+					case 1: // [ESP+00]
+						*code++ = 0x44;
+						*code++ = 0x24;
+						*code++ = 0x00;
+						break;
+					case 2: // [ESP+00000000]
+						*code++ = 0x84;
+						*code++ = 0x24;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						break;
+				}
+				break;
+			case RANGE_CASE(9): // 1
+				// FILD DWORD [ESP]
+				emit_random_prefixes(ALLOW_DATASIZE, X87_MEM_ADDRSIZE, true, ALLOW_REP);
+				emit_random_rexXB(false, false);
+				*code++ = 0xDB;
+				switch (get_random_int_range(3)) {
+					case 0: // [ESP]
+						*code++ = 0x04;
+						*code++ = 0x24;
+						break;
+					case 1: // [ESP+00]
+						*code++ = 0x44;
+						*code++ = 0x24;
+						*code++ = 0x00;
+						break;
+					case 2: // [ESP+00000000]
+						*code++ = 0x84;
+						*code++ = 0x24;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						break;
+				}
+				break;
+			case RANGE_CASE(10): // 1
+				// FLD QWORD [ESP]
+				emit_random_prefixes(ALLOW_DATASIZE, X87_MEM_ADDRSIZE, true, ALLOW_REP);
+				emit_random_rexXB(false, false);
+				*code++ = 0xDD;
+				switch (get_random_int_range(3)) {
+					case 0: // [ESP]
+						*code++ = 0x04;
+						*code++ = 0x24;
+						break;
+					case 1: // [ESP+00]
+						*code++ = 0x44;
+						*code++ = 0x24;
+						*code++ = 0x00;
+						break;
+					case 2: // [ESP+00000000]
+						*code++ = 0x84;
+						*code++ = 0x24;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						break;
+				}
+				break;
+			case RANGE_CASE(11): // 1
+				// FILD WORD [ESP]
+				emit_random_prefixes(ALLOW_DATASIZE, X87_MEM_ADDRSIZE, true, ALLOW_REP);
+				emit_random_rexXB(false, false);
+				*code++ = 0xDF;
+				switch (get_random_int_range(3)) {
+					case 0: // [ESP]
+						*code++ = 0x04;
+						*code++ = 0x24;
+						break;
+					case 1: // [ESP+00]
+						*code++ = 0x44;
+						*code++ = 0x24;
+						*code++ = 0x00;
+						break;
+					case 2: // [ESP+00000000]
+						*code++ = 0x84;
+						*code++ = 0x24;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						break;
+				}
+				break;
+			case RANGE_CASE(12): // 1
+				// FILD QWORD [ESP]
+				emit_random_prefixes(ALLOW_DATASIZE, X87_MEM_ADDRSIZE, true, ALLOW_REP);
+				emit_random_rexXB(false, false);
+				*code++ = 0xDF;
+				switch (get_random_int_range(3)) {
+					case 0: // [ESP]
+						*code++ = 0x2C;
+						*code++ = 0x24;
+						break;
+					case 1: // [ESP+00]
+						*code++ = 0x6C;
+						*code++ = 0x24;
+						*code++ = 0x00;
+						break;
+					case 2: // [ESP+00000000]
+						*code++ = 0xAC;
+						*code++ = 0x24;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						break;
+				}
+				break;
+			case RANGE_CASE(13): // 1
+				// FLD TBYTE [ESP]
+				emit_random_prefixes(ALLOW_DATASIZE, X87_MEM_ADDRSIZE, true, ALLOW_REP);
+				emit_random_rexXB(false, false);
+				*code++ = 0xDB;
+				switch (get_random_int_range(3)) {
+					case 0: // [ESP]
+						*code++ = 0x2C;
+						*code++ = 0x24;
+						break;
+					case 1: // [ESP+00]
+						*code++ = 0x6C;
+						*code++ = 0x24;
+						*code++ = 0x00;
+						break;
+					case 2: // [ESP+00000000]
+						*code++ = 0xAC;
+						*code++ = 0x24;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						break;
+				}
+				break;
+			case RANGE_CASE(14): // 1
+				// FBLD TBYTE [ESP]
+				emit_random_prefixes(ALLOW_DATASIZE, X87_MEM_ADDRSIZE, true, ALLOW_REP);
+				emit_random_rexXB(false, false);
+				*code++ = 0xDF;
+				switch (get_random_int_range(3)) {
+					case 0: // [ESP]
+						*code++ = 0x24;
+						*code++ = 0x24;
+						break;
+					case 1: // [ESP+00]
+						*code++ = 0x64;
+						*code++ = 0x24;
+						*code++ = 0x00;
+						break;
+					case 2: // [ESP+00000000]
+						*code++ = 0xA4;
+						*code++ = 0x24;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						*code++ = 0x00;
+						break;
+				}
+				break;
+		}
+	};
+
+	auto emit_bt_for_carry = [&]() {
+		uint32_t range = 8 + is_x64 * 4;
+		uint32_t random = get_random_int_range(range);
+		switch (random) {
+			default:
+				unreachable;
+			case 0: // BT AX, imm
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0x0F; *code++ = 0xBA; *code++ = 0xE0; *code++ = get_random_bit_test_index<uint16_t>(0x00);
+				break;
+			case 1: // BTS AX, imm
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0x0F; *code++ = 0xBA; *code++ = 0xE8; *code++ = get_random_bit_test_index<uint16_t>(0x00);
+				break;
+			case 2: // BTR AX, imm
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0x0F; *code++ = 0xBA; *code++ = 0xF0; *code++ = get_random_bit_test_index<uint16_t>(0x00);
+				break;
+			case 3: // BTC AX, imm
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0x0F; *code++ = 0xBA; *code++ = 0xF8; *code++ = get_random_bit_test_index<uint16_t>(0x00);
+				break;
+			case 4: // BT EAX, imm
+				emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+				*code++ = 0x0F; *code++ = 0xBA; *code++ = 0xE0; *code++ = get_random_bit_test_index<uint32_t>(0x00);
+				break;
+			case 5: // BTS EAX, imm
+				emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+				*code++ = 0x0F; *code++ = 0xBA; *code++ = 0xE8; *code++ = get_random_bit_test_index<uint32_t>(0x00);
+				break;
+			case 6: // BTR EAX, imm
+				emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+				*code++ = 0x0F; *code++ = 0xBA; *code++ = 0xF0; *code++ = get_random_bit_test_index<uint32_t>(0x00);
+				break;
+			case 7: // BTC EAX, imm
+				emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+				*code++ = 0x0F; *code++ = 0xBA; *code++ = 0xF8; *code++ = get_random_bit_test_index<uint32_t>(0x00);
+				break;
+			case 8: // BT RAX, imm
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWB(true, false, true);
+				*code++ = 0x0F; *code++ = 0xBA; *code++ = 0xE0; *code++ = get_random_bit_test_index<uint64_t>(0x00);
+				break;
+			case 9: // BTS RAX, imm
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWB(true, false, true);
+				*code++ = 0x0F; *code++ = 0xBA; *code++ = 0xE8; *code++ = get_random_bit_test_index<uint64_t>(0x00);
+				break;
+			case 10: // BTR RAX, imm
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWB(true, false, true);
+				*code++ = 0x0F; *code++ = 0xBA; *code++ = 0xF0; *code++ = get_random_bit_test_index<uint64_t>(0x00);
+				break;
+			case 11: // BTC RAX, imm
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWB(true, false, true);
+				*code++ = 0x0F; *code++ = 0xBA; *code++ = 0xF8; *code++ = get_random_bit_test_index<uint64_t>(0x00);
+				break;
+		}
+	};
+	auto emit_shift_for_carry = [&]() {
+		constexpr std::pair<int32_t, int32_t> range[] = {
+			// SHR AL, 1
+			RANGE_NEXT(0, 1),
+			// SHR AL, 1 (with immediate)
+			RANGE_NEXT(1, 1, mode != RealMode8086),
+			// SAR AL, 1
+			RANGE_NEXT(2, 1),
+			// SAR AL, 1 (with immediate)
+			RANGE_NEXT(3, 1, mode != RealMode8086),
+			// SHL AL, 8
+			RANGE_NEXT(4, 1, mode != RealMode8086),
+			// SAL AL, 8
+			RANGE_NEXT(5, 1, mode != RealMode8086),
+			// SHR AX, 1
+			RANGE_NEXT(6, 1),
+			// SHR AX, 1 (with immediate)
+			RANGE_NEXT(7, 1, mode != RealMode8086),
+			// SAR AX, 1
+			RANGE_NEXT(8, 1),
+			// SAR AX, 1 (with immediate)
+			RANGE_NEXT(9, 1, mode != RealMode8086),
+			// SHL AX, 16
+			RANGE_NEXT(10, 1, mode != RealMode8086),
+			// SAL AX, 16
+			RANGE_NEXT(11, 1, mode != RealMode8086),
+			// SHR EAX, 1
+			RANGE_NEXT(12, 1, sizeof(T) > sizeof(int16_t) && has_32_bit),
+			// SHR EAX, 1 (with immediate)
+			RANGE_NEXT(13, 1, sizeof(T) > sizeof(int16_t) && has_32_bit),
+			// SAR EAX, 1
+			RANGE_NEXT(14, 1, sizeof(T) > sizeof(int16_t) && has_32_bit),
+			// SAR EAX, 1 (with immediate)
+			RANGE_NEXT(15, 1, sizeof(T) > sizeof(int16_t) && has_32_bit),
+			// SHR RAX, 1
+			RANGE_NEXT(16, 1, sizeof(T) > sizeof(int16_t) && is_x64),
+			// SHR RAX, 1 (with immediate)
+			RANGE_NEXT(17, 1, sizeof(T) > sizeof(int16_t) && is_x64),
+			// SAR RAX, 1
+			RANGE_NEXT(18, 1, sizeof(T) > sizeof(int16_t) && is_x64),
+			// SAR RAX, 1 (with immediate)
+			RANGE_NEXT(19, 1, sizeof(T) > sizeof(int16_t) && is_x64)
+		};
+
+		uint32_t random = get_random_int_range(RANGE_COUNT());
+		switch (random) {
+			default:
+				unreachable;
+			case RANGE_CASE(0): // SHR AL, 1
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexB(false);
+				*code++ = 0xD0; *code++ = 0xE8;
+				break;
+			case RANGE_CASE(1): // SHR AL, 1 (with immediate)
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexB(false);
+				*code++ = 0xC0; *code++ = 0xE8; *code++ = get_random_shift_count<uint8_t>(0x01);
+				break;
+			case RANGE_CASE(2): // SAR AL, 1
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexB(false);
+				*code++ = 0xD0; *code++ = 0xF8;
+				break;
+			case RANGE_CASE(3): // SAR AL, 1 (with immediate)
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexB(false);
+				*code++ = 0xC0; *code++ = 0xF8; *code++ = get_random_shift_count<uint8_t>(0x01);
+				break;
+			case RANGE_CASE(4): // SHL AL, 8
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexB(false);
+				*code++ = 0xC0; *code++ = 0xE0; *code++ = get_random_shift_count<uint8_t>(0x08);
+				break;
+			case RANGE_CASE(5): // SAL AL, 8
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexB(false);
+				*code++ = 0xC0; *code++ = 0xF0; *code++ = get_random_shift_count<uint8_t>(0x08);
+				break;
+			case RANGE_CASE(6): // SHR AX, 1
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0xD1; *code++ = 0xE8;
+				break;
+			case RANGE_CASE(7): // SHR AX, 1 (with immediate)
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0xC1; *code++ = 0xE8; *code++ = get_random_shift_count<uint16_t>(0x01);
+				break;
+			case RANGE_CASE(8): // SAR AX, 1
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0xD1; *code++ = 0xF8;
+				break;
+			case RANGE_CASE(9): // SAR AX, 1 (with immediate)
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0xC1; *code++ = 0xF8; *code++ = get_random_shift_count<uint16_t>(0x01);
+				break;
+			case RANGE_CASE(10): // SHL AX, 16
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0xC1; *code++ = 0xE0; *code++ = get_random_shift_count<uint16_t>(0x10);
+				break;
+			case RANGE_CASE(11): // SAL AX, 16
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0xC1; *code++ = 0xF0; *code++ = get_random_shift_count<uint16_t>(0x10);
+				break;
+			case RANGE_CASE(12): // SHR EAX, 1
+				emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+				*code++ = 0xD1; *code++ = 0xE8;
+				break;
+			case RANGE_CASE(13): // SHR EAX, 1 (with immediate)
+				emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+				*code++ = 0xC1; *code++ = 0xE8; *code++ = get_random_shift_count<uint32_t>(0x01);
+				break;
+			case RANGE_CASE(14): // SAR EAX, 1
+				emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+				*code++ = 0xD1; *code++ = 0xF8;
+				break;
+			case RANGE_CASE(15): // SAR EAX, 1 (with immediate)
+				emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+				*code++ = 0xC1; *code++ = 0xF8; *code++ = get_random_shift_count<uint32_t>(0x01);
+				break;
+			case RANGE_CASE(16): // SHR RAX, 1
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWB(false, false);
+				*code++ = 0xD1; *code++ = 0xE8;
+				break;
+			case RANGE_CASE(17): // SHR RAX, 1 (with immediate)
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWB(true, false, true);
+				*code++ = 0xC1; *code++ = 0xE8; *code++ = get_random_shift_count<uint64_t>(0x01);
+				break;
+			case RANGE_CASE(18): // SAR RAX, 1
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWB(true, false, true);
+				*code++ = 0xD1; *code++ = 0xF8;
+				break;
+			case RANGE_CASE(19): // SAR RAX, 1 (with immediate)
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWB(true, false, true);
+				*code++ = 0xC1; *code++ = 0xF8; *code++ = get_random_shift_count<uint64_t>(0x01);
+				break;
+		}
+	};
+	auto emit_rotate_for_carry = [&]() {
+		constexpr std::pair<int32_t, int32_t> range[] = {
+			// ROR AL, 1
+			RANGE_NEXT(0, 1),
+			// ROR AL, 1 (with immediate)
+			RANGE_NEXT(1, 1, mode != RealMode8086),
+			// ROL AL, 8
+			RANGE_NEXT(2, 1, mode != RealMode8086),
+			// ROR AX, 1
+			RANGE_NEXT(3, 1),
+			// ROR AX, 1 (with immediate)
+			RANGE_NEXT(4, 1, mode != RealMode8086),
+			// ROL AX, 16
+			RANGE_NEXT(5, 1, mode != RealMode8086),
+			// ROR EAX, 1
+			RANGE_NEXT(6, 1, sizeof(T) > sizeof(int16_t) && has_32_bit),
+			// ROR EAX, 1 (with immediate)
+			RANGE_NEXT(7, 1, sizeof(T) > sizeof(int16_t) && has_32_bit),
+			// ROR RAX, 1
+			RANGE_NEXT(8, 1, sizeof(T) > sizeof(int16_t) && is_x64),
+			// ROR RAX, 1 (with immediate)
+			RANGE_NEXT(9, 1, sizeof(T) > sizeof(int16_t) && is_x64)
+		};
+
+		uint32_t random = get_random_int_range(RANGE_COUNT());
+		switch (random) {
+			default:
+				unreachable;
+			case RANGE_CASE(0): // ROR AL, 1
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexB(false);
+				*code++ = 0xD0; *code++ = 0xC8;
+				break;
+			case RANGE_CASE(1): // ROR AL, 1 (with immediate)
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexB(false);
+				*code++ = 0xC0; *code++ = 0xC8; *code++ = get_random_rotate_count<uint8_t>(0x01);
+				break;
+			case RANGE_CASE(2): // ROL AL, 8
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexB(false);
+				*code++ = 0xC0; *code++ = 0xC0; *code++ = get_random_rotate_count<uint8_t>(0x08);
+				break;
+			case RANGE_CASE(3): // ROR AX, 1
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0xD1; *code++ = 0xC8;
+				break;
+			case RANGE_CASE(4): // ROR AX, 1 (with immediate)
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0xC1; *code++ = 0xC8; *code++ = get_random_rotate_count<uint16_t>(0x01);
+				break;
+			case RANGE_CASE(5): // ROL AX, 16
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0xC1; *code++ = 0xC0; *code++ = get_random_rotate_count<uint16_t>(0x10);
+				break;
+			case RANGE_CASE(6): // ROR EAX, 1
+				emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+				*code++ = 0xD1; *code++ = 0xC8;
+				break;
+			case RANGE_CASE(7): // ROR EAX, 1 (with immediate)
+				emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+				*code++ = 0xC1; *code++ = 0xC8; *code++ = get_random_rotate_count<uint32_t>(0x01);
+				break;
+			case RANGE_CASE(8): // ROR RAX, 1
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWB(true, false, true);
+				*code++ = 0xD1; *code++ = 0xC8;
+				break;
+			case RANGE_CASE(9): // ROR RAX, 1 (with immediate)
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWB(true, false, true);
+				*code++ = 0xC1; *code++ = 0xC8; *code++ = get_random_rotate_count<uint64_t>(0x01);
+				break;
+		}
+	};
+	auto emit_rotate_with_carry_for_carry = [&]() {
+		constexpr std::pair<int32_t, int32_t> range[] = {
+			// RCR AL, 1
+			RANGE_NEXT(0, 1),
+			// RCR AL, 1 (with immediate)
+			RANGE_NEXT(1, 1, mode != RealMode8086),
+			// RCL AL, 8
+			RANGE_NEXT(2, 1, mode != RealMode8086),
+			// RCR AX, 1
+			RANGE_NEXT(3, 1),
+			// RCR AX, 1 (with immediate)
+			RANGE_NEXT(4, 1, mode != RealMode8086),
+			// RCL AX, 16
+			RANGE_NEXT(5, 1, mode != RealMode8086),
+			// RCR EAX, 1
+			RANGE_NEXT(6, 1, sizeof(T) > sizeof(int16_t) && has_32_bit),
+			// RCR EAX, 1 (with immediate)
+			RANGE_NEXT(7, 1, sizeof(T) > sizeof(int16_t) && has_32_bit),
+			// RCR RAX, 1
+			RANGE_NEXT(8, 1, sizeof(T) > sizeof(int16_t) && is_x64),
+			// RCR RAX, 1 (with immediate)
+			RANGE_NEXT(9, 1, sizeof(T) > sizeof(int16_t) && is_x64)
+		};
+
+		uint32_t random = get_random_int_range(RANGE_COUNT());
+		switch (get_random_int_range(random)) {
+			default:
+				unreachable;
+			case RANGE_CASE(0): // RCR AL, 1
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexB(false);
+				*code++ = 0xD0; *code++ = 0xD8;
+				break;
+			case RANGE_CASE(1): // RCR AL, 1 (with immediate)
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexB(false);
+				*code++ = 0xC0; *code++ = 0xD8;
+				switch (get_random_int_range(4)) {
+					case 0:
+						*code++ = get_random_shift_count<uint32_t>(1);
+						break;
+					case 1:
+						*code++ = get_random_shift_count<uint32_t>(10);
+						break;
+					case 2:
+						*code++ = get_random_shift_count<uint32_t>(19);
+						break;
+					case 3:
+						*code++ = get_random_shift_count<uint32_t>(28);
+						break;
+				}
+				break;
+			case RANGE_CASE(2): // RCL AL, 8
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexB(false);
+				*code++ = 0xC0; *code++ = 0xD0;
+				switch (get_random_int_range(3)) {
+					case 0:
+						*code++ = get_random_shift_count<uint32_t>(8);
+						break;
+					case 1:
+						*code++ = get_random_shift_count<uint32_t>(17);
+						break;
+					case 2:
+						*code++ = get_random_shift_count<uint32_t>(26);
+						break;
+				}
+				break;
+			case RANGE_CASE(3): // RCR AX, 1
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0xD1; *code++ = 0xD8;
+				break;
+			case RANGE_CASE(4): // RCR AX, 1 (with immediate)
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0xC1; *code++ = 0xD8;
+				switch (get_random_int_range(2)) {
+					case 0:
+						*code++ = get_random_shift_count<uint32_t>(1);
+						break;
+					case 1:
+						*code++ = get_random_shift_count<uint32_t>(18);
+						break;
+				}
+				break;
+			case RANGE_CASE(5): // RCL AX, 16
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0xC1; *code++ = 0xD0; *code++ = get_random_shift_count<uint32_t>(16);
+				break;
+			case RANGE_CASE(6): // RCR EAX, 1
+				emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+				*code++ = 0xD1; *code++ = 0xD8;
+				break;
+			case RANGE_CASE(7): // RCR EAX, 1 (with immediate)
+				emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+				*code++ = 0xC1; *code++ = 0xD8; *code++ = get_random_shift_count<uint32_t>(1);
+				break;
+			case RANGE_CASE(8): // RCR RAX, 1
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWB(true, false, true);
+				*code++ = 0xD1; *code++ = 0xD8;
+				break;
+			case RANGE_CASE(9): // RCR RAX, 1 (with immediate)
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWB(true, false, true);
+				*code++ = 0xC1; *code++ = 0xD8; *code++ = get_random_shift_count<uint32_t>(1);
+				break;
+		}
+	};
+	auto emit_double_shift_for_carry = [&]() {
+		uint32_t range = 2;
+		if constexpr (sizeof(T) > sizeof(int16_t)) {
+			range += 1 + is_x64;
+		}
+		switch (get_random_int_range(range)) {
+			case 0: // SHRD AX, reg, 1
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0x0F; *code++ = 0xAC; *code++ = 0xC0 | (get_random_int_range(8) << 3); *code++ = get_random_shift_double_count<uint16_t>(0x01);
+				break;
+			case 1: // SHLD AX, reg, 16
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0x0F; *code++ = 0xA4; *code++ = 0xC0 | (get_random_int_range(8) << 3); *code++ = get_random_shift_double_count<uint16_t>(0x10);
+				break;
+			case 2: // SHRD EAX, reg, 1
+				emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+				*code++ = 0x0F; *code++ = 0xAC; *code++ = 0xC0 | (get_random_int_range(8) << 3); *code++ = get_random_shift_double_count<uint32_t>(0x01);
+				break;
+			case 3: // SHRD RAX, reg, 1
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWB(true, false, true);
+				*code++ = 0x0F; *code++ = 0xAC; *code++ = 0xC0 | (get_random_int_range(8) << 3); *code++ = get_random_shift_double_count<uint64_t>(0x01);
+				break;
+		}
+	};
+	auto emit_sahf_for_carry = [&]() {
+		constexpr std::pair<int32_t, int32_t> range[] = {
+			// MOV AH, AL
+			RANGE_NEXT(0, 1),
+			// XCHG AL, AH
+			RANGE_NEXT(1, 1),
+			// ROL AX, 8
+			RANGE_NEXT(2, 1, mode != RealMode8086),
+			// ROR AX, 8
+			RANGE_NEXT(3, 1, mode != RealMode8086),
+			// SHLD AX, AX, 8
+			RANGE_NEXT(4, 1, has_32_bit),
+			// SHRD AX, AX, 8
+			RANGE_NEXT(5, 1, has_32_bit)
+		};
+		
+		uint32_t random = get_random_int_range(RANGE_COUNT());
+		switch (random) {
+			case RANGE_CASE(0):
+				// MOV AH, AL
+				emit_random_prefixes(ALLOW_DATASIZE);
+				if (get_random_bool()) {
+					*code++ = 0x88; *code++ = 0xC4;
+				} else {
+					*code++ = 0x8A; *code++ = 0xE0;
+				}
+				break;
+			case RANGE_CASE(1):
+				// XCHG AL, AH
+				emit_random_prefixes(ALLOW_DATASIZE);
+				*code++ = 0x86;
+				if (get_random_bool()) {
+					*code++ = 0xC4;
+				} else {
+					*code++ = 0xE0;
+				}
+				break;
+			case RANGE_CASE(2):
+				// ROL AX, 8
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0xC1; *code++ = 0xC0; *code++ = get_random_rotate_count<uint16_t>(0x08);
+				break;
+			case RANGE_CASE(3):
+				// ROR AX, 8
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+				*code++ = 0xC1; *code++ = 0xC8; *code++ = get_random_rotate_count<uint16_t>(0x08);
+				break;
+			case RANGE_CASE(4):
+				// SHLD AX, AX, 8
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWRB(false, false, false);
+				*code++ = 0x0F; *code++ = 0xA4; *code++ = 0xC0; *code++ = get_random_shift_double_count<uint16_t>(0x08);
+				break;
+			case RANGE_CASE(5):
+				// SHRD AX, AX, 8
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWRB(false, false, false);
+				*code++ = 0x0F; *code++ = 0xAC; *code++ = 0xC0; *code++ = get_random_shift_double_count<uint16_t>(0x08);
+				break;
+		}
+		emit_random_prefixes(ALLOW_DATASIZE); emit_random_rex();
+		// SAHF
+		*code++ = 0x9E;
+	};
+	/*
+	auto emit_multiply_for_shift = [&]() {
+		// NO 16 BIT VERSION
+		if constexpr (sizeof(T) == sizeof(int32_t)) {
+			if (get_random_bool()) {
+				// IMUL EAX, EAX, 0x80000000
+				emit_random_prefixes(NO_DATASIZE); emit_random_rexWRB(false, false, false);
+				*code++ = 0x69; *code++ = 0xC0; *code++ = 0x00; *code++ = 0x00; *code++ = 0x00; *code++ = 0x80;
+			}
+			else {
+				// MOV ECX, 0x80000000
+				emit_random_prefixes(NO_DATASIZE); emit_random_rexWB(false, false);
+				*code++ = 0xB9; *code++ = 0x00; *code++ = 0x00; *code++ = 0x00; *code++ = 0x80;
+				// IMUL EAX, ECX
+				emit_random_prefixes(NO_DATASIZE); emit_random_rexRB(false, false);
+				*code++ = 0x0F; *code++ = 0xAF; *code++ = 0xC1;
+			}
 		}
 		else if constexpr (sizeof(T) == sizeof(int64_t)) {
-			*code++ = get_random_rexw(); *code++ = 0x0F; *code++ = 0xAC; *code++ = 0xC2; *code++ = get_random_shift_count<true>(0x01); // SHRD RDX, RAX, 1
+			// MOV RCX, 0x8000000000000000
+			emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWB(true, false, true);
+			*code++ = 0xB9; *code++ = 0x00; *code++ = 0x00; *code++ = 0x00; *code++ = 0x00; *code++ = 0x00; *code++ = 0x00; *code++ = 0x00; *code++ = 0x80;
+			// IMUL EAX, ECX
+			emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWRB(true, false, false, true);
+			*code++ = 0x0F; *code++ = 0xAF; *code++ = 0xC1;
+		}
+	};
+	auto emit_shift_for_shift = [&]() {
+
+	};
+	*/
+	auto emit_shift_for_bit = [&]() {
+		if constexpr (sizeof(T) <= sizeof(int16_t)) {
+			if (get_random_bool()) {
+				// ROR EAX, 1
+				emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+				*code++ = 0xD1; *code++ = 0xC8;
+			}
+			else {
+				// ROR EAX, 1 (with immediate)
+				emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+				*code++ = 0xC1; *code++ = 0xC8; *code++ = get_random_rotate_count<uint32_t>(0x01);
+			}
+		}
+		else if constexpr (sizeof(T) == sizeof(int32_t)) {
+			// SHRD EDX, EAX, 1
+			emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWRB(false, false, false);
+			*code++ = 0x0F; *code++ = 0xAC; *code++ = 0xC2; *code++ = get_random_shift_double_count<uint32_t>(0x01);
+		}
+		else if constexpr (sizeof(T) == sizeof(int64_t)) {
+			// SHRD EDX, EAX, 1
+			emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWRB(true, false, false, true);
+			*code++ = 0x0F; *code++ = 0xAC; *code++ = 0xC2; *code++ = get_random_shift_double_count<uint32_t>(0x01);
+		}
+	};
+	auto emit_rcr_for_bit = [&]() {
+		if constexpr (sizeof(T) <= sizeof(int16_t)) {
+			if constexpr (has_32_bit) {
+				if (get_random_bool()) {
+					// RCR EAX, 1
+					emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+					*code++ = 0xD1; *code++ = 0xD8;
+				}
+				else {
+					// RCR EAX, 1 (with immediate)
+					emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+					*code++ = 0xC1; *code++ = 0xD8; *code++ = get_random_shift_count<uint32_t>(0x01);
+				}
+			}
+			else {
+				if (mode == RealMode8086 || get_random_bool()) {
+					// RCR DX, 1
+					emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+					*code++ = 0xD1; *code++ = 0xDA;
+				}
+				else {
+					// RCR DX, 1 (with immediate)
+					emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWB(false, false);
+					*code++ = 0xC1; *code++ = 0xDA; *code++ = get_random_shift_count<uint16_t>(0x01);
+				}
+			}
+		}
+		else if constexpr (sizeof(T) == sizeof(int32_t)) {
+			if (mode == RealMode8086 || get_random_bool()) {
+				// RCR EDX, 1
+				emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+				*code++ = 0xD1; *code++ = 0xDA;
+			}
+			else {
+				// RCR EDX, 1 (with immediate)
+				emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+				*code++ = 0xC1; *code++ = 0xDA; *code++ = get_random_shift_count<uint32_t>(0x01);
+			}
+		}
+		else if constexpr (sizeof(T) == sizeof(int64_t)) {
+			if (mode == RealMode8086 || get_random_bool()) {
+				// RCR RDX, 1
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWB(true, false, true);
+				*code++ = 0xD1; *code++ = 0xDA;
+			}
+			else {
+				// RCR RDX, 1 (with immediate)
+				emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexWB(true, false, true);
+				*code++ = 0xC1; *code++ = 0xDA; *code++ = get_random_shift_count<uint32_t>(0x01);
+			}
+		}
+	};
+
+	
+	if constexpr (has_32_bit) {
+		// PUSH FS
+		emit_random_prefixes(FORCE_DATASIZE32); emit_random_rex();
+		*code++ = 0x0F; *code++ = 0xA0;
+
+		// FSTCW [ESP]
+		emit_random_wait();
+		emit_random_prefixes(ALLOW_DATASIZE, ALLOW_ADDRSIZE_ON_X64, true, ALLOW_REP);
+		emit_random_rexXB(false, false);
+		*code++ = 0xD9;
+		switch (get_random_int_range(3)) {
+			default:
+				unreachable;
+			case 0: // [ESP]
+				*code++ = 0x3C;
+				*code++ = 0x24;
+				break;
+			case 1: // [ESP+00]
+				*code++ = 0x7C;
+				*code++ = 0x24;
+				*code++ = 0x00;
+				break;
+			case 2: // [ESP+00000000]
+				*code++ = 0xBC;
+				*code++ = 0x24;
+				*code++ = 0x00;
+				*code++ = 0x00;
+				*code++ = 0x00;
+				*code++ = 0x00;
+				break;
+		}
+	}
+	else {
+		if (mode == RealMode8086 || get_random_bool()) {
+			// PUSH BP
+			emit_random_prefixes(NO_DATASIZE);
+			*code++ = 0x55;
+			// MOV BP, SP
+			emit_random_prefixes(NO_DATASIZE);
+			if (get_random_bool()) {
+				*code++ = 0x89; *code++ = 0xE5;
+			} else {
+				*code++ = 0x8B; *code++ = 0xEC;
+			}
+			emit_random_prefixes(NO_DATASIZE);
+			switch (get_random_int_range(4)) {
+				default:
+					unreachable;
+				case 0: // PUSH reg
+					*code++ = 0x50 | get_random_int_range(8);
+					break;
+				case 1: // SUB SP, 2
+					if (get_random_bool()) {
+						*code++ = 0x83; *code++ = 0xEC; *code++ = 0x02;
+					} else {
+						*code++ = 0x81; *code++ = 0xEC; *code++ = 0x02; *code++ = 0x00;
+					}
+					break;
+				case 2: // ADD SP, -2
+					if (get_random_bool()) {
+						*code++ = 0x83; *code++ = 0xC4; *code++ = 0xFE;
+					} else {
+						*code++ = 0x81; *code++ = 0xC4; *code++ = 0xFE; *code++ = 0xFF;
+					}
+					break;
+				case 3: // DEC SP x2
+					*code++ = 0x4C;
+					emit_random_prefixes(NO_DATASIZE);
+					*code++ = 0x4C;
+					break;
+			}
+		}
+		else {
+			// ENTER
+			emit_random_prefixes(NO_DATASIZE, NO_ADDRSIZE);
+			*code++ = 0xC8;
+			if (get_random_bool()) {
+				*code++ = 0x02; *code++ = 0x00; *code++ = 0x00;
+			} else {
+				*code++ = 0x00; *code++ = 0x00; *code++ = 0x01;
+			}
+		}
+
+		// FSTCW [BP-2]
+		emit_random_wait();
+		emit_random_prefixes(ALLOW_DATASIZE, NO_ADDRSIZE, true, ALLOW_REP);
+		emit_random_rexXB(false, false);
+		*code++ = 0xD9;
+		if (get_random_bool()) {
+			// [BP-02]
+			*code++ = 0x7E; *code++ = 0xFE;
+		} else {
+			// [BP-0002]
+			*code++ = 0xBE; *code++ = 0xFE; *code++ = 0xFF;
+		}
+	}
+
+	for (size_t i = 0; i < bitsof(T); ++i) {
+
+		emit_fp_exception_clear();
+		if (value >> i & 1) {
+			emit_IE_gen();
+		}
+		else {
+			emit_IE_nop();
+		}
+
+		if constexpr (mode != RealMode8086) {
+			// FSTSW AX
+			emit_random_wait();
+			emit_random_prefixes(); emit_random_rex();
+			*code++ = 0xDF; *code++ = 0xE0;
+		}
+		else {
+			// PUSH reg
+			emit_random_prefixes(NO_DATASIZE);
+			*code++ = 0x50 | get_random_int_range(8);
+			// FSTSW [BP-4]
+			emit_random_wait();
+			emit_random_prefixes(ALLOW_DATASIZE, NO_ADDRSIZE, true, ALLOW_REP);
+			emit_random_rexXB(false, false);
+			*code++ = 0xDD;
+			if (get_random_bool()) {
+				// [BP-04]
+				*code++ = 0x7E; *code++ = 0xFC;
+			} else {
+				// [BP-0004]
+				*code++ = 0xBE; *code++ = 0xFC; *code++ = 0xFF;
+			}
+			// POP AX
+			emit_random_prefixes(NO_DATASIZE);
+			*code++ = 0x58;
+		}
+
+		constexpr std::pair<int32_t, int32_t> range[] = {
+			RANGE_NEXT(0, 1, has_32_bit), // Rotate
+			RANGE_NEXT(1, 1), // Shift + RCR
+			RANGE_NEXT(2, 1), // Rotate + RCR
+			RANGE_NEXT(3, 1, has_32_bit), // Shift double + RCR
+			RANGE_NEXT(4, 1, has_32_bit), // BT + RCR
+			RANGE_NEXT(5, 1), // SAHF + RCR
+			RANGE_NEXT(6, 1), // Rotate carry + RCR
+		};
+
+		uint32_t random = get_random_int_range(RANGE_COUNT());
+		switch (random) {
+			case RANGE_CASE(0):
+				emit_shift_for_bit();
+				break;
+			case RANGE_CASE(1):
+				emit_shift_for_carry();
+				emit_rcr_for_bit();
+				break;
+			case RANGE_CASE(2):
+				emit_rotate_for_carry();
+				emit_rcr_for_bit();
+				break;
+			case RANGE_CASE(3):
+				emit_double_shift_for_carry();
+				emit_rcr_for_bit();
+				break;
+			case RANGE_CASE(4):
+				emit_bt_for_carry();
+				emit_rcr_for_bit();
+				break;
+			case RANGE_CASE(5):
+				emit_sahf_for_carry();
+				emit_rcr_for_bit();
+				break;
+			case RANGE_CASE(6):
+				emit_rotate_with_carry_for_carry();
+				emit_rcr_for_bit();
+				break;
 		}
 	}
 	if constexpr (sizeof(T) == sizeof(int8_t)) {
-		*code++ = 0xC1; *code++ = 0xF8; *code++ = get_random_shift_count<false>(0x18); // SAR EAX, 24
+		if constexpr (has_32_bit) {
+			// SAR EAX, 24
+			emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+			*code++ = 0xC1; *code++ = 0xF8; *code++ = get_random_shift_count<uint32_t>(0x18);
+		}
+		else {
+			if (get_random_bool()) {
+				// MOV AL, DH
+				emit_random_prefixes(); emit_random_rexRB(false, false);
+				if (get_random_bool()) {
+					*code++ = 0x88; *code++ = 0xF0;
+				} else {
+					*code++ = 0x8A; *code++ = 0xC6;
+				}
+			}
+			else {
+				// XCHG AL, DH
+				emit_random_prefixes(); emit_random_rexRB(false, false);
+				*code++ = 0x86;
+				if (get_random_bool()) {
+					*code++ = 0xF0;
+				} else {
+					*code++ = 0xC6;
+				}
+			}
+			// CBW
+			emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexW(false);
+			*code++ = 0x98;
+		}
 	}
 	else if constexpr (sizeof(T) == sizeof(int16_t)) {
-		*code++ = 0xC1; *code++ = 0xF8; *code++ = get_random_shift_count<false>(0x10); // SAR EAX, 16
+		if constexpr (has_32_bit) {
+			// SAR EAX, 16
+			emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexWB(false, false);
+			*code++ = 0xC1; *code++ = 0xF8; *code++ = get_random_shift_count<uint32_t>(0x10);
+		}
+		else {
+			if (get_random_bool()) {
+				// MOV AX, DX
+				emit_random_prefixes(FORCE_DATASIZE16); emit_random_rexWRB(false, false, false);
+				if (get_random_bool()) {
+					*code++ = 0x89; *code++ = 0xD0;
+				} else {
+					*code++ = 0x8B; *code++ = 0xC2;
+				}
+			}
+			else {
+				// XCHG AX, DX
+				emit_random_prefixes(FORCE_DATASIZE16);
+				switch (get_random_int_range(3)) {
+					case 0:
+						emit_random_rexB(false);
+						*code++ = 0x92;
+						break;
+					case 1:
+						emit_random_rexRB(false, false);
+						*code++ = 0x87; *code++ = 0xC2;
+						break;
+					case 2:
+						emit_random_rexRB(false, false);
+						*code++ = 0x87; *code++ = 0xD0;
+						break;
+				}
+			}
+		}
 	}
 	else if constexpr (sizeof(T) == sizeof(int32_t)) {
-		*code++ = 0x89; *code++ = 0xD0; // MOV EAX, EDX
+		switch (get_random_int_range(3)) {
+			case 0:
+				// MOV EAX, EDX
+				emit_random_prefixes(FORCE_DATASIZE32);
+				emit_random_rexRB(false, false);
+				if (get_random_bool()) {
+					*code++ = 0x89; *code++ = 0xD0;
+				} else {
+					*code++ = 0x8B; *code++ = 0xC2;
+				}
+				break;
+			case 1:
+				// XCHG EAX, EDX
+				emit_random_prefixes(FORCE_DATASIZE32);
+				switch (get_random_int_range(3)) {
+					case 0:
+						emit_random_rexB(false);
+						*code++ = 0x92;
+						break;
+					case 1:
+						emit_random_rexRB(false, false);
+						*code++ = 0x87; *code++ = 0xC2;
+						break;
+					case 2:
+						emit_random_rexRB(false, false);
+						*code++ = 0x87; *code++ = 0xD0;
+						break;
+				}
+				break;
+			case 2:
+				// LEA EAX, [EDX]
+				emit_random_prefixes(FORCE_DATASIZE32, ALLOW_ADDRSIZE_ON_X64);
+				emit_random_rexRXB(false, false, false);
+				*code++ = 0x8D;
+				switch (get_random_int_range(6)) {
+					case 0: // [EDX]
+						*code++ = 0x02;
+						break;
+					case 1: // [EDX] (with SIB)
+						*code++ = 0x04; *code++ = 0x22;
+						break;
+					case 2: // [EDX+00]
+						*code++ = 0x42; *code++ = 0x00;
+						break;
+					case 3: // [EDX+00] (with SIB)
+						*code++ = 0x44; *code++ = 0x22; *code++ = 0x00;
+						break;
+					case 4: // [EDX+00000000]
+						*code++ = 0x82; *code++ = 0x00; *code++ = 0x00; *code++ = 0x00; *code++ = 0x00;
+						break;
+					case 5: // [EDX+00000000] (with SIB)
+						*code++ = 0x84; *code++ = 0x22; *code++ = 0x00; *code++ = 0x00; *code++ = 0x00; *code++ = 0x00;
+						break;
+				}
+				break;
+		}
 	}
 	else if constexpr (sizeof(T) == sizeof(int64_t)) {
-		*code++ = get_random_rexw(); *code++ = 0x89; *code++ = 0xD0; // MOV RAX, RDX
+		emit_random_prefixes(ALLOW_DATASIZE);
+		switch (get_random_int_range(3)) {
+			case 0:
+				// MOV RAX, RDX
+				emit_random_rexWRB(true, false, false, true);
+				if (get_random_bool()) {
+					*code++ = 0x89; *code++ = 0xD0;
+				} else {
+					*code++ = 0x8B; *code++ = 0xC2;
+				}
+				break;
+			case 1:
+				// XCHG RAX, RDX
+				switch (get_random_int_range(3)) {
+					case 0:
+						emit_random_rexWB(true, false, true);
+						*code++ = 0x92;
+						break;
+					case 1:
+						emit_random_rexWRB(true, false, false, true);
+						*code++ = 0x87; *code++ = 0xC2;
+						break;
+					case 2:
+						emit_random_rexWRB(true, false, false, true);
+						*code++ = 0x87; *code++ = 0xD0;
+						break;
+				}
+				break;
+			case 2:
+				// LEA RAX, [RDX]
+				*code++ = 0x48; // REXW
+				*code++ = 0x8D;
+				switch (get_random_int_range(6)) {
+					case 0: // [RDX]
+						*code++ = 0x02;
+						break;
+					case 1: // [RDX] (with SIB)
+						*code++ = 0x04; *code++ = 0x22;
+						break;
+					case 2: // [RDX+00]
+						*code++ = 0x42; *code++ = 0x00;
+						break;
+					case 3: // [RDX+00] (with SIB)
+						*code++ = 0x44; *code++ = 0x22; *code++ = 0x00;
+						break;
+					case 4: // [RDX+00000000]
+						*code++ = 0x82; *code++ = 0x00; *code++ = 0x00; *code++ = 0x00; *code++ = 0x00;
+						break;
+					case 5: // [RDX+00000000] (with SIB)
+						*code++ = 0x84; *code++ = 0x22; *code++ = 0x00; *code++ = 0x00; *code++ = 0x00; *code++ = 0x00;
+						break;
+				}
+				break;
+		}
 	}
-	*code++ = 0xD9; *code++ = 0x2C; *code++ = 0x24; // FLDCW [ESP]
-	*code++ = 0x5A; // POP EDX
+
+	if constexpr (is_x64 && sizeof(T) != sizeof(int64_t)) {
+		// CDQE
+		emit_random_prefixes(ALLOW_DATASIZE); emit_random_rexW(true, true);
+		*code++ = 0x98;
+	}
+
+	if constexpr (has_32_bit) {
+		// FLDCW [ESP]
+		emit_random_wait();
+		emit_random_prefixes(ALLOW_DATASIZE, X87_MEM_ADDRSIZE, true, ALLOW_REP);
+		emit_random_rexXB(false, false);
+		*code++ = 0xD9;
+		switch (get_random_int_range(3)) {
+			case 0: // [ESP]
+				*code++ = 0x2C;
+				*code++ = 0x24;
+				break;
+			case 1: // [ESP+00]
+				*code++ = 0x6C;
+				*code++ = 0x24;
+				*code++ = 0x00;
+				break;
+			case 2: // [ESP+00000000]
+				*code++ = 0xAC;
+				*code++ = 0x24;
+				*code++ = 0x00;
+				*code++ = 0x00;
+				*code++ = 0x00;
+				*code++ = 0x00;
+				break;
+		}
+
+		emit_random_prefixes(FORCE_DATASIZE32); emit_random_rexB(false);
+		if (get_random_bool()) {
+			// POP EDX
+			*code++ = 0x5A;
+		}
+		else {
+			// POP EDX (wide encoding)
+			*code++ = 0x8F; *code++ = 0xC2;
+		}
+	}
+	else {
+		// FLDCW [BP-2]
+		emit_random_wait();
+		emit_random_prefixes(ALLOW_DATASIZE, NO_ADDRSIZE, true, ALLOW_REP);
+		emit_random_rexXB(false, false);
+		*code++ = 0xD9;
+		if (get_random_bool()) {
+			// [BP-02]
+			*code++ = 0x6E; *code++ = 0xFE;
+		}
+		else {
+			// [BP-0002]
+			*code++ = 0xAE; *code++ = 0xFE; *code++ = 0xFF;
+		}
+
+		uint32_t range = 7;
+		if constexpr (mode != RealMode8086) {
+			range += 2;
+		}
+		uint32_t random = get_random_int_range(range);
+		switch (random) {
+			default:
+				unreachable;
+			case 0:
+				// MOV SP, BP
+				emit_random_prefixes(NO_DATASIZE);
+				if (get_random_bool()) {
+					*code++ = 0x89; *code++ = 0xEC;
+				} else {
+					*code++ = 0x8B; *code++ = 0xE5;
+				}
+				// POP BP
+				emit_random_prefixes(NO_DATASIZE);
+				*code++ = 0x5D;
+				break;
+			case 1:
+				// XCHG SP, BP
+				emit_random_prefixes(NO_DATASIZE);
+				*code++ = 0x87;
+				if (get_random_bool()) {
+					*code++ = 0xEC;
+				} else {
+					*code++ = 0xE5;
+				}
+				// POP BP
+				emit_random_prefixes(NO_DATASIZE);
+				*code++ = 0x5D;
+				break;
+			case 2:
+				// LEA SP, [BP]
+				emit_random_prefixes(NO_DATASIZE);
+				*code++ = 0x8D;
+				if (get_random_bool()) {
+					// [BP+00]
+					*code++ = 0x66; *code++ = 0x00;
+				} else {
+					// [BP+0000]
+					*code++ = 0xA6; *code++ = 0x00; *code++ = 0x00;
+				}
+				// POP BP
+				emit_random_prefixes(NO_DATASIZE);
+				*code++ = 0x5D;
+				break;
+			case 3:
+				// POP
+				emit_random_prefixes(NO_DATASIZE);
+				if (get_random_bool()) {
+					// POP BP
+					*code++ = 0x5D;
+				} else {
+					// POP DX
+					*code++ = 0x5A;
+				}
+				// POP BP
+				emit_random_prefixes(NO_DATASIZE);
+				*code++ = 0x5D;
+				break;
+			case 4:
+				// SUB SP, -2
+				emit_random_prefixes(NO_DATASIZE);
+				if (get_random_bool()) {
+					*code++ = 0x83; *code++ = 0xEC; *code++ = 0xFE;
+				} else {
+					*code++ = 0x81; *code++ = 0xEC; *code++ = 0xFE; *code++ = 0xFF;
+				}
+				// POP BP
+				emit_random_prefixes(NO_DATASIZE);
+				*code++ = 0x5D;
+				break;
+			case 5:
+				// ADD SP, 2
+				emit_random_prefixes(NO_DATASIZE);
+				if (get_random_bool()) {
+					*code++ = 0x83; *code++ = 0xC4; *code++ = 0xFE;
+				} else {
+					*code++ = 0x81; *code++ = 0xC4; *code++ = 0xFE; *code++ = 0xFF;
+				}
+				// POP BP
+				emit_random_prefixes(NO_DATASIZE);
+				*code++ = 0x5D;
+				break;
+			case 6:
+				// INC SP
+				emit_random_prefixes(NO_DATASIZE);
+				*code++ = 0x44;
+				// INC SP
+				emit_random_prefixes(NO_DATASIZE);
+				*code++ = 0x44;
+				// POP BP
+				emit_random_prefixes(NO_DATASIZE);
+				*code++ = 0x5D;
+				break;
+			case 7:
+				// ENTER -4, 0
+				emit_random_prefixes(NO_DATASIZE, NO_ADDRSIZE);
+				*code++ = 0xC8; *code++ = 0xFC; *code++ = 0xFF; *code++ = 0x00;
+				// POP BP
+				emit_random_prefixes(NO_DATASIZE);
+				*code++ = 0x5D;
+				break;
+			case 8:
+				// LEAVE
+				emit_random_prefixes(NO_DATASIZE, NO_ADDRSIZE);
+				*code++ = 0xC9;
+				break;
+		}
+	}
 	return code;
 }
 
@@ -9451,20 +11595,6 @@ static inline constexpr UNICODE_STRING InitUnicodeString(const wchar_t(&str)[N])
 		sizeof(wchar_t[N]),
 		str
 	};
-}
-
-template<size_t bits>
-static constexpr void RtlInitUnicodeString(UNICODE_STRINGX<bits>* unicode_string, const wchar_t* string) {
-	if (expect(string != NULL, true)) {
-		size_t length = byteloop_wcslen_raw(string);
-		if (length >= 0x7FFE) length = 0x7FFE;
-		length *= sizeof(wchar_t);
-		unicode_string->Length = length;
-		unicode_string->MaximumLength = length + sizeof(wchar_t);
-		unicode_string->Buffer = (PTRZX<bits, wchar_t>)string;
-	} else {
-		__builtin_memset(unicode_string, 0, sizeof(*unicode_string));
-	}
 }
 
 static inline constexpr UNICODE_STRING MakeUnicodeString(const wchar_t* str) {

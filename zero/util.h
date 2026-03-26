@@ -1002,6 +1002,9 @@ struct ZUNListIterBase;
 template <typename T, bool has_idk ZUNListIdkDefaultValue>
 struct ZUNListEndsBase;
 
+#define LIST_BREAK_DO_WHILE false
+#define LIST_CONTINUE_DO_WHILE true
+
 #if !ZUNListPlayNiceWithIntellisense
 
 template <typename T, bool has_idk>
@@ -1216,7 +1219,11 @@ protected:
     static inline bool do_while_impl(const L& lambda, N* node) {
         for (; node; node = node->next) {
             T* data = node->data;
-            if (!lambda(data)) return false;
+            if constexpr (std::is_invocable_v<L, T*, N*>) {
+                if (!lambda(data, node)) return false;
+            } else {
+                if (!lambda(data)) return false;
+            }
         }
         return true;
     }

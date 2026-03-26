@@ -1080,14 +1080,20 @@ target_sources(smallest_pe_file PRIVATE
 	"why.cpp"
 )
 target_compile_definitions(smallest_pe_file PRIVATE
-	STOP_LINKING_DEFAULT_LIB_PLZ
+	#STOP_LINKING_DEFAULT_LIB_PLZ
 )
 target_link_options(smallest_pe_file PRIVATE
 	/ENTRY:yeet
-	"/STUB:F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\empty_dos_stub.exe"
+	#"/STUB:F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\empty_dos_stub.exe"
 	#/emittoolversioninfo:no
-	"LINKER:/fixed"
+	#"LINKER:/fixed"
 	-nodefaultlib
+	/LARGEADDRESSAWARE:NO
+	
+	#/DYNAMICBASE:NO
+	/HIGHENTROPYVA:NO
+	/CETCOMPAT:NO
+	/MANIFEST:NO
 )
 
 target_sources(XInput1_4 PRIVATE
