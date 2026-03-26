@@ -283,12 +283,14 @@ static inline uint8_t& RED(D3DCOLOR& color) {
 static inline uint8_t& ALPHA(D3DCOLOR& color) {
     return ((uint8_t*)&color)[3];
 }
+
 // Just make these macro colored
 // to indicate there's BS going on
 #define BLUE(...) BLUE(__VA_ARGS__)
 #define GREEN(...) GREEN(__VA_ARGS__)
 #define RED(...) RED(__VA_ARGS__)
 #define ALPHA(...) ALPHA(__VA_ARGS__)
+#define COLOR(a,r,g,b) PackD3DCOLOR(a,r,g,b)
 
 // I don't even want to know how this is a thing
 // 0x47D870
@@ -4469,6 +4471,16 @@ union AnmID {
     dllexport void thiscall set_controller_position(Float3* position) asm_symbol_rel(0x488F70);
 
     inline void set_z_rotation(float rotation);
+
+    inline void set_x_scale(float value);
+
+    inline void set_y_scale(float value);
+
+    inline void set_scale(float x, float y);
+
+    inline void set_scale(const Float2& values);
+
+    inline void set_scale(float value);
 
     // 0x488FD0
     dllexport void thiscall __sub_488FD0(int32_t script) asm_symbol_rel(0x488FD0);
@@ -10708,6 +10720,8 @@ enum CancelType : int32_t {
 
 static inline int bullet_cancel_radius(Float3* position, float radius, CancelType cancel_type);
 static inline int bullet_cancel_radius_as_bomb(Float2* position, float radius, CancelType cancel_type, int32_t max_count, int arg5);
+static inline int bullet_cancel_rotated_rectangle_as_bomb(Float2* position, Float2* size, float rotation, CancelType cancel_type, int arg5);
+static inline int32_t bullet_manager_get_cancel_counter2();
 static inline int laser_cancel_radius(Float3* position, float radius, CancelType cancel_type, int arg4);
 static inline int laser_cancel_all(CancelType cancel_type);
 
@@ -15950,7 +15964,7 @@ struct AnmVM {
         this->data.scale = { 1.0f, 1.0f };
         this->data.scale2 = { 1.0f, 1.0f };
         this->data.uv_scale = { 1.0f, 1.0f };
-        this->data.color1 = PackD3DCOLOR(255, 255, 255, 255);
+        this->data.color1 = COLOR(255, 255, 255, 255);
         this->data.__matrix_3D4.set_identity();
         this->controller.script_time.default_values();
         this->controller.__timer_1C.default_values();
@@ -18027,7 +18041,7 @@ struct AnmManager {
                                         g = std::max(GREEN(color) * GREEN(parent_color) >> 7, 0xFF);
                                         b = std::max(BLUE(color) * BLUE(parent_color) >> 7, 0xFF);
                                         a = std::max(ALPHA(color) * ALPHA(parent_color) >> 7, 0xFF);
-                                        color = PackD3DCOLOR(a, r, g, b);
+                                        color = COLOR(a, r, g, b);
                                     } else {
                                         a = ALPHA(color);
                                         r = RED(color);
@@ -18040,7 +18054,7 @@ struct AnmManager {
                                         g = std::max(g * GREEN(this->__color_39724B0) >> 7, 0xFF);
                                         b = std::max(b * BLUE(this->__color_39724B0) >> 7, 0xFF);
                                         a = std::max(a * ALPHA(this->__color_39724B0) >> 7, 0xFF);
-                                        color = PackD3DCOLOR(a, r, g, b);
+                                        color = COLOR(a, r, g, b);
                                     }
                                     SPRITE_VERTEX_BUFFER_A[0].diffuse = color;
                                     SPRITE_VERTEX_BUFFER_A[1].diffuse = color;
@@ -18062,8 +18076,8 @@ struct AnmManager {
                                         g2 = std::max(GREEN(color2) * GREEN(this->__color_39724B0) >> 7, 0xFF);
                                         b2 = std::max(BLUE(color2) * BLUE(this->__color_39724B0) >> 7, 0xFF);
                                         a2 = std::max(ALPHA(color2) * ALPHA(this->__color_39724B0) >> 7, 0xFF);
-                                        color1 = PackD3DCOLOR(a1, r1, g1, b1);
-                                        color2 = PackD3DCOLOR(a2, r2, g2, b2);
+                                        color1 = COLOR(a1, r1, g1, b1);
+                                        color2 = COLOR(a2, r2, g2, b2);
                                     }
                                     SPRITE_VERTEX_BUFFER_A[0].diffuse = color1;
                                     SPRITE_VERTEX_BUFFER_A[3].diffuse = color2;
@@ -18094,14 +18108,14 @@ struct AnmManager {
                                         b = std::max(b * BLUE(parent_color) >> 7, 0xFF);
                                         a = std::max(a * ALPHA(parent_color) >> 7, 0xFF);
                                     }
-                                    color = PackD3DCOLOR(a, r, g, b);
+                                    color = COLOR(a, r, g, b);
                                     vm->data.mixed_inherited_color = color;
                                     if (this->__int_39724B4) {
                                         r = std::max(r * RED(this->__color_39724B0) >> 7, 0xFF);
                                         g = std::max(g * GREEN(this->__color_39724B0) >> 7, 0xFF);
                                         b = std::max(b * BLUE(this->__color_39724B0) >> 7, 0xFF);
                                         a = std::max(a * ALPHA(this->__color_39724B0) >> 7, 0xFF);
-                                        color = PackD3DCOLOR(a, r, g, b);
+                                        color = COLOR(a, r, g, b);
                                     }
                                     SPRITE_VERTEX_BUFFER_A[0].diffuse = color;
                                     SPRITE_VERTEX_BUFFER_A[1].diffuse = color;
@@ -18160,7 +18174,7 @@ struct AnmManager {
                         g = std::max(g * GREEN(this->__color_39724B0) >> 7, 0xFF);
                         b = std::max(b * BLUE(this->__color_39724B0) >> 7, 0xFF);
                         a = std::max(a * ALPHA(this->__color_39724B0) >> 7, 0xFF);
-                        color = PackD3DCOLOR(a, r, g, b);
+                        color = COLOR(a, r, g, b);
                     }
                     if (length < draw_begin) {
                         float E = (draw_begin - length) / draw_distance;
@@ -18205,8 +18219,8 @@ struct AnmManager {
                         g2 = std::max(GREEN(color2) * GREEN(this->__color_39724B0) >> 7, 0xFF);
                         b2 = std::max(BLUE(color2) * BLUE(this->__color_39724B0) >> 7, 0xFF);
                         a2 = std::max(ALPHA(color2) * ALPHA(this->__color_39724B0) >> 7, 0xFF);
-                        color1 = PackD3DCOLOR(a1, r1, g1, b1);
-                        color2 = PackD3DCOLOR(a2, r2, g2, b2);
+                        color1 = COLOR(a1, r1, g1, b1);
+                        color2 = COLOR(a2, r2, g2, b2);
                     }
                     if (length > draw_begin) {
                         float E = (draw_begin - length) / draw_distance;
@@ -18250,7 +18264,7 @@ struct AnmManager {
                         g = std::max(g * GREEN(this->__color_39724B0) >> 7, 0xFF);
                         b = std::max(b * BLUE(this->__color_39724B0) >> 7, 0xFF);
                         a = std::max(a * ALPHA(this->__color_39724B0) >> 7, 0xFF);
-                        color = PackD3DCOLOR(a, r, g, b);
+                        color = COLOR(a, r, g, b);
                     }
                     if (length > draw_begin) {
                         float E = (draw_begin - length) / draw_distance;
@@ -18361,7 +18375,7 @@ struct AnmManager {
                 uint8_t g = std::max(GREEN(color) * GREEN(this->__color_39724B0) >> 7, 0xFF);
                 uint8_t b = std::max(BLUE(color) * BLUE(this->__color_39724B0) >> 7, 0xFF);
                 uint8_t a = std::max(ALPHA(color) * ALPHA(this->__color_39724B0) >> 7, 0xFF);
-                color = PackD3DCOLOR(a, r, g, b);
+                color = COLOR(a, r, g, b);
             }
 
             if (this->current_texture_blend_color != color) {
@@ -18877,7 +18891,7 @@ struct AnmManager {
         this->__byte_3120E09 = 0;
         this->__sbyte_3120E0A = 0;
         this->__byte_3120E0B = 0;
-        this->current_texture_blend_color = PackD3DCOLOR(0, 0, 0, 0);
+        this->current_texture_blend_color = COLOR(0, 0, 0, 0);
         this->__byte_3120E0C = -1;
         this->backbuffer_textures[0].anm_loaded_index = -1;
         this->backbuffer_textures[1].anm_loaded_index = -1;
@@ -19638,7 +19652,7 @@ ValidateStructSize32(0x39724B8, AnmManager);
 // 0x4553B0
 dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_A(void* ptr) {
     if (SUPERVISOR.__surface_1AC) {
-        SUPERVISOR.d3d_device->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, PackD3DCOLOR(255, 255, 255, 255), 1.0f, 0);
+        SUPERVISOR.d3d_device->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, COLOR(255, 255, 255, 255), 1.0f, 0);
         SUPERVISOR.d3d_device->SetRenderTarget(0, SUPERVISOR.__surface_1AC);
         D3DRECT rect = SUPERVISOR.cameras[3].get_viewport_d3d_rect();
         SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, SUPERVISOR.background_color, 1.0f, 0);
@@ -19659,7 +19673,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_A(void* pt
     anm_manager->__byte_3120E0B = -1;
     anm_manager->__byte_3120E0C = -1;
     anm_manager->__int_39724B4 = FALSE;
-    anm_manager->__color_39724B0 = PackD3DCOLOR(128, 128, 128, 128);
+    anm_manager->__color_39724B0 = COLOR(128, 128, 128, 128);
     anm_manager->current_resample_mode = -1;
     anm_manager->current_texture_op = -1;
     anm_manager->__float2_D0.y = 0.0f;
@@ -19701,10 +19715,10 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_B(void* pt
         verts[2].position.w = 1.0f;
         verts[1].position.w = 1.0f;
         verts[0].position.w = 1.0f;
-        verts[0].diffuse = PackD3DCOLOR(255, 0, 0, 0);
-        verts[1].diffuse = PackD3DCOLOR(255, 0, 0, 0);
-        verts[2].diffuse = PackD3DCOLOR(255, 0, 0, 0);
-        verts[3].diffuse = PackD3DCOLOR(255, 0, 0, 0);
+        verts[0].diffuse = COLOR(255, 0, 0, 0);
+        verts[1].diffuse = COLOR(255, 0, 0, 0);
+        verts[2].diffuse = COLOR(255, 0, 0, 0);
+        verts[3].diffuse = COLOR(255, 0, 0, 0);
 
         Float2 viewport_size = SUPERVISOR.cameras[3].get_viewport_size();
         verts[1].position.x += viewport_size.x;
@@ -19751,7 +19765,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_
             SUPERVISOR.set_camera_by_index(3);
 
             ANM_MANAGER_PTR->draw_vm(SUPERVISOR.__arcade_vm_ptr_A);
-            SUPERVISOR.__arcade_vm_ptr_A->data.color1 = PackD3DCOLOR(255, 255, 255, 255);
+            SUPERVISOR.__arcade_vm_ptr_A->data.color1 = COLOR(255, 255, 255, 255);
 
             ANM_MANAGER_PTR->render_layer(35);
             ANM_MANAGER_PTR->flush_sprites();
@@ -19789,7 +19803,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_
             SUPERVISOR.set_camera_by_index(3);
 
             ANM_MANAGER_PTR->draw_vm(SUPERVISOR.__arcade_vm_ptr_B);
-            SUPERVISOR.__arcade_vm_ptr_B->data.color1 = PackD3DCOLOR(255, 255, 255, 255);
+            SUPERVISOR.__arcade_vm_ptr_B->data.color1 = COLOR(255, 255, 255, 255);
 
             ANM_MANAGER_PTR->flush_sprites();
 
@@ -19832,7 +19846,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_
 
         ANM_MANAGER_PTR->flush_sprites();
 
-        SUPERVISOR.__arcade_vm_ptr_C->data.color1 = PackD3DCOLOR(255, 255, 255, 255);
+        SUPERVISOR.__arcade_vm_ptr_C->data.color1 = COLOR(255, 255, 255, 255);
 
         SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
     }
@@ -19843,7 +19857,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_
 dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_H(void* ptr) {
     ANM_MANAGER_PTR->flush_sprites();
     SUPERVISOR.d3d_device->SetRenderTarget(0, SUPERVISOR.back_buffer);
-    SUPERVISOR.d3d_device->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, PackD3DCOLOR(255, 0, 0, 0), 1.0f, 0);
+    SUPERVISOR.d3d_device->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, COLOR(255, 0, 0, 0), 1.0f, 0);
     return UpdateFuncNext;
 }
 
@@ -19853,7 +19867,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_
         SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
 
         ANM_MANAGER_PTR->draw_vm(SUPERVISOR.__arcade_vm_ptr_D);
-        SUPERVISOR.__arcade_vm_ptr_D->data.color1 = PackD3DCOLOR(255, 255, 255, 255);
+        SUPERVISOR.__arcade_vm_ptr_D->data.color1 = COLOR(255, 255, 255, 255);
 
         ANM_MANAGER_PTR->flush_sprites();
 
@@ -19886,7 +19900,7 @@ dllexport gnu_noinline ZUNResult UpdateFuncCC Supervisor::on_registration(void* 
         LOG_BUFFER.write_error(JpEnStr("", "error : data file does not exist\r\n"));
     }
     GAME_SPEED.value = 1.0f;
-    SUPERVISOR.background_color = PackD3DCOLOR(255, 0, 0, 0);
+    SUPERVISOR.background_color = COLOR(255, 0, 0, 0);
     SUPERVISOR.__initialize_cameras();
     SUPERVISOR.__camera2_sub_454F50();
     DWORD time = timeGetTime();
@@ -21406,6 +21420,36 @@ inline void AnmID::set_z_rotation(float rotation) {
     }
 }
 
+inline void AnmID::set_x_scale(float value) {
+    if (AnmVM* vm = this->get_vm_ptr()) {
+        vm->set_x_scale(value);
+    }
+}
+
+inline void AnmID::set_y_scale(float value) {
+    if (AnmVM* vm = this->get_vm_ptr()) {
+        vm->set_y_scale(value);
+    }
+}
+
+inline void AnmID::set_scale(float x, float y) {
+    if (AnmVM* vm = this->get_vm_ptr()) {
+        vm->set_scale(x, y);
+    }
+}
+
+inline void AnmID::set_scale(const Float2& values) {
+    if (AnmVM* vm = this->get_vm_ptr()) {
+        vm->set_scale(values);
+    }
+}
+
+inline void AnmID::set_scale(float value) {
+    if (AnmVM* vm = this->get_vm_ptr()) {
+        vm->set_scale(value);
+    }
+}
+
 // 0x488FD0
 dllexport void thiscall AnmID::__sub_488FD0(int32_t script) {
     AnmManager* anm_manager_ptr = ANM_MANAGER_PTR;
@@ -21857,8 +21901,8 @@ struct AsciiManager : ZUNTask {
     inline AsciiManager() {
         this->zero_contents();
         this->__unknown_task_flag_A = true;
-        this->color = PackD3DCOLOR(255, 255, 255, 255);
-        this->color2 = PackD3DCOLOR(255, 0, 0, 0);
+        this->color = COLOR(255, 255, 255, 255);
+        this->color2 = COLOR(255, 0, 0, 0);
         this->scale.x = 1.0f;
         this->scale.y = 1.0f;
         this->__dword_1923C = 0;
@@ -22600,8 +22644,8 @@ public:
 
 private:
     inline void set_defaults_impl() {
-        this->color = PackD3DCOLOR(255, 255, 255, 255);
-        this->color2 = PackD3DCOLOR(255, 0, 0, 0);
+        this->color = COLOR(255, 255, 255, 255);
+        this->color2 = COLOR(255, 0, 0, 0);
         this->__dword_1923C = 0;
         this->__character_spacing_for_font_0 = 9;
         this->scale.x = 1.0f;
@@ -22785,7 +22829,7 @@ struct EndVM {
         this->pause_timer.initialize_and_reset();
 
         this->__unknown_flag_A = true;
-        this->__color_7C = PackD3DCOLOR(0, 255, 255, 255);
+        this->__color_7C = COLOR(0, 255, 255, 255);
     }
 
     inline ~EndVM() NO_EH_TERMINATE {
@@ -23033,7 +23077,7 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
                     if (!index) {
                         for (size_t i = 0; i != countof(this->__vm_id_array_40); ++i) {
                             AnmVM* vm = this->__vm_id_array_40[i].get_vm_ptr();
-                            ANM_MANAGER_PTR->draw_text_left(vm, PackD3DCOLOR(0, 255, 255, 255), 0, 0, 0, 0, " ");
+                            ANM_MANAGER_PTR->draw_text_left(vm, COLOR(0, 255, 255, 255), 0, 0, 0, 0, " ");
                             this->__vm_id_array_40[i].interrupt_tree(3);
                         }
                         AnmVM* vm = this->__vm_id_array_40[0].get_vm_ptr();
@@ -23188,7 +23232,7 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
                     this->script_time.reset();
                     this->pause_timer.reset();
                     this->__unknown_flag_B = true;
-                    this->__color_7C = PackD3DCOLOR(0, 255, 255, 255);
+                    this->__color_7C = COLOR(0, 255, 255, 255);
                     break;
                 }
                 case anm_source_load: // 7
@@ -24304,11 +24348,11 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC FpsCounter::on_draw(void* ptr)
 
                 D3DCOLOR color;
                 if (fps < 30.0f) {
-                    color = PackD3DCOLOR(255, 80, 80, 255);
+                    color = COLOR(255, 80, 80, 255);
                 } else if (fps < 40.0f) {
-                    color = PackD3DCOLOR(255, 160, 160, 255);
+                    color = COLOR(255, 160, 160, 255);
                 } else {
-                    color = PackD3DCOLOR(255, 255, 255, 255);
+                    color = COLOR(255, 255, 255, 255);
                 }
                 ascii_manager->color = color;
 
@@ -24316,7 +24360,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC FpsCounter::on_draw(void* ptr)
 
                 ascii_manager->debugf(&position, "%2.1ffps", fps + 0.05);
 
-                ASCII_MANAGER_PTR->color = PackD3DCOLOR(255, 255, 255, 255);
+                ASCII_MANAGER_PTR->color = COLOR(255, 255, 255, 255);
             }
         }
         case 4: case 15:
@@ -24453,7 +24497,15 @@ struct ShtFile {
     float __float_4; // 0x4
     float __float_8; // 0x8
     float __float_C; // 0xC
-    float movement_speeds[4]; // 0x10
+    union {
+        float movement_speeds[4]; // 0x10
+        struct {
+            float __unfocused_linear_speed; // 0x10
+            float __focused_linear_speed; // 0x14
+            float __unfocused_diagonal_speed; // 0x18
+            float __focused_diagonal_speed; // 0x1C
+        };
+    };
     int32_t max_level; // 0x20
     int32_t power_per_level; // 0x24
     int32_t damage_cap; // 0x28
@@ -24485,8 +24537,9 @@ extern "C" {
 }
 
 static inline bool enemies_are_alive();
+static inline void enemy_manager_disable_enemy_collision();
 
-static inline float ability_manager_get_float_C58();
+static inline float& ability_manager_get_float_C58();
 static inline AnmLoaded* ability_manager_get_ability_anm();
 static inline BOOL ability_manager_card_equipped(int32_t id);
 
@@ -25452,6 +25505,17 @@ struct PlayerOption {
         return 0;
     }
 
+    // 0x40BD50
+    dllexport gnu_noinline static int32_t fastcall __position_func_card_nue(PlayerOption* self) asm_symbol_rel(0x40BD50);
+
+    inline float get_x_position() {
+        return this->internal_position.x * (1.0f / INTERNAL_POSITION_RATIO);
+    }
+
+    inline float get_y_position() {
+        return this->internal_position.y * (1.0f / INTERNAL_POSITION_RATIO);
+    }
+
     inline Float2 get_position() {
         return (Float2)this->internal_position * (1.0f / INTERNAL_POSITION_RATIO);
     }
@@ -25579,6 +25643,9 @@ struct PlayerBullet {
     dllexport gnu_noinline static int32_t fastcall __damage_func_5(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) asm_symbol_rel(0x460F30);
     // 0x461080
     dllexport gnu_noinline static int32_t fastcall __damage_func_6(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) asm_symbol_rel(0x461080);
+
+    // 0x40C4F0
+    dllexport gnu_noinline static int32_t fastcall create_explosion_suwako_card(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) asm_symbol_rel(0x40C4F0);
 
     // 0x45F7C0
     dllexport gnu_noinline static int32_t fastcall __funcB_1(PlayerBullet* self) asm_symbol_rel(0x45F7C0);
@@ -25708,7 +25775,7 @@ struct PlayerData {
             uint32_t scale_enabled : 1; // 5
             uint32_t __unknown_flag_E : 1; // 6
             uint32_t __unknown_flag_G : 1; // 7
-            uint32_t __unknown_field_A : 2; // 8-9
+            uint32_t __yukari_wrap_type : 2; // 8-9
             uint32_t __unknown_flag_D : 1; // 10
         };
     };
@@ -25958,10 +26025,10 @@ public:
     }
 
     // 0x409A60
-    dllexport gnu_noinline uint32_t thiscall __sub_409A60(uint32_t arg1) asm_symbol_rel(0x409A60) {
+    dllexport gnu_noinline uint32_t thiscall __set_yukari_wrap(uint32_t type) asm_symbol_rel(0x409A60) {
         this->data.__timer_47180.reset();
-        this->data.__unknown_field_A = arg1;
-        return this->data.__unknown_field_A;
+        this->data.__yukari_wrap_type = type;
+        return this->data.__yukari_wrap_type;
     }
 
     inline bool is_movement_direction_diagonal() {
@@ -25971,12 +26038,12 @@ public:
     // 0x45B170
     dllexport gnu_noinline void thiscall __move() asm_symbol_rel(0x45B170) {
         Int2 movement;
-        if (this->data.__unknown_field_A) {
+        if (this->data.__yukari_wrap_type) {
             if (!this->data.__timer_47180) {
                 this->__sub_416CD0();
             }
             ++this->data.__timer_47180;
-            if (this->data.__unknown_field_A == 1) {
+            if (this->data.__yukari_wrap_type == 1) {
                 if (this->data.__timer_47180 == 1) {
                     SOUND_MANAGER.play_sound(81);
                 }
@@ -26001,7 +26068,7 @@ public:
             movement.y = 0;
             if (this->data.__timer_47180 >= 16) {
                 this->__sub_416D50();
-                this->__sub_409A60(0);
+                this->__set_yukari_wrap(0);
             }
             else {
                 goto skip_movement_keys;
@@ -26123,7 +26190,7 @@ skip_movement_keys:;
         internal_position += internal_velocity;
         this->data.internal_position = internal_position;
 
-        if (!this->data.__unknown_field_A) {
+        if (this->data.__yukari_wrap_type == 0) {
             if (internal_position.x < INTERNAL_POSITION_SCREEN_LEFT_EDGE) {
                 this->data.internal_position.x = INTERNAL_POSITION_SCREEN_LEFT_EDGE;
                 internal_position.x = INTERNAL_POSITION_SCREEN_LEFT_EDGE;
@@ -27068,6 +27135,19 @@ dllexport gnu_noinline int32_t fastcall PlayerOption::__position_func_card_youmu
     return 0;
 }
 
+// 0x40BD50
+dllexport gnu_noinline int32_t fastcall PlayerOption::__position_func_card_nue(PlayerOption* self) {
+    Float2 offset;
+    offset.make_from_vector(self->__angle_A8, 96.0f);
+
+    self->position = PLAYER_PTR->data.internal_position - (Int2)(offset * -INTERNAL_POSITION_RATIO);
+
+    // this runs three angle reductions
+    self->__angle_A8 = reduce_angle(self->__angle_A8 + DEGREES(2));
+
+    return 0;
+}
+
 // 0x45F6A0
 dllexport gnu_noinline int32_t fastcall PlayerDamageSource::__unknown_func_1(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius) {
     PlayerBullet* bullet = get_player_bullet_by_index(self->__player_bullet_index);
@@ -27383,6 +27463,12 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_6(PlayerBull
     return self->__sub_45F6F0();
 }
 
+// 0x40C4F0
+dllexport gnu_noinline int32_t fastcall PlayerBullet::create_explosion_suwako_card(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
+    // TODO: later :hahaa:
+    return self->damage;
+}
+
 // 0x45F7C0
 dllexport gnu_noinline int32_t fastcall PlayerBullet::__funcB_1(PlayerBullet* self) {
     // TODO
@@ -27472,7 +27558,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
                         int32_t spacing = atol(text);
                         text = strchr(text, ',');
                         this->furigana_lines[0].get_vm_ptr()->data.__unknown_flag_Y = true;
-                        ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[0].get_vm_ptr(), 0, PackD3DCOLOR(0, 160, 160, 160), 2, x, spacing, text + 1);
+                        ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[0].get_vm_ptr(), 0, COLOR(0, 160, 160, 160), 2, x, spacing, text + 1);
                         this->furigana_lines[0].interrupt_and_run_tree(2);
                     }
                     else {
@@ -27508,7 +27594,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
                         int32_t spacing = atol(text);
                         text = strchr(text, ',');
                         this->furigana_lines[1].get_vm_ptr()->data.__unknown_flag_Y = true;
-                        ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[1].get_vm_ptr(), 0, PackD3DCOLOR(0, 160, 160, 160), 2, x, spacing, text + 1);
+                        ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[1].get_vm_ptr(), 0, COLOR(0, 160, 160, 160), 2, x, spacing, text + 1);
                         this->furigana_lines[1].interrupt_and_run_tree(2);
                     }
                     else {
@@ -28194,13 +28280,23 @@ public:
 };
 
 // size: 0x54
-struct CardBlank : CardBase {
+struct CardBlank : CardBase { // DONE
     // CardBase base; // 0x0
     // 0x54
 
     static inline constexpr CardId ID = BLANK_CARD; // 0
 
+    inline CardBlank() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
+    }
 
+    // Method 50
+    // 0x409B20
+    virtual ~CardBlank() NO_EH_TERMINATE {
+    }
 };
 
 // size: 0x54
@@ -28430,7 +28526,7 @@ struct CardRingo : CardBase { // DONE
                 if (player) {
                     player->data.__update_option_power_levels();
                     Float3* player_position = &PLAYER_PTR->data.position;
-                    POPUP_MANAGER_PTR->create_popup(player_position, -1, PackD3DCOLOR(255, 255, 255, 64));
+                    POPUP_MANAGER_PTR->create_popup(player_position, -1, COLOR(255, 255, 255, 64));
                     SOUND_MANAGER.play_sound_positioned(13, player_position->x);
                 }
             }
@@ -28498,7 +28594,7 @@ struct CardReimu1 : CardBase { // DONE
     PlayerOption* option; // 0x54
     // 0x58
 
-    static inline constexpr CardId ID = REIMU_OP_CARD; // 7
+    static inline constexpr CardId ID = REIMU_OP_CARD; // 8
 
     inline CardReimu1() {
         this->__unknown_flag_B = false;
@@ -28539,6 +28635,369 @@ struct CardReimu1 : CardBase { // DONE
     // 0x40AB20
     // EH frame (terminate)
     virtual ~CardReimu1() EH_TERMINATE {
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+};
+
+// size: 0x58
+struct CardReimu2 : CardBase { // DONE
+    // CardBase base; // 0x0
+    PlayerOption* option; // 0x54
+    // 0x58
+
+    static inline constexpr CardId ID = REIMU_OP2_CARD; // 9
+
+    inline CardReimu2() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = true;
+        this->option = NULL;
+    }
+
+    // Method 18
+    // 0x40ABF0
+    dllexport gnu_noinline virtual int thiscall on_power_level_change() {
+        this->option = this->allocate_equipment_option(-24, -24, 2);
+        return 0;
+    }
+
+    // Method 1C
+    // 0x40AC10
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+        PLAYER_PTR->tick_shooting_state_for_card(this->option, short_timer, long_timer, 18);
+        return ZUN_SUCCESS;
+    }
+
+    // Method 34
+    // 0x40ABC0
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__method_4C();
+        this->option = NULL;
+    }
+
+    // Method 4C
+    // 0x40ABE0
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+
+    // Method 50
+    // 0x40AC30
+    // EH frame (terminate)
+    virtual ~CardReimu2() EH_TERMINATE {
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+};
+
+// size: 0x58
+struct CardMarisa1 : CardBase { // DONE
+    // CardBase base; // 0x0
+    PlayerOption* option; // 0x54
+    // 0x58
+
+    static inline constexpr CardId ID = MARISA_OP_CARD; // 10
+
+    inline CardMarisa1() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = true;
+        this->option = NULL;
+    }
+
+    // Method 18
+    // 0x40AD00
+    dllexport gnu_noinline virtual int thiscall on_power_level_change() {
+        this->option = this->allocate_equipment_option(16, 16, 6);
+        return 0;
+    }
+
+    // Method 1C
+    // 0x40AD20
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+        PLAYER_PTR->tick_shooting_state_for_card(this->option, short_timer, long_timer, 11);
+        return ZUN_SUCCESS;
+    }
+
+    // Method 34
+    // 0x40ACD0
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__method_4C();
+        this->option = NULL;
+    }
+
+    // Method 4C
+    // 0x40ACF0
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+
+    // Method 50
+    // 0x40AD40
+    // EH frame (terminate)
+    virtual ~CardMarisa1() EH_TERMINATE {
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+};
+
+// size: 0x58
+struct CardMarisa2 : CardBase { // DONE
+    // CardBase base; // 0x0
+    PlayerOption* option; // 0x54
+    // 0x58
+
+    static inline constexpr CardId ID = MARISA_OP2_CARD; // 11
+
+    inline CardMarisa2() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = true;
+        this->option = NULL;
+    }
+
+    // Method 18
+    // 0x40AE10
+    dllexport gnu_noinline virtual int thiscall on_power_level_change() {
+        this->option = this->allocate_equipment_option(32, 32, 6);
+        return 0;
+    }
+
+    // Method 1C
+    // 0x40AE30
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+        PLAYER_PTR->tick_shooting_state_for_card(this->option, short_timer, long_timer, 19);
+        return ZUN_SUCCESS;
+    }
+
+    // Method 34
+    // 0x40ADE0
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__method_4C();
+        this->option = NULL;
+    }
+
+    // Method 4C
+    // 0x40AE00
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+
+    // Method 50
+    // 0x40AE50
+    // EH frame (terminate)
+    virtual ~CardMarisa2() EH_TERMINATE {
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+};
+
+// size: 0x58
+struct CardSakuya1 : CardBase { // DONE
+    // CardBase base; // 0x0
+    PlayerOption* option; // 0x54
+    // 0x58
+
+    static inline constexpr CardId ID = SAKUYA_OP_CARD; // 12
+
+    inline CardSakuya1() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = true;
+        this->option = NULL;
+    }
+
+    // Method 18
+    // 0x40AF20
+    dllexport gnu_noinline virtual int thiscall on_power_level_change() {
+        PlayerOption* option = this->allocate_equipment_option(16, 16, 7);
+        this->option = option;
+        option->__angle_A8 = {};
+        this->option->__float_AC = 20.0f;
+        this->option->__func_ptr_E8 = &PlayerOption::__position_func_card_sakuya1;
+        return 0;
+    }
+
+    // Method 1C
+    // 0x40AF60
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+        Player* player = PLAYER_PTR;
+        int32_t index = 12 + (player->data.focused != false);
+        player->tick_shooting_state_for_card(this->option, short_timer, long_timer, index);
+        return ZUN_SUCCESS;
+    }
+
+    // Method 34
+    // 0x40AEF0
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__method_4C();
+        this->option = NULL;
+    }
+
+    // Method 4C
+    // 0x40AF10
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+
+    // Method 50
+    // 0x40AF90
+    // EH frame (terminate)
+    virtual ~CardSakuya1() EH_TERMINATE {
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+};
+
+// size: 0x58
+struct CardSakuya2 : CardBase { // DONE
+    // CardBase base; // 0x0
+    PlayerOption* option; // 0x54
+    // 0x58
+
+    static inline constexpr CardId ID = SAKUYA_OP2_CARD; // 13
+
+    inline CardSakuya2() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = true;
+        this->option = NULL;
+    }
+
+    // Method 18
+    // 0x40B060
+    dllexport gnu_noinline virtual int thiscall on_power_level_change() {
+        this->option = this->allocate_equipment_option(32, 32, 7);
+        return 0;
+    }
+
+    // Method 1C
+    // 0x40B080
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+        PLAYER_PTR->tick_shooting_state_for_card(this->option, short_timer, long_timer, 20);
+        return ZUN_SUCCESS;
+    }
+
+    // Method 34
+    // 0x40B030
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__method_4C();
+        this->option = NULL;
+    }
+
+    // Method 4C
+    // 0x40B050
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+
+    // Method 50
+    // 0x40B0A0
+    // EH frame (terminate)
+    virtual ~CardSakuya2() EH_TERMINATE {
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+};
+
+// size: 0x58
+struct CardSanae1 : CardBase { // DONE
+    // CardBase base; // 0x0
+    PlayerOption* option; // 0x54
+    // 0x58
+
+    static inline constexpr CardId ID = SANAE_OP_CARD; // 14
+
+    inline CardSanae1() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = true;
+        this->option = NULL;
+    }
+
+    // Method 18
+    // 0x40B170
+    dllexport gnu_noinline virtual int thiscall on_power_level_change() {
+        this->option = this->allocate_equipment_option(28, 28, 14);
+        return 0;
+    }
+
+    // Method 1C
+    // 0x40B190
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+        PLAYER_PTR->tick_shooting_state_for_card(this->option, short_timer, long_timer, 14);
+        return ZUN_SUCCESS;
+    }
+
+    // Method 34
+    // 0x40B140
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__method_4C();
+        this->option = NULL;
+    }
+
+    // Method 4C
+    // 0x40B160
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+
+    // Method 50
+    // 0x40B1B0
+    // EH frame (terminate)
+    virtual ~CardSanae1() EH_TERMINATE {
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+};
+
+// size: 0x58
+struct CardSanae2 : CardBase { // DONE
+    // CardBase base; // 0x0
+    PlayerOption* option; // 0x54
+    // 0x58
+
+    static inline constexpr CardId ID = SANAE_OP2_CARD; // 15
+
+    inline CardSanae2() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = true;
+        this->option = NULL;
+    }
+
+    // Method 18
+    // 0x40B280
+    dllexport gnu_noinline virtual int thiscall on_power_level_change() {
+        this->option = this->allocate_equipment_option(-20, -20, 14);
+        return 0;
+    }
+
+    // Method 1C
+    // 0x40B2A0
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+        PLAYER_PTR->tick_shooting_state_for_card(this->option, short_timer, long_timer, 21);
+        return ZUN_SUCCESS;
+    }
+
+    // Method 34
+    // 0x40B250
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__method_4C();
+        this->option = NULL;
+    }
+
+    // Method 4C
+    // 0x40B270
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+
+    // Method 50
+    // 0x40B2C0
+    // EH frame (terminate)
+    virtual ~CardSanae2() EH_TERMINATE {
         this->effect_vm_id.mark_tree_for_delete();
     }
 };
@@ -28716,6 +29175,121 @@ struct CardCirno : CardBase { // DONE
     // 0x40BB50
     // EH frame (terminate)
     virtual ~CardCirno() EH_TERMINATE {
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+};
+
+// size: 0x58
+struct CardOkina : CardBase { // DONE
+    // CardBase base; // 0x0
+    PlayerOption* option; // 0x54
+    // 0x58
+
+    static inline constexpr CardId ID = OKINA_OP_CARD; // 19
+
+    inline CardOkina() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = true;
+        this->option = NULL;
+    }
+
+    // Method 18
+    // 0x40B990
+    dllexport gnu_noinline virtual int thiscall on_power_level_change() {
+        this->option = this->allocate_equipment_option(36, 36, 18);
+        return 0;
+    }
+
+    // Method 24
+    // 0x40B9B0
+    dllexport gnu_noinline virtual int thiscall on_tick() {
+        PlayerOption* option = this->option;
+        if (option) {
+            Float2 size = { 20.0f, 6.0f };
+            Float3 position = option->get_position();
+            bullet_cancel_rotated_rectangle_as_bomb(&position, &size, 0.0f, CancelType0, 1);
+            PLAYER_PTR->create_damage_source_rotated_rectangle(&position, 20.0f, 6.0f, 0.0f, 2, 4);
+        }
+        return 0;
+    }
+
+    // Method 34
+    // 0x40B960
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__method_4C();
+        this->option = NULL;
+    }
+
+    // Method 4C
+    // 0x40B980
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+
+    // Method 50
+    // 0x40BA40
+    // EH frame (terminate)
+    virtual ~CardOkina() EH_TERMINATE {
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+};
+
+// size: 0x58
+struct CardNue : CardBase { // DONE
+    // CardBase base; // 0x0
+    PlayerOption* option; // 0x54
+    // 0x58
+
+    static inline constexpr CardId ID = NUE_OP_CARD; // 20
+
+    inline CardNue() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = true;
+        this->option = NULL;
+    }
+
+    // Method 18
+    // 0x40BC20
+    dllexport gnu_noinline virtual int thiscall on_power_level_change() {
+        PlayerOption* option = this->allocate_equipment_option(36, 36, 18);
+        this->option = option;
+        option->__func_ptr_E8 = &PlayerOption::__position_func_card_nue;
+        this->option->__unknown_flag_A = true;
+        return 0;
+    }
+
+    // Method 24
+    // 0x40BC50
+    dllexport gnu_noinline virtual int thiscall on_tick() {
+        PlayerOption* option = this->option;
+        if (option) {
+            Float3 position = this->option->get_position();
+            bullet_cancel_radius_as_bomb(&position, 6.0f, CancelType0, 9999, 1); // That's one less 9 than the usual default...?
+        }
+        return 0;
+    }
+
+    // Method 34
+    // 0x40BBF0
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__method_4C();
+        this->option = NULL;
+    }
+
+    // Method 4C
+    // 0x40BC10
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+
+    // Method 50
+    // 0x40BCB0
+    // EH frame (terminate)
+    virtual ~CardNue() EH_TERMINATE {
         this->effect_vm_id.mark_tree_for_delete();
     }
 };
@@ -28974,7 +29548,15 @@ struct CardSaki : CardBase {
     // Method 28
     // 0x40C310
     dllexport gnu_noinline virtual int thiscall __on_bullet_init(PlayerBullet* bullet) {
-        // TODO: when I feel like it
+        int32_t sht_entry_index = bullet->__sht_entry_index;
+        uint8_t index2 = sht_entry_index;
+        int32_t index1 = sht_entry_index >> 8;
+        ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->__entry_ptr_array_E0[index1][index2];
+        if (entry_ptr->__byte_21 == 7) {
+            bullet->__vm_id_8.set_scale(1.5f);
+            bullet->damage = entry_ptr->damage * 1.4f;
+            bullet->size = entry_ptr->size * 1.4f;
+        }
         return 0;
     }
 
@@ -28993,6 +29575,46 @@ struct CardSaki : CardBase {
     // Method 50
     // 0x40C3D0
     virtual ~CardSaki() NO_EH_TERMINATE {
+    }
+};
+
+// size: 0x54
+struct CardByakuren : CardBase {
+    // CardBase base; // 0x0
+    // 0x54
+
+    static inline constexpr CardId ID = MAGICSCROLL_CARD; // 26
+
+    inline CardByakuren() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
+    }
+
+    // Method 20
+    // 0x40CBD0
+    dllexport gnu_noinline virtual int thiscall on_load() {
+        BOMB_PTR->__int_A4 = 1;
+        return 0;
+    }
+
+    // Method 34
+    // 0x40CBA0
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__method_4C();
+    }
+
+    // Method 4C
+    // 0x40CBB0
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+        ability_manager_get_float_C58() = 0.8f;
+    }
+
+    // Method 50
+    // 0x40CBF0
+    virtual ~CardByakuren() NO_EH_TERMINATE {
     }
 };
 
@@ -29034,11 +29656,7 @@ struct CardKoishi : CardBase {
     // Method 2C
     // 0x40D4C0
     dllexport gnu_noinline virtual int thiscall __on_tick_2() {
-        /*
-        if (EnemyManager* enemy_manager = ENEMY_MANAGER_PTR) {
-            enemy_manager->__int_164 = 1;
-        }
-        */
+        enemy_manager_disable_enemy_collision();
         return 0;
     }
 
@@ -29057,6 +29675,137 @@ struct CardKoishi : CardBase {
     // Method 50
     // 0x40D530
     virtual ~CardKoishi() NO_EH_TERMINATE {
+    }
+};
+
+// size: 0x54
+struct CardSuwako : CardBase { // DONE
+    // CardBase base; // 0x0
+    // 0x54
+
+    static inline constexpr CardId ID = MAINSHOT_SP_CARD; // 28
+
+    inline CardSuwako() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
+    }
+
+    // Method 28
+    // 0x40C440
+    dllexport gnu_noinline virtual int thiscall __on_bullet_init(PlayerBullet* bullet) {
+        int32_t sht_entry_index = bullet->__sht_entry_index;
+        uint8_t index2 = sht_entry_index;
+        int32_t index1 = sht_entry_index >> 8;
+        ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->__entry_ptr_array_E0[index1][index2];
+        if (entry_ptr->__byte_21 == 7) {
+            if (!(REPLAY_RNG.rand_uint() % 8)) {
+                bullet->__damage_func = &PlayerBullet::create_explosion_suwako_card;
+            }
+        }
+        return 0;
+    }
+
+    // Method 34
+    // 0x40C420
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__method_4C();
+    }
+
+    // Method 4C
+    // 0x40C430
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+
+    // Method 50
+    // 0x40C4A0
+    virtual ~CardSuwako() NO_EH_TERMINATE {
+    }
+};
+
+// size: 0x5C
+struct CardAya : CardBase {
+    // CardBase base; // 0x0
+    int __int_54; // 0x54
+    MovementDirection previous_direction; // 0x58
+    // 0x5C
+
+    static inline constexpr CardId ID = SPEEDQUEEN_CARD; // 29
+
+    inline CardAya() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
+        this->previous_direction = MovementNone;
+        this->__int_54 = 0;
+    }
+
+    // Method 20
+    // 0x40C7B0
+    dllexport gnu_noinline virtual int thiscall on_load() {
+        Player* player = PLAYER_PTR;
+        player->__hitbox_radius_unfocused = 1.0f;
+        player->__hitbox_size_unfocused.x = 1.0f;
+        player->__hitbox_size_unfocused.y = 1.0f;
+        this->previous_direction = MovementNone;
+        this->__int_54 = 0;
+        return 0;
+    }
+
+    // Method 24
+    // 0x40C7F0
+    dllexport gnu_noinline virtual int thiscall on_tick() {
+        Player* player = PLAYER_PTR;
+        if (player->data.__unknown_flag_D) {
+            ShtFile* sht_file = player->sht_file;
+            player->data.__unfocused_linear_speed = INTERNAL_POSITION_ADJUST(sht_file->__unfocused_linear_speed);
+            player->data.__unfocused_diagonal_speed = INTERNAL_POSITION_ADJUST(sht_file->__unfocused_diagonal_speed);
+            this->__int_54 = 1;
+            this->previous_direction = MovementNone;
+        }
+        else {
+            int32_t scripts[CHARACTER_COUNT] = { 17, 19, 14, 14 };
+            AnmID id = player->player_anm->instantiate_vm_to_world_list_back(scripts[GAME_MANAGER.globals.character], &player->data.position);
+            AnmVM* vm = id.get_vm_ptr();
+            player->player_anm->set_sprite(vm, player->__vm_14.data.sprite_id);
+            AnmID id2 = vm ? id : AnmID{}; // I don't even know anymore
+            AnmVM* vm2 = id2.get_vm_ptr();
+            vm2->data.color1 = COLOR(255, 255, 0, 0);
+
+            player->data.__unfocused_linear_speed = INTERNAL_POSITION_ADJUST(8.0);
+            player->data.__unfocused_diagonal_speed = INTERNAL_POSITION_ADJUST(5.65625);
+
+            MovementDirection previous_direction = this->previous_direction;
+            if (
+                previous_direction != player->movement_direction &&
+                previous_direction == MovementNone &&
+                player->data.focused == false
+            ) {
+                player->data.__timer_47154 += 4.0f;
+            }
+            this->previous_direction = player->movement_direction;
+        }
+        return 0;
+    }
+
+    // Method 34
+    // 0x40C790
+    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+        this->__method_4C();
+    }
+
+    // Method 4C
+    // 0x40C7A0
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+
+    // Method 50
+    // 0x40CB50
+    virtual ~CardAya() NO_EH_TERMINATE {
     }
 };
 
@@ -29102,7 +29851,7 @@ struct CardMamizou : CardBase {
             if (A) {
                 if (Player* player = PLAYER_PTR) {
                     player->data.__update_option_power_levels();
-                    POPUP_MANAGER_PTR->create_popup(&PLAYER_PTR->data.position, -1, PackD3DCOLOR(64, 255, 255, 255));
+                    POPUP_MANAGER_PTR->create_popup(&PLAYER_PTR->data.position, -1, COLOR(64, 255, 255, 255));
                     SOUND_MANAGER.play_sound_positioned(13, PLAYER_PTR->data.position.x);
                 }
             }
@@ -29368,10 +30117,77 @@ struct CardSannyo : CardBase { // DONE
     }
 };
 
+// size: 0x54
+struct CardYukari : CardBase { // DONE
+    // CardBase base; // 0x0
+    // 0x54
+
+    static inline constexpr CardId ID = WARP_CARD; // 41
+
+    inline CardYukari() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = false;
+        this->__is_active_card = true;
+        this->__is_equipment_card = false;
+        this->__timer_34.reset();
+        this->recharge_time = 999; // not more 9s ZUN, plz
+    }
+
+    // Method 8
+    // 0x40A1B0
+    dllexport gnu_noinline virtual int thiscall on_activate() {
+        Player* player = PLAYER_PTR;
+        if (player->data.__yukari_wrap_type == 0) {
+            int32_t position = player->data.internal_position.x;
+
+            if ((uint32_t)(position + (INTERNAL_POSITION_SCREEN_HALF_WIDTH - INTERNAL_POSITION_ADJUST(8))) > (uint32_t)(INTERNAL_POSITION_SCREEN_WIDTH - INTERNAL_POSITION_ADJUST(8))) {
+                if (position < 0) {
+                    if (INPUT_STATES[0].check_inputs(BUTTON_LEFT)) {
+                        player->__set_yukari_wrap(1);
+                        return 1;
+                    }
+                }
+                else {
+                    if (INPUT_STATES[0].check_inputs(BUTTON_RIGHT)) {
+                        player->__set_yukari_wrap(2);
+                        return 2;
+                    }
+                }
+            }
+        }
+        return 0;
+    }
+
+    // Method 2C
+    // 0x40A180
+    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
+        Player* player = PLAYER_PTR;
+        if (player) {
+            if (player->data.__yukari_wrap_type != 0) {
+                this->__unknown_flag_A = true;
+            } else {
+                this->__unknown_flag_A = false;
+            }
+        }
+        return 0;
+    }
+
+    // Method 4C
+    // 0x40A170
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+
+    // Method 50
+    // 0x40A210
+    virtual ~CardYukari() NO_EH_TERMINATE {
+    }
+};
+
 // size: 0x68
 struct CardShinmyoumaru : CardBase {
     // CardBase base; // 0x0
-    int __int_54; // 0x54
+    int state; // 0x54
     Float3 position; // 0x58
     int __dword_64; // 0x64
     // 0x68
@@ -29385,17 +30201,17 @@ struct CardShinmyoumaru : CardBase {
         this->__is_equipment_card = false;
         this->__timer_20.reset();
         this->recharge_time = 2400;
-        this->__int_54 = 0;
+        this->state = 0;
         this->__timer_34.reset();
     }
 
     // Method 8
     // 0x40F0F0
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (!this->__int_54 && this->recharge_time <= 0) {
+        if (this->state == 0 && this->recharge_time <= 0) {
             this->position = PLAYER_PTR->data.position;
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(30, &this->position, 13);
-            this->__int_54 = 1;
+            this->state = 1;
             this->__timer_20.reset();
             SOUND_MANAGER.play_sound_positioned(30, this->position.x);
             this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
@@ -29403,81 +30219,91 @@ struct CardShinmyoumaru : CardBase {
         }
         return 0;
     }
+
     // Method C
     // 0x40F0D0
     dllexport gnu_noinline virtual BOOL thiscall on_player_death(BOOL already_prevented_death) {
-        this->__int_54 = 0;
+        this->state = 0;
         this->effect_vm_id.mark_tree_for_delete();
         return FALSE;
     }
+
     // Method 2C
     // 0x40EED0
     dllexport gnu_noinline virtual int thiscall __on_tick_2() {
-        switch (this->__int_54) {
-            case 3:
-                this->__unknown_flag_A = true;
-                if (this->__timer_20 < 10) {
-                    float A = (float)this->__timer_20 * 4.0f + 30.0f;
-                    // TODO
-                }
-                if (this->__timer_20 > 40) {
-                    this->__int_54 = 0;
-                    this->effect_vm_id.mark_tree_for_delete();
-                }
-                break;
-            case 2:
-                this->__unknown_flag_A = true;
-                if (this->__timer_20 > 10) {
-                    this->__int_54 = 3;
-                    // TODO, something inlined from sound manager
-                    SOUND_MANAGER.play_sound_positioned(41, this->position.x);
-                    this->__timer_20.reset();
-                    this->position.y -= 84.0f;
-                }
+        switch (this->state) {
+            case 0:
+                this->__unknown_flag_A = false;
+                this->__dec_timer_34_during_gameplay();
                 break;
             case 1:
                 this->position = PLAYER_PTR->data.position;
                 this->position.y -= 16.0f;
                 this->effect_vm_id.set_controller_position(&this->position);
                 if (this->__timer_20 > 20) {
-                    this->__int_54 = 2;
+                    this->state = 2;
                     this->__timer_20.reset();
                 }
                 break;
-            case 0:
-                this->__unknown_flag_A = false;
-                this->__dec_timer_34_during_gameplay();
+            case 2:
+                this->__unknown_flag_A = true;
+                if (this->__timer_20 > 10) {
+                    this->state = 3;
+                    SOUND_MANAGER.stop_sound(30);
+                    SOUND_MANAGER.play_sound_positioned(41, this->position.x);
+                    this->__timer_20.reset();
+                    this->position.y -= 84.0f;
+                }
+                break;
+            case 3:
+                this->__unknown_flag_A = true;
+                if (this->__timer_20 < 10) {
+                    float radius = (float)this->__timer_20 * 4.0f + 30.0f;
+                    bullet_cancel_radius_as_bomb(&this->position, radius, CancelType4, 99999, 0);
+                    laser_cancel_radius(&this->position, radius, CancelType4, 0);
+                }
+                if (this->__timer_20 > 40) {
+                    this->state = 0;
+                    this->effect_vm_id.mark_tree_for_delete();
+                }
                 break;
         }
         ++this->__timer_20;
         return 0;
     }
+
     // Method 34
     // 0x40EE00
     dllexport gnu_noinline virtual void thiscall __on_load_2() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
-        this->__int_54 = 0;
+        this->state = 0;
         this->effect_vm_id.mark_tree_for_delete();
     }
+
     // Method 4C
     // 0x40EE50
     dllexport gnu_noinline virtual void thiscall __method_4C() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
-        this->__int_54 = 0;
+        this->state = 0;
         this->__timer_34.reset();
         this->effect_vm_id.mark_tree_for_delete();
+    }
+
+    // Method 50
+    // 0x40F280
+    virtual ~CardShinmyoumaru() NO_EH_TERMINATE {
     }
 };
 
 // size: 0x74
-struct CardTenshi : CardBase {
+struct CardTenshi : CardBase { // DONE
     // CardBase base; // 0x0
-    int __int_54; // 0x54
+    int state; // 0x54
     Float3 position; // 0x58
-    Float3 __float3_64; // 0x64
-    int __dword_70; // 0x70
+    Float3 __position2; // 0x64
+    int32_t __cancel_counter; // 0x70
     // 0x74
 
     static inline constexpr CardId ID = KANAME_CARD; // 43
@@ -29489,35 +30315,36 @@ struct CardTenshi : CardBase {
         this->__is_equipment_card = false;
         this->__timer_20.reset();
         this->recharge_time = 3600;
-        this->__int_54 = 0;
+        this->state = 0;
         this->__timer_34.reset();
     }
 
     // Method 8
     // 0x40EBF0
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (!this->__int_54 && this->recharge_time <= 0) {
+        if (this->state == 0 && this->recharge_time <= 0) {
             this->position = PLAYER_PTR->data.position;
             this->position.y -= 100.0f;
-            this->__float3_64 = this->position;
+            this->__position2 = this->position;
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(28, &this->position, 13);
-            this->__int_54 = 1;
+            this->state = 1;
             this->__timer_20.reset();
             SOUND_MANAGER.play_sound_positioned(77, this->position.x);
             this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
             this->__unknown_flag_A = true;
-            this->__dword_70 = 0;
+            this->__cancel_counter = 0;
         }
         return 0;
     }
+
     // Method 2C
     // 0x40E8C0
     dllexport gnu_noinline virtual int thiscall __on_tick_2() {
-        switch (this->__int_54) {
+        switch (this->state) {
             case 2:
                 this->__unknown_flag_A = false;
                 if (this->__timer_20 > 8) {
-                    this->__int_54 = 0;
+                    this->state = 0;
                     this->effect_vm_id.mark_tree_for_delete();
                 }
                 break;
@@ -29525,14 +30352,14 @@ struct CardTenshi : CardBase {
                 if (this->__timer_20 >= 30) {
                     this->__unknown_flag_A = false;
                 }
-                this->__float3_64 = PLAYER_PTR->data.position;
-                this->__float3_64.y -= 80.0f;
+                this->__position2 = PLAYER_PTR->data.position;
+                this->__position2.y -= 80.0f;
                 static constexpr float scale = 1.0f / 25.0f;
-                this->position += (this->__float3_64 - this->position) * scale;
+                this->position += (this->__position2 - this->position) * scale;
                 this->effect_vm_id.set_controller_position(&this->position);
                 if (this->__timer_20 > 1800) {
                     this->effect_vm_id.interrupt_tree(1);
-                    this->__int_54 = 2;
+                    this->state = 2;
                     this->__timer_20.reset();
                     SOUND_MANAGER.play_sound_positioned(41, this->position.x);
                 }
@@ -29542,38 +30369,65 @@ struct CardTenshi : CardBase {
                 this->__dec_timer_34_during_gameplay();
                 break;
         }
-        if (this->__int_54 == 1) {
-            // TODO
+        if (this->state == 1) {
+            AnmVM* vm = this->effect_vm_id.get_vm_ptr();
+            if (vm) {
+                bullet_cancel_radius_as_bomb(&this->position, 18.0f, CancelType0, 99999, 0);
+                laser_cancel_radius(&this->position, 18.0f, CancelType0, 0);
+                vm->data.color1 = COLOR(255, 255, 255, 255);
+
+                int32_t cancel_counter = bullet_manager_get_cancel_counter2();
+                if (cancel_counter) {
+                    vm->data.color1 = COLOR(255, 0, 128, 255);
+                    cancel_counter = bullet_manager_get_cancel_counter2();
+                }
+
+                this->__cancel_counter += cancel_counter;
+
+                if (this->__cancel_counter >= 250) {
+                    vm->interrupt(1);
+                    this->state = 2;
+                    this->__timer_20.reset();
+                    SOUND_MANAGER.play_sound_positioned(41, this->position.x);
+                }
+            }
         }
         this->__inc_timer_20_during_gameplay();
         return 0;
     }
+
     // Method 34
     // 0x40E7F0
     dllexport gnu_noinline virtual void thiscall __on_load_2() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
-        this->__int_54 = 0;
+        this->state = 0;
         this->effect_vm_id.mark_tree_for_delete();
     }
+
     // Method 4C
     // 0x40E840
     dllexport gnu_noinline virtual void thiscall __method_4C() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
-        this->__int_54 = 0;
+        this->state = 0;
         this->__timer_34.reset();
         this->effect_vm_id.mark_tree_for_delete();
+    }
+
+    // Method 50
+    // 0x40A210
+    virtual ~CardTenshi() NO_EH_TERMINATE {
     }
 };
 
 // size: 0xC4
 struct CardClownpiece : CardBase {
     // CardBase base; // 0x0
-    int __int_54; // 0x54
+    int state; // 0x54
     Float3 position; // 0x58
     ZUNInterp<Float3> position_interp; // 0x64
-    void* __ptr_BC; // 0xBC PlayerDamageSource*?
+    PlayerDamageSource* damage_source_ptr; // 0xBC
     float __float_C0; // 0xC0
     // 0xC4
 
@@ -29586,23 +30440,27 @@ struct CardClownpiece : CardBase {
         this->__is_equipment_card = false;
         this->__timer_20.reset();
         this->recharge_time = 2700;
-        this->__int_54 = 0;
+        this->state = 0;
         this->__timer_34.reset();
     }
 
     // Method 8
     // 0x40E040
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (!this->__int_54 && this->recharge_time <= 0) {
-            Float3 A = this->position_interp.initial_value = this->position = PLAYER_PTR->data.position;
+        if (this->state == 0 && this->recharge_time <= 0) {
+            Player* player = PLAYER_PTR;
+            Float3 A = this->position_interp.initial_value = this->position = player->data.position;
             A.y -= 400.0f;
             this->position_interp.mode = 1;
             this->position_interp.end_time = 120;
             this->position_interp.final_value = A;
             this->position_interp.time.reset();
-            // TODO
+            
+            int32_t damage_source_index = player->create_damage_source_circle(&this->position, 10.0f, 0.0f, 120, 45);
+            this->damage_source_ptr = player->get_damage_source_by_index(damage_source_index);
+
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(45, &this->position, 13);
-            this->__int_54 = 1;
+            this->state = 1;
             this->__timer_20.reset();
             this->__float_C0 = 0;
             SOUND_MANAGER.play_sound_positioned(77, this->position.x);
@@ -29610,17 +30468,18 @@ struct CardClownpiece : CardBase {
         }
         return 0;
     }
+
     // Method 2C
     // 0x40DCE0
     dllexport gnu_noinline virtual int thiscall __on_tick_2() {
-        switch (this->__int_54) {
+        switch (this->state) {
             case 2:
                 this->__unknown_flag_A = true;
                 this->position = this->position_interp.step();
                 this->position.y += this->__float_C0;
                 this->effect_vm_id.set_controller_position(&this->position);
                 if (this->__timer_20 > 40) {
-                    this->__int_54 = 0;
+                    this->state = 0;
                     this->effect_vm_id.mark_tree_for_delete();
                 }
                 break;
@@ -29630,10 +30489,9 @@ struct CardClownpiece : CardBase {
                 this->position.y += this->__float_C0;
                 this->effect_vm_id.set_controller_position(&this->position);
                 if (this->__timer_20 > 80) {
-                    this->__int_54 = 2;
+                    this->state = 2;
                     this->effect_vm_id.interrupt_tree(1);
                     this->__timer_20.reset();
-
                 }
                 break;
             case 0:
@@ -29641,28 +30499,53 @@ struct CardClownpiece : CardBase {
                 this->__dec_timer_34_during_gameplay();
                 break;
         }
-        if (this->__int_54) {
-            // TODO
+        if (this->state != 0) {
+            AnmVM* vm = this->effect_vm_id.get_vm_ptr();
+            if (vm) {
+                float radius = vm->data.scale.x * 50.0f;
+                bullet_cancel_radius_as_bomb(&this->position, radius, CancelType0, 99999, 0);
+                laser_cancel_radius(&this->position, radius, CancelType0, 0);
+                this->damage_source_ptr->motion.position = this->position;
+                this->damage_source_ptr->radius = radius;
+                vm->data.color1 = COLOR(255, 255, 255, 255);
+
+                PlayerDamageSource* damage_source = this->damage_source_ptr;
+                if (damage_source_ptr->damage_dealt != 0) {
+                    this->__float_C0 += 3.5f;
+                    if (this->__timer_20.is_multiple_of(2)) {
+                        vm->data.color1 = COLOR(255, 128, 128, 255);
+                        damage_source = this->damage_source_ptr;
+                    }
+                }
+                damage_source_ptr->damage_dealt = 0;
+            }
         }
         ++this->__timer_20;
         return 0;
     }
+
     // Method 34
     // 0x40DC10
     dllexport gnu_noinline virtual void thiscall __on_load_2() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
-        this->__int_54 = 0;
+        this->state = 0;
         this->effect_vm_id.mark_tree_for_delete();
     }
+
     // Method 4C
     // 0x40DC60
     dllexport gnu_noinline virtual void thiscall __method_4C() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
-        this->__int_54 = 0;
+        this->state = 0;
         this->__timer_34.reset();
         this->effect_vm_id.mark_tree_for_delete();
+    }
+
+    // Method 50
+    // 0x40E2B0
+    virtual ~CardClownpiece() NO_EH_TERMINATE {
     }
 };
 
@@ -30267,7 +31150,7 @@ struct CardMegumu : CardBase {
             else {
                 if (GAME_MANAGER.globals.add_power(DEFAULT_POWER_PER_LEVEL)) {
                     PLAYER_PTR->data.__update_option_power_levels();
-                    POPUP_MANAGER_PTR->create_popup(&PLAYER_PTR->data.position, -1, PackD3DCOLOR(64, 255, 255, 255));
+                    POPUP_MANAGER_PTR->create_popup(&PLAYER_PTR->data.position, -1, COLOR(64, 255, 255, 255));
                     SOUND_MANAGER.play_sound_positioned(13, PLAYER_PTR->data.position.x);
                 }
             }
@@ -30906,6 +31789,59 @@ public:
                 case KOISHI_CARD: // 27
                     card = new CardKoishi();
                     break;
+                case MAGICSCROLL_CARD: // 26
+                    card = new CardByakuren();
+                    break;
+                case WARP_CARD: // 41
+                    card = new CardYukari();
+                    break;
+                case KANAME_CARD: // 43
+                    card = new CardTenshi();
+                    break;
+                case KOZUCHI_CARD: // 42
+                    card = new CardShinmyoumaru();
+                    break;
+                case MOON_CARD: // 44
+                    card = new CardClownpiece();
+                    break;
+                case BLANK_CARD: // 0
+                    this->__sub_407DA0(FALSE);
+                    card = new CardBlank();
+                    break;
+                case REIMU_OP2_CARD: // 9
+                    card = new CardReimu2();
+                    break;
+                case MARISA_OP_CARD: // 10
+                    card = new CardMarisa1();
+                    break;
+                case MARISA_OP2_CARD: // 11
+                    card = new CardMarisa2();
+                    break;
+                case SAKUYA_OP_CARD: // 12
+                    card = new CardSakuya1();
+                    break;
+                case SAKUYA_OP2_CARD: // 13
+                    card = new CardSakuya2();
+                    break;
+                case SANAE_OP_CARD: // 14
+                    card = new CardSanae1();
+                    break;
+                case SANAE_OP2_CARD: // 15
+                    card = new CardSanae2();
+                    break;
+                case OKINA_OP_CARD: // 19
+                    card = new CardOkina();
+                    break;
+                case NUE_OP_CARD: // 20
+                    card = new CardNue();
+                    break;
+                case MAINSHOT_SP_CARD: // 28
+                    card = new CardSuwako();
+                    break;
+                case SPEEDQUEEN_CARD: // 29
+                    card = new CardAya();
+                    break;
+
 
                 // TODO
                 default:
@@ -31093,7 +32029,7 @@ public:
                         ) {
                             AnmVM* vmA = this->__anm_id_array_458[i].get_vm_ptr();
                             vmA->data.__position_2 = position;
-                            vmA->__find_child_vm_with_script(11)->data.color1 = PackD3DCOLOR(208, 128, 192, 128);
+                            vmA->__find_child_vm_with_script(11)->data.color1 = COLOR(208, 128, 192, 128);
                             AnmVM* vmB = vmA->__find_child_vm_with_script(6);
                             AnmVM* vmC = vmA->__find_child_vm_with_script(11);
                             vmC->set_alpha(vmB->get_alpha());
@@ -31322,7 +32258,7 @@ ValidateFieldOffset32(0xC84, AbilityManager, __int_array_C84);
 ValidateStructSize32(0xD70, AbilityManager);
 #pragma endregion
 
-static inline float ability_manager_get_float_C58() {
+static inline float& ability_manager_get_float_C58() {
     return ABILITY_MANAGER_PTR->__float_C58;
 }
 static inline AnmLoaded* ability_manager_get_ability_anm() {
@@ -32375,7 +33311,7 @@ struct EnemyManager : ZUNTask {
     int32_t __int_AC; // 0xAC
     int32_t __int_B0; // 0xB0
     unknown_fields(0xB0); // 0xB4
-    int __int_164; // 0x164
+    BOOL disable_enemy_collision; // 0x164
     AnmLoaded* enemy_anms[MAX_ECL_ANM_FILES]; // 0x168
     EclManager* ecl_manager; // 0x188
     ZUNListEnds<Enemy> enemy_list; // 0x18C
@@ -32697,7 +33633,7 @@ public:
 
         enemy_manager->__timer_98.initialize_and_reset();
         enemy_manager->enemy_limit = 99999;
-        enemy_manager->__int_164 = 0;
+        enemy_manager->disable_enemy_collision = false;
 
         return enemy_manager;
     }
@@ -32719,7 +33655,7 @@ ValidateFieldOffset32(0x94, EnemyManager, prev_enemy_id);
 ValidateFieldOffset32(0x98, EnemyManager, __timer_98);
 ValidateFieldOffset32(0xAC, EnemyManager, __int_AC);
 ValidateFieldOffset32(0xB0, EnemyManager, __int_B0);
-ValidateFieldOffset32(0x164, EnemyManager, __int_164);
+ValidateFieldOffset32(0x164, EnemyManager, disable_enemy_collision);
 ValidateFieldOffset32(0x168, EnemyManager, enemy_anms);
 ValidateFieldOffset32(0x188, EnemyManager, ecl_manager);
 ValidateFieldOffset32(0x18C, EnemyManager, enemy_list);
@@ -32740,6 +33676,12 @@ static inline bool enemies_are_alive() {
         return enemy_manager->enemy_count != 0;
     }
     return false;
+}
+
+static inline void enemy_manager_disable_enemy_collision() {
+    if (EnemyManager* enemy_manager = ENEMY_MANAGER_PTR) {
+        enemy_manager->disable_enemy_collision = true;
+    }
 }
 
 static inline BOOL enemy_manager_enemy_exists_with_id(int32_t id) {
@@ -33187,7 +34129,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC1(AnmVM* vm, v
 
     uint32_t j = 0;
     for (int32_t i = 0; i < countof(special_data->__color_array_200); ++i) {
-        special_data->__color_array_200[i] = PackD3DCOLOR(255, 0, 128, 255);
+        special_data->__color_array_200[i] = COLOR(255, 0, 128, 255);
         if (i < 8u) {
             RED(special_data->__color_array_200[i]) = ~(i << 5);
         }
@@ -33267,7 +34209,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC2(AnmVM* vm, v
 
     uint32_t j = 0;
     for (int32_t i = 0; i < countof(special_data->__color_array_200); ++i) {
-        special_data->__color_array_200[i] = PackD3DCOLOR(255, 80, 80, 80);
+        special_data->__color_array_200[i] = COLOR(255, 80, 80, 80);
         if (i < 8u) {
             RED(special_data->__color_array_200[i]) = ~(i << 5);
         } else if (i >= 32u) {
@@ -33882,7 +34824,7 @@ struct Stage : ZUNTask {
             Float3 A = this->std_vm.camera.facing + this->std_vm.camera.__shaking_float3_B;
             D3DXVec3Normalize(&this->std_vm.camera.facing_normalized, &A);
 
-            this->std_vm.__color_3440 = PackD3DCOLOR(0, 128, 128, 128);
+            this->std_vm.__color_3440 = COLOR(0, 128, 128, 128);
 
             if (!this->__unknown_flag_B || this->__timer_3478 < 30) {
                 for (int32_t i = 0; i < this->std_file->object_count; ++i) {
@@ -33936,7 +34878,7 @@ struct Stage : ZUNTask {
 
             if (this->__unknown_flag_B && this->__int_3490 < 34) {
                 D3DRECT rect = SUPERVISOR.cameras[3].get_viewport_d3d_rect();
-                SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, PackD3DCOLOR(255, 0, 0, 0), 1.0f, 0);
+                SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, COLOR(255, 0, 0, 0), 1.0f, 0);
             } else {
                 D3DRECT rect = SUPERVISOR.cameras[3].get_viewport_d3d_rect();
                 SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, this->std_vm.camera.sky.color, 1.0f, 0);
@@ -33980,7 +34922,7 @@ struct Stage : ZUNTask {
             }
             
             anm_manager_ptr->__int_39724B4 = 0;
-            anm_manager_ptr->__color_39724B0 = PackD3DCOLOR(128, 128, 128, 128);
+            anm_manager_ptr->__color_39724B0 = COLOR(128, 128, 128, 128);
             SUPERVISOR.d3d_disable_zwrite();
             SUPERVISOR.d3d_zfunc_always();
         }
@@ -34031,12 +34973,12 @@ struct Stage : ZUNTask {
 
             AnmManager* anm_manager_ptr = ANM_MANAGER_PTR;
             anm_manager_ptr->__int_39724B4 = 0;
-            anm_manager_ptr->__color_39724B0 = PackD3DCOLOR(128, 128, 128, 128);
+            anm_manager_ptr->__color_39724B0 = COLOR(128, 128, 128, 128);
 
             if (this->__timer_3478 > 0) {
                 this->__timer_3478--;
                 if (this->__timer_3478 <= 0) {
-                    this->std_vm.__color_3440 = PackD3DCOLOR(0, 255, 255, 255);
+                    this->std_vm.__color_3440 = COLOR(0, 255, 255, 255);
                     this->__unknown_flag_B |= this->__unknown_flag_D;
                     this->__unknown_flag_D = false;
                     this->__unknown_flag_A = false;
@@ -34553,7 +35495,7 @@ struct Spellcard : ZUNTask {
         this->__vm_id_array_10[2] = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(1);
         AnmVM* vm = this->__vm_id_array_10[1].get_vm_ptr();
         
-        ANM_MANAGER_PTR->draw_text_right(vm, PackD3DCOLOR(0, 255, 255, 255), 0, 0, 0, name);
+        ANM_MANAGER_PTR->draw_text_right(vm, COLOR(0, 255, 255, 255), 0, 0, 0, name);
 
         SOUND_MANAGER.play_sound(33);
         this->__vm_id_1C = EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(13);
@@ -34985,7 +35927,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
         this->data.__timer_47154--;
 
         if (this->data.__death_timer.__is_multiple_of_not_paused(3)) {
-            this->__vm_14.data.color2 = PackD3DCOLOR(255, 0, 0, 255);
+            this->__vm_14.data.color2 = COLOR(255, 0, 0, 255);
             this->__vm_14.data.color_mode = 1;
         } else {
             this->__vm_14.data.color_mode = 0;
@@ -34996,7 +35938,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 
         if (this->data.__unknown_flag_E) {
             if (this->data.__death_timer % 8 < 4) {
-                this->__vm_14.data.color2 = PackD3DCOLOR(255, 255, 0, 0);
+                this->__vm_14.data.color2 = COLOR(255, 255, 0, 0);
                 this->__vm_14.data.color_mode = 1;
             }
         }
@@ -35046,7 +35988,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
         !GAME_THREAD_PTR->__unknown_flag_C &&
         this->data.__timer_3C >= 20 &&
         !this->data.__unknown_flag_H &&
-        !this->data.__unknown_field_A &&
+        this->data.__yukari_wrap_type == 0 &&
         !this->data.scale_enabled
     ) {
         this->tick_shooting_state();
@@ -38788,6 +39730,14 @@ static inline int bullet_cancel_radius_as_bomb(Float2* position, float radius, C
     return BULLET_MANAGER_PTR->cancel_radius_as_bomb(position, radius, cancel_type, max_count, arg5);
 }
 
+static inline int bullet_cancel_rotated_rectangle_as_bomb(Float2* position, Float2* size, float rotation, CancelType cancel_type, int arg5) {
+    return BULLET_MANAGER_PTR->cancel_rotated_rectangle_as_bomb(position, size, rotation, cancel_type, arg5);
+}
+
+static inline int32_t bullet_manager_get_cancel_counter2() {
+    return BULLET_MANAGER_PTR->__cancel_counter2;
+}
+
 // 0x424AD0
 dllexport gnu_noinline void Bullet::cleanup() {
     if (this->state != 0) {
@@ -40737,7 +41687,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
     if (
         this->has_active_collision() &&
         this->__basic_anm_update &&
-        (!ENEMY_MANAGER_PTR->__int_164 || this->is_boss)
+        (!ENEMY_MANAGER_PTR->disable_enemy_collision || this->is_boss)
     ) {
         if (auto* extra_hitbox_func = this->extra_hitbox_func) {
             extra_hitbox_func(this);
@@ -40785,7 +41735,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
         if (!this->__int_50E4) {
             if (this->__anm_related_flag_A) {
                 if (this->phase_timer.is_multiple_of(4)) {
-                    main_vm->data.color2 = PackD3DCOLOR(255, 255, 0, 255);
+                    main_vm->data.color2 = COLOR(255, 255, 0, 255);
                     main_vm->data.color_mode = 1;
                 }
                 else {
@@ -40796,7 +41746,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
                 this->__damaged_this_frame &&
                 !this->slowdown_immune // ???
             ) {
-                main_vm->data.color2 = PackD3DCOLOR(255, 0, 0, 255);
+                main_vm->data.color2 = COLOR(255, 0, 0, 255);
                 main_vm->data.color_mode = 1;
                 int32_t hit_sound = this->hit_sound;
                 this->__int_50E4 = 4;
@@ -40822,7 +41772,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
                         (this->__is_chonky | this->is_boss) &&
                         SPELLCARD_PTR->__enemy_is_low_health(this, 100, 500)
                     ) {
-                        main_vm->data.color2 = PackD3DCOLOR(255, 0, 0, 255);
+                        main_vm->data.color2 = COLOR(255, 0, 0, 255);
                         main_vm->data.color_mode = 1;
                     }
                 }
@@ -42526,7 +43476,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
         case score_add: { // 638
             int32_t score_bonus = this->get_int_arg(0);
             GAME_MANAGER.add_to_score(score_bonus);
-            POPUP_MANAGER_PTR->create_popup(&this->current_motion.position, score_bonus, PackD3DCOLOR(255, 255, 255, 255));
+            POPUP_MANAGER_PTR->create_popup(&this->current_motion.position, score_bonus, COLOR(255, 255, 255, 255));
             break;
         }
         case anm_set_slot: // 303
@@ -45093,16 +46043,16 @@ public:
                     float A = self->__byte_208;
                     D3DCOLOR color;
                     if (A < 30.0f) { // IDK why these were ever floats
-                        color = PackD3DCOLOR(255, 80, 80, 255);
+                        color = COLOR(255, 80, 80, 255);
                     } else if (A < 50.0f) {
-                        color = PackD3DCOLOR(255, 160, 160, 255);
+                        color = COLOR(255, 160, 160, 255);
                     } else {
-                        color = PackD3DCOLOR(255, 255, 255, 255);
+                        color = COLOR(255, 255, 255, 255);
                     }
                     AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
                     ascii_manager->color = color;
                     ascii_manager->printf(&position, "%3d", self->__byte_208);
-                    ASCII_MANAGER_PTR->color = PackD3DCOLOR(255, 255, 255, 255);
+                    ASCII_MANAGER_PTR->color = COLOR(255, 255, 255, 255);
             }
         }
         return UpdateFuncNext;
@@ -48240,7 +49190,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 
             ascii_manager = ASCII_MANAGER_PTR;
             position.x = 224.0f;
-            ascii_manager->color = PackD3DCOLOR(255, 128, 128, 128);
+            ascii_manager->color = COLOR(255, 128, 128, 128);
             ascii_manager->set_alpha(vm->get_alpha());
             spellcard = SPELLCARD_PTR;
             ascii_manager->scale.x = 1.0f;
@@ -48274,7 +49224,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
             ascii_manager->scale.y = 1.0f;
             ascii_manager->font_id = 0;
             ascii_manager->group = 0;
-            ascii_manager->color = PackD3DCOLOR(255, 255, 255, 255);
+            ascii_manager->color = COLOR(255, 255, 255, 255);
         }
     }
 
@@ -48282,8 +49232,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
     // High score
     // ====================
 
-    ascii_manager->color = PackD3DCOLOR(255, 112, 112, 112);
-    ascii_manager->color2 = PackD3DCOLOR(128, 255, 255, 255);
+    ascii_manager->color = COLOR(255, 112, 112, 112);
+    ascii_manager->color2 = COLOR(128, 255, 255, 255);
     ascii_manager->font_id = 10;
     ascii_manager->group = 3;
 
@@ -48306,8 +49256,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 
     position.y = 64.0f;
 
-    ascii_manager->color = PackD3DCOLOR(255, 0, 16, 128);
-    ascii_manager->color2 = PackD3DCOLOR(208, 255, 255, 255);
+    ascii_manager->color = COLOR(255, 0, 16, 128);
+    ascii_manager->color2 = COLOR(208, 255, 255, 255);
     ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha2());
     ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha2());
 
@@ -48328,8 +49278,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 
     float life_fragment_position = 576.0f - offset;
 
-    ascii_manager->color = PackD3DCOLOR(255, 0, 0, 0);
-    ascii_manager->color2 = PackD3DCOLOR(255, 255, 255, 255);
+    ascii_manager->color = COLOR(255, 0, 0, 0);
+    ascii_manager->color2 = COLOR(255, 255, 255, 255);
     ascii_manager->scale.x = 0.6f;
     ascii_manager->scale.y = 0.6f;
 
@@ -48379,8 +49329,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
     position.x = 540.0f;
     position.y = 182.0f;
 
-    ascii_manager->color = PackD3DCOLOR(255, 128, 0, 0);
-    ascii_manager->color2 = PackD3DCOLOR(128, 255, 208, 208);
+    ascii_manager->color = COLOR(255, 128, 0, 0);
+    ascii_manager->color2 = COLOR(128, 255, 208, 208);
     ascii_manager->scale.x = 1.0f;
     ascii_manager->scale.y = 1.0f;
     ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha2());
@@ -48427,8 +49377,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
     position.x = 620.0f;
     position.y = 204.0f;
 
-    ascii_manager->color = PackD3DCOLOR(255, 128, 128, 0);
-    ascii_manager->color2 = PackD3DCOLOR(128, 255, 255, 208);
+    ascii_manager->color = COLOR(255, 128, 128, 0);
+    ascii_manager->color2 = COLOR(128, 255, 255, 208);
     ascii_manager->scale.x = 1.0f;
     ascii_manager->scale.y = 1.0f;
     ascii_manager->__horizontal_positioning_mode = 2;
@@ -48444,12 +49394,12 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 
     ascii_manager = ASCII_MANAGER_PTR;
 
-    ascii_manager->color = PackD3DCOLOR(255, 255, 255, 255);
+    ascii_manager->color = COLOR(255, 255, 255, 255);
     ascii_manager->__horizontal_positioning_mode = 1;
     ascii_manager->__vertical_positioning_mode = 1;
     ascii_manager->scale.x = 1.0f;
     ascii_manager->scale.y = 1.0f;
-    ascii_manager->color2 = PackD3DCOLOR(255, 0, 0, 0);
+    ascii_manager->color2 = COLOR(255, 0, 0, 0);
     ascii_manager->set_alpha(255);
     ascii_manager->font_id = 0;
     ascii_manager->group = 0;
@@ -48489,7 +49439,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 
         ascii_manager->scale.x = 1.0f;
         ascii_manager->scale.y = 1.0f;
-        ascii_manager->color = PackD3DCOLOR(255, 255, 255, 255);
+        ascii_manager->color = COLOR(255, 255, 255, 255);
         ascii_manager->group = 0;
         ascii_manager->font_id = 0;
     }
@@ -49229,7 +50179,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__sub_455040() {
             int32_t new_gamemode = this->gamemode_switch;
             this->gamemode_previous = prev_gamemode;
 
-            this->background_color = PackD3DCOLOR(255, 0, 0, 0);
+            this->background_color = COLOR(255, 0, 0, 0);
 
             switch (new_gamemode) {
                 case 0: {
@@ -49888,7 +50838,7 @@ dllexport gnu_noinline GameThread::~GameThread() {
 
     UNKNOWN_INT_H = 1;
 
-    SUPERVISOR.background_color = GAME_MANAGER.__unknown_flag_A ? PackD3DCOLOR(0, 0, 0, 0) : PackD3DCOLOR(255, 0, 0, 0);
+    SUPERVISOR.background_color = GAME_MANAGER.__unknown_flag_A ? COLOR(0, 0, 0, 0) : COLOR(255, 0, 0, 0);
 }
 
 inline unsigned GameThread::thread_start_impl() {
@@ -50308,7 +51258,7 @@ dllexport gnu_noinline void __set_default_d3d_states() {
     SUPERVISOR.d3d_device->SetRenderState(D3DRS_FOGDENSITY, bitcast<DWORD>(1.0f));
     SUPERVISOR.d3d_device->SetRenderState(D3DRS_FOGTABLEMODE, D3DFOG_NONE);
     SUPERVISOR.d3d_device->SetRenderState(D3DRS_FOGVERTEXMODE, D3DFOG_LINEAR);
-    SUPERVISOR.d3d_device->SetRenderState(D3DRS_FOGCOLOR, PackD3DCOLOR(255, 160, 160, 160));
+    SUPERVISOR.d3d_device->SetRenderState(D3DRS_FOGCOLOR, COLOR(255, 160, 160, 160));
     SUPERVISOR.d3d_device->SetRenderState(D3DRS_FOGSTART, bitcast<DWORD>(1000.0f));
     SUPERVISOR.d3d_device->SetRenderState(D3DRS_FOGEND, bitcast<DWORD>(5000.0f));
     SUPERVISOR.d3d_device->SetRenderState(D3DRS_MULTISAMPLEANTIALIAS, FALSE);
