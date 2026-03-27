@@ -4440,6 +4440,10 @@ union AnmID {
     // 0x488E30
     dllexport AnmVM* get_vm_ptr() asm_symbol_rel(0x488E30);
 
+    forceinline bool has_live_vm() {
+        return this->get_vm_ptr();
+    }
+
     inline int32_t run_vm();
 
     // 0x488E50
@@ -10045,7 +10049,12 @@ struct EnemyInitData {
     int32_t item_drop; // 0x10
     int32_t life; // 0x14
     int32_t mirrored; // 0x18
-    int32_t __basic_anm_update; // 0x1C
+    union {
+        int32_t __basic_anm_update; // 0x1C
+        struct {
+            uint32_t __basic_anm_update_but_as_a_flag : 1;
+        };
+    };
     int32_t int_vars[4]; // 0x20
     float float_vars[8]; // 0x30
     int32_t parent_id; // 0x50
@@ -10718,17 +10727,27 @@ enum CancelType : int32_t {
     CancelType4 = 4
 };
 
+static inline int bullet_cancel_random(CancelType cancel_type);
 static inline int bullet_cancel_radius(Float3* position, float radius, CancelType cancel_type);
 static inline int bullet_cancel_radius_as_bomb(Float2* position, float radius, CancelType cancel_type, int32_t max_count, int arg5);
 static inline int bullet_cancel_rotated_rectangle_as_bomb(Float2* position, Float2* size, float rotation, CancelType cancel_type, int arg5);
 static inline int32_t bullet_manager_get_cancel_counter2();
+static inline void bullet_manager_enable_graze_despawns();
 static inline int laser_cancel_radius(Float3* position, float radius, CancelType cancel_type, int arg4);
+static inline int laser_cancel_rectangle(Float3* position, Float3* size, float rotation, CancelType cancel_type = GARBAGE_ARG(CancelType), int32_t arg5 = 0);
 static inline int laser_cancel_all(CancelType cancel_type);
 
+
+static inline void __spellcard_fail();
+static inline void __inline_spellcard_fail();
+
 typedef struct BombBase BombBase;
+typedef struct Spellcard Spellcard;
 extern "C" {
     // 0x4CF2B8
     externcg BombBase* BOMB_PTR cgasm("_BOMB_PTR");
+    // 0x4CF2C0
+    externcg Spellcard* SPELLCARD_PTR cgasm("_SPELLCARD_PTR");
 }
 
 // size: 0xA8
@@ -20188,7 +20207,7 @@ inline void Lifebar::delete_vms() {
 
 // 0x4422C0
 dllexport gnu_noinline void thiscall Gui::__sub_4422C0() {
-    if (!this->__anm_id_C8.get_vm_ptr()) {
+    if (!this->__anm_id_C8.has_live_vm()) {
         int32_t script;
 
         StageData* stage_data = STAGE_DATA_PTR;
@@ -20218,7 +20237,7 @@ dllexport gnu_noinline void thiscall Gui::__display_stage_logo() {
 inline void MsgVM::__inline_textbox_sub_A(float arg1) {
     uint32_t i = 0;
 repeat:
-    if (this->__callout_related.get_vm_ptr()) {
+    if (this->__callout_related.has_live_vm()) {
         AnmVM* vm = this->__callout_related.__find_child_vm_with_script(-1, i);
         if (vm) {
             vm->data.current_context.float_vars[0] = arg1;
@@ -20615,7 +20634,7 @@ struct EffectManager : ZUNTask {
             this->slot_index = next_slot % MAX_EFFECTS;
             if (
                 !this->vm_slots[next_slot] ||
-                !this->vm_slots[next_slot].get_vm_ptr()
+                !this->vm_slots[next_slot].has_live_vm()
             ) {
                 return cur_slot;
             }
@@ -25318,10 +25337,27 @@ namespace Impl {
 
 namespace Impl {
     // 0x45F0F0
-    dllexport gnu_noinline int32_t vectorcall enm_compute_damage_sources(int32_t, int32_t, float, float, float, Float3* position, Float2* size, float rotation, float radius, BOOL* arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) asm_symbol_rel(0x45F0F0);
+    dllexport gnu_noinline int32_t vectorcall enm_compute_damage_sources(
+        int, int, float, float, float,
+        Float3* position, Float2* size,         // EBX+0x8, EBX+0xC
+        float rotation, uint32_t radius,        // XMM3, EBX+0x10
+        BOOL* arg5, Float3* hit_position_out,   // EBX+0x14, EBX+0x18
+        BOOL arg7, int32_t enemy_id             // EBX+0x1C, EBX+0x20
+    ) asm_symbol_rel(0x45F0F0);
 }
-    forceinline int32_t enm_compute_damage_sources(Float3* position, Float2* size, float rotation, float radius, BOOL* arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) {
-        return Impl::enm_compute_damage_sources(UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT, position, size, rotation, radius, arg5, hit_position_out, arg7, enemy_id);
+    forceinline int32_t enm_compute_damage_sources(
+        Float3* position, Float2* size,
+        float rotation, float radius,
+        BOOL* arg5, Float3* hit_position_out,
+        BOOL arg7, int32_t enemy_id
+    ) {
+        return Impl::enm_compute_damage_sources(
+            UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT,
+            position, size,
+            rotation, bitcast<uint32_t>(radius),
+            arg5, hit_position_out,
+            arg7, enemy_id
+        );
     }
 
 namespace Impl {
@@ -25354,9 +25390,9 @@ struct PlayerDamageSource {
     int32_t damage_dealt; // 0x78
     int32_t damage_cap; // 0x7C
     int32_t __hit_frequency; // 0x80
-    EnemyID __enemy_id_84; // 0x84
+    EnemyID __last_hit_enemy; // 0x84
     int32_t __int_88; // 0x88
-    int __int_8C; // 0x8C
+    int __damage_type; // 0x8C
     int32_t __player_bullet_index; // 0x90
     EnemyID __enemy_id_94; // 0x94
     int32_t __unknown_func_index; // 0x98
@@ -25440,9 +25476,9 @@ ValidateFieldOffset32(0x74, PlayerDamageSource, damage);
 ValidateFieldOffset32(0x78, PlayerDamageSource, damage_dealt);
 ValidateFieldOffset32(0x7C, PlayerDamageSource, damage_cap);
 ValidateFieldOffset32(0x80, PlayerDamageSource, __hit_frequency);
-ValidateFieldOffset32(0x84, PlayerDamageSource, __enemy_id_84);
+ValidateFieldOffset32(0x84, PlayerDamageSource, __last_hit_enemy);
 ValidateFieldOffset32(0x88, PlayerDamageSource, __int_88);
-ValidateFieldOffset32(0x8C, PlayerDamageSource, __int_8C);
+ValidateFieldOffset32(0x8C, PlayerDamageSource, __damage_type);
 ValidateFieldOffset32(0x90, PlayerDamageSource, __player_bullet_index);
 ValidateFieldOffset32(0x94, PlayerDamageSource, __enemy_id_94);
 ValidateFieldOffset32(0x98, PlayerDamageSource, __unknown_func_index);
@@ -25484,7 +25520,7 @@ struct PlayerOption {
         };
     };
     int __dword_DC; // 0xDC
-    unknown_fields(0x4); // 0xE0
+    float __float_E0; // 0xE0
     EnemyID __enemy_id_E4; // 0xE4
     OptionPositionFunc* __func_ptr_E8; // 0xE8
     unknown_fields(0x4); // 0xEC
@@ -25497,16 +25533,19 @@ struct PlayerOption {
     dllexport gnu_noinline static int32_t fastcall __position_func_card_youmu(PlayerOption* self) asm_symbol_rel(0x45DDE0);
 
     // 0x40B6E0
-    dllexport gnu_noinline static void fastcall __position_func_card_alice_impl(PlayerOption* self) asm_symbol_rel(0x40B6E0);
+    dllexport gnu_noinline void thiscall __position_func_card_alice_impl() asm_symbol_rel(0x40B6E0);
 
     // 0x40B6D0
     dllexport gnu_noinline static int32_t fastcall __position_func_card_alice(PlayerOption* self) asm_symbol_rel(0x40B6D0) {
-        __position_func_card_alice_impl(self);
+        self->__position_func_card_alice_impl();
         return 0;
     }
 
     // 0x40BD50
     dllexport gnu_noinline static int32_t fastcall __position_func_card_nue(PlayerOption* self) asm_symbol_rel(0x40BD50);
+
+    // 0x40C080
+    dllexport gnu_noinline static int32_t fastcall __position_func_card_misumaru(PlayerOption* self) asm_symbol_rel(0x40C080);
 
     inline float get_x_position() {
         return this->internal_position.x * (1.0f / INTERNAL_POSITION_RATIO);
@@ -25535,6 +25574,7 @@ ValidateFieldOffset32(0xD0, PlayerOption, __option_index);
 ValidateFieldOffset32(0xD4, PlayerOption, __int_D4);
 ValidateFieldOffset32(0xD8, PlayerOption, flags);
 ValidateFieldOffset32(0xDC, PlayerOption, __dword_DC);
+ValidateFieldOffset32(0xE0, PlayerOption, __float_E0);
 ValidateFieldOffset32(0xE4, PlayerOption, __enemy_id_E4);
 ValidateFieldOffset32(0xE8, PlayerOption, __func_ptr_E8);
 ValidateStructSize32(0xF0, PlayerOption);
@@ -26212,7 +26252,7 @@ skip_movement_keys:;
         this->set_position_internal(internal_position);
 
 
-        if (this->data.__vm_id_47090.get_vm_ptr()) {
+        if (this->data.__vm_id_47090.has_live_vm()) {
             this->data.__vm_id_47090.set_controller_position(&this->data.position);
         }
 
@@ -26231,7 +26271,7 @@ skip_movement_keys:;
         }
 
         if (this->data.__timer_47098 > 0) {
-            if (!this->data.__vm_id_47094.get_vm_ptr()) {
+            if (!this->data.__vm_id_47094.has_live_vm()) {
                 this->data.__vm_id_47094 = EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(27, 14);
             }
             this->data.__vm_id_47094.set_controller_position(&this->data.position);
@@ -26869,9 +26909,9 @@ private:
                 damage_source->damage_cap = 9999999;
                 damage_source->__hit_frequency = 1;
                 damage_source->__unknown_func_index = 0;
-                damage_source->__enemy_id_84 = 0;
+                damage_source->__last_hit_enemy = 0;
                 damage_source->__int_88 = 0;
-                damage_source->__int_8C = 0;
+                damage_source->__damage_type = 0;
                 break;
             }
         }
@@ -26917,9 +26957,9 @@ private:
                 damage_source->damage_cap = 9999999;
                 damage_source->__hit_frequency = 1;
                 damage_source->__unknown_func_index = 0;
-                damage_source->__enemy_id_84 = 0;
+                damage_source->__last_hit_enemy = 0;
                 damage_source->__int_88 = 0;
-                damage_source->__int_8C = 0;
+                damage_source->__damage_type = 0;
                 break;
             }
         }
@@ -26958,7 +26998,12 @@ public:
         );
     }
 
-    inline int32_t compute_damage_sources(Float3* position, Float2* size, float rotation, float radius, BOOL* arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) {
+    inline int32_t compute_damage_sources(
+        Float3* position, Float2* size,         // EBX+0x8, EBX+0xC
+        float rotation, float radius,           // XMM3, EBX+0x10
+        BOOL* arg5, Float3* hit_position_out,   // EBX+0x14, EBX+0x18
+        BOOL arg7, int32_t enemy_id             // EBX+0x1C, EBX+0x20
+    ) {
         if (this->data.__death_timer.__is_paused()) {
             return 0;
         }
@@ -26977,9 +27022,9 @@ public:
             *arg5 = damage >= 0 ? true : false;
         }
 
-        BOOL B[4] = {};
-        int32_t C[4] = {};
-        int32_t D[4] = {};
+        BOOL taken_damage_of_type[4] = {};
+        int32_t highest_damage_of_type[4] = {};
+        int32_t previous_damage_of_type[4] = {};
 
         PlayerDamageSource* damage_source_ptr = &this->data.damage_sources[0]; // LOCAL 16
         for (
@@ -26993,43 +27038,54 @@ public:
                 damage_source_ptr->__int_88 <= 0
             ) {
                 if (damage_source_ptr->check_collision(position, size, rotation, radius)) {
-                    switch (int32_t index = damage_source_ptr->__int_8C - 1) {
+                    
+                    switch (int32_t type = damage_source_ptr->__damage_type - 1) {
                         case 0: case 1: case 2: case 3:
-                            if (B[index] && C[index] > damage_source_ptr->damage) {
+                            if (
+                                taken_damage_of_type[type] &&
+                                highest_damage_of_type[type] > damage_source_ptr->damage
+                            ) {
                                 continue;
                             }
-                            damage -= D[index];
-                            B[index] = true;
-                            C[index] = damage_source_ptr->damage;
+                            damage -= previous_damage_of_type[type];
+                            taken_damage_of_type[type] = true;
+                            highest_damage_of_type[type] = damage_source_ptr->damage;
                     }
+
                     if (enemy_id) {
-                        if (damage_source_ptr->__enemy_id_84 == enemy_id) {
+                        if (damage_source_ptr->__last_hit_enemy == enemy_id) {
                             continue;
                         }
-                        damage_source_ptr->__enemy_id_84 = enemy_id;
+                        damage_source_ptr->__last_hit_enemy = enemy_id;
                     }
+
                     if (arg5 && damage_source_ptr->__unknown_flag_A) {
                         *arg5 = true;
                     }
+
                     int32_t damage_from_source = damage_source_ptr->damage;
                     if (!arg7) {
                         if (damage_source_ptr->__unknown_func_index) {
                             damage_source_ptr->__enemy_id_94 = enemy_id;
-                            int32_t F = PLAYER_DAMAGE_SOURCE_UNKNOWN_FUNCS[damage_source_ptr->__unknown_func_index](damage_source_ptr, position, size, rotation, radius);
-                            if (F >= 0) {
-                                damage_from_source = F;
+                            int32_t new_damage = PLAYER_DAMAGE_SOURCE_UNKNOWN_FUNCS[damage_source_ptr->__unknown_func_index](damage_source_ptr, position, size, rotation, radius);
+                            if (new_damage >= 0) {
+                                damage_from_source = new_damage;
                             }
                         }
                         damage_source_ptr->damage_dealt += damage_source_ptr->damage;
                     }
-                    switch (int32_t index = damage_source_ptr->__int_8C - 1) {
+
+                    switch (int32_t type = damage_source_ptr->__damage_type - 1) {
                         case 0: case 1: case 2: case 3:
-                            D[index] = damage_from_source;
+                            previous_damage_of_type[type] = damage_from_source;
                     }
                     damage += damage_from_source;
+
                     if (hit_position_out) {
                         *hit_position_out = damage_source_ptr->motion.position;
                     }
+
+                    // Turn off the damage source if it's over its cap
                     int32_t damage_cap_of_source = damage_source_ptr->damage_cap;
                     if (
                         damage_cap_of_source < 9999999 &&
@@ -27091,8 +27147,19 @@ ValidateStructSize32(0x479D0, Player);
 #pragma endregion
 
 // 0x45F0F0
-dllexport gnu_noinline int32_t vectorcall HitboxManager::Impl::enm_compute_damage_sources(int32_t, int32_t, float, float, float, Float3* position, Float2* size, float rotation, float radius, BOOL* arg5, Float3* hit_position_out, BOOL arg7, int32_t enemy_id) {
-    clang_forceinline return PLAYER_PTR->compute_damage_sources(position, size, rotation, radius, arg5, hit_position_out, arg7, enemy_id);
+dllexport gnu_noinline int32_t vectorcall HitboxManager::Impl::enm_compute_damage_sources(
+    int, int, float, float, float,
+    Float3* position, Float2* size,         // EBX+0x8, EBX+0xC
+    float rotation, uint32_t radius,        // XMM3, EBX+0x10
+    BOOL* arg5, Float3* hit_position_out,   // EBX+0x14, EBX+0x18
+    BOOL arg7, int32_t enemy_id             // EBX+0x1C, EBX+0x20
+) {
+    clang_forceinline return PLAYER_PTR->compute_damage_sources(
+        position, size,
+        rotation, bitcast<float>(radius),
+        arg5, hit_position_out, 
+        arg7, enemy_id
+    );
 }
 
 // 0x45CBA0
@@ -27140,6 +27207,21 @@ dllexport gnu_noinline int32_t fastcall PlayerOption::__position_func_card_nue(P
     Float2 offset;
     offset.make_from_vector(self->__angle_A8, 96.0f);
 
+    self->position = PLAYER_PTR->data.internal_position - (Int2)(offset * -INTERNAL_POSITION_RATIO);
+
+    // this runs three angle reductions
+    self->__angle_A8 = reduce_angle(self->__angle_A8 + DEGREES(2));
+
+    return 0;
+}
+
+// 0x40C080
+dllexport gnu_noinline int32_t fastcall PlayerOption::__position_func_card_misumaru(PlayerOption* self) {
+    Float2 offset;
+    offset.make_from_vector(self->__angle_A8, 8.0f);
+
+    // TODO: change code structure to match better
+    offset.x = self->__float_E0;
     self->position = PLAYER_PTR->data.internal_position - (Int2)(offset * -INTERNAL_POSITION_RATIO);
 
     // this runs three angle reductions
@@ -28076,9 +28158,10 @@ extern "C" {
     // 0x4CF2A0
     externcg AbilityMenu* ABILITY_MENU_PTR cgasm("_ABILITY_MENU_PTR");
     // 0x4CF2D4
-    externcg int32_t UNKNOWN_COUNTER_A cgasm("_UNKNOWN_COUNTER_A");
+    externcg int32_t MOMOYO_CARD_COUNTER cgasm("_MOMOYO_CARD_COUNTER");
 }
 
+static inline void enemy_manager_fail_spell();
 static inline void enemy_manager_fail_spell_with_bomb();
 static inline BOOL enemy_manager_enemy_exists_with_id(int32_t id);
 
@@ -28155,7 +28238,7 @@ struct CardBase {
     }
     // Method 1C
     // 0x413080
-    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shooter_tick(int32_t short_timer, int32_t long_timer) {
         return ZUN_SUCCESS;
     }
     // Method 20
@@ -28165,7 +28248,7 @@ struct CardBase {
     }
     // Method 24
     // 0x4130A0
-    dllexport gnu_noinline virtual int thiscall on_tick() {
+    dllexport gnu_noinline virtual int thiscall on_player_tick() {
         return 0;
     }
     // Method 28
@@ -28175,7 +28258,7 @@ struct CardBase {
     }
     // Method 2C
     // 0x4130C0
-    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
+    dllexport gnu_noinline virtual int thiscall on_tick() {
         return 0;
     }
     // Method 30
@@ -28185,7 +28268,7 @@ struct CardBase {
     }
     // Method 34
     // 0x4130E0
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
     }
     // Method 38
     // 0x4130F0
@@ -28613,14 +28696,14 @@ struct CardReimu1 : CardBase { // DONE
 
     // Method 1C
     // 0x40AB00
-    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shooter_tick(int32_t short_timer, int32_t long_timer) {
         PLAYER_PTR->tick_shooting_state_for_card(this->option, short_timer, long_timer, 10);
         return ZUN_SUCCESS;
     }
 
     // Method 34
     // 0x40AAB0
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
         this->option = NULL;
     }
@@ -28664,14 +28747,14 @@ struct CardReimu2 : CardBase { // DONE
 
     // Method 1C
     // 0x40AC10
-    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shooter_tick(int32_t short_timer, int32_t long_timer) {
         PLAYER_PTR->tick_shooting_state_for_card(this->option, short_timer, long_timer, 18);
         return ZUN_SUCCESS;
     }
 
     // Method 34
     // 0x40ABC0
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
         this->option = NULL;
     }
@@ -28715,14 +28798,14 @@ struct CardMarisa1 : CardBase { // DONE
 
     // Method 1C
     // 0x40AD20
-    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shooter_tick(int32_t short_timer, int32_t long_timer) {
         PLAYER_PTR->tick_shooting_state_for_card(this->option, short_timer, long_timer, 11);
         return ZUN_SUCCESS;
     }
 
     // Method 34
     // 0x40ACD0
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
         this->option = NULL;
     }
@@ -28766,14 +28849,14 @@ struct CardMarisa2 : CardBase { // DONE
 
     // Method 1C
     // 0x40AE30
-    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shooter_tick(int32_t short_timer, int32_t long_timer) {
         PLAYER_PTR->tick_shooting_state_for_card(this->option, short_timer, long_timer, 19);
         return ZUN_SUCCESS;
     }
 
     // Method 34
     // 0x40ADE0
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
         this->option = NULL;
     }
@@ -28821,7 +28904,7 @@ struct CardSakuya1 : CardBase { // DONE
 
     // Method 1C
     // 0x40AF60
-    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shooter_tick(int32_t short_timer, int32_t long_timer) {
         Player* player = PLAYER_PTR;
         int32_t index = 12 + (player->data.focused != false);
         player->tick_shooting_state_for_card(this->option, short_timer, long_timer, index);
@@ -28830,7 +28913,7 @@ struct CardSakuya1 : CardBase { // DONE
 
     // Method 34
     // 0x40AEF0
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
         this->option = NULL;
     }
@@ -28874,14 +28957,14 @@ struct CardSakuya2 : CardBase { // DONE
 
     // Method 1C
     // 0x40B080
-    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shooter_tick(int32_t short_timer, int32_t long_timer) {
         PLAYER_PTR->tick_shooting_state_for_card(this->option, short_timer, long_timer, 20);
         return ZUN_SUCCESS;
     }
 
     // Method 34
     // 0x40B030
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
         this->option = NULL;
     }
@@ -28925,14 +29008,14 @@ struct CardSanae1 : CardBase { // DONE
 
     // Method 1C
     // 0x40B190
-    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shooter_tick(int32_t short_timer, int32_t long_timer) {
         PLAYER_PTR->tick_shooting_state_for_card(this->option, short_timer, long_timer, 14);
         return ZUN_SUCCESS;
     }
 
     // Method 34
     // 0x40B140
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
         this->option = NULL;
     }
@@ -28976,14 +29059,14 @@ struct CardSanae2 : CardBase { // DONE
 
     // Method 1C
     // 0x40B2A0
-    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shooter_tick(int32_t short_timer, int32_t long_timer) {
         PLAYER_PTR->tick_shooting_state_for_card(this->option, short_timer, long_timer, 21);
         return ZUN_SUCCESS;
     }
 
     // Method 34
     // 0x40B250
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
         this->option = NULL;
     }
@@ -29030,14 +29113,14 @@ struct CardYoumu : CardBase { // DONE
 
     // Method 1C
     // 0x40B3C0
-    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shooter_tick(int32_t short_timer, int32_t long_timer) {
         PLAYER_PTR->tick_shooting_state_for_card(this->option, short_timer, long_timer, 17);
         return ZUN_SUCCESS;
     }
 
     // Method 34
     // 0x40B360
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
         this->option = NULL;
     }
@@ -29084,7 +29167,7 @@ struct CardAlice : CardBase { // DONE
 
     // Method 1C
     // 0x40B4E0
-    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shooter_tick(int32_t short_timer, int32_t long_timer) {
         PlayerOption* option = this->option;
         EnemyID id = option->__enemy_id_E4;
         if (id) {
@@ -29109,7 +29192,7 @@ struct CardAlice : CardBase { // DONE
 
     // Method 34
     // 0x40B480
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
         this->option = NULL;
     }
@@ -29153,14 +29236,14 @@ struct CardCirno : CardBase { // DONE
 
     // Method 1C
     // 0x40BB30
-    dllexport gnu_noinline virtual ZUNResult thiscall on_shoot(int32_t short_timer, int32_t long_timer) {
+    dllexport gnu_noinline virtual ZUNResult thiscall on_shooter_tick(int32_t short_timer, int32_t long_timer) {
         PLAYER_PTR->tick_shooting_state_for_card(this->option, short_timer, long_timer, 16);
         return ZUN_SUCCESS;
     }
 
     // Method 34
     // 0x40BAE0
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
         this->option = NULL;
     }
@@ -29204,7 +29287,7 @@ struct CardOkina : CardBase { // DONE
 
     // Method 24
     // 0x40B9B0
-    dllexport gnu_noinline virtual int thiscall on_tick() {
+    dllexport gnu_noinline virtual int thiscall on_player_tick() {
         PlayerOption* option = this->option;
         if (option) {
             Float2 size = { 20.0f, 6.0f };
@@ -29217,7 +29300,7 @@ struct CardOkina : CardBase { // DONE
 
     // Method 34
     // 0x40B960
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
         this->option = NULL;
     }
@@ -29264,7 +29347,7 @@ struct CardNue : CardBase { // DONE
 
     // Method 24
     // 0x40BC50
-    dllexport gnu_noinline virtual int thiscall on_tick() {
+    dllexport gnu_noinline virtual int thiscall on_player_tick() {
         PlayerOption* option = this->option;
         if (option) {
             Float3 position = this->option->get_position();
@@ -29275,7 +29358,7 @@ struct CardNue : CardBase { // DONE
 
     // Method 34
     // 0x40BBF0
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
         this->option = NULL;
     }
@@ -29321,7 +29404,7 @@ struct CardNitori : CardBase { // DONE
 
     // Method 34
     // 0x40C1B0
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
     }
 
@@ -29364,7 +29447,7 @@ struct CardKanako : CardBase { // DONE
 
     // Method 34
     // 0x40C250
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
     }
 
@@ -29383,7 +29466,7 @@ struct CardKanako : CardBase { // DONE
 // size: 0x60
 struct CardEirin : CardBase {
     // CardBase base; // 0x0
-    BOOL __bool_54; // 0x54
+    BOOL enabled; // 0x54
     AnmID __vm_id_58; // 0x58
     int32_t damage_source_index; // 0x5C
     // 0x60
@@ -29391,8 +29474,9 @@ struct CardEirin : CardBase {
     static inline constexpr CardId ID = AUTOBOMB_CARD; // 23
 
     inline CardEirin() {
-        this->__vm_id_58 = NULL;
-        this->damage_source_index = NULL;
+        // BUG: enabled is not set here
+        this->__vm_id_58 = 0;
+        this->damage_source_index = 0;
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = true;
         this->__is_active_card = false;
@@ -29405,14 +29489,14 @@ struct CardEirin : CardBase {
         SOUND_MANAGER.play_sound(44);
         Player* player = PLAYER_PTR;
         this->damage_source_index = PLAYER_PTR->create_damage_source_circle(&player->data.position, 8.0f, 0.0f, 40, 5);
-        //SPELLCARD_PTR->__inline_sub_409AD0();
+        __inline_spellcard_fail();
         clang_forceinline GAME_MANAGER.globals.subtract_bomb();
         clang_forceinline GAME_MANAGER.globals.subtract_bomb();
         PLAYER_PTR->data.__timer_47154.set(60);
         enemy_manager_fail_spell_with_bomb();
         BOMB_PTR->__int_A0 = 1;
         this->__timer_20.reset();
-        this->__bool_54 = true;
+        this->enabled = true;
         return 0;
     }
 
@@ -29420,8 +29504,8 @@ struct CardEirin : CardBase {
     // 0x40A4F0
     dllexport gnu_noinline virtual BOOL thiscall on_player_death(BOOL already_prevented_death) {
         if (!already_prevented_death) {
-            // ShikiEiki card
             if (
+                // ShikiEiki card test
                 (!ability_manager_card_equipped(ROKUMON_CARD) || GAME_MANAGER.globals.current_money < 200) &&
                 BOMB_PTR && BOMB_PTR->bomb_allowed()
             ) {
@@ -29435,8 +29519,11 @@ struct CardEirin : CardBase {
 
     // Method 24
     // 0x40A560
-    dllexport gnu_noinline virtual int thiscall on_tick() {
-        if (this->__bool_54) {
+    dllexport gnu_noinline virtual int thiscall on_player_tick() {
+        // BUG: because enabled was not set to 0 in the constructor
+        // this will still run during stage transitions when
+        // BOMB_PTR can be set to NULL, which crashes.
+        if (this->enabled) {
             PlayerDamageSource* damage_source = get_damage_source_by_index(this->damage_source_index);
             if (damage_source) {
                 float radius = 1.0f - GAME_MANAGER.globals.__timer_D8 / 40.0f;
@@ -29452,7 +29539,7 @@ struct CardEirin : CardBase {
             }
             if (this->__timer_20 >= 60) {
                 BombBase* bomb = BOMB_PTR;
-                this->__bool_54 = false;
+                this->enabled = false;
                 bomb->__int_A0 = 0;
             }
         }
@@ -29462,7 +29549,7 @@ struct CardEirin : CardBase {
 
     // Method 34
     // 0x40A260
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
     }
 
@@ -29471,7 +29558,7 @@ struct CardEirin : CardBase {
     dllexport gnu_noinline virtual void thiscall __method_4C() {
         this->__unknown_flag_B = false;
         this->__vm_id_58.mark_tree_for_delete();
-        this->__bool_54 = false;
+        this->enabled = false;
         this->damage_source_index = 0;
     }
 
@@ -29562,7 +29649,7 @@ struct CardSaki : CardBase {
 
     // Method 34
     // 0x40C2F0
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
     }
 
@@ -29601,7 +29688,7 @@ struct CardByakuren : CardBase {
 
     // Method 34
     // 0x40CBA0
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
     }
 
@@ -29655,14 +29742,14 @@ struct CardKoishi : CardBase {
 
     // Method 2C
     // 0x40D4C0
-    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
+    dllexport gnu_noinline virtual int thiscall on_tick() {
         enemy_manager_disable_enemy_collision();
         return 0;
     }
 
     // Method 34
     // 0x40D4A0
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
     }
 
@@ -29709,7 +29796,7 @@ struct CardSuwako : CardBase { // DONE
 
     // Method 34
     // 0x40C420
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
     }
 
@@ -29757,7 +29844,7 @@ struct CardAya : CardBase {
 
     // Method 24
     // 0x40C7F0
-    dllexport gnu_noinline virtual int thiscall on_tick() {
+    dllexport gnu_noinline virtual int thiscall on_player_tick() {
         Player* player = PLAYER_PTR;
         if (player->data.__unknown_flag_D) {
             ShtFile* sht_file = player->sht_file;
@@ -29793,7 +29880,7 @@ struct CardAya : CardBase {
 
     // Method 34
     // 0x40C790
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
     }
 
@@ -29809,7 +29896,120 @@ struct CardAya : CardBase {
     }
 };
 
-struct CardKaguya : CardBase {
+// size: 0xB4
+struct CardKeiki : CardBase { // DONE
+    // CardBase base; // 0x0
+    Timer cooldowns[PLAYER_OPTION_COUNT]; // 0x54
+    AnmID vm_ids[PLAYER_OPTION_COUNT]; // 0xA4
+    // 0xB4
+
+    static inline constexpr CardId ID = OPTION_BR_CARD; // 30
+
+    inline CardKeiki() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
+        this->__timer_20.reset();
+
+        for (size_t i = 0; i != PLAYER_OPTION_COUNT; ++i) {
+            this->vm_ids[i] = 0;
+        }
+    }
+
+    // Method 18
+    // 0x40CD60
+    dllexport gnu_noinline virtual int thiscall on_power_level_change() {
+        
+        PlayerOption* options = PLAYER_PTR->data.options;
+
+        for (size_t i = 0; i != PLAYER_OPTION_COUNT; ++i) {
+            this->vm_ids[i].mark_tree_for_delete();
+            if (
+                options[i].state != 0 &&
+                this->cooldowns[i] >= this->recharge_time
+            ) {
+                this->vm_ids[i] = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(27, 14);
+            }
+        }
+
+        return 0;
+    }
+
+    // Method 20
+    // 0x40CC60
+    dllexport gnu_noinline virtual int thiscall on_load() {
+
+        this->__timer_20.reset();
+        this->recharge_time = 360;
+
+        this->cooldowns[0].set(360);
+        this->cooldowns[1].set(this->recharge_time);
+        this->cooldowns[2].set(this->recharge_time);
+        this->cooldowns[3].set(this->recharge_time);
+
+        return 0;
+    }
+
+    // Method 24
+    // 0x40CEF0
+    dllexport gnu_noinline virtual int thiscall on_player_tick() {
+
+        PlayerOption* options = PLAYER_PTR->data.options;
+
+        for (size_t i = 0; i != PLAYER_OPTION_COUNT; ++i) {
+            
+            if (options[i].state == 2) {
+                this->vm_ids[i].interrupt_and_orphan_tree(1);
+                continue;
+            }
+
+            if (this->cooldowns[i] >= this->recharge_time) {
+                if (!this->vm_ids[i].has_live_vm()) {
+                    this->vm_ids[i] = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(27, 14);
+                }
+                Float3 position = options[i].get_position();
+                if (bullet_cancel_radius_as_bomb(&position, 8.0f, CancelType0, 1, 1)) {
+                    this->cooldowns[i].reset();
+                    this->vm_ids[i].interrupt_and_orphan_tree(1);
+                }
+            }
+
+            if (this->vm_ids[i].has_live_vm()) {
+                Float3 position = options[i].get_position();
+                this->vm_ids[i].set_controller_position(&position);
+            }
+
+            ++this->cooldowns[i];
+        }
+
+        ++this->__timer_20;
+        return 0;
+    }
+
+    // Method 34
+    // 0x40CC40
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
+        this->__method_4C();
+    }
+
+    // Method 4C
+    // 0x40CC50
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+
+    // Method 50
+    // 0x40D270
+    virtual ~CardKeiki() NO_EH_TERMINATE {
+    }
+};
+
+// size: 0x54
+struct CardKaguya : CardBase { // DONE
+    // CardBase base; // 0x0
+    // 0x54
+
     static inline constexpr CardId ID = DEAD_SPELL_CARD; // 31
 
     inline CardKaguya() {
@@ -29825,10 +30025,27 @@ struct CardKaguya : CardBase {
         spawn_item(BombItem, &PLAYER_PTR->data.position, -HALF_PI_f, 3.2f, 3);
         return 0;
     }
+
+    // Method 34
+    // 0x40D2C0
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
+        this->__method_4C();
+    }
+
+    // Method 4C
+    // 0x40D2D0
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+
+    // Method 50
+    // 0x40D320
+    virtual ~CardKaguya() NO_EH_TERMINATE {
+    }
 };
 
 // size: 0x58
-struct CardMamizou : CardBase {
+struct CardMamizou : CardBase { // DONE
     // CardBase base; // 0x0
     int32_t power; // 0x54
     // 0x58
@@ -29845,25 +30062,32 @@ struct CardMamizou : CardBase {
     // Method 4
     // 0x40D390
     dllexport gnu_noinline virtual int thiscall __method_4() {
-        if (GAME_THREAD_PTR && this->__unknown_flag_B) {
-            BOOL A = GAME_MANAGER.globals.add_power(DEFAULT_POWER_PER_LEVEL);
+        if (
+            GAME_THREAD_PTR &&
+            this->__unknown_flag_B
+        ) {
+            BOOL level_up = GAME_MANAGER.globals.add_power(DEFAULT_POWER_PER_LEVEL);
             this->__unknown_flag_B = false;
-            if (A) {
-                if (Player* player = PLAYER_PTR) {
+            if (level_up) {
+                Player* player = PLAYER_PTR;
+                if (player) {
                     player->data.__update_option_power_levels();
-                    POPUP_MANAGER_PTR->create_popup(&PLAYER_PTR->data.position, -1, COLOR(64, 255, 255, 255));
-                    SOUND_MANAGER.play_sound_positioned(13, PLAYER_PTR->data.position.x);
+                    Float3* player_position = &PLAYER_PTR->data.position;
+                    POPUP_MANAGER_PTR->create_popup(player_position, -1, COLOR(255, 255, 255, 64));
+                    SOUND_MANAGER.play_sound_positioned(13, player_position->x);
                 }
             }
         }
         return 0;
     }
+
     // Method C
     // 0x40D400
     dllexport gnu_noinline virtual BOOL thiscall on_player_death(BOOL already_prevented_death) {
         this->power = GAME_MANAGER.globals.current_power;
         return FALSE;
     }
+
     // Method 14
     // 0x40D410
     dllexport gnu_noinline virtual int thiscall on_player_death_power_loss() {
@@ -29888,21 +30112,32 @@ struct CardMamizou : CardBase {
         }
         return 0;
     }
+
     // Method 34
     // 0x40D380
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         if (SUPERVISOR.__int_804) {
             this->__method_4();
         }
     }
+
     // Method 4C
     // 0x40D370
     dllexport gnu_noinline virtual void thiscall __method_4C() {
         this->__unknown_flag_B = true;
     }
+
+    // Method 50
+    // 0x40D450
+    virtual ~CardMamizou() NO_EH_TERMINATE {
+    }
 };
 
+// size: 0x54
 struct CardYuyuko : CardBase {
+    // CardBase base; // 0x0
+    // 0x54
+
     static inline constexpr CardId ID = YUYUKO_CARD; // 33
 
     inline CardYuyuko() {
@@ -29914,26 +30149,34 @@ struct CardYuyuko : CardBase {
 
     // Method 2C
     // 0x40D5A0
-    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
-        /*
-        if (BulletManager* bullet_manager = BULLET_MANAGER_PTR) {
-            bullet_manager->__unknown_counter_flag = 1;
-        }
-        */
+    dllexport gnu_noinline virtual int thiscall on_tick() {
+        bullet_manager_enable_graze_despawns();
         return 0;
     }
+
     // Method 34
     // 0x40D580
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
     }
+
     // Method 4C
     // 0x40D590
     dllexport gnu_noinline virtual void thiscall __method_4C() {
         this->__unknown_flag_B = false;
     }
+
+    // Method 50
+    // 0x40D5C0
+    virtual ~CardYuyuko() NO_EH_TERMINATE {
+    }
 };
+
+// size: 0x54
 struct CardYachie : CardBase {
+    // CardBase base; // 0x0
+    // 0x54
+
     static inline constexpr CardId ID = MONEY_CARD; // 34
 
     inline CardYachie() {
@@ -29947,25 +30190,32 @@ struct CardYachie : CardBase {
     // 0x40D630
     dllexport gnu_noinline virtual int thiscall recharge(int, int) {
         float A = REPLAY_RNG.rand_angle();
-        // TODO
+        // TODO, needs arguments known
         return 0;
     }
+
     // Method 34
     // 0x40D610
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
     }
+
     // Method 4C
     // 0x40D620
     dllexport gnu_noinline virtual void thiscall __method_4C() {
         this->__unknown_flag_B = false;
+    }
+
+    // Method 50
+    // 0x40D7B0
+    virtual ~CardYachie() NO_EH_TERMINATE {
     }
 };
 
 // size: 0x64
 struct CardShikiEiki : CardBase {
     // CardBase base; // 0x0
-    BOOL __bool_54; // 0x54
+    BOOL enabled; // 0x54
     AnmID __vm_id_58; // 0x58
     int32_t damage_source_index; // 0x5C
     unknown_fields(0x4); // 0x60
@@ -29974,7 +30224,8 @@ struct CardShikiEiki : CardBase {
     static inline constexpr CardId ID = ROKUMON_CARD; // 35
 
     inline CardShikiEiki() {
-        this->__vm_id_58 = NULL;
+        // BUG: enabled is not set here
+        this->__vm_id_58 = 0;
         this->damage_source_index = 0;
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = true;
@@ -29988,13 +30239,13 @@ struct CardShikiEiki : CardBase {
         SOUND_MANAGER.play_sound(44);
         Player* player_ptr = PLAYER_PTR;
         player_ptr->create_damage_source_circle(&player_ptr->data.position, 8.0f, 0.0f, 40, 5);
-        //SPELLCARD_PTR->__inline_sub_409AD0();
+        __inline_spellcard_fail();
         GAME_MANAGER.globals.current_money -= 200;
         PLAYER_PTR->data.__timer_47154.set(60);
         enemy_manager_fail_spell_with_bomb();
         BOMB_PTR->__int_A0 = 1;
         this->__timer_20.reset();
-        this->__bool_54 = true;
+        this->enabled = true;
         return 0;
     }
 
@@ -30014,9 +30265,11 @@ struct CardShikiEiki : CardBase {
 
     // Method 24
     // 0x40DA80
-    dllexport gnu_noinline virtual int thiscall on_tick() {
-        if (this->__bool_54) {
-
+    dllexport gnu_noinline virtual int thiscall on_player_tick() {
+        // BUG: because enabled was not set to 0 in the constructor
+        // this will still run during stage transitions when
+        // BOMB_PTR can be set to NULL, which crashes.
+        if (this->enabled) {
             PlayerDamageSource* damage_source = get_damage_source_by_index(this->damage_source_index);
             if (damage_source) {
                 float radius = 1.0f - GAME_MANAGER.globals.__timer_D8 / 40.0f;
@@ -30032,7 +30285,7 @@ struct CardShikiEiki : CardBase {
             }
             if (this->__timer_20 >= 60) {
                 BombBase* bomb = BOMB_PTR;
-                this->__bool_54 = false;
+                this->enabled = false;
                 bomb->__int_A0 = 0;
             }
         }
@@ -30042,7 +30295,7 @@ struct CardShikiEiki : CardBase {
 
     // Method 34
     // 0x40D800
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
     }
 
@@ -30051,10 +30304,102 @@ struct CardShikiEiki : CardBase {
     dllexport gnu_noinline virtual void thiscall __method_4C() {
         this->__unknown_flag_B = false;
         this->__vm_id_58.mark_tree_for_delete();
-        this->__bool_54 = false;
+        this->enabled = false;
         this->damage_source_index = 0;
     }
 
+    // Method 50
+    // 0x40DBC0
+    virtual ~CardShikiEiki() NO_EH_TERMINATE {
+    }
+};
+
+// size: 0x54
+struct CardNarumi : CardBase {
+    // CardBase base; // 0x0
+    // 0x54
+
+    static inline constexpr CardId ID = NARUMI_CARD; // 36
+
+    inline CardNarumi() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
+    }
+
+    // Method 4
+    // 0x409EC0
+    dllexport gnu_noinline virtual ZUNResult thiscall initializeB() {
+        if (
+            GAME_THREAD_PTR &&
+            this->__unknown_flag_B
+        ) {
+            // NOTE: Does not add to stock max like the normal life card
+            GAME_MANAGER.globals.add_life();
+            this->__unknown_flag_B = false;
+        }
+        return ZUN_SUCCESS;
+    }
+
+    // Method 34
+    // 0x409E90
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
+        if (!SUPERVISOR.__int_804) {
+            GAME_MANAGER.globals.add_life_fragment();
+        } else {
+            GAME_MANAGER.globals.add_life();
+        }
+    }
+
+    // Method 4C
+    // 0x409EB0
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = true;
+    }
+
+    // Method 50
+    // 0x409EF0
+    virtual ~CardNarumi() NO_EH_TERMINATE {
+    }
+};
+
+// size: 0x54
+struct CardPatchouli : CardBase {
+    // CardBase base; // 0x0
+    // 0x54
+
+    static inline constexpr CardId ID = PACHE_CARD; // 37
+
+    inline CardPatchouli() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
+    }
+
+    // Method A
+    // 0x409FB0
+    dllexport gnu_noinline virtual ZUNResult thiscall initializeA() {
+        return ZUN_SUCCESS;
+    }
+
+    // Method 34
+    // 0x409F40
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
+        GAME_MANAGER.globals.add_bomb();
+    }
+
+    // Method 4C
+    // 0x409FA0
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = true;
+    }
+
+    // Method 50
+    // 0x409FC0
+    virtual ~CardPatchouli() NO_EH_TERMINATE {
+    }
 };
 
 // size: 0x54
@@ -30160,7 +30505,7 @@ struct CardYukari : CardBase { // DONE
 
     // Method 2C
     // 0x40A180
-    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
+    dllexport gnu_noinline virtual int thiscall on_tick() {
         Player* player = PLAYER_PTR;
         if (player) {
             if (player->data.__yukari_wrap_type != 0) {
@@ -30230,7 +30575,7 @@ struct CardShinmyoumaru : CardBase {
 
     // Method 2C
     // 0x40EED0
-    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
+    dllexport gnu_noinline virtual int thiscall on_tick() {
         switch (this->state) {
             case 0:
                 this->__unknown_flag_A = false;
@@ -30274,7 +30619,7 @@ struct CardShinmyoumaru : CardBase {
 
     // Method 34
     // 0x40EE00
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
         this->state = 0;
@@ -30339,7 +30684,7 @@ struct CardTenshi : CardBase { // DONE
 
     // Method 2C
     // 0x40E8C0
-    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
+    dllexport gnu_noinline virtual int thiscall on_tick() {
         switch (this->state) {
             case 2:
                 this->__unknown_flag_A = false;
@@ -30398,7 +30743,7 @@ struct CardTenshi : CardBase { // DONE
 
     // Method 34
     // 0x40E7F0
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
         this->state = 0;
@@ -30471,7 +30816,7 @@ struct CardClownpiece : CardBase {
 
     // Method 2C
     // 0x40DCE0
-    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
+    dllexport gnu_noinline virtual int thiscall on_tick() {
         switch (this->state) {
             case 2:
                 this->__unknown_flag_A = true;
@@ -30526,7 +30871,7 @@ struct CardClownpiece : CardBase {
 
     // Method 34
     // 0x40DC10
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
         this->state = 0;
@@ -30550,11 +30895,11 @@ struct CardClownpiece : CardBase {
 };
 
 // size: 0x68
-struct CardMiko : CardBase {
+struct CardMiko : CardBase { // DONE
     // CardBase base; // 0x0
-    int __int_54; // 0x54
+    int state; // 0x54
     Float3 position; // 0x58
-    void* __ptr_64; // 0x64 PlayerDamageSource*?
+    PlayerDamageSource* damage_source_ptr; // 0x64
     // 0x68
 
     static inline constexpr CardId ID = MIKOFLASH_CARD; // 45
@@ -30566,43 +30911,50 @@ struct CardMiko : CardBase {
         this->__is_equipment_card = false;
         this->__timer_20.reset();
         this->recharge_time = 1800;
-        this->__int_54 = 0;
+        this->state = 0;
         this->__timer_34.reset();
     }
 
     // Method 8
     // 0x40E5C0
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (!this->__int_54 && this->recharge_time <= 0) {
-            this->position = PLAYER_PTR->data.position;
-            // TODO
+        if (this->state == 0 && this->recharge_time <= 0) {
+            Player* player = PLAYER_PTR;
+            this->position = player->data.position;
+            
+            int32_t damage_source_index = player->create_damage_source_circle(&this->position, 600.0f, 0.0f, 120, 10);
+            this->damage_source_ptr = player->get_damage_source_by_index(damage_source_index);
+
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(47, &this->position, 13);
-            this->__int_54 = 1;
+            this->state = 1;
             this->__timer_20.reset();
             SOUND_MANAGER.play_sound_positioned(77, this->position.x);
             this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
         }
         return 0;
     }
+
     // Method 2C
     // 0x40E3D0
-    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
-        switch (this->__int_54) {
-            case 1:
+    dllexport gnu_noinline virtual int thiscall on_tick() {
+        switch (this->state) {
+            case 1: {
+                Player* player = PLAYER_PTR;
                 this->__unknown_flag_A = true;
-                this->position = PLAYER_PTR->data.position;
-                this->effect_vm_id.set_controller_position(&PLAYER_PTR->data.position);
+                this->position = player->data.position;
+                this->effect_vm_id.set_controller_position(&player->data.position);
                 if (this->__timer_20 > 130) {
-                    this->__int_54 = 0;
+                    this->state = 0;
                     this->effect_vm_id.mark_tree_for_delete();
                 }
                 if (
-                    (uint32_t)this->__timer_20.current - 40 <= 79 &&
+                    (uint32_t)(this->__timer_20 - 40) <= 79 &&
                     this->__timer_20.is_multiple_of(8)
                 ) {
-                    // TODO
+                    bullet_cancel_random(CancelType0);
                 }
                 break;
+            }
             case 0:
                 this->__unknown_flag_A = false;
                 this->__dec_timer_34_during_gameplay();
@@ -30611,29 +30963,36 @@ struct CardMiko : CardBase {
         ++this->__timer_20;
         return 0;
     }
+
     // Method 34
     // 0x40E300
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
-        this->__int_54 = 0;
+        this->state = 0;
         this->effect_vm_id.mark_tree_for_delete();
     }
+
     // Method 4C
     // 0x40E350
     dllexport gnu_noinline virtual void thiscall __method_4C() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
-        this->__int_54 = 0;
+        this->state = 0;
         this->__timer_34.reset();
         this->effect_vm_id.mark_tree_for_delete();
+    }
+
+    // Method 50
+    // 0x40E7A0
+    virtual ~CardMiko() NO_EH_TERMINATE { // No effect vm cleanup?
     }
 };
 
 // size: 0x68
 struct CardRemilia : CardBase {
     // CardBase base; // 0x0
-    int __int_54; // 0x54
+    int state; // 0x54
     Float3 position; // 0x58
     int __dword_64; // 0x64
     // 0x68
@@ -30647,17 +31006,17 @@ struct CardRemilia : CardBase {
         this->__is_equipment_card = false;
         this->__timer_20.reset();
         this->recharge_time = 1200;
-        this->__int_54 = 0;
+        this->state = 0;
         this->__timer_34.reset();
     }
 
     // Method 8
     // 0x40F670
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (!this->__int_54 && this->recharge_time <= 0) {
+        if (this->state == 0 && this->recharge_time <= 0) {
             this->position = PLAYER_PTR->data.position;
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(38, &this->position, 13);
-            this->__int_54 = 1;
+            this->state = 1;
             this->__timer_20.reset();
             SOUND_MANAGER.play_sound_positioned(30, this->position.x);
             this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
@@ -30665,45 +31024,58 @@ struct CardRemilia : CardBase {
         }
         return 0;
     }
+
     // Method C
     // 0x40F650
     dllexport gnu_noinline virtual BOOL thiscall on_player_death(BOOL already_prevented_death) {
-        this->__int_54 = 0;
+        this->state = 0;
         this->effect_vm_id.mark_tree_for_delete();
         return FALSE;
     }
+
     // Method 2C
     // 0x40F3A0
-    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
-        switch (this->__int_54) {
-            case 2:
-                this->position = PLAYER_PTR->data.position;
-                this->effect_vm_id.set_controller_position(&PLAYER_PTR->data.position);
+    dllexport gnu_noinline virtual int thiscall on_tick() {
+        switch (this->state) {
+            case 2: {
+                Player* player = PLAYER_PTR;
+                this->position = player->data.position;
+                this->effect_vm_id.set_controller_position(&player->data.position);
                 if (this->__timer_20 < 50) {
-                    Float3 A = this->position;
-                    float B;
+                    Float3 position = this->position;
+                    float height;
                     if (this->__timer_20 < 10) {
-                        B = (float)this->__timer_20 * 90.0f / 10.0f;
+                        height = (float)this->__timer_20 * 90.0f / 10.0f;
                     } else {
-                        B = 90.0f;
+                        height = 90.0f;
                     }
-                    A.y -= B * 0.5f;
-                    // TODO
+                    position.y -= height * 0.5f;
+
+                    player->create_damage_source_rotated_rectangle(&position, 32.0f, height, 0.0f, 2, 200);
+                    Float3 size;
+                    size.x = 32.0f;
+                    size.y = height;
+                    // BUG: size.z is undefined?
+                    bullet_cancel_rotated_rectangle_as_bomb(&position, &size, 0.0f, CancelType0, 0);
+                    laser_cancel_rectangle(&position, &size, 0.0f);
                 }
                 if (this->__timer_20 > 60) {
-                    this->__int_54 = 0;
+                    this->state = 0;
                     this->effect_vm_id.mark_tree_for_delete();
                 }
                 break;
-            case 1:
-                this->position = PLAYER_PTR->data.position;
-                this->effect_vm_id.set_controller_position(&PLAYER_PTR->data.position);
+            }
+            case 1: {
+                Player* player = PLAYER_PTR;
+                this->position = player->data.position;
+                this->effect_vm_id.set_controller_position(&player->data.position);
                 if (this->__timer_20 > 30) {
-                    this->__int_54 = 2;
+                    this->state = 2;
                     this->__timer_20.reset();
                     SOUND_MANAGER.play_sound_positioned(27, this->position.x);
                 }
                 break;
+            }
             case 0:
                 this->__unknown_flag_A = false;
                 this->__dec_timer_34_during_gameplay();
@@ -30712,32 +31084,39 @@ struct CardRemilia : CardBase {
         ++this->__timer_20;
         return 0;
     }
+
     // Method 34
     // 0x40F2D0
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
-        this->__int_54 = 0;
+        this->state = 0;
         this->effect_vm_id.mark_tree_for_delete();
     }
+
     // Method 4C
     // 0x40F320
     dllexport gnu_noinline virtual void thiscall __method_4C() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
-        this->__int_54 = 0;
+        this->state = 0;
         this->__timer_34.reset();
         this->effect_vm_id.mark_tree_for_delete();
+    }
+
+    // Method 50
+    // 0x40F800
+    virtual ~CardRemilia() NO_EH_TERMINATE {
     }
 };
 
 // size: 0x6C
 struct CardUtsuho : CardBase {
     // CardBase base; // 0x0
-    int __int_54; // 0x54
+    int state; // 0x54
     Float3 position; // 0x58
     int __dword_64; // 0x64
-    void* __ptr_68; // 0x68 PlayerDamageSource*?
+    PlayerDamageSource* damage_source_ptr; // 0x68
     // 0x6C
 
     static inline constexpr CardId ID = SUN_CARD; // 47
@@ -30749,20 +31128,24 @@ struct CardUtsuho : CardBase {
         this->__is_equipment_card = false;
         this->__timer_20.reset();
         this->recharge_time = 18000;
-        this->__int_54 = 0;
+        this->state = 0;
         this->__timer_34.reset();
     }
 
     // Method 8
     // 0x40FB60
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (!this->__int_54 && this->recharge_time <= 0) {
-            //SPELLCARD_PTR->__sub_409AD0();
-            // TODO
-            this->position = PLAYER_PTR->data.position;
-            // TODO
+        if (this->state == 0 && this->recharge_time <= 0) {
+            __inline_spellcard_fail();
+            PLAYER_PTR->__set_data_timer_47154(2);
+            Player* player = PLAYER_PTR;
+            this->position = player->data.position;
+
+            int32_t damage_source_index = player->create_damage_source_circle(&this->position, 10.0f, 0.0f, 600, 80);
+            this->damage_source_ptr = player->get_damage_source_by_index(damage_source_index);
+
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(50, &this->position, 13);
-            this->__int_54 = 1;
+            this->state = 1;
             this->__timer_20.reset();
             SOUND_MANAGER.play_sound_positioned(49, this->position.x);
             this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
@@ -30770,48 +31153,53 @@ struct CardUtsuho : CardBase {
         }
         return 0;
     }
+
     // Method C
     // 0x40FB40
     dllexport gnu_noinline virtual BOOL thiscall on_player_death(BOOL already_prevented_death) {
-        this->__int_54 = 0;
+        this->state = 0;
         this->effect_vm_id.mark_tree_for_delete();
         return FALSE;
     }
+
     // Method 2C
     // 0x40F920
-    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
-        switch (this->__int_54) {
+    dllexport gnu_noinline virtual int thiscall on_tick() {
+        switch (this->state) {
             case 2:
                 this->__unknown_flag_A = true;
                 if (this->__timer_20 > 60) {
-                    this->__int_54 = 0;
+                    this->state = 0;
                     this->effect_vm_id.mark_tree_for_delete();
                 }
                 break;
             case 1: {
                 this->__unknown_flag_A = true;
-                /*
                 if (SPELLCARD_PTR) {
-                    Spellcard::__sub_409AD0();
+                    __spellcard_fail();
                 }
-                */
                 if (GUI_PTR->msg_vm) {
-                    this->__int_54 = 2;
+                    this->state = 2;
                     this->__timer_20.reset();
                     this->effect_vm_id.interrupt_tree(1);
                 }
-                // TODO
-                float A = this->effect_vm_id.get_vm_ptr()->data.scale.x * 96.0f;
+                PLAYER_PTR->__set_data_timer_47154(2);
+
+                float radius = this->effect_vm_id.get_vm_ptr()->data.scale.x * 96.0f;
+                bullet_cancel_radius_as_bomb(&this->position, radius, CancelType0, 99999, 0);
+                laser_cancel_radius(&this->position, radius, CancelType0, 0);
+                this->damage_source_ptr->motion.radius = radius;
+
                 if (this->__timer_20 > 600) {
-                    this->__int_54 = 2;
+                    this->state = 2;
                     this->__timer_20.reset();
                     SOUND_MANAGER.play_sound_positioned(27, this->position.x);
                 }
-                if (
-                    this->__timer_20.is_multiple_of(6) &&
-                    GAME_MANAGER.globals.subtract_power(1)
-                ) {
-                    PLAYER_PTR->data.__update_option_power_levels();
+                if (this->__timer_20.is_multiple_of(6)) {
+                    BOOL level_changed = GAME_MANAGER.globals.subtract_power(1);
+                    if (level_changed) {
+                        PLAYER_PTR->data.__update_option_power_levels();
+                    }
                 }
                 break;
             }
@@ -30823,29 +31211,36 @@ struct CardUtsuho : CardBase {
         ++this->__timer_20;
         return 0;
     }
+
     // Method 34
     // 0x40F850
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
-        this->__int_54 = 0;
+        this->state = 0;
         this->effect_vm_id.mark_tree_for_delete();
     }
+
     // Method 4C
     // 0x40F8A0
     dllexport gnu_noinline virtual void thiscall __method_4C() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
-        this->__int_54 = 0;
+        this->state = 0;
         this->__timer_34.reset();
         this->effect_vm_id.mark_tree_for_delete();
+    }
+
+    // Method 50
+    // 0x40FD80
+    virtual ~CardUtsuho() NO_EH_TERMINATE {
     }
 };
 
 // size: 0x58
 struct CardLilyWhite : CardBase {
     // CardBase base; // 0x0
-    int32_t __int_54; // 0x54
+    int32_t level; // 0x54
     // 0x58
 
     static inline constexpr CardId ID = LILY_CARD; // 48
@@ -30857,61 +31252,61 @@ struct CardLilyWhite : CardBase {
         this->__is_active_card = true;
         this->__is_equipment_card = false;
         this->__timer_34.reset();
-        this->__int_54 = 0;
+        this->level = 0;
     }
 
     // Method 8
     // 0x40FE70
-    dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (this->recharge_time <= 0) {
-            if (EnemyManager* enemy_manager = ENEMY_MANAGER_PTR) {
-                // TODO, needs full enemy manager access
-                this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
-                ++this->__int_54;
-                this->__unknown_flag_A = true;
-            }
-        }
-        return 0;
-    }
+    dllexport gnu_noinline virtual int thiscall on_activate(); // Defined later, needs ENEMY_MANAGER_PTR
+
     // Method 2C
     // 0x40FE20
-    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
+    dllexport gnu_noinline virtual int thiscall on_tick() {
         this->__dec_timer_34_during_gameplay();
         if (this->__timer_34 < this->recharge_time - 8) {
             this->__unknown_flag_A = false;
         }
         return 0;
     }
+
     // Method 34
     // 0x40FDD0
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__unknown_flag_B = false;
     }
+
     // Method 38
     // 0x40FFA0
     dllexport gnu_noinline virtual int thiscall __set_replay_state(int32_t value) {
         this->__timer_34.set((uint16_t)value);
-        this->__int_54 = value >> 16;
+        this->level = value >> 16;
         return 0;
     }
+
     // Method 3C
     // 0x40FFE0
     dllexport gnu_noinline virtual int32_t thiscall __get_replay_state() {
-        return (uint16_t)this->__timer_34.current | this->__int_54 << 16;
+        return (uint16_t)this->__timer_34.current | this->level << 16;
     }
+
     // Method 4C
     // 0x40FDE0
     dllexport gnu_noinline virtual void thiscall __method_4C() {
         this->__unknown_flag_B = false;
         this->__timer_34.reset();
-        this->__int_54 = 0;
+        this->level = 0;
+    }
+
+    // Method 50
+    // 0x40FFF0
+    virtual ~CardLilyWhite() NO_EH_TERMINATE {
     }
 };
 
 // size: 0x68
 struct CardRaiko : CardBase {
     // CardBase base; // 0x0
-    int __int_54; // 0x54
+    int state; // 0x54
     Float3 position; // 0x58
     int __dword_64; // 0x64
     // 0x68
@@ -30925,17 +31320,17 @@ struct CardRaiko : CardBase {
         this->__is_equipment_card = false;
         this->__timer_20.reset();
         this->recharge_time = 600;
-        this->__int_54 = 0;
+        this->state = 0;
         this->__timer_34.reset();
     }
 
     // Method 8
     // 0x410250
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (!this->__int_54 && this->recharge_time <= 0) {
+        if (this->state == 0 && this->recharge_time <= 0) {
             this->position = PLAYER_PTR->data.position;
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(58, &this->position, 13);
-            this->__int_54 = 1;
+            this->state = 1;
             this->__timer_20.reset();
             SOUND_MANAGER.play_sound_positioned(51, this->position.x);
             this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
@@ -30943,19 +31338,25 @@ struct CardRaiko : CardBase {
         }
         return 0;
     }
+
     // Method 2C
     // 0x410110
-    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
-        switch (this->__int_54) {
-            case 1:
+    dllexport gnu_noinline virtual int thiscall on_tick() {
+        switch (this->state) {
+            case 1: {
+                float radius = (float)this->__timer_20 + 34.0f;
                 this->__unknown_flag_A = true;
-                // TODO
+
+                bullet_cancel_radius_as_bomb(&this->position, radius, CancelType0, 99999, 0);
+                laser_cancel_radius(&this->position, (float)this->__timer_20 + 34.0f, CancelType0, 0);
+
                 if (this->__timer_20 >= 30) {
-                    this->__int_54 = 0;
+                    this->state = 0;
                     this->__timer_20.reset();
                     this->effect_vm_id.mark_tree_for_delete();
                 }
                 break;
+            }
             case 0:
                 this->__unknown_flag_A = false;
                 this->__dec_timer_34_during_gameplay();
@@ -30964,29 +31365,36 @@ struct CardRaiko : CardBase {
         ++this->__timer_20;
         return 0;
     }
+
     // Method 34
     // 0x410040
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
-        this->__int_54 = 0;
+        this->state = 0;
         this->effect_vm_id.mark_tree_for_delete();
     }
+
     // Method 4C
     // 0x410090
     dllexport gnu_noinline virtual void thiscall __method_4C() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
-        this->__int_54 = 0;
+        this->state = 0;
         this->__timer_34.reset();
         this->effect_vm_id.mark_tree_for_delete();
+    }
+
+    // Method 50
+    // 0x4103E0
+    virtual ~CardRaiko() NO_EH_TERMINATE {
     }
 };
 
 // size: 0x68
 struct CardSumireko : CardBase {
     // CardBase base; // 0x0
-    int __int_54; // 0x54
+    int state; // 0x54
     Float3 position; // 0x58
     int __dword_64; // 0x64
     // 0x68
@@ -31000,17 +31408,17 @@ struct CardSumireko : CardBase {
         this->__is_equipment_card = false;
         this->__timer_20.reset();
         this->recharge_time = 1500;
-        this->__int_54 = 0;
+        this->state = 0;
         this->__timer_34.reset();
     }
 
     // Method 8
     // 0x410780
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (!this->__int_54 && this->recharge_time <= 0) {
+        if (this->state == 0 && this->recharge_time <= 0) {
             this->position = PLAYER_PTR->data.position;
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(60, &this->position, 13);
-            this->__int_54 = 1;
+            this->state = 1;
             this->__timer_20.reset();
             SOUND_MANAGER.play_sound_positioned(51, this->position.x);
             this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
@@ -31018,20 +31426,29 @@ struct CardSumireko : CardBase {
         }
         return 0;
     }
+
     // Method 2C
     // 0x410500
-    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
-        switch (this->__int_54) {
-            case 1:
+    dllexport gnu_noinline virtual int thiscall on_tick() {
+        switch (this->state) {
+            case 1: {
                 this->effect_vm_id.set_controller_position(&this->position);
                 this->__unknown_flag_A = true;
-                // TODO
+
+                Player* player = PLAYER_PTR;
+                player->bullet_anm = ability_manager_get_ability_anm();
+
+                // TODO: iterate bullets
+
+                player->bullet_anm = player->player_anm;
+
                 if (this->__timer_20 >= 120) {
-                    this->__int_54 = 0;
+                    this->state = 0;
                     this->__timer_20.reset();
                     this->effect_vm_id.mark_tree_for_delete();
                 }
                 break;
+            }
             case 0: 
                 this->__unknown_flag_A = false;
                 this->__dec_timer_34_during_gameplay();
@@ -31040,37 +31457,115 @@ struct CardSumireko : CardBase {
         ++this->__timer_20;
         return 0;
     }
+
     // Method 34
     // 0x410430
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
-        this->__int_54 = 0;
+        this->state = 0;
         this->effect_vm_id.mark_tree_for_delete();
     }
+
     // Method 4C
     // 0x410480
     dllexport gnu_noinline virtual void thiscall __method_4C() {
         this->__unknown_flag_B = false;
         this->__timer_20.reset();
-        this->__int_54 = 0;
+        this->state = 0;
         this->__timer_34.reset();
+        this->effect_vm_id.mark_tree_for_delete();
+    }
+
+    // Method 50
+    // 0x410910
+    virtual ~CardSumireko() NO_EH_TERMINATE {
+    }
+};
+
+// size: 0x5C
+struct CardMisumaru : CardBase {
+    // CardBase base; // 0x0
+    PlayerOption* left_magtama; // 0x54
+    PlayerOption* right_magtama; // 0x58
+    // 0x5C
+
+    static inline constexpr CardId ID = MAGATAMA_CARD; // 51
+
+    inline CardMisumaru() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = true;
+        this->left_magtama = NULL;
+        this->right_magtama = NULL;
+    }
+
+    // Method 18
+    // 0x40BEB0
+    dllexport gnu_noinline virtual int thiscall on_power_level_change() {
+
+        PlayerOption* left_magtama = this->allocate_equipment_option(-60, -60, 64);
+        this->left_magtama = left_magtama;
+        left_magtama->__func_ptr_E8 = &PlayerOption::__position_func_card_misumaru;
+        this->left_magtama->__unknown_flag_A = true;
+        this->left_magtama->__float_E0 = -60.0f;
+
+        PlayerOption* right_magtama = this->allocate_equipment_option(60, 60, 65);
+        this->right_magtama = right_magtama;
+        right_magtama->__func_ptr_E8 = &PlayerOption::__position_func_card_misumaru;
+        this->right_magtama->__unknown_flag_A = true;
+        this->right_magtama->__float_E0 = 60.0f;
+
+        return 0;
+    }
+
+    // Method 24
+    // 0x40BF30
+    dllexport gnu_noinline virtual int thiscall on_player_tick() {
+
+        PlayerOption* left_magtama = this->left_magtama;
+        if (left_magtama) {
+            Float3 position = left_magtama->get_position();
+            bullet_cancel_radius_as_bomb(&position, 3.0f, CancelType0, 1, 1);
+        }
+
+        PlayerOption* right_magtama = this->right_magtama;
+        if (right_magtama) {
+            Float3 position = right_magtama->get_position();
+            bullet_cancel_radius_as_bomb(&position, 3.0f, CancelType0, 1, 1);
+        }
+
+        return 0;
+    }
+
+    // Method 34
+    // 0x40BE80
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
+        this->__method_4C();
+        this->left_magtama = NULL;
+        this->right_magtama = NULL;
+    }
+
+    // Method 4C
+    // 0x40BEA0
+    dllexport gnu_noinline virtual void thiscall __method_4C() {
+        this->__unknown_flag_B = false;
+    }
+
+    // Method 50
+    // 0x40BFE0
+    // EH frame (terminate)
+    virtual ~CardMisumaru() EH_TERMINATE {
         this->effect_vm_id.mark_tree_for_delete();
     }
 };
 
 
-struct CardMagtama : CardBase {
-    static inline constexpr CardId ID = MAGATAMA_CARD; // 51
-
-    inline CardMagtama() {
-        this->__unknown_flag_B = false;
-        this->__unknown_flag_C = true;
-        this->__is_active_card = false;
-        this->__is_equipment_card = false;
-    }
-};
 struct CardTsukasa : CardBase {
+    // CardBase base; // 0x0
+    // 0x54
+
     static inline constexpr CardId ID = CYLINDER_CARD; // 52
 
     inline CardTsukasa() {
@@ -31094,11 +31589,18 @@ struct CardTsukasa : CardBase {
             if (!bomb->active && !bomb->__int_A0) {
                 bomb->active = TRUE;
                 bomb->__timer_34.reset();
-                // TODO
+
+                /*
+                Spellcard* spellcard = SPELLCARD_PTR;
+                if (spellcard->__unknown_flag_A && spellcard->__timer_20 >= 60) {
+                    bomb->__int_68 = 1;
+                }
+                */
+
                 SOUND_MANAGER.play_sound_positioned(44, PLAYER_PTR->data.position.x);
                 bomb->activate();
-                UNKNOWN_COUNTER_A = 0;
-                // ENEMY_MANAGER_PTR->can_capture_spell = FALSE;
+                MOMOYO_CARD_COUNTER = 0;
+                enemy_manager_fail_spell();
                 GAME_MANAGER.globals.subtract_power(GAME_MANAGER.globals.power_per_level);
                 PLAYER_PTR->data.__update_option_power_levels();
                 this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
@@ -31106,28 +31608,41 @@ struct CardTsukasa : CardBase {
         }
         return 0;
     }
+
     // Method 2C
     // 0x410E10
-    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
+    dllexport gnu_noinline virtual int thiscall on_tick() {
         this->__dec_timer_34_during_gameplay();
         if (this->__timer_34 < this->recharge_time - 8) {
             this->__unknown_flag_A = false;
         }
         return 0;
     }
+
     // Method 34
     // 0x410DD0
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__unknown_flag_B = false;
     }
+
     // Method 4C
     // 0x410DE0
     dllexport gnu_noinline virtual void thiscall __method_4C() {
         this->__unknown_flag_B = false;
         this->__timer_34.reset();
     }
+
+    // Method 50
+    // 0x410F90
+    virtual ~CardTsukasa() NO_EH_TERMINATE {
+    }
 };
+
+// size: 0x54
 struct CardMegumu : CardBase {
+    // CardBase base; // 0x0
+    // 0x54
+
     static inline constexpr CardId ID = RICEBALL_CARD; // 53
 
     inline CardMegumu() {
@@ -31148,9 +31663,10 @@ struct CardMegumu : CardBase {
                 SOUND_MANAGER.play_sound_positioned(13, PLAYER_PTR->data.position.x);
             }
             else {
-                if (GAME_MANAGER.globals.add_power(DEFAULT_POWER_PER_LEVEL)) {
+                BOOL level_up = GAME_MANAGER.globals.add_power(DEFAULT_POWER_PER_LEVEL);
+                if (level_up) {
                     PLAYER_PTR->data.__update_option_power_levels();
-                    POPUP_MANAGER_PTR->create_popup(&PLAYER_PTR->data.position, -1, COLOR(64, 255, 255, 255));
+                    POPUP_MANAGER_PTR->create_popup(&PLAYER_PTR->data.position, -1, COLOR(255, 255, 255, 64));
                     SOUND_MANAGER.play_sound_positioned(13, PLAYER_PTR->data.position.x);
                 }
             }
@@ -31159,42 +31675,59 @@ struct CardMegumu : CardBase {
         }
         return 0;
     }
+
     // Method 2C
     // 0x410A90
-    dllexport gnu_noinline virtual int thiscall __on_tick_2() {
+    dllexport gnu_noinline virtual int thiscall on_tick() {
         this->__dec_timer_34_during_gameplay();
         if (this->__timer_34 < this->recharge_time - 8) {
             this->__unknown_flag_A = false;
         }
-        this->effect_vm_id.set_controller_position(&PLAYER_PTR->data.position);
-        // TODO
+
+        if (!this->effect_vm_id.has_live_vm()) {
+            this->effect_vm_id = 0;
+            return 0;
+        }
+
+        Float3* position = &PLAYER_PTR->data.position;
+        this->effect_vm_id.set_controller_position(position);
+        bullet_cancel_radius_as_bomb(position, 48.0f, CancelType0, 99999, 0);
+        laser_cancel_radius(&PLAYER_PTR->data.position, 48.0f, CancelType0, 0);
+        
         return 0;
     }
+
     // Method 34
     // 0x410A50
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__unknown_flag_B = false;
     }
+
     // Method 4C
     // 0x410A60
     dllexport gnu_noinline virtual void thiscall __method_4C() {
         this->__unknown_flag_B = false;
         this->__timer_34.reset();
     }
+
+    // Method 50
+    // 0x410D80
+    virtual ~CardMegumu() NO_EH_TERMINATE {
+    }
 };
 
 // size: 0x5C
 struct CardMomoyo : CardBase {
     // CardBase base; // 0x0
-    int32_t __int_54; // 0x54
+    int32_t prev_counter_value; // 0x54
     AnmID __vm_id_58; // 0x58
     // 0x5C
 
     static inline constexpr CardId ID = MUKADE_CARD; // 54
 
     inline CardMomoyo() {
-        this->__int_54 = 0;
-        UNKNOWN_COUNTER_A = 0;
+        this->prev_counter_value = 0;
+        MOMOYO_CARD_COUNTER = 0;
         this->__unknown_flag_B = false;
         this->__unknown_flag_C = true;
         this->__is_active_card = false;
@@ -31204,47 +31737,127 @@ struct CardMomoyo : CardBase {
     // Method 28
     // 0x411010
     dllexport gnu_noinline virtual int thiscall __on_bullet_init(PlayerBullet* bullet) {
-        // TODO
+        int32_t sht_entry_index = bullet->__sht_entry_index;
+        uint8_t index2 = sht_entry_index;
+        int32_t index1 = sht_entry_index >> 8;
+        ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->__entry_ptr_array_E0[index1][index2];
+
+        this->prev_counter_value = MOMOYO_CARD_COUNTER;
+
+        int32_t damage = entry_ptr->damage;
+        float multiplier = 1.0f + this->prev_counter_value / 20000.0f;
+        multiplier = __min(1.8f, multiplier);
+
+        bullet->damage = damage * multiplier;
+
         return 0;
     }
+
     // Method 2C
     // 0x411000
-    dllexport gnu_noinline virtual int thiscall __on_tick_2() { // pointless override
+    dllexport gnu_noinline virtual int thiscall on_tick() {
         return 0;
     }
+
     // Method 34
     // 0x410FE0
-    dllexport gnu_noinline virtual void thiscall __on_load_2() {
+    dllexport gnu_noinline virtual void thiscall __on_stage_load() {
         this->__method_4C();
     }
+
     // Method 38
     // 0x411350
     dllexport gnu_noinline virtual int thiscall __set_replay_state(int32_t value) {
-        this->__int_54 = value;
+        this->prev_counter_value = value;
         return 0;
     }
+
     // Method 3C
     // 0x411360
     dllexport gnu_noinline virtual int32_t thiscall __get_replay_state() {
-        return this->__int_54;
+        return this->prev_counter_value;
     }
+
     // Method 44
     // 0x413050
     dllexport gnu_noinline virtual int thiscall on_anm_id_assigned_to_hud(AnmID id) {
         this->__vm_id_58 = id;
         return 0;
     }
+
     // Method 48
     // 0x4110A0
     dllexport gnu_noinline virtual int thiscall on_draw() {
-        // TODO
+        if (this->__vm_id_58.has_live_vm()) {
+            Float3 position;
+            this->__vm_id_58.get_vm_ptr()->get_render_position(&position);
+
+            ASCII_MANAGER_PTR->color = COLOR(255, 255, 160, 0);
+
+            float A = 1.0f / WINDOW_DATA.__game_scale;
+            position.x = (position.x - 32.0f) * A;
+            position.y = (position.y + 32.0f) * A;
+            position.z = (0.0f) * A;
+
+            AnmVM* vm;
+            if (
+                this->__vm_id_58 &&
+                this->__vm_id_58.has_live_vm()
+            ) {
+                vm = this->__vm_id_58.__find_child_vm_with_script(6);
+            } else {
+                vm = NULL;
+            }
+
+            AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
+            ascii_manager->set_alpha(vm->get_alpha());
+
+            // This is probably the only thing preventing weird desyncs
+            int32_t counter_value = MOMOYO_CARD_COUNTER;
+            this->prev_counter_value = counter_value;
+
+            float multiplier = 1.0f + counter_value / 20000.0f;
+            multiplier = __min(1.8f, multiplier);
+
+            ascii_manager->debugf(&position, "%.3f", multiplier);
+
+            ascii_manager = ASCII_MANAGER_PTR;
+            ascii_manager->color = COLOR(255, 255, 255, 255);
+            ascii_manager->set_alpha(255);
+        }
         return 0;
     }
+
     // Method 4C
     // 0x410FF0
     dllexport gnu_noinline virtual void thiscall __method_4C() {
         this->__unknown_flag_B = false;
-        this->__int_54 = 0;
+        this->prev_counter_value = 0;
+    }
+
+    // Method 50
+    // 0x411370
+    virtual ~CardMomoyo() NO_EH_TERMINATE {
+    }
+};
+
+// size: 0x54
+struct CardMagatama : CardBase { // DONE
+    // CardBase base; // 0x0
+    // 0x54
+
+    static inline constexpr CardId ID = MAGATAMA2_CARD; // 55
+
+    inline CardMagatama() {
+        this->__unknown_flag_B = false;
+        this->__unknown_flag_C = true;
+        this->__is_active_card = false;
+        this->__is_equipment_card = false;
+    }
+
+    // Method 50
+    // 0x4113C0
+    virtual ~CardMagatama() NO_EH_TERMINATE {
     }
 };
 
@@ -31841,9 +32454,63 @@ public:
                 case SPEEDQUEEN_CARD: // 29
                     card = new CardAya();
                     break;
-
-
-                // TODO
+                case OPTION_BR_CARD: // 30
+                    card = new CardKeiki();
+                    break;
+                case DEAD_SPELL_CARD: // 31
+                    card = new CardKaguya();
+                    break;
+                case MIKOFLASH_CARD: // 45
+                    card = new CardMiko();
+                    break;
+                case POWERMAX_CARD: // 32
+                    card = new CardMamizou();
+                    break;
+                case YUYUKO_CARD: // 33
+                    card = new CardYuyuko();
+                    break;
+                case MONEY_CARD: // 34
+                    card = new CardYachie();
+                    break;
+                case VAMPIRE_CARD: // 46
+                    card = new CardRemilia();
+                    break;
+                case SUN_CARD: // 47
+                    card = new CardUtsuho();
+                    break;
+                case LILY_CARD: // 48
+                    card = new CardLilyWhite();
+                    break;
+                case ROKUMON_CARD: // 35
+                    card = new CardShikiEiki();
+                    break;
+                case PSYCHO_CARD: // 50
+                    card = new CardSumireko();
+                    break;
+                case NARUMI_CARD: // 36
+                    card = new CardNarumi();
+                    break;
+                case PACHE_CARD: // 37
+                    card = new CardPatchouli();
+                    break;
+                case BASSDRUM_CARD: // 49
+                    card = new CardRaiko();
+                    break;
+                case MAGATAMA_CARD: // 51
+                    card = new CardMisumaru();
+                    break;
+                case RICEBALL_CARD: // 53
+                    card = new CardMegumu();
+                    break;
+                case CYLINDER_CARD: // 52
+                    card = new CardTsukasa();
+                    break;
+                case MUKADE_CARD: // 54
+                    card = new CardMomoyo();
+                    break;
+                case MAGATAMA2_CARD: // 55
+                    card = new CardMagatama();
+                    break;
                 default:
                     return -1;
             }
@@ -31986,7 +32653,7 @@ public:
             this->__ability_data_loaded
         ) {
             this->card_list.for_each([](CardBase* card) {
-                card->__on_tick_2();
+                card->on_tick();
             });
             this->__anm_id_3C.get_vm_ptr();
             if (
@@ -32808,7 +33475,7 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
             }
 
             ABILITY_MANAGER_PTR->card_list.for_each([=](CardBase* card) {
-                card->on_shoot(short_timer, long_timer);
+                card->on_shooter_tick(short_timer, long_timer);
             });
         }
 
@@ -33665,6 +34332,10 @@ ValidateFieldOffset32(0x19C, EnemyManager, __angle_19C);
 ValidateStructSize32(0x1A0, EnemyManager);
 #pragma endregion
 
+static inline void enemy_manager_fail_spell() {
+    ENEMY_MANAGER_PTR->can_capture_spell = FALSE;
+}
+
 static inline void enemy_manager_fail_spell_with_bomb() {
     EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
     ++enemy_manager->player_bomb_count;
@@ -33688,17 +34359,58 @@ static inline BOOL enemy_manager_enemy_exists_with_id(int32_t id) {
     return ENEMY_MANAGER_PTR->enemy_exists_with_id(id);
 }
 
+// Method 8
+// 0x40FE70
+dllexport gnu_noinline int thiscall CardLilyWhite::on_activate() {
+    if (this->recharge_time <= 0) {
+        if (EnemyManager* enemy_manager = ENEMY_MANAGER_PTR) {
+
+            EnemyInitData enemy_init = {};
+
+            int32_t level = this->level;
+            enemy_init.position = { 0.0f, -32.0f, 0.0f };
+            enemy_init.score = 0;
+            enemy_init.mirrored = false;
+            enemy_init.parent_id = 0;
+            enemy_init.__basic_anm_update_but_as_a_flag = false;
+
+            int32_t level_mod_3 = level % 3;
+
+            enemy_init.item_drop = level_mod_3 != 2 ? BombFragmentItem : LifeFragmentItem;
+
+            if (level >= 10) {
+                enemy_init.life = 7000;
+                enemy_init.int_vars[0] = 4;
+            } else {
+                enemy_init.life = 4000 + level * 300;
+                if (level >= 8) {
+                    enemy_init.int_vars[0] = 4;
+                } else {
+                    enemy_init.int_vars[0] = level / 2;
+                }
+            }
+
+            enemy_manager->allocate_new_enemy(level_mod_3 == 2 ? "ItemCarryLily2" : "ItemCarryLily", &enemy_init);
+
+            this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
+            ++this->level;
+            this->__unknown_flag_A = true;
+        }
+    }
+    return 0;
+}
+
 // 0x40B6E0
-dllexport gnu_noinline void fastcall PlayerOption::__position_func_card_alice_impl(PlayerOption* self) {
-    Float2 position = self->get_position();
+dllexport gnu_noinline void thiscall PlayerOption::__position_func_card_alice_impl() {
+    Float2 position = this->get_position();
     Float2 offset;
 
     EnemyManager* enemy_manager_ptr = ENEMY_MANAGER_PTR;
     if (enemy_manager_ptr) {
-        EnemyID id = self->__enemy_id_E4;
+        EnemyID id = this->__enemy_id_E4;
         if (!id) {
             id = enemy_manager_ptr->__get_id_of_nearest_enemy_in_radius(&position, 512.0f);
-            self->__enemy_id_E4 = id;
+            this->__enemy_id_E4 = id;
             if (!id) {
                 return;
             }
@@ -33718,26 +34430,26 @@ dllexport gnu_noinline void fastcall PlayerOption::__position_func_card_alice_im
                     }
                     offset.make_from_vector(angle, magnitude);
                     Int2 A = (Int2)((offset + position) * INTERNAL_POSITION_RATIO);
-                    self->position = A;
-                    self->__unfocused_offset = A;
-                    self->__focused_offset.x = A.x;
-                    self->__focused_offset.y = self->__unfocused_offset.y;
+                    this->position = A;
+                    this->__unfocused_offset = A;
+                    this->__focused_offset.x = A.x;
+                    this->__focused_offset.y = this->__unfocused_offset.y;
                 }
                 else if (distance >= 48.0f) {
                     float angle = (float)position_diff.direction();
                     float magnitude = -2.0f;
                     offset.make_from_vector(angle, magnitude);
                     Int2 A = (Int2)((offset + position) * INTERNAL_POSITION_RATIO);
-                    self->position = A;
-                    self->__unfocused_offset = A;
-                    self->__focused_offset.x = A.x;
-                    self->__focused_offset.y = self->__unfocused_offset.y;
+                    this->position = A;
+                    this->__unfocused_offset = A;
+                    this->__focused_offset.x = A.x;
+                    this->__focused_offset.y = this->__unfocused_offset.y;
                 }
                 return;
             }
         }
     }
-    self->__enemy_id_E4 = 0;
+    this->__enemy_id_E4 = 0;
 }
 
 // 0x42DA90
@@ -35346,12 +36058,6 @@ std_end:
     return ZUN_SUCCESS;
 }
 
-typedef struct Spellcard Spellcard;
-extern "C" {
-    // 0x4CF2C0
-    externcg Spellcard* SPELLCARD_PTR cgasm("_SPELLCARD_PTR");
-}
-
 // size: 0xC0
 struct Spellcard : ZUNTask {
     // ZUNTask base; // 0x0
@@ -35449,7 +36155,7 @@ struct Spellcard : ZUNTask {
         spellcard->__vm_id_1C.mark_tree_for_delete();
     }
 
-    inline void __inline_sub_409AD0() {
+    inline void __inline_spellcard_fail() {
         if (this->__unknown_flag_A) {
             if (this->__timer_20 >= 60) {
                 this->__bonus_A = 0;
@@ -35462,8 +36168,8 @@ struct Spellcard : ZUNTask {
     }
 
     // 0x409AD0
-    dllexport gnu_noinline static void __sub_409AD0() asm_symbol_rel(0x409AD0) {
-        SPELLCARD_PTR->__inline_sub_409AD0();
+    dllexport gnu_noinline static void __spellcard_fail() asm_symbol_rel(0x409AD0) {
+        SPELLCARD_PTR->__inline_spellcard_fail();
     }
 
     // 0x42A320
@@ -35749,6 +36455,13 @@ ValidateFieldOffset32(0xAC, Spellcard, __float3_AC);
 ValidateStructSize32(0xC0, Spellcard);
 #pragma endregion
 
+static inline void __spellcard_fail() {
+    SPELLCARD_PTR->__spellcard_fail();
+}
+static inline void __inline_spellcard_fail() {
+    SPELLCARD_PTR->__inline_spellcard_fail();
+}
+
 // 0x420360
 dllexport gnu_noinline ZUNResult BombBase::start_bomb() {
     BombBase* bomb = BOMB_PTR;
@@ -35771,7 +36484,7 @@ dllexport gnu_noinline ZUNResult BombBase::start_bomb() {
 
         bomb->activate();
 
-        UNKNOWN_COUNTER_A = 0;
+        MOMOYO_CARD_COUNTER = 0;
 
         ENEMY_MANAGER_PTR->can_capture_spell = false;
 
@@ -35835,7 +36548,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
                 this->__move();
             }
             ABILITY_MANAGER_PTR->card_list.for_each([](CardBase* card) {
-                card->on_tick();
+                card->on_player_tick();
             });
             break;
         case 4: // Dying?
@@ -36053,7 +36766,7 @@ dllexport gnu_noinline void thiscall Player::death() {
         }
     }
 
-    UNKNOWN_COUNTER_A = 0;
+    MOMOYO_CARD_COUNTER = 0;
 
     EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
     ++enemy_manager->player_death_count;
@@ -36070,7 +36783,7 @@ dllexport gnu_noinline void thiscall Player::start_dying() {
     
     EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(29, &this->data.position);
 
-    SPELLCARD_PTR->__inline_sub_409AD0();
+    SPELLCARD_PTR->__inline_spellcard_fail();
 
     this->data.__death_timer.reset();
     this->data.state = 4;
@@ -37631,10 +38344,10 @@ struct Bullet {
             }
 
             switch (this->state) {
-                case 3:
+                case BulletState3:
                     this->position += (this->velocity * GAME_SPEED) * 0.5f;
                     break;
-                case 2:
+                case BulletState2:
                     this->position += (this->velocity * GAME_SPEED) * 0.5f;
                     if (this->__timer_F6C >= 8) {
                         if (
@@ -37645,8 +38358,8 @@ struct Bullet {
                     }
                     // wtf is this ZUN
                     if (this->vm.data.current_context.int_vars[0]) {
-                        this->state = 1;
-                case 1:
+                        this->state = BulletState1;
+                case BulletState1:
                     rerun_effects:
                         if (!this->effects_active(EX_DELAY)) {
                             this->run_effects();
@@ -39056,8 +39769,8 @@ struct BulletManager : ZUNTask {
     BulletIters bullet_iter; // 0x7A41D8
     int32_t __cancel_counter2; // 0x7A41E8
     AnmLoaded* bullet_anm; // 0x7A41EC
-    int32_t __unknown_counter_flag; // 0x7A41F0
-    int32_t __unknown_counter; // 0x7A41F4
+    BOOL __grazing_despawns_bullets; // 0x7A41F0
+    int32_t __graze_despawn_counter; // 0x7A41F4
     // 0x7A41F8
 
     inline void zero_contents() {
@@ -39107,8 +39820,8 @@ private:
         this->__bounce_bounds.y = 0.0f;
         this->__cancel_counter = 0;
         zero_array(this->__graze_array);
-        this->__unknown_counter_flag = 0;
-        this->__unknown_counter = 0;
+        this->__grazing_despawns_bullets = false;
+        this->__graze_despawn_counter = 0;
     }
 
 public:
@@ -39427,7 +40140,7 @@ public:
             if (interrupt_index != 1) {
                 bullet->vm.interrupt(7 + interrupt_index);
             }
-            bullet->state = 2;
+            bullet->state = BulletState2;
             bullet->position -= bullet->velocity * 4.0f;
         }
         else {
@@ -39456,6 +40169,24 @@ public:
         return 0;
     }
 
+    static inline int cancel_random(CancelType cancel_type) {
+        int32_t random = 0;
+        for (
+            Bullet* bullet = BULLET_MANAGER_PTR->start_bullet_iter(0);
+            bullet;
+            bullet = BULLET_MANAGER_PTR->next_bullet_iter(0)
+        ) {
+            if (
+                !bullet->invulnerable_time &&
+                !(random % 7)
+            ) {
+                bullet->cancel(cancel_type);
+            }
+            random += 1 + REPLAY_RNG.rand_uint_range(3);
+        }
+        return 0;
+    }
+
 private:
     // 0x429250
     dllexport gnu_noinline int vectorcall cancel_radius(int, float, float, Float2* position, float radius, CancelType cancel_type) asm_symbol_rel(0x429250) {
@@ -39466,7 +40197,7 @@ private:
             bullet = BULLET_MANAGER_PTR->next_bullet_iter(0)
         ) {
             switch (bullet->state) {
-                case 2: case 1: {
+                case BulletState2: case BulletState1: {
                     // Yes, this aliases the normal radius field.
                     // But the math is written in a way that makes more sense
                     // for this to be reading the square size.
@@ -39496,7 +40227,7 @@ private:
             bullet = BULLET_MANAGER_PTR->next_bullet_iter(0)
         ) {
             switch (bullet->state) {
-                case 2: case 1:
+                case BulletState2: case BulletState1:
                     if (!bullet->invulnerable_time) {
                         // Yes, this aliases the normal radius field.
                         // But the math is written in a way that makes more sense
@@ -39533,7 +40264,7 @@ private:
             ++i, ++bullet
         ) {
             switch (bullet->state) {
-                case 2: case 1:
+                case BulletState2: case BulletState1:
                     if (!bullet->invulnerable_time) {
                         // TODO
                     }
@@ -39574,11 +40305,11 @@ public:
             ) {
                 if (bullet->__unknown_flag_C) {
                     switch (bullet->state) {
-                        case 2:
+                        case BulletState2:
                             if (bullet->__timer_F6C < 8) {
                                 break;
                             }
-                        case 1:
+                        case BulletState1:
                             bullet->__check_collision(GrazeCollisionTest);
                             goto idkA;
                     }
@@ -39717,10 +40448,14 @@ ValidateFieldOffset32(0x7A41D4, BulletManager, __int_7A41D4);
 ValidateFieldOffset32(0x7A41D8, BulletManager, bullet_iter);
 ValidateFieldOffset32(0x7A41E8, BulletManager, __cancel_counter2);
 ValidateFieldOffset32(0x7A41EC, BulletManager, bullet_anm);
-ValidateFieldOffset32(0x7A41F0, BulletManager, __unknown_counter_flag);
-ValidateFieldOffset32(0x7A41F4, BulletManager, __unknown_counter);
+ValidateFieldOffset32(0x7A41F0, BulletManager, __grazing_despawns_bullets);
+ValidateFieldOffset32(0x7A41F4, BulletManager, __graze_despawn_counter);
 ValidateStructSize32(0x7A41F8, BulletManager);
 #pragma endregion
+
+static inline int bullet_cancel_random(CancelType cancel_type) {
+    return BULLET_MANAGER_PTR->cancel_random(cancel_type);
+}
 
 static inline int bullet_cancel_radius(Float3* position, float radius, CancelType cancel_type) {
     return BULLET_MANAGER_PTR->cancel_radius(position, radius, cancel_type);
@@ -39736,6 +40471,12 @@ static inline int bullet_cancel_rotated_rectangle_as_bomb(Float2* position, Floa
 
 static inline int32_t bullet_manager_get_cancel_counter2() {
     return BULLET_MANAGER_PTR->__cancel_counter2;
+}
+
+static inline void bullet_manager_enable_graze_despawns() {
+    if (BulletManager* bullet_manager = BULLET_MANAGER_PTR) {
+        bullet_manager->__grazing_despawns_bullets = true;
+    }
 }
 
 // 0x424AD0
@@ -39852,7 +40593,7 @@ dllexport gnu_noinline CollisionResult thiscall Bullet::__check_collision(Collis
                 if (!this->invulnerable_time) {
                     break;
                 }
-                goto spawn_graze_effects;
+                goto create_despawn_effects;
             case GrazeCollision:
                 if (!this->grazed) {
                     PLAYER_PTR->do_graze(&this->position);
@@ -39860,12 +40601,13 @@ dllexport gnu_noinline CollisionResult thiscall Bullet::__check_collision(Collis
 
                     BulletManager* bullet_manager = BULLET_MANAGER_PTR;
                     ++bullet_manager->__graze_array[0];
-                    if (bullet_manager->__unknown_counter_flag) {
-                        ++bullet_manager->__unknown_counter;
-                        if (!(bullet_manager->__unknown_counter % 6)) {
-            spawn_graze_effects:
+
+                    if (bullet_manager->__grazing_despawns_bullets) {
+                        ++bullet_manager->__graze_despawn_counter;
+                        if (!(bullet_manager->__graze_despawn_counter % 6)) {
+                create_despawn_effects:
                             this->__int_678 = 1;
-                            this->state = 3;
+                            this->state = BulletState3;
                             this->vm.interrupt(1);
                             this->__anm_tree_id.interrupt_tree(1);
 
@@ -40195,6 +40937,10 @@ static inline int laser_cancel_radius(Float3* position, float radius, CancelType
     return LASER_MANAGER_PTR->cancel_in_radius(position, radius, cancel_type, arg4);
 }
 
+static inline int laser_cancel_rectangle(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5) {
+    return LASER_MANAGER_PTR->cancel_in_rectangle(position, size, rotation, cancel_type, arg5);
+}
+
 static inline int laser_cancel_all(CancelType cancel_type) {
     return LASER_MANAGER_PTR->cancel_all(cancel_type);
 }
@@ -40384,6 +41130,8 @@ dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_call_2_ex(EnemyData*
             SCREEN_WIDTH, SCREEN_HEIGHT,
             0.0f
         )) {
+            // BUG: This is the Float2 version of the function call.
+            // Z coord is left uninitialized
             unit_vec.make_from_vector(laser->angle, 1.0f);
 
             Float3 C = (A - laser->position) * unit_vec;
@@ -40419,6 +41167,8 @@ dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_call_3_ex(EnemyData*
             SCREEN_WIDTH, SCREEN_HEIGHT,
             0.0f
         )) {
+            // BUG: This is the Float2 version of the function call.
+            // Z coord is left uninitialized
             unit_vec.make_from_vector(laser->angle, 1.0f);
 
             Float3 C = (A - laser->position) * unit_vec;
@@ -41377,7 +42127,7 @@ forceinline const char* Enemy::check_timer_callbacks() {
 
                     Spellcard* spellcard = SPELLCARD_PTR;
                     if (!spellcard->__timeout_spell) {
-                        spellcard->__sub_409AD0();
+                        spellcard->__spellcard_fail();
                         ENEMY_MANAGER_PTR->can_capture_spell = false;
                     }
                     else if (spellcard->__inline_sub_B()) {
@@ -41653,7 +42403,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
             }
         }
         if (damage) {
-            ++UNKNOWN_COUNTER_A;
+            ++MOMOYO_CARD_COUNTER;
             if (SPELLCARD_PTR->__inline_sub_C()) {
                 damage /= 60;
             }
@@ -41684,6 +42434,8 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
         return ZUN_SUCCESS2; // triggers the fail condition
     }
 
+    // BUG: Restarting a run after buying the Koishi card
+    // doesn't clear this flag, so the no collision persists
     if (
         this->has_active_collision() &&
         this->__basic_anm_update &&
@@ -41695,7 +42447,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
         else {
             CollisionResult result;
             if (!this->rectangular_hitbox) {
-                result = PLAYER_PTR->check_collision_circle(&this->current_motion.position, this->collision_size.x, LethalCollisionTest);
+                result = PLAYER_PTR->check_collision_circle(&this->current_motion.position, this->collision_size.x * 0.5f, LethalCollisionTest);
             }
             else {
                 AnmVM* main_vm = this->anm_vms[0].get_vm_ptr();
@@ -47504,8 +48256,8 @@ extern "C" {
     externcg MainMenu* MAIN_MENU_PTR cgasm("_MAIN_MENU_PTR");
 }
 
-static int32_t DEBUG_STAGE = 1;
-static Difficulty DEBUG_DIFFICULTY = NORMAL;
+static int32_t DEBUG_STAGE = 7;
+static Difficulty DEBUG_DIFFICULTY = EXTRA;
 static CharacterID DEBUG_CHARACTER = Reimu;
 static char* DEBUG_PATH = NULL;
 
@@ -48129,12 +48881,12 @@ public:
                     this->__unknown_flag_B = false;
                 }
                 else {
-                    if (!this->__anm_id_3B4.get_vm_ptr()) {
+                    if (!this->__anm_id_3B4.has_live_vm()) {
                         AnmID id = this->title_anm->instantiate_vm_to_world_list_back(7);
                         this->__anm_id_3B4 = id;
                         id.interrupt_and_run_tree(2);
                     }
-                    if (!this->__anm_id_420.get_vm_ptr()) {
+                    if (!this->__anm_id_420.has_live_vm()) {
                         AnmID id = this->title_anm->instantiate_vm_to_world_list_back(34);
                         this->__anm_id_420 = id;
                         id.interrupt_and_run_tree(2);
@@ -48148,7 +48900,7 @@ public:
                 [[fallthrough]];
             case 1:
                 if (this->__timer_384 == 120) {
-                    if (!this->__anm_id_704.get_vm_ptr()) {
+                    if (!this->__anm_id_704.has_live_vm()) {
                         this->__anm_id_704 = this->title_v_anm->instantiate_vm_to_world_list_back(0);
                     }
                 }
@@ -48633,6 +49385,7 @@ public:
                 GAME_MANAGER.globals.__ecl_var_9907 = -1;
                 GAME_MANAGER.globals.difficulty = DEBUG_DIFFICULTY;
                 GAME_MANAGER.globals.character = DEBUG_CHARACTER;
+                ACHIEVEMENT_MODE_STATE = -1;
 #endif
             }
 #if !DEBUG_SKIP_MENUS
@@ -48801,8 +49554,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
     }
 
     if (this->__int_134) {
-        AnmVM* vm = this->__anm_id_110.get_vm_ptr();
-        if (!vm) {
+        if (!this->__anm_id_110.has_live_vm()) {
             this->__int_134 = 0;
         }
     }
@@ -51028,7 +51780,7 @@ inline unsigned GameThread::thread_start_impl() {
             ABILITY_MANAGER_PTR->allocate_new_card(MAGATAMA2_CARD, 0);
             //ABILITY_MANAGER_PTR->__sub_4094C0();
         }
-        UNKNOWN_COUNTER_A = 0;
+        MOMOYO_CARD_COUNTER = 0;
     }
     else {
         GAME_MANAGER.__high_score = __max(GAME_MANAGER.globals.score, GAME_MANAGER.__high_score);
@@ -51075,7 +51827,7 @@ inline unsigned GameThread::thread_start_impl() {
     AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
     ability_manager->__float_C58 = 1.0f;
     ability_manager->card_list.for_each([](CardBase* card) {
-        card->__on_load_2();
+        card->__on_stage_load();
     });
     ABILITY_MANAGER_PTR->card_list.for_each_safeB([](CardBase* card) {
         card->initializeA();
