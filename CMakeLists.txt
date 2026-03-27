@@ -53,7 +53,7 @@ add_library(z8086 SHARED)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
 add_library(winhttp_websocket SHARED)
-add_library(CSoundLib STATIC)
+#add_library(CSoundLib STATIC)
 add_library(wow64 SHARED)
 add_library(wow64cpu SHARED)
 add_library(wow64win SHARED)
@@ -81,7 +81,7 @@ MoFTest1
 UMTest1
 FWTest1
 FourOfAKind1
-CSoundLib
+#CSoundLib
 tts_test1
 print_copypasta
 ntoskrnl_tests
@@ -245,6 +245,12 @@ target_compile_definitions(${EXE} PRIVATE
 	#__CLANG_STDATOMIC_H
 	#_CRT_DECLARE_GLOBAL_VARIABLES_DIRECTLY
 	#ZERO_TRAP_AND_EMULATE
+
+	#_MSVC_LANG=202003L # Hopefully this is fine?
+)
+
+if(CMAKE_IS_BROKEN)
+target_compile_definitions(${EXE} PRIVATE
 	_Float16=float
 	__bf16=float
 	__AVX512FP16INTRIN_H
@@ -252,9 +258,8 @@ target_compile_definitions(${EXE} PRIVATE
 	__AVX512BF16INTRIN_H
 	__AVX512VLBF16INTRIN_H
 	__AVXNECONVERTINTRIN_H
-
-	#_MSVC_LANG=202003L # Hopefully this is fine?
 )
+endif()
 
 # Language Standards
 target_compile_options(${EXE} PRIVATE
@@ -686,6 +691,11 @@ target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully
 target_link_libraries(${EXE} "F:\\My Programs Expansion\\DirectX_SDKs\\8.0a\\lib\\d3d8.lib")
 #target_link_libraries(${EXE} DummyDLL)
 endif()
+
+else()
+
+# Add your non-broken paths for winmm and D3D stuff here, sorry :/
+
 endif()
 
 endif()
@@ -713,21 +723,21 @@ target_sources(${EXE} PRIVATE
 	"zun/util.h"
 )
 if (NOT NO_STDLIB)
-if (STATIC_CSOUND)
-target_sources(${EXE} PRIVATE
-	"F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Optional\\SDKSound.cpp"
-	"F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Optional\\SDKwavefile.cpp"
-)
-set_source_files_properties("F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Optional\\SDKSound.cpp" PROPERTIES COMPILE_FLAGS "-DUNICODE")
-set_source_files_properties("F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Optional\\SDKwavefile.cpp" PROPERTIES COMPILE_FLAGS "-DUNICODE")
+#if (STATIC_CSOUND)
+#target_sources(${EXE} PRIVATE
+#	"F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Optional\\SDKSound.cpp"
+#	"F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Optional\\SDKwavefile.cpp"
+#)
+#set_source_files_properties("F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Optional\\SDKSound.cpp" PROPERTIES COMPILE_FLAGS "-DUNICODE")
+#set_source_files_properties("F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Optional\\SDKwavefile.cpp" PROPERTIES COMPILE_FLAGS "-DUNICODE")
 target_include_directories(${EXE} SYSTEM PRIVATE
 	"F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Core"
 	"F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Optional"
 )
-target_compile_definitions(CSoundLib PRIVATE
-	UNICODE
-)
-endif()
+#target_compile_definitions(CSoundLib PRIVATE
+#	UNICODE
+#)
+#endif()
 endif()
 
 endforeach()
@@ -737,19 +747,19 @@ endforeach()
 #SET_PROPERTY(TARGET NT PROPERTY IMPORTED_LOCATION "C:\\WinDDK\\7600.16385.1\\lib\\win7\\amd64\\ntoskrnl.lib")
 #target_link_libraries(${PROJECT_NAME} NT)
 
-if(NOT STATIC_CSOUND)
-target_sources(CSoundLib PRIVATE
-	"F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Optional\\SDKSound.cpp"
-	"F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Optional\\SDKwavefile.cpp"
-)
-target_include_directories(CSoundLib SYSTEM PRIVATE
-	"F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Core"
-	"F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Optional"
-)
-target_compile_definitions(CSoundLib PRIVATE
-	UNICODE
-)
-endif()
+#if(NOT STATIC_CSOUND)
+#target_sources(CSoundLib PRIVATE
+#	"F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Optional\\SDKSound.cpp"
+#	"F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Optional\\SDKwavefile.cpp"
+#)
+#target_include_directories(CSoundLib SYSTEM PRIVATE
+#	"F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Core"
+#	"F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Optional"
+#)
+#target_compile_definitions(CSoundLib PRIVATE
+#	UNICODE
+#)
+#endif()
 
 add_library(windows_test_asm OBJECT
 	"windows_labels.asm"

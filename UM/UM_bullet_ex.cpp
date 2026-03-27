@@ -58,6 +58,8 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define ALLOCATE_CONSOLE 1
 #define TESTING_FEATURES 1
 
+#define KILL_THE_MUTEX_WITH_FIRE 1
+
 #define FIX_REALLY_BAD_BUGS 1
 #define PROTECT_ORIGINAL_FILES 1
 #define IGNORE_HASH_CHECKS 1
@@ -1303,9 +1305,63 @@ dllexport gnu_noinline void* fastcall __compress_buffer(void* buffer_in, int32_t
     return (void*)rand();
 }
 
+#define LZSS_DICTSIZE 0x2000
+#define LZSS_DICTSIZE_MASK (LZSS_DICTSIZE - 1)
+#define LZSS_MIN_MATCH 3
+
 // 0x46F840
 dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32_t buffer_size, void* out_buffer, int32_t out_buffer_size) asm_symbol_rel(0x46F840);
 dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32_t buffer_size, void* out_buffer, int32_t out_buffer_size) {
+    
+#if FIX_REALLY_BAD_BUGS
+    // Khang's quickload code instead of ZUN's crap
+
+    if (!out_buffer) {
+        if (!(out_buffer = malloc(out_buffer_size))) {
+            return NULL;
+        }
+    }
+    uint8_t* src = (uint8_t*)buffer_in;
+    uint8_t* dst = (uint8_t*)out_buffer;
+
+    size_t src_pos = 0;
+    size_t dst_pos = 0;
+    uint32_t bit_buf = 0;
+    uint8_t bit_count = 0;
+
+    auto refill = [&](uint8_t count) gnu_always_inline {
+        while (bit_count < count) {
+            bit_buf |= (uint32_t)(expect(src_pos == buffer_size, false) ? 0 : src[src_pos++]) << (24 - bit_count);
+            bit_count += 8;
+        }
+    };
+    auto get_bits = [&](uint8_t count) gnu_always_inline {
+        uint32_t ret = bit_buf >> (32 - count);
+        bit_buf <<= count;
+        bit_count -= count;
+        return ret;
+    };
+
+    for (;;) {
+        refill(1 + 13 + 4);
+        if (get_bits(1)) {
+            dst[dst_pos++] = get_bits(8);
+        } else {
+            uint32_t match_offset = get_bits(13);
+            if (expect(!match_offset, false)) {
+                break;
+            }
+
+            uint32_t match_len = get_bits(4) + LZSS_MIN_MATCH;
+            for (uint32_t i = 0; i < match_len; ++i) {
+                uint32_t dict_offset = (match_offset + i - 1) & LZSS_DICTSIZE_MASK;
+                dst[dst_pos++] = dst[(dst_pos & ~LZSS_DICTSIZE_MASK) + dict_offset - (dict_offset >= (dst_pos & LZSS_DICTSIZE_MASK) ? LZSS_DICTSIZE : 0)];
+            }
+        }
+    }
+
+    return dst;
+#else
     codegen_barrier();
     uint32_t uintA = 0; // EBP-8
     uint8_t* buffer = (uint8_t*)buffer_in;
@@ -1327,11 +1383,7 @@ dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32
         nounroll do {
             if (byteA == 0x80) {
                 uintA = *buffer_read;
-#if FIX_REALLY_BAD_BUGS
-                if (sizeA >= buffer_size - 1) {
-#else
                 if (sizeA >= buffer_size) {
-#endif
                     uintA = 0;
                 } else {
                     ++buffer_read;
@@ -1359,11 +1411,7 @@ dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32
             uintA = *buffer_read;
             sizeA = buffer_read - buffer;
             byteA = byteB;
-#if FIX_REALLY_BAD_BUGS
-            if (sizeA >= buffer_size - 1) {
-#else
             if (sizeA >= buffer_size) {
-#endif
                 uintA = 0;
                 uintB = 0;
                 // the compiler figured out that the uintB != 0 branch
@@ -1409,6 +1457,7 @@ dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32
             }
         }
     }
+#endif
 }
 
 // size: 0x10
@@ -8749,9 +8798,9 @@ private:
                             ScorefileSectionB* sectionB = (ScorefileSectionB*)section;
                             if (
                                 sectionB->__version_number == SCOREFILE_SECTION_B_VERSION_NUMBER &&
-#if !IGNORE_HASH_CHECKS
+//#if !IGNORE_HASH_CHECKS
                                 sectionB->checksum == sectionB->calculate_checksum() &&
-#endif
+//#endif
                                 sectionB->size == sizeof(ScorefileSectionB)
                             ) {
                                 scorefile->shottypes[sectionB->index] = *sectionB;
@@ -8765,9 +8814,9 @@ private:
                             ScorefileSectionA* sectionA = (ScorefileSectionA*)section;
                             if (
                                 sectionA->__version_number == SCOREFILE_SECTION_A_VERSION_NUMBER &&
-#if !IGNORE_HASH_CHECKS
+//#if !IGNORE_HASH_CHECKS
                                 sectionA->checksum == sectionA->calculate_checksum() &&
-#endif
+//#endif
                                 sectionA->size == sizeof(ScorefileSectionA)
                             ) {
                                 scorefile->__sectionA = *sectionA;
@@ -48256,8 +48305,8 @@ extern "C" {
     externcg MainMenu* MAIN_MENU_PTR cgasm("_MAIN_MENU_PTR");
 }
 
-static int32_t DEBUG_STAGE = 7;
-static Difficulty DEBUG_DIFFICULTY = EXTRA;
+static int32_t DEBUG_STAGE = 1;
+static Difficulty DEBUG_DIFFICULTY = NORMAL;
 static CharacterID DEBUG_CHARACTER = Reimu;
 static char* DEBUG_PATH = NULL;
 
@@ -52675,11 +52724,15 @@ extern "C" {
 // 0x474400
 dllexport gnu_noinline ZUNResult __make_mutex_and_test_path() asm_symbol_rel(0x474400);
 dllexport gnu_noinline ZUNResult __make_mutex_and_test_path() {
+
+#if !KILL_THE_MUTEX_WITH_FIRE
     MUTEX_DATA.handle = CreateMutexA(NULL, TRUE, "th18 App");
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
         LOG_BUFFER.write_error(JpEnStr("“ñ‚Â‚Í‹N“®‚Å‚«‚Ü‚¹‚ñ\r\n", "Two cannot be started\r\n"));
         return ZUN_ERROR;
     }
+#endif
+
     STARTUPINFOA startup_info = { sizeof(STARTUPINFOA) };
     char filename_buffer[MAX_PATH + 1];
     char path_buffer[MAX_PATH + 1];
@@ -52724,7 +52777,11 @@ dllexport gnu_noinline ZUNResult __make_mutex_and_test_path() {
     else {
         SUPERVISOR.__unknown_flag_A = true;
     }
+#if !KILL_THE_MUTEX_WITH_FIRE
     return MUTEX_DATA.handle != NULL ? ZUN_SUCCESS : ZUN_ERROR;
+#else
+    return ZUN_SUCCESS;
+#endif
 }
 
 extern "C" {
