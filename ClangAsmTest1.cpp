@@ -3729,9 +3729,109 @@ dllexport void find_u16_tangent();
 
 dllexport void print_hello_world_but_worse();
 
+static forceinline double rdtsc_frequency() {
+	double frequency = 0.0;
+
+#if _WIN32
+	uint8_t shift;
+	switch (*(uint32_t*)0x7FFE026C) { // NT major version
+		default: // windows 10+
+			shift = *(uint8_t*)0x7FFE03C7;
+			break;
+		case 6: // windows 7, windows 8
+			switch (*(uint32_t*)0x7FFE0270) { // NT minor version
+				case 3: // 10 betas
+				case 2: // 8
+					shift = *(uint8_t*)0x7FFE03C7;
+					break;
+				case 1: // 7
+					shift = *(uint8_t*)0x7FFE02ED >> 2;
+					break;
+				default: // Vista
+					goto no_qpc_tsc;
+			}
+			break;
+		case 0: case 1: case 2: case 3: case 4: case 5: // Not relevant
+			goto no_qpc_tsc;
+	}
+	{
+		LARGE_INTEGER qpc_freq;
+		QueryPerformanceFrequency(&qpc_freq);
+		return qpc_freq.QuadPart << shift;
+	}
+no_qpc_tsc:
+#endif
+	uint32_t eax, ebx, ecx, edx;
+
+	uint32_t highest_ex_page;
+
+	bool has_rdpru = false;
+	get_cpuid(0x80000000, highest_ex_page, ebx, ecx, edx);
+	if (highest_ex_page >= 0x80000008) {
+		if (ebx & 0x10) { // RDPRU
+			has_rdpru = true;
+		}
+	}
+
+	bool guaranteed_invariant = false;
+	if (highest_ex_page >= 0x80000007) {
+		get_cpuid(0x80000007, eax, ebx, ecx, edx);
+		if (edx & 0x100) { // TscInvariant
+			guaranteed_invariant = true;
+		}
+	}
+
+	uint32_t highest_page;
+	uint32_t brand_string1, brand_string2, brand_string3;
+
+	get_cpuid(0, highest_page, brand_string1, brand_string3, brand_string2);
+
+	if (highest_page >= 21) {
+		uint32_t tsc_numerator;
+		uint32_t tsc_denominator;
+		uint32_t frequency_Hz;
+		get_cpuid(21, tsc_denominator, tsc_numerator, frequency_Hz, edx);
+		if (tsc_numerator) {
+			if (tsc_denominator) {
+				if (guaranteed_invariant) {
+					frequency = (double)tsc_numerator / (double)tsc_denominator;
+				}
+				else if (frequency_Hz) {
+					double tsc_rate = (double)tsc_numerator / (double)tsc_denominator;
+					frequency = tsc_rate * (double)frequency_Hz;
+				}
+			}
+			else if (highest_page >= 22) {
+				// skylake is stupid apparently and leaves frequency_Hz as 0
+				uint32_t base_frequency_MHz;
+				uint32_t max_frequency_MHz;
+				uint32_t bus_frequency_MHz;
+				get_cpuid(22, base_frequency_MHz, max_frequency_MHz, bus_frequency_MHz, edx);
+
+				frequency = (double)(uint16_t)base_frequency_MHz * 1000000.0;
+			}
+		}
+	}
+
+	//if (has_rdpru && !(frequency == 0.0)) {
+		//rdpru(0);
+	//}
+	return frequency;
+}
+
 int stdcall main(int argc, char* argv[]) {
 
-	print_hello_world_but_worse();
+	double freq_tsc = rdtsc_frequency();
+	LARGE_INTEGER freq_qpc;
+	QueryPerformanceFrequency(&freq_qpc);
+	printf(
+		"TSC: %f\n"
+		"QPC: %f\n"
+		, freq_tsc
+		, (double)freq_qpc.QuadPart
+	);
+
+	//print_hello_world_but_worse();
 	return 0;
 
 	//fine_tangent_test();

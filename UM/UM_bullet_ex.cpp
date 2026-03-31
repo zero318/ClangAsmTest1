@@ -4536,7 +4536,7 @@ union AnmID {
     inline void set_scale(float value);
 
     // 0x488FD0
-    dllexport void thiscall __sub_488FD0(int32_t script) asm_symbol_rel(0x488FD0);
+    dllexport gnu_noinline void thiscall __set_script(int32_t script) asm_symbol_rel(0x488FD0);
 
     // 0x4892F0
     dllexport void thiscall set_color1(D3DCOLOR color) asm_symbol_rel(0x4892F0);
@@ -7940,6 +7940,34 @@ public:
         this->graze_in_stage = __min(stage_graze, 99999999);
         this->graze = __min(total_graze, 99999999);
     }
+
+    inline int32_t set_point_item_value(int32_t value) {
+        int32_t max_value = this->max_point_item_value;
+        this->point_item_value = value;
+        if (value >= max_value) {
+            this->point_item_value = max_value;
+            return max_value;
+        }
+        int32_t min_value = this->min_point_item_value;
+        if (value < min_value) {
+            this->point_item_value = min_value;
+            return min_value;
+        }
+        return value;
+    }
+
+    inline int32_t update_point_item_value() {
+        switch (this->difficulty) {
+            case EASY:
+                return this->set_point_item_value((this->current_money * 500.0f + 500.0f) * 100.0f);
+            case NORMAL: case HARD: case LUNATIC:
+                return this->set_point_item_value((this->current_money * 1000.0f + 1000.0f) * 100.0f);
+            case EXTRA: // Copy/paste or actually different? Not sure
+                return this->set_point_item_value((this->current_money * 1000.0f + 1000.0f) * 100.0f);
+            default:
+                return this->point_item_value;
+        }
+    }
 };
 
 enum GameType {
@@ -7972,7 +8000,7 @@ struct GameManager {
     int32_t __int_118; // 0x118
     probably_padding_bytes(0x4); // 0x11C
     double game_time_double; // 0x120
-    int __int_128; // 0x128
+    int __ending_type; // 0x128
     probably_padding_bytes(0x4); // 0x12C
     // 0x130
 
@@ -9671,13 +9699,23 @@ struct ZUNInterp { //       0x58    0x44    0x30
     dllexport gnu_noinline void reset_timer() {
         this->time.reset();
     }
-    
+
     // int: 0x47CF40
     // float: 0x41F640
+    dllexport gnu_noinline T vectorcall step() requires(std::is_scalar_v<T>) {
+        T ret{ GARBAGE_VALUE(T) };
+        clang_forceinline return this->step_impl(ret);
+    }
+
+    forceinline T step() requires(!std::is_scalar_v<T>) {
+        T ret{ GARBAGE_VALUE(T) };
+        clang_noinline return this->step_impl(ret);
+    }
+    
     // Float2: 0x4396A0
     // ZUNAngle: 0x47CC50
     // StageSky: 0x41EFA0
-    dllexport T vectorcall step() {
+    dllexport T& thiscall step_impl(T& out) {
         int32_t end_time = this->end_time;
         if (end_time > 0) {
             this->time.increment();
@@ -9690,22 +9728,22 @@ struct ZUNInterp { //       0x58    0x44    0x30
 TimeEnd:
             int32_t mode = this->mode;
             if (mode != ConstantVelocity && mode != ConstantAccel) {
-                return this->final_value;
+                return (out = this->final_value);
             } else {
-                return this->initial_value;
+                return (out = this->initial_value);
             }
         }
         int32_t mode = this->mode;
         if (mode == ConstantVelocity) { // 7
             // Final value is per-tick velocity
-            return this->current = this->initial_value = this->initial_value + this->final_value;
+            return (out = this->current = this->initial_value = this->initial_value + this->final_value);
         }
         if (mode == ConstantAccel) { // 17
             // Bezier2 is per-tick velocity
             // Final value is per-tick acceleration
             T temp = this->bezier2;
             this->bezier2 = temp + this->final_value;
-            return this->current = this->initial_value = this->initial_value + temp;
+            return (out = this->current = this->initial_value = this->initial_value + temp);
         }
         float current_time = this->time.current_f;
         float end_time_f = end_time;
@@ -9727,11 +9765,11 @@ TimeEnd:
             value = value + this->final_value * final_factor;
             value = value + this->bezier1 * bezier1_factor;
             value = value + this->bezier2 * bezier2_factor;
-            return this->current = value;
+            return (out = this->current = value);
         }
         else {
             float interp_value = __interp_inner_thing(mode, current_time, end_time_f);
-            return this->current = lerp(this->initial_value, this->final_value, interp_value);
+            return (out = this->current = lerp(this->initial_value, this->final_value, interp_value));
         }
     }
 
@@ -9862,8 +9900,18 @@ struct ZUNInterpExImpl { //                 0x68    0x50
         this->combined_mode = mode;
     }
 
+    dllexport gnu_noinline T vectorcall step() requires(std::is_scalar_v<T>) {
+        T ret{ GARBAGE_VALUE(T) };
+        clang_forceinline return this->step_impl(ret);
+    }
+
+    forceinline T step() requires(!std::is_scalar_v<T>) {
+        T ret{ GARBAGE_VALUE(T) };
+        clang_noinline return this->step_impl(ret);
+    }
+
     // Float3: 0x439A10
-    dllexport T vectorcall step() {
+    dllexport T& thiscall step_impl(T& out) {
         int32_t end_time = this->end_time;
         if (end_time > 0) {
             this->time.increment();
@@ -9876,23 +9924,23 @@ struct ZUNInterpExImpl { //                 0x68    0x50
 TimeEnd:
             int32_t mode = this->combined_mode;
             if (mode != ConstantVelocity && mode != ConstantAccel) {
-                return this->final_value;
+                return (out = this->final_value);
             } else {
-                return this->initial_value;
+                return (out = this->initial_value);
             }
         }
         if (!this->interp_per_axis) {
             int32_t mode = this->combined_mode;
             if (mode == ConstantVelocity) { // 7
                 // Final value is per-tick velocity
-                return this->current = this->initial_value = this->initial_value + this->final_value;
+                return (out = this->current = this->initial_value = this->initial_value + this->final_value);
             }
             if (mode == ConstantAccel) { // 17
                 // Bezier2 is per-tick velocity
                 // Final value is per-tick acceleration
                 T temp = this->bezier2;
                 this->bezier2 = temp + this->final_value;
-                return this->current = this->initial_value = this->initial_value + temp;
+                return (out = this->current = this->initial_value = this->initial_value + temp);
             }
             float current_time = this->time.current_f;
             float end_time_f = end_time;
@@ -9914,11 +9962,11 @@ TimeEnd:
                 value = value + this->final_value * final_factor;
                 value = value + this->bezier1 * bezier1_factor;
                 value = value + this->bezier2 * bezier2_factor;
-                return this->current = value;
+                return (out = this->current = value);
             }
             else {
                 float interp_value = __interp_inner_thing(mode, current_time, end_time_f);
-                return this->current = lerp(this->initial_value, this->final_value, interp_value);
+                return (out = this->current = lerp(this->initial_value, this->final_value, interp_value));
             }
         }
         else {
@@ -9971,7 +10019,7 @@ TimeEnd:
                     }
                 }
             }
-            return this->current;
+            return (out = this->current);
         }
     }
 };
@@ -10776,6 +10824,8 @@ enum CancelType : int32_t {
     CancelType4 = 4
 };
 
+static inline AnmLoaded* get_bullet_anm();
+
 static inline int bullet_cancel_random(CancelType cancel_type);
 static inline int bullet_cancel_radius(Float3* position, float radius, CancelType cancel_type);
 static inline int bullet_cancel_radius_as_bomb(Float2* position, float radius, CancelType cancel_type, int32_t max_count, int arg5);
@@ -10836,6 +10886,10 @@ struct BombBase : ZUNTask {
 
     inline bool is_active() {
         return this->active == TRUE;
+    }
+
+    inline bool __inline_sub_A() {
+        return this->active == TRUE && this->__timer_34 < 60;
     }
 
     // 0x420360
@@ -11285,7 +11339,8 @@ enum ItemID : int32_t {
     Item16 = 16,
     Item17 = 17,
     Item18 = 18,
-    Item19 = 19
+    Item19 = 19,
+    Item20 = 20
 };
 
 typedef struct Item Item;
@@ -11388,13 +11443,13 @@ struct EnemyLife {
         uint32_t flags; // 0x18, 0x500C, 0x6238
         struct {
             uint32_t is_spell : 1; // 1
-            uint32_t __unknown_flag_A : 1; // 2
+            uint32_t __force_kill : 1; // 2
         };
     };
     // 0x1C
 
     inline void initialize() {
-        this->__unknown_flag_A = false;
+        this->__force_kill = false;
         this->current = 0;
         this->maximum = 0;
         this->remaining_current_attack = 0;
@@ -11555,7 +11610,7 @@ struct EnemyData {
     int32_t death_sound; // 0x50D8, 0x6304
     int32_t death_anm_script; // 0x50DC, 0x6308
     int32_t death_anm_index; // 0x50E0, 0x630C
-    int32_t __int_50E4; // 0x50E4, 0x6310
+    int32_t __hit_flash_delay; // 0x50E4, 0x6310
     int __dword_50E8; // 0x50E8, 0x6314
     int32_t hit_sound; // 0x50EC, 0x6318
     Timer invulnerable_timer; // 0x50F0, 0x631C
@@ -11581,7 +11636,7 @@ struct EnemyData {
             uint32_t slowdown_immune : 1; // 14
             uint32_t __unknown_flag_E : 1; // 15
             uint32_t __unknown_flag_F : 1; // 16
-            uint32_t __unknown_flag_G : 1; // 17
+            uint32_t __has_been_onscreen : 1; // 17
             uint32_t move_bounds_enable : 1; // 18
             uint32_t __unknown_flag_A : 1; // 19
             uint32_t mirrored : 1; // 20
@@ -11713,6 +11768,14 @@ struct EnemyData {
         return !(this->disable_hitbox | this->intangible | this->__basic_anm_update | this->homing_disable);
     }
 
+    inline bool can_despawn_offscreen_vertically() {
+        return this->__has_been_onscreen & !this->offscreen_immune_vertical;
+    }
+
+    inline bool can_despawn_offscreen_horizontally() {
+        return this->__has_been_onscreen & !this->offscreen_immune_horizontal;
+    }
+
     inline void enforce_move_bounds() {
         if (this->move_bounds_enable) {
             float x_limit_size = this->move_bounds_size.x * 0.5f;
@@ -11803,7 +11866,7 @@ public:
 
     // 0x42F890
     dllexport gnu_noinline void thiscall __update_fog() asm_symbol_rel(0x42F890) {
-
+        // TODO
     }
 
     // 0x42FF80
@@ -14988,7 +15051,35 @@ struct UnknownVertexB {
     }
 };
 
-typedef struct AnmSprite AnmSprite;
+// size: 0x44
+struct AnmSprite {
+    int32_t slot; // 0x0
+    int32_t __index_4; // 0x4
+    int32_t __index_8; // 0x8
+    FloatRect bounds; // 0xC
+    float __surface_height; // 0x1C
+    float __surface_width; // 0x20
+    FloatRect uv_bounds; // 0x24
+    float __size_y; // 0x34
+    float __size_x; // 0x38
+    float __entry_width_frac; // 0x3C
+    float __entry_height_frac; // 0x40
+    // 0x44
+};
+#pragma region // AnmSprite Validation
+ValidateFieldOffset32(0x0, AnmSprite, slot);
+ValidateFieldOffset32(0x4, AnmSprite, __index_4);
+ValidateFieldOffset32(0x8, AnmSprite, __index_8);
+ValidateFieldOffset32(0xC, AnmSprite, bounds);
+ValidateFieldOffset32(0x1C, AnmSprite, __surface_height);
+ValidateFieldOffset32(0x20, AnmSprite, __surface_width);
+ValidateFieldOffset32(0x24, AnmSprite, uv_bounds);
+ValidateFieldOffset32(0x34, AnmSprite, __size_y);
+ValidateFieldOffset32(0x38, AnmSprite, __size_x);
+ValidateFieldOffset32(0x3C, AnmSprite, __entry_width_frac);
+ValidateFieldOffset32(0x40, AnmSprite, __entry_height_frac);
+ValidateStructSize32(0x44, AnmSprite);
+#pragma endregion
 
 extern "C" {
     // 0x51F65C
@@ -15771,6 +15862,21 @@ struct AnmVM {
     // 0x406730
     dllexport gnu_noinline void set_controller_position(Float3* position) asm_symbol_rel(0x406730) {
         this->controller.position = *position;
+    }
+
+    inline void set_uv_from_sprite(AnmSprite* sprite) {
+        float left = sprite->uv_bounds.left;
+        this->data.sprite_uv_quad[2].x = left;
+        this->data.sprite_uv_quad[0].x = left;
+        float right = sprite->uv_bounds.right;
+        this->data.sprite_uv_quad[3].x = right;
+        this->data.sprite_uv_quad[1].x = right;
+        float top = sprite->uv_bounds.top;
+        this->data.sprite_uv_quad[1].y = top;
+        this->data.sprite_uv_quad[0].y = top;
+        float bottom = sprite->uv_bounds.bottom;
+        this->data.sprite_uv_quad[3].y = bottom;
+        this->data.sprite_uv_quad[2].y = bottom;
     }
 
     // 0x47E8F0
@@ -16960,36 +17066,6 @@ ValidateFieldOffset32(0xC, AnmSpriteData, size);
 ValidateStructSize32(0x14, AnmSpriteData);
 #pragma endregion
 
-// size: 0x44
-struct AnmSprite {
-    int32_t slot; // 0x0
-    int32_t __index_4; // 0x4
-    int32_t __index_8; // 0x8
-    FloatRect bounds; // 0xC
-    float __surface_height; // 0x1C
-    float __surface_width; // 0x20
-    FloatRect uv_bounds; // 0x24
-    float __size_y; // 0x34
-    float __size_x; // 0x38
-    float __entry_width_frac; // 0x3C
-    float __entry_height_frac; // 0x40
-    // 0x44
-};
-#pragma region // AnmSprite Validation
-ValidateFieldOffset32(0x0, AnmSprite, slot);
-ValidateFieldOffset32(0x4, AnmSprite, __index_4);
-ValidateFieldOffset32(0x8, AnmSprite, __index_8);
-ValidateFieldOffset32(0xC, AnmSprite, bounds);
-ValidateFieldOffset32(0x1C, AnmSprite, __surface_height);
-ValidateFieldOffset32(0x20, AnmSprite, __surface_width);
-ValidateFieldOffset32(0x24, AnmSprite, uv_bounds);
-ValidateFieldOffset32(0x34, AnmSprite, __size_y);
-ValidateFieldOffset32(0x38, AnmSprite, __size_x);
-ValidateFieldOffset32(0x3C, AnmSprite, __entry_width_frac);
-ValidateFieldOffset32(0x40, AnmSprite, __entry_height_frac);
-ValidateStructSize32(0x44, AnmSprite);
-#pragma endregion
-
 // size: 0x8
 struct AnmScriptHeader {
     uint32_t script_id; // 0x0
@@ -17103,14 +17179,7 @@ struct AnmLoaded {
         }
         vm->data.sprite_id = sprite_id;
         AnmSprite* sprite = &this->sprites[sprite_id];
-        vm->data.sprite_uv_quad[2].x = sprite->uv_bounds.left;
-        vm->data.sprite_uv_quad[0].x = sprite->uv_bounds.left;
-        vm->data.sprite_uv_quad[3].x = sprite->uv_bounds.right;
-        vm->data.sprite_uv_quad[1].x = sprite->uv_bounds.right;
-        vm->data.sprite_uv_quad[1].y = sprite->uv_bounds.top;
-        vm->data.sprite_uv_quad[0].y = sprite->uv_bounds.top;
-        vm->data.sprite_uv_quad[3].y = sprite->uv_bounds.bottom;
-        vm->data.sprite_uv_quad[2].y = sprite->uv_bounds.bottom;
+        vm->set_uv_from_sprite(sprite);
         
         float sizeX = sprite->__size_x;
         vm->data.sprite_size.x = sizeX;
@@ -21519,7 +21588,7 @@ inline void AnmID::set_scale(float value) {
 }
 
 // 0x488FD0
-dllexport void thiscall AnmID::__sub_488FD0(int32_t script) {
+dllexport gnu_noinline void thiscall AnmID::__set_script(int32_t script) {
     AnmManager* anm_manager_ptr = ANM_MANAGER_PTR;
     if (AnmVM* vm = anm_manager_ptr->get_vm_with_id(*this)) {
         AnmLoaded* anm_loaded = anm_manager_ptr->loaded_anm_files[vm->data.slot];
@@ -21994,7 +22063,7 @@ struct AsciiManager : ZUNTask {
         ASCII_MANAGER_PTR = NULL;
     }
 
-    // This functions is disgusting
+    // This function is disgusting
     // 0x41A2B0
     dllexport gnu_noinline void thiscall draw_string(AsciiString* string) asm_symbol_rel(0x41A2B0) {
         int32_t length = byteloop_strlen(string->text);
@@ -22017,7 +22086,7 @@ struct AsciiManager : ZUNTask {
                 this->__vm_C.data.disable_z_write = this->__vm_C.data.scale.x != 1.0f;
                 scale = this->__vm_C.data.scale;
                 scale.x *= 12.0f;
-                scale.y *= 15.0f;
+                scale.y *= 16.0f;
                 break;
             case 7: case 9:
                 this->__vm_C.data.disable_z_write = this->__vm_C.data.scale.x != 1.0f;
@@ -22041,13 +22110,13 @@ struct AsciiManager : ZUNTask {
                 this->__vm_C.data.disable_z_write = false;
                 scale = this->__vm_C.data.scale;
                 scale.x *= 12.0f;
-                scale.y *= 15.0f;
+                scale.y *= 16.0f;
                 break;
             case 5:
                 this->__vm_C.data.disable_z_write = true;
                 scale = this->__vm_C.data.scale;
                 scale.x *= 12.0f;
-                scale.y *= 15.0f;
+                scale.y *= 16.0f;
                 break;
             default:
                 this->__vm_C.data.disable_z_write = this->__vm_C.data.scale.x != 1.0f;
@@ -22056,16 +22125,6 @@ struct AsciiManager : ZUNTask {
                 scale.y *= 14.0f;
                 break;
         }
-
-#define SET_UV_FROM_SPRITE() \
-    this->__vm_C.data.sprite_uv_quad[2].x = sprite->uv_bounds.left; \
-    this->__vm_C.data.sprite_uv_quad[0].x = sprite->uv_bounds.left; \
-    this->__vm_C.data.sprite_uv_quad[3].x = sprite->uv_bounds.right; \
-    this->__vm_C.data.sprite_uv_quad[1].x = sprite->uv_bounds.right; \
-    this->__vm_C.data.sprite_uv_quad[1].y = sprite->uv_bounds.top; \
-    this->__vm_C.data.sprite_uv_quad[0].y = sprite->uv_bounds.top; \
-    this->__vm_C.data.sprite_uv_quad[3].y = sprite->uv_bounds.bottom; \
-    this->__vm_C.data.sprite_uv_quad[2].y = sprite->uv_bounds.bottom;
 
         // Technically the whole sub should be using this...
         AnmManager* anm_manager_ptr = ANM_MANAGER_PTR;
@@ -22083,8 +22142,7 @@ struct AsciiManager : ZUNTask {
                             do {
                                 int32_t sprite_id = sprite_id_base + c;
                                 this->__vm_C.data.sprite_id = sprite_id;
-                                AnmSprite* sprite = &sprites[sprite_id];
-                                SET_UV_FROM_SPRITE();
+                                this->__vm_C.set_uv_from_sprite(&sprites[sprite_id]);
                                 sprites = this->__vm_C.get_anm_loaded2()->sprites;
                                 floatA += sprites[sprite_id].__size_x / (3.0f - WINDOW_DATA.__game_scale);
                                 c = *++str;
@@ -22098,7 +22156,7 @@ struct AsciiManager : ZUNTask {
                         uint8_t c = *str;
                         if (c) {
                             do {
-                                this->__vm_C.data.position.x += (c == '.' ? string->scale.x * 12.0f : -scale.x) * WINDOW_DATA.__game_scale;
+                                this->__vm_C.data.position.x += (c == '.' ? string->scale.x * -4.0f : -scale.x) * WINDOW_DATA.__game_scale;
                                 c = *++str;
                             } while (c);
                         }
@@ -22109,12 +22167,15 @@ struct AsciiManager : ZUNTask {
                         uint8_t c = *str;
                         if (c) {
                             do {
-                                this->__vm_C.data.position.x += (c == ',' ? string->scale.x * 12.0f : -scale.x) * WINDOW_DATA.__game_scale;
+                                this->__vm_C.data.position.x += (c == ',' ? string->scale.x * -4.0f : -scale.x) * WINDOW_DATA.__game_scale;
                                 c = *++str;
                             } while (c);
                         }
                         break;
                     }
+                    default:
+                        this->__vm_C.data.position.x += -(float)length * scale.x * WINDOW_DATA.__game_scale;
+                        break;
                 }
                 break;
             case 0:
@@ -22129,8 +22190,7 @@ struct AsciiManager : ZUNTask {
                             do {
                                 int32_t sprite_id = sprite_id_base + c;
                                 this->__vm_C.data.sprite_id = sprite_id;
-                                AnmSprite* sprite = &sprites[sprite_id];
-                                SET_UV_FROM_SPRITE();
+                                this->__vm_C.set_uv_from_sprite(&sprites[sprite_id]);
                                 sprites = this->__vm_C.get_anm_loaded2()->sprites;
                                 floatA += sprites[sprite_id].__size_x / (3.0f - WINDOW_DATA.__game_scale);
                                 c = *++str;
@@ -22146,7 +22206,7 @@ struct AsciiManager : ZUNTask {
                             c;
                             c = *++str
                         ) {
-                            this->__vm_C.data.position.x += (c == '.' ? string->scale.x * 12.0f : -scale.x) * 0.5f * WINDOW_DATA.__game_scale;
+                            this->__vm_C.data.position.x += (c == '.' ? string->scale.x * -4.0f : -scale.x) * 0.5f * WINDOW_DATA.__game_scale;
                         }
                         break;
                     }
@@ -22157,14 +22217,14 @@ struct AsciiManager : ZUNTask {
                             c;
                             c = *++str
                         ) {
-                            this->__vm_C.data.position.x += (c == ',' ? string->scale.x * 12.0f : -scale.x) * 0.5f * WINDOW_DATA.__game_scale;
+                            this->__vm_C.data.position.x += (c == ',' ? string->scale.x * -4.0f : -scale.x) * 0.5f * WINDOW_DATA.__game_scale;
                         }
                         break;
                     }
+                    default:
+                        this->__vm_C.data.position.x += -(float)length * scale.x * 0.5f * WINDOW_DATA.__game_scale;
+                        break;
                 }
-                break;
-            default:
-                this->__vm_C.data.position.x += -length * scale.x * 0.5f * WINDOW_DATA.__game_scale;
                 break;
         }
 
@@ -22222,53 +22282,45 @@ struct AsciiManager : ZUNTask {
                             break;
                         case 2: case 3: {
                             scale.x = string->scale.x * 7.0f;
-                            if (c - 'a' <= 25) {
+                            if ((uint8_t)(c - 'a') <= 25u) {
                                 sprite_id = c + 116;
-                            } else if (c - 'A' <= 25) {
+                            } else if ((uint8_t)(c - 'A') <= 25u) {
                                 sprite_id = c + 148;
                             } else {
                                 AnmSprite* sprites = this->__vm_C.get_anm_loaded2()->sprites;
                                 switch (c) {
                                     case '/':
                                         this->__vm_C.data.sprite_id = 206;
-                                        sprite = &sprites[206];
-                                        SET_UV_FROM_SPRITE();
+                                        this->__vm_C.set_uv_from_sprite(&sprites[206]);
                                         goto sprite_uv_set;
                                     case ':':
                                         this->__vm_C.data.sprite_id = 207;
-                                        sprite = &sprites[207];
-                                        SET_UV_FROM_SPRITE();
+                                        this->__vm_C.set_uv_from_sprite(&sprites[207]);
                                         goto sprite_uv_set;
                                     case '-':
                                         this->__vm_C.data.sprite_id = 208;
-                                        sprite = &sprites[208];
-                                        SET_UV_FROM_SPRITE();
+                                        this->__vm_C.set_uv_from_sprite(&sprites[208]);
                                         goto sprite_uv_set;
                                     case '*':
                                         this->__vm_C.data.sprite_id = 209;
-                                        sprite = &sprites[209];
-                                        SET_UV_FROM_SPRITE();
+                                        this->__vm_C.set_uv_from_sprite(&sprites[209]);
                                         goto sprite_uv_set;
                                     case '%':
                                         this->__vm_C.data.sprite_id = 210;
-                                        sprite = &sprites[210];
-                                        SET_UV_FROM_SPRITE();
+                                        this->__vm_C.set_uv_from_sprite(&sprites[210]);
                                         goto sprite_uv_set;
                                     case '$':
                                         this->__vm_C.data.sprite_id = 287;
-                                        sprite = &sprites[287];
-                                        SET_UV_FROM_SPRITE();
+                                        this->__vm_C.set_uv_from_sprite(&sprites[287]);
                                         goto sprite_uv_set;
                                     case '.':
                                         this->__vm_C.data.sprite_id = 211;
-                                        sprite = &sprites[211];
-                                        SET_UV_FROM_SPRITE();
+                                        this->__vm_C.set_uv_from_sprite(&sprites[211]);
                                         scale.x = string->scale.x * 4.0f;
                                         goto sprite_uv_set;
                                     case '+':
                                         this->__vm_C.data.sprite_id = 212;
-                                        sprite = &sprites[212];
-                                        SET_UV_FROM_SPRITE();
+                                        this->__vm_C.set_uv_from_sprite(&sprites[212]);
                                         goto sprite_uv_set;
                                     default:
                                         sprite_id = c + 148;
@@ -22302,21 +22354,19 @@ struct AsciiManager : ZUNTask {
                                 case ',':
                                     sprite_id += 14;
                                     this->__vm_C.data.sprite_id = sprite_id;
-                                    sprite = &this->__vm_C.get_anm_loaded2()->sprites[sprite_id];
-                                    SET_UV_FROM_SPRITE();
+                                    this->__vm_C.set_uv_from_sprite(&this->__vm_C.get_anm_loaded2()->sprites[sprite_id]);
                                     this->__vm_C.data.position.y = string->position.y + WINDOW_DATA.__game_scale * 3.0f;
                                     scale.x = string->scale.x * 4.0f;
                                     goto sprite_uv_set;
                                 default:
-                                    sprite_id = c - 48;
+                                    sprite_id += c - '0';
                                     break;
                             }
                             break;
                         }
                     }
                     this->__vm_C.data.sprite_id = sprite_id;
-                    sprite = &this->__vm_C.get_anm_loaded2()->sprites[sprite_id];
-                    SET_UV_FROM_SPRITE();
+                    this->__vm_C.set_uv_from_sprite(&this->__vm_C.get_anm_loaded2()->sprites[sprite_id]);
                 sprite_uv_set:
                     float size_x;
                     float size_y;
@@ -22490,7 +22540,7 @@ struct AsciiManager : ZUNTask {
     }
 
 private:
-    inline void print_number_impl(Float3* position, uint32_t number) {
+    forceinline void print_number_impl(Float3* position, uint32_t number) {
         char buffer[0x100];
         if (number < 1000) {
             sprintf(buffer, "%d", number);
@@ -22533,7 +22583,7 @@ public:
     }
     
 private:
-    inline void print_score_impl(Float3* position, uint32_t score, uint32_t continues) {
+    forceinline void print_score_impl(Float3* position, uint32_t score, uint32_t continues) {
         char buffer[0x100];
         if (score < 100) {
             sprintf(buffer, "%d", score * 10 + continues);
@@ -23058,7 +23108,7 @@ struct Ending : ZUNTask {
 
         ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
 
-        this->ending_index = GAME_MANAGER.__int_128;
+        this->ending_index = GAME_MANAGER.__ending_type;
         this->__unknown_flag_A = false;
         
         int32_t index = UNKNOWN_INT32_I;
@@ -26122,6 +26172,18 @@ public:
 
     inline bool is_movement_direction_diagonal() {
         return this->movement_direction >= MovementUpLeft;
+    }
+
+    inline bool above_poc() {
+        switch (this->data.state) {
+            default:
+                if (this->data.position.y < this->poc_height) {
+                    return true;
+                }
+            case 2: case 4:
+                break;
+        }
+        return false;
     }
 
     // 0x45B170
@@ -31640,8 +31702,7 @@ struct CardTsukasa : CardBase {
                 bomb->__timer_34.reset();
 
                 /*
-                Spellcard* spellcard = SPELLCARD_PTR;
-                if (spellcard->__unknown_flag_A && spellcard->__timer_20 >= 60) {
+                if (SPELLCARD_PTR->__spell_past_grace_period()) {
                     bomb->__int_68 = 1;
                 }
                 */
@@ -36107,6 +36168,8 @@ std_end:
     return ZUN_SUCCESS;
 }
 
+static inline constexpr int32_t SPELLCARD_GRACE_PERIOD = 60;
+
 // size: 0xC0
 struct Spellcard : ZUNTask {
     // ZUNTask base; // 0x0
@@ -36119,7 +36182,7 @@ struct Spellcard : ZUNTask {
     union {
         uint32_t flags; // 0x78
         struct {
-            uint32_t __unknown_flag_A : 1; // 1 spell_active
+            uint32_t spell_active : 1; // 1
             uint32_t __unknown_flag_B : 1; // 2
             uint32_t __unknown_flag_I : 1; // 3
             uint32_t __timeout_spell : 1; // 4
@@ -36127,7 +36190,7 @@ struct Spellcard : ZUNTask {
             uint32_t __unknown_flag_E : 1; // 6
             uint32_t __unknown_flag_F : 1; // 7
             uint32_t __unknown_flag_D : 1; // 8
-            uint32_t __unknown_flag_H: 1; // 9
+            uint32_t __unknown_flag_H : 1; // 9
             uint32_t __unknown_flag_G : 1; // 10
         };
     };
@@ -36166,8 +36229,8 @@ struct Spellcard : ZUNTask {
     }
 
     // 0x409B10
-    dllexport gnu_noinline BOOL thiscall __get_flag_A() asm_symbol_rel(0x409B10) {
-        return this->__unknown_flag_A;
+    dllexport gnu_noinline BOOL thiscall is_spell_active() asm_symbol_rel(0x409B10) {
+        return this->spell_active;
     }
 
     // 0x42D640
@@ -36185,16 +36248,16 @@ struct Spellcard : ZUNTask {
         SPELLCARD_PTR->__unknown_flag_H = state;
     }
 
-    inline bool __inline_sub_A() {
-        return this->__unknown_flag_A && this->__timer_20 >= 60;
+    inline bool __spell_past_grace_period() {
+        return this->spell_active && this->__timer_20 >= SPELLCARD_GRACE_PERIOD;
     }
 
-    inline bool __inline_sub_B() {
-        return this->__unknown_flag_A & this->__timeout_spell;
+    inline bool __is_timeout_spell_active() {
+        return this->spell_active & this->__timeout_spell;
     }
 
     inline bool __inline_sub_C() {
-        return this->__unknown_flag_A & this->__unknown_flag_E;
+        return this->spell_active & this->__unknown_flag_E;
     }
 
     // 0x42D670
@@ -36205,8 +36268,8 @@ struct Spellcard : ZUNTask {
     }
 
     inline void __inline_spellcard_fail() {
-        if (this->__unknown_flag_A) {
-            if (this->__timer_20 >= 60) {
+        if (this->spell_active) {
+            if (this->__timer_20 >= SPELLCARD_GRACE_PERIOD) {
                 this->__bonus_A = 0;
                 this->__unknown_flag_B = false;
                 this->__unknown_flag_E = false;
@@ -36228,7 +36291,7 @@ struct Spellcard : ZUNTask {
         this->__timer_20.reset();
         this->id = id;
         byteloop_strcpy(this->name, name);
-        this->__unknown_flag_A = true;
+        this->spell_active = true;
         this->__unknown_flag_B = true;
         this->__timeout_spell = false;
         this->__unknown_flag_C = false;
@@ -36300,12 +36363,12 @@ struct Spellcard : ZUNTask {
 
     // 0x42A780
     dllexport gnu_noinline void thiscall end_spell() {
-        if (this->__unknown_flag_A) {
-            // TODO, sets some stage flag
+        if (this->spell_active) {
+            STAGE_PTR->__unknown_flag_C = true;
             this->__vm_id_array_10[0].interrupt_tree(1);
             this->__vm_id_array_10[1].interrupt_tree(1);
             this->__vm_id_array_10[2].interrupt_tree(1);
-            this->__unknown_flag_A = false;
+            this->spell_active = false;
             this->__vm_id_C.mark_tree_for_delete();
             this->__unknown_flag_E = false;
             //GUI_PTR->__sub_429C30();
@@ -36342,7 +36405,7 @@ struct Spellcard : ZUNTask {
         }
         int32_t life_remaining = enemy_data->enemy()->data.life.remaining_current_attack;
 
-        if (this->__unknown_flag_A) {
+        if (this->spell_active) {
             return life_remaining < threshold_low;
         } else {
             return life_remaining < threshold_high;
@@ -36351,7 +36414,7 @@ struct Spellcard : ZUNTask {
 
     // 0x429EB0
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x429EB0) {
-        if (this->__unknown_flag_A) {
+        if (this->spell_active) {
             ++this->__int_8C;
             if (
                 this->__timer_20 >= 60 &&
@@ -36419,7 +36482,7 @@ struct Spellcard : ZUNTask {
     }
 
     inline UpdateFuncRet thiscall on_draw() {
-        if (this->__unknown_flag_A) {
+        if (this->spell_active) {
             AnmVM* vm = this->__vm_id_array_10[2].get_vm_ptr();
             if (!vm) {
                 return UpdateFuncNext;
@@ -36521,11 +36584,7 @@ dllexport gnu_noinline ZUNResult BombBase::start_bomb() {
         bomb->__timer_34.reset();
         GAME_MANAGER.globals.subtract_bomb();
 
-        Spellcard* spellcard = SPELLCARD_PTR;
-        if (
-            spellcard->__unknown_flag_A &&
-            spellcard->__timer_20 >= 60
-        ) {
+        if (SPELLCARD_PTR->__spell_past_grace_period()) {
             bomb->__int_68 = 1;
         }
 
@@ -36569,7 +36628,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
             if (B >= 30) {
                 Spellcard* spellcard = SPELLCARD_PTR;
                 if (
-                    spellcard->__unknown_flag_A &&
+                    spellcard->spell_active &&
                     spellcard->id == 96
                 ) {
                     bullet_cancel_radius(&this->data.position, 128.0f, CancelType0);
@@ -36804,16 +36863,7 @@ dllexport gnu_noinline void thiscall Player::death() {
         option->__anm_id_B4.interrupt_tree(1);
     }
 
-    Spellcard* spellcard = SPELLCARD_PTR;
-    if (spellcard->__unknown_flag_A) {
-        if (spellcard->__timer_20 >= 60) {
-            spellcard->__unknown_flag_B = false;
-            spellcard->__unknown_flag_E = false;
-        }
-        else if (BOMB_PTR->is_active()) {
-            spellcard->__unknown_flag_E = true;
-        }
-    }
+    SPELLCARD_PTR->__inline_spellcard_fail();
 
     MOMOYO_CARD_COUNTER = 0;
 
@@ -36852,9 +36902,101 @@ struct ItemSpriteData {
     // 0x8
 };
 
+extern "C" {
+    // 0x4B4020
+    //externcg const ItemSpriteData ITEM_SPRITE_DATA[21] cgasm("_ITEM_SPRITE_DATA");
+}
+
+static const ItemSpriteData ITEM_SPRITE_DATA[] = {
+    { // 0, InvalidItem
+        .__id_0 = -1,
+        .__id_4 = -1
+    },
+    { // 1, PowerItem
+        .__id_0 = 112,
+        .__id_4 = 134
+    },
+    { // 2, PointItem
+        .__id_0 = 113,
+        .__id_4 = 135
+    },
+    { // 3, BigPowerItem
+        .__id_0 = 114,
+        .__id_4 = 136
+    },
+    { // 4, LifeFragmentItem
+        .__id_0 = 115,
+        .__id_4 = 137
+    },
+    { // 5, LifeItem
+        .__id_0 = 116,
+        .__id_4 = 138
+    },
+    { // 6, BombFragmentItem
+        .__id_0 = 117,
+        .__id_4 = 139
+    },
+    { // 7, BombItem
+        .__id_0 = 118,
+        .__id_4 = 140
+    },
+    { // 8, FItem
+        .__id_0 = 119,
+        .__id_4 = 141
+    },
+    { // 9, Piv5Item
+        .__id_0 = 120,
+        .__id_4 = -1
+    },
+    { // 10, Piv10Item
+        .__id_0 = 121,
+        .__id_4 = -1
+    },
+    { // 11, Piv20Item
+        .__id_0 = 122,
+        .__id_4 = -1
+    },
+    { // 12, Piv30Item
+        .__id_0 = 123,
+        .__id_4 = -1
+    },
+    { // 13, Piv40Item
+        .__id_0 = 124,
+        .__id_4 = -1
+    },
+    { // 14, Piv50Item
+        .__id_0 = 125,
+        .__id_4 = -1
+    },
+    { // 15, Item15
+        .__id_0 = -1,
+        .__id_4 = -1
+    },
+    { // 16, Item16
+        .__id_0 = 3,
+        .__id_4 = -1
+    },
+    { // 17, Item17
+        .__id_0 = 4,
+        .__id_4 = -1
+    },
+    { // 18, Item18
+        .__id_0 = 5,
+        .__id_4 = -1
+    },
+    { // 19, Item19
+        .__id_0 = 6,
+        .__id_4 = -1
+    },
+    { // 20, Item20
+        .__id_0 = 129,
+        .__id_4 = -1
+    }
+};
+
 // size: 0xC94
 struct Item {
-    ZUNList<Item> __list_node_0; // 0x0
+    ZUNList<Item> free_list_node; // 0x0
     AnmVM __vm_10; // 0x10
     AnmVM __vm_61C; // 0x61C
     AnmID __vm_id_C28; // 0xC28
@@ -36866,10 +37008,10 @@ struct Item {
     unknown_fields(0x14); // 0xC60 (unused timer according to FW)
     uint32_t state; // 0xC74
     ItemID id; // 0xC78
-    int __dword_C7C; // 0xC7C
-    float __float_C80; // 0xC80
+    ItemID id2; // 0xC7C
+    float __attract_speed; // 0xC80
     int32_t __int_C84; // 0xC84
-    unknown_fields(0x4); // 0xC88
+    int __dword_C88; // 0xC88
     int __dword_C8C; // 0xC8C
     int32_t sound_id; // 0xC90
     // 0xC94
@@ -36880,27 +37022,152 @@ struct Item {
     // 0x445800
     dllexport ~Item() NO_EH_TERMINATE = default;
 
+    inline void cleanup() {
+        this->state = 0;
+        this->__vm_id_C28.mark_tree_for_delete();
+        ((ZUNList<Item>*)this->free_list_node.data)->append((ZUNList<Item>*)this);
+    }
+
     // 0x4472B0
-    dllexport gnu_noinline int thiscall __sub_4472B0() asm_symbol_rel(0x4472B0) {
+    dllexport gnu_noinline int thiscall __create_spawn_effects() asm_symbol_rel(0x4472B0) {
         switch (this->id) {
+            case PowerItem: // 1
+            case PointItem: // 2
+                EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(101, &this->position);
+                SOUND_MANAGER.play_sound_validate(this->sound_id);
+                break;
             case LifeFragmentItem: // 4
-            case BombFragmentItem: // 6
-            case Item15: // 15
             case LifeItem: // 5
+            case BombFragmentItem: // 6
             case BombItem: // 7
+            case Item15: // 15
             case Item16: // 16
             case Item17: // 17
-            case Item19: // 19
             case Item18: // 18
-
-            case PointItem: // 2
+            case Item19: // 19
+                EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(101, &this->position);
+                switch (this->id) {
+                    default:
+                        SOUND_MANAGER.play_sound(48);
+                        break;
+                    case LifeFragmentItem: // 4
+                    case LifeItem: // 5
+                        SOUND_MANAGER.play_sound(74);
+                        break;
+                }
                 break;
         }
         return 0;
     }
+
+    // 0x446B00
+    dllexport gnu_noinline void thiscall collect_point_item() asm_symbol_rel(0x446B00) {
+        Player* player = PLAYER_PTR;
+        float player_y = player->data.position.y;
+        int32_t point_item_value = GAME_MANAGER.globals.update_point_item_value();
+        float poc_height = player->poc_height;
+        D3DCOLOR popup_color;
+        if (
+            !(player_y <= poc_height) &&
+            this->state != 3
+        ) {
+            // this part is probably totally wrong
+            float height_diff = player_y - poc_height;
+            point_item_value /= 100;
+            point_item_value = (point_item_value % 10) - point_item_value;
+            point_item_value *= 9;
+            point_item_value /= 10;
+
+            point_item_value *= (int32_t)height_diff;
+            point_item_value /= 450;
+
+            point_item_value /= 10;
+            point_item_value *= 10;
+            if (point_item_value <= 0) {
+                point_item_value = 10;
+            }
+            popup_color = COLOR(255, 255, 255, 255);
+        }
+        else {
+            point_item_value /= 100;
+            point_item_value -= point_item_value % 10;
+            point_item_value /= 10;
+            point_item_value *= 10;
+            if (point_item_value <= 0) {
+                point_item_value = 10;
+            }
+            popup_color = COLOR(255, 255, 255, 0);
+        }
+        POPUP_MANAGER_PTR->create_popup(&this->position, point_item_value, popup_color);
+        ++GAME_MANAGER.globals.point_items_collected_in_game;
+        ++GAME_MANAGER.globals.money_collected_in_game;
+        ++GAME_MANAGER.globals.current_money;
+        GAME_MANAGER.add_to_score(point_item_value);
+    }
+
+    // 0x446870
+    dllexport gnu_noinline void thiscall collect_power_item() asm_symbol_rel(0x446870) {
+        int32_t point_item_value = GAME_MANAGER.globals.update_point_item_value();
+        Player* player = PLAYER_PTR;
+        float player_y = player->data.position.y;
+        if (GAME_MANAGER.globals.current_power >= GAME_MANAGER.globals.max_power) {
+            float poc_height = player->poc_height;
+            if (
+                !(player_y <= poc_height) &&
+                this->state != 3
+            ) {
+                
+            }
+            else {
+
+            }
+        }
+        else {
+            BOOL level_up = GAME_MANAGER.globals.add_power(1);
+            if (level_up) {
+                PLAYER_PTR->data.__update_option_power_levels();
+                POPUP_MANAGER_PTR->create_popup(&this->position, -1, COLOR(255, 255, 255, 64));
+                SOUND_MANAGER.play_sound_positioned(13, this->position.x);
+            }
+        }
+    }
+
+    forceinline void collect_big_power_item() {
+        if (GAME_MANAGER.globals.current_power >= GAME_MANAGER.globals.max_power) {
+            GAME_MANAGER.add_to_score(2000);
+            POPUP_MANAGER_PTR->create_popup(&this->position, 20000, COLOR(255, 128, 128, 128));
+            SOUND_MANAGER.play_sound_positioned(13, this->position.x);
+        }
+        else {
+            BOOL level_up = GAME_MANAGER.globals.add_power(GAME_MANAGER.globals.power_per_level);
+            if (level_up) {
+                PLAYER_PTR->data.__update_option_power_levels();
+                SOUND_MANAGER.play_sound_positioned(13, this->position.x);
+                POPUP_MANAGER_PTR->create_popup(&this->position, -1, COLOR(255, 255, 255, 64));
+            }
+        }
+        // TODO: more score here
+    }
+
+    forceinline void collect_f_item() {
+        BOOL level_up = GAME_MANAGER.globals.add_power(GAME_MANAGER.globals.max_power);
+        if (level_up) {
+            PLAYER_PTR->data.__update_option_power_levels();
+            POPUP_MANAGER_PTR->create_popup(&this->position, -1, COLOR(255, 255, 255, 64));
+            SOUND_MANAGER.play_sound_positioned(13, this->position.x);
+        }
+    }
+
+    forceinline void collect_life_fragment_item() {
+        clang_noinline GAME_MANAGER.globals.add_life_fragment();
+    }
+
+    forceinline void collect_bomb_fragment_item() {
+        clang_forceinline GAME_MANAGER.globals.add_bomb_fragment();
+    }
 };
 #pragma region // Item Validation
-ValidateFieldOffset32(0x0, Item, __list_node_0);
+ValidateFieldOffset32(0x0, Item, free_list_node);
 ValidateFieldOffset32(0x10, Item, __vm_10);
 ValidateFieldOffset32(0x61C, Item, __vm_61C);
 ValidateFieldOffset32(0xC28, Item, __vm_id_C28);
@@ -36911,9 +37178,10 @@ ValidateFieldOffset32(0xC48, Item, angle);
 ValidateFieldOffset32(0xC4C, Item, __timer_C4C);
 ValidateFieldOffset32(0xC74, Item, state);
 ValidateFieldOffset32(0xC78, Item, id);
-ValidateFieldOffset32(0xC7C, Item, __dword_C7C);
-ValidateFieldOffset32(0xC80, Item, __float_C80);
+ValidateFieldOffset32(0xC7C, Item, id2);
+ValidateFieldOffset32(0xC80, Item, __attract_speed);
 ValidateFieldOffset32(0xC84, Item, __int_C84);
+ValidateFieldOffset32(0xC88, Item, __dword_C88);
 ValidateFieldOffset32(0xC8C, Item, __dword_C8C);
 ValidateFieldOffset32(0xC90, Item, sound_id);
 ValidateStructSize32(0xC94, Item);
@@ -36937,12 +37205,13 @@ struct ItemManager : ZUNTask {
     UpdateFunc* on_draw_func_B; // 0x10
     Item items[MAX_ITEM_COUNT]; // 0x14
     Item cancel_items[MAX_CANCEL_ITEM_COUNT]; // 0x1D7AF4
-    ZUNListHead<Item> items_freelist; // 0xE6BAF4
-    ZUNListHead<Item> cancel_items_freelist; // 0xE6BB04
+    ZUNListHead<Item> item_free_list; // 0xE6BAF4
+    ZUNListHead<Item> cancel_item_free_list; // 0xE6BB04
     float slowdown_factor; // 0xE6BB14
     int32_t items_onscreen; // 0xE6BB18
     int32_t item_count; // 0xE6BB1C
-    unknown_fields(0x8); // 0xE6BB20
+    int32_t __int_E6BB20; // 0xE6BB20
+    int __dword_E6BB24; // 0xE6BB24
     // 0xE6BB28
 
     inline void zero_contents() {
@@ -36995,20 +37264,20 @@ struct ItemManager : ZUNTask {
     dllexport gnu_noinline void thiscall destroy_all() {
         memset(&this->items, 0, sizeof(Item[MAX_ITEM_COUNT + MAX_CANCEL_ITEM_COUNT]));
 
-        this->items_freelist.initialize_with(NULL);
+        this->item_free_list.initialize_with(NULL);
 
         for (size_t i = 0; i < MAX_ITEM_COUNT; ++i) {
             Item* item = &this->items[i];
-            item->__list_node_0.initialize_with(item);
-            this->items_freelist.append(&item->__list_node_0);
+            item->free_list_node.initialize_with((Item*)&this->item_free_list);
+            this->item_free_list.append(&item->free_list_node);
         }
 
-        this->cancel_items_freelist.initialize_with(NULL);
+        this->cancel_item_free_list.initialize_with(NULL);
 
         for (size_t i = 0; i < MAX_CANCEL_ITEM_COUNT; ++i) {
             Item* item = &this->cancel_items[i];
-            item->__list_node_0.initialize_with(item);
-            this->cancel_items_freelist.append(&item->__list_node_0);
+            item->free_list_node.initialize_with((Item*)&this->cancel_item_free_list);
+            this->cancel_item_free_list.append(&item->free_list_node);
         }
 
         this->slowdown_factor = 1.0f;
@@ -37024,31 +37293,93 @@ private:
         ++this->item_count;
         switch (item_id) {
             default: // normal items
-                if ((item = (Item*)this->items_freelist.next)) {
+                if ((item = (Item*)this->item_free_list.next)) {
                     item->state = 1;
                     item->position = *position;
-                    if (position->x <= SCREEN_LEFT_EDGE) {
-                        position->x = SCREEN_LEFT_EDGE;
-                    } else if (position->x >= SCREEN_RIGHT_EDGE) {
-                        position->x = SCREEN_RIGHT_EDGE;
+                    if (item->position.x <= SCREEN_LEFT_EDGE) {
+                        item->position.x = SCREEN_LEFT_EDGE;
+                    } else if (item->position.x >= SCREEN_RIGHT_EDGE) {
+                        item->position.x = SCREEN_RIGHT_EDGE;
                     }
-                    // TODO
+
+                    if (item_id == Item15) {
+                        item_id = BombFragmentItem;
+                    }
+
+                    // nothing sets angle...?
+
+                    item->velocity.make_from_vector3(angle, speed);
+                    item->__timer_C4C.reset();
+                    item->speed = 0.0f;
+                    item->__attract_speed = 0.0f;
+                    item->__int_C84 = arg6;
+                    item->id = (ItemID)item_id;
+                    item->sound_id = -1;
+                    if (!arg6) {
+                        item->__create_spawn_effects();
+                    }
+
+                    int32_t script = ITEM_SPRITE_DATA[item_id].__id_0;
+                    item->id2 = InvalidItem;
+
+                    switch (item_id) {
+                        case Item16: case Item17: case Item18: case Item19:
+                            item->__vm_10.data.visible = false;
+                            item->__vm_61C.data.visible = false;
+                            item->__vm_10.data.current_instruction_offset = -1;
+                            item->__vm_61C.data.current_instruction_offset = -1;
+                            //item->__vm_id_C28 = ABILITY_MANAGER_PTR->__sub_409310(&item_id);
+                            item->__vm_id_C28.set_controller_position(&item->position);
+                            item->__vm_id_C28.set_color1(COLOR(255, 255, 255, 255));
+                            break;
+                        default:
+                            get_bullet_anm()->__copy_data_to_vm_and_run(&item->__vm_10, script);
+                            get_bullet_anm()->__copy_data_to_vm_and_run(&item->__vm_61C, ITEM_SPRITE_DATA[item_id].__id_4);
+                            item->__vm_id_C28 = 0;
+                            item->__vm_10.data.color1 = COLOR(255, 255, 255, 255);
+                            break;
+                    }
+                    item->__dword_C8C = 0;
+                    item->free_list_node.unlink();
                 }
-                break;
+                return item;
+
             case Piv5Item: // 9
             case Piv10Item: // 10
             case Piv20Item: // 11
             case Piv30Item: // 12
             case Piv40Item: // 13
             case Piv50Item: // 14
-
+                if ((item = (Item*)this->cancel_item_free_list.next)) {
+                    int32_t A = this->__int_E6BB20;
+                    int32_t B = this->item_count;
+                    if (A >= 1024) {
+                        B = B % 32 + 16;
+                    }
+                    else if (A >= 512) {
+                        B = B % 16 + 8;
+                    }
+                    else if (A >= 256) {
+                        B = B % 8 + 4;
+                    }
+                    else {
+                        B = B % 4;
+                    }
+                    item->__int_C84 = B;
+                    item->state = 5;
+                    item->id = (ItemID)item_id;
+                    item->id2 = (ItemID)item_id;
+                    item->position = *position;
+                    item->velocity.make_from_vector3(angle, speed);
+                    item->__timer_C4C.reset();
+                    item->angle = angle;
+                    item->speed = speed;
+                    item->__dword_C8C = 0;
+                    item->free_list_node.unlink();
+                    item->sound_id = -1;
+                }
+                return item;
         }
-        return item;
-        use_var(item_id);
-        use_var(position);
-        use_var(angle);
-        use_var(speed);
-        return (Item*)(position + (intptr_t)(item_id + angle + speed));
     }
 public:
     inline Item* spawn_item(int32_t item_id, Float3* position, float angle, float speed, int32_t arg6) {
@@ -37057,21 +37388,247 @@ public:
 
     // 0x445A80
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x445A80) {
-        // TODO
+        
+        Player* player = PLAYER_PTR;
+        
+        this->__int_E6BB20 = 0;
+        this->items_onscreen = 0;
+
+        Item* item = this->items;
+        for (int32_t i = 0; i < TOTAL_ITEM_COUNT; ++i, ++item) {
+            switch (item->state) {
+                case 0:
+                    continue;
+                case 5:
+                    if (--item->__int_C84 < 0) {
+                        item->state = 2;
+                        get_bullet_anm()->__copy_data_to_vm_and_run(&item->__vm_10, ITEM_SPRITE_DATA[item->id].__id_0);
+                        item->__vm_61C.data.visible = false;
+                        item->__vm_61C.data.current_instruction_offset = -1;
+                        player = PLAYER_PTR;
+                    }
+                    continue;
+                case 1:
+                    if (item->__int_C84 > 0) {
+                        if (--item->__int_C84 <= 0) {
+                            item->__create_spawn_effects();
+                            player = PLAYER_PTR;
+                        }
+                        continue;
+                    }
+
+                    if (
+                        !player->above_poc() &&
+                        !BOMB_PTR->__inline_sub_A() &&
+                        !GUI_PTR->msg_vm_active()
+                    ) {
+                        item->position += item->velocity * this->slowdown_factor * GAME_SPEED;
+                        item->velocity.y += this->slowdown_factor * GAME_SPEED * 0.03f;
+
+                        if (item->__timer_C4C >= 32) {
+                            if (this->slowdown_factor < 1.0f) {
+                                Float3 position = { RNG.rand_float_signed(), RNG.rand_float_signed(), 0.0f };
+                                item->__vm_id_C28.set_controller_position(&position);
+                                item->__vm_id_C28.set_color1(COLOR(255, 160, 255, 255));
+                                item->__vm_10.data.position = position;
+                                GREEN(item->__vm_10.data.color1) = 160;
+                                RED(item->__vm_10.data.color1) = 255;
+                                player = PLAYER_PTR;
+                            }
+                            else {
+                                item->__vm_id_C28.set_color1(COLOR(255, 255, 255, 255));
+                                GREEN(item->__vm_10.data.color1) = 255;
+                                RED(item->__vm_10.data.color1) = 255;
+                            }
+                            ALPHA(item->__vm_10.data.color1) = 255;
+                            BLUE(item->__vm_10.data.color1) = 255;
+                        }
+
+                        float velocity_y = item->velocity.y;
+                        if (velocity_y >= 0.0f) {
+                            item->velocity.x = 0.0f;
+                        }
+                        if (velocity_y > 2.0f) {
+                            item->velocity.y = 2.0f;
+                        }
+
+                        if (
+                            item->position.y > SCREEN_HEIGHT + 24.0f ||
+                            zfabsf(item->position.x) > SCREEN_HALF_WIDTH + 8.0f
+                        ) {
+                            item->cleanup();
+                            player = PLAYER_PTR;
+                            continue;
+                        }
+                    }
+                    else {
+                        goto trigger_high_speed_item_attract;
+                    }
+                    break;
+
+                case 2:
+                    item->position += item->velocity * this->slowdown_factor * GAME_SPEED;
+                    if (
+                        (item->velocity.y += this->slowdown_factor * GAME_SPEED * 0.03f) >= 0.0f
+                    ) {
+                trigger_high_speed_item_attract:
+                        item->__attract_speed = player->__item_attract_speed;
+                        item->state = 3;
+                case 3: item_attract:
+                        float angle = player->angle_from_point(&item->position);
+                        item->velocity.make_from_vector(angle, item->__attract_speed);
+                        item->position += item->velocity * GAME_SPEED;
+
+                        float attract_speed = item->__attract_speed;
+                        if (attract_speed < 12.0f) {
+                            item->__attract_speed = attract_speed + 0.2f;
+                        }
+                        player = PLAYER_PTR;
+                        if (player->data.state == 4) {
+                            item->state = 1;
+                            item->velocity.x = 0.0f;
+                            item->velocity.y = 0.0f;
+                        }
+                    }
+                    break;
+
+                case 4:
+                    if (
+                        !player->above_poc() &&
+                        !BOMB_PTR->__inline_sub_A() &&
+                        !GUI_PTR->msg_vm_active()
+                    ) {
+                        goto item_attract;
+                    }
+                    goto trigger_high_speed_item_attract;
+
+                default:
+                    break;
+            }
+
+            if (player->data.state != 2) {
+                float distance_squared = player->data.position.distance_squared(&item->position);
+                float collect_radius = player->item_collect_radius;
+                if (collect_radius * collect_radius > distance_squared) {
+                    switch (ItemID id = item->id) {
+                        case FItem: // 8
+                            item->collect_f_item();
+                            break;
+                        case PowerItem: // 1
+                            item->collect_power_item();
+                            break;
+                        case BigPowerItem: // 3
+                            item->collect_big_power_item();
+                            break;
+                        case PointItem: // 2
+                            item->collect_point_item();
+                            break;
+                        case LifeFragmentItem: // 4
+                            item->collect_life_fragment_item();
+                            break;
+                        case LifeItem: // 5
+                            //item->collect_life_item();
+                            break;
+                        case BombFragmentItem: // 6
+                            item->collect_bomb_fragment_item();
+                            break;
+                        case BombItem: // 7
+                            //item->collect_bomb_item();
+                            break;
+                        case Item16: // 16
+                        case Item17: // 17
+                        case Item18: // 18
+                        case Item19: // 19
+                            //ABILITY_MANAGER_PTR->allocate_new_card(ITEM_SPRITE_DATA[id].__id_0, 0);
+                            break;
+                        case Piv5Item: // 9
+                        case Piv10Item: // 10
+                        case Piv20Item: // 11
+                        case Piv30Item: // 12
+                        case Piv40Item: // 13
+                        case Piv50Item: // 14
+                            // TODO
+                            GAME_MANAGER.add_to_score(GAME_MANAGER.globals.current_money / 10 * 10);
+                            break;
+                    }
+                    SOUND_MANAGER.play_sound_positioned(37, item->position.x);
+                    item->cleanup();
+                    player = PLAYER_PTR;
+                }
+                else {
+                    switch (item->state) {
+                        default: {
+                            float attract_radius;
+                            if (INPUT_STATES[0].check_inputs(BUTTON_FOCUS)) {
+                                attract_radius = player->item_attract_radius_focused;
+                            } else {
+                                attract_radius = player->item_attract_radius_unfocused;
+                            }
+                            if (attract_radius * attract_radius > distance_squared) {
+                                switch (item->id) {
+                                    default: {
+                                        float attract_speed = player->__item_attract_speed / 3.0f;
+                                        item->state = 4;
+                                        item->__attract_speed = attract_speed;
+                                        break;
+                                    }
+                                    case Piv5Item: // 9
+                                    case Piv10Item: // 10
+                                    case Piv20Item: // 11
+                                    case Piv30Item: // 12
+                                    case Piv40Item: // 13
+                                    case Piv50Item: // 14
+                                        break;
+                                }
+                            }
+                        }
+                        case 3: case 4:
+                            break;
+                    }
+                }
+            }
+
+            if (item->__vm_10.data.visible) {
+                item->__vm_10.run_anm();
+                player = PLAYER_PTR;
+            }
+            if (item->__vm_61C.data.visible) {
+                item->__vm_61C.run_anm();
+                player = PLAYER_PTR;
+            }
+            if (item->__vm_id_C28) {
+                item->__vm_id_C28.set_controller_position(&item->position);
+            }
+            ++item->__timer_C4C;
+            ++this->items_onscreen;
+        }
+
+        float slowdown_factor = this->slowdown_factor;
+        if (slowdown_factor < 1.0f) {
+            this->slowdown_factor = slowdown_factor + 0.1f;
+        }
+
         return UpdateFuncNext;
     }
 
     // 0x446D60
-    dllexport gnu_noinline UpdateFuncRet thiscall on_draw(BOOL arg1) asm_symbol_rel(0x446D60) {
+    dllexport gnu_noinline UpdateFuncRet thiscall on_draw(BOOL do_literally_anything) asm_symbol_rel(0x446D60) {
         Item* item = this->items;
         for (size_t i = 0; i < TOTAL_ITEM_COUNT; ++i, ++item) {
             if (
                 item->state != 0 &&
-                (item->__vm_10.controller.fast_id & 1) && // this has to be wrong...
+                item->__vm_10.data.visible &&
                 item->__int_C84 <= 0 &&
-                arg1
+                do_literally_anything
             ) {
-
+                item->__vm_10.controller.position = item->__vm_61C.controller.position;
+                if (item->position.y < -8.0f) {
+                    ANM_MANAGER_PTR->draw_vm(&item->__vm_61C);
+                    item->id2 = (ItemID)1;
+                } else {
+                    ANM_MANAGER_PTR->draw_vm(&item->__vm_10);
+                    item->id2 = (ItemID)0;
+                }
             }
         }
         return UpdateFuncNext;
@@ -37146,11 +37703,13 @@ ValidateFieldOffset32(0x8, ItemManager, on_draw_func);
 ValidateFieldOffset32(0x10, ItemManager, on_draw_func_B);
 ValidateFieldOffset32(0x14, ItemManager, items);
 ValidateFieldOffset32(0x1D7AF4, ItemManager, cancel_items);
-ValidateFieldOffset32(0xE6BAF4, ItemManager, items_freelist);
-ValidateFieldOffset32(0xE6BB04, ItemManager, cancel_items_freelist);
+ValidateFieldOffset32(0xE6BAF4, ItemManager, item_free_list);
+ValidateFieldOffset32(0xE6BB04, ItemManager, cancel_item_free_list);
 ValidateFieldOffset32(0xE6BB14, ItemManager, slowdown_factor);
 ValidateFieldOffset32(0xE6BB18, ItemManager, items_onscreen);
 ValidateFieldOffset32(0xE6BB1C, ItemManager, item_count);
+ValidateFieldOffset32(0xE6BB20, ItemManager, __int_E6BB20);
+ValidateFieldOffset32(0xE6BB24, ItemManager, __dword_E6BB24);
 ValidateStructSize32(0xE6BB28, ItemManager);
 #pragma endregion
 
@@ -40502,6 +41061,10 @@ ValidateFieldOffset32(0x7A41F4, BulletManager, __graze_despawn_counter);
 ValidateStructSize32(0x7A41F8, BulletManager);
 #pragma endregion
 
+static inline AnmLoaded* get_bullet_anm() {
+    return BULLET_MANAGER_PTR->bullet_anm;
+}
+
 static inline int bullet_cancel_random(CancelType cancel_type) {
     return BULLET_MANAGER_PTR->cancel_random(cancel_type);
 }
@@ -42179,7 +42742,7 @@ forceinline const char* Enemy::check_timer_callbacks() {
                         spellcard->__spellcard_fail();
                         ENEMY_MANAGER_PTR->can_capture_spell = false;
                     }
-                    else if (spellcard->__inline_sub_B()) {
+                    else if (spellcard->__is_timeout_spell_active()) {
                         this->data.__unknown_flag_L = false;
                         GAME_MANAGER.globals.__int_90 += this->data.chapter_spawn_weight;
                     }
@@ -42224,7 +42787,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__move() {
             case EllipseMovement: // 3
                 break;
             default:
-                this->motion.absolute.angle = reduce_angle(this->angle_interp_absolute.step());
+                this->motion.absolute.angle = reduce_angle<NoInline>(this->angle_interp_absolute.step());
         }
     }
     if (this->speed_interp_absolute.end_time) {
@@ -42236,19 +42799,21 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__move() {
             case EllipseMovement: // 3
                 break;
             default:
-                this->motion.relative.angle = reduce_angle(this->angle_interp_relative.step());
+                this->motion.relative.angle = reduce_angle<NoInline>(this->angle_interp_relative.step());
         }
     }
     if (this->speed_interp_relative.end_time) {
         this->motion.relative.speed = this->speed_interp_relative.step();
     }
     if (this->orbit_radius_interp.absolute.end_time) {
-        Float2 values = this->orbit_radius_interp.absolute.step();
+        Float2 values;
+        this->orbit_radius_interp.absolute.step_impl(values);
         this->motion.absolute.radius = values.x;
         this->motion.absolute.radius_delta = values.y;
     }
     if (this->orbit_radius_interp.relative.end_time) {
-        Float2 values = this->orbit_radius_interp.relative.step();
+        Float2 values;
+        this->orbit_radius_interp.relative.step_impl(values);
         this->motion.relative.radius = values.x;
         this->motion.relative.radius_delta = values.y;
     }
@@ -42324,16 +42889,16 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__move() {
             !(position_y + half_sprite_size_y < SCREEN_BOTTOM_EDGE) &&
             !(position_y - half_sprite_size_y > SCREEN_TOP_EDGE)
         ) {
-            this->__unknown_flag_G = true;
+            this->__has_been_onscreen = true;
         }
         else {
-            if (this->__unknown_flag_G && !this->offscreen_immune_vertical) {
+            if (this->can_despawn_offscreen_vertically()) {
                 return ZUN_ERROR;
             }
         }
     }
     else {
-        if (this->__unknown_flag_G & !this->offscreen_immune_horizontal) {
+        if (this->can_despawn_offscreen_horizontally()) {
             return ZUN_ERROR;
         }
     }
@@ -42345,19 +42910,23 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__move() {
 dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
     BombBase* bomb = BOMB_PTR;
     if (this->bomb_shield) {
-        if (bomb->active && !this->bomb_shield_active) {
-            this->anm_vms[0].__sub_488FD0(this->current_anm_script = this->bombshield_on_anm);
-            this->disable_hitbox = true;
-            this->bomb_shield_active = true;
+        if (bomb->active) {
+            if (!this->bomb_shield_active) {
+                this->anm_vms[0].__set_script(this->current_anm_script = this->bombshield_on_anm);
+                this->disable_hitbox = true;
+                this->bomb_shield_active = true;
+            }
         } else if (this->bomb_shield_active) {
-            this->anm_vms[0].__sub_488FD0(this->current_anm_script = this->bombshield_off_anm);
+            this->anm_vms[0].__set_script(this->current_anm_script = this->bombshield_off_anm);
             this->disable_hitbox = false;
             this->bomb_shield_active = false;
         }
-    } else if (!bomb->active && this->bomb_shield_active) {
-        this->anm_vms[0].__sub_488FD0(this->current_anm_script = this->bombshield_off_anm);
-        this->disable_hitbox = false;
-        this->bomb_shield_active = false;
+    } else if (!bomb->active) {
+        if (this->bomb_shield_active) {
+            this->anm_vms[0].__set_script(this->current_anm_script = this->bombshield_off_anm);
+            this->disable_hitbox = false;
+            this->bomb_shield_active = false;
+        }
     }
     if (this->delete_as_bullet) {
         Float3* damage_pos = &this->position_of_last_damage_source_to_hit;
@@ -42477,7 +43046,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
     }
 
     if (
-        this->life.__unknown_flag_A &&
+        this->life.__force_kill &&
         this->enemy()->kill()
     ) {
         return ZUN_SUCCESS2; // triggers the fail condition
@@ -42533,7 +43102,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
     }
 
     if (AnmVM* main_vm = this->anm_vms[0].get_vm_ptr()) {
-        if (!this->__int_50E4) {
+        if (!this->__hit_flash_delay) {
             if (this->__anm_related_flag_A) {
                 if (this->phase_timer.is_multiple_of(4)) {
                     main_vm->data.color2 = COLOR(255, 255, 0, 255);
@@ -42550,7 +43119,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
                 main_vm->data.color2 = COLOR(255, 0, 0, 255);
                 main_vm->data.color_mode = 1;
                 int32_t hit_sound = this->hit_sound;
-                this->__int_50E4 = 4;
+                this->__hit_flash_delay = 4;
                 if (hit_sound < 0) {
                     int32_t health_remaining;
                     if (
@@ -42584,7 +43153,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
         }
         else {
             main_vm->data.color_mode = 0;
-            --this->__int_50E4;
+            --this->__hit_flash_delay;
         }
     }
 
@@ -45732,7 +46301,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             this->life.set_spell(this->get_int_arg(0));
             break;
         case spellcard_end: // 523
-            if (SPELLCARD_PTR->__get_flag_A() && SPELLCARD_PTR->__get_flag_B()) {
+            if (SPELLCARD_PTR->is_spell_active() && SPELLCARD_PTR->__get_flag_B()) {
                 ITEM_MANAGER_PTR->spawn_item(LifeFragmentItem, &this->get_position(), -HALF_PI_f, 2.2f, 60);
             }
             SPELLCARD_PTR->end_spell();
@@ -49829,7 +50398,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
             vm->__tree_set_visible2();
 
             int32_t state = this->__unknown_field_C;
-            if (SPELLCARD_PTR->__unknown_flag_A) {
+            if (SPELLCARD_PTR->spell_active) {
                 switch (state) {
                     case 0:
                         if (boss->data.life.remaining_current_attack < 2000) {
@@ -50042,8 +50611,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
     position.y = 42.0f;
     position.z = 0.0f;
 
-    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha2());
-    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha2());
+    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha());
+    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha());
     ascii_manager->__horizontal_positioning_mode = 2;
     ascii_manager->__vertical_positioning_mode = 1;
 
@@ -50059,11 +50628,10 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 
     ascii_manager->color = COLOR(255, 0, 16, 128);
     ascii_manager->color2 = COLOR(208, 255, 255, 255);
-    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha2());
-    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha2());
+    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha());
+    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha());
 
     ascii_manager->print_score(&position, this->__score, GAME_MANAGER.globals.continues);
-    ZDEBUG_PRINT("Score: %u%u\n", this->__score, GAME_MANAGER.globals.continues);
 
     // ====================
     // Life fragments for next life
@@ -50087,8 +50655,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
     position.x = life_fragment_position;
     position.y = 120.0f;
 
-    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha2());
-    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha2());
+    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha());
+    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha());
 
     if (LIFE_FRAGMENT_COST_TABLE[GAME_MANAGER.globals.lives_added] < 999999u) {
         ascii_manager->printf(&position, "%3d", GAME_MANAGER.globals.life_fragments);
@@ -50110,8 +50678,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
     position.x = 576.0f;
     position.y = 158.0f;
 
-    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha2());
-    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha2());
+    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha());
+    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha());
     ascii_manager->scale.x = 0.6f;
     ascii_manager->scale.y = 0.6f;
 
@@ -50134,8 +50702,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
     ascii_manager->color2 = COLOR(128, 255, 208, 208);
     ascii_manager->scale.x = 1.0f;
     ascii_manager->scale.y = 1.0f;
-    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha2());
-    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha2());
+    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha());
+    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha());
 
     ascii_manager->printf(&position, "%d.", GAME_MANAGER.globals.power_level());
 
@@ -50184,8 +50752,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
     ascii_manager->scale.y = 1.0f;
     ascii_manager->__horizontal_positioning_mode = 2;
     ascii_manager->__vertical_positioning_mode = 1;
-    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha2());
-    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha2());
+    ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha());
+    ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha());
 
     ascii_manager->print_number(&position, GAME_MANAGER.globals.current_money);
 
