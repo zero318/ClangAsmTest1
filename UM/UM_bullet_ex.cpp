@@ -30664,7 +30664,7 @@ struct CardShinmyoumaru : CardBase {
     // Method 8
     // 0x40F0F0
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (this->state == 0 && this->recharge_time <= 0) {
+        if (this->state == 0 && this->__timer_34 <= 0) {
             this->position = PLAYER_PTR->data.position;
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(30, &this->position, 13);
             this->state = 1;
@@ -30778,7 +30778,7 @@ struct CardTenshi : CardBase { // DONE
     // Method 8
     // 0x40EBF0
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (this->state == 0 && this->recharge_time <= 0) {
+        if (this->state == 0 && this->__timer_34 <= 0) {
             this->position = PLAYER_PTR->data.position;
             this->position.y -= 100.0f;
             this->__position2 = this->position;
@@ -30903,7 +30903,7 @@ struct CardClownpiece : CardBase {
     // Method 8
     // 0x40E040
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (this->state == 0 && this->recharge_time <= 0) {
+        if (this->state == 0 && this->__timer_34 <= 0) {
             Player* player = PLAYER_PTR;
             Float3 A = this->position_interp.initial_value = this->position = player->data.position;
             A.y -= 400.0f;
@@ -31029,7 +31029,7 @@ struct CardMiko : CardBase { // DONE
     // Method 8
     // 0x40E5C0
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (this->state == 0 && this->recharge_time <= 0) {
+        if (this->state == 0 && this->__timer_34 <= 0) {
             Player* player = PLAYER_PTR;
             this->position = player->data.position;
             
@@ -31124,7 +31124,7 @@ struct CardRemilia : CardBase {
     // Method 8
     // 0x40F670
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (this->state == 0 && this->recharge_time <= 0) {
+        if (this->state == 0 && this->__timer_34 <= 0) {
             this->position = PLAYER_PTR->data.position;
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(38, &this->position, 13);
             this->state = 1;
@@ -31246,7 +31246,7 @@ struct CardUtsuho : CardBase {
     // Method 8
     // 0x40FB60
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (this->state == 0 && this->recharge_time <= 0) {
+        if (this->state == 0 && this->__timer_34 <= 0) {
             __inline_spellcard_fail();
             PLAYER_PTR->__set_data_timer_47154(2);
             Player* player = PLAYER_PTR;
@@ -31438,7 +31438,7 @@ struct CardRaiko : CardBase {
     // Method 8
     // 0x410250
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (this->state == 0 && this->recharge_time <= 0) {
+        if (this->state == 0 && this->__timer_34 <= 0) {
             this->position = PLAYER_PTR->data.position;
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(58, &this->position, 13);
             this->state = 1;
@@ -31526,7 +31526,7 @@ struct CardSumireko : CardBase {
     // Method 8
     // 0x410780
     dllexport gnu_noinline virtual int thiscall on_activate() {
-        if (this->state == 0 && this->recharge_time <= 0) {
+        if (this->state == 0 && this->__timer_34 <= 0) {
             this->position = PLAYER_PTR->data.position;
             this->effect_vm_id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(60, &this->position, 13);
             this->state = 1;
@@ -34472,7 +34472,7 @@ static inline BOOL enemy_manager_enemy_exists_with_id(int32_t id) {
 // Method 8
 // 0x40FE70
 dllexport gnu_noinline int thiscall CardLilyWhite::on_activate() {
-    if (this->recharge_time <= 0) {
+    if (this->__timer_34 <= 0) {
         if (EnemyManager* enemy_manager = ENEMY_MANAGER_PTR) {
 
             EnemyInitData enemy_init = {};
@@ -37112,15 +37112,39 @@ struct Item {
         float player_y = player->data.position.y;
         if (GAME_MANAGER.globals.current_power >= GAME_MANAGER.globals.max_power) {
             float poc_height = player->poc_height;
+            D3DCOLOR popup_color;
             if (
                 !(player_y <= poc_height) &&
                 this->state != 3
             ) {
-                
+                // this part is probably totally wrong
+                int32_t height_diff = (int32_t)player_y - (int32_t)poc_height;
+                point_item_value /= 100;
+                point_item_value = (point_item_value % 10) - point_item_value;
+                point_item_value *= 9;
+                point_item_value /= 10;
+
+                point_item_value *= height_diff;
+                point_item_value /= 450;
+
+                point_item_value /= 10;
+                point_item_value *= 10;
+                if (point_item_value <= 0) {
+                    point_item_value = 10;
+                }
+                popup_color = COLOR(255, 255, 255, 255);
             }
             else {
-
+                point_item_value /= 100;
+                point_item_value -= point_item_value % 10;
+                point_item_value /= 10;
+                point_item_value *= 10;
+                if (point_item_value <= 0) {
+                    point_item_value = 10;
+                }
+                popup_color = COLOR(255, 255, 255, 0);
             }
+            POPUP_MANAGER_PTR->create_popup(&this->position, point_item_value, popup_color);
         }
         else {
             BOOL level_up = GAME_MANAGER.globals.add_power(1);
@@ -37621,9 +37645,20 @@ public:
                 item->__int_C84 <= 0 &&
                 do_literally_anything
             ) {
-                item->__vm_10.controller.position = item->__vm_61C.controller.position;
+                item->__vm_10.controller.position = item->__vm_61C.controller.position = item->position;
                 if (item->position.y < -8.0f) {
-                    ANM_MANAGER_PTR->draw_vm(&item->__vm_61C);
+                    if (item->__vm_61C.data.visible) {
+                        float A = item->__vm_61C.data.position.y + 8.0f;
+                        item->__vm_61C.data.position.y = 8.0f;
+                        uint8_t alpha;
+                        if (A >= 8.0f) {
+                            alpha = 255;
+                        } else {
+                            alpha = A / 32.0f * 255.0f;
+                        }
+                        item->__vm_61C.set_alpha(alpha);
+                        ANM_MANAGER_PTR->draw_vm(&item->__vm_61C);
+                    }
                     item->id2 = (ItemID)1;
                 } else {
                     ANM_MANAGER_PTR->draw_vm(&item->__vm_10);
