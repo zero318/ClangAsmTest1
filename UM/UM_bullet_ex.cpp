@@ -3451,7 +3451,7 @@ struct InputState {
         pressed |= (keys[VK_LEFT] | keys[VK_NUMPAD4]) & 0x80; // becomes 0x40
         pressed >>= 1;
 
-        uint32_t pressed2 = (keys[VK_END] | keys['R']) & 0x80; // becomes 0x200000
+        uint32_t pressed2 = (keys[VK_END] | keys[(uint8_t)'R']) & 0x80; // becomes 0x200000
         pressed2 <<= 1;
 
         // mystery key
@@ -3460,7 +3460,7 @@ struct InputState {
         pressed2 |= keys[VK_RETURN] & 0x80; // becomes 0x80000
         pressed2 <<= 1;
 
-        pressed2 |= (keys[VK_HOME] | keys['P']) & 0x80; // becomes 0x40000
+        pressed2 |= (keys[VK_HOME] | keys[(uint8_t)'P']) & 0x80; // becomes 0x40000
         pressed2 <<= 7;
 
         int32_t switch_card = this->keyboard_mapping.switch_card;
@@ -3525,16 +3525,21 @@ extern "C" {
     externcg InputState INPUT_STATES[3] cgasm("_INPUT_STATES");
 }
 
+//#define INPUT_P1 INPUT_STATES[0]
+//#define INPUT_P2 INPUT_STATES[1]
+static inline InputState& INPUT_P1 = INPUT_STATES[0];
+static inline InputState& INPUT_P2 = INPUT_STATES[1];
+
 // 0x42ABC0
 dllexport gnu_noinline void __update_input0() asm_symbol_rel(0x42ABC0);
 dllexport gnu_noinline void __update_input0() {
-    INPUT_STATES[0].__update_input();
+    INPUT_P1.__update_input();
 }
 
 // 0x416B70
 dllexport gnu_noinline BOOL stdcall check_hardware_inputs_repeating(uint32_t mask) asm_symbol_rel(0x416B70);
 dllexport gnu_noinline BOOL stdcall check_hardware_inputs_repeating(uint32_t mask) {
-    return INPUT_STATES[0].check_hardware_inputs_repeating(mask);
+    return INPUT_P1.check_hardware_inputs_repeating(mask);
 }
 
 enum BgmType : uint8_t {
@@ -3624,9 +3629,9 @@ struct Config {
         this->bgm_type = BgmWav;
         this->sfx_type = SfxOn;
         this->resolution = BorderlessDotByDot;
-        this->joypad_mapping = INPUT_STATES[0].joypad_mapping;
-        this->xinput_mapping = INPUT_STATES[0].xinput_mapping;
-        this->keyboard_mapping = INPUT_STATES[0].keyboard_mapping;
+        this->joypad_mapping = INPUT_P1.joypad_mapping;
+        this->xinput_mapping = INPUT_P1.xinput_mapping;
+        this->keyboard_mapping = INPUT_P1.keyboard_mapping;
         this->__ubyte_49 = 2;
         this->bgm_volume = 100;
         this->__byte_4C = 0;
@@ -7873,6 +7878,8 @@ public:
         return this->add_life_fragments(UNUSED_DWORD);
     }
 
+    forceinline void add_life_no_cost();
+
     // 0x4575F0
     dllexport gnu_noinline void thiscall add_life() asm_symbol_rel(0x4575F0);
 
@@ -8229,9 +8236,9 @@ extern "C" {
 // 0x467740
 dllexport gnu_noinline BOOL fastcall get_dinput_keyboard_state(BYTE keys[256]) asm_symbol_rel(0x467740);
 dllexport gnu_noinline BOOL fastcall get_dinput_keyboard_state(BYTE keys[256]) {
-    memset(keys, 0, sizeof(keys));
+    memset(keys, 0, sizeof(BYTE[256]));
     if (WINDOW_DATA.window_active) {
-        HRESULT result = SUPERVISOR.keyboard_device->GetDeviceState(sizeof(keys), keys);
+        HRESULT result = SUPERVISOR.keyboard_device->GetDeviceState(sizeof(BYTE[256]), keys);
         if (result == DIERR_INPUTLOST || result != DI_OK) {
             SUPERVISOR.keyboard_device->Acquire();
         }
@@ -10907,7 +10914,7 @@ struct BombBase : ZUNTask {
         if (
             BOMB_PTR &&
             BOMB_PTR->bomb_allowed() &&
-            INPUT_STATES[0].check_inputs_no_repeat(BUTTON_BOMB)
+            INPUT_P1.check_inputs_no_repeat(BUTTON_BOMB)
         ) {
             BOMB_PTR->start_bomb();
             return true;
@@ -10917,7 +10924,7 @@ struct BombBase : ZUNTask {
     inline static bool check_for_deathbomb() {
         if (
             BOMB_PTR &&
-            INPUT_STATES[0].check_inputs_no_repeat(BUTTON_BOMB) &&
+            INPUT_P1.check_inputs_no_repeat(BUTTON_BOMB) &&
             BOMB_PTR->bomb_allowed()
         ) {
             BOMB_PTR->start_bomb();
@@ -11335,11 +11342,11 @@ enum ItemID : int32_t {
     Piv30Item = 12,
     Piv40Item = 13,
     Piv50Item = 14,
-    Item15 = 15,
-    Item16 = 16,
-    Item17 = 17,
-    Item18 = 18,
-    Item19 = 19,
+    CyclingBombFragmentItem = 15,
+    LifeFragmentCardItem = 16,
+    BombFragmentCardItem = 17,
+    MoneyCardItem = 18,
+    PowerCardItem = 19,
     Item20 = 20
 };
 
@@ -20403,8 +20410,7 @@ dllexport gnu_noinline void thiscall Globals::add_life_fragments(int32_t) {
     __update_life_ui();
 }
 
-// 0x4575F0
-dllexport gnu_noinline void thiscall Globals::add_life() {
+forceinline void Globals::add_life_no_cost() {
     int32_t lives = this->life_stocks;
     int32_t max_lives = this->life_stock_max;
     if (lives >= max_lives) {
@@ -20429,8 +20435,12 @@ dllexport gnu_noinline void thiscall Globals::add_life() {
         gui->__anm_id_BC.mark_tree_for_delete();
         gui->__anm_id_BC = gui->__front_anm->instantiate_vm_to_world_list_back(53);
     }
+}
 
-    ++this->lives_added;
+// 0x4575F0
+dllexport gnu_noinline void thiscall Globals::add_life() {
+    this->add_life_no_cost();
+    ++this->lives_added; // Increases cost of lives from fragments
 }
 
 // 0x488FA0
@@ -23052,8 +23062,8 @@ struct Ending : ZUNTask {
             !this->__unknown_flag_C &&
             end_vm->__unknown_flag_B &&
             (
-                INPUT_STATES[0].check_hardware_inputs(BUTTON_SKIP) ||
-                (INPUT_STATES[0].check_hardware_inputs(BUTTON_SHOOT) && INPUT_STATES[0].hardware_inputs_held[BUTTON_SHOOT_INDEX] >= 20)
+                INPUT_P1.check_hardware_inputs(BUTTON_SKIP) ||
+                (INPUT_P1.check_hardware_inputs(BUTTON_SHOOT) && INPUT_P1.hardware_inputs_held[BUTTON_SHOOT_INDEX] >= 20)
             )
         ) {
             if (!(A % 12)) {
@@ -23231,14 +23241,14 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
                     }
                     if (
                         // Wouldn't this require a frame perfect press?
-                        !INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_SELECT) &&
+                        !INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT) &&
                         this->pause_timer > 0
                     ) {
                         if (
                             !ENDING_PTR->__unknown_flag_B ||
                             !(
-                                INPUT_STATES[0].check_hardware_inputs(BUTTON_SKIP) ||
-                                (INPUT_STATES[0].check_hardware_inputs(BUTTON_SHOOT) && INPUT_STATES[0].hardware_inputs_held[BUTTON_SHOOT_INDEX] >= 20)
+                                INPUT_P1.check_hardware_inputs(BUTTON_SKIP) ||
+                                (INPUT_P1.check_hardware_inputs(BUTTON_SHOOT) && INPUT_P1.hardware_inputs_held[BUTTON_SHOOT_INDEX] >= 20)
                             ) ||
                             this->pause_timer % 6
                         ) {
@@ -23257,14 +23267,14 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
                     this->pause_timer--;
                     if (
                         // Wouldn't this require a frame perfect press?
-                        !INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_SELECT) &&
+                        !INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT) &&
                         this->pause_timer > 0
                     ) {
                         if (
                             !ENDING_PTR->__unknown_flag_B ||
                             !(
-                                INPUT_STATES[0].check_hardware_inputs(BUTTON_SKIP) ||
-                                (INPUT_STATES[0].check_hardware_inputs(BUTTON_SHOOT) && INPUT_STATES[0].hardware_inputs_held[BUTTON_SHOOT_INDEX] >= 20)
+                                INPUT_P1.check_hardware_inputs(BUTTON_SKIP) ||
+                                (INPUT_P1.check_hardware_inputs(BUTTON_SHOOT) && INPUT_P1.hardware_inputs_held[BUTTON_SHOOT_INDEX] >= 20)
                             ) ||
                             this->pause_timer % 6
                         ) {
@@ -26227,28 +26237,28 @@ public:
         }
 
         MovementDirection movement_direction;
-        if (INPUT_STATES[0].check_inputs_all(BUTTON_UP | BUTTON_LEFT)) {
+        if (INPUT_P1.check_inputs_all(BUTTON_UP | BUTTON_LEFT)) {
             this->movement_direction = movement_direction = MovementUpLeft;
         }
-        else if (INPUT_STATES[0].check_inputs_all(BUTTON_DOWN | BUTTON_LEFT)) {
+        else if (INPUT_P1.check_inputs_all(BUTTON_DOWN | BUTTON_LEFT)) {
             this->movement_direction = movement_direction = MovementDownLeft;
         }
-        else if (INPUT_STATES[0].check_inputs_all(BUTTON_UP | BUTTON_RIGHT)) {
+        else if (INPUT_P1.check_inputs_all(BUTTON_UP | BUTTON_RIGHT)) {
             this->movement_direction = movement_direction = MovementUpRight;
         }
-        else if (INPUT_STATES[0].check_inputs_all(BUTTON_DOWN | BUTTON_RIGHT)) {
+        else if (INPUT_P1.check_inputs_all(BUTTON_DOWN | BUTTON_RIGHT)) {
             this->movement_direction = movement_direction = MovementDownRight;
         }
-        else if (INPUT_STATES[0].check_inputs(BUTTON_DOWN)) {
+        else if (INPUT_P1.check_inputs(BUTTON_DOWN)) {
             this->movement_direction = movement_direction = MovementDown;
         }
-        else if (INPUT_STATES[0].check_inputs(BUTTON_UP)) {
+        else if (INPUT_P1.check_inputs(BUTTON_UP)) {
             this->movement_direction = movement_direction = MovementUp;
         }
-        else if (INPUT_STATES[0].check_inputs(BUTTON_LEFT)) {
+        else if (INPUT_P1.check_inputs(BUTTON_LEFT)) {
             this->movement_direction = movement_direction = MovementLeft;
         }
-        else if (INPUT_STATES[0].check_inputs(BUTTON_RIGHT)) {
+        else if (INPUT_P1.check_inputs(BUTTON_RIGHT)) {
             this->movement_direction = movement_direction = MovementRight;
         }
         else {
@@ -26256,7 +26266,7 @@ public:
         }
 
         if (enemies_are_alive() && this->data.__timer_28 >= 4) {
-            this->data.focused = INPUT_STATES[0].check_inputs(BUTTON_FOCUS);
+            this->data.focused = INPUT_P1.check_inputs(BUTTON_FOCUS);
         }
         else {
             this->data.__int_471C4 = 30;
@@ -27687,15 +27697,15 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
     if (this->__int_1A8 > 0) {
         --this->__int_1A8;
     } else {
-        if (INPUT_STATES[0].check_inputs_no_repeat(BUTTON_SELECT)) {
+        if (INPUT_P1.check_inputs_no_repeat(BUTTON_SELECT)) {
             this->__unknown_flag_A = true;
         }
     }
     if (
         (this->__unknown_flag_A & this->__unknown_flag_B) &&
         (
-            (INPUT_STATES[0].check_inputs(BUTTON_SKIP) && INPUT_STATES[0].inputs_held[BUTTON_SKIP_INDEX] >= 20) ||
-            (INPUT_STATES[0].check_inputs(BUTTON_SHOOT) && INPUT_STATES[0].inputs_held[BUTTON_SHOOT_INDEX] >= 20)
+            (INPUT_P1.check_inputs(BUTTON_SKIP) && INPUT_P1.inputs_held[BUTTON_SKIP_INDEX] >= 20) ||
+            (INPUT_P1.check_inputs(BUTTON_SHOOT) && INPUT_P1.inputs_held[BUTTON_SHOOT_INDEX] >= 20)
         )
     ) {
         this->script_time.set(this->current_instr->time);
@@ -27983,14 +27993,14 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
                 this->pause_timer--;
                 if (
                     // Wouldn't this require a frame perfect press?
-                    !INPUT_STATES[0].check_inputs_no_repeat(BUTTON_SELECT) &&
+                    !INPUT_P1.check_inputs_no_repeat(BUTTON_SELECT) &&
                     this->pause_timer > 0
                 ) {
                     if (
                         !(this->__unknown_flag_A & this->__unknown_flag_B) ||
                         !(
-                            (INPUT_STATES[0].check_inputs(BUTTON_SKIP) && INPUT_STATES[0].inputs_held[BUTTON_SKIP_INDEX] >= 20) ||
-                            (INPUT_STATES[0].check_inputs(BUTTON_SHOOT) && INPUT_STATES[0].inputs_held[BUTTON_SHOOT_INDEX] >= 20)
+                            (INPUT_P1.check_inputs(BUTTON_SKIP) && INPUT_P1.inputs_held[BUTTON_SKIP_INDEX] >= 20) ||
+                            (INPUT_P1.check_inputs(BUTTON_SHOOT) && INPUT_P1.inputs_held[BUTTON_SHOOT_INDEX] >= 20)
                         )
                     ) {
                         goto break_skip_time;
@@ -30598,13 +30608,13 @@ struct CardYukari : CardBase { // DONE
 
             if ((uint32_t)(position + (INTERNAL_POSITION_SCREEN_HALF_WIDTH - INTERNAL_POSITION_ADJUST(8))) > (uint32_t)(INTERNAL_POSITION_SCREEN_WIDTH - INTERNAL_POSITION_ADJUST(8))) {
                 if (position < 0) {
-                    if (INPUT_STATES[0].check_inputs(BUTTON_LEFT)) {
+                    if (INPUT_P1.check_inputs(BUTTON_LEFT)) {
                         player->__set_yukari_wrap(1);
                         return 1;
                     }
                 }
                 else {
-                    if (INPUT_STATES[0].check_inputs(BUTTON_RIGHT)) {
+                    if (INPUT_P1.check_inputs(BUTTON_RIGHT)) {
                         player->__set_yukari_wrap(2);
                         return 2;
                     }
@@ -32253,6 +32263,28 @@ public:
         ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABMENU_ANM_INDEX);
     }
 
+private:
+    // 0x409310
+    dllexport gnu_noinline static AnmID& instantiate_small_card_sprite_vm(AnmID& out, int32_t card_id) asm_symbol_rel(0x409310) {
+        AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
+        
+        const CardData& card_data = find_id_in_card_data(card_id);
+
+        AnmID id = ability_manager->abcard_anm->instantiate_vm_to_world_list_back(14);
+        out = id;
+        if (id.has_live_vm()) {
+            // MSVC inlined this in the worst way possible
+            id.__find_child_vm_with_script(15)->set_sprite(card_data.sprite_small);
+        }
+        return out;
+    }
+
+public:
+    forceinline static AnmID instantiate_small_card_sprite_vm(int32_t card_id) {
+        AnmID dummy{ GARBAGE_VALUE(int) };
+        return instantiate_small_card_sprite_vm(dummy, card_id);
+    }
+
     // 0x4080E0
     dllexport gnu_noinline static void __sub_4080E0() asm_symbol_rel(0x4080E0) {
         AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
@@ -32718,7 +32750,7 @@ public:
         Gui* gui = GUI_PTR;
         if (gui && !gui->msg_vm) {
             if (enemies_are_alive()) {
-                if (INPUT_STATES[0].check_inputs_no_repeat(BUTTON_USE_CARD)) {
+                if (INPUT_P1.check_inputs_no_repeat(BUTTON_USE_CARD)) {
                     if (CardBase* selected_card = this->selected_active_card) {
                         selected_card->on_activate();
                     }
@@ -32728,7 +32760,7 @@ public:
     }
 
     static inline void check_for_card_switch() {
-        if (INPUT_STATES[0].check_inputs_no_repeat(BUTTON_SWITCH_CARD)) {
+        if (INPUT_P1.check_inputs_no_repeat(BUTTON_SWITCH_CARD)) {
             if (ABILITY_MANAGER_PTR->__sub_408B00(-1)) {
                 SOUND_MANAGER.play_sound(78);
             }
@@ -33471,11 +33503,11 @@ inline void Player::reset_impl() {
 
 // 0x45EA00
 dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
-    if (INPUT_STATES[0].check_inputs(BUTTON_SHOOT)) {
+    if (INPUT_P1.check_inputs(BUTTON_SHOOT)) {
         this->data.__unknown_flag_D = true;
     }
     if (!this->data.focused) {
-        if (INPUT_STATES[0].check_inputs(BUTTON_LEFT)) {
+        if (INPUT_P1.check_inputs(BUTTON_LEFT)) {
             float angle = this->data.__shot_tilt_angle;
             if (
                 angle > DEGREES(-135.0f)
@@ -33483,7 +33515,7 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
                 this->data.__shot_tilt_angle += (DEGREES(-135.0f) - angle) * 0.08f;
             }
         }
-        else if (INPUT_STATES[0].check_inputs(BUTTON_RIGHT)) {
+        else if (INPUT_P1.check_inputs(BUTTON_RIGHT)) {
             float angle = this->data.__shot_tilt_angle;
             if (
                 angle < -QUARTER_PI_f
@@ -33491,7 +33523,7 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
                 this->data.__shot_tilt_angle += (-QUARTER_PI_f - angle) * 0.08f;
             }
         }
-        else if (INPUT_STATES[0].check_inputs(BUTTON_DOWN)) {
+        else if (INPUT_P1.check_inputs(BUTTON_DOWN)) {
             float angle = this->data.__shot_tilt_angle;
             this->data.__shot_tilt_angle += (-HALF_PI_f - angle) * 0.08f;
 
@@ -33499,7 +33531,7 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
                 this->data.__shot_spread += 0.05f;
             }
         }
-        else if (INPUT_STATES[0].check_inputs(BUTTON_UP)) {
+        else if (INPUT_P1.check_inputs(BUTTON_UP)) {
             float angle = this->data.__shot_tilt_angle;
             this->data.__shot_tilt_angle += (-HALF_PI_f - angle) * 0.08f;
 
@@ -33512,14 +33544,14 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
             this->data.__shot_tilt_angle += (-HALF_PI_f - angle) * 0.05f;
         }
 
-        if (INPUT_STATES[0].check_inputs(BUTTON_UP | BUTTON_DOWN)) {
+        if (INPUT_P1.check_inputs(BUTTON_UP | BUTTON_DOWN)) {
             this->data.__shot_spread *= 0.9f;
         }
     }
 
     if (this->data.state == 1) {
         if (this->data.shoot_key_short_timer < 0) {
-            if (!INPUT_STATES[0].check_inputs(BUTTON_SHOOT)) {
+            if (!INPUT_P1.check_inputs(BUTTON_SHOOT)) {
                 goto not_shooting;
             }
 
@@ -33591,7 +33623,7 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
 
 
         if (this->data.shoot_key_short_timer >= 15) {
-            if (INPUT_STATES[0].check_inputs(BUTTON_SHOOT)) {
+            if (INPUT_P1.check_inputs(BUTTON_SHOOT)) {
                 this->data.shoot_key_short_timer -= 15;
             } else {
                 this->data.shoot_key_short_timer.set(-1);
@@ -33602,7 +33634,7 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
             int32_t long_timer = this->data.shoot_key_long_timer;
             if (long_timer >= 0) {
                 if (long_timer >= 119) {
-                    if (INPUT_STATES[0].check_inputs(BUTTON_SHOOT)) {
+                    if (INPUT_P1.check_inputs(BUTTON_SHOOT)) {
                         this->data.shoot_key_long_timer -= 119;
                     } else {
                         this->data.shoot_key_long_timer.set(-1);
@@ -36968,24 +37000,24 @@ static const ItemSpriteData ITEM_SPRITE_DATA[] = {
         .__id_0 = 125,
         .__id_4 = -1
     },
-    { // 15, Item15
+    { // 15, CyclingBombFragmentItem
         .__id_0 = -1,
         .__id_4 = -1
     },
-    { // 16, Item16
-        .__id_0 = 3,
+    { // 16, LifeFragmentCardItem
+        .__id_0 = EXTEND2_CARD,
         .__id_4 = -1
     },
-    { // 17, Item17
-        .__id_0 = 4,
+    { // 17, BombFragmentCardItem
+        .__id_0 = BOMB2_CARD,
         .__id_4 = -1
     },
-    { // 18, Item18
-        .__id_0 = 5,
+    { // 18, MoneyCardItem
+        .__id_0 = PENDULUM_CARD,
         .__id_4 = -1
     },
-    { // 19, Item19
-        .__id_0 = 6,
+    { // 19, PowerCardItem
+        .__id_0 = DANGO_CARD,
         .__id_4 = -1
     },
     { // 20, Item20
@@ -37040,11 +37072,11 @@ struct Item {
             case LifeItem: // 5
             case BombFragmentItem: // 6
             case BombItem: // 7
-            case Item15: // 15
-            case Item16: // 16
-            case Item17: // 17
-            case Item18: // 18
-            case Item19: // 19
+            case CyclingBombFragmentItem: // 15
+            case LifeFragmentCardItem: // 16
+            case BombFragmentCardItem: // 17
+            case MoneyCardItem: // 18
+            case PowerCardItem: // 19
                 EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(101, &this->position);
                 switch (this->id) {
                     default:
@@ -37060,8 +37092,12 @@ struct Item {
         return 0;
     }
 
+    forceinline void collect_piv() {
+        GAME_MANAGER.add_to_score(GAME_MANAGER.globals.current_money / 10 * 10);
+    }
+
     // 0x446B00
-    dllexport gnu_noinline void thiscall collect_point_item() asm_symbol_rel(0x446B00) {
+    dllexport gnu_noinline void thiscall collect_point() asm_symbol_rel(0x446B00) {
         Player* player = PLAYER_PTR;
         float player_y = player->data.position.y;
         int32_t point_item_value = GAME_MANAGER.globals.update_point_item_value();
@@ -37071,31 +37107,39 @@ struct Item {
             !(player_y <= poc_height) &&
             this->state != 3
         ) {
-            // this part is probably totally wrong
             float height_diff = player_y - poc_height;
-            point_item_value /= 100;
-            point_item_value = (point_item_value % 10) - point_item_value;
-            point_item_value *= 9;
-            point_item_value /= 10;
 
-            point_item_value *= (int32_t)height_diff;
-            point_item_value /= 450;
+            int32_t value_div_100 = point_item_value / 100;
+            int32_t value_div_100_mod_10 = value_div_100 % 10;
 
-            point_item_value /= 10;
-            point_item_value *= 10;
+            point_item_value = (value_div_100_mod_10 - value_div_100) * 9 / 10;
+
+            point_item_value = point_item_value * (int32_t)height_diff / 450; // SCREEN_HEIGHT + 2? 500 * 9 / 10?
+
+            point_item_value += (value_div_100_mod_10 - value_div_100) * 9 / 10;
+
+            // Truncate to 10s digit
+            point_item_value = point_item_value / 10 * 10;
+
             if (point_item_value <= 0) {
                 point_item_value = 10;
             }
+
             popup_color = COLOR(255, 255, 255, 255);
         }
         else {
-            point_item_value /= 100;
-            point_item_value -= point_item_value % 10;
-            point_item_value /= 10;
-            point_item_value *= 10;
+            int32_t value_div_100 = point_item_value / 100;
+            int32_t value_div_100_mod_10 = value_div_100 % 10;
+
+            point_item_value = value_div_100 - value_div_100_mod_10;
+
+            // Truncate to 10s digit
+            point_item_value = point_item_value / 10 * 10;
+
             if (point_item_value <= 0) {
                 point_item_value = 10;
             }
+
             popup_color = COLOR(255, 255, 255, 0);
         }
         POPUP_MANAGER_PTR->create_popup(&this->position, point_item_value, popup_color);
@@ -37106,7 +37150,7 @@ struct Item {
     }
 
     // 0x446870
-    dllexport gnu_noinline void thiscall collect_power_item() asm_symbol_rel(0x446870) {
+    dllexport gnu_noinline void thiscall collect_power() asm_symbol_rel(0x446870) {
         int32_t point_item_value = GAME_MANAGER.globals.update_point_item_value();
         Player* player = PLAYER_PTR;
         float player_y = player->data.position.y;
@@ -37117,36 +37161,44 @@ struct Item {
                 !(player_y <= poc_height) &&
                 this->state != 3
             ) {
-                // this part is probably totally wrong
                 int32_t height_diff = (int32_t)player_y - (int32_t)poc_height;
-                point_item_value /= 100;
-                point_item_value = (point_item_value % 10) - point_item_value;
-                point_item_value *= 9;
-                point_item_value /= 10;
 
-                point_item_value *= height_diff;
-                point_item_value /= 450;
+                int32_t value_div_100 = point_item_value / 100;
+                int32_t value_div_100_mod_10 = value_div_100 % 10;
 
-                point_item_value /= 10;
-                point_item_value *= 10;
+                point_item_value = (value_div_100_mod_10 - value_div_100) * 9 / 10;
+
+                point_item_value = point_item_value * height_diff / 450; // SCREEN_HEIGHT + 2? 500 * 9 / 10?
+
+                point_item_value += (value_div_100_mod_10 - value_div_100) * 9 / 10;
+
+                // Truncate to 10s digit
+                point_item_value = point_item_value / 10 * 10;
                 if (point_item_value <= 0) {
                     point_item_value = 10;
                 }
                 popup_color = COLOR(255, 255, 255, 255);
             }
             else {
-                point_item_value /= 100;
-                point_item_value -= point_item_value % 10;
-                point_item_value /= 10;
-                point_item_value *= 10;
+                int32_t value_div_100 = point_item_value / 100;
+                int32_t value_div_100_mod_10 = value_div_100 % 10;
+
+                point_item_value = value_div_100 - value_div_100_mod_10;
+
+                // Truncate to 10s digit
+                point_item_value = point_item_value / 10 * 10;
+
                 if (point_item_value <= 0) {
                     point_item_value = 10;
                 }
+
                 popup_color = COLOR(255, 255, 255, 0);
             }
             POPUP_MANAGER_PTR->create_popup(&this->position, point_item_value, popup_color);
+            POPUP_MANAGER_PTR->create_popup(&this->position, point_item_value, COLOR(255, 255, 255, 255));
         }
         else {
+            point_item_value = 100;
             BOOL level_up = GAME_MANAGER.globals.add_power(1);
             if (level_up) {
                 PLAYER_PTR->data.__update_option_power_levels();
@@ -37154,15 +37206,19 @@ struct Item {
                 SOUND_MANAGER.play_sound_positioned(13, this->position.x);
             }
         }
+        GAME_MANAGER.add_to_score(point_item_value);
     }
 
-    forceinline void collect_big_power_item() {
+    forceinline void collect_big_power() {
+        int32_t score_value;
         if (GAME_MANAGER.globals.current_power >= GAME_MANAGER.globals.max_power) {
             GAME_MANAGER.add_to_score(2000);
+            score_value = 20000;
             POPUP_MANAGER_PTR->create_popup(&this->position, 20000, COLOR(255, 128, 128, 128));
             SOUND_MANAGER.play_sound_positioned(13, this->position.x);
         }
         else {
+            score_value = 100;
             BOOL level_up = GAME_MANAGER.globals.add_power(GAME_MANAGER.globals.power_per_level);
             if (level_up) {
                 PLAYER_PTR->data.__update_option_power_levels();
@@ -37170,10 +37226,10 @@ struct Item {
                 POPUP_MANAGER_PTR->create_popup(&this->position, -1, COLOR(255, 255, 255, 64));
             }
         }
-        // TODO: more score here
+        GAME_MANAGER.add_to_score(score_value);
     }
 
-    forceinline void collect_f_item() {
+    forceinline void collect_f() {
         BOOL level_up = GAME_MANAGER.globals.add_power(GAME_MANAGER.globals.max_power);
         if (level_up) {
             PLAYER_PTR->data.__update_option_power_levels();
@@ -37182,12 +37238,21 @@ struct Item {
         }
     }
 
-    forceinline void collect_life_fragment_item() {
+    forceinline void collect_life_fragment() {
         clang_noinline GAME_MANAGER.globals.add_life_fragment();
     }
 
-    forceinline void collect_bomb_fragment_item() {
+    forceinline void collect_life() {
+        // NOTE: Is it a bug that this doesn't increment lives_added?
+        clang_forceinline GAME_MANAGER.globals.add_life_no_cost();
+    }
+
+    forceinline void collect_bomb_fragment() {
         clang_forceinline GAME_MANAGER.globals.add_bomb_fragment();
+    }
+
+    forceinline void collect_bomb() {
+        clang_forceinline GAME_MANAGER.globals.add_bomb();
     }
 };
 #pragma region // Item Validation
@@ -37326,7 +37391,10 @@ private:
                         item->position.x = SCREEN_RIGHT_EDGE;
                     }
 
-                    if (item_id == Item15) {
+                    if (item_id == CyclingBombFragmentItem) {
+                        // NOTE: The DDC code to turn every
+                        // 5th PoC bomb fragment into a life
+                        // fragment originally happened here.
                         item_id = BombFragmentItem;
                     }
 
@@ -37347,12 +37415,15 @@ private:
                     item->id2 = InvalidItem;
 
                     switch (item_id) {
-                        case Item16: case Item17: case Item18: case Item19:
+                        case LifeFragmentCardItem: // 16
+                        case BombFragmentCardItem: // 17
+                        case MoneyCardItem: // 18
+                        case PowerCardItem: // 19
                             item->__vm_10.data.visible = false;
                             item->__vm_61C.data.visible = false;
                             item->__vm_10.data.current_instruction_offset = -1;
                             item->__vm_61C.data.current_instruction_offset = -1;
-                            //item->__vm_id_C28 = ABILITY_MANAGER_PTR->__sub_409310(&item_id);
+                            item->__vm_id_C28 = ABILITY_MANAGER_PTR->instantiate_small_card_sprite_vm(script);
                             item->__vm_id_C28.set_controller_position(&item->position);
                             item->__vm_id_C28.set_color1(COLOR(255, 255, 255, 255));
                             break;
@@ -37536,34 +37607,34 @@ public:
                 if (collect_radius * collect_radius > distance_squared) {
                     switch (ItemID id = item->id) {
                         case FItem: // 8
-                            item->collect_f_item();
+                            item->collect_f();
                             break;
                         case PowerItem: // 1
-                            item->collect_power_item();
+                            item->collect_power();
                             break;
                         case BigPowerItem: // 3
-                            item->collect_big_power_item();
+                            item->collect_big_power();
                             break;
                         case PointItem: // 2
-                            item->collect_point_item();
+                            item->collect_point();
                             break;
                         case LifeFragmentItem: // 4
-                            item->collect_life_fragment_item();
+                            item->collect_life_fragment();
                             break;
                         case LifeItem: // 5
-                            //item->collect_life_item();
+                            item->collect_life();
                             break;
                         case BombFragmentItem: // 6
-                            item->collect_bomb_fragment_item();
+                            item->collect_bomb_fragment();
                             break;
                         case BombItem: // 7
-                            //item->collect_bomb_item();
+                            item->collect_bomb();
                             break;
-                        case Item16: // 16
-                        case Item17: // 17
-                        case Item18: // 18
-                        case Item19: // 19
-                            //ABILITY_MANAGER_PTR->allocate_new_card(ITEM_SPRITE_DATA[id].__id_0, 0);
+                        case LifeFragmentCardItem: // 16
+                        case BombFragmentCardItem: // 17
+                        case MoneyCardItem: // 18
+                        case PowerCardItem: // 19
+                            ABILITY_MANAGER_PTR->allocate_new_card(ITEM_SPRITE_DATA[id].__id_0, 0);
                             break;
                         case Piv5Item: // 9
                         case Piv10Item: // 10
@@ -37571,8 +37642,7 @@ public:
                         case Piv30Item: // 12
                         case Piv40Item: // 13
                         case Piv50Item: // 14
-                            // TODO
-                            GAME_MANAGER.add_to_score(GAME_MANAGER.globals.current_money / 10 * 10);
+                            item->collect_piv();
                             break;
                     }
                     SOUND_MANAGER.play_sound_positioned(37, item->position.x);
@@ -37583,7 +37653,7 @@ public:
                     switch (item->state) {
                         default: {
                             float attract_radius;
-                            if (INPUT_STATES[0].check_inputs(BUTTON_FOCUS)) {
+                            if (INPUT_P1.check_inputs(BUTTON_FOCUS)) {
                                 attract_radius = player->item_attract_radius_focused;
                             } else {
                                 attract_radius = player->item_attract_radius_unfocused;
@@ -40295,6 +40365,7 @@ struct LaserBeam : LaserData {
 
         this->vm.reset();
         this->vm.data.blend_mode = 1;
+        return 0;
     }
 
     // 0x452B70
@@ -47238,7 +47309,7 @@ private:
     inline void __sub_462EA0_impl() {
         this->enable_funcs();
 
-        INPUT_STATES[0].__reset_inputs();
+        INPUT_P1.__reset_inputs();
 
         switch (this->mode) {
             case __replay_recording: {
@@ -47286,7 +47357,7 @@ public:
 
         replay_manager->enable_funcs();
 
-        INPUT_STATES[0].__reset_inputs();
+        INPUT_P1.__reset_inputs();
 
         switch (replay_manager->mode) {
             case __replay_recording: {
@@ -47326,15 +47397,15 @@ public:
     dllexport static UpdateFuncRet UpdateFuncCC on_tick_A1(void* ptr) asm_symbol_rel(0x462940) {
         ReplayManager* self = (ReplayManager*)ptr;
         if (GAME_THREAD_PTR) {
-            INPUT_STATES[0].inputs_previous = INPUT_STATES[0].inputs_current;
-            INPUT_STATES[0].inputs_current = (uint16_t)INPUT_STATES[0].hardware_inputs_current;
+            INPUT_P1.inputs_previous = INPUT_P1.inputs_current;
+            INPUT_P1.inputs_current = (uint16_t)INPUT_P1.hardware_inputs_current;
             __update_input0();
             if (
                 SUPERVISOR.config.__unknown_flag_C &&
-                INPUT_STATES[0].check_inputs(BUTTON_SHOOT) &&
-                INPUT_STATES[0].inputs_held[BUTTON_SHOOT_INDEX] >= 10
+                INPUT_P1.check_inputs(BUTTON_SHOOT) &&
+                INPUT_P1.inputs_held[BUTTON_SHOOT_INDEX] >= 10
             ) {
-                INPUT_STATES[0].inputs_current |= BUTTON_FOCUS;
+                INPUT_P1.inputs_current |= BUTTON_FOCUS;
             }
             if (self->__int_20C >= 0 && !ABILITY_SHOP_PTR) {
                 if (!(self->__int_20C % 30)) {
@@ -47343,7 +47414,7 @@ public:
                     ReplayChunk* cur_chunk = self->current_chunk_node->data;
                     *cur_chunk->next_fps_count_write_pos++ = fps_count;
                 }
-                if (self->current_chunk_node->data->write_input(INPUT_STATES[0].inputs_current, INPUT_STATES[0].inputs_rising_edge, INPUT_STATES[0].inputs_falling_edge)) {
+                if (self->current_chunk_node->data->write_input(INPUT_P1.inputs_current, INPUT_P1.inputs_rising_edge, INPUT_P1.inputs_falling_edge)) {
                     self->current_chunk_node = self->allocate_chunk(self->stage_number);
                 }
                 ++self->__int_20C;
@@ -47357,25 +47428,25 @@ public:
         ReplayManager* self = (ReplayManager*)ptr;
         if (GAME_THREAD_PTR && !self->__unknown_flag_A) {
             if (self->stage_data[self->stage_number].current_frame < 0) {
-                INPUT_STATES[0].inputs_current = 0;
-                INPUT_STATES[0].inputs_rising_edge = 0;
-                INPUT_STATES[0].inputs_falling_edge = 0;
+                INPUT_P1.inputs_current = 0;
+                INPUT_P1.inputs_rising_edge = 0;
+                INPUT_P1.inputs_falling_edge = 0;
             }
             else if (!ABILITY_SHOP_PTR) {
                 if (self->stage_number >= 0) {
-                    INPUT_STATES[0].inputs_previous = INPUT_STATES[0].inputs_current;
+                    INPUT_P1.inputs_previous = INPUT_P1.inputs_current;
                     if (self->stage_data[self->stage_number].current_frame < self->stage_data[self->stage_number].gamestate_start->input_count) {
                         if (self->stage_data[self->stage_number].inputs_current->is_end()) {
-                            INPUT_STATES[0].inputs_current = 0;
-                            INPUT_STATES[0].inputs_rising_edge = 0;
-                            INPUT_STATES[0].inputs_falling_edge = 0;
+                            INPUT_P1.inputs_current = 0;
+                            INPUT_P1.inputs_rising_edge = 0;
+                            INPUT_P1.inputs_falling_edge = 0;
                             // some mess with the pause screen, probably just replay end
                             self->stage_number = -1;
                         }
                         else {
-                            INPUT_STATES[0].inputs_current = self->stage_data[self->stage_number].inputs_current->current;
-                            INPUT_STATES[0].inputs_rising_edge = self->stage_data[self->stage_number].inputs_current->rising_edge;
-                            INPUT_STATES[0].inputs_falling_edge = self->stage_data[self->stage_number].inputs_current->falling_edge;
+                            INPUT_P1.inputs_current = self->stage_data[self->stage_number].inputs_current->current;
+                            INPUT_P1.inputs_rising_edge = self->stage_data[self->stage_number].inputs_current->rising_edge;
+                            INPUT_P1.inputs_falling_edge = self->stage_data[self->stage_number].inputs_current->falling_edge;
                             __update_input0();
                             self->__byte_208 = *self->stage_data[self->stage_number].fps_counts_current;
                             ++self->stage_data[self->stage_number].inputs_current;
@@ -47385,17 +47456,17 @@ public:
                         }
                     }
                     else {
-                        INPUT_STATES[0].inputs_current = 0;
-                        INPUT_STATES[0].inputs_rising_edge = 0;
-                        INPUT_STATES[0].inputs_falling_edge = 0;
+                        INPUT_P1.inputs_current = 0;
+                        INPUT_P1.inputs_rising_edge = 0;
+                        INPUT_P1.inputs_falling_edge = 0;
                     }
                     ++self->stage_data[self->stage_number].current_frame;
                     ++self->__int_20C;
                 }
                 else {
-                    INPUT_STATES[0].inputs_current = 0;
-                    INPUT_STATES[0].inputs_rising_edge = 0;
-                    INPUT_STATES[0].inputs_falling_edge = 0;
+                    INPUT_P1.inputs_current = 0;
+                    INPUT_P1.inputs_rising_edge = 0;
+                    INPUT_P1.inputs_falling_edge = 0;
                     ++self->__int_20C;
                 }
             }
@@ -47408,7 +47479,7 @@ public:
         if (
             GAME_THREAD_PTR && this->mode == __replay_playback
         ) {
-            if (!INPUT_STATES[0].check_hardware_inputs(BUTTON_SHOOT | BUTTON_DOWN)) {
+            if (!INPUT_P1.check_hardware_inputs(BUTTON_SHOOT | BUTTON_DOWN)) {
                 if (!this->__dword_10) {
                     SOUND_MANAGER.cstreaming_sound_ptr->__sub_48AF10(GAME_MANAGER.globals.__counter_14 / 60.0);
                 }
@@ -47665,8 +47736,8 @@ dllexport gnu_noinline void thiscall AbilityShop::cleanup() {
     AbilityShop* ability_shop = this;
     __asm__ volatile ("":"+c"(ability_shop));
     if (ability_shop) {
-        INPUT_STATES[0].__reset_inputs();
-        INPUT_STATES[1].__reset_inputs();
+        INPUT_P1.__reset_inputs();
+        INPUT_P2.__reset_inputs();
         INPUT_STATES[2].__reset_inputs();
 
         ReplayManager* replay_manager = REPLAY_MANAGER_PTR;
@@ -47743,7 +47814,7 @@ struct HelpMenu : ZUNTask {
     void* file_buffer; // 0x130
     int __int_134; // 0x134
     char filename_buffer[128]; // 0x138
-    int32_t __int_1B8; // 0x1B8
+    int32_t file_size; // 0x1B8
     // 0x1BC
 
     inline void zero_contents() {
@@ -47768,7 +47839,143 @@ struct HelpMenu : ZUNTask {
 
     // 0x4451C0
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x4451C0) {
-        // TODO
+        Float3 position = { 0.0f, this->__float_128, 0.0f };
+        switch (this->__int_C) {
+            case 2:
+                if (this->__timer_10 >= 30) {
+                    this->__int_124 = 1;
+                }
+                break;
+            case 1:
+                switch (this->__int_134) {
+                    case 0:
+                        this->menu_select.menu_length = 7;
+                        this->menu_select.set_selection(0);
+                        this->menu_select.enable_wrap = true;
+
+                        for (int32_t i = 0; i != countof(this->__anm_id_array_FC); ++i) {
+                            AnmID id = this->help_anm->instantiate_vm_to_ui_list_back(i, &position);
+                            this->__anm_id_array_FC[i] = id;
+                            if (this->menu_select.current_selection == i) {
+                                id.interrupt_and_run_tree(2);
+                            } else {
+                                id.interrupt_and_run_tree(3);
+                            }
+                        }
+
+                        this->help_anm->images[1].__sub_489030();
+                        this->__int_134 = 1;
+                    case 1:
+                        if (this->__timer_10 >= 20) {
+                            this->menu_select.previous_selection = this->menu_select.current_selection;
+
+                            if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_UP)) {
+                                this->menu_select.move_selection(-1);
+                            }
+                            if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_DOWN)) {
+                                this->menu_select.move_selection(1);
+                            }
+
+                            if (this->menu_select.previous_selection != this->menu_select.current_selection) {
+                                SOUND_MANAGER.play_sound(10);
+                                for (size_t i = 0; i != countof(this->__anm_id_array_FC); ++i) {
+                                    if (this->menu_select.current_selection == i) {
+                                        this->__anm_id_array_FC[i].interrupt_and_run_tree(2);
+                                    } else {
+                                        this->__anm_id_array_FC[i].interrupt_and_run_tree(3);
+                                    }
+                                }
+                            }
+
+                            if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+                                SOUND_MANAGER.play_sound(7);
+                                goto load_image;
+                            }
+                            if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+                                SOUND_MANAGER.play_sound(9);
+
+                                for (size_t i = 0; i != countof(this->__anm_id_array_FC); ++i) {
+                                    this->__anm_id_array_FC[i].interrupt_tree(1);
+                                }
+
+                                this->__int_C = 2;
+                                this->__int_134 = 0;
+                                this->__timer_10.reset();
+                            }
+                        }
+                        break;
+
+                    case 3:
+                        ANM_MANAGER_PTR->__sub_4860C0(&this->help_anm->images[1], this->file_buffer, this->file_size);
+                        SAFE_FREE(this->file_buffer);
+                        this->help_anm->images[1].d3d_texture->PreLoad();
+                        this->__anm_id_120 = this->help_anm->instantiate_vm_to_ui_list_back(9, &position);
+                        this->__int_134 = 4;
+                        this->__timer_10.reset();
+                    case 4:
+                        if (this->__timer_10 >= 20) {
+                            if (
+                                INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_DOWN) &&
+                                this->menu_select.current_selection < 6
+                            ) {
+                                this->__int_134 = 5;
+                                this->__timer_10.reset();
+                                SOUND_MANAGER.play_sound(7);
+                                this->menu_select.move_selection(1);
+                                this->__anm_id_120.interrupt_and_run_tree(7);
+                            }
+                            else if (
+                                INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_UP) &&
+                                this->menu_select.current_selection > 0
+                            ) {
+                                this->__int_134 = 5;
+                                this->__timer_10.reset();
+                                SOUND_MANAGER.play_sound(7);
+                                this->menu_select.move_selection(-1);
+                                this->__anm_id_120.interrupt_and_run_tree(8);
+                            }
+                            else if (
+                                INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT | BUTTON_CANCEL)
+                            ) {
+                                SOUND_MANAGER.play_sound(9);
+                                this->__int_134 = 1;
+                                this->__timer_10.reset();
+                                this->__anm_id_120.interrupt_tree(1);
+
+                                for (int32_t i = 0; i != countof(this->__anm_id_array_FC); ++i) {
+                                    AnmID id = this->help_anm->instantiate_vm_to_ui_list_back(i, &position);
+                                    this->__anm_id_array_FC[i] = id;
+                                    if (this->menu_select.current_selection == i) {
+                                        id.interrupt_and_run_tree(2);
+                                    } else {
+                                        id.interrupt_and_run_tree(3);
+                                    }
+                                }
+                                break;
+                            }
+
+                    case 5: load_image:
+                            
+                            if (this->__timer_10 >= 20) {
+                                this->__int_134 = 2;
+                                this->__timer_10.reset();
+
+                                SUPERVISOR.__start_thread_A94((_beginthreadex_proc_type)&thread_func_load_image);
+
+                                for (size_t i = 0; i != countof(this->__anm_id_array_FC); ++i) {
+                                    this->__anm_id_array_FC[i].interrupt_tree(1);
+                                }
+                            }
+                        }
+                        break;
+                }
+                break;
+            case 0:
+                this->__int_C = 1;
+                break;
+        }
+        ++this->__timer_10;
+        return UpdateFuncNext;
     }
 
     // 0x445690
@@ -47782,9 +47989,9 @@ struct HelpMenu : ZUNTask {
     }
 
     // 0x444EC0
-    dllexport gnu_noinline static void cdecl thread_func_load_file(void* arg) asm_symbol_rel(0x444EC0) {
+    dllexport gnu_noinline static void cdecl thread_func_load_image(void* arg) asm_symbol_rel(0x444EC0) {
         HelpMenu* help_menu = HELP_MENU_PTR;
-        void* file = read_file_to_buffer(help_menu->filename_buffer, &help_menu->__int_1B8, false);
+        void* file = read_file_to_buffer(help_menu->filename_buffer, &help_menu->file_size, false);
         help_menu = HELP_MENU_PTR;
         help_menu->file_buffer = file;
         help_menu->__int_134 = 3;
@@ -47848,7 +48055,7 @@ ValidateFieldOffset32(0x12C, HelpMenu, help_anm);
 ValidateFieldOffset32(0x130, HelpMenu, file_buffer);
 ValidateFieldOffset32(0x134, HelpMenu, __int_134);
 ValidateFieldOffset32(0x138, HelpMenu, filename_buffer);
-ValidateFieldOffset32(0x1B8, HelpMenu, __int_1B8);
+ValidateFieldOffset32(0x1B8, HelpMenu, file_size);
 ValidateStructSize32(0x1BC, HelpMenu);
 #pragma endregion
 
@@ -48020,7 +48227,10 @@ struct OptionsMenu : ZUNTask {
     }
 
     inline UpdateFuncRet on_draw() {
-        // TODO
+        if (!KEY_CONFIG_MENU_PTR) {
+            // TODO
+        }
+        return UpdateFuncNext;
     }
 
     // 0x457190
@@ -48155,7 +48365,7 @@ struct PauseMenu : ZUNTask {
                     !GAME_MANAGER.__unknown_flag_E &&
                     !GAME_THREAD_PTR->__unknown_flag_F &&
                     ACHIEVEMENT_MODE_STATE < 0 &&
-                    (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_PAUSE) || SUPERVISOR.__unknown_flag_F) &&
+                    (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE) || SUPERVISOR.__unknown_flag_F) &&
                     GAME_THREAD_PTR->on_tick_enabled() &&
                     this->__timer_C >= 30
                 ) {
@@ -48163,7 +48373,7 @@ struct PauseMenu : ZUNTask {
                 }
                 if (
                     ACHIEVEMENT_MODE_STATE >= 0 &&
-                    INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_PAUSE)
+                    INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE)
                 ) {
                     ACHIEVEMENT_MODE_STATE = -1;
                     SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_G ? 2 : 4;
@@ -48327,7 +48537,7 @@ struct PauseMenu : ZUNTask {
                     this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 7);
                     SOUND_MANAGER.play_sound(10);
                 }
-                if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+                if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
                     SOUND_MANAGER.play_sound(7);
                     switch (this->__menu_select_34.current_selection) {
                         case 0:
@@ -48380,7 +48590,7 @@ struct PauseMenu : ZUNTask {
                     this->__timer_C.reset();
                 }
                 if (!this->__dword_204) {
-                    if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_RESTART)) {
+                    if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_RESTART)) {
                         if (!this->__menu_select_34.__is_index_disabled(6)) {
             restart_case:
                             SOUND_MANAGER.play_sound(7);
@@ -48399,7 +48609,7 @@ struct PauseMenu : ZUNTask {
                             break;
                         }
                     }
-                    if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_PAUSE)) {
+                    if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE)) {
                         this->__vm_id_1E8.interrupt_tree(1);
                         this->__vm_id_1E4.interrupt_tree(1);
                         this->__menu_select_34.set_selection(0);
@@ -48407,7 +48617,7 @@ struct PauseMenu : ZUNTask {
                         break;
                     }
                 }
-                if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_UNKNOWN_A)) {
+                if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_UNKNOWN_A)) {
                     SOUND_MANAGER.play_sound(7);
                     this->__vm_id_1E4.__find_child_id_with_script(120).interrupt_tree(6);
                     this->__menu_select_34.set_selection(1);
@@ -48438,7 +48648,7 @@ struct PauseMenu : ZUNTask {
                             this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 15);
                             SOUND_MANAGER.play_sound(10);
                         }
-                        if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+                        if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
                             switch (this->__menu_select_34.current_selection) {
                                 case 0:
                                     this->__vm_id_1E4.__find_child_id_with_script(146).interrupt_tree(6);
@@ -48452,7 +48662,7 @@ struct PauseMenu : ZUNTask {
                                     break;
                             }
                         }
-                        if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_CANCEL | BUTTON_PAUSE)) {
+                        if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL | BUTTON_PAUSE)) {
                             SOUND_MANAGER.play_sound(9);
                             switch (this->__menu_select_34.current_selection) {
                                 case 0:
@@ -48466,7 +48676,7 @@ struct PauseMenu : ZUNTask {
                             }
                         }
                         if (
-                            INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_PAUSE) &&
+                            INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE) &&
                             this->__int_1EC == 1
                         ) {
                             this->__vm_id_1E8.interrupt_tree(1);
@@ -48537,7 +48747,7 @@ struct PauseMenu : ZUNTask {
                     if (this->__menu_select_10C.current_selection != this->__menu_select_10C.previous_selection) {
                         SOUND_MANAGER.play_sound(10);
                     }
-                    if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+                    if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
                         int32_t key = this->__menu_select_10C.current_selection;
                         if (key <= KEYBOARD_STRING_NORMAL_KEY_COUNT) {
                             char c = KEYBOARD_STRING[key];
@@ -48620,7 +48830,7 @@ struct PauseMenu : ZUNTask {
                             }
                         }
                     }
-                    else if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_CANCEL | BUTTON_PAUSE)) {
+                    else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL | BUTTON_PAUSE)) {
                         SOUND_MANAGER.play_sound(9);
                         int32_t index = this->__int_1F8;
                         if (!index) {
@@ -48648,7 +48858,7 @@ struct PauseMenu : ZUNTask {
                     if (this->__menu_select_34.current_selection != this->__menu_select_34.previous_selection) {
                         SOUND_MANAGER.play_sound(10);
                     }
-                    if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+                    if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
                         this->__unknown_bitfield_A = 2;
                         this->__sub_4577D0(12);
                         this->__menu_select_10C.set_selection(0);
@@ -48672,7 +48882,7 @@ struct PauseMenu : ZUNTask {
                         this->__int_1F8 = i;
                         SOUND_MANAGER.play_sound(7);
                     }
-                    else if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_CANCEL | BUTTON_PAUSE)) {
+                    else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL | BUTTON_PAUSE)) {
                         this->__unknown_bitfield_A = 0;
                         this->__menu_select_34.pop_state();
                         this->__menu_select_34.menu_length = 7;
@@ -49711,7 +49921,7 @@ public:
 
                 int32_t idle_time = ++GAME_MANAGER.__demo_timer;
 
-                if (INPUT_STATES[0].check_hardware_inputs(BUTTON_ANY)) {
+                if (INPUT_P1.check_hardware_inputs(BUTTON_ANY)) {
                     goto reset_demo_idle_timer;
                 }
 
@@ -50854,24 +51064,25 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 // 0x401860
 dllexport gnu_noinline uint32_t get_hardware_xinput() asm_symbol_rel(0x401860);
 dllexport gnu_noinline uint32_t get_hardware_xinput() {
-    return INPUT_STATES[0].get_xinput(0);
+    return INPUT_P1.get_xinput(0);
 }
 
 // 0x401650
 dllexport gnu_noinline uint32_t get_joypad_input(uint32_t buttons) asm_symbol_rel(0x401650);
 dllexport gnu_noinline uint32_t get_joypad_input(uint32_t buttons) {
-    return INPUT_STATES[0].get_joypad(buttons);
+    return INPUT_P1.get_joypad(buttons);
 }
 
+// 0x401C50
 dllexport gnu_noinline uint32_t get_hardware_inputs() {
     uint32_t buttons = get_hardware_xinput();
     if (WINDOW_DATA.window_active) {
-        buttons = INPUT_STATES[0].get_keyboard(buttons);
+        buttons = INPUT_P1.get_keyboard(buttons);
     }
     buttons = get_joypad_input(buttons);
-    INPUT_STATES[0].hardware_inputs_previous = INPUT_STATES[0].hardware_inputs_current;
-    INPUT_STATES[0].hardware_inputs_current = buttons;
-    INPUT_STATES[0].__update_hardware_input();
+    INPUT_P1.hardware_inputs_previous = INPUT_P1.hardware_inputs_current;
+    INPUT_P1.hardware_inputs_current = buttons;
+    INPUT_P1.__update_hardware_input();
     return buttons;
 }
 
@@ -51497,9 +51708,9 @@ dllexport gnu_noinline ZUNResult thiscall Supervisor::load_config_file(int) {
             SUPERVISOR.config.__dword_0 == 0x180002 &&
             file_size == 0x88
         ) {
-            INPUT_STATES[0].xinput_mapping   = SUPERVISOR.config.xinput_mapping;
-            INPUT_STATES[0].joypad_mapping   = SUPERVISOR.config.joypad_mapping;
-            INPUT_STATES[0].keyboard_mapping = SUPERVISOR.config.keyboard_mapping;
+            INPUT_P1.xinput_mapping   = SUPERVISOR.config.xinput_mapping;
+            INPUT_P1.joypad_mapping   = SUPERVISOR.config.joypad_mapping;
+            INPUT_P1.keyboard_mapping = SUPERVISOR.config.keyboard_mapping;
         }
         else {
             LOG_BUFFER.write(JpEnStr("コンフィグデータが異常でしたので再初期化しました\r\n", "The configuration data was abnormal, so it was reinitialized\r\n"));
@@ -51953,7 +52164,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 
     if (GAME_MANAGER.__unknown_flag_E) {
         if (
-            INPUT_STATES[0].check_hardware_inputs(BUTTON_SHOOT | BUTTON_BOMB | BUTTON_PAUSE | BUTTON_ENTER) ||
+            INPUT_P1.check_hardware_inputs(BUTTON_SHOOT | BUTTON_BOMB | BUTTON_PAUSE | BUTTON_ENTER) ||
             (this->__unknown_flag_I | this->__unknown_flag_L | this->__unknown_flag_M)
         ) {
             SUPERVISOR.gamemode_switch = (SUPERVISOR.__unknown_bitfield_A & 1) ? 2 : 4;
@@ -52920,7 +53131,7 @@ dllexport gnu_noinline void thiscall WindowData::present__alt_version2() {
 // 0x4731B0
 dllexport gnu_noinline void thiscall WindowData::__present_setup() {
     ANM_MANAGER_PTR->__present_setup();
-    if (INPUT_STATES[0].check_inputs_no_repeat(BUTTON_SCREENSHOT)) {
+    if (INPUT_P1.check_inputs_no_repeat(BUTTON_SCREENSHOT)) {
         if (chdir(this->appdata_path)) {
             mkdir("snapshot");
             char path[MAX_PATH];
@@ -53530,18 +53741,18 @@ dllexport gnu_noinline void process_resolution_dialog() {
             TranslateMessage(&message);
             DispatchMessageA(&message);
         }
-        if (INPUT_STATES[0].check_hardware_inputs_no_repeat(BUTTON_ENTER | BUTTON_SHOOT)) {
+        if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_ENTER | BUTTON_SHOOT)) {
             break;
         }
         if (
-            INPUT_STATES[0].check_hardware_inputs_repeating(BUTTON_DOWN) &&
+            INPUT_P1.check_hardware_inputs_repeating(BUTTON_DOWN) &&
             button_index < 9
         ) {
             while (disabled_buttons[++button_index]);
             CheckRadioButton(WINDOW_DATA.resolution_dialogue, 0xCF, 0xD8, ResolutionDialogButtonIDsB[button_index]);
         }
         if (
-            INPUT_STATES[0].check_hardware_inputs_repeating(BUTTON_UP) &&
+            INPUT_P1.check_hardware_inputs_repeating(BUTTON_UP) &&
             button_index > 0
         ) {
             while (disabled_buttons[--button_index]);

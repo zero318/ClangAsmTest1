@@ -327,6 +327,7 @@ target_compile_options(${EXE} PRIVATE
 	-Wno-address-of-packed-member
 	-Wno-invalid-offsetof
 	-Wno-switch-bool
+	-Wno-delete-non-abstract-non-virtual-dtor
 )
 
 # Output Flags
