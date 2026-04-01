@@ -12601,7 +12601,7 @@ forceinline int32_t thiscall EclContext::parse_int_as_arg(int32_t index, int32_t
             return this->vm->get_int_var(value);
         }
     } else {
-        return IntArg(index);
+        return value;
     }
 }
 
@@ -14033,6 +14033,9 @@ struct Gui : ZUNTask {
 
     // 0x4422C0
     dllexport gnu_noinline void thiscall __sub_4422C0() asm_symbol_rel(0x4422C0);
+
+    // 0x429C30
+    dllexport gnu_noinline static void __spell_timer_vms_interrupt_3() asm_symbol_rel(0x429C30);
 
     // 0x42D560
     dllexport gnu_noinline void __set_boss_life_count(int value) asm_symbol_rel(0x42D560) {
@@ -18499,7 +18502,7 @@ struct AnmManager {
                     case 5:
                         vm->data.__matrix_414.rotate_z(rotation.z);
                         vm->data.__matrix_414.rotate_y(rotation.y);
-                        vm->data.__matrix_414.rotate_z(rotation.z);
+                        vm->data.__matrix_414.rotate_x(rotation.z);
                         break;
                 }
                 vm->data.rotation_enabled = false;
@@ -20350,6 +20353,13 @@ dllexport gnu_noinline void thiscall Gui::__sub_4422C0() {
             }
         }
     }
+}
+
+// 0x429C30
+dllexport gnu_noinline void Gui::__spell_timer_vms_interrupt_3() {
+    Gui* gui = GUI_PTR;
+    gui->spell_timer_vms[0]->interrupt_and_run(3);
+    gui->spell_timer_vms[1]->interrupt_and_run(3);
 }
 
 // 0x441ED0
@@ -34008,7 +34018,7 @@ dllexport gnu_noinline void count_cards_of_type(EnemyData* self) {
         "movl -0x57C(%%ebp), %[current_instruction]"
         : asm_arg("=r", current_instruction)
     );
-    *out = ABILITY_MANAGER_PTR->dont_worry_bravi_it_only_took_me_a_year(StringArg(4));
+    *out = ABILITY_MANAGER_PTR->dont_worry_bravi_it_only_took_me_a_year(StringArg(0x4));
 }
 
 dllexport gnu_noinline void count_cards_of_type2(EnemyData* self) {
@@ -34017,7 +34027,7 @@ dllexport gnu_noinline void count_cards_of_type2(EnemyData* self) {
         "movl -0x57C(%%ebp), %[current_instruction]"
         : asm_arg("=r", current_instruction)
     );
-    const char* count_name = StringArg(4);
+    const char* count_name = StringArg(0x4);
     
     int32_t count = 0;
     for (
@@ -34048,7 +34058,7 @@ dllexport gnu_noinline void fastcall thcrap_print(EclContext* self_in, int, cons
         : "0"(self_in)
     );
     
-    const EclValue* call_arg_formats = based_pointer<EclValue>(StringArg(4), IntArg(0));
+    const EclValue* call_arg_formats = based_pointer<EclValue>(StringArg(0x4), IntArg(0));
     size_t param_count = current_instruction->param_count;
     //uint8_t* print_args = (uint8_t*)__builtin_alloca(sizeof(double[param_count - 1]));
     //uint8_t* print_args_write = print_args;
@@ -34071,7 +34081,7 @@ dllexport gnu_noinline void fastcall thcrap_print(EclContext* self_in, int, cons
                 break;
         }
     }
-    log_vprintf(StringArg(4), (va_list)print_args_mem);
+    log_vprintf(StringArg(0x4), (va_list)print_args_mem);
     //free(print_args);
 }
 #endif
@@ -36356,7 +36366,7 @@ struct Spellcard : ZUNTask {
         this->__vm_id_1C.set_controller_position(&boss->data.current_motion.position);
 
         this->__vm_id_1C.__find_child_vm_with_script(11)->data.current_context.int_vars[2] = time;
-        this->__vm_id_1C.__find_child_vm_with_script(13)->data.current_context.int_vars[2] = time;
+        this->__vm_id_1C.__find_child_vm_with_script(12)->data.current_context.int_vars[2] = time;
 
         this->time = time;
 
@@ -36403,7 +36413,7 @@ struct Spellcard : ZUNTask {
             this->spell_active = false;
             this->__vm_id_C.mark_tree_for_delete();
             this->__unknown_flag_E = false;
-            //GUI_PTR->__sub_429C30();
+            GUI_PTR->__spell_timer_vms_interrupt_3();
             this->__vm_id_1C.mark_tree_for_delete();
 
             if (this->__unknown_flag_B) {
@@ -37116,7 +37126,7 @@ struct Item {
 
             point_item_value = point_item_value * (int32_t)height_diff / 450; // SCREEN_HEIGHT + 2? 500 * 9 / 10?
 
-            point_item_value += (value_div_100_mod_10 - value_div_100) * 9 / 10;
+            point_item_value += (value_div_100 - value_div_100_mod_10) * 9 / 10;
 
             // Truncate to 10s digit
             point_item_value = point_item_value / 10 * 10;
@@ -37170,7 +37180,7 @@ struct Item {
 
                 point_item_value = point_item_value * height_diff / 450; // SCREEN_HEIGHT + 2? 500 * 9 / 10?
 
-                point_item_value += (value_div_100_mod_10 - value_div_100) * 9 / 10;
+                point_item_value += (value_div_100 - value_div_100_mod_10) * 9 / 10;
 
                 // Truncate to 10s digit
                 point_item_value = point_item_value / 10 * 10;
@@ -40915,8 +40925,8 @@ private:
                     // Yes, this aliases the normal radius field.
                     // But the math is written in a way that makes more sense
                     // for this to be reading the square size.
-                    float bullet_radius = bullet->hitbox_size.x * 0.5f;
-                    bool in_cancel_radius = bullet->position.distance_squared(position) <= bullet_radius * bullet_radius;
+                    float cancel_radius = bullet->hitbox_size.x * 0.5f + radius;
+                    bool in_cancel_radius = bullet->position.distance_squared(position) <= cancel_radius * cancel_radius;
                     if (in_cancel_radius) {
                         bullet->cancel(cancel_type);
                         ++bullet_manager->__cancel_counter2;
@@ -40946,8 +40956,8 @@ private:
                         // Yes, this aliases the normal radius field.
                         // But the math is written in a way that makes more sense
                         // for this to be reading the square size.
-                        float bullet_radius = bullet->hitbox_size.x * 0.5f;
-                        bool in_cancel_radius = bullet->position.distance_squared(position) <= bullet_radius * bullet_radius;
+                        float cancel_radius = bullet->hitbox_size.x * 0.5f + radius;
+                        bool in_cancel_radius = bullet->position.distance_squared(position) <= cancel_radius * cancel_radius;
                         if (in_cancel_radius) {
                             bullet->__int_678 = arg5;
                             bullet->cancel(cancel_type);
@@ -41937,7 +41947,7 @@ dllexport gnu_noinline void thiscall LaserLine::run_effects() {
         BulletEffectType current_type = current_effect.type;
         if (
             current_type == EX_NONE ||
-            !current_effect.async && this->active_effects != EX_NONE
+            (!current_effect.async && this->active_effects != EX_NONE)
         ) {
             return;
         }
@@ -42051,7 +42061,7 @@ dllexport gnu_noinline void thiscall LaserInfinite::run_effects() {
         BulletEffectType current_type = current_effect.type;
         if (
             current_type == EX_NONE ||
-            !current_effect.async && this->active_effects != EX_NONE
+            (!current_effect.async && this->active_effects != EX_NONE)
         ) {
             return;
         }
@@ -42089,8 +42099,8 @@ dllexport gnu_noinline void thiscall LaserCurve::run_effects() {
         BulletEffectType current_type = current_effect.type;
         if (
             current_type == EX_NONE ||
-            !current_effect.async && this->active_effects != EX_NONE ||
-            !(this->active_effects & current_type)
+            (!current_effect.async && this->active_effects != EX_NONE) ||
+            (this->active_effects & current_type)
         ) {
             return;
         }
@@ -42274,8 +42284,8 @@ dllexport void Bullet::run_effects() {
         BulletEffectType current_type = current_effect.type;
         if (
             current_type == EX_NONE ||
-            !current_effect.async && (this->active_effects & EX_OFFSCREEN) != EX_NONE ||
-            !(this->active_effects & current_type)
+            (!current_effect.async && (this->active_effects & ~EX_OFFSCREEN) != EX_NONE) ||
+            (this->active_effects & current_type)
         ) {
             return;
         }
@@ -43404,7 +43414,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::ecl_enm_create() {
         __builtin_memcpy(init_data.int_vars, this->int_vars, sizeof(this->int_vars));
         __builtin_memcpy(init_data.float_vars, this->float_vars, sizeof(this->float_vars));
         init_data.parent_id = this->enemy()->id;
-        ENEMY_MANAGER_PTR->allocate_new_enemy(StringArg(4), &init_data);
+        ENEMY_MANAGER_PTR->allocate_new_enemy(StringArg(0x4), &init_data);
     }
     return 0;
 }
@@ -43664,7 +43674,7 @@ dllexport gnu_noinline ZUNResult thiscall EclContext::call(EclContext* new_conte
     }
     if (++va_index < current_instruction->param_count) {
         uint8_t* stack_write_ptr = &new_context->stack.raw[new_stack_pointer];
-        const EclRawValue* call_args_ptr = based_pointer<EclRawValue>(StringArg(4), va_offset);
+        const EclRawValue* call_args_ptr = based_pointer<EclRawValue>(StringArg(0x4), va_offset);
         // Yes, all this weird pointer arithmetic seems to be in the original code.
         // There's too much BS for it to be simple.
         do {
@@ -43711,7 +43721,7 @@ dllexport gnu_noinline ZUNResult thiscall EclContext::call(EclContext* new_conte
         new_context->stack.push(-1);
     }
     std::swap(new_context, this->vm->current_context);
-    const char* sub_name = StringArg(4);
+    const char* sub_name = StringArg(0x4);
     clang_forceinline this->vm->set_context_to_sub(sub_name);
     if (this->get_current_instruction()) {
         this->vm->current_context = new_context;
@@ -44781,7 +44791,7 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
                     break;
                 case 96: { // thcrap_expr
                     int32_t* write = this->get_int_ptr_arg(0);
-                    eval_expr(StringArg(1), '\0', write, NULL, 0, NULL);
+                    eval_expr(StringArg(0x4), '\0', write, NULL, 0, NULL);
                     break;
                 }
                 case 97: // math_shl
@@ -44853,12 +44863,12 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
                     // Assuming this hasn't changed since MoF...
                     // though it's kinda broken.
                     // Just including it because why not
-                    const char* format = StringArg(4);
+                    const char* format = StringArg(0x4);
                     char* buffer = (char*)malloc(1024);
                     buffer[0] = '\0';
                     if (format) {
                         int32_t va_index = 1;
-                        const EclRawValue* print_args_ptr = based_pointer<EclRawValue>(StringArg(4), IntArg(0) + sizeof(int32_t));
+                        const EclRawValue* print_args_ptr = based_pointer<EclRawValue>(StringArg(0x4), IntArg(0) + sizeof(int32_t));
                         do {
                             const char* specifier = strchr(format, '%');
                             if (!specifier) {
@@ -46236,7 +46246,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
         case bullet_effects_set_string: { // 640
             int32_t shooter_slot = this->get_int_arg(0);
             int32_t effect_slot = this->get_int_arg(1);
-            this->shooters[shooter_slot].effects[effect_slot].string = StringArg(2);
+            this->shooters[shooter_slot].effects[effect_slot].string = StringArg(0xC);
             break;
         }
         case laser_size_data: { // 700
@@ -46266,7 +46276,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             break;
         }
         case callback_ex: { // 514
-            const char* callback_sub = StringArg(4);
+            const char* callback_sub = StringArg(0x10);
             int32_t chapter;
             if (
                 GAME_MANAGER.__is_spell_practice() &&
@@ -46309,13 +46319,13 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             break;
         }
         case timer_callback_sub: { // 521
-            const char* callback_sub = StringArg(1);
+            const char* callback_sub = StringArg(0x8);
             int32_t callback_index = this->get_int_arg(0);
             this->enemy()->set_callback_time_sub_name(callback_index, callback_sub);
             break;
         }
         case Opcode::death_callback_sub: { // 556
-            const char* callback_sub = StringArg(0);
+            const char* callback_sub = StringArg(0x4);
             byteloop_strcpy(this->death_callback_sub, callback_sub);
             break;
         }
@@ -46780,7 +46790,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
         case enemy_id_change_sub: { // 800
             int32_t id = this->get_int_arg(0);
             if (Enemy* enemy = ENEMY_MANAGER_PTR->get_enemy_by_id(id)) {
-                enemy->reinitialize_vm_with_sub(StringArg(1));
+                enemy->reinitialize_vm_with_sub(StringArg(0x8));
             }
             break;
         }
@@ -46824,7 +46834,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
         //}
         case 1003: { // enemy_interrupt_set
             uint32_t slot = this->get_int_arg(0);
-            this->set_interrupt(slot, StringArg(1));
+            this->set_interrupt(slot, StringArg(0x4));
             break;
         }
 #endif
