@@ -49,6 +49,8 @@ using ZUNListIter = ZUNListIterBase<T, true>;
 template <typename T>
 using ZUNListEnds = ZUNListEndsBase<T, true>;
 
+#define MALLET_PIPE 0
+
 #define FORCE_DEBUG_LOGGING 1
 
 #define DEBUG_SKIP_MENUS 1
@@ -6960,6 +6962,9 @@ struct SoundManager {
     // 0x4546F0
     dllexport gnu_noinline static ZUNResult __queue_bgm_stop() asm_symbol_rel(0x4546F0);
 
+    // 0x45A4A0
+    dllexport gnu_noinline static void __restart_all_playing_sfx() asm_symbol_rel(0x45A4A0);
+
 private:
     // 0x454720
     dllexport gnu_noinline static ZUNResult vectorcall __queue_fade_out(float, float arg1) asm_symbol_rel(0x454720);
@@ -7476,6 +7481,19 @@ dllexport gnu_noinline int stdcall SoundManager::__load_wav_slot(int32_t slot, c
     byteloop_strcat(buffer, ".wav");
     SOUND_MANAGER.queue_sound_command(SndPreloadBgm, slot, buffer);
     return 1;
+}
+
+// 0x45A4A0
+dllexport gnu_noinline void SoundManager::__restart_all_playing_sfx() {
+    SoundManagerUnknownB* smb_ptr = SOUND_MANAGER.__unknown_smb_array_1A84;
+    for (size_t i = 0; i < countof(SOUND_MANAGER.__unknown_smb_array_1A84); ++smb_ptr, ++i) {
+        if (
+            smb_ptr->sound_buffer &&
+            smb_ptr->__playing
+        ) {
+            smb_ptr->sound_buffer->Play(0, 0, smb_ptr->data->play_flags);
+        }
+    }
 }
 
 // 0x4546F0
@@ -11402,7 +11420,9 @@ public:
 
     // 0x430510
     dllexport gnu_noinline void spawn_extra_items(Float3* position) asm_symbol_rel(0x430510) {
+        float angle = REPLAY_RNG.rand_angle();
 
+        //for (int32_t i = 0; i < )
     }
 
     // 0x42D0C0
@@ -30660,6 +30680,13 @@ struct CardYukari : CardBase { // DONE
     }
 };
 
+#if MALLET_PIPE
+static constexpr uint8_t metal_pipe[] = {
+#include "obnoxiously_loud_metal_pipe2.h"
+};
+#endif
+
+
 // size: 0x68
 struct CardShinmyoumaru : CardBase {
     // CardBase base; // 0x0
@@ -30667,6 +30694,9 @@ struct CardShinmyoumaru : CardBase {
     Float3 position; // 0x58
     int __dword_64; // 0x64
     // 0x68
+#if MALLET_PIPE
+    bool has_hit_bullets;
+#endif
 
     static inline constexpr CardId ID = KOZUCHI_CARD; // 42
 
@@ -30679,6 +30709,9 @@ struct CardShinmyoumaru : CardBase {
         this->recharge_time = 2400;
         this->state = 0;
         this->__timer_34.reset();
+#if MALLET_PIPE
+        this->has_hit_bullets = false;
+#endif
     }
 
     // Method 8
@@ -30692,6 +30725,9 @@ struct CardShinmyoumaru : CardBase {
             SOUND_MANAGER.play_sound_positioned(30, this->position.x);
             this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
             this->__dword_64 = 0;
+#if MALLET_PIPE
+            this->has_hit_bullets = false;
+#endif
         }
         return 0;
     }
@@ -30735,8 +30771,19 @@ struct CardShinmyoumaru : CardBase {
                 this->__unknown_flag_A = true;
                 if (this->__timer_20 < 10) {
                     float radius = (float)this->__timer_20 * 4.0f + 30.0f;
+#if MALLET_PIPE
+                    int32_t cancel_counter_before = bullet_manager_get_cancel_counter2();
+#endif
                     bullet_cancel_radius_as_bomb(&this->position, radius, CancelType4, 99999, 0);
                     laser_cancel_radius(&this->position, radius, CancelType4, 0);
+#if MALLET_PIPE
+                    if (cancel_counter_before != bullet_manager_get_cancel_counter2()) {
+                        if (!this->has_hit_bullets) {
+                            this->has_hit_bullets = true;
+                            sndPlaySound((const char*)metal_pipe, SND_ASYNC | SND_MEMORY);
+                        }
+                    }
+#endif
                 }
                 if (this->__timer_20 > 40) {
                     this->state = 0;
@@ -33545,7 +33592,7 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
             float angle = this->data.__shot_tilt_angle;
             this->data.__shot_tilt_angle += (-HALF_PI_f - angle) * 0.08f;
 
-            if (this->data.__shot_spread > 0.3f) {
+            if (this->data.__shot_spread > -0.3f) {
                 this->data.__shot_spread -= 0.05f;
             }
         }
@@ -33554,7 +33601,7 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
             this->data.__shot_tilt_angle += (-HALF_PI_f - angle) * 0.05f;
         }
 
-        if (INPUT_P1.check_inputs(BUTTON_UP | BUTTON_DOWN)) {
+        if (!INPUT_P1.check_inputs(BUTTON_UP | BUTTON_DOWN)) {
             this->data.__shot_spread *= 0.9f;
         }
     }
@@ -48999,7 +49046,7 @@ struct PauseMenu : ZUNTask {
                         case 0:
                             switch (this->__int_1EC) {
                                 case 1:
-                                    //SOUND_MANAGER.__sub_45A4A0();
+                                    SOUND_MANAGER.__restart_all_playing_sfx();
                                     SOUND_MANAGER.queue_sound_command(SndUnpause, 0, "UnPause");
                                     if (AbilityShop* ability_shop = ABILITY_SHOP_PTR) {
                                         ability_shop->__dword_E38 = 0;
@@ -49028,7 +49075,7 @@ struct PauseMenu : ZUNTask {
                                         --GAME_MANAGER.continue_credits;
                                         GAME_MANAGER.globals.continues = __min(continues_used, MAX_CONTINUES);
                                         GAME_THREAD_PTR->__unknown_flag_I = false;
-                                        //SOUND_MANAGER.__sub_45A4A0();
+                                        SOUND_MANAGER.__restart_all_playing_sfx();
                                         SOUND_MANAGER.queue_sound_command(SndLoadBgm, -1, this->__text_buffer_2F0);
                                         while (SOUND_MANAGER.__on_tick() != SndCmdEmpty);
                                         SOUND_MANAGER.cstreaming_sound_ptr->__sub_48AF10(this->__double_2E8);
@@ -49175,7 +49222,6 @@ const wchar_t* get_arg(const wchar_t* arg, const wchar_t(&name)[N], int argc, in
 gnu_noinline void debug_command_line() {
     int argc;
     const wchar_t* command_line = GetCommandLineW();
-    //const wchar_t* command_line = L"pingas -p \"F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\"";
     if (wchar_t** argv = CommandLineToArgvW(command_line, &argc)) {
         if (argc > 1) {
             for (int i = 1; i < argc; ++i) {
