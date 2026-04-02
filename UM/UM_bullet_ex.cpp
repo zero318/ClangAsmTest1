@@ -50,6 +50,7 @@ template <typename T>
 using ZUNListEnds = ZUNListEndsBase<T, true>;
 
 #define MALLET_PIPE 0
+#define FAST_TIMER 0
 
 #define FORCE_DEBUG_LOGGING 1
 
@@ -2622,7 +2623,11 @@ struct Timer {
     }
 
 private:
-    inline void initialize_previous_force(int32_t value) volatile {
+    inline void initialize_previous_force(int32_t value)
+#if !FAST_TIMER
+        volatile
+#endif
+    {
         this->previous = value;
     }
 public:
@@ -2636,7 +2641,10 @@ public:
     }
 
     inline void initialize_important() {
-        if (!this->initialized) {
+#if !FAST_TIMER
+        if (!this->initialized)
+#endif
+        {
             this->scale_table_index = 0;
             this->initialized = true;
         }
@@ -2685,15 +2693,23 @@ public:
     Timer& operator=(Timer timer) = delete;
 
     inline uint32_t get_scaling_index() {
+#if !FAST_TIMER
         uint32_t time_scaling_index = this->scale_table_index;
         if (time_scaling_index >= countof(TIME_SCALING_TABLE)) {
             time_scaling_index = this->scale_table_index = 0;
         }
         return time_scaling_index;
+#else
+        return 0;
+#endif
     }
 
     inline float get_scale_unsafe() {
+#if !FAST_TIMER
         return *TIME_SCALING_TABLE[this->scale_table_index];
+#else
+        return *TIME_SCALING_TABLE[0];
+#endif
     }
 
 private:
@@ -6615,7 +6631,7 @@ dllexport gnu_noinline HRESULT thiscall CSoundManager::CreateStreaming(
     ThBgmFormat* bgm_format
 ) {
     static constexpr DWORD dwNotifyCount = 8;
-    static constexpr LPSTR strWaveFileName = "thbgm.dat";
+    static constexpr LPCSTR strWaveFileName = "thbgm.dat";
 
     if (!this->dsound) {
         return CO_E_NOTINITIALIZED;
@@ -16927,6 +16943,27 @@ public:
         this->set_uv_scale(value, value);
     }
 
+    inline void set_x_scroll(float value) {
+        this->data.uv_scroll.x = value;
+    }
+
+    inline void set_y_scroll(float value) {
+        this->data.uv_scroll.y = value;
+    }
+
+    inline void set_xy_scroll(float x, float y) {
+        this->data.uv_scroll.x = x;
+        this->data.uv_scroll.y = y;
+    }
+
+    inline void set_xy_scroll(const Float2& values) {
+        this->set_xy_scroll(values.x, values.y);
+    }
+
+    inline void set_xy_scroll(float value) {
+        this->set_xy_scroll(value, value);
+    }
+
     inline void set_x_scroll_speed(float value) {
         this->data.__deltas_enabled = true;
         this->data.uv_scroll_speed.x = value;
@@ -17655,7 +17692,7 @@ struct AnmManager {
     AnmVM __vm_31207F0; // 0x31207F0
     unknown_fields(0x4); // 0x3120DFC
     D3DCOLOR current_texture_blend_color; // 0x3120E00
-    int32_t __index_3120E04; // 0x3120E04
+    int32_t __current_sprite_index; // 0x3120E04
     AnmBlendMode current_blend_mode; // 0x3120E08
     char __byte_3120E09; // 0x3120E09
     int8_t __sbyte_3120E0A; // 0x3120E0A
@@ -17667,7 +17704,7 @@ struct AnmManager {
     AnmUVMode current_u_sample_mode; // 0x3120E10
     AnmUVMode current_v_sample_mode; // 0x3120E11
     probably_padding_bytes(0x2); // 0x3120E12
-    AnmSprite* __current_sprite; // 0x3120E14
+    AnmSprite* current_sprite; // 0x3120E14
     LPDIRECT3DVERTEXBUFFER9 __d3d_vertex_buffer_3120E18; // 0x3120E18
     UnknownVertexA __vertex_array_3120E1C[4]; // 0x3120E1C
     int32_t unrendered_sprite_count; // 0x3120E6C
@@ -17752,6 +17789,69 @@ struct AnmManager {
                 }
             }
         }
+    }
+
+    // 0x4754E0
+    dllexport gnu_noinline static void fastcall __sub_4754E0(Float2 coords[2], D3DCOLOR color) asm_symbol_rel(0x4754E0) {
+        ANM_MANAGER_PTR->flush_sprites();
+
+        AnmManager* anm_manager = ANM_MANAGER_PTR;
+
+        PrimitiveVertex verts[4];
+
+        float x1 = coords[0].x;
+        float y1 = coords[0].y;
+        float x2 = coords[1].x;
+        float y2 = coords[1].y;
+
+        verts[0].position.as2() = { x1, y1 };
+        verts[1].position.as2() = { x2, y1 };
+        verts[2].position.as2() = { x1, y2 };
+        verts[3].position.as2() = { x2, y2 };
+
+        // setting these has the dumbest codegen
+        verts[0].position.z = 0.0f;
+        verts[1].position.z = 0.0f;
+        verts[2].position.z = 0.0f;
+        verts[3].position.z = 0.0f;
+
+        verts[0].position.as2() += anm_manager->__float2_D8;
+        verts[1].position.as2() += anm_manager->__float2_D8;
+        verts[2].position.as2() += anm_manager->__float2_D8;
+        verts[3].position.as2() += anm_manager->__float2_D8;
+
+        verts[3].position.w = 1.0f;
+        verts[2].position.w = 1.0f;
+        verts[1].position.w = 1.0f;
+        verts[0].position.w = 1.0f;
+        verts[3].diffuse = color;
+        verts[2].diffuse = color;
+        verts[1].diffuse = color;
+        verts[0].diffuse = color;
+
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
+
+        SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+
+        SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+        SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, &verts, sizeof(PrimitiveVertex));
+
+        anm_manager = ANM_MANAGER_PTR;
+        anm_manager->__byte_3120E09 = -1;
+        anm_manager->__sbyte_3120E0A = -1;
+        anm_manager->current_sprite = NULL;
+        anm_manager->__current_sprite_index = -1;
+        anm_manager->current_blend_mode = (AnmBlendMode)11;
+        anm_manager->__byte_3120E0B = -1;
+
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     }
 
     inline void __present_setup() {
@@ -18181,10 +18281,10 @@ struct AnmManager {
                     ) {
 
                         int32_t sprite_index = vm->get_sprite()->__index_8;
-                        if (this->__index_3120E04 != sprite_index) {
-                            this->__index_3120E04 = sprite_index;
+                        if (this->__current_sprite_index != sprite_index) {
+                            this->__current_sprite_index = sprite_index;
                             this->flush_sprites();
-                            sprite_index = this->__index_3120E04;
+                            sprite_index = this->__current_sprite_index;
                             SUPERVISOR.d3d_device->SetTexture(0, this->get_texture_from_sprite_index(sprite_index));
                         }
 
@@ -18557,20 +18657,20 @@ struct AnmManager {
 
             AnmSprite* sprite = vm->get_sprite();
             int32_t sprite_index = sprite->__index_8;
-            if (this->__index_3120E04 != sprite_index) {
-                this->__index_3120E04 = sprite_index;
+            if (this->__current_sprite_index != sprite_index) {
+                this->__current_sprite_index = sprite_index;
                 this->flush_sprites();
-                sprite_index = this->__index_3120E04;
+                sprite_index = this->__current_sprite_index;
                 SUPERVISOR.d3d_device->SetTexture(0, this->get_texture_from_sprite_index(sprite_index));
             }
 
             if (
-                this->__current_sprite != sprite ||
+                this->current_sprite != sprite ||
                 vm->data.uv_scroll.x != 0.0f ||
                 vm->data.uv_scale.x != 1.0f ||
                 vm->data.uv_scale.y != 1.0f
             ) {
-                this->__current_sprite = sprite;
+                this->current_sprite = sprite;
 
                 D3DMATRIXZ temp = vm->data.__matrix_454;
                 *(Float2*)&temp.m[2][0] = vm->data.sprite_uv_quad[0] + vm->data.uv_scroll;
@@ -18608,8 +18708,8 @@ struct AnmManager {
 
             AnmSprite* sprite = vm->get_sprite();
             int32_t sprite_index = sprite->__index_8;
-            if (this->__index_3120E04 != sprite_index) {
-                this->__index_3120E04 = sprite_index;
+            if (this->__current_sprite_index != sprite_index) {
+                this->__current_sprite_index = sprite_index;
                 SUPERVISOR.d3d_device->SetTexture(0, this->get_texture_from_sprite_index(sprite_index));
             }
 
@@ -18645,8 +18745,8 @@ struct AnmManager {
 
         AnmSprite* sprite = vm->get_sprite();
         int32_t sprite_index = sprite->__index_8;
-        if (this->__index_3120E04 != sprite_index) {
-            this->__index_3120E04 = sprite_index;
+        if (this->__current_sprite_index != sprite_index) {
+            this->__current_sprite_index = sprite_index;
             SUPERVISOR.d3d_device->SetTexture(0, this->get_texture_from_sprite_index(sprite_index));
         }
 
@@ -18703,18 +18803,18 @@ struct AnmManager {
 
             AnmSprite* sprite = vm->get_sprite();
             int32_t sprite_index = sprite->__index_8;
-            if (this->__index_3120E04 != sprite_index) {
-                this->__index_3120E04 = sprite_index;
+            if (this->__current_sprite_index != sprite_index) {
+                this->__current_sprite_index = sprite_index;
                 SUPERVISOR.d3d_device->SetTexture(0, this->get_texture_from_sprite_index(sprite_index));
             }
 
             if (
-                this->__current_sprite != sprite ||
+                this->current_sprite != sprite ||
                 vm->data.uv_scroll.x != 0.0f ||
                 vm->data.uv_scale.x != 1.0f ||
                 vm->data.uv_scale.y != 1.0f
             ) {
-                this->__current_sprite = sprite;
+                this->current_sprite = sprite;
 
                 D3DMATRIXZ temp = vm->data.__matrix_454;
                 *(Float2*)&temp.m[2][0] = vm->data.sprite_uv_quad[0] + vm->data.uv_scroll;
@@ -19053,7 +19153,7 @@ struct AnmManager {
         SPRITE_VERTEX_BUFFER_A[3].texture_uv = { 1.0f, 1.0f };
         
         this->__d3d_vertex_buffer_3120E18 = NULL;
-        this->__index_3120E04 = -1;
+        this->__current_sprite_index = -1;
         this->current_blend_mode = (AnmBlendMode)0;
         this->__byte_3120E09 = 0;
         this->__sbyte_3120E0A = 0;
@@ -19788,7 +19888,7 @@ ValidateFieldOffset32(0x312072C, AnmManager, loaded_anm_files);
 ValidateFieldOffset32(0x31207B0, AnmManager, __matrix_31207B0);
 ValidateFieldOffset32(0x31207F0, AnmManager, __vm_31207F0);
 ValidateFieldOffset32(0x3120E00, AnmManager, current_texture_blend_color);
-ValidateFieldOffset32(0x3120E04, AnmManager, __index_3120E04);
+ValidateFieldOffset32(0x3120E04, AnmManager, __current_sprite_index);
 ValidateFieldOffset32(0x3120E08, AnmManager, current_blend_mode);
 ValidateFieldOffset32(0x3120E09, AnmManager, __byte_3120E09);
 ValidateFieldOffset32(0x3120E0A, AnmManager, __sbyte_3120E0A);
@@ -19798,7 +19898,7 @@ ValidateFieldOffset32(0x3120E0E, AnmManager, current_resample_mode);
 ValidateFieldOffset32(0x3120E0F, AnmManager, current_texture_op);
 ValidateFieldOffset32(0x3120E10, AnmManager, current_u_sample_mode);
 ValidateFieldOffset32(0x3120E11, AnmManager, current_v_sample_mode);
-ValidateFieldOffset32(0x3120E14, AnmManager, __current_sprite);
+ValidateFieldOffset32(0x3120E14, AnmManager, current_sprite);
 ValidateFieldOffset32(0x3120E18, AnmManager, __d3d_vertex_buffer_3120E18);
 ValidateFieldOffset32(0x3120E1C, AnmManager, __vertex_array_3120E1C);
 ValidateFieldOffset32(0x3120E6C, AnmManager, unrendered_sprite_count);
@@ -19833,8 +19933,8 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_A(void* pt
     }
 
     AnmManager* anm_manager = ANM_MANAGER_PTR;
-    anm_manager->__current_sprite = NULL;
-    anm_manager->__index_3120E04 = -1;
+    anm_manager->current_sprite = NULL;
+    anm_manager->__current_sprite_index = -1;
     anm_manager->current_blend_mode = (AnmBlendMode)-1;
     anm_manager->__byte_3120E09 = -1;
     anm_manager->__byte_3120E0B = -1;
@@ -20618,6 +20718,12 @@ ValidateFieldOffset32(0x1C, EffectData, on_copyB_index);
 ValidateStructSize32(0x20, EffectData);
 #pragma endregion
 
+extern "C" {
+    // 0x507648
+    externcg uint32_t SCREEN_EFFECT_DISABLE_TIME cgasm("_SCREEN_EFFECT_DISABLE_TIME");
+}
+
+
 // 0x4CCBF8
 // this isn't marked const again...
 static EffectData EFFECT_DATA_TABLE[5] = {
@@ -20673,14 +20779,506 @@ static EffectData EFFECT_DATA_TABLE[5] = {
     }
 };
 
-typedef struct Effect Effect;
+typedef struct ScreenEffect ScreenEffect;
 
-struct Effect {
-
+enum ScreenEffectType : int32_t {
+    ScreenEffect0 = 0,
+    ScreenEffect1 = 1,
+    ScreenEffect2 = 2,
+    ScreenEffect3 = 3,
+    ScreenEffect4 = 4,
+    ScreenEffect5 = 5,
+    ScreenEffect6 = 6,
+    ScreenEffect7 = 7,
+    ScreenEffect8 = 8,
+    ScreenEffect9 = 9
 };
-#pragma region // Effect Validation
-ValidateFieldOffset32(0x39724B0, AnmManager, __color_39724B0);
-ValidateStructSize32(0x39724B8, AnmManager);
+
+// size: 0x40
+struct ScreenEffect : ZUNTask {
+    // ZUNTask base; // 0x0
+    ScreenEffectType type; // 0xC
+    unknown_fields(0x4); // 0x10
+    int32_t alpha; // 0x14
+    union {
+        int32_t __int_18; // 0x18
+        int32_t duration;
+    };
+    union {
+        int __int_1C; // 0x1C
+        D3DCOLOR color1;
+    };
+    union {
+        int __int_20; // 0x20
+        D3DCOLOR color2;
+    };
+    int __int_24; // 0x24
+    int __dword_28; // 0x28
+    Timer timer; // 0x2C
+    // 0x40
+
+    inline void zero_contents() {
+        zero_this();
+    }
+
+    inline ScreenEffect() {
+        this->zero_contents();
+        this->__unknown_task_flag_A = true;
+    }
+
+    // 0x476260
+    dllexport gnu_noinline ~ScreenEffect() NO_EH_TERMINATE {
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
+        UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
+    }
+
+    // 0x476040
+    dllexport gnu_noinline static ZUNResult UpdateFuncCC on_cleanup(void* ptr) {
+        if (ptr) {
+            delete_no_eh((ScreenEffect*)ptr);
+        }
+        return ZUN_SUCCESS;
+    }
+
+    // 0x475480
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick_0_3(void* ptr) {
+        ScreenEffect* self = (ScreenEffect*)ptr;
+
+        // Nothing ticks the timer...?
+
+        if (expect(SCREEN_EFFECT_DISABLE_TIME == 0, true)) {
+            int32_t duration = self->duration;
+            if (duration) {
+                int32_t alpha = 255.0f - self->timer * 255.0f / duration;
+                if (alpha < 0) {
+                    alpha = 0;
+                }
+                self->alpha = alpha;
+            }
+            if (self->timer < duration) {
+                return UpdateFuncNext;
+            }
+        }
+        return UpdateFuncCleanupThenNext;
+    }
+
+    // 0x475C70
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick_1(void* ptr) {
+        ScreenEffect* self = (ScreenEffect*)ptr;
+
+        if (expect(SCREEN_EFFECT_DISABLE_TIME == 0, true)) {
+            int32_t time = ++self->timer;
+            int32_t duration = self->duration;
+            if (time < duration) {
+
+                int32_t initial_val = self->__int_1C;
+                int32_t final_val = self->__int_20;
+                float A = (float)(final_val - initial_val) * (float)self->timer / (float)duration + (float)initial_val;
+
+                switch (RNG.rand_uint_range(3)) {
+                    case 2:
+                        SUPERVISOR.cameras[3].__float2_FC.x = -A;
+                        SUPERVISOR.cameras[1].__float2_FC.x = A * WINDOW_DATA.__game_scale;
+                        break;
+                    case 1:
+                        SUPERVISOR.cameras[3].__float2_FC.x = A;
+                        SUPERVISOR.cameras[1].__float2_FC.x = A * WINDOW_DATA.__game_scale;
+                        break;
+                    case 0:
+                        SUPERVISOR.cameras[3].__float2_FC.x = 0.0f;
+                        SUPERVISOR.cameras[1].__float2_FC.x = 0.0f;
+                        break;
+                }
+                switch (RNG.rand_uint_range(3)) {
+                    case 2:
+                        SUPERVISOR.cameras[3].__float2_FC.y = -A;
+                        SUPERVISOR.cameras[1].__float2_FC.y = A * WINDOW_DATA.__game_scale;
+                        break;
+                    case 1:
+                        SUPERVISOR.cameras[3].__float2_FC.y = A;
+                        SUPERVISOR.cameras[1].__float2_FC.y = A * WINDOW_DATA.__game_scale;
+                        break;
+                    case 0:
+                        SUPERVISOR.cameras[3].__float2_FC.y = 0.0f;
+                        SUPERVISOR.cameras[1].__float2_FC.y = 0.0f;
+                        break;
+                }
+                return UpdateFuncNext;
+            }
+        }
+        return UpdateFuncCleanupThenNext;
+    }
+
+    // 0x475820
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick_2_5(void* ptr) {
+        ScreenEffect* self = (ScreenEffect*)ptr;
+
+        if (expect(SCREEN_EFFECT_DISABLE_TIME == 0, true)) {
+            int32_t duration = self->duration;
+            if (duration) {
+                if (self->timer < duration) {
+                    int32_t alpha = 255.0f - self->timer * 255.0f / duration;
+                    self->alpha = alpha;
+                    if (alpha < 0) {
+                        self->alpha = 0;
+                    }
+                }
+                else {
+                    self->alpha = 255;
+                }
+            }
+            if (self->timer < duration + 2) {
+                GameThread* game_thread_ptr = GAME_THREAD_PTR;
+                if (
+                    !game_thread_ptr ||
+                    !(game_thread_ptr->__unknown_flag_A | game_thread_ptr->skip_flag)
+                ) {
+                    self->timer++;
+                }
+                return UpdateFuncNext;
+            }
+        }
+        return UpdateFuncCleanupThenNext;
+    }
+
+    // 0x475AF0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick_4(void* ptr) {
+        ScreenEffect* self = (ScreenEffect*)ptr;
+
+        uint32_t alpha = ALPHA(self->color2);
+
+        if (expect(SCREEN_EFFECT_DISABLE_TIME == 0, true)) {
+            int32_t duration = self->duration;
+            if (self->timer < duration) {
+                alpha -= (int32_t)(alpha * (float)self->timer / duration);
+                self->alpha = alpha;
+                if ((int32_t)alpha < 0) {
+                    self->alpha = 0;
+                }
+            }
+            else {
+                --self->__int_1C;
+                self->alpha = 0;
+                if (self->__int_1C <= 0) {
+                    return UpdateFuncCleanupThenNext;
+                }
+                self->timer.reset();
+            }
+            ++self->timer;
+            return UpdateFuncNext;
+        }
+        return UpdateFuncCleanupThenNext;
+    }
+
+    // 0x475900
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick_6_7(void* ptr) {
+        ScreenEffect* self = (ScreenEffect*)ptr;
+
+        if (!self->__dword_28) {
+            int32_t duration = self->__int_18;
+            if (self->timer <= duration) {
+                self->alpha = 128 - (int32_t)(self->timer * 128.0f / duration);
+            }
+        }
+        else {
+            if (self->timer > 8) {
+                return UpdateFuncCleanupThenNext;
+            }
+            self->alpha = 128 - (int32_t)(self->timer * 128.0f * (1.0f / 8.0f));
+        }
+
+        ++self->timer;
+        return UpdateFuncNext;
+    }
+
+    // 0x475E40
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick_8(void* ptr) {
+        ScreenEffect* self = (ScreenEffect*)ptr;
+
+        if (expect(SCREEN_EFFECT_DISABLE_TIME == 0, true)) {
+
+            GameThread* game_thread_ptr = GAME_THREAD_PTR;
+            if (
+                game_thread_ptr &&
+                !(game_thread_ptr->__unknown_flag_A | game_thread_ptr->skip_flag) &&
+                !(game_thread_ptr->__unknown_flag_B | game_thread_ptr->__unknown_flag_I | game_thread_ptr->__unknown_flag_L | game_thread_ptr->__unknown_flag_M)
+            ) {
+                self->timer++;
+
+                int32_t time = self->timer;
+                int32_t A = self->__int_1C;
+
+                float E;
+                if (time < A) {
+                    E = (float)self->timer / A;
+                }
+                else {
+                    int32_t B = self->__int_20;
+                    int32_t C = A + B;
+                    if (time < C) {
+                        E = 1.0f;
+                    }
+                    else {
+                        int32_t D = self->__int_24;
+                        if (time >= A + B + D) {
+                            return UpdateFuncCleanupThenNext;
+                        }
+
+                        E = (uint32_t)(C + D) - (float)self->timer / (uint32_t)D;
+                    }
+                }
+
+                E *= self->__int_18;
+
+                switch (RNG.rand_uint_range(3)) {
+                    case 2:
+                        SUPERVISOR.cameras[3].__float2_FC.x = -E;
+                        SUPERVISOR.cameras[1].__float2_FC.x = E * WINDOW_DATA.__game_scale;
+                        break;
+                    case 1:
+                        SUPERVISOR.cameras[3].__float2_FC.x = E;
+                        SUPERVISOR.cameras[1].__float2_FC.x = E * WINDOW_DATA.__game_scale;
+                        break;
+                    case 0:
+                        SUPERVISOR.cameras[3].__float2_FC.x = 0.0f;
+                        SUPERVISOR.cameras[1].__float2_FC.x = 0.0f;
+                        break;
+                }
+                switch (RNG.rand_uint_range(3)) {
+                    case 2:
+                        SUPERVISOR.cameras[3].__float2_FC.y = -E;
+                        SUPERVISOR.cameras[1].__float2_FC.y = E * WINDOW_DATA.__game_scale;
+                        break;
+                    case 1:
+                        SUPERVISOR.cameras[3].__float2_FC.y = E;
+                        SUPERVISOR.cameras[1].__float2_FC.y = E * WINDOW_DATA.__game_scale;
+                        break;
+                    case 0:
+                        SUPERVISOR.cameras[3].__float2_FC.y = 0.0f;
+                        SUPERVISOR.cameras[1].__float2_FC.y = 0.0f;
+                        break;
+                }
+            }
+            return UpdateFuncNext;
+        }
+        return UpdateFuncCleanupThenNext;
+    }
+
+    // 0x4759E0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick_9(void* ptr) {
+        ScreenEffect* self = (ScreenEffect*)ptr;
+
+        int32_t time = self->timer;
+        self->alpha = 255;
+        if (time >= self->duration) {
+            return UpdateFuncCleanupThenNext;
+        }
+
+        ++self->timer;
+
+        return UpdateFuncNext;
+    }
+
+    // 0x475750
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_0_5(void* ptr) {
+        ScreenEffect* self = (ScreenEffect*)ptr;
+
+        Float2 coords[2] = {
+            { 0.0f, 0.0f },
+            { WINDOW_DATA.__scaled_width, WINDOW_DATA.__scaled_height }
+        };
+
+        ANM_MANAGER_PTR->flush_sprites();
+        SUPERVISOR.set_camera_by_index(2);
+
+        D3DCOLOR color = self->alpha << 24 | self->color1;
+
+        ANM_MANAGER_PTR->__sub_4754E0(coords, color);
+
+        return UpdateFuncNext;
+    }
+
+    // Identical to on_draw_6_9
+    // 0x4758B0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_2_3(void* ptr) {
+        ScreenEffect* self = (ScreenEffect*)ptr;
+
+        D3DCOLOR color = self->alpha << 24 | self->color1;
+
+        Float2 coords[2] = {
+            { 0.0f, 0.0f },
+            { WINDOW_DATA.__scaled_width, WINDOW_DATA.__scaled_height }
+        };
+
+        ANM_MANAGER_PTR->__sub_4754E0(coords, color);
+
+        return UpdateFuncNext;
+    }
+
+    // 0x475C00
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_4(void* ptr) {
+        ScreenEffect* self = (ScreenEffect*)ptr;
+
+        D3DCOLOR color = self->alpha << 24 | self->color2 & 0x00FFFFFF;
+
+        Float2 coords[2] = {
+            { WINDOW_DATA.__width_related_2074, WINDOW_DATA.__height_related_2078 },
+            { WINDOW_DATA.__width_related_2080, WINDOW_DATA.__height_related_207C }
+        };
+
+        ANM_MANAGER_PTR->__sub_4754E0(coords, color);
+
+        return UpdateFuncNext;
+    }
+
+    // Identical to on_draw_2_3
+    // 0x475A70
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_6_9(void* ptr) {
+        ScreenEffect* self = (ScreenEffect*)ptr;
+
+        D3DCOLOR color = self->alpha << 24 | self->color1;
+
+        Float2 coords[2] = {
+            { 0.0f, 0.0f },
+            { WINDOW_DATA.__scaled_width, WINDOW_DATA.__scaled_height }
+        };
+
+        ANM_MANAGER_PTR->__sub_4754E0(coords, color);
+
+        return UpdateFuncNext;
+    }
+
+    // 0x475AC0
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_7(void* ptr) {
+        ScreenEffect* self = (ScreenEffect*)ptr;
+
+        D3DCOLOR color = self->alpha << 24 | self->color1;
+
+        Float2 coords[2] = {
+            { 128.0f, 16.0f },
+            { 512.0f, 464.0f }
+        };
+
+        ANM_MANAGER_PTR->__sub_4754E0(coords, color);
+
+        return UpdateFuncNext;
+    }
+
+    // 0x4760B0
+    dllexport gnu_noinline void thiscall initialize(ScreenEffectType type, int32_t A, int32_t B, int32_t C, int32_t D, int32_t draw_priority) asm_symbol_rel(0x4760B0) {
+        UpdateFunc* update_func;
+        switch (type) {
+            case ScreenEffect0: // 0
+                update_func = new UpdateFunc(&on_tick_0_3, true, this);
+                UpdateFuncRegistry::register_on_tick(update_func, TickPriority::ScreenEffect);
+                this->on_tick_func = update_func;
+                update_func = new UpdateFunc(&on_draw_0_5, true, this);
+                UpdateFuncRegistry::register_on_draw(update_func, draw_priority);
+                this->on_draw_func = update_func;
+                break;
+            case ScreenEffect1: // 1
+                update_func = new UpdateFunc(&on_tick_1, true, this);
+                UpdateFuncRegistry::register_on_tick(update_func, TickPriority::ScreenEffect);
+                this->on_tick_func = update_func;
+                break;
+            case ScreenEffect2: // 2
+                update_func = new UpdateFunc(&on_tick_2_5, true, this);
+                UpdateFuncRegistry::register_on_tick(update_func, TickPriority::ScreenEffect);
+                this->on_tick_func = update_func;
+                update_func = new UpdateFunc(&on_draw_2_3, true, this);
+                UpdateFuncRegistry::register_on_draw(update_func, draw_priority);
+                this->on_draw_func = update_func;
+                break;
+            case ScreenEffect3: // 3
+                this->alpha = 255;
+                update_func = new UpdateFunc(&on_tick_0_3, true, this);
+                UpdateFuncRegistry::register_on_tick(update_func, TickPriority::ScreenEffect);
+                this->on_tick_func = update_func;
+                update_func = new UpdateFunc(&on_draw_2_3, true, this);
+                UpdateFuncRegistry::register_on_draw(update_func, draw_priority);
+                this->on_draw_func = update_func;
+                break;
+            case ScreenEffect5: // 5
+                update_func = new UpdateFunc(&on_tick_2_5, true, this);
+                UpdateFuncRegistry::register_on_tick(update_func, TickPriority::ScreenEffect);
+                this->on_tick_func = update_func;
+                update_func = new UpdateFunc(&on_draw_0_5, true, this);
+                UpdateFuncRegistry::register_on_draw(update_func, draw_priority);
+                this->on_draw_func = update_func;
+                break;
+            case ScreenEffect4: // 4
+                update_func = new UpdateFunc(&on_tick_4, true, this);
+                UpdateFuncRegistry::register_on_tick(update_func, TickPriority::ScreenEffect);
+                this->on_tick_func = update_func;
+                update_func = new UpdateFunc(&on_draw_4, true, this);
+                UpdateFuncRegistry::register_on_draw(update_func, draw_priority);
+                this->on_draw_func = update_func;
+                break;
+            case ScreenEffect6: // 6
+                update_func = new UpdateFunc(&on_tick_6_7, true, this);
+                UpdateFuncRegistry::register_on_tick(update_func, TickPriority::ScreenEffect);
+                this->on_tick_func = update_func;
+                update_func = new UpdateFunc(&on_draw_6_9, true, this);
+                UpdateFuncRegistry::register_on_draw(update_func, draw_priority);
+                this->on_draw_func = update_func;
+                break;
+            case ScreenEffect7: // 7
+                update_func = new UpdateFunc(&on_tick_6_7, true, this);
+                UpdateFuncRegistry::register_on_tick(update_func, TickPriority::ScreenEffect);
+                this->on_tick_func = update_func;
+                update_func = new UpdateFunc(&on_draw_7, true, this);
+                UpdateFuncRegistry::register_on_draw(update_func, draw_priority);
+                this->on_draw_func = update_func;
+                break;
+            case ScreenEffect8: // 8
+                update_func = new UpdateFunc(&on_tick_8, true, this);
+                UpdateFuncRegistry::register_on_tick(update_func, TickPriority::ScreenEffect);
+                this->on_tick_func = update_func;
+                break;
+            case ScreenEffect9: // 9
+                update_func = new UpdateFunc(&on_tick_9, true, this);
+                UpdateFuncRegistry::register_on_tick(update_func, TickPriority::ScreenEffect);
+                this->on_tick_func = update_func;
+                update_func = new UpdateFunc(&on_draw_6_9, true, this);
+                UpdateFuncRegistry::register_on_draw(update_func, draw_priority);
+                this->on_draw_func = update_func;
+                break;
+        }
+        this->on_tick_func->on_cleanup_func = &on_cleanup;
+        this->timer.reset();
+        this->__int_18 = A;
+        this->__int_1C = B;
+        this->__int_20 = C;
+        this->type = type;
+        this->__int_24 = D;
+    }
+
+    // 0x476060
+    dllexport gnu_noinline static ScreenEffect* fastcall allocate(ScreenEffectType type, int32_t A, int32_t B, int32_t C, int32_t D, int32_t draw_priority) asm_symbol_rel(0x476060) {
+        ScreenEffect* screen_effect = new ScreenEffect();
+        screen_effect->initialize(type, A, B, C, D, draw_priority);
+        return screen_effect;
+    }
+
+    /*
+    static forceinline ScreenEffect* allocate_type_0(int32_t A, D3DCOLOR color, int C, int D, int32_t draw_priority) {
+        return allocate(ScreenEffect0, A, color, C, D, draw_priority);
+    }
+    */
+};
+#pragma region // ScreenEffect Validation
+ValidateFieldOffset32(0x0, ScreenEffect, task_flags);
+ValidateFieldOffset32(0x4, ScreenEffect, on_tick_func);
+ValidateFieldOffset32(0x8, ScreenEffect, on_draw_func);
+ValidateFieldOffset32(0xC, ScreenEffect, type);
+ValidateFieldOffset32(0x14, ScreenEffect, alpha);
+ValidateFieldOffset32(0x18, ScreenEffect, __int_18);
+ValidateFieldOffset32(0x1C, ScreenEffect, __int_1C);
+ValidateFieldOffset32(0x20, ScreenEffect, __int_20);
+ValidateFieldOffset32(0x24, ScreenEffect, __int_24);
+ValidateFieldOffset32(0x28, ScreenEffect, __dword_28);
+ValidateFieldOffset32(0x2C, ScreenEffect, timer);
+ValidateStructSize32(0x40, ScreenEffect);
 #pragma endregion
 
 typedef struct EffectManager EffectManager;
@@ -20736,52 +21334,22 @@ struct EffectManager : ZUNTask {
         EFFECT_MANAGER_PTR = NULL;
     }
 
-    // 0x42AF30
-    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) {
-        EffectManager* self = (EffectManager*)ptr;
+    inline UpdateFuncRet on_tick() {
         for (size_t i = 0; i < MAX_EFFECTS; ++i) {
-            (void)self->vm_slots[i].get_vm_ptr();
+            // This clears the ID if the VM is dead
+            (void)this->vm_slots[i].get_vm_ptr();
         }
         return UpdateFuncNext;
+    }
+
+    // 0x42AF30
+    dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) {
+        return ((EffectManager*)ptr)->on_tick();
     }
 
     // 0x42AF60
     dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) {
         return UpdateFuncNext;
-    }
-
-    inline ZUNResult initialize() {
-        if (
-            (this->bullet_anm = ANM_MANAGER_PTR->preload_anm(BULLET_ANM_INDEX, "bullet.anm")) &&
-            (this->effect_anm = ANM_MANAGER_PTR->preload_anm(EFFECT_ANM_INDEX, "effect.anm"))
-        ) {
-            this->__done_loading = 1;
-        }
-        else {
-            LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
-            // no return here?
-        }
-
-        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
-        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::EffectManager); // 32
-        this->on_tick_func = update_func;
-        update_func = new UpdateFunc(&on_draw, false, this);
-        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::EffectManager); // 39
-        this->on_draw_func = update_func;
-        this->enable_funcs();
-
-        return ZUN_SUCCESS;
-    }
-
-    // 0x42AC70
-    dllexport gnu_noinline static EffectManager* allocate() asm_symbol_rel(0x42AC70) {
-        EffectManager* effect_manager = new EffectManager();
-        EFFECT_MANAGER_PTR = effect_manager;
-        if (ZUN_FAILED(effect_manager->initialize())) {
-            delete effect_manager;
-            return NULL;
-        }
-        return effect_manager;
     }
 
     // 0x422D00
@@ -20815,7 +21383,7 @@ struct EffectManager : ZUNTask {
 private:
     // 0x422DD0
     dllexport gnu_noinline static AnmID& stdcall __get_slot_vm_id(AnmID& out, int32_t slot) {
-        uint32_t masked_slot = slot % (MAX_EFFECTS * 2u);
+        uint32_t masked_slot = (uint32_t)slot % (MAX_EFFECTS * 2u);
         if (
             masked_slot < MAX_EFFECTS &&
             slot < 0
@@ -20905,6 +21473,40 @@ public:
         if (slot != -1 && slot < MAX_EFFECTS) {
             this->vm_slots[slot] = this->effect_anm->instantiate_vm_to_world_list_back(script, position);
         }
+    }
+
+    inline ZUNResult initialize() {
+        if (
+            (this->bullet_anm = ANM_MANAGER_PTR->preload_anm(BULLET_ANM_INDEX, "bullet.anm")) &&
+            (this->effect_anm = ANM_MANAGER_PTR->preload_anm(EFFECT_ANM_INDEX, "effect.anm"))
+        ) {
+            this->__done_loading = 1;
+        }
+        else {
+            LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
+            // no return here?
+        }
+
+        UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
+        UpdateFuncRegistry::register_on_tick(update_func, TickPriority::EffectManager); // 32
+        this->on_tick_func = update_func;
+        update_func = new UpdateFunc(&on_draw, false, this);
+        UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::EffectManager); // 39
+        this->on_draw_func = update_func;
+        this->enable_funcs();
+
+        return ZUN_SUCCESS;
+    }
+
+    // 0x42AC70
+    dllexport gnu_noinline static EffectManager* allocate() asm_symbol_rel(0x42AC70) {
+        EffectManager* effect_manager = new EffectManager();
+        EFFECT_MANAGER_PTR = effect_manager;
+        if (ZUN_FAILED(effect_manager->initialize())) {
+            delete effect_manager;
+            return NULL;
+        }
+        return effect_manager;
     }
 };
 #pragma region // EffectManager Validation
@@ -22892,8 +23494,6 @@ typedef struct Ending Ending;
 extern "C" {
     // 0x4CF2CC
     externcg Ending* ENDING_PTR cgasm("_ENDING_PTR");
-    // 0x507648
-    externcg int UNKNOWN_INT_H cgasm("_UNKNOWN_INT_H");
     // 0x4C5F88
     externcg int32_t UNKNOWN_INT32_I cgasm("_UNKNOWN_INT32_I");
 }
@@ -23060,7 +23660,7 @@ struct Ending : ZUNTask {
 
         SAFE_FREE(this->end_file);
         ENDING_PTR = NULL;
-        UNKNOWN_INT_H = 0;
+        SCREEN_EFFECT_DISABLE_TIME = 0;
     }
 
     // 0x42BB10
@@ -32411,6 +33011,16 @@ public:
         }
     }
 
+    // 0x4094C0
+    dllexport gnu_noinline static void __sub_4094C0() asm_symbol_rel(0x4094C0) {
+        AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
+        for (int32_t i = 0; i < ability_manager->card_count; ++i) {
+            ability_manager->__anm_id_array_58[i].__tree_clear_visible2();
+            ability_manager->__anm_id_array_458[i].__tree_clear_visible2();
+        }
+        ability_manager->__anm_id_3C.__tree_clear_visible2();
+    }
+
     // 0x408DE0
     dllexport gnu_noinline void thiscall create_card_list_for_hud(Float3* position_ptr, int32_t count, int card_type, BOOL arg4) {
         Float3 position = *position_ptr;
@@ -32825,22 +33435,59 @@ public:
     }
 
     // 0x408890
-    dllexport gnu_noinline void thiscall __sub_408890(AnmID id, int32_t scriptA, int32_t scriptB, CardBase* card, int arg5) asm_symbol_rel(0x408890) {
+    dllexport gnu_noinline void thiscall __sub_408890(AnmID id, int32_t scriptA, int32_t scriptB, CardBase* card, BOOL arg5) asm_symbol_rel(0x408890) {
         AnmVM* vmA = id.__find_child_vm_with_script(scriptA);
         AnmVM* vmB = id.__find_child_vm_with_script(scriptB);
 
-        // TODO
+        float B = 1.0f;
+        float A = 1.0f - card->recharge_time / (float)card->__timer_34;
 
         if (card->__get_unknown_flag_A()) {
-
+            A = B;
+            uint8_t c = this->__timer_44 % 4 <= 2 ? 0 : 255;
+            RED(vmA->data.color1) = 255;
+            GREEN(vmA->data.color1) = c;
+            BLUE(vmA->data.color1) = c;
+            id.interrupt_tree(2);
         }
         else if (!this->selected_active_card) {
-
+            id.interrupt_tree(2);
+            RED(vmA->data.color1) = 255;
+            GREEN(vmA->data.color1) = 64;
+            BLUE(vmA->data.color1) = 64;
         }
         else {
-
+            id.interrupt_tree(3);
+            float C = A * 64.0f;
+            uint8_t c1 = C + 0.0f;
+            uint8_t c2 = C + 128.0f;
+            RED(vmA->data.color1) = c1;
+            BLUE(vmA->data.color1) = c1;
+            GREEN(vmA->data.color1) = c2;
         }
 
+        if (arg5) {
+            float angle = vmA->get_controller_rotation()->z;
+            float y = (B - A) * 40.0f;
+            float y_unit = zsinf(angle);
+            float x_unit = zcosf(angle);
+            float x = 0.0f;
+            Float3 position = {
+                (x_unit * x) - (y_unit * y),
+                (x_unit * y) + (y_unit * x),
+                0.0f
+            };
+            vmA->data.position = position;
+            vmB->data.position = position;
+        }
+
+        float C = (5.0f / 8.0f) - A * (5.0f / 8.0f);
+        vmA->set_v_scale(A);
+        vmA->set_y_scale(A);
+        vmA->set_y_scroll(C);
+        vmB->set_v_scale(A);
+        vmB->set_y_scale(A);
+        vmB->set_y_scroll(C);
     }
 
     // 0x408640
@@ -32918,8 +33565,8 @@ public:
 
     // 0x408AB0
     dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* self) asm_symbol_rel(0x408AB0) {
-        ((AbilityManager*)self)->card_list.for_each([](CardBase* card) static_lambda {
-
+        ((AbilityManager*)self)->card_list.for_each([](CardBase* card) static_lambda{
+            card->on_draw();
         });
         return UpdateFuncNext;
     }
@@ -39789,18 +40436,18 @@ struct LaserLine : LaserData {
     // 0x44C790
     // Method 0x30
     dllexport virtual gnu_noinline int thiscall __method_30(Float2* arg1, float arg2) override asm_symbol_rel(0x44C790) {
-        float x = arg1->x - this->position.x;
-        float y = arg1->y - this->position.y;
+        float x_diff = arg1->x - this->position.x;
+        float y_diff = arg1->y - this->position.y;
         float angle = -this->angle;
         float y_unit = zsinf(angle);
         float x_unit = zcosf(angle);
-        float A = (x_unit * x) - (y_unit * y);
-        float B = (x_unit * y) + (y_unit * x);
+        float x = (x_unit * x_diff) - (y_unit * y_diff);
+        float y = (x_unit * y_diff) + (y_unit * x_diff);
         if (
-            !(A - arg2 > this->length) &&
-            !(B - arg2 > this->width * 0.5) &&
-            !(A + arg2 < 0.0f) &&
-            !(B + arg2 < -this->width * 0.5)
+            !(x - arg2 > this->length) &&
+            !(y - arg2 > this->width * 0.5) &&
+            !(x + arg2 < 0.0f) &&
+            !(y + arg2 < -this->width * 0.5)
         ) {
             return 2;
         }
@@ -46387,7 +47034,11 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             break;
         }
         case effect_screen_shake: { // 517
-            // TODO
+            int32_t D = this->get_int_arg(3);
+            int32_t C = this->get_int_arg(2);
+            int32_t B = this->get_int_arg(1);
+            int32_t duration = this->get_int_arg(0);
+            ScreenEffect::allocate(ScreenEffect1, duration, B, C, D, 91);
             break;
         }
         case msg_read: { // 518
@@ -50097,7 +50748,7 @@ public:
                         this->__menu_select_24.set_selection(2);
                         this->__menu_select_24.push_state();
                         // somehow this generates the 9 by subtracting 21 from 30
-                        // ScreenEffect::create(9, 30, 0, 0, 0, 0x5B);
+                        ScreenEffect::allocate(ScreenEffect9, 30, 0, 0, 0, 91);
                         (this->__anm_id_3B4 = this->title_anm->instantiate_vm_to_world_list_back(7)).interrupt_and_run_tree(3);
                         this->change_state(23);
                         UNKNOWN_INT32_C = 1;
@@ -50106,7 +50757,7 @@ public:
                         this->__state_23_handler();
                     }
                     else if (A == 5) {
-                        // ScreenEffect::create(9, 30, 0, 0, 0, 0x5B);
+                        ScreenEffect::allocate(ScreenEffect9, 30, 0, 0, 0, 91);
                         (this->__anm_id_3B4 = this->title_anm->instantiate_vm_to_world_list_back(7)).interrupt_and_run_tree(3);
                         this->change_state(18);
                         UNKNOWN_INT32_C = 1;
@@ -50115,7 +50766,7 @@ public:
                         this->__state_18_handler();
                     }
                     else if (A == 4) {
-                        // ScreenEffect::create(9, 30, 0, 0, 0, 0x5B);
+                        ScreenEffect::allocate(ScreenEffect9, 30, 0, 0, 0, 91);
                         (this->__anm_id_3B4 = this->title_anm->instantiate_vm_to_world_list_back(7)).interrupt_and_run_tree(3);
                         this->change_state(5);
                         this->enable_draw_unsafe();
@@ -50287,7 +50938,7 @@ public:
             (main_menu->title_v_anm = ANM_MANAGER_PTR->preload_anm(TITLEV_ANM_INDEX, "title_v.anm"))
         ) {
             main_menu->__menu_select_24.enable_wrap = true;
-            UNKNOWN_INT_H = 0;
+            SCREEN_EFFECT_DISABLE_TIME = 0;
             SUPERVISOR.__sub_475380();
             if (LoadingThread* loading_thread = LOADING_THREAD_PTR) {
                 if (loading_thread->__int_648 < 180) {
@@ -52161,13 +52812,13 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
         }
         if (replay_mode == __replay_recording) {
             if (this->__int_D4 == 180) {
-                // ScreenEffect::create(5, 0xC8, 0, 0, 0, 0x59);
+                ScreenEffect::allocate(ScreenEffect5, 0xC8, 0, 0, 0, 89);
                 replay_mode = this->replay_mode;
             }
         }
         if (replay_mode == __replay_recording) {
             if (this->__int_D4 > 380) {
-                // ABILITY_MANAGER_PTR->__sub_4074C0();
+                ABILITY_MANAGER_PTR->__sub_4094C0();
                 ABILITY_MANAGER_PTR->__sub_407DA0(true);
 
                 int32_t mode;
@@ -52220,7 +52871,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 
     if (GAME_MANAGER.__unknown_flag_E) {
         if (
-            INPUT_P1.check_hardware_inputs(BUTTON_SHOOT | BUTTON_BOMB | BUTTON_PAUSE | BUTTON_ENTER) ||
+            INPUT_P1.check_hardware_inputs(BUTTON_SELECT | BUTTON_CANCEL) ||
             (this->__unknown_flag_I | this->__unknown_flag_L | this->__unknown_flag_M)
         ) {
             SUPERVISOR.gamemode_switch = (SUPERVISOR.__unknown_bitfield_A & 1) ? 2 : 4;
@@ -52228,7 +52879,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 
         switch (this->__timer_C.current) {
             case 3540:
-                // ScreenEffect::create(5, 0x3C, 0, 0, 0, 0x5B);
+                ScreenEffect::allocate(ScreenEffect5, 0x3C, 0, 0, 0, 91);
                 break;
             case 3600:
                 SUPERVISOR.gamemode_switch = (SUPERVISOR.__unknown_bitfield_A & 1) ? 2 : 4;
@@ -52359,8 +53010,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
         player_ptr->damage_cap = player_ptr->sht_file->damage_cap;
     }
 
-    if (int A = UNKNOWN_INT_H) {
-        UNKNOWN_INT_H = A - 1;
+    if (uint32_t disable_time = SCREEN_EFFECT_DISABLE_TIME) {
+        SCREEN_EFFECT_DISABLE_TIME = disable_time - 1;
     }
 
     ++this->__timer_C;
@@ -52507,7 +53158,7 @@ dllexport gnu_noinline GameThread::~GameThread() {
 
     SOUND_MANAGER.__stop_all_sfx();
 
-    UNKNOWN_INT_H = 1;
+    SCREEN_EFFECT_DISABLE_TIME = 1;
 
     SUPERVISOR.background_color = GAME_MANAGER.__unknown_flag_A ? COLOR(0, 0, 0, 0) : COLOR(255, 0, 0, 0);
 }
@@ -52697,7 +53348,7 @@ inline unsigned GameThread::thread_start_impl() {
             !ABILITY_MANAGER_PTR->card_equipped(MAGATAMA2_CARD)
         ) {
             ABILITY_MANAGER_PTR->allocate_new_card(MAGATAMA2_CARD, 0);
-            //ABILITY_MANAGER_PTR->__sub_4094C0();
+            ABILITY_MANAGER_PTR->__sub_4094C0();
         }
         MOMOYO_CARD_COUNTER = 0;
     }
@@ -52813,7 +53464,7 @@ inline unsigned GameThread::thread_start_impl() {
     SUPERVISOR.__thread_A94.__bool_10 = false;
     SUPERVISOR.__thread_A94.__bool_C = true;
 
-    UNKNOWN_INT_H = 0;
+    SCREEN_EFFECT_DISABLE_TIME = 0;
     UNKNOWN_FUNC_PTR_A = NULL;
     UNKNOWN_FUNC_PTR_B = NULL;
 
@@ -52951,7 +53602,7 @@ dllexport gnu_noinline void __set_default_d3d_states() {
         anm_manager->current_blend_mode = (AnmBlendMode)11;
         anm_manager->__byte_3120E09 = -1;
         anm_manager->__sbyte_3120E0A = -1;
-        anm_manager->__index_3120E04 = -1;
+        anm_manager->__current_sprite_index = -1;
         anm_manager->__byte_3120E0C = -1;
     }
 }
