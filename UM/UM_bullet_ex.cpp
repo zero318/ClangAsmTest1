@@ -10716,9 +10716,9 @@ struct ShooterData {
     float width; // 0x448
     unknown_fields(0xC); // 0x44C
     int32_t start_time; // 0x458
-    int32_t __transform_A; // 0x45C
+    int32_t expand_time; // 0x45C
     int32_t duration; // 0x460
-    int32_t __transform_B; // 0x464
+    int32_t stop_time; // 0x464
     int32_t __laser_flags; // 0x468
     int16_t count1; // 0x46C
     int16_t count2; // 0x46E
@@ -10760,9 +10760,9 @@ ValidateFieldOffset32(0x24, ShooterData, distance);
 ValidateFieldOffset32(0x28, ShooterData, effects);
 ValidateFieldOffset32(0x448, ShooterData, width);
 ValidateFieldOffset32(0x458, ShooterData, start_time);
-ValidateFieldOffset32(0x45C, ShooterData, __transform_A);
+ValidateFieldOffset32(0x45C, ShooterData, expand_time);
 ValidateFieldOffset32(0x460, ShooterData, duration);
-ValidateFieldOffset32(0x464, ShooterData, __transform_B);
+ValidateFieldOffset32(0x464, ShooterData, stop_time);
 ValidateFieldOffset32(0x468, ShooterData, __laser_flags);
 ValidateFieldOffset32(0x46C, ShooterData, count1);
 ValidateFieldOffset32(0x46E, ShooterData, count2);
@@ -11278,16 +11278,16 @@ struct BombSanaeA : BombBase {
         }
         if (this->__timer_34 == 180) {
             SOUND_MANAGER.play_sound(6);
-            // TODO: screen effect
+            //ScreenEffect::allocate(ScreenEffect8, 4, 1, 60, 10, 91);
         }
         else if (BOMB_PTR->__int_A4) {
             if (this->__timer_34 == 240) {
                 SOUND_MANAGER.play_sound(6);
-                // TODO: screen effect
+                //ScreenEffect::allocate(ScreenEffect8, 4, 1, 60, 10, 91);
             }
             else if (this->__timer_34 == 300) {
                 SOUND_MANAGER.play_sound(6);
-                // TODO: screen effect
+                //ScreenEffect::allocate(ScreenEffect8, 4, 1, 60, 10, 91);
             }
         }
         // TODO
@@ -13392,7 +13392,7 @@ struct GameThread : ZUNTask {
         struct {
             uint32_t __unknown_flag_A : 1; // 1
             uint32_t __unknown_flag_B : 1; // 2
-            uint32_t skip_flag : 1; // 3
+            uint32_t skip_flag : 1; // 3 why is this called skip_flag? Doesn't seem to be related to skipping anything...
             uint32_t __unknown_flag_H : 1; // 4
             uint32_t __unknown_flag_I : 1; // 5
             uint32_t __unknown_flag_L : 1; // 6
@@ -23993,6 +23993,9 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
                     this->__color_7C = COLOR(0, 255, 255, 255);
                     break;
                 }
+                case __screen_effect_A: // 13
+                    ScreenEffect::allocate(ScreenEffect0, IntArg(0), 0, 0, 0, 91);
+                    break;
                 case anm_source_load: // 7
                     ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
                     ANM_MANAGER_PTR->unload_anm(END_ANM_INDEX_A + IntArg(0));
@@ -24003,6 +24006,9 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
                     this->__thread_D0.start((_beginthreadex_proc_type)&Ending::__load_end_anm, this);
                     this->current_instr = IndexInstr(sizeof(MsgInstruction) + this->current_instr->args_size);
                     return ZUN_SUCCESS;
+                case __screen_effect_B: // 14
+                    ScreenEffect::allocate(ScreenEffect5, IntArg(0), 0, 0, 0, 91);
+                    break;
             }
         }
     }
@@ -40296,7 +40302,7 @@ struct LaserLineParams {
         };
     };
     BulletEffectArgs effects[BULLET_EFFECT_MAX]; // 0x38, 0x7C0
-    int32_t shot_sound; // 0x458, 0xBE0
+    int32_t shoot_sound; // 0x458, 0xBE0
     int32_t transform_sound; // 0x45C, 0xBE4
     // 0x460, 0xBE8
 
@@ -40545,7 +40551,7 @@ struct LaserInfiniteParams {
     int32_t expand_time; // 0x34, 0x7BC
     int32_t duration; // 0x38, 0x7C0
     int32_t stop_time; // 0x3C, 0x7C4
-    int32_t shot_sound; // 0x40, 0x7C8
+    int32_t shoot_sound; // 0x40, 0x7C8
     int32_t transform_sound; // 0x44, 0x7CC
     int32_t laser_id; // 0x48, 0x7D0
     float distance; // 0x4C, 0x7D4
@@ -40728,11 +40734,11 @@ struct LaserCurveParams {
     union {
         uint32_t flags; // 0x28, 0x7B0
         struct {
-
+            uint32_t __unknown_flag_A : 1; // 1
         };
     };
     BulletEffectArgs effects[BULLET_EFFECT_MAX]; // 0x2C, 0x7B4
-    int32_t shot_sound; // 0x44C, 0xBD4
+    int32_t shoot_sound; // 0x44C, 0xBD4
     int32_t transform_sound; // 0x450, 0xBD8
     unknown_fields(0xC); // 0x454, 0xBDC
     // 0x460, 0xBE8
@@ -42403,7 +42409,7 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
     vm->data.origin_mode = 1;
     this->__timer_754.set(30);
     this->offscreen_timer.set(3);
-    SoundManager::play_sound_positioned_validate(this->params.shot_sound, 0.0f);
+    SOUND_MANAGER.play_sound_positioned_validate(this->params.shoot_sound, 0.0f);
     this->graze_timer.reset();
     this->__timer_40.reset();
     
@@ -42463,7 +42469,7 @@ dllexport gnu_noinline int thiscall LaserInfinite::initialize(void* data) {
     this->__vm_1218.data.render_mode = 1;
     this->__vm_1218.data.origin_mode = 1;
 
-    SoundManager::play_sound_positioned_validate(this->params.shot_sound, 0.0f);
+    SOUND_MANAGER.play_sound_positioned_validate(this->params.shoot_sound, 0.0f);
 
     this->position = this->params.position;
 
@@ -42669,7 +42675,7 @@ dllexport gnu_noinline void thiscall LaserLine::run_effects() {
                 effect_data.duration = IntArg(0);
                 effect_data.acceleration_vec.make_from_vector(effect_data.angle, effect_data.acceleration);
                 if (this->effect_index != 0) {
-                    SoundManager::play_sound_validate(this->params.transform_sound);
+                    SOUND_MANAGER.play_sound_validate(this->params.transform_sound);
                 }
                 break;
             }
@@ -42681,7 +42687,7 @@ dllexport gnu_noinline void thiscall LaserLine::run_effects() {
                 effect_data.timer.reset();
                 effect_data.duration = IntArg(0);
                 if (this->effect_index != 0) {
-                    SoundManager::play_sound_validate(this->params.transform_sound);
+                    SOUND_MANAGER.play_sound_validate(this->params.transform_sound);
                 }
                 break;
             }
@@ -43323,7 +43329,7 @@ dllexport void Bullet::run_effects() {
                 effect_data.duration = IntArg(0);
                 effect_data.velocity.make_from_vector(effect_data.angle, effect_data.speed);
                 if (this->effect_index != 0) {
-                    SoundManager::play_sound_validate(this->transform_sound);
+                    SOUND_MANAGER.play_sound_validate(this->transform_sound);
                 }
                 break;
             }
@@ -43368,7 +43374,7 @@ dllexport void Bullet::run_effects() {
                         laser_params.expand_time = 0;
                         laser_params.duration = 0;
                         laser_params.stop_time = 0;
-                        laser_params.shot_sound = 0;
+                        laser_params.shoot_sound = 0;
                         laser_params.transform_sound = 0;
                         laser_params.laser_id = 0;
                         laser_params.distance = 0.0f;
@@ -43402,7 +43408,7 @@ dllexport void Bullet::run_effects() {
                         laser_params.length = FloatArg(3);
                         laser_params.stop_time = IntArgEx(7);
                         laser_params.width = FloatArgEx(4);
-                        laser_params.shot_sound = 18;
+                        laser_params.shoot_sound = 18;
                         laser_params.transform_sound = -1;
                         laser_params.distance = FloatArgEx(5);
                         LASER_MANAGER_PTR->allocate_new_laser(1, &laser_params);
@@ -43423,7 +43429,7 @@ dllexport void Bullet::run_effects() {
                         laser_params.__speed_1 = 0.0f;
                         laser_params.distance = 0.0f;
                         laser_params.effect_index = 0;
-                        laser_params.shot_sound = 0;
+                        laser_params.shoot_sound = 0;
                         laser_params.transform_sound = 0;
                         __builtin_memcpy(laser_params.effects, this->effects, sizeof(laser_params.effects));
                         BOOL cancel_current_bullet = IntArg(3);
@@ -43451,7 +43457,7 @@ dllexport void Bullet::run_effects() {
                         laser_params.length = FloatArg(2);
                         laser_params.__length_related = FloatArg(3);
                         laser_params.__float_18 = FloatArgEx(4);
-                        laser_params.shot_sound = IntArgEx(4);
+                        laser_params.shoot_sound = IntArgEx(4);
                         laser_params.width = FloatArgEx(5);
                         laser_params.transform_sound = IntArgEx(5);
                         laser_params.distance = FloatArgEx(6);
@@ -46959,12 +46965,12 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             int32_t slot = this->get_int_arg(0);
             int32_t start_time = this->get_int_arg(1);
             this->shooters[slot].start_time = start_time;
-            int32_t A = this->get_int_arg(2);
-            this->shooters[slot].__transform_A = A;
+            int32_t expand_time = this->get_int_arg(2);
+            this->shooters[slot].expand_time = expand_time;
             int32_t duration = this->get_int_arg(3);
             this->shooters[slot].duration = duration;
-            int32_t B = this->get_int_arg(4);
-            this->shooters[slot].__transform_B = B;
+            int32_t stop_time = this->get_int_arg(4);
+            this->shooters[slot].stop_time = stop_time;
             int32_t __laser_flags = this->get_int_arg(5);
             this->shooters[slot].__laser_flags = __laser_flags;
             break;
@@ -47153,7 +47159,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             params.length = this->shooters[slot].position.x;
             params.flags = this->shooters[slot].__laser_flags | 1;
             params.__length_related = this->shooters[slot].position.y;
-            params.shot_sound = this->shooters[slot].shoot_sound;
+            params.shoot_sound = this->shooters[slot].shoot_sound;
             params.__float_18 = this->shooters[slot].position.z;
             params.transform_sound = this->shooters[slot].transform_sound;
             params.width = this->shooters[slot].width;
@@ -47172,8 +47178,20 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             } else {
                 params.position = this->current_motion.get_position() + this->shooter_offsets[slot];
             }
-            // TODO
-
+            params.sprite = this->shooters[slot].type;
+            params.color = this->shooters[slot].color;
+            params.angle = reduce_angle(this->shooters[slot].angle1);
+            params.start_time = this->shooters[slot].start_time;
+            params.expand_time = this->shooters[slot].expand_time;
+            params.__speed_1 = this->shooters[slot].speed1;
+            params.duration = this->shooters[slot].duration;
+            params.stop_time = this->shooters[slot].stop_time;
+            params.__float_24 = this->shooters[slot].position.x;
+            params.length = this->shooters[slot].position.y;
+            params.flags = this->shooters[slot].__laser_flags | 2;
+            params.width = this->shooters[slot].width;
+            params.shoot_sound = this->shooters[slot].shoot_sound;
+            params.transform_sound = this->shooters[slot].transform_sound;
             params.laser_id = this->get_int_arg(1);
             LASER_MANAGER_PTR->allocate_new_laser(InfiniteLaser, &params);
             break;
@@ -47191,7 +47209,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             }
             params.color = this->shooters[slot].color;
             params.angle = reduce_angle(this->shooters[slot].angle1);
-            params.length = this->shooters[slot].position.z;
+            params.length = this->shooters[slot].width;
             params.start_time = this->shooters[slot].start_time;
             params.distance = this->shooters[slot].distance;
             params.laser_id = this->get_int_arg(1);
@@ -47209,8 +47227,16 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             } else {
                 params.position = this->current_motion.get_position() + this->shooter_offsets[slot];
             }
-            // TODO
-
+            params.sprite = this->shooters[slot].type;
+            params.color = this->shooters[slot].color;
+            params.angle = reduce_angle(this->shooters[slot].angle1);
+            params.__unknown_flag_A = true;
+            params.curve_length = this->shooters[slot].start_time;
+            params.shoot_sound = this->shooters[slot].shoot_sound;
+            params.__speed_1 = this->shooters[slot].speed1;
+            params.transform_sound = this->shooters[slot].transform_sound;
+            params.width = this->shooters[slot].width;
+            params.distance = this->shooters[slot].distance;
             LASER_MANAGER_PTR->allocate_new_laser(CurvyLaser, &params);
             break;
         }
@@ -52751,7 +52777,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_443E60() {
 
     STAGE_PTR->__start();
     if (STAGE_B_PTR) {
-        // TODO: screen effect
+        ScreenEffect::allocate(ScreenEffect2, 30, 0, 0, 0, 10);
         this->__unknown_flag_K = true;
         GUI_PTR->__anm_id_B8.interrupt_tree(1);
         return ZUN_SUCCESS;

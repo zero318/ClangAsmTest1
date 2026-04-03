@@ -49,6 +49,7 @@ add_executable(vec3_testing)
 add_executable(create_process_test)
 add_executable(totallylegit2husourceleak)
 add_executable(last_branch_test)
+add_executable(zenc)
 add_library(z8086 SHARED)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
@@ -134,6 +135,7 @@ vec3_testing
 create_process_test
 totallylegit2husourceleak
 last_branch_test
+zenc
 )
 
 enable_language(ASM-ATT)
@@ -1954,6 +1956,22 @@ target_sources(last_branch_test PRIVATE
 	#"last_branch_test.cpp"
 	"last_branch_enable.cpp"
 	"last_branch_lib_test.cpp"
+)
+
+target_compile_options(zenc PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-sse3"
+	"-mno-ssse3"
+	"-mno-sse4.1"
+	"-mno-sse4.2"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+)
+target_sources(zenc PRIVATE 
+	"zenc.cpp"
 )
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")
