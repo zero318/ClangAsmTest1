@@ -310,12 +310,12 @@ dllexport gnu_noinline D3DCOLOR& thiscall pack_rgb(D3DCOLOR& self, uint8_t r, ui
 struct D3DMATRIXZ : D3DMATRIX {
 
 
-    inline D3DXMATRIX& D3DX() {
+    forceinline D3DXMATRIX& D3DX() {
         return *(D3DXMATRIX*)this;
     }
 
     // D3DXMatrixIdentity
-    inline void set_identity() {
+    forceinline void set_identity() {
         this->m[0][0] = 1.0f;
         this->m[0][1] = 0.0f;
         this->m[0][2] = 0.0f;
@@ -335,7 +335,7 @@ struct D3DMATRIXZ : D3DMATRIX {
     }
 
     // D3DXMatrixScaling
-    inline void set_scaled(float X, float Y, float Z = 1.0f) {
+    forceinline void set_scaled(float X, float Y, float Z = 1.0f) {
         this->m[0][0] = X;
         this->m[0][1] = 0.0f;
         this->m[0][2] = 0.0f;
@@ -354,7 +354,7 @@ struct D3DMATRIXZ : D3DMATRIX {
         this->m[3][3] = 1.0f;
     }
 
-    inline void rotate_x(float rotation) {
+    forceinline void rotate_x(float rotation) {
         if (rotation != 0.0f) {
             D3DXMATRIX temp;
             D3DXMatrixRotationX(&temp, rotation);
@@ -362,7 +362,7 @@ struct D3DMATRIXZ : D3DMATRIX {
         }
     }
 
-    inline void rotate_y(float rotation) {
+    forceinline void rotate_y(float rotation) {
         if (rotation != 0.0f) {
             D3DXMATRIX temp;
             D3DXMatrixRotationY(&temp, rotation);
@@ -370,7 +370,7 @@ struct D3DMATRIXZ : D3DMATRIX {
         }
     }
 
-    inline void rotate_z(float rotation) {
+    forceinline void rotate_z(float rotation) {
         if (rotation != 0.0f) {
             D3DXMATRIX temp;
             D3DXMatrixRotationZ(&temp, rotation);
@@ -540,7 +540,7 @@ public:
     */
 
     // 0x404DC0
-    dllexport vectorcall operator float() const asm_symbol_rel(0x404DC0) {
+    dllexport operator float() const vectorcall asm_symbol_rel(0x404DC0) {
         return this->value;
     }
 
@@ -12931,7 +12931,7 @@ enum Opcode : uint16_t {
     anm_alpha2_slot,
     anm_alpha2_slot_interp,
     anm_move_position_slot_interp,
-    __effect_create_special,
+    effect_create_special,
     anm_scale2_slot,
     __anm_layer_slot,
     anm_blend_mode_slot,
@@ -15312,7 +15312,7 @@ enum Opcode : int16_t {
     anm_create_child_back_rel, // 505
     anm_create_back_rel, // 506
     __anm_flag_treat_as_root, // 507
-    effect_create, // 508
+    effect_create_special, // 508
     copy_parent_context, // 509
     anm_create_child_front_rel, // 510
 
@@ -15412,7 +15412,18 @@ enum AnmTextureOp : uint8_t {
 };
 
 enum AnmBlendMode : uint8_t {
-
+    BlendNormal = 0,
+    BlendAdditive = 1,
+    BlendMode2 = 2,
+    BlendMode3 = 3,
+    BlendMode4 = 4,
+    BlendMode5 = 5,
+    BlendMode6 = 6,
+    BlendMode7 = 7,
+    BlendMode8 = 8,
+    BlendMode9 = 9,
+    BlendMode10 = 10,
+    BlendMode11 = 11
 };
 
 enum AnmUVMode : uint8_t {
@@ -15424,6 +15435,16 @@ enum AnmUVMode : uint8_t {
 enum AnmRNGMode : uint8_t {
     ReplayRNG = 0,
     NormalRNG = 1,
+};
+
+enum AnmRotationMode : uint8_t {
+    RotationXYZ = 0,
+    RotationXZY = 1,
+    RotationYXZ = 2,
+    RotationYZX = 3,
+    RotationZXY = 4,
+    RotationZYX = 5,
+    RotationNone = 6
 };
 
 // size: 0x60C
@@ -15995,7 +16016,7 @@ struct AnmVM {
     ) asm_symbol_rel(0x47ED50) {
         // this; // ESI
 
-        auto __temp = CRT::sincos_asm(this->get_controller_rotation()->z); // ESP+8 for rotation
+        auto __temp = CRT::sincosf_asm(this->get_controller_rotation()->z); // ESP+8 for rotation
         float unit_x = __temp[0]; // ESP+C
         float unit_y = __temp[1]; // ESP+10
 
@@ -16057,7 +16078,7 @@ struct AnmVM {
         // this; // ESI
 
         float rotation_z = this->get_controller_rotation()->z; // ESP+8
-        auto __temp = CRT::sincos_asm(rotation_z);
+        auto __temp = CRT::sincosf_asm(rotation_z);
         float unit_x = __temp[0]; // ESP+20
         float unit_y = __temp[1]; // ESP+4
 
@@ -16091,7 +16112,7 @@ struct AnmVM {
             SPRITE_VERTEX_BUFFER_A[0].position.z = projectedA.z;
 
             // Yup, we're just doing this again for no reason
-            __temp = CRT::sincos_asm(rotation_z); // ESP+8 for rotation
+            __temp = CRT::sincosf_asm(rotation_z); // ESP+8 for rotation
             unit_x = __temp[0]; // ESP+20
             unit_y = __temp[1]; // ESP+4
 
@@ -16779,8 +16800,6 @@ public:
             this->set_alpha(this->data.alpha_interp.step());
         }
 
-        // TODO: double check if these are really normal float2 interps,
-        // they call a separate function than the uv_scale right below.
         if (this->data.scale_interp.end_time) {
             this->set_scale(this->data.scale_interp.step());
         }
@@ -16869,6 +16888,18 @@ public:
 
     inline void set_rotation(const Float3& values) {
         this->set_rotation(values.x, values.y, values.z);
+    }
+
+    inline void flip_x_scale() {
+        this->data.mirror_x ^= true;
+        this->data.scale_enabled = true;
+        this->data.scale.x *= -1.0f;
+    }
+
+    inline void flip_y_scale() {
+        this->data.mirror_y ^= true;
+        this->data.scale_enabled = true;
+        this->data.scale.y *= -1.0f;
     }
 
     inline void set_x_scale(float value) {
@@ -17695,7 +17726,7 @@ struct AnmManager {
     int32_t __current_sprite_index; // 0x3120E04
     AnmBlendMode current_blend_mode; // 0x3120E08
     char __byte_3120E09; // 0x3120E09
-    int8_t __sbyte_3120E0A; // 0x3120E0A
+    int8_t __current_vertex_type; // 0x3120E0A
     char __byte_3120E0B; // 0x3120E0B
     char __byte_3120E0C; // 0x3120E0C
     unknown_fields(0x1); // 0x3120E0D
@@ -17842,10 +17873,10 @@ struct AnmManager {
 
         anm_manager = ANM_MANAGER_PTR;
         anm_manager->__byte_3120E09 = -1;
-        anm_manager->__sbyte_3120E0A = -1;
+        anm_manager->__current_vertex_type = -1;
         anm_manager->current_sprite = NULL;
         anm_manager->__current_sprite_index = -1;
-        anm_manager->current_blend_mode = (AnmBlendMode)11;
+        anm_manager->current_blend_mode = BlendMode11; // 11
         anm_manager->__byte_3120E0B = -1;
 
         SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
@@ -18001,53 +18032,53 @@ struct AnmManager {
             SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
 
             switch (this->current_blend_mode) {
-                case 0:
+                case BlendNormal: // 0
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
                     break;
-                case 1:
+                case BlendAdditive: // 1
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
                     break;
-                case 2:
+                case BlendMode2: // 2
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_REVSUBTRACT);
                     break;
-                case 3:
+                case BlendMode3: // 3
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ZERO);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
                     break;
-                case 4:
+                case BlendMode4: // 4
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_INVDESTCOLOR);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
                     break;
-                case 6: // why are 5 and 6 swapped?
+                case BlendMode6: // 6 why are 5 and 6 swapped?
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_INVSRCCOLOR);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
                     break;
-                case 5:
+                case BlendMode5: // 5
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_DESTCOLOR);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ZERO);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
                     break;
-                case 7:
+                case BlendMode7: // 7
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_DESTALPHA);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVDESTALPHA);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
                     break;
-                case 8:
+                case BlendMode8: // 8
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_MIN);
                     break;
-                case 9:
+                case BlendMode9: // 9
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
                     SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_MAX);
@@ -18288,9 +18319,9 @@ struct AnmManager {
                             SUPERVISOR.d3d_device->SetTexture(0, this->get_texture_from_sprite_index(sprite_index));
                         }
 
-                        if (!this->__sbyte_3120E0A) {
+                        if (!this->__current_vertex_type) {
                             this->flush_sprites();
-                            this->__sbyte_3120E0A = 1;
+                            this->__current_vertex_type = 1;
                         }
 
                         if (!(flags & RENDER_VERTICES_IGNORE_COLORS)) {
@@ -18405,7 +18436,7 @@ struct AnmManager {
     }
 
     // 0x47F530
-    dllexport gnu_noinline ZUNResult thiscall __sub_47F530(AnmVM* vm) asm_symbol_rel(0x47F530) {
+    dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_6(AnmVM* vm) asm_symbol_rel(0x47F530) {
         if (ZUN_SUCCEEDED(vm->__sub_47F090())) {
 
             Float3 position = vm->data.position + vm->controller.position + vm->data.__position_2;
@@ -18569,9 +18600,9 @@ struct AnmManager {
             }
 
             if (vm->data.disable_z_write) {
-                SUPERVISOR.d3d_disable_zwrite();
+                clang_noinline SUPERVISOR.d3d_disable_zwrite();
             } else {
-                SUPERVISOR.d3d_enable_zwrite();
+                clang_noinline SUPERVISOR.d3d_enable_zwrite();
             }
 
             if (!vm->data.__unknown_std_flag_A) {
@@ -18594,35 +18625,35 @@ struct AnmManager {
                 Float3 rotation = *vm->get_controller_rotation();
 
                 switch (vm->data.rotation_mode) {
-                    case 0:
+                    case RotationXYZ: // 0
                         vm->data.__matrix_414.rotate_x(rotation.x);
                         vm->data.__matrix_414.rotate_y(rotation.y);
                         vm->data.__matrix_414.rotate_z(rotation.z);
                         break;
-                    case 1:
+                    case RotationXZY: // 1
                         vm->data.__matrix_414.rotate_x(rotation.x);
                         vm->data.__matrix_414.rotate_z(rotation.z);
                         vm->data.__matrix_414.rotate_y(rotation.y);
                         break;
-                    case 2:
+                    case RotationYXZ: // 2
                         vm->data.__matrix_414.rotate_y(rotation.y);
                         vm->data.__matrix_414.rotate_x(rotation.x);
                         vm->data.__matrix_414.rotate_z(rotation.z);
                         break;
-                    case 3:
+                    case RotationYZX: // 3
                         vm->data.__matrix_414.rotate_y(rotation.y);
                         vm->data.__matrix_414.rotate_z(rotation.z);
                         vm->data.__matrix_414.rotate_x(rotation.x);
                         break;
-                    case 4:
+                    case RotationZXY: // 4
                         vm->data.__matrix_414.rotate_z(rotation.z);
                         vm->data.__matrix_414.rotate_x(rotation.x);
                         vm->data.__matrix_414.rotate_y(rotation.y);
                         break;
-                    case 5:
+                    case RotationZYX: // 5
                         vm->data.__matrix_414.rotate_z(rotation.z);
                         vm->data.__matrix_414.rotate_y(rotation.y);
-                        vm->data.__matrix_414.rotate_x(rotation.z);
+                        vm->data.__matrix_414.rotate_x(rotation.x);
                         break;
                 }
                 vm->data.rotation_enabled = false;
@@ -18630,8 +18661,9 @@ struct AnmManager {
 
             D3DMATRIXZ matrix = vm->data.__matrix_414;
 
-            Float3 position;
-            clang_forceinline vm->get_render_position(&position);
+            *(Float2*)&matrix.m[3][0] = (vm->data.position.as2() + vm->controller.position.as2() + vm->data.__position_2.as2()) - vm->data.anchor_offset.as2() * vm->data.scale * vm->data.scale2;
+
+            vm->__adjust_position_for_resolution_and_origin_modes((Float3*)&matrix.m[3][0]);
 
             this->setup_render_state_for_vm(vm);
 
@@ -18651,7 +18683,7 @@ struct AnmManager {
                 SUPERVISOR.d3d_device->SetRenderState(D3DRS_TEXTUREFACTOR, color);
             }
 
-            matrix.m[3][2] += vm->data.position.z + vm->controller.position.z + vm->data.__position_2.z;
+            matrix.m[3][2] = vm->data.position.z + vm->controller.position.z + vm->data.__position_2.z;
             
             SUPERVISOR.d3d_device->SetTransform(D3DTS_WORLDMATRIX(0), &matrix);
 
@@ -18679,12 +18711,12 @@ struct AnmManager {
                 SUPERVISOR.d3d_device->SetTransform(D3DTS_TEXTURE0, &temp);
             }
 
-            if (this->__sbyte_3120E0A != 2) {
+            if (this->__current_vertex_type != 2) {
                 SUPERVISOR.d3d_device->SetStreamSource(0, this->__d3d_vertex_buffer_3120E18, 0, sizeof(UnknownVertexA));
                 SUPERVISOR.d3d_device->SetFVF(UnknownVertexA::FVF_TYPE);
                 SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
                 SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
-                this->__sbyte_3120E0A = 2;
+                this->__current_vertex_type = 2;
             }
 
             this->set_texture_op<Modulate>();
@@ -18713,11 +18745,11 @@ struct AnmManager {
                 SUPERVISOR.d3d_device->SetTexture(0, this->get_texture_from_sprite_index(sprite_index));
             }
 
-            if (this->__sbyte_3120E0A != 3) {
+            if (this->__current_vertex_type != 3) {
                 SUPERVISOR.d3d_device->SetFVF(SpriteVertex::FVF_TYPE);
                 SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
                 SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-                this->__sbyte_3120E0A = 3;
+                this->__current_vertex_type = 3;
             }
 
             this->setup_render_state_for_vm(vm);
@@ -18736,9 +18768,9 @@ struct AnmManager {
             this->flush_sprites();
         }
 
-        if (this->__sbyte_3120E0A != 3) {
+        if (this->__current_vertex_type != 3) {
             SUPERVISOR.d3d_device->SetFVF(SpriteVertex::FVF_TYPE);
-            this->__sbyte_3120E0A = 3;
+            this->__current_vertex_type = 3;
         }
 
         this->setup_render_state_for_vm(vm);
@@ -18823,11 +18855,11 @@ struct AnmManager {
                 SUPERVISOR.d3d_device->SetTransform(D3DTS_TEXTURE0, &temp);
             }
 
-            if (this->__sbyte_3120E0A != 5) {
+            if (this->__current_vertex_type != 5) {
                 SUPERVISOR.d3d_device->SetFVF(SpriteVertexC::FVF_TYPE);
                 SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
                 SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-                this->__sbyte_3120E0A = 5;
+                this->__current_vertex_type = 5;
             }
 
             this->set_texture_op<Modulate>();
@@ -18886,7 +18918,7 @@ struct AnmManager {
                 if (!vm->get_alpha() && !vm->get_alpha2()) {
                     return ZUN_ERROR;
                 }
-                return this->__sub_47F530(vm);
+                return this->__draw_vm_type_6(vm);
             case 7: {
                 if (!vm->get_alpha() && !vm->get_alpha2()) {
                     return ZUN_ERROR;
@@ -19034,7 +19066,7 @@ struct AnmManager {
     /* // 0x4876A0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_4(void* self) asm_symbol_rel(0x4876A0) { return ((AnmManager*)self)->render_layer(4); }
     // 0x4876B0
     dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_3(void* self) asm_symbol_rel(0x4876B0) {
-        Supervisor::__sub_454950(&SUPERVISOR.cameras[3]);
+        SUPERVISOR.__sub_454950(&SUPERVISOR.cameras[3]);
         SUPERVISOR.set_camera_by_index_disable_fog(3);
         return ((AnmManager*)self)->render_layer(3);
     }
@@ -19154,9 +19186,9 @@ struct AnmManager {
         
         this->__d3d_vertex_buffer_3120E18 = NULL;
         this->__current_sprite_index = -1;
-        this->current_blend_mode = (AnmBlendMode)0;
+        this->current_blend_mode = BlendNormal;
         this->__byte_3120E09 = 0;
-        this->__sbyte_3120E0A = 0;
+        this->__current_vertex_type = 0;
         this->__byte_3120E0B = 0;
         this->current_texture_blend_color = COLOR(0, 0, 0, 0);
         this->__byte_3120E0C = -1;
@@ -19891,7 +19923,7 @@ ValidateFieldOffset32(0x3120E00, AnmManager, current_texture_blend_color);
 ValidateFieldOffset32(0x3120E04, AnmManager, __current_sprite_index);
 ValidateFieldOffset32(0x3120E08, AnmManager, current_blend_mode);
 ValidateFieldOffset32(0x3120E09, AnmManager, __byte_3120E09);
-ValidateFieldOffset32(0x3120E0A, AnmManager, __sbyte_3120E0A);
+ValidateFieldOffset32(0x3120E0A, AnmManager, __current_vertex_type);
 ValidateFieldOffset32(0x3120E0B, AnmManager, __byte_3120E0B);
 ValidateFieldOffset32(0x3120E0C, AnmManager, __byte_3120E0C);
 ValidateFieldOffset32(0x3120E0E, AnmManager, current_resample_mode);
@@ -19945,7 +19977,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_A(void* pt
     anm_manager->current_texture_op = -1;
     anm_manager->__float2_D0.y = 0.0f;
     anm_manager->__float2_D0.x = 0.0f;
-    anm_manager->__sbyte_3120E0A = -1;
+    anm_manager->__current_vertex_type = -1;
 
     ((Supervisor*)ptr)->set_camera_by_index(2);
 
@@ -20007,7 +20039,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_B(void* pt
         SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
         SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
 
-        ANM_MANAGER_PTR->current_blend_mode = (AnmBlendMode)11;
+        ANM_MANAGER_PTR->current_blend_mode = BlendMode11;
         SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_SRCALPHA);
         SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ONE);
         SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
@@ -21403,7 +21435,7 @@ public:
 
 private:
     // 0x42AF70
-    dllexport gnu_noinline AnmID& thiscall instantiate_effect_vm_to_world_list_back(AnmID& out, int32_t type, void* on_create_arg, AnmVM* vm) asm_symbol_rel(0x42AF70) {
+    dllexport gnu_noinline AnmID& thiscall instantiate_special_effect_vm_to_world_list_back(AnmID& out, int32_t type, void* on_create_arg, AnmVM* vm) asm_symbol_rel(0x42AF70) {
         out = 0;
         const EffectData& effect_data = EFFECT_DATA_TABLE[type];
         int32_t script = effect_data.__script_id;
@@ -21425,14 +21457,14 @@ private:
         return out;
     }
 public:
-    inline AnmID instantiate_effect_vm_to_world_list_back(int32_t type, void* on_create_arg, AnmVM* vm) {
+    inline AnmID instantiate_special_effect_vm_to_world_list_back(int32_t type, void* on_create_arg, AnmVM* vm) {
         AnmID dummy{ GARBAGE_VALUE(int) };
-        return this->instantiate_effect_vm_to_world_list_back(dummy, type, on_create_arg, vm);
+        return this->instantiate_special_effect_vm_to_world_list_back(dummy, type, on_create_arg, vm);
     }
 
 private:
     // 0x42B0A0
-    dllexport gnu_noinline static AnmID& thiscall instantiate_effect_vm_to_ui_list_back(AnmID& out, UNUSED_ARG(int32_t type), UNUSED_ARG(void* on_create_arg), UNUSED_ARG(AnmVM* vm)) {
+    dllexport gnu_noinline static AnmID& thiscall instantiate_special_effect_vm_to_ui_list_back(AnmID& out, UNUSED_ARG(int32_t type), UNUSED_ARG(void* on_create_arg), UNUSED_ARG(AnmVM* vm)) {
         EffectManager* effect_manager = EFFECT_MANAGER_PTR;
 
         out = 0;
@@ -21453,17 +21485,17 @@ private:
         return out;
     }
 public:
-    inline static AnmID instantiate_effect0_vm_to_ui_list_back() {
+    inline static AnmID instantiate_special_effect0_vm_to_ui_list_back() {
         AnmID dummy{ GARBAGE_VALUE(int) };
-        return instantiate_effect_vm_to_ui_list_back(dummy, UNUSED_DWORD, GARBAGE_VALUE(void*), GARBAGE_VALUE(AnmVM*));
+        return instantiate_special_effect_vm_to_ui_list_back(dummy, UNUSED_DWORD, GARBAGE_VALUE(void*), GARBAGE_VALUE(AnmVM*));
     }
 
     // 0x422D70
-    dllexport gnu_noinline static int32_t stdcall create_effect(int32_t type, Float3* position, int = UNUSED_DWORD) {
+    dllexport gnu_noinline static int32_t stdcall create_special_effect(int32_t type, Float3* position, AnmVM* = GARBAGE_ARG(AnmVM*)) {
         EffectManager* effect_manager = EFFECT_MANAGER_PTR;
         int32_t slot = effect_manager->find_available_slot();
         if (slot != -1 && slot < MAX_EFFECTS) {
-            effect_manager->vm_slots[slot] = effect_manager->instantiate_effect_vm_to_world_list_back(type, position, NULL);
+            effect_manager->vm_slots[slot] = effect_manager->instantiate_special_effect_vm_to_world_list_back(type, position, NULL);
         }
         return 0;
     }
@@ -24525,6 +24557,9 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 
                 AnmLoaded* anm_loaded;
                 if (sprite < 0) { // why is this here?
+                    // BUG: This placeholder sprite changes based on
+                    // resolution, so using negative sprite IDs for
+                    // enemies will cause desyncs. This happens in FW.
                     sprite = 288;
                     anm_loaded = ASCII_MANAGER_PTR->ascii_anm;
                 } else {
@@ -24586,10 +24621,9 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
                 ANM_MANAGER_PTR->loaded_anm_files[this->data.slot]->instantiate_orphan_vm_to_world_list_back(script, this, WORLD_LIST_BACK);
                 break;
             }
-            case effect_create: { // 508
-                // this effectively overrides the current VM state
+            case effect_create_special: { // 508
                 int32_t type = ParseIntArg(0);
-                EFFECT_MANAGER_PTR->instantiate_effect_vm_to_world_list_back(type, this, this);
+                EFFECT_MANAGER_PTR->instantiate_special_effect_vm_to_world_list_back(type, this, this);
                 break;
             }
             case sprite_set_rand_bound: { // 301
@@ -24650,14 +24684,10 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
                 BLUE(this->data.color2) = ParseIntArg(2);
                 break;
             case scale_flip_x: // 308
-                this->data.mirror_x ^= true;
-                this->data.scale_enabled = true;
-                this->data.scale.x *= -1.0f;
+                this->flip_x_scale();
                 break;
             case scale_flip_y: // 309
-                this->data.mirror_y ^= true;
-                this->data.scale_enabled = true;
-                this->data.scale.y *= -1.0f;
+                this->flip_y_scale();
                 break;
             case anm_flag_color_children: // 315
                 this->data.colorize_children = IntArg(0); // IMMEDIATE ARGUMENT
@@ -24942,19 +24972,19 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
             case textured_ring: { // 600
                 this->data.render_mode = 9;
                 int32_t max_count = ParseIntArg(0);
-                this->allocate_special_vertex_buffer(max_count * 0x38); // TODO: convert to vertex type
+                this->allocate_special_vertex_buffer(max_count * sizeof(SpriteVertex[2]));
                 break;
             }
             case textured_arc_A: { // 601
                 this->data.render_mode = 13;
                 int32_t max_count = ParseIntArg(0);
-                this->allocate_special_vertex_buffer(max_count * 0x38); // TODO: convert to vertex type
+                this->allocate_special_vertex_buffer(max_count * sizeof(SpriteVertex[2]));
                 break;
             }
             case textured_arc_B: { // 602
                 this->data.render_mode = 14;
                 int32_t max_count = ParseIntArg(0);
-                this->allocate_special_vertex_buffer(max_count * 0x38); // TODO: convert to vertex type
+                this->allocate_special_vertex_buffer(max_count * sizeof(SpriteVertex[2]));
                 break;
             }
             case textured_cylinder: { // 609
@@ -26540,9 +26570,9 @@ struct PlayerData {
     PlayerDamageSource damage_sources[PLAYER_DAMAGE_SOURCE_COUNT + 1]; // 0x1FF54, 0x20574
     PlayerDamageSource __dummy_damage_source; // 0x46FF0, 0x47610
     int32_t state; // 0x4708C, 0x476AC
-    AnmID __vm_id_47090; // 0x47090, 0x476B0
-    AnmID __vm_id_47094; // 0x47094, 0x476B4
-    Timer __timer_47098; // 0x47098, 0x476B8
+    AnmID focus_sigil_vm_id; // 0x47090, 0x476B0
+    AnmID __graze_aura_vm_id; // 0x47094, 0x476B4
+    Timer __graze_aura_timer; // 0x47098, 0x476B8
     BOOL focused; // 0x470AC, 0x476CC
     Timer shoot_key_short_timer; // 0x470B0, 0x476D0
     Timer shoot_key_long_timer; // 0x470C4, 0x476E4
@@ -26603,9 +26633,9 @@ ValidateFieldOffset32(0x1FF50, PlayerData, last_created_damage_source_index);
 ValidateFieldOffset32(0x1FF54, PlayerData, damage_sources);
 ValidateFieldOffset32(0x46FF0, PlayerData, __dummy_damage_source);
 ValidateFieldOffset32(0x4708C, PlayerData, state);
-ValidateFieldOffset32(0x47090, PlayerData, __vm_id_47090);
-ValidateFieldOffset32(0x47094, PlayerData, __vm_id_47094);
-ValidateFieldOffset32(0x47098, PlayerData, __timer_47098);
+ValidateFieldOffset32(0x47090, PlayerData, focus_sigil_vm_id);
+ValidateFieldOffset32(0x47094, PlayerData, __graze_aura_vm_id);
+ValidateFieldOffset32(0x47098, PlayerData, __graze_aura_timer);
 ValidateFieldOffset32(0x470AC, PlayerData, focused);
 ValidateFieldOffset32(0x470B0, PlayerData, shoot_key_short_timer);
 ValidateFieldOffset32(0x470C4, PlayerData, shoot_key_long_timer);
@@ -26913,10 +26943,10 @@ public:
 
         int32_t speed;
         if (this->data.focused) {
-            if (!this->data.__vm_id_47090) {
-                this->data.__vm_id_47090 = EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(26, 14);
+            if (!this->data.focus_sigil_vm_id) {
+                this->data.focus_sigil_vm_id = EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(26, 14);
             }
-            if (AnmVM* vm = this->data.__vm_id_47090.get_vm_ptr()) {
+            if (AnmVM* vm = this->data.focus_sigil_vm_id.get_vm_ptr()) {
                 if (this->data.scale_enabled) {
                     vm->set_scale2((this->scale - 1.0f) * 2.0f + 1.0f);
                 } else {
@@ -26930,7 +26960,7 @@ public:
             }
         }
         else {
-            this->data.__vm_id_47090.interrupt_and_orphan_tree(1);
+            this->data.focus_sigil_vm_id.interrupt_and_orphan_tree(1);
             if (this->is_movement_direction_diagonal()) {
                 speed = this->data.__unfocused_diagonal_speed;
             } else {
@@ -27009,8 +27039,8 @@ skip_movement_keys:;
         this->set_position_internal(internal_position);
 
 
-        if (this->data.__vm_id_47090.has_live_vm()) {
-            this->data.__vm_id_47090.set_controller_position(&this->data.position);
+        if (this->data.focus_sigil_vm_id.has_live_vm()) {
+            this->data.focus_sigil_vm_id.set_controller_position(&this->data.position);
         }
 
         if (internal_velocity.y || internal_velocity.x) {
@@ -27027,14 +27057,14 @@ skip_movement_keys:;
             this->data.__option_count = 0;
         }
 
-        if (this->data.__timer_47098 > 0) {
-            if (!this->data.__vm_id_47094.has_live_vm()) {
-                this->data.__vm_id_47094 = EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(27, 14);
+        if (this->data.__graze_aura_timer > 0) {
+            if (!this->data.__graze_aura_vm_id.has_live_vm()) {
+                this->data.__graze_aura_vm_id = EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(27, 14);
             }
-            this->data.__vm_id_47094.set_controller_position(&this->data.position);
-            if (--this->data.__timer_47098 <= 0) {
-                this->data.__vm_id_47094.interrupt_tree(1);
-                this->data.__timer_47098.reset();
+            this->data.__graze_aura_vm_id.set_controller_position(&this->data.position);
+            if (--this->data.__graze_aura_timer <= 0) {
+                this->data.__graze_aura_vm_id.interrupt_tree(1);
+                this->data.__graze_aura_timer.reset();
             }
         }
     }
@@ -27081,11 +27111,12 @@ public:
     }
 
 private:
-    inline void do_graze_impl(Float2* position) {
+    forceinline void do_graze_impl(Float2* position) {
         GAME_MANAGER.globals.add_graze();
 
         Float3 graze_position = (*position + this->data.position) * 0.5f;
 
+        // Graze particles
         EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(24, &graze_position);
 
         SOUND_MANAGER.play_sound_positioned(42, position->x);
@@ -28153,6 +28184,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__init_func_7(PlayerBullet
 // 0x45F9D0
 dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_1(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
     float angle = self->motion.angle + RNG.rand_float_signed_range(PI_f / 9.0f) + PI_f;
+    // Splash effect
     AnmVM* vm = EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(149, &self->motion.position, angle).get_vm_ptr();
     RED(vm->data.color1) = 0x7F + RNG.rand_uint_range(0x80);
     GREEN(vm->data.color1) = 0x40 + RNG.rand_uint_range(0x40);
@@ -28285,6 +28317,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_4(PlayerBull
 // 0x460F30
 dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_5(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
     float angle = self->motion.angle + RNG.rand_float_signed_range(PI_f / 9.0f);
+    // Splash effect
     EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(149, &self->motion.position, angle);
     return self->__sub_45F6F0();
 }
@@ -28292,6 +28325,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_5(PlayerBull
 // 0x461080
 dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_6(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
     float angle = self->motion.angle + RNG.rand_float_signed_range(PI_f / 9.0f) + PI_f;
+    // Splash effect
     AnmVM* vm = EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(149, &self->motion.position, angle).get_vm_ptr();
     Float2 initial_scale = { 1.0f, 1.0f };
     Float2 final_scale = { 3.0f, 3.0f };
@@ -34162,8 +34196,8 @@ inline void Player::reset_impl() {
     this->data.__unknown_flag_A = false;
     this->data.__unknown_flag_B = false;
 
-    this->data.__vm_id_47090.mark_tree_for_delete();
-    this->data.__vm_id_47094.mark_tree_for_delete();
+    this->data.focus_sigil_vm_id.mark_tree_for_delete();
+    this->data.__graze_aura_vm_id.mark_tree_for_delete();
 
     GUI_PTR->__update_life_ui(GAME_MANAGER.globals.life_stocks, GAME_MANAGER.globals.life_fragments, GAME_MANAGER.globals.life_stock_max);
 
@@ -35705,7 +35739,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC1(AnmVM* vm, v
     vm->controller.position = *position;
     vm->data.layer = 15;
     vm->data.origin_mode = 1;
-    vm->data.blend_mode = 1;
+    vm->data.blend_mode = BlendAdditive; // 1
 
     vm->initialize_alpha_interp(64, 0, 255, 0);
 
@@ -35782,7 +35816,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC2(AnmVM* vm, v
     }
 
     vm->controller.position = *(Float3*)arg;
-    vm->data.blend_mode = 0;
+    vm->data.blend_mode = BlendNormal; // 0
     vm->data.layer = 19;
     vm->data.origin_mode = 1;
 
@@ -37092,6 +37126,7 @@ struct Spellcard : ZUNTask {
             this->__bonus_B = 1000000000;
         }
 
+        // Spell Card Attack!
         EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(20);
 
         auto& anm_sourceA = STAGE_DATA_PTR->inner[mode];
@@ -38232,7 +38267,10 @@ public:
 
                         if (item->__timer_C4C >= 32) {
                             if (this->slowdown_factor < 1.0f) {
-                                Float3 position = { RNG.rand_float_signed(), RNG.rand_float_signed(), 0.0f };
+                                Float3 position;
+                                position.x = RNG.rand_float_signed();
+                                position.y = RNG.rand_float_signed();
+                                position.z = 0.0f;
                                 item->__vm_id_C28.set_controller_position(&position);
                                 item->__vm_id_C28.set_color1(COLOR(255, 160, 255, 255));
                                 item->__vm_10.data.position = position;
@@ -40485,18 +40523,18 @@ struct LaserLine : LaserData {
                 }
                 CollisionResult result = PLAYER_PTR->__check_collision_rotated_rectangle(&position, this->angle, width, length, test_type);
                 if (result == DeathCollision) {
-                    Float3 B(32.0f, 32.0f, 0.0f);
-                    this->cancel_in_rectangle(&PLAYER_PTR->data.position, &B, UNUSED_FLOAT, CancelType0, result);
+                    Float3 position = { 32.0f, 32.0f, 0.0f };
+                    this->cancel_in_rectangle(&PLAYER_PTR->data.position, &position, UNUSED_FLOAT, CancelType0, result);
                     return 0;
                 }
                 if (result == GrazeCollision) {
                     if (this->graze_timer.is_multiple_of(3)) {
-                        float C = this->angle;
-                        float D;
-                        float E;
-                        __sub_403BC0(&D, &E, position.x, position.y, C, this->position.x, this->position.y, reduce_angle(C + HALF_PI_f));
-                        Float2 F(D, E);
-                        Player::do_graze(&F);
+                        float angle = this->angle;
+                        float graze_x;
+                        float graze_y;
+                        __sub_403BC0(&graze_x, &graze_y, position.x, position.y, angle, this->position.x, this->position.y, reduce_angle(angle + HALF_PI_f));
+                        Float2 graze_position = { graze_x, graze_y };
+                        PLAYER_PTR->do_graze(&graze_position);
                         this->graze_timer.increment();
                     }
                 }
@@ -40705,7 +40743,7 @@ struct LaserInfinite : LaserData {
                                 __sub_403BC0(&x, &y, position.x, position.y, this->angle, player->data.position.x, player->data.position.y, this->angle + HALF_PI_f);
                                 position.x = x;
                                 position.y = y;
-                                Player::do_graze(&position);
+                                PLAYER_PTR->do_graze(&position);
                             }
                             this->graze_timer++;
                             break;
@@ -41074,7 +41112,7 @@ struct LaserBeam : LaserData {
         this->__float_11F0 = 0.0f;
 
         this->vm.reset();
-        this->vm.data.blend_mode = 1;
+        this->vm.data.blend_mode = BlendAdditive; // 1
         return 0;
     }
 
@@ -42385,7 +42423,7 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
     vm->reset();
     LASER_MANAGER_PTR->bullet_anm->__sub_477D60(vm, BULLET_SPRITE_DATA[this->sprite].color_data[0].sprite_id);
     vm->interrupt_and_run(2);
-    vm->data.blend_mode = 1;
+    vm->data.blend_mode = BlendAdditive; // 1
     vm->data.x_anchor_mode = 0;
     vm->data.y_anchor_mode = 2;
     vm->data.render_mode = 1;
@@ -42394,7 +42432,7 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
     vm = &this->__vm_11F4;
     clang_forceinline LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, this->params.color + 56);
     vm->interrupt_and_run(2);
-    vm->data.blend_mode = 1;
+    vm->data.blend_mode = BlendAdditive; // 1
     vm->data.render_mode = 1;
     vm->data.origin_mode = 1;
 
@@ -42404,7 +42442,7 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
     } else {
         vm = &this->__vm_1800;
         clang_forceinline LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, this->params.color + 91);
-        vm->data.blend_mode = 1;
+        vm->data.blend_mode = BlendAdditive; // 1
     }
     vm->data.origin_mode = 1;
     this->__timer_754.set(30);
@@ -42455,7 +42493,7 @@ dllexport gnu_noinline int thiscall LaserInfinite::initialize(void* data) {
     LASER_MANAGER_PTR->bullet_anm->__sub_477D60(vm, BULLET_SPRITE_DATA[this->sprite].color_data[0].sprite_id);
     vm->interrupt_and_run(2);
 
-    this->__vm_C0C.data.blend_mode = 1;
+    this->__vm_C0C.data.blend_mode = BlendAdditive; // 1
     this->__vm_C0C.data.x_anchor_mode = 0;
     this->__vm_C0C.data.y_anchor_mode = 1;
     this->__vm_C0C.data.render_mode = 1;
@@ -42465,7 +42503,7 @@ dllexport gnu_noinline int thiscall LaserInfinite::initialize(void* data) {
     LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, 56 + this->params.color);
     vm->interrupt_and_run(2);
 
-    this->__vm_1218.data.blend_mode = 1;
+    this->__vm_1218.data.blend_mode = BlendAdditive; // 1
     this->__vm_1218.data.render_mode = 1;
     this->__vm_1218.data.origin_mode = 1;
 
@@ -42518,7 +42556,7 @@ dllexport gnu_noinline int thiscall LaserCurve::initialize(void* data) {
     vm->interrupt_and_run(2);
 
     // why???
-    vm->data.blend_mode = 1;
+    vm->data.blend_mode = BlendAdditive; // 1
     this->__vm_BE8.data.x_anchor_mode = 0;
     this->__vm_BE8.data.y_anchor_mode = 1;
     this->__vm_BE8.data.render_mode = 1;
@@ -42528,7 +42566,7 @@ dllexport gnu_noinline int thiscall LaserCurve::initialize(void* data) {
     LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, 56 + this->params.color);
     vm->interrupt_and_run(2);
 
-    vm->data.blend_mode = 1;
+    vm->data.blend_mode = BlendAdditive; // 1
     this->__vm_11F4.data.render_mode = 1;
     this->__vm_11F4.data.origin_mode = 1;
 
@@ -42776,11 +42814,11 @@ dllexport gnu_noinline void thiscall LaserInfinite::run_effects() {
             }
             case EX_BRIGHT: {
                 if (IntArg(0)) {
-                    this->__vm_C0C.data.blend_mode = 1;
+                    this->__vm_C0C.data.blend_mode = BlendAdditive; // 1
                     ++effect_index;
                     continue;
                 } else {
-                    this->__vm_C0C.data.blend_mode = 0;
+                    this->__vm_C0C.data.blend_mode = BlendNormal; // 0
                     ++effect_index;
                     continue;
                 }
@@ -42947,9 +42985,9 @@ dllexport gnu_noinline void thiscall LaserCurve::run_effects() {
             }       
             case EX_BRIGHT: {
                 if (IntArg(0)) {
-                    this->__vm_BE8.data.blend_mode = 1;
+                    this->__vm_BE8.data.blend_mode = BlendAdditive; // 1
                 } else {
-                    this->__vm_BE8.data.blend_mode = 0;
+                    this->__vm_BE8.data.blend_mode = BlendNormal; // 0
                 }
                 break;
             }
@@ -43291,13 +43329,13 @@ dllexport void Bullet::run_effects() {
             case EX_BRIGHT:
                 switch (IntArg(0)) {
                     case 2:
-                        this->vm.data.blend_mode = 2;
+                        this->vm.data.blend_mode = BlendMode2; // 2
                         break;
                     case 1:
-                        this->vm.data.blend_mode = 1;
+                        this->vm.data.blend_mode = BlendAdditive; // 1
                         break;
                     default:
-                        this->vm.data.blend_mode = 0;
+                        this->vm.data.blend_mode = BlendNormal; // 0
                         break;
                 }
                 break;
@@ -45755,8 +45793,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
             EFFECT_MANAGER_PTR->fill_available_slot(id);
             break;
         }
-        case __effect_create_special: // 334
-            EFFECT_MANAGER_PTR->create_effect(this->get_int_arg(0), &this->get_position(), 0);
+        case effect_create_special: // 334
+            EFFECT_MANAGER_PTR->create_special_effect(this->get_int_arg(0), &this->get_position(), NULL);
             break;
         case anm_set_slot_main: // 306
             this->anm_set_slot_main_impl();
@@ -53625,9 +53663,9 @@ dllexport gnu_noinline void __set_default_d3d_states() {
     SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
     SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_WRAP);
     if (AnmManager* anm_manager = ANM_MANAGER_PTR) {
-        anm_manager->current_blend_mode = (AnmBlendMode)11;
+        anm_manager->current_blend_mode = BlendMode11; // 11
         anm_manager->__byte_3120E09 = -1;
-        anm_manager->__sbyte_3120E0A = -1;
+        anm_manager->__current_vertex_type = -1;
         anm_manager->__current_sprite_index = -1;
         anm_manager->__byte_3120E0C = -1;
     }

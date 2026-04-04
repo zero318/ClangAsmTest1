@@ -185,7 +185,17 @@ static forceinline long double vectorcall sin_asm(long double value) {
     __asm__ volatile ("fsin" : asm_arg("=t", sin) : asm_arg("0", value));
     return sin;
 }
-static forceinline vec<long double, 2> regcall sincos_asm(long double value) {
+static forceinline vec<float, 2> regcall sincosf_asm(float value) {
+    float cos, sin;
+    __asm__ volatile ("fsincos" : asm_arg("=t", cos), asm_arg("=u", sin) : asm_arg("0", value));
+    return { cos, sin };
+}
+static forceinline vec<double, 2> regcall sincos_asm(double value) {
+    double cos, sin;
+    __asm__ volatile ("fsincos" : asm_arg("=t", cos), asm_arg("=u", sin) : asm_arg("0", value));
+    return { cos, sin };
+}
+static forceinline vec<long double, 2> regcall sincosl_asm(long double value) {
     long double cos, sin;
     __asm__ volatile ("fsincos" : asm_arg("=t", cos), asm_arg("=u", sin) : asm_arg("0", value));
     return { cos, sin };
