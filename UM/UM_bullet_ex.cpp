@@ -47130,7 +47130,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 
             uint8_t xor_mask = 0x77;
             uint8_t xor_accel = 7;
-            for (int32_t i = 0; i < IntArg(4); ++i) {
+            for (int32_t i = 0; i < IntArg(3); ++i) {
                 uint8_t c = name_crypt[i];
                 c ^= xor_mask;
                 name[i] = c;
