@@ -20034,8 +20034,8 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_B(void* pt
         SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, &verts, sizeof(PrimitiveVertex));
 
         SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
-        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+        SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
         SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
         SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
 
@@ -27102,7 +27102,7 @@ public:
     dllexport gnu_noinline void thiscall start_dying() asm_symbol_rel(0x45D3A0);
 
     inline void __reset_damage_multiplier() {
-        if (this->damage_multiplier < 1.01f) {
+        if (this->damage_multiplier > 1.01f) {
             this->data.__unknown_flag_E = true;
         } else {
             this->data.__unknown_flag_E = false;
@@ -36163,7 +36163,17 @@ struct StdVM {
                 slot_vm->get_sprite() &&
                 *slot_layer == layer
             ) {
-                // TODO: probably draw the VMs
+                SUPERVISOR.set_camera_by_index_disable_fog(3);
+                SUPERVISOR.d3d_disable_zwrite();
+                if (slot_vm->get_sprite()) {
+                    ANM_MANAGER_PTR->draw_vm(slot_vm);
+                }
+                SUPERVISOR.d3d_enable_zwrite();
+                SUPERVISOR.current_camera_ptr = &SUPERVISOR.cameras[3];
+                if (AnmManager* anm_manager = ANM_MANAGER_PTR) {
+                    anm_manager->flush_sprites();
+                }
+                // TODO: camera shake stuff
             }
         }
     }
