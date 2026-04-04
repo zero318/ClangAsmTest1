@@ -55029,6 +55029,37 @@ dinput_init_success:
     return ZUN_SUCCESS;
 }
 
+#if TESTING_FEATURES
+static constexpr const char* EMOTE_CAPTIONS[] = {
+    ":ReisenWorried:",
+    ":NotLikeAlice:",
+    ":tannedcirno:",
+    ":KeikiPout:",
+    ":ReisenDying:",
+    ":ClownpieceSweat:",
+    ":ReimuWat:",
+    ":KogasaGun:"
+};
+
+gnu_noinline void make_sure_the_dat_file_exists_before_starting() {
+retry_dat_file:
+    if (FILE* dat_file = fopen("th18.dat", "rb")) {
+        fclose(dat_file);
+    } else {
+        unsigned int random;
+        rand_s(&random);
+        switch (MessageBoxA(NULL, "Could not find th18.dat", EMOTE_CAPTIONS[random % countof(EMOTE_CAPTIONS)], MB_ICONERROR | MB_ABORTRETRYIGNORE)) {
+            case IDRETRY:
+                goto retry_dat_file;
+            case IDIGNORE: // if you insist
+                break;
+            case IDABORT:
+                ExitProcess(-1);
+        }
+    }
+}
+#endif
+
 extern "C" {
 
 // 0x471270
@@ -55038,6 +55069,7 @@ dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevIn
 
 #if TESTING_FEATURES
     debug_command_line();
+    make_sure_the_dat_file_exists_before_starting();
 #endif
 
     HINSTANCE current_instance = hInstance;
