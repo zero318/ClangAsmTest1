@@ -10867,6 +10867,7 @@ enum CancelType : int32_t {
 
 static inline AnmLoaded* get_bullet_anm();
 
+static inline void bullet_cancel_all();
 static inline int bullet_cancel_random(CancelType cancel_type);
 static inline int bullet_cancel_radius(Float3* position, float radius, CancelType cancel_type);
 static inline int bullet_cancel_radius_as_bomb(Float2* position, float radius, CancelType cancel_type, int32_t max_count, int arg5);
@@ -13741,7 +13742,11 @@ static int32_t PLAYER_PORTRAIT_SCRIPT_TABLE[] = {
 // size: 0x8
 struct MsgScriptHeader {
     uint32_t script_offset; // 0x0
-    uint32_t flags; // 0x4
+    union {
+        uint32_t flags; // 0x4
+        struct {
+        };
+    };
     // 0x8
 };
 #pragma region // MsgScriptHeader Validation
@@ -13757,7 +13762,7 @@ struct MsgHeader {
 
 // size: 0x1D8
 struct MsgVM {
-    unknown_fields(0x4); // 0x0
+    int32_t script_id; // 0x0
     Timer __timer_4; // 0x4
     Timer script_time; // 0x18
     Timer pause_timer; // 0x2C
@@ -13774,7 +13779,7 @@ struct MsgVM {
     MenuSelect menu_controller; // 0x88
     int __dword_160; // 0x160
     MsgInstruction* current_instr; // 0x164
-    Float3 __float3_168; // 0x168
+    Float3 __float3_168; // 0x168 is this also [MAX_PORTRAIT_COUNT]?
     Float3 __float3_174; // 0x174
     Float3 __float3_180; // 0x180
     Float3 __float3_18C; // 0x18C
@@ -13792,15 +13797,19 @@ struct MsgVM {
     BOOL __skip_text_clear; // 0x1A4
     int32_t __int_1A8; // 0x1A8
     int32_t active_portait; // 0x1AC
-    D3DCOLOR __color_array_1B0[1]; // 0x1B0
-    int __dword_1B4; // 0x1B4
-    int __dword_1B8; // 0x1B8
-    int __dword_1BC; // 0x1BC
+    D3DCOLOR text_color_array[MAX_PORTRAIT_COUNT]; // 0x1B0
     Float3 callout_position; // 0x1C0
     float __float_1CC; // 0x1CC
     int __dword_1D0; // 0x1D0
     int32_t __int_1D4; // 0x1D4
     // 0x1D8
+
+    inline void zero_contents() {
+        zero_this_inline();
+    }
+
+    // 0x43D720
+    dllexport gnu_noinline MsgVM(MsgInstruction* start_instruction);
 
     // 0x43A3F0
     // EH frame (empty???)
@@ -13845,6 +13854,7 @@ public:
     }
 };
 #pragma region // MsgVM Validation
+ValidateFieldOffset32(0x0, MsgVM, script_id);
 ValidateFieldOffset32(0x4, MsgVM, __timer_4);
 ValidateFieldOffset32(0x18, MsgVM, script_time);
 ValidateFieldOffset32(0x2C, MsgVM, pause_timer);
@@ -13871,10 +13881,7 @@ ValidateFieldOffset32(0x1A0, MsgVM, next_text_line);
 ValidateFieldOffset32(0x1A4, MsgVM, __skip_text_clear);
 ValidateFieldOffset32(0x1A8, MsgVM, __int_1A8);
 ValidateFieldOffset32(0x1AC, MsgVM, active_portait);
-ValidateFieldOffset32(0x1B0, MsgVM, __color_array_1B0);
-ValidateFieldOffset32(0x1B4, MsgVM, __dword_1B4);
-ValidateFieldOffset32(0x1B8, MsgVM, __dword_1B8);
-ValidateFieldOffset32(0x1BC, MsgVM, __dword_1BC);
+ValidateFieldOffset32(0x1B0, MsgVM, text_color_array);
 ValidateFieldOffset32(0x1C0, MsgVM, callout_position);
 ValidateFieldOffset32(0x1CC, MsgVM, __float_1CC);
 ValidateFieldOffset32(0x1D0, MsgVM, __dword_1D0);
@@ -13995,7 +14002,10 @@ struct Gui : ZUNTask {
     Timer __timer_198; // 0x198
     int32_t __int_1AC; // 0x1AC
     MsgVM* msg_vm; // 0x1B0
-    void* msg_file; // 0x1B4
+    union {
+        MsgHeader* msg_file; // 0x1B4
+        void* msg_file_buffer; // 0x1B4
+    };
     int32_t spell_timer_seconds; // 0x1B8
     int32_t spell_timer_hundredths; // 0x1BC
     int32_t __int_1C0; // 0x1C0
@@ -14118,6 +14128,9 @@ struct Gui : ZUNTask {
     // 0x43A8B0
     dllexport gnu_noinline static void __allocate_hud() asm_symbol_rel(0x43A8B0);
 
+    // 0x43E360
+    dllexport gnu_noinline void thiscall __start_msg_vm(int32_t index) asm_symbol_rel(0x43E360);
+
     // 0x43BB70
     dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x43BB70);
 
@@ -14173,7 +14186,7 @@ ValidateFieldOffset32(0x170, Gui, __boss_life_count);
 ValidateFieldOffset32(0x194, Gui, flags);
 ValidateFieldOffset32(0x198, Gui, __timer_198);
 ValidateFieldOffset32(0x1B0, Gui, msg_vm);
-ValidateFieldOffset32(0x1B4, Gui, msg_file);
+ValidateFieldOffset32(0x1B4, Gui, msg_file_buffer);
 ValidateFieldOffset32(0x1B8, Gui, spell_timer_seconds);
 ValidateFieldOffset32(0x1BC, Gui, spell_timer_hundredths);
 ValidateFieldOffset32(0x1C0, Gui, __int_1C0);
@@ -20416,12 +20429,12 @@ dllexport gnu_noinline void thiscall Gui::cleanup() {
 
     SAFE_DELETE(this->msg_vm);
 
-    void* msg_file = this->msg_file;
+    void* msg_file_buffer = this->msg_file_buffer;
     if (!(GAME_MANAGER.__unknown_flag_A | GAME_MANAGER.__unknown_flag_D)) {
-        SAFE_FREE(this->msg_file);
-        msg_file = NULL;
+        SAFE_FREE(this->msg_file_buffer);
+        msg_file_buffer = NULL;
     }
-    CACHED_MSG_FILE_PTR = msg_file;
+    CACHED_MSG_FILE_PTR = msg_file_buffer;
 
     this->disable_tick();
 
@@ -22540,13 +22553,13 @@ dllexport gnu_noinline ZUNResult thiscall Gui::__initialize() {
     this->stage_logo_anm = stage_logo_anm;
     if (!stage_logo_anm) goto corrupted_data_error;
     if (void* cached_msg_file = CACHED_MSG_FILE_PTR) {
-        this->msg_file = cached_msg_file;
+        this->msg_file_buffer = cached_msg_file;
         DebugLogger::__debug_log_stub_8("%s load Skip\n", STAGE_DATA_PTR->msg_filenames[GAME_MANAGER.globals.shottype_index()]);
         CACHED_MSG_FILE_PTR = NULL;
     } else {
-        void* msg_file = read_file_from_dat(STAGE_DATA_PTR->msg_filenames[GAME_MANAGER.globals.shottype_index()]);
-        this->msg_file = msg_file;
-        if (!msg_file) goto corrupted_data_error;
+        void* msg_file_buffer = read_file_from_dat(STAGE_DATA_PTR->msg_filenames[GAME_MANAGER.globals.shottype_index()]);
+        this->msg_file_buffer = msg_file_buffer;
+        if (!msg_file_buffer) goto corrupted_data_error;
     }
     this->__timer_13C.reset();
     this->__score = GAME_MANAGER.globals.score;
@@ -23902,7 +23915,6 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
                         this->pause_timer.set(999);
                     }
                     if (
-                        // Wouldn't this require a frame perfect press?
                         !INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT) &&
                         this->pause_timer > 0
                     ) {
@@ -23928,7 +23940,6 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
                     }
                     this->pause_timer--;
                     if (
-                        // Wouldn't this require a frame perfect press?
                         !INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT) &&
                         this->pause_timer > 0
                     ) {
@@ -28395,13 +28406,13 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
             case text_top_line: { // 15
                 AnmVM* vm = this->dialogue_lines[0].get_vm_ptr();
                 const char* text = __decrypt_related(StringArg(0));
-                ANM_MANAGER_PTR->draw_text_left(vm, this->__color_array_1B0[this->active_portait], 0, this->__unknown_flag_C + 4, 0, 0, text);
+                ANM_MANAGER_PTR->draw_text_left(vm, this->text_color_array[this->active_portait], 0, this->__unknown_flag_C + 4, 0, 0, text);
                 break;
             }
             case text_bottom_line: { // 16
                 AnmVM* vm = this->dialogue_lines[1].get_vm_ptr();
                 const char* text = __decrypt_related(StringArg(0));
-                ANM_MANAGER_PTR->draw_text_left(vm, this->__color_array_1B0[this->active_portait], 0, this->__unknown_flag_C + 4, 0, 0, text);
+                ANM_MANAGER_PTR->draw_text_left(vm, this->text_color_array[this->active_portait], 0, this->__unknown_flag_C + 4, 0, 0, text);
                 break;
             }
             case text_position: // 28
@@ -28412,10 +28423,10 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
                 if (this->next_text_line == 0) {
                     if (!this->__skip_text_clear) {
                         this->__float_1CC = 0.0f;
-                        ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[0].get_vm_ptr(), this->__color_array_1B0[this->active_portait], 0, this->__unknown_flag_C, 0, 0, "  ");
-                        ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[1].get_vm_ptr(), this->__color_array_1B0[this->active_portait], 0, this->__unknown_flag_C, 0, 0, "  ");
-                        ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[0].get_vm_ptr(), this->__color_array_1B0[this->active_portait], 0, this->__unknown_flag_C, 0, 0, "  ");
-                        ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[1].get_vm_ptr(), this->__color_array_1B0[this->active_portait], 0, this->__unknown_flag_C, 0, 0, "  ");
+                        ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[0].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__unknown_flag_C, 0, 0, "  ");
+                        ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[1].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__unknown_flag_C, 0, 0, "  ");
+                        ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[0].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__unknown_flag_C, 0, 0, "  ");
+                        ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[1].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__unknown_flag_C, 0, 0, "  ");
                         this->__skip_text_clear = 1;
                         this->dialogue_lines[0].interrupt_tree(3);
                         this->dialogue_lines[1].interrupt_tree(3);
@@ -28441,7 +28452,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
                         this->__float_1CC = A;
                         this->__sub_4416D0(this->callout_position.x, this->callout_position.y, A, this->active_portait + this->__unknown_field_A * 3);
                         this->__sub_441900(this->__float_1CC);
-                        ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[0].get_vm_ptr(), this->__color_array_1B0[this->active_portait], 0, this->__unknown_flag_C, 0, 0, text);
+                        ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[0].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__unknown_flag_C, 0, 0, text);
                         switch (this->active_portait) {
                             case 1: case 2:
                                 this->dialogue_lines[0].set_controller_position(&this->callout_position);
@@ -28477,7 +28488,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
                         this->__float_1CC = A;
                         this->__sub_4416D0(this->callout_position.x, this->callout_position.y, A, this->active_portait + this->__unknown_field_A * 3);
                         this->__sub_441900(this->__float_1CC);
-                        ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[1].get_vm_ptr(), this->__color_array_1B0[this->active_portait], 0, this->__unknown_flag_C, 0, 0, text);
+                        ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[1].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__unknown_flag_C, 0, 0, text);
                         switch (this->active_portait) {
                             case 1: case 2:
                                 this->dialogue_lines[0].set_controller_position(&this->callout_position);
@@ -28662,7 +28673,6 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
                 }
                 this->pause_timer--;
                 if (
-                    // Wouldn't this require a frame perfect press?
                     !INPUT_P1.check_inputs_no_repeat(BUTTON_SELECT) &&
                     this->pause_timer > 0
                 ) {
@@ -41929,6 +41939,10 @@ static inline AnmLoaded* get_bullet_anm() {
     return BULLET_MANAGER_PTR->bullet_anm;
 }
 
+static inline void bullet_cancel_all() {
+    BULLET_MANAGER_PTR->cancel_all();
+}
+
 static inline int bullet_cancel_random(CancelType cancel_type) {
     return BULLET_MANAGER_PTR->cancel_random(cancel_type);
 }
@@ -47097,6 +47111,16 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
         }
         case msg_read: { // 518
             // TODO
+            int32_t index = this->get_int_arg(0);
+            if (
+                GAME_MANAGER.get_current_stage() == 6 &&
+                index == 0
+            ) {
+                //index = ABILITY_MANAGER_PTR->card_equipped(BLANK_CARD) ? 4 : index;
+            }
+            GUI_PTR->__start_msg_vm(index);
+            BULLET_MANAGER_PTR->cancel_all(CancelType0);
+            LASER_MANAGER_PTR->cancel_all(CancelType0, 0);
         }
             [[fallthrough]];
         case enemy_kill_all: // 525
@@ -49887,6 +49911,96 @@ ValidateFieldOffset32(0x3F0, PauseMenu, __flags_3F0);
 ValidateFieldOffset32(0x3F4, PauseMenu, __front_anm);
 ValidateStructSize32(0x3F8, PauseMenu);
 #pragma endregion
+
+// 0x43D720
+dllexport gnu_noinline MsgVM::MsgVM(MsgInstruction* start_instruction) {
+    this->__timer_4.reset();
+    this->script_time.reset();
+    this->__dword_160 = 0;
+    this->pause_timer.reset();
+    this->current_instr = start_instruction;
+
+    this->dialogue_lines[0] = SUPERVISOR.text_anm->instantiate_vm_to_world_list_back(0);
+    AnmID dialogue_id2 = SUPERVISOR.text_anm->instantiate_vm_to_world_list_back(0);
+    this->dialogue_lines[1] = dialogue_id2;
+    dialogue_id2.interrupt_and_run_tree(7);
+
+    // whyyyyyyy
+    this->dialogue_lines[0].get_vm_ptr()->data.font_width = 21;
+    this->dialogue_lines[0].get_vm_ptr()->data.font_height = 21;
+    this->dialogue_lines[1].get_vm_ptr()->data.font_width = 21;
+    this->dialogue_lines[1].get_vm_ptr()->data.font_height = 21;
+
+    this->furigana_lines[0] = SUPERVISOR.text_anm->instantiate_vm_to_world_list_back(1);
+    AnmID furigana_id2 = SUPERVISOR.text_anm->instantiate_vm_to_world_list_back(1);
+    this->furigana_lines[1] = furigana_id2;
+    furigana_id2.interrupt_and_run_tree(7);
+
+    // can someone please revoke ZUN's coding privileges
+    this->furigana_lines[0].get_vm_ptr()->data.font_width = 21;
+    this->furigana_lines[0].get_vm_ptr()->data.font_height = 21;
+    this->furigana_lines[1].get_vm_ptr()->data.font_width = 21;
+    this->furigana_lines[1].get_vm_ptr()->data.font_height = 21;
+
+    this->dialogue_lines[0].get_vm_ptr()->data.disable_z_write = true;
+    this->dialogue_lines[1].get_vm_ptr()->data.disable_z_write = true;
+    this->furigana_lines[0].get_vm_ptr()->data.disable_z_write = true;
+    this->furigana_lines[1].get_vm_ptr()->data.disable_z_write = true;
+
+    this->dialogue_lines[0].get_vm_ptr()->controller.on_draw_index = 5;
+    this->dialogue_lines[1].get_vm_ptr()->controller.on_draw_index = 5;
+    this->furigana_lines[0].get_vm_ptr()->controller.on_draw_index = 5;
+    this->furigana_lines[1].get_vm_ptr()->controller.on_draw_index = 5;
+
+    this->next_text_line = 0;
+    this->__skip_text_clear = false;
+    this->text_color_array[0] = 0;
+    this->text_color_array[1] = 0;
+    this->text_color_array[2] = 0;
+    this->text_color_array[3] = 0;
+    this->active_portait = 0;
+
+    this->__float3_168 = { 16.0f, 0.0f, 0.0f };
+    this->__float3_174 = { 16.0f, 0.0f, 0.0f };
+    this->__float3_180 = { 16.0f, 0.0f, 0.0f };
+    this->__float3_18C = { 16.0f, 0.0f, 0.0f };
+
+    BULLET_MANAGER_PTR->cancel_all();
+    clang_forceinline LASER_MANAGER_PTR->cancel_all(CancelType0, 0);
+    ENEMY_MANAGER_PTR->kill_all();
+
+    this->__unknown_flag_A = false;
+    this->callout_position = { 384.0f, 640.0f, 0.0f };
+    this->__float_1CC = 320.0f;
+    this->__int_1A8 = 0;
+}
+
+// 0x43E360
+dllexport gnu_noinline void thiscall Gui::__start_msg_vm(int32_t index) {
+    // the one FINIT that ZUN forgot in FW
+    __asm FINIT
+
+    switch (index) {
+        case -2:
+            if (SPELLCARD_PTR->__unknown_flag_D) {
+                //PAUSE_MENU_PTR->__sub_458A30();
+            } else {
+                //GAME_THREAD_PTR->end_stage();
+            }
+            break;
+        default: {
+            SAFE_DELETE(this->msg_vm);
+            MsgHeader* msg_file = this->msg_file;
+            MsgInstruction* msg_script = based_pointer<MsgInstruction>(msg_file, msg_file->scripts[index].script_offset);
+            MsgVM* msg_vm = new MsgVM(msg_script);
+            this->msg_vm = msg_vm;
+            msg_vm->script_id = index;
+            break;
+        }
+        case -1: case -3:
+            // TODO
+    }
+}
 
 // 0x4B7B18
 static const char* DEMO_REPLAY_FILENAMES[] = {
@@ -53185,7 +53299,7 @@ dllexport gnu_noinline GameThread::~GameThread() {
         ) {
             ANM_MANAGER_PTR->unload_anm(STAGE_LOGO_ANM_INDEX);
             gui->stage_logo_anm = NULL;
-            SAFE_FREE(gui->msg_file);
+            SAFE_FREE(gui->msg_file_buffer);
         }
         delete STAGE_B_PTR;
         STAGE_B_PTR = STAGE_PTR;
