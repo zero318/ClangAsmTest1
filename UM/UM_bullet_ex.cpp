@@ -52,6 +52,8 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define MALLET_PIPE 0
 #define FAST_TIMER 0
 
+#define ALLOW_FORCE_CLOSING_SHOP 1
+
 #define FORCE_DEBUG_LOGGING 1
 
 #define DEBUG_SKIP_MENUS 1
@@ -3053,7 +3055,7 @@ static inline constexpr uint32_t BUTTON_ENTER       = 0x00080000; // VK_RETURN
 static inline constexpr uint32_t BUTTON_RESTART     = 0x00200000; // 'R', VK_END
 
 static inline constexpr uint32_t BUTTON_SELECT      = BUTTON_SHOOT | BUTTON_ENTER; // 'Z', VK_RETURN
-static inline constexpr uint32_t BUTTON_CANCEL      = BUTTON_BOMB; // 'X'
+static inline constexpr uint32_t BUTTON_CANCEL      = BUTTON_BOMB | BUTTON_PAUSE; // 'X', VK_ESCAPE
 static inline constexpr uint32_t BUTTON_ANY         = 0x0000FFFF;
 
 static inline constexpr uint32_t BUTTON_SHOOT_INDEX = 0;
@@ -4525,14 +4527,22 @@ union AnmID {
 	// 0x488E30
 	dllexport AnmVM* get_vm_ptr() asm_symbol_rel(0x488E30);
 
+	inline AnmVM* get_vm_ptr_safe();
+
 	forceinline bool has_live_vm() {
 		return this->get_vm_ptr();
 	}
 
-	inline int32_t run_vm();
+	inline int32_t run_vm_safe();
+
+	inline Float3* get_render_position_safe(Float3* out);
+
+	inline void set_sprite(int32_t sprite_id);
 
 	// 0x488E50
 	dllexport void interrupt_tree(int32_t interrupt_index) asm_symbol_rel(0x488E50);
+
+	inline void interrupt_tree_word_offset(int16_t interrupt_index, int16_t offset);
 
 	inline void interrupt_and_run_tree(int32_t interrupt_index);
 
@@ -4548,6 +4558,8 @@ union AnmID {
 
 	// 0x488EB0
 	dllexport void __tree_clear_visible2() asm_symbol_rel(0x488EB0);
+
+	inline void __tree_clear_visible2(AnmManager* anm_manager);
 
 	// 0x488F50
 	dllexport void mark_tree_for_delete() asm_symbol_rel(0x488F50);
@@ -8389,16 +8401,107 @@ enum CardId : int32_t {
 static inline constexpr size_t INTERNAL_CARD_COUNT = ENUM_VALUE_COUNT(CardId);
 static inline constexpr size_t CARD_COUNT = INTERNAL_CARD_COUNT - 1;
 
+enum PriceTier : int32_t {
+	FreeTier = 0,
+	CheapTier1 = 1,
+	CheapTier2 = 2,
+	CheapTier3 = 3,
+	ReasonableTier1 = 4,
+	ReasonableTier2 = 5,
+	ReasonableTier3 = 6,
+	PriceyTier1 = 7,
+	PriceyTier2 = 8,
+	PriceyTier3 = 9,
+	ExpensiveTier1 = 10,
+	ExpensiveTier2 = 11,
+	ExpensiveTier3 = 12,
+	ExpensiveTier4 = 13,
+	ExpensiveTier5 = 14
+};
+
+// 0x4B35C4
+static int32_t CARD_PRICE_TABLE[] = {
+	// Free
+	0,
+	// Cheap
+	50,
+	80,
+	100,
+	// Reasonable
+	100,
+	140,
+	180,
+	// Pricey
+	200,
+	240,
+	280,
+	// Expensive
+	300,
+	350,
+	400,
+	450,
+	500,
+};
+
+// 0x4B60E0
+static D3DCOLOR CARD_PRICE_COLORS[] = {
+	// Free
+	COLOR(255, 255, 255, 255),
+	// Cheap
+	COLOR(255, 240, 160, 128),
+	COLOR(255, 240, 160, 128),
+	COLOR(255, 240, 160, 128),
+	// Reasonable
+	COLOR(255, 255, 176, 0),
+	COLOR(255, 255, 176, 0),
+	COLOR(255, 255, 176, 0),
+	// Pricey
+	COLOR(255, 255, 208, 0),
+	COLOR(255, 255, 208, 0),
+	COLOR(255, 255, 208, 0),
+	// Expensive
+	COLOR(255, 255, 255, 80),
+	COLOR(255, 255, 255, 80),
+	COLOR(255, 255, 255, 80),
+	COLOR(255, 255, 255, 80),
+	COLOR(255, 255, 255, 80),
+};
+
+#define ALWAYS_IN_SHOP 0
+#define NEVER_IN_SHOP 6
+
+enum CardAvailability : int32_t {
+	ALWAYS_AVAILABLE = 0,
+	STAGE_1_REWARD = 1, // Force on stage 1, normal chance on any stage once unlocked
+	STAGE_2_REWARD = 2, // Force on stage 2, normal chance on any stage once unlocked
+	STAGE_3_REWARD = 3, // Force on stage 3, normal chance on any stage once unlocked
+	STAGE_4_REWARD = 4, // Force on stage 4, normal chance on any stage once unlocked
+	STAGE_5_REWARD = 5, // Force on stage 5, normal chance on any stage once unlocked
+	STAGES_1_2_LIKELY = 6, // Normal chance on stages 1,2; 20% chance otherwise
+	STAGES_1_2_3_LIKELY = 7, // Normal chance on stages 1,2,3; 20% chance otherwise
+	STAGES_2_3_4_LIKELY = 8, // Normal chance on stages 2,3,4; 20% chance otherwise
+	STAGES_3_4_5_LIKELY = 9, // Normal chance on stages 3,4,5; 20% chance otherwise
+	STAGES_4_5_LIKELY = 10, // Normal chance on stages 4,5; 20% chance otherwise
+	AVAILABLE_IF_UNLOCKED_STAGES_1_2_3_4_5 = 11, // don't offer the blank card on extra
+	AVAILABLE_IF_UNLOCKED = 12 // Only spawns if the card hasn't been unlocked yet
+};
+
+enum CardAvailabilityResult : int32_t {
+	NotAvailable = 0,
+	IsAvailable = 1,
+	IsStageReward = 2
+};
+
 // size: 0x34
 struct CardData {
 	const char* name; // 0x0
 	CardId id; // 0x4
 	int __int_8; // 0x8
 	int __int_C; // 0xC
-	int32_t price_group; // 0x10
-	int __weight; // 0x14
-	int __availability; // 0x18
-	BOOL __allow_duplicates; // 0x1C
+	int32_t price_tier; // 0x10
+	int32_t shop_weight; // 0x14
+	int32_t availability; // 0x18
+	BOOL allow_duplicates; // 0x1C
 	BOOL __can_starting_equip; // 0x21
 	BOOL __default_unlock; // 0x24
 	BOOL __render_passive_in_hud; // 0x28
@@ -8407,17 +8510,17 @@ struct CardData {
 	// 0x34
 
 	// 0x416E10
-	dllexport gnu_noinline int thiscall __check_availability() const asm_symbol_rel(0x416E10);
+	dllexport gnu_noinline CardAvailabilityResult thiscall check_availability() const asm_symbol_rel(0x416E10);
 };
 #pragma region // CardData Validation
 ValidateFieldOffset32(0x0, CardData, name);
 ValidateFieldOffset32(0x4, CardData, id);
 ValidateFieldOffset32(0x8, CardData, __int_8);
 ValidateFieldOffset32(0xC, CardData, __int_C);
-ValidateFieldOffset32(0x10, CardData, price_group);
-ValidateFieldOffset32(0x14, CardData, __weight);
-ValidateFieldOffset32(0x18, CardData, __availability);
-ValidateFieldOffset32(0x1C, CardData, __allow_duplicates);
+ValidateFieldOffset32(0x10, CardData, price_tier);
+ValidateFieldOffset32(0x14, CardData, shop_weight);
+ValidateFieldOffset32(0x18, CardData, availability);
+ValidateFieldOffset32(0x1C, CardData, allow_duplicates);
 ValidateFieldOffset32(0x20, CardData, __can_starting_equip);
 ValidateFieldOffset32(0x24, CardData, __default_unlock);
 ValidateFieldOffset32(0x28, CardData, __render_passive_in_hud);
@@ -9098,81 +9201,83 @@ dllexport gnu_noinline ZUNResult stdcall SoundManager::__play_music_with_unlock(
 }
 
 // 0x416E10
-dllexport gnu_noinline int thiscall CardData::__check_availability() const {
-	switch (this->__availability) {
-		case 0:
-			return 1;
-		case 1:
+dllexport gnu_noinline CardAvailabilityResult thiscall CardData::check_availability() const {
+	switch (this->availability) {
+		case ALWAYS_AVAILABLE: // 0
+			return IsAvailable; // 1
+		case STAGE_1_REWARD: // 1
 			if (GAME_MANAGER.globals.current_stage == Stage1) {
-				return 2;
+				return IsStageReward; // 2
 			}
 			break;
-		case 2:
+		case STAGE_2_REWARD: // 2
 			if (GAME_MANAGER.globals.current_stage == Stage2) {
-				return 2;
+				return IsStageReward; // 2
 			}
 			break;
-		case 3:
+		case STAGE_3_REWARD: // 3
 			if (GAME_MANAGER.globals.current_stage == Stage3) {
-				return 2;
+				return IsStageReward; // 2
 			}
 			break;
-		case 4:
+		case STAGE_4_REWARD: // 4
 			if (GAME_MANAGER.globals.current_stage == Stage4) {
-				return 2;
+				return IsStageReward;
 			}
 			break;
-		case 5:
+		case STAGE_5_REWARD: // 5
 			if (GAME_MANAGER.globals.current_stage == Stage5) {
-				return 2;
+				return IsStageReward; // 2
 			}
 			break;
-		case 6:
+		case STAGES_1_2_LIKELY: // 6
 			switch (GAME_MANAGER.globals.current_stage) {
 				case Stage1: case Stage2:
-					return 1;
+					return IsAvailable; // 1
 				default:
-					return !(RNG.rand_uint() % 5);
+					return !(RNG.rand_uint() % 5) ? IsAvailable : NotAvailable;
 			}
-		case 7:
+		case STAGES_1_2_3_LIKELY: // 7
 			switch (GAME_MANAGER.globals.current_stage) {
 				case Stage1: case Stage2: case Stage3:
-					return 1;
+					return IsAvailable; // 1
 				default:
-					return !(RNG.rand_uint() % 5);
+					return !(RNG.rand_uint() % 5) ? IsAvailable : NotAvailable;
 			}
-		case 8:
+		case STAGES_2_3_4_LIKELY: // 8
 			switch (GAME_MANAGER.globals.current_stage) {
 				case Stage2: case Stage3: case Stage4:
-					return 1;
+					return IsAvailable; // 1
 				default:
-					return !(RNG.rand_uint() % 5);
+					return !(RNG.rand_uint() % 5) ? IsAvailable : NotAvailable;
 			}
-		case 9:
+		case STAGES_3_4_5_LIKELY: // 9
 			switch (GAME_MANAGER.globals.current_stage) {
 				case Stage3: case Stage4: case Stage5:
-					return 1;
+					return IsAvailable; // 1
 				default:
-					return !(RNG.rand_uint() % 5);
+					return !(RNG.rand_uint() % 5) ? IsAvailable : NotAvailable;
 			}
-		case 10:
+		case STAGES_4_5_LIKELY: // 10
 			switch (GAME_MANAGER.globals.current_stage) {
 				case Stage4: case Stage5:
-					return 1;
+					return IsAvailable; // 1
 				default:
-					return !(RNG.rand_uint() % 5);
+					return !(RNG.rand_uint() % 5) ? IsAvailable : NotAvailable;
 			}
-		case 11:
+		case AVAILABLE_IF_UNLOCKED_STAGES_1_2_3_4_5: // 11
 			switch (GAME_MANAGER.globals.current_stage) {
 				default:
-					return 0;
+					return NotAvailable;
 				case Stage1: case Stage2: case Stage3: case Stage4: case Stage5:
 					break;
 			}
-		case 12:
+		case AVAILABLE_IF_UNLOCKED: // 12
 			break;
+		default:
+			return NotAvailable; // 0
 	}
-	return SCOREFILE_MANAGER_PTR->primary_file.__sectionA.__unlocked_cards_array[this->id] != 0;
+	return SCOREFILE_MANAGER_PTR->primary_file.__sectionA.__unlocked_cards_array[this->id] ? IsAvailable : NotAvailable;
 }
 
 enum MotionMode : int32_t {
@@ -22535,19 +22640,30 @@ dllexport AnmVM* AnmID::get_vm_ptr() {
 	return vm;
 }
 
-inline int32_t AnmID::run_vm() {
-	AnmManager* anm_manager = ANM_MANAGER_PTR;
+inline AnmVM* AnmID::get_vm_ptr_safe() {
 	AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this);
 	if (!vm) {
 		this->full = 0;
-		vm = &anm_manager->__vm_E4;
+		vm = &ANM_MANAGER_PTR->__vm_E4;
 	}
-	return vm->run_anm();
+	return vm;
+}
+
+inline void AnmID::set_sprite(int32_t sprite_id) {
+	AnmVM* vm = this->get_vm_ptr();
+	if (vm) {
+		vm->set_sprite(sprite_id);
+	}
 }
 
 // 0x488E50
 dllexport void AnmID::interrupt_tree(int32_t interrupt_index) {
 	AnmManager::interrupt_tree(*this, interrupt_index);
+}
+
+inline void AnmID::interrupt_tree_word_offset(int16_t interrupt_index, int16_t offset) {
+	interrupt_index += offset;
+	this->interrupt_tree(interrupt_index);
 }
 
 inline void AnmID::interrupt_and_run_tree(int32_t interrupt_index) {
@@ -22568,14 +22684,18 @@ dllexport void AnmID::__tree_set_visible2() {
 	this->__tree_set_visible2(ANM_MANAGER_PTR);
 }
 
-// 0x488EB0
-dllexport void AnmID::__tree_clear_visible2() {
-	if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this)) {
+inline void AnmID::__tree_clear_visible2(AnmManager* anm_manager) {
+	if (AnmVM* vm = anm_manager->get_vm_with_id(*this)) {
 		vm->data.__visible2 = false;
 		vm->controller.child_list.for_each([](AnmVM* vm) static_lambda {
 			vm->__tree_clear_visible2();
 		});
 	}
+}
+
+// 0x488EB0
+dllexport void AnmID::__tree_clear_visible2() {
+	this->__tree_clear_visible2(ANM_MANAGER_PTR);
 }
 
 inline void AnmID::mark_tree_for_delete(AnmManager* anm_manager) {
@@ -33105,9 +33225,46 @@ struct AbilityTextData {
 		ability_text_data->__vm_id_63DC.mark_tree_for_delete(anm_manager);
 	}
 
-	// 0x416940
-	dllexport void thiscall __sub_416940(int arg1, int arg2) asm_symbol_rel(0x416940) {
+	// 0x413390
+	dllexport static void __hide_vm_63DC() asm_symbol_rel(0x413390) {
+		ABILITY_TEXT_DATA_PTR->__vm_id_63DC.__tree_clear_visible2();
+	}
 
+	// 0x4133D0
+	dllexport static void __hide_anms() asm_symbol_rel(0x4133D0) {
+		AnmManager* anm_manager = ANM_MANAGER_PTR;
+		AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
+		size_t i = countof(ability_text_data->__vm_id_array_63C0);
+		AnmID* current_vm_id = ability_text_data->__vm_id_array_63C0;
+		do {
+			current_vm_id++->__tree_clear_visible2(anm_manager);
+		} while (--i);
+		ABILITY_TEXT_DATA_PTR->__vm_id_63DC.__tree_clear_visible2(anm_manager);
+	}
+
+	// 0x4168A0
+	dllexport gnu_noinline static void __change_vm_63DC_sprite(int32_t arg1) asm_symbol_rel(0x4168A0) {
+		AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
+		if (arg1 != 4) {
+			ability_text_data->__vm_id_63DC.set_sprite(arg1 + 5);
+			ability_text_data->__vm_id_63DC.interrupt_tree(2);
+		}
+		else {
+			ability_text_data->__hide_vm_63DC();
+		}
+	}
+
+	// 0x416940
+	dllexport void thiscall __sub_416940(int32_t card_id, BOOL arg2) asm_symbol_rel(0x416940) {
+		if (
+			(SCOREFILE_MANAGER_PTR->primary_file.__sectionA.__unlocked_cards_array[card_id] || arg2) &&
+			find_id_in_card_data(card_id).__int_C != 4
+		) {
+			this->__vm_id_63DC.__tree_set_visible2();
+		}
+		else {
+			this->__vm_id_63DC.__tree_clear_visible2();
+		}
 	}
 
 	// 0x416C10
@@ -33119,7 +33276,7 @@ struct AbilityTextData {
 		do {
 			current_vm_id++->__tree_set_visible2(anm_manager);
 		} while (--i);
-		ability_text_data->__sub_416940(arg1, 0);
+		ability_text_data->__sub_416940(arg1, false);
 	}
 
 	static forceinline char* ability_txt_skip_to_end_of_line(const char* str, int32_t& count) {
@@ -33250,7 +33407,7 @@ struct AbilityManager : ZUNTask {
 	BOOL __ability_data_loaded; // 0xC60
 	BOOL __created_ability_data; // 0xC64
 	ZUNThread __thread_C68; // 0xC68
-	int __int_array_C84[CARD_COUNT - 1]; // 0xC84
+	BOOL purchased_cards[CARD_COUNT - 1]; // 0xC84
 	unknown_fields(0xC); // 0xD64
 	// 0xD70
 
@@ -33358,6 +33515,38 @@ public:
 	forceinline static AnmID instantiate_small_card_sprite_vm(int32_t card_id) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
 		return instantiate_small_card_sprite_vm(dummy, card_id);
+	}
+
+private:
+	// 0x4091A0
+	dllexport gnu_noinline static AnmID& instantiate_large_card_sprite_vm(AnmID& out, Float3* position, int32_t script, const CardData* card_data) asm_symbol_rel(0x4091A0) {
+		AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
+
+		AnmID id = ability_manager->abcard_anm->instantiate_vm_to_ui_list_front(script, position);
+		out = id;
+		id.get_vm_ptr_safe()->run_anm();
+
+		int32_t large_sprite = card_data->sprite_large;
+		AnmVM* vm = id.get_vm_ptr();
+		if (vm) {
+			vm->set_sprite(large_sprite);
+		}
+		return out;
+	}
+
+public:
+	forceinline static AnmID instantiate_large_card_sprite_vm(Float3* position, int32_t script, const CardData* card_data) {
+		AnmID dummy{ GARBAGE_VALUE(int) };
+		return instantiate_large_card_sprite_vm(dummy, position, script, card_data);
+	}
+
+	// 0x416DD0
+	dllexport gnu_noinline static int32_t get_price_for_tier(int32_t price_tier) asm_symbol_rel(0x416DD0) {
+		int32_t base_price = CARD_PRICE_TABLE[price_tier];
+		if (card_equipped(YAMAWARO_CARD)) {
+			return base_price * 5 / 10;
+		}
+		return base_price;
 	}
 
 	// 0x4080E0
@@ -33481,7 +33670,7 @@ public:
 					}
 					AnmID anm_id = this->abcard_anm->instantiate_vm_to_ui_list_back(5, &position);
 					this->__anm_id_array_58[i] = anm_id;
-					anm_id.run_vm();
+					anm_id.get_vm_ptr_safe()->run_anm();
 
 					this->__anm_id_array_58[i].__find_child_vm_with_script(6)->set_sprite(data->sprite_small);
 					this->__anm_id_array_58[i].__find_child_vm_with_script(7)->set_sprite(data->sprite_small);
@@ -33538,7 +33727,7 @@ public:
 				return ZUN_ERROR;
 			}
 		}
-		this->__int_array_C84[id] = 1;
+		this->purchased_cards[id] = true;
 		this->card_list.append_to_list_end(&card->list_node);
 		if (card->__is_active_card) {
 			this->selected_active_card = card;
@@ -33752,22 +33941,23 @@ public:
 	}
 
 	// 0x416F50
-	dllexport gnu_noinline static uint32_t fastcall __pick_random_cardA(const CardData*& out, int32_t search_type_low, int32_t search_type_high, const CardData* card_data[], int32_t card_data_count) asm_symbol_rel(0x416F50) {
-		const CardData* weighted_array[countof(AbilityManager::__int_array_C84) * 10] = {};
+	dllexport gnu_noinline static uint32_t fastcall __pick_random_cardA(const CardData*& out, int32_t price_tier_low, int32_t price_tier_high, const CardData* card_data[], int32_t card_data_count) asm_symbol_rel(0x416F50) {
+		const CardData* weighted_array[countof(AbilityManager::purchased_cards) * 10] = {};
 		uint32_t weighted_array_size = 0;
 
-		for (int32_t i = 0; i < countof(AbilityManager::__int_array_C84); ++i) {
-			if (ABILITY_MANAGER_PTR->__int_array_C84[i]) {
-				if (!find_id_in_card_data(i).__allow_duplicates) {
-					continue;
-				}
+		for (int32_t i = 0; i < countof(AbilityManager::purchased_cards); ++i) {
+			if (
+				ABILITY_MANAGER_PTR->purchased_cards[i] &&
+				!find_id_in_card_data(i).allow_duplicates
+			) {
+				continue;
 			}
 			if (
-				find_id_in_card_data(i).__check_availability() == 1 &&
-				find_id_in_card_data(i).price_group >= search_type_low &&
-				find_id_in_card_data(i).price_group <= search_type_high &&
-				find_id_in_card_data(i).__weight != 0 &&
-				find_id_in_card_data(i).__weight != 6
+				find_id_in_card_data(i).check_availability() == IsAvailable && // 1
+				find_id_in_card_data(i).price_tier >= price_tier_low &&
+				find_id_in_card_data(i).price_tier <= price_tier_high &&
+				find_id_in_card_data(i).shop_weight != ALWAYS_IN_SHOP &&
+				find_id_in_card_data(i).shop_weight != NEVER_IN_SHOP
 			) {
 				for (int32_t j = 0; j < card_data_count; ++j) {
 					if (card_data[j]->id == i) {
@@ -33775,7 +33965,7 @@ public:
 					}
 				}
 				const CardData* card = &find_id_in_card_data(i);
-				int32_t weight = card->__weight;
+				int32_t weight = card->shop_weight;
 				for (int32_t j = 0; j < weight; ++j) {
 					weighted_array[weighted_array_size + j] = card;
 				}
@@ -33817,7 +34007,7 @@ public:
 
 		if (arg1) {
 			// Do these REP STOS memsets correspond to std::array = {}?
-			zero_array(this->__int_array_C84);
+			zero_array(this->purchased_cards);
 
 			ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
 			for (
@@ -34185,7 +34375,7 @@ ValidateFieldOffset32(0xC5C, AbilityManager, __int_C5C);
 ValidateFieldOffset32(0xC60, AbilityManager, __ability_data_loaded);
 ValidateFieldOffset32(0xC64, AbilityManager, __created_ability_data);
 ValidateFieldOffset32(0xC68, AbilityManager, __thread_C68);
-ValidateFieldOffset32(0xC84, AbilityManager, __int_array_C84);
+ValidateFieldOffset32(0xC84, AbilityManager, purchased_cards);
 ValidateStructSize32(0xD70, AbilityManager);
 #pragma endregion
 
@@ -34976,11 +35166,12 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
 // size: 0xE3C
 struct AbilityShop : ZUNTask {
 	// ZUNTask base; // 0x0
-	MenuSelect __menu_select_C; // 0xC
-	MenuSelect __menu_select_E4; // 0xE4
-	Timer __timer_1BC; // 0x1BC
-	Float3 __float3_1D0; // 0x1D0
-	unknown_fields(0x18); // 0x1DC
+	MenuSelect confirm_menu; // 0xC
+	MenuSelect card_choice; // 0xE4
+	Timer state_timer; // 0x1BC
+	Float3 position; // 0x1D0
+	Float3 __float3_1DC; // 0x1DC
+	unknown_fields(0xC); // 0x1E8
 	Timer __timer_1F4; // 0x1F4
 	Timer __timer_208; // 0x208
 	unknown_fields(0xC); // 0x21C
@@ -34989,9 +35180,9 @@ struct AbilityShop : ZUNTask {
 	AnmID __anm_id_array_62C[256]; // 0x62C
 	int32_t card_count; // 0xA2C
 	const CardData* card_array[256]; // 0xA30
-	unknown_fields(0x4); // 0xE30
+	int32_t __purchased_card_id; // 0xE30
 	BOOL __has_blank_card_already; // 0xE34
-	int __dword_E38; // 0xE38
+	int32_t primary_state; // 0xE38
 	// 0xE3C
 
 	inline void zero_contents() {
@@ -35023,18 +35214,20 @@ struct AbilityShop : ZUNTask {
 		ABILITY_SHOP_PTR = NULL;
 	}
 
+	// 0x416C80
+	dllexport gnu_noinline void thiscall change_primary_state(int32_t new_state) asm_symbol_rel(0x416C80) {
+		this->primary_state = new_state;
+		this->state_timer.reset();
+	}
+
 	// 0x417880
 	dllexport gnu_noinline void thiscall cleanup() asm_symbol_rel(0x417880);
 
 	// 0x417CC0
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x417CC0) {
-		// TODO
-	}
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x417CC0);
 
 	// 0x418990
-	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x418990) {
-		// TODO
-	}
+	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x418990);
 
 	// 0x418C20
 	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x418C20) {
@@ -35047,7 +35240,7 @@ struct AbilityShop : ZUNTask {
 	}
 
 	// 0x4171B0
-	dllexport gnu_noinline ZUNResult thiscall initialize(Float3* arg1) asm_symbol_rel(0x4171B0) {
+	dllexport gnu_noinline ZUNResult thiscall initialize(Float3* position) asm_symbol_rel(0x4171B0) {
 		UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
 		UpdateFuncRegistry::register_on_tick(update_func, TickPriority::AbilityShop); // 12
 		this->on_tick_func = update_func;
@@ -35057,68 +35250,79 @@ struct AbilityShop : ZUNTask {
 
 		this->enable_funcs_unsafe();
 
-		this->__timer_1BC.reset();
+		this->state_timer.reset();
 		this->__timer_1F4.reset();
 		this->__timer_208.reset();
 
-		this->__float3_1D0 = *arg1;
+		this->position = *position;
 
-		//this->__menu_select_C.__sub_416BA0(0);
-		this->__menu_select_C.enable_wrap = true;
+		this->confirm_menu.set_selection(0);
+		this->confirm_menu.enable_wrap = true;
 
 		int32_t& card_array_size = this->card_count;
 
-		const CardData* new_card_array[countof(AbilityManager::__int_array_C84)];
+		const CardData* new_card_array[countof(AbilityManager::purchased_cards)];
 		card_array_size = 0;
-		if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[0], 10, 15, new_card_array, 0)) {
+
+		// Add one expensive card
+		if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[0], ExpensiveTier1, ExpensiveTier5 + 1, new_card_array, 0)) {
 			++card_array_size;
 		}
-
+		// Add first mike bonus card
 		if (ABILITY_MANAGER_PTR->card_equipped_inline(MANEKI_CARD)) {
-			if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], 1, 15, new_card_array, card_array_size)) {
+			if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], CheapTier1, ExpensiveTier5 + 1, new_card_array, card_array_size)) {
 				++card_array_size;
 			}
 		}
-		if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], 7, 9, new_card_array, card_array_size)) {
+
+		// Add one pricey card
+		if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], PriceyTier1, PriceyTier3, new_card_array, card_array_size)) {
 			++card_array_size;
 		}
-
+		// Add second mike bonus card
 		if (ABILITY_MANAGER_PTR->card_equipped_inline(MANEKI_CARD)) {
-			if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], 1, 15, new_card_array, card_array_size)) {
+			if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], CheapTier1, ExpensiveTier5 + 1, new_card_array, card_array_size)) {
 				++card_array_size;
 			}
 		}
-		if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], 1, 6, new_card_array, card_array_size)) {
+
+		// Add one cheap or reasonable card
+		if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], CheapTier1, ReasonableTier3, new_card_array, card_array_size)) {
 			++card_array_size;
 		}
-
+		// Add third mike bonus card
 		if (ABILITY_MANAGER_PTR->card_equipped_inline(MANEKI_CARD)) {
-			if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], 1, 15, new_card_array, card_array_size)) {
+			if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], CheapTier1, ExpensiveTier5 + 1, new_card_array, card_array_size)) {
 				++card_array_size;
 			}
 		}
-		for (int32_t i = 0; i < countof(AbilityManager::__int_array_C84); ++i) {
-			if (ABILITY_MANAGER_PTR->__int_array_C84[i]) {
-				if (!find_id_in_card_data(i).__allow_duplicates) {
-					continue;
-				}
+
+		// Add the guaranteed cards
+		for (int32_t i = 0; i < countof(AbilityManager::purchased_cards); ++i) {
+			if (
+				ABILITY_MANAGER_PTR->purchased_cards[i] &&
+				!find_id_in_card_data(i).allow_duplicates
+			) {
+				continue;
 			}
 			if (
-				find_id_in_card_data(i).__check_availability() == 1 &&
-				find_id_in_card_data(i).__weight == 0
+				find_id_in_card_data(i).check_availability() == IsAvailable && // 1
+				find_id_in_card_data(i).shop_weight == ALWAYS_IN_SHOP
 			) {
 				new_card_array[card_array_size++] = &find_id_in_card_data(i);
 			}
 		}
 
-		for (int32_t i = 0; i < countof(AbilityManager::__int_array_C84); ++i) {
-			if (ABILITY_MANAGER_PTR->__int_array_C84[i]) {
-				if (!find_id_in_card_data(i).__allow_duplicates) {
-					continue;
-				}
+		// Add stage reward cards
+		for (int32_t i = 0; i < countof(AbilityManager::purchased_cards); ++i) {
+			if (
+				ABILITY_MANAGER_PTR->purchased_cards[i] &&
+				!find_id_in_card_data(i).allow_duplicates
+			) {
+				continue;
 			}
 			if (
-				find_id_in_card_data(i).__check_availability() == 2
+				find_id_in_card_data(i).check_availability() == IsStageReward // 2
 			) {
 				new_card_array[card_array_size++] = &find_id_in_card_data(i);
 			}
@@ -35141,9 +35345,9 @@ struct AbilityShop : ZUNTask {
 		}
 
 		this->card_count = total_cards;
-		this->__menu_select_E4.menu_length = total_cards;
-		//this->__menu_select_E4.__sub_416BA0(0);
-		this->__menu_select_E4.enable_wrap = false;
+		this->card_choice.menu_length = total_cards;
+		this->card_choice.set_selection(0);
+		this->card_choice.enable_wrap = false;
 
 		if (!ABILITY_MANAGER_PTR->card_equipped(BLANK_CARD)) {
 			this->__has_blank_card_already = FALSE;
@@ -35170,10 +35374,11 @@ struct AbilityShop : ZUNTask {
 ValidateFieldOffset32(0x0, AbilityShop, task_flags);
 ValidateFieldOffset32(0x4, AbilityShop, on_tick_func);
 ValidateFieldOffset32(0x8, AbilityShop, on_draw_func);
-ValidateFieldOffset32(0xC, AbilityShop, __menu_select_C);
-ValidateFieldOffset32(0xE4, AbilityShop, __menu_select_E4);
-ValidateFieldOffset32(0x1BC, AbilityShop, __timer_1BC);
-ValidateFieldOffset32(0x1D0, AbilityShop, __float3_1D0);
+ValidateFieldOffset32(0xC, AbilityShop, confirm_menu);
+ValidateFieldOffset32(0xE4, AbilityShop, card_choice);
+ValidateFieldOffset32(0x1BC, AbilityShop, state_timer);
+ValidateFieldOffset32(0x1D0, AbilityShop, position);
+ValidateFieldOffset32(0x1DC, AbilityShop, __float3_1DC);
 ValidateFieldOffset32(0x1F4, AbilityShop, __timer_1F4);
 ValidateFieldOffset32(0x208, AbilityShop, __timer_208);
 ValidateFieldOffset32(0x228, AbilityShop, __anm_id_228);
@@ -35181,8 +35386,9 @@ ValidateFieldOffset32(0x22C, AbilityShop, __anm_id_array_22C);
 ValidateFieldOffset32(0x62C, AbilityShop, __anm_id_array_62C);
 ValidateFieldOffset32(0xA2C, AbilityShop, card_count);
 ValidateFieldOffset32(0xA30, AbilityShop, card_array);
+ValidateFieldOffset32(0xE30, AbilityShop, __purchased_card_id);
 ValidateFieldOffset32(0xE34, AbilityShop, __has_blank_card_already);
-ValidateFieldOffset32(0xE38, AbilityShop, __dword_E38);
+ValidateFieldOffset32(0xE38, AbilityShop, primary_state);
 ValidateStructSize32(0xE3C, AbilityShop);
 #pragma endregion
 
@@ -49920,14 +50126,14 @@ struct PauseMenu : ZUNTask {
 					}
 					if (GAME_MANAGER.globals.continues > 0) {
 						this->__menu_select_34.disable_selection(2);
-						this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 7);
+						this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
 						this->__vm_id_1E4.__find_child_id_with_script(121).interrupt_tree(5);
 						this->__vm_id_1E4.__find_child_id_with_script(128).interrupt_tree(5);
 						this->__vm_id_1E4.__find_child_id_with_script(141).interrupt_tree(5);
 					}
 					this->__menu_select_34.enable_wrap = true;
 					this->__menu_select_34.set_selection(0);
-					this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 7);
+					this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
 					this->__dword_204 = 0;
 				}
 				break;
@@ -49942,7 +50148,7 @@ struct PauseMenu : ZUNTask {
 					this->__menu_select_34.disable_selection(5);
 					this->__menu_select_34.enable_wrap = true;
 					this->__menu_select_34.set_selection(1);
-					this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 7);
+					this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
 					this->__dword_204 = 1;
 				}
 				break;
@@ -50022,7 +50228,7 @@ struct PauseMenu : ZUNTask {
 					this->__menu_select_34.move_selection(1);
 				}
 				if (this->__menu_select_34.current_selection != this->__menu_select_34.previous_selection) {
-					this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 7);
+					this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
 					SOUND_MANAGER.play_sound(10);
 				}
 				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
@@ -50123,7 +50329,7 @@ struct PauseMenu : ZUNTask {
 					}
 					if (this->state_timer >= 30) {
 						if (this->state_timer == 30) {
-							this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 15);
+							this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 15);
 						}
 						this->__menu_select_34.previous_selection = this->__menu_select_34.current_selection;
 						if (check_hardware_inputs_repeating(BUTTON_UP)) {
@@ -50133,7 +50339,7 @@ struct PauseMenu : ZUNTask {
 							this->__menu_select_34.move_selection(1);
 						}
 						if (this->__menu_select_34.current_selection != this->__menu_select_34.previous_selection) {
-							this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 15);
+							this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 15);
 							SOUND_MANAGER.play_sound(10);
 						}
 						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
@@ -50150,13 +50356,14 @@ struct PauseMenu : ZUNTask {
 									break;
 							}
 						}
-						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL | BUTTON_PAUSE)) {
+						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
 							SOUND_MANAGER.play_sound(9);
 							switch (this->__menu_select_34.current_selection) {
-								case 0:
+								case 0: {
 									this->__menu_select_34.set_selection(1);
-									this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 15);
+									this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 15);
 									break;
+								}
 								case 1:
 									this->__vm_id_1E4.__find_child_id_with_script(147).interrupt_tree(6);
 									this->change_secondary_state(8);
@@ -50183,14 +50390,15 @@ struct PauseMenu : ZUNTask {
 							this->__menu_select_34.pop_state();
 							this->change_secondary_state(18);
 							break;
-						case 1:
+						case 1: {
 							this->__menu_select_34.pop_state();
 							if (GAME_MANAGER.globals.continues > 0) {
 								this->__menu_select_34.disable_selection(2);
 							}
-							this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 7);
+							this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
 							this->change_secondary_state(6);
 							break;
+						}
 					}
 				}
 				break;
@@ -50321,11 +50529,11 @@ struct PauseMenu : ZUNTask {
 									}
 								}
 								this->__vm_id_1E4.interrupt_and_run_tree(3);
-								this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 7);
+								this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
 							}
 						}
 					}
-					else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL | BUTTON_PAUSE)) {
+					else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
 						SOUND_MANAGER.play_sound(9);
 						int32_t index = this->__name_length;
 						if (!index) {
@@ -50377,12 +50585,12 @@ struct PauseMenu : ZUNTask {
 						this->__name_length = i;
 						SOUND_MANAGER.play_sound(7);
 					}
-					else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL | BUTTON_PAUSE)) {
+					else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
 						this->__unknown_field_pm_A = 0;
 						this->__menu_select_34.pop_state();
 						this->__menu_select_34.menu_length = 7;
 						this->__menu_select_34.enable_wrap = true;
-						this->__vm_id_1E4.interrupt_tree((int16_t)this->__menu_select_34.current_selection + 7);
+						this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
 						for (size_t i = 0; i != countof(this->__replay_manager_array_20C); ++i) {
 							SAFE_DELETE_NO_EH(this->__replay_manager_array_20C[i]);
 						}
@@ -50487,8 +50695,7 @@ struct PauseMenu : ZUNTask {
 									SOUND_MANAGER.__restart_all_playing_sfx();
 									SOUND_MANAGER.queue_sound_command(SndUnpause, 0, "UnPause");
 									if (AbilityShop* ability_shop = ABILITY_SHOP_PTR) {
-										ability_shop->__dword_E38 = 0;
-										ability_shop->__timer_1BC.reset();
+										clang_forceinline ability_shop->change_primary_state(0);
 									}
 									break;
 								case 2:
@@ -50637,6 +50844,371 @@ dllexport gnu_noinline void __pause_menu_game_over_screen() {
 	pause_menu->__int_208 = WINDOW_DATA.__int_20D0;
 	WINDOW_DATA.__int_20D0 = 0;
 	pause_menu->__unknown_flag_pm_B = false;
+}
+
+// 0x417CC0
+dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
+
+#if TESTING_FEATURES
+	if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_RESTART)) {
+		goto delete_break;
+	}
+#endif
+
+	int32_t achievement_state = ACHIEVEMENT_MODE_STATE;
+	int32_t state_time = this->state_timer;
+	if (
+		state_time != 30 ||
+		(
+			(!REPLAY_MANAGER_PTR || GAME_THREAD_PTR->replay_mode == ReplayRecording) &&
+			GAME_MANAGER.game_type == NormalGame &&
+			achievement_state < 0
+		)
+	) {
+		PauseMenu* pause_menu = PAUSE_MENU_PTR;
+		if (
+			!pause_menu || pause_menu->primary_state == 0
+		) {
+			AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
+			if (ability_manager->__ability_data_loaded) {
+				switch (this->primary_state) {
+					case 0:
+						this->change_primary_state(1);
+						if (
+							GAME_MANAGER.game_type == NormalGame &&
+							achievement_state < 0
+						) {
+							if (!this->__has_blank_card_already) {
+								AnmID id = ability_manager->abmenu_anm->instantiate_vm_to_ui_list_back(13, &this->position);
+								this->__anm_id_228 = id;
+								id.interrupt_tree(27);
+							} else {
+								this->state_timer.set(60);
+								this->__anm_id_228 = ability_manager->abmenu_anm->instantiate_vm_to_ui_list_back(18, &this->position);
+							}
+						}
+						SOUND_MANAGER.play_sound(15);
+					case 1:
+						if (this->state_timer > 60) {
+							this->change_primary_state(this->__has_blank_card_already ? 3 : 2);
+							Float3 position = this->position + Float3(0.0f, 280.0f, 0.0f);
+							int32_t card_count = this->card_count;
+							for (int32_t i = 0; i < card_count; (card_count = this->card_count), ++i) {
+								this->__anm_id_array_62C[i].mark_tree_for_delete();
+								if (!SCOREFILE_MANAGER_PTR->primary_file.__sectionA.__unlocked_cards_array[this->card_array[i]->id]) {
+									this->__anm_id_array_62C[i] = ABILITY_MANAGER_PTR->abmenu_anm->instantiate_vm_to_world_list_back(14, &position);
+								}
+								this->__anm_id_array_22C[i].mark_tree_for_delete();
+								AnmID card_vm_id = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&position, 13, this->card_array[i]);
+								this->__anm_id_array_22C[i] = card_vm_id;
+
+								int32_t price;
+								clang_forceinline price = ABILITY_MANAGER_PTR->get_price_for_tier(this->card_array[i]->price_tier);
+								if (GAME_MANAGER.globals.current_money < price) {
+									card_vm_id.interrupt_and_run_tree(3);
+								}
+							}
+							int32_t selection = this->card_choice.current_selection;
+							if (selection + 1 < card_count) {
+								this->__anm_id_array_22C[selection + 1].interrupt_tree(21);
+								selection = this->card_choice.current_selection;
+							}
+							this->__anm_id_array_22C[selection].interrupt_tree(20);
+							selection = this->card_choice.current_selection;
+							if (selection > 0) {
+								this->__anm_id_array_22C[selection - 1].interrupt_tree(19);
+							}
+							if (!this->__has_blank_card_already) {
+								this->__float3_1DC = this->position;
+								this->__float3_1DC.z += 140.0f;
+								const CardData* card_data = this->card_array[this->card_choice.current_selection];
+								// TODO: text
+								// ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->__float3_1DC, 1);
+								ABILITY_TEXT_DATA_PTR->__change_vm_63DC_sprite(card_data->__int_C);
+								// TODO: text
+								// ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->__float3_1DC, card_data->id, 1, 1);
+							}
+						}
+						break;
+					case 2:
+						this->card_choice.previous_selection = this->card_choice.current_selection;
+						if (check_hardware_inputs_repeating(BUTTON_RIGHT)) {
+							this->card_choice.move_selection(1);
+							int32_t selection = this->card_choice.current_selection;
+							if (selection != this->card_choice.previous_selection) {
+								if (selection + 1 < this->card_count) {
+									this->__anm_id_array_22C[selection + 1].interrupt_tree(17);
+									selection = this->card_choice.current_selection;
+								}
+								this->__anm_id_array_22C[selection].interrupt_tree(15);
+								selection = this->card_choice.current_selection;
+								if (selection > 0) {
+									this->__anm_id_array_22C[selection - 1].interrupt_tree(11);
+									selection = this->card_choice.current_selection;
+								}
+								if (selection - 2 >= 0) {
+									this->__anm_id_array_22C[selection - 2].interrupt_tree(13);
+								}
+							}
+						}
+						if (check_hardware_inputs_repeating(BUTTON_LEFT)) {
+							this->card_choice.move_selection(-1);
+							int32_t selection = this->card_choice.current_selection;
+							if (selection != this->card_choice.previous_selection) {
+								if (selection > 0) {
+									this->__anm_id_array_22C[selection - 1].interrupt_tree(18);
+									selection = this->card_choice.current_selection;
+								}
+								this->__anm_id_array_22C[selection].interrupt_tree(16);
+								selection = this->card_choice.current_selection;
+								int32_t card_count = this->card_count;
+								if (selection + 1 < card_count) {
+									this->__anm_id_array_22C[selection + 1].interrupt_tree(12);
+									selection = this->card_choice.current_selection;
+									card_count = this->card_count;
+								}
+								if (selection + 2 < card_count) {
+									this->__anm_id_array_22C[selection + 2].interrupt_tree(14);
+								}
+							}
+						}
+						if (this->card_choice.previous_selection != this->card_choice.current_selection) {
+							SOUND_MANAGER.play_sound(10);
+							const CardData* card_data = this->card_array[this->card_choice.current_selection];
+							ABILITY_TEXT_DATA_PTR->__change_vm_63DC_sprite(card_data->__int_C);
+							// TODO: text
+							// ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->__float3_1DC, card_data->id, 1, 1);
+							ABILITY_TEXT_DATA_PTR->__sub_416940(card_data->id, true);
+						}
+						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+							int32_t price = ABILITY_MANAGER_PTR->get_price_for_tier(this->card_array[this->card_choice.current_selection]->price_tier);
+							int32_t current_money = GAME_MANAGER.globals.current_money;
+							if (current_money >= price) {
+								SOUND_MANAGER.play_sound(7);
+								this->confirm_menu.menu_length = 2;
+								this->confirm_menu.set_selection(0);
+								this->confirm_menu.enable_wrap = true;
+								this->__anm_id_228.interrupt_tree_word_offset(this->confirm_menu.current_selection, 7);
+								// even more weird codegen here...
+								this->change_primary_state(6);
+								ABILITY_TEXT_DATA_PTR->__hide_anms();
+							}
+							else {
+								int32_t money_plus_extra_power = GAME_MANAGER.globals.current_power - DEFAULT_POWER_PER_LEVEL;
+								money_plus_extra_power += current_money;
+								if (money_plus_extra_power >= price) {
+									SOUND_MANAGER.play_sound(16);
+									this->confirm_menu.menu_length = 2;
+									this->confirm_menu.set_selection(0);
+									this->confirm_menu.enable_wrap = true;
+									this->__anm_id_228.interrupt_tree_word_offset(this->confirm_menu.current_selection, 17);
+									// even more weird codegen here...
+									this->change_primary_state(7);
+									ABILITY_TEXT_DATA_PTR->__hide_anms();
+								}
+								else {
+									SOUND_MANAGER.play_sound(16);
+									this->__anm_id_228.interrupt_tree(37);
+									// even more weird codegen here...
+									this->change_primary_state(8);
+									ABILITY_TEXT_DATA_PTR->__hide_anms();
+								}
+							}
+						}
+						break;
+					case 6: case 7:
+						this->confirm_menu.previous_selection = this->confirm_menu.current_selection;
+						if (check_hardware_inputs_repeating(BUTTON_UP)) {
+							this->confirm_menu.move_selection(-1);
+						}
+						if (check_hardware_inputs_repeating(BUTTON_DOWN)) {
+							this->confirm_menu.move_selection(1);
+						}
+						if (this->card_choice.previous_selection != this->card_choice.current_selection) {
+							SOUND_MANAGER.play_sound(10);
+							this->__anm_id_228.interrupt_tree_word_offset(this->confirm_menu.current_selection, this->primary_state == 7 ? 17 : 7);
+						}
+						if (INPUT_P1.check_inputs_no_repeat(BUTTON_CANCEL)) {
+					cancel_buying:
+							SOUND_MANAGER.play_sound(9);
+							this->change_primary_state(2);
+							this->__anm_id_228.interrupt_tree(27);
+							ABILITY_TEXT_DATA_PTR->__sub_416C10(this->card_array[this->card_choice.current_selection]->id);
+							ABILITY_TEXT_DATA_PTR->__sub_416940(this->card_array[this->card_choice.current_selection]->id, true);
+						}
+						else if (INPUT_P1.check_inputs_no_repeat(BUTTON_SELECT)) {
+							switch (this->confirm_menu.current_selection) {
+								case 1:
+									goto cancel_buying;
+								case 0: {
+									SOUND_MANAGER.play_sound(7);
+									this->change_primary_state(5);
+									this->__anm_id_228.__find_child_vm_with_script(6)->interrupt(6);
+									this->__purchased_card_id = this->card_array[this->card_choice.current_selection]->id;
+									ABILITY_MANAGER_PTR->allocate_new_card(this->card_array[this->card_choice.current_selection]->id, 2);
+									__unlock_card(this->card_array[this->card_choice.current_selection]->id, false);
+
+									int32_t price = ABILITY_MANAGER_PTR->get_price_for_tier(this->card_array[this->card_choice.current_selection]->price_tier);
+									int32_t current_money = GAME_MANAGER.globals.current_money;
+									if (current_money >= price) {
+										GAME_MANAGER.globals.current_money = current_money - price;
+									}
+									else {
+										BOOL level_down = GAME_MANAGER.globals.subtract_power(price - current_money);
+										if (level_down) {
+											if (Player* player = PLAYER_PTR) {
+												player->data.__update_option_power_levels();
+											}
+										}
+										GAME_MANAGER.globals.current_money = 0;
+									}
+								}
+							}
+						}
+						break;
+					case 8:
+						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT | BUTTON_CANCEL | BUTTON_LEFT | BUTTON_RIGHT)) {
+							ABILITY_TEXT_DATA_PTR->__sub_416C10(this->card_array[this->card_choice.current_selection]->id);
+							ABILITY_TEXT_DATA_PTR->__sub_416940(this->card_array[this->card_choice.current_selection]->id, true);
+							this->__anm_id_228.interrupt_tree(27);
+							SOUND_MANAGER.play_sound(9);
+							this->change_primary_state(2);
+						}
+						break;
+					case 3:
+						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT | BUTTON_BOMB)) { // not BUTTON_CANCEL
+							SOUND_MANAGER.play_sound(7);
+							this->__anm_id_228.interrupt_tree(7);
+							this->change_primary_state(4);
+							ABILITY_MANAGER_PTR->__sub_407DA0(false);
+							for (int32_t i = 0; i < this->card_count; ++i) {
+								const CardData* card_data = this->card_array[i];
+								int32_t card_id = card_data->id;
+								if (card_data->allow_duplicates) { // ???
+									ABILITY_MANAGER_PTR->allocate_new_card(card_id, 2);
+									__unlock_card(card_id, false);
+								}
+							}
+							GAME_MANAGER.globals.current_money = 0;
+						}
+						break;
+					case 4:
+						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT | BUTTON_BOMB)) { // not BUTTON_CANCEL
+							goto delete_break;
+						}
+						break;
+					case 5:
+						if (state_time > 30) {
+							goto delete_break;
+						}
+						break;
+					case 9:
+						if (state_time > 10) {
+							goto delete_break;
+						}
+						break;
+				}
+			}
+			Float3 positionA = { -900.0f, 900.0f, 0.0f };
+			for (int32_t i = 0; i < this->card_count; ++i) {
+				AnmVM* vm = this->__anm_id_array_62C[i].get_vm_ptr();
+				if (vm) {
+					Float3 positionB;
+					this->__anm_id_array_22C[i].get_vm_ptr_safe()->get_render_position(&positionB);
+					vm->controller.position = (positionB + (vm->data.position * this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.x - vm->data.position)) * (2.0f / WINDOW_DATA.__game_scale);
+					AnmVM* vmB = this->__anm_id_array_22C[i].get_vm_ptr_safe();
+					vmB->set_z_rotation(vmB->data.rotation.z - (PI_f / 9.0f));
+					vm->set_scale(this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.x, this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.y);
+
+					if (
+						i < this->card_choice.current_selection - 1 ||
+						i > this->card_choice.current_selection + 1
+					) {
+						vm->controller.position = positionB;
+					}
+				}
+			}
+			++this->state_timer;
+			if (this->__timer_1F4 > 0) {
+				--this->__timer_1F4;
+			}
+			if (this->__timer_208 > 0) {
+				--this->__timer_208;
+			}
+			return UpdateFuncNext;
+		}
+		else {
+			switch (this->primary_state) {
+				default:
+					return UpdateFuncNext;
+				case 4: case 5: case 9:
+					break;
+			}
+		}
+	}
+delete_break:
+	ABILITY_TEXT_DATA_PTR->delete_vms();
+	this->cleanup();
+	return UpdateFuncNext;
+}
+
+// 0x418990
+dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_draw() {
+	PauseMenu* pause_menu = PAUSE_MENU_PTR;
+	if (
+		!pause_menu || pause_menu->primary_state == 0
+	) {
+		switch (this->primary_state) {
+			case 2: case 6: case 7: case 8: {
+				Float3 position;
+
+				AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
+
+				position = (this->position + Float3(0.0f, 86.0f, 0.0f)) * 0.5f;
+
+				ascii_manager->font_id = 6;
+				ascii_manager->__horizontal_positioning_mode = 0;
+				ascii_manager->__vertical_positioning_mode = 0;
+				ascii_manager->color = COLOR(255, 208, 208, 208);
+				ascii_manager->color2 = COLOR(255, 0, 0, 0);
+
+				ascii_manager->printf(&position, "Money %d  (+%d)", GAME_MANAGER.globals.current_money, GAME_MANAGER.globals.current_power - DEFAULT_POWER_PER_LEVEL);
+
+				ascii_manager = ASCII_MANAGER_PTR;
+				ascii_manager->font_id = 0;
+				ascii_manager->__horizontal_positioning_mode = 1;
+				ascii_manager->color = COLOR(255, 255, 255, 255);
+				ascii_manager->color2 = COLOR(255, 0, 0, 0);
+				ascii_manager->__vertical_positioning_mode = 1;
+
+				position = (this->position + Float3(0.0f, 412.0f, 0.0f)) * 0.5f;
+
+				ascii_manager->font_id = 6;
+				ascii_manager->__horizontal_positioning_mode = 0;
+				ascii_manager->__vertical_positioning_mode = 0;
+
+				int32_t price_tier = this->card_array[this->card_choice.current_selection]->price_tier;
+
+				int32_t price;
+				clang_forceinline price = ABILITY_MANAGER_PTR->get_price_for_tier(price_tier);
+
+				ascii_manager->color = GAME_MANAGER.globals.current_money >= price ? CARD_PRICE_COLORS[price_tier] : COLOR(255, 96, 96, 96);
+				ascii_manager->color2 = COLOR(255, 0, 0, 0);
+
+				clang_forceinline price = ABILITY_MANAGER_PTR->get_price_for_tier(this->card_array[this->card_choice.current_selection]->price_tier);
+
+				ascii_manager->printf(&position, "Cost %d", price);
+
+				ascii_manager = ASCII_MANAGER_PTR;
+				ascii_manager->color = COLOR(255, 255, 255, 255);
+				ascii_manager->color2 = COLOR(255, 0, 0, 0);
+				ascii_manager->font_id = 0;
+				ascii_manager->__horizontal_positioning_mode = 1;
+				ascii_manager->__vertical_positioning_mode = 1;
+			}
+		}
+	}
+	return UpdateFuncNext;
 }
 
 // 0x43D720
@@ -54090,8 +54662,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 #endif
 
 	if (this->open_ability_shop) {
-		Float3 A = { 448.0f, 32.0f, 0.0f };
-		AbilityShop::allocate(&A);
+		Float3 position = { 448.0f, 32.0f, 0.0f };
+		AbilityShop::allocate(&position);
 		this->open_ability_shop = false;
 	}
 
