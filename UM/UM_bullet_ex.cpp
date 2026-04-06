@@ -3619,7 +3619,7 @@ struct Config {
 	union {
 		int32_t flags; // 0x50
 		struct {
-			int32_t __unknown_flag_B : 1; // 1
+			int32_t __unknown_flag_co_B : 1; // 1
 			int32_t reference_rasterizer : 1; // 2
 			int32_t disable_fog : 1; // 3
 			int32_t disable_direct_input : 1; // 4
@@ -3627,8 +3627,8 @@ struct Config {
 			int32_t disable_vsync : 1; // 6
 			int32_t __disable_locale_detection : 1; // 7
 			int32_t : 1; // 8
-			int32_t __unknown_flag_A : 1; // 9
-			int32_t __unknown_flag_C : 1; // 10
+			int32_t __unknown_flag_co_A : 1; // 9
+			int32_t __shot_slow : 1; // 10
 		};
 	};
 	int32_t window_x; // 0x54
@@ -3642,7 +3642,7 @@ struct Config {
 	// 0x444DD0
 	dllexport gnu_noinline void initialize() asm_symbol_rel(0x444DD0) {
 		this->zero_contents();
-		this->__unknown_flag_A = true;
+		this->__unknown_flag_co_A = true;
 		this->__dword_0 = 0x180002;
 		this->deadzone_x = 0x258;
 		this->deadzone_y = 0x258;
@@ -4665,31 +4665,31 @@ struct Supervisor {
 	int32_t gamemode_switch; // 0x7F8
 	int32_t gamemode_previous; // 0x7FC
 	int __dword_800; // 0x800
-	int32_t __int_804; // 0x804
+	BOOL __bool_804; // 0x804
 	int __int_808; // 0x808
 	unknown_fields(0xC); // 0x80C
 	int __int_818; // 0x818
 	unknown_fields(0x4); // 0x81C
 	BOOL disable_vsync; // 0x820
-	int __dword_824; // 0x824
+	int __int_824; // 0x824
 	int __dword_828; // 0x828
 	AnmLoaded* text_anm; // 0x82C
 	unknown_fields(0x4); // 0x830
 	union {
 		uint32_t flags; // 0x834
 		struct {
-			uint32_t __unknown_flag_D : 1; // 1
-			uint32_t __unknown_flag_C : 1; // 2
-			uint32_t __unknown_flag_E : 1; // 3
+			uint32_t __unknown_flag_su_D : 1; // 1
+			uint32_t __unknown_flag_su_C : 1; // 2
+			uint32_t __unknown_flag_su_E : 1; // 3
 			uint32_t : 1; // 4
-			uint32_t __unknown_flag_F : 1; // 5
+			uint32_t __unknown_flag_su_F : 1; // 5
 			uint32_t : 1; // 6
-			uint32_t __unknown_flag_A : 1; // 7
-			uint32_t __unknown_bitfield_A : 2; // 8-9
+			uint32_t __unknown_flag_su_A : 1; // 7
+			uint32_t __unknown_bitfield_su_A : 2; // 8-9
 			uint32_t : 2; // 10-11
-			uint32_t __unknown_flag_G : 1; // 12
+			uint32_t __unknown_flag_su_G : 1; // 12
 			uint32_t : 1; // 13
-			uint32_t __unknown_flag_B : 1; // 14
+			uint32_t __unknown_flag_su_B : 1; // 14
 		};
 	};
 	uint32_t initial_rng_seed; // 0x838
@@ -4885,11 +4885,11 @@ ValidateFieldOffset32(0x7F4, Supervisor, gamemode_current);
 ValidateFieldOffset32(0x7F8, Supervisor, gamemode_switch);
 ValidateFieldOffset32(0x7FC, Supervisor, gamemode_previous);
 ValidateFieldOffset32(0x800, Supervisor, __dword_800);
-ValidateFieldOffset32(0x804, Supervisor, __int_804);
+ValidateFieldOffset32(0x804, Supervisor, __bool_804);
 ValidateFieldOffset32(0x808, Supervisor, __int_808);
 ValidateFieldOffset32(0x818, Supervisor, __int_818);
 ValidateFieldOffset32(0x820, Supervisor, disable_vsync);
-ValidateFieldOffset32(0x824, Supervisor, __dword_824);
+ValidateFieldOffset32(0x824, Supervisor, __int_824);
 ValidateFieldOffset32(0x828, Supervisor, __dword_828);
 ValidateFieldOffset32(0x82C, Supervisor, text_anm);
 ValidateFieldOffset32(0x834, Supervisor, flags);
@@ -7779,9 +7779,9 @@ struct Globals {
 		uint32_t flags; // 0xF8
 		struct {
 			uint32_t : 4; // 1-4
-			uint32_t __unknown_field_A : 2; // 5-6
+			uint32_t __unknown_field_gl_A : 2; // 5-6
 			uint32_t : 5; // 7-11
-			uint32_t __unknown_flag_A : 1; // 12
+			uint32_t __unknown_flag_gl_A : 1; // 12
 		};
 	};
 	// 0xFC
@@ -7873,8 +7873,8 @@ struct Globals {
 	}
 
 	// 0x42A970
-	dllexport gnu_noinline void thiscall __set_unknown_flag_A(int32_t value) asm_symbol_rel(0x42A970) {
-		this->__unknown_flag_A = value;
+	dllexport gnu_noinline void thiscall __set_unknown_flag_gl_A(int32_t value) asm_symbol_rel(0x42A970) {
+		this->__unknown_flag_gl_A = value;
 	}
 
 	// 0x439EA0
@@ -8062,13 +8062,13 @@ struct GameManager {
 	union {
 		uint32_t flags; // 0x8
 		struct {
-			uint32_t __unknown_flag_A : 1; // 1
-			uint32_t __unknown_flag_B : 1; // 2
-			uint32_t __unknown_flag_C : 1; // 3
-			uint32_t __unknown_flag_D : 1; // 4
-			uint32_t __game_type : 2; // 5-6
+			uint32_t __unknown_flag_gm_A : 1; // 1
+			uint32_t __stage_transition_related : 1; // 2
+			uint32_t __unknown_flag_gm_C : 1; // 3
+			uint32_t __unknown_flag_gm_D : 1; // 4
+			uint32_t game_type : 2; // 5-6
 			uint32_t __is_demo : 1; // 7
-			uint32_t __unknown_flag_F : 1; // 8
+			uint32_t __unknown_flag_gm_F : 1; // 8
 		};
 	};
 	int32_t practice_mode_life_override; // 0xC
@@ -8095,7 +8095,7 @@ struct GameManager {
 
 	// 0x42A990
 	dllexport bool thiscall __is_spell_practice() asm_symbol_rel(0x42A990) {
-		return this->__game_type == SpellPractice;
+		return this->game_type == SpellPractice;
 	}
 
 	// 0x42AA20
@@ -8104,11 +8104,11 @@ struct GameManager {
 	}
 
 	// 0x4630B0
-	dllexport gnu_noinline void __set_game_type(int32_t value) asm_symbol_rel(0x4630B0) {
-		if (this->__game_type != SpellPractice) {
+	dllexport gnu_noinline void set_game_type(int32_t value) asm_symbol_rel(0x4630B0) {
+		if (this->game_type != SpellPractice) {
 			this->globals.spell_practice_id = -1;
 		}
-		this->__game_type = value;
+		this->game_type = value;
 	}
 
 	inline void add_to_score(uint32_t value) {
@@ -8166,8 +8166,8 @@ struct WindowData {
 	int __dword_8; // 0x8
 	HINSTANCE current_instance; // 0xC
 	BOOL window_active; // 0x10
-	int __dword_14; // 0x14
-	int __dword_18; // 0x18
+	BOOL __bool_14; // 0x14
+	int __int_18; // 0x18
 	int8_t __sbyte_1C; // 0x1C
 	probably_padding_bytes(0x3); // 0x1D
 	LARGE_INTEGER performance_counter_frequency; // 0x20
@@ -8182,11 +8182,11 @@ struct WindowData {
 	union {
 		uint32_t flags; // 0x2040
 		struct {
-			uint32_t __unknown_flag_A : 1; // 1
-			uint32_t __unknown_flag_B : 1; // 2
+			uint32_t __unknown_flag_wd_A : 1; // 1
+			uint32_t __unknown_flag_wd_B : 1; // 2
 			uint32_t config_resolution : 5; // 3-7
 			uint32_t __enable_vsync : 1; // 8
-			uint32_t __unknown_bitfield_B : 2; // 9-10
+			uint32_t __unknown_bitfield_wd_B : 2; // 9-10
 		};
 	};
 	uint32_t __counter_2044; // 0x2044
@@ -8260,8 +8260,8 @@ ValidateFieldOffset32(0x4, WindowData, resolution_dialogue);
 ValidateFieldOffset32(0x8, WindowData, __dword_8);
 ValidateFieldOffset32(0xC, WindowData, current_instance);
 ValidateFieldOffset32(0x10, WindowData, window_active);
-ValidateFieldOffset32(0x14, WindowData, __dword_14);
-ValidateFieldOffset32(0x18, WindowData, __dword_18);
+ValidateFieldOffset32(0x14, WindowData, __bool_14);
+ValidateFieldOffset32(0x18, WindowData, __int_18);
 ValidateFieldOffset32(0x1C, WindowData, __sbyte_1C);
 ValidateFieldOffset32(0x20, WindowData, performance_counter_frequency);
 ValidateFieldOffset32(0x28, WindowData, startup_qpc_value);
@@ -8433,7 +8433,9 @@ extern "C" {
 
 // 0x4C53C0
 static CardData CARD_DATA_TABLE[INTERNAL_CARD_COUNT] = {
+#if !__INTELLISENSE__
 #include "card_table.h"
+#endif
 };
 
 template <typename L>
@@ -10615,7 +10617,7 @@ struct EclContext {
 	union {
 		uint32_t flags; // 0x1204
 		struct {
-			uint32_t __unknown_flag_A : 1;
+			uint32_t __unknown_flag_ec_A : 1;
 		};
 	};
 	// 0x1208
@@ -11738,18 +11740,18 @@ struct EnemyData {
 			uint32_t delete_as_bullet : 1; // 12
 			uint32_t rectangular_hitbox : 1; // 13
 			uint32_t slowdown_immune : 1; // 14
-			uint32_t __unknown_flag_E : 1; // 15
-			uint32_t __unknown_flag_F : 1; // 16
+			uint32_t __unknown_flag_ed_E : 1; // 15
+			uint32_t __unknown_flag_ed_F : 1; // 16
 			uint32_t __has_been_onscreen : 1; // 17
 			uint32_t move_bounds_enable : 1; // 18
-			uint32_t __unknown_flag_A : 1; // 19
+			uint32_t __is_being_ticked : 1; // 19
 			uint32_t mirrored : 1; // 20
-			uint32_t __unknown_flag_I : 1; // 21
+			uint32_t __enable_anm_poses : 1; // 21
 			uint32_t __damaged_this_frame : 1; // 22
 			uint32_t __delete_related : 1; // 23 like is_boss, but skips something in the GUI code
 			uint32_t is_boss : 1; // 24
-			uint32_t __unknown_flag_L : 1; // 25
-			uint32_t __unknown_flag_B : 1; // 26
+			uint32_t __unknown_flag_ed_L : 1; // 25
+			uint32_t marked_for_delete : 1; // 26
 			uint32_t __basic_anm_update : 1; // 27
 			uint32_t homing_disable : 1; // 28
 			uint32_t bomb_shield : 1; // 29
@@ -11763,7 +11765,7 @@ struct EnemyData {
 		struct {
 			uint32_t __anm_slowdown_immune : 1; // 1
 			uint32_t : 1; // 2
-			uint32_t __unknown_flag_P : 1; // 3
+			uint32_t __unknown_flag_ed_P : 1; // 3
 #if INCLUDE_PATCH_CODE
 			uint32_t : 13; // padding
 			uint32_t active_interrupt_slots : 8;
@@ -12377,7 +12379,7 @@ public:
 
 	// 0x42CE80
 	dllexport gnu_noinline void initialize_vm() asm_symbol_rel(0x42CE80) {
-		this->context.__unknown_flag_A = false;
+		this->context.__unknown_flag_ec_A = false;
 		this->context.time = 0.0f;
 		this->context.location.reset();
 		this->context.async_id = -1;
@@ -12998,7 +13000,7 @@ enum Opcode : uint16_t {
 	anm_blend_mode_slot,
 	anm_create_rel_front_rotated,
 	__anm_create_zero_front_and_run,
-	__enemy_id_set_flag_unknown_B,
+	enemy_id_delete,
 
 	// Section C
 	move_position_abs = 400,
@@ -13159,7 +13161,7 @@ enum Opcode : uint16_t {
 	__shoot_origin,
 	enemy_fog_spawn,
 	std_interrupt,
-	__enemy_manager_flag_unknown_A,
+	boss_flag_hide_hud,
 	ex_ins_repeat,
 	enemy_damage_ex,
 	enemy_hitbox_ex,
@@ -13218,8 +13220,8 @@ struct Enemy : EclVM {
 	dllexport gnu_noinline Enemy(const char* sub_name);
 
 	// 0x42D200
-	dllexport gnu_noinline void __set_unknown_flag_B() asm_symbol_rel(0x42D200) {
-		this->data.__unknown_flag_B = true;
+	dllexport gnu_noinline void mark_for_delete() asm_symbol_rel(0x42D200) {
+		this->data.marked_for_delete = true;
 	}
 
 	// 0x42D210
@@ -13328,7 +13330,7 @@ protected:
 		nounroll for (size_t i = 0; i < ENEMY_ANM_SLOTS; ++i) {
 			this->data.anm_vms[i].mark_tree_for_delete();
 		}
-		this->data.__unknown_flag_B = true;
+		this->data.marked_for_delete = true;
 	}
 
 public:
@@ -13449,23 +13451,23 @@ struct GameThread : ZUNTask {
 	union {
 		uint32_t flags; // 0xB0
 		struct {
-			uint32_t __unknown_flag_A : 1; // 1
-			uint32_t __unknown_flag_B : 1; // 2
+			uint32_t __unknown_flag_gt_A : 1; // 1
+			uint32_t __unknown_flag_gt_B : 1; // 2
 			uint32_t skip_flag : 1; // 3 why is this called skip_flag? Doesn't seem to be related to skipping anything...
-			uint32_t __unknown_flag_H : 1; // 4
-			uint32_t __unknown_flag_I : 1; // 5
-			uint32_t __unknown_flag_L : 1; // 6
-			uint32_t __unknown_flag_M : 1; // 7
-			uint32_t __unknown_flag_J : 1; // 8
-			uint32_t __unknown_flag_D : 1; // 9
+			uint32_t __marked_for_cleanup : 1; // 4
+			uint32_t __unknown_flag_gt_I : 1; // 5
+			uint32_t __unknown_flag_gt_L : 1; // 6
+			uint32_t __unknown_flag_gt_M : 1; // 7
+			uint32_t __unknown_flag_gt_J : 1; // 8
+			uint32_t __unknown_flag_gt_D : 1; // 9
 			uint32_t : 1; // 10
-			uint32_t __unknown_flag_C : 1; // 11
-			uint32_t __unknown_flag_K : 1; // 12
+			uint32_t __unknown_flag_gt_C : 1; // 11
+			uint32_t __stage_transition_delay_stage_start : 1; // 12
 			uint32_t : 2; // 13-14
-			uint32_t __unknown_flag_E : 1; // 15
+			uint32_t __unknown_flag_gt_E : 1; // 15
 			uint32_t : 1; // 16
-			uint32_t __unknown_flag_F : 1; // 17
-			uint32_t __unknown_flag_G : 1; // 18
+			uint32_t __unknown_flag_gt_F : 1; // 17
+			uint32_t open_ability_shop : 1; // 18
 		};
 	};
 	int __int_B4; // 0xB4
@@ -13871,15 +13873,15 @@ struct MsgVM {
 	union {
 		uint32_t flags; // 0x19C
 		struct {
-			uint32_t __unknown_flag_B : 1; // 1
-			uint32_t __unknown_flag_C : 1; // 2
-			uint32_t __unknown_field_A : 4; // 3-6
-			uint32_t __unknown_flag_A : 1; // 7
+			uint32_t skip_allowed : 1; // 1
+			uint32_t __font_type_flag : 1; // 2
+			uint32_t text_type : 4; // 3-6
+			uint32_t skipping : 1; // 7
 		};
 	};
 	int32_t next_text_line; // 0x1A0
 	BOOL __skip_text_clear; // 0x1A4
-	int32_t __int_1A8; // 0x1A8
+	int32_t __skip_disable_time; // 0x1A8
 	int32_t active_portait; // 0x1AC
 	D3DCOLOR text_color_array[MAX_PORTRAIT_COUNT]; // 0x1B0
 	Float3 callout_position; // 0x1C0
@@ -13931,8 +13933,8 @@ public:
 
 	inline ZUNResult on_tick() {
 		if (ABILITY_SHOP_PTR) {
-			this->__unknown_flag_A = false;
-			this->__int_1A8 = 2;
+			this->skipping = false;
+			this->__skip_disable_time = 2;
 		}
 		else {
 			if (ZUN_FAILED(this->run_msg())) {
@@ -13969,7 +13971,7 @@ ValidateFieldOffset32(0x198, MsgVM, __enemy_appear_counter);
 ValidateFieldOffset32(0x19C, MsgVM, flags);
 ValidateFieldOffset32(0x1A0, MsgVM, next_text_line);
 ValidateFieldOffset32(0x1A4, MsgVM, __skip_text_clear);
-ValidateFieldOffset32(0x1A8, MsgVM, __int_1A8);
+ValidateFieldOffset32(0x1A8, MsgVM, __skip_disable_time);
 ValidateFieldOffset32(0x1AC, MsgVM, active_portait);
 ValidateFieldOffset32(0x1B0, MsgVM, text_color_array);
 ValidateFieldOffset32(0x1C0, MsgVM, callout_position);
@@ -14080,14 +14082,14 @@ struct Gui : ZUNTask {
 		uint32_t flags; // 0x194
 		struct {
 			uint32_t : 1; // 1
-			uint32_t __unknown_field_C : 2; // 2-3
+			uint32_t __unknown_field_gu_C : 2; // 2-3
 			uint32_t : 1; // 4
-			uint32_t __unknown_flag_C : 1; // 5
-			uint32_t __unknown_field_D : 3; // 6-8
-			uint32_t __unknown_flag_A : 1; // 9
-			uint32_t __unknown_field_B : 2; // 10-11
-			uint32_t __unknown_field_A : 2; // 12-13
-			uint32_t __unknown_flag_B : 1; // 14
+			uint32_t __unknown_flag_gu_C : 1; // 5
+			uint32_t __unknown_field_gu_D : 3; // 6-8
+			uint32_t __unknown_flag_gu_A : 1; // 9
+			uint32_t __unknown_field_gu_B : 2; // 10-11
+			uint32_t __unknown_field_gu_A : 2; // 12-13
+			uint32_t show_item_get_line : 1; // 14
 		};
 	};
 	Timer __timer_198; // 0x198
@@ -15622,6 +15624,7 @@ struct AnmVM {
 		uint8_t font_width; // 0x530
 		uint8_t font_height; // 0x531
 		probably_padding_bytes(0x2); // 0x532
+		// next unused flag letter: Z
 		union {
 			uint32_t flags_low; // 0x534
 			struct {
@@ -15637,11 +15640,11 @@ struct AnmVM {
 				uint32_t mirror_y : 1; // 13
 				uint32_t disable_z_write : 1; // 14
 				uint32_t __visible3 : 1; // 15
-				uint32_t __unknown_flag_W : 1; // 16
+				uint32_t __unknown_flag_av_W : 1; // 16
 				uint32_t __unknown_std_flag_A : 1; // 17
 				uint32_t color_mode : 3; // 18-20
 				uint32_t : 1; // 21
-				uint32_t __unknown_flag_O : 1; // 22
+				uint32_t __stop_script : 1; // 22
 				uint32_t x_anchor_mode : 2; // 23-24
 				uint32_t y_anchor_mode : 2; // 25-26
 				uint32_t render_mode : 5; // 27-31
@@ -15654,23 +15657,23 @@ struct AnmVM {
 				uint32_t v_scroll_mode : 2; // 1-2
 				uint32_t u_scroll_mode : 2; // 3-4
 				uint32_t rotation_mode : 3; // 5-7
-				uint32_t __vm_state : 2; // 8-9
+				uint32_t state : 2; // 8-9
 				uint32_t auto_rotate : 1; // 10
-				uint32_t __unknown_flag_T : 1; // 11
+				uint32_t __unknown_flag_av_T : 1; // 11
 				uint32_t slowdown_immune : 1; // 12
 				uint32_t rand_mode : 1; // 13
 				uint32_t resample_mode : 1; // 14
-				uint32_t __unknown_flag_Y : 1; // 15
+				uint32_t text_outline_disable : 1; // 15
 				uint32_t __continual_sprite_window : 1; // 16
-				uint32_t __unknown_field_B : 2; // 17-18
+				uint32_t __unknown_field_av_B : 2; // 17-18
 				uint32_t __treat_as_root : 1; // 19
 				uint32_t : 1; // 20
 				uint32_t origin_mode : 2; // 21-22
 				uint32_t resolution_mode : 3; // 23-25
 				uint32_t inherit_rotation : 1; // 26
-				uint32_t __deltas_enabled : 1; // 27
+				uint32_t deltas_enabled : 1; // 27
 				uint32_t colorize_children : 1; // 28
-				uint32_t __unknown_flag_F : 1; // 29
+				uint32_t __no_delete : 1; // 29
 				uint32_t : 1; // 30
 				uint32_t enable_camera_fade : 1; // 31
 				uint32_t : 1; // 32
@@ -16334,7 +16337,7 @@ struct AnmVM {
 		this->data.alpha2_interp.end_time = 0;
 		this->data.u_scroll_speed_interp.end_time = 0;
 		this->data.v_scroll_speed_interp.end_time = 0;
-		this->data.__unknown_field_B = 1;
+		this->data.__unknown_field_av_B = 1;
 		this->data.current_context.rand_scale = 1.0f;
 		this->data.current_context.rand_angle_scale = PI_f;
 		this->data.current_context.rand_int_range = UINT16_MAX + 1;
@@ -16566,13 +16569,13 @@ struct AnmVM {
 
 	// 0x47D8B0
 	dllexport gnu_noinline void vectorcall set_scale_delta(float x, float y) asm_symbol_rel(0x47D8B0) {
-		this->data.__deltas_enabled = true;
+		this->data.deltas_enabled = true;
 		this->data.scale_delta.x = x;
 		this->data.scale_delta.y = y;
 	}
 	// 0x47D8D0
 	dllexport gnu_noinline void vectorcall set_angular_velocity(float x, float y, float z) asm_symbol_rel(0x47D8D0) {
-		this->data.__deltas_enabled = true;
+		this->data.deltas_enabled = true;
 		this->data.angular_velocity.x = x;
 		this->data.angular_velocity.y = y;
 		this->data.angular_velocity.z = z;
@@ -17109,17 +17112,17 @@ public:
 	}
 
 	inline void set_x_scroll_speed(float value) {
-		this->data.__deltas_enabled = true;
+		this->data.deltas_enabled = true;
 		this->data.uv_scroll_speed.x = value;
 	}
 
 	inline void set_y_scroll_speed(float value) {
-		this->data.__deltas_enabled = true;
+		this->data.deltas_enabled = true;
 		this->data.uv_scroll_speed.y = value;
 	}
 
 	inline void set_scroll_speed(float x, float y) {
-		this->data.__deltas_enabled = true;
+		this->data.deltas_enabled = true;
 		this->data.uv_scroll_speed.x = x;
 		this->data.uv_scroll_speed.y = y;
 	}
@@ -17224,7 +17227,7 @@ struct AnmImage {
 	union {
 		uint32_t flags; // 0x14
 		struct {
-			uint32_t __unknown_flag_A : 1;
+			uint32_t __unknown_flag_im_A : 1;
 			uint32_t : 31;
 		};
 	};
@@ -17908,7 +17911,7 @@ struct AnmManager {
 			if (AnmLoaded* anm_loaded = *anm_loaded_ptr) {
 				for (int32_t j = 0; j < anm_loaded->entry_count; ++j) {
 					AnmImage* image = &anm_loaded->images[j];
-					if (image->__unknown_flag_A) {
+					if (image->__unknown_flag_im_A) {
 						SAFE_RELEASE(image->d3d_texture);
 					}
 				}
@@ -17927,7 +17930,7 @@ struct AnmManager {
 			if (AnmLoaded* anm_loaded = *anm_loaded_ptr) {
 				for (int32_t j = 0; j < anm_loaded->entry_count; ++j) {
 					AnmImage* image = &anm_loaded->images[j];
-					if (image->__unknown_flag_A) {
+					if (image->__unknown_flag_im_A) {
 						image->create_render_target_texture();
 					}
 				}
@@ -18989,7 +18992,7 @@ struct AnmManager {
 		if (
 			!vm->data.visible ||
 			!vm->data.__visible2 ||
-			vm->data.__vm_state != Normal
+			vm->data.state != AnmVMState::Normal
 		) {
 			return ZUN_ERROR;
 		}
@@ -19124,7 +19127,7 @@ struct AnmManager {
 		CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
 		{
 			this->world_list.for_each_safeB([&, this](AnmVM* vm) {
-				if (!vm->data.__vm_state) {
+				if (vm->data.state == AnmVMState::Normal) {
 					uint32_t vm_layer = vm->data.layer;
 					vm_layer = (vm_layer - WORLD_LAYER_COUNT) >= UI_LAYER_COUNT ? vm_layer : vm_layer - WORLD_LAYER_B_COUNT;
 					if (vm_layer == layer_index) {
@@ -19134,7 +19137,7 @@ struct AnmManager {
 				}
 			});
 			this->ui_list.for_each_safeB([=](AnmVM* vm) {
-				if (!vm->data.__vm_state) {
+				if (vm->data.state == AnmVMState::Normal) {
 					int32_t vm_layer = vm->data.layer;
 					if ((uint32_t)(vm_layer - WORLD_LAYER_A_COUNT) < UI_LAYER_COUNT) {
 						vm_layer += WORLD_LAYER_B_COUNT;
@@ -19161,8 +19164,8 @@ struct AnmManager {
 		GameThread* game_thread_ptr = GAME_THREAD_PTR;
 		if (
 			game_thread_ptr &&
-			(game_thread_ptr->__unknown_flag_A | game_thread_ptr->skip_flag) &&
-			game_thread_ptr->__unknown_flag_B
+			(game_thread_ptr->__unknown_flag_gt_A | game_thread_ptr->skip_flag) &&
+			game_thread_ptr->__unknown_flag_gt_B
 		) {
 			return UpdateFuncNext;
 		}
@@ -19443,7 +19446,7 @@ struct AnmManager {
 			goto skip;
 		}
 
-		if (!vm->data.__unknown_flag_Y) {
+		if (!vm->data.text_outline_disable) {
 			GDI_MANAGER.draw_text_to_texture(&sprite_bounds, x, B, text_color, outline_color, buffer, texture, font_id, char_spacing, true);
 		} else {
 			GDI_MANAGER.draw_text_to_texture(&sprite_bounds, x, B, text_color, 0, buffer, texture, font_id, char_spacing, false);
@@ -19483,7 +19486,7 @@ struct AnmManager {
 			goto skip;
 		}
 
-		if (!vm->data.__unknown_flag_Y) {
+		if (!vm->data.text_outline_disable) {
 			GDI_MANAGER.draw_text_to_texture(&sprite_bounds, x, B, text_color, outline_color, buffer, texture, font_id, char_spacing, true);
 		} else {
 			GDI_MANAGER.draw_text_to_texture(&sprite_bounds, x, B, text_color, 0, buffer, texture, font_id, char_spacing, false);
@@ -19523,7 +19526,7 @@ struct AnmManager {
 			goto skip;
 		}
 
-		if (!vm->data.__unknown_flag_Y) {
+		if (!vm->data.text_outline_disable) {
 			GDI_MANAGER.draw_text_to_texture(&sprite_bounds, x, B, text_color, outline_color, buffer, texture, font_id, char_spacing, true);
 		} else {
 			GDI_MANAGER.draw_text_to_texture(&sprite_bounds, x, B, text_color, 0, buffer, texture, font_id, char_spacing, false);
@@ -19559,7 +19562,7 @@ struct AnmManager {
 		AnmLoaded* anm_loaded = anm_manager->create_anm_loaded(file_index, filename);
 		if (expect(anm_loaded != NULL, false)) {
 			anm_loaded->__load_wait = 1;
-			while (anm_loaded->__load_wait && !SUPERVISOR.__unknown_bitfield_A) {
+			while (anm_loaded->__load_wait && SUPERVISOR.__unknown_bitfield_su_A != 0) {
 				Sleep(1);
 			}
 			DebugLogger::__debug_log_stub_6("::preloadAnimEnd : %s\n", filename);
@@ -19644,7 +19647,7 @@ struct AnmManager {
 	// 0x4860C0
 	dllexport gnu_noinline static int stdcall __sub_4860C0(AnmImage* image, LPCVOID image_data, UINT image_size, int = UNUSED_DWORD, int = UNUSED_DWORD, int = UNUSED_DWORD) asm_symbol_rel(0x4860C0) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
-		image->__unknown_flag_A = false;
+		image->__unknown_flag_im_A = false;
 		image->file_size = image_size;
 		LPDIRECT3DSURFACE9 surface = NULL;
 		image->d3d_texture->GetSurfaceLevel(0, &surface);
@@ -19749,8 +19752,8 @@ struct AnmManager {
 
 	// 0x488D50
 	dllexport void thiscall mark_tree_for_delete(AnmVM* vm) asm_symbol_rel(0x488D50) {
-		if (vm && !vm->data.__unknown_flag_F) {
-			vm->data.__vm_state = AnmVMState::MarkedForDelete;
+		if (vm && !vm->data.__no_delete) {
+			vm->data.state = AnmVMState::MarkedForDelete;
 			vm->controller.child_list.for_each([=](AnmVM* vm) gnu_always_inline {
 				clang_noinline this->mark_tree_for_delete(vm);
 			});
@@ -19796,12 +19799,12 @@ struct AnmManager {
 		vm->controller.child_list.for_each_safe([=](AnmVM* current_vm) gnu_always_inline {
 			clang_noinline this->__recursive_remove(current_vm, list_node);
 		});
-		if (vm->data.__vm_state != AnmVMState::Deleted) {
+		if (vm->data.state != AnmVMState::Deleted) {
 			ZUNList<AnmVM>* current_node = &vm->controller.destroy_list_node;
 			current_node->initialize_with(vm);
 			list_node->append(current_node);
 		}
-		vm->data.__vm_state = AnmVMState::Deleted;
+		vm->data.state = AnmVMState::Deleted;
 		vm->controller.__root_vm = NULL;
 		vm->controller.parent = NULL;
 		vm->controller.next_in_layer = NULL;
@@ -19849,7 +19852,7 @@ struct AnmManager {
 			this->world_list.for_each_safe([&, this](AnmVM* vm) {
 				vm->controller.next_in_layer = NULL;
 				vm->controller.prev_in_layer = NULL;
-				switch (vm->data.__vm_state) {
+				switch (vm->data.state) {
 					case AnmVMState::Normal:
 						if (vm->run_anm()) {
 					case AnmVMState::MarkedForDelete:
@@ -19884,7 +19887,7 @@ struct AnmManager {
 			this->ui_list.for_each_safe([&, this](AnmVM* vm) {
 				vm->controller.next_in_layer = NULL;
 				vm->controller.prev_in_layer = NULL;
-				switch (vm->data.__vm_state) {
+				switch (vm->data.state) {
 					case AnmVMState::Normal:
 						if (vm->run_anm()) {
 					case AnmVMState::MarkedForDelete:
@@ -19989,7 +19992,7 @@ public:
 					vm->data.slot == slot ||
 					vm->data.slot2 == slot
 				) {
-					vm->data.__vm_state = 1;
+					vm->data.state = AnmVMState::MarkedForDelete;
 				}
 			};
 			this->world_list.for_each_safe(set_state1_if_slot_matches);
@@ -20347,7 +20350,7 @@ dllexport gnu_noinline ZUNResult UpdateFuncCC Supervisor::on_registration(void* 
 }
 
 inline UpdateFuncRet thiscall Supervisor::on_tick() {
-	if (this->__unknown_bitfield_A == 1) {
+	if (this->__unknown_bitfield_su_A == 1) {
 		if (!this->__thread_A94.__bool_10) {
 			SUPERVISOR.gamemode_switch = 3;
 		}
@@ -20521,7 +20524,9 @@ dllexport gnu_noinline MsgVM::~MsgVM() {
 // 0x43B350
 dllexport gnu_noinline void thiscall Gui::cleanup() {
 	AnmManager* anm_manager = ANM_MANAGER_PTR;
-	if (!(GAME_MANAGER.__unknown_flag_A | GAME_MANAGER.__unknown_flag_D)) {
+	if (
+		!(GAME_MANAGER.__unknown_flag_gm_A | GAME_MANAGER.__unknown_flag_gm_D)
+	) {
 		anm_manager->unload_anm(STAGE_LOGO_ANM_INDEX);
 	} else {
 		anm_manager->mark_all_vms_from_loaded_slot_for_delete(STAGE_LOGO_ANM_INDEX);
@@ -20530,7 +20535,9 @@ dllexport gnu_noinline void thiscall Gui::cleanup() {
 	SAFE_DELETE(this->msg_vm);
 
 	void* msg_file_buffer = this->msg_file_buffer;
-	if (!(GAME_MANAGER.__unknown_flag_A | GAME_MANAGER.__unknown_flag_D)) {
+	if (
+		!(GAME_MANAGER.__unknown_flag_gm_A | GAME_MANAGER.__unknown_flag_gm_D)
+	) {
 		SAFE_FREE(this->msg_file_buffer);
 		msg_file_buffer = NULL;
 	}
@@ -20550,7 +20557,7 @@ dllexport gnu_noinline void thiscall Gui::cleanup() {
 		this->__anm_id_array_90[i].mark_tree_for_delete();
 	}
 
-	this->__unknown_field_D = -1;
+	this->__unknown_field_gu_D = -1;
 	this->__boss_life_count = 0;
 
 	// this looks like a worse idea
@@ -21333,7 +21340,7 @@ struct ScreenEffect : ZUNTask {
 				GameThread* game_thread_ptr = GAME_THREAD_PTR;
 				if (
 					!game_thread_ptr ||
-					!(game_thread_ptr->__unknown_flag_A | game_thread_ptr->skip_flag)
+					!(game_thread_ptr->__unknown_flag_gt_A | game_thread_ptr->skip_flag)
 				) {
 					self->timer++;
 				}
@@ -21402,8 +21409,8 @@ struct ScreenEffect : ZUNTask {
 			GameThread* game_thread_ptr = GAME_THREAD_PTR;
 			if (
 				game_thread_ptr &&
-				!(game_thread_ptr->__unknown_flag_A | game_thread_ptr->skip_flag) &&
-				!(game_thread_ptr->__unknown_flag_B | game_thread_ptr->__unknown_flag_I | game_thread_ptr->__unknown_flag_L | game_thread_ptr->__unknown_flag_M)
+				!(game_thread_ptr->__unknown_flag_gt_A | game_thread_ptr->skip_flag) &&
+				!(game_thread_ptr->__unknown_flag_gt_B | game_thread_ptr->__unknown_flag_gt_I | game_thread_ptr->__unknown_flag_gt_L | game_thread_ptr->__unknown_flag_gt_M)
 			) {
 				self->timer++;
 
@@ -22093,11 +22100,11 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm(AnmID& out, int32_t script_i
 		switch (flags.list_type) {
 			case UiListFront:
 				out = AnmManager::add_vm_to_ui_list_front(vm);
-				vm->data.__unknown_field_B = 0;
+				vm->data.__unknown_field_av_B = 0;
 				break;
 			case UiListBack:
 				out = AnmManager::add_vm_to_ui_list_back(vm);
-				vm->data.__unknown_field_B = 0;
+				vm->data.__unknown_field_av_B = 0;
 				break;
 			case WorldListFront:
 				out = AnmManager::add_vm_to_world_list_front(vm);
@@ -22383,7 +22390,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, 
 		vm->data.creation_flags = UI_LIST_BACK;
 		out = 0;
 		out = AnmManager::add_vm_to_ui_list_back(vm);
-		vm->data.__unknown_field_B = 0;
+		vm->data.__unknown_field_av_B = 0;
 	}
 	CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
 	return out;
@@ -22403,7 +22410,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, 
 		vm->data.creation_flags = UI_LIST_BACK;
 		out = 0;
 		out = AnmManager::add_vm_to_ui_list_back(vm);
-		vm->data.__unknown_field_B = 0;
+		vm->data.__unknown_field_av_B = 0;
 	}
 	CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
 	return out;
@@ -22425,7 +22432,7 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, int
 		vm->data.creation_flags = UI_LIST_BACK;
 		out = 0;
 		out = AnmManager::add_vm_to_ui_list_back(vm);
-		vm->data.__unknown_field_B = 0;
+		vm->data.__unknown_field_av_B = 0;
 	}
 	CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
 	return out;
@@ -22445,7 +22452,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_front(AnmID& out,
 		vm->data.creation_flags = UI_LIST_FRONT;
 		out = 0;
 		out = AnmManager::add_vm_to_ui_list_front(vm);
-		vm->data.__unknown_field_B = 0;
+		vm->data.__unknown_field_av_B = 0;
 	}
 	CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
 	return out;
@@ -22683,7 +22690,7 @@ inline void AnmLoaded::__prepare_vm_data(AnmVM* vm, int32_t script_id) {
 	vm->data.slot2 = this->slot_index;
 	vm->data.mirror_x = false;
 	vm->data.mirror_y = false;
-	vm->data.__unknown_field_B = 2;
+	vm->data.__unknown_field_av_B = 2;
 	vm->data.script_id = script_id;
 	vm->data.current_instruction_offset = 0;
 	vm->controller.__timer_1C.reset();
@@ -22705,8 +22712,8 @@ dllexport void AnmLoaded::__sub_477D60(AnmVM* vm, int32_t script_id) {
 		this->__prepare_vm_data(vm, script_id);
 		vm->run_anm();
 		ANM_MANAGER_PTR->__int_C0++;
-		if (vm->data.__unknown_field_B == 2) {
-			vm->data.__unknown_field_B = 1;
+		if (vm->data.__unknown_field_av_B == 2) {
+			vm->data.__unknown_field_av_B = 1;
 		}
 	} else {
 		vm->zero_contents();
@@ -23953,9 +23960,9 @@ struct EndVM {
 	union {
 		uint32_t flags; // 0x74
 		struct {
-			uint32_t __unknown_flag_A : 1; // 1
-			uint32_t __unknown_flag_B : 1; // 2
-			uint32_t __unknown_flag_C : 1; // 3
+			uint32_t __unknown_flag_ev_A : 1; // 1
+			uint32_t __is_staff : 1; // 2
+			uint32_t __stop_script : 1; // 3
 		};
 	};
 	int __int_78; // 0x78
@@ -23979,7 +23986,7 @@ struct EndVM {
 			this->__vm_id_array_40[i] = SUPERVISOR.text_anm->instantiate_vm_to_world_list_back(53 + i);
 			this->__vm_id_array_40[i].get_vm_ptr()->data.font_width = 16;
 			this->__vm_id_array_40[i].get_vm_ptr()->data.font_height = 16;
-			this->__vm_id_array_40[i].get_vm_ptr()->data.__unknown_flag_Y = false;
+			this->__vm_id_array_40[i].get_vm_ptr()->data.text_outline_disable = false;
 		}
 
 		this->current_instr = script;
@@ -23988,7 +23995,7 @@ struct EndVM {
 		this->script_time.initialize_and_reset();
 		this->pause_timer.initialize_and_reset();
 
-		this->__unknown_flag_A = true;
+		this->__unknown_flag_ev_A = true;
 		this->__color_7C = COLOR(0, 255, 255, 255);
 	}
 
@@ -24029,10 +24036,10 @@ struct Ending : ZUNTask {
 	union {
 		uint32_t flags; // 0x1C
 		struct {
-			uint32_t __unknown_flag_B : 1; // 1
-			uint32_t __unknown_flag_C : 1; // 2
-			uint32_t __unknown_flag_A : 1; // 3
-			uint32_t __unknown_flag_D : 1; // 4
+			uint32_t __unknown_flag_en_B : 1; // 1
+			uint32_t __unknown_flag_en_C : 1; // 2
+			uint32_t __unknown_flag_en_A : 1; // 3
+			uint32_t __unknown_flag_en_D : 1; // 4
 		};
 	};
 	int32_t __int_20; // 0x20
@@ -24079,9 +24086,9 @@ struct Ending : ZUNTask {
 			++end_vm->__timer_4;
 		}
 		else {
-			this->__unknown_flag_A = true;
-			if (!this->__unknown_flag_C) {
-				SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_G ? 2 : 16;
+			this->__unknown_flag_en_A = true;
+			if (!this->__unknown_flag_en_C) {
+				SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? 2 : 16;
 				return UpdateFuncNext;
 			}
 		}
@@ -24090,9 +24097,9 @@ struct Ending : ZUNTask {
 
 		end_vm = this->end_vm;
 		if (
-			!end_vm->__unknown_flag_C &&
-			!this->__unknown_flag_C &&
-			end_vm->__unknown_flag_B &&
+			!end_vm->__stop_script &&
+			!this->__unknown_flag_en_C &&
+			end_vm->__is_staff &&
 			(
 				INPUT_P1.check_hardware_inputs(BUTTON_SKIP) ||
 				(INPUT_P1.check_hardware_inputs(BUTTON_SHOOT) && INPUT_P1.hardware_inputs_held[BUTTON_SHOOT_INDEX] >= 20)
@@ -24124,7 +24131,7 @@ struct Ending : ZUNTask {
 	dllexport gnu_noinline static unsigned cdecl __load_end_anm(void* arg) {
 		EndVM* end_vm = ENDING_PTR->end_vm;
 		end_vm->__anm_loaded_array_80[end_vm->__int_EC] = ANM_MANAGER_PTR->preload_anm(END_ANM_INDEX_A + end_vm->__int_EC, end_vm->__string_70);
-		end_vm->__unknown_flag_C = false;
+		end_vm->__stop_script = false;
 		ASCII_MANAGER_PTR->__vm_id_19268.interrupt_and_orphan_tree(1);
 		return 0;
 	}
@@ -24151,22 +24158,22 @@ struct Ending : ZUNTask {
 		ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
 
 		this->ending_index = GAME_MANAGER.__ending_type;
-		this->__unknown_flag_A = false;
+		this->__unknown_flag_en_A = false;
 		
 		int32_t index = UNKNOWN_INT32_I;
 		if (index >= 0) {
 			this->ending_index = index;
-			this->__unknown_flag_A = true;
+			this->__unknown_flag_en_A = true;
 			UNKNOWN_INT32_I = -1;
 		}
 		else {
 			index = this->ending_index;
 			ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
 			if (!scorefile_manager->primary_file.__sectionA.__byte_array_16[index]) {
-				this->__unknown_flag_B = true;
+				this->__unknown_flag_en_B = true;
 			}
 			if (!scorefile_manager->primary_file.__sectionA.__bool_22) {
-				this->__unknown_flag_C = true;
+				this->__unknown_flag_en_C = true;
 			}
 			scorefile_manager->primary_file.__sectionA.__byte_array_16[index] |= 1 << EASY;
 			switch (GAME_MANAGER.globals.difficulty) {
@@ -24195,7 +24202,7 @@ struct Ending : ZUNTask {
 		this->end_vm = new EndVM(based_pointer<MsgInstruction>(end_file, end_header->scripts[0].script_offset));
 
 		if (this->ending_index >= 12) {
-			this->__unknown_flag_C = true;
+			this->__unknown_flag_en_C = true;
 		}
 
 		return ZUN_SUCCESS;
@@ -24225,7 +24232,7 @@ ValidateStructSize32(0x24, Ending);
 dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
 	using namespace End;
 		
-	if (!this->__unknown_flag_C) {
+	if (!this->__stop_script) {
 		for (
 			MsgInstruction* current_instruction = this->current_instr;
 			this->script_time >= current_instruction->time;
@@ -24276,7 +24283,7 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
 						this->pause_timer > 0
 					) {
 						if (
-							!ENDING_PTR->__unknown_flag_B ||
+							!ENDING_PTR->__unknown_flag_en_B ||
 							!(
 								INPUT_P1.check_hardware_inputs(BUTTON_SKIP) ||
 								(INPUT_P1.check_hardware_inputs(BUTTON_SHOOT) && INPUT_P1.hardware_inputs_held[BUTTON_SHOOT_INDEX] >= 20)
@@ -24301,7 +24308,7 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
 						this->pause_timer > 0
 					) {
 						if (
-							!ENDING_PTR->__unknown_flag_B ||
+							!ENDING_PTR->__unknown_flag_en_B ||
 							!(
 								INPUT_P1.check_hardware_inputs(BUTTON_SKIP) ||
 								(INPUT_P1.check_hardware_inputs(BUTTON_SHOOT) && INPUT_P1.hardware_inputs_held[BUTTON_SHOOT_INDEX] >= 20)
@@ -24355,10 +24362,10 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
 					break;
 				case music_fade_out: // 11
 					clang_forceinline SOUND_MANAGER.__queue_fade_out(3.0f);
-					this->__unknown_flag_B = false;
+					this->__is_staff = false;
 					break;
 				case __end_switch_to_staff: { // 12
-					if (ENDING_PTR->__unknown_flag_A) {
+					if (ENDING_PTR->__unknown_flag_en_A) {
 						return ZUN_ERROR;
 					}
 					for (size_t i = 0; i != countof(this->__vm_id_array_40); ++i) {
@@ -24389,7 +24396,7 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
 					this->__timer_4.reset();
 					this->script_time.reset();
 					this->pause_timer.reset();
-					this->__unknown_flag_B = true;
+					this->__is_staff = true;
 					this->__color_7C = COLOR(0, 255, 255, 255);
 					break;
 				}
@@ -24399,7 +24406,7 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
 				case anm_source_load: // 7
 					ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
 					ANM_MANAGER_PTR->unload_anm(END_ANM_INDEX_A + IntArg(0));
-					this->__unknown_flag_C = true;
+					this->__stop_script = true;
 					current_instruction = this->current_instr;
 					this->__string_70 = StringArg(4);
 					this->__int_EC = IntArg(0);
@@ -24461,7 +24468,7 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 	}
 	if (
 		this->data.current_instruction_offset < 0 ||
-		this->data.__unknown_flag_O
+		this->data.__stop_script
 	) {
 		goto return_static;
 	}
@@ -24472,10 +24479,10 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 		current_instruction = this->get_current_instruction();
 		goto run_interrupt;
 	}
-	if (this->data.__unknown_field_B == 1) {
+	if (this->data.__unknown_field_av_B == 1) {
 		GameThread* game_thread = GAME_THREAD_PTR;
 		if (
-			game_thread && game_thread->__unknown_flag_B
+			game_thread && game_thread->__unknown_flag_gt_B
 		) {
 			goto return_static;
 		}
@@ -25447,7 +25454,7 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 				this->data.origin_mode = ByteArg(0); // IMMEDIATE ARGUMENT
 				break;
 			case __anm_flag_unknown_T: // 431
-				this->data.__unknown_flag_T = ByteArg(0); // IMMEDIATE ARGUMENT
+				this->data.__unknown_flag_av_T = ByteArg(0); // IMMEDIATE ARGUMENT
 				break;
 			case layer: { // 304
 				uint8_t layer = ByteArg(0); // IMMEDIATE ARGUMENT
@@ -25471,10 +25478,10 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 	}
 
 anm_break:
-	if (this->data.__deltas_enabled) {
+	if (this->data.deltas_enabled) {
 		this->__apply_deltas();
 	}
-	if (this->data.__unknown_flag_W) {
+	if (this->data.__unknown_flag_av_W) {
 		this->controller.position += SUPERVISOR.cameras[3].__float3_13C;
 	}
 	if (this->data.__continual_sprite_window) {
@@ -25538,7 +25545,7 @@ inline UpdateFuncRet LoadingThread::on_tick() {
 		WINDOW_DATA.__int_20D0 = 1;
 		ascii_manager->enable_funcs_unsafe();
 
-		SUPERVISOR.__unknown_flag_G = false;
+		SUPERVISOR.__unknown_flag_su_G = false;
 		SUPERVISOR.gamemode_switch = 4;
 		this->__unknown_task_flag_A = false;
 	}
@@ -26519,7 +26526,7 @@ struct PlayerDamageSource {
 		struct {
 			uint32_t active : 1; // 1
 			uint32_t hitbox_type : 1; // 2
-			uint32_t __unknown_flag_A : 1; // 3
+			uint32_t __unknown_flag_pd_A : 1; // 3
 		};
 	};
 	float radius; // 0x4
@@ -26659,7 +26666,7 @@ struct PlayerOption {
 		uint32_t flags; // 0xD8
 		struct {
 			uint32_t : 1; // 1
-			uint32_t __unknown_flag_A : 1; // 2
+			uint32_t __unknown_flag_po_A : 1; // 2
 		};
 	};
 	int __dword_DC; // 0xDC
@@ -26730,9 +26737,9 @@ struct PlayerBullet {
 	union {
 		uint32_t flags; // 0x0
 		struct {
-			uint32_t __unknown_flag_A : 1; // 1
+			uint32_t __unknown_flag_pb_A : 1; // 1
 			uint32_t __focused : 1; // 2
-			uint32_t __unknown_field_A : 4; // 3-6
+			uint32_t __unknown_field_pb_A : 4; // 3-6
 		};
 	};
 	int32_t __bullet_index; // 0x4
@@ -26800,7 +26807,7 @@ struct PlayerBullet {
 	dllexport gnu_noinline static int32_t fastcall __init_func_3(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x460B60);
 	// 0x460DA0
 	dllexport gnu_noinline static int32_t fastcall __init_func_4(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x460DA0) {
-		self->__unknown_field_A = 0;
+		self->__unknown_field_pb_A = 0;
 		self->__dword_90 = 0;
 		return 0;
 	}
@@ -26951,15 +26958,15 @@ struct PlayerData {
 	union {
 		uint32_t flags; // 0x4717C, 0x4779C
 		struct {
-			uint32_t __unknown_flag_A : 1; // 1
-			uint32_t __unknown_flag_C : 1; // 2
-			uint32_t __unknown_flag_H : 1; // 3
-			uint32_t __unknown_flag_B : 1; // 4
+			uint32_t __unknown_flag_pl_A : 1; // 1
+			uint32_t __hide_options : 1; // 2
+			uint32_t __unknown_flag_pl_H : 1; // 3
+			uint32_t __unknown_flag_pl_B : 1; // 4
 			uint32_t scale_enabled : 1; // 5
-			uint32_t __unknown_flag_E : 1; // 6
-			uint32_t __unknown_flag_G : 1; // 7
+			uint32_t __has_damage_boost : 1; // 6
+			uint32_t __unknown_flag_pl_G : 1; // 7
 			uint32_t __yukari_wrap_type : 2; // 8-9
-			uint32_t __unknown_flag_D : 1; // 10
+			uint32_t __is_shooting : 1; // 10
 		};
 	};
 	Timer __timer_47180; // 0x47180, 0x477A0
@@ -27101,7 +27108,7 @@ struct Player : ZUNTask {
 		PLAYER_PTR = NULL;
 
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
-		if (GAME_MANAGER.__unknown_flag_A) {
+		if (GAME_MANAGER.__unknown_flag_gm_A) {
 			anm_manager->mark_all_vms_from_loaded_slot_for_delete(PLAYER_ANM_INDEX);
 			CACHED_SHT_FILE_PTR = this->sht_file;
 		} else {
@@ -27181,7 +27188,7 @@ public:
 
 	// 0x416CD0
 	dllexport gnu_noinline void thiscall __sub_416CD0() asm_symbol_rel(0x416CD0) {
-		this->data.__unknown_flag_C = true;
+		this->data.__hide_options = true;
 		nounroll for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i) {
 			this->data.options[i].__anm_id_B0.interrupt_tree(3);
 			this->data.options[i].__anm_id_B4.interrupt_tree(3);
@@ -27195,7 +27202,7 @@ public:
 
 	// 0x416D50
 	dllexport gnu_noinline void thiscall __sub_416D50() asm_symbol_rel(0x416D50) {
-		this->data.__unknown_flag_C = false;
+		this->data.__hide_options = false;
 		nounroll for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i) {
 			this->data.options[i].__anm_id_B0.interrupt_tree(2);
 			this->data.options[i].__anm_id_B4.interrupt_tree(2);
@@ -27415,7 +27422,7 @@ skip_movement_keys:;
 			this->update_previous_positions();
 		}
 
-		if (this->data.__unknown_flag_C) {
+		if (this->data.__hide_options) {
 			++this->data.__int_471C8;
 		}
 
@@ -27471,9 +27478,9 @@ public:
 
 	inline void __reset_damage_multiplier() {
 		if (this->damage_multiplier > 1.01f) {
-			this->data.__unknown_flag_E = true;
+			this->data.__has_damage_boost = true;
 		} else {
-			this->data.__unknown_flag_E = false;
+			this->data.__has_damage_boost = false;
 		}
 		this->damage_multiplier = 1.0f;
 	}
@@ -27527,8 +27534,8 @@ public:
 	dllexport gnu_noinline void thiscall __update_option_positions(PlayerOption* options, int32_t count) asm_symbol_rel(0x45BC90) {
 		for (int32_t i = 0; i < count; ++i, ++options) {
 			if (options->state != 0) {
-				if (!this->data.__unknown_flag_C) {
-					if (!options->__unknown_flag_A) {
+				if (!this->data.__hide_options) {
+					if (!options->__unknown_flag_po_A) {
 						options->position = this->data.internal_position + (this->data.focused ? options->__focused_offset : options->__unfocused_offset);
 					}
 					if (auto func = options->__func_ptr_E8) {
@@ -27648,7 +27655,7 @@ public:
 		for (size_t i = 0; i < PLAYER_BULLET_COUNT; ++i) {
 			this->data.bullets[i].on_tick();
 		}
-		PLAYER_PTR->data.__unknown_flag_G = false;
+		PLAYER_PTR->data.__unknown_flag_pl_G = false;
 		return 0;
 	}
 
@@ -27771,7 +27778,7 @@ public:
 				this->data.equipment[i].internal_position.y = -51200;
 			}
 
-			this->data.__unknown_flag_H = false;
+			this->data.__unknown_flag_pl_H = false;
 
 			this->scale_interp.end_time = 0;
 			this->scale = 1.0f;
@@ -28053,7 +28060,7 @@ private:
 			if (!damage_source->active) {
 				damage_source->active = true;
 				damage_source->hitbox_type = CircleHitbox;
-				damage_source->__unknown_flag_A = false;
+				damage_source->__unknown_flag_pd_A = false;
 
 				damage_source->motion.zero_contents();
 				damage_source->motion.position = *position;
@@ -28099,7 +28106,7 @@ private:
 			if (!damage_source->active) {
 				damage_source->active = true;
 				damage_source->hitbox_type = RectangleHitbox;
-				damage_source->__unknown_flag_A = false;
+				damage_source->__unknown_flag_pd_A = false;
 
 				damage_source->motion.zero_contents();
 				damage_source->motion.position = *position;
@@ -28215,7 +28222,7 @@ public:
 						damage_source_ptr->__last_hit_enemy = enemy_id;
 					}
 
-					if (arg5 && damage_source_ptr->__unknown_flag_A) {
+					if (arg5 && damage_source_ptr->__unknown_flag_pd_A) {
 						*arg5 = true;
 					}
 
@@ -28489,7 +28496,7 @@ forceinline void PlayerBullet::on_tick() {
 		}
 
 		int32_t damage_source_index = this->damage_source_index;
-		if (damage_source_index != 0 && this->__unknown_flag_A) {
+		if (damage_source_index != 0 && this->__unknown_flag_pb_A) {
 			PlayerDamageSource* damage_source = &PLAYER_PTR->data.damage_sources[damage_source_index - 1];
 
 			damage_source->motion.position = this->motion.position;
@@ -28516,7 +28523,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__init_func_2(PlayerBullet
 	damage_source = player->get_damage_source_by_index(self->damage_source_index);
 	damage_source->__hit_frequency = 1;
 	damage_source->size.x = 0.0f;
-	self->__unknown_flag_A = false;
+	self->__unknown_flag_pb_A = false;
 	return 0;
 }
 
@@ -28732,15 +28739,15 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 	if (this->__enemy_appear_counter > 0) {
 		--this->__enemy_appear_counter;
 	}
-	if (this->__int_1A8 > 0) {
-		--this->__int_1A8;
+	if (this->__skip_disable_time > 0) {
+		--this->__skip_disable_time;
 	} else {
 		if (INPUT_P1.check_inputs_no_repeat(BUTTON_SELECT)) {
-			this->__unknown_flag_A = true;
+			this->skipping = true;
 		}
 	}
 	if (
-		(this->__unknown_flag_A & this->__unknown_flag_B) &&
+		(this->skipping & this->skip_allowed) &&
 		(
 			(INPUT_P1.check_inputs(BUTTON_SKIP) && INPUT_P1.inputs_held[BUTTON_SKIP_INDEX] >= 20) ||
 			(INPUT_P1.check_inputs(BUTTON_SHOOT) && INPUT_P1.inputs_held[BUTTON_SHOOT_INDEX] >= 20)
@@ -28758,18 +28765,18 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 			case msg_delete: // 0
 				return ZUN_ERROR;
 			case __unknown_flag_set_A: // 36
-				this->__unknown_flag_C = true;
+				this->__font_type_flag = true;
 				break;
 			case text_top_line: { // 15
 				AnmVM* vm = this->dialogue_lines[0].get_vm_ptr();
 				const char* text = __decrypt_related(StringArg(0));
-				ANM_MANAGER_PTR->draw_text_left(vm, this->text_color_array[this->active_portait], 0, this->__unknown_flag_C + 4, 0, 0, text);
+				ANM_MANAGER_PTR->draw_text_left(vm, this->text_color_array[this->active_portait], 0, this->__font_type_flag + 4, 0, 0, text);
 				break;
 			}
 			case text_bottom_line: { // 16
 				AnmVM* vm = this->dialogue_lines[1].get_vm_ptr();
 				const char* text = __decrypt_related(StringArg(0));
-				ANM_MANAGER_PTR->draw_text_left(vm, this->text_color_array[this->active_portait], 0, this->__unknown_flag_C + 4, 0, 0, text);
+				ANM_MANAGER_PTR->draw_text_left(vm, this->text_color_array[this->active_portait], 0, this->__font_type_flag + 4, 0, 0, text);
 				break;
 			}
 			case text_position: // 28
@@ -28780,11 +28787,11 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 				if (this->next_text_line == 0) {
 					if (!this->__skip_text_clear) {
 						this->__float_1CC = 0.0f;
-						ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[0].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__unknown_flag_C, 0, 0, "  ");
-						ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[1].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__unknown_flag_C, 0, 0, "  ");
-						ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[0].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__unknown_flag_C, 0, 0, "  ");
-						ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[1].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__unknown_flag_C, 0, 0, "  ");
-						this->__skip_text_clear = 1;
+						ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[0].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__font_type_flag, 0, 0, "  ");
+						ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[1].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__font_type_flag, 0, 0, "  ");
+						ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[0].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__font_type_flag, 0, 0, "  ");
+						ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[1].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__font_type_flag, 0, 0, "  ");
+						this->__skip_text_clear = true;
 						this->dialogue_lines[0].interrupt_tree(3);
 						this->dialogue_lines[1].interrupt_tree(3);
 						this->furigana_lines[0].interrupt_tree(3);
@@ -28798,7 +28805,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 						++text;
 						int32_t spacing = atol(text);
 						text = strchr(text, ',');
-						this->furigana_lines[0].get_vm_ptr()->data.__unknown_flag_Y = true;
+						this->furigana_lines[0].get_vm_ptr()->data.text_outline_disable = true;
 						ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[0].get_vm_ptr(), 0, COLOR(0, 160, 160, 160), 2, x, spacing, text + 1);
 						this->furigana_lines[0].interrupt_and_run_tree(2);
 					}
@@ -28807,9 +28814,9 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 						float A = (float)((text_length * 8 & -16) - 28) * 2.0f;
 						A = __max(A, this->__float_1CC);
 						this->__float_1CC = A;
-						this->__sub_4416D0(this->callout_position.x, this->callout_position.y, A, this->active_portait + this->__unknown_field_A * 3);
+						this->__sub_4416D0(this->callout_position.x, this->callout_position.y, A, this->active_portait + this->text_type * 3);
 						this->__sub_441900(this->__float_1CC);
-						ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[0].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__unknown_flag_C, 0, 0, text);
+						ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[0].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__font_type_flag, 0, 0, text);
 						switch (this->active_portait) {
 							case 1: case 2:
 								this->dialogue_lines[0].set_controller_position(&this->callout_position);
@@ -28834,7 +28841,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 						++text;
 						int32_t spacing = atol(text);
 						text = strchr(text, ',');
-						this->furigana_lines[1].get_vm_ptr()->data.__unknown_flag_Y = true;
+						this->furigana_lines[1].get_vm_ptr()->data.text_outline_disable = true;
 						ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[1].get_vm_ptr(), 0, COLOR(0, 160, 160, 160), 2, x, spacing, text + 1);
 						this->furigana_lines[1].interrupt_and_run_tree(2);
 					}
@@ -28843,9 +28850,9 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 						float A = (float)((text_length * 8 & -16) - 28) * 2.0f;
 						A = __max(A, this->__float_1CC);
 						this->__float_1CC = A;
-						this->__sub_4416D0(this->callout_position.x, this->callout_position.y, A, this->active_portait + this->__unknown_field_A * 3);
+						this->__sub_4416D0(this->callout_position.x, this->callout_position.y, A, this->active_portait + this->text_type * 3);
 						this->__sub_441900(this->__float_1CC);
-						ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[1].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__unknown_flag_C, 0, 0, text);
+						ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[1].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__font_type_flag, 0, 0, text);
 						switch (this->active_portait) {
 							case 1: case 2:
 								this->dialogue_lines[0].set_controller_position(&this->callout_position);
@@ -28859,7 +28866,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 						}
 						this->dialogue_lines[1].interrupt_and_run_tree(2);
 						this->next_text_line = 0;
-						this->__skip_text_clear = 0;
+						this->__skip_text_clear = false;
 					}
 				}
 				break;
@@ -28959,9 +28966,9 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 				this->dialogue_lines[1].get_vm_ptr()->data.__position_2.y = 0.0f;
 				this->furigana_lines[0].get_vm_ptr()->data.__position_2.y = 0.0f;
 				this->furigana_lines[1].get_vm_ptr()->data.__position_2.y = 0.0f;
-				this->__unknown_flag_C = false;
+				this->__font_type_flag = false;
 				this->next_text_line = 0;
-				this->__skip_text_clear = 0;
+				this->__skip_text_clear = false;
 				break;
 			}
 			case focus_boss: { // 8
@@ -28978,9 +28985,9 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 				this->dialogue_lines[1].get_vm_ptr()->data.__position_2.y = 0.0f;
 				this->furigana_lines[0].get_vm_ptr()->data.__position_2.y = 0.0f;
 				this->furigana_lines[1].get_vm_ptr()->data.__position_2.y = 0.0f;
-				this->__unknown_flag_C = false;
+				this->__font_type_flag = false;
 				this->next_text_line = 0;
-				this->__skip_text_clear = 0;
+				this->__skip_text_clear = false;
 				break;
 			}
 			case __unknown_A: // 32
@@ -28990,9 +28997,9 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 				this->dialogue_lines[1].get_vm_ptr()->data.__position_2.y = 0.0f;
 				this->furigana_lines[0].get_vm_ptr()->data.__position_2.y = 0.0f;
 				this->furigana_lines[1].get_vm_ptr()->data.__position_2.y = 0.0f;
-				this->__unknown_flag_C = false;
+				this->__font_type_flag = false;
 				this->next_text_line = 0;
-				this->__skip_text_clear = 0;
+				this->__skip_text_clear = false;
 				break;
 			case focus_none: // 9
 				for (int32_t i = 0; i != MAX_PORTRAIT_COUNT; ++i) {
@@ -29005,12 +29012,12 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 				this->dialogue_lines[1].get_vm_ptr()->data.__position_2.y = 0.0f;
 				this->furigana_lines[0].get_vm_ptr()->data.__position_2.y = 0.0f;
 				this->furigana_lines[1].get_vm_ptr()->data.__position_2.y = 0.0f;
-				this->__unknown_flag_C = false;
+				this->__font_type_flag = false;
 				this->next_text_line = 0;
-				this->__skip_text_clear = 0;
+				this->__skip_text_clear = false;
 				break;
 			case msg_flag_wait_skippable: // 10
-				this->__unknown_flag_B = OneBitArg(0);
+				this->skip_allowed = OneBitArg(0);
 				break;
 			case portrait_player: { // 13
 				int32_t interrupt = IntArg(0) + 17;
@@ -29034,7 +29041,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 					this->pause_timer > 0
 				) {
 					if (
-						!(this->__unknown_flag_A & this->__unknown_flag_B) ||
+						!(this->skipping & this->skip_allowed) ||
 						!(
 							(INPUT_P1.check_inputs(BUTTON_SKIP) && INPUT_P1.inputs_held[BUTTON_SKIP_INDEX] >= 20) ||
 							(INPUT_P1.check_inputs(BUTTON_SHOOT) && INPUT_P1.inputs_held[BUTTON_SHOOT_INDEX] >= 20)
@@ -29048,7 +29055,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 				}
 				this->pause_timer.initialize_and_reset();
 				this->next_text_line = 0;
-				this->__skip_text_clear = 0;
+				this->__skip_text_clear = false;
 				break;
 			}
 			case ecl_resume: // 12
@@ -29075,8 +29082,8 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 			case music_fade_out_time: // 27
 				clang_forceinline SOUND_MANAGER.__queue_fade_out(FloatArg(0));
 				break;
-			case text_type: // 29
-				this->__unknown_field_A = IntArg(0);
+			case Opcode::text_type: // 29
+				this->text_type = IntArg(0);
 				break;
 			case __gui_overlay: { // 35
 				Gui* gui = GUI_PTR;
@@ -29084,7 +29091,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 				break;
 			}
 			case __store_open: // 36
-				GAME_THREAD_PTR->__unknown_flag_F = true;
+				GAME_THREAD_PTR->open_ability_shop = true;
 				this->current_instr = IndexInstr(sizeof(MsgInstruction) + this->current_instr->args_size);
 				return ZUN_SUCCESS;
 		}
@@ -29337,12 +29344,12 @@ struct CardBase {
 	union {
 		uint32_t flags; // 0x50
 		struct {
-			uint32_t __unknown_flag_F : 1; // 1
-			uint32_t __unknown_flag_B : 1; // 2
-			uint32_t __unknown_flag_C : 1; // 3
+			uint32_t __unknown_flag_cd_F : 1; // 1
+			uint32_t __unknown_flag_cd_B : 1; // 2
+			uint32_t __unknown_flag_cd_C : 1; // 3
 			uint32_t __is_active_card : 1; // 4
 			uint32_t : 1; // 5
-			uint32_t __unknown_flag_A : 1; // 6
+			uint32_t __unknown_flag_cd_A : 1; // 6
 			uint32_t __is_equipment_card : 1; // 7
 			uint32_t : 1; // 8
 		};
@@ -29441,8 +29448,8 @@ struct CardBase {
 	}
 	// Method 40
 	// 0x413140
-	dllexport gnu_noinline virtual bool thiscall __get_unknown_flag_A() {
-		return this->__unknown_flag_A;
+	dllexport gnu_noinline virtual bool thiscall __get_unknown_flag_cd_A() {
+		return this->__unknown_flag_cd_A;
 	}
 	// Method 44
 	// 0x413050
@@ -29528,8 +29535,8 @@ struct CardBlank : CardBase { // DONE
 	static inline constexpr CardId ID = BLANK_CARD; // 0
 
 	inline CardBlank() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -29548,8 +29555,8 @@ struct CardLife : CardBase { // DONE
 	static inline constexpr CardId ID = EXTEND_CARD; // 1
 
 	inline CardLife() {
-		this->__unknown_flag_B = true;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = true;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -29559,11 +29566,11 @@ struct CardLife : CardBase { // DONE
 	dllexport gnu_noinline virtual ZUNResult thiscall initializeB() {
 		if (
 			GAME_THREAD_PTR &&
-			this->__unknown_flag_B
+			this->__unknown_flag_cd_B
 		) {
 			GAME_MANAGER.globals.add_life_stock_max(); // why? this does nothing
 			GAME_MANAGER.globals.add_life();
-			this->__unknown_flag_B = false;
+			this->__unknown_flag_cd_B = false;
 		}
 		return ZUN_SUCCESS2;
 	}
@@ -29571,7 +29578,7 @@ struct CardLife : CardBase { // DONE
 	// Method 4C
 	// 0x409B70
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = true;
+		this->__unknown_flag_cd_B = true;
 	}
 
 	// Method 50
@@ -29588,8 +29595,8 @@ struct CardBomb : CardBase { // DONE
 	static inline constexpr CardId ID = BOMB_CARD; // 2
 
 	inline CardBomb() {
-		this->__unknown_flag_B = true;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = true;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -29599,11 +29606,11 @@ struct CardBomb : CardBase { // DONE
 	dllexport gnu_noinline virtual ZUNResult thiscall initializeB() {
 		if (
 			GAME_THREAD_PTR &&
-			this->__unknown_flag_B
+			this->__unknown_flag_cd_B
 		) {
 			GAME_MANAGER.globals.add_bomb_stock_max(); // why? this does nothing
 			GAME_MANAGER.globals.add_bomb();
-			this->__unknown_flag_B = false;
+			this->__unknown_flag_cd_B = false;
 		}
 		return ZUN_SUCCESS2;
 	}
@@ -29611,7 +29618,7 @@ struct CardBomb : CardBase { // DONE
 	// Method 4C
 	// 0x409C10
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = true;
+		this->__unknown_flag_cd_B = true;
 	}
 
 	// Method 50
@@ -29628,8 +29635,8 @@ struct CardLifeFragment : CardBase { // DONE
 	static inline constexpr CardId ID = EXTEND2_CARD; // 3
 
 	inline CardLifeFragment() {
-		this->__unknown_flag_B = true;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = true;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -29639,11 +29646,11 @@ struct CardLifeFragment : CardBase { // DONE
 	dllexport gnu_noinline virtual ZUNResult thiscall initializeA() {
 		if (
 			GAME_THREAD_PTR &&
-			this->__unknown_flag_B
+			this->__unknown_flag_cd_B
 		) {
 			GAME_MANAGER.globals.add_life_stock_max(); // why? this does nothing
 			GAME_MANAGER.globals.add_life_fragment();
-			this->__unknown_flag_B = false;
+			this->__unknown_flag_cd_B = false;
 		}
 		return ZUN_SUCCESS2;
 	}
@@ -29651,7 +29658,7 @@ struct CardLifeFragment : CardBase { // DONE
 	// Method 4C
 	// 0x409CB0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = true;
+		this->__unknown_flag_cd_B = true;
 	}
 
 	// Method 50
@@ -29668,8 +29675,8 @@ struct CardBombFragment : CardBase { // DONE
 	static inline constexpr CardId ID = BOMB2_CARD; // 4
 
 	inline CardBombFragment() {
-		this->__unknown_flag_B = true;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = true;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -29679,10 +29686,10 @@ struct CardBombFragment : CardBase { // DONE
 	dllexport gnu_noinline virtual ZUNResult thiscall initializeA() {
 		if (
 			GAME_THREAD_PTR &&
-			this->__unknown_flag_B
+			this->__unknown_flag_cd_B
 		) {
 			GAME_MANAGER.globals.add_bomb_fragment();
-			this->__unknown_flag_B = false;
+			this->__unknown_flag_cd_B = false;
 		}
 		return ZUN_SUCCESS2;
 	}
@@ -29690,7 +29697,7 @@ struct CardBombFragment : CardBase { // DONE
 	// Method 4C
 	// 0x409D50
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = true;
+		this->__unknown_flag_cd_B = true;
 	}
 
 	// Method 50
@@ -29707,8 +29714,8 @@ struct CardNazrin : CardBase { // DONE
 	static inline constexpr CardId ID = PENDULUM_CARD; // 5
 
 	inline CardNazrin() {
-		this->__unknown_flag_B = true;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = true;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -29718,11 +29725,11 @@ struct CardNazrin : CardBase { // DONE
 	dllexport gnu_noinline virtual ZUNResult thiscall initializeA() {
 		if (
 			GAME_THREAD_PTR &&
-			this->__unknown_flag_B
+			this->__unknown_flag_cd_B
 		) {
 			GAME_MANAGER.globals.money_collected_in_game += 50;
 			GAME_MANAGER.globals.current_money += 50;
-			this->__unknown_flag_B = false;
+			this->__unknown_flag_cd_B = false;
 		}
 		return ZUN_SUCCESS2;
 	}
@@ -29730,7 +29737,7 @@ struct CardNazrin : CardBase { // DONE
 	// Method 4C
 	// 0x40A010
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = true;
+		this->__unknown_flag_cd_B = true;
 	}
 
 	// Method 50
@@ -29747,8 +29754,8 @@ struct CardRingo : CardBase { // DONE
 	static inline constexpr CardId ID = DANGO_CARD; // 6
 
 	inline CardRingo() {
-		this->__unknown_flag_B = true;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = true;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -29758,10 +29765,10 @@ struct CardRingo : CardBase { // DONE
 	dllexport gnu_noinline virtual ZUNResult thiscall initializeA() {
 		if (
 			GAME_THREAD_PTR &&
-			this->__unknown_flag_B
+			this->__unknown_flag_cd_B
 		) {
 			BOOL level_up = GAME_MANAGER.globals.add_power(50);
-			this->__unknown_flag_B = false;
+			this->__unknown_flag_cd_B = false;
 			if (level_up) {
 				Player* player = PLAYER_PTR;
 				if (player) {
@@ -29778,7 +29785,7 @@ struct CardRingo : CardBase { // DONE
 	// Method 4C
 	// 0x40A0A0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = true;
+		this->__unknown_flag_cd_B = true;
 	}
 
 	// Method 50
@@ -29795,8 +29802,8 @@ struct CardMokou : CardBase { // DONE
 	static inline constexpr CardId ID = MOKOU_CARD; // 7
 
 	inline CardMokou() {
-		this->__unknown_flag_B = true;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = true;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -29806,7 +29813,7 @@ struct CardMokou : CardBase { // DONE
 	dllexport gnu_noinline virtual ZUNResult thiscall initializeB() {
 		if (
 			GAME_THREAD_PTR &&
-			this->__unknown_flag_B
+			this->__unknown_flag_cd_B
 		) {
 			// again, why...?
 			GAME_MANAGER.globals.life_stock_max = MAX_LIFE_STOCKS; // 7
@@ -29820,7 +29827,7 @@ struct CardMokou : CardBase { // DONE
 	// Method 4C
 	// 0x409DE0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = true;
+		this->__unknown_flag_cd_B = true;
 	}
 
 	// Method 50
@@ -29838,8 +29845,8 @@ struct CardReimu1 : CardBase { // DONE
 	static inline constexpr CardId ID = REIMU_OP_CARD; // 8
 
 	inline CardReimu1() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = true;
 		this->option = NULL;
@@ -29869,7 +29876,7 @@ struct CardReimu1 : CardBase { // DONE
 	// Method 4C
 	// 0x40AAD0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -29889,8 +29896,8 @@ struct CardReimu2 : CardBase { // DONE
 	static inline constexpr CardId ID = REIMU_OP2_CARD; // 9
 
 	inline CardReimu2() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = true;
 		this->option = NULL;
@@ -29920,7 +29927,7 @@ struct CardReimu2 : CardBase { // DONE
 	// Method 4C
 	// 0x40ABE0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -29940,8 +29947,8 @@ struct CardMarisa1 : CardBase { // DONE
 	static inline constexpr CardId ID = MARISA_OP_CARD; // 10
 
 	inline CardMarisa1() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = true;
 		this->option = NULL;
@@ -29971,7 +29978,7 @@ struct CardMarisa1 : CardBase { // DONE
 	// Method 4C
 	// 0x40ACF0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -29991,8 +29998,8 @@ struct CardMarisa2 : CardBase { // DONE
 	static inline constexpr CardId ID = MARISA_OP2_CARD; // 11
 
 	inline CardMarisa2() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = true;
 		this->option = NULL;
@@ -30022,7 +30029,7 @@ struct CardMarisa2 : CardBase { // DONE
 	// Method 4C
 	// 0x40AE00
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -30042,8 +30049,8 @@ struct CardSakuya1 : CardBase { // DONE
 	static inline constexpr CardId ID = SAKUYA_OP_CARD; // 12
 
 	inline CardSakuya1() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = true;
 		this->option = NULL;
@@ -30079,7 +30086,7 @@ struct CardSakuya1 : CardBase { // DONE
 	// Method 4C
 	// 0x40AF10
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -30099,8 +30106,8 @@ struct CardSakuya2 : CardBase { // DONE
 	static inline constexpr CardId ID = SAKUYA_OP2_CARD; // 13
 
 	inline CardSakuya2() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = true;
 		this->option = NULL;
@@ -30130,7 +30137,7 @@ struct CardSakuya2 : CardBase { // DONE
 	// Method 4C
 	// 0x40B050
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -30150,8 +30157,8 @@ struct CardSanae1 : CardBase { // DONE
 	static inline constexpr CardId ID = SANAE_OP_CARD; // 14
 
 	inline CardSanae1() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = true;
 		this->option = NULL;
@@ -30181,7 +30188,7 @@ struct CardSanae1 : CardBase { // DONE
 	// Method 4C
 	// 0x40B160
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -30201,8 +30208,8 @@ struct CardSanae2 : CardBase { // DONE
 	static inline constexpr CardId ID = SANAE_OP2_CARD; // 15
 
 	inline CardSanae2() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = true;
 		this->option = NULL;
@@ -30232,7 +30239,7 @@ struct CardSanae2 : CardBase { // DONE
 	// Method 4C
 	// 0x40B270
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -30252,8 +30259,8 @@ struct CardYoumu : CardBase { // DONE
 	static inline constexpr CardId ID = YOUMU_OP_CARD; // 16
 
 	inline CardYoumu() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = true;
 		this->option = NULL;
@@ -30286,7 +30293,7 @@ struct CardYoumu : CardBase { // DONE
 	// Method 4C
 	// 0x40B380
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -30306,8 +30313,8 @@ struct CardAlice : CardBase { // DONE
 	static inline constexpr CardId ID = ALICE_OP_CARD; // 17
 
 	inline CardAlice() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = true;
 		this->option = NULL;
@@ -30319,7 +30326,7 @@ struct CardAlice : CardBase { // DONE
 		PlayerOption* option = this->allocate_equipment_option(28, 28, 16);
 		this->option = option;
 		option->__func_ptr_E8 = &PlayerOption::__position_func_card_alice;
-		option->__unknown_flag_A = true;
+		option->__unknown_flag_po_A = true;
 		return 0;
 	}
 
@@ -30358,7 +30365,7 @@ struct CardAlice : CardBase { // DONE
 	// Method 4C
 	// 0x40B4A0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -30378,8 +30385,8 @@ struct CardCirno : CardBase { // DONE
 	static inline constexpr CardId ID = CIRNO_OP_CARD; // 18
 
 	inline CardCirno() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = true;
 		this->option = NULL;
@@ -30409,7 +30416,7 @@ struct CardCirno : CardBase { // DONE
 	// Method 4C
 	// 0x40BB00
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -30429,8 +30436,8 @@ struct CardOkina : CardBase { // DONE
 	static inline constexpr CardId ID = OKINA_OP_CARD; // 19
 
 	inline CardOkina() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = true;
 		this->option = NULL;
@@ -30466,7 +30473,7 @@ struct CardOkina : CardBase { // DONE
 	// Method 4C
 	// 0x40B980
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -30486,8 +30493,8 @@ struct CardNue : CardBase { // DONE
 	static inline constexpr CardId ID = NUE_OP_CARD; // 20
 
 	inline CardNue() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = true;
 		this->option = NULL;
@@ -30499,7 +30506,7 @@ struct CardNue : CardBase { // DONE
 		PlayerOption* option = this->allocate_equipment_option(36, 36, 18);
 		this->option = option;
 		option->__func_ptr_E8 = &PlayerOption::__position_func_card_nue;
-		this->option->__unknown_flag_A = true;
+		this->option->__unknown_flag_po_A = true;
 		return 0;
 	}
 
@@ -30524,7 +30531,7 @@ struct CardNue : CardBase { // DONE
 	// Method 4C
 	// 0x40BC10
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -30543,8 +30550,8 @@ struct CardNitori : CardBase { // DONE
 	static inline constexpr CardId ID = ITEM_CATCH_CARD; // 21
 
 	inline CardNitori() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -30569,7 +30576,7 @@ struct CardNitori : CardBase { // DONE
 	// Method 4C
 	// 0x40C1C0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -30586,8 +30593,8 @@ struct CardKanako : CardBase { // DONE
 	static inline constexpr CardId ID = ITEM_LINE_CARD; // 22
 
 	inline CardKanako() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -30598,7 +30605,7 @@ struct CardKanako : CardBase { // DONE
 		PLAYER_PTR->poc_height = 224.0f;
 		Gui* gui = GUI_PTR;
 		if (gui) {
-			gui->__unknown_flag_B = true;
+			gui->show_item_get_line = true;
 		}
 		return 0;
 	}
@@ -30612,7 +30619,7 @@ struct CardKanako : CardBase { // DONE
 	// Method 4C
 	// 0x40C260
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -30635,8 +30642,8 @@ struct CardEirin : CardBase {
 		// BUG: enabled is not set here
 		this->__vm_id_58 = 0;
 		this->damage_source_index = 0;
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -30714,7 +30721,7 @@ struct CardEirin : CardBase {
 	// Method 4C
 	// 0x40A270
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__vm_id_58.mark_tree_for_delete();
 		this->enabled = false;
 		this->damage_source_index = 0;
@@ -30735,8 +30742,8 @@ struct CardTewi : CardBase { // DONE
 	static inline constexpr CardId ID = DBOMBEXTEND_CARD; // 24
 
 	inline CardTewi() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -30767,7 +30774,7 @@ struct CardTewi : CardBase { // DONE
 	// Method 4C
 	// 0x40A6F0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -30784,8 +30791,8 @@ struct CardSaki : CardBase {
 	static inline constexpr CardId ID = MAINSHOT_PU_CARD; // 25
 
 	inline CardSaki() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -30814,7 +30821,7 @@ struct CardSaki : CardBase {
 	// Method 4C
 	// 0x40C300
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -30831,8 +30838,8 @@ struct CardByakuren : CardBase {
 	static inline constexpr CardId ID = MAGICSCROLL_CARD; // 26
 
 	inline CardByakuren() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -30853,7 +30860,7 @@ struct CardByakuren : CardBase {
 	// Method 4C
 	// 0x40CBB0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		ability_manager_get_float_C58() = 0.8f;
 	}
 
@@ -30872,8 +30879,8 @@ struct CardKoishi : CardBase {
 	static inline constexpr CardId ID = KOISHI_CARD; // 27
 
 	inline CardKoishi() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -30914,7 +30921,7 @@ struct CardKoishi : CardBase {
 	// Method 4C
 	// 0x40D4B0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -30931,8 +30938,8 @@ struct CardSuwako : CardBase { // DONE
 	static inline constexpr CardId ID = MAINSHOT_SP_CARD; // 28
 
 	inline CardSuwako() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -30961,7 +30968,7 @@ struct CardSuwako : CardBase { // DONE
 	// Method 4C
 	// 0x40C430
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -30980,8 +30987,8 @@ struct CardAya : CardBase {
 	static inline constexpr CardId ID = SPEEDQUEEN_CARD; // 29
 
 	inline CardAya() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 		this->previous_direction = MovementNone;
@@ -31004,7 +31011,7 @@ struct CardAya : CardBase {
 	// 0x40C7F0
 	dllexport gnu_noinline virtual int thiscall on_player_tick() {
 		Player* player = PLAYER_PTR;
-		if (player->data.__unknown_flag_D) {
+		if (player->data.__is_shooting) {
 			ShtFile* sht_file = player->sht_file;
 			player->data.__unfocused_linear_speed = INTERNAL_POSITION_ADJUST(sht_file->__unfocused_linear_speed);
 			player->data.__unfocused_diagonal_speed = INTERNAL_POSITION_ADJUST(sht_file->__unfocused_diagonal_speed);
@@ -31045,7 +31052,7 @@ struct CardAya : CardBase {
 	// Method 4C
 	// 0x40C7A0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -31064,8 +31071,8 @@ struct CardKeiki : CardBase { // DONE
 	static inline constexpr CardId ID = OPTION_BR_CARD; // 30
 
 	inline CardKeiki() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 		this->__timer_20.reset();
@@ -31154,7 +31161,7 @@ struct CardKeiki : CardBase { // DONE
 	// Method 4C
 	// 0x40CC50
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -31171,8 +31178,8 @@ struct CardKaguya : CardBase { // DONE
 	static inline constexpr CardId ID = DEAD_SPELL_CARD; // 31
 
 	inline CardKaguya() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -31193,7 +31200,7 @@ struct CardKaguya : CardBase { // DONE
 	// Method 4C
 	// 0x40D2D0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -31211,8 +31218,8 @@ struct CardMamizou : CardBase { // DONE
 	static inline constexpr CardId ID = POWERMAX_CARD; // 32
 
 	inline CardMamizou() {
-		this->__unknown_flag_B = true;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = true;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -31222,10 +31229,10 @@ struct CardMamizou : CardBase { // DONE
 	dllexport gnu_noinline virtual int thiscall __method_4() {
 		if (
 			GAME_THREAD_PTR &&
-			this->__unknown_flag_B
+			this->__unknown_flag_cd_B
 		) {
 			BOOL level_up = GAME_MANAGER.globals.add_power(DEFAULT_POWER_PER_LEVEL);
-			this->__unknown_flag_B = false;
+			this->__unknown_flag_cd_B = false;
 			if (level_up) {
 				Player* player = PLAYER_PTR;
 				if (player) {
@@ -31274,7 +31281,7 @@ struct CardMamizou : CardBase { // DONE
 	// Method 34
 	// 0x40D380
 	dllexport gnu_noinline virtual void thiscall __on_stage_load() {
-		if (SUPERVISOR.__int_804) {
+		if (SUPERVISOR.__bool_804) {
 			this->__method_4();
 		}
 	}
@@ -31282,7 +31289,7 @@ struct CardMamizou : CardBase { // DONE
 	// Method 4C
 	// 0x40D370
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = true;
+		this->__unknown_flag_cd_B = true;
 	}
 
 	// Method 50
@@ -31299,8 +31306,8 @@ struct CardYuyuko : CardBase {
 	static inline constexpr CardId ID = YUYUKO_CARD; // 33
 
 	inline CardYuyuko() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -31321,7 +31328,7 @@ struct CardYuyuko : CardBase {
 	// Method 4C
 	// 0x40D590
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -31338,8 +31345,8 @@ struct CardYachie : CardBase {
 	static inline constexpr CardId ID = MONEY_CARD; // 34
 
 	inline CardYachie() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -31361,7 +31368,7 @@ struct CardYachie : CardBase {
 	// Method 4C
 	// 0x40D620
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -31385,8 +31392,8 @@ struct CardShikiEiki : CardBase {
 		// BUG: enabled is not set here
 		this->__vm_id_58 = 0;
 		this->damage_source_index = 0;
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -31460,7 +31467,7 @@ struct CardShikiEiki : CardBase {
 	// Method 4C
 	// 0x40D810
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__vm_id_58.mark_tree_for_delete();
 		this->enabled = false;
 		this->damage_source_index = 0;
@@ -31480,8 +31487,8 @@ struct CardNarumi : CardBase {
 	static inline constexpr CardId ID = NARUMI_CARD; // 36
 
 	inline CardNarumi() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -31491,11 +31498,11 @@ struct CardNarumi : CardBase {
 	dllexport gnu_noinline virtual ZUNResult thiscall initializeB() {
 		if (
 			GAME_THREAD_PTR &&
-			this->__unknown_flag_B
+			this->__unknown_flag_cd_B
 		) {
 			// NOTE: Does not add to stock max like the normal life card
 			GAME_MANAGER.globals.add_life();
-			this->__unknown_flag_B = false;
+			this->__unknown_flag_cd_B = false;
 		}
 		return ZUN_SUCCESS;
 	}
@@ -31503,7 +31510,7 @@ struct CardNarumi : CardBase {
 	// Method 34
 	// 0x409E90
 	dllexport gnu_noinline virtual void thiscall __on_stage_load() {
-		if (!SUPERVISOR.__int_804) {
+		if (!SUPERVISOR.__bool_804) {
 			GAME_MANAGER.globals.add_life_fragment();
 		} else {
 			GAME_MANAGER.globals.add_life();
@@ -31513,7 +31520,7 @@ struct CardNarumi : CardBase {
 	// Method 4C
 	// 0x409EB0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = true;
+		this->__unknown_flag_cd_B = true;
 	}
 
 	// Method 50
@@ -31530,8 +31537,8 @@ struct CardPatchouli : CardBase {
 	static inline constexpr CardId ID = PACHE_CARD; // 37
 
 	inline CardPatchouli() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -31551,7 +31558,7 @@ struct CardPatchouli : CardBase {
 	// Method 4C
 	// 0x409FA0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = true;
+		this->__unknown_flag_cd_B = true;
 	}
 
 	// Method 50
@@ -31568,8 +31575,8 @@ struct CardMike : CardBase { // DONE
 	static inline constexpr CardId ID = MANEKI_CARD; // 38
 
 	inline CardMike() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -31588,8 +31595,8 @@ struct CardTakane : CardBase { // DONE
 	static inline constexpr CardId ID = YAMAWARO_CARD; // 39
 
 	inline CardTakane() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -31608,8 +31615,8 @@ struct CardSannyo : CardBase { // DONE
 	static inline constexpr CardId ID = KISERU_CARD; // 40
 
 	inline CardSannyo() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -31628,8 +31635,8 @@ struct CardYukari : CardBase { // DONE
 	static inline constexpr CardId ID = WARP_CARD; // 41
 
 	inline CardYukari() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = true;
 		this->__is_equipment_card = false;
 		this->__timer_34.reset();
@@ -31667,9 +31674,9 @@ struct CardYukari : CardBase { // DONE
 		Player* player = PLAYER_PTR;
 		if (player) {
 			if (player->data.__yukari_wrap_type != 0) {
-				this->__unknown_flag_A = true;
+				this->__unknown_flag_cd_A = true;
 			} else {
-				this->__unknown_flag_A = false;
+				this->__unknown_flag_cd_A = false;
 			}
 		}
 		return 0;
@@ -31678,7 +31685,7 @@ struct CardYukari : CardBase { // DONE
 	// Method 4C
 	// 0x40A170
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -31710,8 +31717,8 @@ struct CardShinmyoumaru : CardBase {
 	static inline constexpr CardId ID = KOZUCHI_CARD; // 42
 
 	inline CardShinmyoumaru() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = true;
 		this->__is_equipment_card = false;
 		this->__timer_20.reset();
@@ -31754,7 +31761,7 @@ struct CardShinmyoumaru : CardBase {
 	dllexport gnu_noinline virtual int thiscall on_tick() {
 		switch (this->state) {
 			case 0:
-				this->__unknown_flag_A = false;
+				this->__unknown_flag_cd_A = false;
 				this->__dec_timer_34_during_gameplay();
 				break;
 			case 1:
@@ -31767,7 +31774,7 @@ struct CardShinmyoumaru : CardBase {
 				}
 				break;
 			case 2:
-				this->__unknown_flag_A = true;
+				this->__unknown_flag_cd_A = true;
 				if (this->__timer_20 > 10) {
 					this->state = 3;
 					SOUND_MANAGER.stop_sound(30);
@@ -31777,7 +31784,7 @@ struct CardShinmyoumaru : CardBase {
 				}
 				break;
 			case 3:
-				this->__unknown_flag_A = true;
+				this->__unknown_flag_cd_A = true;
 				if (this->__timer_20 < 10) {
 					float radius = (float)this->__timer_20 * 4.0f + 30.0f;
 #if MALLET_PIPE
@@ -31807,7 +31814,7 @@ struct CardShinmyoumaru : CardBase {
 	// Method 34
 	// 0x40EE00
 	dllexport gnu_noinline virtual void thiscall __on_stage_load() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_20.reset();
 		this->state = 0;
 		this->effect_vm_id.mark_tree_for_delete();
@@ -31816,7 +31823,7 @@ struct CardShinmyoumaru : CardBase {
 	// Method 4C
 	// 0x40EE50
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_20.reset();
 		this->state = 0;
 		this->__timer_34.reset();
@@ -31841,8 +31848,8 @@ struct CardTenshi : CardBase { // DONE
 	static inline constexpr CardId ID = KANAME_CARD; // 43
 
 	inline CardTenshi() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = true;
 		this->__is_equipment_card = false;
 		this->__timer_20.reset();
@@ -31863,7 +31870,7 @@ struct CardTenshi : CardBase { // DONE
 			this->__timer_20.reset();
 			SOUND_MANAGER.play_sound_positioned(77, this->position.x);
 			this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
-			this->__unknown_flag_A = true;
+			this->__unknown_flag_cd_A = true;
 			this->__cancel_counter = 0;
 		}
 		return 0;
@@ -31874,7 +31881,7 @@ struct CardTenshi : CardBase { // DONE
 	dllexport gnu_noinline virtual int thiscall on_tick() {
 		switch (this->state) {
 			case 2:
-				this->__unknown_flag_A = false;
+				this->__unknown_flag_cd_A = false;
 				if (this->__timer_20 > 8) {
 					this->state = 0;
 					this->effect_vm_id.mark_tree_for_delete();
@@ -31882,7 +31889,7 @@ struct CardTenshi : CardBase { // DONE
 				break;
 			case 1:
 				if (this->__timer_20 >= 30) {
-					this->__unknown_flag_A = false;
+					this->__unknown_flag_cd_A = false;
 				}
 				this->__position2 = PLAYER_PTR->data.position;
 				this->__position2.y -= 80.0f;
@@ -31897,7 +31904,7 @@ struct CardTenshi : CardBase { // DONE
 				}
 				break;
 			case 0:
-				this->__unknown_flag_A = false;
+				this->__unknown_flag_cd_A = false;
 				this->__dec_timer_34_during_gameplay();
 				break;
 		}
@@ -31931,7 +31938,7 @@ struct CardTenshi : CardBase { // DONE
 	// Method 34
 	// 0x40E7F0
 	dllexport gnu_noinline virtual void thiscall __on_stage_load() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_20.reset();
 		this->state = 0;
 		this->effect_vm_id.mark_tree_for_delete();
@@ -31940,7 +31947,7 @@ struct CardTenshi : CardBase { // DONE
 	// Method 4C
 	// 0x40E840
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_20.reset();
 		this->state = 0;
 		this->__timer_34.reset();
@@ -31966,8 +31973,8 @@ struct CardClownpiece : CardBase {
 	static inline constexpr CardId ID = MOON_CARD; // 44
 
 	inline CardClownpiece() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = true;
 		this->__is_equipment_card = false;
 		this->__timer_20.reset();
@@ -32006,7 +32013,7 @@ struct CardClownpiece : CardBase {
 	dllexport gnu_noinline virtual int thiscall on_tick() {
 		switch (this->state) {
 			case 2:
-				this->__unknown_flag_A = true;
+				this->__unknown_flag_cd_A = true;
 				this->position = this->position_interp.step();
 				this->position.y += this->__float_C0;
 				this->effect_vm_id.set_controller_position(&this->position);
@@ -32016,7 +32023,7 @@ struct CardClownpiece : CardBase {
 				}
 				break;
 			case 1:
-				this->__unknown_flag_A = true;
+				this->__unknown_flag_cd_A = true;
 				this->position = this->position_interp.step();
 				this->position.y += this->__float_C0;
 				this->effect_vm_id.set_controller_position(&this->position);
@@ -32027,7 +32034,7 @@ struct CardClownpiece : CardBase {
 				}
 				break;
 			case 0:
-				this->__unknown_flag_A = false;
+				this->__unknown_flag_cd_A = false;
 				this->__dec_timer_34_during_gameplay();
 				break;
 		}
@@ -32059,7 +32066,7 @@ struct CardClownpiece : CardBase {
 	// Method 34
 	// 0x40DC10
 	dllexport gnu_noinline virtual void thiscall __on_stage_load() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_20.reset();
 		this->state = 0;
 		this->effect_vm_id.mark_tree_for_delete();
@@ -32068,7 +32075,7 @@ struct CardClownpiece : CardBase {
 	// Method 4C
 	// 0x40DC60
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_20.reset();
 		this->state = 0;
 		this->__timer_34.reset();
@@ -32092,8 +32099,8 @@ struct CardMiko : CardBase { // DONE
 	static inline constexpr CardId ID = MIKOFLASH_CARD; // 45
 
 	inline CardMiko() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = true;
 		this->__is_equipment_card = false;
 		this->__timer_20.reset();
@@ -32127,7 +32134,7 @@ struct CardMiko : CardBase { // DONE
 		switch (this->state) {
 			case 1: {
 				Player* player = PLAYER_PTR;
-				this->__unknown_flag_A = true;
+				this->__unknown_flag_cd_A = true;
 				this->position = player->data.position;
 				this->effect_vm_id.set_controller_position(&player->data.position);
 				if (this->__timer_20 > 130) {
@@ -32143,7 +32150,7 @@ struct CardMiko : CardBase { // DONE
 				break;
 			}
 			case 0:
-				this->__unknown_flag_A = false;
+				this->__unknown_flag_cd_A = false;
 				this->__dec_timer_34_during_gameplay();
 				break;
 		}
@@ -32154,7 +32161,7 @@ struct CardMiko : CardBase { // DONE
 	// Method 34
 	// 0x40E300
 	dllexport gnu_noinline virtual void thiscall __on_stage_load() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_20.reset();
 		this->state = 0;
 		this->effect_vm_id.mark_tree_for_delete();
@@ -32163,7 +32170,7 @@ struct CardMiko : CardBase { // DONE
 	// Method 4C
 	// 0x40E350
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_20.reset();
 		this->state = 0;
 		this->__timer_34.reset();
@@ -32187,8 +32194,8 @@ struct CardRemilia : CardBase {
 	static inline constexpr CardId ID = VAMPIRE_CARD; // 46
 
 	inline CardRemilia() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = true;
 		this->__is_equipment_card = false;
 		this->__timer_20.reset();
@@ -32223,6 +32230,8 @@ struct CardRemilia : CardBase {
 	// Method 2C
 	// 0x40F3A0
 	dllexport gnu_noinline virtual int thiscall on_tick() {
+		// NOTE: Doesn't set __unknown_flag_cd_A
+		// like other active cards do.
 		switch (this->state) {
 			case 2: {
 				Player* player = PLAYER_PTR;
@@ -32264,7 +32273,7 @@ struct CardRemilia : CardBase {
 				break;
 			}
 			case 0:
-				this->__unknown_flag_A = false;
+				this->__unknown_flag_cd_A = false;
 				this->__dec_timer_34_during_gameplay();
 				break;
 		}
@@ -32275,7 +32284,7 @@ struct CardRemilia : CardBase {
 	// Method 34
 	// 0x40F2D0
 	dllexport gnu_noinline virtual void thiscall __on_stage_load() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_20.reset();
 		this->state = 0;
 		this->effect_vm_id.mark_tree_for_delete();
@@ -32284,7 +32293,7 @@ struct CardRemilia : CardBase {
 	// Method 4C
 	// 0x40F320
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_20.reset();
 		this->state = 0;
 		this->__timer_34.reset();
@@ -32309,8 +32318,8 @@ struct CardUtsuho : CardBase {
 	static inline constexpr CardId ID = SUN_CARD; // 47
 
 	inline CardUtsuho() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = true;
 		this->__is_equipment_card = false;
 		this->__timer_20.reset();
@@ -32354,14 +32363,14 @@ struct CardUtsuho : CardBase {
 	dllexport gnu_noinline virtual int thiscall on_tick() {
 		switch (this->state) {
 			case 2:
-				this->__unknown_flag_A = true;
+				this->__unknown_flag_cd_A = true;
 				if (this->__timer_20 > 60) {
 					this->state = 0;
 					this->effect_vm_id.mark_tree_for_delete();
 				}
 				break;
 			case 1: {
-				this->__unknown_flag_A = true;
+				this->__unknown_flag_cd_A = true;
 				if (SPELLCARD_PTR) {
 					__spellcard_fail();
 				}
@@ -32391,7 +32400,7 @@ struct CardUtsuho : CardBase {
 				break;
 			}
 			case 0:
-				this->__unknown_flag_A = false;
+				this->__unknown_flag_cd_A = false;
 				this->__dec_timer_34_during_gameplay();
 				break;
 		}
@@ -32402,7 +32411,7 @@ struct CardUtsuho : CardBase {
 	// Method 34
 	// 0x40F850
 	dllexport gnu_noinline virtual void thiscall __on_stage_load() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_20.reset();
 		this->state = 0;
 		this->effect_vm_id.mark_tree_for_delete();
@@ -32411,7 +32420,7 @@ struct CardUtsuho : CardBase {
 	// Method 4C
 	// 0x40F8A0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_20.reset();
 		this->state = 0;
 		this->__timer_34.reset();
@@ -32434,8 +32443,8 @@ struct CardLilyWhite : CardBase {
 
 	inline CardLilyWhite() {
 		this->recharge_time = 7200;
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = true;
 		this->__is_equipment_card = false;
 		this->__timer_34.reset();
@@ -32451,7 +32460,7 @@ struct CardLilyWhite : CardBase {
 	dllexport gnu_noinline virtual int thiscall on_tick() {
 		this->__dec_timer_34_during_gameplay();
 		if (this->__timer_34 < this->recharge_time - 8) {
-			this->__unknown_flag_A = false;
+			this->__unknown_flag_cd_A = false;
 		}
 		return 0;
 	}
@@ -32459,7 +32468,7 @@ struct CardLilyWhite : CardBase {
 	// Method 34
 	// 0x40FDD0
 	dllexport gnu_noinline virtual void thiscall __on_stage_load() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 38
@@ -32479,7 +32488,7 @@ struct CardLilyWhite : CardBase {
 	// Method 4C
 	// 0x40FDE0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_34.reset();
 		this->level = 0;
 	}
@@ -32501,8 +32510,8 @@ struct CardRaiko : CardBase {
 	static inline constexpr CardId ID = BASSDRUM_CARD; // 49
 
 	inline CardRaiko() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = true;
 		this->__is_equipment_card = false;
 		this->__timer_20.reset();
@@ -32532,7 +32541,7 @@ struct CardRaiko : CardBase {
 		switch (this->state) {
 			case 1: {
 				float radius = (float)this->__timer_20 + 34.0f;
-				this->__unknown_flag_A = true;
+				this->__unknown_flag_cd_A = true;
 
 				bullet_cancel_radius_as_bomb(&this->position, radius, CancelType0, 99999, 0);
 				laser_cancel_radius(&this->position, (float)this->__timer_20 + 34.0f, CancelType0, 0);
@@ -32545,7 +32554,7 @@ struct CardRaiko : CardBase {
 				break;
 			}
 			case 0:
-				this->__unknown_flag_A = false;
+				this->__unknown_flag_cd_A = false;
 				this->__dec_timer_34_during_gameplay();
 				break;
 		}
@@ -32556,7 +32565,7 @@ struct CardRaiko : CardBase {
 	// Method 34
 	// 0x410040
 	dllexport gnu_noinline virtual void thiscall __on_stage_load() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_20.reset();
 		this->state = 0;
 		this->effect_vm_id.mark_tree_for_delete();
@@ -32565,7 +32574,7 @@ struct CardRaiko : CardBase {
 	// Method 4C
 	// 0x410090
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_20.reset();
 		this->state = 0;
 		this->__timer_34.reset();
@@ -32589,8 +32598,8 @@ struct CardSumireko : CardBase {
 	static inline constexpr CardId ID = PSYCO_CARD; // 50
 
 	inline CardSumireko() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = true;
 		this->__is_equipment_card = false;
 		this->__timer_20.reset();
@@ -32620,7 +32629,7 @@ struct CardSumireko : CardBase {
 		switch (this->state) {
 			case 1: {
 				this->effect_vm_id.set_controller_position(&this->position);
-				this->__unknown_flag_A = true;
+				this->__unknown_flag_cd_A = true;
 
 				Player* player = PLAYER_PTR;
 				player->bullet_anm = ability_manager_get_ability_anm();
@@ -32637,7 +32646,7 @@ struct CardSumireko : CardBase {
 				break;
 			}
 			case 0: 
-				this->__unknown_flag_A = false;
+				this->__unknown_flag_cd_A = false;
 				this->__dec_timer_34_during_gameplay();
 				break;
 		}
@@ -32648,7 +32657,7 @@ struct CardSumireko : CardBase {
 	// Method 34
 	// 0x410430
 	dllexport gnu_noinline virtual void thiscall __on_stage_load() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_20.reset();
 		this->state = 0;
 		this->effect_vm_id.mark_tree_for_delete();
@@ -32657,7 +32666,7 @@ struct CardSumireko : CardBase {
 	// Method 4C
 	// 0x410480
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_20.reset();
 		this->state = 0;
 		this->__timer_34.reset();
@@ -32680,8 +32689,8 @@ struct CardMisumaru : CardBase {
 	static inline constexpr CardId ID = MAGATAMA_CARD; // 51
 
 	inline CardMisumaru() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = true;
 		this->left_magtama = NULL;
@@ -32695,13 +32704,13 @@ struct CardMisumaru : CardBase {
 		PlayerOption* left_magtama = this->allocate_equipment_option(-60, -60, 64);
 		this->left_magtama = left_magtama;
 		left_magtama->__func_ptr_E8 = &PlayerOption::__position_func_card_misumaru;
-		this->left_magtama->__unknown_flag_A = true;
+		this->left_magtama->__unknown_flag_po_A = true;
 		this->left_magtama->__float_E0 = -60.0f;
 
 		PlayerOption* right_magtama = this->allocate_equipment_option(60, 60, 65);
 		this->right_magtama = right_magtama;
 		right_magtama->__func_ptr_E8 = &PlayerOption::__position_func_card_misumaru;
-		this->right_magtama->__unknown_flag_A = true;
+		this->right_magtama->__unknown_flag_po_A = true;
 		this->right_magtama->__float_E0 = 60.0f;
 
 		return 0;
@@ -32737,7 +32746,7 @@ struct CardMisumaru : CardBase {
 	// Method 4C
 	// 0x40BEA0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 50
@@ -32748,7 +32757,7 @@ struct CardMisumaru : CardBase {
 	}
 };
 
-
+// size: 0x54
 struct CardTsukasa : CardBase {
 	// CardBase base; // 0x0
 	// 0x54
@@ -32757,8 +32766,8 @@ struct CardTsukasa : CardBase {
 
 	inline CardTsukasa() {
 		this->recharge_time = 1200;
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = true;
 		this->__is_equipment_card = false;
 		this->__timer_34.reset();
@@ -32800,7 +32809,7 @@ struct CardTsukasa : CardBase {
 	dllexport gnu_noinline virtual int thiscall on_tick() {
 		this->__dec_timer_34_during_gameplay();
 		if (this->__timer_34 < this->recharge_time - 8) {
-			this->__unknown_flag_A = false;
+			this->__unknown_flag_cd_A = false;
 		}
 		return 0;
 	}
@@ -32808,13 +32817,13 @@ struct CardTsukasa : CardBase {
 	// Method 34
 	// 0x410DD0
 	dllexport gnu_noinline virtual void thiscall __on_stage_load() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 4C
 	// 0x410DE0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_34.reset();
 	}
 
@@ -32833,8 +32842,8 @@ struct CardMegumu : CardBase {
 
 	inline CardMegumu() {
 		this->recharge_time = 5400;
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = false;
 		this->__is_active_card = true;
 		this->__is_equipment_card = false;
 		this->__timer_34.reset();
@@ -32867,7 +32876,7 @@ struct CardMegumu : CardBase {
 	dllexport gnu_noinline virtual int thiscall on_tick() {
 		this->__dec_timer_34_during_gameplay();
 		if (this->__timer_34 < this->recharge_time - 8) {
-			this->__unknown_flag_A = false;
+			this->__unknown_flag_cd_A = false;
 		}
 
 		if (!this->effect_vm_id.has_live_vm()) {
@@ -32886,13 +32895,13 @@ struct CardMegumu : CardBase {
 	// Method 34
 	// 0x410A50
 	dllexport gnu_noinline virtual void thiscall __on_stage_load() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 	}
 
 	// Method 4C
 	// 0x410A60
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->__timer_34.reset();
 	}
 
@@ -32914,8 +32923,8 @@ struct CardMomoyo : CardBase {
 	inline CardMomoyo() {
 		this->prev_counter_value = 0;
 		MOMOYO_CARD_COUNTER = 0;
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -33017,7 +33026,7 @@ struct CardMomoyo : CardBase {
 	// Method 4C
 	// 0x410FF0
 	dllexport gnu_noinline virtual void thiscall __method_4C() {
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_cd_B = false;
 		this->prev_counter_value = 0;
 	}
 
@@ -33035,8 +33044,8 @@ struct CardMagatama : CardBase { // DONE
 	static inline constexpr CardId ID = MAGATAMA2_CARD; // 55
 
 	inline CardMagatama() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -33055,8 +33064,8 @@ struct CardNull : CardBase {
 	static inline constexpr CardId ID = NULL_CARD; // 56
 
 	inline CardNull() {
-		this->__unknown_flag_B = false;
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_cd_B = false;
+		this->__unknown_flag_cd_C = true;
 		this->__is_active_card = false;
 		this->__is_equipment_card = false;
 	}
@@ -33360,7 +33369,7 @@ public:
 		ability_manager->passive_card_count = 0;
 
 		ability_manager->card_list.for_each_safeB([=](CardBase* card) {
-			if (card->__unknown_flag_F) {
+			if (card->__unknown_flag_cd_F) {
 				card->list_node.unlink();
 				delete card;
 				--ability_manager->card_count;
@@ -33518,7 +33527,7 @@ public:
 		card->id = id;
 		card->__array_index = this->card_count + 1;
 		BOOL flagF = flags & 1;
-		card->__unknown_flag_F = flagF;
+		card->__unknown_flag_cd_F = flagF;
 		if (!flagF) {
 			if (ZUN_FAILED(card->initializeA())) {
 				return ZUN_ERROR;
@@ -33851,7 +33860,7 @@ public:
 		float B = 1.0f;
 		float A = 1.0f - card->recharge_time / (float)card->__timer_34;
 
-		if (card->__get_unknown_flag_A()) {
+		if (card->__get_unknown_flag_cd_A()) {
 			A = B;
 			uint8_t c = this->__timer_44 % 4 <= 2 ? 0 : 255;
 			RED(vmA->data.color1) = 255;
@@ -34600,7 +34609,7 @@ normal_angle:
 	damage_source->damage_cap = 10000000;
 	damage_source->__player_bullet_index = this->__bullet_index;
 
-	this->__unknown_flag_A = true;
+	this->__unknown_flag_pb_A = true;
 
 	auto* init_func = this->__init_func;
 	if (
@@ -34609,7 +34618,7 @@ normal_angle:
 	) {
 		this->state = 0;
 		this->__vm_id_8.mark_tree_for_delete();
-		this->__unknown_flag_A = false;
+		this->__unknown_flag_pb_A = false;
 		return ZUN_ERROR;
 	}
 
@@ -34699,7 +34708,7 @@ dllexport gnu_noinline void thiscall PlayerData::__update_option_power_levels(in
 				option_iter->__anm_id_B0 = player->player_anm->instantiate_vm_to_world_list_back(PLAYER_OPTION_ANM_SCRIPTS_B[GAME_MANAGER.globals.character], 15);
 				option_iter->__anm_id_B0.get_vm_ptr()->controller.position.y = -999.0f;
 
-				option_iter->__unknown_flag_A = false;
+				option_iter->__unknown_flag_po_A = false;
 				option_iter->state = 2;
 				option_iter->__dword_DC = 0;
 				player = PLAYER_PTR;
@@ -34738,7 +34747,7 @@ dllexport gnu_noinline void thiscall PlayerData::__update_option_power_levels(in
 
 	for (size_t i = 0; i < PLAYER_EQUIPMENT_OPTION_COUNT; ++i) {
 		PlayerOption* equipment = &this->equipment[i];
-		equipment->__unknown_flag_A = false;
+		equipment->__unknown_flag_po_A = false;
 		equipment->state = 0;
 		equipment->__dword_DC = 0;
 	}
@@ -34756,8 +34765,8 @@ inline void Player::reset_impl() {
 	this->data.__timer_28.reset();
 	this->data.__timer_3C.reset();
 
-	this->data.__unknown_flag_A = false;
-	this->data.__unknown_flag_B = false;
+	this->data.__unknown_flag_pl_A = false;
+	this->data.__unknown_flag_pl_B = false;
 
 	this->data.focus_sigil_vm_id.mark_tree_for_delete();
 	this->data.__graze_aura_vm_id.mark_tree_for_delete();
@@ -34767,7 +34776,7 @@ inline void Player::reset_impl() {
 	this->__sub_416D50();
 	this->data.__update_option_power_levels();
 
-	this->data.__unknown_flag_H = false;
+	this->data.__unknown_flag_pl_H = false;
 	zero_array(this->data.__level_array_470DC);
 
 	this->__dword_479BC = 0;
@@ -34811,7 +34820,7 @@ inline void Player::reset_impl() {
 // 0x45EA00
 dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
 	if (INPUT_P1.check_inputs(BUTTON_SHOOT)) {
-		this->data.__unknown_flag_D = true;
+		this->data.__is_shooting = true;
 	}
 	if (!this->data.focused) {
 		if (INPUT_P1.check_inputs(BUTTON_LEFT)) {
@@ -35417,7 +35426,7 @@ struct EnemyManager : ZUNTask {
 	union {
 		uint32_t flags; // 0x88
 		struct {
-			uint32_t __unknown_flag_A : 1; // 1
+			uint32_t __hide_boss_hud : 1; // 1
 		};
 	};
 	int32_t enemy_limit; // 0x8C
@@ -35585,8 +35594,8 @@ struct EnemyManager : ZUNTask {
 	}
 
 	// 0x42D4D0
-	dllexport gnu_noinline void __set_unkown_flag_A(bool value) asm_symbol_rel(0x42D4D0) {
-		ENEMY_MANAGER_PTR->__unknown_flag_A = value;
+	dllexport gnu_noinline void __set_hide_boss_hud(bool value) asm_symbol_rel(0x42D4D0) {
+		ENEMY_MANAGER_PTR->__hide_boss_hud = value;
 	}
 
 	forceinline Enemy* get_enemy_by_id_impl(int32_t enemy_id) {
@@ -35688,11 +35697,11 @@ public:
 
 		this->enemy_list.for_each_safeB([](Enemy* enemy, ZUNList<Enemy>* node) {
 			if (
-				!enemy->data.__unknown_flag_B &&
+				!enemy->data.marked_for_delete &&
 				ZUN_SUCCEEDED(enemy->on_tick())
 			) {
 				enemy = node->data;
-				enemy->data.__unknown_flag_A = false;
+				enemy->data.__is_being_ticked = false;
 			}
 			else {
 				enemy = node->data;
@@ -35714,9 +35723,9 @@ public:
 		GameThread* game_thread_ptr = GAME_THREAD_PTR;
 		if (
 			game_thread_ptr &&
-			!(game_thread_ptr->__unknown_flag_A | game_thread_ptr->skip_flag) &&
-			!game_thread_ptr->__unknown_flag_C &&
-			!game_thread_ptr->__unknown_flag_B &&
+			!(game_thread_ptr->__unknown_flag_gt_A | game_thread_ptr->skip_flag) &&
+			!game_thread_ptr->__unknown_flag_gt_C &&
+			!game_thread_ptr->__unknown_flag_gt_B &&
 			!ABILITY_SHOP_PTR
 		) {
 			return ((EnemyManager*)ptr)->on_tick();
@@ -35843,7 +35852,7 @@ dllexport gnu_noinline int thiscall CardLilyWhite::on_activate() {
 
 			this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
 			++this->level;
-			this->__unknown_flag_A = true;
+			this->__unknown_flag_cd_A = true;
 		}
 	}
 	return 0;
@@ -36022,10 +36031,10 @@ dllexport gnu_noinline Enemy::~Enemy() EH_TERMINATE {
 	this->data.global_list_node.unlink_from_tail(enemy_manager->enemy_list.tail);
 	this->data.global_list_node.unlink_from_head(enemy_manager->__unknown_enemy_list);
 	this->data.global_list_node.unlink();
-	if (!this->data.__unknown_flag_P) {
+	if (!this->data.__unknown_flag_ed_P) {
 		--enemy_manager->enemy_count;
 		// Probably a nested function here...
-		if (!this->data.__unknown_flag_P) {
+		if (!this->data.__unknown_flag_ed_P) {
 			if (this->data.is_boss) {
 				enemy_manager->boss_ids[this->data.boss_id] = 0;
 			}
@@ -36481,8 +36490,8 @@ struct StdObject {
 	union {
 		uint8_t flags; // 0x3
 		struct {
-			uint8_t __unknown_flag_A : 1; // 1
-			uint8_t __unknown_flag_B : 1; // 2
+			uint8_t __run_quad_vm_scripts : 1; // 1
+			uint8_t __unknown_flag_so_B : 1; // 2
 		};
 	};
 	Float3 position; // 0x4
@@ -36625,7 +36634,7 @@ struct StdInstance {
 	union {
 		uint16_t flags; // 0x2
 		struct {
-			uint16_t __unknown_flag_A : 1; // 1
+			uint16_t __unknown_flag_si_A : 1; // 1
 		};
 	};
 	Float3 position; // 0x4
@@ -36778,10 +36787,10 @@ struct Stage : ZUNTask {
 	union {
 		uint32_t flags; // 0x3474
 		struct {
-			uint32_t __unknown_flag_C : 1; // 1
-			uint32_t __unknown_flag_D : 1; // 2
-			uint32_t __unknown_flag_B : 1; // 3
-			uint32_t __unknown_flag_A : 1; // 4
+			uint32_t __unknown_flag_bg_C : 1; // 1
+			uint32_t __unknown_flag_bg_D : 1; // 2
+			uint32_t __unknown_flag_bg_B : 1; // 3
+			uint32_t __unknown_flag_bg_A : 1; // 4
 		};
 	};
 	Timer __timer_3478; // 0x3478
@@ -36852,7 +36861,7 @@ struct Stage : ZUNTask {
 
 		SAFE_DELETE(this->std_vm.distortion.fog_ptr);
 
-		if (!GAME_MANAGER.__unknown_flag_A) {
+		if (!GAME_MANAGER.__unknown_flag_gm_A) {
 			ANM_MANAGER_PTR->unload_anm(STAGE_ANM_INDEX_A + (this->stage_number & 1));
 		}
 
@@ -36932,7 +36941,7 @@ struct Stage : ZUNTask {
 				Float3 position = object->position;
 				if (object->__sub_41CA90(&position, this->std_vm.draw_distance_squared, &SUPERVISOR.cameras[3])) {
 					++this->__int_346C;
-					instance->__unknown_flag_A = false;
+					instance->__unknown_flag_si_A = false;
 				}
 				else {
 					for (
@@ -36973,7 +36982,7 @@ struct Stage : ZUNTask {
 							}
 						}
 					}
-					instance->__unknown_flag_A = true;
+					instance->__unknown_flag_si_A = true;
 					++this->__int_3468;
 				}
 			}
@@ -36986,8 +36995,8 @@ struct Stage : ZUNTask {
 	// 0x41C0A0
 	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x41C0A0) {
 		if (
-			!this->__unknown_flag_A &&
-			(!this->__unknown_flag_B || this->__timer_3478 < 60)
+			!this->__unknown_flag_bg_A &&
+			(!this->__unknown_flag_bg_B || this->__timer_3478 < 60)
 		) {
 			this->std_vm.camera.__float2_FC = {};
 			this->std_vm.camera.__float3_13C = {};
@@ -36997,10 +37006,10 @@ struct Stage : ZUNTask {
 
 			this->std_vm.__color_3440 = COLOR(0, 128, 128, 128);
 
-			if (!this->__unknown_flag_B || this->__timer_3478 < 30) {
+			if (!this->__unknown_flag_bg_B || this->__timer_3478 < 30) {
 				for (int32_t i = 0; i < this->std_file->object_count; ++i) {
 					StdObject* object = this->objects[i];
-					if (object->__unknown_flag_A) {
+					if (object->__run_quad_vm_scripts) {
 						uint32_t vms_alive = 0;
 						for (
 							StdQuad* quad = object->quads;
@@ -37012,7 +37021,7 @@ struct Stage : ZUNTask {
 							vms_alive += vm->data.current_instruction_offset >= 0;
 						}
 						if (!vms_alive) {
-							object->__unknown_flag_A = false;
+							object->__run_quad_vm_scripts = false;
 						}
 					}
 				}
@@ -37031,8 +37040,8 @@ struct Stage : ZUNTask {
 	// 0x41C290
 	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x41C290) {
 		if (
-			!this->__unknown_flag_A &&
-			(!this->__unknown_flag_B || this->__timer_3478 < 60)
+			!this->__unknown_flag_bg_A &&
+			(!this->__unknown_flag_bg_B || this->__timer_3478 < 60)
 		) {
 			ANM_MANAGER_PTR->flush_sprites();
 			this->std_vm.camera.__float2_FC.x = SUPERVISOR.cameras[3].__float2_FC.x;
@@ -37047,7 +37056,7 @@ struct Stage : ZUNTask {
 			SUPERVISOR.d3d_fog_start(this->std_vm.camera.sky.begin_distance);
 			SUPERVISOR.d3d_fog_end(this->std_vm.camera.sky.end_distance);
 
-			if (this->__unknown_flag_B && this->__int_3490 < 34) {
+			if (this->__unknown_flag_bg_B && this->__int_3490 < 34) {
 				D3DRECT rect = SUPERVISOR.cameras[3].get_viewport_d3d_rect();
 				SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, COLOR(255, 0, 0, 0), 1.0f, 0);
 			} else {
@@ -37055,15 +37064,15 @@ struct Stage : ZUNTask {
 				SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, this->std_vm.camera.sky.color, 1.0f, 0);
 			}
 
-			if (this->__unknown_flag_B) {
+			if (this->__unknown_flag_bg_B) {
 				if (this->__timer_3478 < 30) {
-					// TODO: allocate a screen effect
-					this->__unknown_flag_C = true;
+					//ScreenEffect::allocate(ScreenEffect3, 30, 0, 0, 0, 10);
+					this->__unknown_flag_bg_C = true;
 					this->__timer_3478.reset();
 				}
 				else {
 					ALPHA(this->std_vm.__color_3440) = 0;
-					this->__unknown_flag_C = false;
+					this->__unknown_flag_bg_C = false;
 				}
 			}
 
@@ -37078,7 +37087,7 @@ struct Stage : ZUNTask {
 			this->__int_346C = 0;
 			this->__int_3470 = 0;
 
-			if (this->__unknown_flag_C) {
+			if (this->__unknown_flag_bg_C) {
 				SUPERVISOR.d3d_enable_fog();
 				this->__draw_vms(0);
 				this->__draw_vms(1);
@@ -37103,8 +37112,8 @@ struct Stage : ZUNTask {
 	// 0x41C700
 	dllexport gnu_noinline UpdateFuncRet thiscall on_draw_B() asm_symbol_rel(0x41C700) {
 		if (
-			!this->__unknown_flag_A &&
-			(!this->__unknown_flag_B || this->__timer_3478 < 60)
+			!this->__unknown_flag_bg_A &&
+			(!this->__unknown_flag_bg_B || this->__timer_3478 < 60)
 		) {
 			ANM_MANAGER_PTR->flush_sprites();
 			this->std_vm.camera.__float2_FC.x = SUPERVISOR.cameras[3].__float2_FC.x;
@@ -37128,11 +37137,11 @@ struct Stage : ZUNTask {
 			SUPERVISOR.d3d_fog_start(this->std_vm.camera.sky.begin_distance);
 			SUPERVISOR.d3d_fog_end(this->std_vm.camera.sky.end_distance);
 
-			if (this->__unknown_flag_B && this->__int_3490 >= 30) {
+			if (this->__unknown_flag_bg_B && this->__int_3490 >= 30) {
 				ALPHA(this->std_vm.__color_3440) = 0;
 			}
 
-			if (this->__unknown_flag_C) {
+			if (this->__unknown_flag_bg_C) {
 				SUPERVISOR.d3d_disable_zwrite();
 				SUPERVISOR.d3d_enable_fog();
 				this->__draw_vms(8);
@@ -37150,9 +37159,9 @@ struct Stage : ZUNTask {
 				this->__timer_3478--;
 				if (this->__timer_3478 <= 0) {
 					this->std_vm.__color_3440 = COLOR(0, 255, 255, 255);
-					this->__unknown_flag_B |= this->__unknown_flag_D;
-					this->__unknown_flag_D = false;
-					this->__unknown_flag_A = false;
+					this->__unknown_flag_bg_B |= this->__unknown_flag_bg_D;
+					this->__unknown_flag_bg_D = false;
+					this->__unknown_flag_bg_A = false;
 				}
 			}
 
@@ -37245,7 +37254,7 @@ corrupted_data:
 
 		this->__int_3490 = 0;
 		this->std_vm.script_time.reset();
-		this->__unknown_flag_C = true;
+		this->__unknown_flag_bg_C = true;
 		this->std_vm.camera_facing_interp.end_time = 0;
 		this->std_vm.camera_position_interp.end_time = 0;
 
@@ -37532,15 +37541,15 @@ struct Spellcard : ZUNTask {
 		uint32_t flags; // 0x78
 		struct {
 			uint32_t spell_active : 1; // 1
-			uint32_t __unknown_flag_B : 1; // 2
-			uint32_t __unknown_flag_I : 1; // 3
+			uint32_t __unknown_flag_sp_B : 1; // 2
+			uint32_t __unknown_flag_sp_I : 1; // 3
 			uint32_t __timeout_spell : 1; // 4
-			uint32_t __unknown_flag_C : 1; // 5
-			uint32_t __unknown_flag_E : 1; // 6
-			uint32_t __unknown_flag_F : 1; // 7
-			uint32_t __unknown_flag_D : 1; // 8
-			uint32_t __unknown_flag_H : 1; // 9
-			uint32_t __unknown_flag_G : 1; // 10
+			uint32_t __unknown_flag_sp_C : 1; // 5
+			uint32_t __unknown_flag_sp_E : 1; // 6
+			uint32_t __unknown_flag_sp_F : 1; // 7
+			uint32_t __unknown_flag_sp_D : 1; // 8
+			uint32_t __unknown_flag_sp_H : 1; // 9
+			uint32_t __unknown_flag_sp_G : 1; // 10
 		};
 	};
 	int32_t __bonus_A; // 0x7C
@@ -37583,8 +37592,8 @@ struct Spellcard : ZUNTask {
 	}
 
 	// 0x42D640
-	dllexport gnu_noinline BOOL thiscall __get_flag_B() asm_symbol_rel(0x42D640) {
-		return this->__unknown_flag_B;
+	dllexport gnu_noinline BOOL thiscall __get_flag_sp_B() asm_symbol_rel(0x42D640) {
+		return this->__unknown_flag_sp_B;
 	}
 
 	// 0x42D650
@@ -37593,8 +37602,8 @@ struct Spellcard : ZUNTask {
 	}
 
 	// 0x42D610
-	dllexport gnu_noinline void thiscall __set_flag_H(int32_t state) asm_symbol_rel(0x42D610) {
-		SPELLCARD_PTR->__unknown_flag_H = state;
+	dllexport gnu_noinline void thiscall __set_flag_sp_H(int32_t state) asm_symbol_rel(0x42D610) {
+		SPELLCARD_PTR->__unknown_flag_sp_H = state;
 	}
 
 	inline bool __spell_past_grace_period() {
@@ -37606,13 +37615,13 @@ struct Spellcard : ZUNTask {
 	}
 
 	inline bool __inline_sub_C() {
-		return this->spell_active & this->__unknown_flag_E;
+		return this->spell_active & this->__unknown_flag_sp_E;
 	}
 
 	// 0x42D670
 	dllexport gnu_noinline void thiscall __sub_42D670() asm_symbol_rel(0x42D670) {
 		Spellcard* spellcard = SPELLCARD_PTR;
-		spellcard->__unknown_flag_C = true;
+		spellcard->__unknown_flag_sp_C = true;
 		spellcard->__vm_id_1C.mark_tree_for_delete();
 	}
 
@@ -37620,10 +37629,10 @@ struct Spellcard : ZUNTask {
 		if (this->spell_active) {
 			if (this->__timer_20 >= SPELLCARD_GRACE_PERIOD) {
 				this->__bonus_A = 0;
-				this->__unknown_flag_B = false;
-				this->__unknown_flag_E = false;
+				this->__unknown_flag_sp_B = false;
+				this->__unknown_flag_sp_E = false;
 			} else if (BOMB_PTR->is_active()) {
-				this->__unknown_flag_E = true;
+				this->__unknown_flag_sp_E = true;
 			}
 		}
 	}
@@ -37641,10 +37650,10 @@ struct Spellcard : ZUNTask {
 		this->id = id;
 		byteloop_strcpy(this->name, name);
 		this->spell_active = true;
-		this->__unknown_flag_B = true;
+		this->__unknown_flag_sp_B = true;
 		this->__timeout_spell = false;
-		this->__unknown_flag_C = false;
-		this->__unknown_flag_D = false;
+		this->__unknown_flag_sp_C = false;
+		this->__unknown_flag_sp_D = false;
 		if (!is_replay()) {
 			byteloop_strcpy(SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].spells[id].name, name);
 			// TODO: scorefile stuff
@@ -37654,8 +37663,8 @@ struct Spellcard : ZUNTask {
 		gui->spell_timer_vms[1]->interrupt_and_run(2);
 
 		this->__int_8C = 1;
-		this->__unknown_flag_E = false;
-		this->__unknown_flag_F = false;
+		this->__unknown_flag_sp_E = false;
+		this->__unknown_flag_sp_F = false;
 
 		this->__vm_id_array_10[0] = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(0);
 		this->__vm_id_array_10[1] = SUPERVISOR.text_anm->instantiate_vm_to_world_list_back(2);
@@ -37705,26 +37714,26 @@ struct Spellcard : ZUNTask {
 		auto& anm_sourceA = STAGE_DATA_PTR->inner[mode];
 		anm_file_lookup(anm_sourceA.__spell_anm_indexA)->instantiate_vm_to_world_list_back(anm_sourceA.__spell_anm_scriptA);
 		auto& anm_sourceB = STAGE_DATA_PTR->inner[mode];
-		this->__unknown_flag_G = anm_sourceB.__spell_flag_state;
+		this->__unknown_flag_sp_G = anm_sourceB.__spell_flag_state;
 		anm_file_lookup(anm_sourceB.__spell_anm_indexB)->instantiate_vm_to_world_list_back(anm_sourceB.__spell_anm_scriptB);
 		
-		GAME_MANAGER.globals.__unknown_flag_A = false;
+		GAME_MANAGER.globals.__unknown_flag_gl_A = false;
 	}
 
 	// 0x42A780
 	dllexport gnu_noinline void thiscall end_spell() {
 		if (this->spell_active) {
-			STAGE_PTR->__unknown_flag_C = true;
+			STAGE_PTR->__unknown_flag_bg_C = true;
 			this->__vm_id_array_10[0].interrupt_tree(1);
 			this->__vm_id_array_10[1].interrupt_tree(1);
 			this->__vm_id_array_10[2].interrupt_tree(1);
 			this->spell_active = false;
 			this->__vm_id_C.mark_tree_for_delete();
-			this->__unknown_flag_E = false;
+			this->__unknown_flag_sp_E = false;
 			GUI_PTR->__spell_timer_vms_interrupt_3();
 			this->__vm_id_1C.mark_tree_for_delete();
 
-			if (this->__unknown_flag_B) {
+			if (this->__unknown_flag_sp_B) {
 				GAME_MANAGER.add_to_score(this->__bonus_A);
 				//GUI_PTR->__sub_441A50(0, this->__bonus_A);
 				if (!is_replay()) {
@@ -37768,9 +37777,9 @@ struct Spellcard : ZUNTask {
 			++this->__int_8C;
 			if (
 				this->__timer_20 >= 60 &&
-				!this->__unknown_flag_G
+				!this->__unknown_flag_sp_G
 			) {
-				STAGE_PTR->__unknown_flag_C = false;
+				STAGE_PTR->__unknown_flag_bg_C = false;
 			}
 
 			if (
@@ -37789,26 +37798,26 @@ struct Spellcard : ZUNTask {
 
 			if (this->__timer_20 >= 120) {
 				Player* player = PLAYER_PTR;
-				if (!this->__unknown_flag_I) {
+				if (!this->__unknown_flag_sp_I) {
 					if (
-						(!this->__unknown_flag_H && player->data.position.y < 96.0f) ||
-						(this->__unknown_flag_H && player->data.position.y > 352.0f)
+						(!this->__unknown_flag_sp_H && player->data.position.y < 96.0f) ||
+						(this->__unknown_flag_sp_H && player->data.position.y > 352.0f)
 					) {
 						nounroll for (size_t i = 0; i != countof(this->__vm_id_array_10); ++i) {
 							this->__vm_id_array_10[i].interrupt_tree(1);
 						}
-						this->__unknown_flag_I = true;
+						this->__unknown_flag_sp_I = true;
 					}
 				}
 				else {
 					if (
-						(!this->__unknown_flag_H && player->data.position.y > 128.0f) ||
-						(this->__unknown_flag_H && player->data.position.y < 320.0f)
+						(!this->__unknown_flag_sp_H && player->data.position.y > 128.0f) ||
+						(this->__unknown_flag_sp_H && player->data.position.y < 320.0f)
 					) {
 						nounroll for (size_t i = 0; i != countof(this->__vm_id_array_10); ++i) {
 							this->__vm_id_array_10[i].interrupt_tree(2);
 						}
-						this->__unknown_flag_I = false;
+						this->__unknown_flag_sp_I = false;
 					}
 				}
 			}
@@ -37822,10 +37831,10 @@ struct Spellcard : ZUNTask {
 			this->__vm_id_1C.set_controller_position(&this->__float3_AC);
 
 			if (
-				this->__unknown_flag_B &&
+				this->__unknown_flag_sp_B &&
 				BOMB_PTR->is_active()
 			) {
-				this->__unknown_flag_E = false;
+				this->__unknown_flag_sp_E = false;
 			}
 		}
 		return UpdateFuncNext;
@@ -37845,7 +37854,7 @@ struct Spellcard : ZUNTask {
 			ascii_manager->font_id = 2;
 			ascii_manager->group = 2;
 			ascii_manager->set_alpha(vm->get_alpha());
-			if (this->__unknown_flag_B) {
+			if (this->__unknown_flag_sp_B) {
 				position.x = 266.0f;
 				ascii_manager->printf(&position, "%8d", this->__bonus_A);
 			} else {
@@ -38112,7 +38121,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 	else {
 		this->__vm_14.data.color_mode = 0;
 
-		if (this->data.__unknown_flag_E) {
+		if (this->data.__has_damage_boost) {
 			if (this->data.__death_timer % 8 < 4) {
 				this->__vm_14.data.color2 = COLOR(255, 255, 0, 0);
 				this->__vm_14.data.color_mode = 1;
@@ -38156,14 +38165,14 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 	this->data.__timer_28++;
 	this->data.__timer_3C++;
 
-	this->data.__unknown_flag_D = false;
+	this->data.__is_shooting = false;
 
 	if (
 		!GUI_PTR->msg_vm &&
 		enemies_are_alive() &&
-		!GAME_THREAD_PTR->__unknown_flag_C &&
+		!GAME_THREAD_PTR->__unknown_flag_gt_C &&
 		this->data.__timer_3C >= 20 &&
-		!this->data.__unknown_flag_H &&
+		!this->data.__unknown_flag_pl_H &&
 		this->data.__yukari_wrap_type == 0 &&
 		!this->data.scale_enabled
 	) {
@@ -38231,7 +38240,7 @@ dllexport gnu_noinline void thiscall Player::death() {
 
 // 0x45D3A0
 dllexport gnu_noinline void thiscall Player::start_dying() {
-	if (!this->data.__unknown_flag_B) {
+	if (!this->data.__unknown_flag_pl_B) {
 		SOUND_MANAGER.play_sound(2);
 	}
 	
@@ -39069,7 +39078,13 @@ public:
 	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x446EC0) {
 		GameThread* game_thread = GAME_THREAD_PTR;
 		if (
-			(game_thread && ((game_thread->__unknown_flag_A | game_thread->skip_flag) || game_thread->__unknown_flag_C)) ||
+			(
+				game_thread &&
+				(
+					(game_thread->__unknown_flag_gt_A | game_thread->skip_flag) ||
+					game_thread->__unknown_flag_gt_C
+				)
+			) ||
 			ABILITY_SHOP_PTR
 		) {
 			return UpdateFuncNext;
@@ -39942,15 +39957,15 @@ struct Bullet {
 	union {
 		uint32_t flags; // 0x20
 		struct {
-			uint32_t __unknown_flag_E : 1; // 1
-			uint32_t __unknown_flag_F : 1; // 2
+			uint32_t __unknown_flag_bu_E : 1; // 1
+			uint32_t __hitbox_enabled : 1; // 2
 			uint32_t grazed : 1; // 3
-			uint32_t __unknown_flag_D : 1; // 4
-			uint32_t __circular_hitbox : 1; // 5
+			uint32_t __unknown_flag_bu_D : 1; // 4
+			uint32_t circular_hitbox : 1; // 5
 			uint32_t : 1; // 6
-			uint32_t __scale_enabled : 1; // 7
+			uint32_t scale_enabled : 1; // 7
 			uint32_t : 1; // 8
-			uint32_t __unknown_flag_C : 1; // 9
+			uint32_t __unknown_flag_bu_C : 1; // 9
 			uint32_t __delay_flag : 1; // 10
 		};
 	};
@@ -40369,7 +40384,7 @@ struct Bullet {
 	dllexport gnu_noinline ZUNResult thiscall on_tick() asm_symbol_rel(0x423E10) {
 		this->__timer_F80++;
 
-		if (!this->__unknown_flag_D) {
+		if (!this->__unknown_flag_bu_D) {
 
 			if (this->effects_active(EX_SIZE)) {
 				float scale = this->scale_interp.step();
@@ -40377,7 +40392,7 @@ struct Bullet {
 				if (!this->scale_interp.end_time) {
 					this->disable_effects(EX_SIZE);
 					if (scale == 1.0f) {
-						this->__scale_enabled = false;
+						this->scale_enabled = false;
 					}
 				}
 			}
@@ -40495,7 +40510,7 @@ struct Bullet {
 		if (this->vm.data.auto_rotate) {
 			this->vm.set_z_rotation(reduce_angle_add(this->angle, HALF_PI_f));
 		}
-		if (this->__scale_enabled) {
+		if (this->scale_enabled) {
 			this->vm.set_scale2(this->scale);
 		}
 		ANM_MANAGER_PTR->draw_vm(&this->vm);
@@ -40569,12 +40584,12 @@ struct LaserData {
 	// void* vtable; // 0x0
 	ZUNEmbeddedListR<LaserData> embedded_node; // 0x4
 	union {
-		uint32_t __flags_C; // 0xC
+		uint32_t flags; // 0xC
 		struct {
-			uint32_t __unknown_flag_A : 1; // 1
-			uint32_t __unknown_field_A : 2; // 2-3
-			uint32_t __unknown_flag_B : 1; // 4
-			uint32_t __unknown_flag_C : 1; // 5
+			uint32_t __unknown_flag_ld_A : 1; // 1
+			uint32_t __unknown_field_ld_A : 2; // 2-3
+			uint32_t __unknown_flag_ld_B : 1; // 4
+			uint32_t __unknown_flag_ld_C : 1; // 5
 		};
 	};
 	int32_t state; // 0x10
@@ -40857,7 +40872,7 @@ public:
 #pragma endregion // LaserData method stubs
 
 	inline int on_tick_common() {
-		if (this->__unknown_flag_B) {
+		if (this->__unknown_flag_ld_B) {
 			this->check_collision(GrazeCollisionTest);
 		}
 		else {
@@ -40865,7 +40880,7 @@ public:
 				return 1;
 			}
 			++this->__timer_18;
-			this->__unknown_flag_A = true;
+			this->__unknown_flag_ld_A = true;
 		}
 		return 0;
 	}
@@ -40913,8 +40928,8 @@ struct LaserLineParams {
 	union {
 		uint32_t flags; // 0x34, 0x7BC
 		struct {
-			uint32_t __unknown_flag_A : 1; // 1
-			uint32_t __unknown_flag_B : 1; // 2
+			uint32_t __unknown_flag_ll_A : 1; // 1
+			uint32_t __unknown_flag_ll_B : 1; // 2
 		};
 	};
 	BulletEffectArgs effects[BULLET_EFFECT_MAX]; // 0x38, 0x7C0
@@ -41084,13 +41099,13 @@ struct LaserLine : LaserData {
 			float width = this->width;
 			if (width > 3.0f) {
 				Float3 position;
-				if (!this->params.__unknown_flag_B) {
+				if (!this->params.__unknown_flag_ll_B) {
 					position.make_from_vector(this->angle, length / 10.0f);
 					position += this->position;
 				} else {
 					position = this->position;
 				}
-				if (!this->params.__unknown_flag_B) {
+				if (!this->params.__unknown_flag_ll_B) {
 					length *= 4.0f;
 					length /= 5.0f;
 				}
@@ -41178,7 +41193,7 @@ struct LaserInfiniteParams {
 		uint32_t flags; // 0x5C, 0x7E4
 		struct {
 			uint32_t : 1; // 1
-			uint32_t __unknown_flag_A : 1; // 2
+			uint32_t __unknown_flag_li_A : 1; // 2
 		};
 	};
 	BulletEffectArgs effects[BULLET_EFFECT_MAX]; // 0x60, 0x7E8
@@ -41350,7 +41365,7 @@ struct LaserCurveParams {
 	union {
 		uint32_t flags; // 0x28, 0x7B0
 		struct {
-			uint32_t __unknown_flag_A : 1; // 1
+			uint32_t __unknown_flag_lc_A : 1; // 1
 		};
 	};
 	BulletEffectArgs effects[BULLET_EFFECT_MAX]; // 0x2C, 0x7B4
@@ -41464,7 +41479,7 @@ struct LaserCurve : LaserData {
 
 		// TODO: nodes
 		LaserCurveNode* current_node = this->nodes;
-		if (!this->__unknown_flag_C) {
+		if (!this->__unknown_flag_ld_C) {
 			for (int32_t i = 0; i < this->params.curve_length; ++current_node, ++i) {
 				// TODO: iterate nodes
 			}
@@ -41623,7 +41638,7 @@ struct LaserBeamParams {
 	union {
 		uint32_t flags; // 0x38
 		struct {
-			uint32_t __unknown_flag_A : 1; // 1
+			uint32_t __unknown_flag_lb_A : 1; // 1
 		};
 	};
 	BulletEffectArgs effects[24]; // 0x3C
@@ -41666,7 +41681,7 @@ struct LaserBeam : LaserData {
 	// 0x448630
 	// Method 0x8
 	dllexport virtual gnu_noinline void thiscall __method_8(int arg) override asm_symbol_rel(0x448630) {
-		this->params.__unknown_flag_A = arg;
+		this->params.__unknown_flag_lb_A = arg;
 	}
 
 	// 0x4527D0
@@ -41749,7 +41764,7 @@ struct LaserBeam : LaserData {
 	// Method 0x28
 	dllexport virtual gnu_noinline int thiscall cancel(CancelType cancel_type, int32_t arg2) override asm_symbol_rel(0x452BB0) {
 		if (!arg2) {
-			this->__unknown_field_A = 1;
+			this->__unknown_field_ld_A = 1;
 		}
 		return 0;
 	}
@@ -42068,7 +42083,7 @@ public:
 		}
 		bullet->position.z = 0.1f;
 
-		bullet->__unknown_flag_E = true;
+		bullet->__unknown_flag_bu_E = true;
 		bullet->state = BulletState1;
 		bullet->__timer_F6C.reset();
 		bullet->__timer_F80.reset();
@@ -42092,9 +42107,9 @@ public:
 		bullet->sprite = shooter->type;
 		bullet->__dword_690 = 0;
 		bullet->__int_F64 = 60;
-		bullet->__unknown_flag_F = true;
+		bullet->__hitbox_enabled = true;
 		bullet->grazed = false;
-		bullet->__unknown_flag_D = false;
+		bullet->__unknown_flag_bu_D = false;
 		bullet->__timer_F3C.reset();
 		bullet->__timer_F50.reset();
 		bullet->vm.reset();
@@ -42104,7 +42119,7 @@ public:
 
 		this->bullet_anm->__sub_477D60(&bullet->vm, BULLET_SPRITE_DATA[shooter->type].anm_script);
 
-		bullet->__circular_hitbox = true;
+		bullet->circular_hitbox = true;
 		bullet->vm.data.origin_mode = 1;
 
 		if (int32_t script = BULLET_SPRITE_DATA[shooter->type].__anm_script_114) {
@@ -42122,7 +42137,7 @@ public:
 				break;
 			case 2:
 				bullet->cancel_script_id = -1;
-				bullet->__circular_hitbox = true;
+				bullet->circular_hitbox = true;
 				break;
 			case 3:
 				bullet->cancel_script_id = 16;
@@ -42138,23 +42153,23 @@ public:
 				*/
 			case 6:
 				bullet->cancel_script_id = BULLET_SPRITE_DATA[bullet->sprite].color_data[shooter->color].cancel_script;
-				bullet->__circular_hitbox = true;
+				bullet->circular_hitbox = true;
 				break;
 			case 7:
 				bullet->cancel_script_id = 260;
-				bullet->__circular_hitbox = true;
+				bullet->circular_hitbox = true;
 				break;
 			case 8:
 				bullet->cancel_script_id = 263;
-				bullet->__circular_hitbox = true;
+				bullet->circular_hitbox = true;
 				break;
 			case 9:
 				bullet->cancel_script_id = 266;
-				bullet->__circular_hitbox = true;
+				bullet->circular_hitbox = true;
 				break;
 			case 10:
 				bullet->cancel_script_id = 275;
-				bullet->__circular_hitbox = true;
+				bullet->circular_hitbox = true;
 				break;
 		}
 
@@ -42341,9 +42356,9 @@ public:
 		) {
 			GameThread* game_thread_ptr = GAME_THREAD_PTR;
 			if (
-				!(game_thread_ptr && game_thread_ptr->__unknown_flag_C)
+				!(game_thread_ptr && game_thread_ptr->__unknown_flag_gt_C)
 			) {
-				if (bullet->__unknown_flag_C) {
+				if (bullet->__unknown_flag_bu_C) {
 					switch (bullet->state) {
 						case BulletState2:
 							if (bullet->__timer_F6C < 8) {
@@ -42400,7 +42415,7 @@ public:
 	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x424E70) {
 		GameThread* game_thread_ptr = GAME_THREAD_PTR;
 		if (
-			(game_thread_ptr && (game_thread_ptr->__unknown_flag_A | game_thread_ptr->skip_flag)) ||
+			(game_thread_ptr && (game_thread_ptr->__unknown_flag_gt_A | game_thread_ptr->skip_flag)) ||
 			ABILITY_SHOP_PTR
 		) {
 			return UpdateFuncNext;
@@ -42529,15 +42544,15 @@ static inline void bullet_manager_enable_graze_despawns() {
 
 // 0x424AD0
 dllexport gnu_noinline void Bullet::cleanup() {
-	if (this->state != 0) {
-		this->state = 0;
+	if (this->state != BulletState0) {
+		this->state = BulletState0;
 		this->__timer_F6C.reset();
 		this->__timer_F80.reset();
 		this->__timer_F3C.reset();
 		this->__timer_F50.reset();
-		this->__unknown_flag_E = false;
-		this->__scale_enabled = false;
-		this->__unknown_flag_C = false;
+		this->__unknown_flag_bu_E = false;
+		this->scale_enabled = false;
+		this->__unknown_flag_bu_C = false;
 		this->__delay_flag = false;
 		this->__dword_690 = 0;
 		this->__ex_func_a = 0;
@@ -42618,18 +42633,18 @@ dllexport gnu_noinline CollisionResult thiscall Bullet::__check_collision(Collis
 	this->vm.data.position = UNKNOWN_FLOAT3_A;
 
 	if (
-		this->__unknown_flag_F &&
+		this->__hitbox_enabled &&
 		this->hitbox_radius > 0.0f // aliases hitbox_size.x
 	) {
-		if (!this->__scale_enabled) {
-			if (!this->__circular_hitbox) {
+		if (!this->scale_enabled) {
+			if (!this->circular_hitbox) {
 				result = PLAYER_PTR->__check_collision_rectangle(&this->position, &this->hitbox_size, test_type);
 			} else {
 				result = PLAYER_PTR->check_collision_circle(&this->position, this->hitbox_radius, test_type);
 			}
 		} else {
 			float scale = this->scale;
-			if (!this->__circular_hitbox) {
+			if (!this->circular_hitbox) {
 				Float2 scaled_hitbox = this->hitbox_size * scale;
 				result = PLAYER_PTR->__check_collision_rectangle(&this->position, &scaled_hitbox, test_type);
 			} else {
@@ -42835,7 +42850,7 @@ private:
 		laser_manager->list_head().for_each_safe([&](LaserData* laser) {
 			if (
 				laser->state != 1 &&
-				laser->__unknown_flag_A
+				laser->__unknown_flag_ld_A
 			) {
 				ret += laser->cancel_in_rectangle(position, size, rotation, CancelType0, arg5);
 			}
@@ -42869,7 +42884,7 @@ public:
 	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() {
 		this->list_head().for_each_safe([=](LaserData* laser) {
 			if (
-				(laser->__unknown_field_A != 0 && ++laser->__unknown_field_A >= 2) ||
+				(laser->__unknown_field_ld_A != 0 && ++laser->__unknown_field_ld_A >= 2) ||
 				laser->state == 1 ||
 				laser->on_tick_common() != 0
 			) {
@@ -42888,11 +42903,13 @@ public:
 	// 0x448870
 	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) {
 		LaserManager* laser_manager = (LaserManager*)ptr;
+
+		GameThread* game_thread_ptr = GAME_THREAD_PTR;
 		if (
-			!(GAME_THREAD_PTR->skip_flag | GAME_THREAD_PTR->__unknown_flag_A) &&
-			!GAME_THREAD_PTR->__unknown_flag_C
+			!(game_thread_ptr->__unknown_flag_gt_A | game_thread_ptr->skip_flag) &&
+			!game_thread_ptr->__unknown_flag_gt_C
 		) {
-			if (GAME_THREAD_PTR->__unknown_flag_B) {
+			if (game_thread_ptr->__unknown_flag_gt_B) {
 				float prev_game_speed = GAME_SPEED;
 				GAME_SPEED.value = 0.0f;
 				UpdateFuncRet ret = laser_manager->on_tick();
@@ -42970,13 +42987,13 @@ public:
 
 	dllexport static inline void __set_flag_B_on_all_lasers() {
 		for_each_laser_but_stupid([](LaserData* laser) {
-			laser->__unknown_flag_B = true;
+			laser->__unknown_flag_ld_B = true;
 		});
 	}
 
 	dllexport static inline void __clear_flag_B_on_all_lasers() {
 		for_each_laser_but_stupid([](LaserData* laser) {
-			laser->__unknown_flag_B = false;
+			laser->__unknown_flag_ld_B = false;
 		});
 	}
 };
@@ -43562,7 +43579,7 @@ dllexport gnu_noinline void thiscall LaserCurve::run_effects() {
 				break;
 			}
 			case EX_UNKFLAG: {
-				this->__unknown_flag_C = IntArg(0);
+				this->__unknown_flag_ld_C = IntArg(0);
 				break;
 			}       
 			case EX_BRIGHT: {
@@ -43750,7 +43767,7 @@ dllexport void Bullet::run_effects() {
 						break;
 					case 2:
 						this->cancel_script_id = -1;
-						this->__circular_hitbox = true;
+						this->circular_hitbox = true;
 						break;
 					case 3:
 						this->cancel_script_id = 16;
@@ -43763,23 +43780,23 @@ dllexport void Bullet::run_effects() {
 						break;
 					case 6:
 						this->cancel_script_id = BULLET_SPRITE_DATA[this->sprite].color_data[this->color].cancel_script;
-						this->__circular_hitbox = true;
+						this->circular_hitbox = true;
 						break;
 					case 7:
 						this->cancel_script_id = 260;
-						this->__circular_hitbox = true;
+						this->circular_hitbox = true;
 						break;
 					case 8:
 						this->cancel_script_id = 263;
-						this->__circular_hitbox = true;
+						this->circular_hitbox = true;
 						break;
 					case 9:
 						this->cancel_script_id = 266;
-						this->__circular_hitbox = true;
+						this->circular_hitbox = true;
 						break;
 					case 10:
 						this->cancel_script_id = 275;
-						this->__circular_hitbox = true;
+						this->circular_hitbox = true;
 						break;
 				}
 				if (IntArg(2) & 0x8000) {
@@ -43940,7 +43957,7 @@ dllexport void Bullet::run_effects() {
 				this->scale_interp.end_time = IntArg(0);
 				this->scale_interp.mode = IntArg(1);
 				this->scale_interp.time.reset();
-				this->__scale_enabled = true;
+				this->scale_enabled = true;
 				break;
 			}
 			case EX_VELTIME: {
@@ -44075,7 +44092,7 @@ dllexport void Bullet::run_effects() {
 							speed_arg = this->speed;
 						}
 						++effect_index;
-						laser_params.__unknown_flag_A = true;
+						laser_params.__unknown_flag_ll_A = true;
 						laser_params.__speed_1 = speed_arg;
 						laser_params.length = FloatArg(2);
 						laser_params.__length_related = FloatArg(3);
@@ -44174,7 +44191,7 @@ forceinline const char* Enemy::check_timer_callbacks() {
 					this->data.life.current = this->data.callbacks[i].life;
 					this->data.callbacks[i].life = -1;
 					this->data.phase_timer.reset();
-					this->data.__unknown_flag_L = true;
+					this->data.__unknown_flag_ed_L = true;
 
 					Spellcard* spellcard = SPELLCARD_PTR;
 					if (!spellcard->__timeout_spell) {
@@ -44182,7 +44199,7 @@ forceinline const char* Enemy::check_timer_callbacks() {
 						ENEMY_MANAGER_PTR->can_capture_spell = false;
 					}
 					else if (spellcard->__is_timeout_spell_active()) {
-						this->data.__unknown_flag_L = false;
+						this->data.__unknown_flag_ed_L = false;
 						GAME_MANAGER.globals.__int_90 += this->data.chapter_spawn_weight;
 					}
 					this->data.chapter_spawn_weight = 0;
@@ -44208,7 +44225,7 @@ forceinline const char* Enemy::check_life_callbacks() {
 				this->data.add_spawn_weight_to_chapter_destroy();
 				this->data.callbacks[i].life = -1;
 				this->data.phase_timer.reset();
-				this->data.__unknown_flag_L = false;
+				this->data.__unknown_flag_ed_L = false;
 				return this->data.callbacks[i].life_sub;
 			}
 			break;
@@ -44272,7 +44289,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__move() {
 	}
 	this->motion.relative.update();
 	this->update_current_motion();
-	if (this->__unknown_flag_I) {
+	if (this->__enable_anm_poses) {
 		float velocity_x = this->current_motion.axis_velocity.x;
 		int32_t script = 0;
 		int32_t rel = velocity_x < -0.03f ? -1 :
@@ -44288,7 +44305,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__move() {
 					script = rel != -1 ? 2 : 1;
 					break;
 				case -1:
-					script = rel != 0 ? 3 : 2;
+					script = rel != 0 ? 2 : 3;
 					break;
 			}
 			AnmVM* vm = this->anm_vms[0].get_vm_ptr();
@@ -44296,7 +44313,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__move() {
 			Float3 position;
 			if (!vm) {
 				anm_loaded = anm_file_lookup(this->anm_slot_0_source_index);
-				position = {};
+				position = { 0.0f, 0.0f, 0.0f };
 			}
 			else {
 				anm_loaded = anm_file_lookup(this->anm_slot_0_source_index);
@@ -44604,8 +44621,8 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
 
 // 0x42FF80
 dllexport gnu_noinline ZUNResult thiscall EnemyData::on_tick() {
-	if (!this->__unknown_flag_A) {
-		this->__unknown_flag_A = true;
+	if (!this->__is_being_ticked) {
+		this->__is_being_ticked = true;
 		if (ZUN_FAILED(this->update())) {
 			return ZUN_ERROR;
 		}
@@ -44781,7 +44798,7 @@ inline void thiscall EnemyData::anm_set_slot_main_impl() {
 		id.__tree_clear_visible2();
 	}
 	if (slot == 0) {
-		this->__unknown_flag_I = true;
+		this->__enable_anm_poses = true;
 		this->current_anm_script = sprite;
 		this->anm_slot_0_script = sprite;
 		this->current_anm_pose = 0;
@@ -44923,7 +44940,7 @@ dllexport gnu_noinline void thiscall EnemyData::ecl_set_anm_data() {
 inline void thiscall EnemyData::anm_play_main_impl() {
 	this->anm_vms[0].mark_tree_for_delete();
 	this->anm_vms[0] = ENEMY_MANAGER_PTR->anm_file_lookup(this->anm_source_index)->instantiate_vm_to_world_list_front(this->current_anm_script, this->anm_base_layer + 7);
-	this->__unknown_flag_I = false;
+	this->__enable_anm_poses = false;
 	this->anm_slot_0_script = this->current_anm_script;
 	this->current_anm_pose = 0;
 	this->anm_slot_0_source_index = this->anm_source_index;
@@ -45188,7 +45205,7 @@ dllexport gnu_noinline int32_t Enemy::get_int_var(int32_t index) {
 		case __REPLAY_UNKNOWN_A: // -9927
 			if (
 				GAME_THREAD_PTR->replay_mode == ReplayRecording &&
-				SUPERVISOR.__int_804
+				SUPERVISOR.__bool_804
 			) {
 		case TRUE_VAR: // -9957
 				return true;
@@ -45548,7 +45565,7 @@ dllexport gnu_noinline float Enemy::get_float_var(int32_t index) {
 			if (
 				// WTF?
 				!((float)(GAME_THREAD_PTR->replay_mode == ReplayRecording) == 0.0f) &&
-				SUPERVISOR.__int_804
+				SUPERVISOR.__bool_804
 			) {
 				return true;
 			}
@@ -45729,7 +45746,7 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
 						return context->async_id == id;
 					};
 					if (EclContext* context = this->vm->context_list.find_if(async_id_matches)) {
-						context->__unknown_flag_A = true;
+						context->__unknown_flag_ec_A = true;
 					}
 					break;
 				}
@@ -45739,7 +45756,7 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
 						return context->async_id == id;
 					};
 					if (EclContext* context = this->vm->context_list.find_if(async_id_matches)) {
-						context->__unknown_flag_A = false;
+						context->__unknown_flag_ec_A = false;
 					}
 					break;
 				}
@@ -46273,8 +46290,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 		case enemy_flag_mirror: // 424
 			this->mirrored = this->get_int_arg(0);
 			break;
-		case __enemy_manager_flag_unknown_A: // 631
-			ENEMY_MANAGER_PTR->__unknown_flag_A = this->get_int_arg(0);
+		case boss_flag_hide_hud: // 631
+			ENEMY_MANAGER_PTR->__hide_boss_hud = this->get_int_arg(0);
 			break;
 		case anm_layer_base: // 552
 			this->anm_base_layer = this->get_int_arg(0);
@@ -47094,7 +47111,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 		}
 		case boss_set: {
 			int32_t index = this->get_int_arg(0);
-			ENEMY_MANAGER_PTR->__set_unkown_flag_A(false);
+			ENEMY_MANAGER_PTR->__set_hide_boss_hud(false);
 			if (index < 0) {
 				if (this->is_boss) {
 					ENEMY_MANAGER_PTR->set_boss(this->boss_id, NULL);
@@ -47753,7 +47770,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			this->life.set_spell(this->get_int_arg(0));
 			break;
 		case spellcard_end: // 523
-			if (SPELLCARD_PTR->is_spell_active() && SPELLCARD_PTR->__get_flag_B()) {
+			if (SPELLCARD_PTR->is_spell_active() && SPELLCARD_PTR->__get_flag_sp_B()) {
 				ITEM_MANAGER_PTR->spawn_item(LifeFragmentItem, &this->get_position(), -HALF_PI_f, 2.2f, 60);
 			}
 			SPELLCARD_PTR->end_spell();
@@ -47767,7 +47784,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			break;
 		case __spellcard_flag_unknown_A: { // 567
 			int32_t state = this->get_int_arg(0);
-			SPELLCARD_PTR->__set_flag_H(state);
+			SPELLCARD_PTR->__set_flag_sp_H(state);
 			break;
 		}
 		case enemy_flag_homing_disable: // 544
@@ -47862,7 +47879,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			params.sprite = this->shooters[slot].type;
 			params.color = this->shooters[slot].color;
 			params.angle = reduce_angle(this->shooters[slot].angle1);
-			params.__unknown_flag_A = true;
+			params.__unknown_flag_lc_A = true;
 			params.curve_length = this->shooters[slot].start_time;
 			params.shoot_sound = this->shooters[slot].shoot_sound;
 			params.__speed_1 = this->shooters[slot].speed1;
@@ -48167,10 +48184,10 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			BULLET_MANAGER_PTR->__set_bounce_bounds(width, height);
 			break;
 		}
-		case __enemy_id_set_flag_unknown_B: { // 340
+		case enemy_id_delete: { // 340
 			int32_t id = this->get_int_arg(0);
 			if (Enemy* enemy = ENEMY_MANAGER_PTR->get_enemy_by_id(id)) {
-				enemy->__set_unknown_flag_B();
+				enemy->mark_for_delete();
 			}
 			break;
 		}
@@ -48181,7 +48198,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 #endif
 		case __globals_flag_unknown_A: { // 1001
 			int32_t state = this->get_int_arg(0);
-			GAME_MANAGER.globals.__set_unknown_flag_A(state);
+			GAME_MANAGER.globals.__set_unknown_flag_gl_A(state);
 			break;
 		}
 #if INCLUDE_PATCH_CODE
@@ -48347,7 +48364,7 @@ struct ReplayGamestate {
 	union {
 		uint32_t flags; // 0x1268
 		struct {
-			uint32_t __unknown_flag_A : 1;
+			uint32_t __unknown_flag_rg_A : 1;
 		};
 	};
 	unsigned char extra[]; // 0x126C
@@ -48611,8 +48628,8 @@ struct ReplayManager : ZUNTask {
 	union {
 		uint32_t flags; // 0x218
 		struct {
-			uint32_t __unknown_flag_B : 1;
-			uint32_t __unknown_flag_A : 1;
+			uint32_t __unknown_flag_rm_B : 1;
+			uint32_t __unknown_flag_rm_A : 1;
 		};
 	};
 	char file_path[0x100]; // 0x21C
@@ -48689,7 +48706,7 @@ struct ReplayManager : ZUNTask {
 			INPUT_P1.inputs_current = (uint16_t)INPUT_P1.hardware_inputs_current;
 			__update_input0();
 			if (
-				SUPERVISOR.config.__unknown_flag_C &&
+				SUPERVISOR.config.__shot_slow &&
 				INPUT_P1.check_inputs(BUTTON_SHOOT) &&
 				INPUT_P1.inputs_held[BUTTON_SHOOT_INDEX] >= 10
 			) {
@@ -48714,7 +48731,7 @@ struct ReplayManager : ZUNTask {
 	// 0x462A50
 	dllexport static UpdateFuncRet UpdateFuncCC on_tick_A2(void* ptr) asm_symbol_rel(0x462A50) {
 		ReplayManager* self = (ReplayManager*)ptr;
-		if (GAME_THREAD_PTR && !self->__unknown_flag_A) {
+		if (GAME_THREAD_PTR && !self->__unknown_flag_rm_A) {
 			if (self->stage_data[self->stage_number].current_frame < 0) {
 				INPUT_P1.inputs_current = 0;
 				INPUT_P1.inputs_rising_edge = 0;
@@ -48728,7 +48745,7 @@ struct ReplayManager : ZUNTask {
 							INPUT_P1.inputs_current = 0;
 							INPUT_P1.inputs_rising_edge = 0;
 							INPUT_P1.inputs_falling_edge = 0;
-							// some mess with the pause screen, probably just replay end
+							//PAUSE_MENU_PTR->__sub_4588F0();
 							self->stage_number = -1;
 						}
 						else {
@@ -48846,7 +48863,7 @@ struct ReplayManager : ZUNTask {
 				game_state->stage_number = GAME_MANAGER.globals.current_stage;
 				game_state->rng = REPLAY_RNG.value;
 				REPLAY_RNG.index = 0;
-				game_state->__unknown_flag_A = SUPERVISOR.__int_804;
+				game_state->__unknown_flag_rg_A = SUPERVISOR.__bool_804;
 				break;
 			}
 			case ReplayPlayback: {
@@ -48878,7 +48895,7 @@ struct ReplayManager : ZUNTask {
 				this->info->character = GAME_MANAGER.globals.character;
 				this->info->shottype = GAME_MANAGER.globals.shottype;
 				this->info->difficulty = GAME_MANAGER.globals.difficulty;
-				this->info->practice_mode = GAME_MANAGER.__game_type & 1;
+				this->info->practice_mode = GAME_MANAGER.game_type & 1; // code is *not* == PracticeMode
 				this->info->spell_practice_mode = GAME_MANAGER.__is_spell_practice();
 				this->info->spell_practice_id = GAME_MANAGER.globals.spell_practice_id;
 				if (GameThread* game_thread_ptr = GAME_THREAD_PTR) {
@@ -48887,8 +48904,8 @@ struct ReplayManager : ZUNTask {
 				game_state->stage_number = GAME_MANAGER.globals.current_stage;
 				game_state->rng = REPLAY_RNG.value;
 				REPLAY_RNG.index = 0;
-				game_state->__unknown_flag_A = SUPERVISOR.__int_804;
-				if (SUPERVISOR.__int_804) {
+				game_state->__unknown_flag_rg_A = SUPERVISOR.__bool_804;
+				if (SUPERVISOR.__bool_804) {
 					game_state->player_position = { 0, 0 };
 				}
 				game_state->globals = GAME_MANAGER.globals;
@@ -48932,15 +48949,15 @@ struct ReplayManager : ZUNTask {
 
 					int32_t spell_id = GAME_MANAGER.globals.spell_practice_id;
 					if (spell_id >= 0) {
-						if (GAME_MANAGER.globals.__unknown_field_A != 2) {
+						if (GAME_MANAGER.globals.__unknown_field_gl_A != 2) {
 							spell_id = -1;
 						}
-						GAME_MANAGER.globals.__unknown_field_A = 2;
+						GAME_MANAGER.globals.__unknown_field_gl_A = 2;
 					} else {
-						if (GAME_MANAGER.globals.__unknown_field_A != 2) {
+						if (GAME_MANAGER.globals.__unknown_field_gl_A != 2) {
 							spell_id = -1;
 						}
-						GAME_MANAGER.globals.__unknown_field_A = 0;
+						GAME_MANAGER.globals.__unknown_field_gl_A = 0;
 					}
 					GAME_MANAGER.globals.spell_practice_id = spell_id;
 
@@ -49094,7 +49111,7 @@ dllexport gnu_noinline void __replay_manager_global_sub_462EA0() {
 			replay_manager->stage_data[stage_number].fps_counts_current = replay_manager->stage_data[stage_number].fps_counts_start;
 
 			GAME_MANAGER.globals = game_state->globals;
-			replay_manager->__unknown_flag_A = false;
+			replay_manager->__unknown_flag_rm_A = false;
 			break;
 		}
 	}
@@ -49716,10 +49733,10 @@ struct PauseMenu : ZUNTask {
 	double __double_2E8; // 0x2E8
 	char __text_buffer_2F0[256]; // 0x2F0
 	union {
-		uint32_t __flags_3F0; // 0x3F0
+		uint32_t flags; // 0x3F0
 		struct {
-			uint32_t __unknown_bitfield_A : 2;
-			uint32_t __unknown_flag_B : 1;
+			uint32_t __unknown_field_pm_A : 2;
+			uint32_t __unknown_flag_pm_B : 1;
 		};
 	};
 	AnmLoaded* front_anm; // 0x3F4
@@ -49758,9 +49775,9 @@ struct PauseMenu : ZUNTask {
 			case 0:
 				if (
 					!GAME_MANAGER.__is_demo &&
-					!GAME_THREAD_PTR->__unknown_flag_F &&
+					!GAME_THREAD_PTR->__unknown_flag_gt_F &&
 					ACHIEVEMENT_MODE_STATE < 0 &&
-					(INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE) || SUPERVISOR.__unknown_flag_F) &&
+					(INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE) || SUPERVISOR.__unknown_flag_su_F) &&
 					GAME_THREAD_PTR->on_tick_enabled() &&
 					this->state_timer >= 30
 				) {
@@ -49771,7 +49788,7 @@ struct PauseMenu : ZUNTask {
 					INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE)
 				) {
 					ACHIEVEMENT_MODE_STATE = -1;
-					SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_G ? 2 : 4;
+					SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? 2 : 4;
 				}
 				break;
 		}
@@ -49813,7 +49830,7 @@ struct PauseMenu : ZUNTask {
 	dllexport gnu_noinline void thiscall __sub_458680() asm_symbol_rel(0x458680) {
 		GAME_MANAGER.__update_scorefile_game_time();
 		this->change_primary_state(1);
-		GAME_THREAD_PTR->__unknown_flag_I = true;
+		GAME_THREAD_PTR->__unknown_flag_gt_I = true;
 		this->front_anm = GUI_PTR->front_anm;
 		this->__vm_id_1E4.mark_tree_for_delete();
 
@@ -49827,7 +49844,7 @@ struct PauseMenu : ZUNTask {
 
 		SOUND_MANAGER.__stop_all_sfx();
 		SOUND_MANAGER.play_sound(14);
-		if (GAME_MANAGER.__game_type != SpellPractice) {
+		if (GAME_MANAGER.game_type != SpellPractice) {
 			SOUND_MANAGER.queue_sound_command(SndPause, 0, "Pause");
 		}
 		while (SOUND_MANAGER.__on_tick() != SndCmdEmpty);
@@ -49846,16 +49863,16 @@ struct PauseMenu : ZUNTask {
 		if (AbilityShop* ability_shop = ABILITY_SHOP_PTR) {
 			// TODO
 		}
-		this->__unknown_flag_B = false;
+		this->__unknown_flag_pm_B = false;
 	}
 
 	// 0x4588F0
 	dllexport gnu_noinline static void __sub_4588F0() asm_symbol_rel(0x4588F0) {
 		PauseMenu* pause_menu = PAUSE_MENU_PTR;
-		if (!REPLAY_MANAGER_PTR->__unknown_flag_A) {
+		if (!REPLAY_MANAGER_PTR->__unknown_flag_rm_A) {
 			pause_menu->change_primary_state(1);
 			clang_forceinline pause_menu->change_secondary_state(1);
-			GAME_THREAD_PTR->__unknown_flag_I = true;
+			GAME_THREAD_PTR->__unknown_flag_gt_I = true;
 			//pause_menu->__sub_458480();
 			pause_menu->front_anm = GUI_PTR->front_anm;
 
@@ -49878,8 +49895,8 @@ struct PauseMenu : ZUNTask {
 			GUI_PTR->__hide_vm_id_114();
 			GUI_PTR->__hide_spell_timer_anms();
 
-			pause_menu->__unknown_flag_B = false;
-			REPLAY_MANAGER_PTR->__unknown_flag_A = true;
+			pause_menu->__unknown_flag_pm_B = false;
+			REPLAY_MANAGER_PTR->__unknown_flag_rm_A = true;
 		}
 	}
 
@@ -49933,7 +49950,7 @@ struct PauseMenu : ZUNTask {
 						uint32_t high_score = GAME_MANAGER.__high_score;
 						GAME_MANAGER.__high_score = __max(high_score, score);
 					}
-					switch (GAME_MANAGER.__game_type) {
+					switch (GAME_MANAGER.game_type) {
 						default: { // PracticeMode
 							uint32_t score = GAME_MANAGER.globals.score;
 							ScorefileStagePractice& practice = SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
@@ -50174,7 +50191,7 @@ struct PauseMenu : ZUNTask {
 				break;
 			case 10:
 				if (this->state_timer >= 20) {
-					this->__unknown_bitfield_A = 1;
+					this->__unknown_field_pm_A = 1;
 					this->change_secondary_state(11);
 					this->__vm_id_1E4.__tree_clear_visible2();
 					this->__menu_select_34.push_state();
@@ -50250,7 +50267,7 @@ struct PauseMenu : ZUNTask {
 						}
 						else if (key == KEYBOARD_STRING_CONFIRM) {
 							if (this->secondary_state == 12) {
-								this->__unknown_bitfield_A = 1;
+								this->__unknown_field_pm_A = 1;
 								SOUND_MANAGER.play_sound(17);
 								sprintf(buffer, "th18_%.2d.rpy", this->__menu_select_34.current_selection + 1);
 								ReplayManager* old_replay_manager = this->__replay_manager_array_20C[this->__menu_select_34.current_selection];
@@ -50274,8 +50291,8 @@ struct PauseMenu : ZUNTask {
 								this->__menu_select_34.menu_length = 7;
 								this->__menu_select_34.enable_wrap = true;
 								if (
-									!this->__unknown_flag_B &&
-									GAME_MANAGER.__game_type == NormalGame
+									!this->__unknown_flag_pm_B &&
+									GAME_MANAGER.game_type == NormalGame
 								) {
 									this->__vm_id_1E4 = this->front_anm->instantiate_vm_to_ui_list_back(151);
 									if (GAME_MANAGER.globals.continues > 0) {
@@ -50294,7 +50311,7 @@ struct PauseMenu : ZUNTask {
 									this->__menu_select_34.disable_selection(0);
 									this->__menu_select_34.disable_selection(4);
 									this->__menu_select_34.set_selection(0);
-									if (!this->__unknown_flag_B) {
+									if (!this->__unknown_flag_pm_B) {
 										this->__menu_select_34.set_selection(6);
 									}
 								}
@@ -50308,7 +50325,7 @@ struct PauseMenu : ZUNTask {
 						int32_t index = this->__name_length;
 						if (!index) {
 							if (this->secondary_state == 12) {
-								this->__unknown_bitfield_A = 1;
+								this->__unknown_field_pm_A = 1;
 								this->change_secondary_state(11);
 							}
 						}
@@ -50332,14 +50349,14 @@ struct PauseMenu : ZUNTask {
 						SOUND_MANAGER.play_sound(10);
 					}
 					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
-						this->__unknown_bitfield_A = 2;
+						this->__unknown_field_pm_A = 2;
 						this->change_secondary_state(12);
 						this->__menu_select_10C.set_selection(0);
 						this->__menu_select_10C.menu_length = KEYBOARD_STRING_TOTAL_KEY_COUNT;
 						this->__menu_select_10C.enable_wrap = true;
 						if (
 							this->__int_1FC &&
-							GAME_MANAGER.__game_type == NormalGame
+							GAME_MANAGER.game_type == NormalGame
 						) {
 							__replay_manager_global_set_time_and_end_stage(1);
 						} else {
@@ -50356,7 +50373,7 @@ struct PauseMenu : ZUNTask {
 						SOUND_MANAGER.play_sound(7);
 					}
 					else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL | BUTTON_PAUSE)) {
-						this->__unknown_bitfield_A = 0;
+						this->__unknown_field_pm_A = 0;
 						this->__menu_select_34.pop_state();
 						this->__menu_select_34.menu_length = 7;
 						this->__menu_select_34.enable_wrap = true;
@@ -50371,7 +50388,7 @@ struct PauseMenu : ZUNTask {
 						else {
 							this->change_secondary_state(6);
 							this->__vm_id_1E4.__tree_set_visible2();
-							if (GAME_MANAGER.__game_type != NormalGame) {
+							if (GAME_MANAGER.game_type != NormalGame) {
 								this->__menu_select_34.disable_selection(0);
 								this->__menu_select_34.disable_selection(4);
 							}
@@ -50441,7 +50458,7 @@ struct PauseMenu : ZUNTask {
 							if (GAME_THREAD_PTR->replay_mode == ReplayRecording) {
 								GAME_MANAGER.game_time_double = get_runtime();
 							}
-							GAME_THREAD_PTR->__unknown_flag_I = false;
+							GAME_THREAD_PTR->__unknown_flag_gt_I = false;
 							GAME_SPEED.set(this->__float_2E0);
 							if (MsgVM* msg_vm = GUI_PTR->msg_vm) {
 								msg_vm->__show_all_anms();
@@ -50490,7 +50507,7 @@ struct PauseMenu : ZUNTask {
 										GAME_MANAGER.globals.score = 0;
 										--GAME_MANAGER.continue_credits;
 										GAME_MANAGER.globals.continues = __min(continues_used, MAX_CONTINUES);
-										GAME_THREAD_PTR->__unknown_flag_I = false;
+										GAME_THREAD_PTR->__unknown_flag_gt_I = false;
 										SOUND_MANAGER.__restart_all_playing_sfx();
 										SOUND_MANAGER.queue_sound_command(SndLoadBgm, -1, this->__text_buffer_2F0);
 										while (SOUND_MANAGER.__on_tick() != SndCmdEmpty);
@@ -50508,7 +50525,7 @@ struct PauseMenu : ZUNTask {
 						case 1:
 							this->__vm_id_1E8.interrupt_tree(1);
 							this->__vm_id_1E4.interrupt_tree(1);
-							SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_G ? 2 : 4;
+							SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? 2 : 4;
 							break;
 						case 6:
 							this->__vm_id_1E8.mark_tree_for_delete();
@@ -50574,7 +50591,7 @@ ValidateFieldOffset32(0x2D4, PauseMenu, __name_buffer);
 ValidateFieldOffset32(0x2E0, PauseMenu, __float_2E0);
 ValidateFieldOffset32(0x2E8, PauseMenu, __double_2E8);
 ValidateFieldOffset32(0x2F0, PauseMenu, __text_buffer_2F0);
-ValidateFieldOffset32(0x3F0, PauseMenu, __flags_3F0);
+ValidateFieldOffset32(0x3F0, PauseMenu, flags);
 ValidateFieldOffset32(0x3F4, PauseMenu, front_anm);
 ValidateStructSize32(0x3F8, PauseMenu);
 #pragma endregion
@@ -50585,16 +50602,16 @@ dllexport gnu_noinline void __pause_menu_game_over_screen() {
 	GAME_MANAGER.__update_scorefile_game_time();
 	GameThread* game_thread_ptr = GAME_THREAD_PTR;
 	if (game_thread_ptr->replay_mode == ReplayPlayback) {
-		SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_G ? 2 : 4;
+		SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? 2 : 4;
 		return;
 	}
 	pause_menu->change_primary_state(2);
 	clang_forceinline pause_menu->change_secondary_state(2);
-	game_thread_ptr->__unknown_flag_I = true;
+	game_thread_ptr->__unknown_flag_gt_I = true;
 
 	SOUND_MANAGER.__stop_all_sfx();
 	SOUND_MANAGER.play_sound(14);
-	if (GAME_MANAGER.__game_type != SpellPractice) {
+	if (GAME_MANAGER.game_type != SpellPractice) {
 		SOUND_MANAGER.queue_sound_command(SndPause, 0, "Pause");
 	}
 	while (SOUND_MANAGER.__on_tick() != SndCmdEmpty);
@@ -50602,7 +50619,7 @@ dllexport gnu_noinline void __pause_menu_game_over_screen() {
 	//pause_menu->__sub_458480();
 
 	pause_menu->front_anm = GUI_PTR->front_anm;
-	if (GAME_MANAGER.__game_type != SpellPractice) {
+	if (GAME_MANAGER.game_type != SpellPractice) {
 		byteloop_strcpy(pause_menu->__text_buffer_2F0, SOUND_MANAGER.__text_buffer_2384);
 		pause_menu->__double_2E8 = SOUND_MANAGER.cstreaming_sound_ptr->__sub_48AE50();
 		SOUND_MANAGER.__load_wav_slot(0, "th128_08");
@@ -50614,7 +50631,7 @@ dllexport gnu_noinline void __pause_menu_game_over_screen() {
 	GAME_SPEED.set(1.0f);
 	pause_menu->__int_208 = WINDOW_DATA.__int_20D0;
 	WINDOW_DATA.__int_20D0 = 0;
-	pause_menu->__unknown_flag_B = false;
+	pause_menu->__unknown_flag_pm_B = false;
 }
 
 // 0x43D720
@@ -50674,10 +50691,10 @@ dllexport gnu_noinline MsgVM::MsgVM(MsgInstruction* start_instruction) {
 	clang_forceinline LASER_MANAGER_PTR->cancel_all(CancelType0, 0);
 	ENEMY_MANAGER_PTR->kill_all();
 
-	this->__unknown_flag_A = false;
+	this->skipping = false;
 	this->callout_position = { 384.0f, 640.0f, 0.0f };
 	this->__float_1CC = 320.0f;
-	this->__int_1A8 = 0;
+	this->__skip_disable_time = 0;
 }
 
 // 0x43E360
@@ -50687,7 +50704,7 @@ dllexport gnu_noinline void thiscall Gui::__start_msg_vm(int32_t script) {
 
 	switch (script) {
 		case -2:
-			if (SPELLCARD_PTR->__unknown_flag_D) {
+			if (SPELLCARD_PTR->__unknown_flag_sp_D) {
 				__pause_menu_game_over_screen();
 			} else {
 				GAME_THREAD_PTR->end_stage();
@@ -51217,10 +51234,10 @@ struct MainMenu : ZUNTask {
 	union {
 		uint32_t flags; // 0x5C4C
 		struct {
-			uint32_t __unknown_flag_A : 1; // 1
-			uint32_t __unknown_flag_B : 1; // 2
-			uint32_t __unknown_flag_C : 1; // 3
-			uint32_t __unknown_flag_D : 1; // 4
+			uint32_t __unknown_flag_mm_A : 1; // 1
+			uint32_t __unknown_flag_mm_B : 1; // 2
+			uint32_t __unknown_flag_mm_C : 1; // 3
+			uint32_t __unknown_flag_mm_D : 1; // 4
 		};
 	};
 	MenuSelect __menu_select_5C50; // 0x5C50
@@ -51340,14 +51357,14 @@ public:
 					this->__menu_select_24.disable_selection(1);
 				}
 
-				switch (GAME_MANAGER.__game_type) {
+				switch (GAME_MANAGER.game_type) {
 					case SpellPractice:
 						this->__menu_select_24.set_selection(3);
-						GAME_MANAGER.__set_game_type(NormalGame);
+						GAME_MANAGER.set_game_type(NormalGame);
 						break;
 					default: // PracticeMode
 						this->__menu_select_24.set_selection(2);
-						GAME_MANAGER.__set_game_type(NormalGame);
+						GAME_MANAGER.set_game_type(NormalGame);
 						break;
 					case NormalGame:
 						break;
@@ -51355,10 +51372,10 @@ public:
 
 				this->change_secondary_state(1);
 
-				if (this->__unknown_flag_B) {
+				if (this->__unknown_flag_mm_B) {
 					this->__anm_id_3B4 = this->title_anm->instantiate_vm_to_world_list_back(7);
 					this->__anm_id_420 = this->title_anm->instantiate_vm_to_world_list_back(34);
-					this->__unknown_flag_B = false;
+					this->__unknown_flag_mm_B = false;
 				}
 				else {
 					if (!this->__anm_id_3B4.has_live_vm()) {
@@ -51524,7 +51541,7 @@ public:
 	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x464ED0) {
 		Ending* ending = ENDING_PTR;
 		if (ending) {
-			if (ending->__unknown_flag_D) {
+			if (ending->__unknown_flag_en_D) {
 				if (ending) {
 					delete ending;
 				}
@@ -51542,7 +51559,7 @@ public:
 				}
 
 				if (idle_time >= 1800) {
-					GAME_MANAGER.__unknown_flag_F = false;
+					GAME_MANAGER.__unknown_flag_gm_F = false;
 					GAME_MANAGER.__is_demo = true;
 
 					byteloop_strcpy(UNKNOWN_TEXT_BUFFER_A, DEMO_REPLAY_FILENAMES[GAME_MANAGER.__demo_index]);
@@ -51576,11 +51593,11 @@ public:
 				}
 			}
 
-			if (this->__unknown_flag_A) {
+			if (this->__unknown_flag_mm_A) {
 				int32_t __delay = ++this->__int_5C48;
 				if (UNKNOWN_INT32_C == 1 || __delay >= 30) {
 					SOUND_MANAGER.__load_and_play_music_with_unlock(0, 0, "th18_01");
-					this->__unknown_flag_A = false;
+					this->__unknown_flag_mm_A = false;
 					this->__int_5C48 = 0;
 				}
 			}
@@ -51612,15 +51629,15 @@ public:
 
 					if (!GAME_MANAGER.__is_demo) {
 						this->__int_5C48 = 0;
-						this->__unknown_flag_A = true;
+						this->__unknown_flag_mm_A = true;
 					} else {
-						this->__unknown_flag_A = false;
+						this->__unknown_flag_mm_A = false;
 					}
 
 					GAME_MANAGER.globals.difficulty = GAME_MANAGER.__int_118;
 					GAME_MANAGER.__is_demo = false;
 
-					this->__unknown_flag_B = !A;
+					this->__unknown_flag_mm_B = !A;
 
 					if (A == 0) {
 						this->change_primary_state(1);
@@ -51638,7 +51655,7 @@ public:
 						this->__state_1_handler();
 					}
 					else if (A == 2) {
-						GAME_MANAGER.__set_game_type(NormalGame);
+						GAME_MANAGER.set_game_type(NormalGame);
 						this->__menu_select_24.menu_length = 10;
 						this->__menu_select_24.set_selection(4);
 						this->__menu_select_24.push_state();
@@ -51649,7 +51666,7 @@ public:
 						this->__state_12_handler();
 					}
 					else if (A == 6) {
-						GAME_MANAGER.__set_game_type(NormalGame);
+						GAME_MANAGER.set_game_type(NormalGame);
 						this->__menu_select_24.menu_length = 10;
 						this->__menu_select_24.set_selection(5);
 						this->__menu_select_24.push_state();
@@ -51704,7 +51721,7 @@ public:
 				}
 
 				case 2:
-					SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_G ? 2 : 3;
+					SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? 2 : 3;
 				case 9: case 13:
 					SOUND_MANAGER.__queue_bgm_stop();
 					break;
@@ -51874,7 +51891,7 @@ public:
 		}
 		else {
 			LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
-			SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_G ? 2 : 3;
+			SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? 2 : 3;
 		}
 		return 0;
 	}
@@ -51946,7 +51963,7 @@ dllexport gnu_noinline void Gui::__allocate_hud() {
 	if (
 		SUPERVISOR.gamemode_switch != 8 &&
 		!GAME_MANAGER.__is_demo &&
-		GAME_MANAGER.__game_type != PracticeMode
+		GAME_MANAGER.game_type != PracticeMode
 	) {
 		gui_ptr->stage_logo_anm->instantiate_vm_to_world_list_back(1);
 	}
@@ -51965,17 +51982,17 @@ dllexport gnu_noinline void Gui::__allocate_hud() {
 			GAME_THREAD_PTR->replay_mode == ReplayRecording &&
 			GAME_MANAGER.globals.continues == 0
 		) ||
-		gui_ptr->__unknown_flag_B
+		gui_ptr->show_item_get_line
 	) {
 		// Item Get Line notice
 		AnmID id = gui_ptr->front_anm->instantiate_vm_to_world_list_back(57);
 		float poc_height = PLAYER_PTR->poc_height;
 		Float3 position = { 0.0f, poc_height + poc_height - 80.0f, 0.0f };
 		id.set_controller_position(&position);
-		gui_ptr->__unknown_flag_B = false;
+		gui_ptr->show_item_get_line = false;
 	}
 
-	if (SUPERVISOR.__int_804) {
+	if (SUPERVISOR.__bool_804) {
 		AnmID id = gui_ptr->front_anm->instantiate_vm_to_world_list_back(69 + GAME_MANAGER.globals.difficulty);
 		gui_ptr->__difficulty_indicatorA = id;
 		id.interrupt_tree(3);
@@ -51996,14 +52013,14 @@ dllexport gnu_noinline void Gui::__allocate_hud() {
 
 // 0x43BB70
 dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
-	if (this->__unknown_flag_A) {
+	if (this->__unknown_flag_gu_A) {
 		this->__timer_198++;
 	}
 
-	if (this->__unknown_field_A) {
+	if (this->__unknown_field_gu_A) {
 		this->__timer_198++;
 		if (
-			this->__unknown_field_A == 1 &&
+			this->__unknown_field_gu_A == 1 &&
 			this->__timer_198 >= 90
 		) {
 			if (this->__float_11C < 0.0f) {
@@ -52020,16 +52037,16 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 				this->__float_11C = this->__float_120;
 				this->__int_12C = 0;
 				this->__int_128 = this->__int_124;
-				this->__unknown_field_A = 2;
+				this->__unknown_field_gu_A = 2;
 			}
 		}
 	}
 
 	if (this->__timer_198 >= this->__int_1AC) {
 		this->__anm_id_114.interrupt_tree(1);
-		this->__unknown_field_A = 1;
+		this->__unknown_field_gu_A = 1;
 		this->__timer_198.reset();
-		this->__unknown_field_A = 0; // why?
+		this->__unknown_field_gu_A = 0; // why?
 	}
 
 	if (this->__int_134) {
@@ -52043,22 +52060,22 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 		enemy_manager &&
 		this->spell_timer_seconds >= 0 &&
 		get_boss_by_index(0) != NULL &&
-		!enemy_manager->__unknown_flag_A &&
+		!enemy_manager->__hide_boss_hud &&
 		!this->msg_vm &&
-		!GAME_THREAD_PTR->__unknown_flag_F
+		!GAME_THREAD_PTR->__unknown_flag_gt_F
 	) {
 		this->spell_timer_vms[0]->__tree_set_visible2();
 		this->spell_timer_vms[1]->__tree_set_visible2();
 
-		int32_t state = this->__unknown_field_B;
+		int32_t state = this->__unknown_field_gu_B;
 		if (state == 0) {
 			Player* player = PLAYER_PTR;
-			bool spell_flag = SPELLCARD_PTR->__unknown_flag_H;
+			bool spell_flag = SPELLCARD_PTR->__unknown_flag_sp_H;
 			if (
 				(!spell_flag && player->data.position.y < 128.0f) ||
 				(spell_flag && player->data.position.y > 320.0f)
 			) {
-				this->__unknown_field_B = 1;
+				this->__unknown_field_gu_B = 1;
 				this->spell_timer_vms[0]->interrupt(5);
 				this->spell_timer_vms[1]->interrupt(5);
 			}
@@ -52067,7 +52084,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 			Spellcard* spellcard = SPELLCARD_PTR;
 			if (state == 1) {
 				Player* player = PLAYER_PTR;
-				bool spell_flag = spellcard->__unknown_flag_H;
+				bool spell_flag = spellcard->__unknown_flag_sp_H;
 				if (
 					(!spell_flag && player->data.position.y < 160.0f) ||
 					(spell_flag && player->data.position.y > 288.0f)
@@ -52077,7 +52094,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 				}
 			}
 			else {
-				if (spellcard->__unknown_flag_H) {
+				if (spellcard->__unknown_flag_sp_H) {
 					this->spell_timer_vms[0]->interrupt_and_run(2);
 					this->spell_timer_vms[1]->interrupt_and_run(2);
 				}
@@ -52088,7 +52105,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 					this->spell_timer_vms[1]->interrupt_and_run(4);
 				}
 			}
-			this->__unknown_field_B = 0;
+			this->__unknown_field_gu_B = 0;
 		}
 
 		int32_t spell_seconds = this->spell_timer_seconds;
@@ -52126,7 +52143,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 	enemy_manager = ENEMY_MANAGER_PTR;
 	if (
 		enemy_manager &&
-		!enemy_manager->__unknown_flag_A
+		!enemy_manager->__hide_boss_hud
 	) {
 		for (int32_t i = 0; i < MAX_LIFEBARS_IN_GUI; ++i) {
 			Enemy* boss = NULL;
@@ -52258,31 +52275,31 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 			AnmVM* vm = this->boss_indicator.get_vm_ptr();
 			vm->__tree_set_visible2();
 
-			int32_t state = this->__unknown_field_C;
+			int32_t state = this->__unknown_field_gu_C;
 			if (SPELLCARD_PTR->spell_active) {
 				switch (state) {
 					case 0:
 						if (boss->data.life.remaining_current_attack < 2000) {
 							vm->interrupt(7);
-							this->__unknown_field_C = 1;
+							this->__unknown_field_gu_C = 1;
 						}
 						break;
 					case 1:
 						if (boss->data.life.remaining_current_attack < 1000) {
 							vm->interrupt(8);
-							this->__unknown_field_C = 2;
+							this->__unknown_field_gu_C = 2;
 						}
 						break;
 					case 2:
 						if (boss->data.life.remaining_current_attack < 400) {
 							vm->interrupt(9);
-							this->__unknown_field_C = 3;
+							this->__unknown_field_gu_C = 3;
 						}
 						break;
 					case 3:
 						if (boss->data.life.remaining_current_attack >= 400) {
 							vm->interrupt(10);
-							this->__unknown_field_C = 0;
+							this->__unknown_field_gu_C = 0;
 						}
 						break;
 				}
@@ -52292,25 +52309,25 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 					case 0:
 						if (boss->data.life.remaining_current_attack < 700) {
 							vm->interrupt(7);
-							this->__unknown_field_C = 1;
+							this->__unknown_field_gu_C = 1;
 						}
 						break;
 					case 1:
 						if (boss->data.life.remaining_current_attack < 400) {
 							vm->interrupt(8);
-							this->__unknown_field_C = 2;
+							this->__unknown_field_gu_C = 2;
 						}
 						break;
 					case 2:
 						if (boss->data.life.remaining_current_attack < 200) {
 							vm->interrupt(9);
-							this->__unknown_field_C = 3;
+							this->__unknown_field_gu_C = 3;
 						}
 						break;
 					case 3:
 						if (boss->data.life.remaining_current_attack >= 200) {
 							vm->interrupt(10);
-							this->__unknown_field_C = 0;
+							this->__unknown_field_gu_C = 0;
 						}
 						break;
 				}
@@ -52638,10 +52655,10 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 		ENEMY_MANAGER_PTR &&
 		this->spell_timer_seconds >= 0 &&
 		get_boss_by_index(0) != NULL &&
-		!ENEMY_MANAGER_PTR->__unknown_flag_A &&
+		!ENEMY_MANAGER_PTR->__hide_boss_hud &&
 		!this->msg_vm &&
 		PAUSE_MENU_PTR->primary_state == 0 &&
-		!GAME_THREAD_PTR->__unknown_flag_F
+		!GAME_THREAD_PTR->__unknown_flag_gt_F
 	) {
 		vm = this->spell_timer_vms[0];
 
@@ -52704,7 +52721,7 @@ dllexport gnu_noinline uint32_t get_hardware_inputs() {
 
 // 0x486140
 dllexport gnu_noinline int32_t thiscall AnmManager::__create_texture_from_file(AnmImage* image, uint32_t format_index, uint32_t entry_index, int32_t width, int32_t height, int32_t offset_x, int32_t offset_y) {
-	image->__unknown_flag_A = false;
+	image->__unknown_flag_im_A = false;
 	LPDIRECT3DTEXTURE9 texture;
 	if (D3DXCreateTextureFromFileInMemoryEx(
 		SUPERVISOR.d3d_device,
@@ -52779,7 +52796,7 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__create_texture_from_file(A
 // 0x486390
 dllexport gnu_noinline int32_t stdcall __create_texture_from_anm(AnmImage* image, AnmTexture* texture, uint32_t format_index, int32_t width, int32_t height) asm_symbol_rel(0x486390);
 dllexport gnu_noinline int32_t stdcall __create_texture_from_anm(AnmImage* image, AnmTexture* texture, uint32_t format_index, int32_t width, int32_t height) {
-	image->__unknown_flag_A = false;
+	image->__unknown_flag_im_A = false;
 	AnmEntry* entry = image->entry;
 	int32_t texture_width = texture->width;
 	int32_t texture_height = texture->height;
@@ -52857,7 +52874,7 @@ dllexport gnu_noinline int32_t stdcall __create_render_target_texture(AnmImage* 
 }
 
 static inline int32_t stdcall __create_normal_texture(AnmImage* image, uint32_t format_index, uint32_t width, uint32_t height) {
-	image->__unknown_flag_A = false;
+	image->__unknown_flag_im_A = false;
 	D3DXCreateTexture(
 		SUPERVISOR.d3d_device,
 		width, height,
@@ -53053,7 +53070,7 @@ dllexport gnu_noinline ZUNResult thiscall ReplayManager::__load_from_path(const 
 	void* replay_data;
 	ReplayHeader* header;
 	byteloop_strcpy(this->file_path, path);
-	if (!GAME_MANAGER.__unknown_flag_C) {
+	if (!GAME_MANAGER.__unknown_flag_gm_C) {
 		chdir(WINDOW_DATA.appdata_path);
 		sprintf(buffer, "replay/%s", path);
 		if (zun_file_exists(buffer)) {
@@ -53102,7 +53119,7 @@ valid_replay:
 		gamestate_ptr = based_pointer(gamestate_ptr + 1, gamestate_ptr->extra_size);
 	}
 	if (
-		!GAME_MANAGER.__unknown_flag_C &&
+		!GAME_MANAGER.__unknown_flag_gm_C &&
 		replay_data
 	) {
 		free(replay_data);
@@ -53127,7 +53144,7 @@ dllexport gnu_noinline ZUNResult thiscall ReplayManager::__write_to_path(const c
 		self->info->name[i] = ' ';
 	}
 
-	if (self->__unknown_flag_B && arg4) {
+	if (self->__unknown_flag_rm_B && arg4) {
 		ReplayChunk* cur_chunk = self->current_chunk_node->data;
 		if (cur_chunk->write_input(REPLAY_INPUT_END)) {
 			self->current_chunk_node = self->allocate_chunk(self->stage_number);
@@ -53147,7 +53164,7 @@ dllexport gnu_noinline ZUNResult thiscall ReplayManager::__write_to_path(const c
 				stage_start = i; // This only works if 0 isn't a valid index, so why are the arrays 8...?
 			}
 
-			if (!self->__unknown_flag_B) {
+			if (!self->__unknown_flag_rm_B) {
 				game_state->extra_size = 0;
 			}
 			alloc_size += sizeof(ReplayGamestate);
@@ -53155,7 +53172,7 @@ dllexport gnu_noinline ZUNResult thiscall ReplayManager::__write_to_path(const c
 				size_t input_size = chunk->input_size();
 				alloc_size += input_size;
 				alloc_size += chunk->fps_size();
-				if (!self->__unknown_flag_B) {
+				if (!self->__unknown_flag_rm_B) {
 					self->game_states[i]->extra_size += input_size + chunk->fps_size();
 					self->game_states[i]->input_count += chunk->input_count();
 				}
@@ -53295,7 +53312,7 @@ dllexport gnu_noinline ZUNResult thiscall ReplayManager::__write_to_path(const c
 
 	chdir(WINDOW_DATA.exe_path);
 
-	self->__unknown_flag_B = true;
+	self->__unknown_flag_rm_B = true;
 
 	return ZUN_SUCCESS;
 }
@@ -53470,7 +53487,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__sub_455040() {
 					if (prev_gamemode == 4) {
 						MAIN_MENU_PTR->cleanup();
 					}
-					this->__int_804 = 1;
+					this->__bool_804 = true;
 					GameThread::allocate(ReplayRecording);
 					break;
 				case 13:
@@ -53478,12 +53495,12 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__sub_455040() {
 						MAIN_MENU_PTR->cleanup();
 					}
 					this->gamemode_switch = 7;
-					this->__int_804 = 1;
+					this->__bool_804 = true;
 					GameThread::allocate(ReplayPlayback);
 					break;
 				case 12: {
 					ReplayMode replay_mode = GAME_THREAD_PTR->replay_mode;
-					this->__int_804 = 0;
+					this->__bool_804 = false;
 					if (prev_gamemode == 7) {
 						GAME_THREAD_PTR->cleanup();
 					}
@@ -53493,7 +53510,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__sub_455040() {
 				}
 				case 10: {
 					GAME_THREAD_PTR->cleanup();
-					this->__int_804 = 1;
+					this->__bool_804 = true;
 					this->__int_808 = 0;
 					this->gamemode_switch = 7;
 					int32_t stage_number = GAME_MANAGER.globals.__stage_number_related_4;
@@ -53504,7 +53521,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__sub_455040() {
 				}
 				case 11: {
 					GAME_THREAD_PTR->cleanup();
-					this->__int_804 = 1;
+					this->__bool_804 = true;
 					this->__int_808 = 0;
 					this->gamemode_switch = 7;
 					int32_t stage_number = GAME_MANAGER.globals.__stage_number_related_4;
@@ -53515,7 +53532,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__sub_455040() {
 				}
 				case 19: {
 					GAME_THREAD_PTR->cleanup();
-					this->__int_804 = 1;
+					this->__bool_804 = true;
 					this->__int_808 = 1;
 					this->gamemode_switch = 7;
 					int32_t stage_number = GAME_MANAGER.globals.__stage_number_related_4;
@@ -53526,7 +53543,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__sub_455040() {
 				}
 				case 14:
 					GAME_THREAD_PTR->cleanup();
-					this->__int_804 = 1;
+					this->__bool_804 = true;
 					this->gamemode_switch = 7;
 					GameThread::allocate(ReplayRecording);
 					break;
@@ -53534,7 +53551,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__sub_455040() {
 					if (prev_gamemode == 7) {
 						GAME_THREAD_PTR->cleanup();
 					}
-					//Ending::allocate();
+					Ending::allocate();
 					break;
 				case 17:
 					this->__sub_453C70();
@@ -53551,8 +53568,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__sub_455040() {
 
 // 0x453C70
 dllexport gnu_noinline void thiscall Supervisor::__sub_453C70() {
-	if (!SUPERVISOR.__unknown_bitfield_A) {
-		SUPERVISOR.__unknown_bitfield_A = 1;
+	if (SUPERVISOR.__unknown_bitfield_su_A == 0) {
+		SUPERVISOR.__unknown_bitfield_su_A = 1;
 	}
 
 	delete_no_eh(KEY_CONFIG_MENU_PTR);
@@ -53612,7 +53629,7 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_453A70() {
 inline void GameThread::__start_stage() {
 	ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABILITY_ANM_INDEX);
 	ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABCARD_ANM_INDEX);
-	this->__unknown_flag_K = false;
+	this->__stage_transition_delay_stage_start = false;
 	BULLET_MANAGER_PTR->destroy_all();
 	PLAYER_PTR->reset();
 	ITEM_MANAGER_PTR->destroy_all();
@@ -53657,7 +53674,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 			REPLAY_MANAGER_PTR->stage_data[current_stage - 1].current_frame != 0
 		)
 	) {
-		if (GAME_MANAGER.__game_type != SpellPractice) {
+		if (GAME_MANAGER.game_type != SpellPractice) {
 			Gui* gui = GUI_PTR;
 			gui->__anm_id_108 = gui->front_anm->instantiate_vm_to_world_list_back(111);
 			
@@ -53665,7 +53682,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 			gui->__clear_bonus = stage_clear_bonus;
 			GAME_MANAGER.add_to_score(stage_clear_bonus);
 
-			gui->__unknown_flag_A = true;
+			gui->__unknown_flag_gu_A = true;
 			gui->__timer_198.reset();
 
 			PLAYER_PTR->__sub_416CD0();
@@ -53673,15 +53690,15 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 			// TODO: ask about whether this needs bug notes
 			BOMB_PTR->cleanup_if_active();
 
-			uint32_t game_type = GAME_MANAGER.__game_type;
+			uint32_t game_type = GAME_MANAGER.game_type;
 			if (game_type == NormalGame) {
 				int32_t ending_type;
 				ScorefileManager* scorefile_manager;
 				switch ((current_stage = GAME_MANAGER.globals.current_stage)) {
 					case Stage6: {
-						game_thread->__unknown_flag_E = true;
+						game_thread->__unknown_flag_gt_E = true;
 						game_thread->__int_D4 = 0;
-						GUI_PTR->__unknown_flag_C = true;
+						GUI_PTR->__unknown_flag_gu_C = true;
 						GAME_MANAGER.__update_scorefile_game_time();
 						
 						scorefile_manager = SCOREFILE_MANAGER_PTR;
@@ -53777,10 +53794,10 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 					}
 
 					case ExtraStage: {
-						GUI_PTR->__unknown_flag_C = true;
+						GUI_PTR->__unknown_flag_gu_C = true;
 						if (ACHIEVEMENT_MODE_STATE >= 0) {
 							ACHIEVEMENT_MODE_STATE = -1;
-							SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_G ? 2 : 4;
+							SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? 2 : 4;
 							break;
 						}
 						__unlock_card(MUKADE_CARD, true);
@@ -53797,7 +53814,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 							// TODO: add to scorefile clear count
 						}
 						GAME_MANAGER.__update_scorefile_game_time();
-						game_thread->__unknown_flag_E = true;
+						game_thread->__unknown_flag_gt_E = true;
 						game_thread->__int_D4 = 0;
 						break;
 					}
@@ -53824,7 +53841,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 				if (game_type != SpellPractice) {
 					// TODO: spell practice scoring
 				}
-				if (GAME_MANAGER.__game_type != SpellPractice) {
+				if (GAME_MANAGER.game_type != SpellPractice) {
 					SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
 						.practice[GAME_MANAGER.globals.difficulty][GAME_MANAGER.globals.current_stage]
 							.cleared = true;
@@ -53843,19 +53860,19 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_443E60() {
 	Gui* gui_ptr = GUI_PTR;
 	gui_ptr->__anm_id_108.interrupt_tree(1);
 	gui_ptr->__anm_id_10C.interrupt_tree(1);
-	gui_ptr->__unknown_flag_A = false;
+	gui_ptr->__unknown_flag_gu_A = false;
 	gui_ptr->__timer_198.reset();
 
-	if (this->__unknown_flag_H) {
+	if (this->__marked_for_cleanup) {
 		SUPERVISOR.__thread_A94.stop_and_cleanup();
-		SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_G ? 2 : 3;
+		SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? 2 : 3;
 		return ZUN_SUCCESS2;
 	}
 
 	STAGE_PTR->__start();
 	if (STAGE_B_PTR) {
 		ScreenEffect::allocate(ScreenEffect2, 30, 0, 0, 0, 10);
-		this->__unknown_flag_K = true;
+		this->__stage_transition_delay_stage_start = true;
 		GUI_PTR->__anm_id_B8.interrupt_tree(1);
 		return ZUN_SUCCESS;
 	}
@@ -53863,7 +53880,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_443E60() {
 	this->__start_stage();
 
 	if (
-		GAME_MANAGER.__game_type != SpellPractice &&
+		GAME_MANAGER.game_type != SpellPractice &&
 		GAME_MANAGER.__is_demo
 	) {
 		SOUND_MANAGER.__play_music_with_unlock(0, STAGE_DATA_PTR->bgm_indices[0]);
@@ -53880,7 +53897,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_443E60() {
 dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_4443C0() {
 	// TODO-MOVE
 	// TODO 2: what did I mean when I wrote "MOVE" here
-	if (this->__unknown_flag_K) {
+	if (this->__stage_transition_delay_stage_start) {
 		this->__start_stage();
 
 		clang_forceinline SOUND_MANAGER.__queue_bgm_stop();
@@ -53895,12 +53912,12 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_4443C0() {
 
 // 0x443860
 dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
-	if (SUPERVISOR.__unknown_bitfield_A != 0) {
+	if (SUPERVISOR.__unknown_bitfield_su_A != 0) {
 		return UpdateFuncDeleteCurrentThenNext;
 	}
 
-	if (this->__unknown_flag_E) {
-		if (this->__unknown_flag_I) {
+	if (this->__unknown_flag_gt_E) {
+		if (this->__unknown_flag_gt_I) {
 			return UpdateFuncEnd1;
 		}
 
@@ -53926,9 +53943,9 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 
 				int32_t mode;
 				if (GAME_MANAGER.globals.difficulty != EXTRA) {
-					mode = (SUPERVISOR.__unknown_bitfield_A & 1) ? 2 : 15;
+					mode = (SUPERVISOR.__unknown_bitfield_su_A & 1) ? 2 : 15;
 				} else {
-					mode = (SUPERVISOR.__unknown_bitfield_A & 1) ? 2 : 16;
+					mode = (SUPERVISOR.__unknown_bitfield_su_A & 1) ? 2 : 16;
 				}
 				SUPERVISOR.gamemode_switch = mode;
 			}
@@ -53938,9 +53955,9 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 	// Non-ZUN BUG: Stage transitions break because of this, figure out why
 	Gui* gui = GUI_PTR;
 	if (
-		gui->__unknown_flag_A &&
+		gui->__unknown_flag_gu_A &&
 		gui->__timer_198 < 120 &&
-		!this->__unknown_flag_I
+		!this->__unknown_flag_gt_I
 	) {
 		return UpdateFuncNext;
 	}
@@ -53960,7 +53977,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 	Stage* stageB = STAGE_B_PTR;
 	if (
 		stageB != NULL &&
-		stageB->__unknown_flag_A &&
+		stageB->__unknown_flag_bg_A &&
 		stageB != NULL
 	) {
 		delete stageB;
@@ -53969,16 +53986,16 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 	WINDOW_DATA.__int_20D0 = this->__timer_C == 5 ? 2 : WINDOW_DATA.__int_20D0;
 
 	if (this->skip_flag) {
-		this->__unknown_flag_J = true;
+		this->__unknown_flag_gt_J = true;
 		return UpdateFuncNext;
 	}
 
 	if (GAME_MANAGER.__is_demo) {
 		if (
 			INPUT_P1.check_hardware_inputs(BUTTON_SELECT | BUTTON_CANCEL) ||
-			(this->__unknown_flag_I | this->__unknown_flag_L | this->__unknown_flag_M)
+			(this->__unknown_flag_gt_I | this->__unknown_flag_gt_L | this->__unknown_flag_gt_M)
 		) {
-			SUPERVISOR.gamemode_switch = (SUPERVISOR.__unknown_bitfield_A & 1) ? 2 : 4;
+			SUPERVISOR.gamemode_switch = (SUPERVISOR.__unknown_bitfield_su_A & 1) ? 2 : 4;
 		}
 
 		switch (this->__timer_C.current) {
@@ -53986,7 +54003,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 				ScreenEffect::allocate(ScreenEffect5, 0x3C, 0, 0, 0, 91);
 				break;
 			case 3600:
-				SUPERVISOR.gamemode_switch = (SUPERVISOR.__unknown_bitfield_A & 1) ? 2 : 4;
+				SUPERVISOR.gamemode_switch = (SUPERVISOR.__unknown_bitfield_su_A & 1) ? 2 : 4;
 				break;
 		}
 	}
@@ -54060,23 +54077,23 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 	}
 	if ((int32_t)GAME_MANAGER.__high_score < displayed_score) {
 		int32_t continues = GAME_MANAGER.globals.continues;
-		GAME_MANAGER.__unknown_flag_C = true;
+		GAME_MANAGER.__unknown_flag_gm_C = true;
 		GAME_MANAGER.__high_score = displayed_score;
 		GAME_MANAGER.__high_score_continues = continues;
 	}
 #endif
 
-	if (this->__unknown_flag_G) {
+	if (this->open_ability_shop) {
 		Float3 A = { 448.0f, 32.0f, 0.0f };
 		AbilityShop::allocate(&A);
-		this->__unknown_flag_G = false;
+		this->open_ability_shop = false;
 	}
 
-	if (this->__unknown_flag_J) {
+	if (this->__unknown_flag_gt_J) {
 		return UpdateFuncEnd1;
 	}
 
-	if (this->__unknown_flag_F) {
+	if (this->__unknown_flag_gt_F) {
 		if (!this->__int_B4) {
 			if (GAME_MANAGER.globals.chapter < 43) {
 				SOUND_MANAGER.__queue_bgm_stop();
@@ -54098,7 +54115,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 				}
 			}
 		}
-		this->__unknown_flag_F = false;
+		this->__unknown_flag_gt_F = false;
 		this->__int_B4 = 0;
 	}
 
@@ -54153,8 +54170,8 @@ static const int32_t CONTINUE_CREDITS_TABLE[DIFFICULTY_COUNT] = {
 // 0x4432C0
 dllexport gnu_noinline GameThread::~GameThread() {
 	SCOREFILE_MANAGER_PTR->save_files();
-	GAME_MANAGER.__unknown_flag_A = false;
-	GAME_MANAGER.__unknown_flag_B = false;
+	GAME_MANAGER.__unknown_flag_gm_A = false;
+	GAME_MANAGER.__stage_transition_related = false;
 	GAME_SPEED.set(1.0f);
 	UNKNOWN_FUNC_PTR_A = NULL;
 	UNKNOWN_FUNC_PTR_B = NULL;
@@ -54162,7 +54179,7 @@ dllexport gnu_noinline GameThread::~GameThread() {
 	switch (SUPERVISOR.gamemode_switch) {
 		case 12:
 			ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
-			GAME_MANAGER.__unknown_flag_B = true;
+			GAME_MANAGER.__stage_transition_related = true;
 			break;
 		case 4: case 16:
 			ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
@@ -54172,10 +54189,10 @@ dllexport gnu_noinline GameThread::~GameThread() {
 			ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
 			if (GAME_MANAGER.globals.__stage_number_related_4 == GAME_MANAGER.globals.current_stage) {
 				GAME_MANAGER.globals.add_continue();
-				GAME_MANAGER.__unknown_flag_D = true;
+				GAME_MANAGER.__unknown_flag_gm_D = true;
 			}
 			else {
-				GAME_MANAGER.__unknown_flag_A = true;
+				GAME_MANAGER.__unknown_flag_gm_A = true;
 			}
 			break;
 		case 2:
@@ -54185,12 +54202,12 @@ dllexport gnu_noinline GameThread::~GameThread() {
 			ABILITY_MANAGER_PTR->__sub_4080E0();
 			ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
 			if (GAME_MANAGER.globals.__stage_number_related_4 == GAME_MANAGER.globals.current_stage) {
-				GAME_MANAGER.__unknown_flag_A = true;
+				GAME_MANAGER.__unknown_flag_gm_A = true;
 			}
 			break;
 	}
 
-	if (!GAME_MANAGER.__unknown_flag_B) {
+	if (!GAME_MANAGER.__stage_transition_related) {
 		switch (SUPERVISOR.gamemode_switch) {
 			default:
 				delete REPLAY_MANAGER_PTR;
@@ -54210,8 +54227,8 @@ dllexport gnu_noinline GameThread::~GameThread() {
 		Gui* gui = GUI_PTR;
 		SAFE_DELETE(gui->msg_vm);
 		if (
-			!GAME_MANAGER.__unknown_flag_A &&
-			!GAME_MANAGER.__unknown_flag_D
+			!GAME_MANAGER.__unknown_flag_gm_A &&
+			!GAME_MANAGER.__unknown_flag_gm_D
 		) {
 			ANM_MANAGER_PTR->unload_anm(STAGE_LOGO_ANM_INDEX);
 			gui->stage_logo_anm = NULL;
@@ -54227,8 +54244,8 @@ dllexport gnu_noinline GameThread::~GameThread() {
 
 	EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
 	if (
-		!GAME_MANAGER.__unknown_flag_A &&
-		!GAME_MANAGER.__unknown_flag_D
+		!GAME_MANAGER.__unknown_flag_gm_A &&
+		!GAME_MANAGER.__unknown_flag_gm_D
 	) {
 		delete enemy_manager;
 	}
@@ -54253,8 +54270,8 @@ dllexport gnu_noinline GameThread::~GameThread() {
 	}
 
 	if (
-		(GAME_MANAGER.__game_type != SpellPractice || !GAME_MANAGER.__unknown_flag_A) &&
-		!(GAME_MANAGER.__unknown_flag_B | GAME_MANAGER.__is_demo)
+		(GAME_MANAGER.game_type != SpellPractice || !GAME_MANAGER.__unknown_flag_gm_A) &&
+		!(GAME_MANAGER.__stage_transition_related | GAME_MANAGER.__is_demo)
 	) {
 		clang_forceinline SOUND_MANAGER.__queue_bgm_stop();
 		SOUND_MANAGER.__text_buffer_2384[0] = '\0';
@@ -54264,7 +54281,7 @@ dllexport gnu_noinline GameThread::~GameThread() {
 
 	SCREEN_EFFECT_DISABLE_TIME = 1;
 
-	SUPERVISOR.background_color = GAME_MANAGER.__unknown_flag_A ? COLOR(0, 0, 0, 0) : COLOR(255, 0, 0, 0);
+	SUPERVISOR.background_color = GAME_MANAGER.__unknown_flag_gm_A ? COLOR(0, 0, 0, 0) : COLOR(255, 0, 0, 0);
 }
 
 inline unsigned GameThread::thread_start_impl() {
@@ -54276,20 +54293,20 @@ inline unsigned GameThread::thread_start_impl() {
 	__asm FINIT
 
 	while (ANM_MANAGER_PTR->backbuffer_textures[0].anm_loaded_index >= 0) {
-		if (SUPERVISOR.__unknown_bitfield_A) {
+		if (SUPERVISOR.__unknown_bitfield_su_A != 0) {
 			goto thread_start_important_label;
 		}
 		Sleep(1);
 	}
 
-	if (!SUPERVISOR.__int_804) {
+	if (!SUPERVISOR.__bool_804) {
 		Sleep(60);
 	}
 
 	SUPERVISOR.__arcade_vm_ptr_A->interrupt_and_run(2);
 
 	GAME_SPEED.value = 1.0f;
-	GAME_THREAD_PTR->__unknown_flag_E = false;
+	GAME_THREAD_PTR->__unknown_flag_gt_E = false;
 	GAME_MANAGER.globals.__counter_C = 0;
 	GAME_MANAGER.globals.__counter_10 = 0;
 	GAME_MANAGER.globals.__counter_14 = 0;
@@ -54302,14 +54319,14 @@ inline unsigned GameThread::thread_start_impl() {
 				.unlocked = true;
 	}
 
-	if (SUPERVISOR.__int_804) {
+	if (SUPERVISOR.__bool_804) {
 		int32_t difficulty = GAME_MANAGER.globals.difficulty;
 		if (GAME_MANAGER.globals.current_stage == ExtraStage) { // 7
 			difficulty = __max(difficulty, LUNATIC);
 			GAME_MANAGER.globals.difficulty = difficulty;
 		}
 
-		switch (GAME_MANAGER.__game_type) {
+		switch (GAME_MANAGER.game_type) {
 			case SpellPractice: {
 				ScorefileSpellcard& spell = SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
 												.spells[GAME_MANAGER.globals.spell_practice_id];
@@ -54336,7 +54353,7 @@ inline unsigned GameThread::thread_start_impl() {
 		GAME_MANAGER.globals.graze_in_stage = 0;
 
 		int32_t continues = GAME_MANAGER.globals.continues;
-		continues = !GAME_MANAGER.__unknown_flag_D ? 0 : GAME_MANAGER.globals.continues;
+		continues = !GAME_MANAGER.__unknown_flag_gm_D ? 0 : GAME_MANAGER.globals.continues;
 		GAME_MANAGER.globals.continues = continues;
 
 		GAME_MANAGER.globals.score = 0;
@@ -54388,7 +54405,7 @@ inline unsigned GameThread::thread_start_impl() {
 		GAME_MANAGER.continue_credits = CONTINUE_CREDITS_TABLE[difficulty];
 		GAME_MANAGER.globals.life_stock_max = MAX_LIFE_STOCKS; // 7
 
-		switch (GAME_MANAGER.__game_type) {
+		switch (GAME_MANAGER.game_type) {
 			case SpellPractice:
 				GAME_MANAGER.globals.bomb_stock_max = MAX_BOMB_STOCKS; // 7
 				GAME_MANAGER.globals.life_stocks = 0;
@@ -54420,7 +54437,7 @@ inline unsigned GameThread::thread_start_impl() {
 			goto thread_start_important_label;
 		}
 
-		if (GAME_MANAGER.__game_type == SpellPractice) {
+		if (GAME_MANAGER.game_type == SpellPractice) {
 			clang_forceinline GAME_MANAGER.globals.set_power(GAME_MANAGER.globals.power_per_level * DEFAULT_MAX_POWER_LEVEL);
 		}
 		else {
@@ -54438,7 +54455,7 @@ inline unsigned GameThread::thread_start_impl() {
 			GAME_MANAGER.globals.set_power(power);
 		}
 
-		GAME_MANAGER.__unknown_flag_C = false;
+		GAME_MANAGER.__unknown_flag_gm_C = false;
 
 		if (
 			game_thread->replay_mode == ReplayRecording &&
@@ -54471,7 +54488,7 @@ inline unsigned GameThread::thread_start_impl() {
 
 	this->stage_number = STAGE_DATA_PTR->stage_number;
 
-	if (!GAME_MANAGER.__unknown_flag_B) {
+	if (!GAME_MANAGER.__stage_transition_related) {
 		if (!ReplayManager::allocate(this->replay_mode, UNKNOWN_TEXT_BUFFER_A)) {
 			goto thread_start_important_label;
 		}
@@ -54508,8 +54525,8 @@ inline unsigned GameThread::thread_start_impl() {
 	});
 
 	if (
-		!GAME_MANAGER.__unknown_flag_A &&
-		!GAME_MANAGER.__unknown_flag_D
+		!GAME_MANAGER.__unknown_flag_gm_A &&
+		!GAME_MANAGER.__unknown_flag_gm_D
 	) {
 		if (!EnemyManager::allocate(STAGE_DATA_PTR->ecl_filename)) {
 			goto thread_start_important_label;
@@ -54528,7 +54545,7 @@ inline unsigned GameThread::thread_start_impl() {
 
 	SCOREFILE_MANAGER_PTR->save_files();
 
-	if (GAME_MANAGER.__game_type == SpellPractice) {
+	if (GAME_MANAGER.game_type == SpellPractice) {
 		SOUND_MANAGER.__queue_bgm_stop();
 	}
 
@@ -54587,7 +54604,7 @@ inline unsigned GameThread::thread_start_impl() {
 
 thread_start_important_label:
 
-	this->__unknown_flag_H = true;
+	this->__marked_for_cleanup = true;
 
 	if (SUPERVISOR.__int_AD0 == 1) {
 		UNKNOWN_ANM_ID_A.interrupt_tree(2);
@@ -54970,19 +54987,19 @@ dllexport gnu_noinline LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wPa
 	switch (uMsg) {
 		case WM_ACTIVATEAPP: // 0x1C
 			if ((WINDOW_DATA.window_active = wParam)) {
-				WINDOW_DATA.__dword_14 = 0;
+				WINDOW_DATA.__bool_14 = false;
 				SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
 				return DefWindowProcA(hWnd, uMsg, wParam, lParam);
 			}
 			else {
-				WINDOW_DATA.__dword_14 = 1;
+				WINDOW_DATA.__bool_14 = true;
 				SetWindowPos(hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
 				return DefWindowProcA(hWnd, uMsg, wParam, lParam);
 			}
 			break;
 		case WM_SIZE: // 0x5
-			if (WINDOW_DATA.__unknown_flag_A && wParam == SIZE_MAXIMIZED) {
-				WINDOW_DATA.__unknown_flag_B = true;
+			if (WINDOW_DATA.__unknown_flag_wd_A && wParam == SIZE_MAXIMIZED) {
+				WINDOW_DATA.__unknown_flag_wd_B = true;
 				switch (WINDOW_DATA.config_resolution) {
 					case Windowed640x480: // 3
 						WINDOW_DATA.config_resolution = Fullscreen640x480; // 0
@@ -54998,11 +55015,11 @@ dllexport gnu_noinline LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wPa
 			}
 			break;
 		case WM_CLOSE: // 0x10
-			SUPERVISOR.__unknown_bitfield_A = 1;
+			SUPERVISOR.__unknown_bitfield_su_A = 1;
 			return TRUE; // Documentation says to return 0?
 		case WM_SETCURSOR: // 0x20
 			if (!SUPERVISOR.present_parameters.Windowed) {
-				if (WINDOW_DATA.__dword_14) {
+				if (WINDOW_DATA.__bool_14) {
 					SetCursor(LoadCursorA(NULL, IDC_ARROW));
 					show_cursor();
 					return TRUE;
@@ -55028,7 +55045,7 @@ dllexport gnu_noinline LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wPa
 			break;
 		case WM_SYSKEYDOWN: // 0x104
 			if (wParam == VK_RETURN) {
-				WINDOW_DATA.__unknown_flag_B = true;
+				WINDOW_DATA.__unknown_flag_wd_B = true;
 				switch (WINDOW_DATA.config_resolution) {
 					case Windowed640x480: // 3
 						WINDOW_DATA.config_resolution = Fullscreen640x480; // 0
@@ -55085,7 +55102,7 @@ dllexport gnu_noinline LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wPa
 			if (!SUPERVISOR.present_parameters.Windowed) {
 				Sleep(3000);
 			}
-			WINDOW_DATA.__dword_18 = 300;
+			WINDOW_DATA.__int_18 = 300;
 			break;
 	}
 	return DefWindowProcA(hWnd, uMsg, wParam, lParam);
@@ -55222,7 +55239,7 @@ dllexport gnu_noinline BOOL WindowData::__create_window(HINSTANCE instance) {
 	class_def.hInstance = instance;
 	class_def.lpfnWndProc = &WndProc;
 	this->window_active = true;
-	this->__dword_14 = 0;
+	this->__bool_14 = false;
 	class_def.lpszClassName = "BASE";
 	RegisterClassA(&class_def);
 	this->config_resolution = SUPERVISOR.config.resolution;
@@ -55397,10 +55414,10 @@ dllexport gnu_noinline ZUNResult __make_mutex_and_test_path() {
 			}
 			WINDOW_DATA.__bool_30 = strcmp_asm(path_buffer, filename_buffer) ? true : WINDOW_DATA.__bool_30;
 		}
-		SUPERVISOR.__unknown_flag_A = false;
+		SUPERVISOR.__unknown_flag_su_A = false;
 	}
 	else {
-		SUPERVISOR.__unknown_flag_A = true;
+		SUPERVISOR.__unknown_flag_su_A = true;
 	}
 #if !KILL_THE_MUTEX_WITH_FIRE
 	return MUTEX_DATA.handle != NULL ? ZUN_SUCCESS : ZUN_ERROR;
@@ -55451,9 +55468,9 @@ static const uint8_t ResolutionConfigValues[] = {
 dllexport gnu_noinline void set_selected_resolution() asm_symbol_rel(0x4747D0);
 dllexport gnu_noinline void set_selected_resolution() {
 	if (IsDlgButtonChecked(WINDOW_DATA.resolution_dialogue, 0xCA) == BST_CHECKED) {
-		SUPERVISOR.config.__unknown_flag_A = true;
+		SUPERVISOR.config.__unknown_flag_co_A = true;
 	} else {
-		SUPERVISOR.config.__unknown_flag_A = false;
+		SUPERVISOR.config.__unknown_flag_co_A = false;
 	}
 	for (int32_t i = 0; i < countof(ResolutionDialogButtonIDs); ++i) {
 		if (IsDlgButtonChecked(WINDOW_DATA.resolution_dialogue, ResolutionDialogButtonIDs[i]) == BST_CHECKED) {
@@ -55476,15 +55493,15 @@ dllexport gnu_noinline INT_PTR CALLBACK ResolutionDlgProc(HWND hWnd, UINT uMsg, 
 			WINDOW_DATA.resolution_dialogue = NULL;
 			break;
 		case WM_INITDIALOG: // 0x110
-			if (SUPERVISOR.config.__unknown_flag_A) {
+			if (SUPERVISOR.config.__unknown_flag_co_A) {
 				SendMessageA(GetDlgItem(hWnd, 0xCA), BM_SETCHECK, BST_CHECKED, 0);
 			}
 			SendMessageA(GetDlgItem(hWnd, ResolutionDialogButtonIDs[SUPERVISOR.config.resolution]), BM_SETCHECK, BST_CHECKED, 0);
-			WINDOW_DATA.__unknown_bitfield_B = 2;
+			WINDOW_DATA.__unknown_bitfield_wd_B = 2;
 			break;
 		case WM_CLOSE: // 0x10
-			if (WINDOW_DATA.__unknown_bitfield_B == 2) {
-				WINDOW_DATA.__unknown_bitfield_B = 1;
+			if (WINDOW_DATA.__unknown_bitfield_wd_B == 2) {
+				WINDOW_DATA.__unknown_bitfield_wd_B = 1;
 			}
 			DestroyWindow(WINDOW_DATA.resolution_dialogue);
 			WINDOW_DATA.resolution_dialogue = NULL;
@@ -55497,7 +55514,7 @@ dllexport gnu_noinline INT_PTR CALLBACK ResolutionDlgProc(HWND hWnd, UINT uMsg, 
 dllexport gnu_noinline void process_resolution_dialog() asm_symbol_rel(0x474850);
 dllexport gnu_noinline void process_resolution_dialog() {
 	BOOL disabled_buttons[10] = {};
-	if (!SUPERVISOR.config.__unknown_flag_A) {
+	if (!SUPERVISOR.config.__unknown_flag_co_A) {
 		BYTE keyboard[256];
 		GetKeyboardState(keyboard);
 		if (keyboard[VK_SHIFT] & 0x80) {
@@ -55575,7 +55592,7 @@ dllexport gnu_noinline void process_resolution_dialog() {
 		Sleep(6);
 	}
 	set_selected_resolution();
-	WINDOW_DATA.__unknown_bitfield_B = 0;
+	WINDOW_DATA.__unknown_bitfield_wd_B = 0;
 }
 
 /*
@@ -55654,7 +55671,7 @@ dllexport gnu_noinline ZUNResult fastcall __sub_473B20(BOOL arg1) {
 				WINDOW_DATA.__backbuffer_height = height;
 			}
 			if (!arg1) {
-				SUPERVISOR.__unknown_flag_D = false;
+				SUPERVISOR.__unknown_flag_su_D = false;
 				if (!SUPERVISOR.config.reference_rasterizer) {
 					if (SUPERVISOR.d3d->CreateDevice(
 						D3DADAPTER_DEFAULT,
@@ -55695,7 +55712,7 @@ dllexport gnu_noinline ZUNResult fastcall __sub_473B20(BOOL arg1) {
 				}
 			}
 		} while (++i < countof(RESOLUTIONS));
-		SUPERVISOR.__unknown_flag_D = true;
+		SUPERVISOR.__unknown_flag_su_D = true;
 reset_success:
 		HDC hdc = GetDC(WINDOW_DATA.window);
 		GetDeviceCaps(hdc, VREFRESH);
@@ -55795,11 +55812,11 @@ dllexport gnu_noinline int32_t __initialize_d3d() {
 		}
 		present_parameters.Windowed = true;
 	}
-	SUPERVISOR.__unknown_flag_C = true;
+	SUPERVISOR.__unknown_flag_su_C = true;
 	present_parameters.EnableAutoDepthStencil = true;
 	present_parameters.AutoDepthStencilFormat = D3DFMT_D16;
 	present_parameters.Flags = D3DPRESENTFLAG_LOCKABLE_BACKBUFFER;
-	SUPERVISOR.__dword_824 = 1;
+	SUPERVISOR.__int_824 = 1;
 	SUPERVISOR.present_parameters = present_parameters;
 	if (ZUN_FAILED(__sub_473B20(false))) {
 		return boolA;
@@ -55819,11 +55836,11 @@ dllexport gnu_noinline int32_t __initialize_d3d() {
 		D3DRTYPE_TEXTURE,
 		D3DFMT_A8R8G8B8
 	) == D3D_OK) {
-		SUPERVISOR.__unknown_flag_E = true;
+		SUPERVISOR.__unknown_flag_su_E = true;
 	}
 	else {
-		SUPERVISOR.__unknown_flag_E = false;
-		SUPERVISOR.config.__unknown_flag_B = true;
+		SUPERVISOR.__unknown_flag_su_E = false;
+		SUPERVISOR.config.__unknown_flag_co_B = true;
 		LOG_BUFFER.write(JpEnStr("", "Does not support D3DFMT_A8R8G8B8, works in reduced color mode\r\n"));
 	}
 	WINDOW_DATA.__dword_8 = 0;
@@ -56105,7 +56122,7 @@ dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevIn
 	HINSTANCE current_instance = hInstance;
 	int local_int_18 = 0;
 	WINDOW_DATA.current_instance = hInstance;
-	WINDOW_DATA.__dword_18 = 0;
+	WINDOW_DATA.__int_18 = 0;
 	timeBeginPeriod(1);
 	CRITICAL_SECTION_MANAGER.initialize();
 	DEBUG_LOG_PTR = new DebugLogger();
@@ -56152,7 +56169,7 @@ winmain_important_label:
 			DispatchMessageA(&message);
 		}
 	} while (--message_count);
-	SUPERVISOR.__unknown_bitfield_A = 0;
+	SUPERVISOR.__unknown_bitfield_su_A = 0;
 
 winmain_after_config_loaded:
 	IDirect3D9* d3d_ptr = Direct3DCreate9(D3D_SDK_VERSION); // version 32
@@ -56178,10 +56195,10 @@ winmain_load_config:
 		joyGetPosEx(JOYSTICKID1, &joy_info) == JOYERR_NOERROR &&
 		joyGetPosEx(JOYSTICKID2, &joy_info) == JOYERR_NOERROR
 	) {
-		SUPERVISOR.__unknown_flag_B = false;
+		SUPERVISOR.__unknown_flag_su_B = false;
 	} else {
 		joyGetDevCapsA(JOYSTICKID1, &JOYCAPS_GLOBAL, sizeof(JOYCAPSA));
-		SUPERVISOR.__unknown_flag_B = true;
+		SUPERVISOR.__unknown_flag_su_B = true;
 	}
 	BYTE keyboard[256];
 	GetKeyboardState(keyboard);
@@ -56190,7 +56207,7 @@ winmain_load_config:
 	}
 	SetKeyboardState(keyboard);
 	process_resolution_dialog();
-	if (WINDOW_DATA.__unknown_bitfield_B) {
+	if (WINDOW_DATA.__unknown_bitfield_wd_B != 0) {
 		goto winmain_important_label;
 	}
 	WINDOW_DATA.config_resolution = SUPERVISOR.config.resolution;
@@ -56275,7 +56292,7 @@ winmain_d3d_create_success:
 	SetForegroundWindow(WINDOW_DATA.window);
 	ZUNResult result = SUPERVISOR.initialize();
 	if (result == ZUN_SUCCESS) {
-		WINDOW_DATA.__unknown_flag_A = true;
+		WINDOW_DATA.__unknown_flag_wd_A = true;
 		local_int_18 = 0;
 		WINDOW_DATA.__sbyte_1C = -4;
 		while (!WINDOW_DATA.__dword_8) {
@@ -56286,7 +56303,7 @@ winmain_d3d_create_success:
 			else {
 				switch (SUPERVISOR.d3d_device->TestCooperativeLevel()) {
 					case D3D_OK:
-						if (!WINDOW_DATA.__unknown_flag_B) {
+						if (!WINDOW_DATA.__unknown_flag_wd_B) {
 							if (WINDOW_DATA.__enable_vsync) {
 								local_int_18 = WINDOW_DATA.update_window__alt_version2();
 							}
@@ -56302,12 +56319,12 @@ winmain_d3d_create_success:
 							if (local_int_18 != 0) {
 								goto loop_break;
 							}
-							SUPERVISOR.__unknown_flag_F = false;
+							SUPERVISOR.__unknown_flag_su_F = false;
 							break;
 						}
 					case D3DERR_DEVICENOTRESET:
 						WINDOW_DATA.__counter_2044 = 10;
-						if (!WINDOW_DATA.__unknown_flag_B) {
+						if (!WINDOW_DATA.__unknown_flag_wd_B) {
 							D3DFORMAT format;
 							if (WINDOW_DATA.config_resolution <= Fullscreen1280x960) { // 2
 								GetWindowRect(WINDOW_DATA.window, &SUPERVISOR.window_rect);
@@ -56329,9 +56346,9 @@ winmain_d3d_create_success:
 						}
 						__set_default_d3d_states();
 						ANM_MANAGER_PTR->__create_render_targets();
-						SUPERVISOR.__unknown_flag_F = true;
+						SUPERVISOR.__unknown_flag_su_F = true;
 						SUPERVISOR.__int_818 = 3;
-						if (WINDOW_DATA.__unknown_flag_B) {
+						if (WINDOW_DATA.__unknown_flag_wd_B) {
 							SUPERVISOR.__camera2_sub_454F50();
 							switch (WINDOW_DATA.config_resolution) {
 								default: {
@@ -56365,7 +56382,7 @@ winmain_d3d_create_success:
 									WINNLSEnableIME(NULL, false);
 									hide_cursor();
 									SetCursor(NULL);
-									WINDOW_DATA.__dword_14 = 0;
+									WINDOW_DATA.__bool_14 = false;
 									break;
 								}
 								case BorderlessDotByDot: // 8
@@ -56384,7 +56401,7 @@ winmain_d3d_create_success:
 							}
 							GetWindowRect(WINDOW_DATA.window, &SUPERVISOR.window_rect);
 							SUPERVISOR.__sub_455EC0();
-							WINDOW_DATA.__unknown_flag_B = false;
+							WINDOW_DATA.__unknown_flag_wd_B = false;
 						}
 				}
 			}
