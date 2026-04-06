@@ -19562,7 +19562,7 @@ struct AnmManager {
 		AnmLoaded* anm_loaded = anm_manager->create_anm_loaded(file_index, filename);
 		if (expect(anm_loaded != NULL, false)) {
 			anm_loaded->__load_wait = 1;
-			while (anm_loaded->__load_wait && SUPERVISOR.__unknown_bitfield_su_A != 0) {
+			while (anm_loaded->__load_wait && SUPERVISOR.__unknown_bitfield_su_A == 0) {
 				Sleep(1);
 			}
 			DebugLogger::__debug_log_stub_6("::preloadAnimEnd : %s\n", filename);
@@ -34426,9 +34426,14 @@ dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
 		ScorefileManager::allocate();
 		loading_thread->sig_loaded = 1;
 		if (AsciiManager::allocate()) {
+#if !FIX_REALLY_BAD_BUGS
 			loading_thread->__ascii_manager_loaded = 1;
+#endif
 			anm_loaded = ANM_MANAGER_PTR->preload_anm(TEXT_ANM_INDEX, "text.anm");
 			SUPERVISOR.text_anm = anm_loaded;
+#if FIX_REALLY_BAD_BUGS
+			loading_thread->__ascii_manager_loaded = 1;
+#endif
 			if (anm_loaded) {
 				void* bgm_format = read_file_to_buffer("../../bgm/thbgm.fmt", NULL, false);
 				SOUND_MANAGER.bgm_format_file = bgm_format;
@@ -51877,6 +51882,7 @@ public:
 #if DEBUG_SKIP_MENUS
 				// DEBUG: Try to directly start a game?
 				SUPERVISOR.gamemode_switch = 10;
+				GAME_MANAGER.globals.current_stage = DEBUG_STAGE;
 				GAME_MANAGER.globals.__stage_number_related_4 = DEBUG_STAGE;
 				GAME_MANAGER.globals.spell_practice_id = -1;
 				GAME_MANAGER.globals.difficulty = DEBUG_DIFFICULTY;
