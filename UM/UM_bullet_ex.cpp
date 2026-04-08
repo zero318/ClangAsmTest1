@@ -1751,7 +1751,15 @@ extern "C" {
 inline void* read_file_from_dat(const char* path, int32_t* size_out = NULL) {
 	PATH_BUFFER[0] = '\0';
 	byteloop_strcat(PATH_BUFFER, path);
+#if !TESTING_FEATURES
 	return read_file_to_buffer(PATH_BUFFER, size_out, false);
+#else
+	void* buffer = read_file_to_buffer(PATH_BUFFER, size_out, false);
+	if (!buffer) {
+		buffer = read_file_to_buffer(PATH_BUFFER, size_out, true);
+	}
+	return buffer;
+#endif
 }
 
 // 0x402220
@@ -4641,6 +4649,31 @@ typedef struct LoadingThread LoadingThread;
 // 0x473390
 dllexport gnu_noinline double vectorcall get_runtime() asm_symbol_rel(0x473390);
 
+enum class GameMode : int32_t {
+	ForceSwitch = -2,
+	GameModeN1 = -1,
+	Startup = 0,
+	LoadingScreen = 1,
+	GameMode2 = 2, // Maybe a debug mode? No code in the exe...
+	CleanupA = 3,
+	MainMenu = 4,
+	GameMode5 = 5,
+	GameMode6 = 6,
+	Gameplay = 7,
+	GameMode8 = 8,
+	GameMode9 = 9,
+	StartGameplay = 10,
+	StartReplay = 11,
+	StageTransition = 12,
+	StartDemo = 13,
+	GameMode14 = 14,
+	Ending = 15,
+	GameMode16 = 16,
+	CleanupB = 17,
+	GameMode18 = 18,
+	GameMode19 = 19
+};
+
 // size: 0xB60
 struct Supervisor {
 	HINSTANCE current_instance; // 0x0
@@ -4650,7 +4683,7 @@ struct Supervisor {
 	RECT window_rect; // 0x10
 	LPDIRECTINPUTDEVICE8 keyboard_device; // 0x20;
 	LPDIRECTINPUTDEVICE8 joypad_devices[1]; // 0x24;
-	unknown_fields(0x4); // 0x28
+	unknown_fields(0x4); // 0x28 probably a second joypad device
 	DIDEVCAPS __joypad_caps; // 0x2C
 	HWND main_window_handle; // 0x58
 	D3DMATRIXZ __view_matrix_5C; // 0x5C
@@ -4673,9 +4706,9 @@ struct Supervisor {
 	StageCamera cameras[4]; // 0x25C
 	StageCamera* current_camera_ptr; // 0x7EC
 	int32_t current_camera_index; // 0x7F0
-	int32_t gamemode_current; // 0x7F4
-	int32_t gamemode_switch; // 0x7F8
-	int32_t gamemode_previous; // 0x7FC
+	GameMode gamemode_current; // 0x7F4
+	GameMode gamemode_switch; // 0x7F8
+	GameMode gamemode_previous; // 0x7FC
 	int __dword_800; // 0x800
 	BOOL __bool_804; // 0x804
 	int __int_808; // 0x808
@@ -4697,7 +4730,7 @@ struct Supervisor {
 			uint32_t __unknown_flag_su_F : 1; // 5
 			uint32_t : 1; // 6
 			uint32_t __unknown_flag_su_A : 1; // 7
-			uint32_t __unknown_bitfield_su_A : 2; // 8-9
+			uint32_t quitting : 2; // 8-9 why is this two bits???
 			uint32_t : 2; // 10-11
 			uint32_t __unknown_flag_su_G : 1; // 12
 			uint32_t : 1; // 13
@@ -4719,7 +4752,7 @@ struct Supervisor {
 	int32_t game_exe_file_size; // 0xB34
 	int32_t ver_file_size; // 0xB38
 	void* ver_file_buffer; // 0xB3C
-	LoadingThread* __loading_thread_B40; // 0xB40
+	LoadingThread* loading_thread_ptr; // 0xB40
 	unknown_fields(0xC); // 0xB44
 	double __frame_update_time; // 0xB50
 	D3DCOLOR background_color; // 0xB58
@@ -4733,7 +4766,7 @@ struct Supervisor {
 	dllexport gnu_noinline int thiscall __sub_454950() asm_symbol_rel(0x454950);
 
 	// 0x455040
-	dllexport gnu_noinline UpdateFuncRet thiscall __sub_455040() asm_symbol_rel(0x455040);
+	dllexport gnu_noinline UpdateFuncRet thiscall __update_gamemode() asm_symbol_rel(0x455040);
 	
 	inline UpdateFuncRet thiscall on_tick();
 
@@ -4918,7 +4951,7 @@ ValidateFieldOffset32(0xB30, Supervisor, game_exe_checksum);
 ValidateFieldOffset32(0xB34, Supervisor, game_exe_file_size);
 ValidateFieldOffset32(0xB38, Supervisor, ver_file_size);
 ValidateFieldOffset32(0xB3C, Supervisor, ver_file_buffer);
-ValidateFieldOffset32(0xB40, Supervisor, __loading_thread_B40);
+ValidateFieldOffset32(0xB40, Supervisor, loading_thread_ptr);
 ValidateFieldOffset32(0xB50, Supervisor, __frame_update_time);
 ValidateFieldOffset32(0xB58, Supervisor, background_color);
 ValidateStructSize32(0xB60, Supervisor);
@@ -4959,8 +4992,8 @@ dllexport gnu_noinline void Supervisor::__release_rendering_surfaces() {
 
 // 0x453DB0
 dllexport gnu_noinline ZUNResult Supervisor::initialize() {
-	SUPERVISOR.gamemode_current = -2;
-	SUPERVISOR.gamemode_switch = 0;
+	SUPERVISOR.gamemode_current = GameMode::ForceSwitch;
+	SUPERVISOR.gamemode_switch = GameMode::Startup;
 	SUPERVISOR.__dword_800 = 0;
 	UpdateFunc* update_func = new UpdateFunc(&Supervisor::on_tick, true, &SUPERVISOR);
 	update_func->on_init_func = &Supervisor::on_registration;
@@ -11553,7 +11586,7 @@ enum ItemID : int32_t {
 };
 
 typedef struct Item Item;
-static inline Item* spawn_item(int32_t item_id, Float3* position, float angle, float speed, int32_t arg6);
+static inline Item* spawn_item(int32_t item_id, Float3* position, float angle, float speed, int32_t spawn_delay);
 
 // size: 0xC4
 struct EnemyDrops {
@@ -13101,7 +13134,7 @@ enum Opcode : uint16_t {
 	anm_move_position_slot_interp,
 	effect_create_special,
 	anm_scale2_slot,
-	__anm_layer_slot,
+	anm_layer_slot,
 	anm_blend_mode_slot,
 	anm_create_rel_front_rotated,
 	__anm_create_zero_front_and_run,
@@ -13212,7 +13245,7 @@ enum Opcode : uint16_t {
 	enemy_kill_all_id,
 	anm_layer_base,
 	enemy_damage_sound,
-	__stage_logo,
+	stage_logo,
 	enemy_id_exists,
 	death_callback_sub,
 	std_fog_interp,
@@ -13675,7 +13708,8 @@ dllexport gnu_noinline void GameManager::__update_scorefile_game_time() {
 				this->game_time_double = get_runtime();
 				break;
 			}
-			case -1: case 3:
+			case GameMode::GameModeN1: // -1
+			case GameMode::CleanupA: // 3
 				break;
 		}
 	}
@@ -15236,10 +15270,12 @@ extern inline const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[]; // 6
 extern inline const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[]; // 4
 
 extern "C" {
+	// For some unholy reason these aren't const
+
 	// 0x5217DC
-	externcg Float3 UNKNOWN_FLOAT3_A cgasm("_UNKNOWN_FLOAT3_A");
+	externcg Float3 ZERO_FLOAT3 cgasm("_ZERO_FLOAT3");
 	// 0x56AD78
-	externcg Float2 UNKNOWN_FLOAT2_A cgasm("_UNKNOWN_FLOAT2_A");
+	externcg Float2 ZERO_FLOAT2 cgasm("_ZERO_FLOAT2");
 }
 
 // size: 0x14
@@ -15986,8 +16022,8 @@ struct AnmVM {
 	// 0x429AD0
 	dllexport gnu_noinline void thiscall initialize_position_interp(int32_t end_time, int32_t mode, Float3* initial_pos, Float3* final_pos) asm_symbol_rel(0x429AD0) {
 		this->data.position_interp.end_time = end_time;
-		this->data.position_interp.bezier1 = UNKNOWN_FLOAT3_A;
-		this->data.position_interp.bezier2 = UNKNOWN_FLOAT3_A;
+		this->data.position_interp.bezier1 = ZERO_FLOAT3;
+		this->data.position_interp.bezier2 = ZERO_FLOAT3;
 		this->data.position_interp.mode = mode;
 		this->data.position_interp.initial_value = *initial_pos;
 		this->data.position_interp.final_value = *final_pos;
@@ -16061,8 +16097,8 @@ struct AnmVM {
 		this->data.scale_interp.mode = mode;
 		this->data.scale_interp.initial_value = *initial_scale;
 		this->data.scale_interp.final_value = *final_scale;
-		//this->data.scale_interp.bezier1 = UNKNOWN_FLOAT2_A;
-		//this->data.scale_interp.bezier2 = UNKNOWN_FLOAT2_A;
+		//this->data.scale_interp.bezier1 = ZERO_FLOAT2;
+		//this->data.scale_interp.bezier2 = ZERO_FLOAT2;
 		this->data.scale_interp.time.reset();
 	}
 
@@ -16072,8 +16108,8 @@ struct AnmVM {
 		this->data.scale2_interp.mode = mode;
 		this->data.scale2_interp.initial_value = *initial_scale;
 		this->data.scale2_interp.final_value = *final_scale;
-		//this->data.scale2_interp.bezier1 = UNKNOWN_FLOAT2_A;
-		//this->data.scale2_interp.bezier2 = UNKNOWN_FLOAT2_A;
+		//this->data.scale2_interp.bezier1 = ZERO_FLOAT2;
+		//this->data.scale2_interp.bezier2 = ZERO_FLOAT2;
 		this->data.scale2_interp.time.reset();
 	}
 
@@ -16083,8 +16119,8 @@ struct AnmVM {
 		this->data.uv_scale_interp.mode = mode;
 		this->data.uv_scale_interp.initial_value = *initial_scale;
 		this->data.uv_scale_interp.final_value = *final_scale;
-		//this->data.uv_scale_interp.bezier1 = UNKNOWN_FLOAT2_A;
-		//this->data.uv_scale_interp.bezier2 = UNKNOWN_FLOAT2_A;
+		//this->data.uv_scale_interp.bezier1 = ZERO_FLOAT2;
+		//this->data.uv_scale_interp.bezier2 = ZERO_FLOAT2;
 		this->data.uv_scale_interp.time.reset();
 	}
 
@@ -19667,7 +19703,7 @@ struct AnmManager {
 		AnmLoaded* anm_loaded = anm_manager->create_anm_loaded(file_index, filename);
 		if (expect(anm_loaded != NULL, false)) {
 			anm_loaded->__load_wait = 1;
-			while (anm_loaded->__load_wait && SUPERVISOR.__unknown_bitfield_su_A == 0) {
+			while (anm_loaded->__load_wait && SUPERVISOR.quitting == false) {
 				Sleep(1);
 			}
 			DebugLogger::__debug_log_stub_6("::preloadAnimEnd : %s\n", filename);
@@ -20455,9 +20491,9 @@ dllexport gnu_noinline ZUNResult UpdateFuncCC Supervisor::on_registration(void* 
 }
 
 inline UpdateFuncRet thiscall Supervisor::on_tick() {
-	if (this->__unknown_bitfield_su_A == 1) {
+	if (this->quitting == true) {
 		if (!this->__thread_A94.__bool_10) {
-			SUPERVISOR.gamemode_switch = 3;
+			SUPERVISOR.gamemode_switch = GameMode::CleanupA; // 3
 		}
 	}
 
@@ -20494,7 +20530,7 @@ inline UpdateFuncRet thiscall Supervisor::on_tick() {
 		case 2:
 			return UpdateFuncEnd0;
 		case 0:
-			ret = this->__sub_455040();
+			ret = this->__update_gamemode();
 			if (ret == UpdateFuncNext) {
 				WINDOW_DATA.__width_related_208C = WINDOW_DATA.__scaled_width / 2;
 				WINDOW_DATA.__height_related_2090 = (WINDOW_DATA.__scaled_height - (int32_t)SCREEN_HEIGHT) / 2;
@@ -20758,7 +20794,10 @@ dllexport gnu_noinline void Gui::__hide_spell_timer_anms() {
 
 // 0x441ED0
 dllexport gnu_noinline void thiscall Gui::__display_stage_logo() {
-	if (SUPERVISOR.gamemode_switch != 8 && !GAME_MANAGER.__is_demo) {
+	if (
+		SUPERVISOR.gamemode_switch != GameMode::GameMode8 && // 8
+		!GAME_MANAGER.__is_demo
+	) {
 		GUI_PTR->stage_logo_anm->instantiate_vm_to_world_list_back(0);
 	}
 }
@@ -24208,7 +24247,7 @@ struct Ending : ZUNTask {
 		else {
 			this->__unknown_flag_en_A = true;
 			if (!this->__unknown_flag_en_C) {
-				SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? 2 : 16;
+				SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::GameMode16;
 				return UpdateFuncNext;
 			}
 		}
@@ -25270,8 +25309,8 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 			case move_position_interp: { // 407
 				int32_t end_time = ParseIntArg(0);
 				this->data.position_interp.set_end_time(end_time);
-				this->data.position_interp.set_bezier1(UNKNOWN_FLOAT3_A);
-				this->data.position_interp.set_bezier2(UNKNOWN_FLOAT3_A);
+				this->data.position_interp.set_bezier1(ZERO_FLOAT3);
+				this->data.position_interp.set_bezier2(ZERO_FLOAT3);
 				int32_t mode = IntArg(1); // IMMEDIATE ARGUMENT
 				this->data.position_interp.set_mode(mode);
 				this->data.position_interp.set_initial_value(this->data.position_mode == 0 ? this->data.position : this->data.__position_2);
@@ -25286,8 +25325,8 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 			case move_velocity_interp: { // 433
 				int32_t end_time = ParseIntArg(0);
 				this->data.position_interp.set_end_time(end_time);
-				this->data.position_interp.set_bezier1(UNKNOWN_FLOAT3_A);
-				this->data.position_interp.set_bezier2(UNKNOWN_FLOAT3_A);
+				this->data.position_interp.set_bezier1(ZERO_FLOAT3);
+				this->data.position_interp.set_bezier2(ZERO_FLOAT3);
 				int32_t mode = IntArg(1); // IMMEDIATE ARGUMENT
 				this->data.position_interp.set_mode(mode);
 				this->data.position_interp.set_initial_value(this->data.position_mode == 0 ? this->data.position : this->data.__position_2);
@@ -25369,8 +25408,8 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 				Float3 rotation = { rotation_x, rotation_y, rotation_z };
 				int32_t end_time = ParseIntArg(0);
 				this->data.rotation_interp.set_end_time(end_time);
-				this->data.rotation_interp.set_bezier1(UNKNOWN_FLOAT3_A);
-				this->data.rotation_interp.set_bezier2(UNKNOWN_FLOAT3_A);
+				this->data.rotation_interp.set_bezier1(ZERO_FLOAT3);
+				this->data.rotation_interp.set_bezier2(ZERO_FLOAT3);
 				int32_t mode = IntArg(1); // IMMEDIATE ARGUMENT
 				this->data.rotation_interp.set_mode(mode);
 				this->data.rotation_interp.set_initial_value(this->data.rotation);
@@ -25652,7 +25691,8 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC FpsCounter::on_draw(void* ptr)
 				ASCII_MANAGER_PTR->color = COLOR(255, 255, 255, 255);
 			}
 		}
-		case 4: case 15:
+		case GameMode::MainMenu: // 4
+		case GameMode::Ending: // 15
 			return UpdateFuncNext;
 	}
 }
@@ -25666,7 +25706,7 @@ inline UpdateFuncRet LoadingThread::on_tick() {
 		ascii_manager->enable_funcs_unsafe();
 
 		SUPERVISOR.__unknown_flag_su_G = false;
-		SUPERVISOR.gamemode_switch = 4;
+		SUPERVISOR.gamemode_switch = GameMode::MainMenu; // 4
 		this->__unknown_task_flag_A = false;
 	}
 	return UpdateFuncNext;
@@ -28762,7 +28802,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_2(PlayerBull
 			float angle = self->motion.angle;
 			id.set_z_rotation(angle);
 			AnmVM* vm = id.get_vm_ptr();
-			vm->initialize_position_interp(20, DecelerateSlow, &UNKNOWN_FLOAT3_A, &E);
+			vm->initialize_position_interp(20, DecelerateSlow, &ZERO_FLOAT3, &E);
 			player = PLAYER_PTR;
 		}
 		if (!self->__timer_C.__is_multiple_of_not_paused(4)) {
@@ -33426,7 +33466,7 @@ struct AbilityManager : ZUNTask {
 		this->__thread_C68.stop_and_cleanup();
 		UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
 		UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
-		this->__sub_407DA0(0);
+		this->__sub_407DA0(false);
 		ANM_MANAGER_PTR->unload_anm(ABILITY_ANM_INDEX);
 		ANM_MANAGER_PTR->unload_anm(ABCARD_ANM_INDEX);
 		ANM_MANAGER_PTR->unload_anm(ABMENU_ANM_INDEX);
@@ -33834,7 +33874,7 @@ public:
 					card = new CardClownpiece();
 					break;
 				case BLANK_CARD: // 0
-					this->__sub_407DA0(FALSE);
+					this->__sub_407DA0(false);
 					card = new CardBlank();
 					break;
 				case REIMU_OP2_CARD: // 9
@@ -34143,7 +34183,7 @@ public:
 				for (int32_t i = 0; i < this->active_card_count; ++i) {
 					if (CardBase* card = this->__card_array_858[i]) {
 						this->__sub_408890(this->__anm_id_array_458[i], 9, 7, card, true);
-						this->__anm_id_array_458[i].get_vm_ptr()->data.__position_2 = UNKNOWN_FLOAT3_A;
+						this->__anm_id_array_458[i].get_vm_ptr()->data.__position_2 = ZERO_FLOAT3;
 						if (
 							this->selected_active_card == this->__card_array_858[i] &&
 							this->__timer_44 >= 80
@@ -34616,6 +34656,9 @@ dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
 		ScorefileManager::allocate();
 		loading_thread->sig_loaded = 1;
 		if (AsciiManager::allocate()) {
+			// BUG: Setting this before actually loading text.anm creates
+			// a race condition with a VM in a different thread trying
+			// to use it. This may be the cause of some startup crashes.
 #if !FIX_REALLY_BAD_BUGS
 			loading_thread->__ascii_manager_loaded = 1;
 #endif
@@ -34691,7 +34734,7 @@ dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
 		}
 		LOG_BUFFER.write(JpEnStr("", "error : failed to initialize character\r\n"));
 	}
-	SUPERVISOR.gamemode_switch = 3;
+	SUPERVISOR.gamemode_switch = GameMode::CleanupA; // 3
 end:
 	loading_thread->enable_tick_unsafe();
 	return 0;
@@ -37277,7 +37320,7 @@ struct Stage : ZUNTask {
 
 			if (this->__unknown_flag_bg_B) {
 				if (this->__timer_3478 < 30) {
-					//ScreenEffect::allocate(ScreenEffect3, 30, 0, 0, 0, 10);
+					ScreenEffect::allocate(ScreenEffect3, 30, 0, 0, 0, 10);
 					this->__unknown_flag_bg_C = true;
 					this->__timer_3478.reset();
 				}
@@ -38350,7 +38393,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 	}
 
 	this->data.__speed_modifier = 1.0f;
-	this->data.__base_axis_speed = UNKNOWN_FLOAT3_A;
+	this->data.__base_axis_speed = ZERO_FLOAT3;
 
 	this->__vm_14.run_anm();
 
@@ -38569,6 +38612,15 @@ static const ItemSpriteData ITEM_SPRITE_DATA[] = {
 	}
 };
 
+enum class ItemState : uint32_t {
+	Inactive = 0, // Default state, also set when despawning
+	Normal = 1, // Falling items
+	AutoCollectBurst = 2, // Used for cancel items
+	AutoAttract = 3, // High speed
+	NearbyAttract = 4, // Low speed
+	DelayedBurst = 5 // Used for cancel items
+};
+
 // size: 0xC94
 struct Item {
 	ZUNList<Item> free_list_node; // 0x0
@@ -38581,11 +38633,11 @@ struct Item {
 	ZUNAngle angle; // 0xC48
 	Timer __timer_C4C; // 0xC4C
 	unknown_fields(0x14); // 0xC60 (unused timer according to FW)
-	uint32_t state; // 0xC74
+	ItemState state; // 0xC74
 	ItemID id; // 0xC78
-	ItemID id2; // 0xC7C
+	int32_t __int_C7C; // 0xC7C
 	float __attract_speed; // 0xC80
-	int32_t __int_C84; // 0xC84
+	int32_t __spawn_delay; // 0xC84
 	int __dword_C88; // 0xC88
 	int __dword_C8C; // 0xC8C
 	int32_t sound_id; // 0xC90
@@ -38598,7 +38650,7 @@ struct Item {
 	dllexport ~Item() NO_EH_TERMINATE = default;
 
 	inline void cleanup() {
-		this->state = 0;
+		this->state = ItemState::Inactive; // 0
 		this->__vm_id_C28.mark_tree_for_delete();
 		((ZUNList<Item>*)this->free_list_node.data)->append((ZUNList<Item>*)this);
 	}
@@ -38648,7 +38700,7 @@ struct Item {
 		D3DCOLOR popup_color;
 		if (
 			!(player_y <= poc_height) &&
-			this->state != 3
+			this->state != ItemState::AutoAttract // 3
 		) {
 			float height_diff = player_y - poc_height;
 
@@ -38702,7 +38754,7 @@ struct Item {
 			D3DCOLOR popup_color;
 			if (
 				!(player_y <= poc_height) &&
-				this->state != 3
+				this->state != ItemState::AutoAttract // 3
 			) {
 				int32_t height_diff = (int32_t)player_y - (int32_t)poc_height;
 
@@ -38810,9 +38862,9 @@ ValidateFieldOffset32(0xC48, Item, angle);
 ValidateFieldOffset32(0xC4C, Item, __timer_C4C);
 ValidateFieldOffset32(0xC74, Item, state);
 ValidateFieldOffset32(0xC78, Item, id);
-ValidateFieldOffset32(0xC7C, Item, id2);
+ValidateFieldOffset32(0xC7C, Item, __int_C7C);
 ValidateFieldOffset32(0xC80, Item, __attract_speed);
-ValidateFieldOffset32(0xC84, Item, __int_C84);
+ValidateFieldOffset32(0xC84, Item, __spawn_delay);
 ValidateFieldOffset32(0xC88, Item, __dword_C88);
 ValidateFieldOffset32(0xC8C, Item, __dword_C8C);
 ValidateFieldOffset32(0xC90, Item, sound_id);
@@ -38917,7 +38969,7 @@ struct ItemManager : ZUNTask {
 
 private:
 	// 0x446F40
-	dllexport gnu_noinline Item* thiscall spawn_item(int32_t item_id, Float3* position, float, float angle, float speed, int32_t arg6, int, int) asm_symbol_rel(0x446F40) {
+	dllexport gnu_noinline Item* thiscall spawn_item(int32_t item_id, Float3* position, float, float angle, float speed, int32_t spawn_delay, int, int) asm_symbol_rel(0x446F40) {
 		if (item_id > 20) {
 			return NULL;
 		}
@@ -38926,7 +38978,7 @@ private:
 		switch (item_id) {
 			default: // normal items
 				if ((item = (Item*)this->item_free_list.next)) {
-					item->state = 1;
+					item->state = ItemState::Normal; // 1
 					item->position = *position;
 					if (item->position.x <= SCREEN_LEFT_EDGE) {
 						item->position.x = SCREEN_LEFT_EDGE;
@@ -38947,15 +38999,15 @@ private:
 					item->__timer_C4C.reset();
 					item->speed = 0.0f;
 					item->__attract_speed = 0.0f;
-					item->__int_C84 = arg6;
+					item->__spawn_delay = spawn_delay;
 					item->id = (ItemID)item_id;
 					item->sound_id = -1;
-					if (!arg6) {
+					if (!spawn_delay) {
 						item->__create_spawn_effects();
 					}
 
 					int32_t script = ITEM_SPRITE_DATA[item_id].__id_0;
-					item->id2 = InvalidItem;
+					item->__int_C7C = 0;
 
 					switch (item_id) {
 						case LifeFragmentCardItem: // 16
@@ -39003,10 +39055,10 @@ private:
 					else {
 						B = B % 4;
 					}
-					item->__int_C84 = B;
-					item->state = 5;
+					item->__spawn_delay = B;
+					item->state = ItemState::DelayedBurst; // 5
 					item->id = (ItemID)item_id;
-					item->id2 = (ItemID)item_id;
+					item->__int_C7C = item_id;
 					item->position = *position;
 					item->velocity.make_from_vector3(angle, speed);
 					item->__timer_C4C.reset();
@@ -39020,8 +39072,8 @@ private:
 		}
 	}
 public:
-	inline Item* spawn_item(int32_t item_id, Float3* position, float angle, float speed, int32_t arg6) {
-		return this->spawn_item(item_id, position, UNUSED_FLOAT, angle, speed, arg6, UNUSED_DWORD, UNUSED_DWORD);
+	inline Item* spawn_item(int32_t item_id, Float3* position, float angle, float speed, int32_t spawn_delay) {
+		return this->spawn_item(item_id, position, UNUSED_FLOAT, angle, speed, spawn_delay, UNUSED_DWORD, UNUSED_DWORD);
 	}
 
 	// 0x445A80
@@ -39035,20 +39087,22 @@ public:
 		Item* item = this->items;
 		for (int32_t i = 0; i < TOTAL_ITEM_COUNT; ++i, ++item) {
 			switch (item->state) {
-				case 0:
+				case ItemState::Inactive: // 0
 					continue;
-				case 5:
-					if (--item->__int_C84 < 0) {
-						item->state = 2;
+
+				case ItemState::DelayedBurst: // 5
+					if (--item->__spawn_delay < 0) {
+						item->state = ItemState::AutoCollectBurst; // 2
 						get_bullet_anm()->__copy_data_to_vm_and_run(&item->__vm_10, ITEM_SPRITE_DATA[item->id].__id_0);
 						item->__vm_61C.data.visible = false;
 						item->__vm_61C.data.current_instruction_offset = -1;
 						player = PLAYER_PTR;
 					}
 					continue;
-				case 1:
-					if (item->__int_C84 > 0) {
-						if (--item->__int_C84 <= 0) {
+
+				case ItemState::Normal: // 1
+					if (item->__spawn_delay > 0) {
+						if (--item->__spawn_delay <= 0) {
 							item->__create_spawn_effects();
 							player = PLAYER_PTR;
 						}
@@ -39107,15 +39161,17 @@ public:
 					}
 					break;
 
-				case 2:
+				case ItemState::AutoCollectBurst: // 2
 					item->position += item->velocity * this->slowdown_factor * GAME_SPEED;
 					if (
 						(item->velocity.y += this->slowdown_factor * GAME_SPEED * 0.03f) >= 0.0f
 					) {
 				trigger_high_speed_item_attract:
 						item->__attract_speed = player->__item_attract_speed;
-						item->state = 3;
-				case 3: item_attract:
+						item->state = ItemState::AutoAttract; // 3
+
+				case ItemState::AutoAttract: // 3
+				item_attract:
 						float angle = player->angle_from_point(&item->position);
 						item->velocity.make_from_vector(angle, item->__attract_speed);
 						item->position += item->velocity * GAME_SPEED;
@@ -39126,14 +39182,14 @@ public:
 						}
 						player = PLAYER_PTR;
 						if (player->data.state == 4) {
-							item->state = 1;
+							item->state = ItemState::Normal; // 1
 							item->velocity.x = 0.0f;
 							item->velocity.y = 0.0f;
 						}
 					}
 					break;
 
-				case 4:
+				case ItemState::NearbyAttract: // 4
 					if (
 						!player->above_poc() &&
 						!BOMB_PTR->__inline_sub_A() &&
@@ -39208,7 +39264,7 @@ public:
 								switch (item->id) {
 									default: {
 										float attract_speed = player->__item_attract_speed / 3.0f;
-										item->state = 4;
+										item->state = ItemState::NearbyAttract; // 4
 										item->__attract_speed = attract_speed;
 										break;
 									}
@@ -39222,7 +39278,8 @@ public:
 								}
 							}
 						}
-						case 3: case 4:
+						case ItemState::AutoAttract: // 3
+						case ItemState::NearbyAttract: // 4
 							break;
 					}
 				}
@@ -39256,12 +39313,13 @@ public:
 		Item* item = this->items;
 		for (size_t i = 0; i < TOTAL_ITEM_COUNT; ++i, ++item) {
 			if (
-				item->state != 0 &&
+				item->state != ItemState::Inactive &&
 				item->__vm_10.data.visible &&
-				item->__int_C84 <= 0 &&
+				item->__spawn_delay <= 0 &&
 				do_literally_anything
 			) {
 				item->__vm_10.controller.position = item->__vm_61C.controller.position = item->position;
+
 				if (item->position.y < -8.0f) {
 					if (item->__vm_61C.data.visible) {
 						float A = item->__vm_61C.data.position.y + 8.0f;
@@ -39275,10 +39333,10 @@ public:
 						item->__vm_61C.set_alpha(alpha);
 						ANM_MANAGER_PTR->draw_vm(&item->__vm_61C);
 					}
-					item->id2 = (ItemID)1;
+					item->__int_C7C = 1;
 				} else {
 					ANM_MANAGER_PTR->draw_vm(&item->__vm_10);
-					item->id2 = (ItemID)0;
+					item->__int_C7C = 0;
 				}
 			}
 		}
@@ -39370,8 +39428,8 @@ ValidateFieldOffset32(0xE6BB24, ItemManager, __dword_E6BB24);
 ValidateStructSize32(0xE6BB28, ItemManager);
 #pragma endregion
 
-static inline Item* spawn_item(int32_t item_id, Float3* position, float angle, float speed, int32_t arg6) {
-	return ITEM_MANAGER_PTR->spawn_item(item_id, position, angle, speed, arg6);
+static inline Item* spawn_item(int32_t item_id, Float3* position, float angle, float speed, int32_t spawn_delay) {
+	return ITEM_MANAGER_PTR->spawn_item(item_id, position, angle, speed, spawn_delay);
 }
 
 enum BulletColor16 : int32_t {
@@ -40073,13 +40131,13 @@ extern "C" {
 }
 
 enum BulletEffectType : uint32_t {
-	EX_NONE         = 0x00000000, // 0      0
+	EX_NONE			= 0x00000000, // 0      0
 	EX_DIST         = 0x00000001, // 1      1
 	EX_ANIM         = 0x00000002, // 2      2
 	EX_ACCEL        = 0x00000004, // 3      4
 	EX_ANGLE_ACCEL  = 0x00000008, // 4      8
 	EX_ANGLE        = 0x00000010, // 5      16
-	// EX_NOP_A     = 0x00000020, // 6      32
+	//EX_SPAWNSOUND = 0x00000020, // 6      32
 	EX_BOUNCE       = 0x00000040, // 7      64
 	EX_INVULN       = 0x00000080, // 8      128
 	EX_OFFSCREEN    = 0x00000100, // 9      256
@@ -40088,7 +40146,7 @@ enum BulletEffectType : uint32_t {
 	EX_PLAYSOUND    = 0x00000800, // 12     2048
 	EX_WRAP         = 0x00001000, // 13     4096
 	EX_SHOOT        = 0x00002000, // 14     8192
-	// EX_NOP_B     = 0x00004000, // 15     16384
+	//EX_SHOOT_DATA = 0x00004000, // 15     16384
 	EX_REACT        = 0x00008000, // 16     32768
 	EX_LOOP         = 0x00010000, // 17     65536
 	EX_MOVE         = 0x00020000, // 18     131072
@@ -40102,7 +40160,7 @@ enum BulletEffectType : uint32_t {
 	EX_LAYER        = 0x02000000, // 26     33554432
 	EX_DELAY        = 0x04000000, // 27     67108864
 	EX_LASER        = 0x08000000, // 28     134217728
-	// EX_NOP_C     = 0x10000000, // 29     268435456
+	//EX_LASER_DATA = 0x10000000, // 29     268435456
 	EX_HITBOX       = 0x20000000, // 30     536870912
 	EX_HOMING       = 0x40000000, // 31     1073741824
 	EX_WAIT         = 0x80000000, // 32     -2147483648
@@ -40828,7 +40886,8 @@ struct LaserData {
 	BulletEffectData effect_unusedB[12]; // 0x3E4
 	int32_t effect_index; // 0x744
 	uint32_t active_effects; // 0x748
-	unknown_fields(0x8); // 0x74C
+	unknown_fields(0x4); // 0x74C
+	int32_t effect_loop_index; // 0x750
 	Timer __timer_754; // 0x754
 	Timer offscreen_timer; // 0x768
 	int32_t invulnerable_time; // 0x77C
@@ -40904,7 +40963,7 @@ public:
 	}
 
 	// 0x42D730
-	// Line:        angle, __length_related, length
+	// Line:        angle, max_length, length
 	// Infinite:    velocity
 	// Curve:       angle, width, __speed1
 	// Beam:        velocity
@@ -41127,7 +41186,7 @@ dllexport gnu_noinline int32_t fastcall AnmVM::sprite_lookup_3(AnmVM* vm, int32_
 struct LaserLineParams {
 	Float3 position; // 0x0, 0x788
 	float angle; // 0xC, 0x794
-	float __length_related; // 0x10, 0x798 (max length?)
+	float max_length; // 0x10, 0x798
 	float length; // 0x14, 0x79C
 	float __float_18; // 0x18, 0x7A0
 	float width; // 0x1C, 0x7A4
@@ -41170,6 +41229,35 @@ struct LaserLine : LaserData {
 
 	// 0x4482C0
 	dllexport gnu_noinline LaserLine() {
+	}
+
+	inline bool is_offscreen() {
+		Float2 tip_offset;
+		tip_offset.make_from_vector(this->angle, this->length);
+
+		float position_x = this->position.x;
+		float width = this->width;
+		float position_y = this->position.y;
+
+		float tip_position_x = position_x + tip_offset.x;
+		float tip_position_y = position_y + tip_offset.y;
+
+		if (
+			(
+				position_x + width <= SCREEN_LEFT_EDGE ||
+				position_x - width >= SCREEN_RIGHT_EDGE ||
+				position_y + width <= SCREEN_BOTTOM_EDGE ||
+				position_y - width >= SCREEN_TOP_EDGE
+			) && (
+				tip_position_x + width <= SCREEN_LEFT_EDGE ||
+				tip_position_x - width >= SCREEN_RIGHT_EDGE ||
+				tip_position_y + width <= SCREEN_BOTTOM_EDGE ||
+				tip_position_y - width >= SCREEN_TOP_EDGE
+			)
+		) {
+			return true;
+		}
+		return false;
 	}
 
 	// 0x448220
@@ -41224,7 +41312,70 @@ struct LaserLine : LaserData {
 			}
 		}
 
-		// TODO
+		float length = this->length;
+		float max_length = this->params.max_length;
+
+		float speed = this->speed * GAME_SPEED;
+
+		if (length < max_length) {
+			length += speed;
+			this->length = length;
+			if (length > max_length) {
+				this->length = max_length;
+			}
+		}
+		else {
+			this->__float_7C += speed;
+
+			this->position += this->velocity * GAME_SPEED;
+
+			float A = this->params.__float_18;
+			if (A > 0.0f) {
+				float B = this->__float_7C;
+				if (A < this->length + B) {
+					A -= B;
+					this->length = A;
+					this->params.max_length = A;
+					if (A <= 0.0f) {
+						return 1;
+					}
+				}
+			}
+		}
+
+		if (this->__timer_754 <= 0) {
+			if (this->offscreen_timer > 0) {
+				goto tick_offscreen_timer;
+			}
+
+			if (this->is_offscreen()) {
+				return 1;
+			}
+		}
+		else {
+			this->__timer_754--;
+			if (this->offscreen_timer > 0) {
+	tick_offscreen_timer:
+				this->offscreen_timer--;
+			}
+		}
+
+		this->check_collision(LethalCollisionTest);
+
+		this->__vm_BE8.set_scale(
+			this->width / this->__vm_BE8.get_sprite()->__size_x,
+			this->length / this->__vm_BE8.get_sprite()->__size_y
+		);
+
+		this->__vm_BE8.run_anm();
+
+		if (this->__float_7C == 0.0f) {
+			this->__vm_11F4.run_anm();
+		}
+
+		this->__vm_1800.run_anm();
+
+		++this->__timer_40;
 
 		return 0;
 	}
@@ -41385,8 +41536,8 @@ struct LaserInfiniteParams {
 	Float3 velocity; // 0xC, 0x794
 	float angle; // 0x18, 0x7A0
 	float angular_velocity; // 0x1C, 0x7A4
-	float length; // 0x20, 0x7A8
-	float __float_24; // 0x24, 0x7AC
+	float max_length; // 0x20, 0x7A8
+	float length; // 0x24, 0x7AC
 	float width; // 0x28, 0x7B0
 	float __speed_1; // 0x2C, 0x7B4
 	int32_t start_time; // 0x30, 0x7B8
@@ -41403,7 +41554,7 @@ struct LaserInfiniteParams {
 	union {
 		uint32_t flags; // 0x5C, 0x7E4
 		struct {
-			uint32_t : 1; // 1
+			uint32_t __anchor_to_boss : 1; // 1
 			uint32_t __unknown_flag_li_A : 1; // 2
 		};
 	};
@@ -41468,6 +41619,91 @@ struct LaserInfinite : LaserData {
 		}
 
 		// TODO
+
+		float length = this->length;
+		float max_length = this->params.max_length;
+
+		if (length < max_length) {
+			length += this->speed * GAME_SPEED;
+			this->length = length;
+			if (length > max_length) {
+				this->length = max_length;
+			}
+		}
+
+		this->angle = reduce_angle(this->angle + this->params.angular_velocity * GAME_SPEED);
+
+		// Why? Isn't this going to lock it in place?
+		this->position = this->params.position;
+
+		if (
+			this->params.__anchor_to_boss &&
+			get_boss_by_index(0)
+		) {
+			this->position = get_boss_by_index(0)->data.current_motion.position;
+		}
+
+		this->position += this->params.velocity * GAME_SPEED;
+
+		float distance = this->params.distance;
+		if (distance != 0.0f) {
+			Float2 offset;
+			offset.make_from_vector(this->angle, distance);
+			this->position.as2() += offset;
+		}
+
+		switch (this->state) {
+			case 3:
+				if (this->__timer_18 >= this->params.start_time) {
+					this->__timer_18.set(0);
+					this->state = 4;
+				}
+				break;
+			case 4: {
+				int32_t expand_time = this->params.expand_time;
+				if (this->__timer_18 >= expand_time) {
+					this->__timer_18.set(0);
+					this->state = 2;
+					this->width = this->params.width;
+				}
+				else {
+					this->width = this->params.width * (float)this->__timer_18 / expand_time;
+					break;
+				}
+			}
+				// no break
+			case 2:
+				if (this->__timer_18 >= this->params.duration) {
+					this->__timer_18.set(0);
+					this->state = 5;
+				}
+				// no break
+			case 5: {
+				int32_t stop_time = this->params.stop_time;
+				if (this->__timer_18 >= stop_time) {
+					return 1;
+				}
+				float param_width = this->params.width;
+				this->width = param_width - param_width * (float)this->__timer_18 / stop_time;
+				break;
+			}
+		}
+
+		this->check_collision(LethalCollisionTest);
+
+		// flipped length/width again
+		this->__vm_C0C.set_scale(
+			this->length / this->__vm_C0C.get_sprite()->__size_x,
+			this->width / this->__vm_C0C.get_sprite()->__size_y
+		);
+
+		this->__vm_C0C.run_anm();
+
+		if (this->__float_7C == 0.0f) {
+			this->__vm_1218.run_anm();
+		}
+
+		return 0;
 	}
 
 	// 0x44D010
@@ -41594,34 +41830,169 @@ struct LaserCurveParams {
 	}
 };
 
+// size: 0x20
+struct LaserCurveNode {
+	Float3 position; // 0x0
+	Float3 velocity; // 0xC
+	float angle; // 0x18
+	float speed; // 0x1C
+	// 0x20
+};
+
+// size: 0x3C
+struct LaserCurveNodeEx {
+	LaserCurveNodeEx* next; // 0x0
+	LaserCurveNodeEx* prev; // 0x4
+	float __min_diff; // 0x8
+	float __max_diff; // 0xC
+	int32_t move_type; // 0x10
+	Float3 __float3_14; // 0x14
+	Float3 __float3_20; // 0x20
+	float angle; // 0x2C
+	float speed; // 0x30
+	float __speed_2; // 0x34
+	float __angle_2; // 0x38
+	// 0x3C
+
+	// 0x44FB10
+	dllexport gnu_noinline void thiscall __sub_44FB10(
+		Float3* position_out, float* speed_out, float* angle_out,
+		float arg4
+	) asm_symbol_rel(0x44FB10)
+	{
+
+		float diff = arg4 - this->__min_diff; // ESP+48
+
+		Float3 velocity; // ESP+68, ESP+6C, ESP+70
+
+		switch (this->move_type) {
+			case 2: {
+				Float3 initial_position = this->__float3_20; // ESP+58, ESP+5C, ESP+60
+				float angle = this->angle; // ESP+44
+				float speed = this->speed; // ESP+54
+
+				velocity.z = 0.0f;
+
+				Float3 prev_position; // ESP+40, ESP+4C, ESP+50
+
+				int32_t diff_count = diff;
+				if (diff_count > 0) {
+					prev_position = initial_position;
+					do {
+						velocity.make_from_vector(angle, speed);
+						angle = reduce_angle(angle + this->__angle_2);
+						speed += this->__speed_2;
+						prev_position += velocity;
+					} while (--diff_count);
+				}
+				else {
+					prev_position = initial_position;
+				}
+
+				velocity.make_from_vector(angle, speed);
+				float diff_whole = zfloorf(diff);
+
+				*position_out = prev_position + velocity * (diff - diff_whole);
+				*speed_out = speed;
+				*angle_out = angle;
+				break;
+			}
+			case 1: {
+				if (this->__angle_2 < -990.0f) {
+					float speed = this->speed;
+					*position_out = this->__float3_20 - this->__float3_14 * (speed + speed - this->__speed_2 * diff) * (diff + 1.0f) * 0.5f;
+					*speed_out = (this->speed - this->__speed_2) * diff;
+					*angle_out = this->angle;
+				}
+				else {
+					Float3 cur_velocity;
+
+					Float3 prev_position = this->__float3_20;
+
+					velocity.z = 0.0f;
+					cur_velocity.z = 0.0f;
+
+					velocity.make_from_vector(this->angle, this->speed);
+					cur_velocity.make_from_vector(this->__angle_2, this->__speed_2);
+					
+					Float2 velocity2 = cur_velocity + velocity;
+					*position_out = prev_position + (cur_velocity + velocity) * diff;
+					*speed_out = velocity2.length();
+					*angle_out = velocity2.direction();
+				}
+				break;
+			}
+			case 0: {
+				*position_out = this->__float3_20 + this->__float3_14 * (this->speed * diff);
+				*speed_out = this->speed;
+				*angle_out = this->angle;
+				break;
+			}
+		}
+	}
+
+	// 0x44FF80
+	dllexport gnu_noinline void thiscall __sub_44FF80(
+		Float3* position_out, float* speed_out, float* angle_out,
+		Float3* prev_position, float prev_speed, float prev_angle,
+		float diff
+	) asm_symbol_rel(0x44FF80)
+	{
+		Float3 prev_velocity;
+		switch (this->move_type) {
+			case 2: {
+				// BUG: uninitialized z coord
+				prev_velocity.make_from_vector(prev_angle, prev_speed);
+
+				float diff_whole = zfloorf(diff);
+				*position_out = *prev_position - prev_velocity * (diff - diff_whole);
+
+				float speed = prev_speed - this->__speed_2;
+				*speed_out = speed;
+				float angle = reduce_angle(prev_angle - this->__angle_2);
+				*angle_out = angle;
+
+				// BUG: uninitialized z coord
+				prev_velocity.make_from_vector(angle, speed);
+
+				*position_out -= prev_velocity * (1.0f - diff + diff_whole);
+				break;
+			}
+			case 1: {
+				if (this->__angle_2 < -990.0f) {
+					*position_out = *prev_position - this->__float3_14 * (prev_speed - this->__speed_2);
+					*speed_out = this->speed - this->__speed_2;
+					*angle_out = prev_angle;
+				}
+				else {
+					Float3 cur_velocity;
+
+					prev_velocity.z = 0.0f;
+					cur_velocity.z = 0.0f;
+
+					prev_velocity.make_from_vector(prev_angle, -prev_speed);
+					cur_velocity.make_from_vector(this->__angle_2, -this->__speed_2);
+
+					Float2 velocity2 = cur_velocity + prev_velocity;
+					*position_out = *prev_position + cur_velocity + prev_velocity;
+					float angle = velocity2.direction();
+					*speed_out = velocity2.length();
+					*angle_out = angle;
+				}
+				break;
+			}
+			case 0: {
+				*position_out = *prev_position - this->__float3_14 * this->speed;
+				*speed_out = this->speed;
+				*angle_out = this->angle;
+				break;
+			}
+		}
+	}
+};
+
 // size: 0x1844
 struct LaserCurve : LaserData {
-
-	// size: 0x20
-	struct LaserCurveNode {
-		Float3 position; // 0x0
-		Float3 velocity; // 0xC
-		float angle; // 0x18
-		float speed; // 0x1C
-		// 0x20
-	};
-
-	// size: 0x3C
-	struct LaserCurveNodeEx {
-		LaserCurveNodeEx* next; // 0x0
-		LaserCurveNodeEx* prev; // 0x4
-		float __float_8; // 0x8
-		float __float_C; // 0xC
-		int32_t move_type; // 0x10
-		Float3 __float3_14; // 0x14
-		Float3 __float3_20; // 0x20
-		float angle; // 0x2C
-		float speed; // 0x30
-		float __float_34; // 0x34
-		float __float_38; // 0x38
-		// 0x3C
-	};
-
 	LaserCurveParams params; // 0x788
 	AnmVM __vm_BE8; // 0xBE8
 	AnmVM __vm_11F4; // 0x11F4
@@ -41631,6 +42002,37 @@ struct LaserCurve : LaserData {
 	// 0x1844
 
 	inline LaserCurve() {
+	}
+
+	inline bool is_node_offscreen(LaserCurveNode* node) {
+		// ALMOST BUG: uninitialized z coord
+		// but it doesn't matter because this
+		// entire variable is pointless
+		Float3 tip_offset;
+		tip_offset.make_from_vector(this->angle, this->length);
+		Float3 position = this->position + tip_offset;
+
+		float width = this->width;
+
+		float node_position_x = node->position.x;
+
+		if (
+			node_position_x + width <= SCREEN_LEFT_EDGE ||
+			node_position_x - width >= SCREEN_RIGHT_EDGE
+		) {
+			return true;
+		}
+
+		float node_position_y = node->position.y;
+
+		if (
+			node_position_y + width <= SCREEN_BOTTOM_EDGE ||
+			node_position_y - width >= SCREEN_TOP_EDGE
+		) {
+			return true;
+		}
+
+		return false;
 	}
 
 	// 0x448500
@@ -41688,27 +42090,63 @@ struct LaserCurve : LaserData {
 			}
 		}
 
-		// TODO: nodes
-		LaserCurveNode* current_node = this->nodes;
+		LaserCurveNode* node = this->nodes;
 		if (!this->__unknown_flag_ld_C) {
-			for (int32_t i = 0; i < this->params.curve_length; ++current_node, ++i) {
-				// TODO: iterate nodes
+
+			BOOL A = false;
+
+			for (int32_t i = 0; i < this->params.curve_length; ++node, ++i) {
+				
+				float diff = (float)this->__timer_40 - i;
+				if (diff >= 0.0f) {
+					float prev_speed = node[-1].speed;
+					float prev_angle = node[-1].angle;
+
+					for (
+						LaserCurveNodeEx* node_ex = &this->node_ex;
+						node_ex != NULL;
+						node_ex = node_ex->next
+					) {
+						if (
+							diff >= node_ex->__min_diff &&
+							diff < node_ex->__max_diff
+						) {
+							if (!A) {
+								node_ex->__sub_44FB10(&node->position, &node->speed, &node->angle, diff);
+							}
+							else {
+								node_ex->__sub_44FF80(&node->position, &node->speed, &node->angle, &node[-1].position, prev_speed, prev_angle, diff);
+							}
+							break;
+						}
+					}
+					A = true;
+				}
+				else {
+					node->position = this->params.position;
+					node->velocity = ZERO_FLOAT3;
+					node->angle = this->params.angle;
+					node->speed = this->params.__speed_1;
+				}
 			}
-			current_node = this->nodes;
+			node = this->nodes;
 		}
 
 		if (
 			this->__timer_754 <= 0 &&
 			!this->effects_active(EX_OFFSCREEN)
 		) {
-			for (int32_t i = 0; i < this->params.curve_length; ++current_node, ++i) {
-				// TODO: iterate nodes
+			for (int32_t i = 0; i < this->params.curve_length; ++node, ++i) {
+				if (!this->is_node_offscreen(node)) {
+					goto is_onscreen;
+				}
 			}
 			return 1;
 		}
 		else {
 			this->__timer_754--;
 		}
+	is_onscreen:
 
 		this->check_collision(LethalCollisionTest);
 
@@ -41724,18 +42162,81 @@ struct LaserCurve : LaserData {
 	// Method 0x14
 	dllexport virtual gnu_noinline int thiscall on_draw() override asm_symbol_rel(0x450340) {
 		
-		LaserCurveNode* current_node = this->nodes;
+		int32_t curve_length = this->params.curve_length;
+
 		SpriteVertex* current_vertex = this->vertices;
-		for (int32_t i = 0; i < this->params.curve_length; ++i) {
-			// TODO: disgusting amounts of angle reduction
-			++current_node;
-			// TODO
-			current_vertex += 2;
+
+		LaserCurveNode* node = this->nodes;
+
+		float u_frac = 0.0f;
+
+		if (curve_length > 0) {
+			int32_t i = 0;
+			do {
+				current_vertex[0].texture_uv.x = u_frac;
+				current_vertex[0].position.w = 1.0f;
+				current_vertex[0].diffuse = COLOR(255, 255, 255, 255);
+				current_vertex[0].texture_uv.y = this->__vm_BE8.data.sprite_uv_quad[0].y;
+
+				// we love inlined ZUNAngle operators
+				float angle;
+				if (i == 0) {
+					angle = reduce_angle(node->angle + HALF_PI_f);
+				}
+				else {
+					float cur_angle = reduce_angle(node->angle + HALF_PI_f);
+					float prev_angle = reduce_angle(node[-1].angle + HALF_PI_f);
+					angle = reduce_angle(reduced_angle_diff(prev_angle, cur_angle));
+					angle = reduce_angle(angle * 0.5f);
+					angle = reduce_angle(angle + cur_angle);
+				}
+
+				current_vertex[0].position.as2().make_from_vector(angle, this->width * 0.5f);
+				current_vertex[0].position.as3() += node->position;
+				current_vertex[0].position.x += WINDOW_DATA.__width_related_208C;
+				current_vertex[0].position.y += WINDOW_DATA.__height_related_2078;
+				current_vertex[0].position.z = 0.0f;
+
+				current_vertex[1].position.w = 1.0f;
+				current_vertex[1].diffuse = COLOR(255, 255, 255, 255);
+				current_vertex[1].texture_uv.x = u_frac;
+				current_vertex[1].texture_uv.y = this->__vm_BE8.data.sprite_uv_quad[2].y;
+
+				if (i == 0) {
+					angle = reduce_angle(node->angle - HALF_PI_f);
+				}
+				else {
+					float cur_angle = reduce_angle(node->angle - HALF_PI_f);
+					float prev_angle = reduce_angle(node[-1].angle - HALF_PI_f);
+					angle = reduce_angle(reduced_angle_diff(prev_angle, cur_angle));
+					angle = reduce_angle(angle * 0.5f);
+					angle = reduce_angle(angle + cur_angle);
+				}
+
+				current_vertex[1].position.as2().make_from_vector(angle, this->width * 0.5f);
+				current_vertex[1].position.as3() += node->position;
+				current_vertex[1].position.x += WINDOW_DATA.__width_related_208C;
+				current_vertex[1].position.y += WINDOW_DATA.__height_related_2078;
+				current_vertex[1].position.z = 0.0f;
+
+				++i;
+				++node;
+				current_vertex += 2;
+
+				curve_length = this->params.curve_length;
+
+				u_frac += 1.0f / (curve_length - 1);
+
+			} while (i < curve_length);
+
+			current_vertex = this->vertices;
 		}
 
-		ANM_MANAGER_PTR->draw_vm(&this->__vm_BE8);
-		if (this->params.curve_length >= this->__timer_40) {
-			this->__vm_11F4.data.position = this->nodes[this->params.curve_length - 1].position;
+		ANM_MANAGER_PTR->__draw_vm_type_9_C_D_E(&this->__vm_BE8, current_vertex, curve_length * 2);
+
+		curve_length = this->params.curve_length;
+		if (curve_length >= this->__timer_40) {
+			this->__vm_11F4.data.position = this->nodes[curve_length - 1].position;
 			ANM_MANAGER_PTR->draw_vm(&this->__vm_11F4);
 		}
 		return 0;
@@ -42009,6 +42510,10 @@ enum AimMode : int32_t {
 	RandomAngleMode = 6,
 	RandomSpeedMode = 7,
 	RandomMode = 8,
+	StarAimedMode = 9,
+	StarMode = 10,
+	OvalMode = 11,
+	PeanutMode = 12
 };
 
 static inline constexpr int32_t MAX_BULLETS = 2000;
@@ -42233,7 +42738,7 @@ public:
 				angle = shooter->angle1 + REPLAY_RNG.rand_float_signed_range(shooter->angle2);
 				speed = shooter->speed1 + REPLAY_RNG.rand_float_range(shooter->speed2);
 				break;
-			case 9: case 10: {
+			case StarAimedMode: case StarMode: { // 9, 10
 				float angle_between_bullets = count1_index * TWO_PI_f / shooter->count1;
 				float angle2 = shooter->angle2;
 				if (count2_max & 1) {
@@ -42256,13 +42761,13 @@ public:
 				if (count1_index & 1) {
 					angle2 *= -1.0f;
 				}
-				if (shooter->aim_mode == 9) { // 0
+				if (shooter->aim_mode == StarAimedMode) { // 9
 					angle2 += angle_to_player;
 				}
 				angle = shooter->angle1 + angle2;
 				break;
 			}
-			case 11: {
+			case OvalMode: { // 11
 				float angle_between_bullets = count1_index * TWO_PI_f / shooter->count1;
 
 				angle = shooter->angle1 + angle_between_bullets + zero;
@@ -42270,7 +42775,7 @@ public:
 				speed *= 1.0f - (zfabsf(zsin(angle_between_bullets)) * shooter->speed2);
 				break;
 			}
-			case 12: {
+			case PeanutMode: { // 12
 				float count1 = shooter->count1;
 				float offset = PI_f / count1;
 				float angle_between_bullets = count1_index * TWO_PI_f / count1;
@@ -42841,7 +43346,7 @@ dllexport gnu_noinline CollisionResult thiscall Bullet::__check_collision(Collis
 	CollisionResult result = NoCollision;
 
 	this->vm.data.color_mode = 0; // why is this *here* of all places
-	this->vm.data.position = UNKNOWN_FLOAT3_A;
+	this->vm.data.position = ZERO_FLOAT3;
 
 	if (
 		this->__hitbox_enabled &&
@@ -42893,7 +43398,7 @@ dllexport gnu_noinline CollisionResult thiscall Bullet::__check_collision(Collis
 									vm->interrupt(3);
 								}
 								Float3 end = (this->velocity * GAME_SPEED) * 10.0f;
-								vm->initialize_position_interp(30, 6, &UNKNOWN_FLOAT3_A, &end);
+								vm->initialize_position_interp(30, 6, &ZERO_FLOAT3, &end);
 							}
 						}
 					}
@@ -43277,7 +43782,7 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
 	this->length = length;
 	this->speed = speed;
 	this->angle = angle;
-	if (length > this->params.__length_related) {
+	if (length > this->params.max_length) {
 		A = 0.01f;
 	}
 	this->__float_7C = A;
@@ -43328,7 +43833,7 @@ dllexport gnu_noinline int thiscall LaserInfinite::initialize(void* data) {
 		this->position.as2() += offset;
 	}
 
-	this->length = this->params.__float_24;
+	this->length = this->params.length;
 	this->speed = this->params.__speed_1;
 	this->angle = this->params.angle;
 	this->effect_index = this->params.effect_index;
@@ -43504,6 +44009,7 @@ dllexport gnu_noinline void thiscall LaserLine::run_effects() {
 				this->active_effects |= EX_DIST;
 				BulletEffectData& effect_data = this->effect_speedup;
 				effect_data.timer.reset();
+				effect_data.velocity.z = 0.0f;
 				++effect_index;
 				continue;
 			}
@@ -43594,6 +44100,101 @@ dllexport gnu_noinline void thiscall LaserLine::run_effects() {
 				this->state = 3;
 				++effect_index;
 				continue;
+			}
+			case EX_SHOOT: {
+				ShooterData bullet_shooter;
+				bullet_shooter.position.make_from_vector(this->angle, this->length);
+				bullet_shooter.position.x += this->position.x;
+				bullet_shooter.position.y += this->position.y;
+				bullet_shooter.position.z = 0.0f;
+				bullet_shooter.aim_mode = WordArg(0);
+				bullet_shooter.start_transform = IntArg(1);
+				bullet_shooter.count1 = WordArg(2);
+				bullet_shooter.count2 = WordArg(3);
+				float angle;
+				float angle_arg = FloatArg(0);
+				if (angle_arg <= -999990.0f) {
+					angle = this->angle;
+				} else if (999990.0f < angle_arg /* && angle_arg < 1999990.0f*/) {
+					clang_forceinline angle = angle_to_player_from_point(&this->position);
+				} else {
+					angle = angle_arg;
+				}
+				bullet_shooter.angle1 = angle;
+				bullet_shooter.angle2 = FloatArg(1);
+				float speed_arg = FloatArg(2);
+				if (speed_arg <= -999990.0f) {
+					speed_arg = this->speed;
+				}
+				bullet_shooter.speed1 = speed_arg;
+				float speed2 = FloatArg(3);
+				++effect_index;
+				bullet_shooter.type = IntArgEx(4);
+				bullet_shooter.color = IntArgEx(5);
+				BOOL cancel_current_bullet = IntArgEx(6);
+				bullet_shooter.speed2 = speed2;
+				bullet_shooter.flags = 0;
+				memcpy(bullet_shooter.effects, this->params.effects, sizeof(bullet_shooter.effects));
+				BULLET_MANAGER_PTR->shoot_bullets(&bullet_shooter);
+				++effect_index;
+				if (cancel_current_bullet) {
+					this->cancel(CancelType0, 0);
+				}
+				continue;
+			}
+			case EX_WRAP: {
+				this->active_effects |= current_type;
+				this->effect_wrap.timer.set(IntArg(0));
+				++effect_index;
+				continue;
+			}
+			case EX_PLAYSOUND: {
+				SOUND_MANAGER.play_sound_positioned(IntArg(0), this->position.x);
+				++effect_index;
+				continue;
+			}
+			case EX_SETID: {
+				this->id = IntArg(0);
+				++effect_index;
+				continue;
+			}
+			case EX_WAIT: {
+				this->active_effects |= current_type;
+				this->effect_wait.timer.set(IntArg(0));
+				++effect_index;
+				continue;
+			}
+			case EX_BRIGHT: {
+				if (IntArg(0)) {
+					this->__vm_BE8.data.blend_mode = BlendAdditive; // 1
+					++effect_index;
+					continue;
+				} else {
+					this->__vm_BE8.data.blend_mode = BlendNormal; // 0
+					++effect_index;
+					continue;
+				}
+			}
+			case EX_LOOP: {
+				int32_t new_loop_index = IntArg(1);
+				int32_t current_loop_index;
+				if (new_loop_index <= 0) goto default_loop;
+				current_loop_index = this->effect_loop_index;
+				switch (current_loop_index) {
+					case 0:
+						this->effect_loop_index = new_loop_index;
+						effect_index = IntArg(0);
+						continue;
+					case 1:
+						this->effect_loop_index = 0;
+						break;
+					default:
+						this->effect_loop_index = --current_loop_index;
+					default_loop:
+						effect_index = IntArg(0);
+						continue;
+				}
+				break;
 			}
 		}
 		++effect_index;
@@ -43722,8 +44323,7 @@ dllexport gnu_noinline void thiscall LaserCurve::run_effects() {
 			}
 			case EX_WRAP: {
 				this->active_effects |= EX_WRAP;
-				BulletEffectData& effect_data = this->effect_wrap;
-				effect_data.timer.set(IntArg(0));
+				this->effect_wrap.timer.set(IntArg(0));
 				break;
 			}
 			case EX_PLAYSOUND: {
@@ -43731,7 +44331,7 @@ dllexport gnu_noinline void thiscall LaserCurve::run_effects() {
 				break;
 			}
 			case EX_SHOOT: {
-				ShooterData bullet_shooter(0);
+				ShooterData bullet_shooter;
 				bullet_shooter.position.make_from_vector(this->angle, this->length);
 				bullet_shooter.position.x += this->position.x;
 				bullet_shooter.position.y += this->position.y;
@@ -43739,15 +44339,13 @@ dllexport gnu_noinline void thiscall LaserCurve::run_effects() {
 				bullet_shooter.aim_mode = WordArg(0);
 				bullet_shooter.start_transform = IntArg(1);
 				bullet_shooter.count1 = WordArg(2);
-				bullet_shooter.transform_sound = -1;
 				bullet_shooter.count2 = WordArg(3);
 				float angle;
 				float angle_arg = FloatArg(0);
 				if (angle_arg <= -999990.0f) {
 					angle = this->angle;
-				} else if (999990.0f < angle_arg && angle_arg < 1999990.0f) {
-					// Somehow this can end up only running half of an angle reduce? WTF?
-					angle = angle_to_player_from_point(&this->position);
+				} else if (999990.0f < angle_arg /* && angle_arg < 1999990.0f*/) {
+					clang_forceinline angle = angle_to_player_from_point(&this->position);
 				} else {
 					angle = angle_arg;
 				}
@@ -43758,10 +44356,12 @@ dllexport gnu_noinline void thiscall LaserCurve::run_effects() {
 					speed_arg = this->speed;
 				}
 				bullet_shooter.speed1 = speed_arg;
-				BOOL cancel_current_bullet = IntArgEx(6);
+				float speed2 = FloatArg(3);
+				++effect_index;
 				bullet_shooter.type = IntArgEx(4);
 				bullet_shooter.color = IntArgEx(5);
-				bullet_shooter.speed2 = FloatArg(3);
+				BOOL cancel_current_bullet = IntArgEx(6);
+				bullet_shooter.speed2 = speed2;
 				bullet_shooter.flags = 0;
 				memcpy(bullet_shooter.effects, this->params.effects, sizeof(bullet_shooter.effects));
 				BULLET_MANAGER_PTR->shoot_bullets(&bullet_shooter);
@@ -44028,21 +44628,22 @@ dllexport void Bullet::run_effects() {
 				++effect_index;
 				continue;
 			case EX_SHOOT: {
-				ShooterData bullet_shooter(0);
+				ShooterData bullet_shooter;
 				bullet_shooter.position = this->position;
 				bullet_shooter.aim_mode = WordArg(0);
 				bullet_shooter.start_transform = IntArg(1);
 				bullet_shooter.count1 = WordArg(2);
-				bullet_shooter.transform_sound = -1;
 				bullet_shooter.count2 = WordArg(3);
 				ZUNAngle angle;
 				float angle_arg = FloatArg(0);
 				if (angle_arg <= -999990.0f) {
+					// No angle reduction here
 					angle = this->angle;
 				}
 				else if (999990.0f < angle_arg && angle_arg < 1999990.0f) {
-					// Somehow this can end up only running half of an angle reduce? WTF?
-					angle = angle_to_player_from_point(&this->position);
+					// This only runs half an angle reduce if angle_to_player_from_point
+					// returns the hardcoded Pi/2 because the value is known positive.
+					clang_forceinline angle = angle_to_player_from_point(&this->position);
 				}
 				else {
 					angle = angle_arg;
@@ -44054,10 +44655,12 @@ dllexport void Bullet::run_effects() {
 					speed_arg = this->speed;
 				}
 				bullet_shooter.speed1 = speed_arg;
-				BOOL cancel_current_bullet = IntArgEx(6);
+				float speed2 = FloatArg(3);
+				++effect_index;
 				bullet_shooter.type = IntArgEx(4);
+				BOOL cancel_current_bullet = IntArgEx(6);
 				bullet_shooter.color = IntArgEx(5);
-				bullet_shooter.speed2 = FloatArg(3);
+				bullet_shooter.speed2 = speed2;
 				bullet_shooter.flags = 0;
 				memcpy(bullet_shooter.effects, this->effects, sizeof(bullet_shooter.effects));
 				BULLET_MANAGER_PTR->shoot_bullets(&bullet_shooter);
@@ -44132,8 +44735,8 @@ dllexport void Bullet::run_effects() {
 				effect_data.timer.reset();
 				this->effect_move_interp.initial_value = this->position;
 				this->effect_move_interp.final_value = effect_data.target;
-				this->effect_move_interp.bezier1 = UNKNOWN_FLOAT3_A;
-				this->effect_move_interp.bezier2 = UNKNOWN_FLOAT3_A;
+				this->effect_move_interp.bezier1 = ZERO_FLOAT3;
+				this->effect_move_interp.bezier2 = ZERO_FLOAT3;
 				this->effect_move_interp.end_time = IntArg(0);
 				this->effect_move_interp.mode = IntArg(1);
 				this->effect_move_interp.time.reset();
@@ -44218,8 +44821,8 @@ dllexport void Bullet::run_effects() {
 						laser_params.velocity.z = 0.0f;
 						laser_params.angle = 0.0f;
 						laser_params.angular_velocity = 0.0f;
+						laser_params.max_length = 0.0f;
 						laser_params.length = 0.0f;
-						laser_params.__float_24 = 0.0f;
 						laser_params.width = 0.0f;
 						laser_params.start_time = 0;
 						laser_params.expand_time = 0;
@@ -44241,7 +44844,6 @@ dllexport void Bullet::run_effects() {
 						if (angle_arg <= -999990.0f) {
 							angle = this->angle;
 						} else if (999990.0f < angle_arg && angle_arg < 1999990.0f) {
-							// Somehow this can end up only running half of an angle reduce? WTF?
 							clang_forceinline angle = angle_to_player_from_point(&this->position);
 						} else {
 							angle = angle_arg;
@@ -44251,12 +44853,13 @@ dllexport void Bullet::run_effects() {
 						if (speed_arg <= -999990.0f) {
 							speed_arg = this->speed;
 						}
+						laser_params.length = FloatArg(2);
+						float max_length = FloatArg(3);
 						++effect_index;
-						laser_params.__float_24 = FloatArg(2);
 						laser_params.start_time = IntArgEx(4);
 						laser_params.expand_time = IntArgEx(5);
 						laser_params.duration = IntArgEx(6);
-						laser_params.length = FloatArg(3);
+						laser_params.max_length = max_length;
 						laser_params.stop_time = IntArgEx(7);
 						laser_params.width = FloatArgEx(4);
 						laser_params.shoot_sound = 18;
@@ -44273,7 +44876,7 @@ dllexport void Bullet::run_effects() {
 						LaserLineParams laser_params(0); // 0x528
 						laser_params.flags = 0;
 						laser_params.angle = 0.0f;
-						laser_params.__length_related = 0.0f;
+						laser_params.max_length = 0.0f;
 						laser_params.length = 0.0f;
 						laser_params.__float_18 = 0.0f;
 						laser_params.width = 0.0f;
@@ -44292,7 +44895,6 @@ dllexport void Bullet::run_effects() {
 						if (angle_arg <= -999990.0f) {
 							angle = this->angle;
 						} else if (999990.0f < angle_arg && angle_arg < 1999990.0f) {
-							// Somehow this can end up only running half of an angle reduce? WTF?
 							clang_forceinline angle = angle_to_player_from_point(&this->position);
 						} else {
 							angle = angle_arg;
@@ -44302,11 +44904,11 @@ dllexport void Bullet::run_effects() {
 						if (speed_arg <= -999990.0f) {
 							speed_arg = this->speed;
 						}
-						++effect_index;
 						laser_params.__unknown_flag_ll_A = true;
 						laser_params.__speed_1 = speed_arg;
 						laser_params.length = FloatArg(2);
-						laser_params.__length_related = FloatArg(3);
+						laser_params.max_length = FloatArg(3);
+						++effect_index;
 						laser_params.__float_18 = FloatArgEx(4);
 						laser_params.shoot_sound = IntArgEx(4);
 						laser_params.width = FloatArgEx(5);
@@ -45134,7 +45736,7 @@ dllexport gnu_noinline void thiscall EnemyData::ecl_set_anm_data() {
 				vm->initialize_position_interp(end_time, mode, &vm->controller.position, &position);
 				break;
 			}
-			case __anm_layer_slot: { // 336
+			case anm_layer_slot: { // 336
 				int32_t layer = this->vm->current_context->get_int_arg(1);
 				vm->set_layer(layer);
 				break;
@@ -46542,7 +47144,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 		case __anm_set_slot_anchor_index: // 322
 			this->anm_vm_indices[this->get_int_arg(0)] = this->get_int_arg(1);
 			break;
-		case __stage_logo: // 554
+		case stage_logo: // 554
 			GUI_PTR->__display_stage_logo();
 			break;
 		case anm_create_rel_front_rotated: { // 338
@@ -46631,11 +47233,11 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			MotionData& motion_rel = this->motion.relative;
 			MotionData& motion_abs = this->motion.absolute;
 			motion_abs.get_position() += motion_rel.get_position();
-			motion_rel.set_positionB(UNKNOWN_FLOAT3_A);
+			motion_rel.set_positionB(ZERO_FLOAT3);
 			motion_rel.set_speed(0.0f);
 			motion_abs.set_speed(0.0f);
-			motion_rel.set_orbit_origin(UNKNOWN_FLOAT3_A);
-			motion_abs.set_orbit_origin(UNKNOWN_FLOAT3_A);
+			motion_rel.set_orbit_origin(ZERO_FLOAT3);
+			motion_abs.set_orbit_origin(ZERO_FLOAT3);
 			motion_rel.set_axis_velocity_mode();
 			motion_abs.set_axis_velocity_mode();
 			this->position_interp.absolute.reset_end_time();
@@ -46696,8 +47298,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 				Y = motion.get_position_y() + Y;
 			}
 			position_interp.set_end_time(this->get_int_arg(0));
-			position_interp.set_bezier1(UNKNOWN_FLOAT3_A);
-			position_interp.set_bezier2(UNKNOWN_FLOAT3_A);
+			position_interp.set_bezier1(ZERO_FLOAT3);
+			position_interp.set_bezier2(ZERO_FLOAT3);
 			position_interp.set_combined_mode(this->get_int_arg(1));
 			position_interp.set_initial_value(motion.get_position());
 			if (!(Y > -999999.0f)) {
@@ -46731,8 +47333,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 				Y = motion.get_position_y() + Y;
 			}
 			position_interp.set_end_time(this->get_int_arg(0));
-			position_interp.set_bezier1(UNKNOWN_FLOAT3_A);
-			position_interp.set_bezier2(UNKNOWN_FLOAT3_A);
+			position_interp.set_bezier1(ZERO_FLOAT3);
+			position_interp.set_bezier2(ZERO_FLOAT3);
 			position_interp.set_axis_mode(0, this->get_int_arg(1));
 			position_interp.set_axis_mode(1, this->get_int_arg(2));
 			position_interp.set_initial_value(motion.get_position());
@@ -46985,7 +47587,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 				break;
 			}
 			speed_interp.initialize(end_time, interp_mode, initial_speed.y, final_speed.y);
-			orbit_radius_interp.initialize_bezier(end_time, interp_mode, initial_orbit, final_orbit, UNKNOWN_FLOAT2_A, UNKNOWN_FLOAT2_A);
+			orbit_radius_interp.initialize_bezier(end_time, interp_mode, initial_orbit, final_orbit, ZERO_FLOAT2, ZERO_FLOAT2);
 			motion.set_orbit_mode();
 			motion.first_update();
 			this->update_current_motion();
@@ -47080,8 +47682,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 				break;
 			}
 			speed_interp.initialize(end_time, interp_mode, initial_speed.y, final_speed.y);
-			orbit_radius_interp.initialize_bezier(end_time, interp_mode, initial_orbit, final_orbit, UNKNOWN_FLOAT2_A, UNKNOWN_FLOAT2_A);
-			ellipse_interp.initialize_bezier(end_time, interp_mode, initial_ellipse, final_ellipse, UNKNOWN_FLOAT2_A, UNKNOWN_FLOAT2_A);
+			orbit_radius_interp.initialize_bezier(end_time, interp_mode, initial_orbit, final_orbit, ZERO_FLOAT2, ZERO_FLOAT2);
+			ellipse_interp.initialize_bezier(end_time, interp_mode, initial_ellipse, final_ellipse, ZERO_FLOAT2, ZERO_FLOAT2);
 			motion.set_orbit_origin(motion.get_position());
 			motion.set_orbit_mode();
 			motion.set_ellipse_mode();
@@ -48018,7 +48620,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			params.__speed_1 = this->shooters[slot].speed1;
 			params.length = this->shooters[slot].position.x;
 			params.flags = this->shooters[slot].__laser_flags | 1;
-			params.__length_related = this->shooters[slot].position.y;
+			params.max_length = this->shooters[slot].position.y;
 			params.shoot_sound = this->shooters[slot].shoot_sound;
 			params.__float_18 = this->shooters[slot].position.z;
 			params.transform_sound = this->shooters[slot].transform_sound;
@@ -48046,8 +48648,8 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			params.__speed_1 = this->shooters[slot].speed1;
 			params.duration = this->shooters[slot].duration;
 			params.stop_time = this->shooters[slot].stop_time;
-			params.__float_24 = this->shooters[slot].position.x;
-			params.length = this->shooters[slot].position.y;
+			params.length = this->shooters[slot].position.x;
+			params.max_length = this->shooters[slot].position.y;
 			params.flags = this->shooters[slot].__laser_flags | 2;
 			params.width = this->shooters[slot].width;
 			params.shoot_sound = this->shooters[slot].shoot_sound;
@@ -49266,7 +49868,7 @@ dllexport gnu_noinline void __replay_manager_global_sub_462D20() {
 			int32_t stage_number = GAME_MANAGER.globals.current_stage;
 			replay_manager->stage_number = stage_number;
 			ReplayGamestate* game_state = replay_manager->stage_data[stage_number].gamestate_start;
-			ABILITY_MANAGER_PTR->__sub_407DA0(FALSE);
+			ABILITY_MANAGER_PTR->__sub_407DA0(false);
 			for (size_t i = 0; i < countof(game_state->cards_owned); ++i) {
 				int32_t card_id = game_state->cards_owned[i];
 				if (card_id < 0) {
@@ -49371,7 +49973,7 @@ dllexport gnu_noinline void thiscall AbilityShop::cleanup() {
 				uint32_t current_stage = GAME_MANAGER.globals.current_stage;
 				ReplayGamestate* game_state = replay_manager->stage_data[current_stage].gamestate_start;
 				if (game_state->__globalsB.current_stage == current_stage) {
-					ABILITY_MANAGER_PTR->__sub_407DA0(FALSE);
+					ABILITY_MANAGER_PTR->__sub_407DA0(false);
 
 					for (int32_t i = 0; i < countof(game_state->__cards_ownedB); ++i) {
 						int32_t id = game_state->__cards_ownedB[i];
@@ -49933,9 +50535,9 @@ struct PauseMenu : ZUNTask {
 	int32_t __name_length; // 0x1F8
 	int __int_1FC; // 0x1FC
 	int __int_200; // 0x200
-	int __dword_204; // 0x204
+	BOOL __bool_204; // 0x204
 	int __int_208; // 0x208
-	ReplayManager* __replay_manager_array_20C[25]; // 0x20C
+	ReplayManager* replay_manager_array[25]; // 0x20C
 	unknown_fields(0x64); // 0x270
 	char __name_buffer[9]; // 0x2D4
 	unknown_fields(0x3); // 0x2DD
@@ -49967,8 +50569,8 @@ struct PauseMenu : ZUNTask {
 		UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
 		UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
-		for (size_t i = 0; i < countof(this->__replay_manager_array_20C); ++i) {
-			delete this->__replay_manager_array_20C[i];
+		for (size_t i = 0; i < countof(this->replay_manager_array); ++i) {
+			delete this->replay_manager_array[i];
 		}
 
 		PAUSE_MENU_PTR = NULL;
@@ -49999,7 +50601,7 @@ struct PauseMenu : ZUNTask {
 					INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE)
 				) {
 					ACHIEVEMENT_MODE_STATE = -1;
-					SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? 2 : 4;
+					SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::MainMenu;
 				}
 				break;
 		}
@@ -50134,7 +50736,7 @@ struct PauseMenu : ZUNTask {
 					this->__menu_select_34.enable_wrap = true;
 					this->__menu_select_34.set_selection(0);
 					this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
-					this->__dword_204 = 0;
+					this->__bool_204 = false;
 				}
 				break;
 			case 1:
@@ -50149,7 +50751,7 @@ struct PauseMenu : ZUNTask {
 					this->__menu_select_34.enable_wrap = true;
 					this->__menu_select_34.set_selection(1);
 					this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
-					this->__dword_204 = 1;
+					this->__bool_204 = true;
 				}
 				break;
 			case 2: case 3: case 4: case 5:
@@ -50283,7 +50885,7 @@ struct PauseMenu : ZUNTask {
 					}
 					this->state_timer.reset();
 				}
-				if (!this->__dword_204) {
+				if (!this->__bool_204) {
 					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_RESTART)) {
 						if (!this->__menu_select_34.__is_index_disabled(6)) {
 			restart_case:
@@ -50411,9 +51013,9 @@ struct PauseMenu : ZUNTask {
 					this->__menu_select_34.menu_length = 25;
 					this->__menu_select_34.enable_wrap = true;
 					this->__menu_select_34.set_selection(0);
-					for (int32_t i = 1; i <= countof(this->__replay_manager_array_20C); ++i) {
+					for (int32_t i = 1; i <= countof(this->replay_manager_array); ++i) {
 						sprintf(buffer, "th18_%.2d.rpy", i);
-						this->__replay_manager_array_20C[i - 1] = ReplayManager::allocate_mode2(buffer);
+						this->replay_manager_array[i - 1] = ReplayManager::allocate_mode2(buffer);
 					}
 				}
 				break;
@@ -50483,12 +51085,12 @@ struct PauseMenu : ZUNTask {
 								this->__unknown_field_pm_A = 1;
 								SOUND_MANAGER.play_sound(17);
 								sprintf(buffer, "th18_%.2d.rpy", this->__menu_select_34.current_selection + 1);
-								ReplayManager* old_replay_manager = this->__replay_manager_array_20C[this->__menu_select_34.current_selection];
+								ReplayManager* old_replay_manager = this->replay_manager_array[this->__menu_select_34.current_selection];
 								if (old_replay_manager) {
 									delete_no_eh(old_replay_manager);
 								}
 								REPLAY_MANAGER_PTR->__write_to_path(buffer, this->__name_buffer, false, true);
-								this->__replay_manager_array_20C[this->__menu_select_34.current_selection] = ReplayManager::allocate_mode2(buffer);
+								this->replay_manager_array[this->__menu_select_34.current_selection] = ReplayManager::allocate_mode2(buffer);
 								this->change_secondary_state(11);
 								byteloop_strcpy(SCOREFILE_MANAGER_PTR->primary_file.__sectionA.__recent_name, this->__name_buffer);
 								SOUND_MANAGER.play_sound(7);
@@ -50591,8 +51193,8 @@ struct PauseMenu : ZUNTask {
 						this->__menu_select_34.menu_length = 7;
 						this->__menu_select_34.enable_wrap = true;
 						this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
-						for (size_t i = 0; i != countof(this->__replay_manager_array_20C); ++i) {
-							SAFE_DELETE_NO_EH(this->__replay_manager_array_20C[i]);
+						for (size_t i = 0; i != countof(this->replay_manager_array); ++i) {
+							SAFE_DELETE_NO_EH(this->replay_manager_array[i]);
 						}
 						if (this->primary_state == 1) {
 							this->change_secondary_state(18);
@@ -50700,10 +51302,10 @@ struct PauseMenu : ZUNTask {
 									break;
 								case 2:
 									if (this->__int_1FC) {
-										SUPERVISOR.gamemode_switch = 10;
+										SUPERVISOR.gamemode_switch = GameMode::StartGameplay; // 10
 									}
 									else if (GAME_MANAGER.globals.current_stage == ExtraStage) { // 7
-										SUPERVISOR.gamemode_switch = 14;
+										SUPERVISOR.gamemode_switch = GameMode::GameMode14; // 14
 									}
 									else {
 										GAME_MANAGER.globals.life_stocks = DEFAULT_LIFE_STOCKS;
@@ -50737,16 +51339,16 @@ struct PauseMenu : ZUNTask {
 						case 1:
 							this->__vm_id_1E8.interrupt_tree(1);
 							this->__vm_id_1E4.interrupt_tree(1);
-							SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? 2 : 4;
+							SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::MainMenu;
 							break;
 						case 6:
 							this->__vm_id_1E8.mark_tree_for_delete();
 							this->__vm_id_1E4.mark_tree_for_delete();
 							if (GAME_THREAD_PTR->replay_mode != ReplayRecording) {
-								SUPERVISOR.gamemode_switch = 11;
+								SUPERVISOR.gamemode_switch = GameMode::StartReplay; // 11
 							}
 							else {
-								SUPERVISOR.gamemode_switch = 10;
+								SUPERVISOR.gamemode_switch = GameMode::StartGameplay; // 10
 							}
 							break;
 					}
@@ -50796,9 +51398,9 @@ ValidateFieldOffset32(0x1F4, PauseMenu, secondary_state);
 ValidateFieldOffset32(0x1F8, PauseMenu, __name_length);
 ValidateFieldOffset32(0x1FC, PauseMenu, __int_1FC);
 ValidateFieldOffset32(0x200, PauseMenu, __int_200);
-ValidateFieldOffset32(0x204, PauseMenu, __dword_204);
+ValidateFieldOffset32(0x204, PauseMenu, __bool_204);
 ValidateFieldOffset32(0x208, PauseMenu, __int_208);
-ValidateFieldOffset32(0x20C, PauseMenu, __replay_manager_array_20C);
+ValidateFieldOffset32(0x20C, PauseMenu, replay_manager_array);
 ValidateFieldOffset32(0x2D4, PauseMenu, __name_buffer);
 ValidateFieldOffset32(0x2E0, PauseMenu, __float_2E0);
 ValidateFieldOffset32(0x2E8, PauseMenu, __double_2E8);
@@ -50814,7 +51416,7 @@ dllexport gnu_noinline void __pause_menu_game_over_screen() {
 	GAME_MANAGER.__update_scorefile_game_time();
 	GameThread* game_thread_ptr = GAME_THREAD_PTR;
 	if (game_thread_ptr->replay_mode == ReplayPlayback) {
-		SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? 2 : 4;
+		SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::MainMenu;
 		return;
 	}
 	pause_menu->change_primary_state(2);
@@ -51805,7 +52407,7 @@ struct MainMenu : ZUNTask {
 
 	int __index_5AAC; // 0x5AAC
 	int __int_5AB0; // 0x5AB0
-	ReplayManager* __replay_manager_array_5AB4[100]; // 0x5AB4
+	ReplayManager* replay_manager_array[100]; // 0x5AB4
 	void* musiccmt_file; // 0x5C44
 	int32_t __int_5C48; // 0x5C48
 	union {
@@ -51851,8 +52453,8 @@ struct MainMenu : ZUNTask {
 		ANM_MANAGER_PTR->unload_anm(TITLE_ANM_INDEX);
 		ANM_MANAGER_PTR->unload_anm(TITLEV_ANM_INDEX);
 
-		nounroll for (size_t i = 0; i < countof(this->__replay_manager_array_5AB4); ++i) {
-			delete this->__replay_manager_array_5AB4[i];
+		nounroll for (size_t i = 0; i < countof(this->replay_manager_array); ++i) {
+			delete this->replay_manager_array[i];
 		}
 
 		this->__anm_id_650.interrupt_tree(1);
@@ -51924,7 +52526,7 @@ public:
 			{
 				AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
 				ability_manager->__int_C5C = 0;
-				ability_manager->__sub_407DA0(TRUE);
+				ability_manager->__sub_407DA0(true);
 			}
 
 				this->__menu_select_24.menu_length = 10;
@@ -52151,7 +52753,7 @@ public:
 					} while (++stage_number < STAGE_COUNT);
 					GAME_MANAGER.globals.current_stage = stage_number;
 					GAME_MANAGER.globals.__stage_number_related_4 = stage_number;
-					SUPERVISOR.gamemode_switch = 13;
+					SUPERVISOR.gamemode_switch = GameMode::StartDemo; // 13
 
 					ReplayInfo* replay_info = replay_manager->info;
 
@@ -52298,7 +52900,7 @@ public:
 				}
 
 				case 2:
-					SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? 2 : 3;
+					SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::CleanupA;
 				case 9: case 13:
 					SOUND_MANAGER.__queue_bgm_stop();
 					break;
@@ -52453,7 +53055,7 @@ public:
 
 #if DEBUG_SKIP_MENUS
 				// DEBUG: Try to directly start a game?
-				SUPERVISOR.gamemode_switch = 10;
+				SUPERVISOR.gamemode_switch = GameMode::StartGameplay;
 				GAME_MANAGER.globals.current_stage = DEBUG_STAGE;
 				GAME_MANAGER.globals.__stage_number_related_4 = DEBUG_STAGE;
 				GAME_MANAGER.globals.spell_practice_id = -1;
@@ -52469,7 +53071,7 @@ public:
 		}
 		else {
 			LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
-			SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? 2 : 3;
+			SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::CleanupA;
 		}
 		return 0;
 	}
@@ -52539,7 +53141,7 @@ dllexport gnu_noinline void Gui::__allocate_hud() {
 	gui_ptr->__update_bomb_ui(GAME_MANAGER.globals.bomb_stocks, GAME_MANAGER.globals.bomb_fragments, GAME_MANAGER.globals.bomb_stock_max);
 
 	if (
-		SUPERVISOR.gamemode_switch != 8 &&
+		SUPERVISOR.gamemode_switch != GameMode::GameMode8 &&
 		!GAME_MANAGER.__is_demo &&
 		GAME_MANAGER.game_type != PracticeMode
 	) {
@@ -52911,17 +53513,23 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 				}
 			}
 
-			vm->controller.position.x = boss->data.current_motion.position.x + 32.0f + 192.0f;
+			// TODO: is 32 the width of the screen edge?
+			float position_x = boss->data.current_motion.position.x + 32.0f + SCREEN_HALF_WIDTH;
+			vm->controller.position.x = position_x + position_x;
 			vm->controller.position.y = 960.0f;
 
 			float x_diff = zfabsf(boss->data.current_motion.position.x - PLAYER_PTR->data.position.x);
 
 			uint8_t alpha;
 			if (x_diff >= 64.0f) {
+				// For some reason this uses OR AL, -1
+				// without anything to clear the upper
+				// register. It's not even smaller than
+				// MOV AL, -1 so WTF is this?
 				alpha = 255;
 			}
 			else {
-				x_diff *= 191.0f;
+				x_diff *= 191.0f; // SCREEN_HALF_WIDTH - 1
 				x_diff *= (1.0f / 64.0f);
 				alpha = (int32_t)x_diff + 64;
 			}
@@ -53995,143 +54603,145 @@ dllexport gnu_noinline double vectorcall get_runtime() {
 	}
 }
 
+// GAMEMODE SWITCH
 // 0x455040
-dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__sub_455040() {
+dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__update_gamemode() {
 	if (this->gamemode_current != this->gamemode_switch) {
 		CRITICAL_SECTION_MANAGER.enter_section(Menu_CS);
 		{
 
-			int32_t prev_gamemode = this->gamemode_current;
-			int32_t new_gamemode = this->gamemode_switch;
+			GameMode prev_gamemode = this->gamemode_current;
+			GameMode new_gamemode = this->gamemode_switch;
 			this->gamemode_previous = prev_gamemode;
 
 			this->background_color = COLOR(255, 0, 0, 0);
 
 			switch (new_gamemode) {
-				case 0: {
-					this->gamemode_switch = 1;
+				case GameMode::Startup: { // 0
+					this->gamemode_switch = GameMode::LoadingScreen; // 1
 					LoadingThread* loading_thread = LoadingThread::allocate();
-					this->__loading_thread_B40 = loading_thread;
+					this->loading_thread_ptr = loading_thread;
 					if (loading_thread) {
 						break;
 					}
-					this->gamemode_switch = 3;
+					this->gamemode_switch = GameMode::CleanupA; // 3
 				}
-				case 3:
+				case GameMode::CleanupA: // 3
 					this->__sub_453C70();
 					CRITICAL_SECTION_MANAGER.leave_section(Menu_CS);
 					return UpdateFuncEnd0;
-				case 4: {
+				case GameMode::MainMenu: { // 4
 					AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
 					ability_manager->__int_C5C = 0;
-					ability_manager->__sub_407DA0(TRUE);
+					ability_manager->__sub_407DA0(true);
 					switch (this->gamemode_current) {
 						default:
 							goto finalize_gamemode_switch;
-						case 7:
+						case GameMode::Gameplay: // 7
 							GAME_THREAD_PTR->cleanup();
 							break;
-						case 15:
+						case GameMode::Ending: // 15
 							ENDING_PTR->cleanup();
 							break;
-						case 1: case 2:
+						case GameMode::LoadingScreen: // 1
+						case GameMode::GameMode2: // 2
 							break;
 					}
 					MainMenu::allocate();
 					break;
 				}
-				case 16: {
+				case GameMode::GameMode16: { // 16
 					AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
 					ability_manager->__int_C5C = 0;
-					ability_manager->__sub_407DA0(TRUE);
+					ability_manager->__sub_407DA0(true);
 					switch (this->gamemode_current) {
 						default:
 							goto finalize_gamemode_switch;
-						case 7:
+						case GameMode::Gameplay: // 7
 							GAME_THREAD_PTR->cleanup();
 							break;
-						case 15:
+						case GameMode::Ending: // 15
 							ENDING_PTR->cleanup();
 							break;
-						case 2:
+						case GameMode::GameMode2: // 2
 							break;
 					}
-					this->gamemode_switch = 4;
+					this->gamemode_switch = GameMode::MainMenu; // 4
 					UNKNOWN_INT32_C = 3;
 					MainMenu::allocate();
 					break;
 				}
-				case 7:
-					if (prev_gamemode == 4) {
+				case GameMode::Gameplay: // 7
+					if (prev_gamemode == GameMode::MainMenu) { // 4
 						MAIN_MENU_PTR->cleanup();
 					}
 					this->__bool_804 = true;
 					GameThread::allocate(ReplayRecording);
 					break;
-				case 13:
-					if (prev_gamemode == 4) {
+				case GameMode::StartDemo: // 13
+					if (prev_gamemode == GameMode::MainMenu) { // 4
 						MAIN_MENU_PTR->cleanup();
 					}
-					this->gamemode_switch = 7;
+					this->gamemode_switch = GameMode::Gameplay; // 7
 					this->__bool_804 = true;
 					GameThread::allocate(ReplayPlayback);
 					break;
-				case 12: {
+				case GameMode::StageTransition: { // 12
 					ReplayMode replay_mode = GAME_THREAD_PTR->replay_mode;
 					this->__bool_804 = false;
-					if (prev_gamemode == 7) {
+					if (prev_gamemode == GameMode::Gameplay) { // 7
 						GAME_THREAD_PTR->cleanup();
 					}
-					this->gamemode_switch = 7;
+					this->gamemode_switch = GameMode::Gameplay; // 7
 					GameThread::allocate(replay_mode);
 					break;
 				}
-				case 10: {
+				case GameMode::StartGameplay: { // 10
 					GAME_THREAD_PTR->cleanup();
 					this->__bool_804 = true;
 					this->__int_808 = 0;
-					this->gamemode_switch = 7;
+					this->gamemode_switch = GameMode::Gameplay; // 7
 					int32_t stage_number = GAME_MANAGER.globals.__stage_number_related_4;
 					GAME_MANAGER.globals.current_stage = stage_number;
 					STAGE_DATA_PTR = &STAGE_DATA[stage_number];
 					GameThread::allocate(ReplayRecording);
 					break;
 				}
-				case 11: {
+				case GameMode::StartReplay: { // 11
 					GAME_THREAD_PTR->cleanup();
 					this->__bool_804 = true;
 					this->__int_808 = 0;
-					this->gamemode_switch = 7;
+					this->gamemode_switch = GameMode::Gameplay; // 7
 					int32_t stage_number = GAME_MANAGER.globals.__stage_number_related_4;
 					GAME_MANAGER.globals.current_stage = stage_number;
 					STAGE_DATA_PTR = &STAGE_DATA[stage_number];
 					GameThread::allocate(ReplayPlayback);
 					break;
 				}
-				case 19: {
+				case GameMode::GameMode19: { // 19
 					GAME_THREAD_PTR->cleanup();
 					this->__bool_804 = true;
 					this->__int_808 = 1;
-					this->gamemode_switch = 7;
+					this->gamemode_switch = GameMode::Gameplay; // 7
 					int32_t stage_number = GAME_MANAGER.globals.__stage_number_related_4;
 					GAME_MANAGER.globals.current_stage = stage_number;
 					STAGE_DATA_PTR = &STAGE_DATA[stage_number];
 					GameThread::allocate(ReplayRecording);
 					break;
 				}
-				case 14:
+				case GameMode::GameMode14: // 14
 					GAME_THREAD_PTR->cleanup();
 					this->__bool_804 = true;
-					this->gamemode_switch = 7;
+					this->gamemode_switch = GameMode::Gameplay; // 7
 					GameThread::allocate(ReplayRecording);
 					break;
-				case 15:
-					if (prev_gamemode == 7) {
+				case GameMode::Ending: // 15
+					if (prev_gamemode == GameMode::Gameplay) { // 7
 						GAME_THREAD_PTR->cleanup();
 					}
 					Ending::allocate();
 					break;
-				case 17:
+				case GameMode::CleanupB: // 17
 					this->__sub_453C70();
 					CRITICAL_SECTION_MANAGER.leave_section(Menu_CS);
 					return UpdateFuncEndN1;
@@ -54146,8 +54756,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__sub_455040() {
 
 // 0x453C70
 dllexport gnu_noinline void thiscall Supervisor::__sub_453C70() {
-	if (SUPERVISOR.__unknown_bitfield_su_A == 0) {
-		SUPERVISOR.__unknown_bitfield_su_A = 1;
+	if (SUPERVISOR.quitting == false) {
+		SUPERVISOR.quitting = true;
 	}
 
 	delete_no_eh(KEY_CONFIG_MENU_PTR);
@@ -54162,8 +54772,8 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_453C70() {
 	delete_no_eh(ABILITY_MANAGER_PTR);
 	delete_no_eh(ABILITY_MENU_PTR);
 	ABILITY_SHOP_PTR->cleanup();
-	//delete_no_eh(TROPHY_MANAGER_A_PTR);
-	//delete_no_eh(NOTICE_MANAGER_PTR);
+	delete_no_eh(ABILITY_TROPHY_MANAGER_PTR);
+	delete_no_eh(NOTICE_MANAGER_PTR);
 }
 
 // 0x453A70
@@ -54375,7 +54985,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 						GUI_PTR->__unknown_flag_gu_C = true;
 						if (ACHIEVEMENT_MODE_STATE >= 0) {
 							ACHIEVEMENT_MODE_STATE = -1;
-							SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? 2 : 4;
+							SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::MainMenu;
 							break;
 						}
 						__unlock_card(MUKADE_CARD, true);
@@ -54404,7 +55014,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 									.cleared = true;
 							current_stage = GAME_MANAGER.globals.current_stage;
 						}
-						SUPERVISOR.gamemode_switch = 12;
+						SUPERVISOR.gamemode_switch = GameMode::StageTransition; // 12
 						// codegen is weird here, again
 						if (current_stage < ExtraStage) {
 							GAME_MANAGER.globals.current_stage = current_stage + 1;
@@ -54443,13 +55053,19 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_443E60() {
 
 	if (this->__marked_for_cleanup) {
 		SUPERVISOR.__thread_A94.stop_and_cleanup();
-		SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? 2 : 3;
+		SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::CleanupA;
 		return ZUN_SUCCESS2;
 	}
 
 	STAGE_PTR->__start();
-	if (STAGE_B_PTR) {
+	Stage* stageB = STAGE_B_PTR;
+	if (stageB) {
 		ScreenEffect::allocate(ScreenEffect2, 30, 0, 0, 0, 10);
+		stageB->__timer_3478.set(29);
+		stageB->__unknown_flag_bg_D = true;
+		Stage* stageA = STAGE_PTR;
+		stageA->__timer_3478.set(59);
+		stageA->__unknown_flag_bg_B = true;
 		this->__stage_transition_delay_stage_start = true;
 		GUI_PTR->__anm_id_B8.interrupt_tree(1);
 		return ZUN_SUCCESS;
@@ -54459,7 +55075,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_443E60() {
 
 	if (
 		GAME_MANAGER.game_type != SpellPractice &&
-		GAME_MANAGER.__is_demo
+		!GAME_MANAGER.__is_demo
 	) {
 		SOUND_MANAGER.__play_music_with_unlock(0, STAGE_DATA_PTR->bgm_indices[0]);
 	}
@@ -54490,7 +55106,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_4443C0() {
 
 // 0x443860
 dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
-	if (SUPERVISOR.__unknown_bitfield_su_A != 0) {
+	if (SUPERVISOR.quitting != false) {
 		return UpdateFuncDeleteCurrentThenNext;
 	}
 
@@ -54519,11 +55135,11 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 				ABILITY_MANAGER_PTR->__sub_4094C0();
 				ABILITY_MANAGER_PTR->__sub_407DA0(true);
 
-				int32_t mode;
+				GameMode mode;
 				if (GAME_MANAGER.globals.difficulty != EXTRA) {
-					mode = (SUPERVISOR.__unknown_bitfield_su_A & 1) ? 2 : 15;
+					mode = SUPERVISOR.__unknown_flag_su_G  ? GameMode::GameMode2 : GameMode::Ending;
 				} else {
-					mode = (SUPERVISOR.__unknown_bitfield_su_A & 1) ? 2 : 16;
+					mode = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::GameMode16;
 				}
 				SUPERVISOR.gamemode_switch = mode;
 			}
@@ -54573,7 +55189,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 			INPUT_P1.check_hardware_inputs(BUTTON_SELECT | BUTTON_CANCEL) ||
 			(this->__unknown_flag_gt_I | this->__unknown_flag_gt_L | this->__unknown_flag_gt_M)
 		) {
-			SUPERVISOR.gamemode_switch = (SUPERVISOR.__unknown_bitfield_su_A & 1) ? 2 : 4;
+			SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::MainMenu;
 		}
 
 		switch (this->__timer_C.current) {
@@ -54581,7 +55197,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 				ScreenEffect::allocate(ScreenEffect5, 0x3C, 0, 0, 0, 91);
 				break;
 			case 3600:
-				SUPERVISOR.gamemode_switch = (SUPERVISOR.__unknown_bitfield_su_A & 1) ? 2 : 4;
+				SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::MainMenu;
 				break;
 		}
 	}
@@ -54755,15 +55371,16 @@ dllexport gnu_noinline GameThread::~GameThread() {
 	UNKNOWN_FUNC_PTR_B = NULL;
 	
 	switch (SUPERVISOR.gamemode_switch) {
-		case 12:
+		case GameMode::StageTransition: // 12
 			ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
 			GAME_MANAGER.__stage_transition_related = true;
 			break;
-		case 4: case 16:
+		case GameMode::MainMenu: // 4
+		case GameMode::GameMode16: // 16
 			ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
 			ABILITY_MANAGER_PTR->__cleanup_all_anms();
 			break;
-		case 14:
+		case GameMode::GameMode14: // 14
 			ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
 			if (GAME_MANAGER.globals.__stage_number_related_4 == GAME_MANAGER.globals.current_stage) {
 				GAME_MANAGER.globals.add_continue();
@@ -54773,10 +55390,11 @@ dllexport gnu_noinline GameThread::~GameThread() {
 				GAME_MANAGER.__unknown_flag_gm_A = true;
 			}
 			break;
-		case 2:
+		case GameMode::GameMode2: // 2
 			ABILITY_MANAGER_PTR->__cleanup_all_anms();
 			break;
-		case 10: case 11:
+		case GameMode::StartGameplay: // 10
+		case GameMode::StartReplay: // 11
 			ABILITY_MANAGER_PTR->__sub_4080E0();
 			ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
 			if (GAME_MANAGER.globals.__stage_number_related_4 == GAME_MANAGER.globals.current_stage) {
@@ -54789,7 +55407,9 @@ dllexport gnu_noinline GameThread::~GameThread() {
 		switch (SUPERVISOR.gamemode_switch) {
 			default:
 				delete REPLAY_MANAGER_PTR;
-			case 15: case 16:;
+			case GameMode::Ending: // 15
+			case GameMode::GameMode16: // 16
+				break;
 		}
 		delete STAGE_PTR;
 		delete STAGE_B_PTR;
@@ -54871,7 +55491,7 @@ inline unsigned GameThread::thread_start_impl() {
 	__asm FINIT
 
 	while (ANM_MANAGER_PTR->backbuffer_textures[0].anm_loaded_index >= 0) {
-		if (SUPERVISOR.__unknown_bitfield_su_A != 0) {
+		if (SUPERVISOR.quitting != false) {
 			goto thread_start_important_label;
 		}
 		Sleep(1);
@@ -55593,7 +56213,7 @@ dllexport gnu_noinline LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wPa
 			}
 			break;
 		case WM_CLOSE: // 0x10
-			SUPERVISOR.__unknown_bitfield_su_A = 1;
+			SUPERVISOR.quitting = true;
 			return TRUE; // Documentation says to return 0?
 		case WM_SETCURSOR: // 0x20
 			if (!SUPERVISOR.present_parameters.Windowed) {
@@ -56747,7 +57367,7 @@ winmain_important_label:
 			DispatchMessageA(&message);
 		}
 	} while (--message_count);
-	SUPERVISOR.__unknown_bitfield_su_A = 0;
+	SUPERVISOR.quitting = false;
 
 winmain_after_config_loaded:
 	IDirect3D9* d3d_ptr = Direct3DCreate9(D3D_SDK_VERSION); // version 32

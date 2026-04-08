@@ -1,0 +1,250 @@
+
+/// General angle utility
+global HALF_PI = 1.5707964f;
+global PI = 3.1415927f;
+global TWO_PI = 6.2831855f;
+
+global ANGLE_LEFT = rad(180);
+global ANGLE_RIGHT = 0.0f;
+global ANGLE_UP = rad(-90);
+global ANGLE_DOWN = rad(90);
+
+/// Screen constants
+global SCREEN_LEFT = -192.0f;
+global SCREEN_MIDDLE_X = 0.0f;
+global SCREEN_RIGHT = 192.0f;
+global SCREEN_TOP = 0.0f;
+global SCREEN_MIDDLE_Y = 224.0f;
+global SCREEN_BOTTOM = 448.0f;
+
+global SCREEN_WIDTH = 384.0f;
+global SCREEN_HEIGHT = 448.0f;
+
+/// Interp modes
+global Interp_Linear = 0;
+global Interp_AccelerateSlow = 1;
+global Interp_Accelerate = 2;
+global Interp_AccelerateFast = 3;
+global Interp_DecelerateSlow = 4;
+global Interp_Decelerate = 5;
+global Interp_DecelerateFast = 6;
+global Interp_ConstantVelocity = 7;
+global Interp_Bezier = 8;
+global Interp_AccelDecelSlow = 9;
+global Interp_AccelDecel = 10;
+global Interp_AccelDecelFast = 11;
+global Interp_DecelAccelSlow = 12;
+global Interp_DecelAccel = 13;
+global Interp_DecelAccelFast = 14;
+global Interp_ForceInitial = 15;
+global Interp_ForceFinal = 16;
+global Interp_ConstantAccel = 17;
+global Interp_DecelerateSine = 18;
+global Interp_AccelerateSine = 19;
+global Interp_DecelAccelSine = 20;
+global Interp_AccelDecelSine = 21;
+global Interp_AccelParabolaA = 22;
+global Interp_AccelParabolaB = 23;
+global Interp_AccelParabolaC = 24;
+global Interp_AccelParabolaD = 25;
+global Interp_AccelParabolaE = 26;
+global Interp_DecelParabolaA = 27;
+global Interp_DecelParabolaB = 28;
+global Interp_DecelParabolaC = 29;
+global Interp_DecelParabolaD = 30;
+global Interp_DecelParabolaE = 31;
+
+/// Aim modes
+global FanAimedMode = 0;
+global FanMode = 1;
+global CircleAimedMode = 2;
+global CircleMode = 3;
+global OffsetCircleAimedMode = 4;
+global OffsetCircleMode = 5;
+global RandomAngleMode = 6;
+global RandomSpeedMode = 7;
+global RandomMode = 8;
+global StarAimedMode = 9;
+global StarMode = 10;
+global OvalMode = 11;
+global PeanutMode = 12;
+
+/// Colors
+// 16 colors
+global Gray = 0;
+global DarkRed = 1;
+global Red = 2;
+global DarkPurple = 3;
+global Purple = 4;
+global DarkBlue = 5;
+global Blue = 6;
+global DarkCyan = 7;
+global Cyan = 8;
+global DarkGreen = 9;
+global Green = 10;
+global Lime = 11;
+global DarkYellow = 12;
+global Yellow = 13;
+global Orange = 14;
+global White = 15;
+// 8 colors
+global Gray8 = 0;
+global Red8 = 1;
+global Purple8 = 2;
+global Blue8 = 3;
+global Cyan8 = 4;
+global Green8 = 5;
+global Yellow8 = 6;
+global White8 = 7;
+// 4 colors
+global Red4 = 0;
+global Blue4 = 1;
+global Green4 = 2;
+global Yellow4 = 3;
+// Special colors
+global GoldCoin = 0;
+global SilverCoin = 1;
+global BronzeCoin = 2;
+global PresetColor = 0;
+
+/// Bullet sprites
+// 16 colors
+global Pellet = 0;
+global Pellet2 = 1;
+global InvertPopcorn = 2;
+global Popcorn = 3;
+global Ball = 4;
+global Ball2 = 5;
+global RingBall = 6;
+global RingBall2 = 7;
+global Rice = 8;
+global Kunai = 9;
+global Shard = 10;
+global Talisman = 11;
+global Arrowhead = 12;
+global Bullet = 13;
+global LumpyBall = 14;
+global InvertRice = 15;
+global StarR = 16;
+global Droplet = 34;
+global SpinRice = 35;
+global SpinShard = 36;
+global StarL = 37;
+global LaserChunk = 38;
+// 8 colors
+global BigBall = 18;
+global BigBall2 = 19;
+global Oval = 20;
+global Dagger = 21;
+global Butterfly = 22;
+global BigStarR = 23;
+global BigStarL = 24;
+global Heart = 29;
+global PulseBall = 30;
+global Arrow = 31;
+global GlowBall = 33;
+global Rest = 43;
+global YinYangR = 44;
+global YinYangL = 45;
+//global Diamond = 48;
+//global Tear = 49;
+// 4 colors
+global Bubble = 32;
+global BigYinYangR = 46;
+global BigYinYangL = 47;
+// Special colors
+global Coin = 17;
+global FireballRed = 25;
+global FireballPurple = 26;
+global FireballBlue = 27;
+global FireballYellow = 28;
+global NoteRed = 39;
+global NoteBlue = 40;
+global NoteYellow = 41;
+global NotePurple = 42;
+
+/// Bullet effects
+global EX_DIST = 1;
+global EX_ANIM = 2;
+global EX_ACCEL = 4;
+global EX_ANGLE_ACCEL = 8;
+global EX_ANGLE = 16;
+global EX_SPAWNSOUND = 32; // not a real ex anymore
+global EX_BOUNCE = 64;
+global EX_INVULN = 128;
+global EX_OFFSCREEN = 256;
+global EX_SETSPRITE = 512;
+global EX_DELETE = 1024;
+global EX_PLAYSOUND = 2048;
+global EX_WRAP = 4096;
+global EX_SHOOT = 8192;
+global EX_SHOOT_DATA = 16384; // Does nothing
+global EX_REACT = 32768;
+global EX_LOOP = 65536;
+global EX_MOVE = 131072;
+global EX_VEL = 262144;
+global EX_VELADD = 524288;
+global EX_BRIGHT = 1048576;
+global EX_VELTIME = 2097152;
+global EX_SIZE = 4194304;
+global EX_SAVEANGLE = 8388608;
+global EX_ENEMY = 16777216;
+global EX_LAYER = 33554432;
+global EX_DELAY = 67108864;
+global EX_LASER = 134217728;
+global EX_LASER_DATA = 268435456; // Does nothing
+global EX_HITBOX = 536870912;
+global EX_HOMING = 1073741824;
+global EX_WAIT = -2147483648;
+//global EX_ACCEL_2 = 32;
+//global EX_NO_GRAZE_EFFECT = 33;
+// Laser unique effects
+global EX_SETID = 32768;
+global EX_GOTO = 65536;
+global EX_UNKFLAG = 268435456;
+
+/// Bullet effect arguments
+global ExIgnoreI                = -9999994;
+global ExIgnoreF                = -9999994.0f;
+global ExNoI                    = -9999994;
+global ExNoF                    = -9999994.0f;
+
+// EX_ACCEL
+global ExCurrentAngle           = -1000000.0f;
+global ExAngleToPlayerOffsetM   =  1000000.0f;
+global ExAngleToPlayerSpreadM   =  3000000.0f;
+global ExCurrentAngleSpreadM    =  4000000.0f;
+global ExAngleFromBoss0         =  5000000.0f;
+
+// EX_ANGLE
+global ExCurrentSpeed           = -1000000.0f;
+
+/// Enemy flags
+
+global FLAG_NO_HITBOX = 1;
+global FLAG_NO_COLLISION = 2;
+global FLAG_OFFSCREEN_LR = 4;
+global FLAG_OFFSCREEN_UD = 8;
+global FLAG_INVINCIBLE = 16;
+global FLAG_INTANGIBLE = 32;
+global FLAG_IS_MIDBOSS = 64;
+global FLAG_NO_DELETE = 128;
+global FLAG_ALWAYS_DELETE = 256;
+global FLAG_GRAZABLE = 512;
+global FLAG_ONLY_DIALOG_DELETE = 1024;
+global FLAG_DELETE_AS_BULLET = 2048;
+global FLAG_RECTANGLE_HITBOX = 4096;
+global FLAG_SLOWDOWN_IMMUNE = 8192;
+global FLAG_OFFSCREEN = FLAG_OFFSCREEN_LR | FLAG_OFFSCREEN_UD;
+
+inline void halt() {
+    loop {
++10000:
+    }
+}
+inline void delete() {
+    enemy_delete();
+}
+inline void despawn() {
+    enemy_delete();
+}

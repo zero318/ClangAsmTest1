@@ -1,0 +1,23 @@
+anim { "enemy.anm"; "st01enm.anm"; }
+//ecli { "default.ecl"; "st01bs.ecl"; "st01mbs.ecl"; }
+ecli { "default.ecl"; }
+
+#include "common.hecl"
+#include "math.hecl"
+
+void enemy_test() {
+    anm_source(2);
+    anm_set_slot_main(0, 0);
+    
+    halt();
+}
+
+void main() {
+    enemy_flags_set(FLAG_INVINCIBLE | FLAG_INTANGIBLE | FLAG_NO_DELETE);
++1:
+    chapter_set(0);
+    
+    enemy_create_abs("enemy_test", SCREEN_MIDDLE_X, SCREEN_MIDDLE_Y, 1, 0, 0);
+    
+    halt();
+}

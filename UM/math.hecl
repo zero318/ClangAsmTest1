@@ -1,0 +1,164 @@
+// C <math.h> functions
+inline float fabs(float value) {
+    $value &= 0x7FFFFFFF;
+    return value;
+}
+inline int iabs(int value) {
+    return value >= 0 ? value : -value;
+}
+inline float fmax(float A, float B) {
+    return A > B ? A : B;
+}
+inline int imax(int A, int B) {
+    return A > B ? A : B;
+}
+inline float fmin(float A, float B) {
+    return A < B ? A : B;
+}
+inline int imin(int A, int B) {
+    return A < B ? A : B;
+}
+inline float fdim(float A, float B) {
+    return A > B ? A - B : 0.0f;
+}
+inline float atan2(float Y, float X) {
+    math_line_angle(Y, 0.0f, 0.0f, X, Y);
+    return Y;
+}
+inline float floor(float value) {
+    return _f(_S(value) - (value < 0.0f));
+}
+inline float trunc(float value) {
+    return _f(_S(value));
+}
+inline float copysign(float value, float sign) {
+    $value = $value & 0x7FFFFFFF | $sign & 0x80000000;
+    return value;
+}
+// C++ <math.h> functions
+inline float flerp(float start, float end, float t) {
+    return start * (1.0f - t) + (end * t);
+}
+inline int ilerp(int start, int end, float t) {
+    return _S(_f(start) * (1.0f - t) + (_f(end) * t));
+}
+// C++ <bit> functions
+inline int byteswap(int value) {
+    push_int(value);
+    push_int(0x00FF00FF);
+    math_bit_and();
+    push_int(8);
+    math_shl();
+    push_int(value);
+    push_int(0xFF00FF00);
+    math_bit_and();
+    push_int(8);
+    math_shr();
+    math_bit_or();
+    push_int(16);
+    math_rol();
+    int temp;
+    pop_int(temp);
+    return temp;
+}
+inline int rotl(int value, int count) {
+    push_int(value);
+    push_int(count);
+    math_rol();
+    int temp;
+    pop_int(temp);
+    return temp;
+}
+inline int rotr(int value, int count) {
+    push_int(value);
+    push_int(count);
+    math_ror();
+    int temp;
+    pop_int(temp);
+    return temp;
+}
+inline int popcount(int value) {
+    math_popcount(value, value);
+    return value;
+}
+// Custom math functions
+inline int ipun(float value) {
+    return $value;
+}
+inline float fpun(int value) {
+    return %value;
+}
+inline float fdiff(float A, float B) {
+    A -= B;
+    $A &= 0x7FFFFFFF;
+    return A;
+}
+inline int idiff(int A, int B) {
+    return A > B ? A - B : B - A;
+}
+// Stack op helpers
+inline int SHL(int value, int count) {
+    push_int(value);
+    push_int(count);
+    math_shl();
+    int temp;
+    pop_int(temp);
+    return temp;
+}
+inline int SHR(int value, int count) {
+    push_int(value);
+    push_int(count);
+    math_shr();
+    int temp;
+    pop_int(temp);
+    return temp;
+}
+inline int SAR(int value, int count) {
+    push_int(value);
+    push_int(count);
+    math_sar();
+    int temp;
+    pop_int(temp);
+    return temp;
+}
+// Unsigned math helpers
+inline int CMP_B(int A, int B) {
+    return A - 0x80000000 < B - 0x80000000;
+}
+inline int CMP_BE(int A, int B) {
+    return A - 0x80000000 <= B - 0x80000000;
+}
+inline int CMP_A(int A, int B) {
+    return A - 0x80000000 > B - 0x80000000;
+}
+inline int CMP_AE(int A, int B) {
+    return A - 0x80000000 >= B - 0x80000000;
+}
+inline int UDIV(int A, int B) {
+    push_int(A);
+    push_int(B);
+    math_udiv();
+    int temp;
+    pop_int(temp);
+    return temp;
+}
+inline int UMOD(int A, int B) {
+    push_int(A);
+    push_int(B);
+    math_umod();
+    int temp = [-1];
+    return temp;
+}
+// RNG helpers
+inline int int_rand_bound(int limit) {
+    return RAND_INT % limit; 
+}
+inline int int_rand_range(int min, int max) {
+    return RAND_INT % (max - min) + min;
+}
+inline float float_rand_bound(float limit) {
+    return RAND_FLOAT * limit;
+}
+inline float float_rand_range(float min, float max) {
+    return RAND_FLOAT * (max - min) + min;
+}
