@@ -1684,6 +1684,40 @@ extern "C" {
 	externcg ArcFileEx ARCFILE_ARRAY[20] cgasm("_ARCFILE_ARRAY");
 }
 
+#if TESTING_FEATURES
+static constexpr const char* EMOTE_CAPTIONS[] = {
+	":ReisenWorried:",
+	":NotLikeAlice:",
+	":tannedcirno:",
+	":KeikiPout:",
+	":ReisenDying:",
+	":ClownpieceSweat:",
+	":ReimuWat:",
+	":KogasaGun:"
+};
+
+gnu_noinline void make_sure_file_exists(const char* path) {
+
+	size_t path_len = strlen(path);
+	char message_buffer[sizeof("Could not find ") + path_len];
+	memcpy(message_buffer, "Could not find ", sizeof("Could not find ") - 1);
+	memcpy(&message_buffer[sizeof("Could not find ") - 1], path, path_len + 1);
+
+	while (GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES) {
+		unsigned int random;
+		rand_s(&random);
+		switch (MessageBoxA(NULL, message_buffer, EMOTE_CAPTIONS[random % countof(EMOTE_CAPTIONS)], MB_ICONERROR | MB_ABORTRETRYIGNORE)) {
+			case IDRETRY:
+				break;
+			case IDIGNORE: // if you insist
+				return;
+			case IDABORT:
+				ExitProcess(-1);
+		}
+	}
+}
+#endif
+
 // 0x402060
 dllexport gnu_noinline void* fastcall read_file_to_buffer(const char* path, int32_t* file_size_out, bool is_not_in_dat) {
 	CRITICAL_SECTION_MANAGER.enter_section(FileIO_CS);
@@ -1756,6 +1790,7 @@ inline void* read_file_from_dat(const char* path, int32_t* size_out = NULL) {
 #else
 	void* buffer = read_file_to_buffer(PATH_BUFFER, size_out, false);
 	if (!buffer) {
+		make_sure_file_exists(PATH_BUFFER);
 		buffer = read_file_to_buffer(PATH_BUFFER, size_out, true);
 	}
 	return buffer;
@@ -17776,6 +17811,7 @@ public:
 		void* anm_file = read_file_to_buffer(path, NULL, false);
 		if (!anm_file) {
 #if TESTING_FEATURES
+			make_sure_file_exists(path);
 			anm_file = read_file_to_buffer(path, NULL, true);
 			if (!anm_file)
 #endif
@@ -40874,7 +40910,7 @@ struct LaserData {
 			uint32_t __unknown_flag_ld_A : 1; // 1
 			uint32_t __unknown_field_ld_A : 2; // 2-3
 			uint32_t __unknown_flag_ld_B : 1; // 4
-			uint32_t __disable_movement : 1; // 5
+			uint32_t __disable_movement : 1; // 5 only seems to apply to curvy lasers
 		};
 	};
 	int32_t state; // 0x10
@@ -52183,7 +52219,7 @@ gnu_noinline void debug_command_line() {
 				}
 				else if (const wchar_t* stage_arg = get_arg(arg, L"stage", argc, i, argv)) {
 					switch (wchar_t c = stage_arg[0]) {
-						case L'1' ... L'7':
+						case L'0' ... L'7':
 							DEBUG_STAGE = c - L'0';
 							break;
 						case L'e': case L'x':
@@ -53233,8 +53269,15 @@ public:
 #if DEBUG_SKIP_MENUS
 				// DEBUG: Try to directly start a game?
 				SUPERVISOR.gamemode_switch = GameMode::StartGameplay;
-				GAME_MANAGER.globals.current_stage = DEBUG_STAGE;
-				GAME_MANAGER.globals.__stage_number_related_4 = DEBUG_STAGE;
+				int32_t stage_number = DEBUG_STAGE;
+				if (
+					stage_number == DebugStage &&
+					GetFileAttributesW(L"st00.ecl") == INVALID_FILE_ATTRIBUTES
+				) {
+					DEBUG_STAGE = stage_number = Stage1;
+				}
+				GAME_MANAGER.globals.current_stage = stage_number;
+				GAME_MANAGER.globals.__stage_number_related_4 = stage_number;
 				GAME_MANAGER.globals.spell_practice_id = -1;
 				GAME_MANAGER.globals.difficulty = DEBUG_DIFFICULTY;
 				GAME_MANAGER.globals.character = DEBUG_CHARACTER;
@@ -57451,37 +57494,6 @@ dinput_init_success:
 	return ZUN_SUCCESS;
 }
 
-#if TESTING_FEATURES
-static constexpr const char* EMOTE_CAPTIONS[] = {
-	":ReisenWorried:",
-	":NotLikeAlice:",
-	":tannedcirno:",
-	":KeikiPout:",
-	":ReisenDying:",
-	":ClownpieceSweat:",
-	":ReimuWat:",
-	":KogasaGun:"
-};
-
-gnu_noinline void make_sure_the_dat_file_exists_before_starting() {
-retry_dat_file:
-	if (FILE* dat_file = fopen("th18.dat", "rb")) {
-		fclose(dat_file);
-	} else {
-		unsigned int random;
-		rand_s(&random);
-		switch (MessageBoxA(NULL, "Could not find th18.dat", EMOTE_CAPTIONS[random % countof(EMOTE_CAPTIONS)], MB_ICONERROR | MB_ABORTRETRYIGNORE)) {
-			case IDRETRY:
-				goto retry_dat_file;
-			case IDIGNORE: // if you insist
-				break;
-			case IDABORT:
-				ExitProcess(-1);
-		}
-	}
-}
-#endif
-
 extern "C" {
 
 // 0x471270
@@ -57491,7 +57503,7 @@ dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevIn
 
 #if TESTING_FEATURES
 	debug_command_line();
-	make_sure_the_dat_file_exists_before_starting();
+	make_sure_file_exists("th18.dat");
 #endif
 
 	HINSTANCE current_instance = hInstance;
