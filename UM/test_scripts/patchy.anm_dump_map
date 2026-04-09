@@ -1,0 +1,482 @@
+#pragma mapfile "F:\\Touhou_Stuff_2\\_thtk-bin-new\\__truth\\map\\any.anmm"
+
+entry {
+    path: "data/stgenm/stg4enm.png",
+    //path_2: "data/stgenm/stg4enm_a.png",
+    rt_width: 256,
+    rt_height: 256,
+    //rt_format: FORMAT_ARGB_4444,
+    sprites: {
+        sprite0: {x: 1.0, y: 1.0, w: 30.0, h: 30.0},
+        sprite1: {x: 33.0, y: 1.0, w: 30.0, h: 30.0},
+        sprite2: {x: 65.0, y: 1.0, w: 30.0, h: 30.0},
+        sprite3: {x: 97.0, y: 1.0, w: 30.0, h: 30.0},
+        sprite4: {x: 129.0, y: 1.0, w: 30.0, h: 30.0},
+        sprite5: {x: 161.0, y: 1.0, w: 30.0, h: 30.0},
+        sprite6: {x: 193.0, y: 1.0, w: 30.0, h: 30.0},
+        sprite7: {x: 225.0, y: 1.0, w: 30.0, h: 30.0},
+        sprite8: {x: 1.0, y: 33.0, w: 30.0, h: 30.0},
+        sprite9: {x: 33.0, y: 33.0, w: 30.0, h: 30.0},
+        sprite10: {x: 65.0, y: 33.0, w: 30.0, h: 30.0},
+        sprite11: {x: 97.0, y: 33.0, w: 30.0, h: 30.0},
+        sprite12: {x: 129.0, y: 33.0, w: 30.0, h: 30.0},
+        sprite13: {x: 161.0, y: 33.0, w: 30.0, h: 30.0},
+        sprite14: {x: 193.0, y: 33.0, w: 30.0, h: 30.0},
+        sprite15: {x: 225.0, y: 33.0, w: 30.0, h: 30.0},
+        sprite16: {x: 1.0, y: 65.0, w: 30.0, h: 30.0},
+        sprite17: {x: 33.0, y: 65.0, w: 30.0, h: 30.0},
+        sprite18: {x: 65.0, y: 65.0, w: 30.0, h: 30.0},
+        sprite19: {x: 97.0, y: 65.0, w: 30.0, h: 30.0},
+        sprite20: {x: 129.0, y: 65.0, w: 30.0, h: 30.0},
+        sprite21: {x: 161.0, y: 65.0, w: 30.0, h: 30.0},
+        sprite22: {x: 193.0, y: 65.0, w: 30.0, h: 30.0},
+        sprite23: {x: 225.0, y: 65.0, w: 30.0, h: 30.0},
+        sprite24: {x: 128.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite25: {x: 1.0, y: 160.0, w: 30.0, h: 32.0},
+        sprite26: {x: 33.0, y: 160.0, w: 30.0, h: 32.0},
+        sprite27: {x: 65.0, y: 160.0, w: 30.0, h: 32.0},
+        sprite28: {x: 97.0, y: 160.0, w: 30.0, h: 32.0},
+        sprite29: {x: 129.0, y: 160.0, w: 30.0, h: 32.0},
+        sprite30: {x: 161.0, y: 160.0, w: 30.0, h: 32.0},
+        sprite31: {x: 193.0, y: 160.0, w: 30.0, h: 32.0},
+        sprite32: {x: 225.0, y: 160.0, w: 30.0, h: 32.0},
+        sprite33: {x: 129.0, y: 160.0, w: 30.0, h: 32.0},
+        sprite34: {x: 161.0, y: 160.0, w: 30.0, h: 32.0},
+        sprite35: {x: 193.0, y: 160.0, w: 30.0, h: 32.0},
+        sprite36: {x: 225.0, y: 160.0, w: 30.0, h: 32.0},
+        sprite37: {x: 0.0, y: 208.0, w: 32.0, h: 48.0},
+        sprite38: {x: 32.0, y: 208.0, w: 32.0, h: 48.0},
+        sprite39: {x: 64.0, y: 208.0, w: 32.0, h: 48.0},
+        sprite40: {x: 96.0, y: 208.0, w: 48.0, h: 48.0},
+        sprite41: {x: 144.0, y: 208.0, w: 48.0, h: 48.0},
+        sprite42: {x: 192.0, y: 208.0, w: 48.0, h: 48.0},
+        sprite43: {x: 160.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite44: {x: 192.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite45: {x: 224.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite46: {x: 0.0, y: 96.0, w: 64.0, h: 64.0},
+    },
+}
+
+
+script 0 script0 {
+    loop {
+        sprite_set(sprite0);
++4: // 4
+        sprite_set(sprite1);
++4: // 8
+        sprite_set(sprite2);
++4: // 12
+        sprite_set(sprite3);
++4: // 16
+    }
+}
+
+
+script 1 script1 {
+    loop {
+        sprite_set(sprite4);
++6: // 6
+        sprite_set(sprite5);
++6: // 12
+        sprite_set(sprite6);
++6: // 18
+        sprite_set(sprite7);
++6: // 24
+    }
+}
+
+
+script 2 script2 {
+    loop {
+        sprite_set(sprite8);
++6: // 6
+        sprite_set(sprite9);
++6: // 12
+        sprite_set(sprite10);
++6: // 18
+        sprite_set(sprite11);
++6: // 24
+    }
+}
+
+
+script 3 script3 {
+    loop {
+        sprite_set(sprite12);
++6: // 6
+        sprite_set(sprite13);
++6: // 12
+        sprite_set(sprite14);
++6: // 18
+        sprite_set(sprite15);
++6: // 24
+    }
+}
+
+
+script 4 script4 {
+    loop {
+        sprite_set(sprite16);
++6: // 6
+        sprite_set(sprite17);
++6: // 12
+        sprite_set(sprite18);
++6: // 18
+        sprite_set(sprite19);
++6: // 24
+    }
+}
+
+
+script 5 script5 {
+    loop {
+        sprite_set(sprite20);
++6: // 6
+        sprite_set(sprite21);
++6: // 12
+        sprite_set(sprite22);
++6: // 18
+        sprite_set(sprite23);
++6: // 24
+    }
+}
+
+
+script 6 script6 {
+    scale_flip_x();
+    loop {
+        sprite_set(sprite16);
++6: // 6
+        sprite_set(sprite17);
++6: // 12
+        sprite_set(sprite18);
++6: // 18
+        sprite_set(sprite19);
++6: // 24
+    }
+}
+
+
+script 7 script7 {
+    scale_flip_x();
+    loop {
+        sprite_set(sprite20);
++6: // 6
+        sprite_set(sprite21);
++6: // 12
+        sprite_set(sprite22);
++6: // 18
+        sprite_set(sprite23);
++6: // 24
+    }
+}
+
+
+script 8 script8 {
+    sprite_set(sprite24);
+    rotation_speed(0.0, 0.0, 0.31415927);
++10000: // 10000
+    anm_static();
+}
+
+
+script 9 script9 {
+    sprite_set(sprite24);
+    rotation_speed(0.0, 0.0, -0.31415927);
++10000: // 10000
+    anm_static();
+}
+
+
+script 10 script10 {
+    loop {
+        sprite_set(sprite25);
++3: // 3
+        sprite_set(sprite26);
++3: // 6
+        sprite_set(sprite27);
++3: // 9
+        sprite_set(sprite28);
++3: // 12
+    }
+}
+
+
+script 11 script11 {
+    loop {
+        sprite_set(sprite29);
++3: // 3
+        sprite_set(sprite30);
++3: // 6
+        sprite_set(sprite31);
++3: // 9
+        sprite_set(sprite32);
++3: // 12
+    }
+}
+
+
+script 12 script12 {
+    loop {
+        sprite_set(sprite33);
++3: // 3
+        sprite_set(sprite34);
++3: // 6
+        sprite_set(sprite35);
++3: // 9
+        sprite_set(sprite36);
++3: // 12
+    }
+}
+
+
+script 13 script13 {
+    sprite_set(sprite43);
+    alpha(0x0);
+    alpha_interp_linear(0xff, 30);
+    //position_mode(true);
+    loop {
+        move_position_interp(60, DecelerateSlow, 0.0, -4.0, 0.0);
++60: // 60
+        move_position_interp(60, DecelerateSlow, 0.0, 4.0, 0.0);
++60: // 120
+    }
+
+interrupt[1]:
+    alpha_interp_linear(0x0, 30);
++30: // 150
+    anm_delete();
+}
+
+
+script 14 script14 {
+    sprite_set(sprite44);
+    alpha(0x0);
+    alpha_interp_linear(0xff, 30);
+    //position_mode(true);
+    loop {
+        move_position_interp(60, DecelerateSlow, 0.0, -4.0, 0.0);
++60: // 60
+        move_position_interp(60, DecelerateSlow, 0.0, 4.0, 0.0);
++60: // 120
+    }
+
+interrupt[1]:
+    alpha_interp_linear(0x0, 30);
++30: // 150
+    anm_delete();
+}
+
+
+script 15 script15 {
+    sprite_set(sprite45);
+    alpha(0x0);
+    alpha_interp_linear(0xff, 30);
+    //position_mode(true);
+    loop {
+        move_position_interp(60, DecelerateSlow, 0.0, -4.0, 0.0);
++60: // 60
+        move_position_interp(60, DecelerateSlow, 0.0, 4.0, 0.0);
++60: // 120
+    }
+
+interrupt[1]:
+    alpha_interp_linear(0x0, 30);
++30: // 150
+    anm_delete();
+}
+
+
+script 16 script16 {
+    sprite_set(sprite46);
+    blend_mode(Additive);
+    alpha(0x0);
+    alpha_interp_linear(0xff, 30);
+    color(0xe0, 0xe0, 0xff);
++30: // 30
+    anm_halt();
+
+interrupt[1]:
+    alpha_interp_linear(0x0, 120);
++120: // 150
+    anm_delete();
+}
+
+
+script 17 script17 {
+    sprite_set(sprite46);
+    blend_mode(Additive);
+    alpha(0x0);
+    alpha_interp_linear(0xff, 300);
+    color(0xff, 0xe0, 0xe0);
+    scale(1.5, 1.5);
+    rotation_speed(0.0, 0.0, 0.02617994);
++300: // 300
+    anm_halt();
+
+interrupt[1]:
+    alpha_interp_linear(0x0, 120);
++120: // 420
+    anm_delete();
+}
+
+// 64
+// Koa
+script 18 script18 {
+-1:
+    layer(Layer7);
+    sprite_set(sprite37);
+    alpha(0x0);
+    scale(10.0, 10.0);
+0:
+    alpha_interp_linear(0xff, 30);
+    scale_interp(30, Linear, 1.0, 1.0);
+    //position_mode(true);
+    loop {
+        move_position_interp(60, DecelerateSlow, 0.0, -4.0, 0.0);
++60: // 60
+        move_position_interp(60, DecelerateSlow, 0.0, 4.0, 0.0);
++60: // 120
+    }
+}
+
+// 65
+// Patchy main
+script 19 script19 {
+-1:
+    layer(Layer7);
+    sprite_set(sprite38);
+0:
+    //position_mode(true);
+    loop {
+        move_position_interp(60, DecelerateSlow, 0.0, -4.0, 0.0);
++60: // 60
+        move_position_interp(60, DecelerateSlow, 0.0, 4.0, 0.0);
++60: // 120
+    }
+    
+interrupt[1]:
+    sprite_set(sprite38);
+    interrupt_return();
+interrupt[6]:
+    sprite_set(sprite39);
+    interrupt_return();
+}
+
+// 67
+// Patchy left
+script 20 script21 {
+-1:
+    layer(Layer7);
+    sprite_set(sprite38);
+0:
+    nop();
++5: // 5
+    sprite_set(sprite42);
++5: // 10
+    sprite_set(sprite41);
++5: // 15
+    sprite_set(sprite40);
+    anm_static();
+    
+interrupt[1]:
+interrupt[6]:
+    interrupt_return();
+}
+
+// 68
+// Patchy right
+script 21 script22 {
+-1:
+    layer(Layer7);
+    sprite_set(sprite38);
+    scale_flip_x();
+0:
+    nop();
++5: // 5
+    sprite_set(sprite42);
++5: // 10
+    sprite_set(sprite41);
++5: // 15
+    sprite_set(sprite40);
+    anm_static();
+    
+interrupt[1]:
+interrupt[6]:
+    interrupt_return();
+}
+
+// 69
+// Patchy left stop
+script 22 script23 {
+-1:
+    layer(Layer7);
+    sprite_set(sprite40);
+0:
+    nop();
++5: // 5
+    sprite_set(sprite41);
++5: // 10
+    sprite_set(sprite42);
++5: // 15
+    sprite_set(sprite38);
+    loop {
+        move_position_interp(60, DecelerateSlow, 0.0, -4.0, 0.0);
++60: // 60
+        move_position_interp(60, DecelerateSlow, 0.0, 4.0, 0.0);
++60: // 120
+    }
+    
+interrupt[1]:
+    sprite_set(sprite38);
+    interrupt_return();
+interrupt[6]:
+    sprite_set(sprite39);
+    interrupt_return();
+}
+
+// 70
+// Patchy right stop
+script 23 script24 {
+-1:
+    layer(Layer7);
+    sprite_set(sprite40);
+    scale_flip_x();
+0:
+    nop();
++5: // 5
+    sprite_set(sprite41);
++5: // 10
+    sprite_set(sprite42);
++5: // 15
+    sprite_set(sprite38);
+    loop {
+        move_position_interp(60, DecelerateSlow, 0.0, -4.0, 0.0);
++60: // 60
+        move_position_interp(60, DecelerateSlow, 0.0, 4.0, 0.0);
++60: // 120
+    }
+
+interrupt[1]:
+    sprite_set(sprite38);
+    interrupt_return();
+interrupt[6]:
+    sprite_set(sprite39);
+    interrupt_return();
+}
+
+// 66
+// Patchy attack
+script 24 script20 {
+-1:
+    layer(Layer7);
+    sprite_set(sprite39);
+    //position_mode(true);
+0:
+    loop {
+        move_position_interp(60, DecelerateSlow, 0.0, -4.0, 0.0);
++60: // 60
+        move_position_interp(60, DecelerateSlow, 0.0, 4.0, 0.0);
++60: // 120
+    }
+}

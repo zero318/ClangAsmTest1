@@ -184,7 +184,7 @@ global EX_LOOP = 65536;
 global EX_MOVE = 131072;
 global EX_VEL = 262144;
 global EX_VELADD = 524288;
-global EX_BRIGHT = 1048576;
+global EX_BLEND = 1048576;
 global EX_VELTIME = 2097152;
 global EX_SIZE = 4194304;
 global EX_SAVEANGLE = 8388608;
@@ -198,10 +198,12 @@ global EX_HOMING = 1073741824;
 global EX_WAIT = -2147483648;
 //global EX_ACCEL_2 = 32;
 //global EX_NO_GRAZE_EFFECT = 33;
-// Laser unique effects
+
+// Line/curvy laser unique effects
 global EX_SETID = 32768;
+// Curvy laser unique effects
 global EX_GOTO = 65536;
-global EX_UNKFLAG = 268435456;
+global EX_FREEZE = 268435456;
 
 /// Bullet effect arguments
 global ExIgnoreI                = -9999994;

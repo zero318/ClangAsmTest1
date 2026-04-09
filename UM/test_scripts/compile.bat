@@ -8,13 +8,15 @@ SET "truanm=%truth_path%truth-core.exe truanm"
 SET "trustd=%truth_path%truth-core.exe trustd"
 SET "trumsg=%truth_path%truth-core.exe trumsg"
 
-SET "out=..\out\build\x86-Clang-Release-Debug\"
+SET "out=..\..\out\build\x86-Clang-Release-Debug\"
+SET "outD=..\..\out\build\x86-Clang-Debug\"
 
 SET "thecl=F:\Users\zero318\Source\Repos\thtk_current2\out\build\x64-Clang-Release-Debug\thecl\thecl.exe"
 
-REM for %%g in (*.anm_dump_map) do (
-	REM %truanm% c "%%g" -g 18 -m %truth_map_path%any.anmm -o "%out%%%~ng.anm" -i "anm_data/%%~ng.anm"
-    REM %truanm% d "%out%%%~ng.anm" -g 18 -m %truth_map_path%any.anmm -o "%%~ng.anm_redump_map"
+for %%g in (*.anm_dump_map) do (
+	%truanm% c "%%g" -g 18 -m %truth_map_path%any.anmm -o "%out%%%~ng.anm" -i "."
+    %truanm% d "%out%%%~ng.anm" -g 18 -m %truth_map_path%any.anmm -o "%%~ng.anm_redump_map"
+    COPY "%out%%%~ng.anm" "%outD%%%~ng.anm"
     REM thanm.exe -x 18 "%%g" "anm_data/%%~ng.anm_temp"
     REM thanm.exe -c 18 "anm_data/%%~ng.anm_temp" "%out%%%~ng.anm"
 )
@@ -27,4 +29,5 @@ for %%g in (*.ecl_dump_map) do (
 	%thecl% -c 18 -m "%truth_map_path%th18_thtk.eclm" "%%~ng.ecl_dump_map"  "%out%%%~ng.ecl"
 	%thecl% -d 18 -m "%truth_map_path%th18_thtk.eclm" "%out%%%~ng.ecl" "%%~ng.ecl_redump_map"
 	%thecl% -d 18 -r -m "%truth_map_path%th18_thtk.eclm" "%out%%%~ng.ecl" "%%~ng.ecl_raw_redump_map"
+    COPY "%out%%%~ng.ecl" "%outD%%%~ng.ecl"
 )

@@ -1,0 +1,76 @@
+anim { "enemy.anm"; "st01enm.anm"; "patchy.anm"; }
+//ecli { "default.ecl"; "st01bs.ecl"; "st01mbs.ecl"; }
+ecli { "default.ecl"; }
+
+#include "common.hecl"
+#include "math.hecl"
+
+inline void laser_curve_init(int shooter, int color, int curve_length, float width, float speed, float angle) {
+    shooter_reset(shooter);
+    laser_timing_data(shooter, curve_length, 0, 0, 0, 0);
+    laser_size_data(shooter, 0.0f, 0.0f, 0.0f, width);
+    bullet_sprite(shooter, 0, color);
+    bullet_speed(shooter, speed, 0.0f);
+    shoot_angle(shooter, angle, 0.0f);
+}
+
+void enemy_test() {
+    anm_source(4);
+    anm_set_slot_main(0, 19);
+
+    move_position_abs_interp(60, Interp_DecelerateSlow, 0.0, 128.0);
+
+    boss_set(0);
+    enemy_set_hitbox(48.0, 56.0);
+
+    shooter_reset(1);
+    bullet_sprite(1, Rice, Blue);
+    //bullet_sprite(1, BigYinYangR, Red4);
+    shoot_angle(1, 0.7853982f, 0.7853982f);
+    bullet_speed(1, 3.0f, 3.0f);
+    laser_size_data(1, 0.0f, 256.0f, 0.0f, 16.0f);
+    //laser_size_data(1, 0.0f, 64.0f, 0.0f, 256.0f);
+    bullet_sound(0, 18, -1);
+    bullet_effects_add(1, false, EX_BLEND, 0, ExNoI, ExNoF, ExNoF);
+    //bullet_effects_ex(1, 0, false, EX_SHOOT, 8, 8, 1, 1, -PI, PI, 2.3f, 1.0f);
+    //bullet_effects_ex(1, 1, false, EX_SHOOT_DATA, 5, 6, 0, 0, 0.0f, 0.0f, 0.0f, 0.0f);
+    //bullet_effects(1, 2, false, EX_WAIT, 2 : 2 : 2 : 4, ExNoI, ExNoF, ExNoF);
+    //bullet_effects(1, 3, false, EX_LOOP, 0, ExNoI, ExNoF, ExNoF);
+    //bullet_effects(1, 8, false, EX_ANIM, 1, ExNoI, ExNoF, ExNoF);
+    //bullet_effects(1, 9, false, EX_BRIGHT, 1, ExNoI, ExNoF, ExNoF);
+    //bullet_effects(1, 10, false, EX_VELTIME, 90, ExNoI, 0.4f, -1000000.0f);
+    shoot_offset(1, 0.0f, -40.0f);
+    
+    shooter_reset(2);
+    laser_curve_init(2, DarkCyan, 10, 5.0f, 5.0f, 0.0f);
+    
+    
+loop {
++120:
+        anm_interrupt_slot(0, 6);
+        
+        float angle = PLAYER_ANGLE - PI;
+        times(5) {
+            shoot_angle(1, angle, 0.0f);
+            laser_line_create(1);
+            angle += 1.256637f;
+            math_reduce_angle(angle);
+        }
++30:
+        //laser_curve_create(2);
++90:
+        anm_interrupt_slot(0, 1);
+    }
+    
+    halt();
+}
+
+void main() {
+    enemy_flags_set(FLAG_INVINCIBLE | FLAG_INTANGIBLE | FLAG_NO_DELETE);
++1:
+    chapter_set(0);
+    
+    enemy_create_abs("enemy_test", 64.0, -32.0, 10000, 0, 0);
+    
+    halt();
+}

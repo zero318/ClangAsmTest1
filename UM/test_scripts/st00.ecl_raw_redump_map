@@ -1,0 +1,68 @@
+anim { "enemy.anm"; "st01enm.anm"; "patchy.anm"; }
+ecli { "default.ecl"; }
+
+void enemy_test()
+{
+    frame_enter(8);
+    anm_source(4);
+    anm_set_slot_main(0, 19);
+    move_position_abs_interp(60, 4, 0.0f, 128.0f);
+    boss_set(0);
+    enemy_set_hitbox(48.0f, 56.0f);
+    shooter_reset(1);
+    bullet_sprite(1, 8, 6);
+    shoot_angle(1, 0.7853982f, 0.7853982f);
+    bullet_speed(1, 3.0f, 3.0f);
+    laser_size_data(1, 0.0f, 256.0f, 0.0f, 16.0f);
+    bullet_sound(0, 18, -1);
+    bullet_effects_add(1, 0, 1048576, 0, -9999994, -9999994.0f, -9999994.0f);
+    shoot_offset(1, 0.0f, -40.0f);
+    shooter_reset(2);
+    shooter_reset(2);
+    laser_timing_data(2, 10, 0, 0, 0, 0);
+    laser_size_data(2, 0.0f, 0.0f, 0.0f, 5.0f);
+    bullet_sprite(2, 0, 7);
+    bullet_speed(2, 5.0f, 0.0f);
+    shoot_angle(2, 0.0f, 0.0f);
+enemy_test_596:
++120: //120
+    anm_interrupt_slot(0, 6);
+    push_float(%PLAYER_ANGLE);
+    push_float(3.1415927f);
+    math_float_sub();
+    pop_float([0.0f]);
+    push_int(5);
+    pop_int([4]);
+enemy_test_736:
+    math_post_dec([4]);
+    jump_equ(enemy_test_948, 120);
+    shoot_angle(1, [0.0f], 0.0f);
+    laser_line_create(1);
+    push_float([0.0f]);
+    push_float(1.256637f);
+    math_float_add();
+    pop_float([0.0f]);
+    math_reduce_angle([0.0f]);
+    jump(enemy_test_736, 120);
+enemy_test_948:
++120: //240
+    anm_interrupt_slot(0, 1);
+    jump(enemy_test_596, 0);
+enemy_test_996:
++10000: //10240
+    jump(enemy_test_996, 240);
+    ret();
+}
+
+void main()
+{
+    frame_enter(0);
+    enemy_flags_set(176);
++1: //1
+    chapter_set(0);
+    enemy_create_abs("enemy_test", 64.0f, -32.0f, 10000, 0, 0);
+main_128:
++10000: //10001
+    jump(main_128, 1);
+    ret();
+}
