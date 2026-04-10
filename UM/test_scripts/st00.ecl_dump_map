@@ -22,6 +22,8 @@ void enemy_test() {
 
     boss_set(0);
     enemy_set_hitbox(48.0, 56.0);
+    
+    item_reward_set(20);
 
     shooter_reset(1);
     bullet_sprite(1, Rice, Blue);
@@ -70,8 +72,8 @@ void main() {
 +1:
     chapter_set(0);
     
-    msg_read(-2);
-    halt();
+    //msg_read(-2);
+    //halt();
     
     enemy_create_abs("enemy_test", 64.0, -32.0, 10000, 0, 0);
     

@@ -27725,8 +27725,12 @@ public:
 		return this->angle_from_point(UNUSED_DWORD, position);
 	}
 
+	inline float distance_from_point_squared(Float2* position) {
+		return position->distance_squared(&this->data.position);
+	}
+
 	inline float distance_from_point(Float2* position) {
-		return zsqrtf<ForceInline>(position->distance_squared(&this->data.position));
+		return zsqrtf<ForceInline>(this->distance_from_point_squared(position));
 	}
 
 	// 0x45D090
@@ -29417,39 +29421,57 @@ struct Popup {
 	Float3 position; // 0xC
 	float __speed; // 0x18
 	D3DCOLOR color; // 0x1C
-	Timer __timer_20; // 0x20
+	Timer lifetime; // 0x20
 	unknown_fields(0x8); // 0x34
 	bool alive; // 0x3C
 	uint8_t digit_count; // 0x3D
-	unknown_fields(0xA); // 0x3E
+	unknown_fields(0x2); // 0x3E
+	int32_t bonusA; // 0x40
+	float bonusB; // 0x44
 	// 0x48
 
-	inline bool on_tick() {
+	inline void on_tick_small_score() {
 		if (this->alive) {
 			float position = this->position.y;
 			float speed = this->__speed;
 			this->position.y -= speed * GAME_SPEED;
 			this->__speed = speed * 0.95f;
-			if (++this->__timer_20 <= 60) {
-				return true;
+			if (++this->lifetime > 60) {
+				this->alive = false;
 			}
-			this->alive = false;
 		}
-		return false;
+	}
+
+	inline void on_tick_bonus() {
+		if (this->alive) {
+			if (++this->lifetime > 60) {
+				D3DCOLOR color = this->color;
+				int32_t alpha = color >> 24;
+				alpha -= 4;
+				if (alpha <= 0) {
+					this->alive = false;
+				} else {
+					this->color = (color & 0xFFFFFF) | alpha << 24;
+				}
+			}
+		}
 	}
 };
 #pragma region // Popup Validation
 
 #pragma endregion
 
+static inline constexpr uint32_t SMALL_SCORE_POPUP_COUNT = 13;
+static inline constexpr uint32_t BONUS_POPUP_COUNT = 5;
+
 // size: 0x1044
 struct PopupManager : ZUNTask {
 	// ZUNTask base; // 0x0
 	AnmLoaded* ascii_anm; // 0xC
-	int32_t __index_10; // 0x10
+	int32_t __next_small_score_index; // 0x10
 	unknown_fields(0x4); // 0x14
-	AnmVM __vm_18; // 0x18
-	Popup popups[18]; // 0x624
+	AnmVM vm; // 0x18
+	Popup popups[SMALL_SCORE_POPUP_COUNT + BONUS_POPUP_COUNT]; // 0x624
 	// 0xCE4
 
 	inline void zero_contents() {
@@ -29472,21 +29494,13 @@ struct PopupManager : ZUNTask {
 	// 0x464020
 	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x464020) {
 
-		for (size_t i = 0; i < 13; ++i) {
-			this->popups[i].on_tick();
+		Popup* popup = &this->popups[0];
+		nounroll for (size_t i = 0; i < SMALL_SCORE_POPUP_COUNT; ++popup, ++i) {
+			popup->on_tick_small_score();
 		}
-		for (size_t i = 0; i < 5; ++i) {
-			Popup* popup = &this->popups[i + 13];
-			if (popup->on_tick()) {
-				D3DCOLOR color = popup->color;
-				int32_t alpha = color >> 18;
-				alpha -= 4;
-				if (alpha <= 0) {
-					popup->alive = false;
-				} else {
-					popup->color = (color & 0xFFFFFF) | alpha << 18;
-				}
-			}
+		popup = &this->popups[SMALL_SCORE_POPUP_COUNT];
+		nounroll for (size_t i = 0; i < BONUS_POPUP_COUNT; ++popup, ++i) {
+			popup->on_tick_bonus();
 		}
 
 		return UpdateFuncNext;
@@ -29494,11 +29508,109 @@ struct PopupManager : ZUNTask {
 
 	// 0x464180
 	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x464180) {
-		Popup* popup = this->popups;
+		Popup* popup = &this->popups[0];
 		SUPERVISOR.d3d_disable_fog();
 
-		for (size_t i = 0; i < 13; ++i) {
-			// TODO: render popups
+		Player* player = PLAYER_PTR;
+
+		for (size_t i = 0; i < SMALL_SCORE_POPUP_COUNT; ++popup, ++i) {
+			float offset = 8.0f;
+			if (popup->alive) {
+				if (popup->lifetime < 8) {
+					offset /= (float)popup->lifetime;
+				}
+				this->vm.controller.position.x = popup->position.x - (int32_t)popup->digit_count * offset * 0.5f;
+				this->vm.controller.position.y = popup->position.y;
+				this->vm.data.color1 = popup->color;
+
+				int32_t alpha;
+
+				int32_t player_distance_squared = player->distance_from_point_squared(&popup->position);
+				if (player_distance_squared > 16384) { // 128 squared
+					alpha = 255;
+				}
+				else if (player_distance_squared > 4096) { // 64 squared
+					alpha = (player_distance_squared - 4096) / 12288 - 128; // 12288 = (128 squared - 64 squared)
+				}
+				else {
+					alpha = 128;
+				}
+
+				int32_t digit_count = popup->digit_count;
+				uint8_t* digit_ptr = &popup->digits[digit_count - 1];
+				if (digit_count) {
+					int32_t B = (30 - digit_count) * 2;
+					int32_t C = (28 - digit_count) * 2;
+					uint8_t digit;
+					int32_t sprite;
+					do {
+						int32_t lifetime = popup->lifetime;
+						if (
+							lifetime >= C - 4 &&
+							(digit = *digit_ptr) != 10
+						) {
+							if (lifetime < C) {
+								sprite = digit + 300;
+							} else if (lifetime < B) {
+								sprite = digit + 310;
+							} else {
+								goto skip_render;
+							}
+						} else {
+							digit = *digit_ptr;
+							sprite = digit + 289;
+						}
+						
+						this->vm.data.sprite_id = sprite;
+						this->vm.set_uv_from_sprite(&this->vm.get_anm_loaded2()->sprites[sprite]);
+						this->vm.set_alpha(alpha);
+						this->vm.data.sprite_size.x = this->vm.get_sprite()->__size_x;
+						this->vm.data.scale_enabled = true;
+						this->vm.__get_vertex_positions(&SPRITE_VERTEX_BUFFER_A[0].position, &SPRITE_VERTEX_BUFFER_A[1].position, &SPRITE_VERTEX_BUFFER_A[2].position, &SPRITE_VERTEX_BUFFER_A[3].position);
+						ANM_MANAGER_PTR->__render_vertices(&this->vm, RENDER_VERTICES_ROUND_INPUTS);
+
+					skip_render:
+						--digit_ptr;
+						B += 2;
+						C += 2;
+						this->vm.controller.position.x += offset;
+					} while (--digit_count);
+					player = PLAYER_PTR;
+				}
+			}
+		}
+
+		popup = &this->popups[SMALL_SCORE_POPUP_COUNT];
+		AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
+
+		for (size_t i = 0; i < BONUS_POPUP_COUNT; ++popup, ++i) {
+			if (popup->alive) {
+				ascii_manager->font_id = 2;
+				ascii_manager->group = 2;
+				ascii_manager->color = popup->color;
+				ascii_manager->__horizontal_positioning_mode = 0;
+				ascii_manager->__vertical_positioning_mode = 0;
+
+				Float3 position = popup->position;
+				position.x += 224.0f;
+				position.y += 16.0f;
+
+				if (popup->bonusA >= 0) {
+					ascii_manager->printf(&position, "BONUS %.1f", popup->bonusB);
+					position.y += 11.0f;
+					ASCII_MANAGER_PTR->printf(&position, "%d", popup->bonusA);
+				}
+				else {
+					ascii_manager->printf(&position, "NO BONUS");
+				}
+
+				ascii_manager = ASCII_MANAGER_PTR;
+				ascii_manager->color = COLOR(255, 255, 255, 255);
+				ascii_manager->group = 0;
+				ascii_manager->font_id = 0;
+				ascii_manager->__horizontal_positioning_mode = 1;
+				ascii_manager->__vertical_positioning_mode = 1;
+			}
 		}
 
 		return UpdateFuncNext;
@@ -29518,9 +29630,9 @@ struct PopupManager : ZUNTask {
 	dllexport gnu_noinline static void stdcall create_popup(Float3* position, int32_t value, D3DCOLOR color) {
 		PopupManager* popup_manager = POPUP_MANAGER_PTR;
 
-		int32_t index = popup_manager->__index_10;
-		if (index >= 10) {
-			popup_manager->__index_10 = 0;
+		int32_t index = popup_manager->__next_small_score_index;
+		if (index >= 10) { // this doesn't even wrap at the array size...
+			popup_manager->__next_small_score_index = 0;
 			index = 0;
 		}
 
@@ -29545,11 +29657,48 @@ struct PopupManager : ZUNTask {
 		}
 		popup->digit_count = digit_count;
 		popup->color = color;
-		popup->__timer_20.reset();
+		popup->lifetime.reset();
 		popup->position = *position;
 		popup->__speed = 1.0f;
 
-		++popup_manager->__index_10;
+		++popup_manager->__next_small_score_index;
+	}
+
+private:
+	// Function from DDC, not normally in UM
+	// th14: 0x458000
+	dllexport gnu_noinline static void vectorcall create_bonus_popup(int, int, float, float, float, Float3* position, int32_t bonusA, D3DCOLOR color, float bonusB) {
+		Popup* popup = &POPUP_MANAGER_PTR->popups[SMALL_SCORE_POPUP_COUNT]; // offset 0x98C in DDC
+
+		for (int32_t i = 0; i < BONUS_POPUP_COUNT; ++popup, ++i) {
+			if (!popup->alive) {
+				popup->color = color;
+				popup->lifetime.reset();
+				popup->position = *position;
+
+				if (popup->position.y < SCREEN_BOTTOM_EDGE) {
+					popup->position.y = SCREEN_BOTTOM_EDGE;
+				}
+
+				float position_x = popup->position.x;
+				if (position_x < SCREEN_LEFT_EDGE + 24.0f) { // -168.0f
+					popup->position.x = SCREEN_LEFT_EDGE + 24.0f; // -168.0f
+				}
+				else if (position_x > SCREEN_RIGHT_EDGE - 24.0f) { // 168.0f
+					popup->position.x = SCREEN_RIGHT_EDGE - 24.0f; // 168.0f
+				}
+
+				popup->bonusB = bonusB;
+				popup->bonusA = bonusA;
+
+				popup->alive = true;
+				return;
+			}
+		}
+	}
+public:
+	forceinline static void vectorcall create_bonus_popup(Float3* position, int32_t bonusA, D3DCOLOR color, float bonusB) {
+		create_bonus_popup(UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT, position, bonusA, color, bonusB);
 	}
 
 	forceinline ZUNResult initialize() {
@@ -29563,12 +29712,12 @@ struct PopupManager : ZUNTask {
 		this->on_draw_func = update_func;
 
 		AnmLoaded* ascii_anm = this->ascii_anm;
-		this->__vm_18.reset();
-		this->__vm_18.data.slot2 = ascii_anm->slot_index;
-		ascii_anm->set_sprite(&this->__vm_18, 289);
+		this->vm.reset();
+		this->vm.data.slot2 = ascii_anm->slot_index;
+		ascii_anm->set_sprite(&this->vm, 289);
 
-		this->__vm_18.data.origin_mode = 2;
-		this->__vm_18.data.resolution_mode = 3;
+		this->vm.data.origin_mode = 2;
+		this->vm.data.resolution_mode = 3;
 
 		return ZUN_SUCCESS;
 	}
@@ -31631,8 +31780,24 @@ struct CardYachie : CardBase {
 	// Method 30
 	// 0x40D630
 	dllexport gnu_noinline virtual int thiscall __on_enemy_item_spawn(Float3* position, int32_t* extra_counts) {
-		float A = REPLAY_RNG.rand_angle();
-		// TODO, needs arguments known
+		float angle = REPLAY_RNG.rand_angle();
+
+		int32_t money_count = extra_counts[PointItem - 1] / 3; // -1 to account for the invalid item
+		if (!money_count) {
+			money_count = 1;
+		}
+
+		if (money_count > 0) {
+			do {
+				Float3 spawn_position;
+				spawn_position.make_from_vector_components3(angle, 32.0f, 32.0f);
+				float mult = REPLAY_RNG.rand_float() * 0.5f + 1.0f;
+				spawn_position = spawn_position * mult + *position;
+				spawn_item(PointItem, &spawn_position, -HALF_PI_f, 2.2f, 30);
+				angle = reduce_angle(angle + HALF_PI_f + REPLAY_RNG.rand_angle() * 0.25f);
+			} while (--money_count);
+		}
+
 		return 0;
 	}
 
@@ -39167,9 +39332,24 @@ struct ItemManager : ZUNTask {
 	}
 
 private:
+	// unused args based on FW code
 	// 0x446F40
-	dllexport gnu_noinline Item* thiscall spawn_item(int32_t item_id, Float3* position, float, float angle, float speed, int32_t spawn_delay, int, int) asm_symbol_rel(0x446F40) {
-		if (item_id > 20) {
+	dllexport gnu_noinline Item* thiscall spawn_item(
+		int32_t item_id,
+		Float3* position,
+		UNUSED_ARG(D3DCOLOR _tint),
+		float angle,
+		float speed,
+		int32_t spawn_delay,
+		UNUSED_ARG(int32_t _dword_C8C_val),
+		UNUSED_ARG(int32_t _sound_id)
+	) asm_symbol_rel(0x446F40)
+	{
+		constexpr D3DCOLOR tint = COLOR(255, 255, 255, 255);
+		constexpr int dword_C8C_val = 0;
+		constexpr int32_t sound_id = -1;
+
+		if (item_id > ITEM_ID_COUNT) {
 			return NULL;
 		}
 		Item* item = NULL;
@@ -39200,7 +39380,7 @@ private:
 					item->__attract_speed = 0.0f;
 					item->__spawn_delay = spawn_delay;
 					item->id = (ItemID)item_id;
-					item->sound_id = -1;
+					item->sound_id = sound_id; // -1
 					if (!spawn_delay) {
 						item->__create_spawn_effects();
 					}
@@ -39219,16 +39399,16 @@ private:
 							item->__vm_61C.data.current_instruction_offset = -1;
 							item->__vm_id_C28 = ABILITY_MANAGER_PTR->instantiate_small_card_sprite_vm(script);
 							item->__vm_id_C28.set_controller_position(&item->position);
-							item->__vm_id_C28.set_color1(COLOR(255, 255, 255, 255));
+							item->__vm_id_C28.set_color1(tint); // -1
 							break;
 						default:
 							get_bullet_anm()->__copy_data_to_vm_and_run(&item->__vm_10, script);
 							get_bullet_anm()->__copy_data_to_vm_and_run(&item->__vm_61C, ITEM_SPRITE_DATA[item_id].__id_4);
 							item->__vm_id_C28 = 0;
-							item->__vm_10.data.color1 = COLOR(255, 255, 255, 255);
+							item->__vm_10.data.color1 = tint; // -1
 							break;
 					}
-					item->__dword_C8C = 0;
+					item->__dword_C8C = dword_C8C_val; // 0
 					item->free_list_node.unlink();
 				}
 				return item;
@@ -39263,16 +39443,16 @@ private:
 					item->__timer_C4C.reset();
 					item->angle = angle;
 					item->speed = speed;
-					item->__dword_C8C = 0;
+					item->__dword_C8C = dword_C8C_val; // 0
 					item->free_list_node.unlink();
-					item->sound_id = -1;
+					item->sound_id = sound_id; // -1
 				}
 				return item;
 		}
 	}
 public:
 	inline Item* spawn_item(int32_t item_id, Float3* position, float angle, float speed, int32_t spawn_delay) {
-		return this->spawn_item(item_id, position, UNUSED_FLOAT, angle, speed, spawn_delay, UNUSED_DWORD, UNUSED_DWORD);
+		return this->spawn_item(item_id, position, UNUSED_DWORD, angle, speed, spawn_delay, UNUSED_DWORD, UNUSED_DWORD);
 	}
 
 	// 0x445A80

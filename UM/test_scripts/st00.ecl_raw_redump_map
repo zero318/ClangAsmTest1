@@ -9,6 +9,7 @@ void enemy_test()
     move_position_abs_interp(60, 4, 0.0f, 128.0f);
     boss_set(0);
     enemy_set_hitbox(48.0f, 56.0f);
+    item_reward_set(20);
     shooter_reset(1);
     bullet_sprite(1, 8, 6);
     shoot_angle(1, 0.7853982f, 0.7853982f);
@@ -24,7 +25,7 @@ void enemy_test()
     bullet_sprite(2, 0, 7);
     bullet_speed(2, 5.0f, 0.0f);
     shoot_angle(2, 0.0f, 0.0f);
-enemy_test_596:
+enemy_test_616:
 +120: //120
     anm_interrupt_slot(0, 6);
     push_float(%PLAYER_ANGLE);
@@ -33,9 +34,9 @@ enemy_test_596:
     pop_float([0.0f]);
     push_int(5);
     pop_int([4]);
-enemy_test_736:
+enemy_test_756:
     math_post_dec([4]);
-    jump_equ(enemy_test_948, 120);
+    jump_equ(enemy_test_968, 120);
     shoot_angle(1, [0.0f], 0.0f);
     laser_line_create(1);
     push_float([0.0f]);
@@ -43,14 +44,14 @@ enemy_test_736:
     math_float_add();
     pop_float([0.0f]);
     math_reduce_angle([0.0f]);
-    jump(enemy_test_736, 120);
-enemy_test_948:
+    jump(enemy_test_756, 120);
+enemy_test_968:
 +120: //240
     anm_interrupt_slot(0, 1);
-    jump(enemy_test_596, 0);
-enemy_test_996:
+    jump(enemy_test_616, 0);
+enemy_test_1016:
 +10000: //10240
-    jump(enemy_test_996, 240);
+    jump(enemy_test_1016, 240);
     ret();
 }
 
@@ -60,13 +61,9 @@ void main()
     enemy_flags_set(176);
 +1: //1
     chapter_set(0);
-    msg_read(-2);
-main_96:
-+10000: //10001
-    jump(main_96, 1);
     enemy_create_abs("enemy_test", 64.0f, -32.0f, 10000, 0, 0);
-main_172:
-+10000: //20001
-    jump(main_172, 10001);
+main_128:
++10000: //10001
+    jump(main_128, 1);
     ret();
 }
