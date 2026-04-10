@@ -7856,7 +7856,7 @@ static inline constexpr int32_t DEFAULT_BOMB_STOCKS = 3;
 // size: 0xFC
 struct Globals {
 	int32_t current_stage; // 0x0
-	int32_t __stage_number_related_4; // 0x4
+	int32_t __starting_stage; // 0x4
 	int32_t chapter; // 0x8
 	int32_t __counter_C; // 0xC (Sound related?)
 	int32_t __counter_10; // 0x10 (Sound related?)
@@ -7927,7 +7927,7 @@ struct Globals {
 	// 0x417A60
 	dllexport gnu_noinline Globals& thiscall operator=(const Globals& rhs) {
 		this->current_stage = rhs.current_stage;
-		this->__stage_number_related_4 = rhs.__stage_number_related_4;
+		this->__starting_stage = rhs.__starting_stage;
 		this->chapter = rhs.chapter;
 		this->__counter_C = rhs.__counter_C;
 		this->__counter_10 = rhs.__counter_10;
@@ -8196,10 +8196,10 @@ struct GameManager {
 	union {
 		uint32_t flags; // 0x8
 		struct {
-			uint32_t __unknown_flag_gm_A : 1; // 1
-			uint32_t __stage_transition_related : 1; // 2
+			uint32_t __stage_restart : 1; // 1
+			uint32_t __stage_transition : 1; // 2
 			uint32_t __unknown_flag_gm_C : 1; // 3
-			uint32_t __unknown_flag_gm_D : 1; // 4
+			uint32_t __stage_restart_with_continue : 1; // 4
 			uint32_t game_type : 2; // 5-6
 			uint32_t __is_demo : 1; // 7
 			uint32_t __unknown_flag_gm_F : 1; // 8
@@ -13678,7 +13678,7 @@ extern "C" {
 // size: 0xD8
 struct GameThread : ZUNTask {
 	//ZUNTask base; // 0x0
-	Timer __timer_C; // 0xC
+	Timer time; // 0xC
 	int32_t stage_number; // 0x20
 	int32_t chapter; // 0x24
 	Config config; // 0x28
@@ -13704,11 +13704,11 @@ struct GameThread : ZUNTask {
 			uint32_t open_ability_shop : 1; // 18
 		};
 	};
-	int __int_B4; // 0xB4
-	int __int_B8; // 0xB8
+	int32_t __int_B4; // 0xB4
+	int32_t __int_B8; // 0xB8
 	unknown_fields(0x14); // 0xBC
 	ReplayMode replay_mode; // 0xD0
-	int __int_D4; // 0xD4
+	int32_t __int_D4; // 0xD4
 	// 0xD8
 
 	inline void zero_contents() {
@@ -20771,7 +20771,7 @@ dllexport gnu_noinline MsgVM::~MsgVM() {
 dllexport gnu_noinline void thiscall Gui::cleanup() {
 	AnmManager* anm_manager = ANM_MANAGER_PTR;
 	if (
-		!(GAME_MANAGER.__unknown_flag_gm_A | GAME_MANAGER.__unknown_flag_gm_D)
+		!(GAME_MANAGER.__stage_restart | GAME_MANAGER.__stage_restart_with_continue)
 	) {
 		anm_manager->unload_anm(STAGE_LOGO_ANM_INDEX);
 	} else {
@@ -20782,7 +20782,7 @@ dllexport gnu_noinline void thiscall Gui::cleanup() {
 
 	void* msg_file_buffer = this->msg_file_buffer;
 	if (
-		!(GAME_MANAGER.__unknown_flag_gm_A | GAME_MANAGER.__unknown_flag_gm_D)
+		!(GAME_MANAGER.__stage_restart | GAME_MANAGER.__stage_restart_with_continue)
 	) {
 		SAFE_FREE(this->msg_file_buffer);
 		msg_file_buffer = NULL;
@@ -23270,9 +23270,9 @@ extern "C" {
 	externcg AsciiManager* ASCII_MANAGER_PTR cgasm("_ASCII_MANAGER_PTR");
 }
 
-#if INCLUDE_PATCH_CODE
-dllexport uint32_t score_upper[3] = { rand(), rand(), rand() };
-#endif
+//#if INCLUDE_PATCH_CODE
+//dllexport uint32_t score_upper[3] = { rand(), rand(), rand() };
+//#endif
 
 // size: 0x19278
 struct AsciiManager : ZUNTask {
@@ -23958,6 +23958,7 @@ public:
 		ASCII_MANAGER_PTR->print_score_impl(position, score, continues);
 	}
 
+	/*
 #if INCLUDE_PATCH_CODE
 	dllexport gnu_noinline static void stdcall print_score_bigger(Float3* position, uint32_t score, uint32_t continues) {
 		uint64_t big_score = score | (uint64_t)score_upper[1 + (*(uint32_t*)&position->y == 0x42800000)] << 32;
@@ -24012,6 +24013,7 @@ public:
 		ascii_manager->add_string(position, buffer_write);
 	}
 #endif
+	*/
 
 	// 0x41A110
 	dllexport gnu_noinline void cdecl debugf(Float3* position, const char* format, ...) asm_symbol_rel(0x41A110) {
@@ -27373,7 +27375,7 @@ struct Player : ZUNTask {
 		PLAYER_PTR = NULL;
 
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
-		if (GAME_MANAGER.__unknown_flag_gm_A) {
+		if (GAME_MANAGER.__stage_restart) { // does not check the other stage restart flag
 			anm_manager->mark_all_vms_from_loaded_slot_for_delete(PLAYER_ANM_INDEX);
 			CACHED_SHT_FILE_PTR = this->sht_file;
 		} else {
@@ -37430,13 +37432,13 @@ struct Stage : ZUNTask {
 
 		if (AnmVM* instance_vms = this->instance_vms) {
 			for (int32_t i = 0; i < this->std_file->instance_count; ++i) {
-				instance_vms[i].cleanup();
+				clang_forceinline instance_vms[i].cleanup();
 			}
 			SAFE_FREE(this->instance_vms);
 		}
 
-		for (int32_t i = 0; i < countof(this->std_vm.slot_vms); ++i) {
-			this->std_vm.slot_vms[i].cleanup();
+		nounroll for (int32_t i = 0; i < countof(this->std_vm.slot_vms); ++i) {
+			clang_forceinline this->std_vm.slot_vms[i].cleanup();
 		}
 
 		SAFE_FREE(this->std_file);
@@ -37444,16 +37446,15 @@ struct Stage : ZUNTask {
 
 		SAFE_DELETE(this->std_vm.distortion.fog_ptr);
 
-		if (!GAME_MANAGER.__unknown_flag_gm_A) {
+		if (!GAME_MANAGER.__stage_restart) {
 			ANM_MANAGER_PTR->unload_anm(STAGE_ANM_INDEX_A + (this->stage_number & 1));
 		}
 
-		if (STAGE_PTR == this) {
-			STAGE_PTR = NULL;
-		}
-		if (STAGE_B_PTR == this) {
-			STAGE_B_PTR = NULL;
-		}
+		Stage* stage = STAGE_PTR;
+		STAGE_PTR = stage == this ? NULL : stage;
+
+		stage = STAGE_B_PTR;
+		STAGE_B_PTR = stage == this ? NULL : stage;
 	}
 
 	// 0x41E2D0
@@ -52704,7 +52705,7 @@ void APPLY_DEBUG_CONFIG() {
 		DEBUG_STAGE = stage_number = Stage1;
 	}
 	GAME_MANAGER.globals.current_stage = stage_number;
-	GAME_MANAGER.globals.__stage_number_related_4 = stage_number;
+	GAME_MANAGER.globals.__starting_stage = stage_number;
 	GAME_MANAGER.globals.spell_practice_id = -1;
 	GAME_MANAGER.globals.difficulty = DEBUG_DIFFICULTY;
 	GAME_MANAGER.globals.character = DEBUG_CHARACTER;
@@ -53526,7 +53527,7 @@ public:
 						}
 					} while (++stage_number < STAGE_COUNT);
 					GAME_MANAGER.globals.current_stage = stage_number;
-					GAME_MANAGER.globals.__stage_number_related_4 = stage_number;
+					GAME_MANAGER.globals.__starting_stage = stage_number;
 					SUPERVISOR.gamemode_switch = GameMode::StartDemo; // 13
 
 					ReplayInfo* replay_info = replay_manager->info;
@@ -55468,7 +55469,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__update_gamemode() {
 					this->__bool_804 = true;
 					this->__int_808 = 0;
 					this->gamemode_switch = GameMode::Gameplay; // 7
-					int32_t stage_number = GAME_MANAGER.globals.__stage_number_related_4;
+					int32_t stage_number = GAME_MANAGER.globals.__starting_stage;
 					GAME_MANAGER.globals.current_stage = stage_number;
 					STAGE_DATA_PTR = &STAGE_DATA[stage_number];
 					GameThread::allocate(ReplayRecording);
@@ -55479,7 +55480,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__update_gamemode() {
 					this->__bool_804 = true;
 					this->__int_808 = 0;
 					this->gamemode_switch = GameMode::Gameplay; // 7
-					int32_t stage_number = GAME_MANAGER.globals.__stage_number_related_4;
+					int32_t stage_number = GAME_MANAGER.globals.__starting_stage;
 					GAME_MANAGER.globals.current_stage = stage_number;
 					STAGE_DATA_PTR = &STAGE_DATA[stage_number];
 					GameThread::allocate(ReplayPlayback);
@@ -55490,7 +55491,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__update_gamemode() {
 					this->__bool_804 = true;
 					this->__int_808 = 1;
 					this->gamemode_switch = GameMode::Gameplay; // 7
-					int32_t stage_number = GAME_MANAGER.globals.__stage_number_related_4;
+					int32_t stage_number = GAME_MANAGER.globals.__starting_stage;
 					GAME_MANAGER.globals.current_stage = stage_number;
 					STAGE_DATA_PTR = &STAGE_DATA[stage_number];
 					GameThread::allocate(ReplayRecording);
@@ -55866,14 +55867,14 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_4443C0() {
 		
 		ASCII_MANAGER_PTR->__vm_id_19268.interrupt_and_orphan_tree(1);
 
-		this->__timer_C.reset();
+		this->time.reset();
 	}
 	return ZUN_SUCCESS;
 }
 
 // 0x443860
 dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
-	if (SUPERVISOR.quitting != false) {
+	if (SUPERVISOR.quitting) {
 		return UpdateFuncDeleteCurrentThenNext;
 	}
 
@@ -55924,7 +55925,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 	}
 
 	// These both allocate the "main" enemy
-	switch (this->__timer_C.current) {
+	switch (this->time.current) {
 		case 0:
 			if (ZUN_FAILED(this->__sub_443E60())) {
 				return UpdateFuncNext;
@@ -55944,7 +55945,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 		delete stageB;
 	}
 
-	WINDOW_DATA.__int_20D0 = this->__timer_C == 5 ? 2 : WINDOW_DATA.__int_20D0;
+	WINDOW_DATA.__int_20D0 = this->time == 5 ? 2 : WINDOW_DATA.__int_20D0;
 
 	if (this->skip_flag) {
 		this->__unknown_flag_gt_J = true;
@@ -55959,7 +55960,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 			SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::MainMenu;
 		}
 
-		switch (this->__timer_C.current) {
+		switch (this->time.current) {
 			case 3540:
 				ScreenEffect::allocate(ScreenEffect5, 0x3C, 0, 0, 0, 91);
 				break;
@@ -55969,6 +55970,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 		}
 	}
 
+	// this didn't work anyway
+	/*
 #if INCLUDE_PATCH_CODE
 	gui = GUI_PTR;
 	uint64_t score = GAME_MANAGER.globals.score | (uint64_t)score_upper[0] << 32;
@@ -56007,9 +56010,10 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 		GAME_MANAGER.__high_score_continues = continues_local;
 	}
 #else
+*/
 	gui = GUI_PTR;
-	uint32_t score = GAME_MANAGER.globals.score;
-	uint32_t displayed_score = gui->__score;
+	int32_t score = GAME_MANAGER.globals.score;
+	int32_t displayed_score = gui->__score;
 	if (score != displayed_score) {
 		uint32_t score_diff = score - displayed_score;
 		uint32_t score_diff_B = score_diff / 32;
@@ -56032,17 +56036,17 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 		displayed_score += score_diff_C;
 		gui->__score = displayed_score;
 
-		if (displayed_score >= (int32_t)GAME_MANAGER.globals.score) {
+		if (displayed_score >= GAME_MANAGER.globals.score) {
 			gui->__int_15C = 0;
 		}
 	}
-	if ((int32_t)GAME_MANAGER.__high_score < displayed_score) {
+	if (GAME_MANAGER.__high_score < displayed_score) {
 		int32_t continues = GAME_MANAGER.globals.continues;
 		GAME_MANAGER.__unknown_flag_gm_C = true;
 		GAME_MANAGER.__high_score = displayed_score;
 		GAME_MANAGER.__high_score_continues = continues;
 	}
-#endif
+//#endif
 
 	if (this->open_ability_shop) {
 		Float3 position = { 448.0f, 32.0f, 0.0f };
@@ -56096,7 +56100,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 		SCREEN_EFFECT_DISABLE_TIME = disable_time - 1;
 	}
 
-	++this->__timer_C;
+	this->time++;
 
 	return UpdateFuncNext;
 }
@@ -56131,8 +56135,8 @@ static const int32_t CONTINUE_CREDITS_TABLE[DIFFICULTY_COUNT] = {
 // 0x4432C0
 dllexport gnu_noinline GameThread::~GameThread() {
 	SCOREFILE_MANAGER_PTR->save_files();
-	GAME_MANAGER.__unknown_flag_gm_A = false;
-	GAME_MANAGER.__stage_transition_related = false;
+	GAME_MANAGER.__stage_restart = false;
+	GAME_MANAGER.__stage_transition = false;
 	GAME_SPEED.set(1.0f);
 	UNKNOWN_FUNC_PTR_A = NULL;
 	UNKNOWN_FUNC_PTR_B = NULL;
@@ -56140,7 +56144,7 @@ dllexport gnu_noinline GameThread::~GameThread() {
 	switch (SUPERVISOR.gamemode_switch) {
 		case GameMode::StageTransition: // 12
 			ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
-			GAME_MANAGER.__stage_transition_related = true;
+			GAME_MANAGER.__stage_transition = true;
 			break;
 		case GameMode::MainMenu: // 4
 		case GameMode::GameMode16: // 16
@@ -56149,13 +56153,11 @@ dllexport gnu_noinline GameThread::~GameThread() {
 			break;
 		case GameMode::GameMode14: // 14
 			ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
-			if (GAME_MANAGER.globals.__stage_number_related_4 == GAME_MANAGER.globals.current_stage) {
+			if (GAME_MANAGER.globals.__starting_stage != GAME_MANAGER.globals.current_stage) {
 				GAME_MANAGER.globals.add_continue();
-				GAME_MANAGER.__unknown_flag_gm_D = true;
+				GAME_MANAGER.__stage_restart_with_continue = true;
 			}
-			else {
-				GAME_MANAGER.__unknown_flag_gm_A = true;
-			}
+			GAME_MANAGER.__stage_restart = true;
 			break;
 		case GameMode::GameMode2: // 2
 			ABILITY_MANAGER_PTR->__cleanup_all_anms();
@@ -56164,13 +56166,13 @@ dllexport gnu_noinline GameThread::~GameThread() {
 		case GameMode::StartReplay: // 11
 			ABILITY_MANAGER_PTR->__sub_4080E0();
 			ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
-			if (GAME_MANAGER.globals.__stage_number_related_4 == GAME_MANAGER.globals.current_stage) {
-				GAME_MANAGER.__unknown_flag_gm_A = true;
+			if (GAME_MANAGER.globals.__starting_stage == GAME_MANAGER.globals.current_stage) {
+				GAME_MANAGER.__stage_restart = true;
 			}
 			break;
 	}
 
-	if (!GAME_MANAGER.__stage_transition_related) {
+	if (!GAME_MANAGER.__stage_transition) {
 		switch (SUPERVISOR.gamemode_switch) {
 			default:
 				delete REPLAY_MANAGER_PTR;
@@ -56192,8 +56194,8 @@ dllexport gnu_noinline GameThread::~GameThread() {
 		Gui* gui = GUI_PTR;
 		SAFE_DELETE(gui->msg_vm);
 		if (
-			!GAME_MANAGER.__unknown_flag_gm_A &&
-			!GAME_MANAGER.__unknown_flag_gm_D
+			!GAME_MANAGER.__stage_restart &&
+			!GAME_MANAGER.__stage_restart_with_continue
 		) {
 			ANM_MANAGER_PTR->unload_anm(STAGE_LOGO_ANM_INDEX);
 			gui->stage_logo_anm = NULL;
@@ -56209,8 +56211,8 @@ dllexport gnu_noinline GameThread::~GameThread() {
 
 	EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
 	if (
-		!GAME_MANAGER.__unknown_flag_gm_A &&
-		!GAME_MANAGER.__unknown_flag_gm_D
+		!GAME_MANAGER.__stage_restart &&
+		!GAME_MANAGER.__stage_restart_with_continue
 	) {
 		delete enemy_manager;
 	}
@@ -56235,8 +56237,8 @@ dllexport gnu_noinline GameThread::~GameThread() {
 	}
 
 	if (
-		(GAME_MANAGER.game_type != SpellPractice || !GAME_MANAGER.__unknown_flag_gm_A) &&
-		!(GAME_MANAGER.__stage_transition_related | GAME_MANAGER.__is_demo)
+		(GAME_MANAGER.game_type != SpellPractice || !GAME_MANAGER.__stage_restart) &&
+		!(GAME_MANAGER.__stage_transition | GAME_MANAGER.__is_demo)
 	) {
 		clang_forceinline SOUND_MANAGER.__queue_bgm_stop();
 		SOUND_MANAGER.__text_buffer_2384[0] = '\0';
@@ -56246,7 +56248,7 @@ dllexport gnu_noinline GameThread::~GameThread() {
 
 	SCREEN_EFFECT_DISABLE_TIME = 1;
 
-	SUPERVISOR.background_color = GAME_MANAGER.__unknown_flag_gm_A ? COLOR(0, 0, 0, 0) : COLOR(255, 0, 0, 0);
+	SUPERVISOR.background_color = GAME_MANAGER.__stage_restart ? COLOR(0, 0, 0, 0) : COLOR(255, 0, 0, 0);
 }
 
 inline unsigned GameThread::thread_start_impl() {
@@ -56258,8 +56260,8 @@ inline unsigned GameThread::thread_start_impl() {
 	__asm FINIT
 
 	while (ANM_MANAGER_PTR->backbuffer_textures[0].anm_loaded_index >= 0) {
-		if (SUPERVISOR.quitting != false) {
-			goto thread_start_important_label;
+		if (SUPERVISOR.quitting) {
+			goto thread_start_fail;
 		}
 		Sleep(1);
 	}
@@ -56318,7 +56320,7 @@ inline unsigned GameThread::thread_start_impl() {
 		GAME_MANAGER.globals.graze_in_stage = 0;
 
 		int32_t continues = GAME_MANAGER.globals.continues;
-		continues = !GAME_MANAGER.__unknown_flag_gm_D ? 0 : GAME_MANAGER.globals.continues;
+		continues = GAME_MANAGER.__stage_restart_with_continue ? continues : 0;
 		GAME_MANAGER.globals.continues = continues;
 
 		GAME_MANAGER.globals.score = 0;
@@ -56399,7 +56401,7 @@ inline unsigned GameThread::thread_start_impl() {
 		}
 
 		if (!Player::allocate()) {
-			goto thread_start_important_label;
+			goto thread_start_fail;
 		}
 
 		if (GAME_MANAGER.game_type == SpellPractice) {
@@ -56453,9 +56455,9 @@ inline unsigned GameThread::thread_start_impl() {
 
 	this->stage_number = STAGE_DATA_PTR->stage_number;
 
-	if (!GAME_MANAGER.__stage_transition_related) {
+	if (!GAME_MANAGER.__stage_transition) {
 		if (!ReplayManager::allocate(this->replay_mode, UNKNOWN_TEXT_BUFFER_A)) {
-			goto thread_start_important_label;
+			goto thread_start_fail;
 		}
 		__replay_manager_global_sub_462D20();
 
@@ -56468,7 +56470,7 @@ inline unsigned GameThread::thread_start_impl() {
 			!PauseMenu::allocate() ||
 			!PopupManager::allocate()
 		) {
-			goto thread_start_important_label;
+			goto thread_start_fail;
 		}
 	}
 	else {
@@ -56476,7 +56478,7 @@ inline unsigned GameThread::thread_start_impl() {
 		__replay_manager_global_sub_462D20();
 		GUI_PTR->initialize();
 		if (!Stage::allocate(STAGE_DATA_PTR->std_filename)) {
-			goto thread_start_important_label;
+			goto thread_start_fail;
 		}
 	}
 
@@ -56490,11 +56492,11 @@ inline unsigned GameThread::thread_start_impl() {
 	});
 
 	if (
-		!GAME_MANAGER.__unknown_flag_gm_A &&
-		!GAME_MANAGER.__unknown_flag_gm_D
+		!GAME_MANAGER.__stage_restart &&
+		!GAME_MANAGER.__stage_restart_with_continue
 	) {
 		if (!EnemyManager::allocate(STAGE_DATA_PTR->ecl_filename)) {
-			goto thread_start_important_label;
+			goto thread_start_fail;
 		}
 	}
 	else {
@@ -56505,7 +56507,7 @@ inline unsigned GameThread::thread_start_impl() {
 		!BombBase::allocate() ||
 		!Spellcard::allocate()
 	) {
-		goto thread_start_important_label;
+		goto thread_start_fail;
 	}
 
 	SCOREFILE_MANAGER_PTR->save_files();
@@ -56519,7 +56521,7 @@ inline unsigned GameThread::thread_start_impl() {
 
 	FPS_COUNTER_PTR->reset();
 
-	clang_noinline this->__timer_C.set(0);
+	clang_noinline this->time.set(0);
 
 	// Wait for the sound command queue to empty
 	while (SOUND_MANAGER.sound_command_queue[0].type != SndCmdEmpty) {
@@ -56547,6 +56549,10 @@ inline unsigned GameThread::thread_start_impl() {
 
 	this->skip_flag = false;
 
+	GAME_MANAGER.__stage_restart = false;
+	GAME_MANAGER.__stage_transition = false;
+	GAME_MANAGER.__stage_restart_with_continue = false;
+
 	SUPERVISOR.__thread_A94.__bool_10 = false;
 	SUPERVISOR.__thread_A94.__bool_C = true;
 
@@ -56567,7 +56573,7 @@ inline unsigned GameThread::thread_start_impl() {
 
 	return ZUN_SUCCESS;
 
-thread_start_important_label:
+thread_start_fail:
 
 	this->__marked_for_cleanup = true;
 
