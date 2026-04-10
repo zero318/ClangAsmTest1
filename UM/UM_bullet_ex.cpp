@@ -11096,13 +11096,20 @@ enum CancelType : int32_t {
 
 static inline AnmLoaded* get_bullet_anm();
 
+typedef struct LaserLineParams LaserLineParams;
+
+// 0x4290E0
+dllexport gnu_noinline void fastcall spawn_bullet_cancel_items(Float3* position, CancelType cancel_type);
+
 static inline void bullet_cancel_all();
 static inline int bullet_cancel_random(CancelType cancel_type);
 static inline int bullet_cancel_radius(Float3* position, float radius, CancelType cancel_type);
 static inline int bullet_cancel_radius_as_bomb(Float2* position, float radius, CancelType cancel_type, int32_t max_count, int arg5);
 static inline int bullet_cancel_rotated_rectangle_as_bomb(Float2* position, Float2* size, float rotation, CancelType cancel_type, int arg5);
 static inline int32_t bullet_manager_get_cancel_counter2();
+static inline void bullet_manager_inc_cancel_counter2();
 static inline void bullet_manager_enable_graze_despawns();
+static inline void allocate_new_line_laser(LaserLineParams* data);
 static inline int laser_cancel_radius(Float3* position, float radius, CancelType cancel_type, int arg4);
 static inline int laser_cancel_rectangle(Float3* position, Float3* size, float rotation, CancelType cancel_type = GARBAGE_ARG(CancelType), int32_t arg5 = 0);
 static inline int laser_cancel_all(CancelType cancel_type);
@@ -41071,7 +41078,7 @@ public:
 	}
 	// 0x448040
 	// Method 0x1C
-	dllexport virtual gnu_noinline int thiscall __cancel_unknown(int, int, int, int, int, int) asm_symbol_rel(0x448040) {
+	dllexport virtual gnu_noinline int thiscall __cancel_unknown(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5, int) asm_symbol_rel(0x448040) {
 		return 0;
 	}
 	// 0x448050
@@ -41174,7 +41181,7 @@ public:
 
 	inline int thiscall run_effect_wait() {
 		if (this->effect_wait.timer <= 0) {
-			this->disable_effects(EX_WAIT);
+			this->toggle_effects(EX_WAIT);
 			return 1;
 		}
 		this->effect_wait.timer--;
@@ -41209,6 +41216,7 @@ public:
 };
 
 // 0x429A20
+// Bullets
 dllexport gnu_noinline int32_t fastcall AnmVM::sprite_lookup_1(AnmVM* vm, int32_t sprite) {
 	Bullet* bullet = (Bullet*)vm->controller.associated_entity;
 	int32_t bullet_sprite = bullet->sprite;
@@ -41219,6 +41227,7 @@ dllexport gnu_noinline int32_t fastcall AnmVM::sprite_lookup_1(AnmVM* vm, int32_
 }
 
 // 0x4494B0
+// Line lasers
 dllexport gnu_noinline int32_t fastcall AnmVM::sprite_lookup_2(AnmVM* vm, int32_t sprite) {
 	LaserData* laser = (LaserData*)vm->controller.associated_entity;
 	int32_t laser_sprite = laser->sprite;
@@ -41229,6 +41238,7 @@ dllexport gnu_noinline int32_t fastcall AnmVM::sprite_lookup_2(AnmVM* vm, int32_
 }
 
 // 0x4527B0
+// Curvy lasers
 dllexport gnu_noinline int32_t fastcall AnmVM::sprite_lookup_3(AnmVM* vm, int32_t sprite) {
 	LaserData* laser = (LaserData*)vm->controller.associated_entity;
 	return 524 + laser->color;
@@ -41271,12 +41281,17 @@ struct LaserLineParams {
 	}
 };
 
+// these probably should be static members but
+// the syntax highlighting is nicer as globals
+static inline constexpr float LINE_LASER_UNIT_LENGTH = 16.0f;
+static inline constexpr float LINE_LASER_HALF_UNIT_LENGTH = LINE_LASER_UNIT_LENGTH / 2.0f;
+
 // size: 0x1E0C
 struct LaserLine : LaserData {
 	LaserLineParams params; // 0x788
-	AnmVM __vm_BE8; // 0xBE8
-	AnmVM __vm_11F4; // 0x11F4
-	AnmVM __vm_1800; // 0x1800
+	AnmVM main_vm; // 0xBE8
+	AnmVM __spawn_effect_vm; // 0x11F4
+	AnmVM __tip_vm; // 0x1800
 	// 0x1E0C
 
 	// 0x4482C0
@@ -41414,18 +41429,18 @@ struct LaserLine : LaserData {
 
 		this->check_collision(LethalCollisionTest);
 
-		this->__vm_BE8.set_scale(
-			this->width / this->__vm_BE8.get_sprite()->__size_x,
-			this->length / this->__vm_BE8.get_sprite()->__size_y
+		this->main_vm.set_scale(
+			this->width / this->main_vm.get_sprite()->__size_x,
+			this->length / this->main_vm.get_sprite()->__size_y
 		);
 
-		this->__vm_BE8.run_anm();
+		this->main_vm.run_anm();
 
 		if (this->distance_traveled == 0.0f) {
-			this->__vm_11F4.run_anm();
+			this->__spawn_effect_vm.run_anm();
 		}
 
-		this->__vm_1800.run_anm();
+		this->__tip_vm.run_anm();
 
 		++this->__timer_40;
 
@@ -41435,15 +41450,15 @@ struct LaserLine : LaserData {
 	// 0x44AB60
 	// Method 0x14
 	dllexport virtual gnu_noinline int thiscall on_draw() override asm_symbol_rel(0x44AB60) {
-		this->__vm_BE8.data.position = this->position;
-		this->__vm_BE8.set_z_rotation(reduce_angle_add(this->angle, HALF_PI_f));
-		ANM_MANAGER_PTR->draw_vm(&this->__vm_BE8);
-		this->__vm_1800.data.position.make_from_vector3(this->angle, this->length);
-		this->__vm_1800.data.position.as2() += this->position.as2();
-		ANM_MANAGER_PTR->draw_vm(&this->__vm_1800);
+		this->main_vm.data.position = this->position;
+		this->main_vm.set_z_rotation(reduce_angle_add(this->angle, HALF_PI_f));
+		ANM_MANAGER_PTR->draw_vm(&this->main_vm);
+		this->__tip_vm.data.position.make_from_vector3(this->angle, this->length);
+		this->__tip_vm.data.position.as2() += this->position.as2();
+		ANM_MANAGER_PTR->draw_vm(&this->__tip_vm);
 		if (this->distance_traveled == 0.0f) {
-			this->__vm_11F4.data.position = this->position;
-			ANM_MANAGER_PTR->draw_vm(&this->__vm_11F4);
+			this->__spawn_effect_vm.data.position = this->position;
+			ANM_MANAGER_PTR->draw_vm(&this->__spawn_effect_vm);
 		}
 		return 0;
 	}
@@ -41456,32 +41471,227 @@ struct LaserLine : LaserData {
 
 	// 0x44B5B0
 	// Method 0x1C
-	dllexport virtual gnu_noinline int thiscall __cancel_unknown(int, int, int, int, int, int) override asm_symbol_rel(0x44B5B0) {
+	dllexport virtual gnu_noinline int thiscall __cancel_unknown(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5, int) override asm_symbol_rel(0x44B5B0) {
+		if (arg5 && this->invulnerable_time) {
+			return 0;
+		}
+		
 		// TODO
 		return 0;
 	}
 
 	// 0x44ACA0
 	// Method 0x20
-	dllexport virtual gnu_noinline int thiscall cancel_in_rectangle(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5) override asm_symbol_rel(0x44ACA0) {
+	dllexport virtual gnu_noinline int thiscall cancel_in_rectangle(Float3* cancel_position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5) override asm_symbol_rel(0x44ACA0) {
 		if (arg5 && this->invulnerable_time) {
 			return 0;
 		}
 
-		// TODO: nasty math
-		return 0;
+		Float3 initial_position = this->position; // ESP+68, ESP+6C, ESP+70
+
+		uint32_t cancel_count = 0; // ESP+2C
+
+		float test_length = LINE_LASER_HALF_UNIT_LENGTH; // ESP+54
+
+		bool cancel_test_array[512] = {}; // ESP+4F8
+
+		Float2 A = (this->position.as2() - cancel_position->as2()).rotate_around_origin(-rotation); // XMM5, XMM4
+
+		Float3 B; // ESP+58, ESP+5C, ESP+60
+		B.make_from_vector3(reduce_angle(this->angle - rotation), LINE_LASER_HALF_UNIT_LENGTH);
+		
+		Float3 half_size = { size->x * 0.5f, size->y * 0.5f, 0.0f }; // ESP+14, ESP+C, ESP+20
+
+		Float2 C = A + B.as2(); // ESP+10, ESP+24
+		
+		B.as2() += B.as2();
+
+		Float3 D; // ESP+3C, ESP+40, ESP+44
+		D.make_from_vector3(this->angle, LINE_LASER_HALF_UNIT_LENGTH);
+
+		Float2 test_positionB = this->position.as2() + D.as2(); // ESP+48, ESP+4C
+		D.as2() += D.as2();
+
+		if (this->length >= LINE_LASER_UNIT_LENGTH) {
+			
+			// aaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+		}
+
+		return cancel_count;
 	}
 
 	// 0x44BD00
 	// Method 0x24
-	dllexport virtual gnu_noinline int thiscall cancel_in_radius(Float3* position, float radius, CancelType cancel_type, int32_t arg4) override asm_symbol_rel(0x44BD00) {
-		// TODO
-		return 0;
+	dllexport virtual gnu_noinline int thiscall cancel_in_radius(Float3* cancel_position, float radius, CancelType cancel_type, int32_t arg4) override asm_symbol_rel(0x44BD00) {
+		if (arg4 && this->invulnerable_time) {
+			return 0;
+		}
+
+		/*
+		ESP+C = B.y
+
+		ESP+14 = this
+		
+		ESP+1C = step.x
+		ESP+20 = step.y
+		ESP+24 = step.z
+		ESP+28 = cancel_count
+		ESP+2C = D.x
+		ESP+30 = D.y
+		ESP+34 = D.z
+		ESP+38 = B.x
+		ESP+3C = B.z
+		ESP+40 = A (float)
+		ESP+44 = position.x
+		ESP+48 = position.y
+		ESP+4C = position.z
+		ESP+50 = D.x copy
+		ESP+54 = D.y copy
+		ESP+58 = junk 0
+		ESP+5C = junk 0
+
+		ESP+4D8 = __giant_bool_array
+		
+		*/
+
+		Float3 initial_position = this->position; // ESP+44, ESP+48, ESP+4C
+		
+		uint32_t cancel_count = 0; // ESP+28
+
+		float test_length = LINE_LASER_HALF_UNIT_LENGTH; // ESP+40
+
+		bool cancel_test_array[512] = {}; // ESP+4D8
+
+		Float3 test_positionA; // ESP+38, ESP+C, ESP+3C
+		test_positionA.z = 0.0f;
+
+		Float3 step; // ESP+1C, ESP+20, ESP+24
+		step.make_from_vector3(this->angle, LINE_LASER_HALF_UNIT_LENGTH);
+
+		Float3 test_positionB = { step.x + this->position.x, step.y + this->position.y, 0.0f }; // ESP+2C, ESP+30, ESP+34
+		step += step;
+
+		float radius_squared = radius * radius;
+
+		if (this->length >= LINE_LASER_UNIT_LENGTH) {
+			test_positionA.x = test_positionB.x;
+			test_positionA.y = test_positionB.y;
+
+			int32_t test_count = 0;
+
+			do {
+				if (!(cancel_position->distance_squared(&test_positionA) > radius_squared)) {
+					++cancel_count;
+					cancel_test_array[test_count] = true;
+					bullet_manager_inc_cancel_counter2();
+					spawn_bullet_cancel_items(&test_positionB, cancel_type);
+
+					int32_t sprite = this->sprite;
+					if (
+						sprite >= 17 &&
+						sprite != 34 &&
+						sprite != 38
+					) {
+						if (sprite >= 31 && sprite <= 33) {
+							get_bullet_anm()->instantiate_vm_to_world_list_back(281 + this->params.color * 2, &test_positionB);
+						} else {
+							get_bullet_anm()->instantiate_vm_to_world_list_back(257 + this->params.color * 2, &test_positionB);
+						}
+					} else {
+						get_bullet_anm()->instantiate_vm_to_world_list_back(209 + this->params.color * 2, &test_positionB);
+					}
+				}
+				++test_count;
+				test_positionA += step;
+				test_positionB = test_positionA;
+				test_length += LINE_LASER_UNIT_LENGTH;
+			} while (test_length + LINE_LASER_HALF_UNIT_LENGTH <= this->length);
+
+			if (cancel_count != 0) {
+				if (cancel_count >= test_count) {
+					// full cancel
+					this->__unknown_field_ld_A = 1;
+					return test_count;
+				}
+
+				int32_t i = 0; // ESP+C
+				if (test_count > 0) {
+					while (cancel_test_array[i] && ++i < test_count);
+					if (i != 0) {
+						float E = i;
+						this->position += step * E;
+						E *= LINE_LASER_UNIT_LENGTH;
+						float new_length = this->length - E;
+						this->length = new_length;
+						if (new_length > 24.0f) {
+							this->params.max_length = new_length;
+							this->distance_traveled = E;
+						}
+						else {
+							// full cancel
+							this->__unknown_field_ld_A = 1;
+							return test_count;
+						}
+					}
+				}
+
+				for (int32_t j = 0; i < test_count; ++i, ++j) {
+					if (cancel_test_array[i]) {
+
+						float new_length = this->length;
+						float max_length = this->params.max_length;
+
+						float F = j * LINE_LASER_UNIT_LENGTH;
+						new_length -= F;
+						this->length = new_length;
+						this->params.max_length = max_length - new_length;
+
+						if (F < 24.0f) {
+							this->__unknown_field_ld_A = 1;
+						}
+
+						do {
+							if (cancel_test_array[i]) {
+								++i;
+							} else {
+								int32_t k = i;
+								int32_t l = 0;
+								do {
+									if (cancel_test_array[i]) {
+										break;
+									}
+									++i;
+									++l;
+								} while (i < test_count);
+
+								float G = l;
+								LaserLineParams laser_params = this->params;
+								G *= LINE_LASER_UNIT_LENGTH;
+								laser_params.length = G;
+								laser_params.max_length = G;
+								if (G > 24.0f) {
+									laser_params.position = initial_position + step * k;
+									allocate_new_line_laser(&laser_params);
+								}
+							}
+						} while (i < test_count);
+
+						return cancel_count;
+					}
+				}
+			}
+		}
+		return cancel_count;
 	}
 
 	// 0x44C420
 	// Method 0x28
 	dllexport virtual gnu_noinline int thiscall cancel(CancelType cancel_type, int32_t arg2) override asm_symbol_rel(0x44C420) {
+		if (arg2 && this->invulnerable_time) {
+			return 0;
+		}
+		
 		// TODO
 		return 0;
 	}
@@ -41517,7 +41727,7 @@ struct LaserLine : LaserData {
 	// Method 0x34
 	dllexport virtual gnu_noinline int thiscall check_collision(CollisionTestType test_type) override asm_symbol_rel(0x44A950) {
 		float length = this->length;
-		if (length > 16.0f) {
+		if (length > LINE_LASER_UNIT_LENGTH) {
 			float width = this->width;
 			if (width > 3.0f) {
 				Float3 position;
@@ -41638,8 +41848,8 @@ struct LaserInfiniteParams {
 struct LaserInfinite : LaserData {
 	LaserInfiniteParams params; // 0x788
 	int __dword_C08; // 0xC08
-	AnmVM __vm_C0C; // 0xC0C
-	AnmVM __vm_1218; // 0x1218
+	AnmVM main_vm; // 0xC0C
+	AnmVM __spawn_effect_vm; // 0x1218
 	// 0x1824
 
 	inline LaserInfinite() {
@@ -41753,15 +41963,15 @@ struct LaserInfinite : LaserData {
 		this->check_collision(LethalCollisionTest);
 
 		// flipped length/width again
-		this->__vm_C0C.set_scale(
-			this->length / this->__vm_C0C.get_sprite()->__size_x,
-			this->width / this->__vm_C0C.get_sprite()->__size_y
+		this->main_vm.set_scale(
+			this->length / this->main_vm.get_sprite()->__size_x,
+			this->width / this->main_vm.get_sprite()->__size_y
 		);
 
-		this->__vm_C0C.run_anm();
+		this->main_vm.run_anm();
 
 		if (this->distance_traveled == 0.0f) {
-			this->__vm_1218.run_anm();
+			this->__spawn_effect_vm.run_anm();
 		}
 
 		return 0;
@@ -41770,12 +41980,12 @@ struct LaserInfinite : LaserData {
 	// 0x44D010
 	// Method 0x14
 	dllexport virtual gnu_noinline int thiscall on_draw() override asm_symbol_rel(0x44D010) {
-		this->__vm_C0C.data.position = this->position;
-		this->__vm_C0C.set_z_rotation(this->angle);
-		ANM_MANAGER_PTR->draw_vm(&this->__vm_C0C);
+		this->main_vm.data.position = this->position;
+		this->main_vm.set_z_rotation(this->angle);
+		ANM_MANAGER_PTR->draw_vm(&this->main_vm);
 		if (this->distance_traveled == 0.0f) {
-			this->__vm_1218.data.position = this->position;
-			ANM_MANAGER_PTR->draw_vm(&this->__vm_1218);
+			this->__spawn_effect_vm.data.position = this->position;
+			ANM_MANAGER_PTR->draw_vm(&this->__spawn_effect_vm);
 		}
 		return 0;
 	}
@@ -41788,7 +41998,7 @@ struct LaserInfinite : LaserData {
 
 	// 0x44D9B0
 	// Method 0x1C
-	dllexport virtual gnu_noinline int thiscall __cancel_unknown(int, int, int, int, int, int) override asm_symbol_rel(0x44D9B0) {
+	dllexport virtual gnu_noinline int thiscall __cancel_unknown(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5, int) override asm_symbol_rel(0x44D9B0) {
 		// TODO
 		return 0;
 	}
@@ -42061,7 +42271,7 @@ struct LaserCurveParams {
 // size: 0x1844
 struct LaserCurve : LaserData {
 	LaserCurveParams params; // 0x788
-	AnmVM __vm_BE8; // 0xBE8
+	AnmVM main_vm; // 0xBE8
 	AnmVM __vm_11F4; // 0x11F4
 	LaserCurveNode* nodes; // 0x1800
 	SpriteVertex* vertices; // 0x1804
@@ -42218,7 +42428,7 @@ struct LaserCurve : LaserData {
 
 		this->check_collision(LethalCollisionTest);
 
-		this->__vm_BE8.run_anm();
+		this->main_vm.run_anm();
 		this->__vm_11F4.run_anm();
 
 		++this->__timer_40;
@@ -42244,7 +42454,7 @@ struct LaserCurve : LaserData {
 				current_vertex[0].texture_uv.x = u_frac;
 				current_vertex[0].position.w = 1.0f;
 				current_vertex[0].diffuse = COLOR(255, 255, 255, 255);
-				current_vertex[0].texture_uv.y = this->__vm_BE8.data.sprite_uv_quad[0].y;
+				current_vertex[0].texture_uv.y = this->main_vm.data.sprite_uv_quad[0].y;
 
 				// we love inlined ZUNAngle operators
 				float angle;
@@ -42268,7 +42478,7 @@ struct LaserCurve : LaserData {
 				current_vertex[1].position.w = 1.0f;
 				current_vertex[1].diffuse = COLOR(255, 255, 255, 255);
 				current_vertex[1].texture_uv.x = u_frac;
-				current_vertex[1].texture_uv.y = this->__vm_BE8.data.sprite_uv_quad[2].y;
+				current_vertex[1].texture_uv.y = this->main_vm.data.sprite_uv_quad[2].y;
 
 				if (i == 0) {
 					angle = reduce_angle(node->angle - HALF_PI_f);
@@ -42300,7 +42510,7 @@ struct LaserCurve : LaserData {
 			current_vertex = this->vertices;
 		}
 
-		ANM_MANAGER_PTR->__draw_vm_type_9_C_D_E(&this->__vm_BE8, current_vertex, curve_length * 2);
+		ANM_MANAGER_PTR->__draw_vm_type_9_C_D_E(&this->main_vm, current_vertex, curve_length * 2);
 
 		curve_length = this->params.curve_length;
 		if (curve_length >= this->__timer_40) {
@@ -42328,7 +42538,7 @@ struct LaserCurve : LaserData {
 
 	// 0x451CC0
 	// Method 0x1C
-	dllexport virtual gnu_noinline int thiscall __cancel_unknown(int, int, int, int, int, int) override asm_symbol_rel(0x451CC0) {
+	dllexport virtual gnu_noinline int thiscall __cancel_unknown(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5, int) override asm_symbol_rel(0x451CC0) {
 		// TODO
 		return 0;
 	}
@@ -42562,7 +42772,7 @@ struct LaserBeam : LaserData {
 
 	// 0x452BA0
 	// Method 0x1C
-	dllexport virtual gnu_noinline int thiscall __cancel_unknown(int, int, int, int, int, int) override asm_symbol_rel(0x452BA0) {
+	dllexport virtual gnu_noinline int thiscall __cancel_unknown(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5, int) override asm_symbol_rel(0x452BA0) {
 		return 0;
 	}
 
@@ -43361,6 +43571,10 @@ static inline int32_t bullet_manager_get_cancel_counter2() {
 	return BULLET_MANAGER_PTR->__cancel_counter2;
 }
 
+static inline void bullet_manager_inc_cancel_counter2() {
+	++BULLET_MANAGER_PTR->__cancel_counter2;
+}
+
 static inline void bullet_manager_enable_graze_despawns() {
 	if (BulletManager* bullet_manager = BULLET_MANAGER_PTR) {
 		bullet_manager->__grazing_despawns_bullets = true;
@@ -43823,6 +44037,10 @@ public:
 	}
 };
 
+static inline void allocate_new_line_laser(LaserLineParams* data) {
+	LASER_MANAGER_PTR->allocate_new_line_laser(data);
+}
+
 static inline int laser_cancel_radius(Float3* position, float radius, CancelType cancel_type, int arg4) {
 	return LASER_MANAGER_PTR->cancel_in_radius(position, radius, cancel_type, arg4);
 }
@@ -43843,7 +44061,7 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
 	this->color = this->params.color;
 	this->state = 2;
 	this->type = LineLaser;
-	AnmVM* vm = &this->__vm_BE8;
+	AnmVM* vm = &this->main_vm;
 	vm->reset();
 	vm->controller.on_sprite_lookup_index = 2;
 	vm->controller.associated_entity = this;
@@ -43855,7 +44073,7 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
 	vm->data.render_mode = 1;
 	vm->data.origin_mode = 1;
 
-	vm = &this->__vm_11F4;
+	vm = &this->__spawn_effect_vm;
 	clang_forceinline LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, this->params.color + 56);
 	vm->interrupt_and_run(2);
 	vm->data.blend_mode = BlendAdditive; // 1
@@ -43863,14 +44081,15 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
 	vm->data.origin_mode = 1;
 
 	if (this->sprite > 17 && this->sprite != 38) {
-		vm = &this->__vm_1800;
+		vm = &this->__tip_vm;
 		clang_forceinline LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, this->params.color + 83);
 	} else {
-		vm = &this->__vm_1800;
+		vm = &this->__tip_vm;
 		clang_forceinline LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, this->params.color + 91);
 		vm->data.blend_mode = BlendAdditive; // 1
 	}
 	vm->data.origin_mode = 1;
+
 	this->__timer_754.set(30);
 	this->offscreen_timer.set(3);
 	SOUND_MANAGER.play_sound_positioned_validate(this->params.shoot_sound, 0.0f);
@@ -43916,26 +44135,26 @@ dllexport gnu_noinline int thiscall LaserInfinite::initialize(void* data) {
 	this->state = 3;
 	this->type = InfiniteLaser;
 
-	AnmVM* vm = &this->__vm_C0C;
+	AnmVM* vm = &this->main_vm;
 	vm->reset();
 	vm->controller.on_sprite_lookup_index = 2;
 	vm->controller.associated_entity = this;
 	LASER_MANAGER_PTR->bullet_anm->__sub_477D60(vm, BULLET_SPRITE_DATA[this->sprite].anm_script);
 	vm->interrupt_and_run(2);
 
-	this->__vm_C0C.data.blend_mode = BlendAdditive; // 1
-	this->__vm_C0C.data.x_anchor_mode = 0;
-	this->__vm_C0C.data.y_anchor_mode = 1;
-	this->__vm_C0C.data.render_mode = 1;
-	this->__vm_C0C.data.origin_mode = 1;
+	this->main_vm.data.blend_mode = BlendAdditive; // 1
+	this->main_vm.data.x_anchor_mode = 0;
+	this->main_vm.data.y_anchor_mode = 1;
+	this->main_vm.data.render_mode = 1;
+	this->main_vm.data.origin_mode = 1;
 
-	vm = &this->__vm_1218;
+	vm = &this->__spawn_effect_vm;
 	LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, 56 + this->params.color);
 	vm->interrupt_and_run(2);
 
-	this->__vm_1218.data.blend_mode = BlendAdditive; // 1
-	this->__vm_1218.data.render_mode = 1;
-	this->__vm_1218.data.origin_mode = 1;
+	this->__spawn_effect_vm.data.blend_mode = BlendAdditive; // 1
+	this->__spawn_effect_vm.data.render_mode = 1;
+	this->__spawn_effect_vm.data.origin_mode = 1;
 
 	SOUND_MANAGER.play_sound_positioned_validate(this->params.shoot_sound, 0.0f);
 
@@ -43971,26 +44190,26 @@ dllexport gnu_noinline int thiscall LaserCurve::initialize(void* data) {
 	this->state = 2;
 	this->type = CurvyLaser;
 
-	AnmVM* vm = &this->__vm_BE8;
+	AnmVM* vm = &this->main_vm;
 	vm->reset();
 
 	int32_t script;
 	if (this->sprite == 1) {
 		script = 322;
 	} else {
-		this->__vm_BE8.controller.on_sprite_lookup_index = 3;
-		this->__vm_BE8.controller.associated_entity = this;
+		this->main_vm.controller.on_sprite_lookup_index = 3;
+		this->main_vm.controller.associated_entity = this;
 		script = this->sprite + 142;
 	}
 	LASER_MANAGER_PTR->bullet_anm->__sub_477D60(vm, script);
 	vm->interrupt_and_run(2);
 
-	// why does only one of these us vm and rest are direct access???
+	// why does only one of these use vm and rest are direct access???
 	vm->data.blend_mode = BlendAdditive; // 1
-	this->__vm_BE8.data.x_anchor_mode = 0;
-	this->__vm_BE8.data.y_anchor_mode = 1;
-	this->__vm_BE8.data.render_mode = 1;
-	this->__vm_BE8.data.origin_mode = 1;
+	this->main_vm.data.x_anchor_mode = 0;
+	this->main_vm.data.y_anchor_mode = 1;
+	this->main_vm.data.render_mode = 1;
+	this->main_vm.data.origin_mode = 1;
 
 	vm = &this->__vm_11F4;
 	LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, 56 + this->params.color);
@@ -44292,7 +44511,7 @@ dllexport gnu_noinline void thiscall LaserLine::run_effects() {
 				break;
 			}
 			case EX_SETSPRITE: {
-				AnmVM* vm = &this->__vm_BE8;
+				AnmVM* vm = &this->main_vm;
 				int32_t script_id = BULLET_SPRITE_DATA[IntArg(0)].anm_script + IntArg(1);
 				clang_forceinline BULLET_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, script_id);
 				++effect_index;
@@ -44378,11 +44597,11 @@ dllexport gnu_noinline void thiscall LaserLine::run_effects() {
 			}
 			case EX_BLEND: {
 				if (IntArg(0)) {
-					this->__vm_BE8.data.blend_mode = BlendAdditive; // 1
+					this->main_vm.data.blend_mode = BlendAdditive; // 1
 					++effect_index;
 					continue;
 				} else {
-					this->__vm_BE8.data.blend_mode = BlendNormal; // 0
+					this->main_vm.data.blend_mode = BlendNormal; // 0
 					++effect_index;
 					continue;
 				}
@@ -44437,11 +44656,11 @@ dllexport gnu_noinline void thiscall LaserInfinite::run_effects() {
 			}
 			case EX_BLEND: {
 				if (IntArg(0)) {
-					this->__vm_C0C.data.blend_mode = BlendAdditive; // 1
+					this->main_vm.data.blend_mode = BlendAdditive; // 1
 					++effect_index;
 					continue;
 				} else {
-					this->__vm_C0C.data.blend_mode = BlendNormal; // 0
+					this->main_vm.data.blend_mode = BlendNormal; // 0
 					++effect_index;
 					continue;
 				}
@@ -44513,7 +44732,7 @@ dllexport gnu_noinline void thiscall LaserCurve::run_effects() {
 				break;
 			}
 			case EX_SETSPRITE: {
-				AnmVM* vm = &this->__vm_BE8;
+				AnmVM* vm = &this->main_vm;
 				int32_t script_id = BULLET_SPRITE_DATA[IntArg(0)].anm_script + IntArg(1);
 				clang_forceinline BULLET_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, script_id);
 				break;
@@ -44607,9 +44826,9 @@ dllexport gnu_noinline void thiscall LaserCurve::run_effects() {
 			}       
 			case EX_BLEND: {
 				if (IntArg(0)) {
-					this->__vm_BE8.data.blend_mode = BlendAdditive; // 1
+					this->main_vm.data.blend_mode = BlendAdditive; // 1
 				} else {
-					this->__vm_BE8.data.blend_mode = BlendNormal; // 0
+					this->main_vm.data.blend_mode = BlendNormal; // 0
 				}
 				break;
 			}
