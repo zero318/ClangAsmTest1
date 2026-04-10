@@ -45897,7 +45897,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
 	// doesn't clear this flag, so the no collision persists
 	if (
 		this->has_active_collision() &&
-		this->__basic_anm_update &&
+		!this->__basic_anm_update &&
 		(!ENEMY_MANAGER_PTR->disable_enemy_collision || this->is_boss)
 	) {
 		if (auto* extra_hitbox_func = this->extra_hitbox_func) {
