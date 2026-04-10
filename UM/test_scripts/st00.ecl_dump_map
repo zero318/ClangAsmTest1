@@ -70,6 +70,9 @@ void main() {
 +1:
     chapter_set(0);
     
+    msg_read(-2);
+    halt();
+    
     enemy_create_abs("enemy_test", 64.0, -32.0, 10000, 0, 0);
     
     halt();

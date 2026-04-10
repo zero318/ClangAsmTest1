@@ -51,9 +51,13 @@ void main()
     enemy_flags_set(176);
 +1: //1
     chapter_set(0);
-    enemy_create_abs("enemy_test", 64.0f, -32.0f, 10000, 0, 0);
-main_128:
+    msg_read(-2);
+main_96:
 +10000: //10001
-    goto main_128 @ 1;
+    goto main_96 @ 1;
+    enemy_create_abs("enemy_test", 64.0f, -32.0f, 10000, 0, 0);
+main_172:
++10000: //20001
+    goto main_172 @ 10001;
     return;
 }

@@ -5657,6 +5657,11 @@ enum FadeType : int32_t {
 	FadeOutShort = 4
 };
 
+static inline constexpr auto MAX_VOLUME = DSBVOLUME_MIN / 2;
+static inline constexpr auto SILENT_VOLUME = DSBVOLUME_MIN;
+static inline constexpr auto VOLUME_RANGE = SILENT_VOLUME - MAX_VOLUME;
+static inline constexpr auto VOLUME_RANGE_ABS = VOLUME_RANGE >= 0 ? VOLUME_RANGE : -VOLUME_RANGE;
+
 // size: 0x88
 struct CSound {
 	// vtable ptr
@@ -5900,6 +5905,47 @@ struct CSound {
 	inline void StartFadeOut(float seconds) {
 		this->__fade_type = FadeOut;
 		this->__fade_length = this->__fade_progress = seconds * 60.0f;
+	}
+
+	inline void HandleFadeOut() {
+		--this->__fade_progress;
+		int32_t fade_progress = this->__fade_progress;
+		if (fade_progress <= 0) {
+			this->__fade_type = FadeNone;
+			this->sound_buffer_array[0]->Stop();
+		} else {
+			this->SetVolume(fade_progress * VOLUME_RANGE_ABS / this->__fade_length + MAX_VOLUME);
+		}
+	}
+
+	inline void HandleFadeIn() {
+		--this->__fade_progress;
+		int32_t fade_progress = this->__fade_progress;
+		if (fade_progress <= 0) {
+			this->__fade_type = FadeNone;
+		} else {
+			this->SetVolume(fade_progress * VOLUME_RANGE / this->__fade_length);
+		}
+	}
+
+	inline void HandleFadeOutShort() {
+		--this->__fade_progress;
+		int32_t fade_progress = this->__fade_progress;
+		if (fade_progress <= 0) {
+			this->__fade_type = FadeNone;
+		} else {
+			this->SetVolume(fade_progress * (VOLUME_RANGE_ABS / 5) / this->__fade_length + (MAX_VOLUME / 5));
+		}
+	}
+
+	inline void HandleFadeInShort() {
+		--this->__fade_progress;
+		int32_t fade_progress = this->__fade_progress;
+		if (fade_progress <= 0) {
+			this->__fade_type = FadeNone;
+		} else {
+			this->SetVolume(fade_progress * (VOLUME_RANGE / 5) / this->__fade_length);
+		}
 	}
 
 	inline HRESULT Pause() {
@@ -6729,10 +6775,6 @@ static inline constexpr size_t BGM_SAMPLE_BITS = 16;
 static inline constexpr size_t BGM_SAMPLE_BYTES = SAMPLE_BYTES(BGM_SAMPLE_BITS);
 static inline constexpr size_t BGM_BLOCK_ALIGN = SAMPLE_BLOCK_ALIGN(BGM_SAMPLE_BITS, BGM_CHANNELS);
 static inline constexpr size_t BGM_SAMPLE_THROUGHPUT = SAMPLE_THROUGHPUT(BGM_SAMPLE_BITS, BGM_CHANNELS, BGM_SAMPLE_RATE);
-
-static inline constexpr auto MAX_VOLUME = DSBVOLUME_MIN / 2;
-static inline constexpr auto SILENT_VOLUME = DSBVOLUME_MIN;
-static inline constexpr auto VOLUME_RANGE = SILENT_VOLUME - MAX_VOLUME;
 
 // 0x4895A0
 // EH frame (free something)
@@ -20537,6 +20579,7 @@ dllexport gnu_noinline ZUNResult UpdateFuncCC Supervisor::on_registration(void* 
 	return ZUN_SUCCESS;
 }
 
+// 0x453460
 inline UpdateFuncRet thiscall Supervisor::on_tick() {
 	if (this->quitting == true) {
 		if (!this->__thread_A94.__bool_10) {
@@ -20547,7 +20590,10 @@ inline UpdateFuncRet thiscall Supervisor::on_tick() {
 	SOUND_MANAGER.__on_tick();
 
 	if (CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr) {
-		// TODO: IMPORTANT SOUND STUFF
+		cstreaming_sound_ptr->HandleFadeOut();
+		SOUND_MANAGER.cstreaming_sound_ptr->HandleFadeIn();
+		SOUND_MANAGER.cstreaming_sound_ptr->HandleFadeOutShort();
+		SOUND_MANAGER.cstreaming_sound_ptr->HandleFadeInShort();
 	}
 
 	get_hardware_inputs();
@@ -35312,6 +35358,7 @@ struct AbilityShop : ZUNTask {
 		nounroll for (size_t i = 0; i < countof(__anm_id_array_22C); ++i) {
 			this->__anm_id_array_22C[i].mark_tree_for_delete();
 		}
+		// Doesn't delete __anm_id_array_62C
 
 		ABILITY_SHOP_PTR = NULL;
 	}
@@ -35324,6 +35371,14 @@ struct AbilityShop : ZUNTask {
 
 	// 0x417880
 	dllexport gnu_noinline void thiscall cleanup() asm_symbol_rel(0x417880);
+
+	inline void delete_vms() {
+		this->__anm_id_228.mark_tree_for_delete();
+		nounroll for (int32_t i = 0; i < this->card_count; ++i) {
+			this->__anm_id_array_22C[i].mark_tree_for_delete();
+			this->__anm_id_array_62C[i].mark_tree_for_delete();
+		}
+	}
 
 	// 0x417CC0
 	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x417CC0);
@@ -51106,7 +51161,8 @@ struct PauseMenu : ZUNTask {
 		GUI_PTR->__anm_id_114.__tree_clear_visible2();
 		GUI_PTR->__hide_spell_timer_anms();
 		if (AbilityShop* ability_shop = ABILITY_SHOP_PTR) {
-			// TODO
+			ability_shop->delete_vms();
+			ABILITY_TEXT_DATA_PTR->delete_vms();
 		}
 		this->__unknown_flag_pm_B = false;
 	}
@@ -51701,18 +51757,21 @@ struct PauseMenu : ZUNTask {
 			case 18:
 				if (this->state_timer >= 12) {
 					switch (this->primary_state) {
-						case 1:
+						case 1: {
 							if (GAME_THREAD_PTR->replay_mode == ReplayRecording) {
 								GAME_MANAGER.game_time_double = get_runtime();
 							}
 							GAME_THREAD_PTR->__unknown_flag_gt_I = false;
 							GAME_SPEED.set(this->__float_2E0);
-							if (MsgVM* msg_vm = GUI_PTR->msg_vm) {
+							Gui* gui = GUI_PTR;
+							if (MsgVM* msg_vm = gui->msg_vm) {
 								msg_vm->__show_all_anms();
+								gui = GUI_PTR;
 							}
-							GUI_PTR->__anm_id_114.__tree_set_visible2();
+							gui->__anm_id_114.__tree_set_visible2();
 							WINDOW_DATA.__int_20D0 = this->__int_208;
 							break;
+						}
 						case 2: case 3:
 							if (GAME_THREAD_PTR->replay_mode == ReplayRecording) {
 								GAME_MANAGER.game_time_double = get_runtime();
@@ -53552,7 +53611,7 @@ dllexport gnu_noinline void Gui::__allocate_hud() {
 		size_t i = 0;
 		Float3 zero = {};
 		AnmVM** life_icon_vms = gui_ptr->player_life_icons;
-		do {
+		nounroll do {
 			gui_ptr->__player_life_icon_ids[i] = gui_ptr->front_anm->instantiate_vm_to_ui_list_back(32 + i, &zero, life_icon_vms);
 			++life_icon_vms;
 		} while (++i < countof(gui_ptr->player_life_icons));
@@ -53560,7 +53619,7 @@ dllexport gnu_noinline void Gui::__allocate_hud() {
 		i = 0;
 		zero = {};
 		AnmVM** bomb_icon_vms = gui_ptr->player_bomb_icons;
-		do {
+		nounroll do {
 			gui_ptr->__player_bomb_icon_ids[i] = gui_ptr->front_anm->instantiate_vm_to_ui_list_back(40 + i, &zero, bomb_icon_vms);
 			++bomb_icon_vms;
 		} while (++i < countof(gui_ptr->player_bomb_icons));
@@ -53568,12 +53627,12 @@ dllexport gnu_noinline void Gui::__allocate_hud() {
 		i = 0;
 		zero = {};
 		AnmVM** spell_timer_vms = gui_ptr->spell_timer_vms;
-		do {
+		nounroll do {
 			gui_ptr->spell_timer_vm_ids[i] = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(2 + i, &zero, spell_timer_vms);
 			(*spell_timer_vms)->__tree_clear_visible2();
 			(*spell_timer_vms)->data.origin_mode = 0;
 			++spell_timer_vms;
-		} while (++i < 2);
+		} while (++i < countof(gui_ptr->spell_timer_vms));
 	}
 
 	gui_ptr->__update_life_ui(GAME_MANAGER.globals.life_stocks, GAME_MANAGER.globals.life_fragments, GAME_MANAGER.globals.life_stock_max);
@@ -53659,13 +53718,12 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 				this->__unknown_field_gu_A = 2;
 			}
 		}
-	}
-
-	if (this->__timer_198 >= this->__int_1AC) {
-		this->__anm_id_114.interrupt_tree(1);
-		this->__unknown_field_gu_A = 1;
-		this->__timer_198.reset();
-		this->__unknown_field_gu_A = 0; // why?
+		if (this->__timer_198 >= this->__int_1AC) {
+			this->__anm_id_114.interrupt_tree(1);
+			this->__unknown_field_gu_A = 1;
+			this->__timer_198.reset();
+			this->__unknown_field_gu_A = 0; // why?
+		}
 	}
 
 	if (this->__int_134) {
