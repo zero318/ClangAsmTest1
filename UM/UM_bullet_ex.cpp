@@ -72,6 +72,8 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define IGNORE_HASH_CHECKS 1
 #define OVERRIDE_PATH_CHECKS 1
 
+void APPLY_DEBUG_CONFIG();
+
 #define USE_EXTERN_FOR_CODEGEN 0
 
 #define GAME_VERSION UM_VER
@@ -1696,17 +1698,27 @@ static constexpr const char* EMOTE_CAPTIONS[] = {
 	":KogasaGun:"
 };
 
-gnu_noinline void make_sure_file_exists(const char* path) {
-
-	size_t path_len = strlen(path);
-	char message_buffer[sizeof("Could not find ") + path_len];
-	memcpy(message_buffer, "Could not find ", sizeof("Could not find ") - 1);
-	memcpy(&message_buffer[sizeof("Could not find ") - 1], path, path_len + 1);
-
-	while (GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES) {
+inline int Zmbox(const char* message, const char* caption, UINT type) {
+	if (!caption) {
 		unsigned int random;
 		rand_s(&random);
-		switch (MessageBoxA(NULL, message_buffer, EMOTE_CAPTIONS[random % countof(EMOTE_CAPTIONS)], MB_ICONERROR | MB_ABORTRETRYIGNORE)) {
+		caption = EMOTE_CAPTIONS[random % countof(EMOTE_CAPTIONS)];
+	}
+	return MessageBoxA(NULL, message, caption, type);
+}
+inline int Zmboxf(const char* format, const char* caption, UINT type, ...) {
+	va_list va;
+	va_start(va, type);
+	int length = vsnprintf(NULL, 0, format, va);
+	char buffer[length + 1];
+	vsprintf(buffer, format, va);
+	va_end(va);
+	return Zmbox(buffer, caption, type);
+}
+
+gnu_noinline void make_sure_file_exists(const char* path) {
+	while (GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES) {
+		switch (Zmboxf("Count not find %s", NULL, MB_TOPMOST | MB_ICONERROR | MB_ABORTRETRYIGNORE | MB_DEFBUTTON2, path)) {
 			case IDRETRY:
 				break;
 			case IDIGNORE: // if you insist
@@ -11666,8 +11678,12 @@ enum ItemID : int32_t {
 	BombFragmentCardItem = 17,
 	MoneyCardItem = 18,
 	PowerCardItem = 19,
-	Item20 = 20
+	Item20 = 20,
+
+	ENUM_VALUE_COUNT_DECLARE(ItemID)
 };
+
+static inline constexpr int32_t ITEM_ID_COUNT = ENUM_VALUE_COUNT(ItemID) - 1; // -1 to not count InvalidItem
 
 typedef struct Item Item;
 static inline Item* spawn_item(int32_t item_id, Float3* position, float angle, float speed, int32_t spawn_delay);
@@ -11675,8 +11691,8 @@ static inline Item* spawn_item(int32_t item_id, Float3* position, float angle, f
 // size: 0xC4
 struct EnemyDrops {
 	int32_t main_id; // 0x0
-	int32_t extra_ids[20]; // 0x4
-	int32_t limited_extra_ids[20]; // 0x54
+	int32_t extra_counts[ITEM_ID_COUNT]; // 0x4
+	int32_t limited_extra_counts[ITEM_ID_COUNT]; // 0x54
 	int32_t limited_end_time; // 0xA4
 	Timer limited_timer; // 0xA8
 	float width; // 0xBC
@@ -11688,13 +11704,13 @@ struct EnemyDrops {
 	}
 
 	// 0x42D010
-	dllexport gnu_noinline void set_extra_drop(int32_t index, int32_t id) asm_symbol_rel(0x42D010) {
-		this->extra_ids[index - 1] = id;
+	dllexport gnu_noinline void set_extra_drop_count(int32_t id, int32_t count) asm_symbol_rel(0x42D010) {
+		this->extra_counts[id - 1] = count;
 	}
 
 	// 0x42D020
-	dllexport gnu_noinline void set_timed_extra_drop(int32_t index, int32_t id) asm_symbol_rel(0x42D020) {
-		this->limited_extra_ids[index - 1] = id;
+	dllexport gnu_noinline void set_timed_extra_drop_count(int32_t id, int32_t count) asm_symbol_rel(0x42D020) {
+		this->limited_extra_counts[id - 1] = count;
 	}
 
 	// 0x42D040
@@ -11740,7 +11756,7 @@ public:
 	}
 
 	inline void reset() {
-		memset(this->extra_ids, 0, sizeof(EnemyDrops) - sizeof(this->main_id));
+		memset(this->extra_counts, 0, sizeof(EnemyDrops) - sizeof(this->main_id));
 		this->height = 32.0f;
 		this->width = 32.0f;
 		this->main_id = 0;
@@ -11749,7 +11765,7 @@ public:
 
 	// 0x42D180
 	dllexport gnu_noinline void reset_extra_drops() asm_symbol_rel(0x42D180) {
-		memset(this->extra_ids, 0, sizeof(this->extra_ids) + sizeof(this->limited_extra_ids));
+		memset(this->extra_counts, 0, sizeof(this->extra_counts) + sizeof(this->limited_extra_counts));
 		this->limited_end_time = 0;
 		this->limited_timer.reset();
 	}
@@ -13277,8 +13293,8 @@ enum Opcode : uint16_t {
 	enemy_flags_clear,
 	move_bounds_set,
 	move_bounds_disable,
-	item_bonus_slots_reset,
-	item_bonus_slot_set,
+	item_bonus_count_reset,
+	item_bonus_count_set,
 	item_drop_area,
 	drop_item_rewards,
 	item_reward_set,
@@ -13344,7 +13360,7 @@ enum Opcode : uint16_t {
 	__enemy_add_spawn_weight_to_destroy,
 	enemy_kill_all_no_callbacks,
 	__enemy_life_set_current,
-	item_timed_bonus_slot_set,
+	item_timed_bonus_count_set,
 	item_timed_bonus_duration,
 
 	// Section E
@@ -29689,7 +29705,7 @@ struct CardBase {
 	}
 	// Method 30
 	// 0x4130D0
-	dllexport gnu_noinline virtual int thiscall __on_enemy_item_spawn(Float3* position, int32_t* extra_ids) {
+	dllexport gnu_noinline virtual int thiscall __on_enemy_item_spawn(Float3* position, int32_t* extra_counts) {
 		return 0;
 	}
 	// Method 34
@@ -31614,7 +31630,7 @@ struct CardYachie : CardBase {
 
 	// Method 30
 	// 0x40D630
-	dllexport gnu_noinline virtual int thiscall __on_enemy_item_spawn(Float3* position, int32_t* extra_ids) {
+	dllexport gnu_noinline virtual int thiscall __on_enemy_item_spawn(Float3* position, int32_t* extra_counts) {
 		float A = REPLAY_RNG.rand_angle();
 		// TODO, needs arguments known
 		return 0;
@@ -34533,40 +34549,39 @@ static inline BOOL ability_manager_card_equipped(int32_t id) {
 // 0x430510
 dllexport gnu_noinline void EnemyDrops::spawn_extra_items(Float3* position) {
 	
-	// this entire function looks VERY broken and the codegen is abnormal, WTF?
+	// this entire function has very strange codegen... WTF?
 	
 	float angle = REPLAY_RNG.rand_angle();
 
-	for (int32_t i = 0; i < countof(this->extra_ids) - 1; ++i) {
+	for (int32_t id = 0; id < ITEM_ID_COUNT - 1; ++id) { // the -1 might be a bug...?
 		int32_t end_time = this->limited_end_time;
-		int32_t drop = this->extra_ids[i];
+		int32_t item_count = this->extra_counts[id];
 		if (end_time) {
 			int32_t limited_timer = this->limited_timer;
 			if (limited_timer < end_time) {
-				int32_t limited_drop = this->limited_extra_ids[i];
-				if (limited_drop > 0) {
-					/// aren't these item IDs...?
-					drop += limited_drop - limited_drop * limited_timer / end_time;
+				int32_t limited_drop_count = this->limited_extra_counts[id];
+				if (limited_drop_count > 0) {
+					item_count += limited_drop_count - (limited_drop_count * limited_timer / end_time);
 				}
 			}
 		}
-		if (drop > 0) {
+		if (item_count > 0) {
 			do {
 				Float3 spawn_position;
 				spawn_position.make_from_vector_components3(angle, this->width, this->height);
 				float mult = REPLAY_RNG.rand_float() * 0.5f + 0.5f;
 				spawn_position = spawn_position * mult + *position;
-				spawn_item(i + 1, &spawn_position, -HALF_PI_f, 2.2f, 0);
+				spawn_item(id + 1, &spawn_position, -HALF_PI_f, 2.2f, 0); // +1 to make valid IDs
 				angle = reduce_angle(angle + HALF_PI_f + REPLAY_RNG.rand_angle() * 0.25f);
-			} while (--drop);
+			} while (--item_count);
 		}
 	}
 
 	ABILITY_MANAGER_PTR->card_list.for_each([=](CardBase* card) {
-		card->__on_enemy_item_spawn(position, this->extra_ids);
+		card->__on_enemy_item_spawn(position, this->extra_counts);
 	});
 
-	memset(this->extra_ids, 0, sizeof(EnemyDrops) - sizeof(this->main_id));
+	memset(this->extra_counts, 0, sizeof(EnemyDrops) - sizeof(this->main_id));
 }
 
 // This struct is one of the worst things in this
@@ -38481,6 +38496,41 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 				if (!is_replay()) {
 #if !DEBUG_NO_GAME_OVER
 					__pause_menu_game_over_screen();
+#else
+#if TESTING_FEATURES
+					int32_t continue_credits = GAME_MANAGER.continue_credits;
+					switch (Zmboxf(
+						"YOU DIED\n\nContinues: %d", NULL,
+						MB_TOPMOST | MB_ICONWARNING | (continue_credits ? MB_CANCELTRYCONTINUE | MB_DEFBUTTON3 : MB_RETRYCANCEL)
+						, continue_credits
+					)) {
+						case IDRETRY:
+						case IDTRYAGAIN:
+							APPLY_DEBUG_CONFIG();
+							return UpdateFuncRestart;
+							
+						case IDCONTINUE:
+							if (!GAME_MANAGER.continue_credits) {
+						case IDCANCEL:
+								ExitProcess(-1);
+							}
+							// this is just copy/pasted from the pause menu code
+							GAME_MANAGER.globals.life_stocks = DEFAULT_LIFE_STOCKS;
+							GAME_MANAGER.globals.life_fragments = 0;
+							GAME_MANAGER.globals.set_bombs(DEFAULT_BOMB_STOCKS);
+							GAME_MANAGER.globals.bomb_fragments = 0;
+							GAME_MANAGER.globals.set_power(0);
+							GAME_MANAGER.globals.add_power(GAME_MANAGER.globals.power_per_level * DEFAULT_MAX_POWER_LEVEL);
+							PLAYER_PTR->data.__update_option_power_levels();
+							__update_life_ui_unsafe();
+							__update_bomb_ui_unsafe();
+							int32_t continues_used = GAME_MANAGER.globals.continues + 1;
+							GAME_MANAGER.globals.score = 0;
+							GAME_MANAGER.continue_credits = continue_credits - 1;
+							GAME_MANAGER.globals.continues = __min(continues_used, MAX_CONTINUES);
+							break;
+					}
+#endif
 #endif
 				}
 				this->data.__death_timer++;
@@ -48394,19 +48444,19 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 				}
 			}
 			break;
-		case item_bonus_slots_reset: // 506
+		case item_bonus_count_reset: // 506
 			this->drops.reset_extra_drops();
 			break;
-		case item_bonus_slot_set: { // 507
-			int32_t slot = this->get_int_arg(0);
-			int32_t item = this->get_int_arg(1);
-			this->drops.set_extra_drop(slot, item);
+		case item_bonus_count_set: { // 507
+			int32_t item = this->get_int_arg(0);
+			int32_t count = this->get_int_arg(1);
+			this->drops.set_extra_drop_count(item, count);
 			break;
 		}
-		case item_timed_bonus_slot_set: { // 573
-			int32_t slot = this->get_int_arg(0);
-			int32_t item = this->get_int_arg(1);
-			this->drops.set_timed_extra_drop(slot, item);
+		case item_timed_bonus_count_set: { // 573
+			int32_t item = this->get_int_arg(0);
+			int32_t count = this->get_int_arg(1);
+			this->drops.set_timed_extra_drop_count(item, count);
 			break;
 		}
 		case item_drop_area: { // 508
@@ -52464,7 +52514,25 @@ static Difficulty DEBUG_DIFFICULTY = NORMAL;
 static CharacterID DEBUG_CHARACTER = Reimu;
 static char* DEBUG_PATH = NULL;
 
+void APPLY_DEBUG_CONFIG() {
+	SUPERVISOR.gamemode_switch = GameMode::StartGameplay;
+	int32_t stage_number = DEBUG_STAGE;
+	if (
+		stage_number == DebugStage &&
+		GetFileAttributesW(L"st00.ecl") == INVALID_FILE_ATTRIBUTES
+	) {
+		DEBUG_STAGE = stage_number = Stage1;
+	}
+	GAME_MANAGER.globals.current_stage = stage_number;
+	GAME_MANAGER.globals.__stage_number_related_4 = stage_number;
+	GAME_MANAGER.globals.spell_practice_id = -1;
+	GAME_MANAGER.globals.difficulty = DEBUG_DIFFICULTY;
+	GAME_MANAGER.globals.character = DEBUG_CHARACTER;
+	ACHIEVEMENT_MODE_STATE = -1;
+}
+
 #if TESTING_FEATURES
+
 template<size_t N>
 const wchar_t* get_arg(const wchar_t* arg, const wchar_t(&name)[N], int argc, int& i, wchar_t** argv) {
 	switch (*arg++) { // First char
@@ -53581,20 +53649,7 @@ public:
 
 #if DEBUG_SKIP_MENUS
 				// DEBUG: Try to directly start a game?
-				SUPERVISOR.gamemode_switch = GameMode::StartGameplay;
-				int32_t stage_number = DEBUG_STAGE;
-				if (
-					stage_number == DebugStage &&
-					GetFileAttributesW(L"st00.ecl") == INVALID_FILE_ATTRIBUTES
-				) {
-					DEBUG_STAGE = stage_number = Stage1;
-				}
-				GAME_MANAGER.globals.current_stage = stage_number;
-				GAME_MANAGER.globals.__stage_number_related_4 = stage_number;
-				GAME_MANAGER.globals.spell_practice_id = -1;
-				GAME_MANAGER.globals.difficulty = DEBUG_DIFFICULTY;
-				GAME_MANAGER.globals.character = DEBUG_CHARACTER;
-				ACHIEVEMENT_MODE_STATE = -1;
+				APPLY_DEBUG_CONFIG();
 #endif
 			}
 #if !DEBUG_SKIP_MENUS
