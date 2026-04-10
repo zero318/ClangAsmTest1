@@ -11720,11 +11720,7 @@ public:
 	}
 
 	// 0x430510
-	dllexport gnu_noinline void spawn_extra_items(Float3* position) asm_symbol_rel(0x430510) {
-		float angle = REPLAY_RNG.rand_angle();
-
-		//for (int32_t i = 0; i < )
-	}
+	dllexport gnu_noinline void spawn_extra_items(Float3* position) asm_symbol_rel(0x430510);
 
 	// 0x42D0C0
 	dllexport void spawn_items(Float3* position) asm_symbol_rel(0x42D0C0) {
@@ -29693,7 +29689,7 @@ struct CardBase {
 	}
 	// Method 30
 	// 0x4130D0
-	dllexport gnu_noinline virtual int thiscall recharge(int, int) {
+	dllexport gnu_noinline virtual int thiscall __on_enemy_item_spawn(Float3* position, int32_t* extra_ids) {
 		return 0;
 	}
 	// Method 34
@@ -31618,7 +31614,7 @@ struct CardYachie : CardBase {
 
 	// Method 30
 	// 0x40D630
-	dllexport gnu_noinline virtual int thiscall recharge(int, int) {
+	dllexport gnu_noinline virtual int thiscall __on_enemy_item_spawn(Float3* position, int32_t* extra_ids) {
 		float A = REPLAY_RNG.rand_angle();
 		// TODO, needs arguments known
 		return 0;
@@ -34532,6 +34528,45 @@ static inline AnmLoaded* ability_manager_get_ability_anm() {
 }
 static inline BOOL ability_manager_card_equipped(int32_t id) {
 	return ABILITY_MANAGER_PTR->card_equipped_inline(id);
+}
+
+// 0x430510
+dllexport gnu_noinline void EnemyDrops::spawn_extra_items(Float3* position) {
+	
+	// this entire function looks VERY broken and the codegen is abnormal, WTF?
+	
+	float angle = REPLAY_RNG.rand_angle();
+
+	for (int32_t i = 0; i < countof(this->extra_ids) - 1; ++i) {
+		int32_t end_time = this->limited_end_time;
+		int32_t drop = this->extra_ids[i];
+		if (end_time) {
+			int32_t limited_timer = this->limited_timer;
+			if (limited_timer < end_time) {
+				int32_t limited_drop = this->limited_extra_ids[i];
+				if (limited_drop > 0) {
+					/// aren't these item IDs...?
+					drop += limited_drop - limited_drop * limited_timer / end_time;
+				}
+			}
+		}
+		if (drop > 0) {
+			do {
+				Float3 spawn_position;
+				spawn_position.make_from_vector_components3(angle, this->width, this->height);
+				float mult = REPLAY_RNG.rand_float() * 0.5f + 0.5f;
+				spawn_position = spawn_position * mult + *position;
+				spawn_item(i + 1, &spawn_position, -HALF_PI_f, 2.2f, 0);
+				angle = reduce_angle(angle + HALF_PI_f + REPLAY_RNG.rand_angle() * 0.25f);
+			} while (--drop);
+		}
+	}
+
+	ABILITY_MANAGER_PTR->card_list.for_each([=](CardBase* card) {
+		card->__on_enemy_item_spawn(position, this->extra_ids);
+	});
+
+	memset(this->extra_ids, 0, sizeof(EnemyDrops) - sizeof(this->main_id));
 }
 
 // This struct is one of the worst things in this
