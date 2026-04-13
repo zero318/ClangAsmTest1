@@ -3713,6 +3713,94 @@ void test_fprem1_floats() {
 	);
 }
 
+template<bool trap = false, bool bit_perfect = false, typename L1, typename L2>
+void test_math_floats(const L1& func1, const L2& func2) {
+	size_t correct = 0;
+	auto test_float = [&](uint32_t value) {
+		volatile float x = bitcast<float>(value);
+		auto func1_val = func1(x);
+		auto func2_val = func2(x);
+		if constexpr (bit_perfect) {
+			uint32_t func1_bits = bitcast<uint32_t>(func1_val);
+			uint32_t func2_bits = bitcast<uint32_t>(func2_val);
+			if constexpr (trap) {
+				if (func1_bits != func2_bits) __asm int3
+			}
+			correct += func1_bits == func2_bits;
+		}
+		else {
+			if constexpr (trap) {
+				if (func1_val != func2_val) __asm int3
+			}
+			correct += func1_val == func2_val;
+		}
+	};
+	for (
+        uint32_t value = bitcast<uint32_t>(minimum_negative_float_value);
+        value >= bitcast<uint32_t>(maximum_negative_float_value);
+        --value
+    ) {
+        test_float(value);
+    }
+    for (
+        uint32_t value = bitcast<uint32_t>(minimum_positive_float_value);
+        value <= bitcast<uint32_t>(maximum_positive_float_value);
+        ++value
+    ) {
+        test_float(value);
+    }
+	printf(
+		"%zu / 4278190080\n"
+		, correct
+	);
+}
+template<bool trap = false, bool bit_perfect = false, typename L1, typename L2>
+void test_math_floats_int_range(const L1& func1, const L2& func2) {
+	size_t correct = 0;
+	size_t count = 0;
+	auto test_float = [&](uint32_t value) {
+		++count;
+		volatile float x = bitcast<float>(value);
+		auto func1_val = func1(x);
+		auto func2_val = func2(x);
+		if constexpr (bit_perfect) {
+			uint32_t func1_bits = bitcast<uint32_t>(func1_val);
+			uint32_t func2_bits = bitcast<uint32_t>(func2_val);
+			if constexpr (trap) {
+				if (func1_bits != func2_bits) __asm int3
+			}
+			correct += func1_bits == func2_bits;
+		}
+		else {
+			if constexpr (trap) {
+				if (func1_val != func2_val) __asm int3
+			}
+			correct += func1_val == func2_val;
+		}
+	};
+	for (
+        uint32_t value = bitcast<uint32_t>((float)INT32_MIN);
+        //uint32_t value = bitcast<uint32_t>((float)-8388608);
+        value >= bitcast<uint32_t>(maximum_negative_float_value);
+        --value
+    ) {
+        test_float(value);
+    }
+    for (
+        uint32_t value = bitcast<uint32_t>(minimum_positive_float_value);
+        value < bitcast<uint32_t>((float)INT32_MAX);
+        //value < bitcast<uint32_t>((float)8388608);
+        ++value
+    ) {
+        test_float(value);
+    }
+	printf(
+		"%zu / %zu\n"
+		, correct, count
+	);
+}
+
+
 float vectorcall x87_fsin_float_emulate(float value) {
 	uint32_t ivalue = bitcast<uint32_t>(value);
 	int32_t exponent = (int32_t)(ivalue >> 23 & 0xFF) - 127;
@@ -3820,6 +3908,93 @@ no_qpc_tsc:
 }
 
 int stdcall main(int argc, char* argv[]) {
+	
+	test_math_floats_int_range<true>(
+		[](float value) -> float {
+			//return truncf(asinf(value) * 1000.0f);
+			return fmodf(value, 420.69f);
+		},
+		[](float value) -> float {
+			/*
+			float a = value;
+			float b = 420.69f;
+
+			float fa, fb, dividend, divisor;
+			int expo_a, expo_b;
+			fa = fabsf(a);
+			fb = fabsf(b);
+			if (fa >= fb) {
+				dividend = fa;
+				(void)frexpf(fa, &expo_a);
+				(void)frexpf(fb, &expo_b);
+				divisor = ldexpf(fb, expo_a - expo_b);
+				if (divisor <= 0.5f * dividend) {
+					divisor += divisor;
+				}
+				while (divisor >= fb) {
+					if (dividend >= divisor) {
+						dividend -= divisor;
+					}
+					divisor *= 0.5f;
+				}
+				return copysignf(dividend, a);
+			} else {
+				return a;
+			}
+			*/
+
+			
+			union {
+				float tempf;
+				int32_t tempi;
+			};
+			union {
+				float tempf2;
+				int32_t tempi2;
+			};
+
+			tempf = value;
+			tempi &= 0x7FFFFFFF;
+			tempf2 = 420.69f;
+			tempi2 &= 0x7FFFFFFF;
+			if (tempi >= tempi2) {
+				//float Y2 = tempf2;
+				int32_t Y2 = tempi2;
+				tempi2 += (tempi - tempi2) & 0x7F800000;
+				
+				/*
+				if (tempf2 <= tempf * 0.5f) {
+					//tempf2 += tempf2;
+				}
+				*/
+				/*
+				if (tempi2 <= tempi - 0x800000) {
+					tempi2 += 0x800000;
+				}
+				*/
+				tempi2 += 0x800000 * (tempi2 <= tempi - 0x800000);
+				//Y2 = (Y2 - tempi2) / 0x800000 - 1;
+				// 
+				do {
+					/*
+					if (tempi >= tempi2) {
+						tempf -= tempf2;
+					}
+					*/
+					tempf -= tempf2 * (tempi >= tempi2);
+					//tempf2 *= 0.5f;
+					tempi2 -= 0x800000;
+				} while (tempi2 >= Y2);
+				tempi = tempi & 0x7FFFFFFF | bitcast<int32_t>(value) & 0x80000000;
+				value = tempf;
+			}
+			return value;
+			
+		}
+	);
+
+	//return __builtin_roundevenf(argc + 42069.5f);
+	return 0;
 
 	double freq_tsc = rdtsc_frequency();
 	LARGE_INTEGER freq_qpc;

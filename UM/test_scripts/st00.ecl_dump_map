@@ -3,7 +3,7 @@ anim { "enemy.anm"; "st01enm.anm"; "patchy.anm"; }
 ecli { "default.ecl"; }
 
 #include "common.hecl"
-#include "math.hecl"
+//#include "math.hecl"
 
 inline void laser_curve_init(int shooter, int color, int curve_length, float width, float speed, float angle) {
     shooter_reset(shooter);
@@ -79,3 +79,107 @@ void main() {
     
     halt();
 }
+
+
+inline float fmodA(float X, float Y) {
+    int X2 = $X & 0x7FFFFFFF;
+    int Y2 = $Y & 0x7FFFFFFF;
+    if (X2 >= Y2) {
+        $Y = Y2;
+        Y2 += X2 - Y2 & 0x7F800000;
+        Y2 += 0x800000 * (Y2 <= X2 - 0x800000);
+        while (Y2 >= $Y) {
+            %X2 -= %Y2 * _f(X2 >= Y2);
+            $Y2 -= 0x800000;
+        }
+        $X = X2 & 0x7FFFFFFF | $X & 0x80000000;
+    }
+    return X;
+}
+inline float fmodB(float X, float Y) {
+    int X2 = $X & 0x7FFFFFFF;
+    int Y2 = $Y & 0x7FFFFFFF;
+    if (X2 >= Y2) {
+        $Y = Y2;
+        Y2 += X2 - Y2 & 0x7F800000;
+        Y2 += 0x800000 * (Y2 <= X2 - 0x800000);
+        do {
+            %X2 -= %Y2 * _f(X2 >= Y2);
+            Y2 -= 0x800000;
+        } while (Y2 >= $Y);
+        $X = X2 & 0x7FFFFFFF | $X & 0x80000000;
+    }
+    return X;
+}
+inline float fmodC(float X, float Y) {
+    int X2 = $X & 0x7FFFFFFF;
+    int Y2 = $Y & 0x7FFFFFFF;
+    if (X2 >= Y2) {
+        $Y = Y2;
+        Y2 += X2 - Y2 & 0x7F800000;
+        Y2 += 0x800000 * (Y2 <= X2 - 0x800000);
+        $Y = (Y2 - $Y) / 0x800000 - 1;
+        do {
+            %X2 -= %Y2 * _f(X2 >= Y2);
+            $Y2 -= 0x800000;
+        } while ($Y--);
+        $X = X2 & 0x7FFFFFFF | $X & 0x80000000;
+    }
+    return X;
+}
+inline float fmodD(float X, float Y) {
+    int X2 = $X & 0x7FFFFFFF;
+    int Y2 = $Y & 0x7FFFFFFF;
+    if (X2 >= Y2) {
+        $Y = Y2;
+        Y2 += X2 - Y2 & 0x7F800000;
+        Y2 += 0x800000 * (Y2 <= X2 - 0x800000);
+        $Y = (Y2 - $Y) / 0x800000 - 1;
+        do {
+            %X2 -= %Y2 * _f(X2 >= Y2);
+            $Y2 -= 0x800000;
+        } while ($Y--);
+        $X = X2 & 0x7FFFFFFF | $X & 0x80000000;
+    }
+    return X;
+}
+
+float testA(float A, float B) {
+    return fmodA(A, B);
+}
+float testB(float A, float B) {
+    return fmodB(A, B);
+}
+float testC(float A, float B) {
+    return fmodC(A, B);
+}
+float testD(float A, float B) {
+    return fmodD(A, B);
+}
+/*
+int testB(float A) {
+    return iroundB(A);
+}
+float testC(float A, float B) {
+    return fdiffC(A, B);
+}
+int testD(float A) {
+    return iroundevenD(A);
+}
+float testE(float A) {
+    return roundeven(A);
+}
+*/
+
+/*
+int testA(int A, int B) {
+    return idiffA(A, B);
+}
+int testB(int A, int B) {
+    return idiffB(A, B);
+}
+*/
+
+//int testC(int A, int B) {
+    //return icopysignC(A, B);
+//}

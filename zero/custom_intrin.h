@@ -2545,14 +2545,14 @@ static inline void store_x87_env(void* env) {
     if constexpr (!wait) {
         __asm__ volatile (
             "FNSTENV %[env]"
-            : asm_arg("=m", env)
+            : [env]"=m"(*(uint8_t*)env)
             :
             : "fpcr"
         );
     } else {
         __asm__ volatile (
             "FSTENV %[env]"
-            : asm_arg("=m", env)
+            : [env]"=m"(*(uint8_t*)env)
             :
             : "fpcr"
         );

@@ -1,46 +1,167 @@
 // C <math.h> functions
+inline float tan(float angle) {
+    float cosX;
+    float sinY;
+    ins_90(cosX, sinY, 1.0f, 0.0f, angle);
+    return sinY / cosX;
+}
+inline float asin(float X) {
+    float temp;
+    ins_87(temp, 0.0f, 0.0f, sqrt(1.0f - X * X), X);
+    return temp;
+}
+inline float acos(float X) {
+    float temp;
+    ins_87(temp, 0.0f, 0.0f, X, sqrt(1.0f - X * X));
+    return temp;
+}
+inline float atan(float X) {
+    float temp;
+    ins_87(temp, 0.0f, 0.0f, 1.0f, sqrt(1.0f - X * X));
+    return temp;
+}
+inline float atan2(float Y, float X) {
+    float temp;
+    ins_87(temp, 0.0f, 0.0f, X, Y);
+    return temp;
+}
+inline float fmod(float X, float Y) {
+    int X2 = $X & 0x7FFFFFFF;
+    int Y2 = $Y & 0x7FFFFFFF;
+    if (X2 >= Y2) {
+        $Y = Y2;
+        Y2 += X2 - Y2 & 0x7F800000;
+        Y2 += 0x800000 * (Y2 <= X2 - 0x800000);
+        do {
+            %X2 -= %Y2 * _f(X2 >= Y2);
+            Y2 -= 0x800000;
+        } while (Y2 >= $Y);
+        $X = X2 & 0x7FFFFFFF | $X & 0x80000000;
+    }
+    return X;
+}
+// C <math.h> functions for int/float returning int/float
 inline float fabs(float value) {
     $value &= 0x7FFFFFFF;
     return value;
 }
 inline int iabs(int value) {
-    return value >= 0 ? value : -value;
+    return value & 0x80000000 ? -value : value;
 }
 inline float fmax(float A, float B) {
-    return A > B ? A : B;
+    return A >= B ? A : B;
 }
 inline int imax(int A, int B) {
-    return A > B ? A : B;
+    return A >= B ? A : B;
 }
 inline float fmin(float A, float B) {
-    return A < B ? A : B;
+    return A <= B ? A : B;
 }
 inline int imin(int A, int B) {
-    return A < B ? A : B;
+    return A <= B ? A : B;
 }
 inline float fdim(float A, float B) {
     return A > B ? A - B : 0.0f;
 }
-inline float atan2(float Y, float X) {
-    math_line_angle(Y, 0.0f, 0.0f, X, Y);
-    return Y;
-}
-inline float floor(float value) {
-    return _f(_S(value) - (value < 0.0f));
-}
-inline float trunc(float value) {
-    return _f(_S(value));
+inline int idim(int A, int B) {
+    return A - B & -(A >= B);
 }
 inline float copysign(float value, float sign) {
     $value = $value & 0x7FFFFFFF | $sign & 0x80000000;
     return value;
 }
+inline int icopysign(int value, int sign) {
+    return (value ^ sign) & 0x80000000 ? -value : value;
+}
+// C <math.h> functions for float returning int/float
+
+// Valid range: [-2147483648.0, 2147483647.0)
+inline float floor(float value) {
+    int temp = _S(value);
+    return _f(temp - (value < _f(temp)));
+}
+// Valid range: [-2147483648.0, 2147483647.0)
+inline int ifloor(float value) {
+    int temp = _S(value);
+    return temp - (value < _f(temp));
+}
+// Valid range: [-2147483648.0, 2147483647.0)
+inline float ceil(float value) {
+    int temp = _S(value);
+    return _f(temp + (value > _f(temp)));
+}
+// Valid range: [-2147483648.0, 2147483647.0)
+inline int iceil(float value) {
+    int temp = _S(value);
+    return temp + (value > _f(temp));
+}
+// Valid range: [-2147483648.0, 2147483647.0)
+inline float trunc(float value) {
+    $value = _S(value);
+    return _f($value);
+}
+// Valid range: [-2147483648.0, 2147483647.0)
+inline int itrunc(float value) {
+    return _S(value);
+}
+// Valid range: [-2147483648.0, 2147483647.0)
+inline float round(float value) {
+    int whole = _S(value);
+    float frac = value - _f(whole);
+    if (($frac & 0x7FFFFFFF) >= 0x3F000000) {
+        whole += 1 | -($frac < 0);
+    }
+    return _f(whole);
+}
+// Valid range: [-2147483648.0, 2147483647.0)
+inline int iround(float value) {
+    int whole = _S(value);
+    float frac = value - _f(whole);
+    if (($frac & 0x7FFFFFFF) >= 0x3F000000) {
+        whole += 1 | -($frac < 0);
+    }
+    return whole;
+}
+// Valid range: [-2147483648.0, 2147483647.0)
+inline float roundeven(float value) {
+    int whole = _S(value);
+    float frac = value - _f(whole);
+    $frac &= 0x7FFFFFFF;
+    if ($frac != 0x3F000000 ? $frac > 0x3F000000 : whole & 1) {
+        whole += 1 | -(value < 0.0f);
+    }
+    return _f(whole);
+}
+// Valid range: [-2147483648.0, 2147483647.0)
+inline int iroundeven(float value) {
+    int whole = _S(value);
+    float frac = value - _f(whole);
+    $frac &= 0x7FFFFFFF;
+    if ($frac != 0x3F000000 ? $frac > 0x3F000000 : whole & 1) {
+        whole += 1 | -(value < 0.0f);
+    }
+    return whole;
+}
+
 // C++ <math.h> functions
 inline float flerp(float start, float end, float t) {
     return start * (1.0f - t) + (end * t);
 }
 inline int ilerp(int start, int end, float t) {
     return _S(_f(start) * (1.0f - t) + (_f(end) * t));
+}
+// Java Math functions
+inline float fsignumf(float value) {
+    return _f((value > 0.0f) - (value < 0.0f));
+}
+inline int fsignumi(float value) {
+    return (value > 0.0f) - (value < 0.0f);
+}
+inline float isignumf(int value) {
+    return _f((value > 0) - (value < 0));
+}
+inline int isignumi(int value) {
+    return (value > 0) - (value < 0);
 }
 // C++ <bit> functions
 inline int byteswap(int value) {
@@ -89,12 +210,12 @@ inline float fpun(int value) {
     return %value;
 }
 inline float fdiff(float A, float B) {
-    A -= B;
-    $A &= 0x7FFFFFFF;
-    return A;
+    float temp = A - B;
+    $temp &= 0x7FFFFFFF;
+    return temp;
 }
 inline int idiff(int A, int B) {
-    return A > B ? A - B : B - A;
+    return A >= B ? A - B : B - A;
 }
 // Stack op helpers
 inline int SHL(int value, int count) {
