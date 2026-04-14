@@ -50,6 +50,7 @@ template <typename T>
 using ZUNListEnds = ZUNListEndsBase<T, true>;
 
 #define INCLUDE_FUTURE_INSTRUCTIONS 0
+#define INCLUDE_FUTURE_VARIABLES 0
 #define INCLUDE_PATCH_INSTRUCTIONS 0
 
 #define MALLET_PIPE 0
@@ -40681,7 +40682,7 @@ enum BulletState {
 
 // size: 0xFA0
 struct Bullet {
-	ZUNList<Bullet> free_list_node; // 0x0
+ 	ZUNList<Bullet> free_list_node; // 0x0
 	ZUNList<Bullet> tick_list_node; // 0x10
 	union {
 		uint32_t flags; // 0x20
@@ -40710,7 +40711,7 @@ struct Bullet {
 		Float2 hitbox_size; // 0x658
 	};
 	int32_t bullet_manager_index; // 0x660
-	int32_t __ex_func_a; // 0x664
+	int32_t __ex_react_val; // 0x664
 	unknown_fields(0x8); // 0x668
 	int32_t offscreen_time; // 0x670
 	int32_t cancel_script_id; // 0x674
@@ -40720,7 +40721,7 @@ struct Bullet {
 	uint32_t active_effects; // 0x684
 	uint32_t initial_effects; // 0x688
 	Bullet* next_in_layer; // 0x68C
-	int __dword_690; // 0x690
+	int __int_690; // 0x690
 	int32_t transform_sound; // 0x694
 	int32_t layer; // 0x698
 	BulletEffectArgs effects[BULLET_EFFECT_MAX]; // 0x69C
@@ -41258,7 +41259,7 @@ ValidateFieldOffset32(0x650, Bullet, speed);
 ValidateFieldOffset32(0x654, Bullet, angle);
 ValidateFieldOffset32(0x658, Bullet, hitbox_size);
 ValidateFieldOffset32(0x660, Bullet, bullet_manager_index);
-ValidateFieldOffset32(0x664, Bullet, __ex_func_a);
+ValidateFieldOffset32(0x664, Bullet, __ex_react_val);
 ValidateFieldOffset32(0x670, Bullet, offscreen_time);
 ValidateFieldOffset32(0x674, Bullet, cancel_script_id);
 ValidateFieldOffset32(0x678, Bullet, __int_678);
@@ -41267,7 +41268,7 @@ ValidateFieldOffset32(0x680, Bullet, effect_loop_index);
 ValidateFieldOffset32(0x684, Bullet, active_effects);
 ValidateFieldOffset32(0x688, Bullet, initial_effects);
 ValidateFieldOffset32(0x68C, Bullet, next_in_layer);
-ValidateFieldOffset32(0x690, Bullet, __dword_690);
+ValidateFieldOffset32(0x690, Bullet, __int_690);
 ValidateFieldOffset32(0x694, Bullet, transform_sound);
 ValidateFieldOffset32(0x698, Bullet, layer);
 ValidateFieldOffset32(0x69C, Bullet, effects);
@@ -43541,7 +43542,7 @@ public:
 
 		bullet->color = shooter->color;
 		bullet->sprite = shooter->type;
-		bullet->__dword_690 = 0;
+		bullet->__int_690 = 0;
 		bullet->__int_F64 = 60;
 		bullet->__hitbox_enabled = true;
 		bullet->grazed = false;
@@ -43994,8 +43995,8 @@ dllexport gnu_noinline void Bullet::cleanup() {
 		this->scale_enabled = false;
 		this->__unknown_flag_bu_C = false;
 		this->__delay_flag = false;
-		this->__dword_690 = 0;
-		this->__ex_func_a = 0;
+		this->__int_690 = 0;
+		this->__ex_react_val = 0;
 		BULLET_MANAGER_PTR->bullet_free_list.append(&this->free_list_node);
 		this->tick_list_node.unlink();
 	}
@@ -44725,7 +44726,41 @@ dllexport gnu_noinline int thiscall LaserCurve::initialize(void* data) {
 
 // 0x438D90
 dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_set_1_6bs(EnemyData* enemy_data) {
-	// TODO
+	BulletManager* bullet_manager = BULLET_MANAGER_PTR;
+	if (Bullet* bullet = bullet_manager->start_bullet_iter(0)) {
+		Player* player = PLAYER_PTR;
+		do {
+			if (bullet->__ex_react_val == 1) {
+				switch (bullet->__int_690) {
+					case 0: {
+						Enemy* boss;
+						clang_forceinline boss = get_boss_by_index(0);
+						Float2 position = bullet->position;
+						float F1 = enemy_data->float_vars[1];
+						if (position.distance_squared(&boss->data.current_motion.position) >= F1 * F1) {
+							float F0 = enemy_data->float_vars[0];
+							if (position.distance_squared(&player->data.position) >= F0 * F0) {
+								bullet->__int_690 = 1;
+								bullet->effect_index = 8;
+							}
+						}
+						break;
+					}
+					case 1:
+						if (bullet->effect_index == 11) {
+							float angle = player->angle_from_point(&bullet->position);
+							bullet->angle = angle;
+							bullet->speed = 0.01f;
+							bullet->velocity.make_from_vector(angle, 0.01f); // z coord unchanged
+							bullet_manager = BULLET_MANAGER_PTR;
+							player = PLAYER_PTR;
+						}
+						break;
+				}
+			}
+		} while ((bullet = bullet_manager->next_bullet_iter(0)));
+	}
+	return ZUN_SUCCESS;
 }
 
 // 0x439020
@@ -44804,7 +44839,35 @@ dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_call_3_ex(EnemyData*
 
 // 0x439320
 dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_set_4_ex(EnemyData* enemy_data) {
-	// TODO
+	BulletManager* bullet_manager = BULLET_MANAGER_PTR;
+
+	for (
+		Bullet* bulletA = bullet_manager->start_bullet_iter(0);
+		bulletA;
+		bulletA = bullet_manager->next_bullet_iter(0)
+	) {
+		if (bulletA->__ex_react_val == 1) {
+			for (
+				Bullet* bulletB = bullet_manager->start_bullet_iter(1);
+				bulletB;
+				bulletB = bullet_manager->next_bullet_iter(1)
+			) {
+				if (
+					bulletB->__int_690 == 0 &&
+					bulletB->__ex_react_val == 0
+				) {
+					float F1 = enemy_data->float_vars[1];
+					if (bulletA->position.distance_squared(&bulletB->position) < F1 * F1) {
+						bulletB->__int_690 = 1;
+						bulletB->active_effects = 0;
+						bulletB->effect_index = 8;
+					}
+				}
+			}
+		}
+	}
+
+	return ZUN_SUCCESS;
 }
 
 #pragma push_macro("IntArg")
@@ -45456,7 +45519,7 @@ dllexport void Bullet::run_effects() {
 				break;
 			}
 			case EX_REACT:
-				this->__ex_func_a = IntArg(0);
+				this->__ex_react_val = IntArg(0);
 				++effect_index;
 				continue;
 			case EX_SHOOT: {
@@ -45645,7 +45708,7 @@ dllexport void Bullet::run_effects() {
 			}
 			case EX_LASER: {
 				switch (IntArg(0)) {
-					case 1: {
+					case InfiniteLaser: { // 1
 						LaserInfiniteParams laser_params(0); // 0xA8
 						laser_params.speed = 8.0f; // IDK why this isn't 0
 						laser_params.velocity.x = 0.0f;
@@ -45698,14 +45761,14 @@ dllexport void Bullet::run_effects() {
 						laser_params.shoot_sound = 18;
 						laser_params.transform_sound = -1;
 						laser_params.distance = FloatArgEx(5);
-						LASER_MANAGER_PTR->allocate_new_laser(1, &laser_params);
+						LASER_MANAGER_PTR->allocate_new_laser(InfiniteLaser, &laser_params);
 						++effect_index;
 						if (flags & 0x10000) {
 							this->cancel(CancelType0);
 						}
 						continue;
 					}
-					case 0: {
+					case LineLaser: { // 0
 						LaserLineParams laser_params(0); // 0x528
 						laser_params.flags = 0;
 						laser_params.angle = 0.0f;
@@ -45748,7 +45811,7 @@ dllexport void Bullet::run_effects() {
 						laser_params.transform_sound = IntArgEx(5);
 						laser_params.spawn_distance = FloatArgEx(6);
 						laser_params.effect_index = IntArgEx(6);
-						LASER_MANAGER_PTR->allocate_new_laser(0, &laser_params);
+						LASER_MANAGER_PTR->allocate_new_laser(LineLaser, &laser_params);
 						++effect_index;
 						if (cancel_current_bullet) {
 							this->cancel(CancelType0);
@@ -45772,7 +45835,7 @@ dllexport void Bullet::run_effects() {
 				continue;
 			case EX_HITBOX: {
 				float hitbox_size = FloatArg(0);
-				if (0.0f > hitbox_size) {
+				if (hitbox_size < 0.0f) {
 					hitbox_size = BULLET_SPRITE_DATA[this->sprite].hitbox_size;
 				}
 				this->hitbox_size.y = hitbox_size;
@@ -58307,6 +58370,11 @@ extern "C" {
 // EH frame (terminate)
 dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow) EH_TERMINATE;
 dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow) EH_TERMINATE asm_symbol_rel(0x471270) {
+
+	//MXCSR mxcsr;
+	//store_mxcsr(mxcsr);
+	//mxcsr.misaligned_exception_mask = true;
+	//load_mxcsr(mxcsr);
 
 #if TESTING_FEATURES
 	debug_command_line();

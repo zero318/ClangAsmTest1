@@ -548,6 +548,20 @@ target_compile_options(${EXE} PRIVATE
 	# Enable early if conversion
 	#"SHELL:-mllvm -x86-early-ifcvt=true"
 
+	# Subtarget controls
+	#"SHELL:-Xclang -target-feature -Xclang -"
+	#"SHELL:-Xclang -target-feature -Xclang -slow-shld"
+	#"SHELL:-Xclang -target-feature -Xclang +no-bypass-delay"
+	# Steamroller has no MOV domain penalty for register->register
+	"SHELL:-Xclang -target-feature -Xclang +no-bypass-delay-mov"
+	#"SHELL:-Xclang -target-feature -Xclang +no-bypass-delay-blend"
+	# All shuffles are integer unit anyway whether I like it or not
+	"SHELL:-Xclang -target-feature -Xclang +no-bypass-delay-shuffle"
+	#"SHELL:-Xclang -target-feature -Xclang +branch-hint"
+
+	# Neat clang actually has a flag for this
+	#"SHELL:-Xclang -target-feature -Xclang +sse-unaligned-mem"
+
 	# Disable generating VZEROUPPER for AVX/SSE transitions
 	#"SHELL:-mllvm -x86-use-vzeroupper=false"
 

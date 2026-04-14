@@ -64,7 +64,7 @@ dllexport gnu_noinline void mmx_jank_test() {
 	store_x87_env(&stack.env[2]);
 
 	__asm {
-		MOVDQ2Q MM0, XMM0
+		MOVQ MM0, MM0
 		FST stack.tempf + 12
 	}
 
@@ -97,7 +97,7 @@ dllexport gnu_noinline void mmx_jank_test() {
 		"-TOS: %u\n"
 		"-TAG: %04X, %s,%s,%s,%s,%s,%s,%s,%s\n"
 		"-VAL: %08X\n"
-		"SSE -> MMX:\n"
+		"MMX reg->MMX:\n"
 		"-TOS: %u\n"
 		"-TAG: %04X, %s,%s,%s,%s,%s,%s,%s,%s\n"
 		"-VAL: %08X\n"
