@@ -1,0 +1,598 @@
+
+meta {
+    unknown: 0,
+    anm_path: "stg4bg.anm",
+    //anm_path: "st01wl.anm",
+    /*
+    stage_name: "暗闇の館　～ Save the mind.",
+    bgm: [
+        {path: "bgm/th06_08.mid", name: "ヴワル魔法図書館"},
+        {
+            path: "bgm/th06_09.mid",
+            name: "ラクトガール　～ 少女密室",
+        },
+        {path: " ", name: " "},
+        {path: " ", name: " "},
+    ],
+    */
+    objects: {
+        object0: {
+            layer: 0,
+            pos: [-32.0, -32.0, 0.0],
+            size: [480.0, 288.0, 0.0],
+            quads: [
+                rect {
+                    anm_script: 1,
+                    pos: [0.0, 0.0, 0.0],
+                    size: [64.0, -64.0]
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [64.0, 0.0, 0.0],
+                    size: [64.0, -64.0]
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [128.0, 0.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [192.0, 0.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [256.0, 0.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [320.0, 0.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [384.0, 0.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [0.0, 64.0, 0.0],
+                    size: [64.0, -64.0]
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [64.0, 64.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [128.0, 64.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [192.0, 64.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [256.0, 64.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [320.0, 64.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [384.0, 64.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [0.0, 128.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [64.0, 128.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [128.0, 128.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [192.0, 128.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [256.0, 128.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [320.0, 128.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [384.0, 128.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [0.0, 192.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [64.0, 192.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [128.0, 192.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [192.0, 192.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [256.0, 192.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [320.0, 192.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+                rect {
+                    anm_script: 1,
+                    pos: [384.0, 192.0, 0.0],
+                    size: [64.0, -64.0],
+                },
+            ],
+        },
+        object1: {
+            layer: 0,
+            pos: [-88.0, 0.0, -160.0],
+            size: [520.0, 240.0, 80.0],
+            quads: [
+                rect {
+                    anm_script: 2,
+                    pos: [-48.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [-48.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+                rect {
+                    anm_script: 2,
+                    pos: [32.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [32.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+                rect {
+                    anm_script: 4,
+                    pos: [112.0, 80.0, -80.0],
+                    size: [16.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [112.0, 80.0, -160.0],
+                    size: [16.0, -80.0],
+                },
+                rect {
+                    anm_script: 6,
+                    pos: [88.0, 40.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 6,
+                    pos: [216.0, 40.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 5,
+                    pos: [256.0, 80.0, -80.0],
+                    size: [16.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [256.0, 80.0, -160.0],
+                    size: [16.0, -80.0],
+                },
+                rect {
+                    anm_script: 3,
+                    pos: [272.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [272.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+                rect {
+                    anm_script: 3,
+                    pos: [352.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [352.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+            ],
+        },
+        object2: {
+            layer: 0,
+            pos: [-72.0, 0.0, -160.0],
+            size: [520.0, 240.0, 80.0],
+            quads: [
+                rect {
+                    anm_script: 2,
+                    pos: [-32.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [-32.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+                rect {
+                    anm_script: 2,
+                    pos: [48.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [48.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+                rect {
+                    anm_script: 2,
+                    pos: [128.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [128.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+                rect {
+                    anm_script: 2,
+                    pos: [208.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [208.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+                rect {
+                    anm_script: 2,
+                    pos: [288.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [288.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+                rect {
+                    anm_script: 2,
+                    pos: [368.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [368.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+            ],
+        },
+        object3: {
+            layer: 0,
+            pos: [-168.0, 0.0, -160.0],
+            size: [520.0, 240.0, 80.0],
+            quads: [
+                rect {
+                    anm_script: 2,
+                    pos: [-128.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [-128.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+                rect {
+                    anm_script: 2,
+                    pos: [-48.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [-48.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+                rect {
+                    anm_script: 4,
+                    pos: [32.0, 80.0, -80.0],
+                    size: [16.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [32.0, 80.0, -160.0],
+                    size: [16.0, -80.0],
+                },
+                rect {
+                    anm_script: 6,
+                    pos: [8.0, 40.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 6,
+                    pos: [136.0, 40.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 5,
+                    pos: [176.0, 80.0, -80.0],
+                    size: [16.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [176.0, 80.0, -160.0],
+                    size: [16.0, -80.0],
+                },
+                rect {
+                    anm_script: 3,
+                    pos: [192.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [192.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+                rect {
+                    anm_script: 3,
+                    pos: [272.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [272.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+            ],
+        },
+        object4: {
+            layer: 0,
+            pos: [-72.0, 0.0, -160.0],
+            size: [520.0, 240.0, 80.0],
+            quads: [
+                rect {
+                    anm_script: 2,
+                    pos: [-32.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [-32.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+                rect {
+                    anm_script: 2,
+                    pos: [48.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [48.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+                rect {
+                    anm_script: 2,
+                    pos: [128.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [128.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+                rect {
+                    anm_script: 4,
+                    pos: [208.0, 80.0, -80.0],
+                    size: [16.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [208.0, 80.0, -160.0],
+                    size: [16.0, -80.0],
+                },
+                rect {
+                    anm_script: 6,
+                    pos: [184.0, 40.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 6,
+                    pos: [312.0, 40.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 5,
+                    pos: [352.0, 80.0, -80.0],
+                    size: [16.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [352.0, 80.0, -160.0],
+                    size: [16.0, -80.0],
+                },
+                rect {
+                    anm_script: 3,
+                    pos: [368.0, 80.0, -80.0],
+                    size: [80.0, -160.0],
+                },
+                rect {
+                    anm_script: 0,
+                    pos: [368.0, 80.0, -160.0],
+                    size: [80.0, -80.0],
+                },
+            ],
+        },
+    },
+    instances: [
+        object0 {pos: [0.0, -7000.0, -110.0]},
+        object0 {pos: [0.0, -6744.0, -110.0]},
+        object0 {pos: [0.0, -6488.0, -110.0]},
+        object0 {pos: [0.0, -6232.0, -110.0]},
+        object0 {pos: [0.0, -5976.0, -110.0]},
+        object0 {pos: [0.0, -5720.0, -110.0]},
+        object0 {pos: [0.0, -5464.0, -110.0]},
+        object0 {pos: [0.0, -5208.0, -110.0]},
+        object0 {pos: [0.0, -4952.0, -110.0]},
+        object0 {pos: [0.0, -4696.0, -110.0]},
+        object2 {pos: [0.0, -4440.0, -110.0]},
+        object0 {pos: [0.0, -4184.0, -110.0]},
+        object1 {pos: [0.0, -4184.0, -110.0]},
+        object0 {pos: [0.0, -3928.0, -110.0]},
+        object1 {pos: [0.0, -3928.0, -110.0]},
+        object0 {pos: [0.0, -3672.0, -110.0]},
+        object2 {pos: [0.0, -3672.0, -110.0]},
+        object0 {pos: [0.0, -3416.0, -110.0]},
+        object4 {pos: [0.0, -3416.0, -110.0]},
+        object0 {pos: [0.0, -3160.0, -110.0]},
+        object1 {pos: [0.0, -3160.0, -110.0]},
+        object0 {pos: [0.0, -2904.0, -110.0]},
+        object3 {pos: [0.0, -2904.0, -110.0]},
+        object0 {pos: [0.0, -2648.0, -110.0]},
+        object2 {pos: [0.0, -2648.0, -110.0]},
+        object0 {pos: [0.0, -2392.0, -110.0]},
+        object3 {pos: [0.0, -2392.0, -110.0]},
+        object0 {pos: [0.0, -2136.0, -110.0]},
+        object1 {pos: [0.0, -2136.0, -110.0]},
+        object0 {pos: [0.0, -1880.0, -110.0]},
+        object4 {pos: [0.0, -1880.0, -110.0]},
+        object0 {pos: [0.0, -1624.0, -110.0]},
+        object1 {pos: [0.0, -1624.0, -110.0]},
+        object0 {pos: [0.0, -1368.0, -110.0]},
+        object3 {pos: [0.0, -1368.0, -110.0]},
+        object0 {pos: [0.0, -1112.0, -110.0]},
+        object1 {pos: [0.0, -1112.0, -110.0]},
+        object0 {pos: [0.0, -856.0, -110.0]},
+        object2 {pos: [0.0, -856.0, -110.0]},
+        object0 {pos: [0.0, -600.0, -110.0]},
+        object1 {pos: [0.0, -600.0, -110.0]},
+        object0 {pos: [0.0, -344.0, -110.0]},
+        object3 {pos: [0.0, -344.0, -110.0]},
+        object0 {pos: [0.0, -88.0, -110.0]},
+        object1 {pos: [0.0, -88.0, -110.0]},
+        object0 {pos: [0.0, 168.0, -110.0]},
+        object1 {pos: [0.0, 168.0, -110.0]},
+        object0 {pos: [0.0, 424.0, -110.0]},
+        object1 {pos: [0.0, 424.0, -110.0]},
+        object0 {pos: [0.0, 680.0, -110.0]},
+        object1 {pos: [0.0, 680.0, -110.0]},
+        object0 {pos: [0.0, 936.0, -110.0]},
+        object0 {pos: [0.0, 1192.0, -110.0]},
+        object0 {pos: [0.0, 1448.0, -110.0]},
+    ],
+}
+
+// g_Supervisor.viewport.Width = 408.0
+// g_Supervisor.viewport.Height = 472.0
+// viewportMiddleWidth = 204.0
+// viewportMiddleHeight = 236.0
+// tanf(fov / 2) = 0.2679492
+// cameraDistance = 880.7640
+script main {
+    camera_fov(0.523599);
+    background_fill_color(0xff000000);
+    //fog(0xff000000, 350.0, 600.0);
+    fog(0xff80c0ff, 8000.0, 12000.0);
+    //camera_facing(0.0, -700.0, 0.7);
+    
+    camera_rotation(0.0, -1.0, 0.0);
+    camera_facing(0.0, -700.0, 880.7640 * 0.7);
+    camera_position(204.0, 0.0, -880.7640 * 0.7);
+    
+    //camera_facing_interp(800, Linear, 204.0, 700.0 -200.0, 880.7640 * 0.7);
+    //camera_position_interp(800, Linear, 204.0, -2000.0, -880.7640 * 0.7);
+    
+//+100000:
+    //camera_facing(0.0, -700.0, 0.7);
+    //camera_position(0.0, 0.0, -110.0);
+    camera_position_interp(800, Linear, 204.0, -200.0, -880.7640 * 0.7);
++800: // 800
+    camera_position_interp(800, Linear, 204.0, -400.0, -880.7640 * 0.7);
+    //fog_interp(400, Linear, 0xff804020, 300.0, 860.0);
++800: // 1600
+    camera_position_interp(800, Linear, 204.0, -600.0, -880.7640 * 0.7);
++800: // 2400
+    camera_position_interp(800, Linear, 204.0, -800.0, -880.7640 * 0.7);
++800: // 3200
+    camera_position_interp(800, Linear, 204.0, -1000.0, -880.7640 * 0.7);
++800: // 4000
+    camera_position_interp(100, Linear, 0.0, -1025.0, -880.7640 * 0.7);
++100: // 4100
+    camera_position_interp(800, Linear, 204.0, -1225.0, -880.7640 * 0.7);
+    //fog_interp(400, Linear, 0xff000060, 330.0, 700.0);
++800: // 4900
+    camera_position_interp(800, Linear, 204.0, -1425.0, -880.7640 * 0.7);
++800: // 5700
+    camera_position_interp(800, Linear, 204.0, -1625.0, -880.7640 * 0.7);
++800: // 6500
+    camera_position_interp(800, Linear, 204.0, -1825.0, -880.7640 * 0.7);
++800: // 7300
+    camera_position_interp(800, Linear, 204.0, -1925.0, -880.7640 * 0.7);
+    //fog_interp(400, Linear, 0xff500030, 350.0, 750.0);
++800: // 8100
+    camera_position_interp(800, Linear, 204.0, -2025.0, -880.7640 * 0.7);
++800: // 8900
+    camera_position_interp(800, Linear, 204.0, -2125.0, -880.7640 * 0.7);
++800: // 9700
+    camera_position_interp(800, Linear, 204.0, -2225.0, -880.7640 * 0.7);
++800: // 10500
+    camera_position_interp(800, Linear, 204.0, -2325.0, -880.7640 * 0.7);
+    //fog_interp(400, Linear, 0xff000080, 360.0, 660.0);
++800: // 11300
+    camera_position_interp(800, Linear, 204.0, -2425.0, -880.7640 * 0.7);
++800: // 12100
+    camera_position_interp(800, Linear, 204.0, -2525.0, -880.7640 * 0.7);
++800: // 12900
+    camera_position_interp(800, Linear, 204.0, -2625.0, -880.7640 * 0.7);
++800: // 13700
+    camera_position_interp(800, Linear, 204.0, -2725.0, -880.7640 * 0.7);
++800: // 14500
+    camera_position_interp(800, Linear, 204.0, -2825.0, -880.7640 * 0.7);
++800: // 15300
+    camera_position_interp(800, Linear, 204.0, -2925.0, -880.7640 * 0.7);
++800: // 16100
+    camera_position_interp(800, Linear, 204.0, -3025.0, -880.7640 * 0.7);
++800: // 16900
+    camera_position_interp(800, Linear, 204.0, -3125.0, -880.7640 * 0.7);
+    loop {
++800: // 16900
+    }
+}

@@ -209,6 +209,23 @@ static forceinline void delete_no_eh(T* ptr) noexcept(false) {
 #define SAFE_DELETE_NO_EH(p)       { if (p) { delete_no_eh_nonnull(p);     (p)=NULL; } }
 #endif
 
+#ifndef SAFE_FREE_SLOW
+#define SAFE_FREE_SLOW(p)       { if (p) { free ((void*)p); }    (p)=NULL;  }
+#endif
+
+#ifndef SAFE_DELETE_SLOW
+#define SAFE_DELETE_SLOW(p)       { if (p) { delete (p); }    (p)=NULL;  }
+#endif    
+#ifndef SAFE_DELETE_NO_EH_SLOW
+#define SAFE_DELETE_NO_EH_SLOW(p)       { if (p) { delete_no_eh_nonnull(p); }    (p)=NULL;  }
+#endif
+#ifndef SAFE_DELETE_ARRAY_SLOW
+#define SAFE_DELETE_ARRAY_SLOW(p) { if (p) { delete[] (p); }  (p)=NULL;  }
+#endif    
+#ifndef SAFE_RELEASE_SLOW
+#define SAFE_RELEASE_SLOW(p)      { if (p) { (p)->Release(); } (p)=NULL;  }
+#endif
+
 #if INCLUDE_PATCH_CODE
 // just a stub to make the code look right
 dllexport gnu_noinline const char* fastcall eval_expr(const char* expr, char end, int32_t* out, void* regs, uintptr_t rel_source, HMODULE hMod) {
@@ -1489,8 +1506,8 @@ struct ArcFile {
 			free(this->archive_filename);
 		}
 		this->archive_filename = NULL;
-		SAFE_DELETE_ARRAY(this->contents);
-		SAFE_DELETE(this->file);
+		SAFE_DELETE_ARRAY_SLOW(this->contents);
+		SAFE_DELETE_SLOW(this->file);
 		this->file_count = 0;
 	}
 
@@ -1645,7 +1662,7 @@ free_buffer:
 				}
 			}
 		}
-		SAFE_DELETE(THDAT_ARCFILE.file);
+		SAFE_DELETE_SLOW(THDAT_ARCFILE.file);
 	}
 	return false;
 }
@@ -3836,6 +3853,13 @@ ValidateFieldOffset32(0x18, StageSky, color);
 ValidateStructSize32(0x1C, StageSky);
 #pragma endregion
 
+enum CameraID : int32_t {
+	Camera0 = 0,
+	Camera1 = 1,
+	Camera2 = 2,
+	StdCamera = 3
+};
+
 // size: 0x164
 struct StageCamera {
 	Float3 position; // 0x0
@@ -4814,7 +4838,7 @@ struct Supervisor {
 	dllexport gnu_noinline static void __release_rendering_surfaces() asm_symbol_rel(0x456180);
 
 	// 0x454950
-	dllexport gnu_noinline int thiscall __sub_454950() asm_symbol_rel(0x454950);
+	dllexport gnu_noinline int thiscall __setup_camera() asm_symbol_rel(0x454950);
 
 	// 0x455040
 	dllexport gnu_noinline UpdateFuncRet thiscall __update_gamemode() asm_symbol_rel(0x455040);
@@ -4907,7 +4931,7 @@ public:
 	dllexport gnu_noinline static void stdcall __sub_4548E0(StageCamera* camera) asm_symbol_rel(0x4548E0);
 
 	// 0x454950
-	dllexport gnu_noinline static void stdcall __sub_454950(StageCamera* camera) asm_symbol_rel(0x454950) {
+	dllexport gnu_noinline static void stdcall __setup_camera(StageCamera* camera) asm_symbol_rel(0x454950) {
 		uint32_t height = camera->viewport.Height;
 		float x = (float)camera->viewport.X + (float)camera->viewport.Width * 0.5f;
 		float viewport_height = (float)height;
@@ -4932,7 +4956,7 @@ public:
 	}
 
 	// 0x41F950
-	dllexport gnu_noinline void thiscall __sub_41F950() asm_symbol_rel(0x41F950);
+	dllexport gnu_noinline void thiscall __setup_stage_camera() asm_symbol_rel(0x41F950);
 
 	// 0x454B20
 	dllexport gnu_noinline void thiscall __initialize_cameras() asm_symbol_rel(0x454B20);
@@ -17001,17 +17025,17 @@ private:
 			case __CONTROLLER_Z_ROT: // 10026
 				return this->get_controller_rotation()->z;
 			case CAMERA_POS_X: // 10016
-				return SUPERVISOR.cameras[3].position.x + SUPERVISOR.cameras[3].__shaking_float3_A.x;
+				return SUPERVISOR.cameras[StdCamera].position.x + SUPERVISOR.cameras[StdCamera].__shaking_float3_A.x;
 			case CAMERA_POS_Y: // 10017
-				return SUPERVISOR.cameras[3].position.y + SUPERVISOR.cameras[3].__shaking_float3_A.y;
+				return SUPERVISOR.cameras[StdCamera].position.y + SUPERVISOR.cameras[StdCamera].__shaking_float3_A.y;
 			case CAMERA_POS_Z: // 10018
-				return SUPERVISOR.cameras[3].position.z + SUPERVISOR.cameras[3].__shaking_float3_A.z;
+				return SUPERVISOR.cameras[StdCamera].position.z + SUPERVISOR.cameras[StdCamera].__shaking_float3_A.z;
 			case CAMERA_FACING_X: // 10019
-				return SUPERVISOR.cameras[3].facing_normalized.x;
+				return SUPERVISOR.cameras[StdCamera].facing_normalized.x;
 			case CAMERA_FACING_Y: // 10020
-				return SUPERVISOR.cameras[3].facing_normalized.x;
+				return SUPERVISOR.cameras[StdCamera].facing_normalized.x;
 			case CAMERA_FACING_Z: // 10021
-				return SUPERVISOR.cameras[3].facing_normalized.x;
+				return SUPERVISOR.cameras[StdCamera].facing_normalized.x;
 			case RAND_SCALE: // 10027
 				return this->data.current_context.rand_scale;
 			case RAND_ANGLE_SCALE: // 10028
@@ -19102,7 +19126,7 @@ struct AnmManager {
 
 			matrix.m[3][2] = vm->data.position.z + vm->controller.position.z + vm->data.__position_2.z;
 			
-			SUPERVISOR.d3d_device->SetTransform(D3DTS_WORLDMATRIX(0), &matrix);
+			SUPERVISOR.d3d_device->SetTransform(D3DTS_WORLD, &matrix);
 
 			AnmSprite* sprite = vm->get_sprite();
 			int32_t sprite_index = sprite->__index_8;
@@ -19246,7 +19270,7 @@ struct AnmManager {
 			matrix.m[3][1] = vm->controller.position.y + vm->data.position.y + +vm->data.__position_2.y;
 			matrix.m[3][2] = vm->controller.position.z + vm->data.position.z + +vm->data.__position_2.z;
 
-			SUPERVISOR.d3d_device->SetTransform(D3DTS_WORLDMATRIX(0), &matrix);
+			SUPERVISOR.d3d_device->SetTransform(D3DTS_WORLD, &matrix);
 
 			this->setup_render_state_for_vm(vm);
 
@@ -19483,8 +19507,8 @@ struct AnmManager {
 	/* // 0x4876A0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_4(void* self) asm_symbol_rel(0x4876A0) { return ((AnmManager*)self)->render_layer(4); }
 	// 0x4876B0
 	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_3(void* self) asm_symbol_rel(0x4876B0) {
-		SUPERVISOR.__sub_454950(&SUPERVISOR.cameras[3]);
-		SUPERVISOR.set_camera_by_index_disable_fog(3);
+		SUPERVISOR.__sub_454950(&SUPERVISOR.cameras[StdCamera]);
+		SUPERVISOR.set_camera_by_index_disable_fog(StdCamera);
 		return ((AnmManager*)self)->render_layer(3);
 	}
 	/* // 0x487770 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_5(void* self) asm_symbol_rel(0x487770) { return ((AnmManager*)self)->render_layer(5); }
@@ -20370,7 +20394,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_A(void* pt
 	if (SUPERVISOR.__surface_1AC) {
 		SUPERVISOR.d3d_device->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, COLOR(255, 255, 255, 255), 1.0f, 0);
 		SUPERVISOR.d3d_device->SetRenderTarget(0, SUPERVISOR.__surface_1AC);
-		D3DRECT rect = SUPERVISOR.cameras[3].get_viewport_d3d_rect();
+		D3DRECT rect = SUPERVISOR.cameras[StdCamera].get_viewport_d3d_rect();
 		SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, SUPERVISOR.background_color, 1.0f, 0);
 
 		WINDOW_DATA.__width_related_2080 = (int32_t)SCREEN_WIDTH;
@@ -20417,7 +20441,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_B(void* pt
 
 		PrimitiveVertex verts[4];
 
-		Float2 viewport_position = SUPERVISOR.cameras[3].get_viewport_position();
+		Float2 viewport_position = SUPERVISOR.cameras[StdCamera].get_viewport_position();
 		
 		verts[3].position.z = 0.0f;
 		verts[2].position.z = 0.0f;
@@ -20436,7 +20460,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_B(void* pt
 		verts[2].diffuse = COLOR(255, 0, 0, 0);
 		verts[3].diffuse = COLOR(255, 0, 0, 0);
 
-		Float2 viewport_size = SUPERVISOR.cameras[3].get_viewport_size();
+		Float2 viewport_size = SUPERVISOR.cameras[StdCamera].get_viewport_size();
 		verts[1].position.x += viewport_size.x;
 		verts[3].position.as2() += viewport_size;
 		verts[2].position.y += viewport_size.y;
@@ -20463,7 +20487,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_B(void* pt
 
 		ANM_MANAGER_PTR->flush_sprites();
 		SUPERVISOR.d3d_device->SetRenderTarget(0, SUPERVISOR.__surface_1B0);
-		D3DRECT rect = SUPERVISOR.cameras[3].get_viewport_d3d_rect();
+		D3DRECT rect = SUPERVISOR.cameras[StdCamera].get_viewport_d3d_rect();
 		SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_ZBUFFER, SUPERVISOR.background_color, 1.0f, 0);
 	}
 	return UpdateFuncNext;
@@ -20478,7 +20502,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_
 			SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
 
 			SUPERVISOR.d3d_disable_zwrite();
-			SUPERVISOR.set_camera_by_index(3);
+			SUPERVISOR.set_camera_by_index(StdCamera);
 
 			ANM_MANAGER_PTR->draw_vm(SUPERVISOR.__arcade_vm_ptr_A);
 			SUPERVISOR.__arcade_vm_ptr_A->data.color1 = COLOR(255, 255, 255, 255);
@@ -20501,7 +20525,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_D(void* pt
 		ANM_MANAGER_PTR->flush_sprites();
 		SUPERVISOR.d3d_device->SetRenderTarget(0, SUPERVISOR.__surface_1AC);
 
-		D3DRECT rect = SUPERVISOR.cameras[3].get_viewport_d3d_rect();
+		D3DRECT rect = SUPERVISOR.cameras[StdCamera].get_viewport_d3d_rect();
 		SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_ZBUFFER, SUPERVISOR.background_color, 1.0f, 0);
 	}
 	return UpdateFuncNext;
@@ -20516,7 +20540,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_
 			SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
 
 			SUPERVISOR.d3d_disable_zwrite();
-			SUPERVISOR.set_camera_by_index(3);
+			SUPERVISOR.set_camera_by_index(StdCamera);
 
 			ANM_MANAGER_PTR->draw_vm(SUPERVISOR.__arcade_vm_ptr_B);
 			SUPERVISOR.__arcade_vm_ptr_B->data.color1 = COLOR(255, 255, 255, 255);
@@ -20595,7 +20619,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_
 // 0x455D40
 dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_J(void* ptr) {
 	ANM_MANAGER_PTR->flush_sprites();
-	SUPERVISOR.cameras[3].__float2_FC = { 0.0f, 0.0f };
+	SUPERVISOR.cameras[StdCamera].__float2_FC = { 0.0f, 0.0f };
 	SUPERVISOR.cameras[1].__float2_FC = { 0.0f, 0.0f };
 	return UpdateFuncNext;
 }
@@ -20744,13 +20768,13 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_455EC0() {
 		}
 	}
 	else {
-		this->cameras[0] = this->cameras[3];
+		this->cameras[0] = this->cameras[StdCamera];
 	}
 }
 
 // 0x41F950
-dllexport gnu_noinline void thiscall Supervisor::__sub_41F950() {
-	StageCamera* camera = &this->cameras[3];
+dllexport gnu_noinline void thiscall Supervisor::__setup_stage_camera() {
+	StageCamera* camera = &this->cameras[StdCamera];
 	this->current_camera_ptr = camera;
 	if (AnmManager* anm_manager = ANM_MANAGER_PTR) {
 		anm_manager->flush_sprites();
@@ -20778,7 +20802,7 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_41F950() {
 
 	AnmManager* anm_manager = ANM_MANAGER_PTR;
 	anm_manager->__float2_D8 = (Float2)this->current_camera_ptr->__int2_104;
-	this->current_camera_index = 3;
+	this->current_camera_index = StdCamera;
 }
 
 inline void AnmLoaded::cleanup() {
@@ -21594,29 +21618,29 @@ struct ScreenEffect : ZUNTask {
 
 				switch (RNG.rand_uint_range(3)) {
 					case 2:
-						SUPERVISOR.cameras[3].__float2_FC.x = -A;
+						SUPERVISOR.cameras[StdCamera].__float2_FC.x = -A;
 						SUPERVISOR.cameras[1].__float2_FC.x = A * WINDOW_DATA.__game_scale;
 						break;
 					case 1:
-						SUPERVISOR.cameras[3].__float2_FC.x = A;
+						SUPERVISOR.cameras[StdCamera].__float2_FC.x = A;
 						SUPERVISOR.cameras[1].__float2_FC.x = A * WINDOW_DATA.__game_scale;
 						break;
 					case 0:
-						SUPERVISOR.cameras[3].__float2_FC.x = 0.0f;
+						SUPERVISOR.cameras[StdCamera].__float2_FC.x = 0.0f;
 						SUPERVISOR.cameras[1].__float2_FC.x = 0.0f;
 						break;
 				}
 				switch (RNG.rand_uint_range(3)) {
 					case 2:
-						SUPERVISOR.cameras[3].__float2_FC.y = -A;
+						SUPERVISOR.cameras[StdCamera].__float2_FC.y = -A;
 						SUPERVISOR.cameras[1].__float2_FC.y = A * WINDOW_DATA.__game_scale;
 						break;
 					case 1:
-						SUPERVISOR.cameras[3].__float2_FC.y = A;
+						SUPERVISOR.cameras[StdCamera].__float2_FC.y = A;
 						SUPERVISOR.cameras[1].__float2_FC.y = A * WINDOW_DATA.__game_scale;
 						break;
 					case 0:
-						SUPERVISOR.cameras[3].__float2_FC.y = 0.0f;
+						SUPERVISOR.cameras[StdCamera].__float2_FC.y = 0.0f;
 						SUPERVISOR.cameras[1].__float2_FC.y = 0.0f;
 						break;
 				}
@@ -21749,29 +21773,29 @@ struct ScreenEffect : ZUNTask {
 
 				switch (RNG.rand_uint_range(3)) {
 					case 2:
-						SUPERVISOR.cameras[3].__float2_FC.x = -E;
+						SUPERVISOR.cameras[StdCamera].__float2_FC.x = -E;
 						SUPERVISOR.cameras[1].__float2_FC.x = E * WINDOW_DATA.__game_scale;
 						break;
 					case 1:
-						SUPERVISOR.cameras[3].__float2_FC.x = E;
+						SUPERVISOR.cameras[StdCamera].__float2_FC.x = E;
 						SUPERVISOR.cameras[1].__float2_FC.x = E * WINDOW_DATA.__game_scale;
 						break;
 					case 0:
-						SUPERVISOR.cameras[3].__float2_FC.x = 0.0f;
+						SUPERVISOR.cameras[StdCamera].__float2_FC.x = 0.0f;
 						SUPERVISOR.cameras[1].__float2_FC.x = 0.0f;
 						break;
 				}
 				switch (RNG.rand_uint_range(3)) {
 					case 2:
-						SUPERVISOR.cameras[3].__float2_FC.y = -E;
+						SUPERVISOR.cameras[StdCamera].__float2_FC.y = -E;
 						SUPERVISOR.cameras[1].__float2_FC.y = E * WINDOW_DATA.__game_scale;
 						break;
 					case 1:
-						SUPERVISOR.cameras[3].__float2_FC.y = E;
+						SUPERVISOR.cameras[StdCamera].__float2_FC.y = E;
 						SUPERVISOR.cameras[1].__float2_FC.y = E * WINDOW_DATA.__game_scale;
 						break;
 					case 0:
-						SUPERVISOR.cameras[3].__float2_FC.y = 0.0f;
+						SUPERVISOR.cameras[StdCamera].__float2_FC.y = 0.0f;
 						SUPERVISOR.cameras[1].__float2_FC.y = 0.0f;
 						break;
 				}
@@ -25831,7 +25855,7 @@ anm_break:
 		this->__apply_deltas();
 	}
 	if (this->data.__unknown_flag_av_W) {
-		this->controller.position += SUPERVISOR.cameras[3].__float3_13C;
+		this->controller.position += SUPERVISOR.cameras[StdCamera].__float3_13C;
 	}
 	if (this->data.__continual_sprite_window) {
 		Float3 quad_positions[4];
@@ -37403,13 +37427,13 @@ struct StdVM {
 				slot_vm->get_sprite() &&
 				*slot_layer == layer
 			) {
-				SUPERVISOR.set_camera_by_index_disable_fog(3);
+				SUPERVISOR.set_camera_by_index_disable_fog(StdCamera);
 				SUPERVISOR.d3d_disable_zwrite();
 				if (slot_vm->get_sprite()) {
 					ANM_MANAGER_PTR->draw_vm(slot_vm);
 				}
 				SUPERVISOR.d3d_enable_zwrite();
-				SUPERVISOR.current_camera_ptr = &SUPERVISOR.cameras[3];
+				SUPERVISOR.current_camera_ptr = &SUPERVISOR.cameras[StdCamera];
 				if (AnmManager* anm_manager = ANM_MANAGER_PTR) {
 					anm_manager->flush_sprites();
 				}
@@ -37599,18 +37623,19 @@ struct Stage : ZUNTask {
 		StdInstance* instance = this->instances;
 		this->std_vm.__draw_vms(layer);
 		SUPERVISOR.d3d_enable_fog();
-		SUPERVISOR.__sub_41F950();
+		SUPERVISOR.__setup_stage_camera();
 		ANM_MANAGER_PTR->__byte_3120E0C = 1;
 
 		while (instance->object_id >= 0) {
 			StdObject* object = this->objects[instance->object_id];
 			if (object->layer == layer) {
 				Float3 position = object->position;
-				if (object->__sub_41CA90(&position, this->std_vm.draw_distance_squared, &SUPERVISOR.cameras[3])) {
+				if (object->__sub_41CA90(&position, this->std_vm.draw_distance_squared, &SUPERVISOR.cameras[StdCamera])) {
 					++this->__int_346C;
 					instance->__unknown_flag_si_A = false;
 				}
 				else {
+					object->__unknown_flag_so_B = true;
 					for (
 						StdQuad* quad = object->quads;
 						quad->type >= 0;
@@ -37620,7 +37645,7 @@ struct Stage : ZUNTask {
 						switch (quad->type) {
 							case 0: {
 								switch (vm->data.render_mode) {
-									case 0: case 1: case 2: case 3:
+									default:
 										vm->controller.position = quad->position + instance->position;
 										if (quad->size.x != 0.0f) {
 											vm->set_x_scale(quad->size.x / vm->get_sprite()->__size_x);
@@ -37628,13 +37653,14 @@ struct Stage : ZUNTask {
 										if (quad->size.y != 0.0f) {
 											vm->set_y_scale(quad->size.y / vm->get_sprite()->__size_y);
 										}
+									case 0: case 1: case 2: case 3:
 										break;
 								}
 								switch (vm->data.render_mode) {
 									default:
 										SUPERVISOR.d3d_disable_fog();
 										break;
-									case 8: case 18:
+									case 8: case 24:
 										SUPERVISOR.d3d_enable_fog();
 										break;
 								}
@@ -37694,7 +37720,7 @@ struct Stage : ZUNTask {
 				}
 				this->std_vm.run_std();
 			}
-			SUPERVISOR.cameras[3] = this->std_vm.camera;
+			SUPERVISOR.cameras[StdCamera] = this->std_vm.camera;
 			nounroll for (size_t i = 0; i < countof(this->std_vm.slot_vms); ++i) {
 				this->std_vm.slot_vms[i].run_anm();
 			}
@@ -37709,10 +37735,10 @@ struct Stage : ZUNTask {
 		if (!this->__unknown_flag_bg_A) {
 			if (!this->__unknown_flag_bg_B || this->__timer_3478 < 60) {
 				ANM_MANAGER_PTR->flush_sprites();
-				this->std_vm.camera.__float2_FC.x = SUPERVISOR.cameras[3].__float2_FC.x;
-				this->std_vm.camera.__float2_FC.y = SUPERVISOR.cameras[3].__float2_FC.y;
-				SUPERVISOR.cameras[3] = this->std_vm.camera;
-				SUPERVISOR.__sub_41F950();
+				this->std_vm.camera.__float2_FC.x = SUPERVISOR.cameras[StdCamera].__float2_FC.x;
+				this->std_vm.camera.__float2_FC.y = SUPERVISOR.cameras[StdCamera].__float2_FC.y;
+				SUPERVISOR.cameras[StdCamera] = this->std_vm.camera;
+				SUPERVISOR.__setup_stage_camera();
 
 				SUPERVISOR.d3d_enable_zwrite();
 				SUPERVISOR.d3d_zfunc_lessequal();
@@ -37722,10 +37748,10 @@ struct Stage : ZUNTask {
 				SUPERVISOR.d3d_fog_end(this->std_vm.camera.sky.end_distance);
 
 				if (this->__unknown_flag_bg_B && this->__int_3490 < 34) {
-					D3DRECT rect = SUPERVISOR.cameras[3].get_viewport_d3d_rect();
+					D3DRECT rect = SUPERVISOR.cameras[StdCamera].get_viewport_d3d_rect();
 					SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, COLOR(255, 0, 0, 0), 1.0f, 0);
 				} else {
-					D3DRECT rect = SUPERVISOR.cameras[3].get_viewport_d3d_rect();
+					D3DRECT rect = SUPERVISOR.cameras[StdCamera].get_viewport_d3d_rect();
 					SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, this->std_vm.camera.sky.color, 1.0f, 0);
 				}
 			}
@@ -37780,10 +37806,10 @@ struct Stage : ZUNTask {
 		if (!this->__unknown_flag_bg_A) {
 			if (!this->__unknown_flag_bg_B || this->__timer_3478 < 60) {
 				ANM_MANAGER_PTR->flush_sprites();
-				this->std_vm.camera.__float2_FC.x = SUPERVISOR.cameras[3].__float2_FC.x;
-				this->std_vm.camera.__float2_FC.y = SUPERVISOR.cameras[3].__float2_FC.y;
-				SUPERVISOR.cameras[3] = this->std_vm.camera;
-				SUPERVISOR.__sub_41F950();
+				this->std_vm.camera.__float2_FC.x = SUPERVISOR.cameras[StdCamera].__float2_FC.x;
+				this->std_vm.camera.__float2_FC.y = SUPERVISOR.cameras[StdCamera].__float2_FC.y;
+				SUPERVISOR.cameras[StdCamera] = this->std_vm.camera;
+				SUPERVISOR.__setup_stage_camera();
 
 				SUPERVISOR.d3d_disable_fog();
 				SUPERVISOR.d3d_disable_zwrite();
@@ -37898,7 +37924,7 @@ corrupted_data:
 
 		this->std_vm.full_stage = this;
 
-		this->std_vm.camera = SUPERVISOR.cameras[3];
+		this->std_vm.camera = SUPERVISOR.cameras[StdCamera];
 
 		this->std_vm.camera.position = { 0.0f, 0.0f, -600.0f };
 		this->std_vm.camera.facing = { 0.0f, 300.0f, 600.0f };
@@ -42291,8 +42317,6 @@ struct LaserInfinite : LaserData {
 			//}
 		}
 
-		// TODO
-
 		float length = this->length;
 		float max_length = this->params.max_length;
 
@@ -42325,6 +42349,7 @@ struct LaserInfinite : LaserData {
 			this->position.as2() += offset;
 		}
 
+		int32_t expand_time;
 		switch (this->state) {
 			case 3:
 				if (this->__timer_18 >= this->params.start_time) {
@@ -42332,34 +42357,29 @@ struct LaserInfinite : LaserData {
 					this->state = 4;
 				}
 				break;
-			case 4: {
-				int32_t expand_time = this->params.expand_time;
+			case 4:
+				expand_time = this->params.expand_time;
 				if (this->__timer_18 >= expand_time) {
 					this->__timer_18.set(0);
 					this->state = 2;
 					this->width = this->params.width;
+			case 2:
+					if (this->__timer_18 >= this->params.duration) {
+						this->__timer_18.set(0);
+						this->state = 5;
+			case 5:
+						int32_t stop_time = this->params.stop_time;
+						if (this->__timer_18 >= stop_time) {
+							return 1;
+						}
+						float param_width = this->params.width;
+						this->width = param_width - param_width * (float)this->__timer_18 / stop_time;
+					}
 				}
 				else {
 					this->width = this->params.width * (float)this->__timer_18 / expand_time;
-					break;
 				}
-			}
-				// no break
-			case 2:
-				if (this->__timer_18 >= this->params.duration) {
-					this->__timer_18.set(0);
-					this->state = 5;
-				}
-				// no break
-			case 5: {
-				int32_t stop_time = this->params.stop_time;
-				if (this->__timer_18 >= stop_time) {
-					return 1;
-				}
-				float param_width = this->params.width;
-				this->width = param_width - param_width * (float)this->__timer_18 / stop_time;
 				break;
-			}
 		}
 
 		this->check_collision(LethalCollisionTest);
@@ -44551,7 +44571,7 @@ dllexport gnu_noinline int thiscall LaserInfinite::initialize(void* data) {
 	this->main_vm.data.origin_mode = 1;
 
 	vm = &this->__spawn_effect_vm;
-	LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, 56 + this->params.color);
+	LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, this->params.color + 56);
 	vm->interrupt_and_run(2);
 
 	this->__spawn_effect_vm.data.blend_mode = BlendAdditive; // 1
@@ -48718,7 +48738,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			MotionData* motion;
 			ZUNInterp<float>* angle_interp;
 			ZUNInterp<float>* speed_interp;
-			if (opcode == move_ellipse_abs_interp) {
+			if (opcode == move_rand_interp_abs) {
 				angle_interp = &this->angle_interp_absolute;
 				speed_interp = &this->speed_interp_absolute;
 				motion = &this->motion.absolute;
@@ -49459,11 +49479,11 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 		case laser_size_data: { // 700
 			int32_t slot = this->get_int_arg(0);
 			float length = this->get_float_arg(1);
-			this->shooters[slot].position.x = length;
+			this->shooters[slot].position.x = length; // length
 			float B = this->get_float_arg(2);
-			this->shooters[slot].position.y = B;
+			this->shooters[slot].position.y = B; // max length
 			float C = this->get_float_arg(3);
-			this->shooters[slot].position.z = C;
+			this->shooters[slot].position.z = C; // despawn distance
 			float width = this->get_float_arg(4);
 			this->shooters[slot].width = width;
 			break;
@@ -55277,7 +55297,7 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	camera2->__viewport_124.Y = WINDOW_DATA.__game_scale * 16.0f;
 	camera2->__viewport_124.Width = WINDOW_DATA.__game_scale * SCREEN_WIDTH;
 	camera2->__viewport_124.Height = WINDOW_DATA.__game_scale * SCREEN_HEIGHT;
-	this->__sub_454950(camera2);
+	this->__setup_camera(camera2);
 	StageCamera* camera0 = &this->cameras[0];
 	*camera0 = *camera2;
 	camera0->camera_index = 0;
@@ -55288,7 +55308,7 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	camera0->__int2_104.x = 0;
 	camera0->__int2_104.y = 0;
 	camera0->__viewport_10C = camera0->viewport;
-	this->__sub_454950(camera0);
+	this->__setup_camera(camera0);
 	StageCamera* camera1 = &this->cameras[1];
 	*camera1 = *camera0;
 	camera1->camera_index = 1;
@@ -55299,18 +55319,18 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	camera1->__int2_104.x = 0;
 	camera1->__int2_104.y = 0;
 	camera1->__viewport_10C = camera1->viewport;
-	this->__sub_454950(camera1);
-	StageCamera* camera3 = &this->cameras[3];
+	this->__setup_camera(camera1);
+	StageCamera* camera3 = &this->cameras[StdCamera]; // 3
 	*camera3 = *camera0;
-	camera3->camera_index = 3;
+	camera3->camera_index = StdCamera;
 	camera3->viewport.X = ((float)WINDOW_DATA.__scaled_width - (SCREEN_WIDTH + 24.0f)) * 0.5f;
 	camera3->viewport.Width = 408;
-	camera3->viewport.Width = 472;
+	camera3->viewport.Height = 472;
 	camera3->__int2_104.x = 0;
 	camera3->__int2_104.y = 0;
 	camera3->viewport.Y = ((float)WINDOW_DATA.__scaled_height - (SCREEN_HEIGHT + 24.0f)) * 0.5f;
 	camera3->__viewport_10C = camera3->viewport;
-	this->__sub_454950(camera3);
+	this->__setup_camera(camera3);
 	WINDOW_DATA.__width_related_2084 = WINDOW_DATA.__scaled_width / 2;
 	WINDOW_DATA.__height_related_2088 = WINDOW_DATA.__game_scale * 16.0f;
 }

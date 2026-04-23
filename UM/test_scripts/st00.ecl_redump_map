@@ -1,6 +1,647 @@
 anim { "enemy.anm"; "st01enm.anm"; "patchy.anm"; }
 ecli { "default.ecl"; }
 
+void BossPatchouliEnd()
+{
+    move_stop();
+    enemy_flags_set(3);
+    move_rand_interp_abs(90, 4, 0.6f);
+    enemy_life_set(0);
++3000: //3000
+    enemy_delete();
+}
+
+void BossPatchouliPhase1()
+{
+    var A;
+    enemy_flags_set(3);
+    anm_source(4);
+    anm_set_slot_main(0, 19);
+    boss_set(0);
+    enemy_set_hitbox(48.0f, 56.0f);
+    boss_set_life_count(2);
+    move_position_abs_interp(60, 4, 0.0f, 128.0f);
++180: //180
+    enemy_flags_clear(3);
+    anm_set_slot(1, 17);
+    enemy_life_set(17000);
+    phase_timer_clear();
+    move_bounds_set(((32.0f + 352.0f) / 2.0f) - 192.0f, (48.0f + 144.0f) / 2.0f, 352.0f - 32.0f, 144.0f - 48.0f);
+    $A = $PLAYER_SHOT;
+    goto BossPatchouliPhase1_1596 @ 180;
+BossPatchouliPhase1_704:
+!E
+    callback_ex(0, 0, 2400, "BossPatchouliPhase2");
+!N
+    callback_ex(0, 1600, 2400, "FireSignAgniShine");
+!HL
+    callback_ex(0, 1600, 2400, "FireSignAgniShineHighLevel");
+!NHL
+    enemy_lifebar_color(0, 1600.0f, -24448);
+!*
+    goto BossPatchouliPhase1_1860 @ 180;
+BossPatchouliPhase1_920:
+!E
+    callback_ex(0, 0, 2400, "BossPatchouliPhase2");
+!N
+    callback_ex(0, 1600, 2400, "WaterSignPrincessUndine");
+!HL
+    callback_ex(0, 1600, 2400, "WaterSignBuryInLake");
+!NHL
+    enemy_lifebar_color(0, 1600.0f, -24448);
+!*
+    goto BossPatchouliPhase1_1860 @ 180;
+BossPatchouliPhase1_1132:
+!E
+    callback_ex(0, 0, 2400, "BossPatchouliPhase2");
+!N
+    callback_ex(0, 1600, 2400, "WoodSignSylphyHorn");
+!HL
+    callback_ex(0, 1600, 2400, "WoodSignSylphyHornHighLevel");
+!NHL
+    enemy_lifebar_color(0, 1600.0f, -24448);
+!*
+    goto BossPatchouliPhase1_1860 @ 180;
+BossPatchouliPhase1_1348:
+!E
+    callback_ex(0, 0, 2400, "BossPatchouliPhase2");
+!N
+    callback_ex(0, 1800, 2400, "EarthSignLazyTrilithon");
+!HL
+    callback_ex(0, 1800, 2400, "EarthSignLazyTrilithonHighLevel");
+!NHL
+    enemy_lifebar_color(0, 1800.0f, -24448);
+!*
+    goto BossPatchouliPhase1_1860 @ 180;
+    goto BossPatchouliPhase1_1860 @ 180;
+BossPatchouliPhase1_1596:
+    if (0 == $A) goto BossPatchouliPhase1_704 @ 180;
+    goto BossPatchouliPhase1_920 @ 180;
+    if (2 == $A) goto BossPatchouliPhase1_1132 @ 180;
+    if (1 == $A) goto BossPatchouliPhase1_1348 @ 180;
+BossPatchouliPhase1_1860:
+    callback_ex(1, 0, -1, "BossPatchouliPhase2");
+    $A = 0;
+BossPatchouliPhase1_1952:
++60: //240
+    unless ($A & 1) goto BossPatchouliPhase1_2112 @ 240;
+    @spinning_lasersA(0, $A);
+    goto BossPatchouliPhase1_2168 @ 240;
+BossPatchouliPhase1_2112:
+    @spinning_lasersB(0, $A);
+BossPatchouliPhase1_2168:
+    move_rand_interp_abs(90, 4, 2.5f);
+    shooter_reset(0);
+    shoot_aim_mode(0, 2);
+    bullet_sprite(0, 4, 2);
+!E67
+    3;
+!N67
+    4;
+!H67
+    4;
+!LX67
+    4;
+!*
+    $A;
+!E67
+    12;
+!N67
+    16;
+!H67
+    24;
+!LX67
+    24;
+!*
+    math_int_add();
+    bullet_count(0, [-1], [-2]);
+!E67
+    2.5f;
+!N67
+    3.5f;
+!H67
+    3.5f;
+!LX67
+    3.5f;
+!*
+    bullet_speed(0, [-1.0f], 1.2f);
+    shoot_offset(0, 0.0f, -12.0f);
++40: //280
+    shoot_now(0);
++40: //320
+    shoot_now(0);
++10: //330
+    move_position_abs_interp(90, 4, 0.0f, 128.0f);
++90: //420
+    $A = $A + 1;
+    goto BossPatchouliPhase1_1952 @ 180;
+    return;
+}
+
+void BossPatchouliPhase2()
+{
+    var A, B;
+    __enemy_flag_armored(0);
+    unless (8 > 0) goto BossPatchouliPhase2_424 @ 0;
+    item_bonus_count_reset();
+    item_drop_area(144.0f, 144.0f);
+    unless ($PLAYER_POWER != 400) goto BossPatchouliPhase2_384 @ 0;
+    item_bonus_count_set(3, 1);
+    item_bonus_count_set(1, 8 - 1);
+    goto BossPatchouliPhase2_408 @ 0;
+BossPatchouliPhase2_384:
+    item_bonus_count_set(2, 8);
+BossPatchouliPhase2_408:
+    drop_item_rewards();
+BossPatchouliPhase2_424:
+    boss_set_life_count(1);
+    enemy_life_set(16000);
+    phase_timer_clear();
+    $A = $PLAYER_SHOT;
+    goto BossPatchouliPhase2_1588 @ 0;
+BossPatchouliPhase2_544:
+!E
+    callback_ex(0, 1500, 2400, "FireSignAgniShine");
+!N
+    callback_ex(0, 1500, 2400, "EarthSignLazyTrilithonHighLevel");
+!HL
+    callback_ex(0, 1500, 2400, "EarthSignTrilithonShake");
+!*
+    enemy_lifebar_color(0, 1500.0f, -24448);
+    goto BossPatchouliPhase2_1852 @ 0;
+BossPatchouliPhase2_768:
+!E
+    callback_ex(0, 1600, 2400, "WaterSignPrincessUndine");
+!N
+    callback_ex(0, 1600, 2400, "WoodSignSylphyHornHighLevel");
+!HL
+    callback_ex(0, 1600, 2400, "WoodSignGreenStorm");
+!*
+    enemy_lifebar_color(0, 1600.0f, -24448);
+    goto BossPatchouliPhase2_1852 @ 0;
+BossPatchouliPhase2_988:
+!E
+    callback_ex(0, 1600, 2400, "WoodSignSylphyHorn");
+!N
+    callback_ex(0, 1600, 2400, "FireSignAgniShineHighLevel");
+!H
+    callback_ex(0, 1700, 2400, "FireSignAgniRadiance");
+!L
+    callback_ex(0, 1800, 2400, "FireSignAgniRadiance");
+!E67
+    1600.0f;
+!N67
+    1600.0f;
+!H67
+    1700.0f;
+!LX67
+    1800.0f;
+!*
+    enemy_lifebar_color(0, [-1.0f], -24448);
+    goto BossPatchouliPhase2_1852 @ 0;
+BossPatchouliPhase2_1344:
+!E
+    callback_ex(0, 1800, 2400, "EarthSignLazyTrilithon");
+!N
+    callback_ex(0, 1800, 2400, "MetalSignMetalFatigue");
+!HL
+    callback_ex(0, 1800, 2400, "MetalSignSilverDragon");
+!*
+    enemy_lifebar_color(0, 1800.0f, -24448);
+    goto BossPatchouliPhase2_1852 @ 0;
+    goto BossPatchouliPhase2_1852 @ 0;
+BossPatchouliPhase2_1588:
+    if (0 == $A) goto BossPatchouliPhase2_544 @ 0;
+    goto BossPatchouliPhase2_768 @ 0;
+    if (2 == $A) goto BossPatchouliPhase2_988 @ 0;
+    if (1 == $A) goto BossPatchouliPhase2_1344 @ 0;
+BossPatchouliPhase2_1852:
+    callback_ex(1, 0, -1, "BossPatchouliPhase3");
+    $A = 0;
+BossPatchouliPhase2_1944:
++60: //60
+    unless ($A & 1) goto BossPatchouliPhase2_2104 @ 60;
+    @spinning_lasersA(1, $A);
+    goto BossPatchouliPhase2_2160 @ 60;
+BossPatchouliPhase2_2104:
+    @spinning_lasersB(1, $A);
+BossPatchouliPhase2_2160:
+    move_rand_interp_abs(90, 4, 2.5f);
+    shooter_reset(0);
+    shoot_aim_mode(0, 2);
+    bullet_sprite(0, 4, 6);
+!E67
+    2;
+!N67
+    3;
+!H67
+    4;
+!LX67
+    5;
+!*
+    bullet_count(0, $A + 10, [-2]);
+!E67
+    4.0f;
+!N67
+    4.0f;
+!H67
+    5.5f;
+!LX67
+    5.5f;
+!*
+    bullet_speed(0, [-1.0f], 1.5f);
+    shoot_offset(0, 0.0f, -12.0f);
+!E67
+    4;
+!N67
+    6;
+!H67
+    6;
+!LX67
+    9;
+!*
+    pop_int($B);
+BossPatchouliPhase2_2660:
+    unless ($B--) goto BossPatchouliPhase2_2780 @ 60;
+    ecl_time_sub_difficulty(20, 15, 15, 10);
+    shoot_now(0);
+    goto BossPatchouliPhase2_2660 @ 60;
+BossPatchouliPhase2_2780:
+!E
+    ecl_time_sub(10);
+!*
+    move_position_abs_interp(90, 4, 0.0f, 128.0f);
+!E67
+    6;
+!N67
+    12;
+!H67
+    16;
+!LX67
+    20;
+!*
+    bullet_count(0, [-1], 1);
+!E67
+    1.0f;
+!N67
+    1.5f;
+!H67
+    1.5f;
+!LX67
+    1.5f;
+!*
+    bullet_speed(0, [-1.0f], 1.0f);
+    ecl_time_sub_difficulty(70, 60, 60, 60);
+    shoot_now(0);
+    ecl_time_sub_difficulty(20, 30, 30, 30);
+    $A = $A + 1;
+    goto BossPatchouliPhase2_1944 @ 0;
+    return;
+}
+
+void BossPatchouliPhase3()
+{
+    var A;
+    __enemy_flag_armored(0);
+    unless (8 > 0) goto BossPatchouliPhase3_424 @ 0;
+    item_bonus_count_reset();
+    item_drop_area(144.0f, 144.0f);
+    unless ($PLAYER_POWER != 400) goto BossPatchouliPhase3_384 @ 0;
+    item_bonus_count_set(3, 1);
+    item_bonus_count_set(1, 8 - 1);
+    goto BossPatchouliPhase3_408 @ 0;
+BossPatchouliPhase3_384:
+    item_bonus_count_set(2, 8);
+BossPatchouliPhase3_408:
+    drop_item_rewards();
+BossPatchouliPhase3_424:
+    boss_set_life_count(0);
+    enemy_flags_set(1);
+!E67
+    1700;
+!N67
+    3400;
+!H67
+    5100;
+!LX67
+    5100;
+!*
+    enemy_life_set([-1]);
+    phase_timer_clear();
+!E
+    callback_ex(0, 0, -1, "BossPatchouliEnd");
+!NHL
+    callback_ex(0, 0, -1, "BossPatchouliPhase4");
+!N
+    callback_ex(0, 1700, 2400, "BossPatchouliPhase4");
+!*
+    enemy_lifebar_color(0, 1700.0f, -24448);
+!HL
+    callback_ex(0, 3400, 2400, "BossPatchouliPhase4");
+!*
+    enemy_lifebar_color(0, 3400.0f, -24448);
+    enemy_lifebar_color(1, 1700.0f, -24448);
+    nop();
++120: //120
+    enemy_flags_clear(1);
+    $A = $PLAYER_SHOT;
+    goto BossPatchouliPhase3_1280 @ 120;
+BossPatchouliPhase3_972:
+    @FireEarthSignLavaCromlech();
+    goto BossPatchouliPhase3_1544 @ 120;
+BossPatchouliPhase3_1044:
+    @WaterWoodSignWaterElf();
+    goto BossPatchouliPhase3_1544 @ 120;
+BossPatchouliPhase3_1112:
+    @FireEarthSignLavaCromlech();
+    goto BossPatchouliPhase3_1544 @ 120;
+BossPatchouliPhase3_1184:
+    @FireEarthSignLavaCromlech();
+    goto BossPatchouliPhase3_1544 @ 120;
+    goto BossPatchouliPhase3_1544 @ 120;
+BossPatchouliPhase3_1280:
+    if (0 == $A) goto BossPatchouliPhase3_972 @ 120;
+    goto BossPatchouliPhase3_1044 @ 120;
+    if (2 == $A) goto BossPatchouliPhase3_1112 @ 120;
+    if (1 == $A) goto BossPatchouliPhase3_1184 @ 120;
+BossPatchouliPhase3_1544:
+    return;
+}
+
+void BossPatchouliPhase4()
+{
+    var A;
+    __enemy_flag_armored(0);
+    unless (8 > 0) goto BossPatchouliPhase4_424 @ 0;
+    item_bonus_count_reset();
+    item_drop_area(144.0f, 144.0f);
+    unless ($PLAYER_POWER != 400) goto BossPatchouliPhase4_384 @ 0;
+    item_bonus_count_set(3, 1);
+    item_bonus_count_set(1, 8 - 1);
+    goto BossPatchouliPhase4_408 @ 0;
+BossPatchouliPhase4_384:
+    item_bonus_count_set(2, 8);
+BossPatchouliPhase4_408:
+    drop_item_rewards();
+BossPatchouliPhase4_424:
+    enemy_flags_set(1);
+    phase_timer_clear();
+!EN
+    callback_ex(0, 0, -1, "BossPatchouliEnd");
+!HL
+    callback_ex(0, 0, -1, "BossPatchouliPhase5");
+!*
+    nop();
++120: //120
+    enemy_flags_clear(1);
+    $A = $PLAYER_SHOT;
+    goto BossPatchouliPhase4_976 @ 120;
+BossPatchouliPhase4_664:
+    @MetalWaterSignMercuryPoison();
+    goto BossPatchouliPhase4_1240 @ 120;
+BossPatchouliPhase4_736:
+    @MetalWaterSignMercuryPoison();
+    goto BossPatchouliPhase4_1240 @ 120;
+BossPatchouliPhase4_808:
+    @EarthMetalSignEmeraldMegalith();
+    goto BossPatchouliPhase4_1240 @ 120;
+BossPatchouliPhase4_884:
+    @WaterWoodSignWaterElf();
+    goto BossPatchouliPhase4_1240 @ 120;
+    goto BossPatchouliPhase4_1240 @ 120;
+BossPatchouliPhase4_976:
+    if (0 == $A) goto BossPatchouliPhase4_664 @ 120;
+    goto BossPatchouliPhase4_736 @ 120;
+    if (2 == $A) goto BossPatchouliPhase4_808 @ 120;
+    if (1 == $A) goto BossPatchouliPhase4_884 @ 120;
+BossPatchouliPhase4_1240:
+    return;
+}
+
+void BossPatchouliPhase5()
+{
+    var A;
+    unless (8 > 0) goto BossPatchouliPhase5_404 @ 0;
+    item_bonus_count_reset();
+    item_drop_area(144.0f, 144.0f);
+    unless ($PLAYER_POWER != 400) goto BossPatchouliPhase5_364 @ 0;
+    item_bonus_count_set(3, 1);
+    item_bonus_count_set(1, 8 - 1);
+    goto BossPatchouliPhase5_388 @ 0;
+BossPatchouliPhase5_364:
+    item_bonus_count_set(2, 8);
+BossPatchouliPhase5_388:
+    drop_item_rewards();
+BossPatchouliPhase5_404:
+    enemy_flags_set(1);
+    phase_timer_clear();
+    death_callback_sub("BossPatchouliEnd");
++120: //120
+    enemy_flags_clear(1);
+    $A = $PLAYER_SHOT;
+    goto BossPatchouliPhase5_876 @ 120;
+BossPatchouliPhase5_564:
+    @WoodFireSignForestBlaze();
+    goto BossPatchouliPhase5_1140 @ 120;
+BossPatchouliPhase5_632:
+    @EarthMetalSignEmeraldMegalith();
+    goto BossPatchouliPhase5_1140 @ 120;
+BossPatchouliPhase5_708:
+    @FireEarthSignLavaCromlech();
+    goto BossPatchouliPhase5_1140 @ 120;
+BossPatchouliPhase5_780:
+    @MetalWaterSignMercuryPoison();
+    goto BossPatchouliPhase5_1140 @ 120;
+    goto BossPatchouliPhase5_1140 @ 120;
+BossPatchouliPhase5_876:
+    if (0 == $A) goto BossPatchouliPhase5_564 @ 120;
+    goto BossPatchouliPhase5_632 @ 120;
+    if (2 == $A) goto BossPatchouliPhase5_708 @ 120;
+    if (1 == $A) goto BossPatchouliPhase5_780 @ 120;
+BossPatchouliPhase5_1140:
+    return;
+}
+
+void EarthMetalSignEmeraldMegalith()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+EarthMetalSignEmeraldMegalith_76:
++10000: //10000
+    goto EarthMetalSignEmeraldMegalith_76 @ 0;
+    return;
+}
+
+void EarthSignLazyTrilithon()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+EarthSignLazyTrilithon_76:
++10000: //10000
+    goto EarthSignLazyTrilithon_76 @ 0;
+    return;
+}
+
+void EarthSignLazyTrilithonHighLevel()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+EarthSignLazyTrilithonHighLevel_76:
++10000: //10000
+    goto EarthSignLazyTrilithonHighLevel_76 @ 0;
+    return;
+}
+
+void EarthSignTrilithonShake()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+EarthSignTrilithonShake_76:
++10000: //10000
+    goto EarthSignTrilithonShake_76 @ 0;
+    return;
+}
+
+void FireEarthSignLavaCromlech()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+FireEarthSignLavaCromlech_76:
++10000: //10000
+    goto FireEarthSignLavaCromlech_76 @ 0;
+    return;
+}
+
+void FireSignAgniRadiance()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+FireSignAgniRadiance_76:
++10000: //10000
+    goto FireSignAgniRadiance_76 @ 0;
+    return;
+}
+
+void FireSignAgniShine()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+FireSignAgniShine_76:
++10000: //10000
+    goto FireSignAgniShine_76 @ 0;
+    return;
+}
+
+void FireSignAgniShineHighLevel()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+FireSignAgniShineHighLevel_76:
++10000: //10000
+    goto FireSignAgniShineHighLevel_76 @ 0;
+    return;
+}
+
+void MetalSignMetalFatigue()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+MetalSignMetalFatigue_76:
++10000: //10000
+    goto MetalSignMetalFatigue_76 @ 0;
+    return;
+}
+
+void MetalSignSilverDragon()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+MetalSignSilverDragon_76:
++10000: //10000
+    goto MetalSignSilverDragon_76 @ 0;
+    return;
+}
+
+void MetalWaterSignMercuryPoison()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+MetalWaterSignMercuryPoison_76:
++10000: //10000
+    goto MetalWaterSignMercuryPoison_76 @ 0;
+    return;
+}
+
+void WaterSignBuryInLake()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+WaterSignBuryInLake_76:
++10000: //10000
+    goto WaterSignBuryInLake_76 @ 0;
+    return;
+}
+
+void WaterSignPrincessUndine()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+WaterSignPrincessUndine_76:
++10000: //10000
+    goto WaterSignPrincessUndine_76 @ 0;
+    return;
+}
+
+void WaterWoodSignWaterElf()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+WaterWoodSignWaterElf_76:
++10000: //10000
+    goto WaterWoodSignWaterElf_76 @ 0;
+    return;
+}
+
+void WoodFireSignForestBlaze()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+WoodFireSignForestBlaze_76:
++10000: //10000
+    goto WoodFireSignForestBlaze_76 @ 0;
+    return;
+}
+
+void WoodSignGreenStorm()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+WoodSignGreenStorm_76:
++10000: //10000
+    goto WoodSignGreenStorm_76 @ 0;
+    return;
+}
+
+void WoodSignSylphyHorn()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+WoodSignSylphyHorn_76:
++10000: //10000
+    goto WoodSignSylphyHorn_76 @ 0;
+    return;
+}
+
+void WoodSignSylphyHornHighLevel()
+{
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+WoodSignSylphyHornHighLevel_76:
++10000: //10000
+    goto WoodSignSylphyHornHighLevel_76 @ 0;
+    return;
+}
+
 void enemy_test()
 {
     var A, B;
@@ -47,102 +688,479 @@ enemy_test_1016:
     return;
 }
 
+void full_power_dummy()
+{
+    item_drop_area(0.0f, 0.0f);
+    item_bonus_count_set(3, 4);
+    drop_item_rewards();
+    enemy_delete();
+}
+
 void main()
 {
     enemy_flags_set(176);
 +1: //1
     chapter_set(0);
-    enemy_create_abs("enemy_test", 64.0f, -32.0f, 10000, 0, 0);
-main_128:
+    enemy_create_abs("full_power_dummy", %PLAYER_X, %PLAYER_Y, 1, 0, 0);
+main_136:
 +10000: //10001
-    goto main_128 @ 1;
+    goto main_136 @ 1;
     return;
 }
 
-void testA()
+void spinning_lasersA(var A, var B)
 {
-    var A, B, C, D, E, F;
-    %C = %A;
-    %D = %B;
-    $E = $C & 2147483647;
-    $F = $D & 2147483647;
-    unless ($E >= $F) goto testA_1196 @ 0;
-    $D = $F;
-    $F = $F + (($E - $F) & 2139095040);
-    $F = $F + (8388608 * ($F <= ($E - 8388608)));
-testA_720:
-    unless ($F >= $D) goto testA_1048 @ 0;
-    %E = %E - (%F * _f($E >= $F));
-    $F = $F - 8388608;
-    goto testA_720 @ 0;
-testA_1048:
-    $C = ($E & 2147483647) | ($C & -2147483648);
-testA_1196:
-    %EF3 = %C;
+    var C, D, E, F, G, H, I, J;
+    shooter_reset(0);
+    shoot_aim_mode(0, 2);
+    bullet_sprite(0, 4, 2);
+!E67
+    1;
+!N67
+    1;
+!H67
+    1;
+!LX67
+    2;
+!E67
+    8;
+!N67
+    10;
+!H67
+    14;
+!LX67
+    10;
+!*
+    bullet_count(0, [-1], [-2]);
+!E67
+    1.5f;
+!N67
+    2.0f;
+!H67
+    2.4f;
+!LX67
+    3.0f;
+!*
+    bullet_speed(0, [-1.0f], 1.2f);
+    laser_clear_all();
+    unless ($A) goto spinning_lasersA_508 @ 0;
+    2;
+    goto spinning_lasersA_528 @ 0;
+spinning_lasersA_508:
+    6;
+spinning_lasersA_528:
+    pop_int($C);
+!E67
+    30;
+!N67
+    30;
+!H67
+    25;
+!LX67
+    23;
+!*
+    pop_int($D);
+!E67
+    70;
+!N67
+    70;
+!H67
+    58;
+!LX67
+    54;
+!*
+    pop_int($E);
+!E67
+    20;
+!N67
+    20;
+!H67
+    16;
+!LX67
+    15;
+!*
+    pop_int($F);
+!E67
+    30;
+!N67
+    30;
+!H67
+    25;
+!LX67
+    23;
+!*
+    pop_int($G);
+    %H = 64.0f;
+    unless (500.0f < (500.0f - 64.0f)) goto spinning_lasersA_1180 @ 0;
+    %H = 500.0f - 500.0f;
+spinning_lasersA_1180:
+    unless (%H <= 0.0f) goto spinning_lasersA_1300 @ 0;
+    %H = 0.0f;
+spinning_lasersA_1300:
+    shooter_reset(1);
+    bullet_sprite(1, 4, $C);
+    shoot_angle(1, 0.7853982f, 0.0f);
+    bullet_speed(1, 0.0f, 0.0f);
+    shoot_spawn_distance(1, %H);
+    laser_size_data(1, 500.0f - %H, inff, 0.0f, 24.0f);
+    laser_timing_data(1, $G, $D - $G, $E + 14, $F, 0);
+    unless ($A) goto spinning_lasersA_1760 @ 0;
+    2;
+    goto spinning_lasersA_1780 @ 0;
+spinning_lasersA_1760:
+    6;
+spinning_lasersA_1780:
+    pop_int($C);
+!E67
+    30;
+!N67
+    30;
+!H67
+    25;
+!LX67
+    23;
+!*
+    pop_int($D);
+!E67
+    90;
+!N67
+    90;
+!H67
+    75;
+!LX67
+    70;
+!*
+    pop_int($E);
+!E67
+    20;
+!N67
+    20;
+!H67
+    16;
+!LX67
+    15;
+!*
+    pop_int($F);
+!E67
+    30;
+!N67
+    30;
+!H67
+    25;
+!LX67
+    23;
+!*
+    pop_int($G);
+    %H = 64.0f;
+    unless (500.0f < (500.0f - 64.0f)) goto spinning_lasersA_2432 @ 0;
+    %H = 500.0f - 500.0f;
+spinning_lasersA_2432:
+    unless (%H <= 0.0f) goto spinning_lasersA_2552 @ 0;
+    %H = 0.0f;
+spinning_lasersA_2552:
+    shooter_reset(2);
+    bullet_sprite(2, 4, $C);
+    shoot_angle(2, 0.7853982f, 0.0f);
+    bullet_speed(2, 0.0f, 0.0f);
+    shoot_spawn_distance(2, %H);
+    laser_size_data(2, 500.0f - %H, inff, 0.0f, 24.0f);
+    laser_timing_data(2, $G, $D - $G, $E + 14, $F, 0);
+    shoot_offset(1, 0.0f, -12.0f);
+    shoot_offset(2, 0.0f, -12.0f);
+    laser_infinite_create(1, 1);
+    shoot_angle(1, 2.3561945f, 0.0f);
+    laser_infinite_create(1, 2);
+    shoot_angle(1, -2.3561945f, 0.0f);
+    laser_infinite_create(1, 3);
+    shoot_angle(1, -0.7853982f, 0.0f);
+    laser_infinite_create(1, 4);
+    set_float_difficulty(%C, 0.0060415245f, 0.006829549f, 0.008195459f, 0.008780849f);
+    laser_rotate(1, %C);
+    laser_rotate(2, %C);
+    laser_rotate(3, %C);
+    laser_rotate(4, %C);
+    %D = -2.3561945f;
+    set_int_difficulty($F, 180, 180, 150, 140);
+    set_int_difficulty($G, 120, 120, 100, 93);
+    set_int_difficulty($H, 60, 60, 50, 46);
+    set_int_difficulty($I, 60, 50, 40, 40);
+    $J = 0;
+spinning_lasersA_3516:
+    unless ($J == $H) goto spinning_lasersA_3968 @ 0;
+    laser_infinite_create(2, 5);
+    shoot_angle(2, 2.3561945f, 0.0f);
+    laser_infinite_create(2, 6);
+    shoot_angle(2, -2.3561945f, 0.0f);
+    laser_infinite_create(2, 7);
+    shoot_angle(2, -0.7853982f, 0.0f);
+    laser_infinite_create(2, 8);
+    %C = -%C;
+    laser_rotate(5, %C);
+    laser_rotate(6, %C);
+    laser_rotate(7, %C);
+    laser_rotate(8, %C);
+    %E = 2.3561945f;
+spinning_lasersA_3968:
+    unless ($B) goto spinning_lasersA_4972 @ 0;
+    if ($J % $I) goto spinning_lasersA_4972 @ 0;
+    unless ($J < $G) goto spinning_lasersA_4532 @ 0;
+    shoot_offset_circle(0, %D, 64.0f);
+    shoot_now(0);
+    shoot_offset_circle(0, %D + 1.5707964f, 64.0f);
+    shoot_now(0);
+    shoot_offset_circle(0, %D + 3.1415927f, 64.0f);
+    shoot_now(0);
+    shoot_offset_circle(0, %D + 4.712389f, 64.0f);
+    shoot_now(0);
+spinning_lasersA_4532:
+    unless ($J >= $H) goto spinning_lasersA_4972 @ 0;
+    shoot_offset_circle(0, %E, 64.0f);
+    shoot_now(0);
+    shoot_offset_circle(0, %E + 1.5707964f, 64.0f);
+    shoot_now(0);
+    shoot_offset_circle(0, %E + 3.1415927f, 64.0f);
+    shoot_now(0);
+    shoot_offset_circle(0, %E + 4.712389f, 64.0f);
+    shoot_now(0);
+spinning_lasersA_4972:
+    %D = %D + %C;
+    %E = %E - %C;
+    $J = $J + 1;
++1: //1
+    if ($F--) goto spinning_lasersA_3516 @ 0;
     return;
 }
 
-void testB()
+void spinning_lasersB(var A, var B)
 {
-    var A, B, C, D, E, F;
-    %C = %A;
-    %D = %B;
-    $E = $C & 2147483647;
-    $F = $D & 2147483647;
-    unless ($E >= $F) goto testB_1172 @ 0;
-    $D = $F;
-    $F = $F + (($E - $F) & 2139095040);
-    $F = $F + (8388608 * ($F <= ($E - 8388608)));
-testB_720:
-    %E = %E - (%F * _f($E >= $F));
-    $F = $F - 8388608;
-    if ($F >= $D) goto testB_720 @ 0;
-    $C = ($E & 2147483647) | ($C & -2147483648);
-testB_1172:
-    %EF3 = %C;
-    return;
-}
-
-void testC()
-{
-    var A, B, C, D, E, F;
-    %C = %A;
-    %D = %B;
-    $E = $C & 2147483647;
-    $F = $D & 2147483647;
-    unless ($E >= $F) goto testC_1320 @ 0;
-    $D = $F;
-    $F = $F + (($E - $F) & 2139095040);
-    $F = $F + (8388608 * ($F <= ($E - 8388608)));
-    $D = (($F - $D) / 8388608) - 1;
-testC_868:
-    %E = %E - (%F * _f($E >= $F));
-    $F = $F - 8388608;
-    if ($D-- - 1) goto testC_868 @ 0;
-    $C = ($E & 2147483647) | ($C & -2147483648);
-testC_1320:
-    %EF3 = %C;
-    return;
-}
-
-void testD()
-{
-    var A, B, C, D, E, F;
-    %C = %A;
-    %D = %B;
-    $E = $C & 2147483647;
-    $F = $D & 2147483647;
-    unless ($E >= $F) goto testD_1284 @ 0;
-    $D = $F;
-    $F = $F + (($E - $F) & 2139095040);
-    $F = $F + (8388608 * ($F <= ($E - 8388608)));
-    $D = (($F - $D) / 8388608) - 1;
-testD_868:
-    %E = %E - (%F * _f($E >= $F));
-    $F = $F - 8388608;
-    if ($D--) goto testD_868 @ 0;
-    $C = ($E & 2147483647) | ($C & -2147483648);
-testD_1284:
-    %EF3 = %C;
+    var C, D, E, F, G, H, I, J;
+    shooter_reset(0);
+!E67
+    2;
+!N67
+    2;
+!H67
+    0;
+!LX67
+    0;
+!*
+    shoot_aim_mode(0, [-1]);
+    bullet_sprite(0, 4, 2);
+!E67
+    1;
+!N67
+    1;
+!H67
+    2;
+!LX67
+    2;
+!*
+    bullet_count(0, [-1], 2);
+!E67
+    2.0f;
+!N67
+    2.0f;
+!H67
+    2.0f;
+!LX67
+    2.5f;
+!*
+    bullet_speed(0, [-1.0f], 1.2f);
+!E67
+    0.0f;
+!N67
+    0.0f;
+!H67
+    0.09817477f;
+!LX67
+    0.09817477f;
+!*
+    shoot_angle(0, 0.0f, [-1.0f]);
+    laser_clear_all();
+    unless ($A) goto spinning_lasersB_616 @ 0;
+    2;
+    goto spinning_lasersB_636 @ 0;
+spinning_lasersB_616:
+    6;
+spinning_lasersB_636:
+    pop_int($C);
+!E67
+    30;
+!N67
+    30;
+!H67
+    25;
+!LX67
+    23;
+!*
+    pop_int($D);
+!E67
+    70;
+!N67
+    70;
+!H67
+    58;
+!LX67
+    54;
+!*
+    pop_int($E);
+!E67
+    20;
+!N67
+    20;
+!H67
+    16;
+!LX67
+    15;
+!*
+    pop_int($F);
+!E67
+    30;
+!N67
+    30;
+!H67
+    25;
+!LX67
+    23;
+!*
+    pop_int($G);
+    %H = 64.0f;
+    unless (500.0f < (500.0f - 64.0f)) goto spinning_lasersB_1288 @ 0;
+    %H = 500.0f - 500.0f;
+spinning_lasersB_1288:
+    unless (%H <= 0.0f) goto spinning_lasersB_1408 @ 0;
+    %H = 0.0f;
+spinning_lasersB_1408:
+    shooter_reset(1);
+    bullet_sprite(1, 4, $C);
+    shoot_angle(1, 0.7853982f, 0.0f);
+    bullet_speed(1, 0.0f, 0.0f);
+    shoot_spawn_distance(1, %H);
+    laser_size_data(1, 500.0f - %H, inff, 0.0f, 24.0f);
+    laser_timing_data(1, $G, $D - $G, $E + 14, $F, 0);
+    unless ($A) goto spinning_lasersB_1868 @ 0;
+    2;
+    goto spinning_lasersB_1888 @ 0;
+spinning_lasersB_1868:
+    6;
+spinning_lasersB_1888:
+    pop_int($C);
+!E67
+    30;
+!N67
+    30;
+!H67
+    25;
+!LX67
+    23;
+!*
+    pop_int($D);
+!E67
+    90;
+!N67
+    90;
+!H67
+    75;
+!LX67
+    70;
+!*
+    pop_int($E);
+!E67
+    20;
+!N67
+    20;
+!H67
+    16;
+!LX67
+    15;
+!*
+    pop_int($F);
+!E67
+    30;
+!N67
+    30;
+!H67
+    25;
+!LX67
+    23;
+!*
+    pop_int($G);
+    %H = 64.0f;
+    unless (500.0f < (500.0f - 64.0f)) goto spinning_lasersB_2540 @ 0;
+    %H = 500.0f - 500.0f;
+spinning_lasersB_2540:
+    unless (%H <= 0.0f) goto spinning_lasersB_2660 @ 0;
+    %H = 0.0f;
+spinning_lasersB_2660:
+    shooter_reset(2);
+    bullet_sprite(2, 4, $C);
+    shoot_angle(2, 0.7853982f, 0.0f);
+    bullet_speed(2, 0.0f, 0.0f);
+    shoot_spawn_distance(2, %H);
+    laser_size_data(2, 500.0f - %H, inff, 0.0f, 24.0f);
+    laser_timing_data(2, $G, $D - $G, $E + 14, $F, 0);
+    shoot_offset(1, 0.0f, -12.0f);
+    shoot_offset(2, 0.0f, -12.0f);
+    laser_infinite_create(1, 1);
+    shoot_angle(1, 2.3561945f, 0.0f);
+    laser_infinite_create(1, 2);
+    shoot_angle(1, -2.3561945f, 0.0f);
+    laser_infinite_create(1, 3);
+    shoot_angle(1, -0.7853982f, 0.0f);
+    laser_infinite_create(1, 4);
+    set_float_difficulty(%C, -0.0060415245f, -0.006829549f, -0.008195459f, -0.008780849f);
+    laser_rotate(1, %C);
+    laser_rotate(2, %C);
+    laser_rotate(3, %C);
+    laser_rotate(4, %C);
+    %D = -2.3561945f;
+    set_int_difficulty($F, 180, 180, 150, 140);
+    set_int_difficulty($G, 120, 120, 100, 93);
+    set_int_difficulty($H, 60, 60, 50, 46);
+    set_int_difficulty($I, 60, 50, 40, 40);
+    $J = 0;
+spinning_lasersB_3624:
+    unless ($J == $H) goto spinning_lasersB_4076 @ 0;
+    laser_infinite_create(2, 5);
+    shoot_angle(2, 2.3561945f, 0.0f);
+    laser_infinite_create(2, 6);
+    shoot_angle(2, -2.3561945f, 0.0f);
+    laser_infinite_create(2, 7);
+    shoot_angle(2, -0.7853982f, 0.0f);
+    laser_infinite_create(2, 8);
+    %C = -%C;
+    laser_rotate(5, %C);
+    laser_rotate(6, %C);
+    laser_rotate(7, %C);
+    laser_rotate(8, %C);
+    %E = 2.3561945f;
+spinning_lasersB_4076:
+    unless ($B) goto spinning_lasersB_5080 @ 0;
+    if ($J % $I) goto spinning_lasersB_5080 @ 0;
+    unless ($J < $G) goto spinning_lasersB_4640 @ 0;
+    shoot_offset_circle(0, %D, 64.0f);
+    shoot_now(0);
+    shoot_offset_circle(0, %D + 1.5707964f, 64.0f);
+    shoot_now(0);
+    shoot_offset_circle(0, %D + 3.1415927f, 64.0f);
+    shoot_now(0);
+    shoot_offset_circle(0, %D + 4.712389f, 64.0f);
+    shoot_now(0);
+spinning_lasersB_4640:
+    unless ($J >= $H) goto spinning_lasersB_5080 @ 0;
+    shoot_offset_circle(0, %E, 64.0f);
+    shoot_now(0);
+    shoot_offset_circle(0, %E + 1.5707964f, 64.0f);
+    shoot_now(0);
+    shoot_offset_circle(0, %E + 3.1415927f, 64.0f);
+    shoot_now(0);
+    shoot_offset_circle(0, %E + 4.712389f, 64.0f);
+    shoot_now(0);
+spinning_lasersB_5080:
+    %D = %D + %C;
+    %E = %E - %C;
+    $J = $J + 1;
++1: //1
+    if ($F--) goto spinning_lasersB_3624 @ 0;
     return;
 }

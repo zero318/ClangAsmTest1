@@ -300,6 +300,8 @@ interrupt[1]:
 
 
 script 17 script17 {
+-1:
+    render_mode(RenderMode1);
     sprite_set(sprite46);
     blend_mode(Additive);
     alpha(0x0);
@@ -307,12 +309,13 @@ script 17 script17 {
     color(0xff, 0xe0, 0xe0);
     scale(1.5, 1.5);
     rotation_speed(0.0, 0.0, 0.02617994);
-+300: // 300
+0:
++299: // 299
     anm_halt();
 
 interrupt[1]:
     alpha_interp_linear(0x0, 120);
-+120: // 420
++120: // 419
     anm_delete();
 }
 

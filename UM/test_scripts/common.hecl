@@ -9,6 +9,8 @@ global ANGLE_RIGHT = 0.0f;
 global ANGLE_UP = rad(-90);
 global ANGLE_DOWN = rad(90);
 
+global inff = 1.0f / 0.0f;
+
 /// Screen constants
 global SCREEN_LEFT = -192.0f;
 global SCREEN_MIDDLE_X = 0.0f;
@@ -19,6 +21,9 @@ global SCREEN_BOTTOM = 448.0f;
 
 global SCREEN_WIDTH = 384.0f;
 global SCREEN_HEIGHT = 448.0f;
+
+global SCREEN_HALF_WIDTH = 192.0f;
+global SCREEN_HALF_HEIGHT = 224.0f;
 
 /// Interp modes
 global Interp_Linear = 0;
@@ -238,6 +243,28 @@ global FLAG_DELETE_AS_BULLET = 2048;
 global FLAG_RECTANGLE_HITBOX = 4096;
 global FLAG_SLOWDOWN_IMMUNE = 8192;
 global FLAG_OFFSCREEN = FLAG_OFFSCREEN_LR | FLAG_OFFSCREEN_UD;
+
+// Item IDs
+global NoItem = 0;
+global PowerItem = 1;
+global PointItem = 2;
+global BigPowerItem = 3;
+global LifeFragmentItem = 4;
+global LifeItem = 5;
+global BombFragmentItem = 6;
+global BombItem = 7;
+global FItem = 8;
+global Piv5Item = 9;
+global Piv10Item = 10;
+global Piv20Item = 11;
+global Piv30Item = 12;
+global Piv40Item = 13;
+global Piv50Item = 14;
+global CyclingBombFragmentItem = 15;
+global LifeFragmentCardItem = 16;
+global BombFragmentCardItem = 17;
+global MoneyCardItem = 18;
+global PowerCardItem = 19;
 
 inline void halt() {
     loop {

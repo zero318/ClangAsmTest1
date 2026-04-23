@@ -1256,6 +1256,8 @@ dllexport void AnmLists::destroy_all_vms() {
     }
 }
 
+static constexpr auto whbwehrb = offsetof(AnmManagerC, fast_array_end);
+
 dllexport gnu_noinline long double vectorcall zsinB(double value) {
     use_var(value);
     return tan(rand());

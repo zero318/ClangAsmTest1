@@ -1,6 +1,788 @@
 anim { "enemy.anm"; "st01enm.anm"; "patchy.anm"; }
 ecli { "default.ecl"; }
 
+void BossPatchouliEnd()
+{
+    frame_enter(0);
+    move_stop();
+    enemy_flags_set(3);
+    move_rand_interp_abs(90, 4, 0.6f);
+    enemy_life_set(0);
++3000: //3000
+    enemy_delete();
+}
+
+void BossPatchouliPhase1()
+{
+    frame_enter(4);
+    enemy_flags_set(3);
+    anm_source(4);
+    anm_set_slot_main(0, 19);
+    boss_set(0);
+    enemy_set_hitbox(48.0f, 56.0f);
+    boss_set_life_count(2);
+    move_position_abs_interp(60, 4, 0.0f, 128.0f);
++180: //180
+    enemy_flags_clear(3);
+    anm_set_slot(1, 17);
+    enemy_life_set(17000);
+    phase_timer_clear();
+    push_float(144.0f);
+    push_float(48.0f);
+    math_float_sub();
+    push_float(352.0f);
+    push_float(32.0f);
+    math_float_sub();
+    push_float(48.0f);
+    push_float(144.0f);
+    math_float_add();
+    push_float(2.0f);
+    math_float_div();
+    push_float(32.0f);
+    push_float(352.0f);
+    math_float_add();
+    push_float(2.0f);
+    math_float_div();
+    push_float(192.0f);
+    math_float_sub();
+    move_bounds_set([-1.0f], [-2.0f], [-3.0f], [-4.0f]);
+    push_int($PLAYER_SHOT);
+    pop_int([0]);
+    jump(BossPatchouliPhase1_1596, 180);
+BossPatchouliPhase1_704:
+!E
+    callback_ex(0, 0, 2400, "BossPatchouliPhase2");
+!N
+    callback_ex(0, 1600, 2400, "FireSignAgniShine");
+!HL
+    callback_ex(0, 1600, 2400, "FireSignAgniShineHighLevel");
+!NHL
+    enemy_lifebar_color(0, 1600.0f, -24448);
+!*
+    jump(BossPatchouliPhase1_1860, 180);
+BossPatchouliPhase1_920:
+!E
+    callback_ex(0, 0, 2400, "BossPatchouliPhase2");
+!N
+    callback_ex(0, 1600, 2400, "WaterSignPrincessUndine");
+!HL
+    callback_ex(0, 1600, 2400, "WaterSignBuryInLake");
+!NHL
+    enemy_lifebar_color(0, 1600.0f, -24448);
+!*
+    jump(BossPatchouliPhase1_1860, 180);
+BossPatchouliPhase1_1132:
+!E
+    callback_ex(0, 0, 2400, "BossPatchouliPhase2");
+!N
+    callback_ex(0, 1600, 2400, "WoodSignSylphyHorn");
+!HL
+    callback_ex(0, 1600, 2400, "WoodSignSylphyHornHighLevel");
+!NHL
+    enemy_lifebar_color(0, 1600.0f, -24448);
+!*
+    jump(BossPatchouliPhase1_1860, 180);
+BossPatchouliPhase1_1348:
+!E
+    callback_ex(0, 0, 2400, "BossPatchouliPhase2");
+!N
+    callback_ex(0, 1800, 2400, "EarthSignLazyTrilithon");
+!HL
+    callback_ex(0, 1800, 2400, "EarthSignLazyTrilithonHighLevel");
+!NHL
+    enemy_lifebar_color(0, 1800.0f, -24448);
+!*
+    jump(BossPatchouliPhase1_1860, 180);
+    jump(BossPatchouliPhase1_1860, 180);
+BossPatchouliPhase1_1596:
+    push_int(0);
+    push_int([0]);
+    cmp_int_equ();
+    jump_neq(BossPatchouliPhase1_704, 180);
+    jump(BossPatchouliPhase1_920, 180);
+    push_int(2);
+    push_int([0]);
+    cmp_int_equ();
+    jump_neq(BossPatchouliPhase1_1132, 180);
+    push_int(1);
+    push_int([0]);
+    cmp_int_equ();
+    jump_neq(BossPatchouliPhase1_1348, 180);
+BossPatchouliPhase1_1860:
+    callback_ex(1, 0, -1, "BossPatchouliPhase2");
+    push_int(0);
+    pop_int([0]);
+BossPatchouliPhase1_1952:
++60: //240
+    push_int([0]);
+    push_int(1);
+    math_bit_and();
+    jump_equ(BossPatchouliPhase1_2112, 240);
+    call("spinning_lasersA", _SS 0, _SS [0]);
+    jump(BossPatchouliPhase1_2168, 240);
+BossPatchouliPhase1_2112:
+    call("spinning_lasersB", _SS 0, _SS [0]);
+BossPatchouliPhase1_2168:
+    move_rand_interp_abs(90, 4, 2.5f);
+    shooter_reset(0);
+    shoot_aim_mode(0, 2);
+    bullet_sprite(0, 4, 2);
+!E67
+    push_int(3);
+!N67
+    push_int(4);
+!H67
+    push_int(4);
+!LX67
+    push_int(4);
+!*
+    push_int([0]);
+!E67
+    push_int(12);
+!N67
+    push_int(16);
+!H67
+    push_int(24);
+!LX67
+    push_int(24);
+!*
+    math_int_add();
+    bullet_count(0, [-1], [-2]);
+!E67
+    push_float(2.5f);
+!N67
+    push_float(3.5f);
+!H67
+    push_float(3.5f);
+!LX67
+    push_float(3.5f);
+!*
+    bullet_speed(0, [-1.0f], 1.2f);
+    shoot_offset(0, 0.0f, -12.0f);
++40: //280
+    shoot_now(0);
++40: //320
+    shoot_now(0);
++10: //330
+    move_position_abs_interp(90, 4, 0.0f, 128.0f);
++90: //420
+    push_int([0]);
+    push_int(1);
+    math_int_add();
+    pop_int([0]);
+    jump(BossPatchouliPhase1_1952, 180);
+    ret();
+}
+
+void BossPatchouliPhase2()
+{
+    frame_enter(8);
+    __enemy_flag_armored(0);
+    push_int(8);
+    push_int(0);
+    cmp_int_gre();
+    jump_equ(BossPatchouliPhase2_424, 0);
+    item_bonus_count_reset();
+    item_drop_area(144.0f, 144.0f);
+    push_int($PLAYER_POWER);
+    push_int(400);
+    cmp_int_neq();
+    jump_equ(BossPatchouliPhase2_384, 0);
+    item_bonus_count_set(3, 1);
+    push_int(8);
+    push_int(1);
+    math_int_sub();
+    item_bonus_count_set(1, [-1]);
+    jump(BossPatchouliPhase2_408, 0);
+BossPatchouliPhase2_384:
+    item_bonus_count_set(2, 8);
+BossPatchouliPhase2_408:
+    drop_item_rewards();
+BossPatchouliPhase2_424:
+    boss_set_life_count(1);
+    enemy_life_set(16000);
+    phase_timer_clear();
+    push_int($PLAYER_SHOT);
+    pop_int([0]);
+    jump(BossPatchouliPhase2_1588, 0);
+BossPatchouliPhase2_544:
+!E
+    callback_ex(0, 1500, 2400, "FireSignAgniShine");
+!N
+    callback_ex(0, 1500, 2400, "EarthSignLazyTrilithonHighLevel");
+!HL
+    callback_ex(0, 1500, 2400, "EarthSignTrilithonShake");
+!*
+    enemy_lifebar_color(0, 1500.0f, -24448);
+    jump(BossPatchouliPhase2_1852, 0);
+BossPatchouliPhase2_768:
+!E
+    callback_ex(0, 1600, 2400, "WaterSignPrincessUndine");
+!N
+    callback_ex(0, 1600, 2400, "WoodSignSylphyHornHighLevel");
+!HL
+    callback_ex(0, 1600, 2400, "WoodSignGreenStorm");
+!*
+    enemy_lifebar_color(0, 1600.0f, -24448);
+    jump(BossPatchouliPhase2_1852, 0);
+BossPatchouliPhase2_988:
+!E
+    callback_ex(0, 1600, 2400, "WoodSignSylphyHorn");
+!N
+    callback_ex(0, 1600, 2400, "FireSignAgniShineHighLevel");
+!H
+    callback_ex(0, 1700, 2400, "FireSignAgniRadiance");
+!L
+    callback_ex(0, 1800, 2400, "FireSignAgniRadiance");
+!E67
+    push_float(1600.0f);
+!N67
+    push_float(1600.0f);
+!H67
+    push_float(1700.0f);
+!LX67
+    push_float(1800.0f);
+!*
+    enemy_lifebar_color(0, [-1.0f], -24448);
+    jump(BossPatchouliPhase2_1852, 0);
+BossPatchouliPhase2_1344:
+!E
+    callback_ex(0, 1800, 2400, "EarthSignLazyTrilithon");
+!N
+    callback_ex(0, 1800, 2400, "MetalSignMetalFatigue");
+!HL
+    callback_ex(0, 1800, 2400, "MetalSignSilverDragon");
+!*
+    enemy_lifebar_color(0, 1800.0f, -24448);
+    jump(BossPatchouliPhase2_1852, 0);
+    jump(BossPatchouliPhase2_1852, 0);
+BossPatchouliPhase2_1588:
+    push_int(0);
+    push_int([0]);
+    cmp_int_equ();
+    jump_neq(BossPatchouliPhase2_544, 0);
+    jump(BossPatchouliPhase2_768, 0);
+    push_int(2);
+    push_int([0]);
+    cmp_int_equ();
+    jump_neq(BossPatchouliPhase2_988, 0);
+    push_int(1);
+    push_int([0]);
+    cmp_int_equ();
+    jump_neq(BossPatchouliPhase2_1344, 0);
+BossPatchouliPhase2_1852:
+    callback_ex(1, 0, -1, "BossPatchouliPhase3");
+    push_int(0);
+    pop_int([0]);
+BossPatchouliPhase2_1944:
++60: //60
+    push_int([0]);
+    push_int(1);
+    math_bit_and();
+    jump_equ(BossPatchouliPhase2_2104, 60);
+    call("spinning_lasersA", _SS 1, _SS [0]);
+    jump(BossPatchouliPhase2_2160, 60);
+BossPatchouliPhase2_2104:
+    call("spinning_lasersB", _SS 1, _SS [0]);
+BossPatchouliPhase2_2160:
+    move_rand_interp_abs(90, 4, 2.5f);
+    shooter_reset(0);
+    shoot_aim_mode(0, 2);
+    bullet_sprite(0, 4, 6);
+!E67
+    push_int(2);
+!N67
+    push_int(3);
+!H67
+    push_int(4);
+!LX67
+    push_int(5);
+!*
+    push_int([0]);
+    push_int(10);
+    math_int_add();
+    bullet_count(0, [-1], [-2]);
+!E67
+    push_float(4.0f);
+!N67
+    push_float(4.0f);
+!H67
+    push_float(5.5f);
+!LX67
+    push_float(5.5f);
+!*
+    bullet_speed(0, [-1.0f], 1.5f);
+    shoot_offset(0, 0.0f, -12.0f);
+!E67
+    push_int(4);
+!N67
+    push_int(6);
+!H67
+    push_int(6);
+!LX67
+    push_int(9);
+!*
+    pop_int([4]);
+BossPatchouliPhase2_2660:
+    math_post_dec([4]);
+    jump_equ(BossPatchouliPhase2_2780, 60);
+    ecl_time_sub_difficulty(20, 15, 15, 10);
+    shoot_now(0);
+    jump(BossPatchouliPhase2_2660, 60);
+BossPatchouliPhase2_2780:
+!E
+    ecl_time_sub(10);
+!*
+    move_position_abs_interp(90, 4, 0.0f, 128.0f);
+!E67
+    push_int(6);
+!N67
+    push_int(12);
+!H67
+    push_int(16);
+!LX67
+    push_int(20);
+!*
+    bullet_count(0, [-1], 1);
+!E67
+    push_float(1.0f);
+!N67
+    push_float(1.5f);
+!H67
+    push_float(1.5f);
+!LX67
+    push_float(1.5f);
+!*
+    bullet_speed(0, [-1.0f], 1.0f);
+    ecl_time_sub_difficulty(70, 60, 60, 60);
+    shoot_now(0);
+    ecl_time_sub_difficulty(20, 30, 30, 30);
+    push_int([0]);
+    push_int(1);
+    math_int_add();
+    pop_int([0]);
+    jump(BossPatchouliPhase2_1944, 0);
+    ret();
+}
+
+void BossPatchouliPhase3()
+{
+    frame_enter(4);
+    __enemy_flag_armored(0);
+    push_int(8);
+    push_int(0);
+    cmp_int_gre();
+    jump_equ(BossPatchouliPhase3_424, 0);
+    item_bonus_count_reset();
+    item_drop_area(144.0f, 144.0f);
+    push_int($PLAYER_POWER);
+    push_int(400);
+    cmp_int_neq();
+    jump_equ(BossPatchouliPhase3_384, 0);
+    item_bonus_count_set(3, 1);
+    push_int(8);
+    push_int(1);
+    math_int_sub();
+    item_bonus_count_set(1, [-1]);
+    jump(BossPatchouliPhase3_408, 0);
+BossPatchouliPhase3_384:
+    item_bonus_count_set(2, 8);
+BossPatchouliPhase3_408:
+    drop_item_rewards();
+BossPatchouliPhase3_424:
+    boss_set_life_count(0);
+    enemy_flags_set(1);
+!E67
+    push_int(1700);
+!N67
+    push_int(3400);
+!H67
+    push_int(5100);
+!LX67
+    push_int(5100);
+!*
+    enemy_life_set([-1]);
+    phase_timer_clear();
+!E
+    callback_ex(0, 0, -1, "BossPatchouliEnd");
+!NHL
+    callback_ex(0, 0, -1, "BossPatchouliPhase4");
+!N
+    callback_ex(0, 1700, 2400, "BossPatchouliPhase4");
+!*
+    enemy_lifebar_color(0, 1700.0f, -24448);
+!HL
+    callback_ex(0, 3400, 2400, "BossPatchouliPhase4");
+!*
+    enemy_lifebar_color(0, 3400.0f, -24448);
+    enemy_lifebar_color(1, 1700.0f, -24448);
+    nop();
++120: //120
+    enemy_flags_clear(1);
+    push_int($PLAYER_SHOT);
+    pop_int([0]);
+    jump(BossPatchouliPhase3_1280, 120);
+BossPatchouliPhase3_972:
+    call("FireEarthSignLavaCromlech");
+    jump(BossPatchouliPhase3_1544, 120);
+BossPatchouliPhase3_1044:
+    call("WaterWoodSignWaterElf");
+    jump(BossPatchouliPhase3_1544, 120);
+BossPatchouliPhase3_1112:
+    call("FireEarthSignLavaCromlech");
+    jump(BossPatchouliPhase3_1544, 120);
+BossPatchouliPhase3_1184:
+    call("FireEarthSignLavaCromlech");
+    jump(BossPatchouliPhase3_1544, 120);
+    jump(BossPatchouliPhase3_1544, 120);
+BossPatchouliPhase3_1280:
+    push_int(0);
+    push_int([0]);
+    cmp_int_equ();
+    jump_neq(BossPatchouliPhase3_972, 120);
+    jump(BossPatchouliPhase3_1044, 120);
+    push_int(2);
+    push_int([0]);
+    cmp_int_equ();
+    jump_neq(BossPatchouliPhase3_1112, 120);
+    push_int(1);
+    push_int([0]);
+    cmp_int_equ();
+    jump_neq(BossPatchouliPhase3_1184, 120);
+BossPatchouliPhase3_1544:
+    ret();
+}
+
+void BossPatchouliPhase4()
+{
+    frame_enter(4);
+    __enemy_flag_armored(0);
+    push_int(8);
+    push_int(0);
+    cmp_int_gre();
+    jump_equ(BossPatchouliPhase4_424, 0);
+    item_bonus_count_reset();
+    item_drop_area(144.0f, 144.0f);
+    push_int($PLAYER_POWER);
+    push_int(400);
+    cmp_int_neq();
+    jump_equ(BossPatchouliPhase4_384, 0);
+    item_bonus_count_set(3, 1);
+    push_int(8);
+    push_int(1);
+    math_int_sub();
+    item_bonus_count_set(1, [-1]);
+    jump(BossPatchouliPhase4_408, 0);
+BossPatchouliPhase4_384:
+    item_bonus_count_set(2, 8);
+BossPatchouliPhase4_408:
+    drop_item_rewards();
+BossPatchouliPhase4_424:
+    enemy_flags_set(1);
+    phase_timer_clear();
+!EN
+    callback_ex(0, 0, -1, "BossPatchouliEnd");
+!HL
+    callback_ex(0, 0, -1, "BossPatchouliPhase5");
+!*
+    nop();
++120: //120
+    enemy_flags_clear(1);
+    push_int($PLAYER_SHOT);
+    pop_int([0]);
+    jump(BossPatchouliPhase4_976, 120);
+BossPatchouliPhase4_664:
+    call("MetalWaterSignMercuryPoison");
+    jump(BossPatchouliPhase4_1240, 120);
+BossPatchouliPhase4_736:
+    call("MetalWaterSignMercuryPoison");
+    jump(BossPatchouliPhase4_1240, 120);
+BossPatchouliPhase4_808:
+    call("EarthMetalSignEmeraldMegalith");
+    jump(BossPatchouliPhase4_1240, 120);
+BossPatchouliPhase4_884:
+    call("WaterWoodSignWaterElf");
+    jump(BossPatchouliPhase4_1240, 120);
+    jump(BossPatchouliPhase4_1240, 120);
+BossPatchouliPhase4_976:
+    push_int(0);
+    push_int([0]);
+    cmp_int_equ();
+    jump_neq(BossPatchouliPhase4_664, 120);
+    jump(BossPatchouliPhase4_736, 120);
+    push_int(2);
+    push_int([0]);
+    cmp_int_equ();
+    jump_neq(BossPatchouliPhase4_808, 120);
+    push_int(1);
+    push_int([0]);
+    cmp_int_equ();
+    jump_neq(BossPatchouliPhase4_884, 120);
+BossPatchouliPhase4_1240:
+    ret();
+}
+
+void BossPatchouliPhase5()
+{
+    frame_enter(4);
+    push_int(8);
+    push_int(0);
+    cmp_int_gre();
+    jump_equ(BossPatchouliPhase5_404, 0);
+    item_bonus_count_reset();
+    item_drop_area(144.0f, 144.0f);
+    push_int($PLAYER_POWER);
+    push_int(400);
+    cmp_int_neq();
+    jump_equ(BossPatchouliPhase5_364, 0);
+    item_bonus_count_set(3, 1);
+    push_int(8);
+    push_int(1);
+    math_int_sub();
+    item_bonus_count_set(1, [-1]);
+    jump(BossPatchouliPhase5_388, 0);
+BossPatchouliPhase5_364:
+    item_bonus_count_set(2, 8);
+BossPatchouliPhase5_388:
+    drop_item_rewards();
+BossPatchouliPhase5_404:
+    enemy_flags_set(1);
+    phase_timer_clear();
+    death_callback_sub("BossPatchouliEnd");
++120: //120
+    enemy_flags_clear(1);
+    push_int($PLAYER_SHOT);
+    pop_int([0]);
+    jump(BossPatchouliPhase5_876, 120);
+BossPatchouliPhase5_564:
+    call("WoodFireSignForestBlaze");
+    jump(BossPatchouliPhase5_1140, 120);
+BossPatchouliPhase5_632:
+    call("EarthMetalSignEmeraldMegalith");
+    jump(BossPatchouliPhase5_1140, 120);
+BossPatchouliPhase5_708:
+    call("FireEarthSignLavaCromlech");
+    jump(BossPatchouliPhase5_1140, 120);
+BossPatchouliPhase5_780:
+    call("MetalWaterSignMercuryPoison");
+    jump(BossPatchouliPhase5_1140, 120);
+    jump(BossPatchouliPhase5_1140, 120);
+BossPatchouliPhase5_876:
+    push_int(0);
+    push_int([0]);
+    cmp_int_equ();
+    jump_neq(BossPatchouliPhase5_564, 120);
+    jump(BossPatchouliPhase5_632, 120);
+    push_int(2);
+    push_int([0]);
+    cmp_int_equ();
+    jump_neq(BossPatchouliPhase5_708, 120);
+    push_int(1);
+    push_int([0]);
+    cmp_int_equ();
+    jump_neq(BossPatchouliPhase5_780, 120);
+BossPatchouliPhase5_1140:
+    ret();
+}
+
+void EarthMetalSignEmeraldMegalith()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+EarthMetalSignEmeraldMegalith_76:
++10000: //10000
+    jump(EarthMetalSignEmeraldMegalith_76, 0);
+    ret();
+}
+
+void EarthSignLazyTrilithon()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+EarthSignLazyTrilithon_76:
++10000: //10000
+    jump(EarthSignLazyTrilithon_76, 0);
+    ret();
+}
+
+void EarthSignLazyTrilithonHighLevel()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+EarthSignLazyTrilithonHighLevel_76:
++10000: //10000
+    jump(EarthSignLazyTrilithonHighLevel_76, 0);
+    ret();
+}
+
+void EarthSignTrilithonShake()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+EarthSignTrilithonShake_76:
++10000: //10000
+    jump(EarthSignTrilithonShake_76, 0);
+    ret();
+}
+
+void FireEarthSignLavaCromlech()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+FireEarthSignLavaCromlech_76:
++10000: //10000
+    jump(FireEarthSignLavaCromlech_76, 0);
+    ret();
+}
+
+void FireSignAgniRadiance()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+FireSignAgniRadiance_76:
++10000: //10000
+    jump(FireSignAgniRadiance_76, 0);
+    ret();
+}
+
+void FireSignAgniShine()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+FireSignAgniShine_76:
++10000: //10000
+    jump(FireSignAgniShine_76, 0);
+    ret();
+}
+
+void FireSignAgniShineHighLevel()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+FireSignAgniShineHighLevel_76:
++10000: //10000
+    jump(FireSignAgniShineHighLevel_76, 0);
+    ret();
+}
+
+void MetalSignMetalFatigue()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+MetalSignMetalFatigue_76:
++10000: //10000
+    jump(MetalSignMetalFatigue_76, 0);
+    ret();
+}
+
+void MetalSignSilverDragon()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+MetalSignSilverDragon_76:
++10000: //10000
+    jump(MetalSignSilverDragon_76, 0);
+    ret();
+}
+
+void MetalWaterSignMercuryPoison()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+MetalWaterSignMercuryPoison_76:
++10000: //10000
+    jump(MetalWaterSignMercuryPoison_76, 0);
+    ret();
+}
+
+void WaterSignBuryInLake()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+WaterSignBuryInLake_76:
++10000: //10000
+    jump(WaterSignBuryInLake_76, 0);
+    ret();
+}
+
+void WaterSignPrincessUndine()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+WaterSignPrincessUndine_76:
++10000: //10000
+    jump(WaterSignPrincessUndine_76, 0);
+    ret();
+}
+
+void WaterWoodSignWaterElf()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+WaterWoodSignWaterElf_76:
++10000: //10000
+    jump(WaterWoodSignWaterElf_76, 0);
+    ret();
+}
+
+void WoodFireSignForestBlaze()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+WoodFireSignForestBlaze_76:
++10000: //10000
+    jump(WoodFireSignForestBlaze_76, 0);
+    ret();
+}
+
+void WoodSignGreenStorm()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+WoodSignGreenStorm_76:
++10000: //10000
+    jump(WoodSignGreenStorm_76, 0);
+    ret();
+}
+
+void WoodSignSylphyHorn()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+WoodSignSylphyHorn_76:
++10000: //10000
+    jump(WoodSignSylphyHorn_76, 0);
+    ret();
+}
+
+void WoodSignSylphyHornHighLevel()
+{
+    frame_enter(0);
+    __enemy_flag_armored(1);
+    __enemy_life_set_current($SELF_LIFE);
+WoodSignSylphyHornHighLevel_76:
++10000: //10000
+    jump(WoodSignSylphyHornHighLevel_76, 0);
+    ret();
+}
+
 void enemy_test()
 {
     frame_enter(8);
@@ -55,311 +837,665 @@ enemy_test_1016:
     ret();
 }
 
+void full_power_dummy()
+{
+    frame_enter(0);
+    item_drop_area(0.0f, 0.0f);
+    item_bonus_count_set(3, 4);
+    drop_item_rewards();
+    enemy_delete();
+}
+
 void main()
 {
     frame_enter(0);
     enemy_flags_set(176);
 +1: //1
     chapter_set(0);
-    enemy_create_abs("enemy_test", 64.0f, -32.0f, 10000, 0, 0);
-main_128:
+    enemy_create_abs("full_power_dummy", %PLAYER_X, %PLAYER_Y, 1, 0, 0);
+main_136:
 +10000: //10001
-    jump(main_128, 1);
+    jump(main_136, 1);
     ret();
 }
 
-void testA()
+void spinning_lasersA()
 {
-    frame_enter(24);
-    push_float([0.0f]);
-    pop_float([8.0f]);
-    push_float([4.0f]);
-    pop_float([12.0f]);
-    push_int([8]);
-    push_int(2147483647);
-    math_bit_and();
-    pop_int([16]);
-    push_int([12]);
-    push_int(2147483647);
-    math_bit_and();
-    pop_int([20]);
-    push_int([16]);
-    push_int([20]);
-    cmp_int_geq();
-    jump_equ(testA_1196, 0);
-    push_int([20]);
-    pop_int([12]);
-    push_int([20]);
-    push_int([16]);
-    push_int([20]);
-    math_int_sub();
-    push_int(2139095040);
-    math_bit_and();
-    math_int_add();
-    pop_int([20]);
-    push_int([20]);
-    push_int(8388608);
-    push_int([20]);
-    push_int([16]);
-    push_int(8388608);
-    math_int_sub();
-    cmp_int_leq();
-    math_int_mul();
-    math_int_add();
-    pop_int([20]);
-testA_720:
-    push_int([20]);
-    push_int([12]);
-    cmp_int_geq();
-    jump_equ(testA_1048, 0);
-    push_float([16.0f]);
-    push_float([20.0f]);
-    push_int([16]);
-    push_int([20]);
-    cmp_int_geq();
-    math_float_mul();
-    math_float_sub();
-    pop_float([16.0f]);
-    push_int([20]);
-    push_int(8388608);
-    math_int_sub();
-    pop_int([20]);
-    jump(testA_720, 0);
-testA_1048:
-    push_int([16]);
-    push_int(2147483647);
-    math_bit_and();
-    push_int([8]);
-    push_int(-2147483648);
-    math_bit_and();
-    math_bit_or();
-    pop_int([8]);
-testA_1196:
-    push_float([8.0f]);
-    pop_float(%EF3);
-    ret();
-}
-
-void testB()
-{
-    frame_enter(24);
-    push_float([0.0f]);
-    pop_float([8.0f]);
-    push_float([4.0f]);
-    pop_float([12.0f]);
-    push_int([8]);
-    push_int(2147483647);
-    math_bit_and();
-    pop_int([16]);
-    push_int([12]);
-    push_int(2147483647);
-    math_bit_and();
-    pop_int([20]);
-    push_int([16]);
-    push_int([20]);
-    cmp_int_geq();
-    jump_equ(testB_1172, 0);
-    push_int([20]);
-    pop_int([12]);
-    push_int([20]);
-    push_int([16]);
-    push_int([20]);
-    math_int_sub();
-    push_int(2139095040);
-    math_bit_and();
-    math_int_add();
-    pop_int([20]);
-    push_int([20]);
-    push_int(8388608);
-    push_int([20]);
-    push_int([16]);
-    push_int(8388608);
-    math_int_sub();
-    cmp_int_leq();
-    math_int_mul();
-    math_int_add();
-    pop_int([20]);
-testB_720:
-    push_float([16.0f]);
-    push_float([20.0f]);
-    push_int([16]);
-    push_int([20]);
-    cmp_int_geq();
-    math_float_mul();
-    math_float_sub();
-    pop_float([16.0f]);
-    push_int([20]);
-    push_int(8388608);
-    math_int_sub();
-    pop_int([20]);
-    push_int([20]);
-    push_int([12]);
-    cmp_int_geq();
-    jump_neq(testB_720, 0);
-    push_int([16]);
-    push_int(2147483647);
-    math_bit_and();
-    push_int([8]);
-    push_int(-2147483648);
-    math_bit_and();
-    math_bit_or();
-    pop_int([8]);
-testB_1172:
-    push_float([8.0f]);
-    pop_float(%EF3);
-    ret();
-}
-
-void testC()
-{
-    frame_enter(24);
-    push_float([0.0f]);
-    pop_float([8.0f]);
-    push_float([4.0f]);
-    pop_float([12.0f]);
-    push_int([8]);
-    push_int(2147483647);
-    math_bit_and();
-    pop_int([16]);
-    push_int([12]);
-    push_int(2147483647);
-    math_bit_and();
-    pop_int([20]);
-    push_int([16]);
-    push_int([20]);
-    cmp_int_geq();
-    jump_equ(testC_1320, 0);
-    push_int([20]);
-    pop_int([12]);
-    push_int([20]);
-    push_int([16]);
-    push_int([20]);
-    math_int_sub();
-    push_int(2139095040);
-    math_bit_and();
-    math_int_add();
-    pop_int([20]);
-    push_int([20]);
-    push_int(8388608);
-    push_int([20]);
-    push_int([16]);
-    push_int(8388608);
-    math_int_sub();
-    cmp_int_leq();
-    math_int_mul();
-    math_int_add();
-    pop_int([20]);
-    push_int([20]);
-    push_int([12]);
-    math_int_sub();
-    push_int(8388608);
-    math_int_div();
+    frame_enter(40);
+    shooter_reset(0);
+    shoot_aim_mode(0, 2);
+    bullet_sprite(0, 4, 2);
+!E67
     push_int(1);
-    math_int_sub();
+!N67
+    push_int(1);
+!H67
+    push_int(1);
+!LX67
+    push_int(2);
+!E67
+    push_int(8);
+!N67
+    push_int(10);
+!H67
+    push_int(14);
+!LX67
+    push_int(10);
+!*
+    bullet_count(0, [-1], [-2]);
+!E67
+    push_float(1.5f);
+!N67
+    push_float(2.0f);
+!H67
+    push_float(2.4f);
+!LX67
+    push_float(3.0f);
+!*
+    bullet_speed(0, [-1.0f], 1.2f);
+    laser_clear_all();
+    push_int([0]);
+    jump_equ(spinning_lasersA_508, 0);
+    push_int(2);
+    jump(spinning_lasersA_528, 0);
+spinning_lasersA_508:
+    push_int(6);
+spinning_lasersA_528:
+    pop_int([8]);
+!E67
+    push_int(30);
+!N67
+    push_int(30);
+!H67
+    push_int(25);
+!LX67
+    push_int(23);
+!*
     pop_int([12]);
-testC_868:
-    push_float([16.0f]);
-    push_float([20.0f]);
+!E67
+    push_int(70);
+!N67
+    push_int(70);
+!H67
+    push_int(58);
+!LX67
+    push_int(54);
+!*
+    pop_int([16]);
+!E67
+    push_int(20);
+!N67
+    push_int(20);
+!H67
+    push_int(16);
+!LX67
+    push_int(15);
+!*
+    pop_int([20]);
+!E67
+    push_int(30);
+!N67
+    push_int(30);
+!H67
+    push_int(25);
+!LX67
+    push_int(23);
+!*
+    pop_int([24]);
+    push_float(64.0f);
+    pop_float([28.0f]);
+    push_float(500.0f);
+    push_float(500.0f);
+    push_float(64.0f);
+    math_float_sub();
+    cmp_float_les();
+    jump_equ(spinning_lasersA_1180, 0);
+    push_float(500.0f);
+    push_float(500.0f);
+    math_float_sub();
+    pop_float([28.0f]);
+spinning_lasersA_1180:
+    push_float([28.0f]);
+    push_float(0.0f);
+    cmp_float_leq();
+    jump_equ(spinning_lasersA_1300, 0);
+    push_float(0.0f);
+    pop_float([28.0f]);
+spinning_lasersA_1300:
+    shooter_reset(1);
+    bullet_sprite(1, 4, [8]);
+    shoot_angle(1, 0.7853982f, 0.0f);
+    bullet_speed(1, 0.0f, 0.0f);
+    shoot_spawn_distance(1, [28.0f]);
+    push_float(500.0f);
+    push_float([28.0f]);
+    math_float_sub();
+    laser_size_data(1, [-1.0f], inff, 0.0f, 24.0f);
     push_int([16]);
-    push_int([20]);
+    push_int(14);
+    math_int_add();
+    push_int([12]);
+    push_int([24]);
+    math_int_sub();
+    laser_timing_data(1, [24], [-1], [-2], [20], 0);
+    push_int([0]);
+    jump_equ(spinning_lasersA_1760, 0);
+    push_int(2);
+    jump(spinning_lasersA_1780, 0);
+spinning_lasersA_1760:
+    push_int(6);
+spinning_lasersA_1780:
+    pop_int([8]);
+!E67
+    push_int(30);
+!N67
+    push_int(30);
+!H67
+    push_int(25);
+!LX67
+    push_int(23);
+!*
+    pop_int([12]);
+!E67
+    push_int(90);
+!N67
+    push_int(90);
+!H67
+    push_int(75);
+!LX67
+    push_int(70);
+!*
+    pop_int([16]);
+!E67
+    push_int(20);
+!N67
+    push_int(20);
+!H67
+    push_int(16);
+!LX67
+    push_int(15);
+!*
+    pop_int([20]);
+!E67
+    push_int(30);
+!N67
+    push_int(30);
+!H67
+    push_int(25);
+!LX67
+    push_int(23);
+!*
+    pop_int([24]);
+    push_float(64.0f);
+    pop_float([28.0f]);
+    push_float(500.0f);
+    push_float(500.0f);
+    push_float(64.0f);
+    math_float_sub();
+    cmp_float_les();
+    jump_equ(spinning_lasersA_2432, 0);
+    push_float(500.0f);
+    push_float(500.0f);
+    math_float_sub();
+    pop_float([28.0f]);
+spinning_lasersA_2432:
+    push_float([28.0f]);
+    push_float(0.0f);
+    cmp_float_leq();
+    jump_equ(spinning_lasersA_2552, 0);
+    push_float(0.0f);
+    pop_float([28.0f]);
+spinning_lasersA_2552:
+    shooter_reset(2);
+    bullet_sprite(2, 4, [8]);
+    shoot_angle(2, 0.7853982f, 0.0f);
+    bullet_speed(2, 0.0f, 0.0f);
+    shoot_spawn_distance(2, [28.0f]);
+    push_float(500.0f);
+    push_float([28.0f]);
+    math_float_sub();
+    laser_size_data(2, [-1.0f], inff, 0.0f, 24.0f);
+    push_int([16]);
+    push_int(14);
+    math_int_add();
+    push_int([12]);
+    push_int([24]);
+    math_int_sub();
+    laser_timing_data(2, [24], [-1], [-2], [20], 0);
+    shoot_offset(1, 0.0f, -12.0f);
+    shoot_offset(2, 0.0f, -12.0f);
+    laser_infinite_create(1, 1);
+    shoot_angle(1, 2.3561945f, 0.0f);
+    laser_infinite_create(1, 2);
+    shoot_angle(1, -2.3561945f, 0.0f);
+    laser_infinite_create(1, 3);
+    shoot_angle(1, -0.7853982f, 0.0f);
+    laser_infinite_create(1, 4);
+    set_float_difficulty([8.0f], 0.0060415245f, 0.006829549f, 0.008195459f, 0.008780849f);
+    laser_rotate(1, [8.0f]);
+    laser_rotate(2, [8.0f]);
+    laser_rotate(3, [8.0f]);
+    laser_rotate(4, [8.0f]);
+    push_float(-2.3561945f);
+    pop_float([12.0f]);
+    set_int_difficulty([20], 180, 180, 150, 140);
+    set_int_difficulty([24], 120, 120, 100, 93);
+    set_int_difficulty([28], 60, 60, 50, 46);
+    set_int_difficulty([32], 60, 50, 40, 40);
+    push_int(0);
+    pop_int([36]);
+spinning_lasersA_3516:
+    push_int([36]);
+    push_int([28]);
+    cmp_int_equ();
+    jump_equ(spinning_lasersA_3968, 0);
+    laser_infinite_create(2, 5);
+    shoot_angle(2, 2.3561945f, 0.0f);
+    laser_infinite_create(2, 6);
+    shoot_angle(2, -2.3561945f, 0.0f);
+    laser_infinite_create(2, 7);
+    shoot_angle(2, -0.7853982f, 0.0f);
+    laser_infinite_create(2, 8);
+    push_float([8.0f]);
+    math_float_neg();
+    pop_float([8.0f]);
+    laser_rotate(5, [8.0f]);
+    laser_rotate(6, [8.0f]);
+    laser_rotate(7, [8.0f]);
+    laser_rotate(8, [8.0f]);
+    push_float(2.3561945f);
+    pop_float([16.0f]);
+spinning_lasersA_3968:
+    push_int([4]);
+    jump_equ(spinning_lasersA_4972, 0);
+    push_int([36]);
+    push_int([32]);
+    math_int_mod();
+    jump_neq(spinning_lasersA_4972, 0);
+    push_int([36]);
+    push_int([24]);
+    cmp_int_les();
+    jump_equ(spinning_lasersA_4532, 0);
+    shoot_offset_circle(0, [12.0f], 64.0f);
+    shoot_now(0);
+    push_float([12.0f]);
+    push_float(1.5707964f);
+    math_float_add();
+    shoot_offset_circle(0, [-1.0f], 64.0f);
+    shoot_now(0);
+    push_float([12.0f]);
+    push_float(3.1415927f);
+    math_float_add();
+    shoot_offset_circle(0, [-1.0f], 64.0f);
+    shoot_now(0);
+    push_float([12.0f]);
+    push_float(4.712389f);
+    math_float_add();
+    shoot_offset_circle(0, [-1.0f], 64.0f);
+    shoot_now(0);
+spinning_lasersA_4532:
+    push_int([36]);
+    push_int([28]);
     cmp_int_geq();
-    math_float_mul();
+    jump_equ(spinning_lasersA_4972, 0);
+    shoot_offset_circle(0, [16.0f], 64.0f);
+    shoot_now(0);
+    push_float([16.0f]);
+    push_float(1.5707964f);
+    math_float_add();
+    shoot_offset_circle(0, [-1.0f], 64.0f);
+    shoot_now(0);
+    push_float([16.0f]);
+    push_float(3.1415927f);
+    math_float_add();
+    shoot_offset_circle(0, [-1.0f], 64.0f);
+    shoot_now(0);
+    push_float([16.0f]);
+    push_float(4.712389f);
+    math_float_add();
+    shoot_offset_circle(0, [-1.0f], 64.0f);
+    shoot_now(0);
+spinning_lasersA_4972:
+    push_float([12.0f]);
+    push_float([8.0f]);
+    math_float_add();
+    pop_float([12.0f]);
+    push_float([16.0f]);
+    push_float([8.0f]);
     math_float_sub();
     pop_float([16.0f]);
-    push_int([20]);
-    push_int(8388608);
-    math_int_sub();
-    pop_int([20]);
-    math_post_dec([12]);
+    push_int([36]);
     push_int(1);
-    math_int_sub();
-    jump_neq(testC_868, 0);
-    push_int([16]);
-    push_int(2147483647);
-    math_bit_and();
-    push_int([8]);
-    push_int(-2147483648);
-    math_bit_and();
-    math_bit_or();
-    pop_int([8]);
-testC_1320:
-    push_float([8.0f]);
-    pop_float(%EF3);
+    math_int_add();
+    pop_int([36]);
++1: //1
+    math_post_dec([20]);
+    jump_neq(spinning_lasersA_3516, 0);
     ret();
 }
 
-void testD()
+void spinning_lasersB()
 {
-    frame_enter(24);
-    push_float([0.0f]);
-    pop_float([8.0f]);
-    push_float([4.0f]);
-    pop_float([12.0f]);
-    push_int([8]);
-    push_int(2147483647);
-    math_bit_and();
-    pop_int([16]);
-    push_int([12]);
-    push_int(2147483647);
-    math_bit_and();
-    pop_int([20]);
-    push_int([16]);
-    push_int([20]);
-    cmp_int_geq();
-    jump_equ(testD_1284, 0);
-    push_int([20]);
-    pop_int([12]);
-    push_int([20]);
-    push_int([16]);
-    push_int([20]);
-    math_int_sub();
-    push_int(2139095040);
-    math_bit_and();
-    math_int_add();
-    pop_int([20]);
-    push_int([20]);
-    push_int(8388608);
-    push_int([20]);
-    push_int([16]);
-    push_int(8388608);
-    math_int_sub();
-    cmp_int_leq();
-    math_int_mul();
-    math_int_add();
-    pop_int([20]);
-    push_int([20]);
-    push_int([12]);
-    math_int_sub();
-    push_int(8388608);
-    math_int_div();
+    frame_enter(40);
+    shooter_reset(0);
+!E67
+    push_int(2);
+!N67
+    push_int(2);
+!H67
+    push_int(0);
+!LX67
+    push_int(0);
+!*
+    shoot_aim_mode(0, [-1]);
+    bullet_sprite(0, 4, 2);
+!E67
     push_int(1);
-    math_int_sub();
+!N67
+    push_int(1);
+!H67
+    push_int(2);
+!LX67
+    push_int(2);
+!*
+    bullet_count(0, [-1], 2);
+!E67
+    push_float(2.0f);
+!N67
+    push_float(2.0f);
+!H67
+    push_float(2.0f);
+!LX67
+    push_float(2.5f);
+!*
+    bullet_speed(0, [-1.0f], 1.2f);
+!E67
+    push_float(0.0f);
+!N67
+    push_float(0.0f);
+!H67
+    push_float(0.09817477f);
+!LX67
+    push_float(0.09817477f);
+!*
+    shoot_angle(0, 0.0f, [-1.0f]);
+    laser_clear_all();
+    push_int([0]);
+    jump_equ(spinning_lasersB_616, 0);
+    push_int(2);
+    jump(spinning_lasersB_636, 0);
+spinning_lasersB_616:
+    push_int(6);
+spinning_lasersB_636:
+    pop_int([8]);
+!E67
+    push_int(30);
+!N67
+    push_int(30);
+!H67
+    push_int(25);
+!LX67
+    push_int(23);
+!*
     pop_int([12]);
-testD_868:
-    push_float([16.0f]);
-    push_float([20.0f]);
+!E67
+    push_int(70);
+!N67
+    push_int(70);
+!H67
+    push_int(58);
+!LX67
+    push_int(54);
+!*
+    pop_int([16]);
+!E67
+    push_int(20);
+!N67
+    push_int(20);
+!H67
+    push_int(16);
+!LX67
+    push_int(15);
+!*
+    pop_int([20]);
+!E67
+    push_int(30);
+!N67
+    push_int(30);
+!H67
+    push_int(25);
+!LX67
+    push_int(23);
+!*
+    pop_int([24]);
+    push_float(64.0f);
+    pop_float([28.0f]);
+    push_float(500.0f);
+    push_float(500.0f);
+    push_float(64.0f);
+    math_float_sub();
+    cmp_float_les();
+    jump_equ(spinning_lasersB_1288, 0);
+    push_float(500.0f);
+    push_float(500.0f);
+    math_float_sub();
+    pop_float([28.0f]);
+spinning_lasersB_1288:
+    push_float([28.0f]);
+    push_float(0.0f);
+    cmp_float_leq();
+    jump_equ(spinning_lasersB_1408, 0);
+    push_float(0.0f);
+    pop_float([28.0f]);
+spinning_lasersB_1408:
+    shooter_reset(1);
+    bullet_sprite(1, 4, [8]);
+    shoot_angle(1, 0.7853982f, 0.0f);
+    bullet_speed(1, 0.0f, 0.0f);
+    shoot_spawn_distance(1, [28.0f]);
+    push_float(500.0f);
+    push_float([28.0f]);
+    math_float_sub();
+    laser_size_data(1, [-1.0f], inff, 0.0f, 24.0f);
     push_int([16]);
-    push_int([20]);
+    push_int(14);
+    math_int_add();
+    push_int([12]);
+    push_int([24]);
+    math_int_sub();
+    laser_timing_data(1, [24], [-1], [-2], [20], 0);
+    push_int([0]);
+    jump_equ(spinning_lasersB_1868, 0);
+    push_int(2);
+    jump(spinning_lasersB_1888, 0);
+spinning_lasersB_1868:
+    push_int(6);
+spinning_lasersB_1888:
+    pop_int([8]);
+!E67
+    push_int(30);
+!N67
+    push_int(30);
+!H67
+    push_int(25);
+!LX67
+    push_int(23);
+!*
+    pop_int([12]);
+!E67
+    push_int(90);
+!N67
+    push_int(90);
+!H67
+    push_int(75);
+!LX67
+    push_int(70);
+!*
+    pop_int([16]);
+!E67
+    push_int(20);
+!N67
+    push_int(20);
+!H67
+    push_int(16);
+!LX67
+    push_int(15);
+!*
+    pop_int([20]);
+!E67
+    push_int(30);
+!N67
+    push_int(30);
+!H67
+    push_int(25);
+!LX67
+    push_int(23);
+!*
+    pop_int([24]);
+    push_float(64.0f);
+    pop_float([28.0f]);
+    push_float(500.0f);
+    push_float(500.0f);
+    push_float(64.0f);
+    math_float_sub();
+    cmp_float_les();
+    jump_equ(spinning_lasersB_2540, 0);
+    push_float(500.0f);
+    push_float(500.0f);
+    math_float_sub();
+    pop_float([28.0f]);
+spinning_lasersB_2540:
+    push_float([28.0f]);
+    push_float(0.0f);
+    cmp_float_leq();
+    jump_equ(spinning_lasersB_2660, 0);
+    push_float(0.0f);
+    pop_float([28.0f]);
+spinning_lasersB_2660:
+    shooter_reset(2);
+    bullet_sprite(2, 4, [8]);
+    shoot_angle(2, 0.7853982f, 0.0f);
+    bullet_speed(2, 0.0f, 0.0f);
+    shoot_spawn_distance(2, [28.0f]);
+    push_float(500.0f);
+    push_float([28.0f]);
+    math_float_sub();
+    laser_size_data(2, [-1.0f], inff, 0.0f, 24.0f);
+    push_int([16]);
+    push_int(14);
+    math_int_add();
+    push_int([12]);
+    push_int([24]);
+    math_int_sub();
+    laser_timing_data(2, [24], [-1], [-2], [20], 0);
+    shoot_offset(1, 0.0f, -12.0f);
+    shoot_offset(2, 0.0f, -12.0f);
+    laser_infinite_create(1, 1);
+    shoot_angle(1, 2.3561945f, 0.0f);
+    laser_infinite_create(1, 2);
+    shoot_angle(1, -2.3561945f, 0.0f);
+    laser_infinite_create(1, 3);
+    shoot_angle(1, -0.7853982f, 0.0f);
+    laser_infinite_create(1, 4);
+    set_float_difficulty([8.0f], -0.0060415245f, -0.006829549f, -0.008195459f, -0.008780849f);
+    laser_rotate(1, [8.0f]);
+    laser_rotate(2, [8.0f]);
+    laser_rotate(3, [8.0f]);
+    laser_rotate(4, [8.0f]);
+    push_float(-2.3561945f);
+    pop_float([12.0f]);
+    set_int_difficulty([20], 180, 180, 150, 140);
+    set_int_difficulty([24], 120, 120, 100, 93);
+    set_int_difficulty([28], 60, 60, 50, 46);
+    set_int_difficulty([32], 60, 50, 40, 40);
+    push_int(0);
+    pop_int([36]);
+spinning_lasersB_3624:
+    push_int([36]);
+    push_int([28]);
+    cmp_int_equ();
+    jump_equ(spinning_lasersB_4076, 0);
+    laser_infinite_create(2, 5);
+    shoot_angle(2, 2.3561945f, 0.0f);
+    laser_infinite_create(2, 6);
+    shoot_angle(2, -2.3561945f, 0.0f);
+    laser_infinite_create(2, 7);
+    shoot_angle(2, -0.7853982f, 0.0f);
+    laser_infinite_create(2, 8);
+    push_float([8.0f]);
+    math_float_neg();
+    pop_float([8.0f]);
+    laser_rotate(5, [8.0f]);
+    laser_rotate(6, [8.0f]);
+    laser_rotate(7, [8.0f]);
+    laser_rotate(8, [8.0f]);
+    push_float(2.3561945f);
+    pop_float([16.0f]);
+spinning_lasersB_4076:
+    push_int([4]);
+    jump_equ(spinning_lasersB_5080, 0);
+    push_int([36]);
+    push_int([32]);
+    math_int_mod();
+    jump_neq(spinning_lasersB_5080, 0);
+    push_int([36]);
+    push_int([24]);
+    cmp_int_les();
+    jump_equ(spinning_lasersB_4640, 0);
+    shoot_offset_circle(0, [12.0f], 64.0f);
+    shoot_now(0);
+    push_float([12.0f]);
+    push_float(1.5707964f);
+    math_float_add();
+    shoot_offset_circle(0, [-1.0f], 64.0f);
+    shoot_now(0);
+    push_float([12.0f]);
+    push_float(3.1415927f);
+    math_float_add();
+    shoot_offset_circle(0, [-1.0f], 64.0f);
+    shoot_now(0);
+    push_float([12.0f]);
+    push_float(4.712389f);
+    math_float_add();
+    shoot_offset_circle(0, [-1.0f], 64.0f);
+    shoot_now(0);
+spinning_lasersB_4640:
+    push_int([36]);
+    push_int([28]);
     cmp_int_geq();
-    math_float_mul();
+    jump_equ(spinning_lasersB_5080, 0);
+    shoot_offset_circle(0, [16.0f], 64.0f);
+    shoot_now(0);
+    push_float([16.0f]);
+    push_float(1.5707964f);
+    math_float_add();
+    shoot_offset_circle(0, [-1.0f], 64.0f);
+    shoot_now(0);
+    push_float([16.0f]);
+    push_float(3.1415927f);
+    math_float_add();
+    shoot_offset_circle(0, [-1.0f], 64.0f);
+    shoot_now(0);
+    push_float([16.0f]);
+    push_float(4.712389f);
+    math_float_add();
+    shoot_offset_circle(0, [-1.0f], 64.0f);
+    shoot_now(0);
+spinning_lasersB_5080:
+    push_float([12.0f]);
+    push_float([8.0f]);
+    math_float_add();
+    pop_float([12.0f]);
+    push_float([16.0f]);
+    push_float([8.0f]);
     math_float_sub();
     pop_float([16.0f]);
-    push_int([20]);
-    push_int(8388608);
-    math_int_sub();
-    pop_int([20]);
-    math_post_dec([12]);
-    jump_neq(testD_868, 0);
-    push_int([16]);
-    push_int(2147483647);
-    math_bit_and();
-    push_int([8]);
-    push_int(-2147483648);
-    math_bit_and();
-    math_bit_or();
-    pop_int([8]);
-testD_1284:
-    push_float([8.0f]);
-    pop_float(%EF3);
+    push_int([36]);
+    push_int(1);
+    math_int_add();
+    pop_int([36]);
++1: //1
+    math_post_dec([20]);
+    jump_neq(spinning_lasersB_3624, 0);
     ret();
 }

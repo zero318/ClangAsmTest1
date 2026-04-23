@@ -307,22 +307,22 @@ struct Float2 : Float1 {
     dllexport zun_make_from_vector_inline Float2& thiscall make_from_vector(float angle, float magnitude) {
 #ifndef __x86_64__
         __asm {
-            MOV EAX, this;
-            FLD angle;
-            FSINCOS;
-            FMUL magnitude;
+            MOV EAX, this
+            FLD angle
+            FSINCOS
+            FMUL magnitude
             FSTP DWORD PTR [EAX]
-            FMUL magnitude;
+            FMUL magnitude
             FSTP DWORD PTR [EAX+4]
         };
 #else
         __asm {
-            MOV RAX, this;
-            FLD angle;
-            FSINCOS;
-            FMUL magnitude;
+            MOV RAX, this
+            FLD angle
+            FSINCOS
+            FMUL magnitude
             FSTP DWORD PTR [RAX]
-            FMUL magnitude;
+            FMUL magnitude
             FSTP DWORD PTR [RAX+4]
         };
 #endif
@@ -330,24 +330,24 @@ struct Float2 : Float1 {
     }
 
     dllexport zun_make_from_vector_inline Float2& thiscall make_from_vector_components(float angle, float x_magnitude, float y_magnitude) {
-    #ifndef __x86_64__
+#ifndef __x86_64__
         __asm {
-            MOV EAX, this;
-            FLD angle;
-            FSINCOS;
-            FMUL x_magnitude;
+            MOV EAX, this
+            FLD angle
+            FSINCOS
+            FMUL x_magnitude
             FSTP DWORD PTR [EAX]
-            FMUL y_magnitude;
+            FMUL y_magnitude
             FSTP DWORD PTR [EAX+4]
         };
 #else
         __asm {
-            MOV RAX, this;
-            FLD angle;
-            FSINCOS;
-            FMUL x_magnitude;
+            MOV RAX, this
+            FLD angle
+            FSINCOS
+            FMUL x_magnitude
             FSTP DWORD PTR [RAX]
-            FMUL y_magnitude;
+            FMUL y_magnitude
             FSTP DWORD PTR [RAX+4]
         };
 #endif

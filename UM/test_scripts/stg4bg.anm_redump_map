@@ -1,0 +1,77 @@
+#pragma mapfile "F:\\Touhou_Stuff_2\\_thtk-bin-new\\__truth\\map\\any.anmm"
+#pragma mapfile "F:\\Touhou_Stuff_2\\_thtk-bin-new\\__truth\\map\\any.anmm"
+
+entry {
+    path: "data/stg1bg/stg4bg.png",
+    img_width: 256,
+    img_height: 256,
+    sprites: {
+        sprite0: {x: 17.0, y: 17.0, w: 32.0, h: 32.0},
+        sprite1: {x: 32.0, y: 64.0, w: 80.0, h: 160.0},
+        sprite2: {x: 192.0, y: 64.0, w: 16.0, h: 160.0},
+    },
+}
+
+
+script 0 script0 {
+    render_mode(RenderMode8);
+    sprite_set(sprite0);
+    anchor_offset(-16.0, -48.0);
+    anm_static();
+}
+
+
+script 1 script1 {
+    render_mode(RenderMode8);
+    sprite_set(sprite0);
+    color(0x80, 0x80, 0x80);
+    anchor_offset(-16.0, -16.0);
+    anm_static();
+}
+
+
+script 2 script2 {
+    render_mode(RenderMode8);
+    sprite_set(sprite1);
+    anchor_offset(-40.0, -80.0);
+    rotation(-1.5707964, 0.0, 0.0);
+    anm_static();
+}
+
+
+script 3 script3 {
+    render_mode(RenderMode8);
+    sprite_set(sprite1);
+    anchor_offset(-40.0, -80.0);
+    rotation(-1.5707964, 0.0, 3.1415927);
+    scale_flip_x();
+    anm_static();
+}
+
+
+script 4 script4 {
+    render_mode(RenderMode8);
+    sprite_set(sprite2);
+    anchor_offset(-8.0, -80.0);
+    rotation(-1.5707964, 0.0, 0.0);
+    anm_static();
+}
+
+
+script 5 script5 {
+    render_mode(RenderMode8);
+    sprite_set(sprite2);
+    anchor_offset(-8.0, -80.0);
+    rotation(-1.5707964, 0.0, 3.1415927);
+    anm_static();
+}
+
+
+script 6 script6 {
+    render_mode(RenderMode8);
+    sprite_set(sprite0);
+    color(0x28, 0x28, 0x28);
+    anchor_offset(-16.0, -16.0);
+    rotation(-1.5707964, 0.0, -1.5707964);
+    anm_static();
+}
