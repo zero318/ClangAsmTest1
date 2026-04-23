@@ -19507,7 +19507,7 @@ struct AnmManager {
 	/* // 0x4876A0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_4(void* self) asm_symbol_rel(0x4876A0) { return ((AnmManager*)self)->render_layer(4); }
 	// 0x4876B0
 	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_3(void* self) asm_symbol_rel(0x4876B0) {
-		SUPERVISOR.__sub_454950(&SUPERVISOR.cameras[StdCamera]);
+		SUPERVISOR.__setup_camera(&SUPERVISOR.cameras[StdCamera]);
 		SUPERVISOR.set_camera_by_index_disable_fog(StdCamera);
 		return ((AnmManager*)self)->render_layer(3);
 	}
