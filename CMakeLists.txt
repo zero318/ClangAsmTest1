@@ -982,6 +982,7 @@ target_sources(UMTest1 PRIVATE
 	#"dummy_main.cpp"
 	$<TARGET_OBJECTS:UMAsm>
 	"UM/UM_bullet_ex.cpp"
+	"UM/UMTest1.rc"
 	#"UM/new_header_test.cpp"
 )
 target_compile_definitions(UMTest1 PRIVATE
