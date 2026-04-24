@@ -324,6 +324,8 @@ static inline uint8_t& ALPHA(D3DCOLOR& color) {
 #define ALPHA(...) ALPHA(__VA_ARGS__)
 #define COLOR(a,r,g,b) PackD3DCOLOR(a,r,g,b)
 
+#define COLOR_BLEND(a, b) std::min((uint32_t)((a)*(b))>>7, 255u)
+
 // I don't even want to know how this is a thing
 // 0x47D870
 dllexport gnu_noinline D3DCOLOR& thiscall pack_rgb(D3DCOLOR& self, uint8_t r, uint8_t g, uint8_t b) asm_symbol_rel(0x47D870);
@@ -4956,7 +4958,7 @@ public:
 	}
 
 	// 0x41F950
-	dllexport gnu_noinline void thiscall __setup_stage_camera() asm_symbol_rel(0x41F950);
+	dllexport gnu_noinline void thiscall __setup_stage_camera(UNUSED_ARG(StageCamera* _camera) = GARBAGE_ARG(StageCamera*)) asm_symbol_rel(0x41F950);
 
 	// 0x454B20
 	dllexport gnu_noinline void thiscall __initialize_cameras() asm_symbol_rel(0x454B20);
@@ -9497,8 +9499,7 @@ struct MotionData {
 				Float3 offset;
 				offset.make_from_vector(reduce_angle<NoInline>(angle), this->radius);
 				offset.x *= this->ellipse_ratio;
-				offset.rotate_around_origin(this->ellipse_angle);
-				this->position = this->orbit_origin + offset.as2();
+				this->position = this->orbit_origin + offset.rotate_around_origin(this->ellipse_angle);
 				break;
 			}
 			case SinusoidalMovement: {
@@ -10412,7 +10413,7 @@ current_instruction = (decltype(current_instruction))(value)
 SetInstr((intptr_t)current_instruction + (offset))
 
 #define SByteArgOf(instr, number) \
-(((int8_t*)(instr)->args)[(number])
+(((int8_t*)(instr)->args)[(number)])
 
 #define SByteArg(number) \
 SByteArgOf(current_instruction, number)
@@ -11595,7 +11596,7 @@ struct BombSanaeA : BombBase {
 	// 0x423270
 	dllexport gnu_noinline virtual int thiscall on_tick_impl() {
 		AnmVM* vm = this->__vm_id_5C.get_vm_ptr();
-		//PLAYER_PTR->data.__timer_47154.set(39);
+		//PLAYER_PTR->data.invulnerable_timer.set(39);
 		if (!vm) {
 			this->__vm_id_64.interrupt_tree(1);
 			this->__vm_id_5C = 0;
@@ -12225,7 +12226,7 @@ public:
 	dllexport gnu_noinline int32_t thiscall ecl_enm_create() asm_symbol_rel(0x4369E0);
 
 	// 0x42E5A0
-	dllexport gnu_noinline ZUNResult thiscall __move() asm_symbol_rel(0x42E5A0);
+	dllexport gnu_noinline ZUNResult thiscall move() asm_symbol_rel(0x42E5A0);
 
 	forceinline ZUNResult thiscall update();
 
@@ -16113,8 +16114,8 @@ struct AnmVM {
 			!this->data.__treat_as_root
 		) {
 			if (this->data.inherit_rotation) {
-				out->rotate_around_origin(root_vm->data.rotation.z);
-				root_vm = this->controller.parent;
+				out->as2() = out->rotate_around_origin(root_vm->data.rotation.z);
+				root_vm = this->controller.__root_vm;
 			}
 			Float3 offset;
 			root_vm->get_render_position(&offset);
@@ -16497,8 +16498,10 @@ struct AnmVM {
 	}
 
 	// 0x47F090
-	dllexport gnu_noinline ZUNResult stdcall __sub_47F090() asm_symbol_rel(0x47F090) {
+	dllexport gnu_noinline ZUNResult stdcall __billboard_sprites_47F090() asm_symbol_rel(0x47F090) {
 		// this; // ESI
+
+		// Supposedly this is a mode for billboard sprites?
 
 		float rotation_z = this->get_controller_rotation()->z; // ESP+8
 		auto __temp = CRT::sincosf_asm(rotation_z);
@@ -17013,9 +17016,9 @@ private:
 			case SELF_X: // 10013
 				return this->data.position.x;
 			case SELF_Y: // 10014
-				return this->data.position.x;
+				return this->data.position.y;
 			case SELF_Z: // 10015
-				return this->data.position.x;
+				return this->data.position.z;
 			case SELF_X_ROT: // 10023
 				return this->data.rotation.x;
 			case SELF_Y_ROT: // 10024
@@ -17033,9 +17036,9 @@ private:
 			case CAMERA_FACING_X: // 10019
 				return SUPERVISOR.cameras[StdCamera].facing_normalized.x;
 			case CAMERA_FACING_Y: // 10020
-				return SUPERVISOR.cameras[StdCamera].facing_normalized.x;
+				return SUPERVISOR.cameras[StdCamera].facing_normalized.y;
 			case CAMERA_FACING_Z: // 10021
-				return SUPERVISOR.cameras[StdCamera].facing_normalized.x;
+				return SUPERVISOR.cameras[StdCamera].facing_normalized.z;
 			case RAND_SCALE: // 10027
 				return this->data.current_context.rand_scale;
 			case RAND_ANGLE_SCALE: // 10028
@@ -17117,9 +17120,9 @@ public:
 			case SELF_X: // 10013
 				return &this->data.position.x;
 			case SELF_Y: // 10014
-				return &this->data.position.x;
+				return &this->data.position.y;
 			case SELF_Z: // 10015
-				return &this->data.position.x;
+				return &this->data.position.z;
 			case SELF_X_ROT: // 10023
 				return &this->data.rotation.x;
 			case SELF_Y_ROT: // 10024
@@ -18189,8 +18192,8 @@ struct AnmManager {
 	PrimitiveVertex* primitive_render_cursor; // 0x3960E80
 	AnmVM layer_heads[WORLD_LAYER_COUNT + UI_LAYER_COUNT]; // 0x3960E84
 	uint32_t prev_slow_id; // 0x39724AC
-	D3DCOLOR __color_39724B0; // 0x39724B0
-	int __int_39724B4; // 0x39724B4
+	D3DCOLOR __global_color; // 0x39724B0
+	BOOL __global_color_enabled; // 0x39724B4
 	// 0x39724B8
 
 	inline void zero_contents() {
@@ -18199,6 +18202,16 @@ struct AnmManager {
 
 	template<AnmTextureOp op>
 	inline static void set_texture_op();
+
+	inline void __set_global_color(D3DCOLOR color) {
+		this->__global_color_enabled = true;
+		this->__global_color = color;
+	}
+
+	inline void __clear_global_color() {
+		this->__global_color_enabled = false;
+		this->__global_color = COLOR(128, 128, 128, 128);
+	}
 
 	// 0x47E6E0
 	dllexport gnu_noinline static void reset_vertex_buffers() asm_symbol_rel(0x47E6E0) {
@@ -18603,7 +18616,7 @@ struct AnmManager {
 
 		AnmVM* parent = vm->controller.parent;
 		if (
-			!parent &&
+			parent &&
 			!vm->data.__treat_as_root
 		) {
 			matrix.m[0][0] += parent->data.position.x + parent->controller.position.x + parent->data.__position_2.x;
@@ -18776,10 +18789,10 @@ struct AnmManager {
 										vm->controller.parent
 									) {
 										D3DCOLOR parent_color = vm->controller.parent->data.mixed_inherited_color;
-										r = std::max(RED(color) * RED(parent_color) >> 7, 0xFF);
-										g = std::max(GREEN(color) * GREEN(parent_color) >> 7, 0xFF);
-										b = std::max(BLUE(color) * BLUE(parent_color) >> 7, 0xFF);
-										a = std::max(ALPHA(color) * ALPHA(parent_color) >> 7, 0xFF);
+										r = COLOR_BLEND(RED(color), RED(parent_color));
+										g = COLOR_BLEND(GREEN(color), GREEN(parent_color));
+										b = COLOR_BLEND(BLUE(color), BLUE(parent_color));
+										a = COLOR_BLEND(ALPHA(color), ALPHA(parent_color));
 										color = COLOR(a, r, g, b);
 									} else {
 										a = ALPHA(color);
@@ -18788,11 +18801,11 @@ struct AnmManager {
 										b = BLUE(color);
 									}
 									vm->data.mixed_inherited_color = color;
-									if (this->__int_39724B4) {
-										r = std::max(r * RED(this->__color_39724B0) >> 7, 0xFF);
-										g = std::max(g * GREEN(this->__color_39724B0) >> 7, 0xFF);
-										b = std::max(b * BLUE(this->__color_39724B0) >> 7, 0xFF);
-										a = std::max(a * ALPHA(this->__color_39724B0) >> 7, 0xFF);
+									if (this->__global_color_enabled) {
+										r = COLOR_BLEND(r, RED(this->__global_color));
+										g = COLOR_BLEND(g, GREEN(this->__global_color));
+										b = COLOR_BLEND(b, BLUE(this->__global_color));
+										a = COLOR_BLEND(a, ALPHA(this->__global_color));
 										color = COLOR(a, r, g, b);
 									}
 									SPRITE_VERTEX_BUFFER_A[0].diffuse = color;
@@ -18806,15 +18819,15 @@ struct AnmManager {
 									uint8_t r2, g2, b2, a2;
 									D3DCOLOR color1 = vm->data.color1;
 									D3DCOLOR color2 = vm->data.color2;
-									if (this->__int_39724B4) {
-										r1 = std::max(RED(color1) * RED(this->__color_39724B0) >> 7, 0xFF);
-										g1 = std::max(GREEN(color1) * GREEN(this->__color_39724B0) >> 7, 0xFF);
-										b1 = std::max(BLUE(color1) * BLUE(this->__color_39724B0) >> 7, 0xFF);
-										a1 = std::max(ALPHA(color1) * ALPHA(this->__color_39724B0) >> 7, 0xFF);
-										r2 = std::max(RED(color2) * RED(this->__color_39724B0) >> 7, 0xFF);
-										g2 = std::max(GREEN(color2) * GREEN(this->__color_39724B0) >> 7, 0xFF);
-										b2 = std::max(BLUE(color2) * BLUE(this->__color_39724B0) >> 7, 0xFF);
-										a2 = std::max(ALPHA(color2) * ALPHA(this->__color_39724B0) >> 7, 0xFF);
+									if (this->__global_color_enabled) {
+										r1 = COLOR_BLEND(RED(color1), RED(this->__global_color));
+										g1 = COLOR_BLEND(GREEN(color1), GREEN(this->__global_color));
+										b1 = COLOR_BLEND(BLUE(color1), BLUE(this->__global_color));
+										a1 = COLOR_BLEND(ALPHA(color1), ALPHA(this->__global_color));
+										r2 = COLOR_BLEND(RED(color2), RED(this->__global_color));
+										g2 = COLOR_BLEND(GREEN(color2), GREEN(this->__global_color));
+										b2 = COLOR_BLEND(BLUE(color2), BLUE(this->__global_color));
+										a2 = COLOR_BLEND(ALPHA(color2), ALPHA(this->__global_color));
 										color1 = COLOR(a1, r1, g1, b1);
 										color2 = COLOR(a2, r2, g2, b2);
 									}
@@ -18841,19 +18854,19 @@ struct AnmManager {
 										vm->controller.parent
 									) {
 										D3DCOLOR parent_color = vm->controller.parent->data.mixed_inherited_color;
-										r = std::max(r * RED(parent_color) >> 7, 0xFF);
-										g = std::max(g * GREEN(parent_color) >> 7, 0xFF);
+										r = COLOR_BLEND(r, RED(parent_color));
+										g = COLOR_BLEND(g, GREEN(parent_color));
 										parent_color = vm->controller.parent->data.mixed_inherited_color; // why tho
-										b = std::max(b * BLUE(parent_color) >> 7, 0xFF);
-										a = std::max(a * ALPHA(parent_color) >> 7, 0xFF);
+										b = COLOR_BLEND(b, BLUE(parent_color));
+										a = COLOR_BLEND(a, ALPHA(parent_color));
 									}
 									color = COLOR(a, r, g, b);
 									vm->data.mixed_inherited_color = color;
-									if (this->__int_39724B4) {
-										r = std::max(r * RED(this->__color_39724B0) >> 7, 0xFF);
-										g = std::max(g * GREEN(this->__color_39724B0) >> 7, 0xFF);
-										b = std::max(b * BLUE(this->__color_39724B0) >> 7, 0xFF);
-										a = std::max(a * ALPHA(this->__color_39724B0) >> 7, 0xFF);
+									if (this->__global_color_enabled) {
+										r = COLOR_BLEND(r, RED(this->__global_color));
+										g = COLOR_BLEND(g, GREEN(this->__global_color));
+										b = COLOR_BLEND(b, BLUE(this->__global_color));
+										a = COLOR_BLEND(a, ALPHA(this->__global_color));
 										color = COLOR(a, r, g, b);
 									}
 									SPRITE_VERTEX_BUFFER_A[0].diffuse = color;
@@ -18878,7 +18891,7 @@ struct AnmManager {
 
 	// 0x47F530
 	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_6(AnmVM* vm) asm_symbol_rel(0x47F530) {
-		if (ZUN_SUCCEEDED(vm->__sub_47F090())) {
+		if (ZUN_SUCCEEDED(vm->__billboard_sprites_47F090())) {
 
 			Float3 position = vm->data.position + vm->controller.position + vm->data.__position_2;
 
@@ -18908,11 +18921,11 @@ struct AnmManager {
 					g = GREEN(color);
 					b = BLUE(color);
 					a = ALPHA(color);
-					if (this->__int_39724B4) {
-						r = std::max(r * RED(this->__color_39724B0) >> 7, 0xFF);
-						g = std::max(g * GREEN(this->__color_39724B0) >> 7, 0xFF);
-						b = std::max(b * BLUE(this->__color_39724B0) >> 7, 0xFF);
-						a = std::max(a * ALPHA(this->__color_39724B0) >> 7, 0xFF);
+					if (this->__global_color_enabled) {
+						r = COLOR_BLEND(r, RED(this->__global_color));
+						g = COLOR_BLEND(g, GREEN(this->__global_color));
+						b = COLOR_BLEND(b, BLUE(this->__global_color));
+						a = COLOR_BLEND(a, ALPHA(this->__global_color));
 						color = COLOR(a, r, g, b);
 					}
 					if (length < draw_begin) {
@@ -18949,15 +18962,15 @@ struct AnmManager {
 					uint8_t r2, g2, b2, a2;
 					D3DCOLOR color1 = vm->data.color1;
 					D3DCOLOR color2 = vm->data.color2;
-					if (this->__int_39724B4) {
-						r1 = std::max(RED(color1) * RED(this->__color_39724B0) >> 7, 0xFF);
-						g1 = std::max(GREEN(color1) * GREEN(this->__color_39724B0) >> 7, 0xFF);
-						b1 = std::max(BLUE(color1) * BLUE(this->__color_39724B0) >> 7, 0xFF);
-						a1 = std::max(ALPHA(color1) * ALPHA(this->__color_39724B0) >> 7, 0xFF);
-						r2 = std::max(RED(color2) * RED(this->__color_39724B0) >> 7, 0xFF);
-						g2 = std::max(GREEN(color2) * GREEN(this->__color_39724B0) >> 7, 0xFF);
-						b2 = std::max(BLUE(color2) * BLUE(this->__color_39724B0) >> 7, 0xFF);
-						a2 = std::max(ALPHA(color2) * ALPHA(this->__color_39724B0) >> 7, 0xFF);
+					if (this->__global_color_enabled) {
+						r1 = COLOR_BLEND(RED(color1), RED(this->__global_color));
+						g1 = COLOR_BLEND(GREEN(color1), GREEN(this->__global_color));
+						b1 = COLOR_BLEND(BLUE(color1), BLUE(this->__global_color));
+						a1 = COLOR_BLEND(ALPHA(color1), ALPHA(this->__global_color));
+						r2 = COLOR_BLEND(RED(color2), RED(this->__global_color));
+						g2 = COLOR_BLEND(GREEN(color2), GREEN(this->__global_color));
+						b2 = COLOR_BLEND(BLUE(color2), BLUE(this->__global_color));
+						a2 = COLOR_BLEND(ALPHA(color2), ALPHA(this->__global_color));
 						color1 = COLOR(a1, r1, g1, b1);
 						color2 = COLOR(a2, r2, g2, b2);
 					}
@@ -18998,11 +19011,11 @@ struct AnmManager {
 					g = GREEN(color) * GREEN(vm->data.color2) / 0xFF;
 					b = BLUE(color) * BLUE(vm->data.color2) / 0xFF;
 					a = ALPHA(color) * ALPHA(vm->data.color2) / 0xFF;
-					if (this->__int_39724B4) {
-						r = std::max(r * RED(this->__color_39724B0) >> 7, 0xFF);
-						g = std::max(g * GREEN(this->__color_39724B0) >> 7, 0xFF);
-						b = std::max(b * BLUE(this->__color_39724B0) >> 7, 0xFF);
-						a = std::max(a * ALPHA(this->__color_39724B0) >> 7, 0xFF);
+					if (this->__global_color_enabled) {
+						r = COLOR_BLEND(r, RED(this->__global_color));
+						g = COLOR_BLEND(g, GREEN(this->__global_color));
+						b = COLOR_BLEND(b, BLUE(this->__global_color));
+						a = COLOR_BLEND(a, ALPHA(this->__global_color));
 						color = COLOR(a, r, g, b);
 					}
 					if (length > draw_begin) {
@@ -19110,11 +19123,11 @@ struct AnmManager {
 
 			D3DCOLOR color = vm->data.color_mode == 0 ? vm->data.color1 : vm->data.color2;
 
-			if (this->__int_39724B4) {
-				uint8_t r = std::max(RED(color) * RED(this->__color_39724B0) >> 7, 0xFF);
-				uint8_t g = std::max(GREEN(color) * GREEN(this->__color_39724B0) >> 7, 0xFF);
-				uint8_t b = std::max(BLUE(color) * BLUE(this->__color_39724B0) >> 7, 0xFF);
-				uint8_t a = std::max(ALPHA(color) * ALPHA(this->__color_39724B0) >> 7, 0xFF);
+			if (this->__global_color_enabled) {
+				uint8_t r = COLOR_BLEND(RED(color), RED(this->__global_color));
+				uint8_t g = COLOR_BLEND(GREEN(color), GREEN(this->__global_color));
+				uint8_t b = COLOR_BLEND(BLUE(color), BLUE(this->__global_color));
+				uint8_t a = COLOR_BLEND(ALPHA(color), ALPHA(this->__global_color));
 				color = COLOR(a, r, g, b);
 			}
 
@@ -19341,7 +19354,9 @@ struct AnmManager {
 				if (!vm->get_alpha() && !vm->get_alpha2()) {
 					return ZUN_ERROR;
 				}
-				vm->__sub_47F090();
+				if (ZUN_FAILED(vm->__billboard_sprites_47F090())) {
+					return ZUN_ERROR;
+				}
 				return this->__render_vertices(vm, RENDER_VERTICES_DEFAULT);
 			case 5: {
 				if (!vm->get_alpha() && !vm->get_alpha2()) {
@@ -20384,8 +20399,8 @@ ValidateFieldOffset32(0x3960E7C, AnmManager, primitive_write_cursor);
 ValidateFieldOffset32(0x3960E80, AnmManager, primitive_render_cursor);
 ValidateFieldOffset32(0x3960E84, AnmManager, layer_heads);
 ValidateFieldOffset32(0x39724AC, AnmManager, prev_slow_id);
-ValidateFieldOffset32(0x39724B0, AnmManager, __color_39724B0);
-ValidateFieldOffset32(0x39724B4, AnmManager, __int_39724B4);
+ValidateFieldOffset32(0x39724B0, AnmManager, __global_color);
+ValidateFieldOffset32(0x39724B4, AnmManager, __global_color_enabled);
 ValidateStructSize32(0x39724B8, AnmManager);
 #pragma endregion
 
@@ -20412,8 +20427,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_A(void* pt
 	anm_manager->__byte_3120E09 = -1;
 	anm_manager->__byte_3120E0B = -1;
 	anm_manager->__byte_3120E0C = -1;
-	anm_manager->__int_39724B4 = FALSE;
-	anm_manager->__color_39724B0 = COLOR(128, 128, 128, 128);
+	anm_manager->__clear_global_color();
 	anm_manager->current_resample_mode = -1;
 	anm_manager->current_texture_op = -1;
 	anm_manager->__float2_D0.y = 0.0f;
@@ -20773,7 +20787,7 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_455EC0() {
 }
 
 // 0x41F950
-dllexport gnu_noinline void thiscall Supervisor::__setup_stage_camera() {
+dllexport gnu_noinline void thiscall Supervisor::__setup_stage_camera(UNUSED_ARG(StageCamera* _camera)) {
 	StageCamera* camera = &this->cameras[StdCamera];
 	this->current_camera_ptr = camera;
 	if (AnmManager* anm_manager = ANM_MANAGER_PTR) {
@@ -24750,7 +24764,7 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
 					break;
 				}
 				case __screen_effect_A: // 13
-					ScreenEffect::allocate(ScreenEffect0, IntArg(0), 0, 0, 0, 91);
+					clang_forceinline ScreenEffect::allocate(ScreenEffect0, IntArg(0), 0, 0, 0, 91);
 					break;
 				case anm_source_load: // 7
 					ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
@@ -24763,7 +24777,7 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
 					this->current_instr = IndexInstr(sizeof(MsgInstruction) + this->current_instr->args_size);
 					return ZUN_SUCCESS;
 				case __screen_effect_B: // 14
-					ScreenEffect::allocate(ScreenEffect5, IntArg(0), 0, 0, 0, 91);
+					clang_forceinline ScreenEffect::allocate(ScreenEffect5, IntArg(0), 0, 0, 0, 91);
 					break;
 			}
 		}
@@ -27305,11 +27319,19 @@ static inline constexpr size_t PLAYER_TOTAL_OPTION_COUNT_BIT_WIDTH = std::bit_wi
 static inline constexpr size_t PLAYER_BULLET_COUNT = 0x200;
 static inline constexpr size_t PLAYER_DAMAGE_SOURCE_COUNT = 0x400;
 
+enum class PlayerState : int32_t {
+	Respawning = 0,
+	Normal = 1,
+	Dead = 2,
+	State3 = 3,
+	Dying = 4, // death bomb window
+};
+
 // size: 0x47308
 struct PlayerData {
 	Float3 position; // 0x0, 0x620
 	Int2 internal_position; // 0xC, 0x62C
-	Timer __death_timer; // 0x14, 0x634
+	Timer state_timer; // 0x14, 0x634
 	Timer __timer_28; // 0x28, 0x648
 	Timer __timer_3C; // 0x3C, 0x65C
 	PlayerOption options[PLAYER_OPTION_COUNT]; // 0x50, 0x670
@@ -27318,7 +27340,7 @@ struct PlayerData {
 	int32_t last_created_damage_source_index; // 0x1FF50, 0x20570
 	PlayerDamageSource damage_sources[PLAYER_DAMAGE_SOURCE_COUNT + 1]; // 0x1FF54, 0x20574
 	PlayerDamageSource __dummy_damage_source; // 0x46FF0, 0x47610
-	int32_t state; // 0x4708C, 0x476AC
+	PlayerState state; // 0x4708C, 0x476AC
 	AnmID focus_sigil_vm_id; // 0x47090, 0x476B0
 	AnmID __graze_aura_vm_id; // 0x47094, 0x476B4
 	Timer __graze_aura_timer; // 0x47098, 0x476B8
@@ -27327,7 +27349,7 @@ struct PlayerData {
 	Timer shoot_key_long_timer; // 0x470C4, 0x476E4
 	int __option_count; // 0x470D8, 0x476F8
 	int32_t __level_array_470DC[30]; // 0x470DC, 0x476FC
-	Timer __timer_47154; // 0x47154, 0x47774
+	Timer invulnerable_timer; // 0x47154, 0x47774
 	Timer __timer_47168; // 0x47168, 0x47788
 	union {
 		uint32_t flags; // 0x4717C, 0x4779C
@@ -27343,7 +27365,7 @@ struct PlayerData {
 			uint32_t __is_shooting : 1; // 10
 		};
 	};
-	Timer __timer_47180; // 0x47180, 0x477A0
+	Timer __yukari_wrap_timer; // 0x47180, 0x477A0
 	int32_t __unfocused_linear_speed; // 0x47194, 0x477B4
 	int32_t __focused_linear_speed; // 0x47198, 0x477B8
 	int32_t __unfocused_diagonal_speed; // 0x4719C, 0x477BC
@@ -27352,7 +27374,7 @@ struct PlayerData {
 	Float3 __last_movement_velocity; // 0x471B0, 0x477D0
 	Int2 __internal_velocity; // 0x471BC, 0x477DC
 	int32_t __int_471C4; // 0x471C4, 0x477E4
-	int32_t __int_471C8; // 0x471C8, 0x477E8
+	int32_t __options_hidden_frames; // 0x471C8, 0x477E8
 	float __speed_modifier; // 0x471CC, 0x477EC
 	Float3 __base_axis_speed; // 0x471D0, 0x477F0
 	int32_t power_level; // 0x471DC, 0x477FC
@@ -27372,7 +27394,7 @@ struct PlayerData {
 #pragma region // PlayerData Validation
 ValidateFieldOffset32(0x0, PlayerData, position);
 ValidateFieldOffset32(0xC, PlayerData, internal_position);
-ValidateFieldOffset32(0x14, PlayerData, __death_timer);
+ValidateFieldOffset32(0x14, PlayerData, state_timer);
 ValidateFieldOffset32(0x28, PlayerData, __timer_28);
 ValidateFieldOffset32(0x3C, PlayerData, __timer_3C);
 ValidateFieldOffset32(0x50, PlayerData, options);
@@ -27390,10 +27412,10 @@ ValidateFieldOffset32(0x470B0, PlayerData, shoot_key_short_timer);
 ValidateFieldOffset32(0x470C4, PlayerData, shoot_key_long_timer);
 ValidateFieldOffset32(0x470D8, PlayerData, __option_count);
 ValidateFieldOffset32(0x470DC, PlayerData, __level_array_470DC);
-ValidateFieldOffset32(0x47154, PlayerData, __timer_47154);
+ValidateFieldOffset32(0x47154, PlayerData, invulnerable_timer);
 ValidateFieldOffset32(0x47168, PlayerData, __timer_47168);
 ValidateFieldOffset32(0x4717C, PlayerData, flags);
-ValidateFieldOffset32(0x47180, PlayerData, __timer_47180);
+ValidateFieldOffset32(0x47180, PlayerData, __yukari_wrap_timer);
 ValidateFieldOffset32(0x47194, PlayerData, __unfocused_linear_speed);
 ValidateFieldOffset32(0x47198, PlayerData, __focused_linear_speed);
 ValidateFieldOffset32(0x4719C, PlayerData, __unfocused_diagonal_speed);
@@ -27402,7 +27424,7 @@ ValidateFieldOffset32(0x471A4, PlayerData, velocity);
 ValidateFieldOffset32(0x471B0, PlayerData, __last_movement_velocity);
 ValidateFieldOffset32(0x471BC, PlayerData, __internal_velocity);
 ValidateFieldOffset32(0x471C4, PlayerData, __int_471C4);
-ValidateFieldOffset32(0x471C8, PlayerData, __int_471C8);
+ValidateFieldOffset32(0x471C8, PlayerData, __options_hidden_frames);
 ValidateFieldOffset32(0x471CC, PlayerData, __speed_modifier);
 ValidateFieldOffset32(0x471D0, PlayerData, __base_axis_speed);
 ValidateFieldOffset32(0x471DC, PlayerData, power_level);
@@ -27556,12 +27578,12 @@ public:
 	}
 
 	// 0x4099D0
-	dllexport gnu_noinline static void stdcall __set_data_timer_47154(int32_t time) asm_symbol_rel(0x4099D0) {
-		PLAYER_PTR->data.__timer_47154.initialize_and_set(time);
+	dllexport gnu_noinline static void stdcall set_invulnerable_timer(int32_t time) asm_symbol_rel(0x4099D0) {
+		PLAYER_PTR->data.invulnerable_timer.initialize_and_set(time);
 	}
 
 	// 0x416CD0
-	dllexport gnu_noinline void thiscall __sub_416CD0() asm_symbol_rel(0x416CD0) {
+	dllexport gnu_noinline void thiscall __hide_options() asm_symbol_rel(0x416CD0) {
 		this->data.__hide_options = true;
 		nounroll for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i) {
 			this->data.options[i].__anm_id_B0.interrupt_tree(3);
@@ -27571,11 +27593,11 @@ public:
 			this->data.equipment[i].__anm_id_B0.interrupt_tree(3);
 			this->data.equipment[i].__anm_id_B4.interrupt_tree(3);
 		}
-		this->data.__int_471C8 = 0;
+		this->data.__options_hidden_frames = 0;
 	}
 
 	// 0x416D50
-	dllexport gnu_noinline void thiscall __sub_416D50() asm_symbol_rel(0x416D50) {
+	dllexport gnu_noinline void thiscall __show_options() asm_symbol_rel(0x416D50) {
 		this->data.__hide_options = false;
 		nounroll for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i) {
 			this->data.options[i].__anm_id_B0.interrupt_tree(2);
@@ -27585,12 +27607,12 @@ public:
 			this->data.equipment[i].__anm_id_B0.interrupt_tree(2);
 			this->data.equipment[i].__anm_id_B4.interrupt_tree(2);
 		}
-		this->data.__int_471C8 = 0;
+		this->data.__options_hidden_frames = 0;
 	}
 
 	// 0x409A60
 	dllexport gnu_noinline uint32_t thiscall __set_yukari_wrap(uint32_t type) asm_symbol_rel(0x409A60) {
-		this->data.__timer_47180.reset();
+		this->data.__yukari_wrap_timer.reset();
 		this->data.__yukari_wrap_type = type;
 		return this->data.__yukari_wrap_type;
 	}
@@ -27605,45 +27627,46 @@ public:
 				if (this->data.position.y < this->poc_height) {
 					return true;
 				}
-			case 2: case 4:
+			case PlayerState::Dead: // 2
+			case PlayerState::Dying: // 4
 				break;
 		}
 		return false;
 	}
 
-	// 0x45B170
-	dllexport gnu_noinline void thiscall __move() asm_symbol_rel(0x45B170) {
+	// 0x45B170 Player::move
+	dllexport gnu_noinline void thiscall move() asm_symbol_rel(0x45B170) {
 		Int2 movement;
 		if (this->data.__yukari_wrap_type) {
-			if (!this->data.__timer_47180) {
-				this->__sub_416CD0();
+			if (this->data.__yukari_wrap_timer == 0) {
+				this->__hide_options();
 			}
-			++this->data.__timer_47180;
+			++this->data.__yukari_wrap_timer;
 			if (this->data.__yukari_wrap_type == 1) {
-				if (this->data.__timer_47180 == 1) {
+				if (this->data.__yukari_wrap_timer == 1) {
 					SOUND_MANAGER.play_sound(81);
 				}
 				movement.x = -256;
-				if (this->data.__timer_47180 == 8) {
+				if (this->data.__yukari_wrap_timer == 8) {
 					movement.x = INTERNAL_POSITION_SCREEN_WIDTH;
 					this->__set_all_option_D4_to_1();
 					this->__set_all_equipment_option_D4_to_1();
 				}
 			}
 			else {
-				if (this->data.__timer_47180 == 1) {
+				if (this->data.__yukari_wrap_timer == 1) {
 					SOUND_MANAGER.play_sound(80);
 				}
 				movement.x = 256;
-				if (this->data.__timer_47180 == 8) {
+				if (this->data.__yukari_wrap_timer == 8) {
 					movement.x = -INTERNAL_POSITION_SCREEN_WIDTH;
 					this->__set_all_option_D4_to_1();
 					this->__set_all_equipment_option_D4_to_1();
 				}
 			}
 			movement.y = 0;
-			if (this->data.__timer_47180 >= 16) {
-				this->__sub_416D50();
+			if (this->data.__yukari_wrap_timer >= 16) {
+				this->__show_options();
 				this->__set_yukari_wrap(0);
 			}
 			else {
@@ -27797,12 +27820,12 @@ skip_movement_keys:;
 		}
 
 		if (this->data.__hide_options) {
-			++this->data.__int_471C8;
+			++this->data.__options_hidden_frames;
 		}
 
 		this->__update_option_positions();
 
-		if (this->data.__int_471C8 >= 30) {
+		if (this->data.__options_hidden_frames >= 30) {
 			this->data.__option_count = 0;
 		}
 
@@ -27847,8 +27870,8 @@ public:
 
 	// 0x45D590
 	dllexport gnu_noinline void thiscall cancel_impending_death() asm_symbol_rel(0x45D590) {
-		this->data.__death_timer.set(60);
-		this->data.state = 1;
+		this->data.state_timer.set(60);
+		this->data.state = PlayerState::Normal; // 1
 	}
 
 	// 0x45D3A0
@@ -27922,7 +27945,7 @@ public:
 				}
 				else {
 					options->position = this->data.internal_position;
-					if (this->data.__int_471C8 >= 30) {
+					if (this->data.__options_hidden_frames >= 30) {
 						options->state = 0;
 						options->__anm_id_B0.interrupt_tree(1);
 						options->__anm_id_B4.interrupt_tree(1);
@@ -28049,7 +28072,7 @@ public:
 	}
 
 	inline UpdateFuncRet on_draw() {
-		if (this->data.state != 2) {
+		if (this->data.state != PlayerState::Dead) { // 2
 			this->__vm_14.controller.position = this->data.position;
 			this->__vm_14.data.origin_mode = 1;
 			ANM_MANAGER_PTR->draw_vm(&this->__vm_14);
@@ -28140,9 +28163,9 @@ public:
 
 			this->data.shoot_key_short_timer.set(-1);
 			this->data.shoot_key_long_timer.set(-1);
-			this->data.__death_timer.reset();
+			this->data.state_timer.reset();
 			this->data.__timer_3C.reset();
-			this->data.__timer_47154.reset();
+			this->data.invulnerable_timer.reset();
 			this->data.__timer_47168.reset();
 
 			this->data.__int_471C4 = 30;
@@ -28214,10 +28237,12 @@ private:
 					return GrazeCollision;
 				}
 				switch (this->data.state) {
-					case 2: case 3: case 4:
+					case PlayerState::Dead: // 2
+					case PlayerState::State3: // 3
+					case PlayerState::Dying: // 4
 						return NoCollision;
 				}
-				if (this->data.__timer_47154 <= 0) {
+				if (this->data.invulnerable_timer <= 0) {
 					this->start_dying();
 				}
 				return DeathCollision;
@@ -28281,10 +28306,12 @@ private:
 						return GrazeCollision;
 					}
 					switch (this->data.state) {
-						case 2: case 3: case 4:
+						case PlayerState::Dead: // 2
+						case PlayerState::State3: // 3
+						case PlayerState::Dying: // 4
 							return NoCollision;
 					}
-					if (this->data.__timer_47154 > 0) {
+					if (this->data.invulnerable_timer > 0) {
 						return NoCollision; // Bug? Inconsistent with other types
 					}
 					this->start_dying();
@@ -28353,7 +28380,7 @@ private:
 						case 2: case 3: case 4:
 							return NoCollision;
 					}
-					if (this->data.__timer_47154 > 0) {
+					if (this->data.invulnerable_timer > 0) {
 						return NoCollision;
 					}
 					this->start_dying();
@@ -28416,10 +28443,12 @@ private:
 			return GrazeCollision;
 		}
 		switch (this->data.state) {
-			case 2: case 3: case 4:
+			case PlayerState::Dead: // 2
+			case PlayerState::State3: // 3
+			case PlayerState::Dying: // 4
 				return NoCollision;
 		}
-		if (this->data.__timer_47154 <= 0) {
+		if (this->data.invulnerable_timer <= 0) {
 			this->start_dying();
 		}
 		return DeathCollision;
@@ -28557,7 +28586,7 @@ public:
 		BOOL* arg5, Float3* hit_position_out,   // EBX+0x14, EBX+0x18
 		BOOL arg7, int32_t enemy_id             // EBX+0x1C, EBX+0x20
 	) {
-		if (this->data.__death_timer.__is_paused()) {
+		if (this->data.state_timer.__is_paused()) {
 			return 0;
 		}
 
@@ -31192,7 +31221,7 @@ struct CardEirin : CardBase {
 		__inline_spellcard_fail();
 		clang_forceinline GAME_MANAGER.globals.subtract_bomb();
 		clang_forceinline GAME_MANAGER.globals.subtract_bomb();
-		PLAYER_PTR->data.__timer_47154.set(60);
+		PLAYER_PTR->data.invulnerable_timer.set(60);
 		enemy_manager_fail_spell_with_bomb();
 		BOMB_PTR->__int_A0 = 1;
 		this->__timer_20.reset();
@@ -31571,7 +31600,7 @@ struct CardAya : CardBase {
 				previous_direction == MovementNone &&
 				player->data.focused == false
 			) {
-				player->data.__timer_47154 += 4.0f;
+				player->data.invulnerable_timer += 4.0f;
 			}
 			this->previous_direction = player->movement_direction;
 		}
@@ -31957,7 +31986,7 @@ struct CardShikiEiki : CardBase {
 		player_ptr->create_damage_source_circle(&player_ptr->data.position, 8.0f, 0.0f, 40, 5);
 		__inline_spellcard_fail();
 		GAME_MANAGER.globals.current_money -= 200;
-		PLAYER_PTR->data.__timer_47154.set(60);
+		PLAYER_PTR->data.invulnerable_timer.set(60);
 		enemy_manager_fail_spell_with_bomb();
 		BOMB_PTR->__int_A0 = 1;
 		this->__timer_20.reset();
@@ -31972,8 +32001,8 @@ struct CardShikiEiki : CardBase {
 			this->__sub_40D840();
 
 			// This is an inlined version of cancel_impending_death
-			PLAYER_PTR->data.__death_timer.set(60);
-			PLAYER_PTR->data.state = 1;
+			PLAYER_PTR->data.state_timer.set(60);
+			PLAYER_PTR->data.state = PlayerState::Normal; // 1
 			return TRUE;
 		}
 		return FALSE;
@@ -32884,7 +32913,7 @@ struct CardUtsuho : CardBase {
 	dllexport gnu_noinline virtual int thiscall on_activate() {
 		if (this->state == 0 && this->__timer_34 <= 0) {
 			__inline_spellcard_fail();
-			PLAYER_PTR->__set_data_timer_47154(2);
+			PLAYER_PTR->set_invulnerable_timer(2);
 			Player* player = PLAYER_PTR;
 			this->position = player->data.position;
 
@@ -32930,7 +32959,7 @@ struct CardUtsuho : CardBase {
 					this->__timer_20.reset();
 					this->effect_vm_id.interrupt_tree(1);
 				}
-				PLAYER_PTR->__set_data_timer_47154(2);
+				PLAYER_PTR->set_invulnerable_timer(2);
 
 				float radius = this->effect_vm_id.get_vm_ptr()->data.scale.x * 96.0f;
 				bullet_cancel_radius_as_bomb(&this->position, radius, CancelType0, 99999, 0);
@@ -35425,10 +35454,10 @@ dllexport gnu_noinline void thiscall PlayerData::__update_option_power_levels(in
 }
 
 inline void Player::reset_impl() {
-	this->data.state = 1;
+	this->data.state = PlayerState::Normal; // 1
 	this->data.shoot_key_short_timer.set(-1);
 	this->data.shoot_key_long_timer.set(-1);
-	this->data.__death_timer.reset();
+	this->data.state_timer.reset();
 	this->data.__timer_28.reset();
 	this->data.__timer_3C.reset();
 
@@ -35440,7 +35469,7 @@ inline void Player::reset_impl() {
 
 	GUI_PTR->__update_life_ui(GAME_MANAGER.globals.life_stocks, GAME_MANAGER.globals.life_fragments, GAME_MANAGER.globals.life_stock_max);
 
-	this->__sub_416D50();
+	this->__show_options();
 	this->data.__update_option_power_levels();
 
 	this->data.__unknown_flag_pl_H = false;
@@ -35532,7 +35561,7 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
 		}
 	}
 
-	if (this->data.state == 1) {
+	if (this->data.state == PlayerState::Normal) { // 1
 		if (this->data.shoot_key_short_timer < 0) {
 			if (!INPUT_P1.check_inputs(BUTTON_SHOOT)) {
 				goto not_shooting;
@@ -35842,7 +35871,7 @@ struct AbilityShop : ZUNTask {
 	inline static AbilityShop* allocate(Float3* arg1) {
 		AbilityShop* ability_shop = new AbilityShop();
 		if (Player* player = PLAYER_PTR) {
-			player->__sub_416CD0();
+			player->__hide_options();
 		}
 		if (ZUN_FAILED(ability_shop->initialize(arg1))) {
 			delete ability_shop;
@@ -37433,11 +37462,7 @@ struct StdVM {
 					ANM_MANAGER_PTR->draw_vm(slot_vm);
 				}
 				SUPERVISOR.d3d_enable_zwrite();
-				SUPERVISOR.current_camera_ptr = &SUPERVISOR.cameras[StdCamera];
-				if (AnmManager* anm_manager = ANM_MANAGER_PTR) {
-					anm_manager->flush_sprites();
-				}
-				// TODO: camera shake stuff
+				clang_forceinline SUPERVISOR.__setup_stage_camera();
 			}
 		}
 	}
@@ -37473,9 +37498,9 @@ struct Stage : ZUNTask {
 	StdInstance* instances; // 0x345C
 	StdInstruction* script; // 0x3460
 	AnmLoaded* stage_anm; // 0x3464
-	int __int_3468; // 0x3468
-	int __int_346C; // 0x346C
-	int __int_3470; // 0x3470
+	int __rendered_instances_counter; // 0x3468
+	int __culled_instances_counter; // 0x346C
+	int __rendered_quads_counter; // 0x3470
 	union {
 		uint32_t flags; // 0x3474
 		struct {
@@ -37631,7 +37656,7 @@ struct Stage : ZUNTask {
 			if (object->layer == layer) {
 				Float3 position = object->position;
 				if (object->__sub_41CA90(&position, this->std_vm.draw_distance_squared, &SUPERVISOR.cameras[StdCamera])) {
-					++this->__int_346C;
+					++this->__culled_instances_counter;
 					instance->__unknown_flag_si_A = false;
 				}
 				else {
@@ -37670,13 +37695,13 @@ struct Stage : ZUNTask {
 									SUPERVISOR.d3d_enable_zwrite();
 								}
 								ANM_MANAGER_PTR->draw_vm(vm);
-								++this->__int_3470;
+								++this->__rendered_quads_counter;
 								break;
 							}
 						}
 					}
 					instance->__unknown_flag_si_A = true;
-					++this->__int_3468;
+					++this->__rendered_instances_counter;
 				}
 			}
 			++instance;
@@ -37758,7 +37783,7 @@ struct Stage : ZUNTask {
 
 			if (this->__unknown_flag_bg_B) {
 				if (this->__timer_3478 < 30) {
-					ScreenEffect::allocate(ScreenEffect3, 30, 0, 0, 0, 10);
+					clang_forceinline ScreenEffect::allocate(ScreenEffect3, 30, 0, 0, 0, 10);
 					this->__unknown_flag_bg_C = true;
 					this->__timer_3478.set(1);
 				}
@@ -37770,14 +37795,13 @@ struct Stage : ZUNTask {
 
 			AnmManager* anm_manager_ptr = ANM_MANAGER_PTR;
 			if (ALPHA(this->std_vm.__color_3440)) {
-				anm_manager_ptr->__int_39724B4 = 1;
-				anm_manager_ptr->__color_39724B0 = this->std_vm.__color_3440;
+				anm_manager_ptr->__set_global_color(this->std_vm.__color_3440);
 				ALPHA(this->std_vm.__color_3440) = 0;
 			}
 
-			this->__int_3468 = 0;
-			this->__int_346C = 0;
-			this->__int_3470 = 0;
+			this->__rendered_instances_counter = 0;
+			this->__culled_instances_counter = 0;
+			this->__rendered_quads_counter = 0;
 
 			if (this->__unknown_flag_bg_C) {
 				SUPERVISOR.d3d_enable_fog();
@@ -37793,8 +37817,7 @@ struct Stage : ZUNTask {
 				anm_manager_ptr = ANM_MANAGER_PTR;
 			}
 			
-			anm_manager_ptr->__int_39724B4 = 0;
-			anm_manager_ptr->__color_39724B0 = COLOR(128, 128, 128, 128);
+			anm_manager_ptr->__clear_global_color();
 			SUPERVISOR.d3d_disable_zwrite();
 			SUPERVISOR.d3d_zfunc_always();
 		}
@@ -37842,9 +37865,7 @@ struct Stage : ZUNTask {
 				ANM_MANAGER_PTR->flush_sprites();
 			}
 
-			AnmManager* anm_manager_ptr = ANM_MANAGER_PTR;
-			anm_manager_ptr->__int_39724B4 = 0;
-			anm_manager_ptr->__color_39724B0 = COLOR(128, 128, 128, 128);
+			ANM_MANAGER_PTR->__clear_global_color();
 
 			if (this->__timer_3478 > 0) {
 				this->__timer_3478--;
@@ -37974,9 +37995,9 @@ ValidateFieldOffset32(0x3458, Stage, objects);
 ValidateFieldOffset32(0x345C, Stage, instances);
 ValidateFieldOffset32(0x3460, Stage, script);
 ValidateFieldOffset32(0x3464, Stage, stage_anm);
-ValidateFieldOffset32(0x3468, Stage, __int_3468);
-ValidateFieldOffset32(0x346C, Stage, __int_346C);
-ValidateFieldOffset32(0x3470, Stage, __int_3470);
+ValidateFieldOffset32(0x3468, Stage, __rendered_instances_counter);
+ValidateFieldOffset32(0x346C, Stage, __culled_instances_counter);
+ValidateFieldOffset32(0x3470, Stage, __rendered_quads_counter);
 ValidateFieldOffset32(0x3474, Stage, flags);
 ValidateFieldOffset32(0x3478, Stage, __timer_3478);
 ValidateFieldOffset32(0x348C, Stage, stage_number);
@@ -38672,13 +38693,13 @@ dllexport gnu_noinline void __pause_menu_game_over_screen() asm_symbol_rel(0x458
 // 0x45BE90
 dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 	switch (this->data.state) {
-		case 0: { // Respawning?
-			this->set_y_position_internal(61440 - this->data.__death_timer * 10240 / 60);
+		case PlayerState::Respawning: { // 0
+			this->set_y_position_internal(61440 - this->data.state_timer * 10240 / 60);
 			this->__set_all_option_D4_to_1();
 			this->reset_previous_positions();
-			int32_t B = this->data.__death_timer;
+			int32_t state_time = this->data.state_timer;
 			float radius;
-			if (B >= 30) {
+			if (state_time >= 30) {
 				Spellcard* spellcard = SPELLCARD_PTR;
 				if (
 					spellcard->spell_active &&
@@ -38689,31 +38710,31 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 				bullet_cancel_radius_as_bomb(&this->data.position, 640.0f, CancelType0, 99999, 0);
 				radius = 640.0f;
 			} else {
-				radius = (float)B * 512.0f / 30.f + 64.0f;
+				radius = (float)state_time * 512.0f / 30.f + 64.0f;
 				laser_cancel_radius(&this->data.position, radius, CancelType0, 1);
 				radius *= 0.25f;
 			}
 			laser_cancel_radius(&this->data.position, radius, CancelType0, 0);
 
-			if (this->data.__death_timer < 60) {
+			if (this->data.state_timer < 60) {
 				break;
 			}
-			this->data.state = 1;
-			this->data.__death_timer.reset();
+			this->data.state = PlayerState::Normal; // 1
+			this->data.state_timer.reset();
 		}
-		case 1: // Normal
+		case PlayerState::Normal: // 1
 			BOMB_PTR->check_for_bomb();
 			ABILITY_MANAGER_PTR->check_for_card_activation();
 			ABILITY_MANAGER_PTR->check_for_card_switch();
 			if (!ABILITY_SHOP_PTR) {
-				this->__move();
+				this->move();
 			}
 			ABILITY_MANAGER_PTR->card_list.for_each([](CardBase* card) {
 				card->on_player_tick();
 			});
 			break;
-		case 4: // Dying?
-			if (this->data.__death_timer >= this->data.num_deathbomb_frames) {
+		case PlayerState::Dying: // 4
+			if (this->data.state_timer >= this->data.num_deathbomb_frames) {
 				BOOL prevent_death = FALSE;
 				ABILITY_MANAGER_PTR->card_list.for_each([&](CardBase* card) {
 					prevent_death |= card->on_player_death(prevent_death);
@@ -38728,9 +38749,9 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 				}
 				break;
 			}
-		case 2: {
-			int32_t current_death_timer = this->data.__death_timer;
-			if (current_death_timer == 3) {
+		case PlayerState::Dead: { // 2
+			int32_t death_timer = this->data.state_timer;
+			if (death_timer == 3) {
 				GAME_MANAGER.globals.subtract_power(GAME_MANAGER.globals.power_per_level);
 				
 				Float3 position = { 0.0f, this->data.position.y - SCREEN_CENTER_Y, 0.0f };
@@ -38756,15 +38777,15 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 
 				this->data.__update_option_power_levels();
 
-				current_death_timer = this->data.__death_timer;
+				death_timer = this->data.state_timer;
 			}
-			if (current_death_timer < 60) {
+			if (death_timer < 60) {
 				break;
 			}
 
 			if (
 				GAME_MANAGER.globals.life_stocks < 0 &&
-				current_death_timer == 60
+				death_timer == 60
 			) {
 				if (!is_replay()) {
 #if !DEBUG_NO_GAME_OVER
@@ -38806,22 +38827,22 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 #endif
 #endif
 				}
-				this->data.__death_timer++;
+				this->data.state_timer++;
 			}
 			else {
-				this->data.state = 0;
+				this->data.state = PlayerState::Respawning; // 0
 				GAME_SPEED.value = 1.0f;
 				this->create_damage_source_circle(&this->data.position, 32.0f, 16.0f, 30, 150);
 				this->__float3_47928 = this->data.position;
 				this->__set_position_and_all_option_D4_to_1(0.0f, SCREEN_HEIGHT + 32.0f);
-				this->data.__timer_47154.set(280);
-				this->data.__death_timer.reset();
+				this->data.invulnerable_timer.set(280);
+				this->data.state_timer.reset();
 			}
 			break;
 		}
-		case 3: {
-			int32_t A = this->data.__death_timer;
-			if (A != 4 && A == 15) {
+		case PlayerState::State3: { // 3
+			int32_t state_time = this->data.state_timer;
+			if (state_time != 4 && state_time == 15) {
 				laser_cancel_all(CancelType1);
 			}
 			break;
@@ -38834,10 +38855,10 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 
 	this->data.__timer_47168--;
 
-	if (this->data.__timer_47154 > 0) {
-		this->data.__timer_47154--;
+	if (this->data.invulnerable_timer > 0) {
+		this->data.invulnerable_timer--;
 
-		if (this->data.__death_timer.__is_multiple_of_not_paused(3)) {
+		if (this->data.state_timer.__is_multiple_of_not_paused(3)) {
 			this->__vm_14.data.color2 = COLOR(255, 0, 0, 255);
 			this->__vm_14.data.color_mode = 1;
 		} else {
@@ -38848,7 +38869,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 		this->__vm_14.data.color_mode = 0;
 
 		if (this->data.__has_damage_boost) {
-			if (this->data.__death_timer % 8 < 4) {
+			if (this->data.state_timer % 8 < 4) {
 				this->__vm_14.data.color2 = COLOR(255, 255, 0, 0);
 				this->__vm_14.data.color_mode = 1;
 			}
@@ -38856,7 +38877,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 		else {
 			if (
 				this->data.__speed_modifier > 1.01f &&
-				this->data.__death_timer % 8 < 4
+				this->data.state_timer % 8 < 4
 			) {
 				this->__vm_14.set_alpha2(0);
 				this->__vm_14.data.color_mode = 1;
@@ -38876,7 +38897,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 			this->scale = scale;
 			if (
 				!this->scale_interp.end_time ||
-				!this->data.__death_timer.is_multiple_of(3)
+				!this->data.state_timer.is_multiple_of(3)
 			) {
 				scale = 1.0f;
 			}
@@ -38887,7 +38908,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 		this->__vm_14.set_scale(1.0f);
 	}
 
-	this->data.__death_timer++;
+	this->data.state_timer++;
 	this->data.__timer_28++;
 	this->data.__timer_3C++;
 
@@ -38931,9 +38952,9 @@ dllexport gnu_noinline void thiscall Player::death() {
 		__update_bomb_ui();
 	}
 
-	this->data.state = 2;
-	this->data.__death_timer.reset();
-	this->data.__timer_47154.set(180);
+	this->data.state = PlayerState::Dead; // 2
+	this->data.state_timer.reset();
+	this->data.invulnerable_timer.set(180);
 
 	this->player_anm->__copy_data_to_vm_and_run(&this->__vm_14, 0);
 
@@ -38974,9 +38995,9 @@ dllexport gnu_noinline void thiscall Player::start_dying() {
 
 	SPELLCARD_PTR->__inline_spellcard_fail();
 
-	this->data.__death_timer.reset();
-	this->data.state = 4;
-	this->data.__timer_47154.set(6);
+	this->data.state_timer.reset();
+	this->data.state = PlayerState::Dying; // 4
+	this->data.invulnerable_timer.set(6);
 
 	this->player_anm->__copy_data_to_vm_and_run(&this->__vm_14, 0);
 
@@ -39668,7 +39689,7 @@ public:
 							item->__attract_speed = attract_speed + 0.2f;
 						}
 						player = PLAYER_PTR;
-						if (player->data.state == 4) {
+						if (player->data.state == PlayerState::Dying) { // 4
 							item->state = ItemState::Normal; // 1
 							item->velocity.x = 0.0f;
 							item->velocity.y = 0.0f;
@@ -39690,7 +39711,7 @@ public:
 					break;
 			}
 
-			if (player->data.state != 2) {
+			if (player->data.state != PlayerState::Dead) { // 2
 				float distance_squared = player->data.position.distance_squared(&item->position);
 				float collect_radius = player->item_collect_radius;
 				if (collect_radius * collect_radius > distance_squared) {
@@ -45894,7 +45915,7 @@ dllexport void Bullet::run_effects() {
 #pragma pop_macro("FloatArg")
 
 forceinline ZUNResult thiscall EnemyData::update() {
-	if (ZUN_FAILED(this->__move())) {
+	if (ZUN_FAILED(this->move())) {
 		return ZUN_ERROR;
 	}
 	if (ZUN_FAILED(this->vm->run_ecl(this->phase_timer.get_scale_unsafe()))) {
@@ -45964,7 +45985,7 @@ forceinline const char* Enemy::check_life_callbacks() {
 }
 
 // 0x42E5A0
-dllexport gnu_noinline ZUNResult thiscall EnemyData::__move() {
+dllexport gnu_noinline ZUNResult thiscall EnemyData::move() {
 	clang_noinline this->previous_motion = this->current_motion;
 	if (this->angle_interp_absolute.end_time) {
 		switch (this->motion.absolute.mode) {
@@ -46176,7 +46197,8 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
 			this->__delayed_damage = 0;
 		}
 		switch (PLAYER_PTR->data.state) {
-			case 0: case 2:
+			case PlayerState::Respawning: // 0
+			case PlayerState::Dead: // 2
 				damage /= 5;
 		}
 		if (GUI_PTR->msg_vm_active()) {
@@ -47864,7 +47886,7 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
 					position.make_from_vector(angle, radius);
 					float ellipse_factor = this->get_float_arg(5);
 					position.x *= ellipse_factor;
-					position.rotate_around_origin(offset);
+					position = position.rotate_around_origin(offset);
 					float* x_write = this->get_float_ptr_arg(0);
 					*x_write = position.x;
 					float* y_write = this->get_float_ptr_arg(1);
@@ -51086,7 +51108,7 @@ dllexport gnu_noinline void thiscall AbilityShop::cleanup() {
 						card->on_load();
 					});
 
-					PLAYER_PTR->__sub_416D50();
+					PLAYER_PTR->__show_options();
 
 					// Yes, this is called twice. No, IDK why
 					PLAYER_PTR->data.__update_option_power_levels();
@@ -55978,7 +56000,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 			gui->__unknown_flag_gu_A = true;
 			gui->__timer_198.reset();
 
-			PLAYER_PTR->__sub_416CD0();
+			PLAYER_PTR->__hide_options();
 
 			// TODO: ask about whether this needs bug notes
 			BOMB_PTR->cleanup_if_active();
@@ -56165,7 +56187,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_443E60() {
 	STAGE_PTR->__start();
 	Stage* stageB = STAGE_B_PTR;
 	if (stageB) {
-		ScreenEffect::allocate(ScreenEffect2, 30, 0, 0, 0, 10);
+		clang_forceinline ScreenEffect::allocate(ScreenEffect2, 30, 0, 0, 0, 10);
 		stageB->__timer_3478.set(30);
 		stageB->__unknown_flag_bg_D = true;
 		Stage* stageA = STAGE_PTR;

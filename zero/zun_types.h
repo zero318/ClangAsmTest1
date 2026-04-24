@@ -380,6 +380,7 @@ struct Float2 : Float1 {
         return zsqrt(this->hypot_squared());
     }
 
+    /*
     inline Float2 normalize() {
         float scale_squared = this->hypot_squared();
         Float2 ret = *this;
@@ -387,6 +388,27 @@ struct Float2 : Float1 {
             ret /= zsqrt(scale_squared);
         }
         return ret;
+    }
+    */
+
+    inline Float2 normalize() {
+        float cur_length = this->length();
+        if (zfabsf(cur_length) < 0.01f) {
+            return *this;
+        }
+        else {
+            return *this / cur_length;
+        }
+    }
+
+    inline Float2 normalize_to_length(float length) {
+        float cur_length = this->length();
+        if (zfabsf(cur_length) < 0.01f) {
+            return *this * length;
+        }
+        else {
+            return *this / cur_length * length;
+        }
     }
 
     inline float length_squared() {
@@ -551,6 +573,26 @@ struct Float3 : Float2 {
             *this = { 0.0f, 0.0f, 0.0f };
         } else {
             this->set(*src);
+        }
+    }
+
+    inline Float3 normalize() {
+        float cur_length = this->length();
+        if (zfabsf(cur_length) < 0.01f) {
+            return *this;
+        }
+        else {
+            return *this / cur_length;
+        }
+    }
+
+    inline Float3 normalize_to_length(float length) {
+        float cur_length = this->length();
+        if (zfabsf(cur_length) < 0.01f) {
+            return *this * length;
+        }
+        else {
+            return *this / cur_length * length;
         }
     }
 
