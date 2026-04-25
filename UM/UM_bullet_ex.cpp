@@ -37,9 +37,6 @@
 //#include "../zero/custom_intrin.h"
 #include "../zero/func_traits_basic.h"
 
-//#define USE_FAST_REDUCE_ANGLE
-#include "../reduce_angle_fast.h"
-
 template <typename T>
 using ZUNList = ZUNListBase<T, true>;
 template <typename T>
@@ -52,6 +49,8 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define INCLUDE_FUTURE_INSTRUCTIONS 0
 #define INCLUDE_FUTURE_VARIABLES 0
 #define INCLUDE_PATCH_INSTRUCTIONS 0
+
+#define USE_THE_DANG_EXE_ICON_PLZ 1
 
 #define MALLET_PIPE 0
 #define FAST_TIMER 0
@@ -133,7 +132,11 @@ extern StaticCtorsDtors fake_static_data;
 
 #define UNICODE
 #include "d3dx9.h"
+#include "d3d9x_sucks.h"
+
+#define XINPUT_USE_9_1_0 1
 #include "Xinput.h"
+#include "xinput_sucks.h"
 
 #define WAVEFILE_READ   1
 #define WAVEFILE_WRITE  2
@@ -37294,7 +37297,6 @@ private:
 			D3DXMatrixTranslation(&matrix, offset->x, offset->y, offset->z);
 			D3DXVec3ProjectArray(float3_array_out, sizeof(Float3), float3_array_in, sizeof(Float3), &camera->viewport, &camera->projection_matrix, &camera->view_matrix, &matrix, COORD_COUNT);
 
-
 			// TODO: something is still slightly off here but the logic looks correct...?
 			float X = WINDOW_DATA.__screen_start_x;
 			float Y = WINDOW_DATA.__screen_start_y;
@@ -57564,7 +57566,11 @@ dllexport gnu_noinline BOOL WindowData::__create_window(HINSTANCE instance) {
 	WNDCLASSA class_def;
 	LCID user_locale = GetUserDefaultLCID();
 	class_def.style = 0;
+#if USE_THE_DANG_EXE_ICON_PLZ
+	class_def.hIcon = LoadIconA(instance, MAKEINTRESOURCEA(1));
+#else
 	class_def.hIcon = NULL;
+#endif
 	class_def.lpszMenuName = NULL;
 	class_def.cbClsExtra = 0;
 	class_def.cbWndExtra = 0;
