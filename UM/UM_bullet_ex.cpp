@@ -3790,7 +3790,7 @@ private:
 	// 0x41F830
 	dllexport gnu_noinline StageSky& add(StageSky& out, const StageSky& value) const asm_symbol_rel(0x41F830) {
 		out.begin_distance = this->begin_distance + value.begin_distance;
-		out.begin_distance = this->begin_distance + value.end_distance;
+		out.end_distance = this->end_distance + value.end_distance;
 		out.color_components.b = this->color_components.b + value.color_components.b;
 		out.color_components.g = this->color_components.g + value.color_components.g;
 		out.color_components.r = this->color_components.r + value.color_components.r;
@@ -3809,7 +3809,7 @@ public:
 private:
 	inline StageSky& sub(StageSky& out, const StageSky& value) const {
 		out.begin_distance = this->begin_distance - value.begin_distance;
-		out.begin_distance = this->begin_distance - value.end_distance;
+		out.end_distance = this->end_distance - value.end_distance;
 		out.color_components.b = this->color_components.b - value.color_components.b;
 		out.color_components.g = this->color_components.g - value.color_components.g;
 		out.color_components.r = this->color_components.r - value.color_components.r;
@@ -3828,7 +3828,7 @@ public:
 private:
 	inline StageSky& mul(StageSky& out, const float value) const {
 		out.begin_distance = this->begin_distance * value;
-		out.begin_distance = this->begin_distance * value;
+		out.end_distance = this->end_distance * value;
 		out.color_components.b = this->color_components.b * value;
 		out.color_components.g = this->color_components.g * value;
 		out.color_components.r = this->color_components.r * value;
@@ -8323,6 +8323,10 @@ dllexport gnu_noinline void fastcall __convert_position_to_window_uv(Float2* out
 	}
 }
 
+// window = The actual game window
+// display = Monitor
+// screen = Game area that most things actually care about
+
 // size: 0x2108
 struct WindowData {
 	HWND window; // 0x0
@@ -8355,8 +8359,8 @@ struct WindowData {
 	};
 	uint32_t __counter_2044; // 0x2044
 	unknown_fields(0x8); // 0x2048
-	int32_t __scaled_width; // 0x2050
-	int32_t __scaled_height; // 0x2054
+	int32_t __scaled_window_width; // 0x2050
+	int32_t __scaled_window_height; // 0x2054
 	int32_t window_width; // 0x2058
 	int32_t window_height; // 0x205C
 	int32_t __display_width; // 0x2060
@@ -8364,14 +8368,14 @@ struct WindowData {
 	int32_t __backbuffer_width; // 0x2068
 	int32_t __backbuffer_height; // 0x206C
 	float __game_scale; // 0x2070
-	int32_t __width_related_2074; // 0x2074
-	int32_t __height_related_2078; // 0x2078
-	int32_t __height_related_207C; // 0x207C
-	int32_t __width_related_2080; // 0x2080
-	int32_t __width_related_2084; // 0x2084
-	int32_t __height_related_2088; // 0x2088
-	int32_t __width_related_208C; // 0x208C
-	int32_t __height_related_2090; // 0x2090
+	int32_t __screen_start_x; // 0x2074
+	int32_t __screen_start_y; // 0x2078
+	int32_t __screen_height_current; // 0x207C
+	int32_t __screen_width_current; // 0x2080
+	int32_t __screen_center_x_full_res; // 0x2084
+	int32_t __screen_top_y_full_res; // 0x2088
+	int32_t __screen_center_x_fixed_res; // 0x208C
+	int32_t __screen_top_y_fixed_res; // 0x2090
 	probably_padding_bytes(0x4); // 0x2094
 	double __cur_frame_start; // 0x2098
 	double __prev_frame_start; // 0x20A0
@@ -8438,8 +8442,8 @@ ValidateFieldOffset32(0x203C, WindowData, screen_saver_power_off_active);
 ValidateFieldOffset32(0x2040, WindowData, flags);
 ValidateFieldOffset32(0x2044, WindowData, __counter_2044);
 
-ValidateFieldOffset32(0x2050, WindowData, __scaled_width);
-ValidateFieldOffset32(0x2054, WindowData, __scaled_height);
+ValidateFieldOffset32(0x2050, WindowData, __scaled_window_width);
+ValidateFieldOffset32(0x2054, WindowData, __scaled_window_height);
 ValidateFieldOffset32(0x2058, WindowData, window_width);
 ValidateFieldOffset32(0x205C, WindowData, window_height);
 ValidateFieldOffset32(0x2060, WindowData, __display_width);
@@ -8447,14 +8451,14 @@ ValidateFieldOffset32(0x2064, WindowData, __display_height);
 ValidateFieldOffset32(0x2068, WindowData, __backbuffer_width);
 ValidateFieldOffset32(0x206C, WindowData, __backbuffer_height);
 ValidateFieldOffset32(0x2070, WindowData, __game_scale);
-ValidateFieldOffset32(0x2074, WindowData, __width_related_2074);
-ValidateFieldOffset32(0x2078, WindowData, __height_related_2078);
-ValidateFieldOffset32(0x207C, WindowData, __height_related_207C);
-ValidateFieldOffset32(0x2080, WindowData, __width_related_2080);
-ValidateFieldOffset32(0x2084, WindowData, __width_related_2084);
-ValidateFieldOffset32(0x2088, WindowData, __height_related_2088);
-ValidateFieldOffset32(0x208C, WindowData, __width_related_208C);
-ValidateFieldOffset32(0x2090, WindowData, __height_related_2090);
+ValidateFieldOffset32(0x2074, WindowData, __screen_start_x);
+ValidateFieldOffset32(0x2078, WindowData, __screen_start_y);
+ValidateFieldOffset32(0x207C, WindowData, __screen_height_current);
+ValidateFieldOffset32(0x2080, WindowData, __screen_width_current);
+ValidateFieldOffset32(0x2084, WindowData, __screen_center_x_full_res);
+ValidateFieldOffset32(0x2088, WindowData, __screen_top_y_full_res);
+ValidateFieldOffset32(0x208C, WindowData, __screen_center_x_fixed_res);
+ValidateFieldOffset32(0x2090, WindowData, __screen_top_y_fixed_res);
 ValidateFieldOffset32(0x2098, WindowData, __cur_frame_start);
 ValidateFieldOffset32(0x20A0, WindowData, __prev_frame_start);
 ValidateFieldOffset32(0x20A8, WindowData, __double_20A8);
@@ -16127,12 +16131,12 @@ struct AnmVM {
 			case 0:
 				break;
 			case 1:
-				out->x += WINDOW_DATA.__width_related_208C;
-				out->y += WINDOW_DATA.__height_related_2090;
+				out->x += WINDOW_DATA.__screen_center_x_fixed_res;
+				out->y += WINDOW_DATA.__screen_top_y_fixed_res;
 				break;
 			default:
-				out->x += WINDOW_DATA.__width_related_2084;
-				out->y += WINDOW_DATA.__height_related_2088;
+				out->x += WINDOW_DATA.__screen_center_x_full_res;
+				out->y += WINDOW_DATA.__screen_top_y_full_res;
 				break;
 		}
 
@@ -18608,8 +18612,8 @@ struct AnmManager {
 			vm->data.origin_mode != 0 &&
 			!vm->controller.parent
 		) {
-			matrix.m[0][0] += WINDOW_DATA.__scaled_width * 0.5f;
-			matrix.m[0][1] += (WINDOW_DATA.__scaled_height - SCREEN_HEIGHT) * 0.5f;
+			matrix.m[0][0] += WINDOW_DATA.__scaled_window_width * 0.5f;
+			matrix.m[0][1] += (WINDOW_DATA.__scaled_window_height - SCREEN_HEIGHT) * 0.5f;
 		}
 		matrix.m[0][1] += vm->data.position.y + vm->controller.position.y + vm->data.__position_2.y;
 		matrix.m[0][2] += vm->data.position.z + vm->controller.position.z + vm->data.__position_2.z;
@@ -18906,8 +18910,8 @@ struct AnmManager {
 				vm->data.origin_mode != 0 &&
 				!vm->controller.parent
 			) {
-				position.x += WINDOW_DATA.__scaled_width * 0.5f;
-				position.y += (WINDOW_DATA.__scaled_height - SCREEN_HEIGHT) * 0.5f;
+				position.x += WINDOW_DATA.__scaled_window_width * 0.5f;
+				position.y += (WINDOW_DATA.__scaled_window_height - SCREEN_HEIGHT) * 0.5f;
 			}
 
 			float length = position.length();
@@ -19278,7 +19282,7 @@ struct AnmManager {
 				vm->data.origin_mode != 0 &&
 				!vm->controller.parent
 			) {
-				matrix.m[3][0] += (float)WINDOW_DATA.__width_related_208C;
+				matrix.m[3][0] += WINDOW_DATA.__screen_center_x_fixed_res;
 			}
 			matrix.m[3][1] = vm->controller.position.y + vm->data.position.y + +vm->data.__position_2.y;
 			matrix.m[3][2] = vm->controller.position.z + vm->data.position.z + +vm->data.__position_2.z;
@@ -20412,10 +20416,10 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_A(void* pt
 		D3DRECT rect = SUPERVISOR.cameras[StdCamera].get_viewport_d3d_rect();
 		SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, SUPERVISOR.background_color, 1.0f, 0);
 
-		WINDOW_DATA.__width_related_2080 = (int32_t)SCREEN_WIDTH;
-		WINDOW_DATA.__width_related_208C = WINDOW_DATA.__scaled_width / 2;
-		WINDOW_DATA.__height_related_207C = (int32_t)SCREEN_HEIGHT;
-		WINDOW_DATA.__height_related_2090 = (int32_t)(WINDOW_DATA.__scaled_height - SCREEN_HEIGHT) / 2;
+		WINDOW_DATA.__screen_width_current = (int32_t)SCREEN_WIDTH;
+		WINDOW_DATA.__screen_center_x_fixed_res = WINDOW_DATA.__scaled_window_width / 2;
+		WINDOW_DATA.__screen_height_current = (int32_t)SCREEN_HEIGHT;
+		WINDOW_DATA.__screen_top_y_fixed_res = (int32_t)(WINDOW_DATA.__scaled_window_height - SCREEN_HEIGHT) / 2;
 	} else {
 		SUPERVISOR.d3d_device->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, SUPERVISOR.background_color, 1.0f, 0);
 	}
@@ -20582,8 +20586,8 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_F(void* pt
 		float scale = WINDOW_DATA.__game_scale;
 		float height = SCREEN_HEIGHT * scale;
 		float width = SCREEN_WIDTH * scale;
-		WINDOW_DATA.__width_related_2080 = width;
-		WINDOW_DATA.__height_related_207C = height;
+		WINDOW_DATA.__screen_width_current = width;
+		WINDOW_DATA.__screen_height_current = height;
 	}
 	return UpdateFuncNext;
 }
@@ -20734,8 +20738,8 @@ inline UpdateFuncRet thiscall Supervisor::on_tick() {
 		case 0:
 			ret = this->__update_gamemode();
 			if (ret == UpdateFuncNext) {
-				WINDOW_DATA.__width_related_208C = WINDOW_DATA.__scaled_width / 2;
-				WINDOW_DATA.__height_related_2090 = (WINDOW_DATA.__scaled_height - (int32_t)SCREEN_HEIGHT) / 2;
+				WINDOW_DATA.__screen_center_x_fixed_res = WINDOW_DATA.__scaled_window_width / 2;
+				WINDOW_DATA.__screen_top_y_fixed_res = (WINDOW_DATA.__scaled_window_height - (int32_t)SCREEN_HEIGHT) / 2;
 			}
 	}
 
@@ -20756,7 +20760,7 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_455EC0() {
 
 		AnmVM* arcade_vmA = this->__arcade_vm_ptr_A;
 		if (!arcade_vmA->data.visible) {
-			switch (WINDOW_DATA.__scaled_width) {
+			switch (WINDOW_DATA.__scaled_window_width) {
 				case 640:
 					this->text_anm->__copy_data_to_vm_and_run(arcade_vmA, 66);
 					this->text_anm->__copy_data_to_vm_and_run(this->__arcade_vm_ptr_B, 72);
@@ -21840,7 +21844,7 @@ struct ScreenEffect : ZUNTask {
 
 		Float2 coords[2] = {
 			{ 0.0f, 0.0f },
-			{ WINDOW_DATA.__scaled_width, WINDOW_DATA.__scaled_height }
+			{ WINDOW_DATA.__scaled_window_width, WINDOW_DATA.__scaled_window_height }
 		};
 
 		ANM_MANAGER_PTR->flush_sprites();
@@ -21862,7 +21866,7 @@ struct ScreenEffect : ZUNTask {
 
 		Float2 coords[2] = {
 			{ 0.0f, 0.0f },
-			{ WINDOW_DATA.__scaled_width, WINDOW_DATA.__scaled_height }
+			{ WINDOW_DATA.__scaled_window_width, WINDOW_DATA.__scaled_window_height }
 		};
 
 		ANM_MANAGER_PTR->__sub_4754E0(coords, color);
@@ -21877,8 +21881,8 @@ struct ScreenEffect : ZUNTask {
 		D3DCOLOR color = self->alpha << 24 | self->color2 & 0x00FFFFFF;
 
 		Float2 coords[2] = {
-			{ WINDOW_DATA.__width_related_2074, WINDOW_DATA.__height_related_2078 },
-			{ WINDOW_DATA.__width_related_2080, WINDOW_DATA.__height_related_207C }
+			{ WINDOW_DATA.__screen_start_x, WINDOW_DATA.__screen_start_y },
+			{ WINDOW_DATA.__screen_width_current, WINDOW_DATA.__screen_height_current }
 		};
 
 		ANM_MANAGER_PTR->__sub_4754E0(coords, color);
@@ -21895,7 +21899,7 @@ struct ScreenEffect : ZUNTask {
 
 		Float2 coords[2] = {
 			{ 0.0f, 0.0f },
-			{ WINDOW_DATA.__scaled_width, WINDOW_DATA.__scaled_height }
+			{ WINDOW_DATA.__scaled_window_width, WINDOW_DATA.__scaled_window_height }
 		};
 
 		ANM_MANAGER_PTR->__sub_4754E0(coords, color);
@@ -28874,33 +28878,33 @@ forceinline void PlayerBullet::on_tick() {
 			vm->__get_vertex_quad(vertex_positions);
 			if (this->__timer_C >= 15) {
 				// it really does redundantly cast from an int for each vertex...
-				float windowX = WINDOW_DATA.__width_related_2074;
-				int32_t windowY = WINDOW_DATA.__height_related_2078;
+				float screenX = WINDOW_DATA.__screen_start_x;
+				int32_t screenY = WINDOW_DATA.__screen_start_y;
 				if (
 					!(
 						(
-							!(vertex_positions[0].x <= windowX) &&
-							!(vertex_positions[0].x >= windowX + SCREEN_WIDTH) &&
-							!(vertex_positions[0].y <= windowY) &&
-							!(vertex_positions[0].y >= windowY + SCREEN_HEIGHT)
+							!(vertex_positions[0].x <= screenX) &&
+							!(vertex_positions[0].x >= screenX + SCREEN_WIDTH) &&
+							!(vertex_positions[0].y <= screenY) &&
+							!(vertex_positions[0].y >= screenY + SCREEN_HEIGHT)
 						) ||
 						(
-							!(vertex_positions[1].x <= windowX) &&
-							!(vertex_positions[1].x >= windowX + SCREEN_WIDTH) &&
-							!(vertex_positions[1].y <= windowY) &&
-							!(vertex_positions[1].y >= windowY + SCREEN_HEIGHT)
+							!(vertex_positions[1].x <= screenX) &&
+							!(vertex_positions[1].x >= screenX + SCREEN_WIDTH) &&
+							!(vertex_positions[1].y <= screenY) &&
+							!(vertex_positions[1].y >= screenY + SCREEN_HEIGHT)
 						) ||
 						(
-							!(vertex_positions[2].x <= windowX) &&
-							!(vertex_positions[2].x >= windowX + SCREEN_WIDTH) &&
-							!(vertex_positions[2].y <= windowY) &&
-							!(vertex_positions[2].y >= windowY + SCREEN_HEIGHT)
+							!(vertex_positions[2].x <= screenX) &&
+							!(vertex_positions[2].x >= screenX + SCREEN_WIDTH) &&
+							!(vertex_positions[2].y <= screenY) &&
+							!(vertex_positions[2].y >= screenY + SCREEN_HEIGHT)
 						) ||
 						(
-							!(vertex_positions[3].x <= windowX) &&
-							!(vertex_positions[3].x >= windowX + SCREEN_WIDTH) &&
-							!(vertex_positions[3].y <= windowY) &&
-							!(vertex_positions[3].y >= windowY + SCREEN_HEIGHT)
+							!(vertex_positions[3].x <= screenX) &&
+							!(vertex_positions[3].x >= screenX + SCREEN_WIDTH) &&
+							!(vertex_positions[3].y <= screenY) &&
+							!(vertex_positions[3].y >= screenY + SCREEN_HEIGHT)
 						)
 					)
 				) {
@@ -37221,7 +37225,7 @@ struct StdObject {
 
 private:
 	// 0x41CA90
-	dllexport gnu_noinline BOOL vectorcall __sub_41CA90(int, Float3* offset, float, float, float draw_distance_squared, StageCamera* camera) asm_symbol_rel(0x41CA90) {
+	dllexport gnu_noinline BOOL vectorcall __test_culling(int, Float3* offset, float, float, float draw_distance_squared, StageCamera* camera) asm_symbol_rel(0x41CA90) {
 		Float3 position = this->position;
 		Float3 A = (position + *offset) - (camera->position + camera->__shaking_float3_A);
 		if (
@@ -37290,8 +37294,10 @@ private:
 			D3DXMatrixTranslation(&matrix, offset->x, offset->y, offset->z);
 			D3DXVec3ProjectArray(float3_array_out, sizeof(Float3), float3_array_in, sizeof(Float3), &camera->viewport, &camera->projection_matrix, &camera->view_matrix, &matrix, COORD_COUNT);
 
-			float X = WINDOW_DATA.__width_related_2074;
-			float Y = WINDOW_DATA.__height_related_2078;
+
+			// TODO: something is still slightly off here but the logic looks correct...?
+			float X = WINDOW_DATA.__screen_start_x;
+			float Y = WINDOW_DATA.__screen_start_y;
 
 			float max_X = X + SCREEN_WIDTH + 8.0f;
 			float max_Y = Y + SCREEN_HEIGHT + 8.0f;
@@ -37311,10 +37317,10 @@ private:
 			}
 
 			if (
-				min_X >= WINDOW_DATA.__width_related_2074 &&
+				min_X >= WINDOW_DATA.__screen_start_x &&
 				max_X <= X + SCREEN_WIDTH &&
-				min_Y >= WINDOW_DATA.__height_related_2078 &&
-				max_Y <= Y + SCREEN_WIDTH
+				min_Y >= WINDOW_DATA.__screen_start_y &&
+				max_Y <= Y + SCREEN_HEIGHT
 			) {
 				return false;
 			}
@@ -37324,8 +37330,8 @@ private:
 
 public:
 	// 0x41CA90
-	inline BOOL __sub_41CA90(Float3* offset, float draw_distance_squared, StageCamera* camera) {
-		return this->__sub_41CA90(UNUSED_DWORD, offset, UNUSED_FLOAT, UNUSED_FLOAT, draw_distance_squared, camera);
+	inline BOOL __test_culling(Float3* offset, float draw_distance_squared, StageCamera* camera) {
+		return this->__test_culling(UNUSED_DWORD, offset, UNUSED_FLOAT, UNUSED_FLOAT, draw_distance_squared, camera);
 	}
 };
 
@@ -37655,7 +37661,7 @@ struct Stage : ZUNTask {
 			StdObject* object = this->objects[instance->object_id];
 			if (object->layer == layer) {
 				Float3 position = object->position;
-				if (object->__sub_41CA90(&position, this->std_vm.draw_distance_squared, &SUPERVISOR.cameras[StdCamera])) {
+				if (object->__test_culling(&position, this->std_vm.draw_distance_squared, &SUPERVISOR.cameras[StdCamera])) {
 					++this->__culled_instances_counter;
 					instance->__unknown_flag_si_A = false;
 				}
@@ -42914,8 +42920,8 @@ struct LaserCurve : LaserData {
 
 				current_vertex[0].position.as2().make_from_vector(angle, this->width * 0.5f);
 				current_vertex[0].position.as3() += node->position;
-				current_vertex[0].position.x += WINDOW_DATA.__width_related_208C;
-				current_vertex[0].position.y += WINDOW_DATA.__height_related_2078;
+				current_vertex[0].position.x += WINDOW_DATA.__screen_center_x_fixed_res;
+				current_vertex[0].position.y += WINDOW_DATA.__screen_start_y;
 				current_vertex[0].position.z = 0.0f;
 
 				current_vertex[1].position.w = 1.0f;
@@ -42936,8 +42942,8 @@ struct LaserCurve : LaserData {
 
 				current_vertex[1].position.as2().make_from_vector(angle, this->width * 0.5f);
 				current_vertex[1].position.as3() += node->position;
-				current_vertex[1].position.x += WINDOW_DATA.__width_related_208C;
-				current_vertex[1].position.y += WINDOW_DATA.__height_related_2078;
+				current_vertex[1].position.x += WINDOW_DATA.__screen_center_x_fixed_res;
+				current_vertex[1].position.y += WINDOW_DATA.__screen_start_y;
 				current_vertex[1].position.z = 0.0f;
 
 				++i;
@@ -55216,9 +55222,9 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__sub_486BC0(AnmLoaded* anm_
 		const char* image_filename = based_pointer<const char>(entry, entry->image_path_offset);
 		if (image_filename[0] == '@') {
 			if (image_filename[1] == 'R') {
-				entry->width = WINDOW_DATA.__scaled_width;
-				entry->height = WINDOW_DATA.__scaled_height;
-				__create_render_target_texture(&anm_loaded->images[entry_index], WINDOW_DATA.__scaled_width, WINDOW_DATA.__scaled_height);
+				entry->width = WINDOW_DATA.__scaled_window_width;
+				entry->height = WINDOW_DATA.__scaled_window_height;
+				__create_render_target_texture(&anm_loaded->images[entry_index], WINDOW_DATA.__scaled_window_width, WINDOW_DATA.__scaled_window_height);
 				goto skip_adding_image_size;
 			}
 			image_size = __create_normal_texture(&anm_loaded->images[entry_index], entry->format, entry->width, entry->height);
@@ -55293,8 +55299,8 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	camera2->facing.z = dumb_local;
 	dumb_local = 0.0f;
 	camera2->rotation.z = dumb_local;
-	camera2->viewport.Width = WINDOW_DATA.__scaled_width;
-	camera2->viewport.Height = WINDOW_DATA.__scaled_height;
+	camera2->viewport.Width = WINDOW_DATA.__scaled_window_width;
+	camera2->viewport.Height = WINDOW_DATA.__scaled_window_height;
 	camera2->__shaking_float3_A.x = 0.0f;
 	camera2->__shaking_float3_A.y = 0.0f;
 	camera2->viewport.MinZ = 0.0f;
@@ -55306,15 +55312,15 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	camera2->__shaking_float3_B.y = 0.0f;
 	dumb_local = 0.0f;
 	camera2->__shaking_float3_B.z = dumb_local;
-	camera2->window_resolution.x = WINDOW_DATA.__scaled_width;
-	camera2->window_resolution.y = WINDOW_DATA.__scaled_height;
+	camera2->window_resolution.x = WINDOW_DATA.__scaled_window_width;
+	camera2->window_resolution.y = WINDOW_DATA.__scaled_window_height;
 	camera2->__viewport_10C = camera2->viewport;
 	camera2->__int2_104.x = 0;
 	camera2->__int2_104.y = 0;
 	camera2->__viewport_10C.X = 0;
 	camera2->__viewport_10C.Y = 0;
-	camera2->__viewport_10C.Width = WINDOW_DATA.__scaled_width;
-	camera2->__viewport_10C.Height = WINDOW_DATA.__scaled_height;
+	camera2->__viewport_10C.Width = WINDOW_DATA.__scaled_window_width;
+	camera2->__viewport_10C.Height = WINDOW_DATA.__scaled_window_height;
 	camera2->__viewport_124.X = WINDOW_DATA.__game_scale * 32.0f;
 	camera2->__viewport_124.Y = WINDOW_DATA.__game_scale * 16.0f;
 	camera2->__viewport_124.Width = WINDOW_DATA.__game_scale * SCREEN_WIDTH;
@@ -55345,25 +55351,25 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	StageCamera* camera3 = &this->cameras[StdCamera]; // 3
 	*camera3 = *camera0;
 	camera3->camera_index = StdCamera;
-	camera3->viewport.X = ((float)WINDOW_DATA.__scaled_width - (SCREEN_WIDTH + 24.0f)) * 0.5f;
+	camera3->viewport.X = ((float)WINDOW_DATA.__scaled_window_width - (SCREEN_WIDTH + 24.0f)) * 0.5f;
 	camera3->viewport.Width = 408;
 	camera3->viewport.Height = 472;
 	camera3->__int2_104.x = 0;
 	camera3->__int2_104.y = 0;
-	camera3->viewport.Y = ((float)WINDOW_DATA.__scaled_height - (SCREEN_HEIGHT + 24.0f)) * 0.5f;
+	camera3->viewport.Y = ((float)WINDOW_DATA.__scaled_window_height - (SCREEN_HEIGHT + 24.0f)) * 0.5f;
 	camera3->__viewport_10C = camera3->viewport;
 	this->__setup_camera(camera3);
-	WINDOW_DATA.__width_related_2084 = WINDOW_DATA.__scaled_width / 2;
-	WINDOW_DATA.__height_related_2088 = WINDOW_DATA.__game_scale * 16.0f;
+	WINDOW_DATA.__screen_center_x_full_res = WINDOW_DATA.__scaled_window_width / 2;
+	WINDOW_DATA.__screen_top_y_full_res = WINDOW_DATA.__game_scale * 16.0f;
 }
 
 // 0x454F50
 dllexport gnu_noinline void Supervisor::__camera2_sub_454F50() {
-	int32_t intA = WINDOW_DATA.__scaled_width;
+	int32_t intA = WINDOW_DATA.__scaled_window_width;
 	int32_t intB = (float)(WINDOW_DATA.__backbuffer_width - intA) * 0.5f;
 	float floatA = WINDOW_DATA.__game_scale;
 	SUPERVISOR.cameras[2].__int2_104.x = intB;
-	int32_t intC = WINDOW_DATA.__scaled_height;
+	int32_t intC = WINDOW_DATA.__scaled_window_height;
 	int32_t intD = (float)(WINDOW_DATA.__backbuffer_height - intC) * 0.5f;
 	SUPERVISOR.cameras[2].__int2_104.y = intD;
 	SUPERVISOR.cameras[2].__viewport_10C = SUPERVISOR.cameras[2].viewport;
@@ -57535,6 +57541,7 @@ dllexport gnu_noinline void WindowData::__sub_4734E0(BOOL arg1) {
 					WINDOW_DATA.__backbuffer_height = new_height;
 					WINDOW_DATA.__backbuffer_width = new_height * ratio;
 				} else {
+					// BUG(?): Will __backbuffer_height be set yet here?
 					logical_width /= 2;
 					int32_t new_width = logical_width;
 					heightf /= widthf;
@@ -57546,10 +57553,10 @@ dllexport gnu_noinline void WindowData::__sub_4734E0(BOOL arg1) {
 	}
 	height = scale * LOGICAL_WINDOW_HEIGHT;
 	width = scale * LOGICAL_WINDOW_WIDTH;
-	WINDOW_DATA.__scaled_height = height;
-	WINDOW_DATA.__scaled_width = width;
-	this->__width_related_2074 = (int32_t)(width - (float)SCREEN_WIDTH) / 2;
-	this->__height_related_2078 = (int32_t)(WINDOW_DATA.__scaled_height - (float)SCREEN_HEIGHT) / 2;
+	WINDOW_DATA.__scaled_window_height = height;
+	WINDOW_DATA.__scaled_window_width = width;
+	this->__screen_start_x = (int32_t)(width - SCREEN_WIDTH) / 2;
+	this->__screen_start_y = (int32_t)(WINDOW_DATA.__scaled_window_height - SCREEN_HEIGHT) / 2;
 }
 
 // 0x473890
@@ -57992,9 +57999,9 @@ dllexport gnu_noinline ZUNResult fastcall __sub_473B20(BOOL arg1) {
 				present_parameters.BackBufferHeight = WINDOW_DATA.__backbuffer_height;
 			} else {
 				int32_t width = RESOLUTIONS[i].x;
-				if (width < WINDOW_DATA.__scaled_width) continue;
+				if (width < WINDOW_DATA.__scaled_window_width) continue;
 				int32_t height = RESOLUTIONS[i].y;
-				if (height < WINDOW_DATA.__scaled_height) continue;
+				if (height < WINDOW_DATA.__scaled_window_height) continue;
 				present_parameters.BackBufferWidth = width;
 				WINDOW_DATA.__backbuffer_width = width;
 				present_parameters.BackBufferHeight = height;
@@ -58674,8 +58681,8 @@ winmain_d3d_create_success:
 								case Fullscreen960x720: // 1
 								case Fullscreen1280x960: // 2
 								{
-									int32_t width = WINDOW_DATA.__scaled_width;
-									int32_t height = WINDOW_DATA.__scaled_height;
+									int32_t width = WINDOW_DATA.__scaled_window_width;
+									int32_t height = WINDOW_DATA.__scaled_window_height;
 									SetWindowLongA(WINDOW_DATA.window, GWL_STYLE, WS_POPUP | WS_VISIBLE);
 									SetWindowPos(
 										WINDOW_DATA.window, HWND_TOP,
