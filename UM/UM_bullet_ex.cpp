@@ -3881,7 +3881,7 @@ struct StageCamera {
 	Int2 __int2_104; // 0x104
 	D3DVIEWPORT9 __viewport_10C; // 0x10C
 	D3DVIEWPORT9 __viewport_124; // 0x124
-	Float3 __float3_13C; // 0x13C
+	Float3 __last_position_delta; // 0x13C
 	StageSky sky; // 0x148
 	// 0x164
 
@@ -3930,7 +3930,7 @@ ValidateFieldOffset32(0xFC, StageCamera, __float2_FC);
 ValidateFieldOffset32(0x104, StageCamera, __int2_104);
 ValidateFieldOffset32(0x10C, StageCamera, __viewport_10C);
 ValidateFieldOffset32(0x124, StageCamera, __viewport_124);
-ValidateFieldOffset32(0x13C, StageCamera, __float3_13C);
+ValidateFieldOffset32(0x13C, StageCamera, __last_position_delta);
 ValidateFieldOffset32(0x148, StageCamera, sky);
 ValidateStructSize32(0x164, StageCamera);
 #pragma endregion
@@ -25533,7 +25533,7 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 				this->data.disable_z_write = IntArg(0); // IMMEDIATE ARGUMENT
 				break;
 			case __anm_flag_unknown_std_A: // 306
-				this->data.__unknown_std_flag_A = IntArg(0); // IMMEDIATE ARGUMENT
+				this->data.__unknown_flag_av_W = IntArg(0); // IMMEDIATE ARGUMENT
 				break;
 			case resample_mode: // 311
 				this->data.resample_mode = IntArg(0); // IMMEDIATE ARGUMENT
@@ -25873,7 +25873,7 @@ anm_break:
 		this->__apply_deltas();
 	}
 	if (this->data.__unknown_flag_av_W) {
-		this->controller.position += SUPERVISOR.cameras[StdCamera].__float3_13C;
+		this->controller.position += SUPERVISOR.cameras[StdCamera].__last_position_delta;
 	}
 	if (this->data.__continual_sprite_window) {
 		Float3 quad_positions[4];
@@ -37723,7 +37723,7 @@ struct Stage : ZUNTask {
 			(!this->__unknown_flag_bg_B || this->__timer_3478 < 60)
 		) {
 			this->std_vm.camera.__float2_FC = {};
-			this->std_vm.camera.__float3_13C = {};
+			this->std_vm.camera.__last_position_delta = {};
 
 			Float3 A = this->std_vm.camera.facing + this->std_vm.camera.__shaking_float3_B;
 			D3DXVec3Normalize(&this->std_vm.camera.facing_normalized, &A);
@@ -38038,11 +38038,11 @@ dllexport gnu_noinline ZUNResult thiscall StdVM::run_std() {
 				current_instruction = this->get_current_instruction(IntArg(0));
 				continue;
 			case camera_position: // 2
-				this->camera.__float3_13C = this->camera.position;
+				this->camera.__last_position_delta = this->camera.position;
 				this->camera.position.x = FloatArg(0);
 				this->camera.position.y = FloatArg(1);
 				this->camera.position.z = FloatArg(2);
-				this->camera.__float3_13C = this->camera.position - this->camera.__float3_13C;
+				this->camera.__last_position_delta = this->camera.position - this->camera.__last_position_delta;
 				break;
 			case Opcode::camera_position_interp: { // 3
 				float z = FloatArg(4);
@@ -46041,7 +46041,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::move() {
 	}
 	this->motion.absolute.update();
 	if (this->__basic_anm_update) {
-		this->motion.relative.position += SUPERVISOR.cameras[0].__float3_13C;
+		this->motion.relative.position += SUPERVISOR.cameras[0].__last_position_delta;
 	}
 	this->motion.relative.update();
 	this->update_current_motion();
