@@ -37209,7 +37209,7 @@ typedef struct Stage Stage;
 extern "C" {
 	// 0x4CF2B4
 	externcg Stage* STAGE_PTR cgasm("_STAGE_PTR");
-	// 0x4CF2B8
+	// 0x4CF2B0
 	externcg Stage* STAGE_B_PTR cgasm("_STAGE_B_PTR");
 }
 
