@@ -15844,16 +15844,16 @@ enum AnmTextureOp : uint8_t {
 enum AnmBlendMode : uint8_t {
 	BlendNormal = 0,
 	BlendAdditive = 1,
-	BlendMode2 = 2,
-	BlendMode3 = 3,
-	BlendMode4 = 4,
-	BlendMode5 = 5,
-	BlendMode6 = 6,
-	BlendMode7 = 7,
-	BlendMode8 = 8,
-	BlendMode9 = 9,
+	BlendSubtractive = 2,
+	BlendNone = 3,
+	BlendInvert = 4,
+	BlendMultiply = 5,
+	BlendWTF = 6,
+	BlendMask = 7,
+	BlendDarken = 8,
+	BlendLighten = 9,
 	BlendMode10 = 10,
-	BlendMode11 = 11
+	BlendHardcoded = 11
 };
 
 enum AnmUVMode : uint8_t {
@@ -18284,7 +18284,7 @@ struct AnmManager {
 	}
 
 	// 0x4754E0
-	dllexport gnu_noinline static void fastcall __sub_4754E0(Float2 coords[2], D3DCOLOR color) asm_symbol_rel(0x4754E0) {
+	dllexport gnu_noinline static void fastcall __render_simple_polygon(Float2 coords[2], D3DCOLOR color) asm_symbol_rel(0x4754E0) {
 		ANM_MANAGER_PTR->flush_sprites();
 
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
@@ -18337,7 +18337,7 @@ struct AnmManager {
 		anm_manager->__current_vertex_type = -1;
 		anm_manager->current_sprite = NULL;
 		anm_manager->__current_sprite_index = -1;
-		anm_manager->current_blend_mode = BlendMode11; // 11
+		anm_manager->current_blend_mode = BlendHardcoded; // 11
 		anm_manager->__byte_3120E0B = -1;
 
 		SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
@@ -18503,43 +18503,43 @@ struct AnmManager {
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
 					break;
-				case BlendMode2: // 2
+				case BlendSubtractive: // 2
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_REVSUBTRACT);
 					break;
-				case BlendMode3: // 3
+				case BlendNone: // 3
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ZERO);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
 					break;
-				case BlendMode4: // 4
+				case BlendInvert: // 4
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_INVDESTCOLOR);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
 					break;
-				case BlendMode6: // 6 why are 5 and 6 swapped?
+				case BlendWTF: // 6 why are 5 and 6 swapped?
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_INVSRCCOLOR);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
 					break;
-				case BlendMode5: // 5
+				case BlendMultiply: // 5
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_DESTCOLOR);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ZERO);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
 					break;
-				case BlendMode7: // 7
+				case BlendMask: // 7
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_DESTALPHA);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVDESTALPHA);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
 					break;
-				case BlendMode8: // 8
+				case BlendDarken: // 8
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_MIN);
 					break;
-				case BlendMode9: // 9
+				case BlendLighten: // 9
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
 					SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_MAX);
@@ -20501,7 +20501,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_B(void* pt
 		SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
 		SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
 
-		ANM_MANAGER_PTR->current_blend_mode = BlendMode11;
+		ANM_MANAGER_PTR->current_blend_mode = BlendHardcoded;
 		SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_SRCALPHA);
 		SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ONE);
 		SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
@@ -21855,7 +21855,7 @@ struct ScreenEffect : ZUNTask {
 
 		D3DCOLOR color = self->alpha << 24 | self->color1;
 
-		ANM_MANAGER_PTR->__sub_4754E0(coords, color);
+		ANM_MANAGER_PTR->__render_simple_polygon(coords, color);
 
 		return UpdateFuncNext;
 	}
@@ -21872,7 +21872,7 @@ struct ScreenEffect : ZUNTask {
 			{ WINDOW_DATA.__scaled_window_width, WINDOW_DATA.__scaled_window_height }
 		};
 
-		ANM_MANAGER_PTR->__sub_4754E0(coords, color);
+		ANM_MANAGER_PTR->__render_simple_polygon(coords, color);
 
 		return UpdateFuncNext;
 	}
@@ -21888,7 +21888,7 @@ struct ScreenEffect : ZUNTask {
 			{ WINDOW_DATA.__screen_width_current, WINDOW_DATA.__screen_height_current }
 		};
 
-		ANM_MANAGER_PTR->__sub_4754E0(coords, color);
+		ANM_MANAGER_PTR->__render_simple_polygon(coords, color);
 
 		return UpdateFuncNext;
 	}
@@ -21905,7 +21905,7 @@ struct ScreenEffect : ZUNTask {
 			{ WINDOW_DATA.__scaled_window_width, WINDOW_DATA.__scaled_window_height }
 		};
 
-		ANM_MANAGER_PTR->__sub_4754E0(coords, color);
+		ANM_MANAGER_PTR->__render_simple_polygon(coords, color);
 
 		return UpdateFuncNext;
 	}
@@ -21921,7 +21921,7 @@ struct ScreenEffect : ZUNTask {
 			{ 512.0f, 464.0f }
 		};
 
-		ANM_MANAGER_PTR->__sub_4754E0(coords, color);
+		ANM_MANAGER_PTR->__render_simple_polygon(coords, color);
 
 		return UpdateFuncNext;
 	}
@@ -26190,7 +26190,7 @@ struct RectPoints {
 
 private:
 	// 0x403660
-	dllexport gnu_noinline BOOL vectorcall __sub_403660(float x, float y, float width, float height, float, float, float angle) asm_symbol_rel(0x403660) {
+	dllexport gnu_noinline BOOL vectorcall __test_intersect(float x, float y, float width, float height, float, float, float angle) asm_symbol_rel(0x403660) {
 		RectPoints rect; // ESP+1C
 
 		Float2 position = { x, y };
@@ -26219,8 +26219,8 @@ private:
 		return FALSE;
 	}
 public:
-	inline BOOL __sub_403660(float x, float y, float width, float height, float angle) {
-		return this->__sub_403660(x, y, width, height, UNUSED_FLOAT, UNUSED_FLOAT, angle);
+	inline BOOL __test_intersect(float x, float y, float width, float height, float angle) {
+		return this->__test_intersect(x, y, width, height, UNUSED_FLOAT, UNUSED_FLOAT, angle);
 	}
 };
 
@@ -26252,7 +26252,7 @@ namespace Impl {
 		return zsqrt(distance_squared(x1, y1, x2, y2));
 	}
 
-	forceinline BOOL __inline_sub_A(
+	forceinline BOOL __test_lines_intersect(
 		float A1x, float A1y,
 		float A2x, float A2y,
 		float B1x, float B1y,
@@ -26292,42 +26292,42 @@ namespace Impl {
 }
 
 namespace Impl {
-	forceinline BOOL vectorcall __sub_4038A0(
+	forceinline BOOL vectorcall __solve_lines_intersect(
 		float* x_out, float* y_out, // ECX, EDX,
-		float x1, float y1,         // XMM2, XMM3,
-		float x2, float y2,         // 
-		float x3, float y3,         // 
-		float x4, float y4          // 
+		float A1x, float A1y,       // XMM2, XMM3,
+		float A2x, float A2y,       // 
+		float B1x, float B1y,       // 
+		float B2x, float B2y        // 
 	) {
 
-		if (__inline_sub_A(
-			x1, y1, x2, y2,
-			x3, y3, x4, y4
+		if (__test_lines_intersect(
+			A1x, A1y, A2x, A2y,
+			B1x, B1y, B2x, B2y
 		)) {
 			BOOL A;
-			float B = x2 - x1;
+			float B = A2x - A1x;
 			float C;
 			if (zfabsf(B) < 0.01f) {
 				A = true;
 				B = 0.0f;
-				C = x1;
+				C = A1x;
 			} else {
 				A = false;
-				B = (y2 - y1) / (x2 - x1);
-				C = y1 - ((y2 - y1) * x1 / (x2 - x1));
+				B = (A2y - A1y) / (A2x - A1x);
+				C = A1y - ((A2y - A1y) * A1x / (A2x - A1x));
 			}
 
 			BOOL D;
-			float E = x4 - x3;
+			float E = B2x - B1x;
 			float F;
 			if (zfabsf(E) < 0.01f) {
 				D = true;
 				E = 0.0f;
-				F = x3;
+				F = B1x;
 			} else {
 				D = false;
-				E = (y4 - y3) / (x4 - x3);
-				F = y3 - ((y4 - y3) * x3 / (x4 - x3));
+				E = (B2y - B1y) / (B2x - B1x);
+				F = B1y - ((B2y - B1y) * B1x / (B2x - B1x));
 			}
 
 			if (!A) {
@@ -26336,61 +26336,62 @@ namespace Impl {
 					*y_out = C + ((F - C) * B / (B - E));
 					return TRUE;
 				} else {
-					*x_out = x3;
-					*y_out = B * x3 + C;
+					*x_out = B1x;
+					*y_out = B * B1x + C;
 					return TRUE;
 				}
 			} else {
 				if (D) {
-					if (zfabsf(x1 - x3) < 0.001f) {
-						*x_out = x1;
-						*y_out = y1;
+					if (zfabsf(A1x - B1x) < 0.001f) {
+						*x_out = A1x;
+						*y_out = A1y;
 						return TRUE;
 					}
 				} else {
-					*x_out = x1;
-					*y_out = E * x1 + F;
+					*x_out = A1x;
+					*y_out = E * A1x + F;
 					return TRUE;
 				}
 			}
 		}
 		return FALSE;
 	}
+
 	// 0x4038A0
-	dllexport gnu_noinline BOOL vectorcall __sub_4038A0(
+	dllexport gnu_noinline BOOL vectorcall __solve_lines_intersect(
 		float* x_out, float* y_out,
-		float x1, float y1,
-		uint32_t x2, uint32_t y2,
-		uint32_t x3, uint32_t y3,
-		uint32_t x4, uint32_t y4
+		float A1x, float A1y,
+		uint32_t A2x, uint32_t A2y,
+		uint32_t B1x, uint32_t B1y,
+		uint32_t B2x, uint32_t B2y
 	) asm_symbol_rel(0x4038A0) {
-		return Impl::__sub_4038A0(
+		return Impl::__solve_lines_intersect(
 			x_out, y_out,
-			x1, y1,
-			bitcast<float>(x2), bitcast<float>(y2),
-			bitcast<float>(x3), bitcast<float>(y3),
-			bitcast<float>(x4), bitcast<float>(y4)
+			A1x, A1y,
+			bitcast<float>(A2x), bitcast<float>(A2y),
+			bitcast<float>(B1x), bitcast<float>(B1y),
+			bitcast<float>(B2x), bitcast<float>(B2y)
 		);
 	}
 }
-	forceinline BOOL __sub_4038A0(
+	forceinline BOOL __solve_lines_intersect(
 		float* x_out, float* y_out,
-		float x1, float y1,
-		float x2, float y2,
-		float x3, float y3,
-		float x4, float y4
+		float A1x, float A1y,
+		float A2x, float A2y,
+		float B1x, float B1y,
+		float B2x, float B2y
 	) {
-		return Impl::__sub_4038A0(
+		return Impl::__solve_lines_intersect(
 			x_out, y_out,
-			x1, y1,
-			bitcast<uint32_t>(x2), bitcast<uint32_t>(y2),
-			bitcast<uint32_t>(x3), bitcast<uint32_t>(y3),
-			bitcast<uint32_t>(x4), bitcast<uint32_t>(y4)
+			A1x, A1y,
+			bitcast<uint32_t>(A2x), bitcast<uint32_t>(A2y),
+			bitcast<uint32_t>(B1x), bitcast<uint32_t>(B1y),
+			bitcast<uint32_t>(B2x), bitcast<uint32_t>(B2y)
 		);
 	}
 
 namespace Impl {
-	forceinline BOOL __sub_403BC0(
+	forceinline BOOL __solve_rays_intersect(
 		float* x_out, float* y_out,
 		float x1, float y1,
 		float rotation1,
@@ -26471,25 +26472,26 @@ namespace Impl {
 						if (zfabsf(x1 - x2) < 0.001f) {
 							*y_out = y1;
 							*x_out = x1;
-							return true;
+							return TRUE;
 						}
 						else {
 							// Does not write to out?
-							return false;
+							return FALSE;
 						}
 					}
 				}
 				*x_out = X;
 				*y_out = Y;
-				return true;
+				return TRUE;
 			}
 		}
 		*y_out = y1;
 		*x_out = x1;
-		return false;
+		return FALSE;
 	}
+
 	// 0x403BC0
-	dllexport gnu_noinline BOOL vectorcall __sub_403BC0(
+	dllexport gnu_noinline BOOL vectorcall __solve_rays_intersect(
 		float, float,
 		float* x_out, float* y_out,
 		float x1, float y1,
@@ -26497,7 +26499,7 @@ namespace Impl {
 		uint32_t x2, uint32_t y2,
 		uint32_t rotation2
 	) asm_symbol_rel(0x403BC0) {
-		return Impl::__sub_403BC0(
+		return Impl::__solve_rays_intersect(
 			x_out, y_out,
 			x1, y1,
 			bitcast<float>(rotation1),
@@ -26506,14 +26508,14 @@ namespace Impl {
 		);
 	}
 }
-	forceinline BOOL __sub_403BC0(
+	forceinline BOOL __solve_rays_intersect(
 		float* x_out, float* y_out,
 		float x1, float y1,
 		float rotation1,
 		float x2, float y2,
 		float rotation2
 	) {
-		return Impl::__sub_403BC0(
+		return Impl::__solve_rays_intersect(
 			UNUSED_FLOAT, UNUSED_FLOAT,
 			x_out, y_out,
 			x1, y1,
@@ -26524,98 +26526,99 @@ namespace Impl {
 	}
 
 namespace Impl {
-	forceinline BOOL __sub_403F30(
-		float* x_out, float* y_out, // ECX, EDX,        (ESP+1C, EDI)
-		Float2* position1,          // EBP+8
-		float rotation1,            // XMM3
-		Float2* position2,          // EBP+C
-		float radius2               // EBP+10
+	forceinline BOOL __solve_hitscan_circle(
+		float* hit_start, float* hit_end, // ECX, EDX,        (ESP+1C, EDI)
+		Float2* ray_position,             // EBP+8
+		float ray_angle,                  // XMM3
+		Float2* circle_position,          // EBP+C
+		float circle_radius               // EBP+10
 	) {
 		Float2 position;
-		position.x = position2->x - position1->x;
-		position.y = position2->y - position1->y;
-		position = position.rotate_around_origin(-rotation1);
+		position.x = circle_position->x - ray_position->x;
+		position.y = circle_position->y - ray_position->y;
+		position = position.rotate_around_origin(-ray_angle);
 
 		if (
-			!(radius2 < zfabsf(position.y)) &&
-			!(-radius2 > position.x) &&
-			(!(position.x < 0.0f) || !(position.hypot_squared() > Impl::squared(radius2)))
+			!(circle_radius < zfabsf(position.y)) &&
+			!(-circle_radius > position.x) &&
+			(!(position.x < 0.0f) || !(position.hypot_squared() > Impl::squared(circle_radius)))
 		) {
-			float A = zsqrt(1.0f - Impl::squared(position.x / radius2));
-			A *= radius2;
-			*x_out = position.x - A;
-			*y_out = position.x + A;
+			float A = zsqrt(1.0f - Impl::squared(position.x / circle_radius));
+			A *= circle_radius;
+			*hit_start = position.x - A;
+			*hit_end = position.x + A;
 			return TRUE;
 		}
 
 		return FALSE;
 	}
+
 	// 0x403F30
-	dllexport gnu_noinline BOOL vectorcall __sub_403F30(
+	dllexport gnu_noinline BOOL vectorcall __solve_hitscan_circle(
 		float, float, float,
-		float* x_out, float* y_out,
-		Float2* position1,
-		float rotation1,
-		Float2* position2,
-		uint32_t radius2
+		float* hit_start, float* hit_end,
+		Float2* ray_position,
+		float ray_angle,
+		Float2* circle_position,
+		uint32_t circle_radius
 	) asm_symbol_rel(0x403F30) {
-		return Impl::__sub_403F30(
-			x_out, y_out,
-			position1,
-			rotation1,
-			position2,
-			bitcast<float>(radius2)
+		return Impl::__solve_hitscan_circle(
+			hit_start, hit_end,
+			ray_position,
+			ray_angle,
+			circle_position,
+			bitcast<float>(circle_radius)
 		);
 	}
 }
 
-	forceinline BOOL __sub_403F30(
-		float* x_out, float* y_out,
-		Float2* position1,
-		float rotation1,
-		Float2* position2,
-		float radius2
+	forceinline BOOL __solve_hitscan_circle(
+		float* hit_start, float* hit_end,
+		Float2* ray_position,
+		float ray_angle,
+		Float2* circle_position,
+		float circle_radius
 	) {
-		return Impl::__sub_403F30(
-			x_out, y_out,
-			position1,
-			rotation1,
-			position2,
-			bitcast<uint32_t>(radius2)
+		return Impl::__solve_hitscan_circle(
+			hit_start, hit_end,
+			ray_position,
+			ray_angle,
+			circle_position,
+			bitcast<uint32_t>(circle_radius)
 		);
 	}
 
 namespace Impl {
-	forceinline BOOL __sub_404080(
-		Float2* pointA, Float2* pointB, // ECX, EDX,        (ESP+10, ESP+14)
-		Float2* position1,              // EBP+8,
-		float rotation1,                // XMM3,
-		float x2, float y2,             // EBP+C,  EBP+10,
-		float width2, float height2,    // EBP+14, EBP+18,
-		float rotation2                 // EBP+1C
+	forceinline BOOL __solve_hitscan_rotated_rectangle(
+		Float2* hit_start, Float2* hit_end,  // ECX, EDX,        (ESP+10, ESP+14)
+		Float2* ray_position,                // EBP+8,
+		float ray_angle,                     // XMM3,
+		float rect_x, float rect_y,          // EBP+C,  EBP+10,
+		float rect_width, float rect_height, // EBP+14, EBP+18,
+		float rect_rotation                  // EBP+1C
 	) {
-		float half_width2 = width2 * 0.5f;
-		float half_height2 = height2 * 0.5f;
-		float neg_half_width2 = -width2 * 0.5f;
-		float neg_half_height2 = -height2 * 0.5f;
+		float half_width2 = rect_width * 0.5f;
+		float half_height2 = rect_height * 0.5f;
+		float neg_half_width2 = -rect_width * 0.5f;
+		float neg_half_height2 = -rect_height * 0.5f;
 
-		RectPoints rectA; // ESP+24
-		rectA.points[0] = { neg_half_width2, neg_half_height2 };
-		rectA.points[1] = { neg_half_width2, half_height2 };
-		rectA.points[2] = { half_width2, half_height2 };
-		rectA.points[3] = { half_width2, neg_half_height2 };
+		RectPoints rect; // ESP+24
+		rect.points[0] = { neg_half_width2, neg_half_height2 };
+		rect.points[1] = { neg_half_width2, half_height2 };
+		rect.points[2] = { half_width2, half_height2 };
+		rect.points[3] = { half_width2, neg_half_height2 };
 
-		if (rotation1 != 0.0f) {
-			rectA.rotate_around_origin(rotation2);
+		if (ray_angle != 0.0f) {
+			rect.rotate_around_origin(rect_rotation);
 		}
 
-		rectA.offset(x2, y2);
+		rect.offset(rect_x, rect_y);
 
 		constexpr Float2 offset_source = { 1000.0f, 0.0f };
-		Float2 offset = offset_source.rotate_around_origin(rotation1);
+		Float2 offset = offset_source.rotate_around_origin(ray_angle);
 
-		float x1 = position1->x;
-		float y1 = position1->y;
+		float x1 = ray_position->x;
+		float y1 = ray_position->y;
 
 		Float2 A1; // ESP+18, ESP+C
 
@@ -26632,12 +26635,12 @@ namespace Impl {
 			int32_t B2 = AWFUL_RECTANGLE_INDEX_TABLE[i * 2 + 1];
 			int32_t B1 = AWFUL_RECTANGLE_INDEX_TABLE[i * 2];
 
-			float B2y = rectA.points[B2].y;
-			float B2x = rectA.points[B2].x;
-			float B1y = rectA.points[B1].y;
-			float B1x = rectA.points[B1].x;
+			float B2y = rect.points[B2].y;
+			float B2x = rect.points[B2].x;
+			float B1y = rect.points[B1].y;
+			float B1x = rect.points[B1].x;
 
-			if (__sub_4038A0(
+			if (__solve_lines_intersect(
 				&points[successes].x, &points[successes].y,
 				A1.x, A1.y, A2x, A2y,
 				B1x, B1y, B2x, B2y
@@ -26653,59 +26656,77 @@ namespace Impl {
 				return FALSE;
 			case 2: {
 				if (A1.distance_squared(&points[0]) < A1.distance_squared(&points[1])) {
-					*pointA = points[0];
-					*pointB = points[1];
+					*hit_start = points[0];
+					*hit_end = points[1];
 				} else {
-					*pointA = points[1];
-					*pointB = points[0];
+					*hit_start = points[1];
+					*hit_end = points[0];
 				}
 				return TRUE;
 			}
 			default: {
 				float X = points[0].x;
 				float Y = points[0].y;
-				*pointA = { X, Y };
-				*pointB = { X, Y };
+				*hit_start = { X, Y };
+				*hit_end = { X, Y };
 				return TRUE;
 			}
 		}
 	}
+
 	// 0x404080
-	dllexport gnu_noinline BOOL vectorcall __sub_404080(
+	dllexport gnu_noinline BOOL vectorcall __solve_hitscan_rotated_rectangle(
 		float, float, float,
-		Float2* pointA, Float2* pointB,
-		Float2* position1,
-		float rotation1,
-		uint32_t x2, uint32_t y2,
-		uint32_t width2, uint32_t height2,
-		uint32_t rotation2
+		Float2* hit_start, Float2* hit_end,
+		Float2* ray_position,
+		float ray_angle,
+		uint32_t rect_x, uint32_t rect_y,
+		uint32_t rect_width, uint32_t rect_height,
+		uint32_t rect_rotation
 	) {
-		return Impl::__sub_404080(
-			pointA, pointB,
-			position1,
-			rotation1,
-			bitcast<float>(x2), bitcast<float>(y2),
-			bitcast<float>(width2), bitcast<float>(height2),
-			bitcast<float>(rotation2)
+		return Impl::__solve_hitscan_rotated_rectangle(
+			hit_start, hit_end,
+			ray_position,
+			ray_angle,
+			bitcast<float>(rect_x), bitcast<float>(rect_y),
+			bitcast<float>(rect_width), bitcast<float>(rect_height),
+			bitcast<float>(rect_rotation)
 		);
 	}
 }
-	forceinline BOOL __sub_404080(
-		Float2* pointA, Float2* pointB,
-		Float2* position1,
-		float rotation1,
-		float x2, float y2,
-		float width2, float height2,
-		float rotation2
+	forceinline BOOL __solve_hitscan_rotated_rectangle(
+		Float2* hit_start, Float2* hit_end,
+		Float2* ray_position,
+		float ray_angle,
+		float rect_x, float rect_y,
+		float rect_width, float rect_height,
+		float rect_rotation
 	) {
-		return Impl::__sub_404080(
+		return Impl::__solve_hitscan_rotated_rectangle(
 			UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT,
-			pointA, pointB,
-			position1,
-			rotation1,
-			bitcast<uint32_t>(x2), bitcast<uint32_t>(y2),
-			bitcast<uint32_t>(width2), bitcast<uint32_t>(height2),
-			bitcast<uint32_t>(rotation2)
+			hit_start, hit_end,
+			ray_position,
+			ray_angle,
+			bitcast<uint32_t>(rect_x), bitcast<uint32_t>(rect_y),
+			bitcast<uint32_t>(rect_width), bitcast<uint32_t>(rect_height),
+			bitcast<uint32_t>(rect_rotation)
+		);
+	}
+
+	forceinline BOOL __solve_hitscan_rectangle(
+		Float2* hit_start, Float2* hit_end,
+		Float2* ray_position,
+		float ray_angle,
+		float rect_x, float rect_y,
+		float rect_width, float rect_height
+	) {
+		return __solve_hitscan_rotated_rectangle(
+			hit_start, hit_end,
+			ray_position,
+			ray_angle,
+			rect_x, rect_y,
+			rect_width, rect_height,
+			0.0f
 		);
 	}
 
@@ -26757,8 +26778,8 @@ namespace Impl {
 			}
 
 			if (
-				rectA.__sub_403660(x1, y1, width1, height1, rotation1) ||
-				rectB.__sub_403660(x2, y2, width2, height2, rotation2)
+				rectA.__test_intersect(x1, y1, width1, height1, rotation1) ||
+				rectB.__test_intersect(x2, y2, width2, height2, rotation2)
 			) {
 				return TRUE;
 			}
@@ -26779,7 +26800,7 @@ namespace Impl {
 					float B2x = rectB.points[B2].x;
 					float B2y = rectB.points[B2].y;
 
-					if (__inline_sub_A(
+					if (__test_lines_intersect(
 						A1x, A1y, A2x, A2y,
 						B1x, B1y, B2x, B2y
 					)) {
@@ -29011,7 +29032,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_2(PlayerBull
 	if (!size) {
 		damage_source = player->get_damage_source_by_index(index);
 		float C;
-		HitboxManager::__sub_403F30(&B.x, &C, &self->motion.position, self->motion.angle, position, damage_source->size.y * 0.5f + radius);
+		HitboxManager::__solve_hitscan_circle(&B.x, &C, &self->motion.position, self->motion.angle, position, damage_source->size.y * 0.5f + radius);
 		A = B.x + 8.0f;
 		self->size.x = A;
 		if (A < 0.0f) {
@@ -29023,7 +29044,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_2(PlayerBull
 	else {
 		damage_source = player->get_damage_source_by_index(index);
 		float D = damage_source->size.y;
-		if (HitboxManager::__sub_404080(&B, &E, &self->motion.position, self->motion.angle, position->x, position->y, size->x + D, size->y + D, rotation)) {
+		if (HitboxManager::__solve_hitscan_rotated_rectangle(&B, &E, &self->motion.position, self->motion.angle, position->x, position->y, size->x + D, size->y + D, rotation)) {
 			Float2 F = B.as2() - self->motion.position.as2();
 			float angle = F.direction();
 			angle = zfabsf(reduced_angle_diff(angle, self->motion.angle));
@@ -41511,7 +41532,7 @@ public:
 	dllexport virtual gnu_noinline void thiscall run_effects() asm_symbol_rel(0x447FD0) {}
 	// 0x447FE0
 	// Method 0x8
-	dllexport virtual gnu_noinline void thiscall __method_8(int) asm_symbol_rel(0x447FE0) {}
+	dllexport virtual gnu_noinline void thiscall __set_unknown_flag_lb_A(int) asm_symbol_rel(0x447FE0) {}
 	// 0x447FF0
 	// Method 0xC
 	dllexport virtual gnu_noinline int thiscall initialize(void*) asm_symbol_rel(0x447FF0) {
@@ -41786,9 +41807,9 @@ struct LaserLine : LaserData {
 
 	// 0x448220
 	// Method 0x0
-	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* arg2) override asm_symbol_rel(0x448220) {
-		arg2->make_from_vector(this->angle, magnitude);
-		*arg2 += this->position;
+	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* out) override asm_symbol_rel(0x448220) {
+		out->make_from_vector(this->angle, magnitude);
+		*out += this->position;
 	}
 
 	// 0x4494F0
@@ -42148,8 +42169,46 @@ struct LaserLine : LaserData {
 		if (arg2 && this->invulnerable_time) {
 			return 0;
 		}
+
+		float test_length = LINE_LASER_HALF_UNIT_LENGTH; // EBP-10
+
+		Float3 step; // EBP-3C, EBP-38, EBP-34
+		step.make_from_vector3(this->angle, LINE_LASER_HALF_UNIT_LENGTH);
+
+		Float3 test_positionA = step + this->position; // EBP-4, EBP-8, EBP-28
+		Float3 test_positionB = test_positionA; // EBP-30, EBP-2C, EBP-C
+
+		if (this->length >= LINE_LASER_UNIT_LENGTH) {
+
+			int32_t test_count = 0;
+
+			do {
+				int32_t sprite = this->sprite;
+				if (
+					sprite >= 17 &&
+					sprite != 34 &&
+					sprite != 38
+				) {
+					if (sprite >= 31 && sprite <= 33) {
+						get_bullet_anm()->instantiate_vm_to_world_list_back(281 + this->params.color * 2, &test_positionA);
+					} else {
+						get_bullet_anm()->instantiate_vm_to_world_list_back(257 + this->params.color * 2, &test_positionA);
+					}
+				} else {
+					get_bullet_anm()->instantiate_vm_to_world_list_back(209 + this->params.color * 2, &test_positionA);
+				}
+
+				spawn_bullet_cancel_items(&test_positionB, cancel_type);
+
+				++test_count;
+				test_positionA += step;
+				test_positionB = test_positionA;
+				test_length += LINE_LASER_UNIT_LENGTH;
+			} while (test_length + LINE_LASER_HALF_UNIT_LENGTH <= this->length);
+		}
+
+		this->state = 1;
 		
-		// TODO
 		return 0;
 	}
 
@@ -42215,7 +42274,7 @@ struct LaserLine : LaserData {
 						float angle = this->angle;
 						float graze_x;
 						float graze_y;
-						__sub_403BC0(&graze_x, &graze_y, position.x, position.y, angle, this->position.x, this->position.y, reduce_angle(angle + HALF_PI_f));
+						__solve_rays_intersect(&graze_x, &graze_y, position.x, position.y, angle, this->position.x, this->position.y, reduce_angle(angle + HALF_PI_f));
 						Float2 graze_position = { graze_x, graze_y };
 						PLAYER_PTR->do_graze(&graze_position);
 						this->graze_timer.increment();
@@ -42314,9 +42373,9 @@ struct LaserInfinite : LaserData {
 
 	// 0x448570
 	// Method 0x0
-	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* arg2) override asm_symbol_rel(0x448570) {
-		arg2->make_from_vector(this->angle, magnitude);
-		*arg2 += this->position;
+	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* out) override asm_symbol_rel(0x448570) {
+		out->make_from_vector(this->angle, magnitude);
+		*out += this->position;
 	}
 
 	// 0x44ECC0
@@ -42506,7 +42565,7 @@ struct LaserInfinite : LaserData {
 							if (this->graze_timer.is_multiple_of(3)) {
 								Player* player = PLAYER_PTR;
 								float x, y;
-								__sub_403BC0(&x, &y, position.x, position.y, this->angle, player->data.position.x, player->data.position.y, this->angle + HALF_PI_f);
+								__solve_rays_intersect(&x, &y, position.x, position.y, this->angle, player->data.position.x, player->data.position.y, this->angle + HALF_PI_f);
 								position.x = x;
 								position.y = y;
 								PLAYER_PTR->do_graze(&position);
@@ -43149,9 +43208,9 @@ struct LaserBeam : LaserData {
 
 	// 0x4485D0
 	// Method 0x0
-	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* arg2) override asm_symbol_rel(0x4485D0) {
-		arg2->make_from_vector(this->angle, magnitude);
-		*arg2 += this->position;
+	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* out) override asm_symbol_rel(0x4485D0) {
+		out->make_from_vector(this->angle, magnitude);
+		*out += this->position;
 	}
 
 	// 0x452BE0
@@ -43162,7 +43221,7 @@ struct LaserBeam : LaserData {
 
 	// 0x448630
 	// Method 0x8
-	dllexport virtual gnu_noinline void thiscall __method_8(int arg) override asm_symbol_rel(0x448630) {
+	dllexport virtual gnu_noinline void thiscall __set_unknown_flag_lb_A(int arg) override asm_symbol_rel(0x448630) {
 		this->params.__unknown_flag_lb_A = arg;
 	}
 
@@ -44819,13 +44878,12 @@ dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_call_2_ex(EnemyData*
 	Float3 unit_vec; // ESP+34
 
 	LASER_MANAGER_PTR->for_each_laser_but_stupid([&](LaserData* laser) {
-		if (HitboxManager::__sub_404080(
+		if (HitboxManager::__solve_hitscan_rectangle(
 			&A, &B,
 			&laser->position,
 			laser->angle,
 			SCREEN_CENTER_X, SCREEN_CENTER_Y,
-			SCREEN_WIDTH, SCREEN_HEIGHT,
-			0.0f
+			SCREEN_WIDTH, SCREEN_HEIGHT
 		)) {
 			// BUG: This is the Float2 version of the function call.
 			// Z coord is left uninitialized
@@ -44856,13 +44914,12 @@ dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_call_3_ex(EnemyData*
 	Float3 unit_vec; // ESP+34
 	
 	LASER_MANAGER_PTR->for_each_laser_but_stupid([&](LaserData* laser) {
-		if (HitboxManager::__sub_404080(
+		if (HitboxManager::__solve_hitscan_rectangle(
 			&A, &B,
 			&laser->position,
 			laser->angle,
 			SCREEN_CENTER_X, SCREEN_CENTER_Y,
-			SCREEN_WIDTH, SCREEN_HEIGHT,
-			0.0f
+			SCREEN_WIDTH, SCREEN_HEIGHT
 		)) {
 			// BUG: This is the Float2 version of the function call.
 			// Z coord is left uninitialized
@@ -45689,7 +45746,7 @@ dllexport void Bullet::run_effects() {
 			case EX_BLEND:
 				switch (IntArg(0)) {
 					case 2:
-						this->vm.data.blend_mode = BlendMode2; // 2
+						this->vm.data.blend_mode = BlendSubtractive; // 2
 						break;
 					case 1:
 						this->vm.data.blend_mode = BlendAdditive; // 1
@@ -49861,7 +49918,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 		case __laser_beam_flag_unknown_A: // 714
 			if (LaserData* laser = LASER_MANAGER_PTR->get_laser_with_id(this->get_int_arg(0))) {
 				int32_t state = this->get_int_arg(1);
-				laser->__method_8(state);
+				laser->__set_unknown_flag_lb_A(state);
 			}
 			break;
 		case Opcode::bullet_cancel_radius: { // 615
@@ -57058,7 +57115,7 @@ dllexport gnu_noinline void __set_default_d3d_states() {
 	SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
 	SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_WRAP);
 	if (AnmManager* anm_manager = ANM_MANAGER_PTR) {
-		anm_manager->current_blend_mode = BlendMode11; // 11
+		anm_manager->current_blend_mode = BlendHardcoded; // 11
 		anm_manager->__byte_3120E09 = -1;
 		anm_manager->__current_vertex_type = -1;
 		anm_manager->__current_sprite_index = -1;

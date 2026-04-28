@@ -74,6 +74,7 @@ add_library(Netplay SHARED)
 add_library(dbghelp SHARED)
 add_library(_dbghelp SHARED)
 add_library(vpatch_dll SHARED)
+add_library(DSOUND_hijack SHARED)
 
 set(programs
 ${PROJECT_NAME}
@@ -140,6 +141,7 @@ last_branch_test
 zenc
 jank_test
 shared_section_test
+DSOUND_hijack
 )
 
 enable_language(ASM-ATT)
@@ -2033,6 +2035,32 @@ target_link_options(shared_section_test PRIVATE
 )
 target_sources(shared_section_test PRIVATE
 	"shared_section_test.cpp"
+)
+
+target_sources(DSOUND_hijack PRIVATE
+	"DSOUND_hijack/dsound.cpp"
+	"dsound_hijack.def"
+)
+target_compile_options(DSOUND_hijack PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(DSOUND_hijack PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+target_link_options(DSOUND_hijack PRIVATE
+	${MSLINK_ARG}/DEF:dsound_hijack.def
+	${MSLINK_ARG}/DLL
+	${MSLINK_ARG}/NOENTRY
+	#${MSLINK_ARG}-nodefaultlib
+	${NOSTDLIB_LINK}
+	#-nodefaultlibs
+	#-nostdlib
 )
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")

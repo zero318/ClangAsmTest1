@@ -1,0 +1,2 @@
+EXPORTS
+    DllMain=DSOUND.#11
