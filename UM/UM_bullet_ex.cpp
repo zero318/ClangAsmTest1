@@ -18780,7 +18780,7 @@ struct AnmManager {
 							SUPERVISOR.d3d_device->SetTexture(0, this->get_texture_from_sprite_index(sprite_index));
 						}
 
-						if (!this->__current_vertex_type) {
+						if (this->__current_vertex_type != 1) {
 							this->flush_sprites();
 							this->__current_vertex_type = 1;
 						}
@@ -37683,7 +37683,7 @@ struct Stage : ZUNTask {
 		while (instance->object_id >= 0) {
 			StdObject* object = this->objects[instance->object_id];
 			if (object->layer == layer) {
-				Float3 position = object->position;
+				Float3 position = instance->position;
 				if (object->__test_culling(&position, this->std_vm.draw_distance_squared, &SUPERVISOR.cameras[StdCamera])) {
 					++this->__culled_instances_counter;
 					instance->__unknown_flag_si_A = false;
@@ -55439,7 +55439,7 @@ dllexport gnu_noinline void Supervisor::__camera2_sub_454F50() {
 	SUPERVISOR.cameras[2].__viewport_124.X = floatA * -32.0f;
 	SUPERVISOR.cameras[2].__viewport_124.Y = floatA * -16.0f;
 	SUPERVISOR.cameras[2].__viewport_124.Width = floatA * SCREEN_WIDTH;
-	SUPERVISOR.cameras[2].__viewport_124.Width = floatA * SCREEN_HEIGHT;
+	SUPERVISOR.cameras[2].__viewport_124.Height = floatA * SCREEN_HEIGHT;
 }
 
 // 0x462680
