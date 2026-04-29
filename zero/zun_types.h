@@ -326,7 +326,11 @@ struct Float2 : Float1 {
             FSTP DWORD PTR [RAX+4]
         };
 #endif
-        return *this;
+        // Note: Functions containing an MSVC style ASM block
+        // without an explicit return are assumed to have set
+        // the return value within the ASM block. 
+        // Despite being stupid this behavior is well defined.
+        // return *this;
     }
 
     dllexport zun_make_from_vector_inline Float2& thiscall make_from_vector_components(float angle, float x_magnitude, float y_magnitude) {
@@ -351,7 +355,11 @@ struct Float2 : Float1 {
             FSTP DWORD PTR [RAX+4]
         };
 #endif
-        return *this;
+        // Note: Functions containing an MSVC style ASM block
+        // without an explicit return are assumed to have set
+        // the return value within the ASM block. 
+        // Despite being stupid this behavior is well defined.
+        // return *this;
     }
     
     inline float angle_to(const Float2& coord) {

@@ -49,6 +49,7 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define INCLUDE_FUTURE_INSTRUCTIONS 0
 #define INCLUDE_FUTURE_VARIABLES 0
 #define INCLUDE_PATCH_INSTRUCTIONS 0
+#define ENABLE_THIRD_BOSS_BAR 1
 
 #define USE_THE_DANG_EXE_ICON_PLZ 1
 
@@ -15757,7 +15758,7 @@ enum Opcode : int16_t {
 	polygon_ring, // 611
 	polygon_rectangle_hollow, // 612
 	polygon_line, // 613
-	__polygon_unknown_A, // 614
+	polygon_triangle, // 614
 #if INCLUDE_FUTURE_INSTRUCTIONS
 	__polygon_ring_unknown_A, // 615 (th19)
 	__polygon_ring_unknown_B, // 616 (th19)
@@ -15834,6 +15835,38 @@ enum AnmVMState {
 	Normal = 0, // 0
 	MarkedForDelete, // 1
 	Deleted // 2
+};
+
+enum AnmRenderMode : uint8_t {
+	Mode2DSprite = 0,
+	Mode2DSpriteRotated = 1,
+	Mode2DSpriteBlurry = 2,
+	Mode2DSpriteRotatedB = 3,
+	Mode3DSpriteBillboard = 4,
+	Mode3DSprite = 5,
+	Mode3DSpriteBillboardSpecial = 6,
+	Mode3DSpriteSpecial = 7,
+	Mode3DObject = 8,
+	ModeTexturedRing = 9,
+	Mode10 = 10,
+	Mode11 = 11,
+	Mode12 = 12,
+	ModeTexturedArcA = 13,
+	ModeTexturedArcB = 14,
+	Mode3DObjectB = 15,
+	ModePolygonRectangle = 16,
+	ModePolygon = 17,
+	ModePolygonHollow = 18,
+	ModePolygonRing = 19,
+	ModePolygonRectangleGradient = 20,
+	ModePolygonRectangleAntiAlias = 21,
+	ModePolygonRectangleGradientAntiAlias = 22,
+	Mode23 = 23,
+	ModeTexturedCylinder = 24,
+	ModeTexturedRing3D = 25,
+	ModePolygonLine = 26,
+	ModePolygonRectangleHollow = 27,
+	ModePolygonTriangle = 28,
 };
 
 enum AnmTextureOp : uint8_t {
@@ -16402,6 +16435,7 @@ struct AnmVM {
 		vert3->as2() -= this->data.anchor_offset;
 
 		switch (this->data.resolution_mode) {
+			// Note: No 3 or 4
 			case 1:
 				vert0->as2() *= WINDOW_DATA.__game_scale;
 				vert1->as2() *= WINDOW_DATA.__game_scale;
@@ -16460,6 +16494,7 @@ struct AnmVM {
 		offset_y -= this->data.anchor_offset.y;
 
 		switch (this->data.resolution_mode) {
+			// Note: No 3 or 4
 			case 1: {
 				float scale = WINDOW_DATA.__game_scale;
 				offset_x *= scale;
@@ -16620,10 +16655,12 @@ struct AnmVM {
 	// 0x481D20
 	dllexport gnu_noinline void thiscall __get_vertex_quad(Float3* out) asm_symbol_rel(0x481D20) {
 		switch (this->data.render_mode) {
-			case 1:
+			case Mode2DSpriteRotated: // 1
 				this->__get_rotated_vertex_positions(&out[0], &out[1], &out[2], &out[3]);
 				break;
-			case 0: case 2: case 3:
+			case Mode2DSprite: // 0
+			case Mode2DSpriteBlurry: // 2
+			case Mode2DSpriteRotatedB: // 3
 				this->__get_vertex_positions(&out[0], &out[1], &out[2], &out[3]);
 				break;
 		}
@@ -17115,7 +17152,7 @@ public:
 
 	inline float* get_float_ptr(int32_t index) {
 		using namespace Anm;
-		switch ((int32_t)index) {
+		switch (index) {
 			case F0: // 10004
 				return &this->data.current_context.float_vars[0];
 			case F1: // 10005
@@ -17268,10 +17305,219 @@ public:
 
 	// 0x47BEF0
 	dllexport gnu_noinline void thiscall __update_polygons() asm_symbol_rel(0x47BEF0) {
-		switch (this->data.render_mode) {
-			case 9:
-			case 13: case 14:
-			case 18: case 19:
+		switch (uint32_t render_mode = this->data.render_mode) {
+			case ModeTexturedRing: // 9
+			{
+				int32_t points = this->data.current_context.int_vars[0] - 1;
+				float angle = this->data.rotation.z;
+				SpriteVertex* vertices = (SpriteVertex*)this->controller.special_data;
+				float points_f = points;
+				float angle_add = TWO_PI_f / points_f;
+				float texture_v_add = this->data.current_context.int_vars[1] / points_f;
+				Float3 position = this->data.position + this->controller.position + this->data.__position_2;
+				this->__adjust_position_for_resolution_and_origin_modes(&position);
+
+				D3DCOLOR color1 = this->data.color1;
+				D3DCOLOR color2 = this->data.color_mode == 0 ? color1 : this->data.color2;
+				float ring_width = this->data.scale.x;
+				float radius = this->data.scale.y;
+
+				float half_width = ring_width * 0.5f;
+				float radius_outer = radius + half_width;
+				float radius_inner = radius - half_width;
+
+				AnmVM* parent = this->controller.parent;
+				if (
+					parent &&
+					!this->data.__treat_as_root
+				) {
+					radius_outer *= parent->data.scale.x;
+					radius_inner *= parent->data.scale.y;
+				}
+
+				switch (this->data.resolution_mode) {
+					// Note: No 3 or 4
+					case 1:
+						radius_outer *= WINDOW_DATA.__game_scale;
+						radius_inner *= WINDOW_DATA.__game_scale;
+						break;
+					case 2: {
+						float scale = WINDOW_DATA.__game_scale * 0.5f;
+						radius_outer *= scale;
+						radius_inner *= scale;
+						break;
+					}
+				}
+
+				float texture_v = 0.0f;
+
+				for (int32_t i = 0; i < points; ++i) {
+					vertices[0].position.w = 1.0f;
+					vertices[0].diffuse = color1;
+					vertices[0].texture_uv.x = this->data.sprite_uv_quad[0].x + this->data.uv_scroll.x;
+					vertices[0].texture_uv.y = texture_v + this->data.uv_scroll.y;
+					vertices[0].position.make_from_vector(angle, radius_outer);
+					vertices[0].position.as2() += position.as2();
+					vertices[0].position.z = position.z;
+
+					vertices[1].position.w = 1.0f;
+					vertices[1].diffuse = color2;
+					vertices[1].texture_uv.x = this->data.sprite_uv_quad[1].x + this->data.uv_scroll.x;
+					vertices[1].texture_uv.y = texture_v + this->data.uv_scroll.y;
+					vertices[1].position.make_from_vector(angle, radius_inner);
+					vertices[1].position.as2() += position.as2();
+					vertices[1].position.z = position.z;
+
+					angle += angle_add;
+					texture_v += texture_v_add;
+					angle = reduce_angle(angle);
+					vertices += 2;
+				}
+
+				SpriteVertex* first_vertices = (SpriteVertex*)this->controller.special_data;
+				vertices[0] = first_vertices[0];
+				vertices[0].texture_uv.y = texture_v + this->data.uv_scroll.y;
+				vertices[1] = first_vertices[1];
+				vertices[1].texture_uv.y = texture_v + this->data.uv_scroll.y;
+				break;
+			}
+			case ModeTexturedArcA: // 13
+			case ModeTexturedArcB: // 14
+			{
+				float arc_length = this->data.rotation.x;
+				int32_t points = this->data.current_context.int_vars[0];
+				float angle;
+				clang_noinline angle = reduce_angle(this->data.rotation.z - arc_length * 0.5f);
+				float points_f = points - 1;
+				float texture_v = 0.0f;
+				float texture_v_add = this->data.current_context.int_vars[1] / points_f;
+				float angle_add = arc_length / points_f;
+				SpriteVertex* vertices = (SpriteVertex*)this->controller.special_data;
+				Float3 position = this->data.position + this->controller.position + this->data.__position_2;
+				this->__adjust_position_for_resolution_and_origin_modes(&position);
+
+				if (this->data.render_mode == ModeTexturedArcB) {
+					clang_noinline angle = reduce_angle(this->data.rotation.z);
+				}
+
+				D3DCOLOR color = this->data.color_mode == 0 ? this->data.color1 : this->data.color2;
+				float ring_width = this->data.scale.x;
+				float radius = this->data.scale.y;
+
+				float half_width = ring_width * 0.5f;
+				float radius_outer = radius + half_width;
+				float radius_inner = radius - half_width;
+
+				AnmVM* parent = this->controller.parent;
+				if (
+					parent &&
+					!this->data.__treat_as_root
+				) {
+					radius_outer *= parent->data.scale.x;
+					radius_inner *= parent->data.scale.y;
+				}
+
+				switch (this->data.resolution_mode) {
+					// Note: No 3 or 4
+					case 1:
+						radius_outer *= WINDOW_DATA.__game_scale;
+						radius_inner *= WINDOW_DATA.__game_scale;
+						break;
+					case 2: {
+						float scale = WINDOW_DATA.__game_scale * 0.5f;
+						radius_outer *= scale;
+						radius_inner *= scale;
+						break;
+					}
+				}
+
+				if (points > 0) {
+					do {
+						vertices[0].position.w = 1.0f;
+						vertices[0].diffuse = color;
+						vertices[0].texture_uv.x = this->data.sprite_uv_quad[0].x + this->data.uv_scroll.x;
+						vertices[0].texture_uv.y = texture_v + this->data.uv_scroll.y;
+						vertices[0].position.make_from_vector(angle, radius_outer);
+						vertices[0].position.as2() += position.as2();
+						vertices[0].position.z = position.z;
+
+						vertices[1].position.w = 1.0f;
+						vertices[1].diffuse = color;
+						vertices[1].texture_uv.x = this->data.sprite_uv_quad[1].x + this->data.uv_scroll.x;
+						vertices[1].texture_uv.y = texture_v + this->data.uv_scroll.y;
+						vertices[1].position.make_from_vector(angle, radius_inner);
+						vertices[1].position.as2() += position.as2();
+						vertices[1].position.z = position.z;
+
+						angle += angle_add;
+						texture_v += texture_v_add;
+						angle = reduce_angle(angle);
+						vertices += 2;
+					} while (--points);
+				}
+				break;
+			}
+			case ModeTexturedCylinder: // 24
+			case ModeTexturedRing3D: // 25
+			{
+				float arc_length = this->data.current_context.float_vars[0];
+				int32_t points = this->data.current_context.int_vars[0];
+				float angle;
+				clang_noinline angle = reduce_angle(this->data.current_context.float_vars[3] - arc_length * 0.5f);
+				float points_f = points - 1;
+				float texture_v = 0.0f;
+				float texture_v_add = this->data.current_context.int_vars[1] / points_f;
+				float angle_add = arc_length / points_f;
+				SpriteVertexC* vertices = (SpriteVertexC*)this->controller.special_data;
+
+				D3DCOLOR color = this->data.color_mode == 0 ? this->data.color1 : this->data.color2;
+
+				float width = this->data.current_context.float_vars[1];
+				float radius = this->data.current_context.float_vars[2];
+
+				float half_width = width * 0.5f;
+
+				float radius_inner = radius;
+				float radius_outer = radius;
+				float height_high = width;
+
+				// This jank is here only to prevent clang emitting the dumbest code ever.
+				// Without this it emits ~6 redundant branches for no good reason.
+				if (render_mode == ModeTexturedRing3D) {
+					radius_inner = radius - half_width;
+					height_high = 0.0f;
+					radius_outer = radius + half_width;
+					__asm__ volatile (""::"x"(radius_inner), "x"(height_high), "x"(radius_outer));
+				}
+
+				if (points > 0) {
+					float height_low = -height_high;
+					Float2 position;
+					do {
+						position.make_from_vector(angle, radius_inner);
+						vertices[0].diffuse = color;
+						vertices[0].texture_uv.x = this->data.sprite_uv_quad[0].x + this->data.uv_scroll.x;
+						vertices[0].texture_uv.y = texture_v + this->data.uv_scroll.y;
+						vertices[0].position.x = position.x;
+						vertices[0].position.y = height_high;
+						vertices[0].position.z = position.y;
+
+						position.make_from_vector(angle, radius_outer);
+						vertices[1].diffuse = color;
+						vertices[1].texture_uv.x = this->data.sprite_uv_quad[1].x + this->data.uv_scroll.x;
+						vertices[1].texture_uv.y = texture_v + this->data.uv_scroll.y;
+						vertices[1].position.x = position.x;
+						vertices[1].position.y = height_low;
+						vertices[1].position.z = position.y;
+
+						angle += angle_add;
+						texture_v += texture_v_add;
+						angle = reduce_angle(angle);
+						vertices += 2;
+					} while (--points);
+				}
+				break;
+			}
 		}
 	}
 
@@ -19073,6 +19319,7 @@ struct AnmManager {
 				vm->data.__matrix_414.m[1][1] *= vm->data.scale.y * vm->data.scale2.y;
 
 				switch (vm->data.resolution_mode) {
+					// Note: No 3 or 4
 					case 1:
 						vm->data.__matrix_414.m[0][0] *= WINDOW_DATA.__game_scale;
 						vm->data.__matrix_414.m[1][1] *= WINDOW_DATA.__game_scale;
@@ -19189,7 +19436,7 @@ struct AnmManager {
 	}
 
 	// 0x480F70
-	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_9_C_D_E(AnmVM* vm, void* special_data, int32_t arg3) asm_symbol_rel(0x480F70) {
+	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_9_C_D_E(AnmVM* vm, void* special_data, int32_t points) asm_symbol_rel(0x480F70) {
 		if (
 			vm->data.visible &&
 			vm->data.__visible2 &&
@@ -19217,7 +19464,7 @@ struct AnmManager {
 
 			this->set_texture_op<Modulate>();
 
-			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, arg3 - 2, special_data, sizeof(SpriteVertex));
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, points - 2, special_data, sizeof(SpriteVertex));
 			return ZUN_SUCCESS;
 		}
 		return ZUN_ERROR;
@@ -19252,7 +19499,7 @@ struct AnmManager {
 	}
 
 	// 0x480A50
-	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_18_19(AnmVM* vm, void* special_data, int32_t arg3) asm_symbol_rel(0x480A50) {
+	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_18_19(AnmVM* vm, void* special_data, int32_t points) asm_symbol_rel(0x480A50) {
 		if (
 			vm->data.visible &&
 			vm->data.__visible2
@@ -19325,10 +19572,836 @@ struct AnmManager {
 
 			this->set_texture_op<Modulate>();
 
-			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, arg3 - 2, special_data, sizeof(SpriteVertexC));
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, points - 2, special_data, sizeof(SpriteVertexC));
 			return ZUN_SUCCESS;
 		}
 		return ZUN_ERROR;
+	}
+
+private:
+	forceinline ZUNResult draw_polygon_impl(
+		float position_x, float position_y,	            // XMM1, XMM2
+		float radius, float angle,                      // XMM3, EBP+8
+		int32_t sides, D3DCOLOR color1, D3DCOLOR color2	// EBP+C, EBP+10, EBP+14
+	) {
+		PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+		if (primitive_write_cursor + (sides + 2) < array_end_addr(this->primitive_vertex_data)) {
+			this->flush_sprites();
+
+			primitive_write_cursor->diffuse = color1;
+			primitive_write_cursor->position.x = position_x;
+			primitive_write_cursor->position.y = position_y;
+			primitive_write_cursor->position.z = 0.0f;
+			primitive_write_cursor->position.w = 1.0f;
+
+			int32_t i = sides + 1;
+
+			float angle_add = TWO_PI_f / i;
+
+			++primitive_write_cursor;
+
+			if (i) {
+				do {
+					primitive_write_cursor->position.make_from_vector(angle, radius);
+					angle += angle_add;
+					primitive_write_cursor->position.x += position_x;
+					primitive_write_cursor->position.y += position_y;
+					primitive_write_cursor->position.z = 0.0f;
+					primitive_write_cursor->position.w = 1.0f;
+					primitive_write_cursor->diffuse = color2;
+					primitive_write_cursor->position.as2() += this->__float2_D8;
+					++primitive_write_cursor;
+					angle = reduce_angle(angle);
+				} while (--i);
+			}
+
+			SUPERVISOR.d3d_disable_zwrite();
+			SUPERVISOR.d3d_zfunc_always();
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, sides, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += (sides + 2);
+			++this->__int_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+
+	// 0x482C10
+	dllexport gnu_noinline ZUNResult vectorcall draw_polygon_impl(
+		uint32_t, float,
+		float position_x, float position_y,
+		float radius, uint32_t angle,
+		int32_t sides, D3DCOLOR color1, D3DCOLOR color2
+	) asm_symbol_rel(0x482C10) {
+		return this->draw_polygon_impl(
+			position_x, position_y,
+			radius, bitcast<float>(angle),
+			sides, color1, color2
+		);
+	}
+public:
+	forceinline ZUNResult draw_polygon(
+		float position_x, float position_y,
+		float radius, float angle,
+		int32_t sides, D3DCOLOR color1, D3DCOLOR color2
+	) {
+		return this->draw_polygon_impl(
+			UNUSED_DWORD, UNUSED_FLOAT,
+			position_x, position_y,
+			radius, bitcast<uint32_t>(angle),
+			sides, color1, color2
+		);
+	}
+
+private:
+	forceinline ZUNResult draw_polygon_hollow_impl(
+		float position_x, float position_y,
+		float radius, float angle,
+		int32_t sides, D3DCOLOR color
+	) {
+		if (this->primitive_write_cursor + 1 + sides < array_end_addr(this->primitive_vertex_data)) {
+			this->flush_sprites();
+
+			PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+			int32_t i = sides + 1;
+
+			float angle_add = TWO_PI_f / i;
+
+			if (i) {
+				do {
+					primitive_write_cursor->position.make_from_vector(angle, radius);
+					angle += angle_add;
+					primitive_write_cursor->position.x += position_x;
+					primitive_write_cursor->position.y += position_y;
+					primitive_write_cursor->position.z = 0.0f;
+					primitive_write_cursor->position.w = 1.0f;
+					primitive_write_cursor->diffuse = color;
+					primitive_write_cursor->position.as2() += this->__float2_D8;
+					++primitive_write_cursor;
+					angle = reduce_angle(angle);
+				} while (--i);
+			}
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_LINESTRIP, sides, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += 1 + sides;
+			++this->__int_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+
+	// 0x482E70
+	dllexport gnu_noinline ZUNResult vectorcall draw_polygon_hollow_impl(
+		uint32_t, float,
+		float position_x, float position_y,
+		float radius, uint32_t angle,
+		int32_t sides, D3DCOLOR color
+	) asm_symbol_rel(0x482E70) {
+		return this->draw_polygon_hollow_impl(
+			position_x, position_y,
+			radius, bitcast<float>(angle),
+			sides, color
+		);
+	}
+public:
+	forceinline ZUNResult draw_polygon_hollow(
+		float position_x, float position_y,
+		float radius, float angle,
+		int32_t sides, D3DCOLOR color
+	) {
+		return this->draw_polygon_hollow_impl(
+			UNUSED_DWORD, UNUSED_FLOAT,
+			position_x, position_y,
+			radius, bitcast<uint32_t>(angle),
+			sides, color
+		);
+	}
+
+private:
+	forceinline ZUNResult draw_polygon_ring_impl(
+		float position_x, float position_y,
+		float radius, float width, float angle,
+		int32_t sides, D3DCOLOR color
+	) {
+		if (this->primitive_write_cursor + 2 + sides < array_end_addr(this->primitive_vertex_data)) {
+			this->flush_sprites();
+
+			PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+			int32_t i = sides + 1;
+
+			float half_width = width * 0.5f;
+
+			float radius_inner = radius - half_width;
+			float angle_add = TWO_PI_f / i;
+			float radius_outer = radius + half_width;
+
+			if (i) {
+				do {
+					primitive_write_cursor[0].position.make_from_vector(angle, radius_inner);
+					primitive_write_cursor[0].position.x += position_x;
+					primitive_write_cursor[0].position.y += position_y;
+					primitive_write_cursor[0].position.z = 0.0f;
+					primitive_write_cursor[0].position.w = 1.0f;
+					primitive_write_cursor[0].diffuse = color;
+					primitive_write_cursor[0].position.as2() += this->__float2_D8;
+
+					primitive_write_cursor[1].position.make_from_vector(angle, radius_outer);
+					angle += angle_add;
+					primitive_write_cursor[1].position.x += position_x;
+					primitive_write_cursor[1].position.y += position_y;
+					primitive_write_cursor[1].position.z = 0.0f;
+					primitive_write_cursor[1].position.w = 1.0f;
+					primitive_write_cursor[1].diffuse = color;
+					primitive_write_cursor[1].position.as2() += this->__float2_D8;
+
+					primitive_write_cursor += 2;
+					angle = reduce_angle(angle);
+				} while (--i);
+			}
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, sides * 2, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += 2 + sides;
+			++this->__int_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+
+	// 0x483060
+	dllexport gnu_noinline ZUNResult vectorcall draw_polygon_ring_impl(
+		uint32_t, float,
+		float position_x, float position_y,
+		float radius, uint32_t width, uint32_t angle,
+		int32_t sides, D3DCOLOR color
+	) asm_symbol_rel(0x483060) {
+		return this->draw_polygon_ring_impl(
+			position_x, position_y,
+			radius, bitcast<float>(width), bitcast<float>(angle),
+			sides, color
+		);
+	}
+public:
+	forceinline ZUNResult draw_polygon_ring(
+		float position_x, float position_y,
+		float radius, float width, float angle,
+		int32_t sides, D3DCOLOR color
+	) {
+		return this->draw_polygon_ring_impl(
+			UNUSED_DWORD, UNUSED_FLOAT,
+			position_x, position_y,
+			radius, bitcast<uint32_t>(width), bitcast<uint32_t>(angle),
+			sides, color
+		);
+	}
+
+private:
+	forceinline ZUNResult draw_polygon_rectangle_impl(
+		float position_x, float position_y,
+		float size_x, float size_y, float rotation,
+		D3DCOLOR color1, D3DCOLOR color2,
+		uint32_t anchor_x, uint32_t anchor_y
+	) {
+		PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+		if (primitive_write_cursor + 4 < array_end_addr(this->primitive_vertex_data)) {
+			this->flush_sprites();
+
+			auto __temp = CRT::sincosf_asm(rotation);
+			float unit_x = __temp[0]; // LOCAL.0
+			float unit_y = __temp[1]; // LOCAL.1
+
+			float x0, x1, x2, x3;
+			switch (anchor_x) {
+				case 2:
+					x1 = x3 = 0.0f;
+					x0 = x2 = -size_x;
+					break;
+				case 1:
+					x1 = x3 = size_x;
+					x0 = x2 = 0.0f;
+					break;
+				case 0:
+					x1 = x3 = size_x * 0.5f;
+					x0 = x2 = -size_x * 0.5f;
+					break;
+				default:
+					x0 = x1 = x2 = x3 = size_y; // first stack arg
+					break;
+			}
+			float y0, y1, y2, y3;
+			switch (anchor_y) {
+				case 2:
+					y0 = y1 = -size_y;
+					y2 = y3 = 0.0f;
+					break;
+				case 1:
+					y0 = y1 = 0.0f;
+					y2 = y3 = size_y;
+					break;
+				case 0:
+					y0 = y1 = -size_y * 0.5f;
+					y2 = y3 = size_y * 0.5f;
+					break;
+				default:
+					y0 = y1 = y2 = y3 = size_y; // first stack arg
+					break;
+			}
+
+			primitive_write_cursor[0].position.x = position_x + ((unit_x * x0) - (unit_y * y0));
+			primitive_write_cursor[0].position.y = position_y + ((unit_x * y0) + (unit_y * x0));
+			primitive_write_cursor[1].position.x = position_x + ((unit_x * x1) - (unit_y * y1));
+			primitive_write_cursor[1].position.y = position_y + ((unit_x * y1) + (unit_y * x1));
+			primitive_write_cursor[2].position.x = position_x + ((unit_x * x2) - (unit_y * y2));
+			primitive_write_cursor[2].position.y = position_y + ((unit_x * y2) + (unit_y * x2));
+			primitive_write_cursor[3].position.x = position_x + ((unit_x * x3) - (unit_y * y3));
+			primitive_write_cursor[3].position.y = position_y + ((unit_x * y3) + (unit_y * x3));
+
+			primitive_write_cursor[3].position.z = 0.0f;
+			primitive_write_cursor[2].position.z = 0.0f;
+			primitive_write_cursor[1].position.z = 0.0f;
+			primitive_write_cursor[0].position.z = 0.0f;
+
+			primitive_write_cursor[0].position.as2() += this->__float2_D8;
+			primitive_write_cursor[1].position.as2() += this->__float2_D8;
+			primitive_write_cursor[2].position.as2() += this->__float2_D8;
+			primitive_write_cursor[3].position.as2() += this->__float2_D8;
+
+			primitive_write_cursor[3].position.w = 1.0f;
+			primitive_write_cursor[2].position.w = 1.0f;
+			primitive_write_cursor[1].position.w = 1.0f;
+			primitive_write_cursor[0].position.w = 1.0f;
+
+			primitive_write_cursor[2].diffuse = color1;
+			primitive_write_cursor[0].diffuse = color1;
+			primitive_write_cursor[3].diffuse = color2;
+			primitive_write_cursor[1].diffuse = color2;
+
+			SUPERVISOR.d3d_disable_zwrite();
+			SUPERVISOR.d3d_zfunc_always();
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += 4;
+			++this->__int_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+
+	// 0x481D90
+	dllexport gnu_noinline ZUNResult vectorcall draw_polygon_rectangle_impl(
+		uint32_t, float,
+		float position_x, float position_y,
+		float size_x, uint32_t size_y, uint32_t rotation,
+		D3DCOLOR color1, D3DCOLOR color2,
+		uint32_t anchor_x, uint32_t anchor_y
+	) asm_symbol_rel(0x481D90) {
+		return this->draw_polygon_rectangle_impl(
+			position_x, position_y,
+			size_x, bitcast<float>(size_y),
+			bitcast<float>(rotation),
+			color1, color2,
+			anchor_x, anchor_y
+		);
+	}
+public:
+	forceinline ZUNResult draw_polygon_rectangle(
+		float position_x, float position_y,
+		float size_x, float size_y, float rotation,
+		D3DCOLOR color1, D3DCOLOR color2,
+		uint32_t anchor_x, uint32_t anchor_y
+	) {
+		return this->draw_polygon_rectangle_impl(
+			UNUSED_DWORD, UNUSED_FLOAT,
+			position_x, position_y,
+			size_x, bitcast<uint32_t>(size_y),
+			bitcast<uint32_t>(rotation),
+			color1, color2,
+			anchor_x, anchor_y
+		);
+	}
+
+private:
+	forceinline ZUNResult draw_polygon_rectangle_antialias_impl(
+		float position_x, float position_y,
+		float size_x, float size_y, float rotation,
+		D3DCOLOR color1, D3DCOLOR color2,
+		uint32_t anchor_x, uint32_t anchor_y
+	) {
+		this->draw_polygon_rectangle(
+			position_x, position_y,
+			size_x + 1.0f, size_y + 1.0f, rotation,
+			(color1 >> 1 & 0x7F000000) | (color1 & 0xFFFFFF), (color2 >> 1 & 0x7F000000) | (color2 & 0xFFFFFF),
+			anchor_x, anchor_y
+		);
+		this->draw_polygon_rectangle(
+			position_x, position_y,
+			size_x, size_y, rotation,
+			color1, color2,
+			anchor_x, anchor_y
+		);
+		return ZUN_SUCCESS;
+	}
+
+	// 0x482B40
+	dllexport gnu_noinline ZUNResult vectorcall draw_polygon_rectangle_antialias_impl(
+		uint32_t, float,
+		float position_x, float position_y,
+		float size_x, uint32_t size_y, uint32_t rotation,
+		D3DCOLOR color1, D3DCOLOR color2,
+		uint32_t anchor_x, uint32_t anchor_y
+	) asm_symbol_rel(0x482B40) {
+		return this->draw_polygon_rectangle_antialias_impl(
+			position_x, position_y,
+			size_x, bitcast<float>(size_y),
+			bitcast<float>(rotation),
+			color1, color2,
+			anchor_x, anchor_y
+		);
+	}
+public:
+	forceinline ZUNResult draw_polygon_rectangle_antialias(
+		float position_x, float position_y,
+		float size_x, float size_y, float rotation,
+		D3DCOLOR color1, D3DCOLOR color2,
+		uint32_t anchor_x, uint32_t anchor_y
+	) {
+		return this->draw_polygon_rectangle_antialias_impl(
+			UNUSED_DWORD, UNUSED_FLOAT,
+			position_x, position_y,
+			size_x, bitcast<uint32_t>(size_y),
+			bitcast<uint32_t>(rotation),
+			color1, color2,
+			anchor_x, anchor_y
+		);
+	}
+
+private:
+	forceinline ZUNResult draw_polygon_line_impl(
+		float position_x, float position_y,
+		float length, float rotation,
+		D3DCOLOR color1, D3DCOLOR color2,
+		uint32_t anchor
+	) {
+		PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+		if (primitive_write_cursor + 2 < array_end_addr(this->primitive_vertex_data)) {
+			this->flush_sprites();
+
+			auto __temp = CRT::sincosf_asm(rotation);
+			float unit_x = __temp[0]; // LOCAL.2
+			float unit_y = __temp[1]; // LOCAL.1
+
+			float x0, x1;
+			switch (anchor) {
+				case 2:
+					x1 = 0.0f;
+					x0 = -length;
+					break;
+				case 1:
+					x1 = length;
+					x0 = 0.0f;
+					break;
+				case 0:
+					x1 = length * 0.5f;
+					x0 = -length * 0.5f;
+					break;
+				default:
+					x0 = x1 = rotation; // first stack arg
+					break;
+			}
+			float y0, y1;
+			y0 = y1 = 0.0f;
+
+			primitive_write_cursor[0].position.x = position_x + ((unit_x * x0) - (unit_y * y0));
+			primitive_write_cursor[0].position.y = position_y + ((unit_x * y0) + (unit_y * x0));
+			primitive_write_cursor[1].position.x = position_x + ((unit_x * x1) - (unit_y * y1));
+			primitive_write_cursor[1].position.y = position_y + ((unit_x * y1) + (unit_y * x1));
+
+			primitive_write_cursor[1].position.z = 0.0f;
+			primitive_write_cursor[0].position.z = 0.0f;
+
+			primitive_write_cursor[0].position.as2() += this->__float2_D8;
+			primitive_write_cursor[1].position.as2() += this->__float2_D8;
+
+			// This looks like copy/paste from the function below
+			// Pretty sure these can OOB write
+			primitive_write_cursor[4].position.w = 1.0f;
+			primitive_write_cursor[3].position.w = 1.0f;
+			primitive_write_cursor[2].position.w = 1.0f;
+			primitive_write_cursor[1].position.w = 1.0f;
+			primitive_write_cursor[0].position.w = 1.0f;
+
+			primitive_write_cursor[0].diffuse = color1;
+			primitive_write_cursor[1].diffuse = color2;
+
+			SUPERVISOR.d3d_disable_zwrite();
+			SUPERVISOR.d3d_zfunc_always();
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_LINESTRIP, 1, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += 2;
+			++this->__int_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+
+	// 0x482590
+	dllexport gnu_noinline ZUNResult vectorcall draw_polygon_line_impl(
+		uint32_t, float,
+		float position_x, float position_y,
+		float length, uint32_t rotation,
+		D3DCOLOR color1, D3DCOLOR color2,
+		uint32_t anchor
+	) asm_symbol_rel(0x482590) {
+		return this->draw_polygon_line_impl(
+			position_x, position_y,
+			length,
+			bitcast<float>(rotation),
+			color1, color2,
+			anchor
+		);
+	}
+public:
+	forceinline ZUNResult draw_polygon_line(
+		float position_x, float position_y,
+		float length, float rotation,
+		D3DCOLOR color1, D3DCOLOR color2,
+		uint32_t anchor
+	) {
+		return this->draw_polygon_line_impl(
+			UNUSED_DWORD, UNUSED_FLOAT,
+			position_x, position_y,
+			length, bitcast<uint32_t>(rotation),
+			color1, color2,
+			anchor
+		);
+	}
+
+private:
+	forceinline ZUNResult draw_polygon_rectangle_hollow_impl(
+		float position_x, float position_y,
+		float size_x, float size_y, float rotation,
+		D3DCOLOR color1, D3DCOLOR color2,
+		uint32_t anchor_x, uint32_t anchor_y
+	) {
+		PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+		if (primitive_write_cursor + 5 < array_end_addr(this->primitive_vertex_data)) {
+			this->flush_sprites();
+
+			auto __temp = CRT::sincosf_asm(rotation);
+			float unit_x = __temp[0]; // LOCAL.2
+			float unit_y = __temp[1]; // LOCAL.1
+
+			float x0, x1, x2, x3;
+			switch (anchor_x) {
+				case 2:
+					x1 = x2 = 0.0f;
+					x0 = x3 = -size_x;
+					break;
+				case 1:
+					x1 = x2 = size_x;
+					x0 = x3 = 0.0f;
+					break;
+				case 0:
+					x1 = x2 = size_x * 0.5f;
+					x0 = x3 = -size_x * 0.5f;
+					break;
+				default:
+					x0 = x1 = x2 = x3 = size_y; // first stack arg
+					break;
+			}
+			float y0, y1, y2, y3;
+			switch (anchor_y) {
+				case 2:
+					y0 = y1 = -size_y;
+					y2 = y3 = 0.0f;
+					break;
+				case 1:
+					y0 = y1 = 0.0f;
+					y2 = y3 = size_y;
+					break;
+				case 0:
+					y0 = y1 = -size_y * 0.5f;
+					y2 = y3 = size_y * 0.5f;
+					break;
+				default:
+					y0 = y1 = y2 = y3 = size_y; // first stack arg
+					break;
+			}
+
+			primitive_write_cursor[0].position.x = position_x + ((unit_x * x0) - (unit_y * y0));
+			primitive_write_cursor[0].position.y = position_y + ((unit_x * y0) + (unit_y * x0));
+			primitive_write_cursor[1].position.x = position_x + ((unit_x * x1) - (unit_y * y1));
+			primitive_write_cursor[1].position.y = position_y + ((unit_x * y1) + (unit_y * x1));
+			primitive_write_cursor[3].position.x = position_x + ((unit_x * x3) - (unit_y * y3));
+			primitive_write_cursor[3].position.y = position_y + ((unit_x * y3) + (unit_y * x3));
+			primitive_write_cursor[2].position.x = position_x + ((unit_x * x2) - (unit_y * y2));
+			primitive_write_cursor[2].position.y = position_y + ((unit_x * y2) + (unit_y * x2));
+			primitive_write_cursor[4].position.as2() = primitive_write_cursor[0].position.as2();
+
+			primitive_write_cursor[4].position.z = 0.0f;
+			primitive_write_cursor[3].position.z = 0.0f;
+			primitive_write_cursor[2].position.z = 0.0f;
+			primitive_write_cursor[1].position.z = 0.0f;
+			primitive_write_cursor[0].position.z = 0.0f;
+
+			primitive_write_cursor[0].position.as2() += this->__float2_D8;
+			primitive_write_cursor[1].position.as2() += this->__float2_D8;
+			primitive_write_cursor[2].position.as2() += this->__float2_D8;
+			primitive_write_cursor[3].position.as2() += this->__float2_D8;
+			primitive_write_cursor[4].position.as2() += this->__float2_D8;
+
+			primitive_write_cursor[4].position.w = 1.0f;
+			primitive_write_cursor[3].position.w = 1.0f;
+			primitive_write_cursor[2].position.w = 1.0f;
+			primitive_write_cursor[1].position.w = 1.0f;
+			primitive_write_cursor[0].position.w = 1.0f;
+
+			primitive_write_cursor[4].diffuse = color1;
+			primitive_write_cursor[3].diffuse = color1;
+			primitive_write_cursor[0].diffuse = color1;
+			primitive_write_cursor[2].diffuse = color2;
+			primitive_write_cursor[1].diffuse = color2;
+
+			SUPERVISOR.d3d_disable_zwrite();
+			SUPERVISOR.d3d_zfunc_always();
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_LINESTRIP, 4, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += 5;
+			++this->__int_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+
+	// 0x482170
+	dllexport gnu_noinline ZUNResult vectorcall draw_polygon_rectangle_hollow_impl(
+		uint32_t, float,
+		float position_x, float position_y,
+		float size_x, uint32_t size_y, uint32_t rotation,
+		D3DCOLOR color1, D3DCOLOR color2,
+		uint32_t anchor_x, uint32_t anchor_y
+	) asm_symbol_rel(0x482170) {
+		return this->draw_polygon_rectangle_hollow_impl(
+			position_x, position_y,
+			size_x, bitcast<float>(size_y),
+			bitcast<float>(rotation),
+			color1, color2,
+			anchor_x, anchor_y
+		);
+	}
+public:
+	forceinline ZUNResult draw_polygon_rectangle_hollow(
+		float position_x, float position_y,
+		float size_x, float size_y, float rotation,
+		D3DCOLOR color1, D3DCOLOR color2,
+		uint32_t anchor_x, uint32_t anchor_y
+	) {
+		return this->draw_polygon_rectangle_hollow_impl(
+			UNUSED_DWORD, UNUSED_FLOAT,
+			position_x, position_y,
+			size_x, bitcast<uint32_t>(size_y),
+			bitcast<uint32_t>(rotation),
+			color1, color2,
+			anchor_x, anchor_y
+		);
+	}
+
+private:
+	forceinline ZUNResult draw_polygon_triangle_impl(
+		float position_x, float position_y,
+		float size_x, float size_y, float rotation,
+		D3DCOLOR color1, D3DCOLOR color2,
+		uint32_t anchor_x, uint32_t anchor_y
+	) {
+		PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+		if (primitive_write_cursor + 3 < array_end_addr(this->primitive_vertex_data)) {
+			this->flush_sprites();
+
+			auto __temp = CRT::sincosf_asm(rotation);
+			float unit_x = __temp[0]; // LOCAL.2
+			float unit_y = __temp[1]; // LOCAL.1
+
+			float x0, x1, x2;
+			switch (anchor_x) {
+				case 2:
+					x1 = 0.0f;
+					x0 = x2 = -size_x;
+					break;
+				case 1:
+					x1 = size_x;
+					x0 = x2 = 0.0f;
+					break;
+				case 0:
+					x1 = size_x * 0.5f;
+					x0 = x2 = -size_x * 0.5f;
+					break;
+				default:
+					x0 = x1 = x2 = size_y; // first stack arg
+					break;
+			}
+			float y0, y1, y2;
+			switch (anchor_y) {
+				case 2:
+					y0 = -size_y;
+					y1 = -size_y * 0.5f;
+					y2 = 0.0f;
+					break;
+				case 1:
+					y0 = 0.0f;
+					y1 = size_y * 0.5f;
+					y2 = size_y;
+					break;
+				case 0:
+					y0 = -size_y * 0.5f;
+					y1 = 0.0f;
+					y2 = size_y * 0.5f;
+					break;
+				default:
+					y0 = y1 = y2 = size_y; // first stack arg
+					break;
+			}
+
+			primitive_write_cursor[0].position.x = position_x + ((unit_x * x0) - (unit_y * y0));
+			primitive_write_cursor[0].position.y = position_y + ((unit_x * y0) + (unit_y * x0));
+			primitive_write_cursor[1].position.x = position_x + ((unit_x * x1) - (unit_y * y1));
+			primitive_write_cursor[1].position.y = position_y + ((unit_x * y1) + (unit_y * x1));
+			primitive_write_cursor[2].position.x = position_x + ((unit_x * x2) - (unit_y * y2));
+			primitive_write_cursor[2].position.y = position_y + ((unit_x * y2) + (unit_y * x2));
+
+			primitive_write_cursor[2].position.z = 0.0f;
+			primitive_write_cursor[1].position.z = 0.0f;
+			primitive_write_cursor[0].position.z = 0.0f;
+
+			primitive_write_cursor[0].position.as2() += this->__float2_D8;
+			primitive_write_cursor[1].position.as2() += this->__float2_D8;
+			primitive_write_cursor[2].position.as2() += this->__float2_D8;
+
+			primitive_write_cursor[2].position.w = 1.0f;
+			primitive_write_cursor[1].position.w = 1.0f;
+			primitive_write_cursor[0].position.w = 1.0f;
+
+			primitive_write_cursor[2].diffuse = color1;
+			primitive_write_cursor[0].diffuse = color1;
+			primitive_write_cursor[1].diffuse = color2;
+
+			SUPERVISOR.d3d_disable_zwrite();
+			SUPERVISOR.d3d_zfunc_always();
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 1, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += 3;
+			++this->__int_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+
+	// 0x482810
+	dllexport gnu_noinline ZUNResult vectorcall draw_polygon_triangle_impl(
+		uint32_t, float,
+		float position_x, float position_y,
+		float size_x, uint32_t size_y, uint32_t rotation,
+		D3DCOLOR color1, D3DCOLOR color2,
+		uint32_t anchor_x, uint32_t anchor_y
+	) asm_symbol_rel(0x482810) {
+		return this->draw_polygon_triangle_impl(
+			position_x, position_y,
+			size_x, bitcast<float>(size_y),
+			bitcast<float>(rotation),
+			color1, color2,
+			anchor_x, anchor_y
+		);
+	}
+public:
+	forceinline ZUNResult draw_polygon_triangle(
+		float position_x, float position_y,
+		float size_x, float size_y, float rotation,
+		D3DCOLOR color1, D3DCOLOR color2,
+		uint32_t anchor_x, uint32_t anchor_y
+	) {
+		return this->draw_polygon_triangle_impl(
+			UNUSED_DWORD, UNUSED_FLOAT,
+			position_x, position_y,
+			size_x, bitcast<uint32_t>(size_y),
+			bitcast<uint32_t>(rotation),
+			color1, color2,
+			anchor_x, anchor_y
+		);
 	}
 
 	// 0x481210
@@ -19345,19 +20418,20 @@ struct AnmManager {
 		SUPERVISOR.d3d_disable_zwrite();
 
 		switch (vm->data.render_mode) {
-			case 0:
+			case Mode2DSprite: // 0
 				if (!vm->get_alpha() && !vm->get_alpha2()) {
 					return ZUN_ERROR;
 				}
 				vm->__get_vertex_positions(&SPRITE_VERTEX_BUFFER_A[0].position, &SPRITE_VERTEX_BUFFER_A[1].position, &SPRITE_VERTEX_BUFFER_A[2].position, &SPRITE_VERTEX_BUFFER_A[3].position);
 				return this->__render_vertices(vm, RENDER_VERTICES_ROUND_INPUTS);
-			case 1: case 3:
+			case Mode2DSpriteRotated: // 1
+			case Mode2DSpriteRotatedB: // 3
 				if (!vm->get_alpha() && !vm->get_alpha2()) {
 					return ZUN_ERROR;
 				}
 				vm->__get_rotated_vertex_positions(&SPRITE_VERTEX_BUFFER_A[0].position, &SPRITE_VERTEX_BUFFER_A[1].position, &SPRITE_VERTEX_BUFFER_A[2].position, &SPRITE_VERTEX_BUFFER_A[3].position);
 				return this->__render_vertices(vm, RENDER_VERTICES_DEFAULT);
-			case 4:
+			case Mode3DSpriteBillboard: // 4
 				if (!vm->get_alpha() && !vm->get_alpha2()) {
 					return ZUN_ERROR;
 				}
@@ -19365,7 +20439,7 @@ struct AnmManager {
 					return ZUN_ERROR;
 				}
 				return this->__render_vertices(vm, RENDER_VERTICES_DEFAULT);
-			case 5: {
+			case Mode3DSprite: { // 5
 				if (!vm->get_alpha() && !vm->get_alpha2()) {
 					return ZUN_ERROR;
 				}
@@ -19377,12 +20451,12 @@ struct AnmManager {
 				SPRITE_VERTEX_BUFFER_A[0].position.w = 1.0f;
 				return ret;
 			}
-			case 6:
+			case Mode3DSpriteBillboardSpecial: // 6
 				if (!vm->get_alpha() && !vm->get_alpha2()) {
 					return ZUN_ERROR;
 				}
 				return this->__draw_vm_type_6(vm);
-			case 7: {
+			case Mode3DSpriteSpecial: { // 7
 				if (!vm->get_alpha() && !vm->get_alpha2()) {
 					return ZUN_ERROR;
 				}
@@ -19406,6 +20480,7 @@ struct AnmManager {
 					D3DXVec3Transform(float4_ptr, &vertexA_ptr->position, &this->__matrix_31207B0);
 					camera = SUPERVISOR.current_camera_ptr;
 					float length = float4_ptr->distance3(&camera->position);
+					camera = SUPERVISOR.current_camera_ptr;
 					float draw_begin = camera->sky.begin_distance;
 					if (length > draw_begin) {
 						float E = (draw_begin - length) / draw_diff;
@@ -19435,12 +20510,12 @@ struct AnmManager {
 				SPRITE_VERTEX_BUFFER_A[0].position.w = 1.0f;
 				return ret;
 			}
-			case 8:
+			case Mode3DObject: // 8
 				if (!vm->get_alpha() && !vm->get_alpha2()) {
 					return ZUN_ERROR;
 				}
 				return this->__draw_vm_type_8_F(vm);
-			case 15: {
+			case Mode3DObjectB: { // 15
 				if (!vm->get_alpha() && !vm->get_alpha2()) {
 					return ZUN_ERROR;
 				}
@@ -19449,22 +20524,206 @@ struct AnmManager {
 				SUPERVISOR.d3d_disable_fog();
 				return ret;
 			}
-			case 9: case 12: case 13: case 14:
-				return this->__draw_vm_type_9_C_D_E(vm, vm->controller.special_data, vm->data.current_context.int_vars[0]);
-			case 11:
-				return this->__draw_vm_type_B(vm, vm->controller.special_data, vm->data.current_context.int_vars[0]);
-			case 24: case 25:
-				return this->__draw_vm_type_18_19(vm, vm->controller.special_data, vm->data.current_context.int_vars[0]);
-			case 2:
+			case ModeTexturedRing: // 9
+			case Mode12: // 12
+			case ModeTexturedArcA: // 13
+			case ModeTexturedArcB: // 14
+				return this->__draw_vm_type_9_C_D_E(vm, vm->controller.special_data, vm->data.current_context.int_vars[0] * 2);
+			case Mode11: // 11
+				return this->__draw_vm_type_B(vm, vm->controller.special_data, vm->data.current_context.int_vars[0] * 2);
+			case ModeTexturedCylinder: // 24
+			case ModeTexturedRing3D: // 25
+				return this->__draw_vm_type_18_19(vm, vm->controller.special_data, vm->data.current_context.int_vars[0] * 2);
+			case Mode2DSpriteBlurry: // 2
 				if (!vm->get_alpha() && !vm->get_alpha2()) {
 					return ZUN_ERROR;
 				}
 				vm->__get_vertex_positions(&SPRITE_VERTEX_BUFFER_A[0].position, &SPRITE_VERTEX_BUFFER_A[1].position, &SPRITE_VERTEX_BUFFER_A[2].position, &SPRITE_VERTEX_BUFFER_A[3].position);
 				return this->__render_vertices(vm, RENDER_VERTICES_DEFAULT);
-			case 16: case 20: case 21: case 22: case 26: case 27: case 28:
-				// TODO: polygons
-			case 17: case 18: case 19:
-				// TODO: polygons
+			case ModePolygonRectangle: // 16
+			case ModePolygonRectangleGradient: // 20
+			case ModePolygonRectangleAntiAlias: // 21
+			case ModePolygonRectangleGradientAntiAlias: // 22
+			case ModePolygonLine: // 26
+			case ModePolygonRectangleHollow: // 27
+			case ModePolygonTriangle: // 28
+			{
+				float angle = vm->data.rotation.z;
+				Float2 size = vm->data.sprite_size * vm->data.scale;
+				Float3 position = vm->data.position + vm->controller.position + vm->data.__position_2;
+				vm->__adjust_position_for_resolution_and_origin_modes(&position);
+
+				AnmVM* parent = vm->controller.parent;
+				if (
+					parent &&
+					!vm->data.__treat_as_root
+				) {
+					size *= parent->data.scale;
+					angle += parent->data.rotation.z;
+				}
+
+				this->setup_render_state_for_vm(vm);
+
+				switch (vm->data.resolution_mode) {
+					// Note: No 3 or 4
+					case 1:
+						size *= WINDOW_DATA.__game_scale;
+						break;
+					case 2:
+						size *= WINDOW_DATA.__game_scale * 0.5f;
+						break;
+				}
+
+				switch (vm->data.render_mode) {
+					case ModePolygonLine: { // 26
+						D3DCOLOR color1, color2;
+						if (vm->data.color_mode != 0) {
+							color2 = vm->data.color2;
+							color1 = vm->data.color1;
+						} else {
+							color1 = color2 = vm->data.color1;
+						}
+						this->draw_polygon_line(
+							position.x, position.y,
+							size.x, angle,
+							color1, color2,
+							vm->data.x_anchor_mode
+						);
+						break;
+					}
+					case ModePolygonRectangle: { // 16
+						D3DCOLOR color = vm->data.color1;
+						this->draw_polygon_rectangle(
+							position.x, position.y,
+							size.x, size.y,
+							angle,
+							color, color,
+							vm->data.x_anchor_mode, vm->data.y_anchor_mode
+						);
+						break;
+					}
+					case ModePolygonRectangleHollow: { // 27
+						D3DCOLOR color1, color2;
+						if (vm->data.color_mode != 0) {
+							color2 = vm->data.color2;
+							color1 = vm->data.color1;
+						} else {
+							color1 = color2 = vm->data.color1;
+						}
+						this->draw_polygon_rectangle_hollow(
+							position.x, position.y,
+							size.x, size.y,
+							angle,
+							color1, color2,
+							vm->data.x_anchor_mode, vm->data.y_anchor_mode
+						);
+						break;
+					}
+					case ModePolygonRectangleGradient: { // 20
+						this->draw_polygon_rectangle(
+							position.x, position.y,
+							size.x, size.y,
+							angle,
+							vm->data.color1, vm->data.color2,
+							vm->data.x_anchor_mode, vm->data.y_anchor_mode
+						);
+						break;
+					}
+					case ModePolygonRectangleAntiAlias: { // 21
+						D3DCOLOR color = vm->data.color1;
+						this->draw_polygon_rectangle_antialias(
+							position.x, position.y,
+							size.x, size.y,
+							angle,
+							color, color,
+							vm->data.x_anchor_mode, vm->data.y_anchor_mode
+						);
+						break;
+					}
+					case ModePolygonRectangleGradientAntiAlias: { // 22
+						this->draw_polygon_rectangle_antialias(
+							position.x, position.y,
+							size.x, size.y,
+							angle,
+							vm->data.color1, vm->data.color2,
+							vm->data.x_anchor_mode, vm->data.y_anchor_mode
+						);
+						break;
+					}
+					case ModePolygonTriangle: { // 28
+						this->draw_polygon_triangle(
+							position.x, position.y,
+							size.x, size.y,
+							angle,
+							vm->data.color1, vm->data.color2,
+							vm->data.x_anchor_mode, vm->data.y_anchor_mode
+						);
+						break;
+					}
+				}
+				break;
+			}
+			case ModePolygon: // 17
+			case ModePolygonHollow: // 18
+			case ModePolygonRing: // 19
+			{
+				float angle = vm->data.rotation.z;
+				Float2 size = vm->data.sprite_size * vm->data.scale;
+				Float3 position = vm->data.position + vm->controller.position + vm->data.__position_2;
+				vm->__adjust_position_for_resolution_and_origin_modes(&position);
+
+				AnmVM* parent = vm->controller.parent;
+				if (
+					parent &&
+					!vm->data.__treat_as_root
+				) {
+					angle += parent->data.rotation.z;
+					size *= parent->data.scale;
+				}
+
+				switch (vm->data.resolution_mode) {
+					// Note: No 3 or 4
+					case 1:
+						size *= WINDOW_DATA.__game_scale;
+						break;
+					case 2:
+						size *= WINDOW_DATA.__game_scale * 0.5f;
+						break;
+				}
+
+				this->setup_render_state_for_vm(vm);
+
+				switch (vm->data.render_mode) {
+					case ModePolygonRing: { // 19
+						this->draw_polygon_ring(
+							position.x, position.y,
+							size.x, size.y, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1
+						);
+						break;
+					}
+					case ModePolygonHollow: { // 18
+						this->draw_polygon_hollow(
+							position.x, position.y,
+							size.x, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1
+						);
+						break;
+					}
+					case ModePolygon: { // 17
+						this->draw_polygon(
+							position.x, position.y,
+							size.x, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1, vm->data.color2
+						);
+						break;
+					}
+				}
+				break;
+			}
 		}
 		return ZUN_SUCCESS;
 	}
@@ -23202,13 +24461,14 @@ dllexport gnu_noinline void thiscall Gui::__update_life_ui(int32_t life_count, i
 				AnmVM** empty_life_vms = &this->player_life_icons[final_life_index];
 
 				uint32_t empty_life_icons = life_max - final_life_index;
+				final_life_index = life_max;
 				do {
 					(*empty_life_vms++)->interrupt(3);
 				} while (--empty_life_icons);
 			}
 		}
 
-		if (final_life_index < (uint32_t)LIFE_ICONS_IN_GUI) {
+		if ((uint32_t)final_life_index < (uint32_t)LIFE_ICONS_IN_GUI) {
 			life_vms = this->player_life_icons;
 
 			AnmVM** empty_life_vms = &this->player_life_icons[final_life_index];
@@ -23260,13 +24520,14 @@ dllexport gnu_noinline void thiscall Gui::__update_bomb_ui(int32_t bomb_count, i
 				AnmVM** empty_bomb_vms = &this->player_bomb_icons[final_bomb_index];
 
 				uint32_t empty_bomb_icons = bomb_max - final_bomb_index;
+				final_bomb_index = bomb_max;
 				do {
 					(*empty_bomb_vms++)->interrupt(3);
 				} while (--empty_bomb_icons);
 			}
 		}
 
-		if (final_bomb_index < (uint32_t)BOMB_ICONS_IN_GUI) {
+		if ((uint32_t)final_bomb_index < (uint32_t)BOMB_ICONS_IN_GUI) {
 			bomb_vms = this->player_bomb_icons;
 
 			AnmVM** empty_bomb_vms = &this->player_bomb_icons[final_bomb_index];
@@ -25730,7 +26991,7 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 			}
 			case render_mode: // 302
 				this->data.render_mode = IntArg(0); // IMMEDIATE ARGUMENT
-				if (this->data.render_mode == 10) {
+				if (this->data.render_mode == Mode10) { // 10
 					this->__sub_4832F0();
 				}
 				break;
@@ -25739,33 +27000,33 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 				this->controller.position = {};
 				break;
 			case textured_ring: { // 600
-				this->data.render_mode = 9;
+				this->data.render_mode = ModeTexturedRing; // 9
 				int32_t max_count = ParseIntArg(0);
 				this->allocate_special_vertex_buffer(max_count * sizeof(SpriteVertex[2]));
 				break;
 			}
 			case textured_arc_A: { // 601
-				this->data.render_mode = 13;
+				this->data.render_mode = ModeTexturedArcA; // 13
 				int32_t max_count = ParseIntArg(0);
 				this->allocate_special_vertex_buffer(max_count * sizeof(SpriteVertex[2]));
 				break;
 			}
 			case textured_arc_B: { // 602
-				this->data.render_mode = 14;
+				this->data.render_mode = ModeTexturedArcB; // 14
 				int32_t max_count = ParseIntArg(0);
 				this->allocate_special_vertex_buffer(max_count * sizeof(SpriteVertex[2]));
 				break;
 			}
 			case textured_cylinder: { // 609
-				this->data.render_mode = 24;
+				this->data.render_mode = ModeTexturedCylinder; // 24
 				int32_t max_count = ParseIntArg(0);
-				this->allocate_special_vertex_buffer(max_count * 0x30); // TODO: convert to vertex type
+				this->allocate_special_vertex_buffer(max_count * sizeof(SpriteVertexC[2]));
 				break;
 			}
-			case textured_ring_3D: { // 609
-				this->data.render_mode = 25;
+			case textured_ring_3D: { // 610
+				this->data.render_mode = ModeTexturedRing3D; // 25
 				int32_t max_count = ParseIntArg(0);
-				this->allocate_special_vertex_buffer(max_count * 0x30); // TODO: convert to vertex type
+				this->allocate_special_vertex_buffer(max_count * sizeof(SpriteVertexC[2]));
 				break;
 			}
 			case sprite_window: { // 418
@@ -25781,53 +27042,53 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 				this->data.__continual_sprite_window = ParseIntArg(0);
 				break;
 			case polygon_rectangle: // 603
-				this->data.render_mode = 16;
+				this->data.render_mode = ModePolygonRectangle; // 16
 				this->data.sprite_size.x = ParseFloatArg(0);
 				this->data.sprite_size.y = ParseFloatArg(1);
 				break;
 			case polygon_rectangle_gradient: // 606
-				this->data.render_mode = 20;
+				this->data.render_mode = ModePolygonRectangleGradient; // 20
 				this->data.sprite_size.x = ParseFloatArg(0);
 				this->data.sprite_size.y = ParseFloatArg(1);
 				break;
 			case polygon_rectangle_antialias: // 607
-				this->data.render_mode = 21;
+				this->data.render_mode = ModePolygonRectangleAntiAlias; // 21
 				this->data.sprite_size.x = ParseFloatArg(0);
 				this->data.sprite_size.y = ParseFloatArg(1);
 				break;
 			case polygon_rectangle_gradient_antialias: // 608
-				this->data.render_mode = 22;
+				this->data.render_mode = ModePolygonRectangleGradientAntiAlias; // 22
 				this->data.sprite_size.x = ParseFloatArg(0);
 				this->data.sprite_size.y = ParseFloatArg(1);
 				break;
 			case polygon_line: // 613
-				this->data.render_mode = 26;
+				this->data.render_mode = ModePolygonLine; // 26
 				this->data.sprite_size.x = ParseFloatArg(0);
 				this->data.sprite_size.y = ParseFloatArg(1);
 				break;
 			case polygon_rectangle_hollow: // 612
-				this->data.render_mode = 27;
+				this->data.render_mode = ModePolygonRectangleHollow; // 27
 				this->data.sprite_size.x = ParseFloatArg(0);
 				this->data.sprite_size.y = ParseFloatArg(1);
 				break;
 			case polygon: // 604
-				this->data.render_mode = 17;
+				this->data.render_mode = ModePolygon; // 17
 				this->data.sprite_size.x = ParseFloatArg(0);
 				this->data.current_context.int_vars[0] = ParseIntArg(1);
 				break;
 			case polygon_hollow: // 605
-				this->data.render_mode = 18;
+				this->data.render_mode = ModePolygonHollow; // 18
 				this->data.sprite_size.x = ParseFloatArg(0);
 				this->data.current_context.int_vars[0] = ParseIntArg(1);
 				break;
 			case polygon_ring: // 611
-				this->data.render_mode = 19;
+				this->data.render_mode = ModePolygonRing; // 19
 				this->data.sprite_size.x = ParseFloatArg(0);
 				this->data.sprite_size.y = ParseFloatArg(1);
 				this->data.current_context.int_vars[0] = ParseIntArg(2);
 				break;
-			case __polygon_unknown_A: // 614
-				this->data.render_mode = 28;
+			case polygon_triangle: // 614
+				this->data.render_mode = ModePolygonTriangle; // 28
 				this->data.sprite_size.x = ParseFloatArg(0);
 				this->data.sprite_size.y = ParseFloatArg(1);
 				break;
@@ -37707,14 +38968,18 @@ struct Stage : ZUNTask {
 										if (quad->size.y != 0.0f) {
 											vm->set_y_scale(quad->size.y / vm->get_sprite()->__size_y);
 										}
-									case 0: case 1: case 2: case 3:
+									case Mode2DSprite: // 0
+									case Mode2DSpriteRotated: // 1
+									case Mode2DSpriteBlurry: // 2
+									case Mode2DSpriteRotatedB: // 3
 										break;
 								}
 								switch (vm->data.render_mode) {
 									default:
 										SUPERVISOR.d3d_disable_fog();
 										break;
-									case 8: case 24:
+									case Mode3DObject: // 8
+									case ModeTexturedCylinder: // 24 ...why?
 										SUPERVISOR.d3d_enable_fog();
 										break;
 								}
@@ -40758,7 +42023,7 @@ enum BulletState {
 
 // size: 0xFA0
 struct Bullet {
- 	ZUNList<Bullet> free_list_node; // 0x0
+	ZUNList<Bullet> free_list_node; // 0x0
 	ZUNList<Bullet> tick_list_node; // 0x10
 	union {
 		uint32_t flags; // 0x20
@@ -44580,14 +45845,14 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
 	vm->data.blend_mode = BlendAdditive; // 1
 	vm->data.x_anchor_mode = 0;
 	vm->data.y_anchor_mode = 2;
-	vm->data.render_mode = 1;
+	vm->data.render_mode = Mode2DSpriteRotated; // 1
 	vm->data.origin_mode = 1;
 
 	vm = &this->__spawn_effect_vm;
 	clang_forceinline LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, this->params.color + 56);
 	vm->interrupt_and_run(2);
 	vm->data.blend_mode = BlendAdditive; // 1
-	vm->data.render_mode = 1;
+	vm->data.render_mode = Mode2DSpriteRotated; // 1
 	vm->data.origin_mode = 1;
 
 	if (this->sprite > 17 && this->sprite != 38) {
@@ -44655,7 +45920,7 @@ dllexport gnu_noinline int thiscall LaserInfinite::initialize(void* data) {
 	this->main_vm.data.blend_mode = BlendAdditive; // 1
 	this->main_vm.data.x_anchor_mode = 0;
 	this->main_vm.data.y_anchor_mode = 1;
-	this->main_vm.data.render_mode = 1;
+	this->main_vm.data.render_mode = Mode2DSpriteRotated; // 1
 	this->main_vm.data.origin_mode = 1;
 
 	vm = &this->__spawn_effect_vm;
@@ -44663,7 +45928,7 @@ dllexport gnu_noinline int thiscall LaserInfinite::initialize(void* data) {
 	vm->interrupt_and_run(2);
 
 	this->__spawn_effect_vm.data.blend_mode = BlendAdditive; // 1
-	this->__spawn_effect_vm.data.render_mode = 1;
+	this->__spawn_effect_vm.data.render_mode = Mode2DSpriteRotated; // 1
 	this->__spawn_effect_vm.data.origin_mode = 1;
 
 	SOUND_MANAGER.play_sound_positioned_validate(this->params.shoot_sound, 0.0f);
@@ -44718,7 +45983,7 @@ dllexport gnu_noinline int thiscall LaserCurve::initialize(void* data) {
 	vm->data.blend_mode = BlendAdditive; // 1
 	this->main_vm.data.x_anchor_mode = 0;
 	this->main_vm.data.y_anchor_mode = 1;
-	this->main_vm.data.render_mode = 1;
+	this->main_vm.data.render_mode = Mode2DSpriteRotated; // 1
 	this->main_vm.data.origin_mode = 1;
 
 	vm = &this->__vm_11F4;
@@ -44726,7 +45991,7 @@ dllexport gnu_noinline int thiscall LaserCurve::initialize(void* data) {
 	vm->interrupt_and_run(2);
 
 	vm->data.blend_mode = BlendAdditive; // 1
-	this->__vm_11F4.data.render_mode = 1;
+	this->__vm_11F4.data.render_mode = Mode2DSpriteRotated; // 1
 	this->__vm_11F4.data.origin_mode = 1;
 
 	this->vertices = (SpriteVertex*)malloc(this->params.curve_length * sizeof(SpriteVertex[2]));
@@ -54517,7 +55782,16 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 		enemy_manager &&
 		!enemy_manager->__hide_boss_hud
 	) {
-		for (int32_t i = 0; i < MAX_LIFEBARS_IN_GUI; ++i) {
+		// BUG(?): This -1 just makes the third bar do nothing
+		for (
+			int32_t i = 0;
+#if ENABLE_THIRD_BOSS_BAR
+			i < MAX_LIFEBARS_IN_GUI;
+#else
+			i < MAX_LIFEBARS_IN_GUI - 1;
+#endif
+			++i
+		) {
 			Enemy* boss = NULL;
 			clang_forceinline boss = get_boss_by_index(i);
 			if (boss) {
