@@ -1,0 +1,6153 @@
+#pragma mapfile "F:\\Touhou_Stuff_2\\_thtk-bin-new\\__truth\\map\\any.anmm"
+#pragma mapfile "F:\\Touhou_Stuff_2\\_thtk-bin-new\\__truth\\map\\any.anmm"
+
+entry {
+    path: "data/enemy/enemy.png",
+    img_width: 512,
+    img_height: 512,
+    img_format: FORMAT_ARGB_4444,
+    sprites: {
+        sprite0: {x: 0.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite1: {x: 32.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite2: {x: 64.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite3: {x: 96.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite4: {x: 128.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite5: {x: 160.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite6: {x: 192.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite7: {x: 224.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite8: {x: 256.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite9: {x: 288.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite10: {x: 320.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite11: {x: 352.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite12: {x: 0.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite13: {x: 32.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite14: {x: 64.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite15: {x: 96.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite16: {x: 128.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite17: {x: 160.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite18: {x: 192.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite19: {x: 224.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite20: {x: 256.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite21: {x: 288.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite22: {x: 320.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite23: {x: 352.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite24: {x: 0.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite25: {x: 32.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite26: {x: 64.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite27: {x: 96.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite28: {x: 128.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite29: {x: 160.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite30: {x: 192.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite31: {x: 224.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite32: {x: 256.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite33: {x: 288.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite34: {x: 320.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite35: {x: 352.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite36: {x: 0.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite37: {x: 32.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite38: {x: 64.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite39: {x: 96.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite40: {x: 128.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite41: {x: 160.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite42: {x: 192.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite43: {x: 224.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite44: {x: 256.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite45: {x: 288.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite46: {x: 320.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite47: {x: 352.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite48: {x: 0.0, y: 0.0, w: 48.0, h: 32.0},
+        sprite49: {x: 48.0, y: 0.0, w: 48.0, h: 32.0},
+        sprite50: {x: 96.0, y: 0.0, w: 48.0, h: 32.0},
+        sprite51: {x: 144.0, y: 0.0, w: 48.0, h: 32.0},
+        sprite52: {x: 0.0, y: 32.0, w: 48.0, h: 32.0},
+        sprite53: {x: 48.0, y: 32.0, w: 48.0, h: 32.0},
+        sprite54: {x: 96.0, y: 32.0, w: 48.0, h: 32.0},
+        sprite55: {x: 144.0, y: 32.0, w: 48.0, h: 32.0},
+        sprite56: {x: 0.0, y: 64.0, w: 48.0, h: 32.0},
+        sprite57: {x: 48.0, y: 64.0, w: 48.0, h: 32.0},
+        sprite58: {x: 96.0, y: 64.0, w: 48.0, h: 32.0},
+        sprite59: {x: 144.0, y: 64.0, w: 48.0, h: 32.0},
+        sprite60: {x: 0.0, y: 96.0, w: 48.0, h: 32.0},
+        sprite61: {x: 48.0, y: 96.0, w: 48.0, h: 32.0},
+        sprite62: {x: 96.0, y: 96.0, w: 48.0, h: 32.0},
+        sprite63: {x: 144.0, y: 96.0, w: 48.0, h: 32.0},
+        sprite64: {x: 0.0, y: 128.0, w: 48.0, h: 32.0},
+        sprite65: {x: 48.0, y: 128.0, w: 48.0, h: 32.0},
+        sprite66: {x: 96.0, y: 128.0, w: 48.0, h: 32.0},
+        sprite67: {x: 144.0, y: 128.0, w: 48.0, h: 32.0},
+        sprite68: {x: 0.0, y: 160.0, w: 48.0, h: 32.0},
+        sprite69: {x: 48.0, y: 160.0, w: 48.0, h: 32.0},
+        sprite70: {x: 96.0, y: 160.0, w: 48.0, h: 32.0},
+        sprite71: {x: 144.0, y: 160.0, w: 48.0, h: 32.0},
+        sprite72: {x: 320.0, y: 0.0, w: 48.0, h: 48.0},
+        sprite73: {x: 368.0, y: 0.0, w: 48.0, h: 48.0},
+        sprite74: {x: 416.0, y: 0.0, w: 48.0, h: 48.0},
+        sprite75: {x: 464.0, y: 0.0, w: 48.0, h: 48.0},
+        sprite76: {x: 320.0, y: 48.0, w: 48.0, h: 48.0},
+        sprite77: {x: 368.0, y: 48.0, w: 48.0, h: 48.0},
+        sprite78: {x: 416.0, y: 48.0, w: 48.0, h: 48.0},
+        sprite79: {x: 464.0, y: 48.0, w: 48.0, h: 48.0},
+        sprite80: {x: 320.0, y: 96.0, w: 48.0, h: 48.0},
+        sprite81: {x: 368.0, y: 96.0, w: 48.0, h: 48.0},
+        sprite82: {x: 416.0, y: 96.0, w: 48.0, h: 48.0},
+        sprite83: {x: 464.0, y: 96.0, w: 48.0, h: 48.0},
+        sprite84: {x: 320.0, y: 144.0, w: 48.0, h: 48.0},
+        sprite85: {x: 368.0, y: 144.0, w: 48.0, h: 48.0},
+        sprite86: {x: 416.0, y: 144.0, w: 48.0, h: 48.0},
+        sprite87: {x: 464.0, y: 144.0, w: 48.0, h: 48.0},
+        sprite88: {x: 320.0, y: 192.0, w: 48.0, h: 48.0},
+        sprite89: {x: 368.0, y: 192.0, w: 48.0, h: 48.0},
+        sprite90: {x: 416.0, y: 192.0, w: 48.0, h: 48.0},
+        sprite91: {x: 464.0, y: 192.0, w: 48.0, h: 48.0},
+        sprite92: {x: 320.0, y: 240.0, w: 48.0, h: 48.0},
+        sprite93: {x: 368.0, y: 240.0, w: 48.0, h: 48.0},
+        sprite94: {x: 416.0, y: 240.0, w: 48.0, h: 48.0},
+        sprite95: {x: 464.0, y: 240.0, w: 48.0, h: 48.0},
+        sprite96: {x: 0.0, y: 448.0, w: 64.0, h: 64.0},
+        sprite97: {x: 64.0, y: 448.0, w: 64.0, h: 64.0},
+        sprite98: {x: 128.0, y: 448.0, w: 64.0, h: 64.0},
+        sprite99: {x: 192.0, y: 448.0, w: 64.0, h: 64.0},
+        sprite100: {x: 256.0, y: 448.0, w: 64.0, h: 64.0},
+        sprite101: {x: 320.0, y: 448.0, w: 64.0, h: 64.0},
+        sprite102: {x: 384.0, y: 448.0, w: 64.0, h: 64.0},
+        sprite103: {x: 448.0, y: 448.0, w: 64.0, h: 64.0},
+        sprite104: {x: 384.0, y: 320.0, w: 64.0, h: 64.0},
+        sprite105: {x: 448.0, y: 320.0, w: 64.0, h: 64.0},
+        sprite106: {x: 384.0, y: 384.0, w: 64.0, h: 64.0},
+        sprite107: {x: 448.0, y: 384.0, w: 64.0, h: 64.0},
+        sprite108: {x: 0.0, y: 288.0, w: 32.0, h: 32.0},
+        sprite109: {x: 32.0, y: 288.0, w: 32.0, h: 32.0},
+        sprite110: {x: 64.0, y: 288.0, w: 32.0, h: 32.0},
+        sprite111: {x: 96.0, y: 288.0, w: 32.0, h: 32.0},
+        sprite112: {x: 128.0, y: 256.0, w: 32.0, h: 32.0},
+        sprite113: {x: 160.0, y: 256.0, w: 32.0, h: 32.0},
+        sprite114: {x: 192.0, y: 256.0, w: 32.0, h: 32.0},
+        sprite115: {x: 224.0, y: 256.0, w: 32.0, h: 32.0},
+        sprite116: {x: 128.0, y: 288.0, w: 32.0, h: 32.0},
+        sprite117: {x: 160.0, y: 288.0, w: 32.0, h: 32.0},
+        sprite118: {x: 192.0, y: 288.0, w: 32.0, h: 32.0},
+        sprite119: {x: 224.0, y: 288.0, w: 32.0, h: 32.0},
+    },
+}
+
+
+script 0 script0 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite0);
++5: // 5
+        sprite_set(sprite1);
++5: // 10
+        sprite_set(sprite2);
++5: // 15
+        sprite_set(sprite3);
++5: // 20
+    }
+}
+
+
+script 1 script1 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite4);
++4: // 4
+    sprite_set(sprite5);
++4: // 8
+    sprite_set(sprite6);
++4: // 12
+    sprite_set(sprite7);
+    loop {
++5: // 17
+        sprite_set(sprite8);
++5: // 22
+        sprite_set(sprite9);
++5: // 27
+        sprite_set(sprite10);
++5: // 32
+        sprite_set(sprite11);
+    }
+}
+
+
+script 2 script2 {
+    layer(Layer8);
+    sprite_set(sprite4);
++4: // 4
+    sprite_set(sprite5);
++4: // 8
+    sprite_set(sprite6);
++4: // 12
+    sprite_set(sprite7);
+    loop {
++5: // 17
+        sprite_set(sprite8);
++5: // 22
+        sprite_set(sprite9);
++5: // 27
+        sprite_set(sprite10);
++5: // 32
+        sprite_set(sprite11);
+    }
+}
+
+
+script 3 script3 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite7);
++4: // 4
+    sprite_set(sprite6);
++4: // 8
+    sprite_set(sprite5);
++4: // 12
+    sprite_set(sprite4);
+    loop {
++5: // 17
+        sprite_set(sprite0);
++5: // 22
+        sprite_set(sprite1);
++5: // 27
+        sprite_set(sprite2);
++5: // 32
+        sprite_set(sprite3);
+    }
+}
+
+
+script 4 script4 {
+    layer(Layer8);
+    sprite_set(sprite7);
++4: // 4
+    sprite_set(sprite6);
++4: // 8
+    sprite_set(sprite5);
++4: // 12
+    sprite_set(sprite4);
+    loop {
++5: // 17
+        sprite_set(sprite0);
++5: // 22
+        sprite_set(sprite1);
++5: // 27
+        sprite_set(sprite2);
++5: // 32
+        sprite_set(sprite3);
+    }
+}
+
+
+script 5 script5 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite12);
++5: // 5
+        sprite_set(sprite13);
++5: // 10
+        sprite_set(sprite14);
++5: // 15
+        sprite_set(sprite15);
++5: // 20
+    }
+}
+
+
+script 6 script6 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite16);
++4: // 4
+    sprite_set(sprite17);
++4: // 8
+    sprite_set(sprite18);
++4: // 12
+    sprite_set(sprite19);
+    loop {
++5: // 17
+        sprite_set(sprite20);
++5: // 22
+        sprite_set(sprite21);
++5: // 27
+        sprite_set(sprite22);
++5: // 32
+        sprite_set(sprite23);
+    }
+}
+
+
+script 7 script7 {
+    layer(Layer8);
+    sprite_set(sprite16);
++4: // 4
+    sprite_set(sprite17);
++4: // 8
+    sprite_set(sprite18);
++4: // 12
+    sprite_set(sprite19);
+    loop {
++5: // 17
+        sprite_set(sprite20);
++5: // 22
+        sprite_set(sprite21);
++5: // 27
+        sprite_set(sprite22);
++5: // 32
+        sprite_set(sprite23);
+    }
+}
+
+
+script 8 script8 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite19);
++4: // 4
+    sprite_set(sprite18);
++4: // 8
+    sprite_set(sprite17);
++4: // 12
+    sprite_set(sprite16);
+    loop {
++5: // 17
+        sprite_set(sprite12);
++5: // 22
+        sprite_set(sprite13);
++5: // 27
+        sprite_set(sprite14);
++5: // 32
+        sprite_set(sprite15);
+    }
+}
+
+
+script 9 script9 {
+    layer(Layer8);
+    sprite_set(sprite19);
++4: // 4
+    sprite_set(sprite18);
++4: // 8
+    sprite_set(sprite17);
++4: // 12
+    sprite_set(sprite16);
+    loop {
++5: // 17
+        sprite_set(sprite12);
++5: // 22
+        sprite_set(sprite13);
++5: // 27
+        sprite_set(sprite14);
++5: // 32
+        sprite_set(sprite15);
+    }
+}
+
+
+script 10 script10 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite24);
++5: // 5
+        sprite_set(sprite25);
++5: // 10
+        sprite_set(sprite26);
++5: // 15
+        sprite_set(sprite27);
++5: // 20
+    }
+}
+
+
+script 11 script11 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite28);
++4: // 4
+    sprite_set(sprite29);
++4: // 8
+    sprite_set(sprite30);
++4: // 12
+    sprite_set(sprite31);
+    loop {
++5: // 17
+        sprite_set(sprite32);
++5: // 22
+        sprite_set(sprite33);
++5: // 27
+        sprite_set(sprite34);
++5: // 32
+        sprite_set(sprite35);
+    }
+}
+
+
+script 12 script12 {
+    layer(Layer8);
+    sprite_set(sprite28);
++4: // 4
+    sprite_set(sprite29);
++4: // 8
+    sprite_set(sprite30);
++4: // 12
+    sprite_set(sprite31);
+    loop {
++5: // 17
+        sprite_set(sprite32);
++5: // 22
+        sprite_set(sprite33);
++5: // 27
+        sprite_set(sprite34);
++5: // 32
+        sprite_set(sprite35);
+    }
+}
+
+
+script 13 script13 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite31);
++4: // 4
+    sprite_set(sprite30);
++4: // 8
+    sprite_set(sprite29);
++4: // 12
+    sprite_set(sprite28);
+    loop {
++5: // 17
+        sprite_set(sprite24);
++5: // 22
+        sprite_set(sprite25);
++5: // 27
+        sprite_set(sprite26);
++5: // 32
+        sprite_set(sprite27);
+    }
+}
+
+
+script 14 script14 {
+    layer(Layer8);
+    sprite_set(sprite31);
++4: // 4
+    sprite_set(sprite30);
++4: // 8
+    sprite_set(sprite29);
++4: // 12
+    sprite_set(sprite28);
+    loop {
++5: // 17
+        sprite_set(sprite24);
++5: // 22
+        sprite_set(sprite25);
++5: // 27
+        sprite_set(sprite26);
++5: // 32
+        sprite_set(sprite27);
+    }
+}
+
+
+script 15 script15 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite36);
++5: // 5
+        sprite_set(sprite37);
++5: // 10
+        sprite_set(sprite38);
++5: // 15
+        sprite_set(sprite39);
++5: // 20
+    }
+}
+
+
+script 16 script16 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite40);
++4: // 4
+    sprite_set(sprite41);
++4: // 8
+    sprite_set(sprite42);
++4: // 12
+    sprite_set(sprite43);
+    loop {
++5: // 17
+        sprite_set(sprite44);
++5: // 22
+        sprite_set(sprite45);
++5: // 27
+        sprite_set(sprite46);
++5: // 32
+        sprite_set(sprite47);
+    }
+}
+
+
+script 17 script17 {
+    layer(Layer8);
+    sprite_set(sprite40);
++4: // 4
+    sprite_set(sprite41);
++4: // 8
+    sprite_set(sprite42);
++4: // 12
+    sprite_set(sprite43);
+    loop {
++5: // 17
+        sprite_set(sprite44);
++5: // 22
+        sprite_set(sprite45);
++5: // 27
+        sprite_set(sprite46);
++5: // 32
+        sprite_set(sprite47);
+    }
+}
+
+
+script 18 script18 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite43);
++4: // 4
+    sprite_set(sprite42);
++4: // 8
+    sprite_set(sprite41);
++4: // 12
+    sprite_set(sprite40);
+    loop {
++5: // 17
+        sprite_set(sprite36);
++5: // 22
+        sprite_set(sprite37);
++5: // 27
+        sprite_set(sprite38);
++5: // 32
+        sprite_set(sprite39);
+    }
+}
+
+
+script 19 script19 {
+    layer(Layer8);
+    sprite_set(sprite43);
++4: // 4
+    sprite_set(sprite42);
++4: // 8
+    sprite_set(sprite41);
++4: // 12
+    sprite_set(sprite40);
+    loop {
++5: // 17
+        sprite_set(sprite36);
++5: // 22
+        sprite_set(sprite37);
++5: // 27
+        sprite_set(sprite38);
++5: // 32
+        sprite_set(sprite39);
+    }
+}
+
+
+script 20 script20 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite48);
++5: // 5
+        sprite_set(sprite49);
++5: // 10
+        sprite_set(sprite50);
++5: // 15
+        sprite_set(sprite51);
++5: // 20
+    }
+}
+
+
+script 21 script21 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite52);
++4: // 4
+    sprite_set(sprite53);
++4: // 8
+    sprite_set(sprite54);
++4: // 12
+    sprite_set(sprite55);
+    loop {
++5: // 17
+        sprite_set(sprite56);
++5: // 22
+        sprite_set(sprite57);
++5: // 27
+        sprite_set(sprite58);
++5: // 32
+        sprite_set(sprite59);
+    }
+}
+
+
+script 22 script22 {
+    layer(Layer8);
+    sprite_set(sprite52);
++4: // 4
+    sprite_set(sprite53);
++4: // 8
+    sprite_set(sprite54);
++4: // 12
+    sprite_set(sprite55);
+    loop {
++5: // 17
+        sprite_set(sprite56);
++5: // 22
+        sprite_set(sprite57);
++5: // 27
+        sprite_set(sprite58);
++5: // 32
+        sprite_set(sprite59);
+    }
+}
+
+
+script 23 script23 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite55);
++4: // 4
+    sprite_set(sprite54);
++4: // 8
+    sprite_set(sprite53);
++4: // 12
+    sprite_set(sprite52);
+    loop {
++5: // 17
+        sprite_set(sprite48);
++5: // 22
+        sprite_set(sprite49);
++5: // 27
+        sprite_set(sprite50);
++5: // 32
+        sprite_set(sprite51);
+    }
+}
+
+
+script 24 script24 {
+    layer(Layer8);
+    sprite_set(sprite55);
++4: // 4
+    sprite_set(sprite54);
++4: // 8
+    sprite_set(sprite53);
++4: // 12
+    sprite_set(sprite52);
+    loop {
++5: // 17
+        sprite_set(sprite48);
++5: // 22
+        sprite_set(sprite49);
++5: // 27
+        sprite_set(sprite50);
++5: // 32
+        sprite_set(sprite51);
+    }
+}
+
+
+script 25 script25 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite60);
++5: // 5
+        sprite_set(sprite61);
++5: // 10
+        sprite_set(sprite62);
++5: // 15
+        sprite_set(sprite63);
++5: // 20
+    }
+}
+
+
+script 26 script26 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite64);
++4: // 4
+    sprite_set(sprite65);
++4: // 8
+    sprite_set(sprite66);
++4: // 12
+    sprite_set(sprite67);
+    loop {
++5: // 17
+        sprite_set(sprite68);
++5: // 22
+        sprite_set(sprite69);
++5: // 27
+        sprite_set(sprite70);
++5: // 32
+        sprite_set(sprite71);
+    }
+}
+
+
+script 27 script27 {
+    layer(Layer8);
+    sprite_set(sprite64);
++4: // 4
+    sprite_set(sprite65);
++4: // 8
+    sprite_set(sprite66);
++4: // 12
+    sprite_set(sprite67);
+    loop {
++5: // 17
+        sprite_set(sprite68);
++5: // 22
+        sprite_set(sprite69);
++5: // 27
+        sprite_set(sprite70);
++5: // 32
+        sprite_set(sprite71);
+    }
+}
+
+
+script 28 script28 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite67);
++4: // 4
+    sprite_set(sprite66);
++4: // 8
+    sprite_set(sprite65);
++4: // 12
+    sprite_set(sprite64);
+    loop {
++5: // 17
+        sprite_set(sprite60);
++5: // 22
+        sprite_set(sprite61);
++5: // 27
+        sprite_set(sprite62);
++5: // 32
+        sprite_set(sprite63);
+    }
+}
+
+
+script 29 script29 {
+    layer(Layer8);
+    sprite_set(sprite67);
++4: // 4
+    sprite_set(sprite66);
++4: // 8
+    sprite_set(sprite65);
++4: // 12
+    sprite_set(sprite64);
+    loop {
++5: // 17
+        sprite_set(sprite60);
++5: // 22
+        sprite_set(sprite61);
++5: // 27
+        sprite_set(sprite62);
++5: // 32
+        sprite_set(sprite63);
+    }
+}
+
+
+script 30 script30 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite72);
++5: // 5
+        sprite_set(sprite73);
++5: // 10
+        sprite_set(sprite74);
++5: // 15
+        sprite_set(sprite75);
++5: // 20
+    }
+}
+
+
+script 31 script31 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite76);
++4: // 4
+    sprite_set(sprite77);
++4: // 8
+    sprite_set(sprite78);
++4: // 12
+    sprite_set(sprite79);
+    loop {
++5: // 17
+        sprite_set(sprite80);
++5: // 22
+        sprite_set(sprite81);
++5: // 27
+        sprite_set(sprite82);
++5: // 32
+        sprite_set(sprite83);
+    }
+}
+
+
+script 32 script32 {
+    layer(Layer8);
+    sprite_set(sprite76);
++4: // 4
+    sprite_set(sprite77);
++4: // 8
+    sprite_set(sprite78);
++4: // 12
+    sprite_set(sprite79);
+    loop {
++5: // 17
+        sprite_set(sprite80);
++5: // 22
+        sprite_set(sprite81);
++5: // 27
+        sprite_set(sprite82);
++5: // 32
+        sprite_set(sprite83);
+    }
+}
+
+
+script 33 script33 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite79);
++4: // 4
+    sprite_set(sprite78);
++4: // 8
+    sprite_set(sprite77);
++4: // 12
+    sprite_set(sprite76);
+    loop {
++5: // 17
+        sprite_set(sprite72);
++5: // 22
+        sprite_set(sprite73);
++5: // 27
+        sprite_set(sprite74);
++5: // 32
+        sprite_set(sprite75);
+    }
+}
+
+
+script 34 script34 {
+    layer(Layer8);
+    sprite_set(sprite79);
++4: // 4
+    sprite_set(sprite78);
++4: // 8
+    sprite_set(sprite77);
++4: // 12
+    sprite_set(sprite76);
+    loop {
++5: // 17
+        sprite_set(sprite72);
++5: // 22
+        sprite_set(sprite73);
++5: // 27
+        sprite_set(sprite74);
++5: // 32
+        sprite_set(sprite75);
+    }
+}
+
+
+script 35 script35 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite84);
++5: // 5
+        sprite_set(sprite85);
++5: // 10
+        sprite_set(sprite86);
++5: // 15
+        sprite_set(sprite87);
++5: // 20
+    }
+}
+
+
+script 36 script36 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite88);
++4: // 4
+    sprite_set(sprite89);
++4: // 8
+    sprite_set(sprite90);
++4: // 12
+    sprite_set(sprite91);
+    loop {
++5: // 17
+        sprite_set(sprite92);
++5: // 22
+        sprite_set(sprite93);
++5: // 27
+        sprite_set(sprite94);
++5: // 32
+        sprite_set(sprite95);
+    }
+}
+
+
+script 37 script37 {
+    layer(Layer8);
+    sprite_set(sprite88);
++4: // 4
+    sprite_set(sprite89);
++4: // 8
+    sprite_set(sprite90);
++4: // 12
+    sprite_set(sprite91);
+    loop {
++5: // 17
+        sprite_set(sprite92);
++5: // 22
+        sprite_set(sprite93);
++5: // 27
+        sprite_set(sprite94);
++5: // 32
+        sprite_set(sprite95);
+    }
+}
+
+
+script 38 script38 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite91);
++4: // 4
+    sprite_set(sprite90);
++4: // 8
+    sprite_set(sprite89);
++4: // 12
+    sprite_set(sprite88);
+    loop {
++5: // 17
+        sprite_set(sprite84);
++5: // 22
+        sprite_set(sprite85);
++5: // 27
+        sprite_set(sprite86);
++5: // 32
+        sprite_set(sprite87);
+    }
+}
+
+
+script 39 script39 {
+    layer(Layer8);
+    sprite_set(sprite91);
++4: // 4
+    sprite_set(sprite90);
++4: // 8
+    sprite_set(sprite89);
++4: // 12
+    sprite_set(sprite88);
+    loop {
++5: // 17
+        sprite_set(sprite84);
++5: // 22
+        sprite_set(sprite85);
++5: // 27
+        sprite_set(sprite86);
++5: // 32
+        sprite_set(sprite87);
+    }
+}
+
+
+script 40 script40 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite96);
++5: // 5
+        sprite_set(sprite97);
++5: // 10
+        sprite_set(sprite98);
++5: // 15
+        sprite_set(sprite99);
++5: // 20
+    }
+}
+
+
+script 41 script41 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite100);
++4: // 4
+    sprite_set(sprite101);
++4: // 8
+    sprite_set(sprite102);
++4: // 12
+    sprite_set(sprite103);
+    loop {
++5: // 17
+        sprite_set(sprite104);
++5: // 22
+        sprite_set(sprite105);
++5: // 27
+        sprite_set(sprite106);
++5: // 32
+        sprite_set(sprite107);
+    }
+}
+
+
+script 42 script42 {
+    layer(Layer8);
+    sprite_set(sprite100);
++4: // 4
+    sprite_set(sprite101);
++4: // 8
+    sprite_set(sprite102);
++4: // 12
+    sprite_set(sprite103);
+    loop {
++5: // 17
+        sprite_set(sprite104);
++5: // 22
+        sprite_set(sprite105);
++5: // 27
+        sprite_set(sprite106);
++5: // 32
+        sprite_set(sprite107);
+    }
+}
+
+
+script 43 script43 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite103);
++4: // 4
+    sprite_set(sprite102);
++4: // 8
+    sprite_set(sprite101);
++4: // 12
+    sprite_set(sprite100);
+    loop {
++5: // 17
+        sprite_set(sprite96);
++5: // 22
+        sprite_set(sprite97);
++5: // 27
+        sprite_set(sprite98);
++5: // 32
+        sprite_set(sprite99);
+    }
+}
+
+
+script 44 script44 {
+    layer(Layer8);
+    sprite_set(sprite103);
++4: // 4
+    sprite_set(sprite102);
++4: // 8
+    sprite_set(sprite101);
++4: // 12
+    sprite_set(sprite100);
+    loop {
++5: // 17
+        sprite_set(sprite96);
++5: // 22
+        sprite_set(sprite97);
++5: // 27
+        sprite_set(sprite98);
++5: // 32
+        sprite_set(sprite99);
+    }
+}
+
+
+script 45 script45 {
+    blend_mode(Additive);
+    layer(Layer7);
+    sprite_set(sprite110);
+    alpha(0x80);
+    render_mode(RenderMode1);
+    rotation_speed(0.0, 0.0, 0.31415927);
+    scale(0.0, 0.0);
+    loop {
+        scale_interp(20, AccelDecelSlow, 1.4, 1.4);
++20: // 20
+        scale_interp(20, AccelDecelSlow, 1.0, 1.0);
++20: // 40
+    }
+}
+
+
+script 46 script46 {
+    blend_mode(Additive);
+    layer(Layer7);
+    sprite_set(sprite108);
+    alpha(0x80);
+    render_mode(RenderMode1);
+    rotation_speed(0.0, 0.0, 0.31415927);
+    scale(0.0, 0.0);
+    loop {
+        scale_interp(20, AccelDecelSlow, 1.4, 1.4);
++20: // 20
+        scale_interp(20, AccelDecelSlow, 1.0, 1.0);
++20: // 40
+    }
+}
+
+
+script 47 script47 {
+    blend_mode(Additive);
+    layer(Layer7);
+    sprite_set(sprite109);
+    alpha(0x80);
+    render_mode(RenderMode1);
+    rotation_speed(0.0, 0.0, 0.31415927);
+    scale(0.0, 0.0);
+    loop {
+        scale_interp(20, AccelDecelSlow, 1.4, 1.4);
++20: // 20
+        scale_interp(20, AccelDecelSlow, 1.0, 1.0);
++20: // 40
+    }
+}
+
+
+script 48 script48 {
+    blend_mode(Additive);
+    layer(Layer7);
+    sprite_set(sprite111);
+    alpha(0x80);
+    render_mode(RenderMode1);
+    rotation_speed(0.0, 0.0, 0.31415927);
+    scale(0.0, 0.0);
+    loop {
+        scale_interp(20, AccelDecelSlow, 1.4, 1.4);
++20: // 20
+        scale_interp(20, AccelDecelSlow, 1.0, 1.0);
++20: // 40
+    }
+}
+
+
+script 49 script49 {
+    render_mode(RenderMode1);
+    rotation_speed(0.0, 0.0, 0.31415927);
+    blend_mode(Additive);
+    layer(Layer7);
+    sprite_set(sprite110);
+    alpha(0x0);
+    alpha_interp(76, Linear, 0xc0);
+    scale(4.0, 4.0);
+    scale_interp(76, Linear, 1.0, 1.0);
++76: // 76
+    nop();
+    loop {
+        scale_interp(20, AccelDecelSlow, 1.4, 1.4);
++20: // 96
+        scale_interp(20, AccelDecelSlow, 1.0, 1.0);
++20: // 116
+    }
+}
+
+
+script 50 script50 {
+    render_mode(RenderMode1);
+    rotation_speed(0.0, 0.0, 0.31415927);
+    blend_mode(Additive);
+    layer(Layer7);
+    sprite_set(sprite108);
+    alpha(0x0);
+    alpha_interp(76, Linear, 0xc0);
+    scale(4.0, 4.0);
+    scale_interp(76, Linear, 1.0, 1.0);
++76: // 76
+    nop();
+    loop {
+        scale_interp(20, AccelDecelSlow, 1.4, 1.4);
++20: // 96
+        scale_interp(20, AccelDecelSlow, 1.0, 1.0);
++20: // 116
+    }
+}
+
+
+script 51 script51 {
+    render_mode(RenderMode1);
+    rotation_speed(0.0, 0.0, 0.31415927);
+    blend_mode(Additive);
+    layer(Layer7);
+    sprite_set(sprite109);
+    alpha(0x0);
+    alpha_interp(76, Linear, 0xc0);
+    scale(4.0, 4.0);
+    scale_interp(76, Linear, 1.0, 1.0);
++76: // 76
+    nop();
+    loop {
+        scale_interp(20, AccelDecelSlow, 1.4, 1.4);
++20: // 96
+        scale_interp(20, AccelDecelSlow, 1.0, 1.0);
++20: // 116
+    }
+}
+
+
+script 52 script52 {
+    render_mode(RenderMode1);
+    rotation_speed(0.0, 0.0, 0.31415927);
+    blend_mode(Additive);
+    layer(Layer7);
+    sprite_set(sprite111);
+    alpha(0x0);
+    alpha_interp(76, Linear, 0xc0);
+    scale(4.0, 4.0);
+    scale_interp(76, Linear, 1.0, 1.0);
++76: // 76
+    nop();
+    loop {
+        scale_interp(20, AccelDecelSlow, 1.4, 1.4);
++20: // 96
+        scale_interp(20, AccelDecelSlow, 1.0, 1.0);
++20: // 116
+    }
+}
+
+
+script 53 script53 {
+-1:
+    layer(Layer8);
+    render_mode(RenderMode1);
+    anm_flag_color_children(true);
+0:
+    sprite_set(sprite112);
+    anm_create_child_back(script54);
+    anm_create_child_back(script55);
+    anm_halt();
+}
+
+
+script 54 script54 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite116);
+    rotation_interp(-1, ConstantVelocity, 0.0, 0.0, 0.19634955);
+0:
+    anm_halt();
+}
+
+
+script 55 script55 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite116);
+    rotation_interp(-1, ConstantVelocity, 0.0, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+0:
+    anm_halt();
+}
+
+
+script 56 script56 {
+-1:
+    layer(Layer8);
+    render_mode(RenderMode1);
+    anm_flag_color_children(true);
+0:
+    sprite_set(sprite113);
+    anm_create_child_back(script57);
+    anm_create_child_back(script58);
+    anm_halt();
+}
+
+
+script 57 script57 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite117);
+    rotation_interp(-1, ConstantVelocity, 0.0, 0.0, 0.19634955);
+0:
+    anm_halt();
+}
+
+
+script 58 script58 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite117);
+    rotation_interp(-1, ConstantVelocity, 0.0, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+0:
+    anm_halt();
+}
+
+
+script 59 script59 {
+-1:
+    layer(Layer8);
+    render_mode(RenderMode1);
+    anm_flag_color_children(true);
+0:
+    sprite_set(sprite114);
+    anm_create_child_back(script60);
+    anm_create_child_back(script61);
+    anm_halt();
+}
+
+
+script 60 script60 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite118);
+    rotation_interp(-1, ConstantVelocity, 0.0, 0.0, 0.19634955);
+0:
+    anm_halt();
+}
+
+
+script 61 script61 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite118);
+    rotation_interp(-1, ConstantVelocity, 0.0, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+0:
+    anm_halt();
+}
+
+
+script 62 script62 {
+-1:
+    layer(Layer8);
+    render_mode(RenderMode1);
+    anm_flag_color_children(true);
+0:
+    sprite_set(sprite115);
+    anm_create_child_back(script63);
+    anm_create_child_back(script64);
+    anm_halt();
+}
+
+
+script 63 script63 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite119);
+    rotation_interp(-1, ConstantVelocity, 0.0, 0.0, 0.19634955);
+0:
+    anm_halt();
+}
+
+
+script 64 script64 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite119);
+    rotation_interp(-1, ConstantVelocity, 0.0, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+0:
+    anm_halt();
+}
+
+
+script 65 script65 {
+-1:
+    layer(Layer8);
+    render_mode(RenderMode1);
+    sprite_set(sprite112);
+    scale(0.2, 0.2);
+    scale_interp(90, AccelerateSlow, 1.0, 1.0);
+    anm_flag_color_children(true);
+0:
+    anm_create_child_back(script66);
+    anm_create_child_back(script67);
+    color(0x0, 0xff, 0x0);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    anm_halt();
+}
+
+
+script 66 script66 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite116);
+    rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    anm_halt();
+}
+
+
+script 67 script67 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite116);
+    rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    anm_halt();
+}
+
+
+script 68 script68 {
+-1:
+    layer(Layer8);
+    render_mode(RenderMode1);
+    sprite_set(sprite113);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, Linear, 0x80, 0x80, 0x80);
+    scale(0.2, 0.2);
+    scale_interp(90, AccelerateSlow, 1.0, 1.0);
+    anm_flag_color_children(true);
+0:
+    anm_create_child_back(script69);
+    anm_create_child_back(script70);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    anm_halt();
+}
+
+
+script 69 script69 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite117);
+    rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    anm_halt();
+}
+
+
+script 70 script70 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite117);
+    rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    anm_halt();
+}
+
+
+script 71 script71 {
+-1:
+    layer(Layer8);
+    render_mode(RenderMode1);
+    sprite_set(sprite114);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, Linear, 0x80, 0x80, 0x80);
+    scale(0.2, 0.2);
+    scale_interp(90, AccelerateSlow, 1.0, 1.0);
+    anm_flag_color_children(true);
+0:
+    anm_create_child_back(script72);
+    anm_create_child_back(script73);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    anm_halt();
+}
+
+
+script 72 script72 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite118);
+    rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    anm_halt();
+}
+
+
+script 73 script73 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite118);
+    rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    anm_halt();
+}
+
+
+script 74 script74 {
+-1:
+    layer(Layer8);
+    render_mode(RenderMode1);
+    sprite_set(sprite115);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, Linear, 0x80, 0x80, 0x80);
+    scale(0.2, 0.2);
+    scale_interp(90, AccelerateSlow, 1.0, 1.0);
+    anm_flag_color_children(true);
+0:
+    anm_create_child_back(script75);
+    anm_create_child_back(script76);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    anm_halt();
+}
+
+
+script 75 script75 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite119);
+    rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    anm_halt();
+}
+
+
+script 76 script76 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite119);
+    rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    anm_halt();
+}
+
+
+script 77 script77 {
+-1:
+    layer(Layer8);
+    render_mode(RenderMode1);
+    sprite_set(sprite112);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, Linear, 0x80, 0x80, 0x80);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+    scale(0.2, 0.2);
+    scale_interp(90, AccelerateSlow, 1.0, 1.0);
+    anm_flag_color_children(true);
+0:
+    anm_create_child_back(script78);
+    anm_create_child_back(script79);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 78 script78 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite116);
+    rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 79 script79 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite116);
+    rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 80 script80 {
+-1:
+    layer(Layer8);
+    render_mode(RenderMode1);
+    sprite_set(sprite113);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, Linear, 0x80, 0x80, 0x80);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+    scale(0.2, 0.2);
+    scale_interp(90, AccelerateSlow, 1.0, 1.0);
+    anm_flag_color_children(true);
+0:
+    anm_create_child_back(script81);
+    anm_create_child_back(script82);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 81 script81 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite117);
+    rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 82 script82 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite117);
+    rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 83 script83 {
+-1:
+    layer(Layer8);
+    render_mode(RenderMode1);
+    sprite_set(sprite114);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, Linear, 0x80, 0x80, 0x80);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+    scale(0.2, 0.2);
+    scale_interp(90, AccelerateSlow, 1.0, 1.0);
+    anm_flag_color_children(true);
+0:
+    anm_create_child_back(script84);
+    anm_create_child_back(script85);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 84 script84 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite118);
+    rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 85 script85 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite118);
+    rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 86 script86 {
+-1:
+    layer(Layer8);
+    render_mode(RenderMode1);
+    sprite_set(sprite115);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, Linear, 0x80, 0x80, 0x80);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+    scale(0.2, 0.2);
+    scale_interp(90, AccelerateSlow, 1.0, 1.0);
+    anm_flag_color_children(true);
+0:
+    anm_create_child_back(script87);
+    anm_create_child_back(script88);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 87 script87 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite119);
+    rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 88 script88 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite119);
+    rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+entry {
+    path: "data/enemy/enemy2.png",
+    img_width: 256,
+    img_height: 128,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {
+        sprite120: {x: 0.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite121: {x: 32.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite122: {x: 64.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite123: {x: 96.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite124: {x: 128.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite125: {x: 160.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite126: {x: 192.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite127: {x: 224.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite128: {x: 0.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite129: {x: 32.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite130: {x: 64.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite131: {x: 96.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite132: {x: 128.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite133: {x: 160.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite134: {x: 192.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite135: {x: 224.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite136: {x: 0.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite137: {x: 32.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite138: {x: 64.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite139: {x: 96.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite140: {x: 128.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite141: {x: 160.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite142: {x: 192.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite143: {x: 224.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite144: {x: 0.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite145: {x: 32.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite146: {x: 64.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite147: {x: 96.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite148: {x: 128.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite149: {x: 160.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite150: {x: 192.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite151: {x: 224.0, y: 96.0, w: 32.0, h: 32.0},
+    },
+}
+
+
+script 89 script89 {
+    layer(Layer9);
+    render_mode(RenderMode0);
+    blend_mode(Additive);
+    sprite_set_rand_bound(sprite120, 8);
+    F0 = RAND_FLOAT_SIGNED * 8.0;
+    F1 = RAND_FLOAT * 8.0;
+    F1 -= 4.0;
+    move_position(F0, F1, 0.0);
+    F0 = RAND_FLOAT_SIGNED * 8.0;
+    F1 = RAND_FLOAT * -16.0;
+    F1 -= 16.0;
+    move_position_interp(10, Linear, F0, F1, 0.0);
+    scale(0.5, 0.5);
+    scale_interp(10, AccelerateSlow, 0.0, 0.0);
++10: // 10
+    anm_delete();
+}
+
+
+script 90 script90 {
+    layer(Layer9);
+    render_mode(RenderMode0);
+    blend_mode(Additive);
+    sprite_set_rand_bound(sprite120, 8);
+    F0 = RAND_FLOAT_SIGNED * 8.0;
+    F1 = RAND_FLOAT * 8.0;
+    F1 -= 4.0;
+    move_position(F0, F1, 0.0);
+    F0 = RAND_FLOAT_SIGNED * 8.0;
+    F1 = RAND_FLOAT * 16.0;
+    F1 += 16.0;
+    move_position_interp(10, Linear, F0, F1, 0.0);
+    scale(0.5, 0.5);
+    scale_interp(10, AccelerateSlow, 0.0, 0.0);
++10: // 10
+    anm_delete();
+}
+
+
+script 91 script91 {
+    layer(Layer9);
+    render_mode(RenderMode0);
+    scale(0.0, 0.0);
+    scale_interp(6, DecelerateSlow, 3.0, 3.0);
+    sprite_set(sprite120);
++3: // 3
+    sprite_set(sprite121);
++3: // 6
+    sprite_set(sprite122);
+    scale_interp(12, AccelerateSlow, 1.0, 1.0);
++3: // 9
+    sprite_set(sprite123);
++3: // 12
+    sprite_set(sprite124);
+    loop {
+        sprite_set(sprite120);
+        anm_create_back(script89);
++1: // 13
+        anm_create_back(script89);
++1: // 14
+        anm_create_back(script89);
++1: // 15
+        sprite_set(sprite121);
+        anm_create_back(script89);
++1: // 16
+        anm_create_back(script89);
++1: // 17
+        anm_create_back(script89);
++1: // 18
+        sprite_set(sprite122);
+        anm_create_back(script89);
++1: // 19
+        anm_create_back(script89);
++1: // 20
+        anm_create_back(script89);
++1: // 21
+        sprite_set(sprite123);
+        anm_create_back(script89);
++1: // 22
+        anm_create_back(script89);
++1: // 23
+        anm_create_back(script89);
++1: // 24
+        sprite_set(sprite124);
+        scale_interp(12, AccelerateSlow, 1.0, 1.0);
+        anm_create_back(script89);
++1: // 25
+        anm_create_back(script89);
++1: // 26
+        anm_create_back(script89);
++1: // 27
+        sprite_set(sprite125);
+        anm_create_back(script89);
++1: // 28
+        anm_create_back(script89);
++1: // 29
+        anm_create_back(script89);
++1: // 30
+        sprite_set(sprite126);
+        anm_create_back(script89);
++1: // 31
+        anm_create_back(script89);
++1: // 32
+        anm_create_back(script89);
++1: // 33
+        sprite_set(sprite127);
+        anm_create_back(script89);
++1: // 34
+        anm_create_back(script89);
++1: // 35
+        anm_create_back(script89);
++1: // 36
+    }
+}
+
+
+script 92 script92 {
+    layer(Layer9);
+    render_mode(RenderMode0);
+    scale(0.0, 0.0);
+    scale_interp(6, DecelerateSlow, 2.0, 2.0);
+    sprite_set(sprite120);
++3: // 3
+    sprite_set(sprite121);
++3: // 6
+    sprite_set(sprite122);
+    scale_interp(6, AccelerateSlow, 1.0, 1.0);
++3: // 9
+    sprite_set(sprite123);
++3: // 12
+    sprite_set(sprite124);
+    loop {
+        sprite_set(sprite120);
+        anm_create_back(script90);
++1: // 13
+        anm_create_back(script90);
++1: // 14
+        anm_create_back(script90);
++1: // 15
+        sprite_set(sprite121);
+        anm_create_back(script90);
++1: // 16
+        anm_create_back(script90);
++1: // 17
+        anm_create_back(script90);
++1: // 18
+        sprite_set(sprite122);
+        anm_create_back(script90);
++1: // 19
+        anm_create_back(script90);
++1: // 20
+        anm_create_back(script90);
++1: // 21
+        sprite_set(sprite123);
+        anm_create_back(script90);
++1: // 22
+        anm_create_back(script90);
++1: // 23
+        anm_create_back(script90);
++1: // 24
+        sprite_set(sprite124);
+        scale_interp(12, AccelerateSlow, 1.0, 1.0);
+        anm_create_back(script90);
++1: // 25
+        anm_create_back(script90);
++1: // 26
+        anm_create_back(script90);
++1: // 27
+        sprite_set(sprite125);
+        anm_create_back(script90);
++1: // 28
+        anm_create_back(script90);
++1: // 29
+        anm_create_back(script90);
++1: // 30
+        sprite_set(sprite126);
+        anm_create_back(script90);
++1: // 31
+        anm_create_back(script90);
++1: // 32
+        anm_create_back(script90);
++1: // 33
+        sprite_set(sprite127);
+        anm_create_back(script90);
++1: // 34
+        anm_create_back(script90);
++1: // 35
+        anm_create_back(script90);
++1: // 36
+    }
+}
+
+
+script 93 script93 {
+    layer(Layer9);
+    render_mode(RenderMode0);
+    blend_mode(Additive);
+    sprite_set_rand_bound(sprite128, 8);
+    F0 = RAND_FLOAT_SIGNED * 8.0;
+    F1 = RAND_FLOAT * 8.0;
+    F1 -= 4.0;
+    move_position(F0, F1, 0.0);
+    F0 = RAND_FLOAT_SIGNED * 8.0;
+    F1 = RAND_FLOAT * -16.0;
+    F1 -= 16.0;
+    move_position_interp(10, Linear, F0, F1, 0.0);
+    scale(0.5, 0.5);
+    scale_interp(10, AccelerateSlow, 0.0, 0.0);
++10: // 10
+    anm_delete();
+}
+
+
+script 94 script94 {
+    layer(Layer9);
+    render_mode(RenderMode0);
+    blend_mode(Additive);
+    sprite_set_rand_bound(sprite128, 8);
+    F0 = RAND_FLOAT_SIGNED * 8.0;
+    F1 = RAND_FLOAT * 8.0;
+    F1 -= 4.0;
+    move_position(F0, F1, 0.0);
+    F0 = RAND_FLOAT_SIGNED * 8.0;
+    F1 = RAND_FLOAT * 16.0;
+    F1 += 16.0;
+    move_position_interp(10, Linear, F0, F1, 0.0);
+    scale(0.5, 0.5);
+    scale_interp(10, AccelerateSlow, 0.0, 0.0);
++10: // 10
+    anm_delete();
+}
+
+
+script 95 script95 {
+    layer(Layer9);
+    render_mode(RenderMode0);
+    scale(0.0, 0.0);
+    scale_interp(6, DecelerateSlow, 3.0, 3.0);
+    sprite_set(sprite128);
++3: // 3
+    sprite_set(sprite129);
++3: // 6
+    sprite_set(sprite130);
+    scale_interp(12, AccelerateSlow, 1.0, 1.0);
++3: // 9
+    sprite_set(sprite131);
++3: // 12
+    sprite_set(sprite132);
+    loop {
+        sprite_set(sprite128);
+        anm_create_back(script93);
++1: // 13
+        anm_create_back(script93);
++1: // 14
+        anm_create_back(script93);
++1: // 15
+        sprite_set(sprite129);
+        anm_create_back(script93);
++1: // 16
+        anm_create_back(script93);
++1: // 17
+        anm_create_back(script93);
++1: // 18
+        sprite_set(sprite130);
+        anm_create_back(script93);
++1: // 19
+        anm_create_back(script93);
++1: // 20
+        anm_create_back(script93);
++1: // 21
+        sprite_set(sprite131);
+        anm_create_back(script93);
++1: // 22
+        anm_create_back(script93);
++1: // 23
+        anm_create_back(script93);
++1: // 24
+        sprite_set(sprite132);
+        scale_interp(12, AccelerateSlow, 1.0, 1.0);
+        anm_create_back(script93);
++1: // 25
+        anm_create_back(script93);
++1: // 26
+        anm_create_back(script93);
++1: // 27
+        sprite_set(sprite133);
+        anm_create_back(script93);
++1: // 28
+        anm_create_back(script93);
++1: // 29
+        anm_create_back(script93);
++1: // 30
+        sprite_set(sprite134);
+        anm_create_back(script93);
++1: // 31
+        anm_create_back(script93);
++1: // 32
+        anm_create_back(script93);
++1: // 33
+        sprite_set(sprite135);
+        anm_create_back(script93);
++1: // 34
+        anm_create_back(script93);
++1: // 35
+        anm_create_back(script93);
++1: // 36
+    }
+}
+
+
+script 96 script96 {
+    layer(Layer9);
+    render_mode(RenderMode0);
+    scale(0.0, 0.0);
+    scale_interp(6, DecelerateSlow, 2.0, 2.0);
+    sprite_set(sprite128);
++3: // 3
+    sprite_set(sprite129);
++3: // 6
+    sprite_set(sprite130);
+    scale_interp(6, AccelerateSlow, 1.0, 1.0);
++3: // 9
+    sprite_set(sprite131);
++3: // 12
+    sprite_set(sprite132);
+    loop {
+        sprite_set(sprite128);
+        anm_create_back(script94);
++1: // 13
+        anm_create_back(script94);
++1: // 14
+        anm_create_back(script94);
++1: // 15
+        sprite_set(sprite129);
+        anm_create_back(script94);
++1: // 16
+        anm_create_back(script94);
++1: // 17
+        anm_create_back(script94);
++1: // 18
+        sprite_set(sprite130);
+        anm_create_back(script94);
++1: // 19
+        anm_create_back(script94);
++1: // 20
+        anm_create_back(script94);
++1: // 21
+        sprite_set(sprite131);
+        anm_create_back(script94);
++1: // 22
+        anm_create_back(script94);
++1: // 23
+        anm_create_back(script94);
++1: // 24
+        sprite_set(sprite132);
+        scale_interp(12, AccelerateSlow, 1.0, 1.0);
+        anm_create_back(script94);
++1: // 25
+        anm_create_back(script94);
++1: // 26
+        anm_create_back(script94);
++1: // 27
+        sprite_set(sprite133);
+        anm_create_back(script94);
++1: // 28
+        anm_create_back(script94);
++1: // 29
+        anm_create_back(script94);
++1: // 30
+        sprite_set(sprite134);
+        anm_create_back(script94);
++1: // 31
+        anm_create_back(script94);
++1: // 32
+        anm_create_back(script94);
++1: // 33
+        sprite_set(sprite135);
+        anm_create_back(script94);
++1: // 34
+        anm_create_back(script94);
++1: // 35
+        anm_create_back(script94);
++1: // 36
+    }
+}
+
+
+script 97 script97 {
+    layer(Layer9);
+    render_mode(RenderMode0);
+    blend_mode(Additive);
+    sprite_set_rand_bound(sprite136, 8);
+    F0 = RAND_FLOAT_SIGNED * 8.0;
+    F1 = RAND_FLOAT * 8.0;
+    F1 -= 4.0;
+    move_position(F0, F1, 0.0);
+    F0 = RAND_FLOAT_SIGNED * 8.0;
+    F1 = RAND_FLOAT * -16.0;
+    F1 -= 16.0;
+    move_position_interp(10, Linear, F0, F1, 0.0);
+    scale(0.5, 0.5);
+    scale_interp(10, AccelerateSlow, 0.0, 0.0);
++10: // 10
+    anm_delete();
+}
+
+
+script 98 script98 {
+    layer(Layer9);
+    render_mode(RenderMode0);
+    blend_mode(Additive);
+    sprite_set_rand_bound(sprite136, 8);
+    F0 = RAND_FLOAT_SIGNED * 8.0;
+    F1 = RAND_FLOAT * 8.0;
+    F1 -= 4.0;
+    move_position(F0, F1, 0.0);
+    F0 = RAND_FLOAT_SIGNED * 8.0;
+    F1 = RAND_FLOAT * 16.0;
+    F1 += 16.0;
+    move_position_interp(10, Linear, F0, F1, 0.0);
+    scale(0.5, 0.5);
+    scale_interp(10, AccelerateSlow, 0.0, 0.0);
++10: // 10
+    anm_delete();
+}
+
+
+script 99 script99 {
+    layer(Layer9);
+    render_mode(RenderMode0);
+    scale(0.0, 0.0);
+    scale_interp(6, DecelerateSlow, 3.0, 3.0);
+    sprite_set(sprite136);
++3: // 3
+    sprite_set(sprite137);
++3: // 6
+    sprite_set(sprite138);
+    scale_interp(12, AccelerateSlow, 1.0, 1.0);
++3: // 9
+    sprite_set(sprite139);
++3: // 12
+    sprite_set(sprite140);
+    loop {
+        sprite_set(sprite136);
+        anm_create_back(script97);
++1: // 13
+        anm_create_back(script97);
++1: // 14
+        anm_create_back(script97);
++1: // 15
+        sprite_set(sprite137);
+        anm_create_back(script97);
++1: // 16
+        anm_create_back(script97);
++1: // 17
+        anm_create_back(script97);
++1: // 18
+        sprite_set(sprite138);
+        anm_create_back(script97);
++1: // 19
+        anm_create_back(script97);
++1: // 20
+        anm_create_back(script97);
++1: // 21
+        sprite_set(sprite139);
+        anm_create_back(script97);
++1: // 22
+        anm_create_back(script97);
++1: // 23
+        anm_create_back(script97);
++1: // 24
+        sprite_set(sprite140);
+        scale_interp(12, AccelerateSlow, 1.0, 1.0);
+        anm_create_back(script97);
++1: // 25
+        anm_create_back(script97);
++1: // 26
+        anm_create_back(script97);
++1: // 27
+        sprite_set(sprite141);
+        anm_create_back(script97);
++1: // 28
+        anm_create_back(script97);
++1: // 29
+        anm_create_back(script97);
++1: // 30
+        sprite_set(sprite142);
+        anm_create_back(script97);
++1: // 31
+        anm_create_back(script97);
++1: // 32
+        anm_create_back(script97);
++1: // 33
+        sprite_set(sprite143);
+        anm_create_back(script97);
++1: // 34
+        anm_create_back(script97);
++1: // 35
+        anm_create_back(script97);
++1: // 36
+    }
+}
+
+
+script 100 script100 {
+    layer(Layer9);
+    render_mode(RenderMode0);
+    scale(0.0, 0.0);
+    scale_interp(6, DecelerateSlow, 2.0, 2.0);
+    sprite_set(sprite136);
++3: // 3
+    sprite_set(sprite137);
++3: // 6
+    sprite_set(sprite138);
+    scale_interp(6, AccelerateSlow, 1.0, 1.0);
++3: // 9
+    sprite_set(sprite139);
++3: // 12
+    sprite_set(sprite140);
+    loop {
+        sprite_set(sprite136);
+        anm_create_back(script98);
++1: // 13
+        anm_create_back(script98);
++1: // 14
+        anm_create_back(script98);
++1: // 15
+        sprite_set(sprite137);
+        anm_create_back(script98);
++1: // 16
+        anm_create_back(script98);
++1: // 17
+        anm_create_back(script98);
++1: // 18
+        sprite_set(sprite138);
+        anm_create_back(script98);
++1: // 19
+        anm_create_back(script98);
++1: // 20
+        anm_create_back(script98);
++1: // 21
+        sprite_set(sprite139);
+        anm_create_back(script98);
++1: // 22
+        anm_create_back(script98);
++1: // 23
+        anm_create_back(script98);
++1: // 24
+        sprite_set(sprite140);
+        scale_interp(12, AccelerateSlow, 1.0, 1.0);
+        anm_create_back(script98);
++1: // 25
+        anm_create_back(script98);
++1: // 26
+        anm_create_back(script98);
++1: // 27
+        sprite_set(sprite141);
+        anm_create_back(script98);
++1: // 28
+        anm_create_back(script98);
++1: // 29
+        anm_create_back(script98);
++1: // 30
+        sprite_set(sprite142);
+        anm_create_back(script98);
++1: // 31
+        anm_create_back(script98);
++1: // 32
+        anm_create_back(script98);
++1: // 33
+        sprite_set(sprite143);
+        anm_create_back(script98);
++1: // 34
+        anm_create_back(script98);
++1: // 35
+        anm_create_back(script98);
++1: // 36
+    }
+}
+
+
+script 101 script101 {
+    layer(Layer9);
+    render_mode(RenderMode0);
+    blend_mode(Additive);
+    sprite_set_rand_bound(sprite144, 8);
+    F0 = RAND_FLOAT_SIGNED * 8.0;
+    F1 = RAND_FLOAT * 8.0;
+    F1 -= 4.0;
+    move_position(F0, F1, 0.0);
+    F0 = RAND_FLOAT_SIGNED * 8.0;
+    F1 = RAND_FLOAT * -16.0;
+    F1 -= 16.0;
+    move_position_interp(10, Linear, F0, F1, 0.0);
+    scale(0.5, 0.5);
+    scale_interp(10, AccelerateSlow, 0.0, 0.0);
++10: // 10
+    anm_delete();
+}
+
+
+script 102 script102 {
+    layer(Layer9);
+    render_mode(RenderMode0);
+    blend_mode(Additive);
+    sprite_set_rand_bound(sprite144, 8);
+    F0 = RAND_FLOAT_SIGNED * 8.0;
+    F1 = RAND_FLOAT * 8.0;
+    F1 -= 4.0;
+    move_position(F0, F1, 0.0);
+    F0 = RAND_FLOAT_SIGNED * 8.0;
+    F1 = RAND_FLOAT * 16.0;
+    F1 += 16.0;
+    move_position_interp(10, Linear, F0, F1, 0.0);
+    scale(0.5, 0.5);
+    scale_interp(10, AccelerateSlow, 0.0, 0.0);
++10: // 10
+    anm_delete();
+}
+
+
+script 103 script103 {
+    layer(Layer9);
+    render_mode(RenderMode0);
+    scale(0.0, 0.0);
+    scale_interp(6, DecelerateSlow, 3.0, 3.0);
+    sprite_set(sprite144);
++3: // 3
+    sprite_set(sprite145);
++3: // 6
+    sprite_set(sprite146);
+    scale_interp(12, AccelerateSlow, 1.0, 1.0);
++3: // 9
+    sprite_set(sprite147);
++3: // 12
+    sprite_set(sprite148);
+    loop {
+        sprite_set(sprite144);
+        anm_create_back(script101);
++1: // 13
+        anm_create_back(script101);
++1: // 14
+        anm_create_back(script101);
++1: // 15
+        sprite_set(sprite145);
+        anm_create_back(script101);
++1: // 16
+        anm_create_back(script101);
++1: // 17
+        anm_create_back(script101);
++1: // 18
+        sprite_set(sprite146);
+        anm_create_back(script101);
++1: // 19
+        anm_create_back(script101);
++1: // 20
+        anm_create_back(script101);
++1: // 21
+        sprite_set(sprite147);
+        anm_create_back(script101);
++1: // 22
+        anm_create_back(script101);
++1: // 23
+        anm_create_back(script101);
++1: // 24
+        sprite_set(sprite148);
+        scale_interp(12, AccelerateSlow, 1.0, 1.0);
+        anm_create_back(script101);
++1: // 25
+        anm_create_back(script101);
++1: // 26
+        anm_create_back(script101);
++1: // 27
+        sprite_set(sprite149);
+        anm_create_back(script101);
++1: // 28
+        anm_create_back(script101);
++1: // 29
+        anm_create_back(script101);
++1: // 30
+        sprite_set(sprite150);
+        anm_create_back(script101);
++1: // 31
+        anm_create_back(script101);
++1: // 32
+        anm_create_back(script101);
++1: // 33
+        sprite_set(sprite151);
+        anm_create_back(script101);
++1: // 34
+        anm_create_back(script101);
++1: // 35
+        anm_create_back(script101);
++1: // 36
+    }
+}
+
+
+script 104 script104 {
+    layer(Layer9);
+    render_mode(RenderMode0);
+    scale(0.0, 0.0);
+    scale_interp(6, DecelerateSlow, 2.0, 2.0);
+    sprite_set(sprite144);
++3: // 3
+    sprite_set(sprite145);
++3: // 6
+    sprite_set(sprite146);
+    scale_interp(6, AccelerateSlow, 1.0, 1.0);
++3: // 9
+    sprite_set(sprite147);
++3: // 12
+    sprite_set(sprite148);
+    loop {
+        sprite_set(sprite144);
+        anm_create_back(script102);
++1: // 13
+        anm_create_back(script102);
++1: // 14
+        anm_create_back(script102);
++1: // 15
+        sprite_set(sprite145);
+        anm_create_back(script102);
++1: // 16
+        anm_create_back(script102);
++1: // 17
+        anm_create_back(script102);
++1: // 18
+        sprite_set(sprite146);
+        anm_create_back(script102);
++1: // 19
+        anm_create_back(script102);
++1: // 20
+        anm_create_back(script102);
++1: // 21
+        sprite_set(sprite147);
+        anm_create_back(script102);
++1: // 22
+        anm_create_back(script102);
++1: // 23
+        anm_create_back(script102);
++1: // 24
+        sprite_set(sprite148);
+        scale_interp(12, AccelerateSlow, 1.0, 1.0);
+        anm_create_back(script102);
++1: // 25
+        anm_create_back(script102);
++1: // 26
+        anm_create_back(script102);
++1: // 27
+        sprite_set(sprite149);
+        anm_create_back(script102);
++1: // 28
+        anm_create_back(script102);
++1: // 29
+        anm_create_back(script102);
++1: // 30
+        sprite_set(sprite150);
+        anm_create_back(script102);
++1: // 31
+        anm_create_back(script102);
++1: // 32
+        anm_create_back(script102);
++1: // 33
+        sprite_set(sprite151);
+        anm_create_back(script102);
++1: // 34
+        anm_create_back(script102);
++1: // 35
+        anm_create_back(script102);
++1: // 36
+    }
+}
+
+
+entry {
+    path: "data/enemy/enemy_aura.png",
+    img_width: 512,
+    img_height: 48,
+    memory_priority: 0,
+    sprites: {
+        sprite152: {x: 0.0, y: 0.0, w: 48.0, h: 48.0},
+        sprite153: {x: 48.0, y: 0.0, w: 48.0, h: 48.0},
+        sprite154: {x: 96.0, y: 0.0, w: 48.0, h: 48.0},
+        sprite155: {x: 144.0, y: 0.0, w: 48.0, h: 48.0},
+        sprite156: {x: 192.0, y: 0.0, w: 48.0, h: 48.0},
+        sprite157: {x: 240.0, y: 0.0, w: 48.0, h: 48.0},
+        sprite158: {x: 288.0, y: 0.0, w: 48.0, h: 48.0},
+        sprite159: {x: 336.0, y: 0.0, w: 48.0, h: 48.0},
+    },
+}
+
+
+script 105 script105 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script106);
+    anm_create_child_back(script107);
+    anm_halt();
+}
+
+
+script 106 script106 {
+-1:
+    layer(Layer6);
+    color(0x0, 0xbf, 0xbf);
+    blend_mode(BlendMode2);
+    scale(1.1, 1.1);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 107 script107 {
+-1:
+    layer(Layer6);
+    color(0xff, 0x40, 0x40);
+    blend_mode(Additive);
+    scale(1.0, 1.0);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 108 script108 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script109);
+    anm_create_child_back(script110);
+    anm_halt();
+}
+
+
+script 109 script109 {
+-1:
+    layer(Layer6);
+    color(0x0, 0xff, 0x0);
+    blend_mode(BlendMode2);
+    scale(1.1, 1.1);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 110 script110 {
+-1:
+    layer(Layer6);
+    color(0xff, 0x0, 0xff);
+    blend_mode(Additive);
+    scale(1.0, 1.0);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 111 script111 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script112);
+    anm_create_child_back(script113);
+    anm_halt();
+}
+
+
+script 112 script112 {
+-1:
+    layer(Layer6);
+    color(0xff, 0xff, 0x0);
+    blend_mode(BlendMode2);
+    scale(1.1, 1.1);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 113 script113 {
+-1:
+    layer(Layer6);
+    color(0x0, 0x0, 0xff);
+    blend_mode(Additive);
+    scale(1.0, 1.0);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 114 script114 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script115);
+    anm_create_child_back(script116);
+    anm_halt();
+}
+
+
+script 115 script115 {
+-1:
+    layer(Layer6);
+    color(0xff, 0x0, 0xff);
+    blend_mode(BlendMode2);
+    scale(1.1, 1.1);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 116 script116 {
+-1:
+    layer(Layer6);
+    color(0x0, 0xff, 0x0);
+    blend_mode(Additive);
+    scale(1.0, 1.0);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 117 script117 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script118);
+    anm_create_child_back(script119);
+    anm_halt();
+}
+
+
+script 118 script118 {
+-1:
+    layer(Layer6);
+    color(0x0, 0x0, 0xff);
+    blend_mode(BlendMode2);
+    scale(1.1, 1.1);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 119 script119 {
+-1:
+    layer(Layer6);
+    color(0xff, 0xff, 0x0);
+    blend_mode(Additive);
+    scale(1.0, 1.0);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 120 script120 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script121);
+    anm_create_child_back(script122);
+    anm_halt();
+}
+
+
+script 121 script121 {
+-1:
+    layer(Layer6);
+    color(0xff, 0x0, 0x0);
+    blend_mode(BlendMode2);
+    scale(1.1, 1.1);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 122 script122 {
+-1:
+    layer(Layer6);
+    color(0x0, 0xff, 0xff);
+    blend_mode(Additive);
+    scale(1.0, 1.0);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 123 script123 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script124);
+    anm_create_child_back(script125);
+    anm_halt();
+}
+
+
+script 124 script124 {
+-1:
+    layer(Layer6);
+    color(0x0, 0xbf, 0xbf);
+    blend_mode(BlendMode2);
+    scale(1.32, 1.32);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 125 script125 {
+-1:
+    layer(Layer6);
+    color(0xff, 0x40, 0x40);
+    blend_mode(Additive);
+    scale(1.2, 1.2);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 126 script126 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script127);
+    anm_create_child_back(script128);
+    anm_halt();
+}
+
+
+script 127 script127 {
+-1:
+    layer(Layer6);
+    color(0x0, 0xff, 0x0);
+    blend_mode(BlendMode2);
+    scale(1.32, 1.32);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 128 script128 {
+-1:
+    layer(Layer6);
+    color(0xff, 0x0, 0xff);
+    blend_mode(Additive);
+    scale(1.2, 1.2);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 129 script129 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script130);
+    anm_create_child_back(script131);
+    anm_halt();
+}
+
+
+script 130 script130 {
+-1:
+    layer(Layer6);
+    color(0xff, 0xff, 0x0);
+    blend_mode(BlendMode2);
+    scale(1.32, 1.32);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 131 script131 {
+-1:
+    layer(Layer6);
+    color(0x0, 0x0, 0xff);
+    blend_mode(Additive);
+    scale(1.2, 1.2);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 132 script132 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script133);
+    anm_create_child_back(script134);
+    anm_halt();
+}
+
+
+script 133 script133 {
+-1:
+    layer(Layer6);
+    color(0xff, 0x0, 0xff);
+    blend_mode(BlendMode2);
+    scale(1.32, 1.32);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 134 script134 {
+-1:
+    layer(Layer6);
+    color(0x0, 0xff, 0x0);
+    blend_mode(Additive);
+    scale(1.2, 1.2);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 135 script135 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script136);
+    anm_create_child_back(script137);
+    anm_halt();
+}
+
+
+script 136 script136 {
+-1:
+    layer(Layer6);
+    color(0x0, 0x0, 0xff);
+    blend_mode(BlendMode2);
+    scale(1.32, 1.32);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 137 script137 {
+-1:
+    layer(Layer6);
+    color(0xff, 0xff, 0x0);
+    blend_mode(Additive);
+    scale(1.2, 1.2);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 138 script138 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script139);
+    anm_create_child_back(script140);
+    anm_halt();
+}
+
+
+script 139 script139 {
+-1:
+    layer(Layer6);
+    color(0xff, 0x0, 0x0);
+    blend_mode(BlendMode2);
+    scale(1.32, 1.32);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 140 script140 {
+-1:
+    layer(Layer6);
+    color(0x0, 0xff, 0xff);
+    blend_mode(Additive);
+    scale(1.2, 1.2);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 141 script141 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script142);
+    anm_create_child_back(script143);
+    anm_halt();
+}
+
+
+script 142 script142 {
+-1:
+    layer(Layer6);
+    color(0x0, 0xbf, 0xbf);
+    blend_mode(BlendMode2);
+    scale(1.65, 1.65);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 143 script143 {
+-1:
+    layer(Layer6);
+    color(0xff, 0x40, 0x40);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 144 script144 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script145);
+    anm_create_child_back(script146);
+    anm_halt();
+}
+
+
+script 145 script145 {
+-1:
+    layer(Layer6);
+    color(0x0, 0xff, 0x0);
+    blend_mode(BlendMode2);
+    scale(1.65, 1.65);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 146 script146 {
+-1:
+    layer(Layer6);
+    color(0xff, 0x0, 0xff);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 147 script147 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script148);
+    anm_create_child_back(script149);
+    anm_halt();
+}
+
+
+script 148 script148 {
+-1:
+    layer(Layer6);
+    color(0xff, 0xff, 0x0);
+    blend_mode(BlendMode2);
+    scale(1.65, 1.65);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 149 script149 {
+-1:
+    layer(Layer6);
+    color(0x0, 0x0, 0xff);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 150 script150 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script151);
+    anm_create_child_back(script152);
+    anm_halt();
+}
+
+
+script 151 script151 {
+-1:
+    layer(Layer6);
+    color(0xff, 0x0, 0xff);
+    blend_mode(BlendMode2);
+    scale(1.65, 1.65);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 152 script152 {
+-1:
+    layer(Layer6);
+    color(0x0, 0xff, 0x0);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 153 script153 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script154);
+    anm_create_child_back(script155);
+    anm_halt();
+}
+
+
+script 154 script154 {
+-1:
+    layer(Layer6);
+    color(0x0, 0x0, 0xff);
+    blend_mode(BlendMode2);
+    scale(1.65, 1.65);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 155 script155 {
+-1:
+    layer(Layer6);
+    color(0xff, 0xff, 0x0);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 156 script156 {
+    alpha(0x0);
+    layer(Layer11);
+    render_mode(RenderMode1);
+    move_position(0.0, -8.0, 0.0);
+    anm_create_child_back(script157);
+    anm_create_child_back(script158);
+    anm_halt();
+}
+
+
+script 157 script157 {
+-1:
+    layer(Layer6);
+    color(0xff, 0x0, 0x0);
+    blend_mode(BlendMode2);
+    scale(1.65, 1.65);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+script 158 script158 {
+-1:
+    layer(Layer6);
+    color(0x0, 0xff, 0xff);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    render_mode(RenderMode1);
+0:
+    loop {
+        sprite_set(sprite152);
++5: // 5
+        sprite_set(sprite153);
++5: // 10
+        sprite_set(sprite154);
++5: // 15
+        sprite_set(sprite155);
++5: // 20
+        sprite_set(sprite156);
++5: // 25
+        sprite_set(sprite157);
++5: // 30
+        sprite_set(sprite158);
++5: // 35
+        sprite_set(sprite159);
++5: // 40
+    }
+}
+
+
+entry {
+    path: "data/enemy/enemy5.png",
+    img_width: 512,
+    img_height: 256,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {
+        sprite160: {x: 0.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite161: {x: 32.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite162: {x: 64.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite163: {x: 96.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite164: {x: 128.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite165: {x: 160.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite166: {x: 192.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite167: {x: 224.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite168: {x: 256.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite169: {x: 288.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite170: {x: 320.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite171: {x: 352.0, y: 0.0, w: 32.0, h: 32.0},
+        sprite172: {x: 0.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite173: {x: 32.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite174: {x: 64.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite175: {x: 96.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite176: {x: 128.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite177: {x: 160.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite178: {x: 192.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite179: {x: 224.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite180: {x: 256.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite181: {x: 288.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite182: {x: 320.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite183: {x: 352.0, y: 32.0, w: 32.0, h: 32.0},
+        sprite184: {x: 0.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite185: {x: 32.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite186: {x: 64.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite187: {x: 96.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite188: {x: 128.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite189: {x: 160.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite190: {x: 192.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite191: {x: 224.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite192: {x: 256.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite193: {x: 288.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite194: {x: 320.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite195: {x: 352.0, y: 64.0, w: 32.0, h: 32.0},
+        sprite196: {x: 0.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite197: {x: 32.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite198: {x: 64.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite199: {x: 96.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite200: {x: 128.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite201: {x: 160.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite202: {x: 192.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite203: {x: 224.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite204: {x: 256.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite205: {x: 288.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite206: {x: 320.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite207: {x: 352.0, y: 96.0, w: 32.0, h: 32.0},
+        sprite208: {x: 0.0, y: 128.0, w: 64.0, h: 64.0},
+        sprite209: {x: 64.0, y: 128.0, w: 64.0, h: 64.0},
+        sprite210: {x: 128.0, y: 128.0, w: 64.0, h: 64.0},
+        sprite211: {x: 192.0, y: 128.0, w: 64.0, h: 64.0},
+        sprite212: {x: 256.0, y: 128.0, w: 64.0, h: 64.0},
+        sprite213: {x: 320.0, y: 128.0, w: 64.0, h: 64.0},
+        sprite214: {x: 384.0, y: 128.0, w: 64.0, h: 64.0},
+        sprite215: {x: 448.0, y: 128.0, w: 64.0, h: 64.0},
+        sprite216: {x: 384.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite217: {x: 448.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite218: {x: 384.0, y: 64.0, w: 64.0, h: 64.0},
+        sprite219: {x: 448.0, y: 64.0, w: 64.0, h: 64.0},
+    },
+}
+
+
+script 159 script159 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite160);
++5: // 5
+        sprite_set(sprite161);
++5: // 10
+        sprite_set(sprite162);
++5: // 15
+        sprite_set(sprite163);
++5: // 20
+    }
+}
+
+
+script 160 script160 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite164);
++4: // 4
+    sprite_set(sprite165);
++4: // 8
+    sprite_set(sprite166);
++4: // 12
+    sprite_set(sprite167);
+    loop {
++5: // 17
+        sprite_set(sprite168);
++5: // 22
+        sprite_set(sprite169);
++5: // 27
+        sprite_set(sprite170);
++5: // 32
+        sprite_set(sprite171);
+    }
+}
+
+
+script 161 script161 {
+    layer(Layer8);
+    sprite_set(sprite164);
++4: // 4
+    sprite_set(sprite165);
++4: // 8
+    sprite_set(sprite166);
++4: // 12
+    sprite_set(sprite167);
+    loop {
++5: // 17
+        sprite_set(sprite168);
++5: // 22
+        sprite_set(sprite169);
++5: // 27
+        sprite_set(sprite170);
++5: // 32
+        sprite_set(sprite171);
+    }
+}
+
+
+script 162 script162 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite167);
++4: // 4
+    sprite_set(sprite166);
++4: // 8
+    sprite_set(sprite165);
++4: // 12
+    sprite_set(sprite164);
+    loop {
++5: // 17
+        sprite_set(sprite160);
++5: // 22
+        sprite_set(sprite161);
++5: // 27
+        sprite_set(sprite162);
++5: // 32
+        sprite_set(sprite163);
+    }
+}
+
+
+script 163 script163 {
+    layer(Layer8);
+    sprite_set(sprite167);
++4: // 4
+    sprite_set(sprite166);
++4: // 8
+    sprite_set(sprite165);
++4: // 12
+    sprite_set(sprite164);
+    loop {
++5: // 17
+        sprite_set(sprite160);
++5: // 22
+        sprite_set(sprite161);
++5: // 27
+        sprite_set(sprite162);
++5: // 32
+        sprite_set(sprite163);
+    }
+}
+
+
+script 164 script164 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite172);
++5: // 5
+        sprite_set(sprite173);
++5: // 10
+        sprite_set(sprite174);
++5: // 15
+        sprite_set(sprite175);
++5: // 20
+    }
+}
+
+
+script 165 script165 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite176);
++4: // 4
+    sprite_set(sprite177);
++4: // 8
+    sprite_set(sprite178);
++4: // 12
+    sprite_set(sprite179);
+    loop {
++5: // 17
+        sprite_set(sprite180);
++5: // 22
+        sprite_set(sprite181);
++5: // 27
+        sprite_set(sprite182);
++5: // 32
+        sprite_set(sprite183);
+    }
+}
+
+
+script 166 script166 {
+    layer(Layer8);
+    sprite_set(sprite176);
++4: // 4
+    sprite_set(sprite177);
++4: // 8
+    sprite_set(sprite178);
++4: // 12
+    sprite_set(sprite179);
+    loop {
++5: // 17
+        sprite_set(sprite180);
++5: // 22
+        sprite_set(sprite181);
++5: // 27
+        sprite_set(sprite182);
++5: // 32
+        sprite_set(sprite183);
+    }
+}
+
+
+script 167 script167 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite179);
++4: // 4
+    sprite_set(sprite178);
++4: // 8
+    sprite_set(sprite177);
++4: // 12
+    sprite_set(sprite176);
+    loop {
++5: // 17
+        sprite_set(sprite172);
++5: // 22
+        sprite_set(sprite173);
++5: // 27
+        sprite_set(sprite174);
++5: // 32
+        sprite_set(sprite175);
+    }
+}
+
+
+script 168 script168 {
+    layer(Layer8);
+    sprite_set(sprite179);
++4: // 4
+    sprite_set(sprite178);
++4: // 8
+    sprite_set(sprite177);
++4: // 12
+    sprite_set(sprite176);
+    loop {
++5: // 17
+        sprite_set(sprite172);
++5: // 22
+        sprite_set(sprite173);
++5: // 27
+        sprite_set(sprite174);
++5: // 32
+        sprite_set(sprite175);
+    }
+}
+
+
+script 169 script169 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite184);
++5: // 5
+        sprite_set(sprite185);
++5: // 10
+        sprite_set(sprite186);
++5: // 15
+        sprite_set(sprite187);
++5: // 20
+    }
+}
+
+
+script 170 script170 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite188);
++4: // 4
+    sprite_set(sprite189);
++4: // 8
+    sprite_set(sprite190);
++4: // 12
+    sprite_set(sprite191);
+    loop {
++5: // 17
+        sprite_set(sprite192);
++5: // 22
+        sprite_set(sprite193);
++5: // 27
+        sprite_set(sprite194);
++5: // 32
+        sprite_set(sprite195);
+    }
+}
+
+
+script 171 script171 {
+    layer(Layer8);
+    sprite_set(sprite188);
++4: // 4
+    sprite_set(sprite189);
++4: // 8
+    sprite_set(sprite190);
++4: // 12
+    sprite_set(sprite191);
+    loop {
++5: // 17
+        sprite_set(sprite192);
++5: // 22
+        sprite_set(sprite193);
++5: // 27
+        sprite_set(sprite194);
++5: // 32
+        sprite_set(sprite195);
+    }
+}
+
+
+script 172 script172 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite191);
++4: // 4
+    sprite_set(sprite190);
++4: // 8
+    sprite_set(sprite189);
++4: // 12
+    sprite_set(sprite188);
+    loop {
++5: // 17
+        sprite_set(sprite184);
++5: // 22
+        sprite_set(sprite185);
++5: // 27
+        sprite_set(sprite186);
++5: // 32
+        sprite_set(sprite187);
+    }
+}
+
+
+script 173 script173 {
+    layer(Layer8);
+    sprite_set(sprite191);
++4: // 4
+    sprite_set(sprite190);
++4: // 8
+    sprite_set(sprite189);
++4: // 12
+    sprite_set(sprite188);
+    loop {
++5: // 17
+        sprite_set(sprite184);
++5: // 22
+        sprite_set(sprite185);
++5: // 27
+        sprite_set(sprite186);
++5: // 32
+        sprite_set(sprite187);
+    }
+}
+
+
+script 174 script174 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite196);
++5: // 5
+        sprite_set(sprite197);
++5: // 10
+        sprite_set(sprite198);
++5: // 15
+        sprite_set(sprite199);
++5: // 20
+    }
+}
+
+
+script 175 script175 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite200);
++4: // 4
+    sprite_set(sprite201);
++4: // 8
+    sprite_set(sprite202);
++4: // 12
+    sprite_set(sprite203);
+    loop {
++5: // 17
+        sprite_set(sprite204);
++5: // 22
+        sprite_set(sprite205);
++5: // 27
+        sprite_set(sprite206);
++5: // 32
+        sprite_set(sprite207);
+    }
+}
+
+
+script 176 script176 {
+    layer(Layer8);
+    sprite_set(sprite200);
++4: // 4
+    sprite_set(sprite201);
++4: // 8
+    sprite_set(sprite202);
++4: // 12
+    sprite_set(sprite203);
+    loop {
++5: // 17
+        sprite_set(sprite204);
++5: // 22
+        sprite_set(sprite205);
++5: // 27
+        sprite_set(sprite206);
++5: // 32
+        sprite_set(sprite207);
+    }
+}
+
+
+script 177 script177 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite203);
++4: // 4
+    sprite_set(sprite202);
++4: // 8
+    sprite_set(sprite201);
++4: // 12
+    sprite_set(sprite200);
+    loop {
++5: // 17
+        sprite_set(sprite196);
++5: // 22
+        sprite_set(sprite197);
++5: // 27
+        sprite_set(sprite198);
++5: // 32
+        sprite_set(sprite199);
+    }
+}
+
+
+script 178 script178 {
+    layer(Layer8);
+    sprite_set(sprite203);
++4: // 4
+    sprite_set(sprite202);
++4: // 8
+    sprite_set(sprite201);
++4: // 12
+    sprite_set(sprite200);
+    loop {
++5: // 17
+        sprite_set(sprite196);
++5: // 22
+        sprite_set(sprite197);
++5: // 27
+        sprite_set(sprite198);
++5: // 32
+        sprite_set(sprite199);
+    }
+}
+
+
+script 179 script179 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite208);
++5: // 5
+        sprite_set(sprite209);
++5: // 10
+        sprite_set(sprite210);
++5: // 15
+        sprite_set(sprite211);
++5: // 20
+    }
+}
+
+
+script 180 script180 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite212);
++4: // 4
+    sprite_set(sprite213);
++4: // 8
+    sprite_set(sprite214);
++4: // 12
+    sprite_set(sprite215);
+    loop {
++5: // 17
+        sprite_set(sprite216);
++5: // 22
+        sprite_set(sprite217);
++5: // 27
+        sprite_set(sprite218);
++5: // 32
+        sprite_set(sprite219);
+    }
+}
+
+
+script 181 script181 {
+    layer(Layer8);
+    sprite_set(sprite212);
++4: // 4
+    sprite_set(sprite213);
++4: // 8
+    sprite_set(sprite214);
++4: // 12
+    sprite_set(sprite215);
+    loop {
++5: // 17
+        sprite_set(sprite216);
++5: // 22
+        sprite_set(sprite217);
++5: // 27
+        sprite_set(sprite218);
++5: // 32
+        sprite_set(sprite219);
+    }
+}
+
+
+script 182 script182 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite215);
++4: // 4
+    sprite_set(sprite214);
++4: // 8
+    sprite_set(sprite213);
++4: // 12
+    sprite_set(sprite212);
+    loop {
++5: // 17
+        sprite_set(sprite208);
++5: // 22
+        sprite_set(sprite209);
++5: // 27
+        sprite_set(sprite210);
++5: // 32
+        sprite_set(sprite211);
+    }
+}
+
+
+script 183 script183 {
+    layer(Layer8);
+    sprite_set(sprite215);
++4: // 4
+    sprite_set(sprite214);
++4: // 8
+    sprite_set(sprite213);
++4: // 12
+    sprite_set(sprite212);
+    loop {
++5: // 17
+        sprite_set(sprite208);
++5: // 22
+        sprite_set(sprite209);
++5: // 27
+        sprite_set(sprite210);
++5: // 32
+        sprite_set(sprite211);
+    }
+}
+
+
+entry {
+    path: "data/enemy/enemy_g.png",
+    img_width: 512,
+    img_height: 512,
+    memory_priority: 0,
+    sprites: {
+        sprite220: {x: 0.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite221: {x: 32.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite222: {x: 64.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite223: {x: 96.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite224: {x: 128.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite225: {x: 160.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite226: {x: 192.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite227: {x: 224.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite228: {x: 256.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite229: {x: 288.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite230: {x: 320.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite231: {x: 352.0, y: 320.0, w: 32.0, h: 32.0},
+        sprite232: {x: 0.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite233: {x: 32.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite234: {x: 64.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite235: {x: 96.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite236: {x: 128.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite237: {x: 160.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite238: {x: 192.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite239: {x: 224.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite240: {x: 256.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite241: {x: 288.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite242: {x: 320.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite243: {x: 352.0, y: 352.0, w: 32.0, h: 32.0},
+        sprite244: {x: 0.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite245: {x: 32.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite246: {x: 64.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite247: {x: 96.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite248: {x: 128.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite249: {x: 160.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite250: {x: 192.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite251: {x: 224.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite252: {x: 256.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite253: {x: 288.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite254: {x: 320.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite255: {x: 352.0, y: 384.0, w: 32.0, h: 32.0},
+        sprite256: {x: 0.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite257: {x: 32.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite258: {x: 64.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite259: {x: 96.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite260: {x: 128.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite261: {x: 160.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite262: {x: 192.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite263: {x: 224.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite264: {x: 256.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite265: {x: 288.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite266: {x: 320.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite267: {x: 352.0, y: 416.0, w: 32.0, h: 32.0},
+        sprite268: {x: 0.0, y: 0.0, w: 48.0, h: 32.0},
+        sprite269: {x: 48.0, y: 0.0, w: 48.0, h: 32.0},
+        sprite270: {x: 96.0, y: 0.0, w: 48.0, h: 32.0},
+        sprite271: {x: 144.0, y: 0.0, w: 48.0, h: 32.0},
+        sprite272: {x: 0.0, y: 32.0, w: 48.0, h: 32.0},
+        sprite273: {x: 48.0, y: 32.0, w: 48.0, h: 32.0},
+        sprite274: {x: 96.0, y: 32.0, w: 48.0, h: 32.0},
+        sprite275: {x: 144.0, y: 32.0, w: 48.0, h: 32.0},
+        sprite276: {x: 0.0, y: 64.0, w: 48.0, h: 32.0},
+        sprite277: {x: 48.0, y: 64.0, w: 48.0, h: 32.0},
+        sprite278: {x: 96.0, y: 64.0, w: 48.0, h: 32.0},
+        sprite279: {x: 144.0, y: 64.0, w: 48.0, h: 32.0},
+        sprite280: {x: 0.0, y: 96.0, w: 48.0, h: 32.0},
+        sprite281: {x: 48.0, y: 96.0, w: 48.0, h: 32.0},
+        sprite282: {x: 96.0, y: 96.0, w: 48.0, h: 32.0},
+        sprite283: {x: 144.0, y: 96.0, w: 48.0, h: 32.0},
+        sprite284: {x: 0.0, y: 128.0, w: 48.0, h: 32.0},
+        sprite285: {x: 48.0, y: 128.0, w: 48.0, h: 32.0},
+        sprite286: {x: 96.0, y: 128.0, w: 48.0, h: 32.0},
+        sprite287: {x: 144.0, y: 128.0, w: 48.0, h: 32.0},
+        sprite288: {x: 0.0, y: 160.0, w: 48.0, h: 32.0},
+        sprite289: {x: 48.0, y: 160.0, w: 48.0, h: 32.0},
+        sprite290: {x: 96.0, y: 160.0, w: 48.0, h: 32.0},
+        sprite291: {x: 144.0, y: 160.0, w: 48.0, h: 32.0},
+        sprite292: {x: 320.0, y: 0.0, w: 48.0, h: 48.0},
+        sprite293: {x: 368.0, y: 0.0, w: 48.0, h: 48.0},
+        sprite294: {x: 416.0, y: 0.0, w: 48.0, h: 48.0},
+        sprite295: {x: 464.0, y: 0.0, w: 48.0, h: 48.0},
+        sprite296: {x: 320.0, y: 48.0, w: 48.0, h: 48.0},
+        sprite297: {x: 368.0, y: 48.0, w: 48.0, h: 48.0},
+        sprite298: {x: 416.0, y: 48.0, w: 48.0, h: 48.0},
+        sprite299: {x: 464.0, y: 48.0, w: 48.0, h: 48.0},
+        sprite300: {x: 320.0, y: 96.0, w: 48.0, h: 48.0},
+        sprite301: {x: 368.0, y: 96.0, w: 48.0, h: 48.0},
+        sprite302: {x: 416.0, y: 96.0, w: 48.0, h: 48.0},
+        sprite303: {x: 464.0, y: 96.0, w: 48.0, h: 48.0},
+        sprite304: {x: 320.0, y: 144.0, w: 48.0, h: 48.0},
+        sprite305: {x: 368.0, y: 144.0, w: 48.0, h: 48.0},
+        sprite306: {x: 416.0, y: 144.0, w: 48.0, h: 48.0},
+        sprite307: {x: 464.0, y: 144.0, w: 48.0, h: 48.0},
+        sprite308: {x: 320.0, y: 192.0, w: 48.0, h: 48.0},
+        sprite309: {x: 368.0, y: 192.0, w: 48.0, h: 48.0},
+        sprite310: {x: 416.0, y: 192.0, w: 48.0, h: 48.0},
+        sprite311: {x: 464.0, y: 192.0, w: 48.0, h: 48.0},
+        sprite312: {x: 320.0, y: 240.0, w: 48.0, h: 48.0},
+        sprite313: {x: 368.0, y: 240.0, w: 48.0, h: 48.0},
+        sprite314: {x: 416.0, y: 240.0, w: 48.0, h: 48.0},
+        sprite315: {x: 464.0, y: 240.0, w: 48.0, h: 48.0},
+        sprite316: {x: 0.0, y: 448.0, w: 64.0, h: 64.0},
+        sprite317: {x: 64.0, y: 448.0, w: 64.0, h: 64.0},
+        sprite318: {x: 128.0, y: 448.0, w: 64.0, h: 64.0},
+        sprite319: {x: 192.0, y: 448.0, w: 64.0, h: 64.0},
+        sprite320: {x: 256.0, y: 448.0, w: 64.0, h: 64.0},
+        sprite321: {x: 320.0, y: 448.0, w: 64.0, h: 64.0},
+        sprite322: {x: 384.0, y: 448.0, w: 64.0, h: 64.0},
+        sprite323: {x: 448.0, y: 448.0, w: 64.0, h: 64.0},
+        sprite324: {x: 384.0, y: 320.0, w: 64.0, h: 64.0},
+        sprite325: {x: 448.0, y: 320.0, w: 64.0, h: 64.0},
+        sprite326: {x: 384.0, y: 384.0, w: 64.0, h: 64.0},
+        sprite327: {x: 448.0, y: 384.0, w: 64.0, h: 64.0},
+    },
+}
+
+
+script 184 script184 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite220);
++5: // 5
+        sprite_set(sprite221);
++5: // 10
+        sprite_set(sprite222);
++5: // 15
+        sprite_set(sprite223);
++5: // 20
+    }
+}
+
+
+script 185 script185 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite224);
++4: // 4
+    sprite_set(sprite225);
++4: // 8
+    sprite_set(sprite226);
++4: // 12
+    sprite_set(sprite227);
+    loop {
++5: // 17
+        sprite_set(sprite228);
++5: // 22
+        sprite_set(sprite229);
++5: // 27
+        sprite_set(sprite230);
++5: // 32
+        sprite_set(sprite231);
+    }
+}
+
+
+script 186 script186 {
+    layer(Layer8);
+    sprite_set(sprite224);
++4: // 4
+    sprite_set(sprite225);
++4: // 8
+    sprite_set(sprite226);
++4: // 12
+    sprite_set(sprite227);
+    loop {
++5: // 17
+        sprite_set(sprite228);
++5: // 22
+        sprite_set(sprite229);
++5: // 27
+        sprite_set(sprite230);
++5: // 32
+        sprite_set(sprite231);
+    }
+}
+
+
+script 187 script187 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite227);
++4: // 4
+    sprite_set(sprite226);
++4: // 8
+    sprite_set(sprite225);
++4: // 12
+    sprite_set(sprite224);
+    loop {
++5: // 17
+        sprite_set(sprite220);
++5: // 22
+        sprite_set(sprite221);
++5: // 27
+        sprite_set(sprite222);
++5: // 32
+        sprite_set(sprite223);
+    }
+}
+
+
+script 188 script188 {
+    layer(Layer8);
+    sprite_set(sprite227);
++4: // 4
+    sprite_set(sprite226);
++4: // 8
+    sprite_set(sprite225);
++4: // 12
+    sprite_set(sprite224);
+    loop {
++5: // 17
+        sprite_set(sprite220);
++5: // 22
+        sprite_set(sprite221);
++5: // 27
+        sprite_set(sprite222);
++5: // 32
+        sprite_set(sprite223);
+    }
+}
+
+
+script 189 script189 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite232);
++5: // 5
+        sprite_set(sprite233);
++5: // 10
+        sprite_set(sprite234);
++5: // 15
+        sprite_set(sprite235);
++5: // 20
+    }
+}
+
+
+script 190 script190 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite236);
++4: // 4
+    sprite_set(sprite237);
++4: // 8
+    sprite_set(sprite238);
++4: // 12
+    sprite_set(sprite239);
+    loop {
++5: // 17
+        sprite_set(sprite240);
++5: // 22
+        sprite_set(sprite241);
++5: // 27
+        sprite_set(sprite242);
++5: // 32
+        sprite_set(sprite243);
+    }
+}
+
+
+script 191 script191 {
+    layer(Layer8);
+    sprite_set(sprite236);
++4: // 4
+    sprite_set(sprite237);
++4: // 8
+    sprite_set(sprite238);
++4: // 12
+    sprite_set(sprite239);
+    loop {
++5: // 17
+        sprite_set(sprite240);
++5: // 22
+        sprite_set(sprite241);
++5: // 27
+        sprite_set(sprite242);
++5: // 32
+        sprite_set(sprite243);
+    }
+}
+
+
+script 192 script192 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite239);
++4: // 4
+    sprite_set(sprite238);
++4: // 8
+    sprite_set(sprite237);
++4: // 12
+    sprite_set(sprite236);
+    loop {
++5: // 17
+        sprite_set(sprite232);
++5: // 22
+        sprite_set(sprite233);
++5: // 27
+        sprite_set(sprite234);
++5: // 32
+        sprite_set(sprite235);
+    }
+}
+
+
+script 193 script193 {
+    layer(Layer8);
+    sprite_set(sprite239);
++4: // 4
+    sprite_set(sprite238);
++4: // 8
+    sprite_set(sprite237);
++4: // 12
+    sprite_set(sprite236);
+    loop {
++5: // 17
+        sprite_set(sprite232);
++5: // 22
+        sprite_set(sprite233);
++5: // 27
+        sprite_set(sprite234);
++5: // 32
+        sprite_set(sprite235);
+    }
+}
+
+
+script 194 script194 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite244);
++5: // 5
+        sprite_set(sprite245);
++5: // 10
+        sprite_set(sprite246);
++5: // 15
+        sprite_set(sprite247);
++5: // 20
+    }
+}
+
+
+script 195 script195 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite248);
++4: // 4
+    sprite_set(sprite249);
++4: // 8
+    sprite_set(sprite250);
++4: // 12
+    sprite_set(sprite251);
+    loop {
++5: // 17
+        sprite_set(sprite252);
++5: // 22
+        sprite_set(sprite253);
++5: // 27
+        sprite_set(sprite254);
++5: // 32
+        sprite_set(sprite255);
+    }
+}
+
+
+script 196 script196 {
+    layer(Layer8);
+    sprite_set(sprite248);
++4: // 4
+    sprite_set(sprite249);
++4: // 8
+    sprite_set(sprite250);
++4: // 12
+    sprite_set(sprite251);
+    loop {
++5: // 17
+        sprite_set(sprite252);
++5: // 22
+        sprite_set(sprite253);
++5: // 27
+        sprite_set(sprite254);
++5: // 32
+        sprite_set(sprite255);
+    }
+}
+
+
+script 197 script197 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite251);
++4: // 4
+    sprite_set(sprite250);
++4: // 8
+    sprite_set(sprite249);
++4: // 12
+    sprite_set(sprite248);
+    loop {
++5: // 17
+        sprite_set(sprite244);
++5: // 22
+        sprite_set(sprite245);
++5: // 27
+        sprite_set(sprite246);
++5: // 32
+        sprite_set(sprite247);
+    }
+}
+
+
+script 198 script198 {
+    layer(Layer8);
+    sprite_set(sprite251);
++4: // 4
+    sprite_set(sprite250);
++4: // 8
+    sprite_set(sprite249);
++4: // 12
+    sprite_set(sprite248);
+    loop {
++5: // 17
+        sprite_set(sprite244);
++5: // 22
+        sprite_set(sprite245);
++5: // 27
+        sprite_set(sprite246);
++5: // 32
+        sprite_set(sprite247);
+    }
+}
+
+
+script 199 script199 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite256);
++5: // 5
+        sprite_set(sprite257);
++5: // 10
+        sprite_set(sprite258);
++5: // 15
+        sprite_set(sprite259);
++5: // 20
+    }
+}
+
+
+script 200 script200 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite260);
++4: // 4
+    sprite_set(sprite261);
++4: // 8
+    sprite_set(sprite262);
++4: // 12
+    sprite_set(sprite263);
+    loop {
++5: // 17
+        sprite_set(sprite264);
++5: // 22
+        sprite_set(sprite265);
++5: // 27
+        sprite_set(sprite266);
++5: // 32
+        sprite_set(sprite267);
+    }
+}
+
+
+script 201 script201 {
+    layer(Layer8);
+    sprite_set(sprite260);
++4: // 4
+    sprite_set(sprite261);
++4: // 8
+    sprite_set(sprite262);
++4: // 12
+    sprite_set(sprite263);
+    loop {
++5: // 17
+        sprite_set(sprite264);
++5: // 22
+        sprite_set(sprite265);
++5: // 27
+        sprite_set(sprite266);
++5: // 32
+        sprite_set(sprite267);
+    }
+}
+
+
+script 202 script202 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite263);
++4: // 4
+    sprite_set(sprite262);
++4: // 8
+    sprite_set(sprite261);
++4: // 12
+    sprite_set(sprite260);
+    loop {
++5: // 17
+        sprite_set(sprite256);
++5: // 22
+        sprite_set(sprite257);
++5: // 27
+        sprite_set(sprite258);
++5: // 32
+        sprite_set(sprite259);
+    }
+}
+
+
+script 203 script203 {
+    layer(Layer8);
+    sprite_set(sprite263);
++4: // 4
+    sprite_set(sprite262);
++4: // 8
+    sprite_set(sprite261);
++4: // 12
+    sprite_set(sprite260);
+    loop {
++5: // 17
+        sprite_set(sprite256);
++5: // 22
+        sprite_set(sprite257);
++5: // 27
+        sprite_set(sprite258);
++5: // 32
+        sprite_set(sprite259);
+    }
+}
+
+
+script 204 script204 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite268);
++5: // 5
+        sprite_set(sprite269);
++5: // 10
+        sprite_set(sprite270);
++5: // 15
+        sprite_set(sprite271);
++5: // 20
+    }
+}
+
+
+script 205 script205 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite272);
++4: // 4
+    sprite_set(sprite273);
++4: // 8
+    sprite_set(sprite274);
++4: // 12
+    sprite_set(sprite275);
+    loop {
++5: // 17
+        sprite_set(sprite276);
++5: // 22
+        sprite_set(sprite277);
++5: // 27
+        sprite_set(sprite278);
++5: // 32
+        sprite_set(sprite279);
+    }
+}
+
+
+script 206 script206 {
+    layer(Layer8);
+    sprite_set(sprite272);
++4: // 4
+    sprite_set(sprite273);
++4: // 8
+    sprite_set(sprite274);
++4: // 12
+    sprite_set(sprite275);
+    loop {
++5: // 17
+        sprite_set(sprite276);
++5: // 22
+        sprite_set(sprite277);
++5: // 27
+        sprite_set(sprite278);
++5: // 32
+        sprite_set(sprite279);
+    }
+}
+
+
+script 207 script207 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite275);
++4: // 4
+    sprite_set(sprite274);
++4: // 8
+    sprite_set(sprite273);
++4: // 12
+    sprite_set(sprite272);
+    loop {
++5: // 17
+        sprite_set(sprite268);
++5: // 22
+        sprite_set(sprite269);
++5: // 27
+        sprite_set(sprite270);
++5: // 32
+        sprite_set(sprite271);
+    }
+}
+
+
+script 208 script208 {
+    layer(Layer8);
+    sprite_set(sprite275);
++4: // 4
+    sprite_set(sprite274);
++4: // 8
+    sprite_set(sprite273);
++4: // 12
+    sprite_set(sprite272);
+    loop {
++5: // 17
+        sprite_set(sprite268);
++5: // 22
+        sprite_set(sprite269);
++5: // 27
+        sprite_set(sprite270);
++5: // 32
+        sprite_set(sprite271);
+    }
+}
+
+
+script 209 script209 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite280);
++5: // 5
+        sprite_set(sprite281);
++5: // 10
+        sprite_set(sprite282);
++5: // 15
+        sprite_set(sprite283);
++5: // 20
+    }
+}
+
+
+script 210 script210 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite284);
++4: // 4
+    sprite_set(sprite285);
++4: // 8
+    sprite_set(sprite286);
++4: // 12
+    sprite_set(sprite287);
+    loop {
++5: // 17
+        sprite_set(sprite288);
++5: // 22
+        sprite_set(sprite289);
++5: // 27
+        sprite_set(sprite290);
++5: // 32
+        sprite_set(sprite291);
+    }
+}
+
+
+script 211 script211 {
+    layer(Layer8);
+    sprite_set(sprite284);
++4: // 4
+    sprite_set(sprite285);
++4: // 8
+    sprite_set(sprite286);
++4: // 12
+    sprite_set(sprite287);
+    loop {
++5: // 17
+        sprite_set(sprite288);
++5: // 22
+        sprite_set(sprite289);
++5: // 27
+        sprite_set(sprite290);
++5: // 32
+        sprite_set(sprite291);
+    }
+}
+
+
+script 212 script212 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite287);
++4: // 4
+    sprite_set(sprite286);
++4: // 8
+    sprite_set(sprite285);
++4: // 12
+    sprite_set(sprite284);
+    loop {
++5: // 17
+        sprite_set(sprite280);
++5: // 22
+        sprite_set(sprite281);
++5: // 27
+        sprite_set(sprite282);
++5: // 32
+        sprite_set(sprite283);
+    }
+}
+
+
+script 213 script213 {
+    layer(Layer8);
+    sprite_set(sprite287);
++4: // 4
+    sprite_set(sprite286);
++4: // 8
+    sprite_set(sprite285);
++4: // 12
+    sprite_set(sprite284);
+    loop {
++5: // 17
+        sprite_set(sprite280);
++5: // 22
+        sprite_set(sprite281);
++5: // 27
+        sprite_set(sprite282);
++5: // 32
+        sprite_set(sprite283);
+    }
+}
+
+
+script 214 script214 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite292);
++5: // 5
+        sprite_set(sprite293);
++5: // 10
+        sprite_set(sprite294);
++5: // 15
+        sprite_set(sprite295);
++5: // 20
+    }
+}
+
+
+script 215 script215 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite296);
++4: // 4
+    sprite_set(sprite297);
++4: // 8
+    sprite_set(sprite298);
++4: // 12
+    sprite_set(sprite299);
+    loop {
++5: // 17
+        sprite_set(sprite300);
++5: // 22
+        sprite_set(sprite301);
++5: // 27
+        sprite_set(sprite302);
++5: // 32
+        sprite_set(sprite303);
+    }
+}
+
+
+script 216 script216 {
+    layer(Layer8);
+    sprite_set(sprite296);
++4: // 4
+    sprite_set(sprite297);
++4: // 8
+    sprite_set(sprite298);
++4: // 12
+    sprite_set(sprite299);
+    loop {
++5: // 17
+        sprite_set(sprite300);
++5: // 22
+        sprite_set(sprite301);
++5: // 27
+        sprite_set(sprite302);
++5: // 32
+        sprite_set(sprite303);
+    }
+}
+
+
+script 217 script217 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite299);
++4: // 4
+    sprite_set(sprite298);
++4: // 8
+    sprite_set(sprite297);
++4: // 12
+    sprite_set(sprite296);
+    loop {
++5: // 17
+        sprite_set(sprite292);
++5: // 22
+        sprite_set(sprite293);
++5: // 27
+        sprite_set(sprite294);
++5: // 32
+        sprite_set(sprite295);
+    }
+}
+
+
+script 218 script218 {
+    layer(Layer8);
+    sprite_set(sprite299);
++4: // 4
+    sprite_set(sprite298);
++4: // 8
+    sprite_set(sprite297);
++4: // 12
+    sprite_set(sprite296);
+    loop {
++5: // 17
+        sprite_set(sprite292);
++5: // 22
+        sprite_set(sprite293);
++5: // 27
+        sprite_set(sprite294);
++5: // 32
+        sprite_set(sprite295);
+    }
+}
+
+
+script 219 script219 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite304);
++5: // 5
+        sprite_set(sprite305);
++5: // 10
+        sprite_set(sprite306);
++5: // 15
+        sprite_set(sprite307);
++5: // 20
+    }
+}
+
+
+script 220 script220 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite308);
++4: // 4
+    sprite_set(sprite309);
++4: // 8
+    sprite_set(sprite310);
++4: // 12
+    sprite_set(sprite311);
+    loop {
++5: // 17
+        sprite_set(sprite312);
++5: // 22
+        sprite_set(sprite313);
++5: // 27
+        sprite_set(sprite314);
++5: // 32
+        sprite_set(sprite315);
+    }
+}
+
+
+script 221 script221 {
+    layer(Layer8);
+    sprite_set(sprite308);
++4: // 4
+    sprite_set(sprite309);
++4: // 8
+    sprite_set(sprite310);
++4: // 12
+    sprite_set(sprite311);
+    loop {
++5: // 17
+        sprite_set(sprite312);
++5: // 22
+        sprite_set(sprite313);
++5: // 27
+        sprite_set(sprite314);
++5: // 32
+        sprite_set(sprite315);
+    }
+}
+
+
+script 222 script222 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite311);
++4: // 4
+    sprite_set(sprite310);
++4: // 8
+    sprite_set(sprite309);
++4: // 12
+    sprite_set(sprite308);
+    loop {
++5: // 17
+        sprite_set(sprite304);
++5: // 22
+        sprite_set(sprite305);
++5: // 27
+        sprite_set(sprite306);
++5: // 32
+        sprite_set(sprite307);
+    }
+}
+
+
+script 223 script223 {
+    layer(Layer8);
+    sprite_set(sprite311);
++4: // 4
+    sprite_set(sprite310);
++4: // 8
+    sprite_set(sprite309);
++4: // 12
+    sprite_set(sprite308);
+    loop {
++5: // 17
+        sprite_set(sprite304);
++5: // 22
+        sprite_set(sprite305);
++5: // 27
+        sprite_set(sprite306);
++5: // 32
+        sprite_set(sprite307);
+    }
+}
+
+
+script 224 script224 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite316);
++5: // 5
+        sprite_set(sprite317);
++5: // 10
+        sprite_set(sprite318);
++5: // 15
+        sprite_set(sprite319);
++5: // 20
+    }
+}
+
+
+script 225 script225 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite320);
++4: // 4
+    sprite_set(sprite321);
++4: // 8
+    sprite_set(sprite322);
++4: // 12
+    sprite_set(sprite323);
+    loop {
++5: // 17
+        sprite_set(sprite324);
++5: // 22
+        sprite_set(sprite325);
++5: // 27
+        sprite_set(sprite326);
++5: // 32
+        sprite_set(sprite327);
+    }
+}
+
+
+script 226 script226 {
+    layer(Layer8);
+    sprite_set(sprite320);
++4: // 4
+    sprite_set(sprite321);
++4: // 8
+    sprite_set(sprite322);
++4: // 12
+    sprite_set(sprite323);
+    loop {
++5: // 17
+        sprite_set(sprite324);
++5: // 22
+        sprite_set(sprite325);
++5: // 27
+        sprite_set(sprite326);
++5: // 32
+        sprite_set(sprite327);
+    }
+}
+
+
+script 227 script227 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite323);
++4: // 4
+    sprite_set(sprite322);
++4: // 8
+    sprite_set(sprite321);
++4: // 12
+    sprite_set(sprite320);
+    loop {
++5: // 17
+        sprite_set(sprite316);
++5: // 22
+        sprite_set(sprite317);
++5: // 27
+        sprite_set(sprite318);
++5: // 32
+        sprite_set(sprite319);
+    }
+}
+
+
+script 228 script228 {
+    layer(Layer8);
+    sprite_set(sprite323);
++4: // 4
+    sprite_set(sprite322);
++4: // 8
+    sprite_set(sprite321);
++4: // 12
+    sprite_set(sprite320);
+    loop {
++5: // 17
+        sprite_set(sprite316);
++5: // 22
+        sprite_set(sprite317);
++5: // 27
+        sprite_set(sprite318);
++5: // 32
+        sprite_set(sprite319);
+    }
+}
+
+
+entry {
+    path: "data/enemy/enemy_ll.png",
+    img_width: 256,
+    img_height: 128,
+    memory_priority: 0,
+    sprites: {
+        sprite328: {x: 0.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite329: {x: 64.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite330: {x: 128.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite331: {x: 192.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite332: {x: 0.0, y: 64.0, w: 64.0, h: 64.0},
+        sprite333: {x: 64.0, y: 64.0, w: 64.0, h: 64.0},
+        sprite334: {x: 128.0, y: 64.0, w: 64.0, h: 64.0},
+        sprite335: {x: 192.0, y: 64.0, w: 64.0, h: 64.0},
+    },
+}
+
+
+script 229 script229 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite328);
++5: // 5
+        sprite_set(sprite329);
++5: // 10
+        sprite_set(sprite330);
++5: // 15
+        sprite_set(sprite331);
++5: // 20
+    }
+}
+
+
+script 230 script230 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite332);
++4: // 4
+    sprite_set(sprite333);
+    anm_halt();
+}
+
+
+script 231 script231 {
+    layer(Layer8);
+    sprite_set(sprite332);
++4: // 4
+    sprite_set(sprite333);
+    anm_halt();
+}
+
+
+script 232 script232 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite333);
++4: // 4
+    sprite_set(sprite332);
+    loop {
++5: // 9
+        sprite_set(sprite328);
++5: // 14
+        sprite_set(sprite329);
++5: // 19
+        sprite_set(sprite330);
++5: // 24
+        sprite_set(sprite331);
+    }
+}
+
+
+script 233 script233 {
+    layer(Layer8);
+    sprite_set(sprite333);
++4: // 4
+    sprite_set(sprite332);
+    loop {
++5: // 9
+        sprite_set(sprite328);
++5: // 14
+        sprite_set(sprite329);
++5: // 19
+        sprite_set(sprite330);
++5: // 24
+        sprite_set(sprite331);
+    }
+}
+
+
+script 234 script234 {
+    layer(Layer8);
+    sprite_set(sprite334);
+    anm_halt();
+}
+
+
+entry {
+    path: "data/enemy/enemy_ll2.png",
+    img_width: 256,
+    img_height: 128,
+    memory_priority: 0,
+    sprites: {
+        sprite336: {x: 0.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite337: {x: 64.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite338: {x: 128.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite339: {x: 192.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite340: {x: 0.0, y: 64.0, w: 64.0, h: 64.0},
+        sprite341: {x: 64.0, y: 64.0, w: 64.0, h: 64.0},
+        sprite342: {x: 128.0, y: 64.0, w: 64.0, h: 64.0},
+        sprite343: {x: 192.0, y: 64.0, w: 64.0, h: 64.0},
+    },
+}
+
+
+script 235 script235 {
+    layer(Layer8);
+    loop {
+        sprite_set(sprite336);
++5: // 5
+        sprite_set(sprite337);
++5: // 10
+        sprite_set(sprite338);
++5: // 15
+        sprite_set(sprite339);
++5: // 20
+    }
+}
+
+
+script 236 script236 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite340);
++4: // 4
+    sprite_set(sprite341);
+    anm_halt();
+}
+
+
+script 237 script237 {
+    layer(Layer8);
+    sprite_set(sprite340);
++4: // 4
+    sprite_set(sprite341);
+    anm_halt();
+}
+
+
+script 238 script238 {
+    layer(Layer8);
+    scale_flip_x();
+    sprite_set(sprite341);
++4: // 4
+    sprite_set(sprite340);
+    loop {
++5: // 9
+        sprite_set(sprite336);
++5: // 14
+        sprite_set(sprite337);
++5: // 19
+        sprite_set(sprite338);
++5: // 24
+        sprite_set(sprite339);
+    }
+}
+
+
+script 239 script239 {
+    layer(Layer8);
+    sprite_set(sprite341);
++4: // 4
+    sprite_set(sprite340);
+    loop {
++5: // 9
+        sprite_set(sprite336);
++5: // 14
+        sprite_set(sprite337);
++5: // 19
+        sprite_set(sprite338);
++5: // 24
+        sprite_set(sprite339);
+    }
+}
+
+
+script 240 script240 {
+    layer(Layer8);
+    sprite_set(sprite342);
+    anm_halt();
+}
+
+
+script 241 script241 {
+-1:
+    layer(Layer8);
+    render_mode(RenderMode1);
+    sprite_set(sprite112);
+    blend_mode(Additive);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, Linear, 0x80, 0x80, 0x80);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+    scale(0.2, 0.2);
+    scale_interp(90, AccelerateSlow, 2.0, 2.0);
+    anm_flag_color_children(true);
+0:
+    anm_create_child_back(script242);
+    anm_create_child_back(script243);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 242 script242 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite116);
+    rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
+    blend_mode(Additive);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 243 script243 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite116);
+    rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 244 script244 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite116);
+    rotation_interp(-1, ConstantVelocity, 0.09817477, 0.0, 0.09817477);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+    scale(2.2, 2.2);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 245 script245 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite116);
+    rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(3.0, 3.0);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 246 script246 {
+-1:
+    layer(Layer8);
+    render_mode(RenderMode1);
+    sprite_set(sprite113);
+    blend_mode(Additive);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, Linear, 0x80, 0x80, 0x80);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+    scale(0.2, 0.2);
+    scale_interp(90, AccelerateSlow, 2.0, 2.0);
+    anm_flag_color_children(true);
+0:
+    anm_create_child_back(script247);
+    anm_create_child_back(script248);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 247 script247 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite117);
+    rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
+    blend_mode(Additive);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 248 script248 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite117);
+    rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 249 script249 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite117);
+    rotation_interp(-1, ConstantVelocity, 0.09817477, 0.0, 0.09817477);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+    scale(2.2, 2.2);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 250 script250 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite117);
+    rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(3.0, 3.0);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 251 script251 {
+-1:
+    layer(Layer8);
+    render_mode(RenderMode1);
+    sprite_set(sprite114);
+    blend_mode(Additive);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, Linear, 0x80, 0x80, 0x80);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+    scale(0.2, 0.2);
+    scale_interp(90, AccelerateSlow, 2.0, 2.0);
+    anm_flag_color_children(true);
+0:
+    anm_create_child_back(script252);
+    anm_create_child_back(script253);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 252 script252 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite118);
+    rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
+    blend_mode(Additive);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 253 script253 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite118);
+    rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 254 script254 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite118);
+    rotation_interp(-1, ConstantVelocity, 0.09817477, 0.0, 0.09817477);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+    scale(2.2, 2.2);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 255 script255 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite118);
+    rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(3.0, 3.0);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 256 script256 {
+-1:
+    layer(Layer8);
+    render_mode(RenderMode1);
+    sprite_set(sprite115);
+    blend_mode(Additive);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, Linear, 0x80, 0x80, 0x80);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+    scale(0.2, 0.2);
+    scale_interp(90, AccelerateSlow, 2.0, 2.0);
+    anm_flag_color_children(true);
+0:
+    anm_create_child_back(script257);
+    anm_create_child_back(script258);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 257 script257 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite119);
+    rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
+    blend_mode(Additive);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 258 script258 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite119);
+    rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(1.5, 1.5);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 259 script259 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite119);
+    rotation_interp(-1, ConstantVelocity, 0.09817477, 0.0, 0.09817477);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+    scale(2.2, 2.2);
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
+0:
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}
+
+
+script 260 script260 {
+-1:
+    layer(Layer9);
+    render_mode(RenderMode1);
+    sprite_set(sprite119);
+    rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
+    blend_mode(Additive);
+    scale(3.0, 3.0);
+    color(0x20, 0x20, 0x20);
+    color_interp(90, AccelerateSlow, 0x80, 0x80, 0x80);
+0:
+    alpha(0x40);
+    alpha_interp(90, Linear, 0xc0);
++90: // 90
+    color(0xff, 0xff, 0xff);
+    alpha(0xff);
+    anm_halt();
+}

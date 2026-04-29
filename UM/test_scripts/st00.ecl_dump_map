@@ -1,4 +1,4 @@
-anim { "enemy.anm"; "st01enm.anm"; "patchy.anm"; }
+anim { "enemy.anm"; "st01enm.anm"; "patchy.anm"; "enemy_test.anm"; }
 //ecli { "default.ecl"; "st01bs.ecl"; "st01mbs.ecl"; }
 ecli { "default.ecl"; }
 
@@ -781,6 +781,41 @@ void full_power_dummy() {
     enemy_delete();
 }
 
+void Cir00func()
+{
+    enemy_flags_set(3);
+!L
+    death_callback_sub("DeadAttack1");
+!*
+    enemy_set_hitbox(28.0f, 28.0f);
+    enemy_set_collision(16.0f, 16.0f);
+    //move_velocity_abs(-1.5707964f + (%RAND_FLOAT_SIGNED * 0.05235988f), 0.6f);
+    ecl_time_sub(70);
+    //move_speed_abs_interp(20, 0, 0.0f);
+    //@Cir00_at() async;
+    ecl_time_sub(20);
+    enemy_flags_clear(3);
+    //move_velocity_abs(%PLAYER_ANGLE, 0.0f);
+    ecl_time_sub(80);
+    math_line_angle(%EF2, %SELF_X, %SELF_Y, %EF0, %EF1);
+    //move_velocity_abs(%EF2, 0.0f);
+    //move_velocity_abs_interp(120, 0, %EF2, 1.0f);
+    ecl_time_sub(60);
+    loop {
+		ecl_time_sub(1000);
+	}
+}
+
+void Cir00p() {
+    anm_source(5);
+    item_reward_set(1);
+    //item_timed_bonus_slot_set(2, 1);
+    item_timed_bonus_duration(150);
+    anm_set_slot(0, 65);
+    @Cir00func();
+    //enemy_delete();
+}
+
 void main() {
     enemy_flags_set(FLAG_INVINCIBLE | FLAG_INTANGIBLE | FLAG_NO_DELETE);
 +1:
@@ -790,6 +825,9 @@ void main() {
     //halt();
     
     enemy_create_abs("full_power_dummy", PLAYER_X, PLAYER_Y, 1, 0, 0);
+	
++120:
+	enemy_create_rel("Cir00p", 0.0f, 144.0f, 120, 1000, 1);
     
     //enemy_create_abs("BossPatchouliPhase1", 64.0, -32.0, 10000, 0, 0);
     //enemy_create_abs("enemy_test", 64.0, -32.0, 10000, 0, 0);

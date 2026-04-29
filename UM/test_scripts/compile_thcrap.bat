@@ -20,9 +20,9 @@ for %%g in (*.anm_dump_map) do (
     REM thanm.exe -x 18 "%%g" "anm_data/%%~ng.anm_temp"
     REM thanm.exe -c 18 "anm_data/%%~ng.anm_temp" "%out%%%~ng.anm"
 )
-for %%g in (*.std_dump_map) do (
-    %trustd% c "%%g" -g 18 -m %truth_map_path%any.stdm -o "%out%%%~ng.std"
-)
+REM for %%g in (*.std_dump_map) do (
+    REM %trustd% c "%%g" -g 18 -m %truth_map_path%any.stdm -o "%out%%%~ng.std"
+REM )
 for %%g in (*.ecl_dump_map) do (
     REM call clang_cpp_comments.bat "%%g" "%%~ng.pre_ecl_dump_map" "-DPRAGMA=#pragma"
 	REM %thecl% -c 18 -m "%truth_map_path%th18_thtk.eclm" "%%~ng.pre_ecl_dump_map"  "%out%%%~ng.ecl"

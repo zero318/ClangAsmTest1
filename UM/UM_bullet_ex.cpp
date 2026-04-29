@@ -10083,6 +10083,7 @@ struct ZUNInterp { //       0x58    0x44    0x30
 			end_time = this->end_time;
 			if (this->time >= end_time) {
 				this->time.set(end_time);
+				this->end_time = 0;
 				goto TimeEnd;
 			}
 		} else if (end_time == 0) {
@@ -10279,6 +10280,7 @@ struct ZUNInterpExImpl { //                 0x68    0x50
 			end_time = this->end_time;
 			if (this->time >= end_time) {
 				this->time.set(end_time);
+				this->end_time = 0;
 				goto TimeEnd;
 			}
 		} else if (end_time == 0) {
@@ -16680,11 +16682,11 @@ struct AnmVM {
 		this->controller.script_time.default_values();
 		this->controller.__timer_1C.default_values();
 		this->data.position_interp.end_time = 0;
-		//this->data.color_interp.end_time = 0;
+		this->data.color_interp.end_time = 0;
 		this->data.alpha_interp.end_time = 0;
 		this->data.rotation_interp.end_time = 0;
-		this->data.spin_interp.end_time = 0;
-		//this->data.scale_interp.end_time = 0;
+		//this->data.spin_interp.end_time = 0;
+		this->data.scale_interp.end_time = 0;
 		this->data.scale2_interp.end_time = 0;
 		this->data.uv_scale_interp.end_time = 0;
 		this->data.color2_interp.end_time = 0;

@@ -1,4 +1,4 @@
-anim { "enemy.anm"; "st01enm.anm"; "patchy.anm"; }
+anim { "enemy.anm"; "st01enm.anm"; "patchy.anm"; "enemy_test.anm"; }
 ecli { "default.ecl"; }
 
 void BossPatchouliEnd()
@@ -585,6 +585,38 @@ BossPatchouliPhase5_1140:
     ret();
 }
 
+void Cir00func()
+{
+    frame_enter(0);
+    enemy_flags_set(3);
+!L
+    death_callback_sub("DeadAttack1");
+!*
+    enemy_set_hitbox(28.0f, 28.0f);
+    enemy_set_collision(16.0f, 16.0f);
+    ecl_time_sub(70);
+    ecl_time_sub(20);
+    enemy_flags_clear(3);
+    ecl_time_sub(80);
+    math_line_angle(%EF2, %SELF_X, %SELF_Y, %EF0, %EF1);
+    ecl_time_sub(60);
+Cir00func_272:
+    ecl_time_sub(1000);
+    jump(Cir00func_272, 0);
+    ret();
+}
+
+void Cir00p()
+{
+    frame_enter(0);
+    anm_source(5);
+    item_reward_set(1);
+    item_timed_bonus_duration(150);
+    anm_set_slot(0, 65);
+    call("Cir00func");
+    ret();
+}
+
 void EarthMetalSignEmeraldMegalith()
 {
     frame_enter(0);
@@ -853,9 +885,11 @@ void main()
 +1: //1
     chapter_set(0);
     enemy_create_abs("full_power_dummy", %PLAYER_X, %PLAYER_Y, 1, 0, 0);
-main_136:
-+10000: //10001
-    jump(main_136, 1);
++120: //121
+    enemy_create_rel("Cir00p", 0.0f, 144.0f, 120, 1000, 1);
+main_184:
++10000: //10121
+    jump(main_184, 121);
     ret();
 }
 
