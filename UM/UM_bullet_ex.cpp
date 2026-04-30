@@ -46,6 +46,7 @@ using ZUNListIter = ZUNListIterBase<T, true>;
 template <typename T>
 using ZUNListEnds = ZUNListEndsBase<T, true>;
 
+// Patch/extension feature toggles
 #define INCLUDE_FUTURE_INSTRUCTIONS 0
 #define INCLUDE_FUTURE_VARIABLES 0
 #define INCLUDE_PATCH_INSTRUCTIONS 0
@@ -56,11 +57,12 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define MALLET_PIPE 0
 #define FAST_TIMER 0
 
+// Debug toggles
 #define ALLOW_FORCE_CLOSING_SHOP 1
 
-#define LOG_DEBUG_TO_FILE 1
+#define LOG_DEBUG_TO_FILE 0
 #define FORCE_DEBUG_LOGGING 1
-#define INCLUDE_SOUND_DEBUG 1
+#define INCLUDE_SOUND_DEBUG 0
 
 #define DEBUG_SKIP_MENUS 1
 #define INCLUDE_EXTRA_DEBUG_STUFF (1 && (FORCE_DEBUG_LOGGING || !NDEBUG))
@@ -70,6 +72,9 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define TESTING_FEATURES 1
 
 #define DEBUG_NO_GAME_OVER 1
+#define DEBUG_INVINCIBLE 1
+#define DEBUG_FAST_FORWARD 1
+#define DEBUG_FAST_FORWARD_SPEED 10
 
 #define KILL_THE_MUTEX_WITH_FIRE 1
 
@@ -259,15 +264,15 @@ struct LockKey {
 										key == VK_CAPITAL ? 58 :
 										70;
 	static inline bool on() {
-		return GetAsyncKeyState(key) & 1;
+		return GetKeyState(key) & 1;
 	}
 	static inline bool is(bool state) {
 		return on() == state;
 	}
 	static inline void toggle() {
 		static constexpr INPUT buttons[] = {
-			{ .type = INPUT_KEYBOARD, (KEYBDINPUT){ .wVk = key, .wScan = SCAN, .dwFlags = KEYEVENTF_EXTENDEDKEY } },
-			{ .type = INPUT_KEYBOARD, (KEYBDINPUT){ .wVk = key, .wScan = SCAN, .dwFlags = KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP } }
+			{ .type = INPUT_KEYBOARD, { .ki = (KEYBDINPUT){ .wVk = key, .wScan = SCAN, .dwFlags = KEYEVENTF_EXTENDEDKEY } } },
+			{ .type = INPUT_KEYBOARD, { .ki = (KEYBDINPUT){ .wVk = key, .wScan = SCAN, .dwFlags = KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP } } }
 		};
 		SendInput(countof(buttons), (LPINPUT)buttons, sizeof(INPUT));
 	}
@@ -2418,6 +2423,9 @@ struct UpdateFuncRegistry {
 
 	// 0x4012E0
 	dllexport gnu_noinline int32_t thiscall run_all_on_tick() asm_symbol_rel(0x4012E0) {
+#if DEBUG_FAST_FORWARD
+		uint32_t repeat_count = 0;
+#endif
 		int32_t ret;
 		CRITICAL_SECTION_MANAGER.enter_section(UpdateFuncRegistry_CS);
 		{
@@ -2480,6 +2488,11 @@ NextFunc:
 			}
 		}
 EndOnTick:
+#if DEBUG_FAST_FORWARD
+		if (CapsLock::on() && repeat_count++ < DEBUG_FAST_FORWARD_SPEED) {
+			goto RestartOnTick;
+		}
+#endif
 		CRITICAL_SECTION_MANAGER.leave_section(UpdateFuncRegistry_CS);
 		return ret;
 	}
@@ -4299,12 +4312,12 @@ static inline constexpr size_t msg_variant_count = 4;
 
 // size: 0x28
 struct StageDataInner {
-	int32_t __anm_script_0; // 0x0 (0x30)
-	int32_t __spell_anm_indexA; // 0x4 (0x34)
-	int32_t __spell_anm_scriptA; // 0x8 (0x38)
-	int32_t __spell_flag_state; // 0xC (0x3C)
-	int32_t __spell_anm_indexB; // 0x10 (0x40)
-	int32_t __spell_anm_scriptB; // 0x14 (0x44)
+	int32_t boss_name_index; // 0x0 (0x30)
+	int32_t spell_background_anm_index; // 0x4 (0x34)
+	int32_t spell_background_anm_script; // 0x8 (0x38)
+	int32_t __render_stage_during_spell; // 0xC (0x3C)
+	int32_t spell_cut_in_anm_index; // 0x10 (0x40)
+	int32_t spell_cut_in_anm_script; // 0x14 (0x44)
 	int32_t intro_anm_index; // 0x18 (0x48)
 	int32_t intro_anm_script; // 0x1C (0x4C)
 	int32_t portrait_anm_index; // 0x20 (0x50)
@@ -4360,10 +4373,10 @@ static StageData STAGE_DATA[STAGE_COUNT] = {
 		.bgm_indices = { 1, 2 },
 		.inner = {
 			{
-				.__anm_script_0 = 0,
-				.__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 10,
-				.__spell_flag_state = false,
-				.__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 18,
+				.boss_name_index = 0,
+				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 10,
+				.__render_stage_during_spell = false,
+				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 18,
 				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 15,
 				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
 			}
@@ -4380,23 +4393,23 @@ static StageData STAGE_DATA[STAGE_COUNT] = {
 		.bgm_indices = { 1, 2 },
 		.inner = {
 			{
-				.__anm_script_0 = 0,
-				.__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 10,
-				.__spell_flag_state = false,
-				.__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 18,
+				.boss_name_index = 0,
+				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 10,
+				.__render_stage_during_spell = false,
+				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 18,
 				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 15,
 				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
 			},
 			{
-				.__anm_script_0 = 0,
-				.__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 10,
-				.__spell_flag_state = false,
-				.__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 18,
+				.boss_name_index = 0,
+				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 10,
+				.__render_stage_during_spell = false,
+				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 18,
 				.intro_anm_index = -1, .intro_anm_script = -1,
 				.portrait_anm_index = -1, .portrait_anm_script = -1
 			},
 			{
-				.__anm_script_0 = -1
+				.boss_name_index = -1
 			}
 		},
 		.__int_D0 = 0
@@ -4411,23 +4424,23 @@ static StageData STAGE_DATA[STAGE_COUNT] = {
 		.bgm_indices = { 3, 4 },
 		.inner = {
 			{
-				.__anm_script_0 = 0,
-				.__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 11,
-				.__spell_flag_state = false,
-				.__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 18,
+				.boss_name_index = 0,
+				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 11,
+				.__render_stage_during_spell = false,
+				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 18,
 				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 15,
 				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 10
 			},
 			{
-				.__anm_script_0 = 1,
-				.__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 11,
-				.__spell_flag_state = false,
-				.__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 18,
+				.boss_name_index = 1,
+				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 11,
+				.__render_stage_during_spell = false,
+				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 18,
 				.intro_anm_index = -1, .intro_anm_script = -1,
 				.portrait_anm_index = -1, .portrait_anm_script = -1
 			},
 			{
-				.__anm_script_0 = -1
+				.boss_name_index = -1
 			}
 		},
 		.__int_D0 = 0
@@ -4442,23 +4455,23 @@ static StageData STAGE_DATA[STAGE_COUNT] = {
 		.bgm_indices = { 5, 6 },
 		.inner = {
 			{
-				.__anm_script_0 = 0,
-				.__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 10,
-				.__spell_flag_state = false,
-				.__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 17,
+				.boss_name_index = 0,
+				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 10,
+				.__render_stage_during_spell = false,
+				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 17,
 				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 14,
 				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
 			},
 			{
-				.__anm_script_0 = 2,
-				.__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 10,
-				.__spell_flag_state = false,
-				.__spell_anm_indexB = -1, .__spell_anm_scriptB = -1,
+				.boss_name_index = 2,
+				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 10,
+				.__render_stage_during_spell = false,
+				.spell_cut_in_anm_index = -1, .spell_cut_in_anm_script = -1,
 				.intro_anm_index = -1, .intro_anm_script = -1,
 				.portrait_anm_index = -1, .portrait_anm_script = -1
 			},
 			{
-				.__anm_script_0 = -1
+				.boss_name_index = -1
 			}
 		},
 		.__int_D0 = 0
@@ -4473,23 +4486,23 @@ static StageData STAGE_DATA[STAGE_COUNT] = {
 		.bgm_indices = { 7, 8 },
 		.inner = {
 			{
-				.__anm_script_0 = 0,
-				.__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 12,
-				.__spell_flag_state = false,
-				.__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 19,
+				.boss_name_index = 0,
+				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 12,
+				.__render_stage_during_spell = false,
+				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 19,
 				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 16,
 				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 8
 			},
 			{
-				.__anm_script_0 = 3,
-				.__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 12,
-				.__spell_flag_state = false,
-				.__spell_anm_indexB = -1, .__spell_anm_scriptB = -1,
+				.boss_name_index = 3,
+				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 12,
+				.__render_stage_during_spell = false,
+				.spell_cut_in_anm_index = -1, .spell_cut_in_anm_script = -1,
 				.intro_anm_index = -1, .intro_anm_script = -1,
 				.portrait_anm_index = -1, .portrait_anm_script = -1
 			},
 			{
-				.__anm_script_0 = -1
+				.boss_name_index = -1
 			}
 		},
 		.__int_D0 = 0
@@ -4504,23 +4517,23 @@ static StageData STAGE_DATA[STAGE_COUNT] = {
 		.bgm_indices = { 9, 10 },
 		.inner = {
 			{
-				.__anm_script_0 = 0,
-				.__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 9,
-				.__spell_flag_state = false,
-				.__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 18,
+				.boss_name_index = 0,
+				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 9,
+				.__render_stage_during_spell = false,
+				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 18,
 				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 15,
 				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 8
 			},
 			{
-				.__anm_script_0 = 5,
-				.__spell_anm_indexA = -1, .__spell_anm_scriptA = -1,
-				.__spell_flag_state = false,
-				.__spell_anm_indexB = -1, .__spell_anm_scriptB = -1,
+				.boss_name_index = 5,
+				.spell_background_anm_index = -1, .spell_background_anm_script = -1,
+				.__render_stage_during_spell = false,
+				.spell_cut_in_anm_index = -1, .spell_cut_in_anm_script = -1,
 				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_2, .intro_anm_script = 9,
 				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_2, .portrait_anm_script = 8
 			},
 			{
-				.__anm_script_0 = -1
+				.boss_name_index = -1
 			}
 		},
 		.__int_D0 = 0
@@ -4535,31 +4548,31 @@ static StageData STAGE_DATA[STAGE_COUNT] = {
 		.bgm_indices = { 11, 12 },
 		.inner = {
 			{
-				.__anm_script_0 = 0,
-				.__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 13,
-				.__spell_flag_state = false,
-				.__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 21,
+				.boss_name_index = 0,
+				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 13,
+				.__render_stage_during_spell = false,
+				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 21,
 				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 18,
 				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 12
 			},
 			{
-				.__anm_script_0 = 6,
-				.__spell_anm_indexA = -1, .__spell_anm_scriptA = -1,
-				.__spell_flag_state = false,
-				.__spell_anm_indexB = -1, .__spell_anm_scriptB = -1,
+				.boss_name_index = 6,
+				.spell_background_anm_index = -1, .spell_background_anm_script = -1,
+				.__render_stage_during_spell = false,
+				.spell_cut_in_anm_index = -1, .spell_cut_in_anm_script = -1,
 				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_2, .intro_anm_script = 9,
 				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_2, .portrait_anm_script = 8
 			},
 			{
-				.__anm_script_0 = 4,
-				.__spell_anm_indexA = -1, .__spell_anm_scriptA = 0,
-				.__spell_flag_state = true,
-				.__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 21,
+				.boss_name_index = 4,
+				.spell_background_anm_index = -1, .spell_background_anm_script = 0,
+				.__render_stage_during_spell = true,
+				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 21,
 				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 18,
 				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 12
 			},
 			{
-				.__anm_script_0 = 4
+				.boss_name_index = 4
 			}
 		},
 		.__int_D0 = 0
@@ -4574,34 +4587,34 @@ static StageData STAGE_DATA[STAGE_COUNT] = {
 		.bgm_indices = { 13, 14 },
 		.inner = {
 			{
-				.__anm_script_0 = 0,
-				.__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptA = 10,
-				.__spell_flag_state = false,
-				.__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_1, .__spell_anm_scriptB = 19,
+				.boss_name_index = 0,
+				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 10,
+				.__render_stage_during_spell = false,
+				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 19,
 				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 16,
 				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
 			},
 			{
-				.__anm_script_0 = 7,
-				.__spell_anm_indexA = -1, .__spell_anm_scriptA = 0,
-				.__spell_flag_state = true,
-				.__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_2, .__spell_anm_scriptB = 12,
+				.boss_name_index = 7,
+				.spell_background_anm_index = -1, .spell_background_anm_script = 0,
+				.__render_stage_during_spell = true,
+				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_2, .spell_cut_in_anm_script = 12,
 				.intro_anm_index = -1, .intro_anm_script = -1,
 				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_2, .portrait_anm_script = 8
 			},
 			{
-				.__anm_script_0 = 4,
-				.__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_3, .__spell_anm_scriptA = 12,
-				.__spell_flag_state = true,
-				.__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_3, .__spell_anm_scriptB = 19,
+				.boss_name_index = 4,
+				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_3, .spell_background_anm_script = 12,
+				.__render_stage_during_spell = true,
+				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_3, .spell_cut_in_anm_script = 19,
 				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_3, .intro_anm_script = 16,
 				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_3, .portrait_anm_script = 11
 			},
 			{
-				.__anm_script_0 = 3,
-				.__spell_anm_indexA = ECL_INCLUDE_ANM_INDEX_3, .__spell_anm_scriptA = 12,
-				.__spell_flag_state = true,
-				.__spell_anm_indexB = ECL_INCLUDE_ANM_INDEX_3, .__spell_anm_scriptB = 19,
+				.boss_name_index = 3,
+				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_3, .spell_background_anm_script = 12,
+				.__render_stage_during_spell = true,
+				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_3, .spell_cut_in_anm_script = 19,
 				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_3, .intro_anm_script = 16,
 				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_3, .portrait_anm_script = 8
 			}
@@ -4617,6 +4630,8 @@ typedef struct MainMenu MainMenu;
 #define ANM_FAST_ID_BITS (15)
 #define ANM_SLOW_ID_BITS (ANM_FULL_ID_BITS - ANM_FAST_ID_BITS)
 #define INVALID_FAST_ID uint_width_max(ANM_FAST_ID_BITS)
+
+typedef uint32_t AnmIDRaw;
 
 // size: 0x4
 union AnmID {
@@ -4648,8 +4663,10 @@ union AnmID {
 
 	inline void set_sprite(int32_t sprite_id);
 
+	inline void set_sprite_unsafe(int32_t sprite_id);
+
 	// 0x488E50
-	dllexport void interrupt_tree(int32_t interrupt_index) asm_symbol_rel(0x488E50);
+	dllexport forceinline void interrupt_tree(int32_t interrupt_index) asm_symbol_rel(0x488E50);
 
 	inline void interrupt_tree_word_offset(int16_t interrupt_index, int16_t offset);
 
@@ -4657,7 +4674,7 @@ union AnmID {
 
 	inline void interrupt_and_orphan_tree(int32_t interrupt_index) {
 		this->interrupt_tree(interrupt_index);
-		*this = 0;
+		*this = NULL;
 	}
 
 	// 0x488E70
@@ -4671,7 +4688,7 @@ union AnmID {
 	inline void __tree_clear_visible2(AnmManager* anm_manager);
 
 	// 0x488F50
-	dllexport void mark_tree_for_delete() asm_symbol_rel(0x488F50);
+	dllexport forceinline void mark_tree_for_delete() asm_symbol_rel(0x488F50);
 
 	inline void mark_tree_for_delete(AnmManager* anm_manager);
 
@@ -4701,7 +4718,7 @@ union AnmID {
 	// 0x489230
 	dllexport gnu_noinline AnmVM* thiscall __find_child_vm_with_script(int32_t script, uint32_t minimum_hierarchy_depth = 0) asm_symbol_rel(0x489230);
 
-	inline constexpr operator uint32_t() const {
+	forceinline constexpr operator uint32_t() const {
 		return this->full;
 	}
 	template<typename T> requires(std::is_integral_v<T>)
@@ -5624,7 +5641,7 @@ struct CWaveFile {
 		return S_OK;
 	}
 
-	inline HRESULT Reopen(ThBgmFormat* bgm_format, int arg2) {
+	forceinline HRESULT Reopen(ThBgmFormat* bgm_format, int arg2) {
 		if (this->m_bIsReadingFromMemory) {
 			return E_FAIL;
 		}
@@ -7012,7 +7029,7 @@ dllexport gnu_noinline HRESULT thiscall CSoundManager::CreateStreamingFromMemory
 ) {
 	static constexpr DWORD dwNotifyCount = 8;
 
-	DEBUG_PRINT("StreamingSound Create \r\n");
+	SDEBUG_PRINT("StreamingSound Create \r\n");
 
 	if (!this->dsound) {
 		return CO_E_NOTINITIALIZED;
@@ -7176,7 +7193,7 @@ struct SoundManager {
 	dllexport gnu_noinline static DWORD WINAPI load_sound_effects(void* self) asm_symbol_rel(0x4767B0);
 
 	// 0x476970
-	dllexport gnu_noinline static ZUNResult thiscall preload_bgm(int32_t index, const char* filename) asm_symbol_rel(0x476970);
+	dllexport gnu_noinline static ZUNResult stdcall preload_bgm(int32_t index, const char* filename) asm_symbol_rel(0x476970);
 
 	static inline ZUNResult load_bgm(int32_t index);
 	
@@ -7403,7 +7420,7 @@ dllexport inline HRESULT CSound::SetVolume(int32_t volume) {
 }
 
 // 0x476970
-dllexport gnu_noinline ZUNResult thiscall SoundManager::preload_bgm(int32_t index, const char* filename) {
+dllexport gnu_noinline ZUNResult stdcall SoundManager::preload_bgm(int32_t index, const char* filename) {
 	if (
 		!SOUND_MANAGER.__loaded_bgm_buffers_A[index] ||
 		strcmp_asm(filename, SOUND_MANAGER.loaded_bgm_filenames[index]) != 0
@@ -7547,13 +7564,13 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 				break;
 			case SndPreloadBgm: // 1
 				if (SUPERVISOR.config.preload_bgm) {
-					DEBUG_PRINT("Sound : PreLoad Stage\r\n");
+					SDEBUG_PRINT("Sound : PreLoad Stage\r\n");
 					if (snd_cmd->iter != 0) {
 						BREAK_NEXT_CMD_ITER();
 					}
 					SOUND_MANAGER.stop_bgm();
 				} else {
-					DEBUG_PRINT("Sound : PreLoad Stage\r\n");
+					SDEBUG_PRINT("Sound : PreLoad Stage\r\n");
 				}
 				SOUND_MANAGER.preload_bgm(snd_cmd->arg, snd_cmd->text_buffer);
 				run_next_cmd = true;
@@ -7564,11 +7581,13 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 					if (index >= 0) {
 						switch (int32_t iter = snd_cmd->iter) {
 							case 0:
+								SDEBUG_PRINT("Sound : Load Stage\r\n");
 								if (ZUN_SUCCEEDED(SOUND_MANAGER.load_bgm(index))) {
 									BREAK_NEXT_CMD_ITER();
 								}
 								break;
 							case 2: {
+								SDEBUG_PRINT("Sound : Reset Stage\r\n");
 								CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr;
 								if (
 									!cstreaming_sound_ptr ||
@@ -7579,11 +7598,12 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 								break;
 							}
 							case 5: {
+								SDEBUG_PRINT("Sound : Fill Buffer Stage\r\n");
 								CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr;
 								LPDIRECTSOUNDBUFFER sound_buffer = cstreaming_sound_ptr->GetBuffer();
 								if (SUCCEEDED(SOUND_MANAGER.cstreaming_sound_ptr->FillBufferWithSound(
 									sound_buffer,
-									cstreaming_sound_ptr->cwave_ptr->bgm_format->length != 0,
+									(snd_cmd->arg = cstreaming_sound_ptr->cwave_ptr->bgm_format->length != 0),
 									0
 								))) {
 									BREAK_NEXT_CMD_ITER();
@@ -7591,10 +7611,11 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 								break;
 							}
 							case 7:
+								SDEBUG_PRINT("Sound : Play Stage\r\n");
 								SOUND_MANAGER.cstreaming_sound_ptr->Play(0, DSBPLAY_LOOPING, 0);
 								BREAK_NEXT_CMD_ITER();
 							default:
-								if (iter < 14) {
+								if (iter < 20) {
 									BREAK_NEXT_CMD_ITER();
 								}
 								break;
@@ -7605,10 +7626,12 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 				if (CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr) {
 					switch (int32_t iter = snd_cmd->iter) {
 						case 0:
+							SDEBUG_PRINT("Sound : Stop Stage\r\n");
 							cstreaming_sound_ptr->Stop(FALSE);
 							BREAK_NEXT_CMD_ITER();
 						case 1:
 							if (!cstreaming_sound_ptr->__locked) {
+								SDEBUG_PRINT("Sound : Recreate Stage\r\n");
 								int32_t index = snd_cmd->arg;
 								const char* filename = index >= 0 ? SOUND_MANAGER.loaded_bgm_filenames[index] : snd_cmd->text_buffer;
 								byteloop_strcpy(SOUND_MANAGER.__text_buffer_2384, filename);
@@ -7619,14 +7642,16 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 							}
 							goto end_snd_cmd_loop;
 						case 2:
+							SDEBUG_PRINT("Sound : ReOpen Stage\r\n");
 							cstreaming_sound_ptr->Reopen(&SOUND_MANAGER.bgm_formats[snd_cmd->arg], 0);
 							BREAK_NEXT_CMD_ITER();
 						case 3: {
+							SDEBUG_PRINT("Sound : Fill Buffer Stage\r\n");
 							LPDIRECTSOUNDBUFFER sound_buffer = cstreaming_sound_ptr->GetBuffer();
 							cstreaming_sound_ptr->Reset(0);
 							if (SUCCEEDED(SOUND_MANAGER.cstreaming_sound_ptr->FillBufferWithSound(
 								sound_buffer,
-								cstreaming_sound_ptr->cwave_ptr->bgm_format->length != 0,
+								(snd_cmd->arg = cstreaming_sound_ptr->cwave_ptr->bgm_format->length != 0),
 								0
 							))) {
 								BREAK_NEXT_CMD_ITER();
@@ -7634,6 +7659,7 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 							break;
 						}
 						case 4:
+							SDEBUG_PRINT("Sound : Play Stage\r\n");
 							cstreaming_sound_ptr->Play(0, DSBPLAY_LOOPING, 0);
 							BREAK_NEXT_CMD_ITER();
 						default:
@@ -7648,9 +7674,11 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 				if (CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr) {                    
 					switch (int32_t iter = snd_cmd->iter) {
 						case 0:
+							SDEBUG_PRINT("Sound : Stop Stage\r\n");
 							cstreaming_sound_ptr->Stop(TRUE);
 							BREAK_NEXT_CMD_ITER();
 						case 1:
+							SDEBUG_PRINT("Sound : Thread Stop Stage\r\n");
 							if (SOUND_MANAGER.sound_thread_handle) {
 								PostThreadMessageA(SOUND_MANAGER.sound_thread_id, WM_QUIT, 0, 0);
 								BREAK_NEXT_CMD_ITER();
@@ -7658,6 +7686,7 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 							break;
 						case 2:
 							if (WaitForSingleObject(SOUND_MANAGER.sound_thread_handle, 256) != WAIT_OBJECT_0) {
+								SDEBUG_PRINT("Sound : Thread Stop Wait Stage\r\n");
 								PostThreadMessageA(SOUND_MANAGER.sound_thread_id, WM_QUIT, 0, 0);
 								--snd_cmd->iter;
 							}
@@ -7666,6 +7695,7 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 							}
 							BREAK_NEXT_CMD_ITER();
 						case 3:
+							SDEBUG_PRINT("Sound : Handle Close Stage\r\n");
 							CloseHandle(SOUND_MANAGER.sound_thread_handle);
 							CloseHandle(SOUND_MANAGER.__notify_event);
 							SAFE_DELETE(SOUND_MANAGER.cstreaming_sound_ptr);
@@ -7681,6 +7711,7 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 				if (CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr) {
 					switch (int32_t iter = snd_cmd->iter) {
 						case 0:
+							SDEBUG_PRINT("Sound : Stop Stage\r\n");
 							cstreaming_sound_ptr->Stop(TRUE);
 							BREAK_NEXT_CMD_ITER();
 						default:
@@ -7691,12 +7722,14 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 				}
 				break;
 			case SndFadeOut: // 5
+				SDEBUG_PRINT("Sound : Fade Out Stage %d\r\n", snd_cmd->arg);
 				SOUND_MANAGER.__start_fade_out(snd_cmd->arg);
 				break;
 			case SndPause: // 6
 				if (SUPERVISOR.config.bgm_type == BgmWav) {
 					if (CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr) {
 						if (cstreaming_sound_ptr->__locked) {
+							SDEBUG_PRINT("locked\n");
 							goto end_snd_cmd_loop;
 						}
 						cstreaming_sound_ptr->Pause();
@@ -7793,7 +7826,6 @@ end_snd_cmd_loop:
 			}
 		}
 	}
-
 
 	CRITICAL_SECTION_MANAGER.leave_section(SoundManagerA_CS);
 
@@ -8366,7 +8398,7 @@ struct GameManager {
 	}
 
 	// 0x42A990
-	dllexport bool thiscall __is_spell_practice() asm_symbol_rel(0x42A990) {
+	dllexport bool thiscall is_spell_practice() asm_symbol_rel(0x42A990) {
 		return this->game_type == SpellPractice;
 	}
 
@@ -8385,7 +8417,7 @@ struct GameManager {
 
 	inline void add_to_score(uint32_t value) {
 		uint32_t new_score = this->globals.score + value / 10;
-		if (new_score > 1000000000) {
+		if (new_score >= 1000000000) {
 			new_score = 999999999;
 		}
 		this->globals.score = new_score;
@@ -8597,6 +8629,64 @@ dllexport gnu_noinline BOOL fastcall get_dinput_keyboard_state(BYTE keys[256]) {
 	}
 	return false;
 }
+
+typedef struct CardBlank CardBlank;
+typedef struct CardLife CardLife;
+typedef struct CardBomb CardBomb;
+typedef struct CardLifeFragment CardLifeFragment;
+typedef struct CardBombFragment CardBombFragment;
+typedef struct CardNazrin CardNazrin;
+typedef struct CardRingo CardRingo;
+typedef struct CardMokou CardMokou;
+typedef struct CardReimu1 CardReimu1;
+typedef struct CardReimu2 CardReimu2;
+typedef struct CardMarisa1 CardMarisa1;
+typedef struct CardMarisa2 CardMarisa2;
+typedef struct CardSakuya1 CardSakuya1;
+typedef struct CardSakuya2 CardSakuya2;
+typedef struct CardSanae1 CardSanae1;
+typedef struct CardSanae2 CardSanae2;
+typedef struct CardYoumu CardYoumu;
+typedef struct CardAlice CardAlice;
+typedef struct CardCirno CardCirno;
+typedef struct CardOkina CardOkina;
+typedef struct CardNue CardNue;
+typedef struct CardNitori CardNitori;
+typedef struct CardKanako CardKanako;
+typedef struct CardEirin CardEirin;
+typedef struct CardTewi CardTewi;
+typedef struct CardSaki CardSaki;
+typedef struct CardByakuren CardByakuren;
+typedef struct CardKoishi CardKoishi;
+typedef struct CardSuwako CardSuwako;
+typedef struct CardAya CardAya;
+typedef struct CardKeiki CardKeiki;
+typedef struct CardKaguya CardKaguya;
+typedef struct CardMamizou CardMamizou;
+typedef struct CardYuyuko CardYuyuko;
+typedef struct CardYachie CardYachie;
+typedef struct CardShikiEiki CardShikiEiki;
+typedef struct CardNarumi CardNarumi;
+typedef struct CardPatchouli CardPatchouli;
+typedef struct CardMike CardMike;
+typedef struct CardTakane CardTakane;
+typedef struct CardSannyo CardSannyo;
+typedef struct CardYukari CardYukari;
+typedef struct CardShinmyoumaru CardShinmyoumaru;
+typedef struct CardTenshi CardTenshi;
+typedef struct CardClownpiece CardClownpiece;
+typedef struct CardMiko CardMiko;
+typedef struct CardRemilia CardRemilia;
+typedef struct CardUtsuho CardUtsuho;
+typedef struct CardLilyWhite CardLilyWhite;
+typedef struct CardRaiko CardRaiko;
+typedef struct CardSumireko CardSumireko;
+typedef struct CardMisumaru CardMisumaru;
+typedef struct CardTsukasa CardTsukasa;
+typedef struct CardMegumu CardMegumu;
+typedef struct CardMomoyo CardMomoyo;
+typedef struct CardMagatama CardMagatama;
+typedef struct CardNull CardNull;
 
 // Yes, I know I don't need explicit enum values. But it makes a quick lookup table visually.
 enum CardId : int32_t {
@@ -8865,6 +8955,11 @@ static const int8_t SPELL_DIFFICULTY_TABLE[SPELL_COUNT] = {
 	EXTRA
 };
 
+typedef struct TrophyManager TrophyManager;
+
+// 0x46E490
+dllexport gnu_noinline TrophyManager* fastcall __unlock_trophy(int32_t trophy_id) asm_symbol_rel(0x46E490);
+
 // size: 0x18
 struct ScorefileHeader {
 	ZUNMagic magic; // 0x0
@@ -8913,6 +9008,9 @@ ValidateFieldOffset32(0x18, ScorefileRecord, slowdown_rate);
 ValidateStructSize32(0x20, ScorefileRecord);
 #pragma endregion
 
+static inline constexpr int32_t MAX_SPELL_CAPTURES = 99999;
+static inline constexpr int32_t MAX_SPELL_ATTEMPTS = 99999;
+
 // size: 0xDC
 struct ScorefileSpellcard {
 	char name[0]; // 0x0, 0x8D0, 0x8D8
@@ -8920,11 +9018,25 @@ struct ScorefileSpellcard {
 	int32_t captures[2]; // 0xC0, 0x990, 0x998 0 = Spell record menu, Spell practice menu GAME MODE line, 1 = Spell practice menu
 	int32_t attempts[2]; // 0xC8, 0x998, 0x9A0 0 = Spell record menu, Spell practice menu GAME MODE line, 1 = Spell practice menu
 	int32_t id; // 0xD0, 0x9A0, 0x9A8
-	int32_t difficulty; // 0xD0, 0x9A0, 0x9A8
-	int32_t spell_practice_score; // 0xD0, 0x9A8, 0x9B0
+	int32_t difficulty; // 0xD4, 0x9A4, 0x9AC
+	int32_t spell_practice_score; // 0xD8, 0x9A8, 0x9B0
 	// 0xDC
 
-	//inline void 
+	inline bool captured() {
+		return this->captures[0] || this->captures[1];
+	}
+	inline void add_capture(int mode) {
+		int32_t captures = this->captures[mode];
+		if (captures < MAX_SPELL_CAPTURES) {
+			this->captures[mode] = captures + 1;
+		}
+	}
+	inline void add_attempt(int mode) {
+		int32_t attempts = this->attempts[mode];
+		if (attempts < MAX_SPELL_ATTEMPTS) {
+			this->attempts[mode] = attempts + 1;
+		}
+	}
 };
 #pragma region // ScorefileSpellcard
 ValidateFieldOffset32(0x0, ScorefileSpellcard, name);
@@ -9089,6 +9201,19 @@ struct ScorefileSectionB : ScorefileSectionHeader {
 
 	inline bool has_1cc_clear() {
 		return this->__1cc_clears[EASY] || this->__1cc_clears[NORMAL] || this->__1cc_clears[HARD] || this->__1cc_clears[LUNATIC];
+	}
+
+	inline int32_t spells_captured() {
+		int32_t captures = 0;
+		for (size_t i = 0; i != countof(this->spells); ++i) {
+			if (this->spells[i].captured()) {
+				++captures;
+			}
+		}
+		return captures;
+	}
+	inline bool all_spells_captured() {
+		return this->spells_captured() >= SPELL_COUNT;
 	}
 };
 #pragma region // ScorefileSectionB Validation
@@ -9444,6 +9569,35 @@ struct ScorefileManager {
 		scorefile_manager->__int_array_BF114[scorefile_manager->__int_BF110] = value;
 		++scorefile_manager->__int_BF110;
 		scorefile_manager->primary_file.__sectionA.__card_ids_150[3][value] = EXTEND_CARD;
+	}
+
+	// These probably weren't functions but I'd rather make a semi-nice API if I can
+	static inline void record_spell_attempt(int32_t id, const char* name) {
+		byteloop_strcpy(SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].spells[id].name, name);
+		bool is_spell_practice = GAME_MANAGER.is_spell_practice();
+		ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
+		scorefile_manager->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].spells[id].add_attempt(is_spell_practice);
+		byteloop_strcpy(scorefile_manager->primary_file.shottypes[SHOTTYPE_COUNT].spells[id].name, name);
+		SCOREFILE_MANAGER_PTR->primary_file.shottypes[SHOTTYPE_COUNT].spells[id].add_attempt(is_spell_practice);
+	}
+
+	static inline void record_spell_capture(int32_t id) {
+		bool is_spell_practice = GAME_MANAGER.is_spell_practice();
+		SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].spells[id].add_capture(is_spell_practice);
+		ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
+		scorefile_manager->primary_file.shottypes[SHOTTYPE_COUNT].spells[id].add_capture(is_spell_practice);
+		if (scorefile_manager->primary_file.shottypes[SHOTTYPE_COUNT].all_spells_captured()) {
+			__unlock_trophy(28);
+		}
+	}
+
+	static inline int32_t get_spell_captures(int32_t shottype, int32_t id) {
+		bool is_spell_practice = GAME_MANAGER.is_spell_practice();
+		return SCOREFILE_MANAGER_PTR->primary_file.shottypes[shottype].spells[id].captures[is_spell_practice];
+	}
+	static inline int32_t get_spell_attempts(int32_t shottype, int32_t id) {
+		bool is_spell_practice = GAME_MANAGER.is_spell_practice();
+		return SCOREFILE_MANAGER_PTR->primary_file.shottypes[shottype].spells[id].attempts[is_spell_practice];
 	}
 };
 #pragma region // ScorefileManager Validation
@@ -14437,6 +14591,16 @@ struct Lifebar {
 };
 #pragma endregion
 
+enum BigPopupType {
+	PopupGetSpellCardBonus = 0,
+	PopupBonusFailed = 1,
+	PopupFullPowerup = 2,
+	PopupHiscore = 3,
+	PopupExtend = 4,
+	PopupItemGetBorderLine = 5,
+	PopupChallengeNextStage = 6
+};
+
 static inline constexpr int32_t MAX_LIFEBARS_IN_GUI = 3;
 static inline constexpr uint32_t MAX_BOSS_LIFE_MARKERS = 10;
 
@@ -14454,20 +14618,20 @@ struct Gui : ZUNTask {
 	AnmVM* spell_timer_vms[2]; // 0x84
 	AnmID boss_indicator; // 0x8C
 	AnmID __anm_id_array_90[10]; // 0x90
-	AnmID __anm_id_B8; // 0xB8
-	AnmID __anm_id_BC; // 0xBC
+	AnmID __big_popupA; // 0xB8
+	AnmID __big_popupB; // 0xBC
 	AnmID __anm_id_C0; // 0xC0
 	AnmID __anm_id_C4; // 0xC4
-	AnmID __anm_id_C8; // 0xC8
+	AnmID boss_name; // 0xC8
 	AnmID __boss_life_markers[MAX_BOSS_LIFE_MARKERS]; // 0xCC
 	AnmID __difficulty_indicatorA; // 0xF4
 	AnmID __difficulty_indicatorB; // 0xF8
 	AnmID __shottype_indicator; // 0xFC
 	AnmID __anm_id_100; // 0x100
 	AnmID __anm_id_104; // 0x104
-	AnmID __anm_id_108; // 0x108
+	AnmID __stage_clear_bonus_vm; // 0x108
 	AnmID __anm_id_10C; // 0x10C
-	AnmID __anm_id_110; // 0x110
+	AnmID __spell_clear_time_label; // 0x110
 	AnmID __anm_id_114; // 0x114
 	unknown_fields(0x4); // 0x118
 	float __float_11C; // 0x11C
@@ -14476,7 +14640,7 @@ struct Gui : ZUNTask {
 	int __int_128; // 0x128
 	int __int_12C; // 0x12C
 	unknown_fields(0x4); // 0x130
-	int __int_134; // 0x134
+	BOOL __show_spell_clear_time; // 0x134
 	AnmID __anm_id_138; // 0x138
 	Timer __timer_13C; // 0x13C
 	UpdateFunc* on_draw_func_B; // 0x150
@@ -14491,7 +14655,7 @@ struct Gui : ZUNTask {
 		uint32_t flags; // 0x194
 		struct {
 			uint32_t : 1; // 1
-			uint32_t __unknown_field_gu_C : 2; // 2-3
+			uint32_t __boss_indicator_state : 2; // 2-3
 			uint32_t : 1; // 4
 			uint32_t __unknown_flag_gu_C : 1; // 5
 			uint32_t __unknown_field_gu_D : 3; // 6-8
@@ -14580,7 +14744,14 @@ struct Gui : ZUNTask {
 	dllexport gnu_noinline void thiscall __update_bomb_ui(int32_t bomb_count, int32_t bomb_fragments, int32_t bomb_max) asm_symbol_rel(0x4420E0);
 
 	// 0x4422C0
-	dllexport gnu_noinline void thiscall __sub_4422C0() asm_symbol_rel(0x4422C0);
+	dllexport gnu_noinline void thiscall __show_boss_name() asm_symbol_rel(0x4422C0);
+
+	forceinline void __big_popup_text_inline(BigPopupType type, int32_t score_bonus = 0);
+
+	// 0x441A50
+	dllexport gnu_noinline static void stdcall __big_popup_text(BigPopupType type, int32_t score_bonus = 0) asm_symbol_rel(0x441A50) {
+		GUI_PTR->__big_popup_text_inline(type, score_bonus);
+	}
 
 	// 0x442330
 	dllexport gnu_noinline static void __hide_vm_id_114() asm_symbol_rel(0x442330);
@@ -14678,16 +14849,16 @@ ValidateFieldOffset32(0x68, Gui, player_bomb_icons);
 ValidateFieldOffset32(0x84, Gui, spell_timer_vms);
 ValidateFieldOffset32(0x90, Gui, __anm_id_array_90);
 ValidateFieldOffset32(0x8C, Gui, boss_indicator);
-ValidateFieldOffset32(0xB8, Gui, __anm_id_B8);
-ValidateFieldOffset32(0xBC, Gui, __anm_id_BC);
+ValidateFieldOffset32(0xB8, Gui, __big_popupA);
+ValidateFieldOffset32(0xBC, Gui, __big_popupB);
 ValidateFieldOffset32(0xCC, Gui, __boss_life_markers);
 ValidateFieldOffset32(0xF4, Gui, __difficulty_indicatorA);
 ValidateFieldOffset32(0xF8, Gui, __difficulty_indicatorB);
 ValidateFieldOffset32(0xFC, Gui, __shottype_indicator);
-ValidateFieldOffset32(0x108, Gui, __anm_id_108);
+ValidateFieldOffset32(0x108, Gui, __stage_clear_bonus_vm);
 ValidateFieldOffset32(0x10C, Gui, __anm_id_10C);
-ValidateFieldOffset32(0x110, Gui, __anm_id_110);
-ValidateFieldOffset32(0x134, Gui, __int_134);
+ValidateFieldOffset32(0x110, Gui, __spell_clear_time_label);
+ValidateFieldOffset32(0x134, Gui, __show_spell_clear_time);
 ValidateFieldOffset32(0x138, Gui, __anm_id_138);
 ValidateFieldOffset32(0x13C, Gui, __timer_13C);
 ValidateFieldOffset32(0x150, Gui, on_draw_func_B);
@@ -17006,9 +17177,13 @@ struct AnmVM {
 
 	// 0x4837E0
 	dllexport gnu_noinline static int fastcall on_draw_6(AnmVM* vm) asm_symbol_rel(0x4837E0);
-	
+
+	forceinline void set_sprite(int32_t sprite_id, AnmManager* anm_manager);
 	// 0x488FA0
 	dllexport void thiscall set_sprite(int32_t sprite_id) asm_symbol_rel(0x488FA0);
+
+	forceinline void set_sprite_unsafe(int32_t sprite_id, AnmManager* anm_manager);
+	forceinline void set_sprite_unsafe(int32_t sprite_id);
 
 	// 0x429A20
 	dllexport gnu_noinline static int32_t fastcall sprite_lookup_1(AnmVM* vm, int32_t sprite) asm_symbol_rel(0x429A20);
@@ -21422,8 +21597,8 @@ public:
 	}
 
 	// 0x488B40
-	dllexport gnu_noinline AnmVM* get_vm_with_id(const AnmID& vm_id) asm_symbol_rel(0x488B40) {
-		if (vm_id) {
+	dllexport gnu_noinline AnmVM* thiscall get_vm_with_id(AnmIDRaw vm_id_raw) asm_symbol_rel(0x488B40) {
+		if (AnmID vm_id{ vm_id_raw }) {
 			uint32_t fast_id = vm_id.fast_id;
 			if (fast_id == INVALID_FAST_ID) {
 				auto id_match = [=](AnmVM* vm){
@@ -21443,8 +21618,8 @@ public:
 	}
 
 	// 0x488BE0
-	dllexport static void interrupt_tree(const AnmID& id, int32_t interrupt_index) asm_symbol_rel(0x488BE0) {
-		if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(id)) {
+	dllexport static void stdcall interrupt_tree(AnmIDRaw id_raw, int32_t interrupt_index) asm_symbol_rel(0x488BE0) {
+		if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(id_raw)) {
 			vm->interrupt(interrupt_index);
 			vm->controller.child_list.for_each([=](AnmVM* vm) {
 				vm->interrupt(interrupt_index);
@@ -21453,8 +21628,8 @@ public:
 	}
 
 	// 0x488C60
-	dllexport static void interrupt_and_run_tree(const AnmID& id, int32_t interrupt_index) asm_symbol_rel(0x488C60) {
-		if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(id)) {
+	dllexport static void stdcall interrupt_and_run_tree(AnmIDRaw id_raw, int32_t interrupt_index) asm_symbol_rel(0x488C60) {
+		if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(id_raw)) {
 			vm->interrupt_and_run(interrupt_index);
 			vm->controller.child_list.for_each([=](AnmVM*& vm) {
 				vm->interrupt_and_run(interrupt_index);
@@ -21472,13 +21647,13 @@ public:
 		}
 	}
 
-	inline void mark_tree_id_for_delete(AnmID& id) {
-		this->mark_tree_for_delete(this->get_vm_with_id(id));
+	inline void mark_tree_id_for_delete_inline(AnmIDRaw id_raw) {
+		this->mark_tree_for_delete(this->get_vm_with_id(id_raw));
 	}
 
 	// 0x488CF0
-	dllexport gnu_noinline static void stdcall mark_tree_id_for_delete(const AnmID& id) asm_symbol_rel(0x488CF0) {
-		ANM_MANAGER_PTR->mark_tree_id_for_delete((AnmID&)id);
+	dllexport gnu_noinline static void stdcall mark_tree_id_for_delete(AnmIDRaw id_raw) asm_symbol_rel(0x488CF0) {
+		ANM_MANAGER_PTR->mark_tree_id_for_delete_inline(id_raw);
 	}
 
 	// 0x489320
@@ -22260,13 +22435,13 @@ dllexport gnu_noinline void thiscall Gui::cleanup() {
 
 	this->disable_tick();
 
-	this->__anm_id_B8.mark_tree_for_delete();
-	this->__anm_id_BC.mark_tree_for_delete();
-	this->__anm_id_C8.mark_tree_for_delete();
+	this->__big_popupA.mark_tree_for_delete();
+	this->__big_popupB.mark_tree_for_delete();
+	this->boss_name.mark_tree_for_delete();
 
 	// this doesn't look like a good idea
 	for (size_t i = 0; i < MAX_BOSS_LIFE_MARKERS; ++i) {
-		this->__boss_life_markers[i] = 0;
+		this->__boss_life_markers[i] = NULL;
 	}
 	nounroll for (size_t i = 0; i < countof(this->__anm_id_array_90); ++i) {
 		this->__anm_id_array_90[i].mark_tree_for_delete();
@@ -22321,22 +22496,22 @@ inline void Lifebar::delete_vms() {
 }
 
 // 0x4422C0
-dllexport gnu_noinline void thiscall Gui::__sub_4422C0() {
-	if (!this->__anm_id_C8.has_live_vm()) {
-		int32_t script;
+dllexport gnu_noinline void thiscall Gui::__show_boss_name() {
+	if (!this->boss_name.has_live_vm()) {
+		int32_t name_index;
 
 		StageData* stage_data = STAGE_DATA_PTR;
 		if (GAME_MANAGER.globals.chapter >= 41) {
-			script = stage_data->inner[1].__anm_script_0;
+			name_index = stage_data->inner[1].boss_name_index;
 		}
 		else {
-			script = stage_data->inner[2].__anm_script_0;
+			name_index = stage_data->inner[2].boss_name_index;
 		}
 
-		if (script >= 0) {
-			script += 154;
+		if (name_index >= 0) {
+			int32_t script = 154 + name_index;
 			if (script >= 0) {
-				this->__anm_id_C8 = this->front_anm->instantiate_vm_to_world_list_back(script);
+				this->boss_name = this->front_anm->instantiate_vm_to_world_list_back(script);
 			}
 		}
 	}
@@ -22481,8 +22656,7 @@ forceinline void Globals::add_life_no_cost() {
 	SOUND_MANAGER.play_sound(17);
 
 	if (gui) {
-		gui->__anm_id_BC.mark_tree_for_delete();
-		gui->__anm_id_BC = gui->front_anm->instantiate_vm_to_world_list_back(53);
+		gui->__big_popup_text_inline(PopupExtend);
 	}
 }
 
@@ -22492,11 +22666,23 @@ dllexport gnu_noinline void thiscall Globals::add_life() {
 	++this->lives_added; // Increases cost of lives from fragments
 }
 
-// 0x488FA0
-dllexport void thiscall AnmVM::set_sprite(int32_t sprite_id) {
-	if (AnmLoaded* anm_loaded = ANM_MANAGER_PTR->loaded_anm_files[this->data.slot]) {
+forceinline void AnmVM::set_sprite(int32_t sprite_id, AnmManager* anm_manager) {
+	if (AnmLoaded* anm_loaded = anm_manager->loaded_anm_files[this->data.slot]) {
 		anm_loaded->set_sprite(this, sprite_id);
 	}
+}
+
+// 0x488FA0
+dllexport void thiscall AnmVM::set_sprite(int32_t sprite_id) {
+	this->set_sprite(sprite_id, ANM_MANAGER_PTR);
+}
+
+forceinline void AnmVM::set_sprite_unsafe(int32_t sprite_id, AnmManager* anm_manager) {
+	anm_manager->loaded_anm_files[this->data.slot]->set_sprite(this, sprite_id);
+}
+
+forceinline void AnmVM::set_sprite_unsafe(int32_t sprite_id) {
+	this->set_sprite_unsafe(sprite_id, ANM_MANAGER_PTR);
 }
 
 // 0x4894D0
@@ -22511,8 +22697,6 @@ inline AnmLoaded* AnmVM::get_anm_loaded2() {
 inline AnmSprite* AnmVM::get_sprite() {
 	return &this->get_anm_loaded2()->sprites[this->data.sprite_id];
 }
-
-typedef struct TrophyManager TrophyManager;
 
 extern "C" {
 	// 0x507640
@@ -22702,7 +22886,6 @@ ValidateStructSize32(0x244, TrophyManager);
 #pragma endregion
 
 // 0x46E490
-dllexport gnu_noinline TrophyManager* fastcall __unlock_trophy(int32_t trophy_id) asm_symbol_rel(0x46E490);
 dllexport gnu_noinline TrophyManager* fastcall __unlock_trophy(int32_t trophy_id) {
 	ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
 	if (!scorefile_manager->primary_file.__sectionA.trophies[trophy_id]) {
@@ -23496,12 +23679,12 @@ struct EffectManager : ZUNTask {
 	}
 
 	// 0x42D5D0
-	dllexport int32_t thiscall fill_available_slot(AnmID id) asm_symbol_rel(0x42D5D0) {
+	dllexport int32_t thiscall fill_available_slot(AnmIDRaw id_raw) asm_symbol_rel(0x42D5D0) {
 		EffectManager* effect_manager = EFFECT_MANAGER_PTR;
 
 		int32_t slot = effect_manager->find_available_slot();
 		if (slot != -1 && slot < MAX_EFFECTS) {
-			effect_manager->vm_slots[slot] = id;
+			effect_manager->vm_slots[slot] = id_raw;
 			return slot | 0x80000000;
 		}
 		return 0;
@@ -24248,7 +24431,7 @@ inline AnmInstruction* AnmVM::get_current_instruction() {
 dllexport AnmVM* AnmID::get_vm_ptr() {
 	AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this);
 	if (!vm) {
-		this->full = 0;
+		this->full = NULL;
 	}
 	return vm;
 }
@@ -24256,21 +24439,28 @@ dllexport AnmVM* AnmID::get_vm_ptr() {
 inline AnmVM* AnmID::get_vm_ptr_safe() {
 	AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this);
 	if (!vm) {
-		this->full = 0;
+		this->full = NULL;
 		vm = &ANM_MANAGER_PTR->__vm_E4;
 	}
 	return vm;
 }
 
 inline void AnmID::set_sprite(int32_t sprite_id) {
-	AnmVM* vm = this->get_vm_ptr();
-	if (vm) {
-		vm->set_sprite(sprite_id);
+	AnmManager* anm_manager = ANM_MANAGER_PTR;
+	if (AnmVM* vm = anm_manager->get_vm_with_id(*this)) {
+		vm->set_sprite(sprite_id, anm_manager);
+	}
+}
+
+inline void AnmID::set_sprite_unsafe(int32_t sprite_id) {
+	AnmManager* anm_manager = ANM_MANAGER_PTR;
+	if (AnmVM* vm = anm_manager->get_vm_with_id(*this)) {
+		vm->set_sprite_unsafe(sprite_id, anm_manager);
 	}
 }
 
 // 0x488E50
-dllexport void AnmID::interrupt_tree(int32_t interrupt_index) {
+dllexport forceinline void AnmID::interrupt_tree(int32_t interrupt_index) {
 	AnmManager::interrupt_tree(*this, interrupt_index);
 }
 
@@ -24312,12 +24502,12 @@ dllexport void AnmID::__tree_clear_visible2() {
 }
 
 inline void AnmID::mark_tree_for_delete(AnmManager* anm_manager) {
-	anm_manager->mark_tree_id_for_delete(*this);
+	anm_manager->mark_tree_id_for_delete_inline(*this);
 	this->full = NULL;
 }
 
 // 0x488F50
-dllexport void AnmID::mark_tree_for_delete() {
+dllexport forceinline void AnmID::mark_tree_for_delete() {
 	AnmManager::mark_tree_id_for_delete(*this);
 	this->full = NULL;
 }
@@ -24387,7 +24577,7 @@ dllexport gnu_noinline void thiscall AnmID::__set_script(int32_t script) {
 dllexport void thiscall AnmID::set_color1(D3DCOLOR color) {
 	AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this);
 	if (!vm) {
-		this->full = 0;
+		this->full = NULL;
 		return;
 	}
 	vm->data.color1 = color;
@@ -24500,9 +24690,7 @@ dllexport gnu_noinline BOOL thiscall Globals::add_power(int32_t amount) {
 	this->current_power = power;
 	if (power > max_power) {
 		this->current_power = max_power;
-		Gui* gui = GUI_PTR;
-		gui->__anm_id_BC.mark_tree_for_delete();
-		gui->__anm_id_BC = gui->front_anm->instantiate_vm_to_world_list_back(33);
+		GUI_PTR->__big_popup_text_inline(PopupFullPowerup);
 		power = this->current_power;
 	}
 	int32_t prev_level = (power - amount) / this->power_per_level;
@@ -25634,6 +25822,87 @@ ValidateFieldOffset32(0x19270, AsciiManager, on_draw_func_group_2);
 ValidateFieldOffset32(0x19274, AsciiManager, on_draw_func_group_3);
 ValidateStructSize32(0x19278, AsciiManager);
 #pragma endregion
+
+// 0x441A50
+forceinline void Gui::__big_popup_text_inline(BigPopupType type, int32_t score_bonus) {
+	switch (type) {
+		case PopupGetSpellCardBonus: { // 0: Get Spell Card Bonus!!
+			this->__big_popupA.mark_tree_for_delete();
+			this->__big_popupA = this->front_anm->instantiate_vm_to_world_list_back(49);
+			int32_t A = 10000000;
+			int32_t B = score_bonus;
+			BOOL C = false;
+			// No, not countof(gui->__anm_id_array_90)
+			for (int32_t i = 0; i < 8; ++i) {
+				this->__anm_id_array_90[i].mark_tree_for_delete();
+				AnmID id = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(i + 4);
+				this->__anm_id_array_90[i] = id;
+				int32_t D = B / A;
+				B %= A;
+				C = D ? true : C;
+				id.set_sprite_unsafe(239 + D);
+				AnmVM* vm = id.get_vm_ptr();
+				if (!C) {
+					if (vm) {
+						vm->__tree_clear_visible2();
+					}
+				} else {
+					if (vm) {
+						vm->__tree_set_visible2();
+					}
+				}
+				A /= 10;
+			}
+			this->__anm_id_array_90[8].mark_tree_for_delete();
+			if (score_bonus >= 1000000) {
+				AnmID id = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(12);
+				this->__anm_id_array_90[8] = id;
+				id.set_sprite_unsafe(253);
+			}
+			this->__anm_id_array_90[9].mark_tree_for_delete();
+			if (score_bonus >= 1000) {
+				AnmID id = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(13);
+				this->__anm_id_array_90[9] = id;
+				id.set_sprite_unsafe(253);
+			}
+			this->__show_spell_clear_time = true;
+			this->__spell_clear_time_label = this->front_anm->instantiate_vm_to_world_list_back(84);
+			break;
+		}
+		case PopupBonusFailed: { // 1: Bonus Failed...
+			this->__big_popupA.mark_tree_for_delete();
+			this->__big_popupA = this->front_anm->instantiate_vm_to_world_list_back(50);
+			this->__show_spell_clear_time = true;
+			this->__spell_clear_time_label = this->front_anm->instantiate_vm_to_world_list_back(84);
+			break;
+		}
+		case PopupFullPowerup: { // 2: Full PowerUp!
+			this->__big_popupB.mark_tree_for_delete();
+			this->__big_popupB = this->front_anm->instantiate_vm_to_world_list_back(51);
+			break;
+		}
+		case PopupHiscore: { // 3: Hiscore!
+			this->__big_popupB.mark_tree_for_delete();
+			this->__big_popupB = this->front_anm->instantiate_vm_to_world_list_back(52);
+			break;
+		}
+		case PopupExtend: { // 4: Extend!!
+			this->__big_popupB.mark_tree_for_delete();
+			this->__big_popupB = this->front_anm->instantiate_vm_to_world_list_back(53);
+			break;
+		}
+		/* this case was removed but the gap in sprite numbers makes it kinda obvious
+		case PopupItemGetBorderLine: { // 5: Item Get Border Line!
+			this->front_anm->instantiate_vm_to_world_list_back(57);
+			break;
+		} */
+		case PopupChallengeNextStage: { // 6: Challenge Next Stage!
+			this->__big_popupA.mark_tree_for_delete();
+			this->__big_popupA = this->front_anm->instantiate_vm_to_world_list_back(54);
+			break;
+		}
+	}
+}
 
 typedef struct Ending Ending;
 
@@ -27473,6 +27742,8 @@ static inline void enemy_manager_disable_enemy_collision();
 static inline float& ability_manager_get_float_C58();
 static inline AnmLoaded* ability_manager_get_ability_anm();
 static inline BOOL ability_manager_card_equipped(int32_t id);
+template<typename T>
+static inline BOOL ability_manager_card_equipped();
 
 static inline constexpr float INTERNAL_POSITION_RATIO = 128.0f;
 
@@ -29637,10 +29908,12 @@ private:
 					case PlayerState::Dying: // 4
 						return NoCollision;
 				}
+#if !DEBUG_INVINCIBLE
 				if (this->data.invulnerable_timer <= 0) {
 					this->start_dying();
 				}
 				return DeathCollision;
+#endif
 			}
 		}
 		else {
@@ -29706,11 +29979,13 @@ private:
 						case PlayerState::Dying: // 4
 							return NoCollision;
 					}
+#if !DEBUG_INVINCIBLE
 					if (this->data.invulnerable_timer > 0) {
 						return NoCollision; // Bug? Inconsistent with other types
 					}
 					this->start_dying();
 					return DeathCollision;
+#endif
 				}
 			} else {
 				return GrazeCollision;
@@ -29843,10 +30118,14 @@ private:
 			case PlayerState::Dying: // 4
 				return NoCollision;
 		}
+#if !DEBUG_INVINCIBLE
 		if (this->data.invulnerable_timer <= 0) {
 			this->start_dying();
 		}
 		return DeathCollision;
+#else
+		return NoCollision;
+#endif
 	}
 
 	// 0x45CD90
@@ -30884,7 +31163,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 				int32_t who = IntArg(0);
 				StageData* stage_data = STAGE_DATA_PTR;
 				this->intro = anm_file_lookup(stage_data->inner[who].intro_anm_index)->instantiate_vm_to_world_list_back(stage_data->inner[who].intro_anm_script);
-				GUI_PTR->__sub_4422C0();
+				GUI_PTR->__show_boss_name();
 				break;
 			}
 			case stage_end: // 21
@@ -31412,7 +31691,7 @@ struct CardBase {
 	}
 	// Method 44
 	// 0x413050
-	dllexport gnu_noinline virtual int thiscall on_anm_id_assigned_to_hud(AnmID id) {
+	dllexport gnu_noinline virtual int thiscall on_anm_id_assigned_to_hud(AnmIDRaw id_raw) {
 		return 0;
 	}
 	// Method 48
@@ -31487,7 +31766,7 @@ public:
 };
 
 // size: 0x54
-struct CardBlank : CardBase { // DONE
+struct CardBlank : CardBase {
 	// CardBase base; // 0x0
 	// 0x54
 
@@ -31507,7 +31786,7 @@ struct CardBlank : CardBase { // DONE
 };
 
 // size: 0x54
-struct CardLife : CardBase { // DONE
+struct CardLife : CardBase {
 	// CardBase base; // 0x0
 	// 0x54
 
@@ -31547,7 +31826,7 @@ struct CardLife : CardBase { // DONE
 };
 
 // size: 0x54
-struct CardBomb : CardBase { // DONE
+struct CardBomb : CardBase {
 	// CardBase base; // 0x0
 	// 0x54
 
@@ -31587,7 +31866,7 @@ struct CardBomb : CardBase { // DONE
 };
 
 // size: 0x54
-struct CardLifeFragment : CardBase { // DONE
+struct CardLifeFragment : CardBase {
 	// CardBase base; // 0x0
 	// 0x54
 
@@ -31627,7 +31906,7 @@ struct CardLifeFragment : CardBase { // DONE
 };
 
 // size: 0x54
-struct CardBombFragment : CardBase { // DONE
+struct CardBombFragment : CardBase {
 	// CardBase base; // 0x0
 	// 0x54
 
@@ -31666,7 +31945,7 @@ struct CardBombFragment : CardBase { // DONE
 };
 
 // size: 0x54
-struct CardNazrin : CardBase { // DONE
+struct CardNazrin : CardBase {
 	// CardBase base; // 0x0
 	// 0x54
 
@@ -31706,7 +31985,7 @@ struct CardNazrin : CardBase { // DONE
 };
 
 // size: 0x54
-struct CardRingo : CardBase { // DONE
+struct CardRingo : CardBase {
 	// CardBase base; // 0x0
 	// 0x54
 
@@ -31754,7 +32033,7 @@ struct CardRingo : CardBase { // DONE
 };
 
 // size: 0x54
-struct CardMokou : CardBase { // DONE
+struct CardMokou : CardBase {
 	// CardBase base; // 0x0
 	// 0x54
 
@@ -31796,7 +32075,7 @@ struct CardMokou : CardBase { // DONE
 };
 
 // size: 0x58
-struct CardReimu1 : CardBase { // DONE
+struct CardReimu1 : CardBase {
 	// CardBase base; // 0x0
 	PlayerOption* option; // 0x54
 	// 0x58
@@ -31847,7 +32126,7 @@ struct CardReimu1 : CardBase { // DONE
 };
 
 // size: 0x58
-struct CardReimu2 : CardBase { // DONE
+struct CardReimu2 : CardBase {
 	// CardBase base; // 0x0
 	PlayerOption* option; // 0x54
 	// 0x58
@@ -31898,7 +32177,7 @@ struct CardReimu2 : CardBase { // DONE
 };
 
 // size: 0x58
-struct CardMarisa1 : CardBase { // DONE
+struct CardMarisa1 : CardBase {
 	// CardBase base; // 0x0
 	PlayerOption* option; // 0x54
 	// 0x58
@@ -31949,7 +32228,7 @@ struct CardMarisa1 : CardBase { // DONE
 };
 
 // size: 0x58
-struct CardMarisa2 : CardBase { // DONE
+struct CardMarisa2 : CardBase {
 	// CardBase base; // 0x0
 	PlayerOption* option; // 0x54
 	// 0x58
@@ -32000,7 +32279,7 @@ struct CardMarisa2 : CardBase { // DONE
 };
 
 // size: 0x58
-struct CardSakuya1 : CardBase { // DONE
+struct CardSakuya1 : CardBase {
 	// CardBase base; // 0x0
 	PlayerOption* option; // 0x54
 	// 0x58
@@ -32057,7 +32336,7 @@ struct CardSakuya1 : CardBase { // DONE
 };
 
 // size: 0x58
-struct CardSakuya2 : CardBase { // DONE
+struct CardSakuya2 : CardBase {
 	// CardBase base; // 0x0
 	PlayerOption* option; // 0x54
 	// 0x58
@@ -32108,7 +32387,7 @@ struct CardSakuya2 : CardBase { // DONE
 };
 
 // size: 0x58
-struct CardSanae1 : CardBase { // DONE
+struct CardSanae1 : CardBase {
 	// CardBase base; // 0x0
 	PlayerOption* option; // 0x54
 	// 0x58
@@ -32159,7 +32438,7 @@ struct CardSanae1 : CardBase { // DONE
 };
 
 // size: 0x58
-struct CardSanae2 : CardBase { // DONE
+struct CardSanae2 : CardBase {
 	// CardBase base; // 0x0
 	PlayerOption* option; // 0x54
 	// 0x58
@@ -32210,7 +32489,7 @@ struct CardSanae2 : CardBase { // DONE
 };
 
 // size: 0x58
-struct CardYoumu : CardBase { // DONE
+struct CardYoumu : CardBase {
 	// CardBase base; // 0x0
 	PlayerOption* option; // 0x54
 	// 0x58
@@ -32264,7 +32543,7 @@ struct CardYoumu : CardBase { // DONE
 };
 
 // 0x58
-struct CardAlice : CardBase { // DONE
+struct CardAlice : CardBase {
 	// CardBase base; // 0x0
 	PlayerOption* option; // 0x54
 	// 0x58
@@ -32336,7 +32615,7 @@ struct CardAlice : CardBase { // DONE
 };
 
 // size: 0x58
-struct CardCirno : CardBase { // DONE
+struct CardCirno : CardBase {
 	// CardBase base; // 0x0
 	PlayerOption* option; // 0x54
 	// 0x58
@@ -32387,7 +32666,7 @@ struct CardCirno : CardBase { // DONE
 };
 
 // size: 0x58
-struct CardOkina : CardBase { // DONE
+struct CardOkina : CardBase {
 	// CardBase base; // 0x0
 	PlayerOption* option; // 0x54
 	// 0x58
@@ -32444,7 +32723,7 @@ struct CardOkina : CardBase { // DONE
 };
 
 // size: 0x58
-struct CardNue : CardBase { // DONE
+struct CardNue : CardBase {
 	// CardBase base; // 0x0
 	PlayerOption* option; // 0x54
 	// 0x58
@@ -32502,7 +32781,7 @@ struct CardNue : CardBase { // DONE
 };
 
 // size: 0x54
-struct CardNitori : CardBase { // DONE
+struct CardNitori : CardBase {
 	// CardBase base; // 0x0
 	// 0x54
 
@@ -32545,7 +32824,7 @@ struct CardNitori : CardBase { // DONE
 };
 
 // size: 0x54
-struct CardKanako : CardBase { // DONE
+struct CardKanako : CardBase {
 	// CardBase base; // 0x0
 	// 0x54
 
@@ -32599,6 +32878,9 @@ struct CardEirin : CardBase {
 
 	inline CardEirin() {
 		// BUG: enabled is not set here
+#if FIX_REALLY_BAD_BUGS
+		this->enabled = false;
+#endif
 		this->__vm_id_58 = 0;
 		this->damage_source_index = 0;
 		this->__unknown_flag_cd_B = false;
@@ -32630,7 +32912,7 @@ struct CardEirin : CardBase {
 		if (!already_prevented_death) {
 			if (
 				// ShikiEiki card test
-				(!ability_manager_card_equipped(ROKUMON_CARD) || GAME_MANAGER.globals.current_money < 200) &&
+				(!ability_manager_card_equipped<CardShikiEiki>() || GAME_MANAGER.globals.current_money < 200) &&
 				BOMB_PTR && BOMB_PTR->bomb_allowed()
 			) {
 				this->__sub_40A2A0();
@@ -32693,7 +32975,7 @@ struct CardEirin : CardBase {
 };
 
 // size: 0x58
-struct CardTewi : CardBase { // DONE
+struct CardTewi : CardBase {
 	// CardBase base; // 0x0
 	int32_t money_backup; // 0x54
 	// 0x58
@@ -32890,7 +33172,7 @@ struct CardKoishi : CardBase {
 };
 
 // size: 0x54
-struct CardSuwako : CardBase { // DONE
+struct CardSuwako : CardBase {
 	// CardBase base; // 0x0
 	// 0x54
 
@@ -33021,7 +33303,7 @@ struct CardAya : CardBase {
 };
 
 // size: 0xB4
-struct CardKeiki : CardBase { // DONE
+struct CardKeiki : CardBase {
 	// CardBase base; // 0x0
 	Timer cooldowns[PLAYER_OPTION_COUNT]; // 0x54
 	AnmID vm_ids[PLAYER_OPTION_COUNT]; // 0xA4
@@ -33130,7 +33412,7 @@ struct CardKeiki : CardBase { // DONE
 };
 
 // size: 0x54
-struct CardKaguya : CardBase { // DONE
+struct CardKaguya : CardBase {
 	// CardBase base; // 0x0
 	// 0x54
 
@@ -33169,7 +33451,7 @@ struct CardKaguya : CardBase { // DONE
 };
 
 // size: 0x58
-struct CardMamizou : CardBase { // DONE
+struct CardMamizou : CardBase {
 	// CardBase base; // 0x0
 	int32_t power; // 0x54
 	// 0x58
@@ -33365,6 +33647,9 @@ struct CardShikiEiki : CardBase {
 
 	inline CardShikiEiki() {
 		// BUG: enabled is not set here
+#if FIX_REALLY_BAD_BUGS
+		this->enabled = false;
+#endif
 		this->__vm_id_58 = 0;
 		this->damage_source_index = 0;
 		this->__unknown_flag_cd_B = false;
@@ -33543,7 +33828,7 @@ struct CardPatchouli : CardBase {
 };
 
 // size: 0x54
-struct CardMike : CardBase { // DONE
+struct CardMike : CardBase {
 	// CardBase base; // 0x0
 	// 0x54
 
@@ -33563,7 +33848,7 @@ struct CardMike : CardBase { // DONE
 };
 
 // size: 0x54
-struct CardTakane : CardBase { // DONE
+struct CardTakane : CardBase {
 	// CardBase base; // 0x0
 	// 0x54
 
@@ -33583,7 +33868,7 @@ struct CardTakane : CardBase { // DONE
 };
 
 // size: 0x54
-struct CardSannyo : CardBase { // DONE
+struct CardSannyo : CardBase {
 	// CardBase base; // 0x0
 	// 0x54
 
@@ -33603,7 +33888,7 @@ struct CardSannyo : CardBase { // DONE
 };
 
 // size: 0x54
-struct CardYukari : CardBase { // DONE
+struct CardYukari : CardBase {
 	// CardBase base; // 0x0
 	// 0x54
 
@@ -33676,7 +33961,6 @@ static constexpr uint8_t metal_pipe[] = {
 #endif
 };
 #endif
-
 
 // size: 0x68
 struct CardShinmyoumaru : CardBase {
@@ -33812,7 +34096,7 @@ struct CardShinmyoumaru : CardBase {
 };
 
 // size: 0x74
-struct CardTenshi : CardBase { // DONE
+struct CardTenshi : CardBase {
 	// CardBase base; // 0x0
 	int state; // 0x54
 	Float3 position; // 0x58
@@ -34064,7 +34348,7 @@ struct CardClownpiece : CardBase {
 };
 
 // size: 0x68
-struct CardMiko : CardBase { // DONE
+struct CardMiko : CardBase {
 	// CardBase base; // 0x0
 	int state; // 0x54
 	Float3 position; // 0x58
@@ -34950,8 +35234,8 @@ struct CardMomoyo : CardBase {
 
 	// Method 44
 	// 0x413050
-	dllexport gnu_noinline virtual int thiscall on_anm_id_assigned_to_hud(AnmID id) {
-		this->__vm_id_58 = id;
+	dllexport gnu_noinline virtual int thiscall on_anm_id_assigned_to_hud(AnmIDRaw id_raw) {
+		this->__vm_id_58 = id_raw;
 		return 0;
 	}
 
@@ -35101,7 +35385,7 @@ struct AbilityTextData {
 	dllexport gnu_noinline static void __change_vm_63DC_sprite(int32_t arg1) asm_symbol_rel(0x4168A0) {
 		AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
 		if (arg1 != 4) {
-			ability_text_data->__vm_id_63DC.set_sprite(arg1 + 5);
+			ability_text_data->__vm_id_63DC.set_sprite_unsafe(arg1 + 5);
 			ability_text_data->__vm_id_63DC.interrupt_tree(2);
 		}
 		else {
@@ -35377,15 +35661,11 @@ private:
 	dllexport gnu_noinline static AnmID& instantiate_large_card_sprite_vm(AnmID& out, Float3* position, int32_t script, const CardData* card_data) asm_symbol_rel(0x4091A0) {
 		AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
 
+		out = NULL;
 		AnmID id = ability_manager->abcard_anm->instantiate_vm_to_ui_list_front(script, position);
 		out = id;
 		id.get_vm_ptr_safe()->run_anm();
-
-		int32_t large_sprite = card_data->sprite_large;
-		AnmVM* vm = id.get_vm_ptr();
-		if (vm) {
-			vm->set_sprite(large_sprite);
-		}
+		id.set_sprite_unsafe(card_data->sprite_large);
 		return out;
 	}
 
@@ -35398,7 +35678,7 @@ public:
 	// 0x416DD0
 	dllexport gnu_noinline static int32_t get_price_for_tier(int32_t price_tier) asm_symbol_rel(0x416DD0) {
 		int32_t base_price = CARD_PRICE_TABLE[price_tier];
-		if (card_equipped(YAMAWARO_CARD)) {
+		if (card_equipped_inline<CardTakane>()) {
 			return base_price * 5 / 10;
 		}
 		return base_price;
@@ -35898,7 +36178,9 @@ public:
 	}
 
 	// 0x408890
-	dllexport gnu_noinline void thiscall __sub_408890(AnmID id, int32_t scriptA, int32_t scriptB, CardBase* card, BOOL arg5) asm_symbol_rel(0x408890) {
+	dllexport gnu_noinline void thiscall __sub_408890(AnmIDRaw id_raw, int32_t scriptA, int32_t scriptB, CardBase* card, BOOL arg5) asm_symbol_rel(0x408890) {
+		AnmID id{ id_raw };
+
 		AnmVM* vmA = id.__find_child_vm_with_script(scriptA);
 		AnmVM* vmB = id.__find_child_vm_with_script(scriptB);
 
@@ -36152,9 +36434,19 @@ public:
 		});
 	}
 
+	template<typename T>
+	inline static BOOL card_equipped_inline() {
+		return card_equipped_inline(T::ID);
+	}
+
 	// 0x412FE0
 	dllexport gnu_noinline static BOOL stdcall card_equipped(int32_t id) asm_symbol_rel(0x412FE0) {
 		return card_equipped_inline(id);
+	}
+
+	template<typename T>
+	inline static BOOL card_equipped() {
+		return card_equipped(T::ID);
 	}
 
 private:
@@ -36242,6 +36534,10 @@ static inline AnmLoaded* ability_manager_get_ability_anm() {
 }
 static inline BOOL ability_manager_card_equipped(int32_t id) {
 	return ABILITY_MANAGER_PTR->card_equipped_inline(id);
+}
+template<typename T>
+static inline BOOL ability_manager_card_equipped() {
+	return ABILITY_MANAGER_PTR->card_equipped_inline<T>();
 }
 
 // 0x430510
@@ -37174,7 +37470,7 @@ struct AbilityShop : ZUNTask {
 			++card_array_size;
 		}
 		// Add first mike bonus card
-		if (ABILITY_MANAGER_PTR->card_equipped_inline(MANEKI_CARD)) {
+		if (ABILITY_MANAGER_PTR->card_equipped_inline<CardMike>()) {
 			if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], CheapTier1, ExpensiveTier5 + 1, new_card_array, card_array_size)) {
 				++card_array_size;
 			}
@@ -37185,7 +37481,7 @@ struct AbilityShop : ZUNTask {
 			++card_array_size;
 		}
 		// Add second mike bonus card
-		if (ABILITY_MANAGER_PTR->card_equipped_inline(MANEKI_CARD)) {
+		if (ABILITY_MANAGER_PTR->card_equipped_inline<CardMike>()) {
 			if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], CheapTier1, ExpensiveTier5 + 1, new_card_array, card_array_size)) {
 				++card_array_size;
 			}
@@ -37196,7 +37492,7 @@ struct AbilityShop : ZUNTask {
 			++card_array_size;
 		}
 		// Add third mike bonus card
-		if (ABILITY_MANAGER_PTR->card_equipped_inline(MANEKI_CARD)) {
+		if (ABILITY_MANAGER_PTR->card_equipped_inline<CardMike>()) {
 			if (ABILITY_MANAGER_PTR->__pick_random_cardA(new_card_array[card_array_size], CheapTier1, ExpensiveTier5 + 1, new_card_array, card_array_size)) {
 				++card_array_size;
 			}
@@ -37254,7 +37550,7 @@ struct AbilityShop : ZUNTask {
 		this->card_choice.set_selection(0);
 		this->card_choice.enable_wrap = false;
 
-		if (!ABILITY_MANAGER_PTR->card_equipped(BLANK_CARD)) {
+		if (!ABILITY_MANAGER_PTR->card_equipped<CardBlank>()) {
 			this->__has_blank_card_already = FALSE;
 		} else {
 			this->__has_blank_card_already = TRUE;
@@ -38156,8 +38452,7 @@ dllexport gnu_noinline Enemy::~Enemy() EH_TERMINATE {
 			}
 			AnmManager* anm_manager = ANM_MANAGER_PTR;
 			for (size_t i = 0; i < countof(this->data.anm_vms); ++i) {
-				anm_manager->mark_tree_id_for_delete(this->data.anm_vms[i]);
-				this->data.anm_vms[i] = 0;
+				this->data.anm_vms[i].mark_tree_for_delete(anm_manager);
 			}
 		}
 	}
@@ -38900,7 +39195,7 @@ struct Stage : ZUNTask {
 	union {
 		uint32_t flags; // 0x3474
 		struct {
-			uint32_t __unknown_flag_bg_C : 1; // 1
+			uint32_t __render_enable : 1; // 1
 			uint32_t __unknown_flag_bg_D : 1; // 2
 			uint32_t __unknown_flag_bg_B : 1; // 3
 			uint32_t __unknown_flag_bg_A : 1; // 4
@@ -39184,12 +39479,12 @@ struct Stage : ZUNTask {
 			if (this->__unknown_flag_bg_B) {
 				if (this->__timer_3478 < 30) {
 					clang_forceinline ScreenEffect::allocate(ScreenEffect3, 30, 0, 0, 0, 10);
-					this->__unknown_flag_bg_C = true;
+					this->__render_enable = true;
 					this->__timer_3478.set(1);
 				}
 				else {
 					ALPHA(this->std_vm.__color_3440) = 0;
-					this->__unknown_flag_bg_C = false;
+					this->__render_enable = false;
 				}
 			}
 
@@ -39203,7 +39498,7 @@ struct Stage : ZUNTask {
 			this->__culled_instances_counter = 0;
 			this->__rendered_quads_counter = 0;
 
-			if (this->__unknown_flag_bg_C) {
+			if (this->__render_enable) {
 				SUPERVISOR.d3d_enable_fog();
 				this->__draw_vms(0);
 				this->__draw_vms(1);
@@ -39255,7 +39550,7 @@ struct Stage : ZUNTask {
 				ALPHA(this->std_vm.__color_3440) = 0;
 			}
 
-			if (this->__unknown_flag_bg_C) {
+			if (this->__render_enable) {
 				SUPERVISOR.d3d_disable_zwrite();
 				SUPERVISOR.d3d_enable_fog();
 				this->__draw_vms(8);
@@ -39366,7 +39661,7 @@ corrupted_data:
 
 		this->__int_3490 = 0;
 		this->std_vm.script_time.reset();
-		this->__unknown_flag_bg_C = true;
+		this->__render_enable = true;
 		this->std_vm.camera_facing_interp.end_time = 0;
 		this->std_vm.camera_position_interp.end_time = 0;
 
@@ -39643,9 +39938,9 @@ static inline constexpr int32_t SPELLCARD_GRACE_PERIOD = 60;
 // size: 0xC0
 struct Spellcard : ZUNTask {
 	// ZUNTask base; // 0x0
-	AnmID __vm_id_C; // 0xC
-	AnmID __vm_id_array_10[3]; // 0x10
-	AnmID __vm_id_1C; // 0x1C
+	AnmID spell_background; // 0xC
+	AnmID __spell_name_vms[3]; // 0x10
+	AnmID __spell_ring_effect; // 0x1C
 	Timer __timer_20; // 0x20
 	char name[64]; // 0x34
 	int32_t id; // 0x74
@@ -39653,15 +39948,15 @@ struct Spellcard : ZUNTask {
 		uint32_t flags; // 0x78
 		struct {
 			uint32_t spell_active : 1; // 1
-			uint32_t __unknown_flag_sp_B : 1; // 2
-			uint32_t __unknown_flag_sp_I : 1; // 3
+			uint32_t capture_state : 1; // 2
+			uint32_t spell_name_hidden : 1; // 3
 			uint32_t __timeout_spell : 1; // 4
 			uint32_t __unknown_flag_sp_C : 1; // 5
-			uint32_t __unknown_flag_sp_E : 1; // 6
+			uint32_t __grace_period_bomb_resist : 1; // 6
 			uint32_t __unknown_flag_sp_F : 1; // 7
 			uint32_t __unknown_flag_sp_D : 1; // 8
 			uint32_t __unknown_flag_sp_H : 1; // 9
-			uint32_t __unknown_flag_sp_G : 1; // 10
+			uint32_t __render_stage_during_spell : 1; // 10
 		};
 	};
 	int32_t __bonus_A; // 0x7C
@@ -39672,7 +39967,7 @@ struct Spellcard : ZUNTask {
 	int32_t __int_90; // 0x90
 	unknown_fields(0x14); // 0x94
 	int32_t __int_A8; // 0xA8
-	Float3 __float3_AC; // 0xAC
+	Float3 __spell_ring_position; // 0xAC
 	unknown_fields(0x8); // 0xB8
 	// 0xC0
 
@@ -39688,9 +39983,9 @@ struct Spellcard : ZUNTask {
 	// 0x429D80
 	// EH frame (terminate)
 	dllexport gnu_noinline ~Spellcard() EH_TERMINATE {
-		this->__vm_id_array_10[0].mark_tree_for_delete();
-		this->__vm_id_array_10[1].mark_tree_for_delete();
-		this->__vm_id_array_10[2].mark_tree_for_delete();
+		this->__spell_name_vms[0].mark_tree_for_delete();
+		this->__spell_name_vms[1].mark_tree_for_delete();
+		this->__spell_name_vms[2].mark_tree_for_delete();
 
 		UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
 		UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
@@ -39704,8 +39999,8 @@ struct Spellcard : ZUNTask {
 	}
 
 	// 0x42D640
-	dllexport gnu_noinline BOOL thiscall __get_flag_sp_B() asm_symbol_rel(0x42D640) {
-		return this->__unknown_flag_sp_B;
+	dllexport gnu_noinline BOOL thiscall get_capture_state() asm_symbol_rel(0x42D640) {
+		return this->capture_state;
 	}
 
 	// 0x42D650
@@ -39726,25 +40021,25 @@ struct Spellcard : ZUNTask {
 		return this->spell_active & this->__timeout_spell;
 	}
 
-	inline bool __inline_sub_C() {
-		return this->spell_active & this->__unknown_flag_sp_E;
+	inline bool __grace_period_bomb_resist_active() {
+		return this->spell_active & this->__grace_period_bomb_resist;
 	}
 
 	// 0x42D670
 	dllexport gnu_noinline void thiscall __sub_42D670() asm_symbol_rel(0x42D670) {
 		Spellcard* spellcard = SPELLCARD_PTR;
 		spellcard->__unknown_flag_sp_C = true;
-		spellcard->__vm_id_1C.mark_tree_for_delete();
+		spellcard->__spell_ring_effect.mark_tree_for_delete();
 	}
 
 	inline void __inline_spellcard_fail() {
 		if (this->spell_active) {
 			if (this->__timer_20 >= SPELLCARD_GRACE_PERIOD) {
 				this->__bonus_A = 0;
-				this->__unknown_flag_sp_B = false;
-				this->__unknown_flag_sp_E = false;
+				this->capture_state = false;
+				this->__grace_period_bomb_resist = false;
 			} else if (BOMB_PTR->is_active()) {
-				this->__unknown_flag_sp_E = true;
+				this->__grace_period_bomb_resist = true;
 			}
 		}
 	}
@@ -39762,39 +40057,38 @@ struct Spellcard : ZUNTask {
 		this->id = id;
 		byteloop_strcpy(this->name, name);
 		this->spell_active = true;
-		this->__unknown_flag_sp_B = true;
+		this->capture_state = true;
 		this->__timeout_spell = false;
 		this->__unknown_flag_sp_C = false;
 		this->__unknown_flag_sp_D = false;
 		if (!is_replay()) {
-			byteloop_strcpy(SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].spells[id].name, name);
-			// TODO: scorefile stuff
+			SCOREFILE_MANAGER_PTR->record_spell_attempt(id, name);
 		}
 		Gui* gui = GUI_PTR;
 		gui->spell_timer_vms[0]->interrupt_and_run(2);
 		gui->spell_timer_vms[1]->interrupt_and_run(2);
 
 		this->__int_8C = 1;
-		this->__unknown_flag_sp_E = false;
+		this->__grace_period_bomb_resist = false;
 		this->__unknown_flag_sp_F = false;
 
-		this->__vm_id_array_10[0] = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(0);
-		this->__vm_id_array_10[1] = SUPERVISOR.text_anm->instantiate_vm_to_world_list_back(2);
-		this->__vm_id_array_10[2] = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(1);
-		AnmVM* vm = this->__vm_id_array_10[1].get_vm_ptr();
+		this->__spell_name_vms[0] = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(0);
+		this->__spell_name_vms[1] = SUPERVISOR.text_anm->instantiate_vm_to_world_list_back(2);
+		this->__spell_name_vms[2] = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(1);
+		AnmVM* vm = this->__spell_name_vms[1].get_vm_ptr();
 		
-		ANM_MANAGER_PTR->draw_text_right(vm, COLOR(0, 255, 255, 255), 0, 0, 0, name);
+		ANM_MANAGER_PTR->draw_text_right(vm, COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0), 0, 0, name);
 
 		SOUND_MANAGER.play_sound(33);
-		this->__vm_id_1C = EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(13);
+		this->__spell_ring_effect = EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(13);
 
 		Enemy* boss;
 		clang_forceinline boss = ENEMY_MANAGER_PTR->get_boss_by_index(0);
-		this->__float3_AC = boss->data.current_motion.position;
-		this->__vm_id_1C.set_controller_position(&boss->data.current_motion.position);
+		this->__spell_ring_position = boss->data.current_motion.position;
+		this->__spell_ring_effect.set_controller_position(&boss->data.current_motion.position);
 
-		this->__vm_id_1C.__find_child_vm_with_script(11)->data.current_context.int_vars[2] = time;
-		this->__vm_id_1C.__find_child_vm_with_script(12)->data.current_context.int_vars[2] = time;
+		this->__spell_ring_effect.__find_child_vm_with_script(11)->data.current_context.int_vars[2] = time;
+		this->__spell_ring_effect.__find_child_vm_with_script(12)->data.current_context.int_vars[2] = time;
 
 		this->time = time;
 
@@ -39824,54 +40118,57 @@ struct Spellcard : ZUNTask {
 		EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(20);
 
 		auto& anm_sourceA = STAGE_DATA_PTR->inner[mode];
-		anm_file_lookup(anm_sourceA.__spell_anm_indexA)->instantiate_vm_to_world_list_back(anm_sourceA.__spell_anm_scriptA);
+		this->spell_background = anm_file_lookup(anm_sourceA.spell_background_anm_index)->instantiate_vm_to_world_list_back(anm_sourceA.spell_background_anm_script);
 		auto& anm_sourceB = STAGE_DATA_PTR->inner[mode];
-		this->__unknown_flag_sp_G = anm_sourceB.__spell_flag_state;
-		anm_file_lookup(anm_sourceB.__spell_anm_indexB)->instantiate_vm_to_world_list_back(anm_sourceB.__spell_anm_scriptB);
+		this->__render_stage_during_spell = anm_sourceB.__render_stage_during_spell;
+		anm_file_lookup(anm_sourceB.spell_cut_in_anm_index)->instantiate_vm_to_world_list_back(anm_sourceB.spell_cut_in_anm_script);
 		
 		GAME_MANAGER.globals.__unknown_flag_gl_A = false;
 	}
 
-	// 0x42A780
-	dllexport gnu_noinline void thiscall end_spell() {
+private:
+	forceinline void end_spell_impl() {
 		if (this->spell_active) {
-			STAGE_PTR->__unknown_flag_bg_C = true;
-			this->__vm_id_array_10[0].interrupt_tree(1);
-			this->__vm_id_array_10[1].interrupt_tree(1);
-			this->__vm_id_array_10[2].interrupt_tree(1);
+			STAGE_PTR->__render_enable = true;
+			clang_noinline this->__spell_name_vms[0].interrupt_tree(1);
+			clang_noinline this->__spell_name_vms[1].interrupt_tree(1);
+			clang_noinline this->__spell_name_vms[2].interrupt_tree(1);
 			this->spell_active = false;
-			this->__vm_id_C.mark_tree_for_delete();
-			this->__unknown_flag_sp_E = false;
+			this->spell_background.mark_tree_for_delete();
+			this->__grace_period_bomb_resist = false;
 			GUI_PTR->__spell_timer_vms_interrupt_3();
-			this->__vm_id_1C.mark_tree_for_delete();
+			this->__spell_ring_effect.mark_tree_for_delete();
 
-			if (this->__unknown_flag_sp_B) {
+			if (this->capture_state) {
 				GAME_MANAGER.add_to_score(this->__bonus_A);
-				//GUI_PTR->__sub_441A50(0, this->__bonus_A);
+				GUI_PTR->__big_popup_text(PopupGetSpellCardBonus, this->__bonus_A);
 				if (!is_replay()) {
-					// TODO: update scorefile
+					SCOREFILE_MANAGER_PTR->record_spell_capture(this->id);
 				}
 				SOUND_MANAGER.play_sound(46);
 			}
 			else {
-				Gui* gui = GUI_PTR;
-				gui->__anm_id_B8.mark_tree_for_delete();
-				gui->__anm_id_B8 = gui->front_anm->instantiate_vm_to_world_list_back(50);
-				gui->__int_134 = 1;
-				gui->__anm_id_110 = gui->front_anm->instantiate_vm_to_world_list_back(84);
+				clang_forceinline GUI_PTR->__big_popup_text(PopupBonusFailed);
 			}
 
-			if (this->__timeout_spell) {
+			if (this->__unknown_flag_sp_D) {
 				SOUND_MANAGER.play_sound(69);
 			}
 		}
+	}
+public:
+	// 0x42A780
+	dllexport gnu_noinline void thiscall end_spell() {
+		// Oh boy, chaining through global pointers
+		// in method bodies sure is fun!
+		SPELLCARD_PTR->end_spell_impl();
 	}
 
 	// this probably actually takes an Enemy*, but
 	// the memory access pattern when recompiling
 	// would be wrong for that.
 	inline bool __enemy_is_low_health(EnemyData* enemy_data, int32_t threshold_low, int32_t threshold_high) {
-		if (this->__inline_sub_C()) {
+		if (this->__grace_period_bomb_resist_active()) {
 			return false;
 		}
 		int32_t life_remaining = enemy_data->enemy()->data.life.remaining_current_attack;
@@ -39889,9 +40186,9 @@ struct Spellcard : ZUNTask {
 			++this->__int_8C;
 			if (
 				this->__timer_20 >= 60 &&
-				!this->__unknown_flag_sp_G
+				!this->__render_stage_during_spell
 			) {
-				STAGE_PTR->__unknown_flag_bg_C = false;
+				STAGE_PTR->__render_enable = false;
 			}
 
 			if (
@@ -39910,15 +40207,15 @@ struct Spellcard : ZUNTask {
 
 			if (this->__timer_20 >= 120) {
 				Player* player = PLAYER_PTR;
-				if (!this->__unknown_flag_sp_I) {
+				if (!this->spell_name_hidden) {
 					if (
 						(!this->__unknown_flag_sp_H && player->data.position.y < 96.0f) ||
 						(this->__unknown_flag_sp_H && player->data.position.y > 352.0f)
 					) {
-						nounroll for (size_t i = 0; i != countof(this->__vm_id_array_10); ++i) {
-							this->__vm_id_array_10[i].interrupt_tree(1);
+						nounroll for (size_t i = 0; i != countof(this->__spell_name_vms); ++i) {
+							this->__spell_name_vms[i].interrupt_tree(3);
 						}
-						this->__unknown_flag_sp_I = true;
+						this->spell_name_hidden = true;
 					}
 				}
 				else {
@@ -39926,10 +40223,10 @@ struct Spellcard : ZUNTask {
 						(!this->__unknown_flag_sp_H && player->data.position.y > 128.0f) ||
 						(this->__unknown_flag_sp_H && player->data.position.y < 320.0f)
 					) {
-						nounroll for (size_t i = 0; i != countof(this->__vm_id_array_10); ++i) {
-							this->__vm_id_array_10[i].interrupt_tree(2);
+						nounroll for (size_t i = 0; i != countof(this->__spell_name_vms); ++i) {
+							this->__spell_name_vms[i].interrupt_tree(2);
 						}
-						this->__unknown_flag_sp_I = false;
+						this->spell_name_hidden = false;
 					}
 				}
 			}
@@ -39937,16 +40234,16 @@ struct Spellcard : ZUNTask {
 			// First call is inlined, second is not
 			if (ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
 				Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0);
-				this->__float3_AC += (boss->data.current_motion.position - this->__float3_AC) * 0.05f;
+				this->__spell_ring_position += (boss->data.current_motion.position - this->__spell_ring_position) * 0.05f;
 			}
 
-			this->__vm_id_1C.set_controller_position(&this->__float3_AC);
+			this->__spell_ring_effect.set_controller_position(&this->__spell_ring_position);
 
 			if (
-				this->__unknown_flag_sp_B &&
-				BOMB_PTR->is_active()
+				this->capture_state &&
+				!BOMB_PTR->is_active()
 			) {
-				this->__unknown_flag_sp_E = false;
+				this->__grace_period_bomb_resist = false;
 			}
 		}
 		return UpdateFuncNext;
@@ -39954,7 +40251,7 @@ struct Spellcard : ZUNTask {
 
 	inline UpdateFuncRet thiscall on_draw() {
 		if (this->spell_active) {
-			AnmVM* vm = this->__vm_id_array_10[2].get_vm_ptr();
+			AnmVM* vm = this->__spell_name_vms[2].get_vm_ptr();
 			if (!vm) {
 				return UpdateFuncNext;
 			}
@@ -39966,7 +40263,7 @@ struct Spellcard : ZUNTask {
 			ascii_manager->font_id = 2;
 			ascii_manager->group = 2;
 			ascii_manager->set_alpha(vm->get_alpha());
-			if (this->__unknown_flag_sp_B) {
+			if (this->capture_state) {
 				position.x = 266.0f;
 				ascii_manager->printf(&position, "%8d", this->__bonus_A);
 			} else {
@@ -39974,7 +40271,25 @@ struct Spellcard : ZUNTask {
 				ascii_manager->printf(&position, "$");
 			}
 
-			// TODO: print captures from scorefile
+			int32_t spell_id = this->id;
+
+			position.x = 360.0f;
+			position.y = 35.0f;
+			position.z = 0.0f;
+
+			int32_t captures = SCOREFILE_MANAGER_PTR->get_spell_captures(GAME_MANAGER.globals.shottype_index(), spell_id);
+			if (captures >= 100) {
+				ASCII_MANAGER_PTR->printf(&position, "MASTER");
+			}
+			else {
+				int32_t attempts = SCOREFILE_MANAGER_PTR->get_spell_attempts(GAME_MANAGER.globals.shottype_index(), spell_id);
+				if (attempts >= 100) {
+					ASCII_MANAGER_PTR->printf(&position, "%.2d/99+", captures);
+				}
+				else {
+					ASCII_MANAGER_PTR->printf(&position, "%.2d/%.2d", captures, attempts);
+				}
+			}
 
 			ascii_manager = ASCII_MANAGER_PTR;
 			ascii_manager->font_id = 0;
@@ -40021,9 +40336,9 @@ struct Spellcard : ZUNTask {
 ValidateFieldOffset32(0x0, Spellcard, task_flags);
 ValidateFieldOffset32(0x4, Spellcard, on_tick_func);
 ValidateFieldOffset32(0x8, Spellcard, on_draw_func);
-ValidateFieldOffset32(0xC, Spellcard, __vm_id_C);
-ValidateFieldOffset32(0x10, Spellcard, __vm_id_array_10);
-ValidateFieldOffset32(0x1C, Spellcard, __vm_id_1C);
+ValidateFieldOffset32(0xC, Spellcard, spell_background);
+ValidateFieldOffset32(0x10, Spellcard, __spell_name_vms);
+ValidateFieldOffset32(0x1C, Spellcard, __spell_ring_effect);
 ValidateFieldOffset32(0x20, Spellcard, __timer_20);
 ValidateFieldOffset32(0x34, Spellcard, name);
 ValidateFieldOffset32(0x74, Spellcard, id);
@@ -40034,7 +40349,7 @@ ValidateFieldOffset32(0x84, Spellcard, time);
 ValidateFieldOffset32(0x8C, Spellcard, __int_8C);
 ValidateFieldOffset32(0x90, Spellcard, __int_90);
 ValidateFieldOffset32(0xA8, Spellcard, __int_A8);
-ValidateFieldOffset32(0xAC, Spellcard, __float3_AC);
+ValidateFieldOffset32(0xAC, Spellcard, __spell_ring_position);
 ValidateStructSize32(0xC0, Spellcard);
 #pragma endregion
 
@@ -40860,7 +41175,6 @@ struct ItemManager : ZUNTask {
 		this->slowdown_factor = 1.0f;
 	}
 
-private:
 	// unused args based on FW code
 	// 0x446F40
 	dllexport gnu_noinline Item* thiscall spawn_item(
@@ -40979,7 +41293,7 @@ private:
 				return item;
 		}
 	}
-public:
+
 	inline Item* spawn_item(int32_t item_id, Float3* position, float angle, float speed, int32_t spawn_delay) {
 		return this->spawn_item(item_id, position, UNUSED_DWORD, angle, speed, spawn_delay, UNUSED_DWORD, UNUSED_DWORD);
 	}
@@ -47665,7 +47979,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
 		}
 		if (damage) {
 			++MOMOYO_CARD_COUNTER;
-			if (SPELLCARD_PTR->__inline_sub_C()) {
+			if (SPELLCARD_PTR->__grace_period_bomb_resist_active()) {
 				damage /= 60;
 			}
 			this->life.take_damage(damage, this->is_invulnerable());
@@ -47974,7 +48288,7 @@ inline void thiscall EnemyData::anm_set_slot_main_impl() {
 	int32_t slot = this->get_int_arg(0);
 	int32_t script = this->get_int_arg(1);
 	AnmID& id = this->anm_vms[slot];
-	id.mark_tree_for_delete();
+	clang_noinline id.mark_tree_for_delete();
 	id = ENEMY_MANAGER_PTR->anm_file_lookup(this->anm_source_index)->instantiate_vm_to_world_list_front(script, this->anm_base_layer + 7);
 	AnmVM* vm = id.get_vm_ptr();
 	if (slot == 0) {
@@ -48125,7 +48439,7 @@ dllexport gnu_noinline void thiscall EnemyData::ecl_set_anm_data() {
 }
 
 inline void thiscall EnemyData::anm_play_main_impl() {
-	this->anm_vms[0].mark_tree_for_delete();
+	clang_noinline this->anm_vms[0].mark_tree_for_delete();
 	this->anm_vms[0] = ENEMY_MANAGER_PTR->anm_file_lookup(this->anm_source_index)->instantiate_vm_to_world_list_front(this->current_anm_script, this->anm_base_layer + 7);
 	this->__enable_anm_poses = false;
 	this->anm_slot_0_script = this->current_anm_script;
@@ -48135,7 +48449,7 @@ inline void thiscall EnemyData::anm_play_main_impl() {
 
 inline void thiscall EnemyData::anm_play_attack_impl() {
 	int32_t slot = this->get_int_arg(0);
-	this->anm_vms[slot].mark_tree_for_delete();
+	clang_noinline this->anm_vms[slot].mark_tree_for_delete();
 	this->anm_vms[slot] = ENEMY_MANAGER_PTR->anm_file_lookup(this->anm_source_index)->instantiate_vm_to_world_list_front(this->current_anm_script + 5, this->anm_base_layer + 7);
 	AnmVM* vm = this->anm_vms[slot].get_vm_ptr();
 	if (slot == 0) {
@@ -48151,7 +48465,7 @@ inline void thiscall EnemyData::anm_play_attack_ex_impl() {
 	int32_t slot = this->get_int_arg(0);
 	int32_t attack_index = this->get_int_arg(1);
 	AnmID& id = this->anm_vms[slot];
-	id.mark_tree_for_delete();
+	clang_noinline id.mark_tree_for_delete();
 	int32_t sprite = this->current_anm_script;
 	if (attack_index >= 0) {
 		sprite += attack_index + 5;
@@ -49700,7 +50014,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 		case anm_interrupt_slot: { // 317
 			int32_t slot = this->get_int_arg(0);
 			int16_t interrupt = this->get_int_arg(1);
-			this->anm_vms[slot].interrupt_tree(interrupt);
+			clang_noinline this->anm_vms[slot].interrupt_tree(interrupt);
 			break;
 		}
 		case move_stop: { // 427
@@ -50368,7 +50682,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			break;
 		}
 		case drop_item_rewards: // 509
-			if (GAME_MANAGER.__is_spell_practice()) {
+			if (GAME_MANAGER.is_spell_practice()) {
 		case drop_item_rewards_force: // 562
 				this->drops.spawn_items(&this->get_position());
 			}
@@ -50964,7 +51278,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			const char* callback_sub = StringArg(0x10);
 			int32_t chapter;
 			if (
-				GAME_MANAGER.__is_spell_practice() &&
+				GAME_MANAGER.is_spell_practice() &&
 				this->is_boss
 			) {
 				// This section is very strange.
@@ -51038,7 +51352,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 				GAME_MANAGER.get_current_stage() == Stage6 &&
 				script == 0
 			) {
-				script = ABILITY_MANAGER_PTR->card_equipped(BLANK_CARD) ? 4 : script;
+				script = ABILITY_MANAGER_PTR->card_equipped<CardBlank>() ? 4 : script;
 			}
 			GUI_PTR->__start_msg_vm(script);
 			BULLET_MANAGER_PTR->cancel_all(CancelType0);
@@ -51115,8 +51429,15 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			this->life.set_spell(this->get_int_arg(0));
 			break;
 		case spellcard_end: // 523
-			if (SPELLCARD_PTR->is_spell_active() && SPELLCARD_PTR->__get_flag_sp_B()) {
-				ITEM_MANAGER_PTR->spawn_item(LifeFragmentItem, &this->get_position(), -HALF_PI_f, 2.2f, 60);
+			if (
+				SPELLCARD_PTR->is_spell_active() &&
+				SPELLCARD_PTR->get_capture_state() &&
+				ABILITY_MANAGER_PTR->card_equipped<CardSannyo>()
+			) {
+				// This is the only place all args are passed.
+				// All other item spawns leave the unused params
+				// with garbage values.
+				ITEM_MANAGER_PTR->spawn_item(LifeFragmentItem, &this->get_position(), COLOR(255, 255, 255, 255), -HALF_PI_f, 2.2f, 60, 0, -1);
 			}
 			SPELLCARD_PTR->end_spell();
 			this->life.set_spell(false);
@@ -52257,7 +52578,7 @@ struct ReplayManager : ZUNTask {
 				this->info->shottype = GAME_MANAGER.globals.shottype;
 				this->info->difficulty = GAME_MANAGER.globals.difficulty;
 				this->info->practice_mode = GAME_MANAGER.game_type & 1; // code is *not* == PracticeMode
-				this->info->spell_practice_mode = GAME_MANAGER.__is_spell_practice();
+				this->info->spell_practice_mode = GAME_MANAGER.is_spell_practice();
 				this->info->spell_practice_id = GAME_MANAGER.globals.spell_practice_id;
 				if (GameThread* game_thread_ptr = GAME_THREAD_PTR) {
 					this->info->config = game_thread_ptr->config;
@@ -54003,7 +54324,7 @@ dllexport gnu_noinline void __pause_menu_game_over_screen() {
 // 0x417CC0
 dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 
-#if TESTING_FEATURES
+#if ALLOW_FORCE_CLOSING_SHOP
 	if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_RESTART)) {
 		goto delete_break;
 	}
@@ -54454,7 +54775,7 @@ dllexport gnu_noinline void thiscall Gui::__start_msg_vm(int32_t script) {
 			StageData* stage_data = STAGE_DATA_PTR;
 			int32_t index = script == -1 ? 1 : 0;
 			if (
-				!GAME_MANAGER.__is_spell_practice() ||
+				!GAME_MANAGER.is_spell_practice() ||
 				GAME_THREAD_PTR->replay_mode != ReplayRecording
 			) {
 				char filename[MAX_PATH];
@@ -55792,9 +56113,9 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 		}
 	}
 
-	if (this->__int_134) {
-		if (!this->__anm_id_110.has_live_vm()) {
-			this->__int_134 = 0;
+	if (this->__show_spell_clear_time) {
+		if (!this->__spell_clear_time_label.has_live_vm()) {
+			this->__show_spell_clear_time = false;
 		}
 	}
 
@@ -55872,8 +56193,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 
 		spell_seconds = this->spell_timer_seconds;
 		if (spell_seconds != this->__int_1C0) {
-			this->spell_timer_vms[0]->set_sprite(spell_seconds / 10 + 239);
-			this->spell_timer_vms[1]->set_sprite(this->spell_timer_seconds % 10 + 239);
+			this->spell_timer_vms[0]->set_sprite(239 + spell_seconds / 10);
+			this->spell_timer_vms[1]->set_sprite(239 + this->spell_timer_seconds % 10);
 			spell_seconds = this->spell_timer_seconds;
 		}
 		this->__int_1C0 = spell_seconds;
@@ -55931,7 +56252,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 						lifebar.vms_initialized = TRUE;
 					}
 
-					this->__sub_4422C0();
+					this->__show_boss_name();
 
 					AnmVM* main_vm = lifebar.main_vm.get_vm_ptr();
 
@@ -55990,6 +56311,9 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 			}
 			else {
 				this->lifebars[i].clear();
+				if (!i) {
+					this->boss_name.mark_tree_for_delete();
+				}
 			}
 		}
 	}
@@ -56027,31 +56351,31 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 			AnmVM* vm = this->boss_indicator.get_vm_ptr();
 			vm->__tree_set_visible2();
 
-			int32_t state = this->__unknown_field_gu_C;
+			int32_t state = this->__boss_indicator_state;
 			if (SPELLCARD_PTR->spell_active) {
 				switch (state) {
 					case 0:
 						if (boss->data.life.remaining_current_attack < 2000) {
 							vm->interrupt(7);
-							this->__unknown_field_gu_C = 1;
+							this->__boss_indicator_state = 1;
 						}
 						break;
 					case 1:
 						if (boss->data.life.remaining_current_attack < 1000) {
 							vm->interrupt(8);
-							this->__unknown_field_gu_C = 2;
+							this->__boss_indicator_state = 2;
 						}
 						break;
 					case 2:
 						if (boss->data.life.remaining_current_attack < 400) {
 							vm->interrupt(9);
-							this->__unknown_field_gu_C = 3;
+							this->__boss_indicator_state = 3;
 						}
 						break;
 					case 3:
-						if (boss->data.life.remaining_current_attack >= 400) {
+						if (boss->data.life.remaining_current_attack > 400) {
 							vm->interrupt(10);
-							this->__unknown_field_gu_C = 0;
+							this->__boss_indicator_state = 0;
 						}
 						break;
 				}
@@ -56061,25 +56385,25 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 					case 0:
 						if (boss->data.life.remaining_current_attack < 700) {
 							vm->interrupt(7);
-							this->__unknown_field_gu_C = 1;
+							this->__boss_indicator_state = 1;
 						}
 						break;
 					case 1:
 						if (boss->data.life.remaining_current_attack < 400) {
 							vm->interrupt(8);
-							this->__unknown_field_gu_C = 2;
+							this->__boss_indicator_state = 2;
 						}
 						break;
 					case 2:
 						if (boss->data.life.remaining_current_attack < 200) {
 							vm->interrupt(9);
-							this->__unknown_field_gu_C = 3;
+							this->__boss_indicator_state = 3;
 						}
 						break;
 					case 3:
-						if (boss->data.life.remaining_current_attack >= 200) {
+						if (boss->data.life.remaining_current_attack > 200) {
 							vm->interrupt(10);
-							this->__unknown_field_gu_C = 0;
+							this->__boss_indicator_state = 0;
 						}
 						break;
 				}
@@ -56131,7 +56455,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 
 	AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
 
-	AnmVM* vm = this->__anm_id_108.get_vm_ptr();
+	AnmVM* vm = this->__stage_clear_bonus_vm.get_vm_ptr();
 
 	float offset = 0.0f; // LOCAL 4
 
@@ -56140,7 +56464,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 		position.y = 200.0f;
 		position.z = 0.0f;
 
-		vm = this->__anm_id_108.get_vm_ptr();
+		vm = this->__stage_clear_bonus_vm.get_vm_ptr();
 
 		ascii_manager->set_alpha(vm->get_alpha());
 		ascii_manager->group = 2;
@@ -56157,20 +56481,20 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 		ascii_manager->__vertical_positioning_mode = 1;
 	}
 
-	if (this->__int_134) {
+	if (this->__show_spell_clear_time) {
 		position.x = 224.0f;
 		position.y = 144.0f;
 		position.z = 0.0f;
 
-		AnmVM* vm = this->__anm_id_110.get_vm_ptr();
+		AnmVM* vm = this->__spell_clear_time_label.get_vm_ptr();
 
 		Spellcard* spellcard = SPELLCARD_PTR;
 		if (!spellcard) {
-			this->__int_134 = 0;
-			this->__anm_id_110.mark_tree_for_delete();
+			this->__show_spell_clear_time = false;
+			this->__spell_clear_time_label.mark_tree_for_delete();
 		}
 		else if (!vm) {
-			this->__int_134 = 0;
+			this->__show_spell_clear_time = false;
 		}
 		else {
 			ascii_manager->set_alpha(vm->get_alpha());
@@ -57088,6 +57412,7 @@ dllexport gnu_noinline ZUNResult thiscall Supervisor::load_config_file(int) {
 	}
 	else {
 		SUPERVISOR.config = *(Config*)config_file;
+		//SUPERVISOR.config.preload_bgm = true;
 		free(config_file);
 		if (
 			SUPERVISOR.config.__color_mode < 2 &&
@@ -57436,7 +57761,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 	) {
 		if (GAME_MANAGER.game_type != SpellPractice) {
 			Gui* gui = GUI_PTR;
-			gui->__anm_id_108 = gui->front_anm->instantiate_vm_to_world_list_back(111);
+			gui->__stage_clear_bonus_vm = gui->front_anm->instantiate_vm_to_world_list_back(111);
 			
 			int32_t stage_clear_bonus = GAME_MANAGER.globals.current_stage * 1000000;
 			gui->__clear_bonus = stage_clear_bonus;
@@ -57475,14 +57800,14 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 						}
 						else {
 							int32_t shottype = GAME_MANAGER.globals.shottype_index();
-							ending_type = shottype * 2 + !ABILITY_MANAGER_PTR->card_equipped_inline(BLANK_CARD);
+							ending_type = shottype * 2 + !ABILITY_MANAGER_PTR->card_equipped_inline<CardBlank>();
 						}
 						GAME_MANAGER.__ending_type = ending_type;
 						__unlock_trophy(ending_type);
 
 						if (
 							GAME_MANAGER.globals.continues == 0 &&
-							ABILITY_MANAGER_PTR->card_equipped(BLANK_CARD)
+							ABILITY_MANAGER_PTR->card_equipped<CardBlank>()
 						) {
 							__unlock_trophy(24);
 							scorefile_manager = SCOREFILE_MANAGER_PTR;
@@ -57618,7 +57943,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 // 0x443E60
 dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_443E60() {
 	Gui* gui_ptr = GUI_PTR;
-	gui_ptr->__anm_id_108.interrupt_tree(1);
+	gui_ptr->__stage_clear_bonus_vm.interrupt_tree(1);
 	gui_ptr->__anm_id_10C.interrupt_tree(1);
 	gui_ptr->__unknown_flag_gu_A = false;
 	gui_ptr->__timer_198.reset();
@@ -57639,7 +57964,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_443E60() {
 		stageA->__timer_3478.set(60);
 		stageA->__unknown_flag_bg_B = true;
 		this->__stage_transition_delay_stage_start = true;
-		GUI_PTR->__anm_id_B8.interrupt_tree(1);
+		GUI_PTR->__big_popupA.interrupt_tree(1);
 		return ZUN_SUCCESS;
 	}
 
@@ -58028,7 +58353,7 @@ dllexport gnu_noinline GameThread::~GameThread() {
 	anm_manager->mark_all_vms_from_loaded_slot_for_delete(EFFECT_ANM_INDEX);
 	anm_manager->mark_all_vms_from_loaded_slot_for_delete(BULLET_ANM_INDEX);
 
-	SAFE_DELETE(BOMB_PTR);
+	SAFE_DELETE_SLOW(BOMB_PTR);
 	delete SPELLCARD_PTR;
 
 	UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
@@ -58237,7 +58562,7 @@ inline unsigned GameThread::thread_start_impl() {
 
 		if (
 			GAME_MANAGER.globals.current_stage == ExtraStage && // 7
-			!ABILITY_MANAGER_PTR->card_equipped(MAGATAMA2_CARD)
+			!ABILITY_MANAGER_PTR->card_equipped<CardMagatama>()
 		) {
 			ABILITY_MANAGER_PTR->allocate_new_card(MAGATAMA2_CARD, 0);
 			ABILITY_MANAGER_PTR->__sub_4094C0();
@@ -59870,6 +60195,9 @@ dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevIn
 	//load_mxcsr(mxcsr);
 
 #if TESTING_FEATURES
+#if DEBUG_FAST_FORWARD
+	CapsLock::set(false);
+#endif
 #if LOG_DEBUG_TO_FILE
 	DEBUG_LOG_FILE = fopen("debug_log.txt", "wb");
 #endif
