@@ -58,7 +58,9 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 
 #define ALLOW_FORCE_CLOSING_SHOP 1
 
+#define LOG_DEBUG_TO_FILE 1
 #define FORCE_DEBUG_LOGGING 1
+#define INCLUDE_SOUND_DEBUG 1
 
 #define DEBUG_SKIP_MENUS 1
 #define INCLUDE_EXTRA_DEBUG_STUFF (1 && (FORCE_DEBUG_LOGGING || !NDEBUG))
@@ -875,6 +877,18 @@ struct ScopedCriticalSection {
 #define ZDEBUG_SPRINT(buf, fmt, ...) DEBUG_SPRINT(buf, fmt, __VA_ARGS__)
 #define ZDEBUG_VSPRINT(buf, fmt) DEBUG_VSPRINT(buf, fmt)
 
+#if INCLUDE_SOUND_DEBUG
+#define SDEBUG_PRINT(fmt, ...) DEBUG_PRINT(fmt, __VA_ARGS__)
+#define SDEBUG_VPRINT(fmt) DEBUG_VPRINT(fmt)
+#else
+#define SDEBUG_PRINT(fmt, ...)
+#define SDEBUG_VPRINT(fmt)
+#endif
+
+#if LOG_DEBUG_TO_FILE
+static FILE* DEBUG_LOG_FILE;
+#endif
+
 // size: 0x4
 struct DebugLogger {
 	int __dword_0; // 0x0
@@ -944,7 +958,13 @@ struct DebugLogger {
 
 #if INCLUDE_EXTRA_DEBUG_STUFF
 	static inline int debug_vprint(const char* format, va_list va) {
+#if LOG_DEBUG_TO_FILE
+		int ret = vfprintf(DEBUG_LOG_FILE, format, va);
+		fflush(DEBUG_LOG_FILE);
+		return ret;
+#else
 		return vprintf(format, va);
+#endif
 	}
 	static int cdecl debug_print(const char* format, ...) {
 		va_list va;
@@ -5274,8 +5294,7 @@ struct SoundData {
 	int16_t volume; // 0x8
 	int16_t __short_A; // 0xA
 	uint32_t play_flags; // 0xC
-	//unknown_fields(0x4); // 0x10
-	int __dword_10;
+	int __int_10; // 0x10
 	// 0x14
 };
 #pragma region // SoundData Validation
@@ -5284,6 +5303,7 @@ ValidateFieldOffset32(0x4, SoundData, filename_index);
 ValidateFieldOffset32(0x8, SoundData, volume);
 ValidateFieldOffset32(0xA, SoundData, __short_A);
 ValidateFieldOffset32(0xC, SoundData, play_flags);
+ValidateFieldOffset32(0x10, SoundData, __int_10);
 ValidateStructSize32(0x14, SoundData);
 #pragma endregion
 
@@ -6128,7 +6148,9 @@ struct CStreamingSound : CSound {
 	}
 
 	// 0x48A730
-	dllexport gnu_noinline HRESULT thiscall HandleWaveStreamNotification(BOOL bLoopedPlay = UNUSED_DWORD) asm_symbol_rel(0x48A730) {
+	dllexport gnu_noinline HRESULT thiscall HandleWaveStreamNotification(BOOL _bLoopedPlay = UNUSED_DWORD) asm_symbol_rel(0x48A730) {
+		constexpr BOOL bLoopedPlay = TRUE;
+
 		if (
 			this->sound_buffer_array &&
 			this->cwave_ptr
@@ -6150,18 +6172,22 @@ struct CStreamingSound : CSound {
 				(next_write_offset >= write_cursor && next_write_offset < write_cursor_min) ||
 				((int32_t)write_cursor >= 0 && next_write_offset >= this->__dsound_buffer_size - notify_size)
 			) {
+				SDEBUG_PRINT("Stream Skip\n");
 				ret = CO_E_NOTINITIALIZED;
 				goto end;
 			}
 
 			BOOL restored;
 			if (FAILED(this->RestoreBuffer(this->sound_buffer_array[0], &restored))) {
+				SDEBUG_PRINT("error : RestoreBuffer in HandleWaveStreamNotification\r\n");
 				ret = CO_E_NOTINITIALIZED;
 				goto end;
 			}
 
 			if (restored) {
-				ret = this->FillBufferWithSound(this->sound_buffer_array[0], FALSE, 0);
+				if (FAILED(ret = this->FillBufferWithSound(this->sound_buffer_array[0], FALSE, 0))) {
+					SDEBUG_PRINT("error : FillBufferWithSound in HandleWaveStreamNotification\r\n");
+				}
 				goto end;
 			}
 
@@ -6183,8 +6209,59 @@ struct CStreamingSound : CSound {
 
 				CWaveFile* cwave_ptr = this->cwave_ptr;
 				if (!this->m_bFillNextNotificationWithSilence) {
-					// TODO: anything
+					DWORD dwBytesWrittenToBuffer;
+					if (FAILED(cwave_ptr->Read((BYTE*)pDSLockedBuffer1, dwDSLockedBufferSize1, &dwBytesWrittenToBuffer))) {
+						SDEBUG_PRINT("error : m_pWaveFile->Read in HandleWaveStreamNotification\r\n");
+						ret = CO_E_NOTINITIALIZED;
+						goto end;
+					}
+
+					DWORD dwReadSoFar = dwBytesWrittenToBuffer;
+					while (dwReadSoFar < dwDSLockedBufferSize1) {
+						if (FAILED(ret = this->cwave_ptr->ResetFile(true, 0))) {
+							SDEBUG_PRINT("error : m_pWaveFile->ResetFile in HandleWaveStreamNotification\r\n");
+							goto end;
+						}
+						if (FAILED(this->cwave_ptr->Read((BYTE*)pDSLockedBuffer1 + dwReadSoFar, dwDSLockedBufferSize1 - dwReadSoFar, &dwBytesWrittenToBuffer))) {
+							SDEBUG_PRINT("error : m_pWaveFile->Read(+) in HandleWaveStreamNotification\r\n");
+							ret = CO_E_NOTINITIALIZED;
+							goto end;
+						}
+						dwReadSoFar += dwBytesWrittenToBuffer;
+					}
 				}
+				else {
+					uint32_t silence = cwave_ptr->bgm_format->wave_format.wBitsPerSample == CHAR_BIT ? 0x80 : 0x0;
+					memset(pDSLockedBuffer1, silence, dwDSLockedBufferSize1);
+				}
+			}
+			else {
+				SDEBUG_PRINT("error : Buffer->Lock in HandleWaveStreamNotification\r\n");
+			}
+
+			this->sound_buffer_array[0]->Unlock(pDSLockedBuffer1, dwDSLockedBufferSize1, NULL, 0);
+
+			DWORD current_play_pos;
+			if (SUCCEEDED(ret = this->sound_buffer_array[0]->GetCurrentPosition(&current_play_pos, NULL))) {
+				DWORD last_play_pos = this->m_dwLastPlayPos;
+				DWORD buffer_size = this->__dsound_buffer_size;
+				DWORD play_progress;
+				if (current_play_pos < last_play_pos) {
+					play_progress = buffer_size - last_play_pos + current_play_pos;
+				}
+				else {
+					play_progress = current_play_pos - last_play_pos;
+				}
+				this->m_dwPlayProgress = play_progress;
+
+				next_write_offset = (this->m_dwNextWriteOffset + dwDSLockedBufferSize1) % buffer_size;
+				this->m_dwLastPlayPos = last_play_pos;
+				this->m_dwNextWriteOffset = next_write_offset;
+
+				ret = S_OK;
+			}
+			else {
+				SDEBUG_PRINT("error : m_apDSBuffer[0]->GetCurrentPosition in HandleWaveStreamNotification\r\n");
 			}
 
 		end:
@@ -6198,7 +6275,7 @@ struct CStreamingSound : CSound {
 	dllexport gnu_noinline double vectorcall __sub_48AE50() asm_symbol_rel(0x48AE50) {
 		// TODO: double check math
 		double A = get_runtime();
-		return A;
+		//return A;
 
 		CWaveFile* cwave_ptr = this->cwave_ptr;
 		A -= this->__double_48 + this->__double_38;
@@ -6219,9 +6296,32 @@ struct CStreamingSound : CSound {
 		return A;
 	}
 
+private:
 	// 0x48AF10
-	dllexport gnu_noinline void vectorcall __sub_48AF10(double arg1) asm_symbol_rel(0x48AF10) {
-		use_var(arg1);
+	dllexport gnu_noinline void vectorcall __sub_48AF10(float, double arg1) asm_symbol_rel(0x48AF10) {
+		CRITICAL_SECTION_MANAGER.enter_section(SoundManagerB_CS);
+		this->sound_buffer_array[0]->Stop();
+		int A = 0;
+		ThBgmFormat* bgm_format = this->cwave_ptr->bgm_format;
+		int32_t B = bgm_format->wave_format.nSamplesPerSec * arg1;
+		B *= bgm_format->wave_format.wBitsPerSample / 8;
+		B *= bgm_format->wave_format.nChannels;
+		B -= bgm_format->wave_format.nBlockAlign;
+		if (B >= 0) {
+			A = B;
+		}
+		this->InitSoundBuffers(bgm_format);
+		this->Reset(A);
+		CWaveFile* cwave_ptr = this->cwave_ptr;
+		cwave_ptr->m_dwSize = cwave_ptr->m_ck.cksize;
+		this->FillBufferWithSound(this->sound_buffer_array[0], this->cwave_ptr->bgm_format->length != 0, A);
+		this->Play(this->priority, this->play_flags, A);
+		this->__double_38 -= arg1;
+		CRITICAL_SECTION_MANAGER.leave_section(SoundManagerB_CS);
+	}
+public:
+	forceinline void __sub_48AF10(double arg1) {
+		this->__sub_48AF10(UNUSED_FLOAT, arg1);
 	}
 
 	// 0x489E90
@@ -6304,507 +6404,507 @@ static SoundData SOUND_DATA[SOUND_EFFECT_COUNT] = {
 		.id = 0, .filename_index = SE_PLST,
 		.volume = -1900,
 		.__short_A = 0,
-		.__dword_10 = 0
+		.__int_10 = 0
 	},
 	{ // 1
 		.id = 1, .filename_index = SE_PLST,
 		.volume = -200,
 		.__short_A = 0,
-		.__dword_10 = 0
+		.__int_10 = 0
 	},
 	{ // 2
 		.id = 3, .filename_index = SE_ENEP00,
 		.volume = -1200,
 		.__short_A = 5,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 3
 		.id = 4, .filename_index = SE_ENEP00,
 		.volume = -1500,
 		.__short_A = 5,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 4
 		.id = 2, .filename_index = SE_PLDEAD00,
 		.volume = -1100,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 5
 		.id = 28, .filename_index = SE_POWER0,
 		.volume = -700,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 6
 		.id = 29, .filename_index = SE_POWER1,
 		.volume = -700,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 7
 		.id = 21, .filename_index = SE_TAN00,
 		.volume = -1900,
 		.__short_A = 50,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 8
 		.id = 22, .filename_index = SE_TAN01,
 		.volume = -2200,
 		.__short_A = 50,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 9
 		.id = 23, .filename_index = SE_TAN02,
 		.volume = -2400,
 		.__short_A = 50,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 10
 		.id = 7, .filename_index = SE_OK00,
 		.volume = -500,
 		.__short_A = 100,
-		.__dword_10 = 0
+		.__int_10 = 0
 	},
 	{ // 11
 		.id = 9, .filename_index = SE_CANCEL00,
 		.volume = -400,
 		.__short_A = 100,
-		.__dword_10 = 0
+		.__int_10 = 0
 	},
 	{ // 12
 		.id = 10, .filename_index = SE_SELECT00,
 		.volume = -800,
 		.__short_A = 10,
-		.__dword_10 = 0
+		.__int_10 = 0
 	},
 	{ // 13
 		.id = 32, .filename_index = SE_GUN00,
 		.volume = -1500,
 		.__short_A = 10,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 14
 		.id = 33, .filename_index = SE_CAT00,
 		.volume = -300,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 15
 		.id = 27, .filename_index = SE_TAN00,
 		.volume = -1100,
 		.__short_A = 50,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 16
 		.id = 18, .filename_index = SE_LAZER00,
 		.volume = -1300,
 		.__short_A = 50,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 17
 		.id = 19, .filename_index = SE_LAZER01,
 		.volume = -1400,
 		.__short_A = 50,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 18
 		.id = 5, .filename_index = SE_ENEP01,
 		.volume = -900,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 19
 		.id = 34, .filename_index = SE_DAMAGE00,
 		.volume = -880,
 		.__short_A = 0,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 20
 		.id = 36, .filename_index = SE_NODAMAGE,
 		.volume = -880,
 		.__short_A = 0,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 21
 		.id = 37, .filename_index = SE_ITEM00,
 		.volume = -1500,
 		.__short_A = 0,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 22
 		.id = 24, .filename_index = SE_TAN00,
 		.volume = -300,
 		.__short_A = 20,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 23
 		.id = 25, .filename_index = SE_TAN01,
 		.volume = -1800,
 		.__short_A = 20,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 24
 		.id = 26, .filename_index = SE_TAN02,
 		.volume = -1800,
 		.__short_A = 20,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 25
 		.id = 38, .filename_index = SE_KIRA00,
 		.volume = -1100,
 		.__short_A = 50,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 26
 		.id = 39, .filename_index = SE_KIRA01,
 		.volume = -1300,
 		.__short_A = 50,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 27
 		.id = 40, .filename_index = SE_KIRA02,
 		.volume = -1500,
 		.__short_A = 50,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 28
 		.id = 11, .filename_index = SE_TIMEOUT,
 		.volume = -500,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 29
 		.id = 42, .filename_index = SE_GRAZE,
 		.volume = -600,
 		.__short_A = 20,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 30
 		.id = 43, .filename_index = SE_GRAZE,
 		.volume = -700,
 		.__short_A = 20,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 31
 		.id = 76, .filename_index = SE_ITEM01,
 		.volume = 0,
 		.__short_A = 20,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 32
 		.id = 13, .filename_index = SE_POWERUP,
 		.volume = -100,
 		.__short_A = 90,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 33
 		.id = 41, .filename_index = SE_KIRA00,
 		.volume = -500,
 		.__short_A = 50,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 34
 		.id = 14, .filename_index = SE_PAUSE,
 		.volume = -800,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 35
 		.id = 15, .filename_index = SE_CARDGET,
 		.volume = -800,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 36
 		.id = 35, .filename_index = SE_DAMAGE01,
 		.volume = -500,
 		.__short_A = 0,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 37
 		.id = 12, .filename_index = SE_TIMEOUT2,
 		.volume = -300,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 38
 		.id = 16, .filename_index = SE_INVALID,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 39
 		.id = 44, .filename_index = SE_SLASH,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 40
 		.id = 45, .filename_index = SE_SLASH,
 		.volume = -600,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 41
 		.id = 8, .filename_index = SE_OK00,
 		.volume = -300,
 		.__short_A = 100,
-		.__dword_10 = 0
+		.__int_10 = 0
 	},
 	{ // 42
 		.id = 30, .filename_index = SE_CH00,
 		.volume = -300,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 43
 		.id = 31, .filename_index = SE_CH01,
 		.volume = -300,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 44
 		.id = 17, .filename_index = SE_EXTEND,
 		.volume = -100,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 45
 		.id = 46, .filename_index = SE_CARDGET_DUPE, // why is this used
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 46
 		.id = 49, .filename_index = SE_NEP00,
 		.volume = -200,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 47
 		.id = 47, .filename_index = SE_BONUS,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 48
 		.id = 48, .filename_index = SE_BONUS2,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 49
 		.id = 6, .filename_index = SE_ENEP02,
 		.volume = -500,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 50
 		.id = 20, .filename_index = SE_LAZER02,
 		.volume = -3000,
 		.__short_A = 0,
 		.play_flags = DSBPLAY_LOOPING,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 51
 		.id = 50, .filename_index = SE_BOON00,
 		.volume = -500,
 		.__short_A = 0,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 52
 		.id = 51, .filename_index = SE_DON00,
 		.volume = 0,
 		.__short_A = 0,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 53
 		.id = 52, .filename_index = SE_BOON01,
 		.volume = 0,
 		.__short_A = 0,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 54
 		.id = 53, .filename_index = SE_BOON01,
 		.volume = -300,
 		.__short_A = 0,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 55
 		.id = 54, .filename_index = SE_CH02,
 		.volume = -300,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 56
 		.id = 55, .filename_index = SE_CH03,
 		.volume = -1500,
 		.__short_A = 0,
 		.play_flags = DSBPLAY_LOOPING,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 57
 		.id = 56, .filename_index = SE_EXTEND2,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 58
 		.id = 57, .filename_index = SE_PIN00,
 		.volume = -200,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 59
 		.id = 58, .filename_index = SE_PIN01,
 		.volume = -200,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 60
 		.id = 59, .filename_index = SE_LGODS1,
 		.volume = -500,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 61
 		.id = 60, .filename_index = SE_LGODS2,
 		.volume = -500,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 62
 		.id = 61, .filename_index = SE_LGODS3,
 		.volume = -500,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 63
 		.id = 62, .filename_index = SE_LGODS4,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 64
 		.id = 63, .filename_index = SE_LGODSGET,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 65
 		.id = 64, .filename_index = SE_MSL,
 		.volume = -900,
 		.__short_A = 5,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 66
 		.id = 65, .filename_index = SE_MSL2,
 		.volume = -900,
 		.__short_A = 5,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 67
 		.id = 66, .filename_index = SE_PLDEAD01,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 68
 		.id = 67, .filename_index = SE_HEAL,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 69
 		.id = 68, .filename_index = SE_MSL3,
 		.volume = -2500,
 		.__short_A = 5,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 70
 		.id = 69, .filename_index = SE_FAULT,
 		.volume = -500,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 71
 		.id = 70, .filename_index = SE_NOISE,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 72
 		.id = 71, .filename_index = SE_ETBREAK,
 		.volume = -400,
 		.__short_A = 0,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 73
 		.id = 72, .filename_index = SE_TAN03,
 		.volume = -500,
 		.__short_A = 0,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 74
 		.id = 73, .filename_index = SE_WOLD,
 		.volume = -500,
 		.__short_A = 0,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 75
 		.id = 74, .filename_index = SE_BONUS4,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 76
 		.id = 75, .filename_index = SE_BIG,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 77
 		.id = 77, .filename_index = SE_RELEASE,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 78
 		.id = 78, .filename_index = SE_CHANGEITEM,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 79
 		.id = 79, .filename_index = SE_TROPHY,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 80
 		.id = 80, .filename_index = SE_WARPR,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 81
 		.id = 81, .filename_index = SE_WARPL,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 82
 		.id = 82, .filename_index = SE_TROPHY,
 		.volume = -500,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 	{ // 83
 		.id = 83, .filename_index = SE_NOTICE,
 		.volume = 0,
 		.__short_A = 100,
-		.__dword_10 = 1
+		.__int_10 = 1
 	},
 };
 
@@ -6978,7 +7078,7 @@ struct SoundManager {
 	HWND timer_hwnd; // 0x8
 	CSoundManager* csound_manager_ptr; // 0xC
 	DWORD sound_thread_id; // 0x10
-	HANDLE __handle_14; // 0x14
+	HANDLE sound_thread_handle; // 0x14
 	unknown_fields(0x4); // 0x18
 	int32_t active_sound_ids[MAX_ACTIVE_SOUNDS]; // 0x1C
 	int32_t active_sound_id_counts[MAX_ACTIVE_SOUNDS]; // 0x4C
@@ -7095,7 +7195,7 @@ struct SoundManager {
 		ThBgmFormat* bgm_formats = this->bgm_formats;
 		size_t i = 0;
 		while (bgm_formats[i].filename[0] != '\0') {
-			if (strcmp_asm(bgm_formats[i].filename, buffer)) {
+			if (!strcmp_asm(bgm_formats[i].filename, buffer)) {
 				break;
 			}
 			++i;
@@ -7210,7 +7310,7 @@ ValidateFieldOffset32(0x4, SoundManager, sound_buffer_ptr);
 ValidateFieldOffset32(0x8, SoundManager, timer_hwnd);
 ValidateFieldOffset32(0xC, SoundManager, csound_manager_ptr);
 ValidateFieldOffset32(0x10, SoundManager, sound_thread_id);
-ValidateFieldOffset32(0x14, SoundManager, __handle_14);
+ValidateFieldOffset32(0x14, SoundManager, sound_thread_handle);
 ValidateFieldOffset32(0x1C, SoundManager, active_sound_ids);
 ValidateFieldOffset32(0x4C, SoundManager, active_sound_id_counts);
 ValidateFieldOffset32(0x7C, SoundManager, __unknown_smf_array_7C);
@@ -7376,8 +7476,10 @@ dllexport gnu_noinline DWORD WINAPI __sound_thread_4779A0(LPVOID) {
 			}
 			case WAIT_OBJECT_0:
 				if (streaming_sound && streaming_sound->__playing) {
+					ZDEBUG_PRINT("Locking sound buffer\r\n");
 					streaming_sound->__locked = true;
 					SOUND_MANAGER.cstreaming_sound_ptr->HandleWaveStreamNotification();
+					ZDEBUG_PRINT("Unlocking sound buffer\r\n");
 					SOUND_MANAGER.cstreaming_sound_ptr->__locked = false;
 				}
 		}
@@ -7399,7 +7501,7 @@ inline ZUNResult SoundManager::load_bgm(int32_t index) {
 		uint32_t align = bgm_format->wave_format.nBlockAlign;
 		uint32_t notify_size = (bgm_format->wave_format.nSamplesPerSec * align) * BGM_BLOCK_ALIGN / CHAR_BIT;
 		SOUND_MANAGER.__notify_event = CreateEventA(NULL, FALSE, FALSE, NULL);
-		SOUND_MANAGER.__handle_14 = CreateThread(NULL, 0, &__sound_thread_4779A0, NULL, 0, &SOUND_MANAGER.sound_thread_id);
+		SOUND_MANAGER.sound_thread_handle = CreateThread(NULL, 0, &__sound_thread_4779A0, SUPERVISOR.main_window_handle, 0, &SOUND_MANAGER.sound_thread_id);
 		if (SUCCEEDED(SOUND_MANAGER.csound_manager_ptr->CreateStreamingFromMemory(
 			&SOUND_MANAGER.cstreaming_sound_ptr,
 			(BYTE*)SOUND_MANAGER.__loaded_bgm_buffers_B[index],
@@ -7436,6 +7538,8 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 	do {
 		run_next_cmd = false;
 		switch (snd_cmd->type) {
+			default:
+				goto end_snd_cmd_loop;
 			case SndVolume: // 8
 				if (CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr) {
 					cstreaming_sound_ptr->SetVolume();
@@ -7513,7 +7617,7 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 								SOUND_MANAGER.cstreaming_sound_ptr->InitSoundBuffers(&SOUND_MANAGER.bgm_formats[format_index]);
 								BREAK_NEXT_CMD_ITER();
 							}
-							break;
+							goto end_snd_cmd_loop;
 						case 2:
 							cstreaming_sound_ptr->Reopen(&SOUND_MANAGER.bgm_formats[snd_cmd->arg], 0);
 							BREAK_NEXT_CMD_ITER();
@@ -7547,22 +7651,22 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 							cstreaming_sound_ptr->Stop(TRUE);
 							BREAK_NEXT_CMD_ITER();
 						case 1:
-							if (SOUND_MANAGER.__handle_14) {
+							if (SOUND_MANAGER.sound_thread_handle) {
 								PostThreadMessageA(SOUND_MANAGER.sound_thread_id, WM_QUIT, 0, 0);
 								BREAK_NEXT_CMD_ITER();
 							}
 							break;
 						case 2:
-							if (WaitForSingleObject(SOUND_MANAGER.__handle_14, 256) != WAIT_OBJECT_0) {
+							if (WaitForSingleObject(SOUND_MANAGER.sound_thread_handle, 256) != WAIT_OBJECT_0) {
 								PostThreadMessageA(SOUND_MANAGER.sound_thread_id, WM_QUIT, 0, 0);
 								--snd_cmd->iter;
 							}
 							else {
-								SOUND_MANAGER.__handle_14 = NULL;
+								SOUND_MANAGER.sound_thread_handle = NULL;
 							}
 							BREAK_NEXT_CMD_ITER();
 						case 3:
-							CloseHandle(SOUND_MANAGER.__handle_14);
+							CloseHandle(SOUND_MANAGER.sound_thread_handle);
 							CloseHandle(SOUND_MANAGER.__notify_event);
 							SAFE_DELETE(SOUND_MANAGER.cstreaming_sound_ptr);
 							BREAK_NEXT_CMD_ITER();
@@ -7593,7 +7697,7 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 				if (SUPERVISOR.config.bgm_type == BgmWav) {
 					if (CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr) {
 						if (cstreaming_sound_ptr->__locked) {
-							BREAK_NEXT_CMD_ITER();
+							goto end_snd_cmd_loop;
 						}
 						cstreaming_sound_ptr->Pause();
 					}
@@ -7603,7 +7707,7 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 				if (SUPERVISOR.config.bgm_type == BgmWav) {
 					if (CStreamingSound* cstreaming_sound_ptr = SOUND_MANAGER.cstreaming_sound_ptr) {
 						if (cstreaming_sound_ptr->__locked) {
-							BREAK_NEXT_CMD_ITER();
+							goto end_snd_cmd_loop;
 						}
 						cstreaming_sound_ptr->Unpause();
 					}
@@ -13891,7 +13995,7 @@ struct MenuSelect {
 	int32_t selection_stack[MENU_STACK_DEPTH]; // 0xC
 	int32_t menu_length_stack[MENU_STACK_DEPTH]; // 0x4C
 	int32_t stack_index; // 0x8C
-	int32_t disabled_selections[MENU_STACK_DEPTH]; // 0x90
+	int32_t disabled_selections[MENU_STACK_DEPTH]; // 0x90 this might just happen to also be 16 length
 	BOOL enable_wrap; // 0xD0
 	int32_t disabled_selections_count; // 0xD4
 	// 0xD8
@@ -14817,18 +14921,18 @@ dllexport gnu_noinline ZUNResult thiscall SoundManager::__sub_476410(HWND window
 // 0x476B40
 dllexport gnu_noinline void thiscall SoundManager::stop_bgm() {
 	if (CStreamingSound* cstreaming_sound_ptr = this->cstreaming_sound_ptr) {
-		DEBUG_PRINT("Streming BGM stop\r\n");
+		SDEBUG_PRINT("Streming BGM stop\r\n");
 		cstreaming_sound_ptr->Stop(true);
-		if (this->__handle_14) {
+		if (this->sound_thread_handle) {
 			PostThreadMessageA(this->sound_thread_id, WM_QUIT, 0, 0);
-			DEBUG_PRINT("stop m_dwNotifyThreadID\r\n");
-			while (WaitForSingleObject(this->__handle_14, 256)) {
+			SDEBUG_PRINT("stop m_dwNotifyThreadID\r\n");
+			while (WaitForSingleObject(this->sound_thread_handle, 256)) {
 				PostThreadMessageA(this->sound_thread_id, WM_QUIT, 0, 0);
 			}
-			DEBUG_PRINT("stop comp\r\n");
-			CloseHandle(this->__handle_14);
+			SDEBUG_PRINT("stop comp\r\n");
+			CloseHandle(this->sound_thread_handle);
 			CloseHandle(this->__notify_event);
-			this->__handle_14 = 0;
+			this->sound_thread_handle = NULL;
 		}
 	}
 	SAFE_DELETE(this->cstreaming_sound_ptr);
@@ -36453,7 +36557,7 @@ dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
 							uint32_t align = bgm_format->wave_format.nBlockAlign;
 							uint32_t notify_size = (bgm_format->wave_format.nSamplesPerSec * align) * BGM_BLOCK_ALIGN / CHAR_BIT;
 							SOUND_MANAGER.__notify_event = CreateEventA(NULL, FALSE, FALSE, NULL);
-							SOUND_MANAGER.__handle_14 = CreateThread(NULL, 0, &__sound_thread_4779A0, NULL, 0, &SOUND_MANAGER.sound_thread_id);
+							SOUND_MANAGER.sound_thread_handle = CreateThread(NULL, 0, &__sound_thread_4779A0, SUPERVISOR.main_window_handle, 0, &SOUND_MANAGER.sound_thread_id);
 							SOUND_MANAGER.csound_manager_ptr->CreateStreaming(
 								&SOUND_MANAGER.cstreaming_sound_ptr,
 								UNUSED_STRING,
@@ -40102,7 +40206,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 						case IDCONTINUE:
 							if (!GAME_MANAGER.continue_credits) {
 						case IDCANCEL:
-								ExitProcess(-1);
+								exit(-1);
 							}
 							// this is just copy/pasted from the pause menu code
 							GAME_MANAGER.globals.life_stocks = DEFAULT_LIFE_STOCKS;
@@ -59013,6 +59117,7 @@ dllexport gnu_noinline BOOL WindowData::__create_window(HINSTANCE instance) {
 	}
 #if ALLOCATE_CONSOLE
 	if (SUPERVISOR.present_parameters.Windowed) {
+		//AttachConsole(ATTACH_PARENT_PROCESS);
 		AllocConsole();
 		(void)freopen("CONIN$", "r", stdin);
 		(void)freopen("CONOUT$", "w+b", stdout);
@@ -59765,6 +59870,9 @@ dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevIn
 	//load_mxcsr(mxcsr);
 
 #if TESTING_FEATURES
+#if LOG_DEBUG_TO_FILE
+	DEBUG_LOG_FILE = fopen("debug_log.txt", "wb");
+#endif
 	debug_command_line();
 	make_sure_file_exists("th18.dat");
 #endif
