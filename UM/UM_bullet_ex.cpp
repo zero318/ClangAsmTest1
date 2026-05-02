@@ -51,6 +51,7 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define INCLUDE_FUTURE_VARIABLES 0
 #define INCLUDE_PATCH_INSTRUCTIONS 0
 #define ENABLE_THIRD_BOSS_BAR 1
+#define QUICKLOAD 0
 
 #define USE_THE_DANG_EXE_ICON_PLZ 1
 
@@ -72,8 +73,8 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define TESTING_FEATURES 1
 
 #define DEBUG_NO_GAME_OVER 1
-#define DEBUG_INVINCIBLE 1
-#define DEBUG_FAST_FORWARD 1
+#define DEBUG_INVINCIBLE 0
+#define DEBUG_FAST_FORWARD 0
 #define DEBUG_FAST_FORWARD_SPEED 10
 
 #define KILL_THE_MUTEX_WITH_FIRE 1
@@ -1374,7 +1375,7 @@ dllexport gnu_noinline void* fastcall __compress_buffer(void* buffer_in, int32_t
 dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32_t buffer_size, void* out_buffer, int32_t out_buffer_size) asm_symbol_rel(0x46F840);
 dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32_t buffer_size, void* out_buffer, int32_t out_buffer_size) {
 	
-#if FIX_REALLY_BAD_BUGS
+#if FIX_REALLY_BAD_BUGS || QUICKLOAD
 	// Khang's quickload code instead of ZUN's crap
 
 	if (!out_buffer) {
@@ -4179,6 +4180,12 @@ static constexpr LONG JOYPAD_MAX_RANGE = 1000;
 typedef struct FpsCounter FpsCounter;
 typedef struct TickCounter TickCounter;
 
+// According to FW these belong to WindowData
+// 0x473390
+dllexport gnu_noinline double vectorcall get_runtime() asm_symbol_rel(0x473390);
+// 0x4728A0
+dllexport gnu_noinline void __update_realtimes() asm_symbol_rel(0x4728A0);
+
 extern "C" {
 	// 0x4CF2DC
 	externcg FpsCounter* FPS_COUNTER_PTR cgasm("_FPS_COUNTER_PTR");
@@ -4190,10 +4197,12 @@ extern "C" {
 struct FpsCounter : ZUNTask {
 	//ZUNTask base; // 0x0
 	int __dword_C; // 0xC
-	unknown_fields(0x10); // 0x10
+	double __double_10; // 0x10
+	int __int_18; // 0x18
+	uint32_t __uint_1C; // 0x1C
 	double __double_20; // 0x20
 	double __double_28; // 0x28
-	float __fps; // 0x30
+	float fps; // 0x30
 	unknown_fields(0x4); // 0x34
 	// 0x38
 
@@ -4220,6 +4229,8 @@ struct FpsCounter : ZUNTask {
 	inline float calc_slowdown_rate() {
 		return 100.0f - (float)(this->__double_20 / this->__double_28) * 100.0f;
 	}
+
+	inline void __update();
 
 	// 0x43A340
 	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x43A340);
@@ -4709,6 +4720,56 @@ union AnmID {
 
 	inline void set_scale(float value);
 
+	inline void set_x_scale2(float value);
+
+	inline void set_y_scale2(float value);
+
+	inline void set_scale2(float x, float y);
+
+	inline void set_scale2(const Float2& values);
+
+	inline void set_scale2(float value);
+
+	inline void set_u_scale(float value);
+
+	inline void set_v_scale(float value);
+
+	inline void set_uv_scale(float u, float v);
+
+	inline void set_uv_scale(const Float2& values);
+
+	inline void set_uv_scale(float value);
+
+	inline void set_x_scroll(float value);
+
+	inline void set_y_scroll(float value);
+
+	inline void set_xy_scroll(float x, float y);
+
+	inline void set_xy_scroll(const Float2& values);
+
+	inline void set_xy_scroll(float value);
+
+	inline void set_x_scroll_speed(float value);
+
+	inline void set_y_scroll_speed(float value);
+
+	inline void set_scroll_speed(float x, float y);
+
+	inline void set_scroll_speed(const Float2& values);
+
+	inline void set_scroll_speed(float value);
+
+	inline void set_x_sprite_size(float value);
+
+	inline void set_y_sprite_size(float value);
+
+	inline void set_sprite_size(float x, float y);
+
+	inline void set_sprite_size(const Float2& values);
+
+	inline void set_sprite_size(float value);
+
 	// 0x488FD0
 	dllexport gnu_noinline void thiscall __set_script(int32_t script) asm_symbol_rel(0x488FD0);
 
@@ -4762,10 +4823,6 @@ extern "C" {
 }
 
 typedef struct LoadingThread LoadingThread;
-
-// According to FW this belongs to WindowData
-// 0x473390
-dllexport gnu_noinline double vectorcall get_runtime() asm_symbol_rel(0x473390);
 
 enum class GameMode : int32_t {
 	ForceSwitch = -2,
@@ -4886,7 +4943,7 @@ struct Supervisor {
 	// 0x455040
 	dllexport gnu_noinline UpdateFuncRet thiscall __update_gamemode() asm_symbol_rel(0x455040);
 	
-	inline UpdateFuncRet thiscall on_tick();
+	forceinline UpdateFuncRet thiscall on_tick();
 
 	// 0x453460
 	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x453460) {
@@ -8507,7 +8564,7 @@ struct WindowData {
 	int32_t __display_height; // 0x2064
 	int32_t __backbuffer_width; // 0x2068
 	int32_t __backbuffer_height; // 0x206C
-	float __game_scale; // 0x2070
+	float game_scale; // 0x2070
 	int32_t __screen_start_x; // 0x2074
 	int32_t __screen_start_y; // 0x2078
 	int32_t __screen_height_current; // 0x207C
@@ -8590,7 +8647,7 @@ ValidateFieldOffset32(0x2060, WindowData, __display_width);
 ValidateFieldOffset32(0x2064, WindowData, __display_height);
 ValidateFieldOffset32(0x2068, WindowData, __backbuffer_width);
 ValidateFieldOffset32(0x206C, WindowData, __backbuffer_height);
-ValidateFieldOffset32(0x2070, WindowData, __game_scale);
+ValidateFieldOffset32(0x2070, WindowData, game_scale);
 ValidateFieldOffset32(0x2074, WindowData, __screen_start_x);
 ValidateFieldOffset32(0x2078, WindowData, __screen_start_y);
 ValidateFieldOffset32(0x207C, WindowData, __screen_height_current);
@@ -11369,6 +11426,10 @@ union EnemyID {
 
 	// 0x42E0C0
 	dllexport gnu_noinline Enemy* thiscall get_enemy_ptr() asm_symbol_rel(0x42E0C0);
+
+	forceinline bool has_live_enemy() {
+		return this->get_enemy_ptr();
+	}
 };
 
 static inline constexpr uint32_t MAX_CALLBACKS = 8;
@@ -14115,6 +14176,48 @@ public:
 	}
 };
 
+inline void FpsCounter::__update() {
+	double A = get_runtime();
+	double B = this->__double_10;
+	if (A < B) {
+		this->__double_10 = A;
+		B = A;
+	}
+	A -= B;
+	uint32_t C;
+	if (A >= 1.0) {
+		B += A;
+		this->__double_10 = B;
+		float fps = this->__uint_1C / A;
+		this->fps = fps;
+		if (fps > 65.0f) {
+			++this->__int_18;
+		} else {
+			this->__int_18 = 0;
+		}
+		if (GameThread* game_thread_ptr = GAME_THREAD_PTR) {
+			if (
+				!(game_thread_ptr->__unknown_flag_gt_I | game_thread_ptr->skip_flag)
+			) {
+				this->__double_28 += 60.0;
+				double D = this->__double_20;
+				if (fps > 57.0f) {
+					this->__double_20 = D + 60.0;
+				} else {
+					this->__double_20 = D + fps;
+				}
+			}
+			game_thread_ptr->__unknown_flag_gt_J = false;
+		}
+		this->__uint_1C = 0;
+		C = 0;
+	}
+	else {
+		C = this->__uint_1C;
+	}
+	this->__uint_1C = SUPERVISOR.config.frame_skip + 1 + C;
+}
+
 // 0x443DC0
 dllexport gnu_noinline void GameManager::__update_scorefile_game_time() {
 	if (
@@ -15136,12 +15239,12 @@ dllexport gnu_noinline void stdcall SoundManager::play_sound_centered(int32_t so
 // 0x476C70
 dllexport gnu_noinline void vectorcall SoundManager::play_sound_positioned(int, int, float, float, int32_t sound_id, float position) {
 	int32_t idk = SOUND_DATA[sound_id].__short_A;
-	int32_t idk2 = (int32_t)(position * 1000.0f / SCREEN_HALF_WIDTH);
+	int32_t panning = position * 1000.0f / SCREEN_HALF_WIDTH;
 	nounroll for (size_t i = 0; i < countof(SOUND_MANAGER.active_sound_ids); ++i) {
 		int32_t active_sound_id = SOUND_MANAGER.active_sound_ids[i];
 		if (active_sound_id < 0) {
 			SOUND_MANAGER.active_sound_ids[i] = sound_id;
-			SOUND_MANAGER.__unknown_smf_array_7C[i].__int_array_0[0] = idk2;
+			SOUND_MANAGER.__unknown_smf_array_7C[i].__int_array_0[0] = panning;
 			SOUND_MANAGER.active_sound_id_counts[i] = 1;
 			SOUND_MANAGER.__unknown_smb_array_1A84[i].__int_4 = idk;
 			return;
@@ -15150,7 +15253,7 @@ dllexport gnu_noinline void vectorcall SoundManager::play_sound_positioned(int, 
 			int32_t active_sound_id_count = SOUND_MANAGER.active_sound_id_counts[i];
 			int32_t* active_sound_id_count_ptr = &SOUND_MANAGER.active_sound_id_counts[i];
 			if (active_sound_id_count < countof(SoundManagerUnknownF::__int_array_0) && active_sound_id_count >= 0) {
-				SOUND_MANAGER.__unknown_smf_array_7C[i].__int_array_0[active_sound_id_count] = idk2;
+				SOUND_MANAGER.__unknown_smf_array_7C[i].__int_array_0[active_sound_id_count] = panning;
 				++*active_sound_id_count_ptr;
 			}
 			return;
@@ -16418,10 +16521,10 @@ struct AnmVM {
 		
 		switch (this->data.resolution_mode) {
 			case 1: case 3:
-				*out *= WINDOW_DATA.__game_scale;
+				*out *= WINDOW_DATA.game_scale;
 				break;
 			case 2: case 4:
-				*out *= WINDOW_DATA.__game_scale * 0.5f;
+				*out *= WINDOW_DATA.game_scale * 0.5f;
 				break;
 		}
 
@@ -16714,16 +16817,16 @@ struct AnmVM {
 		switch (this->data.resolution_mode) {
 			// Note: No 3 or 4
 			case 1:
-				vert0->as2() *= WINDOW_DATA.__game_scale;
-				vert1->as2() *= WINDOW_DATA.__game_scale;
-				vert2->as2() *= WINDOW_DATA.__game_scale;
-				vert3->as2() *= WINDOW_DATA.__game_scale;
+				vert0->as2() *= WINDOW_DATA.game_scale;
+				vert1->as2() *= WINDOW_DATA.game_scale;
+				vert2->as2() *= WINDOW_DATA.game_scale;
+				vert3->as2() *= WINDOW_DATA.game_scale;
 				break;
 			case 2:
-				vert0->as2() *= WINDOW_DATA.__game_scale * 0.5f;
-				vert1->as2() *= WINDOW_DATA.__game_scale * 0.5f;
-				vert2->as2() *= WINDOW_DATA.__game_scale * 0.5f;
-				vert3->as2() *= WINDOW_DATA.__game_scale * 0.5f;
+				vert0->as2() *= WINDOW_DATA.game_scale * 0.5f;
+				vert1->as2() *= WINDOW_DATA.game_scale * 0.5f;
+				vert2->as2() *= WINDOW_DATA.game_scale * 0.5f;
+				vert3->as2() *= WINDOW_DATA.game_scale * 0.5f;
 				break;
 		}
 
@@ -16773,13 +16876,13 @@ struct AnmVM {
 		switch (this->data.resolution_mode) {
 			// Note: No 3 or 4
 			case 1: {
-				float scale = WINDOW_DATA.__game_scale;
+				float scale = WINDOW_DATA.game_scale;
 				offset_x *= scale;
 				offset_y *= scale;
 				break;
 			}
 			case 2: {
-				float scale = WINDOW_DATA.__game_scale * 0.5f;
+				float scale = WINDOW_DATA.game_scale * 0.5f;
 				offset_x *= scale;
 				offset_y *= scale;
 				break;
@@ -17170,7 +17273,30 @@ struct AnmVM {
 		MsgVM* msg_vm = GUI_PTR->msg_vm;
 		AnmVM* vm2 = msg_vm->__callout_related.__find_child_vm_with_script(msg_vm->__int_1D4 + 170);
 		if (vm2) {
-			// TODO: math
+			Float3 position = vm2->data.position + vm2->controller.position + vm2->data.__position_2;
+			vm2->__adjust_position_for_resolution_and_origin_modes(&position);
+			position.as2() *= 2.0f / WINDOW_DATA.game_scale;
+			switch (msg_vm->active_portait) {
+				case 1: {
+					float x_scale = vm2->data.scale.x;
+					if (x_scale < 1.0f) {
+						position.x += (x_scale + (1.0f / 8.0f)) * 32.0f - 8.0f;
+					} else {
+						position.x += 24.0f;
+					}
+					break;
+				}
+				case 0: {
+					position.x -= 36.0f;
+					break;
+				}
+				case 2: {
+					float x_scale = vm2->data.scale.x;
+					position.x += (x_scale + (1.0f / 8.0f)) * 16.0f - 8.0f;
+					break;
+				}
+			}
+			vm->controller.position = position;
 		}
 		return 0;
 	}
@@ -17619,11 +17745,11 @@ public:
 				switch (this->data.resolution_mode) {
 					// Note: No 3 or 4
 					case 1:
-						radius_outer *= WINDOW_DATA.__game_scale;
-						radius_inner *= WINDOW_DATA.__game_scale;
+						radius_outer *= WINDOW_DATA.game_scale;
+						radius_inner *= WINDOW_DATA.game_scale;
 						break;
 					case 2: {
-						float scale = WINDOW_DATA.__game_scale * 0.5f;
+						float scale = WINDOW_DATA.game_scale * 0.5f;
 						radius_outer *= scale;
 						radius_inner *= scale;
 						break;
@@ -17701,11 +17827,11 @@ public:
 				switch (this->data.resolution_mode) {
 					// Note: No 3 or 4
 					case 1:
-						radius_outer *= WINDOW_DATA.__game_scale;
-						radius_inner *= WINDOW_DATA.__game_scale;
+						radius_outer *= WINDOW_DATA.game_scale;
+						radius_inner *= WINDOW_DATA.game_scale;
 						break;
 					case 2: {
-						float scale = WINDOW_DATA.__game_scale * 0.5f;
+						float scale = WINDOW_DATA.game_scale * 0.5f;
 						radius_outer *= scale;
 						radius_inner *= scale;
 						break;
@@ -17990,6 +18116,30 @@ public:
 
 	inline void set_scroll_speed(float value) {
 		this->set_scroll_speed(value, value);
+	}
+
+	inline void set_x_sprite_size(float value) {
+		this->data.scale_enabled = true;
+		this->data.sprite_size.x = value;
+	}
+
+	inline void set_y_sprite_size(float value) {
+		this->data.scale_enabled = true;
+		this->data.sprite_size.y = value;
+	}
+
+	inline void set_sprite_size(float x, float y) {
+		this->data.scale_enabled = true;
+		this->data.sprite_size.x = x;
+		this->data.sprite_size.y = y;
+	}
+
+	inline void set_sprite_size(const Float2& values) {
+		this->set_sprite_size(values.x, values.y);
+	}
+
+	inline void set_sprite_size(float value) {
+		this->set_sprite_size(value, value);
 	}
 };
 ValidateStructSize32(0x60C, AnmVM);
@@ -19602,12 +19752,12 @@ struct AnmManager {
 				switch (vm->data.resolution_mode) {
 					// Note: No 3 or 4
 					case 1:
-						vm->data.__matrix_414.m[0][0] *= WINDOW_DATA.__game_scale;
-						vm->data.__matrix_414.m[1][1] *= WINDOW_DATA.__game_scale;
+						vm->data.__matrix_414.m[0][0] *= WINDOW_DATA.game_scale;
+						vm->data.__matrix_414.m[1][1] *= WINDOW_DATA.game_scale;
 						break;
 					case 2:
-						vm->data.__matrix_414.m[0][0] *= WINDOW_DATA.__game_scale * 0.5f;
-						vm->data.__matrix_414.m[1][1] *= WINDOW_DATA.__game_scale * 0.5f;
+						vm->data.__matrix_414.m[0][0] *= WINDOW_DATA.game_scale * 0.5f;
+						vm->data.__matrix_414.m[1][1] *= WINDOW_DATA.game_scale * 0.5f;
 						break;
 				}
 
@@ -20848,10 +20998,10 @@ public:
 				switch (vm->data.resolution_mode) {
 					// Note: No 3 or 4
 					case 1:
-						size *= WINDOW_DATA.__game_scale;
+						size *= WINDOW_DATA.game_scale;
 						break;
 					case 2:
-						size *= WINDOW_DATA.__game_scale * 0.5f;
+						size *= WINDOW_DATA.game_scale * 0.5f;
 						break;
 				}
 
@@ -20965,10 +21115,10 @@ public:
 				switch (vm->data.resolution_mode) {
 					// Note: No 3 or 4
 					case 1:
-						size *= WINDOW_DATA.__game_scale;
+						size *= WINDOW_DATA.game_scale;
 						break;
 					case 2:
-						size *= WINDOW_DATA.__game_scale * 0.5f;
+						size *= WINDOW_DATA.game_scale * 0.5f;
 						break;
 				}
 
@@ -21447,7 +21597,7 @@ public:
 			return anm_manager->loaded_anm_files[file_index];
 		}
 		AnmLoaded* anm_loaded = anm_manager->create_anm_loaded(file_index, filename);
-		if (expect(anm_loaded != NULL, false)) {
+		if (expect(anm_loaded != NULL, false)) { // Expect mimics original branch
 			anm_loaded->__load_wait = 1;
 			while (anm_loaded->__load_wait && SUPERVISOR.quitting == false) {
 				Sleep(1);
@@ -22126,7 +22276,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_F(void* pt
 		D3DRECT rect = SUPERVISOR.cameras[1].get_viewport_d3d_rect();
 		SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_ZBUFFER, SUPERVISOR.background_color, 1.0f, 0);
 
-		float scale = WINDOW_DATA.__game_scale;
+		float scale = WINDOW_DATA.game_scale;
 		float height = SCREEN_HEIGHT * scale;
 		float width = SCREEN_WIDTH * scale;
 		WINDOW_DATA.__screen_width_current = width;
@@ -22324,7 +22474,7 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_455EC0() {
 					break;
 			}
 		}
-		if (WINDOW_DATA.__game_scale == 1.5f) {
+		if (WINDOW_DATA.game_scale == 1.5f) {
 			this->__arcade_vm_ptr_C->data.resample_mode = false;
 		}
 	}
@@ -22934,9 +23084,9 @@ struct LoadingThread : ZUNTask {
 	// EH frame (empty???)
 	dllexport gnu_noinline ~LoadingThread();
 
-	inline UpdateFuncRet on_tick();
+	forceinline UpdateFuncRet on_tick();
 
-	inline UpdateFuncRet on_draw();
+	forceinline UpdateFuncRet on_draw();
 
 	// 0x453380
 	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x453380) {
@@ -23188,11 +23338,11 @@ struct ScreenEffect : ZUNTask {
 				switch (RNG.rand_uint_range(3)) {
 					case 2:
 						SUPERVISOR.cameras[StdCamera].__float2_FC.x = -A;
-						SUPERVISOR.cameras[1].__float2_FC.x = A * WINDOW_DATA.__game_scale;
+						SUPERVISOR.cameras[1].__float2_FC.x = A * WINDOW_DATA.game_scale;
 						break;
 					case 1:
 						SUPERVISOR.cameras[StdCamera].__float2_FC.x = A;
-						SUPERVISOR.cameras[1].__float2_FC.x = A * WINDOW_DATA.__game_scale;
+						SUPERVISOR.cameras[1].__float2_FC.x = A * WINDOW_DATA.game_scale;
 						break;
 					case 0:
 						SUPERVISOR.cameras[StdCamera].__float2_FC.x = 0.0f;
@@ -23202,11 +23352,11 @@ struct ScreenEffect : ZUNTask {
 				switch (RNG.rand_uint_range(3)) {
 					case 2:
 						SUPERVISOR.cameras[StdCamera].__float2_FC.y = -A;
-						SUPERVISOR.cameras[1].__float2_FC.y = A * WINDOW_DATA.__game_scale;
+						SUPERVISOR.cameras[1].__float2_FC.y = A * WINDOW_DATA.game_scale;
 						break;
 					case 1:
 						SUPERVISOR.cameras[StdCamera].__float2_FC.y = A;
-						SUPERVISOR.cameras[1].__float2_FC.y = A * WINDOW_DATA.__game_scale;
+						SUPERVISOR.cameras[1].__float2_FC.y = A * WINDOW_DATA.game_scale;
 						break;
 					case 0:
 						SUPERVISOR.cameras[StdCamera].__float2_FC.y = 0.0f;
@@ -23343,11 +23493,11 @@ struct ScreenEffect : ZUNTask {
 				switch (RNG.rand_uint_range(3)) {
 					case 2:
 						SUPERVISOR.cameras[StdCamera].__float2_FC.x = -E;
-						SUPERVISOR.cameras[1].__float2_FC.x = E * WINDOW_DATA.__game_scale;
+						SUPERVISOR.cameras[1].__float2_FC.x = E * WINDOW_DATA.game_scale;
 						break;
 					case 1:
 						SUPERVISOR.cameras[StdCamera].__float2_FC.x = E;
-						SUPERVISOR.cameras[1].__float2_FC.x = E * WINDOW_DATA.__game_scale;
+						SUPERVISOR.cameras[1].__float2_FC.x = E * WINDOW_DATA.game_scale;
 						break;
 					case 0:
 						SUPERVISOR.cameras[StdCamera].__float2_FC.x = 0.0f;
@@ -23357,11 +23507,11 @@ struct ScreenEffect : ZUNTask {
 				switch (RNG.rand_uint_range(3)) {
 					case 2:
 						SUPERVISOR.cameras[StdCamera].__float2_FC.y = -E;
-						SUPERVISOR.cameras[1].__float2_FC.y = E * WINDOW_DATA.__game_scale;
+						SUPERVISOR.cameras[1].__float2_FC.y = E * WINDOW_DATA.game_scale;
 						break;
 					case 1:
 						SUPERVISOR.cameras[StdCamera].__float2_FC.y = E;
-						SUPERVISOR.cameras[1].__float2_FC.y = E * WINDOW_DATA.__game_scale;
+						SUPERVISOR.cameras[1].__float2_FC.y = E * WINDOW_DATA.game_scale;
 						break;
 					case 0:
 						SUPERVISOR.cameras[StdCamera].__float2_FC.y = 0.0f;
@@ -23644,7 +23794,7 @@ struct EffectManager : ZUNTask {
 		EFFECT_MANAGER_PTR = NULL;
 	}
 
-	inline UpdateFuncRet on_tick() {
+	forceinline UpdateFuncRet on_tick() {
 		for (size_t i = 0; i < MAX_EFFECTS; ++i) {
 			// This clears the ID if the VM is dead
 			(void)this->vm_slots[i].get_vm_ptr();
@@ -24532,33 +24682,123 @@ inline void AnmID::set_z_rotation(float rotation) {
 }
 
 inline void AnmID::set_x_scale(float value) {
-	if (AnmVM* vm = this->get_vm_ptr()) {
-		vm->set_x_scale(value);
-	}
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_x_scale(value);
 }
 
 inline void AnmID::set_y_scale(float value) {
-	if (AnmVM* vm = this->get_vm_ptr()) {
-		vm->set_y_scale(value);
-	}
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_y_scale(value);
 }
 
 inline void AnmID::set_scale(float x, float y) {
-	if (AnmVM* vm = this->get_vm_ptr()) {
-		vm->set_scale(x, y);
-	}
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_scale(x, y);
 }
 
 inline void AnmID::set_scale(const Float2& values) {
-	if (AnmVM* vm = this->get_vm_ptr()) {
-		vm->set_scale(values);
-	}
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_scale(values);
 }
 
 inline void AnmID::set_scale(float value) {
-	if (AnmVM* vm = this->get_vm_ptr()) {
-		vm->set_scale(value);
-	}
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_scale(value);
+}
+
+inline void AnmID::set_x_scale2(float value) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_x_scale2(value);
+}
+
+inline void AnmID::set_y_scale2(float value) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_y_scale2(value);
+}
+
+inline void AnmID::set_scale2(float x, float y) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_scale2(x, y);
+}
+
+inline void AnmID::set_scale2(const Float2& values) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_scale2(values);
+}
+
+inline void AnmID::set_scale2(float value) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_scale2(value);
+}
+
+inline void AnmID::set_u_scale(float value) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_u_scale(value);
+}
+
+inline void AnmID::set_v_scale(float value) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_v_scale(value);
+}
+
+inline void AnmID::set_uv_scale(float u, float v) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_uv_scale(u, v);
+}
+
+inline void AnmID::set_uv_scale(const Float2& values) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_uv_scale(values);
+}
+
+inline void AnmID::set_uv_scale(float value) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_uv_scale(value);
+}
+
+inline void AnmID::set_x_scroll(float value) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_x_scroll(value);
+}
+
+inline void AnmID::set_y_scroll(float value) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_y_scroll(value);
+}
+
+inline void AnmID::set_xy_scroll(float x, float y) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_xy_scroll(x, y);
+}
+
+inline void AnmID::set_xy_scroll(const Float2& values) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_xy_scroll(values);
+}
+
+inline void AnmID::set_xy_scroll(float value) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_xy_scroll(value);
+}
+
+inline void AnmID::set_x_scroll_speed(float value) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_x_scroll_speed(value);
+}
+
+inline void AnmID::set_y_scroll_speed(float value) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_y_scroll_speed(value);
+}
+
+inline void AnmID::set_scroll_speed(float x, float y) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_scroll_speed(x, y);
+}
+
+inline void AnmID::set_scroll_speed(const Float2& values) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_scroll_speed(values);
+}
+
+inline void AnmID::set_scroll_speed(float value) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_scroll_speed(value);
+}
+
+inline void AnmID::set_x_sprite_size(float value) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_x_sprite_size(value);
+}
+
+inline void AnmID::set_y_sprite_size(float value) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_y_sprite_size(value);
+}
+
+inline void AnmID::set_sprite_size(float x, float y) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_sprite_size(x, y);
+}
+
+inline void AnmID::set_sprite_size(const Float2& values) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_sprite_size(values);
+}
+
+inline void AnmID::set_sprite_size(float value) {
+	if (AnmVM* vm = this->get_vm_ptr()) vm->set_sprite_size(value);
 }
 
 // 0x488FD0
@@ -25118,7 +25358,7 @@ struct AsciiManager : ZUNTask {
 								this->__vm_C.data.sprite_id = sprite_id;
 								this->__vm_C.set_uv_from_sprite(&sprites[sprite_id]);
 								sprites = this->__vm_C.get_anm_loaded2()->sprites;
-								floatA += sprites[sprite_id].__size_x / (3.0f - WINDOW_DATA.__game_scale);
+								floatA += sprites[sprite_id].__size_x / (3.0f - WINDOW_DATA.game_scale);
 								c = *++str;
 							} while (c);
 						}
@@ -25130,7 +25370,7 @@ struct AsciiManager : ZUNTask {
 						uint8_t c = *str;
 						if (c) {
 							do {
-								this->__vm_C.data.position.x += (c == '.' ? string->scale.x * -4.0f : -scale.x) * WINDOW_DATA.__game_scale;
+								this->__vm_C.data.position.x += (c == '.' ? string->scale.x * -4.0f : -scale.x) * WINDOW_DATA.game_scale;
 								c = *++str;
 							} while (c);
 						}
@@ -25141,14 +25381,14 @@ struct AsciiManager : ZUNTask {
 						uint8_t c = *str;
 						if (c) {
 							do {
-								this->__vm_C.data.position.x += (c == ',' ? string->scale.x * -4.0f : -scale.x) * WINDOW_DATA.__game_scale;
+								this->__vm_C.data.position.x += (c == ',' ? string->scale.x * -4.0f : -scale.x) * WINDOW_DATA.game_scale;
 								c = *++str;
 							} while (c);
 						}
 						break;
 					}
 					default:
-						this->__vm_C.data.position.x += -(float)length * scale.x * WINDOW_DATA.__game_scale;
+						this->__vm_C.data.position.x += -(float)length * scale.x * WINDOW_DATA.game_scale;
 						break;
 				}
 				break;
@@ -25166,7 +25406,7 @@ struct AsciiManager : ZUNTask {
 								this->__vm_C.data.sprite_id = sprite_id;
 								this->__vm_C.set_uv_from_sprite(&sprites[sprite_id]);
 								sprites = this->__vm_C.get_anm_loaded2()->sprites;
-								floatA += sprites[sprite_id].__size_x / (3.0f - WINDOW_DATA.__game_scale);
+								floatA += sprites[sprite_id].__size_x / (3.0f - WINDOW_DATA.game_scale);
 								c = *++str;
 							} while (c);
 						}
@@ -25180,7 +25420,7 @@ struct AsciiManager : ZUNTask {
 							c;
 							c = *++str
 						) {
-							this->__vm_C.data.position.x += (c == '.' ? string->scale.x * -4.0f : -scale.x) * 0.5f * WINDOW_DATA.__game_scale;
+							this->__vm_C.data.position.x += (c == '.' ? string->scale.x * -4.0f : -scale.x) * 0.5f * WINDOW_DATA.game_scale;
 						}
 						break;
 					}
@@ -25191,12 +25431,12 @@ struct AsciiManager : ZUNTask {
 							c;
 							c = *++str
 						) {
-							this->__vm_C.data.position.x += (c == ',' ? string->scale.x * -4.0f : -scale.x) * 0.5f * WINDOW_DATA.__game_scale;
+							this->__vm_C.data.position.x += (c == ',' ? string->scale.x * -4.0f : -scale.x) * 0.5f * WINDOW_DATA.game_scale;
 						}
 						break;
 					}
 					default:
-						this->__vm_C.data.position.x += -(float)length * scale.x * 0.5f * WINDOW_DATA.__game_scale;
+						this->__vm_C.data.position.x += -(float)length * scale.x * 0.5f * WINDOW_DATA.game_scale;
 						break;
 				}
 				break;
@@ -25204,10 +25444,10 @@ struct AsciiManager : ZUNTask {
 
 		switch (string->__vertical_positioning_mode) {
 			case 2:
-				this->__vm_C.data.position.y += -scale.y * WINDOW_DATA.__game_scale;
+				this->__vm_C.data.position.y += -scale.y * WINDOW_DATA.game_scale;
 				break;
 			case 0:
-				this->__vm_C.data.position.y += -scale.y * 0.5f * WINDOW_DATA.__game_scale;
+				this->__vm_C.data.position.y += -scale.y * 0.5f * WINDOW_DATA.game_scale;
 				break;
 		}
 
@@ -25220,7 +25460,7 @@ struct AsciiManager : ZUNTask {
 		) {
 			switch (c) {
 				case '\n':
-					this->__vm_C.data.position.y += string->scale.y * scale.y * WINDOW_DATA.__game_scale;
+					this->__vm_C.data.position.y += string->scale.y * scale.y * WINDOW_DATA.game_scale;
 					this->__vm_C.data.position.x = string->position.x;
 					continue;
 				case ' ':
@@ -25329,7 +25569,7 @@ struct AsciiManager : ZUNTask {
 									sprite_id += 14;
 									this->__vm_C.data.sprite_id = sprite_id;
 									this->__vm_C.set_uv_from_sprite(&this->__vm_C.get_anm_loaded2()->sprites[sprite_id]);
-									this->__vm_C.data.position.y = string->position.y + WINDOW_DATA.__game_scale * 3.0f;
+									this->__vm_C.data.position.y = string->position.y + WINDOW_DATA.game_scale * 3.0f;
 									scale.x = string->scale.x * 4.0f;
 									goto sprite_uv_set;
 								default:
@@ -25351,13 +25591,13 @@ struct AsciiManager : ZUNTask {
 							size_x = sprite->__size_x;
 							break;
 						case 6: case 7: case 8: case 9: {
-							float floatA = 3.0f - WINDOW_DATA.__game_scale;
+							float floatA = 3.0f - WINDOW_DATA.game_scale;
 							sprite = this->__vm_C.get_sprite();
 							size_x = sprite->__size_x;
 							size_y = sprite->__size_y;
-							scale.x = size_x / floatA / WINDOW_DATA.__game_scale * string->scale.x;
-							size_x = size_x * 0.5f * WINDOW_DATA.__game_scale;
-							size_y = size_y * 0.5f * WINDOW_DATA.__game_scale;
+							scale.x = size_x / floatA / WINDOW_DATA.game_scale * string->scale.x;
+							size_x = size_x * 0.5f * WINDOW_DATA.game_scale;
+							size_y = size_y * 0.5f * WINDOW_DATA.game_scale;
 							break;
 						}
 					}
@@ -25367,14 +25607,14 @@ struct AsciiManager : ZUNTask {
 					if (string->enable_shadows) {
 						this->__vm_C.data.color1 = string->color & 0xFF000000;
 						ALPHA(this->__vm_C.data.color1) = string->color >> 25;
-						this->__vm_C.data.position.x += WINDOW_DATA.__game_scale * 2.0f;
-						this->__vm_C.data.position.y += WINDOW_DATA.__game_scale * 2.0f;
+						this->__vm_C.data.position.x += WINDOW_DATA.game_scale * 2.0f;
+						this->__vm_C.data.position.y += WINDOW_DATA.game_scale * 2.0f;
 						this->__vm_C.data.disable_z_write = this->__vm_C.data.scale.x != 1.0f;
 						this->__vm_C.__get_vertex_positions(&SPRITE_VERTEX_BUFFER_A[0].position, &SPRITE_VERTEX_BUFFER_A[1].position, &SPRITE_VERTEX_BUFFER_A[2].position, &SPRITE_VERTEX_BUFFER_A[3].position);
 						anm_manager_ptr->__render_vertices(&this->__vm_C, RENDER_VERTICES_ROUND_INPUTS);
 						anm_manager_ptr = ANM_MANAGER_PTR;
-						this->__vm_C.data.position.x += WINDOW_DATA.__game_scale * -2.0f;
-						this->__vm_C.data.position.y += WINDOW_DATA.__game_scale * -2.0f;
+						this->__vm_C.data.position.x += WINDOW_DATA.game_scale * -2.0f;
+						this->__vm_C.data.position.y += WINDOW_DATA.game_scale * -2.0f;
 					}
 					this->__vm_C.data.color1 = string->color;
 					this->__vm_C.__get_vertex_positions(&SPRITE_VERTEX_BUFFER_A[0].position, &SPRITE_VERTEX_BUFFER_A[1].position, &SPRITE_VERTEX_BUFFER_A[2].position, &SPRITE_VERTEX_BUFFER_A[3].position);
@@ -25382,7 +25622,7 @@ struct AsciiManager : ZUNTask {
 					anm_manager_ptr = ANM_MANAGER_PTR;
 			}
 		next_position:
-			this->__vm_C.data.position.x += WINDOW_DATA.__game_scale * scale.x;
+			this->__vm_C.data.position.x += WINDOW_DATA.game_scale * scale.x;
 		}
 	}
 
@@ -25461,7 +25701,7 @@ struct AsciiManager : ZUNTask {
 
 			byteloop_strcpy(string.text, str);
 			string.position = *position;
-			string.position *= WINDOW_DATA.__game_scale;
+			string.position *= WINDOW_DATA.game_scale;
 			string.group = this->group;
 			string.color = this->color;
 			string.scale = this->scale; // Copied as integers
@@ -25687,10 +25927,10 @@ public:
 
 	inline ZUNResult initialize() {
 		const char* ascii_filename;
-		if (WINDOW_DATA.__game_scale <= 1.1f) {
+		if (WINDOW_DATA.game_scale <= 1.1f) {
 			ascii_filename = "ascii.anm";
 		}
-		else if (WINDOW_DATA.__game_scale <= 1.6f) {
+		else if (WINDOW_DATA.game_scale <= 1.6f) {
 			ascii_filename = "ascii_960.anm";
 		}
 		else {
@@ -26086,7 +26326,7 @@ struct Ending : ZUNTask {
 		}
 	}
 
-	inline UpdateFuncRet on_tick() {
+	forceinline UpdateFuncRet on_tick() {
 		EndVM* end_vm = this->end_vm;
 		if (ZUN_SUCCEEDED(end_vm->run_end())) {
 			++end_vm->__timer_4;
@@ -26119,7 +26359,7 @@ struct Ending : ZUNTask {
 		return UpdateFuncNext;
 	}
 
-	inline UpdateFuncRet on_draw() {
+	forceinline UpdateFuncRet on_draw() {
 		return UpdateFuncNext;
 	}
 
@@ -27542,7 +27782,7 @@ return_static:
 dllexport gnu_noinline UpdateFuncRet UpdateFuncCC FpsCounter::on_draw(void* ptr) {
 	switch (SUPERVISOR.gamemode_switch) {
 		default: {
-			float fps = ((FpsCounter*)ptr)->__fps;
+			float fps = ((FpsCounter*)ptr)->fps;
 			if (AsciiManager* ascii_manager = ASCII_MANAGER_PTR) {
 
 				D3DCOLOR color;
@@ -27603,10 +27843,8 @@ typedef struct PlayerOption PlayerOption;
 using DamageSourceFunc = int32_t fastcall(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius);
 using BulletDamageFunc = int32_t fastcall(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius);
 using BulletInitFunc = int32_t fastcall(PlayerBullet* self, PlayerDamageSource* damage_source);
-using BulletFuncB = int32_t fastcall(PlayerBullet* self);
-using PlayerBulletFuncA = ZUNResult fastcall(PlayerBullet* bullet);
+using BulletTickFunc = ZUNResult fastcall(PlayerBullet* self);
 using OptionPositionFunc = int32_t fastcall(PlayerOption* self);
-
 
 typedef struct ShtFile ShtFile;
 extern "C" {
@@ -27616,7 +27854,7 @@ extern "C" {
 	// 0x4B4230
 	//externcg BulletInitFunc *const PLAYER_BULLET_INIT_FUNCS[8] cgasm("_PLAYER_BULLET_INIT_FUNCS");
 	// 0x4B4210
-	//externcg void *const PLAYER_FUNC_TABLE_B[8] cgasm("_PLAYER_FUNC_TABLE_B");
+	//externcg void *const PLAYER_BULLET_TICK_FUNCS[8] cgasm("_PLAYER_BULLET_TICK_FUNCS");
 	// 0x4CF414
 	void* PLAYER_FUNC_TABLE_C[1] cgasm("_PLAYER_FUNC_TABLE_C") = {}; // No, the missing const isn't a typo
 	// 0x4B41F0
@@ -27649,8 +27887,8 @@ struct ShtEntry {
 		uint32_t __init_func_index; // 0x2C
 	};
 	union {
-		BulletFuncB* __unknown_func_B; // 0x30
-		uint32_t __unknown_func_B_index; // 0x30
+		BulletTickFunc* __on_tick_func; // 0x30
+		uint32_t __on_tick_func_index; // 0x30
 	};
 	union {
 		void* __unknown_func_C; // 0x34
@@ -27683,7 +27921,7 @@ ValidateFieldOffset32(0x29, ShtEntry, __card_long_timer_value);
 ValidateFieldOffset32(0x2A, ShtEntry, __long_timer_modulo);
 ValidateFieldOffset32(0x2B, ShtEntry, __long_timer_value);
 ValidateFieldOffset32(0x2C, ShtEntry, __init_func);
-ValidateFieldOffset32(0x30, ShtEntry, __unknown_func_B);
+ValidateFieldOffset32(0x30, ShtEntry, __on_tick_func);
 ValidateFieldOffset32(0x34, ShtEntry, __unknown_func_C);
 ValidateFieldOffset32(0x38, ShtEntry, __damage_func);
 ValidateFieldOffset32(0x4C, ShtEntry, __float_4C);
@@ -28799,12 +29037,13 @@ struct PlayerBullet {
 	int32_t __bullet_index; // 0x4
 	AnmID __vm_id_8; // 0x8
 	Timer __timer_C; // 0xC
-	unknown_fields(0x28);// 0x20
+	Timer __timer_20; // 0x20
+	unknown_fields(0x14);// 0x34
 	MotionData motion; // 0x48
 	int state; // 0x8C
-	int __dword_90; // 0x90
-	int __int_94; // 0x94
-	int __int_98; // 0x98
+	EnemyID __enemy_id_90; // 0x90
+	BOOL __bool_94; // 0x94
+	BOOL __bool_98; // 0x98
 	int32_t damage; // 0x9C
 	Float2 size; // 0xA0
 	unknown_fields(0x4); // 0xA8
@@ -28816,13 +29055,12 @@ struct PlayerBullet {
 		};
 	};
 	int32_t damage_source_index; // 0xB0
-	unknown_fields(0x24); // 0xB4
-	PlayerBulletFuncA* __func_ptr_D8; // 0xD8
-	unknown_fields(0x4); // 0xDC
+	unknown_fields(0x20); // 0xB4
+	Float3 __float3_D4; // 0xD4
 	AnmLoaded* bullet_anm; // 0xE0
 	PlayerOption* option; // 0xE4
 	BulletInitFunc* __init_func; // 0xE8
-	BulletFuncB* __func_ptr_EC; // 0xEC
+	BulletTickFunc* __on_tick_func; // 0xEC
 	void* __func_ptr_F0; // 0xF0
 	BulletDamageFunc* __damage_func; // 0xF4
 	// 0xF8
@@ -28852,7 +29090,7 @@ struct PlayerBullet {
 
 	// 0x45F7B0
 	dllexport gnu_noinline static int32_t fastcall __init_func_1(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x45F7B0) {
-		self->__dword_90 = 0;
+		self->__enemy_id_90 = NULL;
 		return 0;
 	}
 	// 0x45FC20
@@ -28862,7 +29100,7 @@ struct PlayerBullet {
 	// 0x460DA0
 	dllexport gnu_noinline static int32_t fastcall __init_func_4(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x460DA0) {
 		self->__unknown_field_pb_A = 0;
-		self->__dword_90 = 0;
+		self->__enemy_id_90 = NULL;
 		return 0;
 	}
 	// 0x4612D0
@@ -28892,27 +29130,27 @@ struct PlayerBullet {
 	dllexport gnu_noinline static int32_t fastcall create_explosion_suwako_card(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) asm_symbol_rel(0x40C4F0);
 
 	// 0x45F7C0
-	dllexport gnu_noinline static int32_t fastcall __funcB_1(PlayerBullet* self) asm_symbol_rel(0x45F7C0);
+	dllexport gnu_noinline static ZUNResult fastcall __on_tick_1(PlayerBullet* self) asm_symbol_rel(0x45F7C0);
 	// 0x45FC80
-	dllexport gnu_noinline static int32_t fastcall __funcB_2(PlayerBullet* self) asm_symbol_rel(0x45FC80);
+	dllexport gnu_noinline static ZUNResult fastcall __on_tick_2(PlayerBullet* self) asm_symbol_rel(0x45FC80);
 	// 0x4609A0
-	dllexport gnu_noinline static int32_t fastcall __funcB_3(PlayerBullet* self) asm_symbol_rel(0x4609A0) {
+	dllexport gnu_noinline static ZUNResult fastcall __on_tick_3(PlayerBullet* self) asm_symbol_rel(0x4609A0) {
 		if (self->state == 1) {
 			self->motion.speed += 0.3f;
 		}
-		return 0;
+		return ZUN_SUCCESS;
 	}
 	// 0x460DB0
-	dllexport gnu_noinline static int32_t fastcall __funcB_4(PlayerBullet* self) asm_symbol_rel(0x460DB0);
+	dllexport gnu_noinline static ZUNResult fastcall __on_tick_4(PlayerBullet* self) asm_symbol_rel(0x460DB0);
 	// 0x460AE0
-	dllexport gnu_noinline static int32_t fastcall __funcB_5(PlayerBullet* self) asm_symbol_rel(0x460AE0) {
+	dllexport gnu_noinline static ZUNResult fastcall __on_tick_5(PlayerBullet* self) asm_symbol_rel(0x460AE0) {
 		if (self->state == 1) {
 			float x = self->motion.position.x;
 			if (x < SCREEN_LEFT_EDGE || x > SCREEN_RIGHT_EDGE) {
 				self->motion.angle = -PI_f - self->motion.angle;
 			}
 		}
-		return 0;
+		return ZUN_SUCCESS;
 	}
 };
 #pragma region // PlayerBullet Validation
@@ -28920,20 +29158,21 @@ ValidateFieldOffset32(0x0, PlayerBullet, flags);
 ValidateFieldOffset32(0x4, PlayerBullet, __bullet_index);
 ValidateFieldOffset32(0x8, PlayerBullet, __vm_id_8);
 ValidateFieldOffset32(0xC, PlayerBullet, __timer_C);
+ValidateFieldOffset32(0x20, PlayerBullet, __timer_20);
 ValidateFieldOffset32(0x48, PlayerBullet, motion);
 ValidateFieldOffset32(0x8C, PlayerBullet, state);
-ValidateFieldOffset32(0x90, PlayerBullet, __dword_90);
-ValidateFieldOffset32(0x94, PlayerBullet, __int_94);
-ValidateFieldOffset32(0x98, PlayerBullet, __int_98);
+ValidateFieldOffset32(0x90, PlayerBullet, __enemy_id_90);
+ValidateFieldOffset32(0x94, PlayerBullet, __bool_94);
+ValidateFieldOffset32(0x98, PlayerBullet, __bool_98);
 ValidateFieldOffset32(0x9C, PlayerBullet, damage);
 ValidateFieldOffset32(0xA0, PlayerBullet, size);
 ValidateFieldOffset32(0xAC, PlayerBullet, __sht_entry_index);
 ValidateFieldOffset32(0xB0, PlayerBullet, damage_source_index);
-ValidateFieldOffset32(0xD8, PlayerBullet, __func_ptr_D8);
+ValidateFieldOffset32(0xD4, PlayerBullet, __float3_D4);
 ValidateFieldOffset32(0xE0, PlayerBullet, bullet_anm);
 ValidateFieldOffset32(0xE4, PlayerBullet, option);
 ValidateFieldOffset32(0xE8, PlayerBullet, __init_func);
-ValidateFieldOffset32(0xEC, PlayerBullet, __func_ptr_EC);
+ValidateFieldOffset32(0xEC, PlayerBullet, __on_tick_func);
 ValidateFieldOffset32(0xF0, PlayerBullet, __func_ptr_F0);
 ValidateFieldOffset32(0xF4, PlayerBullet, __damage_func);
 ValidateStructSize32(0xF8, PlayerBullet);
@@ -28952,13 +29191,13 @@ static BulletDamageFunc *const PLAYER_BULLET_DAMAGE_FUNCS[8] = {
 };
 
 // 0x4B4210
-static BulletFuncB *const PLAYER_FUNC_TABLE_B[8] = {
+static BulletTickFunc *const PLAYER_BULLET_TICK_FUNCS[8] = {
 	NULL,
-	&PlayerBullet::__funcB_1,
-	&PlayerBullet::__funcB_2,
-	&PlayerBullet::__funcB_3,
-	&PlayerBullet::__funcB_4,
-	&PlayerBullet::__funcB_5,
+	&PlayerBullet::__on_tick_1,
+	&PlayerBullet::__on_tick_2,
+	&PlayerBullet::__on_tick_3,
+	&PlayerBullet::__on_tick_4,
+	&PlayerBullet::__on_tick_5,
 	NULL,
 	NULL
 };
@@ -29013,7 +29252,7 @@ struct PlayerData {
 	BOOL focused; // 0x470AC, 0x476CC
 	Timer shoot_key_short_timer; // 0x470B0, 0x476D0
 	Timer shoot_key_long_timer; // 0x470C4, 0x476E4
-	int __option_count; // 0x470D8, 0x476F8
+	int32_t __option_count; // 0x470D8, 0x476F8
 	int32_t __level_array_470DC[30]; // 0x470DC, 0x476FC
 	Timer invulnerable_timer; // 0x47154, 0x47774
 	Timer __timer_47168; // 0x47168, 0x47788
@@ -29737,7 +29976,7 @@ public:
 		return ((Player*)ptr)->on_tick();
 	}
 
-	inline UpdateFuncRet on_draw() {
+	forceinline UpdateFuncRet on_draw() {
 		if (this->data.state != PlayerState::Dead) { // 2
 			this->__vm_14.controller.position = this->data.position;
 			this->__vm_14.data.origin_mode = 1;
@@ -29792,7 +30031,7 @@ public:
 							++entry_ptr
 						) {
 							entry_ptr->__init_func = PLAYER_BULLET_INIT_FUNCS[entry_ptr->__init_func_index];
-							entry_ptr->__unknown_func_B = PLAYER_FUNC_TABLE_B[entry_ptr->__unknown_func_B_index];
+							entry_ptr->__on_tick_func = PLAYER_BULLET_TICK_FUNCS[entry_ptr->__on_tick_func_index];
 							entry_ptr->__unknown_func_C = PLAYER_FUNC_TABLE_C[entry_ptr->__unknown_func_C_index];
 							entry_ptr->__damage_func = PLAYER_BULLET_DAMAGE_FUNCS[entry_ptr->__damage_func_index];
 						}
@@ -30526,7 +30765,7 @@ forceinline void PlayerBullet::on_tick() {
 
 		ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->__entry_ptr_array_E0[this->__sht_entry_index1][this->__sht_entry_index2];
 
-		if (auto func_ptr = this->__func_ptr_D8) {
+		if (auto func_ptr = this->__on_tick_func) {
 			if (ZUN_FAILED(func_ptr(this))) {
 				return;
 			}
@@ -30628,7 +30867,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__init_func_3(PlayerBullet
 
 	self->motion.position = self->option->get_position();
 
-	self->motion.angle = player->data.__shot_spread * entry_ptr->__float_4C + player->data.__shot_tilt_angle + entry_ptr->angle;
+	self->motion.angle = reduce_angle(player->data.__shot_tilt_angle + entry_ptr->angle + player->data.__shot_spread * entry_ptr->__float_4C);
 	return 0;
 }
 
@@ -30665,10 +30904,10 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_1(PlayerBull
 dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_2(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
 	Player* player = PLAYER_PTR;
 	ShtEntry* entry_ptr = &player->sht_file->__entry_ptr_array_E0[self->__sht_entry_index1][self->__sht_entry_index2];
-	self->__int_94 = 1;
-	if (!self->__int_98) {
+	self->__bool_94 = true;
+	if (!self->__bool_98) {
 		self->__vm_id_8.interrupt_tree(2);
-		self->__int_98 = 1;
+		self->__bool_98 = true;
 	}
 	int32_t index = self->damage_source_index;
 	float A;
@@ -30778,6 +31017,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_4(PlayerBull
 	new_damage_source->motion = self->motion;
 	PlayerDamageSource* damage_source = get_damage_source_by_index(self->damage_source_index);
 	damage_source->active = false;
+	self->damage_source_index = 0;
 	SOUND_MANAGER.play_sound_positioned(65, self->motion.position.x);
 	return self->damage;
 }
@@ -30806,23 +31046,22 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_6(PlayerBull
 
 // 0x40C4F0
 dllexport gnu_noinline int32_t fastcall PlayerBullet::create_explosion_suwako_card(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
-	// TODO: later :hahaa:
+	Player* player = PLAYER_PTR;
+	int32_t index = player->create_damage_source_circle(&self->motion.position, 8.0f, 2.4f, 20, 6);
+	PlayerDamageSource* new_damage_source = player->get_damage_source_by_index(index);
+	new_damage_source->__hit_frequency = 3;
+	self->__vm_id_8.interrupt_tree(1);
+	self->state = 2;
+	self->motion.speed = 2.0f;
+	new_damage_source->motion = self->motion;
+	PlayerDamageSource* damage_source = get_damage_source_by_index(self->damage_source_index);
+	damage_source->active = false;
+	SOUND_MANAGER.play_sound_positioned(65, self->motion.position.x);
+	self->__vm_id_8.mark_tree_for_delete();
+	AnmID id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(26);
+	self->__vm_id_8 = id;
+	id.set_controller_position(&self->motion.position);
 	return self->damage;
-}
-
-// 0x45F7C0
-dllexport gnu_noinline int32_t fastcall PlayerBullet::__funcB_1(PlayerBullet* self) {
-	// TODO
-}
-
-// 0x45FC80
-dllexport gnu_noinline int32_t fastcall PlayerBullet::__funcB_2(PlayerBullet* self) {
-	// TODO
-}
-
-// 0x460DB0
-dllexport gnu_noinline int32_t fastcall PlayerBullet::__funcB_4(PlayerBullet* self) {
-	// TODO
 }
 
 // 0x43E550
@@ -31195,7 +31434,7 @@ break_skip_time:
 		// TODO
 		Float3 position;
 		vm->get_render_position(&position);
-		position.as2() *= 2.0f / WINDOW_DATA.__game_scale;
+		position.as2() *= 2.0f / WINDOW_DATA.game_scale;
 		switch (this->active_portait) {
 			case 0:
 				position.x -= 36.0f;
@@ -35248,7 +35487,7 @@ struct CardMomoyo : CardBase {
 
 			ASCII_MANAGER_PTR->color = COLOR(255, 255, 160, 0);
 
-			float A = 1.0f / WINDOW_DATA.__game_scale;
+			float A = 1.0f / WINDOW_DATA.game_scale;
 			position.x = (position.x - 32.0f) * A;
 			position.y = (position.y + 32.0f) * A;
 			position.z = (0.0f) * A;
@@ -36903,7 +37142,7 @@ dllexport gnu_noinline ZUNResult thiscall PlayerBullet::shoot(int32_t sht_entry_
 	this->option = option;
 	this->__focused = PLAYER_PTR->data.focused;
 	this->__init_func = entry_ptr->__init_func;
-	this->__func_ptr_EC = entry_ptr->__unknown_func_B;
+	this->__on_tick_func = entry_ptr->__on_tick_func;
 	this->__func_ptr_F0 = entry_ptr->__unknown_func_C;
 	this->__damage_func = entry_ptr->__damage_func;
 	this->motion.zero_contents();
@@ -37847,12 +38086,14 @@ struct EnemyManager : ZUNTask {
 	Timer __timer_98; // 0x98
 	int32_t __int_AC; // 0xAC
 	int32_t __int_B0; // 0xB0
-	unknown_fields(0xB0); // 0xB4
+	unknown_fields(0xA8); // 0xB4
+	ZUNList<Enemy>* __enemy_list_iter; // 0x15C
+	unknown_fields(0x4); // 0x160
 	BOOL disable_enemy_collision; // 0x164
 	AnmLoaded* enemy_anms[MAX_ECL_ANM_FILES]; // 0x168
 	EclManager* ecl_manager; // 0x188
 	ZUNListEnds<Enemy> enemy_list; // 0x18C
-	ZUNList<Enemy>* __unknown_enemy_list; // 0x194
+	ZUNList<Enemy>* __unknown_enemy_list; // 0x194 Maybe this was a free list once upon a time?
 	int32_t enemy_count; // 0x198
 	ZUNAngle __angle_19C; // 0x19C
 	// 0x1A0
@@ -38103,7 +38344,7 @@ public:
 		enemy_manager->__timer_98++;
 	}
 
-	inline UpdateFuncRet thiscall on_tick() {
+	forceinline UpdateFuncRet thiscall on_tick() {
 		this->__int_AC = 0;
 		this->__int_B0 = 0;
 
@@ -38192,6 +38433,7 @@ ValidateFieldOffset32(0x94, EnemyManager, prev_enemy_id);
 ValidateFieldOffset32(0x98, EnemyManager, __timer_98);
 ValidateFieldOffset32(0xAC, EnemyManager, __int_AC);
 ValidateFieldOffset32(0xB0, EnemyManager, __int_B0);
+ValidateFieldOffset32(0x15C, EnemyManager, __enemy_list_iter);
 ValidateFieldOffset32(0x164, EnemyManager, disable_enemy_collision);
 ValidateFieldOffset32(0x168, EnemyManager, enemy_anms);
 ValidateFieldOffset32(0x188, EnemyManager, ecl_manager);
@@ -38285,7 +38527,7 @@ dllexport gnu_noinline void thiscall PlayerOption::__position_func_card_alice_im
 				return;
 			}
 		}
-		if (id.get_enemy_ptr()) {
+		if (id.has_live_enemy()) {
 			Enemy* enemy = id.get_enemy_ptr();
 			if (enemy->data.flags_allow_homing()) {
 				Float2 position_diff = enemy->data.current_motion.position.as2() - position;
@@ -38320,6 +38562,218 @@ dllexport gnu_noinline void thiscall PlayerOption::__position_func_card_alice_im
 		}
 	}
 	this->__enemy_id_E4 = 0;
+}
+
+// 0x45F7C0
+dllexport gnu_noinline ZUNResult fastcall PlayerBullet::__on_tick_1(PlayerBullet* self) {
+	if (self->state != 2) {
+		if (ENEMY_MANAGER_PTR) {
+			EnemyID id = self->__enemy_id_90;
+			if (!id) {
+				Float3 position = self->motion.position;
+				id = ENEMY_MANAGER_PTR->__get_id_of_nearest_enemy_in_radius(&position, 256.0f);
+				self->__enemy_id_90 = id;
+				if (!id) {
+					goto fail;
+				}
+				if (id.has_live_enemy()) {
+					Enemy* enemy = self->__enemy_id_90.get_enemy_ptr();
+					if (enemy->data.flags_allow_homing()) {
+						ZUNAngle angle;
+						angle.value = enemy->data.current_motion.position.angle_to(&self->motion.position);
+						float angle_diff = angle - self->motion.angle;
+						float speed = self->motion.speed;
+						if (self->__timer_C < 60) {
+							float abs_diff = zfabsf(angle_diff);
+							if (abs_diff >= PI_f / 4.0f) {
+								speed = __max(speed - 0.2f, 4.0f);
+							}
+							else if (abs_diff < PI_f / 12.0f) {
+								speed = __min(speed + 0.2f, 16.0f);
+							}
+							self->motion.set_angle(angle + angle_diff * 0.08f);
+							self->motion.speed = speed;
+						}
+						else {
+							self->motion.speed = speed + 0.2f;
+						}
+						return ZUN_SUCCESS;
+					}
+				}
+			}
+		}
+		self->__enemy_id_90 = NULL;
+fail:
+		self->motion.speed = __min(self->motion.speed + 0.1f, 16.0f);
+	}
+	return ZUN_SUCCESS;
+}
+
+// 0x45FC80
+dllexport gnu_noinline ZUNResult fastcall PlayerBullet::__on_tick_2(PlayerBullet* self) {
+	Player* player = PLAYER_PTR;
+	ShtEntry* entry_ptr = &player->sht_file->__entry_ptr_array_E0[self->__sht_entry_index1][self->__sht_entry_index2];
+	Float3 position = self->option->get_position();
+	self->motion.position = position;
+
+	// you don't want to know how many reduce_angle this actually runs
+	ZUNAngle angle, angleB;
+	angle = self->motion.angle;
+	angleB = player->data.focused ? -HALF_PI_f : entry_ptr->angle;
+	if (zfabsf(angle - angleB) < 0.001f) {
+		angleB = (float)(angleB + (angle - angleB) * 0.1f);
+	}
+	else {
+		angleB = (float)angle;
+	}
+	self->motion.angle = angleB;
+
+	if (self->state != 2) {
+		int32_t panning = PLAYER_PTR->data.position.x * 1000.0f / SCREEN_HALF_WIDTH;
+		SOUND_MANAGER.__unknown_smb_array_1A84[20].sound_buffer->SetPan(panning);
+		float size_x = self->size.x;
+		if (size_x < 512.0f) {
+			size_x += 18.0f;
+			self->size.x = size_x;
+			get_damage_source_by_index(self->damage_source_index)->size.x = size_x;
+			size_x = self->size.x * 0.5f;
+		}
+		Float2 offset;
+		offset.make_from_vector(self->motion.angle, size_x);
+		position.as2() += offset;
+		if (self->__vm_id_8.has_live_vm()) {
+			self->__vm_id_8.get_vm_ptr()->set_x_sprite_size(self->size.x);
+			self->__vm_id_8.get_vm_ptr()->set_u_scale(self->size.x * 0x1p-9f); // (1/2)^9 = 0.001953125
+		}
+		player = PLAYER_PTR;
+		player->get_damage_source_by_index(self->damage_source_index)->motion.position = position;
+		if (!self->__bool_94) {
+			if (self->state != 1) {
+				goto end;
+			}
+			if (self->__bool_98 == TRUE) { // ick
+				self->__vm_id_8.interrupt_tree(3);
+				player = PLAYER_PTR;
+				self->__bool_98 = false;
+			}
+		}
+		if (self->state == 1) {
+			if (player->data.shoot_key_short_timer >= 0) {
+				switch (player->data.state) {
+					default:
+						if (
+							!player->data.__unknown_flag_pl_G &&
+							!GUI_PTR->msg_is_active() &&
+							ENEMY_MANAGER_PTR
+						) {
+							int8_t option_index = entry_ptr->__option_index;
+							if (!option_index) {
+								goto end;
+							}
+							if (
+								option_index - 1 < player->data.__option_count &&
+								!player->data.focused
+							) {
+								int32_t option_index_low = option_index % PLAYER_TOTAL_OPTION_COUNT;
+								int32_t option_index_high = option_index >> PLAYER_TOTAL_OPTION_COUNT_BIT_WIDTH;
+
+								int32_t index = option_index < PLAYER_TOTAL_OPTION_COUNT ? option_index_low : option_index_high;
+
+								int32_t level = GAME_MANAGER.globals.power_level();
+
+								if (player->data.__level_array_470DC[index] == level) {
+									goto end;
+								}
+							}
+						}
+						break;
+					case PlayerState::Dead: // 2
+					case PlayerState::Dying: // 4
+						break;
+				}
+			}
+			player->get_damage_source_by_index(self->damage_source_index)->active = false;
+			self->state = 2;
+			self->__vm_id_8.interrupt_tree(1);
+
+			int8_t option_index = entry_ptr->__option_index;
+
+			int32_t option_index_low = option_index % PLAYER_TOTAL_OPTION_COUNT;
+			int32_t option_index_high = option_index >> PLAYER_TOTAL_OPTION_COUNT_BIT_WIDTH;
+
+			int32_t index = option_index < PLAYER_TOTAL_OPTION_COUNT ? option_index_low : option_index_high;
+
+			player->data.__level_array_470DC[index] = 0;
+
+			SOUND_MANAGER.stop_sound(20);
+		}
+end:
+		self->__bool_94 = false;
+	}
+	return ZUN_SUCCESS;
+}
+
+// 0x460DB0
+dllexport gnu_noinline ZUNResult fastcall PlayerBullet::__on_tick_4(PlayerBullet* self) {
+	if (self->state != 2) {
+		float angle = 0.0f;
+		if (self->__unknown_field_pb_A == 0) {
+			if (EnemyManager* enemy_manager_ptr = ENEMY_MANAGER_PTR) {
+				EnemyID id = self->__enemy_id_90;
+				if (!id) {
+					ZUNList<Enemy>* node = enemy_manager_ptr->enemy_list.head;
+					enemy_manager_ptr->__enemy_list_iter = node;
+					Float2 position = self->motion.position;
+					Enemy* enemy = node->data;
+					if (enemy) {
+						do {
+							if (
+								!enemy->data.disable_hitbox &&
+								enemy->data.flags_allow_homing()
+							) {
+								float enemy_position_y = enemy->data.current_motion.position.y;
+								if (
+									enemy_position_y - 16.0f <= position.y &&
+									enemy_position_y + 16.0f >= position.y
+								) {
+									float enemy_position_x = enemy->data.current_motion.position.x;
+									if (
+										enemy_position_x - 16.0f >= position.x ||
+										enemy_position_x + 16.0f <= position.x
+									) {
+										self->__unknown_field_pb_A = 1;
+										self->__vm_id_8.interrupt_tree(2);
+										self->__timer_20.set(0);
+										self->motion.speed = 0.0f;
+										self->__float3_D4 = enemy->data.current_motion.position;
+										break;
+									}
+								}
+							}
+						} while (
+							(node = enemy_manager_ptr->__enemy_list_iter = enemy_manager_ptr->__enemy_list_iter->next) &&
+							(enemy = node->data)
+						);
+					}
+				}
+			}
+			else {
+				self->__enemy_id_90 = NULL;
+			}
+		}
+		if (self->__unknown_field_pb_A == 1) {
+			if (self->__timer_20 == 4) {
+				if (self->motion.position.x > self->__float3_D4.x) {
+					angle = -PI_f;
+				}
+				self->motion.set_angle(angle);
+				self->motion.speed = 14.0f;
+				self->__unknown_field_pb_A = 2;
+			}
+			self->__timer_20++;
+		}
+	}
+	return ZUN_SUCCESS;
 }
 
 // 0x42DA90
@@ -39962,10 +40416,12 @@ struct Spellcard : ZUNTask {
 	int32_t __bonus_A; // 0x7C
 	int32_t __bonus_B; // 0x80
 	int32_t time; // 0x84
-	unknown_fields(0x4); // 0x88
-	int __int_8C; // 0x8C
+	int __index_88; // 0x88
+	int32_t __int_8C; // 0x8C
 	int32_t __int_90; // 0x90
-	unknown_fields(0x14); // 0x94
+	unknown_fields(0x4); // 0x94
+	double __double_98; // 0x98
+	double __double_A0; // 0xA0
 	int32_t __int_A8; // 0xA8
 	Float3 __spell_ring_position; // 0xAC
 	unknown_fields(0x8); // 0xB8
@@ -40025,6 +40481,18 @@ struct Spellcard : ZUNTask {
 		return this->spell_active & this->__grace_period_bomb_resist;
 	}
 
+	inline void __update_realtime();
+
+	// 0x429BE0
+	dllexport gnu_noinline BOOL thiscall __sub_429BE0() asm_symbol_rel(0x429BE0) {
+		int32_t A = this->__int_A8;
+		int32_t B = A % 100;
+		int32_t C = (A % 1000 + 936) % 1000;
+		C += (B + 67) % 100;
+		int32_t D = A / 100000 - 22;
+		return D != C;
+	}
+
 	// 0x42D670
 	dllexport gnu_noinline void thiscall __sub_42D670() asm_symbol_rel(0x42D670) {
 		Spellcard* spellcard = SPELLCARD_PTR;
@@ -40050,7 +40518,7 @@ struct Spellcard : ZUNTask {
 	}
 
 	// 0x42A320
-	dllexport gnu_noinline void thiscall start_spell(int32_t id, const char* name, int32_t time, int32_t mode) asm_symbol_rel(0x42A320) {
+	dllexport gnu_noinline void thiscall start_spell(int32_t id, const char* name, int32_t time, int32_t character) asm_symbol_rel(0x42A320) {
 		__asm FINIT
 
 		this->__timer_20.reset();
@@ -40117,9 +40585,9 @@ struct Spellcard : ZUNTask {
 		// Spell Card Attack!
 		EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(20);
 
-		auto& anm_sourceA = STAGE_DATA_PTR->inner[mode];
+		auto& anm_sourceA = STAGE_DATA_PTR->inner[character];
 		this->spell_background = anm_file_lookup(anm_sourceA.spell_background_anm_index)->instantiate_vm_to_world_list_back(anm_sourceA.spell_background_anm_script);
-		auto& anm_sourceB = STAGE_DATA_PTR->inner[mode];
+		auto& anm_sourceB = STAGE_DATA_PTR->inner[character];
 		this->__render_stage_during_spell = anm_sourceB.__render_stage_during_spell;
 		anm_file_lookup(anm_sourceB.spell_cut_in_anm_index)->instantiate_vm_to_world_list_back(anm_sourceB.spell_cut_in_anm_script);
 		
@@ -40249,7 +40717,7 @@ public:
 		return UpdateFuncNext;
 	}
 
-	inline UpdateFuncRet thiscall on_draw() {
+	forceinline UpdateFuncRet thiscall on_draw() {
 		if (this->spell_active) {
 			AnmVM* vm = this->__spell_name_vms[2].get_vm_ptr();
 			if (!vm) {
@@ -40346,8 +40814,11 @@ ValidateFieldOffset32(0x78, Spellcard, flags);
 ValidateFieldOffset32(0x7C, Spellcard, __bonus_A);
 ValidateFieldOffset32(0x80, Spellcard, __bonus_B);
 ValidateFieldOffset32(0x84, Spellcard, time);
+ValidateFieldOffset32(0x88, Spellcard, __index_88);
 ValidateFieldOffset32(0x8C, Spellcard, __int_8C);
 ValidateFieldOffset32(0x90, Spellcard, __int_90);
+ValidateFieldOffset32(0x98, Spellcard, __double_98);
+ValidateFieldOffset32(0xA0, Spellcard, __double_A0);
 ValidateFieldOffset32(0xA8, Spellcard, __int_A8);
 ValidateFieldOffset32(0xAC, Spellcard, __spell_ring_position);
 ValidateStructSize32(0xC0, Spellcard);
@@ -40358,6 +40829,16 @@ static inline void __spellcard_fail() {
 }
 static inline void __inline_spellcard_fail() {
 	SPELLCARD_PTR->__inline_spellcard_fail();
+}
+
+// 0x4728A0
+dllexport gnu_noinline void __update_realtimes() {
+	if (FpsCounter* fps_counter = FPS_COUNTER_PTR) {
+		fps_counter->__update();
+	}
+	if (Spellcard* spellcard = SPELLCARD_PTR) {
+		spellcard->__update_realtime();
+	}
 }
 
 // 0x420360
@@ -45625,7 +46106,7 @@ public:
 		return UpdateFuncNext;
 	}
 
-	inline UpdateFuncRet thiscall on_draw() {
+	forceinline UpdateFuncRet thiscall on_draw() {
 		Bullet** draw_list = this->__bullet_cache_A;
 		size_t i = countof(this->__bullet_cache_A);
 		nounroll do {
@@ -46573,6 +47054,9 @@ dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_call_2_ex(EnemyData*
 			// BUG: This is the Float2 version of the function call.
 			// Z coord is left uninitialized
 			unit_vec.make_from_vector(laser->angle, 1.0f);
+#if FIX_REALLY_BAD_BUGS
+			unit_vec.z = 0.0f;
+#endif
 
 			Float3 C = (A - laser->position) * unit_vec;
 			if (C.x + C.y + C.z >= 1.0f) {
@@ -46609,6 +47093,9 @@ dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_call_3_ex(EnemyData*
 			// BUG: This is the Float2 version of the function call.
 			// Z coord is left uninitialized
 			unit_vec.make_from_vector(laser->angle, 1.0f);
+#if FIX_REALLY_BAD_BUGS
+			unit_vec.z = 0.0f;
+#endif
 
 			Float3 C = (A - laser->position) * unit_vec;
 			if (C.x + C.y + C.z >= 1.0f) {
@@ -51414,10 +51901,10 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 					spell_id = base_id;
 			}
 
-			int32_t mode = this->get_int_arg(2);
-			int32_t time = this->get_int_arg(0);
+			int32_t character = this->get_int_arg(2);
+			int32_t time = this->get_int_arg(1);
 
-			SPELLCARD_PTR->start_spell(spell_id, name, time, mode);
+			SPELLCARD_PTR->start_spell(spell_id, name, time, character);
 			this->life.set_spell(true);
 			this->life.set_current_scaled(this->life.get_current());
 			break;
@@ -52034,7 +52521,7 @@ struct ReplayGamestate {
 	uint32_t extra_size; // 0x8
 	Int2 player_position; // 0xC
 	BOOL player_focused; // 0x14
-	int __dword_array_18[20]; // 0x18
+	int32_t __int_array_18[20]; // 0x18
 	Globals globals; // 0x68
 	int32_t cards_owned[0x100]; // 0x164
 	int32_t card_replay_states[0x100]; // 0x564
@@ -52066,7 +52553,7 @@ ValidateFieldOffset32(0x4, ReplayGamestate, input_count);
 ValidateFieldOffset32(0x8, ReplayGamestate, extra_size);
 ValidateFieldOffset32(0xC, ReplayGamestate, player_position);
 ValidateFieldOffset32(0x14, ReplayGamestate, player_focused);
-ValidateFieldOffset32(0x18, ReplayGamestate, __dword_array_18);
+ValidateFieldOffset32(0x18, ReplayGamestate, __int_array_18);
 ValidateFieldOffset32(0x68, ReplayGamestate, globals);
 ValidateFieldOffset32(0x164, ReplayGamestate, cards_owned);
 ValidateFieldOffset32(0x564, ReplayGamestate, card_replay_states);
@@ -52396,7 +52883,7 @@ struct ReplayManager : ZUNTask {
 			}
 			if (self->__int_20C >= 0 && !ABILITY_SHOP_PTR) {
 				if (!(self->__int_20C % 30)) {
-					float fps_count_f = FPS_COUNTER_PTR->__fps + 0.5f;
+					float fps_count_f = FPS_COUNTER_PTR->fps + 0.5f;
 					int32_t fps_count = fps_count_f < 256.0f ? fps_count_f : 255;
 					ReplayChunk* cur_chunk = self->current_chunk_node->data;
 					*cur_chunk->next_fps_count_write_pos++ = fps_count;
@@ -52593,8 +53080,8 @@ struct ReplayManager : ZUNTask {
 				game_state->globals = GAME_MANAGER.globals;
 
 				size_t bs_value = 0;
-				for (size_t i = 0; i < countof(game_state->__dword_array_18); ++i) {
-					game_state->__dword_array_18[i] = bs_value;
+				for (size_t i = 0; i < countof(game_state->__int_array_18); ++i) {
+					game_state->__int_array_18[i] = bs_value;
 					bs_value -= 0x21522153; // This is a suspiciously repetitve constant...
 				}
 
@@ -52816,6 +53303,47 @@ dllexport gnu_noinline int stdcall __replay_manager_global_set_time_and_end_stag
 
 static inline bool is_replay() {
 	return REPLAY_MANAGER_PTR->mode == ReplayPlayback;
+}
+
+inline void Spellcard::__update_realtime() {
+	if (this->spell_active) {
+		if (!this->__unknown_flag_sp_F) {
+			this->__double_98 = get_runtime();
+			this->__unknown_flag_sp_F = true;
+		}
+	} else {
+		if (this->__unknown_flag_sp_F) {
+			this->__int_90 = this->__int_8C;
+			double time_diff = get_runtime() - this->__double_98;
+			double frame_frac = zfmod(time_diff, 0.0167);
+			time_diff -= frame_frac;
+			if (frame_frac >= 0.00835) {
+				time_diff += 0.0167;
+			}
+			double time_floor = zfloor(time_diff);
+			int32_t A = std::min((int32_t)time_floor, 1000);
+			time_diff -= time_floor;
+			this->__double_A0 = 0.0;
+			this->__unknown_flag_sp_F = false;
+			int32_t B = time_diff * 100.0;
+			int32_t C = (A + 22 + B) * 1000;
+			C += (A + 66) % 1000;
+			C = C * 100 + (B + 33) % 100;
+			this->__int_A8 = C;
+			int32_t current_stage = GAME_MANAGER.globals.current_stage;
+			if (GAME_THREAD_PTR->replay_mode == ReplayRecording) {
+				REPLAY_MANAGER_PTR->game_states[current_stage]->__int_array_18[this->__index_88] = C;
+				this->__index_88++;
+			} else {
+				int index = this->__index_88;
+				this->__int_A8 = REPLAY_MANAGER_PTR->stage_data[current_stage].gamestate_start->__int_array_18[index];
+				if (this->__sub_429BE0()) {
+					this->__int_A8 = 112006532; // WTF is this constant
+				}
+				this->__index_88 = index + 1;
+			}
+		}
+	}
 }
 
 // 0x417880
@@ -53314,7 +53842,7 @@ struct OptionsMenu : ZUNTask {
 		// TODO
 	}
 
-	inline UpdateFuncRet on_draw() {
+	forceinline UpdateFuncRet on_draw() {
 		if (!KEY_CONFIG_MENU_PTR) {
 			// TODO
 		}
@@ -54590,7 +55118,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 				if (vm) {
 					Float3 positionB;
 					this->__anm_id_array_22C[i].get_vm_ptr_safe()->get_render_position(&positionB);
-					vm->controller.position = (positionB + (vm->data.position * this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.x - vm->data.position)) * (2.0f / WINDOW_DATA.__game_scale);
+					vm->controller.position = (positionB + (vm->data.position * this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.x - vm->data.position)) * (2.0f / WINDOW_DATA.game_scale);
 					AnmVM* vmB = this->__anm_id_array_22C[i].get_vm_ptr_safe();
 					vmB->set_z_rotation(vmB->data.rotation.z - (PI_f / 9.0f));
 					vm->set_scale(this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.x, this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.y);
@@ -56826,7 +57354,7 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__create_texture_from_file(A
 	D3DSURFACE_DESC surface_desc;
 	surface->GetDesc(&surface_desc);
 	this->__screw_with_texture_bits(texture);
-	float floatA = WINDOW_DATA.__game_scale;
+	float floatA = WINDOW_DATA.game_scale;
 	if (
 		surface_desc.Width == width && surface_desc.Height == height &&
 		(!image->entry->low_res_scale || !(floatA < 2.0f))
@@ -56860,7 +57388,7 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__create_texture_from_file(A
 		src_rect.right = offset_x + right;
 		src_rect.top = offset_y;
 		src_rect.bottom = offset_y + bottom;
-		DWORD filter = !image->entry->low_res_scale || !(WINDOW_DATA.__game_scale < 2.0f) ? D3DX_FILTER_NONE : D3DX_FILTER_TRIANGLE | D3DX_FILTER_MIRROR_U | D3DX_FILTER_MIRROR_V;
+		DWORD filter = !image->entry->low_res_scale || !(WINDOW_DATA.game_scale < 2.0f) ? D3DX_FILTER_NONE : D3DX_FILTER_TRIANGLE | D3DX_FILTER_MIRROR_U | D3DX_FILTER_MIRROR_V;
 		D3DXLoadSurfaceFromSurface(
 			surface2, NULL, NULL,
 			surface, NULL, &src_rect, filter, 0
@@ -56897,7 +57425,7 @@ dllexport gnu_noinline int32_t stdcall __create_texture_from_anm(AnmImage* image
 		.right = texture_width,
 		.bottom = texture_height
 	};
-	float scale = WINDOW_DATA.__game_scale;
+	float scale = WINDOW_DATA.game_scale;
 	if (entry->low_res_scale && scale < 2.0f) {
 		dst_rect.right = (float)texture_width * scale * 0.5f;
 		dst_rect.bottom = (float)texture_height * scale * 0.5f;
@@ -56918,7 +57446,7 @@ dllexport gnu_noinline int32_t stdcall __create_texture_from_anm(AnmImage* image
 	image->d3d_texture->GetSurfaceLevel(0, &surface);
 
 	DWORD filter = D3DX_FILTER_NONE;
-	if (image->entry->low_res_scale && WINDOW_DATA.__game_scale < 2.0f) {
+	if (image->entry->low_res_scale && WINDOW_DATA.game_scale < 2.0f) {
 		filter = D3DX_FILTER_TRIANGLE | D3DX_FILTER_MIRROR_U | D3DX_FILTER_MIRROR_V;
 	}
 
@@ -57084,18 +57612,18 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	camera2->__viewport_10C.Y = 0;
 	camera2->__viewport_10C.Width = WINDOW_DATA.__scaled_window_width;
 	camera2->__viewport_10C.Height = WINDOW_DATA.__scaled_window_height;
-	camera2->__viewport_124.X = WINDOW_DATA.__game_scale * 32.0f;
-	camera2->__viewport_124.Y = WINDOW_DATA.__game_scale * 16.0f;
-	camera2->__viewport_124.Width = WINDOW_DATA.__game_scale * SCREEN_WIDTH;
-	camera2->__viewport_124.Height = WINDOW_DATA.__game_scale * SCREEN_HEIGHT;
+	camera2->__viewport_124.X = WINDOW_DATA.game_scale * 32.0f;
+	camera2->__viewport_124.Y = WINDOW_DATA.game_scale * 16.0f;
+	camera2->__viewport_124.Width = WINDOW_DATA.game_scale * SCREEN_WIDTH;
+	camera2->__viewport_124.Height = WINDOW_DATA.game_scale * SCREEN_HEIGHT;
 	this->__setup_camera(camera2);
 	StageCamera* camera0 = &this->cameras[0];
 	*camera0 = *camera2;
 	camera0->camera_index = 0;
-	camera0->viewport.X = WINDOW_DATA.__game_scale * 32.0f;
-	camera0->viewport.Y = WINDOW_DATA.__game_scale * 16.0f;
-	camera0->viewport.Width = WINDOW_DATA.__game_scale * SCREEN_WIDTH;
-	camera0->viewport.Height = WINDOW_DATA.__game_scale * SCREEN_HEIGHT;
+	camera0->viewport.X = WINDOW_DATA.game_scale * 32.0f;
+	camera0->viewport.Y = WINDOW_DATA.game_scale * 16.0f;
+	camera0->viewport.Width = WINDOW_DATA.game_scale * SCREEN_WIDTH;
+	camera0->viewport.Height = WINDOW_DATA.game_scale * SCREEN_HEIGHT;
 	camera0->__int2_104.x = 0;
 	camera0->__int2_104.y = 0;
 	camera0->__viewport_10C = camera0->viewport;
@@ -57103,10 +57631,10 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	StageCamera* camera1 = &this->cameras[1];
 	*camera1 = *camera0;
 	camera1->camera_index = 1;
-	camera1->viewport.X = WINDOW_DATA.__game_scale * 128.0f;
-	camera1->viewport.Y = WINDOW_DATA.__game_scale * 16.0f;
-	camera1->viewport.Width = WINDOW_DATA.__game_scale * SCREEN_WIDTH;
-	camera1->viewport.Height = WINDOW_DATA.__game_scale * SCREEN_HEIGHT;
+	camera1->viewport.X = WINDOW_DATA.game_scale * 128.0f;
+	camera1->viewport.Y = WINDOW_DATA.game_scale * 16.0f;
+	camera1->viewport.Width = WINDOW_DATA.game_scale * SCREEN_WIDTH;
+	camera1->viewport.Height = WINDOW_DATA.game_scale * SCREEN_HEIGHT;
 	camera1->__int2_104.x = 0;
 	camera1->__int2_104.y = 0;
 	camera1->__viewport_10C = camera1->viewport;
@@ -57123,14 +57651,14 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	camera3->__viewport_10C = camera3->viewport;
 	this->__setup_camera(camera3);
 	WINDOW_DATA.__screen_center_x_full_res = WINDOW_DATA.__scaled_window_width / 2;
-	WINDOW_DATA.__screen_top_y_full_res = WINDOW_DATA.__game_scale * 16.0f;
+	WINDOW_DATA.__screen_top_y_full_res = WINDOW_DATA.game_scale * 16.0f;
 }
 
 // 0x454F50
 dllexport gnu_noinline void Supervisor::__camera2_sub_454F50() {
 	int32_t intA = WINDOW_DATA.__scaled_window_width;
 	int32_t intB = (float)(WINDOW_DATA.__backbuffer_width - intA) * 0.5f;
-	float floatA = WINDOW_DATA.__game_scale;
+	float floatA = WINDOW_DATA.game_scale;
 	SUPERVISOR.cameras[2].__int2_104.x = intB;
 	int32_t intC = WINDOW_DATA.__scaled_window_height;
 	int32_t intD = (float)(WINDOW_DATA.__backbuffer_height - intC) * 0.5f;
@@ -58904,7 +59432,7 @@ inline void WindowData::present__normal_version() {
 		__set_default_d3d_states();
 		SUPERVISOR.__int_818 = 2;
 	}
-	// FPS_COUNTER_PTR->__sub_4728A0();
+	__update_realtimes();
 }
 
 // 0x472FD0
@@ -58950,7 +59478,7 @@ inline void WindowData::present__alt_version() {
 		SUPERVISOR.__int_818 = 2;
 	}
 	this->__prev_present_alt_end = get_runtime();
-	// FPS_COUNTER_PTR->__sub_4728A0();
+	__update_realtimes();
 }
 
 inline int32_t thiscall WindowData::update_window__alt_version2() {
@@ -59043,7 +59571,7 @@ dllexport gnu_noinline void thiscall WindowData::present__alt_version2() {
 			SUPERVISOR.__int_818 = 2;
 		}
 	}
-	// FPS_COUNTER_PTR->__sub_4728A0();
+	__update_realtimes();
 
 	// Amazing
 	(void)get_runtime();
@@ -59215,29 +59743,29 @@ dllexport gnu_noinline void WindowData::__sub_4734E0(BOOL arg1) {
 	int32_t width;
 	switch (int32_t intA = WINDOW_DATA.config_resolution) {
 		case Windowed2560x1920: // 7
-			WINDOW_DATA.__game_scale = scale = 2.0f;
+			WINDOW_DATA.game_scale = scale = 2.0f;
 			WINDOW_DATA.window_width = 2560;
 			WINDOW_DATA.window_height = 1920;
 			break;
 		case Windowed1920x1440: // 6
-			WINDOW_DATA.__game_scale = scale = 2.0f;
+			WINDOW_DATA.game_scale = scale = 2.0f;
 			WINDOW_DATA.window_width = 1920;
 			WINDOW_DATA.window_height = 1440;
 			break;
 		default:
-			WINDOW_DATA.__game_scale = scale = 1.0f;
+			WINDOW_DATA.game_scale = scale = 1.0f;
 			WINDOW_DATA.window_width = 640;
 			WINDOW_DATA.window_height = 480;
 			break;
 		case Fullscreen960x720: // 1
 		case Windowed960x720: // 4
-			WINDOW_DATA.__game_scale = scale = 1.5f;
+			WINDOW_DATA.game_scale = scale = 1.5f;
 			WINDOW_DATA.window_width = 960;
 			WINDOW_DATA.window_height = 720;
 			break;
 		case Fullscreen1280x960: // 2
 		case Windowed1280x960: // 5
-			WINDOW_DATA.__game_scale = scale = 2.0f;
+			WINDOW_DATA.game_scale = scale = 2.0f;
 			WINDOW_DATA.window_width = 1280;
 			WINDOW_DATA.window_height = 960;
 			break;
@@ -59249,28 +59777,28 @@ dllexport gnu_noinline void WindowData::__sub_4734E0(BOOL arg1) {
 			WINDOW_DATA.window_height = height;
 			if (arg1) {
 				if (width >= 2560 && height >= 1920) {
-					WINDOW_DATA.__game_scale = scale = 2.0f;
+					WINDOW_DATA.game_scale = scale = 2.0f;
 					SUPERVISOR.config.__ubyte_4E = 4;
 				}
 				else if (width >= 1920 && height >= 1440) {
-					WINDOW_DATA.__game_scale = scale = 2.0f;
+					WINDOW_DATA.game_scale = scale = 2.0f;
 					SUPERVISOR.config.__ubyte_4E = 3;
 				}
 				else if (width >= 1280 && height >= 960) {
-					WINDOW_DATA.__game_scale = scale = 2.0f;
+					WINDOW_DATA.game_scale = scale = 2.0f;
 					SUPERVISOR.config.__ubyte_4E = 2;
 				}
 				else if (width >= 960 && height >= 720) {
-					WINDOW_DATA.__game_scale = scale = 1.5f;
+					WINDOW_DATA.game_scale = scale = 1.5f;
 					SUPERVISOR.config.__ubyte_4E = 1;
 				}
 				else {
 					scale = 1.0f;
 					SUPERVISOR.config.__ubyte_4E = 0;
-					WINDOW_DATA.__game_scale = scale;
+					WINDOW_DATA.game_scale = scale;
 				}
 			} else {
-				scale = WINDOW_DATA.__game_scale;
+				scale = WINDOW_DATA.game_scale;
 			}
 			float widthf = width;
 			int32_t logical_width = scale * LOGICAL_WINDOW_WIDTH;
