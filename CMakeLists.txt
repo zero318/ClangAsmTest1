@@ -974,6 +974,7 @@ target_compile_options(MoFTest1 PRIVATE
 	"-mno-fma4"
 )
 
+if (NOT CMAKE_BUILD_TYPE STREQUAL "Release")
 add_library(UMAsm OBJECT
 	"UM/globals.asm"
 )
@@ -981,8 +982,12 @@ target_compile_options(UMAsm PRIVATE
 	-march=bdver3
 )
 target_sources(UMTest1 PRIVATE
-	#"dummy_main.cpp"
 	$<TARGET_OBJECTS:UMAsm>
+)
+endif()
+target_sources(UMTest1 PRIVATE
+	#"dummy_main.cpp"
+	#$<TARGET_OBJECTS:UMAsm>
 	"UM/UM_bullet_ex.cpp"
 	"UM/UMTest1.rc"
 	#"UM/new_header_test.cpp"

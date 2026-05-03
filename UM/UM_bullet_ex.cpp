@@ -160,6 +160,25 @@ extern StaticCtorsDtors fake_static_data;
 
 #undef SHARD
 
+#define FORCE_EXPORT_FUNCTIONS 1
+#define FORCE_ORIGINAL_INLINING 1
+
+#if !FORCE_EXPORT_FUNCTIONS
+#undef dllexport
+#define dllexport
+#endif
+
+#if !FORCE_ORIGINAL_INLINING
+#undef gnu_noinline
+#define gnu_noinline
+#undef clang_noinline
+#define clang_noinline
+#undef forceinline
+#define forceinline
+#undef clang_forceinline
+#define clang_forceinline
+#endif
+
 extern "C" {
 	// This is the mangled name of the global operator delete.
 	// By default delete is supposed to *always* be noexcept,
