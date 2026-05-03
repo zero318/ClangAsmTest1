@@ -80,6 +80,7 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define KILL_THE_MUTEX_WITH_FIRE 1
 
 #define FIX_REALLY_BAD_BUGS 1
+#define FIX_MINOR_BUGS 1
 #define PROTECT_ORIGINAL_FILES 1
 #define IGNORE_HASH_CHECKS 1
 #define OVERRIDE_PATH_CHECKS 1
@@ -141,7 +142,7 @@ extern StaticCtorsDtors fake_static_data;
 
 #define UNICODE
 #include "d3dx9.h"
-#include "d3d9x_sucks.h"
+#include "../zero/d3d9x_sucks.h"
 
 #define XINPUT_USE_9_1_0 1
 #include "Xinput.h"
@@ -3906,24 +3907,24 @@ struct StageCamera {
 	Float3 facing; // 0xC
 	Float3 rotation; // 0x18
 	Float3 facing_normalized; // 0x24
-	Float3 __float3_30; // 0x30
-	Float3 __shaking_float3_A; // 0x3C
-	Float3 __shaking_float3_B; // 0x48
+	Float3 __side_vector; // 0x30
+	Float3 __shaking_position; // 0x3C
+	Float3 __shaking_facing; // 0x48
 	float fov; // 0x54
 	Int2 window_resolution; // 0x58
 	D3DMATRIXZ view_matrix; // 0x60
 	D3DMATRIXZ projection_matrix; // 0xA0
 	D3DVIEWPORT9 viewport; // 0xE0
 	int32_t camera_index; // 0xF8
-	Float2 __float2_FC; // 0xFC
-	Int2 __int2_104; // 0x104
+	Float2 __vertex_offsetA; // 0xFC
+	Int2 __vertex_offsetB; // 0x104
 	D3DVIEWPORT9 __viewport_10C; // 0x10C
 	D3DVIEWPORT9 __viewport_124; // 0x124
 	Float3 __last_position_delta; // 0x13C
 	StageSky sky; // 0x148
 	// 0x164
 
-	inline void __copy_float2_FC_to_anm_manager();
+	inline void __copy_vertex_offsetA_to_anm_manager();
 
 	inline D3DRECT get_viewport_d3d_rect() {
 		int32_t X = this->viewport.X;
@@ -3955,17 +3956,17 @@ ValidateFieldOffset32(0x0, StageCamera, position);
 ValidateFieldOffset32(0xC, StageCamera, facing);
 ValidateFieldOffset32(0x18, StageCamera, rotation);
 ValidateFieldOffset32(0x24, StageCamera, facing_normalized);
-ValidateFieldOffset32(0x30, StageCamera, __float3_30);
-ValidateFieldOffset32(0x3C, StageCamera, __shaking_float3_A);
-ValidateFieldOffset32(0x48, StageCamera, __shaking_float3_B);
+ValidateFieldOffset32(0x30, StageCamera, __side_vector);
+ValidateFieldOffset32(0x3C, StageCamera, __shaking_position);
+ValidateFieldOffset32(0x48, StageCamera, __shaking_facing);
 ValidateFieldOffset32(0x54, StageCamera, fov);
 ValidateFieldOffset32(0x58, StageCamera, window_resolution);
 ValidateFieldOffset32(0x60, StageCamera, view_matrix);
 ValidateFieldOffset32(0xA0, StageCamera, projection_matrix);
 ValidateFieldOffset32(0xE0, StageCamera, viewport);
 ValidateFieldOffset32(0xF8, StageCamera, camera_index);
-ValidateFieldOffset32(0xFC, StageCamera, __float2_FC);
-ValidateFieldOffset32(0x104, StageCamera, __int2_104);
+ValidateFieldOffset32(0xFC, StageCamera, __vertex_offsetA);
+ValidateFieldOffset32(0x104, StageCamera, __vertex_offsetB);
 ValidateFieldOffset32(0x10C, StageCamera, __viewport_10C);
 ValidateFieldOffset32(0x124, StageCamera, __viewport_124);
 ValidateFieldOffset32(0x13C, StageCamera, __last_position_delta);
@@ -4689,14 +4690,14 @@ union AnmID {
 	}
 
 	// 0x488E70
-	dllexport void __tree_set_visible2() asm_symbol_rel(0x488E70);
+	dllexport void __show_tree() asm_symbol_rel(0x488E70);
 
-	inline void __tree_set_visible2(AnmManager* anm_manager);
+	inline void __show_tree(AnmManager* anm_manager);
 
 	// 0x488EB0
-	dllexport void __tree_clear_visible2() asm_symbol_rel(0x488EB0);
+	dllexport void __hide_tree() asm_symbol_rel(0x488EB0);
 
-	inline void __tree_clear_visible2(AnmManager* anm_manager);
+	inline void __hide_tree(AnmManager* anm_manager);
 
 	// 0x488F50
 	dllexport forceinline void mark_tree_for_delete() asm_symbol_rel(0x488F50);
@@ -4771,7 +4772,7 @@ union AnmID {
 	inline void set_sprite_size(float value);
 
 	// 0x488FD0
-	dllexport gnu_noinline void thiscall __set_script(int32_t script) asm_symbol_rel(0x488FD0);
+	dllexport gnu_noinline void thiscall __set_new_script(int32_t script) asm_symbol_rel(0x488FD0);
 
 	// 0x4892F0
 	dllexport void thiscall set_color1(D3DCOLOR color) asm_symbol_rel(0x4892F0);
@@ -5038,18 +5039,9 @@ public:
 		height /= 2;
 		float y = (float)camera->viewport.Y + viewport_height * 0.5f;
 		float eye_z = (float)height / ztanf(camera->fov * 0.5f);
-		Float3 eye;
-		Float3 at;
-		Float3 up;
-		up.x = 0.0f;
-		up.y = -1.0f;
-		up.z = 0.0f;
-		eye.z = eye_z;
-		eye.x = x;
-		eye.y = y;
-		at.x = x;
-		at.y = y;
-		at.z = 0.0f;
+		Float3 up = { 0.0f, -1.0f, 0.0f };
+		Float3 eye = { x, y, eye_z };
+		Float3 at = { x, y, 0.0f };
 		D3DXMatrixLookAtLH(&camera->view_matrix, &eye, &at, &up);
 		float aspect = (float)camera->viewport.Width / (float)camera->viewport.Height;
 		D3DXMatrixPerspectiveFovLH(&camera->projection_matrix, camera->fov, aspect, 1.0f, 10000.0f);
@@ -5066,6 +5058,7 @@ public:
 
 	// 0x41B330
 	dllexport void thiscall set_camera_by_index(uint32_t index) asm_symbol_rel(0x41B330);
+
 	// 0x41B3B0
 	dllexport gnu_noinline static void stdcall set_camera2_alt(uint32_t = UNUSED_DWORD) asm_symbol_rel(0x41B3B0);
 
@@ -14075,7 +14068,7 @@ struct GameThread : ZUNTask {
 		uint32_t flags; // 0xB0
 		struct {
 			uint32_t __unknown_flag_gt_A : 1; // 1
-			uint32_t __unknown_flag_gt_B : 1; // 2
+			uint32_t __pause_world : 1; // 2
 			uint32_t skip_flag : 1; // 3 why is this called skip_flag? Doesn't seem to be related to skipping anything...
 			uint32_t __marked_for_cleanup : 1; // 4
 			uint32_t __unknown_flag_gt_I : 1; // 5
@@ -14726,11 +14719,11 @@ struct Gui : ZUNTask {
 	AnmID __anm_id_C0; // 0xC0
 	AnmID __anm_id_C4; // 0xC4
 	AnmID boss_name; // 0xC8
-	AnmID __boss_life_markers[MAX_BOSS_LIFE_MARKERS]; // 0xCC
+	AnmID boss_life_markers[MAX_BOSS_LIFE_MARKERS]; // 0xCC
 	AnmID __difficulty_indicatorA; // 0xF4
 	AnmID __difficulty_indicatorB; // 0xF8
 	AnmID __shottype_indicator; // 0xFC
-	AnmID __anm_id_100; // 0x100
+	AnmID __fade_to_white_vm; // 0x100
 	AnmID __anm_id_104; // 0x104
 	AnmID __stage_clear_bonus_vm; // 0x108
 	AnmID __anm_id_10C; // 0x10C
@@ -14744,21 +14737,21 @@ struct Gui : ZUNTask {
 	int __int_12C; // 0x12C
 	unknown_fields(0x4); // 0x130
 	BOOL __show_spell_clear_time; // 0x134
-	AnmID __anm_id_138; // 0x138
+	AnmID __hud_root; // 0x138
 	Timer __timer_13C; // 0x13C
 	UpdateFunc* on_draw_func_B; // 0x150
 	unknown_fields(0x4); // 0x154
 	int32_t __score; // 0x158
-	int32_t __int_15C; // 0x15C
+	int32_t __score_diff; // 0x15C
 	AnmLoaded* stage_logo_anm; // 0x160
 	unknown_fields(0xC); // 0x164
-	int32_t __boss_life_count; // 0x170
+	int32_t boss_life_count; // 0x170
 	unknown_fields(0x20); // 0x174
 	union {
 		uint32_t flags; // 0x194
 		struct {
 			uint32_t : 1; // 1
-			uint32_t __boss_indicator_state : 2; // 2-3
+			uint32_t boss_indicator_state : 2; // 2-3
 			uint32_t : 1; // 4
 			uint32_t __unknown_flag_gu_C : 1; // 5
 			uint32_t __unknown_field_gu_D : 3; // 6-8
@@ -14777,7 +14770,7 @@ struct Gui : ZUNTask {
 	};
 	int32_t spell_timer_seconds; // 0x1B8
 	int32_t spell_timer_hundredths; // 0x1BC
-	int32_t __int_1C0; // 0x1C0
+	int32_t __prev_spell_timer_seconds; // 0x1C0
 	Lifebar lifebars[MAX_LIFEBARS_IN_GUI]; // 0x1C4
 	AnmLoaded* front_anm; // 0x2C0
 	int32_t __clear_bonus; // 0x2C4
@@ -14829,15 +14822,18 @@ struct Gui : ZUNTask {
 	dllexport gnu_noinline ~Gui();
 
 	inline void update_spell_timer(int32_t time) {
-		// I'm only ~80% sure I got this math right
 		int32_t seconds = time / 60;
 		int32_t frames = time % 60;
+		
+		int32_t hundredths = frames * 100 / 60;
 
-		int32_t hundredths = frames * 100;
-		hundredths += (hundredths / 60);
-
-		this->spell_timer_seconds = seconds > 99 ? seconds : 99;
-		this->spell_timer_hundredths = seconds > 99 ? hundredths : 99; // Is this a bug?
+		if (seconds > 99) {
+			seconds = 99;
+			hundredths = 99;
+		}
+		
+		this->spell_timer_seconds = seconds;
+		this->spell_timer_hundredths = hundredths;
 	}
 
 	// 0x441F10
@@ -14856,21 +14852,17 @@ struct Gui : ZUNTask {
 		GUI_PTR->__big_popup_text_inline(type, score_bonus);
 	}
 
-	// 0x442330
-	dllexport gnu_noinline static void __hide_vm_id_114() asm_symbol_rel(0x442330);
+	inline void __spell_timer_vms_interrupt(int32_t interrupt);
 
-	// 0x442370
-	dllexport gnu_noinline static void __show_vm_id_114() asm_symbol_rel(0x442370);
+	inline void __spell_timer_vms_interrupt_and_run(int32_t interrupt);
 
-	// 0x429C30
-	dllexport gnu_noinline static void __spell_timer_vms_interrupt_3() asm_symbol_rel(0x429C30);
+	inline void __show_spell_timer_anms();
 
-	// 0x457810
-	dllexport gnu_noinline static void __hide_spell_timer_anms() asm_symbol_rel(0x457810);
+	inline void __hide_spell_timer_anms();
 
 	// 0x42D560
-	dllexport gnu_noinline void __set_boss_life_count(int value) asm_symbol_rel(0x42D560) {
-		this->__boss_life_count = value;
+	dllexport gnu_noinline void set_boss_life_count(int value) asm_symbol_rel(0x42D560) {
+		this->boss_life_count = value;
 	}
 
 	// 0x42D570
@@ -14954,7 +14946,7 @@ ValidateFieldOffset32(0x90, Gui, __anm_id_array_90);
 ValidateFieldOffset32(0x8C, Gui, boss_indicator);
 ValidateFieldOffset32(0xB8, Gui, __big_popupA);
 ValidateFieldOffset32(0xBC, Gui, __big_popupB);
-ValidateFieldOffset32(0xCC, Gui, __boss_life_markers);
+ValidateFieldOffset32(0xCC, Gui, boss_life_markers);
 ValidateFieldOffset32(0xF4, Gui, __difficulty_indicatorA);
 ValidateFieldOffset32(0xF8, Gui, __difficulty_indicatorB);
 ValidateFieldOffset32(0xFC, Gui, __shottype_indicator);
@@ -14962,19 +14954,19 @@ ValidateFieldOffset32(0x108, Gui, __stage_clear_bonus_vm);
 ValidateFieldOffset32(0x10C, Gui, __anm_id_10C);
 ValidateFieldOffset32(0x110, Gui, __spell_clear_time_label);
 ValidateFieldOffset32(0x134, Gui, __show_spell_clear_time);
-ValidateFieldOffset32(0x138, Gui, __anm_id_138);
+ValidateFieldOffset32(0x138, Gui, __hud_root);
 ValidateFieldOffset32(0x13C, Gui, __timer_13C);
 ValidateFieldOffset32(0x150, Gui, on_draw_func_B);
 ValidateFieldOffset32(0x158, Gui, __score);
-ValidateFieldOffset32(0x15C, Gui, __int_15C);
-ValidateFieldOffset32(0x170, Gui, __boss_life_count);
+ValidateFieldOffset32(0x15C, Gui, __score_diff);
+ValidateFieldOffset32(0x170, Gui, boss_life_count);
 ValidateFieldOffset32(0x194, Gui, flags);
 ValidateFieldOffset32(0x198, Gui, __timer_198);
 ValidateFieldOffset32(0x1B0, Gui, msg_vm);
 ValidateFieldOffset32(0x1B4, Gui, msg_file_buffer);
 ValidateFieldOffset32(0x1B8, Gui, spell_timer_seconds);
 ValidateFieldOffset32(0x1BC, Gui, spell_timer_hundredths);
-ValidateFieldOffset32(0x1C0, Gui, __int_1C0);
+ValidateFieldOffset32(0x1C0, Gui, __prev_spell_timer_seconds);
 ValidateFieldOffset32(0x1C4, Gui, lifebars);
 ValidateFieldOffset32(0x2C0, Gui, front_anm);
 ValidateFieldOffset32(0x2C4, Gui, __clear_bonus);
@@ -16190,16 +16182,16 @@ union AnmVMCreationFlags {
 
 // 0x4CDB00
 static Float4 ANCHOR_X_TABLE[3] = {
-	{ -0.5f, 0.5f, -0.5f, 0.5f },
-	{ 0.0f, 1.0f, 0.0f, 1.0f },
-	{ -1.0f, 0.0f, -1.0f, 0.0f }
+	{ -0.5f, 0.5f, -0.5f, 0.5f }, // Center
+	{ 0.0f, 1.0f, 0.0f, 1.0f },   // Left
+	{ -1.0f, 0.0f, -1.0f, 0.0f }  // Right
 };
 
 // 0x4CDB30
 static Float4 ANCHOR_Y_TABLE[3] = {
-	{ -0.5f, -0.5f, 0.5f, 0.5f },
-	{ 0.0f, 0.0f, 1.0f, 1.0f },
-	{ -1.0f, -1.0f, 0.0f, 0.0f }
+	{ -0.5f, -0.5f, 0.5f, 0.5f }, // Center
+	{ 0.0f, 0.0f, 1.0f, 1.0f },   // Top
+	{ -1.0f, -1.0f, 0.0f, 0.0f }  // Bottom
 };
 
 // 0x0
@@ -16215,6 +16207,12 @@ enum AnmVMState {
 	Normal = 0, // 0
 	MarkedForDelete, // 1
 	Deleted // 2
+};
+
+enum AnmRunType : uint8_t {
+	Always = 0, // UI list
+	Pausable = 1,
+	RunType2 = 2
 };
 
 enum AnmRenderMode : uint8_t {
@@ -16246,7 +16244,7 @@ enum AnmRenderMode : uint8_t {
 	ModeTexturedRing3D = 25,
 	ModePolygonLine = 26,
 	ModePolygonRectangleHollow = 27,
-	ModePolygonTriangle = 28,
+	ModePolygonTriangle = 28
 };
 
 enum AnmTextureOp : uint8_t {
@@ -16269,6 +16267,50 @@ enum AnmBlendMode : uint8_t {
 	BlendHardcoded = 11
 };
 
+enum AnmResampleMode : int8_t {
+	ResampleLinearInterp = 0,
+	ResampleNearestPoint = 1,
+};
+
+enum AnmOriginMode : uint8_t {
+	OriginWindow = 0,
+	OriginFixedResolution = 1,
+	OriginFullResolution = 2
+};
+
+enum AnmResolutionMode : uint8_t {
+	ResolutionNoScaling = 0,
+	ResolutionScaledA = 1,
+	ResolutionHalfScaledA = 2,
+	ResolutionScaledB = 3,
+	ResolutionHalfScaledB = 4
+};
+
+enum AnmXAnchorMode : uint8_t {
+	AnchorXCenter = 0,
+	AnchorXLeft = 1,
+	AnchorXRight = 2
+};
+
+enum AnmYAnchorMode : uint8_t {
+	AnchorYCenter = 0,
+	AnchorYTop = 1,
+	AnchorYBottom = 2
+};
+
+enum AnmColorMode : uint8_t {
+	UseColor1 = 0,
+	UseColor2 = 1,
+	ColorGradientHorizontal = 2,
+	ColorGradientVertical = 3,
+	ColorBlend = 4
+};
+
+enum AnmPositionMode : uint8_t {
+	UsePosition1 = 0,
+	UsePosition2 = 1
+};
+
 enum AnmUVMode : uint8_t {
 	Wrap = 0,
 	Clamp = 1,
@@ -16277,7 +16319,7 @@ enum AnmUVMode : uint8_t {
 
 enum AnmRNGMode : uint8_t {
 	ReplayRNG = 0,
-	NormalRNG = 1,
+	NormalRNG = 1
 };
 
 enum AnmRotationMode : uint8_t {
@@ -16334,9 +16376,9 @@ struct AnmVM {
 		ZUNInterp<float> v_scroll_speed_interp; // 0x37C
 		Float2 sprite_uv_quad[4]; // 0x3AC
 		Float2 uv_scroll_speed; // 0x3CC
-		D3DMATRIXZ __matrix_3D4; // 0x3D4
-		D3DMATRIXZ __matrix_414; // 0x414
-		D3DMATRIXZ __matrix_454; // 0x454
+		D3DMATRIXZ __base_world_matrix; // 0x3D4
+		D3DMATRIXZ __world_matrix; // 0x414
+		D3DMATRIXZ __texture_matrix; // 0x454
 		int32_t run_interrupt; // 0x494
 		int32_t __last_sprite_set_time; // 0x498
 		unknown_fields(0x4); // 0x49C
@@ -16369,7 +16411,7 @@ struct AnmVM {
 				uint32_t disable_z_write : 1; // 14
 				uint32_t __visible3 : 1; // 15
 				uint32_t __unknown_flag_av_W : 1; // 16
-				uint32_t __unknown_std_flag_A : 1; // 17
+				uint32_t __preserve_world_matrix : 1; // 17
 				uint32_t color_mode : 3; // 18-20
 				uint32_t : 1; // 21
 				uint32_t __stop_script : 1; // 22
@@ -16393,7 +16435,7 @@ struct AnmVM {
 				uint32_t resample_mode : 1; // 14
 				uint32_t text_outline_disable : 1; // 15
 				uint32_t __continual_sprite_window : 1; // 16
-				uint32_t __unknown_field_av_B : 2; // 17-18
+				uint32_t __run_type : 2; // 17-18
 				uint32_t __treat_as_root : 1; // 19
 				uint32_t : 1; // 20
 				uint32_t origin_mode : 2; // 21-22
@@ -16495,18 +16537,18 @@ struct AnmVM {
 		this->data.layer = layer;
 		switch (layer) {
 			default:
-				this->data.origin_mode = 0;
+				this->data.origin_mode = OriginWindow; // 0
 				break;
 			case 3 ... 19:
-				this->data.origin_mode = 1;
+				this->data.origin_mode = OriginFixedResolution; // 1
 				break;
 			case 20 ... 23:
-				this->data.origin_mode = 2;
+				this->data.origin_mode = OriginFullResolution; // 2
 				break;
 		}
 		switch (layer) {
 			case 20 ... 32: case 37 ... 45:
-				this->data.resolution_mode = 1;
+				this->data.resolution_mode = ResolutionScaledA; // 1
 				break;
 		}
 	}
@@ -16520,10 +16562,12 @@ struct AnmVM {
 	dllexport gnu_noinline Float3* thiscall __adjust_position_for_resolution_and_origin_modes(Float3* out) asm_symbol_rel(0x4063D0) {
 		
 		switch (this->data.resolution_mode) {
-			case 1: case 3:
+			case ResolutionScaledA: // 1
+			case ResolutionScaledB: // 3
 				*out *= WINDOW_DATA.game_scale;
 				break;
-			case 2: case 4:
+			case ResolutionHalfScaledA: // 2
+			case ResolutionHalfScaledB: // 4
 				*out *= WINDOW_DATA.game_scale * 0.5f;
 				break;
 		}
@@ -16544,13 +16588,13 @@ struct AnmVM {
 		}
 
 		switch (this->data.origin_mode) {
-			case 0:
+			case OriginWindow: // 0
 				break;
-			case 1:
+			case OriginFixedResolution: // 1
 				out->x += WINDOW_DATA.__screen_center_x_fixed_res;
 				out->y += WINDOW_DATA.__screen_top_y_fixed_res;
 				break;
-			default:
+			default: // OriginFullResolution // 2
 				out->x += WINDOW_DATA.__screen_center_x_full_res;
 				out->y += WINDOW_DATA.__screen_top_y_full_res;
 				break;
@@ -16659,8 +16703,8 @@ struct AnmVM {
 		this->data.color2_interp.initial_value = { RED(initial_color), GREEN(initial_color), BLUE(initial_color) };
 		this->data.color2_interp.final_value = { RED(final_color), GREEN(final_color), BLUE(final_color) };
 		this->data.color2_interp.time.reset();
-		if (this->data.color_mode == 0) {
-			this->data.color_mode = 1;
+		if (this->data.color_mode == UseColor1) { // 0
+			this->data.color_mode = UseColor2; // 1
 		}
 	}
 
@@ -16673,8 +16717,8 @@ struct AnmVM {
 		//this->data.alpha2_interp.bezier1 = 0;
 		//this->data.alpha2_interp.bezier2 = 0;
 		this->data.alpha2_interp.time.reset();
-		if (this->data.color_mode == 0) {
-			this->data.color_mode = 1;
+		if (this->data.color_mode == UseColor1) { // 0
+			this->data.color_mode = UseColor2; // 1
 		}
 	}
 	
@@ -16816,13 +16860,13 @@ struct AnmVM {
 
 		switch (this->data.resolution_mode) {
 			// Note: No 3 or 4
-			case 1:
+			case ResolutionScaledA: // 1
 				vert0->as2() *= WINDOW_DATA.game_scale;
 				vert1->as2() *= WINDOW_DATA.game_scale;
 				vert2->as2() *= WINDOW_DATA.game_scale;
 				vert3->as2() *= WINDOW_DATA.game_scale;
 				break;
-			case 2:
+			case ResolutionHalfScaledA: // 2
 				vert0->as2() *= WINDOW_DATA.game_scale * 0.5f;
 				vert1->as2() *= WINDOW_DATA.game_scale * 0.5f;
 				vert2->as2() *= WINDOW_DATA.game_scale * 0.5f;
@@ -16875,13 +16919,13 @@ struct AnmVM {
 
 		switch (this->data.resolution_mode) {
 			// Note: No 3 or 4
-			case 1: {
+			case ResolutionScaledA: { // 1
 				float scale = WINDOW_DATA.game_scale;
 				offset_x *= scale;
 				offset_y *= scale;
 				break;
 			}
-			case 2: {
+			case ResolutionHalfScaledA: { // 2
 				float scale = WINDOW_DATA.game_scale * 0.5f;
 				offset_x *= scale;
 				offset_y *= scale;
@@ -16920,10 +16964,8 @@ struct AnmVM {
 	}
 
 	// 0x47F090
-	dllexport gnu_noinline ZUNResult stdcall __billboard_sprites_47F090() asm_symbol_rel(0x47F090) {
+	dllexport gnu_noinline ZUNResult stdcall __get_billboard_vertex_positions() asm_symbol_rel(0x47F090) {
 		// this; // ESI
-
-		// Supposedly this is a mode for billboard sprites?
 
 		float rotation_z = this->get_controller_rotation()->z; // ESP+8
 		auto __temp = CRT::sincosf_asm(rotation_z);
@@ -16948,7 +16990,7 @@ struct AnmVM {
 			camera = SUPERVISOR.current_camera_ptr;
 
 			Float3 projectedB; // ESP+3C
-			D3DXVec3Project(&projectedB, &camera->__float3_30, &camera->viewport, &camera->projection_matrix, &camera->view_matrix, &pWorld);
+			D3DXVec3Project(&projectedB, &camera->__side_vector, &camera->viewport, &camera->projection_matrix, &camera->view_matrix, &pWorld);
 
 			float scale = projectedB.distance(&projectedA) * 0.5f;
 
@@ -16966,19 +17008,19 @@ struct AnmVM {
 
 			float X0, X1, X2, X3;
 			switch (this->data.x_anchor_mode) {
-				case 0:
+				case AnchorXCenter: // 0
 					X0 = -size.x * 0.5f;
 					X1 = size.x * 0.5f;
 					X2 = -size.x * 0.5f;
 					X3 = size.x * 0.5f;
 					break;
-				case 1:
+				case AnchorXLeft: // 1
 					X0 = 0.0f;
 					X1 = size.x;
 					X2 = 0.0f;
 					X3 = size.x;
 					break;
-				case 2:
+				case AnchorXRight: // 2
 					X0 = -size.x;
 					X1 = 0.0f;
 					X2 = -size.x;
@@ -16993,19 +17035,19 @@ struct AnmVM {
 			}
 			float Y0, Y1, Y2, Y3;
 			switch (this->data.y_anchor_mode) {
-				case 0:
+				case AnchorYCenter: // 0
 					Y0 = -size.y * 0.5f;
 					Y1 = size.y * 0.5f;
 					Y2 = -size.y * 0.5f;
 					Y3 = size.y * 0.5f;
 					break;
-				case 1:
+				case AnchorYTop: // 1
 					Y0 = 0.0f;
 					Y1 = size.y;
 					Y2 = 0.0f;
 					Y3 = size.y;
 					break;
-				case 2:
+				case AnchorYBottom: // 2
 					Y0 = -size.y;
 					Y1 = 0.0f;
 					Y2 = -size.y;
@@ -17056,7 +17098,7 @@ struct AnmVM {
 		this->data.scale2 = { 1.0f, 1.0f };
 		this->data.uv_scale = { 1.0f, 1.0f };
 		this->data.color1 = COLOR(255, 255, 255, 255);
-		this->data.__matrix_3D4.set_identity();
+		this->data.__base_world_matrix.set_identity();
 		this->controller.script_time.default_values();
 		this->controller.__timer_1C.default_values();
 		this->data.position_interp.end_time = 0;
@@ -17071,7 +17113,7 @@ struct AnmVM {
 		this->data.alpha2_interp.end_time = 0;
 		this->data.u_scroll_speed_interp.end_time = 0;
 		this->data.v_scroll_speed_interp.end_time = 0;
-		this->data.__unknown_field_av_B = 1;
+		this->data.__run_type = AnmRunType::Pausable; // 1
 		this->data.current_context.rand_scale = 1.0f;
 		this->data.current_context.rand_angle_scale = PI_f;
 		this->data.current_context.rand_int_range = UINT16_MAX + 1;
@@ -17479,11 +17521,11 @@ private:
 			case __CONTROLLER_Z_ROT: // 10026
 				return this->get_controller_rotation()->z;
 			case CAMERA_POS_X: // 10016
-				return SUPERVISOR.cameras[StdCamera].position.x + SUPERVISOR.cameras[StdCamera].__shaking_float3_A.x;
+				return SUPERVISOR.cameras[StdCamera].position.x + SUPERVISOR.cameras[StdCamera].__shaking_position.x;
 			case CAMERA_POS_Y: // 10017
-				return SUPERVISOR.cameras[StdCamera].position.y + SUPERVISOR.cameras[StdCamera].__shaking_float3_A.y;
+				return SUPERVISOR.cameras[StdCamera].position.y + SUPERVISOR.cameras[StdCamera].__shaking_position.y;
 			case CAMERA_POS_Z: // 10018
-				return SUPERVISOR.cameras[StdCamera].position.z + SUPERVISOR.cameras[StdCamera].__shaking_float3_A.z;
+				return SUPERVISOR.cameras[StdCamera].position.z + SUPERVISOR.cameras[StdCamera].__shaking_position.z;
 			case CAMERA_FACING_X: // 10019
 				return SUPERVISOR.cameras[StdCamera].facing_normalized.x;
 			case CAMERA_FACING_Y: // 10020
@@ -17663,7 +17705,7 @@ public:
 	// 0x47C750
 	dllexport gnu_noinline void thiscall step_interps() asm_symbol_rel(0x47C750) {
 		if (this->data.position_interp.end_time) {
-			if (this->data.position_mode == 0) {
+			if (this->data.position_mode == UsePosition1) { // 0
 				this->data.position = this->data.position_interp.step();
 			} else {
 				this->data.__position_2 = this->data.position_interp.step();
@@ -17724,8 +17766,9 @@ public:
 				Float3 position = this->data.position + this->controller.position + this->data.__position_2;
 				this->__adjust_position_for_resolution_and_origin_modes(&position);
 
+				// No color modes 2, 3, 4
 				D3DCOLOR color1 = this->data.color1;
-				D3DCOLOR color2 = this->data.color_mode == 0 ? color1 : this->data.color2;
+				D3DCOLOR color2 = this->data.color_mode == UseColor1 ? color1 : this->data.color2;
 				float ring_width = this->data.scale.x;
 				float radius = this->data.scale.y;
 
@@ -17744,11 +17787,11 @@ public:
 
 				switch (this->data.resolution_mode) {
 					// Note: No 3 or 4
-					case 1:
+					case ResolutionScaledA: // 1
 						radius_outer *= WINDOW_DATA.game_scale;
 						radius_inner *= WINDOW_DATA.game_scale;
 						break;
-					case 2: {
+					case ResolutionHalfScaledA: { // 2
 						float scale = WINDOW_DATA.game_scale * 0.5f;
 						radius_outer *= scale;
 						radius_inner *= scale;
@@ -17807,7 +17850,8 @@ public:
 					clang_noinline angle = reduce_angle(this->data.rotation.z);
 				}
 
-				D3DCOLOR color = this->data.color_mode == 0 ? this->data.color1 : this->data.color2;
+				// No color modes 2, 3, 4
+				D3DCOLOR color = this->data.color_mode == UseColor1 ? this->data.color1 : this->data.color2;
 				float ring_width = this->data.scale.x;
 				float radius = this->data.scale.y;
 
@@ -17826,11 +17870,11 @@ public:
 
 				switch (this->data.resolution_mode) {
 					// Note: No 3 or 4
-					case 1:
+					case ResolutionScaledA: // 1
 						radius_outer *= WINDOW_DATA.game_scale;
 						radius_inner *= WINDOW_DATA.game_scale;
 						break;
-					case 2: {
+					case ResolutionHalfScaledA: { // 2
 						float scale = WINDOW_DATA.game_scale * 0.5f;
 						radius_outer *= scale;
 						radius_inner *= scale;
@@ -17877,7 +17921,8 @@ public:
 				float angle_add = arc_length / points_f;
 				SpriteVertexC* vertices = (SpriteVertexC*)this->controller.special_data;
 
-				D3DCOLOR color = this->data.color_mode == 0 ? this->data.color1 : this->data.color2;
+				// No color modes 2, 3, 4
+				D3DCOLOR color = this->data.color_mode == UseColor1 ? this->data.color1 : this->data.color2;
 
 				float width = this->data.current_context.float_vars[1];
 				float radius = this->data.current_context.float_vars[2];
@@ -17929,18 +17974,18 @@ public:
 	}
 
 	// 0x488EF0
-	dllexport void __tree_set_visible2() asm_symbol_rel(0x488EF0) {
+	dllexport void __show_tree() asm_symbol_rel(0x488EF0) {
 		this->data.__visible2 = true;
 		this->controller.child_list.for_each([](AnmVM* vm) gnu_always_inline static_lambda {
-			clang_noinline vm->__tree_set_visible2();
+			clang_noinline vm->__show_tree();
 		});
 	}
 
 	// 0x488F20
-	dllexport void __tree_clear_visible2() asm_symbol_rel(0x488F20) {
+	dllexport void __hide_tree() asm_symbol_rel(0x488F20) {
 		this->data.__visible2 = false;
 		this->controller.child_list.for_each([](AnmVM* vm) gnu_always_inline static_lambda {
-			clang_noinline vm->__tree_clear_visible2();
+			clang_noinline vm->__hide_tree();
 		});
 	}
 
@@ -18408,15 +18453,15 @@ struct AnmLoaded {
 		vm->data.sprite_size.y = sizeY;
 
 		constexpr float scale_factor = 1.0f / 256.0f;
-		vm->data.__matrix_3D4.set_scaled(
+		vm->data.__base_world_matrix.set_scaled(
 			sizeX * scale_factor,
 			sizeY * scale_factor
 		);
-		vm->data.__matrix_454.set_scaled(
+		vm->data.__texture_matrix.set_scaled(
 			sizeX / sprite->__surface_width * sprite->__entry_width_frac,
 			sizeY / sprite->__surface_height * sprite->__entry_height_frac
 		);
-		vm->data.__matrix_414 = vm->data.__matrix_3D4;
+		vm->data.__world_matrix = vm->data.__base_world_matrix;
 
 		return ZUN_SUCCESS;
 	}
@@ -18428,12 +18473,12 @@ struct AnmLoaded {
 		return this->set_sprite(vm, sprite_id);
 	}
 
-	inline void __prepare_vm_data(AnmVM* vm, int32_t script_id);
+	inline void __set_script(AnmVM* vm, int32_t script_id);
 
-	inline void __prepare_vm(AnmVM* vm, int32_t script_id);
+	inline void __set_new_script(AnmVM* vm, int32_t script_id);
 
 	// 0x477D60
-	dllexport void __sub_477D60(AnmVM* vm, int32_t sprite_id) asm_symbol_rel(0x477D60);
+	dllexport void __set_script_and_run(AnmVM* vm, int32_t sprite_id) asm_symbol_rel(0x477D60);
 
 	// 0x407420
 	dllexport gnu_noinline void __copy_data_to_vm(AnmVM* vm, int32_t index) asm_symbol_rel(0x407420) {
@@ -18829,14 +18874,14 @@ struct AnmManager {
 	ZUNThreadB __thread_0; // 0x0
 	unknown_fields(0x4); // 0x1C
 	BackbufferTexture backbuffer_textures[4]; // 0x20
-	int __int_C0; // 0xC0
+	int __counter_C0; // 0xC0
 	int __dword_C4; // 0xC4
 	int __dword_C8; // 0xC8
-	int __int_CC; // 0xCC
-	Float2 __float2_D0; // 0xD0
-	Float2 __float2_D8; // 0xD8
-	int __int_E0; // 0xE0
-	AnmVM __vm_E4; // 0xE4
+	int __counter_CC; // 0xCC
+	Float2 __vertex_offsetA; // 0xD0
+	Float2 __vertex_offsetB; // 0xD8
+	int __counter_E0; // 0xE0
+	AnmVM dummy_vm; // 0xE4
 	ZUNListEnds<AnmVM> world_list; // 0x6F0
 	ZUNListEnds<AnmVM> ui_list; // 0x6F8
 	FastAnmVM fast_array[uint_width_max(ANM_FAST_ID_BITS)]; // 0x700
@@ -18858,7 +18903,7 @@ struct AnmManager {
 	char __byte_3120E0B; // 0x3120E0B
 	char __byte_3120E0C; // 0x3120E0C
 	unknown_fields(0x1); // 0x3120E0D
-	int8_t current_resample_mode; // 0x3120E0E
+	AnmResampleMode current_resample_mode; // 0x3120E0E
 	int8_t current_texture_op; // 0x3120E0F
 	AnmUVMode current_u_sample_mode; // 0x3120E10
 	AnmUVMode current_v_sample_mode; // 0x3120E11
@@ -18917,7 +18962,7 @@ struct AnmManager {
 			SUPERVISOR.d3d_device->SetFVF(SpriteVertex::FVF_TYPE);
 			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLELIST, this->unrendered_sprite_count * 2, this->sprite_render_cursor, sizeof(SpriteVertex));
 			this->sprite_render_cursor = this->sprite_write_cursor;
-			++this->__int_CC;
+			++this->__counter_CC;
 			this->unrendered_sprite_count = 0;
 		}
 	}
@@ -18984,10 +19029,10 @@ struct AnmManager {
 		verts[2].position.z = 0.0f;
 		verts[3].position.z = 0.0f;
 
-		verts[0].position.as2() += anm_manager->__float2_D8;
-		verts[1].position.as2() += anm_manager->__float2_D8;
-		verts[2].position.as2() += anm_manager->__float2_D8;
-		verts[3].position.as2() += anm_manager->__float2_D8;
+		verts[0].position.as2() += anm_manager->__vertex_offsetB;
+		verts[1].position.as2() += anm_manager->__vertex_offsetB;
+		verts[2].position.as2() += anm_manager->__vertex_offsetB;
+		verts[3].position.as2() += anm_manager->__vertex_offsetB;
 
 		verts[3].position.w = 1.0f;
 		verts[2].position.w = 1.0f;
@@ -19226,8 +19271,8 @@ struct AnmManager {
 
 		if (this->current_resample_mode != vm->data.resample_mode) {
 			this->flush_sprites();
-			this->current_resample_mode = vm->data.resample_mode;
-			if (!this->current_resample_mode) {
+			this->current_resample_mode = (AnmResampleMode)vm->data.resample_mode;
+			if (this->current_resample_mode == ResampleLinearInterp) {
 				SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
 				SUPERVISOR.d3d_device->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
 			} else {
@@ -19271,25 +19316,25 @@ struct AnmManager {
 
 	// 0x47FEB0
 	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_5_7(AnmVM* vm) asm_symbol_rel(0x47FEB0) {
-		if (!vm->data.__unknown_std_flag_A) {
+		if (!vm->data.__preserve_world_matrix) {
 			vm->data.scale_enabled = false;
-			vm->data.__matrix_414 = vm->data.__matrix_3D4;
-			vm->data.__matrix_414.m[0][0] *= vm->data.scale.x * vm->data.scale2.x;
-			vm->data.__matrix_414.m[1][1] *= vm->data.scale.y * vm->data.scale2.y;
+			vm->data.__world_matrix = vm->data.__base_world_matrix;
+			vm->data.__world_matrix.m[0][0] *= vm->data.scale.x * vm->data.scale2.x;
+			vm->data.__world_matrix.m[1][1] *= vm->data.scale.y * vm->data.scale2.y;
 
 			Float3 rotation = *vm->get_controller_rotation();
 
-			vm->data.__matrix_414.rotate_x(rotation.x);
-			vm->data.__matrix_414.rotate_y(rotation.y);
-			vm->data.__matrix_414.rotate_z(rotation.z);
+			vm->data.__world_matrix.rotate_x(rotation.x);
+			vm->data.__world_matrix.rotate_y(rotation.y);
+			vm->data.__world_matrix.rotate_z(rotation.z);
 
 			vm->data.rotation_enabled = false;
 		}
 
-		D3DMATRIXZ matrix = vm->data.__matrix_414;
+		D3DMATRIXZ matrix = vm->data.__world_matrix;
 		matrix.m[0][0] += vm->data.position.x + vm->controller.position.x + vm->data.__position_2.x;
 		if (
-			vm->data.origin_mode != 0 &&
+			vm->data.origin_mode != OriginWindow && // 0
 			!vm->controller.parent
 		) {
 			matrix.m[0][0] += WINDOW_DATA.__scaled_window_width * 0.5f;
@@ -19394,14 +19439,14 @@ struct AnmManager {
 
 	// 0x47DCE0
 	dllexport gnu_noinline ZUNResult thiscall __render_vertices(AnmVM* vm, uint32_t flags) asm_symbol_rel(0x47DCE0) {
-		SPRITE_VERTEX_BUFFER_A[0].position.as2() += this->__float2_D0;
-		SPRITE_VERTEX_BUFFER_A[1].position.as2() += this->__float2_D0;
-		SPRITE_VERTEX_BUFFER_A[2].position.as2() += this->__float2_D0;
-		SPRITE_VERTEX_BUFFER_A[3].position.as2() += this->__float2_D0;
-		SPRITE_VERTEX_BUFFER_A[0].position.as2() += this->__float2_D8;
-		SPRITE_VERTEX_BUFFER_A[1].position.as2() += this->__float2_D8;
-		SPRITE_VERTEX_BUFFER_A[2].position.as2() += this->__float2_D8;
-		SPRITE_VERTEX_BUFFER_A[3].position.as2() += this->__float2_D8;
+		SPRITE_VERTEX_BUFFER_A[0].position.as2() += this->__vertex_offsetA;
+		SPRITE_VERTEX_BUFFER_A[1].position.as2() += this->__vertex_offsetA;
+		SPRITE_VERTEX_BUFFER_A[2].position.as2() += this->__vertex_offsetA;
+		SPRITE_VERTEX_BUFFER_A[3].position.as2() += this->__vertex_offsetA;
+		SPRITE_VERTEX_BUFFER_A[0].position.as2() += this->__vertex_offsetB;
+		SPRITE_VERTEX_BUFFER_A[1].position.as2() += this->__vertex_offsetB;
+		SPRITE_VERTEX_BUFFER_A[2].position.as2() += this->__vertex_offsetB;
+		SPRITE_VERTEX_BUFFER_A[3].position.as2() += this->__vertex_offsetB;
 		if (flags & RENDER_VERTICES_ROUND_INPUTS) {
 			long double A = CRT::rint_asm(SPRITE_VERTEX_BUFFER_A[0].position.x) - 0.5f;
 			long double B = CRT::rint_asm(SPRITE_VERTEX_BUFFER_A[1].position.x) - 0.5f;
@@ -19465,9 +19510,11 @@ struct AnmManager {
 						if (!(flags & RENDER_VERTICES_IGNORE_COLORS)) {
 							uint32_t color_mode = vm->data.color_mode;
 							switch (color_mode) {
-								case 0: case 1: {
+								case UseColor1: // 0
+								case UseColor2: // 1
+								{
 									uint8_t r, g, b, a;
-									D3DCOLOR color = color_mode == 0 ? vm->data.color1 : vm->data.color2;
+									D3DCOLOR color = color_mode == UseColor1 ? vm->data.color1 : vm->data.color2;
 									if (
 										vm->data.colorize_children &&
 										vm->controller.parent
@@ -19498,7 +19545,9 @@ struct AnmManager {
 									SPRITE_VERTEX_BUFFER_A[2].diffuse = color;
 									break;
 								}
-								case 2: case 3: {
+								case ColorGradientHorizontal: // 2
+								case ColorGradientVertical: // 3
+								{
 									uint8_t r1, g1, b1, a1;
 									uint8_t r2, g2, b2, a2;
 									D3DCOLOR color1 = vm->data.color1;
@@ -19517,7 +19566,7 @@ struct AnmManager {
 									}
 									SPRITE_VERTEX_BUFFER_A[0].diffuse = color1;
 									SPRITE_VERTEX_BUFFER_A[3].diffuse = color2;
-									if (color_mode == 2) {
+									if (color_mode == ColorGradientHorizontal) { // 2
 										SPRITE_VERTEX_BUFFER_A[1].diffuse = color2;
 										SPRITE_VERTEX_BUFFER_A[2].diffuse = color1;
 									} else {
@@ -19526,7 +19575,7 @@ struct AnmManager {
 									}
 									break;
 								}
-								case 4: {
+								case ColorBlend: { // 4
 									uint8_t r, g, b, a;
 									D3DCOLOR color = vm->data.color1;
 									r = RED(color) * RED(vm->data.color2) / 0xFF;
@@ -19575,7 +19624,7 @@ struct AnmManager {
 
 	// 0x47F530
 	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_6(AnmVM* vm) asm_symbol_rel(0x47F530) {
-		if (ZUN_SUCCEEDED(vm->__billboard_sprites_47F090())) {
+		if (ZUN_SUCCEEDED(vm->__get_billboard_vertex_positions())) {
 
 			Float3 position = vm->data.position + vm->controller.position + vm->data.__position_2;
 
@@ -19587,7 +19636,7 @@ struct AnmManager {
 			float draw_distance = draw_begin - camera->sky.end_distance;
 
 			if (
-				vm->data.origin_mode != 0 &&
+				vm->data.origin_mode != OriginWindow && // 0
 				!vm->controller.parent
 			) {
 				position.x += WINDOW_DATA.__scaled_window_width * 0.5f;
@@ -19598,9 +19647,11 @@ struct AnmManager {
 
 			int32_t color_mode = vm->data.color_mode;
 			switch (color_mode) {
-				case 0: case 1: {
+				case UseColor1: // 0
+				case UseColor2: // 1
+				{
 					uint8_t r, g, b, a;
-					D3DCOLOR color = color_mode == 0 ? vm->data.color1 : vm->data.color2;
+					D3DCOLOR color = color_mode == UseColor1 ? vm->data.color1 : vm->data.color2;
 					r = RED(color);
 					g = GREEN(color);
 					b = BLUE(color);
@@ -19641,7 +19692,9 @@ struct AnmManager {
 					SPRITE_VERTEX_BUFFER_A[1].diffuse = color;
 					break;
 				}
-				case 2: case 3: {
+				case ColorGradientHorizontal: // 2
+				case ColorGradientVertical: // 3
+				{
 					uint8_t r1, g1, b1, a1;
 					uint8_t r2, g2, b2, a2;
 					D3DCOLOR color1 = vm->data.color1;
@@ -19679,7 +19732,7 @@ struct AnmManager {
 						SPRITE_VERTEX_BUFFER_A[0].diffuse = color1;
 						SPRITE_VERTEX_BUFFER_A[3].diffuse = color2;
 					}
-					if (vm->data.color_mode == 2) {
+					if (vm->data.color_mode == ColorGradientHorizontal) { // 2
 						SPRITE_VERTEX_BUFFER_A[1].diffuse = color2;
 						SPRITE_VERTEX_BUFFER_A[2].diffuse = color1;
 					} else {
@@ -19688,7 +19741,7 @@ struct AnmManager {
 					}
 					break;
 				}
-				case 4: {
+				case ColorBlend: { // 4
 					uint8_t r, g, b, a;
 					D3DCOLOR color = vm->data.color1;
 					r = RED(color) * RED(vm->data.color2) / 0xFF;
@@ -19743,21 +19796,21 @@ struct AnmManager {
 				clang_noinline SUPERVISOR.d3d_enable_zwrite();
 			}
 
-			if (!vm->data.__unknown_std_flag_A) {
+			if (!vm->data.__preserve_world_matrix) {
 				vm->data.scale_enabled = false;
-				vm->data.__matrix_414 = vm->data.__matrix_3D4;
-				vm->data.__matrix_414.m[0][0] *= vm->data.scale.x * vm->data.scale2.x;
-				vm->data.__matrix_414.m[1][1] *= vm->data.scale.y * vm->data.scale2.y;
+				vm->data.__world_matrix = vm->data.__base_world_matrix;
+				vm->data.__world_matrix.m[0][0] *= vm->data.scale.x * vm->data.scale2.x;
+				vm->data.__world_matrix.m[1][1] *= vm->data.scale.y * vm->data.scale2.y;
 
 				switch (vm->data.resolution_mode) {
 					// Note: No 3 or 4
-					case 1:
-						vm->data.__matrix_414.m[0][0] *= WINDOW_DATA.game_scale;
-						vm->data.__matrix_414.m[1][1] *= WINDOW_DATA.game_scale;
+					case ResolutionScaledA: // 1
+						vm->data.__world_matrix.m[0][0] *= WINDOW_DATA.game_scale;
+						vm->data.__world_matrix.m[1][1] *= WINDOW_DATA.game_scale;
 						break;
-					case 2:
-						vm->data.__matrix_414.m[0][0] *= WINDOW_DATA.game_scale * 0.5f;
-						vm->data.__matrix_414.m[1][1] *= WINDOW_DATA.game_scale * 0.5f;
+					case ResolutionHalfScaledA: // 2
+						vm->data.__world_matrix.m[0][0] *= WINDOW_DATA.game_scale * 0.5f;
+						vm->data.__world_matrix.m[1][1] *= WINDOW_DATA.game_scale * 0.5f;
 						break;
 				}
 
@@ -19765,40 +19818,40 @@ struct AnmManager {
 
 				switch (vm->data.rotation_mode) {
 					case RotationXYZ: // 0
-						vm->data.__matrix_414.rotate_x(rotation.x);
-						vm->data.__matrix_414.rotate_y(rotation.y);
-						vm->data.__matrix_414.rotate_z(rotation.z);
+						vm->data.__world_matrix.rotate_x(rotation.x);
+						vm->data.__world_matrix.rotate_y(rotation.y);
+						vm->data.__world_matrix.rotate_z(rotation.z);
 						break;
 					case RotationXZY: // 1
-						vm->data.__matrix_414.rotate_x(rotation.x);
-						vm->data.__matrix_414.rotate_z(rotation.z);
-						vm->data.__matrix_414.rotate_y(rotation.y);
+						vm->data.__world_matrix.rotate_x(rotation.x);
+						vm->data.__world_matrix.rotate_z(rotation.z);
+						vm->data.__world_matrix.rotate_y(rotation.y);
 						break;
 					case RotationYXZ: // 2
-						vm->data.__matrix_414.rotate_y(rotation.y);
-						vm->data.__matrix_414.rotate_x(rotation.x);
-						vm->data.__matrix_414.rotate_z(rotation.z);
+						vm->data.__world_matrix.rotate_y(rotation.y);
+						vm->data.__world_matrix.rotate_x(rotation.x);
+						vm->data.__world_matrix.rotate_z(rotation.z);
 						break;
 					case RotationYZX: // 3
-						vm->data.__matrix_414.rotate_y(rotation.y);
-						vm->data.__matrix_414.rotate_z(rotation.z);
-						vm->data.__matrix_414.rotate_x(rotation.x);
+						vm->data.__world_matrix.rotate_y(rotation.y);
+						vm->data.__world_matrix.rotate_z(rotation.z);
+						vm->data.__world_matrix.rotate_x(rotation.x);
 						break;
 					case RotationZXY: // 4
-						vm->data.__matrix_414.rotate_z(rotation.z);
-						vm->data.__matrix_414.rotate_x(rotation.x);
-						vm->data.__matrix_414.rotate_y(rotation.y);
+						vm->data.__world_matrix.rotate_z(rotation.z);
+						vm->data.__world_matrix.rotate_x(rotation.x);
+						vm->data.__world_matrix.rotate_y(rotation.y);
 						break;
 					case RotationZYX: // 5
-						vm->data.__matrix_414.rotate_z(rotation.z);
-						vm->data.__matrix_414.rotate_y(rotation.y);
-						vm->data.__matrix_414.rotate_x(rotation.x);
+						vm->data.__world_matrix.rotate_z(rotation.z);
+						vm->data.__world_matrix.rotate_y(rotation.y);
+						vm->data.__world_matrix.rotate_x(rotation.x);
 						break;
 				}
 				vm->data.rotation_enabled = false;
 			}
 
-			D3DMATRIXZ matrix = vm->data.__matrix_414;
+			D3DMATRIXZ matrix = vm->data.__world_matrix;
 
 			*(Float2*)&matrix.m[3][0] = (vm->data.position.as2() + vm->controller.position.as2() + vm->data.__position_2.as2()) - vm->data.anchor_offset.as2() * vm->data.scale * vm->data.scale2;
 
@@ -19806,7 +19859,8 @@ struct AnmManager {
 
 			this->setup_render_state_for_vm(vm);
 
-			D3DCOLOR color = vm->data.color_mode == 0 ? vm->data.color1 : vm->data.color2;
+			// No color modes 2, 3, 4
+			D3DCOLOR color = vm->data.color_mode == UseColor1 ? vm->data.color1 : vm->data.color2;
 
 			if (this->__global_color_enabled) {
 				uint8_t r = COLOR_BLEND(RED(color), RED(this->__global_color));
@@ -19843,7 +19897,7 @@ struct AnmManager {
 			) {
 				this->current_sprite = sprite;
 
-				D3DMATRIXZ temp = vm->data.__matrix_454;
+				D3DMATRIXZ temp = vm->data.__texture_matrix;
 				*(Float2*)&temp.m[2][0] = vm->data.sprite_uv_quad[0] + vm->data.uv_scroll;
 				temp.m[0][0] *= vm->data.uv_scale.x;
 				temp.m[1][1] *= vm->data.uv_scale.y;
@@ -19945,22 +19999,22 @@ struct AnmManager {
 				SUPERVISOR.d3d_enable_zwrite();
 			}
 
-			vm->data.__matrix_3D4.set_identity();
+			vm->data.__base_world_matrix.set_identity();
 
-			vm->data.__matrix_414 = vm->data.__matrix_3D4;
-			vm->data.__matrix_414.m[0][0] *= vm->data.scale.x * vm->data.scale2.x;
-			vm->data.__matrix_414.m[1][1] *= vm->data.scale.y * vm->data.scale2.y;
+			vm->data.__world_matrix = vm->data.__base_world_matrix;
+			vm->data.__world_matrix.m[0][0] *= vm->data.scale.x * vm->data.scale2.x;
+			vm->data.__world_matrix.m[1][1] *= vm->data.scale.y * vm->data.scale2.y;
 			vm->data.scale_enabled = false;
 
-			vm->data.__matrix_414.rotate_x(vm->data.rotation.x);
-			vm->data.__matrix_414.rotate_y(vm->data.rotation.y);
-			vm->data.__matrix_414.rotate_z(vm->data.rotation.z);
+			vm->data.__world_matrix.rotate_x(vm->data.rotation.x);
+			vm->data.__world_matrix.rotate_y(vm->data.rotation.y);
+			vm->data.__world_matrix.rotate_z(vm->data.rotation.z);
 			vm->data.rotation_enabled = false;
 
-			D3DMATRIXZ matrix = vm->data.__matrix_414;
+			D3DMATRIXZ matrix = vm->data.__world_matrix;
 			matrix.m[3][0] = vm->controller.position.x + vm->data.position.x + +vm->data.__position_2.x;
 			if (
-				vm->data.origin_mode != 0 &&
+				vm->data.origin_mode != OriginWindow && // 0
 				!vm->controller.parent
 			) {
 				matrix.m[3][0] += WINDOW_DATA.__screen_center_x_fixed_res;
@@ -19987,7 +20041,7 @@ struct AnmManager {
 			) {
 				this->current_sprite = sprite;
 
-				D3DMATRIXZ temp = vm->data.__matrix_454;
+				D3DMATRIXZ temp = vm->data.__texture_matrix;
 				*(Float2*)&temp.m[2][0] = vm->data.sprite_uv_quad[0] + vm->data.uv_scroll;
 				temp.m[0][0] *= vm->data.uv_scale.x;
 				temp.m[1][1] *= vm->data.uv_scale.y;
@@ -20041,7 +20095,7 @@ private:
 					primitive_write_cursor->position.z = 0.0f;
 					primitive_write_cursor->position.w = 1.0f;
 					primitive_write_cursor->diffuse = color2;
-					primitive_write_cursor->position.as2() += this->__float2_D8;
+					primitive_write_cursor->position.as2() += this->__vertex_offsetB;
 					++primitive_write_cursor;
 					angle = reduce_angle(angle);
 				} while (--i);
@@ -20063,7 +20117,7 @@ private:
 			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, sides, this->primitive_write_cursor, sizeof(PrimitiveVertex));
 
 			this->primitive_write_cursor += (sides + 2);
-			++this->__int_CC;
+			++this->__counter_CC;
 		}
 		return ZUN_SUCCESS;
 	}
@@ -20119,7 +20173,7 @@ private:
 					primitive_write_cursor->position.z = 0.0f;
 					primitive_write_cursor->position.w = 1.0f;
 					primitive_write_cursor->diffuse = color;
-					primitive_write_cursor->position.as2() += this->__float2_D8;
+					primitive_write_cursor->position.as2() += this->__vertex_offsetB;
 					++primitive_write_cursor;
 					angle = reduce_angle(angle);
 				} while (--i);
@@ -20138,7 +20192,7 @@ private:
 			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_LINESTRIP, sides, this->primitive_write_cursor, sizeof(PrimitiveVertex));
 
 			this->primitive_write_cursor += 1 + sides;
-			++this->__int_CC;
+			++this->__counter_CC;
 		}
 		return ZUN_SUCCESS;
 	}
@@ -20197,7 +20251,7 @@ private:
 					primitive_write_cursor[0].position.z = 0.0f;
 					primitive_write_cursor[0].position.w = 1.0f;
 					primitive_write_cursor[0].diffuse = color;
-					primitive_write_cursor[0].position.as2() += this->__float2_D8;
+					primitive_write_cursor[0].position.as2() += this->__vertex_offsetB;
 
 					primitive_write_cursor[1].position.make_from_vector(angle, radius_outer);
 					angle += angle_add;
@@ -20206,7 +20260,7 @@ private:
 					primitive_write_cursor[1].position.z = 0.0f;
 					primitive_write_cursor[1].position.w = 1.0f;
 					primitive_write_cursor[1].diffuse = color;
-					primitive_write_cursor[1].position.as2() += this->__float2_D8;
+					primitive_write_cursor[1].position.as2() += this->__vertex_offsetB;
 
 					primitive_write_cursor += 2;
 					angle = reduce_angle(angle);
@@ -20226,7 +20280,7 @@ private:
 			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, sides * 2, this->primitive_write_cursor, sizeof(PrimitiveVertex));
 
 			this->primitive_write_cursor += 2 + sides;
-			++this->__int_CC;
+			++this->__counter_CC;
 		}
 		return ZUN_SUCCESS;
 	}
@@ -20276,15 +20330,15 @@ private:
 
 			float x0, x1, x2, x3;
 			switch (anchor_x) {
-				case 2:
+				case AnchorXRight: // 2
 					x1 = x3 = 0.0f;
 					x0 = x2 = -size_x;
 					break;
-				case 1:
+				case AnchorXLeft: // 1
 					x1 = x3 = size_x;
 					x0 = x2 = 0.0f;
 					break;
-				case 0:
+				case AnchorXCenter: // 0
 					x1 = x3 = size_x * 0.5f;
 					x0 = x2 = -size_x * 0.5f;
 					break;
@@ -20294,15 +20348,15 @@ private:
 			}
 			float y0, y1, y2, y3;
 			switch (anchor_y) {
-				case 2:
+				case AnchorYBottom: // 2
 					y0 = y1 = -size_y;
 					y2 = y3 = 0.0f;
 					break;
-				case 1:
+				case AnchorYTop: // 1
 					y0 = y1 = 0.0f;
 					y2 = y3 = size_y;
 					break;
-				case 0:
+				case AnchorYCenter: // 0
 					y0 = y1 = -size_y * 0.5f;
 					y2 = y3 = size_y * 0.5f;
 					break;
@@ -20325,10 +20379,10 @@ private:
 			primitive_write_cursor[1].position.z = 0.0f;
 			primitive_write_cursor[0].position.z = 0.0f;
 
-			primitive_write_cursor[0].position.as2() += this->__float2_D8;
-			primitive_write_cursor[1].position.as2() += this->__float2_D8;
-			primitive_write_cursor[2].position.as2() += this->__float2_D8;
-			primitive_write_cursor[3].position.as2() += this->__float2_D8;
+			primitive_write_cursor[0].position.as2() += this->__vertex_offsetB;
+			primitive_write_cursor[1].position.as2() += this->__vertex_offsetB;
+			primitive_write_cursor[2].position.as2() += this->__vertex_offsetB;
+			primitive_write_cursor[3].position.as2() += this->__vertex_offsetB;
 
 			primitive_write_cursor[3].position.w = 1.0f;
 			primitive_write_cursor[2].position.w = 1.0f;
@@ -20356,7 +20410,7 @@ private:
 			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, this->primitive_write_cursor, sizeof(PrimitiveVertex));
 
 			this->primitive_write_cursor += 4;
-			++this->__int_CC;
+			++this->__counter_CC;
 		}
 		return ZUN_SUCCESS;
 	}
@@ -20467,15 +20521,15 @@ private:
 
 			float x0, x1;
 			switch (anchor) {
-				case 2:
+				case AnchorXRight: // 2
 					x1 = 0.0f;
 					x0 = -length;
 					break;
-				case 1:
+				case AnchorXLeft: // 1
 					x1 = length;
 					x0 = 0.0f;
 					break;
-				case 0:
+				case AnchorXCenter: // 0
 					x1 = length * 0.5f;
 					x0 = -length * 0.5f;
 					break;
@@ -20494,8 +20548,8 @@ private:
 			primitive_write_cursor[1].position.z = 0.0f;
 			primitive_write_cursor[0].position.z = 0.0f;
 
-			primitive_write_cursor[0].position.as2() += this->__float2_D8;
-			primitive_write_cursor[1].position.as2() += this->__float2_D8;
+			primitive_write_cursor[0].position.as2() += this->__vertex_offsetB;
+			primitive_write_cursor[1].position.as2() += this->__vertex_offsetB;
 
 			// This looks like copy/paste from the function below
 			// Pretty sure these can OOB write
@@ -20524,7 +20578,7 @@ private:
 			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_LINESTRIP, 1, this->primitive_write_cursor, sizeof(PrimitiveVertex));
 
 			this->primitive_write_cursor += 2;
-			++this->__int_CC;
+			++this->__counter_CC;
 		}
 		return ZUN_SUCCESS;
 	}
@@ -20579,15 +20633,15 @@ private:
 
 			float x0, x1, x2, x3;
 			switch (anchor_x) {
-				case 2:
+				case AnchorXRight: // 2
 					x1 = x2 = 0.0f;
 					x0 = x3 = -size_x;
 					break;
-				case 1:
+				case AnchorXLeft: // 1
 					x1 = x2 = size_x;
 					x0 = x3 = 0.0f;
 					break;
-				case 0:
+				case AnchorXCenter: // 0
 					x1 = x2 = size_x * 0.5f;
 					x0 = x3 = -size_x * 0.5f;
 					break;
@@ -20597,15 +20651,15 @@ private:
 			}
 			float y0, y1, y2, y3;
 			switch (anchor_y) {
-				case 2:
+				case AnchorYBottom: // 2
 					y0 = y1 = -size_y;
 					y2 = y3 = 0.0f;
 					break;
-				case 1:
+				case AnchorYTop: // 1
 					y0 = y1 = 0.0f;
 					y2 = y3 = size_y;
 					break;
-				case 0:
+				case AnchorYCenter: // 0
 					y0 = y1 = -size_y * 0.5f;
 					y2 = y3 = size_y * 0.5f;
 					break;
@@ -20630,11 +20684,11 @@ private:
 			primitive_write_cursor[1].position.z = 0.0f;
 			primitive_write_cursor[0].position.z = 0.0f;
 
-			primitive_write_cursor[0].position.as2() += this->__float2_D8;
-			primitive_write_cursor[1].position.as2() += this->__float2_D8;
-			primitive_write_cursor[2].position.as2() += this->__float2_D8;
-			primitive_write_cursor[3].position.as2() += this->__float2_D8;
-			primitive_write_cursor[4].position.as2() += this->__float2_D8;
+			primitive_write_cursor[0].position.as2() += this->__vertex_offsetB;
+			primitive_write_cursor[1].position.as2() += this->__vertex_offsetB;
+			primitive_write_cursor[2].position.as2() += this->__vertex_offsetB;
+			primitive_write_cursor[3].position.as2() += this->__vertex_offsetB;
+			primitive_write_cursor[4].position.as2() += this->__vertex_offsetB;
 
 			primitive_write_cursor[4].position.w = 1.0f;
 			primitive_write_cursor[3].position.w = 1.0f;
@@ -20664,7 +20718,7 @@ private:
 			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_LINESTRIP, 4, this->primitive_write_cursor, sizeof(PrimitiveVertex));
 
 			this->primitive_write_cursor += 5;
-			++this->__int_CC;
+			++this->__counter_CC;
 		}
 		return ZUN_SUCCESS;
 	}
@@ -20720,15 +20774,15 @@ private:
 
 			float x0, x1, x2;
 			switch (anchor_x) {
-				case 2:
+				case AnchorXRight: // 2
 					x1 = 0.0f;
 					x0 = x2 = -size_x;
 					break;
-				case 1:
+				case AnchorXLeft: // 1
 					x1 = size_x;
 					x0 = x2 = 0.0f;
 					break;
-				case 0:
+				case AnchorXCenter: // 0
 					x1 = size_x * 0.5f;
 					x0 = x2 = -size_x * 0.5f;
 					break;
@@ -20738,17 +20792,17 @@ private:
 			}
 			float y0, y1, y2;
 			switch (anchor_y) {
-				case 2:
+				case AnchorYBottom: // 2
 					y0 = -size_y;
 					y1 = -size_y * 0.5f;
 					y2 = 0.0f;
 					break;
-				case 1:
+				case AnchorYTop: // 1
 					y0 = 0.0f;
 					y1 = size_y * 0.5f;
 					y2 = size_y;
 					break;
-				case 0:
+				case AnchorYCenter: // 0
 					y0 = -size_y * 0.5f;
 					y1 = 0.0f;
 					y2 = size_y * 0.5f;
@@ -20769,9 +20823,9 @@ private:
 			primitive_write_cursor[1].position.z = 0.0f;
 			primitive_write_cursor[0].position.z = 0.0f;
 
-			primitive_write_cursor[0].position.as2() += this->__float2_D8;
-			primitive_write_cursor[1].position.as2() += this->__float2_D8;
-			primitive_write_cursor[2].position.as2() += this->__float2_D8;
+			primitive_write_cursor[0].position.as2() += this->__vertex_offsetB;
+			primitive_write_cursor[1].position.as2() += this->__vertex_offsetB;
+			primitive_write_cursor[2].position.as2() += this->__vertex_offsetB;
 
 			primitive_write_cursor[2].position.w = 1.0f;
 			primitive_write_cursor[1].position.w = 1.0f;
@@ -20797,7 +20851,7 @@ private:
 			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 1, this->primitive_write_cursor, sizeof(PrimitiveVertex));
 
 			this->primitive_write_cursor += 3;
-			++this->__int_CC;
+			++this->__counter_CC;
 		}
 		return ZUN_SUCCESS;
 	}
@@ -20866,7 +20920,7 @@ public:
 				if (!vm->get_alpha() && !vm->get_alpha2()) {
 					return ZUN_ERROR;
 				}
-				if (ZUN_FAILED(vm->__billboard_sprites_47F090())) {
+				if (ZUN_FAILED(vm->__get_billboard_vertex_positions())) {
 					return ZUN_ERROR;
 				}
 				return this->__render_vertices(vm, RENDER_VERTICES_DEFAULT);
@@ -20896,7 +20950,8 @@ public:
 				StageCamera* camera = SUPERVISOR.current_camera_ptr;
 				float draw_diff = camera->sky.begin_distance - camera->sky.end_distance;
 
-				D3DCOLOR color = vm->data.color_mode == 0 ? vm->data.color1 : vm->data.color2;
+				// No color modes 2, 3, 4
+				D3DCOLOR color = vm->data.color_mode == UseColor1 ? vm->data.color1 : vm->data.color2;
 
 				Float4 float4_array[4];
 
@@ -20997,10 +21052,10 @@ public:
 
 				switch (vm->data.resolution_mode) {
 					// Note: No 3 or 4
-					case 1:
+					case ResolutionScaledA: // 1
 						size *= WINDOW_DATA.game_scale;
 						break;
-					case 2:
+					case ResolutionHalfScaledA: // 2
 						size *= WINDOW_DATA.game_scale * 0.5f;
 						break;
 				}
@@ -21008,7 +21063,7 @@ public:
 				switch (vm->data.render_mode) {
 					case ModePolygonLine: { // 26
 						D3DCOLOR color1, color2;
-						if (vm->data.color_mode != 0) {
+						if (vm->data.color_mode != UseColor1) { // abnormal color mode handling
 							color2 = vm->data.color2;
 							color1 = vm->data.color1;
 						} else {
@@ -21035,7 +21090,7 @@ public:
 					}
 					case ModePolygonRectangleHollow: { // 27
 						D3DCOLOR color1, color2;
-						if (vm->data.color_mode != 0) {
+						if (vm->data.color_mode != UseColor1) { // abnormal color mode handling
 							color2 = vm->data.color2;
 							color1 = vm->data.color1;
 						} else {
@@ -21114,10 +21169,10 @@ public:
 
 				switch (vm->data.resolution_mode) {
 					// Note: No 3 or 4
-					case 1:
+					case ResolutionScaledA: // 1
 						size *= WINDOW_DATA.game_scale;
 						break;
-					case 2:
+					case ResolutionHalfScaledA: // 2
 						size *= WINDOW_DATA.game_scale * 0.5f;
 						break;
 				}
@@ -21169,7 +21224,7 @@ public:
 					vm_layer = (vm_layer - WORLD_LAYER_COUNT) >= UI_LAYER_COUNT ? vm_layer : vm_layer - WORLD_LAYER_B_COUNT;
 					if (vm_layer == layer_index) {
 						this->draw_vm(vm);
-						++this->__int_E0;
+						++this->__counter_E0;
 					}
 				}
 			});
@@ -21187,7 +21242,7 @@ public:
 					}
 					if (vm_layer == layer_index) {
 						this->draw_vm(vm);
-						++this->__int_E0;
+						++this->__counter_E0;
 					}
 				}
 			});
@@ -21202,7 +21257,7 @@ public:
 		if (
 			game_thread_ptr &&
 			(game_thread_ptr->__unknown_flag_gt_A | game_thread_ptr->skip_flag) &&
-			game_thread_ptr->__unknown_flag_gt_B
+			game_thread_ptr->__pause_world
 		) {
 			return UpdateFuncNext;
 		}
@@ -21269,8 +21324,7 @@ public:
 		SUPERVISOR.set_camera_by_index_disable_fog(2);
 		SUPERVISOR.d3d_zfunc_always();
 		AnmManager* anm_manager = (AnmManager*)self;
-		anm_manager->__float2_D0.x = 0.0f;
-		anm_manager->__float2_D0.y = 0.0f;
+		anm_manager->__vertex_offsetA = { 0.0f, 0.0f };
 		return anm_manager->render_layer(24);
 	}
 	// 0x487BC0
@@ -21728,7 +21782,7 @@ public:
 			} else {
 				for (int32_t i = 0; i < anm_loaded->script_count; ++i) {
 					(*anm_loaded->__vm_array)[i].reset();
-					anm_loaded->__prepare_vm(&(*anm_loaded->__vm_array)[i], i);
+					anm_loaded->__set_new_script(&(*anm_loaded->__vm_array)[i], i);
 					(*anm_loaded->__vm_array)[i].controller.script_time.set(-1);
 					(*anm_loaded->__vm_array)[i].controller.__timer_1C.set(-1);
 					(*anm_loaded->__vm_array)[i].run_anm();
@@ -22053,14 +22107,14 @@ public:
 #pragma region // AnmManager Validation
 ValidateFieldOffset32(0x0, AnmManager, __thread_0);
 ValidateFieldOffset32(0x20, AnmManager, backbuffer_textures);
-ValidateFieldOffset32(0xC0, AnmManager, __int_C0);
+ValidateFieldOffset32(0xC0, AnmManager, __counter_C0);
 ValidateFieldOffset32(0xC4, AnmManager, __dword_C4);
 ValidateFieldOffset32(0xC8, AnmManager, __dword_C8);
-ValidateFieldOffset32(0xCC, AnmManager, __int_CC);
-ValidateFieldOffset32(0xD0, AnmManager, __float2_D0);
-ValidateFieldOffset32(0xD8, AnmManager, __float2_D8);
-ValidateFieldOffset32(0xE0, AnmManager, __int_E0);
-ValidateFieldOffset32(0xE4, AnmManager, __vm_E4);
+ValidateFieldOffset32(0xCC, AnmManager, __counter_CC);
+ValidateFieldOffset32(0xD0, AnmManager, __vertex_offsetA);
+ValidateFieldOffset32(0xD8, AnmManager, __vertex_offsetB);
+ValidateFieldOffset32(0xE0, AnmManager, __counter_E0);
+ValidateFieldOffset32(0xE4, AnmManager, dummy_vm);
 ValidateFieldOffset32(0x6F0, AnmManager, world_list);
 ValidateFieldOffset32(0x6F8, AnmManager, ui_list);
 ValidateFieldOffset32(0x700, AnmManager, fast_array);
@@ -22125,10 +22179,10 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_A(void* pt
 	anm_manager->__byte_3120E0B = -1;
 	anm_manager->__byte_3120E0C = -1;
 	anm_manager->__clear_global_color();
-	anm_manager->current_resample_mode = -1;
+	anm_manager->current_resample_mode = (AnmResampleMode)-1;
 	anm_manager->current_texture_op = -1;
-	anm_manager->__float2_D0.y = 0.0f;
-	anm_manager->__float2_D0.x = 0.0f;
+	anm_manager->__vertex_offsetA.y = 0.0f;
+	anm_manager->__vertex_offsetA.x = 0.0f;
 	anm_manager->__current_vertex_type = -1;
 
 	((Supervisor*)ptr)->set_camera_by_index(2);
@@ -22330,8 +22384,8 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_
 // 0x455D40
 dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_J(void* ptr) {
 	ANM_MANAGER_PTR->flush_sprites();
-	SUPERVISOR.cameras[StdCamera].__float2_FC = { 0.0f, 0.0f };
-	SUPERVISOR.cameras[1].__float2_FC = { 0.0f, 0.0f };
+	SUPERVISOR.cameras[StdCamera].__vertex_offsetA = { 0.0f, 0.0f };
+	SUPERVISOR.cameras[1].__vertex_offsetA = { 0.0f, 0.0f };
 	return UpdateFuncNext;
 }
 
@@ -22475,7 +22529,7 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_455EC0() {
 			}
 		}
 		if (WINDOW_DATA.game_scale == 1.5f) {
-			this->__arcade_vm_ptr_C->data.resample_mode = false;
+			this->__arcade_vm_ptr_C->data.resample_mode = ResampleLinearInterp;
 		}
 	}
 	else {
@@ -22491,28 +22545,25 @@ dllexport gnu_noinline void thiscall Supervisor::__setup_stage_camera(UNUSED_ARG
 		anm_manager->flush_sprites();
 	}
 	Float3 facing = camera->facing_normalized;
-	Float3 eye = camera->__shaking_float3_A + camera->position;
+	Float3 eye = camera->__shaking_position + camera->position;
 	Float3 at = eye + facing;
 	D3DXMatrixLookAtLH(&camera->view_matrix, &eye, &at, &camera->rotation);
-
+	
 	float aspect_ratio = (float)camera->viewport.Width / (float)camera->viewport.Height;
 	D3DXMatrixPerspectiveFovLH(&camera->projection_matrix, camera->fov, aspect_ratio, 30.0f, 8000.0f);
 
 	SUPERVISOR.d3d_device->SetTransform(D3DTS_VIEW, &camera->view_matrix);
 	SUPERVISOR.d3d_device->SetTransform(D3DTS_PROJECTION, &camera->projection_matrix);
 
-	Float3 rotation = camera->rotation;
-	camera->__float3_30.x = rotation.z * facing.y - rotation.y * facing.z;
-	camera->__float3_30.y = rotation.x * facing.z - rotation.z * facing.x;
-	camera->__float3_30.z = rotation.y * facing.x - rotation.x * facing.y;
-	D3DXVec3Normalize(&camera->__float3_30, &camera->__float3_30);
+	camera->__side_vector = facing.cross_product(camera->rotation);
+	D3DXVec3Normalize(&camera->__side_vector, &camera->__side_vector);
 
-	camera->__copy_float2_FC_to_anm_manager();
+	camera->__copy_vertex_offsetA_to_anm_manager();
 
 	this->d3d_device->SetViewport(&camera->__viewport_10C);
 
 	AnmManager* anm_manager = ANM_MANAGER_PTR;
-	anm_manager->__float2_D8 = (Float2)this->current_camera_ptr->__int2_104;
+	anm_manager->__vertex_offsetB = (Float2)this->current_camera_ptr->__vertex_offsetB;
 	this->current_camera_index = StdCamera;
 }
 
@@ -22538,8 +22589,8 @@ dllexport gnu_noinline UpdateFuncRet fastcall GameThread::on_draw(void* ptr) {
 	AnmManager* anm_manager = ANM_MANAGER_PTR;
 	anm_manager->__dword_C4 = 0;
 	anm_manager->__dword_C8 = 0;
-	anm_manager->__int_C0 = 0;
-	anm_manager->__int_CC = 0;
+	anm_manager->__counter_C0 = 0;
+	anm_manager->__counter_CC = 0;
 	return UpdateFuncNext;
 }
 
@@ -22591,14 +22642,14 @@ dllexport gnu_noinline void thiscall Gui::cleanup() {
 
 	// this doesn't look like a good idea
 	for (size_t i = 0; i < MAX_BOSS_LIFE_MARKERS; ++i) {
-		this->__boss_life_markers[i] = NULL;
+		this->boss_life_markers[i] = NULL;
 	}
 	nounroll for (size_t i = 0; i < countof(this->__anm_id_array_90); ++i) {
 		this->__anm_id_array_90[i].mark_tree_for_delete();
 	}
 
 	this->__unknown_field_gu_D = -1;
-	this->__boss_life_count = 0;
+	this->boss_life_count = 0;
 
 	// this looks like a worse idea
 	for (size_t i = 0; i < MAX_LIFEBARS_IN_GUI; ++i) {
@@ -22667,28 +22718,48 @@ dllexport gnu_noinline void thiscall Gui::__show_boss_name() {
 	}
 }
 
+inline void Gui::__spell_timer_vms_interrupt(int32_t interrupt) {
+	this->spell_timer_vms[0]->interrupt(interrupt);
+	this->spell_timer_vms[1]->interrupt(interrupt);
+}
+
+inline void Gui::__spell_timer_vms_interrupt_and_run(int32_t interrupt) {
+	this->spell_timer_vms[0]->interrupt_and_run(interrupt);
+	this->spell_timer_vms[1]->interrupt_and_run(interrupt);
+}
+
+inline void Gui::__show_spell_timer_anms() {
+	this->spell_timer_vms[0]->__show_tree();
+	this->spell_timer_vms[1]->__show_tree();
+}
+
+inline void Gui::__hide_spell_timer_anms() {
+	this->spell_timer_vms[0]->__hide_tree();
+	this->spell_timer_vms[1]->__hide_tree();
+}
+
 // 0x442330
-dllexport gnu_noinline void Gui::__hide_vm_id_114() {
-	GUI_PTR->__anm_id_114.__tree_clear_visible2();
+dllexport gnu_noinline void __hide_gui_vm_id_114() asm_symbol_rel(0x442330);
+dllexport gnu_noinline void __hide_gui_vm_id_114() {
+	GUI_PTR->__anm_id_114.__hide_tree();
 }
 
 // 0x442370
-dllexport gnu_noinline void Gui::__show_vm_id_114() {
-	GUI_PTR->__anm_id_114.__tree_set_visible2();
+dllexport gnu_noinline void __show_gui_vm_id_114() asm_symbol_rel(0x442370);
+dllexport gnu_noinline void __show_gui_vm_id_114() {
+	GUI_PTR->__anm_id_114.__show_tree();
 }
 
 // 0x429C30
-dllexport gnu_noinline void Gui::__spell_timer_vms_interrupt_3() {
-	Gui* gui = GUI_PTR;
-	gui->spell_timer_vms[0]->interrupt_and_run(3);
-	gui->spell_timer_vms[1]->interrupt_and_run(3);
+dllexport gnu_noinline void __spell_timer_vms_interrupt_and_run_3() asm_symbol_rel(0x429C30);
+dllexport gnu_noinline void __spell_timer_vms_interrupt_and_run_3() {
+	GUI_PTR->__spell_timer_vms_interrupt_and_run(3);
 }
 
 // 0x457810
-dllexport gnu_noinline void Gui::__hide_spell_timer_anms() {
-	Gui* gui = GUI_PTR;
-	gui->spell_timer_vms[0]->__tree_clear_visible2();
-	gui->spell_timer_vms[1]->__tree_clear_visible2();
+dllexport gnu_noinline void __hide_spell_timer_anms() asm_symbol_rel(0x457810);
+dllexport gnu_noinline void __hide_spell_timer_anms() {
+	GUI_PTR->__hide_spell_timer_anms();
 }
 
 // 0x441ED0
@@ -22728,33 +22799,33 @@ dllexport gnu_noinline void vectorcall MsgVM::__sub_4416D0(int, float, float x, 
 // 0x4412B0
 dllexport gnu_noinline void thiscall MsgVM::__hide_all_anms() {
 	for (size_t i = 0; i != MAX_PORTRAIT_COUNT; ++i) {
-		this->player_portraits[i].__tree_clear_visible2();
-		this->enemy_portraits[i].__tree_clear_visible2();
+		this->player_portraits[i].__hide_tree();
+		this->enemy_portraits[i].__hide_tree();
 	}
-	this->__anm_id_60.__tree_clear_visible2();
-	this->dialogue_lines[0].__tree_clear_visible2();
-	this->dialogue_lines[1].__tree_clear_visible2();
-	this->furigana_lines[0].__tree_clear_visible2();
-	this->furigana_lines[1].__tree_clear_visible2();
-	this->intro.__tree_clear_visible2();
-	this->__anm_id_7C.__tree_clear_visible2();
-	this->__callout_related.__tree_clear_visible2();
+	this->__anm_id_60.__hide_tree();
+	this->dialogue_lines[0].__hide_tree();
+	this->dialogue_lines[1].__hide_tree();
+	this->furigana_lines[0].__hide_tree();
+	this->furigana_lines[1].__hide_tree();
+	this->intro.__hide_tree();
+	this->__anm_id_7C.__hide_tree();
+	this->__callout_related.__hide_tree();
 }
 
 // 0x4414C0
 dllexport gnu_noinline void thiscall MsgVM::__show_all_anms() {
 	for (size_t i = 0; i != MAX_PORTRAIT_COUNT; ++i) {
-		this->player_portraits[i].__tree_set_visible2();
-		this->enemy_portraits[i].__tree_set_visible2();
+		this->player_portraits[i].__show_tree();
+		this->enemy_portraits[i].__show_tree();
 	}
-	this->__anm_id_60.__tree_set_visible2();
-	this->dialogue_lines[0].__tree_set_visible2();
-	this->dialogue_lines[1].__tree_set_visible2();
-	this->furigana_lines[0].__tree_set_visible2();
-	this->furigana_lines[1].__tree_set_visible2();
-	this->intro.__tree_set_visible2();
-	this->__anm_id_7C.__tree_set_visible2();
-	this->__callout_related.__tree_set_visible2();
+	this->__anm_id_60.__show_tree();
+	this->dialogue_lines[0].__show_tree();
+	this->dialogue_lines[1].__show_tree();
+	this->furigana_lines[0].__show_tree();
+	this->furigana_lines[1].__show_tree();
+	this->intro.__show_tree();
+	this->__anm_id_7C.__show_tree();
+	this->__callout_related.__show_tree();
 }
 
 // 0x457570
@@ -23337,30 +23408,30 @@ struct ScreenEffect : ZUNTask {
 
 				switch (RNG.rand_uint_range(3)) {
 					case 2:
-						SUPERVISOR.cameras[StdCamera].__float2_FC.x = -A;
-						SUPERVISOR.cameras[1].__float2_FC.x = A * WINDOW_DATA.game_scale;
+						SUPERVISOR.cameras[StdCamera].__vertex_offsetA.x = -A;
+						SUPERVISOR.cameras[1].__vertex_offsetA.x = A * WINDOW_DATA.game_scale;
 						break;
 					case 1:
-						SUPERVISOR.cameras[StdCamera].__float2_FC.x = A;
-						SUPERVISOR.cameras[1].__float2_FC.x = A * WINDOW_DATA.game_scale;
+						SUPERVISOR.cameras[StdCamera].__vertex_offsetA.x = A;
+						SUPERVISOR.cameras[1].__vertex_offsetA.x = A * WINDOW_DATA.game_scale;
 						break;
 					case 0:
-						SUPERVISOR.cameras[StdCamera].__float2_FC.x = 0.0f;
-						SUPERVISOR.cameras[1].__float2_FC.x = 0.0f;
+						SUPERVISOR.cameras[StdCamera].__vertex_offsetA.x = 0.0f;
+						SUPERVISOR.cameras[1].__vertex_offsetA.x = 0.0f;
 						break;
 				}
 				switch (RNG.rand_uint_range(3)) {
 					case 2:
-						SUPERVISOR.cameras[StdCamera].__float2_FC.y = -A;
-						SUPERVISOR.cameras[1].__float2_FC.y = A * WINDOW_DATA.game_scale;
+						SUPERVISOR.cameras[StdCamera].__vertex_offsetA.y = -A;
+						SUPERVISOR.cameras[1].__vertex_offsetA.y = A * WINDOW_DATA.game_scale;
 						break;
 					case 1:
-						SUPERVISOR.cameras[StdCamera].__float2_FC.y = A;
-						SUPERVISOR.cameras[1].__float2_FC.y = A * WINDOW_DATA.game_scale;
+						SUPERVISOR.cameras[StdCamera].__vertex_offsetA.y = A;
+						SUPERVISOR.cameras[1].__vertex_offsetA.y = A * WINDOW_DATA.game_scale;
 						break;
 					case 0:
-						SUPERVISOR.cameras[StdCamera].__float2_FC.y = 0.0f;
-						SUPERVISOR.cameras[1].__float2_FC.y = 0.0f;
+						SUPERVISOR.cameras[StdCamera].__vertex_offsetA.y = 0.0f;
+						SUPERVISOR.cameras[1].__vertex_offsetA.y = 0.0f;
 						break;
 				}
 				return UpdateFuncNext;
@@ -23461,7 +23532,7 @@ struct ScreenEffect : ZUNTask {
 			if (
 				game_thread_ptr &&
 				!(game_thread_ptr->__unknown_flag_gt_A | game_thread_ptr->skip_flag) &&
-				!(game_thread_ptr->__unknown_flag_gt_B | game_thread_ptr->__unknown_flag_gt_I | game_thread_ptr->__unknown_flag_gt_L | game_thread_ptr->__unknown_flag_gt_M)
+				!(game_thread_ptr->__pause_world | game_thread_ptr->__unknown_flag_gt_I | game_thread_ptr->__unknown_flag_gt_L | game_thread_ptr->__unknown_flag_gt_M)
 			) {
 				self->timer++;
 
@@ -23492,30 +23563,30 @@ struct ScreenEffect : ZUNTask {
 
 				switch (RNG.rand_uint_range(3)) {
 					case 2:
-						SUPERVISOR.cameras[StdCamera].__float2_FC.x = -E;
-						SUPERVISOR.cameras[1].__float2_FC.x = E * WINDOW_DATA.game_scale;
+						SUPERVISOR.cameras[StdCamera].__vertex_offsetA.x = -E;
+						SUPERVISOR.cameras[1].__vertex_offsetA.x = E * WINDOW_DATA.game_scale;
 						break;
 					case 1:
-						SUPERVISOR.cameras[StdCamera].__float2_FC.x = E;
-						SUPERVISOR.cameras[1].__float2_FC.x = E * WINDOW_DATA.game_scale;
+						SUPERVISOR.cameras[StdCamera].__vertex_offsetA.x = E;
+						SUPERVISOR.cameras[1].__vertex_offsetA.x = E * WINDOW_DATA.game_scale;
 						break;
 					case 0:
-						SUPERVISOR.cameras[StdCamera].__float2_FC.x = 0.0f;
-						SUPERVISOR.cameras[1].__float2_FC.x = 0.0f;
+						SUPERVISOR.cameras[StdCamera].__vertex_offsetA.x = 0.0f;
+						SUPERVISOR.cameras[1].__vertex_offsetA.x = 0.0f;
 						break;
 				}
 				switch (RNG.rand_uint_range(3)) {
 					case 2:
-						SUPERVISOR.cameras[StdCamera].__float2_FC.y = -E;
-						SUPERVISOR.cameras[1].__float2_FC.y = E * WINDOW_DATA.game_scale;
+						SUPERVISOR.cameras[StdCamera].__vertex_offsetA.y = -E;
+						SUPERVISOR.cameras[1].__vertex_offsetA.y = E * WINDOW_DATA.game_scale;
 						break;
 					case 1:
-						SUPERVISOR.cameras[StdCamera].__float2_FC.y = E;
-						SUPERVISOR.cameras[1].__float2_FC.y = E * WINDOW_DATA.game_scale;
+						SUPERVISOR.cameras[StdCamera].__vertex_offsetA.y = E;
+						SUPERVISOR.cameras[1].__vertex_offsetA.y = E * WINDOW_DATA.game_scale;
 						break;
 					case 0:
-						SUPERVISOR.cameras[StdCamera].__float2_FC.y = 0.0f;
-						SUPERVISOR.cameras[1].__float2_FC.y = 0.0f;
+						SUPERVISOR.cameras[StdCamera].__vertex_offsetA.y = 0.0f;
+						SUPERVISOR.cameras[1].__vertex_offsetA.y = 0.0f;
 						break;
 				}
 			}
@@ -23984,9 +24055,9 @@ ValidateFieldOffset32(0x203C, EffectManager, __done_loading);
 ValidateStructSize32(0x2040, EffectManager);
 #pragma endregion
 
-inline void StageCamera::__copy_float2_FC_to_anm_manager() {
+inline void StageCamera::__copy_vertex_offsetA_to_anm_manager() {
 	if (AnmManager* anm_manager = ANM_MANAGER_PTR) {
-		anm_manager->__float2_D0 = this->__float2_FC;
+		anm_manager->__vertex_offsetA = this->__vertex_offsetA;
 	}
 }
 
@@ -24062,7 +24133,7 @@ dllexport void thiscall Supervisor::set_camera_by_index(uint32_t index) {
 	this->__sub_4548E0(camera);
 	this->d3d_device->SetViewport(&this->current_camera_ptr->__viewport_10C);
 	AnmManager* anm_manager = ANM_MANAGER_PTR;
-	anm_manager->__float2_D8 = (Float2)this->current_camera_ptr->__int2_104;
+	anm_manager->__vertex_offsetB = (Float2)this->current_camera_ptr->__vertex_offsetB;
 	this->current_camera_index = index;
 }
 // 0x41B3B0
@@ -24072,7 +24143,7 @@ dllexport gnu_noinline void stdcall Supervisor::set_camera2_alt(uint32_t) {
 	SUPERVISOR.__sub_4548E0(camera);
 	SUPERVISOR.d3d_device->SetViewport(&SUPERVISOR.current_camera_ptr->__viewport_124);
 	AnmManager* anm_manager = ANM_MANAGER_PTR;
-	anm_manager->__float2_D8 = (Float2)SUPERVISOR.current_camera_ptr->__int2_104;
+	anm_manager->__vertex_offsetB = (Float2)SUPERVISOR.current_camera_ptr->__vertex_offsetB;
 	SUPERVISOR.current_camera_index = 2;
 }
 
@@ -24082,7 +24153,7 @@ inline void thiscall Supervisor::set_camera_by_index_disable_fog(uint32_t index)
 	this->__sub_4548E0(camera);
 	this->d3d_device->SetViewport(&this->current_camera_ptr->__viewport_10C);
 	AnmManager* anm_manager = ANM_MANAGER_PTR;
-	anm_manager->__float2_D8 = (Float2)this->current_camera_ptr->__int2_104;
+	anm_manager->__vertex_offsetB = (Float2)this->current_camera_ptr->__vertex_offsetB;
 	this->current_camera_index = index;
 	if (this->fog_enabled != FALSE) {
 		anm_manager->flush_sprites();
@@ -24113,7 +24184,7 @@ dllexport gnu_noinline void stdcall Supervisor::__sub_4548E0(StageCamera* camera
 	}
 	SUPERVISOR.d3d_device->SetTransform(D3DTS_VIEW, &camera->view_matrix);
 	SUPERVISOR.d3d_device->SetTransform(D3DTS_PROJECTION, &camera->projection_matrix);
-	camera->__copy_float2_FC_to_anm_manager();
+	camera->__copy_vertex_offsetA_to_anm_manager();
 }
 
 #pragma region // AnmLoaded instantiate funcs
@@ -24130,8 +24201,8 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm(AnmID& out, int32_t script_i
 		vm->data.rand_mode = NormalRNG;
 		if (layer >= 0) {
 			vm->data.layer = layer;
-			if (layer < 23) {
-				vm->data.origin_mode = 1;
+			if (layer <= 23) {
+				vm->data.origin_mode = OriginFixedResolution; // 1
 			}
 		}
 		if (!position && !flags.__unknown_flag_B) {
@@ -24139,7 +24210,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm(AnmID& out, int32_t script_i
 		}
 		else if (position) {
 			if (flags.__unknown_flag_A) {
-				vm->controller.position = *position + (Float2){ 320.0f, 16.0f };
+				vm->controller.position = *position + Float2(320.0f, 16.0f);
 			} else {
 				vm->controller.position = *position;
 			}
@@ -24147,15 +24218,15 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm(AnmID& out, int32_t script_i
 		vm->data.rotation.z = z_rotation;
 		vm->run_anm();
 		vm->data.creation_flags = flags;
-		out = 0;
+		out = NULL;
 		switch (flags.list_type) {
 			case UiListFront:
 				out = AnmManager::add_vm_to_ui_list_front(vm);
-				vm->data.__unknown_field_av_B = 0;
+				vm->data.__run_type = AnmRunType::Always; // 0
 				break;
 			case UiListBack:
 				out = AnmManager::add_vm_to_ui_list_back(vm);
-				vm->data.__unknown_field_av_B = 0;
+				vm->data.__run_type = AnmRunType::Always; // 0
 				break;
 			case WorldListFront:
 				out = AnmManager::add_vm_to_world_list_front(vm);
@@ -24195,11 +24266,11 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, 
 		vm->data.rand_mode = NormalRNG;
 		if (layer >= 0) {
 			vm->data.layer = layer;
-			if (layer < 23) {
-				vm->data.origin_mode = 1;
+			if (layer <= 23) {
+				vm->data.origin_mode = OriginFixedResolution; // 1
 			}
 		}
-		vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
+		vm->controller.position = { 0.0f, 0.0f, 0.0f };
 		vm->data.rotation.z = 0.0f;
 		vm->run_anm();
 		vm->data.creation_flags = WORLD_LIST_BACK;
@@ -24238,8 +24309,8 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, 
 		vm->data.rand_mode = NormalRNG;
 		if (layer >= 0) {
 			vm->data.layer = layer;
-			if (layer < 23) {
-				vm->data.origin_mode = 1;
+			if (layer <= 23) {
+				vm->data.origin_mode = OriginFixedResolution; // 1
 			}
 		}
 		vm->controller.position.safe_copy(position);
@@ -24265,15 +24336,15 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& ou
 		vm->data.rand_mode = NormalRNG;
 		if (layer >= 0) {
 			vm->data.layer = layer;
-			if (layer < 23) {
-				vm->data.origin_mode = 1;
+			if (layer <= 23) {
+				vm->data.origin_mode = OriginFixedResolution; // 1
 			}
 		}
-		vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
+		vm->controller.position = { 0.0f, 0.0f, 0.0f };
 		vm->data.rotation.z = 0.0f;
 		vm->run_anm();
 		vm->data.creation_flags = WORLD_LIST_BACK;
-		out = 0;
+		out = NULL;
 		out = AnmManager::add_vm_to_world_list_back(vm);
 	}
 	CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
@@ -24290,7 +24361,7 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, 
 		vm->data.rotation.z = z_rotation;
 		vm->run_anm();
 		vm->data.creation_flags = WORLD_LIST_BACK;
-		out = 0;
+		out = NULL;
 		out = AnmManager::add_vm_to_world_list_back(vm);
 	}
 	CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
@@ -24305,15 +24376,15 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, 
 		vm->data.rand_mode = NormalRNG;
 		if (layer >= 0) {
 			vm->data.layer = layer;
-			if (layer < 23) {
-				vm->data.origin_mode = 1;
+			if (layer <= 23) {
+				vm->data.origin_mode = OriginFixedResolution; // 1
 			}
 		}
 		vm->controller.position.safe_copy(position);
 		vm->data.rotation.z = z_rotation;
 		vm->run_anm();
 		vm->data.creation_flags = WORLD_LIST_BACK;
-		out = 0;
+		out = NULL;
 		out = AnmManager::add_vm_to_world_list_back(vm);
 	}
 	CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
@@ -24332,15 +24403,15 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& ou
 		vm->data.rand_mode = NormalRNG;
 		if (layer >= 0) {
 			vm->data.layer = layer;
-			if (layer < 23) {
-				vm->data.origin_mode = 1;
+			if (layer <= 23) {
+				vm->data.origin_mode = OriginFixedResolution; // 1
 			}
 		}
 		vm->controller.position.safe_copy(position);
 		vm->data.rotation.z = z_rotation;
 		vm->run_anm();
 		vm->data.creation_flags = WORLD_LIST_BACK;
-		out = 0;
+		out = NULL;
 		out = AnmManager::add_vm_to_world_list_back(vm);
 	}
 	CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
@@ -24354,11 +24425,11 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& out,
 		AnmVM* vm = AnmManager::allocate_new_vm();
 		this->__copy_data_to_vm(vm, script_index);
 		vm->data.rand_mode = NormalRNG;
-		vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
+		vm->controller.position = { 0.0f, 0.0f, 0.0f };
 		vm->data.rotation.z = 0.0f;
 		vm->run_anm();
 		vm->data.creation_flags = WORLD_LIST_FRONT;
-		out = 0;
+		out = NULL;
 		out = AnmManager::add_vm_to_world_list_front(vm);
 	}
 	CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
@@ -24376,7 +24447,7 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& out,
 		vm->data.rotation.z = 0.0f;
 		vm->run_anm();
 		vm->data.creation_flags = WORLD_LIST_FRONT;
-		out = 0;
+		out = NULL;
 		out = AnmManager::add_vm_to_world_list_front(vm);
 	}
 	CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
@@ -24393,15 +24464,15 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& o
 		vm->data.rand_mode = NormalRNG;
 		if (layer >= 0) {
 			vm->data.layer = layer;
-			if (layer < 23) {
-				vm->data.origin_mode = 1;
+			if (layer <= 23) {
+				vm->data.origin_mode = OriginFixedResolution; // 1
 			}
 		}
-		vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
+		vm->controller.position = { 0.0f, 0.0f, 0.0f };
 		vm->data.rotation.z = 0.0f;
 		vm->run_anm();
 		vm->data.creation_flags = WORLD_LIST_FRONT;
-		out = 0;
+		out = NULL;
 		out = AnmManager::add_vm_to_world_list_front(vm);
 	}
 	CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
@@ -24420,7 +24491,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& o
 		vm->data.rotation.z = z_rotation;
 		vm->run_anm();
 		vm->data.creation_flags = WORLD_LIST_FRONT;
-		out = 0;
+		out = NULL;
 		out = AnmManager::add_vm_to_world_list_front(vm);
 	}
 	CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
@@ -24435,13 +24506,13 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, 
 		AnmVM* vm = AnmManager::allocate_new_vm();
 		this->__copy_data_to_vm(vm, script_index);
 		vm->data.rand_mode = NormalRNG;
-		vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
+		vm->controller.position = { 0.0f, 0.0f, 0.0f };
 		vm->data.rotation.z = 0.0f;
 		vm->run_anm();
 		vm->data.creation_flags = UI_LIST_BACK;
-		out = 0;
+		out = NULL;
 		out = AnmManager::add_vm_to_ui_list_back(vm);
-		vm->data.__unknown_field_av_B = 0;
+		vm->data.__run_type = AnmRunType::Always; // 0
 	}
 	CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
 	return out;
@@ -24459,9 +24530,9 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, 
 		vm->data.rotation.z = 0.0f;
 		vm->run_anm();
 		vm->data.creation_flags = UI_LIST_BACK;
-		out = 0;
+		out = NULL;
 		out = AnmManager::add_vm_to_ui_list_back(vm);
-		vm->data.__unknown_field_av_B = 0;
+		vm->data.__run_type = AnmRunType::Always; // 0
 	}
 	CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
 	return out;
@@ -24481,9 +24552,9 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, int
 		vm->data.rotation.z = 0.0f;
 		vm->run_anm();
 		vm->data.creation_flags = UI_LIST_BACK;
-		out = 0;
+		out = NULL;
 		out = AnmManager::add_vm_to_ui_list_back(vm);
-		vm->data.__unknown_field_av_B = 0;
+		vm->data.__run_type = AnmRunType::Always; // 0
 	}
 	CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
 	return out;
@@ -24501,9 +24572,9 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_front(AnmID& out,
 		vm->data.rotation.z = 0.0f;
 		vm->run_anm();
 		vm->data.creation_flags = UI_LIST_FRONT;
-		out = 0;
+		out = NULL;
 		out = AnmManager::add_vm_to_ui_list_front(vm);
-		vm->data.__unknown_field_av_B = 0;
+		vm->data.__run_type = AnmRunType::Always; // 0
 	}
 	CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
 	return out;
@@ -24517,7 +24588,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_child_vm(AnmID& out, int32_t sc
 		AnmVM* vm = AnmManager::allocate_new_vm();
 		vm->data.rand_mode = NormalRNG;
 		vm->data.layer = parent->data.layer;
-		vm->controller.position = (Float3){ 0.0f, 0.0f, 0.0f };
+		vm->controller.position = { 0.0f, 0.0f, 0.0f };
 		this->__copy_data_to_vm(vm, script_index);
 		vm->data.colorize_children = parent->data.colorize_children;
 		vm->controller.parent = parent;
@@ -24525,13 +24596,15 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_child_vm(AnmID& out, int32_t sc
 		vm->controller.__root_vm = root ? root : parent;
 		vm->run_anm();
 		vm->data.creation_flags = flags;
-		out = 0;
+		out = NULL;
 		switch (flags.list_type) {
 			case UiListFront:
 				out = AnmManager::add_vm_to_ui_list_front(vm);
+				//vm->data.__run_type = AnmRunType::Always; // 0
 				break;
 			case UiListBack:
 				out = AnmManager::add_vm_to_ui_list_back(vm);
+				//vm->data.__run_type = AnmRunType::Always; // 0
 				break;
 			case WorldListFront:
 				out = AnmManager::add_vm_to_world_list_front(vm);
@@ -24561,7 +24634,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_orphan_vm_to_world_list_back(An
 		vm->data.__position_2 = parent->data.position;
 		vm->run_anm();
 		vm->data.creation_flags = WORLD_LIST_BACK;
-		out = 0;
+		out = NULL;
 		out = AnmManager::add_vm_to_world_list_back(vm);
 	}
 	CRITICAL_SECTION_MANAGER.leave_section(AnmList_CS);
@@ -24590,7 +24663,7 @@ inline AnmVM* AnmID::get_vm_ptr_safe() {
 	AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this);
 	if (!vm) {
 		this->full = NULL;
-		vm = &ANM_MANAGER_PTR->__vm_E4;
+		vm = &ANM_MANAGER_PTR->dummy_vm;
 	}
 	return vm;
 }
@@ -24623,32 +24696,32 @@ inline void AnmID::interrupt_and_run_tree(int32_t interrupt_index) {
 	AnmManager::interrupt_and_run_tree(*this, interrupt_index);
 }
 
-inline void AnmID::__tree_set_visible2(AnmManager* anm_manager) {
+inline void AnmID::__show_tree(AnmManager* anm_manager) {
 	if (AnmVM* vm = anm_manager->get_vm_with_id(*this)) {
 		vm->data.__visible2 = true;
 		vm->controller.child_list.for_each([](AnmVM* vm) static_lambda {
-			vm->__tree_set_visible2();
+			vm->__show_tree();
 		});
 	}
 }
 
 // 0x488E70
-dllexport void AnmID::__tree_set_visible2() {
-	this->__tree_set_visible2(ANM_MANAGER_PTR);
+dllexport void AnmID::__show_tree() {
+	this->__show_tree(ANM_MANAGER_PTR);
 }
 
-inline void AnmID::__tree_clear_visible2(AnmManager* anm_manager) {
+inline void AnmID::__hide_tree(AnmManager* anm_manager) {
 	if (AnmVM* vm = anm_manager->get_vm_with_id(*this)) {
 		vm->data.__visible2 = false;
 		vm->controller.child_list.for_each([](AnmVM* vm) static_lambda {
-			vm->__tree_clear_visible2();
+			vm->__hide_tree();
 		});
 	}
 }
 
 // 0x488EB0
-dllexport void AnmID::__tree_clear_visible2() {
-	this->__tree_clear_visible2(ANM_MANAGER_PTR);
+dllexport void AnmID::__hide_tree() {
+	this->__hide_tree(ANM_MANAGER_PTR);
 }
 
 inline void AnmID::mark_tree_for_delete(AnmManager* anm_manager) {
@@ -24801,38 +24874,32 @@ inline void AnmID::set_sprite_size(float value) {
 	if (AnmVM* vm = this->get_vm_ptr()) vm->set_sprite_size(value);
 }
 
+// 0x4892F0
+dllexport void thiscall AnmID::set_color1(D3DCOLOR color) {
+	// Branch originally predicted false
+	if (AnmVM* vm = this->get_vm_ptr()) vm->data.color1 = color;
+}
+
 // 0x488FD0
-dllexport gnu_noinline void thiscall AnmID::__set_script(int32_t script) {
+dllexport gnu_noinline void thiscall AnmID::__set_new_script(int32_t script) {
 	AnmManager* anm_manager_ptr = ANM_MANAGER_PTR;
 	if (AnmVM* vm = anm_manager_ptr->get_vm_with_id(*this)) {
 		AnmLoaded* anm_loaded = anm_manager_ptr->loaded_anm_files[vm->data.slot];
 		vm->data.visible = false;
+		vm->data.current_instruction_offset = -1;
 		*this = anm_loaded->instantiate_vm_to_world_list_back(script);
 		vm->data.slot = anm_loaded->slot_index;
 		vm->data.slot2 = anm_loaded->slot_index;
 	}
 }
 
-// 0x4892F0
-dllexport void thiscall AnmID::set_color1(D3DCOLOR color) {
-	AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this);
-	if (!vm) {
-		this->full = NULL;
-		return;
-	}
-	vm->data.color1 = color;
-}
-
 // 0x489230
 dllexport gnu_noinline AnmVM* thiscall AnmID::__find_child_vm_with_script(int32_t script, uint32_t minimum_hierarchy_depth) {
-	AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this);
-	if (!vm) {
-		this->full = 0;
-		return NULL;
+	// Branch originally predicted false
+	if (this->has_live_vm()) {
+		return this->get_vm_ptr()->__find_child_vm_with_script(script, minimum_hierarchy_depth);
 	}
-	// zun, you literally just checked the ID
-	// why
-	return this->get_vm_ptr()->__find_child_vm_with_script(script, minimum_hierarchy_depth);
+	return NULL;
 }
 
 // 0x489140
@@ -24843,17 +24910,17 @@ dllexport gnu_noinline AnmID& thiscall AnmID::__find_child_id_with_script(AnmID&
 		out = vm->controller.id;
 		return out;
 	}
-	out = 0;
+	out = NULL;
 	return out;
 }
 
-inline void AnmLoaded::__prepare_vm_data(AnmVM* vm, int32_t script_id) {
+inline void AnmLoaded::__set_script(AnmVM* vm, int32_t script_id) {
 	vm->data.script_id2 = script_id;
 	vm->data.slot = this->slot_index;
 	vm->data.slot2 = this->slot_index;
 	vm->data.mirror_x = false;
 	vm->data.mirror_y = false;
-	vm->data.__unknown_field_av_B = 2;
+	vm->data.__run_type = AnmRunType::RunType2; // 2
 	vm->data.script_id = script_id;
 	vm->data.current_instruction_offset = 0;
 	vm->controller.__timer_1C.reset();
@@ -24861,63 +24928,28 @@ inline void AnmLoaded::__prepare_vm_data(AnmVM* vm, int32_t script_id) {
 	vm->data.visible = false;
 }
 
-inline void AnmLoaded::__prepare_vm(AnmVM* vm, int32_t script_id) {
+inline void AnmLoaded::__set_new_script(AnmVM* vm, int32_t script_id) {
 	if ((*this->scripts)[script_id]) {
 		vm->reset();
-		this->__prepare_vm_data(vm, script_id);
+		this->__set_script(vm, script_id);
 	} else {
 		vm->zero_contents();
 	}
 }
 
-dllexport void AnmLoaded::__sub_477D60(AnmVM* vm, int32_t script_id) {
+// 0x477D60
+dllexport void AnmLoaded::__set_script_and_run(AnmVM* vm, int32_t script_id) {
 	if ((*this->scripts)[script_id] && !this->__load_wait) {
-		this->__prepare_vm_data(vm, script_id);
+		this->__set_script(vm, script_id);
 		vm->run_anm();
-		ANM_MANAGER_PTR->__int_C0++;
-		if (vm->data.__unknown_field_av_B == 2) {
-			vm->data.__unknown_field_av_B = 1;
+		ANM_MANAGER_PTR->__counter_C0++;
+		if (vm->data.__run_type == AnmRunType::RunType2) { // 2
+			vm->data.__run_type = AnmRunType::Pausable; // 1
 		}
 	} else {
 		vm->zero_contents();
 	}
 }
-
-//template<size_t initial_size, size_t batch_size>
-//struct AnmVMIDHack {
-//    AnmVM** id_array = (AnmVM**)calloc(initial_size, sizeof(AnmVM*));
-//    size_t array_size = initial_size;
-//    size_t previous_index = 0;
-//
-//    dllexport gnu_noinline AnmVM** allocate_anm_id() {
-//        AnmVM** id_array = this->id_array;
-//        AnmVM** new_id = &id_array[this->previous_index];
-//        AnmVM** starting_id = new_id;
-//        AnmVM** array_end_id = &id_array[this->array_size];
-//        do {
-//            if (unpredictable(!*new_id)) {
-//                this->previous_index = new_id - id_array;
-//                return new_id;
-//            }
-//            ++new_id;
-//            if (expect(new_id == array_end_id, false)) {
-//                new_id = id_array;
-//            }
-//        } while (expect(new_id != starting_id, true));
-//        size_t prev_size = this->array_size;
-//        size_t new_size = prev_size + batch_size;
-//        auto new_array = (AnmVM**)realloc(id_array, sizeof(AnmVM*) * new_size);
-//        if (expect(new_array != NULL, true)) {
-//            this->id_array = new_array;
-//            this->array_size = new_size;
-//            this->previous_index = prev_size;
-//            return (AnmVM**)__builtin_memset(&new_array[prev_size], 0, sizeof(AnmVM*) * batch_size);
-//        }
-//        return NULL;
-//    }
-//};
-//
-//dllexport AnmVMIDHack<0x8000, 0x100> anm_hack;
 
 // 0x4573F0
 dllexport gnu_noinline BOOL thiscall Globals::add_power(int32_t amount) {
@@ -25254,8 +25286,7 @@ struct AsciiManager : ZUNTask {
 		this->__unknown_task_flag_A = true;
 		this->color = COLOR(255, 255, 255, 255);
 		this->color2 = COLOR(255, 0, 0, 0);
-		this->scale.x = 1.0f;
-		this->scale.y = 1.0f;
+		this->scale.splat(1.0f);
 		this->__dword_1923C = 0;
 		this->__character_spacing_for_font_0 = 9;
 		this->__horizontal_positioning_mode = 1;
@@ -25281,9 +25312,9 @@ struct AsciiManager : ZUNTask {
 	// 0x41A2B0
 	dllexport gnu_noinline void thiscall draw_string(AsciiString* string) asm_symbol_rel(0x41A2B0) {
 		int32_t length = byteloop_strlen(string->text);
-		this->__vm_C.data.resolution_mode = 0;
-		this->__vm_C.data.x_anchor_mode = 1;
-		this->__vm_C.data.y_anchor_mode = 1;
+		this->__vm_C.data.resolution_mode = ResolutionNoScaling; // 0
+		this->__vm_C.data.x_anchor_mode = AnchorXLeft; // 1
+		this->__vm_C.data.y_anchor_mode = AnchorYTop; // 1
 		this->__vm_C.data.visible = true;
 		this->__vm_C.data.position = string->position;
 		this->__vm_C.set_scale(string->scale);
@@ -25291,49 +25322,49 @@ struct AsciiManager : ZUNTask {
 		Float2 scale;
 		switch (string->font_id) {
 			case 1:
-				this->__vm_C.data.disable_z_write = false;
+				this->__vm_C.data.resample_mode = ResampleLinearInterp;
 				scale = this->__vm_C.data.scale;
 				scale.x *= 6.0f;
 				scale.y *= 9.0f;
 				break;
 			case 6: case 8:
-				this->__vm_C.data.disable_z_write = this->__vm_C.data.scale.x != 1.0f;
+				this->__vm_C.data.resample_mode = this->__vm_C.data.scale.x != 1.0f ? ResampleNearestPoint : ResampleLinearInterp;
 				scale = this->__vm_C.data.scale;
 				scale.x *= 12.0f;
 				scale.y *= 16.0f;
 				break;
 			case 7: case 9:
-				this->__vm_C.data.disable_z_write = this->__vm_C.data.scale.x != 1.0f;
+				this->__vm_C.data.resample_mode = this->__vm_C.data.scale.x != 1.0f ? ResampleNearestPoint : ResampleLinearInterp;
 				scale = this->__vm_C.data.scale;
 				scale.x *= 17.0f;
 				scale.y *= 23.0f;
 				break;
 			case 2:
-				this->__vm_C.data.disable_z_write = false;
+				this->__vm_C.data.resample_mode = ResampleLinearInterp;
 				scale = this->__vm_C.data.scale;
 				scale.x *= 7.0f;
 				scale.y *= 10.0f;
 				break;
 			case 3:
-				this->__vm_C.data.disable_z_write = true;
+				this->__vm_C.data.resample_mode = ResampleNearestPoint;
 				scale = this->__vm_C.data.scale;
 				scale.x *= 7.0f;
 				scale.y *= 10.0f;
 				break;
 			case 4: case 10: case 11:
-				this->__vm_C.data.disable_z_write = false;
+				this->__vm_C.data.resample_mode = ResampleLinearInterp;
 				scale = this->__vm_C.data.scale;
 				scale.x *= 12.0f;
 				scale.y *= 16.0f;
 				break;
 			case 5:
-				this->__vm_C.data.disable_z_write = true;
+				this->__vm_C.data.resample_mode = ResampleNearestPoint;
 				scale = this->__vm_C.data.scale;
 				scale.x *= 12.0f;
 				scale.y *= 16.0f;
 				break;
 			default:
-				this->__vm_C.data.disable_z_write = this->__vm_C.data.scale.x != 1.0f;
+				this->__vm_C.data.resample_mode = this->__vm_C.data.scale.x != 1.0f ? ResampleNearestPoint : ResampleLinearInterp;
 				scale = this->__vm_C.data.scale;
 				scale.x *= this->__character_spacing_for_font_0;
 				scale.y *= 14.0f;
@@ -25601,15 +25632,13 @@ struct AsciiManager : ZUNTask {
 							break;
 						}
 					}
-					this->__vm_C.data.scale_enabled = true;
-					this->__vm_C.data.sprite_size.x = size_x;
-					this->__vm_C.data.sprite_size.y = size_y;
+					this->__vm_C.set_sprite_size(size_x, size_y);
 					if (string->enable_shadows) {
 						this->__vm_C.data.color1 = string->color & 0xFF000000;
 						ALPHA(this->__vm_C.data.color1) = string->color >> 25;
 						this->__vm_C.data.position.x += WINDOW_DATA.game_scale * 2.0f;
 						this->__vm_C.data.position.y += WINDOW_DATA.game_scale * 2.0f;
-						this->__vm_C.data.disable_z_write = this->__vm_C.data.scale.x != 1.0f;
+						this->__vm_C.data.resample_mode = this->__vm_C.data.scale.x != 1.0f ? ResampleNearestPoint : ResampleLinearInterp;
 						this->__vm_C.__get_vertex_positions(&SPRITE_VERTEX_BUFFER_A[0].position, &SPRITE_VERTEX_BUFFER_A[1].position, &SPRITE_VERTEX_BUFFER_A[2].position, &SPRITE_VERTEX_BUFFER_A[3].position);
 						anm_manager_ptr->__render_vertices(&this->__vm_C, RENDER_VERTICES_ROUND_INPUTS);
 						anm_manager_ptr = ANM_MANAGER_PTR;
@@ -25669,9 +25698,9 @@ struct AsciiManager : ZUNTask {
 		AsciiManager* self = (AsciiManager*)ptr;
 		SUPERVISOR.set_camera_by_index(0);
 		ANM_MANAGER_PTR->flush_sprites();
-		self->__vm_C.data.origin_mode = 2;
+		self->__vm_C.data.origin_mode = OriginFullResolution; // 2
 		self->draw_group(1);
-		self->__vm_C.data.origin_mode = 0;
+		self->__vm_C.data.origin_mode = OriginWindow; // 0
 		SUPERVISOR.set_camera_by_index(2);
 		return UpdateFuncNext;
 	}
@@ -25982,8 +26011,7 @@ private:
 		this->color2 = COLOR(255, 0, 0, 0);
 		this->__dword_1923C = 0;
 		this->__character_spacing_for_font_0 = 9;
-		this->scale.x = 1.0f;
-		this->scale.y = 1.0f;
+		this->scale.splat(1.0f);
 		this->enable_shadows = FALSE;
 		this->font_id = 0;
 		this->group = 0;
@@ -26012,6 +26040,27 @@ public:
 
 	inline void set_alpha2(uint8_t value) {
 		ALPHA(this->color2) = value;
+	}
+
+	inline void set_x_scale(float value) {
+		this->scale.x = value;
+	}
+
+	inline void set_y_scale(float value) {
+		this->scale.y = value;
+	}
+
+	inline void set_scale(float x, float y) {
+		this->scale.x = x;
+		this->scale.y = y;
+	}
+
+	inline void set_scale(const Float2& values) {
+		this->set_scale(values.x, values.y);
+	}
+
+	inline void set_scale(float value) {
+		this->set_scale(value, value);
 	}
 
 	// 0x42CB60
@@ -26084,11 +26133,11 @@ forceinline void Gui::__big_popup_text_inline(BigPopupType type, int32_t score_b
 				AnmVM* vm = id.get_vm_ptr();
 				if (!C) {
 					if (vm) {
-						vm->__tree_clear_visible2();
+						vm->__hide_tree();
 					}
 				} else {
 					if (vm) {
-						vm->__tree_set_visible2();
+						vm->__show_tree();
 					}
 				}
 				A /= 10;
@@ -26725,10 +26774,10 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 		current_instruction = this->get_current_instruction();
 		goto run_interrupt;
 	}
-	if (this->data.__unknown_field_av_B == 1) {
+	if (this->data.__run_type == AnmRunType::Pausable) { // 1
 		GameThread* game_thread = GAME_THREAD_PTR;
 		if (
-			game_thread && game_thread->__unknown_flag_gt_B
+			game_thread && game_thread->__pause_world
 		) {
 			goto return_static;
 		}
@@ -27367,7 +27416,7 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 				this->data.blend_mode = IntArg(0); // IMMEDIATE_ARGUMENT
 				break;
 			case move_position: // 400
-				if (this->data.position_mode == 0) {
+				if (this->data.position_mode == UsePosition1) { // 0
 					float position_z = ParseFloatArg(2);
 					float position_y = ParseFloatArg(1);
 					float position_x = ParseFloatArg(0);
@@ -27424,7 +27473,7 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 				this->data.position_interp.set_bezier2(ZERO_FLOAT3);
 				int32_t mode = IntArg(1); // IMMEDIATE ARGUMENT
 				this->data.position_interp.set_mode(mode);
-				this->data.position_interp.set_initial_value(this->data.position_mode == 0 ? this->data.position : this->data.__position_2);
+				this->data.position_interp.set_initial_value(this->data.position_mode == UsePosition1 ? this->data.position : this->data.__position_2); // 0
 				float position_z = ParseFloatArg(4);
 				float position_y = ParseFloatArg(3);
 				float position_x = ParseFloatArg(2);
@@ -27440,7 +27489,7 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 				this->data.position_interp.set_bezier2(ZERO_FLOAT3);
 				int32_t mode = IntArg(1); // IMMEDIATE ARGUMENT
 				this->data.position_interp.set_mode(mode);
-				this->data.position_interp.set_initial_value(this->data.position_mode == 0 ? this->data.position : this->data.__position_2);
+				this->data.position_interp.set_initial_value(this->data.position_mode == UsePosition1 ? this->data.position : this->data.__position_2); // 0
 				Float3 position;
 				float magnitude = ParseFloatArg(3);
 				float angle = ParseFloatArg(2);
@@ -27463,7 +27512,7 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 				this->data.position_interp.set_bezier1(bezier1);
 				this->data.position_interp.set_bezier2(bezier2);
 				this->data.position_interp.set_mode(Bezier);
-				this->data.position_interp.set_initial_value(this->data.position_mode == 0 ? this->data.position : this->data.__position_2);
+				this->data.position_interp.set_initial_value(this->data.position_mode == UsePosition1 ? this->data.position : this->data.__position_2); // 0
 				float position_z = ParseFloatArg(6);
 				float position_y = ParseFloatArg(5);
 				float position_x = ParseFloatArg(4);
@@ -27612,7 +27661,7 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 				break;
 			case position_inherit: // 422
 				this->data.position = this->controller.position;
-				this->controller.position = {};
+				this->controller.position = { 0.0f, 0.0f, 0.0f };
 				break;
 			case textured_ring: { // 600
 				this->data.render_mode = ModeTexturedRing; // 9
@@ -27986,7 +28035,7 @@ static inline BOOL ability_manager_card_equipped();
 static inline constexpr float INTERNAL_POSITION_RATIO = 128.0f;
 
 #define INTERNAL_POSITION_ADJUST(val) (int32_t)((val) * INTERNAL_POSITION_RATIO)
-#define INTERNAL_POSITION_ADJUST_INT(val) (int32_t)((val) * (int32_t)INTERNAL_POSITION_RATIO)
+#define INTERNAL_POSITION_INT(val) (int32_t)((val) * (int32_t)INTERNAL_POSITION_RATIO)
 
 static inline constexpr int32_t INTERNAL_POSITION_SCREEN_LEFT_EDGE = SCREEN_LEFT_EDGE * INTERNAL_POSITION_RATIO;
 static inline constexpr int32_t INTERNAL_POSITION_SCREEN_CENTER_X = SCREEN_CENTER_X * INTERNAL_POSITION_RATIO;
@@ -28409,9 +28458,7 @@ namespace Impl {
 		Float2* circle_position,          // EBP+C
 		float circle_radius               // EBP+10
 	) {
-		Float2 position;
-		position.x = circle_position->x - ray_position->x;
-		position.y = circle_position->y - ray_position->y;
+		Float2 position = *circle_position - *ray_position;
 		position = position.rotate_around_origin(-ray_angle);
 
 		if (
@@ -29526,15 +29573,22 @@ public:
 		return this->movement_direction >= MovementUpLeft;
 	}
 
-	inline bool above_poc() {
+	inline bool is_not_dead_or_dying() {
 		switch (this->data.state) {
 			default:
-				if (this->data.position.y < this->poc_height) {
-					return true;
-				}
+				return true;
 			case PlayerState::Dead: // 2
 			case PlayerState::Dying: // 4
-				break;
+				return false;
+		}
+	}
+
+	inline bool above_poc() {
+		if (
+			this->is_not_dead_or_dying() &&
+			this->data.position.y < this->poc_height
+		) {
+			return true;
 		}
 		return false;
 	}
@@ -29979,7 +30033,7 @@ public:
 	forceinline UpdateFuncRet on_draw() {
 		if (this->data.state != PlayerState::Dead) { // 2
 			this->__vm_14.controller.position = this->data.position;
-			this->__vm_14.data.origin_mode = 1;
+			this->__vm_14.data.origin_mode = OriginFixedResolution; // 1
 			ANM_MANAGER_PTR->draw_vm(&this->__vm_14);
 		}
 		return UpdateFuncNext;
@@ -30050,11 +30104,8 @@ public:
 
 			this->player_anm->__copy_data_to_vm_and_run(&this->__vm_14, 0);
 
-			this->data.internal_position.x = 0;
-			this->data.internal_position.y = 51200;
-			this->data.position.x = 0.0f;
-			this->data.position.y = 400.0f;
-
+			this->set_position_internal(0, 400);
+			
 			this->__set_all_option_D4_to_1();
 
 			for (int32_t i = 0; i < 4; ++i) {
@@ -30748,13 +30799,10 @@ dllexport gnu_noinline int32_t fastcall PlayerDamageSource::__unknown_func_3(Pla
 	AnmVM* vm;
 	PLAYER_PTR->player_anm->instantiate_vm_to_world_list_back(20, position, &vm);
 
-	float A = BOMB_PTR->rotation.z;
-
 	Float2 idk;
-	idk.make_from_vector(A, 6.5f);
+	idk.make_from_vector(BOMB_PTR->rotation.z, 6.5f);
 
-	vm->data.current_context.__float3_20.x = idk.x;
-	vm->data.current_context.__float3_20.y = idk.y;
+	vm->data.current_context.__float3_20.as2() = idk;
 
 	return -1;
 }
@@ -31419,7 +31467,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 				break;
 			case __gui_overlay: { // 35
 				Gui* gui = GUI_PTR;
-				gui->__anm_id_100 = gui->front_anm->instantiate_vm_to_world_list_back(48);
+				gui->__fade_to_white_vm = gui->front_anm->instantiate_vm_to_world_list_back(48);
 				break;
 			}
 			case __store_open: // 36
@@ -31767,8 +31815,8 @@ public:
 		this->vm.data.slot2 = ascii_anm->slot_index;
 		ascii_anm->set_sprite(&this->vm, 289);
 
-		this->vm.data.origin_mode = 2;
-		this->vm.data.resolution_mode = 3;
+		this->vm.data.origin_mode = OriginFullResolution; // 2
+		this->vm.data.resolution_mode = ResolutionScaledB; // 3
 
 		return ZUN_SUCCESS;
 	}
@@ -31981,8 +32029,8 @@ private:
 
 				Player* player = PLAYER_PTR;
 				option->__option_index = this->__array_index;
-				option->__unfocused_offset.y = INTERNAL_POSITION_ADJUST_INT(unfocused_offset_y);
-				option->__focused_offset.y = INTERNAL_POSITION_ADJUST_INT(focused_offset_y);
+				option->__unfocused_offset.y = INTERNAL_POSITION_INT(unfocused_offset_y);
+				option->__focused_offset.y = INTERNAL_POSITION_INT(focused_offset_y);
 				option->__unfocused_offset.x = 0;
 				option->__focused_offset.x = 0;
 
@@ -33134,7 +33182,7 @@ struct CardEirin : CardBase {
 		SOUND_MANAGER.play_sound(44);
 		Player* player = PLAYER_PTR;
 		this->damage_source_index = PLAYER_PTR->create_damage_source_circle(&player->data.position, 8.0f, 0.0f, 40, 5);
-		__inline_spellcard_fail();
+		__inline_spellcard_fail(); // TODO: Method
 		clang_forceinline GAME_MANAGER.globals.subtract_bomb();
 		clang_forceinline GAME_MANAGER.globals.subtract_bomb();
 		PLAYER_PTR->data.invulnerable_timer.set(60);
@@ -33903,7 +33951,7 @@ struct CardShikiEiki : CardBase {
 		SOUND_MANAGER.play_sound(44);
 		Player* player_ptr = PLAYER_PTR;
 		player_ptr->create_damage_source_circle(&player_ptr->data.position, 8.0f, 0.0f, 40, 5);
-		__inline_spellcard_fail();
+		__inline_spellcard_fail(); // TODO: Method
 		GAME_MANAGER.globals.current_money -= 200;
 		PLAYER_PTR->data.invulnerable_timer.set(60);
 		enemy_manager_fail_spell_with_bomb();
@@ -34750,6 +34798,9 @@ struct CardRemilia : CardBase {
 					size.x = 32.0f;
 					size.y = height;
 					// BUG: size.z is undefined?
+#if FIX_MINOR_BUGS
+					size.z = 0.0f;
+#endif
 					bullet_cancel_rotated_rectangle_as_bomb(&position, &size, 0.0f, CancelType0, 0);
 					laser_cancel_rectangle(&position, &size, 0.0f);
 				}
@@ -34830,7 +34881,7 @@ struct CardUtsuho : CardBase {
 	// 0x40FB60
 	dllexport gnu_noinline virtual int thiscall on_activate() {
 		if (this->state == 0 && this->__timer_34 <= 0) {
-			__inline_spellcard_fail();
+			__inline_spellcard_fail(); // TODO: Method
 			PLAYER_PTR->set_invulnerable_timer(2);
 			Player* player = PLAYER_PTR;
 			this->position = player->data.position;
@@ -35605,7 +35656,7 @@ struct AbilityTextData {
 
 	// 0x413390
 	dllexport static void __hide_vm_63DC() asm_symbol_rel(0x413390) {
-		ABILITY_TEXT_DATA_PTR->__vm_id_63DC.__tree_clear_visible2();
+		ABILITY_TEXT_DATA_PTR->__vm_id_63DC.__hide_tree();
 	}
 
 	// 0x4133D0
@@ -35615,9 +35666,9 @@ struct AbilityTextData {
 		size_t i = countof(ability_text_data->__vm_id_array_63C0);
 		AnmID* current_vm_id = ability_text_data->__vm_id_array_63C0;
 		do {
-			current_vm_id++->__tree_clear_visible2(anm_manager);
+			current_vm_id++->__hide_tree(anm_manager);
 		} while (--i);
-		ABILITY_TEXT_DATA_PTR->__vm_id_63DC.__tree_clear_visible2(anm_manager);
+		ABILITY_TEXT_DATA_PTR->__vm_id_63DC.__hide_tree(anm_manager);
 	}
 
 	// 0x4168A0
@@ -35638,10 +35689,10 @@ struct AbilityTextData {
 			(SCOREFILE_MANAGER_PTR->primary_file.__sectionA.__unlocked_cards_array[card_id] || arg2) &&
 			find_id_in_card_data(card_id).__int_C != 4
 		) {
-			this->__vm_id_63DC.__tree_set_visible2();
+			this->__vm_id_63DC.__show_tree();
 		}
 		else {
-			this->__vm_id_63DC.__tree_clear_visible2();
+			this->__vm_id_63DC.__hide_tree();
 		}
 	}
 
@@ -35652,7 +35703,7 @@ struct AbilityTextData {
 		size_t i = countof(ability_text_data->__vm_id_array_63C0);
 		AnmID* current_vm_id = ability_text_data->__vm_id_array_63C0;
 		do {
-			current_vm_id++->__tree_set_visible2(anm_manager);
+			current_vm_id++->__show_tree(anm_manager);
 		} while (--i);
 		ability_text_data->__sub_416940(arg1, false);
 	}
@@ -35971,7 +36022,7 @@ public:
 					ability_manager->selected_active_card = card;
 					const CardData* card_data = card->data;
 
-					ability_manager->__anm_id_3C.__tree_set_visible2();
+					ability_manager->__anm_id_3C.__show_tree();
 					if (AnmVM* vm = ability_manager->__anm_id_3C.__find_child_vm_with_script(4)) {
 						vm->set_sprite(card_data->sprite_small);
 					}
@@ -35996,10 +36047,10 @@ public:
 	dllexport gnu_noinline static void __sub_4094C0() asm_symbol_rel(0x4094C0) {
 		AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
 		for (int32_t i = 0; i < ability_manager->card_count; ++i) {
-			ability_manager->__anm_id_array_58[i].__tree_clear_visible2();
-			ability_manager->__anm_id_array_458[i].__tree_clear_visible2();
+			ability_manager->__anm_id_array_58[i].__hide_tree();
+			ability_manager->__anm_id_array_458[i].__hide_tree();
 		}
-		ability_manager->__anm_id_3C.__tree_clear_visible2();
+		ability_manager->__anm_id_3C.__hide_tree();
 	}
 
 	// 0x408DE0
@@ -36077,7 +36128,7 @@ public:
 			this->__anm_id_array_58[i].mark_tree_for_delete();
 		}
 		if (GAME_THREAD_PTR) {
-			Float3 position = {};
+			Float3 position = { 0.0f, 0.0f, 0.0f};
 			this->create_card_list_for_hud(&position, this->active_card_count, 0, arg1);
 			position.y = 130.0f;
 			this->create_card_list_for_hud(&position, this->equipment_card_count, 1, arg1);
@@ -36584,12 +36635,12 @@ public:
 	dllexport gnu_noinline void thiscall __sub_408C30() asm_symbol_rel(0x408C30) {
 		CardBase* card = this->selected_active_card;
 		if (!card) {
-			this->__anm_id_3C.__tree_clear_visible2();
+			this->__anm_id_3C.__hide_tree();
 		}
 		else {
 			const CardData* card_data = card->data;
 
-			this->__anm_id_3C.__tree_set_visible2();
+			this->__anm_id_3C.__show_tree();
 
 			if (AnmVM* vm = this->__anm_id_3C.__find_child_vm_with_script(4)) {
 				vm->set_sprite(card_data->sprite_small);
@@ -38378,7 +38429,7 @@ public:
 			game_thread_ptr &&
 			!(game_thread_ptr->__unknown_flag_gt_A | game_thread_ptr->skip_flag) &&
 			!game_thread_ptr->__unknown_flag_gt_C &&
-			!game_thread_ptr->__unknown_flag_gt_B &&
+			!game_thread_ptr->__pause_world &&
 			!ABILITY_SHOP_PTR
 		) {
 			return ((EnemyManager*)ptr)->on_tick();
@@ -38658,38 +38709,31 @@ dllexport gnu_noinline ZUNResult fastcall PlayerBullet::__on_tick_2(PlayerBullet
 			}
 		}
 		if (self->state == 1) {
-			if (player->data.shoot_key_short_timer >= 0) {
-				switch (player->data.state) {
-					default:
-						if (
-							!player->data.__unknown_flag_pl_G &&
-							!GUI_PTR->msg_is_active() &&
-							ENEMY_MANAGER_PTR
-						) {
-							int8_t option_index = entry_ptr->__option_index;
-							if (!option_index) {
-								goto end;
-							}
-							if (
-								option_index - 1 < player->data.__option_count &&
-								!player->data.focused
-							) {
-								int32_t option_index_low = option_index % PLAYER_TOTAL_OPTION_COUNT;
-								int32_t option_index_high = option_index >> PLAYER_TOTAL_OPTION_COUNT_BIT_WIDTH;
+			if (
+				player->data.shoot_key_short_timer >= 0 &&
+				player->is_not_dead_or_dying() &&
+				!player->data.__unknown_flag_pl_G &&
+				!GUI_PTR->msg_is_active() &&
+				ENEMY_MANAGER_PTR
+			) {
+				int8_t option_index = entry_ptr->__option_index;
+				if (!option_index) {
+					goto end;
+				}
+				if (
+					option_index - 1 < player->data.__option_count &&
+					!player->data.focused
+				) {
+					int32_t option_index_low = option_index % PLAYER_TOTAL_OPTION_COUNT;
+					int32_t option_index_high = option_index >> PLAYER_TOTAL_OPTION_COUNT_BIT_WIDTH;
 
-								int32_t index = option_index < PLAYER_TOTAL_OPTION_COUNT ? option_index_low : option_index_high;
+					int32_t index = option_index < PLAYER_TOTAL_OPTION_COUNT ? option_index_low : option_index_high;
 
-								int32_t level = GAME_MANAGER.globals.power_level();
+					int32_t level = GAME_MANAGER.globals.power_level();
 
-								if (player->data.__level_array_470DC[index] == level) {
-									goto end;
-								}
-							}
-						}
-						break;
-					case PlayerState::Dead: // 2
-					case PlayerState::Dying: // 4
-						break;
+					if (player->data.__level_array_470DC[index] == level) {
+						goto end;
+					}
 				}
 			}
 			player->get_damage_source_by_index(self->damage_source_index)->active = false;
@@ -38965,13 +39009,10 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataA(AnmVM* vm, vo
 	vm->controller.special_data = special_data;
 	memset(special_data, 0, sizeof(AnmVMSpecialDataA));
 
-	vm->data.origin_mode = 0;
+	vm->data.origin_mode = OriginWindow; // 0
 	vm->data.layer = 0;
 
-	Float3 position;
-	position.x = 320.0f;
-	position.y = 240.0f;
-	position.z = 0.0f;
+	Float3 position = { 320.0f, 240.0f, 0.0f };
 
 	nounroll for (int32_t i = 0; i < countof(special_data->__vm_array_0); ++i) {
 		AnmVM* vm = &special_data->__vm_array_0[i];
@@ -38982,8 +39023,8 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataA(AnmVM* vm, vo
 
 	special_data->__int_1E3C = 0;
 	vm->data.layer = 43;
-	vm->data.origin_mode = 0;
-	vm->data.resolution_mode = 1;
+	vm->data.origin_mode = OriginWindow; // 0
+	vm->data.resolution_mode = ResolutionScaledA; // 1
 
 	for (size_t i = 0; i < countof(special_data->__vm_array_0); ++i) {
 		special_data->__vm_array_0[i].controller.position = { 320.0f, 240.0f, 0.0f };
@@ -39046,8 +39087,8 @@ dllexport gnu_noinline int fastcall AnmVM::on_interrupt_special_dataA(AnmVM* vm,
 			break;
 		case 8:
 			special_data->__int_1E3C = 1;
-			vm->data.origin_mode = 1;
-			vm->data.resolution_mode = 1;
+			vm->data.origin_mode = OriginFixedResolution; // 1
+			vm->data.resolution_mode = ResolutionScaledA; // 1
 			break;
 		case 9:
 			special_data->__int_1E3C = 0;
@@ -39056,8 +39097,8 @@ dllexport gnu_noinline int fastcall AnmVM::on_interrupt_special_dataA(AnmVM* vm,
 		case 10:
 			special_data->__int_1E3C = 3;
 			vm->data.layer = 31;
-			vm->data.origin_mode = 0;
-			vm->data.resolution_mode = 1;
+			vm->data.origin_mode = OriginWindow; // 0
+			vm->data.resolution_mode = ResolutionScaledA; // 1
 			break;
 	}
 	for (size_t i = 0; i < countof(special_data->__vm_array_0); ++i) {
@@ -39175,7 +39216,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC1(AnmVM* vm, v
 
 	vm->controller.position = *position;
 	vm->data.layer = 15;
-	vm->data.origin_mode = 1;
+	vm->data.origin_mode = OriginFixedResolution; // 1
 	vm->data.blend_mode = BlendAdditive; // 1
 
 	vm->initialize_alpha_interp(64, 0, 255, 0);
@@ -39255,7 +39296,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC2(AnmVM* vm, v
 	vm->controller.position = *(Float3*)arg;
 	vm->data.blend_mode = BlendNormal; // 0
 	vm->data.layer = 19;
-	vm->data.origin_mode = 1;
+	vm->data.origin_mode = OriginFixedResolution; // 1
 
 	return 0;
 }
@@ -39367,7 +39408,7 @@ private:
 	// 0x41CA90
 	dllexport gnu_noinline BOOL vectorcall __test_culling(int, Float3* offset, float, float, float draw_distance_squared, StageCamera* camera) asm_symbol_rel(0x41CA90) {
 		Float3 position = this->position;
-		Float3 A = (position + *offset) - (camera->position + camera->__shaking_float3_A);
+		Float3 A = (position + *offset) - (camera->position + camera->__shaking_position);
 		if (
 			!(A.length_squared3() > draw_distance_squared)
 		) {
@@ -39633,6 +39674,7 @@ ValidateFieldOffset32(0x3440, StdVM, __color_3440);
 ValidateStructSize32(0x3444, StdVM);
 #pragma endregion
 
+// ZUN name: BackgroundInf
 // size: 0x34A0
 struct Stage : ZUNTask {
 	// ZUNTask base; // 0x0
@@ -39719,7 +39761,7 @@ struct Stage : ZUNTask {
 		}
 
 		SAFE_FREE(this->std_file);
-		SAFE_FREE(this->std_file_buffer);
+		SAFE_FREE_SLOW(this->std_file_buffer);
 
 		SAFE_DELETE(this->std_vm.distortion.fog_ptr);
 
@@ -39865,11 +39907,11 @@ struct Stage : ZUNTask {
 			!this->__unknown_flag_bg_A &&
 			(!this->__unknown_flag_bg_B || this->__timer_3478 < 60)
 		) {
-			this->std_vm.camera.__float2_FC = {};
+			this->std_vm.camera.__vertex_offsetA = {};
 			this->std_vm.camera.__last_position_delta = {};
 
-			Float3 A = this->std_vm.camera.facing + this->std_vm.camera.__shaking_float3_B;
-			D3DXVec3Normalize(&this->std_vm.camera.facing_normalized, &A);
+			Float3 facing = this->std_vm.camera.facing + this->std_vm.camera.__shaking_facing;
+			D3DXVec3Normalize(&this->std_vm.camera.facing_normalized, &facing);
 
 			this->std_vm.__color_3440 = COLOR(0, 128, 128, 128);
 
@@ -39909,8 +39951,7 @@ struct Stage : ZUNTask {
 		if (!this->__unknown_flag_bg_A) {
 			if (!this->__unknown_flag_bg_B || this->__timer_3478 < 60) {
 				ANM_MANAGER_PTR->flush_sprites();
-				this->std_vm.camera.__float2_FC.x = SUPERVISOR.cameras[StdCamera].__float2_FC.x;
-				this->std_vm.camera.__float2_FC.y = SUPERVISOR.cameras[StdCamera].__float2_FC.y;
+				this->std_vm.camera.__vertex_offsetA = SUPERVISOR.cameras[StdCamera].__vertex_offsetA;
 				SUPERVISOR.cameras[StdCamera] = this->std_vm.camera;
 				SUPERVISOR.__setup_stage_camera();
 
@@ -39978,8 +40019,7 @@ struct Stage : ZUNTask {
 		if (!this->__unknown_flag_bg_A) {
 			if (!this->__unknown_flag_bg_B || this->__timer_3478 < 60) {
 				ANM_MANAGER_PTR->flush_sprites();
-				this->std_vm.camera.__float2_FC.x = SUPERVISOR.cameras[StdCamera].__float2_FC.x;
-				this->std_vm.camera.__float2_FC.y = SUPERVISOR.cameras[StdCamera].__float2_FC.y;
+				this->std_vm.camera.__vertex_offsetA = SUPERVISOR.cameras[StdCamera].__vertex_offsetA;
 				SUPERVISOR.cameras[StdCamera] = this->std_vm.camera;
 				SUPERVISOR.__setup_stage_camera();
 
@@ -40099,8 +40139,8 @@ corrupted_data:
 		this->std_vm.camera.position = { 0.0f, 0.0f, -600.0f };
 		this->std_vm.camera.facing = { 0.0f, 300.0f, 600.0f };
 		this->std_vm.camera.rotation = { 0.0f, 1.0f, 0.0f };
-		this->std_vm.camera.__shaking_float3_A = { 0.0f, 0.0f, 0.0f };
-		this->std_vm.camera.__shaking_float3_B = { 0.0f, 0.0f, 0.0f };
+		this->std_vm.camera.__shaking_position = { 0.0f, 0.0f, 0.0f };
+		this->std_vm.camera.__shaking_facing = { 0.0f, 0.0f, 0.0f };
 		this->std_vm.draw_distance_squared = 9610000.0f; // 3100 squared
 
 		UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
@@ -40309,9 +40349,7 @@ dllexport gnu_noinline ZUNResult thiscall StdVM::run_std() {
 				uint8_t mode = ByteArg(0);
 				this->shaking_mode = mode;
 				if (mode == 0) {
-					this->camera.__shaking_float3_A.x = 0.0f;
-					this->camera.__shaking_float3_A.y = 0.0f;
-					this->camera.__shaking_float3_A.z = 0.0f;
+					this->camera.__shaking_position = { 0.0f, 0.0f, 0.0f };
 				}
 				if (mode != 6) {
 					this->shaking_timer.reset();
@@ -40532,9 +40570,7 @@ struct Spellcard : ZUNTask {
 		if (!is_replay()) {
 			SCOREFILE_MANAGER_PTR->record_spell_attempt(id, name);
 		}
-		Gui* gui = GUI_PTR;
-		gui->spell_timer_vms[0]->interrupt_and_run(2);
-		gui->spell_timer_vms[1]->interrupt_and_run(2);
+		GUI_PTR->__spell_timer_vms_interrupt_and_run(2);
 
 		this->__int_8C = 1;
 		this->__grace_period_bomb_resist = false;
@@ -40604,7 +40640,7 @@ private:
 			this->spell_active = false;
 			this->spell_background.mark_tree_for_delete();
 			this->__grace_period_bomb_resist = false;
-			GUI_PTR->__spell_timer_vms_interrupt_3();
+			__spell_timer_vms_interrupt_and_run_3();
 			this->__spell_ring_effect.mark_tree_for_delete();
 
 			if (this->capture_state) {
@@ -40741,9 +40777,7 @@ public:
 
 			int32_t spell_id = this->id;
 
-			position.x = 360.0f;
-			position.y = 35.0f;
-			position.z = 0.0f;
+			position = { 360.0f, 35.0f, 0.0f };
 
 			int32_t captures = SCOREFILE_MANAGER_PTR->get_spell_captures(GAME_MANAGER.globals.shottype_index(), spell_id);
 			if (captures >= 100) {
@@ -41056,18 +41090,18 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 
 		if (this->data.state_timer.__is_multiple_of_not_paused(3)) {
 			this->__vm_14.data.color2 = COLOR(255, 0, 0, 255);
-			this->__vm_14.data.color_mode = 1;
+			this->__vm_14.data.color_mode = UseColor2; // 1
 		} else {
-			this->__vm_14.data.color_mode = 0;
+			this->__vm_14.data.color_mode = UseColor1; // 0
 		}
 	}
 	else {
-		this->__vm_14.data.color_mode = 0;
+		this->__vm_14.data.color_mode = UseColor1; // 0
 
 		if (this->data.__has_damage_boost) {
 			if (this->data.state_timer % 8 < 4) {
 				this->__vm_14.data.color2 = COLOR(255, 255, 0, 0);
-				this->__vm_14.data.color_mode = 1;
+				this->__vm_14.data.color_mode = UseColor2; // 1
 			}
 		}
 		else {
@@ -41076,7 +41110,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 				this->data.state_timer % 8 < 4
 			) {
 				this->__vm_14.set_alpha2(0);
-				this->__vm_14.data.color_mode = 1;
+				this->__vm_14.data.color_mode = UseColor2; // 1
 			}
 		}
 	}
@@ -44473,7 +44507,7 @@ struct LaserLine : LaserData {
 	// Method 0x64
 	dllexport virtual gnu_noinline LaserData* thiscall duplicate() override asm_symbol_rel(0x448280) {
 		LaserLine* new_laser = new_no_eh<LaserLine>();
-		memcpy(new_laser, this, sizeof(LaserLine));
+		memcpy((void*)new_laser, this, sizeof(LaserLine));
 		return new_laser;
 	}
 
@@ -45582,8 +45616,7 @@ private:
 
 		this->bullet_tick_list.initialize_with(NULL);
 
-		this->__bounce_bounds.x = 0.0f;
-		this->__bounce_bounds.y = 0.0f;
+		this->__bounce_bounds = { 0.0f, 0.0f };
 		this->__cancel_counter = 0;
 		zero_array(this->__graze_array);
 		this->__grazing_despawns_bullets = false;
@@ -45828,10 +45861,10 @@ public:
 		bullet->vm.controller.on_sprite_lookup_index = 1;
 		bullet->vm.controller.associated_entity = bullet;
 
-		this->bullet_anm->__sub_477D60(&bullet->vm, BULLET_SPRITE_DATA[shooter->type].anm_script);
+		this->bullet_anm->__set_script_and_run(&bullet->vm, BULLET_SPRITE_DATA[shooter->type].anm_script);
 
 		bullet->circular_hitbox = true;
-		bullet->vm.data.origin_mode = 1;
+		bullet->vm.data.origin_mode = OriginFixedResolution; // 1
 
 		if (int32_t script = BULLET_SPRITE_DATA[shooter->type].__anm_script_114) {
 			bullet->__anm_tree_id = BULLET_MANAGER_PTR->bullet_anm->instantiate_vm_to_world_list_back(script, &bullet->position);
@@ -46344,7 +46377,8 @@ dllexport gnu_noinline int32_t thiscall Bullet::cancel(CancelType cancel_type) {
 dllexport gnu_noinline CollisionResult thiscall Bullet::__check_collision(CollisionTestType test_type) {
 	CollisionResult result = NoCollision;
 
-	this->vm.data.color_mode = 0; // why is this *here* of all places
+	// why is this *here* of all places
+	this->vm.data.color_mode = UseColor1; // 0
 	this->vm.data.position = ZERO_FLOAT3;
 
 	if (
@@ -46624,7 +46658,7 @@ public:
 			!(game_thread_ptr->__unknown_flag_gt_A | game_thread_ptr->skip_flag) &&
 			!game_thread_ptr->__unknown_flag_gt_C
 		) {
-			if (game_thread_ptr->__unknown_flag_gt_B) {
+			if (game_thread_ptr->__pause_world) {
 				float prev_game_speed = GAME_SPEED;
 				GAME_SPEED.value = 0.0f;
 				UpdateFuncRet ret = laser_manager->on_tick();
@@ -46741,20 +46775,20 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
 	vm->reset();
 	vm->controller.on_sprite_lookup_index = 2;
 	vm->controller.associated_entity = this;
-	LASER_MANAGER_PTR->bullet_anm->__sub_477D60(vm, BULLET_SPRITE_DATA[this->sprite].anm_script);
+	LASER_MANAGER_PTR->bullet_anm->__set_script_and_run(vm, BULLET_SPRITE_DATA[this->sprite].anm_script);
 	vm->interrupt_and_run(2);
 	vm->data.blend_mode = BlendAdditive; // 1
-	vm->data.x_anchor_mode = 0;
-	vm->data.y_anchor_mode = 2;
+	vm->data.x_anchor_mode = AnchorXCenter; // 0
+	vm->data.y_anchor_mode = AnchorYBottom; // 2
 	vm->data.render_mode = Mode2DSpriteRotated; // 1
-	vm->data.origin_mode = 1;
+	vm->data.origin_mode = OriginFixedResolution; // 1
 
 	vm = &this->__spawn_effect_vm;
 	clang_forceinline LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, this->params.color + 56);
 	vm->interrupt_and_run(2);
 	vm->data.blend_mode = BlendAdditive; // 1
 	vm->data.render_mode = Mode2DSpriteRotated; // 1
-	vm->data.origin_mode = 1;
+	vm->data.origin_mode = OriginFixedResolution; // 1
 
 	if (this->sprite > 17 && this->sprite != 38) {
 		vm = &this->__tip_vm;
@@ -46764,7 +46798,7 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
 		clang_forceinline LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, this->params.color + 91);
 		vm->data.blend_mode = BlendAdditive; // 1
 	}
-	vm->data.origin_mode = 1;
+	vm->data.origin_mode = OriginFixedResolution; // 1
 
 	this->__timer_754.set(30);
 	this->offscreen_timer.set(3);
@@ -46815,14 +46849,14 @@ dllexport gnu_noinline int thiscall LaserInfinite::initialize(void* data) {
 	vm->reset();
 	vm->controller.on_sprite_lookup_index = 2;
 	vm->controller.associated_entity = this;
-	LASER_MANAGER_PTR->bullet_anm->__sub_477D60(vm, BULLET_SPRITE_DATA[this->sprite].anm_script);
+	LASER_MANAGER_PTR->bullet_anm->__set_script_and_run(vm, BULLET_SPRITE_DATA[this->sprite].anm_script);
 	vm->interrupt_and_run(2);
 
 	this->main_vm.data.blend_mode = BlendAdditive; // 1
-	this->main_vm.data.x_anchor_mode = 0;
-	this->main_vm.data.y_anchor_mode = 1;
+	this->main_vm.data.x_anchor_mode = AnchorXCenter; // 0
+	this->main_vm.data.y_anchor_mode = AnchorYTop; // 1
 	this->main_vm.data.render_mode = Mode2DSpriteRotated; // 1
-	this->main_vm.data.origin_mode = 1;
+	this->main_vm.data.origin_mode = OriginFixedResolution; // 1
 
 	vm = &this->__spawn_effect_vm;
 	LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, this->params.color + 56);
@@ -46830,7 +46864,7 @@ dllexport gnu_noinline int thiscall LaserInfinite::initialize(void* data) {
 
 	this->__spawn_effect_vm.data.blend_mode = BlendAdditive; // 1
 	this->__spawn_effect_vm.data.render_mode = Mode2DSpriteRotated; // 1
-	this->__spawn_effect_vm.data.origin_mode = 1;
+	this->__spawn_effect_vm.data.origin_mode = OriginFixedResolution; // 1
 
 	SOUND_MANAGER.play_sound_positioned_validate(this->params.shoot_sound, 0.0f);
 
@@ -46877,15 +46911,15 @@ dllexport gnu_noinline int thiscall LaserCurve::initialize(void* data) {
 		this->main_vm.controller.associated_entity = this;
 		script = this->sprite + 142;
 	}
-	LASER_MANAGER_PTR->bullet_anm->__sub_477D60(vm, script);
+	LASER_MANAGER_PTR->bullet_anm->__set_script_and_run(vm, script);
 	vm->interrupt_and_run(2);
 
 	// why does only one of these use vm and rest are direct access???
 	vm->data.blend_mode = BlendAdditive; // 1
-	this->main_vm.data.x_anchor_mode = 0;
-	this->main_vm.data.y_anchor_mode = 1;
+	this->main_vm.data.x_anchor_mode = AnchorXCenter; // 0
+	this->main_vm.data.y_anchor_mode = AnchorYTop; // 1
 	this->main_vm.data.render_mode = Mode2DSpriteRotated; // 1
-	this->main_vm.data.origin_mode = 1;
+	this->main_vm.data.origin_mode = OriginFixedResolution; // 1
 
 	vm = &this->__vm_11F4;
 	LASER_MANAGER_PTR->bullet_anm->__copy_data_to_vm_and_run(vm, 56 + this->params.color);
@@ -46893,7 +46927,7 @@ dllexport gnu_noinline int thiscall LaserCurve::initialize(void* data) {
 
 	vm->data.blend_mode = BlendAdditive; // 1
 	this->__vm_11F4.data.render_mode = Mode2DSpriteRotated; // 1
-	this->__vm_11F4.data.origin_mode = 1;
+	this->__vm_11F4.data.origin_mode = OriginFixedResolution; // 1
 
 	this->vertices = (SpriteVertex*)malloc(this->params.curve_length * sizeof(SpriteVertex[2]));
 	this->nodes = (LaserCurveNode*)malloc(this->params.curve_length * sizeof(LaserCurveNode));
@@ -47056,6 +47090,8 @@ dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_call_2_ex(EnemyData*
 			unit_vec.make_from_vector(laser->angle, 1.0f);
 #if FIX_REALLY_BAD_BUGS
 			unit_vec.z = 0.0f;
+			A.z = 0.0f;
+			B.z = 0.0f;
 #endif
 
 			Float3 C = (A - laser->position) * unit_vec;
@@ -47095,6 +47131,8 @@ dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_call_3_ex(EnemyData*
 			unit_vec.make_from_vector(laser->angle, 1.0f);
 #if FIX_REALLY_BAD_BUGS
 			unit_vec.z = 0.0f;
+			A.z = 0.0f;
+			B.z = 0.0f;
 #endif
 
 			Float3 C = (A - laser->position) * unit_vec;
@@ -47736,8 +47774,8 @@ dllexport void Bullet::run_effects() {
 				this->vm.reset();
 				this->vm.controller.on_sprite_lookup_index = 1;
 				this->vm.controller.associated_entity = this;
-				BULLET_MANAGER_PTR->bullet_anm->__sub_477D60(&this->vm, BULLET_SPRITE_DATA[IntArg(0)].anm_script);
-				this->vm.data.origin_mode = 1;
+				BULLET_MANAGER_PTR->bullet_anm->__set_script_and_run(&this->vm, BULLET_SPRITE_DATA[IntArg(0)].anm_script);
+				this->vm.data.origin_mode = OriginFixedResolution; // 1
 				this->__anm_tree_id.mark_tree_for_delete();
 				if (int32_t script = BULLET_SPRITE_DATA[IntArg(0)].__anm_script_114) {
 					this->__anm_tree_id = BULLET_MANAGER_PTR->bullet_anm->instantiate_vm_to_world_list_back(script, &this->position);
@@ -47989,9 +48027,7 @@ dllexport void Bullet::run_effects() {
 					case InfiniteLaser: { // 1
 						LaserInfiniteParams laser_params(0); // 0xA8
 						laser_params.speed = 8.0f; // IDK why this isn't 0
-						laser_params.velocity.x = 0.0f;
-						laser_params.velocity.y = 0.0f;
-						laser_params.velocity.z = 0.0f;
+						laser_params.velocity = { 0.0f, 0.0f, 0.0f };
 						laser_params.angle = 0.0f;
 						laser_params.angular_velocity = 0.0f;
 						laser_params.max_length = 0.0f;
@@ -48182,7 +48218,7 @@ forceinline const char* Enemy::check_timer_callbacks() {
 
 					Spellcard* spellcard = SPELLCARD_PTR;
 					if (!spellcard->__timeout_spell) {
-						spellcard->__spellcard_fail();
+						spellcard->__inline_spellcard_fail();
 						ENEMY_MANAGER_PTR->can_capture_spell = false;
 					}
 					else if (spellcard->__is_timeout_spell_active()) {
@@ -48355,18 +48391,18 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
 	if (this->bomb_shield) {
 		if (bomb->active) {
 			if (!this->bomb_shield_active) {
-				this->anm_vms[0].__set_script(this->current_anm_script = this->bombshield_on_anm);
+				this->anm_vms[0].__set_new_script(this->current_anm_script = this->bombshield_on_anm);
 				this->disable_hitbox = true;
 				this->bomb_shield_active = true;
 			}
 		} else if (this->bomb_shield_active) {
-			this->anm_vms[0].__set_script(this->current_anm_script = this->bombshield_off_anm);
+			this->anm_vms[0].__set_new_script(this->current_anm_script = this->bombshield_off_anm);
 			this->disable_hitbox = false;
 			this->bomb_shield_active = false;
 		}
 	} else if (!bomb->active) {
 		if (this->bomb_shield_active) {
-			this->anm_vms[0].__set_script(this->current_anm_script = this->bombshield_off_anm);
+			this->anm_vms[0].__set_new_script(this->current_anm_script = this->bombshield_off_anm);
 			this->disable_hitbox = false;
 			this->bomb_shield_active = false;
 		}
@@ -48550,10 +48586,10 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
 			if (this->__anm_related_flag_A) {
 				if (this->phase_timer.is_multiple_of(4)) {
 					main_vm->data.color2 = COLOR(255, 255, 0, 255);
-					main_vm->data.color_mode = 1;
+					main_vm->data.color_mode = UseColor2; // 1
 				}
 				else {
-					main_vm->data.color_mode = 0;
+					main_vm->data.color_mode = UseColor1; // 0
 				}
 			}
 			if (
@@ -48561,7 +48597,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
 				!this->slowdown_immune // ???
 			) {
 				main_vm->data.color2 = COLOR(255, 0, 0, 255);
-				main_vm->data.color_mode = 1;
+				main_vm->data.color_mode = UseColor2; // 1
 				int32_t hit_sound = this->hit_sound;
 				this->__hit_flash_delay = 4;
 				if (hit_sound < 0) {
@@ -48587,16 +48623,16 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
 						SPELLCARD_PTR->__enemy_is_low_health(this, 100, 500)
 					) {
 						main_vm->data.color2 = COLOR(255, 0, 0, 255);
-						main_vm->data.color_mode = 1;
+						main_vm->data.color_mode = UseColor2; // 1
 					}
 				}
 				else {
-					main_vm->data.color_mode = 0;
+					main_vm->data.color_mode = UseColor1; // 0
 				}
 			}
 		}
 		else {
-			main_vm->data.color_mode = 0;
+			main_vm->data.color_mode = UseColor1; // 0
 			--this->__hit_flash_delay;
 		}
 	}
@@ -48704,7 +48740,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::ecl_enm_create() {
 		int32_t enm_args_offset = sub_name_length / sizeof(DWORD);
 
 		EnemyInitData init_data;
-		init_data.position = {};
+		init_data.position = { 0.0f, 0.0f, 0.0f };
 		init_data.mirrored = false;
 		init_data.__basic_anm_update = false;
 		
@@ -48766,7 +48802,7 @@ dllexport gnu_noinline void thiscall EnemyData::anm_set_slot_impl() {
 			this->final_sprite_size.y = vm->get_scaled_sprite_x_size();
 		}
 		if (this->intangible) {
-			id.__tree_clear_visible2();
+			id.__hide_tree();
 		}
 	}
 }
@@ -48783,7 +48819,7 @@ inline void thiscall EnemyData::anm_set_slot_main_impl() {
 		this->final_sprite_size.y = vm->get_scaled_sprite_x_size();
 	}
 	if (this->intangible) {
-		id.__tree_clear_visible2();
+		id.__hide_tree();
 	}
 	if (slot == 0) {
 		this->__enable_anm_poses = true;
@@ -48895,8 +48931,8 @@ dllexport gnu_noinline void thiscall EnemyData::ecl_set_anm_data() {
 				vm->data.alpha2_interp.mode = mode;
 				vm->data.alpha2_interp.final_value = (uint8_t)alpha;
 				vm->data.alpha2_interp.time.reset();
-				if (vm->data.color_mode == 0) {
-					vm->data.color_mode = 1;
+				if (vm->data.color_mode == UseColor1) { // 0
+					vm->data.color_mode = UseColor2; // 1
 				}
 				break;
 			}
@@ -48944,7 +48980,7 @@ inline void thiscall EnemyData::anm_play_attack_impl() {
 		this->final_sprite_size.y = vm->get_scaled_sprite_x_size();
 	}
 	if (this->intangible) {
-		this->anm_vms[slot].__tree_clear_visible2();
+		this->anm_vms[slot].__hide_tree();
 	}
 }
 
@@ -48964,7 +49000,7 @@ inline void thiscall EnemyData::anm_play_attack_ex_impl() {
 		this->final_sprite_size.y = vm->get_scaled_sprite_x_size();
 	}
 	if (this->intangible) {
-		this->anm_vms[slot].__tree_clear_visible2();
+		this->anm_vms[slot].__hide_tree();
 	}
 }
 
@@ -51135,7 +51171,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			this->flags_low |= this->get_int_arg(0);
 			if (this->intangible) {
 				for (size_t i = 0; i < ENEMY_ANM_SLOTS; ++i) {
-					this->anm_vms[i].__tree_clear_visible2();
+					this->anm_vms[i].__hide_tree();
 				}
 			}
 			break;
@@ -51143,7 +51179,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			this->flags_low &= ~this->get_int_arg(0);
 			if (this->intangible) {
 				for (size_t i = 0; i < ENEMY_ANM_SLOTS; ++i) {
-					this->anm_vms[i].__tree_set_visible2();
+					this->anm_vms[i].__show_tree();
 				}
 			}
 			break;
@@ -51343,9 +51379,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			this->shooters[slot].flags = 0x23; // TODO: convert to bitfields
 			this->shooter_offsets[slot].x = 0.0f;
 			this->shooter_offsets[slot].y = 0.0f;
-			this->shooter_origins[slot].x = 0.0f;
-			this->shooter_origins[slot].y = 0.0f;
-			this->shooter_origins[slot].z = 0.0f;
+			this->shooter_origins[slot] = { 0.0f, 0.0f, 0.0f };
 			this->bullet_effect_indices[slot] = 0;
 			break;
 		}
@@ -52110,6 +52144,9 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			Float3 size;
 			size.x = this->get_float_arg(0);
 			size.y = this->get_float_arg(1);
+#if FIX_MINOR_BUGS
+			size.z = 0.0f;
+#endif
 			float rotation = this->anm_vms[0].get_vm_ptr()->get_z_rotation();
 			BULLET_MANAGER_PTR->cancel_rotated_rectangle_as_bomb(&this->get_position(), &size, rotation, CancelType1, 0);
 			break;
@@ -52213,7 +52250,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 		}
 		case boss_set_life_count: { // 540
 			int32_t lives = this->get_int_arg(0);
-			GUI_PTR->__set_boss_life_count(lives);
+			GUI_PTR->set_boss_life_count(lives);
 			break;
 		}
 		case laser_clear_all: // 545
@@ -54068,8 +54105,8 @@ struct PauseMenu : ZUNTask {
 		if (MsgVM* msg_vm = GUI_PTR->msg_vm) {
 			msg_vm->__hide_all_anms();
 		}
-		GUI_PTR->__anm_id_114.__tree_clear_visible2();
-		GUI_PTR->__hide_spell_timer_anms();
+		GUI_PTR->__anm_id_114.__hide_tree();
+		__hide_spell_timer_anms();
 		if (AbilityShop* ability_shop = ABILITY_SHOP_PTR) {
 			ability_shop->delete_vms();
 			ABILITY_TEXT_DATA_PTR->delete_vms();
@@ -54103,8 +54140,8 @@ struct PauseMenu : ZUNTask {
 			if (MsgVM* msg_vm = GUI_PTR->msg_vm) {
 				msg_vm->__hide_all_anms();
 			}
-			GUI_PTR->__hide_vm_id_114();
-			GUI_PTR->__hide_spell_timer_anms();
+			__hide_gui_vm_id_114();
+			__hide_spell_timer_anms();
 
 			pause_menu->__unknown_flag_pm_B = false;
 			REPLAY_MANAGER_PTR->__unknown_flag_rm_A = true;
@@ -54206,7 +54243,7 @@ struct PauseMenu : ZUNTask {
 							this->__name_length = i;
 							this->__int_200 = 0;
 							this->change_secondary_state(15);
-							this->__vm_id_1E4.__tree_clear_visible2();
+							this->__vm_id_1E4.__hide_tree();
 							break;
 						}
 					}
@@ -54406,7 +54443,7 @@ struct PauseMenu : ZUNTask {
 				if (this->state_timer >= 20) {
 					this->__unknown_field_pm_A = 1;
 					this->change_secondary_state(11);
-					this->__vm_id_1E4.__tree_clear_visible2();
+					this->__vm_id_1E4.__hide_tree();
 					this->__menu_select_34.push_state();
 					this->__menu_select_34.menu_length = 25;
 					this->__menu_select_34.enable_wrap = true;
@@ -54600,7 +54637,7 @@ struct PauseMenu : ZUNTask {
 						}
 						else {
 							this->change_secondary_state(6);
-							this->__vm_id_1E4.__tree_set_visible2();
+							this->__vm_id_1E4.__show_tree();
 							if (GAME_MANAGER.game_type != NormalGame) {
 								this->__menu_select_34.disable_selection(0);
 								this->__menu_select_34.disable_selection(4);
@@ -54613,7 +54650,7 @@ struct PauseMenu : ZUNTask {
 			case 14: {
 				HelpMenu* help_menu;
 				if (this->state_timer == 20) {
-					this->__vm_id_1E4.__tree_clear_visible2();
+					this->__vm_id_1E4.__hide_tree();
 					HelpMenu::allocate();
 					help_menu = HELP_MENU_PTR;
 					help_menu->__float_128 = 32.0f;
@@ -54626,14 +54663,14 @@ struct PauseMenu : ZUNTask {
 				) {
 					delete_no_eh(help_menu);
 					this->change_secondary_state(6);
-					this->__vm_id_1E4.__tree_set_visible2();
+					this->__vm_id_1E4.__show_tree();
 				}
 				break;
 			}
 			case 16: {
 				OptionsMenu* options_menu;
 				if (this->state_timer == 20) {
-					this->__vm_id_1E4.__tree_clear_visible2();
+					this->__vm_id_1E4.__hide_tree();
 					Float3 A = { 60.0f, 100.0f, 0.0f };
 					OptionsMenu::allocate(&A);
 					options_menu = OPTIONS_MENU_PTR;
@@ -54646,13 +54683,13 @@ struct PauseMenu : ZUNTask {
 					!options_menu
 				) {
 					this->change_secondary_state(6);
-					this->__vm_id_1E4.__tree_set_visible2();
+					this->__vm_id_1E4.__show_tree();
 				}
 				break;
 			}
 			case 17:
 				if (this->state_timer == 20) {
-					this->__vm_id_1E4.__tree_clear_visible2();
+					this->__vm_id_1E4.__hide_tree();
 					Float3 A = { 448.0f, 100.0f, 0.0f };
 					AbilityMenu::allocate(&A, 0);
 				}
@@ -54661,7 +54698,7 @@ struct PauseMenu : ZUNTask {
 					!ABILITY_MENU_PTR
 				) {
 					this->change_secondary_state(6);
-					this->__vm_id_1E4.__tree_set_visible2();
+					this->__vm_id_1E4.__show_tree();
 				}
 				break;
 			case 18:
@@ -54678,7 +54715,7 @@ struct PauseMenu : ZUNTask {
 								msg_vm->__show_all_anms();
 								gui = GUI_PTR;
 							}
-							gui->__anm_id_114.__tree_set_visible2();
+							gui->__anm_id_114.__show_tree();
 							WINDOW_DATA.__int_20D0 = this->__int_208;
 							break;
 						}
@@ -54731,7 +54768,7 @@ struct PauseMenu : ZUNTask {
 										if (MsgVM* msg_vm = GUI_PTR->msg_vm) {
 											msg_vm->__show_all_anms();
 										}
-										GUI_PTR->__show_vm_id_114();
+										__show_gui_vm_id_114();
 										WINDOW_DATA.__int_20D0 = this->__int_208;
 									}
 									break;
@@ -55727,6 +55764,7 @@ extern "C" {
 	externcg int32_t UNKNOWN_INT32_C cgasm("_UNKNOWN_INT32_C");
 }
 
+// ZUN name: TitleInf
 // size: 0x5D98
 struct MainMenu : ZUNTask {
 	// void* vftable; // 0x0
@@ -55892,6 +55930,7 @@ struct MainMenu : ZUNTask {
 	}
 
 	// This can't actually be called because the memset at the start nukes it
+	// Not that anything ever tries to call it anyway
 	// 0x4646D0
 	// Method 0
 	dllexport gnu_noinline virtual size_t __method_0() asm_symbol_rel(0x4646D0) {
@@ -56518,8 +56557,8 @@ ValidateVirtualFieldOffset32(0x384, MainMenu, state_timer);
 dllexport gnu_noinline void Gui::__allocate_hud() {
 	Gui* gui_ptr = GUI_PTR;
 	gui_ptr->enable_funcs();
-	if (!gui_ptr->__anm_id_138) {
-		gui_ptr->__anm_id_138 = gui_ptr->front_anm->instantiate_vm_to_ui_list_back(0);
+	if (!gui_ptr->__hud_root) {
+		gui_ptr->__hud_root = gui_ptr->front_anm->instantiate_vm_to_ui_list_back(0);
 	}
 
 	if (!gui_ptr->player_life_icons[0]) {
@@ -56544,8 +56583,8 @@ dllexport gnu_noinline void Gui::__allocate_hud() {
 		AnmVM** spell_timer_vms = gui_ptr->spell_timer_vms;
 		nounroll do {
 			gui_ptr->spell_timer_vm_ids[i] = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(2 + i, &zero, spell_timer_vms);
-			(*spell_timer_vms)->__tree_clear_visible2();
-			(*spell_timer_vms)->data.origin_mode = 0;
+			(*spell_timer_vms)->__hide_tree();
+			(*spell_timer_vms)->data.origin_mode = OriginWindow; // 0
 			++spell_timer_vms;
 		} while (++i < countof(gui_ptr->spell_timer_vms));
 	}
@@ -56597,10 +56636,10 @@ dllexport gnu_noinline void Gui::__allocate_hud() {
 	for (size_t i = 0; i != MAX_LIFEBARS_IN_GUI; ++i) {
 		gui_ptr->lifebars[i].vms_initialized = false;
 	}
-	gui_ptr->__boss_life_count = 0;
+	gui_ptr->boss_life_count = 0;
 
-	if (gui_ptr->__anm_id_100) {
-		gui_ptr->__anm_id_100.interrupt_and_orphan_tree(1);
+	if (gui_ptr->__fade_to_white_vm) {
+		gui_ptr->__fade_to_white_vm.interrupt_and_orphan_tree(1);
 	}
 }
 
@@ -56656,8 +56695,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 		!this->msg_vm &&
 		!GAME_THREAD_PTR->__unknown_flag_gt_F
 	) {
-		this->spell_timer_vms[0]->__tree_set_visible2();
-		this->spell_timer_vms[1]->__tree_set_visible2();
+		this->__show_spell_timer_anms();
 
 		int32_t state = this->__unknown_field_gu_B;
 		if (state == 0) {
@@ -56668,8 +56706,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 				(spell_flag && player->data.position.y > 320.0f)
 			) {
 				this->__unknown_field_gu_B = 1;
-				this->spell_timer_vms[0]->interrupt(5);
-				this->spell_timer_vms[1]->interrupt(5);
+				this->__spell_timer_vms_interrupt(5);
 			}
 		}
 		else {
@@ -56681,55 +56718,47 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 					(!spell_flag && player->data.position.y < 160.0f) ||
 					(spell_flag && player->data.position.y > 288.0f)
 				) {
-					this->spell_timer_vms[0]->interrupt(4);
-					this->spell_timer_vms[1]->interrupt(4);
+					this->__spell_timer_vms_interrupt(4);
 				}
 			}
 			else {
 				if (spellcard->__unknown_flag_sp_H) {
-					this->spell_timer_vms[0]->interrupt_and_run(2);
-					this->spell_timer_vms[1]->interrupt_and_run(2);
+					this->__spell_timer_vms_interrupt_and_run(2);
 				}
 				else {
-					this->spell_timer_vms[0]->interrupt_and_run(3);
-					this->spell_timer_vms[1]->interrupt_and_run(3);
-					this->spell_timer_vms[0]->interrupt_and_run(4);
-					this->spell_timer_vms[1]->interrupt_and_run(4);
+					this->__spell_timer_vms_interrupt_and_run(3);
+					this->__spell_timer_vms_interrupt_and_run(4);
 				}
 			}
 			this->__unknown_field_gu_B = 0;
 		}
 
 		int32_t spell_seconds = this->spell_timer_seconds;
-		int32_t A = this->__int_1C0;
-		if (spell_seconds < A) {
+		int32_t prev_seconds = this->__prev_spell_timer_seconds;
+		if (spell_seconds < prev_seconds) {
 			if (spell_seconds < 2) {
-				this->spell_timer_vms[0]->interrupt(9);
-				this->spell_timer_vms[1]->interrupt(9);
+				this->__spell_timer_vms_interrupt(9);
 				SOUND_MANAGER.play_sound(12);
 			}
 			else if (spell_seconds < 5) {
-				this->spell_timer_vms[0]->interrupt(8);
-				this->spell_timer_vms[1]->interrupt(8);
+				this->__spell_timer_vms_interrupt(8);
 				SOUND_MANAGER.play_sound(11);
 			}
 		}
-		else if (spell_seconds > A) {
-			this->spell_timer_vms[0]->interrupt(7);
-			this->spell_timer_vms[1]->interrupt(7);
+		else if (spell_seconds > prev_seconds) {
+			this->__spell_timer_vms_interrupt(7);
 		}
 
 		spell_seconds = this->spell_timer_seconds;
-		if (spell_seconds != this->__int_1C0) {
+		if (spell_seconds != this->__prev_spell_timer_seconds) {
 			this->spell_timer_vms[0]->set_sprite(239 + spell_seconds / 10);
 			this->spell_timer_vms[1]->set_sprite(239 + this->spell_timer_seconds % 10);
 			spell_seconds = this->spell_timer_seconds;
 		}
-		this->__int_1C0 = spell_seconds;
+		this->__prev_spell_timer_seconds = spell_seconds;
 	}
 	else {
-		this->spell_timer_vms[0]->__tree_clear_visible2();
-		this->spell_timer_vms[1]->__tree_clear_visible2();
+		this->__hide_spell_timer_anms();
 	}
 
 	enemy_manager = ENEMY_MANAGER_PTR;
@@ -56806,7 +56835,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 							!(marker_position == 0.0f) &&
 							!(marker_position >= lifebar.bar_value)
 						) {
-							marker_vm->__tree_set_visible2();
+							marker_vm->__show_tree();
 
 							float angle = reduce_angle(NPI_f - markers->bar_position * TWO_PI_f);
 							marker_vm->set_z_rotation(angle);
@@ -56816,7 +56845,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 							marker_vm->controller.position = position + offset.rotate_around_origin(angle);
 						}
 						else {
-							marker_vm->__tree_clear_visible2();
+							marker_vm->__hide_tree();
 						}
 					}
 
@@ -56847,14 +56876,14 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 	}
 
 	for (size_t i = 0; i < MAX_BOSS_LIFE_MARKERS; ++i) {
-		if (i < this->__boss_life_count) {
-			if (!this->__boss_life_markers[i]) {
-				this->__boss_life_markers[i] = this->front_anm->instantiate_vm_to_world_list_back(i + 58);
+		if (i < this->boss_life_count) {
+			if (!this->boss_life_markers[i]) {
+				this->boss_life_markers[i] = this->front_anm->instantiate_vm_to_world_list_back(i + 58);
 			}
 		}
 		else {
-			if (this->__boss_life_markers[i]) {
-				this->__boss_life_markers[i].interrupt_tree(1);
+			if (this->boss_life_markers[i]) {
+				this->boss_life_markers[i].interrupt_tree(1);
 			}
 		}
 	}
@@ -56877,33 +56906,33 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 			!boss->data.disable_hitbox
 		) {
 			AnmVM* vm = this->boss_indicator.get_vm_ptr();
-			vm->__tree_set_visible2();
+			vm->__show_tree();
 
-			int32_t state = this->__boss_indicator_state;
+			int32_t state = this->boss_indicator_state;
 			if (SPELLCARD_PTR->spell_active) {
 				switch (state) {
 					case 0:
 						if (boss->data.life.remaining_current_attack < 2000) {
 							vm->interrupt(7);
-							this->__boss_indicator_state = 1;
+							this->boss_indicator_state = 1;
 						}
 						break;
 					case 1:
 						if (boss->data.life.remaining_current_attack < 1000) {
 							vm->interrupt(8);
-							this->__boss_indicator_state = 2;
+							this->boss_indicator_state = 2;
 						}
 						break;
 					case 2:
 						if (boss->data.life.remaining_current_attack < 400) {
 							vm->interrupt(9);
-							this->__boss_indicator_state = 3;
+							this->boss_indicator_state = 3;
 						}
 						break;
 					case 3:
 						if (boss->data.life.remaining_current_attack > 400) {
 							vm->interrupt(10);
-							this->__boss_indicator_state = 0;
+							this->boss_indicator_state = 0;
 						}
 						break;
 				}
@@ -56913,25 +56942,25 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 					case 0:
 						if (boss->data.life.remaining_current_attack < 700) {
 							vm->interrupt(7);
-							this->__boss_indicator_state = 1;
+							this->boss_indicator_state = 1;
 						}
 						break;
 					case 1:
 						if (boss->data.life.remaining_current_attack < 400) {
 							vm->interrupt(8);
-							this->__boss_indicator_state = 2;
+							this->boss_indicator_state = 2;
 						}
 						break;
 					case 2:
 						if (boss->data.life.remaining_current_attack < 200) {
 							vm->interrupt(9);
-							this->__boss_indicator_state = 3;
+							this->boss_indicator_state = 3;
 						}
 						break;
 					case 3:
 						if (boss->data.life.remaining_current_attack > 200) {
 							vm->interrupt(10);
-							this->__boss_indicator_state = 0;
+							this->boss_indicator_state = 0;
 						}
 						break;
 				}
@@ -56968,7 +56997,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 			}
 		}
 		else {
-			this->boss_indicator.__tree_clear_visible2();
+			this->boss_indicator.__hide_tree();
 		}
 	}
 
@@ -56988,9 +57017,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 	float offset = 0.0f; // LOCAL 4
 
 	if (vm) {
-		position.x = 224.0f;
-		position.y = 200.0f;
-		position.z = 0.0f;
+		position = { 224.0f, 200.0f, 0.0f };
 
 		vm = this->__stage_clear_bonus_vm.get_vm_ptr();
 
@@ -57010,9 +57037,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 	}
 
 	if (this->__show_spell_clear_time) {
-		position.x = 224.0f;
-		position.y = 144.0f;
-		position.z = 0.0f;
+		position = { 224.0f, 144.0f, 0.0f };
 
 		AnmVM* vm = this->__spell_clear_time_label.get_vm_ptr();
 
@@ -57040,8 +57065,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 			spellcard = SPELLCARD_PTR;
 			position.x = 268.0f;
 			position.y = 150.0f;
-			ascii_manager->scale.x = 0.6f;
-			ascii_manager->scale.y = 0.6f;
+			ascii_manager->set_scale(0.6f);
 
 			value = spellcard->__int_90 % 60 * 100 / 60;
 			ascii_manager->printf(&position, "%.2ds", value);
@@ -57051,8 +57075,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 			ascii_manager->color = COLOR(255, 128, 128, 128);
 			ascii_manager->set_alpha(vm->get_alpha());
 			spellcard = SPELLCARD_PTR;
-			ascii_manager->scale.x = 1.0f;
-			ascii_manager->scale.y = 1.0f;
+			ascii_manager->set_scale(1.0f);
 			position.y = 160.0f;
 
 			int32_t A = spellcard->__int_A8;
@@ -57069,8 +57092,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 			ASCII_MANAGER_PTR->printf(&position, "%3d.", value);
 
 			ascii_manager = ASCII_MANAGER_PTR;
-			ascii_manager->scale.x = 0.6f;
-			ascii_manager->scale.y = 0.6f;
+			ascii_manager->set_scale(0.6f);
 			position.x = 268.0f;
 			position.y = 166.0f;
 
@@ -57078,8 +57100,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 
 			ascii_manager = ASCII_MANAGER_PTR;
 			ascii_manager->set_alpha(255);
-			ascii_manager->scale.x = 1.0f;
-			ascii_manager->scale.y = 1.0f;
+			ascii_manager->set_scale(1.0f);
 			ascii_manager->font_id = 0;
 			ascii_manager->group = 0;
 			ascii_manager->color = COLOR(255, 255, 255, 255);
@@ -57095,9 +57116,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 	ascii_manager->font_id = 10;
 	ascii_manager->group = 3;
 
-	position.x = 620.0f;
-	position.y = 42.0f;
-	position.z = 0.0f;
+	position = { 620.0f, 42.0f, 0.0f };
 
 	ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha());
 	ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha());
@@ -57137,8 +57156,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 
 	ascii_manager->color = COLOR(255, 0, 0, 0);
 	ascii_manager->color2 = COLOR(255, 255, 255, 255);
-	ascii_manager->scale.x = 0.6f;
-	ascii_manager->scale.y = 0.6f;
+	ascii_manager->set_scale(0.6f);
 
 	position.x = life_fragment_position;
 	position.y = 120.0f;
@@ -57168,8 +57186,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 
 	ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha());
 	ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha());
-	ascii_manager->scale.x = 0.6f;
-	ascii_manager->scale.y = 0.6f;
+	ascii_manager->set_scale(0.6f);
 
 	ascii_manager->printf(&position, "%3d", GAME_MANAGER.globals.bomb_fragments);
 
@@ -57188,8 +57205,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 
 	ascii_manager->color = COLOR(255, 128, 0, 0);
 	ascii_manager->color2 = COLOR(128, 255, 208, 208);
-	ascii_manager->scale.x = 1.0f;
-	ascii_manager->scale.y = 1.0f;
+	ascii_manager->set_scale(1.0f);
 	ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha());
 	ascii_manager->set_alpha2(this->player_life_icons[0]->get_alpha());
 
@@ -57200,8 +57216,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 	position.x = 560.0f;
 	position.y = 189.0f;
 
-	ascii_manager->scale.x = 0.6f;
-	ascii_manager->scale.y = 0.6f;
+	ascii_manager->set_scale(0.6f);
 
 	ascii_manager->printf(&position, "%.2d", GAME_MANAGER.globals.power_percent_to_next_level());
 
@@ -57210,8 +57225,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 	position.y = 182.0f;
 	position.x = 574.0f;
 
-	ascii_manager->scale.x = 1.0f;
-	ascii_manager->scale.y = 1.0f;
+	ascii_manager->set_scale(1.0f);
 
 	ascii_manager->printf(&position, "/%d.", GAME_MANAGER.globals.power_level_max());
 
@@ -57220,8 +57234,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 	position.x = 606.0f;
 	position.y = 189.0f;
 
-	ascii_manager->scale.x = 0.6f;
-	ascii_manager->scale.y = 0.6f;
+	ascii_manager->set_scale(0.6f);
 
 	ascii_manager->printf(&position, "00");
 
@@ -57236,8 +57249,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 
 	ascii_manager->color = COLOR(255, 128, 128, 0);
 	ascii_manager->color2 = COLOR(128, 255, 255, 208);
-	ascii_manager->scale.x = 1.0f;
-	ascii_manager->scale.y = 1.0f;
+	ascii_manager->set_scale(1.0f);
 	ascii_manager->__horizontal_positioning_mode = 2;
 	ascii_manager->__vertical_positioning_mode = 1;
 	ascii_manager->set_alpha(this->player_life_icons[0]->get_alpha());
@@ -57254,8 +57266,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 	ascii_manager->color = COLOR(255, 255, 255, 255);
 	ascii_manager->__horizontal_positioning_mode = 1;
 	ascii_manager->__vertical_positioning_mode = 1;
-	ascii_manager->scale.x = 1.0f;
-	ascii_manager->scale.y = 1.0f;
+	ascii_manager->set_scale(1.0f);
 	ascii_manager->color2 = COLOR(255, 0, 0, 0);
 	ascii_manager->set_alpha(255);
 	ascii_manager->font_id = 0;
@@ -57286,16 +57297,14 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 		ascii_manager = ASCII_MANAGER_PTR;
 
 		position.x = X + 8.0f;
-		ascii_manager->scale.x = 0.6f;
-		ascii_manager->scale.y = 0.6f;
+		ascii_manager->set_scale(0.6f);
 		position.y = Y + 6.0f;
 
 		ascii_manager->printf(&position, "%.2d", this->spell_timer_hundredths);
 
 		ascii_manager = ASCII_MANAGER_PTR;
 
-		ascii_manager->scale.x = 1.0f;
-		ascii_manager->scale.y = 1.0f;
+		ascii_manager->set_scale(1.0f);
 		ascii_manager->color = COLOR(255, 255, 255, 255);
 		ascii_manager->group = 0;
 		ascii_manager->font_id = 0;
@@ -57575,9 +57584,7 @@ skip_adding_image_size:
 
 // 0x454B20
 dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
-	this->cameras[2].position.x = 0.0f;
-	this->cameras[2].position.y = 0.0f;
-	this->cameras[2].position.z = 0.0f;
+	this->cameras[2].position = { 0.0f, 0.0f, 0.0f };
 	this->cameras[2].facing.x = 0.0f;
 	this->cameras[2].facing.y = 0.0f;
 	this->cameras[2].rotation.x = 0.0f;
@@ -57585,29 +57592,28 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	StageCamera* camera2 = &this->cameras[2];
 	camera2->viewport.X = 0;
 	camera2->viewport.Y = 0;
-	camera2->fov = 0.5235988f;
+	camera2->fov = 0.5235988f; // TODO: Make a meaningful value
 	float dumb_local = 0.0f;
 	camera2->facing.z = dumb_local;
 	dumb_local = 0.0f;
 	camera2->rotation.z = dumb_local;
 	camera2->viewport.Width = WINDOW_DATA.__scaled_window_width;
 	camera2->viewport.Height = WINDOW_DATA.__scaled_window_height;
-	camera2->__shaking_float3_A.x = 0.0f;
-	camera2->__shaking_float3_A.y = 0.0f;
+	camera2->__shaking_position.x = 0.0f;
+	camera2->__shaking_position.y = 0.0f;
 	camera2->viewport.MinZ = 0.0f;
 	camera2->viewport.MaxZ = 1.0f;
 	camera2->camera_index = 2;
 	dumb_local = 0.0f;
-	camera2->__shaking_float3_A.z = dumb_local;
-	camera2->__shaking_float3_B.x = 0.0f;
-	camera2->__shaking_float3_B.y = 0.0f;
+	camera2->__shaking_position.z = dumb_local;
+	camera2->__shaking_facing.x = 0.0f;
+	camera2->__shaking_facing.y = 0.0f;
 	dumb_local = 0.0f;
-	camera2->__shaking_float3_B.z = dumb_local;
+	camera2->__shaking_facing.z = dumb_local;
 	camera2->window_resolution.x = WINDOW_DATA.__scaled_window_width;
 	camera2->window_resolution.y = WINDOW_DATA.__scaled_window_height;
 	camera2->__viewport_10C = camera2->viewport;
-	camera2->__int2_104.x = 0;
-	camera2->__int2_104.y = 0;
+	camera2->__vertex_offsetB = { 0, 0 };
 	camera2->__viewport_10C.X = 0;
 	camera2->__viewport_10C.Y = 0;
 	camera2->__viewport_10C.Width = WINDOW_DATA.__scaled_window_width;
@@ -57624,8 +57630,7 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	camera0->viewport.Y = WINDOW_DATA.game_scale * 16.0f;
 	camera0->viewport.Width = WINDOW_DATA.game_scale * SCREEN_WIDTH;
 	camera0->viewport.Height = WINDOW_DATA.game_scale * SCREEN_HEIGHT;
-	camera0->__int2_104.x = 0;
-	camera0->__int2_104.y = 0;
+	camera0->__vertex_offsetB = { 0, 0 };
 	camera0->__viewport_10C = camera0->viewport;
 	this->__setup_camera(camera0);
 	StageCamera* camera1 = &this->cameras[1];
@@ -57635,8 +57640,7 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	camera1->viewport.Y = WINDOW_DATA.game_scale * 16.0f;
 	camera1->viewport.Width = WINDOW_DATA.game_scale * SCREEN_WIDTH;
 	camera1->viewport.Height = WINDOW_DATA.game_scale * SCREEN_HEIGHT;
-	camera1->__int2_104.x = 0;
-	camera1->__int2_104.y = 0;
+	camera1->__vertex_offsetB = { 0, 0 };
 	camera1->__viewport_10C = camera1->viewport;
 	this->__setup_camera(camera1);
 	StageCamera* camera3 = &this->cameras[StdCamera]; // 3
@@ -57645,8 +57649,7 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	camera3->viewport.X = ((float)WINDOW_DATA.__scaled_window_width - (SCREEN_WIDTH + 24.0f)) * 0.5f;
 	camera3->viewport.Width = 408;
 	camera3->viewport.Height = 472;
-	camera3->__int2_104.x = 0;
-	camera3->__int2_104.y = 0;
+	camera3->__vertex_offsetB = { 0, 0 };
 	camera3->viewport.Y = ((float)WINDOW_DATA.__scaled_window_height - (SCREEN_HEIGHT + 24.0f)) * 0.5f;
 	camera3->__viewport_10C = camera3->viewport;
 	this->__setup_camera(camera3);
@@ -57659,10 +57662,10 @@ dllexport gnu_noinline void Supervisor::__camera2_sub_454F50() {
 	int32_t intA = WINDOW_DATA.__scaled_window_width;
 	int32_t intB = (float)(WINDOW_DATA.__backbuffer_width - intA) * 0.5f;
 	float floatA = WINDOW_DATA.game_scale;
-	SUPERVISOR.cameras[2].__int2_104.x = intB;
+	SUPERVISOR.cameras[2].__vertex_offsetB.x = intB;
 	int32_t intC = WINDOW_DATA.__scaled_window_height;
 	int32_t intD = (float)(WINDOW_DATA.__backbuffer_height - intC) * 0.5f;
-	SUPERVISOR.cameras[2].__int2_104.y = intD;
+	SUPERVISOR.cameras[2].__vertex_offsetB.y = intD;
 	SUPERVISOR.cameras[2].__viewport_10C = SUPERVISOR.cameras[2].viewport;
 	SUPERVISOR.cameras[2].__viewport_10C.X = intB;
 	SUPERVISOR.cameras[2].__viewport_10C.Y = intD;
@@ -58639,14 +58642,14 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 
 		uint32_t score_diff_C = __max(__min(score_diff_B, 578910), 1);
 
-		if (gui->__int_15C < score_diff_C) {
-			gui->__int_15C = score_diff_C;
+		if (gui->__score_diff < score_diff_C) {
+			gui->__score_diff = score_diff_C;
 		} else {
-			score_diff_C = gui->__int_15C;
+			score_diff_C = gui->__score_diff;
 		}
 
 		if (score_diff_C > score_diff) {
-			gui->__int_15C = score_diff;
+			gui->__score_diff = score_diff;
 		} else {
 			score_diff = score_diff_C;
 		}
@@ -58655,7 +58658,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 		score_upper[2] = displayed_score >> 32;
 
 		if (displayed_score >= score) {
-			gui->__int_15C = 0;
+			gui->__score_diff = 0;
 		}
 	}
 	uint64_t high_score = GAME_MANAGER.__high_score | (uint64_t)score_upper[1] << 32;
@@ -58677,24 +58680,24 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 
 		int32_t score_diff_C = __max(__min(score_diff_B, 578910), 1);
 
-		if (gui->__int_15C < score_diff_C) {
-			gui->__int_15C = score_diff_C;
+		if (gui->__score_diff < score_diff_C) {
+			gui->__score_diff = score_diff_C;
 			score = GAME_MANAGER.globals.score;
 		} else {
-			score_diff_C = gui->__int_15C;
+			score_diff_C = gui->__score_diff;
 		}
 
 		int32_t score_diff_D = score - displayed_score;
 
 		if (score_diff_C > score_diff_D) {
-			gui->__int_15C = score_diff_D;
+			gui->__score_diff = score_diff_D;
 			score_diff_C = score_diff_D;
 		}
 		displayed_score += score_diff_C;
 		gui->__score = displayed_score;
 
 		if (displayed_score >= GAME_MANAGER.globals.score) {
-			gui->__int_15C = 0;
+			gui->__score_diff = 0;
 		}
 	}
 	if (GAME_MANAGER.__high_score < displayed_score) {

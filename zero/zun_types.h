@@ -20,6 +20,8 @@
 #define zun_make_from_vector_inline gnu_noinline
 #endif
 
+#define TRY_TO_USE_BETTER_INIT_LIST 1
+
 struct Int1;
 struct Int2;
 struct Int3;
@@ -40,6 +42,20 @@ struct Int1 {
 
     inline Int1() = default;
     inline constexpr Int1(const int32_t& X) : x(X) {}
+#if TRY_TO_USE_BETTER_INIT_LIST
+    inline constexpr Int1(const Int1&) = default;
+    inline constexpr Int1& operator=(const Int1&) = default;
+    inline constexpr Int1(Int1&&) = default;
+    inline constexpr Int1& operator=(Int1&& value) {
+        this->x = value.x;
+        return *this;
+    }
+#endif
+
+    inline constexpr Int1& splat(int32_t value) {
+        this->x = value;
+        return *this;
+    }
 };
 
 // size: 0x8
@@ -50,6 +66,22 @@ struct Int2 : Int1 {
     using Int1::Int1;
     inline Int2() = default;
     inline constexpr Int2(const int32_t& X, const int32_t& Y) : Int1(X), y(Y) {}
+#if TRY_TO_USE_BETTER_INIT_LIST
+    inline constexpr Int2(const Int2&) = default;
+    inline constexpr Int2& operator=(const Int2&) = default;
+    inline constexpr Int2(Int2&&) = default;
+    inline constexpr Int2& operator=(Int2&& value) {
+        this->x = value.x;
+        this->y = value.y;
+        return *this;
+    }
+#endif
+
+    inline constexpr Int2& splat(int32_t value) {
+        this->x = value;
+        this->y = value;
+        return *this;
+    }
 
 #pragma region // Int2 Operators
 
@@ -156,9 +188,27 @@ struct Int3 : Int2 {
     inline constexpr Int3(const Int2& v) : Int2(v), z(0.0f) {}
     inline constexpr Int3(const Int2& v, int32_t Z) : Int2(v), z(Z) {}
     inline constexpr Int3(const int32_t& X, const int32_t& Y, const int32_t& Z) : Int2(X, Y), z(Z) {}
+#if TRY_TO_USE_BETTER_INIT_LIST
+    inline constexpr Int3(const Int3&) = default;
+    inline constexpr Int3& operator=(const Int3&) = default;
+    inline constexpr Int3(Int3&&) = default;
+    inline constexpr Int3& operator=(Int3&& value) {
+        this->x = value.x;
+        this->y = value.y;
+        this->z = value.z;
+        return *this;
+    }
+#endif
 
     inline Int2& as2() {
         return *(Int2*)this;
+    }
+
+    inline constexpr Int3& splat(int32_t value) {
+        this->x = value;
+        this->y = value;
+        this->z = value;
+        return *this;
     }
 
 #pragma region // Int3 Operators
@@ -288,6 +338,20 @@ struct Float1 {
 
     inline Float1() = default;
     inline constexpr Float1(const float& X) : x(X) {}
+#if TRY_TO_USE_BETTER_INIT_LIST
+    inline constexpr Float1(const Float1&) = default;
+    inline constexpr Float1& operator=(const Float1&) = default;
+    inline constexpr Float1(Float1&&) = default;
+    inline constexpr Float1& operator=(Float1&& value) {
+        this->x = value.x;
+        return *this;
+    }
+#endif
+
+    inline constexpr Float1& splat(float value) {
+        this->x = value;
+        return *this;
+    }
 };
 
 // size: 0x8
@@ -297,9 +361,25 @@ struct Float2 : Float1 {
     using Float1::Float1;
     inline Float2() = default;
     inline constexpr Float2(const float& X, const float& Y) : Float1(X), y(Y) {}
+#if TRY_TO_USE_BETTER_INIT_LIST
+    inline constexpr Float2(const Float2&) = default;
+    inline constexpr Float2& operator=(const Float2&) = default;
+    inline constexpr Float2(Float2&&) = default;
+    inline constexpr Float2& operator=(Float2&& value) {
+        this->x = value.x;
+        this->y = value.y;
+        return *this;
+    }
+#endif
 
     inline D3DXVECTOR2& D3DX() {
         return *(D3DXVECTOR2*)this;
+    }
+
+    inline constexpr Float2& splat(float value) {
+        this->x = value;
+        this->y = value;
+        return *this;
     }
     
     // th18 A: 0x404DD0
@@ -400,6 +480,7 @@ struct Float2 : Float1 {
     */
 
     inline Float2 normalize() {
+#if GAME_VERSION >= UDoALG_VER
         float cur_length = this->length();
         if (zfabsf(cur_length) < 0.01f) {
             return *this;
@@ -407,6 +488,10 @@ struct Float2 : Float1 {
         else {
             return *this / cur_length;
         }
+#else
+        //D3DXVec2Normalize(this, this);
+        //return *this;
+#endif
     }
 
     inline Float2 normalize_to_length(float length) {
@@ -535,18 +620,39 @@ struct Float3 : Float2 {
     float z; // 0x8
 
     using Float2::Float2;
-    //inline constexpr Float3() {};
     inline Float3() = default;
     inline constexpr Float3(const Float2& v) : Float2(v), z(0.0f) {}
     inline constexpr Float3(const Float2& v, float Z) : Float2(v), z(Z) {}
     inline constexpr Float3(const float& X, const float& Y, const float& Z) : Float2(X, Y), z(Z) {}
+#if TRY_TO_USE_BETTER_INIT_LIST
+    inline constexpr Float3(const Float3&) = default;
+    inline constexpr Float3& operator=(const Float3&) = default;
+    inline constexpr Float3(Float3&&) = default;
+    inline constexpr Float3& operator=(Float3&& value) {
+        this->x = value.x;
+        this->y = value.y;
+        this->z = value.z;
+        return *this;
+    }
+#endif
     
     inline Float2& as2() {
         return *(Float2*)this;
     }
 
+    inline const Float2& as2() const {
+        return *(Float2*)this;
+    }
+
     inline D3DXVECTOR3& D3DX() {
         return *(D3DXVECTOR3*)this;
+    }
+
+    inline constexpr Float3& splat(float value) {
+        this->x = value;
+        this->y = value;
+        this->z = value;
+        return *this;
     }
 
     inline Float3& thiscall make_from_vector3(float angle, float magnitude) {
@@ -567,12 +673,12 @@ struct Float3 : Float2 {
 #endif
 
     void set(const Float2& src) {
-        *(double*)&this->x = *(double*)&src.x;
+        this->as2() = src;
         this->z = 0.0f;
     }
 
     void set(const Float3& src) {
-        *(double*)&this->x = *(double*)&src.x;
+        this->as2() = src.as2();
         this->z = src.z;
     }
 
@@ -584,7 +690,20 @@ struct Float3 : Float2 {
         }
     }
 
-    inline Float3 normalize() {
+    inline float dot_product3(const Float3& value) {
+        return this->x * value.x + this->y * value.y + this->z * value.z;
+    }
+
+    inline Float3 cross_product(const Float3& value) {
+        return {
+            this->y * value.z - this->z * value.y,
+            this->z * value.x - this->x * value.z,
+            this->x * value.y - this->y * value.x
+        };
+    }
+
+    inline Float3 normalize3() {
+#if GAME_VERSION >= UDoALG_VER
         float cur_length = this->length();
         if (zfabsf(cur_length) < 0.01f) {
             return *this;
@@ -592,9 +711,13 @@ struct Float3 : Float2 {
         else {
             return *this / cur_length;
         }
+#else
+        //D3DXVec3Normalize(this, this);
+        //return *this;
+#endif
     }
 
-    inline Float3 normalize_to_length(float length) {
+    inline Float3 normalize_to_length3(float length) {
         float cur_length = this->length();
         if (zfabsf(cur_length) < 0.01f) {
             return *this * length;
@@ -739,16 +862,40 @@ struct Float4 : Float3 {
     inline constexpr Float4(const Float3& v, float W) : Float3(v), w(W) {}
     inline constexpr Float4(const float& X, const float& Y, const float& Z) : Float3(X, Y, Z), w(0.0f) {}
     inline constexpr Float4(const float& X, const float& Y, const float& Z, const float& W) : Float3(X, Y, Z), w(W) {}
+#if TRY_TO_USE_BETTER_INIT_LIST
+    inline constexpr Float4(const Float4&) = default;
+    inline constexpr Float4& operator=(const Float4&) = default;
+    inline constexpr Float4(Float4&&) = default;
+    inline constexpr Float4& operator=(Float4&& value) {
+        this->x = value.x;
+        this->y = value.y;
+        this->z = value.z;
+        this->w = value.w;
+        return *this;
+    }
+#endif
 
     inline Float3& as3() {
         return *(Float3*)this;
     }
 
+    inline const Float3& as3() const {
+        return *(Float3*)this;
+    }
+
     inline Float2& low2() {
-        return *(Float2*)this;
+        return this->as2();
+    }
+
+    inline const Float2& low2() const {
+        return this->as2();
     }
 
     inline Float2& high2() {
+        return *(Float2*)&this->z;
+    }
+
+    inline const Float2& high2() const {
         return *(Float2*)&this->z;
     }
 
