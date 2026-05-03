@@ -11491,6 +11491,24 @@ extern "C" {
 	externcg AbilityShop* ABILITY_SHOP_PTR cgasm("_ABILITY_SHOP_PTR");
 }
 
+typedef struct ScreenEffect ScreenEffect;
+
+enum ScreenEffectType : int32_t {
+	ScreenEffect0 = 0,
+	ScreenEffect1 = 1,
+	ScreenEffect2 = 2,
+	ScreenEffect3 = 3,
+	ScreenEffect4 = 4,
+	ScreenEffect5 = 5,
+	ScreenEffect6 = 6,
+	ScreenEffect7 = 7,
+	ScreenEffect8 = 8,
+	ScreenEffect9 = 9
+};
+
+static forceinline ScreenEffect* screen_effect_allocate(ScreenEffectType type, int32_t A, int32_t B, int32_t C, int32_t D, int32_t draw_priority);
+static forceinline ScreenEffect* screen_effect_allocate_inline(ScreenEffectType type, int32_t A, int32_t B, int32_t C, int32_t D, int32_t draw_priority);
+
 enum CancelType : int32_t {
 	CancelType0 = 0,
 	CancelType1 = 1,
@@ -11555,7 +11573,7 @@ struct BombBase : ZUNTask {
 	int __int_90; // 0x90
 	Float3 __float3_94; // 0x94
 	int __int_A0; // 0xA0
-	int __int_A4; // 0xA4
+	BOOL stronger_effects; // 0xA4
 	// 0xA8
 
 	inline void zero_contents() {
@@ -11630,8 +11648,8 @@ struct BombBase : ZUNTask {
 	}
 	// Method 8
 	// 0x41FB90
-	dllexport gnu_noinline virtual int thiscall on_tick_impl() {
-		return 0;
+	dllexport gnu_noinline virtual ZUNResult thiscall on_tick_impl() {
+		return ZUN_SUCCESS;
 	}
 	// Method C
 	// 0x41FBA0
@@ -11662,37 +11680,32 @@ struct BombBase : ZUNTask {
 	// 0x41FD40
 	dllexport gnu_noinline static BombBase* allocate() asm_symbol_rel(0x41FD40);
 
-	// 0x420040
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) {
-		BombBase* self = (BombBase*)ptr;
+	forceinline UpdateFuncRet on_tick() {
 		if (!ABILITY_SHOP_PTR) {
-			if (self->__timer_34 < 0) {
-				++self->__timer_34;
+			if (this->__timer_34 < 0) {
+				++this->__timer_34;
 			}
-			if (self->active) {
-				if (!self->on_tick_impl()) {
-					self->active = FALSE;
+			if (this->active) {
+				if (ZUN_FAILED(this->on_tick_impl())) {
+					this->active = FALSE;
 					return UpdateFuncNext;
 				}
-				++self->__timer_34;
+				++this->__timer_34;
 			}
 		}
 		return UpdateFuncNext;
 	}
 
+	forceinline UpdateFuncRet on_draw();
+
+	// 0x420040
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) {
+		return ((BombBase*)ptr)->on_tick();;
+	}
+
 	// 0x420160
 	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) {
-		BombBase* self = (BombBase*)ptr;
-		self->on_draw_impl();
-		if (self->__timer_7C <= 0) {
-			self->__float_78 = -1.0f;
-			return UpdateFuncNext;
-		}
-		if (self->__timer_7C <= 60) {
-			// TODO
-			--self->__timer_7C;
-		}
-		return UpdateFuncNext;
+		return ((BombBase*)ptr)->on_draw();
 	}
 };
 #pragma region // BombBase Validation
@@ -11714,299 +11727,9 @@ ValidateVirtualFieldOffset32(0x7C, BombBase, __timer_7C);
 ValidateVirtualFieldOffset32(0x90, BombBase, __int_90);
 ValidateVirtualFieldOffset32(0x94, BombBase, __float3_94);
 ValidateVirtualFieldOffset32(0xA0, BombBase, __int_A0);
-ValidateVirtualFieldOffset32(0xA4, BombBase, __int_A4);
+ValidateVirtualFieldOffset32(0xA4, BombBase, stronger_effects);
 ValidateStructSize32(0xA8, BombBase);
 #pragma endregion
-
-// size: 0xDC
-struct BombReimuAInner {
-	AnmID __vm_id_0; // 0x0
-	MotionData current_motion; // 0x4
-	// 0x48
-
-	int __dword_A0; // 0xA0
-	Timer __timer_A4; // 0xA4
-	Float3 __float3_B8; // 0xB8
-	EnemyID __enemy_id_C4; // 0xC4
-	Enemy* __enemy_C8; // 0xC8
-	int __object_index; // 0xCC
-	int32_t __damage_source_index_D0; // 0xD0
-	// 0xD4
-	float __float_D8; // 0xD8
-	// 0xDC
-};
-
-// size: 0x14A0
-struct BombReimuAData {
-	BombReimuAInner inners[24]; // 0x0
-	// 0x14A0
-
-	inline void zero_contents() {
-		zero_this();
-	}
-
-	// 0x4212A0
-	dllexport gnu_noinline void thiscall __sub_4212A0() asm_symbol_rel(0x4212A0) {
-		// TODO
-	}
-};
-
-struct BombReimuA : BombBase {
-	// Method 4
-	// 0x421420
-	dllexport gnu_noinline virtual int thiscall activate() {
-		//this->position = PLAYER_PTR->data.position;
-		SOUND_MANAGER.play_sound(49);
-		// TODO
-		//++ENEMY_MANAGER_PTR->player_bomb_count;
-		SAFE_FREE(this->__ptr_70);
-		this->__ptr_70 = malloc(sizeof(BombReimuAData));
-		memset(this->__ptr_70, 0, sizeof(BombReimuAData));
-		// TODO
-		return 0;
-	}
-	// Method 8
-	// 0x421590
-	dllexport gnu_noinline virtual int thiscall on_tick_impl() {
-		// TODO
-		if (this->__timer_34 >= 120) {
-			// TODO
-		}
-		// TODO
-		return 0;
-	}
-	// Method C
-	// 0x422380
-	dllexport gnu_noinline virtual int thiscall on_draw_impl() {
-		return 1;
-	}
-	// Method 10
-	// 0x422390
-	dllexport gnu_noinline virtual int32_t thiscall __damage(Float3* position, Float2* size) {
-		return 0;
-	}
-	// Method 14
-	// 0x4223A0
-	dllexport gnu_noinline virtual int thiscall __cancel() {
-		BombReimuAData* data = (BombReimuAData*)this->__ptr_70;
-		for (int32_t i = 0; i < countof(data->inners); ++i) {
-			if (
-				data->inners[i].__dword_A0 &&
-				(this->__timer_34 % 8) == (i % 8)
-			) {
-				bullet_cancel_radius_as_bomb(&data->inners[i].current_motion.position, 64.0f, CancelType0, 99999, 0);
-				laser_cancel_radius(&data->inners[i].current_motion.position, 64.0f, CancelType0, 1);
-			}
-		}
-		return 0;
-	}
-	// Method 18
-	// 0x422450
-	dllexport gnu_noinline virtual void thiscall cleanup() {
-		((BombReimuAData*)this->__ptr_70)->__sub_4212A0();
-		this->__vm_id_64.interrupt_tree(1);
-		SAFE_FREE(this->__ptr_70);
-		// TODO: screen effect
-		this->active = FALSE;
-	}
-};
-
-struct BombMarisaA : BombBase {
-	// Method 4
-	// 0x420470
-	dllexport gnu_noinline virtual int thiscall activate() {
-		//Player* player = PLAYER_PTR;
-		//this->position = player->data.position;
-		this->rotation.z = -HALF_PI_f;
-		SOUND_MANAGER.play_sound(49);
-		// TODO
-		if (BOMB_PTR->__int_A4) {
-
-		}
-		else {
-
-		}
-		// TODO
-		return 0;
-	}
-	// Method 8
-	// 0x420820
-	dllexport gnu_noinline virtual int thiscall on_tick_impl() {
-		// TODO
-		return 0;
-	}
-	// Method C
-	// 0x420BD0
-	dllexport gnu_noinline virtual int thiscall on_draw_impl() {
-		return 1;
-	}
-	// Method 10
-	// 0x420BE0
-	dllexport gnu_noinline virtual int32_t thiscall __damage(Float3* position, Float2* size) {
-		return 0;
-	}
-	// Method 14
-	// 0x420D00
-	dllexport gnu_noinline virtual int thiscall __cancel() {
-		// TODO
-		return 0;
-	}
-	// Method 18
-	// 0x420F70
-	dllexport gnu_noinline virtual void thiscall cleanup() {
-	}
-};
-
-struct BombSakuya : BombBase {
-	// Method 4
-	// 0x422600
-	dllexport gnu_noinline virtual int thiscall activate() {
-		// TODO
-		return 0;
-	}
-	// Method 8
-	// 0x422960
-	dllexport gnu_noinline virtual int thiscall on_tick_impl() {
-		AnmVM* vm = this->__vm_id_5C.get_vm_ptr();
-		if (!vm) {
-			return -1;
-		}
-		// TODO
-		return 0;
-	}
-	// Method C
-	// 0x422C60
-	dllexport gnu_noinline virtual int thiscall on_draw_impl() {
-		return 1;
-	}
-	// Method 10
-	// 0x422C70
-	dllexport gnu_noinline virtual int32_t thiscall __damage(Float3* position, Float2* size) {
-		return 0;
-	}
-	// Method 14
-	// 0x422C80
-	dllexport gnu_noinline virtual int thiscall __cancel() {
-		bullet_cancel_radius_as_bomb(&this->position, 600.0f, CancelType3, 99999, 0);
-		laser_cancel_radius(&this->position, 600.0f, CancelType3, 1);
-		return 0;
-	}
-	// Method 18
-	// 0x422CF0
-	dllexport gnu_noinline virtual void thiscall cleanup() {
-	}
-};
-
-struct BombSanaeA : BombBase {
-	// Method 4
-	// 0x422E20
-	dllexport gnu_noinline virtual int thiscall activate() {
-		//Player* player = PLAYER_PTR;
-		//this->position = player->data.position;
-		this->rotation.z = -HALF_PI_f;
-		SOUND_MANAGER.play_sound(49);
-		// TODO
-		if (BOMB_PTR->__int_A4) {
-
-		} else {
-
-		}
-		// TODO
-		return 0;
-	}
-	// Method 8
-	// 0x423270
-	dllexport gnu_noinline virtual int thiscall on_tick_impl() {
-		AnmVM* vm = this->__vm_id_5C.get_vm_ptr();
-		//PLAYER_PTR->data.invulnerable_timer.set(39);
-		if (!vm) {
-			this->__vm_id_64.interrupt_tree(1);
-			this->__vm_id_5C = 0;
-			return -1;
-		}
-		if (this->__timer_34 == 180) {
-			SOUND_MANAGER.play_sound(6);
-			//ScreenEffect::allocate(ScreenEffect8, 4, 1, 60, 10, 91);
-		}
-		else if (BOMB_PTR->__int_A4) {
-			if (this->__timer_34 == 240) {
-				SOUND_MANAGER.play_sound(6);
-				//ScreenEffect::allocate(ScreenEffect8, 4, 1, 60, 10, 91);
-			}
-			else if (this->__timer_34 == 300) {
-				SOUND_MANAGER.play_sound(6);
-				//ScreenEffect::allocate(ScreenEffect8, 4, 1, 60, 10, 91);
-			}
-		}
-		// TODO
-		return 0;
-	}
-	// Method C
-	// 0x4236A0
-	dllexport gnu_noinline virtual int thiscall on_draw_impl() {
-		return 1;
-	}
-	// Method 10
-	// 0x4236B0
-	dllexport gnu_noinline virtual int32_t thiscall __damage(Float3* position, Float2* size) {
-		return 0;
-	}
-	// Method 14
-	// 0x4236D0
-	dllexport gnu_noinline virtual int thiscall __cancel() {
-		float radius;
-		int32_t time = this->__timer_34;
-		if (time < 180) {
-			radius = this->__timer_34.current_f * 48.0f / 180.0f + 16.0f;
-		}
-		else if (time < 200) {
-			radius = (this->__timer_34.current_f - 180.0f) * 416.0f / 20.0f + 64.0f;
-		}
-		else {
-			radius = 480.0f;
-		}
-		//bullet_cancel_radius_as_bomb(&this->position, radius, SPELLCARD_PTR->__unknown_flag_A ? CancelType0 : CancelType1, 99999, 0);
-		//laser_cancel_radius(&this->position, radius, SPELLCARD_PTR->__unknown_flag_A ? CancelType0 : CancelType1, 1);
-		return 0;
-	}
-	// Method 18
-	// 0x4236C0
-	dllexport gnu_noinline virtual void thiscall cleanup() {
-	}
-};
-
-// 0x41FD40
-dllexport gnu_noinline BombBase* BombBase::allocate() {
-	BombBase* bomb_ptr;
-	switch (GAME_MANAGER.globals.shottype_index()) {
-		default:
-			bomb_ptr = new BombReimuA();
-			break;
-		case 1:
-			bomb_ptr = new BombMarisaA();
-			break;
-		case 2:
-			bomb_ptr = new BombSakuya();
-			break;
-		case 3:
-			bomb_ptr = new BombSanaeA();
-			break;
-	}
-	UpdateFunc* update_func = new UpdateFunc(&on_tick, true, bomb_ptr);
-	UpdateFuncRegistry::register_on_tick(update_func, TickPriority::BombBase); // 25
-	bomb_ptr->on_tick_func = update_func;
-	update_func = new UpdateFunc(&on_draw, true, bomb_ptr);
-	UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::BombBase); // 41
-	bomb_ptr->on_draw_func = update_func;
-	bomb_ptr->__timer_34.reset();
-	bomb_ptr->__timer_7C.reset();
-	bomb_ptr->__float_78 = -1.0f;
-	bomb_ptr->__float_74 = 0.0f;
-	bomb_ptr->__int_A0 = 0;
-	bomb_ptr->__int_A4 = 0;
-	BOMB_PTR = bomb_ptr;
-	return bomb_ptr;
-}
 
 enum ItemID : int32_t {
 	InvalidItem = 0,
@@ -16556,6 +16279,25 @@ struct AnmVM {
 	// 0x405BB0
 	dllexport gnu_noinline float vectorcall get_custom_slowdown() asm_symbol_rel(0x405BB0) {
 		return this->find_root_vm()->controller.slowdown;
+	}
+
+	// 0x420F80
+	dllexport gnu_noinline Float3* thiscall __get_rotated_position(Float3* out) {
+		*out = this->data.position + this->controller.position + this->data.__position_2;
+		AnmVM* root_vm = this->controller.__root_vm;
+		if (
+			root_vm &&
+			!this->data.__treat_as_root
+		) {
+			if (this->data.inherit_rotation) {
+				out->as2() = out->rotate_around_origin(root_vm->data.rotation.z);
+				root_vm = this->controller.__root_vm;
+			}
+			Float3 offset;
+			root_vm->__get_rotated_position(&offset);
+			*out += offset;
+		}
+		return out;
 	}
 
 	// 0x4063D0
@@ -23310,21 +23052,6 @@ static EffectData EFFECT_DATA_TABLE[5] = {
 	}
 };
 
-typedef struct ScreenEffect ScreenEffect;
-
-enum ScreenEffectType : int32_t {
-	ScreenEffect0 = 0,
-	ScreenEffect1 = 1,
-	ScreenEffect2 = 2,
-	ScreenEffect3 = 3,
-	ScreenEffect4 = 4,
-	ScreenEffect5 = 5,
-	ScreenEffect6 = 6,
-	ScreenEffect7 = 7,
-	ScreenEffect8 = 8,
-	ScreenEffect9 = 9
-};
-
 // size: 0x40
 struct ScreenEffect : ZUNTask {
 	// ZUNTask base; // 0x0
@@ -23791,6 +23518,12 @@ struct ScreenEffect : ZUNTask {
 		return screen_effect;
 	}
 
+	forceinline static ScreenEffect* fastcall allocate_inline(ScreenEffectType type, int32_t A, int32_t B, int32_t C, int32_t D, int32_t draw_priority) {
+		ScreenEffect* screen_effect = new ScreenEffect();
+		clang_forceinline screen_effect->initialize(type, A, B, C, D, draw_priority);
+		return screen_effect;
+	}
+
 	/*
 	static forceinline ScreenEffect* allocate_type_0(int32_t A, D3DCOLOR color, int C, int D, int32_t draw_priority) {
 		return allocate(ScreenEffect0, A, color, C, D, draw_priority);
@@ -23811,6 +23544,14 @@ ValidateFieldOffset32(0x28, ScreenEffect, __dword_28);
 ValidateFieldOffset32(0x2C, ScreenEffect, timer);
 ValidateStructSize32(0x40, ScreenEffect);
 #pragma endregion
+
+forceinline ScreenEffect* screen_effect_allocate(ScreenEffectType type, int32_t A, int32_t B, int32_t C, int32_t D, int32_t draw_priority) {
+	return ScreenEffect::allocate(type, A, B, C, D, draw_priority);
+}
+
+forceinline ScreenEffect* screen_effect_allocate_inline(ScreenEffectType type, int32_t A, int32_t B, int32_t C, int32_t D, int32_t draw_priority) {
+	return ScreenEffect::allocate_inline(type, A, B, C, D, draw_priority);
+}
 
 typedef struct EffectManager EffectManager;
 extern "C" {
@@ -25286,7 +25027,7 @@ struct AsciiManager : ZUNTask {
 		this->__unknown_task_flag_A = true;
 		this->color = COLOR(255, 255, 255, 255);
 		this->color2 = COLOR(255, 0, 0, 0);
-		this->scale.splat(1.0f);
+		this->set_scale(1.0f);
 		this->__dword_1923C = 0;
 		this->__character_spacing_for_font_0 = 9;
 		this->__horizontal_positioning_mode = 1;
@@ -26011,7 +25752,7 @@ private:
 		this->color2 = COLOR(255, 0, 0, 0);
 		this->__dword_1923C = 0;
 		this->__character_spacing_for_font_0 = 9;
-		this->scale.splat(1.0f);
+		this->set_scale(1.0f);
 		this->enable_shadows = FALSE;
 		this->font_id = 0;
 		this->group = 0;
@@ -26696,7 +26437,7 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
 					break;
 				}
 				case __screen_effect_A: // 13
-					clang_forceinline ScreenEffect::allocate(ScreenEffect0, IntArg(0), 0, 0, 0, 91);
+					ScreenEffect::allocate_inline(ScreenEffect0, IntArg(0), 0, 0, 0, 91);
 					break;
 				case anm_source_load: // 7
 					ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
@@ -26709,7 +26450,7 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
 					this->current_instr = IndexInstr(sizeof(MsgInstruction) + this->current_instr->args_size);
 					return ZUN_SUCCESS;
 				case __screen_effect_B: // 14
-					clang_forceinline ScreenEffect::allocate(ScreenEffect5, IntArg(0), 0, 0, 0, 91);
+					ScreenEffect::allocate_inline(ScreenEffect5, IntArg(0), 0, 0, 0, 91);
 					break;
 			}
 		}
@@ -30104,7 +29845,7 @@ public:
 
 			this->player_anm->__copy_data_to_vm_and_run(&this->__vm_14, 0);
 
-			this->set_position_internal(0, 400);
+			this->set_position(0.0f, 400.0f);
 			
 			this->__set_all_option_D4_to_1();
 
@@ -33375,7 +33116,7 @@ struct CardByakuren : CardBase {
 	// Method 20
 	// 0x40CBD0
 	dllexport gnu_noinline virtual int thiscall on_load() {
-		BOMB_PTR->__int_A4 = 1;
+		BOMB_PTR->stronger_effects = true;
 		return 0;
 	}
 
@@ -39973,7 +39714,7 @@ struct Stage : ZUNTask {
 
 			if (this->__unknown_flag_bg_B) {
 				if (this->__timer_3478 < 30) {
-					clang_forceinline ScreenEffect::allocate(ScreenEffect3, 30, 0, 0, 0, 10);
+					ScreenEffect::allocate_inline(ScreenEffect3, 30, 0, 0, 0, 10);
 					this->__render_enable = true;
 					this->__timer_3478.set(1);
 				}
@@ -40211,6 +39952,9 @@ inline StdInstruction* StdVM::get_current_instruction(int32_t offset) {
 dllexport gnu_noinline ZUNResult thiscall StdVM::run_std() {
 	using namespace Std;
 
+	float A = 1.0f; // EBP-1C
+	float B = 0.0f; // EBP-2C
+
 	StdInstruction* current_instruction = this->get_current_instruction();
 	while (current_instruction->time <= this->script_time) {
 		switch (current_instruction->opcode) {
@@ -40419,7 +40163,129 @@ std_end:
 	uint8_t shaking_mode = this->shaking_mode;
 	if (shaking_mode) {
 		switch (shaking_mode) {
-			// TODO
+			case 1: {
+				float shaking_timer_f = (float)this->shaking_timer;
+				if (this->shaking_timer < 512) {
+					A = shaking_timer_f * 0x1p-9f; // (1/2)^9 = 0.001953125
+				}
+				float angle = reduce_angle(shaking_timer_f * PI_f * 2.0f * 0x1p-10f); // (1/2)^10 = 0.0009765625
+				float C = zsinf(angle);
+				float D = C * -10.0f * A;
+				this->camera.__shaking_position.x = D;
+				float E = zsinf(reduce_angle(angle * 2.0f)) * -10.0f * A;
+				this->camera.__shaking_position.z = E;
+				this->camera.rotation.x = -C * 0.01f * A;
+				this->camera.__shaking_facing.x = -D * 0.5f;
+				this->camera.__shaking_facing.z = E * 0.5f;
+				this->shaking_timer++;
+				if (this->shaking_timer >= 2048) {
+					this->shaking_timer.set(1024);
+				}
+				break;
+			}
+			case 2: {
+				float angle = reduce_angle(this->shaking_timer * PI_f * 2.0f / 3072.0f);
+				this->camera.rotation.x = -zsinf(angle);
+				this->camera.rotation.z = zcosf(angle);
+				this->shaking_timer++;
+				if (this->shaking_timer >= 3072) {
+					this->shaking_timer.set(0);
+				}
+				break;
+			}
+			case 3: {
+				float angle = reduce_angle(this->shaking_timer % 1024 * PI_f * 2.0f * 0x1p-10f); // (1/2)^10 = 0.0009765625
+				float mult;
+				if (this->shaking_timer >= 1024) {
+					mult = 80.0f;
+				} else {
+					mult = (float)this->shaking_timer * 80.0f * 0x1p-10f; // (1/2)^10 = 0.0009765625
+				}
+				float C = zsinf(angle) * mult;
+				this->camera.__shaking_position.y = 0.0f;
+				this->camera.__shaking_position.z = 0.0f;
+				this->camera.__shaking_position.x = C;
+				this->camera.__shaking_facing.x = -C / 10.0f;
+				this->shaking_timer++;
+				if (this->shaking_timer >= 2048) {
+					this->shaking_timer.set(1024);
+				}
+				break;
+			}
+			case 5: {
+				float angle = reduce_angle(this->shaking_timer % 1024 * PI_f * 2.0f * 0x1p-10f); // (1/2)^10 = 0.0009765625
+				if (this->shaking_timer < 512) {
+					A = (float)this->shaking_timer * 0x1p-9f; // (1/2)^9 = 0.001953125
+				}
+				this->camera.__shaking_position.z = zsinf(angle) * -50.0f * A;
+				this->shaking_timer++;
+				if (this->shaking_timer >= 2048) {
+					this->shaking_timer.set(1024);
+				}
+				break;
+			}
+			case 6: {
+				float angle = reduce_angle(this->shaking_timer % 1024 * PI_f * 2.0f * 0x1p-10f); // (1/2)^10 = 0.0009765625
+				if (this->__shaking_6_timer < 512) {
+					B = (A - (float)this->__shaking_6_timer * 0x1p-9f) * 80.0f;
+				}
+				float C = zsinf(angle) * B;
+				this->camera.__shaking_position.y = 0.0f;
+				this->camera.__shaking_position.z = 0.0f;
+				this->camera.__shaking_position.x = C;
+				this->camera.__shaking_facing.x = -C / 10.0f;
+				this->shaking_timer++;
+				this->__shaking_6_timer++;
+				if (this->shaking_timer >= 2048) {
+					this->shaking_timer.set(1024);
+				}
+				break;
+			}
+			case 4: {
+				float angle = reduce_angle(this->shaking_timer * PI_f * 2.0f / 3072.0f);
+				this->camera.rotation.x = -zsinf(angle);
+				this->camera.rotation.z = -zcosf(angle);
+				this->shaking_timer++;
+				if (this->shaking_timer >= 3072) {
+					this->shaking_timer.set(0);
+				}
+				break;
+			}
+			case 9: {
+				float angle = PI_f - this->shaking_timer * PI_f * 2.0f * 0x1p-11f; // (1/2)^11 = 0.0004882812
+				float C = zsinf(angle);
+				this->camera.__shaking_position.x = C * 70.0f;
+				float D = zsinf(reduce_angle(angle * 2.0f)) * 200.0f;
+				this->camera.__shaking_position.z = D;
+				this->camera.rotation.x = -C * 0.1f;
+				this->shaking_timer++;
+				if (this->shaking_timer >= 2048) {
+					this->shaking_timer.set(0);
+				}
+				break;
+			}
+			case 10: {
+				float angle = this->shaking_timer * PI_f * 2.0f * 0x1p-10f; // (1/2)^10 = 0.0009765625
+				float C = zsinf(angle - PI_f);
+				this->camera.__shaking_position.x = C * -50.0f;
+				this->camera.rotation.x = -C * 0.1f;
+				this->shaking_timer++;
+				if (this->shaking_timer >= 1024) {
+					this->shaking_timer.set(0);
+				}
+				break;
+			}
+			case 11: {
+				float angle = this->shaking_timer * PI_f * 2.0f * 0x1p-9f; // (1/2)^9 = 0.001953125
+				float C = zsinf(angle - PI_f);
+				this->camera.__shaking_position.x = C * -15.0f;
+				this->camera.rotation.x = -C * 0.01f;
+				this->shaking_timer++;
+				if (this->shaking_timer >= 512) {
+					this->shaking_timer.set(0);
+				}
+				break;
+			}
 		}
 	}
 	return ZUN_SUCCESS;
@@ -42971,7 +42837,7 @@ struct Bullet {
 			uint32_t : 1; // 6
 			uint32_t scale_enabled : 1; // 7
 			uint32_t : 1; // 8
-			uint32_t __unknown_flag_bu_C : 1; // 9
+			uint32_t __disable_movement : 1; // 9
 			uint32_t __delay_flag : 1; // 10
 		};
 	};
@@ -45968,6 +45834,26 @@ public:
 		return 0;
 	}
 
+	inline void __disable_bullet_movement() {
+		for (
+			Bullet* bullet = BULLET_MANAGER_PTR->start_bullet_iter(0);
+			bullet;
+			bullet = BULLET_MANAGER_PTR->next_bullet_iter(0)
+		) {
+			bullet->__disable_movement = true;
+		}
+	}
+
+	inline void __enable_bullet_movement() {
+		for (
+			Bullet* bullet = BULLET_MANAGER_PTR->start_bullet_iter(0);
+			bullet;
+			bullet = BULLET_MANAGER_PTR->next_bullet_iter(0)
+		) {
+			bullet->__disable_movement = true;
+		}
+	}
+
 	static inline int cancel_random(CancelType cancel_type) {
 		int32_t random = 0;
 		for (
@@ -46102,7 +45988,7 @@ public:
 			if (
 				!(game_thread_ptr && game_thread_ptr->__unknown_flag_gt_C)
 			) {
-				if (bullet->__unknown_flag_bu_C) {
+				if (bullet->__disable_movement) {
 					switch (bullet->state) {
 						case BulletState2:
 							if (bullet->__timer_F6C < 8) {
@@ -46110,7 +45996,7 @@ public:
 							}
 						case BulletState1:
 							bullet->__check_collision(GrazeCollisionTest);
-							goto idkA;
+							goto skip_tick;
 					}
 				}
 
@@ -46118,7 +46004,7 @@ public:
 					continue;
 				}
 			}
-		idkA:
+		skip_tick:
 
 			if (!bullet->__delay_flag) {
 				int32_t layer = bullet->layer;
@@ -46300,7 +46186,7 @@ dllexport gnu_noinline void Bullet::cleanup() {
 		this->__timer_F50.reset();
 		this->__unknown_flag_bu_E = false;
 		this->scale_enabled = false;
-		this->__unknown_flag_bu_C = false;
+		this->__disable_movement = false;
 		this->__delay_flag = false;
 		this->__int_690 = 0;
 		this->__ex_react_val = 0;
@@ -46718,7 +46604,22 @@ public:
 	}
 
 	template <typename L>
-	static inline void for_each_laser_but_stupid(const L& lambda) {
+	inline void for_each_laser_but_stupid(const L& lambda) {
+		LaserData* data = this->list_head().next;
+		this->__current_stupid_iter = data;
+		if (data) {
+			do {
+				lambda(data);
+				data = this->__current_stupid_iter;
+				if (!data) break;
+				data = data->embedded_node.next;
+				this->__current_stupid_iter = data;
+			} while (data);
+		}
+	}
+
+	template <typename L>
+	static inline void for_each_laser_but_stupid_static(const L& lambda) {
 		LaserManager* laser_manager = LASER_MANAGER_PTR;
 		LaserData* data = laser_manager->list_head().next;
 		laser_manager->__current_stupid_iter = data;
@@ -46735,14 +46636,26 @@ public:
 	}
 
 	dllexport static inline void __set_flag_B_on_all_lasers() {
-		for_each_laser_but_stupid([](LaserData* laser) {
+		for_each_laser_but_stupid_static([](LaserData* laser) {
 			laser->__unknown_flag_ld_B = true;
 		});
 	}
 
 	dllexport static inline void __clear_flag_B_on_all_lasers() {
-		for_each_laser_but_stupid([](LaserData* laser) {
+		for_each_laser_but_stupid_static([](LaserData* laser) {
 			laser->__unknown_flag_ld_B = false;
+		});
+	}
+
+	inline void __disable_laser_movement() {
+		this->for_each_laser_but_stupid([](LaserData* laser) {
+			laser->__disable_movement = true;
+		});
+	}
+
+	inline void __enable_laser_movement() {
+		this->for_each_laser_but_stupid([](LaserData* laser) {
+			laser->__disable_movement = false;
 		});
 	}
 };
@@ -47077,7 +46990,7 @@ dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_call_2_ex(EnemyData*
 	Float3 B; // ESP+28
 	Float3 unit_vec; // ESP+34
 
-	LASER_MANAGER_PTR->for_each_laser_but_stupid([&](LaserData* laser) {
+	LASER_MANAGER_PTR->for_each_laser_but_stupid_static([&](LaserData* laser) {
 		if (HitboxManager::__solve_hitscan_rectangle(
 			&A, &B,
 			&laser->position,
@@ -47118,7 +47031,7 @@ dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_call_3_ex(EnemyData*
 	Float3 B; // ESP+28
 	Float3 unit_vec; // ESP+34
 	
-	LASER_MANAGER_PTR->for_each_laser_but_stupid([&](LaserData* laser) {
+	LASER_MANAGER_PTR->for_each_laser_but_stupid_static([&](LaserData* laser) {
 		if (HitboxManager::__solve_hitscan_rectangle(
 			&A, &B,
 			&laser->position,
@@ -48186,6 +48099,749 @@ dllexport void Bullet::run_effects() {
 #pragma pop_macro("ShortArg")
 #pragma pop_macro("WordArg")
 #pragma pop_macro("FloatArg")
+
+forceinline UpdateFuncRet BombBase::on_draw() {
+	this->on_draw_impl();
+	if (this->__timer_7C <= 0) {
+		this->__float_78 = -1.0f;
+		return UpdateFuncNext;
+	}
+	if (this->__timer_7C <= 60) {
+		if (this->__float_78 < 0.0f) {
+			this->__float_78 = this->__float_74;
+			this->__float3_94 = PLAYER_PTR->data.position;
+			this->__float3_94.y -= 32.0f;
+		}
+
+		int32_t index = this->__int_90;
+
+		AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
+
+		D3DCOLOR color_array[] = {
+			COLOR(96, 96, 96, 96),
+			COLOR(160, 176, 176, 128),
+			COLOR(176, 184, 184, 128),
+			COLOR(192, 192, 192, 128),
+			COLOR(208, 208, 208, 128),
+			COLOR(224, 224, 224, 128),
+			COLOR(255, 255, 255, 48)
+		};
+
+		ascii_manager->color = color_array[index];
+		ascii_manager->group = 1;
+		ascii_manager->font_id = 2;
+		ascii_manager->__horizontal_positioning_mode = 0;
+		ascii_manager->__vertical_positioning_mode = 2;
+
+		ascii_manager->printf(&this->__float3_94, "+%d", (int32_t)this->__float_78 / 10 * 10);
+
+		ascii_manager = ASCII_MANAGER_PTR;
+		ascii_manager->color = COLOR(255, 255, 255, 255);
+		ascii_manager->set_alpha(255);
+		ascii_manager->font_id = 0;
+		ascii_manager->group = 0;
+		ascii_manager->__horizontal_positioning_mode = 1;
+		ascii_manager->__vertical_positioning_mode = 1;
+
+		--this->__timer_7C;
+	}
+	return UpdateFuncNext;
+}
+
+// size: 0xDC
+struct BombReimuAInner {
+	AnmID vm; // 0x0
+	MotionData motion; // 0x4
+	unknown_fields(0x58); // 0x48
+	BOOL active; // 0xA0
+	Timer __timer_A4; // 0xA4
+	Float3 __last_frame_movement; // 0xB8
+	EnemyID target_enemy_id; // 0xC4
+	Enemy* target_enemy; // 0xC8
+	int __object_index; // 0xCC
+	int32_t damage_source_index; // 0xD0
+	int __dword_D4; // 0xD4
+	float __angle_delta; // 0xD8
+	// 0xDC
+
+	// 0x4210F0
+	dllexport gnu_noinline void thiscall __sub_4210F0(int32_t i, Float3* position, int32_t damage) asm_symbol_rel(0x4210F0) {
+		this->motion.orbit_origin = *position;
+		this->vm = PLAYER_PTR->player_anm->instantiate_vm_to_world_list_back((BOMB_PTR->stronger_effects ? 23 : 22), &this->motion.position);
+		this->active = true;
+		this->__timer_A4.reset();
+		this->__object_index = i;
+		Player* player = PLAYER_PTR;
+		int32_t damage_source_index = player->create_damage_source_circle(&this->motion.position, 56.0f, 0.0f, 9999, damage);
+		this->damage_source_index = damage_source_index;
+		PlayerDamageSource* new_damage_source = player->get_damage_source_by_index(damage_source_index);
+		new_damage_source->__unknown_flag_pd_A = true;
+		new_damage_source->__hit_frequency = 3;
+	}
+};
+
+// size: 0x14A0
+struct BombReimuAData {
+	BombReimuAInner orbs[24]; // 0x0
+	// 0x14A0
+
+	inline void zero_contents() {
+		zero_this();
+	}
+
+	// 0x4212A0
+	dllexport gnu_noinline void thiscall __sub_4212A0() asm_symbol_rel(0x4212A0) {
+		nounroll for (size_t i = 0; i != countof(this->orbs); ++i) {
+			if (!this->orbs[i].__dword_D4) {
+				if (this->orbs[i].active) {
+					SOUND_MANAGER.play_sound_positioned(27, this->orbs[i].motion.position.x);
+					BULLET_MANAGER_PTR->cancel_radius_as_bomb(&this->orbs[i].motion.position, 128.0f, CancelType0, 99999, 0);
+					LASER_MANAGER_PTR->cancel_in_radius(&this->orbs[i].motion.position, 128.0f, CancelType1, 1);
+					Player* player = PLAYER_PTR;
+					int32_t damage_source_index = player->create_damage_source_circle(&this->orbs[i].motion.position, 64.0f, 8.0f, 11, 100);
+					PlayerDamageSource* new_damage_source = player->get_damage_source_by_index(damage_source_index);
+					new_damage_source->__unknown_flag_pd_A = true;
+				}
+				this->orbs[i].vm.interrupt_tree(1);
+				if (int32_t damage_source_index = this->orbs[i].damage_source_index) {
+					get_damage_source_by_index(damage_source_index)->active = false;
+				}
+				this->orbs[i].damage_source_index = 0;
+			}
+			else {
+				this->orbs[i].vm.mark_tree_for_delete();
+			}
+		}
+	}
+};
+
+struct BombReimuA : BombBase {
+	// Method 4
+	// 0x421420
+	dllexport gnu_noinline virtual int thiscall activate() {
+		this->position = PLAYER_PTR->data.position;
+		SOUND_MANAGER.play_sound(49);
+		SPELLCARD_PTR->__inline_spellcard_fail();
+		++ENEMY_MANAGER_PTR->player_bomb_count;
+		SAFE_FREE(this->__ptr_70);
+		this->__ptr_70 = malloc(sizeof(BombReimuAData));
+		memset(this->__ptr_70, 0, sizeof(BombReimuAData));
+		this->__vm_id_64 = PLAYER_PTR->player_anm->instantiate_vm_to_world_list_back(37, &this->position);
+		return 0;
+	}
+
+	// Method 8
+	// 0x421590
+	dllexport gnu_noinline virtual ZUNResult thiscall on_tick_impl() {
+		Player* player = PLAYER_PTR;
+		player->data.invulnerable_timer.set(40);
+		BombReimuAData* data = (BombReimuAData*)this->__ptr_70;
+		this->__vm_id_64.set_controller_position(&player->data.position);
+
+		int32_t time = this->__timer_34;
+		if (time >= 120) {
+			nounroll for (int32_t i = 0; i < countof(data->orbs); ++i) {
+				if (data->orbs[i].vm.has_live_vm()) {
+					goto live_vm_found;
+				}
+			}
+			this->__vm_id_64.interrupt_tree(1);
+			SAFE_FREE(this->__ptr_70);
+			return ZUN_ERROR;
+
+	live_vm_found:
+			time = this->__timer_34;
+		}
+
+		BOOL stronger_effects;
+		int32_t duration = (stronger_effects = BOMB_PTR->stronger_effects) ? 320 : 200;
+		if (time == duration) {
+			data->__sub_4212A0();
+			this->__vm_id_64.interrupt_tree(1);
+			ScreenEffect::allocate_inline(ScreenEffect1, 8, 6, 6, 0, 91);
+		}
+		else {
+			BombBase* bomb_ptr = BOMB_PTR;
+			if (!this->__timer_34.__is_paused()) {
+				if (time == 0) {
+					player = PLAYER_PTR;
+					float angle = 0.0f;
+					nounroll for (int32_t i = 0; i < 8; ++i) {
+						data->orbs[i].motion.orbit_origin = player->data.position;
+						data->orbs[i].vm = player->player_anm->instantiate_vm_to_world_list_back((bomb_ptr->stronger_effects ? 23 : 22), &data->orbs[i].motion.position);
+						data->orbs[i].active = true;
+						data->orbs[i].__timer_A4.reset();
+						int32_t damage_source_index = PLAYER_PTR->create_damage_source_circle(&data->orbs[i].motion.position, 56.0f, 0.0f, 9999, 15);
+						player = PLAYER_PTR;
+						data->orbs[i].damage_source_index = damage_source_index;
+						PlayerDamageSource* new_damage_source = player->get_damage_source_by_index(damage_source_index);
+						new_damage_source->__unknown_flag_pd_A = true;
+						new_damage_source->__hit_frequency = 3;
+						data->orbs[i].motion.radius = 0.0f;
+						data->orbs[i].motion.mode = OrbitMovement; // 2
+						data->orbs[i].motion.angle = angle;
+						data->orbs[i].motion.radius_delta = 0.04908739f; // TODO: what is this number
+						data->orbs[i].__angle_delta = DEGREES(6.0f);
+						player->get_damage_source_by_index(data->orbs[i].damage_source_index)->damage_cap = 400;
+						angle = reduce_angle(angle + QUARTER_PI_f);
+						bomb_ptr = BOMB_PTR;
+					}
+				}
+				else if (stronger_effects && time == 80) {
+					ZUNAngle stupid_angle = 0.0f; // wtf
+					SOUND_MANAGER.play_sound_positioned(44, player->data.position.x);
+					player = PLAYER_PTR;
+					float angle = stupid_angle;
+					nounroll for (int32_t i = 0; i < 8; ++i) {
+						data->orbs[i].__sub_4210F0(i, &player->data.position, 7);
+						data->orbs[i].motion.mode = OrbitMovement; // 2
+						data->orbs[i].motion.radius = 0.0f;
+						data->orbs[i].motion.angle = angle;
+						player = PLAYER_PTR;
+						data->orbs[i].motion.radius_delta = -0.04908739f; // TODO: what is this number
+						data->orbs[i].__angle_delta = -DEGREES(6.0f);
+						player->get_damage_source_by_index(data->orbs[i].damage_source_index)->damage_cap = 400;
+						angle = reduce_angle(angle + QUARTER_PI_f);
+					}
+				}
+				else {
+					player = PLAYER_PTR;
+				}
+			}
+			else {
+				player = PLAYER_PTR;
+			}
+
+			nounroll for (int32_t i = 0; i < countof(data->orbs); ++i) {
+				if (data->orbs[i].active) {
+					if (!data->orbs[i].__timer_A4.__is_paused()) {
+						int32_t time = data->orbs[i].__timer_A4;
+						if (time < 90) {
+							data->orbs[i].motion.orbit_origin = player->data.position;
+							data->orbs[i].motion.radius += 1.5f;
+							data->orbs[i].motion.angle += data->orbs[i].__angle_delta;
+						}
+						else {
+							int32_t A = data->orbs[i].__object_index * 100;
+							if (time < A) {
+								data->orbs[i].motion.orbit_origin = player->data.position;
+								data->orbs[i].motion.angle += data->orbs[i].__angle_delta;
+							}
+							else if (time == A) {
+								data->orbs[i].motion.mode = AxisVelocityMovement; // 0
+								data->orbs[i].motion.angle = data->orbs[i].__last_frame_movement.direction();
+								data->orbs[i].motion.speed = data->orbs[i].__last_frame_movement.length();
+							}
+							else {
+								EnemyID id;
+								if (ENEMY_MANAGER_PTR) {
+									id = ENEMY_MANAGER_PTR->__get_id_of_nearest_enemy_in_radius(&data->orbs[i].motion.position, 512.0f);
+									data->orbs[i].target_enemy_id = id;
+								} else {
+									id = data->orbs[i].target_enemy_id;
+								}
+								if (id) {
+									Enemy* enemy = id.get_enemy_ptr();
+									data->orbs[i].target_enemy = enemy;
+									if (enemy->data.flags_allow_homing()) {
+										float angle = enemy->data.current_motion.position.angle_to(&data->orbs[i].motion.position);
+										float angle_diff = reduced_angle_diff(angle, data->orbs[i].motion.angle);
+										float speed = data->orbs[i].motion.speed;
+										float abs_diff = zfabsf(angle_diff);
+										if (abs_diff >= PI_f / 4.0f) {
+											speed = __max(speed - 0.7f, 1.0f);
+										} else if (abs_diff < PI_f / 12.0f) {
+											speed = __min(speed + 0.2f, 8.0f);
+										}
+										data->orbs[i].motion.set_angle(data->orbs[i].motion.angle + abs_diff * 0.1f);
+										data->orbs[i].motion.speed = speed;
+									}
+								} else {
+									if (
+										data->orbs[i].motion.position.x < SCREEN_LEFT_EDGE + 32.0f ||
+										data->orbs[i].motion.position.x > SCREEN_RIGHT_EDGE - 32.0f ||
+										data->orbs[i].motion.position.y < SCREEN_BOTTOM_EDGE + 32.0f ||
+										data->orbs[i].motion.position.y > SCREEN_TOP_EDGE - 32.0f
+									) {
+										data->orbs[i].motion.speed *= 0.9f;
+									}
+								}
+							}
+						}
+					}
+					Float3 previous_position = data->orbs[i].motion.position;
+					data->orbs[i].motion.apply_deltas_and_update();
+					data->orbs[i].vm.set_controller_position(&data->orbs[i].motion.position);
+					data->orbs[i].__last_frame_movement = data->orbs[i].motion.position - previous_position;
+					++data->orbs[i].__timer_A4;
+					int32_t damage_source_index = data->orbs[i].damage_source_index;
+					player = PLAYER_PTR;
+					PlayerDamageSource* damage_source = player->get_damage_source_by_index(damage_source_index);
+					if (damage_source->damage_dealt >= 400) {
+						if (!data->orbs[i].__dword_D4) {
+							if (data->orbs[i].active) {
+								SOUND_MANAGER.play_sound_positioned(27, data->orbs[i].motion.position.x);
+								BULLET_MANAGER_PTR->cancel_radius_as_bomb(&data->orbs[i].motion.position, 128.0f, CancelType0, 99999, 0);
+								LASER_MANAGER_PTR->cancel_in_radius(&data->orbs[i].motion.position, 64.0f, CancelType1, 1);
+								PlayerDamageSource* new_damage_source = get_damage_source_by_index(PLAYER_PTR->create_damage_source_circle(&data->orbs[i].motion.position, 64.0f, 8.0f, 11, 100));
+								new_damage_source->__unknown_flag_pd_A = true;
+							}
+							data->orbs[i].vm.interrupt_tree(1);
+							if (int32_t damage_source_index = data->orbs[i].damage_source_index) {
+								PLAYER_PTR->get_damage_source_by_index(damage_source_index)->active = false;
+							}
+							data->orbs[i].active = false;
+						} else {
+							data->orbs[i].vm.mark_tree_for_delete();
+						}
+						SOUND_MANAGER.play_sound_positioned(27, data->orbs[i].motion.position.x);
+						ScreenEffect::allocate_inline(ScreenEffect1, 8, 6, 6, 0, 91);
+						player = PLAYER_PTR;
+					}
+					else {
+						player->get_damage_source_by_index(damage_source_index)->motion.position = data->orbs[i].motion.position;
+					}
+				}
+			}
+
+			this->__cancel();
+		}
+		return ZUN_SUCCESS;
+	}
+
+	// Method C
+	// 0x422380
+	dllexport gnu_noinline virtual int thiscall on_draw_impl() {
+		return 1;
+	}
+
+	// Method 10
+	// 0x422390
+	dllexport gnu_noinline virtual int32_t thiscall __damage(Float3* position, Float2* size) {
+		return 0;
+	}
+
+	// Method 14
+	// 0x4223A0
+	dllexport gnu_noinline virtual int thiscall __cancel() {
+		BombReimuAData* data = (BombReimuAData*)this->__ptr_70;
+		nounroll for (int32_t i = 0; i < countof(data->orbs); ++i) {
+			if (
+				data->orbs[i].active &&
+				(this->__timer_34 % 8) == (i % 8)
+			) {
+				BULLET_MANAGER_PTR->cancel_radius_as_bomb(&data->orbs[i].motion.position, 64.0f, CancelType0, 99999, 0);
+				LASER_MANAGER_PTR->cancel_in_radius(&data->orbs[i].motion.position, 64.0f, CancelType0, 1);
+			}
+		}
+		return 0;
+	}
+
+	// Method 18
+	// 0x422450
+	dllexport gnu_noinline virtual void thiscall cleanup() {
+		((BombReimuAData*)this->__ptr_70)->__sub_4212A0();
+		this->__vm_id_64.interrupt_tree(1);
+		SAFE_FREE(this->__ptr_70);
+		ScreenEffect::allocate_inline(ScreenEffect1, 8, 6, 6, 0, 91);
+		this->active = FALSE;
+	}
+};
+
+struct BombMarisaA : BombBase {
+	// Method 4
+	// 0x420470
+	dllexport gnu_noinline virtual int thiscall activate() {
+		Player* player = PLAYER_PTR;
+		this->position = player->data.position;
+		this->rotation.z = -HALF_PI_f;
+		SOUND_MANAGER.play_sound(49);
+		AnmLoaded* player_anm = player->player_anm;
+		if (BOMB_PTR->stronger_effects) {
+			this->__vm_id_5C = player_anm->instantiate_vm_to_world_list_back(29, &this->position);
+		}
+		else {
+			this->__vm_id_5C = player_anm->instantiate_vm_to_world_list_back(22, &this->position);
+		}
+		SPELLCARD_PTR->__inline_spellcard_fail();
+		PLAYER_PTR->data.invulnerable_timer.set(120);
+		++ENEMY_MANAGER_PTR->player_bomb_count;
+		ScreenEffect::allocate_inline(ScreenEffect8, 3, 60, (BOMB_PTR->stronger_effects ? 420 : 240), 30, 91);
+		this->__vm_id_64 = PLAYER_PTR->player_anm->instantiate_vm_to_world_list_back(36, &this->position);
+		PLAYER_PTR->data.__unknown_flag_pl_H = true;
+		return 0;
+	}
+
+	// Method 8
+	// 0x420820
+	dllexport gnu_noinline virtual ZUNResult thiscall on_tick_impl() {
+		AnmVM* vm = this->__vm_id_5C.get_vm_ptr();
+		Player* player = PLAYER_PTR;
+		player->data.invulnerable_timer.set(40);
+		int32_t duration = BOMB_PTR->stronger_effects ? 450 : 300;
+		if (!vm) {
+			this->__vm_id_64.interrupt_tree(1);
+			return ZUN_ERROR;
+		}
+		if (this->__timer_34 <= duration) {
+			if (this->__timer_34 == duration) {
+				this->__vm_id_5C.interrupt_tree(1);
+				this->__vm_id_64.interrupt_tree(1);
+				player = PLAYER_PTR;
+				player->data.__unknown_flag_pl_H = false;
+				player->data.__speed_modifier = 1.0f; // this gets clobbered below
+			}
+			vm->set_z_rotation(this->rotation.z);
+			float velocity_x = player->data.velocity.x;
+			if (velocity_x < 0.0f) {
+				this->rotation.z -= DEGREES(0.15);
+			}
+			else if (velocity_x > 0.0f) {
+				this->rotation.z += DEGREES(0.15);
+			}
+			player->data.__speed_modifier = 0.5f;
+			this->position = player->data.position;
+			if (this->__timer_34.__is_multiple_of_not_paused(3)) {
+				Float3 position;
+				position.z = 0.0f;
+
+				position.make_from_vector(this->rotation.z, 208.0f);
+				position += this->position;
+				int32_t damage_source_index = player->create_damage_source_rotated_rectangle(&position, 512.0f, 23.0f, this->rotation.z, 0, 50);
+				PlayerDamageSource* new_damage_source = get_damage_source_by_index(damage_source_index);
+				new_damage_source->__unknown_flag_pd_A = true;
+
+				position.make_from_vector(this->rotation.z, 240.0f);
+				position += this->position;
+				damage_source_index = player->create_damage_source_rotated_rectangle(&position, 512.0f, 128.0f, this->rotation.z, 0, 50);
+				new_damage_source = get_damage_source_by_index(damage_source_index);
+				new_damage_source->__unknown_flag_pd_A = true;
+
+				position.make_from_vector(this->rotation.z, 304.0f);
+				BombBase* bomb_ptr = BOMB_PTR;
+				position += this->position;
+				damage_source_index = player->create_damage_source_rotated_rectangle(&position, 512.0f, 128.0f, this->rotation.z, 0, (bomb_ptr->stronger_effects ? 40 : 15));
+				new_damage_source = get_damage_source_by_index(damage_source_index);
+				new_damage_source->__unknown_flag_pd_A = true;
+				if (bomb_ptr->stronger_effects) {
+					new_damage_source->__unknown_func_index = 3;
+				}
+
+				this->__vm_id_5C.set_controller_position(&this->position);
+				this->__vm_id_64.set_controller_position(&this->position);
+				this->__cancel();
+			}
+		}
+		return ZUN_SUCCESS;
+	}
+
+	// Method C
+	// 0x420BD0
+	dllexport gnu_noinline virtual int thiscall on_draw_impl() {
+		return 1;
+	}
+
+	// Method 10
+	// 0x420BE0
+	dllexport gnu_noinline virtual int32_t thiscall __damage(Float3* position, Float2* size) {
+		return 0;
+	}
+
+	// Method 14
+	// 0x420D00
+	dllexport gnu_noinline virtual int thiscall __cancel() {
+		
+		// wtf is this ZUN, no don't
+		int32_t script = BOMB_PTR->stronger_effects ? 35 : 28;
+		for (; AnmVM* vm = this->__vm_id_5C.__find_child_vm_with_script(script); ++script) {
+			Float3 size;
+			size.as2() = vm->data.scale * Float2(48.0f, 160.0f);
+#if FIX_MINOR_BUGS
+			size.z = 0.0f;
+#endif
+			
+			Float3 position;
+			clang_forceinline vm->__get_rotated_position(&position);
+
+			BULLET_MANAGER_PTR->cancel_rotated_rectangle_as_bomb(&position, &size, this->rotation.z, CancelType0, 0);
+			LASER_MANAGER_PTR->cancel_in_rectangle(&position, &size, this->rotation.z, CancelType0, 0);
+		}
+
+		return 0;
+	}
+
+	// Method 18
+	// 0x420F70
+	dllexport gnu_noinline virtual void thiscall cleanup() {
+	}
+};
+
+struct BombSakuya : BombBase {
+	// Method 4
+	// 0x422600
+	dllexport gnu_noinline virtual int thiscall activate() {
+		Player* player = PLAYER_PTR;
+		this->position = player->data.position;
+		SPELLCARD_PTR->__inline_spellcard_fail();
+		++ENEMY_MANAGER_PTR->player_bomb_count;
+		BombBase* bomb_ptr = BOMB_PTR;
+		player->data.invulnerable_timer.set(bomb_ptr->stronger_effects ? 300 : 180);
+		AnmLoaded* player_anm = player->player_anm;
+		if (!bomb_ptr->stronger_effects) {
+			this->__vm_id_5C = player_anm->instantiate_vm_to_world_list_back(22);
+			this->__vm_id_64 = PLAYER_PTR->player_anm->instantiate_vm_to_world_list_back(21, &this->position);
+		} else {
+			this->__vm_id_5C = player_anm->instantiate_vm_to_world_list_back(25);
+			this->__vm_id_64 = PLAYER_PTR->player_anm->instantiate_vm_to_world_list_back(24, &this->position);
+		}
+		SOUND_MANAGER.play_sound(51);
+		return 0;
+	}
+
+	// Method 8
+	// 0x422960
+	dllexport gnu_noinline virtual ZUNResult thiscall on_tick_impl() {
+		if (!this->__vm_id_5C.has_live_vm()) {
+			return ZUN_ERROR;
+		}
+
+		// MSVC global caching is so *fun*
+		Player* player;
+		BombBase* bomb_ptr = BOMB_PTR;
+		if (bomb_ptr->stronger_effects) {
+			switch ((int32_t)this->__timer_34) {
+				default:
+					goto weak_effects_case;
+				case 50: case 100: case 150:
+					player = PLAYER_PTR;
+					this->__vm_id_64 = player->player_anm->instantiate_vm_to_world_list_back(24, &player->data.position);
+					player = PLAYER_PTR;
+					player->create_damage_source_circle(&player->data.position, 8.0f, 10.0f, 40, 7);
+					SOUND_MANAGER.play_sound(51);
+					player->create_damage_source_circle(&this->position, 640.0f, 0.0f, 20, 50);
+					bomb_ptr = BOMB_PTR;
+			}
+		}
+		else {
+	weak_effects_case:
+			player = PLAYER_PTR;
+		}
+
+		int32_t duration = bomb_ptr->stronger_effects ? 230 : 110;
+		if (this->__timer_34 < duration) {
+			BULLET_MANAGER_PTR->__disable_bullet_movement();
+			LASER_MANAGER_PTR->__disable_laser_movement();
+		}
+		else if (this->__timer_34 == duration) {
+			SOUND_MANAGER.play_sound(27);
+			SOUND_MANAGER.play_sound(41);
+			BULLET_MANAGER_PTR->__enable_bullet_movement();
+			LASER_MANAGER_PTR->__enable_laser_movement();
+			PLAYER_PTR->create_damage_source_circle(&this->position, 640.0f, 0.0f, 40, 400);
+			this->__cancel();
+		}
+		return ZUN_SUCCESS;
+	}
+
+	// Method C
+	// 0x422C60
+	dllexport gnu_noinline virtual int thiscall on_draw_impl() {
+		return 1;
+	}
+
+	// Method 10
+	// 0x422C70
+	dllexport gnu_noinline virtual int32_t thiscall __damage(Float3* position, Float2* size) {
+		return 0;
+	}
+
+	// Method 14
+	// 0x422C80
+	dllexport gnu_noinline virtual int thiscall __cancel() {
+		BULLET_MANAGER_PTR->cancel_radius_as_bomb(&this->position, 600.0f, CancelType3, 99999, 0);
+		LASER_MANAGER_PTR->cancel_in_radius(&this->position, 600.0f, CancelType3, 1);
+		return 0;
+	}
+
+	// Method 18
+	// 0x422CF0
+	dllexport gnu_noinline virtual void thiscall cleanup() {
+	}
+};
+
+struct BombSanaeA : BombBase {
+	// Method 4
+	// 0x422E20
+	dllexport gnu_noinline virtual int thiscall activate() {
+		Player* player = PLAYER_PTR;
+		this->position = player->data.position;
+		this->rotation.z = -HALF_PI_f;
+		SOUND_MANAGER.play_sound(49);
+		AnmLoaded* player_anm = player->player_anm;
+		if (!BOMB_PTR->stronger_effects) {
+			this->__vm_id_5C = player_anm->instantiate_vm_to_world_list_back(17, &this->position);
+			this->__vm_id_64 = PLAYER_PTR->player_anm->instantiate_vm_to_world_list_back(25, &this->position);
+		} else {
+			this->__vm_id_5C = player_anm->instantiate_vm_to_world_list_back(21, &this->position);
+			this->__vm_id_64 = PLAYER_PTR->player_anm->instantiate_vm_to_world_list_back(25, &this->position);
+		}
+		PLAYER_PTR->data.invulnerable_timer.set(110);
+		SPELLCARD_PTR->__inline_spellcard_fail();
+		++ENEMY_MANAGER_PTR->player_bomb_count;
+		ScreenEffect::allocate_inline(ScreenEffect8, 3, 60, 240, 30, 91);
+		return 0;
+	}
+
+	// Method 8
+	// 0x423270
+	dllexport gnu_noinline virtual ZUNResult thiscall on_tick_impl() {
+		AnmVM* vm = this->__vm_id_5C.get_vm_ptr();
+		Player* player = PLAYER_PTR;
+		player->data.invulnerable_timer.set(40);
+		if (!vm) {
+			this->__vm_id_64.interrupt_tree(1);
+			this->__vm_id_5C = NULL;
+			return ZUN_ERROR;
+		}
+
+		int32_t time = this->__timer_34;
+		if (time == 180) {
+			SOUND_MANAGER.play_sound(6);
+			ScreenEffect::allocate_inline(ScreenEffect8, 4, 1, 60, 10, 91);
+			player = PLAYER_PTR;
+		}
+		else if (BOMB_PTR->stronger_effects) {
+			if (time == 240) {
+				SOUND_MANAGER.play_sound(6);
+				ScreenEffect::allocate_inline(ScreenEffect8, 4, 1, 60, 10, 91);
+				player = PLAYER_PTR;
+			}
+			else if (time == 300) {
+				SOUND_MANAGER.play_sound(6);
+				ScreenEffect::allocate(ScreenEffect8, 4, 1, 60, 10, 91);
+				player = PLAYER_PTR;
+			}
+		}
+
+		time = this->__timer_34;
+		if (time == 0) {
+			player->create_damage_source_circle(&this->position, 16.0f, 16.0f / 45.0f, 180, 13);
+		}
+		else {
+			BombBase* bomb_ptr = BOMB_PTR;
+			if (time == 180) {
+				player->create_damage_source_circle(&this->position, 80.0f, 20.0f, 100, (bomb_ptr->stronger_effects ? 30 : 80)); // Initial damage is weaker with byakuren card
+			}
+			else if (bomb_ptr->stronger_effects) {
+				if (time == 240 || time == 300) {
+					player->create_damage_source_circle(&this->position, 80.0f, 20.0f, 100, 30);
+				}
+			}
+		}
+
+		time = this->__timer_34;
+		int32_t durationA = BOMB_PTR->stronger_effects ? 310 : 250;
+		Float3 position;
+		if (time < durationA) {
+			if (time >= 30) {
+				position.make_from_vector(REPLAY_RNG.rand_angle(), vm->data.scale.x);
+				position = this->position + position.as2();
+				goto make_effect;
+			}
+		}
+		else {
+			position.x = REPLAY_RNG.rand_float_signed_range(SCREEN_HALF_WIDTH);
+			position.y = REPLAY_RNG.rand_float_range(SCREEN_HEIGHT);
+			position.z = 0.0f;
+		make_effect:
+			// this feels like it could crash...
+			int32_t slot = EFFECT_MANAGER_PTR->create_special_effect(3, &position);
+			AnmVM* effect_vm = EFFECT_MANAGER_PTR->__get_slot_vm_id(slot).get_vm_ptr();
+			effect_vm->data.rotation_enabled = true;
+			effect_vm->data.blend_mode = BlendAdditive; // 1
+		}
+
+		int32_t durationB = BOMB_PTR->stronger_effects ? 460 : 400;
+		if (this->__timer_34 >= durationB) {
+			this->__vm_id_64.interrupt_tree(1);
+			this->__vm_id_5C.interrupt_and_orphan_tree(1);
+		}
+		else {
+			this->__cancel();
+		}
+
+		return ZUN_SUCCESS;
+	}
+
+	// Method C
+	// 0x4236A0
+	dllexport gnu_noinline virtual int thiscall on_draw_impl() {
+		return 1;
+	}
+
+	// Method 10
+	// 0x4236B0
+	dllexport gnu_noinline virtual int32_t thiscall __damage(Float3* position, Float2* size) {
+		return 0;
+	}
+
+	// Method 14
+	// 0x4236D0
+	dllexport gnu_noinline virtual int thiscall __cancel() {
+		float radius;
+		int32_t time = this->__timer_34;
+		if (time < 180) {
+			radius = (float)this->__timer_34 * 48.0f / 180.0f + 16.0f;
+		}
+		else if (time < 200) {
+			radius = ((float)this->__timer_34 - 180.0f) * 416.0f / 20.0f + 64.0f;
+		}
+		else {
+			radius = 480.0f;
+		}
+		BULLET_MANAGER_PTR->cancel_radius_as_bomb(&this->position, radius, SPELLCARD_PTR->spell_active ? CancelType0 : CancelType1, 99999, 0);
+		LASER_MANAGER_PTR->cancel_in_radius(&this->position, radius, SPELLCARD_PTR->spell_active ? CancelType0 : CancelType1, 1);
+		return 0;
+	}
+
+	// Method 18
+	// 0x4236C0
+	dllexport gnu_noinline virtual void thiscall cleanup() {
+	}
+};
+
+// 0x41FD40
+dllexport gnu_noinline BombBase* BombBase::allocate() {
+	BombBase* bomb_ptr;
+	switch (GAME_MANAGER.globals.shottype_index()) {
+		default:
+			bomb_ptr = new BombReimuA();
+			break;
+		case 1:
+			bomb_ptr = new BombMarisaA();
+			break;
+		case 2:
+			bomb_ptr = new BombSakuya();
+			break;
+		case 3:
+			bomb_ptr = new BombSanaeA();
+			break;
+	}
+	UpdateFunc* update_func = new UpdateFunc(&on_tick, true, bomb_ptr);
+	UpdateFuncRegistry::register_on_tick(update_func, TickPriority::BombBase); // 25
+	bomb_ptr->on_tick_func = update_func;
+	update_func = new UpdateFunc(&on_draw, true, bomb_ptr);
+	UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::BombBase); // 41
+	bomb_ptr->on_draw_func = update_func;
+	bomb_ptr->__timer_34.reset();
+	bomb_ptr->__timer_7C.reset();
+	bomb_ptr->__float_78 = -1.0f;
+	bomb_ptr->__float_74 = 0.0f;
+	bomb_ptr->__int_A0 = 0;
+	bomb_ptr->stronger_effects = false; // ???
+	BOMB_PTR = bomb_ptr;
+	return bomb_ptr;
+}
 
 forceinline ZUNResult thiscall EnemyData::update() {
 	if (ZUN_FAILED(this->move())) {
@@ -58488,7 +59144,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_443E60() {
 	STAGE_PTR->__start();
 	Stage* stageB = STAGE_B_PTR;
 	if (stageB) {
-		clang_forceinline ScreenEffect::allocate(ScreenEffect2, 30, 0, 0, 0, 10);
+		ScreenEffect::allocate_inline(ScreenEffect2, 30, 0, 0, 0, 10);
 		stageB->__timer_3478.set(30);
 		stageB->__unknown_flag_bg_D = true;
 		Stage* stageA = STAGE_PTR;
