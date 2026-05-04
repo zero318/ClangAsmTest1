@@ -7850,11 +7850,11 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 				break;
 		}
 		nounroll for (int32_t i = 0; i < SOUND_COMMAND_QUEUE_LENGTH; ++i) {
-			if (snd_cmd->type != SndCmdEmpty) {
-				*snd_cmd = *(snd_cmd + 1);
-				++snd_cmd;
+			if (snd_cmd->type == SndCmdEmpty) {
 				break;
 			}
+			*snd_cmd = *(snd_cmd + 1);
+			++snd_cmd;
 		}
 	} while (run_next_cmd);
 end_snd_cmd_loop:
@@ -23147,8 +23147,6 @@ struct ScreenEffect : ZUNTask {
 	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick_0_3(void* ptr) {
 		ScreenEffect* self = (ScreenEffect*)ptr;
 
-		// Nothing ticks the timer...?
-
 		if (expect(SCREEN_EFFECT_DISABLE_TIME == 0, true)) {
 			int32_t duration = self->duration;
 			if (duration) {
@@ -23159,6 +23157,7 @@ struct ScreenEffect : ZUNTask {
 				self->alpha = alpha;
 			}
 			if (self->timer < duration) {
+				self->timer++;
 				return UpdateFuncNext;
 			}
 		}
@@ -38116,7 +38115,7 @@ struct EnemyManager : ZUNTask {
 	inline AnmLoaded* anm_file_lookup(int32_t file_index) asm_symbol_rel(0x438D40);
 
 private:
-	inline EnemyID& __get_id_of_nearest_enemy_in_radius(EnemyID& out, Float2* position, float radius) {
+	inline EnemyID& __get_id_of_nearest_enemy_in_radius_homing(EnemyID& out, Float2* position, float radius) {
 		Enemy* found = NULL;
 		float radius_squared = radius * radius;
 		this->enemy_list.for_each_safe([&](Enemy* enemy) {
@@ -38132,17 +38131,17 @@ private:
 			out = found->id;
 			return out;
 		}
-		out = 0;
+		out = NULL;
 		return out;
 	}
 	// 0x438CB0
-	dllexport gnu_noinline static EnemyID& vectorcall __get_id_of_nearest_enemy_in_radius(int, int, EnemyID& out, Float2* position, float, float, float, float radius) {
-		return ENEMY_MANAGER_PTR->__get_id_of_nearest_enemy_in_radius(out, position, radius);
+	dllexport gnu_noinline static EnemyID& vectorcall __get_id_of_nearest_enemy_in_radius_homing(int, int, EnemyID& out, Float2* position, float, float, float, float radius) {
+		return ENEMY_MANAGER_PTR->__get_id_of_nearest_enemy_in_radius_homing(out, position, radius);
 	}
 public:
-	inline static EnemyID __get_id_of_nearest_enemy_in_radius(Float2* position, float radius) {
+	inline static EnemyID __get_id_of_nearest_enemy_in_radius_homing(Float2* position, float radius) {
 		EnemyID temp;
-		return __get_id_of_nearest_enemy_in_radius(UNUSED_DWORD, UNUSED_DWORD, temp, position, UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT, radius);
+		return __get_id_of_nearest_enemy_in_radius_homing(UNUSED_DWORD, UNUSED_DWORD, temp, position, UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT, radius);
 	}
 
 	// 0x430710
@@ -38349,7 +38348,7 @@ dllexport gnu_noinline void thiscall PlayerOption::__position_func_card_alice_im
 	if (enemy_manager_ptr) {
 		EnemyID id = this->__enemy_id_E4;
 		if (!id) {
-			id = enemy_manager_ptr->__get_id_of_nearest_enemy_in_radius(&position, 512.0f);
+			id = enemy_manager_ptr->__get_id_of_nearest_enemy_in_radius_homing(&position, 512.0f);
 			this->__enemy_id_E4 = id;
 			if (!id) {
 				return;
@@ -38399,7 +38398,7 @@ dllexport gnu_noinline ZUNResult fastcall PlayerBullet::__on_tick_1(PlayerBullet
 			EnemyID id = self->__enemy_id_90;
 			if (!id) {
 				Float3 position = self->motion.position;
-				id = ENEMY_MANAGER_PTR->__get_id_of_nearest_enemy_in_radius(&position, 256.0f);
+				id = ENEMY_MANAGER_PTR->__get_id_of_nearest_enemy_in_radius_homing(&position, 256.0f);
 				self->__enemy_id_90 = id;
 				if (!id) {
 					goto fail;
@@ -39469,12 +39468,12 @@ struct Stage : ZUNTask {
 		uint32_t flags; // 0x3474
 		struct {
 			uint32_t __render_enable : 1; // 1
-			uint32_t __unknown_flag_bg_D : 1; // 2
-			uint32_t __unknown_flag_bg_B : 1; // 3
-			uint32_t __unknown_flag_bg_A : 1; // 4
+			uint32_t __queue_delete_wait : 1; // 2
+			uint32_t __wait_for_transition : 1; // 3
+			uint32_t waiting_for_delete : 1; // 4
 		};
 	};
-	Timer __timer_3478; // 0x3478
+	Timer __transition_timer; // 0x3478
 	int32_t stage_number; // 0x348C
 	int32_t __int_3490; // 0x3490
 	void* std_file_buffer; // 0x3494
@@ -39564,7 +39563,7 @@ struct Stage : ZUNTask {
 				current_instruction->opcode == interrupt_label &&
 				IntArg(0) == interrupt
 			) {
-				stage->std_vm.current_instruction_offset = current_instruction - stage->script;
+				stage->std_vm.current_instruction_offset = (uintptr_t)current_instruction - (uintptr_t)stage->script;
 				stage->std_vm.script_time.set(current_instruction->time);
 				return;
 			}
@@ -39681,8 +39680,8 @@ struct Stage : ZUNTask {
 	// 0x41C0A0
 	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x41C0A0) {
 		if (
-			!this->__unknown_flag_bg_A &&
-			(!this->__unknown_flag_bg_B || this->__timer_3478 < 60)
+			!this->waiting_for_delete &&
+			(!this->__wait_for_transition || this->__transition_timer < 60)
 		) {
 			this->std_vm.camera.__vertex_offsetA = {};
 			this->std_vm.camera.__last_position_delta = {};
@@ -39692,7 +39691,7 @@ struct Stage : ZUNTask {
 
 			this->std_vm.__color_3440 = COLOR(0, 128, 128, 128);
 
-			if (!this->__unknown_flag_bg_B || this->__timer_3478 < 30) {
+			if (!this->__wait_for_transition || this->__transition_timer < 30) {
 				for (int32_t i = 0; i < this->std_file->object_count; ++i) {
 					StdObject* object = this->objects[i];
 					if (object->__run_quad_vm_scripts) {
@@ -39725,8 +39724,8 @@ struct Stage : ZUNTask {
 
 	// 0x41C290
 	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x41C290) {
-		if (!this->__unknown_flag_bg_A) {
-			if (!this->__unknown_flag_bg_B || this->__timer_3478 < 60) {
+		if (!this->waiting_for_delete) {
+			if (!this->__wait_for_transition || this->__transition_timer < 60) {
 				ANM_MANAGER_PTR->flush_sprites();
 				this->std_vm.camera.__vertex_offsetA = SUPERVISOR.cameras[StdCamera].__vertex_offsetA;
 				SUPERVISOR.cameras[StdCamera] = this->std_vm.camera;
@@ -39739,7 +39738,7 @@ struct Stage : ZUNTask {
 				SUPERVISOR.d3d_fog_start(this->std_vm.camera.sky.begin_distance);
 				SUPERVISOR.d3d_fog_end(this->std_vm.camera.sky.end_distance);
 
-				if (this->__unknown_flag_bg_B && this->__int_3490 < 34) {
+				if (this->__wait_for_transition && this->__int_3490 < 34) {
 					D3DRECT rect = SUPERVISOR.cameras[StdCamera].get_viewport_d3d_rect();
 					SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, COLOR(255, 0, 0, 0), 1.0f, 0);
 				} else {
@@ -39748,11 +39747,11 @@ struct Stage : ZUNTask {
 				}
 			}
 
-			if (this->__unknown_flag_bg_B) {
-				if (this->__timer_3478 < 30) {
+			if (this->__wait_for_transition) {
+				if (this->__transition_timer < 30) {
 					ScreenEffect::allocate_inline(ScreenEffect3, 30, 0, 0, 0, 10);
 					this->__render_enable = true;
-					this->__timer_3478.set(1);
+					this->__transition_timer.set(1);
 				}
 				else {
 					ALPHA(this->std_vm.__color_3440) = 0;
@@ -39793,8 +39792,8 @@ struct Stage : ZUNTask {
 
 	// 0x41C700
 	dllexport gnu_noinline UpdateFuncRet thiscall on_draw_B() asm_symbol_rel(0x41C700) {
-		if (!this->__unknown_flag_bg_A) {
-			if (!this->__unknown_flag_bg_B || this->__timer_3478 < 60) {
+		if (!this->waiting_for_delete) {
+			if (!this->__wait_for_transition || this->__transition_timer < 60) {
 				ANM_MANAGER_PTR->flush_sprites();
 				this->std_vm.camera.__vertex_offsetA = SUPERVISOR.cameras[StdCamera].__vertex_offsetA;
 				SUPERVISOR.cameras[StdCamera] = this->std_vm.camera;
@@ -39817,7 +39816,7 @@ struct Stage : ZUNTask {
 				SUPERVISOR.d3d_fog_end(this->std_vm.camera.sky.end_distance);
 			}
 
-			if (this->__unknown_flag_bg_B && this->__int_3490 >= 30) {
+			if (this->__wait_for_transition && this->__transition_timer >= 30) {
 				ALPHA(this->std_vm.__color_3440) = 0;
 			}
 
@@ -39833,13 +39832,15 @@ struct Stage : ZUNTask {
 
 			ANM_MANAGER_PTR->__clear_global_color();
 
-			if (this->__timer_3478 > 0) {
-				this->__timer_3478--;
-				if (this->__timer_3478 <= 0) {
+			if (this->__transition_timer > 0) {
+				this->__transition_timer--;
+				if (this->__transition_timer <= 0) {
 					this->std_vm.__color_3440 = COLOR(0, 255, 255, 255);
-					this->__unknown_flag_bg_A |= this->__unknown_flag_bg_D;
-					this->__unknown_flag_bg_D = false;
-					this->__unknown_flag_bg_B = false;
+					if (this->__queue_delete_wait) {
+						this->waiting_for_delete = true;
+					}
+					this->__queue_delete_wait = false;
+					this->__wait_for_transition = false;
 				}
 			}
 
@@ -39965,7 +39966,7 @@ ValidateFieldOffset32(0x3468, Stage, __rendered_instances_counter);
 ValidateFieldOffset32(0x346C, Stage, __culled_instances_counter);
 ValidateFieldOffset32(0x3470, Stage, __rendered_quads_counter);
 ValidateFieldOffset32(0x3474, Stage, flags);
-ValidateFieldOffset32(0x3478, Stage, __timer_3478);
+ValidateFieldOffset32(0x3478, Stage, __transition_timer);
 ValidateFieldOffset32(0x348C, Stage, stage_number);
 ValidateFieldOffset32(0x3490, Stage, __int_3490);
 ValidateFieldOffset32(0x3494, Stage, std_file_buffer);
@@ -40524,10 +40525,16 @@ struct Spellcard : ZUNTask {
 		EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(20);
 
 		auto& anm_sourceA = STAGE_DATA_PTR->inner[character];
-		this->spell_background = anm_file_lookup(anm_sourceA.spell_background_anm_index)->instantiate_vm_to_world_list_back(anm_sourceA.spell_background_anm_script);
+		int32_t background_anm_index = anm_sourceA.spell_background_anm_index;
+		if (background_anm_index >= 0) {
+			this->spell_background = anm_file_lookup(background_anm_index)->instantiate_vm_to_world_list_back(anm_sourceA.spell_background_anm_script);
+		}
 		auto& anm_sourceB = STAGE_DATA_PTR->inner[character];
 		this->__render_stage_during_spell = anm_sourceB.__render_stage_during_spell;
-		anm_file_lookup(anm_sourceB.spell_cut_in_anm_index)->instantiate_vm_to_world_list_back(anm_sourceB.spell_cut_in_anm_script);
+		int32_t spell_cut_in_anm_index = anm_sourceB.spell_cut_in_anm_index;
+		if (spell_cut_in_anm_index != -1) {
+			anm_file_lookup(spell_cut_in_anm_index)->instantiate_vm_to_world_list_back(anm_sourceB.spell_cut_in_anm_script);
+		}
 		
 		GAME_MANAGER.globals.__unknown_flag_gl_A = false;
 	}
@@ -48405,7 +48412,7 @@ struct BombReimuA : BombBase {
 							else {
 								EnemyID id;
 								if (ENEMY_MANAGER_PTR) {
-									id = ENEMY_MANAGER_PTR->__get_id_of_nearest_enemy_in_radius(&data->orbs[i].motion.position, 512.0f);
+									id = ENEMY_MANAGER_PTR->__get_id_of_nearest_enemy_in_radius_homing(&data->orbs[i].motion.position, 512.0f);
 									data->orbs[i].target_enemy_id = id;
 								} else {
 									id = data->orbs[i].target_enemy_id;
@@ -56101,7 +56108,7 @@ extern "C" {
 	externcg MainMenu* MAIN_MENU_PTR cgasm("_MAIN_MENU_PTR");
 }
 
-static int32_t DEBUG_STAGE = 0;
+static int32_t DEBUG_STAGE = 6;
 static Difficulty DEBUG_DIFFICULTY = NORMAL;
 static CharacterID DEBUG_CHARACTER = Reimu;
 static char* DEBUG_PATH = NULL;
@@ -59220,11 +59227,11 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::__sub_443E60() {
 	Stage* stageB = STAGE_B_PTR;
 	if (stageB) {
 		ScreenEffect::allocate_inline(ScreenEffect2, 30, 0, 0, 0, 10);
-		stageB->__timer_3478.set(30);
-		stageB->__unknown_flag_bg_D = true;
+		stageB->__transition_timer.set(30);
+		stageB->__queue_delete_wait = true;
 		Stage* stageA = STAGE_PTR;
-		stageA->__timer_3478.set(60);
-		stageA->__unknown_flag_bg_B = true;
+		stageA->__transition_timer.set(60);
+		stageA->__wait_for_transition = true;
 		this->__stage_transition_delay_stage_start = true;
 		GUI_PTR->__big_popupA.interrupt_tree(1);
 		return ZUN_SUCCESS;
@@ -59330,7 +59337,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 	Stage* stageB = STAGE_B_PTR;
 	if (
 		stageB != NULL &&
-		stageB->__unknown_flag_bg_A &&
+		stageB->waiting_for_delete &&
 		stageB != NULL
 	) {
 		delete stageB;
@@ -59590,7 +59597,7 @@ dllexport gnu_noinline GameThread::~GameThread() {
 		) {
 			ANM_MANAGER_PTR->unload_anm(STAGE_LOGO_ANM_INDEX);
 			gui->stage_logo_anm = NULL;
-			SAFE_FREE(gui->msg_file_buffer);
+			SAFE_FREE_SLOW(gui->msg_file_buffer);
 		}
 		delete STAGE_B_PTR;
 		STAGE_B_PTR = STAGE_PTR;

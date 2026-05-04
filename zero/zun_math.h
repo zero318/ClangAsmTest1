@@ -102,7 +102,7 @@ static forceinline long double atan2l(long double Y, long double X) {
         "call __CIatan2"
         : asm_arg("=t", ret)
         : asm_arg("0", X), asm_arg("u", Y)
-        : clobber_list("st(1)")
+        : clobber_list("st(1)", "eax", "edx", "ecx", "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7")
     );
     return ret;
 }
@@ -122,7 +122,7 @@ static forceinline long double fmodl(long double X, long double Y) {
         "call __CIfmod"
         : asm_arg("=t", ret)
         : asm_arg("0", Y), asm_arg("u", X)
-        : clobber_list("st(1)")
+        : clobber_list("st(1)", "eax", "edx", "ecx", "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7")
     );
     return ret;
 }
@@ -139,7 +139,7 @@ static forceinline long double powl(long double base, long double exponent) {
         "call __CIpow"
         : asm_arg("=t", ret)
         : asm_arg("0", exponent), asm_arg("u", base)
-        : clobber_list("st(1)")
+        : clobber_list("st(1)", "eax", "edx", "ecx", "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7")
     );
     return ret;
 }
