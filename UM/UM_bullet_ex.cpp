@@ -58,6 +58,12 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define MALLET_PIPE 0
 #define FAST_TIMER 0
 
+#define FIX_REALLY_BAD_BUGS 1
+#define FIX_MINOR_BUGS 1
+
+#define KILL_THE_MUTEX_WITH_FIRE 1
+#define ALWAYS_ON_TOP_SUCKS 1
+
 // Debug toggles
 #define ALLOW_FORCE_CLOSING_SHOP 1
 
@@ -72,15 +78,12 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define ALLOCATE_CONSOLE 1
 #define TESTING_FEATURES 1
 
+#define THE_BEST_ENDING_SCREEN 1
 #define DEBUG_NO_GAME_OVER 1
 #define DEBUG_INVINCIBLE 0
 #define DEBUG_FAST_FORWARD 0
 #define DEBUG_FAST_FORWARD_SPEED 10
 
-#define KILL_THE_MUTEX_WITH_FIRE 1
-
-#define FIX_REALLY_BAD_BUGS 1
-#define FIX_MINOR_BUGS 1
 #define PROTECT_ORIGINAL_FILES 1
 #define IGNORE_HASH_CHECKS 1
 #define OVERRIDE_PATH_CHECKS 1
@@ -1765,6 +1768,31 @@ extern "C" {
 }
 
 #if TESTING_FEATURES
+
+#ifndef STATUS_NOT_IMPLEMENTED
+#define STATUS_NOT_IMPLEMENTED				((DWORD)0xC0000002L)
+#endif
+#ifndef STATUS_INVALID_LOCK_SEQUENCE
+#define STATUS_INVALID_LOCK_SEQUENCE		((DWORD)0xC000001EL)
+#endif
+#ifndef STATUS_BAD_STACK
+#define STATUS_BAD_STACK					((DWORD)0xC0000028L)
+#endif
+#ifndef STATUS_INVALID_UNWIND_TARGET
+#define STATUS_INVALID_UNWIND_TARGET		((DWORD)0xC0000029L)
+#endif
+#ifndef STATUS_BAD_FUNCTION_TABLE
+#define STATUS_BAD_FUNCTION_TABLE			((DWORD)0xC00000FFL)
+#endif
+#ifndef STATUS_DATATYPE_MISALIGNMENT_ERROR
+#define STATUS_DATATYPE_MISALIGNMENT_ERROR	((DWORD)0xC00002C5L)
+#endif
+#ifndef STATUS_HEAP_CORRUPTION
+#define STATUS_HEAP_CORRUPTION				((DWORD)0xC0000374L)
+#endif
+
+#define EH_EXCEPTION_NUMBER 0xE06D7363
+
 static constexpr const char* EMOTE_CAPTIONS[] = {
 	":ReisenWorried:",
 	":NotLikeAlice:",
@@ -1804,6 +1832,52 @@ gnu_noinline void make_sure_file_exists(const char* path) {
 			case IDABORT:
 				ExitProcess(-1);
 		}
+	}
+}
+
+LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI) {
+	LPEXCEPTION_RECORD lpER = lpEI->ExceptionRecord;
+
+	switch (lpER->ExceptionCode) {
+		case EXCEPTION_BREAKPOINT:
+			if (!IsDebuggerPresent()) {
+		case STATUS_ACCESS_VIOLATION:
+		case STATUS_ILLEGAL_INSTRUCTION:
+		case STATUS_INTEGER_DIVIDE_BY_ZERO:
+		case EH_EXCEPTION_NUMBER:
+
+		case STATUS_NOT_IMPLEMENTED:
+		case STATUS_INVALID_LOCK_SEQUENCE:
+		case STATUS_ARRAY_BOUNDS_EXCEEDED:
+		case STATUS_PRIVILEGED_INSTRUCTION:
+		case STATUS_DATATYPE_MISALIGNMENT_ERROR:
+		case STATUS_ASSERTION_FAILURE:
+
+		case STATUS_FLOAT_INVALID_OPERATION:
+		case STATUS_FLOAT_OVERFLOW:
+		case STATUS_FLOAT_STACK_CHECK:
+		case STATUS_FLOAT_UNDERFLOW:
+		case STATUS_FLOAT_MULTIPLE_FAULTS:
+		case STATUS_FLOAT_MULTIPLE_TRAPS:
+
+		case STATUS_STACK_OVERFLOW:
+		case STATUS_STACK_BUFFER_OVERRUN:
+		case STATUS_BAD_STACK:
+		case STATUS_INVALID_UNWIND_TARGET:
+		case STATUS_BAD_FUNCTION_TABLE:
+		case STATUS_HEAP_CORRUPTION:
+				Zmboxf(
+					"Your dodging is ass. Session terminated.\n"
+					"\n"
+					"Exception %08X at 0x%p",
+					"Yes this is actually a crash handler",
+					MB_OK | MB_ICONSTOP | MB_TASKMODAL,
+					lpER->ExceptionCode, lpER->ExceptionAddress
+				);
+			}
+			[[fallthrough]];
+		default:
+			return EXCEPTION_CONTINUE_SEARCH;
 	}
 }
 #endif
@@ -22847,6 +22921,9 @@ struct TrophyManager : ZUNTask {
 	}
 
 	forceinline ZUNResult initialize(int32_t trophy_id) {
+		// HACK TODO: figure out why this softlocks
+		return ZUN_ERROR;
+
 		AnmLoaded* anm_loaded = ANM_MANAGER_PTR->preload_anm(TROPHY_ANM_INDEX, "trophy.anm");
 		this->trophy_anm = anm_loaded;
 
@@ -26236,7 +26313,7 @@ struct Ending : ZUNTask {
 	// 0x42B650
 	// EH frame (free end vm)
 	dllexport gnu_noinline ZUNResult initialize() asm_symbol_rel(0x42B650) {
-		UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
+		UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
 		UpdateFuncRegistry::register_on_tick(update_func, TickPriority::Ending); // 36
 		this->on_tick_func = update_func;
 		update_func = new UpdateFunc(&on_draw, true, this);
@@ -56108,7 +56185,7 @@ extern "C" {
 	externcg MainMenu* MAIN_MENU_PTR cgasm("_MAIN_MENU_PTR");
 }
 
-static int32_t DEBUG_STAGE = 6;
+static int32_t DEBUG_STAGE = 0;
 static Difficulty DEBUG_DIFFICULTY = NORMAL;
 static CharacterID DEBUG_CHARACTER = Reimu;
 static char* DEBUG_PATH = NULL;
@@ -58827,6 +58904,12 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__update_gamemode() {
 							break;
 						case GameMode::Ending: // 15
 							ENDING_PTR->cleanup();
+#if THE_BEST_ENDING_SCREEN
+							switch (Zmbox("YOU'RE WINNER !\n\nPlay again?", "just imagine I included the trophy", MB_YESNO | MB_DEFBUTTON2)) {
+								case IDNO:
+									exit(-1);
+							}
+#endif
 							break;
 						case GameMode::GameMode2: // 2
 							break;
@@ -60357,12 +60440,16 @@ dllexport gnu_noinline LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wPa
 		case WM_ACTIVATEAPP: // 0x1C
 			if ((WINDOW_DATA.window_active = wParam)) {
 				WINDOW_DATA.__bool_14 = false;
+#if !ALWAYS_ON_TOP_SUCKS
 				SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+#endif
 				return DefWindowProcA(hWnd, uMsg, wParam, lParam);
 			}
 			else {
 				WINDOW_DATA.__bool_14 = true;
+#if !ALWAYS_ON_TOP_SUCKS
 				SetWindowPos(hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+#endif
 				return DefWindowProcA(hWnd, uMsg, wParam, lParam);
 			}
 			break;
@@ -61464,6 +61551,7 @@ dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevIn
 	//load_mxcsr(mxcsr);
 
 #if TESTING_FEATURES
+	AddVectoredExceptionHandler(0, exception_filter);
 #if DEBUG_FAST_FORWARD
 	CapsLock::set(false);
 #endif
@@ -61472,6 +61560,7 @@ dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevIn
 #endif
 	debug_command_line();
 	make_sure_file_exists("th18.dat");
+	make_sure_file_exists("thbgm.dat");
 #endif
 
 	HINSTANCE current_instance = hInstance;
