@@ -119,15 +119,6 @@ void APPLY_DEBUG_CONFIG();
 #define cgasm(...)
 #endif
 
-//#define GAME_FOLDER_PATH "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\"
-
-#define CHEAT_THE_LOADER 0
-
-#if CHEAT_THE_LOADER
-typedef struct StaticCtorsDtors StaticCtorsDtors;
-extern StaticCtorsDtors fake_static_data;
-#endif
-
 #undef WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <process.h>
@@ -147,6 +138,12 @@ extern StaticCtorsDtors fake_static_data;
 #define XINPUT_USE_9_1_0 1
 #include "Xinput.h"
 #include "xinput_sucks.h"
+extern "C" {
+	__declspec(dllimport) IDirect3D9* WINAPI Direct3DCreate9(UINT SDKVersion);
+	__declspec(dllimport) HRESULT WINAPI DirectSoundCreate8(__in_opt LPCGUID pcGuidDevice, __deref_out LPDIRECTSOUND8* ppDS8, __null LPUNKNOWN pUnkOuter);
+	__declspec(dllimport) HRESULT WINAPI DirectInput8Create(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID *ppvOut, LPUNKNOWN punkOuter);
+	__declspec(dllimport) BOOL WINAPI WINNLSEnableIME(IN HWND, IN BOOL);
+}
 
 #define WAVEFILE_READ   1
 #define WAVEFILE_WRITE  2
@@ -159,6 +156,13 @@ extern StaticCtorsDtors fake_static_data;
 #pragma comment (lib, "Xinput9_1_0.lib")
 
 #undef SHARD
+
+// Using the normal GUID_NULL always pulls from
+// memory because it's an exernal variable.
+// Original codegen generates zero from XORPS
+// instead, but it's unclear if that's because
+// MSVC knows what GUID_NULL is or if ZUN did it.
+static inline constexpr GUID GUID_NULL = {};
 
 #define FORCE_EXPORT_FUNCTIONS 1
 #define FORCE_ORIGINAL_INLINING 1
@@ -2641,7 +2645,7 @@ struct Rng {
 		return temp / (float)INT32_MAX - 1.0f; // float jank rounds this to INT32_MAX+1
 	}
 	// 0x405B90
-	dllexport float vectorcall rand_angle() asm_symbol_rel(0x405B90) {
+	dllexport inline float vectorcall rand_angle() asm_symbol_rel(0x405B90) {
 		return this->rand_float_signed() * PI_f;
 	}
 	// 0x402850
@@ -2653,15 +2657,15 @@ struct Rng {
 	
 private:
 	// 0x406AB0
-	dllexport gnu_noinline float vectorcall rand_float_range(float, float range) asm_symbol_rel(0x406AB0) {
+	dllexport inline float vectorcall rand_float_range(float, float range) asm_symbol_rel(0x406AB0) {
 		return this->rand_float() * range;
 	}
 public:
-	inline float rand_float_range(float range) {
+	forceinline float rand_float_range(float range) {
 		return this->rand_float_range(UNUSED_FLOAT, range);
 	}
 	
-	inline float rand_float_signed_range(float range) {
+	forceinline float rand_float_signed_range(float range) {
 		return this->rand_float_signed() * range;
 	}
 	// 0x4615A0
@@ -5288,7 +5292,7 @@ static inline constexpr const char *const SOUND_EFFECT_FILENAMES[] = {
 	"se_noise.wav",
 	"se_etbreak.wav",
 	"se_tan03.wav",
-	"se_wold.wav",
+	"se_wolf.wav",
 	"se_bonus4.wav",
 	"se_big.wav",
 	"se_item01.wav",
@@ -5362,7 +5366,7 @@ static inline constexpr const char *const SOUND_EFFECT_FILENAMES[] = {
 #define SE_NOISE 59
 #define SE_ETBREAK 60
 #define SE_TAN03 61
-#define SE_WOLD 62
+#define SE_WOLF 62
 #define SE_BONUS4 63
 #define SE_BIG 64
 #define SE_ITEM01 65
@@ -5445,7 +5449,7 @@ dllexport gnu_noinline unsigned char* vectorcall get_wav_chunk_data(WavFileChunk
 dllexport gnu_noinline unsigned char* vectorcall get_wav_chunk_data(WavFileChunk* chunk, const char* chunk_id, int32_t* remaining_size_ptr, int32_t remaining_size) {
 	while (remaining_size) {
 		*remaining_size_ptr = chunk->size;
-		if (strncmp(chunk->id, chunk_id, sizeof(chunk->id)) == 0) {
+		if (!strncmp(chunk->id, chunk_id, sizeof(chunk->id))) {
 			return chunk->data;
 		}
 		int32_t chunk_size = *remaining_size_ptr;
@@ -5472,26 +5476,26 @@ struct MMCKINFO {
 */
 
 // size: 0x18
-struct SoundManagerUnknownB {
+struct SoundEffectData {
 	LPDIRECTSOUNDBUFFER sound_buffer; // 0x0
 	int32_t __int_4; // 0x4
 	SoundData* data; // 0x8
 	int32_t __int_C; // 0xC
-	int32_t __pan; // 0x10
+	int32_t panning; // 0x10
 	BOOL __playing; // 0x14
 	// 0x18
 
 	// 0x4776F0
-	dllexport gnu_noinline ZUNResult thiscall __sub_4776F0(const char* filename) asm_symbol_rel(0x4776F0);
+	dllexport gnu_noinline ZUNResult thiscall initialize(const char* filename) asm_symbol_rel(0x4776F0);
 };
-#pragma region // SoundManagerUnknownB Validation
-ValidateFieldOffset32(0x0, SoundManagerUnknownB, sound_buffer);
-ValidateFieldOffset32(0x4, SoundManagerUnknownB, __int_4);
-ValidateFieldOffset32(0x8, SoundManagerUnknownB, data);
-ValidateFieldOffset32(0xC, SoundManagerUnknownB, __int_C);
-ValidateFieldOffset32(0x10, SoundManagerUnknownB, __pan);
-ValidateFieldOffset32(0x14, SoundManagerUnknownB, __playing);
-ValidateStructSize32(0x18, SoundManagerUnknownB);
+#pragma region // SoundEffectData Validation
+ValidateFieldOffset32(0x0, SoundEffectData, sound_buffer);
+ValidateFieldOffset32(0x4, SoundEffectData, __int_4);
+ValidateFieldOffset32(0x8, SoundEffectData, data);
+ValidateFieldOffset32(0xC, SoundEffectData, __int_C);
+ValidateFieldOffset32(0x10, SoundEffectData, panning);
+ValidateFieldOffset32(0x14, SoundEffectData, __playing);
+ValidateStructSize32(0x18, SoundEffectData);
 #pragma endregion
 
 enum SoundCommandType : int32_t {
@@ -5537,6 +5541,10 @@ struct CSoundManager {
 	// 0x4
 
 	friend struct CStreamingSound;
+
+	inline ~CSoundManager() {
+		SAFE_RELEASE(this->dsound);
+	}
 
 	inline HRESULT Initialize(HWND hWnd, DWORD dwCoopLevel) {
 
@@ -6469,14 +6477,14 @@ ValidateStructSize32(0xA8, CStreamingSound);
 #pragma endregion
 
 // size: 0x200
-struct SoundManagerUnknownF {
-	int32_t __int_array_0[60]; // 0x0
+struct SoundEffectPanningData {
+	int32_t data[60]; // 0x0
 	unknown_fields(0x110); // 0xF0
 	// 0x200
 };
-#pragma region // SoundManagerUnknownF Validation
-ValidateFieldOffset32(0x0, SoundManagerUnknownF, __int_array_0);
-ValidateStructSize32(0x200, SoundManagerUnknownF);
+#pragma region // SoundEffectPanningData Validation
+ValidateFieldOffset32(0x0, SoundEffectPanningData, data);
+ValidateStructSize32(0x200, SoundEffectPanningData);
 #pragma endregion
 
 extern "C" {
@@ -6484,6 +6492,7 @@ extern "C" {
 	//externcg SoundData SOUND_DATA[SOUND_EFFECT_COUNT] cgasm("_SOUND_DATA");
 }
 
+// WHY ISN'T THIS CONST
 // 0x4C9B80
 static SoundData SOUND_DATA[SOUND_EFFECT_COUNT] = {
 	{ // 0
@@ -6933,7 +6942,7 @@ static SoundData SOUND_DATA[SOUND_EFFECT_COUNT] = {
 		.__int_10 = 1
 	},
 	{ // 74
-		.id = 73, .filename_index = SE_WOLD,
+		.id = 73, .filename_index = SE_WOLF,
 		.volume = -500,
 		.__short_A = 0,
 		.__int_10 = 1
@@ -7168,7 +7177,7 @@ struct SoundManager {
 	unknown_fields(0x4); // 0x18
 	int32_t active_sound_ids[MAX_ACTIVE_SOUNDS]; // 0x1C
 	int32_t active_sound_id_counts[MAX_ACTIVE_SOUNDS]; // 0x4C
-	SoundManagerUnknownF __unknown_smf_array_7C[MAX_ACTIVE_SOUNDS]; // 0x7C
+	SoundEffectPanningData __sound_panning[MAX_ACTIVE_SOUNDS]; // 0x7C
 	ThBgmFormat* loaded_bgm_formats[MAX_LOADED_MUSIC]; // 0x187C
 	void* __loaded_bgm_buffers_A[MAX_LOADED_MUSIC]; // 0x18BC
 	void* __loaded_bgm_buffers_B[MAX_LOADED_MUSIC]; // 0x18FC
@@ -7179,7 +7188,7 @@ struct SoundManager {
 		ThBgmFormat* bgm_formats;
 	};
 	char __text_buffer_1984[0x100]; // 0x1984
-	SoundManagerUnknownB __unknown_smb_array_1A84[SOUND_EFFECT_COUNT]; // 0x1A84
+	SoundEffectData __sound_effects[SOUND_EFFECT_COUNT]; // 0x1A84
 	void* sound_effect_files[countof(SOUND_EFFECT_FILENAMES)]; // 0x2264
 	char __text_buffer_2384[0x100]; // 0x2384
 	SoundCommand sound_command_queue[SOUND_COMMAND_QUEUE_LENGTH + 1]; // 0x2484 (yes there's an extra dummy slot)
@@ -7190,12 +7199,12 @@ struct SoundManager {
 	HANDLE __notify_event; // 0x570C
 	unknown_fields(0x4); // 0x5710
 	int32_t file_pointer_offset; // 0x5714
-	HANDLE __thread_5718; // 0x5718
-	HANDLE __handle_571C; // 0x571C
-	DWORD __thread_id_5720; // 0x5720
+	HANDLE initialization_thread; // 0x5718
+	HANDLE sfx_loading_thread; // 0x571C
+	DWORD initialization_thread_id; // 0x5720
 	int __int_5724; // 0x5724
 	HWND main_window_hwnd; // 0x5728
-	int __int_572C; // 0x572C
+	BOOL __initialized; // 0x572C
 	int32_t bgm_volume; // 0x5730
 	int32_t sound_volume; // 0x5734
 	int32_t __csound_volume; // 0x5738
@@ -7206,11 +7215,11 @@ struct SoundManager {
 	}
 
 	inline void copy_sound_data() {
-		SoundManagerUnknownB* unknown_b_ptr = this->__unknown_smb_array_1A84;
-		for (size_t i = 0; i < countof(this->__unknown_smb_array_1A84); ++unknown_b_ptr, ++i) {
+		SoundEffectData* unknown_b_ptr = this->__sound_effects;
+		for (size_t i = 0; i < countof(this->__sound_effects); ++unknown_b_ptr, ++i) {
 			unknown_b_ptr->__int_4 = -1;
 			SoundData* sound_data = SOUND_DATA;
-			while (sound_data->id != i) ++sound_data;
+			while (sound_data->id != i && ++sound_data);
 			unknown_b_ptr->__int_C = i;
 			unknown_b_ptr->data = sound_data;
 		}
@@ -7220,10 +7229,10 @@ struct SoundManager {
 		SAFE_FREE_FAST(this->bgm_format_file);
 	}
 
-	inline void release_smb_array() {
-		SoundManagerUnknownB* smb_ptr = this->__unknown_smb_array_1A84;
-		for (size_t i = 0; i < countof(this->__unknown_smb_array_1A84); ++smb_ptr, ++i) {
-			SAFE_RELEASE(smb_ptr->sound_buffer);
+	inline void release_sound_effect_array() {
+		SoundEffectData* sound_effect_ptr = this->__sound_effects;
+		for (size_t i = 0; i < countof(this->__sound_effects); ++sound_effect_ptr, ++i) {
+			SAFE_RELEASE(sound_effect_ptr->sound_buffer);
 		}
 	}
 
@@ -7241,6 +7250,7 @@ struct SoundManager {
 		}
 	}
 
+	// 0x401100
 	SoundManager() {
 		this->copy_sound_data();
 	}
@@ -7252,14 +7262,14 @@ struct SoundManager {
 	dllexport gnu_noinline static int32_t __wait_and_close_handles() asm_symbol_rel(0x476320);
 
 	// 0x4763D0
-	dllexport gnu_noinline static DWORD WINAPI sound_thread_func(void* self) asm_symbol_rel(0x4763D0);
+	dllexport gnu_noinline static DWORD WINAPI initialization_thread_func(void* self) asm_symbol_rel(0x4763D0);
 
 	// 0x476410
 	// EH frame (terminate)
-	dllexport gnu_noinline ZUNResult thiscall __sub_476410(HWND window_hwnd_arg) EH_TERMINATE asm_symbol_rel(0x476410);
+	dllexport gnu_noinline ZUNResult thiscall initialize(HWND window_hwnd_arg) EH_TERMINATE asm_symbol_rel(0x476410);
 
 	// 0x4767B0
-	dllexport gnu_noinline static DWORD WINAPI load_sound_effects(void* self) asm_symbol_rel(0x4767B0);
+	dllexport gnu_noinline static DWORD WINAPI load_sound_effect_files(void* self) asm_symbol_rel(0x4767B0);
 
 	// 0x476970
 	dllexport gnu_noinline static ZUNResult stdcall preload_bgm(int32_t index, const char* filename) asm_symbol_rel(0x476970);
@@ -7293,7 +7303,7 @@ struct SoundManager {
 	dllexport gnu_noinline void thiscall stop_bgm() asm_symbol_rel(0x476B40);
 
 	// 0x476BE0
-	dllexport gnu_noinline static void stdcall play_sound_centered(int32_t sound_id, float) asm_symbol_rel(0x476BE0);
+	dllexport gnu_noinline static void stdcall play_sound_centered(int32_t sound_id, int32_t) asm_symbol_rel(0x476BE0);
 
 	// 0x476C70
 	dllexport gnu_noinline static void vectorcall play_sound_positioned(int, int, float, float, int32_t sound_id, float position) asm_symbol_rel(0x476C70);
@@ -7305,12 +7315,12 @@ struct SoundManager {
 	static inline void stop_sound(int32_t sound_id);
 
 	// 0x444D80
-	dllexport gnu_noinline static void __stop_all_sfx() asm_symbol_rel(0x444D80);
+	dllexport gnu_noinline static void __stop_all_sound_effects() asm_symbol_rel(0x444D80);
 
-	static inline void __stop_smb(int32_t index);
+	static inline void __stop_sound_effect(int32_t index);
 
 	static inline void play_sound(int32_t sound_id) {
-		SoundManager::play_sound_centered(sound_id, UNUSED_FLOAT);
+		SoundManager::play_sound_centered(sound_id, UNUSED_DWORD);
 	}
 
 	static inline void play_sound_validate(int32_t sound_id) {
@@ -7321,10 +7331,10 @@ struct SoundManager {
 		if (sound_id >= 0) SoundManager::play_sound_positioned(sound_id, position);
 	}
 
-	inline void cleanup() { // Might be destructor?
+	inline void cleanup() {
 		this->__wait_and_close_handles();
 		this->free_bgm_format_file();
-		this->release_smb_array();
+		this->release_sound_effect_array();
 		this->free_all_sound_effect_files();
 		if (this->csound_manager_ptr) {
 			KillTimer(this->timer_hwnd, 1);
@@ -7399,14 +7409,14 @@ ValidateFieldOffset32(0x10, SoundManager, sound_thread_id);
 ValidateFieldOffset32(0x14, SoundManager, sound_thread_handle);
 ValidateFieldOffset32(0x1C, SoundManager, active_sound_ids);
 ValidateFieldOffset32(0x4C, SoundManager, active_sound_id_counts);
-ValidateFieldOffset32(0x7C, SoundManager, __unknown_smf_array_7C);
+ValidateFieldOffset32(0x7C, SoundManager, __sound_panning);
 ValidateFieldOffset32(0x187C, SoundManager, loaded_bgm_formats);
 ValidateFieldOffset32(0x18BC, SoundManager, __loaded_bgm_buffers_A);
 ValidateFieldOffset32(0x18FC, SoundManager, __loaded_bgm_buffers_B);
 ValidateFieldOffset32(0x193C, SoundManager, loaded_bgm_buffer_sizes);
 ValidateFieldOffset32(0x197C, SoundManager, __bgm_index_197C);
 ValidateFieldOffset32(0x1980, SoundManager, bgm_format_file);
-ValidateFieldOffset32(0x1A84, SoundManager, __unknown_smb_array_1A84);
+ValidateFieldOffset32(0x1A84, SoundManager, __sound_effects);
 ValidateFieldOffset32(0x2264, SoundManager, sound_effect_files);
 ValidateFieldOffset32(0x2384, SoundManager, __text_buffer_2384);
 ValidateFieldOffset32(0x2484, SoundManager, sound_command_queue);
@@ -7414,12 +7424,12 @@ ValidateFieldOffset32(0x5604, SoundManager, thbgm_filename);
 ValidateFieldOffset32(0x5704, SoundManager, cstreaming_sound_ptr);
 ValidateFieldOffset32(0x570C, SoundManager, __notify_event);
 ValidateFieldOffset32(0x5714, SoundManager, file_pointer_offset);
-ValidateFieldOffset32(0x5718, SoundManager, __thread_5718);
-ValidateFieldOffset32(0x571C, SoundManager, __handle_571C);
-ValidateFieldOffset32(0x5720, SoundManager, __thread_id_5720);
+ValidateFieldOffset32(0x5718, SoundManager, initialization_thread);
+ValidateFieldOffset32(0x571C, SoundManager, sfx_loading_thread);
+ValidateFieldOffset32(0x5720, SoundManager, initialization_thread_id);
 ValidateFieldOffset32(0x5724, SoundManager, __int_5724);
 ValidateFieldOffset32(0x5728, SoundManager, main_window_hwnd);
-ValidateFieldOffset32(0x572C, SoundManager, __int_572C);
+ValidateFieldOffset32(0x572C, SoundManager, __initialized);
 ValidateFieldOffset32(0x5730, SoundManager, bgm_volume);
 ValidateFieldOffset32(0x5734, SoundManager, sound_volume);
 ValidateFieldOffset32(0x5738, SoundManager, __csound_volume);
@@ -7541,8 +7551,8 @@ dllexport gnu_noinline ZUNResult stdcall SoundManager::preload_bgm(int32_t index
 }
 
 // 0x4779A0
-dllexport gnu_noinline DWORD WINAPI __sound_thread_4779A0(LPVOID) asm_symbol_rel(0x4779A0);
-dllexport gnu_noinline DWORD WINAPI __sound_thread_4779A0(LPVOID) {
+dllexport gnu_noinline DWORD WINAPI sound_thread_func(LPVOID) asm_symbol_rel(0x4779A0);
+dllexport gnu_noinline DWORD WINAPI sound_thread_func(LPVOID) {
 	BOOL stop = false;
 	do {
 		DWORD wait_object = MsgWaitForMultipleObjects(1, &SOUND_MANAGER.__notify_event, FALSE, INFINITE, QS_ALLEVENTS);
@@ -7587,7 +7597,7 @@ inline ZUNResult SoundManager::load_bgm(int32_t index) {
 		uint32_t align = bgm_format->wave_format.nBlockAlign;
 		uint32_t notify_size = (bgm_format->wave_format.nSamplesPerSec * align) * BGM_BLOCK_ALIGN / CHAR_BIT;
 		SOUND_MANAGER.__notify_event = CreateEventA(NULL, FALSE, FALSE, NULL);
-		SOUND_MANAGER.sound_thread_handle = CreateThread(NULL, 0, &__sound_thread_4779A0, SUPERVISOR.main_window_handle, 0, &SOUND_MANAGER.sound_thread_id);
+		SOUND_MANAGER.sound_thread_handle = CreateThread(NULL, 0, &sound_thread_func, SUPERVISOR.main_window_handle, 0, &SOUND_MANAGER.sound_thread_id);
 		if (SUCCEEDED(SOUND_MANAGER.csound_manager_ptr->CreateStreamingFromMemory(
 			&SOUND_MANAGER.cstreaming_sound_ptr,
 			(BYTE*)SOUND_MANAGER.__loaded_bgm_buffers_B[index],
@@ -7857,40 +7867,40 @@ end_snd_cmd_loop:
 			int32_t active_count = SOUND_MANAGER.active_sound_id_counts[i];
 			SOUND_MANAGER.active_sound_ids[i] = -1;
 			if (active_count < 0) {
-				SOUND_MANAGER.__stop_smb(sound_id);
+				SOUND_MANAGER.__stop_sound_effect(sound_id);
 				SOUND_MANAGER.active_sound_id_counts[i] = 0;
 			}
 			else {
-				int32_t pan = 0;
+				int32_t panning = 0;
 				if (active_count > 0) {
-					int32_t* smf_array_read = SOUND_MANAGER.__unknown_smf_array_7C[i].__int_array_0;
+					int32_t* pannning_array_read = SOUND_MANAGER.__sound_panning[i].data;
 					int32_t j = active_count;
 					do {
-						pan += *smf_array_read++;
+						panning += *pannning_array_read++;
 					} while (--j);
-					pan /= active_count;
+					panning /= active_count;
 				}
 				SOUND_MANAGER.active_sound_id_counts[i] = 0;
-				if (LPDIRECTSOUNDBUFFER sound_buffer = SOUND_MANAGER.__unknown_smb_array_1A84[i].sound_buffer) {
+				if (LPDIRECTSOUNDBUFFER sound_buffer = SOUND_MANAGER.__sound_effects[i].sound_buffer) {
 					sound_buffer->Stop();
-					SOUND_MANAGER.__unknown_smb_array_1A84[i].sound_buffer->SetCurrentPosition(0);
-					SOUND_MANAGER.__unknown_smb_array_1A84[i].sound_buffer->SetPan(pan);
-					SOUND_MANAGER.__unknown_smb_array_1A84[i].__pan = pan;
+					SOUND_MANAGER.__sound_effects[i].sound_buffer->SetCurrentPosition(0);
+					SOUND_MANAGER.__sound_effects[i].sound_buffer->SetPan(panning);
+					SOUND_MANAGER.__sound_effects[i].panning = panning;
 					if (int32_t sound_volume = SOUND_MANAGER.sound_volume) {
 						float sound_volume_f = 1.0f - (float)sound_volume / 100.0f;
 						sound_volume_f = sound_volume_f * sound_volume_f * sound_volume_f;
 						sound_volume_f = 1.0f - sound_volume_f;
 
-						int32_t volume = SOUND_MANAGER.__unknown_smb_array_1A84[i].data->volume;
+						int32_t volume = SOUND_MANAGER.__sound_effects[i].data->volume;
 						volume -= MAX_VOLUME;
 						volume = volume * sound_volume_f;
 						volume += MAX_VOLUME;
-						SOUND_MANAGER.__unknown_smb_array_1A84[i].sound_buffer->SetVolume(volume);
+						SOUND_MANAGER.__sound_effects[i].sound_buffer->SetVolume(volume);
 					}
 					else {
-						SOUND_MANAGER.__unknown_smb_array_1A84[i].sound_buffer->SetVolume(SILENT_VOLUME);
+						SOUND_MANAGER.__sound_effects[i].sound_buffer->SetVolume(SILENT_VOLUME);
 					}
-					SOUND_MANAGER.__unknown_smb_array_1A84[i].sound_buffer->Play(0, 0, SOUND_MANAGER.__unknown_smb_array_1A84[i].data->play_flags);
+					SOUND_MANAGER.__sound_effects[i].sound_buffer->Play(0, 0, SOUND_MANAGER.__sound_effects[i].data->play_flags);
 				}
 			}
 		}
@@ -7912,13 +7922,13 @@ dllexport gnu_noinline int stdcall SoundManager::__load_wav_slot(int32_t slot, c
 
 // 0x45A4A0
 dllexport gnu_noinline void SoundManager::__restart_all_playing_sfx() {
-	SoundManagerUnknownB* smb_ptr = SOUND_MANAGER.__unknown_smb_array_1A84;
-	for (size_t i = 0; i < countof(SOUND_MANAGER.__unknown_smb_array_1A84); ++smb_ptr, ++i) {
+	SoundEffectData* sound_effect_ptr = SOUND_MANAGER.__sound_effects;
+	for (size_t i = 0; i < countof(SOUND_MANAGER.__sound_effects); ++sound_effect_ptr, ++i) {
 		if (
-			smb_ptr->sound_buffer &&
-			smb_ptr->__playing
+			sound_effect_ptr->sound_buffer &&
+			sound_effect_ptr->__playing
 		) {
-			smb_ptr->sound_buffer->Play(0, 0, smb_ptr->data->play_flags);
+			sound_effect_ptr->sound_buffer->Play(0, 0, sound_effect_ptr->data->play_flags);
 		}
 	}
 }
@@ -9055,11 +9065,12 @@ ValidateStructSize32(0x18, ScorefileHeader);
 #pragma endregion
 
 #define DEFAULT_RECORD_NAME "        "
+#define EMPTY_RECORD_NAME "--------"
 
 // size: 0x20
 struct ScorefileRecord {
 	uint32_t score; // 0x0
-	uint8_t __byte_4; // 0x4
+	uint8_t __stage_reached; // 0x4
 	int8_t continues; // 0x5
 	char name[10]; // 0x6
 	time_t time; // 0x10
@@ -9069,7 +9080,7 @@ struct ScorefileRecord {
 };
 #pragma region // ScorefileRecord Validation
 ValidateFieldOffset32(0x0, ScorefileRecord, score);
-ValidateFieldOffset32(0x4, ScorefileRecord, __byte_4);
+ValidateFieldOffset32(0x4, ScorefileRecord, __stage_reached);
 ValidateFieldOffset32(0x5, ScorefileRecord, continues);
 ValidateFieldOffset32(0x6, ScorefileRecord, name);
 ValidateFieldOffset32(0x10, ScorefileRecord, time);
@@ -9080,12 +9091,15 @@ ValidateStructSize32(0x20, ScorefileRecord);
 static inline constexpr int32_t MAX_SPELL_CAPTURES = 99999;
 static inline constexpr int32_t MAX_SPELL_ATTEMPTS = 99999;
 
+// WARNING:
+// Despite this being a 192 character buffer the
+// spellcard struct only has a 64 character buffer
+
 // size: 0xDC
 struct ScorefileSpellcard {
-	char name[0]; // 0x0, 0x8D0, 0x8D8
-	unknown_fields(0xC0); // 0x0
-	int32_t captures[2]; // 0xC0, 0x990, 0x998 0 = Spell record menu, Spell practice menu GAME MODE line, 1 = Spell practice menu
-	int32_t attempts[2]; // 0xC8, 0x998, 0x9A0 0 = Spell record menu, Spell practice menu GAME MODE line, 1 = Spell practice menu
+	char name[192]; // 0x0, 0x8D0, 0x8D8
+	int32_t captures[2]; // 0xC0, 0x990, 0x998 0 = Main game, 1 = Spell practice
+	int32_t attempts[2]; // 0xC8, 0x998, 0x9A0 0 = Main game, 1 = Spell practice
 	int32_t id; // 0xD0, 0x9A0, 0x9A8
 	int32_t difficulty; // 0xD4, 0x9A4, 0x9AC
 	int32_t spell_practice_score; // 0xD8, 0x9A8, 0x9B0
@@ -9161,7 +9175,7 @@ struct ScorefileSection : ScorefileSectionHeader {
 	}
 };
 
-static inline constexpr uint16_t SCOREFILE_SECTION_B_MAGIC = PackUInt16('C', 'R');
+static inline constexpr uint16_t SCOREFILE_SECTION_B_MAGIC = PackUInt16('C', 'R'); // Character record?
 static inline constexpr uint16_t SCOREFILE_SECTION_B_VERSION_NUMBER = 3;
 static inline constexpr int32_t RECORDS_PER_DIFFICULTY = 10;
 
@@ -9185,7 +9199,7 @@ struct ScorefileSectionB : ScorefileSectionHeader {
 	unknown_fields(0x140); // 0x790, 0x798
 	ScorefileSpellcard spells[SPELL_COUNT]; // 0x8D0, 0x8D8
 	unknown_fields(0x898); // 0x5C2C, 0x5C34
-	int32_t __int_64C4; // 0x64C4, 0x64CC
+	int32_t __play_count; // 0x64C4, 0x64CC
 	uint64_t total_game_time; // 0x64C8, 0x64D0
 	int32_t __total_clears[DIFFICULTY_COUNT]; // 0x64D0, 0x64D8
 	unknown_fields(0x4); // 0x64E8, 0x64F0
@@ -9208,9 +9222,9 @@ struct ScorefileSectionB : ScorefileSectionHeader {
 	}
 
 	inline void __add_play_count() {
-		int32_t count = this->__int_64C4;
+		int32_t count = this->__play_count;
 		if (count < 9999999) {
-			this->__int_64C4 = count + 1;
+			this->__play_count = count + 1;
 		}
 	}
 
@@ -9224,8 +9238,8 @@ struct ScorefileSectionB : ScorefileSectionHeader {
 		for (size_t i = 0; i < DIFFICULTY_COUNT; ++i) {
 			for (size_t j = 0; j < RECORDS_PER_DIFFICULTY; ++j) {
 				this->records[i][j].score = 100000 - j * 10000;
-				this->records[i][j].__byte_4 = 1;
-				memcpy(this->records[i][j].name, "--------", sizeof("--------"));
+				this->records[i][j].__stage_reached = Stage1;
+				memcpy(this->records[i][j].name, EMPTY_RECORD_NAME, sizeof(EMPTY_RECORD_NAME));
 				this->records[i][j].time = 0;
 				this->records[i][j].continues = 0;
 				this->records[i][j].slowdown_rate = 0.0f;
@@ -9260,7 +9274,7 @@ struct ScorefileSectionB : ScorefileSectionHeader {
 
 		cur_record->score = GAME_MANAGER.globals.score;
 		cur_record->continues = GAME_MANAGER.globals.continues;
-		cur_record->__byte_4 = GAME_MANAGER.globals.current_stage;
+		cur_record->__stage_reached = GAME_MANAGER.globals.current_stage;
 		time(&cur_record->time);
 		memcpy(cur_record->name, DEFAULT_RECORD_NAME, sizeof(DEFAULT_RECORD_NAME));
 		cur_record->slowdown_rate = FPS_COUNTER_PTR->calc_slowdown_rate();
@@ -9293,7 +9307,7 @@ ValidateFieldOffset32(0x8, ScorefileSectionB, size);
 ValidateFieldOffset32(0xC, ScorefileSectionB, index);
 ValidateFieldOffset32(0x10, ScorefileSectionB, records);
 ValidateFieldOffset32(0x8D0, ScorefileSectionB, spells);
-ValidateFieldOffset32(0x64C4, ScorefileSectionB, __int_64C4);
+ValidateFieldOffset32(0x64C4, ScorefileSectionB, __play_count);
 ValidateFieldOffset32(0x64C8, ScorefileSectionB, total_game_time);
 ValidateFieldOffset32(0x64D0, ScorefileSectionB, __total_clears);
 ValidateFieldOffset32(0x64EC, ScorefileSectionB, __1cc_clears);
@@ -9308,7 +9322,7 @@ static inline constexpr uint16_t SCOREFILE_SECTION_A_VERSION_NUMBER = 6;
 struct ScorefileSectionA : ScorefileSectionHeader {
 	// ScorefileSectionHeader base; // 0x0, 0x5F4B8
 	char __recent_name[10]; // 0xC, 0x5F4C4
-	uint8_t __byte_array_16[12]; // 0x16, 0x5F4CE
+	uint8_t __endings_seen[12]; // 0x16, 0x5F4CE
 	bool __bool_22; // 0x22, 0x5F4DA
 	unknown_fields(0x3); // 0x23, 0x5F4DB
 	bool unlocked_music[18]; // 0x26, 0x5F4DE
@@ -9316,7 +9330,7 @@ struct ScorefileSectionA : ScorefileSectionHeader {
 	uint64_t total_game_time; // 0x48, 0x5F500
 	bool trophies[30]; // 0x50, 0x5F508
 	unknown_fields(0x62); // 0x6E, 0x5F526
-	uint8_t __unlocked_cards_array[CARD_COUNT]; // 0xD0, 0x5F588
+	uint8_t unlocked_cards[CARD_COUNT]; // 0xD0, 0x5F588
 	unknown_fields(0x47); // 0x109, 0x5F5C1
 	uint8_t __card_ids_150[4][16]; // 0x150, 0x5F608
 	unknown_fields(0x30); // 0x190, 0x5F648
@@ -9345,7 +9359,7 @@ struct ScorefileSectionA : ScorefileSectionHeader {
 
 		memcpy(this->__recent_name, DEFAULT_RECORD_NAME, sizeof(DEFAULT_RECORD_NAME));
 		for (int32_t i = 0; i < CARD_COUNT; ++i) {
-			this->__unlocked_cards_array[i] = find_id_in_card_data(i).__default_unlock;
+			this->unlocked_cards[i] = find_id_in_card_data(i).__default_unlock;
 		}
 		memset(this->__card_ids_150, NULL_CARD, sizeof(__card_ids_150));
 		this->__card_ids_150[0][0] = KOZUCHI_CARD;
@@ -9368,12 +9382,12 @@ ValidateFieldOffset32(0x2, ScorefileSectionA, __version_number);
 ValidateFieldOffset32(0x4, ScorefileSectionA, checksum);
 ValidateFieldOffset32(0x8, ScorefileSectionA, size);
 ValidateFieldOffset32(0xC, ScorefileSectionA, __recent_name);
-ValidateFieldOffset32(0x16, ScorefileSectionA, __byte_array_16);
+ValidateFieldOffset32(0x16, ScorefileSectionA, __endings_seen);
 ValidateFieldOffset32(0x22, ScorefileSectionA, __bool_22);
 ValidateFieldOffset32(0x26, ScorefileSectionA, unlocked_music);
 ValidateFieldOffset32(0x48, ScorefileSectionA, total_game_time);
 ValidateFieldOffset32(0x50, ScorefileSectionA, trophies);
-ValidateFieldOffset32(0xD0, ScorefileSectionA, __unlocked_cards_array);
+ValidateFieldOffset32(0xD0, ScorefileSectionA, unlocked_cards);
 ValidateFieldOffset32(0x150, ScorefileSectionA, __card_ids_150);
 ValidateFieldOffset32(0x1C0, ScorefileSectionA, __int_array_1C0);
 ValidateFieldOffset32(0x1D0, ScorefileSectionA, __short_array_1D0);
@@ -9390,7 +9404,7 @@ struct Scorefile {
 	ScorefileBuffer* buffer; // 0x0
 	void* decompressed_buffer; // 0x4
 	ScorefileSectionB shottypes[SHOTTYPE_COUNT + 1]; // 0x8, 0x130F8, 0x251E8, 0x392D8, 0x4C3C8
-	ScorefileSectionA __sectionA; // 0x5F4B8
+	ScorefileSectionA common; // 0x5F4B8
 	// 0x5F888
 
 	inline ~Scorefile() NO_EH_TERMINATE {
@@ -9435,7 +9449,7 @@ private:
 			++sectionB;
 		}
 
-		ScorefileSectionA* sectionA = &scorefile->__sectionA;
+		ScorefileSectionA* sectionA = &scorefile->common;
 		sectionA->checksum = sectionA->calculate_checksum();
 		*(ScorefileSectionA*)&big_buffer[written_size] = *sectionA;
 		written_size += sizeof(ScorefileSectionA) - sizeof(ScorefileHeader); // WTF ZUN
@@ -9505,7 +9519,7 @@ private:
 //#endif
 								sectionA->size == sizeof(ScorefileSectionA)
 							) {
-								scorefile->__sectionA = *sectionA;
+								scorefile->common = *sectionA;
 								remaining_size -= sectionA->size;
 								if (remaining_size < 0) break;
 								section = sectionA->next_section();
@@ -9540,7 +9554,7 @@ public:
 		int32_t bak_file_size;
 		this->buffer = (ScorefileBuffer*)read_file_to_buffer(filename, &bak_file_size, true);
 		chdir(WINDOW_DATA.exe_path);
-		this->__sectionA.initialize();
+		this->common.initialize();
 
 		for (
 			ScorefileSectionB* sectionB = this->shottypes;
@@ -9555,7 +9569,7 @@ public:
 ValidateFieldOffset32(0x0, Scorefile, buffer);
 ValidateFieldOffset32(0x4, Scorefile, decompressed_buffer);
 ValidateFieldOffset32(0x8, Scorefile, shottypes);
-ValidateFieldOffset32(0x5F4B8, Scorefile, __sectionA);
+ValidateFieldOffset32(0x5F4B8, Scorefile, common);
 ValidateStructSize32(0x5F888, Scorefile);
 #pragma endregion
 
@@ -9586,12 +9600,12 @@ struct ScorefileManager {
 
 	inline void copy_backup_to_primary() {
 		memcpy(this->primary_file.shottypes, this->backup_file.shottypes, sizeof(this->backup_file.shottypes));
-		this->primary_file.__sectionA = this->backup_file.__sectionA;
+		this->primary_file.common = this->backup_file.common;
 	}
 
 	inline void copy_primary_to_backup() {
 		memcpy(this->backup_file.shottypes, this->primary_file.shottypes, sizeof(this->primary_file.shottypes));
-		this->backup_file.__sectionA = this->primary_file.__sectionA;
+		this->backup_file.common = this->primary_file.common;
 	}
 
 	inline void initialize() {
@@ -9629,7 +9643,7 @@ struct ScorefileManager {
 	}
 
 	inline void unlock_music(int32_t index) {
-		this->primary_file.__sectionA.unlocked_music[index] = true;
+		this->primary_file.common.unlocked_music[index] = true;
 	}
 
 	// 0x442450
@@ -9637,7 +9651,7 @@ struct ScorefileManager {
 		ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
 		scorefile_manager->__int_array_BF114[scorefile_manager->__int_BF110] = value;
 		++scorefile_manager->__int_BF110;
-		scorefile_manager->primary_file.__sectionA.__card_ids_150[3][value] = EXTEND_CARD;
+		scorefile_manager->primary_file.common.__card_ids_150[3][value] = EXTEND_CARD;
 	}
 
 	// These probably weren't functions but I'd rather make a semi-nice API if I can
@@ -9764,7 +9778,7 @@ dllexport gnu_noinline CardAvailabilityResult thiscall CardData::check_availabil
 		default:
 			return NotAvailable; // 0
 	}
-	return SCOREFILE_MANAGER_PTR->primary_file.__sectionA.__unlocked_cards_array[this->id] ? IsAvailable : NotAvailable;
+	return SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_cards[this->id] ? IsAvailable : NotAvailable;
 }
 
 enum MotionMode : int32_t {
@@ -11559,6 +11573,7 @@ static inline int laser_cancel_all(CancelType cancel_type);
 
 static inline void __spellcard_fail();
 static inline void __inline_spellcard_fail();
+static inline bool __spell_past_grace_period();
 
 typedef struct BombBase BombBase;
 typedef struct Spellcard Spellcard;
@@ -11583,7 +11598,7 @@ struct BombBase : ZUNTask {
 	AnmID __vm_id_5C; // 0x5C
 	AnmID __vm_id_60; // 0x60
 	AnmID __vm_id_64; // 0x64
-	int __int_68; // 0x68
+	BOOL __caused_spell_fail; // 0x68
 	unknown_fields(0x4); // 0x6C
 	void* __ptr_70; // 0x70
 	float __float_74; // 0x74
@@ -11591,7 +11606,7 @@ struct BombBase : ZUNTask {
 	Timer __timer_7C; // 0x7C
 	int __int_90; // 0x90
 	Float3 __float3_94; // 0x94
-	int __int_A0; // 0xA0
+	BOOL __disable_bombing; // 0xA0
 	BOOL stronger_effects; // 0xA4
 	// 0xA8
 
@@ -11614,6 +11629,8 @@ struct BombBase : ZUNTask {
 
 	// 0x420360
 	dllexport gnu_noinline static ZUNResult start_bomb() asm_symbol_rel(0x420360);
+
+	forceinline ZUNResult start_bomb_for_power();
 
 	// 0x420420
 	dllexport gnu_noinline static BOOL bomb_allowed() asm_symbol_rel(0x420420);
@@ -11738,14 +11755,14 @@ ValidateVirtualFieldOffset32(0x34, BombBase, __timer_34);
 ValidateVirtualFieldOffset32(0x5C, BombBase, __vm_id_5C);
 ValidateVirtualFieldOffset32(0x60, BombBase, __vm_id_60);
 ValidateVirtualFieldOffset32(0x64, BombBase, __vm_id_64);
-ValidateVirtualFieldOffset32(0x68, BombBase, __int_68);
+ValidateVirtualFieldOffset32(0x68, BombBase, __caused_spell_fail);
 ValidateVirtualFieldOffset32(0x70, BombBase, __ptr_70);
 ValidateVirtualFieldOffset32(0x74, BombBase, __float_74);
 ValidateVirtualFieldOffset32(0x78, BombBase, __float_78);
 ValidateVirtualFieldOffset32(0x7C, BombBase, __timer_7C);
 ValidateVirtualFieldOffset32(0x90, BombBase, __int_90);
 ValidateVirtualFieldOffset32(0x94, BombBase, __float3_94);
-ValidateVirtualFieldOffset32(0xA0, BombBase, __int_A0);
+ValidateVirtualFieldOffset32(0xA0, BombBase, __disable_bombing);
 ValidateVirtualFieldOffset32(0xA4, BombBase, stronger_effects);
 ValidateStructSize32(0xA8, BombBase);
 #pragma endregion
@@ -13964,7 +13981,7 @@ dllexport gnu_noinline void GameManager::__update_scorefile_game_time() {
 				if (game_time_diff >= 0.0) {
 					ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
 					uint64_t as_uint = game_time_diff;
-					scorefile_manager->primary_file.__sectionA.total_game_time += as_uint;
+					scorefile_manager->primary_file.common.total_game_time += as_uint;
 					scorefile_manager->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].total_game_time += as_uint;
 				}
 				this->game_time_double = get_runtime();
@@ -14736,7 +14753,7 @@ static inline void __update_bomb_ui_unsafe() {
 }
 
 // 0x4767B0
-dllexport gnu_noinline DWORD WINAPI SoundManager::load_sound_effects(void* self) {
+dllexport gnu_noinline DWORD WINAPI SoundManager::load_sound_effect_files(void* self) {
 	int32_t i = 0;
 	do {
 		if (SOUND_MANAGER.__int_5724 == 2) {
@@ -14756,29 +14773,35 @@ dllexport gnu_noinline DWORD WINAPI SoundManager::load_sound_effects(void* self)
 }
 
 // 0x4776F0
-dllexport gnu_noinline ZUNResult thiscall SoundManagerUnknownB::__sub_4776F0(const char* filename) {
+dllexport gnu_noinline ZUNResult thiscall SoundEffectData::initialize(const char* filename) {
 	if (SOUND_MANAGER.csound_manager_ptr) {
 		SAFE_RELEASE(this->sound_buffer);
-		SoundManagerUnknownB* unknown_b_ptr = SOUND_MANAGER.__unknown_smb_array_1A84;
 		int32_t idk = this->__int_C;
-		int32_t current_filename_index = this->data->filename_index;
-		for (int32_t i = 0; i < idk; ++i, ++unknown_b_ptr) {
-			if (unknown_b_ptr->data->filename_index == current_filename_index) {
-				SOUND_MANAGER.dsound->DuplicateSoundBuffer(SOUND_MANAGER.__unknown_smb_array_1A84[i].sound_buffer, &this->sound_buffer);
+		int32_t i = 0;
+		if (idk > 0) {
+			int32_t current_filename_index = this->data->filename_index;
+			do {
+				if (SOUND_MANAGER.__sound_effects[i].data->filename_index == current_filename_index) {
+					SOUND_MANAGER.dsound->DuplicateSoundBuffer(SOUND_MANAGER.__sound_effects[i].sound_buffer, &this->sound_buffer);
+					return ZUN_SUCCESS;
+				}
+			} while (++i < idk);
+		}
+		// Wait on the sound loading thread to actually load the file
+		while (!SOUND_MANAGER.sound_effect_files[this->data->filename_index]) {
+			Sleep(10);
+			if (SOUND_MANAGER.__int_5724 == 2) {
 				return ZUN_SUCCESS;
 			}
 		}
-		while (!SOUND_MANAGER.sound_effect_files[this->data->filename_index]) {
-			Sleep(10);
-		}
 		const char* error_text;
 		if (WavFile* sound_file = (WavFile*)SOUND_MANAGER.sound_effect_files[this->data->filename_index]) {
-			if (!strncmp(sound_file->header.riff_text, "RIFF", sizeof(sound_file->header.riff_text))) {
+			if (strncmp(sound_file->header.riff_text, "RIFF", sizeof(sound_file->header.riff_text))) {
 				error_text = JpEnStr("Wav ファイルじゃない %s\r\n", "Not a Wav file %s\r\n");
 				goto OtherError;
 			}
 			int32_t file_size = sound_file->header.remaining_file_size;
-			if (!strncmp(sound_file->header.wave_text, "WAVE", sizeof(sound_file->header.wave_text))) {
+			if (strncmp(sound_file->header.wave_text, "WAVE", sizeof(sound_file->header.wave_text))) {
 				goto MalformedWaveError;
 			}
 			int32_t data_size = file_size - sizeof(WavFileHeader);
@@ -14799,19 +14822,21 @@ dllexport gnu_noinline ZUNResult thiscall SoundManagerUnknownB::__sub_4776F0(con
 				.lpwfxFormat = &wav_format,
 				.guid3DAlgorithm = DS3DALG_DEFAULT
 			};
-			if (SUCCEEDED(SOUND_MANAGER.dsound->CreateSoundBuffer(&wav_buffer_desc, &this->sound_buffer, NULL))) {
-				LPVOID buffer_contents_ptr_A, buffer_contents_ptr_B;
-				DWORD buffer_contents_size_A, buffer_contents_size_B;
-				if (SUCCEEDED(this->sound_buffer->Lock(0, file_size, &buffer_contents_ptr_A, &buffer_contents_size_A, &buffer_contents_ptr_B, &buffer_contents_size_B, 0))) {
-					memcpy(buffer_contents_ptr_A, sound_data_ptr, buffer_contents_size_A);
-					if (buffer_contents_size_B) {
-						memcpy(buffer_contents_ptr_B, sound_data_ptr + buffer_contents_size_A, buffer_contents_size_B);
-					}
-					this->sound_buffer->Unlock(buffer_contents_ptr_A, buffer_contents_size_A, buffer_contents_ptr_B, buffer_contents_size_B);
-					SAFE_FREE(SOUND_MANAGER.sound_effect_files[this->data->filename_index]);
-					DebugLogger::__debug_log_stub_10("Create Sound Buffer %s\n", filename);
-				}
+			if (FAILED(SOUND_MANAGER.dsound->CreateSoundBuffer(&wav_buffer_desc, &this->sound_buffer, NULL))) {
+				goto OtherError;
 			}
+			LPVOID buffer_contents_ptr_A, buffer_contents_ptr_B;
+			DWORD buffer_contents_size_A, buffer_contents_size_B;
+			if (FAILED(this->sound_buffer->Lock(0, file_size, &buffer_contents_ptr_A, &buffer_contents_size_A, &buffer_contents_ptr_B, &buffer_contents_size_B, 0))) {
+				goto OtherError;
+			}
+			memcpy(buffer_contents_ptr_A, sound_data_ptr, buffer_contents_size_A);
+			if (buffer_contents_size_B) {
+				memcpy(buffer_contents_ptr_B, sound_data_ptr + buffer_contents_size_A, buffer_contents_size_B);
+			}
+			this->sound_buffer->Unlock(buffer_contents_ptr_A, buffer_contents_size_A, buffer_contents_ptr_B, buffer_contents_size_B);
+			SAFE_FREE(SOUND_MANAGER.sound_effect_files[this->data->filename_index]);
+			DebugLogger::__debug_log_stub_10("Create Sound Buffer %s\n", filename);
 		}
 		else {
 MalformedWaveError:
@@ -14827,35 +14852,35 @@ OtherError:
 
 // 0x476320
 dllexport gnu_noinline int32_t SoundManager::__wait_and_close_handles() {
-	if (SOUND_MANAGER.__thread_5718) {
+	if (SOUND_MANAGER.initialization_thread) {
 		SOUND_MANAGER.__int_5724 = SOUND_MANAGER.__int_5724 == 0 ? 1 : SOUND_MANAGER.__int_5724;
-		while (WaitForSingleObject(SOUND_MANAGER.__thread_5718, 100) == WAIT_TIMEOUT) {
+		while (WaitForSingleObject(SOUND_MANAGER.initialization_thread, 100) == WAIT_TIMEOUT) {
 			Sleep(1);
 		}
-		while (WaitForSingleObject(SOUND_MANAGER.__handle_571C, 100) == WAIT_TIMEOUT) {
+		while (WaitForSingleObject(SOUND_MANAGER.sfx_loading_thread, 100) == WAIT_TIMEOUT) {
 			Sleep(1);
 		}
-		CloseHandle(SOUND_MANAGER.__thread_5718);
-		CloseHandle(SOUND_MANAGER.__handle_571C);
-		SOUND_MANAGER.__thread_5718 = NULL;
-		SOUND_MANAGER.__handle_571C = NULL;
+		CloseHandle(SOUND_MANAGER.initialization_thread);
+		CloseHandle(SOUND_MANAGER.sfx_loading_thread);
+		SOUND_MANAGER.initialization_thread = NULL;
+		SOUND_MANAGER.sfx_loading_thread = NULL;
 	}
 	return 0;
 }
 
 // 0x4763D0
-dllexport gnu_noinline DWORD WINAPI SoundManager::sound_thread_func(void* self) {
-	SOUND_MANAGER.__sub_476410(SOUND_MANAGER.main_window_hwnd);
-	while (!SOUND_MANAGER.__int_5724) {
+dllexport gnu_noinline DWORD WINAPI SoundManager::initialization_thread_func(void* self) {
+	SOUND_MANAGER.initialize(SOUND_MANAGER.main_window_hwnd);
+	while (SOUND_MANAGER.__int_5724 == 0) {
 		Sleep(1);
 	}
-	SOUND_MANAGER.__int_572C = 1;
+	SOUND_MANAGER.__initialized = true;
 	return 0;
 }
 
 // 0x476410
 // EH frame (terminate)
-dllexport gnu_noinline ZUNResult thiscall SoundManager::__sub_476410(HWND window_hwnd_arg) EH_TERMINATE {
+dllexport gnu_noinline ZUNResult thiscall SoundManager::initialize(HWND window_hwnd_arg) EH_TERMINATE {
 	HWND window_hwnd = window_hwnd_arg;
 	this->copy_sound_data();
 	memset(this->active_sound_ids, -1, sizeof(this->active_sound_ids));
@@ -14900,14 +14925,13 @@ dllexport gnu_noinline ZUNResult thiscall SoundManager::__sub_476410(HWND window
 		this->sound_volume = 100;
 		SetTimer(window_hwnd, 0, 250, NULL);
 		this->timer_hwnd = window_hwnd;
-		window_hwnd = NULL;
-		SoundManagerUnknownB* unknown_b_ptr = this->__unknown_smb_array_1A84;
+		SoundEffectData* unknown_b_ptr = this->__sound_effects;
 		SoundData* sound_data = SOUND_DATA;
 		for (size_t i = 0; sound_data < array_end_addr(SOUND_DATA); ++i, ++sound_data, ++unknown_b_ptr) {
 			if (SOUND_MANAGER.__int_5724 == 2) {
 				return ZUN_ERROR;
 			}
-			if (ZUN_FAILED(unknown_b_ptr->__sub_4776F0(SOUND_EFFECT_FILENAMES[sound_data->filename_index]))) {
+			if (ZUN_FAILED(unknown_b_ptr->initialize(SOUND_EFFECT_FILENAMES[sound_data->filename_index]))) {
 				LOG_BUFFER.write(
 					JpEnStr("error : Sound ファイルが読み込めない データを確認 %s\r\n", "error : Sound File cannot read Check data %s\r\n")
 					, SOUND_EFFECT_FILENAMES[SOUND_DATA[i].filename_index]
@@ -14947,22 +14971,23 @@ dllexport gnu_noinline void thiscall SoundManager::stop_bgm() {
 }
 
 // 0x476BE0
-dllexport gnu_noinline void stdcall SoundManager::play_sound_centered(int32_t sound_id, float) {
+dllexport gnu_noinline void stdcall SoundManager::play_sound_centered(int32_t sound_id, int32_t) {
 	int32_t idk = SOUND_DATA[sound_id].__short_A;
+	constexpr int32_t panning = 0;
 	nounroll for (size_t i = 0; i < countof(SOUND_MANAGER.active_sound_ids); ++i) {
 		int32_t active_sound_id = SOUND_MANAGER.active_sound_ids[i];
 		if (active_sound_id < 0) {
 			SOUND_MANAGER.active_sound_ids[i] = sound_id;
-			SOUND_MANAGER.__unknown_smf_array_7C[i].__int_array_0[0] = 0;
+			SOUND_MANAGER.__sound_panning[i].data[0] = panning;
 			SOUND_MANAGER.active_sound_id_counts[i] = 1;
-			SOUND_MANAGER.__unknown_smb_array_1A84[i].__int_4 = idk;
+			SOUND_MANAGER.__sound_effects[i].__int_4 = idk;
 			return;
 		}
 		if (active_sound_id == sound_id) {
 			int32_t active_sound_id_count = SOUND_MANAGER.active_sound_id_counts[i];
 			int32_t* active_sound_id_count_ptr = &SOUND_MANAGER.active_sound_id_counts[i];
-			if (active_sound_id_count < countof(SoundManagerUnknownF::__int_array_0) && active_sound_id_count >= 0) {
-				SOUND_MANAGER.__unknown_smf_array_7C[i].__int_array_0[active_sound_id_count] = 0;
+			if (active_sound_id_count < countof(SoundEffectPanningData::data) && active_sound_id_count >= 0) {
+				SOUND_MANAGER.__sound_panning[i].data[active_sound_id_count] = panning;
 				++*active_sound_id_count_ptr;
 			}
 			return;
@@ -14978,16 +15003,16 @@ dllexport gnu_noinline void vectorcall SoundManager::play_sound_positioned(int, 
 		int32_t active_sound_id = SOUND_MANAGER.active_sound_ids[i];
 		if (active_sound_id < 0) {
 			SOUND_MANAGER.active_sound_ids[i] = sound_id;
-			SOUND_MANAGER.__unknown_smf_array_7C[i].__int_array_0[0] = panning;
+			SOUND_MANAGER.__sound_panning[i].data[0] = panning;
 			SOUND_MANAGER.active_sound_id_counts[i] = 1;
-			SOUND_MANAGER.__unknown_smb_array_1A84[i].__int_4 = idk;
+			SOUND_MANAGER.__sound_effects[i].__int_4 = idk;
 			return;
 		}
 		if (active_sound_id == sound_id) {
 			int32_t active_sound_id_count = SOUND_MANAGER.active_sound_id_counts[i];
 			int32_t* active_sound_id_count_ptr = &SOUND_MANAGER.active_sound_id_counts[i];
-			if (active_sound_id_count < countof(SoundManagerUnknownF::__int_array_0) && active_sound_id_count >= 0) {
-				SOUND_MANAGER.__unknown_smf_array_7C[i].__int_array_0[active_sound_id_count] = panning;
+			if (active_sound_id_count < countof(SoundEffectPanningData::data) && active_sound_id_count >= 0) {
+				SOUND_MANAGER.__sound_panning[i].data[active_sound_id_count] = panning;
 				++*active_sound_id_count_ptr;
 			}
 			return;
@@ -15015,20 +15040,20 @@ dllexport void fastcall stop_sound_export(int32_t sound_id) {
 }
 
 // 0x444D80
-dllexport gnu_noinline void SoundManager::__stop_all_sfx() {
+dllexport gnu_noinline void SoundManager::__stop_all_sound_effects() {
 	SOUND_MANAGER.active_sound_ids[0] = -1;
-	for (size_t i = 0; i < countof(SOUND_MANAGER.__unknown_smb_array_1A84); ++i) {
-		SOUND_MANAGER.__stop_smb(i);
+	for (size_t i = 0; i < SOUND_EFFECT_COUNT; ++i) {
+		SOUND_MANAGER.__stop_sound_effect(i);
 	}
 }
 
-inline void SoundManager::__stop_smb(int32_t index) {
-	SOUND_MANAGER.__unknown_smb_array_1A84[index].__playing = FALSE;
-	if (LPDIRECTSOUNDBUFFER sound_buffer = SOUND_MANAGER.__unknown_smb_array_1A84[index].sound_buffer) {
+inline void SoundManager::__stop_sound_effect(int32_t index) {
+	SOUND_MANAGER.__sound_effects[index].__playing = FALSE;
+	if (LPDIRECTSOUNDBUFFER sound_buffer = SOUND_MANAGER.__sound_effects[index].sound_buffer) {
 		DWORD status;
 		sound_buffer->GetStatus(&status);
-		SOUND_MANAGER.__unknown_smb_array_1A84[index].__playing = status & DSBSTATUS_PLAYING;
-		SOUND_MANAGER.__unknown_smb_array_1A84[index].sound_buffer->Stop();
+		SOUND_MANAGER.__sound_effects[index].__playing = status & DSBSTATUS_PLAYING;
+		SOUND_MANAGER.__sound_effects[index].sound_buffer->Stop();
 	}
 }
 
@@ -22174,10 +22199,10 @@ dllexport gnu_noinline ZUNResult UpdateFuncCC Supervisor::on_registration(void* 
 	REPLAY_RNG.value = time;
 	RNG.value = time;
 	DWORD thread_id;
-	SOUND_MANAGER.__handle_571C = CreateThread(
+	SOUND_MANAGER.sfx_loading_thread = CreateThread(
 		NULL,
 		0,
-		&SoundManager::load_sound_effects,
+		&SoundManager::load_sound_effect_files,
 		&SOUND_MANAGER,
 		0,
 		&thread_id
@@ -22870,8 +22895,8 @@ ValidateStructSize32(0x244, TrophyManager);
 // 0x46E490
 dllexport gnu_noinline TrophyManager* fastcall __unlock_trophy(int32_t trophy_id) {
 	ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
-	if (!scorefile_manager->primary_file.__sectionA.trophies[trophy_id]) {
-		scorefile_manager->primary_file.__sectionA.trophies[trophy_id] = true;
+	if (!scorefile_manager->primary_file.common.trophies[trophy_id]) {
+		scorefile_manager->primary_file.common.trophies[trophy_id] = true;
 		
 		TrophyManager* trophy_manager = TROPHY_MANAGER_PTR;
 		if (trophy_manager) {
@@ -23564,6 +23589,12 @@ ValidateFieldOffset32(0x2C, ScreenEffect, timer);
 ValidateStructSize32(0x40, ScreenEffect);
 #pragma endregion
 
+// this does absolutely nothing
+extern "C" {
+	// 0x56AD38
+	externcg ScreenEffect SCREEN_INF cgasm("_SCREEN_INF");
+}
+
 forceinline ScreenEffect* screen_effect_allocate(ScreenEffectType type, int32_t A, int32_t B, int32_t C, int32_t D, int32_t draw_priority) {
 	return ScreenEffect::allocate(type, A, B, C, D, draw_priority);
 }
@@ -23659,16 +23690,21 @@ struct EffectManager : ZUNTask {
 		return -1;
 	}
 
-	// 0x42D5D0
-	dllexport int32_t thiscall fill_available_slot(AnmIDRaw id_raw) asm_symbol_rel(0x42D5D0) {
-		EffectManager* effect_manager = EFFECT_MANAGER_PTR;
-
-		int32_t slot = effect_manager->find_available_slot();
+	template<typename L>
+	forceinline int32_t fill_available_slot_with(const L& lambda) {
+		int32_t slot = this->find_available_slot();
 		if (slot != -1 && slot < MAX_EFFECTS) {
-			effect_manager->vm_slots[slot] = id_raw;
+			this->vm_slots[slot] = lambda();
 			return slot | 0x80000000;
 		}
 		return 0;
+	}
+
+	// 0x42D5D0
+	dllexport int32_t thiscall fill_available_slot(AnmIDRaw id_raw) asm_symbol_rel(0x42D5D0) {
+		return EFFECT_MANAGER_PTR->fill_available_slot_with([=]() {
+			return id_raw;
+		});
 	}
 
 private:
@@ -23682,7 +23718,7 @@ private:
 			out = EFFECT_MANAGER_PTR->vm_slots[masked_slot];
 		}
 		else {
-			out = 0;
+			out = NULL;
 		}
 		return out;
 	}
@@ -23752,18 +23788,15 @@ public:
 	// 0x422D70
 	dllexport gnu_noinline static int32_t stdcall create_special_effect(int32_t type, Float3* position, AnmVM* = GARBAGE_ARG(AnmVM*)) {
 		EffectManager* effect_manager = EFFECT_MANAGER_PTR;
-		int32_t slot = effect_manager->find_available_slot();
-		if (slot != -1 && slot < MAX_EFFECTS) {
-			effect_manager->vm_slots[slot] = effect_manager->instantiate_special_effect_vm_to_world_list_back(type, position, NULL);
-		}
-		return 0;
+		return effect_manager->fill_available_slot_with([=]() {
+			return effect_manager->instantiate_special_effect_vm_to_world_list_back(type, position, NULL);
+		});
 	}
 
-	inline void instantiate_effect_vm_to_world_list_back(int32_t script, Float3* position) {
-		int32_t slot = this->find_available_slot();
-		if (slot != -1 && slot < MAX_EFFECTS) {
-			this->vm_slots[slot] = this->effect_anm->instantiate_vm_to_world_list_back(script, position);
-		}
+	inline int32_t instantiate_effect_vm_to_world_list_back(int32_t script, Float3* position) {
+		return this->fill_available_slot_with([=]() {
+			return this->effect_anm->instantiate_vm_to_world_list_back(script, position);
+		});
 	}
 
 	inline ZUNResult initialize() {
@@ -26224,26 +26257,26 @@ struct Ending : ZUNTask {
 		else {
 			index = this->ending_index;
 			ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
-			if (!scorefile_manager->primary_file.__sectionA.__byte_array_16[index]) {
+			if (!scorefile_manager->primary_file.common.__endings_seen[index]) {
 				this->__unknown_flag_en_B = true;
 			}
-			if (!scorefile_manager->primary_file.__sectionA.__bool_22) {
+			if (!scorefile_manager->primary_file.common.__bool_22) {
 				this->__unknown_flag_en_C = true;
 			}
-			scorefile_manager->primary_file.__sectionA.__byte_array_16[index] |= 1 << EASY;
+			scorefile_manager->primary_file.common.__endings_seen[index] |= 1 << EASY;
 			switch (GAME_MANAGER.globals.difficulty) {
 				case NORMAL:
-					scorefile_manager->primary_file.__sectionA.__byte_array_16[index] |= 1 << NORMAL;
+					scorefile_manager->primary_file.common.__endings_seen[index] |= 1 << NORMAL;
 					break;
 				case HARD:
-					scorefile_manager->primary_file.__sectionA.__byte_array_16[index] |= 1 << HARD;
+					scorefile_manager->primary_file.common.__endings_seen[index] |= 1 << HARD;
 					break;
 				case LUNATIC:
-					scorefile_manager->primary_file.__sectionA.__byte_array_16[index] |= 1 << LUNATIC;
+					scorefile_manager->primary_file.common.__endings_seen[index] |= 1 << LUNATIC;
 					break;
 			}
 			if (index <= 7) {
-				scorefile_manager->primary_file.__sectionA.__bool_22 = true;
+				scorefile_manager->primary_file.common.__bool_22 = true;
 			}
 		}
 		void* end_file = read_file_from_dat(ENDING_FILENAMES[this->ending_index]);
@@ -26793,7 +26826,7 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 			case set_float_rand_bound: { // 123
 				float range = ParseFloatArg(1);
 				float* write = ParseFloatPtrArg(0);
-				*write = RNG.rand_float_range(range);
+				clang_noinline *write = RNG.rand_float_range(range);
 				break;
 			}
 			case math_sin: { // 124
@@ -32947,7 +32980,7 @@ struct CardEirin : CardBase {
 		clang_forceinline GAME_MANAGER.globals.subtract_bomb();
 		PLAYER_PTR->data.invulnerable_timer.set(60);
 		enemy_manager_fail_spell_with_bomb();
-		BOMB_PTR->__int_A0 = 1;
+		BOMB_PTR->__disable_bombing = true;
 		this->__timer_20.reset();
 		this->enabled = true;
 		return 0;
@@ -32993,7 +33026,7 @@ struct CardEirin : CardBase {
 			if (this->__timer_20 >= 60) {
 				BombBase* bomb = BOMB_PTR;
 				this->enabled = false;
-				bomb->__int_A0 = 0;
+				bomb->__disable_bombing = false;
 			}
 		}
 		++this->__timer_20;
@@ -33715,7 +33748,7 @@ struct CardShikiEiki : CardBase {
 		GAME_MANAGER.globals.current_money -= 200;
 		PLAYER_PTR->data.invulnerable_timer.set(60);
 		enemy_manager_fail_spell_with_bomb();
-		BOMB_PTR->__int_A0 = 1;
+		BOMB_PTR->__disable_bombing = true;
 		this->__timer_20.reset();
 		this->enabled = true;
 		return 0;
@@ -33758,7 +33791,7 @@ struct CardShikiEiki : CardBase {
 			if (this->__timer_20 >= 60) {
 				BombBase* bomb = BOMB_PTR;
 				this->enabled = false;
-				bomb->__int_A0 = 0;
+				bomb->__disable_bombing = false;
 			}
 		}
 		++this->__timer_20;
@@ -34308,7 +34341,7 @@ struct CardClownpiece : CardBase {
 			this->state = 1;
 			this->__timer_20.reset();
 			this->__float_C0 = 0;
-			SOUND_MANAGER.play_sound_positioned(77, this->position.x);
+			SOUND_MANAGER.play_sound_positioned(53, this->position.x);
 			this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
 		}
 		return 0;
@@ -35088,25 +35121,8 @@ struct CardTsukasa : CardBase {
 		if (this->__timer_34 <= 0) {
 			if (GAME_MANAGER.globals.current_power < GAME_MANAGER.globals.power_per_level * 2) {
 				SOUND_MANAGER.play_sound(16);
-				return 0;
 			}
-			BombBase* bomb = BOMB_PTR;
-			if (!bomb->active && !bomb->__int_A0) {
-				bomb->active = TRUE;
-				bomb->__timer_34.reset();
-
-				/*
-				if (SPELLCARD_PTR->__spell_past_grace_period()) {
-					bomb->__int_68 = 1;
-				}
-				*/
-
-				SOUND_MANAGER.play_sound_positioned(44, PLAYER_PTR->data.position.x);
-				bomb->activate();
-				MOMOYO_CARD_COUNTER = 0;
-				enemy_manager_fail_spell();
-				GAME_MANAGER.globals.subtract_power(GAME_MANAGER.globals.power_per_level);
-				PLAYER_PTR->data.__update_option_power_levels();
+			else if (ZUN_SUCCEEDED(BOMB_PTR->start_bomb_for_power())) {
 				this->__timer_34.set(this->recharge_time * ability_manager_get_float_C58());
 			}
 		}
@@ -35446,7 +35462,7 @@ struct AbilityTextData {
 	// 0x416940
 	dllexport void thiscall __sub_416940(int32_t card_id, BOOL arg2) asm_symbol_rel(0x416940) {
 		if (
-			(SCOREFILE_MANAGER_PTR->primary_file.__sectionA.__unlocked_cards_array[card_id] || arg2) &&
+			(SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_cards[card_id] || arg2) &&
 			find_id_in_card_data(card_id).__int_C != 4
 		) {
 			this->__vm_id_63DC.__show_tree();
@@ -36155,7 +36171,7 @@ public:
 					weighted_array[weighted_array_size + j] = card;
 				}
 				weighted_array_size += weight;
-				if (!SCOREFILE_MANAGER_PTR->primary_file.__sectionA.__unlocked_cards_array[i]) {
+				if (!SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_cards[i]) {
 					for (int32_t j = 0; j < 5; ++j) {
 						weighted_array[weighted_array_size + j] = card;
 					}
@@ -36197,10 +36213,10 @@ public:
 			ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
 			for (
 				int32_t i = 0;
-				i < scorefile_manager->primary_file.__sectionA.__int_array_1C0[this->__int_C5C];
+				i < scorefile_manager->primary_file.common.__int_array_1C0[this->__int_C5C];
 				++i, scorefile_manager = SCOREFILE_MANAGER_PTR
 			) {
-				int32_t card_id = scorefile_manager->primary_file.__sectionA.__card_ids_150[this->__int_C5C][i];
+				int32_t card_id = scorefile_manager->primary_file.common.__card_ids_150[this->__int_C5C][i];
 				this->allocate_new_card(card_id, 1);
 			}
 		}
@@ -36799,12 +36815,12 @@ ValidateStructSize32(0x248, AbilityTrophyManager);
 dllexport gnu_noinline AbilityTrophyManager* fastcall __unlock_card(int32_t card_id, BOOL arg2) asm_symbol_rel(0x418DE0);
 dllexport gnu_noinline AbilityTrophyManager* fastcall __unlock_card(int32_t card_id, BOOL arg2) {
 	ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
-	if (!scorefile_manager->primary_file.__sectionA.__unlocked_cards_array[card_id]) {
-		scorefile_manager->primary_file.__sectionA.__unlocked_cards_array[card_id] = true;
+	if (!scorefile_manager->primary_file.common.unlocked_cards[card_id]) {
+		scorefile_manager->primary_file.common.unlocked_cards[card_id] = true;
 
 		// -1 to exclude null card
 		for (int32_t i = 0; i < CARD_COUNT - 1; ++i) {
-			if (!scorefile_manager->primary_file.__sectionA.__unlocked_cards_array[CARD_DATA_TABLE[i].id]) {
+			if (!scorefile_manager->primary_file.common.unlocked_cards[CARD_DATA_TABLE[i].id]) {
 				goto skip_all_cards_trophy;
 			}
 		}
@@ -36903,7 +36919,7 @@ dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
 							uint32_t align = bgm_format->wave_format.nBlockAlign;
 							uint32_t notify_size = (bgm_format->wave_format.nSamplesPerSec * align) * BGM_BLOCK_ALIGN / CHAR_BIT;
 							SOUND_MANAGER.__notify_event = CreateEventA(NULL, FALSE, FALSE, NULL);
-							SOUND_MANAGER.sound_thread_handle = CreateThread(NULL, 0, &__sound_thread_4779A0, SUPERVISOR.main_window_handle, 0, &SOUND_MANAGER.sound_thread_id);
+							SOUND_MANAGER.sound_thread_handle = CreateThread(NULL, 0, &sound_thread_func, SUPERVISOR.main_window_handle, 0, &SOUND_MANAGER.sound_thread_id);
 							SOUND_MANAGER.csound_manager_ptr->CreateStreaming(
 								&SOUND_MANAGER.cstreaming_sound_ptr,
 								UNUSED_STRING,
@@ -38441,7 +38457,7 @@ dllexport gnu_noinline ZUNResult fastcall PlayerBullet::__on_tick_2(PlayerBullet
 
 	if (self->state != 2) {
 		int32_t panning = PLAYER_PTR->data.position.x * 1000.0f / SCREEN_HALF_WIDTH;
-		SOUND_MANAGER.__unknown_smb_array_1A84[20].sound_buffer->SetPan(panning);
+		SOUND_MANAGER.__sound_effects[20].sound_buffer->SetPan(panning);
 		float size_x = self->size.x;
 		if (size_x < 512.0f) {
 			size_x += 18.0f;
@@ -40516,6 +40532,7 @@ struct Spellcard : ZUNTask {
 	}
 
 private:
+	// 0x42A780
 	forceinline void end_spell_impl() {
 		if (this->spell_active) {
 			STAGE_PTR->__render_enable = true;
@@ -40749,6 +40766,9 @@ static inline void __spellcard_fail() {
 static inline void __inline_spellcard_fail() {
 	SPELLCARD_PTR->__inline_spellcard_fail();
 }
+static inline bool __spell_past_grace_period() {
+	return SPELLCARD_PTR->__spell_past_grace_period();
+}
 
 // 0x4728A0
 dllexport gnu_noinline void __update_realtimes() {
@@ -40764,14 +40784,14 @@ dllexport gnu_noinline void __update_realtimes() {
 dllexport gnu_noinline ZUNResult BombBase::start_bomb() {
 	BombBase* bomb = BOMB_PTR;
 	if (
-		!bomb->active && !bomb->__int_A0
+		!bomb->active && !bomb->__disable_bombing
 	) {
 		bomb->active = TRUE;
 		bomb->__timer_34.reset();
 		GAME_MANAGER.globals.subtract_bomb();
 
 		if (SPELLCARD_PTR->__spell_past_grace_period()) {
-			bomb->__int_68 = 1;
+			bomb->__caused_spell_fail = true;
 		}
 
 		SOUND_MANAGER.play_sound_positioned(44, PLAYER_PTR->data.position.x);
@@ -40781,6 +40801,35 @@ dllexport gnu_noinline ZUNResult BombBase::start_bomb() {
 		MOMOYO_CARD_COUNTER = 0;
 
 		ENEMY_MANAGER_PTR->can_capture_spell = false;
+
+		return ZUN_SUCCESS;
+	}
+	return ZUN_ERROR;
+}
+
+// 0x420360
+forceinline ZUNResult BombBase::start_bomb_for_power() {
+	if (
+		!this->active && !this->__disable_bombing
+	) {
+		this->active = TRUE;
+		this->__timer_34.reset();
+		GAME_MANAGER.globals.subtract_bomb();
+
+		if (SPELLCARD_PTR->__spell_past_grace_period()) {
+			this->__caused_spell_fail = true;
+		}
+
+		SOUND_MANAGER.play_sound_positioned(44, PLAYER_PTR->data.position.x);
+
+		this->activate();
+
+		MOMOYO_CARD_COUNTER = 0;
+
+		ENEMY_MANAGER_PTR->can_capture_spell = false;
+
+		GAME_MANAGER.globals.subtract_power(GAME_MANAGER.globals.power_per_level);
+		PLAYER_PTR->data.__update_option_power_levels();
 
 		return ZUN_SUCCESS;
 	}
@@ -46734,7 +46783,7 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
 
 	this->__timer_754.set(30);
 	this->offscreen_timer.set(3);
-	SOUND_MANAGER.play_sound_positioned_validate(this->params.shoot_sound, 0.0f);
+	SOUND_MANAGER.play_sound_positioned_validate(this->params.shoot_sound, SCREEN_CENTER_X);
 	this->graze_timer.reset();
 	this->__timer_40.reset();
 	
@@ -46798,7 +46847,7 @@ dllexport gnu_noinline int thiscall LaserInfinite::initialize(void* data) {
 	this->__spawn_effect_vm.data.render_mode = Mode2DSpriteRotated; // 1
 	this->__spawn_effect_vm.data.origin_mode = OriginFixedResolution; // 1
 
-	SOUND_MANAGER.play_sound_positioned_validate(this->params.shoot_sound, 0.0f);
+	SOUND_MANAGER.play_sound_positioned_validate(this->params.shoot_sound, SCREEN_CENTER_X);
 
 	this->position = this->params.position;
 
@@ -48695,7 +48744,7 @@ struct BombSanaeA : BombBase {
 		Player* player = PLAYER_PTR;
 		this->position = player->data.position;
 		this->rotation.z = -HALF_PI_f;
-		SOUND_MANAGER.play_sound(49);
+		SOUND_MANAGER.play_sound(30);
 		AnmLoaded* player_anm = player->player_anm;
 		if (!BOMB_PTR->stronger_effects) {
 			this->__vm_id_5C = player_anm->instantiate_vm_to_world_list_back(17, &this->position);
@@ -48763,7 +48812,7 @@ struct BombSanaeA : BombBase {
 		Float3 position;
 		if (time < durationA) {
 			if (time >= 30) {
-				position.make_from_vector(REPLAY_RNG.rand_angle(), vm->data.scale.x);
+				position.make_from_vector(REPLAY_RNG.rand_angle(), REPLAY_RNG.rand_float_range(vm->data.scale.x));
 				position = this->position + position.as2();
 				goto make_effect;
 			}
@@ -48856,7 +48905,7 @@ dllexport gnu_noinline BombBase* BombBase::allocate() {
 	bomb_ptr->__timer_7C.reset();
 	bomb_ptr->__float_78 = -1.0f;
 	bomb_ptr->__float_74 = 0.0f;
-	bomb_ptr->__int_A0 = 0;
+	bomb_ptr->__disable_bombing = 0;
 	bomb_ptr->stronger_effects = false; // ???
 	BOMB_PTR = bomb_ptr;
 	return bomb_ptr;
@@ -52581,6 +52630,9 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 		case spellcard_start: case spellcard_start_2: // 522, 528
 		case spellcard_start_difficulty: case spellcard_start_difficulty_1: case spellcard_start_difficulty_2: // 537, 538, 539
 		{
+			// WARNING:
+			// Despite this being a 128 character buffer the
+			// spellcard struct only has a 64 character buffer
 			char name[128];
 			const char* name_crypt = StringArg(0x10);
 
@@ -54764,7 +54816,7 @@ struct PauseMenu : ZUNTask {
 
 		this->__vm_id_1E4.interrupt_tree(3);
 
-		SOUND_MANAGER.__stop_all_sfx();
+		SOUND_MANAGER.__stop_all_sound_effects();
 		SOUND_MANAGER.play_sound(14);
 		if (GAME_MANAGER.game_type != SpellPractice) {
 			SOUND_MANAGER.queue_sound_command(SndPause, 0, "Pause");
@@ -54804,7 +54856,7 @@ struct PauseMenu : ZUNTask {
 			pause_menu->__vm_id_1E4 = id;
 			id.interrupt_tree(3);
 
-			SOUND_MANAGER.__stop_all_sfx();
+			SOUND_MANAGER.__stop_all_sound_effects();
 			SOUND_MANAGER.queue_sound_command(SndPause, 0, "Pause");
 
 			pause_menu->__float_2E0 = GAME_SPEED;
@@ -54908,7 +54960,7 @@ struct PauseMenu : ZUNTask {
 							this->__menu_select_10C.set_selection(0);
 							this->__menu_select_10C.menu_length = 91;
 							this->__menu_select_10C.enable_wrap = true;
-							byteloop_strcpy(this->__name_buffer, SCOREFILE_MANAGER_PTR->primary_file.__sectionA.__recent_name);
+							byteloop_strcpy(this->__name_buffer, SCOREFILE_MANAGER_PTR->primary_file.common.__recent_name);
 							this->__name_length = 0;
 							if (strcmp_asm(this->__name_buffer, DEFAULT_RECORD_NAME)) {
 								this->__menu_select_10C.move_selection(-1);
@@ -55202,7 +55254,7 @@ struct PauseMenu : ZUNTask {
 								REPLAY_MANAGER_PTR->__write_to_path(buffer, this->__name_buffer, false, true);
 								this->replay_manager_array[this->__menu_select_34.current_selection] = ReplayManager::allocate_mode2(buffer);
 								this->change_secondary_state(11);
-								byteloop_strcpy(SCOREFILE_MANAGER_PTR->primary_file.__sectionA.__recent_name, this->__name_buffer);
+								byteloop_strcpy(SCOREFILE_MANAGER_PTR->primary_file.common.__recent_name, this->__name_buffer);
 								SOUND_MANAGER.play_sound(7);
 							}
 							else {
@@ -55210,7 +55262,7 @@ struct PauseMenu : ZUNTask {
 								ScorefileRecord& record = SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
 																	.records[GAME_MANAGER.globals.difficulty][this->__menu_select_34.current_selection];
 								byteloop_strcpy(record.name, this->__name_buffer);
-								byteloop_strcpy(SCOREFILE_MANAGER_PTR->primary_file.__sectionA.__recent_name, this->__name_buffer);
+								byteloop_strcpy(SCOREFILE_MANAGER_PTR->primary_file.common.__recent_name, this->__name_buffer);
 			nasty_label:
 								this->change_secondary_state(6);
 								this->__menu_select_34.menu_length = 7;
@@ -55287,7 +55339,7 @@ struct PauseMenu : ZUNTask {
 						} else {
 							__replay_manager_global_set_time_and_end_stage(0);
 						}
-						byteloop_strcpy(this->__name_buffer, SCOREFILE_MANAGER_PTR->primary_file.__sectionA.__recent_name);
+						byteloop_strcpy(this->__name_buffer, SCOREFILE_MANAGER_PTR->primary_file.common.__recent_name);
 						this->__name_length = 0;
 						if (strcmp_asm(this->__name_buffer, DEFAULT_RECORD_NAME)) {
 							this->__menu_select_10C.move_selection(-1);
@@ -55536,7 +55588,7 @@ dllexport gnu_noinline void __pause_menu_game_over_screen() {
 	clang_forceinline pause_menu->change_secondary_state(2);
 	game_thread_ptr->__unknown_flag_gt_I = true;
 
-	SOUND_MANAGER.__stop_all_sfx();
+	SOUND_MANAGER.__stop_all_sound_effects();
 	SOUND_MANAGER.play_sound(14);
 	if (GAME_MANAGER.game_type != SpellPractice) {
 		SOUND_MANAGER.queue_sound_command(SndPause, 0, "Pause");
@@ -55610,7 +55662,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 							int32_t card_count = this->card_count;
 							for (int32_t i = 0; i < card_count; (card_count = this->card_count), ++i) {
 								this->__anm_id_array_62C[i].mark_tree_for_delete();
-								if (!SCOREFILE_MANAGER_PTR->primary_file.__sectionA.__unlocked_cards_array[this->card_array[i]->id]) {
+								if (!SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_cards[this->card_array[i]->id]) {
 									this->__anm_id_array_62C[i] = ABILITY_MANAGER_PTR->abmenu_anm->instantiate_vm_to_world_list_back(14, &position);
 								}
 								this->__anm_id_array_22C[i].mark_tree_for_delete();
@@ -58884,6 +58936,7 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_453A70() {
 	while (SOUND_MANAGER.__on_tick() != SndCmdEmpty);
 
 	SUPERVISOR.__thread_AB0.stop_and_cleanup();
+	SOUND_MANAGER.__int_5724 = 2;
 	SUPERVISOR.__thread_A94.stop_and_cleanup();
 
 	SAFE_FREE(SUPERVISOR.ver_file_buffer);
@@ -58994,11 +59047,11 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 						
 						scorefile_manager = SCOREFILE_MANAGER_PTR;
 						if (
-							scorefile_manager->primary_file.__sectionA.__int_array_1C0[0] == 1 &&
-							scorefile_manager->primary_file.__sectionA.__card_ids_150[3][2] == BLANK_CARD
+							scorefile_manager->primary_file.common.__int_array_1C0[0] == 1 &&
+							scorefile_manager->primary_file.common.__card_ids_150[3][2] == BLANK_CARD
 						) {
 							scorefile_manager->__sub_442450(1);
-							scorefile_manager->primary_file.__sectionA.__int_array_1C0[0] = 2;
+							scorefile_manager->primary_file.common.__int_array_1C0[0] = 2;
 						}
 
 						if (GAME_MANAGER.globals.continues != 0) {
@@ -59017,17 +59070,17 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 						) {
 							__unlock_trophy(24);
 							scorefile_manager = SCOREFILE_MANAGER_PTR;
-							switch (scorefile_manager->primary_file.__sectionA.__int_array_1C0[0]) {
+							switch (scorefile_manager->primary_file.common.__int_array_1C0[0]) {
 								case 1:
-									if (scorefile_manager->primary_file.__sectionA.__card_ids_150[3][2] == BLANK_CARD) {
+									if (scorefile_manager->primary_file.common.__card_ids_150[3][2] == BLANK_CARD) {
 										scorefile_manager->__sub_442450(1);
-										scorefile_manager->primary_file.__sectionA.__int_array_1C0[0] = 2;
+										scorefile_manager->primary_file.common.__int_array_1C0[0] = 2;
 									}
 									break;
 								case 2:
-									if (scorefile_manager->primary_file.__sectionA.__card_ids_150[3][2] == BLANK_CARD) {
+									if (scorefile_manager->primary_file.common.__card_ids_150[3][2] == BLANK_CARD) {
 										scorefile_manager->__sub_442450(2);
-										scorefile_manager->primary_file.__sectionA.__int_array_1C0[0] = 3;
+										scorefile_manager->primary_file.common.__int_array_1C0[0] = 3;
 									}
 									break;
 							}
@@ -59062,7 +59115,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 						if (GAME_MANAGER.globals.continues == 0) {
 							__unlock_card(MAGATAMA2_CARD, true);
 							__unlock_card(BLANK_CARD, true);
-							if (SCOREFILE_MANAGER_PTR->primary_file.__sectionA.__card_ids_150[3][3] == BLANK_CARD) {
+							if (SCOREFILE_MANAGER_PTR->primary_file.common.__card_ids_150[3][3] == BLANK_CARD) {
 								SCOREFILE_MANAGER_PTR->__sub_442450(3);
 							}
 						}
@@ -59579,7 +59632,7 @@ dllexport gnu_noinline GameThread::~GameThread() {
 		SOUND_MANAGER.__text_buffer_2384[0] = '\0';
 	}
 
-	SOUND_MANAGER.__stop_all_sfx();
+	SOUND_MANAGER.__stop_all_sound_effects();
 
 	SCREEN_EFFECT_DISABLE_TIME = 1;
 
@@ -61555,13 +61608,13 @@ winmain_d3d_create_success:
 	UNKNOWN_THREAD_A.stop_and_cleanup();
 	SOUND_MANAGER.zero_contents();
 	SOUND_MANAGER.main_window_hwnd = WINDOW_DATA.window;
-	SOUND_MANAGER.__thread_5718 = CreateThread(
+	SOUND_MANAGER.initialization_thread = CreateThread(
 		NULL,
 		0,
-		&SoundManager::sound_thread_func,
+		&SoundManager::initialization_thread_func,
 		&SOUND_MANAGER,
 		0,
-		&SOUND_MANAGER.__thread_id_5720
+		&SOUND_MANAGER.initialization_thread_id
 	);
 	if (__initialize_d3d()) {
 		goto winmain_important_label;
