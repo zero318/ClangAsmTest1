@@ -335,6 +335,7 @@ inline void* cdecl memset_force(void* dst, int val, size_t size) {
 #define zero_this() memset_force(this, 0, sizeof(*this));
 #define zero_this_inline() __builtin_memset(this, 0, sizeof(*this));
 
+// TODO: Improve accuracy, rounding is a bit off
 static inline constexpr float DEGREES(float degrees) {
 	return degrees * PI_f / 180.0f;
 }
@@ -48373,10 +48374,11 @@ struct BombReimuA : BombBase {
 					}
 				}
 				else {
-					player = PLAYER_PTR;
+					goto player_ptr_reread;
 				}
 			}
 			else {
+		player_ptr_reread:
 				player = PLAYER_PTR;
 			}
 
@@ -48390,7 +48392,7 @@ struct BombReimuA : BombBase {
 							data->orbs[i].motion.angle += data->orbs[i].__angle_delta;
 						}
 						else {
-							int32_t A = data->orbs[i].__object_index * 100;
+							int32_t A = 90 + data->orbs[i].__object_index * 10;
 							if (time < A) {
 								data->orbs[i].motion.orbit_origin = player->data.position;
 								data->orbs[i].motion.angle += data->orbs[i].__angle_delta;
@@ -48409,7 +48411,7 @@ struct BombReimuA : BombBase {
 									id = data->orbs[i].target_enemy_id;
 								}
 								if (id) {
-									Enemy* enemy = id.get_enemy_ptr();
+									Enemy* enemy = data->orbs[i].target_enemy_id.get_enemy_ptr();
 									data->orbs[i].target_enemy = enemy;
 									if (enemy->data.flags_allow_homing()) {
 										float angle = enemy->data.current_motion.position.angle_to(&data->orbs[i].motion.position);
@@ -48421,7 +48423,7 @@ struct BombReimuA : BombBase {
 										} else if (abs_diff < PI_f / 12.0f) {
 											speed = __min(speed + 0.2f, 8.0f);
 										}
-										data->orbs[i].motion.set_angle(data->orbs[i].motion.angle + abs_diff * 0.1f);
+										data->orbs[i].motion.set_angle(data->orbs[i].motion.angle + angle_diff * 0.1f);
 										data->orbs[i].motion.speed = speed;
 									}
 								} else {
@@ -48455,10 +48457,11 @@ struct BombReimuA : BombBase {
 								new_damage_source->__unknown_flag_pd_A = true;
 							}
 							data->orbs[i].vm.interrupt_tree(1);
+							data->orbs[i].active = false;
 							if (int32_t damage_source_index = data->orbs[i].damage_source_index) {
 								PLAYER_PTR->get_damage_source_by_index(damage_source_index)->active = false;
 							}
-							data->orbs[i].active = false;
+							data->orbs[i].damage_source_index = 0;
 						} else {
 							data->orbs[i].vm.mark_tree_for_delete();
 						}
