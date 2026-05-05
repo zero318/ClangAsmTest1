@@ -37,15 +37,6 @@
 //#include "../zero/custom_intrin.h"
 #include "../zero/func_traits_basic.h"
 
-template <typename T>
-using ZUNList = ZUNListBase<T, true>;
-template <typename T>
-using ZUNListHead = ZUNListHeadBase<T, true>;
-template <typename T>
-using ZUNListIter = ZUNListIterBase<T, true>;
-template <typename T>
-using ZUNListEnds = ZUNListEndsBase<T, true>;
-
 // Patch/extension feature toggles
 #define INCLUDE_FUTURE_INSTRUCTIONS 0
 #define INCLUDE_FUTURE_VARIABLES 0
@@ -56,13 +47,18 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define USE_THE_DANG_EXE_ICON_PLZ 1
 
 #define MALLET_PIPE 0
-#define FAST_TIMER 0
+#define BETTER_BASIC_CODE 0
 
 #define FIX_REALLY_BAD_BUGS 1
 #define FIX_MINOR_BUGS 1
 
 #define KILL_THE_MUTEX_WITH_FIRE 1
 #define ALWAYS_ON_TOP_SUCKS 1
+
+#if BETTER_BASIC_CODE
+#define FAST_TIMER 0
+#define REMOVE_LIST_HEAD_PTR 1
+#endif
 
 // Debug toggles
 #define ALLOW_FORCE_CLOSING_SHOP 1
@@ -87,6 +83,26 @@ using ZUNListEnds = ZUNListEndsBase<T, true>;
 #define PROTECT_ORIGINAL_FILES 1
 #define IGNORE_HASH_CHECKS 1
 #define OVERRIDE_PATH_CHECKS 1
+
+#if !REMOVE_LIST_HEAD_PTR
+template <typename T>
+using ZUNList = ZUNListBase<T, true>;
+template <typename T>
+using ZUNListHead = ZUNListHeadBase<T, true>;
+template <typename T>
+using ZUNListIter = ZUNListIterBase<T, true>;
+template <typename T>
+using ZUNListEnds = ZUNListEndsBase<T, true>;
+#else
+template <typename T>
+using ZUNList = ZUNListBase<T, false>;
+template <typename T>
+using ZUNListHead = ZUNListHeadBase<T, false>;
+template <typename T>
+using ZUNListIter = ZUNListIterBase<T, false>;
+template <typename T>
+using ZUNListEnds = ZUNListEndsBase<T, false>;
+#endif
 
 void APPLY_DEBUG_CONFIG();
 
@@ -284,6 +300,17 @@ dllexport gnu_noinline const char* fastcall eval_expr(const char* expr, char end
 #endif
 #define cdecl __cdecl
 */
+
+#if BETTER_BASIC_CODE
+#undef ValidateFieldOffset
+#undef ValidateVirtualFieldOffset
+#undef ValidateStructSize
+#undef ValidateStructAlignment
+#define ValidateFieldOffset(...)
+#define ValidateVirtualFieldOffset(...)
+#define ValidateStructSize(...)
+#define ValidateStructAlignment(...)
+#endif
 
 template<int key> requires(key == VK_NUMLOCK || key == VK_CAPITAL || key == VK_SCROLL)
 struct LockKey {
@@ -3459,6 +3486,8 @@ struct InputState {
 	dllexport gnu_noinline void thiscall __update_hardware_input() asm_symbol_rel(0x404E90) {
 		uint32_t current = this->hardware_inputs_current;
 		uint32_t mask = 1;
+		this->hardware_inputs_held_26_frames = 0;
+		this->hardware_inputs_held_8_frames = 0;
 
 		for (size_t i = 0; i < BUTTON_COUNT; ++i) {
 			if (current & 1) {
@@ -3487,6 +3516,8 @@ struct InputState {
 	inline void __update_input() {
 		uint32_t current = this->inputs_current;
 		uint32_t mask = 1;
+		this->inputs_held_26_frames = 0;
+		this->inputs_held_8_frames = 0;
 
 		for (size_t i = 0; i < BUTTON_COUNT; ++i) {
 			if (current & 1) {
@@ -4778,11 +4809,11 @@ union AnmID {
 	// 0x488E50
 	dllexport forceinline void interrupt_tree(int32_t interrupt_index) asm_symbol_rel(0x488E50);
 
-	inline void interrupt_tree_word_offset(int16_t interrupt_index, int16_t offset);
+	forceinline void interrupt_tree_word_offset(int16_t interrupt_index, int16_t offset);
 
-	inline void interrupt_and_run_tree(int32_t interrupt_index);
+	forceinline void interrupt_and_run_tree(int32_t interrupt_index);
 
-	inline void interrupt_and_orphan_tree(int32_t interrupt_index) {
+	forceinline void interrupt_and_orphan_tree(int32_t interrupt_index) {
 		this->interrupt_tree(interrupt_index);
 		*this = NULL;
 	}
@@ -24557,12 +24588,12 @@ dllexport forceinline void AnmID::interrupt_tree(int32_t interrupt_index) {
 	AnmManager::interrupt_tree(*this, interrupt_index);
 }
 
-inline void AnmID::interrupt_tree_word_offset(int16_t interrupt_index, int16_t offset) {
+forceinline void AnmID::interrupt_tree_word_offset(int16_t interrupt_index, int16_t offset) {
 	interrupt_index += offset;
 	this->interrupt_tree(interrupt_index);
 }
 
-inline void AnmID::interrupt_and_run_tree(int32_t interrupt_index) {
+forceinline void AnmID::interrupt_and_run_tree(int32_t interrupt_index) {
 	AnmManager::interrupt_and_run_tree(*this, interrupt_index);
 }
 
@@ -35779,7 +35810,7 @@ public:
 
 private:
 	// 0x409310
-	dllexport gnu_noinline static AnmID& instantiate_small_card_sprite_vm(AnmID& out, int32_t card_id) asm_symbol_rel(0x409310) {
+	dllexport gnu_noinline static AnmID& stdcall instantiate_small_card_sprite_vm(AnmID& out, int32_t card_id) asm_symbol_rel(0x409310) {
 		AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
 		
 		const CardData& card_data = find_id_in_card_data(card_id);
@@ -35801,7 +35832,7 @@ public:
 
 private:
 	// 0x4091A0
-	dllexport gnu_noinline static AnmID& instantiate_large_card_sprite_vm(AnmID& out, Float3* position, int32_t script, const CardData* card_data) asm_symbol_rel(0x4091A0) {
+	dllexport gnu_noinline static AnmID& stdcall instantiate_large_card_sprite_vm(AnmID& out, Float3* position, int32_t script, const CardData* card_data) asm_symbol_rel(0x4091A0) {
 		AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
 
 		out = NULL;
@@ -35819,7 +35850,7 @@ public:
 	}
 
 	// 0x416DD0
-	dllexport gnu_noinline static int32_t get_price_for_tier(int32_t price_tier) asm_symbol_rel(0x416DD0) {
+	dllexport gnu_noinline static int32_t stdcall get_price_for_tier(int32_t price_tier) asm_symbol_rel(0x416DD0) {
 		int32_t base_price = CARD_PRICE_TABLE[price_tier];
 		if (card_equipped_inline<CardTakane>()) {
 			return base_price * 5 / 10;
@@ -55733,12 +55764,12 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 							achievement_state < 0
 						) {
 							if (!this->__has_blank_card_already) {
-								AnmID id = ability_manager->abmenu_anm->instantiate_vm_to_ui_list_back(13, &this->position);
+								AnmID id = ability_manager->abmenu_anm->instantiate_vm_to_world_list_back(13, &this->position);
 								this->__anm_id_228 = id;
 								id.interrupt_tree(27);
 							} else {
 								this->state_timer.set(60);
-								this->__anm_id_228 = ability_manager->abmenu_anm->instantiate_vm_to_ui_list_back(18, &this->position);
+								this->__anm_id_228 = ability_manager->abmenu_anm->instantiate_vm_to_world_list_back(18, &this->position);
 							}
 						}
 						SOUND_MANAGER.play_sound(15);
@@ -55878,7 +55909,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 						if (check_hardware_inputs_repeating(BUTTON_DOWN)) {
 							this->confirm_menu.move_selection(1);
 						}
-						if (this->card_choice.previous_selection != this->card_choice.current_selection) {
+						if (this->confirm_menu.previous_selection != this->confirm_menu.current_selection) {
 							SOUND_MANAGER.play_sound(10);
 							this->__anm_id_228.interrupt_tree_word_offset(this->confirm_menu.current_selection, this->primary_state == 7 ? 17 : 7);
 						}
@@ -55962,32 +55993,32 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 						}
 						break;
 				}
-			}
-			Float3 positionA = { -900.0f, 900.0f, 0.0f };
-			for (int32_t i = 0; i < this->card_count; ++i) {
-				AnmVM* vm = this->__anm_id_array_62C[i].get_vm_ptr();
-				if (vm) {
-					Float3 positionB;
-					this->__anm_id_array_22C[i].get_vm_ptr_safe()->get_render_position(&positionB);
-					vm->controller.position = (positionB + (vm->data.position * this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.x - vm->data.position)) * (2.0f / WINDOW_DATA.game_scale);
-					AnmVM* vmB = this->__anm_id_array_22C[i].get_vm_ptr_safe();
-					vmB->set_z_rotation(vmB->data.rotation.z - (PI_f / 9.0f));
-					vm->set_scale(this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.x, this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.y);
+				Float3 positionA = { -900.0f, 900.0f, 0.0f };
+				for (int32_t i = 0; i < this->card_count; ++i) {
+					AnmVM* vm = this->__anm_id_array_62C[i].get_vm_ptr();
+					if (vm) {
+						Float3 positionB;
+						this->__anm_id_array_22C[i].get_vm_ptr_safe()->get_render_position(&positionB);
+						vm->controller.position = (positionB + (vm->data.position * this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.x - vm->data.position)) * (2.0f / WINDOW_DATA.game_scale);
+						AnmVM* vmB = this->__anm_id_array_22C[i].get_vm_ptr_safe();
+						vmB->set_z_rotation(vmB->data.rotation.z - (PI_f / 9.0f));
+						vm->set_scale(this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.x, this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.y);
 
-					if (
-						i < this->card_choice.current_selection - 1 ||
-						i > this->card_choice.current_selection + 1
-					) {
-						vm->controller.position = positionB;
+						if (
+							i < this->card_choice.current_selection - 1 ||
+							i > this->card_choice.current_selection + 1
+						) {
+							vm->controller.position = positionB;
+						}
 					}
 				}
-			}
-			++this->state_timer;
-			if (this->__timer_1F4 > 0) {
-				--this->__timer_1F4;
-			}
-			if (this->__timer_208 > 0) {
-				--this->__timer_208;
+				++this->state_timer;
+				if (this->__timer_1F4 > 0) {
+					--this->__timer_1F4;
+				}
+				if (this->__timer_208 > 0) {
+					--this->__timer_208;
+				}
 			}
 			return UpdateFuncNext;
 		}
