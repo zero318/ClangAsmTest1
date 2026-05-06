@@ -39350,9 +39350,9 @@ private:
 	// 0x41CA90
 	dllexport gnu_noinline BOOL vectorcall __test_culling(int, Float3* offset, float, float, float draw_distance_squared, StageCamera* camera) asm_symbol_rel(0x41CA90) {
 		Float3 position = this->position;
-		Float3 A = (position + *offset) - (camera->position + camera->__shaking_position);
+		Float3 position_diff = (position + *offset) - (camera->position + camera->__shaking_position);
 		if (
-			!(A.length_squared3() > draw_distance_squared)
+			!(position_diff.length_squared3() > draw_distance_squared)
 		) {
 			constexpr size_t COORD_COUNT = 16;
 			D3DMATRIXZ matrix; // EBP-1C8
