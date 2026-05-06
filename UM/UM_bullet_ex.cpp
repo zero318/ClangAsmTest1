@@ -34,8 +34,12 @@
 #include "../zero/FloatConstants.h"
 
 #include "../zero/util.h"
-//#include "../zero/custom_intrin.h"
 #include "../zero/func_traits_basic.h"
+
+// Testing toggles
+#define DEBUG_INVINCIBLE 0
+#define DEBUG_FAST_FORWARD 0
+#define DEBUG_FAST_FORWARD_SPEED 10
 
 // Patch/extension feature toggles
 #define INCLUDE_FUTURE_INSTRUCTIONS 0
@@ -76,9 +80,6 @@
 
 #define THE_BEST_ENDING_SCREEN 1
 #define DEBUG_NO_GAME_OVER 1
-#define DEBUG_INVINCIBLE 0
-#define DEBUG_FAST_FORWARD 0
-#define DEBUG_FAST_FORWARD_SPEED 10
 
 #define PROTECT_ORIGINAL_FILES 1
 #define IGNORE_HASH_CHECKS 1
@@ -349,14 +350,6 @@ using ScrollLock = LockKey<VK_SCROLL>;
 dllexport gnu_noinline void* cdecl memset_force(void* dst, int val, size_t size) {
 	gnu_attr(musttail) return memset(dst, val, size);
 }
-
-/*
-inline void* cdecl memset_force(void* dst, int val, size_t size) {
-	void* ret;
-	clang_noinline ret = memset(dst, val, size);
-	return ret;
-}
-*/
 
 #define zero_pointer_contents(ptr) memset_force(ptr, 0, sizeof(*ptr))
 #define zero_pointer_contents_inline(ptr) __builtin_memset(ptr, 0, sizeof(*ptr))
@@ -4839,6 +4832,8 @@ union AnmID {
 	dllexport void thiscall set_controller_position(Float3* position) asm_symbol_rel(0x488F70);
 
 	inline void set_z_rotation(float rotation);
+
+	inline void spin_z_rotation(float value);
 
 	inline void set_x_scale(float value);
 
@@ -17902,6 +17897,10 @@ public:
 		return this->set_z_rotation(UNUSED_FLOAT, value);
 	}
 
+	inline void spin_z_rotation(float value) {
+		return this->set_z_rotation(this->data.rotation.z + value);
+	}
+
 	inline void set_rotation(float x, float y, float z) {
 		this->data.rotation.x = x;
 		this->data.rotation.y = y;
@@ -24652,6 +24651,12 @@ dllexport void thiscall AnmID::set_controller_position(Float3* position) {
 inline void AnmID::set_z_rotation(float rotation) {
 	if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this)) {
 		vm->set_z_rotation(rotation);
+	}
+}
+
+inline void AnmID::spin_z_rotation(float value) {
+	if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this)) {
+		vm->spin_z_rotation(value);
 	}
 }
 
@@ -31770,7 +31775,7 @@ struct CardBase {
 	union {
 		uint32_t flags; // 0x50
 		struct {
-			uint32_t __unknown_flag_cd_F : 1; // 1
+			uint32_t __skipped_initA : 1; // 1
 			uint32_t __unknown_flag_cd_B : 1; // 2
 			uint32_t __unknown_flag_cd_C : 1; // 3
 			uint32_t __is_active_card : 1; // 4
@@ -35427,15 +35432,7 @@ struct CardMomoyo : CardBase {
 			position.y = (position.y + 32.0f) * A;
 			position.z = (0.0f) * A;
 
-			AnmVM* vm;
-			if (
-				this->__vm_id_58 &&
-				this->__vm_id_58.has_live_vm()
-			) {
-				vm = this->__vm_id_58.__find_child_vm_with_script(6);
-			} else {
-				vm = NULL;
-			}
+			AnmVM* vm = this->__vm_id_58.__find_child_vm_with_script(6);
 
 			AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
 			ascii_manager->set_alpha(vm->get_alpha());
@@ -35553,6 +35550,39 @@ struct AbilityTextData {
 			current_vm_id++->__hide_tree(anm_manager);
 		} while (--i);
 		ABILITY_TEXT_DATA_PTR->__vm_id_63DC.__hide_tree(anm_manager);
+	}
+
+	// 0x4162B0
+	dllexport gnu_noinline static int __sub_4162B0(Float3* position, BOOL arg2) asm_symbol_rel(0x4162B0);
+
+	// 0x416540
+	dllexport gnu_noinline static void __sub_416540(Float3* position, CardId card_id, BOOL print_description, BOOL hide_unlocked_text) asm_symbol_rel(0x416540) {
+		Float3 positionB = *position + Float3(0.0f, 310.0f, 0.0f);
+		AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
+		BOOL enable_description;
+		if (!SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_cards[card_id] && !hide_unlocked_text) {
+			enable_description = false;
+			ANM_MANAGER_PTR->draw_text_center(ability_text_data->__vm_id_array_63C0[0].get_vm_ptr(), COLOR(0, 128, 128, 128), COLOR(0, 0, 0, 0), 10, 0, JpEnStr("", "You haven't unlocked this yet"));
+		}
+		else {
+			enable_description = true;
+			ANM_MANAGER_PTR->draw_text_center(ability_text_data->__vm_id_array_63C0[0].get_vm_ptr(), COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0), 10, 0, &ability_text_data->description_text[card_id].lines[0][0]);
+		}
+		ability_text_data->__vm_id_array_63C0[0].set_controller_position(&positionB);
+		if (print_description && enable_description) {
+			positionB.y += 188.0f;
+			nounroll for (size_t i = 0; i != countof(ability_text_data->__vm_id_array_63C0) - 1; ++i) {
+				ANM_MANAGER_PTR->draw_text_center(ability_text_data->__vm_id_array_63C0[i + 1].get_vm_ptr(), COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0), 0, 0, &ability_text_data->description_text[card_id].lines[i + 1][0]);
+				ability_text_data->__vm_id_array_63C0[i + 1].set_controller_position(&positionB);
+				positionB.y += 38.0f;
+				ability_text_data->__vm_id_array_63C0[i + 1].__show_tree();
+			}
+		}
+		else {
+			nounroll for (size_t i = 0; i != countof(ability_text_data->__vm_id_array_63C0) - 1; ++i) {
+				ability_text_data->__vm_id_array_63C0[i + 1].__hide_tree();
+			}
+		}
 	}
 
 	// 0x4168A0
@@ -35815,12 +35845,10 @@ private:
 		
 		const CardData& card_data = find_id_in_card_data(card_id);
 
-		AnmID id = ability_manager->abcard_anm->instantiate_vm_to_world_list_back(14);
-		out = id;
-		if (id.has_live_vm()) {
-			// MSVC inlined this in the worst way possible
-			id.__find_child_vm_with_script(15)->set_sprite(card_data.sprite_small);
-		}
+		out = NULL;
+		out = ability_manager->abcard_anm->instantiate_vm_to_world_list_back(14);
+		// MSVC inlined this in the worst way possible
+		out.__find_child_vm_with_script(15)->set_sprite(card_data.sprite_small);
 		return out;
 	}
 
@@ -35833,13 +35861,12 @@ public:
 private:
 	// 0x4091A0
 	dllexport gnu_noinline static AnmID& stdcall instantiate_large_card_sprite_vm(AnmID& out, Float3* position, int32_t script, const CardData* card_data) asm_symbol_rel(0x4091A0) {
-		AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
+		AnmLoaded* abcard_anm = ABILITY_MANAGER_PTR->abcard_anm;
 
 		out = NULL;
-		AnmID id = ability_manager->abcard_anm->instantiate_vm_to_ui_list_front(script, position);
-		out = id;
-		id.get_vm_ptr_safe()->run_anm();
-		id.set_sprite_unsafe(card_data->sprite_large);
+		out = abcard_anm->instantiate_vm_to_ui_list_front(script, position);
+		out.get_vm_ptr_safe()->run_anm();
+		out.set_sprite_unsafe(card_data->sprite_large);
 		return out;
 	}
 
@@ -35867,7 +35894,7 @@ public:
 		ability_manager->passive_card_count = 0;
 
 		ability_manager->card_list.for_each_safeB([=](CardBase* card) {
-			if (card->__unknown_flag_cd_F) {
+			if (card->__skipped_initA) {
 				card->list_node.unlink();
 				delete card;
 				--ability_manager->card_count;
@@ -36021,17 +36048,25 @@ public:
 		}
 	}
 
+#define CARD_RUN_INIT_A_ONLY 0
+#define CARD_RUN_NO_INITS 1
+#define CARD_RUN_BOTH_INITS 2
+#define CARD_RUN_INIT_B_ONLY 3
+
+#define CARD_SKIP_INIT_A 1
+#define CARD_RUN_INIT_B 2
+
 	inline ZUNResult initialize_new_card(CardBase* card, int32_t id, uint32_t flags) {
 		card->id = id;
 		card->__array_index = this->card_count + 1;
-		BOOL flagF = flags & 1;
-		card->__unknown_flag_cd_F = flagF;
-		if (!flagF) {
+		BOOL skip_initA = flags & CARD_SKIP_INIT_A; // 1
+		card->__skipped_initA = skip_initA;
+		if (!skip_initA) {
 			if (ZUN_FAILED(card->initializeA())) {
 				return ZUN_ERROR;
 			}
 		}
-		if (flags & 2) {
+		if (flags & CARD_RUN_INIT_B) { // 2
 			if (ZUN_FAILED(card->initializeB())) {
 				return ZUN_ERROR;
 			}
@@ -36050,7 +36085,7 @@ public:
 		}
 		card->data = &find_id_in_card_data(card->id);
 
-		if (flags != 1) {
+		if (flags == CARD_RUN_NO_INITS) { // 1
 			this->create_all_card_lists_for_hud(false);
 		}
 
@@ -36325,7 +36360,7 @@ public:
 				++i, scorefile_manager = SCOREFILE_MANAGER_PTR
 			) {
 				int32_t card_id = scorefile_manager->primary_file.common.__card_ids_150[this->__int_C5C][i];
-				this->allocate_new_card(card_id, 1);
+				this->allocate_new_card(card_id, CARD_RUN_NO_INITS); // 1
 			}
 		}
 	}
@@ -36712,6 +36747,29 @@ static inline BOOL ability_manager_card_equipped(int32_t id) {
 template<typename T>
 static inline BOOL ability_manager_card_equipped() {
 	return ABILITY_MANAGER_PTR->card_equipped_inline<T>();
+}
+
+// 0x4162B0
+dllexport gnu_noinline int AbilityTextData::__sub_4162B0(Float3* position, BOOL arg2) {
+	AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
+	AnmLoaded* text_anm = SUPERVISOR.text_anm;
+	Float3 positionB;
+	if (arg2) {
+		ability_text_data->__vm_id_array_63C0[0] = text_anm->instantiate_vm_to_ui_list_back(3);
+		positionB = { 0.0f, 0.0f, 0.0f };
+		for (int32_t i = 0; i < countof(ability_text_data->__vm_id_array_63C0) - 1; ++i) {
+			ability_text_data->__vm_id_array_63C0[i + 1] = SUPERVISOR.text_anm->instantiate_vm_to_ui_list_back(i + 4, &positionB);
+		}
+	} else {
+		AnmID id = text_anm->instantiate_vm_to_ui_list_back(3);
+		ability_text_data->__vm_id_array_63C0[0] = id;
+		ANM_MANAGER_PTR->draw_text_center(id.get_vm_ptr(), COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0), 10, 0, JpEnStr("", "I have nothing!"));
+		positionB = *position + Float3(0.0f, 370.0f, 0.0f);
+		ability_text_data->__vm_id_array_63C0[0].set_controller_position(&positionB);
+	}
+	positionB = *position + Float3(0.0f, 160.0f, 0.0f);
+	ability_text_data->__vm_id_63DC = ABILITY_MANAGER_PTR->abmenu_anm->instantiate_vm_to_ui_list_back(5, &positionB);
+	return 0;
 }
 
 // 0x430510
@@ -42023,7 +42081,7 @@ struct ItemManager : ZUNTask {
 						case BombFragmentCardItem: // 17
 						case MoneyCardItem: // 18
 						case PowerCardItem: // 19
-							ABILITY_MANAGER_PTR->allocate_new_card(ITEM_SPRITE_DATA[id].__id_0, 0);
+							ABILITY_MANAGER_PTR->allocate_new_card(ITEM_SPRITE_DATA[id].__id_0, CARD_RUN_INIT_A_ONLY); // 0
 							break;
 						case Piv5Item: // 9
 						case Piv10Item: // 10
@@ -54112,7 +54170,7 @@ dllexport gnu_noinline void __replay_manager_global_sub_462D20() {
 				if (card_id < 0) {
 					break;
 				}
-				ABILITY_MANAGER_PTR->allocate_new_card(card_id, 1);
+				ABILITY_MANAGER_PTR->allocate_new_card(card_id, CARD_RUN_NO_INITS); // 1
 			}
 			ABILITY_MANAGER_PTR->__sub_408B00(game_state->card_selected);
 			int32_t* card_replay_states = game_state->card_replay_states;
@@ -54259,7 +54317,7 @@ dllexport gnu_noinline void thiscall AbilityShop::cleanup() {
 						if (id < 0) {
 							break;
 						}
-						ABILITY_MANAGER_PTR->allocate_new_card(id, 3);
+						ABILITY_MANAGER_PTR->allocate_new_card(id, CARD_RUN_INIT_B_ONLY); // 3
 					}
 
 					ABILITY_MANAGER_PTR->__sub_408B00(game_state->__card_selectedB);
@@ -55805,13 +55863,11 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 							}
 							if (!this->__has_blank_card_already) {
 								this->__float3_1DC = this->position;
-								this->__float3_1DC.z += 140.0f;
+								this->__float3_1DC.y += 140.0f;
 								const CardData* card_data = this->card_array[this->card_choice.current_selection];
-								// TODO: text
-								// ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->__float3_1DC, 1);
+								ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->__float3_1DC, true);
 								ABILITY_TEXT_DATA_PTR->__change_vm_63DC_sprite(card_data->__int_C);
-								// TODO: text
-								// ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->__float3_1DC, card_data->id, 1, 1);
+								ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_1DC, card_data->id, true, true);
 							}
 						}
 						break;
@@ -55820,7 +55876,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 						if (check_hardware_inputs_repeating(BUTTON_RIGHT)) {
 							this->card_choice.move_selection(1);
 							int32_t selection = this->card_choice.current_selection;
-							if (selection != this->card_choice.previous_selection) {
+							if (this->card_choice.previous_selection != selection) {
 								if (selection + 1 < this->card_count) {
 									this->__anm_id_array_22C[selection + 1].interrupt_tree(17);
 									selection = this->card_choice.current_selection;
@@ -55831,7 +55887,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 									this->__anm_id_array_22C[selection - 1].interrupt_tree(11);
 									selection = this->card_choice.current_selection;
 								}
-								if (selection - 2 >= 0) {
+								if (selection - 2 >= 0) { // selection - 1 > 0 but written weird
 									this->__anm_id_array_22C[selection - 2].interrupt_tree(13);
 								}
 							}
@@ -55839,7 +55895,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 						if (check_hardware_inputs_repeating(BUTTON_LEFT)) {
 							this->card_choice.move_selection(-1);
 							int32_t selection = this->card_choice.current_selection;
-							if (selection != this->card_choice.previous_selection) {
+							if (this->card_choice.previous_selection != selection) {
 								if (selection > 0) {
 									this->__anm_id_array_22C[selection - 1].interrupt_tree(18);
 									selection = this->card_choice.current_selection;
@@ -55861,8 +55917,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 							SOUND_MANAGER.play_sound(10);
 							const CardData* card_data = this->card_array[this->card_choice.current_selection];
 							ABILITY_TEXT_DATA_PTR->__change_vm_63DC_sprite(card_data->__int_C);
-							// TODO: text
-							// ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->__float3_1DC, card_data->id, 1, 1);
+							ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_1DC, card_data->id, true, true);
 							ABILITY_TEXT_DATA_PTR->__sub_416940(card_data->id, true);
 						}
 						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
@@ -55913,24 +55968,24 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 							SOUND_MANAGER.play_sound(10);
 							this->__anm_id_228.interrupt_tree_word_offset(this->confirm_menu.current_selection, this->primary_state == 7 ? 17 : 7);
 						}
-						if (INPUT_P1.check_inputs_no_repeat(BUTTON_CANCEL)) {
-					cancel_buying:
-							SOUND_MANAGER.play_sound(9);
-							this->change_primary_state(2);
-							this->__anm_id_228.interrupt_tree(27);
-							ABILITY_TEXT_DATA_PTR->__sub_416C10(this->card_array[this->card_choice.current_selection]->id);
-							ABILITY_TEXT_DATA_PTR->__sub_416940(this->card_array[this->card_choice.current_selection]->id, true);
+						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+							goto cancel_buying;
 						}
-						else if (INPUT_P1.check_inputs_no_repeat(BUTTON_SELECT)) {
+						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
 							switch (this->confirm_menu.current_selection) {
-								case 1:
-									goto cancel_buying;
+								case 1: cancel_buying:
+									SOUND_MANAGER.play_sound(9);
+									this->change_primary_state(2);
+									this->__anm_id_228.interrupt_tree(27);
+									ABILITY_TEXT_DATA_PTR->__sub_416C10(this->card_array[this->card_choice.current_selection]->id);
+									ABILITY_TEXT_DATA_PTR->__sub_416940(this->card_array[this->card_choice.current_selection]->id, true);
+									break;
 								case 0: {
 									SOUND_MANAGER.play_sound(7);
 									this->change_primary_state(5);
 									this->__anm_id_228.__find_child_vm_with_script(6)->interrupt(6);
 									this->__purchased_card_id = this->card_array[this->card_choice.current_selection]->id;
-									ABILITY_MANAGER_PTR->allocate_new_card(this->card_array[this->card_choice.current_selection]->id, 2);
+									ABILITY_MANAGER_PTR->allocate_new_card(this->card_array[this->card_choice.current_selection]->id, CARD_RUN_BOTH_INITS); // 2
 									__unlock_card(this->card_array[this->card_choice.current_selection]->id, false);
 
 									int32_t price = ABILITY_MANAGER_PTR->get_price_for_tier(this->card_array[this->card_choice.current_selection]->price_tier);
@@ -55960,7 +56015,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 							this->change_primary_state(2);
 						}
 						break;
-					case 3:
+					case 3: // Blank care shop buyout
 						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT | BUTTON_BOMB)) { // not BUTTON_CANCEL
 							SOUND_MANAGER.play_sound(7);
 							this->__anm_id_228.interrupt_tree(7);
@@ -55969,8 +56024,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 							for (int32_t i = 0; i < this->card_count; ++i) {
 								const CardData* card_data = this->card_array[i];
 								int32_t card_id = card_data->id;
-								if (card_data->allow_duplicates) { // ???
-									ABILITY_MANAGER_PTR->allocate_new_card(card_id, 2);
+								if (card_data->allow_duplicates) {
+									ABILITY_MANAGER_PTR->allocate_new_card(card_id, CARD_RUN_BOTH_INITS); // 2
 									__unlock_card(card_id, false);
 								}
 							}
@@ -55995,20 +56050,20 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 				}
 				Float3 positionA = { -900.0f, 900.0f, 0.0f };
 				for (int32_t i = 0; i < this->card_count; ++i) {
-					AnmVM* vm = this->__anm_id_array_62C[i].get_vm_ptr();
-					if (vm) {
+					if (AnmVM* vm = this->__anm_id_array_62C[i].get_vm_ptr()) {
 						Float3 positionB;
 						this->__anm_id_array_22C[i].get_vm_ptr_safe()->get_render_position(&positionB);
-						vm->controller.position = (positionB + (vm->data.position * this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.x - vm->data.position)) * (2.0f / WINDOW_DATA.game_scale);
-						AnmVM* vmB = this->__anm_id_array_22C[i].get_vm_ptr_safe();
-						vmB->set_z_rotation(vmB->data.rotation.z - (PI_f / 9.0f));
+						Float3 positionC = vm->data.position;
+						positionB = (positionC * this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.x - vm->data.position + positionB) * (2.0f / WINDOW_DATA.game_scale);
+						vm->controller.position = positionB;
+						this->__anm_id_array_22C[i].get_vm_ptr_safe()->spin_z_rotation(-(PI_f / 9.0f));
 						vm->set_scale(this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.x, this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.y);
 
 						if (
 							i < this->card_choice.current_selection - 1 ||
 							i > this->card_choice.current_selection + 1
 						) {
-							vm->controller.position = positionB;
+							vm->controller.position = positionA;
 						}
 					}
 				}
@@ -56053,7 +56108,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_draw() {
 
 				ascii_manager->font_id = 6;
 				ascii_manager->__horizontal_positioning_mode = 0;
-				ascii_manager->__vertical_positioning_mode = 0;
+				ascii_manager->__vertical_positioning_mode = 1;
 				ascii_manager->color = COLOR(255, 208, 208, 208);
 				ascii_manager->color2 = COLOR(255, 0, 0, 0);
 
@@ -56070,7 +56125,6 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_draw() {
 
 				ascii_manager->font_id = 6;
 				ascii_manager->__horizontal_positioning_mode = 0;
-				ascii_manager->__vertical_positioning_mode = 0;
 
 				int32_t price_tier = this->card_array[this->card_choice.current_selection]->price_tier;
 
@@ -59947,7 +60001,7 @@ inline unsigned GameThread::thread_start_impl() {
 			GAME_MANAGER.globals.current_stage == ExtraStage && // 7
 			!ABILITY_MANAGER_PTR->card_equipped<CardMagatama>()
 		) {
-			ABILITY_MANAGER_PTR->allocate_new_card(MAGATAMA2_CARD, 0);
+			ABILITY_MANAGER_PTR->allocate_new_card(MAGATAMA2_CARD, CARD_RUN_INIT_A_ONLY); // 0
 			ABILITY_MANAGER_PTR->__sub_4094C0();
 		}
 		MOMOYO_CARD_COUNTER = 0;
