@@ -8627,9 +8627,9 @@ static inline constexpr float SCREEN_HALF_HEIGHT = SCREEN_HEIGHT / 2.0f;
 static inline constexpr float SCREEN_LEFT_EDGE = -SCREEN_HALF_WIDTH;
 static inline constexpr float SCREEN_CENTER_X = 0.0f;
 static inline constexpr float SCREEN_RIGHT_EDGE = SCREEN_HALF_WIDTH;
-static inline constexpr float SCREEN_BOTTOM_EDGE = 0.0f;
+static inline constexpr float SCREEN_TOP_EDGE = 0.0f;
 static inline constexpr float SCREEN_CENTER_Y = SCREEN_HALF_HEIGHT;
-static inline constexpr float SCREEN_TOP_EDGE = SCREEN_HEIGHT;
+static inline constexpr float SCREEN_BOTTOM_EDGE = SCREEN_HEIGHT;
 
 static inline constexpr float LOGICAL_WINDOW_WIDTH = 640.0f;
 static inline constexpr float LOGICAL_WINDOW_HEIGHT = 480.0f;
@@ -28058,9 +28058,9 @@ static inline constexpr float INTERNAL_POSITION_RATIO = 128.0f;
 static inline constexpr int32_t INTERNAL_POSITION_SCREEN_LEFT_EDGE = SCREEN_LEFT_EDGE * INTERNAL_POSITION_RATIO;
 static inline constexpr int32_t INTERNAL_POSITION_SCREEN_CENTER_X = SCREEN_CENTER_X * INTERNAL_POSITION_RATIO;
 static inline constexpr int32_t INTERNAL_POSITION_SCREEN_RIGHT_EDGE = SCREEN_RIGHT_EDGE * INTERNAL_POSITION_RATIO;
-static inline constexpr int32_t INTERNAL_POSITION_SCREEN_BOTTOM_EDGE = SCREEN_BOTTOM_EDGE * INTERNAL_POSITION_RATIO;
-static inline constexpr int32_t INTERNAL_POSITION_SCREEN_CENTER_Y = SCREEN_CENTER_Y * INTERNAL_POSITION_RATIO;
 static inline constexpr int32_t INTERNAL_POSITION_SCREEN_TOP_EDGE = SCREEN_TOP_EDGE * INTERNAL_POSITION_RATIO;
+static inline constexpr int32_t INTERNAL_POSITION_SCREEN_CENTER_Y = SCREEN_CENTER_Y * INTERNAL_POSITION_RATIO;
+static inline constexpr int32_t INTERNAL_POSITION_SCREEN_BOTTOM_EDGE = SCREEN_BOTTOM_EDGE * INTERNAL_POSITION_RATIO;
 
 static inline constexpr int32_t INTERNAL_POSITION_SCREEN_WIDTH = SCREEN_WIDTH * INTERNAL_POSITION_RATIO;
 static inline constexpr int32_t INTERNAL_POSITION_SCREEN_HEIGHT = SCREEN_HEIGHT * INTERNAL_POSITION_RATIO;
@@ -29778,13 +29778,13 @@ skip_movement_keys:;
 				this->data.internal_position.x = INTERNAL_POSITION_SCREEN_RIGHT_EDGE;
 				internal_position.x = INTERNAL_POSITION_SCREEN_RIGHT_EDGE;
 			}
-			if (internal_position.y < INTERNAL_POSITION_SCREEN_BOTTOM_EDGE + INTERNAL_POSITION_ADJUST(32)) {
-				this->data.internal_position.y = INTERNAL_POSITION_SCREEN_BOTTOM_EDGE + INTERNAL_POSITION_ADJUST(32);
-				internal_position.y = INTERNAL_POSITION_SCREEN_BOTTOM_EDGE + INTERNAL_POSITION_ADJUST(32);
+			if (internal_position.y < INTERNAL_POSITION_SCREEN_TOP_EDGE + INTERNAL_POSITION_ADJUST(32)) {
+				this->data.internal_position.y = INTERNAL_POSITION_SCREEN_TOP_EDGE + INTERNAL_POSITION_ADJUST(32);
+				internal_position.y = INTERNAL_POSITION_SCREEN_TOP_EDGE + INTERNAL_POSITION_ADJUST(32);
 			}
-			else if (internal_position.y > INTERNAL_POSITION_SCREEN_TOP_EDGE - INTERNAL_POSITION_ADJUST(16)) {
-				this->data.internal_position.y = INTERNAL_POSITION_SCREEN_TOP_EDGE - INTERNAL_POSITION_ADJUST(16);
-				internal_position.y = INTERNAL_POSITION_SCREEN_TOP_EDGE - INTERNAL_POSITION_ADJUST(16);
+			else if (internal_position.y > INTERNAL_POSITION_SCREEN_BOTTOM_EDGE - INTERNAL_POSITION_ADJUST(16)) {
+				this->data.internal_position.y = INTERNAL_POSITION_SCREEN_BOTTOM_EDGE - INTERNAL_POSITION_ADJUST(16);
+				internal_position.y = INTERNAL_POSITION_SCREEN_BOTTOM_EDGE - INTERNAL_POSITION_ADJUST(16);
 			}
 		}
 
@@ -31846,8 +31846,8 @@ private:
 				popup->lifetime.reset();
 				popup->position = *position;
 
-				if (popup->position.y < SCREEN_BOTTOM_EDGE) {
-					popup->position.y = SCREEN_BOTTOM_EDGE;
+				if (popup->position.y < SCREEN_TOP_EDGE) {
+					popup->position.y = SCREEN_TOP_EDGE;
 				}
 
 				float position_x = popup->position.x;
@@ -43225,11 +43225,11 @@ enum BulletEffectType : uint32_t {
 };
 
 // Bounce flags
-#define BOUNCE_BOTTOM_EDGE		0x01
-#define BOUNCE_TOP_EDGE			0x02
+#define BOUNCE_TOP_EDGE			0x01
+#define BOUNCE_BOTTOM_EDGE		0x02
 #define BOUNCE_LEFT_EDGE		0x04
 #define BOUNCE_RIGHT_EDGE		0x08
-#define BOUNCE_IGNORE		    0x10 // why is this a flag
+#define BOUNCE_BOUNDS_ONLY		0x10
 #define BOUNCE_CUSTOM_BOUNDS	0x20
 
 // size: 0x48
@@ -43389,7 +43389,7 @@ struct Bullet {
 		return this->vm.get_sprite();
 	}
 
-	forceinline bool is_offscreen(float scale, float bottom_tolerance) {
+	forceinline bool is_offscreen(float scale, float top_tolerance) {
 		float X = this->position.x;
 
 		float sprite_width = this->get_sprite()->__size_x * scale;
@@ -43408,8 +43408,8 @@ struct Bullet {
 		float half_height = sprite_height * 0.5f;
 
 		if (
-			(Y + half_height <= SCREEN_BOTTOM_EDGE - bottom_tolerance) || // bit of extra tolerance off the bottom I guess
-			(Y - half_height >= SCREEN_TOP_EDGE)
+			(Y + half_height <= SCREEN_TOP_EDGE - top_tolerance) || // bit of extra tolerance off the top
+			(Y - half_height >= SCREEN_BOTTOM_EDGE)
 		) {
 			return true;
 		}
@@ -43627,26 +43627,26 @@ struct Bullet {
 			// on no
 			Float2 A; // LOCAL.2, LOCAL.1
 
-			A.x = (-(SCREEN_TOP_EDGE - 64.0f) - this->get_sprite()->__size_x) * 0.5f - this->position.x;
-			A.y = (-SCREEN_TOP_EDGE - this->get_sprite()->__size_y) * 0.5f + SCREEN_HALF_HEIGHT - this->position.y;
+			A.x = (-(SCREEN_HEIGHT - 64.0f) - this->get_sprite()->__size_x) * 0.5f - this->position.x;
+			A.y = (-SCREEN_HEIGHT - this->get_sprite()->__size_y) * 0.5f + SCREEN_HALF_HEIGHT - this->position.y;
 			D3DXVec2Normalize(&A, &A);
 			float B = unit.x * A.y - unit.y * A.x; // LOCAL.8
 			float C = unit.y * A.y + unit.x * A.x; // LOCAL.5
 
-			A.x = ((SCREEN_TOP_EDGE - 64.0f) - this->get_sprite()->__size_x) * 0.5f - this->position.x;
-			A.y = (-SCREEN_TOP_EDGE - this->get_sprite()->__size_y) * 0.5f + SCREEN_HALF_HEIGHT - this->position.y;
+			A.x = ((SCREEN_HEIGHT - 64.0f) - this->get_sprite()->__size_x) * 0.5f - this->position.x;
+			A.y = (-SCREEN_HEIGHT - this->get_sprite()->__size_y) * 0.5f + SCREEN_HALF_HEIGHT - this->position.y;
 			D3DXVec2Normalize(&A, &A);
 			float D = unit.x * A.y - unit.y * A.x; // LOCAL.9
 			float E = unit.y * A.y + unit.x * A.x; // LOCAL.6
 
-			A.x = (-(SCREEN_TOP_EDGE - 64.0f) - this->get_sprite()->__size_x) * 0.5f - this->position.x;
-			A.y = (SCREEN_TOP_EDGE - this->get_sprite()->__size_y) * 0.5f + SCREEN_HALF_HEIGHT - this->position.y;
+			A.x = (-(SCREEN_HEIGHT - 64.0f) - this->get_sprite()->__size_x) * 0.5f - this->position.x;
+			A.y = (SCREEN_HEIGHT - this->get_sprite()->__size_y) * 0.5f + SCREEN_HALF_HEIGHT - this->position.y;
 			D3DXVec2Normalize(&A, &A);
 			float F = unit.x * A.y - unit.y * A.x; // LOCAL.10
 			float G = unit.y * A.y + unit.x * A.x; // LOCAL.7
 
-			A.x = ((SCREEN_TOP_EDGE - 64.0f) - this->get_sprite()->__size_x) * 0.5f - this->position.x;
-			A.y = (SCREEN_TOP_EDGE - this->get_sprite()->__size_y) * 0.5f + SCREEN_HALF_HEIGHT - this->position.y;
+			A.x = ((SCREEN_HEIGHT - 64.0f) - this->get_sprite()->__size_x) * 0.5f - this->position.x;
+			A.y = (SCREEN_HEIGHT - this->get_sprite()->__size_y) * 0.5f + SCREEN_HALF_HEIGHT - this->position.y;
 			D3DXVec2Normalize(&A, &A);
 			float H = unit.x * A.y - unit.y * A.x; // LOCAL.1, XMM5
 			float I = unit.y * A.y + unit.x * A.x; // XMM4
@@ -43723,8 +43723,8 @@ struct Bullet {
 			float Y = this->position.y;
 			float half_height = sprite_height * 0.5f;
 			if (
-				!(Y + half_height <= SCREEN_BOTTOM_EDGE) &&
-				!(Y - half_height >= SCREEN_TOP_EDGE)
+				!(Y + half_height <= SCREEN_TOP_EDGE) &&
+				!(Y - half_height >= SCREEN_BOTTOM_EDGE)
 			) {
 				return;
 			}
@@ -43732,13 +43732,13 @@ struct Bullet {
 
 		if (
 			(this->effect_wrap.flags & 0b0001) &&
-			this->position.y < SCREEN_BOTTOM_EDGE
+			this->position.y < SCREEN_TOP_EDGE
 		) {
 			this->position.y += sprite_height + SCREEN_HEIGHT;
 		}
 		else if (
 			(this->effect_wrap.flags & 0b0010) &&
-			this->position.y > SCREEN_TOP_EDGE
+			this->position.y > SCREEN_BOTTOM_EDGE
 		) {
 			this->position.y -= sprite_height + SCREEN_HEIGHT;
 		}
@@ -44374,13 +44374,13 @@ struct LaserLine : LaserData {
 			(
 				position_x + width <= SCREEN_LEFT_EDGE ||
 				position_x - width >= SCREEN_RIGHT_EDGE ||
-				position_y + width <= SCREEN_BOTTOM_EDGE ||
-				position_y - width >= SCREEN_TOP_EDGE
+				position_y + width <= SCREEN_TOP_EDGE ||
+				position_y - width >= SCREEN_BOTTOM_EDGE
 			) && (
 				tip_position_x + width <= SCREEN_LEFT_EDGE ||
 				tip_position_x - width >= SCREEN_RIGHT_EDGE ||
-				tip_position_y + width <= SCREEN_BOTTOM_EDGE ||
-				tip_position_y - width >= SCREEN_TOP_EDGE
+				tip_position_y + width <= SCREEN_TOP_EDGE ||
+				tip_position_y - width >= SCREEN_BOTTOM_EDGE
 			)
 		) {
 			return true;
@@ -44833,6 +44833,9 @@ struct LaserLine : LaserData {
 				if (!this->params.__unknown_flag_ll_B) {
 					// BUG: uninitialized z coord
 					position.make_from_vector(this->angle, length / 10.0f);
+#if FIX_MINOR_BUGS
+					position.z = 0.0f;
+#endif
 					position += this->position;
 				} else {
 					position = this->position;
@@ -45324,6 +45327,9 @@ struct LaserCurveNodeEx {
 			case 2: {
 				// BUG: uninitialized z coord
 				prev_velocity.make_from_vector(prev_angle, prev_speed);
+#if FIX_MINOR_BUGS
+				prev_velocity.z = 0.0f;
+#endif
 
 				float diff_whole = zfloorf(diff);
 				*position_out = *prev_position - prev_velocity * (diff - diff_whole);
@@ -45335,6 +45341,9 @@ struct LaserCurveNodeEx {
 
 				// BUG: uninitialized z coord
 				prev_velocity.make_from_vector(angle, speed);
+#if FIX_MINOR_BUGS
+				prev_velocity.z = 0.0f;
+#endif
 
 				*position_out -= prev_velocity * (1.0f - diff + diff_whole);
 				break;
@@ -45393,7 +45402,7 @@ struct LaserCurveParams {
 	int32_t transform_sound; // 0x450, 0xBD8
 	int32_t effect_index; // 0x454, 0xBDC
 	LaserCurveNodeEx* node_ex_ptr; // 0x458, 0xBE0
-	float __float_45C; // 0x45C, 0xBE4
+	float __initial_node_count; // 0x45C, 0xBE4
 	// 0x460, 0xBE8
 
 	inline void zero_contents() {
@@ -45440,8 +45449,8 @@ struct LaserCurve : LaserData {
 		float node_position_y = node->position.y;
 
 		if (
-			node_position_y + width <= SCREEN_BOTTOM_EDGE ||
-			node_position_y - width >= SCREEN_TOP_EDGE
+			node_position_y + width <= SCREEN_TOP_EDGE ||
+			node_position_y - width >= SCREEN_BOTTOM_EDGE
 		) {
 			return true;
 		}
@@ -45454,6 +45463,9 @@ struct LaserCurve : LaserData {
 	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* out) override asm_symbol_rel(0x448500) {
 		// BUG: uninitialized z coord
 		out->make_from_vector(this->angle, magnitude);
+#if FIX_MINOR_BUGS
+		out->z = 0.0f;
+#endif
 		*out += this->position;
 	}
 
@@ -45725,6 +45737,9 @@ struct LaserCurve : LaserData {
 			Float3 position;
 			// BUG: uninitialized z coord
 			position.make_from_vector(node->angle, node->speed * 0.5f);
+#if FIX_MINOR_BUGS
+			position.z = 0.0f;
+#endif
 			position += node->position;
 
 			float speed = node->speed; // this isn't speed, is it
@@ -46823,28 +46838,28 @@ dllexport gnu_noinline int thiscall Bullet::run_effect_bounce() {
 	) {
 		uint32_t bounce_flags = this->effect_bounce.type;
 		BOOL has_bounced = false;
-		if (bounce_flags & BOUNCE_BOTTOM_EDGE) {
-			bounce_bound_y = bullet_manager->__bounce_bounds.y;
-			if (bounce_bound_y <= 0.0f) {
-				bounce_bound_y = this->effect_bounce.size.y;
-			}
-			float position_y = this->position.y;
-			if (position_y < SCREEN_CENTER_Y - bounce_bound_y * 0.5f) {
-				if (!(bounce_flags & BOUNCE_IGNORE)) {
-					this->angle = -this->angle;
-					this->position.y = SCREEN_HEIGHT - bounce_bound_y - position_y;
-				}
-				has_bounced = true;
-			}
-		}
 		if (bounce_flags & BOUNCE_TOP_EDGE) {
 			bounce_bound_y = bullet_manager->__bounce_bounds.y;
 			if (bounce_bound_y <= 0.0f) {
 				bounce_bound_y = this->effect_bounce.size.y;
 			}
 			float position_y = this->position.y;
+			if (position_y < SCREEN_CENTER_Y - bounce_bound_y * 0.5f) {
+				if (!(bounce_flags & BOUNCE_BOUNDS_ONLY)) {
+					this->angle = -this->angle;
+					this->position.y = SCREEN_HEIGHT - bounce_bound_y - position_y;
+				}
+				has_bounced = true;
+			}
+		}
+		if (bounce_flags & BOUNCE_BOTTOM_EDGE) {
+			bounce_bound_y = bullet_manager->__bounce_bounds.y;
+			if (bounce_bound_y <= 0.0f) {
+				bounce_bound_y = this->effect_bounce.size.y;
+			}
+			float position_y = this->position.y;
 			if (position_y > SCREEN_CENTER_Y + bounce_bound_y * 0.5f) {
-				if (!(bounce_flags & BOUNCE_IGNORE)) {
+				if (!(bounce_flags & BOUNCE_BOUNDS_ONLY)) {
 					this->angle = -this->angle;
 					this->position.y = SCREEN_HEIGHT + bounce_bound_y - position_y;
 				}
@@ -46857,7 +46872,7 @@ dllexport gnu_noinline int thiscall Bullet::run_effect_bounce() {
 				bounce_bound_x = this->effect_bounce.size.x;
 			}
 			if (this->position.x > SCREEN_CENTER_X + bounce_bound_x * 0.5f) {
-				if (!(bounce_flags & BOUNCE_IGNORE)) {
+				if (!(bounce_flags & BOUNCE_BOUNDS_ONLY)) {
 					this->angle = reduce_angle(reduce_angle(-this->angle - PI_f) + 0.0f);
 					this->position.x = SCREEN_CENTER_X + bounce_bound_x - this->position.x;
 				}
@@ -46870,7 +46885,7 @@ dllexport gnu_noinline int thiscall Bullet::run_effect_bounce() {
 				bounce_bound_x = this->effect_bounce.size.x;
 			}
 			if (this->position.x > SCREEN_CENTER_X + -bounce_bound_x * 0.5f) {
-				if (!(bounce_flags & BOUNCE_IGNORE)) {
+				if (!(bounce_flags & BOUNCE_BOUNDS_ONLY)) {
 					this->angle = reduce_angle(reduce_angle(-this->angle - PI_f) + 0.0f);
 					this->position.x = SCREEN_CENTER_X - bounce_bound_x - this->position.x;
 				}
@@ -46928,8 +46943,8 @@ dllexport gnu_noinline void fastcall spawn_bullet_cancel_items(Float3* position,
 		) {
 			float y = position->y;
 			if (
-				!(y + 32.0f <= SCREEN_BOTTOM_EDGE) &&
-				!(y - 32.0f >= SCREEN_TOP_EDGE)
+				!(y + 32.0f <= SCREEN_TOP_EDGE) &&
+				!(y - 32.0f >= SCREEN_BOTTOM_EDGE)
 			) {
 				int32_t cancel_counter = ++BULLET_MANAGER_PTR->__cancel_counter;
 
@@ -47483,33 +47498,15 @@ dllexport gnu_noinline int thiscall LaserLine::run_effect_bounce() {
 	if ( // yes the 0.0 are really there
 		tip_position.x + 0.0f >= SCREEN_LEFT_EDGE ||
 		tip_position.x - 0.0f <= SCREEN_RIGHT_EDGE ||
-		tip_position.y + 0.0f >= SCREEN_BOTTOM_EDGE ||
-		tip_position.y - 0.0f <= SCREEN_TOP_EDGE
+		tip_position.y + 0.0f >= SCREEN_TOP_EDGE ||
+		tip_position.y - 0.0f <= SCREEN_BOTTOM_EDGE
 	) {
 		uint32_t bounce_flags = this->effect_bounce.flags;
 		BOOL has_bounced = false;
 		if (
-			(bounce_flags & BOUNCE_BOTTOM_EDGE) && tip_position.y < SCREEN_BOTTOM_EDGE
+			(bounce_flags & BOUNCE_TOP_EDGE) && tip_position.y < SCREEN_TOP_EDGE
 		) {
-			if (!(bounce_flags & BOUNCE_IGNORE)) {
-				HitboxManager::__solve_lines_intersect(
-					&this->params.position.x, &this->params.position.y,
-					SCREEN_LEFT_EDGE - 64.0f, SCREEN_BOTTOM_EDGE, SCREEN_RIGHT_EDGE + 64.0f, SCREEN_BOTTOM_EDGE,
-					tip_position.x, tip_position.y, this->position.x, this->position.y
-				);
-				this->params.position.z = 0.0f;
-				this->params.angle = -this->angle;
-				this->params.speed = this->effect_bounce.speed;
-				this->params.spawn_distance = 0.0f;
-				LASER_MANAGER_PTR->allocate_new_laser(LineLaser, &this->params);
-				bounce_flags = this->effect_bounce.flags;
-			}
-			has_bounced = true;
-		}
-		if (
-			(bounce_flags & BOUNCE_TOP_EDGE) && tip_position.y > SCREEN_TOP_EDGE
-		) {
-			if (!(bounce_flags & BOUNCE_IGNORE)) {
+			if (!(bounce_flags & BOUNCE_BOUNDS_ONLY)) {
 				HitboxManager::__solve_lines_intersect(
 					&this->params.position.x, &this->params.position.y,
 					SCREEN_LEFT_EDGE - 64.0f, SCREEN_TOP_EDGE, SCREEN_RIGHT_EDGE + 64.0f, SCREEN_TOP_EDGE,
@@ -47525,12 +47522,30 @@ dllexport gnu_noinline int thiscall LaserLine::run_effect_bounce() {
 			has_bounced = true;
 		}
 		if (
-			(bounce_flags & BOUNCE_LEFT_EDGE) && tip_position.x < SCREEN_LEFT_EDGE
+			(bounce_flags & BOUNCE_BOTTOM_EDGE) && tip_position.y > SCREEN_BOTTOM_EDGE
 		) {
-			if (!(bounce_flags & BOUNCE_IGNORE)) {
+			if (!(bounce_flags & BOUNCE_BOUNDS_ONLY)) {
 				HitboxManager::__solve_lines_intersect(
 					&this->params.position.x, &this->params.position.y,
-					SCREEN_LEFT_EDGE, SCREEN_BOTTOM_EDGE - 192.0f, SCREEN_LEFT_EDGE, SCREEN_TOP_EDGE + 192.0f,
+					SCREEN_LEFT_EDGE - 64.0f, SCREEN_BOTTOM_EDGE, SCREEN_RIGHT_EDGE + 64.0f, SCREEN_BOTTOM_EDGE,
+					tip_position.x, tip_position.y, this->position.x, this->position.y
+				);
+				this->params.position.z = 0.0f;
+				this->params.angle = -this->angle;
+				this->params.speed = this->effect_bounce.speed;
+				this->params.spawn_distance = 0.0f;
+				LASER_MANAGER_PTR->allocate_new_laser(LineLaser, &this->params);
+				bounce_flags = this->effect_bounce.flags;
+			}
+			has_bounced = true;
+		}
+		if (
+			(bounce_flags & BOUNCE_LEFT_EDGE) && tip_position.x < SCREEN_LEFT_EDGE
+		) {
+			if (!(bounce_flags & BOUNCE_BOUNDS_ONLY)) {
+				HitboxManager::__solve_lines_intersect(
+					&this->params.position.x, &this->params.position.y,
+					SCREEN_LEFT_EDGE, SCREEN_TOP_EDGE - 192.0f, SCREEN_LEFT_EDGE, SCREEN_BOTTOM_EDGE + 192.0f,
 					tip_position.x, tip_position.y, this->position.x, this->position.y
 				);
 				this->params.position.z = 0.0f;
@@ -47545,10 +47560,10 @@ dllexport gnu_noinline int thiscall LaserLine::run_effect_bounce() {
 		if (
 			(bounce_flags & BOUNCE_RIGHT_EDGE) && tip_position.x > SCREEN_RIGHT_EDGE
 		) {
-			if (!(bounce_flags & BOUNCE_IGNORE)) {
+			if (!(bounce_flags & BOUNCE_BOUNDS_ONLY)) {
 				HitboxManager::__solve_lines_intersect(
 					&this->params.position.x, &this->params.position.y,
-					SCREEN_RIGHT_EDGE, SCREEN_BOTTOM_EDGE - 192.0f, SCREEN_RIGHT_EDGE, SCREEN_TOP_EDGE + 192.0f,
+					SCREEN_RIGHT_EDGE, SCREEN_TOP_EDGE - 192.0f, SCREEN_RIGHT_EDGE, SCREEN_BOTTOM_EDGE + 192.0f,
 					tip_position.x, tip_position.y, this->position.x, this->position.y
 				);
 				this->params.position.z = 0.0f;
@@ -47691,7 +47706,7 @@ dllexport gnu_noinline int thiscall LaserCurve::initialize(void* data) {
 	}
 
 	// ???
-	this->__timer_40.set(this->params.__float_45C);
+	this->__timer_40.set(this->params.__initial_node_count);
 
 	int32_t effect_index;
 	LaserCurveNodeEx* node_ex_ptr = this->params.node_ex_ptr;
@@ -49179,8 +49194,8 @@ struct BombReimuA : BombBase {
 									if (
 										data->orbs[i].motion.position.x < SCREEN_LEFT_EDGE + 32.0f ||
 										data->orbs[i].motion.position.x > SCREEN_RIGHT_EDGE - 32.0f ||
-										data->orbs[i].motion.position.y < SCREEN_BOTTOM_EDGE + 32.0f ||
-										data->orbs[i].motion.position.y > SCREEN_TOP_EDGE - 32.0f
+										data->orbs[i].motion.position.y < SCREEN_TOP_EDGE + 32.0f ||
+										data->orbs[i].motion.position.y > SCREEN_BOTTOM_EDGE - 32.0f
 									) {
 										data->orbs[i].motion.speed *= 0.9f;
 									}
@@ -49841,8 +49856,8 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::move() {
 		float position_y = this->current_motion.position.y;
 		float half_sprite_size_y = this->final_sprite_size.y * 0.5f;
 		if (
-			!(position_y + half_sprite_size_y < SCREEN_BOTTOM_EDGE) &&
-			!(position_y - half_sprite_size_y > SCREEN_TOP_EDGE)
+			!(position_y + half_sprite_size_y < SCREEN_TOP_EDGE) &&
+			!(position_y - half_sprite_size_y > SCREEN_BOTTOM_EDGE)
 		) {
 			this->__has_been_onscreen = true;
 		}
@@ -56981,11 +56996,11 @@ gnu_noinline void debug_command_line() {
 						case L's':
 							if (char_arg[1] == L'a') {
 								if (char_arg[2] == L'k') {
-						case L'2': case 'y':
+						case L'2': case 'k': case 'y':
 									DEBUG_CHARACTER = Sakuya;
 									break;
 								} else if (char_arg[2] == L'n') {
-						case L'3': case L'g': // green reimu
+						case L'3': case 'n': case L'g': // green reimu
 									DEBUG_CHARACTER = Sanae;
 									break;
 								}
