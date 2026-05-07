@@ -56728,6 +56728,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_draw() {
 
 // 0x43D720
 dllexport gnu_noinline MsgVM::MsgVM(MsgInstruction* start_instruction) {
+	this->zero_contents();
+
 	this->__timer_4.reset();
 	this->script_time.reset();
 	this->__dword_160 = 0;
