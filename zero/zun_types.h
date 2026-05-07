@@ -534,6 +534,10 @@ struct Float2 : Float1 {
         };
     }
 
+    inline Float2 rotate_around_origin_unit(const Float2& unit) const {
+        return this->rotate_around_origin_unit(unit.x, unit.y);
+    }
+
     inline Float2 rotate_around_origin(float angle) const {
         float y_unit = zsinf(angle);
         float x_unit = zcosf(angle);

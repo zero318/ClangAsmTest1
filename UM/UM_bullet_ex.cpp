@@ -1024,7 +1024,9 @@ struct DebugLogger {
 		va_list va;
 		va_start(va, format);
 		int ret = debug_vprint(format, va);
-		//va_end(va);
+#if FIX_MINOR_BUGS
+		va_end(va);
+#endif
 		return ret;
 	}
 	static inline int debug_vsprint(char* buffer, const char* format, va_list va) {
@@ -1034,7 +1036,9 @@ struct DebugLogger {
 		va_list va;
 		va_start(va, format);
 		int ret = debug_vsprint(buffer, format, va);
-		//va_end(va);
+#if FIX_MINOR_BUGS
+		va_end(va);
+#endif
 		return ret;
 	}
 #endif
@@ -1833,12 +1837,14 @@ inline int Zmbox(const char* message, const char* caption, UINT type) {
 	return MessageBoxA(NULL, message, caption, type);
 }
 inline int Zmboxf(const char* format, const char* caption, UINT type, ...) {
-	va_list va;
+	va_list va, va2;
 	va_start(va, type);
+	va_copy(va2, va);
 	int length = vsnprintf(NULL, 0, format, va);
-	char buffer[length + 1];
-	vsprintf(buffer, format, va);
 	va_end(va);
+	char buffer[length + 1];
+	vsprintf(buffer, format, va2);
+	va_end(va2);
 	return Zmbox(buffer, caption, type);
 }
 
@@ -7316,13 +7322,13 @@ struct SoundManager {
 	}
 
 	inline void copy_sound_data() {
-		SoundEffectData* unknown_b_ptr = this->__sound_effects;
-		for (size_t i = 0; i < countof(this->__sound_effects); ++unknown_b_ptr, ++i) {
-			unknown_b_ptr->__int_4 = -1;
+		SoundEffectData* sound_effect_ptr = this->__sound_effects;
+		for (size_t i = 0; i < countof(this->__sound_effects); ++sound_effect_ptr, ++i) {
+			sound_effect_ptr->__int_4 = -1;
 			SoundData* sound_data = SOUND_DATA;
 			while (sound_data->id != i && ++sound_data);
-			unknown_b_ptr->__int_C = i;
-			unknown_b_ptr->data = sound_data;
+			sound_effect_ptr->__int_C = i;
+			sound_effect_ptr->data = sound_data;
 		}
 	}
 
@@ -9026,12 +9032,20 @@ enum CardAvailabilityResult : int32_t {
 	IsStageReward = 2
 };
 
+enum CardEquipType : int32_t {
+	ActiveCard = 0,
+	EquipmentCard = 1,
+	PassiveCard = 2,
+	ItemCard = 3,
+	InternalCard = 4
+};
+
 // size: 0x34
 struct CardData {
 	const char* name; // 0x0
 	CardId id; // 0x4
 	int __int_8; // 0x8
-	int __int_C; // 0xC
+	int32_t __card_type; // 0xC
 	int32_t price_tier; // 0x10
 	int32_t shop_weight; // 0x14
 	int32_t availability; // 0x18
@@ -9050,7 +9064,7 @@ struct CardData {
 ValidateFieldOffset32(0x0, CardData, name);
 ValidateFieldOffset32(0x4, CardData, id);
 ValidateFieldOffset32(0x8, CardData, __int_8);
-ValidateFieldOffset32(0xC, CardData, __int_C);
+ValidateFieldOffset32(0xC, CardData, __card_type);
 ValidateFieldOffset32(0x10, CardData, price_tier);
 ValidateFieldOffset32(0x14, CardData, shop_weight);
 ValidateFieldOffset32(0x18, CardData, availability);
@@ -14336,6 +14350,21 @@ dllexport gnu_noinline const char* fastcall __decrypt_related(const char* str) {
 	return MSG_DECRYPT_BUFFER;
 }
 
+enum FontId : int32_t {
+	Font0 = 0,
+	Font1 = 1,
+	Font2 = 2,
+	Font3 = 3,
+	Font4 = 4,
+	Font5 = 5,
+	Font6 = 6,
+	Font7 = 7,
+	Font8 = 8,
+	Font9 = 9,
+	Font10 = 10,
+	Font11 = 11
+};
+
 static inline constexpr size_t MAX_PORTRAIT_COUNT = 4;
 static inline constexpr size_t MAX_DIALOG_LINE_COUNT = 2;
 
@@ -15026,13 +15055,13 @@ dllexport gnu_noinline ZUNResult thiscall SoundManager::initialize(HWND window_h
 		this->sound_volume = 100;
 		SetTimer(window_hwnd, 0, 250, NULL);
 		this->timer_hwnd = window_hwnd;
-		SoundEffectData* unknown_b_ptr = this->__sound_effects;
+		SoundEffectData* sound_effect_ptr = this->__sound_effects;
 		SoundData* sound_data = SOUND_DATA;
-		for (size_t i = 0; sound_data < array_end_addr(SOUND_DATA); ++i, ++sound_data, ++unknown_b_ptr) {
+		for (size_t i = 0; sound_data < array_end_addr(SOUND_DATA); ++i, ++sound_data, ++sound_effect_ptr) {
 			if (SOUND_MANAGER.__int_5724 == 2) {
 				return ZUN_ERROR;
 			}
-			if (ZUN_FAILED(unknown_b_ptr->initialize(SOUND_EFFECT_FILENAMES[sound_data->filename_index]))) {
+			if (ZUN_FAILED(sound_effect_ptr->initialize(SOUND_EFFECT_FILENAMES[sound_data->filename_index]))) {
 				LOG_BUFFER.write(
 					JpEnStr("error : Sound ファイルが読み込めない データを確認 %s\r\n", "error : Sound File cannot read Check data %s\r\n")
 					, SOUND_EFFECT_FILENAMES[SOUND_DATA[i].filename_index]
@@ -15243,7 +15272,7 @@ struct GdiManager {
 	}
 
 	// 0x470010
-	dllexport gnu_noinline static bool stdcall __sub_470010(uint32_t arg1) asm_symbol_rel(0x470010);
+	dllexport gnu_noinline static bool stdcall __screw_with_texture_bits(uint32_t height) asm_symbol_rel(0x470010);
 	
 	// 0x4703A0
 	dllexport gnu_noinline static bool stdcall __sub_4703A0(int arg1, int = UNUSED_DWORD) asm_symbol_rel(0x4703A0);
@@ -15333,16 +15362,73 @@ dllexport gnu_noinline bool stdcall GdiManager::__sub_4703A0(int arg1, int) {
 }
 
 // 0x470010
-dllexport gnu_noinline bool stdcall GdiManager::__sub_470010(uint32_t arg1) {
+dllexport gnu_noinline bool stdcall GdiManager::__screw_with_texture_bits(uint32_t height) {
+
+	auto process_pixels = [=](auto dummy_pixel, bool extra_div_by_2) gnu_always_inline {
+		using PixelT = decltype(dummy_pixel);
+
+		PixelT* pixel = (PixelT*)GDI_MANAGER.bitmap_data;
+		uint32_t y = 0;
+		if (height > y) {
+			uint32_t width = GDI_MANAGER.width;
+			do {
+				for (uint32_t x = 0; x < width; ++x) {
+					PixelT original_pixel = pixel[0];
+					if (!original_pixel.a) {
+						uint32_t count = 0;
+						uint32_t R = 0, G = 0, B = 0;
+						if (x > 0 && pixel[-1].a) {
+							R = pixel[-1].r; G = pixel[-1].g; B = pixel[-1].b;
+							count = 1;
+						}
+						if (x < GDI_MANAGER.width - 1 && pixel[1].a) {
+							R += pixel[1].r; G += pixel[1].g; B += pixel[1].b;
+							++count;
+						}
+						if (y > 0) {
+							PixelT* prev_row_pixel = pixel - GDI_MANAGER.stride / sizeof(PixelT);
+							if (prev_row_pixel->a) {
+								R += prev_row_pixel->r; G += prev_row_pixel->g; B += prev_row_pixel->b;
+								++count;
+							}
+						}
+						if (y < GDI_MANAGER.height - 1) {
+							PixelT* next_row_pixel = pixel + GDI_MANAGER.stride / sizeof(PixelT);
+							if (next_row_pixel->a) {
+								R += next_row_pixel->r; G += next_row_pixel->g; B += next_row_pixel->b;
+								++count;
+							}
+						}
+						if (count > 1) {
+							R /= count; G /= count; B /= count;
+						}
+						if (extra_div_by_2) {
+							R /= 2; G /= 2; B /= 2; // ???
+						}
+						if constexpr (PixelT::a_is_bitfield) {
+							pixel[0] = (PixelT){
+								.r = R, .g = G, .b = B, .a = 0
+							};
+						} else {
+							PixelT temp = pixel[0];
+							temp.r = R; temp.g = G; temp.b = B;
+							pixel[0] = temp;
+						}
+						width = GDI_MANAGER.width;
+					}
+					++pixel;
+				}
+			} while (++y < height);
+		}
+	};
+
 	switch (GDI_MANAGER.format) {
-		case D3DFMT_A4R4G4B4: { // 26
-			// TODO: color stuff
+		case D3DFMT_A4R4G4B4: // 26
+			process_pixels((PixelA4R4G4B4){}, true);
 			return true;
-		}
-		case D3DFMT_A8R8G8B8: { // 21
-			// TODO: color stuff
+		case D3DFMT_A8R8G8B8: // 21
+			process_pixels((PixelA8R8G8B8){}, false);
 			return true;
-		}
 		default:
 			return false;
 	}
@@ -15350,70 +15436,70 @@ dllexport gnu_noinline bool stdcall GdiManager::__sub_470010(uint32_t arg1) {
 
 // 0x470A40
 dllexport gnu_noinline void fastcall GdiManager::draw_text_to_texture(
-	RECT* bounds, // ECX
-	int x, // EDX
+	RECT* bounds, // ECX, LOCAL.20
+	int x, // EDX, LOCAL.12
 	int B, // EBX+8
 	D3DCOLOR text_color, // EBX+C
 	D3DCOLOR outline_color, // EBX+10
-	const char* text, // EBX+14
-	LPDIRECT3DTEXTURE9 texture, // EBX+18
+	const char* text, // EBX+14, LOCAL.9
+	LPDIRECT3DTEXTURE9 texture, // EBX+18, LOCAL.21
 	int font_id, // EBX+1C
 	int char_spacing, // EBX+20
 	BOOL enable_outline // EBX+24
 ) {
-	int E = x;
+	int E = x; // LOCAL.8
 
 	HANDLE font;
 	switch (font_id) {
-		case 8:
+		case Font8: // 8
 			font = FONT_BLOCK.handles[1];
 			break;
-		case 0:
+		case Font0: // 0
 			font = FONT_BLOCK.handles[2];
 			break;
-		case 2:
+		case Font2: // 2
 			font = FONT_BLOCK.handles[4];
 			break;
-		case 1:
+		case Font1: // 1
 			font = FONT_BLOCK.handles[3];
 			break;
-		case 3:
+		case Font3: // 3
 			font = FONT_BLOCK.handles[5];
 			break;
-		case 4:
+		case Font4: // 4
 			font = FONT_BLOCK.handles[6];
 			break;
-		case 6:
+		case Font6: // 6
 			font = FONT_BLOCK.handles[8];
 			break;
-		case 5:
+		case Font5: // 5
 			font = FONT_BLOCK.handles[7];
 			break;
-		case 7:
+		case Font7: // 7
 			font = FONT_BLOCK.handles[9];
 			break;
-		case 10:
+		case Font10: // 10
 			font = FONT_BLOCK.handles[10];
 			break;
-		case 11:
+		case Font11: // 11
 			font = FONT_BLOCK.handles[11];
 			break;
-		default:
+		default: // case Font9: // 9
 			font = FONT_BLOCK.handles[0];
 			break;
 	}
 
 	memset(GDI_MANAGER.bitmap_data, 0, GDI_MANAGER.bitmap_size);
 
-	HDC device_context = GDI_MANAGER.device_context;
-	HGDIOBJ prev_font = SelectObject(device_context, font);
+	HDC device_context = GDI_MANAGER.device_context; // LOCAL.15
+	HGDIOBJ prev_font = SelectObject(device_context, font); // LOCAL.14
 
-	int D = 12 + __max(B, 17);
-	GDI_MANAGER.__sub_4703A0(D);
+	int32_t height = 12 + __max(B, 17); // LOCAL.13
+	GDI_MANAGER.__sub_4703A0(height);
 
 	SetBkMode(device_context, TRANSPARENT);
 
-	size_t text_length = byteloop_strlen(text);
+	size_t text_length = byteloop_strlen(text); // LOCAL.11
 
 	if (!char_spacing) {
 		E += 2;
@@ -15431,46 +15517,58 @@ dllexport gnu_noinline void fastcall GdiManager::draw_text_to_texture(
 		TextOutA(device_context, E, 2, text, text_length);
 	}
 	else {
-		E -= 2;
-		char buffer[3];
+		int32_t i = 0; // LOCAL.12
+		char buffer[3]; // LOCAL.10
 		buffer[2] = '\0';
-		for (int32_t i = 0; i < text_length; i += 2) {
-			buffer[0] = text[i];
-			buffer[1] = text[i + 1];
-			if (enable_outline) {
-				SetTextColor(device_context, outline_color);
-				TextOutA(device_context, E + 4, 4, buffer, 2);
-				TextOutA(device_context, E, 4, buffer, 2);
-				TextOutA(device_context, E + 4, 0, buffer, 2);
-				TextOutA(device_context, E, 0, buffer, 2);
-			}
-			SetTextColor(device_context, text_color);
-			TextOutA(device_context, E + 2, 2, buffer, 2);
-			E += char_spacing;
+		if (text_length) {
+			E -= 2;
+			do { // LOCAL.12
+				buffer[0] = text[i];
+				buffer[1] = text[i + 1];
+				if (enable_outline) {
+					SetTextColor(device_context, outline_color);
+					TextOutA(device_context, E + 4, 4, buffer, 2);
+					TextOutA(device_context, E, 4, buffer, 2);
+					TextOutA(device_context, E + 4, 0, buffer, 2);
+					TextOutA(device_context, E, 0, buffer, 2);
+				}
+				SetTextColor(device_context, text_color);
+				TextOutA(device_context, E + 2, 2, buffer, 2);
+				E += char_spacing;
+				i += 2;
+			} while (i < text_length);
 		}
 	}
 	SelectObject(device_context, prev_font);
-	GDI_MANAGER.__sub_4703A0(D);
+	GDI_MANAGER.__sub_4703A0(height);
 
-	uint8_t* bitmap_data = (uint8_t*)GDI_MANAGER.bitmap_data;
+	void* bitmap_data = GDI_MANAGER.bitmap_data;
 	if (GDI_MANAGER.format == D3DFMT_A4R4G4B4) {
-		/*
-		uint8_t* data = (uint8_t*)malloc(GDI_MANAGER.width * D * 2 + 1);
-		memcpy(data, bitmap_data, GDI_MANAGER.width * D * 2);
+		
+		uint8_t* data = (uint8_t*)malloc(GDI_MANAGER.width * height * sizeof(PixelA4R4G4B4) + 1); // LOCAL.11
+		memcpy(data, bitmap_data, GDI_MANAGER.width * height * sizeof(PixelA4R4G4B4));
 
-		int32_t F = -GDI_MANAGER.width;
-		int32_t G = 1 - F;
-		int32_t H = -1 - F;
-		int32_t I = F + 1;
-		int32_t J = F - 1;
-		int32_t K = F * 2;
-		uint8_t* L = &bitmap_data[K];
-		uint8_t* M = &data[K];
-		*/
-		// TODO: pain
+		int32_t width = GDI_MANAGER.width;
+		PixelA4R4G4B4* pixels_out = &((PixelA4R4G4B4*)bitmap_data)[width]; // LOCAL.8
+		PixelA4R4G4B4* pixels = &((PixelA4R4G4B4*)data)[width]; // ESI
+
+		for (
+			int32_t i = 0; // LOCAL.12
+			i < (height - 2) * GDI_MANAGER.width;
+			++i, ++pixels_out, ++pixels
+		) {
+			if (
+				!pixels->a &&
+				i % GDI_MANAGER.width != 0
+			) {
+				pixels_out->a = (pixels[-width].a + pixels[width].a + pixels[-1].a + pixels[1].a) * 2 + pixels[-1 + width].a + pixels[1 + width].a + pixels[-1 - width].a + pixels[1 - width].a;
+			}
+		}
+
+		SAFE_FREE(data);
 	}
 
-	GDI_MANAGER.__sub_470010(D);
+	GDI_MANAGER.__screw_with_texture_bits(height);
 	SelectObject(device_context, prev_font);
 
 	RECT src_rect;
@@ -15478,15 +15576,15 @@ dllexport gnu_noinline void fastcall GdiManager::draw_text_to_texture(
 	src_rect.top = 0;
 
 	int32_t width = bounds->right - bounds->left;
-	int32_t height = bounds->bottom - bounds->top;
+	int32_t heightB = bounds->bottom - bounds->top;
 	width = __min(width, 1000);
 	src_rect.right = width;
-	src_rect.bottom = height;
+	src_rect.bottom = heightB;
 
 	if (
 		FONT_BLOCK.found_meiryo &&
-		font_id != 6 &&
-		font_id != 2
+		font_id != Font6 && // 6
+		font_id != Font2 // 2
 	) {
 		src_rect.top = 6;
 		src_rect.bottom += 6;
@@ -15505,7 +15603,7 @@ dllexport gnu_noinline void fastcall GdiManager::draw_text_to_texture(
 		NULL,
 		&src_rect,
 		D3DX_FILTER_NONE,
-		0
+		COLOR(0, 0, 0, 0)
 	);
 
 	SAFE_RELEASE(surface);
@@ -15639,8 +15737,8 @@ dllexport gnu_noinline void __initialize_fonts() {
 		FONT_BLOCK.handles[7] = CreateFontA(40, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, JSIS_MS_MINCHO);
 		FONT_BLOCK.handles[4] = CreateFontA(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_DONTCARE, SJIS_MEIRYO);
 		FONT_BLOCK.handles[5] = CreateFontA(15, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, JSIS_MS_MINCHO);
-		FONT_BLOCK.handles[4] = CreateFontA(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_DONTCARE, SJIS_MEIRYO);
-		FONT_BLOCK.handles[5] = CreateFontA(15, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, JSIS_MS_MINCHO);
+		FONT_BLOCK.handles[8] = CreateFontA(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_DONTCARE, SJIS_MEIRYO);
+		FONT_BLOCK.handles[9] = CreateFontA(15, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, JSIS_MS_MINCHO);
 		FONT_BLOCK.handles[10] = CreateFontA(96, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_DONTCARE, SJIS_MEIRYO);
 		FONT_BLOCK.handles[11] = CreateFontA(64, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH | FF_ROMAN, JSIS_MS_MINCHO);
 	}
@@ -21412,7 +21510,9 @@ public:
 		va_list va;
 		va_start(va, format);
 		vsprintf(buffer, format, va);
-		//va_end(va);
+#if FIX_MINOR_BUGS
+		va_end(va);
+#endif
 
 		AnmSprite* sprite = vm->get_sprite();
 		RECT sprite_bounds = sprite->bounds;
@@ -21447,7 +21547,9 @@ public:
 		va_list va;
 		va_start(va, format);
 		vsprintf(buffer, format, va);
-		//va_end(va);
+#if FIX_MINOR_BUGS
+		va_end(va);
+#endif
 
 		AnmSprite* sprite = vm->get_sprite();
 		RECT sprite_bounds = sprite->bounds;
@@ -21487,7 +21589,9 @@ public:
 		va_list va;
 		va_start(va, format);
 		vsprintf(buffer, format, va);
-		//va_end(va);
+#if FIX_MINOR_BUGS
+		va_end(va);
+#endif
 
 		AnmSprite* sprite = vm->get_sprite();
 		RECT sprite_bounds = sprite->bounds;
@@ -21585,7 +21689,7 @@ public:
 							}
 						}
 						if (y < surface_desc.Height - 1) {
-							PixelT* next_row_pixel = pixel - rect.Pitch / sizeof(PixelT);
+							PixelT* next_row_pixel = pixel + rect.Pitch / sizeof(PixelT);
 							if (next_row_pixel->a) {
 								R += next_row_pixel->r; G += next_row_pixel->g; B += next_row_pixel->b;
 								++count;
@@ -22921,8 +23025,20 @@ struct TrophyManager : ZUNTask {
 
 					AnmVM* vm = this->__anm_id_23C.get_vm_ptr();
 					// TODO: trophy text data
-					//ANM_MANAGER_PTR->draw_text_center(vm, COLOR(0, 128, 192, 192), COLOR(0, 0, 0, 0), 9, 0, JpEnStr("", "[%s]"), /* TODO */);
-					ANM_MANAGER_PTR->draw_text_center(this->__anm_id_240.get_vm_ptr(), COLOR(0, 128, 192, 192), COLOR(0, 0, 0, 0), 9, 0, JpEnStr("", "They achieved this accomplishment."));
+					/*
+					ANM_MANAGER_PTR->draw_text_center(
+						vm,
+						COLOR(0, 128, 192, 192), COLOR(0, 0, 0, 0),
+						9, 0,
+						JpEnStr("", "[%s]"), // TODO
+					);
+					*/
+					ANM_MANAGER_PTR->draw_text_center(
+						this->__anm_id_240.get_vm_ptr(),
+						COLOR(0, 128, 192, 192), COLOR(0, 0, 0, 0),
+						9, 0,
+						JpEnStr("", "They achieved this accomplishment.")
+					);
 
 					SOUND_MANAGER.play_sound(79);
 				}
@@ -24554,7 +24670,7 @@ inline AnmInstruction* AnmVM::get_current_instruction() {
 dllexport AnmVM* AnmID::get_vm_ptr() {
 	AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this);
 	if (!vm) {
-		this->full = NULL;
+		*this = NULL;
 	}
 	return vm;
 }
@@ -24562,7 +24678,7 @@ dllexport AnmVM* AnmID::get_vm_ptr() {
 inline AnmVM* AnmID::get_vm_ptr_safe() {
 	AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this);
 	if (!vm) {
-		this->full = NULL;
+		*this = NULL;
 		vm = &ANM_MANAGER_PTR->dummy_vm;
 	}
 	return vm;
@@ -24626,13 +24742,13 @@ dllexport void AnmID::__hide_tree() {
 
 inline void AnmID::mark_tree_for_delete(AnmManager* anm_manager) {
 	anm_manager->mark_tree_id_for_delete_inline(*this);
-	this->full = NULL;
+	*this = NULL;
 }
 
 // 0x488F50
 dllexport forceinline void AnmID::mark_tree_for_delete() {
 	AnmManager::mark_tree_id_for_delete(*this);
-	this->full = NULL;
+	*this = NULL;
 }
 
 inline void AnmID::set_position(Float3* position) {
@@ -25080,7 +25196,7 @@ struct AsciiString {
 	Float2 scale; // 0x110
 	int __dword_118; // 0x118
 	int __dword_11C; // 0x11C
-	int font_id; // 0x120
+	int32_t font_id; // 0x120
 	BOOL enable_shadows; // 0x124
 	uint32_t group; // 0x128
 	int32_t duration; // 0x12C
@@ -25107,10 +25223,6 @@ extern "C" {
 	externcg AsciiManager* ASCII_MANAGER_PTR cgasm("_ASCII_MANAGER_PTR");
 }
 
-//#if INCLUDE_PATCH_CODE
-//dllexport uint32_t score_upper[3] = { rand(), rand(), rand() };
-//#endif
-
 // size: 0x19278
 struct AsciiManager : ZUNTask {
 	// ZUNTask base; // 0x0
@@ -25124,7 +25236,7 @@ struct AsciiManager : ZUNTask {
 	int __dword_19238; // 0x19238
 	int __dword_1923C; // 0x1923C
 	BOOL enable_shadows; // 0x19240
-	int font_id; // 0x19244
+	int32_t font_id; // 0x19244
 	uint32_t group; // 0x19248
 	int32_t duration; // 0x1924C
 	int __horizontal_positioning_mode; // 0x19250
@@ -25227,49 +25339,53 @@ struct AsciiManager : ZUNTask {
 
 		Float2 scale;
 		switch (string->font_id) {
-			case 1:
+			case Font1: // 1
 				this->__vm_C.data.resample_mode = ResampleLinearInterp;
 				scale = this->__vm_C.data.scale;
 				scale.x *= 6.0f;
 				scale.y *= 9.0f;
 				break;
-			case 6: case 8:
+			case Font6: // 6
+			case Font8: // 8
 				this->__vm_C.data.resample_mode = this->__vm_C.data.scale.x != 1.0f ? ResampleNearestPoint : ResampleLinearInterp;
 				scale = this->__vm_C.data.scale;
 				scale.x *= 12.0f;
 				scale.y *= 16.0f;
 				break;
-			case 7: case 9:
+			case Font7: // 7
+			case Font9: // 9
 				this->__vm_C.data.resample_mode = this->__vm_C.data.scale.x != 1.0f ? ResampleNearestPoint : ResampleLinearInterp;
 				scale = this->__vm_C.data.scale;
 				scale.x *= 17.0f;
 				scale.y *= 23.0f;
 				break;
-			case 2:
+			case Font2: // 2
 				this->__vm_C.data.resample_mode = ResampleLinearInterp;
 				scale = this->__vm_C.data.scale;
 				scale.x *= 7.0f;
 				scale.y *= 10.0f;
 				break;
-			case 3:
+			case Font3: // 3
 				this->__vm_C.data.resample_mode = ResampleNearestPoint;
 				scale = this->__vm_C.data.scale;
 				scale.x *= 7.0f;
 				scale.y *= 10.0f;
 				break;
-			case 4: case 10: case 11:
+			case Font4: // 4
+			case Font10: // 10
+			case Font11: // 11
 				this->__vm_C.data.resample_mode = ResampleLinearInterp;
 				scale = this->__vm_C.data.scale;
 				scale.x *= 12.0f;
 				scale.y *= 16.0f;
 				break;
-			case 5:
+			case Font5: // 5
 				this->__vm_C.data.resample_mode = ResampleNearestPoint;
 				scale = this->__vm_C.data.scale;
 				scale.x *= 12.0f;
 				scale.y *= 16.0f;
 				break;
-			default:
+			default: // case Font0: // 0
 				this->__vm_C.data.resample_mode = this->__vm_C.data.scale.x != 1.0f ? ResampleNearestPoint : ResampleLinearInterp;
 				scale = this->__vm_C.data.scale;
 				scale.x *= this->__character_spacing_for_font_0;
@@ -25283,8 +25399,12 @@ struct AsciiManager : ZUNTask {
 		switch (string->__horizontal_positioning_mode) {
 			case 2:
 				switch (int32_t font_id = string->font_id) {
-					case 6: case 7: case 8: case 9: {
-						int32_t sprite_id_base = font_id == 6 || font_id == 8 ? 288 : 484;
+					case Font6: // 6
+					case Font7: // 7
+					case Font8: // 8
+					case Font9: // 9
+					{
+						int32_t sprite_id_base = font_id == Font6 || font_id == Font8 ? 288 : 484; // 6, 8
 						float floatA = 0.0f;
 						const uint8_t* str = (const uint8_t*)string->text;
 						uint8_t c = *str;
@@ -25302,7 +25422,9 @@ struct AsciiManager : ZUNTask {
 						this->__vm_C.data.position.x += -floatA * string->scale.x;
 						break;
 					}
-					case 2: case 3: {
+					case Font2: // 2
+					case Font3: // 3
+					{
 						const uint8_t* str = (const uint8_t*)string->text;
 						uint8_t c = *str;
 						if (c) {
@@ -25313,7 +25435,11 @@ struct AsciiManager : ZUNTask {
 						}
 						break;
 					}
-					case 4: case 5: case 10: case 11: {
+					case Font4: // 4
+					case Font5: // 5
+					case Font10: // 10
+					case Font11: // 11
+					{
 						const uint8_t* str = (const uint8_t*)string->text;
 						uint8_t c = *str;
 						if (c) {
@@ -25331,8 +25457,12 @@ struct AsciiManager : ZUNTask {
 				break;
 			case 0:
 				switch (int32_t font_id = string->font_id) {
-					case 6: case 7: case 8: case 9: {
-						int32_t sprite_id_base = font_id == 6 || font_id == 8 ? 288 : 484;
+					case Font6: // 6
+					case Font7: // 7
+					case Font8: // 8
+					case Font9: // 9
+					{
+						int32_t sprite_id_base = font_id == Font6 || font_id == Font8 ? 288 : 484; // 6, 8
 						float floatA = 0.0f;
 						const uint8_t* str = (const uint8_t*)string->text;
 						uint8_t c = *str;
@@ -25350,7 +25480,9 @@ struct AsciiManager : ZUNTask {
 						this->__vm_C.data.position.x += -floatA * string->scale.x * 0.5f;
 						break;
 					}
-					case 2: case 3: {
+					case Font2: // 2
+					case Font3: // 3
+					{
 						const uint8_t* str = (const uint8_t*)string->text;
 						for (
 							uint8_t c = *str;
@@ -25361,7 +25493,11 @@ struct AsciiManager : ZUNTask {
 						}
 						break;
 					}
-					case 4: case 5: case 10: case 11: {
+					case Font4: // 4
+					case Font5: // 5
+					case Font10: // 10
+					case Font11: // 11
+					{
 						const uint8_t* str = (const uint8_t*)string->text;
 						for (
 							uint8_t c = *str;
@@ -25402,7 +25538,10 @@ struct AsciiManager : ZUNTask {
 					continue;
 				case ' ':
 					switch (string->font_id) {
-						case 6: case 7: case 8: case 9:
+						case Font6: // 6
+						case Font7: // 7
+						case Font8: // 8
+						case Font9: // 9
 							break;
 						default:
 							goto next_position;
@@ -25413,25 +25552,27 @@ struct AsciiManager : ZUNTask {
 					switch (int32_t font_id = string->font_id) {
 						default:
 							goto sprite_uv_set;
-						case 0:
+						case Font0: // 0
 							sprite_id = c - 32;
 							break;
-						case 1:
+						case Font1: // 1
 							sprite_id = c + 66;
 							break;
-						case 6:
+						case Font6: // 6
 							sprite_id = c + 288;
 							break;
-						case 7:
+						case Font7: // 7
 							sprite_id = c + 484;
 							break;
-						case 8:
+						case Font8: // 8
 							sprite_id = c + 386;
 							break;
-						case 9:
+						case Font9: // 9
 							sprite_id = c + 582;
 							break;
-						case 2: case 3: {
+						case Font2: // 2
+						case Font3: // 3
+						{
 							scale.x = string->scale.x * 7.0f;
 							if ((uint8_t)(c - 'a') <= 25u) {
 								sprite_id = c + 116;
@@ -25480,12 +25621,16 @@ struct AsciiManager : ZUNTask {
 							}
 							break;
 						}
-						case 4: case 5: case 10: case 11: {
-							if (font_id == 10) {
+						case Font4: // 4
+						case Font5: // 5
+						case Font10: // 10
+						case Font11: // 11
+						{
+							if (font_id == Font10) { // 10
 								sprite_id = 269;
 							}
 							else {
-								sprite_id = font_id == 11 ? 254 : 239;
+								sprite_id = font_id == Font11 ? 254 : 239; // 11
 							}
 							this->__vm_C.data.position.y = string->position.y;
 							scale.x = string->scale.x * 12.0f;
@@ -25527,7 +25672,11 @@ struct AsciiManager : ZUNTask {
 							size_y = sprite->__size_y;
 							size_x = sprite->__size_x;
 							break;
-						case 6: case 7: case 8: case 9: {
+						case Font6: // 6
+						case Font7: // 7
+						case Font8: // 8
+						case Font9: // 9
+						{
 							float floatA = 3.0f - WINDOW_DATA.game_scale;
 							sprite = this->__vm_C.get_sprite();
 							size_x = sprite->__size_x;
@@ -25540,6 +25689,7 @@ struct AsciiManager : ZUNTask {
 					}
 					this->__vm_C.set_sprite_size(size_x, size_y);
 					if (string->enable_shadows) {
+						// ???
 						this->__vm_C.data.color1 = string->color & 0xFF000000;
 						ALPHA(this->__vm_C.data.color1) = string->color >> 25;
 						this->__vm_C.data.position.x += WINDOW_DATA.game_scale * 2.0f;
@@ -25655,32 +25805,34 @@ struct AsciiManager : ZUNTask {
 		va_start(va, format);
 		char buffer[0x100];
 		vsprintf(buffer, format, va);
-		//va_end(va);
+#if FIX_MINOR_BUGS
+		va_end(va);
+#endif
 		switch (this->font_id) {
-			case 10: {
+			case Font10: { // 10
 				D3DCOLOR prev_color = this->color;
 				this->color = this->color2;
-				this->font_id = 11;
+				this->font_id = Font11; // 11
 				this->add_string(position, buffer);
-				this->font_id = 10;
+				this->font_id = Font10; // 10
 				this->color = prev_color;
 				break;
 			}
-			case 7: {
+			case Font7: { // 7
 				D3DCOLOR prev_color = this->color;
 				this->color = this->color2;
-				this->font_id = 9;
+				this->font_id = Font9; // 9
 				this->add_string(position, buffer);
-				this->font_id = 7;
+				this->font_id = Font7; // 7
 				this->color = prev_color;
 				break;
 			}
-			case 6: {
+			case Font6: { // 6
 				D3DCOLOR prev_color = this->color;
 				this->color = this->color2;
-				this->font_id = 8;
+				this->font_id = Font8; // 8
 				this->add_string(position, buffer);
-				this->font_id = 6;
+				this->font_id = Font6; // 6
 				this->color = prev_color;
 				break;
 			}
@@ -25691,34 +25843,34 @@ struct AsciiManager : ZUNTask {
 private:
 	forceinline void print_number_impl(Float3* position, uint32_t number) {
 		char buffer[0x100];
-		if (number < 1000) {
+		if (number < 1'000) {
 			sprintf(buffer, "%d", number);
 		}
 		else {
-			uint32_t hundreds = number % 1000;
-			uint32_t thousands = number / 1000;
-			if (number < 1000000) {
+			uint32_t hundreds = number % 1'000;
+			uint32_t thousands = number / 1'000;
+			if (number < 1'000'000) {
 				sprintf(buffer, "%d,%.3d", thousands, hundreds);
 			}
 			else {
-				thousands %= 1000;
-				uint32_t millions = (number / 1000000) % 1000;
-				if (number < 1000000000) {
+				thousands %= 1'000;
+				uint32_t millions = (number / 1'000'000) % 1'000;
+				if (number < 1'000'000'000) {
 					sprintf(buffer, "%d,%.3d,%.3d", millions, thousands, hundreds);
 				}
 				else {
-					uint32_t billions = (number / 1000000000) % 1000;
+					uint32_t billions = (number / 1'000'000'000) % 1'000;
 					sprintf(buffer, "%d,%.3d,%.3d,%.3d", billions, millions, thousands, hundreds);
 				}
 			}
 		}
 		switch (this->font_id) {
-			case 10: {
+			case Font10: { // 10
 				D3DCOLOR prev_color = this->color;
 				this->color = this->color2;
-				this->font_id = 11;
+				this->font_id = Font11; // 11
 				this->add_string(position, buffer);
-				this->font_id = 10;
+				this->font_id = Font10; // 10
 				this->color = prev_color;
 				break;
 			}
@@ -25740,46 +25892,46 @@ private:
 		else {
 			uint32_t hundreds = score % 100;
 			uint32_t thousands = score / 100;
-			if (score < 100000) {
+			if (score < 100'000) {
 				sprintf(buffer, "%d,%.2d%d", thousands, hundreds, continues);
 			}
 			else {
-				thousands %= 1000;
-				uint32_t millions = (score / 100000) % 1000;
-				if (score < 10000000) {
+				thousands %= 1'000;
+				uint32_t millions = (score / 100'000) % 1'000;
+				if (score < 100'000'000) {
 					sprintf(buffer, "%d,%.3d,%.2d%d", millions, thousands, hundreds, continues);
 				}
 				else {
-					uint32_t billions = (score / 100000000) % 1000;
+					uint32_t billions = (score / 100'000'000) % 1'000;
 					sprintf(buffer, "%d,%.3d,%.3d,%.2d%d", billions, millions, thousands, hundreds, continues);
 				}
 			}
 		}
 		switch (this->font_id) {
-			case 10: {
+			case Font10: { // 10
 				D3DCOLOR prev_color = this->color;
 				this->color = this->color2;
-				this->font_id = 11;
+				this->font_id = Font11; // 11
 				this->add_string(position, buffer);
-				this->font_id = 10;
+				this->font_id = Font10; // 10
 				this->color = prev_color;
 				break;
 			}
-			case 7: {
+			case Font7: { // 7
 				D3DCOLOR prev_color = this->color;
 				this->color = this->color2;
-				this->font_id = 9;
+				this->font_id = Font9; // 9
 				this->add_string(position, buffer);
-				this->font_id = 7;
+				this->font_id = Font7; // 7
 				this->color = prev_color;
 				break;
 			}
-			case 6: {
+			case Font6: { // 6
 				D3DCOLOR prev_color = this->color;
 				this->color = this->color2;
-				this->font_id = 8;
+				this->font_id = Font8; // 8
 				this->add_string(position, buffer);
-				this->font_id = 6;
+				this->font_id = Font6; // 6
 				this->color = prev_color;
 				break;
 			}
@@ -25792,72 +25944,17 @@ public:
 		ASCII_MANAGER_PTR->print_score_impl(position, score, continues);
 	}
 
-	/*
-#if INCLUDE_PATCH_CODE
-	dllexport gnu_noinline static void stdcall print_score_bigger(Float3* position, uint32_t score, uint32_t continues) {
-		uint64_t big_score = score | (uint64_t)score_upper[1 + (*(uint32_t*)&position->y == 0x42800000)] << 32;
-
-		char buffer[32];
-		char* buffer_write = &buffer[31];
-		*buffer_write = '\0';
-		*--buffer_write = '0' + continues;
-		uint8_t comma_counter = 2;
-
-		while (big_score) {
-			uint8_t digit = big_score % 10;
-			big_score /= 10;
-			*--buffer_write = '0' + digit;
-			if (!--comma_counter && big_score) {
-				comma_counter = 3;
-				*--buffer_write = ',';
-			}
-		}
-
-		AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
-
-		switch (ascii_manager->font_id) {
-			case 10: {
-				D3DCOLOR prev_color = ascii_manager->color;
-				ascii_manager->color = ascii_manager->color2;
-				ascii_manager->font_id = 11;
-				ascii_manager->add_string(position, buffer_write);
-				ascii_manager->font_id = 10;
-				ascii_manager->color = prev_color;
-				break;
-			}
-			case 7: {
-				D3DCOLOR prev_color = ascii_manager->color;
-				ascii_manager->color = ascii_manager->color2;
-				ascii_manager->font_id = 9;
-				ascii_manager->add_string(position, buffer_write);
-				ascii_manager->font_id = 7;
-				ascii_manager->color = prev_color;
-				break;
-			}
-			case 6: {
-				D3DCOLOR prev_color = ascii_manager->color;
-				ascii_manager->color = ascii_manager->color2;
-				ascii_manager->font_id = 8;
-				ascii_manager->add_string(position, buffer_write);
-				ascii_manager->font_id = 6;
-				ascii_manager->color = prev_color;
-				break;
-			}
-		}
-		ascii_manager->add_string(position, buffer_write);
-	}
-#endif
-	*/
-
 	// 0x41A110
 	dllexport gnu_noinline void cdecl debugf(Float3* position, const char* format, ...) asm_symbol_rel(0x41A110) {
 		va_list va;
 		va_start(va, format);
 		char buffer[0x100];
 		vsprintf(buffer, format, va);
-		//va_end(va);
+#if FIX_MINOR_BUGS
+		va_end(va);
+#endif
 		this->add_string(position, buffer);
-		this->strings[this->string_count - 1].font_id = 1;
+		this->strings[this->string_count - 1].font_id = Font1; // 1
 	}
 
 	inline ZUNResult initialize() {
@@ -25919,7 +26016,7 @@ private:
 		this->__character_spacing_for_font_0 = 9;
 		this->set_scale(1.0f);
 		this->enable_shadows = FALSE;
-		this->font_id = 0;
+		this->font_id = Font0; // 0
 		this->group = 0;
 		this->duration = 0;
 		this->__horizontal_positioning_mode = 1;
@@ -26445,19 +26542,34 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
 					if (!index) {
 						for (size_t i = 0; i != countof(this->__vm_id_array_40); ++i) {
 							AnmVM* vm = this->__vm_id_array_40[i].get_vm_ptr();
-							ANM_MANAGER_PTR->draw_text_left(vm, COLOR(0, 255, 255, 255), 0, 0, 0, 0, " ");
+							ANM_MANAGER_PTR->draw_text_left(
+								vm,
+								COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0),
+								0, 0, 0,
+								" "
+							);
 							this->__vm_id_array_40[i].interrupt_tree(3);
 						}
 						AnmVM* vm = this->__vm_id_array_40[0].get_vm_ptr();
 						const char* text = __decrypt_related(StringArgOf(this->current_instr, 0));
-						ANM_MANAGER_PTR->draw_text_left(vm, this->__color_7C, 0, 0, 0, 0, text);
+						ANM_MANAGER_PTR->draw_text_left(
+							vm,
+							this->__color_7C, COLOR(0, 0, 0, 0),
+							0, 0, 0,
+							text
+						);
 						this->__vm_id_array_40[0].interrupt_tree(2);
 						++this->__int_78;
 					}
 					else {
 						AnmVM* vm = this->__vm_id_array_40[index].get_vm_ptr();
 						const char* text = __decrypt_related(StringArgOf(this->current_instr, 0));
-						ANM_MANAGER_PTR->draw_text_left(vm, this->__color_7C, 0, 0, 0, 0, text);
+						ANM_MANAGER_PTR->draw_text_left(
+							vm,
+							this->__color_7C, COLOR(0, 0, 0, 0),
+							0, 0, 0,
+							text
+						);
 						this->__vm_id_array_40[0].interrupt_tree(2);
 						++this->__int_78;
 						if (this->__int_78 >= countof(this->__vm_id_array_40)) {
@@ -28190,6 +28302,7 @@ namespace Impl {
 
 	// 0x4038A0
 	dllexport gnu_noinline BOOL vectorcall __solve_lines_intersect(
+		float, float,
 		float* x_out, float* y_out,
 		float A1x, float A1y,
 		uint32_t A2x, uint32_t A2y,
@@ -28213,6 +28326,7 @@ namespace Impl {
 		float B2x, float B2y
 	) {
 		return Impl::__solve_lines_intersect(
+			UNUSED_FLOAT, UNUSED_FLOAT,
 			x_out, y_out,
 			A1x, A1y,
 			bitcast<uint32_t>(A2x), bitcast<uint32_t>(A2y),
@@ -28409,6 +28523,7 @@ namespace Impl {
 		float circle_radius
 	) {
 		return Impl::__solve_hitscan_circle(
+			UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT,
 			hit_start, hit_end,
 			ray_position,
 			ray_angle,
@@ -31056,13 +31171,23 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 			case text_top_line: { // 15
 				AnmVM* vm = this->dialogue_lines[0].get_vm_ptr();
 				const char* text = __decrypt_related(StringArg(0));
-				ANM_MANAGER_PTR->draw_text_left(vm, this->text_color_array[this->active_portait], 0, this->__font_type_flag + 4, 0, 0, text);
+				ANM_MANAGER_PTR->draw_text_left(
+					vm,
+					this->text_color_array[this->active_portait], COLOR(0, 0, 0, 0),
+					this->__font_type_flag ? Font5 : Font4, 0, 0, // 5, 4
+					text
+				);
 				break;
 			}
 			case text_bottom_line: { // 16
 				AnmVM* vm = this->dialogue_lines[1].get_vm_ptr();
 				const char* text = __decrypt_related(StringArg(0));
-				ANM_MANAGER_PTR->draw_text_left(vm, this->text_color_array[this->active_portait], 0, this->__font_type_flag + 4, 0, 0, text);
+				ANM_MANAGER_PTR->draw_text_left(
+					vm,
+					this->text_color_array[this->active_portait], COLOR(0, 0, 0, 0),
+					this->__font_type_flag ? Font5 : Font4, 0, 0, // 5, 4
+					text
+				);
 				break;
 			}
 			case text_position: // 28
@@ -31073,10 +31198,30 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 				if (this->next_text_line == 0) {
 					if (!this->__skip_text_clear) {
 						this->__float_1CC = 0.0f;
-						ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[0].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__font_type_flag, 0, 0, "  ");
-						ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[1].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__font_type_flag, 0, 0, "  ");
-						ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[0].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__font_type_flag, 0, 0, "  ");
-						ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[1].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__font_type_flag, 0, 0, "  ");
+						ANM_MANAGER_PTR->draw_text_left(
+							this->dialogue_lines[0].get_vm_ptr(),
+							this->text_color_array[this->active_portait], COLOR(0, 0, 0, 0),
+							this->__font_type_flag ? Font1 : Font0, 0, 0, // 1, 0
+							"  "
+						);
+						ANM_MANAGER_PTR->draw_text_left(
+							this->dialogue_lines[1].get_vm_ptr(),
+							this->text_color_array[this->active_portait], COLOR(0, 0, 0, 0),
+							this->__font_type_flag ? Font1 : Font0, 0, 0, // 1, 0
+							"  "
+						);
+						ANM_MANAGER_PTR->draw_text_left(
+							this->furigana_lines[0].get_vm_ptr(),
+							this->text_color_array[this->active_portait], COLOR(0, 0, 0, 0),
+							this->__font_type_flag ? Font1 : Font0, 0, 0, // 1, 0
+							"  "
+						);
+						ANM_MANAGER_PTR->draw_text_left(
+							this->furigana_lines[1].get_vm_ptr(),
+							this->text_color_array[this->active_portait], COLOR(0, 0, 0, 0),
+							this->__font_type_flag ? Font1 : Font0, 0, 0, // 1, 0
+							"  "
+						);
 						this->__skip_text_clear = true;
 						this->dialogue_lines[0].interrupt_tree(3);
 						this->dialogue_lines[1].interrupt_tree(3);
@@ -31092,7 +31237,12 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 						int32_t spacing = atol(text);
 						text = strchr(text, ',');
 						this->furigana_lines[0].get_vm_ptr()->data.text_outline_disable = true;
-						ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[0].get_vm_ptr(), 0, COLOR(0, 160, 160, 160), 2, x, spacing, text + 1);
+						ANM_MANAGER_PTR->draw_text_left(
+							this->furigana_lines[0].get_vm_ptr(),
+							COLOR(0, 0, 0, 0), COLOR(0, 160, 160, 160),
+							Font2, x, spacing, // 2
+							text + 1
+						);
 						this->furigana_lines[0].interrupt_and_run_tree(2);
 					}
 					else {
@@ -31102,7 +31252,12 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 						this->__float_1CC = A;
 						this->__sub_4416D0(this->callout_position.x, this->callout_position.y, A, this->active_portait + this->text_type * 3);
 						this->__sub_441900(this->__float_1CC);
-						ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[0].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__font_type_flag, 0, 0, text);
+						ANM_MANAGER_PTR->draw_text_left(
+							this->dialogue_lines[0].get_vm_ptr(),
+							this->text_color_array[this->active_portait], COLOR(0, 0, 0, 0),
+							this->__font_type_flag ? Font1 : Font0, 0, 0, // 1, 0
+							text
+						);
 						switch (this->active_portait) {
 							case 1: case 2:
 								this->dialogue_lines[0].set_controller_position(&this->callout_position);
@@ -31128,7 +31283,12 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 						int32_t spacing = atol(text);
 						text = strchr(text, ',');
 						this->furigana_lines[1].get_vm_ptr()->data.text_outline_disable = true;
-						ANM_MANAGER_PTR->draw_text_left(this->furigana_lines[1].get_vm_ptr(), 0, COLOR(0, 160, 160, 160), 2, x, spacing, text + 1);
+						ANM_MANAGER_PTR->draw_text_left(
+							this->furigana_lines[1].get_vm_ptr(),
+							COLOR(0, 0, 0, 0), COLOR(0, 160, 160, 160),
+							Font2, x, spacing, // 2
+							text + 1
+						);
 						this->furigana_lines[1].interrupt_and_run_tree(2);
 					}
 					else {
@@ -31138,7 +31298,12 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 						this->__float_1CC = A;
 						this->__sub_4416D0(this->callout_position.x, this->callout_position.y, A, this->active_portait + this->text_type * 3);
 						this->__sub_441900(this->__float_1CC);
-						ANM_MANAGER_PTR->draw_text_left(this->dialogue_lines[1].get_vm_ptr(), this->text_color_array[this->active_portait], 0, this->__font_type_flag, 0, 0, text);
+						ANM_MANAGER_PTR->draw_text_left(
+							this->dialogue_lines[1].get_vm_ptr(),
+							this->text_color_array[this->active_portait], COLOR(0, 0, 0, 0),
+							this->__font_type_flag ? Font1 : Font0, 0, 0, // 1, 0
+							text
+						);
 						switch (this->active_portait) {
 							case 1: case 2:
 								this->dialogue_lines[0].set_controller_position(&this->callout_position);
@@ -31590,7 +31755,7 @@ struct PopupManager : ZUNTask {
 
 		for (size_t i = 0; i < BONUS_POPUP_COUNT; ++popup, ++i) {
 			if (popup->alive) {
-				ascii_manager->font_id = 2;
+				ascii_manager->font_id = Font2; // 2
 				ascii_manager->group = 2;
 				ascii_manager->color = popup->color;
 				ascii_manager->__horizontal_positioning_mode = 0;
@@ -31612,7 +31777,7 @@ struct PopupManager : ZUNTask {
 				ascii_manager = ASCII_MANAGER_PTR;
 				ascii_manager->color = COLOR(255, 255, 255, 255);
 				ascii_manager->group = 0;
-				ascii_manager->font_id = 0;
+				ascii_manager->font_id = Font0; // 0
 				ascii_manager->__horizontal_positioning_mode = 1;
 				ascii_manager->__vertical_positioning_mode = 1;
 			}
@@ -35506,17 +35671,19 @@ struct CardNull : CardBase {
 	}
 };
 
+static inline constexpr int32_t CARD_TEXT_LINES = 7;
+
 // size: 0x1C0
 struct CardText {
-	char lines[7][64]; // 0x0
+	char lines[CARD_TEXT_LINES][64]; // 0x0
 	// 0x1C0
 };
 
 // size: 0x63E0
 struct AbilityTextData {
 	CardText description_text[CARD_COUNT]; // 0x0
-	AnmID __vm_id_array_63C0[7]; // 0x63C0
-	AnmID __vm_id_63DC; // 0x63DC
+	AnmID __text_line_vms[CARD_TEXT_LINES]; // 0x63C0
+	AnmID card_type_label; // 0x63DC
 	// 0x63E0
 
 	inline void zero_contents() {
@@ -35527,29 +35694,29 @@ struct AbilityTextData {
 	dllexport static void delete_vms() asm_symbol_rel(0x4132B0) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 		AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
-		size_t i = countof(ability_text_data->__vm_id_array_63C0);
-		AnmID* current_vm_id = ability_text_data->__vm_id_array_63C0;
+		size_t i = countof(ability_text_data->__text_line_vms);
+		AnmID* current_vm_id = ability_text_data->__text_line_vms;
 		do {
 			current_vm_id++->mark_tree_for_delete(anm_manager);
 		} while (--i);
-		ability_text_data->__vm_id_63DC.mark_tree_for_delete(anm_manager);
+		ability_text_data->card_type_label.mark_tree_for_delete(anm_manager);
 	}
 
 	// 0x413390
-	dllexport static void __hide_vm_63DC() asm_symbol_rel(0x413390) {
-		ABILITY_TEXT_DATA_PTR->__vm_id_63DC.__hide_tree();
+	dllexport static void __hide_card_type_label() asm_symbol_rel(0x413390) {
+		ABILITY_TEXT_DATA_PTR->card_type_label.__hide_tree();
 	}
 
 	// 0x4133D0
 	dllexport static void __hide_anms() asm_symbol_rel(0x4133D0) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 		AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
-		size_t i = countof(ability_text_data->__vm_id_array_63C0);
-		AnmID* current_vm_id = ability_text_data->__vm_id_array_63C0;
+		size_t i = countof(ability_text_data->__text_line_vms);
+		AnmID* current_vm_id = ability_text_data->__text_line_vms;
 		do {
 			current_vm_id++->__hide_tree(anm_manager);
 		} while (--i);
-		ABILITY_TEXT_DATA_PTR->__vm_id_63DC.__hide_tree(anm_manager);
+		ABILITY_TEXT_DATA_PTR->card_type_label.__hide_tree(anm_manager);
 	}
 
 	// 0x4162B0
@@ -35562,73 +35729,92 @@ struct AbilityTextData {
 		BOOL enable_description;
 		if (!SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_cards[card_id] && !hide_unlocked_text) {
 			enable_description = false;
-			ANM_MANAGER_PTR->draw_text_center(ability_text_data->__vm_id_array_63C0[0].get_vm_ptr(), COLOR(0, 128, 128, 128), COLOR(0, 0, 0, 0), 10, 0, JpEnStr("", "You haven't unlocked this yet"));
+			ANM_MANAGER_PTR->draw_text_center(
+				ability_text_data->__text_line_vms[0].get_vm_ptr(),
+				COLOR(0, 128, 128, 128), COLOR(0, 0, 0, 0),
+				10, 0,
+				JpEnStr("", "You haven't unlocked this yet")
+			);
 		}
 		else {
 			enable_description = true;
-			ANM_MANAGER_PTR->draw_text_center(ability_text_data->__vm_id_array_63C0[0].get_vm_ptr(), COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0), 10, 0, &ability_text_data->description_text[card_id].lines[0][0]);
+			ANM_MANAGER_PTR->draw_text_center(
+				ability_text_data->__text_line_vms[0].get_vm_ptr(),
+				COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0),
+				10, 0,
+				&ability_text_data->description_text[card_id].lines[0][0]
+			);
 		}
-		ability_text_data->__vm_id_array_63C0[0].set_controller_position(&positionB);
+		ability_text_data->__text_line_vms[0].set_controller_position(&positionB);
 		if (print_description && enable_description) {
 			positionB.y += 188.0f;
-			nounroll for (size_t i = 0; i != countof(ability_text_data->__vm_id_array_63C0) - 1; ++i) {
-				ANM_MANAGER_PTR->draw_text_center(ability_text_data->__vm_id_array_63C0[i + 1].get_vm_ptr(), COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0), 0, 0, &ability_text_data->description_text[card_id].lines[i + 1][0]);
-				ability_text_data->__vm_id_array_63C0[i + 1].set_controller_position(&positionB);
+			nounroll for (size_t i = 0; i != countof(ability_text_data->__text_line_vms) - 1; ++i) {
+				ANM_MANAGER_PTR->draw_text_center(
+					ability_text_data->__text_line_vms[i + 1].get_vm_ptr(),
+					COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0),
+					0, 0,
+					&ability_text_data->description_text[card_id].lines[i + 1][0]
+				);
+				ability_text_data->__text_line_vms[i + 1].set_controller_position(&positionB);
 				positionB.y += 38.0f;
-				ability_text_data->__vm_id_array_63C0[i + 1].__show_tree();
+				ability_text_data->__text_line_vms[i + 1].__show_tree();
 			}
 		}
 		else {
-			nounroll for (size_t i = 0; i != countof(ability_text_data->__vm_id_array_63C0) - 1; ++i) {
-				ability_text_data->__vm_id_array_63C0[i + 1].__hide_tree();
+			nounroll for (size_t i = 0; i != countof(ability_text_data->__text_line_vms) - 1; ++i) {
+				ability_text_data->__text_line_vms[i + 1].__hide_tree();
 			}
 		}
 	}
 
 	// 0x4168A0
-	dllexport gnu_noinline static void __change_vm_63DC_sprite(int32_t arg1) asm_symbol_rel(0x4168A0) {
+	dllexport gnu_noinline static void __set_card_type_label(int32_t card_type) asm_symbol_rel(0x4168A0) {
 		AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
-		if (arg1 != 4) {
-			ability_text_data->__vm_id_63DC.set_sprite_unsafe(arg1 + 5);
-			ability_text_data->__vm_id_63DC.interrupt_tree(2);
+		if (card_type != InternalCard) { // 4
+			ability_text_data->card_type_label.set_sprite_unsafe(5 + card_type);
+			ability_text_data->card_type_label.interrupt_tree(2);
 		}
 		else {
-			ability_text_data->__hide_vm_63DC();
+			ability_text_data->__hide_card_type_label();
 		}
 	}
 
 	// 0x416940
-	dllexport void thiscall __sub_416940(int32_t card_id, BOOL arg2) asm_symbol_rel(0x416940) {
+	dllexport void thiscall __show_card_type_label_if_unlocked(int32_t card_id, BOOL force_show) asm_symbol_rel(0x416940) {
 		if (
-			(SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_cards[card_id] || arg2) &&
-			find_id_in_card_data(card_id).__int_C != 4
+			(SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_cards[card_id] || force_show) &&
+			find_id_in_card_data(card_id).__card_type != InternalCard
 		) {
-			this->__vm_id_63DC.__show_tree();
+			this->card_type_label.__show_tree();
 		}
 		else {
-			this->__vm_id_63DC.__hide_tree();
+			this->card_type_label.__hide_tree();
 		}
 	}
 
 	// 0x416C10
-	dllexport static void stdcall __sub_416C10(int arg1) asm_symbol_rel(0x416C10) {
+	dllexport static void stdcall __show_anms(int32_t card_id) asm_symbol_rel(0x416C10) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 		AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
-		size_t i = countof(ability_text_data->__vm_id_array_63C0);
-		AnmID* current_vm_id = ability_text_data->__vm_id_array_63C0;
+		size_t i = countof(ability_text_data->__text_line_vms);
+		AnmID* current_vm_id = ability_text_data->__text_line_vms;
 		do {
 			current_vm_id++->__show_tree(anm_manager);
 		} while (--i);
-		ability_text_data->__sub_416940(arg1, false);
+		ability_text_data->__show_card_type_label_if_unlocked(card_id, false);
 	}
 
 	static forceinline char* ability_txt_skip_to_end_of_line(const char* str, int32_t& count) {
 		char c = *str;
-		while (
-			c != '\n' && c != '\r' && c != '\f'
-		) {
-			c = *str++;
-			--count;
+		if (c != '\n') {
+			int32_t count_local = count;
+			do {
+				if (c == '\r' || c == '\f' || count_local == 0) {
+					break;
+				}
+				c = *str++;
+				count = --count_local;
+			} while (c != '\n');
 		}
 		return (char*)str;
 	}
@@ -35656,63 +35842,65 @@ struct AbilityTextData {
 	// 0x4135D0
 	dllexport gnu_noinline static char* fastcall ability_txt_copy_rest_of_line_to_buffer(char* out_str, char* str, int32_t& count) asm_symbol_rel(0x4135D0) {
 		out_str[0] = '\0';
-		char* end_of_line = str;
-		if (*str != '\n') {
-			end_of_line = ability_txt_skip_to_end_of_line(str, count);
-		}
+		char* end_of_line = ability_txt_skip_to_end_of_line(str, count);
 		if (count != 0) {
 			*end_of_line = '\0';
 			byteloop_strcpy(out_str, str);
-			end_of_line = ability_txt_skip_end_of_line_chars(++end_of_line, count);
+			++end_of_line;
+			--count;
+			end_of_line = ability_txt_skip_end_of_line_chars(end_of_line, count);
 		}
 		return end_of_line;
 	}
 
 	// 0x4160B0
-	dllexport gnu_noinline void thiscall initialize() asm_symbol_rel(0x4160B0) {
-		return; // TODO: remove BUG
+	dllexport gnu_noinline ZUNResult thiscall initialize() asm_symbol_rel(0x4160B0) {
+		//return ZUN_SUCCESS; // TODO: remove BUG
 		char buffer[0x100];
 		int32_t ability_txt_count;
 		void* ability_txt_file = read_file_to_buffer("ability.txt", &ability_txt_count, false);
 		char* ability_txt = (char*)ability_txt_file;
 		while (ability_txt_count > 0) {
-			switch (char c = *ability_txt++) {
-				case '\\':
+			switch (char c = *ability_txt) {
+				case '\\': // No escape chars I guess
 					goto break_all;
-				case '@': stupid_label: {
+				case '@': start_card_text: {
 					--ability_txt_count;
 					ability_txt = ability_txt_copy_rest_of_line_to_buffer(buffer, ability_txt, ability_txt_count);
 					auto& matched_card = find_in_card_data([=](const CardData& card) {
 						return !strcmp_asm(card.name, buffer);
 					});
 					const CardId& matched_id = matched_card.id;
-					if (ability_txt_count > 0) {
-						for (int32_t i = 0; i < countof(CardText::lines); ++i) {
-							while ((c = *ability_txt) == '#') {
-								clang_forceinline ability_txt = ability_txt_skip_to_next_line(ability_txt, ability_txt_count);
-								if (ability_txt_count <= 0) {
-									goto break_all;
-								}
-							}
-							if (c == '@') {
-								goto stupid_label;
-							}
-							ability_txt = ability_txt_copy_rest_of_line_to_buffer(buffer, ability_txt, ability_txt_count);
-							byteloop_strcpy(this->description_text[matched_id].lines[i], buffer);
+					if (ability_txt_count <= 0) {
+						goto break_all;
+					}
+					nounroll for (int32_t i = 0; i < countof(CardText::lines); ++i) {
+						while ((c = *ability_txt) == '#') {
+							clang_forceinline ability_txt = ability_txt_skip_to_next_line(ability_txt, ability_txt_count);
 							if (ability_txt_count <= 0) {
 								goto break_all;
 							}
 						}
+						if (c == '@') {
+							goto start_card_text;
+						}
+						ability_txt = ability_txt_copy_rest_of_line_to_buffer(buffer, ability_txt, ability_txt_count);
+						byteloop_strcpy(this->description_text[matched_id].lines[i], buffer);
+						if (ability_txt_count <= 0) {
+							goto break_all;
+						}
 					}
 					break;
 				}
-				case '#': default:
+				case '#': // Comment line
+				default: // Unlabeled data I guess?
 					ability_txt = ability_txt_skip_to_next_line(ability_txt, ability_txt_count);
 					break;
 			}
 		}
 	break_all:
 		SAFE_FREE(ability_txt_file);
+		return ZUN_SUCCESS;
 	}
 
 	inline AbilityTextData() {
@@ -35722,8 +35910,8 @@ struct AbilityTextData {
 };
 #pragma region // AbilityTextData Validation
 ValidateFieldOffset32(0x0, AbilityTextData, description_text);
-ValidateFieldOffset32(0x63C0, AbilityTextData, __vm_id_array_63C0);
-ValidateFieldOffset32(0x63DC, AbilityTextData, __vm_id_63DC);
+ValidateFieldOffset32(0x63C0, AbilityTextData, __text_line_vms);
+ValidateFieldOffset32(0x63DC, AbilityTextData, card_type_label);
 ValidateStructSize32(0x63E0, AbilityTextData);
 #pragma endregion
 
@@ -35815,8 +36003,13 @@ public:
 		) {
 			this->__created_ability_data = false;
 			if (!ABILITY_TEXT_DATA_PTR) {
+#if !FIX_REALLY_BAD_BUGS
 				this->__created_ability_data = true;
+#endif
 				ABILITY_TEXT_DATA_PTR = new AbilityTextData();
+#if FIX_REALLY_BAD_BUGS
+				this->__created_ability_data = true;
+#endif
 			}
 			this->__ability_data_loaded = true;
 		}
@@ -36755,20 +36948,25 @@ dllexport gnu_noinline int AbilityTextData::__sub_4162B0(Float3* position, BOOL 
 	AnmLoaded* text_anm = SUPERVISOR.text_anm;
 	Float3 positionB;
 	if (arg2) {
-		ability_text_data->__vm_id_array_63C0[0] = text_anm->instantiate_vm_to_ui_list_back(3);
+		ability_text_data->__text_line_vms[0] = text_anm->instantiate_vm_to_ui_list_back(3);
 		positionB = { 0.0f, 0.0f, 0.0f };
-		for (int32_t i = 0; i < countof(ability_text_data->__vm_id_array_63C0) - 1; ++i) {
-			ability_text_data->__vm_id_array_63C0[i + 1] = SUPERVISOR.text_anm->instantiate_vm_to_ui_list_back(i + 4, &positionB);
+		for (int32_t i = 0; i < countof(ability_text_data->__text_line_vms) - 1; ++i) {
+			ability_text_data->__text_line_vms[i + 1] = SUPERVISOR.text_anm->instantiate_vm_to_ui_list_back(4 + i, &positionB);
 		}
 	} else {
 		AnmID id = text_anm->instantiate_vm_to_ui_list_back(3);
-		ability_text_data->__vm_id_array_63C0[0] = id;
-		ANM_MANAGER_PTR->draw_text_center(id.get_vm_ptr(), COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0), 10, 0, JpEnStr("", "I have nothing!"));
+		ability_text_data->__text_line_vms[0] = id;
+		ANM_MANAGER_PTR->draw_text_center(
+			id.get_vm_ptr(),
+			COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0),
+			10, 0,
+			JpEnStr("", "I have nothing!")
+		);
 		positionB = *position + Float3(0.0f, 370.0f, 0.0f);
-		ability_text_data->__vm_id_array_63C0[0].set_controller_position(&positionB);
+		ability_text_data->__text_line_vms[0].set_controller_position(&positionB);
 	}
 	positionB = *position + Float3(0.0f, 160.0f, 0.0f);
-	ability_text_data->__vm_id_63DC = ABILITY_MANAGER_PTR->abmenu_anm->instantiate_vm_to_ui_list_back(5, &positionB);
+	ability_text_data->card_type_label = ABILITY_MANAGER_PTR->abmenu_anm->instantiate_vm_to_ui_list_back(5, &positionB);
 	return 0;
 }
 
@@ -36866,8 +37064,7 @@ struct AbilityTrophyManager : ZUNTask {
 	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x419170) {
 		AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
 		if (
-			ability_manager &&
-			ability_manager->__ability_data_loaded
+			ability_manager && ability_manager->__ability_data_loaded
 		) {
 			switch (this->primary_state) {
 				case 2:
@@ -36892,8 +37089,19 @@ struct AbilityTrophyManager : ZUNTask {
 						this->__anm_id_244 = this->trophy_anm->instantiate_vm_to_ui_list_back(11);
 
 						// TODO: trophy text data
-						//ANM_MANAGER_PTR->draw_text_center(this->__anm_id_240.get_vm_ptr(), COLOR(0, 128, 192, 192), COLOR(0, 0, 0, 0), 9, 0, JpEnStr("", "[%s]"), /*TODO*/);
-						ANM_MANAGER_PTR->draw_text_center(this->__anm_id_244.get_vm_ptr(), COLOR(0, 128, 192, 192), COLOR(0, 0, 0, 0), 9, 0, JpEnStr("", "got!"));
+						/*
+						ANM_MANAGER_PTR->draw_text_center(
+							this->__anm_id_240.get_vm_ptr(),
+							COLOR(0, 128, 192, 192), COLOR(0, 0, 0, 0),
+							9, 0,
+							JpEnStr("", "[%s]"), // TODO
+						);
+						*/
+						ANM_MANAGER_PTR->draw_text_center(
+							this->__anm_id_244.get_vm_ptr(),
+							COLOR(0, 128, 192, 192), COLOR(0, 0, 0, 0),
+							9, 0, JpEnStr("", "got!")
+						);
 
 						SOUND_MANAGER.play_sound(82);
 
@@ -38157,7 +38365,7 @@ struct EnemyManager : ZUNTask {
 	}
 
 	// 0x42D7D0
-	dllexport gnu_noinline Enemy* allocate_new_enemy(const char* sub_name, EnemyInitData* data, int32_t = UNUSED_DWORD) asm_symbol_rel(0x42D7D0) {
+	dllexport gnu_noinline Enemy* thiscall allocate_new_enemy(const char* sub_name, EnemyInitData* data, int32_t = UNUSED_DWORD) asm_symbol_rel(0x42D7D0) {
 		//ZDEBUG_PRINT("Creating enemy with sub %s\n", sub_name);
 		Enemy* enemy = new_no_eh<Enemy>(sub_name);
 		enemy->data.motion.absolute.position = data->position;
@@ -38225,22 +38433,21 @@ struct EnemyManager : ZUNTask {
 	dllexport gnu_noinline static int32_t count_killable_enemies() asm_symbol_rel(0x42D440) {
 		return ENEMY_MANAGER_PTR->enemy_list.count_if_not([](Enemy* enemy) {
 			return !enemy->data.has_active_hitbox() || enemy->data.is_invulnerable();
-			//return enemy->data.disable_hitbox || enemy->data.invincible || enemy->data.intangible || enemy->data.invulnerable_timer > 0;
 		});
 	}
 
 	// 0x42D490
-	dllexport gnu_noinline void set_boss(int32_t index, Enemy* enemy) asm_symbol_rel(0x42D490) {
+	dllexport gnu_noinline void thiscall set_boss(int32_t index, Enemy* enemy) asm_symbol_rel(0x42D490) {
 		EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
 		if (enemy) {
 			enemy_manager->boss_ids[index] = enemy->id;
 		} else {
-			enemy_manager->boss_ids[index] = 0;
+			enemy_manager->boss_ids[index] = NULL;
 		}
 	}
 
 	// 0x42D4D0
-	dllexport gnu_noinline void __set_hide_boss_hud(bool value) asm_symbol_rel(0x42D4D0) {
+	dllexport gnu_noinline void thiscall __set_hide_boss_hud(bool value) asm_symbol_rel(0x42D4D0) {
 		ENEMY_MANAGER_PTR->__hide_boss_hud = value;
 	}
 
@@ -38255,16 +38462,16 @@ struct EnemyManager : ZUNTask {
 	}
 
 	// 0x42D500
-	dllexport gnu_noinline Enemy* get_enemy_by_id(int32_t enemy_id) asm_symbol_rel(0x42D500) {
+	dllexport gnu_noinline Enemy* thiscall get_enemy_by_id(int32_t enemy_id) asm_symbol_rel(0x42D500) {
 		return ENEMY_MANAGER_PTR->get_enemy_by_id_impl(enemy_id);
 	}
 
 	forceinline Enemy* get_boss_by_index(int32_t index) {
-		return ::get_boss_by_index(index);
+		return this->get_enemy_by_id_impl(this->boss_ids[index]);
 	}
 
 	// 0x409990
-	dllexport gnu_noinline BOOL enemy_exists_with_id(int32_t enemy_id) asm_symbol_rel(0x409990) {
+	dllexport gnu_noinline BOOL thiscall enemy_exists_with_id(int32_t enemy_id) asm_symbol_rel(0x409990) {
 		if (enemy_id) {
 			return (bool)ENEMY_MANAGER_PTR->enemy_list.find_if([=](Enemy* enemy) {
 				return enemy->id == enemy_id;
@@ -38274,7 +38481,7 @@ struct EnemyManager : ZUNTask {
 	}
 
 	// 0x42D540
-	dllexport gnu_noinline void set_enemy_limit(int32_t limit) asm_symbol_rel(0x42D540) {
+	dllexport gnu_noinline void thiscall set_enemy_limit(int32_t limit) asm_symbol_rel(0x42D540) {
 		ENEMY_MANAGER_PTR->enemy_limit = limit;
 	}
 
@@ -38871,8 +39078,7 @@ dllexport gnu_noinline Enemy::Enemy(const char* sub_name) {
 
 // 0x4237F0
 dllexport gnu_noinline Enemy* stdcall get_boss_by_index(int32_t boss_index) {
-	EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
-	return enemy_manager->get_enemy_by_id_impl(enemy_manager->boss_ids[boss_index]);
+	return ENEMY_MANAGER_PTR->get_boss_by_index(boss_index);
 }
 
 // 0x42D220
@@ -40650,13 +40856,17 @@ struct Spellcard : ZUNTask {
 		this->__spell_name_vms[2] = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(1);
 		AnmVM* vm = this->__spell_name_vms[1].get_vm_ptr();
 		
-		ANM_MANAGER_PTR->draw_text_right(vm, COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0), 0, 0, name);
+		ANM_MANAGER_PTR->draw_text_right(
+			vm,
+			COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0),
+			0, 0,
+			name
+		);
 
 		SOUND_MANAGER.play_sound(33);
 		this->__spell_ring_effect = EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(13);
 
-		Enemy* boss;
-		clang_forceinline boss = ENEMY_MANAGER_PTR->get_boss_by_index(0);
+		Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0);
 		this->__spell_ring_position = boss->data.current_motion.position;
 		this->__spell_ring_effect.set_controller_position(&boss->data.current_motion.position);
 
@@ -40811,10 +41021,8 @@ public:
 				}
 			}
 
-			// First call is inlined, second is not
 			if (ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
-				Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0);
-				this->__spell_ring_position += (boss->data.current_motion.position - this->__spell_ring_position) * 0.05f;
+				this->__spell_ring_position += (get_boss_by_index(0)->data.current_motion.position - this->__spell_ring_position) * 0.05f;
 			}
 
 			this->__spell_ring_effect.set_controller_position(&this->__spell_ring_position);
@@ -40840,7 +41048,7 @@ public:
 			Float3 position;
 			position.y = 35.0f;
 			position.z = 0.0f;
-			ascii_manager->font_id = 2;
+			ascii_manager->font_id = Font2; // 2
 			ascii_manager->group = 2;
 			ascii_manager->set_alpha(vm->get_alpha());
 			if (this->capture_state) {
@@ -40870,7 +41078,7 @@ public:
 			}
 
 			ascii_manager = ASCII_MANAGER_PTR;
-			ascii_manager->font_id = 0;
+			ascii_manager->font_id = Font0; // 0
 			ascii_manager->group = 0;
 			ascii_manager->set_alpha(255);
 		}
@@ -43016,6 +43224,14 @@ enum BulletEffectType : uint32_t {
 	EX_FREEZE       = 0x10000000, // 29     268435456
 };
 
+// Bounce flags
+#define BOUNCE_BOTTOM_EDGE		0x01
+#define BOUNCE_TOP_EDGE			0x02
+#define BOUNCE_LEFT_EDGE		0x04
+#define BOUNCE_RIGHT_EDGE		0x08
+#define BOUNCE_IGNORE		    0x10 // why is this a flag
+#define BOUNCE_CUSTOM_BOUNDS	0x20
+
 // size: 0x48
 struct BulletEffectData {
 	Timer timer; // 0x0
@@ -43038,8 +43254,9 @@ struct BulletEffectData {
 	};
 	union { // 0x34
 		int32_t duration;
-		int32_t __offscreen_unknown;
+		int32_t __despawn_if_trajectory_offscreen;
 		int32_t wrap_count;
+		int32_t bounce_count;
 	};
 	union { // 0x38
 		int32_t max_count;
@@ -43172,9 +43389,7 @@ struct Bullet {
 		return this->vm.get_sprite();
 	}
 
-	inline bool is_offscreen() {
-		float scale = this->scale;
-		
+	forceinline bool is_offscreen(float scale, float bottom_tolerance) {
 		float X = this->position.x;
 
 		float sprite_width = this->get_sprite()->__size_x * scale;
@@ -43193,7 +43408,7 @@ struct Bullet {
 		float half_height = sprite_height * 0.5f;
 
 		if (
-			(Y + half_height <= -64.0f) || // bit of extra tolerance off the bottom I guess
+			(Y + half_height <= SCREEN_BOTTOM_EDGE - bottom_tolerance) || // bit of extra tolerance off the bottom I guess
 			(Y - half_height >= SCREEN_TOP_EDGE)
 		) {
 			return true;
@@ -43238,9 +43453,9 @@ struct Bullet {
 			zfabsf(this->velocity.x) > 0.0001f ||
 			zfabsf(this->velocity.y) > 0.0001f
 		) {
-			this->angle = this->velocity.as2().direction();
+			this->angle = this->velocity.direction();
 		}
-		this->speed = this->velocity.as2().length();
+		this->speed = this->velocity.length();
 
 		this->effect_accel.timer++;
 		return 0;
@@ -43327,11 +43542,7 @@ struct Bullet {
 	}
 
 	// 0x427F40
-	dllexport gnu_noinline int thiscall run_effect_bounce() asm_symbol_rel(0x427F40) {
-		// uuuuuuugh
-
-		return 0;
-	}
+	dllexport gnu_noinline int thiscall run_effect_bounce() asm_symbol_rel(0x427F40);
 
 	// 0x428460
 	dllexport gnu_noinline int thiscall run_effect_homing() asm_symbol_rel(0x428460) {
@@ -43398,7 +43609,7 @@ struct Bullet {
 
 		this->position += this->effect_veladd.velocity;
 
-		this->effect_veladd.timer.reset(); // is this bugged?
+		this->effect_veladd.timer.reset(); // is this bugged? feels like it should be incrementing
 		return 0;
 	}
 
@@ -43406,8 +43617,72 @@ struct Bullet {
 	dllexport gnu_noinline int thiscall run_effect_offscreen() asm_symbol_rel(0x428970) {
 		this->effect_offscreen.timer--;
 
-		if (this->effect_offscreen.__offscreen_unknown) {
-			// TODO: nastiness
+		if (
+			this->effect_offscreen.__despawn_if_trajectory_offscreen &&
+			this->is_offscreen(1.0f, 0.0f)
+		) {
+			Float2 unit; // LOCAL.4, LOCAL.3
+			unit.make_from_vector(this->angle, 1.0f);
+
+			// on no
+			Float2 A; // LOCAL.2, LOCAL.1
+
+			A.x = (-(SCREEN_TOP_EDGE - 64.0f) - this->get_sprite()->__size_x) * 0.5f - this->position.x;
+			A.y = (-SCREEN_TOP_EDGE - this->get_sprite()->__size_y) * 0.5f + SCREEN_HALF_HEIGHT - this->position.y;
+			D3DXVec2Normalize(&A, &A);
+			float B = unit.x * A.y - unit.y * A.x; // LOCAL.8
+			float C = unit.y * A.y + unit.x * A.x; // LOCAL.5
+
+			A.x = ((SCREEN_TOP_EDGE - 64.0f) - this->get_sprite()->__size_x) * 0.5f - this->position.x;
+			A.y = (-SCREEN_TOP_EDGE - this->get_sprite()->__size_y) * 0.5f + SCREEN_HALF_HEIGHT - this->position.y;
+			D3DXVec2Normalize(&A, &A);
+			float D = unit.x * A.y - unit.y * A.x; // LOCAL.9
+			float E = unit.y * A.y + unit.x * A.x; // LOCAL.6
+
+			A.x = (-(SCREEN_TOP_EDGE - 64.0f) - this->get_sprite()->__size_x) * 0.5f - this->position.x;
+			A.y = (SCREEN_TOP_EDGE - this->get_sprite()->__size_y) * 0.5f + SCREEN_HALF_HEIGHT - this->position.y;
+			D3DXVec2Normalize(&A, &A);
+			float F = unit.x * A.y - unit.y * A.x; // LOCAL.10
+			float G = unit.y * A.y + unit.x * A.x; // LOCAL.7
+
+			A.x = ((SCREEN_TOP_EDGE - 64.0f) - this->get_sprite()->__size_x) * 0.5f - this->position.x;
+			A.y = (SCREEN_TOP_EDGE - this->get_sprite()->__size_y) * 0.5f + SCREEN_HALF_HEIGHT - this->position.y;
+			D3DXVec2Normalize(&A, &A);
+			float H = unit.x * A.y - unit.y * A.x; // LOCAL.1, XMM5
+			float I = unit.y * A.y + unit.x * A.x; // XMM4
+
+			float J = -999.0f;
+			if (B <= 0.0f && C > J && C <= 0.0f) {
+				J = C;
+			}
+			if (D <= 0.0f && E > J && E <= 0.0f) {
+				J = E;
+			}
+			if (F <= 0.0f && G > J && G <= 0.0f) {
+				J = G;
+			}
+			if (H <= 0.0f && I > J && I <= 0.0f) {
+				J = I;
+			}
+
+			float K = -999.0f;
+			if (B >= 0.0f && C > K && C <= 0.0f) {
+				K = C;
+			}
+			if (D >= 0.0f && E > K && E <= 0.0f) {
+				K = E;
+			}
+			if (F >= 0.0f && G > K && G <= 0.0f) {
+				K = G;
+			}
+			if (H >= 0.0f && I > K && I <= 0.0f) {
+				K = I;
+			}
+
+			if (J < -998.0f || K < -998.0f) {
+				this->toggle_effects(EX_OFFSCREEN);
+				return 1;
+			}
 		}
 		if (this->effect_offscreen.timer <= 0) {
 			this->toggle_effects(EX_OFFSCREEN);
@@ -43595,7 +43870,7 @@ struct Bullet {
 					!this->effects_active(EX_OFFSCREEN) &&
 					this->offscreen_time < 1
 				) {
-					if (this->is_offscreen()) {
+					if (this->is_offscreen(this->scale, 64.0f)) {
 						goto cleanup_bullet;
 					}
 				}
@@ -44596,20 +44871,64 @@ struct LaserLine : LaserData {
 	// 0x44A370
 	// Method 0x3C
 	dllexport virtual gnu_noinline int thiscall run_effect_accel() override asm_symbol_rel(0x44A370) {
-		// TODO
+		if (this->effect_accel.timer >= this->effect_accel.duration) {
+			this->disable_effects(EX_ACCEL);
+			return 1;
+		}
+
+		this->speed += this->effect_accel.acceleration * GAME_SPEED;
+		this->velocity += this->effect_accel.acceleration_vec * GAME_SPEED;
+
+		if (
+			zfabsf(this->velocity.x) > 0.0001f ||
+			zfabsf(this->velocity.y) > 0.0001f
+		) {
+			this->angle = this->velocity.direction();
+		}
+		this->speed = this->velocity.length();
+
+		this->effect_accel.timer++;
+		return 0;
 	}
 
 	// 0x44A1F0
 	// Method 0x44
 	dllexport virtual gnu_noinline int thiscall __run_effect_angle_type_0() override asm_symbol_rel(0x44A1F0) {
-		// TODO
+		float speed;
+		float angle;
+		
+		int32_t end_time = this->effect_angle.duration;
+		if (this->effect_angle.timer >= end_time) {
+			SOUND_MANAGER.play_sound_validate(this->params.transform_sound);
+
+			angle = this->angle + this->effect_angle.angle;
+			speed = this->effect_angle.speed;
+
+			++this->effect_angle.count;
+
+			this->speed = speed;
+			this->angle = angle;
+
+			this->effect_angle.timer.reset();
+
+			if (this->effect_angle.count >= this->effect_angle.max_count) {
+				this->velocity.make_from_vector(angle, speed);
+				this->disable_effects(EX_ANGLE);
+				return 1;
+			}
+		}
+		else {
+			speed = this->speed - ((float)this->effect_angle.timer * this->speed / (float)end_time);
+		}
+		this->velocity.make_from_vector(this->angle, speed);
+
+		this->effect_angle.timer++;
+		return 0;
 	}
 
 	// 0x449E00
 	// Method 0x50
-	dllexport virtual gnu_noinline int thiscall run_effect_bounce() override asm_symbol_rel(0x449E00) {
-		// TODO
-	}
+	dllexport virtual gnu_noinline int thiscall run_effect_bounce() override asm_symbol_rel(0x449E00);
 
 	// 0x448280
 	// Method 0x64
@@ -44731,7 +45050,7 @@ struct LaserInfinite : LaserData {
 
 		if (
 			this->params.__anchor_to_boss &&
-			get_boss_by_index(0)
+			ENEMY_MANAGER_PTR->get_boss_by_index(0)
 		) {
 			this->position = get_boss_by_index(0)->data.current_motion.position;
 		}
@@ -45440,24 +45759,82 @@ struct LaserCurve : LaserData {
 	// 0x451560
 	// Method 0x3C
 	dllexport virtual gnu_noinline int thiscall run_effect_accel() override asm_symbol_rel(0x451560) {
-		// TODO
+		if (this->effect_accel.timer >= this->effect_accel.duration) {
+			this->disable_effects(EX_ACCEL);
+			return 1;
+		}
+
+		this->speed += this->effect_accel.acceleration * GAME_SPEED;
+		this->velocity += this->effect_accel.acceleration_vec * GAME_SPEED;
+
+		if (
+			zfabsf(this->velocity.x) > 0.0001f ||
+			zfabsf(this->velocity.y) > 0.0001f
+		) {
+			this->angle = this->velocity.direction();
+		}
+		this->speed = this->velocity.length();
+
+		this->effect_accel.timer++;
+		return 0;
 	}
 
 	// 0x451410
 	// Method 0x40
 	dllexport virtual gnu_noinline int thiscall run_effect_angle_accel() override asm_symbol_rel(0x451410) {
-		// TODO
+		if (this->effect_angle_accel.timer >= this->effect_angle_accel.duration) {
+			this->disable_effects(EX_ANGLE_ACCEL);
+			return 1;
+		}
+
+		float angle = reduce_angle(this->angle + this->effect_angle_accel.angular_velocity * GAME_SPEED);
+		this->angle = angle;
+		float speed = this->speed + this->effect_angle_accel.acceleration * GAME_SPEED;
+		this->speed = speed;
+
+		this->velocity.make_from_vector(angle, speed);
+
+		this->effect_angle_accel.timer++;
+		return 0;
 	}
 
 	// 0x451290
 	// Method 0x44
 	dllexport virtual gnu_noinline int thiscall __run_effect_angle_type_0() override asm_symbol_rel(0x451290) {
-		// TODO
+		float speed;
+		float angle;
+
+		int32_t end_time = this->effect_angle.duration;
+		if (this->effect_angle.timer >= end_time) {
+			SOUND_MANAGER.play_sound_validate(this->params.transform_sound);
+
+			angle = this->angle + this->effect_angle.angle;
+			speed = this->effect_angle.speed;
+
+			++this->effect_angle.count;
+
+			this->speed = speed;
+			this->angle = angle;
+
+			this->effect_angle.timer.reset();
+
+			if (this->effect_angle.count >= this->effect_angle.max_count) {
+				this->velocity.make_from_vector(angle, speed);
+				this->disable_effects(EX_ANGLE);
+				return 1;
+			}
+		} else {
+			speed = this->speed - ((float)this->effect_angle.timer * this->speed / (float)end_time);
+		}
+		this->velocity.make_from_vector(this->angle, speed);
+
+		this->effect_angle.timer++;
+		return 0;
 	}
 	
 	// 0x4516E0
-	// Method 0x50
-	dllexport virtual gnu_noinline int thiscall run_effect_bounce() override asm_symbol_rel(0x4516E0) {
+	// Method 0x60
+	dllexport virtual gnu_noinline int thiscall run_effect_offscreen() override asm_symbol_rel(0x4516E0) {
 		this->effect_offscreen.timer--;
 		if (this->effect_offscreen.timer <= 0) {
 			this->toggle_effects(EX_OFFSCREEN);
@@ -46418,6 +46795,110 @@ static inline void bullet_manager_enable_graze_despawns() {
 	}
 }
 
+// 0x427F40
+dllexport gnu_noinline int thiscall Bullet::run_effect_bounce() {
+	BulletManager* bullet_manager = BULLET_MANAGER_PTR;
+
+	float bounce_bound_x = bullet_manager->__bounce_bounds.x;
+	float bounce_bound_y;
+	if (
+		(
+			bounce_bound_x <= 0.0f &&
+			(
+				this->position.x + 0.0f <= SCREEN_CENTER_X + -this->effect_bounce.size.x * 0.5f ||
+				this->position.x - 0.0f >= SCREEN_CENTER_X + this->effect_bounce.size.x * 0.5f ||
+				this->position.y + 0.0f <= SCREEN_CENTER_Y - this->effect_bounce.size.y * 0.5f ||
+				this->position.y - 0.0f >= SCREEN_CENTER_Y + this->effect_bounce.size.y * 0.5f
+			)
+		) ||
+		(
+			bounce_bound_x > 0.0f &&
+			(
+				this->position.x + 0.0f <= SCREEN_CENTER_X + -bounce_bound_x * 0.5f ||
+				this->position.x - 0.0f >= SCREEN_CENTER_X + bounce_bound_x * 0.5f ||
+				this->position.y + 0.0f <= SCREEN_CENTER_Y - (bounce_bound_y = bullet_manager->__bounce_bounds.y) * 0.5f ||
+				this->position.y - 0.0f >= SCREEN_CENTER_Y + bounce_bound_y * 0.5f
+			)
+		)
+	) {
+		uint32_t bounce_flags = this->effect_bounce.type;
+		BOOL has_bounced = false;
+		if (bounce_flags & BOUNCE_BOTTOM_EDGE) {
+			bounce_bound_y = bullet_manager->__bounce_bounds.y;
+			if (bounce_bound_y <= 0.0f) {
+				bounce_bound_y = this->effect_bounce.size.y;
+			}
+			float position_y = this->position.y;
+			if (position_y < SCREEN_CENTER_Y - bounce_bound_y * 0.5f) {
+				if (!(bounce_flags & BOUNCE_IGNORE)) {
+					this->angle = -this->angle;
+					this->position.y = SCREEN_HEIGHT - bounce_bound_y - position_y;
+				}
+				has_bounced = true;
+			}
+		}
+		if (bounce_flags & BOUNCE_TOP_EDGE) {
+			bounce_bound_y = bullet_manager->__bounce_bounds.y;
+			if (bounce_bound_y <= 0.0f) {
+				bounce_bound_y = this->effect_bounce.size.y;
+			}
+			float position_y = this->position.y;
+			if (position_y > SCREEN_CENTER_Y + bounce_bound_y * 0.5f) {
+				if (!(bounce_flags & BOUNCE_IGNORE)) {
+					this->angle = -this->angle;
+					this->position.y = SCREEN_HEIGHT + bounce_bound_y - position_y;
+				}
+				has_bounced = true;
+			}
+		}
+		if (bounce_flags & BOUNCE_RIGHT_EDGE) {
+			bounce_bound_x = bullet_manager->__bounce_bounds.x;
+			if (bounce_bound_x <= 0.0f) {
+				bounce_bound_x = this->effect_bounce.size.x;
+			}
+			if (this->position.x > SCREEN_CENTER_X + bounce_bound_x * 0.5f) {
+				if (!(bounce_flags & BOUNCE_IGNORE)) {
+					this->angle = reduce_angle(reduce_angle(-this->angle - PI_f) + 0.0f);
+					this->position.x = SCREEN_CENTER_X + bounce_bound_x - this->position.x;
+				}
+				has_bounced = true;
+			}
+		}
+		if (bounce_flags & BOUNCE_LEFT_EDGE) {
+			bounce_bound_x = bullet_manager->__bounce_bounds.x;
+			if (bounce_bound_x <= 0.0f) {
+				bounce_bound_x = this->effect_bounce.size.x;
+			}
+			if (this->position.x > SCREEN_CENTER_X + -bounce_bound_x * 0.5f) {
+				if (!(bounce_flags & BOUNCE_IGNORE)) {
+					this->angle = reduce_angle(reduce_angle(-this->angle - PI_f) + 0.0f);
+					this->position.x = SCREEN_CENTER_X - bounce_bound_x - this->position.x;
+				}
+				has_bounced = true;
+			}
+		}
+
+		float speed = this->effect_bounce.speed;
+		if (speed > -990.0f) {
+			this->speed = speed;
+		} else {
+			speed = this->speed;
+		}
+
+		this->velocity.make_from_vector(this->angle, speed);
+
+		if (has_bounced) {
+			++this->effect_bounce.bounce_count;
+			SOUND_MANAGER.play_sound_validate(this->transform_sound);
+		}
+		if (this->effect_bounce.bounce_count >= this->effect_bounce.max_count) {
+			this->disable_effects(EX_BOUNCE);
+			return 1;
+		}
+	}
+	return 0;
+}
+
 // 0x424AD0
 dllexport gnu_noinline void Bullet::cleanup() {
 	if (this->state != BulletState0) {
@@ -46991,6 +47472,102 @@ dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
 	return 0;
 }
 
+// 0x449E00
+// Method 0x50
+dllexport gnu_noinline int thiscall LaserLine::run_effect_bounce() {
+	Float3 tip_position;
+	tip_position.make_from_vector(this->angle, this->length);
+	tip_position.as2() += this->position.as2();
+	tip_position.z = 0.0f;
+
+	if ( // yes the 0.0 are really there
+		tip_position.x + 0.0f >= SCREEN_LEFT_EDGE ||
+		tip_position.x - 0.0f <= SCREEN_RIGHT_EDGE ||
+		tip_position.y + 0.0f >= SCREEN_BOTTOM_EDGE ||
+		tip_position.y - 0.0f <= SCREEN_TOP_EDGE
+	) {
+		uint32_t bounce_flags = this->effect_bounce.flags;
+		BOOL has_bounced = false;
+		if (
+			(bounce_flags & BOUNCE_BOTTOM_EDGE) && tip_position.y < SCREEN_BOTTOM_EDGE
+		) {
+			if (!(bounce_flags & BOUNCE_IGNORE)) {
+				HitboxManager::__solve_lines_intersect(
+					&this->params.position.x, &this->params.position.y,
+					SCREEN_LEFT_EDGE - 64.0f, SCREEN_BOTTOM_EDGE, SCREEN_RIGHT_EDGE + 64.0f, SCREEN_BOTTOM_EDGE,
+					tip_position.x, tip_position.y, this->position.x, this->position.y
+				);
+				this->params.position.z = 0.0f;
+				this->params.angle = -this->angle;
+				this->params.speed = this->effect_bounce.speed;
+				this->params.spawn_distance = 0.0f;
+				LASER_MANAGER_PTR->allocate_new_laser(LineLaser, &this->params);
+				bounce_flags = this->effect_bounce.flags;
+			}
+			has_bounced = true;
+		}
+		if (
+			(bounce_flags & BOUNCE_TOP_EDGE) && tip_position.y > SCREEN_TOP_EDGE
+		) {
+			if (!(bounce_flags & BOUNCE_IGNORE)) {
+				HitboxManager::__solve_lines_intersect(
+					&this->params.position.x, &this->params.position.y,
+					SCREEN_LEFT_EDGE - 64.0f, SCREEN_TOP_EDGE, SCREEN_RIGHT_EDGE + 64.0f, SCREEN_TOP_EDGE,
+					tip_position.x, tip_position.y, this->position.x, this->position.y
+				);
+				this->params.position.z = 0.0f;
+				this->params.angle = -this->angle;
+				this->params.speed = this->effect_bounce.speed;
+				this->params.spawn_distance = 0.0f;
+				LASER_MANAGER_PTR->allocate_new_laser(LineLaser, &this->params);
+				bounce_flags = this->effect_bounce.flags;
+			}
+			has_bounced = true;
+		}
+		if (
+			(bounce_flags & BOUNCE_LEFT_EDGE) && tip_position.x < SCREEN_LEFT_EDGE
+		) {
+			if (!(bounce_flags & BOUNCE_IGNORE)) {
+				HitboxManager::__solve_lines_intersect(
+					&this->params.position.x, &this->params.position.y,
+					SCREEN_LEFT_EDGE, SCREEN_BOTTOM_EDGE - 192.0f, SCREEN_LEFT_EDGE, SCREEN_TOP_EDGE + 192.0f,
+					tip_position.x, tip_position.y, this->position.x, this->position.y
+				);
+				this->params.position.z = 0.0f;
+				this->params.angle = reduce_angle(-this->angle - PI_f);
+				this->params.speed = this->effect_bounce.speed;
+				this->params.spawn_distance = 0.0f;
+				LASER_MANAGER_PTR->allocate_new_laser(LineLaser, &this->params);
+				bounce_flags = this->effect_bounce.flags;
+			}
+			has_bounced = true;
+		}
+		if (
+			(bounce_flags & BOUNCE_RIGHT_EDGE) && tip_position.x > SCREEN_RIGHT_EDGE
+		) {
+			if (!(bounce_flags & BOUNCE_IGNORE)) {
+				HitboxManager::__solve_lines_intersect(
+					&this->params.position.x, &this->params.position.y,
+					SCREEN_RIGHT_EDGE, SCREEN_BOTTOM_EDGE - 192.0f, SCREEN_RIGHT_EDGE, SCREEN_TOP_EDGE + 192.0f,
+					tip_position.x, tip_position.y, this->position.x, this->position.y
+				);
+				this->params.position.z = 0.0f;
+				this->params.angle = reduce_angle(-this->angle - PI_f);
+				this->params.speed = this->effect_bounce.speed;
+				this->params.spawn_distance = 0.0f;
+				LASER_MANAGER_PTR->allocate_new_laser(LineLaser, &this->params);
+			}
+			has_bounced = true;
+		}
+		if (has_bounced) {
+			this->disable_effects(EX_BOUNCE);
+			SOUND_MANAGER.play_sound_validate(this->params.transform_sound);
+			return 1;
+		}
+	}
+	return 0;
+}
+
 // 0x44C870
 // Method 0xC
 dllexport gnu_noinline int thiscall LaserInfinite::initialize(void* data) {
@@ -47196,8 +47773,7 @@ dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_set_1_6bs(EnemyData*
 			if (bullet->__ex_react_val == 1) {
 				switch (bullet->__int_690) {
 					case 0: {
-						Enemy* boss;
-						clang_forceinline boss = get_boss_by_index(0);
+						Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0);
 						Float2 position = bullet->position;
 						float F1 = enemy_data->float_vars[1];
 						if (position.distance_squared(&boss->data.current_motion.position) >= F1 * F1) {
@@ -47438,8 +48014,8 @@ dllexport gnu_noinline void thiscall LaserLine::run_effects() {
 					}
 					effect_data.speed = speed_arg;
 					effect_data.max_count = --IntArg(0);
-					effect_data.duration = 0;
-					effect_data.count = IntArg(1);
+					effect_data.bounce_count = 0;
+					effect_data.flags = IntArg(1); // Lasers use flags, bullets use type. There is no reason.
 					++effect_index;
 					continue;
 				}
@@ -47661,8 +48237,8 @@ dllexport gnu_noinline void thiscall LaserCurve::run_effects() {
 					}
 					effect_data.speed = speed_arg;
 					effect_data.max_count = --IntArg(0);
-					effect_data.duration = 0;
-					effect_data.count = IntArg(1);
+					effect_data.bounce_count = 0;
+					effect_data.flags = IntArg(1); // Lasers use flags, bullets use type. There is no reason.
 				}
 				break;
 			}
@@ -47676,7 +48252,7 @@ dllexport gnu_noinline void thiscall LaserCurve::run_effects() {
 				this->active_effects |= EX_OFFSCREEN;
 				BulletEffectData& effect_data = this->effect_offscreen;
 				effect_data.timer.set(IntArg(0));
-				effect_data.__offscreen_unknown = IntArg(1);
+				effect_data.__despawn_if_trajectory_offscreen = IntArg(1);
 				break;
 			}
 			case EX_INVULN: {
@@ -47888,7 +48464,7 @@ dllexport void Bullet::run_effects() {
 				this->active_effects |= current_type;
 				BulletEffectData& effect_data = this->effect_bounce;
 				effect_data.speed = FloatArg(0);
-				if (IntArg(1) & 0x20) {
+				if (IntArg(1) & BOUNCE_CUSTOM_BOUNDS) { // 0x20
 					effect_data.size.x = FloatArg(1);
 					effect_data.size.y = FloatArg(2);
 				} else {
@@ -47896,8 +48472,8 @@ dllexport void Bullet::run_effects() {
 					effect_data.size.y = SCREEN_HEIGHT;
 				}
 				effect_data.max_count = IntArg(0);
-				effect_data.duration = 0;
-				effect_data.type = IntArg(1);
+				effect_data.bounce_count = 0;
+				effect_data.type = IntArg(1); // Lasers use flags, bullets use type. There is no reason.
 				break;
 			}
 			case EX_INVULN:
@@ -47907,7 +48483,7 @@ dllexport void Bullet::run_effects() {
 				this->active_effects |= EX_OFFSCREEN;
 				BulletEffectData& effect_data = this->effect_offscreen;
 				effect_data.timer.set(IntArg(0));
-				effect_data.__offscreen_unknown = IntArg(1);
+				effect_data.__despawn_if_trajectory_offscreen = IntArg(1);
 				break;
 			}
 			case EX_PLAYSOUND:
@@ -48371,7 +48947,7 @@ forceinline UpdateFuncRet BombBase::on_draw() {
 
 		ascii_manager->color = color_array[index];
 		ascii_manager->group = 1;
-		ascii_manager->font_id = 2;
+		ascii_manager->font_id = Font2; // 2
 		ascii_manager->__horizontal_positioning_mode = 0;
 		ascii_manager->__vertical_positioning_mode = 2;
 
@@ -48380,7 +48956,7 @@ forceinline UpdateFuncRet BombBase::on_draw() {
 		ascii_manager = ASCII_MANAGER_PTR;
 		ascii_manager->color = COLOR(255, 255, 255, 255);
 		ascii_manager->set_alpha(255);
-		ascii_manager->font_id = 0;
+		ascii_manager->font_id = Font0; // 0
 		ascii_manager->group = 0;
 		ascii_manager->__horizontal_positioning_mode = 1;
 		ascii_manager->__vertical_positioning_mode = 1;
@@ -50083,9 +50659,9 @@ dllexport gnu_noinline int32_t Enemy::get_int_var(int32_t index) {
 		case PLAYER_Y2: // -9964
 			return PLAYER_PTR->data.position.y;
 		case BOSS0_X: // -9963
-			return ENEMY_MANAGER_PTR->get_boss_by_index(0)->data.current_motion.position.x;
+			return get_boss_by_index(0)->data.current_motion.position.x;
 		case BOSS0_Y: // -9962
-			return ENEMY_MANAGER_PTR->get_boss_by_index(0)->data.current_motion.position.y;
+			return get_boss_by_index(0)->data.current_motion.position.y;
 		case ANM_SLOT0_SCRIPT_ID: // -9961
 			return this->data.anm_vms[0].get_vm_ptr()->data.script_id2;
 		case RANK: // -9960
@@ -50136,53 +50712,53 @@ dllexport gnu_noinline int32_t Enemy::get_int_var(int32_t index) {
 			}
 			return false;
 		case BOSS0_EI0: // -9943
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.int_vars[0];
 			}
 			return 0;
 		case BOSS0_EI1: // -9942
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.int_vars[1];
 			}
 			return 0;
 		case BOSS0_EI2: // -9941
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.int_vars[2];
 			}
 			return 0;
 		case BOSS0_EI3: // -9940
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.int_vars[3];
 			}
 			return 0;
 		case BOSS0_EF0: // -9939
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.float_vars[0];
 			}
 			return 0;
 		case BOSS0_EF1: // -9938
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.float_vars[1];
 			}
 			return 0;
 		case BOSS0_EF2: // -9937
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.float_vars[2];
 			}
 			return 0;
 		case BOSS0_EF3: // -9936
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.float_vars[3];
 			}
 			return 0;
 		case BOSS0_ORBIT: // -9911
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				// WARNING: This reads the multi-purpose float3 fields
 				return zatan2f(boss->data.current_motion.orbit_origin.y, boss->data.current_motion.orbit_origin.x);
 			}
 			return 0;
 		case BOSS0_SPEED_ABS: // -9910
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.motion.absolute.speed;
 			}
 			return 0;
@@ -50271,24 +50847,24 @@ dllexport gnu_noinline int32_t* Enemy::get_int_ptr(int32_t index) {
 		case SPELL_CAPTURE: // -9947
 			return &ENEMY_MANAGER_PTR->can_capture_spell;
 		case BOSS0_EI0: // -9943
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				enemy = boss;
 			}
 			return &enemy->data.int_vars[0];
 		case BOSS0_EI1: // -9942
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				enemy = boss;
 			}
 		case EI1: // -9984
 			return &enemy->data.int_vars[1];
 		case BOSS0_EI2: // -9941
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				enemy = boss;
 			}
 		case EI2: // -9983
 			return &enemy->data.int_vars[2];
 		case BOSS0_EI3: // -9940
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				enemy = boss;
 			}
 		case EI3: // -9982
@@ -50349,53 +50925,53 @@ dllexport gnu_noinline float Enemy::get_float_var(int32_t index) {
 		case EF7: // -9932
 			return this->data.float_vars[7];
 		case BOSS0_EI0: // -9943
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.int_vars[0];
 			}
 			return 0;
 		case BOSS0_EI1: // -9942
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.int_vars[1];
 			}
 			return 0;
 		case BOSS0_EI2: // -9941
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.int_vars[2];
 			}
 			return 0;
 		case BOSS0_EI3: // -9940
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.int_vars[3];
 			}
 			return 0;
 		case BOSS0_EF0: // -9939
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.float_vars[0];
 			}
 			return 0;
 		case BOSS0_EF1: // -9938
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.float_vars[1];
 			}
 			return 0;
 		case BOSS0_EF2: // -9937
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.float_vars[2];
 			}
 			return 0;
 		case BOSS0_EF3: // -9936
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.float_vars[3];
 			}
 			return 0;
 		case BOSS0_ORBIT: // -9911
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				// WARNING: This reads the multi-purpose float3 fields
 				return zatan2f(boss->data.current_motion.orbit_origin.y, boss->data.current_motion.orbit_origin.x);
 			}
 			return 0;
 		case BOSS0_SPEED_ABS: // -9910
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				return boss->data.motion.absolute.speed;
 			}
 			return 0;
@@ -50439,9 +51015,9 @@ dllexport gnu_noinline float Enemy::get_float_var(int32_t index) {
 		case PLAYER_Y2: // -9964
 			return PLAYER_PTR->data.position.y;
 		case BOSS0_X: // -9963
-			return ENEMY_MANAGER_PTR->get_boss_by_index(0)->data.current_motion.position.x;
+			return get_boss_by_index(0)->data.current_motion.position.x;
 		case BOSS0_Y: // -9962
-			return ENEMY_MANAGER_PTR->get_boss_by_index(0)->data.current_motion.position.y;
+			return get_boss_by_index(0)->data.current_motion.position.y;
 			/*
 		case ANM_SLOT0_SCRIPT_ID: // -9961
 			return this->data.anm_vms[0].get_vm_ptr()->data.script_id2;
@@ -50559,24 +51135,24 @@ dllexport gnu_noinline float* Enemy::get_float_ptr(int32_t index) {
 		case EF7: // -9932
 			return &this->data.float_vars[7];
 		case BOSS0_EF0: // -9939
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				enemy = boss;
 			}
 			return &enemy->data.float_vars[0];
 		case BOSS0_EF1: // -9938
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				enemy = boss;
 			}
 		case EF1: // -9980
 			return &enemy->data.float_vars[1];
 		case BOSS0_EF2: // -9937
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				enemy = boss;
 			}
 		case EF2: // -9979
 			return &enemy->data.float_vars[2];
 		case BOSS0_EF3: // -9936
-			if (Enemy* boss = ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (Enemy* boss = get_boss_by_index(0)) {
 				enemy = boss;
 			}
 		case EF3: // -9978
@@ -51286,7 +51862,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 	switch (opcode) {
 		case enemy_create_rel_stage: case enemy_create_abs_stage: // 309, 310
 		case enemy_create_rel_stage_mirror: case enemy_create_abs_stage_mirror: // 311, 312
-			clang_forceinline if (ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
+			if (ENEMY_MANAGER_PTR->get_boss_by_index(0)) {
 				break;
 			}
 		case enemy_create_rel: case enemy_create_abs: // 300, 301
@@ -55866,7 +56442,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 								this->__float3_1DC.y += 140.0f;
 								const CardData* card_data = this->card_array[this->card_choice.current_selection];
 								ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->__float3_1DC, true);
-								ABILITY_TEXT_DATA_PTR->__change_vm_63DC_sprite(card_data->__int_C);
+								ABILITY_TEXT_DATA_PTR->__set_card_type_label(card_data->__card_type);
 								ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_1DC, card_data->id, true, true);
 							}
 						}
@@ -55916,9 +56492,9 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 						if (this->card_choice.previous_selection != this->card_choice.current_selection) {
 							SOUND_MANAGER.play_sound(10);
 							const CardData* card_data = this->card_array[this->card_choice.current_selection];
-							ABILITY_TEXT_DATA_PTR->__change_vm_63DC_sprite(card_data->__int_C);
+							ABILITY_TEXT_DATA_PTR->__set_card_type_label(card_data->__card_type);
 							ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_1DC, card_data->id, true, true);
-							ABILITY_TEXT_DATA_PTR->__sub_416940(card_data->id, true);
+							ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(card_data->id, true);
 						}
 						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
 							int32_t price = ABILITY_MANAGER_PTR->get_price_for_tier(this->card_array[this->card_choice.current_selection]->price_tier);
@@ -55977,8 +56553,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 									SOUND_MANAGER.play_sound(9);
 									this->change_primary_state(2);
 									this->__anm_id_228.interrupt_tree(27);
-									ABILITY_TEXT_DATA_PTR->__sub_416C10(this->card_array[this->card_choice.current_selection]->id);
-									ABILITY_TEXT_DATA_PTR->__sub_416940(this->card_array[this->card_choice.current_selection]->id, true);
+									ABILITY_TEXT_DATA_PTR->__show_anms(this->card_array[this->card_choice.current_selection]->id);
+									ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(this->card_array[this->card_choice.current_selection]->id, true);
 									break;
 								case 0: {
 									SOUND_MANAGER.play_sound(7);
@@ -56008,8 +56584,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 						break;
 					case 8:
 						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT | BUTTON_CANCEL | BUTTON_LEFT | BUTTON_RIGHT)) {
-							ABILITY_TEXT_DATA_PTR->__sub_416C10(this->card_array[this->card_choice.current_selection]->id);
-							ABILITY_TEXT_DATA_PTR->__sub_416940(this->card_array[this->card_choice.current_selection]->id, true);
+							ABILITY_TEXT_DATA_PTR->__show_anms(this->card_array[this->card_choice.current_selection]->id);
+							ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(this->card_array[this->card_choice.current_selection]->id, true);
 							this->__anm_id_228.interrupt_tree(27);
 							SOUND_MANAGER.play_sound(9);
 							this->change_primary_state(2);
@@ -56106,7 +56682,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_draw() {
 
 				position = (this->position + Float3(0.0f, 86.0f, 0.0f)) * 0.5f;
 
-				ascii_manager->font_id = 6;
+				ascii_manager->font_id = Font6; // 6
 				ascii_manager->__horizontal_positioning_mode = 0;
 				ascii_manager->__vertical_positioning_mode = 1;
 				ascii_manager->color = COLOR(255, 208, 208, 208);
@@ -56115,7 +56691,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_draw() {
 				ascii_manager->printf(&position, "Money %d  (+%d)", GAME_MANAGER.globals.current_money, GAME_MANAGER.globals.current_power - DEFAULT_POWER_PER_LEVEL);
 
 				ascii_manager = ASCII_MANAGER_PTR;
-				ascii_manager->font_id = 0;
+				ascii_manager->font_id = Font0; // 0
 				ascii_manager->__horizontal_positioning_mode = 1;
 				ascii_manager->color = COLOR(255, 255, 255, 255);
 				ascii_manager->color2 = COLOR(255, 0, 0, 0);
@@ -56123,7 +56699,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_draw() {
 
 				position = (this->position + Float3(0.0f, 412.0f, 0.0f)) * 0.5f;
 
-				ascii_manager->font_id = 6;
+				ascii_manager->font_id = Font6; // 6
 				ascii_manager->__horizontal_positioning_mode = 0;
 
 				int32_t price_tier = this->card_array[this->card_choice.current_selection]->price_tier;
@@ -56141,7 +56717,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_draw() {
 				ascii_manager = ASCII_MANAGER_PTR;
 				ascii_manager->color = COLOR(255, 255, 255, 255);
 				ascii_manager->color2 = COLOR(255, 0, 0, 0);
-				ascii_manager->font_id = 0;
+				ascii_manager->font_id = Font0; // 0
 				ascii_manager->__horizontal_positioning_mode = 1;
 				ascii_manager->__vertical_positioning_mode = 1;
 			}
@@ -56270,7 +56846,7 @@ extern "C" {
 	externcg MainMenu* MAIN_MENU_PTR cgasm("_MAIN_MENU_PTR");
 }
 
-static int32_t DEBUG_STAGE = 0;
+static int32_t DEBUG_STAGE = DebugStage;
 static Difficulty DEBUG_DIFFICULTY = NORMAL;
 static CharacterID DEBUG_CHARACTER = Reimu;
 static char* DEBUG_PATH = NULL;
@@ -57922,14 +58498,14 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 
 		ascii_manager->set_alpha(vm->get_alpha());
 		ascii_manager->group = 2;
-		ascii_manager->font_id = 4;
+		ascii_manager->font_id = Font4; // 4
 		ascii_manager->__horizontal_positioning_mode = 0;
 		ascii_manager->__vertical_positioning_mode = 0;
 		ascii_manager->print_number(&position, this->__clear_bonus);
 
 		ascii_manager = ASCII_MANAGER_PTR;
 		ascii_manager->set_alpha(255);
-		ascii_manager->font_id = 0;
+		ascii_manager->font_id = Font0; // 0
 		ascii_manager->group = 0;
 		ascii_manager->__horizontal_positioning_mode = 1;
 		ascii_manager->__vertical_positioning_mode = 1;
@@ -57951,7 +58527,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 		else {
 			ascii_manager->set_alpha(vm->get_alpha());
 			ascii_manager->group = 2;
-			ascii_manager->font_id = 4;
+			ascii_manager->font_id = Font4; // 4
 
 			int32_t value = spellcard->__int_90 / 60;
 			if (value >= 1000) {
@@ -58000,7 +58576,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 			ascii_manager = ASCII_MANAGER_PTR;
 			ascii_manager->set_alpha(255);
 			ascii_manager->set_scale(1.0f);
-			ascii_manager->font_id = 0;
+			ascii_manager->font_id = Font0; // 0
 			ascii_manager->group = 0;
 			ascii_manager->color = COLOR(255, 255, 255, 255);
 		}
@@ -58012,7 +58588,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 
 	ascii_manager->color = COLOR(255, 112, 112, 112);
 	ascii_manager->color2 = COLOR(128, 255, 255, 255);
-	ascii_manager->font_id = 10;
+	ascii_manager->font_id = Font10; // 10
 	ascii_manager->group = 3;
 
 	position = { 620.0f, 42.0f, 0.0f };
@@ -58168,7 +58744,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 	ascii_manager->set_scale(1.0f);
 	ascii_manager->color2 = COLOR(255, 0, 0, 0);
 	ascii_manager->set_alpha(255);
-	ascii_manager->font_id = 0;
+	ascii_manager->font_id = Font0; // 0
 	ascii_manager->group = 0;
 
 	if (
@@ -58186,7 +58762,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 		float X = vm->data.position.x + 16.0f;
 		position.x = X;
 		ascii_manager->color = vm->data.color1;
-		ascii_manager->font_id = 4;
+		ascii_manager->font_id = Font4; // 4
 		float Y = vm->data.position.y - 7.0f;
 		position.y = Y;
 		ascii_manager->group = 2;
@@ -58206,7 +58782,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 		ascii_manager->set_scale(1.0f);
 		ascii_manager->color = COLOR(255, 255, 255, 255);
 		ascii_manager->group = 0;
-		ascii_manager->font_id = 0;
+		ascii_manager->font_id = Font0; // 0
 	}
 
 	return UpdateFuncNext;
@@ -59536,47 +60112,6 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 		}
 	}
 
-	// this didn't work anyway
-	/*
-#if INCLUDE_PATCH_CODE
-	gui = GUI_PTR;
-	uint64_t score = GAME_MANAGER.globals.score | (uint64_t)score_upper[0] << 32;
-	uint64_t displayed_score = gui->__score | (uint64_t)score_upper[2] << 32;
-	if (score != displayed_score) {
-		uint64_t score_diff = score - displayed_score;
-		uint64_t score_diff_B = score_diff / 32;
-
-		uint32_t score_diff_C = __max(__min(score_diff_B, 578910), 1);
-
-		if (gui->__score_diff < score_diff_C) {
-			gui->__score_diff = score_diff_C;
-		} else {
-			score_diff_C = gui->__score_diff;
-		}
-
-		if (score_diff_C > score_diff) {
-			gui->__score_diff = score_diff;
-		} else {
-			score_diff = score_diff_C;
-		}
-		displayed_score += score_diff;
-		gui->__score = displayed_score;
-		score_upper[2] = displayed_score >> 32;
-
-		if (displayed_score >= score) {
-			gui->__score_diff = 0;
-		}
-	}
-	uint64_t high_score = GAME_MANAGER.__high_score | (uint64_t)score_upper[1] << 32;
-	if (high_score < displayed_score) {
-		int32_t continues_local = GAME_MANAGER.globals.continues;
-		GAME_MANAGER.__unknown_flag_C = true;
-		GAME_MANAGER.__high_score = displayed_score;
-		score_upper[1] = displayed_score >> 32;
-		GAME_MANAGER.__high_score_continues = continues_local;
-	}
-#else
-*/
 	gui = GUI_PTR;
 	int32_t score = GAME_MANAGER.globals.score;
 	int32_t displayed_score = gui->__score;
@@ -59612,7 +60147,6 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 		GAME_MANAGER.__high_score = displayed_score;
 		GAME_MANAGER.__high_score_continues = continues;
 	}
-//#endif
 
 	if (this->open_ability_shop) {
 		Float3 position = { 448.0f, 32.0f, 0.0f };

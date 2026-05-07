@@ -2,7 +2,7 @@
 		.name = "BLANK",
 		.id = BLANK_CARD,
 		.__int_8 = 0,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = FreeTier, // $0
 		.shop_weight = ALWAYS_IN_SHOP, // 0
 		.availability = AVAILABLE_IF_UNLOCKED_STAGES_1_2_3_4_5, // 11
@@ -17,7 +17,7 @@
 		.name = "EXTEND",
 		.id = EXTEND_CARD,
 		.__int_8 = 1,
-		.__int_C = 3,
+		.__card_type = ItemCard, // 3
 		.price_tier = CheapTier2, // $80
 		.shop_weight = ALWAYS_IN_SHOP, // 0
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -32,7 +32,7 @@
 		.name = "BOMB",
 		.id = BOMB_CARD,
 		.__int_8 = 1,
-		.__int_C = 3,
+		.__card_type = ItemCard, // 3
 		.price_tier = FreeTier, // $0
 		.shop_weight = ALWAYS_IN_SHOP, // 0
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -47,7 +47,7 @@
 		.name = "EXTEND2",
 		.id = EXTEND2_CARD,
 		.__int_8 = 1,
-		.__int_C = 3,
+		.__card_type = ItemCard, // 3
 		.price_tier = FreeTier, // $0
 		.shop_weight = NEVER_IN_SHOP, // 6
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -62,7 +62,7 @@
 		.name = "BOMB2",
 		.id = BOMB2_CARD,
 		.__int_8 = 1,
-		.__int_C = 3,
+		.__card_type = ItemCard, // 3
 		.price_tier = FreeTier, // $0
 		.shop_weight = NEVER_IN_SHOP, // 6
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -77,7 +77,7 @@
 		.name = "PENDULUM",
 		.id = PENDULUM_CARD,
 		.__int_8 = 1,
-		.__int_C = 3,
+		.__card_type = ItemCard, // 3
 		.price_tier = FreeTier, // $0
 		.shop_weight = ALWAYS_IN_SHOP, // 0
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -92,7 +92,7 @@
 		.name = "DANGO",
 		.id = DANGO_CARD,
 		.__int_8 = 1,
-		.__int_C = 3,
+		.__card_type = ItemCard, // 3
 		.price_tier = FreeTier, // $0
 		.shop_weight = ALWAYS_IN_SHOP, // 0
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -107,7 +107,7 @@
 		.name = "MOKOU",
 		.id = MOKOU_CARD,
 		.__int_8 = 1,
-		.__int_C = 3,
+		.__card_type = ItemCard, // 3
 		.price_tier = ExpensiveTier4, // $450
 		.shop_weight = 4,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -122,7 +122,7 @@
 		.name = "MANEKI",
 		.id = MANEKI_CARD,
 		.__int_8 = 1,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = ReasonableTier2, // $140
 		.shop_weight = 2,
 		.availability = STAGE_1_REWARD, // 1
@@ -137,7 +137,7 @@
 		.name = "YAMAWARO",
 		.id = YAMAWARO_CARD,
 		.__int_8 = 1,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = CheapTier2, // $80
 		.shop_weight = 2,
 		.availability = STAGE_2_REWARD, // 2
@@ -152,7 +152,7 @@
 		.name = "KISERU",
 		.id = KISERU_CARD,
 		.__int_8 = 1,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = PriceyTier3, // $280
 		.shop_weight = 2,
 		.availability = STAGE_3_REWARD, // 3
@@ -167,7 +167,7 @@
 		.name = "NARUMI",
 		.id = NARUMI_CARD,
 		.__int_8 = 0,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = ReasonableTier2, // $140
 		.shop_weight = 4,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -182,7 +182,7 @@
 		.name = "PACHE",
 		.id = PACHE_CARD,
 		.__int_8 = 0,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = CheapTier3, // $100
 		.shop_weight = 4,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -197,7 +197,7 @@
 		.name = "YOUMU_OP",
 		.id = YOUMU_OP_CARD,
 		.__int_8 = 1,
-		.__int_C = 1,
+		.__card_type = EquipmentCard, // 1
 		.price_tier = PriceyTier2, // $240
 		.shop_weight = 3,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -212,7 +212,7 @@
 		.name = "REIMU_OP",
 		.id = REIMU_OP_CARD,
 		.__int_8 = 1,
-		.__int_C = 1,
+		.__card_type = EquipmentCard, // 1
 		.price_tier = PriceyTier2, // $240
 		.shop_weight = 3,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -227,7 +227,7 @@
 		.name = "ALICE_OP",
 		.id = ALICE_OP_CARD,
 		.__int_8 = 1,
-		.__int_C = 1,
+		.__card_type = EquipmentCard, // 1
 		.price_tier = PriceyTier3, // $280
 		.shop_weight = 3,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -242,7 +242,7 @@
 		.name = "CIRNO_OP",
 		.id = CIRNO_OP_CARD,
 		.__int_8 = 1,
-		.__int_C = 1,
+		.__card_type = EquipmentCard, // 1
 		.price_tier = PriceyTier1, // $200
 		.shop_weight = 3,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -257,7 +257,7 @@
 		.name = "REIMU_OP2",
 		.id = REIMU_OP2_CARD,
 		.__int_8 = 0,
-		.__int_C = 1,
+		.__card_type = EquipmentCard, // 1
 		.price_tier = PriceyTier3, // $280
 		.shop_weight = 1,
 		.availability = AVAILABLE_IF_UNLOCKED, // 12
@@ -272,7 +272,7 @@
 		.name = "MARISA_OP",
 		.id = MARISA_OP_CARD,
 		.__int_8 = 0,
-		.__int_C = 1,
+		.__card_type = EquipmentCard, // 1
 		.price_tier = PriceyTier2, // $240
 		.shop_weight = 3,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -287,7 +287,7 @@
 		.name = "MARISA_OP2",
 		.id = MARISA_OP2_CARD,
 		.__int_8 = 0,
-		.__int_C = 1,
+		.__card_type = EquipmentCard, // 1
 		.price_tier = PriceyTier3, // $280
 		.shop_weight = 1,
 		.availability = AVAILABLE_IF_UNLOCKED, // 12
@@ -302,7 +302,7 @@
 		.name = "SAKUYA_OP",
 		.id = SAKUYA_OP_CARD,
 		.__int_8 = 0,
-		.__int_C = 1,
+		.__card_type = EquipmentCard, // 1
 		.price_tier = PriceyTier2, // $240
 		.shop_weight = 3,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -317,7 +317,7 @@
 		.name = "SAKUYA_OP2",
 		.id = SAKUYA_OP2_CARD,
 		.__int_8 = 0,
-		.__int_C = 1,
+		.__card_type = EquipmentCard, // 1
 		.price_tier = PriceyTier3, // $280
 		.shop_weight = 1,
 		.availability = AVAILABLE_IF_UNLOCKED, // 12
@@ -332,7 +332,7 @@
 		.name = "SANAE_OP",
 		.id = SANAE_OP_CARD,
 		.__int_8 = 0,
-		.__int_C = 1,
+		.__card_type = EquipmentCard, // 1
 		.price_tier = PriceyTier2, // $240
 		.shop_weight = 3,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -347,7 +347,7 @@
 		.name = "SANAE_OP2",
 		.id = SANAE_OP2_CARD,
 		.__int_8 = 0,
-		.__int_C = 1,
+		.__card_type = EquipmentCard, // 1
 		.price_tier = PriceyTier3, // $280
 		.shop_weight = 1,
 		.availability = AVAILABLE_IF_UNLOCKED, // 12
@@ -362,7 +362,7 @@
 		.name = "OKINA_OP",
 		.id = OKINA_OP_CARD,
 		.__int_8 = 0,
-		.__int_C = 1,
+		.__card_type = EquipmentCard, // 1
 		.price_tier = PriceyTier3, // $280
 		.shop_weight = 1,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -377,7 +377,7 @@
 		.name = "NUE_OP",
 		.id = NUE_OP_CARD,
 		.__int_8 = 0,
-		.__int_C = 1,
+		.__card_type = EquipmentCard, // 1
 		.price_tier = PriceyTier1, // $200
 		.shop_weight = 2,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -392,7 +392,7 @@
 		.name = "DBOMBEXTEND",
 		.id = DBOMBEXTEND_CARD,
 		.__int_8 = 1,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = CheapTier3, // $100
 		.shop_weight = 3,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -407,7 +407,7 @@
 		.name = "AUTOBOMB",
 		.id = AUTOBOMB_CARD,
 		.__int_8 = 1,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = ExpensiveTier2, // $350
 		.shop_weight = 2,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -422,7 +422,7 @@
 		.name = "ITEM_CATCH",
 		.id = ITEM_CATCH_CARD,
 		.__int_8 = 1,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = CheapTier3, // $100
 		.shop_weight = 3,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -437,7 +437,7 @@
 		.name = "MAINSHOT_PU",
 		.id = MAINSHOT_PU_CARD,
 		.__int_8 = 1,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = ReasonableTier3, // $180
 		.shop_weight = 3,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -452,7 +452,7 @@
 		.name = "KOISHI",
 		.id = KOISHI_CARD,
 		.__int_8 = 1,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = CheapTier3, // $100
 		.shop_weight = 2,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -467,7 +467,7 @@
 		.name = "ITEM_LINE",
 		.id = ITEM_LINE_CARD,
 		.__int_8 = 1,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = ReasonableTier1, // $100
 		.shop_weight = 2,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -482,7 +482,7 @@
 		.name = "MAGICSCROLL",
 		.id = MAGICSCROLL_CARD,
 		.__int_8 = 1,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = ExpensiveTier1, // $300
 		.shop_weight = 3,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -497,7 +497,7 @@
 		.name = "MAINSHOT_SP",
 		.id = MAINSHOT_SP_CARD,
 		.__int_8 = 0,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = ReasonableTier2, // $140
 		.shop_weight = 3,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -512,7 +512,7 @@
 		.name = "SPEEDQUEEN",
 		.id = SPEEDQUEEN_CARD,
 		.__int_8 = 0,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = ReasonableTier1, // $100
 		.shop_weight = 3,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -527,7 +527,7 @@
 		.name = "OPTION_BR",
 		.id = OPTION_BR_CARD,
 		.__int_8 = 0,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = ExpensiveTier2, // $350
 		.shop_weight = 1,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -542,7 +542,7 @@
 		.name = "DEAD_SPELL",
 		.id = DEAD_SPELL_CARD,
 		.__int_8 = 0,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = CheapTier3, // $100
 		.shop_weight = 2,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -557,7 +557,7 @@
 		.name = "POWERMAX",
 		.id = POWERMAX_CARD,
 		.__int_8 = 0,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = ExpensiveTier2, // $350
 		.shop_weight = 3,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -572,7 +572,7 @@
 		.name = "YUYUKO",
 		.id = YUYUKO_CARD,
 		.__int_8 = 0,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = PriceyTier2, // $240
 		.shop_weight = 1,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -587,7 +587,7 @@
 		.name = "MONEY",
 		.id = MONEY_CARD,
 		.__int_8 = 0,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = ReasonableTier2, // $140
 		.shop_weight = 2,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -602,7 +602,7 @@
 		.name = "ROKUMON",
 		.id = ROKUMON_CARD,
 		.__int_8 = 0,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = ReasonableTier2, // $140
 		.shop_weight = 2,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -617,7 +617,7 @@
 		.name = "KOZUCHI",
 		.id = KOZUCHI_CARD,
 		.__int_8 = 1,
-		.__int_C = 0,
+		.__card_type = ActiveCard, // 0
 		.price_tier = ReasonableTier3, // $180
 		.shop_weight = 4,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -632,7 +632,7 @@
 		.name = "WARP",
 		.id = WARP_CARD,
 		.__int_8 = 1,
-		.__int_C = 0,
+		.__card_type = ActiveCard, // 0
 		.price_tier = ExpensiveTier1, // $300
 		.shop_weight = 2,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -647,7 +647,7 @@
 		.name = "KANAME",
 		.id = KANAME_CARD,
 		.__int_8 = 1,
-		.__int_C = 0,
+		.__card_type = ActiveCard, // 0
 		.price_tier = ExpensiveTier3, // $400
 		.shop_weight = 2,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -662,7 +662,7 @@
 		.name = "MOON",
 		.id = MOON_CARD,
 		.__int_8 = 1,
-		.__int_C = 0,
+		.__card_type = ActiveCard, // 0
 		.price_tier = PriceyTier2, // $240
 		.shop_weight = 2,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -677,7 +677,7 @@
 		.name = "BASSDRUM",
 		.id = BASSDRUM_CARD,
 		.__int_8 = 0,
-		.__int_C = 0,
+		.__card_type = ActiveCard, // 0
 		.price_tier = ReasonableTier2, // $140
 		.shop_weight = 2,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -692,7 +692,7 @@
 		.name = "MIKOFLASH",
 		.id = MIKOFLASH_CARD,
 		.__int_8 = 0,
-		.__int_C = 0,
+		.__card_type = ActiveCard, // 0
 		.price_tier = ExpensiveTier3, // $400
 		.shop_weight = 4,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -707,7 +707,7 @@
 		.name = "VAMPIRE",
 		.id = VAMPIRE_CARD,
 		.__int_8 = 0,
-		.__int_C = 0,
+		.__card_type = ActiveCard, // 0
 		.price_tier = PriceyTier2, // $240
 		.shop_weight = 2,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -722,7 +722,7 @@
 		.name = "SUN",
 		.id = SUN_CARD,
 		.__int_8 = 0,
-		.__int_C = 0,
+		.__card_type = ActiveCard, // 0
 		.price_tier = ExpensiveTier4, // $450
 		.shop_weight = 4,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -737,7 +737,7 @@
 		.name = "LILY",
 		.id = LILY_CARD,
 		.__int_8 = 0,
-		.__int_C = 0,
+		.__card_type = ActiveCard, // 0
 		.price_tier = ExpensiveTier1, // $300
 		.shop_weight = 2,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -752,7 +752,7 @@
 		.name = "PSYCO",
 		.id = PSYCO_CARD,
 		.__int_8 = 0,
-		.__int_C = 0,
+		.__card_type = ActiveCard, // 0
 		.price_tier = ReasonableTier3, // $180
 		.shop_weight = 2,
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -767,7 +767,7 @@
 		.name = "MAGATAMA",
 		.id = MAGATAMA_CARD,
 		.__int_8 = 0,
-		.__int_C = 1,
+		.__card_type = EquipmentCard, // 1
 		.price_tier = PriceyTier2, // $240
 		.shop_weight = 4,
 		.availability = STAGE_4_REWARD, // 4
@@ -782,7 +782,7 @@
 		.name = "CYLINDER",
 		.id = CYLINDER_CARD,
 		.__int_8 = 0,
-		.__int_C = 0,
+		.__card_type = ActiveCard, // 0
 		.price_tier = ReasonableTier2, // $140
 		.shop_weight = 4,
 		.availability = STAGE_5_REWARD, // 5
@@ -797,7 +797,7 @@
 		.name = "RICEBALL",
 		.id = RICEBALL_CARD,
 		.__int_8 = 0,
-		.__int_C = 0,
+		.__card_type = ActiveCard, // 0
 		.price_tier = PriceyTier3, // $280
 		.shop_weight = 4,
 		.availability = STAGE_5_REWARD, // 5
@@ -812,7 +812,7 @@
 		.name = "MUKADE",
 		.id = MUKADE_CARD,
 		.__int_8 = 0,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = ExpensiveTier1, // $300
 		.shop_weight = 3,
 		.availability = AVAILABLE_IF_UNLOCKED, // 12
@@ -827,7 +827,7 @@
 		.name = "MAGATAMA2",
 		.id = MAGATAMA2_CARD,
 		.__int_8 = 0,
-		.__int_C = 2,
+		.__card_type = PassiveCard, // 2
 		.price_tier = ReasonableTier2, // $140
 		.shop_weight = NEVER_IN_SHOP, // 6
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -842,7 +842,7 @@
 		.name = "NULL",
 		.id = NULL_CARD,
 		.__int_8 = 1,
-		.__int_C = 4,
+		.__card_type = InternalCard, // 4
 		.price_tier = FreeTier, // $0
 		.shop_weight = ALWAYS_IN_SHOP, // 0
 		.availability = ALWAYS_AVAILABLE, // 0
@@ -857,7 +857,7 @@
 		.name = "BACK",
 		.id = BACK_CARD,
 		.__int_8 = 1,
-		.__int_C = 4,
+		.__card_type = InternalCard, // 4
 		.price_tier = FreeTier, // $0
 		.shop_weight = ALWAYS_IN_SHOP, // 0
 		.availability = ALWAYS_AVAILABLE, // 0
