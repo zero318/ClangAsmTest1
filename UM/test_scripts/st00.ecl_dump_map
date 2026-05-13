@@ -1,4 +1,11 @@
-anim { "enemy.anm"; "st01enm.anm"; "patchy.anm"; "enemy_test.anm"; }
+anim {
+	"enemy.anm";
+	"st01enm.anm";
+	"patchy.anm";
+	//"enemy_test.anm";
+	"sprite_window_test.anm";
+	"koishi.anm";
+}
 //ecli { "default.ecl"; "st01bs.ecl"; "st01mbs.ecl"; }
 ecli { "default.ecl"; }
 
@@ -816,6 +823,51 @@ void Cir00p() {
     //enemy_delete();
 }
 
+void koishi_test() {
+    boss_set(0);
+    anm_source(6);
+	anm_set_slot_main(0, 0);
+	enemy_set_hitbox(48.0f, 48.0f);
+    enemy_set_collision(48.0f, 48.0f);
+	enemy_invincible_timer(60);
+    enemy_life_set(2000);
+	move_position_abs_interp(60, Interp_DecelerateSlow, SCREEN_MIDDLE_X, 128.0f);
++60:
+
+	move_bounds_set(0.0f, 128.0f, 280.0f, 96.0f);
+	anm_source(1);
+    anm_set_slot(1, 105);
+    anm_set_slot(2, 114);
+    anm_source(6);
++120:
+    boss_set_life_count(1);
+	callback_ex(0, 0, 6300, "koishi_card_2");
+	spellcard_start(1, 6300, 1, "dummy spell 1 ");
+	halt();
+}
+
+void koishi_card_2() {
+	enemy_invincible_timer(200);
+    spellcard_end();
+    move_stop();
+	enemy_life_set(4000);
+    boss_set_life_count(0);
+    item_bonus_count_reset();
+	anm_set_slot_main(0, 0);
++120:
+	phase_timer_clear();
+	spellcard_start(2, 3540, 2, "dummy spell 2 ");
+    spellcard_flag_timeout_set();
+	move_position_abs_interp(60, 4, 0.0f, 128.0f);
+    move_bounds_disable();
++60: //60
+    anm_play_attack(0);
++60:
+	anm_play_main();
+    anm_source(2);
+	halt();
+}
+
 void main() {
     enemy_flags_set(FLAG_INVINCIBLE | FLAG_INTANGIBLE | FLAG_NO_DELETE);
 +1:
@@ -826,8 +878,14 @@ void main() {
     
     enemy_create_abs("full_power_dummy", PLAYER_X, PLAYER_Y, 1, 0, 0);
 	
+	anm_create_zero_front(5, 1);
+	
 +120:
-	enemy_create_rel("Cir00p", 0.0f, 144.0f, 120, 1000, 1);
+	
+
+	halt();
+	//enemy_create_rel("Cir00p", 0.0f, 144.0f, 120, 1000, 1);
+	enemy_create_abs("koishi_test", -216.0f, 64.0f, 40, 1000, 1);
     
     //enemy_create_abs("BossPatchouliPhase1", 64.0, -32.0, 10000, 0, 0);
     //enemy_create_abs("enemy_test", 64.0, -32.0, 10000, 0, 0);

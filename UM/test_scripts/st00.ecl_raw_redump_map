@@ -1,4 +1,4 @@
-anim { "enemy.anm"; "st01enm.anm"; "patchy.anm"; "enemy_test.anm"; }
+anim { "enemy.anm"; "st01enm.anm"; "patchy.anm"; "sprite_window_test.anm"; "koishi.anm"; }
 ecli { "default.ecl"; }
 
 void BossPatchouliEnd()
@@ -878,6 +878,60 @@ void full_power_dummy()
     enemy_delete();
 }
 
+void koishi_card_2()
+{
+    frame_enter(0);
+    enemy_invincible_timer(200);
+    spellcard_end();
+    move_stop();
+    enemy_life_set(4000);
+    boss_set_life_count(0);
+    item_bonus_count_reset();
+    anm_set_slot_main(0, 0);
++120: //120
+    phase_timer_clear();
+    spellcard_start(2, 3540, 2, "dummy spell 2 ");
+    spellcard_flag_timeout_set();
+    move_position_abs_interp(60, 4, 0.0f, 128.0f);
+    move_bounds_disable();
++60: //180
+    anm_play_attack(0);
++60: //240
+    anm_play_main();
+    anm_source(2);
+koishi_card_2_352:
++10000: //10240
+    jump(koishi_card_2_352, 240);
+    ret();
+}
+
+void koishi_test()
+{
+    frame_enter(0);
+    boss_set(0);
+    anm_source(6);
+    anm_set_slot_main(0, 0);
+    enemy_set_hitbox(48.0f, 48.0f);
+    enemy_set_collision(48.0f, 48.0f);
+    enemy_invincible_timer(60);
+    enemy_life_set(2000);
+    move_position_abs_interp(60, 4, 0.0f, 128.0f);
++60: //60
+    move_bounds_set(0.0f, 128.0f, 280.0f, 96.0f);
+    anm_source(1);
+    anm_set_slot(1, 105);
+    anm_set_slot(2, 114);
+    anm_source(6);
++120: //180
+    boss_set_life_count(1);
+    callback_ex(0, 0, 6300, "koishi_card_2");
+    spellcard_start(1, 6300, 1, "dummy spell 1 ");
+koishi_test_456:
++10000: //10180
+    jump(koishi_test_456, 180);
+    ret();
+}
+
 void main()
 {
     frame_enter(0);
@@ -885,11 +939,14 @@ void main()
 +1: //1
     chapter_set(0);
     enemy_create_abs("full_power_dummy", %PLAYER_X, %PLAYER_Y, 1, 0, 0);
-+120: //121
-    enemy_create_rel("Cir00p", 0.0f, 144.0f, 120, 1000, 1);
-main_184:
-+10000: //10121
-    jump(main_184, 121);
+    anm_create_zero_front(5, 1);
+main_160:
++10120: //10121
+    jump(main_160, 121);
+    enemy_create_abs("koishi_test", -216.0f, 64.0f, 40, 1000, 1);
+main_236:
++10000: //20121
+    jump(main_236, 10121);
     ret();
 }
 

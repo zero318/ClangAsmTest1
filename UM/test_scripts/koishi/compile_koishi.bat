@@ -1,0 +1,3 @@
+@echo off
+"F:\Users\zero318\Source\Repos\truth_custom\target\release\truth-core.exe" truanm c "koishi.anm_dump_map" -g 18 -m "F:\Touhou_Stuff_2\_thtk-bin-new\__truth\map\any.anmm" -o "..\..\..\out\build\x86-Clang-Release-Debug\koishi.anm" -i "F:\Touhou_Stuff_2\_thtk-bin-new\th11\100a\dat_dump\stgenm07.anm"
+"F:\Users\zero318\Source\Repos\truth_custom\target\release\truth-core.exe" truanm d "..\..\..\out\build\x86-Clang-Release-Debug\koishi.anm" -g 18 -m "F:\Touhou_Stuff_2\_thtk-bin-new\__truth\map\any.anmm" -o "koishi.anm_redump_map"

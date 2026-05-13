@@ -1,0 +1,88 @@
+#pragma mapfile "F:\\Touhou_Stuff_2\\_thtk-bin-new\\__truth\\map\\any.anmm"
+#pragma mapfile "F:\\Touhou_Stuff_2\\_thtk-bin-new\\__truth\\map\\any.anmm"
+
+entry {
+    path: "original_data/sexy_square.png",
+    img_width: 128,
+    img_height: 128,
+    sprites: {sprite0: {x: 0.0, y: 0.0, w: 128.0, h: 128.0}},
+}
+
+
+script 0 script0 {
+    sprite_set(sprite0);
+    layer(Layer8);
+    render_mode(RenderMode1);
+    move_position(0.0, 224.0, 0.0);
+    F0 = 0.0;
+    loop {
+        origin_mode(OriginMode0);
+        scale(5.0, 3.75);
+        __UNKNOWN_X = SELF_X;
+        __UNKNOWN_Y = SELF_Y;
+        __UNKNOWN_Z = SELF_Z_ROT;
+        move_position(960.0, 720.0, 0.0);
+        rotation(0.0, 0.0, F0);
+        sprite_window();
+        origin_mode(OriginMode1);
+        scale(1.0, 1.0);
+        move_position(__UNKNOWN_X, __UNKNOWN_Y, 0.0);
+        rotation(0.0, 0.0, __UNKNOWN_Z);
+        F0 += 0.0523599;
+        math_reduce_angle(F0);
++1: // 1
+    }
+}
+
+
+script 1 script1 {
+    sprite_set(sprite0);
+    layer(Layer8);
+    render_mode(RenderMode1);
+    move_position(0.0, 224.0, 0.0);
+    F0 = 0.0;
+    rotation_speed(0.0, 0.0, 0.0523599);
+    loop {
+        origin_mode(OriginMode0);
+        scale(5.0, 3.75);
+        __UNKNOWN_X = SELF_X;
+        __UNKNOWN_Y = SELF_Y;
+        __UNKNOWN_Z = SELF_Z_ROT;
+        move_position(960.0, 720.0, 0.0);
+        rotation(0.0, 0.0, F0);
+        sprite_window();
+        origin_mode(OriginMode1);
+        scale(1.0, 1.0);
+        move_position(__UNKNOWN_X, __UNKNOWN_Y, 0.0);
+        rotation(0.0, 0.0, __UNKNOWN_Z);
+        F0 += 0.0523599;
+        math_reduce_angle(F0);
++1: // 1
+    }
+}
+
+
+script 2 script2 {
+    sprite_set(sprite0);
+    layer(Layer8);
+    render_mode(RenderMode1);
+    origin_mode(OriginMode0);
+    scale(5.0, 3.75);
+    rotation(0.0, 0.0, -0.785398);
+    sprite_window();
+    origin_mode(OriginMode1);
+    scale(1.0, 1.0);
+    move_position(0.0, 224.0, 0.0);
+    rotation(0.0, 0.0, 0.0);
+    anm_halt();
+}
+
+
+script 3 script3 {
+    sprite_set(sprite0);
+    layer(Layer8);
+    render_mode(RenderMode1);
+    move_position(0.0, 224.0, 0.0);
+    rotation_speed(0.0, 0.0, 0.0523599);
+    anm_halt();
+}

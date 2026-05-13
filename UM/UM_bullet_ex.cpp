@@ -48,6 +48,8 @@
 #define ENABLE_THIRD_BOSS_BAR 1
 #define QUICKLOAD 0
 
+#define KOISHI_DEBUG_TEST 1
+
 #define USE_THE_DANG_EXE_ICON_PLZ 1
 
 #define MALLET_PIPE 0
@@ -71,7 +73,7 @@
 #define FORCE_DEBUG_LOGGING 1
 #define INCLUDE_SOUND_DEBUG 0
 
-#define DEBUG_SKIP_MENUS 1
+#define DEBUG_SKIP_MENUS 0
 #define INCLUDE_EXTRA_DEBUG_STUFF (1 && (FORCE_DEBUG_LOGGING || !NDEBUG))
 #define ZUN_DEBUG_CODE 0
 
@@ -347,6 +349,8 @@ using NumLock = LockKey<VK_NUMLOCK>;
 using CapsLock = LockKey<VK_CAPITAL>;
 using ScrollLock = LockKey<VK_SCROLL>;
 
+#define memcpy_str(dst, src) memcpy((void*)dst, src, sizeof(src))
+
 dllexport gnu_noinline void* cdecl memset_force(void* dst, int val, size_t size) {
 	gnu_attr(musttail) return memset(dst, val, size);
 }
@@ -360,7 +364,8 @@ dllexport gnu_noinline void* cdecl memset_force(void* dst, int val, size_t size)
 
 // TODO: Improve accuracy, rounding is a bit off
 static inline constexpr float DEGREES(float degrees) {
-	return degrees * PI_f / 180.0f;
+	return degrees * (PI_f / 180.0f);
+	//return D3DXToRadian(degrees);
 }
 
 static inline uint8_t& BLUE(D3DCOLOR& color) {
@@ -383,17 +388,37 @@ static inline uint8_t& ALPHA(D3DCOLOR& color) {
 #define RED(...) RED(__VA_ARGS__)
 #define ALPHA(...) ALPHA(__VA_ARGS__)
 #define COLOR(a,r,g,b) PackD3DCOLOR(a,r,g,b)
+#define COLOR3(r,g,b) PackD3DCOLOR(0,r,g,b)
+
+#define COLOR_GREY(a, g) COLOR(a, g, g, g)
+#define COLOR_WHITE COLOR(255, 255, 255, 255)
+#define COLOR_BLACK COLOR(255, 0, 0, 0)
+#define COLOR_TRANSPARENT COLOR(0, 0, 0, 0)
+#define COLOR_NONE COLOR(0, 0, 0, 0)
+
+#define COLOR3_GREY(g) COLOR3(g, g, g)
+#define COLOR3_WHITE COLOR3(255, 255, 255)
+#define COLOR3_BLACK COLOR3(0, 0, 0)
 
 #define COLOR_BLEND(a, b) std::min((uint32_t)((a)*(b))>>7, 255u)
 
 // I don't even want to know how this is a thing
 // 0x47D870
-dllexport gnu_noinline D3DCOLOR& thiscall pack_rgb(D3DCOLOR& self, uint8_t r, uint8_t g, uint8_t b) asm_symbol_rel(0x47D870);
+dllexport gnu_noinline D3DCOLOR& thiscall pack_rgb(D3DCOLOR& self, uint8_t r, uint8_t g, uint8_t b) ASR(0x47D870);
 dllexport gnu_noinline D3DCOLOR& thiscall pack_rgb(D3DCOLOR& self, uint8_t r, uint8_t g, uint8_t b) {
 	BLUE(self) = b;
 	GREEN(self) = g;
 	RED(self) = r;
 	return self;
+}
+
+template<size_t N>
+static inline constexpr std::array<int, N - 1> ASCII_TO_DIK_ARRAY(const char(&arr)[N]) {
+	std::array<int, N - 1> dik = {};
+	for (size_t i = 0; i != N - 1; ++i) {
+		dik[i] = ((uint8_t)arr[i] & 0xDF) - 'A' + DIK_A;
+	}
+	return dik;
 }
 
 struct D3DMATRIXZ : D3DMATRIX {
@@ -471,55 +496,6 @@ struct D3DMATRIXZ : D3DMATRIX {
 ValidateStructSize32(0x40, D3DMATRIXZ);
 #pragma endregion
 
-/*
-// 0x4028F0
-dllexport float vectorcall reduce_angle(float angle) asm_symbol_rel(0x4028F0);
-dllexport float vectorcall reduce_angle(float angle) {
-	int32_t counter = 0;
-	while (angle > PI_f) {
-		angle -= TWO_PI_f;
-		if (counter++ > 32) break;
-	}
-	while (-PI_f > angle) {
-		angle += TWO_PI_f;
-		if (counter++ > 32) break;
-	}
-	return angle;
-}
-
-template <InlineState inline_state = DefaultInline>
-static auto reduce_angle(float angle) {
-	if constexpr (inline_state == ForceInline) {
-		clang_forceinline return reduce_angle(angle);
-	} else if constexpr (inline_state == NoInline) {
-		clang_noinline return reduce_angle(angle);
-	} else {
-		return reduce_angle(angle);
-	}
-}
-
-// 0x402890
-// ZUN has always had this function... IDK why
-dllexport float vectorcall reduce_angle_add(float angle, float value) asm_symbol_rel(0x402890);
-dllexport float vectorcall reduce_angle_add(float angle, float value) {
-	return reduce_angle(angle + value);
-}
-*/
-
-/*
-// 0x404BC0
-dllexport float& vectorcall reduce_angle_add_write(float& angle_ref, float& out, float value) asm_symbol_rel(0x404BC0);
-dllexport float& vectorcall reduce_angle_add_write(float& angle_ref, float& out, float value) {
-	return out = reduce_angle_add(angle_ref, value);
-}
-*/
-/*
-// 0x404D10
-dllexport float& vectorcall reduce_angle_add_assign_write(float& angle_ref, float value) asm_symbol_rel(0x404D10) {
-	return angle_ref = reduce_angle_add_ref(angle_ref, value);
-}
-*/
-
 inline float vectorcall __angle_diffB(float angle, float value, float temp) {
 	if (temp > PI_f) {
 		return angle - (value + TWO_PI_f);
@@ -530,25 +506,8 @@ inline float vectorcall __angle_diffB(float angle, float value, float temp) {
 	}
 }
 
-/*
-// 0x439FE0
-dllexport float vectorcall reduced_angle_diff(float angle, float value) asm_symbol_rel(0x439FE0);
-dllexport float vectorcall reduced_angle_diff(float angle, float value) {
-	float temp = angle - value;
-	if (temp > PI_f) {
-		return angle - (value + TWO_PI_f);
-	}
-	else if (value - angle > PI_f) {
-		return angle - (value - TWO_PI_f);
-	}
-	else {
-		return temp;
-	}
-}
-*/
-
 // 0x47D470
-dllexport gnu_noinline void fastcall circle_pos(float* x, float* y, float angle, float magnitude) asm_symbol_rel(0x47D470);
+dllexport gnu_noinline void fastcall circle_pos(float* x, float* y, float angle, float magnitude) ASR(0x47D470);
 dllexport gnu_noinline void fastcall circle_pos(float* x, float* y, float angle, float magnitude) {
 #ifndef __x86_64__
 	__asm {
@@ -576,7 +535,7 @@ dllexport gnu_noinline void fastcall circle_pos(float* x, float* y, float angle,
 }
 
 // 0x46F150
-dllexport char* stdcall pbg_strdup(const char* str) asm_symbol_rel(0x46F150);
+dllexport char* stdcall pbg_strdup(const char* str) ASR(0x46F150);
 dllexport char* stdcall pbg_strdup(const char* str) {
 	char* ret = (char*)malloc(byteloop_strlen(str) + 1);
 	if (ret) {
@@ -584,13 +543,6 @@ dllexport char* stdcall pbg_strdup(const char* str) {
 	}
 	return ret;
 }
-
-/*
-// 0x404C70
-dllexport float& vectorcall reduce_angle_diff_write(float& angle_ref, float& out, float& value_ref) asm_symbol_rel(0x404C70) {
-	return reduce_angle_write(out, reduced_angle_diff(angle_ref, value_ref));
-}
-*/
 
 // size: 0x4
 // Of course this exists...
@@ -601,7 +553,7 @@ struct ZUNAngle {
 
 private:
 	// 0x404C20
-	dllexport gnu_noinline void vectorcall constructor(float, const float value) asm_symbol_rel(0x404C20) {
+	dllexport gnu_noinline void vectorcall constructor(float, const float value) ASR(0x404C20) {
 		this->value = reduce_angle(value);
 	}
 public:
@@ -611,7 +563,7 @@ public:
 
 private:
 	// 0x404D70
-	dllexport ZUNAngle& vectorcall set(float, const float value) asm_symbol_rel(0x404D70) {
+	dllexport ZUNAngle& vectorcall set(float, const float value) ASR(0x404D70) {
 		this->value = reduce_angle(value);
 		return *this;
 	}
@@ -629,13 +581,13 @@ public:
 	*/
 
 	// 0x404DC0
-	dllexport operator float() const vectorcall asm_symbol_rel(0x404DC0) {
+	dllexport operator float() const vectorcall ASR(0x404DC0) {
 		return this->value;
 	}
 
 private:
 	// 0x404BC0
-	dllexport ZUNAngle& vectorcall add(int, float, float, ZUNAngle& out, const float value) asm_symbol_rel(0x404BC0) {
+	dllexport ZUNAngle& vectorcall add(int, float, float, ZUNAngle& out, const float value) ASR(0x404BC0) {
 		return out = this->value + value;
 	}
 public:
@@ -646,7 +598,7 @@ public:
 
 private:
 	// 0x45E2A0
-	dllexport ZUNAngle& thiscall add(ZUNAngle& out, const ZUNAngle& angle) asm_symbol_rel(0x45E2A0) {
+	dllexport ZUNAngle& thiscall add(ZUNAngle& out, const ZUNAngle& angle) ASR(0x45E2A0) {
 		return out = this->value + angle.value;
 	}
 public:
@@ -657,7 +609,7 @@ public:
 
 private:
 	// 0x404D10
-	dllexport gnu_noinline ZUNAngle& vectorcall add_assign(float, const float value) asm_symbol_rel(0x404D10) {
+	dllexport gnu_noinline ZUNAngle& vectorcall add_assign(float, const float value) ASR(0x404D10) {
 		return *this = this->value + value;
 	}
 public:
@@ -679,7 +631,7 @@ public:
 
 private:
 	// 0x404C70
-	dllexport ZUNAngle& thiscall sub(ZUNAngle& out, const ZUNAngle& angle) asm_symbol_rel(0x404C70) {
+	dllexport ZUNAngle& thiscall sub(ZUNAngle& out, const ZUNAngle& angle) ASR(0x404C70) {
 		return out = reduced_angle_diff(this->value, angle.value);
 	}
 public:
@@ -703,7 +655,7 @@ public:
 
 private:
 	// 0x461540
-	dllexport ZUNAngle& vectorcall mul(int, float, float, ZUNAngle& out, const float value) asm_symbol_rel(0x461540) {
+	dllexport ZUNAngle& vectorcall mul(int, float, float, ZUNAngle& out, const float value) ASR(0x461540) {
 		return out = this->value * value;
 	}
 public:
@@ -853,10 +805,10 @@ struct CriticalSectionManager {
 	}
 
 	// 0x404F60
-	dllexport static inline void stdcall leave_section(CriticalSectionIndex index) asm_symbol_rel(0x404F60);
+	dllexport static inline void stdcall leave_section(CriticalSectionIndex index) ASR(0x404F60);
 	
 	// 0x404F90
-	dllexport static inline void stdcall enter_section(CriticalSectionIndex index) asm_symbol_rel(0x404F90);
+	dllexport static inline void stdcall enter_section(CriticalSectionIndex index) ASR(0x404F90);
 
 	static inline void leave_section_volatile(CriticalSectionIndex index);
 	static inline void enter_section_volatile(CriticalSectionIndex index);
@@ -948,47 +900,47 @@ struct DebugLogger {
 	int __dword_0; // 0x0
 
 	// 0x404E80
-	dllexport gnu_noinline static void cdecl __debug_log_stub_4(const char* format, ...) asm_symbol_rel(0x404E80) {
+	dllexport gnu_noinline static void cdecl __debug_log_stub_4(const char* format, ...) ASR(0x404E80) {
 		DEBUG_VPRINT(format);
 	}
 
 	// 0x404F50
-	dllexport gnu_noinline int32_t thiscall __debug_log_stub_12(int32_t value, int, const char*) asm_symbol_rel(0x404F50) {
+	dllexport gnu_noinline int32_t thiscall __debug_log_stub_12(int32_t value, int, const char*) ASR(0x404F50) {
 		return value;
 	}
 
 	// 0x43A280
-	dllexport gnu_noinline static void cdecl __debug_log_stub_3(const char* format, ...) asm_symbol_rel(0x43A280) {
+	dllexport gnu_noinline static void cdecl __debug_log_stub_3(const char* format, ...) ASR(0x43A280) {
 		DEBUG_VPRINT(format);
 	}
 
 	// 0x442440
-	dllexport gnu_noinline static void cdecl __debug_log_stub_8(const char* format, ...) asm_symbol_rel(0x442440) {
+	dllexport gnu_noinline static void cdecl __debug_log_stub_8(const char* format, ...) ASR(0x442440) {
 		DEBUG_VPRINT(format);
 	}
 
 	// 0x4562A0
-	dllexport gnu_noinline static void cdecl __debug_log_stub_7(const char* format, ...) asm_symbol_rel(0x4562A0) {
+	dllexport gnu_noinline static void cdecl __debug_log_stub_7(const char* format, ...) ASR(0x4562A0) {
 		DEBUG_VPRINT(format);
 	}
 
 	// 0x46F1D0
-	dllexport gnu_noinline static void cdecl __debug_log_stub_2(const char* format, ...) asm_symbol_rel(0x46F1D0) {
+	dllexport gnu_noinline static void cdecl __debug_log_stub_2(const char* format, ...) ASR(0x46F1D0) {
 		DEBUG_VPRINT(format);
 	}
 
 	// 0x471110
-	dllexport gnu_noinline static void cdecl __debug_log_stub_11(const char* format, ...) asm_symbol_rel(0x471110) {
+	dllexport gnu_noinline static void cdecl __debug_log_stub_11(const char* format, ...) ASR(0x471110) {
 		DEBUG_VPRINT(format);
 	}
 
 	// 0x476310
-	dllexport gnu_noinline static void cdecl __debug_log_stub_1(const char* format, ...) asm_symbol_rel(0x476310) {
+	dllexport gnu_noinline static void cdecl __debug_log_stub_1(const char* format, ...) ASR(0x476310) {
 		DEBUG_VPRINT(format);
 	}
 
 	// 0x477AF0
-	dllexport gnu_noinline static void cdecl __debug_log_stub_10(const char* format, ...) asm_symbol_rel(0x477AF0) {
+	dllexport gnu_noinline static void cdecl __debug_log_stub_10(const char* format, ...) ASR(0x477AF0) {
 		DEBUG_VPRINT(format);
 	}
 
@@ -996,17 +948,17 @@ struct DebugLogger {
 #if !INCLUDE_EXTRA_DEBUG_STUFF
 	[[gnu::no_caller_saved_registers]]
 #endif
-	dllexport gnu_noinline static void cdecl __debug_log_stub_6(const char* format, ...) asm_symbol_rel(0x489590) {
+	dllexport gnu_noinline static void cdecl __debug_log_stub_6(const char* format, ...) ASR(0x489590) {
 		DEBUG_VPRINT(format);
 	}
 
 	// 0x48B010
-	dllexport gnu_noinline static void cdecl __debug_log_stub_9(const char* format, ...) asm_symbol_rel(0x48B010) {
+	dllexport gnu_noinline static void cdecl __debug_log_stub_9(const char* format, ...) ASR(0x48B010) {
 		DEBUG_VPRINT(format);
 	}
 
 	// 0x48B020
-	dllexport gnu_noinline static void cdecl __debug_log_stub_5(const char* format, ...) asm_symbol_rel(0x48B020) {
+	dllexport gnu_noinline static void cdecl __debug_log_stub_5(const char* format, ...) ASR(0x48B020) {
 		DEBUG_VPRINT(format);
 	}
 
@@ -1049,7 +1001,10 @@ extern "C" {
 	externcg DebugLogger* DEBUG_LOG_PTR cgasm("_DEBUG_LOG_PTR");
 
 	// 0x4CF2F0
-	externcg char UNKNOWN_TEXT_BUFFER_A[MAX_PATH] cgasm("_UNKNOWN_TEXT_BUFFER_A");
+	externcg char REPLAY_FILENAME_BUFFER[MAX_PATH] cgasm("_REPLAY_FILENAME_BUFFER");
+
+	// 0x570FA4
+	externcg char REPLAY_USERDATA_NAME[5] cgasm("_REPLAY_USERDATA_NAME");
 }
 
 namespace Pbg {
@@ -1086,7 +1041,7 @@ namespace Pbg {
 
 		// 0x46F230
 		// Method 0
-		virtual gnu_noinline bool thiscall open_file(LPCSTR path_in, const char* mode_str) asm_symbol_rel(0x46F230) {
+		virtual gnu_noinline bool thiscall open_file(LPCSTR path_in, const char* mode_str) ASR(0x46F230) {
 			BOOL is_append = false;
 			DWORD create_type = 0;
 			this->close_file();
@@ -1150,7 +1105,7 @@ namespace Pbg {
 
 		// 0x46F3E0
 		// Method 4
-		virtual gnu_noinline void thiscall close_file() asm_symbol_rel(0x46F3E0) {
+		virtual gnu_noinline void thiscall close_file() ASR(0x46F3E0) {
 			HANDLE file_handle = this->handle;
 			if (file_handle != INVALID_HANDLE_VALUE) {
 				CloseHandle(file_handle);
@@ -1161,7 +1116,7 @@ namespace Pbg {
 
 		// 0x46F410
 		// Method 8
-		virtual gnu_noinline DWORD thiscall read_file_to_buffer(LPVOID buffer, DWORD size) asm_symbol_rel(0x46F410) {
+		virtual gnu_noinline DWORD thiscall read_file_to_buffer(LPVOID buffer, DWORD size) ASR(0x46F410) {
 			DWORD read_size = 0;
 			if (this->access_mask != GENERIC_READ) {
 				return 0;
@@ -1172,7 +1127,7 @@ namespace Pbg {
 
 		// 0x46F450
 		// Method C
-		virtual gnu_noinline bool thiscall write_buffer_to_file(LPVOID buffer, DWORD size) asm_symbol_rel(0x46F450) {
+		virtual gnu_noinline bool thiscall write_buffer_to_file(LPVOID buffer, DWORD size) ASR(0x46F450) {
 			DWORD read_size = 0;
 			if (this->access_mask != GENERIC_WRITE) {
 				return false;
@@ -1183,7 +1138,7 @@ namespace Pbg {
 
 		// 0x46F490
 		// Method 10
-		virtual gnu_noinline DWORD thiscall get_file_pointer() asm_symbol_rel(0x46F490) {
+		virtual gnu_noinline DWORD thiscall get_file_pointer() ASR(0x46F490) {
 			HANDLE file_handle = this->handle;
 			if (file_handle == INVALID_HANDLE_VALUE) {
 				return 0;
@@ -1193,7 +1148,7 @@ namespace Pbg {
 
 		// 0x46F4B0
 		// Method 14
-		virtual gnu_noinline DWORD thiscall get_file_size() asm_symbol_rel(0x46F4B0) {
+		virtual gnu_noinline DWORD thiscall get_file_size() ASR(0x46F4B0) {
 			HANDLE file_handle = this->handle;
 			if (file_handle == INVALID_HANDLE_VALUE) {
 				return 0;
@@ -1203,7 +1158,7 @@ namespace Pbg {
 
 		// 0x46F4D0
 		// Method 18
-		virtual gnu_noinline bool thiscall set_file_pointer(LONG offset, DWORD origin) asm_symbol_rel(0x46F4D0) {
+		virtual gnu_noinline bool thiscall set_file_pointer(LONG offset, DWORD origin) ASR(0x46F4D0) {
 			HANDLE file_handle = this->handle;
 			if (file_handle == INVALID_HANDLE_VALUE) {
 				return false;
@@ -1225,7 +1180,7 @@ namespace Pbg {
 
 		// 0x46F500
 		// Method 20
-		virtual gnu_noinline LPVOID copy_file_to_new_buffer(LONG file_offset) asm_symbol_rel(0x46F500) {
+		virtual gnu_noinline LPVOID copy_file_to_new_buffer(LONG file_offset) ASR(0x46F500) {
 			if (this->access_mask == GENERIC_READ) {
 				DWORD file_size = this->get_file_size();
 				if ((DWORD)file_offset <= file_size) {
@@ -1338,7 +1293,7 @@ static UnknownP UNKNOWN_P[] = {
 };
 
 // 0x401F50
-dllexport gnu_noinline void* fastcall __crypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_accel, int32_t arg3, int32_t arg4) asm_symbol_rel(0x401F50);
+dllexport gnu_noinline void* fastcall __crypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_accel, int32_t arg3, int32_t arg4) ASR(0x401F50);
 dllexport gnu_noinline void* fastcall __crypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_accel, int32_t arg3, int32_t arg4) {
 	use_var(buffer);
 	use_var(buffer_size);
@@ -1350,7 +1305,7 @@ dllexport gnu_noinline void* fastcall __crypt_buffer(void* buffer, int32_t buffe
 }
 
 // 0x401E40
-dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_accel, int32_t arg3, int32_t arg4) asm_symbol_rel(0x401E40);
+dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_accel, int32_t arg3, int32_t arg4) ASR(0x401E40);
 dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_accel, int32_t arg3, int32_t arg4) {
 	int32_t intA = buffer_size % arg3; // EBX
 	uint8_t* input_buffer = (uint8_t*)buffer; // ESI
@@ -1411,7 +1366,7 @@ extern "C" {
 }
 
 // 0x46F5B0
-dllexport gnu_noinline void* fastcall __compress_buffer(void* buffer_in, int32_t buffer_size, int32_t* out_buffer_size) asm_symbol_rel(0x46F5B0);
+dllexport gnu_noinline void* fastcall __compress_buffer(void* buffer_in, int32_t buffer_size, int32_t* out_buffer_size) ASR(0x46F5B0);
 dllexport gnu_noinline void* fastcall __compress_buffer(void* buffer_in, int32_t buffer_size, int32_t* out_buffer_size) {
 	use_var(buffer_in);
 	use_var(buffer_size);
@@ -1424,7 +1379,7 @@ dllexport gnu_noinline void* fastcall __compress_buffer(void* buffer_in, int32_t
 #define LZSS_MIN_MATCH 3
 
 // 0x46F840
-dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32_t buffer_size, void* out_buffer, int32_t out_buffer_size) asm_symbol_rel(0x46F840);
+dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32_t buffer_size, void* out_buffer, int32_t out_buffer_size) ASR(0x46F840);
 dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32_t buffer_size, void* out_buffer, int32_t out_buffer_size) {
 	
 #if FIX_REALLY_BAD_BUGS || QUICKLOAD
@@ -1596,14 +1551,14 @@ struct ArcFile {
 	}
 
 	// 0x46EB80
-	dllexport gnu_noinline static bool stdcall __sub_46EB80(int32_t = UNUSED_DWORD) asm_symbol_rel(0x46EB80);
+	dllexport gnu_noinline static bool stdcall __sub_46EB80(int32_t = UNUSED_DWORD) ASR(0x46EB80);
 
 	// 0x46EE90
 	// EH frame (free something)
-	dllexport gnu_noinline static bool stdcall __sub_46EE90(int32_t = UNUSED_DWORD) asm_symbol_rel(0x46EE90);
+	dllexport gnu_noinline static bool stdcall __sub_46EE90(int32_t = UNUSED_DWORD) ASR(0x46EE90);
 
 	// 0x46ED10
-	dllexport gnu_noinline void* thiscall __sub_46ED10(const char* filename, void* file_buffer) asm_symbol_rel(0x46ED10) {
+	dllexport gnu_noinline void* thiscall __sub_46ED10(const char* filename, void* file_buffer) ASR(0x46ED10) {
 		if (!this->file) {
 			return NULL;
 		}
@@ -1783,7 +1738,7 @@ struct ArcFileEx : ArcFile {
 	}
 
 	// 0x46EB70
-	dllexport gnu_noinline ~ArcFileEx() NO_EH_TERMINATE asm_symbol_rel(0x46EB70) {}
+	dllexport gnu_noinline ~ArcFileEx() NO_EH_TERMINATE ASR(0x46EB70) {}
 };
 
 extern "C" {
@@ -1988,7 +1943,7 @@ inline void* read_file_from_dat(const char* path, int32_t* size_out = NULL) {
 }
 
 // 0x402220
-dllexport gnu_noinline BOOL fastcall zun_file_exists(const char* filename) asm_symbol_rel(0x402220);
+dllexport gnu_noinline BOOL fastcall zun_file_exists(const char* filename) ASR(0x402220);
 dllexport gnu_noinline BOOL fastcall zun_file_exists(const char* filename) {
 	CRITICAL_SECTION_MANAGER.enter_section(FileIO_CS);
 	HANDLE file_handle = CreateFileA(
@@ -2011,7 +1966,7 @@ dllexport gnu_noinline BOOL fastcall zun_file_exists(const char* filename) {
 	}
 }
 // 0x4022A0
-dllexport gnu_noinline ZUNResult fastcall __zun_create_new_file_from_buffer(const char* filename, void* buffer, size_t buffer_size) asm_symbol_rel(0x4022A0);
+dllexport gnu_noinline ZUNResult fastcall __zun_create_new_file_from_buffer(const char* filename, void* buffer, size_t buffer_size) ASR(0x4022A0);
 dllexport gnu_noinline ZUNResult fastcall __zun_create_new_file_from_buffer(const char* filename, void* buffer, size_t buffer_size) {
 	CRITICAL_SECTION_MANAGER.enter_section(FileIO_CS);
 	HANDLE file_handle = CreateFileA(
@@ -2096,7 +2051,7 @@ inline ZUNResult __zun_open_file(const char* filename) {
 }
 
 // 0x4023E0
-dllexport gnu_noinline ZUNResult fastcall __zun_open_new_file(const char* filename) asm_symbol_rel(0x4023E0);
+dllexport gnu_noinline ZUNResult fastcall __zun_open_new_file(const char* filename) ASR(0x4023E0);
 dllexport gnu_noinline ZUNResult fastcall __zun_open_new_file(const char* filename) {
 	CRITICAL_SECTION_MANAGER.enter_section(FileIO_CS);
 	HANDLE file_handle = CreateFileA(
@@ -2130,7 +2085,7 @@ dllexport gnu_noinline ZUNResult fastcall __zun_open_new_file(const char* filena
 }
 
 // 0x4024A0
-dllexport gnu_noinline void* fastcall __zun_read_file(size_t bytes) asm_symbol_rel(0x4024A0);
+dllexport gnu_noinline void* fastcall __zun_read_file(size_t bytes) ASR(0x4024A0);
 dllexport gnu_noinline void* fastcall __zun_read_file(size_t bytes) {
 	if (STATIC_FILE_HANDLE == INVALID_HANDLE_VALUE) {
 		return NULL;
@@ -2172,7 +2127,7 @@ inline ZUNResult fastcall __zun_write_file(void* buffer, size_t bytes) {
 }
 
 // 0x402500
-dllexport gnu_noinline ZUNResult fastcall __zun_close_file() asm_symbol_rel(0x402500);
+dllexport gnu_noinline ZUNResult fastcall __zun_close_file() ASR(0x402500);
 dllexport gnu_noinline ZUNResult fastcall __zun_close_file() {
 	HANDLE file_handle = STATIC_FILE_HANDLE;
 	if (file_handle != INVALID_HANDLE_VALUE) {
@@ -2194,7 +2149,7 @@ struct LogBuffer {
 	}
 
 	// 0x402530
-	dllexport gnu_noinline const char* cdecl write(const char* format, ...) asm_symbol_rel(0x402530) {
+	dllexport gnu_noinline const char* cdecl write(const char* format, ...) ASR(0x402530) {
 		char stupid_stack_buffer[buffer_size];
 
 		CRITICAL_SECTION_MANAGER.enter_section(Logging_CS);
@@ -2215,7 +2170,7 @@ struct LogBuffer {
 	}
 
 	// 0x402600
-	dllexport gnu_noinline const char* cdecl write_error(const char* format, ...) asm_symbol_rel(0x402600) {
+	dllexport gnu_noinline const char* cdecl write_error(const char* format, ...) ASR(0x402600) {
 		char stupid_stack_buffer[0x200];
 
 		CRITICAL_SECTION_MANAGER.enter_section(Logging_CS);
@@ -2480,7 +2435,7 @@ struct UpdateFuncRegistry {
 	inline ~UpdateFuncRegistry() NO_EH_TERMINATE;
 
 	// 0x401180
-	dllexport gnu_noinline static ZUNResult stdcall register_on_tick(UpdateFunc* update_tick, int32_t new_func_priority) asm_symbol_rel(0x401180) {
+	dllexport gnu_noinline static ZUNResult stdcall register_on_tick(UpdateFunc* update_tick, int32_t new_func_priority) ASR(0x401180) {
 		ZUNResult ret = update_tick->run_init();
 		UpdateFuncRegistry* update_func_registry = UPDATE_FUNC_REGISTRY_PTR;
 		CRITICAL_SECTION_MANAGER.enter_section(UpdateFuncRegistry_CS);
@@ -2496,7 +2451,7 @@ struct UpdateFuncRegistry {
 	}
 
 	// 0x401230
-	dllexport gnu_noinline static int32_t stdcall register_on_draw(UpdateFunc* update_draw, int32_t new_func_priority) asm_symbol_rel(0x401230) {
+	dllexport gnu_noinline static int32_t stdcall register_on_draw(UpdateFunc* update_draw, int32_t new_func_priority) ASR(0x401230) {
 		int32_t ret = update_draw->run_init();
 		UpdateFuncRegistry* update_func_registry = UPDATE_FUNC_REGISTRY_PTR;
 		CRITICAL_SECTION_MANAGER.enter_section(UpdateFuncRegistry_CS);
@@ -2512,7 +2467,7 @@ struct UpdateFuncRegistry {
 	}
 
 	// 0x4015A0
-	dllexport gnu_noinline void thiscall delete_func(UpdateFunc* update_func) asm_symbol_rel(0x4015A0) {
+	dllexport gnu_noinline void thiscall delete_func(UpdateFunc* update_func) ASR(0x4015A0) {
 		if (update_func) {
 			auto data_match = [=](UpdateFunc* data) {
 				return data == update_func;
@@ -2548,7 +2503,7 @@ struct UpdateFuncRegistry {
 	}
 
 	// 0x4012E0
-	dllexport gnu_noinline int32_t thiscall run_all_on_tick() asm_symbol_rel(0x4012E0) {
+	dllexport gnu_noinline int32_t thiscall run_all_on_tick() ASR(0x4012E0) {
 #if DEBUG_FAST_FORWARD
 		uint32_t repeat_count = 0;
 #endif
@@ -2624,7 +2579,7 @@ EndOnTick:
 	}
 
 	// 0x401420
-	dllexport gnu_noinline static int32_t run_all_on_draw() asm_symbol_rel(0x401420) {
+	dllexport gnu_noinline static int32_t run_all_on_draw() ASR(0x401420) {
 		UpdateFuncRegistry* update_func_registry = UPDATE_FUNC_REGISTRY_PTR;
 		int32_t ret;
 		CRITICAL_SECTION_MANAGER.enter_section(UpdateFuncRegistry_CS);
@@ -2707,7 +2662,7 @@ struct Rng {
 	// 0x8
 	
 	// 0x4026D0
-	dllexport gnu_noinline uint16_t thiscall rand_ushort() asm_symbol_rel(0x4026D0) {
+	dllexport gnu_noinline uint16_t thiscall rand_ushort() ASR(0x4026D0) {
 		CRITICAL_SECTION_MANAGER.enter_section(RNG_CS);
 		{
 			this->index++;
@@ -2719,7 +2674,7 @@ struct Rng {
 	}
 	
 	// 0x402740
-	dllexport gnu_noinline uint32_t thiscall rand_uint() asm_symbol_rel(0x402740) {
+	dllexport gnu_noinline uint32_t thiscall rand_uint() ASR(0x402740) {
 		uint16_t tempA, tempB;
 		CRITICAL_SECTION_MANAGER.enter_section(RNG_CS);
 		{
@@ -2734,23 +2689,23 @@ struct Rng {
 	}
 	
 	// 0x4027D0
-	dllexport gnu_noinline float thiscall rand_float() asm_symbol_rel(0x4027D0) {
+	dllexport gnu_noinline float thiscall rand_float() ASR(0x4027D0) {
 		__asm FINIT;
 		float temp = this->rand_uint();
 		return temp / (float)UINT32_MAX; // float jank rounds this to UINT32_MAX+1
 	}
 	// 0x402810
-	dllexport gnu_noinline float thiscall rand_float_signed() asm_symbol_rel(0x402810) {
+	dllexport gnu_noinline float thiscall rand_float_signed() ASR(0x402810) {
 		__asm FINIT;
 		float temp = this->rand_uint();
 		return temp / (float)INT32_MAX - 1.0f; // float jank rounds this to INT32_MAX+1
 	}
 	// 0x405B90
-	dllexport inline float vectorcall rand_angle() asm_symbol_rel(0x405B90) {
+	dllexport inline float vectorcall rand_angle() ASR(0x405B90) {
 		return this->rand_float_signed() * PI_f;
 	}
 	// 0x402850
-	dllexport gnu_noinline float thiscall rand_angle_2() asm_symbol_rel(0x402850) {
+	dllexport gnu_noinline float thiscall rand_angle_2() ASR(0x402850) {
 		__asm FINIT;
 		float temp = this->rand_uint();
 		return temp / (INT32_MAX / PI_f) - PI_f;
@@ -2758,7 +2713,7 @@ struct Rng {
 	
 private:
 	// 0x406AB0
-	dllexport inline float vectorcall rand_float_range(float, float range) asm_symbol_rel(0x406AB0) {
+	dllexport inline float vectorcall rand_float_range(float, float range) ASR(0x406AB0) {
 		return this->rand_float() * range;
 	}
 public:
@@ -2770,7 +2725,7 @@ public:
 		return this->rand_float_signed() * range;
 	}
 	// 0x4615A0
-	dllexport uint32_t thiscall rand_uint_range(uint32_t range) asm_symbol_rel(0x4615A0) {
+	dllexport uint32_t thiscall rand_uint_range(uint32_t range) ASR(0x4615A0) {
 		if (range != 0) {
 			return this->rand_uint() % range;
 		} else {
@@ -2791,7 +2746,7 @@ extern "C" {
 	externcg Rng REPLAY_RNG cgasm("_REPLAY_RNG");
 }
 
-enum Difficulty {
+enum Difficulty : int32_t {
 	EASY = 0,
 	NORMAL = 1,
 	HARD = 2,
@@ -2804,7 +2759,7 @@ typedef struct Float3 Float3;
 typedef struct Enemy Enemy;
 
 // 0x4237F0
-dllexport gnu_noinline Enemy* stdcall get_boss_by_index(int32_t boss_id) asm_symbol_rel(0x4237F0);
+dllexport gnu_noinline Enemy* stdcall get_boss_by_index(int32_t boss_id) ASR(0x4237F0);
 
 // size: 0x8
 struct GameSpeed {
@@ -2813,7 +2768,7 @@ struct GameSpeed {
 	// 0x8
 
 	// 0x43A200
-	dllexport gnu_noinline void vectorcall set(float new_speed) asm_symbol_rel(0x43A200);
+	dllexport gnu_noinline void vectorcall set(float new_speed) ASR(0x43A200);
 
 	inline operator float() const {
 		return this->value;
@@ -2906,7 +2861,7 @@ public:
 		this->previous = int_time - 1;
 	}
 	// 0x405D10
-	dllexport inline void thiscall set(int32_t time) asm_symbol_rel(0x405D10) {
+	dllexport inline void thiscall set(int32_t time) ASR(0x405D10) {
 		this->initialize_important();
 		this->set_raw(time);
 	}
@@ -2930,7 +2885,7 @@ public:
 	// 0x418C40
 	// Yes, this really does copy a whole timer to the stack
 	// Possibly an assignment operator...?
-	dllexport gnu_noinline void set_from_timer(Timer timer) asm_symbol_rel(0x418C40) {
+	dllexport gnu_noinline void set_from_timer(Timer timer) ASR(0x418C40) {
 		this->set(timer.current);
 	}
 
@@ -2959,7 +2914,7 @@ public:
 
 private:
 	// 0x402A60
-	dllexport gnu_noinline int32_t vectorcall add_raw(float, float value) asm_symbol_rel(0x402A60) {
+	dllexport gnu_noinline int32_t vectorcall add_raw(float, float value) ASR(0x402A60) {
 		this->previous = this->current;
 		return this->current = this->current_f += value;
 	}
@@ -2997,7 +2952,7 @@ public:
 	}
 
 	// 0x452BF0
-	dllexport int32_t thiscall sub_int(int32_t amount) asm_symbol_rel(0x452BF0) {
+	dllexport int32_t thiscall sub_int(int32_t amount) ASR(0x452BF0) {
 		return this->add_float(-amount);
 	}
 	
@@ -3020,17 +2975,17 @@ public:
 	}
 	
 	// 0x405990
-	dllexport int32_t thiscall operator++(int) asm_symbol_rel(0x405990) {
+	dllexport int32_t thiscall operator++(int) ASR(0x405990) {
 		clang_forceinline return this->increment();
 	}
 
 	// 0x402A80
-	dllexport int32_t thiscall operator++() asm_symbol_rel(0x402A80) {
+	dllexport int32_t thiscall operator++() ASR(0x402A80) {
 		clang_forceinline return this->increment();
 	}
 
 	// 0x409750
-	dllexport int32_t thiscall operator--(int) asm_symbol_rel(0x409750) {
+	dllexport int32_t thiscall operator--(int) ASR(0x409750) {
 		clang_forceinline return this->decrement();
 	}
 
@@ -3106,7 +3061,7 @@ public:
 	}
 
 	// 0x4210A0
-	dllexport BOOL thiscall __is_multiple_of_not_paused(int32_t value) asm_symbol_rel(0x4210A0) {
+	dllexport BOOL thiscall __is_multiple_of_not_paused(int32_t value) ASR(0x4210A0) {
 		int32_t current = this->current;
 		if (
 			current != this->previous &&
@@ -3385,83 +3340,23 @@ enum InputMode : int32_t {
 
 // This matches UnknownV in the th19 repo
 struct InputState {
-	union {
-		uint32_t hardware_inputs_current; // 0x0
-		struct {
-
-		};
-	};
-	union {
-		uint32_t hardware_inputs_previous; // 0x4
-		struct {
-
-		};
-	};
-	union {
-		uint32_t hardware_inputs_held_26_frames; // 0x8
-		struct {
-
-		};
-	};
-	union {
-		uint32_t hardware_inputs_rising_edge; // 0xC
-		struct {
-
-		};
-	};
-	union {
-		uint32_t hardware_inputs_falling_edge; // 0x10
-		struct {
-
-		};
-	};
+	uint32_t hardware_inputs_current; // 0x0
+	uint32_t hardware_inputs_previous; // 0x4
+	uint32_t hardware_inputs_held_26_frames; // 0x8
+	uint32_t hardware_inputs_rising_edge; // 0xC
+	uint32_t hardware_inputs_falling_edge; // 0x10
 	uint32_t hardware_inputs_held_for_repeat[BUTTON_COUNT]; // 0x14
 	uint32_t inputs_held_for_repeat[BUTTON_COUNT]; // 0x94
 	uint32_t hardware_inputs_held[BUTTON_COUNT]; // 0x114
 	uint32_t inputs_held[BUTTON_COUNT]; // 0x194
 	int __dword_214; // 0x214
-	union {
-		uint32_t inputs_current; // 0x218
-		struct {
-			
-		};
-	};
-	union {
-		uint32_t inputs_previous; // 0x21C
-		struct {
-			
-		};
-	};
-	union {
-		uint32_t inputs_held_26_frames; // 0x220
-		struct {
-			
-		};
-	};
-	union {
-		uint32_t inputs_rising_edge; // 0x224
-		struct {
-			
-		};
-	};
-	union {
-		uint32_t inputs_falling_edge; // 0x228
-		struct {
-			
-		};
-	};
-	union {
-		uint32_t hardware_inputs_held_8_frames; // 0x22C
-		struct {
-
-		};
-	};
-	union {
-		uint32_t inputs_held_8_frames; // 0x230
-		struct {
-			
-		};
-	};
+	uint32_t inputs_current; // 0x218
+	uint32_t inputs_previous; // 0x21C
+	uint32_t inputs_held_26_frames; // 0x220
+	uint32_t inputs_rising_edge; // 0x224
+	uint32_t inputs_falling_edge; // 0x228
+	uint32_t hardware_inputs_held_8_frames; // 0x22C
+	uint32_t inputs_held_8_frames; // 0x230
 	InputMode __device_type; // 0x234
 	InputMapping joypad_mapping; // 0x238
 	InputMapping xinput_mapping; // 0x24C
@@ -3469,7 +3364,7 @@ struct InputState {
 	// 0x274
 
 	// 0x418CE0
-	dllexport gnu_noinline void thiscall __reset_inputs() asm_symbol_rel(0x418CE0) {
+	dllexport gnu_noinline void thiscall __reset_inputs() ASR(0x418CE0) {
 		zero_array(this->inputs_held_for_repeat);
 		zero_array(this->inputs_held);
 		this->__dword_214 = 0;
@@ -3482,7 +3377,7 @@ struct InputState {
 	}
 
 	// 0x404E90
-	dllexport gnu_noinline void thiscall __update_hardware_input() asm_symbol_rel(0x404E90) {
+	dllexport gnu_noinline void thiscall __update_hardware_input() ASR(0x404E90) {
 		uint32_t current = this->hardware_inputs_current;
 		uint32_t mask = 1;
 		this->hardware_inputs_held_26_frames = 0;
@@ -3512,7 +3407,7 @@ struct InputState {
 		this->hardware_inputs_falling_edge = ~current & changed;
 	}
 
-	inline void __update_input() {
+	forceinline void __update_input() {
 		uint32_t current = this->inputs_current;
 		uint32_t mask = 1;
 		this->inputs_held_26_frames = 0;
@@ -3542,35 +3437,35 @@ struct InputState {
 		this->inputs_falling_edge = ~current & changed;
 	}
 
-	inline BOOL check_inputs(uint32_t mask) {
+	forceinline BOOL check_inputs(uint32_t mask) const {
 		if (!(this->inputs_current & mask)) {
 			return FALSE;
 		}
 		return TRUE;
 	}
 
-	inline BOOL check_inputs_all(uint32_t mask) {
+	forceinline BOOL check_inputs_all(uint32_t mask) const {
 		if ((this->inputs_current & mask) != mask) {
 			return FALSE;
 		}
 		return TRUE;
 	}
 
-	inline BOOL check_inputs_no_repeat(uint32_t mask) {
+	forceinline BOOL check_inputs_no_repeat(uint32_t mask) const {
 		if (!(this->inputs_rising_edge & mask)) {
 			return FALSE;
 		}
 		return TRUE;
 	}
 
-	inline BOOL check_inputs_all_no_repeat(uint32_t mask) {
+	forceinline BOOL check_inputs_all_no_repeat(uint32_t mask) const {
 		if ((this->inputs_rising_edge & mask) != mask) {
 			return FALSE;
 		}
 		return TRUE;
 	}
 
-	inline BOOL check_inputs_repeating(uint32_t mask) {
+	forceinline BOOL check_inputs_repeating(uint32_t mask) const {
 		if (
 			!(this->inputs_rising_edge & mask) &&
 			!(this->inputs_held_26_frames & mask)
@@ -3580,35 +3475,35 @@ struct InputState {
 		return TRUE;
 	}
 
-	inline BOOL check_hardware_inputs(uint32_t mask) {
+	forceinline BOOL check_hardware_inputs(uint32_t mask) const {
 		if (!(this->hardware_inputs_current & mask)) {
 			return FALSE;
 		}
 		return TRUE;
 	}
 
-	inline BOOL check_hardware_inputs_all(uint32_t mask) {
+	forceinline BOOL check_hardware_inputs_all(uint32_t mask) const {
 		if ((this->hardware_inputs_current & mask) != mask) {
 			return FALSE;
 		}
 		return TRUE;
 	}
 
-	inline BOOL check_hardware_inputs_no_repeat(uint32_t mask) {
+	forceinline BOOL check_hardware_inputs_no_repeat(uint32_t mask) const {
 		if (!(this->hardware_inputs_rising_edge & mask)) {
 			return FALSE;
 		}
 		return TRUE;
 	}
 
-	inline BOOL check_hardware_inputs_all_no_repeat(uint32_t mask) {
+	forceinline BOOL check_hardware_inputs_all_no_repeat(uint32_t mask) const {
 		if ((this->hardware_inputs_rising_edge & mask) != mask) {
 			return FALSE;
 		}
 		return TRUE;
 	}
 
-	inline BOOL check_hardware_inputs_repeating(uint32_t mask) {
+	forceinline BOOL check_hardware_inputs_repeating(uint32_t mask) const {
 		if (
 			!(this->hardware_inputs_rising_edge & mask) &&
 			!(this->hardware_inputs_held_26_frames & mask)
@@ -3618,7 +3513,7 @@ struct InputState {
 		return TRUE;
 	}
 
-	inline uint32_t get_xinput(uint32_t buttons) {
+	forceinline uint32_t get_xinput(uint32_t buttons) {
 		uint32_t prev_buttons = buttons;
 
 		nounroll for (DWORD i = 0; i < 4; ++i) {
@@ -3684,9 +3579,9 @@ struct InputState {
 		return buttons;
 	}
 
-	inline uint32_t get_joypad(uint32_t buttons);
+	forceinline uint32_t get_joypad(uint32_t buttons);
 
-	inline uint32_t get_keyboard(uint32_t buttons) {
+	forceinline uint32_t get_keyboard(uint32_t buttons) {
 		uint32_t prev_buttons = buttons;
 
 		BYTE keys[256];
@@ -3786,25 +3681,28 @@ ValidateFieldOffset32(0x260, InputState, keyboard_mapping);
 ValidateStructSize32(0x274, InputState);
 #pragma endregion
 
+enum PlayerId : int32_t {
+	Player1 = 0,
+	Player2 = 1
+};
 
 extern "C" {
+	// why is this 3
 	// 0x4CA210
 	externcg InputState INPUT_STATES[3] cgasm("_INPUT_STATES");
 }
 
-//#define INPUT_P1 INPUT_STATES[0]
-//#define INPUT_P2 INPUT_STATES[1]
-static inline InputState& INPUT_P1 = INPUT_STATES[0];
-static inline InputState& INPUT_P2 = INPUT_STATES[1];
+static inline InputState& INPUT_P1 = INPUT_STATES[Player1];
+static inline InputState& INPUT_P2 = INPUT_STATES[Player2];
 
 // 0x42ABC0
-dllexport gnu_noinline void __update_input0() asm_symbol_rel(0x42ABC0);
+dllexport gnu_noinline void __update_input0() ASR(0x42ABC0);
 dllexport gnu_noinline void __update_input0() {
 	INPUT_P1.__update_input();
 }
 
 // 0x416B70
-dllexport gnu_noinline BOOL stdcall check_hardware_inputs_repeating(uint32_t mask) asm_symbol_rel(0x416B70);
+dllexport gnu_noinline BOOL stdcall check_hardware_inputs_repeating(uint32_t mask) ASR(0x416B70);
 dllexport gnu_noinline BOOL stdcall check_hardware_inputs_repeating(uint32_t mask) {
 	return INPUT_P1.check_hardware_inputs_repeating(mask);
 }
@@ -3887,7 +3785,7 @@ struct Config {
 	}
 	
 	// 0x444DD0
-	dllexport gnu_noinline void initialize() asm_symbol_rel(0x444DD0) {
+	dllexport gnu_noinline void initialize() ASR(0x444DD0) {
 		this->zero_contents();
 		this->__unknown_flag_co_A = true;
 		this->__dword_0 = 0x180002;
@@ -3955,7 +3853,7 @@ struct StageSky {
 
 private:
 	// 0x41F830
-	dllexport gnu_noinline StageSky& add(StageSky& out, const StageSky& value) const asm_symbol_rel(0x41F830) {
+	dllexport gnu_noinline StageSky& add(StageSky& out, const StageSky& value) const ASR(0x41F830) {
 		out.begin_distance = this->begin_distance + value.begin_distance;
 		out.end_distance = this->end_distance + value.end_distance;
 		out.color_components.b = this->color_components.b + value.color_components.b;
@@ -4135,7 +4033,7 @@ struct ZUNThread {
 
 	// 0x402B30
 	// Might be destructor?
-	dllexport gnu_noinline void stop_and_cleanup() asm_symbol_rel(0x402B30) {
+	dllexport gnu_noinline void stop_and_cleanup() ASR(0x402B30) {
 		if (HANDLE thread_handle = this->thread) {
 			this->__bool_C = true;
 			this->__bool_10 = false;
@@ -4153,7 +4051,7 @@ struct ZUNThread {
 	}
 
 	// 0x402BB0
-	dllexport gnu_noinline void start(_beginthreadex_proc_type func, void* arg_list) asm_symbol_rel(0x402BB0) {
+	dllexport gnu_noinline void start(_beginthreadex_proc_type func, void* arg_list) ASR(0x402BB0) {
 		this->stop_and_cleanup();
 		this->start_func = func;
 		this->__bool_10 = true;
@@ -4192,9 +4090,7 @@ struct D3DThread : ZUNThread {
 	// 0x58
 
 	// 0x46FDD0
-	virtual ~D3DThread() NO_EH_TERMINATE {
-
-	}
+	virtual ~D3DThread() NO_EH_TERMINATE {}
 };
 #pragma region // D3DThread Validation
 ValidateStructSize32(0x58, D3DThread);
@@ -4311,9 +4207,9 @@ typedef struct TickCounter TickCounter;
 
 // According to FW these belong to WindowData
 // 0x473390
-dllexport gnu_noinline double vectorcall get_runtime() asm_symbol_rel(0x473390);
+dllexport gnu_noinline double vectorcall get_runtime() ASR(0x473390);
 // 0x4728A0
-dllexport gnu_noinline void __update_realtimes() asm_symbol_rel(0x4728A0);
+dllexport gnu_noinline void __update_realtimes() ASR(0x4728A0);
 
 extern "C" {
 	// 0x4CF2DC
@@ -4362,7 +4258,7 @@ struct FpsCounter : ZUNTask {
 	inline void __update();
 
 	// 0x43A340
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x43A340);
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x43A340);
 
 	inline ZUNResult initialize() {
 		UpdateFunc* update_func = new UpdateFunc(&on_draw, true, this);
@@ -4405,7 +4301,7 @@ struct TickCounter : ZUNTask {
 	}
 
 	// 0x475440
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x475440) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x475440) {
 		((TickCounter*)ptr)->ticks++;
 		return UpdateFuncNext;
 	}
@@ -4482,6 +4378,8 @@ struct StageData {
 };
 
 static inline constexpr int32_t STAGE_COUNT = 8;
+static inline constexpr int32_t IGNORED_STAGES = 1; // ignore the debug stage
+static inline constexpr int32_t PLAYABLE_STAGE_COUNT = STAGE_COUNT - IGNORED_STAGES;
 
 enum StageID : int32_t {
 	DebugStage = 0,
@@ -4520,6 +4418,25 @@ static StageData STAGE_DATA[STAGE_COUNT] = {
 				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 15,
 				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
 			}
+#if KOISHI_DEBUG_TEST
+			,
+			{
+				.boss_name_index = 0,
+				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_4, .spell_background_anm_script = 24,
+				.__render_stage_during_spell = false,
+				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_4, .spell_cut_in_anm_script = 10,
+				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_4, .intro_anm_script = 9,
+				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
+			},
+			{
+				.boss_name_index = 0,
+				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_4, .spell_background_anm_script = 25,
+				.__render_stage_during_spell = false,
+				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_4, .spell_cut_in_anm_script = 10,
+				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_4, .intro_anm_script = 9,
+				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
+			}
+#endif
 		},
 		.__int_D0 = 0
 	},
@@ -4558,7 +4475,7 @@ static StageData STAGE_DATA[STAGE_COUNT] = {
 		.stage_number = Stage2,
 		.std_filename = "st02.std",
 		.ecl_filename = "st02.ecl",
-		.bgm_filenames = { "th18_06", "th18_06" },
+		.bgm_filenames = { "th18_05", "th18_06" },
 		.msg_filenames = { "st02a.msg", "st02b.msg", "st02c.msg", "st02d.msg" },
 		.logo_anm_filename = "st02logo.anm",
 		.bgm_indices = { 3, 4 },
@@ -4788,13 +4705,19 @@ union AnmID {
 	template<typename T> requires(std::is_integral_v<T>)
 	inline constexpr AnmID(const T& raw) : full(raw) {}
 
+	forceinline AnmVM* get_vm_ptr(AnmManager* anm_manager);
+
 	// 0x488E30
-	dllexport AnmVM* get_vm_ptr() asm_symbol_rel(0x488E30);
+	dllexport AnmVM* get_vm_ptr() ASR(0x488E30);
 
 	inline AnmVM* get_vm_ptr_safe();
 
 	forceinline bool has_live_vm() {
 		return this->get_vm_ptr();
+	}
+
+	forceinline bool has_live_vm(AnmManager* anm_manager) {
+		return this->get_vm_ptr(anm_manager);
 	}
 
 	inline int32_t run_vm_safe();
@@ -4806,11 +4729,13 @@ union AnmID {
 	inline void set_sprite_unsafe(int32_t sprite_id);
 
 	// 0x488E50
-	dllexport forceinline void interrupt_tree(int32_t interrupt_index) asm_symbol_rel(0x488E50);
+	dllexport forceinline void interrupt_tree(int32_t interrupt_index) ASR(0x488E50);
 
 	forceinline void interrupt_tree_word_offset(int16_t interrupt_index, int16_t offset);
 
 	forceinline void interrupt_and_run_tree(int32_t interrupt_index);
+
+	forceinline void interrupt_and_run_tree_word_offset(int16_t interrupt_index, int16_t offset);
 
 	forceinline void interrupt_and_orphan_tree(int32_t interrupt_index) {
 		this->interrupt_tree(interrupt_index);
@@ -4818,24 +4743,24 @@ union AnmID {
 	}
 
 	// 0x488E70
-	dllexport void __show_tree() asm_symbol_rel(0x488E70);
+	dllexport void __show_tree() ASR(0x488E70);
 
 	inline void __show_tree(AnmManager* anm_manager);
 
 	// 0x488EB0
-	dllexport void __hide_tree() asm_symbol_rel(0x488EB0);
+	dllexport void __hide_tree() ASR(0x488EB0);
 
 	inline void __hide_tree(AnmManager* anm_manager);
 
 	// 0x488F50
-	dllexport forceinline void mark_tree_for_delete() asm_symbol_rel(0x488F50);
+	dllexport forceinline void mark_tree_for_delete() ASR(0x488F50);
 
 	inline void mark_tree_for_delete(AnmManager* anm_manager);
 
 	inline void set_position(Float3* position);
 
 	// 0x488F70
-	dllexport void thiscall set_controller_position(Float3* position) asm_symbol_rel(0x488F70);
+	dllexport void thiscall set_controller_position(Float3* position) ASR(0x488F70);
 
 	inline void set_z_rotation(float rotation);
 
@@ -4902,13 +4827,13 @@ union AnmID {
 	inline void set_sprite_size(float value);
 
 	// 0x488FD0
-	dllexport gnu_noinline void thiscall __set_new_script(int32_t script) asm_symbol_rel(0x488FD0);
+	dllexport gnu_noinline void thiscall __set_new_script(int32_t script) ASR(0x488FD0);
 
 	// 0x4892F0
-	dllexport void thiscall set_color1(D3DCOLOR color) asm_symbol_rel(0x4892F0);
+	dllexport void thiscall set_color1(D3DCOLOR color) ASR(0x4892F0);
 
 	// 0x489230
-	dllexport gnu_noinline AnmVM* thiscall __find_child_vm_with_script(int32_t script, uint32_t minimum_hierarchy_depth = 0) asm_symbol_rel(0x489230);
+	dllexport gnu_noinline AnmVM* thiscall __find_child_vm_with_script(int32_t script, uint32_t minimum_hierarchy_depth = 0) ASR(0x489230);
 
 	forceinline constexpr operator uint32_t() const {
 		return this->full;
@@ -5066,71 +4991,71 @@ struct Supervisor {
 	// 0xB60
 
 	// 0x456180
-	dllexport gnu_noinline static void __release_rendering_surfaces() asm_symbol_rel(0x456180);
+	dllexport gnu_noinline static void __release_rendering_surfaces() ASR(0x456180);
 
 	// 0x454950
-	dllexport gnu_noinline int thiscall __setup_camera() asm_symbol_rel(0x454950);
+	dllexport gnu_noinline int thiscall __setup_camera() ASR(0x454950);
 
 	// 0x455040
-	dllexport gnu_noinline UpdateFuncRet thiscall __update_gamemode() asm_symbol_rel(0x455040);
+	dllexport gnu_noinline UpdateFuncRet thiscall __update_gamemode() ASR(0x455040);
 	
 	forceinline UpdateFuncRet thiscall on_tick();
 
 	// 0x453460
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x453460) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x453460) {
 		return ((Supervisor*)ptr)->on_tick();
 	}
 
 	// 0x4553B0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_A(void* ptr) asm_symbol_rel(0x4553B0);
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_A(void* ptr) ASR(0x4553B0);
 
 	// 0x455610
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_B(void* ptr) asm_symbol_rel(0x455610);
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_B(void* ptr) ASR(0x455610);
 
 	// 0x455530
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_arcade_vm_A(void* ptr) asm_symbol_rel(0x455530);
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_arcade_vm_A(void* ptr) ASR(0x455530);
 
 	// 0x455A70
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_D(void* ptr) asm_symbol_rel(0x455A70);
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_D(void* ptr) ASR(0x455A70);
 
 	// 0x4559A0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_arcade_vm_B(void* ptr) asm_symbol_rel(0x4559A0);
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_arcade_vm_B(void* ptr) ASR(0x4559A0);
 	
 	// 0x455BC0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_F(void* ptr) asm_symbol_rel(0x455BC0);
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_F(void* ptr) ASR(0x455BC0);
 
 	// 0x455B10
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_arcade_vm_C(void* ptr) asm_symbol_rel(0x455B10);
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_arcade_vm_C(void* ptr) ASR(0x455B10);
 
 	// 0x455CF0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_H(void* ptr) asm_symbol_rel(0x455CF0);
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_H(void* ptr) ASR(0x455CF0);
 
 	// 0x455C90
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_arcade_vm_D(void* ptr) asm_symbol_rel(0x455C90);
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_arcade_vm_D(void* ptr) ASR(0x455C90);
 
 	// 0x455D40
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_J(void* ptr) asm_symbol_rel(0x455D40);
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_J(void* ptr) ASR(0x455D40);
 
 	// 0x453640
-	dllexport gnu_noinline static ZUNResult UpdateFuncCC on_registration(void* self) asm_symbol_rel(0x453640);
+	dllexport gnu_noinline static ZUNResult UpdateFuncCC on_registration(void* self) ASR(0x453640);
 	
 	// 0x453DB0
-	dllexport gnu_noinline static ZUNResult initialize() asm_symbol_rel(0x453DB0);
+	dllexport gnu_noinline static ZUNResult initialize() ASR(0x453DB0);
 
 	// 0x4543A0
-	dllexport gnu_noinline ZUNResult thiscall load_config_file(int) asm_symbol_rel(0x4543A0);
+	dllexport gnu_noinline ZUNResult thiscall load_config_file(int) ASR(0x4543A0);
 
 	// 0x454760
-	dllexport HRESULT thiscall d3d_enable_fog() asm_symbol_rel(0x454760);
+	dllexport HRESULT thiscall d3d_enable_fog() ASR(0x454760);
 
 	// 0x4547A0
-	dllexport HRESULT thiscall d3d_disable_fog() asm_symbol_rel(0x4547A0);
+	dllexport HRESULT thiscall d3d_disable_fog() ASR(0x4547A0);
 
 	// 0x4547E0
-	dllexport HRESULT thiscall d3d_enable_zwrite() asm_symbol_rel(0x4547E0);
+	dllexport HRESULT thiscall d3d_enable_zwrite() ASR(0x4547E0);
 
 	// 0x454820
-	dllexport HRESULT thiscall d3d_disable_zwrite() asm_symbol_rel(0x454820);
+	dllexport HRESULT thiscall d3d_disable_zwrite() ASR(0x454820);
 
 	inline HRESULT d3d_zfunc_always();
 	inline HRESULT d3d_zfunc_lessequal();
@@ -5143,26 +5068,26 @@ struct Supervisor {
 
 private:
 	// 0x454860
-	dllexport gnu_noinline static int32_t stdcall __start_thread_A94(_beginthreadex_proc_type func, int) asm_symbol_rel(0x454860);
+	dllexport gnu_noinline static int32_t stdcall __start_thread_A94(_beginthreadex_proc_type func, int) ASR(0x454860);
 public:
 	inline static int32_t __start_thread_A94(_beginthreadex_proc_type func) {
 		return __start_thread_A94(func, UNUSED_DWORD);
 	}
 
 	// 0x455EC0
-	dllexport gnu_noinline void thiscall __sub_455EC0() asm_symbol_rel(0x455EC0);
+	dllexport gnu_noinline void thiscall __sub_455EC0() ASR(0x455EC0);
 
 	// 0x453C70
-	dllexport gnu_noinline static void thiscall __sub_453C70() asm_symbol_rel(0x453C70);
+	dllexport gnu_noinline static void thiscall __sub_453C70() ASR(0x453C70);
 
 	// 0x453A70
-	dllexport gnu_noinline void thiscall __sub_453A70() asm_symbol_rel(0x453A70);
+	dllexport gnu_noinline void thiscall __sub_453A70() ASR(0x453A70);
 
 	// 0x4548E0
-	dllexport gnu_noinline static void stdcall __sub_4548E0(StageCamera* camera) asm_symbol_rel(0x4548E0);
+	dllexport gnu_noinline static void stdcall __sub_4548E0(StageCamera* camera) ASR(0x4548E0);
 
 	// 0x454950
-	dllexport gnu_noinline static void stdcall __setup_camera(StageCamera* camera) asm_symbol_rel(0x454950) {
+	dllexport gnu_noinline static void stdcall __setup_camera(StageCamera* camera) ASR(0x454950) {
 		uint32_t height = camera->viewport.Height;
 		float x = (float)camera->viewport.X + (float)camera->viewport.Width * 0.5f;
 		float viewport_height = (float)height;
@@ -5178,24 +5103,24 @@ public:
 	}
 
 	// 0x41F950
-	dllexport gnu_noinline void thiscall __setup_stage_camera(UNUSED_ARG(StageCamera* _camera) = GARBAGE_ARG(StageCamera*)) asm_symbol_rel(0x41F950);
+	dllexport gnu_noinline void thiscall __setup_stage_camera(UNUSED_ARG(StageCamera* _camera) = GARBAGE_ARG(StageCamera*)) ASR(0x41F950);
 
 	// 0x454B20
-	dllexport gnu_noinline void thiscall __initialize_cameras() asm_symbol_rel(0x454B20);
+	dllexport gnu_noinline void thiscall __initialize_cameras() ASR(0x454B20);
 
 	// 0x454F50
-	dllexport gnu_noinline static void __camera2_sub_454F50() asm_symbol_rel(0x454F50);
+	dllexport gnu_noinline static void __camera2_sub_454F50() ASR(0x454F50);
 
 	// 0x41B330
-	dllexport void thiscall set_camera_by_index(uint32_t index) asm_symbol_rel(0x41B330);
+	dllexport void thiscall set_camera_by_index(uint32_t index) ASR(0x41B330);
 
 	// 0x41B3B0
-	dllexport gnu_noinline static void stdcall set_camera2_alt(uint32_t = UNUSED_DWORD) asm_symbol_rel(0x41B3B0);
+	dllexport gnu_noinline static void stdcall set_camera2_alt(uint32_t = UNUSED_DWORD) ASR(0x41B3B0);
 
 	inline void thiscall set_camera_by_index_disable_fog(uint32_t index);
 
 	// 0x475380
-	dllexport gnu_noinline static ZUNResult __sub_475380() asm_symbol_rel(0x475380);
+	dllexport gnu_noinline static ZUNResult __sub_475380() ASR(0x475380);
 };
 #pragma region // Supervisor Validation
 ValidateFieldOffset32(0x0, Supervisor, current_instance);
@@ -5552,7 +5477,7 @@ struct WavFileChunk {
 };
 
 // 0x476830
-dllexport gnu_noinline unsigned char* vectorcall get_wav_chunk_data(WavFileChunk* chunk, const char* chunk_id, int32_t* remaining_size_ptr, int32_t remaining_size) asm_symbol_rel(0x476830);
+dllexport gnu_noinline unsigned char* vectorcall get_wav_chunk_data(WavFileChunk* chunk, const char* chunk_id, int32_t* remaining_size_ptr, int32_t remaining_size) ASR(0x476830);
 dllexport gnu_noinline unsigned char* vectorcall get_wav_chunk_data(WavFileChunk* chunk, const char* chunk_id, int32_t* remaining_size_ptr, int32_t remaining_size) {
 	while (remaining_size) {
 		*remaining_size_ptr = chunk->size;
@@ -5593,7 +5518,7 @@ struct SoundEffectData {
 	// 0x18
 
 	// 0x4776F0
-	dllexport gnu_noinline ZUNResult thiscall initialize(const char* filename) asm_symbol_rel(0x4776F0);
+	dllexport gnu_noinline ZUNResult thiscall initialize(const char* filename) ASR(0x4776F0);
 };
 #pragma region // SoundEffectData Validation
 ValidateFieldOffset32(0x0, SoundEffectData, sound_buffer);
@@ -5716,7 +5641,7 @@ struct CSoundManager {
 		DWORD dwNotifySize,
 		HANDLE hNotifyEvent,
 		ThBgmFormat* bgm_format
-	) asm_symbol_rel(0x4895A0);
+	) ASR(0x4895A0);
 
 	// 0x4898F0
 	// EH frame (free something)
@@ -5730,7 +5655,7 @@ struct CSoundManager {
 		DWORD _dwNotifyCount, // unused
 		DWORD dwNotifySize,
 		HANDLE hNotifyEvent
-	) asm_symbol_rel(0x4898F0);
+	) ASR(0x4898F0);
 };
 #pragma region // CSoundManager Validation
 ValidateFieldOffset32(0x0, CSoundManager, dsound);
@@ -5896,7 +5821,7 @@ struct CWaveFile {
 	}
 
 	// 0x48ACC0
-	dllexport inline HRESULT ResetFile(bool loop, uint32_t arg2) asm_symbol_rel(0x48ACC0);
+	dllexport inline HRESULT ResetFile(bool loop, uint32_t arg2) ASR(0x48ACC0);
 };
 #pragma region // CWaveFile Validation
 ValidateFieldOffset32(0x0, CWaveFile, m_hmmio);
@@ -6069,7 +5994,7 @@ struct CSound {
 	}
 
 	// 0x48A440
-	dllexport gnu_noinline HRESULT thiscall Play(DWORD dwPriority, DWORD dwFlags, int arg3) asm_symbol_rel(0x48A440) {
+	dllexport gnu_noinline HRESULT thiscall Play(DWORD dwPriority, DWORD dwFlags, int arg3) ASR(0x48A440) {
 		if (!this->sound_buffer_array) {
 			return CO_E_NOTINITIALIZED;
 		}
@@ -6110,7 +6035,7 @@ struct CSound {
 	}
 
 	// 0x48A1A0
-	dllexport inline HRESULT FillBufferWithSound(LPDIRECTSOUNDBUFFER pDSB, BOOL bRepeatWavIfBufferLarger, int arg3) asm_symbol_rel(0x48A1A0) {
+	dllexport inline HRESULT FillBufferWithSound(LPDIRECTSOUNDBUFFER pDSB, BOOL bRepeatWavIfBufferLarger, int arg3) ASR(0x48A1A0) {
 		
 		if (!pDSB) {
 			return CO_E_NOTINITIALIZED;
@@ -6167,7 +6092,7 @@ struct CSound {
 	}
 
 	// 0x48A5A0
-	dllexport inline HRESULT SetVolume(int32_t volume = 0) asm_symbol_rel(0x48A5A0);
+	dllexport inline HRESULT SetVolume(int32_t volume = 0) ASR(0x48A5A0);
 
 	inline void StartFadeOut(float seconds) {
 		this->__fade_type = FadeOut;
@@ -6236,7 +6161,7 @@ struct CSound {
 	}
 
 	// 0x48ADC0
-	dllexport gnu_noinline HRESULT thiscall Reopen(ThBgmFormat* bgm_format, int arg2) asm_symbol_rel(0x48ADC0) {
+	dllexport gnu_noinline HRESULT thiscall Reopen(ThBgmFormat* bgm_format, int arg2) ASR(0x48ADC0) {
 		return this->cwave_ptr->Reopen(bgm_format, arg2);
 	}
 
@@ -6258,7 +6183,7 @@ struct CSound {
 	}
 
 	// 0x48A620
-	dllexport gnu_noinline HRESULT thiscall Stop(BOOL close_handle) asm_symbol_rel(0x48A620) {
+	dllexport gnu_noinline HRESULT thiscall Stop(BOOL close_handle) ASR(0x48A620) {
 		if (!this->sound_buffer_array) {
 			return CO_E_NOTINITIALIZED;
 		}
@@ -6349,7 +6274,7 @@ struct CStreamingSound : CSound {
 	}
 
 	// 0x48A730
-	dllexport gnu_noinline HRESULT thiscall HandleWaveStreamNotification(BOOL _bLoopedPlay = UNUSED_DWORD) asm_symbol_rel(0x48A730) {
+	dllexport gnu_noinline HRESULT thiscall HandleWaveStreamNotification(BOOL _bLoopedPlay = UNUSED_DWORD) ASR(0x48A730) {
 		constexpr BOOL bLoopedPlay = TRUE;
 
 		if (
@@ -6473,7 +6398,7 @@ struct CStreamingSound : CSound {
 	}
 
 	// 0x48AE50
-	dllexport gnu_noinline double vectorcall __sub_48AE50() asm_symbol_rel(0x48AE50) {
+	dllexport gnu_noinline double vectorcall __sub_48AE50() ASR(0x48AE50) {
 		// TODO: double check math
 		double A = get_runtime();
 		//return A;
@@ -6499,7 +6424,7 @@ struct CStreamingSound : CSound {
 
 private:
 	// 0x48AF10
-	dllexport gnu_noinline void vectorcall __sub_48AF10(float, double arg1) asm_symbol_rel(0x48AF10) {
+	dllexport gnu_noinline void vectorcall __sub_48AF10(float, double arg1) ASR(0x48AF10) {
 		CRITICAL_SECTION_MANAGER.enter_section(SoundManagerB_CS);
 		this->sound_buffer_array[0]->Stop();
 		int A = 0;
@@ -6526,7 +6451,7 @@ public:
 	}
 
 	// 0x489E90
-	dllexport gnu_noinline HRESULT thiscall InitSoundBuffers(ThBgmFormat* bgm_format) asm_symbol_rel(0x489E90) {
+	dllexport gnu_noinline HRESULT thiscall InitSoundBuffers(ThBgmFormat* bgm_format) ASR(0x489E90) {
 		static constexpr DWORD dwNotifyCount = 8;
 		
 		this->__playing = FALSE;
@@ -7317,11 +7242,11 @@ struct SoundManager {
 	int32_t __csound_volume; // 0x5738
 	// 0x573C
 
-	inline void zero_contents() {
+	forceinline void zero_contents() {
 		zero_this();
 	}
 
-	inline void copy_sound_data() {
+	forceinline void copy_sound_data() {
 		SoundEffectData* sound_effect_ptr = this->__sound_effects;
 		for (size_t i = 0; i < countof(this->__sound_effects); ++sound_effect_ptr, ++i) {
 			sound_effect_ptr->__int_4 = -1;
@@ -7332,25 +7257,25 @@ struct SoundManager {
 		}
 	}
 
-	inline void free_bgm_format_file() {
+	forceinline void free_bgm_format_file() {
 		SAFE_FREE_FAST(this->bgm_format_file);
 	}
 
-	inline void release_sound_effect_array() {
+	forceinline void release_sound_effect_array() {
 		SoundEffectData* sound_effect_ptr = this->__sound_effects;
 		for (size_t i = 0; i < countof(this->__sound_effects); ++sound_effect_ptr, ++i) {
 			SAFE_RELEASE(sound_effect_ptr->sound_buffer);
 		}
 	}
 
-	inline void free_all_sound_effect_files() {
+	forceinline void free_all_sound_effect_files() {
 		void** sound_file_pointer = this->sound_effect_files;
 		for (size_t i = 0; i < countof(this->sound_effect_files); ++sound_file_pointer, ++i) {
 			SAFE_FREE_FAST(*sound_file_pointer);
 		}
 	}
 
-	inline void free_bgm_data_array_A() {
+	forceinline void free_bgm_data_array_A() {
 		void** bgm_data_ptr = this->__loaded_bgm_buffers_A;
 		for (size_t i = 0; i < countof(this->__loaded_bgm_buffers_A); ++bgm_data_ptr, ++i) {
 			SAFE_FREE_FAST(*bgm_data_ptr);
@@ -7363,28 +7288,28 @@ struct SoundManager {
 	}
 
 	// 0x476D20
-	dllexport gnu_noinline SoundCommandType thiscall __on_tick() asm_symbol_rel(0x475D20);
+	dllexport gnu_noinline SoundCommandType thiscall __on_tick() ASR(0x475D20);
 
 	// 0x476320
-	dllexport gnu_noinline static int32_t __wait_and_close_handles() asm_symbol_rel(0x476320);
+	dllexport gnu_noinline static int32_t __wait_and_close_handles() ASR(0x476320);
 
 	// 0x4763D0
-	dllexport gnu_noinline static DWORD WINAPI initialization_thread_func(void* self) asm_symbol_rel(0x4763D0);
+	dllexport gnu_noinline static DWORD WINAPI initialization_thread_func(void* self) ASR(0x4763D0);
 
 	// 0x476410
 	// EH frame (terminate)
-	dllexport gnu_noinline ZUNResult thiscall initialize(HWND window_hwnd_arg) EH_TERMINATE asm_symbol_rel(0x476410);
+	dllexport gnu_noinline ZUNResult thiscall initialize(HWND window_hwnd_arg) EH_TERMINATE ASR(0x476410);
 
 	// 0x4767B0
-	dllexport gnu_noinline static DWORD WINAPI load_sound_effect_files(void* self) asm_symbol_rel(0x4767B0);
+	dllexport gnu_noinline static DWORD WINAPI load_sound_effect_files(void* self) ASR(0x4767B0);
 
 	// 0x476970
-	dllexport gnu_noinline static ZUNResult stdcall preload_bgm(int32_t index, const char* filename) asm_symbol_rel(0x476970);
+	dllexport gnu_noinline static ZUNResult stdcall preload_bgm(int32_t index, const char* filename) ASR(0x476970);
 
-	static inline ZUNResult load_bgm(int32_t index);
+	static forceinline ZUNResult load_bgm(int32_t index);
 	
 	// 0x476890
-	dllexport gnu_noinline int32_t thiscall __get_bgm_format_index(const char* filename) asm_symbol_rel(0x476890) {
+	dllexport gnu_noinline int32_t thiscall __get_bgm_format_index(const char* filename) ASR(0x476890) {
 		char buffer[128];
 		const char* path;
 		if (
@@ -7407,38 +7332,38 @@ struct SoundManager {
 	}
 	
 	// 0x476B40
-	dllexport gnu_noinline void thiscall stop_bgm() asm_symbol_rel(0x476B40);
+	dllexport gnu_noinline void thiscall stop_bgm() ASR(0x476B40);
 
 	// 0x476BE0
-	dllexport gnu_noinline static void stdcall play_sound_centered(int32_t sound_id, int32_t) asm_symbol_rel(0x476BE0);
+	dllexport gnu_noinline static void stdcall play_sound_centered(int32_t sound_id, int32_t) ASR(0x476BE0);
 
 	// 0x476C70
-	dllexport gnu_noinline static void vectorcall play_sound_positioned(int, int, float, float, int32_t sound_id, float position) asm_symbol_rel(0x476C70);
+	dllexport gnu_noinline static void vectorcall play_sound_positioned(int, int, float, float, int32_t sound_id, float position) ASR(0x476C70);
 
 	static forceinline void play_sound_positioned(int32_t sound_id, float position) {
 		return play_sound_positioned(UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, sound_id, position);
 	}
 
-	static inline void stop_sound(int32_t sound_id);
+	static forceinline void stop_sound(int32_t sound_id);
 
 	// 0x444D80
-	dllexport gnu_noinline static void __stop_all_sound_effects() asm_symbol_rel(0x444D80);
+	dllexport gnu_noinline static void __stop_all_sound_effects() ASR(0x444D80);
 
-	static inline void __stop_sound_effect(int32_t index);
+	static forceinline void __stop_sound_effect(int32_t index);
 
-	static inline void play_sound(int32_t sound_id) {
+	static forceinline void play_sound(int32_t sound_id) {
 		SoundManager::play_sound_centered(sound_id, UNUSED_DWORD);
 	}
 
-	static inline void play_sound_validate(int32_t sound_id) {
+	static forceinline void play_sound_validate(int32_t sound_id) {
 		if (sound_id >= 0) SoundManager::play_sound(sound_id);
 	}
 
-	static inline void play_sound_positioned_validate(int32_t sound_id, const float& position) {
+	static forceinline void play_sound_positioned_validate(int32_t sound_id, const float& position) {
 		if (sound_id >= 0) SoundManager::play_sound_positioned(sound_id, position);
 	}
 
-	inline void cleanup() {
+	forceinline void cleanup() {
 		this->__wait_and_close_handles();
 		this->free_bgm_format_file();
 		this->release_sound_effect_array();
@@ -7456,7 +7381,7 @@ struct SoundManager {
 	}
 
 	// 0x477A50
-	dllexport gnu_noinline void thiscall queue_sound_command(SoundCommandType type, int arg, const char* filename) asm_symbol_rel(0x477A50) {
+	dllexport gnu_noinline void thiscall queue_sound_command(SoundCommandType type, int arg, const char* filename) ASR(0x477A50) {
 		CRITICAL_SECTION_MANAGER.enter_section(SoundManagerA_CS);
 		nounroll for (int32_t i = 0; i < SOUND_COMMAND_QUEUE_LENGTH; ++i) {
 			if (!this->sound_command_queue[i].type) {
@@ -7472,36 +7397,36 @@ struct SoundManager {
 	}
 
 	// 0x454620
-	dllexport gnu_noinline static int stdcall __load_wav_slot(int32_t slot, const char* name) asm_symbol_rel(0x454620);
+	dllexport gnu_noinline static int stdcall __load_wav_slot(int32_t slot, const char* name) ASR(0x454620);
 
 	forceinline bool __is_wav_loaded();
 
 	// 0x4546A0
-	dllexport gnu_noinline static ZUNResult stdcall __play_music_with_unlock(int32_t slot, int32_t music_room_index) asm_symbol_rel(0x4546A0);
+	dllexport gnu_noinline static ZUNResult stdcall __play_music_with_unlock(int32_t slot, int32_t music_room_index) ASR(0x4546A0);
 
-	inline static ZUNResult __load_and_play_music_with_unlock(int32_t slot, int32_t music_room_index, const char* name) {
+	forceinline static ZUNResult __load_and_play_music_with_unlock(int32_t slot, int32_t music_room_index, const char* name) {
 		SoundManager::__load_wav_slot(slot, name);
 		return SoundManager::__play_music_with_unlock(slot, music_room_index);
 	}
 
 	// 0x4546F0
-	dllexport gnu_noinline static ZUNResult __queue_bgm_stop() asm_symbol_rel(0x4546F0);
+	dllexport gnu_noinline static ZUNResult __queue_bgm_stop() ASR(0x4546F0);
 
 	// 0x45A4A0
-	dllexport gnu_noinline static void __restart_all_playing_sfx() asm_symbol_rel(0x45A4A0);
+	dllexport gnu_noinline static void __restart_all_playing_sfx() ASR(0x45A4A0);
 
 private:
 	// 0x454720
-	dllexport gnu_noinline static ZUNResult vectorcall __queue_fade_out(float, float arg1) asm_symbol_rel(0x454720);
+	dllexport gnu_noinline static ZUNResult vectorcall __queue_fade_out(float, float arg1) ASR(0x454720);
 public:
-	static inline ZUNResult __queue_fade_out(float arg1) {
+	static forceinline ZUNResult __queue_fade_out(float arg1) {
 		return SoundManager::__queue_fade_out(UNUSED_FLOAT, arg1);
 	}
 
 	// 0x457100
-	dllexport gnu_noinline static void update_volume() asm_symbol_rel(0x457100);
+	dllexport gnu_noinline static void update_volume() ASR(0x457100);
 
-	inline void __start_fade_out(float seconds) {
+	forceinline void __start_fade_out(float seconds) {
 		if (CStreamingSound* cstreaming_sound_ptr = this->cstreaming_sound_ptr) {
 			cstreaming_sound_ptr->StartFadeOut(seconds);
 		}
@@ -7658,7 +7583,7 @@ dllexport gnu_noinline ZUNResult stdcall SoundManager::preload_bgm(int32_t index
 }
 
 // 0x4779A0
-dllexport gnu_noinline DWORD WINAPI sound_thread_func(LPVOID) asm_symbol_rel(0x4779A0);
+dllexport gnu_noinline DWORD WINAPI sound_thread_func(LPVOID) ASR(0x4779A0);
 dllexport gnu_noinline DWORD WINAPI sound_thread_func(LPVOID) {
 	BOOL stop = false;
 	do {
@@ -7691,7 +7616,7 @@ dllexport gnu_noinline DWORD WINAPI sound_thread_func(LPVOID) {
 	return 0;
 }
 
-inline ZUNResult SoundManager::load_bgm(int32_t index) {
+forceinline ZUNResult SoundManager::load_bgm(int32_t index) {
 	if (
 		SOUND_MANAGER.csound_manager_ptr &&
 		SUPERVISOR.config.bgm_type != BgmOff &&
@@ -8071,9 +7996,9 @@ dllexport gnu_noinline void SoundManager::update_volume() {
 }
 
 // 0x401C50
-dllexport gnu_noinline uint32_t get_hardware_inputs() asm_symbol_rel(0x401C50);
+dllexport gnu_noinline uint32_t get_hardware_inputs() ASR(0x401C50);
 
-inline uint32_t InputState::get_joypad(uint32_t buttons) {
+forceinline uint32_t InputState::get_joypad(uint32_t buttons) {
 	uint32_t prev_buttons = buttons;
 	if (SUPERVISOR.joypad_devices[0]) {
 		if (FAILED(SUPERVISOR.joypad_devices[0]->Poll())) {
@@ -8155,6 +8080,11 @@ static inline constexpr size_t CHARACTER_COUNT = 4;
 static inline constexpr size_t SHOTTYPES_PER_CHARACTER = 1;
 static inline constexpr size_t SHOTTYPE_COUNT = CHARACTER_COUNT * SHOTTYPES_PER_CHARACTER;
 static inline constexpr size_t DIFFICULTY_COUNT = 6;
+static inline constexpr size_t MAIN_DIFFICULTY_COUNT = 4;
+static inline constexpr int32_t SPELL_DIFFICULTY_VARIANTS = MAIN_DIFFICULTY_COUNT + 1;
+
+// Index in the scorefile for combined stats
+static inline constexpr size_t SHOTTYPES_TOTAL = SHOTTYPE_COUNT;
 
 enum CharacterID : int32_t {
 	Reimu = 0,
@@ -8353,7 +8283,7 @@ struct Globals {
 	}
 
 	// 0x412FA0
-	dllexport gnu_noinline void thiscall set_power(int32_t power) asm_symbol_rel(0x412FA0) {
+	dllexport gnu_noinline void thiscall set_power(int32_t power) ASR(0x412FA0) {
 		int32_t max_power = this->max_power;
 		this->current_power = power;
 		if (power <= max_power) {
@@ -8363,12 +8293,12 @@ struct Globals {
 	}
 
 	// 0x42A970
-	dllexport gnu_noinline void thiscall __set_unknown_flag_gl_A(int32_t value) asm_symbol_rel(0x42A970) {
+	dllexport gnu_noinline void thiscall __set_unknown_flag_gl_A(int32_t value) ASR(0x42A970) {
 		this->__unknown_flag_gl_A = value;
 	}
 
 	// 0x439EA0
-	dllexport gnu_noinline int32_t thiscall get_rank() asm_symbol_rel(0x439EA0) {
+	dllexport gnu_noinline int32_t thiscall get_rank() ASR(0x439EA0) {
 		return this->rank;
 	}
 
@@ -8379,12 +8309,12 @@ struct Globals {
 	}
 
 	// 0x439EB0
-	dllexport gnu_noinline void thiscall __add_to_int_90(int32_t value) asm_symbol_rel(0x439EB0) {
+	dllexport gnu_noinline void thiscall __add_to_int_90(int32_t value) ASR(0x439EB0) {
 		this->__int_90 += value;
 	}
 
 	// 0x439EC0
-	dllexport gnu_noinline void thiscall __add_to_int_8C(int32_t value) asm_symbol_rel(0x439EC0) {
+	dllexport gnu_noinline void thiscall __add_to_int_8C(int32_t value) ASR(0x439EC0) {
 		this->__int_8C += value;
 	}
 
@@ -8401,13 +8331,13 @@ struct Globals {
 	}
 
 	// 0x4573F0
-	dllexport gnu_noinline BOOL thiscall add_power(int32_t amount) asm_symbol_rel(0x4573F0);
+	dllexport gnu_noinline BOOL thiscall add_power(int32_t amount) ASR(0x4573F0);
 
 	// 0x457480
-	dllexport gnu_noinline BOOL thiscall subtract_power(int32_t amount) asm_symbol_rel(0x457480);
+	dllexport gnu_noinline BOOL thiscall subtract_power(int32_t amount) ASR(0x457480);
 
 	// 0x4574D0
-	dllexport gnu_noinline void thiscall subtract_bomb() asm_symbol_rel(0x4574D0) {
+	dllexport gnu_noinline void thiscall subtract_bomb() ASR(0x4574D0) {
 		if (--this->bomb_stocks < 0) {
 			this->bomb_stocks = 0;
 		}
@@ -8419,7 +8349,7 @@ struct Globals {
 	}
 
 	// 0x457520
-	dllexport gnu_noinline void thiscall set_bombs(int32_t bombs) asm_symbol_rel(0x457520) {
+	dllexport gnu_noinline void thiscall set_bombs(int32_t bombs) ASR(0x457520) {
 		this->bomb_stocks = bombs;
 		if (bombs < 0) {
 			this->bomb_stocks = 0;
@@ -8434,7 +8364,7 @@ struct Globals {
 
 private:
 	// 0x457570
-	dllexport gnu_noinline void thiscall add_life_fragments(int32_t) asm_symbol_rel(0x457570);
+	dllexport gnu_noinline void thiscall add_life_fragments(int32_t) ASR(0x457570);
 public:
 	inline void add_life_fragment() {
 		return this->add_life_fragments(UNUSED_DWORD);
@@ -8443,7 +8373,7 @@ public:
 	forceinline void add_life_no_cost();
 
 	// 0x4575F0
-	dllexport gnu_noinline void thiscall add_life() asm_symbol_rel(0x4575F0);
+	dllexport gnu_noinline void thiscall add_life() ASR(0x4575F0);
 
 	inline void add_life_stock_max(int32_t count = 1) {
 		int32_t max_lives = this->life_stock_max + count;
@@ -8455,7 +8385,7 @@ public:
 
 private:
 	// 0x457690
-	dllexport gnu_noinline void thiscall add_bombs(int32_t) asm_symbol_rel(0x457690) {
+	dllexport gnu_noinline void thiscall add_bombs(int32_t) ASR(0x457690) {
 		this->bomb_stocks += 1;
 		int32_t max_bombs = this->bomb_stock_max;
 		if (this->bomb_stocks >= max_bombs) {
@@ -8476,7 +8406,7 @@ public:
 
 private:
 	// 0x4576E0
-	dllexport gnu_noinline void thiscall add_bomb_fragments(int32_t) asm_symbol_rel(0x4576E0) {
+	dllexport gnu_noinline void thiscall add_bomb_fragments(int32_t) ASR(0x4576E0) {
 		if (this->bomb_stocks >= this->bomb_stock_max) {
 			this->bomb_fragments = 0;
 			return;
@@ -8574,27 +8504,27 @@ struct GameManager {
 	// 0x130
 
 	// 0x406AA0
-	dllexport gnu_noinline int32_t thiscall get_chapter() asm_symbol_rel(0x406AA0) {
+	dllexport gnu_noinline int32_t thiscall get_chapter() ASR(0x406AA0) {
 		return this->globals.chapter;
 	}
 
 	// 0x418D60
-	dllexport gnu_noinline int32_t thiscall get_current_stage() asm_symbol_rel(0x418D60) {
+	dllexport gnu_noinline int32_t thiscall get_current_stage() ASR(0x418D60) {
 		return this->globals.current_stage;
 	}
 
 	// 0x42A990
-	dllexport bool thiscall is_spell_practice() asm_symbol_rel(0x42A990) {
+	dllexport bool thiscall is_spell_practice() ASR(0x42A990) {
 		return this->game_type == SpellPractice;
 	}
 
 	// 0x42AA20
-	dllexport gnu_noinline int32_t thiscall get_difficulty() asm_symbol_rel(0x42AA20) {
+	dllexport gnu_noinline int32_t thiscall get_difficulty() ASR(0x42AA20) {
 		return this->globals.difficulty;
 	}
 
 	// 0x4630B0
-	dllexport gnu_noinline void set_game_type(int32_t value) asm_symbol_rel(0x4630B0) {
+	dllexport gnu_noinline void set_game_type(int32_t value) ASR(0x4630B0) {
 		if (this->game_type != SpellPractice) {
 			this->globals.spell_practice_id = -1;
 		}
@@ -8610,13 +8540,16 @@ struct GameManager {
 	}
 
 	// 0x443DC0
-	dllexport gnu_noinline void __update_scorefile_game_time() asm_symbol_rel(0x443DC0);
+	dllexport gnu_noinline void __update_scorefile_game_time() ASR(0x443DC0);
 };
 
 extern "C" {
 	// 0x4CCCC0
 	externcg GameManager GAME_MANAGER cgasm("_GAME_MANAGER");
 }
+
+static inline constexpr float SCREEN_LEFT_BORDER = 32.0f;
+static inline constexpr float SCREEN_TOP_BORDER = 16.0f;
 
 static inline constexpr float SCREEN_WIDTH = 384.0f;
 static inline constexpr float SCREEN_HEIGHT = 448.0f;
@@ -8635,7 +8568,7 @@ static inline constexpr float LOGICAL_WINDOW_WIDTH = 640.0f;
 static inline constexpr float LOGICAL_WINDOW_HEIGHT = 480.0f;
 
 // 0x478540
-dllexport gnu_noinline void fastcall __convert_position_to_window_uv(Float2* out, Float2* position) asm_symbol_rel(0x478540);
+dllexport gnu_noinline void fastcall __convert_position_to_window_uv(Float2* out, Float2* position) ASR(0x478540);
 dllexport gnu_noinline void fastcall __convert_position_to_window_uv(Float2* out, Float2* position) {
 	float x = position->x / LOGICAL_WINDOW_WIDTH;
 	out->x = x;
@@ -8717,7 +8650,7 @@ struct WindowData {
 	// 0x2108
 
 	// 0x4726A0
-	dllexport gnu_noinline ZUNResult __save_properties_and_configure_paths() asm_symbol_rel(0x4726A0);
+	dllexport gnu_noinline ZUNResult __save_properties_and_configure_paths() ASR(0x4726A0);
 
 	inline void __restore_properties();
 
@@ -8725,28 +8658,28 @@ struct WindowData {
 	inline int32_t update_window_common(const L& lambda);
 	
 	// 0x472DD0
-	dllexport gnu_noinline int32_t thiscall update_window__normal_version() asm_symbol_rel(0x472DD0);
+	dllexport gnu_noinline int32_t thiscall update_window__normal_version() ASR(0x472DD0);
 
 	inline void present__normal_version();
 
 	// 0x472FD0
-	dllexport gnu_noinline int32_t thiscall update_window__alt_version() asm_symbol_rel(0x472FD0);
+	dllexport gnu_noinline int32_t thiscall update_window__alt_version() ASR(0x472FD0);
 
 	inline void present__alt_version();
 
 	inline int32_t thiscall update_window__alt_version2();
 
 	// 0x472B50
-	dllexport gnu_noinline void thiscall present__alt_version2() asm_symbol_rel(0x472B50);
+	dllexport gnu_noinline void thiscall present__alt_version2() ASR(0x472B50);
 	
 	// 0x4734E0
-	dllexport gnu_noinline void __sub_4734E0(BOOL arg1) asm_symbol_rel(0x4734E0);
+	dllexport gnu_noinline void __sub_4734E0(BOOL arg1) ASR(0x4734E0);
 	
 	// 0x473890
-	dllexport gnu_noinline BOOL __create_window(HINSTANCE instance) asm_symbol_rel(0x473890);
+	dllexport gnu_noinline BOOL __create_window(HINSTANCE instance) ASR(0x473890);
 
 	// 0x4731B0
-	dllexport gnu_noinline void thiscall __present_setup() asm_symbol_rel(0x4731B0);
+	dllexport gnu_noinline void thiscall __present_setup() ASR(0x4731B0);
 };
 #pragma region // WindowData Verification
 ValidateFieldOffset32(0x0, WindowData, window);
@@ -8802,18 +8735,49 @@ extern "C" {
 	externcg WindowData WINDOW_DATA cgasm("_WINDOW_DATA");
 }
 
-// 0x467740
-dllexport gnu_noinline BOOL fastcall get_dinput_keyboard_state(BYTE keys[256]) asm_symbol_rel(0x467740);
-dllexport gnu_noinline BOOL fastcall get_dinput_keyboard_state(BYTE keys[256]) {
-	memset(keys, 0, sizeof(BYTE[256]));
-	if (WINDOW_DATA.window_active) {
-		HRESULT result = SUPERVISOR.keyboard_device->GetDeviceState(sizeof(BYTE[256]), keys);
-		if (result == DIERR_INPUTLOST || result != DI_OK) {
-			SUPERVISOR.keyboard_device->Acquire();
-		}
-		return true;
+struct DInputKeyboard {
+	BYTE keys[256];
+
+	forceinline void reset() {
+		zero_array(this->keys);
 	}
-	return false;
+
+	// 0x467740
+	dllexport gnu_noinline int32_t thiscall get_state() ASR(0x467740) {
+		this->reset();
+		if (WINDOW_DATA.window_active) {
+			HRESULT result = SUPERVISOR.keyboard_device->GetDeviceState(sizeof(this->keys), this->keys);
+			if (result == DIERR_INPUTLOST || result != DI_OK) {
+				SUPERVISOR.keyboard_device->Acquire();
+			}
+			return 1;
+		}
+		return 0;
+	}
+
+	forceinline const BYTE& operator[](size_t index) const {
+		return this->keys[index];
+	}
+	forceinline BYTE& operator[](size_t index) {
+		return this->keys[index];
+	}
+};
+
+extern "C" {
+	// 0x570B98
+	externcg DInputKeyboard DINPUT_KEYS_A cgasm("_DINPUT_KEYS_A");
+	// 0x5711B0
+	externcg DInputKeyboard DINPUT_KEYS_B cgasm("_DINPUT_KEYS_B");
+	// 0x5712B0
+	externcg DInputKeyboard DINPUT_KEYS_C cgasm("_DINPUT_KEYS_C");
+	// 0x570980
+	externcg DInputKeyboard DINPUT_KEYS_D cgasm("_DINPUT_KEYS_D");
+	// 0x570FB0
+	externcg DInputKeyboard DINPUT_KEYS_E cgasm("_DINPUT_KEYS_E");
+	// 0x5710B0
+	externcg DInputKeyboard DINPUT_KEYS_F cgasm("_DINPUT_KEYS_F");
+	// 0x570A90
+	externcg DInputKeyboard DINPUT_KEYS_G cgasm("_DINPUT_KEYS_G");
 }
 
 typedef struct CardBlank CardBlank;
@@ -8986,7 +8950,7 @@ static int32_t CARD_PRICE_TABLE[] = {
 // 0x4B60E0
 static D3DCOLOR CARD_PRICE_COLORS[] = {
 	// Free
-	COLOR(255, 255, 255, 255),
+	COLOR_WHITE,
 	// Cheap
 	COLOR(255, 240, 160, 128),
 	COLOR(255, 240, 160, 128),
@@ -9058,7 +9022,7 @@ struct CardData {
 	// 0x34
 
 	// 0x416E10
-	dllexport gnu_noinline CardAvailabilityResult thiscall check_availability() const asm_symbol_rel(0x416E10);
+	dllexport gnu_noinline CardAvailabilityResult thiscall check_availability() const ASR(0x416E10);
 };
 #pragma region // CardData Validation
 ValidateFieldOffset32(0x0, CardData, name);
@@ -9111,6 +9075,8 @@ static inline constexpr uint16_t SCOREFILE_VERSION_NUMBER = 6;
 
 static inline constexpr int32_t SPELL_COUNT = 97;
 
+static inline constexpr int32_t MAX_SPELLS_PER_STAGE = 13;
+
 // 0x4B3F30
 static const int8_t SPELL_DIFFICULTY_TABLE[SPELL_COUNT] = {
 	EASY, NORMAL, HARD, LUNATIC,
@@ -9149,10 +9115,75 @@ static const int8_t SPELL_DIFFICULTY_TABLE[SPELL_COUNT] = {
 	EXTRA
 };
 
+// +1 for overdrive? Or just an end marker?
+// 0x4B3710
+static const int32_t SPELL_ID_TABLE[STAGE_COUNT][MAX_SPELLS_PER_STAGE][SPELL_DIFFICULTY_VARIANTS] = {
+	{ // Stage 1
+		{ 0, 1, 2, 3, -1 },
+		{ 4, 5, 6, 7, -1 }
+	},
+	{ // Stage 2
+		{ 8, 9, 10, 11, -1 },
+		{ 12, 13, 14, 15, -1 },
+		{ 16, 17, 18, 19, -1 }
+	},
+	{ // Stage 3
+		{ 20, 21, 22, 23, -1 },
+		{ 24, 25, 26, 27, -1 },
+		{ 28, 29, 30, 31, -1 }
+	},
+	{ // Stage 4
+		{ 32, 33, 34, 35, -1 },
+		{ 36, 37, 38, 39, -1 },
+		{ 40, 41, 42, 43, -1 }
+	},
+	{ // Stage 5
+		{ 44, 45, 46, 47, -1 },
+		{ 48, 49, 50, 51, -1 },
+		{ 52, 53, 54, 55, -1 },
+		{ 56, 57, 58, 59, -1 }
+	},
+	{ // Stage 6
+		{ 60, 61, 62, 63, -1 },
+		{ 64, 65, 66, 67, -1 },
+		{ 68, 69, 70, 71, -1 },
+		{ 72, 73, 74, 75, -1 },
+		{ 76, 77, 78, 79, -1 },
+		{ 80, 81, 82, 83, -1 }
+	},
+	{ // Extra
+		{ 84, -1 },
+		{ 85, -1 },
+		{ 86, -1 },
+		{ 87, -1 },
+		{ 88, -1 },
+		{ 89, -1 },
+		{ 90, -1 },
+		{ 91, -1 },
+		{ 92, -1 },
+		{ 93, -1 },
+		{ 94, -1 },
+		{ 95, -1 },
+		{ 96, -1 },
+	}
+};
+
+// 0x429CB0
+dllexport gnu_noinline int32_t fastcall count_spells_for_difficulty(int32_t difficulty) ASR(0x429CB0);
+dllexport gnu_noinline int32_t fastcall count_spells_for_difficulty(int32_t difficulty) {
+	int32_t count = 0;
+	for (int32_t i = 0; i < SPELL_COUNT; ++i) {
+		if (SPELL_DIFFICULTY_TABLE[i] == difficulty) {
+			++count;
+		}
+	}
+	return count;
+}
+
 typedef struct TrophyManager TrophyManager;
 
 // 0x46E490
-dllexport gnu_noinline TrophyManager* fastcall __unlock_trophy(int32_t trophy_id) asm_symbol_rel(0x46E490);
+dllexport gnu_noinline TrophyManager* fastcall __unlock_trophy(int32_t trophy_id) ASR(0x46E490);
 
 // size: 0x18
 struct ScorefileHeader {
@@ -9179,6 +9210,8 @@ ValidateFieldOffset32(0x14, ScorefileHeader, decompressed_size);
 ValidateStructSize32(0x18, ScorefileHeader);
 #pragma endregion
 
+static inline constexpr int32_t MAX_RECORD_NAME_LENGTH = 8;
+
 #define DEFAULT_RECORD_NAME "        "
 #define EMPTY_RECORD_NAME "--------"
 
@@ -9187,7 +9220,7 @@ struct ScorefileRecord {
 	uint32_t score; // 0x0
 	uint8_t __stage_reached; // 0x4
 	int8_t continues; // 0x5
-	char name[10]; // 0x6
+	char name[MAX_RECORD_NAME_LENGTH + 2]; // 0x6
 	time_t time; // 0x10
 	float slowdown_rate; // 0x18
 	unknown_fields(0x4); // 0x1C
@@ -9223,6 +9256,15 @@ struct ScorefileSpellcard {
 	inline bool captured() {
 		return this->captures[0] || this->captures[1];
 	}
+	inline bool captured_in_spell_practice() {
+		return this->captures[1];
+	}
+	inline bool never_attempted() {
+		return !this->attempts[0] && !this->attempts[1];
+	}
+	inline bool unlocked_in_spell_practice() {
+		return this->attempts[0];
+	}
 	inline void add_capture(int mode) {
 		int32_t captures = this->captures[mode];
 		if (captures < MAX_SPELL_CAPTURES) {
@@ -9248,6 +9290,12 @@ struct ScorefileStagePractice {
 	bool unlocked; // 0x5, 0x12EF5, 0x12EFD
 	unknown_fields(0x2); // 0x6, 0x12EF6, 0x12EFE
 	// 0x8, 0x12EF8, 0x12F00
+
+	forceinline void update_high_score(uint32_t score) {
+		if (this->score < score) {
+			this->score = score;
+		}
+	}
 };
 #pragma region // ScorefileStagePractice Validation
 ValidateFieldOffset32(0x0, ScorefileStagePractice, score);
@@ -9277,7 +9325,7 @@ struct ScorefileSection : ScorefileSectionHeader {
 	uint8_t data[]; // 0xC
 
 	// 0x463250
-	dllexport gnu_noinline uint32_t thiscall calculate_checksum(int32_t data_size) asm_symbol_rel(0x463250) {
+	dllexport gnu_noinline uint32_t thiscall calculate_checksum(int32_t data_size) ASR(0x463250) {
 		const uint8_t* read = this->data - 4;
 		data_size -= sizeof(ScorefileSectionHeader) - 4;
 		
@@ -9293,16 +9341,6 @@ struct ScorefileSection : ScorefileSectionHeader {
 static inline constexpr uint16_t SCOREFILE_SECTION_B_MAGIC = PackUInt16('C', 'R'); // Character record?
 static inline constexpr uint16_t SCOREFILE_SECTION_B_VERSION_NUMBER = 3;
 static inline constexpr int32_t RECORDS_PER_DIFFICULTY = 10;
-
-/*
-uint32_t score; //
-bool __idk; // 0x12EF4, 0x12EFC
-bool __seen; // 0x12EF5, 0x12EFD
-// 0x12EFE
-// 0x12F00
-bool __idkB; // 0x12F05
-// 0x12F06
-*/
 
 static inline constexpr size_t wekjbkrb = sizeof(ScorefileStagePractice[DIFFICULTY_COUNT][STAGE_COUNT + 1]);
 
@@ -9344,7 +9382,7 @@ struct ScorefileSectionB : ScorefileSectionHeader {
 	}
 
 	// 0x463350
-	dllexport gnu_noinline void thiscall initialize() asm_symbol_rel(0x463350) {
+	dllexport gnu_noinline void thiscall initialize() ASR(0x463350) {
 		this->zero_contents();
 		this->magic.as_uint = SCOREFILE_SECTION_B_MAGIC;
 		this->__version_number = SCOREFILE_SECTION_B_VERSION_NUMBER;
@@ -9369,7 +9407,7 @@ struct ScorefileSectionB : ScorefileSectionHeader {
 	}
 
 	// 0x457870
-	dllexport gnu_noinline int32_t thiscall __sub_457870() asm_symbol_rel(0x457870) {
+	dllexport gnu_noinline int32_t thiscall __init_new_record_index() ASR(0x457870) {
 		ScorefileRecord* cur_record = &this->records[GAME_MANAGER.globals.difficulty][0];
 		int32_t cur_score = GAME_MANAGER.globals.score;
 
@@ -9399,6 +9437,10 @@ struct ScorefileSectionB : ScorefileSectionHeader {
 
 	inline bool has_1cc_clear() {
 		return this->__1cc_clears[EASY] || this->__1cc_clears[NORMAL] || this->__1cc_clears[HARD] || this->__1cc_clears[LUNATIC];
+	}
+
+	inline bool has_1cc_clear_for_difficulty(int32_t difficulty) {
+		return this->__1cc_clears[difficulty];
 	}
 
 	inline int32_t spells_captured() {
@@ -9433,17 +9475,24 @@ ValidateStructSize32(0x130F0, ScorefileSectionB);
 static inline constexpr uint16_t SCOREFILE_SECTION_A_MAGIC = PackUInt16('S', 'T');
 static inline constexpr uint16_t SCOREFILE_SECTION_A_VERSION_NUMBER = 6;
 
+static inline constexpr int32_t TROPHY_COUNT = 30;
+
+// Actual number is 18
+static inline constexpr int32_t MUSIC_COUNT = 32;
+
 // size: 0x3D0
 struct ScorefileSectionA : ScorefileSectionHeader {
 	// ScorefileSectionHeader base; // 0x0, 0x5F4B8
 	char __recent_name[10]; // 0xC, 0x5F4C4
 	uint8_t __endings_seen[12]; // 0x16, 0x5F4CE
 	bool __bool_22; // 0x22, 0x5F4DA
-	unknown_fields(0x3); // 0x23, 0x5F4DB
-	bool unlocked_music[18]; // 0x26, 0x5F4DE
-	unknown_fields(0x10); // 0x38, 0x5F4F0
+	uint8_t __byte_23; // 0x23, 0x5F4DB
+	uint8_t __byte_24; // 0x24, 0x5F4DC
+	uint8_t __byte_25; // 0x25, 0x5F4DD
+	bool unlocked_music[MUSIC_COUNT]; // 0x26, 0x5F4DE
+	probably_padding_bytes(0x2); // 0x46, 0x5F4FE
 	uint64_t total_game_time; // 0x48, 0x5F500
-	bool trophies[30]; // 0x50, 0x5F508
+	uint8_t trophies[TROPHY_COUNT]; // 0x50, 0x5F508
 	unknown_fields(0x62); // 0x6E, 0x5F526
 	uint8_t unlocked_cards[CARD_COUNT]; // 0xD0, 0x5F588
 	unknown_fields(0x47); // 0x109, 0x5F5C1
@@ -9466,7 +9515,7 @@ struct ScorefileSectionA : ScorefileSectionHeader {
 	}
 
 	// 0x463670
-	dllexport gnu_noinline void thiscall initialize() asm_symbol_rel(0x463670) {
+	dllexport gnu_noinline void thiscall initialize() ASR(0x463670) {
 		this->zero_contents();
 		this->magic.as_uint = SCOREFILE_SECTION_A_MAGIC;
 		this->__version_number = SCOREFILE_SECTION_A_VERSION_NUMBER;
@@ -9528,8 +9577,34 @@ struct Scorefile {
 	}
 
 	// 0x4647C0
-	dllexport inline BOOL has_1cc_clear(int32_t shottype) {
+	dllexport inline BOOL has_1cc_clear(int32_t shottype) ASR(0x4647C0) {
 		return this->shottypes[shottype].has_1cc_clear();
+	}
+
+	inline bool has_1cc_clear(int32_t character, int32_t shottype) {
+		return this->has_1cc_clear(character * SHOTTYPES_PER_CHARACTER + shottype);
+	}
+
+	inline bool has_1cc_clear_for_character(int32_t character) {
+		for (size_t i = 0; i != SHOTTYPES_PER_CHARACTER; ++i) {
+			if (this->has_1cc_clear(character * SHOTTYPES_PER_CHARACTER + i)) return true;
+		}
+		return false;
+	}
+
+	inline bool has_1cc_clear_for_difficulty(int32_t shottype, int32_t difficulty) {
+		return this->shottypes[shottype].has_1cc_clear_for_difficulty(difficulty);
+	}
+
+	inline bool has_1cc_clear_for_difficulty(int32_t character, int32_t shottype, int32_t difficulty) {
+		return this->has_1cc_clear_for_difficulty(character * SHOTTYPES_PER_CHARACTER + shottype, difficulty);
+	}
+
+	inline bool has_1cc_clear_for_character_difficulty(int32_t character, int32_t difficulty) {
+		for (size_t i = 0; i != SHOTTYPES_PER_CHARACTER; ++i) {
+			if (this->has_1cc_clear_for_difficulty(character, i, difficulty)) return true;
+		}
+		return false;
 	}
 
 	inline BOOL has_any_1cc_clear() {
@@ -9539,9 +9614,26 @@ struct Scorefile {
 		return false;
 	}
 
+	// 0x464810
+	dllexport gnu_noinline BOOL has_any_1cc_clear_for_difficulty(int32_t difficulty) ASR(0x464810) {
+		for (size_t i = 0; i != SHOTTYPE_COUNT; ++i) {
+			if (this->has_1cc_clear_for_difficulty(i, difficulty)) return true;
+		}
+		return false;
+	}
+
+	inline int32_t first_character_with_any_1cc_clear() {
+		for (size_t i = 0; i != CHARACTER_COUNT; ++i) {
+			for (size_t j = 0; j != SHOTTYPES_PER_CHARACTER; ++j) {
+				if (this->has_1cc_clear(i * SHOTTYPES_PER_CHARACTER + j)) return i;
+			}
+		}
+		return -1;
+	}
+
 private:
 	// 0x463B30
-	dllexport gnu_noinline ZUNResult stdcall save_to_file(const char* filename, Scorefile* scorefile) {
+	dllexport gnu_noinline ZUNResult stdcall save_to_file(const char* filename, Scorefile* scorefile) ASR(0x463B30) {
 		if (!scorefile->buffer) {
 			return ZUN_ERROR;
 		}
@@ -9595,7 +9687,7 @@ private:
 	}
 
 	// 0x4639B0
-	dllexport gnu_noinline ZUNResult stdcall load_from_buffer(Scorefile* scorefile) {
+	dllexport gnu_noinline ZUNResult stdcall load_from_buffer(Scorefile* scorefile) ASR(0x4639B0) {
 		if (scorefile->buffer) {
 			if (
 				scorefile->buffer->header.magic.as_uint == SCOREFILE_MAGIC &&
@@ -9695,6 +9787,22 @@ extern "C" {
 	externcg ScorefileManager* SCOREFILE_MANAGER_PTR cgasm("_SCOREFILE_MANAGER_PTR");
 }
 
+// 0x4B7A48
+static inline constexpr auto UNLOCK_CODE_A = ASCII_TO_DIK_ARRAY("mastersdream");
+
+static inline constexpr auto UNLOCK_CODE_B = ASCII_TO_DIK_ARRAY("classiclager");
+
+extern "C" {
+	// 0x570A80
+	externcg int32_t UNLOCK_CODE_A_TIMER cgasm("_UNLOCK_CODE_A_TIMER");
+	// 0x570A84
+	externcg uint32_t UNLOCK_CODE_A_CHARS_ENTERED cgasm("_UNLOCK_CODE_A_CHARS_ENTERED");
+	// 0x570B90
+	externcg int32_t UNLOCK_CODE_B_TIMER cgasm("_UNLOCK_CODE_B_TIMER");
+	// 0x570B94
+	externcg uint32_t UNLOCK_CODE_B_CHARS_ENTERED cgasm("_UNLOCK_CODE_B_CHARS_ENTERED");
+}
+
 // size: 0xBF158
 struct ScorefileManager {
 	Scorefile primary_file; // 0x0
@@ -9762,11 +9870,42 @@ struct ScorefileManager {
 	}
 
 	// 0x442450
-	dllexport gnu_noinline static void stdcall __sub_442450(int32_t value) asm_symbol_rel(0x442450) {
+	dllexport gnu_noinline static void stdcall __sub_442450(int32_t value) ASR(0x442450) {
 		ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
 		scorefile_manager->__int_array_BF114[scorefile_manager->__int_BF110] = value;
 		++scorefile_manager->__int_BF110;
 		scorefile_manager->primary_file.common.__card_ids_150[3][value] = EXTEND_CARD;
+	}
+
+	// 0x464860
+	dllexport gnu_noinline static void unlock_all() ASR(0x464860) {
+		ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
+
+		for (size_t i = 0; i != countof(scorefile_manager->primary_file.common.__endings_seen); ++i) {
+			scorefile_manager->primary_file.common.__endings_seen[i] = true;
+		}
+		scorefile_manager->primary_file.common.__bool_22 = true;
+		scorefile_manager->primary_file.common.__byte_23 = 1;
+		scorefile_manager->primary_file.common.__byte_24 = 1;
+		scorefile_manager->primary_file.common.__byte_25 = 1;
+
+		for (size_t i = 0; i != SPELL_COUNT; ++i) {
+			scorefile_manager->primary_file.shottypes[SHOTTYPES_TOTAL].spells[i].add_capture(0);
+		}
+
+		for (size_t i = 0; i != SHOTTYPE_COUNT; ++i) {
+			for (size_t j = 0; j != DIFFICULTY_COUNT; ++j) {
+				++scorefile_manager->primary_file.shottypes[i].__total_clears[j];
+				++scorefile_manager->primary_file.shottypes[i].__1cc_clears[j];
+				for (size_t k = 0; k != STAGE_COUNT; ++k) {
+					scorefile_manager->primary_file.shottypes[i].practice[j][Stage1 + k].unlocked = true;
+				}
+			}
+		}
+
+		for (size_t i = 0; i != CARD_COUNT - 1; ++i) {
+			scorefile_manager->primary_file.common.unlocked_cards[i] = true;
+		}
 	}
 
 	// These probably weren't functions but I'd rather make a semi-nice API if I can
@@ -9775,16 +9914,16 @@ struct ScorefileManager {
 		bool is_spell_practice = GAME_MANAGER.is_spell_practice();
 		ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
 		scorefile_manager->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].spells[id].add_attempt(is_spell_practice);
-		byteloop_strcpy(scorefile_manager->primary_file.shottypes[SHOTTYPE_COUNT].spells[id].name, name);
-		SCOREFILE_MANAGER_PTR->primary_file.shottypes[SHOTTYPE_COUNT].spells[id].add_attempt(is_spell_practice);
+		byteloop_strcpy(scorefile_manager->primary_file.shottypes[SHOTTYPES_TOTAL].spells[id].name, name);
+		SCOREFILE_MANAGER_PTR->primary_file.shottypes[SHOTTYPES_TOTAL].spells[id].add_attempt(is_spell_practice);
 	}
 
 	static inline void record_spell_capture(int32_t id) {
 		bool is_spell_practice = GAME_MANAGER.is_spell_practice();
 		SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].spells[id].add_capture(is_spell_practice);
 		ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
-		scorefile_manager->primary_file.shottypes[SHOTTYPE_COUNT].spells[id].add_capture(is_spell_practice);
-		if (scorefile_manager->primary_file.shottypes[SHOTTYPE_COUNT].all_spells_captured()) {
+		scorefile_manager->primary_file.shottypes[SHOTTYPES_TOTAL].spells[id].add_capture(is_spell_practice);
+		if (scorefile_manager->primary_file.shottypes[SHOTTYPES_TOTAL].all_spells_captured()) {
 			__unlock_trophy(28);
 		}
 	}
@@ -9947,7 +10086,7 @@ struct MotionData {
 	}
 	
 	// 0x402CC0
-	dllexport gnu_noinline void update() asm_symbol_rel(0x402CC0) {
+	dllexport gnu_noinline void update() ASR(0x402CC0) {
 		switch (this->mode) {
 			case AxisVelocityMovement:
 				this->position += this->axis_velocity;
@@ -9982,7 +10121,7 @@ struct MotionData {
 	}
 
 	// 0x402F90
-	dllexport gnu_noinline void first_update() asm_symbol_rel(0x402F90) {
+	dllexport gnu_noinline void first_update() ASR(0x402F90) {
 		if (this->mode_is_sinusoidal()) {
 			this->base_position = this->position;
 		}
@@ -9990,7 +10129,7 @@ struct MotionData {
 	}
 
 	// 0x402BF0
-	dllexport gnu_noinline void apply_deltas() asm_symbol_rel(0x402BF0) {
+	dllexport gnu_noinline void apply_deltas() ASR(0x402BF0) {
 		switch (this->mode) {
 			case AxisVelocityMovement:
 				this->axis_velocity.make_from_vector(this->angle, this->speed * GAME_SPEED);
@@ -10013,41 +10152,41 @@ struct MotionData {
 	}
 	
 	// 0x412F60
-	dllexport gnu_noinline void set_positionB(const Float3& coord) asm_symbol_rel(0x412F60) {
+	dllexport gnu_noinline void set_positionB(const Float3& coord) ASR(0x412F60) {
 		this->position = coord;
 	}
 	// 0x43A290
-	dllexport gnu_noinline void set_position(const Float3& coord) asm_symbol_rel(0x43A290) {
+	dllexport gnu_noinline void set_position(const Float3& coord) ASR(0x43A290) {
 		this->position = coord;
 	}
 	
 	// 0x412FD0
-	dllexport gnu_noinline void vectorcall set_speed(float value) asm_symbol_rel(0x412FD0) {
+	dllexport gnu_noinline void vectorcall set_speed(float value) ASR(0x412FD0) {
 		this->speed = value;
 	}
 	
 	// 0x413280
-	dllexport gnu_noinline Float3& thiscall get_position() asm_symbol_rel(0x413280) {
+	dllexport gnu_noinline Float3& thiscall get_position() ASR(0x413280) {
 		return this->position;
 	}
 	
 	// 0x422530
-	dllexport gnu_noinline void vectorcall set_orbit_radius_delta(float value) asm_symbol_rel(0x422530) {
+	dllexport gnu_noinline void vectorcall set_orbit_radius_delta(float value) ASR(0x422530) {
 		this->radius_delta = value;
 	}
 	
 	// 0x422540
-	dllexport gnu_noinline void vectorcall set_orbit_radius(float value) asm_symbol_rel(0x422540) {
+	dllexport gnu_noinline void vectorcall set_orbit_radius(float value) ASR(0x422540) {
 		this->radius = value;
 	}
 	
 	// 0x422550
-	dllexport gnu_noinline void set_orbit_mode() asm_symbol_rel(0x422550) {
+	dllexport gnu_noinline void set_orbit_mode() ASR(0x422550) {
 		this->mode = OrbitMovement;
 	}
 	
 	// 0x422560
-	dllexport gnu_noinline void set_misc_float3(const Float3& value) asm_symbol_rel(0x422560) {
+	dllexport gnu_noinline void set_misc_float3(const Float3& value) ASR(0x422560) {
 		this->misc_float3 = value;
 	}
 
@@ -10060,72 +10199,72 @@ struct MotionData {
 	}
 
 	// 0x422580
-	dllexport gnu_noinline float vectorcall get_speed() asm_symbol_rel(0x422580) {
+	dllexport gnu_noinline float vectorcall get_speed() ASR(0x422580) {
 		return this->speed;
 	}
 	
 	// 0x422590
-	dllexport gnu_noinline ZUNAngle& get_angle() asm_symbol_rel(0x422590) {
+	dllexport gnu_noinline ZUNAngle& get_angle() ASR(0x422590) {
 		return this->angle;
 	}
 	
 	// 0x4225A0
-	dllexport gnu_noinline void vectorcall set_angle(float angle) asm_symbol_rel(0x4225A0) {
+	dllexport gnu_noinline void vectorcall set_angle(float angle) ASR(0x4225A0) {
 		this->angle = angle;
 	}
 	
 	// 0x4225F0
-	dllexport gnu_noinline void set_axis_velocity_mode() asm_symbol_rel(0x4225F0) {
+	dllexport gnu_noinline void set_axis_velocity_mode() ASR(0x4225F0) {
 		this->mode = AxisVelocityMovement;
 	}
 	
 	// 0x43A210
-	dllexport gnu_noinline void vectorcall set_position_y(float value) asm_symbol_rel(0x43A210) {
+	dllexport gnu_noinline void vectorcall set_position_y(float value) ASR(0x43A210) {
 		this->position.y = value;
 	}
 	
 	// 0x43A220
-	dllexport gnu_noinline void vectorcall set_position_x(float value) asm_symbol_rel(0x43A220) {
+	dllexport gnu_noinline void vectorcall set_position_x(float value) ASR(0x43A220) {
 		this->position.x = value;
 	}
 	
 	// 0x43A230
-	dllexport gnu_noinline float vectorcall get_position_y() asm_symbol_rel(0x43A230) {
+	dllexport gnu_noinline float vectorcall get_position_y() ASR(0x43A230) {
 		return this->position.y;
 	}
 	
 	// 0x43A240
-	dllexport gnu_noinline float vectorcall get_position_x() asm_symbol_rel(0x43A240) {
+	dllexport gnu_noinline float vectorcall get_position_x() ASR(0x43A240) {
 		return this->position.x;
 	}
 
 	// 0x439ED0
-	dllexport gnu_noinline float vectorcall get_ellipse_angle() asm_symbol_rel(0x439ED0) {
+	dllexport gnu_noinline float vectorcall get_ellipse_angle() ASR(0x439ED0) {
 		return this->ellipse_angle;
 	}
 
 	// 0x439EE0
-	dllexport gnu_noinline float vectorcall get_ellipse_ratio() asm_symbol_rel(0x439EE0) {
+	dllexport gnu_noinline float vectorcall get_ellipse_ratio() ASR(0x439EE0) {
 		return this->ellipse_ratio;
 	}
 	
 	// 0x439EF0
-	dllexport gnu_noinline void set_ellipse_mode() asm_symbol_rel(0x439EF0) {
+	dllexport gnu_noinline void set_ellipse_mode() ASR(0x439EF0) {
 		this->mode = EllipseMovement;
 	}
 	
 	// 0x439F00
-	dllexport gnu_noinline void vectorcall set_ellipse_ratio(float ratio) asm_symbol_rel(0x439F00) {
+	dllexport gnu_noinline void vectorcall set_ellipse_ratio(float ratio) ASR(0x439F00) {
 		this->ellipse_ratio = ratio;
 	}
 	
 	// 0x439F10
-	dllexport gnu_noinline void vectorcall set_ellipse_angle(float angle) asm_symbol_rel(0x439F10) {
+	dllexport gnu_noinline void vectorcall set_ellipse_angle(float angle) ASR(0x439F10) {
 		this->ellipse_angle = angle;
 	}
 
 	// 0x439FA0
-	dllexport gnu_noinline void vectorcall set_misc_float3_y(float value) asm_symbol_rel(0x439FA0) {
+	dllexport gnu_noinline void vectorcall set_misc_float3_y(float value) ASR(0x439FA0) {
 		this->misc_float3.y = value;
 	}
 
@@ -10138,7 +10277,7 @@ struct MotionData {
 	}
 
 	// 0x439FB0
-	dllexport gnu_noinline void vectorcall set_misc_float3_x(float value) asm_symbol_rel(0x439FB0) {
+	dllexport gnu_noinline void vectorcall set_misc_float3_x(float value) ASR(0x439FB0) {
 		this->misc_float3.x = value;
 	}
 
@@ -10151,17 +10290,17 @@ struct MotionData {
 	}
 	
 	// 0x439FC0
-	dllexport gnu_noinline float vectorcall get_orbit_radius() asm_symbol_rel(0x439FC0) {
+	dllexport gnu_noinline float vectorcall get_orbit_radius() ASR(0x439FC0) {
 		return this->radius;
 	}
 	
 	// 0x439FD0
-	dllexport gnu_noinline float vectorcall get_orbit_radius_delta() asm_symbol_rel(0x439FD0) {
+	dllexport gnu_noinline float vectorcall get_orbit_radius_delta() ASR(0x439FD0) {
 		return this->radius_delta;
 	}
 	
 	// 0x43A270
-	dllexport gnu_noinline bool mode_is_orbit() asm_symbol_rel(0x43A270) {
+	dllexport gnu_noinline bool mode_is_orbit() ASR(0x43A270) {
 		return this->mode == OrbitMovement;
 	}
 
@@ -10248,28 +10387,9 @@ struct ZUNAbsRel {
 	T absolute;
 	T relative;
 };
-/*
-enum InterpMode {
-	Linear = 0,
-	AccelerateSlow = 1,
-	Accelerate = 2,
-	AccelerateFast = 3,
-	DecelerateSlow = 4,
-	Decelerate = 5,
-	DecelerateFast = 6,
-	ConstantVelocity = 7,
-	Bezier = 8,
-	AccelDecelSlow = 9,
-	AccelDecel = 10,
-	AccelDecelFast = 11,
-	DecelAccelSlow = 12,
-	DecelAccel = 13,
-	DecelAccelFast = 14,
-};
-*/
 
 // 0x402FB0
-dllexport gnu_noinline float vectorcall __interp_inner_thing(int32_t mode, float current_time, float end_time) asm_symbol_rel(0x402FB0);
+dllexport gnu_noinline float vectorcall __interp_inner_thing(int32_t mode, float current_time, float end_time) ASR(0x402FB0);
 dllexport gnu_noinline float vectorcall __interp_inner_thing(int32_t mode, float current_time, float end_time) {
 	float value = current_time;
 	if (end_time == 0.0f) {
@@ -11362,7 +11482,7 @@ struct EclContext {
 	}
 
 	// 0x48DBE0
-	dllexport EclInstruction* thiscall get_current_instruction() asm_symbol_rel(0x48DBE0) {
+	dllexport EclInstruction* thiscall get_current_instruction() ASR(0x48DBE0) {
 		int32_t instr_offset = this->location.instruction_offset;
 		if (instr_offset != -1) {
 			int32_t sub_index = this->location.sub_index;
@@ -11378,13 +11498,13 @@ struct EclContext {
 	forceinline int32_t thiscall get_int_arg(int32_t index, EclInstruction* current_instruction);
 
 	// 0x48D4F0
-	dllexport gnu_noinline int32_t thiscall get_int_arg(int32_t index) asm_symbol_rel(0x48D4F0);
+	dllexport gnu_noinline int32_t thiscall get_int_arg(int32_t index) ASR(0x48D4F0);
 
 	forceinline float vectorcall get_float_arg(int32_t index, EclInstruction* current_instruction);
 
 private:
 	// 0x48D5A0
-	dllexport gnu_noinline float vectorcall get_float_arg(int, int32_t index) asm_symbol_rel(0x48D5A0);
+	dllexport gnu_noinline float vectorcall get_float_arg(int, int32_t index) ASR(0x48D5A0);
 public:
 	forceinline float get_float_arg(int32_t index) {
 		return this->get_float_arg(UNUSED_DWORD, index);
@@ -11401,7 +11521,7 @@ public:
 	forceinline int32_t thiscall parse_int_as_arg_pop(int32_t index, int32_t value, EclInstruction* current_instruction);
 
 	// 0x48D690
-	dllexport gnu_noinline int32_t thiscall parse_int_as_arg_pop(int32_t index, int32_t value) asm_symbol_rel(0x48D690);
+	dllexport gnu_noinline int32_t thiscall parse_int_as_arg_pop(int32_t index, int32_t value) ASR(0x48D690);
 
 	forceinline float vectorcall parse_float_as_arg_pop(int32_t index, float value, EclInstruction* current_instruction);
 
@@ -11410,12 +11530,12 @@ public:
 	forceinline int32_t* thiscall get_int_ptr_arg(int32_t index, EclInstruction* current_instruction);
 
 	// 0x48D750
-	dllexport gnu_noinline int32_t* thiscall get_int_ptr_arg(int32_t index = UNUSED_DWORD) asm_symbol_rel(0x48D750);
+	dllexport gnu_noinline int32_t* thiscall get_int_ptr_arg(int32_t index = UNUSED_DWORD) ASR(0x48D750);
 
 	forceinline float* thiscall get_float_ptr_arg(int32_t index, EclInstruction* current_instruction);
 
 	// 0x48D7C0
-	dllexport gnu_noinline float* thiscall get_float_ptr_arg(int32_t index) asm_symbol_rel(0x48D7C0);
+	dllexport gnu_noinline float* thiscall get_float_ptr_arg(int32_t index) ASR(0x48D7C0);
 
 	forceinline int32_t thiscall parse_int_as_arg(int32_t index, int32_t value, EclInstruction* current_instruction);
 
@@ -11429,11 +11549,11 @@ public:
 	dllexport gnu_noinline EclContext() noexcept(true) {}
 
 	// 0x48B030
-	dllexport gnu_noinline ZUNResult thiscall call(EclContext* new_context, int32_t va_index, int32_t = UNUSED_DWORD) asm_symbol_rel(0x48B030);
+	dllexport gnu_noinline ZUNResult thiscall call(EclContext* new_context, int32_t va_index, int32_t = UNUSED_DWORD) ASR(0x48B030);
 
 private:
 	// 0x48B3A0
-	dllexport gnu_noinline ZUNResult vectorcall low_ecl_run(float, float current_gamespeed) asm_symbol_rel(0x48B3A0);
+	dllexport gnu_noinline ZUNResult vectorcall low_ecl_run(float, float current_gamespeed) ASR(0x48B3A0);
 
 public:
 	forceinline ZUNResult low_ecl_run(float current_gamespeed) {
@@ -11566,7 +11686,7 @@ union EnemyID {
 	}
 
 	// 0x42E0C0
-	dllexport gnu_noinline Enemy* thiscall get_enemy_ptr() asm_symbol_rel(0x42E0C0);
+	dllexport gnu_noinline Enemy* thiscall get_enemy_ptr() ASR(0x42E0C0);
 
 	forceinline bool has_live_enemy() {
 		return this->get_enemy_ptr();
@@ -11743,12 +11863,12 @@ struct BombBase : ZUNTask {
 	}
 
 	// 0x420360
-	dllexport gnu_noinline static ZUNResult start_bomb() asm_symbol_rel(0x420360);
+	dllexport gnu_noinline static ZUNResult start_bomb() ASR(0x420360);
 
 	forceinline ZUNResult start_bomb_for_power();
 
 	// 0x420420
-	dllexport gnu_noinline static BOOL bomb_allowed() asm_symbol_rel(0x420420);
+	dllexport gnu_noinline static BOOL bomb_allowed() ASR(0x420420);
 
 
 	// These probably weren't inline functions,
@@ -11819,8 +11939,7 @@ struct BombBase : ZUNTask {
 	}
 	// Method 18
 	// 0x41FBD0
-	dllexport gnu_noinline virtual void thiscall cleanup() {
-	}
+	dllexport gnu_noinline virtual void thiscall cleanup() {}
 
 	forceinline void cleanup_if_active() {
 		if (this->active) {
@@ -11829,7 +11948,7 @@ struct BombBase : ZUNTask {
 	}
 
 	// 0x41FD40
-	dllexport gnu_noinline static BombBase* allocate() asm_symbol_rel(0x41FD40);
+	dllexport gnu_noinline static BombBase* allocate() ASR(0x41FD40);
 
 	forceinline UpdateFuncRet on_tick() {
 		if (!ABILITY_SHOP_PTR) {
@@ -11929,24 +12048,24 @@ struct EnemyDrops {
 	}
 
 	// 0x42D010
-	dllexport gnu_noinline void set_extra_drop_count(int32_t id, int32_t count) asm_symbol_rel(0x42D010) {
+	dllexport gnu_noinline void set_extra_drop_count(int32_t id, int32_t count) ASR(0x42D010) {
 		this->extra_counts[id - 1] = count;
 	}
 
 	// 0x42D020
-	dllexport gnu_noinline void set_timed_extra_drop_count(int32_t id, int32_t count) asm_symbol_rel(0x42D020) {
+	dllexport gnu_noinline void set_timed_extra_drop_count(int32_t id, int32_t count) ASR(0x42D020) {
 		this->limited_extra_counts[id - 1] = count;
 	}
 
 	// 0x42D040
-	dllexport gnu_noinline void set_timed_drop_time(int32_t time) asm_symbol_rel(0x42D040) {
+	dllexport gnu_noinline void set_timed_drop_time(int32_t time) ASR(0x42D040) {
 		this->limited_end_time = time;
 		this->limited_timer.reset();
 	}
 
 private:
 	// 0x42D090
-	dllexport gnu_noinline void vectorcall set_area(float, float width, float height) asm_symbol_rel(0x42D090) {
+	dllexport gnu_noinline void vectorcall set_area(float, float width, float height) ASR(0x42D090) {
 		this->width = width;
 		this->height = height;
 	}
@@ -11956,15 +12075,15 @@ public:
 	}
 
 	// 0x42D0B0
-	dllexport gnu_noinline void set_main_drop(int32_t id) asm_symbol_rel(0x42D0B0) {
+	dllexport gnu_noinline void set_main_drop(int32_t id) ASR(0x42D0B0) {
 		this->main_id = id;
 	}
 
 	// 0x430510
-	dllexport gnu_noinline void spawn_extra_items(Float3* position) asm_symbol_rel(0x430510);
+	dllexport gnu_noinline void spawn_extra_items(Float3* position) ASR(0x430510);
 
 	// 0x42D0C0
-	dllexport void spawn_items(Float3* position) asm_symbol_rel(0x42D0C0) {
+	dllexport void spawn_items(Float3* position) ASR(0x42D0C0) {
 		if (int32_t main_drop = this->main_id) {
 			spawn_item(main_drop, position, -HALF_PI_f, 2.2f, 0);
 		}
@@ -11973,7 +12092,7 @@ public:
 	}
 
 	// 0x42D110
-	dllexport gnu_noinline void initialize() asm_symbol_rel(0x42D110) {
+	dllexport gnu_noinline void initialize() ASR(0x42D110) {
 		this->zero_contents();
 		this->height = 32.0f;
 		this->width = 32.0f;
@@ -11989,7 +12108,7 @@ public:
 	}
 
 	// 0x42D180
-	dllexport gnu_noinline void reset_extra_drops() asm_symbol_rel(0x42D180) {
+	dllexport gnu_noinline void reset_extra_drops() ASR(0x42D180) {
 		memset(this->extra_counts, 0, sizeof(this->extra_counts) + sizeof(this->limited_extra_counts));
 		this->limited_end_time = 0;
 		this->limited_timer.reset();
@@ -12022,37 +12141,37 @@ struct EnemyLife {
 	}
 
 	// 0x42CF80
-	dllexport gnu_noinline int32_t get_current() asm_symbol_rel(0x42CF80) {
+	dllexport gnu_noinline int32_t get_current() ASR(0x42CF80) {
 		return this->current;
 	}
 
 	// 0x42CF90
-	dllexport gnu_noinline void set_current_scaled(int32_t value) asm_symbol_rel(0x42CF90) {
+	dllexport gnu_noinline void set_current_scaled(int32_t value) ASR(0x42CF90) {
 		this->current_scaled_by_seven = value * 7;
 	}
 
 	// 0x42CFB0
-	dllexport gnu_noinline void set_spell(int32_t value) asm_symbol_rel(0x42CFB0) {
+	dllexport gnu_noinline void set_spell(int32_t value) ASR(0x42CFB0) {
 		this->is_spell = value;
 	}
 
 	// 0x42CFD0
-	dllexport gnu_noinline int32_t get_maximum() asm_symbol_rel(0x42CFD0) {
+	dllexport gnu_noinline int32_t get_maximum() ASR(0x42CFD0) {
 		return this->maximum;
 	}
 
 	// 0x42CFE0
-	dllexport gnu_noinline void set_maximum(int32_t value) asm_symbol_rel(0x42CFE0) {
+	dllexport gnu_noinline void set_maximum(int32_t value) ASR(0x42CFE0) {
 		this->maximum = value;
 	}
 
 	// 0x42CFF0
-	dllexport gnu_noinline void set_current_remaining(int32_t value) asm_symbol_rel(0x42CFF0) {
+	dllexport gnu_noinline void set_current_remaining(int32_t value) ASR(0x42CFF0) {
 		this->remaining_current_attack = value;
 	}
 
 	// 0x42D000
-	dllexport gnu_noinline void set_current(int32_t value) asm_symbol_rel(0x42D000) {
+	dllexport gnu_noinline void set_current(int32_t value) ASR(0x42D000) {
 		this->current = value;
 	}
 
@@ -12291,7 +12410,7 @@ struct EnemyData {
 	inline void initialize(Enemy* enemy);
 
 	// 0x42D1E0
-	dllexport gnu_noinline MotionData& get_current_motion() asm_symbol_rel(0x42D1E0) {
+	dllexport gnu_noinline MotionData& get_current_motion() ASR(0x42D1E0) {
 		return this->current_motion;
 	}
 
@@ -12300,7 +12419,7 @@ struct EnemyData {
 	}
 
 	// 0x42D1F0
-	dllexport gnu_noinline EnemyLife& get_life_data() asm_symbol_rel(0x42D1F0) {
+	dllexport gnu_noinline EnemyLife& get_life_data() ASR(0x42D1F0) {
 		return this->life;
 	}
 
@@ -12376,7 +12495,7 @@ struct EnemyData {
 	}
 
 	// 0x42EC00
-	dllexport gnu_noinline void update_current_motion() asm_symbol_rel(0x42EC00) {
+	dllexport gnu_noinline void update_current_motion() ASR(0x42EC00) {
 		this->current_motion.axis_velocity = this->motion.relative.position + this->motion.absolute.position - this->current_motion.position;
 		this->current_motion.update();
 		this->enforce_move_bounds();
@@ -12386,17 +12505,17 @@ struct EnemyData {
 
 	// 0x430D40
 	// EH frame (free something)
-	dllexport gnu_noinline int32_t thiscall high_ecl_run() asm_symbol_rel(0x430D40);
+	dllexport gnu_noinline int32_t thiscall high_ecl_run() ASR(0x430D40);
 
 	// 0x438AA0
-	dllexport gnu_noinline int32_t thiscall get_int_arg(int32_t index) asm_symbol_rel(0x438AA0);
+	dllexport gnu_noinline int32_t thiscall get_int_arg(int32_t index) ASR(0x438AA0);
 
 	// 0x438AC0
-	dllexport gnu_noinline int32_t* thiscall get_int_ptr_arg(int32_t index = UNUSED_DWORD) asm_symbol_rel(0x438AC0);
+	dllexport gnu_noinline int32_t* thiscall get_int_ptr_arg(int32_t index = UNUSED_DWORD) ASR(0x438AC0);
 
 private:
 	// 0x438AD0
-	dllexport gnu_noinline float vectorcall get_float_arg(int32_t, int32_t index) asm_symbol_rel(0x438AD0);
+	dllexport gnu_noinline float vectorcall get_float_arg(int32_t, int32_t index) ASR(0x438AD0);
 
 public:
 	forceinline float get_float_arg(int32_t index) {
@@ -12404,14 +12523,14 @@ public:
 	}
 
 	// 0x438AF0
-	dllexport gnu_noinline float* thiscall get_float_ptr_arg(int32_t index) asm_symbol_rel(0x438AF0);
+	dllexport gnu_noinline float* thiscall get_float_ptr_arg(int32_t index) ASR(0x438AF0);
 
 	// 0x438B10
-	dllexport gnu_noinline int32_t thiscall parse_int_as_arg(int32_t index, int32_t value) asm_symbol_rel(0x438B10);
+	dllexport gnu_noinline int32_t thiscall parse_int_as_arg(int32_t index, int32_t value) ASR(0x438B10);
 
 private:
 	// 0x438BC0
-	dllexport gnu_noinline float vectorcall parse_float_as_arg(int32_t, int32_t index, float, float, float value) asm_symbol_rel(0x438BC0);
+	dllexport gnu_noinline float vectorcall parse_float_as_arg(int32_t, int32_t index, float, float, float value) ASR(0x438BC0);
 
 public:
 	forceinline float parse_float_as_arg(int32_t index, float value) {
@@ -12419,26 +12538,26 @@ public:
 	}
 
 	// 0x4369E0
-	dllexport gnu_noinline int32_t thiscall ecl_enm_create() asm_symbol_rel(0x4369E0);
+	dllexport gnu_noinline int32_t thiscall ecl_enm_create() ASR(0x4369E0);
 
 	// 0x42E5A0
-	dllexport gnu_noinline ZUNResult thiscall move() asm_symbol_rel(0x42E5A0);
+	dllexport gnu_noinline ZUNResult thiscall move() ASR(0x42E5A0);
 
 	forceinline ZUNResult thiscall update();
 
 	// 0x42ED40
-	dllexport gnu_noinline ZUNResult thiscall __update_state() asm_symbol_rel(0x42ED40);
+	dllexport gnu_noinline ZUNResult thiscall __update_state() ASR(0x42ED40);
 
 	// 0x42F890
-	dllexport gnu_noinline void thiscall __update_fog() asm_symbol_rel(0x42F890) {
+	dllexport gnu_noinline void thiscall __update_fog() ASR(0x42F890) {
 		// TODO
 	}
 
 	// 0x42FF80
-	dllexport gnu_noinline ZUNResult thiscall on_tick() asm_symbol_rel(0x42FF80);
+	dllexport gnu_noinline ZUNResult thiscall on_tick() ASR(0x42FF80);
 	
 	// 0x439480
-	dllexport gnu_noinline static int32_t fastcall extra_damage_func1(EnemyData* enemy_data, int32_t prev_damage) asm_symbol_rel(0x439480) {
+	dllexport gnu_noinline static int32_t fastcall extra_damage_func1(EnemyData* enemy_data, int32_t prev_damage) ASR(0x439480) {
 		int32_t new_damage = enemy_data->int_vars[3];
 		if (new_damage > 0) {
 			new_damage += prev_damage;
@@ -12450,15 +12569,15 @@ public:
 	}
 	
 	// 0x4394A0
-	dllexport gnu_noinline static int32_t fastcall extra_damage_func2(EnemyData* enemy_data, int32_t prev_damage) asm_symbol_rel(0x4394A0);
+	dllexport gnu_noinline static int32_t fastcall extra_damage_func2(EnemyData* enemy_data, int32_t prev_damage) ASR(0x4394A0);
 
 	// 0x436BB0
-	dllexport gnu_noinline void thiscall anm_set_slot_impl() asm_symbol_rel(0x436BB0);
+	dllexport gnu_noinline void thiscall anm_set_slot_impl() ASR(0x436BB0);
 
 	inline void thiscall anm_set_slot_main_impl();
 	
 	// 0x436CF0
-	dllexport gnu_noinline void thiscall ecl_set_anm_data() asm_symbol_rel(0x436CF0);
+	dllexport gnu_noinline void thiscall ecl_set_anm_data() ASR(0x436CF0);
 
 	inline void thiscall anm_play_main_impl();
 
@@ -12507,16 +12626,16 @@ public:
 #endif
 
 	// 0x438D90
-	dllexport gnu_noinline static ZUNResult fastcall __func_set_1_6bs(EnemyData* enemy_data) asm_symbol_rel(0x438D90);
+	dllexport gnu_noinline static ZUNResult fastcall __func_set_1_6bs(EnemyData* enemy_data) ASR(0x438D90);
 
 	// 0x439020
-	dllexport gnu_noinline static ZUNResult fastcall __func_call_2_ex(EnemyData* enemy_data) asm_symbol_rel(0x439020);
+	dllexport gnu_noinline static ZUNResult fastcall __func_call_2_ex(EnemyData* enemy_data) ASR(0x439020);
 
 	// 0x4391A0
-	dllexport gnu_noinline static ZUNResult fastcall __func_call_3_ex(EnemyData* enemy_data) asm_symbol_rel(0x4391A0);
+	dllexport gnu_noinline static ZUNResult fastcall __func_call_3_ex(EnemyData* enemy_data) ASR(0x4391A0);
 
 	// 0x439320
-	dllexport gnu_noinline static ZUNResult fastcall __func_set_4_ex(EnemyData* enemy_data) asm_symbol_rel(0x439320);
+	dllexport gnu_noinline static ZUNResult fastcall __func_set_4_ex(EnemyData* enemy_data) ASR(0x439320);
 };
 #pragma region // EnemyData Field Validation
 ValidateFieldOffset32(0x0, EnemyData, previous_motion);
@@ -12694,7 +12813,7 @@ struct SptResource {
 
 	// 0x48D9D0
 	// Method 0
-	dllexport gnu_noinline virtual int32_t thiscall add_ecl_file(const char* file_buffer) asm_symbol_rel(0x48D9D0) {
+	dllexport gnu_noinline virtual int32_t thiscall add_ecl_file(const char* file_buffer) ASR(0x48D9D0) {
 		this->files[this->file_count] = (EclFile*)file_buffer;
 		EclFile* ecl_file = this->files[this->file_count];
 		if (
@@ -12769,7 +12888,7 @@ struct SptResource {
 
 	// 0x42CCB0
 	// Method 4
-	dllexport gnu_noinline virtual ZUNResult thiscall load_imports(EclIncludes* includes) asm_symbol_rel(0x42CCB0) {
+	dllexport gnu_noinline virtual ZUNResult thiscall load_imports(EclIncludes* includes) ASR(0x42CCB0) {
 		return ZUN_SUCCESS;
 	}
 };
@@ -12787,8 +12906,7 @@ struct EclManager : SptResource {
 	// SptResource base; // 0x0
 	// 0x1098
 
-	inline EclManager() {
-	}
+	inline EclManager() {}
 
 	inline ~EclManager() NO_EH_TERMINATE {
 		this->free_files();
@@ -12796,7 +12914,7 @@ struct EclManager : SptResource {
 
 	// 0x42D3E0
 	// Method 0
-	dllexport gnu_noinline virtual int32_t thiscall add_ecl_file(const char* file_name) asm_symbol_rel(0x42D3E0) {
+	dllexport gnu_noinline virtual int32_t thiscall add_ecl_file(const char* file_name) ASR(0x42D3E0) {
 		const char* ecl_file = (const char*)read_file_from_dat(file_name);
 		int32_t index = this->SptResource::add_ecl_file(ecl_file);
 		return index >= 0 ? ZUN_SUCCESS : ZUN_ERROR;
@@ -12804,7 +12922,7 @@ struct EclManager : SptResource {
 
 	// 0x42DA90
 	// Method 4
-	dllexport gnu_noinline virtual ZUNResult thiscall load_imports(EclIncludes* includes) asm_symbol_rel(0x42DA90);
+	dllexport gnu_noinline virtual ZUNResult thiscall load_imports(EclIncludes* includes) ASR(0x42DA90);
 };
 #pragma region // EclManager Validation
 ValidateStructSize32(0x1098, EclManager);
@@ -12823,7 +12941,7 @@ struct EclVM {
 
 private:
 	// 0x42CDC0
-	dllexport gnu_noinline void vectorcall subtract_time_float(float, float amount) asm_symbol_rel(0x42CDC0) {
+	dllexport gnu_noinline void vectorcall subtract_time_float(float, float amount) ASR(0x42CDC0) {
 		this->current_context->time -= amount;
 	}
 public:
@@ -12837,7 +12955,7 @@ public:
 	}
 
 	// 0x42CE80
-	dllexport gnu_noinline void initialize_vm() asm_symbol_rel(0x42CE80) {
+	dllexport gnu_noinline void initialize_vm() ASR(0x42CE80) {
 		this->context.__unknown_flag_ec_A = false;
 		this->context.time = 0.0f;
 		this->context.location.reset();
@@ -12852,43 +12970,43 @@ public:
 	}
 
 	// 0x42CD70
-	dllexport gnu_noinline virtual int32_t high_ecl_run() asm_symbol_rel(0x42CD70) {
+	dllexport gnu_noinline virtual int32_t high_ecl_run() ASR(0x42CD70) {
 		return 0;
 	}
 
 	// 0x42CD80
-	dllexport gnu_noinline virtual int32_t get_int_var(int32_t index) asm_symbol_rel(0x42CD80) {
+	dllexport gnu_noinline virtual int32_t get_int_var(int32_t index) ASR(0x42CD80) {
 		return 0;
 	}
 
 	// 0x42CD90
-	dllexport gnu_noinline virtual int32_t* get_int_ptr(int32_t index) asm_symbol_rel(0x42CD90) {
+	dllexport gnu_noinline virtual int32_t* get_int_ptr(int32_t index) ASR(0x42CD90) {
 		return NULL;
 	}
 
 	// 0x42CDA0
-	dllexport gnu_noinline virtual float get_float_var(int32_t index) asm_symbol_rel(0x42CDA0) {
+	dllexport gnu_noinline virtual float get_float_var(int32_t index) ASR(0x42CDA0) {
 		return 0.0f;
 	}
 
 	// 0x42CDB0
-	dllexport gnu_noinline virtual float* get_float_ptr(int32_t index) asm_symbol_rel(0x42CDB0) {
+	dllexport gnu_noinline virtual float* get_float_ptr(int32_t index) ASR(0x42CDB0) {
 		return NULL;
 	}
 
 	// 0x42CDD0
-	dllexport gnu_noinline void cleanup_vm() asm_symbol_rel(0x42CDD0) {
+	dllexport gnu_noinline void cleanup_vm() ASR(0x42CDD0) {
 		this->context_list.as_head().delete_each();
 	}
 
 	// 0x42CF50
-	dllexport inline virtual ~EclVM() NO_EH_TERMINATE asm_symbol_rel(0x42CF50) {
+	dllexport inline virtual ~EclVM() NO_EH_TERMINATE ASR(0x42CF50) {
 		clang_forceinline this->cleanup_vm();
 	}
 
 private:
 	// 0x48D420
-	dllexport gnu_noinline ZUNResult vectorcall run_ecl(float, float current_gamespeed) asm_symbol_rel(0x48D420) {
+	dllexport gnu_noinline ZUNResult vectorcall run_ecl(float, float current_gamespeed) ASR(0x48D420) {
 		BOOL is_primary_context = true;
 		if (this->context_list.do_while_safe([=, &is_primary_context](EclContext* context, ZUNList<EclContext>* node) {
 			this->current_context = context;
@@ -12919,7 +13037,7 @@ public:
 	}
 
 	// 0x48D850
-	dllexport gnu_noinline ZUNResult thiscall new_async(int32_t async_id, int32_t args_index) asm_symbol_rel(0x48D850) {
+	dllexport gnu_noinline ZUNResult thiscall new_async(int32_t async_id, int32_t args_index) ASR(0x48D850) {
 		EclContext* context = new EclContext();
 		ZUNList<EclContext>* list_node = new ZUNList<EclContext>();
 		context->async_id = async_id;
@@ -12933,7 +13051,7 @@ public:
 	}
 
 	// 0x48D920
-	dllexport gnu_noinline void thiscall locate_sub(const char* sub_name) asm_symbol_rel(0x48D920) {
+	dllexport gnu_noinline void thiscall locate_sub(const char* sub_name) ASR(0x48D920) {
 		EclManager* ecl_manager = this->controller;
 		int32_t left_index = 0;
 		assume(sub_name[0] != '\0');
@@ -12960,7 +13078,7 @@ public:
 	}
 
 	// 0x48DC20
-	dllexport gnu_noinline int32_t thiscall set_context_to_sub(const char* sub_name) asm_symbol_rel(0x48DC20) {
+	dllexport gnu_noinline int32_t thiscall set_context_to_sub(const char* sub_name) ASR(0x48DC20) {
 		//ZDEBUG_PRINT("Setting context to sub %s\n", sub_name);
 		this->locate_sub(sub_name);
 		this->current_context->location.instruction_offset = 0;
@@ -13710,21 +13828,21 @@ struct Enemy : EclVM {
 	dllexport gnu_noinline Enemy(const char* sub_name);
 
 	// 0x42D200
-	dllexport gnu_noinline void mark_for_delete() asm_symbol_rel(0x42D200) {
+	dllexport gnu_noinline void mark_for_delete() ASR(0x42D200) {
 		this->data.marked_for_delete = true;
 	}
 
 	// 0x42D210
-	dllexport gnu_noinline EnemyData& get_data() asm_symbol_rel(0x42D210) {
+	dllexport gnu_noinline EnemyData& get_data() ASR(0x42D210) {
 		return this->data;
 	}
 
 	// 0x42D220
 	// EH frame (terminate)
-	dllexport gnu_noinline virtual ~Enemy() EH_TERMINATE asm_symbol_rel(0x42D220);
+	dllexport gnu_noinline virtual ~Enemy() EH_TERMINATE ASR(0x42D220);
 
 	// 0x42FE80
-	dllexport gnu_noinline ZUNResult thiscall on_tick() asm_symbol_rel(0x42FE80) {
+	dllexport gnu_noinline ZUNResult thiscall on_tick() ASR(0x42FE80) {
 		float enemy_slowdown = this->data.slowdown;
 		if (enemy_slowdown <= 0.0f) {
 			if (this->data.__anm_slowdown_immune) {
@@ -13743,7 +13861,7 @@ struct Enemy : EclVM {
 	}
 
 	// 0x4389F0
-	dllexport gnu_noinline void thiscall set_callback(int32_t index, int32_t life, int32_t time, const char* sub_name) asm_symbol_rel(0x4389F0) {
+	dllexport gnu_noinline void thiscall set_callback(int32_t index, int32_t life, int32_t time, const char* sub_name) ASR(0x4389F0) {
 		EnemyCallback& callback = this->data.callbacks[index];
 		callback.life = life;
 		if (life >= 0) {
@@ -13768,7 +13886,7 @@ struct Enemy : EclVM {
 	}
 
 	// 0x438A60
-	dllexport gnu_noinline void thiscall set_callback_time_sub_name(int32_t index, const char* sub_name) asm_symbol_rel(0x438A60) {
+	dllexport gnu_noinline void thiscall set_callback_time_sub_name(int32_t index, const char* sub_name) ASR(0x438A60) {
 		EnemyCallback& callback = this->data.callbacks[index];
 		if (sub_name) {
 			byteloop_strcpy(callback.time_sub, sub_name);
@@ -13787,24 +13905,24 @@ struct Enemy : EclVM {
 	}
 
 	// 0x430D30
-	dllexport gnu_noinline virtual int32_t high_ecl_run() asm_symbol_rel(0x430D30) {
+	dllexport gnu_noinline virtual int32_t high_ecl_run() ASR(0x430D30) {
 		return this->data.high_ecl_run();
 	}
 
 	// 0x437360
-	dllexport gnu_noinline virtual int32_t get_int_var(int32_t index) asm_symbol_rel(0x437360);
+	dllexport gnu_noinline virtual int32_t get_int_var(int32_t index) ASR(0x437360);
 
 	// 0x437B20
-	dllexport gnu_noinline virtual int32_t* get_int_ptr(int32_t index) asm_symbol_rel(0x437B20);
+	dllexport gnu_noinline virtual int32_t* get_int_ptr(int32_t index) ASR(0x437B20);
 
 	// 0x437C90
-	dllexport gnu_noinline virtual float get_float_var(int32_t index) asm_symbol_rel(0x437C90);
+	dllexport gnu_noinline virtual float get_float_var(int32_t index) ASR(0x437C90);
 
 	// 0x4387E0
-	dllexport gnu_noinline virtual float* get_float_ptr(int32_t index) asm_symbol_rel(0x4387E0);
+	dllexport gnu_noinline virtual float* get_float_ptr(int32_t index) ASR(0x4387E0);
 
 	// 0x430240
-	dllexport gnu_noinline int thiscall kill() asm_symbol_rel(0x430240);
+	dllexport gnu_noinline int thiscall kill() ASR(0x430240);
 
 protected:
 	template <bool no_callbacks = false>
@@ -13980,7 +14098,7 @@ struct GameThread : ZUNTask {
 	dllexport gnu_noinline ~GameThread();
 
 	// 0x443830
-	dllexport static void cleanup() asm_symbol_rel(0x443830) {
+	dllexport static void cleanup() ASR(0x443830) {
 		GameThread* game_thread = GAME_THREAD_PTR;
 		WINDOW_DATA.__int_20D0 = 0;
 		if (game_thread) {
@@ -13989,21 +14107,21 @@ struct GameThread : ZUNTask {
 	}
 
 	// 0x439E80
-	dllexport gnu_noinline void thiscall set_chapter(int32_t chapter) asm_symbol_rel(0x439E80) {
+	dllexport gnu_noinline void thiscall set_chapter(int32_t chapter) ASR(0x439E80) {
 		GAME_MANAGER.globals.chapter = chapter;
 		GAME_THREAD_PTR->chapter = chapter;
 	}
 
 	// 0x443860
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x443860);
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x443860);
 
 	// 0x443D70
-	dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) asm_symbol_rel(0x443D70) {
+	dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) ASR(0x443D70) {
 		return ((GameThread*)ptr)->on_tick();
 	}
 
 	// 0x443D80
-	dllexport gnu_noinline static UpdateFuncRet fastcall on_draw(void* ptr) asm_symbol_rel(0x443D80);
+	dllexport gnu_noinline static UpdateFuncRet fastcall on_draw(void* ptr) ASR(0x443D80);
 
 private:
 	inline unsigned thread_start_impl();
@@ -14022,16 +14140,16 @@ public:
 	inline void __start_stage();
 
 	// 0x444650
-	dllexport gnu_noinline ZUNResult thiscall end_stage() asm_symbol_rel(0x444650);
+	dllexport gnu_noinline ZUNResult thiscall end_stage() ASR(0x444650);
 
 	// 0x443E60
-	dllexport gnu_noinline ZUNResult thiscall __sub_443E60() asm_symbol_rel(0x443E60);
+	dllexport gnu_noinline ZUNResult thiscall __sub_443E60() ASR(0x443E60);
 
 	// 0x4443C0
-	dllexport gnu_noinline ZUNResult thiscall __sub_4443C0() asm_symbol_rel(0x4443C0);
+	dllexport gnu_noinline ZUNResult thiscall __sub_4443C0() ASR(0x4443C0);
 
 	// 0x4437B0
-	dllexport gnu_noinline static GameThread* fastcall allocate(ReplayMode mode) asm_symbol_rel(0x4437B0) {
+	dllexport gnu_noinline static GameThread* fastcall allocate(ReplayMode mode) ASR(0x4437B0) {
 		GameThread* game_thread = new_no_eh<GameThread>();
 		WINDOW_DATA.__int_20D0 = 0;
 		SUPERVISOR.d3d_device->EvictManagedResources();
@@ -14109,7 +14227,61 @@ dllexport gnu_noinline void GameManager::__update_scorefile_game_time() {
 	}
 }
 
+// These are just here for documentation
+// so that MenuSelect::initialize function
+// arguments are easier to read
+enum MenuLength : int32_t {
+	MenuLength1 = 1,
+	MenuLength2 = 2,
+	MenuLength3 = 3,
+	MenuLength4 = 4,
+	MenuLength5 = 5,
+	MenuLength6 = 6,
+	MenuLength7 = 7,
+	MenuLength8 = 8,
+	MenuLength9 = 9,
+	MenuLength10 = 10,
+	MenuLength11 = 11,
+	MenuLength12 = 12,
+	MenuLength13 = 13,
+	MenuLength14 = 14,
+	MenuLength15 = 15,
+	MenuLength16 = 16,
+	MenuLength17 = 17,
+	MenuLength18 = 18,
+	MenuLength19 = 19,
+	MenuLength20 = 20,
+	MenuLength21 = 21,
+	MenuLength22 = 22,
+	MenuLength23 = 23,
+	MenuLength24 = 24,
+	MenuLength25 = 25
+};
+enum MenuChoice : int32_t {
+	MenuChoice0 = 0,
+	MenuChoice1 = 1,
+	MenuChoice2 = 2,
+	MenuChoice3 = 3,
+	MenuChoice4 = 4,
+	MenuChoice5 = 5,
+	MenuChoice6 = 6,
+	MenuChoice7 = 7,
+	MenuChoice8 = 8,
+	MenuChoice9 = 9,
+	MenuChoice10 = 10,
+	MenuChoice11 = 11,
+	MenuChoice12 = 12,
+	MenuChoice13 = 13,
+	MenuChoice14 = 14,
+	MenuChoice15 = 15
+};
+enum MenuWrap : bool {
+	MenuWrapEnable = true,
+	MenuWrapDisable = false
+};
+
 static inline constexpr int32_t MENU_STACK_DEPTH = 16;
+static inline constexpr int32_t MAX_DISABLED_SELECTIONS = 16;
 
 // size: 0xD8
 struct MenuSelect {
@@ -14119,7 +14291,7 @@ struct MenuSelect {
 	int32_t selection_stack[MENU_STACK_DEPTH]; // 0xC
 	int32_t menu_length_stack[MENU_STACK_DEPTH]; // 0x4C
 	int32_t stack_index; // 0x8C
-	int32_t disabled_selections[MENU_STACK_DEPTH]; // 0x90 this might just happen to also be 16 length
+	int32_t disabled_selections[MAX_DISABLED_SELECTIONS]; // 0x90
 	BOOL enable_wrap; // 0xD0
 	int32_t disabled_selections_count; // 0xD4
 	// 0xD8
@@ -14133,7 +14305,7 @@ struct MenuSelect {
 	}
 
 	// 0x402940
-	dllexport gnu_noinline void thiscall push_state() asm_symbol_rel(0x402940) {
+	dllexport gnu_noinline void thiscall push_state() ASR(0x402940) {
 		this->selection_stack[this->stack_index] = this->current_selection;
 		this->menu_length_stack[this->stack_index] = this->menu_length;
 		++this->stack_index;
@@ -14144,7 +14316,7 @@ struct MenuSelect {
 	}
 
 	// 0x402990
-	dllexport gnu_noinline void thiscall pop_state() asm_symbol_rel(0x402990) {
+	dllexport gnu_noinline void thiscall pop_state() ASR(0x402990) {
 		if (--this->stack_index < 0) {
 			this->stack_index = 0;
 			this->current_selection = 0;
@@ -14159,7 +14331,7 @@ struct MenuSelect {
 	}
 
 	// 0x4029E0
-	dllexport gnu_noinline int32_t thiscall move_selection(int32_t offset) asm_symbol_rel(0x4029E0) {
+	dllexport gnu_noinline int32_t thiscall move_selection(int32_t offset) ASR(0x4029E0) {
 		int32_t selection = this->current_selection;
 		int32_t menu_length = this->menu_length;
 
@@ -14203,7 +14375,7 @@ struct MenuSelect {
 	}
 
 	// 0x41B2D0
-	dllexport BOOL thiscall __is_index_disabled(int32_t index) asm_symbol_rel(0x41B2D0) {
+	dllexport BOOL thiscall __is_index_disabled(int32_t index) ASR(0x41B2D0) {
 		int32_t disabled_selections_count = this->disabled_selections_count;
 		for (int32_t i = 0; i < disabled_selections_count; ++i) {
 			if (this->disabled_selections[i] == index) {
@@ -14223,7 +14395,7 @@ struct MenuSelect {
 	}
 
 	// 0x45A4D0
-	dllexport gnu_noinline void thiscall disable_selection(int32_t index) asm_symbol_rel(0x45A4D0) {
+	dllexport gnu_noinline void thiscall disable_selection(int32_t index) ASR(0x45A4D0) {
 		if (this->__is_index_disabled(index)) {
 			return;
 		}
@@ -14234,7 +14406,7 @@ struct MenuSelect {
 	}
 
 	// 0x416BA0
-	dllexport gnu_noinline void thiscall set_selection(int32_t index) asm_symbol_rel(0x416BA0) {
+	dllexport gnu_noinline void thiscall set_selection(int32_t index) ASR(0x416BA0) {
 		int32_t menu_length = this->menu_length;
 		if (menu_length) {
 			if (index >= menu_length) {
@@ -14248,6 +14420,156 @@ struct MenuSelect {
 		}
 		else {
 			this->current_selection = 0;
+		}
+	}
+
+	// These likely weren't in the original code
+	// but I was going crazy dealing with it otherwise
+	forceinline bool selection_changed(int32_t new_selection) const {
+		return this->previous_selection != new_selection;
+	}
+	forceinline bool selection_changed() const {
+		return this->selection_changed(this->current_selection);
+	}
+	forceinline void scroll_up_and_down() {
+		if (check_hardware_inputs_repeating(BUTTON_UP)) {
+			this->move_selection(-1);
+		}
+		if (check_hardware_inputs_repeating(BUTTON_DOWN)) {
+			this->move_selection(1);
+		}
+	}
+	forceinline void scroll_up_and_down_inline() {
+		if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_UP)) {
+			this->move_selection(-1);
+		}
+		if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_DOWN)) {
+			this->move_selection(1);
+		}
+	}
+	forceinline void scroll_left_and_right() {
+		if (check_hardware_inputs_repeating(BUTTON_LEFT)) {
+			this->move_selection(-1);
+		}
+		if (check_hardware_inputs_repeating(BUTTON_RIGHT)) {
+			this->move_selection(1);
+		}
+	}
+	forceinline void scroll_left_and_right_inline() {
+		if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_LEFT)) {
+			this->move_selection(-1);
+		}
+		if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_RIGHT)) {
+			this->move_selection(1);
+		}
+	}
+	forceinline void scroll_up_and_down_lr_alias() {
+		if (
+			check_hardware_inputs_repeating(BUTTON_UP) ||
+			check_hardware_inputs_repeating(BUTTON_LEFT)
+		) {
+			this->move_selection(-1);
+		}
+		if (
+			check_hardware_inputs_repeating(BUTTON_DOWN) ||
+			check_hardware_inputs_repeating(BUTTON_RIGHT)
+		) {
+			this->move_selection(1);
+		}
+	}
+	forceinline void scroll_up_and_down_lr_alias_inline() {
+		if (
+			INPUT_P1.check_hardware_inputs_repeating(BUTTON_UP) ||
+			INPUT_P1.check_hardware_inputs_repeating(BUTTON_LEFT)
+		) {
+			this->move_selection(-1);
+		}
+		if (
+			INPUT_P1.check_hardware_inputs_repeating(BUTTON_DOWN) ||
+			INPUT_P1.check_hardware_inputs_repeating(BUTTON_RIGHT)
+		) {
+			this->move_selection(1);
+		}
+	}
+	forceinline void scroll_up_and_down_lr_alias_half_inline() { // idk anymore
+		if (
+			INPUT_P1.check_hardware_inputs_repeating(BUTTON_UP) ||
+			check_hardware_inputs_repeating(BUTTON_LEFT)
+		) {
+			this->move_selection(-1);
+		}
+		if (
+			INPUT_P1.check_hardware_inputs_repeating(BUTTON_DOWN) ||
+			check_hardware_inputs_repeating(BUTTON_RIGHT)
+		) {
+			this->move_selection(1);
+		}
+	}
+	forceinline void scroll_grid(int32_t row_width) {
+		if (check_hardware_inputs_repeating(BUTTON_UP)) {
+			this->move_selection(-row_width);
+		}
+		if (check_hardware_inputs_repeating(BUTTON_DOWN)) {
+			this->move_selection(row_width);
+		}
+		if (check_hardware_inputs_repeating(BUTTON_LEFT)) {
+			if ((this->current_selection % row_width) != 0) {
+				this->move_selection(-1);
+			} else {
+				this->move_selection(row_width - 1);
+			}
+		}
+		if (check_hardware_inputs_repeating(BUTTON_RIGHT)) {
+			if ((this->current_selection % row_width) != (row_width - 1)) {
+				this->move_selection(1);
+			} else {
+				this->move_selection(-(row_width - 1));
+			}
+		}
+	}
+	forceinline void scroll_grid_inline(int32_t row_width) {
+		if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_UP)) {
+			this->move_selection(-row_width);
+		}
+		if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_DOWN)) {
+			this->move_selection(row_width);
+		}
+		if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_LEFT)) {
+			if ((this->current_selection % row_width) != 0) {
+				this->move_selection(-1);
+			} else {
+				this->move_selection(row_width - 1);
+			}
+		}
+		if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_RIGHT)) {
+			if ((this->current_selection % row_width) != (row_width - 1)) {
+				this->move_selection(1);
+			} else {
+				this->move_selection(-(row_width - 1));
+			}
+		}
+	}
+	template<typename F, typename ... Args>
+	forceinline bool update(const F& func, Args&&... args) {
+		this->previous_selection = this->current_selection;
+		if constexpr (std::is_member_function_pointer_v<F>) {
+			(this->*func)(std::forward<Args>(args)...);
+		} else {
+			func(this, std::forward<Args>(args)...);
+		}
+		return this->selection_changed();
+	}
+	template<typename T, typename ... Args>
+	forceinline void initialize(T arg, Args&&... next_args) {
+		if constexpr (std::is_same_v<T, MenuLength>) {
+			this->menu_length = arg;
+		} else if constexpr (std::is_same_v<T, MenuChoice>) {
+			this->set_selection(arg);
+		} else if constexpr (std::is_same_v<T, MenuWrap>) {
+			this->enable_wrap = arg;
+		}
+		if constexpr (sizeof...(Args)) {
+			return this->initialize(std::forward<Args>(next_args)...);
 		}
 	}
 };
@@ -14319,15 +14641,16 @@ static char MSG_DECRYPT_BUFFER[0x100];
 // 0x4419F0
 dllexport gnu_noinline const char* fastcall __decrypt_related(const char* str) {
 	uint8_t xor_mask = 0x77;
-	uint8_t xor_accel = 7;
+	uint8_t xor_vel = 7;
+	constexpr uint8_t xor_accel = 16;
 
 	char* buffer_write = MSG_DECRYPT_BUFFER;
 	uint8_t c;
 	do {
 		c = *str++;
 		c ^= xor_mask;
-		xor_mask += xor_accel;
-		xor_accel += 16;
+		xor_mask += xor_vel;
+		xor_vel += xor_accel;
 		*buffer_write++ = c;
 	} while (c);
 
@@ -14453,7 +14776,7 @@ struct MsgVM {
 	
 private:
 	// 0x4416D0
-	dllexport gnu_noinline void vectorcall __sub_4416D0(int, float, float x, float y, float arg3, int32_t arg4) asm_symbol_rel(0x4416D0);
+	dllexport gnu_noinline void vectorcall __sub_4416D0(int, float, float x, float y, float arg3, int32_t arg4) ASR(0x4416D0);
 public:
 	inline void __sub_4416D0(float x, float y, float arg3, int32_t arg4) {
 		return this->__sub_4416D0(UNUSED_DWORD, UNUSED_FLOAT, x, y, arg3, arg4);
@@ -14461,7 +14784,7 @@ public:
 
 private:
 	// 0x441900
-	dllexport gnu_noinline void vectorcall __sub_441900(int, float, float arg1, int) asm_symbol_rel(0x441900) {
+	dllexport gnu_noinline void vectorcall __sub_441900(int, float, float arg1, int) ASR(0x441900) {
 		// NOTE: the float addition is far dumber than this, happening inside the loop
 		return this->__inline_textbox_sub_A(arg1 + 16.0f);
 	}
@@ -14471,13 +14794,13 @@ public:
 	}
 
 	// 0x4412B0
-	dllexport gnu_noinline void thiscall __hide_all_anms() asm_symbol_rel(0x4412B0);
+	dllexport gnu_noinline void thiscall __hide_all_anms() ASR(0x4412B0);
 
 	// 0x4414C0
-	dllexport gnu_noinline void thiscall __show_all_anms() asm_symbol_rel(0x4414C0);
+	dllexport gnu_noinline void thiscall __show_all_anms() ASR(0x4414C0);
 
 	// 0x43E550
-	dllexport gnu_noinline ZUNResult thiscall run_msg() asm_symbol_rel(0x43E550);
+	dllexport gnu_noinline ZUNResult thiscall run_msg() ASR(0x43E550);
 
 	inline ZUNResult on_tick() {
 		if (ABILITY_SHOP_PTR) {
@@ -14704,7 +15027,7 @@ struct Gui : ZUNTask {
 	}
 
 	// 0x43B350
-	dllexport gnu_noinline void thiscall cleanup() asm_symbol_rel(0x43B350);
+	dllexport gnu_noinline void thiscall cleanup() ASR(0x43B350);
 
 	// 0x43B560
 	// EH frame (empty???)
@@ -14726,18 +15049,18 @@ struct Gui : ZUNTask {
 	}
 
 	// 0x441F10
-	dllexport gnu_noinline void thiscall __update_life_ui(int32_t life_count, int32_t life_fragments, int32_t life_max) asm_symbol_rel(0x441F10);
+	dllexport gnu_noinline void thiscall __update_life_ui(int32_t life_count, int32_t life_fragments, int32_t life_max) ASR(0x441F10);
 
 	// 0x4420E0
-	dllexport gnu_noinline void thiscall __update_bomb_ui(int32_t bomb_count, int32_t bomb_fragments, int32_t bomb_max) asm_symbol_rel(0x4420E0);
+	dllexport gnu_noinline void thiscall __update_bomb_ui(int32_t bomb_count, int32_t bomb_fragments, int32_t bomb_max) ASR(0x4420E0);
 
 	// 0x4422C0
-	dllexport gnu_noinline void thiscall __show_boss_name() asm_symbol_rel(0x4422C0);
+	dllexport gnu_noinline void thiscall __show_boss_name() ASR(0x4422C0);
 
 	forceinline void __big_popup_text_inline(BigPopupType type, int32_t score_bonus = 0);
 
 	// 0x441A50
-	dllexport gnu_noinline static void stdcall __big_popup_text(BigPopupType type, int32_t score_bonus = 0) asm_symbol_rel(0x441A50) {
+	dllexport gnu_noinline static void stdcall __big_popup_text(BigPopupType type, int32_t score_bonus = 0) ASR(0x441A50) {
 		GUI_PTR->__big_popup_text_inline(type, score_bonus);
 	}
 
@@ -14750,24 +15073,24 @@ struct Gui : ZUNTask {
 	inline void __hide_spell_timer_anms();
 
 	// 0x42D560
-	dllexport gnu_noinline void set_boss_life_count(int value) asm_symbol_rel(0x42D560) {
+	dllexport gnu_noinline void set_boss_life_count(int value) ASR(0x42D560) {
 		this->boss_life_count = value;
 	}
 
 	// 0x42D570
-	dllexport gnu_noinline void vectorcall set_lifebar_marker(int32_t bar_index, int32_t marker_index, D3DCOLOR color, float position) asm_symbol_rel(0x42D570) {
+	dllexport gnu_noinline void vectorcall set_lifebar_marker(int32_t bar_index, int32_t marker_index, D3DCOLOR color, float position) ASR(0x42D570) {
 		Gui* gui = GUI_PTR;
 		gui->lifebars[bar_index].markers[marker_index].bar_position = position;
 		gui->lifebars[bar_index].markers[marker_index].section_color = color;
 	}
 
 	// 0x42D5B0
-	dllexport gnu_noinline int32_t __get_enemy_appear_counter() asm_symbol_rel(0x42D5B0) {
+	dllexport gnu_noinline int32_t __get_enemy_appear_counter() ASR(0x42D5B0) {
 		return GUI_PTR->msg_vm->__enemy_appear_counter;
 	}
 
 	// 0x43A730
-	dllexport gnu_noinline ZUNResult thiscall initialize() asm_symbol_rel(0x43A730);
+	dllexport gnu_noinline ZUNResult thiscall initialize() ASR(0x43A730);
 
 	// 0x407D60
 	dllexport BOOL thiscall msg_vm_active() {
@@ -14789,37 +15112,37 @@ struct Gui : ZUNTask {
 	}
 
 	// 0x441ED0
-	dllexport gnu_noinline void thiscall __display_stage_logo() asm_symbol_rel(0x441ED0);
+	dllexport gnu_noinline void thiscall __display_stage_logo() ASR(0x441ED0);
 
 	// 0x43A8B0
-	dllexport gnu_noinline static void __allocate_hud() asm_symbol_rel(0x43A8B0);
+	dllexport gnu_noinline static void __allocate_hud() ASR(0x43A8B0);
 
 	// 0x43E360
-	dllexport gnu_noinline void thiscall __start_msg_vm(int32_t script) asm_symbol_rel(0x43E360);
+	dllexport gnu_noinline void thiscall __start_msg_vm(int32_t script) ASR(0x43E360);
 
 	// 0x43BB70
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x43BB70);
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x43BB70);
 
 	// 0x43CD00
-	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x43CD00);
+	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() ASR(0x43CD00);
 
 	// 0x43D6F0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x43D6F0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x43D6F0) {
 		return ((Gui*)ptr)->on_tick();
 	}
 
 	// 0x43D700
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x43D700) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x43D700) {
 		return UpdateFuncNext;
 	}
 
 	// 0x43D710
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_B(void* ptr) asm_symbol_rel(0x43D710) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_B(void* ptr) ASR(0x43D710) {
 		return ((Gui*)ptr)->on_draw();
 	}
 
 	// 0x43B800
-	dllexport gnu_noinline static Gui* allocate() asm_symbol_rel(0x43B800);
+	dllexport gnu_noinline static Gui* allocate() ASR(0x43B800);
 };
 #pragma region // Gui Validation
 ValidateFieldOffset32(0x0, Gui, task_flags);
@@ -15150,7 +15473,7 @@ dllexport gnu_noinline void vectorcall SoundManager::play_sound_positioned(int, 
 	}
 }
 
-inline void SoundManager::stop_sound(int32_t sound_id) {
+forceinline void SoundManager::stop_sound(int32_t sound_id) {
 	nounroll for (size_t i = 0; i < countof(SOUND_MANAGER.active_sound_ids); ++i) {
 		int32_t active_sound_id = SOUND_MANAGER.active_sound_ids[i];
 		if (active_sound_id < 0) {
@@ -15165,10 +15488,6 @@ inline void SoundManager::stop_sound(int32_t sound_id) {
 	}
 }
 
-dllexport void fastcall stop_sound_export(int32_t sound_id) {
-	SOUND_MANAGER.stop_sound(sound_id);
-}
-
 // 0x444D80
 dllexport gnu_noinline void SoundManager::__stop_all_sound_effects() {
 	SOUND_MANAGER.active_sound_ids[0] = -1;
@@ -15177,7 +15496,7 @@ dllexport gnu_noinline void SoundManager::__stop_all_sound_effects() {
 	}
 }
 
-inline void SoundManager::__stop_sound_effect(int32_t index) {
+forceinline void SoundManager::__stop_sound_effect(int32_t index) {
 	SOUND_MANAGER.__sound_effects[index].__playing = FALSE;
 	if (LPDIRECTSOUNDBUFFER sound_buffer = SOUND_MANAGER.__sound_effects[index].sound_buffer) {
 		DWORD status;
@@ -15253,7 +15572,7 @@ struct GdiManager {
 	}
 
 	// 0x46FE00
-	dllexport gnu_noinline bool thiscall cleanup() asm_symbol_rel(0x46FE000) {
+	dllexport gnu_noinline bool thiscall cleanup() ASR(0x46FE000) {
 		if (HDC device_context = this->device_context) {
 
 			SelectObject(device_context, this->screen_bitmap_object);
@@ -15272,20 +15591,20 @@ struct GdiManager {
 	}
 
 	// 0x470010
-	dllexport gnu_noinline static bool stdcall __screw_with_texture_bits(uint32_t height) asm_symbol_rel(0x470010);
+	dllexport gnu_noinline static bool stdcall __screw_with_texture_bits(uint32_t height) ASR(0x470010);
 	
 	// 0x4703A0
-	dllexport gnu_noinline static bool stdcall __sub_4703A0(int arg1, int = UNUSED_DWORD) asm_symbol_rel(0x4703A0);
+	dllexport gnu_noinline static bool stdcall __sub_4703A0(int arg1, int = UNUSED_DWORD) ASR(0x4703A0);
 
 	// 0x470A40
 	dllexport gnu_noinline static void fastcall draw_text_to_texture(
 		RECT* bounds, int x, int B, D3DCOLOR text_color, D3DCOLOR outline_color,
 		const char* text, LPDIRECT3DTEXTURE9 texture, int font_id, int char_spacing, BOOL enable_outline
-	) asm_symbol_rel(0x470A40);
+	) ASR(0x470A40);
 
 private:
 	// 0x46FE80
-	dllexport gnu_noinline static bool stdcall __sub_46FE80(UNUSED_ARG(int32_t _width), UNUSED_ARG(int32_t _height), D3DFORMAT format) asm_symbol_rel(0x46FE80);
+	dllexport gnu_noinline static bool stdcall __sub_46FE80(UNUSED_ARG(int32_t _width), UNUSED_ARG(int32_t _height), D3DFORMAT format) ASR(0x46FE80);
 public:
 	static inline bool __sub_46FE80(D3DFORMAT format) {
 		return __sub_46FE80(UNUSED_DWORD, UNUSED_DWORD, format);
@@ -15603,7 +15922,7 @@ dllexport gnu_noinline void fastcall GdiManager::draw_text_to_texture(
 		NULL,
 		&src_rect,
 		D3DX_FILTER_NONE,
-		COLOR(0, 0, 0, 0)
+		COLOR_NONE
 	);
 
 	SAFE_RELEASE(surface);
@@ -15677,7 +15996,7 @@ dllexport gnu_noinline bool stdcall GdiManager::__sub_46FE80(UNUSED_ARG(int32_t 
 #define JSIS_MS_MINCHO "\x82\x6C\x82\x72 \x96\xBE\x92\xA9"
 
 // 0x470470
-dllexport gnu_noinline int CALLBACK EnumFontFamiliesExACallback(const LOGFONTA* lpelfe, const TEXTMETRICA* lpntme, DWORD font_type, LPARAM lparam) asm_symbol_rel(0x470470);
+dllexport gnu_noinline int CALLBACK EnumFontFamiliesExACallback(const LOGFONTA* lpelfe, const TEXTMETRICA* lpntme, DWORD font_type, LPARAM lparam) ASR(0x470470);
 dllexport gnu_noinline int CALLBACK EnumFontFamiliesExACallback(const LOGFONTA* lpelfe, const TEXTMETRICA* lpntme, DWORD font_type, LPARAM lparam) {
 	if (!byteloop_strcmp(lpelfe->lfFaceName, SJIS_MEIRYO)) {
 		FONT_BLOCK.found_meiryo = true;
@@ -15687,7 +16006,7 @@ dllexport gnu_noinline int CALLBACK EnumFontFamiliesExACallback(const LOGFONTA* 
 }
 
 // 0x4704C0
-dllexport gnu_noinline void __initialize_fonts() asm_symbol_rel(0x4704C0);
+dllexport gnu_noinline void __initialize_fonts() ASR(0x4704C0);
 dllexport gnu_noinline void __initialize_fonts() {
 	HDC hdc = GetDC(NULL);
 
@@ -16469,7 +16788,7 @@ struct AnmVM {
 	}
 
 	// 0x4894D0
-	dllexport gnu_noinline AnmLoaded* thiscall get_anm_loaded() asm_symbol_rel(0x4894D0);
+	dllexport gnu_noinline AnmLoaded* thiscall get_anm_loaded() ASR(0x4894D0);
 
 	inline AnmLoaded* get_anm_loaded2();
 
@@ -16498,7 +16817,7 @@ struct AnmVM {
 	}
 	
 	// 0x4066B0
-	dllexport gnu_noinline void thiscall set_layer(int32_t layer) asm_symbol_rel(0x4066B0) {
+	dllexport gnu_noinline void thiscall set_layer(int32_t layer) ASR(0x4066B0) {
 		// IDFK how this one was originally structured
 		this->data.layer = layer;
 		switch (layer) {
@@ -16520,7 +16839,7 @@ struct AnmVM {
 	}
 
 	// 0x405BB0
-	dllexport gnu_noinline float vectorcall get_custom_slowdown() asm_symbol_rel(0x405BB0) {
+	dllexport gnu_noinline float vectorcall get_custom_slowdown() ASR(0x405BB0) {
 		return this->find_root_vm()->controller.slowdown;
 	}
 
@@ -16544,7 +16863,7 @@ struct AnmVM {
 	}
 
 	// 0x4063D0
-	dllexport gnu_noinline Float3* thiscall __adjust_position_for_resolution_and_origin_modes(Float3* out) asm_symbol_rel(0x4063D0) {
+	dllexport gnu_noinline Float3* thiscall __adjust_position_for_resolution_and_origin_modes(Float3* out) ASR(0x4063D0) {
 		
 		switch (this->data.resolution_mode) {
 			case ResolutionScaledA: // 1
@@ -16589,14 +16908,14 @@ struct AnmVM {
 	}
 
 	// 0x4065A0
-	dllexport gnu_noinline Float3* thiscall get_render_position(Float3* out) asm_symbol_rel(0x4065A0) {
+	dllexport gnu_noinline Float3* thiscall get_render_position(Float3* out) ASR(0x4065A0) {
 		*out = this->data.position + this->controller.position + this->data.__position_2;
 		this->__adjust_position_for_resolution_and_origin_modes(out);
 		return out;
 	}
 
 	// 0x4097D0
-	dllexport gnu_noinline Float3* thiscall get_controller_rotation() asm_symbol_rel(0x4097D0) {
+	dllexport gnu_noinline Float3* thiscall get_controller_rotation() ASR(0x4097D0) {
 		Float3* controller_rotation = &this->controller.rotation;
 		*controller_rotation = this->data.rotation;
 		
@@ -16631,12 +16950,12 @@ struct AnmVM {
 	}
 
 	// 0x405CE0
-	dllexport gnu_noinline float vectorcall get_z_rotation() asm_symbol_rel(0x405CE0) {
+	dllexport gnu_noinline float vectorcall get_z_rotation() ASR(0x405CE0) {
 		return this->data.rotation.z;
 	}
 
 	// 0x429AD0
-	dllexport gnu_noinline void thiscall initialize_position_interp(int32_t end_time, int32_t mode, Float3* initial_pos, Float3* final_pos) asm_symbol_rel(0x429AD0) {
+	dllexport gnu_noinline void thiscall initialize_position_interp(int32_t end_time, int32_t mode, Float3* initial_pos, Float3* final_pos) ASR(0x429AD0) {
 		this->data.position_interp.end_time = end_time;
 		this->data.position_interp.bezier1 = ZERO_FLOAT3;
 		this->data.position_interp.bezier2 = ZERO_FLOAT3;
@@ -16647,7 +16966,7 @@ struct AnmVM {
 	}
 
 	// 0x405AD0
-	dllexport gnu_noinline void thiscall initialize_position_interp_bezier(int32_t end_time, Float3* initial_pos, Float3* bezier1, Float3* final_pos, Float3* bezier2) asm_symbol_rel(0x405AD0) {
+	dllexport gnu_noinline void thiscall initialize_position_interp_bezier(int32_t end_time, Float3* initial_pos, Float3* bezier1, Float3* final_pos, Float3* bezier2) ASR(0x405AD0) {
 		this->data.position_interp.end_time = end_time;
 		this->data.position_interp.mode = 8;
 		this->data.position_interp.initial_value = *initial_pos;
@@ -16658,7 +16977,7 @@ struct AnmVM {
 	}
 
 	// 0x47D790
-	dllexport gnu_noinline void thiscall initialize_color_interp(int32_t end_time, int32_t mode, D3DCOLOR& initial_color, D3DCOLOR& final_color) asm_symbol_rel(0x47D790) {
+	dllexport gnu_noinline void thiscall initialize_color_interp(int32_t end_time, int32_t mode, D3DCOLOR& initial_color, D3DCOLOR& final_color) ASR(0x47D790) {
 		this->data.color_interp.end_time = end_time;
 		this->data.color_interp.bezier1 = {};
 		this->data.color_interp.bezier2 = {};
@@ -16669,7 +16988,7 @@ struct AnmVM {
 	}
 
 	// 0x406630
-	dllexport gnu_noinline void thiscall initialize_alpha_interp(int32_t end_time, int32_t mode, uint8_t initial_alpha, uint8_t final_alpha) asm_symbol_rel(0x406630) {
+	dllexport gnu_noinline void thiscall initialize_alpha_interp(int32_t end_time, int32_t mode, uint8_t initial_alpha, uint8_t final_alpha) ASR(0x406630) {
 		this->data.alpha_interp.end_time = end_time;
 		this->data.alpha_interp.mode = mode;
 		this->data.alpha_interp.initial_value = initial_alpha;
@@ -16680,7 +16999,7 @@ struct AnmVM {
 	}
 
 	// 0x47D690
-	dllexport gnu_noinline void thiscall initialize_color2_interp(int32_t end_time, int32_t mode, D3DCOLOR& initial_color, D3DCOLOR& final_color) asm_symbol_rel(0x47D790) {
+	dllexport gnu_noinline void thiscall initialize_color2_interp(int32_t end_time, int32_t mode, D3DCOLOR& initial_color, D3DCOLOR& final_color) ASR(0x47D790) {
 		this->data.color2_interp.end_time = end_time;
 		this->data.color2_interp.bezier1 = {};
 		this->data.color2_interp.bezier2 = {};
@@ -16694,7 +17013,7 @@ struct AnmVM {
 	}
 
 	// 0x406630
-	dllexport gnu_noinline void thiscall initialize_alpha2_interp(int32_t end_time, int32_t mode, uint8_t initial_alpha, uint8_t final_alpha) asm_symbol_rel(0x406630) {
+	dllexport gnu_noinline void thiscall initialize_alpha2_interp(int32_t end_time, int32_t mode, uint8_t initial_alpha, uint8_t final_alpha) ASR(0x406630) {
 		this->data.alpha2_interp.end_time = end_time;
 		this->data.alpha2_interp.mode = mode;
 		this->data.alpha2_interp.initial_value = initial_alpha;
@@ -16708,7 +17027,7 @@ struct AnmVM {
 	}
 	
 	// 0x4614B0
-	dllexport gnu_noinline void thiscall initialize_scale_interp(int32_t end_time, int32_t mode, Float2* initial_scale, Float2* final_scale) asm_symbol_rel(0x4614B0) {
+	dllexport gnu_noinline void thiscall initialize_scale_interp(int32_t end_time, int32_t mode, Float2* initial_scale, Float2* final_scale) ASR(0x4614B0) {
 		this->data.scale_interp.end_time = end_time;
 		this->data.scale_interp.mode = mode;
 		this->data.scale_interp.initial_value = *initial_scale;
@@ -16719,7 +17038,7 @@ struct AnmVM {
 	}
 
 	// 0x47D580
-	dllexport gnu_noinline void thiscall initialize_scale2_interp(int32_t end_time, int32_t mode, Float2* initial_scale, Float2* final_scale) asm_symbol_rel(0x47D580) {
+	dllexport gnu_noinline void thiscall initialize_scale2_interp(int32_t end_time, int32_t mode, Float2* initial_scale, Float2* final_scale) ASR(0x47D580) {
 		this->data.scale2_interp.end_time = end_time;
 		this->data.scale2_interp.mode = mode;
 		this->data.scale2_interp.initial_value = *initial_scale;
@@ -16730,7 +17049,7 @@ struct AnmVM {
 	}
 
 	// 0x47D500
-	dllexport gnu_noinline void thiscall initialize_uv_scale_interp(int32_t end_time, int32_t mode, Float2* initial_scale, Float2* final_scale) asm_symbol_rel(0x47D500) {
+	dllexport gnu_noinline void thiscall initialize_uv_scale_interp(int32_t end_time, int32_t mode, Float2* initial_scale, Float2* final_scale) ASR(0x47D500) {
 		this->data.uv_scale_interp.end_time = end_time;
 		this->data.uv_scale_interp.mode = mode;
 		this->data.uv_scale_interp.initial_value = *initial_scale;
@@ -16741,7 +17060,7 @@ struct AnmVM {
 	}
 
 	// 0x4890B0
-	dllexport gnu_noinline AnmVM* thiscall __find_child_vm_with_script(int32_t script, uint32_t minimum_hierarchy_depth = 0) asm_symbol_rel(0x4890B0) {
+	dllexport gnu_noinline AnmVM* thiscall __find_child_vm_with_script(int32_t script, uint32_t minimum_hierarchy_depth = 0) ASR(0x4890B0) {
 		// This iterates the child list as a normal list instead of a list head...?
 		// 
 		// NOTE: This doesn't match any of the normal lambda iteration funcs
@@ -16800,7 +17119,7 @@ struct AnmVM {
 	}
 	
 	// 0x406730
-	dllexport gnu_noinline void set_controller_position(Float3* position) asm_symbol_rel(0x406730) {
+	dllexport gnu_noinline void set_controller_position(Float3* position) ASR(0x406730) {
 		this->controller.position = *position;
 	}
 
@@ -16820,7 +17139,7 @@ struct AnmVM {
 	}
 
 	// 0x47E8F0
-	dllexport gnu_noinline void stdcall __get_vertex_positions(Float3* vert0, Float3* vert1, Float3* vert2, Float3* vert3) asm_symbol_rel(0x47E8F0) {
+	dllexport gnu_noinline void stdcall __get_vertex_positions(Float3* vert0, Float3* vert1, Float3* vert2, Float3* vert3) ASR(0x47E8F0) {
 		Float4* anchor_offset_x = &ANCHOR_X_TABLE[this->data.x_anchor_mode];
 		vert0->x = anchor_offset_x->x;
 		vert1->x = anchor_offset_x->y;
@@ -16887,7 +17206,7 @@ struct AnmVM {
 		Float3* vert1, // ESP+14
 		Float3* vert2, // ESP+18
 		Float3* vert3  // ESP+1C
-	) asm_symbol_rel(0x47ED50) {
+	) ASR(0x47ED50) {
 		// this; // ESI
 
 		auto __temp = CRT::sincosf_asm(this->get_controller_rotation()->z); // ESP+8 for rotation
@@ -16949,7 +17268,7 @@ struct AnmVM {
 	}
 
 	// 0x47F090
-	dllexport gnu_noinline ZUNResult stdcall __get_billboard_vertex_positions() asm_symbol_rel(0x47F090) {
+	dllexport gnu_noinline ZUNResult stdcall __get_billboard_vertex_positions() ASR(0x47F090) {
 		// this; // ESI
 
 		float rotation_z = this->get_controller_rotation()->z; // ESP+8
@@ -17060,7 +17379,7 @@ struct AnmVM {
 	}
 
 	// 0x481D20
-	dllexport gnu_noinline void thiscall __get_vertex_quad(Float3* out) asm_symbol_rel(0x481D20) {
+	dllexport gnu_noinline void thiscall __get_vertex_quad(Float3* out) ASR(0x481D20) {
 		switch (this->data.render_mode) {
 			case Mode2DSpriteRotated: // 1
 				this->__get_rotated_vertex_positions(&out[0], &out[1], &out[2], &out[3]);
@@ -17074,7 +17393,7 @@ struct AnmVM {
 	}
 
 	// 0x41B430
-	dllexport gnu_noinline void reset() asm_symbol_rel(0x41B430) {
+	dllexport gnu_noinline void reset() ASR(0x41B430) {
 		this->clear_all();
 		this->data.visible = true;
 		this->data.__visible2 = true;
@@ -17082,7 +17401,7 @@ struct AnmVM {
 		this->data.scale = { 1.0f, 1.0f };
 		this->data.scale2 = { 1.0f, 1.0f };
 		this->data.uv_scale = { 1.0f, 1.0f };
-		this->data.color1 = COLOR(255, 255, 255, 255);
+		this->data.color1 = COLOR_WHITE;
 		this->data.__base_world_matrix.set_identity();
 		this->controller.script_time.default_values();
 		this->controller.__timer_1C.default_values();
@@ -17123,7 +17442,7 @@ struct AnmVM {
 	}
 
 	// 0x41B6F0
-	dllexport gnu_noinline void cleanup() asm_symbol_rel(0x41B6F0) {
+	dllexport gnu_noinline void cleanup() ASR(0x41B6F0) {
 		if (void* special_data = this->controller.special_data) {
 			free(special_data);
 		}
@@ -17205,98 +17524,98 @@ struct AnmVM {
 	// ====================
 
 	// 0x406AD0
-	dllexport gnu_noinline static int fastcall on_create_special_dataA(AnmVM* vm, void* arg) asm_symbol_rel(0x406AD0);
+	dllexport gnu_noinline static int fastcall on_create_special_dataA(AnmVM* vm, void* arg) ASR(0x406AD0);
 
 	// 0x406C80
-	dllexport gnu_noinline static int fastcall on_tick_special_dataA(AnmVM* vm) asm_symbol_rel(0x406C80);
+	dllexport gnu_noinline static int fastcall on_tick_special_dataA(AnmVM* vm) ASR(0x406C80);
 
 	// 0x406D00
-	dllexport gnu_noinline static int fastcall on_draw_special_dataA(AnmVM* vm) asm_symbol_rel(0x406D00);
+	dllexport gnu_noinline static int fastcall on_draw_special_dataA(AnmVM* vm) ASR(0x406D00);
 
 	// 0x4072A0
-	dllexport gnu_noinline static int fastcall on_destroy_special_dataA(AnmVM* vm) asm_symbol_rel(0x4072A0);
+	dllexport gnu_noinline static int fastcall on_destroy_special_dataA(AnmVM* vm) ASR(0x4072A0);
 
 	// 0x4072B0
-	dllexport gnu_noinline static int fastcall on_interrupt_special_dataA(AnmVM* vm, int32_t interrupt) asm_symbol_rel(0x4072B0);
+	dllexport gnu_noinline static int fastcall on_interrupt_special_dataA(AnmVM* vm, int32_t interrupt) ASR(0x4072B0);
 
 	// 0x404FC0
-	dllexport gnu_noinline static int fastcall on_create_special_dataB(AnmVM* vm, void* arg) asm_symbol_rel(0x404FC0);
+	dllexport gnu_noinline static int fastcall on_create_special_dataB(AnmVM* vm, void* arg) ASR(0x404FC0);
 
 	// 0x405030
-	dllexport gnu_noinline static int fastcall on_tick_special_dataB(AnmVM* vm) asm_symbol_rel(0x405030);
+	dllexport gnu_noinline static int fastcall on_tick_special_dataB(AnmVM* vm) ASR(0x405030);
 
 	// 0x4058B0
-	dllexport gnu_noinline static int fastcall on_draw_special_dataB(AnmVM* vm) asm_symbol_rel(0x4058B0);
+	dllexport gnu_noinline static int fastcall on_draw_special_dataB(AnmVM* vm) ASR(0x4058B0);
 
 	// 0x4058C0
-	dllexport gnu_noinline static int fastcall on_destroy_special_dataB(AnmVM* vm) asm_symbol_rel(0x4058C0);
+	dllexport gnu_noinline static int fastcall on_destroy_special_dataB(AnmVM* vm) ASR(0x4058C0);
 
 	// 0x405910
-	dllexport gnu_noinline static int fastcall on_interrupt_special_dataB(AnmVM* vm, int32_t interrupt) asm_symbol_rel(0x405910);
+	dllexport gnu_noinline static int fastcall on_interrupt_special_dataB(AnmVM* vm, int32_t interrupt) ASR(0x405910);
 
 	// 0x405D70
-	dllexport gnu_noinline static int fastcall on_create_special_dataC1(AnmVM* vm, void* arg) asm_symbol_rel(0x405D70);
+	dllexport gnu_noinline static int fastcall on_create_special_dataC1(AnmVM* vm, void* arg) ASR(0x405D70);
 
 	// 0x405ED0
-	dllexport gnu_noinline static int fastcall on_tick_special_dataC(AnmVM* vm) asm_symbol_rel(0x405ED0);
+	dllexport gnu_noinline static int fastcall on_tick_special_dataC(AnmVM* vm) ASR(0x405ED0);
 
 	// 0x406090
-	dllexport gnu_noinline static int fastcall on_draw_special_dataC(AnmVM* vm) asm_symbol_rel(0x406090);
+	dllexport gnu_noinline static int fastcall on_draw_special_dataC(AnmVM* vm) ASR(0x406090);
 
 	// 0x406290
-	dllexport gnu_noinline static int fastcall on_destroy_special_dataC(AnmVM* vm) asm_symbol_rel(0x406290);
+	dllexport gnu_noinline static int fastcall on_destroy_special_dataC(AnmVM* vm) ASR(0x406290);
 
 	// 0x4062A0
-	dllexport gnu_noinline static int fastcall on_interrupt_special_dataC(AnmVM* vm, int32_t interrupt) asm_symbol_rel(0x4062A0);
+	dllexport gnu_noinline static int fastcall on_interrupt_special_dataC(AnmVM* vm, int32_t interrupt) ASR(0x4062A0);
 
 	// 0x4062B0
-	dllexport gnu_noinline static int fastcall on_create_special_dataC2(AnmVM* vm, void* arg) asm_symbol_rel(0x4062B0);
+	dllexport gnu_noinline static int fastcall on_create_special_dataC2(AnmVM* vm, void* arg) ASR(0x4062B0);
 
 	// 0x407590
-	dllexport gnu_noinline static int fastcall on_create_special_dataD(AnmVM* vm, void* arg) asm_symbol_rel(0x407590);
+	dllexport gnu_noinline static int fastcall on_create_special_dataD(AnmVM* vm, void* arg) ASR(0x407590);
 
 	// 0x4078D0
-	dllexport gnu_noinline static int fastcall on_tick_special_dataD(AnmVM* vm) asm_symbol_rel(0x4078D0);
+	dllexport gnu_noinline static int fastcall on_tick_special_dataD(AnmVM* vm) ASR(0x4078D0);
 
 	// 0x407C90
-	dllexport gnu_noinline static int fastcall on_draw_special_dataD(AnmVM* vm) asm_symbol_rel(0x407C90);
+	dllexport gnu_noinline static int fastcall on_draw_special_dataD(AnmVM* vm) ASR(0x407C90);
 
 	// 0x407D30
-	dllexport gnu_noinline static int fastcall on_destroy_special_dataD(AnmVM* vm) asm_symbol_rel(0x407D30);
+	dllexport gnu_noinline static int fastcall on_destroy_special_dataD(AnmVM* vm) ASR(0x407D30);
 	
 	// 0x407D40
-	dllexport gnu_noinline static int fastcall on_interrupt_special_dataD(AnmVM* vm, int32_t interrupt) asm_symbol_rel(0x407D40);
+	dllexport gnu_noinline static int fastcall on_interrupt_special_dataD(AnmVM* vm, int32_t interrupt) ASR(0x407D40);
 
 	// ====================
 	// Other funcs
 	// ====================
 
 	// 0x405D40
-	dllexport gnu_noinline void thiscall allocate_special_vertex_buffer(size_t buffer_size) asm_symbol_rel(0x405D40) {
+	dllexport gnu_noinline void thiscall allocate_special_vertex_buffer(size_t buffer_size) ASR(0x405D40) {
 		this->controller.special_data_size = buffer_size;
 		this->controller.special_data = malloc(buffer_size);
 	}
 
 	// 0x4832F0
-	dllexport gnu_noinline int thiscall __sub_4832F0() asm_symbol_rel(0x4832F0) {
+	dllexport gnu_noinline int thiscall __sub_4832F0() ASR(0x4832F0) {
 		// TODO: this creates the data for on tick 4
 		return 0;
 	}
 
 	// 0x483560
-	dllexport gnu_noinline static int fastcall on_tick_4(AnmVM* vm) asm_symbol_rel(0x483560) {
+	dllexport gnu_noinline static int fastcall on_tick_4(AnmVM* vm) ASR(0x483560) {
 		// TODO: math
 		return 0;
 	}
 
 	// 0x42B1E0
-	dllexport gnu_noinline static int fastcall on_draw_4(AnmVM* vm) asm_symbol_rel(0x42B1E0) {
+	dllexport gnu_noinline static int fastcall on_draw_4(AnmVM* vm) ASR(0x42B1E0) {
 		// TODO: math
 		return 0;
 	}
 
 	// 0x441130
-	dllexport gnu_noinline static int fastcall on_draw_5(AnmVM* vm) asm_symbol_rel(0x441130) {
+	dllexport gnu_noinline static int fastcall on_draw_5(AnmVM* vm) ASR(0x441130) {
 		MsgVM* msg_vm = GUI_PTR->msg_vm;
 		AnmVM* vm2 = msg_vm->__callout_related.__find_child_vm_with_script(msg_vm->__int_1D4 + 170);
 		if (vm2) {
@@ -17329,26 +17648,26 @@ struct AnmVM {
 	}
 
 	// 0x4837E0
-	dllexport gnu_noinline static int fastcall on_draw_6(AnmVM* vm) asm_symbol_rel(0x4837E0);
+	dllexport gnu_noinline static int fastcall on_draw_6(AnmVM* vm) ASR(0x4837E0);
 
 	forceinline void set_sprite(int32_t sprite_id, AnmManager* anm_manager);
 	// 0x488FA0
-	dllexport void thiscall set_sprite(int32_t sprite_id) asm_symbol_rel(0x488FA0);
+	dllexport void thiscall set_sprite(int32_t sprite_id) ASR(0x488FA0);
 
 	forceinline void set_sprite_unsafe(int32_t sprite_id, AnmManager* anm_manager);
 	forceinline void set_sprite_unsafe(int32_t sprite_id);
 
 	// 0x429A20
-	dllexport gnu_noinline static int32_t fastcall sprite_lookup_1(AnmVM* vm, int32_t sprite) asm_symbol_rel(0x429A20);
+	dllexport gnu_noinline static int32_t fastcall sprite_lookup_1(AnmVM* vm, int32_t sprite) ASR(0x429A20);
 
 	// 0x4494B0
-	dllexport gnu_noinline static int32_t fastcall sprite_lookup_2(AnmVM* vm, int32_t sprite) asm_symbol_rel(0x4494B0);
+	dllexport gnu_noinline static int32_t fastcall sprite_lookup_2(AnmVM* vm, int32_t sprite) ASR(0x4494B0);
 
 	// 0x4527B0
-	dllexport gnu_noinline static int32_t fastcall sprite_lookup_3(AnmVM* vm, int32_t sprite) asm_symbol_rel(0x4527B0);
+	dllexport gnu_noinline static int32_t fastcall sprite_lookup_3(AnmVM* vm, int32_t sprite) ASR(0x4527B0);
 
 	// 0x412F20
-	dllexport inline void thiscall interrupt(int32_t interrupt_index) asm_symbol_rel(0x412F20) {
+	dllexport inline void thiscall interrupt(int32_t interrupt_index) ASR(0x412F20) {
 		this->run_on_interrupt(interrupt_index);
 		this->data.run_interrupt = interrupt_index;
 	}
@@ -17356,13 +17675,13 @@ struct AnmVM {
 	inline AnmInstruction* get_current_instruction();
 
 	// 0x47D8B0
-	dllexport gnu_noinline void vectorcall set_scale_delta(float x, float y) asm_symbol_rel(0x47D8B0) {
+	dllexport gnu_noinline void vectorcall set_scale_delta(float x, float y) ASR(0x47D8B0) {
 		this->data.deltas_enabled = true;
 		this->data.scale_delta.x = x;
 		this->data.scale_delta.y = y;
 	}
 	// 0x47D8D0
-	dllexport gnu_noinline void vectorcall set_angular_velocity(float x, float y, float z) asm_symbol_rel(0x47D8D0) {
+	dllexport gnu_noinline void vectorcall set_angular_velocity(float x, float y, float z) ASR(0x47D8D0) {
 		this->data.deltas_enabled = true;
 		this->data.angular_velocity.x = x;
 		this->data.angular_velocity.y = y;
@@ -17398,17 +17717,17 @@ struct AnmVM {
 	}
 	
 	// 0x43A250
-	dllexport float vectorcall get_scaled_sprite_x_size() asm_symbol_rel(0x43A250) {
+	dllexport float vectorcall get_scaled_sprite_x_size() ASR(0x43A250) {
 		return this->data.sprite_size.x * this->data.scale.x;
 	}
 	
 	// 0x43A260
-	dllexport float vectorcall get_scaled_sprite_y_size() asm_symbol_rel(0x43A260) {
+	dllexport float vectorcall get_scaled_sprite_y_size() ASR(0x43A260) {
 		return this->data.sprite_size.y * this->data.scale.y;
 	}
 
 	// 0x47BCE0
-	dllexport gnu_noinline void thiscall __apply_deltas() asm_symbol_rel(0x47BCE0) {
+	dllexport gnu_noinline void thiscall __apply_deltas() ASR(0x47BCE0) {
 		float x_rotation_delta = this->data.angular_velocity.x;
 		if (x_rotation_delta != 0.0f) {
 			this->set_x_rotation(reduce_angle(this->data.rotation.x + x_rotation_delta * GAME_SPEED));
@@ -17456,7 +17775,7 @@ struct AnmVM {
 
 private:
 	// 0x477EA0
-	dllexport gnu_noinline float vectorcall get_float_var(float, float index) asm_symbol_rel(0x477EA0) {
+	dllexport gnu_noinline float vectorcall get_float_var(float, float index) ASR(0x477EA0) {
 		using namespace Anm;
 		switch ((int32_t)index) {
 			case I0: // 10000
@@ -17542,7 +17861,7 @@ public:
 	}
 
 	// 0x4781E0
-	dllexport gnu_noinline int32_t thiscall get_int_var(int32_t index) asm_symbol_rel(0x4781E0) {
+	dllexport gnu_noinline int32_t thiscall get_int_var(int32_t index) ASR(0x4781E0) {
 		using namespace Anm;
 		switch (index) {
 			case I0: // 10000
@@ -17685,10 +18004,10 @@ public:
 	}
 
 	// 0x478580
-	dllexport gnu_noinline int32_t thiscall run_anm() asm_symbol_rel(0x478580);
+	dllexport gnu_noinline int32_t thiscall run_anm() ASR(0x478580);
 
 	// 0x47C750
-	dllexport gnu_noinline void thiscall step_interps() asm_symbol_rel(0x47C750) {
+	dllexport gnu_noinline void thiscall step_interps() ASR(0x47C750) {
 		if (this->data.position_interp.end_time) {
 			if (this->data.position_mode == UsePosition1) { // 0
 				this->data.position = this->data.position_interp.step();
@@ -17738,7 +18057,7 @@ public:
 	}
 
 	// 0x47BEF0
-	dllexport gnu_noinline void thiscall __update_polygons() asm_symbol_rel(0x47BEF0) {
+	dllexport gnu_noinline void thiscall __update_polygons() ASR(0x47BEF0) {
 		switch (uint32_t render_mode = this->data.render_mode) {
 			case ModeTexturedRing: // 9
 			{
@@ -17959,7 +18278,7 @@ public:
 	}
 
 	// 0x488EF0
-	dllexport void __show_tree() asm_symbol_rel(0x488EF0) {
+	dllexport void __show_tree() ASR(0x488EF0) {
 		this->data.__visible2 = true;
 		this->controller.child_list.for_each([](AnmVM* vm) gnu_always_inline static_lambda {
 			clang_noinline vm->__show_tree();
@@ -17967,7 +18286,7 @@ public:
 	}
 
 	// 0x488F20
-	dllexport void __hide_tree() asm_symbol_rel(0x488F20) {
+	dllexport void __hide_tree() ASR(0x488F20) {
 		this->data.__visible2 = false;
 		this->controller.child_list.for_each([](AnmVM* vm) gnu_always_inline static_lambda {
 			clang_noinline vm->__hide_tree();
@@ -17986,7 +18305,7 @@ public:
 	
 private:
 	// 0x4892E0
-	dllexport void vectorcall set_z_rotation(float, float value) asm_symbol_rel(0x4892E0) {
+	dllexport void vectorcall set_z_rotation(float, float value) ASR(0x4892E0) {
 		this->data.rotation_enabled = true;
 		this->data.rotation.z = value;
 	}
@@ -18256,7 +18575,7 @@ ValidateStructSize32(0x40, AnmEntry);
 typedef struct AnmImage AnmImage;
 
 // 0x486560
-dllexport gnu_noinline int32_t stdcall __create_render_target_texture(AnmImage* image, uint32_t width, uint32_t height) asm_symbol_rel(0x486560);
+dllexport gnu_noinline int32_t stdcall __create_render_target_texture(AnmImage* image, uint32_t width, uint32_t height) ASR(0x486560);
 
 // size: 0x18
 struct AnmImage {
@@ -18285,7 +18604,7 @@ struct AnmImage {
 	}
 
 	// 0x489030
-	dllexport gnu_noinline void thiscall __sub_489030() asm_symbol_rel(0x489030) {
+	dllexport gnu_noinline void thiscall __sub_489030() ASR(0x489030) {
 		LPDIRECT3DSURFACE9 surface;
 		this->d3d_texture->GetSurfaceLevel(0, &surface);
 		D3DSURFACE_DESC surface_desc;
@@ -18423,12 +18742,12 @@ struct AnmLoaded {
 	inline void cleanup();
 
 	// 0x47D8F0
-	dllexport gnu_noinline AnmInstruction* thiscall get_script(int32_t index) asm_symbol_rel(0x47D8F0) {
+	dllexport gnu_noinline AnmInstruction* thiscall get_script(int32_t index) ASR(0x47D8F0) {
 		return (*this->scripts)[index];
 	}
 
 	// 0x477B00
-	dllexport gnu_noinline ZUNResult thiscall set_sprite(AnmVM* vm, int32_t sprite_id) asm_symbol_rel(0x477B00) {
+	dllexport gnu_noinline ZUNResult thiscall set_sprite(AnmVM* vm, int32_t sprite_id) ASR(0x477B00) {
 		if (!this->anm_file) {
 			return ZUN_ERROR;
 		}
@@ -18467,10 +18786,10 @@ struct AnmLoaded {
 	inline void __set_new_script(AnmVM* vm, int32_t script_id);
 
 	// 0x477D60
-	dllexport void __set_script_and_run(AnmVM* vm, int32_t sprite_id) asm_symbol_rel(0x477D60);
+	dllexport void __set_script_and_run(AnmVM* vm, int32_t sprite_id) ASR(0x477D60);
 
 	// 0x407420
-	dllexport gnu_noinline void __copy_data_to_vm(AnmVM* vm, int32_t index) asm_symbol_rel(0x407420) {
+	dllexport gnu_noinline void __copy_data_to_vm(AnmVM* vm, int32_t index) ASR(0x407420) {
 		vm->clear_controller();
 		vm->controller.global_list_node.initialize_with(vm);
 		vm->controller.child_list_node.initialize_with(vm);
@@ -18481,7 +18800,7 @@ struct AnmLoaded {
 	}
 
 	// 0x41F920
-	dllexport gnu_noinline int32_t __copy_data_to_vm_and_run(AnmVM* vm, int32_t index) asm_symbol_rel(0x41F920) {
+	dllexport gnu_noinline int32_t __copy_data_to_vm_and_run(AnmVM* vm, int32_t index) ASR(0x41F920) {
 		this->__copy_data_to_vm(vm, index);
 		vm->controller.parent = NULL;
 		vm->controller.__root_vm = NULL;
@@ -18490,7 +18809,7 @@ struct AnmLoaded {
 
 private:
 	// 0x4894E0
-	dllexport gnu_noinline void thiscall __copy_data_to_vm_unknown_A(AnmVM* vm, int32_t index) asm_symbol_rel(0x4894E0) {
+	dllexport gnu_noinline void thiscall __copy_data_to_vm_unknown_A(AnmVM* vm, int32_t index) ASR(0x4894E0) {
 		Float3 position = vm->data.position;
 		this->__copy_data_to_vm(vm, 7);
 		vm->data.position = position;
@@ -18504,7 +18823,7 @@ public:
 
 private:
 	// 0x488770
-	dllexport AnmID& thiscall instantiate_vm(AnmID& out, int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVMCreationFlags flags, AnmVM** raw_out) asm_symbol_rel(0x488770);
+	dllexport AnmID& thiscall instantiate_vm(AnmID& out, int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVMCreationFlags flags, AnmVM** raw_out) ASR(0x488770);
 public:
 	inline AnmID instantiate_vm(int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVMCreationFlags flags, AnmVM** raw_out) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
@@ -18550,7 +18869,7 @@ public:
 
 private:
 	// 0x405BF0
-	dllexport AnmID& thiscall instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, int32_t layer, AnmVM** raw_out) asm_symbol_rel(0x405BF0);
+	dllexport AnmID& thiscall instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, int32_t layer, AnmVM** raw_out) ASR(0x405BF0);
 public:
 	inline AnmID instantiate_vm_to_world_list_back(int32_t script_index, int32_t layer, AnmVM** raw_out) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
@@ -18575,7 +18894,7 @@ public:
 
 private:
 	// 0x413180
-	dllexport AnmID& thiscall instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVM** raw_out) asm_symbol_rel(0x413180);
+	dllexport AnmID& thiscall instantiate_vm_to_world_list_back(AnmID& out, int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVM** raw_out) ASR(0x413180);
 public:
 	inline AnmID instantiate_vm_to_world_list_back(int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVM** raw_out) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
@@ -18600,7 +18919,7 @@ public:
 
 private:
 	// 0x43A030
-	dllexport AnmID& thiscall instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, int32_t layer, UNUSED_ARG(uint32_t flags)) asm_symbol_rel(0x43A030);
+	dllexport AnmID& thiscall instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, int32_t layer, UNUSED_ARG(uint32_t flags)) ASR(0x43A030);
 public:
 	inline AnmID instantiate_vm_to_world_list_front(int32_t script_index, int32_t layer, AnmVMCreationFlags flags = GARBAGE_ARG(AnmVMCreationFlags)) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
@@ -18609,7 +18928,7 @@ public:
 
 private:
 	// 0x43A110
-	dllexport AnmID& thiscall instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, Float3* position, float z_rotation, UNUSED_ARG(int32_t layer), UNUSED_ARG(uint32_t flags)) asm_symbol_rel(0x43A110);
+	dllexport AnmID& thiscall instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, Float3* position, float z_rotation, UNUSED_ARG(int32_t layer), UNUSED_ARG(uint32_t flags)) ASR(0x43A110);
 public:
 	inline AnmID instantiate_vm_to_world_list_front(int32_t script_index, Float3* position, float z_rotation, int32_t layer = -1, AnmVMCreationFlags flags = {}) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
@@ -18618,7 +18937,7 @@ public:
 
 private:
 	// 0x416A10
-	dllexport AnmID& thiscall instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, UNUSED_ARG(uint32_t flags)) asm_symbol_rel(0x416A10);
+	dllexport AnmID& thiscall instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, UNUSED_ARG(uint32_t flags)) ASR(0x416A10);
 public:
 	inline AnmID instantiate_vm_to_ui_list_back(int32_t script_index) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
@@ -18627,7 +18946,7 @@ public:
 
 private:
 	// 0x409670
-	dllexport AnmID& thiscall instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(uint32_t flags)) asm_symbol_rel(0x409670);
+	dllexport AnmID& thiscall instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(uint32_t flags)) ASR(0x409670);
 public:
 	inline AnmID instantiate_vm_to_ui_list_back(int32_t script_index, Float3* position) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
@@ -18644,7 +18963,7 @@ public:
 
 private:
 	// 0x409590
-	dllexport AnmID& thiscall instantiate_vm_to_ui_list_front(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(uint32_t flags)) asm_symbol_rel(0x409590);
+	dllexport AnmID& thiscall instantiate_vm_to_ui_list_front(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(uint32_t flags)) ASR(0x409590);
 public:
 	inline AnmID instantiate_vm_to_ui_list_front(int32_t script_index, Float3* position) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
@@ -18653,7 +18972,7 @@ public:
 
 private:
 	// 0x4888F0
-	dllexport AnmID& thiscall instantiate_child_vm(AnmID& out, int32_t script_index, AnmVM* parent, AnmVMCreationFlags flags) asm_symbol_rel(0x4888F0);
+	dllexport AnmID& thiscall instantiate_child_vm(AnmID& out, int32_t script_index, AnmVM* parent, AnmVMCreationFlags flags) ASR(0x4888F0);
 public:
 	inline AnmID instantiate_child_vm(int32_t script_index, AnmVM* parent, AnmVMCreationFlags flags) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
@@ -18662,7 +18981,7 @@ public:
 
 private:
 	// 0x488A40
-	dllexport AnmID& thiscall instantiate_orphan_vm_to_world_list_back(AnmID& out, int32_t script_index, AnmVM* parent, UNUSED_ARG(AnmVMCreationFlags flags)) asm_symbol_rel(0x488A40);
+	dllexport AnmID& thiscall instantiate_orphan_vm_to_world_list_back(AnmID& out, int32_t script_index, AnmVM* parent, UNUSED_ARG(AnmVMCreationFlags flags)) ASR(0x488A40);
 public:
 	inline AnmID instantiate_orphan_vm_to_world_list_back(int32_t script_index, AnmVM* parent, AnmVMCreationFlags flags = {}) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
@@ -18670,7 +18989,7 @@ public:
 	}
 
 	// 0x4865B0
-	dllexport gnu_noinline ZUNResult thiscall preload(const char* filename) asm_symbol_rel(0x4865B0) {
+	dllexport gnu_noinline ZUNResult thiscall preload(const char* filename) ASR(0x4865B0) {
 		char path[MAX_PATH + 1];
 		sprintf(path, "%s", filename);
 		void* anm_file = read_file_to_buffer(path, NULL, false);
@@ -18928,11 +19247,11 @@ struct AnmManager {
 
 	inline void __clear_global_color() {
 		this->__global_color_enabled = false;
-		this->__global_color = COLOR(128, 128, 128, 128);
+		this->__global_color = COLOR_GREY(128, 128);
 	}
 
 	// 0x47E6E0
-	dllexport gnu_noinline static void reset_vertex_buffers() asm_symbol_rel(0x47E6E0) {
+	dllexport gnu_noinline static void reset_vertex_buffers() ASR(0x47E6E0) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 		anm_manager->unrendered_sprite_count = 0;
 		anm_manager->sprite_write_cursor = anm_manager->sprite_vertex_data;
@@ -18943,7 +19262,7 @@ struct AnmManager {
 	}
 
 	// 0x47E730
-	dllexport gnu_noinline void thiscall flush_sprites() asm_symbol_rel(0x47E730) {
+	dllexport gnu_noinline void thiscall flush_sprites() ASR(0x47E730) {
 		if (this->unrendered_sprite_count) {
 			this->set_texture_op<Modulate>();
 			SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
@@ -18957,7 +19276,7 @@ struct AnmManager {
 	}
 
 	// 0x471120
-	dllexport gnu_noinline static void __release_render_targets() asm_symbol_rel(0x471120) {
+	dllexport gnu_noinline static void __release_render_targets() ASR(0x471120) {
 		AnmLoaded** anm_loaded_ptr = ANM_MANAGER_PTR->loaded_anm_files;
 		for (
 			size_t i = 0;
@@ -18976,7 +19295,7 @@ struct AnmManager {
 	}
 
 	// 0x4711B0
-	dllexport gnu_noinline static void __create_render_targets() asm_symbol_rel(0x4711B0) {
+	dllexport gnu_noinline static void __create_render_targets() ASR(0x4711B0) {
 		AnmLoaded** anm_loaded_ptr = ANM_MANAGER_PTR->loaded_anm_files;
 		for (
 			size_t i = 0;
@@ -18995,7 +19314,7 @@ struct AnmManager {
 	}
 
 	// 0x4754E0
-	dllexport gnu_noinline static void fastcall __render_simple_polygon(Float2 coords[2], D3DCOLOR color) asm_symbol_rel(0x4754E0) {
+	dllexport gnu_noinline static void fastcall __render_simple_polygon(Float2 coords[2], D3DCOLOR color) ASR(0x4754E0) {
 		ANM_MANAGER_PTR->flush_sprites();
 
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
@@ -19092,7 +19411,7 @@ struct AnmManager {
 	}
 
 	// 0x485110
-	dllexport gnu_noinline static void __sub_485110() asm_symbol_rel(0x485110) {
+	dllexport gnu_noinline static void __sub_485110() ASR(0x485110) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 
 		anm_manager->__vertex_array_3120E1C[0].position = { -128.0f, -128.0f, 0.0f };
@@ -19191,7 +19510,7 @@ struct AnmManager {
 	}
 
 	// 0x47D910
-	dllexport gnu_noinline void thiscall setup_render_state_for_vm(AnmVM* vm) asm_symbol_rel(0x47D910) {
+	dllexport gnu_noinline void thiscall setup_render_state_for_vm(AnmVM* vm) ASR(0x47D910) {
 		if (this->current_blend_mode != vm->data.blend_mode) {
 			this->flush_sprites();
 			this->current_blend_mode = (AnmBlendMode)vm->data.blend_mode;
@@ -19304,7 +19623,7 @@ struct AnmManager {
 	}
 
 	// 0x47FEB0
-	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_5_7(AnmVM* vm) asm_symbol_rel(0x47FEB0) {
+	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_5_7(AnmVM* vm) ASR(0x47FEB0) {
 		if (!vm->data.__preserve_world_matrix) {
 			vm->data.scale_enabled = false;
 			vm->data.__world_matrix = vm->data.__base_world_matrix;
@@ -19348,7 +19667,7 @@ struct AnmManager {
 	}
 
 	// 0x47E800
-	dllexport gnu_noinline int32_t thiscall write_sprite(SpriteVertex* vertices) asm_symbol_rel(0x47E800) {
+	dllexport gnu_noinline int32_t thiscall write_sprite(SpriteVertex* vertices) ASR(0x47E800) {
 		SpriteVertex* sprite_write_cursor = this->sprite_write_cursor;
 		
 		// 6 because 2 triangles
@@ -19427,7 +19746,7 @@ struct AnmManager {
 #define RENDER_VERTICES_IGNORE_COLORS 0x02
 
 	// 0x47DCE0
-	dllexport gnu_noinline ZUNResult thiscall __render_vertices(AnmVM* vm, uint32_t flags) asm_symbol_rel(0x47DCE0) {
+	dllexport gnu_noinline ZUNResult thiscall __render_vertices(AnmVM* vm, uint32_t flags) ASR(0x47DCE0) {
 		SPRITE_VERTEX_BUFFER_A[0].position.as2() += this->__vertex_offsetA;
 		SPRITE_VERTEX_BUFFER_A[1].position.as2() += this->__vertex_offsetA;
 		SPRITE_VERTEX_BUFFER_A[2].position.as2() += this->__vertex_offsetA;
@@ -19612,7 +19931,7 @@ struct AnmManager {
 	}
 
 	// 0x47F530
-	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_6(AnmVM* vm) asm_symbol_rel(0x47F530) {
+	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_6(AnmVM* vm) ASR(0x47F530) {
 		if (ZUN_SUCCEEDED(vm->__get_billboard_vertex_positions())) {
 
 			Float3 position = vm->data.position + vm->controller.position + vm->data.__position_2;
@@ -19769,7 +20088,7 @@ struct AnmManager {
 	}
 
 	// 0x480160
-	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_8_F(AnmVM* vm) asm_symbol_rel(0x480160) {
+	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_8_F(AnmVM* vm) ASR(0x480160) {
 		if (
 			vm->data.visible &&
 			vm->data.__visible2 &&
@@ -19910,7 +20229,7 @@ struct AnmManager {
 	}
 
 	// 0x480F70
-	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_9_C_D_E(AnmVM* vm, void* special_data, int32_t points) asm_symbol_rel(0x480F70) {
+	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_9_C_D_E(AnmVM* vm, void* special_data, int32_t points) ASR(0x480F70) {
 		if (
 			vm->data.visible &&
 			vm->data.__visible2 &&
@@ -19945,7 +20264,7 @@ struct AnmManager {
 	}
 
 	// 0x4810D0
-	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_B(AnmVM* vm, void* special_data, int32_t arg3) asm_symbol_rel(0x4810D0) {
+	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_B(AnmVM* vm, void* special_data, int32_t arg3) ASR(0x4810D0) {
 		if (this->unrendered_sprite_count) {
 			this->flush_sprites();
 		}
@@ -19973,7 +20292,7 @@ struct AnmManager {
 	}
 
 	// 0x480A50
-	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_18_19(AnmVM* vm, void* special_data, int32_t points) asm_symbol_rel(0x480A50) {
+	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_18_19(AnmVM* vm, void* special_data, int32_t points) ASR(0x480A50) {
 		if (
 			vm->data.visible &&
 			vm->data.__visible2
@@ -20117,7 +20436,7 @@ private:
 		float position_x, float position_y,
 		float radius, uint32_t angle,
 		int32_t sides, D3DCOLOR color1, D3DCOLOR color2
-	) asm_symbol_rel(0x482C10) {
+	) ASR(0x482C10) {
 		return this->draw_polygon_impl(
 			position_x, position_y,
 			radius, bitcast<float>(angle),
@@ -20192,7 +20511,7 @@ private:
 		float position_x, float position_y,
 		float radius, uint32_t angle,
 		int32_t sides, D3DCOLOR color
-	) asm_symbol_rel(0x482E70) {
+	) ASR(0x482E70) {
 		return this->draw_polygon_hollow_impl(
 			position_x, position_y,
 			radius, bitcast<float>(angle),
@@ -20280,7 +20599,7 @@ private:
 		float position_x, float position_y,
 		float radius, uint32_t width, uint32_t angle,
 		int32_t sides, D3DCOLOR color
-	) asm_symbol_rel(0x483060) {
+	) ASR(0x483060) {
 		return this->draw_polygon_ring_impl(
 			position_x, position_y,
 			radius, bitcast<float>(width), bitcast<float>(angle),
@@ -20411,7 +20730,7 @@ private:
 		float size_x, uint32_t size_y, uint32_t rotation,
 		D3DCOLOR color1, D3DCOLOR color2,
 		uint32_t anchor_x, uint32_t anchor_y
-	) asm_symbol_rel(0x481D90) {
+	) ASR(0x481D90) {
 		return this->draw_polygon_rectangle_impl(
 			position_x, position_y,
 			size_x, bitcast<float>(size_y),
@@ -20466,7 +20785,7 @@ private:
 		float size_x, uint32_t size_y, uint32_t rotation,
 		D3DCOLOR color1, D3DCOLOR color2,
 		uint32_t anchor_x, uint32_t anchor_y
-	) asm_symbol_rel(0x482B40) {
+	) ASR(0x482B40) {
 		return this->draw_polygon_rectangle_antialias_impl(
 			position_x, position_y,
 			size_x, bitcast<float>(size_y),
@@ -20579,7 +20898,7 @@ private:
 		float length, uint32_t rotation,
 		D3DCOLOR color1, D3DCOLOR color2,
 		uint32_t anchor
-	) asm_symbol_rel(0x482590) {
+	) ASR(0x482590) {
 		return this->draw_polygon_line_impl(
 			position_x, position_y,
 			length,
@@ -20719,7 +21038,7 @@ private:
 		float size_x, uint32_t size_y, uint32_t rotation,
 		D3DCOLOR color1, D3DCOLOR color2,
 		uint32_t anchor_x, uint32_t anchor_y
-	) asm_symbol_rel(0x482170) {
+	) ASR(0x482170) {
 		return this->draw_polygon_rectangle_hollow_impl(
 			position_x, position_y,
 			size_x, bitcast<float>(size_y),
@@ -20852,7 +21171,7 @@ private:
 		float size_x, uint32_t size_y, uint32_t rotation,
 		D3DCOLOR color1, D3DCOLOR color2,
 		uint32_t anchor_x, uint32_t anchor_y
-	) asm_symbol_rel(0x482810) {
+	) ASR(0x482810) {
 		return this->draw_polygon_triangle_impl(
 			position_x, position_y,
 			size_x, bitcast<float>(size_y),
@@ -20879,7 +21198,7 @@ public:
 	}
 
 	// 0x481210
-	dllexport gnu_noinline ZUNResult thiscall draw_vm(AnmVM* vm) asm_symbol_rel(0x481210) {
+	dllexport gnu_noinline ZUNResult thiscall draw_vm(AnmVM* vm) ASR(0x481210) {
 		vm->run_on_draw();
 		if (
 			!vm->data.visible ||
@@ -21204,7 +21523,7 @@ public:
 	}
 
 	// 0x488260
-	dllexport gnu_noinline UpdateFuncRet thiscall render_layer(uint32_t layer_index) asm_symbol_rel(0x488260) {
+	dllexport gnu_noinline UpdateFuncRet thiscall render_layer(uint32_t layer_index) ASR(0x488260) {
 		CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
 		{
 			this->world_list.for_each_safeB([&, this](AnmVM* vm) {
@@ -21241,7 +21560,7 @@ public:
 	}
 
 	// 0x488220
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick_world(void* ptr) asm_symbol_rel(0x488220) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick_world(void* ptr) ASR(0x488220) {
 		GameThread* game_thread_ptr = GAME_THREAD_PTR;
 		if (
 			game_thread_ptr &&
@@ -21253,63 +21572,63 @@ public:
 		return ((AnmManager*)ptr)->on_tick_world();
 	}
 	// 0x488250
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick_ui(void* ptr) asm_symbol_rel(0x488250) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick_ui(void* ptr) ASR(0x488250) {
 		return ((AnmManager*)ptr)->on_tick_ui();
 	}
 
-	/* // 0x487670 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_0(void* self) asm_symbol_rel(0x487670) { return ((AnmManager*)self)->render_layer(0); }
-	/* // 0x487680 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_1(void* self) asm_symbol_rel(0x487680) { return ((AnmManager*)self)->render_layer(1); }
-	/* // 0x487690 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_2(void* self) asm_symbol_rel(0x487690) { return ((AnmManager*)self)->render_layer(2); }
-	/* // 0x4876A0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_4(void* self) asm_symbol_rel(0x4876A0) { return ((AnmManager*)self)->render_layer(4); }
+	/* 0x487670 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_0(void* self) ASR(0x487670) { return ((AnmManager*)self)->render_layer(0); }
+	/* 0x487680 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_1(void* self) ASR(0x487680) { return ((AnmManager*)self)->render_layer(1); }
+	/* 0x487690 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_2(void* self) ASR(0x487690) { return ((AnmManager*)self)->render_layer(2); }
+	/* 0x4876A0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_4(void* self) ASR(0x4876A0) { return ((AnmManager*)self)->render_layer(4); }
 	// 0x4876B0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_3(void* self) asm_symbol_rel(0x4876B0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_3(void* self) ASR(0x4876B0) {
 		SUPERVISOR.__setup_camera(&SUPERVISOR.cameras[StdCamera]);
 		SUPERVISOR.set_camera_by_index_disable_fog(StdCamera);
 		return ((AnmManager*)self)->render_layer(3);
 	}
-	/* // 0x487770 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_5(void* self) asm_symbol_rel(0x487770) { return ((AnmManager*)self)->render_layer(5); }
-	/* // 0x487780 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_6(void* self) asm_symbol_rel(0x487780) { return ((AnmManager*)self)->render_layer(6); }
-	/* // 0x487790 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_7(void* self) asm_symbol_rel(0x487790) { return ((AnmManager*)self)->render_layer(7); }
-	/* // 0x4877A0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_8(void* self) asm_symbol_rel(0x4877A0) { return ((AnmManager*)self)->render_layer(8); }
-	/* // 0x4877B0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_9(void* self) asm_symbol_rel(0x4877B0) { return ((AnmManager*)self)->render_layer(9); }
-	/* // 0x4877C0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_10(void* self) asm_symbol_rel(0x4877C0) { return ((AnmManager*)self)->render_layer(10); }
-	/* // 0x4877D0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_11(void* self) asm_symbol_rel(0x4877D0) { return ((AnmManager*)self)->render_layer(11); }
-	/* // 0x4877E0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_13(void* self) asm_symbol_rel(0x4877E0) { return ((AnmManager*)self)->render_layer(13); }
-	/* // 0x4877F0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_14(void* self) asm_symbol_rel(0x4877F0) { return ((AnmManager*)self)->render_layer(14); }
-	/* // 0x487800 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_15(void* self) asm_symbol_rel(0x487800) { return ((AnmManager*)self)->render_layer(15); }
-	/* // 0x487810 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_16(void* self) asm_symbol_rel(0x487810) { return ((AnmManager*)self)->render_layer(16); }
-	/* // 0x487820 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_17(void* self) asm_symbol_rel(0x487820) { return ((AnmManager*)self)->render_layer(17); }
-	/* // 0x487830 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_18(void* self) asm_symbol_rel(0x487830) { return ((AnmManager*)self)->render_layer(18); }
-	/* // 0x487840 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_12(void* self) asm_symbol_rel(0x487840) { return ((AnmManager*)self)->render_layer(12); }
-	/* // 0x487850 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_19(void* self) asm_symbol_rel(0x487850) { return ((AnmManager*)self)->render_layer(19); }
-	/* // 0x487860 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_21(void* self) asm_symbol_rel(0x487860) { return ((AnmManager*)self)->render_layer(21); }
-	/* // 0x487870 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_22(void* self) asm_symbol_rel(0x487870) { return ((AnmManager*)self)->render_layer(22); }
-	/* // 0x487880 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_31(void* self) asm_symbol_rel(0x487880) { return ((AnmManager*)self)->render_layer(31); }
-	/* // 0x487890 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_32(void* self) asm_symbol_rel(0x487890) { return ((AnmManager*)self)->render_layer(32); }
-	/* // 0x4878A0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_30(void* self) asm_symbol_rel(0x4878A0) { return ((AnmManager*)self)->render_layer(30); }
-	/* // 0x4878B0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_26(void* self) asm_symbol_rel(0x4878B0) { return ((AnmManager*)self)->render_layer(26); }
-	/* // 0x4878C0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_27(void* self) asm_symbol_rel(0x4878C0) { return ((AnmManager*)self)->render_layer(27); }
-	/* // 0x4878D0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_25(void* self) asm_symbol_rel(0x4878D0) { return ((AnmManager*)self)->render_layer(25); }
-	/* // 0x4878E0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_38(void* self) asm_symbol_rel(0x4878E0) { return ((AnmManager*)self)->render_layer(38); }
-	/* // 0x4878F0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_39(void* self) asm_symbol_rel(0x4878F0) { return ((AnmManager*)self)->render_layer(39); }
-	/* // 0x487900 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_40(void* self) asm_symbol_rel(0x487900) { return ((AnmManager*)self)->render_layer(40); }
-	/* // 0x487910 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_43(void* self) asm_symbol_rel(0x487910) { return ((AnmManager*)self)->render_layer(43); }
-	/* // 0x487920 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_44(void* self) asm_symbol_rel(0x487920) { return ((AnmManager*)self)->render_layer(44); }
-	/* // 0x487930 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_45(void* self) asm_symbol_rel(0x487930) { return ((AnmManager*)self)->render_layer(45); }
+	/* 0x487770 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_5(void* self) ASR(0x487770) { return ((AnmManager*)self)->render_layer(5); }
+	/* 0x487780 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_6(void* self) ASR(0x487780) { return ((AnmManager*)self)->render_layer(6); }
+	/* 0x487790 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_7(void* self) ASR(0x487790) { return ((AnmManager*)self)->render_layer(7); }
+	/* 0x4877A0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_8(void* self) ASR(0x4877A0) { return ((AnmManager*)self)->render_layer(8); }
+	/* 0x4877B0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_9(void* self) ASR(0x4877B0) { return ((AnmManager*)self)->render_layer(9); }
+	/* 0x4877C0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_10(void* self) ASR(0x4877C0) { return ((AnmManager*)self)->render_layer(10); }
+	/* 0x4877D0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_11(void* self) ASR(0x4877D0) { return ((AnmManager*)self)->render_layer(11); }
+	/* 0x4877E0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_13(void* self) ASR(0x4877E0) { return ((AnmManager*)self)->render_layer(13); }
+	/* 0x4877F0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_14(void* self) ASR(0x4877F0) { return ((AnmManager*)self)->render_layer(14); }
+	/* 0x487800 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_15(void* self) ASR(0x487800) { return ((AnmManager*)self)->render_layer(15); }
+	/* 0x487810 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_16(void* self) ASR(0x487810) { return ((AnmManager*)self)->render_layer(16); }
+	/* 0x487820 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_17(void* self) ASR(0x487820) { return ((AnmManager*)self)->render_layer(17); }
+	/* 0x487830 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_18(void* self) ASR(0x487830) { return ((AnmManager*)self)->render_layer(18); }
+	/* 0x487840 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_12(void* self) ASR(0x487840) { return ((AnmManager*)self)->render_layer(12); }
+	/* 0x487850 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_19(void* self) ASR(0x487850) { return ((AnmManager*)self)->render_layer(19); }
+	/* 0x487860 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_21(void* self) ASR(0x487860) { return ((AnmManager*)self)->render_layer(21); }
+	/* 0x487870 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_22(void* self) ASR(0x487870) { return ((AnmManager*)self)->render_layer(22); }
+	/* 0x487880 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_31(void* self) ASR(0x487880) { return ((AnmManager*)self)->render_layer(31); }
+	/* 0x487890 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_32(void* self) ASR(0x487890) { return ((AnmManager*)self)->render_layer(32); }
+	/* 0x4878A0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_30(void* self) ASR(0x4878A0) { return ((AnmManager*)self)->render_layer(30); }
+	/* 0x4878B0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_26(void* self) ASR(0x4878B0) { return ((AnmManager*)self)->render_layer(26); }
+	/* 0x4878C0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_27(void* self) ASR(0x4878C0) { return ((AnmManager*)self)->render_layer(27); }
+	/* 0x4878D0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_25(void* self) ASR(0x4878D0) { return ((AnmManager*)self)->render_layer(25); }
+	/* 0x4878E0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_38(void* self) ASR(0x4878E0) { return ((AnmManager*)self)->render_layer(38); }
+	/* 0x4878F0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_39(void* self) ASR(0x4878F0) { return ((AnmManager*)self)->render_layer(39); }
+	/* 0x487900 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_40(void* self) ASR(0x487900) { return ((AnmManager*)self)->render_layer(40); }
+	/* 0x487910 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_43(void* self) ASR(0x487910) { return ((AnmManager*)self)->render_layer(43); }
+	/* 0x487920 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_44(void* self) ASR(0x487920) { return ((AnmManager*)self)->render_layer(44); }
+	/* 0x487930 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_45(void* self) ASR(0x487930) { return ((AnmManager*)self)->render_layer(45); }
 	// 0x487940
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_20(void* self) asm_symbol_rel(0x487940) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_20(void* self) ASR(0x487940) {
 		SUPERVISOR.set_camera_by_index_disable_fog(1);
 		SUPERVISOR.d3d_zfunc_always();
 		return ((AnmManager*)self)->render_layer(20);
 	}
 	// 0x487A10
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_23(void* self) asm_symbol_rel(0x487A10) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_23(void* self) ASR(0x487A10) {
 		SUPERVISOR.set_camera_by_index_disable_fog(1);
 		SUPERVISOR.d3d_zfunc_always();
 		return ((AnmManager*)self)->render_layer(23);
 	}
 	// 0x487AE0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_24(void* self) asm_symbol_rel(0x487AE0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_24(void* self) ASR(0x487AE0) {
 		SUPERVISOR.set_camera_by_index_disable_fog(2);
 		SUPERVISOR.d3d_zfunc_always();
 		AnmManager* anm_manager = (AnmManager*)self;
@@ -21317,7 +21636,7 @@ public:
 		return anm_manager->render_layer(24);
 	}
 	// 0x487BC0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_28(void* self) asm_symbol_rel(0x487BC0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_28(void* self) ASR(0x487BC0) {
 		AnmManager* anm_manager = (AnmManager*)self;
 		SUPERVISOR.set_camera2_alt();
 		UpdateFuncRet ret = anm_manager->render_layer(28);
@@ -21325,7 +21644,7 @@ public:
 		return ret;
 	}
 	// 0x487C50
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_29(void* self) asm_symbol_rel(0x487C50) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_29(void* self) ASR(0x487C50) {
 		AnmManager* anm_manager = (AnmManager*)self;
 		SUPERVISOR.set_camera2_alt();
 		UpdateFuncRet ret = anm_manager->render_layer(29);
@@ -21333,13 +21652,13 @@ public:
 		return ret;
 	}
 	// 0x487CE0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_37(void* self) asm_symbol_rel(0x487CE0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_37(void* self) ASR(0x487CE0) {
 		SUPERVISOR.set_camera_by_index_disable_fog(2);
 		SUPERVISOR.d3d_zfunc_always();
 		return ((AnmManager*)self)->render_layer(37);
 	}
 	// 0x487DB0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_41A(void* self) asm_symbol_rel(0x487DB0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_41A(void* self) ASR(0x487DB0) {
 		AnmManager* anm_manager = (AnmManager*)self;
 		SUPERVISOR.set_camera2_alt();
 		UpdateFuncRet ret = anm_manager->render_layer(41);
@@ -21348,7 +21667,7 @@ public:
 	}
 	// Was this supposed to be 42?
 	// 0x487E40
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_41B(void* self) asm_symbol_rel(0x487E40) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_41B(void* self) ASR(0x487E40) {
 		AnmManager* anm_manager = (AnmManager*)self;
 		SUPERVISOR.set_camera2_alt();
 		UpdateFuncRet ret = anm_manager->render_layer(41);
@@ -21386,7 +21705,7 @@ public:
 		this->__byte_3120E09 = 0;
 		this->__current_vertex_type = 0;
 		this->__byte_3120E0B = 0;
-		this->current_texture_blend_color = COLOR(0, 0, 0, 0);
+		this->current_texture_blend_color = COLOR_TRANSPARENT;
 		this->__byte_3120E0C = -1;
 		this->backbuffer_textures[0].anm_loaded_index = -1;
 		this->backbuffer_textures[1].anm_loaded_index = -1;
@@ -21501,7 +21820,7 @@ public:
 	}
 
 	// 0x487140
-	dllexport gnu_noinline void cdecl draw_text_left(AnmVM* vm, D3DCOLOR text_color, D3DCOLOR outline_color, int font_id, int32_t x, int char_spacing, const char* format, ...) asm_symbol_rel(0x487140) {
+	dllexport gnu_noinline void cdecl draw_text_left(AnmVM* vm, D3DCOLOR text_color, D3DCOLOR outline_color, int font_id, int32_t x, int char_spacing, const char* format, ...) ASR(0x487140) {
 
 		char buffer[128];
 
@@ -21531,14 +21850,14 @@ public:
 		if (!vm->data.text_outline_disable) {
 			GDI_MANAGER.draw_text_to_texture(&sprite_bounds, x, B, text_color, outline_color, buffer, texture, font_id, char_spacing, true);
 		} else {
-			GDI_MANAGER.draw_text_to_texture(&sprite_bounds, x, B, text_color, 0, buffer, texture, font_id, char_spacing, false);
+			GDI_MANAGER.draw_text_to_texture(&sprite_bounds, x, B, text_color, COLOR3_BLACK, buffer, texture, font_id, char_spacing, false);
 		}
 	skip:
 		vm->data.visible = true;
 	}
 
 	// 0x487270
-	dllexport gnu_noinline void cdecl draw_text_right(AnmVM* vm, D3DCOLOR text_color, D3DCOLOR outline_color, int font_id, int char_spacing, const char* format, ...) asm_symbol_rel(0x487270) {
+	dllexport gnu_noinline void cdecl draw_text_right(AnmVM* vm, D3DCOLOR text_color, D3DCOLOR outline_color, int font_id, int char_spacing, const char* format, ...) ASR(0x487270) {
 		
 		char buffer[1024];
 
@@ -21573,14 +21892,14 @@ public:
 		if (!vm->data.text_outline_disable) {
 			GDI_MANAGER.draw_text_to_texture(&sprite_bounds, x, B, text_color, outline_color, buffer, texture, font_id, char_spacing, true);
 		} else {
-			GDI_MANAGER.draw_text_to_texture(&sprite_bounds, x, B, text_color, 0, buffer, texture, font_id, char_spacing, false);
+			GDI_MANAGER.draw_text_to_texture(&sprite_bounds, x, B, text_color, COLOR3_BLACK, buffer, texture, font_id, char_spacing, false);
 		}
 	skip:
 		vm->data.visible = true;
 	}
 
 	// 0x4873F0
-	dllexport gnu_noinline void cdecl draw_text_center(AnmVM* vm, D3DCOLOR text_color, D3DCOLOR outline_color, int font_id, int char_spacing, const char* format, ...) asm_symbol_rel(0x4873F0) {
+	dllexport gnu_noinline void cdecl draw_text_center(AnmVM* vm, D3DCOLOR text_color, D3DCOLOR outline_color, int font_id, int char_spacing, const char* format, ...) ASR(0x4873F0) {
 		
 		char buffer[1024];
 
@@ -21615,14 +21934,14 @@ public:
 		if (!vm->data.text_outline_disable) {
 			GDI_MANAGER.draw_text_to_texture(&sprite_bounds, x, B, text_color, outline_color, buffer, texture, font_id, char_spacing, true);
 		} else {
-			GDI_MANAGER.draw_text_to_texture(&sprite_bounds, x, B, text_color, 0, buffer, texture, font_id, char_spacing, false);
+			GDI_MANAGER.draw_text_to_texture(&sprite_bounds, x, B, text_color, COLOR3_BLACK, buffer, texture, font_id, char_spacing, false);
 		}
 	skip:
 		vm->data.visible = true;
 	}
 
 	// 0x4867E0
-	dllexport gnu_noinline AnmLoaded* thiscall create_anm_loaded(int32_t file_index, const char* filename) asm_symbol_rel(0x4867E0) {
+	dllexport gnu_noinline AnmLoaded* thiscall create_anm_loaded(int32_t file_index, const char* filename) ASR(0x4867E0) {
 		DebugLogger::__debug_log_stub_6("::preloadAnim : %s\n", filename);
 		if (file_index >= countof(this->loaded_anm_files)) {
 			LOG_BUFFER.write_error("Not enough space to store textures\r\n");
@@ -21639,7 +21958,7 @@ public:
 	}
 
 	// 0x486880
-	dllexport gnu_noinline static AnmLoaded* stdcall preload_anm(int32_t file_index, const char* filename) asm_symbol_rel(0x486880) {
+	dllexport gnu_noinline static AnmLoaded* stdcall preload_anm(int32_t file_index, const char* filename) ASR(0x486880) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 		if (anm_manager->loaded_anm_files[file_index]) {
 			DebugLogger::__debug_log_stub_6("::preloadAnim already : %s\n", filename);
@@ -21657,7 +21976,7 @@ public:
 	}
 
 	// 0x4858E0
-	dllexport gnu_noinline void thiscall __screw_with_texture_bits(LPDIRECT3DTEXTURE9 d3d_texture) asm_symbol_rel(0x4858E0) {
+	dllexport gnu_noinline void thiscall __screw_with_texture_bits(LPDIRECT3DTEXTURE9 d3d_texture) ASR(0x4858E0) {
 		LPDIRECT3DSURFACE9 surface = NULL;
 		d3d_texture->GetSurfaceLevel(0, &surface);
 		D3DSURFACE_DESC surface_desc;
@@ -21731,7 +22050,7 @@ public:
 	}
 
 	// 0x4860C0
-	dllexport gnu_noinline static int stdcall __sub_4860C0(AnmImage* image, LPCVOID image_data, UINT image_size, int = UNUSED_DWORD, int = UNUSED_DWORD, int = UNUSED_DWORD) asm_symbol_rel(0x4860C0) {
+	dllexport gnu_noinline static int stdcall __sub_4860C0(AnmImage* image, LPCVOID image_data, UINT image_size, int = UNUSED_DWORD, int = UNUSED_DWORD, int = UNUSED_DWORD) ASR(0x4860C0) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 		image->__unknown_flag_im_A = false;
 		image->file_size = image_size;
@@ -21745,13 +22064,13 @@ public:
 	}
 
 	// 0x486140
-	dllexport gnu_noinline int32_t thiscall __create_texture_from_file(AnmImage* image, uint32_t format_index, uint32_t entry_index, int32_t width, int32_t height, int32_t offset_x, int32_t offset_y) asm_symbol_rel(0x486140);
+	dllexport gnu_noinline int32_t thiscall __create_texture_from_file(AnmImage* image, uint32_t format_index, uint32_t entry_index, int32_t width, int32_t height, int32_t offset_x, int32_t offset_y) ASR(0x486140);
 
 	// 0x486BC0
-	dllexport gnu_noinline int32_t thiscall __sub_486BC0(AnmLoaded* anm_loaded, uint32_t entry_index, uint32_t sprite_count, uint32_t script_count, AnmEntry* anm_entry) asm_symbol_rel(0x486BC0);
+	dllexport gnu_noinline int32_t thiscall __sub_486BC0(AnmLoaded* anm_loaded, uint32_t entry_index, uint32_t sprite_count, uint32_t script_count, AnmEntry* anm_entry) ASR(0x486BC0);
 
 	// 0x486920
-	dllexport gnu_noinline AnmLoaded* thiscall __sub_486920(AnmLoaded* anm_loaded) asm_symbol_rel(0x486920) {
+	dllexport gnu_noinline AnmLoaded* thiscall __sub_486920(AnmLoaded* anm_loaded) ASR(0x486920) {
 		AnmEntry* anm_entry_ptr = (AnmEntry*)anm_loaded->anm_file;
 		int32_t wait_index = 0;
 		int32_t load_wait = anm_loaded->__load_wait;
@@ -21796,7 +22115,7 @@ public:
 	}
 
 	// 0x488B40
-	dllexport gnu_noinline AnmVM* thiscall get_vm_with_id(AnmIDRaw vm_id_raw) asm_symbol_rel(0x488B40) {
+	dllexport gnu_noinline AnmVM* thiscall get_vm_with_id(AnmIDRaw vm_id_raw) ASR(0x488B40) {
 		if (AnmID vm_id{ vm_id_raw }) {
 			uint32_t fast_id = vm_id.fast_id;
 			if (fast_id == INVALID_FAST_ID) {
@@ -21817,7 +22136,7 @@ public:
 	}
 
 	// 0x488BE0
-	dllexport static void stdcall interrupt_tree(AnmIDRaw id_raw, int32_t interrupt_index) asm_symbol_rel(0x488BE0) {
+	dllexport static void stdcall interrupt_tree(AnmIDRaw id_raw, int32_t interrupt_index) ASR(0x488BE0) {
 		if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(id_raw)) {
 			vm->interrupt(interrupt_index);
 			vm->controller.child_list.for_each([=](AnmVM* vm) {
@@ -21827,7 +22146,7 @@ public:
 	}
 
 	// 0x488C60
-	dllexport static void stdcall interrupt_and_run_tree(AnmIDRaw id_raw, int32_t interrupt_index) asm_symbol_rel(0x488C60) {
+	dllexport static void stdcall interrupt_and_run_tree(AnmIDRaw id_raw, int32_t interrupt_index) ASR(0x488C60) {
 		if (AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(id_raw)) {
 			vm->interrupt_and_run(interrupt_index);
 			vm->controller.child_list.for_each([=](AnmVM*& vm) {
@@ -21837,7 +22156,7 @@ public:
 	}
 
 	// 0x488D50
-	dllexport void thiscall mark_tree_for_delete(AnmVM* vm) asm_symbol_rel(0x488D50) {
+	dllexport void thiscall mark_tree_for_delete(AnmVM* vm) ASR(0x488D50) {
 		if (vm && !vm->data.__no_delete) {
 			vm->data.state = AnmVMState::MarkedForDelete;
 			vm->controller.child_list.for_each([=](AnmVM* vm) gnu_always_inline {
@@ -21851,12 +22170,12 @@ public:
 	}
 
 	// 0x488CF0
-	dllexport gnu_noinline static void stdcall mark_tree_id_for_delete(AnmIDRaw id_raw) asm_symbol_rel(0x488CF0) {
+	dllexport gnu_noinline static void stdcall mark_tree_id_for_delete(AnmIDRaw id_raw) ASR(0x488CF0) {
 		ANM_MANAGER_PTR->mark_tree_id_for_delete_inline(id_raw);
 	}
 
 	// 0x489320
-	dllexport static AnmVM* allocate_new_vm() asm_symbol_rel(0x489320) {
+	dllexport static AnmVM* allocate_new_vm() ASR(0x489320) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 		if (ZUNList<FastAnmVM>* free_node = anm_manager->free_list_head.next) {
 			FastAnmVM* vm = free_node->data;
@@ -21881,7 +22200,7 @@ public:
 	}
 
 	// 0x488110
-	dllexport gnu_noinline void thiscall __recursive_remove(AnmVM* vm, ZUNList<AnmVM>* list_node) asm_symbol_rel(0x488110) {
+	dllexport gnu_noinline void thiscall __recursive_remove(AnmVM* vm, ZUNList<AnmVM>* list_node) ASR(0x488110) {
 		vm->controller.child_list.for_each_safe([=](AnmVM* current_vm) gnu_always_inline {
 			clang_noinline this->__recursive_remove(current_vm, list_node);
 		});
@@ -21899,7 +22218,7 @@ public:
 	}
 
 	// 0x4885D0
-	dllexport gnu_noinline int32_t thiscall destroy_possibly_managed_vm(AnmVM* vm) asm_symbol_rel(0x4885D0) {
+	dllexport gnu_noinline int32_t thiscall destroy_possibly_managed_vm(AnmVM* vm) ASR(0x4885D0) {
 		this->unlink_node_from_list_ends(&vm->controller.global_list_node);
 		vm->run_on_destroy();
 		vm->controller.global_list_node.unlink();
@@ -21921,7 +22240,7 @@ public:
 	}
 
 	// 0x487ED0
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick_world() asm_symbol_rel(0x487ED0) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick_world() ASR(0x487ED0) {
 		CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
 		{
 			ZUNListHead<AnmVM> destroy_list;
@@ -21956,7 +22275,7 @@ public:
 	}
 
 	// 0x487FE0
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick_ui() asm_symbol_rel(0x487FE0) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick_ui() ASR(0x487FE0) {
 		CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
 		{
 			ZUNListHead<AnmVM> destroy_list;
@@ -22007,7 +22326,7 @@ private:
 	// This function never uses a pointer for the first arg
 	// even though the return value is typically used instead,
 	// so I can only assume it must be a reference type.
-	dllexport gnu_noinline static AnmID& stdcall add_vm_to_world_list_back(AnmID& out, AnmVM* vm) asm_symbol_rel(0x488350) {
+	dllexport gnu_noinline static AnmID& stdcall add_vm_to_world_list_back(AnmID& out, AnmVM* vm) ASR(0x488350) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 		ZUNList<AnmVM>* world_node = &vm->controller.global_list_node;
 		world_node->initialize_with(vm);
@@ -22023,7 +22342,7 @@ public:
 
 private:
 	// 0x488400
-	dllexport gnu_noinline static AnmID& stdcall add_vm_to_world_list_front(AnmID& out, AnmVM* vm) asm_symbol_rel(0x488400) {
+	dllexport gnu_noinline static AnmID& stdcall add_vm_to_world_list_front(AnmID& out, AnmVM* vm) ASR(0x488400) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 		ZUNList<AnmVM>* world_node = &vm->controller.global_list_node;
 		world_node->initialize_with(vm);
@@ -22039,7 +22358,7 @@ public:
 
 private:
 	// 0x488490
-	dllexport gnu_noinline static AnmID& stdcall add_vm_to_ui_list_back(AnmID& out, AnmVM* vm) asm_symbol_rel(0x488490) {
+	dllexport gnu_noinline static AnmID& stdcall add_vm_to_ui_list_back(AnmID& out, AnmVM* vm) ASR(0x488490) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 		ZUNList<AnmVM>* world_node = &vm->controller.global_list_node;
 		world_node->initialize_with(vm);
@@ -22055,7 +22374,7 @@ public:
 
 private:
 	// 0x488540
-	dllexport gnu_noinline static AnmID& stdcall add_vm_to_ui_list_front(AnmID& out, AnmVM* vm) asm_symbol_rel(0x488540) {
+	dllexport gnu_noinline static AnmID& stdcall add_vm_to_ui_list_front(AnmID& out, AnmVM* vm) ASR(0x488540) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 		ZUNList<AnmVM>* world_node = &vm->controller.global_list_node;
 		world_node->initialize_with(vm);
@@ -22070,7 +22389,7 @@ public:
 	}
 
 	// 0x488DA0
-	dllexport gnu_noinline void thiscall mark_all_vms_from_loaded_for_delete(AnmLoaded* anm_loaded) asm_symbol_rel(0x488DA0) {
+	dllexport gnu_noinline void thiscall mark_all_vms_from_loaded_for_delete(AnmLoaded* anm_loaded) ASR(0x488DA0) {
 		if (anm_loaded) {
 			auto set_state1_if_slot_matches = [=](AnmVM* vm) {
 				int32_t slot = anm_loaded->slot_index;
@@ -22091,7 +22410,7 @@ public:
 	}
 
 	// 0x486FC0
-	dllexport gnu_noinline void thiscall unload_anm(int32_t slot) asm_symbol_rel(0x486FC0) {
+	dllexport gnu_noinline void thiscall unload_anm(int32_t slot) ASR(0x486FC0) {
 		if (
 			slot >= 0 && slot < countof(this->loaded_anm_files)
 		) {
@@ -22153,7 +22472,7 @@ ValidateStructSize32(0x39724B8, AnmManager);
 // 0x4553B0
 dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_A(void* ptr) {
 	if (SUPERVISOR.__surface_1AC) {
-		SUPERVISOR.d3d_device->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, COLOR(255, 255, 255, 255), 1.0f, 0);
+		SUPERVISOR.d3d_device->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, COLOR_WHITE, 1.0f, 0);
 		SUPERVISOR.d3d_device->SetRenderTarget(0, SUPERVISOR.__surface_1AC);
 		D3DRECT rect = SUPERVISOR.cameras[StdCamera].get_viewport_d3d_rect();
 		SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, SUPERVISOR.background_color, 1.0f, 0);
@@ -22215,10 +22534,10 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_B(void* pt
 		verts[2].position.w = 1.0f;
 		verts[1].position.w = 1.0f;
 		verts[0].position.w = 1.0f;
-		verts[0].diffuse = COLOR(255, 0, 0, 0);
-		verts[1].diffuse = COLOR(255, 0, 0, 0);
-		verts[2].diffuse = COLOR(255, 0, 0, 0);
-		verts[3].diffuse = COLOR(255, 0, 0, 0);
+		verts[0].diffuse = COLOR_BLACK;
+		verts[1].diffuse = COLOR_BLACK;
+		verts[2].diffuse = COLOR_BLACK;
+		verts[3].diffuse = COLOR_BLACK;
 
 		Float2 viewport_size = SUPERVISOR.cameras[StdCamera].get_viewport_size();
 		verts[1].position.x += viewport_size.x;
@@ -22265,7 +22584,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_
 			SUPERVISOR.set_camera_by_index(StdCamera);
 
 			ANM_MANAGER_PTR->draw_vm(SUPERVISOR.__arcade_vm_ptr_A);
-			SUPERVISOR.__arcade_vm_ptr_A->data.color1 = COLOR(255, 255, 255, 255);
+			SUPERVISOR.__arcade_vm_ptr_A->data.color1 = COLOR_WHITE;
 
 			ANM_MANAGER_PTR->render_layer(35);
 			ANM_MANAGER_PTR->flush_sprites();
@@ -22303,7 +22622,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_
 			SUPERVISOR.set_camera_by_index(StdCamera);
 
 			ANM_MANAGER_PTR->draw_vm(SUPERVISOR.__arcade_vm_ptr_B);
-			SUPERVISOR.__arcade_vm_ptr_B->data.color1 = COLOR(255, 255, 255, 255);
+			SUPERVISOR.__arcade_vm_ptr_B->data.color1 = COLOR_WHITE;
 
 			ANM_MANAGER_PTR->flush_sprites();
 
@@ -22346,7 +22665,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_
 
 		ANM_MANAGER_PTR->flush_sprites();
 
-		SUPERVISOR.__arcade_vm_ptr_C->data.color1 = COLOR(255, 255, 255, 255);
+		SUPERVISOR.__arcade_vm_ptr_C->data.color1 = COLOR_WHITE;
 
 		SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
 	}
@@ -22357,7 +22676,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_
 dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_H(void* ptr) {
 	ANM_MANAGER_PTR->flush_sprites();
 	SUPERVISOR.d3d_device->SetRenderTarget(0, SUPERVISOR.back_buffer);
-	SUPERVISOR.d3d_device->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, COLOR(255, 0, 0, 0), 1.0f, 0);
+	SUPERVISOR.d3d_device->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, COLOR_BLACK, 1.0f, 0);
 	return UpdateFuncNext;
 }
 
@@ -22367,7 +22686,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_
 		SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
 
 		ANM_MANAGER_PTR->draw_vm(SUPERVISOR.__arcade_vm_ptr_D);
-		SUPERVISOR.__arcade_vm_ptr_D->data.color1 = COLOR(255, 255, 255, 255);
+		SUPERVISOR.__arcade_vm_ptr_D->data.color1 = COLOR_WHITE;
 
 		ANM_MANAGER_PTR->flush_sprites();
 
@@ -22400,7 +22719,7 @@ dllexport gnu_noinline ZUNResult UpdateFuncCC Supervisor::on_registration(void* 
 		LOG_BUFFER.write_error(JpEnStr("", "error : data file does not exist\r\n"));
 	}
 	GAME_SPEED.value = 1.0f;
-	SUPERVISOR.background_color = COLOR(255, 0, 0, 0);
+	SUPERVISOR.background_color = COLOR_BLACK;
 	SUPERVISOR.__initialize_cameras();
 	SUPERVISOR.__camera2_sub_454F50();
 	DWORD time = timeGetTime();
@@ -22734,25 +23053,25 @@ inline void Gui::__hide_spell_timer_anms() {
 }
 
 // 0x442330
-dllexport gnu_noinline void __hide_gui_vm_id_114() asm_symbol_rel(0x442330);
+dllexport gnu_noinline void __hide_gui_vm_id_114() ASR(0x442330);
 dllexport gnu_noinline void __hide_gui_vm_id_114() {
 	GUI_PTR->__anm_id_114.__hide_tree();
 }
 
 // 0x442370
-dllexport gnu_noinline void __show_gui_vm_id_114() asm_symbol_rel(0x442370);
+dllexport gnu_noinline void __show_gui_vm_id_114() ASR(0x442370);
 dllexport gnu_noinline void __show_gui_vm_id_114() {
 	GUI_PTR->__anm_id_114.__show_tree();
 }
 
 // 0x429C30
-dllexport gnu_noinline void __spell_timer_vms_interrupt_and_run_3() asm_symbol_rel(0x429C30);
+dllexport gnu_noinline void __spell_timer_vms_interrupt_and_run_3() ASR(0x429C30);
 dllexport gnu_noinline void __spell_timer_vms_interrupt_and_run_3() {
 	GUI_PTR->__spell_timer_vms_interrupt_and_run(3);
 }
 
 // 0x457810
-dllexport gnu_noinline void __hide_spell_timer_anms() asm_symbol_rel(0x457810);
+dllexport gnu_noinline void __hide_spell_timer_anms() ASR(0x457810);
 dllexport gnu_noinline void __hide_spell_timer_anms() {
 	GUI_PTR->__hide_spell_timer_anms();
 }
@@ -22914,9 +23233,213 @@ inline AnmSprite* AnmVM::get_sprite() {
 	return &this->get_anm_loaded2()->sprites[this->data.sprite_id];
 }
 
+static inline constexpr size_t TROPHY_TEXT_LINE_LENGTH = 0x100;
+
 extern "C" {
 	// 0x507640
 	externcg TrophyManager* TROPHY_MANAGER_PTR cgasm("_TROPHY_MANAGER_PTR");
+
+	// 0x5713B0
+	externcg char TROPHY_TEXT_BUFFER[TROPHY_TEXT_LINE_LENGTH] cgasm("_TROPHY_TEXT_BUFFER");
+}
+
+// size: 0x100
+struct TrophyTextLine {
+	char buffer[TROPHY_TEXT_LINE_LENGTH]; // 0x0
+	// 0x100
+
+	forceinline char& operator[](size_t i) {
+		return this->buffer[i];
+	}
+	forceinline constexpr const char& operator[](size_t i) const {
+		return this->buffer[i];
+	}
+
+	forceinline void __encrypt() {
+		uint8_t xor_mask = 0x77;
+		uint8_t xor_vel = 7;
+		constexpr uint8_t xor_accel = 16;
+
+		char* str = &this->buffer[0];
+		uint8_t c;
+		do {
+			c = *str++;
+			uint8_t c2 = c ^ xor_mask;
+			xor_mask += xor_vel;
+			xor_vel += xor_accel;
+			str[-1] = c2;
+		} while (c);
+	}
+
+	// 0x46EA80
+	dllexport gnu_noinline char* thiscall __decrypt() {
+		uint8_t xor_mask = 0x77;
+		uint8_t xor_vel = 7;
+		constexpr uint8_t xor_accel = 16;
+
+		const char* str = this->buffer;
+		char* buffer_write = TROPHY_TEXT_BUFFER;
+		uint8_t c;
+		do {
+			c = *str++;
+			c ^= xor_mask;
+			xor_mask += xor_vel;
+			xor_vel += xor_accel;
+			*buffer_write++ = c;
+		} while (c);
+		return TROPHY_TEXT_BUFFER;
+	}
+};
+
+static inline constexpr int32_t TROPHY_LINE_GROUPS = 2;
+static inline constexpr int32_t TROPHY_LINES_PER_GROUP = 3;
+static inline constexpr int32_t TROPHY_TEXT_LINES = 1 + TROPHY_LINE_GROUPS * TROPHY_LINES_PER_GROUP;
+
+// size: 0x704
+struct TrophyData {
+	int32_t id; // 0x0
+	TrophyTextLine lines[TROPHY_TEXT_LINES]; // 0x4
+	// 0x704
+
+	// 0x46E030
+	dllexport gnu_noinline void thiscall fill_text_lines_with_junk() ASR(0x46E030) {
+		nounroll for (size_t i = 0; i != TROPHY_TEXT_LINE_LENGTH; ++i) {
+			this->lines[0].buffer[i] = RNG.rand_uint();
+			nounroll for (size_t j = 0; j != TROPHY_LINES_PER_GROUP; ++j) {
+				for (size_t k = 0; k != TROPHY_LINE_GROUPS; ++k) {
+					this->lines[1 + k * TROPHY_LINES_PER_GROUP + j].buffer[i] = RNG.rand_uint();
+				}
+			}
+		}
+	}
+
+	// 0x46EAB0
+	dllexport gnu_noinline static char* fastcall __get_title_for_trophy(int32_t id) ASR(0x46EAB0);
+
+	// 0x46EAF0
+	dllexport gnu_noinline static char* fastcall __get_line_for_trophy(int32_t id, int32_t line_group, int32_t line) ASR(0x46EAF0);
+
+	// 0x46E230
+	dllexport gnu_noinline static ZUNResult TrophyData::initialize() ASR(0x46E230);
+
+	static forceinline char* trophy_txt_skip_to_end_of_line(const char* str, int32_t& count) {
+		char c = *str;
+		if (c != '\n') {
+			int32_t count_local = count;
+			do {
+				if (c == '\r' || count_local == 0) {
+					break;
+				}
+				c = *str++;
+				count = --count_local;
+			} while (c != '\n');
+		}
+		return (char*)str;
+	}
+	static forceinline char* trophy_txt_skip_end_of_line_chars(const char* str, int32_t& count) {
+		char c;
+		while (
+			((c = *str) == '\n' || c == '\r') &&
+			count != 0
+		) {
+			++str;
+			--count;
+		}
+		return (char*)str;
+	}
+
+	// 0x46E9C0
+	dllexport gnu_noinline static char* fastcall trophy_txt_skip_to_next_line(const char* str, int32_t& count) ASR(0x46E9C0) {
+		str = trophy_txt_skip_to_end_of_line(str, count);
+		if (count != 0) {
+			str = trophy_txt_skip_end_of_line_chars(str, count);
+		}
+		return (char*)str;
+	}
+
+	// 0x46EA10
+	dllexport gnu_noinline static char* fastcall trophy_txt_copy_rest_of_line_to_buffer(char* out_str, char* str, int32_t& count) ASR(0x46EA10) {
+		char* end_of_line = trophy_txt_skip_to_end_of_line(str, count);
+		if (count != 0) {
+			*end_of_line = '\0';
+			byteloop_strcpy(out_str, str);
+			++end_of_line;
+			--count;
+			end_of_line = trophy_txt_skip_end_of_line_chars(end_of_line, count);
+		}
+		return end_of_line;
+	}
+};
+
+extern "C" {
+	// TODO: Find exact length somehow
+	// 0x4CF440
+	externcg TrophyData TROPHY_DATA[TROPHY_COUNT] cgasm("_TROPHY_DATA");
+}
+
+// 0x46EAB0
+dllexport gnu_noinline char* fastcall TrophyData::__get_title_for_trophy(int32_t id) {
+	if (TROPHY_DATA[id].id == id) {
+		clang_forceinline return TROPHY_DATA[id].lines[0].__decrypt();
+	}
+	return NULL;
+}
+
+// 0x46EAF0
+dllexport gnu_noinline char* fastcall TrophyData::__get_line_for_trophy(int32_t id, int32_t line_group, int32_t line) {
+	if (TROPHY_DATA[id].id == id) {
+		clang_forceinline return TROPHY_DATA[id].lines[line_group * TROPHY_LINES_PER_GROUP + line].__decrypt();
+	}
+	return NULL;
+}
+
+// 0x46E230
+dllexport gnu_noinline ZUNResult TrophyData::initialize() {
+	AnmLoaded* anm_loaded = ANM_MANAGER_PTR->preload_anm(TROPHY_ANM_INDEX, "trophy.anm");
+
+	if (!anm_loaded) {
+		LOG_BUFFER.write(JpEnStr("", "Screen configuration data not found. data is corrupted\r\n"));
+		return ZUN_ERROR;
+	}
+
+	char buffer[TROPHY_TEXT_LINE_LENGTH];
+	int32_t trophy_txt_count;
+	void* trophy_txt_file = read_file_to_buffer("trophy.txt", &trophy_txt_count, false);
+	char* trophy_txt = (char*)trophy_txt_file;
+	while (trophy_txt_count > 0) {
+		switch (char c = *trophy_txt) {
+			case '\\': // No escape chars I guess
+				goto break_all;
+			case '@': {
+				//--trophy_txt_count;
+				trophy_txt = trophy_txt_copy_rest_of_line_to_buffer(buffer, trophy_txt + 1, trophy_txt_count);
+				int32_t number;
+				sscanf(buffer, "%d", &number); // bleh
+				TROPHY_DATA[number].fill_text_lines_with_junk();
+				TROPHY_DATA[number].id = number;
+				trophy_txt = trophy_txt_copy_rest_of_line_to_buffer(TROPHY_DATA[number].lines[0].buffer, trophy_txt, trophy_txt_count);
+				TROPHY_DATA[number].lines[0].__encrypt();
+
+				// This loop is cursed, WTF
+				size_t line = 1;
+				for (int32_t i = 0; i < TROPHY_TEXT_LINE_LENGTH * (TROPHY_TEXT_LINES - 1); i += TROPHY_TEXT_LINE_LENGTH) {
+					for (size_t j = 0; j != TROPHY_LINES_PER_GROUP; ++j) {
+						clang_forceinline trophy_txt = trophy_txt_copy_rest_of_line_to_buffer(TROPHY_DATA[number].lines[line].buffer, trophy_txt, trophy_txt_count);
+						TROPHY_DATA[number].lines[line].__encrypt();
+						++line;
+					}
+				}
+				break;
+			}
+			case '#': // Comment line
+			default: // Unlabeled data I guess?
+				trophy_txt = trophy_txt_skip_to_next_line(trophy_txt, trophy_txt_count);
+				break;
+		}
+	}
+break_all:
+	SAFE_FREE(trophy_txt_file);
+	return ZUN_SUCCESS;
 }
 
 // size: 0x218
@@ -22953,7 +23476,7 @@ struct TrophyQueue {
 	}
 
 	// 0x419360
-	dllexport gnu_noinline int32_t pop() asm_symbol_rel(0x419360) {
+	dllexport gnu_noinline int32_t pop() ASR(0x419360) {
 		int32_t length = this->length;
 		if (length > 0) {
 			int32_t trophy_id = this->queue[0];
@@ -23001,7 +23524,7 @@ struct TrophyManager : ZUNTask {
 	}
 
 	// 0x46DFC0
-	dllexport gnu_noinline void thiscall change_primary_state(int32_t new_state) asm_symbol_rel(0x46DFC0) {
+	dllexport gnu_noinline void thiscall change_primary_state(int32_t new_state) ASR(0x46DFC0) {
 		this->previous_primary_state = this->primary_state;
 		this->primary_state = new_state;
 		this->secondary_state = 0;
@@ -23009,7 +23532,7 @@ struct TrophyManager : ZUNTask {
 	}
 
 	// 0x46E790
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x46E790) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x46E790) {
 		switch (this->primary_state) {
 			case 2:
 				delete_no_eh(this);
@@ -23024,20 +23547,18 @@ struct TrophyManager : ZUNTask {
 					this->__anm_id_240 = this->trophy_anm->instantiate_vm_to_ui_list_back(8);
 
 					AnmVM* vm = this->__anm_id_23C.get_vm_ptr();
-					// TODO: trophy text data
-					/*
 					ANM_MANAGER_PTR->draw_text_center(
 						vm,
-						COLOR(0, 128, 192, 192), COLOR(0, 0, 0, 0),
-						9, 0,
-						JpEnStr("", "[%s]"), // TODO
+						COLOR3(128, 192, 192), COLOR3_BLACK,
+						Font9, 0, // 9
+						JpEnStr("", "\"%s\""),
+						TROPHY_DATA[trophy_id].lines[0].__decrypt()
 					);
-					*/
 					ANM_MANAGER_PTR->draw_text_center(
 						this->__anm_id_240.get_vm_ptr(),
-						COLOR(0, 128, 192, 192), COLOR(0, 0, 0, 0),
-						9, 0,
-						JpEnStr("", "They achieved this accomplishment.")
+						COLOR3(128, 192, 192), COLOR3_BLACK,
+						Font9, 0, // 9
+						JpEnStr("", "Achievement earned:")
 					);
 
 					SOUND_MANAGER.play_sound(79);
@@ -23057,19 +23578,16 @@ struct TrophyManager : ZUNTask {
 	}
 
 	// 0x46E9A0
-	dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) asm_symbol_rel(0x46E9A0) {
+	dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) ASR(0x46E9A0) {
 		return ((TrophyManager*)ptr)->on_tick();
 	}
 
 	// 0x46E9B0
-	dllexport gnu_noinline static UpdateFuncRet fastcall on_draw(void* ptr) asm_symbol_rel(0x46E9B0) {
+	dllexport gnu_noinline static UpdateFuncRet fastcall on_draw(void* ptr) ASR(0x46E9B0) {
 		return UpdateFuncNext;
 	}
 
 	forceinline ZUNResult initialize(int32_t trophy_id) {
-		// HACK TODO: figure out why this softlocks
-		return ZUN_ERROR;
-
 		AnmLoaded* anm_loaded = ANM_MANAGER_PTR->preload_anm(TROPHY_ANM_INDEX, "trophy.anm");
 		this->trophy_anm = anm_loaded;
 
@@ -23086,6 +23604,8 @@ struct TrophyManager : ZUNTask {
 		this->on_draw_func = update_func;
 
 		this->trophy_id_queue.push(trophy_id);
+
+		this->change_primary_state(0);
 
 		return ZUN_SUCCESS;
 	}
@@ -23170,17 +23690,17 @@ struct LoadingThread : ZUNTask {
 	forceinline UpdateFuncRet on_draw();
 
 	// 0x453380
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x453380) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x453380) {
 		return ((LoadingThread*)ptr)->on_tick();
 	}
 
 	// 0x4533F0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x4533F0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x4533F0) {
 		return ((LoadingThread*)ptr)->on_draw();
 	}
 
 	// 0x43A870
-	dllexport gnu_noinline static unsigned stdcall thread_func_load_front_anm(void* arg) asm_symbol_rel(0x43A870) {
+	dllexport gnu_noinline static unsigned stdcall thread_func_load_front_anm(void* arg) ASR(0x43A870) {
 		AnmLoaded* front_anm = ANM_MANAGER_PTR->preload_anm(FRONT_ANM_INDEX, "front.anm");
 		if (!front_anm) {
 			LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
@@ -23191,7 +23711,7 @@ struct LoadingThread : ZUNTask {
 	}
 
 	// 0x452CB0
-	dllexport gnu_noinline static unsigned cdecl thread_func_A(void* arg) asm_symbol_rel(0x452CB0);
+	dllexport gnu_noinline static unsigned cdecl thread_func_A(void* arg) ASR(0x452CB0);
 
 	forceinline ZUNResult initialize() {
 		UpdateFunc* update_func = new UpdateFunc(&on_tick, false, this);
@@ -23209,7 +23729,7 @@ struct LoadingThread : ZUNTask {
 	}
 
 	// 0x4531B0
-	dllexport gnu_noinline static LoadingThread* allocate() asm_symbol_rel(0x4531B0) {
+	dllexport gnu_noinline static LoadingThread* allocate() ASR(0x4531B0) {
 		LoadingThread* loading_thread = new_no_eh<LoadingThread>();
 		LOADING_THREAD_PTR = loading_thread;
 		if (ZUN_FAILED(loading_thread->initialize())) {
@@ -23690,7 +24210,7 @@ struct ScreenEffect : ZUNTask {
 	}
 
 	// 0x4760B0
-	dllexport gnu_noinline void thiscall initialize(ScreenEffectType type, int32_t A, int32_t B, int32_t C, int32_t D, int32_t draw_priority) asm_symbol_rel(0x4760B0) {
+	dllexport gnu_noinline void thiscall initialize(ScreenEffectType type, int32_t A, int32_t B, int32_t C, int32_t D, int32_t draw_priority) ASR(0x4760B0) {
 		UpdateFunc* update_func;
 		switch (type) {
 			case ScreenEffect0: // 0
@@ -23779,7 +24299,7 @@ struct ScreenEffect : ZUNTask {
 	}
 
 	// 0x476060
-	dllexport gnu_noinline static ScreenEffect* fastcall allocate(ScreenEffectType type, int32_t A, int32_t B, int32_t C, int32_t D, int32_t draw_priority) asm_symbol_rel(0x476060) {
+	dllexport gnu_noinline static ScreenEffect* fastcall allocate(ScreenEffectType type, int32_t A, int32_t B, int32_t C, int32_t D, int32_t draw_priority) ASR(0x476060) {
 		ScreenEffect* screen_effect = new ScreenEffect();
 		screen_effect->initialize(type, A, B, C, D, draw_priority);
 		return screen_effect;
@@ -23790,12 +24310,6 @@ struct ScreenEffect : ZUNTask {
 		clang_forceinline screen_effect->initialize(type, A, B, C, D, draw_priority);
 		return screen_effect;
 	}
-
-	/*
-	static forceinline ScreenEffect* allocate_type_0(int32_t A, D3DCOLOR color, int C, int D, int32_t draw_priority) {
-		return allocate(ScreenEffect0, A, color, C, D, draw_priority);
-	}
-	*/
 };
 #pragma region // ScreenEffect Validation
 ValidateFieldOffset32(0x0, ScreenEffect, task_flags);
@@ -23898,7 +24412,7 @@ struct EffectManager : ZUNTask {
 	}
 
 	// 0x422D00
-	dllexport gnu_noinline int32_t thiscall find_available_slot() asm_symbol_rel(0x422D00) {
+	dllexport gnu_noinline int32_t thiscall find_available_slot() ASR(0x422D00) {
 		for (int32_t i = 0; i < MAX_EFFECTS; ++i) {
 			int32_t cur_slot = this->slot_index;
 			int32_t next_slot = cur_slot + 1;
@@ -23924,7 +24438,7 @@ struct EffectManager : ZUNTask {
 	}
 
 	// 0x42D5D0
-	dllexport int32_t thiscall fill_available_slot(AnmIDRaw id_raw) asm_symbol_rel(0x42D5D0) {
+	dllexport int32_t thiscall fill_available_slot(AnmIDRaw id_raw) ASR(0x42D5D0) {
 		return EFFECT_MANAGER_PTR->fill_available_slot_with([=]() {
 			return id_raw;
 		});
@@ -23953,7 +24467,7 @@ public:
 
 private:
 	// 0x42AF70
-	dllexport gnu_noinline AnmID& thiscall instantiate_special_effect_vm_to_world_list_back(AnmID& out, int32_t type, void* on_create_arg, AnmVM* vm) asm_symbol_rel(0x42AF70) {
+	dllexport gnu_noinline AnmID& thiscall instantiate_special_effect_vm_to_world_list_back(AnmID& out, int32_t type, void* on_create_arg, AnmVM* vm) ASR(0x42AF70) {
 		out = 0;
 		const EffectData& effect_data = EFFECT_DATA_TABLE[type];
 		int32_t script = effect_data.__script_id;
@@ -24027,7 +24541,7 @@ public:
 			(this->bullet_anm = ANM_MANAGER_PTR->preload_anm(BULLET_ANM_INDEX, "bullet.anm")) &&
 			(this->effect_anm = ANM_MANAGER_PTR->preload_anm(EFFECT_ANM_INDEX, "effect.anm"))
 		) {
-			this->__done_loading = 1;
+			this->__done_loading = true;
 		}
 		else {
 			LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
@@ -24046,7 +24560,7 @@ public:
 	}
 
 	// 0x42AC70
-	dllexport gnu_noinline static EffectManager* allocate() asm_symbol_rel(0x42AC70) {
+	dllexport gnu_noinline static EffectManager* allocate() ASR(0x42AC70) {
 		EffectManager* effect_manager = new EffectManager();
 		EFFECT_MANAGER_PTR = effect_manager;
 		if (ZUN_FAILED(effect_manager->initialize())) {
@@ -24226,7 +24740,8 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm(AnmID& out, int32_t script_i
 		}
 		else if (position) {
 			if (flags.__unknown_flag_A) {
-				vm->controller.position = *position + Float2(320.0f, 16.0f);
+				// Offset to fixed res ECL (0,0)?
+				vm->controller.position = *position + Float2(LOGICAL_WINDOW_WIDTH / 2.0f, SCREEN_TOP_BORDER); // 320.0f, 16.0f
 			} else {
 				vm->controller.position = *position;
 			}
@@ -24666,13 +25181,17 @@ inline AnmInstruction* AnmVM::get_current_instruction() {
 	return IndexInstr(this->data.current_instruction_offset);
 }
 
-// 0x488E30
-dllexport AnmVM* AnmID::get_vm_ptr() {
-	AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(*this);
+forceinline AnmVM* AnmID::get_vm_ptr(AnmManager* anm_manager) {
+	AnmVM* vm = anm_manager->get_vm_with_id(*this);
 	if (!vm) {
 		*this = NULL;
 	}
 	return vm;
+}
+
+// 0x488E30
+dllexport AnmVM* AnmID::get_vm_ptr() {
+	return this->get_vm_ptr(ANM_MANAGER_PTR);
 }
 
 inline AnmVM* AnmID::get_vm_ptr_safe() {
@@ -24710,6 +25229,11 @@ forceinline void AnmID::interrupt_tree_word_offset(int16_t interrupt_index, int1
 
 forceinline void AnmID::interrupt_and_run_tree(int32_t interrupt_index) {
 	AnmManager::interrupt_and_run_tree(*this, interrupt_index);
+}
+
+forceinline void AnmID::interrupt_and_run_tree_word_offset(int16_t interrupt_index, int16_t offset) {
+	interrupt_index += offset;
+	this->interrupt_and_run_tree(interrupt_index);
 }
 
 inline void AnmID::__show_tree(AnmManager* anm_manager) {
@@ -25302,8 +25826,8 @@ struct AsciiManager : ZUNTask {
 	inline AsciiManager() {
 		this->zero_contents();
 		this->__unknown_task_flag_A = true;
-		this->color = COLOR(255, 255, 255, 255);
-		this->color2 = COLOR(255, 0, 0, 0);
+		this->color = COLOR_WHITE;
+		this->color2 = COLOR_BLACK;
 		this->set_scale(1.0f);
 		this->__dword_1923C = 0;
 		this->__character_spacing_for_font_0 = 9;
@@ -25328,7 +25852,7 @@ struct AsciiManager : ZUNTask {
 
 	// This function is disgusting
 	// 0x41A2B0
-	dllexport gnu_noinline void thiscall draw_string(AsciiString* string) asm_symbol_rel(0x41A2B0) {
+	dllexport gnu_noinline void thiscall draw_string(AsciiString* string) ASR(0x41A2B0) {
 		int32_t length = byteloop_strlen(string->text);
 		this->__vm_C.data.resolution_mode = ResolutionNoScaling; // 0
 		this->__vm_C.data.x_anchor_mode = AnchorXLeft; // 1
@@ -25712,7 +26236,7 @@ struct AsciiManager : ZUNTask {
 	}
 
 	// 0x41A180
-	dllexport gnu_noinline UpdateFuncRet thiscall draw_group(uint32_t group) asm_symbol_rel(0x41A180) {
+	dllexport gnu_noinline UpdateFuncRet thiscall draw_group(uint32_t group) ASR(0x41A180) {
 		for (int32_t i = 0; i < this->string_count; ++i) {
 			if (this->strings[i].group == group) {
 				this->draw_string(&this->strings[i]);
@@ -25778,7 +26302,7 @@ struct AsciiManager : ZUNTask {
 	}
 
 	// 0x419B90
-	dllexport gnu_noinline void thiscall add_string(Float3* position, const char* str) asm_symbol_rel(0x419B90) {
+	dllexport gnu_noinline void thiscall add_string(Float3* position, const char* str) ASR(0x419B90) {
 		int32_t next_index = this->string_count;
 		if (next_index < countof(this->strings)) {
 			AsciiString& string = this->strings[next_index];
@@ -25800,7 +26324,7 @@ struct AsciiManager : ZUNTask {
 	}
 
 	// 0x419CB0
-	dllexport gnu_noinline void cdecl printf(Float3* position, const char* format, ...) asm_symbol_rel(0x419CB0) {
+	dllexport gnu_noinline void cdecl printf(Float3* position, const char* format, ...) ASR(0x419CB0) {
 		va_list va;
 		va_start(va, format);
 		char buffer[0x100];
@@ -25879,7 +26403,7 @@ private:
 	}
 public:
 	// 0x419DD0
-	dllexport gnu_noinline void thiscall print_number(Float3* position, uint32_t number) asm_symbol_rel(0x419DD0) {
+	dllexport gnu_noinline void thiscall print_number(Float3* position, uint32_t number) ASR(0x419DD0) {
 		ASCII_MANAGER_PTR->print_number_impl(position, number);
 	}
 	
@@ -25940,12 +26464,12 @@ private:
 	}
 public:
 	// 0x419F30
-	dllexport gnu_noinline static void stdcall print_score(Float3* position, uint32_t score, uint32_t continues) asm_symbol_rel(0x419F30) {
+	dllexport gnu_noinline static void stdcall print_score(Float3* position, uint32_t score, uint32_t continues) ASR(0x419F30) {
 		ASCII_MANAGER_PTR->print_score_impl(position, score, continues);
 	}
 
 	// 0x41A110
-	dllexport gnu_noinline void cdecl debugf(Float3* position, const char* format, ...) asm_symbol_rel(0x41A110) {
+	dllexport gnu_noinline void cdecl debugf(Float3* position, const char* format, ...) ASR(0x41A110) {
 		va_list va;
 		va_start(va, format);
 		char buffer[0x100];
@@ -25998,7 +26522,7 @@ public:
 	}
 
 	// 0x419390
-	dllexport gnu_noinline static AsciiManager* allocate() asm_symbol_rel(0x419390) {
+	dllexport gnu_noinline static AsciiManager* allocate() ASR(0x419390) {
 		AsciiManager* ascii_manager = new_no_eh<AsciiManager>();
 		ASCII_MANAGER_PTR = ascii_manager;
 		if (ZUN_FAILED(ascii_manager->initialize())) {
@@ -26010,8 +26534,8 @@ public:
 
 private:
 	inline void set_defaults_impl() {
-		this->color = COLOR(255, 255, 255, 255);
-		this->color2 = COLOR(255, 0, 0, 0);
+		this->color = COLOR_WHITE;
+		this->color2 = COLOR_BLACK;
 		this->__dword_1923C = 0;
 		this->__character_spacing_for_font_0 = 9;
 		this->set_scale(1.0f);
@@ -26294,7 +26818,7 @@ struct EndVM {
 		this->pause_timer.initialize_and_reset();
 
 		this->__unknown_flag_ev_A = true;
-		this->__color_7C = COLOR(0, 255, 255, 255);
+		this->__color_7C = COLOR3_WHITE;
 	}
 
 	inline ~EndVM() NO_EH_TERMINATE {
@@ -26305,7 +26829,7 @@ struct EndVM {
 	}
 
 	// 0x42BE70
-	dllexport gnu_noinline ZUNResult thiscall run_end() asm_symbol_rel(0x42BE70);
+	dllexport gnu_noinline ZUNResult thiscall run_end() ASR(0x42BE70);
 };
 #pragma region // EndVM Validation
 ValidateFieldOffset32(0x4, EndVM, __timer_4);
@@ -26371,7 +26895,7 @@ struct Ending : ZUNTask {
 	}
 
 	// 0x42BB10
-	dllexport static void cleanup() asm_symbol_rel(0x42BB10) {
+	dllexport static void cleanup() ASR(0x42BB10) {
 		Ending* ending = ENDING_PTR;
 		if (ending) {
 			delete ending;
@@ -26416,12 +26940,12 @@ struct Ending : ZUNTask {
 	}
 
 	// 0x42BB30
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x42BB30) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x42BB30) {
 		return ((Ending*)ptr)->on_tick();
 	}
 
 	// 0x42BC50
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x42BC50) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x42BC50) {
 		return ((Ending*)ptr)->on_draw();
 	}
 
@@ -26435,7 +26959,7 @@ struct Ending : ZUNTask {
 	}
 
 	// 0x42B5E0
-	dllexport gnu_noinline static void* load_end_file(const char* filename) asm_symbol_rel(0x42B5E0) {
+	dllexport gnu_noinline static void* load_end_file(const char* filename) ASR(0x42B5E0) {
 		Ending* ending = ENDING_PTR;
 		void* file = read_file_from_dat(filename);
 		SAFE_FREE(ending->end_file);
@@ -26445,7 +26969,7 @@ struct Ending : ZUNTask {
 
 	// 0x42B650
 	// EH frame (free end vm)
-	dllexport gnu_noinline ZUNResult initialize() asm_symbol_rel(0x42B650) {
+	dllexport gnu_noinline ZUNResult initialize() ASR(0x42B650) {
 		UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
 		UpdateFuncRegistry::register_on_tick(update_func, TickPriority::Ending); // 36
 		this->on_tick_func = update_func;
@@ -26507,7 +27031,7 @@ struct Ending : ZUNTask {
 	}
 
 	// 0x4531B0
-	dllexport gnu_noinline static Ending* allocate() asm_symbol_rel(0x4531B0) {
+	dllexport gnu_noinline static Ending* allocate() ASR(0x4531B0) {
 		Ending* ending = new Ending();
 		ENDING_PTR = ending;
 		if (ZUN_FAILED(ending->initialize())) {
@@ -26544,8 +27068,8 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
 							AnmVM* vm = this->__vm_id_array_40[i].get_vm_ptr();
 							ANM_MANAGER_PTR->draw_text_left(
 								vm,
-								COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0),
-								0, 0, 0,
+								COLOR3_WHITE, COLOR3_BLACK,
+								Font0, 0, 0, // 0
 								" "
 							);
 							this->__vm_id_array_40[i].interrupt_tree(3);
@@ -26554,8 +27078,8 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
 						const char* text = __decrypt_related(StringArgOf(this->current_instr, 0));
 						ANM_MANAGER_PTR->draw_text_left(
 							vm,
-							this->__color_7C, COLOR(0, 0, 0, 0),
-							0, 0, 0,
+							this->__color_7C, COLOR3_BLACK,
+							Font0, 0, 0, // 0
 							text
 						);
 						this->__vm_id_array_40[0].interrupt_tree(2);
@@ -26566,8 +27090,8 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
 						const char* text = __decrypt_related(StringArgOf(this->current_instr, 0));
 						ANM_MANAGER_PTR->draw_text_left(
 							vm,
-							this->__color_7C, COLOR(0, 0, 0, 0),
-							0, 0, 0,
+							this->__color_7C, COLOR3_BLACK,
+							Font0, 0, 0, // 0
 							text
 						);
 						this->__vm_id_array_40[0].interrupt_tree(2);
@@ -26710,7 +27234,7 @@ dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
 					this->script_time.reset();
 					this->pause_timer.reset();
 					this->__is_staff = true;
-					this->__color_7C = COLOR(0, 255, 255, 255);
+					this->__color_7C = COLOR3_WHITE;
 					break;
 				}
 				case __screen_effect_A: // 13
@@ -27858,7 +28382,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC FpsCounter::on_draw(void* ptr)
 				} else if (fps < 40.0f) {
 					color = COLOR(255, 160, 160, 255);
 				} else {
-					color = COLOR(255, 255, 255, 255);
+					color = COLOR_WHITE;
 				}
 				ascii_manager->color = color;
 
@@ -27866,7 +28390,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC FpsCounter::on_draw(void* ptr)
 
 				ascii_manager->debugf(&position, "%2.1ffps", fps + 0.05);
 
-				ASCII_MANAGER_PTR->color = COLOR(255, 255, 255, 255);
+				ASCII_MANAGER_PTR->color = COLOR_WHITE;
 			}
 		}
 		case GameMode::MainMenu: // 4
@@ -28133,7 +28657,7 @@ struct RectPoints {
 
 private:
 	// 0x403660
-	dllexport gnu_noinline BOOL vectorcall __test_intersect(float x, float y, float width, float height, float, float, float angle) asm_symbol_rel(0x403660) {
+	dllexport gnu_noinline BOOL vectorcall __test_intersect(float x, float y, float width, float height, float, float, float angle) ASR(0x403660) {
 		RectPoints rect; // ESP+1C
 
 		Float2 position = { x, y };
@@ -28308,7 +28832,7 @@ namespace Impl {
 		uint32_t A2x, uint32_t A2y,
 		uint32_t B1x, uint32_t B1y,
 		uint32_t B2x, uint32_t B2y
-	) asm_symbol_rel(0x4038A0) {
+	) ASR(0x4038A0) {
 		return Impl::__solve_lines_intersect(
 			x_out, y_out,
 			A1x, A1y,
@@ -28443,7 +28967,7 @@ namespace Impl {
 		uint32_t rotation1,
 		uint32_t x2, uint32_t y2,
 		uint32_t rotation2
-	) asm_symbol_rel(0x403BC0) {
+	) ASR(0x403BC0) {
 		return Impl::__solve_rays_intersect(
 			x_out, y_out,
 			x1, y1,
@@ -28504,7 +29028,7 @@ namespace Impl {
 		float ray_angle,
 		Float2* circle_position,
 		uint32_t circle_radius
-	) asm_symbol_rel(0x403F30) {
+	) ASR(0x403F30) {
 		return Impl::__solve_hitscan_circle(
 			hit_start, hit_end,
 			ray_position,
@@ -28766,7 +29290,7 @@ namespace Impl {
 		uint32_t x2, uint32_t y2,
 		uint32_t width2, uint32_t height2,
 		uint32_t rotation2
-	) asm_symbol_rel(0x404440) {
+	) ASR(0x404440) {
 		return Impl::collision_rectangle_rectangle(
 			x1, y1,
 			width1, height1,
@@ -28853,7 +29377,7 @@ namespace Impl {
 		float rotation, uint32_t radius,        // XMM3, EBX+0x10
 		BOOL* arg5, Float3* hit_position_out,   // EBX+0x14, EBX+0x18
 		BOOL arg7, int32_t enemy_id             // EBX+0x1C, EBX+0x20
-	) asm_symbol_rel(0x45F0F0);
+	) ASR(0x45F0F0);
 }
 	forceinline int32_t enm_compute_damage_sources(
 		Float3* position, Float2* size,
@@ -28872,7 +29396,7 @@ namespace Impl {
 
 namespace Impl {
 	// 0x45CBA0
-	dllexport gnu_noinline float vectorcall angle_to_player_from_point(int, int, Float2* position) asm_symbol_rel(0x45CBA0);
+	dllexport gnu_noinline float vectorcall angle_to_player_from_point(int, int, Float2* position) ASR(0x45CBA0);
 }
 	forceinline float angle_to_player_from_point(Float2* position) {
 		return Impl::angle_to_player_from_point(UNUSED_DWORD, UNUSED_DWORD, position);
@@ -28965,13 +29489,13 @@ struct PlayerDamageSource {
 	}
 
 	// 0x45F6A0
-	dllexport gnu_noinline static int32_t fastcall __unknown_func_1(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius) asm_symbol_rel(0x45F6A0);
+	dllexport gnu_noinline static int32_t fastcall __unknown_func_1(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x45F6A0);
 
 	// 0x460AB0
-	dllexport gnu_noinline static int32_t fastcall __unknown_func_2(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius) asm_symbol_rel(0x460AB0);
+	dllexport gnu_noinline static int32_t fastcall __unknown_func_2(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x460AB0);
 
 	// 0x420BF0
-	dllexport gnu_noinline static int32_t fastcall __unknown_func_3(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius) asm_symbol_rel(0x420BF0);
+	dllexport gnu_noinline static int32_t fastcall __unknown_func_3(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x420BF0);
 };
 #pragma region // PlayerDamageSource Validation
 ValidateFieldOffset32(0x0, PlayerDamageSource, flags);
@@ -29037,25 +29561,25 @@ struct PlayerOption {
 	// 0xF0
 
 	// 0x45DD10
-	dllexport gnu_noinline static int32_t fastcall __position_func_card_sakuya1(PlayerOption* self) asm_symbol_rel(0x45DD10);
+	dllexport gnu_noinline static int32_t fastcall __position_func_card_sakuya1(PlayerOption* self) ASR(0x45DD10);
 
 	// 0x45DDE0
-	dllexport gnu_noinline static int32_t fastcall __position_func_card_youmu(PlayerOption* self) asm_symbol_rel(0x45DDE0);
+	dllexport gnu_noinline static int32_t fastcall __position_func_card_youmu(PlayerOption* self) ASR(0x45DDE0);
 
 	// 0x40B6E0
-	dllexport gnu_noinline void thiscall __position_func_card_alice_impl() asm_symbol_rel(0x40B6E0);
+	dllexport gnu_noinline void thiscall __position_func_card_alice_impl() ASR(0x40B6E0);
 
 	// 0x40B6D0
-	dllexport gnu_noinline static int32_t fastcall __position_func_card_alice(PlayerOption* self) asm_symbol_rel(0x40B6D0) {
+	dllexport gnu_noinline static int32_t fastcall __position_func_card_alice(PlayerOption* self) ASR(0x40B6D0) {
 		self->__position_func_card_alice_impl();
 		return 0;
 	}
 
 	// 0x40BD50
-	dllexport gnu_noinline static int32_t fastcall __position_func_card_nue(PlayerOption* self) asm_symbol_rel(0x40BD50);
+	dllexport gnu_noinline static int32_t fastcall __position_func_card_nue(PlayerOption* self) ASR(0x40BD50);
 
 	// 0x40C080
-	dllexport gnu_noinline static int32_t fastcall __position_func_card_misumaru(PlayerOption* self) asm_symbol_rel(0x40C080);
+	dllexport gnu_noinline static int32_t fastcall __position_func_card_misumaru(PlayerOption* self) ASR(0x40C080);
 
 	inline float get_x_position() {
 		return this->internal_position.x * (1.0f / INTERNAL_POSITION_RATIO);
@@ -29136,10 +29660,10 @@ struct PlayerBullet {
 	forceinline void on_tick();
 
 	// 0x45E320
-	dllexport gnu_noinline ZUNResult thiscall shoot(int32_t sht_entry_index, int32_t time, Float3* position, PlayerOption* option) asm_symbol_rel(0x45E320);
+	dllexport gnu_noinline ZUNResult thiscall shoot(int32_t sht_entry_index, int32_t time, Float3* position, PlayerOption* option) ASR(0x45E320);
 
 	// 0x45F6F0
-	dllexport gnu_noinline int32_t thiscall __sub_45F6F0() asm_symbol_rel(0x45F6F0) {
+	dllexport gnu_noinline int32_t thiscall __sub_45F6F0() ASR(0x45F6F0) {
 		AnmVM* vm = this->__vm_id_8.get_vm_ptr();
 		this->motion.position.z = 0.1f;
 		vm->interrupt(1);
@@ -29157,61 +29681,61 @@ struct PlayerBullet {
 	}
 
 	// 0x45F7B0
-	dllexport gnu_noinline static int32_t fastcall __init_func_1(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x45F7B0) {
+	dllexport gnu_noinline static int32_t fastcall __init_func_1(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x45F7B0) {
 		self->__enemy_id_90 = NULL;
 		return 0;
 	}
 	// 0x45FC20
-	dllexport gnu_noinline static int32_t fastcall __init_func_2(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x45FC20);
+	dllexport gnu_noinline static int32_t fastcall __init_func_2(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x45FC20);
 	// 0x460B60
-	dllexport gnu_noinline static int32_t fastcall __init_func_3(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x460B60);
+	dllexport gnu_noinline static int32_t fastcall __init_func_3(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x460B60);
 	// 0x460DA0
-	dllexport gnu_noinline static int32_t fastcall __init_func_4(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x460DA0) {
+	dllexport gnu_noinline static int32_t fastcall __init_func_4(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x460DA0) {
 		self->__unknown_field_pb_A = 0;
 		self->__enemy_id_90 = NULL;
 		return 0;
 	}
 	// 0x4612D0
-	dllexport gnu_noinline static int32_t fastcall __init_func_5(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x4612D0);
+	dllexport gnu_noinline static int32_t fastcall __init_func_5(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x4612D0);
 	// 0x461330
-	dllexport gnu_noinline static int32_t fastcall __init_func_6(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x461330) {
+	dllexport gnu_noinline static int32_t fastcall __init_func_6(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x461330) {
 		self->motion.angle = REPLAY_RNG.rand_angle_2() * 0.5f - HALF_PI_f;
 		return 0;
 	}
 	// 0x4613B0
-	dllexport gnu_noinline static int32_t fastcall __init_func_7(PlayerBullet* self, PlayerDamageSource* damage_source) asm_symbol_rel(0x4613B0);
+	dllexport gnu_noinline static int32_t fastcall __init_func_7(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x4613B0);
 
 	// 0x45F9D0
-	dllexport gnu_noinline static int32_t fastcall __damage_func_1(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) asm_symbol_rel(0x45F9D0);
+	dllexport gnu_noinline static int32_t fastcall __damage_func_1(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x45F9D0);
 	// 0x460320
-	dllexport gnu_noinline static int32_t fastcall __damage_func_2(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) asm_symbol_rel(0x460320);
+	dllexport gnu_noinline static int32_t fastcall __damage_func_2(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x460320);
 	// 0x4609C0
-	dllexport gnu_noinline static int32_t fastcall __damage_func_3(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) asm_symbol_rel(0x4609C0);
+	dllexport gnu_noinline static int32_t fastcall __damage_func_3(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x4609C0);
 	// 0x460CB0
-	dllexport gnu_noinline static int32_t fastcall __damage_func_4(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) asm_symbol_rel(0x460CB0);
+	dllexport gnu_noinline static int32_t fastcall __damage_func_4(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x460CB0);
 	// 0x460F30
-	dllexport gnu_noinline static int32_t fastcall __damage_func_5(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) asm_symbol_rel(0x460F30);
+	dllexport gnu_noinline static int32_t fastcall __damage_func_5(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x460F30);
 	// 0x461080
-	dllexport gnu_noinline static int32_t fastcall __damage_func_6(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) asm_symbol_rel(0x461080);
+	dllexport gnu_noinline static int32_t fastcall __damage_func_6(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x461080);
 
 	// 0x40C4F0
-	dllexport gnu_noinline static int32_t fastcall create_explosion_suwako_card(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) asm_symbol_rel(0x40C4F0);
+	dllexport gnu_noinline static int32_t fastcall create_explosion_suwako_card(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x40C4F0);
 
 	// 0x45F7C0
-	dllexport gnu_noinline static ZUNResult fastcall __on_tick_1(PlayerBullet* self) asm_symbol_rel(0x45F7C0);
+	dllexport gnu_noinline static ZUNResult fastcall __on_tick_1(PlayerBullet* self) ASR(0x45F7C0);
 	// 0x45FC80
-	dllexport gnu_noinline static ZUNResult fastcall __on_tick_2(PlayerBullet* self) asm_symbol_rel(0x45FC80);
+	dllexport gnu_noinline static ZUNResult fastcall __on_tick_2(PlayerBullet* self) ASR(0x45FC80);
 	// 0x4609A0
-	dllexport gnu_noinline static ZUNResult fastcall __on_tick_3(PlayerBullet* self) asm_symbol_rel(0x4609A0) {
+	dllexport gnu_noinline static ZUNResult fastcall __on_tick_3(PlayerBullet* self) ASR(0x4609A0) {
 		if (self->state == 1) {
 			self->motion.speed += 0.3f;
 		}
 		return ZUN_SUCCESS;
 	}
 	// 0x460DB0
-	dllexport gnu_noinline static ZUNResult fastcall __on_tick_4(PlayerBullet* self) asm_symbol_rel(0x460DB0);
+	dllexport gnu_noinline static ZUNResult fastcall __on_tick_4(PlayerBullet* self) ASR(0x460DB0);
 	// 0x460AE0
-	dllexport gnu_noinline static ZUNResult fastcall __on_tick_5(PlayerBullet* self) asm_symbol_rel(0x460AE0) {
+	dllexport gnu_noinline static ZUNResult fastcall __on_tick_5(PlayerBullet* self) ASR(0x460AE0) {
 		if (self->state == 1) {
 			float x = self->motion.position.x;
 			if (x < SCREEN_LEFT_EDGE || x > SCREEN_RIGHT_EDGE) {
@@ -29362,7 +29886,7 @@ struct PlayerData {
 	dllexport gnu_noinline PlayerData() = default;
 
 	// 0x45D5E0
-	dllexport gnu_noinline void thiscall __update_option_power_levels(int = UNUSED_DWORD) asm_symbol_rel(0x45D5E0);
+	dllexport gnu_noinline void thiscall __update_option_power_levels(int = UNUSED_DWORD) ASR(0x45D5E0);
 };
 #pragma region // PlayerData Validation
 ValidateFieldOffset32(0x0, PlayerData, position);
@@ -29491,12 +30015,12 @@ private:
 	inline void reset_impl();
 public:
 	// 0x45ABB0
-	dllexport gnu_noinline static void reset() asm_symbol_rel(0x45ABB0) {
+	dllexport gnu_noinline static void reset() ASR(0x45ABB0) {
 		PLAYER_PTR->reset_impl();
 	}
 
 	// 0x407D50
-	dllexport gnu_noinline Float3* thiscall get_position() asm_symbol_rel(0x407D50) {
+	dllexport gnu_noinline Float3* thiscall get_position() ASR(0x407D50) {
 		return &this->data.position;
 	}
 
@@ -29551,12 +30075,12 @@ public:
 	}
 
 	// 0x4099D0
-	dllexport gnu_noinline static void stdcall set_invulnerable_timer(int32_t time) asm_symbol_rel(0x4099D0) {
+	dllexport gnu_noinline static void stdcall set_invulnerable_timer(int32_t time) ASR(0x4099D0) {
 		PLAYER_PTR->data.invulnerable_timer.initialize_and_set(time);
 	}
 
 	// 0x416CD0
-	dllexport gnu_noinline void thiscall __hide_options() asm_symbol_rel(0x416CD0) {
+	dllexport gnu_noinline void thiscall __hide_options() ASR(0x416CD0) {
 		this->data.__hide_options = true;
 		nounroll for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i) {
 			this->data.options[i].__anm_id_B0.interrupt_tree(3);
@@ -29570,7 +30094,7 @@ public:
 	}
 
 	// 0x416D50
-	dllexport gnu_noinline void thiscall __show_options() asm_symbol_rel(0x416D50) {
+	dllexport gnu_noinline void thiscall __show_options() ASR(0x416D50) {
 		this->data.__hide_options = false;
 		nounroll for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i) {
 			this->data.options[i].__anm_id_B0.interrupt_tree(2);
@@ -29584,7 +30108,7 @@ public:
 	}
 
 	// 0x409A60
-	dllexport gnu_noinline uint32_t thiscall __set_yukari_wrap(uint32_t type) asm_symbol_rel(0x409A60) {
+	dllexport gnu_noinline uint32_t thiscall __set_yukari_wrap(uint32_t type) ASR(0x409A60) {
 		this->data.__yukari_wrap_timer.reset();
 		this->data.__yukari_wrap_type = type;
 		return this->data.__yukari_wrap_type;
@@ -29615,7 +30139,7 @@ public:
 	}
 
 	// 0x45B170 Player::move
-	dllexport gnu_noinline void thiscall move() asm_symbol_rel(0x45B170) {
+	dllexport gnu_noinline void thiscall move() ASR(0x45B170) {
 		Int2 movement;
 		if (this->data.__yukari_wrap_type) {
 			if (this->data.__yukari_wrap_timer == 0) {
@@ -29823,7 +30347,7 @@ skip_movement_keys:;
 
 private:
 	// 0x45CB20
-	dllexport float vectorcall angle_from_point(int, Float2* position) asm_symbol_rel(0x45CB20) {
+	dllexport float vectorcall angle_from_point(int, Float2* position) ASR(0x45CB20) {
 		float y = this->data.position.y - position->y;
 		float x = this->data.position.x - position->x;
 		if (y == 0.0f && x == 0.0f) {
@@ -29846,16 +30370,16 @@ public:
 	}
 
 	// 0x45D090
-	dllexport gnu_noinline void thiscall death() asm_symbol_rel(0x45D090);
+	dllexport gnu_noinline void thiscall death() ASR(0x45D090);
 
 	// 0x45D590
-	dllexport gnu_noinline void thiscall cancel_impending_death() asm_symbol_rel(0x45D590) {
+	dllexport gnu_noinline void thiscall cancel_impending_death() ASR(0x45D590) {
 		this->data.state_timer.set(60);
 		this->data.state = PlayerState::Normal; // 1
 	}
 
 	// 0x45D3A0
-	dllexport gnu_noinline void thiscall start_dying() asm_symbol_rel(0x45D3A0);
+	dllexport gnu_noinline void thiscall start_dying() ASR(0x45D3A0);
 
 	inline void __reset_damage_multiplier() {
 		if (this->damage_multiplier > 1.01f) {
@@ -29879,13 +30403,13 @@ private:
 	}
 public:
 	// 0x45E160
-	dllexport gnu_noinline static void do_graze(Float2* position) asm_symbol_rel(0x45E160) {
+	dllexport gnu_noinline static void do_graze(Float2* position) ASR(0x45E160) {
 		return PLAYER_PTR->do_graze_impl(position);
 	}
 
 private:
 	// 0x45A5A0
-	dllexport gnu_noinline void vectorcall __set_position_and_all_option_D4_to_1(float, float x, float y) asm_symbol_rel(0x45A5A0) {
+	dllexport gnu_noinline void vectorcall __set_position_and_all_option_D4_to_1(float, float x, float y) ASR(0x45A5A0) {
 		this->set_position(x, y);
 		this->__set_all_option_D4_to_1();
 	}
@@ -29895,14 +30419,14 @@ public:
 	}
 
 	// 0x45A660
-	dllexport gnu_noinline void thiscall __set_all_equipment_option_D4_to_1(int32_t value = UNUSED_DWORD) asm_symbol_rel(0x45A660) {
+	dllexport gnu_noinline void thiscall __set_all_equipment_option_D4_to_1(int32_t value = UNUSED_DWORD) ASR(0x45A660) {
 		nounroll for (size_t i = 0; i < PLAYER_EQUIPMENT_OPTION_COUNT; ++i) {
 			this->data.equipment[i].__int_D4 = 1;
 		}
 	}
 
 	// 0x45A600
-	dllexport gnu_noinline void thiscall __set_all_option_D4_to_1(int32_t value = UNUSED_DWORD) asm_symbol_rel(0x45A600) {
+	dllexport gnu_noinline void thiscall __set_all_option_D4_to_1(int32_t value = UNUSED_DWORD) ASR(0x45A600) {
 		for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i) {
 			this->data.options[i].__int_D4 = 1;
 		}
@@ -29912,7 +30436,7 @@ public:
 	}
 
 	// 0x45BC90
-	dllexport gnu_noinline void thiscall __update_option_positions(PlayerOption* options, int32_t count) asm_symbol_rel(0x45BC90) {
+	dllexport gnu_noinline void thiscall __update_option_positions(PlayerOption* options, int32_t count) ASR(0x45BC90) {
 		for (int32_t i = 0; i < count; ++i, ++options) {
 			if (options->state != 0) {
 				if (!this->data.__hide_options) {
@@ -29959,7 +30483,7 @@ public:
 	}
 
 	// 0x45E930
-	dllexport gnu_noinline ZUNResult thiscall shoot_one_bullet(int32_t sht_entry_index, int32_t time, Float3* position, PlayerOption* option) asm_symbol_rel(0x45E930) {
+	dllexport gnu_noinline ZUNResult thiscall shoot_one_bullet(int32_t sht_entry_index, int32_t time, Float3* position, PlayerOption* option) ASR(0x45E930) {
 		uint8_t index2 = sht_entry_index;
 		int32_t index1 = sht_entry_index >> 8;
 		ShtEntry* entry_ptr = &this->sht_file->__entry_ptr_array_E0[index1][index2];
@@ -29990,10 +30514,10 @@ public:
 	}
 
 	// 0x45EA00
-	dllexport gnu_noinline int thiscall tick_shooting_state() asm_symbol_rel(0x45EA00);
+	dllexport gnu_noinline int thiscall tick_shooting_state() ASR(0x45EA00);
 
 	// 0x40A9C0
-	dllexport gnu_noinline static void stdcall tick_shooting_state_for_card(PlayerOption* card_option, int32_t short_timer, int32_t long_timer, int32_t sht_entry_index1) asm_symbol_rel(0x40A9C0) {
+	dllexport gnu_noinline static void stdcall tick_shooting_state_for_card(PlayerOption* card_option, int32_t short_timer, int32_t long_timer, int32_t sht_entry_index1) ASR(0x40A9C0) {
 		if (card_option) {
 			Player* player = PLAYER_PTR;
 
@@ -30032,7 +30556,7 @@ public:
 	}
 
 	// 0x45EDB0
-	dllexport gnu_noinline int thiscall tick_bullets() asm_symbol_rel(0x45EDB0) {
+	dllexport gnu_noinline int thiscall tick_bullets() ASR(0x45EDB0) {
 		for (size_t i = 0; i < PLAYER_BULLET_COUNT; ++i) {
 			this->data.bullets[i].on_tick();
 		}
@@ -30041,10 +30565,10 @@ public:
 	}
 
 	// 0x45BE90
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x45BE90);
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x45BE90);
 
 	// 0x45CAA0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x45CAA0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x45CAA0) {
 		if (ABILITY_SHOP_PTR) {
 			return UpdateFuncNext;
 		}
@@ -30061,7 +30585,7 @@ public:
 	}
 
 	// 0x45CAC0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x45CAC0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x45CAC0) {
 		return ((Player*)ptr)->on_draw();
 	}
 
@@ -30075,7 +30599,7 @@ public:
 	}
 
 	// 0x45A7A0
-	dllexport gnu_noinline ZUNResult thiscall initialize() asm_symbol_rel(0x45A7A0) {
+	dllexport gnu_noinline ZUNResult thiscall initialize() ASR(0x45A7A0) {
 		
 		AnmLoaded* player_anm = ANM_MANAGER_PTR->preload_anm(PLAYER_ANM_INDEX, PLAYER_ANM_FILENAMES[GAME_MANAGER.globals.character]);
 		this->player_anm = player_anm;
@@ -30243,7 +30767,7 @@ private:
 	}
 public:
 	// 0x45CC20
-	dllexport gnu_noinline static CollisionResult stdcall __check_collision_rectangle(Float2* position, Float2* size, CollisionTestType test_type) asm_symbol_rel(0x45CC20) {
+	dllexport gnu_noinline static CollisionResult stdcall __check_collision_rectangle(Float2* position, Float2* size, CollisionTestType test_type) ASR(0x45CC20) {
 		return PLAYER_PTR->__check_collision_rectangle_impl(position, size, test_type);
 	}
 
@@ -30382,7 +30906,7 @@ private:
 		Float2* position,
 		float angle, float width, 
 		uint32_t length, CollisionTestType test_type
-	) asm_symbol_rel(0x45CEA0) {
+	) ASR(0x45CEA0) {
 		return PLAYER_PTR->__check_collision_rotated_rectangle_impl(position, angle, width, bitcast<float>(length), test_type);
 	}
 public:
@@ -30440,7 +30964,7 @@ private:
 	}
 
 	// 0x45CD90
-	dllexport gnu_noinline static CollisionResult vectorcall check_collision_circle(int, int, float, float, Float2* position, float radius, CollisionTestType test_type) asm_symbol_rel(0x45CD90) {
+	dllexport gnu_noinline static CollisionResult vectorcall check_collision_circle(int, int, float, float, Float2* position, float radius, CollisionTestType test_type) ASR(0x45CD90) {
 		return PLAYER_PTR->check_collision_circle_impl(position, radius, test_type);
 	}
 
@@ -30541,7 +31065,7 @@ private:
 		float width, float height,
 		uint32_t rotation,
 		int32_t duration, int32_t damage
-	) asm_symbol_rel(0x45DFA0) {
+	) ASR(0x45DFA0) {
 		return PLAYER_PTR->create_damage_source_rotated_rectangle_impl(
 			position,
 			width, height,
@@ -31173,7 +31697,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 				const char* text = __decrypt_related(StringArg(0));
 				ANM_MANAGER_PTR->draw_text_left(
 					vm,
-					this->text_color_array[this->active_portait], COLOR(0, 0, 0, 0),
+					this->text_color_array[this->active_portait], COLOR3_BLACK,
 					this->__font_type_flag ? Font5 : Font4, 0, 0, // 5, 4
 					text
 				);
@@ -31184,7 +31708,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 				const char* text = __decrypt_related(StringArg(0));
 				ANM_MANAGER_PTR->draw_text_left(
 					vm,
-					this->text_color_array[this->active_portait], COLOR(0, 0, 0, 0),
+					this->text_color_array[this->active_portait], COLOR3_BLACK,
 					this->__font_type_flag ? Font5 : Font4, 0, 0, // 5, 4
 					text
 				);
@@ -31200,25 +31724,25 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 						this->__float_1CC = 0.0f;
 						ANM_MANAGER_PTR->draw_text_left(
 							this->dialogue_lines[0].get_vm_ptr(),
-							this->text_color_array[this->active_portait], COLOR(0, 0, 0, 0),
+							this->text_color_array[this->active_portait], COLOR3_BLACK,
 							this->__font_type_flag ? Font1 : Font0, 0, 0, // 1, 0
 							"  "
 						);
 						ANM_MANAGER_PTR->draw_text_left(
 							this->dialogue_lines[1].get_vm_ptr(),
-							this->text_color_array[this->active_portait], COLOR(0, 0, 0, 0),
+							this->text_color_array[this->active_portait], COLOR3_BLACK,
 							this->__font_type_flag ? Font1 : Font0, 0, 0, // 1, 0
 							"  "
 						);
 						ANM_MANAGER_PTR->draw_text_left(
 							this->furigana_lines[0].get_vm_ptr(),
-							this->text_color_array[this->active_portait], COLOR(0, 0, 0, 0),
+							this->text_color_array[this->active_portait], COLOR3_BLACK,
 							this->__font_type_flag ? Font1 : Font0, 0, 0, // 1, 0
 							"  "
 						);
 						ANM_MANAGER_PTR->draw_text_left(
 							this->furigana_lines[1].get_vm_ptr(),
-							this->text_color_array[this->active_portait], COLOR(0, 0, 0, 0),
+							this->text_color_array[this->active_portait], COLOR3_BLACK,
 							this->__font_type_flag ? Font1 : Font0, 0, 0, // 1, 0
 							"  "
 						);
@@ -31239,7 +31763,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 						this->furigana_lines[0].get_vm_ptr()->data.text_outline_disable = true;
 						ANM_MANAGER_PTR->draw_text_left(
 							this->furigana_lines[0].get_vm_ptr(),
-							COLOR(0, 0, 0, 0), COLOR(0, 160, 160, 160),
+							COLOR3_BLACK, COLOR3_GREY(160),
 							Font2, x, spacing, // 2
 							text + 1
 						);
@@ -31254,7 +31778,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 						this->__sub_441900(this->__float_1CC);
 						ANM_MANAGER_PTR->draw_text_left(
 							this->dialogue_lines[0].get_vm_ptr(),
-							this->text_color_array[this->active_portait], COLOR(0, 0, 0, 0),
+							this->text_color_array[this->active_portait], COLOR3_BLACK,
 							this->__font_type_flag ? Font1 : Font0, 0, 0, // 1, 0
 							text
 						);
@@ -31285,7 +31809,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 						this->furigana_lines[1].get_vm_ptr()->data.text_outline_disable = true;
 						ANM_MANAGER_PTR->draw_text_left(
 							this->furigana_lines[1].get_vm_ptr(),
-							COLOR(0, 0, 0, 0), COLOR(0, 160, 160, 160),
+							COLOR3_BLACK, COLOR3_GREY(160),
 							Font2, x, spacing, // 2
 							text + 1
 						);
@@ -31300,7 +31824,7 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 						this->__sub_441900(this->__float_1CC);
 						ANM_MANAGER_PTR->draw_text_left(
 							this->dialogue_lines[1].get_vm_ptr(),
-							this->text_color_array[this->active_portait], COLOR(0, 0, 0, 0),
+							this->text_color_array[this->active_portait], COLOR3_BLACK,
 							this->__font_type_flag ? Font1 : Font0, 0, 0, // 1, 0
 							text
 						);
@@ -31662,7 +32186,7 @@ struct PopupManager : ZUNTask {
 	}
 
 	// 0x464020
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x464020) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x464020) {
 
 		Popup* popup = &this->popups[0];
 		nounroll for (size_t i = 0; i < SMALL_SCORE_POPUP_COUNT; ++popup, ++i) {
@@ -31677,7 +32201,7 @@ struct PopupManager : ZUNTask {
 	}
 
 	// 0x464180
-	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x464180) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() ASR(0x464180) {
 		Popup* popup = &this->popups[0];
 		SUPERVISOR.d3d_disable_fog();
 
@@ -31775,7 +32299,7 @@ struct PopupManager : ZUNTask {
 				}
 
 				ascii_manager = ASCII_MANAGER_PTR;
-				ascii_manager->color = COLOR(255, 255, 255, 255);
+				ascii_manager->color = COLOR_WHITE;
 				ascii_manager->group = 0;
 				ascii_manager->font_id = Font0; // 0
 				ascii_manager->__horizontal_positioning_mode = 1;
@@ -31787,12 +32311,12 @@ struct PopupManager : ZUNTask {
 	}
 
 	// 0x4645D0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x4645D0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x4645D0) {
 		return ((PopupManager*)ptr)->on_tick();
 	}
 
 	// 0x4645E0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x4645E0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x4645E0) {
 		return ((PopupManager*)ptr)->on_draw();
 	}
 
@@ -31893,7 +32417,7 @@ public:
 	}
 
 	// 0x463DD0
-	dllexport gnu_noinline static PopupManager* allocate() asm_symbol_rel(0x463DD0) {
+	dllexport gnu_noinline static PopupManager* allocate() ASR(0x463DD0) {
 		PopupManager* popup_manager = new_no_eh<PopupManager>();
 		POPUP_MANAGER_PTR = popup_manager;
 		if (ZUN_FAILED(popup_manager->initialize())) {
@@ -32029,8 +32553,7 @@ struct CardBase {
 	}
 	// Method 34
 	// 0x4130E0
-	dllexport gnu_noinline virtual void thiscall __on_stage_load() {
-	}
+	dllexport gnu_noinline virtual void thiscall __on_stage_load() {}
 	// Method 38
 	// 0x4130F0
 	dllexport gnu_noinline virtual int thiscall __set_replay_state(int32_t value) {
@@ -32044,7 +32567,7 @@ struct CardBase {
 	}
 	// Method 40
 	// 0x413140
-	dllexport gnu_noinline virtual bool thiscall __get_unknown_flag_cd_A() {
+	dllexport gnu_noinline virtual BOOL thiscall __get_unknown_flag_cd_A() {
 		return this->__unknown_flag_cd_A;
 	}
 	// Method 44
@@ -32059,8 +32582,7 @@ struct CardBase {
 	}
 	// Method 4C
 	// 0x413070
-	dllexport gnu_noinline virtual void thiscall __method_4C() {
-	}
+	dllexport gnu_noinline virtual void thiscall __method_4C() {}
 	// Method 50
 	// 0x412ED0
 	virtual ~CardBase() NO_EH_TERMINATE {
@@ -32068,7 +32590,7 @@ struct CardBase {
 	}
 
 	// 0x408BF0
-	dllexport int thiscall __dec_timer_34_during_gameplay() asm_symbol_rel(0x408BF0) {
+	dllexport int thiscall __dec_timer_34_during_gameplay() ASR(0x408BF0) {
 		if (!GUI_PTR->msg_is_active() && enemies_are_alive()) {
 			if (this->__timer_34 > 0) {
 				this->__timer_34--;
@@ -32089,7 +32611,7 @@ private:
 		UNUSED_ARG(int32_t unfocused_offset_x), int32_t unfocused_offset_y,
 		UNUSED_ARG(int32_t focused_offset_x), int32_t focused_offset_y,
 		int32_t anm_script
-	) asm_symbol_rel(0x40A790)
+	) ASR(0x40A790)
 	{
 		PlayerOption* option = &PLAYER_PTR->data.equipment[0];
 		for (size_t i = 0; i < PLAYER_EQUIPMENT_OPTION_COUNT; ++i, ++option) {
@@ -32139,8 +32661,7 @@ struct CardBlank : CardBase {
 
 	// Method 50
 	// 0x409B20
-	virtual ~CardBlank() NO_EH_TERMINATE {
-	}
+	virtual ~CardBlank() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -32179,8 +32700,7 @@ struct CardLife : CardBase {
 
 	// Method 50
 	// 0x409BC0
-	virtual ~CardLife() NO_EH_TERMINATE {
-	}
+	virtual ~CardLife() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -32219,8 +32739,7 @@ struct CardBomb : CardBase {
 
 	// Method 50
 	// 0x409C60
-	virtual ~CardBomb() NO_EH_TERMINATE {
-	}
+	virtual ~CardBomb() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -32259,8 +32778,7 @@ struct CardLifeFragment : CardBase {
 
 	// Method 50
 	// 0x409D00
-	virtual ~CardLifeFragment() NO_EH_TERMINATE {
-	}
+	virtual ~CardLifeFragment() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -32298,8 +32816,7 @@ struct CardBombFragment : CardBase {
 
 	// Method 50
 	// 0x409D90
-	virtual ~CardBombFragment() NO_EH_TERMINATE {
-	}
+	virtual ~CardBombFragment() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -32338,8 +32855,7 @@ struct CardNazrin : CardBase {
 
 	// Method 50
 	// 0x40A050
-	virtual ~CardNazrin() NO_EH_TERMINATE {
-	}
+	virtual ~CardNazrin() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -32386,8 +32902,7 @@ struct CardRingo : CardBase {
 
 	// Method 50
 	// 0x40A120
-	virtual ~CardRingo() NO_EH_TERMINATE {
-	}
+	virtual ~CardRingo() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -32428,8 +32943,7 @@ struct CardMokou : CardBase {
 
 	// Method 50
 	// 0x409E40
-	virtual ~CardMokou() NO_EH_TERMINATE {
-	}
+	virtual ~CardMokou() NO_EH_TERMINATE {}
 };
 
 // size: 0x58
@@ -33177,8 +33691,7 @@ struct CardNitori : CardBase {
 
 	// Method 50
 	// 0x40C200
-	virtual ~CardNitori() NO_EH_TERMINATE {
-	}
+	virtual ~CardNitori() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -33220,8 +33733,7 @@ struct CardKanako : CardBase {
 
 	// Method 50
 	// 0x40C2A0
-	virtual ~CardKanako() NO_EH_TERMINATE {
-	}
+	virtual ~CardKanako() NO_EH_TERMINATE {}
 };
 
 // size: 0x60
@@ -33248,7 +33760,7 @@ struct CardEirin : CardBase {
 	}
 
 	// 0x40A2A0
-	dllexport gnu_noinline int thiscall __sub_40A2A0() asm_symbol_rel(0x40A2A0) {
+	dllexport gnu_noinline int thiscall __sub_40A2A0() ASR(0x40A2A0) {
 		this->__vm_id_58 = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(41, &PLAYER_PTR->data.position);
 		SOUND_MANAGER.play_sound(44);
 		Player* player = PLAYER_PTR;
@@ -33328,8 +33840,7 @@ struct CardEirin : CardBase {
 
 	// Method 50
 	// 0x40A6A0
-	virtual ~CardEirin() NO_EH_TERMINATE {
-	}
+	virtual ~CardEirin() NO_EH_TERMINATE {}
 };
 
 // size: 0x58
@@ -33378,8 +33889,7 @@ struct CardTewi : CardBase {
 
 	// Method 50
 	// 0x40BB50
-	virtual ~CardTewi() NO_EH_TERMINATE {
-	}
+	virtual ~CardTewi() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -33425,8 +33935,7 @@ struct CardSaki : CardBase {
 
 	// Method 50
 	// 0x40C3D0
-	virtual ~CardSaki() NO_EH_TERMINATE {
-	}
+	virtual ~CardSaki() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -33465,8 +33974,7 @@ struct CardByakuren : CardBase {
 
 	// Method 50
 	// 0x40CBF0
-	virtual ~CardByakuren() NO_EH_TERMINATE {
-	}
+	virtual ~CardByakuren() NO_EH_TERMINATE {}
 };
 
 // size: 0x58
@@ -33525,8 +34033,7 @@ struct CardKoishi : CardBase {
 
 	// Method 50
 	// 0x40D530
-	virtual ~CardKoishi() NO_EH_TERMINATE {
-	}
+	virtual ~CardKoishi() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -33572,8 +34079,7 @@ struct CardSuwako : CardBase {
 
 	// Method 50
 	// 0x40C4A0
-	virtual ~CardSuwako() NO_EH_TERMINATE {
-	}
+	virtual ~CardSuwako() NO_EH_TERMINATE {}
 };
 
 // size: 0x5C
@@ -33656,8 +34162,7 @@ struct CardAya : CardBase {
 
 	// Method 50
 	// 0x40CB50
-	virtual ~CardAya() NO_EH_TERMINATE {
-	}
+	virtual ~CardAya() NO_EH_TERMINATE {}
 };
 
 // size: 0xB4
@@ -33765,8 +34270,7 @@ struct CardKeiki : CardBase {
 
 	// Method 50
 	// 0x40D270
-	virtual ~CardKeiki() NO_EH_TERMINATE {
-	}
+	virtual ~CardKeiki() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -33804,8 +34308,7 @@ struct CardKaguya : CardBase {
 
 	// Method 50
 	// 0x40D320
-	virtual ~CardKaguya() NO_EH_TERMINATE {
-	}
+	virtual ~CardKaguya() NO_EH_TERMINATE {}
 };
 
 // size: 0x58
@@ -33893,8 +34396,7 @@ struct CardMamizou : CardBase {
 
 	// Method 50
 	// 0x40D450
-	virtual ~CardMamizou() NO_EH_TERMINATE {
-	}
+	virtual ~CardMamizou() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -33932,8 +34434,7 @@ struct CardYuyuko : CardBase {
 
 	// Method 50
 	// 0x40D5C0
-	virtual ~CardYuyuko() NO_EH_TERMINATE {
-	}
+	virtual ~CardYuyuko() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -33988,8 +34489,7 @@ struct CardYachie : CardBase {
 
 	// Method 50
 	// 0x40D7B0
-	virtual ~CardYachie() NO_EH_TERMINATE {
-	}
+	virtual ~CardYachie() NO_EH_TERMINATE {}
 };
 
 // size: 0x64
@@ -34017,7 +34517,7 @@ struct CardShikiEiki : CardBase {
 	}
 
 	// 0x40D840
-	dllexport gnu_noinline int thiscall __sub_40D840() asm_symbol_rel(0x40D840) {
+	dllexport gnu_noinline int thiscall __sub_40D840() ASR(0x40D840) {
 		this->__vm_id_58 = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(41, &PLAYER_PTR->data.position);
 		SOUND_MANAGER.play_sound(44);
 		Player* player_ptr = PLAYER_PTR;
@@ -34093,8 +34593,7 @@ struct CardShikiEiki : CardBase {
 
 	// Method 50
 	// 0x40DBC0
-	virtual ~CardShikiEiki() NO_EH_TERMINATE {
-	}
+	virtual ~CardShikiEiki() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -34143,8 +34642,7 @@ struct CardNarumi : CardBase {
 
 	// Method 50
 	// 0x409EF0
-	virtual ~CardNarumi() NO_EH_TERMINATE {
-	}
+	virtual ~CardNarumi() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -34181,8 +34679,7 @@ struct CardPatchouli : CardBase {
 
 	// Method 50
 	// 0x409FC0
-	virtual ~CardPatchouli() NO_EH_TERMINATE {
-	}
+	virtual ~CardPatchouli() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -34201,8 +34698,7 @@ struct CardMike : CardBase {
 
 	// Method 50
 	// 0x410960
-	virtual ~CardMike() NO_EH_TERMINATE {
-	}
+	virtual ~CardMike() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -34221,8 +34717,7 @@ struct CardTakane : CardBase {
 
 	// Method 50
 	// 0x4109B0
-	virtual ~CardTakane() NO_EH_TERMINATE {
-	}
+	virtual ~CardTakane() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -34241,8 +34736,7 @@ struct CardSannyo : CardBase {
 
 	// Method 50
 	// 0x410A00
-	virtual ~CardSannyo() NO_EH_TERMINATE {
-	}
+	virtual ~CardSannyo() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -34308,8 +34802,7 @@ struct CardYukari : CardBase {
 
 	// Method 50
 	// 0x40A210
-	virtual ~CardYukari() NO_EH_TERMINATE {
-	}
+	virtual ~CardYukari() NO_EH_TERMINATE {}
 };
 
 #if MALLET_PIPE
@@ -34449,8 +34942,7 @@ struct CardShinmyoumaru : CardBase {
 
 	// Method 50
 	// 0x40F280
-	virtual ~CardShinmyoumaru() NO_EH_TERMINATE {
-	}
+	virtual ~CardShinmyoumaru() NO_EH_TERMINATE {}
 };
 
 // size: 0x74
@@ -34530,7 +35022,7 @@ struct CardTenshi : CardBase {
 			if (vm) {
 				bullet_cancel_radius_as_bomb(&this->position, 18.0f, CancelType0, 99999, 0);
 				laser_cancel_radius(&this->position, 18.0f, CancelType0, 0);
-				vm->data.color1 = COLOR(255, 255, 255, 255);
+				vm->data.color1 = COLOR_WHITE;
 
 				int32_t cancel_counter = bullet_manager_get_cancel_counter2();
 				if (cancel_counter) {
@@ -34573,8 +35065,7 @@ struct CardTenshi : CardBase {
 
 	// Method 50
 	// 0x40A210
-	virtual ~CardTenshi() NO_EH_TERMINATE {
-	}
+	virtual ~CardTenshi() NO_EH_TERMINATE {}
 };
 
 // size: 0xC4
@@ -34663,7 +35154,7 @@ struct CardClownpiece : CardBase {
 				laser_cancel_radius(&this->position, radius, CancelType0, 0);
 				this->damage_source_ptr->motion.position = this->position;
 				this->damage_source_ptr->radius = radius;
-				vm->data.color1 = COLOR(255, 255, 255, 255);
+				vm->data.color1 = COLOR_WHITE;
 
 				PlayerDamageSource* damage_source = this->damage_source_ptr;
 				if (damage_source_ptr->damage_dealt != 0) {
@@ -34701,8 +35192,7 @@ struct CardClownpiece : CardBase {
 
 	// Method 50
 	// 0x40E2B0
-	virtual ~CardClownpiece() NO_EH_TERMINATE {
-	}
+	virtual ~CardClownpiece() NO_EH_TERMINATE {}
 };
 
 // size: 0x68
@@ -34922,8 +35412,7 @@ struct CardRemilia : CardBase {
 
 	// Method 50
 	// 0x40F800
-	virtual ~CardRemilia() NO_EH_TERMINATE {
-	}
+	virtual ~CardRemilia() NO_EH_TERMINATE {}
 };
 
 // size: 0x6C
@@ -35049,8 +35538,7 @@ struct CardUtsuho : CardBase {
 
 	// Method 50
 	// 0x40FD80
-	virtual ~CardUtsuho() NO_EH_TERMINATE {
-	}
+	virtual ~CardUtsuho() NO_EH_TERMINATE {}
 };
 
 // size: 0x58
@@ -35115,8 +35603,7 @@ struct CardLilyWhite : CardBase {
 
 	// Method 50
 	// 0x40FFF0
-	virtual ~CardLilyWhite() NO_EH_TERMINATE {
-	}
+	virtual ~CardLilyWhite() NO_EH_TERMINATE {}
 };
 
 // size: 0x68
@@ -35203,8 +35690,7 @@ struct CardRaiko : CardBase {
 
 	// Method 50
 	// 0x4103E0
-	virtual ~CardRaiko() NO_EH_TERMINATE {
-	}
+	virtual ~CardRaiko() NO_EH_TERMINATE {}
 };
 
 // size: 0x68
@@ -35295,8 +35781,7 @@ struct CardSumireko : CardBase {
 
 	// Method 50
 	// 0x410910
-	virtual ~CardSumireko() NO_EH_TERMINATE {
-	}
+	virtual ~CardSumireko() NO_EH_TERMINATE {}
 };
 
 // size: 0x5C
@@ -35432,8 +35917,7 @@ struct CardTsukasa : CardBase {
 
 	// Method 50
 	// 0x410F90
-	virtual ~CardTsukasa() NO_EH_TERMINATE {
-	}
+	virtual ~CardTsukasa() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -35510,8 +35994,7 @@ struct CardMegumu : CardBase {
 
 	// Method 50
 	// 0x410D80
-	virtual ~CardMegumu() NO_EH_TERMINATE {
-	}
+	virtual ~CardMegumu() NO_EH_TERMINATE {}
 };
 
 // size: 0x5C
@@ -35612,7 +36095,7 @@ struct CardMomoyo : CardBase {
 			ascii_manager->debugf(&position, "%.3f", multiplier);
 
 			ascii_manager = ASCII_MANAGER_PTR;
-			ascii_manager->color = COLOR(255, 255, 255, 255);
+			ascii_manager->color = COLOR_WHITE;
 			ascii_manager->set_alpha(255);
 		}
 		return 0;
@@ -35627,8 +36110,7 @@ struct CardMomoyo : CardBase {
 
 	// Method 50
 	// 0x411370
-	virtual ~CardMomoyo() NO_EH_TERMINATE {
-	}
+	virtual ~CardMomoyo() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -35647,8 +36129,7 @@ struct CardMagatama : CardBase { // DONE
 
 	// Method 50
 	// 0x4113C0
-	virtual ~CardMagatama() NO_EH_TERMINATE {
-	}
+	virtual ~CardMagatama() NO_EH_TERMINATE {}
 };
 
 // size: 0x54
@@ -35667,15 +36148,15 @@ struct CardNull : CardBase {
 
 	// Method 50
 	// 0x411410
-	virtual ~CardNull() NO_EH_TERMINATE {
-	}
+	virtual ~CardNull() NO_EH_TERMINATE {}
 };
 
 static inline constexpr int32_t CARD_TEXT_LINES = 7;
+static inline constexpr size_t CARD_TEXT_LINE_LENGTH = 64;
 
 // size: 0x1C0
 struct CardText {
-	char lines[CARD_TEXT_LINES][64]; // 0x0
+	char lines[CARD_TEXT_LINES][CARD_TEXT_LINE_LENGTH]; // 0x0
 	// 0x1C0
 };
 
@@ -35691,7 +36172,7 @@ struct AbilityTextData {
 	}
 
 	// 0x4132B0
-	dllexport static void delete_vms() asm_symbol_rel(0x4132B0) {
+	dllexport static void delete_vms() ASR(0x4132B0) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 		AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
 		size_t i = countof(ability_text_data->__text_line_vms);
@@ -35703,12 +36184,12 @@ struct AbilityTextData {
 	}
 
 	// 0x413390
-	dllexport static void __hide_card_type_label() asm_symbol_rel(0x413390) {
+	dllexport static void __hide_card_type_label() ASR(0x413390) {
 		ABILITY_TEXT_DATA_PTR->card_type_label.__hide_tree();
 	}
 
 	// 0x4133D0
-	dllexport static void __hide_anms() asm_symbol_rel(0x4133D0) {
+	dllexport static void __hide_anms() ASR(0x4133D0) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 		AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
 		size_t i = countof(ability_text_data->__text_line_vms);
@@ -35720,10 +36201,10 @@ struct AbilityTextData {
 	}
 
 	// 0x4162B0
-	dllexport gnu_noinline static int __sub_4162B0(Float3* position, BOOL arg2) asm_symbol_rel(0x4162B0);
+	dllexport gnu_noinline static int __sub_4162B0(Float3* position, BOOL arg2) ASR(0x4162B0);
 
 	// 0x416540
-	dllexport gnu_noinline static void __sub_416540(Float3* position, CardId card_id, BOOL print_description, BOOL hide_unlocked_text) asm_symbol_rel(0x416540) {
+	dllexport gnu_noinline static void __sub_416540(Float3* position, CardId card_id, BOOL print_description, BOOL hide_unlocked_text) ASR(0x416540) {
 		Float3 positionB = *position + Float3(0.0f, 310.0f, 0.0f);
 		AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
 		BOOL enable_description;
@@ -35731,8 +36212,8 @@ struct AbilityTextData {
 			enable_description = false;
 			ANM_MANAGER_PTR->draw_text_center(
 				ability_text_data->__text_line_vms[0].get_vm_ptr(),
-				COLOR(0, 128, 128, 128), COLOR(0, 0, 0, 0),
-				10, 0,
+				COLOR3_GREY(128), COLOR3_BLACK,
+				Font10, 0, // 10
 				JpEnStr("", "You haven't unlocked this yet")
 			);
 		}
@@ -35740,8 +36221,8 @@ struct AbilityTextData {
 			enable_description = true;
 			ANM_MANAGER_PTR->draw_text_center(
 				ability_text_data->__text_line_vms[0].get_vm_ptr(),
-				COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0),
-				10, 0,
+				COLOR3_WHITE, COLOR3_BLACK,
+				Font10, 0, // 10
 				&ability_text_data->description_text[card_id].lines[0][0]
 			);
 		}
@@ -35751,8 +36232,8 @@ struct AbilityTextData {
 			nounroll for (size_t i = 0; i != countof(ability_text_data->__text_line_vms) - 1; ++i) {
 				ANM_MANAGER_PTR->draw_text_center(
 					ability_text_data->__text_line_vms[i + 1].get_vm_ptr(),
-					COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0),
-					0, 0,
+					COLOR3_WHITE, COLOR3_BLACK,
+					Font0, 0, // 0
 					&ability_text_data->description_text[card_id].lines[i + 1][0]
 				);
 				ability_text_data->__text_line_vms[i + 1].set_controller_position(&positionB);
@@ -35768,7 +36249,7 @@ struct AbilityTextData {
 	}
 
 	// 0x4168A0
-	dllexport gnu_noinline static void __set_card_type_label(int32_t card_type) asm_symbol_rel(0x4168A0) {
+	dllexport gnu_noinline static void __set_card_type_label(int32_t card_type) ASR(0x4168A0) {
 		AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
 		if (card_type != InternalCard) { // 4
 			ability_text_data->card_type_label.set_sprite_unsafe(5 + card_type);
@@ -35780,7 +36261,7 @@ struct AbilityTextData {
 	}
 
 	// 0x416940
-	dllexport void thiscall __show_card_type_label_if_unlocked(int32_t card_id, BOOL force_show) asm_symbol_rel(0x416940) {
+	dllexport void thiscall __show_card_type_label_if_unlocked(int32_t card_id, BOOL force_show) ASR(0x416940) {
 		if (
 			(SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_cards[card_id] || force_show) &&
 			find_id_in_card_data(card_id).__card_type != InternalCard
@@ -35793,7 +36274,7 @@ struct AbilityTextData {
 	}
 
 	// 0x416C10
-	dllexport static void stdcall __show_anms(int32_t card_id) asm_symbol_rel(0x416C10) {
+	dllexport static void stdcall __show_anms(int32_t card_id) ASR(0x416C10) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 		AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
 		size_t i = countof(ability_text_data->__text_line_vms);
@@ -35804,6 +36285,8 @@ struct AbilityTextData {
 		ability_text_data->__show_card_type_label_if_unlocked(card_id, false);
 	}
 
+	// The only difference from the trophy.txt version is checking for \f
+	// why are you like this ZUN
 	static forceinline char* ability_txt_skip_to_end_of_line(const char* str, int32_t& count) {
 		char c = *str;
 		if (c != '\n') {
@@ -35831,7 +36314,7 @@ struct AbilityTextData {
 	}
 
 	// 0x413580
-	dllexport gnu_noinline static char* fastcall ability_txt_skip_to_next_line(const char* str, int32_t& count) asm_symbol_rel(0x413580) {
+	dllexport gnu_noinline static char* fastcall ability_txt_skip_to_next_line(const char* str, int32_t& count) ASR(0x413580) {
 		str = ability_txt_skip_to_end_of_line(str, count);
 		if (count != 0) {
 			str = ability_txt_skip_end_of_line_chars(str, count);
@@ -35840,7 +36323,7 @@ struct AbilityTextData {
 	}
 
 	// 0x4135D0
-	dllexport gnu_noinline static char* fastcall ability_txt_copy_rest_of_line_to_buffer(char* out_str, char* str, int32_t& count) asm_symbol_rel(0x4135D0) {
+	dllexport gnu_noinline static char* fastcall ability_txt_copy_rest_of_line_to_buffer(char* out_str, char* str, int32_t& count) ASR(0x4135D0) {
 		out_str[0] = '\0';
 		char* end_of_line = ability_txt_skip_to_end_of_line(str, count);
 		if (count != 0) {
@@ -35854,9 +36337,8 @@ struct AbilityTextData {
 	}
 
 	// 0x4160B0
-	dllexport gnu_noinline ZUNResult thiscall initialize() asm_symbol_rel(0x4160B0) {
-		//return ZUN_SUCCESS; // TODO: remove BUG
-		char buffer[0x100];
+	dllexport gnu_noinline ZUNResult thiscall initialize() ASR(0x4160B0) {
+		char buffer[TROPHY_TEXT_LINE_LENGTH]; // probably copy/paste
 		int32_t ability_txt_count;
 		void* ability_txt_file = read_file_to_buffer("ability.txt", &ability_txt_count, false);
 		char* ability_txt = (char*)ability_txt_file;
@@ -35866,7 +36348,7 @@ struct AbilityTextData {
 					goto break_all;
 				case '@': start_card_text: {
 					--ability_txt_count;
-					ability_txt = ability_txt_copy_rest_of_line_to_buffer(buffer, ability_txt, ability_txt_count);
+					ability_txt = ability_txt_copy_rest_of_line_to_buffer(buffer, ability_txt + 1, ability_txt_count);
 					auto& matched_card = find_in_card_data([=](const CardData& card) {
 						return !strcmp_asm(card.name, buffer);
 					});
@@ -35915,6 +36397,8 @@ ValidateFieldOffset32(0x63DC, AbilityTextData, card_type_label);
 ValidateStructSize32(0x63E0, AbilityTextData);
 #pragma endregion
 
+static inline constexpr int32_t MAX_EQUIPPED_CARDS = 0x100;
+
 // 0xD70
 struct AbilityManager : ZUNTask {
 	// ZUNTask base; // 0x0
@@ -35927,12 +36411,12 @@ struct AbilityManager : ZUNTask {
 	int32_t equipment_card_count; // 0x30
 	int32_t passive_card_count; // 0x34
 	CardBase* selected_active_card; // 0x38
-	AnmID __anm_id_3C; // 0x3C
+	AnmID __selected_card_vm; // 0x3C
 	BOOL __selected_card_hidden; // 0x40
 	Timer __timer_44; // 0x44
-	AnmID __anm_id_array_58[0x100]; // 0x58
-	AnmID __anm_id_array_458[0x100]; // 0x458
-	CardBase* __card_array_858[0x100]; // 0x858
+	AnmID __card_vms[MAX_EQUIPPED_CARDS]; // 0x58
+	AnmID __active_card_vms[MAX_EQUIPPED_CARDS]; // 0x458
+	CardBase* __active_card_array[MAX_EQUIPPED_CARDS]; // 0x858
 	float __float_C58; // 0xC58
 	int32_t __int_C5C; // 0xC5C
 	BOOL __ability_data_loaded; // 0xC60
@@ -35972,9 +36456,9 @@ struct AbilityManager : ZUNTask {
 private:
 	inline void __sub_407F10_impl() {
 		this->enable_funcs_unsafe();
-		this->__anm_id_3C.mark_tree_for_delete();
+		this->__selected_card_vm.mark_tree_for_delete();
 
-		this->__anm_id_3C = this->abcard_anm->instantiate_vm_to_world_list_back(0);
+		this->__selected_card_vm = this->abcard_anm->instantiate_vm_to_world_list_back(0);
 
 		// wtf is this
 		this->card_list.for_each_safe([=](CardBase* card) {
@@ -36017,13 +36501,13 @@ public:
 	}
 
 	// 0x408020
-	dllexport gnu_noinline static void __cleanup_all_anms() asm_symbol_rel(0x408020) {
+	dllexport gnu_noinline static void __cleanup_all_anms() ASR(0x408020) {
 		AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
 
-		ability_manager->__anm_id_3C.mark_tree_for_delete();
+		ability_manager->__selected_card_vm.mark_tree_for_delete();
 
-		nounroll for (size_t i = 0; i < countof(ability_manager->__anm_id_array_58); ++i) {
-			ability_manager->__anm_id_array_58[i].mark_tree_for_delete();
+		nounroll for (size_t i = 0; i < countof(ability_manager->__card_vms); ++i) {
+			ability_manager->__card_vms[i].mark_tree_for_delete();
 		}
 		
 		ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABILITY_ANM_INDEX);
@@ -36033,7 +36517,7 @@ public:
 
 private:
 	// 0x409310
-	dllexport gnu_noinline static AnmID& stdcall instantiate_small_card_sprite_vm(AnmID& out, int32_t card_id) asm_symbol_rel(0x409310) {
+	dllexport gnu_noinline static AnmID& stdcall instantiate_small_card_sprite_vm(AnmID& out, int32_t card_id) ASR(0x409310) {
 		AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
 		
 		const CardData& card_data = find_id_in_card_data(card_id);
@@ -36053,7 +36537,7 @@ public:
 
 private:
 	// 0x4091A0
-	dllexport gnu_noinline static AnmID& stdcall instantiate_large_card_sprite_vm(AnmID& out, Float3* position, int32_t script, const CardData* card_data) asm_symbol_rel(0x4091A0) {
+	dllexport gnu_noinline static AnmID& stdcall instantiate_large_card_sprite_vm(AnmID& out, Float3* position, int32_t script, const CardData* card_data) ASR(0x4091A0) {
 		AnmLoaded* abcard_anm = ABILITY_MANAGER_PTR->abcard_anm;
 
 		out = NULL;
@@ -36070,7 +36554,7 @@ public:
 	}
 
 	// 0x416DD0
-	dllexport gnu_noinline static int32_t stdcall get_price_for_tier(int32_t price_tier) asm_symbol_rel(0x416DD0) {
+	dllexport gnu_noinline static int32_t stdcall get_price_for_tier(int32_t price_tier) ASR(0x416DD0) {
 		int32_t base_price = CARD_PRICE_TABLE[price_tier];
 		if (card_equipped_inline<CardTakane>()) {
 			return base_price * 5 / 10;
@@ -36079,7 +36563,7 @@ public:
 	}
 
 	// 0x4080E0
-	dllexport gnu_noinline static void __sub_4080E0() asm_symbol_rel(0x4080E0) {
+	dllexport gnu_noinline static void __sub_4080E0() ASR(0x4080E0) {
 		AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
 
 		ability_manager->active_card_count = 0;
@@ -36126,11 +36610,11 @@ public:
 					ability_manager->selected_active_card = card;
 					const CardData* card_data = card->data;
 
-					ability_manager->__anm_id_3C.__show_tree();
-					if (AnmVM* vm = ability_manager->__anm_id_3C.__find_child_vm_with_script(4)) {
+					ability_manager->__selected_card_vm.__show_tree();
+					if (AnmVM* vm = ability_manager->__selected_card_vm.__find_child_vm_with_script(4)) {
 						vm->set_sprite(card_data->sprite_small);
 					}
-					if (AnmVM* vm = ability_manager->__anm_id_3C.__find_child_vm_with_script(3)) {
+					if (AnmVM* vm = ability_manager->__selected_card_vm.__find_child_vm_with_script(3)) {
 						vm->set_sprite(card_data->sprite_small);
 					}
 				}
@@ -36138,7 +36622,7 @@ public:
 			}
 		}
 
-		zero_array(ability_manager->__anm_id_array_58);
+		zero_array(ability_manager->__card_vms);
 	}
 
 	inline void wait_for_ability_data_to_load() {
@@ -36148,13 +36632,13 @@ public:
 	}
 
 	// 0x4094C0
-	dllexport gnu_noinline static void __sub_4094C0() asm_symbol_rel(0x4094C0) {
+	dllexport gnu_noinline static void __hide_card_anms() ASR(0x4094C0) {
 		AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
 		for (int32_t i = 0; i < ability_manager->card_count; ++i) {
-			ability_manager->__anm_id_array_58[i].__hide_tree();
-			ability_manager->__anm_id_array_458[i].__hide_tree();
+			ability_manager->__card_vms[i].__hide_tree();
+			ability_manager->__active_card_vms[i].__hide_tree();
 		}
-		ability_manager->__anm_id_3C.__hide_tree();
+		ability_manager->__selected_card_vm.__hide_tree();
 	}
 
 	// 0x408DE0
@@ -36163,32 +36647,31 @@ public:
 		ZUNList<CardBase>* node = this->card_list.next;
 		float offset_per_card = 80.0f; // LOCAL 1
 		if (count) {
-			float count_f = count;
+			float count_f = count - 1;
 			float offset = count_f * offset_per_card; // EBP+C
 			if (offset > 304.0f) {
 				offset = 304.0f;
 				offset_per_card = 304.0f / count_f;
 			}
-			offset *= 0.5f;
-			offset += position.x;
+			offset = offset * 0.5f + position.x;
 			position.x = offset;
 			if (node) {
 				size_t i = 0;
-				size_t j = 0;
-				node->for_each([&](CardBase* card) {
+				size_t active_card_index = 0;
+				node->for_each([&, this](CardBase* card) {
 					const CardData* data = card->data;
 					switch (card_type) {
-						case 0:
+						case ActiveCard: // 0
 							if (!card->__is_active_card) {
 								goto skip_card;
 							}
 							break;
-						case 1:
+						case EquipmentCard: // 1
 							if (!card->__is_equipment_card) {
 								goto skip_card;
 							}
 							break;
-						default:
+						default: // case PassiveCard: // 2
 							if (
 								(card->__is_active_card | card->__is_equipment_card) ||
 								!data->__render_passive_in_hud
@@ -36198,22 +36681,24 @@ public:
 							break;
 					}
 					AnmID anm_id = this->abcard_anm->instantiate_vm_to_ui_list_back(5, &position);
-					this->__anm_id_array_58[i] = anm_id;
+					this->__card_vms[i] = anm_id;
 					anm_id.get_vm_ptr_safe()->run_anm();
 
-					this->__anm_id_array_58[i].__find_child_vm_with_script(6)->set_sprite(data->sprite_small);
-					this->__anm_id_array_58[i].__find_child_vm_with_script(7)->set_sprite(data->sprite_small);
+					int32_t small_sprite = data->sprite_small;
+					this->__card_vms[i].__find_child_vm_with_script(6)->set_sprite(small_sprite);
+					small_sprite = data->sprite_small;
+					this->__card_vms[i].__find_child_vm_with_script(7)->set_sprite(small_sprite);
 
-					card->on_anm_id_assigned_to_hud(this->__anm_id_array_58[i]);
+					card->on_anm_id_assigned_to_hud(this->__card_vms[i]);
 
-					if (arg4) {
-						this->__anm_id_array_58[i].interrupt_tree(4);
+					if (!arg4) {
+						this->__card_vms[i].interrupt_tree(4);
 					}
 
-					if (card_type == 0) {
-						this->__anm_id_array_458[j] = this->__anm_id_array_58[i];
-						this->__card_array_858[j] = card;
-						++j;
+					if (card_type == ActiveCard) { // 0
+						this->__active_card_vms[active_card_index] = this->__card_vms[i];
+						this->__active_card_array[active_card_index] = card;
+						++active_card_index;
 					}
 
 					offset -= offset_per_card;
@@ -36228,16 +36713,16 @@ public:
 
 	// 0x408D00
 	dllexport gnu_noinline void thiscall create_all_card_lists_for_hud(BOOL arg1) {
-		for (size_t i = 0; i < countof(this->__anm_id_array_58); ++i) {
-			this->__anm_id_array_58[i].mark_tree_for_delete();
+		for (size_t i = 0; i < countof(this->__card_vms); ++i) {
+			this->__card_vms[i].mark_tree_for_delete();
 		}
 		if (GAME_THREAD_PTR) {
 			Float3 position = { 0.0f, 0.0f, 0.0f};
-			this->create_card_list_for_hud(&position, this->active_card_count, 0, arg1);
+			this->create_card_list_for_hud(&position, this->active_card_count, ActiveCard, arg1); // 0
 			position.y = 130.0f;
-			this->create_card_list_for_hud(&position, this->equipment_card_count, 1, arg1);
-			position.z = 260.0f;
-			this->create_card_list_for_hud(&position, this->passive_card_count, 2, arg1);
+			this->create_card_list_for_hud(&position, this->equipment_card_count, EquipmentCard, arg1); // 1
+			position.y = 260.0f;
+			this->create_card_list_for_hud(&position, this->passive_card_count, PassiveCard, arg1); // 2
 		}
 	}
 
@@ -36289,7 +36774,7 @@ public:
 
 	// 0x411460
 	dllexport gnu_noinline int32_t thiscall allocate_new_card(int32_t id, uint32_t flags) {
-		if (this->card_count < 0x100) {
+		if (this->card_count < MAX_EQUIPPED_CARDS) {
 			CardBase* card;
 			switch (id) {
 				case NULL_CARD: // 56
@@ -36478,7 +36963,7 @@ public:
 	}
 
 	// 0x416F50
-	dllexport gnu_noinline static uint32_t fastcall __pick_random_cardA(const CardData*& out, int32_t price_tier_low, int32_t price_tier_high, const CardData* card_data[], int32_t card_data_count) asm_symbol_rel(0x416F50) {
+	dllexport gnu_noinline static uint32_t fastcall __pick_random_cardA(const CardData*& out, int32_t price_tier_low, int32_t price_tier_high, const CardData* card_data[], int32_t card_data_count) ASR(0x416F50) {
 		const CardData* weighted_array[countof(AbilityManager::purchased_cards) * 10] = {};
 		uint32_t weighted_array_size = 0;
 
@@ -36535,11 +37020,11 @@ public:
 		this->__float_C58 = 1.0f;
 		this->selected_active_card = NULL;
 		ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABILITY_ANM_INDEX);
-		this->__anm_id_3C.mark_tree_for_delete();
+		this->__selected_card_vm.mark_tree_for_delete();
 		ANM_MANAGER_PTR->mark_all_vms_from_loaded_slot_for_delete(ABCARD_ANM_INDEX);
 
-		nounroll for (size_t i = 0; i < countof(this->__anm_id_array_58); ++i) {
-			this->__anm_id_array_58[i].mark_tree_for_delete();
+		nounroll for (size_t i = 0; i < countof(this->__card_vms); ++i) {
+			this->__card_vms[i].mark_tree_for_delete();
 		}
 
 		if (arg1) {
@@ -36580,17 +37065,17 @@ public:
 	}
 
 	// 0x408890
-	dllexport gnu_noinline void thiscall __sub_408890(AnmIDRaw id_raw, int32_t scriptA, int32_t scriptB, CardBase* card, BOOL arg5) asm_symbol_rel(0x408890) {
+	dllexport gnu_noinline void thiscall __sub_408890(AnmIDRaw id_raw, int32_t scriptA, int32_t scriptB, CardBase* card, BOOL arg5) ASR(0x408890) {
 		AnmID id{ id_raw };
 
 		AnmVM* vmA = id.__find_child_vm_with_script(scriptA);
 		AnmVM* vmB = id.__find_child_vm_with_script(scriptB);
 
 		float B = 1.0f;
-		float A = 1.0f - card->recharge_time / (float)card->__timer_34;
+		float scale = 1.0f - (float)card->__timer_34 / card->recharge_time;
 
 		if (card->__get_unknown_flag_cd_A()) {
-			A = B;
+			scale = B;
 			uint8_t c = this->__timer_44 % 4 <= 2 ? 0 : 255;
 			RED(vmA->data.color1) = 255;
 			GREEN(vmA->data.color1) = c;
@@ -36605,7 +37090,7 @@ public:
 		}
 		else {
 			id.interrupt_tree(3);
-			float C = A * 64.0f;
+			float C = scale * 64.0f;
 			uint8_t c1 = C + 0.0f;
 			uint8_t c2 = C + 128.0f;
 			RED(vmA->data.color1) = c1;
@@ -36615,7 +37100,7 @@ public:
 
 		if (arg5) {
 			float angle = vmA->get_controller_rotation()->z;
-			float y = (B - A) * 40.0f;
+			float y = (B - scale) * 40.0f;
 			float y_unit = zsinf(angle);
 			float x_unit = zcosf(angle);
 			float x = 0.0f;
@@ -36628,17 +37113,17 @@ public:
 			vmB->data.position = position;
 		}
 
-		float C = (5.0f / 8.0f) - A * (5.0f / 8.0f);
-		vmA->set_v_scale(A);
-		vmA->set_y_scale(A);
-		vmA->set_y_scroll(C);
-		vmB->set_v_scale(A);
-		vmB->set_y_scale(A);
-		vmB->set_y_scroll(C);
+		float scroll = (5.0f / 8.0f) - scale * (5.0f / 8.0f);
+		vmA->set_v_scale(scale);
+		vmA->set_y_scale(scale);
+		vmA->set_y_scroll(scroll);
+		vmB->set_v_scale(scale);
+		vmB->set_y_scale(scale);
+		vmB->set_y_scroll(scroll);
 	}
 
 	// 0x408640
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x408640) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x408640) {
 		GameThread* game_thread = GAME_THREAD_PTR;
 		if (
 			game_thread &&
@@ -36648,9 +37133,9 @@ public:
 			this->card_list.for_each([](CardBase* card) {
 				card->on_tick();
 			});
-			this->__anm_id_3C.get_vm_ptr();
+			this->__selected_card_vm.get_vm_ptr();
 			if (
-				this->__anm_id_3C &&
+				this->__selected_card_vm &&
 				this->selected_active_card
 			) {
 				Player* player = PLAYER_PTR;
@@ -36660,7 +37145,7 @@ public:
 						player->data.position.y > 368.0f &&
 						player->data.position.x < -64.0f
 					) {
-						this->__anm_id_3C.interrupt_and_run_tree(5);
+						this->__selected_card_vm.interrupt_and_run_tree(5);
 						this->__selected_card_hidden = true;
 					}
 				} else {
@@ -36670,24 +37155,24 @@ public:
 							player->data.position.x > -48.0f
 						)
 					) {
-						this->__anm_id_3C.interrupt_and_run_tree(4);
+						this->__selected_card_vm.interrupt_and_run_tree(4);
 						this->__selected_card_hidden = false;
 					}
 				}
 
 				Float3 position = { 0.0f, -4.0f, 0.0f };
 
-				this->__sub_408890(this->__anm_id_3C, 2, 3, this->selected_active_card, false);
+				this->__sub_408890(this->__selected_card_vm, 2, 3, this->selected_active_card, false);
 
 				for (int32_t i = 0; i < this->active_card_count; ++i) {
-					if (CardBase* card = this->__card_array_858[i]) {
-						this->__sub_408890(this->__anm_id_array_458[i], 9, 7, card, true);
-						this->__anm_id_array_458[i].get_vm_ptr()->data.__position_2 = ZERO_FLOAT3;
+					if (CardBase* card = this->__active_card_array[i]) {
+						this->__sub_408890(this->__active_card_vms[i], 9, 7, card, true);
+						this->__active_card_vms[i].get_vm_ptr()->data.__position_2 = ZERO_FLOAT3;
 						if (
-							this->selected_active_card == this->__card_array_858[i] &&
+							this->selected_active_card == this->__active_card_array[i] &&
 							this->__timer_44 >= 80
 						) {
-							AnmVM* vmA = this->__anm_id_array_458[i].get_vm_ptr();
+							AnmVM* vmA = this->__active_card_vms[i].get_vm_ptr();
 							vmA->data.__position_2 = position;
 							vmA->__find_child_vm_with_script(11)->data.color1 = COLOR(208, 128, 192, 128);
 							AnmVM* vmB = vmA->__find_child_vm_with_script(6);
@@ -36703,7 +37188,7 @@ public:
 	}
 
 	// 0x408A90
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* self) asm_symbol_rel(0x408A90) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* self) ASR(0x408A90) {
 		if (ABILITY_SHOP_PTR) {
 			return UpdateFuncNext;
 		}
@@ -36711,7 +37196,7 @@ public:
 	}
 
 	// 0x408AB0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* self) asm_symbol_rel(0x408AB0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* self) ASR(0x408AB0) {
 		((AbilityManager*)self)->card_list.for_each([](CardBase* card) static_lambda{
 			card->on_draw();
 		});
@@ -36733,7 +37218,7 @@ public:
 
 	// 0x4082B0
 	// EH frame (free text data)
-	dllexport gnu_noinline static AbilityManager* allocate() asm_symbol_rel(0x4082B0) {
+	dllexport gnu_noinline static AbilityManager* allocate() ASR(0x4082B0) {
 		AbilityManager* ability_manager = new AbilityManager();
 		ABILITY_MANAGER_PTR = ability_manager;
 		if (ZUN_FAILED(ability_manager->initialize())) {
@@ -36744,27 +37229,27 @@ public:
 	}
 
 	// 0x408C30
-	dllexport gnu_noinline void thiscall __sub_408C30() asm_symbol_rel(0x408C30) {
+	dllexport gnu_noinline void thiscall __sub_408C30() ASR(0x408C30) {
 		CardBase* card = this->selected_active_card;
 		if (!card) {
-			this->__anm_id_3C.__hide_tree();
+			this->__selected_card_vm.__hide_tree();
 		}
 		else {
 			const CardData* card_data = card->data;
 
-			this->__anm_id_3C.__show_tree();
+			this->__selected_card_vm.__show_tree();
 
-			if (AnmVM* vm = this->__anm_id_3C.__find_child_vm_with_script(4)) {
+			if (AnmVM* vm = this->__selected_card_vm.__find_child_vm_with_script(4)) {
 				vm->set_sprite(card_data->sprite_small);
 			}
-			if (AnmVM* vm = this->__anm_id_3C.__find_child_vm_with_script(3)) {
+			if (AnmVM* vm = this->__selected_card_vm.__find_child_vm_with_script(3)) {
 				vm->set_sprite(card_data->sprite_small);
 			}
 		}
 	}
 
 	// 0x408B00
-	dllexport gnu_noinline int thiscall __sub_408B00(int32_t card_id) asm_symbol_rel(0x408B00) {
+	dllexport gnu_noinline int thiscall __sub_408B00(int32_t card_id) ASR(0x408B00) {
 		ZUNList<CardBase>* list_node;
 		if (card_id == -1) {
 			CardBase* card = this->selected_active_card;
@@ -36842,7 +37327,7 @@ public:
 	}
 
 	// 0x412FE0
-	dllexport gnu_noinline static BOOL stdcall card_equipped(int32_t id) asm_symbol_rel(0x412FE0) {
+	dllexport gnu_noinline static BOOL stdcall card_equipped(int32_t id) ASR(0x412FE0) {
 		return card_equipped_inline(id);
 	}
 
@@ -36891,7 +37376,7 @@ public:
 	}
 
 	// 0x408BA0
-	dllexport gnu_noinline static int stdcall __equipped_cards_get_replay_states(int32_t* times_out) asm_symbol_rel(0x408BA0) {
+	dllexport gnu_noinline static int stdcall __equipped_cards_get_replay_states(int32_t* times_out) ASR(0x408BA0) {
 		return ABILITY_MANAGER_PTR->__equipped_cards_get_replay_states_impl(times_out);
 	}
 
@@ -36913,12 +37398,12 @@ ValidateFieldOffset32(0x2C, AbilityManager, active_card_count);
 ValidateFieldOffset32(0x30, AbilityManager, equipment_card_count);
 ValidateFieldOffset32(0x34, AbilityManager, passive_card_count);
 ValidateFieldOffset32(0x38, AbilityManager, selected_active_card);
-ValidateFieldOffset32(0x3C, AbilityManager, __anm_id_3C);
+ValidateFieldOffset32(0x3C, AbilityManager, __selected_card_vm);
 ValidateFieldOffset32(0x40, AbilityManager, __selected_card_hidden);
 ValidateFieldOffset32(0x44, AbilityManager, __timer_44);
-ValidateFieldOffset32(0x58, AbilityManager, __anm_id_array_58);
-ValidateFieldOffset32(0x458, AbilityManager, __anm_id_array_458);
-ValidateFieldOffset32(0x858, AbilityManager, __card_array_858);
+ValidateFieldOffset32(0x58, AbilityManager, __card_vms);
+ValidateFieldOffset32(0x458, AbilityManager, __active_card_vms);
+ValidateFieldOffset32(0x858, AbilityManager, __active_card_array);
 ValidateFieldOffset32(0xC58, AbilityManager, __float_C58);
 ValidateFieldOffset32(0xC5C, AbilityManager, __int_C5C);
 ValidateFieldOffset32(0xC60, AbilityManager, __ability_data_loaded);
@@ -36958,8 +37443,8 @@ dllexport gnu_noinline int AbilityTextData::__sub_4162B0(Float3* position, BOOL 
 		ability_text_data->__text_line_vms[0] = id;
 		ANM_MANAGER_PTR->draw_text_center(
 			id.get_vm_ptr(),
-			COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0),
-			10, 0,
+			COLOR3_WHITE, COLOR3_BLACK,
+			Font10, 0, // 10
 			JpEnStr("", "I have nothing!")
 		);
 		positionB = *position + Float3(0.0f, 370.0f, 0.0f);
@@ -37024,7 +37509,7 @@ struct AbilityTrophyManager : ZUNTask {
 	int32_t previous_primary_state; // 0x218
 	int32_t primary_state; // 0x21C
 	int32_t secondary_state; // 0x220
-	int __dword_224; // 0x224
+	BOOL __bool_224; // 0x224
 	Timer state_timer; // 0x228
 	AnmID __anm_id_23C; // 0x238
 	AnmID __anm_id_240; // 0x23C
@@ -37053,7 +37538,7 @@ struct AbilityTrophyManager : ZUNTask {
 	}
 
 	// 0x418D70
-	dllexport gnu_noinline void thiscall change_primary_state(int32_t new_state) asm_symbol_rel(0x418D70) {
+	dllexport gnu_noinline void thiscall change_primary_state(int32_t new_state) ASR(0x418D70) {
 		this->previous_primary_state = this->primary_state;
 		this->primary_state = new_state;
 		this->secondary_state = 0;
@@ -37061,7 +37546,7 @@ struct AbilityTrophyManager : ZUNTask {
 	}
 
 	// 0x419170
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x419170) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x419170) {
 		AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
 		if (
 			ability_manager && ability_manager->__ability_data_loaded
@@ -37076,7 +37561,7 @@ struct AbilityTrophyManager : ZUNTask {
 						if (
 							this->card_id_queue.length > 0 &&
 							(this->card_id_queue.queue[0] & 0xFF00) &&
-							!this->__dword_224 // does this ever get set
+							!this->__bool_224
 						) {
 							break;
 						}
@@ -37092,15 +37577,16 @@ struct AbilityTrophyManager : ZUNTask {
 						/*
 						ANM_MANAGER_PTR->draw_text_center(
 							this->__anm_id_240.get_vm_ptr(),
-							COLOR(0, 128, 192, 192), COLOR(0, 0, 0, 0),
-							9, 0,
+							COLOR3(128, 192, 192), COLOR3_BLACK,
+							Font9, 0, // 9
 							JpEnStr("", "[%s]"), // TODO
 						);
 						*/
 						ANM_MANAGER_PTR->draw_text_center(
 							this->__anm_id_244.get_vm_ptr(),
-							COLOR(0, 128, 192, 192), COLOR(0, 0, 0, 0),
-							9, 0, JpEnStr("", "got!")
+							COLOR3(128, 192, 192), COLOR3_BLACK,
+							Font9, 0, // 9
+							JpEnStr("", "got!")
 						);
 
 						SOUND_MANAGER.play_sound(82);
@@ -37127,12 +37613,12 @@ struct AbilityTrophyManager : ZUNTask {
 	}
 
 	// 0x419340
-	dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) asm_symbol_rel(0x419340) {
+	dllexport gnu_noinline static UpdateFuncRet fastcall on_tick(void* ptr) ASR(0x419340) {
 		return ((AbilityTrophyManager*)ptr)->on_tick();
 	}
 
 	// 0x419350
-	dllexport gnu_noinline static UpdateFuncRet fastcall on_draw(void* ptr) asm_symbol_rel(0x419350) {
+	dllexport gnu_noinline static UpdateFuncRet fastcall on_draw(void* ptr) ASR(0x419350) {
 		return UpdateFuncNext;
 	}
 
@@ -37177,7 +37663,7 @@ ValidateFieldOffset32(0x10, AbilityTrophyManager, card_id_queue);
 ValidateFieldOffset32(0x218, AbilityTrophyManager, previous_primary_state);
 ValidateFieldOffset32(0x21C, AbilityTrophyManager, primary_state);
 ValidateFieldOffset32(0x220, AbilityTrophyManager, secondary_state);
-ValidateFieldOffset32(0x224, AbilityTrophyManager, __dword_224);
+ValidateFieldOffset32(0x224, AbilityTrophyManager, __bool_224);
 ValidateFieldOffset32(0x228, AbilityTrophyManager, state_timer);
 ValidateFieldOffset32(0x23C, AbilityTrophyManager, __anm_id_23C);
 ValidateFieldOffset32(0x240, AbilityTrophyManager, __anm_id_240);
@@ -37186,7 +37672,7 @@ ValidateStructSize32(0x248, AbilityTrophyManager);
 #pragma endregion
 
 // 0x418DE0
-dllexport gnu_noinline AbilityTrophyManager* fastcall __unlock_card(int32_t card_id, BOOL arg2) asm_symbol_rel(0x418DE0);
+dllexport gnu_noinline AbilityTrophyManager* fastcall __unlock_card(int32_t card_id, BOOL arg2) ASR(0x418DE0);
 dllexport gnu_noinline AbilityTrophyManager* fastcall __unlock_card(int32_t card_id, BOOL arg2) {
 	ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
 	if (!scorefile_manager->primary_file.common.unlocked_cards[card_id]) {
@@ -37307,7 +37793,7 @@ dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
 						}
 					}
 					else {
-						memcpy(SOUND_MANAGER.thbgm_filename, "thbgm.dat", sizeof("thbgm.dat"));
+						memcpy_str(SOUND_MANAGER.thbgm_filename, "thbgm.dat");
 					}
 				}
 				UNKNOWN_THREAD_A.start(thread_func_load_front_anm, NULL);
@@ -37315,7 +37801,7 @@ dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
 					AbilityManager::allocate() &&
 					EffectManager::allocate()
 				) {
-					// TODO: Trophy text
+					TrophyData::initialize();
 					loading_thread->enable_tick_unsafe();
 					return 0;
 				}
@@ -37653,9 +38139,9 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
 		if (INPUT_P1.check_inputs(BUTTON_LEFT)) {
 			float angle = this->data.__shot_tilt_angle;
 			if (
-				angle > DEGREES(-135.0f)
+				angle > DEGREES(-135)
 			) {
-				this->data.__shot_tilt_angle += (DEGREES(-135.0f) - angle) * 0.08f;
+				this->data.__shot_tilt_angle += (DEGREES(-135) - angle) * 0.08f;
 			}
 		}
 		else if (INPUT_P1.check_inputs(BUTTON_RIGHT)) {
@@ -37848,13 +38334,13 @@ struct AbilityShop : ZUNTask {
 	}
 
 	// 0x416C80
-	dllexport gnu_noinline void thiscall change_primary_state(int32_t new_state) asm_symbol_rel(0x416C80) {
+	dllexport gnu_noinline void thiscall change_primary_state(int32_t new_state) ASR(0x416C80) {
 		this->primary_state = new_state;
 		this->state_timer.reset();
 	}
 
 	// 0x417880
-	dllexport gnu_noinline void thiscall cleanup() asm_symbol_rel(0x417880);
+	dllexport gnu_noinline void thiscall cleanup() ASR(0x417880);
 
 	inline void delete_vms() {
 		this->__anm_id_228.mark_tree_for_delete();
@@ -37865,23 +38351,23 @@ struct AbilityShop : ZUNTask {
 	}
 
 	// 0x417CC0
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x417CC0);
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x417CC0);
 
 	// 0x418990
-	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x418990);
+	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() ASR(0x418990);
 
 	// 0x418C20
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x418C20) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x418C20) {
 		return ((AbilityShop*)ptr)->on_tick();
 	}
 
 	// 0x418C30
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x418C30) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x418C30) {
 		return ((AbilityShop*)ptr)->on_draw();
 	}
 
 	// 0x4171B0
-	dllexport gnu_noinline ZUNResult thiscall initialize(Float3* position) asm_symbol_rel(0x4171B0) {
+	dllexport gnu_noinline ZUNResult thiscall initialize(Float3* position) ASR(0x4171B0) {
 		UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
 		UpdateFuncRegistry::register_on_tick(update_func, TickPriority::AbilityShop); // 12
 		this->on_tick_func = update_func;
@@ -37897,8 +38383,7 @@ struct AbilityShop : ZUNTask {
 
 		this->position = *position;
 
-		this->confirm_menu.set_selection(0);
-		this->confirm_menu.enable_wrap = true;
+		this->confirm_menu.initialize(MenuLength2, MenuChoice0, MenuWrapEnable);
 
 		int32_t& card_array_size = this->card_count;
 
@@ -37986,9 +38471,7 @@ struct AbilityShop : ZUNTask {
 		}
 
 		this->card_count = total_cards;
-		this->card_choice.menu_length = total_cards;
-		this->card_choice.set_selection(0);
-		this->card_choice.enable_wrap = false;
+		this->card_choice.initialize((MenuLength)total_cards, MenuChoice0, MenuWrapDisable);
 
 		if (!ABILITY_MANAGER_PTR->card_equipped<CardBlank>()) {
 			this->__has_blank_card_already = FALSE;
@@ -38046,7 +38529,7 @@ struct AbilityMenu : ZUNTask {
 	Timer __timer_2E0; // 0x2E0
 	unknown_fields(0xF0); // 0x2F4
 	int32_t __int_3E4; // 0x3E4
-	unknown_fields(0x4); // 0x3E8
+	AnmID __anm_id_3E8; // 0x3E8
 	AnmID __anm_id_array_3EC[256]; // 0x3EC
 	AnmID __anm_id_array_7EC[256]; // 0x7EC
 	AnmID __anm_id_array_BEC[256]; // 0xBEC
@@ -38089,27 +38572,29 @@ struct AbilityMenu : ZUNTask {
 	}
 
 	// 0x413AF0
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x413AF0) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x413AF0) {
 		// TODO
+		return UpdateFuncNext;
 	}
 
 	// 0x415E00
-	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x415E00) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() ASR(0x415E00) {
 		// TODO
+		return UpdateFuncNext;
 	}
 
 	// 0x416090
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x416090) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x416090) {
 		return ((AbilityMenu*)ptr)->on_tick();
 	}
 
 	// 0x4160A0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x4160A0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x4160A0) {
 		return ((AbilityMenu*)ptr)->on_draw();
 	}
 
 	// 0x413650
-	dllexport gnu_noinline ZUNResult thiscall initialize(Float3* arg1, int arg2) asm_symbol_rel(0x413650) {
+	dllexport gnu_noinline ZUNResult thiscall initialize(Float3* arg1, int arg2) ASR(0x413650) {
 		UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
 		UpdateFuncRegistry::register_on_tick(update_func, TickPriority::AbilityShop); // 7
 		this->on_tick_func = update_func;
@@ -38137,7 +38622,7 @@ struct AbilityMenu : ZUNTask {
 	}
 
 	// 0x413810
-	dllexport gnu_noinline static AbilityMenu* fastcall allocate(Float3* arg1, int arg2) asm_symbol_rel(0x413810) {
+	dllexport gnu_noinline static AbilityMenu* fastcall allocate(Float3* arg1, int arg2) ASR(0x413810) {
 		AbilityMenu* ability_menu = new AbilityMenu();
 		if (ZUN_FAILED(ability_menu->initialize(arg1, arg2))) {
 			delete ability_menu;
@@ -38158,6 +38643,7 @@ ValidateFieldOffset32(0x2A8, AbilityMenu, __float3_2A8);
 ValidateFieldOffset32(0x2CC, AbilityMenu, __timer_2CC);
 ValidateFieldOffset32(0x2E0, AbilityMenu, __timer_2E0);
 ValidateFieldOffset32(0x3E4, AbilityMenu, __int_3E4);
+ValidateFieldOffset32(0x3E8, AbilityMenu, __anm_id_3E8);
 ValidateFieldOffset32(0x3EC, AbilityMenu, __anm_id_array_3EC);
 ValidateFieldOffset32(0x7EC, AbilityMenu, __anm_id_array_7EC);
 ValidateFieldOffset32(0xBEC, AbilityMenu, __anm_id_array_BEC);
@@ -38202,45 +38688,6 @@ dllexport gnu_noinline void count_cards_of_type2(EnemyData* self) {
 		}
 	}
 	clang_forceinline *self->get_int_ptr_arg() = count;
-}
-
-dllexport gnu_noinline void stdcall log_vprintf(const char* format, va_list va) {
-	vprintf(format, va);
-}
-
-dllexport gnu_noinline void fastcall thcrap_print(EclContext* self_in, int, const EclInstruction* current_instruction) {
-	EclContext* self;
-	__asm__(
-		""
-		: "=D"(self)
-		: "0"(self_in)
-	);
-	
-	const EclValue* call_arg_formats = based_pointer<EclValue>(StringArg(0x4), IntArg(0));
-	size_t param_count = current_instruction->param_count;
-	//uint8_t* print_args = (uint8_t*)__builtin_alloca(sizeof(double[param_count - 1]));
-	//uint8_t* print_args_write = print_args;
-	double print_args_mem[bitsof(current_instruction->param_mask)];
-	uint8_t* print_args = (uint8_t*)print_args_mem;
-	for (size_t i = 1; i < param_count; ++i) {
-		const EclValue& call_arg = call_arg_formats[i - 1];
-		switch (call_arg.type) {
-			case 'f': case 'g':
-				*(double*)print_args = (long double)self->parse_float_as_arg_pop(i, call_arg.value.real, (EclInstruction*)current_instruction);
-				print_args += sizeof(double);
-				//*(double*)print_args_write = (long double)context->parse_float_as_arg_pop(i, call_arg.value.real, (EclInstruction*)current_instruction);
-				//print_args_write += sizeof(double);
-				break;
-			default:
-				*(int32_t*)print_args = self->parse_int_as_arg_pop(i, call_arg.value.integer, (EclInstruction*)current_instruction);
-				print_args += sizeof(int32_t);
-				//*(int32_t*)print_args_write = context->parse_int_as_arg_pop(i, call_arg.value.integer, (EclInstruction*)current_instruction);
-				//print_args_write += sizeof(int32_t);
-				break;
-		}
-	}
-	log_vprintf(StringArg(0x4), (va_list)print_args_mem);
-	//free(print_args);
 }
 #endif
 
@@ -38332,7 +38779,7 @@ struct EnemyManager : ZUNTask {
 	}
 
 	// 0x42AB40
-	dllexport gnu_noinline void thiscall destroy_all() asm_symbol_rel(0x42AB40) {
+	dllexport gnu_noinline void thiscall destroy_all() ASR(0x42AB40) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 		for (size_t i = 0; i < 10; ++i) {
 			anm_manager->mark_all_vms_from_loaded_slot_for_delete(i + 10);
@@ -38365,7 +38812,7 @@ struct EnemyManager : ZUNTask {
 	}
 
 	// 0x42D7D0
-	dllexport gnu_noinline Enemy* thiscall allocate_new_enemy(const char* sub_name, EnemyInitData* data, int32_t = UNUSED_DWORD) asm_symbol_rel(0x42D7D0) {
+	dllexport gnu_noinline Enemy* thiscall allocate_new_enemy(const char* sub_name, EnemyInitData* data, int32_t = UNUSED_DWORD) ASR(0x42D7D0) {
 		//ZDEBUG_PRINT("Creating enemy with sub %s\n", sub_name);
 		Enemy* enemy = new_no_eh<Enemy>(sub_name);
 		enemy->data.motion.absolute.position = data->position;
@@ -38430,14 +38877,14 @@ struct EnemyManager : ZUNTask {
 	}
 
 	// 0x42D440
-	dllexport gnu_noinline static int32_t count_killable_enemies() asm_symbol_rel(0x42D440) {
+	dllexport gnu_noinline static int32_t count_killable_enemies() ASR(0x42D440) {
 		return ENEMY_MANAGER_PTR->enemy_list.count_if_not([](Enemy* enemy) {
 			return !enemy->data.has_active_hitbox() || enemy->data.is_invulnerable();
 		});
 	}
 
 	// 0x42D490
-	dllexport gnu_noinline void thiscall set_boss(int32_t index, Enemy* enemy) asm_symbol_rel(0x42D490) {
+	dllexport gnu_noinline void thiscall set_boss(int32_t index, Enemy* enemy) ASR(0x42D490) {
 		EnemyManager* enemy_manager = ENEMY_MANAGER_PTR;
 		if (enemy) {
 			enemy_manager->boss_ids[index] = enemy->id;
@@ -38447,7 +38894,7 @@ struct EnemyManager : ZUNTask {
 	}
 
 	// 0x42D4D0
-	dllexport gnu_noinline void thiscall __set_hide_boss_hud(bool value) asm_symbol_rel(0x42D4D0) {
+	dllexport gnu_noinline void thiscall __set_hide_boss_hud(bool value) ASR(0x42D4D0) {
 		ENEMY_MANAGER_PTR->__hide_boss_hud = value;
 	}
 
@@ -38462,7 +38909,7 @@ struct EnemyManager : ZUNTask {
 	}
 
 	// 0x42D500
-	dllexport gnu_noinline Enemy* thiscall get_enemy_by_id(int32_t enemy_id) asm_symbol_rel(0x42D500) {
+	dllexport gnu_noinline Enemy* thiscall get_enemy_by_id(int32_t enemy_id) ASR(0x42D500) {
 		return ENEMY_MANAGER_PTR->get_enemy_by_id_impl(enemy_id);
 	}
 
@@ -38471,7 +38918,7 @@ struct EnemyManager : ZUNTask {
 	}
 
 	// 0x409990
-	dllexport gnu_noinline BOOL thiscall enemy_exists_with_id(int32_t enemy_id) asm_symbol_rel(0x409990) {
+	dllexport gnu_noinline BOOL thiscall enemy_exists_with_id(int32_t enemy_id) ASR(0x409990) {
 		if (enemy_id) {
 			return (bool)ENEMY_MANAGER_PTR->enemy_list.find_if([=](Enemy* enemy) {
 				return enemy->id == enemy_id;
@@ -38481,11 +38928,11 @@ struct EnemyManager : ZUNTask {
 	}
 
 	// 0x42D540
-	dllexport gnu_noinline void thiscall set_enemy_limit(int32_t limit) asm_symbol_rel(0x42D540) {
+	dllexport gnu_noinline void thiscall set_enemy_limit(int32_t limit) ASR(0x42D540) {
 		ENEMY_MANAGER_PTR->enemy_limit = limit;
 	}
 
-	inline AnmLoaded* anm_file_lookup(int32_t file_index) asm_symbol_rel(0x438D40);
+	inline AnmLoaded* anm_file_lookup(int32_t file_index) ASR(0x438D40);
 
 private:
 	inline EnemyID& __get_id_of_nearest_enemy_in_radius_homing(EnemyID& out, Float2* position, float radius) {
@@ -38592,7 +39039,7 @@ public:
 	}
 
 	// 0x42DC20
-	dllexport gnu_noinline static EnemyManager* fastcall allocate(const char* ecl_filename) asm_symbol_rel(0x42DC20) {
+	dllexport gnu_noinline static EnemyManager* fastcall allocate(const char* ecl_filename) ASR(0x42DC20) {
 		EnemyManager* enemy_manager = new EnemyManager();
 		enemy_manager->index_next_enemy_id();
 		ENEMY_MANAGER_PTR = enemy_manager;
@@ -39433,7 +39880,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC2(AnmVM* vm, v
 
 	uint32_t j = 0;
 	for (int32_t i = 0; i < countof(special_data->__color_array_200); ++i) {
-		special_data->__color_array_200[i] = COLOR(255, 80, 80, 80);
+		special_data->__color_array_200[i] = COLOR_GREY(255, 80);
 		if (i < 8u) {
 			RED(special_data->__color_array_200[i]) = ~(i << 5);
 		} else if (i >= 32u) {
@@ -39554,7 +40001,7 @@ struct StdObject {
 
 private:
 	// 0x41CA90
-	dllexport gnu_noinline BOOL vectorcall __test_culling(int, Float3* offset, float, float, float draw_distance_squared, StageCamera* camera) asm_symbol_rel(0x41CA90) {
+	dllexport gnu_noinline BOOL vectorcall __test_culling(int, Float3* offset, float, float, float draw_distance_squared, StageCamera* camera) ASR(0x41CA90) {
 		Float3 position = this->position;
 		Float3 position_diff = (position + *offset) - (camera->position + camera->__shaking_position);
 		if (
@@ -39764,7 +40211,7 @@ struct StdVM {
 	inline StdInstruction* get_current_instruction(int32_t offset);
 
 	// 0x41B7A0
-	dllexport gnu_noinline void thiscall initialize_sky_interp(int32_t end_time, int32_t mode, StageSky* final_sky) asm_symbol_rel(0x41B7A0) {
+	dllexport gnu_noinline void thiscall initialize_sky_interp(int32_t end_time, int32_t mode, StageSky* final_sky) ASR(0x41B7A0) {
 		this->sky_data_interp.end_time = end_time;
 		this->sky_data_interp.mode = mode;
 		this->sky_data_interp.initial_value = this->camera.sky;
@@ -39774,15 +40221,15 @@ struct StdVM {
 
 	// 0x41D260
 	// EH frame (???)
-	dllexport gnu_noinline ZUNResult thiscall run_std() asm_symbol_rel(0x41D260);
+	dllexport gnu_noinline ZUNResult thiscall run_std() ASR(0x41D260);
 
 	// 0x41E760
-	dllexport gnu_noinline void thiscall update_distortion() asm_symbol_rel(0x41E760) {
+	dllexport gnu_noinline void thiscall update_distortion() ASR(0x41E760) {
 		// TODO
 	}
 
 	// 0x41E350
-	dllexport gnu_noinline void thiscall __draw_vms(int32_t layer) asm_symbol_rel(0x41E350) {
+	dllexport gnu_noinline void thiscall __draw_vms(int32_t layer) ASR(0x41E350) {
 		AnmVM* slot_vm = this->slot_vms;
 		int32_t* slot_layer = this->slot_layers;
 		for (size_t i = 0; i != countof(this->slot_vms); ++i, ++slot_layer, ++slot_vm) {
@@ -39925,7 +40372,7 @@ struct Stage : ZUNTask {
 	}
 
 	// 0x41E2D0
-	dllexport gnu_noinline void thiscall std_interrupt(int32_t interrupt) asm_symbol_rel(0x41E2D0) {
+	dllexport gnu_noinline void thiscall std_interrupt(int32_t interrupt) ASR(0x41E2D0) {
 		using namespace Std;
 
 		Stage* stage = STAGE_PTR;
@@ -39944,7 +40391,7 @@ struct Stage : ZUNTask {
 	}
 
 	// 0x42D7B0
-	dllexport gnu_noinline void thiscall initialize_sky_interp(int32_t end_time, int32_t mode, StageSky* final_sky) asm_symbol_rel(0x42D7B0) {
+	dllexport gnu_noinline void thiscall initialize_sky_interp(int32_t end_time, int32_t mode, StageSky* final_sky) ASR(0x42D7B0) {
 		return this->std_vm.initialize_sky_interp(end_time, mode, final_sky);
 	}
 
@@ -39978,7 +40425,7 @@ struct Stage : ZUNTask {
 	}
 
 	// 0x41CEE0
-	dllexport gnu_noinline void thiscall __draw_vms(int32_t layer) asm_symbol_rel(0x41CEE0) {
+	dllexport gnu_noinline void thiscall __draw_vms(int32_t layer) ASR(0x41CEE0) {
 		
 		StdInstance* instance = this->instances;
 		this->std_vm.__draw_vms(layer);
@@ -40050,7 +40497,7 @@ struct Stage : ZUNTask {
 	}
 
 	// 0x41C0A0
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x41C0A0) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x41C0A0) {
 		if (
 			!this->waiting_for_delete &&
 			(!this->__wait_for_transition || this->__transition_timer < 60)
@@ -40095,7 +40542,7 @@ struct Stage : ZUNTask {
 	}
 
 	// 0x41C290
-	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x41C290) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() ASR(0x41C290) {
 		if (!this->waiting_for_delete) {
 			if (!this->__wait_for_transition || this->__transition_timer < 60) {
 				ANM_MANAGER_PTR->flush_sprites();
@@ -40112,7 +40559,7 @@ struct Stage : ZUNTask {
 
 				if (this->__wait_for_transition && this->__int_3490 < 34) {
 					D3DRECT rect = SUPERVISOR.cameras[StdCamera].get_viewport_d3d_rect();
-					SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, COLOR(255, 0, 0, 0), 1.0f, 0);
+					SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, COLOR_BLACK, 1.0f, 0);
 				} else {
 					D3DRECT rect = SUPERVISOR.cameras[StdCamera].get_viewport_d3d_rect();
 					SUPERVISOR.d3d_device->Clear(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, this->std_vm.camera.sky.color, 1.0f, 0);
@@ -40163,7 +40610,7 @@ struct Stage : ZUNTask {
 	}
 
 	// 0x41C700
-	dllexport gnu_noinline UpdateFuncRet thiscall on_draw_B() asm_symbol_rel(0x41C700) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_draw_B() ASR(0x41C700) {
 		if (!this->waiting_for_delete) {
 			if (!this->__wait_for_transition || this->__transition_timer < 60) {
 				ANM_MANAGER_PTR->flush_sprites();
@@ -40224,22 +40671,22 @@ struct Stage : ZUNTask {
 	}
 
 	// 0x41CA60
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x41CA60) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x41CA60) {
 		return ((Stage*)ptr)->on_tick();
 	}
 
 	// 0x41CA70
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x41CA70) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x41CA70) {
 		return ((Stage*)ptr)->on_draw();
 	}
 
 	// 0x41CA80
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_B(void* ptr) asm_symbol_rel(0x41CA80) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_B(void* ptr) ASR(0x41CA80) {
 		return ((Stage*)ptr)->on_draw_B();
 	}
 
 	// 0x41B850
-	dllexport gnu_noinline ZUNResult thiscall initialize(const char* std_filename) asm_symbol_rel(0x41B850) {
+	dllexport gnu_noinline ZUNResult thiscall initialize(const char* std_filename) ASR(0x41B850) {
 		STAGE_PTR = this;
 		this->stage_number = GAME_MANAGER.globals.current_stage;
 
@@ -40314,7 +40761,7 @@ corrupted_data:
 
 	// 0x41BF90
 	// EH frame (???)
-	dllexport gnu_noinline static Stage* fastcall allocate(const char* std_filename) asm_symbol_rel(0x41BF90) {
+	dllexport gnu_noinline static Stage* fastcall allocate(const char* std_filename) ASR(0x41BF90) {
 		Stage* stage = new Stage();
 		if (ZUN_FAILED(stage->initialize(std_filename))) {
 			delete stage;
@@ -40763,22 +41210,22 @@ struct Spellcard : ZUNTask {
 	}
 
 	// 0x409B10
-	dllexport gnu_noinline BOOL thiscall is_spell_active() asm_symbol_rel(0x409B10) {
+	dllexport gnu_noinline BOOL thiscall is_spell_active() ASR(0x409B10) {
 		return this->spell_active;
 	}
 
 	// 0x42D640
-	dllexport gnu_noinline BOOL thiscall get_capture_state() asm_symbol_rel(0x42D640) {
+	dllexport gnu_noinline BOOL thiscall get_capture_state() ASR(0x42D640) {
 		return this->capture_state;
 	}
 
 	// 0x42D650
-	dllexport gnu_noinline void thiscall __set_timeout_flag() asm_symbol_rel(0x42D650) {
+	dllexport gnu_noinline void thiscall __set_timeout_flag() ASR(0x42D650) {
 		SPELLCARD_PTR->__timeout_spell = true;
 	}
 
 	// 0x42D610
-	dllexport gnu_noinline void thiscall __set_flag_sp_H(int32_t state) asm_symbol_rel(0x42D610) {
+	dllexport gnu_noinline void thiscall __set_flag_sp_H(int32_t state) ASR(0x42D610) {
 		SPELLCARD_PTR->__unknown_flag_sp_H = state;
 	}
 
@@ -40797,7 +41244,7 @@ struct Spellcard : ZUNTask {
 	inline void __update_realtime();
 
 	// 0x429BE0
-	dllexport gnu_noinline BOOL thiscall __sub_429BE0() asm_symbol_rel(0x429BE0) {
+	dllexport gnu_noinline BOOL thiscall __sub_429BE0() ASR(0x429BE0) {
 		int32_t A = this->__int_A8;
 		int32_t B = A % 100;
 		int32_t C = (A % 1000 + 936) % 1000;
@@ -40807,7 +41254,7 @@ struct Spellcard : ZUNTask {
 	}
 
 	// 0x42D670
-	dllexport gnu_noinline void thiscall __sub_42D670() asm_symbol_rel(0x42D670) {
+	dllexport gnu_noinline void thiscall __sub_42D670() ASR(0x42D670) {
 		Spellcard* spellcard = SPELLCARD_PTR;
 		spellcard->__unknown_flag_sp_C = true;
 		spellcard->__spell_ring_effect.mark_tree_for_delete();
@@ -40826,12 +41273,12 @@ struct Spellcard : ZUNTask {
 	}
 
 	// 0x409AD0
-	dllexport gnu_noinline static void __spellcard_fail() asm_symbol_rel(0x409AD0) {
+	dllexport gnu_noinline static void __spellcard_fail() ASR(0x409AD0) {
 		SPELLCARD_PTR->__inline_spellcard_fail();
 	}
 
 	// 0x42A320
-	dllexport gnu_noinline void thiscall start_spell(int32_t id, const char* name, int32_t time, int32_t character) asm_symbol_rel(0x42A320) {
+	dllexport gnu_noinline void thiscall start_spell(int32_t id, const char* name, int32_t time, int32_t character) ASR(0x42A320) {
 		__asm FINIT
 
 		this->__timer_20.reset();
@@ -40858,8 +41305,8 @@ struct Spellcard : ZUNTask {
 		
 		ANM_MANAGER_PTR->draw_text_right(
 			vm,
-			COLOR(0, 255, 255, 255), COLOR(0, 0, 0, 0),
-			0, 0,
+			COLOR3_WHITE, COLOR3_BLACK,
+			Font0, 0, // 0
 			name
 		);
 
@@ -40971,7 +41418,7 @@ public:
 	}
 
 	// 0x429EB0
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x429EB0) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x429EB0) {
 		if (this->spell_active) {
 			++this->__int_8C;
 			if (
@@ -41086,12 +41533,12 @@ public:
 	}
 
 	// 0x42A160
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x42A160) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x42A160) {
 		return ((Spellcard*)ptr)->on_tick();
 	}
 
 	// 0x42A170
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x42A170) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x42A170) {
 		return ((Spellcard*)ptr)->on_draw();
 	}
 
@@ -41234,7 +41681,7 @@ dllexport gnu_noinline BOOL BombBase::bomb_allowed() {
 }
 
 // 0x458A30
-dllexport gnu_noinline void __pause_menu_game_over_screen() asm_symbol_rel(0x458A30);
+dllexport gnu_noinline void __pause_menu_game_over_screen() ASR(0x458A30);
 
 // 0x45BE90
 dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
@@ -41695,7 +42142,7 @@ struct Item {
 	}
 
 	// 0x4472B0
-	dllexport gnu_noinline int thiscall __create_spawn_effects() asm_symbol_rel(0x4472B0) {
+	dllexport gnu_noinline int thiscall __create_spawn_effects() ASR(0x4472B0) {
 		switch (this->id) {
 			case PowerItem: // 1
 			case PointItem: // 2
@@ -41731,7 +42178,7 @@ struct Item {
 	}
 
 	// 0x446B00
-	dllexport gnu_noinline void thiscall collect_point() asm_symbol_rel(0x446B00) {
+	dllexport gnu_noinline void thiscall collect_point() ASR(0x446B00) {
 		Player* player = PLAYER_PTR;
 		float player_y = player->data.position.y;
 		int32_t point_item_value = GAME_MANAGER.globals.update_point_item_value();
@@ -41759,7 +42206,7 @@ struct Item {
 				point_item_value = 10;
 			}
 
-			popup_color = COLOR(255, 255, 255, 255);
+			popup_color = COLOR_WHITE;
 		}
 		else {
 			int32_t value_div_100 = point_item_value / 100;
@@ -41784,7 +42231,7 @@ struct Item {
 	}
 
 	// 0x446870
-	dllexport gnu_noinline void thiscall collect_power() asm_symbol_rel(0x446870) {
+	dllexport gnu_noinline void thiscall collect_power() ASR(0x446870) {
 		int32_t point_item_value = GAME_MANAGER.globals.update_point_item_value();
 		Player* player = PLAYER_PTR;
 		float player_y = player->data.position.y;
@@ -41811,7 +42258,7 @@ struct Item {
 				if (point_item_value <= 0) {
 					point_item_value = 10;
 				}
-				popup_color = COLOR(255, 255, 255, 255);
+				popup_color = COLOR_WHITE;
 			}
 			else {
 				int32_t value_div_100 = point_item_value / 100;
@@ -41829,7 +42276,7 @@ struct Item {
 				popup_color = COLOR(255, 255, 255, 0);
 			}
 			POPUP_MANAGER_PTR->create_popup(&this->position, point_item_value, popup_color);
-			POPUP_MANAGER_PTR->create_popup(&this->position, point_item_value, COLOR(255, 255, 255, 255));
+			POPUP_MANAGER_PTR->create_popup(&this->position, point_item_value, COLOR_WHITE);
 		}
 		else {
 			point_item_value = 100;
@@ -42017,9 +42464,9 @@ struct ItemManager : ZUNTask {
 		int32_t spawn_delay,
 		UNUSED_ARG(int32_t _dword_C8C_val),
 		UNUSED_ARG(int32_t _sound_id)
-	) asm_symbol_rel(0x446F40)
+	) ASR(0x446F40)
 	{
-		constexpr D3DCOLOR tint = COLOR(255, 255, 255, 255);
+		constexpr D3DCOLOR tint = COLOR_WHITE;
 		constexpr int dword_C8C_val = 0;
 		constexpr int32_t sound_id = -1;
 
@@ -42130,7 +42577,7 @@ struct ItemManager : ZUNTask {
 	}
 
 	// 0x445A80
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x445A80) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x445A80) {
 		
 		Player* player = PLAYER_PTR;
 		
@@ -42184,7 +42631,7 @@ struct ItemManager : ZUNTask {
 								player = PLAYER_PTR;
 							}
 							else {
-								item->__vm_id_C28.set_color1(COLOR(255, 255, 255, 255));
+								item->__vm_id_C28.set_color1(COLOR_WHITE);
 								GREEN(item->__vm_10.data.color1) = 255;
 								RED(item->__vm_10.data.color1) = 255;
 							}
@@ -42362,7 +42809,7 @@ struct ItemManager : ZUNTask {
 	}
 
 	// 0x446D60
-	dllexport gnu_noinline UpdateFuncRet thiscall on_draw(BOOL do_literally_anything) asm_symbol_rel(0x446D60) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_draw(BOOL do_literally_anything) ASR(0x446D60) {
 		Item* item = this->items;
 		for (size_t i = 0; i < TOTAL_ITEM_COUNT; ++i, ++item) {
 			if (
@@ -42397,7 +42844,7 @@ struct ItemManager : ZUNTask {
 	}
 
 	// 0x446EC0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x446EC0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x446EC0) {
 		GameThread* game_thread = GAME_THREAD_PTR;
 		if (
 			(
@@ -42415,7 +42862,7 @@ struct ItemManager : ZUNTask {
 	}
 
 	// 0x446F00
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_A(void* ptr) asm_symbol_rel(0x446F00) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_A(void* ptr) ASR(0x446F00) {
 		GameThread* game_thread = GAME_THREAD_PTR;
 		if (
 			(game_thread && game_thread->skip_flag)
@@ -42426,7 +42873,7 @@ struct ItemManager : ZUNTask {
 	}
 
 	// 0x446F20
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_B(void* ptr) asm_symbol_rel(0x446F20) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw_B(void* ptr) ASR(0x446F20) {
 		GameThread* game_thread = GAME_THREAD_PTR;
 		if (
 			(game_thread && game_thread->skip_flag)
@@ -42454,7 +42901,7 @@ struct ItemManager : ZUNTask {
 
 	// 0x445820
 	// EH frame (free)
-	dllexport gnu_noinline static ItemManager* allocate() asm_symbol_rel(0x445820) {
+	dllexport gnu_noinline static ItemManager* allocate() ASR(0x445820) {
 		ItemManager* item_manager = new ItemManager();
 		ITEM_MANAGER_PTR = item_manager;
 		if (ZUN_FAILED(item_manager->initialize())) {
@@ -43380,10 +43827,10 @@ struct Bullet {
 	}
 
 	// 0x424AD0
-	dllexport gnu_noinline void cleanup() asm_symbol_rel(0x424AD0);
+	dllexport gnu_noinline void cleanup() ASR(0x424AD0);
 
 	// 0x428E90
-	dllexport gnu_noinline int32_t thiscall cancel(CancelType cancel_type) asm_symbol_rel(0x428E90);
+	dllexport gnu_noinline int32_t thiscall cancel(CancelType cancel_type) ASR(0x428E90);
 
 	inline AnmSprite* get_sprite() {
 		return this->vm.get_sprite();
@@ -43418,10 +43865,10 @@ struct Bullet {
 	}
 
 	// 0x4248A0
-	dllexport gnu_noinline CollisionResult thiscall __check_collision(CollisionTestType test_type) asm_symbol_rel(0x4248A0);
+	dllexport gnu_noinline CollisionResult thiscall __check_collision(CollisionTestType test_type) ASR(0x4248A0);
 
 	// 0x425C60
-	dllexport void run_effects() asm_symbol_rel(0x425C60);
+	dllexport void run_effects() ASR(0x425C60);
 
 	inline int thiscall run_effect_speedup() {
 		if (this->effect_speedup.timer <= 16) {
@@ -43440,7 +43887,7 @@ struct Bullet {
 	}
 
 	// 0x427930
-	dllexport gnu_noinline int thiscall run_effect_accel() asm_symbol_rel(0x427930) {
+	dllexport gnu_noinline int thiscall run_effect_accel() ASR(0x427930) {
 		if (this->effect_accel.timer >= this->effect_accel.duration) {
 			this->disable_effects(EX_ACCEL);
 			return 1;
@@ -43464,7 +43911,7 @@ struct Bullet {
 	// are these literally the same or am I blind
 
 	// 0x427B60
-	dllexport gnu_noinline int thiscall run_effect_veltime() asm_symbol_rel(0x427B60) {
+	dllexport gnu_noinline int thiscall run_effect_veltime() ASR(0x427B60) {
 		if (this->effect_veltime.timer >= this->effect_veltime.duration) {
 			this->disable_effects(EX_VELTIME);
 			return 1;
@@ -43501,7 +43948,7 @@ struct Bullet {
 	}
 
 	// 0x427D50
-	dllexport gnu_noinline int thiscall run_effect_angle() asm_symbol_rel(0x427D50) {
+	dllexport gnu_noinline int thiscall run_effect_angle() ASR(0x427D50) {
 		float speed;
 		
 		int32_t end_time = this->effect_angle.duration;
@@ -43542,10 +43989,10 @@ struct Bullet {
 	}
 
 	// 0x427F40
-	dllexport gnu_noinline int thiscall run_effect_bounce() asm_symbol_rel(0x427F40);
+	dllexport gnu_noinline int thiscall run_effect_bounce() ASR(0x427F40);
 
 	// 0x428460
-	dllexport gnu_noinline int thiscall run_effect_homing() asm_symbol_rel(0x428460) {
+	dllexport gnu_noinline int thiscall run_effect_homing() ASR(0x428460) {
 		if (this->effect_homing.timer >= this->effect_homing.duration) {
 			this->disable_effects(EX_HOMING);
 			return 1;
@@ -43573,7 +44020,7 @@ struct Bullet {
 	}
 
 	// 0x428710
-	dllexport gnu_noinline int thiscall run_effect_move() asm_symbol_rel(0x428710) {
+	dllexport gnu_noinline int thiscall run_effect_move() ASR(0x428710) {
 		int32_t effect_time = this->effect_move.timer;
 		if (effect_time >= this->effect_move.duration) {
 			this->disable_effects(EX_MOVE);
@@ -43614,7 +44061,7 @@ struct Bullet {
 	}
 
 	// 0x428970
-	dllexport gnu_noinline int thiscall run_effect_offscreen() asm_symbol_rel(0x428970) {
+	dllexport gnu_noinline int thiscall run_effect_offscreen() ASR(0x428970) {
 		this->effect_offscreen.timer--;
 
 		if (
@@ -43770,7 +44217,7 @@ struct Bullet {
 	}
 
 	// 0x423E10
-	dllexport gnu_noinline ZUNResult thiscall on_tick() asm_symbol_rel(0x423E10) {
+	dllexport gnu_noinline ZUNResult thiscall on_tick() ASR(0x423E10) {
 		this->__timer_F80++;
 
 		if (!this->__unknown_flag_bu_D) {
@@ -44043,7 +44490,7 @@ struct LaserData {
 
 private:
 	// 0x42D6A0
-	dllexport gnu_noinline void vectorcall set_angle(float, float angle) asm_symbol_rel(0x42D6A0) {
+	dllexport gnu_noinline void vectorcall set_angle(float, float angle) ASR(0x42D6A0) {
 		this->angle = angle;
 	}
 public:
@@ -44053,7 +44500,7 @@ public:
 
 private:
 	// 0x42D6B0
-	dllexport gnu_noinline void vectorcall set_width(float, float width) asm_symbol_rel(0x42D6B0) {
+	dllexport gnu_noinline void vectorcall set_width(float, float width) ASR(0x42D6B0) {
 		this->width = width;
 	}
 public:
@@ -44063,7 +44510,7 @@ public:
 
 private:
 	// 0x42D6C0
-	dllexport gnu_noinline void vectorcall set_speed(float, float speed) asm_symbol_rel(0x42D6C0) {
+	dllexport gnu_noinline void vectorcall set_speed(float, float speed) ASR(0x42D6C0) {
 		this->speed = speed;
 	}
 public:
@@ -44072,12 +44519,12 @@ public:
 	}
 
 	// 0x42D6D0
-	dllexport gnu_noinline void thiscall set_id(int32_t id = 0) asm_symbol_rel(0x42D6D0) {
+	dllexport gnu_noinline void thiscall set_id(int32_t id = 0) ASR(0x42D6D0) {
 		this->id = 0;
 	}
 
 	// 0x42D700
-	dllexport gnu_noinline void thiscall set_position(Float3* position) asm_symbol_rel(0x42D700) {
+	dllexport gnu_noinline void thiscall set_position(Float3* position) ASR(0x42D700) {
 		// why zun, don't do this
 		*(Float3*)&this->derived_class[0] = this->position = *position;
 	}
@@ -44087,7 +44534,7 @@ public:
 	// Infinite:    velocity
 	// Curve:       angle, width, __speed1
 	// Beam:        velocity
-	dllexport gnu_noinline void thiscall set_velocity(Float3* set_velocity) asm_symbol_rel(0x42D730) {
+	dllexport gnu_noinline void thiscall set_velocity(Float3* set_velocity) ASR(0x42D730) {
 		*(Float3*)&this->derived_class[0xC] = *set_velocity;
 	}
 
@@ -44109,82 +44556,82 @@ public:
 
 	// 0x447FC0
 	// Method 0x0
-	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* arg2) asm_symbol_rel(0x447FC0) {}
+	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* arg2) ASR(0x447FC0) {}
 	// 0x447FD0
 	// Method 0x4
-	dllexport virtual gnu_noinline void thiscall run_effects() asm_symbol_rel(0x447FD0) {}
+	dllexport virtual gnu_noinline void thiscall run_effects() ASR(0x447FD0) {}
 	// 0x447FE0
 	// Method 0x8
-	dllexport virtual gnu_noinline void thiscall __set_unknown_flag_lb_A(int) asm_symbol_rel(0x447FE0) {}
+	dllexport virtual gnu_noinline void thiscall __set_unknown_flag_lb_A(int) ASR(0x447FE0) {}
 	// 0x447FF0
 	// Method 0xC
-	dllexport virtual gnu_noinline int thiscall initialize(void*) asm_symbol_rel(0x447FF0) {
+	dllexport virtual gnu_noinline int thiscall initialize(void*) ASR(0x447FF0) {
 		return 0;
 	}
 	// 0x448000
 	// Method 0x10
-	dllexport virtual gnu_noinline int thiscall on_tick() asm_symbol_rel(0x448000) {
+	dllexport virtual gnu_noinline int thiscall on_tick() ASR(0x448000) {
 		return 0;
 	}
 	// 0x448010
 	// Method 0x14
-	dllexport virtual gnu_noinline int thiscall on_draw() asm_symbol_rel(0x448010) {
+	dllexport virtual gnu_noinline int thiscall on_draw() ASR(0x448010) {
 		return 0;
 	}
 	// 0x448020
 	// Method 0x18
-	dllexport virtual gnu_noinline int thiscall cleanup() asm_symbol_rel(0x448020) {
+	dllexport virtual gnu_noinline int thiscall cleanup() ASR(0x448020) {
 		this->embedded_node.unlink();
 		return 0;
 	}
 	// 0x448040
 	// Method 0x1C
-	dllexport virtual gnu_noinline int thiscall __cancel_unknown(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5, int) asm_symbol_rel(0x448040) {
+	dllexport virtual gnu_noinline int thiscall __cancel_unknown(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5, int) ASR(0x448040) {
 		return 0;
 	}
 	// 0x448050
 	// Method 0x20
-	dllexport virtual gnu_noinline int thiscall cancel_in_rectangle(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5) asm_symbol_rel(0x448050) {
+	dllexport virtual gnu_noinline int thiscall cancel_in_rectangle(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5) ASR(0x448050) {
 		return 0;
 	}
 	// 0x448060
 	// Method 0x24
-	dllexport virtual gnu_noinline int thiscall cancel_in_radius(Float3* position, float radius, CancelType cancel_type, int32_t arg4) asm_symbol_rel(0x448060) {
+	dllexport virtual gnu_noinline int thiscall cancel_in_radius(Float3* position, float radius, CancelType cancel_type, int32_t arg4) ASR(0x448060) {
 		return 0;
 	}
 	// 0x448070
 	// Method 0x28
-	dllexport virtual gnu_noinline int thiscall cancel(CancelType cancel_type, int32_t arg2) asm_symbol_rel(0x448070) {
+	dllexport virtual gnu_noinline int thiscall cancel(CancelType cancel_type, int32_t arg2) ASR(0x448070) {
 		return 0;
 	}
 	// 0x448080
 	// Method 0x2C
-	dllexport virtual gnu_noinline int thiscall __method_2C(int, int, int, int) asm_symbol_rel(0x448080) {
+	dllexport virtual gnu_noinline int thiscall __method_2C(int, int, int, int) ASR(0x448080) {
 		return 0;
 	}
 	// 0x448090
 	// Method 0x30
-	dllexport virtual gnu_noinline int thiscall __method_30(Float2* arg1, float arg2) asm_symbol_rel(0x448090) {
+	dllexport virtual gnu_noinline int thiscall __method_30(Float2* arg1, float arg2) ASR(0x448090) {
 		return 0;
 	}
 	// 0x4480A0
 	// Method 0x34
-	dllexport virtual gnu_noinline int thiscall check_collision(CollisionTestType test_type) asm_symbol_rel(0x4480A0) {
+	dllexport virtual gnu_noinline int thiscall check_collision(CollisionTestType test_type) ASR(0x4480A0) {
 		return 0;
 	}
 	// 0x4480B0
 	// Method 0x38
-	dllexport virtual gnu_noinline int thiscall run_effect_speedup() asm_symbol_rel(0x4480B0) {
+	dllexport virtual gnu_noinline int thiscall run_effect_speedup() ASR(0x4480B0) {
 		return 0;
 	}
 	// 0x4480C0
 	// Method 0x3C
-	dllexport virtual gnu_noinline int thiscall run_effect_accel() asm_symbol_rel(0x4480C0) {
+	dllexport virtual gnu_noinline int thiscall run_effect_accel() ASR(0x4480C0) {
 		return 0;
 	}
 	// 0x4480D0
 	// Method 0x40
-	dllexport virtual gnu_noinline int thiscall run_effect_angle_accel() asm_symbol_rel(0x4480D0) {
+	dllexport virtual gnu_noinline int thiscall run_effect_angle_accel() ASR(0x4480D0) {
 		return 0;
 	}
 	inline int run_effect_angle() {
@@ -44201,42 +44648,42 @@ public:
 	}
 	// 0x4480E0
 	// Method 0x44
-	dllexport virtual gnu_noinline int thiscall __run_effect_angle_type_0() asm_symbol_rel(0x4480E0) {
+	dllexport virtual gnu_noinline int thiscall __run_effect_angle_type_0() ASR(0x4480E0) {
 		return 0;
 	}
 	// 0x4480F0
 	// Method 0x48
-	dllexport virtual gnu_noinline int thiscall __run_effect_angle_type_4() asm_symbol_rel(0x4480F0) {
+	dllexport virtual gnu_noinline int thiscall __run_effect_angle_type_4() ASR(0x4480F0) {
 		return 0;
 	}
 	// 0x448100
 	// Method 0x4C
-	dllexport virtual gnu_noinline int thiscall __run_effect_angle_type_1() asm_symbol_rel(0x448100) {
+	dllexport virtual gnu_noinline int thiscall __run_effect_angle_type_1() ASR(0x448100) {
 		return 0;
 	}
 	// 0x448110
 	// Method 0x50
-	dllexport virtual gnu_noinline int thiscall run_effect_bounce() asm_symbol_rel(0x448110) {
+	dllexport virtual gnu_noinline int thiscall run_effect_bounce() ASR(0x448110) {
 		return 0;
 	}
 	// 0x448120
 	// Method 0x54
-	dllexport virtual gnu_noinline int thiscall run_effect_wrap() asm_symbol_rel(0x448120) {
+	dllexport virtual gnu_noinline int thiscall run_effect_wrap() ASR(0x448120) {
 		return 0;
 	}
 	// 0x448130
 	// Method 0x58
-	dllexport virtual gnu_noinline int thiscall __method_58() asm_symbol_rel(0x448130) {
+	dllexport virtual gnu_noinline int thiscall __method_58() ASR(0x448130) {
 		return 0;
 	}
 	// 0x448140
 	// Method 0x5C
-	dllexport virtual gnu_noinline int thiscall __method_5C() asm_symbol_rel(0x448140) {
+	dllexport virtual gnu_noinline int thiscall __method_5C() ASR(0x448140) {
 		return 0;
 	}
 	// 0x448150
 	// Method 0x60
-	dllexport virtual gnu_noinline int thiscall run_effect_offscreen() asm_symbol_rel(0x448150) {
+	dllexport virtual gnu_noinline int thiscall run_effect_offscreen() ASR(0x448150) {
 		return 0;
 	}
 
@@ -44251,13 +44698,12 @@ public:
 
 	// 0x448160
 	// Method 0x64
-	dllexport virtual gnu_noinline LaserData* thiscall duplicate() asm_symbol_rel(0x448160) {
+	dllexport virtual gnu_noinline LaserData* thiscall duplicate() ASR(0x448160) {
 		return NULL;
 	}
 	// 0x4481E0
 	// Method 0x68
-	virtual ~LaserData() NO_EH_TERMINATE {
-	}
+	virtual ~LaserData() NO_EH_TERMINATE {}
 
 #pragma endregion // LaserData method stubs
 
@@ -44338,8 +44784,7 @@ struct LaserLineParams {
 		this->zero_contents();
 	}
 
-	inline LaserLineParams(int) {
-	}
+	inline LaserLineParams(int) {}
 };
 
 // these probably should be static members but
@@ -44356,8 +44801,7 @@ struct LaserLine : LaserData {
 	// 0x1E0C
 
 	// 0x4482C0
-	dllexport gnu_noinline LaserLine() {
-	}
+	dllexport gnu_noinline LaserLine() {}
 
 	inline bool is_offscreen() {
 		Float2 tip_offset;
@@ -44390,22 +44834,22 @@ struct LaserLine : LaserData {
 
 	// 0x448220
 	// Method 0x0
-	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* out) override asm_symbol_rel(0x448220) {
+	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* out) override ASR(0x448220) {
 		out->make_from_vector(this->angle, magnitude);
 		*out += this->position;
 	}
 
 	// 0x4494F0
 	// Method 0x4
-	dllexport virtual gnu_noinline void thiscall run_effects() override asm_symbol_rel(0x4494F0);
+	dllexport virtual gnu_noinline void thiscall run_effects() override ASR(0x4494F0);
 
 	// 0x4490D0
 	// Method 0xC
-	dllexport virtual gnu_noinline int thiscall initialize(void* data) override asm_symbol_rel(0x4490D0);
+	dllexport virtual gnu_noinline int thiscall initialize(void* data) override ASR(0x4490D0);
 
 	// 0x44A4F0
 	// Method 0x10
-	dllexport virtual gnu_noinline int thiscall on_tick() override asm_symbol_rel(0x44A4F0) {
+	dllexport virtual gnu_noinline int thiscall on_tick() override ASR(0x44A4F0) {
 	rerun_effects:
 		this->run_effects();
 		if (this->active_effects) {
@@ -44510,7 +44954,7 @@ struct LaserLine : LaserData {
 
 	// 0x44AB60
 	// Method 0x14
-	dllexport virtual gnu_noinline int thiscall on_draw() override asm_symbol_rel(0x44AB60) {
+	dllexport virtual gnu_noinline int thiscall on_draw() override ASR(0x44AB60) {
 		this->main_vm.data.position = this->position;
 		this->main_vm.set_z_rotation(reduce_angle_add(this->angle, HALF_PI_f));
 		ANM_MANAGER_PTR->draw_vm(&this->main_vm);
@@ -44526,13 +44970,13 @@ struct LaserLine : LaserData {
 
 	// 0x44AC90
 	// Method 0x18
-	dllexport virtual gnu_noinline int thiscall cleanup() override asm_symbol_rel(0x44AC90) {
+	dllexport virtual gnu_noinline int thiscall cleanup() override ASR(0x44AC90) {
 		return 0;
 	}
 
 	// 0x44B5B0
 	// Method 0x1C
-	dllexport virtual gnu_noinline int thiscall __cancel_unknown(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5, int) override asm_symbol_rel(0x44B5B0) {
+	dllexport virtual gnu_noinline int thiscall __cancel_unknown(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5, int) override ASR(0x44B5B0) {
 		if (arg5 && this->invulnerable_time) {
 			return 0;
 		}
@@ -44543,7 +44987,7 @@ struct LaserLine : LaserData {
 
 	// 0x44ACA0
 	// Method 0x20
-	dllexport virtual gnu_noinline int thiscall cancel_in_rectangle(Float3* cancel_position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5) override asm_symbol_rel(0x44ACA0) {
+	dllexport virtual gnu_noinline int thiscall cancel_in_rectangle(Float3* cancel_position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5) override ASR(0x44ACA0) {
 		if (arg5 && this->invulnerable_time) {
 			return 0;
 		}
@@ -44584,7 +45028,7 @@ struct LaserLine : LaserData {
 
 	// 0x44BD00
 	// Method 0x24
-	dllexport virtual gnu_noinline int thiscall cancel_in_radius(Float3* cancel_position, float radius, CancelType cancel_type, int32_t arg4) override asm_symbol_rel(0x44BD00) {
+	dllexport virtual gnu_noinline int thiscall cancel_in_radius(Float3* cancel_position, float radius, CancelType cancel_type, int32_t arg4) override ASR(0x44BD00) {
 		if (arg4 && this->invulnerable_time) {
 			return 0;
 		}
@@ -44748,7 +45192,7 @@ struct LaserLine : LaserData {
 
 	// 0x44C420
 	// Method 0x28
-	dllexport virtual gnu_noinline int thiscall cancel(CancelType cancel_type, int32_t arg2) override asm_symbol_rel(0x44C420) {
+	dllexport virtual gnu_noinline int thiscall cancel(CancelType cancel_type, int32_t arg2) override ASR(0x44C420) {
 		if (arg2 && this->invulnerable_time) {
 			return 0;
 		}
@@ -44797,13 +45241,13 @@ struct LaserLine : LaserData {
 
 	// 0x448210
 	// Method 0x2C
-	dllexport virtual gnu_noinline int thiscall __method_2C(int, int, int, int) override asm_symbol_rel(0x448210) {
+	dllexport virtual gnu_noinline int thiscall __method_2C(int, int, int, int) override ASR(0x448210) {
 		return 0;
 	}
 
 	// 0x44C790
 	// Method 0x30
-	dllexport virtual gnu_noinline int thiscall __method_30(Float2* arg1, float arg2) override asm_symbol_rel(0x44C790) {
+	dllexport virtual gnu_noinline int thiscall __method_30(Float2* arg1, float arg2) override ASR(0x44C790) {
 		float x_diff = arg1->x - this->position.x;
 		float y_diff = arg1->y - this->position.y;
 		float angle = -this->angle;
@@ -44824,7 +45268,7 @@ struct LaserLine : LaserData {
 
 	// 0x44A950
 	// Method 0x34
-	dllexport virtual gnu_noinline int thiscall check_collision(CollisionTestType test_type) override asm_symbol_rel(0x44A950) {
+	dllexport virtual gnu_noinline int thiscall check_collision(CollisionTestType test_type) override ASR(0x44A950) {
 		float length = this->length;
 		if (length > LINE_LASER_UNIT_LENGTH) {
 			float width = this->width;
@@ -44873,7 +45317,7 @@ struct LaserLine : LaserData {
 
 	// 0x44A370
 	// Method 0x3C
-	dllexport virtual gnu_noinline int thiscall run_effect_accel() override asm_symbol_rel(0x44A370) {
+	dllexport virtual gnu_noinline int thiscall run_effect_accel() override ASR(0x44A370) {
 		if (this->effect_accel.timer >= this->effect_accel.duration) {
 			this->disable_effects(EX_ACCEL);
 			return 1;
@@ -44896,7 +45340,7 @@ struct LaserLine : LaserData {
 
 	// 0x44A1F0
 	// Method 0x44
-	dllexport virtual gnu_noinline int thiscall __run_effect_angle_type_0() override asm_symbol_rel(0x44A1F0) {
+	dllexport virtual gnu_noinline int thiscall __run_effect_angle_type_0() override ASR(0x44A1F0) {
 		float speed;
 		float angle;
 		
@@ -44931,11 +45375,11 @@ struct LaserLine : LaserData {
 
 	// 0x449E00
 	// Method 0x50
-	dllexport virtual gnu_noinline int thiscall run_effect_bounce() override asm_symbol_rel(0x449E00);
+	dllexport virtual gnu_noinline int thiscall run_effect_bounce() override ASR(0x449E00);
 
 	// 0x448280
 	// Method 0x64
-	dllexport virtual gnu_noinline LaserData* thiscall duplicate() override asm_symbol_rel(0x448280) {
+	dllexport virtual gnu_noinline LaserData* thiscall duplicate() override ASR(0x448280) {
 		LaserLine* new_laser = new_no_eh<LaserLine>();
 		memcpy((void*)new_laser, this, sizeof(LaserLine));
 		return new_laser;
@@ -44943,8 +45387,7 @@ struct LaserLine : LaserData {
 
 	// 0x4484B0
 	// Method 0x68
-	virtual ~LaserLine() NO_EH_TERMINATE {
-	}
+	virtual ~LaserLine() NO_EH_TERMINATE {}
 };
 
 // size: 0x480
@@ -44986,8 +45429,7 @@ struct LaserInfiniteParams {
 		this->zero_contents();
 	}
 
-	inline LaserInfiniteParams(int) {
-	}
+	inline LaserInfiniteParams(int) {}
 };
 
 // size: 0x1824
@@ -44998,27 +45440,26 @@ struct LaserInfinite : LaserData {
 	AnmVM __spawn_effect_vm; // 0x1218
 	// 0x1824
 
-	inline LaserInfinite() {
-	}
+	inline LaserInfinite() {}
 
 	// 0x448570
 	// Method 0x0
-	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* out) override asm_symbol_rel(0x448570) {
+	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* out) override ASR(0x448570) {
 		out->make_from_vector(this->angle, magnitude);
 		*out += this->position;
 	}
 
 	// 0x44ECC0
 	// Method 0x4
-	dllexport virtual gnu_noinline void thiscall run_effects() override asm_symbol_rel(0x44ECC0);
+	dllexport virtual gnu_noinline void thiscall run_effects() override ASR(0x44ECC0);
 
 	// 0x44C870
 	// Method 0xC
-	dllexport virtual gnu_noinline int thiscall initialize(void* data) override asm_symbol_rel(0x44C870);
+	dllexport virtual gnu_noinline int thiscall initialize(void* data) override ASR(0x44C870);
 
 	// 0x44CAE0
 	// Method 0x10
-	dllexport virtual gnu_noinline int thiscall on_tick() override asm_symbol_rel(0x44CAE0) {
+	dllexport virtual gnu_noinline int thiscall on_tick() override ASR(0x44CAE0) {
 	rerun_effects:
 		this->run_effects();
 		if (this->active_effects) {
@@ -45119,7 +45560,7 @@ struct LaserInfinite : LaserData {
 
 	// 0x44D010
 	// Method 0x14
-	dllexport virtual gnu_noinline int thiscall on_draw() override asm_symbol_rel(0x44D010) {
+	dllexport virtual gnu_noinline int thiscall on_draw() override ASR(0x44D010) {
 		this->main_vm.data.position = this->position;
 		this->main_vm.set_z_rotation(this->angle);
 		ANM_MANAGER_PTR->draw_vm(&this->main_vm);
@@ -45132,47 +45573,47 @@ struct LaserInfinite : LaserData {
 
 	// 0x44D0E0
 	// Method 0x18
-	dllexport virtual gnu_noinline int thiscall cleanup() override asm_symbol_rel(0x44D0E0) {
+	dllexport virtual gnu_noinline int thiscall cleanup() override ASR(0x44D0E0) {
 		return 0;
 	}
 
 	// 0x44D9B0
 	// Method 0x1C
-	dllexport virtual gnu_noinline int thiscall __cancel_unknown(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5, int) override asm_symbol_rel(0x44D9B0) {
+	dllexport virtual gnu_noinline int thiscall __cancel_unknown(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5, int) override ASR(0x44D9B0) {
 		// TODO
 		return 0;
 	}
 
 	// 0x44D0F0
 	// Method 0x20
-	dllexport virtual gnu_noinline int thiscall cancel_in_rectangle(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5) override asm_symbol_rel(0x44D0F0) {
+	dllexport virtual gnu_noinline int thiscall cancel_in_rectangle(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5) override ASR(0x44D0F0) {
 		// TODO
 		return 0;
 	}
 
 	// 0x44E050
 	// Method 0x24
-	dllexport virtual gnu_noinline int thiscall cancel_in_radius(Float3* position, float radius, CancelType cancel_type, int32_t arg4) override asm_symbol_rel(0x44E050) {
+	dllexport virtual gnu_noinline int thiscall cancel_in_radius(Float3* position, float radius, CancelType cancel_type, int32_t arg4) override ASR(0x44E050) {
 		// TODO
 		return 0;
 	}
 
 	// 0x44E810
 	// Method 0x28
-	dllexport virtual gnu_noinline int thiscall cancel(CancelType cancel_type, int32_t arg2) override asm_symbol_rel(0x44E810) {
+	dllexport virtual gnu_noinline int thiscall cancel(CancelType cancel_type, int32_t arg2) override ASR(0x44E810) {
 		// TODO
 		return 0;
 	}
 
 	// 0x44EBE0
 	// Method 0x30
-	dllexport virtual gnu_noinline int thiscall __method_30(Float2* arg1, float arg2) override asm_symbol_rel(0x44EBE0) {
+	dllexport virtual gnu_noinline int thiscall __method_30(Float2* arg1, float arg2) override ASR(0x44EBE0) {
 		// TODO: but this one sucks less
 	}
 
 	// 0x44CE80
 	// Method 0x34
-	dllexport virtual gnu_noinline int thiscall check_collision(CollisionTestType test_type) override asm_symbol_rel(0x44CE80) {
+	dllexport virtual gnu_noinline int thiscall check_collision(CollisionTestType test_type) override ASR(0x44CE80) {
 		switch (this->state) {
 			case 2: case 4:
 				// WHY DO YOU STILL SWAP LENGTH/WIDTH ON LASERS ZUN, STOP ALREADY
@@ -45210,8 +45651,7 @@ struct LaserInfinite : LaserData {
 
 	// 0x448E50
 	// Method 0x68
-	virtual ~LaserInfinite() NO_EH_TERMINATE {
-	}
+	virtual ~LaserInfinite() NO_EH_TERMINATE {}
 };
 
 // size: 0x20
@@ -45242,7 +45682,7 @@ struct LaserCurveNodeEx {
 	dllexport gnu_noinline void thiscall __sub_44FB10(
 		Float3* position_out, float* speed_out, float* angle_out,
 		float arg4
-	) asm_symbol_rel(0x44FB10)
+	) ASR(0x44FB10)
 	{
 
 		float diff = arg4 - this->__min_diff; // ESP+48
@@ -45320,7 +45760,7 @@ struct LaserCurveNodeEx {
 		Float3* position_out, float* speed_out, float* angle_out,
 		Float3* prev_position, float prev_speed, float prev_angle,
 		float diff
-	) asm_symbol_rel(0x44FF80)
+	) ASR(0x44FF80)
 	{
 		Float3 prev_velocity;
 		switch (this->move_type) {
@@ -45424,8 +45864,7 @@ struct LaserCurve : LaserData {
 	LaserCurveNodeEx node_ex; // 0x1808
 	// 0x1844
 
-	inline LaserCurve() {
-	}
+	inline LaserCurve() {}
 
 	inline bool is_node_offscreen(LaserCurveNode* node) {
 		// ALMOST BUG: uninitialized z coord
@@ -45460,7 +45899,7 @@ struct LaserCurve : LaserData {
 
 	// 0x448500
 	// Method 0x0
-	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* out) override asm_symbol_rel(0x448500) {
+	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* out) override ASR(0x448500) {
 		// BUG: uninitialized z coord
 		out->make_from_vector(this->angle, magnitude);
 #if FIX_MINOR_BUGS
@@ -45471,15 +45910,15 @@ struct LaserCurve : LaserData {
 
 	// 0x4508A0
 	// Method 0x4
-	dllexport virtual gnu_noinline void thiscall run_effects() override asm_symbol_rel(0x4508A0);
+	dllexport virtual gnu_noinline void thiscall run_effects() override ASR(0x4508A0);
 
 	// 0x44ED70
 	// Method 0xC
-	dllexport virtual gnu_noinline int thiscall initialize(void* data) override asm_symbol_rel(0x44ED70);
+	dllexport virtual gnu_noinline int thiscall initialize(void* data) override ASR(0x44ED70);
 
 	// 0x44F450
 	// Method 0x10
-	dllexport virtual gnu_noinline int thiscall on_tick() override asm_symbol_rel(0x44F450) {
+	dllexport virtual gnu_noinline int thiscall on_tick() override ASR(0x44F450) {
 	rerun_effects:
 		this->run_effects();
 		if (this->active_effects) {
@@ -45587,7 +46026,7 @@ struct LaserCurve : LaserData {
 
 	// 0x450340
 	// Method 0x14
-	dllexport virtual gnu_noinline int thiscall on_draw() override asm_symbol_rel(0x450340) {
+	dllexport virtual gnu_noinline int thiscall on_draw() override ASR(0x450340) {
 		
 		int32_t curve_length = this->params.curve_length;
 
@@ -45602,7 +46041,7 @@ struct LaserCurve : LaserData {
 			do {
 				current_vertex[0].texture_uv.x = u_frac;
 				current_vertex[0].position.w = 1.0f;
-				current_vertex[0].diffuse = COLOR(255, 255, 255, 255);
+				current_vertex[0].diffuse = COLOR_WHITE;
 				current_vertex[0].texture_uv.y = this->main_vm.data.sprite_uv_quad[0].y;
 
 				// we love inlined ZUNAngle operators
@@ -45625,7 +46064,7 @@ struct LaserCurve : LaserData {
 				current_vertex[0].position.z = 0.0f;
 
 				current_vertex[1].position.w = 1.0f;
-				current_vertex[1].diffuse = COLOR(255, 255, 255, 255);
+				current_vertex[1].diffuse = COLOR_WHITE;
 				current_vertex[1].texture_uv.x = u_frac;
 				current_vertex[1].texture_uv.y = this->main_vm.data.sprite_uv_quad[2].y;
 
@@ -45671,7 +46110,7 @@ struct LaserCurve : LaserData {
 
 	// 0x44F3E0
 	// Method 0x18
-	dllexport virtual gnu_noinline int thiscall cleanup() override asm_symbol_rel(0x44D0E0) {
+	dllexport virtual gnu_noinline int thiscall cleanup() override ASR(0x44D0E0) {
 		for (
 			LaserCurveNodeEx *node_ex = this->node_ex.next, *next_node;
 			node_ex != NULL;
@@ -45687,47 +46126,47 @@ struct LaserCurve : LaserData {
 
 	// 0x451CC0
 	// Method 0x1C
-	dllexport virtual gnu_noinline int thiscall __cancel_unknown(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5, int) override asm_symbol_rel(0x451CC0) {
+	dllexport virtual gnu_noinline int thiscall __cancel_unknown(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5, int) override ASR(0x451CC0) {
 		// TODO
 		return 0;
 	}
 
 	// 0x451780
 	// Method 0x20
-	dllexport virtual gnu_noinline int thiscall cancel_in_rectangle(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5) override asm_symbol_rel(0x451780) {
+	dllexport virtual gnu_noinline int thiscall cancel_in_rectangle(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5) override ASR(0x451780) {
 		// TODO
 		return 0;
 	}
 
 	// 0x4521B0
 	// Method 0x24
-	dllexport virtual gnu_noinline int thiscall cancel_in_radius(Float3* position, float radius, CancelType cancel_type, int32_t arg4) override asm_symbol_rel(0x4521B0) {
+	dllexport virtual gnu_noinline int thiscall cancel_in_radius(Float3* position, float radius, CancelType cancel_type, int32_t arg4) override ASR(0x4521B0) {
 		// TODO
 		return 0;
 	}
 
 	// 0x452590
 	// Method 0x28
-	dllexport virtual gnu_noinline int thiscall cancel(CancelType cancel_type, int32_t arg2) override asm_symbol_rel(0x452590) {
+	dllexport virtual gnu_noinline int thiscall cancel(CancelType cancel_type, int32_t arg2) override ASR(0x452590) {
 		// TODO
 		return 0;
 	}
 
 	// 0x448560
 	// Method 0x2C
-	dllexport virtual gnu_noinline int thiscall __method_2C(int, int, int, int) override asm_symbol_rel(0x448560) {
+	dllexport virtual gnu_noinline int thiscall __method_2C(int, int, int, int) override ASR(0x448560) {
 		return 0;
 	}
 
 	// 0x4526D0
 	// Method 0x30
-	dllexport virtual gnu_noinline int thiscall __method_30(Float2* arg1, float arg2) override asm_symbol_rel(0x4526D0) {
+	dllexport virtual gnu_noinline int thiscall __method_30(Float2* arg1, float arg2) override ASR(0x4526D0) {
 		// TODO
 	}
 
 	// 0x44F920
 	// Method 0x34
-	dllexport virtual gnu_noinline int thiscall check_collision(CollisionTestType test_type) override asm_symbol_rel(0x44F920) {
+	dllexport virtual gnu_noinline int thiscall check_collision(CollisionTestType test_type) override ASR(0x44F920) {
 		float A = 0.0f;
 		BOOL is_grazed = false;
 		Float3 graze_position;
@@ -45773,7 +46212,7 @@ struct LaserCurve : LaserData {
 
 	// 0x451560
 	// Method 0x3C
-	dllexport virtual gnu_noinline int thiscall run_effect_accel() override asm_symbol_rel(0x451560) {
+	dllexport virtual gnu_noinline int thiscall run_effect_accel() override ASR(0x451560) {
 		if (this->effect_accel.timer >= this->effect_accel.duration) {
 			this->disable_effects(EX_ACCEL);
 			return 1;
@@ -45796,7 +46235,7 @@ struct LaserCurve : LaserData {
 
 	// 0x451410
 	// Method 0x40
-	dllexport virtual gnu_noinline int thiscall run_effect_angle_accel() override asm_symbol_rel(0x451410) {
+	dllexport virtual gnu_noinline int thiscall run_effect_angle_accel() override ASR(0x451410) {
 		if (this->effect_angle_accel.timer >= this->effect_angle_accel.duration) {
 			this->disable_effects(EX_ANGLE_ACCEL);
 			return 1;
@@ -45815,7 +46254,7 @@ struct LaserCurve : LaserData {
 
 	// 0x451290
 	// Method 0x44
-	dllexport virtual gnu_noinline int thiscall __run_effect_angle_type_0() override asm_symbol_rel(0x451290) {
+	dllexport virtual gnu_noinline int thiscall __run_effect_angle_type_0() override ASR(0x451290) {
 		float speed;
 		float angle;
 
@@ -45849,7 +46288,7 @@ struct LaserCurve : LaserData {
 	
 	// 0x4516E0
 	// Method 0x60
-	dllexport virtual gnu_noinline int thiscall run_effect_offscreen() override asm_symbol_rel(0x4516E0) {
+	dllexport virtual gnu_noinline int thiscall run_effect_offscreen() override ASR(0x4516E0) {
 		this->effect_offscreen.timer--;
 		if (this->effect_offscreen.timer <= 0) {
 			this->toggle_effects(EX_OFFSCREEN);
@@ -45860,8 +46299,7 @@ struct LaserCurve : LaserData {
 
 	// 0x448ED0
 	// Method 0x68
-	virtual ~LaserCurve() NO_EH_TERMINATE {
-	}
+	virtual ~LaserCurve() NO_EH_TERMINATE {}
 };
 
 // size: 0x45C
@@ -45903,31 +46341,30 @@ struct LaserBeam : LaserData {
 	unknown_fields(0x200); // 0x19F4
 	// 0x21F4
 
-	inline LaserBeam() {
-	}
+	inline LaserBeam() {}
 
 	// 0x4485D0
 	// Method 0x0
-	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* out) override asm_symbol_rel(0x4485D0) {
+	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* out) override ASR(0x4485D0) {
 		out->make_from_vector(this->angle, magnitude);
 		*out += this->position;
 	}
 
 	// 0x452BE0
 	// Method 0x4
-	dllexport virtual gnu_noinline void thiscall run_effects() override asm_symbol_rel(0x452BE0) {
+	dllexport virtual gnu_noinline void thiscall run_effects() override ASR(0x452BE0) {
 		// Even in GFW this is empty
 	}
 
 	// 0x448630
 	// Method 0x8
-	dllexport virtual gnu_noinline void thiscall __set_unknown_flag_lb_A(int arg) override asm_symbol_rel(0x448630) {
+	dllexport virtual gnu_noinline void thiscall __set_unknown_flag_lb_A(int arg) override ASR(0x448630) {
 		this->params.__unknown_flag_lb_A = arg;
 	}
 
 	// 0x4527D0
 	// Method 0xC
-	dllexport virtual gnu_noinline int thiscall initialize(void* data) override asm_symbol_rel(0x4527D0) {
+	dllexport virtual gnu_noinline int thiscall initialize(void* data) override ASR(0x4527D0) {
 		memcpy(&this->params, data, sizeof(LaserBeamParams));
 
 		this->position = this->params.position;
@@ -45952,7 +46389,7 @@ struct LaserBeam : LaserData {
 
 	// 0x452B70
 	// Method 0x10
-	dllexport virtual gnu_noinline int thiscall on_tick() override asm_symbol_rel(0x452B70) {
+	dllexport virtual gnu_noinline int thiscall on_tick() override ASR(0x452B70) {
 		/*
 		this->angle += this->params.angular_velocity;
 		if (this->params.__unknown_flag_A) {
@@ -45967,7 +46404,7 @@ struct LaserBeam : LaserData {
 
 	// 0x452B80
 	// Method 0x14
-	dllexport virtual gnu_noinline int thiscall on_draw() override asm_symbol_rel(0x452B80) {
+	dllexport virtual gnu_noinline int thiscall on_draw() override ASR(0x452B80) {
 		/*
 		// TODO: pain
 		*/
@@ -45976,13 +46413,13 @@ struct LaserBeam : LaserData {
 
 	// 0x452B90
 	// Method 0x18
-	dllexport virtual gnu_noinline int thiscall cleanup() override asm_symbol_rel(0x452B90) {
+	dllexport virtual gnu_noinline int thiscall cleanup() override ASR(0x452B90) {
 		return 0;
 	}
 
 	// 0x452BA0
 	// Method 0x1C
-	dllexport virtual gnu_noinline int thiscall __cancel_unknown(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5, int) override asm_symbol_rel(0x452BA0) {
+	dllexport virtual gnu_noinline int thiscall __cancel_unknown(Float3* position, Float3* size, float rotation, CancelType cancel_type, int32_t arg5, int) override ASR(0x452BA0) {
 		return 0;
 	}
 
@@ -46003,7 +46440,7 @@ struct LaserBeam : LaserData {
 
 	// 0x452BB0
 	// Method 0x28
-	dllexport virtual gnu_noinline int thiscall cancel(CancelType cancel_type, int32_t arg2) override asm_symbol_rel(0x452BB0) {
+	dllexport virtual gnu_noinline int thiscall cancel(CancelType cancel_type, int32_t arg2) override ASR(0x452BB0) {
 		if (!arg2) {
 			this->__unknown_field_ld_A = 1;
 		}
@@ -46012,14 +46449,13 @@ struct LaserBeam : LaserData {
 
 	// 0x452BD0
 	// Method 0x30
-	dllexport virtual gnu_noinline int thiscall __method_30(Float2* arg1, float arg2) override asm_symbol_rel(0x452BD0) {
+	dllexport virtual gnu_noinline int thiscall __method_30(Float2* arg1, float arg2) override ASR(0x452BD0) {
 		return 0;
 	}
 
 	// 0x448E90
 	// Method 0x68
-	virtual ~LaserBeam() NO_EH_TERMINATE {
-	}
+	virtual ~LaserBeam() NO_EH_TERMINATE {}
 };
 
 // size: 0x10
@@ -46125,12 +46561,12 @@ private:
 
 public:
 	// 0x423980
-	dllexport gnu_noinline static void destroy_all() asm_symbol_rel(0x423980) {
+	dllexport gnu_noinline static void destroy_all() ASR(0x423980) {
 		BULLET_MANAGER_PTR->destroy_all_impl();
 	}
 	
 	// 0x409940
-	dllexport Bullet* thiscall start_bullet_iter(uint32_t index) asm_symbol_rel(0x409940) {
+	dllexport Bullet* thiscall start_bullet_iter(uint32_t index) ASR(0x409940) {
 		ZUNList<Bullet>* node = this->bullet_tick_list.next;
 		this->bullet_iter.current[index] = node;
 		if (node) {
@@ -46157,7 +46593,7 @@ public:
 	}
 
 	// 0x42CC70
-	dllexport gnu_noinline uint32_t thiscall __count_graze_array() asm_symbol_rel(0x42CC70) {
+	dllexport gnu_noinline uint32_t thiscall __count_graze_array() ASR(0x42CC70) {
 		// MSVC loops this 2 at a time?
 		uint32_t count = 0;
 		for (size_t i = 0; i < countof(this->__graze_array); ++i) {
@@ -46168,7 +46604,7 @@ public:
 
 private:
 	// 0x42CCA0
-	dllexport gnu_noinline void vectorcall set_player_protect_radius_squared(float, float radius) asm_symbol_rel(0x42CCA0) {
+	dllexport gnu_noinline void vectorcall set_player_protect_radius_squared(float, float radius) ASR(0x42CCA0) {
 		BULLET_MANAGER_PTR->player_protect_radius_squared = radius;
 	}
 public:
@@ -46188,14 +46624,14 @@ public:
 	}
 
 	// 0x4297A0
-	dllexport gnu_noinline void thiscall cancel_all(int = UNUSED_DWORD) asm_symbol_rel(0x4297A0) {
+	dllexport gnu_noinline void thiscall cancel_all(int = UNUSED_DWORD) ASR(0x4297A0) {
 		for (int32_t i = countof(this->bullets); i; --i) {
 			// TODO
 		}
 	}
 
 	// 0x424FE0
-	dllexport gnu_noinline ZUNResult thiscall shoot_one_bullet(ShooterData* shooter, int32_t count1_index, int32_t count2_index, float angle_to_player) asm_symbol_rel(0x424FE0) {
+	dllexport gnu_noinline ZUNResult thiscall shoot_one_bullet(ShooterData* shooter, int32_t count1_index, int32_t count2_index, float angle_to_player) ASR(0x424FE0) {
 		ZUNList<Bullet>* free_bullet_node = this->bullet_free_list.next;
 		if (!free_bullet_node) {
 			return ZUN_SUCCESS2;
@@ -46452,7 +46888,7 @@ public:
 	}
 	
 	// 0x427810
-	dllexport gnu_noinline int32_t thiscall shoot_bullets(ShooterData* shooter) asm_symbol_rel(0x427810) {
+	dllexport gnu_noinline int32_t thiscall shoot_bullets(ShooterData* shooter) ASR(0x427810) {
 		BulletManager* bullet_manager = BULLET_MANAGER_PTR;
 		float angle_to_player = PLAYER_PTR->angle_from_point(&shooter->position);
 		for (int32_t i = 0; i < shooter->count2; ++i) {
@@ -46508,7 +46944,7 @@ public:
 
 private:
 	// 0x429250
-	dllexport gnu_noinline int vectorcall cancel_radius(int, float, float, Float2* position, float radius, CancelType cancel_type) asm_symbol_rel(0x429250) {
+	dllexport gnu_noinline int vectorcall cancel_radius(int, float, float, Float2* position, float radius, CancelType cancel_type) ASR(0x429250) {
 		BulletManager* bullet_manager = BULLET_MANAGER_PTR;
 		for (
 			Bullet* bullet = bullet_manager->start_bullet_iter(0);
@@ -46538,7 +46974,7 @@ public:
 
 private:
 	// 0x429370
-	dllexport gnu_noinline int vectorcall cancel_radius_as_bomb(int, float, float, Float2* position, float radius, CancelType cancel_type, int32_t max_count, int arg5) asm_symbol_rel(0x429370) {
+	dllexport gnu_noinline int vectorcall cancel_radius_as_bomb(int, float, float, Float2* position, float radius, CancelType cancel_type, int32_t max_count, int arg5) ASR(0x429370) {
 		BulletManager* bullet_manager = BULLET_MANAGER_PTR;
 		for (
 			Bullet* bullet = bullet_manager->start_bullet_iter(0);
@@ -46574,7 +47010,7 @@ public:
 
 private:
 	// 0x4294B0
-	dllexport gnu_noinline int vectorcall cancel_rotated_rectangle_as_bomb(int, float, float, float, Float2* position, Float2* size, float rotation, CancelType cancel_type, int arg5) asm_symbol_rel(0x4294B0) {
+	dllexport gnu_noinline int vectorcall cancel_rotated_rectangle_as_bomb(int, float, float, float, Float2* position, Float2* size, float rotation, CancelType cancel_type, int arg5) ASR(0x4294B0) {
 		BulletManager* bullet_manager = BULLET_MANAGER_PTR;
 		Bullet* bullet = bullet_manager->bullets;
 		for (
@@ -46597,7 +47033,7 @@ public:
 	}
 	
 	// 0x424C50
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x424C50) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x424C50) {
 		for (size_t i = countof(this->__graze_array) - 1; i; --i) {
 			this->__graze_array[i] = this->__graze_array[i - 1];
 		}
@@ -46676,7 +47112,7 @@ public:
 	}
 	
 	// 0x424E70
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x424E70) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x424E70) {
 		GameThread* game_thread_ptr = GAME_THREAD_PTR;
 		if (
 			(game_thread_ptr && (game_thread_ptr->__unknown_flag_gt_A | game_thread_ptr->skip_flag)) ||
@@ -46688,7 +47124,7 @@ public:
 	}
 
 	// 0x424EB0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x424EB0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x424EB0) {
 		GameThread* game_thread_ptr = GAME_THREAD_PTR;
 		if (
 			game_thread_ptr && game_thread_ptr->skip_flag
@@ -46736,7 +47172,7 @@ public:
 
 	// 0x423AF0
 	// EH frame (free, terminate)
-	dllexport gnu_noinline static BulletManager* allocate() asm_symbol_rel(0x423AF0) {
+	dllexport gnu_noinline static BulletManager* allocate() ASR(0x423AF0) {
 		BulletManager* bullet_manager = new BulletManager();
 		BULLET_MANAGER_PTR = bullet_manager;
 		if (ZUN_FAILED(bullet_manager->initialize())) {
@@ -46950,7 +47386,7 @@ dllexport gnu_noinline void fastcall spawn_bullet_cancel_items(Float3* position,
 
 				switch (cancel_type) {
 					case CancelType1: cancel_type_1: {
-						float angle = REPLAY_RNG.rand_float_signed_range(DEGREES(10.0f)) - HALF_PI_f;
+						float angle = REPLAY_RNG.rand_float_signed_range(DEGREES(10)) - HALF_PI_f;
 						ITEM_MANAGER_PTR->spawn_item(Piv5Item, position, angle, 2.2f, 0);
 						return;
 					}
@@ -47124,7 +47560,7 @@ struct LaserManager : ZUNTask {
 	}
 
 	// 0x448920
-	dllexport gnu_noinline int32_t thiscall allocate_new_laser(int32_t laser_type, void* data) asm_symbol_rel(0x448920) {
+	dllexport gnu_noinline int32_t thiscall allocate_new_laser(int32_t laser_type, void* data) ASR(0x448920) {
 		LaserManager* laser_manager = LASER_MANAGER_PTR;
 		if (this->laser_count >= MAX_LASER_COUNT) {
 			return 0;
@@ -47183,7 +47619,7 @@ struct LaserManager : ZUNTask {
 	}
 
 	// 0x442480
-	dllexport gnu_noinline void thiscall destroy_all() asm_symbol_rel(0x442480) {
+	dllexport gnu_noinline void thiscall destroy_all() ASR(0x442480) {
 		this->list_head().for_each_safe([](LaserData* laser) {
 			laser->cleanup();
 			laser->embedded_node.unlink();
@@ -47194,7 +47630,7 @@ struct LaserManager : ZUNTask {
 	}
 
 	// 0x449090
-	dllexport gnu_noinline int thiscall cancel_all(CancelType cancel_type, int32_t arg2 = UNUSED_DWORD) asm_symbol_rel(0x449090) {
+	dllexport gnu_noinline int thiscall cancel_all(CancelType cancel_type, int32_t arg2 = UNUSED_DWORD) ASR(0x449090) {
 		LASER_MANAGER_PTR->list_head().for_each_safe([=](LaserData* laser) {
 			if (laser->state != 1) {
 				laser->cancel(cancel_type, 0);
@@ -47204,7 +47640,7 @@ struct LaserManager : ZUNTask {
 	}
 
 	// 0x448FA0
-	dllexport gnu_noinline int thiscall clear_all() asm_symbol_rel(0x448FA0) {
+	dllexport gnu_noinline int thiscall clear_all() ASR(0x448FA0) {
 		LASER_MANAGER_PTR->list_head().for_each_safe([](LaserData* laser) {
 			laser->__timer_754.reset();
 			laser->invulnerable_time = 0;
@@ -48969,7 +49405,7 @@ forceinline UpdateFuncRet BombBase::on_draw() {
 		ascii_manager->printf(&this->__float3_94, "+%d", (int32_t)this->__float_78 / 10 * 10);
 
 		ascii_manager = ASCII_MANAGER_PTR;
-		ascii_manager->color = COLOR(255, 255, 255, 255);
+		ascii_manager->color = COLOR_WHITE;
 		ascii_manager->set_alpha(255);
 		ascii_manager->font_id = Font0; // 0
 		ascii_manager->group = 0;
@@ -48998,7 +49434,7 @@ struct BombReimuAInner {
 	// 0xDC
 
 	// 0x4210F0
-	dllexport gnu_noinline void thiscall __sub_4210F0(int32_t i, Float3* position, int32_t damage) asm_symbol_rel(0x4210F0) {
+	dllexport gnu_noinline void thiscall __sub_4210F0(int32_t i, Float3* position, int32_t damage) ASR(0x4210F0) {
 		this->motion.orbit_origin = *position;
 		this->vm = PLAYER_PTR->player_anm->instantiate_vm_to_world_list_back((BOMB_PTR->stronger_effects ? 23 : 22), &this->motion.position);
 		this->active = true;
@@ -49023,7 +49459,7 @@ struct BombReimuAData {
 	}
 
 	// 0x4212A0
-	dllexport gnu_noinline void thiscall __sub_4212A0() asm_symbol_rel(0x4212A0) {
+	dllexport gnu_noinline void thiscall __sub_4212A0() ASR(0x4212A0) {
 		nounroll for (size_t i = 0; i != countof(this->orbs); ++i) {
 			if (!this->orbs[i].__dword_D4) {
 				if (this->orbs[i].active) {
@@ -49113,8 +49549,8 @@ struct BombReimuA : BombBase {
 						data->orbs[i].motion.radius = 0.0f;
 						data->orbs[i].motion.mode = OrbitMovement; // 2
 						data->orbs[i].motion.angle = angle;
-						data->orbs[i].motion.radius_delta = 0.04908739f; // TODO: what is this number
-						data->orbs[i].__angle_delta = DEGREES(6.0f);
+						data->orbs[i].motion.radius_delta = PI_f / 64.0f; // this isn't an angle though...
+						data->orbs[i].__angle_delta = DEGREES(6);
 						player->get_damage_source_by_index(data->orbs[i].damage_source_index)->damage_cap = 400;
 						angle = reduce_angle(angle + QUARTER_PI_f);
 						bomb_ptr = BOMB_PTR;
@@ -49131,8 +49567,8 @@ struct BombReimuA : BombBase {
 						data->orbs[i].motion.radius = 0.0f;
 						data->orbs[i].motion.angle = angle;
 						player = PLAYER_PTR;
-						data->orbs[i].motion.radius_delta = -0.04908739f; // TODO: what is this number
-						data->orbs[i].__angle_delta = -DEGREES(6.0f);
+						data->orbs[i].motion.radius_delta = -PI_f / 64.0f; // this isn't an angle though...
+						data->orbs[i].__angle_delta = -DEGREES(6);
 						player->get_damage_source_by_index(data->orbs[i].damage_source_index)->damage_cap = 400;
 						angle = reduce_angle(angle + QUARTER_PI_f);
 					}
@@ -49407,8 +49843,7 @@ struct BombMarisaA : BombBase {
 
 	// Method 18
 	// 0x420F70
-	dllexport gnu_noinline virtual void thiscall cleanup() {
-	}
+	dllexport gnu_noinline virtual void thiscall cleanup() {}
 };
 
 struct BombSakuya : BombBase {
@@ -49500,8 +49935,7 @@ struct BombSakuya : BombBase {
 
 	// Method 18
 	// 0x422CF0
-	dllexport gnu_noinline virtual void thiscall cleanup() {
-	}
+	dllexport gnu_noinline virtual void thiscall cleanup() {}
 };
 
 struct BombSanaeA : BombBase {
@@ -49641,8 +50075,7 @@ struct BombSanaeA : BombBase {
 
 	// Method 18
 	// 0x4236C0
-	dllexport gnu_noinline virtual void thiscall cleanup() {
-	}
+	dllexport gnu_noinline virtual void thiscall cleanup() {}
 };
 
 // 0x41FD40
@@ -51903,7 +52336,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 		case score_add: { // 638
 			int32_t score_bonus = this->get_int_arg(0);
 			GAME_MANAGER.add_to_score(score_bonus);
-			POPUP_MANAGER_PTR->create_popup(&this->current_motion.position, score_bonus, COLOR(255, 255, 255, 255));
+			POPUP_MANAGER_PTR->create_popup(&this->current_motion.position, score_bonus, COLOR_WHITE);
 			break;
 		}
 		case anm_set_slot: // 303
@@ -52696,7 +53129,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			break;
 		}
 		case drop_item_rewards: // 509
-			if (GAME_MANAGER.is_spell_practice()) {
+			if (!GAME_MANAGER.is_spell_practice()) {
 		case drop_item_rewards_force: // 562
 				this->drops.spawn_items(&this->get_position());
 			}
@@ -53404,13 +53837,14 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			const char* name_crypt = StringArg(0x10);
 
 			uint8_t xor_mask = 0x77;
-			uint8_t xor_accel = 7;
+			uint8_t xor_vel = 7;
+			constexpr uint8_t xor_accel = 16;
 			for (int32_t i = 0; i < IntArg(3); ++i) {
 				uint8_t c = name_crypt[i];
 				c ^= xor_mask;
 				name[i] = c;
-				xor_mask += xor_accel;
-				xor_accel += 16;
+				xor_mask += xor_vel;
+				xor_vel += xor_accel;
 			}
 
 			int32_t base_id = this->get_int_arg(0);
@@ -53452,7 +53886,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 				// This is the only place all args are passed.
 				// All other item spawns leave the unused params
 				// with garbage values.
-				ITEM_MANAGER_PTR->spawn_item(LifeFragmentItem, &this->get_position(), COLOR(255, 255, 255, 255), -HALF_PI_f, 2.2f, 60, 0, -1);
+				ITEM_MANAGER_PTR->spawn_item(LifeFragmentItem, &this->get_position(), COLOR_WHITE, -HALF_PI_f, 2.2f, 60, 0, -1);
 			}
 			SPELLCARD_PTR->end_spell();
 			this->life.set_spell(false);
@@ -54119,7 +54553,7 @@ struct ReplayInfo {
 	int32_t shottype; // 0xB0
 	int32_t difficulty; // 0xB4
 	int32_t __end_stage; // 0xB8
-	int32_t __int_BC; // 0xBC
+	int32_t continues; // 0xBC
 	int32_t spell_practice_id; // 0xC0
 	unknown_fields(0x4); // 0xC4
 	// 0xC8
@@ -54180,7 +54614,7 @@ ValidateFieldOffset32(0xAC, ReplayInfo, character);
 ValidateFieldOffset32(0xB0, ReplayInfo, shottype);
 ValidateFieldOffset32(0xB4, ReplayInfo, difficulty);
 ValidateFieldOffset32(0xB8, ReplayInfo, __end_stage);
-ValidateFieldOffset32(0xBC, ReplayInfo, __int_BC);
+ValidateFieldOffset32(0xBC, ReplayInfo, continues);
 ValidateFieldOffset32(0xC0, ReplayInfo, spell_practice_id);
 ValidateStructSize32(0xC8, ReplayInfo);
 #pragma endregion
@@ -54249,7 +54683,7 @@ struct ReplayChunk {
 	}
 
 	// 0x463060
-	dllexport bool write_input(uint16_t current, uint16_t rising_edge, uint16_t falling_edge) asm_symbol_rel(0x463060) {
+	dllexport bool write_input(uint16_t current, uint16_t rising_edge, uint16_t falling_edge) ASR(0x463060) {
 		this->next_input_write_pos->current = current;
 		this->next_input_write_pos->rising_edge = rising_edge;
 		this->next_input_write_pos->falling_edge = falling_edge;
@@ -54297,6 +54731,7 @@ extern "C" {
 	externcg ReplayManager* REPLAY_MANAGER_PTR cgasm("_REPLAY_MANAGER_PTR");
 }
 
+static inline constexpr int32_t REPLAYS_PER_PAGE = 25;
 
 // NOTE: Normally I would just use member access to call static
 // function in an attempt to mask over ZUN's janky code layout
@@ -54399,7 +54834,7 @@ struct ReplayManager : ZUNTask {
 	}
 
 	// 0x462940
-	dllexport static UpdateFuncRet UpdateFuncCC on_tick_A1(void* ptr) asm_symbol_rel(0x462940) {
+	dllexport static UpdateFuncRet UpdateFuncCC on_tick_A1(void* ptr) ASR(0x462940) {
 		ReplayManager* self = (ReplayManager*)ptr;
 		if (GAME_THREAD_PTR) {
 			INPUT_P1.inputs_previous = INPUT_P1.inputs_current;
@@ -54429,7 +54864,7 @@ struct ReplayManager : ZUNTask {
 	}
 
 	// 0x462A50
-	dllexport static UpdateFuncRet UpdateFuncCC on_tick_A2(void* ptr) asm_symbol_rel(0x462A50) {
+	dllexport static UpdateFuncRet UpdateFuncCC on_tick_A2(void* ptr) ASR(0x462A50) {
 		ReplayManager* self = (ReplayManager*)ptr;
 		if (GAME_THREAD_PTR && !self->__unknown_flag_rm_A) {
 			if (self->stage_data[self->stage_number].current_frame < 0) {
@@ -54480,7 +54915,7 @@ struct ReplayManager : ZUNTask {
 	}
 
 	// 0x461DB0
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick_B() asm_symbol_rel(0x461DB0) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick_B() ASR(0x461DB0) {
 		if (
 			GAME_THREAD_PTR && this->mode == ReplayPlayback
 		) {
@@ -54500,7 +54935,7 @@ struct ReplayManager : ZUNTask {
 	}
 
 	// 0x462C30
-	dllexport static UpdateFuncRet UpdateFuncCC on_tick_B(void* ptr) asm_symbol_rel(0x462C30) {
+	dllexport static UpdateFuncRet UpdateFuncCC on_tick_B(void* ptr) ASR(0x462C30) {
 		GameThread* game_thread_ptr = GAME_THREAD_PTR;
 		if (game_thread_ptr && game_thread_ptr->skip_flag) {
 			return UpdateFuncNext;
@@ -54509,7 +54944,7 @@ struct ReplayManager : ZUNTask {
 	}
 
 	// 0x462C50
-	dllexport static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x462C50) {
+	dllexport static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x462C50) {
 		ReplayManager* self = (ReplayManager*)ptr;
 
 		GameThread* game_thread_ptr = GAME_THREAD_PTR;
@@ -54528,19 +54963,19 @@ struct ReplayManager : ZUNTask {
 					} else if (A < 50.0f) {
 						color = COLOR(255, 160, 160, 255);
 					} else {
-						color = COLOR(255, 255, 255, 255);
+						color = COLOR_WHITE;
 					}
 					AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
 					ascii_manager->color = color;
 					ascii_manager->printf(&position, "%3d", self->__byte_208);
-					ASCII_MANAGER_PTR->color = COLOR(255, 255, 255, 255);
+					ASCII_MANAGER_PTR->color = COLOR_WHITE;
 			}
 		}
 		return UpdateFuncNext;
 	}
 
 	// 0x463180
-	dllexport gnu_noinline void thiscall delete_chunk_list(int32_t stage_number) asm_symbol_rel(0x463180) {
+	dllexport gnu_noinline void thiscall delete_chunk_list(int32_t stage_number) ASR(0x463180) {
 		this->chunk_lists[stage_number].for_each_safe([](ReplayChunk* chunk) {
 			chunk->cleanup();
 			delete chunk;
@@ -54548,7 +54983,7 @@ struct ReplayManager : ZUNTask {
 	}
 
 	// 0x4630E0
-	dllexport gnu_noinline ZUNList<ReplayChunk>* thiscall allocate_chunk(int32_t stage_number) asm_symbol_rel(0x4630E0) {
+	dllexport gnu_noinline ZUNList<ReplayChunk>* thiscall allocate_chunk(int32_t stage_number) ASR(0x4630E0) {
 		ReplayChunk* chunk = new ReplayChunk();
 		this->chunk_lists[stage_number].append_to_list_end(&chunk->list_node);
 		++this->__chunk_count;
@@ -54581,7 +55016,7 @@ struct ReplayManager : ZUNTask {
 	}
 
 	// 0x4615E0
-	dllexport gnu_noinline ZUNResult thiscall initialize(ReplayMode mode, const char* path) asm_symbol_rel(0x4615E0) {
+	dllexport gnu_noinline ZUNResult thiscall initialize(ReplayMode mode, const char* path) ASR(0x4615E0) {
 		this->mode = mode;
 		switch (mode) {
 			case ReplayRecording: {
@@ -54616,7 +55051,7 @@ struct ReplayManager : ZUNTask {
 					bs_value -= 0x21522153; // This is a suspiciously repetitve constant...
 				}
 
-				this->info->__int_BC = GAME_MANAGER.globals.continues;
+				this->info->continues = GAME_MANAGER.globals.continues;
 
 				UpdateFunc* update_func = new UpdateFunc(&on_tick_A1, false, this);
 				UpdateFuncRegistry::register_on_tick(update_func, TickPriority::ReplayManager_A); // 17
@@ -54687,10 +55122,10 @@ struct ReplayManager : ZUNTask {
 	}
 
 	// 0x462680
-	dllexport gnu_noinline ZUNResult thiscall __load_from_path(const char* path) asm_symbol_rel(0x462680);
+	dllexport gnu_noinline ZUNResult thiscall __load_from_path(const char* path) ASR(0x462680);
 
 	// 0x461E90
-	dllexport gnu_noinline ZUNResult thiscall __write_to_path(const char* path, const char* name, bool arg3, bool arg4) asm_symbol_rel(0x461E90);
+	dllexport gnu_noinline ZUNResult thiscall __write_to_path(const char* path, const char* name, bool arg3, bool arg4) ASR(0x461E90);
 
 
 	static inline ReplayManager* allocate(ReplayMode mode, const char* path) {
@@ -54704,7 +55139,7 @@ struct ReplayManager : ZUNTask {
 
 	// 0x461CF0
 	// EH frame (free)
-	dllexport gnu_noinline static ReplayManager* fastcall allocate_mode2(const char* path) asm_symbol_rel(0x461CF0) {
+	dllexport gnu_noinline static ReplayManager* fastcall allocate_mode2(const char* path) ASR(0x461CF0) {
 		return allocate(ReplayMode2, path);
 	}
 };
@@ -54732,7 +55167,7 @@ ValidateStructSize32(0x31C, ReplayManager);
 #pragma endregion
 
 // 0x462D20
-dllexport gnu_noinline void __replay_manager_global_sub_462D20() asm_symbol_rel(0x462D20);
+dllexport gnu_noinline void __replay_manager_global_sub_462D20() ASR(0x462D20);
 dllexport gnu_noinline void __replay_manager_global_sub_462D20() {
 	ReplayManager* replay_manager = REPLAY_MANAGER_PTR;
 
@@ -54775,7 +55210,7 @@ dllexport gnu_noinline void __replay_manager_global_sub_462D20() {
 }
 
 // 0x462EA0
-dllexport gnu_noinline void __replay_manager_global_sub_462EA0() asm_symbol_rel(0x462EA0);
+dllexport gnu_noinline void __replay_manager_global_sub_462EA0() ASR(0x462EA0);
 dllexport gnu_noinline void __replay_manager_global_sub_462EA0() {
 	ReplayManager* replay_manager = REPLAY_MANAGER_PTR;
 
@@ -54819,7 +55254,7 @@ dllexport gnu_noinline void __replay_manager_global_sub_462EA0() {
 }
 
 // 0x461E40
-dllexport gnu_noinline int stdcall __replay_manager_global_set_time_and_end_stage(int32_t stage) asm_symbol_rel(0x461E40);
+dllexport gnu_noinline int stdcall __replay_manager_global_set_time_and_end_stage(int32_t stage) ASR(0x461E40);
 dllexport gnu_noinline int stdcall __replay_manager_global_set_time_and_end_stage(int32_t stage) {
 	ReplayManager* replay_manager = REPLAY_MANAGER_PTR;
 	time(&replay_manager->info->time);
@@ -54984,8 +55419,19 @@ struct HelpMenu : ZUNTask {
 		HELP_MENU_PTR = NULL;
 	}
 
+	forceinline void change_primary_state(int32_t new_state) {
+		this->primary_state = new_state;
+		this->secondary_state = 0;
+		this->state_timer.reset();
+	}
+
+	forceinline void change_secondary_state(int32_t new_state) {
+		this->secondary_state = new_state;
+		this->state_timer.reset();
+	}
+
 	// 0x4451C0
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x4451C0) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x4451C0) {
 		Float3 position = { 0.0f, this->__float_128, 0.0f };
 		switch (this->primary_state) {
 			case 2:
@@ -54996,9 +55442,7 @@ struct HelpMenu : ZUNTask {
 			case 1:
 				switch (this->secondary_state) {
 					case 0:
-						this->menu_select.menu_length = 7;
-						this->menu_select.set_selection(0);
-						this->menu_select.enable_wrap = true;
+						this->menu_select.initialize(MenuLength7, MenuChoice0, MenuWrapEnable);
 
 						for (int32_t i = 0; i != countof(this->__anm_id_array_FC); ++i) {
 							AnmID id = this->help_anm->instantiate_vm_to_ui_list_back(i, &position);
@@ -55014,16 +55458,7 @@ struct HelpMenu : ZUNTask {
 						this->secondary_state = 1;
 					case 1:
 						if (this->state_timer >= 20) {
-							this->menu_select.previous_selection = this->menu_select.current_selection;
-
-							if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_UP)) {
-								this->menu_select.move_selection(-1);
-							}
-							if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_DOWN)) {
-								this->menu_select.move_selection(1);
-							}
-
-							if (this->menu_select.previous_selection != this->menu_select.current_selection) {
+							if (this->menu_select.update(&MenuSelect::scroll_up_and_down_inline)) {
 								SOUND_MANAGER.play_sound(10);
 								for (size_t i = 0; i != countof(this->__anm_id_array_FC); ++i) {
 									if (this->menu_select.current_selection == i) {
@@ -55045,9 +55480,7 @@ struct HelpMenu : ZUNTask {
 									this->__anm_id_array_FC[i].interrupt_tree(1);
 								}
 
-								this->primary_state = 2;
-								this->secondary_state = 0;
-								this->state_timer.reset();
+								this->change_primary_state(2);
 							}
 						}
 						break;
@@ -55057,16 +55490,14 @@ struct HelpMenu : ZUNTask {
 						SAFE_FREE(this->file_buffer);
 						this->help_anm->images[1].d3d_texture->PreLoad();
 						this->__anm_id_120 = this->help_anm->instantiate_vm_to_ui_list_back(9, &position);
-						this->secondary_state = 4;
-						this->state_timer.reset();
+						this->change_secondary_state(4);
 					case 4:
 						if (this->state_timer >= 20) {
 							if (
 								INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_DOWN) &&
 								this->menu_select.current_selection < 6
 							) {
-								this->secondary_state = 5;
-								this->state_timer.reset();
+								this->change_secondary_state(5);
 								SOUND_MANAGER.play_sound(7);
 								this->menu_select.move_selection(1);
 								this->__anm_id_120.interrupt_and_run_tree(7);
@@ -55075,8 +55506,7 @@ struct HelpMenu : ZUNTask {
 								INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_UP) &&
 								this->menu_select.current_selection > 0
 							) {
-								this->secondary_state = 5;
-								this->state_timer.reset();
+								this->change_secondary_state(5);
 								SOUND_MANAGER.play_sound(7);
 								this->menu_select.move_selection(-1);
 								this->__anm_id_120.interrupt_and_run_tree(8);
@@ -55085,8 +55515,7 @@ struct HelpMenu : ZUNTask {
 								INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT | BUTTON_CANCEL)
 							) {
 								SOUND_MANAGER.play_sound(9);
-								this->secondary_state = 1;
-								this->state_timer.reset();
+								this->change_secondary_state(1);
 								this->__anm_id_120.interrupt_tree(1);
 
 								for (int32_t i = 0; i != countof(this->__anm_id_array_FC); ++i) {
@@ -55104,8 +55533,7 @@ struct HelpMenu : ZUNTask {
 					case 5: load_image:
 							
 							if (this->state_timer >= 20) {
-								this->secondary_state = 2;
-								this->state_timer.reset();
+								this->change_secondary_state(2);
 
 								SUPERVISOR.__start_thread_A94((_beginthreadex_proc_type)&thread_func_load_image);
 
@@ -55126,17 +55554,17 @@ struct HelpMenu : ZUNTask {
 	}
 
 	// 0x445690
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x445690) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x445690) {
 		return ((HelpMenu*)ptr)->on_tick();
 	}
 
 	// 0x4456A0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x4456A0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x4456A0) {
 		return UpdateFuncNext;
 	}
 
 	// 0x444EC0
-	dllexport gnu_noinline static void cdecl thread_func_load_image(void* arg) asm_symbol_rel(0x444EC0) {
+	dllexport gnu_noinline static void cdecl thread_func_load_image(void* arg) ASR(0x444EC0) {
 		HelpMenu* help_menu = HELP_MENU_PTR;
 		void* file = read_file_to_buffer(help_menu->filename_buffer, &help_menu->file_size, false);
 		help_menu = HELP_MENU_PTR;
@@ -55147,7 +55575,7 @@ struct HelpMenu : ZUNTask {
 	}
 
 	// 0x444E60
-	dllexport gnu_noinline static void cdecl thread_func_load_anm(void* arg) asm_symbol_rel(0x444E60) {
+	dllexport gnu_noinline static void cdecl thread_func_load_anm(void* arg) ASR(0x444E60) {
 		AnmLoaded* anm_loaded = ANM_MANAGER_PTR->preload_anm(HELP_ANM_INDEX, "help.anm");
 		HelpMenu* help_menu = HELP_MENU_PTR;
 		help_menu->help_anm = anm_loaded;
@@ -55177,6 +55605,7 @@ struct HelpMenu : ZUNTask {
 		return ZUN_SUCCESS;
 	}
 
+	// 0x444F10
 	dllexport gnu_noinline static HelpMenu* allocate() {
 		HelpMenu* help_menu = new HelpMenu();
 		HELP_MENU_PTR = help_menu;
@@ -55261,28 +55690,28 @@ struct KeyConfigMenu : ZUNTask {
 	}
 
 	// 0x447450
-	dllexport gnu_noinline void thiscall __sub_447450(int arg1) asm_symbol_rel(0x447450) {
+	dllexport gnu_noinline void thiscall __sub_447450(int arg1) ASR(0x447450) {
 		this->__int_17C = arg1;
 		this->__timer_148.reset();
 	}
 
 	// 0x447700
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x447700) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x447700) {
 		// TODO
 	}
 
 	// 0x447CF0
-	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x447CF0) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() ASR(0x447CF0) {
 		// TODO
 	}
 
 	// 0x447FA0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x447FA0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x447FA0) {
 		return ((KeyConfigMenu*)ptr)->on_tick();
 	}
 
 	// 0x447FB0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x447FB0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x447FB0) {
 		return ((KeyConfigMenu*)ptr)->on_draw();
 	}
 
@@ -55304,7 +55733,7 @@ struct KeyConfigMenu : ZUNTask {
 	}
 
 	// 0x4474A0
-	dllexport gnu_noinline static KeyConfigMenu* fastcall allocate(Float3* arg1) asm_symbol_rel(0x4474A0) {
+	dllexport gnu_noinline static KeyConfigMenu* fastcall allocate(Float3* arg1) ASR(0x4474A0) {
 		KeyConfigMenu* key_config_menu = new KeyConfigMenu();
 		KEY_CONFIG_MENU_PTR = key_config_menu;
 		if (ZUN_FAILED(key_config_menu->initialize(arg1))) {
@@ -55369,7 +55798,7 @@ struct OptionsMenu : ZUNTask {
 
 
 	// 0x456B60
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x456B60) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x456B60) {
 		// TODO
 	}
 
@@ -55381,12 +55810,12 @@ struct OptionsMenu : ZUNTask {
 	}
 
 	// 0x457190
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x457190) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x457190) {
 		return ((OptionsMenu*)ptr)->on_tick();
 	}
 
 	// 0x4571A0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x4571A0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x4571A0) {
 		return ((OptionsMenu*)ptr)->on_draw();
 	}
 
@@ -55410,7 +55839,7 @@ struct OptionsMenu : ZUNTask {
 	}
 
 	// 0x456880
-	dllexport gnu_noinline static OptionsMenu* fastcall allocate(Float3* arg1) asm_symbol_rel(0x456880) {
+	dllexport gnu_noinline static OptionsMenu* fastcall allocate(Float3* arg1) ASR(0x456880) {
 		OptionsMenu* options_menu = new_no_eh<OptionsMenu>();
 		OPTIONS_MENU_PTR = options_menu;
 		if (ZUN_FAILED(options_menu->initialize(arg1))) {
@@ -55465,9 +55894,9 @@ struct PauseMenu : ZUNTask {
 	int __int_200; // 0x200
 	BOOL __bool_204; // 0x204
 	int __int_208; // 0x208
-	ReplayManager* replay_manager_array[25]; // 0x20C
+	ReplayManager* replay_manager_array[REPLAYS_PER_PAGE]; // 0x20C
 	unknown_fields(0x64); // 0x270
-	char __name_buffer[9]; // 0x2D4
+	char __name_buffer[MAX_RECORD_NAME_LENGTH + 1]; // 0x2D4
 	unknown_fields(0x3); // 0x2DD
 	float __float_2E0; // 0x2E0
 	unknown_fields(0x4); // 0x2E4
@@ -55497,15 +55926,15 @@ struct PauseMenu : ZUNTask {
 		UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
 		UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
 
-		for (size_t i = 0; i < countof(this->replay_manager_array); ++i) {
-			delete this->replay_manager_array[i];
+		for (size_t i = 0; i < REPLAYS_PER_PAGE; ++i) {
+			delete_no_eh(this->replay_manager_array[i]);
 		}
 
 		PAUSE_MENU_PTR = NULL;
 	}
 
 	// 0x457A60
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x457A60) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x457A60) {
 		switch (this->primary_state) {
 			case 1: case 2: case 3:
 				this->on_tick_active();
@@ -55537,38 +55966,39 @@ struct PauseMenu : ZUNTask {
 	}
 
 	// 0x458090
-	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x458090) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() ASR(0x458090) {
 		// TODO
 		return UpdateFuncNext;
 	}
 
 	// 0x457BE0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x457BE0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x457BE0) {
 		return ((PauseMenu*)ptr)->on_tick();
 	}
 
 	// 0x458470
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x458470) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x458470) {
 		return ((PauseMenu*)ptr)->on_draw();
 	}
 
 	// 0x457740
-	dllexport gnu_noinline void thiscall change_primary_state(int32_t new_state) asm_symbol_rel(0x457740) {
+	dllexport gnu_noinline void thiscall change_primary_state(int32_t new_state) ASR(0x457740) {
 		this->previous_primary_state = this->primary_state;
 		this->primary_state = new_state;
+		this->secondary_state = 0;
 		this->state_timer.reset();
 		this->__state_timer_20.reset();
 		this->__menu_select_34.disabled_selections_count = 0;
 	}
 
 	// 0x4577D0
-	dllexport gnu_noinline void thiscall change_secondary_state(int32_t new_state) asm_symbol_rel(0x4577D0) {
+	dllexport gnu_noinline void thiscall change_secondary_state(int32_t new_state) ASR(0x4577D0) {
 		this->secondary_state = new_state;
 		this->state_timer.reset();
 	}
 
 	// 0x458680
-	dllexport gnu_noinline void thiscall __sub_458680() asm_symbol_rel(0x458680) {
+	dllexport gnu_noinline void thiscall __sub_458680() ASR(0x458680) {
 		GAME_MANAGER.__update_scorefile_game_time();
 		this->change_primary_state(1);
 		GAME_THREAD_PTR->__unknown_flag_gt_I = true;
@@ -55590,7 +56020,7 @@ struct PauseMenu : ZUNTask {
 		}
 		while (SOUND_MANAGER.__on_tick() != SndCmdEmpty);
 
-		//this->__sub_458480();
+		//this->__sub_458480(); // TODO
 		this->__float_2E0 = GAME_SPEED;
 		GAME_SPEED.set(1.0f);
 		this->__int_208 = WINDOW_DATA.__int_20D0;
@@ -55609,13 +56039,13 @@ struct PauseMenu : ZUNTask {
 	}
 
 	// 0x4588F0
-	dllexport gnu_noinline static void __sub_4588F0() asm_symbol_rel(0x4588F0) {
+	dllexport gnu_noinline static void __sub_4588F0() ASR(0x4588F0) {
 		PauseMenu* pause_menu = PAUSE_MENU_PTR;
 		if (!REPLAY_MANAGER_PTR->__unknown_flag_rm_A) {
 			pause_menu->change_primary_state(1);
 			clang_forceinline pause_menu->change_secondary_state(1);
 			GAME_THREAD_PTR->__unknown_flag_gt_I = true;
-			//pause_menu->__sub_458480();
+			//pause_menu->__sub_458480(); // TODO
 			pause_menu->front_anm = GUI_PTR->front_anm;
 
 			pause_menu->__vm_id_1E4.mark_tree_for_delete();
@@ -55643,7 +56073,7 @@ struct PauseMenu : ZUNTask {
 	}
 
 	// 0x458E40
-	dllexport gnu_noinline void thiscall on_tick_active() asm_symbol_rel(0x458E40) {
+	dllexport gnu_noinline void thiscall on_tick_active() ASR(0x458E40) {
 		char buffer[60];
 		int32_t key;
 		switch (this->secondary_state) {
@@ -55695,11 +56125,9 @@ struct PauseMenu : ZUNTask {
 					switch (GAME_MANAGER.game_type) {
 						default: { // PracticeMode
 							uint32_t score = GAME_MANAGER.globals.score;
-							ScorefileStagePractice& practice = SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
-																	.practice[GAME_MANAGER.globals.difficulty][GAME_MANAGER.globals.current_stage];
-							if (practice.score < score) {
-								practice.score = score;
-							}
+							SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
+								.practice[GAME_MANAGER.globals.difficulty][GAME_MANAGER.globals.current_stage]
+								.update_high_score(score);
 							this->__int_200 = 1;
 						}
 						case SpellPractice: // 2
@@ -55711,7 +56139,7 @@ struct PauseMenu : ZUNTask {
 																		? STAGE_COUNT + 1 // 9
 																		: current_stage;
 							}
-							int32_t index = SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].__sub_457870();
+							int32_t index = SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].__init_new_record_index();
 							current_stage = GAME_MANAGER.globals.current_stage;
 							if (current_stage == STAGE_COUNT + 1) { // 9
 								GAME_MANAGER.globals.current_stage = this->__int_1FC
@@ -55721,18 +56149,14 @@ struct PauseMenu : ZUNTask {
 							if (index < 0) {
 								goto nasty_label;
 							}
-							this->__menu_select_34.menu_length = 25;
-							this->__menu_select_34.enable_wrap = true;
-							this->__menu_select_34.set_selection(index);
-							this->__menu_select_10C.set_selection(0);
-							this->__menu_select_10C.menu_length = 91;
-							this->__menu_select_10C.enable_wrap = true;
+							this->__menu_select_34.initialize(MenuLength25, MenuWrapEnable, (MenuChoice)index);
+							this->__menu_select_10C.initialize(MenuChoice0, (MenuLength)KEYBOARD_STRING_TOTAL_KEY_COUNT, MenuWrapEnable);
 							byteloop_strcpy(this->__name_buffer, SCOREFILE_MANAGER_PTR->primary_file.common.__recent_name);
 							this->__name_length = 0;
 							if (strcmp_asm(this->__name_buffer, DEFAULT_RECORD_NAME)) {
 								this->__menu_select_10C.move_selection(-1);
 							}
-							int32_t i = countof(this->__name_buffer) - 1;
+							int32_t i = MAX_RECORD_NAME_LENGTH;
 							while (this->__name_buffer[i] == ' ' && --i > 0);
 							this->__name_length = i;
 							this->__int_200 = 0;
@@ -55751,14 +56175,7 @@ struct PauseMenu : ZUNTask {
 				) {
 					this->__menu_select_34.disable_selection(0);
 				}
-				this->__menu_select_34.previous_selection = this->__menu_select_34.current_selection;
-				if (check_hardware_inputs_repeating(BUTTON_UP)) {
-					this->__menu_select_34.move_selection(-1);
-				}
-				if (check_hardware_inputs_repeating(BUTTON_DOWN)) {
-					this->__menu_select_34.move_selection(1);
-				}
-				if (this->__menu_select_34.current_selection != this->__menu_select_34.previous_selection) {
+				if (this->__menu_select_34.update(&MenuSelect::scroll_up_and_down)) {
 					this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
 					SOUND_MANAGER.play_sound(10);
 				}
@@ -55853,23 +56270,14 @@ struct PauseMenu : ZUNTask {
 				if (this->state_timer >= 20) {
 					if (this->state_timer == 20) {
 						this->__menu_select_34.push_state();
-						this->__menu_select_34.menu_length = 2;
-						this->__menu_select_34.enable_wrap = true;
-						this->__menu_select_34.set_selection(1);
+						this->__menu_select_34.initialize(MenuLength2, MenuWrapEnable, MenuChoice1);
 						this->__vm_id_1E4.interrupt_tree(14);
 					}
 					if (this->state_timer >= 30) {
 						if (this->state_timer == 30) {
 							this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 15);
 						}
-						this->__menu_select_34.previous_selection = this->__menu_select_34.current_selection;
-						if (check_hardware_inputs_repeating(BUTTON_UP)) {
-							this->__menu_select_34.move_selection(-1);
-						}
-						if (check_hardware_inputs_repeating(BUTTON_DOWN)) {
-							this->__menu_select_34.move_selection(1);
-						}
-						if (this->__menu_select_34.current_selection != this->__menu_select_34.previous_selection) {
+						if (this->__menu_select_34.update(&MenuSelect::scroll_up_and_down)) {
 							this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 15);
 							SOUND_MANAGER.play_sound(10);
 						}
@@ -55939,10 +56347,8 @@ struct PauseMenu : ZUNTask {
 					this->change_secondary_state(11);
 					this->__vm_id_1E4.__hide_tree();
 					this->__menu_select_34.push_state();
-					this->__menu_select_34.menu_length = 25;
-					this->__menu_select_34.enable_wrap = true;
-					this->__menu_select_34.set_selection(0);
-					for (int32_t i = 1; i <= countof(this->replay_manager_array); ++i) {
+					this->__menu_select_34.initialize((MenuLength)REPLAYS_PER_PAGE, true, MenuChoice0);
+					for (int32_t i = 1; i <= REPLAYS_PER_PAGE; ++i) {
 						sprintf(buffer, "th18_%.2d.rpy", i);
 						this->replay_manager_array[i - 1] = ReplayManager::allocate_mode2(buffer);
 					}
@@ -55950,28 +56356,7 @@ struct PauseMenu : ZUNTask {
 				break;
 			case 12: case 15:
 				if (this->state_timer >= 10) {
-					this->__menu_select_10C.previous_selection = this->__menu_select_10C.current_selection;
-					if (check_hardware_inputs_repeating(BUTTON_UP)) {
-						this->__menu_select_10C.move_selection(-13);
-					}
-					if (check_hardware_inputs_repeating(BUTTON_DOWN)) {
-						this->__menu_select_10C.move_selection(13);
-					}
-					if (check_hardware_inputs_repeating(BUTTON_LEFT)) {
-						if ((this->__menu_select_10C.current_selection % 13) != 0) {
-							this->__menu_select_10C.move_selection(-1);
-						} else {
-							this->__menu_select_10C.move_selection(12);
-						}
-					}
-					if (check_hardware_inputs_repeating(BUTTON_RIGHT)) {
-						if ((this->__menu_select_10C.current_selection % 13) != 12) {
-							this->__menu_select_10C.move_selection(1);
-						} else {
-							this->__menu_select_10C.move_selection(-12);
-						}
-					}
-					if (this->__menu_select_10C.current_selection != this->__menu_select_10C.previous_selection) {
+					if (this->__menu_select_10C.update(&MenuSelect::scroll_grid, 13)) {
 						SOUND_MANAGER.play_sound(10);
 					}
 					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
@@ -55979,9 +56364,9 @@ struct PauseMenu : ZUNTask {
 						if (key <= KEYBOARD_STRING_NORMAL_KEY_COUNT) {
 							char c = KEYBOARD_STRING[key];
 							int32_t index = this->__name_length;
-							if (index < countof(this->__name_buffer) - 1) {
+							if (index < MAX_RECORD_NAME_LENGTH) {
 								this->__name_buffer[index] = c;
-								if (++this->__name_length >= countof(this->__name_buffer) - 1) {
+								if (++this->__name_length >= MAX_RECORD_NAME_LENGTH) {
 									this->__menu_select_10C.set_selection(KEYBOARD_STRING_CONFIRM);
 								}
 							} else {
@@ -55991,9 +56376,9 @@ struct PauseMenu : ZUNTask {
 						}
 						else if (key == KEYBOARD_STRING_SPACE) {
 							int32_t index = this->__name_length;
-							if (index < countof(this->__name_buffer) - 1) {
+							if (index < MAX_RECORD_NAME_LENGTH) {
 								this->__name_buffer[index] = ' ';
-								if (++this->__name_length >= countof(this->__name_buffer) - 1) {
+								if (++this->__name_length >= MAX_RECORD_NAME_LENGTH) {
 									this->__menu_select_10C.set_selection(KEYBOARD_STRING_CONFIRM);
 								}
 							} else {
@@ -56002,8 +56387,7 @@ struct PauseMenu : ZUNTask {
 							SOUND_MANAGER.play_sound(7);
 						}
 						else if (key == KEYBOARD_STRING_BACK) {
-							int32_t index = this->__name_length;
-							if (index) {
+							if (int32_t index = this->__name_length) {
 								this->__name_length = --index;
 								this->__name_buffer[index] = ' ';
 								SOUND_MANAGER.play_sound(9);
@@ -56014,8 +56398,7 @@ struct PauseMenu : ZUNTask {
 								this->__unknown_field_pm_A = 1;
 								SOUND_MANAGER.play_sound(17);
 								sprintf(buffer, "th18_%.2d.rpy", this->__menu_select_34.current_selection + 1);
-								ReplayManager* old_replay_manager = this->replay_manager_array[this->__menu_select_34.current_selection];
-								if (old_replay_manager) {
+								if (ReplayManager* old_replay_manager = this->replay_manager_array[this->__menu_select_34.current_selection]) {
 									delete_no_eh(old_replay_manager);
 								}
 								REPLAY_MANAGER_PTR->__write_to_path(buffer, this->__name_buffer, false, true);
@@ -56082,22 +56465,13 @@ struct PauseMenu : ZUNTask {
 				break;
 			case 11:
 				if (this->state_timer >= 10) {
-					this->__menu_select_34.previous_selection = this->__menu_select_34.current_selection;
-					if (check_hardware_inputs_repeating(BUTTON_UP)) {
-						this->__menu_select_34.move_selection(-1);
-					}
-					if (check_hardware_inputs_repeating(BUTTON_DOWN)) {
-						this->__menu_select_34.move_selection(1);
-					}
-					if (this->__menu_select_34.current_selection != this->__menu_select_34.previous_selection) {
+					if (this->__menu_select_34.update(&MenuSelect::scroll_up_and_down)) {
 						SOUND_MANAGER.play_sound(10);
 					}
 					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
 						this->__unknown_field_pm_A = 2;
 						this->change_secondary_state(12);
-						this->__menu_select_10C.set_selection(0);
-						this->__menu_select_10C.menu_length = KEYBOARD_STRING_TOTAL_KEY_COUNT;
-						this->__menu_select_10C.enable_wrap = true;
+						this->__menu_select_10C.initialize(MenuChoice0, (MenuLength)KEYBOARD_STRING_TOTAL_KEY_COUNT, MenuWrapEnable);
 						if (
 							this->__int_1FC &&
 							GAME_MANAGER.game_type == NormalGame
@@ -56111,7 +56485,7 @@ struct PauseMenu : ZUNTask {
 						if (strcmp_asm(this->__name_buffer, DEFAULT_RECORD_NAME)) {
 							this->__menu_select_10C.move_selection(-1);
 						}
-						int32_t i = countof(this->__name_buffer) - 1;
+						int32_t i = MAX_RECORD_NAME_LENGTH;
 						while (this->__name_buffer[i] == ' ' && --i > 0);
 						this->__name_length = i;
 						SOUND_MANAGER.play_sound(7);
@@ -56122,7 +56496,7 @@ struct PauseMenu : ZUNTask {
 						this->__menu_select_34.menu_length = 7;
 						this->__menu_select_34.enable_wrap = true;
 						this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
-						for (size_t i = 0; i != countof(this->replay_manager_array); ++i) {
+						for (size_t i = 0; i != REPLAYS_PER_PAGE; ++i) {
 							SAFE_DELETE_NO_EH(this->replay_manager_array[i]);
 						}
 						if (this->primary_state == 1) {
@@ -56467,7 +56841,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 						if (check_hardware_inputs_repeating(BUTTON_RIGHT)) {
 							this->card_choice.move_selection(1);
 							int32_t selection = this->card_choice.current_selection;
-							if (this->card_choice.previous_selection != selection) {
+							if (this->card_choice.selection_changed(selection)) {
 								if (selection + 1 < this->card_count) {
 									this->__anm_id_array_22C[selection + 1].interrupt_tree(17);
 									selection = this->card_choice.current_selection;
@@ -56486,7 +56860,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 						if (check_hardware_inputs_repeating(BUTTON_LEFT)) {
 							this->card_choice.move_selection(-1);
 							int32_t selection = this->card_choice.current_selection;
-							if (this->card_choice.previous_selection != selection) {
+							if (this->card_choice.selection_changed(selection)) {
 								if (selection > 0) {
 									this->__anm_id_array_22C[selection - 1].interrupt_tree(18);
 									selection = this->card_choice.current_selection;
@@ -56504,7 +56878,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 								}
 							}
 						}
-						if (this->card_choice.previous_selection != this->card_choice.current_selection) {
+						if (this->card_choice.selection_changed()) {
 							SOUND_MANAGER.play_sound(10);
 							const CardData* card_data = this->card_array[this->card_choice.current_selection];
 							ABILITY_TEXT_DATA_PTR->__set_card_type_label(card_data->__card_type);
@@ -56516,9 +56890,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 							int32_t current_money = GAME_MANAGER.globals.current_money;
 							if (current_money >= price) {
 								SOUND_MANAGER.play_sound(7);
-								this->confirm_menu.menu_length = 2;
-								this->confirm_menu.set_selection(0);
-								this->confirm_menu.enable_wrap = true;
+								this->confirm_menu.initialize(MenuLength2, MenuChoice0, MenuWrapEnable);
 								this->__anm_id_228.interrupt_tree_word_offset(this->confirm_menu.current_selection, 7);
 								// even more weird codegen here...
 								this->change_primary_state(6);
@@ -56529,9 +56901,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 								money_plus_extra_power += current_money;
 								if (money_plus_extra_power >= price) {
 									SOUND_MANAGER.play_sound(16);
-									this->confirm_menu.menu_length = 2;
-									this->confirm_menu.set_selection(0);
-									this->confirm_menu.enable_wrap = true;
+									this->confirm_menu.initialize(MenuLength2, MenuChoice0, MenuWrapEnable);
 									this->__anm_id_228.interrupt_tree_word_offset(this->confirm_menu.current_selection, 17);
 									// even more weird codegen here...
 									this->change_primary_state(7);
@@ -56548,14 +56918,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 						}
 						break;
 					case 6: case 7:
-						this->confirm_menu.previous_selection = this->confirm_menu.current_selection;
-						if (check_hardware_inputs_repeating(BUTTON_UP)) {
-							this->confirm_menu.move_selection(-1);
-						}
-						if (check_hardware_inputs_repeating(BUTTON_DOWN)) {
-							this->confirm_menu.move_selection(1);
-						}
-						if (this->confirm_menu.previous_selection != this->confirm_menu.current_selection) {
+						if (this->confirm_menu.update(&MenuSelect::scroll_up_and_down)) {
 							SOUND_MANAGER.play_sound(10);
 							this->__anm_id_228.interrupt_tree_word_offset(this->confirm_menu.current_selection, this->primary_state == 7 ? 17 : 7);
 						}
@@ -56701,15 +57064,15 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_draw() {
 				ascii_manager->__horizontal_positioning_mode = 0;
 				ascii_manager->__vertical_positioning_mode = 1;
 				ascii_manager->color = COLOR(255, 208, 208, 208);
-				ascii_manager->color2 = COLOR(255, 0, 0, 0);
+				ascii_manager->color2 = COLOR_BLACK;
 
 				ascii_manager->printf(&position, "Money %d  (+%d)", GAME_MANAGER.globals.current_money, GAME_MANAGER.globals.current_power - DEFAULT_POWER_PER_LEVEL);
 
 				ascii_manager = ASCII_MANAGER_PTR;
 				ascii_manager->font_id = Font0; // 0
 				ascii_manager->__horizontal_positioning_mode = 1;
-				ascii_manager->color = COLOR(255, 255, 255, 255);
-				ascii_manager->color2 = COLOR(255, 0, 0, 0);
+				ascii_manager->color = COLOR_WHITE;
+				ascii_manager->color2 = COLOR_BLACK;
 				ascii_manager->__vertical_positioning_mode = 1;
 
 				position = (this->position + Float3(0.0f, 412.0f, 0.0f)) * 0.5f;
@@ -56723,15 +57086,15 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_draw() {
 				clang_forceinline price = ABILITY_MANAGER_PTR->get_price_for_tier(price_tier);
 
 				ascii_manager->color = GAME_MANAGER.globals.current_money >= price ? CARD_PRICE_COLORS[price_tier] : COLOR(255, 96, 96, 96);
-				ascii_manager->color2 = COLOR(255, 0, 0, 0);
+				ascii_manager->color2 = COLOR_BLACK;
 
 				clang_forceinline price = ABILITY_MANAGER_PTR->get_price_for_tier(this->card_array[this->card_choice.current_selection]->price_tier);
 
 				ascii_manager->printf(&position, "Cost %d", price);
 
 				ascii_manager = ASCII_MANAGER_PTR;
-				ascii_manager->color = COLOR(255, 255, 255, 255);
-				ascii_manager->color2 = COLOR(255, 0, 0, 0);
+				ascii_manager->color = COLOR_WHITE;
+				ascii_manager->color2 = COLOR_BLACK;
 				ascii_manager->font_id = Font0; // 0
 				ascii_manager->__horizontal_positioning_mode = 1;
 				ascii_manager->__vertical_positioning_mode = 1;
@@ -57064,8 +57427,19 @@ struct NoticeManager : ZUNTask {
 		NOTICE_MANAGER_PTR = NULL;
 	}
 
+	forceinline void change_primary_state(int32_t new_state) {
+		this->primary_state = new_state;
+		this->secondary_state = 0;
+		this->state_timer.reset();
+	}
+
+	forceinline void change_secondary_state(int32_t new_state) {
+		this->secondary_state = new_state;
+		this->state_timer.reset();
+	}
+
 	// 0x4562B0
-	dllexport gnu_noinline static void cdecl thread_func_load_anm(void* arg) asm_symbol_rel(0x4562B0) {
+	dllexport gnu_noinline static void cdecl thread_func_load_anm(void* arg) ASR(0x4562B0) {
 		AnmLoaded* anm_loaded = ANM_MANAGER_PTR->preload_anm(NOTICE_ANM_INDEX, "notice.anm");
 		NoticeManager* notice_manager = NOTICE_MANAGER_PTR;
 		notice_manager->notice_anm = anm_loaded;
@@ -57079,7 +57453,7 @@ struct NoticeManager : ZUNTask {
 	}
 
 	// 0x456310
-	dllexport gnu_noinline static void cdecl thread_func_load_image(void* arg) asm_symbol_rel(0x456310) {
+	dllexport gnu_noinline static void cdecl thread_func_load_image(void* arg) ASR(0x456310) {
 		NoticeManager* notice_manager = NOTICE_MANAGER_PTR;
 		void* buffer = read_file_to_buffer(notice_manager->image_path, &notice_manager->image_size, false);
 		notice_manager = NOTICE_MANAGER_PTR;
@@ -57090,14 +57464,14 @@ struct NoticeManager : ZUNTask {
 	}
 
 	// 0x456360
-	dllexport gnu_noinline static void cdecl __set_int_12C_to_6_with_a_thread_because_why_not() asm_symbol_rel(0x456360) {
+	dllexport gnu_noinline static void cdecl __set_int_12C_to_6_with_a_thread_because_why_not() ASR(0x456360) {
 		NOTICE_MANAGER_PTR->secondary_state = 6;
 		SUPERVISOR.__thread_A94.__bool_10 = FALSE;
 		SUPERVISOR.__thread_A94.__bool_C = TRUE;
 	}
 
 	// 0x4564B0
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x4564B0) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x4564B0) {
 		switch (this->primary_state) {
 			case 0:
 				this->primary_state = 1;
@@ -57105,9 +57479,7 @@ struct NoticeManager : ZUNTask {
 			case 1:
 				switch (this->secondary_state) {
 					case 0:
-						this->menu_select.menu_length = 99;
-						this->menu_select.set_selection(this->__int_11C);
-						this->menu_select.enable_wrap = true;
+						this->menu_select.initialize((MenuLength)99, (MenuChoice)this->__int_11C, MenuWrapEnable);
 						this->notice_anm->images[1].__sub_489030();
 						this->secondary_state = 1;
 						if (this->__int_11C < 4) {
@@ -57121,17 +57493,14 @@ struct NoticeManager : ZUNTask {
 						this->notice_anm->images[1].d3d_texture->PreLoad();
 						this->__anm_id_FC = this->notice_anm->instantiate_vm_to_ui_list_back(0);
 						this->__anm_id_10C = this->notice_anm->instantiate_vm_to_ui_list_back(4);
-						this->secondary_state = 4;
-						this->state_timer.reset();
+						this->change_secondary_state(4);
 					case 4:
 						if (
 							this->state_timer >= 20 &&
 							INPUT_STATES->check_hardware_inputs_no_repeat(BUTTON_SELECT) &&
 							this->menu_select.current_selection > 0
 						) {
-							this->primary_state = 2;
-							this->secondary_state = 0;
-							this->state_timer.reset();
+							this->change_primary_state(2);
 							SOUND_MANAGER.play_sound(7);
 							this->menu_select.move_selection(1);
 							this->__anm_id_10C.interrupt_tree(1);
@@ -57142,8 +57511,7 @@ struct NoticeManager : ZUNTask {
 					case 5:
 						if (this->state_timer >= 20) {
 					image_load:
-							this->secondary_state = 2;
-							this->state_timer.reset();
+							this->change_secondary_state(2);
 							if (this->__int_11C < 4) {
 								sprintf(this->image_path, "notice_%.2d.png", this->menu_select.current_selection);
 								SUPERVISOR.__start_thread_A94((_beginthreadex_proc_type)&thread_func_load_image);
@@ -57156,17 +57524,14 @@ struct NoticeManager : ZUNTask {
 
 					case 6:
 						this->__anm_id_110 = this->notice_anm->instantiate_vm_to_world_list_back(this->__int_11C != 4);
-						this->secondary_state = 7;
-						this->state_timer.reset();
+						this->change_secondary_state(7);
 					case 7:
 						if (
 							this->state_timer >= 240 &&
 							INPUT_STATES->check_hardware_inputs_no_repeat(BUTTON_SELECT) &&
 							this->menu_select.current_selection > 0
 						) {
-							this->primary_state = 3;
-							this->secondary_state = 0;
-							this->state_timer.reset();
+							this->change_primary_state(3);
 							SOUND_MANAGER.play_sound(7);
 							this->menu_select.move_selection(1);
 							this->__anm_id_110.interrupt_tree(1);
@@ -57190,12 +57555,12 @@ struct NoticeManager : ZUNTask {
 	}
 
 	// 0x456810
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x456810) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x456810) {
 		return ((NoticeManager*)ptr)->on_tick();
 	}
 
 	// 0x456820
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x465A90) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x465A90) {
 		return UpdateFuncNext;
 	}
 
@@ -57252,8 +57617,171 @@ ValidateStructSize32(0x1B4, NoticeManager);
 #pragma endregion
 
 extern "C" {
+	// 0x4CF42C
+	externcg int32_t MENU_CHARACTER_SELECTION cgasm("_MENU_CHARACTER_SELECTION");
+	// 0x4CF430
+	externcg int32_t TROPHY_MENU_SELECTION cgasm("_TROPHY_MENU_SELECTION");
+	// 0x4CF434
+	externcg int32_t MENU_REPLAY_SELECTION cgasm("_MENU_REPLAY_SELECTION");
 	// 0x4CF438
 	externcg int32_t UNKNOWN_INT32_C cgasm("_UNKNOWN_INT32_C");
+	// 0x4C9AB0
+	externcg int32_t MENU_DIFFICULTY_SELECTION cgasm("_MENU_DIFFICULTY_SELECTION")
+#if !USE_EXTERN_FOR_CODEGEN
+		= NORMAL
+#endif
+	;
+	// 0x4C9AB4
+	externcg int32_t UNKNOWN_INT32_F cgasm("_UNKNOWN_INT32_F")
+#if !USE_EXTERN_FOR_CODEGEN
+		= -1
+#endif
+	;
+	// 0x4C9AB8
+	externcg int32_t UNKNOWN_INT32_E cgasm("_UNKNOWN_INT32_E")
+#if !USE_EXTERN_FOR_CODEGEN
+		= -1
+#endif
+	;
+	// 0x4C9ABC
+	externcg int32_t MENU_SPELL_PRACTICE_STAGE_SELECTION cgasm("_MENU_SPELL_PRACTICE_STAGE_SELECTION")
+#if !USE_EXTERN_FOR_CODEGEN
+		= -1
+#endif
+	;
+	// 0x4C9AC0
+	externcg int32_t MENU_STAGE_SELECTION cgasm("_MENU_STAGE_SELECTION")
+#if !USE_EXTERN_FOR_CODEGEN
+		= -1
+#endif
+	;
+}
+
+// 0x4B7A78
+static inline constexpr const char *const MUSIC_ROOM_SPOILER_TEXT_TABLE[] = {
+	JpEnStr("", " "),
+	JpEnStr("", "  **The selected song is not yet playing in the game**"),
+	" ",
+	JpEnStr("", "    Song comments may be spoilers."),
+	JpEnStr("", "         still play?"),
+	JpEnStr("", " "),
+	JpEnStr("", "   If you want to play, please press the decision button again."),
+	JpEnStr("", "   If you don't want to play, please move the cursor.")
+};
+
+struct MainMenuState {
+	enum : int32_t {
+
+		TitleScreen = 1,
+		State2 = 2,
+		OptionsMenu = 3,
+
+		DifficultySelect = 5,
+		CharacterSelect = 6,
+
+		PracticeStageSelect = 8,
+		State9 = 9,
+		PlayerData = 10,
+		RecordsList = 11,
+		ReplayMenu = 12,
+		State13 = 13,
+		MusicRoom = 14,
+		RecordEntry = 15,
+		ReplaySaving = 16,
+		HelpMenu = 17,
+		SpellPractice = 18,
+		State19 = 19,
+		State20 = 20,
+
+		TrophyMenu = 23,
+		AbilityMenu = 24
+	};
+};
+
+namespace TitleScreen {
+static inline constexpr MenuChoice GameStart = MenuChoice0;
+static inline constexpr MenuChoice ExtraStart = MenuChoice1;
+static inline constexpr MenuChoice Practice = MenuChoice2;
+static inline constexpr MenuChoice SpellPractice = MenuChoice3;
+static inline constexpr MenuChoice Replay = MenuChoice4;
+static inline constexpr MenuChoice PlayerData = MenuChoice5;
+static inline constexpr MenuChoice MusicRoom = MenuChoice6;
+static inline constexpr MenuChoice Option = MenuChoice7;
+static inline constexpr MenuChoice Manual = MenuChoice8;
+static inline constexpr MenuChoice Quit = MenuChoice9;
+
+// 0x4B7AF0
+static const char *const LABELS[] = {
+	"Game Start",
+	"Extra Start",
+	"Practice",
+	"Spell Practice",
+	"Replay",
+	"Player Data",
+	"Music Room",
+	"Option",
+	"Manual",
+	"Quit"
+};
+}
+
+static inline constexpr int32_t SONGS_PER_PAGE = 10;
+static inline constexpr int32_t MUSICCMT_TEXT_LINES = 8;
+static inline constexpr int32_t USER_REPLAY_PAGES = 3;
+static inline constexpr int32_t USER_REPLAY_COUNT = USER_REPLAY_PAGES * REPLAYS_PER_PAGE;
+
+static inline constexpr int32_t RECORDS_PER_PAGE = 10;
+
+// 0x4B6208
+static const float MENU_TEXT_OFFSET_TABLE[][2] = {
+	{  2.0f,  0.0f },
+	{ -1.0f,  2.0f },
+	{  0.0f,  2.0f },
+	{  3.0f,  1.0f },
+	{ -3.0f, -1.0f },
+	{  2.0f,  3.0f },
+	{ -2.0f,  2.0f },
+	{  0.0f, -4.0f },
+	{  2.0f,  0.0f },
+	{  2.0f,  0.0f },
+};
+
+// 0x41B1C0
+dllexport gnu_noinline void fastcall __big_menu_text_effects(Float3* position, int32_t index, MenuSelect* menu_select, int32_t time1, int32_t time2) ASR(0x41B1C0);
+dllexport gnu_noinline void fastcall __big_menu_text_effects(Float3* position, int32_t index, MenuSelect* menu_select, int32_t time1, int32_t time2) {
+	AsciiManager* ascii_manager;
+	if (!menu_select->__is_index_disabled(index)) {
+		if (menu_select->current_selection == index) {
+			if (!time1) {
+				ascii_manager = ASCII_MANAGER_PTR;
+				ascii_manager->color = COLOR_BLACK;
+				ascii_manager->color2 = COLOR(255, 32, 208, 255);
+			} else {
+				ascii_manager = ASCII_MANAGER_PTR;
+				if ((time1 % 4) == 2) {
+					ascii_manager->color = COLOR_BLACK;
+					ascii_manager->color2 = COLOR(255, 255, 255, 0);
+				} else {
+					ascii_manager->color = COLOR(255, 255, 255, 0);
+					ascii_manager->color2 = COLOR_WHITE;
+				}
+			}
+			if (time2 > 0) {
+				position->x += MENU_TEXT_OFFSET_TABLE[time2][0] * 0.5f;
+				position->y += MENU_TEXT_OFFSET_TABLE[time2][0] * 0.5f;
+			}
+		}
+		else {
+			ascii_manager = ASCII_MANAGER_PTR;
+			ascii_manager->color = COLOR(255, 96, 96, 48);
+			ascii_manager->color2 = COLOR_WHITE;
+		}
+	}
+	else {
+		ascii_manager = ASCII_MANAGER_PTR;
+		ascii_manager->color = COLOR_GREY(255, 128);
+		ascii_manager->color2 = COLOR_GREY(64, 255);
+	}
 }
 
 // ZUN name: TitleInf
@@ -57271,92 +57799,85 @@ struct MainMenu : ZUNTask {
 	MenuSelect __menu_select_1D4; // 0x1D4
 	MenuSelect __menu_select_2AC; // 0x2AC
 	Timer state_timer; // 0x384
-
-	// this array is *at least* 110 long :KogasaGun:
-	AnmID __anm_id_array_398[1]; // 0x398
-	// 0x39C
-
-	AnmID __anm_id_3B4; // 0x3B4
-	// 0x3B8
-
-	AnmID __anm_id_3E8; // 0x3E8
-	// 0x3EC
-
-	AnmID __anm_id_420; // 0x420
-	// 0x424
-
-	AnmID __anm_id_42C; // 0x42C
-	AnmID __anm_id_430; // 0x430
-	// 0x434
-	AnmID __anm_id_438; // 0x438
-	AnmID __anm_id_43C; // 0x43C
-	// 0x440
-	AnmID __anm_id_444; // 0x444
-	AnmID __anm_id_448; // 0x448
-	AnmID __anm_id_44C; // 0x44C
-	AnmID __anm_id_450; // 0x450
-	AnmID __anm_id_454; // 0x454
-	AnmID __anm_id_458; // 0x458
-	// 0x45C
-
-	AnmID __anm_id_48C; // 0x48C
-	// 0x490
-
-	AnmID __anm_id_49C; // 0x49C
-	// 0x4A0
-
-	AnmID __anm_id_4B0; // 0x4B0
-	AnmID __anm_id_4B4; // 0x4B4
-	AnmID __anm_id_4B8; // 0x4B8
-	AnmID __anm_id_4BC; // 0x4BC
-	AnmID __anm_id_4C0; // 0x4C0
-	AnmID __anm_id_4C4; // 0x4C4
-	AnmID __anm_id_4C8; // 0x4C8
-	AnmID __anm_id_4CC; // 0x4CC
-	// 0x4D0
-
-	AnmID __anm_id_53C; // 0x53C
-	AnmID __anm_id_540; // 0x540
-	AnmID __anm_id_544; // 0x544
-	AnmID __anm_id_548; // 0x548
-	AnmID __anm_id_54C; // 0x54C
-	// 0x550
-
-	AnmID __anm_id_570; // 0x570
-	AnmID __anm_id_574; // 0x574
-	// 0x574
-
-	AnmID __anm_id_array_618[7]; // 0x618
-	// 0x634
-
-	AnmID __anm_id_644; // 0x644
-	// 0x648
-
+	union {
+		// These array indices match exactly with the script IDs
+		// from title.anm. So script 48 goes in index 48. :KogasaGun:
+		AnmID anms[174]; // 0x398
+		struct {
+			unknown_fields(0x1C); // 0x398
+			AnmID __anm_id_3B4; // 0x3B4
+			unknown_fields(0x30); // 0x3B8
+			AnmID __anm_id_3E8; // 0x3E8
+			AnmID __anm_id_character_select_A; // 0x3EC
+			AnmID __anm_id_character_select_B; // 0x3F0
+			unknown_fields(0x2C); // 0x3F4
+			AnmID __anm_id_420; // 0x420
+			unknown_fields(0x8); // 0x424
+			AnmID __anm_id_42C; // 0x42C
+			AnmID __anm_id_430; // 0x430
+			AnmID __anm_id_434; // 0x434
+			AnmID __anm_id_438; // 0x438
+			AnmID __anm_id_43C; // 0x43C
+			AnmID __anm_id_440; // 0x440
+			AnmID __anm_id_444; // 0x444
+			AnmID __anm_id_448; // 0x448
+			AnmID __anm_id_44C; // 0x44C
+			AnmID __anm_id_450; // 0x450
+			AnmID __anm_id_454; // 0x454
+			AnmID __anm_id_458; // 0x458
+			unknown_fields(0x28); // 0x45C
+			AnmID __anm_id_difficulty_select_A; // 0x484
+			AnmID __anm_id_difficulty_select_B; // 0x488
+			AnmID __anm_id_array_48C[SHOTTYPE_COUNT]; // 0x48C
+			AnmID __anm_id_array_49C[DIFFICULTY_COUNT - 1]; // 0x49C
+			AnmID __anm_id_4B0; // 0x4B0
+			AnmID __anm_id_4B4; // 0x4B4
+			AnmID __anm_id_4B8; // 0x4B8
+			AnmID __anm_id_4BC; // 0x4BC
+			AnmID __anm_id_4C0; // 0x4C0
+			AnmID __anm_id_4C4; // 0x4C4
+			AnmID __anm_id_4C8; // 0x4C8
+			AnmID __anm_id_4CC; // 0x4CC
+			unknown_fields(0x6C); // 0x4D0
+			AnmID __anm_id_53C; // 0x53C
+			AnmID __anm_id_540; // 0x540
+			AnmID __anm_id_544; // 0x544
+			AnmID __anm_id_548; // 0x548
+			AnmID __anm_id_54C; // 0x54C
+			unknown_fields(0x20); // 0x550
+			AnmID __anm_id_570; // 0x570
+			AnmID __anm_id_574; // 0x574
+			unknown_fields(0xA0); // 0x578
+			AnmID __anm_id_array_618[7]; // 0x618
+			unknown_fields(0x10); // 0x634
+			AnmID __anm_id_644; // 0x644
+			unknown_fields(0x8); // 0x648
+			// 0x650
+		};
+	};
 	AnmID __anm_id_650; // 0x650
-	AnmID __anm_id_array_654[10]; // 0x654
-	// 0x67C
-
-	AnmID __anm_id_array_694[1]; // 0x694 UNKNOWN BOUND
-	// 0x698
-
-	AnmID __anm_id_array_6E4[8]; // 0x6E4
+	AnmID __anm_id_array_654[16]; // 0x654 Bound is also 16 in FW
+	AnmID __anm_id_array_694[20]; // 0x694 Bound is 32 in FW, so 20 is just a guess
+	AnmID musiccmt_line_vms[MUSICCMT_TEXT_LINES]; // 0x6E4
 	AnmID __anm_id_704; // 0x704
-	int32_t __int_708; // 0x708
-	int32_t __int_70C; // 0x70C
-	int __int_710; // 0x710
-	int __int_714; // 0x714
-	// 0x718
-
-	int32_t __int_5958; // 0x5958
-	char __text_buffer_595C[12]; // 0x595C double check length, might be 10 or some such
-	int __int_5968; // 0x5968
-	int __dword_596C; // 0x596C
-	MenuSelect __menu_select_5970; // 0x5970
-	// 0x5A48
-
-	int __index_5AAC; // 0x5AAC
-	int __int_5AB0; // 0x5AB0
-	ReplayManager* replay_manager_array[100]; // 0x5AB4
+	int32_t __music_room_song_count; // 0x708
+	int32_t __musiccmt_line_index; // 0x70C
+	int32_t __music_index; // 0x710
+	BOOL __music_room_force_unlock; // 0x714
+	char __musiccmt_titlesA[MUSIC_COUNT][64]; // 0x718
+	char __musiccmt_titlesB[MUSIC_COUNT][66]; // 0xF18
+	char __musiccmt_lines[MUSIC_COUNT][MUSICCMT_TEXT_LINES][66]; // 0x1758
+	int32_t __music_room_scroll_index; // 0x5958
+	char __name_buffer[MAX_RECORD_NAME_LENGTH + 1]; // 0x595C
+	probably_padding_bytes(0x3);
+	int32_t __name_length; // 0x5968
+	BOOL __is_not_new_record; // 0x596C
+	MenuSelect keyboard; // 0x5970
+	unknown_fields(0x60); // 0x5A48
+	int __dword_5AA8; // 0x5AA8
+	int32_t __replay_index; // 0x5AAC
+	int32_t __replay_stage_number; // 0x5AB0
+	ReplayManager* replay_manager_array[REPLAYS_PER_PAGE + USER_REPLAY_COUNT]; // 0x5AB4
 	void* musiccmt_file; // 0x5C44
 	int32_t __int_5C48; // 0x5C48
 	union {
@@ -57364,21 +57885,21 @@ struct MainMenu : ZUNTask {
 		struct {
 			uint32_t __unknown_flag_mm_A : 1; // 1
 			uint32_t __unknown_flag_mm_B : 1; // 2
-			uint32_t __unknown_flag_mm_C : 1; // 3
-			uint32_t __unknown_flag_mm_D : 1; // 4
+			uint32_t __stop_loading_replays : 1; // 3
+			uint32_t __done_loading_replays : 1; // 4
 		};
 	};
 	MenuSelect __menu_select_5C50; // 0x5C50
-	int32_t __int_5D28; // 0x5D28
+	int32_t __spell_practice_stage; // 0x5D28
 	int32_t __int_5D2C; // 0x5D2C
-	// 0x5D30
-	int32_t __int_array_5D34[5]; // 0x5D34
-	int __int_5D48; // 0x5D48
+	unknown_fields(0x4); // 0x5D30
+	int32_t __spell_id_array[SPELL_DIFFICULTY_VARIANTS]; // 0x5D34
+	int32_t __record_type; // 0x5D48
 	int32_t __int_5D4C; // 0x5D4C
-	int __int_5D50; // 0x5D50
+	int32_t __trophy_index; // 0x5D50
 	Timer __timer_5D54; // 0x5D54
 	Timer __timer_5D68; // 0x5D68
-	ZUNThread __thread_5D7C; // 0x5D7C
+	ZUNThread replay_loading_thread; // 0x5D7C
 	// 0x5D98
 
 
@@ -57394,7 +57915,7 @@ struct MainMenu : ZUNTask {
 	}
 
 	inline ~MainMenu() EH_TERMINATE {
-		this->__thread_5D7C.stop_and_cleanup();
+		this->replay_loading_thread.stop_and_cleanup();
 
 		UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_tick_func);
 		UPDATE_FUNC_REGISTRY_PTR->delete_func_locked(this->on_draw_func);
@@ -57417,7 +57938,7 @@ struct MainMenu : ZUNTask {
 
 	// 0x464D20
 	// EH frame (terminate)
-	dllexport gnu_noinline static void cleanup() asm_symbol_rel(0x464D20) {
+	dllexport gnu_noinline static void cleanup() ASR(0x464D20) {
 		delete MAIN_MENU_PTR;
 	}
 
@@ -57425,12 +57946,12 @@ struct MainMenu : ZUNTask {
 	// Not that anything ever tries to call it anyway
 	// 0x4646D0
 	// Method 0
-	dllexport gnu_noinline virtual size_t __method_0() asm_symbol_rel(0x4646D0) {
+	dllexport gnu_noinline virtual size_t __method_0() ASR(0x4646D0) {
 		return sizeof(MainMenu); // why tho
 	}
 
 	// 0x4646E0
-	dllexport gnu_noinline void thiscall change_primary_state(int32_t new_state) asm_symbol_rel(0x4646E0) {
+	dllexport gnu_noinline void thiscall change_primary_state(int32_t new_state) ASR(0x4646E0) {
 		this->previous_primary_state = this->primary_state;
 		this->primary_state = new_state;
 		this->secondary_state = 0;
@@ -57438,7 +57959,7 @@ struct MainMenu : ZUNTask {
 	}
 
 	// 0x464740
-	dllexport gnu_noinline void thiscall change_secondary_state(int32_t new_state) asm_symbol_rel(0x464740) {
+	dllexport gnu_noinline void thiscall change_secondary_state(int32_t new_state) ASR(0x464740) {
 		this->secondary_state = new_state;
 		this->state_timer.reset();
 	}
@@ -57446,7 +57967,7 @@ struct MainMenu : ZUNTask {
 private:
 	// 0x464790
 	dllexport gnu_noinline AnmID& thiscall __find_indexed_child_id_with_script(AnmID& out, int32_t index, int32_t script) {
-		return this->__anm_id_array_398[index].__find_child_id_with_script(out, script);
+		return this->anms[index].__find_child_id_with_script(out, script);
 	}
 
 public:
@@ -57455,22 +57976,57 @@ public:
 		return this->__find_indexed_child_id_with_script(dummy, index, script);
 	}
 
-	// 0x469C80
-	dllexport gnu_noinline int thiscall __state_15_handler() asm_symbol_rel(0x469C80) {
-		// TODO: complain about how much menu code sucks
-		return 1;
+	static forceinline char* musiccmt_txt_skip_to_end_of_line(const char* str, int32_t& count) {
+		char c = *str;
+		if (c != '\n') {
+			int32_t count_local = count;
+			do {
+				if (c == '\r' || count_local == 0) {
+					break;
+				}
+				c = *str++;
+				count = --count_local;
+			} while (c != '\n');
+		}
+		return (char*)str;
+	}
+	static forceinline char* musiccmt_txt_skip_end_of_line_chars(const char* str, int32_t& count) {
+		char c;
+		while (
+			((c = *str) == '\n' || c == '\r') &&
+			count != 0
+		) {
+			++str;
+			--count;
+		}
+		return (char*)str;
 	}
 
-	// 0x46A260
-	dllexport gnu_noinline int thiscall __draw_state_15() asm_symbol_rel(0x46A260) {
-		// TODO
-		return 1;
+	// 0x46BBE0
+	dllexport gnu_noinline static char* fastcall musiccmt_txt_skip_to_next_line(const char* str, int32_t& count) ASR(0x46BBE0) {
+		str = musiccmt_txt_skip_to_end_of_line(str, count);
+		if (count != 0) {
+			str = musiccmt_txt_skip_end_of_line_chars(str, count);
+		}
+		return (char*)str;
+	}
+
+	// 0x46BC30
+	dllexport gnu_noinline static char* fastcall musiccmt_txt_copy_rest_of_line_to_buffer(char* out_str, char* str, int32_t& count) ASR(0x46BC30) {
+		//out_str[0] = '\0';
+		char* end_of_line = musiccmt_txt_skip_to_end_of_line(str, count);
+		if (count != 0) {
+			*end_of_line = '\0';
+			byteloop_strcpy(out_str, str);
+			++end_of_line;
+			--count;
+			end_of_line = musiccmt_txt_skip_end_of_line_chars(end_of_line, count);
+		}
+		return end_of_line;
 	}
 
 	// 0x465AA0
-	dllexport gnu_noinline int thiscall __state_1_handler() asm_symbol_rel(0x465AA0) {
-		// TODO: yet another huge awful menu switch
-
+	dllexport gnu_noinline int thiscall __title_screen_handler() ASR(0x465AA0) {
 		switch (this->secondary_state) {
 			case 0:
 			{
@@ -57483,16 +58039,16 @@ public:
 				this->__menu_select_24.enable_wrap = true;
 
 				if (!SCOREFILE_MANAGER_PTR->primary_file.has_any_1cc_clear()) {
-					this->__menu_select_24.disable_selection(1);
+					this->__menu_select_24.disable_selection(TitleScreen::ExtraStart);
 				}
 
 				switch (GAME_MANAGER.game_type) {
 					case SpellPractice:
-						this->__menu_select_24.set_selection(3);
+						this->__menu_select_24.set_selection(TitleScreen::SpellPractice);
 						GAME_MANAGER.set_game_type(NormalGame);
 						break;
 					default: // PracticeMode
-						this->__menu_select_24.set_selection(2);
+						this->__menu_select_24.set_selection(TitleScreen::Practice);
 						GAME_MANAGER.set_game_type(NormalGame);
 						break;
 					case NormalGame:
@@ -57552,122 +58108,2513 @@ public:
 						delete notice_manager;
 					}
 				}
+				if (AbilityTrophyManager* ability_trophy_manager = ABILITY_TROPHY_MANAGER_PTR) {
+					ability_trophy_manager->__bool_224 = true;
+				}
+				if (this->__menu_select_24.update(&MenuSelect::scroll_up_and_down)) {
+					SOUND_MANAGER.play_sound(10);
+					this->__timer_5D54.set(8);
+				}
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+					if (this->__menu_select_24.current_selection == TitleScreen::Quit) { // 9
+						goto handle_quit;
+					}
+					SOUND_MANAGER.play_sound(9);
+					this->__menu_select_24.set_selection(TitleScreen::Quit); // 9
+				}
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+					this->__timer_5D68.set(30);
+					switch (this->__menu_select_24.current_selection) {
+						case TitleScreen::GameStart: // 0
+						case TitleScreen::ExtraStart: // 1
+						case TitleScreen::Practice: // 2
+						case TitleScreen::SpellPractice: // 3
+						case TitleScreen::Replay: // 4
+						case TitleScreen::PlayerData: // 5
+						case TitleScreen::MusicRoom: // 6
+						case TitleScreen::Option: // 7
+						case TitleScreen::Manual: // 8
+							SOUND_MANAGER.play_sound(7);
+							this->__anm_id_420.interrupt_and_orphan_tree(1);
+							this->__anm_id_704.interrupt_tree(1);
+							this->change_secondary_state(4);
+							break;
+						case TitleScreen::Quit: // 9
+						handle_quit:
+							SOUND_MANAGER.play_sound(9);
+							this->change_secondary_state(4);
+							break;
+					}
+				}
+				break;
+			}
+			case 4:
+				if (this->state_timer >= 20) {
+					int32_t difficulty;
+					switch (this->__menu_select_24.current_selection) {
+						case TitleScreen::GameStart: // 0
+							GAME_MANAGER.set_game_type(NormalGame);
+							this->__anm_id_3B4.interrupt_and_run_tree(3);
+							this->change_primary_state(MainMenuState::DifficultySelect); // 5
+							this->__menu_select_24.push_state();
+							difficulty = MENU_DIFFICULTY_SELECTION;
+							this->__menu_select_24.set_selection(difficulty);
+							GAME_MANAGER.globals.difficulty = difficulty;
+							break;
+						case TitleScreen::ExtraStart: // 1
+							GAME_MANAGER.set_game_type(NormalGame);
+							this->__anm_id_3B4.interrupt_and_run_tree(3);
+							this->change_primary_state(MainMenuState::DifficultySelect); // 5
+							this->__menu_select_24.push_state();
+							GAME_MANAGER.globals.difficulty = EXTRA;
+							this->__menu_select_24.set_selection(0);
+							break;
+						case TitleScreen::Practice: // 2
+							GAME_MANAGER.set_game_type(PracticeMode);
+							this->__anm_id_3B4.interrupt_and_run_tree(3);
+							this->__menu_select_24.push_state();
+							difficulty = MENU_DIFFICULTY_SELECTION;
+							this->__menu_select_24.set_selection(difficulty);
+							GAME_MANAGER.globals.difficulty = difficulty;
+							this->change_primary_state(MainMenuState::DifficultySelect); // 5
+							break;
+						case TitleScreen::SpellPractice: // 3
+							GAME_MANAGER.set_game_type(SpellPractice);
+							this->__anm_id_3B4.interrupt_and_run_tree(3);
+							this->change_primary_state(MainMenuState::SpellPractice); // 18
+							this->__menu_select_24.push_state();
+							this->__menu_select_5C50.initialize((MenuChoice)MENU_CHARACTER_SELECTION, MenuWrapEnable, (MenuLength)CHARACTER_COUNT);
+							this->__menu_select_24.set_selection(0);
+							break;
+						case TitleScreen::Replay: // 4
+							this->__anm_id_3B4.interrupt_and_run_tree(3);
+							this->change_primary_state(MainMenuState::ReplayMenu); // 12
+							this->__menu_select_24.push_state();
+							break;
+						case TitleScreen::PlayerData: // 5
+							this->__anm_id_3B4.interrupt_and_run_tree(3);
+							this->change_primary_state(MainMenuState::PlayerData); // 10
+							this->__menu_select_24.push_state();
+							this->__menu_select_24.set_selection(0);
+							break;
+						case TitleScreen::MusicRoom: // 6
+							this->__anm_id_3B4.interrupt_and_run_tree(3);
+							this->change_primary_state(MainMenuState::MusicRoom); // 14
+							this->__menu_select_24.push_state();
+							break;
+						case TitleScreen::Option: // 7
+							this->__anm_id_3B4.interrupt_and_run_tree(3);
+							this->change_primary_state(MainMenuState::OptionsMenu); // 3
+							this->__menu_select_24.push_state();
+							break;
+						case TitleScreen::Manual: // 8
+							this->__anm_id_3B4.interrupt_and_run_tree(3);
+							this->change_primary_state(MainMenuState::HelpMenu); // 17
+							this->__menu_select_24.push_state();
+							break;
+						case TitleScreen::Quit: // 9
+							this->change_primary_state(MainMenuState::State2); // 2
+							break;
+					}
+				}
+				break;
+		}
+		return 1;
+	}
 
+	// 0x469C80
+	dllexport gnu_noinline int thiscall __record_entry_handler() ASR(0x469C80) {
+		int32_t i;
+		switch (this->secondary_state) {
+			case 0: {
+				this->__menu_select_24.menu_length = 30;
+				SOUND_MANAGER.__load_and_play_music_with_unlock(0, 17, "th128_08");
+				if (!this->__anm_id_650) {
+					this->__anm_id_650 = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(19);
+				}
+				this->__anm_id_444 = this->title_anm->instantiate_vm_to_world_list_back(43);
+				this->change_secondary_state(1);
+				i = 61 + GAME_MANAGER.globals.shottype_index();
+				this->anms[i] = this->title_anm->instantiate_vm_to_world_list_back(i);
+				i = 65 + GAME_MANAGER.globals.difficulty;
+				this->anms[i] = this->title_anm->instantiate_vm_to_world_list_back(i);
+				if (!ANM_MANAGER_PTR->get_vm_with_id(this->__anm_id_3B4)) {
+					AnmID id = this->title_anm->instantiate_vm_to_world_list_back(7);
+					this->__anm_id_3B4 = id;
+					id.interrupt_and_run_tree(3);
+				}
+
+				GAME_MANAGER.globals.current_stage = 8;
+				int32_t index = SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].__init_new_record_index();
+				STAGE_DATA_PTR = &STAGE_DATA[DebugStage]; // 0
+				GAME_MANAGER.globals.current_stage = DebugStage; // 0
+				GAME_MANAGER.globals.__starting_stage = DebugStage; // 0
+
+				if (index >= 0) {
+					this->state_timer.reset();
+					this->__menu_select_24.enable_wrap = true;
+					this->__menu_select_24.set_selection(index);
+					this->keyboard.initialize(MenuChoice0, (MenuLength)KEYBOARD_STRING_TOTAL_KEY_COUNT, MenuWrapEnable);
+					byteloop_strcpy(this->__name_buffer, SCOREFILE_MANAGER_PTR->primary_file.common.__recent_name);
+					if (strcmp_asm(this->__name_buffer, DEFAULT_RECORD_NAME)) {
+						this->keyboard.move_selection(-1);
+					}
+					int32_t i = MAX_RECORD_NAME_LENGTH;
+					while (this->__name_buffer[i] == ' ' && --i > 0);
+					this->__name_length = i;
+					this->__is_not_new_record = false;
+				} else {
+					this->__menu_select_24.set_selection(-1);
+					this->__is_not_new_record = true;
+				}
+			}
+				[[fallthrough]];
+			case 1:
+				if (this->state_timer > 6) {
+					clang_forceinline this->change_secondary_state(2);
+				}
+				break;
+			case 2:
+				if (!this->__is_not_new_record) {
+					if (this->keyboard.update(&MenuSelect::scroll_grid, 13)) {
+						SOUND_MANAGER.play_sound(10);
+					}
+				}
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+					if (this->__is_not_new_record) {
+						goto done_entering_name;
+					}
+					int32_t key = this->keyboard.current_selection;
+					if (key <= KEYBOARD_STRING_NORMAL_KEY_COUNT) {
+						char c = KEYBOARD_STRING[key];
+						int32_t index = this->__name_length;
+						if (index < MAX_RECORD_NAME_LENGTH) {
+							this->__name_buffer[index] = c;
+							if (++this->__name_length >= MAX_RECORD_NAME_LENGTH) {
+								this->keyboard.set_selection(KEYBOARD_STRING_CONFIRM);
+							}
+						} else {
+							this->__name_buffer[index - 1] = c;
+						}
+					}
+					else if (key == KEYBOARD_STRING_SPACE) {
+						int32_t index = this->__name_length;
+						if (index < MAX_RECORD_NAME_LENGTH) {
+							this->__name_buffer[index] = ' ';
+							if (++this->__name_length >= MAX_RECORD_NAME_LENGTH) {
+								this->keyboard.set_selection(KEYBOARD_STRING_CONFIRM);
+							}
+						} else {
+							this->__name_buffer[index - 1] = ' ';
+						}
+					}
+					else if (key == KEYBOARD_STRING_BACK) {
+						if (int32_t index = this->__name_length) {
+							this->__name_length = --index;
+							this->__name_buffer[index] = ' ';
+						}
+					}
+					else if (key == KEYBOARD_STRING_CONFIRM) {
+						ScorefileRecord& record = SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
+													.records[GAME_MANAGER.globals.difficulty][this->__menu_select_24.current_selection];
+						byteloop_strcpy(record.name, this->__name_buffer);
+						byteloop_strcpy(SCOREFILE_MANAGER_PTR->primary_file.common.__recent_name, this->__name_buffer);
+				done_entering_name:
+						this->change_secondary_state(3);
+					}
+					SOUND_MANAGER.play_sound(7);
+				}
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+					if (!this->__is_not_new_record) {
+						if (this->__name_length != 0) {
+							SOUND_MANAGER.play_sound(9);
+							--this->__name_length;
+							this->__name_buffer[this->__name_length] = ' ';
+						}
+					} else {
+						this->change_secondary_state(3);
+						SOUND_MANAGER.play_sound(7);
+					}
+				}
+				break;
+			case 3:
+				if (this->state_timer >= 6) {
+					this->__anm_id_444.interrupt_and_orphan_tree(1);
+					this->__anm_id_array_48C[GAME_MANAGER.globals.shottype_index()].interrupt_and_orphan_tree(1);
+					this->__anm_id_array_49C[GAME_MANAGER.globals.difficulty].interrupt_and_orphan_tree(1);
+					if (GAME_MANAGER.globals.continues == 0) {
+						this->change_primary_state(MainMenuState::PlayerData); // 10
+					}
+					else {
+						delete_no_eh(REPLAY_MANAGER_PTR);
+						this->__anm_id_650.interrupt_and_orphan_tree(1);
+						this->change_primary_state(MainMenuState::TitleScreen); // 1
+						SOUND_MANAGER.__load_and_play_music_with_unlock(0, 0, "th18_01");
+					}
+				}
+				break;
+		}
+		return 1;
+	}
+
+	// 0x46A260
+	dllexport gnu_noinline int thiscall __record_entry_draw() ASR(0x46A260) {
+		if (this->secondary_state == 2) {
+			// TODO
+		}
+		return 1;
+	}
+
+	// 0x4679D0
+	dllexport gnu_noinline static unsigned stdcall thread_func_load_replays(void* arg) ASR(0x4679D0) {
+		MainMenu* main_menu = MAIN_MENU_PTR;
+
+		char buffer[MAX_PATH];
+		for (int32_t i = 0; i <= REPLAYS_PER_PAGE; ++i) {
+			sprintf(buffer, "th18_%.2d.rpy", i);
+			main_menu->replay_manager_array[i - 1] = ReplayManager::allocate_mode2(buffer);
+			if (main_menu->__stop_loading_replays) {
+				break;
+			}
+		}
+		chdir(WINDOW_DATA.appdata_path);
+		chdir("replay");
+
+		WIN32_FIND_DATAA w32fd;
+
+		HANDLE hFind = FindFirstFileA("th18_ud????.rpy", &w32fd);
+		if (hFind != INVALID_HANDLE_VALUE) {
+			// BUG: This only fills 2/3 intended user replay pages
+			for (int32_t i = REPLAYS_PER_PAGE; i < USER_REPLAY_COUNT; ++i) {
+				chdir(WINDOW_DATA.exe_path);
+				main_menu->replay_manager_array[REPLAYS_PER_PAGE + i] = ReplayManager::allocate_mode2(w32fd.cFileName);
+				chdir(WINDOW_DATA.appdata_path);
+				chdir("replay");
+				if (
+					main_menu->__stop_loading_replays ||
+					!FindNextFileA(hFind, &w32fd)
+				) {
+					break;
+				}
+			}
+		}
+		FindClose(hFind);
+		chdir(WINDOW_DATA.exe_path);
+		main_menu->__done_loading_replays = true;
+		return 0;
+	}
+
+	// 0x467B10
+	dllexport gnu_noinline int thiscall __replay_menu_handler() ASR(0x467B10) {
+		switch (this->secondary_state) {
+			case 0: {
+				int32_t replay_index = MENU_REPLAY_SELECTION;
+				int32_t replay_page = replay_index / REPLAYS_PER_PAGE;
+				int32_t replay_in_page = replay_index - replay_page * REPLAYS_PER_PAGE;
+				this->__menu_select_24.initialize((MenuLength)REPLAYS_PER_PAGE, (MenuChoice)replay_in_page);
+				this->__menu_select_2AC.initialize((MenuLength)USER_REPLAY_PAGES, (MenuChoice)replay_page, MenuWrapEnable);
+				MENU_REPLAY_SELECTION = 0;
+				if (!this->__anm_id_650) {
+					this->__anm_id_650 = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(19);
+				}
+				this->__anm_id_438 = this->title_anm->instantiate_vm_to_world_list_back(40);
+				this->change_secondary_state(1);
+
+				zero_array(this->replay_manager_array);
+				this->__stop_loading_replays = false;
+				this->__done_loading_replays = false;
+				this->__dword_5AA8 = 0;
+
+				this->replay_loading_thread.start(&thread_func_load_replays, this);
+
+				if (!ANM_MANAGER_PTR->get_vm_with_id(this->__anm_id_3B4)) {
+					AnmID id = this->title_anm->instantiate_vm_to_world_list_back(7);
+					this->__anm_id_3B4 = id;
+					id.interrupt_and_run_tree(3);
+				}
+			}
+				[[fallthrough]];
+			case 1:
+				if (this->state_timer > 6) {
+					this->change_secondary_state(2);
+				}
+				break;
+			case 2:
+				this->__menu_select_24.previous_selection = this->__menu_select_24.current_selection;
+				this->__menu_select_2AC.previous_selection = this->__menu_select_2AC.current_selection;
+				this->__menu_select_24.scroll_up_and_down_inline();
+				this->__menu_select_2AC.scroll_left_and_right_inline();
+				if (this->__menu_select_2AC.selection_changed()) {
+					SOUND_MANAGER.play_sound(10);
+				}
+				if (this->__menu_select_24.selection_changed()) {
+					SOUND_MANAGER.play_sound(10);
+				}
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+					this->change_secondary_state(5);
+					SOUND_MANAGER.play_sound(9);
+					this->__stop_loading_replays = true;
+				}
+				else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+					int32_t replay_index = this->__menu_select_24.current_selection + this->__menu_select_2AC.current_selection * REPLAYS_PER_PAGE;
+					if (this->replay_manager_array[replay_index]) {
+						this->change_secondary_state(4);
+						this->__replay_index = this->__menu_select_24.current_selection + this->__menu_select_2AC.current_selection * REPLAYS_PER_PAGE;
+						this->__menu_select_24.push_state();
+						this->__menu_select_24.menu_length = PLAYABLE_STAGE_COUNT;
+
+						for (int32_t i = 0; i < PLAYABLE_STAGE_COUNT; ++i) {
+							if (this->replay_manager_array[this->__replay_index]->stage_data[i + Stage1].gamestate_start) {
+								this->__menu_select_24.disable_selection(i);
+							}
+						}
+						// ZUN, wtf is this
+						this->__menu_select_24.move_selection(-1);
+						this->__menu_select_24.move_selection(1);
+
+						if (this->replay_manager_array[this->__replay_index]->info->spell_practice_mode) {
+							goto start_replay;
+						}
+					}
+				}
+				break;
+			case 4:
+				if (this->state_timer >= 15) {
+					if (this->__menu_select_24.update(&MenuSelect::scroll_up_and_down)) {
+						SOUND_MANAGER.play_sound(10);
+					}
+					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+						this->__menu_select_24.pop_state();
+						this->__menu_select_24.menu_length = REPLAYS_PER_PAGE;
+						this->__menu_select_24.enable_wrap = false;
+						this->change_secondary_state(2);
+						SOUND_MANAGER.play_sound(9);
+					}
+					else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+			start_replay:
+						this->__replay_stage_number = this->__menu_select_24.current_selection;
+						this->change_secondary_state(3);
+						this->__stop_loading_replays = true;
+						SOUND_MANAGER.play_sound(50);
+						SOUND_MANAGER.__queue_fade_out(0.05f);
+					}
+				}
+				break;
+			case 3:
+				if (!EFFECT_MANAGER_PTR->__done_loading) {
+					this->state_timer--;
+				}
+				else {
+					int32_t time = this->state_timer;
+					if (time == 2) {
+						AnmID id = EFFECT_MANAGER_PTR->instantiate_special_effect0_vm_to_ui_list_back();
+						SUPERVISOR.__vm_id_1D0 = id;
+						id.interrupt_tree(7);
+						ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
+						time = this->state_timer;
+					}
+					if (
+						time >= 32 &&
+						this->__done_loading_replays
+					) {
+						this->change_primary_state(MainMenuState::State2); // 2
+						int32_t stage_number = this->__menu_select_24.current_selection + Stage1;
+						SUPERVISOR.gamemode_switch = GameMode::StartDemo; // 13 ...?
+						GAME_MANAGER.globals.current_stage = stage_number;
+						GAME_MANAGER.globals.__starting_stage = stage_number;
+						STAGE_DATA_PTR = &STAGE_DATA[stage_number];
+						byteloop_strcpy(REPLAY_FILENAME_BUFFER, this->replay_manager_array[this->__replay_index]->file_path);
+						ReplayInfo* replay_info = this->replay_manager_array[this->__replay_index]->info;
+						GAME_MANAGER.globals.character = replay_info->character;
+						GAME_MANAGER.globals.shottype = replay_info->shottype;
+						GAME_MANAGER.globals.difficulty = replay_info->difficulty;
+						if (replay_info->spell_practice_mode) {
+							GAME_MANAGER.set_game_type(SpellPractice);
+							GAME_MANAGER.globals.spell_practice_id = replay_info->spell_practice_id;
+						} else {
+							GAME_MANAGER.set_game_type(NormalGame);
+							GAME_MANAGER.globals.spell_practice_id = -1;
+						}
+						MENU_REPLAY_SELECTION = this->__replay_index;
+						UNKNOWN_INT32_C = 2;
+					}
+				}
+				break;
+			case 5:
+				if (
+					this->state_timer >= 6 &&
+					this->__done_loading_replays
+				) {
+					nounroll for (size_t i = 0; i < countof(this->replay_manager_array); ++i) {
+						delete_no_eh(this->replay_manager_array[i]);
+					}
+					zero_array(this->replay_manager_array);
+					this->__anm_id_438.interrupt_and_orphan_tree(1);
+					this->__anm_id_650.interrupt_and_orphan_tree(1);
+					this->change_primary_state(MainMenuState::TitleScreen); // 1
+					this->__menu_select_24.pop_state();
+				}
+				break;
+		}
+		return 1;
+	}
+
+	// 0x468130
+	dllexport gnu_noinline int thiscall __replay_menu_draw() ASR(0x468130) {
+		// All of the long format strings are actually read from
+		// a constant index in a table, but I don't know or care
+		// how to make clang generate something that stupid
+		
+		AsciiManager* ascii_manager;
+		switch (this->secondary_state) {
+			case 4: {
+				Float3 position = { 58.0f, 80.0f, 0.0f };
+				int32_t index = this->__replay_index;
+				ReplayInfo* replay_info = this->replay_manager_array[index]->info;
+				if (this->state_timer < 10) {
+					int32_t index_in_page = index % REPLAYS_PER_PAGE;
+					position.y = 80.0f + (10.0f - (float)this->state_timer) * (index_in_page * 15) / 10.0f;
+				}
+
+				ascii_manager = ASCII_MANAGER_PTR;
+				ascii_manager->enable_shadows = true;
+
+				const tm* replay_time = localtime(&replay_info->time);
+				
+				if (this->__menu_select_2AC.current_selection == 0) {
+					if (!replay_info->spell_practice_mode) {
+						ASCII_MANAGER_PTR->printf(
+							&position,
+							"No.%.2d %s %.2d/%.2d/%.2d %.2d:%.2d %s %s %s %2.1f%%",
+							this->__replay_index + 1,
+							replay_info->name,
+							replay_time->tm_year % 100, replay_time->tm_mon, replay_time->tm_mday,
+							replay_time->tm_hour, replay_time->tm_min,
+							SIX_LETTER_SHOTTYPE_NAMES[replay_info->shottype_index()],
+							SEVEN_LETTER_DIFFICULTY_NAMES[replay_info->difficulty],
+							THREE_LETTER_STAGE_NAMES[replay_info->__end_stage],
+							replay_info->slowdown_rate
+						);
+					}
+					else {
+						ASCII_MANAGER_PTR->printf(
+							&position,
+							"No.%.2d %s %.2d/%.2d/%.2d %.2d:%.2d %s SpellPr %3d %2.1f%%",
+							this->__replay_index + 1,
+							replay_info->name,
+							replay_time->tm_year % 100, replay_time->tm_mon, replay_time->tm_mday,
+							replay_time->tm_hour, replay_time->tm_min,
+							SIX_LETTER_SHOTTYPE_NAMES[replay_info->shottype_index()],
+							replay_info->spell_practice_id + 1,
+							replay_info->slowdown_rate
+						);
+					}
+				}
+				else {
+					// I guess that works...
+					__builtin_memcpy(REPLAY_USERDATA_NAME, &this->replay_manager_array[this->__replay_index]->file_path[7], 4);
+					REPLAY_USERDATA_NAME[4] = '\0';
+					ASCII_MANAGER_PTR->printf(
+						&position,
+						"%s  %s %.2d/%.2d/%.2d %.2d:%.2d %s %s %s %s %2.1f%%",
+						&REPLAY_USERDATA_NAME[0],
+						replay_info->name,
+						replay_time->tm_year % 100, replay_time->tm_mon, replay_time->tm_mday,
+						replay_time->tm_hour, replay_time->tm_min,
+						SIX_LETTER_SHOTTYPE_NAMES[replay_info->shottype_index()],
+						SEVEN_LETTER_DIFFICULTY_NAMES[replay_info->difficulty],
+						THREE_LETTER_STAGE_NAMES[replay_info->__end_stage],
+						replay_info->slowdown_rate
+					);
+				}
+
+				if (this->state_timer >= 10) {
+					position.x = 220.0f;
+					position.y = 128.0f;
+					for (uint32_t i = Stage1; i < STAGE_COUNT; ++i) {
+						D3DCOLOR color;
+						if (this->__menu_select_24.current_selection == i - 1) {
+							color = COLOR_GREY(0, 255);
+						} else {
+							color = COLOR_GREY(255, 128);
+						}
+						ascii_manager = ASCII_MANAGER_PTR;
+						ascii_manager->color = color;
+
+						ReplayManager* replay = this->replay_manager_array[this->__replay_index];
+						ReplayGamestate* replay_gamestate;
+						if (!replay->stage_data[i].gamestate_start) {
+							ascii_manager->printf(
+								&position,
+								"%s  ---------",
+								SEVEN_LETTER_STAGE_NAMES[i]
+							);
+						}
+						else if (
+							i < Stage6 &&
+							!(replay_gamestate = replay->stage_data[i + 1].gamestate_start)
+						) {
+							ascii_manager->printf(
+								&position,
+								"%s  %.8d%d",
+								SEVEN_LETTER_STAGE_NAMES[i],
+								replay_gamestate->globals.score, replay_gamestate->globals.continues
+							);
+						}
+						else {
+							ascii_manager->printf(
+								&position,
+								"%s  %.8d%d",
+								SEVEN_LETTER_STAGE_NAMES[i],
+								replay_info->score, replay_info->continues
+							);
+						}
+
+						position.y += 18.0f;
+					}
+				}
+				ascii_manager = ASCII_MANAGER_PTR;
+				ascii_manager->color = COLOR_WHITE;
+				ascii_manager->enable_shadows = false;
+				break;
+			}
+			case 2: {
+				ascii_manager = ASCII_MANAGER_PTR;
+
+				Float3 position = { 58.0f, 80.0f, 0.0f };
+
+				ascii_manager->enable_shadows = true;
+
+				int32_t page_start_index = this->__menu_select_2AC.current_selection * REPLAYS_PER_PAGE;
+
+				for (int32_t i = page_start_index; i < page_start_index + REPLAYS_PER_PAGE; ++i) {
+					int32_t page_number = i / REPLAYS_PER_PAGE;
+					int32_t index_in_page = i - page_number * REPLAYS_PER_PAGE;
+
+					D3DCOLOR color;
+					if (this->__menu_select_24.current_selection == index_in_page) {
+						color = COLOR_GREY(0, 255);
+					} else {
+						color = COLOR_GREY(255, 128);
+					}
+					ascii_manager->color = color;
+
+					ReplayManager* replay = this->replay_manager_array[i];
+					if (replay) {
+						ReplayInfo* replay_info = replay->info;
+
+						const tm* replay_time = localtime(&replay_info->time);
+
+						if (this->__menu_select_2AC.current_selection == 0) {
+							if (!replay_info->spell_practice_mode) {
+								ASCII_MANAGER_PTR->printf(
+									&position,
+									"No.%.2d %s %.2d/%.2d/%.2d %.2d:%.2d %s %s %s %2.1f%%",
+									i + 1,
+									replay_info->name,
+									replay_time->tm_year % 100, replay_time->tm_mon, replay_time->tm_mday,
+									replay_time->tm_hour, replay_time->tm_min,
+									SIX_LETTER_SHOTTYPE_NAMES[replay_info->shottype_index()],
+									SEVEN_LETTER_DIFFICULTY_NAMES[replay_info->difficulty],
+									THREE_LETTER_STAGE_NAMES[replay_info->__end_stage],
+									replay_info->slowdown_rate
+								);
+							}
+							else {
+								ASCII_MANAGER_PTR->printf(
+									&position,
+									"No.%.2d %s %.2d/%.2d/%.2d %.2d:%.2d %s SpellPr %3d %2.1f%%",
+									i + 1,
+									replay_info->name,
+									replay_time->tm_year % 100, replay_time->tm_mon, replay_time->tm_mday,
+									replay_time->tm_hour, replay_time->tm_min,
+									SIX_LETTER_SHOTTYPE_NAMES[replay_info->shottype_index()],
+									replay_info->spell_practice_id + 1,
+									replay_info->slowdown_rate
+								);
+							}
+						}
+						else {
+							// I guess that works...
+							__builtin_memcpy(REPLAY_USERDATA_NAME, &this->replay_manager_array[this->__replay_index]->file_path[7], 4);
+							REPLAY_USERDATA_NAME[4] = '\0';
+							ASCII_MANAGER_PTR->printf(
+								&position,
+								"%s  %s %.2d/%.2d/%.2d %.2d:%.2d %s %s %s %s %2.1f%%",
+								&REPLAY_USERDATA_NAME[0],
+								replay_info->name,
+								replay_time->tm_year % 100, replay_time->tm_mon, replay_time->tm_mday,
+								replay_time->tm_hour, replay_time->tm_min,
+								SIX_LETTER_SHOTTYPE_NAMES[replay_info->shottype_index()],
+								SEVEN_LETTER_DIFFICULTY_NAMES[replay_info->difficulty],
+								THREE_LETTER_STAGE_NAMES[replay_info->__end_stage],
+								replay_info->slowdown_rate
+							);
+						}
+					}
+					else {
+						ASCII_MANAGER_PTR->printf(
+							&position,
+							this->__menu_select_2AC.current_selection == 0
+								? "No.%.2d -------- --/--/-- --:-- ------ ------- --- ---%%"
+								: "User  -------- --/--/-- --:-- ------  ------- --- ---%%",
+							i + 1
+						);
+					}
+
+					position.y += 15.0f;
+
+					ascii_manager = ASCII_MANAGER_PTR;
+				}
+
+				ascii_manager->color = COLOR_WHITE;
+				ascii_manager->enable_shadows = false;
+				break;
 			}
 		}
 		return 1;
 	}
 
-	// 0x467B10
-	dllexport gnu_noinline int thiscall __state_12_handler() asm_symbol_rel(0x467B10) {
-		// TODO: HOW MANY OF THESE GIANT SWITCH FUNCTIONS ARE THERE ZUN
-		return 1;
-	}
-
-	// 0x468130
-	dllexport gnu_noinline int thiscall __draw_state_12() asm_symbol_rel(0x468130) {
-		// TODO
-		return 1;
-	}
-
 	// 0x46D320
-	dllexport gnu_noinline int thiscall __state_23_handler() asm_symbol_rel(0x46D320) {
-		// TODO: this is why I've kept putting off the menu code
+	dllexport gnu_noinline int thiscall __trophy_menu_handler() ASR(0x46D320) {
+		int32_t trophy_index;
+		switch (this->secondary_state) {
+			case 0:
+				if (!this->__anm_id_650) {
+					this->__anm_id_650 = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(19);
+				}
+				this->change_secondary_state(1);
+				this->__menu_select_24.initialize((MenuLength)TROPHY_COUNT, MenuWrapEnable, (MenuChoice)TROPHY_MENU_SELECTION);
+				this->__anm_id_458 = this->title_anm->instantiate_vm_to_world_list_back(48);
+				this->__anm_id_53C = this->title_anm->instantiate_vm_to_world_list_back(105);
+				this->__anm_id_540 = this->title_anm->instantiate_vm_to_world_list_back(106);
+				this->__anm_id_544 = this->title_anm->instantiate_vm_to_world_list_back(107);
+				this->__anm_id_548 = this->title_anm->instantiate_vm_to_world_list_back(108);
+				if (TrophyData::__get_title_for_trophy(this->__menu_select_24.current_selection)) {
+					trophy_index = this->__menu_select_24.current_selection;
+					this->__int_5D4C = 0;
+					this->__trophy_index = trophy_index;
+				}
+				break;
+			case 1:
+				if (this->__menu_select_24.update(&MenuSelect::scroll_grid_inline, 10)) {
+					SOUND_MANAGER.play_sound(10);
+					if (TrophyData::__get_title_for_trophy(this->__menu_select_24.current_selection)) {
+						trophy_index = this->__menu_select_24.current_selection;
+						this->__int_5D4C = 0;
+						this->__trophy_index = trophy_index;
+					}
+				}
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+					trophy_index = this->__menu_select_24.current_selection;
+					if (trophy_index <= 11) {
+						if (SCOREFILE_MANAGER_PTR->primary_file.common.trophies[trophy_index]) {
+							UNKNOWN_INT32_I = trophy_index;
+							SOUND_MANAGER.play_sound(7);
+							SOUND_MANAGER.__queue_fade_out(0.5f);
+							Ending::allocate();
+							return 1;
+						}
+					}
+					else if (trophy_index <= 15) {
+						if (SCOREFILE_MANAGER_PTR->primary_file.common.trophies[trophy_index]) {
+							SOUND_MANAGER.play_sound(7);
+							SOUND_MANAGER.__queue_fade_out(0.5f);
+							this->change_secondary_state(2);
+							break;
+						}
+					}
+				}
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+					this->change_secondary_state(3);
+					SOUND_MANAGER.play_sound(9);
+					this->__anm_id_53C.interrupt_and_orphan_tree(1);
+					this->__anm_id_540.interrupt_and_orphan_tree(1);
+					this->__anm_id_544.interrupt_and_orphan_tree(1);
+					this->__anm_id_548.interrupt_and_orphan_tree(1);
+				}
+				if (this->__menu_select_24.current_selection == 12) {
+					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT | BUTTON_CANCEL)) {
+						UNLOCK_CODE_A_CHARS_ENTERED = 0;
+						UNLOCK_CODE_A_TIMER = 0;
+					}
+					DINPUT_KEYS_C = DINPUT_KEYS_B;
+					switch (DINPUT_KEYS_B.get_state()) {
+						case 2:
+							// This is dead code, the function never returns 2 at all
+							DINPUT_KEYS_D.reset();
+							for (size_t i = 0; i < 26; ++i) {
+								DINPUT_KEYS_D[DIK_A + i] = DINPUT_KEYS_B['A' + i];
+							}
+							DINPUT_KEYS_B = DINPUT_KEYS_D;
+						case 1:
+							for (size_t i = 0; i != 256; ++i) {
+								BYTE current = DINPUT_KEYS_B[i];
+								BYTE previous = DINPUT_KEYS_C[i];
+								BYTE changed = previous ^ current;
+								BYTE rising_edge = changed & current;
+								DINPUT_KEYS_D[i] = rising_edge;
+							}
+							uint32_t i = UNLOCK_CODE_A_CHARS_ENTERED;
+							if (i >= countof(UNLOCK_CODE_A)) {
+								SCOREFILE_MANAGER_PTR->unlock_all();
+								SOUND_MANAGER.play_sound(17);
+								UNLOCK_CODE_A_CHARS_ENTERED = 0;
+							} else if ((int8_t)DINPUT_KEYS_D[UNLOCK_CODE_A[i]] < 0) {
+								UNLOCK_CODE_A_CHARS_ENTERED = i + 1;
+							} else {
+								int8_t c = 0;
+								for (int32_t j = 0; j < 57; ++j) { // 57???
+									c |= DINPUT_KEYS_D[j];
+								}
+								UNLOCK_CODE_A_CHARS_ENTERED = c >= 0 ? i : 0;
+							}
+					}
+					++UNLOCK_CODE_A_TIMER;
+					if (UNLOCK_CODE_A_TIMER > 300) {
+						UNLOCK_CODE_A_CHARS_ENTERED = 0;
+						UNLOCK_CODE_A_TIMER = 0;
+					}
+				}
+				break;
+			case 2:
+				if (!EFFECT_MANAGER_PTR->__done_loading) {
+					this->state_timer--;
+				}
+				else {
+					int32_t time = this->state_timer;
+					if (time == 10) {
+						ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
+						AnmID id = EFFECT_MANAGER_PTR->instantiate_special_effect0_vm_to_ui_list_back();
+						SUPERVISOR.__vm_id_1D0 = id;
+						id.interrupt_tree(7);
+						time = this->state_timer;
+					}
+					if (time >= 40) {
+						int32_t character = this->__menu_select_24.current_selection - 12;
+						UNKNOWN_INT32_C = 6;
+						GAME_MANAGER.globals.character = character;
+						GAME_MANAGER.globals.shottype = 0;
+						GAME_MANAGER.globals.spell_practice_id = -1;
+						ACHIEVEMENT_MODE_STATE = 1;
+						STAGE_DATA_PTR = &STAGE_DATA[ExtraStage];
+						GAME_MANAGER.globals.current_stage = ExtraStage;
+						GAME_MANAGER.globals.__starting_stage = ExtraStage;
+						this->change_primary_state(MainMenuState::State2); // 2
+						TROPHY_MENU_SELECTION = this->__menu_select_24.current_selection;
+						SUPERVISOR.gamemode_switch = GameMode::Gameplay; // 7
+					}
+				}
+				break;
+			case 3:
+				if (this->state_timer >= 20) {
+					TROPHY_MENU_SELECTION = this->__menu_select_24.current_selection;
+					this->change_primary_state(MainMenuState::PlayerData); // 10
+					this->__menu_select_24.pop_state();
+				}
+				break;
+		}
+
+		int32_t i = this->__int_5D4C;
+		if (i < 8) {
+			uint8_t unlocked = SCOREFILE_MANAGER_PTR->primary_file.common.trophies[this->__trophy_index];
+			int32_t line_group = unlocked != false;
+			switch (i) {
+				case 0:
+					if (this->__anm_id_53C.has_live_vm()) {
+						const char* trophy_title;
+						if (unlocked) {
+							trophy_title = TrophyData::__get_title_for_trophy(this->__trophy_index);
+						} else {
+							trophy_title = JpEnStr("", "????????????");
+						}
+						ANM_MANAGER_PTR->draw_text_center(
+							this->__anm_id_53C.get_vm_ptr(),
+							COLOR3_WHITE, COLOR3_BLACK,
+							Font4, 0, // 4
+							trophy_title
+						);
+						this->__anm_id_53C.interrupt_tree(4);
+						this->__anm_id_540.interrupt_tree(5);
+						this->__anm_id_544.interrupt_tree(5);
+						this->__anm_id_548.interrupt_tree(5);
+					}
+					break;
+				case 3:
+					if (this->__anm_id_540.has_live_vm()) {
+						const char* trophy_line = TrophyData::__get_line_for_trophy(this->__trophy_index, line_group, 0);
+						ANM_MANAGER_PTR->draw_text_center(
+							this->__anm_id_540.get_vm_ptr(),
+							COLOR3_WHITE, COLOR3_BLACK,
+							Font4, 0, // 4
+							trophy_line
+						);
+						this->__anm_id_540.interrupt_tree(4);
+					}
+					break;
+				case 5:
+					if (this->__anm_id_544.has_live_vm()) {
+						const char* trophy_line = TrophyData::__get_line_for_trophy(this->__trophy_index, line_group, 1);
+						ANM_MANAGER_PTR->draw_text_center(
+							this->__anm_id_544.get_vm_ptr(),
+							COLOR3_WHITE, COLOR3_BLACK,
+							Font4, 0, // 4
+							trophy_line
+						);
+						this->__anm_id_544.interrupt_tree(4);
+					}
+					break;
+				case 7:
+					if (this->__anm_id_548.has_live_vm()) {
+						const char* trophy_line = TrophyData::__get_line_for_trophy(this->__trophy_index, line_group, 2);
+						ANM_MANAGER_PTR->draw_text_center(
+							this->__anm_id_548.get_vm_ptr(),
+							COLOR3_WHITE, COLOR3_BLACK,
+							Font4, 0, // 4
+							trophy_line
+						);
+						this->__anm_id_548.interrupt_tree(4);
+					}
+					break;
+			}
+		}
+		++this->__int_5D4C;
 		return 1;
 	}
 
 	// 0x46DE90
-	dllexport gnu_noinline int thiscall __draw_state_23() asm_symbol_rel(0x46DE90) {
-		// TODO
+	dllexport gnu_noinline int thiscall __trophy_menu_draw() ASR(0x46DE90) {
+		switch (this->secondary_state) {
+			case 1:
+				// TODO
+		}
 		return 1;
 	}
 
+	// 0x46C680
+	dllexport gnu_noinline int thiscall __sub_46C680(int32_t stage_m1, int32_t difficulty, int32_t(&arg3)[SPELL_DIFFICULTY_VARIANTS], int = UNUSED_DWORD) ASR(0x46C680) {
+		AnmManager* anm_manager = ANM_MANAGER_PTR;
+
+		for (size_t i = 0; i != SPELL_DIFFICULTY_VARIANTS; ++i) {
+			arg3[i] = -2;
+		}
+		for (size_t i = 0; i != countof(this->__anm_id_array_618); ++i) {
+			this->__anm_id_array_618[i].mark_tree_for_delete(anm_manager);
+		}
+		nounroll for (int32_t i = 0; i < SPELL_DIFFICULTY_VARIANTS; ++i) {
+			if (!this->__anm_id_array_654[i].has_live_vm(anm_manager)) {
+				this->__anm_id_array_654[i] = this->title_anm->instantiate_vm_to_world_list_back(100 + i);
+				this->__anm_id_array_654[i].interrupt_tree(2);
+				anm_manager = ANM_MANAGER_PTR;
+				AnmVM* vm = this->__anm_id_array_654[i].get_vm_ptr(anm_manager);
+				anm_manager->draw_text_left(
+					vm,
+					COLOR3_GREY(128), COLOR3_BLACK,
+					Font0, 0, 0, // 0
+					" Nothing ... "
+				);
+				anm_manager = ANM_MANAGER_PTR;
+			}
+		}
+		if (stage_m1 == ExtraStage - 1) {
+			for (int32_t i = 0; i < 4; ++i) {
+				AnmID id = this->title_anm->instantiate_vm_to_world_list_back(160 + i);
+				this->__anm_id_array_618[i] = id;
+				id.interrupt_and_run_tree(3);
+			}
+		}
+
+		const int32_t* spell_ids = &SPELL_ID_TABLE[stage_m1][0][difficulty];
+		
+		int32_t max_index = 0;
+		nounroll for (int32_t i = 0; i < SPELL_DIFFICULTY_VARIANTS; ++i) {
+			int32_t spell_id = spell_ids[i];
+			if (spell_id < 0) {
+				break;
+			}
+
+			int32_t index;
+			BOOL overdrive_unlocked;
+			ScorefileManager* scorefile_manager;
+
+			int8_t spell_difficulty = SPELL_DIFFICULTY_TABLE[spell_id];
+			if (stage_m1 == ExtraStage - 1) {
+				switch (spell_difficulty) {
+					case EXTRA:
+						this->__anm_id_array_618[4] = this->title_anm->instantiate_vm_to_world_list_back(164);
+						break;
+					case OVERDRIVE:
+						this->__anm_id_array_618[6] = this->title_anm->instantiate_vm_to_world_list_back(166);
+						break;
+				}
+				spell_difficulty = SPELL_DIFFICULTY_TABLE[spell_id];
+				index = spell_difficulty != EXTRA;
+				overdrive_unlocked = false;
+				if (spell_difficulty >= OVERDRIVE) {
+					goto overdrive;
+				}
+				scorefile_manager = SCOREFILE_MANAGER_PTR;
+			}
+			else if (spell_difficulty >= OVERDRIVE) {
+				{
+					AnmID id = this->title_anm->instantiate_vm_to_world_list_back(165);
+					this->__anm_id_array_618[5] = id;
+					id.interrupt_and_run_tree(3);
+				}
+				spell_difficulty = SPELL_DIFFICULTY_TABLE[spell_id];
+				if (spell_difficulty < OVERDRIVE) {
+					goto not_overdrive; // why is this here
+				}
+				index = 4;
+				overdrive_unlocked = false;
+		overdrive:
+				scorefile_manager = SCOREFILE_MANAGER_PTR;
+				for (int32_t j = 0; j < i; ++j) {
+					if (!scorefile_manager->primary_file.shottypes[SHOTTYPES_TOTAL].spells[spell_ids[j]].captured()) {
+						goto overdrive_not_unlocked;
+					}
+				}
+				overdrive_unlocked = true;
+		overdrive_not_unlocked:;
+			}
+			else {
+		not_overdrive:
+				scorefile_manager = SCOREFILE_MANAGER_PTR;
+				index = spell_difficulty;
+				overdrive_unlocked = false;
+			}
+			if (
+				!scorefile_manager->primary_file.shottypes[SHOTTYPES_TOTAL].spells[spell_id].unlocked_in_spell_practice() &&
+				!overdrive_unlocked
+			) {
+				arg3[index] = -1;
+				anm_manager = ANM_MANAGER_PTR;
+				AnmVM* vm = this->__anm_id_array_654[index].get_vm_ptr(anm_manager);
+				anm_manager->draw_text_left(
+					vm,
+					COLOR3_GREY(176), COLOR3_BLACK,
+					Font0, 0, 0, // 0
+					" No.%3d  ???????????",
+					spell_id + 1
+				);
+			}
+			else {
+				// WARNING:
+				// Despite this being a 192 character buffer the
+				// spellcard struct only has a 64 character buffer
+				char buffer[193];
+				
+				arg3[index] = spell_id;
+				if (scorefile_manager->primary_file.shottypes[SHOTTYPES_TOTAL].spells[spell_id].never_attempted()) {
+					if (spell_difficulty >= OVERDRIVE) {
+						byteloop_strcpy(buffer, JpEnStr("", "You can challenge overdrive mode!"));
+					} else {
+						byteloop_strcpy(buffer, JpEnStr("", "Challenge possible!"));
+					}
+				} else {
+					byteloop_strcpy(buffer, scorefile_manager->primary_file.shottypes[SHOTTYPES_TOTAL].spells[spell_id].name);
+				}
+
+				int32_t length = byteloop_strlen(buffer);
+				if (length < 42) {
+					memset(&buffer[length], ' ', 42 - length);
+					length = 42;
+				}
+				/*else if ((uint32_t)length >= countof(buffer)) {
+					__report_rangecheckfailure();
+				}*/
+				buffer[length] = '\0';
+
+				D3DCOLOR color;
+				if (scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].captured_in_spell_practice()) {
+					color = COLOR3(255, 255, 128);
+				} else {
+					color = COLOR3(239, 239, 239);
+				}
+
+				AnmVM* vm = this->__anm_id_array_654[index].get_vm_ptr();
+				ANM_MANAGER_PTR->draw_text_left(
+					vm,
+					color, COLOR3_BLACK,
+					Font0, 0, 0, // 0
+					" No.%3d  %s",
+					spell_id + 1, buffer
+				);
+			}
+			this->__anm_id_array_654[index].interrupt_tree(2);
+			max_index = max_index < index ? index : max_index;
+		}
+
+		if (stage_m1 != ExtraStage - 1) {
+			for (int32_t i = 0; i < 5; ++i) {
+				this->__anm_id_array_654[i].interrupt_tree(3);
+			}
+		}
+		else {
+			for (int32_t i = 0; i < 2; ++i) {
+				this->__anm_id_array_654[i].interrupt_tree(3);
+			}
+		}
+
+		if (max_index + 1 < SPELL_DIFFICULTY_VARIANTS) {
+			anm_manager = ANM_MANAGER_PTR;
+			for (size_t i = 0; i != SPELL_DIFFICULTY_VARIANTS; ++i) {
+				this->__anm_id_array_654[i].mark_tree_for_delete();
+			}
+		}
+
+		return 0;
+	}
+
+	// 0x46CCD0
+	dllexport gnu_noinline int thiscall __sub_46CCD0(int32_t arg1) ASR(0x46CCD0) {
+		for (int32_t i = 0; i < SPELL_DIFFICULTY_VARIANTS; ++i) {
+			AnmVM* vm = ANM_MANAGER_PTR->get_vm_with_id(this->__anm_id_array_654[i]);
+			if (i == arg1) {
+				if (!vm) {
+					this->__anm_id_array_654[i] = NULL;
+				} else {
+					this->__anm_id_array_654[i].interrupt_tree(2);
+				}
+				this->__anm_id_array_618[SPELL_DIFFICULTY_TABLE[this->__spell_id_array[i]]].interrupt_and_run_tree(2);
+			}
+			else {
+				if (!vm) {
+					this->__anm_id_array_654[i] = NULL;
+				} else {
+					this->__anm_id_array_654[i].interrupt_tree(3);
+				}
+				this->__anm_id_array_618[SPELL_DIFFICULTY_TABLE[this->__spell_id_array[i]]].interrupt_and_run_tree(3);
+			}
+		}
+		return 0;
+	}
+
+	// 0x46C070
+	dllexport gnu_noinline void thiscall __sub_46C070() ASR(0x46C070) {
+		this->__menu_select_5C50.previous_selection = this->__menu_select_5C50.current_selection;
+		if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_LEFT)) {
+			SOUND_MANAGER.play_sound(10);
+			this->__anm_id_644.interrupt_and_run_tree_word_offset(this->__menu_select_5C50.current_selection, 37);
+			this->__menu_select_5C50.move_selection(-1);
+			this->__anm_id_644.interrupt_and_run_tree_word_offset(this->__menu_select_5C50.current_selection, 17);
+			GAME_MANAGER.globals.character = this->__menu_select_5C50.current_selection;
+			switch (this->primary_state) {
+				case MainMenuState::State19: // 19
+					this->__sub_46C680(this->__spell_practice_stage, this->__menu_select_24.current_selection, this->__spell_id_array);
+					break;
+				case MainMenuState::State20: // 20
+					this->__sub_46C680(this->__spell_practice_stage, this->__int_5D2C, this->__spell_id_array);
+					this->__sub_46CCD0(this->__menu_select_24.current_selection);
+					break;
+			}
+		}
+		if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_RIGHT)) {
+			SOUND_MANAGER.play_sound(10);
+			this->__anm_id_644.interrupt_and_run_tree_word_offset(this->__menu_select_5C50.current_selection, 27);
+			this->__menu_select_5C50.move_selection(1);
+			this->__anm_id_644.interrupt_and_run_tree_word_offset(this->__menu_select_5C50.current_selection, 7);
+			GAME_MANAGER.globals.character = this->__menu_select_5C50.current_selection;
+			switch (this->primary_state) {
+				case MainMenuState::State19: // 19
+					this->__sub_46C680(this->__spell_practice_stage, this->__menu_select_24.current_selection, this->__spell_id_array);
+					break;
+				case MainMenuState::State20: // 20
+					this->__sub_46C680(this->__spell_practice_stage, this->__int_5D2C, this->__spell_id_array);
+					this->__sub_46CCD0(this->__menu_select_24.current_selection);
+					break;
+			}
+		}
+	}
+
 	// 0x46BCA0
-	dllexport gnu_noinline int thiscall __state_18_handler() asm_symbol_rel(0x46BCA0) {
-		// TODO: figure out how to make someone else do this part
+	dllexport gnu_noinline int thiscall __spell_practice_handler() ASR(0x46BCA0) {
+		switch (this->secondary_state) {
+			case 0: {
+				if (!this->__anm_id_650) {
+					this->__anm_id_650 = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(19);
+				}
+				AnmManager* anm_manager = ANM_MANAGER_PTR;
+				if (!anm_manager->get_vm_with_id(this->__anm_id_644)) {
+					this->__anm_id_644 = this->title_anm->instantiate_vm_to_world_list_back(171);
+					anm_manager = ANM_MANAGER_PTR;
+				}
+				if (!anm_manager->get_vm_with_id(this->__anm_id_570)) {
+					this->__anm_id_570 = this->title_anm->instantiate_vm_to_world_list_back(118);
+					anm_manager = ANM_MANAGER_PTR;
+				}
+				AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
+				ability_manager->__int_C5C = 3;
+				ability_manager->__sub_407DA0(true);
+				this->change_secondary_state(1);
+				int32_t A = MENU_SPELL_PRACTICE_STAGE_SELECTION;
+				if (A >= 0) {
+					this->__menu_select_24.set_selection(A);
+					MENU_SPELL_PRACTICE_STAGE_SELECTION = -1;
+					this->__menu_select_5C50.initialize(MenuWrapEnable, (MenuLength)CHARACTER_COUNT, (MenuChoice)GAME_MANAGER.globals.shottype_index());
+					this->__anm_id_570.interrupt_and_run_tree(3);
+					this->__anm_id_570.interrupt_and_run_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					this->__anm_id_570.interrupt_and_run_tree(6);
+					this->__anm_id_644.interrupt_and_run_tree(3);
+					this->__anm_id_644.interrupt_and_run_tree_word_offset(this->__menu_select_5C50.current_selection, 7);
+					goto label_A;
+				}
+				this->__anm_id_44C = this->title_anm->instantiate_vm_to_world_list_back(45);
+			}
+				[[fallthrough]];
+			case 1:
+				if (this->state_timer > 10) {
+					this->change_secondary_state(2);
+					this->__anm_id_570.interrupt_and_run_tree(3);
+					this->__anm_id_570.interrupt_and_run_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					this->__anm_id_644.interrupt_and_run_tree(3);
+					this->__anm_id_644.interrupt_and_run_tree_word_offset(this->__menu_select_5C50.current_selection, 7);
+				}
+				break;
+			case 2:
+				if (this->__menu_select_24.update(&MenuSelect::scroll_up_and_down_inline)) {
+					SOUND_MANAGER.play_sound(10);
+					this->__anm_id_570.interrupt_and_run_tree(3);
+					this->__anm_id_570.interrupt_and_run_tree_word_offset(this->__menu_select_24.current_selection, 7);
+				}
+				this->__sub_46C070();
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+					this->change_secondary_state(4);
+					SOUND_MANAGER.play_sound(9);
+					MENU_STAGE_SELECTION = this->__menu_select_24.current_selection;
+				}
+				else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+					this->__anm_id_570.interrupt_tree(6);
+					this->change_secondary_state(3);
+					SOUND_MANAGER.play_sound(7);
+					MENU_STAGE_SELECTION = this->__menu_select_24.current_selection;
+				}
+				break;
+			case 3:
+				if (this->state_timer >= 20) {
+			label_A:
+					this->__anm_id_44C.interrupt_and_orphan_tree(1);
+					this->change_primary_state(MainMenuState::State19); // 19
+					this->__spell_practice_stage = this->__menu_select_24.current_selection;
+					this->__menu_select_24.push_state();
+					this->__menu_select_24.set_selection(0);
+				}
+				break;
+			case 4:
+				if (this->state_timer >= 6) {
+					this->__anm_id_44C.interrupt_and_orphan_tree(1);
+					this->__anm_id_570.interrupt_and_orphan_tree(1);
+					this->__anm_id_644.interrupt_and_orphan_tree(1);
+					this->__menu_select_24.pop_state();
+					this->__anm_id_650.interrupt_and_orphan_tree(1);
+				}
+				break;
+		}
 		return 1;
 	}
 
 	// 0x466280
-	dllexport gnu_noinline int thiscall __state_5_handler() asm_symbol_rel(0x466280) {
-		// TODO: rethink the life choices that lead to wanting to RE this much menu code
+	dllexport gnu_noinline int thiscall __difficulty_select_handler() ASR(0x466280) {
+		int32_t difficulty = GAME_MANAGER.globals.difficulty;
+		int32_t i = difficulty < EXTRA ? 59 : 60;
+		switch (this->secondary_state) {
+			case 0: {
+				if (!this->__anm_id_650) {
+					this->__anm_id_650 = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(19);
+					difficulty = GAME_MANAGER.globals.difficulty;
+				}
+				this->__menu_select_24.enable_wrap = false;
+				this->__menu_select_24.menu_length = difficulty < EXTRA ? 4 : 1;
+				this->anms[i].interrupt_and_orphan_tree(1);
+				AnmID id = this->title_anm->instantiate_vm_to_world_list_back(i);
+				this->anms[i] = id;
+				id.interrupt_and_run_tree(3);
+				this->anms[i].interrupt_tree_word_offset(this->__menu_select_24.current_selection, 13);
+				if (UNKNOWN_INT32_C == 4) {
+					this->__menu_select_24.set_selection(GAME_MANAGER.globals.difficulty);
+					this->anms[i].interrupt_and_run_tree(3);
+					this->anms[i].interrupt_and_run_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					this->anms[i].__find_child_id_with_script(49 + this->__menu_select_24.current_selection).interrupt_tree(2);
+				} else {
+					this->__anm_id_42C = this->title_anm->instantiate_vm_to_world_list_back(37);
+					this->change_secondary_state(1);
+					if (GAME_MANAGER.globals.difficulty < EXTRA) {
+						if (!SCOREFILE_MANAGER_PTR->primary_file.has_any_1cc_clear_for_difficulty(EASY)) {
+							this->anms[i].__find_child_id_with_script(27).__hide_tree();
+						}
+						if (!SCOREFILE_MANAGER_PTR->primary_file.has_any_1cc_clear_for_difficulty(NORMAL)) {
+							this->anms[i].__find_child_id_with_script(28).__hide_tree();
+						}
+						if (!SCOREFILE_MANAGER_PTR->primary_file.has_any_1cc_clear_for_difficulty(HARD)) {
+							this->anms[i].__find_child_id_with_script(29).__hide_tree();
+						}
+						if (!SCOREFILE_MANAGER_PTR->primary_file.has_any_1cc_clear_for_difficulty(LUNATIC)) {
+							this->anms[i].__find_child_id_with_script(30).__hide_tree();
+						}
+					} else {
+						if (!SCOREFILE_MANAGER_PTR->primary_file.has_any_1cc_clear_for_difficulty(EXTRA)) {
+							this->anms[i].__find_child_id_with_script(31).__hide_tree();
+						}
+					}
+				}
+			}
+				[[fallthrough]];
+			case 1:
+				if (this->state_timer > 6) {
+					this->change_secondary_state(2);
+				}
+				break;
+			case 2:
+				if (difficulty < EXTRA) {
+					if (this->__menu_select_24.update(&MenuSelect::scroll_up_and_down_lr_alias)) {
+						SOUND_MANAGER.play_sound(10);
+						this->anms[i].interrupt_and_run_tree(3);
+						this->anms[i].interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					}
+				}
+				if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_CANCEL)) {
+					this->change_secondary_state(4);
+					SOUND_MANAGER.play_sound(9);
+					this->anms[i].interrupt_and_orphan_tree(3);
+				}
+				else if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_SELECT)) {
+					this->anms[i].interrupt_tree(6);
+					if (GAME_MANAGER.globals.difficulty < EXTRA) {
+						this->__find_indexed_child_id_with_script(i, 49 + this->__menu_select_24.current_selection).interrupt_tree(2);
+					} else {
+						this->anms[i].__find_child_id_with_script(53).interrupt_tree(2);
+					}
+					this->change_secondary_state(3);
+					SOUND_MANAGER.play_sound(7);
+				}
+				break;
+			case 3:
+				if (this->state_timer >= 14) {
+					this->__anm_id_42C.interrupt_and_orphan_tree(1);
+					this->change_primary_state(MainMenuState::CharacterSelect); // 6
+					if (GAME_MANAGER.globals.difficulty < EXTRA) {
+						difficulty = this->__menu_select_24.current_selection;
+						GAME_MANAGER.globals.difficulty = difficulty;
+						MENU_DIFFICULTY_SELECTION = difficulty;
+					}
+					this->__menu_select_24.push_state();
+					this->__menu_select_24.enable_wrap = true;
+					this->__menu_select_24.menu_length = CHARACTER_COUNT;
+					int32_t character = MENU_CHARACTER_SELECTION;
+					this->__menu_select_24.set_selection(character);
+					GAME_MANAGER.globals.character = character;
+				}
+				break;
+			case 4:
+				if (this->state_timer >= 6) {
+					this->__anm_id_42C.interrupt_and_orphan_tree(1);
+					if (GAME_MANAGER.game_type != NormalGame) {
+						difficulty = this->__menu_select_24.current_selection;
+						MENU_DIFFICULTY_SELECTION = difficulty;
+						GAME_MANAGER.globals.difficulty = difficulty;
+						this->change_primary_state(MainMenuState::TitleScreen); // 1
+						this->__anm_id_650.interrupt_and_orphan_tree(1);
+						this->change_primary_state(MainMenuState::TitleScreen); // 1
+						this->__menu_select_24.pop_state();
+					} else if (GAME_MANAGER.globals.difficulty < EXTRA) {
+						this->change_primary_state(MainMenuState::TitleScreen); // 1
+						GAME_MANAGER.globals.difficulty = this->__menu_select_24.current_selection;
+						MENU_DIFFICULTY_SELECTION = this->__menu_select_24.current_selection;
+						this->__menu_select_24.pop_state();
+					} else {
+						difficulty = MENU_DIFFICULTY_SELECTION;
+						GAME_MANAGER.globals.difficulty = difficulty;
+						this->change_primary_state(MainMenuState::TitleScreen); // 1
+						this->__anm_id_650.interrupt_and_orphan_tree(1);
+						this->change_primary_state(MainMenuState::TitleScreen); // 1
+						this->__menu_select_24.pop_state();
+					}
+				}
+				break;
+		}
 		return 1;
 	}
 
 	// 0x466740
-	dllexport gnu_noinline int thiscall __state_6_handler() asm_symbol_rel(0x466740) {
-		// TODO: fun fact, absolutely nothing uses these return values
+	dllexport gnu_noinline int thiscall __character_select_handler() ASR(0x466740) {
+		int32_t difficulty = GAME_MANAGER.globals.difficulty;
+		int32_t i = difficulty != EXTRA ? 21 : 22;
+		int32_t character;
+		switch (this->secondary_state) {
+			case 0: {
+				AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
+				if (!ability_manager->__ability_data_loaded) {
+					return 0;
+				}
+				this->__menu_select_24.menu_length = CHARACTER_COUNT;
+				if (GAME_MANAGER.game_type != NormalGame) {
+					ability_manager->__int_C5C = 2;
+				} else {
+					ability_manager->__int_C5C = GAME_MANAGER.globals.difficulty == EXTRA;
+				}
+				ability_manager->__sub_407DA0(true);
+				AbilityMenu* ability_menu = ABILITY_MENU_PTR;
+				if (!ability_menu) {
+					Float3 A = { 640.0f, 70.0f, 0.0f };
+					AbilityMenu::allocate(&A, 2);
+				}
+				else {
+					// TODO
+					//ability_menu->__sub_464920();
+				}
+				this->__menu_select_FC.set_selection(0);
+				this->__menu_select_FC.menu_length = 2;
+				if (GAME_MANAGER.globals.difficulty == EXTRA) {
+					ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
+					if (!scorefile_manager->primary_file.has_1cc_clear(this->__menu_select_24.current_selection)) {
+						int32_t character_with_1cc = scorefile_manager->primary_file.first_character_with_any_1cc_clear();
+						if (!(character_with_1cc < 0)) {
+							this->__menu_select_24.set_selection(character_with_1cc);
+						}
+					}
+					for (int32_t j = 0; j < CHARACTER_COUNT; ++j) {
+						if (!scorefile_manager->primary_file.has_1cc_clear_for_character(j)) {
+							this->__menu_select_24.disable_selection(j);
+						}
+					}
+				}
+				// This doesn't match any usual inline function...?
+				if (!ANM_MANAGER_PTR->get_vm_with_id(this->__anm_id_430)) {
+					this->__anm_id_430 = this->title_anm->instantiate_vm_to_world_list_back(38);
+				}
+				if (!ANM_MANAGER_PTR->get_vm_with_id(this->anms[i])) {
+					this->anms[i].interrupt_and_orphan_tree(1); // you just confirmed the VM doesn't exist...
+					AnmID id = this->title_anm->instantiate_vm_to_world_list_back(i);
+					this->anms[i] = id;
+					id.interrupt_and_run_tree(3);
+					this->anms[i].interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
+				}
+				else {
+					this->anms[i].interrupt_and_run_tree(3);
+					this->anms[i].interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
+				}
+				clang_forceinline this->change_secondary_state(1);
+				ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
+				difficulty = GAME_MANAGER.globals.difficulty;
+				for (size_t j = 0; j != CHARACTER_COUNT; ++j) {
+					if (!scorefile_manager->primary_file.has_1cc_clear_for_character_difficulty(j, difficulty)) {
+						this->anms[i].__find_child_id_with_script(23 + j).__hide_tree();
+						difficulty = GAME_MANAGER.globals.difficulty;
+					}
+				}
+			}
+				if (UNKNOWN_INT32_C == 4) {
+					this->__menu_select_24.set_selection(GAME_MANAGER.globals.character);
+					this->anms[i].interrupt_and_run_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					this->anms[i].__find_child_id_with_script(9 + this->__menu_select_24.current_selection).interrupt_tree(6);
+					this->anms[i].__find_child_id_with_script(13 + this->__menu_select_24.current_selection).interrupt_tree(6);
+					this->anms[i].__find_child_id_with_script(5).interrupt_tree(6);
+					this->anms[i].__find_child_id_with_script(6).interrupt_tree(6);
+			label_A:
+					character = this->__menu_select_24.current_selection;
+					GAME_MANAGER.globals.character = character;
+					MENU_CHARACTER_SELECTION = character;
+					clang_forceinline this->__menu_select_24.push_state();
+					this->__anm_id_430.interrupt_and_orphan_tree(1);
+					this->change_primary_state(MainMenuState::PracticeStageSelect); // 8
+			label_B:
+					if (this->state_timer >= 40) {
+						character = this->__menu_select_24.current_selection;
+						GAME_MANAGER.globals.character = character;
+						MENU_CHARACTER_SELECTION = character;
+						clang_forceinline this->__menu_select_24.push_state();
+						GAME_MANAGER.globals.spell_practice_id = -1;
+						this->change_primary_state(MainMenuState::State2); // 2
+						if (GAME_MANAGER.globals.difficulty < EXTRA) {
+							GAME_MANAGER.globals.current_stage = Stage1;
+							STAGE_DATA_PTR = &STAGE_DATA[Stage1];
+							GAME_MANAGER.globals.__starting_stage = Stage1;
+						}
+						else {
+							GAME_MANAGER.globals.current_stage = ExtraStage;
+							STAGE_DATA_PTR = &STAGE_DATA[ExtraStage];
+							GAME_MANAGER.globals.__starting_stage = ExtraStage;
+						}
+						SUPERVISOR.gamemode_switch = GameMode::Gameplay; // 7
+						if (AbilityMenu* ability_menu = ABILITY_MENU_PTR) {
+							delete ability_menu;
+						}
+						if (GAME_MANAGER.game_type == NormalGame) {
+							SOUND_MANAGER.__queue_fade_out(0.05f);
+						}
+					}
+				}
+				else {
+			case 1:
+					if (this->state_timer > 6) {
+						this->change_secondary_state(2);
+					}
+				}
+				break;
+			case 2:
+				this->__menu_select_24.previous_selection = this->__menu_select_24.current_selection;
+				if (this->__menu_select_FC.current_selection == 0) {
+					if (check_hardware_inputs_repeating(BUTTON_LEFT)) {
+						SOUND_MANAGER.play_sound(10);
+						this->anms[i].interrupt_and_run_tree_word_offset(this->__menu_select_24.current_selection, 25);
+						this->__menu_select_24.move_selection(-1);
+						this->anms[i].interrupt_tree_word_offset(this->__menu_select_24.current_selection, 13);
+					}
+					if (check_hardware_inputs_repeating(BUTTON_RIGHT)) {
+						SOUND_MANAGER.play_sound(10);
+						this->anms[i].interrupt_and_run_tree_word_offset(this->__menu_select_24.current_selection, 19);
+						this->__menu_select_24.move_selection(1);
+						this->anms[i].interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					}
+				}
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+					this->anms[i].__find_child_id_with_script(9 + this->__menu_select_24.current_selection).interrupt_tree(6);
+					this->anms[i].__find_child_id_with_script(13 + this->__menu_select_24.current_selection).interrupt_tree(6);
+					this->anms[i].__find_child_id_with_script(5).interrupt_tree(6);
+					this->anms[i].__find_child_id_with_script(6).interrupt_tree(6);
+					SOUND_MANAGER.play_sound(7);
+					this->change_secondary_state(3);
+				}
+				else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+					this->change_secondary_state(4);
+					SOUND_MANAGER.play_sound(9);
+				}
+				else {
+			label_C:
+					if (this->__menu_select_FC.update(&MenuSelect::scroll_up_and_down)) {
+						SOUND_MANAGER.play_sound(10);
+						if (this->__menu_select_FC.current_selection == 0) {
+							this->anms[i].interrupt_and_run_tree(4);
+							// ABILITY_MENU_PTR->__sub_464920(); // TODO
+							difficulty = GAME_MANAGER.globals.difficulty;
+							ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
+							for (size_t j = 0; j != CHARACTER_COUNT; ++j) {
+								if (!scorefile_manager->primary_file.has_1cc_clear_for_character_difficulty(j, difficulty)) {
+									this->anms[i].__find_child_id_with_script(23 + j).__hide_tree();
+								} else {
+									this->anms[i].__find_child_id_with_script(23 + j).__show_tree();
+								}
+								difficulty = GAME_MANAGER.globals.difficulty;
+							}
+						}
+						else {
+							this->anms[i].interrupt_and_run_tree(5);
+							// ABILITY_MENU_PTR->__sub_4134D0(); // TODO
+							for (size_t j = 0; j != CHARACTER_COUNT; ++j) {
+								this->anms[i].__find_child_id_with_script(23 + j).__hide_tree();
+							}
+						}
+					}
+				}
+				break;
+			case 3:
+				if (!EFFECT_MANAGER_PTR->__done_loading) {
+					this->state_timer--;
+				}
+				else {
+					if (this->state_timer == 10) {
+						if (GAME_MANAGER.game_type != NormalGame) {
+							goto label_A;
+						}
+						ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
+						AnmID id = EFFECT_MANAGER_PTR->instantiate_special_effect0_vm_to_ui_list_back();
+						SUPERVISOR.__vm_id_1D0 = id;
+						id.interrupt_tree(7);
+					}
+					goto label_B;
+				}
+				break;
+			case 4:
+				if (this->state_timer >= 6) {
+					this->anms[i].interrupt_and_orphan_tree(1);
+					this->__anm_id_430.interrupt_and_orphan_tree(1);
+					this->change_primary_state(MainMenuState::DifficultySelect); // 5
+					GAME_MANAGER.globals.character = this->__menu_select_24.current_selection;
+					clang_forceinline this->__menu_select_24.pop_state();
+					MENU_CHARACTER_SELECTION = GAME_MANAGER.globals.character;
+					if (AbilityMenu* ability_menu = ABILITY_MENU_PTR) {
+						delete ability_menu;
+					}
+				}
+				break;
+			case 5:
+				if (ABILITY_MENU_PTR->__int_13F4 >= 11) {
+					this->change_secondary_state(2);
+					if (!this->__anm_id_430.has_live_vm()) {
+						this->__anm_id_430 = this->title_anm->instantiate_vm_to_world_list_back(38);
+					}
+				}
+				break;
+		}
 		return 1;
 	}
 
 	// 0x467320
-	dllexport gnu_noinline int thiscall __state_8_handler() asm_symbol_rel(0x467320) {
-		// TODO: weird mystery key checks in this one...?
+	dllexport gnu_noinline int thiscall __practice_stage_select_handler() ASR(0x467320) {
+		switch (this->secondary_state) {
+			case 0: {
+				this->__menu_select_24.menu_length = 6;
+				this->__menu_select_24.set_selection(MENU_STAGE_SELECTION);
+				this->__anm_id_44C = this->title_anm->instantiate_vm_to_world_list_back(45);
+				ABILITY_MENU_PTR->__anm_id_3E8.interrupt_tree(1);
+				this->change_secondary_state(1);
+				int32_t C = UNKNOWN_INT32_C;
+				UNKNOWN_INT32_C = C == 4 ? 1 : C;
+			}
+				[[fallthrough]];
+			case 1:
+				if (this->state_timer > 10) {
+					this->change_secondary_state(2);
+				}
+				break;
+			case 2:
+				if (this->__menu_select_24.update(&MenuSelect::scroll_up_and_down_inline)) {
+					SOUND_MANAGER.play_sound(10);
+				}
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+					this->change_secondary_state(4);
+					SOUND_MANAGER.play_sound(9);
+					MENU_STAGE_SELECTION = this->__menu_select_24.current_selection;
+				}
+				else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+					if (
+						!SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
+							.practice[GAME_MANAGER.globals.difficulty][this->__menu_select_24.current_selection + 1].unlocked
+					) {
+						SOUND_MANAGER.play_sound(16);
+					}
+					else {
+						this->change_secondary_state(3);
+						SOUND_MANAGER.play_sound(7);
+						SOUND_MANAGER.play_sound(50);
+						MENU_STAGE_SELECTION = this->__menu_select_24.current_selection;
+
+						int32_t life_override = 0;
+						switch (DINPUT_KEYS_A.get_state()) {
+							case 0:
+								// BUG: the array was memset and never
+								// written to if the function returns 0
+								if      (DINPUT_KEYS_A['1'] & 0x80) life_override = 1;
+								else if (DINPUT_KEYS_A['2'] & 0x80) life_override = 2;
+								else if (DINPUT_KEYS_A['3'] & 0x80) life_override = 3;
+								else if (DINPUT_KEYS_A['4'] & 0x80) life_override = 4;
+								else if (DINPUT_KEYS_A['5'] & 0x80) life_override = 5;
+								else if (DINPUT_KEYS_A['6'] & 0x80) life_override = 6;
+								else if (DINPUT_KEYS_A['7'] & 0x80) life_override = 7;
+								else if (DINPUT_KEYS_A['8'] & 0x80) life_override = 8;
+								else if (DINPUT_KEYS_A['9'] & 0x80) life_override = 9;
+								break;
+							default:
+								if		(DINPUT_KEYS_A[DIK_1] & 0x80) life_override = 1;
+								else if (DINPUT_KEYS_A[DIK_2] & 0x80) life_override = 2;
+								else if (DINPUT_KEYS_A[DIK_3] & 0x80) life_override = 3;
+								else if (DINPUT_KEYS_A[DIK_4] & 0x80) life_override = 4;
+								else if (DINPUT_KEYS_A[DIK_5] & 0x80) life_override = 5;
+								else if (DINPUT_KEYS_A[DIK_6] & 0x80) life_override = 6;
+								else if (DINPUT_KEYS_A[DIK_7] & 0x80) life_override = 7;
+								else if (DINPUT_KEYS_A[DIK_8] & 0x80) life_override = 8;
+								else if (DINPUT_KEYS_A[DIK_9] & 0x80) life_override = 9;
+								break;
+						}
+						GAME_MANAGER.practice_mode_life_override = life_override;
+						SOUND_MANAGER.__queue_fade_out(0.05f);
+					}
+				}
+				break;
+			case 3:
+				if (!EFFECT_MANAGER_PTR->__done_loading) {
+					this->state_timer--;
+				}
+				else {
+					int32_t time = this->state_timer;
+					if (time == 10) {
+						ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
+						AnmID id = EFFECT_MANAGER_PTR->instantiate_special_effect0_vm_to_ui_list_back();
+						SUPERVISOR.__vm_id_1D0 = id;
+						id.interrupt_tree(7);
+						time = this->state_timer;
+					}
+					if (time >= 40) {
+						this->__menu_select_24.push_state();
+						this->change_primary_state(MainMenuState::State2); // 2
+						int32_t stage_number = this->__menu_select_24.current_selection + Stage1;
+						SUPERVISOR.gamemode_switch = GameMode::Gameplay; // 7
+						GAME_MANAGER.globals.current_stage = stage_number;
+						GAME_MANAGER.globals.__starting_stage = stage_number;
+						AbilityMenu* ability_menu = ABILITY_MENU_PTR;
+						ACHIEVEMENT_MODE_STATE = -1;
+						UNKNOWN_INT32_C = 4;
+						STAGE_DATA_PTR = &STAGE_DATA[stage_number];
+						MENU_STAGE_SELECTION = this->__menu_select_24.current_selection;
+						delete ability_menu;
+					}
+				}
+				break;
+			case 4:
+				if (this->state_timer >= 6) {
+					this->__anm_id_44C.interrupt_and_orphan_tree(1);
+					delete ABILITY_MENU_PTR;
+					this->change_primary_state(MainMenuState::CharacterSelect); // 6
+					this->__menu_select_24.pop_state();
+				}
+				break;
+		}
 		return 1;
 	}
 
 	// 0x467790
-	dllexport gnu_noinline int thiscall __draw_state_8() asm_symbol_rel(0x467790) {
-		// TODO
+	dllexport gnu_noinline int thiscall __draw_state_8() ASR(0x467790) {
+		switch (this->secondary_state) {
+			case 2: case 3:
+				// TODO
+		}
 		return 1;
 	}
 
 	// 0x46AFF0
-	dllexport gnu_noinline int thiscall __state_14_handler() asm_symbol_rel(0x46AFF0) {
-		// TODO: is zun okay, this is getting ridiculous
-		return 1;
+	dllexport gnu_noinline int thiscall __music_room_handler() ASR(0x46AFF0) {
+		switch (this->secondary_state) {
+			case 0: {
+				int32_t time = this->state_timer;
+				if (time == 1) {
+					this->__menu_select_24.initialize(MenuLength6, MenuChoice0);
+					if (!this->__anm_id_650) {
+						this->__anm_id_650 = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(19);
+					}
+					this->__anm_id_440 = this->title_anm->instantiate_vm_to_world_list_back(42);
+
+					size_t i = 0;
+					int32_t musiccmt_txt_count;
+					void* musiccmt_txt_file = read_file_to_buffer("musiccmt.txt", &musiccmt_txt_count, false);
+					this->musiccmt_file = musiccmt_txt_file;
+					if (!musiccmt_txt_file) {
+						goto cleanup_music_room;
+					}
+					char* musiccmt_txt = (char*)musiccmt_txt_file;
+					while (musiccmt_txt_count > 0) {
+						switch (char c = *musiccmt_txt) {
+							case '@': {
+								//--musiccmt_txt_count;
+								musiccmt_txt = musiccmt_txt_copy_rest_of_line_to_buffer(this->__musiccmt_titlesA[i], musiccmt_txt + 1, musiccmt_txt_count);
+								musiccmt_txt = musiccmt_txt_copy_rest_of_line_to_buffer(this->__musiccmt_titlesB[i], musiccmt_txt, musiccmt_txt_count);
+								for (size_t j = 0; j != MUSICCMT_TEXT_LINES; ++j) {
+									musiccmt_txt = musiccmt_txt_copy_rest_of_line_to_buffer(this->__musiccmt_lines[i][j], musiccmt_txt, musiccmt_txt_count);
+								}
+								++i;
+								break;
+							}
+							case '#': // Comment line
+							default: // Unlabeled data I guess?
+								musiccmt_txt = musiccmt_txt_skip_to_next_line(musiccmt_txt, musiccmt_txt_count);
+								break;
+						}
+					}
+
+					this->__menu_select_24.initialize((MenuLength)i, MenuChoice0);
+					this->__music_room_scroll_index = 0;
+					this->__music_room_song_count = i;
+
+					for (int32_t j = 0; j < MUSICCMT_TEXT_LINES; ++j) {
+						this->musiccmt_line_vms[j] = SUPERVISOR.text_anm->instantiate_vm_to_world_list_back(26 + j);
+					}
+
+					time = this->state_timer;
+					this->__musiccmt_line_index = 0;
+					this->__music_index = 0;
+					this->__music_room_force_unlock = false;
+				}
+				if (time < 10) {
+					Float3 target;
+					target.x = 128.0f;
+					target.y = ((96.0f - this->__music_room_scroll_index * 20.0f) + (time * 40 - 40)) * 2.0f;
+					target.z = 0.0f;
+
+					int32_t A = time * 2;
+					int32_t i = A - 2;
+					if (i >= A) {
+						break;
+					}
+					do {
+						if (i >= this->__music_room_song_count) {
+							break;
+						}
+						AnmID id = this->title_anm->instantiate_vm_to_world_list_back(78 + i);
+						this->__anm_id_array_694[i] = id;
+						AnmVM* vm = id.get_vm_ptr();
+						if (SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_music[i]) {
+							ANM_MANAGER_PTR->draw_text_left(
+								vm,
+								COLOR3_WHITE, COLOR3_BLACK,
+								Font0, 0, 0, // 0
+								&this->__musiccmt_titlesB[i][0]
+							);
+						}
+						else {
+							ANM_MANAGER_PTR->draw_text_left(
+								vm,
+								COLOR3_WHITE, COLOR3_BLACK,
+								Font0, 0, 0, // 0
+								"No.%2d  ???????????",
+								i + 1
+							);
+						}
+						int32_t scroll = this->__music_room_scroll_index;
+						if (i >= scroll && i < scroll + SONGS_PER_PAGE) {
+							vm->__show_tree();
+						} else {
+							vm->__hide_tree();
+						}
+
+						if (i == this->__menu_select_24.current_selection) {
+							target.x -= 8.0; // yes this is a double
+						}
+
+						vm->initialize_position_interp(4, Linear, &vm->data.position, &target);
+
+						int32_t current_selection = this->__menu_select_24.current_selection;
+						if (i == current_selection) {
+							target.x += 8.0; // yes this is a double
+						}
+						target.y += 40.0f;
+
+						vm->interrupt(i == current_selection ? 2 : 3);
+
+						A = this->state_timer * 2;
+					} while (i < A);
+				}
+				if (time >= 10) {
+					clang_forceinline this->change_secondary_state(1);
+				}
+				break;
+			}
+			case 1: {
+				int32_t time = this->state_timer;
+				if (!(time & 1)) {
+					int32_t line = this->__musiccmt_line_index;
+					if (line < MUSICCMT_TEXT_LINES) {
+						AnmVM* vm = this->musiccmt_line_vms[line].get_vm_ptr();
+						int32_t i = this->__music_index;
+						if (
+							!SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_music[i] &&
+							this->__music_room_force_unlock
+						) {
+							ANM_MANAGER_PTR->draw_text_left(
+								vm,
+								COLOR3(128, 128, 255), COLOR3_BLACK,
+								Font0, 0, 0, // 0
+								MUSIC_ROOM_SPOILER_TEXT_TABLE[this->__musiccmt_line_index]
+							);
+						} else {
+							ANM_MANAGER_PTR->draw_text_left(
+								vm,
+								COLOR3_WHITE, COLOR3_BLACK,
+								Font0, 0, 0, // 0
+								&this->__musiccmt_lines[i][this->__musiccmt_line_index][0]
+							);
+						}
+						vm->interrupt(2);
+						++this->__musiccmt_line_index;
+						time = this->state_timer;
+					}
+				}
+				if (time > 4) {
+					this->change_secondary_state(2);
+				}
+				break;
+			}
+			case 2:
+				if (!((int32_t)this->state_timer & 1)) {
+					int32_t line = this->__musiccmt_line_index;
+					if (line < MUSICCMT_TEXT_LINES) {
+						AnmVM* vm = this->musiccmt_line_vms[line].get_vm_ptr();
+						int32_t i = this->__music_index;
+						if (
+							!SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_music[i] &&
+							this->__music_room_force_unlock
+						) {
+							ANM_MANAGER_PTR->draw_text_left(
+								vm,
+								COLOR3(128, 128, 255), COLOR3_BLACK,
+								Font0, 0, 0, // 0
+								MUSIC_ROOM_SPOILER_TEXT_TABLE[this->__musiccmt_line_index]
+							);
+						} else {
+							ANM_MANAGER_PTR->draw_text_left(
+								vm,
+								COLOR3_WHITE, COLOR3_BLACK,
+								Font0, 0, 0, // 0
+								&this->__musiccmt_lines[i][this->__musiccmt_line_index][0]
+							);
+						}
+						vm->interrupt(2);
+						++this->__musiccmt_line_index;
+					}
+				}
+				if (this->__menu_select_24.update(&MenuSelect::scroll_up_and_down_inline)) {
+					SOUND_MANAGER.play_sound(10);
+
+					int32_t current_selection = this->__menu_select_24.current_selection;
+					int32_t scroll = this->__music_room_scroll_index;
+					if (current_selection < scroll) {
+						this->__music_room_scroll_index = current_selection;
+						scroll = current_selection;
+					} else if (current_selection >= scroll + SONGS_PER_PAGE) {
+						scroll = current_selection - (SONGS_PER_PAGE - 1);
+						this->__music_room_scroll_index = scroll;
+					}
+					
+					Float3 target;
+					target.x = 128.0f;
+					target.y = (96.0f - scroll * 20.0f) * 2.0f;
+					target.z = 0.0f;
+
+					for (int32_t i = 0; i < this->__music_room_song_count; ++i) {
+						AnmVM* vm = this->__anm_id_array_694[i].get_vm_ptr();
+
+						scroll = this->__music_room_scroll_index;
+						if (i >= scroll && i < scroll + SONGS_PER_PAGE) {
+							vm->__show_tree();
+						} else {
+							vm->__hide_tree();
+						}
+
+						if (i == this->__menu_select_24.current_selection) {
+							target.x -= 8.0; // yes this is a double
+						}
+
+						if (zfabsf(vm->data.position.y - target.y) < 80.0f) {
+							vm->initialize_position_interp(4, Linear, &vm->data.position, &target);
+						}
+						else {
+							vm->data.position = target;
+						}
+						
+						current_selection = this->__menu_select_24.current_selection;
+						if (i == current_selection) {
+							target.x += 8.0; // yes this is a double
+						}
+						target.y += 40.0f;
+
+						vm->interrupt(i == current_selection ? 2 : 3);
+					}
+
+					if (this->__musiccmt_line_index >= MUSICCMT_TEXT_LINES) {
+						this->__music_room_force_unlock = false;
+					}
+				}
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+					for (size_t i = 0; i != MUSICCMT_TEXT_LINES; ++i) {
+						this->musiccmt_line_vms[i].interrupt_tree(3);
+					}
+					this->__musiccmt_line_index = 0;
+					this->__music_index = this->__menu_select_24.current_selection;
+					this->state_timer.reset();
+
+					int32_t i = this->__music_index;
+					if (
+						!SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_music[i] &&
+						!this->__music_room_force_unlock
+					) {
+						clang_forceinline SOUND_MANAGER.__queue_bgm_stop();
+						this->__music_room_force_unlock = true;
+					}
+					else {
+						SOUND_MANAGER.__load_and_play_music_with_unlock(0, 0, this->__musiccmt_titlesA[this->__menu_select_24.current_selection]);
+						this->__music_room_force_unlock = false;
+					}
+				}
+				else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+			cleanup_music_room:
+					SAFE_FREE_SLOW(this->musiccmt_file);
+					for (int32_t i = 0; i < this->__music_room_song_count; ++i) {
+						this->__anm_id_array_694[i].interrupt_tree(1);
+					}
+					for (size_t i = 0; i != MUSICCMT_TEXT_LINES; ++i) {
+						this->musiccmt_line_vms[i].interrupt_tree(1);
+					}
+					SOUND_MANAGER.play_sound(9);
+					clang_forceinline this->change_secondary_state(3);
+				}
+				break;
+			case 3:
+				if (this->state_timer >= 10) {
+					this->__anm_id_440.interrupt_and_orphan_tree(1);
+					this->__anm_id_650.interrupt_and_orphan_tree(1);
+					this->change_primary_state(MainMenuState::TitleScreen); // 1
+					SOUND_MANAGER.__load_and_play_music_with_unlock(0, 0, "th18_01");
+					this->__menu_select_24.pop_state();
+				}
+				break;
+		}
+		return 0;
 	}
 
 	// 0x46C1D0
-	dllexport gnu_noinline int thiscall __state_19_handler() asm_symbol_rel(0x46C1D0) {
-		// TODO: despair
+	dllexport gnu_noinline int thiscall __state_19_handler() ASR(0x46C1D0) {
+		// we love stack arrays
+		int32_t SPELLS_PER_STAGE[] = { 2, 3, 3, 3, 4, 6, 13 };
+		switch (this->secondary_state) {
+			case 0: {
+				this->__menu_select_24.menu_length = SPELLS_PER_STAGE[this->__spell_practice_stage];
+				if (!ANM_MANAGER_PTR->get_vm_with_id(this->__anm_id_434)) {
+					this->__anm_id_434 = this->title_anm->instantiate_vm_to_world_list_back(39);
+				}
+				if (!ANM_MANAGER_PTR->get_vm_with_id(this->__anm_id_574)) {
+					this->__anm_id_574 = this->title_anm->instantiate_vm_to_world_list_back(119);
+				}
+				this->change_secondary_state(1);
+				int32_t stage = this->__spell_practice_stage;
+				for (int32_t i = 0; i < MAX_SPELLS_PER_STAGE - SPELLS_PER_STAGE[stage]; ++i) {
+					this->__anm_id_574.interrupt_and_run_tree_word_offset(i, 39);
+					stage = this->__spell_practice_stage;
+				}
+				int32_t A = UNKNOWN_INT32_E;
+				if (A >= 0) {
+					this->__menu_select_24.set_selection(A);
+					UNKNOWN_INT32_E = -1;
+					this->__sub_46C680(this->__spell_practice_stage, this->__menu_select_24.current_selection, this->__spell_id_array);
+					this->__anm_id_574.interrupt_and_run_tree(3);
+					this->__anm_id_574.interrupt_and_run_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					this->__anm_id_574.interrupt_and_run_tree(6);
+					goto label_A;
+				}
+				this->__sub_46C680(stage, this->__menu_select_24.current_selection, this->__spell_id_array);
+			}
+				[[fallthrough]];
+			case 1:
+				if (this->state_timer > 10) {
+					this->change_secondary_state(2);
+					this->__anm_id_574.interrupt_and_run_tree(2);
+					this->__anm_id_574.interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
+				}
+				break;
+			case 2:
+				if (this->__menu_select_24.update(&MenuSelect::scroll_up_and_down_inline)) {
+					SOUND_MANAGER.play_sound(10);
+					this->__anm_id_574.interrupt_and_run_tree(3);
+					this->__anm_id_574.interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					this->__sub_46C680(this->__spell_practice_stage, this->__menu_select_24.current_selection, this->__spell_id_array);
+				}
+				this->__sub_46C070();
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+					this->change_secondary_state(4);
+					SOUND_MANAGER.play_sound(9);
+				}
+				else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+					ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
+					// this feels like an inlined scorefile manager
+					const int32_t* spell_ids = &SPELL_ID_TABLE[this->__spell_practice_stage][this->__menu_select_24.current_selection][0];
+					nounroll for (int32_t i = 0; i < SPELL_DIFFICULTY_VARIANTS; ++i) {
+						int32_t spell_id = spell_ids[i];
+						if (spell_id < 0) {
+							break;
+						}
+						if (scorefile_manager->primary_file.shottypes[SHOTTYPES_TOTAL].spells[spell_id].unlocked_in_spell_practice()) {
+							this->__anm_id_574.interrupt_tree(6);
+							this->change_secondary_state(3);
+							SOUND_MANAGER.play_sound(7);
+							goto is_unlocked;
+						}
+					}
+					SOUND_MANAGER.play_sound(10);
+			is_unlocked:;
+				}
+				break;
+			case 3:
+				if (this->state_timer >= 14) {
+			label_A:
+					this->change_primary_state(MainMenuState::State20); // 20
+					this->__int_5D2C = this->__menu_select_24.current_selection;
+					clang_forceinline this->__menu_select_24.push_state();
+					this->__anm_id_434.interrupt_and_orphan_tree(1);
+					this->__menu_select_24.set_selection(0);
+				}
+				break;
+			case 4:
+				if (this->state_timer >= 6) {
+					// both larger than array bounds...?
+					for (int32_t i = 0; i < 20; ++i) {
+						this->__anm_id_array_654[i].interrupt_tree(1);
+					}
+					for (int32_t i = 0; i < 28; ++i) {
+						this->__anm_id_array_618[i].mark_tree_for_delete();
+					}
+					this->__anm_id_434.interrupt_and_orphan_tree(1);
+					this->__anm_id_574.interrupt_and_orphan_tree(1);
+					clang_forceinline this->change_primary_state(MainMenuState::SpellPractice); // 18
+					clang_forceinline this->__menu_select_24.pop_state();
+				}
+				break;
+		}
 		return 1;
 	}
 
 	// 0x46CD50
-	dllexport gnu_noinline int thiscall __state_20_handler() asm_symbol_rel(0x46CD50) {
-		// TODO: maybe this one first, it looks less painful
+	dllexport gnu_noinline int thiscall __state_20_handler() ASR(0x46CD50) {
+		switch (this->secondary_state) {
+			case 0: {
+				this->__menu_select_24.menu_length = 5;
+				for (int32_t i = 0; i < SPELL_DIFFICULTY_VARIANTS; ++i) {
+					if (this->__spell_id_array[i] < 0) {
+						this->__menu_select_24.disable_selection(i);
+					}
+				}
+				this->__menu_select_24.set_selection(0);
+				int32_t A = UNKNOWN_INT32_F;
+				if (A >= 0) {
+					this->__menu_select_24.set_selection(A);
+					UNKNOWN_INT32_F = -1;
+				}
+				this->__sub_46CCD0(this->__menu_select_24.current_selection);
+				clang_forceinline this->change_secondary_state(1);
+			}
+				[[fallthrough]];
+			case 1:
+				if (this->state_timer > 10) {
+					clang_forceinline this->change_secondary_state(2);
+				}
+				break;
+			case 2:
+				if (this->__menu_select_24.update(&MenuSelect::scroll_up_and_down_inline)) {
+					SOUND_MANAGER.play_sound(10);
+					this->__sub_46CCD0(this->__menu_select_24.current_selection);
+				}
+				this->__sub_46C070();
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+					this->change_secondary_state(4);
+					SOUND_MANAGER.play_sound(9);
+				}
+				else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+					this->__anm_id_array_654[this->__menu_select_24.current_selection].interrupt_tree(6);
+					this->change_secondary_state(3);
+					SOUND_MANAGER.play_sound(7);
+					SOUND_MANAGER.__queue_fade_out(0.05f);
+					SOUND_MANAGER.play_sound(50);
+				}
+				break;
+			case 3:
+				if (!EFFECT_MANAGER_PTR->__done_loading) {
+					this->state_timer--;
+				}
+				else {
+					int32_t time = this->state_timer;
+					if (time == 10) {
+						ASCII_MANAGER_PTR->__instantiate_vm_id_19268(480.0f, 392.0f);
+						AnmID id = EFFECT_MANAGER_PTR->instantiate_special_effect0_vm_to_ui_list_back();
+						SUPERVISOR.__vm_id_1D0 = id;
+						id.interrupt_tree(7);
+						time = this->state_timer;
+					}
+					if (time >= 40) {
+						this->__menu_select_24.push_state();
+						this->change_primary_state(MainMenuState::State2); // 2
+						int32_t stage_number = this->__spell_practice_stage + Stage1;
+						UNKNOWN_INT32_C = 5;
+						GAME_MANAGER.globals.current_stage = stage_number;
+						GAME_MANAGER.globals.__starting_stage = stage_number;
+						STAGE_DATA_PTR = &STAGE_DATA[stage_number];
+						GAME_MANAGER.globals.spell_practice_id = this->__spell_id_array[this->__menu_select_24.current_selection];
+						GAME_MANAGER.globals.character = this->__menu_select_5C50.current_selection;
+						GAME_MANAGER.globals.shottype = 0;
+						SUPERVISOR.gamemode_switch = GameMode::Gameplay; // 7
+						GAME_MANAGER.globals.difficulty = SPELL_DIFFICULTY_TABLE[this->__spell_id_array[this->__menu_select_24.current_selection]];
+						MENU_SPELL_PRACTICE_STAGE_SELECTION = this->__spell_practice_stage;
+						UNKNOWN_INT32_E = this->__int_5D2C;
+						UNKNOWN_INT32_F = this->__menu_select_24.current_selection;
+					}
+				}
+				break;
+			case 4:
+				if (this->state_timer >= 6) {
+					this->__anm_id_574.interrupt_and_orphan_tree(1);
+					this->change_primary_state(MainMenuState::SpellPractice); // 18
+					this->__menu_select_24.pop_state();
+				}
+				break;
+		}
 		return 1;
 	}
 
 	// 0x46D0C0
-	dllexport gnu_noinline int thiscall __draw_state_19_20() asm_symbol_rel(0x46D0C0) {
+	dllexport gnu_noinline int thiscall __draw_state_19_20() ASR(0x46D0C0) {
 		// TODO
 		return 1;
 	}
 
 	// 0x4686E0
-	dllexport gnu_noinline int thiscall __state_10_handler() asm_symbol_rel(0x4686E0) {
-		// TODO: T_T
+	dllexport gnu_noinline int thiscall __player_data_handler() ASR(0x4686E0) {
+		switch (this->secondary_state) {
+			case 0: {
+				if (!this->__anm_id_650) {
+					this->__anm_id_650 = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(19);
+				}
+				this->__menu_select_24.menu_length = 4;
+				this->__menu_select_24.enable_wrap = true;
+				this->__anm_id_54C.interrupt_and_orphan_tree(1);
+				AnmID id = this->title_anm->instantiate_vm_to_world_list_back(109);
+				this->__anm_id_54C = id;
+				id.interrupt_and_run_tree(3);
+				this->__anm_id_54C.interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
+				this->__anm_id_454 = this->title_anm->instantiate_vm_to_world_list_back(47);
+				this->change_secondary_state(1);
+			}
+				[[fallthrough]];
+			case 1:
+				if (this->state_timer > 6) {
+					this->change_secondary_state(2);
+				}
+				break;
+			case 2:
+				if (this->__menu_select_24.update(&MenuSelect::scroll_up_and_down_lr_alias_half_inline)) {
+					SOUND_MANAGER.play_sound(10);
+					this->__anm_id_54C.interrupt_and_run_tree(3);
+					this->__anm_id_54C.interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
+				}
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+					this->change_secondary_state(4);
+					SOUND_MANAGER.play_sound(9);
+					this->__anm_id_54C.interrupt_and_orphan_tree(1);
+				}
+				else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+					this->__anm_id_54C.interrupt_tree(6);
+					if (GAME_MANAGER.globals.difficulty < EXTRA) {
+						this->__find_indexed_child_id_with_script(109, 49 + this->__menu_select_24.current_selection).interrupt_tree(2);
+					} else {
+						this->__anm_id_54C.__find_child_id_with_script(53).interrupt_tree(2);
+					}
+					this->change_secondary_state(3);
+					SOUND_MANAGER.play_sound(7);
+				}
+				break;
+			case 3:
+				if (this->state_timer >= 14) {
+					this->__anm_id_454.interrupt_and_orphan_tree(1);
+					switch (this->__menu_select_24.current_selection) {
+						default:
+							this->change_primary_state(MainMenuState::RecordsList); // 11
+							break;
+						case 2:
+							this->change_primary_state(MainMenuState::AbilityMenu); // 24
+							break;
+						case 3:
+							this->change_primary_state(MainMenuState::TrophyMenu); // 23
+							break;
+					}
+					this->__menu_select_24.push_state();
+				}
+				break;
+			case 4:
+				if (this->state_timer >= 6) {
+					this->__anm_id_454.interrupt_and_orphan_tree(1);
+					this->__anm_id_650.interrupt_and_orphan_tree(1);
+					this->change_primary_state(MainMenuState::TitleScreen); // 1
+					this->__menu_select_24.pop_state();
+				}
+				break;
+		}
 		return 1;
 	}
 
 	// 0x468B10
-	dllexport gnu_noinline int thiscall __state_11_handler() asm_symbol_rel(0x468B10) {
-		// TODO: even more funny keyboard stuff
+	dllexport gnu_noinline int thiscall __records_list_handler() ASR(0x468B10) {
+		int32_t i;
+		switch (this->secondary_state) {
+			case 0: {
+				int32_t record_type = this->__menu_select_24.current_selection;
+				this->__record_type = record_type;
+				if (record_type == 1) {
+					int32_t spell_count = count_spells_for_difficulty(this->__menu_select_1D4.current_selection);
+					int32_t spell_pages = (spell_count + (RECORDS_PER_PAGE - 1)) / RECORDS_PER_PAGE;
+					this->__menu_select_2AC.initialize((MenuLength)spell_pages, MenuChoice0, MenuWrapEnable);
+				}
+				this->__menu_select_24.initialize((MenuLength)CHARACTER_COUNT, MenuChoice0);
+				this->__menu_select_1D4.initialize((MenuLength)(MAIN_DIFFICULTY_COUNT + 1), (MenuChoice)NORMAL, MenuWrapEnable);
+				if (this->__record_type == 1) {
+					nounroll for (int32_t j = 0; j < RECORDS_PER_PAGE; ++j) {
+						this->__anm_id_array_654[j] = SUPERVISOR.text_anm->instantiate_vm_to_world_list_back(10 + j);
+					}
+					// this->__sub_4694A0(); // TODO
+				}
+				clang_forceinline this->change_secondary_state(1);
+				i = 61 + this->__menu_select_24.current_selection;
+				this->anms[i] = this->title_anm->instantiate_vm_to_world_list_back(i);
+				i = 65 + this->__menu_select_1D4.current_selection;
+				this->anms[i] = this->title_anm->instantiate_vm_to_world_list_back(i);
+				this->__anm_id_4BC = this->title_anm->instantiate_vm_to_world_list_back(73);
+				this->__anm_id_4C0 = this->title_anm->instantiate_vm_to_world_list_back(74);
+				this->__anm_id_4C4 = this->title_anm->instantiate_vm_to_world_list_back(75);
+				this->__anm_id_4C8 = this->title_anm->instantiate_vm_to_world_list_back(76);
+				this->__anm_id_4B0 = this->title_anm->instantiate_vm_to_world_list_back(70);
+				this->__anm_id_4B4 = this->title_anm->instantiate_vm_to_world_list_back(71);
+				this->__anm_id_4B8 = this->title_anm->instantiate_vm_to_world_list_back(72);
+				this->__anm_id_43C = this->title_anm->instantiate_vm_to_world_list_back(41);
+			}
+				[[fallthrough]];
+			case 1:
+				if (this->state_timer > 6) {
+					this->change_secondary_state(2);
+				}
+				break;
+			case 2:
+				this->__menu_select_24.previous_selection = this->__menu_select_24.current_selection;
+				this->__menu_select_1D4.previous_selection = this->__menu_select_1D4.current_selection;
+				this->__menu_select_2AC.previous_selection = this->__menu_select_2AC.current_selection;
+				if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_UP)) {
+					this->__menu_select_1D4.move_selection(-1);
+					this->__anm_id_4C4.interrupt_and_run_tree(2);
+				}
+				if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_DOWN)) {
+					this->__menu_select_1D4.move_selection(1);
+					this->__anm_id_4C8.interrupt_and_run_tree(2);
+				}
+				if (this->__menu_select_1D4.selection_changed()) {
+					SOUND_MANAGER.play_sound(10);
+					this->__anm_id_array_49C[this->__menu_select_1D4.current_selection].interrupt_and_orphan_tree(1);
+					i = 65 + this->__menu_select_1D4.current_selection;
+					this->anms[i] = this->title_anm->instantiate_vm_to_world_list_back(i);
+					if (this->__record_type == 1) {
+						this->__menu_select_2AC.set_selection(0);
+						// this->__sub_4694A0(); // TODO
+					}
+					int32_t spell_count = count_spells_for_difficulty(this->__menu_select_1D4.current_selection);
+					int32_t spell_pages = (spell_count + (RECORDS_PER_PAGE - 1)) / RECORDS_PER_PAGE;
+					this->__menu_select_2AC.menu_length = spell_pages;
+				}
+				if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_LEFT)) {
+					this->__menu_select_24.move_selection(-1);
+					this->__anm_id_4BC.interrupt_and_run_tree(2);
+				}
+				if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_RIGHT)) {
+					this->__menu_select_24.move_selection(1);
+					this->__anm_id_4C0.interrupt_and_run_tree(2);
+				}
+				if (this->__menu_select_24.selection_changed()) {
+					SOUND_MANAGER.play_sound(10);
+					this->__anm_id_array_48C[this->__menu_select_24.current_selection].interrupt_and_orphan_tree(1);
+					i = 61 + this->__menu_select_24.current_selection;
+					this->anms[i] = this->title_anm->instantiate_vm_to_world_list_back(i);
+					if (this->__record_type == 1) {
+						// this->__sub_4694A0(); // TODO
+					}
+				}
+				if (this->__record_type == 1) {
+					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+						this->__menu_select_2AC.move_selection(1);
+						// this->__sub_4694A0(); // TODO
+						SOUND_MANAGER.play_sound(7);
+					}
+				}
+				if (
+					this->__menu_select_1D4.current_selection == LUNATIC &&
+					this->__menu_select_24.current_selection == 8 // YoumuOtter from WBaWC
+				) {
+					// Super dead code, there is no shottype 8
+					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT | BUTTON_CANCEL)) {
+						UNLOCK_CODE_B_CHARS_ENTERED = 0;
+						UNLOCK_CODE_B_TIMER = 0;
+					}
+					DINPUT_KEYS_F = DINPUT_KEYS_E;
+					switch (DINPUT_KEYS_E.get_state()) {
+						case 2:
+							// This is dead code, the function never returns 2 at all
+							DINPUT_KEYS_G.reset();
+							for (size_t i = 0; i < 26; ++i) {
+								DINPUT_KEYS_G[DIK_A + i] = DINPUT_KEYS_E['A' + i];
+							}
+							DINPUT_KEYS_E = DINPUT_KEYS_G;
+						case 1:
+							for (size_t i = 0; i != 256; ++i) {
+								BYTE current = DINPUT_KEYS_E[i];
+								BYTE previous = DINPUT_KEYS_F[i];
+								BYTE changed = previous ^ current;
+								BYTE rising_edge = changed & current;
+								DINPUT_KEYS_G[i] = rising_edge;
+							}
+							uint32_t i = UNLOCK_CODE_B_CHARS_ENTERED;
+							if (i >= countof(UNLOCK_CODE_B)) {
+								SCOREFILE_MANAGER_PTR->unlock_all();
+								SOUND_MANAGER.play_sound(17);
+								UNLOCK_CODE_B_CHARS_ENTERED = 0;
+							} else if ((int8_t)DINPUT_KEYS_G[UNLOCK_CODE_B[i]] < 0) {
+								UNLOCK_CODE_B_CHARS_ENTERED = i + 1;
+							} else {
+								int8_t c = 0;
+								for (int32_t j = 0; j < 57; ++j) { // 57???
+									c |= DINPUT_KEYS_G[j];
+								}
+								UNLOCK_CODE_B_CHARS_ENTERED = c >= 0 ? i : 0;
+							}
+					}
+					++UNLOCK_CODE_B_TIMER;
+					if (UNLOCK_CODE_B_TIMER > 300) {
+						UNLOCK_CODE_B_CHARS_ENTERED = 0;
+						UNLOCK_CODE_B_TIMER = 0;
+					}
+				}
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+					this->change_secondary_state(3);
+					SOUND_MANAGER.play_sound(9);
+					this->__anm_id_array_49C[this->__menu_select_1D4.current_selection].interrupt_and_orphan_tree(1);
+					this->__anm_id_array_48C[this->__menu_select_24.current_selection].interrupt_and_orphan_tree(1);
+					this->__anm_id_4BC.interrupt_and_orphan_tree(1);
+					this->__anm_id_4C0.interrupt_and_orphan_tree(1);
+					this->__anm_id_4C4.interrupt_and_orphan_tree(1);
+					this->__anm_id_4C8.interrupt_and_orphan_tree(1);
+					this->__anm_id_4B0.interrupt_and_orphan_tree(1);
+					this->__anm_id_4B4.interrupt_and_orphan_tree(1);
+					this->__anm_id_4B8.interrupt_and_orphan_tree(1);
+					this->__anm_id_4CC.interrupt_and_orphan_tree(1);
+					nounroll for (size_t j = 0; j != RECORDS_PER_PAGE; ++j) {
+						this->__anm_id_array_654[j].interrupt_and_orphan_tree(1);
+					}
+				}
+				break;
+			case 3:
+				if (this->state_timer >= 6) {
+					this->__anm_id_43C.interrupt_and_orphan_tree(1);
+					this->change_primary_state(MainMenuState::PlayerData); // 10
+					this->__menu_select_24.pop_state();
+				}
+				break;
+		}
 		return 1;
 	}
 
 	// 0x4698C0
-	dllexport gnu_noinline int thiscall __draw_state_11() asm_symbol_rel(0x4698C0) {
+	dllexport gnu_noinline int thiscall __draw_state_11() ASR(0x4698C0) {
 		// TODO: 64 bit math in this? Why?
 		return 1;
 	}
 
 	// 0x46A5D0
-	dllexport gnu_noinline int thiscall __state_16_handler() asm_symbol_rel(0x46A5D0) {
-		// TODO
+	dllexport gnu_noinline int thiscall __replay_saving_handler() ASR(0x46A5D0) {
+		char buffer[60];
+		switch (this->secondary_state) {
+			case 0:
+				this->__menu_select_24.initialize((MenuLength)REPLAYS_PER_PAGE, MenuWrapEnable, MenuChoice0);
+				STAGE_DATA_PTR = &STAGE_DATA_PTR[8];
+				GAME_MANAGER.globals.current_stage = 8;
+				GAME_MANAGER.globals.__starting_stage = 8;
+				for (int32_t i = 1; i <= REPLAYS_PER_PAGE; ++i) {
+					sprintf(buffer, "th18_%.2d.rpy", i);
+					this->replay_manager_array[i - 1] = ReplayManager::allocate_mode2(buffer);
+				}
+				if (!ANM_MANAGER_PTR->get_vm_with_id(this->__anm_id_3B4)) {
+					AnmID id = this->title_anm->instantiate_vm_to_world_list_back(7);
+					this->__anm_id_3B4 = id;
+					id.interrupt_and_run_tree(3);
+				}
+				this->__anm_id_448 = this->title_anm->instantiate_vm_to_world_list_back(44);
+				clang_forceinline this->change_secondary_state(1);
+			case 1:
+				if (this->state_timer > 6) {
+					clang_forceinline this->change_secondary_state(2);
+				}
+				break;
+			case 2:
+				if (this->__menu_select_24.update(&MenuSelect::scroll_up_and_down_inline)) {
+					SOUND_MANAGER.play_sound(10);
+				}
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+					this->change_secondary_state(4);
+					SOUND_MANAGER.play_sound(9);
+				}
+				else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+					this->__replay_index = this->__menu_select_24.current_selection;
+					this->keyboard.initialize(MenuChoice0, (MenuLength)KEYBOARD_STRING_TOTAL_KEY_COUNT, MenuWrapEnable);
+					byteloop_strcpy(this->__name_buffer, SCOREFILE_MANAGER_PTR->primary_file.common.__recent_name);
+					if (strcmp_asm(this->__name_buffer, DEFAULT_RECORD_NAME)) {
+						this->keyboard.move_selection(-1);
+					}
+					int32_t i = MAX_RECORD_NAME_LENGTH;
+					while (this->__name_buffer[i] == ' ' && --i > 0);
+					this->__name_length = i;
+					SOUND_MANAGER.play_sound(7);
+					this->change_secondary_state(3);
+				}
+				break;
+			case 3:
+				if (this->keyboard.update(&MenuSelect::scroll_grid_inline, 13)) {
+					SOUND_MANAGER.play_sound(10);
+				}
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+					int32_t key = this->keyboard.current_selection;
+					if (key <= KEYBOARD_STRING_NORMAL_KEY_COUNT) {
+						char c = KEYBOARD_STRING[key];
+						int32_t index = this->__name_length;
+						if (index < MAX_RECORD_NAME_LENGTH) {
+							this->__name_buffer[index] = c;
+							if (++this->__name_length >= MAX_RECORD_NAME_LENGTH) {
+								this->keyboard.set_selection(KEYBOARD_STRING_CONFIRM);
+							}
+						} else {
+							this->__name_buffer[index - 1] = c;
+						}
+					}
+					else if (key == KEYBOARD_STRING_SPACE) {
+						int32_t index = this->__name_length;
+						if (index < MAX_RECORD_NAME_LENGTH) {
+							this->__name_buffer[index] = ' ';
+							if (++this->__name_length >= MAX_RECORD_NAME_LENGTH) {
+								this->keyboard.set_selection(KEYBOARD_STRING_CONFIRM);
+							}
+						} else {
+							this->__name_buffer[index - 1] = ' ';
+						}
+					}
+					else if (key == KEYBOARD_STRING_BACK) {
+						if (int32_t index = this->__name_length) {
+							this->__name_length = --index;
+							this->__name_buffer[index] = ' ';
+						}
+					}
+					else if (key == KEYBOARD_STRING_CONFIRM) {
+						SOUND_MANAGER.play_sound(17);
+						sprintf(buffer, "th18_%.2d.rpy", this->__menu_select_24.current_selection + 1);
+						delete_no_eh(this->replay_manager_array[this->__menu_select_24.current_selection]);
+						REPLAY_MANAGER_PTR->__write_to_path(buffer, this->__name_buffer, true, false);
+						this->replay_manager_array[this->__menu_select_24.current_selection] = ReplayManager::allocate_mode2(buffer);
+						byteloop_strcpy(SCOREFILE_MANAGER_PTR->primary_file.common.__recent_name, this->__name_buffer);
+						this->change_secondary_state(2);
+					}
+					SOUND_MANAGER.play_sound(7);
+				}
+				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+					if (this->__name_length != 0) {
+						SOUND_MANAGER.play_sound(9);
+						--this->__name_length;
+						this->__name_buffer[this->__name_length] = ' ';
+					} else {
+						this->change_secondary_state(2);
+					}
+				}
+				break;
+			case 4:
+				if (this->state_timer >= 6) {
+					this->__anm_id_448.interrupt_and_orphan_tree(1);
+					this->__anm_id_650.interrupt_and_orphan_tree(1);
+					this->change_primary_state(MainMenuState::TitleScreen); // 1
+					this->__menu_select_24.pop_state();
+					delete_no_eh(REPLAY_MANAGER_PTR);
+					SOUND_MANAGER.__load_and_play_music_with_unlock(0, 0, "th18_01");
+					nounroll for (size_t i = 0; i < countof(this->replay_manager_array); ++i) {
+						delete_no_eh(this->replay_manager_array[i]);
+					}
+					zero_array(this->replay_manager_array);
+				}
+				break;
+		}
 		return 1;
 	}
 
 	// 0x46AC00
-	dllexport gnu_noinline int thiscall __draw_state_16() asm_symbol_rel(0x46AC00) {
+	dllexport gnu_noinline int thiscall __draw_state_16() ASR(0x46AC00) {
 		// TODO
 		return 1;
 	}
 
 	// 0x464ED0
-	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() asm_symbol_rel(0x464ED0) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x464ED0) {
 		Ending* ending = ENDING_PTR;
 		if (ending) {
 			if (ending->__unknown_flag_en_D) {
@@ -57691,8 +60638,8 @@ public:
 					GAME_MANAGER.__unknown_flag_gm_F = false;
 					GAME_MANAGER.__is_demo = true;
 
-					byteloop_strcpy(UNKNOWN_TEXT_BUFFER_A, DEMO_REPLAY_FILENAMES[GAME_MANAGER.__demo_index]);
-					ReplayManager* replay_manager = ReplayManager::allocate_mode2(UNKNOWN_TEXT_BUFFER_A);
+					byteloop_strcpy(REPLAY_FILENAME_BUFFER, DEMO_REPLAY_FILENAMES[GAME_MANAGER.__demo_index]);
+					ReplayManager* replay_manager = ReplayManager::allocate_mode2(REPLAY_FILENAME_BUFFER);
 					GAME_MANAGER.__demo_index = (GAME_MANAGER.__demo_index + 1) % countof(DEMO_REPLAY_FILENAMES);
 
 					int32_t stage_number = 0;
@@ -57745,14 +60692,13 @@ public:
 
 					A = UNKNOWN_INT32_C;
 					if (A == 3) {
-						this->__menu_select_24.menu_length = 10;
-						this->__menu_select_24.set_selection(0);
+						this->__menu_select_24.initialize(MenuLength10, MenuChoice0);
 						this->__menu_select_24.push_state();
-						this->change_primary_state(15);
+						this->change_primary_state(MainMenuState::RecordEntry); // 15
 						UNKNOWN_INT32_C = 1;
 						this->enable_draw_unsafe();
-				case 15:
-						this->__state_15_handler();
+				case MainMenuState::RecordEntry: // 15
+						this->__record_entry_handler();
 						break;
 					}
 
@@ -57769,76 +60715,74 @@ public:
 					this->__unknown_flag_mm_B = !A;
 
 					if (A == 0) {
-						this->change_primary_state(1);
+						this->change_primary_state(MainMenuState::TitleScreen); // 1
 						UNKNOWN_INT32_C = 1;
 						this->enable_draw_unsafe();
-				case 1: case1_label:
-						this->__state_1_handler();
+				case MainMenuState::TitleScreen: // 1
+				title_screen_label:
+						this->__title_screen_handler();
 					}
 					else if (A == 1) {
 						if (GAME_MANAGER.globals.difficulty == EXTRA) {
 							this->__menu_select_24.set_selection(1);
 						}
-						this->change_primary_state(1);
+						this->change_primary_state(MainMenuState::TitleScreen); // 1
 						this->enable_draw_unsafe();
-						this->__state_1_handler();
+						this->__title_screen_handler();
 					}
 					else if (A == 2) {
 						GAME_MANAGER.set_game_type(NormalGame);
-						this->__menu_select_24.menu_length = 10;
-						this->__menu_select_24.set_selection(4);
+						this->__menu_select_24.initialize(MenuLength10, MenuChoice4);
 						this->__menu_select_24.push_state();
-						this->change_primary_state(12);
+						this->change_primary_state(MainMenuState::ReplayMenu); // 12
 						UNKNOWN_INT32_C = 1;
 						this->enable_draw_unsafe();
-				case 12:
-						this->__state_12_handler();
+				case MainMenuState::ReplayMenu: // 12
+						this->__replay_menu_handler();
 					}
 					else if (A == 6) {
 						GAME_MANAGER.set_game_type(NormalGame);
-						this->__menu_select_24.menu_length = 10;
-						this->__menu_select_24.set_selection(5);
+						this->__menu_select_24.initialize(MenuLength10, MenuChoice5);
 						this->__menu_select_24.push_state();
-						this->__menu_select_24.menu_length = 10;
-						this->__menu_select_24.set_selection(2);
+						this->__menu_select_24.initialize(MenuLength10, MenuChoice2);
 						this->__menu_select_24.push_state();
 						// somehow this generates the 9 by subtracting 21 from 30
 						ScreenEffect::allocate(ScreenEffect9, 30, 0, 0, 0, 91);
 						(this->__anm_id_3B4 = this->title_anm->instantiate_vm_to_world_list_back(7)).interrupt_and_run_tree(3);
-						this->change_primary_state(23);
+						this->change_primary_state(MainMenuState::TrophyMenu); // 23
 						UNKNOWN_INT32_C = 1;
 						this->enable_draw_unsafe();
-				case 23:
-						this->__state_23_handler();
+				case MainMenuState::TrophyMenu: // 23
+						this->__trophy_menu_handler();
 					}
 					else if (A == 5) {
 						ScreenEffect::allocate(ScreenEffect9, 30, 0, 0, 0, 91);
 						(this->__anm_id_3B4 = this->title_anm->instantiate_vm_to_world_list_back(7)).interrupt_and_run_tree(3);
-						this->change_primary_state(18);
+						this->change_primary_state(MainMenuState::SpellPractice); // 18
 						UNKNOWN_INT32_C = 1;
 						this->enable_draw_unsafe();
-				case 18:
-						this->__state_18_handler();
+				case MainMenuState::SpellPractice: // 18
+						this->__spell_practice_handler();
 					}
 					else if (A == 4) {
 						ScreenEffect::allocate(ScreenEffect9, 30, 0, 0, 0, 91);
 						(this->__anm_id_3B4 = this->title_anm->instantiate_vm_to_world_list_back(7)).interrupt_and_run_tree(3);
-						this->change_primary_state(5);
+						this->change_primary_state(MainMenuState::DifficultySelect); // 5
 						this->enable_draw_unsafe();
-				case 5:
-						this->__state_5_handler();
+				case MainMenuState::DifficultySelect: // 5
+						this->__difficulty_select_handler();
 					}
 					else {
-						goto case1_label;
+						goto title_screen_label;
 					}
 					break;
 					
-				case 3: {
+				case MainMenuState::OptionsMenu: { // 3
 					Float3 position = { 140.0f, 80.0f, 0.0f };
 					switch (this->secondary_state) {
 						case 1:
 							if (OPTIONS_MENU_PTR) {
-								this->change_primary_state(1);
+								this->change_primary_state(MainMenuState::TitleScreen); // 1
 								this->__anm_id_3B4.interrupt_and_run_tree(2);
 							}
 							break;
@@ -57849,40 +60793,41 @@ public:
 					break;
 				}
 
-				case 2:
+				case MainMenuState::State2: // 2
 					SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::CleanupA;
-				case 9: case 13:
+				case MainMenuState::State9: // 9
+				case MainMenuState::State13: // 13
 					SOUND_MANAGER.__queue_bgm_stop();
 					break;
 
-				case 6:
-					this->__state_6_handler();
+				case MainMenuState::CharacterSelect: // 6
+					this->__character_select_handler();
 					break;
-				case 8:
-					this->__state_8_handler();
+				case MainMenuState::PracticeStageSelect: // 8
+					this->__practice_stage_select_handler();
 					break;
-				case 14:
-					this->__state_14_handler();
+				case MainMenuState::MusicRoom: // 14
+					this->__music_room_handler();
 					break;
-				case 19:
+				case MainMenuState::State19: // 19
 					this->__state_19_handler();
 					break;
-				case 20:
+				case MainMenuState::State20: // 20
 					this->__state_20_handler();
 					break;
-				case 10:
-					this->__state_10_handler();
+				case MainMenuState::PlayerData: // 10
+					this->__player_data_handler();
 					break;
-				case 11:
-					this->__state_11_handler();
+				case MainMenuState::RecordsList: // 11
+					this->__records_list_handler();
 					break;
 
-				case 17:
+				case MainMenuState::HelpMenu: // 17
 					switch (this->secondary_state) {
 						case 1:
 							this->__anm_id_650.interrupt_and_orphan_tree(1);
 							this->__anm_id_450.interrupt_and_orphan_tree(1);
-							this->change_primary_state(1);
+							this->change_primary_state(MainMenuState::TitleScreen); // 1
 							delete HELP_MENU_PTR;
 							break;
 						case 0:
@@ -57897,11 +60842,11 @@ public:
 					}
 					break;
 
-				case 16:
-					this->__state_16_handler();
+				case MainMenuState::ReplaySaving: // 16
+					this->__replay_saving_handler();
 					break;
 
-				case 24: {
+				case MainMenuState::AbilityMenu: { // 24
 					Float3 position = { 640.0f, 60.0f, 0.0f };
 					switch (this->secondary_state) {
 						case 1:
@@ -57932,35 +60877,60 @@ public:
 	}
 
 	// 0x465870
-	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() asm_symbol_rel(0x465870) {
+	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() ASR(0x465870) {
 		if (!ENDING_PTR) {
 			switch (this->primary_state) {
-				case 1:
+				case MainMenuState::TitleScreen: // 1
 					switch (this->secondary_state) {
 						case 2: case 3: case 4:
-							// TODO: ascii stuff
+							AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
+
+							Float3 position = { 510.0f, 200.0f, 0.0f };
+
+							ascii_manager->font_id = Font7; // 7
+							ascii_manager->__horizontal_positioning_mode = 0;
+							ascii_manager->__vertical_positioning_mode = 1;
+							ascii_manager->enable_shadows = false;
+
+							for (int32_t i = 0; i < countof(TitleScreen::LABELS); ++i) {
+								Float3 base_position = position;
+								__big_menu_text_effects(&position, i, &this->__menu_select_24, this->__timer_5D68, this->__timer_5D54);
+								ascii_manager->printf(
+									&position,
+									TitleScreen::LABELS[i]
+								);
+								position = base_position;
+								position.y += 23.0f;
+								ascii_manager = ASCII_MANAGER_PTR;
+							}
+							ascii_manager->__horizontal_positioning_mode = 1;
+							ascii_manager->__vertical_positioning_mode = 1;
+							ascii_manager->font_id = Font0; // 0
+							ascii_manager->color = COLOR_WHITE;
+							ascii_manager->color2 = COLOR_BLACK;
 					}
 					break;
-				case 12:
-					this->__draw_state_12();
+				case MainMenuState::ReplayMenu: // 12
+					this->__replay_menu_draw();
 					break;
-				case 11:
+				case MainMenuState::RecordsList: // 11
 					this->__draw_state_11();
 					break;
-				case 15:
-					this->__draw_state_15();
+				case MainMenuState::RecordEntry: // 15
+					this->__record_entry_draw();
 					break;
-				case 16:
+				case MainMenuState::ReplaySaving: // 16
 					this->__draw_state_16();
 					break;
-				case 8:
+				case MainMenuState::PracticeStageSelect: // 8
 					this->__draw_state_8();
 					break;
-				case 19: case 20:
+				case MainMenuState::State19: // 19
+				case MainMenuState::State20: // 20
 					this->__draw_state_19_20();
 					break;
-				case 23:
-					this->__draw_state_23();
+				case MainMenuState::TrophyMenu: // 23
+					this->__trophy_menu_draw();
 					break;
 			}
 		}
@@ -57968,17 +60938,17 @@ public:
 	}
 
 	// 0x465A80
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) asm_symbol_rel(0x465A80) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_tick(void* ptr) ASR(0x465A80) {
 		return ((MainMenu*)ptr)->on_tick();
 	}
 
 	// 0x465A90
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) asm_symbol_rel(0x465A90) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC on_draw(void* ptr) ASR(0x465A90) {
 		return ((MainMenu*)ptr)->on_draw();
 	}
 
 	// 0x464B80
-	dllexport gnu_noinline static unsigned stdcall thread_start(void* arg) asm_symbol_rel(0x464B80) {
+	dllexport gnu_noinline static unsigned stdcall thread_start(void* arg) ASR(0x464B80) {
 		MainMenu* main_menu = MAIN_MENU_PTR;
 
 		UpdateFunc* update_func = new UpdateFunc(&on_tick, false, main_menu);
@@ -58021,10 +60991,10 @@ public:
 	}
 
 	// 0x464CB0
-	dllexport gnu_noinline static MainMenu* allocate() asm_symbol_rel(0x464CB0) {
+	dllexport gnu_noinline static MainMenu* allocate() ASR(0x464CB0) {
 		MainMenu* main_menu = new_no_eh<MainMenu>();
 		WINDOW_DATA.__int_20D0 = 0;
-		main_menu->__thread_5D7C.start(&thread_start, main_menu);
+		main_menu->replay_loading_thread.start(&thread_start, main_menu);
 		return main_menu;
 	}
 };
@@ -58042,7 +61012,7 @@ ValidateVirtualFieldOffset32(0xFC, MainMenu, __menu_select_FC);
 ValidateVirtualFieldOffset32(0x1D4, MainMenu, __menu_select_1D4);
 ValidateVirtualFieldOffset32(0x2AC, MainMenu, __menu_select_2AC);
 ValidateVirtualFieldOffset32(0x384, MainMenu, state_timer);
-//ValidateStructSize32(0x5D98, MainMenu);
+ValidateStructSize32(0x5D98, MainMenu);
 #pragma endregion
 
 // 0x43A8B0
@@ -58458,10 +61428,9 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 				}
 			}
 
-			// TODO: is 32 the width of the screen edge?
-			float position_x = boss->data.current_motion.position.x + 32.0f + SCREEN_HALF_WIDTH;
+			float position_x = boss->data.current_motion.position.x + SCREEN_LEFT_BORDER + SCREEN_HALF_WIDTH;
 			vm->controller.position.x = position_x + position_x;
-			vm->controller.position.y = 960.0f;
+			vm->controller.position.y = LOGICAL_WINDOW_HEIGHT * 2.0f; // 960.0f
 
 			float x_diff = zfabsf(boss->data.current_motion.position.x - PLAYER_PTR->data.position.x);
 
@@ -58474,7 +61443,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 				alpha = 255;
 			}
 			else {
-				x_diff *= 191.0f; // SCREEN_HALF_WIDTH - 1
+				x_diff *= SCREEN_HALF_WIDTH - 1.0f; // 191.0f
 				x_diff *= (1.0f / 64.0f);
 				alpha = (int32_t)x_diff + 64;
 			}
@@ -58595,7 +61564,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 			ascii_manager->set_scale(1.0f);
 			ascii_manager->font_id = Font0; // 0
 			ascii_manager->group = 0;
-			ascii_manager->color = COLOR(255, 255, 255, 255);
+			ascii_manager->color = COLOR_WHITE;
 		}
 	}
 
@@ -58646,8 +61615,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 
 	float life_fragment_position = 576.0f - offset;
 
-	ascii_manager->color = COLOR(255, 0, 0, 0);
-	ascii_manager->color2 = COLOR(255, 255, 255, 255);
+	ascii_manager->color = COLOR_BLACK;
+	ascii_manager->color2 = COLOR_WHITE;
 	ascii_manager->set_scale(0.6f);
 
 	position.x = life_fragment_position;
@@ -58755,11 +61724,11 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 
 	ascii_manager = ASCII_MANAGER_PTR;
 
-	ascii_manager->color = COLOR(255, 255, 255, 255);
+	ascii_manager->color = COLOR_WHITE;
 	ascii_manager->__horizontal_positioning_mode = 1;
 	ascii_manager->__vertical_positioning_mode = 1;
 	ascii_manager->set_scale(1.0f);
-	ascii_manager->color2 = COLOR(255, 0, 0, 0);
+	ascii_manager->color2 = COLOR_BLACK;
 	ascii_manager->set_alpha(255);
 	ascii_manager->font_id = Font0; // 0
 	ascii_manager->group = 0;
@@ -58797,7 +61766,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 		ascii_manager = ASCII_MANAGER_PTR;
 
 		ascii_manager->set_scale(1.0f);
-		ascii_manager->color = COLOR(255, 255, 255, 255);
+		ascii_manager->color = COLOR_WHITE;
 		ascii_manager->group = 0;
 		ascii_manager->font_id = Font0; // 0
 	}
@@ -58806,13 +61775,13 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_draw() {
 }
 
 // 0x401860
-dllexport gnu_noinline uint32_t get_hardware_xinput() asm_symbol_rel(0x401860);
+dllexport gnu_noinline uint32_t get_hardware_xinput() ASR(0x401860);
 dllexport gnu_noinline uint32_t get_hardware_xinput() {
 	return INPUT_P1.get_xinput(0);
 }
 
 // 0x401650
-dllexport gnu_noinline uint32_t get_joypad_input(uint32_t buttons) asm_symbol_rel(0x401650);
+dllexport gnu_noinline uint32_t get_joypad_input(uint32_t buttons) ASR(0x401650);
 dllexport gnu_noinline uint32_t get_joypad_input(uint32_t buttons) {
 	return INPUT_P1.get_joypad(buttons);
 }
@@ -58905,7 +61874,7 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__create_texture_from_file(A
 }
 
 // 0x486390
-dllexport gnu_noinline int32_t stdcall __create_texture_from_anm(AnmImage* image, AnmTexture* texture, uint32_t format_index, int32_t width, int32_t height) asm_symbol_rel(0x486390);
+dllexport gnu_noinline int32_t stdcall __create_texture_from_anm(AnmImage* image, AnmTexture* texture, uint32_t format_index, int32_t width, int32_t height) ASR(0x486390);
 dllexport gnu_noinline int32_t stdcall __create_texture_from_anm(AnmImage* image, AnmTexture* texture, uint32_t format_index, int32_t width, int32_t height) {
 	image->__unknown_flag_im_A = false;
 	AnmEntry* entry = image->entry;
@@ -59110,50 +62079,50 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	camera2->__viewport_10C.Y = 0;
 	camera2->__viewport_10C.Width = WINDOW_DATA.__scaled_window_width;
 	camera2->__viewport_10C.Height = WINDOW_DATA.__scaled_window_height;
-	camera2->__viewport_124.X = WINDOW_DATA.game_scale * 32.0f;
-	camera2->__viewport_124.Y = WINDOW_DATA.game_scale * 16.0f;
-	camera2->__viewport_124.Width = WINDOW_DATA.game_scale * SCREEN_WIDTH;
-	camera2->__viewport_124.Height = WINDOW_DATA.game_scale * SCREEN_HEIGHT;
+	camera2->__viewport_124.X = (int32_t)(WINDOW_DATA.game_scale * SCREEN_LEFT_BORDER);
+	camera2->__viewport_124.Y = (int32_t)(WINDOW_DATA.game_scale * SCREEN_TOP_BORDER);
+	camera2->__viewport_124.Width = (int32_t)(WINDOW_DATA.game_scale * SCREEN_WIDTH);
+	camera2->__viewport_124.Height = (int32_t)(WINDOW_DATA.game_scale * SCREEN_HEIGHT);
 	this->__setup_camera(camera2);
 	StageCamera* camera0 = &this->cameras[0];
 	*camera0 = *camera2;
 	camera0->camera_index = 0;
-	camera0->viewport.X = WINDOW_DATA.game_scale * 32.0f;
-	camera0->viewport.Y = WINDOW_DATA.game_scale * 16.0f;
-	camera0->viewport.Width = WINDOW_DATA.game_scale * SCREEN_WIDTH;
-	camera0->viewport.Height = WINDOW_DATA.game_scale * SCREEN_HEIGHT;
+	camera0->viewport.X = (int32_t)(WINDOW_DATA.game_scale * SCREEN_LEFT_BORDER);
+	camera0->viewport.Y = (int32_t)(WINDOW_DATA.game_scale * SCREEN_TOP_BORDER);
+	camera0->viewport.Width = (int32_t)(WINDOW_DATA.game_scale * SCREEN_WIDTH);
+	camera0->viewport.Height = (int32_t)(WINDOW_DATA.game_scale * SCREEN_HEIGHT);
 	camera0->__vertex_offsetB = { 0, 0 };
 	camera0->__viewport_10C = camera0->viewport;
 	this->__setup_camera(camera0);
 	StageCamera* camera1 = &this->cameras[1];
 	*camera1 = *camera0;
 	camera1->camera_index = 1;
-	camera1->viewport.X = WINDOW_DATA.game_scale * 128.0f;
-	camera1->viewport.Y = WINDOW_DATA.game_scale * 16.0f;
-	camera1->viewport.Width = WINDOW_DATA.game_scale * SCREEN_WIDTH;
-	camera1->viewport.Height = WINDOW_DATA.game_scale * SCREEN_HEIGHT;
+	camera1->viewport.X = (int32_t)(WINDOW_DATA.game_scale * 128.0f);
+	camera1->viewport.Y = (int32_t)(WINDOW_DATA.game_scale * SCREEN_TOP_BORDER);
+	camera1->viewport.Width = (int32_t)(WINDOW_DATA.game_scale * SCREEN_WIDTH);
+	camera1->viewport.Height = (int32_t)(WINDOW_DATA.game_scale * SCREEN_HEIGHT);
 	camera1->__vertex_offsetB = { 0, 0 };
 	camera1->__viewport_10C = camera1->viewport;
 	this->__setup_camera(camera1);
 	StageCamera* camera3 = &this->cameras[StdCamera]; // 3
 	*camera3 = *camera0;
 	camera3->camera_index = StdCamera;
-	camera3->viewport.X = ((float)WINDOW_DATA.__scaled_window_width - (SCREEN_WIDTH + 24.0f)) * 0.5f;
-	camera3->viewport.Width = 408;
-	camera3->viewport.Height = 472;
+	camera3->viewport.X = (int32_t)((WINDOW_DATA.__scaled_window_width - (SCREEN_WIDTH + 24.0f)) * 0.5f);
+	camera3->viewport.Width = (int32_t)(SCREEN_WIDTH + 24.0f); // 408
+	camera3->viewport.Height = (int32_t)(SCREEN_HEIGHT + 24.0f); // 472
 	camera3->__vertex_offsetB = { 0, 0 };
-	camera3->viewport.Y = ((float)WINDOW_DATA.__scaled_window_height - (SCREEN_HEIGHT + 24.0f)) * 0.5f;
+	camera3->viewport.Y = (int32_t)((WINDOW_DATA.__scaled_window_height - (SCREEN_HEIGHT + 24.0f)) * 0.5f);
 	camera3->__viewport_10C = camera3->viewport;
 	this->__setup_camera(camera3);
 	WINDOW_DATA.__screen_center_x_full_res = WINDOW_DATA.__scaled_window_width / 2;
-	WINDOW_DATA.__screen_top_y_full_res = WINDOW_DATA.game_scale * 16.0f;
+	WINDOW_DATA.__screen_top_y_full_res = WINDOW_DATA.game_scale * SCREEN_TOP_BORDER;
 }
 
 // 0x454F50
 dllexport gnu_noinline void Supervisor::__camera2_sub_454F50() {
 	int32_t intA = WINDOW_DATA.__scaled_window_width;
 	int32_t intB = (float)(WINDOW_DATA.__backbuffer_width - intA) * 0.5f;
-	float floatA = WINDOW_DATA.game_scale;
+	float scale = WINDOW_DATA.game_scale;
 	SUPERVISOR.cameras[2].__vertex_offsetB.x = intB;
 	int32_t intC = WINDOW_DATA.__scaled_window_height;
 	int32_t intD = (float)(WINDOW_DATA.__backbuffer_height - intC) * 0.5f;
@@ -59163,15 +62132,15 @@ dllexport gnu_noinline void Supervisor::__camera2_sub_454F50() {
 	SUPERVISOR.cameras[2].__viewport_10C.Y = intD;
 	SUPERVISOR.cameras[2].__viewport_10C.Width = intA;
 	SUPERVISOR.cameras[2].__viewport_10C.Height = intC;
-	SUPERVISOR.cameras[2].__viewport_124.X = floatA * -32.0f;
-	SUPERVISOR.cameras[2].__viewport_124.Y = floatA * -16.0f;
-	SUPERVISOR.cameras[2].__viewport_124.Width = floatA * SCREEN_WIDTH;
-	SUPERVISOR.cameras[2].__viewport_124.Height = floatA * SCREEN_HEIGHT;
+	SUPERVISOR.cameras[2].__viewport_124.X = scale * -SCREEN_LEFT_BORDER;
+	SUPERVISOR.cameras[2].__viewport_124.Y = scale * -SCREEN_TOP_BORDER;
+	SUPERVISOR.cameras[2].__viewport_124.Width = scale * SCREEN_WIDTH;
+	SUPERVISOR.cameras[2].__viewport_124.Height = scale * SCREEN_HEIGHT;
 }
 
 // 0x462680
 dllexport gnu_noinline ZUNResult thiscall ReplayManager::__load_from_path(const char* path) {
-	char buffer[0x1000];
+	char buffer[0x1000]; // why is this buffer so big
 	void* replay_data;
 	ReplayHeader* header;
 	byteloop_strcpy(this->file_path, path);
@@ -59534,7 +62503,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__update_gamemode() {
 			GameMode new_gamemode = this->gamemode_switch;
 			this->gamemode_previous = prev_gamemode;
 
-			this->background_color = COLOR(255, 0, 0, 0);
+			this->background_color = COLOR_BLACK;
 
 			switch (new_gamemode) {
 				case GameMode::Startup: { // 0
@@ -60059,7 +63028,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 		}
 		if (replay_mode == ReplayRecording) {
 			if (this->__int_D4 > 380) {
-				ABILITY_MANAGER_PTR->__sub_4094C0();
+				ABILITY_MANAGER_PTR->__hide_card_anms();
 				ABILITY_MANAGER_PTR->__sub_407DA0(true);
 
 				GameMode mode;
@@ -60365,7 +63334,7 @@ dllexport gnu_noinline GameThread::~GameThread() {
 
 	SCREEN_EFFECT_DISABLE_TIME = 1;
 
-	SUPERVISOR.background_color = GAME_MANAGER.__stage_restart ? COLOR(0, 0, 0, 0) : COLOR(255, 0, 0, 0);
+	SUPERVISOR.background_color = GAME_MANAGER.__stage_restart ? COLOR_TRANSPARENT : COLOR_BLACK;
 }
 
 inline unsigned GameThread::thread_start_impl() {
@@ -60553,7 +63522,7 @@ inline unsigned GameThread::thread_start_impl() {
 			!ABILITY_MANAGER_PTR->card_equipped<CardMagatama>()
 		) {
 			ABILITY_MANAGER_PTR->allocate_new_card(MAGATAMA2_CARD, CARD_RUN_INIT_A_ONLY); // 0
-			ABILITY_MANAGER_PTR->__sub_4094C0();
+			ABILITY_MANAGER_PTR->__hide_card_anms();
 		}
 		MOMOYO_CARD_COUNTER = 0;
 	}
@@ -60573,7 +63542,7 @@ inline unsigned GameThread::thread_start_impl() {
 	this->stage_number = STAGE_DATA_PTR->stage_number;
 
 	if (!GAME_MANAGER.__stage_transition) {
-		if (!ReplayManager::allocate(this->replay_mode, UNKNOWN_TEXT_BUFFER_A)) {
+		if (!ReplayManager::allocate(this->replay_mode, REPLAY_FILENAME_BUFFER)) {
 			goto thread_start_fail;
 		}
 		__replay_manager_global_sub_462D20();
@@ -60658,9 +63627,9 @@ inline unsigned GameThread::thread_start_impl() {
 		UNKNOWN_ANM_ID_A.interrupt_tree(2);
 		UNKNOWN_ANM_ID_B.interrupt_tree(2);
 		UNKNOWN_ANM_ID_C.interrupt_tree(2);
-		UNKNOWN_ANM_ID_A = 0;
-		UNKNOWN_ANM_ID_B = 0;
-		UNKNOWN_ANM_ID_C = 0;
+		UNKNOWN_ANM_ID_A = NULL;
+		UNKNOWN_ANM_ID_B = NULL;
+		UNKNOWN_ANM_ID_C = NULL;
 		SUPERVISOR.__int_AD0 = 0;
 	}
 
@@ -60767,7 +63736,7 @@ dllexport gnu_noinline ZUNResult WindowData::__save_properties_and_configure_pat
 }
 
 // 0x4740D0
-dllexport gnu_noinline void __set_default_d3d_states() asm_symbol_rel(0x4740D0);
+dllexport gnu_noinline void __set_default_d3d_states() ASR(0x4740D0);
 dllexport gnu_noinline void __set_default_d3d_states() {
 	SUPERVISOR.d3d_device->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE);
 	SUPERVISOR.d3d_device->SetRenderState(D3DRS_LIGHTING, FALSE);
@@ -61462,7 +64431,7 @@ extern "C" {
 #include <ShObjIdl.h>
 
 // 0x474400
-dllexport gnu_noinline ZUNResult __make_mutex_and_test_path() asm_symbol_rel(0x474400);
+dllexport gnu_noinline ZUNResult __make_mutex_and_test_path() ASR(0x474400);
 dllexport gnu_noinline ZUNResult __make_mutex_and_test_path() {
 
 #if !KILL_THE_MUTEX_WITH_FIRE
@@ -61563,7 +64532,7 @@ static const uint8_t ResolutionConfigValues[] = {
 };
 
 // 0x4747D0
-dllexport gnu_noinline void set_selected_resolution() asm_symbol_rel(0x4747D0);
+dllexport gnu_noinline void set_selected_resolution() ASR(0x4747D0);
 dllexport gnu_noinline void set_selected_resolution() {
 	if (IsDlgButtonChecked(WINDOW_DATA.resolution_dialogue, 0xCA) == BST_CHECKED) {
 		SUPERVISOR.config.__unknown_flag_co_A = true;
@@ -61609,7 +64578,7 @@ dllexport gnu_noinline INT_PTR CALLBACK ResolutionDlgProc(HWND hWnd, UINT uMsg, 
 }
 
 // 0x474850
-dllexport gnu_noinline void process_resolution_dialog() asm_symbol_rel(0x474850);
+dllexport gnu_noinline void process_resolution_dialog() ASR(0x474850);
 dllexport gnu_noinline void process_resolution_dialog() {
 	BOOL disabled_buttons[10] = {};
 	if (!SUPERVISOR.config.__unknown_flag_co_A) {
@@ -61739,7 +64708,7 @@ static const SimpleInt2 RESOLUTIONS[] = {
 };
 
 // 0x473B20
-dllexport gnu_noinline ZUNResult fastcall __sub_473B20(BOOL arg1) asm_symbol_rel(0x473B20);
+dllexport gnu_noinline ZUNResult fastcall __sub_473B20(BOOL arg1) ASR(0x473B20);
 dllexport gnu_noinline ZUNResult fastcall __sub_473B20(BOOL arg1) {
 	D3DPRESENT_PARAMETERS present_parameters = SUPERVISOR.present_parameters;
 	BOOL is_second_iteration = false;
@@ -61845,7 +64814,7 @@ reset_success:
 }
 
 // 0x473DF0
-dllexport gnu_noinline int32_t __initialize_d3d() asm_symbol_rel(0x473DF0);
+dllexport gnu_noinline int32_t __initialize_d3d() ASR(0x473DF0);
 dllexport gnu_noinline int32_t __initialize_d3d() {
 	D3DPRESENT_PARAMETERS present_parameters;
 	present_parameters.BackBufferWidth = 0;
@@ -61967,7 +64936,7 @@ inline int ole_sscanf(const T* buffer, const T* format, FormatArgs... args) {
 }
 
 // 0x474CD0
-dllexport gnu_noinline BOOL fastcall __joystick_enum_devices_callback(const GUID* joystick_guid) asm_symbol_rel(0x474CD0);
+dllexport gnu_noinline BOOL fastcall __joystick_enum_devices_callback(const GUID* joystick_guid) ASR(0x474CD0);
 dllexport gnu_noinline BOOL fastcall __joystick_enum_devices_callback(const GUID* joystick_guid) {
 	IWbemLocator* wbem_locator = NULL;
 	IEnumWbemClassObject* wbem_enum = NULL;
@@ -62055,7 +65024,7 @@ ole_break:
 }
 
 // 0x475230
-dllexport gnu_noinline BOOL PASCAL EnumDevicesCallback(LPCDIDEVICEINSTANCEA lpddi, LPVOID pvref) asm_symbol_rel(0x475230);
+dllexport gnu_noinline BOOL PASCAL EnumDevicesCallback(LPCDIDEVICEINSTANCEA lpddi, LPVOID pvref) ASR(0x475230);
 dllexport gnu_noinline BOOL PASCAL EnumDevicesCallback(LPCDIDEVICEINSTANCEA lpddi, LPVOID pvref) {
 	if (!__joystick_enum_devices_callback(&lpddi->guidProduct)) {
 		if (!SUPERVISOR.joypad_devices[0]) {
@@ -62073,7 +65042,7 @@ dllexport gnu_noinline BOOL PASCAL EnumDevicesCallback(LPCDIDEVICEINSTANCEA lpdd
 }
 
 // 0x475280
-dllexport gnu_noinline BOOL PASCAL EnumDeviceObjectsCallback(LPCDIDEVICEOBJECTINSTANCEA lpddoi, LPVOID pvRef) asm_symbol_rel(0x475280);
+dllexport gnu_noinline BOOL PASCAL EnumDeviceObjectsCallback(LPCDIDEVICEOBJECTINSTANCEA lpddoi, LPVOID pvRef) ASR(0x475280);
 dllexport gnu_noinline BOOL PASCAL EnumDeviceObjectsCallback(LPCDIDEVICEOBJECTINSTANCEA lpddoi, LPVOID pvRef) {
 	DWORD joypad_type = lpddoi->dwType;
 	if (joypad_type & DIDFT_AXIS) {
@@ -62116,7 +65085,7 @@ dllexport gnu_noinline ZUNResult Supervisor::__sub_475380() {
 }
 
 // 0x475050
-dllexport gnu_noinline ZUNResult __initialize_dinput() asm_symbol_rel(0x475050);
+dllexport gnu_noinline ZUNResult __initialize_dinput() ASR(0x475050);
 dllexport gnu_noinline ZUNResult __initialize_dinput() {
 	if (SUCCEEDED(DirectInput8Create(
 		WINDOW_DATA.current_instance,
@@ -62179,7 +65148,7 @@ extern "C" {
 // 0x471270
 // EH frame (terminate)
 dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow) EH_TERMINATE;
-dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow) EH_TERMINATE asm_symbol_rel(0x471270) {
+dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow) EH_TERMINATE ASR(0x471270) {
 
 	//MXCSR mxcsr;
 	//store_mxcsr(mxcsr);

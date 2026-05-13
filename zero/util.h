@@ -2798,6 +2798,8 @@ asm_symbol_raw("{<" MACRO_STR(symbol) ">}")
 #define asm_symbol_expr(symbol) \
 asm_symbol_raw("{(" MACRO_STR(symbol) ")}")
 
+#define ASR asm_symbol_rel
+
 #define align_statement(...) __asm__ volatile (".align " #__VA_ARGS__ :)
 
 #define infinite_loop() __asm__ volatile (".byte 0xEB, 0xFE")

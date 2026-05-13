@@ -1,0 +1,1066 @@
+#pragma mapfile "F:\\Touhou_Stuff_2\\_thtk-bin-new\\__truth\\map\\any.anmm"
+
+entry {
+    path: "stgenm/stg7enm.png",
+    img_width: 256,
+    img_height: 256,
+    img_format: FORMAT_ARGB_4444,
+    sprites: {
+        sprite0: {x: 0.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite1: {x: 64.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite2: {x: 128.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite3: {x: 192.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite4: {x: 0.0, y: 64.0, w: 64.0, h: 64.0},
+        sprite5: {x: 64.0, y: 64.0, w: 64.0, h: 64.0},
+        sprite6: {x: 128.0, y: 64.0, w: 64.0, h: 64.0},
+        sprite7: {x: 192.0, y: 64.0, w: 64.0, h: 64.0},
+        sprite8: {x: 0.0, y: 128.0, w: 64.0, h: 64.0},
+        sprite9: {x: 64.0, y: 128.0, w: 64.0, h: 64.0},
+        sprite10: {x: 128.0, y: 128.0, w: 64.0, h: 64.0},
+        sprite11: {x: 192.0, y: 128.0, w: 64.0, h: 64.0},
+        sprite12: {x: 288.0, y: 96.0, w: 192.0, h: 192.0},
+    },
+}
+
+
+script 0 script0 {
+    loop {
+        sprite_set(sprite0);
++9: // 9
+        sprite_set(sprite1);
++9: // 18
+        sprite_set(sprite2);
++9: // 27
+        sprite_set(sprite3);
++9: // 36
+        sprite_set(sprite2);
++9: // 45
+        sprite_set(sprite1);
++9: // 54
+    }
+}
+
+
+script 1 script1 {
+    scale_flip_x();
+    sprite_set(sprite4);
++4: // 4
+    sprite_set(sprite5);
++4: // 8
+    sprite_set(sprite6);
++4: // 12
+    sprite_set(sprite7);
+    anm_halt();
+}
+
+
+script 2 script2 {
+    sprite_set(sprite4);
++4: // 4
+    sprite_set(sprite5);
++4: // 8
+    sprite_set(sprite6);
++4: // 12
+    sprite_set(sprite7);
+    anm_halt();
+}
+
+
+script 3 script3 {
+    scale_flip_x();
+    sprite_set(sprite7);
++4: // 4
+    sprite_set(sprite6);
++4: // 8
+    sprite_set(sprite5);
++4: // 12
+    sprite_set(sprite4);
+    move_position(0.0, 0.0, 0.0);
+    loop {
+        sprite_set(sprite0);
++9: // 21
+        sprite_set(sprite1);
++9: // 30
+        sprite_set(sprite2);
++9: // 39
+        sprite_set(sprite3);
++9: // 48
+        sprite_set(sprite2);
++9: // 57
+        sprite_set(sprite1);
++9: // 66
+    }
+}
+
+
+script 4 script4 {
+    sprite_set(sprite7);
++4: // 4
+    sprite_set(sprite6);
++4: // 8
+    sprite_set(sprite5);
++4: // 12
+    sprite_set(sprite4);
+    move_position(0.0, 0.0, 0.0);
+    loop {
+        sprite_set(sprite0);
++9: // 21
+        sprite_set(sprite1);
++9: // 30
+        sprite_set(sprite2);
++9: // 39
+        sprite_set(sprite3);
++9: // 48
+        sprite_set(sprite2);
++9: // 57
+        sprite_set(sprite1);
++9: // 66
+    }
+}
+
+
+script 5 script5 {
+    sprite_set(sprite8);
++5: // 5
+    sprite_set(sprite9);
++5: // 10
+    sprite_set(sprite10);
++5: // 15
+    sprite_set(sprite11);
+    anm_halt();
+}
+
+
+script 6 script6 {
+    layer(Layer9);
+    render_mode(RenderMode1);
+    rotation_speed(0.0, 0.0, 1.4959965);
+    sprite_set(sprite12);
+    alpha(0x0);
+    blend_mode(Additive);
+    alpha_interp(30, Linear, 0xe0);
+    move_position(0.0, -32.0, 0.0);
+    scale(0.0, 0.0);
+    scale_interp(60, DecelerateSlow, 1.0, 1.0);
+    loop {
+        color(0xff, 0x0, 0x80);
++2: // 2
+        color(0xff, 0xff, 0x0);
++2: // 4
+    }
+}
+
+
+entry {
+    path: "face/enemy7/face07no.png",
+    img_width: 256,
+    img_height: 128,
+    memory_priority: 0,
+    sprites: {sprite13: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/enemy7/face07n2.png",
+    img_width: 256,
+    img_height: 128,
+    memory_priority: 0,
+    sprites: {sprite14: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/enemy7/face07hp.png",
+    img_width: 256,
+    img_height: 128,
+    memory_priority: 0,
+    sprites: {sprite15: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/dummy.png",
+    img_width: 8,
+    img_height: 8,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {sprite16: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/dummy.png",
+    img_width: 8,
+    img_height: 8,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {sprite17: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/dummy.png",
+    img_width: 8,
+    img_height: 8,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {sprite18: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/dummy.png",
+    img_width: 8,
+    img_height: 8,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {sprite19: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/enemy7/face07sp.png",
+    img_width: 256,
+    img_height: 128,
+    memory_priority: 0,
+    sprites: {sprite20: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/enemy7/face07lo.png",
+    img_width: 256,
+    img_height: 128,
+    memory_priority: 0,
+    sprites: {sprite21: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/enemy7/face07sno.png",
+    img_width: 256,
+    img_height: 128,
+    memory_priority: 0,
+    sprites: {sprite22: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/enemy7/face07sdp.png",
+    img_width: 256,
+    img_height: 128,
+    memory_priority: 0,
+    sprites: {sprite23: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/enemy7/face07spr.png",
+    img_width: 256,
+    img_height: 128,
+    memory_priority: 0,
+    sprites: {sprite24: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/enemy7/face07no.png",
+    img_width: 256,
+    img_height: 128,
+    offset_y: 128,
+    memory_priority: 0,
+    sprites: {
+        sprite25: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+        sprite26: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+        sprite27: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+        sprite28: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+        sprite29: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+        sprite30: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+        sprite31: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+        sprite32: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+    },
+}
+
+
+entry {
+    path: "face/enemy7/face07lo.png",
+    img_width: 256,
+    img_height: 128,
+    offset_y: 128,
+    memory_priority: 0,
+    sprites: {sprite33: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/enemy7/face07sno.png",
+    img_width: 256,
+    img_height: 128,
+    offset_y: 128,
+    memory_priority: 0,
+    sprites: {
+        sprite34: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+        sprite35: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+        sprite36: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+    },
+}
+
+
+entry {
+    path: "face/enemy7/face07no.png",
+    img_width: 256,
+    img_height: 64,
+    offset_y: 256,
+    memory_priority: 0,
+    sprites: {
+        sprite37: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite38: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite39: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite40: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite41: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite42: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite43: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite44: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite45: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+    },
+}
+
+
+entry {
+    path: "face/enemy7/face07sno.png",
+    img_width: 256,
+    img_height: 64,
+    offset_y: 256,
+    memory_priority: 0,
+    sprites: {
+        sprite46: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite47: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite48: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+    },
+}
+
+
+entry {
+    path: "card/cdbg07a.png",
+    img_width: 384,
+    img_height: 448,
+    img_format: FORMAT_RGB_565,
+    memory_priority: 0,
+    sprites: {sprite49: {x: 0.0, y: 0.0, w: 384.0, h: 448.0}},
+}
+
+
+script 7 script7 {
+    layer(Layer4);
+    sprite_set(sprite49);
+    anchor_mode(Center, Center);
+    move_position(0.0, 224.0, 0.0);
+    render_mode(RenderMode0);
+    alpha(0x0);
+    alpha_interp(60, Linear, 0xff);
+    anm_halt();
+}
+
+
+entry {
+    path: "card/cdbg07b.png",
+    img_width: 256,
+    img_height: 256,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {sprite50: {x: 0.0, y: 0.0, w: 512.0, h: 512.0}},
+}
+
+
+script 8 script8 {
+    layer(Layer4);
+    sprite_set(sprite50);
+    anchor_mode(Center, Center);
+    scale(1.15625, 1.15625);
+    render_mode(RenderMode1);
+    move_position(0.0, 224.0, 0.0);
+    blend_mode(Additive);
+    rotation_speed(0.0, 0.0, 0.0019634955);
+    scroll_speed_x(-0.0016666667);
+    scroll_speed_y(0.0016666667);
+    alpha(0x0);
+    alpha_interp(60, Linear, 0xff);
+    anm_halt();
+}
+
+
+entry {
+    path: "face/enemy7/ename07.png",
+    img_width: 128,
+    img_height: 64,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {sprite51: {x: 0.0, y: 0.0, w: 128.0, h: 64.0}},
+}
+
+
+script 9 script9 {
+    __anm_flag_unknown_T(true);
+    rand_mode(AnimationRNG);
+    anchor_mode(Center, Bottom);
+    move_position(288.0, 374.0, 0.0);
+    layer(Layer16);
+    sprite_set(sprite51);
+    alpha(0x0);
+    alpha_interp(30, Linear, 0xff);
++300: // 300
+    nop();
+
+interrupt[1]:
+    alpha_interp(20, Linear, 0x0);
++20: // 320
+    anm_delete();
+}
+
+
+entry {
+    path: "face/enemy7/face07ct.png",
+    img_width: 256,
+    img_height: 512,
+    memory_priority: 0,
+    sprites: {sprite52: {x: 0.0, y: 0.0, w: 256.0, h: 512.0}},
+}
+
+
+script 10 script10 {
+    sprite_set(sprite52);
+    layer(Layer6);
+    anchor_mode(Center, Top);
+    render_mode(RenderMode2);
+    move_position(384.0, -144.0, 0.0);
+    color(0x0, 0x0, 0x0);
+    color_interp(30, Linear, 0xff, 0xff, 0xff);
+    move_position_interp(30, Linear, 0.0, 0.0, 0.0);
++30: // 30
+    move_position_interp(90, Linear, -32.0, 16.0, 0.0);
++90: // 120
+    move_position_interp(30, Linear, -416.0, 176.0, 0.0);
+    color_interp(30, Linear, 0x0, 0x0, 0x0);
++30: // 150
+    anm_delete();
+}
+
+
+entry {
+    path: "face/enemy7/face07mno.png",
+    img_width: 256,
+    img_height: 128,
+    memory_priority: 0,
+    sprites: {sprite53: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/enemy7/face07mn2.png",
+    img_width: 256,
+    img_height: 128,
+    memory_priority: 0,
+    sprites: {sprite54: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/dummy.png",
+    img_width: 8,
+    img_height: 8,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {sprite55: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/dummy.png",
+    img_width: 8,
+    img_height: 8,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {sprite56: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/dummy.png",
+    img_width: 8,
+    img_height: 8,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {sprite57: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/enemy7/face07mdp.png",
+    img_width: 256,
+    img_height: 128,
+    memory_priority: 0,
+    sprites: {sprite58: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/dummy.png",
+    img_width: 8,
+    img_height: 8,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {sprite59: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/dummy.png",
+    img_width: 8,
+    img_height: 8,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {sprite60: {x: 0.0, y: 0.0, w: 256.0, h: 128.0}},
+}
+
+
+entry {
+    path: "face/enemy7/face07mno.png",
+    img_width: 256,
+    img_height: 128,
+    offset_y: 128,
+    memory_priority: 0,
+    sprites: {
+        sprite61: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+        sprite62: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+        sprite63: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+        sprite64: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+        sprite65: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+        sprite66: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+        sprite67: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+        sprite68: {x: 0.0, y: 0.0, w: 256.0, h: 128.0},
+    },
+}
+
+
+entry {
+    path: "face/enemy7/face07mno.png",
+    img_width: 256,
+    img_height: 64,
+    offset_y: 256,
+    memory_priority: 0,
+    sprites: {
+        sprite69: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite70: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite71: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite72: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite73: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite74: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite75: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite76: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+        sprite77: {x: 0.0, y: 0.0, w: 256.0, h: 64.0},
+    },
+}
+
+
+entry {
+    path: "card/cdbg07ma.png",
+    img_width: 512,
+    img_height: 512,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {sprite78: {x: 0.0, y: 0.0, w: 384.0, h: 448.0}},
+}
+
+
+script 11 script11 {
+    sprite_set(sprite78);
+    move_position(224.0, 240.0, 0.0);
+    alpha(0x0);
+    alpha_interp(60, Linear, 0xff);
+    anm_halt();
+}
+
+
+entry {
+    path: "card/cdbg07mb.png",
+    img_width: 256,
+    img_height: 256,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {sprite79: {x: 0.0, y: 0.0, w: 384.0, h: 448.0}},
+}
+
+
+script 12 script12 {
+    sprite_set(sprite79);
+    blend_mode(Additive);
+    render_mode(RenderMode1);
+    move_position(224.0, 240.0, 0.0);
+    alpha(0x0);
+    alpha_interp(60, Linear, 0xe0);
+    scroll_speed_y(0.0033333334);
+    color(0x0, 0x0, 0x0);
+    loop {
+        color_interp(60, Linear, 0x0, 0x0, 0xff);
++60: // 60
+        color_interp(60, Linear, 0x0, 0xff, 0xff);
++60: // 120
+        color_interp(60, Linear, 0x0, 0xff, 0x0);
++60: // 180
+        color_interp(60, Linear, 0xff, 0xff, 0x0);
++60: // 240
+        color_interp(60, Linear, 0xff, 0x0, 0x0);
++60: // 300
+        color_interp(60, Linear, 0xff, 0x0, 0xff);
++60: // 360
+    }
+    anm_halt();
+}
+
+
+entry {
+    path: "face/enemy7/face07mct.png",
+    img_width: 256,
+    img_height: 512,
+    memory_priority: 0,
+    sprites: {sprite80: {x: 0.0, y: 0.0, w: 256.0, h: 512.0}},
+}
+
+
+script 13 script13 {
+    sprite_set(sprite80);
+    layer(Layer5);
+    anchor_mode(Center, Top);
+    render_mode(RenderMode2);
+    move_position(624.0, -160.0, 0.0);
+    color(0x0, 0x0, 0x0);
+    color_interp(30, Linear, 0xff, 0xff, 0xff);
+    move_position_interp(30, Linear, 240.0, -16.0, 0.0);
++30: // 30
+    move_position_interp(90, Linear, 208.0, 0.0, 0.0);
++90: // 120
+    move_position_interp(30, Linear, -176.0, 160.0, 0.0);
+    color_interp(30, Linear, 0x0, 0x0, 0x0);
++30: // 150
+    anm_delete();
+}
+
+
+entry {
+    path: "stgenm/stg7menm.png",
+    img_width: 256,
+    img_height: 256,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {
+        sprite81: {x: 0.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite82: {x: 64.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite83: {x: 128.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite84: {x: 192.0, y: 0.0, w: 64.0, h: 64.0},
+        sprite85: {x: 0.0, y: 64.0, w: 64.0, h: 64.0},
+        sprite86: {x: 64.0, y: 64.0, w: 64.0, h: 64.0},
+        sprite87: {x: 128.0, y: 64.0, w: 64.0, h: 64.0},
+        sprite88: {x: 192.0, y: 64.0, w: 64.0, h: 64.0},
+        sprite89: {x: 0.0, y: 128.0, w: 64.0, h: 80.0},
+        sprite90: {x: 64.0, y: 128.0, w: 64.0, h: 80.0},
+        sprite91: {x: 128.0, y: 128.0, w: 64.0, h: 80.0},
+    },
+}
+
+
+script 14 script14 {
+    move_position(0.0, 0.0, 0.0);
+    loop {
+        move_position_interp(84, AccelDecelSlow, 0.0, -4.0, 0.0);
+        sprite_set(sprite81);
++7: // 7
+        sprite_set(sprite82);
++7: // 14
+        sprite_set(sprite83);
++7: // 21
+        sprite_set(sprite84);
++7: // 28
+        sprite_set(sprite81);
++7: // 35
+        sprite_set(sprite82);
++7: // 42
+        sprite_set(sprite83);
++7: // 49
+        sprite_set(sprite84);
++7: // 56
+        sprite_set(sprite81);
++7: // 63
+        sprite_set(sprite82);
++7: // 70
+        sprite_set(sprite83);
++7: // 77
+        sprite_set(sprite84);
++7: // 84
+        move_position_interp(84, AccelDecelSlow, 0.0, 4.0, 0.0);
+        sprite_set(sprite81);
++7: // 91
+        sprite_set(sprite82);
++7: // 98
+        sprite_set(sprite83);
++7: // 105
+        sprite_set(sprite84);
++7: // 112
+        sprite_set(sprite81);
++7: // 119
+        sprite_set(sprite82);
++7: // 126
+        sprite_set(sprite83);
++7: // 133
+        sprite_set(sprite84);
++7: // 140
+        sprite_set(sprite81);
++7: // 147
+        sprite_set(sprite82);
++7: // 154
+        sprite_set(sprite83);
++7: // 161
+        sprite_set(sprite84);
++7: // 168
+    }
+}
+
+
+script 15 script15 {
+    move_position(0.0, 0.0, 0.0);
+    scale_flip_x();
+    sprite_set(sprite85);
++4: // 4
+    sprite_set(sprite86);
++4: // 8
+    sprite_set(sprite87);
++4: // 12
+    sprite_set(sprite88);
+    loop {
++400: // 412
+    }
+    anm_halt();
+}
+
+
+script 16 script16 {
+    move_position(0.0, 0.0, 0.0);
+    sprite_set(sprite85);
++4: // 4
+    sprite_set(sprite86);
++4: // 8
+    sprite_set(sprite87);
++4: // 12
+    sprite_set(sprite88);
+    loop {
++400: // 412
+    }
+    anm_halt();
+}
+
+
+script 17 script17 {
+    move_position(0.0, 0.0, 0.0);
+    scale_flip_x();
+    sprite_set(sprite88);
++4: // 4
+    sprite_set(sprite87);
++4: // 8
+    sprite_set(sprite86);
++4: // 12
+    sprite_set(sprite85);
+    loop {
+        move_position_interp(84, AccelDecelSlow, 0.0, -4.0, 0.0);
+        sprite_set(sprite81);
++7: // 19
+        sprite_set(sprite82);
++7: // 26
+        sprite_set(sprite83);
++7: // 33
+        sprite_set(sprite84);
++7: // 40
+        sprite_set(sprite81);
++7: // 47
+        sprite_set(sprite82);
++7: // 54
+        sprite_set(sprite83);
++7: // 61
+        sprite_set(sprite84);
++7: // 68
+        sprite_set(sprite81);
++7: // 75
+        sprite_set(sprite82);
++7: // 82
+        sprite_set(sprite83);
++7: // 89
+        sprite_set(sprite84);
++7: // 96
+        move_position_interp(84, AccelDecelSlow, 0.0, 4.0, 0.0);
+        sprite_set(sprite81);
++7: // 103
+        sprite_set(sprite82);
++7: // 110
+        sprite_set(sprite83);
++7: // 117
+        sprite_set(sprite84);
++7: // 124
+        sprite_set(sprite81);
++7: // 131
+        sprite_set(sprite82);
++7: // 138
+        sprite_set(sprite83);
++7: // 145
+        sprite_set(sprite84);
++7: // 152
+        sprite_set(sprite81);
++7: // 159
+        sprite_set(sprite82);
++7: // 166
+        sprite_set(sprite83);
++7: // 173
+        sprite_set(sprite84);
++7: // 180
+    }
+}
+
+
+script 18 script18 {
+    move_position(0.0, 0.0, 0.0);
+    sprite_set(sprite88);
++4: // 4
+    sprite_set(sprite87);
++4: // 8
+    sprite_set(sprite86);
++4: // 12
+    sprite_set(sprite85);
+    loop {
+        move_position_interp(84, AccelDecelSlow, 0.0, -4.0, 0.0);
+        sprite_set(sprite81);
++7: // 19
+        sprite_set(sprite82);
++7: // 26
+        sprite_set(sprite83);
++7: // 33
+        sprite_set(sprite84);
++7: // 40
+        sprite_set(sprite81);
++7: // 47
+        sprite_set(sprite82);
++7: // 54
+        sprite_set(sprite83);
++7: // 61
+        sprite_set(sprite84);
++7: // 68
+        sprite_set(sprite81);
++7: // 75
+        sprite_set(sprite82);
++7: // 82
+        sprite_set(sprite83);
++7: // 89
+        sprite_set(sprite84);
++7: // 96
+        move_position_interp(84, AccelDecelSlow, 0.0, 4.0, 0.0);
+        sprite_set(sprite81);
++7: // 103
+        sprite_set(sprite82);
++7: // 110
+        sprite_set(sprite83);
++7: // 117
+        sprite_set(sprite84);
++7: // 124
+        sprite_set(sprite81);
++7: // 131
+        sprite_set(sprite82);
++7: // 138
+        sprite_set(sprite83);
++7: // 145
+        sprite_set(sprite84);
++7: // 152
+        sprite_set(sprite81);
++7: // 159
+        sprite_set(sprite82);
++7: // 166
+        sprite_set(sprite83);
++7: // 173
+        sprite_set(sprite84);
++7: // 180
+    }
+}
+
+
+script 19 script19 {
+    move_position(0.0, -10.0, 0.0);
+    sprite_set(sprite89);
++4: // 4
+    sprite_set(sprite90);
++4: // 8
+    sprite_set(sprite91);
+    anm_halt();
+}
+
+
+entry {
+    path: "stgenm/stg7enm2.png",
+    img_width: 256,
+    img_height: 256,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {sprite92: {x: 1.0, y: 1.0, w: 254.0, h: 254.0}},
+}
+
+
+script 20 script20 {
+    layer(Layer9);
+    render_mode(RenderMode1);
+    rotation_speed(0.0, 0.0, 1.4959965);
+    sprite_set(sprite92);
+    alpha(0x0);
+    alpha_interp(10, Linear, 0xff);
+    scale(0.0, 0.0);
+    scale_interp(10, DecelerateSlow, 1.0, 1.0);
+    loop {
+        color(0xff, 0x0, 0x80);
++2: // 2
+        color(0xff, 0xff, 0x0);
++2: // 4
+    }
+
+interrupt[1]:
+    scale_interp(10, DecelerateSlow, 1.5, 1.5);
+    alpha_interp(10, Linear, 0x0);
++10: // 14
+    anm_delete();
+}
+
+
+entry {
+    path: "stgenm/stg7enm2b.png",
+    img_width: 256,
+    img_height: 256,
+    img_format: FORMAT_ARGB_4444,
+    memory_priority: 0,
+    sprites: {sprite93: {x: 1.0, y: 1.0, w: 254.0, h: 254.0}},
+}
+
+
+script 21 script21 {
+    anm_create_child_back(script20);
+    layer(Layer9);
+    render_mode(RenderMode1);
+    rotation_speed(0.0, 0.0, 1.4959965);
+    sprite_set(sprite93);
+    alpha(0x0);
+    blend_mode(Additive);
+    alpha_interp(10, Linear, 0xff);
+    scale(0.0, 0.0);
+    scale_interp(10, DecelerateSlow, 1.0, 1.0);
+    loop {
+        color(0xff, 0x80, 0xff);
++2: // 2
+        color(0xff, 0xff, 0xff);
++2: // 4
+    }
+
+interrupt[1]:
+    scale_interp(10, DecelerateSlow, 1.5, 1.5);
+    alpha_interp(10, Linear, 0x0);
++10: // 14
+    anm_delete();
+}
+
+
+script 22 script22 {
+    layer(Layer9);
+    render_mode(RenderMode1);
+    rotation_speed(0.0, 0.0, 1.4959965);
+    sprite_set(sprite92);
+    alpha(0x0);
+    alpha_interp(10, Linear, 0xff);
+    scale(0.0, 0.0);
+    scale_interp(10, DecelerateSlow, 0.3, 0.3);
+    loop {
+        color(0xff, 0x0, 0x80);
++2: // 2
+        color(0xff, 0xff, 0x0);
++2: // 4
+    }
+
+interrupt[1]:
+    scale_interp(10, DecelerateSlow, 0.5, 0.5);
+    alpha_interp(10, Linear, 0x0);
++10: // 14
+    anm_delete();
+}
+
+
+script 23 script23 {
+    anm_create_child_back(script22);
+    layer(Layer9);
+    render_mode(RenderMode1);
+    rotation_speed(0.0, 0.0, 1.4959965);
+    sprite_set(sprite93);
+    alpha(0x0);
+    blend_mode(Additive);
+    alpha_interp(10, Linear, 0xff);
+    scale(0.0, 0.0);
+    scale_interp(10, DecelerateSlow, 0.3, 0.3);
+    loop {
+        color(0xff, 0x80, 0xff);
++2: // 2
+        color(0xff, 0xff, 0xff);
++2: // 4
+    }
+
+interrupt[1]:
+    scale_interp(10, DecelerateSlow, 0.5, 0.5);
+    alpha_interp(10, Linear, 0x0);
++10: // 14
+    anm_delete();
+}
+
+
+script 24 script24 {
+    alpha(0x0);
+    layer(Layer4);
+    anm_create_child_back(script7);
+    anm_create_child_back(script8);
+    anm_halt();
+}
+
+
+script 25 script25 {
+    sprite_set(-1);
+    alpha(0xff);
+    color(0x0, 0x0, 0x0);
+    polygon_rectangle(394.0, 448.0);
+    layer(Layer3);
+    anchor_mode(Center, Top);
+    anm_create_child_back(script7);
+    anm_create_child_back(script26);
++60: // 60
+    scale2_interp(120, DecelerateSlow, 2.0, 0.0);
++120: // 180
+    anm_halt();
+}
+
+
+script 25 script26 {
+    layer(Layer4);
+    sprite_set(sprite50);
+    anchor_mode(Center, Center);
+    scale(1.15625, 1.15625);
+    render_mode(RenderMode1);
+    move_position(0.0, 224.0, 0.0);
+    blend_mode(Additive);
+    rotation(0.0, 0.0, -0.11780973);
+    rotation_speed(0.0, 0.0, 0.0019634955);
+    scroll_speed_x(-0.0016666667);
+    scroll_speed_y(0.0016666667);
+    alpha(0x0);
+    alpha_interp(60, Linear, 0xff);
++60: // 60
+    rotation(0.0, 0.0, 0.0);
+    rotation_speed(0.0, 0.0, 0.0);
+    scale(1.15625, 0.875);
+    uv_scale(1.0, 1.1428572);
+    anm_halt();
+}
