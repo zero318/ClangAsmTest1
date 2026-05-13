@@ -368,16 +368,16 @@ static inline constexpr float DEGREES(float degrees) {
 	//return D3DXToRadian(degrees);
 }
 
-static inline uint8_t& BLUE(D3DCOLOR& color) {
+static forceinline uint8_t& BLUE(D3DCOLOR& color) {
 	return ((uint8_t*)&color)[0];
 }
-static inline uint8_t& GREEN(D3DCOLOR& color) {
+static forceinline uint8_t& GREEN(D3DCOLOR& color) {
 	return ((uint8_t*)&color)[1];
 }
-static inline uint8_t& RED(D3DCOLOR& color) {
+static forceinline uint8_t& RED(D3DCOLOR& color) {
 	return ((uint8_t*)&color)[2];
 }
-static inline uint8_t& ALPHA(D3DCOLOR& color) {
+static forceinline uint8_t& ALPHA(D3DCOLOR& color) {
 	return ((uint8_t*)&color)[3];
 }
 
@@ -400,7 +400,7 @@ static inline uint8_t& ALPHA(D3DCOLOR& color) {
 #define COLOR3_WHITE COLOR3(255, 255, 255)
 #define COLOR3_BLACK COLOR3(0, 0, 0)
 
-#define COLOR_BLEND(a, b) std::min((uint32_t)((a)*(b))>>7, 255u)
+#define COLOR_MIX(a, b) std::min((uint32_t)((a)*(b))>>7, 255u)
 
 // I don't even want to know how this is a thing
 // 0x47D870
@@ -7913,26 +7913,26 @@ end_snd_cmd_loop:
 					panning /= active_count;
 				}
 				SOUND_MANAGER.active_sound_id_counts[i] = 0;
-				if (LPDIRECTSOUNDBUFFER sound_buffer = SOUND_MANAGER.__sound_effects[i].sound_buffer) {
+				if (LPDIRECTSOUNDBUFFER sound_buffer = SOUND_MANAGER.__sound_effects[sound_id].sound_buffer) {
 					sound_buffer->Stop();
-					SOUND_MANAGER.__sound_effects[i].sound_buffer->SetCurrentPosition(0);
-					SOUND_MANAGER.__sound_effects[i].sound_buffer->SetPan(panning);
-					SOUND_MANAGER.__sound_effects[i].panning = panning;
+					SOUND_MANAGER.__sound_effects[sound_id].sound_buffer->SetCurrentPosition(0);
+					SOUND_MANAGER.__sound_effects[sound_id].sound_buffer->SetPan(panning);
+					SOUND_MANAGER.__sound_effects[sound_id].panning = panning;
 					if (int32_t sound_volume = SOUND_MANAGER.sound_volume) {
 						float sound_volume_f = 1.0f - (float)sound_volume / 100.0f;
 						sound_volume_f = sound_volume_f * sound_volume_f * sound_volume_f;
 						sound_volume_f = 1.0f - sound_volume_f;
 
-						int32_t volume = SOUND_MANAGER.__sound_effects[i].data->volume;
+						int32_t volume = SOUND_MANAGER.__sound_effects[sound_id].data->volume;
 						volume -= MAX_VOLUME;
 						volume = volume * sound_volume_f;
 						volume += MAX_VOLUME;
-						SOUND_MANAGER.__sound_effects[i].sound_buffer->SetVolume(volume);
+						SOUND_MANAGER.__sound_effects[sound_id].sound_buffer->SetVolume(volume);
 					}
 					else {
-						SOUND_MANAGER.__sound_effects[i].sound_buffer->SetVolume(SILENT_VOLUME);
+						SOUND_MANAGER.__sound_effects[sound_id].sound_buffer->SetVolume(SILENT_VOLUME);
 					}
-					SOUND_MANAGER.__sound_effects[i].sound_buffer->Play(0, 0, SOUND_MANAGER.__sound_effects[i].data->play_flags);
+					SOUND_MANAGER.__sound_effects[sound_id].sound_buffer->Play(0, 0, SOUND_MANAGER.__sound_effects[sound_id].data->play_flags);
 				}
 			}
 		}
@@ -16797,7 +16797,6 @@ struct AnmVM {
 	template <typename L>
 	inline AnmVM* search_roots(L&& lambda) {
 		AnmVM* search = this;
-		//while ((search = search->controller.__root_vm) && !lambda(search));
 		for (
 			AnmVM* root = this->controller.__root_vm;
 			root != NULL && !lambda(root);
@@ -19828,10 +19827,10 @@ struct AnmManager {
 										vm->controller.parent
 									) {
 										D3DCOLOR parent_color = vm->controller.parent->data.mixed_inherited_color;
-										r = COLOR_BLEND(RED(color), RED(parent_color));
-										g = COLOR_BLEND(GREEN(color), GREEN(parent_color));
-										b = COLOR_BLEND(BLUE(color), BLUE(parent_color));
-										a = COLOR_BLEND(ALPHA(color), ALPHA(parent_color));
+										r = COLOR_MIX(RED(color), RED(parent_color));
+										g = COLOR_MIX(GREEN(color), GREEN(parent_color));
+										b = COLOR_MIX(BLUE(color), BLUE(parent_color));
+										a = COLOR_MIX(ALPHA(color), ALPHA(parent_color));
 										color = COLOR(a, r, g, b);
 									} else {
 										a = ALPHA(color);
@@ -19841,10 +19840,10 @@ struct AnmManager {
 									}
 									vm->data.mixed_inherited_color = color;
 									if (this->__global_color_enabled) {
-										r = COLOR_BLEND(r, RED(this->__global_color));
-										g = COLOR_BLEND(g, GREEN(this->__global_color));
-										b = COLOR_BLEND(b, BLUE(this->__global_color));
-										a = COLOR_BLEND(a, ALPHA(this->__global_color));
+										r = COLOR_MIX(r, RED(this->__global_color));
+										g = COLOR_MIX(g, GREEN(this->__global_color));
+										b = COLOR_MIX(b, BLUE(this->__global_color));
+										a = COLOR_MIX(a, ALPHA(this->__global_color));
 										color = COLOR(a, r, g, b);
 									}
 									SPRITE_VERTEX_BUFFER_A[0].diffuse = color;
@@ -19861,14 +19860,14 @@ struct AnmManager {
 									D3DCOLOR color1 = vm->data.color1;
 									D3DCOLOR color2 = vm->data.color2;
 									if (this->__global_color_enabled) {
-										r1 = COLOR_BLEND(RED(color1), RED(this->__global_color));
-										g1 = COLOR_BLEND(GREEN(color1), GREEN(this->__global_color));
-										b1 = COLOR_BLEND(BLUE(color1), BLUE(this->__global_color));
-										a1 = COLOR_BLEND(ALPHA(color1), ALPHA(this->__global_color));
-										r2 = COLOR_BLEND(RED(color2), RED(this->__global_color));
-										g2 = COLOR_BLEND(GREEN(color2), GREEN(this->__global_color));
-										b2 = COLOR_BLEND(BLUE(color2), BLUE(this->__global_color));
-										a2 = COLOR_BLEND(ALPHA(color2), ALPHA(this->__global_color));
+										r1 = COLOR_MIX(RED(color1), RED(this->__global_color));
+										g1 = COLOR_MIX(GREEN(color1), GREEN(this->__global_color));
+										b1 = COLOR_MIX(BLUE(color1), BLUE(this->__global_color));
+										a1 = COLOR_MIX(ALPHA(color1), ALPHA(this->__global_color));
+										r2 = COLOR_MIX(RED(color2), RED(this->__global_color));
+										g2 = COLOR_MIX(GREEN(color2), GREEN(this->__global_color));
+										b2 = COLOR_MIX(BLUE(color2), BLUE(this->__global_color));
+										a2 = COLOR_MIX(ALPHA(color2), ALPHA(this->__global_color));
 										color1 = COLOR(a1, r1, g1, b1);
 										color2 = COLOR(a2, r2, g2, b2);
 									}
@@ -19895,19 +19894,19 @@ struct AnmManager {
 										vm->controller.parent
 									) {
 										D3DCOLOR parent_color = vm->controller.parent->data.mixed_inherited_color;
-										r = COLOR_BLEND(r, RED(parent_color));
-										g = COLOR_BLEND(g, GREEN(parent_color));
+										r = COLOR_MIX(r, RED(parent_color));
+										g = COLOR_MIX(g, GREEN(parent_color));
 										parent_color = vm->controller.parent->data.mixed_inherited_color; // why tho
-										b = COLOR_BLEND(b, BLUE(parent_color));
-										a = COLOR_BLEND(a, ALPHA(parent_color));
+										b = COLOR_MIX(b, BLUE(parent_color));
+										a = COLOR_MIX(a, ALPHA(parent_color));
 									}
 									color = COLOR(a, r, g, b);
 									vm->data.mixed_inherited_color = color;
 									if (this->__global_color_enabled) {
-										r = COLOR_BLEND(r, RED(this->__global_color));
-										g = COLOR_BLEND(g, GREEN(this->__global_color));
-										b = COLOR_BLEND(b, BLUE(this->__global_color));
-										a = COLOR_BLEND(a, ALPHA(this->__global_color));
+										r = COLOR_MIX(r, RED(this->__global_color));
+										g = COLOR_MIX(g, GREEN(this->__global_color));
+										b = COLOR_MIX(b, BLUE(this->__global_color));
+										a = COLOR_MIX(a, ALPHA(this->__global_color));
 										color = COLOR(a, r, g, b);
 									}
 									SPRITE_VERTEX_BUFFER_A[0].diffuse = color;
@@ -19965,10 +19964,10 @@ struct AnmManager {
 					b = BLUE(color);
 					a = ALPHA(color);
 					if (this->__global_color_enabled) {
-						r = COLOR_BLEND(r, RED(this->__global_color));
-						g = COLOR_BLEND(g, GREEN(this->__global_color));
-						b = COLOR_BLEND(b, BLUE(this->__global_color));
-						a = COLOR_BLEND(a, ALPHA(this->__global_color));
+						r = COLOR_MIX(r, RED(this->__global_color));
+						g = COLOR_MIX(g, GREEN(this->__global_color));
+						b = COLOR_MIX(b, BLUE(this->__global_color));
+						a = COLOR_MIX(a, ALPHA(this->__global_color));
 						color = COLOR(a, r, g, b);
 					}
 					if (length < draw_begin) {
@@ -20008,14 +20007,14 @@ struct AnmManager {
 					D3DCOLOR color1 = vm->data.color1;
 					D3DCOLOR color2 = vm->data.color2;
 					if (this->__global_color_enabled) {
-						r1 = COLOR_BLEND(RED(color1), RED(this->__global_color));
-						g1 = COLOR_BLEND(GREEN(color1), GREEN(this->__global_color));
-						b1 = COLOR_BLEND(BLUE(color1), BLUE(this->__global_color));
-						a1 = COLOR_BLEND(ALPHA(color1), ALPHA(this->__global_color));
-						r2 = COLOR_BLEND(RED(color2), RED(this->__global_color));
-						g2 = COLOR_BLEND(GREEN(color2), GREEN(this->__global_color));
-						b2 = COLOR_BLEND(BLUE(color2), BLUE(this->__global_color));
-						a2 = COLOR_BLEND(ALPHA(color2), ALPHA(this->__global_color));
+						r1 = COLOR_MIX(RED(color1), RED(this->__global_color));
+						g1 = COLOR_MIX(GREEN(color1), GREEN(this->__global_color));
+						b1 = COLOR_MIX(BLUE(color1), BLUE(this->__global_color));
+						a1 = COLOR_MIX(ALPHA(color1), ALPHA(this->__global_color));
+						r2 = COLOR_MIX(RED(color2), RED(this->__global_color));
+						g2 = COLOR_MIX(GREEN(color2), GREEN(this->__global_color));
+						b2 = COLOR_MIX(BLUE(color2), BLUE(this->__global_color));
+						a2 = COLOR_MIX(ALPHA(color2), ALPHA(this->__global_color));
 						color1 = COLOR(a1, r1, g1, b1);
 						color2 = COLOR(a2, r2, g2, b2);
 					}
@@ -20057,10 +20056,10 @@ struct AnmManager {
 					b = BLUE(color) * BLUE(vm->data.color2) / 0xFF;
 					a = ALPHA(color) * ALPHA(vm->data.color2) / 0xFF;
 					if (this->__global_color_enabled) {
-						r = COLOR_BLEND(r, RED(this->__global_color));
-						g = COLOR_BLEND(g, GREEN(this->__global_color));
-						b = COLOR_BLEND(b, BLUE(this->__global_color));
-						a = COLOR_BLEND(a, ALPHA(this->__global_color));
+						r = COLOR_MIX(r, RED(this->__global_color));
+						g = COLOR_MIX(g, GREEN(this->__global_color));
+						b = COLOR_MIX(b, BLUE(this->__global_color));
+						a = COLOR_MIX(a, ALPHA(this->__global_color));
 						color = COLOR(a, r, g, b);
 					}
 					if (length > draw_begin) {
@@ -20171,10 +20170,10 @@ struct AnmManager {
 			D3DCOLOR color = vm->data.color_mode == UseColor1 ? vm->data.color1 : vm->data.color2;
 
 			if (this->__global_color_enabled) {
-				uint8_t r = COLOR_BLEND(RED(color), RED(this->__global_color));
-				uint8_t g = COLOR_BLEND(GREEN(color), GREEN(this->__global_color));
-				uint8_t b = COLOR_BLEND(BLUE(color), BLUE(this->__global_color));
-				uint8_t a = COLOR_BLEND(ALPHA(color), ALPHA(this->__global_color));
+				uint8_t r = COLOR_MIX(RED(color), RED(this->__global_color));
+				uint8_t g = COLOR_MIX(GREEN(color), GREEN(this->__global_color));
+				uint8_t b = COLOR_MIX(BLUE(color), BLUE(this->__global_color));
+				uint8_t a = COLOR_MIX(ALPHA(color), ALPHA(this->__global_color));
 				color = COLOR(a, r, g, b);
 			}
 
@@ -23411,7 +23410,9 @@ dllexport gnu_noinline ZUNResult TrophyData::initialize() {
 			case '\\': // No escape chars I guess
 				goto break_all;
 			case '@': {
-				//--trophy_txt_count;
+#if FIX_REALLY_BAD_BUGS
+				--trophy_txt_count;
+#endif
 				trophy_txt = trophy_txt_copy_rest_of_line_to_buffer(buffer, trophy_txt + 1, trophy_txt_count);
 				int32_t number;
 				sscanf(buffer, "%d", &number); // bleh
