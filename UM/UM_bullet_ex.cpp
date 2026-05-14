@@ -5582,12 +5582,12 @@ struct CSoundManager {
 
 		SAFE_RELEASE(this->dsound);
 
-		HRESULT hr;
+		HRESULT ret;
 		if (
-			FAILED(hr = DirectSoundCreate8(NULL, &this->dsound, NULL)) ||
-			FAILED(hr = this->dsound->SetCooperativeLevel(hWnd, dwCoopLevel))
+			FAILED(ret = DirectSoundCreate8(NULL, &this->dsound, NULL)) ||
+			FAILED(ret = this->dsound->SetCooperativeLevel(hWnd, dwCoopLevel))
 		) {
-			return hr;
+			return ret;
 		}
 
 		return S_OK;
@@ -5605,9 +5605,9 @@ struct CSoundManager {
 			dsbd.dwBufferBytes = 0;
 			dsbd.dwReserved = 0;
 
-			HRESULT hr;
-			if (FAILED(hr = this->dsound->CreateSoundBuffer(&dsbd, &pDSBPrimary, NULL))) {
-				return hr;
+			HRESULT ret;
+			if (FAILED(ret = this->dsound->CreateSoundBuffer(&dsbd, &pDSBPrimary, NULL))) {
+				return ret;
 			}
 
 			WAVEFORMATEX wfx;
@@ -5619,8 +5619,8 @@ struct CSoundManager {
 			wfx.nSamplesPerSec = dwPrimaryFreq;
 			wfx.nAvgBytesPerSec = SAMPLE_THROUGHPUT(dwPrimaryBitRate, dwPrimaryChannels, dwPrimaryFreq);
 
-			if (FAILED(hr = pDSBPrimary->SetFormat(&wfx))) {
-				return hr;
+			if (FAILED(ret = pDSBPrimary->SetFormat(&wfx))) {
+				return ret;
 			}
 
 			SAFE_RELEASE(pDSBPrimary);
@@ -5681,7 +5681,7 @@ struct CWaveFile {
 	BOOL __loop; // 0x9C
 	// 0xA0
 
-	inline CWaveFile(ThBgmFormat* bgm_format) 
+	forceinline CWaveFile(ThBgmFormat* bgm_format)
 		: bgm_format(bgm_format)
 	{
 		this->m_hmmio = NULL;
@@ -5694,11 +5694,11 @@ struct CWaveFile {
 		this->close_handle();
 	}
 
-	inline DWORD current_offset() {
+	forceinline DWORD current_offset() {
 		return SetFilePointer(this->wave_file_handle, 0, NULL, FILE_CURRENT);
 	}
 
-	inline ZUNResult close_handle() {
+	forceinline ZUNResult close_handle() {
 		if (this->__wave_handle_valid == TRUE) {
 			CloseHandle(this->wave_file_handle);
 			this->wave_file_handle = INVALID_HANDLE_VALUE;
@@ -5708,6 +5708,9 @@ struct CWaveFile {
 
 	// 0x48ABA0
 	dllexport gnu_noinline HRESULT thiscall Open(const char* strFileName, ThBgmFormat* bgm_format, DWORD dwFlags = UNUSED_DWORD) {
+		this->__wave_handle_valid = TRUE;
+		this->m_bIsReadingFromMemory = FALSE;
+		
 		if (!strFileName) {
 			return E_INVALIDARG;
 		}
@@ -5746,31 +5749,30 @@ struct CWaveFile {
 		this->bgm_format = bgm_format;
 		this->ResetFile(false, 0);
 		this->m_dwSize = this->m_ck.cksize;
+		this->__loop = FALSE;
 
 		return S_OK;
 	}
 
-	forceinline HRESULT Reopen(ThBgmFormat* bgm_format, int arg2) {
+	forceinline HRESULT Reopen(ThBgmFormat* bgm_format, uint32_t arg2) {
 		if (this->m_bIsReadingFromMemory) {
 			return E_FAIL;
 		}
-		HANDLE wave_file_handle = this->wave_file_handle;
-		if (wave_file_handle == INVALID_HANDLE_VALUE) {
+		if (this->wave_file_handle == INVALID_HANDLE_VALUE) {
 			this->Open(this->wave_filename, bgm_format);
-			wave_file_handle = this->wave_file_handle;
-			if (wave_file_handle == INVALID_HANDLE_VALUE) {
+			if (this->wave_file_handle == INVALID_HANDLE_VALUE) {
 				return E_FAIL;
 			}
 		}
 		this->__loop = FALSE;
 		this->bgm_format = bgm_format;
 		DebugLogger::__debug_log_stub_9("%s %d %d\n", bgm_format->filename, bgm_format->pre_loop_length, bgm_format->length);
-		this->ResetFile(FALSE, arg2);
+		this->ResetFile(false, arg2);
 		this->m_dwSize = this->m_ck.cksize;
 		return S_OK;
 	}
 
-	inline HRESULT Read(BYTE* pBuffer, DWORD dwSizeToRead, DWORD* pdwSizeRead) {
+	forceinline HRESULT Read(BYTE* pBuffer, DWORD dwSizeToRead, DWORD* pdwSizeRead) {
 		if (this->m_bIsReadingFromMemory) {
 			BYTE* current = this->m_pbDataCur;
 			if (current) {
@@ -5795,8 +5797,11 @@ struct CWaveFile {
 				if (!pBuffer || !pdwSizeRead) {
 					return E_INVALIDARG;
 				}
-				dwSizeToRead = __min2(dwSizeToRead, m_ck.cksize);
-				m_ck.cksize -= dwSizeToRead;
+				DWORD cksize = this->m_ck.cksize;
+				if (dwSizeToRead > cksize) {
+					dwSizeToRead = cksize;
+				}
+				this->m_ck.cksize -= dwSizeToRead;
 				ReadFile(this->wave_file_handle, pBuffer, dwSizeToRead, &dwSizeToRead, NULL);
 				if (pdwSizeRead) {
 					*pdwSizeRead = dwSizeToRead;
@@ -5807,7 +5812,7 @@ struct CWaveFile {
 		return CO_E_NOTINITIALIZED;
 	}
 
-	inline HRESULT OpenFromMemory(BYTE* pbData, ULONG ulDataSize, ThBgmFormat* bgm_format, DWORD dwFlags) {
+	forceinline HRESULT OpenFromMemory(BYTE* pbData, ULONG ulDataSize, ThBgmFormat* bgm_format, DWORD dwFlags) {
 		this->bgm_format = bgm_format;
 		this->m_ulDataSize = ulDataSize;
 		this->m_pbDataCur = this->m_pbData = pbData;
@@ -5906,7 +5911,7 @@ struct CSound {
 		this->__paused = FALSE;
 	}
 
-	inline void FreeSoundBuffers() {
+	forceinline void FreeSoundBuffers() {
 		for (size_t i = 0; i < this->sound_buffer_count; i++) {
 			SAFE_RELEASE(this->sound_buffer_array[i]);
 		}
@@ -5920,7 +5925,7 @@ struct CSound {
 		SAFE_DELETE(this->cwave_ptr);
 	}
 
-	inline LPDIRECTSOUNDBUFFER GetBuffer(DWORD index = 0) {
+	forceinline LPDIRECTSOUNDBUFFER GetBuffer(DWORD index = 0) {
 		LPDIRECTSOUNDBUFFER sound_buffer = NULL;
 		if (this->sound_buffer_array && this->sound_buffer_count >= index) {
 			sound_buffer = this->sound_buffer_array[index];
@@ -5928,7 +5933,7 @@ struct CSound {
 		return sound_buffer;
 	}
 
-	inline LPDIRECTSOUNDBUFFER GetFreeBuffer() {
+	forceinline LPDIRECTSOUNDBUFFER GetFreeBuffer() {
 		if (!this->sound_buffer_array) {
 			return NULL;
 		}
@@ -5949,7 +5954,7 @@ struct CSound {
 		}
 	}
 
-	inline HRESULT Reset() {
+	forceinline HRESULT Reset() {
 		if (!this->sound_buffer_array) {
 			return CO_E_NOTINITIALIZED;
 		}
@@ -5960,7 +5965,7 @@ struct CSound {
 		return ret;
 	}
 
-	inline HRESULT RestoreBuffer(
+	forceinline HRESULT RestoreBuffer(
 		LPDIRECTSOUNDBUFFER pDSB,
 		BOOL* pbWasRestored
 	) {
@@ -5970,9 +5975,9 @@ struct CSound {
 			}
 
 			DWORD dwStatus;
-			HRESULT hr = pDSB->GetStatus(&dwStatus);
-			if (FAILED(hr)) {
-				return hr;
+			HRESULT ret = pDSB->GetStatus(&dwStatus);
+			if (FAILED(ret)) {
+				return ret;
 			}
 
 			if (dwStatus & DSBSTATUS_BUFFERLOST) {
@@ -5994,7 +5999,7 @@ struct CSound {
 	}
 
 	// 0x48A440
-	dllexport gnu_noinline HRESULT thiscall Play(DWORD dwPriority, DWORD dwFlags, int arg3) ASR(0x48A440) {
+	dllexport gnu_noinline HRESULT thiscall Play(DWORD dwPriority, DWORD dwFlags, uint32_t arg3) ASR(0x48A440) {
 		if (!this->sound_buffer_array) {
 			return CO_E_NOTINITIALIZED;
 		}
@@ -6005,14 +6010,14 @@ struct CSound {
 		}
 
 		BOOL restored;
-		HRESULT hr;
-		if (FAILED(hr = this->RestoreBuffer(sound_buffer, &restored))) {
-			return hr;
+		HRESULT ret;
+		if (FAILED(ret = this->RestoreBuffer(sound_buffer, &restored))) {
+			return ret;
 		}
 
 		if (restored) {
-			if (FAILED(hr = this->FillBufferWithSound(sound_buffer, FALSE, arg3))) {
-				return hr;
+			if (FAILED(ret = this->FillBufferWithSound(sound_buffer, FALSE, arg3))) {
+				return ret;
 			}
 			this->Reset();
 		}
@@ -6035,7 +6040,7 @@ struct CSound {
 	}
 
 	// 0x48A1A0
-	dllexport inline HRESULT FillBufferWithSound(LPDIRECTSOUNDBUFFER pDSB, BOOL bRepeatWavIfBufferLarger, int arg3) ASR(0x48A1A0) {
+	dllexport inline HRESULT FillBufferWithSound(LPDIRECTSOUNDBUFFER pDSB, BOOL bRepeatWavIfBufferLarger, uint32_t arg3) ASR(0x48A1A0) {
 		
 		if (!pDSB) {
 			return CO_E_NOTINITIALIZED;
@@ -6045,24 +6050,24 @@ struct CSound {
 		BYTE* pDSLockedBuffer = NULL;
 		DWORD dwWavDataRead = 0;
 
-		HRESULT hr;
+		HRESULT ret;
 		if (
-			FAILED(hr = this->RestoreBuffer(pDSB, NULL)) ||
-			FAILED(hr = pDSB->Lock(0, this->__dsound_buffer_size, (LPVOID*)&pDSLockedBuffer, &dwDSLockedBufferSize, NULL, NULL, 0L))
+			FAILED(ret = this->RestoreBuffer(pDSB, NULL)) ||
+			FAILED(ret = pDSB->Lock(0, this->__dsound_buffer_size, (LPVOID*)&pDSLockedBuffer, &dwDSLockedBufferSize, NULL, NULL, 0L))
 		) {
-			return hr;
+			return ret;
 		}
 
-		this->cwave_ptr->ResetFile(FALSE, arg3);
+		this->cwave_ptr->ResetFile(false, arg3);
 
-		if (FAILED(hr = this->cwave_ptr->Read(pDSLockedBuffer, dwDSLockedBufferSize, &dwWavDataRead))) {
-			return hr;
+		if (FAILED(ret = this->cwave_ptr->Read(pDSLockedBuffer, dwDSLockedBufferSize, &dwWavDataRead))) {
+			return ret;
 		}
 
 		// I couldn't resist the lambda temptation
 		auto fill_silence = [=](uint8_t* ptr, size_t length) {
 			uint32_t silence = this->cwave_ptr->bgm_format->wave_format.wBitsPerSample == CHAR_BIT ? 0x80 : 0x0;
-			memset((ptr), silence, (length));
+			memset(ptr, silence, length);
 		};
 
 		if (!dwWavDataRead) {
@@ -6073,10 +6078,10 @@ struct CSound {
 				DWORD dwReadSoFar = dwWavDataRead;
 				do {
 					if (
-						FAILED(hr = this->cwave_ptr->ResetFile(true, 0)) ||
-						FAILED(hr = this->cwave_ptr->Read(pDSLockedBuffer + dwReadSoFar, dwDSLockedBufferSize - dwWavDataRead, &dwWavDataRead))
+						FAILED(ret = this->cwave_ptr->ResetFile(true, 0)) ||
+						FAILED(ret = this->cwave_ptr->Read(pDSLockedBuffer + dwReadSoFar, dwDSLockedBufferSize - dwWavDataRead, &dwWavDataRead))
 					) {
-						return hr;
+						return ret;
 					}
 					dwReadSoFar += dwWavDataRead;
 				} while (dwReadSoFar < dwDSLockedBufferSize);
@@ -6094,12 +6099,12 @@ struct CSound {
 	// 0x48A5A0
 	dllexport inline HRESULT SetVolume(int32_t volume = 0) ASR(0x48A5A0);
 
-	inline void StartFadeOut(float seconds) {
+	forceinline void StartFadeOut(float seconds) {
 		this->__fade_type = FadeOut;
 		this->__fade_length = this->__fade_progress = seconds * 60.0f;
 	}
 
-	inline void HandleFadeOut() {
+	forceinline void HandleFadeOut() {
 		--this->__fade_progress;
 		int32_t fade_progress = this->__fade_progress;
 		if (fade_progress <= 0) {
@@ -6110,7 +6115,7 @@ struct CSound {
 		}
 	}
 
-	inline void HandleFadeIn() {
+	forceinline void HandleFadeIn() {
 		--this->__fade_progress;
 		int32_t fade_progress = this->__fade_progress;
 		if (fade_progress <= 0) {
@@ -6120,7 +6125,7 @@ struct CSound {
 		}
 	}
 
-	inline void HandleFadeOutShort() {
+	forceinline void HandleFadeOutShort() {
 		--this->__fade_progress;
 		int32_t fade_progress = this->__fade_progress;
 		if (fade_progress <= 0) {
@@ -6130,7 +6135,7 @@ struct CSound {
 		}
 	}
 
-	inline void HandleFadeInShort() {
+	forceinline void HandleFadeInShort() {
 		--this->__fade_progress;
 		int32_t fade_progress = this->__fade_progress;
 		if (fade_progress <= 0) {
@@ -6140,7 +6145,7 @@ struct CSound {
 		}
 	}
 
-	inline HRESULT Pause() {
+	forceinline HRESULT Pause() {
 		if (LPDIRECTSOUNDBUFFER* sound_buffer_array = this->sound_buffer_array) {
 			if (!this->__playing) {
 				this->__paused = FALSE;
@@ -6161,11 +6166,11 @@ struct CSound {
 	}
 
 	// 0x48ADC0
-	dllexport gnu_noinline HRESULT thiscall Reopen(ThBgmFormat* bgm_format, int arg2) ASR(0x48ADC0) {
+	dllexport gnu_noinline HRESULT thiscall Reopen(ThBgmFormat* bgm_format, uint32_t arg2) ASR(0x48ADC0) {
 		return this->cwave_ptr->Reopen(bgm_format, arg2);
 	}
 
-	inline HRESULT Unpause() {
+	forceinline HRESULT Unpause() {
 		if (
 			!this->sound_buffer_array ||
 			this->__paused == FALSE
@@ -6187,8 +6192,8 @@ struct CSound {
 		if (!this->sound_buffer_array) {
 			return CO_E_NOTINITIALIZED;
 		}
-		this->__playing = 0;
-		this->__paused = 0;
+		this->__playing = FALSE;
+		this->__paused = FALSE;
 		HRESULT ret = 0;
 		for (size_t i = 0; i < this->sound_buffer_count; ++i) {
 			ret |= this->sound_buffer_array[i]->Stop();
@@ -6248,8 +6253,9 @@ struct CStreamingSound : CSound {
 	}
 
 	// 0x48AAC0
-	dllexport gnu_noinline HRESULT thiscall Reset(int arg1) {
-		if (LPDIRECTSOUNDBUFFER* sound_buffer_array = this->sound_buffer_array) {
+	dllexport gnu_noinline HRESULT thiscall Reset(uint32_t arg1) {
+		LPDIRECTSOUNDBUFFER* sound_buffer_array = this->sound_buffer_array;
+		if (sound_buffer_array[0]) {
 			if (this->cwave_ptr) {
 				this->m_dwLastPlayPos = 0;
 				this->m_dwPlayProgress = 0;
@@ -6258,16 +6264,18 @@ struct CStreamingSound : CSound {
 				this->m_bFillNextNotificationWithSilence = FALSE;
 
 				BOOL restored;
-				if (SUCCEEDED(this->RestoreBuffer(sound_buffer_array[0], &restored))) {
-					if (restored) {
-						if (FAILED(this->FillBufferWithSound(this->sound_buffer_array[0], FALSE, arg1))) {
-							return CO_E_NOTINITIALIZED;
-						}
-					}
-					CWaveFile* cwave_ptr = this->cwave_ptr;
-					cwave_ptr->ResetFile(cwave_ptr->__loop == TRUE, arg1);
-					return this->sound_buffer_array[0]->SetCurrentPosition(0L);
+				HRESULT ret;
+				if (FAILED(ret = this->RestoreBuffer(sound_buffer_array[0], &restored))) {
+					return ret;
 				}
+				if (restored) {
+					if (FAILED(ret = this->FillBufferWithSound(this->sound_buffer_array[0], FALSE, arg1))) {
+						return ret;
+					}
+				}
+				CWaveFile* cwave_ptr = this->cwave_ptr;
+				cwave_ptr->ResetFile(cwave_ptr->__loop == TRUE, arg1);
+				return this->sound_buffer_array[0]->SetCurrentPosition(0L);
 			}
 		}
 		return CO_E_NOTINITIALIZED;
@@ -6304,9 +6312,8 @@ struct CStreamingSound : CSound {
 			}
 
 			BOOL restored;
-			if (FAILED(this->RestoreBuffer(this->sound_buffer_array[0], &restored))) {
+			if (FAILED(ret = this->RestoreBuffer(this->sound_buffer_array[0], &restored))) {
 				SDEBUG_PRINT("error : RestoreBuffer in HandleWaveStreamNotification\r\n");
-				ret = CO_E_NOTINITIALIZED;
 				goto end;
 			}
 
@@ -6321,74 +6328,71 @@ struct CStreamingSound : CSound {
 			VOID* pDSLockedBuffer2;
 			DWORD dwDSLockedBufferSize1;
 			DWORD dwDSLockedBufferSize2;
-			if (SUCCEEDED(ret = this->sound_buffer_array[0]->Lock(
+			if (FAILED(ret = this->sound_buffer_array[0]->Lock(
 				this->m_dwNextWriteOffset,
 				this->m_dwNotifySize,
 				&pDSLockedBuffer1, &dwDSLockedBufferSize1,
 				&pDSLockedBuffer2, &dwDSLockedBufferSize2,
 				0
 			))) {
-				if (pDSLockedBuffer2) {
-					// BUG: Leaves the mutex locked
-					return E_UNEXPECTED;
+				SDEBUG_PRINT("error : Buffer->Lock in HandleWaveStreamNotification\r\n");
+				goto end;
+			}
+			if (pDSLockedBuffer2) {
+				// BUG: Leaves the mutex locked
+				return E_UNEXPECTED;
+			}
+
+			CWaveFile* cwave_ptr = this->cwave_ptr;
+			if (!this->m_bFillNextNotificationWithSilence) {
+				DWORD dwBytesWrittenToBuffer;
+				if (FAILED(ret = cwave_ptr->Read((BYTE*)pDSLockedBuffer1, dwDSLockedBufferSize1, &dwBytesWrittenToBuffer))) {
+					SDEBUG_PRINT("error : m_pWaveFile->Read in HandleWaveStreamNotification\r\n");
+					goto end;
 				}
 
-				CWaveFile* cwave_ptr = this->cwave_ptr;
-				if (!this->m_bFillNextNotificationWithSilence) {
-					DWORD dwBytesWrittenToBuffer;
-					if (FAILED(cwave_ptr->Read((BYTE*)pDSLockedBuffer1, dwDSLockedBufferSize1, &dwBytesWrittenToBuffer))) {
-						SDEBUG_PRINT("error : m_pWaveFile->Read in HandleWaveStreamNotification\r\n");
-						ret = CO_E_NOTINITIALIZED;
+				DWORD dwReadSoFar = dwBytesWrittenToBuffer;
+				while (dwReadSoFar < dwDSLockedBufferSize1) {
+					if (FAILED(ret = this->cwave_ptr->ResetFile(true, 0))) {
+						SDEBUG_PRINT("error : m_pWaveFile->ResetFile in HandleWaveStreamNotification\r\n");
 						goto end;
 					}
-
-					DWORD dwReadSoFar = dwBytesWrittenToBuffer;
-					while (dwReadSoFar < dwDSLockedBufferSize1) {
-						if (FAILED(ret = this->cwave_ptr->ResetFile(true, 0))) {
-							SDEBUG_PRINT("error : m_pWaveFile->ResetFile in HandleWaveStreamNotification\r\n");
-							goto end;
-						}
-						if (FAILED(this->cwave_ptr->Read((BYTE*)pDSLockedBuffer1 + dwReadSoFar, dwDSLockedBufferSize1 - dwReadSoFar, &dwBytesWrittenToBuffer))) {
-							SDEBUG_PRINT("error : m_pWaveFile->Read(+) in HandleWaveStreamNotification\r\n");
-							ret = CO_E_NOTINITIALIZED;
-							goto end;
-						}
-						dwReadSoFar += dwBytesWrittenToBuffer;
+					if (FAILED(ret = this->cwave_ptr->Read((BYTE*)pDSLockedBuffer1 + dwReadSoFar, dwDSLockedBufferSize1 - dwReadSoFar, &dwBytesWrittenToBuffer))) {
+						SDEBUG_PRINT("error : m_pWaveFile->Read(+) in HandleWaveStreamNotification\r\n");
+						goto end;
 					}
-				}
-				else {
-					uint32_t silence = cwave_ptr->bgm_format->wave_format.wBitsPerSample == CHAR_BIT ? 0x80 : 0x0;
-					memset(pDSLockedBuffer1, silence, dwDSLockedBufferSize1);
+					dwReadSoFar += dwBytesWrittenToBuffer;
 				}
 			}
 			else {
-				SDEBUG_PRINT("error : Buffer->Lock in HandleWaveStreamNotification\r\n");
+				uint32_t silence = cwave_ptr->bgm_format->wave_format.wBitsPerSample == CHAR_BIT ? 0x80 : 0x0;
+				memset(pDSLockedBuffer1, silence, dwDSLockedBufferSize1);
 			}
 
 			this->sound_buffer_array[0]->Unlock(pDSLockedBuffer1, dwDSLockedBufferSize1, NULL, 0);
 
 			DWORD current_play_pos;
-			if (SUCCEEDED(ret = this->sound_buffer_array[0]->GetCurrentPosition(&current_play_pos, NULL))) {
-				DWORD last_play_pos = this->m_dwLastPlayPos;
-				DWORD buffer_size = this->__dsound_buffer_size;
-				DWORD play_progress;
-				if (current_play_pos < last_play_pos) {
-					play_progress = buffer_size - last_play_pos + current_play_pos;
-				}
-				else {
-					play_progress = current_play_pos - last_play_pos;
-				}
-				this->m_dwPlayProgress = play_progress;
+			if (FAILED(ret = this->sound_buffer_array[0]->GetCurrentPosition(&current_play_pos, NULL))) {
+				SDEBUG_PRINT("error : m_apDSBuffer[0]->GetCurrentPosition in HandleWaveStreamNotification\r\n");
+				goto end;
+			}
 
-				next_write_offset = (this->m_dwNextWriteOffset + dwDSLockedBufferSize1) % buffer_size;
-				this->m_dwLastPlayPos = last_play_pos;
-				this->m_dwNextWriteOffset = next_write_offset;
-
-				ret = S_OK;
+			DWORD last_play_pos = this->m_dwLastPlayPos;
+			DWORD buffer_size = this->__dsound_buffer_size;
+			DWORD play_progress;
+			if (current_play_pos < last_play_pos) {
+				play_progress = buffer_size - last_play_pos + current_play_pos;
 			}
 			else {
-				SDEBUG_PRINT("error : m_apDSBuffer[0]->GetCurrentPosition in HandleWaveStreamNotification\r\n");
+				play_progress = current_play_pos - last_play_pos;
 			}
+			this->m_dwPlayProgress = play_progress;
+
+			next_write_offset = (this->m_dwNextWriteOffset + dwDSLockedBufferSize1) % buffer_size;
+			this->m_dwLastPlayPos = last_play_pos;
+			this->m_dwNextWriteOffset = next_write_offset;
+
+			ret = S_OK;
 
 		end:
 			CRITICAL_SECTION_MANAGER.leave_section(SoundManagerB_CS);
@@ -6427,10 +6431,10 @@ private:
 	dllexport gnu_noinline void vectorcall __sub_48AF10(float, double arg1) ASR(0x48AF10) {
 		CRITICAL_SECTION_MANAGER.enter_section(SoundManagerB_CS);
 		this->sound_buffer_array[0]->Stop();
-		int A = 0;
+		uint32_t A = 0;
 		ThBgmFormat* bgm_format = this->cwave_ptr->bgm_format;
 		int32_t B = bgm_format->wave_format.nSamplesPerSec * arg1;
-		B *= bgm_format->wave_format.wBitsPerSample / 8;
+		B *= bgm_format->wave_format.wBitsPerSample / CHAR_BIT;
 		B *= bgm_format->wave_format.nChannels;
 		B -= bgm_format->wave_format.nBlockAlign;
 		if (B >= 0) {
@@ -7072,7 +7076,7 @@ dllexport gnu_noinline HRESULT thiscall CSoundManager::CreateStreaming(
 	LPDIRECTSOUNDNOTIFY pDSNotify = NULL;
 
 	// This pointer gets leaked on error paths
-	CWaveFile* pWaveFile = new CWaveFile(bgm_format);
+	CWaveFile* pWaveFile = new CWaveFile(NULL);
 	if (pWaveFile->Open(strWaveFileName, bgm_format) != S_OK) {
 		delete pWaveFile;
 		return E_FAIL;
@@ -7098,8 +7102,8 @@ dllexport gnu_noinline HRESULT thiscall CSoundManager::CreateStreaming(
 	// yes this is incorrectly freed with delete instead of delete[]
 	DSBPOSITIONNOTIFY* aPosNotify = new DSBPOSITIONNOTIFY[dwNotifyCount];
 
-	// MSVC actually vectorized this with a runtime
-	// check for SSE4.1 for some reason
+	// MSVC actually vectorized this with 
+	// an SSE4.1 runtime check for some reason
 	for (size_t i = 0; i < dwNotifyCount; ++i) {
 		aPosNotify[i].dwOffset = (dwNotifySize * i) + dwNotifySize - 1;
 		aPosNotify[i].hEventNotify = hNotifyEvent;
@@ -7107,12 +7111,20 @@ dllexport gnu_noinline HRESULT thiscall CSoundManager::CreateStreaming(
 
 	if (FAILED(pDSNotify->SetNotificationPositions(dwNotifyCount, aPosNotify))) {
 		SAFE_RELEASE(pDSNotify);
+#if !FIX_REALLY_BAD_BUGS
 		SAFE_DELETE(aPosNotify);
+#else
+		SAFE_DELETE_ARRAY(aPosNotify);
+#endif
 		return E_FAIL;
 	}
 
 	SAFE_RELEASE(pDSNotify);
+#if !FIX_REALLY_BAD_BUGS
 	SAFE_DELETE(aPosNotify);
+#else
+	SAFE_DELETE_ARRAY(aPosNotify);
+#endif
 
 	CStreamingSound* cstreaming_sound_ptr = new CStreamingSound(pDSBuffer, dwDSBufferSize, pWaveFile, dwNotifySize);
 	*ppStreamingSound = cstreaming_sound_ptr;
@@ -7155,8 +7167,8 @@ dllexport gnu_noinline HRESULT thiscall CSoundManager::CreateStreamingFromMemory
 	DWORD dwDSBufferSize = dwNotifySize * dwNotifyCount;
 
 	DSBUFFERDESC dsbd;
+	dsbd.dwBufferBytes = dwDSBufferSize;
 	dsbd.dwReserved = 0;
-	dsbd.dwBufferBytes = ulDataSize;
 	dsbd.dwSize = sizeof(DSBUFFERDESC);
 	dsbd.dwFlags = DSBCAPS_CTRLPOSITIONNOTIFY | DSBCAPS_GLOBALFOCUS | DSBCAPS_GETCURRENTPOSITION2 | DSBCAPS_CTRLVOLUME | DSBCAPS_LOCSOFTWARE;
 	dsbd.guid3DAlgorithm = guid3DAlgorithm;
@@ -7172,8 +7184,8 @@ dllexport gnu_noinline HRESULT thiscall CSoundManager::CreateStreamingFromMemory
 	// yes this is incorrectly freed with delete instead of delete[]
 	DSBPOSITIONNOTIFY* aPosNotify = new DSBPOSITIONNOTIFY[dwNotifyCount];
 
-	// MSVC actually vectorized this with a runtime
-	// check for SSE4.1 for some reason
+	// MSVC actually vectorized this with 
+	// an SSE4.1 runtime check for some reason
 	for (size_t i = 0; i < dwNotifyCount; ++i) {
 		aPosNotify[i].dwOffset = (dwNotifySize * i) + dwNotifySize - 1;
 		aPosNotify[i].hEventNotify = hNotifyEvent;
@@ -7181,12 +7193,20 @@ dllexport gnu_noinline HRESULT thiscall CSoundManager::CreateStreamingFromMemory
 
 	if (FAILED(pDSNotify->SetNotificationPositions(dwNotifyCount, aPosNotify))) {
 		SAFE_RELEASE(pDSNotify);
+#if !FIX_REALLY_BAD_BUGS
 		SAFE_DELETE(aPosNotify);
+#else
+		SAFE_DELETE_ARRAY(aPosNotify);
+#endif
 		return E_FAIL;
 	}
 
 	SAFE_RELEASE(pDSNotify);
+#if !FIX_REALLY_BAD_BUGS
 	SAFE_DELETE(aPosNotify);
+#else
+	SAFE_DELETE_ARRAY(aPosNotify);
+#endif
 
 	CStreamingSound* cstreaming_sound_ptr = new CStreamingSound(pDSBuffer, dwDSBufferSize, pWaveFile, dwNotifySize);
 	*ppStreamingSound = cstreaming_sound_ptr;
@@ -7510,7 +7530,7 @@ dllexport inline HRESULT CWaveFile::ResetFile(bool loop, uint32_t arg2) {
 		}
 		ThBgmFormat* bgm_format = this->bgm_format;
 		if (arg2 >= bgm_format->length) {
-			arg2 += (bgm_format->pre_loop_length - bgm_format->length);
+			arg2 += bgm_format->pre_loop_length - bgm_format->length;
 		}
 		SetFilePointer(wave_file_handle, bgm_format->offset + SOUND_MANAGER.file_pointer_offset + arg2, NULL, FILE_BEGIN);
 		this->m_ck.cksize = this->bgm_format->length - arg2;
@@ -7520,13 +7540,18 @@ dllexport inline HRESULT CWaveFile::ResetFile(bool loop, uint32_t arg2) {
 
 // 0x48A5A0
 dllexport inline HRESULT CSound::SetVolume(int32_t volume) {
-	LPDIRECTSOUNDBUFFER* sound_buffers = this->sound_buffer_array;
-	int32_t bgm_volume = SOUND_MANAGER.bgm_volume;
-	if (bgm_volume) {
-		float fvolume = 1.0f - (float)bgm_volume / 100.f;
-		return sound_buffers[0]->SetVolume(MAX_VOLUME - (int32_t)((float)VOLUME_RANGE * (1.0f - fvolume * fvolume)));
+	if (int32_t bgm_volume = SOUND_MANAGER.bgm_volume) {
+		float bgm_volume_f = bgm_volume / 100.f;
+		bgm_volume_f = 1.0f - bgm_volume_f;
+		bgm_volume_f = bgm_volume_f * bgm_volume_f;
+		bgm_volume_f = 1.0f - bgm_volume_f;
+
+		volume -= MAX_VOLUME;
+		volume = volume * bgm_volume_f;
+		volume += MAX_VOLUME;
+		return this->sound_buffer_array[0]->SetVolume(volume);
 	} else {
-		return sound_buffers[0]->SetVolume(SILENT_VOLUME);
+		return this->sound_buffer_array[0]->SetVolume(SILENT_VOLUME);
 	}
 }
 
@@ -7919,7 +7944,8 @@ end_snd_cmd_loop:
 					SOUND_MANAGER.__sound_effects[sound_id].sound_buffer->SetPan(panning);
 					SOUND_MANAGER.__sound_effects[sound_id].panning = panning;
 					if (int32_t sound_volume = SOUND_MANAGER.sound_volume) {
-						float sound_volume_f = 1.0f - (float)sound_volume / 100.0f;
+						float sound_volume_f = sound_volume / 100.0f;
+						sound_volume_f = 1.0f - sound_volume_f;
 						sound_volume_f = sound_volume_f * sound_volume_f * sound_volume_f;
 						sound_volume_f = 1.0f - sound_volume_f;
 
@@ -15343,6 +15369,7 @@ dllexport gnu_noinline ZUNResult thiscall SoundManager::initialize(HWND window_h
 		csound_manager_ptr->SetPrimaryBufferFormat(BGM_CHANNELS, BGM_SAMPLE_RATE, BGM_SAMPLE_BITS);
 		LPDIRECTSOUND8 dsound = this->csound_manager_ptr->dsound;
 		this->dsound = dsound;
+		this->sound_thread_handle = NULL;
 		LPDIRECTSOUNDBUFFER* buffer_ptr_ptr = &this->sound_buffer_ptr;
 		WAVEFORMATEX sound_format = {
 			.wFormatTag = WAVE_FORMAT_PCM,
@@ -15396,9 +15423,7 @@ dllexport gnu_noinline ZUNResult thiscall SoundManager::initialize(HWND window_h
 		return ZUN_SUCCESS;
 	} else {
 		LOG_BUFFER.write(JpEnStr("DirectSound オブジェクトの初期化が失敗したよ\r\n", "Initialization of DirectSound object failed\r\n"));
-		if (this->csound_manager_ptr) {
-			SAFE_DELETE(this->csound_manager_ptr);
-		}
+		SAFE_DELETE(this->csound_manager_ptr);
 		return ZUN_ERROR;
 	}
 }
@@ -15407,7 +15432,7 @@ dllexport gnu_noinline ZUNResult thiscall SoundManager::initialize(HWND window_h
 dllexport gnu_noinline void thiscall SoundManager::stop_bgm() {
 	if (CStreamingSound* cstreaming_sound_ptr = this->cstreaming_sound_ptr) {
 		SDEBUG_PRINT("Streming BGM stop\r\n");
-		cstreaming_sound_ptr->Stop(true);
+		cstreaming_sound_ptr->Stop(TRUE);
 		if (this->sound_thread_handle) {
 			PostThreadMessageA(this->sound_thread_id, WM_QUIT, 0, 0);
 			SDEBUG_PRINT("stop m_dwNotifyThreadID\r\n");
@@ -16738,7 +16763,7 @@ struct AnmVM {
 		float camera_near_clip; // 0x540
 		// 0x544
 	};
-	static_assert(sizeof(AnmVMData) == 0x544);
+	ValidateStructSize32(0x544, AnmVMData);
 	struct AnmVMController {
 		AnmID id; // 0x0 (0x544)
 		uint32_t fast_id; // 0x4 (0x548)
@@ -37762,8 +37787,13 @@ dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
 					SOUND_MANAGER.bgm_volume = bgm_volume;
 					SOUND_MANAGER.sound_volume = sound_volume;
 					if (sound_volume) {
-						float volume = 1.0f - (float)bgm_volume / 100.f;
-						SOUND_MANAGER.__csound_volume = MAX_VOLUME - (int32_t)((float)VOLUME_RANGE * (1.0f - volume * volume));
+						float bgm_volume_f = bgm_volume / 100.f;
+						bgm_volume_f = 1.0f - bgm_volume_f;
+						bgm_volume_f *= bgm_volume_f;
+						bgm_volume_f *= bgm_volume_f;
+						bgm_volume_f = 1.0f - bgm_volume_f;
+
+						SOUND_MANAGER.__csound_volume = MAX_VOLUME - (int32_t)(VOLUME_RANGE * bgm_volume_f);
 					} else {
 						SOUND_MANAGER.__csound_volume = SILENT_VOLUME;
 					}
@@ -62145,7 +62175,7 @@ dllexport gnu_noinline ZUNResult thiscall ReplayManager::__load_from_path(const 
 	void* replay_data;
 	ReplayHeader* header;
 	byteloop_strcpy(this->file_path, path);
-	if (!GAME_MANAGER.__unknown_flag_gm_C) {
+	if (!GAME_MANAGER.__is_demo) {
 		chdir(WINDOW_DATA.appdata_path);
 		sprintf(buffer, "replay/%s", path);
 		if (zun_file_exists(buffer)) {
@@ -62194,7 +62224,7 @@ valid_replay:
 		gamestate_ptr = based_pointer(gamestate_ptr + 1, gamestate_ptr->extra_size);
 	}
 	if (
-		!GAME_MANAGER.__unknown_flag_gm_C &&
+		!GAME_MANAGER.__is_demo &&
 		replay_data
 	) {
 		free(replay_data);
