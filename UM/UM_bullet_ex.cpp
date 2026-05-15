@@ -213,7 +213,13 @@ extern "C" {
 	// instance of delete and almost always makes an EH frame
 	// without this terrible hack to trick it into thinking
 	// delete is an arbitrary function. Yuck.
+#ifndef __x86_64__
 	void __cdecl delete_no_eh_impl(void* ptr) asm("??3@YAXPAX@Z");
+#else
+	static forceinline void delete_no_eh_impl(void* ptr) {
+		delete ptr;
+	}
+#endif
 }
 
 template <typename T>
@@ -1633,11 +1639,11 @@ struct DatFileHeader {
 	// 0x10
 };
 #pragma region // DatFileHeader Validation
-ValidateFieldOffset32(0x0, DatFileHeader, magic);
-ValidateFieldOffset32(0x4, DatFileHeader, decompressed_size);
-ValidateFieldOffset32(0x8, DatFileHeader, compressed_size);
-ValidateFieldOffset32(0xC, DatFileHeader, file_count);
-ValidateStructSize32(0x10, DatFileHeader);
+ValidateFieldOffset(0x0, DatFileHeader, magic);
+ValidateFieldOffset(0x4, DatFileHeader, decompressed_size);
+ValidateFieldOffset(0x8, DatFileHeader, compressed_size);
+ValidateFieldOffset(0xC, DatFileHeader, file_count);
+ValidateStructSize(0x10, DatFileHeader);
 #pragma endregion
 
 // 0x46EE90
@@ -2708,7 +2714,7 @@ struct Rng {
 	dllexport gnu_noinline float thiscall rand_angle_2() ASR(0x402850) {
 		__asm FINIT;
 		float temp = this->rand_uint();
-		return temp / (INT32_MAX / PI_f) - PI_f;
+		return temp / ((float)INT32_MAX / PI_f) - PI_f;
 	}
 	
 private:
@@ -3811,27 +3817,27 @@ struct Config {
 	}
 };
 #pragma region // Config Validation
-ValidateFieldOffset32(0x0, Config, __dword_0);
-ValidateFieldOffset32(0x4, Config, joypad_mapping);
-ValidateFieldOffset32(0x18, Config, xinput_mapping);
-ValidateFieldOffset32(0x2C, Config, keyboard_mapping);
-ValidateFieldOffset32(0x40, Config, deadzone_x);
-ValidateFieldOffset32(0x42, Config, deadzone_y);
-ValidateFieldOffset32(0x44, Config, __color_mode);
-ValidateFieldOffset32(0x45, Config, bgm_type);
-ValidateFieldOffset32(0x46, Config, sfx_type);
-ValidateFieldOffset32(0x47, Config, resolution);
-ValidateFieldOffset32(0x48, Config, frame_skip);
-ValidateFieldOffset32(0x49, Config, __ubyte_49);
-ValidateFieldOffset32(0x4A, Config, bgm_volume);
-ValidateFieldOffset32(0x4B, Config, sound_volume);
-ValidateFieldOffset32(0x4C, Config, __byte_4C);
-ValidateFieldOffset32(0x4D, Config, input_method);
-ValidateFieldOffset32(0x4E, Config, __ubyte_4E);
-ValidateFieldOffset32(0x50, Config, flags);
-ValidateFieldOffset32(0x54, Config, window_x);
-ValidateFieldOffset32(0x58, Config, window_y);
-ValidateStructSize32(0x88, Config);
+ValidateFieldOffset(0x0, Config, __dword_0);
+ValidateFieldOffset(0x4, Config, joypad_mapping);
+ValidateFieldOffset(0x18, Config, xinput_mapping);
+ValidateFieldOffset(0x2C, Config, keyboard_mapping);
+ValidateFieldOffset(0x40, Config, deadzone_x);
+ValidateFieldOffset(0x42, Config, deadzone_y);
+ValidateFieldOffset(0x44, Config, __color_mode);
+ValidateFieldOffset(0x45, Config, bgm_type);
+ValidateFieldOffset(0x46, Config, sfx_type);
+ValidateFieldOffset(0x47, Config, resolution);
+ValidateFieldOffset(0x48, Config, frame_skip);
+ValidateFieldOffset(0x49, Config, __ubyte_49);
+ValidateFieldOffset(0x4A, Config, bgm_volume);
+ValidateFieldOffset(0x4B, Config, sound_volume);
+ValidateFieldOffset(0x4C, Config, __byte_4C);
+ValidateFieldOffset(0x4D, Config, input_method);
+ValidateFieldOffset(0x4E, Config, __ubyte_4E);
+ValidateFieldOffset(0x50, Config, flags);
+ValidateFieldOffset(0x54, Config, window_x);
+ValidateFieldOffset(0x58, Config, window_y);
+ValidateStructSize(0x88, Config);
 #pragma endregion
 
 // size: 0x10
@@ -6531,512 +6537,9 @@ extern "C" {
 // WHY ISN'T THIS CONST
 // 0x4C9B80
 static SoundData SOUND_DATA[SOUND_EFFECT_COUNT] = {
-	{ // 0
-		.id = 0, .filename_index = SE_PLST,
-		.volume = -1900,
-		.__short_A = 0,
-		.__int_10 = 0
-	},
-	{ // 1
-		.id = 1, .filename_index = SE_PLST,
-		.volume = -200,
-		.__short_A = 0,
-		.__int_10 = 0
-	},
-	{ // 2
-		.id = 3, .filename_index = SE_ENEP00,
-		.volume = -1200,
-		.__short_A = 5,
-		.__int_10 = 1
-	},
-	{ // 3
-		.id = 4, .filename_index = SE_ENEP00,
-		.volume = -1500,
-		.__short_A = 5,
-		.__int_10 = 1
-	},
-	{ // 4
-		.id = 2, .filename_index = SE_PLDEAD00,
-		.volume = -1100,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 5
-		.id = 28, .filename_index = SE_POWER0,
-		.volume = -700,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 6
-		.id = 29, .filename_index = SE_POWER1,
-		.volume = -700,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 7
-		.id = 21, .filename_index = SE_TAN00,
-		.volume = -1900,
-		.__short_A = 50,
-		.__int_10 = 1
-	},
-	{ // 8
-		.id = 22, .filename_index = SE_TAN01,
-		.volume = -2200,
-		.__short_A = 50,
-		.__int_10 = 1
-	},
-	{ // 9
-		.id = 23, .filename_index = SE_TAN02,
-		.volume = -2400,
-		.__short_A = 50,
-		.__int_10 = 1
-	},
-	{ // 10
-		.id = 7, .filename_index = SE_OK00,
-		.volume = -500,
-		.__short_A = 100,
-		.__int_10 = 0
-	},
-	{ // 11
-		.id = 9, .filename_index = SE_CANCEL00,
-		.volume = -400,
-		.__short_A = 100,
-		.__int_10 = 0
-	},
-	{ // 12
-		.id = 10, .filename_index = SE_SELECT00,
-		.volume = -800,
-		.__short_A = 10,
-		.__int_10 = 0
-	},
-	{ // 13
-		.id = 32, .filename_index = SE_GUN00,
-		.volume = -1500,
-		.__short_A = 10,
-		.__int_10 = 1
-	},
-	{ // 14
-		.id = 33, .filename_index = SE_CAT00,
-		.volume = -300,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 15
-		.id = 27, .filename_index = SE_TAN00,
-		.volume = -1100,
-		.__short_A = 50,
-		.__int_10 = 1
-	},
-	{ // 16
-		.id = 18, .filename_index = SE_LAZER00,
-		.volume = -1300,
-		.__short_A = 50,
-		.__int_10 = 1
-	},
-	{ // 17
-		.id = 19, .filename_index = SE_LAZER01,
-		.volume = -1400,
-		.__short_A = 50,
-		.__int_10 = 1
-	},
-	{ // 18
-		.id = 5, .filename_index = SE_ENEP01,
-		.volume = -900,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 19
-		.id = 34, .filename_index = SE_DAMAGE00,
-		.volume = -880,
-		.__short_A = 0,
-		.__int_10 = 1
-	},
-	{ // 20
-		.id = 36, .filename_index = SE_NODAMAGE,
-		.volume = -880,
-		.__short_A = 0,
-		.__int_10 = 1
-	},
-	{ // 21
-		.id = 37, .filename_index = SE_ITEM00,
-		.volume = -1500,
-		.__short_A = 0,
-		.__int_10 = 1
-	},
-	{ // 22
-		.id = 24, .filename_index = SE_TAN00,
-		.volume = -300,
-		.__short_A = 20,
-		.__int_10 = 1
-	},
-	{ // 23
-		.id = 25, .filename_index = SE_TAN01,
-		.volume = -1800,
-		.__short_A = 20,
-		.__int_10 = 1
-	},
-	{ // 24
-		.id = 26, .filename_index = SE_TAN02,
-		.volume = -1800,
-		.__short_A = 20,
-		.__int_10 = 1
-	},
-	{ // 25
-		.id = 38, .filename_index = SE_KIRA00,
-		.volume = -1100,
-		.__short_A = 50,
-		.__int_10 = 1
-	},
-	{ // 26
-		.id = 39, .filename_index = SE_KIRA01,
-		.volume = -1300,
-		.__short_A = 50,
-		.__int_10 = 1
-	},
-	{ // 27
-		.id = 40, .filename_index = SE_KIRA02,
-		.volume = -1500,
-		.__short_A = 50,
-		.__int_10 = 1
-	},
-	{ // 28
-		.id = 11, .filename_index = SE_TIMEOUT,
-		.volume = -500,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 29
-		.id = 42, .filename_index = SE_GRAZE,
-		.volume = -600,
-		.__short_A = 20,
-		.__int_10 = 1
-	},
-	{ // 30
-		.id = 43, .filename_index = SE_GRAZE,
-		.volume = -700,
-		.__short_A = 20,
-		.__int_10 = 1
-	},
-	{ // 31
-		.id = 76, .filename_index = SE_ITEM01,
-		.volume = 0,
-		.__short_A = 20,
-		.__int_10 = 1
-	},
-	{ // 32
-		.id = 13, .filename_index = SE_POWERUP,
-		.volume = -100,
-		.__short_A = 90,
-		.__int_10 = 1
-	},
-	{ // 33
-		.id = 41, .filename_index = SE_KIRA00,
-		.volume = -500,
-		.__short_A = 50,
-		.__int_10 = 1
-	},
-	{ // 34
-		.id = 14, .filename_index = SE_PAUSE,
-		.volume = -800,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 35
-		.id = 15, .filename_index = SE_CARDGET,
-		.volume = -800,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 36
-		.id = 35, .filename_index = SE_DAMAGE01,
-		.volume = -500,
-		.__short_A = 0,
-		.__int_10 = 1
-	},
-	{ // 37
-		.id = 12, .filename_index = SE_TIMEOUT2,
-		.volume = -300,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 38
-		.id = 16, .filename_index = SE_INVALID,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 39
-		.id = 44, .filename_index = SE_SLASH,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 40
-		.id = 45, .filename_index = SE_SLASH,
-		.volume = -600,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 41
-		.id = 8, .filename_index = SE_OK00,
-		.volume = -300,
-		.__short_A = 100,
-		.__int_10 = 0
-	},
-	{ // 42
-		.id = 30, .filename_index = SE_CH00,
-		.volume = -300,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 43
-		.id = 31, .filename_index = SE_CH01,
-		.volume = -300,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 44
-		.id = 17, .filename_index = SE_EXTEND,
-		.volume = -100,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 45
-		.id = 46, .filename_index = SE_CARDGET_DUPE, // why is this used
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 46
-		.id = 49, .filename_index = SE_NEP00,
-		.volume = -200,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 47
-		.id = 47, .filename_index = SE_BONUS,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 48
-		.id = 48, .filename_index = SE_BONUS2,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 49
-		.id = 6, .filename_index = SE_ENEP02,
-		.volume = -500,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 50
-		.id = 20, .filename_index = SE_LAZER02,
-		.volume = -3000,
-		.__short_A = 0,
-		.play_flags = DSBPLAY_LOOPING,
-		.__int_10 = 1
-	},
-	{ // 51
-		.id = 50, .filename_index = SE_BOON00,
-		.volume = -500,
-		.__short_A = 0,
-		.__int_10 = 1
-	},
-	{ // 52
-		.id = 51, .filename_index = SE_DON00,
-		.volume = 0,
-		.__short_A = 0,
-		.__int_10 = 1
-	},
-	{ // 53
-		.id = 52, .filename_index = SE_BOON01,
-		.volume = 0,
-		.__short_A = 0,
-		.__int_10 = 1
-	},
-	{ // 54
-		.id = 53, .filename_index = SE_BOON01,
-		.volume = -300,
-		.__short_A = 0,
-		.__int_10 = 1
-	},
-	{ // 55
-		.id = 54, .filename_index = SE_CH02,
-		.volume = -300,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 56
-		.id = 55, .filename_index = SE_CH03,
-		.volume = -1500,
-		.__short_A = 0,
-		.play_flags = DSBPLAY_LOOPING,
-		.__int_10 = 1
-	},
-	{ // 57
-		.id = 56, .filename_index = SE_EXTEND2,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 58
-		.id = 57, .filename_index = SE_PIN00,
-		.volume = -200,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 59
-		.id = 58, .filename_index = SE_PIN01,
-		.volume = -200,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 60
-		.id = 59, .filename_index = SE_LGODS1,
-		.volume = -500,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 61
-		.id = 60, .filename_index = SE_LGODS2,
-		.volume = -500,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 62
-		.id = 61, .filename_index = SE_LGODS3,
-		.volume = -500,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 63
-		.id = 62, .filename_index = SE_LGODS4,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 64
-		.id = 63, .filename_index = SE_LGODSGET,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 65
-		.id = 64, .filename_index = SE_MSL,
-		.volume = -900,
-		.__short_A = 5,
-		.__int_10 = 1
-	},
-	{ // 66
-		.id = 65, .filename_index = SE_MSL2,
-		.volume = -900,
-		.__short_A = 5,
-		.__int_10 = 1
-	},
-	{ // 67
-		.id = 66, .filename_index = SE_PLDEAD01,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 68
-		.id = 67, .filename_index = SE_HEAL,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 69
-		.id = 68, .filename_index = SE_MSL3,
-		.volume = -2500,
-		.__short_A = 5,
-		.__int_10 = 1
-	},
-	{ // 70
-		.id = 69, .filename_index = SE_FAULT,
-		.volume = -500,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 71
-		.id = 70, .filename_index = SE_NOISE,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 72
-		.id = 71, .filename_index = SE_ETBREAK,
-		.volume = -400,
-		.__short_A = 0,
-		.__int_10 = 1
-	},
-	{ // 73
-		.id = 72, .filename_index = SE_TAN03,
-		.volume = -500,
-		.__short_A = 0,
-		.__int_10 = 1
-	},
-	{ // 74
-		.id = 73, .filename_index = SE_WOLF,
-		.volume = -500,
-		.__short_A = 0,
-		.__int_10 = 1
-	},
-	{ // 75
-		.id = 74, .filename_index = SE_BONUS4,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 76
-		.id = 75, .filename_index = SE_BIG,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 77
-		.id = 77, .filename_index = SE_RELEASE,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 78
-		.id = 78, .filename_index = SE_CHANGEITEM,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 79
-		.id = 79, .filename_index = SE_TROPHY,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 80
-		.id = 80, .filename_index = SE_WARPR,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 81
-		.id = 81, .filename_index = SE_WARPL,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 82
-		.id = 82, .filename_index = SE_TROPHY,
-		.volume = -500,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
-	{ // 83
-		.id = 83, .filename_index = SE_NOTICE,
-		.volume = 0,
-		.__short_A = 100,
-		.__int_10 = 1
-	},
+#if !__INTELLISENSE__
+#include "sound_data_table.h"
+#endif
 };
 
 typedef struct SoundManager SoundManager;
@@ -7391,7 +6894,7 @@ struct SoundManager {
 		if (this->csound_manager_ptr) {
 			KillTimer(this->timer_hwnd, 1);
 			this->stop_bgm();
-			this->dsound = NULL; // Isn't this supposed to be released though?
+			this->dsound = NULL; // Gets released by CSoundManager
 			this->sound_buffer_ptr->Stop();
 			SAFE_RELEASE(this->sound_buffer_ptr);
 			SAFE_DELETE(this->cstreaming_sound_ptr);
@@ -9227,13 +8730,13 @@ struct ScorefileHeader {
 	}
 };
 #pragma region // ScorefileHeader Validation
-ValidateFieldOffset32(0x0, ScorefileHeader, magic);
-ValidateFieldOffset32(0x4, ScorefileHeader, file_size);
-ValidateFieldOffset32(0x8, ScorefileHeader, version_number);
-ValidateFieldOffset32(0xC, ScorefileHeader, __int_C);
-ValidateFieldOffset32(0x10, ScorefileHeader, compressed_size);
-ValidateFieldOffset32(0x14, ScorefileHeader, decompressed_size);
-ValidateStructSize32(0x18, ScorefileHeader);
+ValidateFieldOffset(0x0, ScorefileHeader, magic);
+ValidateFieldOffset(0x4, ScorefileHeader, file_size);
+ValidateFieldOffset(0x8, ScorefileHeader, version_number);
+ValidateFieldOffset(0xC, ScorefileHeader, __int_C);
+ValidateFieldOffset(0x10, ScorefileHeader, compressed_size);
+ValidateFieldOffset(0x14, ScorefileHeader, decompressed_size);
+ValidateStructSize(0x18, ScorefileHeader);
 #pragma endregion
 
 static inline constexpr int32_t MAX_RECORD_NAME_LENGTH = 8;
@@ -9253,13 +8756,13 @@ struct ScorefileRecord {
 	// 0x20
 };
 #pragma region // ScorefileRecord Validation
-ValidateFieldOffset32(0x0, ScorefileRecord, score);
-ValidateFieldOffset32(0x4, ScorefileRecord, __stage_reached);
-ValidateFieldOffset32(0x5, ScorefileRecord, continues);
-ValidateFieldOffset32(0x6, ScorefileRecord, name);
-ValidateFieldOffset32(0x10, ScorefileRecord, time);
-ValidateFieldOffset32(0x18, ScorefileRecord, slowdown_rate);
-ValidateStructSize32(0x20, ScorefileRecord);
+ValidateFieldOffset(0x0, ScorefileRecord, score);
+ValidateFieldOffset(0x4, ScorefileRecord, __stage_reached);
+ValidateFieldOffset(0x5, ScorefileRecord, continues);
+ValidateFieldOffset(0x6, ScorefileRecord, name);
+ValidateFieldOffset(0x10, ScorefileRecord, time);
+ValidateFieldOffset(0x18, ScorefileRecord, slowdown_rate);
+ValidateStructSize(0x20, ScorefileRecord);
 #pragma endregion
 
 static inline constexpr int32_t MAX_SPELL_CAPTURES = 99999;
@@ -9305,8 +8808,8 @@ struct ScorefileSpellcard {
 	}
 };
 #pragma region // ScorefileSpellcard
-ValidateFieldOffset32(0x0, ScorefileSpellcard, name);
-ValidateStructSize32(0xDC, ScorefileSpellcard);
+ValidateFieldOffset(0x0, ScorefileSpellcard, name);
+ValidateStructSize(0xDC, ScorefileSpellcard);
 #pragma endregion
 
 // size: 0x8
@@ -9324,10 +8827,10 @@ struct ScorefileStagePractice {
 	}
 };
 #pragma region // ScorefileStagePractice Validation
-ValidateFieldOffset32(0x0, ScorefileStagePractice, score);
-ValidateFieldOffset32(0x4, ScorefileStagePractice, cleared);
-ValidateFieldOffset32(0x5, ScorefileStagePractice, unlocked);
-ValidateStructSize32(0x8, ScorefileStagePractice);
+ValidateFieldOffset(0x0, ScorefileStagePractice, score);
+ValidateFieldOffset(0x4, ScorefileStagePractice, cleared);
+ValidateFieldOffset(0x5, ScorefileStagePractice, unlocked);
+ValidateStructSize(0x8, ScorefileStagePractice);
 #pragma endregion
 
 // size: 0xC
@@ -9339,11 +8842,11 @@ struct ScorefileSectionHeader {
 	// 0xC
 };
 #pragma region // ScorefileSectionHeader Validation
-ValidateFieldOffset32(0x0, ScorefileSectionHeader, magic);
-ValidateFieldOffset32(0x2, ScorefileSectionHeader, __version_number);
-ValidateFieldOffset32(0x4, ScorefileSectionHeader, checksum);
-ValidateFieldOffset32(0x8, ScorefileSectionHeader, size);
-ValidateStructSize32(0xC, ScorefileSectionHeader);
+ValidateFieldOffset(0x0, ScorefileSectionHeader, magic);
+ValidateFieldOffset(0x2, ScorefileSectionHeader, __version_number);
+ValidateFieldOffset(0x4, ScorefileSectionHeader, checksum);
+ValidateFieldOffset(0x8, ScorefileSectionHeader, size);
+ValidateStructSize(0xC, ScorefileSectionHeader);
 #pragma endregion
 
 
@@ -9483,19 +8986,19 @@ struct ScorefileSectionB : ScorefileSectionHeader {
 	}
 };
 #pragma region // ScorefileSectionB Validation
-ValidateFieldOffset32(0x0, ScorefileSectionB, magic);
-ValidateFieldOffset32(0x2, ScorefileSectionB, __version_number);
-ValidateFieldOffset32(0x4, ScorefileSectionB, checksum);
-ValidateFieldOffset32(0x8, ScorefileSectionB, size);
-ValidateFieldOffset32(0xC, ScorefileSectionB, index);
-ValidateFieldOffset32(0x10, ScorefileSectionB, records);
-ValidateFieldOffset32(0x8D0, ScorefileSectionB, spells);
-ValidateFieldOffset32(0x64C4, ScorefileSectionB, __play_count);
-ValidateFieldOffset32(0x64C8, ScorefileSectionB, total_game_time);
-ValidateFieldOffset32(0x64D0, ScorefileSectionB, __total_clears);
-ValidateFieldOffset32(0x64EC, ScorefileSectionB, __1cc_clears);
-ValidateFieldOffset32(0x12EF0, ScorefileSectionB, practice);
-ValidateStructSize32(0x130F0, ScorefileSectionB);
+ValidateFieldOffset(0x0, ScorefileSectionB, magic);
+ValidateFieldOffset(0x2, ScorefileSectionB, __version_number);
+ValidateFieldOffset(0x4, ScorefileSectionB, checksum);
+ValidateFieldOffset(0x8, ScorefileSectionB, size);
+ValidateFieldOffset(0xC, ScorefileSectionB, index);
+ValidateFieldOffset(0x10, ScorefileSectionB, records);
+ValidateFieldOffset(0x8D0, ScorefileSectionB, spells);
+ValidateFieldOffset(0x64C4, ScorefileSectionB, __play_count);
+ValidateFieldOffset(0x64C8, ScorefileSectionB, total_game_time);
+ValidateFieldOffset(0x64D0, ScorefileSectionB, __total_clears);
+ValidateFieldOffset(0x64EC, ScorefileSectionB, __1cc_clears);
+ValidateFieldOffset(0x12EF0, ScorefileSectionB, practice);
+ValidateStructSize(0x130F0, ScorefileSectionB);
 #pragma endregion
 
 static inline constexpr uint16_t SCOREFILE_SECTION_A_MAGIC = PackUInt16('S', 'T');
@@ -9567,21 +9070,21 @@ struct ScorefileSectionA : ScorefileSectionHeader {
 	}
 };
 #pragma region // ScorefileInnerA Validation
-ValidateFieldOffset32(0x0, ScorefileSectionA, magic);
-ValidateFieldOffset32(0x2, ScorefileSectionA, __version_number);
-ValidateFieldOffset32(0x4, ScorefileSectionA, checksum);
-ValidateFieldOffset32(0x8, ScorefileSectionA, size);
-ValidateFieldOffset32(0xC, ScorefileSectionA, __recent_name);
-ValidateFieldOffset32(0x16, ScorefileSectionA, __endings_seen);
-ValidateFieldOffset32(0x22, ScorefileSectionA, __bool_22);
-ValidateFieldOffset32(0x26, ScorefileSectionA, unlocked_music);
-ValidateFieldOffset32(0x48, ScorefileSectionA, total_game_time);
-ValidateFieldOffset32(0x50, ScorefileSectionA, trophies);
-ValidateFieldOffset32(0xD0, ScorefileSectionA, unlocked_cards);
-ValidateFieldOffset32(0x150, ScorefileSectionA, __card_ids_150);
-ValidateFieldOffset32(0x1C0, ScorefileSectionA, __int_array_1C0);
-ValidateFieldOffset32(0x1D0, ScorefileSectionA, __short_array_1D0);
-ValidateStructSize32(0x3D0, ScorefileSectionA);
+ValidateFieldOffset(0x0, ScorefileSectionA, magic);
+ValidateFieldOffset(0x2, ScorefileSectionA, __version_number);
+ValidateFieldOffset(0x4, ScorefileSectionA, checksum);
+ValidateFieldOffset(0x8, ScorefileSectionA, size);
+ValidateFieldOffset(0xC, ScorefileSectionA, __recent_name);
+ValidateFieldOffset(0x16, ScorefileSectionA, __endings_seen);
+ValidateFieldOffset(0x22, ScorefileSectionA, __bool_22);
+ValidateFieldOffset(0x26, ScorefileSectionA, unlocked_music);
+ValidateFieldOffset(0x48, ScorefileSectionA, total_game_time);
+ValidateFieldOffset(0x50, ScorefileSectionA, trophies);
+ValidateFieldOffset(0xD0, ScorefileSectionA, unlocked_cards);
+ValidateFieldOffset(0x150, ScorefileSectionA, __card_ids_150);
+ValidateFieldOffset(0x1C0, ScorefileSectionA, __int_array_1C0);
+ValidateFieldOffset(0x1D0, ScorefileSectionA, __short_array_1D0);
+ValidateStructSize(0x3D0, ScorefileSectionA);
 #pragma endregion
 
 struct ScorefileBuffer {
@@ -9591,8 +9094,8 @@ struct ScorefileBuffer {
 
 // size: 0x5F888
 struct Scorefile {
-	ScorefileBuffer* buffer; // 0x0
-	void* decompressed_buffer; // 0x4
+	PTR32<ScorefileBuffer> buffer; // 0x0
+	PTR32<void> decompressed_buffer; // 0x4
 	ScorefileSectionB shottypes[SHOTTYPE_COUNT + 1]; // 0x8, 0x130F8, 0x251E8, 0x392D8, 0x4C3C8
 	ScorefileSectionA common; // 0x5F4B8
 	// 0x5F888
@@ -9799,11 +9302,11 @@ public:
 	}
 };
 #pragma region // Scorefile Validation
-ValidateFieldOffset32(0x0, Scorefile, buffer);
-ValidateFieldOffset32(0x4, Scorefile, decompressed_buffer);
-ValidateFieldOffset32(0x8, Scorefile, shottypes);
-ValidateFieldOffset32(0x5F4B8, Scorefile, common);
-ValidateStructSize32(0x5F888, Scorefile);
+ValidateFieldOffset(0x0, Scorefile, buffer);
+ValidateFieldOffset(0x4, Scorefile, decompressed_buffer);
+ValidateFieldOffset(0x8, Scorefile, shottypes);
+ValidateFieldOffset(0x5F4B8, Scorefile, common);
+ValidateStructSize(0x5F888, Scorefile);
 #pragma endregion
 
 typedef struct ScorefileManager ScorefileManager;
@@ -12791,7 +12294,6 @@ struct EclFileHeader {
 	uint32_t include_offset; // 0x8
 	int __dword_C; // 0xC
 	uint16_t sub_count; // 0x10
-
 	int __dword_14; // 0x14
 	int __dword_18; // 0x18
 	int __dword_1C; // 0x1C
@@ -14733,9 +14235,9 @@ struct MsgScriptHeader {
 	// 0x8
 };
 #pragma region // MsgScriptHeader Validation
-ValidateFieldOffset32(0x0, MsgScriptHeader, script_offset);
-ValidateFieldOffset32(0x4, MsgScriptHeader, flags);
-ValidateStructSize32(0x8, MsgScriptHeader);
+ValidateFieldOffset(0x0, MsgScriptHeader, script_offset);
+ValidateFieldOffset(0x4, MsgScriptHeader, flags);
+ValidateStructSize(0x8, MsgScriptHeader);
 #pragma endregion
 
 struct MsgHeader {
@@ -18544,14 +18046,14 @@ struct AnmTexture {
 	unsigned char data[]; // 0x10
 };
 #pragma region // AnmTexture Validation
-ValidateFieldOffset32(0x0, AnmTexture, magic);
-ValidateFieldOffset32(0x4, AnmTexture, __zero);
-ValidateFieldOffset32(0x6, AnmTexture, format);
-ValidateFieldOffset32(0x8, AnmTexture, width);
-ValidateFieldOffset32(0xA, AnmTexture, height);
-ValidateFieldOffset32(0xC, AnmTexture, num_bytes);
-ValidateFieldOffset32(0x10, AnmTexture, data);
-ValidateStructSize32(0x10, AnmTexture);
+ValidateFieldOffset(0x0, AnmTexture, magic);
+ValidateFieldOffset(0x4, AnmTexture, __zero);
+ValidateFieldOffset(0x6, AnmTexture, format);
+ValidateFieldOffset(0x8, AnmTexture, width);
+ValidateFieldOffset(0xA, AnmTexture, height);
+ValidateFieldOffset(0xC, AnmTexture, num_bytes);
+ValidateFieldOffset(0x10, AnmTexture, data);
+ValidateStructSize(0x10, AnmTexture);
 #pragma endregion
 
 // size: 0x40+
@@ -18577,23 +18079,23 @@ struct AnmEntry {
 	unsigned char data[]; // 0x40
 };
 #pragma region // AnmEntry Validation
-ValidateFieldOffset32(0x0, AnmEntry, version);
-ValidateFieldOffset32(0x4, AnmEntry, sprite_count);
-ValidateFieldOffset32(0x6, AnmEntry, script_count);
-ValidateFieldOffset32(0x8, AnmEntry, __word_8);
-ValidateFieldOffset32(0xA, AnmEntry, width);
-ValidateFieldOffset32(0xC, AnmEntry, height);
-ValidateFieldOffset32(0xE, AnmEntry, format);
-ValidateFieldOffset32(0x10, AnmEntry, image_path_offset);
-ValidateFieldOffset32(0x14, AnmEntry, offset_x);
-ValidateFieldOffset32(0x16, AnmEntry, offset_y);
-ValidateFieldOffset32(0x18, AnmEntry, memory_priority);
-ValidateFieldOffset32(0x1C, AnmEntry, texture_data_offset);
-ValidateFieldOffset32(0x20, AnmEntry, has_data);
-ValidateFieldOffset32(0x22, AnmEntry, low_res_scale);
-ValidateFieldOffset32(0x24, AnmEntry, offset_to_next);
-ValidateFieldOffset32(0x40, AnmEntry, data);
-ValidateStructSize32(0x40, AnmEntry);
+ValidateFieldOffset(0x0, AnmEntry, version);
+ValidateFieldOffset(0x4, AnmEntry, sprite_count);
+ValidateFieldOffset(0x6, AnmEntry, script_count);
+ValidateFieldOffset(0x8, AnmEntry, __word_8);
+ValidateFieldOffset(0xA, AnmEntry, width);
+ValidateFieldOffset(0xC, AnmEntry, height);
+ValidateFieldOffset(0xE, AnmEntry, format);
+ValidateFieldOffset(0x10, AnmEntry, image_path_offset);
+ValidateFieldOffset(0x14, AnmEntry, offset_x);
+ValidateFieldOffset(0x16, AnmEntry, offset_y);
+ValidateFieldOffset(0x18, AnmEntry, memory_priority);
+ValidateFieldOffset(0x1C, AnmEntry, texture_data_offset);
+ValidateFieldOffset(0x20, AnmEntry, has_data);
+ValidateFieldOffset(0x22, AnmEntry, low_res_scale);
+ValidateFieldOffset(0x24, AnmEntry, offset_to_next);
+ValidateFieldOffset(0x40, AnmEntry, data);
+ValidateStructSize(0x40, AnmEntry);
 #pragma endregion
 
 typedef struct AnmImage AnmImage;
@@ -18658,10 +18160,10 @@ struct AnmSpriteData {
 	// 0x14
 };
 #pragma region // AnmSpriteData Validation
-ValidateFieldOffset32(0x0, AnmSpriteData, id);
-ValidateFieldOffset32(0x4, AnmSpriteData, position);
-ValidateFieldOffset32(0xC, AnmSpriteData, size);
-ValidateStructSize32(0x14, AnmSpriteData);
+ValidateFieldOffset(0x0, AnmSpriteData, id);
+ValidateFieldOffset(0x4, AnmSpriteData, position);
+ValidateFieldOffset(0xC, AnmSpriteData, size);
+ValidateStructSize(0x14, AnmSpriteData);
 #pragma endregion
 
 // size: 0x8
@@ -18671,9 +18173,9 @@ struct AnmScriptHeader {
 	// 0x8
 };
 #pragma region // AnmScriptHeader Validation
-ValidateFieldOffset32(0x0, AnmScriptHeader, script_id);
-ValidateFieldOffset32(0x4, AnmScriptHeader, script_offset);
-ValidateStructSize32(0x8, AnmScriptHeader);
+ValidateFieldOffset(0x0, AnmScriptHeader, script_id);
+ValidateFieldOffset(0x4, AnmScriptHeader, script_offset);
+ValidateStructSize(0x8, AnmScriptHeader);
 #pragma endregion
 
 
@@ -19780,10 +19282,10 @@ struct AnmManager {
 		SPRITE_VERTEX_BUFFER_A[2].position.as2() += this->__vertex_offsetB;
 		SPRITE_VERTEX_BUFFER_A[3].position.as2() += this->__vertex_offsetB;
 		if (flags & RENDER_VERTICES_ROUND_INPUTS) {
-			long double A = CRT::rint_asm(SPRITE_VERTEX_BUFFER_A[0].position.x) - 0.5f;
-			long double B = CRT::rint_asm(SPRITE_VERTEX_BUFFER_A[1].position.x) - 0.5f;
-			long double C = CRT::rint_asm(SPRITE_VERTEX_BUFFER_A[0].position.y) - 0.5f;
-			long double D = CRT::rint_asm(SPRITE_VERTEX_BUFFER_A[2].position.y) - 0.5f;
+			long double A = CRT::rintl_asm(SPRITE_VERTEX_BUFFER_A[0].position.x) - 0.5f;
+			long double B = CRT::rintl_asm(SPRITE_VERTEX_BUFFER_A[1].position.x) - 0.5f;
+			long double C = CRT::rintl_asm(SPRITE_VERTEX_BUFFER_A[0].position.y) - 0.5f;
+			long double D = CRT::rintl_asm(SPRITE_VERTEX_BUFFER_A[2].position.y) - 0.5f;
 			SPRITE_VERTEX_BUFFER_A[2].position.y = D;
 			SPRITE_VERTEX_BUFFER_A[3].position.y = D;
 			SPRITE_VERTEX_BUFFER_A[0].position.y = C;
@@ -23354,7 +22856,7 @@ struct TrophyData {
 				if (c == '\r' || count_local == 0) {
 					break;
 				}
-				c = *str++;
+				c = *++str;
 				count = --count_local;
 			} while (c != '\n');
 		}
@@ -23439,7 +22941,7 @@ dllexport gnu_noinline ZUNResult TrophyData::initialize() {
 				--trophy_txt_count;
 #endif
 				trophy_txt = trophy_txt_copy_rest_of_line_to_buffer(buffer, trophy_txt + 1, trophy_txt_count);
-				int32_t number;
+				int number;
 				sscanf(buffer, "%d", &number); // bleh
 				TROPHY_DATA[number].fill_text_lines_with_junk();
 				TROPHY_DATA[number].id = number;
@@ -23448,8 +22950,8 @@ dllexport gnu_noinline ZUNResult TrophyData::initialize() {
 
 				// This loop is cursed, WTF
 				size_t line = 1;
-				for (int32_t i = 0; i < TROPHY_TEXT_LINE_LENGTH * (TROPHY_TEXT_LINES - 1); i += TROPHY_TEXT_LINE_LENGTH) {
-					for (size_t j = 0; j != TROPHY_LINES_PER_GROUP; ++j) {
+				for (int32_t i = 0; i < TROPHY_TEXT_LINE_LENGTH * (TROPHY_TEXT_LINES - 1);) {
+					for (size_t j = 0; j != TROPHY_LINES_PER_GROUP; ++j, i += TROPHY_TEXT_LINE_LENGTH) {
 						clang_forceinline trophy_txt = trophy_txt_copy_rest_of_line_to_buffer(TROPHY_DATA[number].lines[line].buffer, trophy_txt, trophy_txt_count);
 						TROPHY_DATA[number].lines[line].__encrypt();
 						++line;
@@ -28500,19 +28002,19 @@ struct ShtEntry {
 	int8_t __long_timer_modulo; // 0x2A
 	int8_t __long_timer_value; // 0x2B
 	union {
-		BulletInitFunc* __init_func; // 0x2C
+		PTR32Z<BulletInitFunc> __init_func; // 0x2C
 		uint32_t __init_func_index; // 0x2C
 	};
 	union {
-		BulletTickFunc* __on_tick_func; // 0x30
+		PTR32Z<BulletTickFunc> __on_tick_func; // 0x30
 		uint32_t __on_tick_func_index; // 0x30
 	};
 	union {
-		void* __unknown_func_C; // 0x34
+		PTR32Z<void> __unknown_func_C; // 0x34
 		uint32_t __unknown_func_C_index; // 0x34
 	};
 	union {
-		BulletDamageFunc* __damage_func; // 0x38
+		PTR32Z<BulletDamageFunc> __damage_func; // 0x38
 		uint32_t __damage_func_index; // 0x38
 	};
 	unknown_fields(0x10); // 0x3C
@@ -28521,28 +28023,28 @@ struct ShtEntry {
 	// 0x5C
 };
 #pragma region // ShtEntry Validation
-ValidateFieldOffset32(0x0, ShtEntry, __short_timer_modulo);
-ValidateFieldOffset32(0x1, ShtEntry, __short_timer_value);
-ValidateFieldOffset32(0x2, ShtEntry, damage);
-ValidateFieldOffset32(0x4, ShtEntry, position);
-ValidateFieldOffset32(0xC, ShtEntry, size);
-ValidateFieldOffset32(0x14, ShtEntry, angle);
-ValidateFieldOffset32(0x18, ShtEntry, speed);
-ValidateFieldOffset32(0x20, ShtEntry, __option_index);
-ValidateFieldOffset32(0x21, ShtEntry, __byte_21);
-ValidateFieldOffset32(0x22, ShtEntry, anm_script);
-ValidateFieldOffset32(0x24, ShtEntry, sound_id);
-ValidateFieldOffset32(0x26, ShtEntry, __anm_scriptB);
-ValidateFieldOffset32(0x28, ShtEntry, __card_long_timer_modulo);
-ValidateFieldOffset32(0x29, ShtEntry, __card_long_timer_value);
-ValidateFieldOffset32(0x2A, ShtEntry, __long_timer_modulo);
-ValidateFieldOffset32(0x2B, ShtEntry, __long_timer_value);
-ValidateFieldOffset32(0x2C, ShtEntry, __init_func);
-ValidateFieldOffset32(0x30, ShtEntry, __on_tick_func);
-ValidateFieldOffset32(0x34, ShtEntry, __unknown_func_C);
-ValidateFieldOffset32(0x38, ShtEntry, __damage_func);
-ValidateFieldOffset32(0x4C, ShtEntry, __float_4C);
-ValidateStructSize32(0x5C, ShtEntry);
+ValidateFieldOffset(0x0, ShtEntry, __short_timer_modulo);
+ValidateFieldOffset(0x1, ShtEntry, __short_timer_value);
+ValidateFieldOffset(0x2, ShtEntry, damage);
+ValidateFieldOffset(0x4, ShtEntry, position);
+ValidateFieldOffset(0xC, ShtEntry, size);
+ValidateFieldOffset(0x14, ShtEntry, angle);
+ValidateFieldOffset(0x18, ShtEntry, speed);
+ValidateFieldOffset(0x20, ShtEntry, __option_index);
+ValidateFieldOffset(0x21, ShtEntry, __byte_21);
+ValidateFieldOffset(0x22, ShtEntry, anm_script);
+ValidateFieldOffset(0x24, ShtEntry, sound_id);
+ValidateFieldOffset(0x26, ShtEntry, __anm_scriptB);
+ValidateFieldOffset(0x28, ShtEntry, __card_long_timer_modulo);
+ValidateFieldOffset(0x29, ShtEntry, __card_long_timer_value);
+ValidateFieldOffset(0x2A, ShtEntry, __long_timer_modulo);
+ValidateFieldOffset(0x2B, ShtEntry, __long_timer_value);
+ValidateFieldOffset(0x2C, ShtEntry, __init_func);
+ValidateFieldOffset(0x30, ShtEntry, __on_tick_func);
+ValidateFieldOffset(0x34, ShtEntry, __unknown_func_C);
+ValidateFieldOffset(0x38, ShtEntry, __damage_func);
+ValidateFieldOffset(0x4C, ShtEntry, __float_4C);
+ValidateStructSize(0x5C, ShtEntry);
 #pragma endregion
 
 // size: 
@@ -28567,22 +28069,22 @@ struct ShtFile {
 	unknown_fields(0x14); // 0x2C
 	Float2 __float2_array_40[10]; // 0x40
 	Float2 __float2_array_90[10]; // 0x90
-	ShtEntry* __entry_ptr_array_E0[MAX_SHT_ENTRY_COUNT]; // 0xE0
+	PTR32Z<ShtEntry> __entry_ptr_array_E0[MAX_SHT_ENTRY_COUNT]; // 0xE0
 	ShtEntry __entry_array_180[]; // 0x180
 };
 #pragma region // ShtFile Validation
-ValidateFieldOffset32(0x2, ShtFile, __entry_count);
-ValidateFieldOffset32(0x4, ShtFile, __float_4);
-ValidateFieldOffset32(0x8, ShtFile, __float_8);
-ValidateFieldOffset32(0xC, ShtFile, __float_C);
-ValidateFieldOffset32(0x10, ShtFile, movement_speeds);
-ValidateFieldOffset32(0x20, ShtFile, max_level);
-ValidateFieldOffset32(0x24, ShtFile, power_per_level);
-ValidateFieldOffset32(0x28, ShtFile, damage_cap);
-ValidateFieldOffset32(0x40, ShtFile, __float2_array_40);
-ValidateFieldOffset32(0x90, ShtFile, __float2_array_90);
-ValidateFieldOffset32(0xE0, ShtFile, __entry_ptr_array_E0);
-ValidateFieldOffset32(0x180, ShtFile, __entry_array_180);
+ValidateFieldOffset(0x2, ShtFile, __entry_count);
+ValidateFieldOffset(0x4, ShtFile, __float_4);
+ValidateFieldOffset(0x8, ShtFile, __float_8);
+ValidateFieldOffset(0xC, ShtFile, __float_C);
+ValidateFieldOffset(0x10, ShtFile, movement_speeds);
+ValidateFieldOffset(0x20, ShtFile, max_level);
+ValidateFieldOffset(0x24, ShtFile, power_per_level);
+ValidateFieldOffset(0x28, ShtFile, damage_cap);
+ValidateFieldOffset(0x40, ShtFile, __float2_array_40);
+ValidateFieldOffset(0x90, ShtFile, __float2_array_90);
+ValidateFieldOffset(0xE0, ShtFile, __entry_ptr_array_E0);
+ValidateFieldOffset(0x180, ShtFile, __entry_array_180);
 #pragma endregion
 
 typedef struct Player Player;
@@ -36311,7 +35813,7 @@ struct AbilityTextData {
 		ability_text_data->__show_card_type_label_if_unlocked(card_id, false);
 	}
 
-	// The only difference from the trophy.txt version is checking for \f
+	// The only difference from the trophy.txt/musiccmt.txt versions is checking for \f
 	// why are you like this ZUN
 	static forceinline char* ability_txt_skip_to_end_of_line(const char* str, int32_t& count) {
 		char c = *str;
@@ -36321,7 +35823,7 @@ struct AbilityTextData {
 				if (c == '\r' || c == '\f' || count_local == 0) {
 					break;
 				}
-				c = *str++;
+				c = *++str;
 				count = --count_local;
 			} while (c != '\n');
 		}
@@ -40149,16 +39651,17 @@ struct StdHeader {
 	uint32_t script_offset; // 0x8
 	unknown_fields(0x4); // 0xC
 	char anm_name[128]; // 0x10
-	StdObject* objects[]; // 0x90 stored as offsets
+	PTR32Z<StdObject> objects[]; // 0x90 stored as offsets
 };
 #pragma region // StdHeader Validation
-ValidateFieldOffset32(0x0, StdHeader, object_count);
-ValidateFieldOffset32(0x2, StdHeader, instance_count);
-ValidateFieldOffset32(0x4, StdHeader, instances_offset);
-ValidateFieldOffset32(0x8, StdHeader, script_offset);
-ValidateFieldOffset32(0x10, StdHeader, anm_name);
-ValidateFieldOffset32(0x90, StdHeader, objects);
-ValidateStructSize32(0x90, StdHeader);
+ValidateFieldOffset(0x0, StdHeader, object_count);
+ValidateFieldOffset(0x2, StdHeader, instance_count);
+ValidateFieldOffset(0x4, StdHeader, instances_offset);
+ValidateFieldOffset(0x8, StdHeader, script_offset);
+ValidateFieldOffset(0x10, StdHeader, anm_name);
+ValidateFieldOffset(0x90, StdHeader, objects);
+ValidateStructSize(0x90, StdHeader);
+ValidateStructAlignment(0x4, StdHeader);
 #pragma endregion
 
 // size: 0x10
@@ -40174,10 +39677,10 @@ struct StdInstance {
 	// 0x10
 };
 #pragma region // StdInstance Validation
-ValidateFieldOffset32(0x0, StdInstance, object_id);
-ValidateFieldOffset32(0x2, StdInstance, flags);
-ValidateFieldOffset32(0x4, StdInstance, position);
-ValidateStructSize32(0x10, StdInstance);
+ValidateFieldOffset(0x0, StdInstance, object_id);
+ValidateFieldOffset(0x2, StdInstance, flags);
+ValidateFieldOffset(0x4, StdInstance, position);
+ValidateStructSize(0x10, StdInstance);
 #pragma endregion
 
 // size: 0x8+
@@ -40307,7 +39810,7 @@ struct Stage : ZUNTask {
 	StdVM std_vm; // 0xC
 	AnmVM* instance_vms; // 0x3450
 	StdHeader* std_file; // 0x3454
-	StdObject** objects; // 0x3458
+	PTR32Z<StdObject>* objects; // 0x3458
 	StdInstance* instances; // 0x345C
 	StdInstruction* script; // 0x3460
 	AnmLoaded* stage_anm; // 0x3464
@@ -45412,7 +44915,7 @@ struct LaserLine : LaserData {
 	// Method 0x64
 	dllexport virtual gnu_noinline LaserData* thiscall duplicate() override ASR(0x448280) {
 		LaserLine* new_laser = new_no_eh<LaserLine>();
-		memcpy((void*)new_laser, this, sizeof(LaserLine));
+		memcpy((void*)new_laser, (void*)this, sizeof(LaserLine));
 		return new_laser;
 	}
 
@@ -54465,12 +53968,12 @@ struct ReplayHeader {
 	}
 };
 #pragma region // ReplayHeader Verification
-ValidateFieldOffset32(0x0, ReplayHeader, magic);
-ValidateFieldOffset32(0x4, ReplayHeader, __version);
-ValidateFieldOffset32(0x10, ReplayHeader, __int_10);
-ValidateFieldOffset32(0x1C, ReplayHeader, compressed_size);
-ValidateFieldOffset32(0x20, ReplayHeader, uncompressed_size);
-ValidateStructSize32(0x24, ReplayHeader);
+ValidateFieldOffset(0x0, ReplayHeader, magic);
+ValidateFieldOffset(0x4, ReplayHeader, __version);
+ValidateFieldOffset(0x10, ReplayHeader, __int_10);
+ValidateFieldOffset(0x1C, ReplayHeader, compressed_size);
+ValidateFieldOffset(0x20, ReplayHeader, uncompressed_size);
+ValidateStructSize(0x24, ReplayHeader);
 #pragma endregion
 
 // size: 0xC+
@@ -54482,11 +53985,11 @@ struct ReplayUserData {
 	char text[]; // 0xC
 };
 #pragma region // ReplayUserData Verification
-ValidateFieldOffset32(0x0, ReplayUserData, magic);
-ValidateFieldOffset32(0x4, ReplayUserData, size);
-ValidateFieldOffset32(0x8, ReplayUserData, __byte_8);
-ValidateFieldOffset32(0xC, ReplayUserData, text);
-ValidateStructSize32(0xC, ReplayUserData);
+ValidateFieldOffset(0x0, ReplayUserData, magic);
+ValidateFieldOffset(0x4, ReplayUserData, size);
+ValidateFieldOffset(0x8, ReplayUserData, __byte_8);
+ValidateFieldOffset(0xC, ReplayUserData, text);
+ValidateStructSize(0xC, ReplayUserData);
 #pragma endregion
 
 // size: 0x6
@@ -54501,10 +54004,10 @@ struct ReplayFrameInput {
 	}
 };
 #pragma region // ReplayFrameInput Verification
-ValidateFieldOffset32(0x0, ReplayFrameInput, current);
-ValidateFieldOffset32(0x2, ReplayFrameInput, rising_edge);
-ValidateFieldOffset32(0x4, ReplayFrameInput, falling_edge);
-ValidateStructSize32(0x6, ReplayFrameInput);
+ValidateFieldOffset(0x0, ReplayFrameInput, current);
+ValidateFieldOffset(0x2, ReplayFrameInput, rising_edge);
+ValidateFieldOffset(0x4, ReplayFrameInput, falling_edge);
+ValidateStructSize(0x6, ReplayFrameInput);
 #pragma endregion
 
 static inline constexpr ReplayFrameInput REPLAY_INPUT_END = { 0xFFFF, 0xFFFF, 0xFFFF };
@@ -54543,24 +54046,24 @@ struct ReplayGamestate {
 	}
 };
 #pragma region // ReplayGamestate Verification
-ValidateFieldOffset32(0x0, ReplayGamestate, stage_number);
-ValidateFieldOffset32(0x2, ReplayGamestate, rng);
-ValidateFieldOffset32(0x4, ReplayGamestate, input_count);
-ValidateFieldOffset32(0x8, ReplayGamestate, extra_size);
-ValidateFieldOffset32(0xC, ReplayGamestate, player_position);
-ValidateFieldOffset32(0x14, ReplayGamestate, player_focused);
-ValidateFieldOffset32(0x18, ReplayGamestate, __int_array_18);
-ValidateFieldOffset32(0x68, ReplayGamestate, globals);
-ValidateFieldOffset32(0x164, ReplayGamestate, cards_owned);
-ValidateFieldOffset32(0x564, ReplayGamestate, card_replay_states);
-ValidateFieldOffset32(0x964, ReplayGamestate, card_selected);
-ValidateFieldOffset32(0x968, ReplayGamestate, __globalsB);
-ValidateFieldOffset32(0xA64, ReplayGamestate, __cards_ownedB);
-ValidateFieldOffset32(0xE64, ReplayGamestate, __card_replay_statesB);
-ValidateFieldOffset32(0x1264, ReplayGamestate, __card_selectedB);
-ValidateFieldOffset32(0x1268, ReplayGamestate, flags);
-ValidateFieldOffset32(0x126C, ReplayGamestate, extra);
-ValidateStructSize32(0x126C, ReplayGamestate);
+ValidateFieldOffset(0x0, ReplayGamestate, stage_number);
+ValidateFieldOffset(0x2, ReplayGamestate, rng);
+ValidateFieldOffset(0x4, ReplayGamestate, input_count);
+ValidateFieldOffset(0x8, ReplayGamestate, extra_size);
+ValidateFieldOffset(0xC, ReplayGamestate, player_position);
+ValidateFieldOffset(0x14, ReplayGamestate, player_focused);
+ValidateFieldOffset(0x18, ReplayGamestate, __int_array_18);
+ValidateFieldOffset(0x68, ReplayGamestate, globals);
+ValidateFieldOffset(0x164, ReplayGamestate, cards_owned);
+ValidateFieldOffset(0x564, ReplayGamestate, card_replay_states);
+ValidateFieldOffset(0x964, ReplayGamestate, card_selected);
+ValidateFieldOffset(0x968, ReplayGamestate, __globalsB);
+ValidateFieldOffset(0xA64, ReplayGamestate, __cards_ownedB);
+ValidateFieldOffset(0xE64, ReplayGamestate, __card_replay_statesB);
+ValidateFieldOffset(0x1264, ReplayGamestate, __card_selectedB);
+ValidateFieldOffset(0x1268, ReplayGamestate, flags);
+ValidateFieldOffset(0x126C, ReplayGamestate, extra);
+ValidateStructSize(0x126C, ReplayGamestate);
 #pragma endregion
 
 // size: 0xC8
@@ -54634,20 +54137,20 @@ public:
 	}
 };
 #pragma region // ReplayFrameInput Verification
-ValidateFieldOffset32(0x0, ReplayInfo, name);
-ValidateFieldOffset32(0xA, ReplayInfo, flags);
-ValidateFieldOffset32(0x10, ReplayInfo, time);
-ValidateFieldOffset32(0x18, ReplayInfo, score);
-ValidateFieldOffset32(0x1C, ReplayInfo, config);
-ValidateFieldOffset32(0xA4, ReplayInfo, slowdown_rate);
-ValidateFieldOffset32(0xA8, ReplayInfo, stage_count);
-ValidateFieldOffset32(0xAC, ReplayInfo, character);
-ValidateFieldOffset32(0xB0, ReplayInfo, shottype);
-ValidateFieldOffset32(0xB4, ReplayInfo, difficulty);
-ValidateFieldOffset32(0xB8, ReplayInfo, __end_stage);
-ValidateFieldOffset32(0xBC, ReplayInfo, continues);
-ValidateFieldOffset32(0xC0, ReplayInfo, spell_practice_id);
-ValidateStructSize32(0xC8, ReplayInfo);
+ValidateFieldOffset(0x0, ReplayInfo, name);
+ValidateFieldOffset(0xA, ReplayInfo, flags);
+ValidateFieldOffset(0x10, ReplayInfo, time);
+ValidateFieldOffset(0x18, ReplayInfo, score);
+ValidateFieldOffset(0x1C, ReplayInfo, config);
+ValidateFieldOffset(0xA4, ReplayInfo, slowdown_rate);
+ValidateFieldOffset(0xA8, ReplayInfo, stage_count);
+ValidateFieldOffset(0xAC, ReplayInfo, character);
+ValidateFieldOffset(0xB0, ReplayInfo, shottype);
+ValidateFieldOffset(0xB4, ReplayInfo, difficulty);
+ValidateFieldOffset(0xB8, ReplayInfo, __end_stage);
+ValidateFieldOffset(0xBC, ReplayInfo, continues);
+ValidateFieldOffset(0xC0, ReplayInfo, spell_practice_id);
+ValidateStructSize(0xC8, ReplayInfo);
 #pragma endregion
 
 // size: 0x28
@@ -58015,7 +57518,7 @@ public:
 				if (c == '\r' || count_local == 0) {
 					break;
 				}
-				c = *str++;
+				c = *++str;
 				count = --count_local;
 			} while (c != '\n');
 		}
@@ -59825,7 +59328,9 @@ public:
 					while (musiccmt_txt_count > 0) {
 						switch (char c = *musiccmt_txt) {
 							case '@': {
-								//--musiccmt_txt_count;
+#if FIX_REALLY_BAD_BUGS
+								--musiccmt_txt_count;
+#endif
 								musiccmt_txt = musiccmt_txt_copy_rest_of_line_to_buffer(this->__musiccmt_titlesA[i], musiccmt_txt + 1, musiccmt_txt_count);
 								musiccmt_txt = musiccmt_txt_copy_rest_of_line_to_buffer(this->__musiccmt_titlesB[i], musiccmt_txt, musiccmt_txt_count);
 								for (size_t j = 0; j != MUSICCMT_TEXT_LINES; ++j) {

@@ -684,7 +684,7 @@ include_directories(AFTER SYSTEM
 #target_link_libraries(${EXE} "msvcrt.lib")
 #target_link_libraries(${EXE} "C:\\WinDDK\\7600.16385.1\\lib\\wxp\\i386\\ntdll.lib")
 if (IS_X64)
-#target_link_libraries(${EXE} "C:\\WinDDK\\7600.16385.1\\lib\\win7\\amd64\\winmm.lib")
+target_link_libraries(${EXE} "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.20262.0\\um\\x64\\WinMM.lib")
 target_link_directories(${EXE} PRIVATE "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.20262.0\\ucrt\\x64")
 target_link_directories(${EXE} PRIVATE "C:\\Program Files (x86)\\Microsoft SDKs\\Windows\\v7.1A\\Lib\\x64")
 #target_link_options(${EXE} PRIVATE "/libpath:\"C/Program Files (x86)/Windows Kits/10/Lib/10.0.20262.0/ucrt/x64/\"")
@@ -974,7 +974,7 @@ target_compile_options(MoFTest1 PRIVATE
 	"-mno-fma4"
 )
 
-if (NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+if (NOT IS_X64 AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
 add_library(UMAsm OBJECT
 	"UM/globals.asm"
 )
@@ -1021,6 +1021,11 @@ target_link_options(UMTest1 PRIVATE
 	#"LINKER:/base:0x800000"
 	#/VERBOSE:LIB
 )
+if (IS_X64)
+target_link_options(UMTest1 PRIVATE
+	/LARGEADDRESSAWARE:NO
+)
+endif()
 
 target_link_libraries(UMTest1 "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Lib\\x86\\dsound.lib")
 if(NOT STATIC_CSOUND)

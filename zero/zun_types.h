@@ -480,7 +480,7 @@ struct Float2 : Float1 {
     */
 
     inline Float2 normalize() {
-#if GAME_VERSION >= UDoALG_VER
+//#if GAME_VERSION >= UDoALG_VER
         float cur_length = this->length();
         if (zfabsf(cur_length) < 0.01f) {
             return *this;
@@ -488,10 +488,10 @@ struct Float2 : Float1 {
         else {
             return *this / cur_length;
         }
-#else
+//#else
         //D3DXVec2Normalize(this, this);
         //return *this;
-#endif
+//#endif
     }
 
     inline Float2 normalize_to_length(float length) {
@@ -707,7 +707,7 @@ struct Float3 : Float2 {
     }
 
     inline Float3 normalize3() {
-#if GAME_VERSION >= UDoALG_VER
+//#if GAME_VERSION >= UDoALG_VER
         float cur_length = this->length();
         if (zfabsf(cur_length) < 0.01f) {
             return *this;
@@ -715,10 +715,10 @@ struct Float3 : Float2 {
         else {
             return *this / cur_length;
         }
-#else
+//#else
         //D3DXVec3Normalize(this, this);
         //return *this;
-#endif
+//#endif
     }
 
     inline Float3 normalize_to_length3(float length) {

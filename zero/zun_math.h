@@ -15,6 +15,7 @@
 namespace CRT {
 
 extern "C" {
+#ifndef __x86_64__
     extern int64_t vectorcall ftol(long double value) asm("__ftol");
     extern int64_t vectorcall ftol2(long double value) asm("__ftol2");
 
@@ -35,22 +36,22 @@ extern "C" {
     extern long double vectorcall CItan(long double value) asm("__CItan");
     extern long double vectorcall CItanh(long double value) asm("__CItanh");
 
-    extern double cdecl acos(double value) asm64("_acos");
-    extern double cdecl asin(double value) asm64("_asin");
-    extern double cdecl atan(double value) asm64("_atan");
-    extern double cdecl atan2(double Y, double X) asm64("_atan2");
-    extern double cdecl cos(double value) asm64("_cos");
-    extern double cdecl cosh(double value) asm64("_cosh");
-    extern double cdecl exp(double value) asm64("_exp");
-    extern double cdecl fmod(double X, double Y) asm64("_fmod");
-    extern double cdecl log(double value) asm64("_log");
-    extern double cdecl log10(double value) asm64("_log10");
-    extern double cdecl pow(double base, double exponent) asm64("_pow");
-    extern double cdecl sin(double value) asm64("_sin");
-    extern double cdecl sinh(double value) asm64("_sinh");
-    extern double cdecl sqrt(double value) asm64("_sqrt");
-    extern double cdecl tan(double value) asm64("_tan");
-    extern double cdecl tanh(double value) asm64("_tanh");
+    extern double cdecl acos(double value);
+    extern double cdecl asin(double value);
+    extern double cdecl atan(double value);
+    extern double cdecl atan2(double Y, double X);
+    extern double cdecl cos(double value);
+    extern double cdecl cosh(double value);
+    extern double cdecl exp(double value);
+    extern double cdecl fmod(double X, double Y);
+    extern double cdecl log(double value);
+    extern double cdecl log10(double value);
+    extern double cdecl pow(double base, double exponent);
+    extern double cdecl sin(double value);
+    extern double cdecl sinh(double value);
+    extern double cdecl sqrt(double value);
+    extern double cdecl tan(double value);
+    extern double cdecl tanh(double value);
 
     extern double vectorcall libm_sse2_acos(double value) asm("___libm_sse2_acos");
     extern float vectorcall libm_sse2_acosf(float value) asm("___libm_sse2_acosf");
@@ -74,8 +75,71 @@ extern "C" {
     extern double vectorcall libm_sse2_tan(double value) asm("___libm_sse2_tan");
     extern float vectorcall libm_sse2_tanf(float value) asm("___libm_sse2_tanf");
 
-    extern double cdecl fabs(double value) asm64("_fabs");
-    extern double cdecl floor(double value) asm64("_floor");
+    extern double cdecl fabs(double value);
+    extern double cdecl floor(double value);
+#else
+    static forceinline int64_t ftol(double value) { return value; }
+    static forceinline int64_t ftol2(double value) { return value; }
+
+    static forceinline double CIacos(double value) { return ::acos(value); }
+    static forceinline double CIasin(double value) { return ::asin(value); }
+    static forceinline double CIatan(double value) { return ::atan(value); }
+    static forceinline double CIatan2(double X, double Y) { return ::atan2(Y, X); } // ARGS ARE FLIPPED
+    static forceinline double CIcos(double value) { return ::cos(value); }
+    static forceinline double CIcosh(double value) { return ::cosh(value); }
+    static forceinline double CIexp(double value) { return ::exp(value); }
+    static forceinline double CIfmod(double Y, double X) { return ::fmod(X, Y); } // ARGS ARE FLIPPED
+    static forceinline double CIlog(double value) { return ::log(value); }
+    static forceinline double CIlog10(double value) { return ::log10(value); }
+    static forceinline double CIpow(double exponent, double base) { return ::pow(base, exponent); } // ARGS ARE FLIPPED
+    static forceinline double CIsin(double value) { return ::sin(value); }
+    static forceinline double CIsinh(double value) { return ::sinh(value); };
+    static forceinline double CIsqrt(double value) { return ::sqrt(value); }
+    static forceinline double CItan(double value) { return ::tan(value); }
+    static forceinline double CItanh(double value) { return ::tanh(value); }
+
+    static forceinline double acos(double value) { return ::acos(value); }
+    static forceinline double asin(double value) { return ::asin(value); }
+    static forceinline double atan(double value) { return ::atan(value); }
+    static forceinline double atan2(double Y, double X) { return ::atan2(Y, X); }
+    static forceinline double cos(double value) { return ::cos(value); }
+    static forceinline double cosh(double value) { return ::cosh(value); }
+    static forceinline double exp(double value) { return ::exp(value); }
+    static forceinline double fmod(double X, double Y) { return ::fmod(X, Y); }
+    static forceinline double log(double value) { return ::log(value); }
+    static forceinline double log10(double value) { return ::log10(value); }
+    static forceinline double pow(double base, double exponent) { return ::pow(base, exponent); }
+    static forceinline double sin(double value) { return ::sin(value); }
+    static forceinline double sinh(double value) { return ::sinh(value); };
+    static forceinline double sqrt(double value) { return ::sqrt(value); }
+    static forceinline double tan(double value) { return ::tan(value); }
+    static forceinline double tanh(double value) { return ::tanh(value); }
+
+    static forceinline double libm_sse2_acos(double value) { return ::acos(value); }
+    static forceinline float libm_sse2_acosf(float value) { return ::acosf(value); }
+    static forceinline double libm_sse2_asin(double value) { return ::asin(value); }
+    static forceinline float libm_sse2_asinf(float value) { return ::asinf(value); }
+    static forceinline double libm_sse2_atan(double value) { return ::atan(value); }
+    static forceinline float libm_sse2_atanf(float value) { return ::atanf(value); }
+    static forceinline double libm_sse2_atan2(double Y, double X) { return ::atan2(Y, X); }
+    static forceinline double libm_sse2_cos(double value) { return ::cos(value); }
+    static forceinline float libm_sse2_cosf(float value) { return ::cosf(value); }
+    static forceinline double libm_sse2_exp(double value) { return ::exp(value); }
+    static forceinline float libm_sse2_expf(float value) { return ::expf(value); }
+    static forceinline double libm_sse2_log(double value) { return ::log(value); }
+    static forceinline float libm_sse2_logf(float value) { return ::logf(value); }
+    static forceinline double libm_sse2_log10(double value) { return ::log10(value); }
+    static forceinline float libm_sse2_log10f(float value) { return ::log10f(value); }
+    static forceinline double libm_sse2_pow(double base, double exponent) { return ::pow(base, exponent); }
+    static forceinline float libm_sse2_powf(float base, float exponent) { return ::powf(base, exponent); }
+    static forceinline double libm_sse2_sin(double value) { return ::sin(value); }
+    static forceinline float libm_sse2_sinf(float value) { return ::sinf(value); }
+    static forceinline double libm_sse2_tan(double value) { return ::tan(value); }
+    static forceinline float libm_sse2_tanf(float value) { return ::tanf(value); }
+
+    static forceinline double fabs(double value) { return ::fabs(value); }
+    static forceinline double floor(double value) { return ::floor(value); }
+#endif
 }
 
 static forceinline long double acosl(long double value) {
@@ -88,7 +152,7 @@ static forceinline long double atanl(long double value) {
     return CRT::CIatan(value);
 }
 static forceinline long double atan2l(long double Y, long double X) {
-    //return CRT::CIatan2(X, Y);
+#ifndef __x86_64__
     /*
         NOTE: For some stupid reason clang is blatantly
         ignoring that the argument order is supposed to be
@@ -105,6 +169,9 @@ static forceinline long double atan2l(long double Y, long double X) {
         : clobber_list("st(1)", "eax", "edx", "ecx", "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7")
     );
     return ret;
+#else
+    return CRT::CIatan2(X, Y);
+#endif
 }
 static forceinline long double cosl(long double value) {
     return CRT::CIcos(value);
@@ -116,7 +183,7 @@ static forceinline long double expl(long double value) {
     return CRT::CIexp(value);
 }
 static forceinline long double fmodl(long double X, long double Y) {
-    //return CRT::CIfmod(Y, X);
+#ifndef __x86_64__
     long double ret;
     __asm__ volatile (
         "call __CIfmod"
@@ -125,6 +192,9 @@ static forceinline long double fmodl(long double X, long double Y) {
         : clobber_list("st(1)", "eax", "edx", "ecx", "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7")
     );
     return ret;
+#else
+    return CRT::CIfmod(Y, X);
+#endif
 }
 static forceinline long double logl(long double value) {
     return CRT::CIlog(value);
@@ -133,7 +203,7 @@ static forceinline long double log10l(long double value) {
     return CRT::CIlog10(value);
 }
 static forceinline long double powl(long double base, long double exponent) {
-    //return CRT::CIpow(exponent, base);
+#ifndef __x86_64__
     long double ret;
     __asm__ volatile (
         "call __CIpow"
@@ -142,6 +212,9 @@ static forceinline long double powl(long double base, long double exponent) {
         : clobber_list("st(1)", "eax", "edx", "ecx", "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7")
     );
     return ret;
+#else
+    return CRT::CIpow(exponent, base);
+#endif
 }
 static forceinline long double sinl(long double value) {
     return CRT::CIsin(value);
@@ -159,28 +232,82 @@ static forceinline long double tanhl(long double value) {
     return CRT::CItanh(value);
 }
 
-static forceinline long double vectorcall rint_asm(long double value) {
+static forceinline float vectorcall rintf_asm(float value) {
+    float ret;
+    __asm__ volatile ("frndint" : asm_arg("=t", ret) : asm_arg("0", value));
+    return ret;
+}
+static forceinline double vectorcall rint_asm(double value) {
+    double ret;
+    __asm__ volatile ("frndint" : asm_arg("=t", ret) : asm_arg("0", value));
+    return ret;
+}
+static forceinline long double vectorcall rintl_asm(long double value) {
     long double ret;
     __asm__ volatile ("frndint" : asm_arg("=t", ret) : asm_arg("0", value));
     return ret;
 }
-static forceinline long double vectorcall atan_asm(long double value) {
+static forceinline float vectorcall atanf_asm(float value) {
+    float ret;
+    long double one;
+    __asm__ volatile ("fld1" : asm_arg("=t", one));
+    __asm__ volatile ("fpatan" : asm_arg("=t", ret) : asm_arg("0", one), asm_arg("u", value) : clobber_list("st(1)"));
+    return ret;
+}
+static forceinline double vectorcall atan_asm(double value) {
+    double ret;
+    long double one;
+    __asm__ volatile ("fld1" : asm_arg("=t", one));
+    __asm__ volatile ("fpatan" : asm_arg("=t", ret) : asm_arg("0", one), asm_arg("u", value) : clobber_list("st(1)"));
+    return ret;
+}
+static forceinline long double vectorcall atanl_asm(long double value) {
     long double ret, one;
     __asm__ volatile ("fld1" : asm_arg("=t", one));
     __asm__ volatile ("fpatan" : asm_arg("=t", ret) : asm_arg("0", one), asm_arg("u", value) : clobber_list("st(1)"));
     return ret;
 }
-static forceinline long double vectorcall atan2_asm(long double Y, long double X) {
+static forceinline long double vectorcall atan2f_asm(float Y, float X) {
+    float ret;
+    __asm__ volatile ("fpatan" : asm_arg("=t", ret) : asm_arg("0", X), asm_arg("u", Y) : clobber_list("st(1)"));
+    return ret;
+}
+static forceinline double vectorcall atan2_asm(double Y, double X) {
+    double ret;
+    __asm__ volatile ("fpatan" : asm_arg("=t", ret) : asm_arg("0", X), asm_arg("u", Y) : clobber_list("st(1)"));
+    return ret;
+}
+static forceinline long double vectorcall atan2l_asm(long double Y, long double X) {
     long double ret;
     __asm__ volatile ("fpatan" : asm_arg("=t", ret) : asm_arg("0", X), asm_arg("u", Y) : clobber_list("st(1)"));
     return ret;
 }
-static forceinline long double vectorcall cos_asm(long double value) {
+static forceinline float vectorcall cosf_asm(float value) {
+    float cos;
+    __asm__ volatile ("fcos" : asm_arg("=t", cos) : asm_arg("0", value));
+    return cos;
+}
+static forceinline double vectorcall cos_asm(double value) {
+    double cos;
+    __asm__ volatile ("fcos" : asm_arg("=t", cos) : asm_arg("0", value));
+    return cos;
+}
+static forceinline long double vectorcall cosl_asm(long double value) {
     long double cos;
     __asm__ volatile ("fcos" : asm_arg("=t", cos) : asm_arg("0", value));
     return cos;
 }
-static forceinline long double vectorcall sin_asm(long double value) {
+static forceinline float vectorcall sinf_asm(float value) {
+    float sin;
+    __asm__ volatile ("fsin" : asm_arg("=t", sin) : asm_arg("0", value));
+    return sin;
+}
+static forceinline double vectorcall sin_asm(double value) {
+    double sin;
+    __asm__ volatile ("fsin" : asm_arg("=t", sin) : asm_arg("0", value));
+    return sin;
+}
+static forceinline long double vectorcall sinl_asm(long double value) {
     long double sin;
     __asm__ volatile ("fsin" : asm_arg("=t", sin) : asm_arg("0", value));
     return sin;
@@ -200,12 +327,32 @@ static forceinline vec<long double, 2> regcall sincosl_asm(long double value) {
     __asm__ volatile ("fsincos" : asm_arg("=t", cos), asm_arg("=u", sin) : asm_arg("0", value));
     return { cos, sin };
 }
-static forceinline long double vectorcall sqrt_asm(long double value) {
+static forceinline float vectorcall sqrtf_asm(float value) {
+    float ret;
+    __asm__ volatile ("fsqrt" : asm_arg("=t", ret) : asm_arg("0", value));
+    return ret;
+}
+static forceinline double vectorcall sqrt_asm(double value) {
+    double ret;
+    __asm__ volatile ("fsqrt" : asm_arg("=t", ret) : asm_arg("0", value));
+    return ret;
+}
+static forceinline long double vectorcall sqrtl_asm(long double value) {
     long double ret;
     __asm__ volatile ("fsqrt" : asm_arg("=t", ret) : asm_arg("0", value));
     return ret;
 }
-static forceinline long double vectorcall tan_asm(long double value) {
+static forceinline float vectorcall tanf_asm(float value) {
+    float ret, one;
+    __asm__ volatile ("fptan" : asm_arg("=t", one), asm_arg("=u", ret) : asm_arg("0", value));
+    return ret;
+}
+static forceinline double vectorcall tan_asm(double value) {
+    double ret, one;
+    __asm__ volatile ("fptan" : asm_arg("=t", one), asm_arg("=u", ret) : asm_arg("0", value));
+    return ret;
+}
+static forceinline long double vectorcall tanl_asm(long double value) {
     long double ret, one;
     __asm__ volatile ("fptan" : asm_arg("=t", one), asm_arg("=u", ret) : asm_arg("0", value));
     return ret;
