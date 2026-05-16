@@ -1024,6 +1024,7 @@ target_link_options(UMTest1 PRIVATE
 if (IS_X64)
 target_link_options(UMTest1 PRIVATE
 	/LARGEADDRESSAWARE:NO
+	/HIGHENTROPYVA:NO
 )
 endif()
 
