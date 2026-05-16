@@ -5405,7 +5405,7 @@ struct Actor2D {
             this->active_flags |= 2;
         }
         // run task list
-        // calls some anim_controller func
+        this->anim_controller->__method78();
     }
 
     // RxC1230
