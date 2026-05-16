@@ -35,6 +35,7 @@
 using namespace std::literals::string_literals;
 
 #include <dinput.h>
+#include <d3d9.h>
 
 #pragma comment (lib, "Ws2_32.lib")
 
@@ -2308,14 +2309,31 @@ struct SQObject {
 namespace Sqrat {
 
 // size: 0x14
-    struct Object {
-        // void* vftable; // 0x0
-        HSQUIRRELVM vm; // 0x4
-        HSQOBJECT obj; // 0x8
-        bool release; // 0x10
-        // 0x11
-    };
+struct Object {
+    // void* vftable; // 0x0
+    HSQUIRRELVM vm; // 0x4
+    HSQOBJECT obj; // 0x8
+    bool release; // 0x10
+    // 0x11
+};
 
+// size: 0x14
+struct Function {
+    HSQUIRRELVM vm; // 0x0
+    HSQOBJECT env; // 0x4
+    HSQOBJECT obj; // 0xC
+    // 0x14
+
+    bool IsNull() {
+        return this->obj._type == 0x1000001; // sq_isnull
+    }
+
+    template<typename R = void, typename ... Args>
+    R Evaluate(Args&&... args) {
+        // I'm not implementing this, just make the compiler happy
+        return (R)rand();
+    }
+};
 }
 
 // size: 0x10
@@ -4719,3 +4737,1019 @@ struct AsyncLobbyClient : AsyncTcpSSLClient {
         }
     }
 };
+
+namespace Manbow {
+
+struct Point {
+    float x; // 0x0
+    float y; // 0x4
+    // 0x8
+};
+
+struct Color {
+    float r; // 0x0
+    float g; // 0x4
+    float b; // 0x8
+    float a; // 0xC
+    // 0x10
+};
+
+struct World2D {
+};
+
+struct ActorCollisionData {
+};
+
+struct UnknownI {
+    int16_t __short_0; // 0x0
+    int16_t __short_2; // 0x2
+    // 0x4
+};
+
+// size: 0x50
+struct AnimationData {
+    unknown_fields(0x4); // 0x0
+    void* __ptr4; // 0x4
+    UnknownI* __unknownI_ptr8; // 0x8
+    uint32_t frame_total; // 0xc
+    uint32_t flags[2]; // 0x10 Related to BindFrameFlag
+    int16_t __short_array_18[24]; // 0x18 Related to BindFrameVariable
+    uint8_t __byte48; // 0x48
+    uint8_t __byte49; // 0x49
+    uint8_t __byte4A; // 0x4A
+    unknown_fields(0x1); // 0x4B
+    uint8_t __byte4C; // 0x4C
+    unknown_fields(0x3); // 0x4D
+    // 0x50
+};
+
+struct Sprite {
+    D3DMATRIX __matrix_0; // 0x0
+    float pos[2]; // 0x40
+    float sx; // 0x48
+    float sy; // 0x4C
+    float ox; // 0x50
+    float oy; // 0x54
+    Color color; // 0x58
+    int blend; // 0x68 TYPE UNKNOWN
+    int filter; // 0x6C TYPE UNKNOWN
+    int address; // 0x70 TYPE UNKNOWN
+    // 0x74 SIZE UNKNOWN
+
+    // Rx62100
+    void Initialize() {
+        // TODO
+    }
+
+    void Update() {}
+
+    // Rx62270
+    void SetUV(int32_t, int32_t, int32_t, int32_t) {
+        // TODO
+    }
+
+    // Rx41EA0
+    void SetWorldTransform(D3DMATRIX* matrix) {
+        this->__matrix_0 = *matrix;
+    }
+};
+
+struct Actor2DTakeData {
+    void* __unk0; // 0x0
+    Actor2DTakeData* next; // 0x4
+    Actor2DTakeData* previous; // 0x8
+    AnimationData* frame_data; // 0xc
+    uint32_t frame_total; // 0x10
+    std::vector<std::shared_ptr<Sprite>> sprites; // 0x14
+    uint16_t __ushort_array_20[2]; // 0x20 Related to BindTakeVariable UNKNOWN LENGTH
+};
+
+struct AnimationNode {
+    AnimationNode* __node0; // 0x0
+    AnimationNode* start; // 0x4
+    AnimationNode* __node8; // 0x8
+    char __bytec; // 0xc
+    bool __boold; // 0xd
+    padding_bytes(0x2); // 0xe
+    uint32_t motionId; // 0x10
+    Actor2DTakeData* take; // 0x14
+};
+
+struct AnimationSet2D {
+    // This might be offset by 0xC when accessed through a shared pointer
+    AnimationNode* nodes; // 0x0
+    uint32_t __int4; // 0x4
+    void* __unk8; // 0x8
+    uint32_t __intC; // 0xC
+
+    AnimationNode* CurrentMotion();
+
+    // RxB250
+    inline AnimationNode* GetMotion(uint32_t motion) {
+        AnimationNode* new_anim = this->nodes;
+        AnimationNode* search_anim = this->nodes->start;
+        while (!search_anim->__boold) {
+            if (search_anim->motionId < motion) {
+                search_anim = search_anim->__node8;
+            } else {
+                new_anim = search_anim;
+                search_anim = search_anim->__node0;
+            }
+        }
+        if (new_anim == this->nodes || motion < new_anim->motionId) {
+            new_anim = this->nodes;
+        }
+        return new_anim;
+    }
+};
+
+// size: 0x120
+struct AnimationControllerBase {
+    unknown_fields(0x18); // 0x4
+    uint32_t motion; // 0x1c
+    uint32_t key_take; // 0x20
+    int32_t keyframe; // 0x24
+    Color color; // 0x28
+    D3DMATRIX __matrix_38; // 0x38
+    std::vector<std::shared_ptr<ActorCollisionData>> col_boxes; // 0x78
+    std::vector<std::shared_ptr<ActorCollisionData>> hit_boxes; // 0x84
+    std::vector<std::shared_ptr<ActorCollisionData>> hurt_boxes; // 0x90
+    unknown_fields(0x84); // 0x9C
+    // 0x120
+    
+    // Rx87210
+    // Method 0
+    virtual void set_matrix(D3DMATRIX* matrix) {
+        this->__matrix_38 = *matrix;
+    }
+    // Rx87240
+    // Method 4
+    virtual D3DMATRIX* get_matrix() {
+        return &this->__matrix_38;
+    }
+    virtual void __method8() {}
+    virtual int __methodC() {
+        return 0;
+    }
+    // Rx87250
+    // Method 10
+    virtual void set_color(float alpha, float red, float green, float blue) {
+        this->color.a = alpha;
+        this->color.r = red;
+        this->color.g = green;
+        this->color.b = blue;
+    }
+    // Rx87280
+    // Method 14
+    virtual Color* get_color() {
+        return &this->color;
+    }
+    // Method 18
+    virtual bool SetMotion(uint32_t motion, int32_t take) {
+        return false;
+    }
+    // Method 1C
+    virtual bool SetTake(int32_t take) {
+        return false;
+    }
+    // Method 20
+    virtual bool SetKeyFrame(int32_t keyframe) {
+        return false;
+    }
+    // Method 24
+    virtual Sqrat::Object* GetKeyFrameData(Sqrat::Object* object) {
+        *object = Sqrat::Object();
+        return object;
+    }
+    virtual void __method28(uint32_t arg1) {}
+    virtual uint32_t __method2C() {
+        return 0;
+    }
+    virtual void __method30(uint32_t speed) {}
+    virtual uint32_t __method34() {
+        return 100;
+    }
+    // Rx872E0
+    virtual void __method38() {
+        // TODO
+    }
+    virtual void __method3C() = NULL;
+    // RxB8C50
+    virtual void __method40() {
+        // TODO
+    }
+    // RxB8250
+    virtual void __method44() {
+        // TODO
+    }
+    // RxB8CC0
+    virtual void __method48() {
+        // TODO
+    }
+    // RxB8D00
+    virtual void __method4C() {
+        // TODO
+    }
+    virtual void __method50(/* TODO */) {}
+    // Method 54
+    virtual void SetCollisionScaling(float, float, float) {}
+    // Method 58
+    virtual void SetCollisionRotation(float, float, float) {}
+    virtual int32_t __method5C(int32_t index) = NULL;
+    virtual int32_t __method60(int32_t index) = NULL;
+    virtual int32_t __method64(int32_t index) = NULL;
+    virtual int32_t __method68(int32_t index) = NULL;
+    virtual int32_t __method6C(int32_t index) = NULL;
+    virtual void __get_frame_point(int32_t index, float* arg2, float* arg3) = NULL;
+    // Method 74
+    virtual ~AnimationControllerBase() {
+        // TODO
+    }
+    virtual void __method78() = NULL;
+    virtual void __method7C() = NULL;
+    // RxB8D40
+    virtual void __method80() {
+        // TODO
+    }
+    // RxB8E20
+    virtual void __method84() {
+        // TODO
+    }
+};
+
+// size: 0x230
+struct AnimationController2D : AnimationControllerBase {
+    void* tf4_imaterial_vftable; // 0x120
+    std::shared_ptr<AnimationSet2D> anim_set; // 124
+    Actor2DTakeData* take; // 0x12C
+    AnimationData* animation_data; // 0x130
+    uint32_t frame; // 0x134 does not wrap
+    uint32_t frame_wrapped; // 0x138 wraps
+    uint16_t speed; // 0x13C
+    char __byte13E; // 0x13E
+    probably_padding_bytes(0x1); // 0x13F
+    void* __unk140; // 0x140
+    unknown_fields(0xE0); // 0x144
+    std::vector<std::shared_ptr<Sprite>> sprites; // 0x224
+    // 0x230
+    
+    // Rx8DCB0
+    // Method 0
+    virtual void set_matrix(D3DMATRIX* matrix) override {
+        this->__matrix_38 = *matrix;
+
+        size_t sprite_count = this->sprites.size();
+        for (size_t i = 0; i != sprite_count; ++i) {
+            // set on sprites
+        }
+    }
+
+    // Rx8DD20
+    // Method 18
+    virtual bool SetMotion(uint32_t motion, int32_t take) override {
+        AnimationNode* current_anim = this->anim_set->CurrentMotion();
+        AnimationNode* new_anim = this->anim_set->GetMotion(motion);
+        if (new_anim == current_anim) {
+            return false;
+        }
+
+        this->motion = motion;
+        this->take = new_anim->take;
+        return this->SetTake(take);
+    }
+
+    // Rx8DD90
+    // Method 1C
+    virtual bool SetTake(int32_t take) override {
+        while (this->take->previous) {
+            this->take = this->take->previous;
+        }
+        this->key_take = 0;
+        for (int32_t i = 0; i < take; ++i) {
+            this->take = this->take->next;
+            this->key_take = i;
+        }
+        this->sprites.clear();
+        this->sprites.resize(this->take->sprites.size());
+        take = 0;
+        while (take < this->sprites.size()) {
+            this->sprites[take] = this->take->sprites[take];
+            // then deletes that element on the take vector with function i have yet
+            // to reverse but it's on Rx7E560
+        }
+        this->SetKeyFrame(0);
+        return true;
+    }
+
+    // Rx8DE90
+    // Method 20
+    virtual bool SetKeyFrame(int32_t keyframe) override {
+        Actor2DTakeData* take = this->take;
+        if (!take) {
+            return false;
+        }
+        this->keyframe = keyframe;
+        this->animation_data = &take->frame_data[keyframe];
+        int32_t frame = 0;
+        if (keyframe) {
+            frame = take->frame_data[keyframe - 1].frame_total;
+        }
+        this->frame = frame;
+        this->frame_wrapped = frame;
+        this->__method8C();
+        return true;
+    }
+
+    // Rx8E180
+    // Method 24
+    virtual Sqrat::Object* GetKeyFrameData(Sqrat::Object* object) override {
+        // TODO
+        return object;
+    }
+
+    // Rx8DF10
+    // Method 28
+    virtual void __method28(uint32_t arg1) override {
+        if (Actor2DTakeData* take = this->take) {
+            uint32_t new_frame = arg1 * 100;
+            this->frame = new_frame;
+            uint32_t new_frame_wrapped = new_frame % take->frame_total;
+            if (new_frame_wrapped < this->frame_wrapped) {
+                this->frame_wrapped = new_frame_wrapped;
+                int32_t keyframe = this->keyframe;
+                if (
+                    keyframe != 0 &&
+                    new_frame_wrapped < take->frame_data[keyframe - 1].frame_total
+                ) {
+                    do {
+                        keyframe = --this->keyframe;
+                        this->animation_data = &take->frame_data[keyframe];
+                    } while (
+                        keyframe > 0 &&
+                        new_frame_wrapped < take->frame_data[keyframe - 1].frame_total
+                    );
+                    this->__method8C();
+                }
+            }
+            else {
+                this->frame_wrapped = new_frame_wrapped;
+                if (new_frame_wrapped >= this->animation_data->frame_total) {
+                    this->__methodA0();
+                }
+            }
+        }
+    }
+
+    // Rx87600
+    // Method 2C
+    virtual uint32_t __method2C() override {
+        return this->frame / 100;
+    }
+
+    // Rx87640
+    // Method 30
+    virtual void __method30(uint32_t speed) override {
+        this->speed = speed;
+    }
+
+    // Rx87660
+    // Method 34
+    virtual uint32_t __method34() override {
+        return this->speed;
+    }
+
+    // Rx8E5A0
+    // Method 38
+    virtual void __method38() override {
+        // TODO
+    }
+
+    // RxBA510
+    // Method 3C
+    virtual void __method3C() override {
+        if (AnimationData* animation_data = this->animation_data) {
+
+        }
+    }
+
+    // RxB9240
+    // Method 50
+    virtual void __method50(/* TODO */) override {
+        // TODO
+    }
+
+    // RxB94E0
+    // Method 54
+    virtual void SetCollisionScaling(float, float, float) override {
+        // TODO
+    }
+
+    // RxB9AE0
+    // Method 58
+    virtual void SetCollisionRotation(float, float, float) override {
+        // TODO
+    }
+
+    // Rx87670
+    // Method 5C
+    virtual int32_t __method5C(int32_t index) override { // Related to BindTakeVariable
+        return this->take->__ushort_array_20[index];
+    }
+
+    // Rx87690
+    // Method 60
+    virtual int32_t __method60(int32_t index) override { // Related to BindFrameFlag
+        return this->animation_data->flags[index];
+    }
+
+    // Rx876B0
+    // Method 64
+    virtual int32_t __method64(int32_t index) override { // Related to BindFrameVariable
+        return this->animation_data->__short_array_18[index];
+    }
+
+    // Rx876D0
+    // Method 68
+    virtual int32_t __method68(int32_t index) override {
+        AnimationData* animation_data = this->animation_data;
+        if (animation_data->__byte4C > index) {
+            return animation_data->__unknownI_ptr8[index].__short_2;
+        } else {
+            return 0;
+        }
+    }
+
+    // Rx87700
+    // Method 6C
+    virtual int32_t __method6C(int32_t index) override {
+        AnimationData* animation_data = this->animation_data;
+        if (animation_data->__byte4C > index) {
+            return animation_data->__unknownI_ptr8[index].__short_2;
+        } else {
+            return 0;
+        }
+    }
+
+    // Rx87730
+    // Method 70
+    virtual void __get_frame_point(int32_t index, float* x, float* y) override {
+        AnimationData* animation_data = this->animation_data;
+        if (animation_data->__byte4C > index) {
+            *x = animation_data->__unknownI_ptr8[index].__short_0;
+            *y = animation_data->__unknownI_ptr8[index].__short_2;
+        } else {
+            *y = 0.0f;
+            *x = 0.0f;
+        }
+    }
+
+    // Method 74
+    virtual ~AnimationController2D() {
+        // TODO
+    }
+
+    // Rx8E280
+    // Method 78
+    virtual void __method78() override {
+        if (AnimationData* animation_data = this->animation_data) {
+            uint32_t speed = this->speed;
+            this->frame += speed;
+            this->frame_wrapped += speed;
+            if (this->frame_wrapped >= animation_data->frame_total) {
+                this->__methodA0();
+            }
+
+            size_t sprite_count = this->sprites.size();
+            for (size_t i = 0; i < sprite_count; ++i) {
+                // TODO
+            }
+        }
+    }
+
+    // Rx8E300
+    // Method 7C
+    virtual void __method7C() override {
+        // TODO
+    }
+
+    // Rx875F0
+    virtual AnimationData* get_animation_data() {
+        return this->animation_data;
+    }
+
+    // Rx8E270
+    // Method 8C
+    virtual void __method8C() {
+        this->__method3C();
+    }
+
+    // Rx8E600
+    virtual D3DMATRIX* __method90(D3DMATRIX* matrix, uint32_t arg2) {
+        if (this->sprites.size() >= arg2) {
+            // set identity matrix
+        } else {
+            // call some sprite func
+        }
+        return matrix;
+    }
+
+    // Rx8E4E0
+    // Method 94
+    virtual void __method94() {
+        // TODO
+    }
+
+    // Rx87630
+    // Method 98
+    virtual uint32_t get_take_frame_total() {
+        return this->take->frame_total;
+    }
+
+    // Rx8E040
+    // Method 9C
+    virtual void __method9C() {
+        // TODO
+    }
+
+    // Rx8DFC0
+    // Method A0
+    virtual void __methodA0() {
+        // TODO
+    }
+};
+
+struct Actor2DManager;
+struct Actor2DGroup;
+struct Camera2D;
+
+// sinf = Rx3632F7
+// cosf = Rx362EDA
+
+struct Actor2D {
+    void* vftable; // 0x0
+    unknown_fields(0x8); // 0x4
+    float pos[3]; // 0xC
+    int32_t id; // 0x18
+    float left; // 0x1C
+    float top; // 0x20
+    float right; // 0x24
+    float bottom; // 0x28
+    float vx; // 0x2C
+    float vy; // 0x30
+    unknown_fields(0x4); // 0x34
+    float direction; // 0x38
+    std::shared_ptr<AnimationController2D> anim_controller; // 0x3C
+    unknown_fields(0x4); // 0x44
+    float ox; // 0x48
+    float oy; // 0x4C
+    float skew[3]; // 0x50
+    float rotation[3]; // 0x5C
+    Actor2DManager* actor2d_mgr; // 0x68
+    Actor2DGroup* actor2d_group; // 0x6C
+    uint8_t active_flags; // 0x70
+    probably_padding_bytes(0x3); // 0x71
+    SQObject sq_obj; // 0x74
+    uint32_t collision_group; // 0x7C
+    uint32_t collision_mask; // 0x80
+    uint32_t callback_group; // 0x84
+    uint32_t callback_mask; // 0x88
+    float hitLeft; // 0x8C
+    float hitTop; // 0x90
+    float hitRight; // 0x94
+    float hitBottom; // 0x98
+    std::vector<std::shared_ptr<void>> __vector9C; // 0x9C type unknown
+    Sqrat::Function on_update; // 0xA8
+    Sqrat::Function on_contact_test; // 0xBC
+    std::list<void*> __task_list; // 0xD0 type unknown
+    void* __ptrD8; // 0xD8
+    uint32_t group_flags; // 0xDC
+    uint32_t list_idx; // 0xE0
+    int* __ptrE4; // 0xE4
+    uint32_t __id2; // 0xE8
+    // 0xEC
+
+    // RxC2B40
+    void __sub_rC2B40() {
+        // TODO
+    }
+
+    // RxC2890
+    void __sub_rC2890() {
+        // TODO
+    }
+
+    // RxC1480
+    void __sub_rC1480() {
+        // TODO
+    }
+
+    // RxC3840
+    void __sub_rC3840(float* X, float* Y) {
+        // TODO
+    }
+
+    // RxC1330
+    void __sub_rC1330(float X, float Y) {
+        int* idk = this->__ptrE4;
+        if (!idk || *idk == 0) {
+            if (X == 0.0f && Y == 0.0f) {
+                this->__sub_rC1480();
+            }
+            else {
+                if (this->collision_mask != 0) {
+                    this->__sub_rC3840(&X, &Y);
+                }
+                this->pos[0] += X;
+                this->pos[1] += Y;
+                this->__sub_rC1480();
+                this->__sub_rC2B40();
+            }
+            this->__sub_rC2890();
+        }
+    }
+
+    // RxC13F0
+    void __sub_rC13F0(float X, float Y) {
+        int* idk = this->__ptrE4;
+        if (!idk || *idk == 0) {
+            if (this->collision_mask != 0) {
+                this->__sub_rC3840(&X, &Y);
+            }
+            this->pos[0] += X;
+            this->pos[1] += Y;
+            this->__sub_rC1480();
+            this->__sub_rC2B40();
+            this->__sub_rC2890();
+        }
+    }
+
+    // RxC3290
+    void __sub_rC3290() {
+        // TODO
+    }
+
+    // RxC2AC0
+    void __sub_rC2AC0() {
+        // TODO
+    }
+
+    // Squirrl APIs
+    
+    // RxC1280
+    void Update() {
+        if (!this->on_update.IsNull()) {
+            if (!this->on_update.Evaluate<bool>()) {
+                this->active_flags &= ~2;
+                return;
+            }
+            this->active_flags |= 2;
+        }
+        // run task list
+        // calls some anim_controller func
+    }
+
+    // RxC1230
+    void Release();
+
+    // RxC29F0
+    bool SetMotion(uint32_t motion, int32_t take) {
+        return this->anim_controller->SetMotion(motion, take);
+    }
+
+    // RxC2A10
+    bool SetTake(int32_t take) {
+        return this->anim_controller->SetTake(take);
+    }
+
+    // RxC2A10
+    bool SetKeyFrame(int32_t keyframe) {
+        return this->anim_controller->SetKeyFrame(keyframe);
+    }
+
+    // RxC2A20
+    Sqrat::Object* GetKeyFrameData(Sqrat::Object* object) {
+        this->anim_controller->GetKeyFrameData(object);
+        return object;
+    }
+
+    // RxC2A40
+    void SetCollisionScaling(float A, float B, float C) {
+        this->anim_controller->SetCollisionScaling(A, B, C);
+    }
+
+    // RxC15D0
+    void Warp(float X, float Y) {
+        this->pos[0] = X;
+        this->pos[1] = Y;
+        this->__sub_rC2B40();
+        this->__sub_rC2890();
+    }
+
+    // RxC1610
+    void Warp3D(float X, float Y, float Z) {
+        this->pos[0] = X;
+        this->pos[1] = Y;
+        this->pos[2] = Z;
+        this->__sub_rC2B40();
+        this->__sub_rC2890();
+    }
+
+    // RxC2A80
+    void SetCollisionRotation(float X, float Y, float Z) {
+        this->anim_controller->SetCollisionRotation(X, Y, Z);
+    }
+
+    // RxC2A40
+    void SetCollisionScaling(float X, float Y, float Z) {
+        this->anim_controller->SetCollisionScaling(X, Y, Z);
+    }
+
+    // Rx942D0
+    void GetPoint(int32_t index, Point* point_out) {
+        Point point;
+        this->anim_controller->__get_frame_point(index, &point.x, &point.y);
+        // ew
+    }
+
+    // Rx94420
+    void GetPointLocal(int32_t index, Point* point_out) {
+        this->anim_controller->__get_frame_point(index, &point_out->x, &point_out->y);
+    }
+};
+
+// size: 0x9C
+struct Actor2DGroup {
+    std::shared_ptr<Actor2DGroup> shared_ptr; // 0x4
+    std::list<std::shared_ptr<Actor2D>> actor_list; // 0xC
+    std::vector<Actor2D*> actor_vec; // 0x14
+    uint32_t size; // 0x20
+    uint32_t update_mask; // 0x24
+    bool pending_release; // 0x28
+    padding_bytes(0x3);
+    unknown_fields(0xC); // 0x2C
+    std::shared_ptr<World2D> world; // 0x38
+    Sqrat::Function on_hit_collision; // 0x40
+    Sqrat::Function on_hit_actor; // 0x54
+    Sqrat::Function on_move; // 0x68
+    unknown_fields(0x4); // 0x7C
+    Sqrat::Object camera_obj; // 0x80
+    Camera2D* camera; // 0x94
+    void(Actor2DGroup::* update_func)(); // 0x98
+    // 0x9C
+    
+    // Rx9B280
+    void Update() {
+        (this->*this->update_func)();
+    }
+    
+    // Rx9B120
+    void Refresh() {
+        if (this->pending_release) {
+            size_t size = this->actor_list.size();
+            this->size = size;
+            if (size != 0) {
+                if (this->actor_vec.size() < size) {
+                    // probably resize vector
+                }
+                this->size = 0;
+                // iterate both list/vector, deletes stuff
+                size = this->actor_list.size();
+                this->size = size;
+                for (size_t i = 0; i < size; ++i) {
+                    this->actor_vec[i]->list_idx = i;
+                }
+                this->pending_release = false;
+            }
+        }
+    }
+    
+    // Rx9B110
+    uint32_t GetSize() {
+        return this->size;
+    }
+    
+    // Rx9AFB0
+    void Clear(uint32_t clear_mask) {
+        if (this->size) {
+            for (size_t i = 0; i < this->size; ++i) {
+                Actor2D* actor = this->actor_vec[i];
+                if (actor->group_flags & clear_mask) {
+                    actor->Release();
+                }
+            }
+            this->Refresh();
+        }
+    }
+    
+    // Rx9B100
+    void ClearAll() {
+        this->Clear(0xFFFFFFFF);
+    }
+    
+    // Rx9B290
+    void UpdateTypeDefault() {
+        this->Refresh();
+        size_t size = this->size;
+        if (size) {
+            uint32_t update_mask = this->update_mask;
+            
+            // This is extremely stupid
+            Actor2D** actors = this->actor_vec.data();
+            Actor2D** last_actor = actors + size;
+            size = last_actor - actors;
+            
+            if (this->camera) {
+                if (actors > last_actor) {
+                    size = 0;
+                }
+                for (size_t i = 0; i != size; ++i) {
+                    if (
+                        (actors[i]->active_flags & 1) &&
+                        (actors[i]->group_flags & update_mask)
+                    ) {
+                        actors[i]->Update();
+                        if (actors[i]->active_flags & 2) {
+                            actors[i]->hitLeft = 0.0f;
+                            actors[i]->hitTop = 0.0f;
+                            actors[i]->hitRight = 0.0f;
+                            actors[i]->hitBottom = 0.0f;
+                            actors[i]->__sub_rC1330(actors[i]->vx, actors[i]->vy);
+                        }
+                        actors[i]->__sub_rC3290();
+                    }
+                }
+            } else {
+                if (actors > last_actor) {
+                    size = 0;
+                }
+                for (size_t i = 0; i != size; ++i) {
+                    if (
+                        (actors[i]->active_flags & 1) &&
+                        (actors[i]->group_flags & update_mask)
+                    ) {
+                        actors[i]->Update();
+                        if (actors[i]->active_flags & 2) {
+                            actors[i]->__sub_rC13F0(actors[i]->vx, actors[i]->vy);
+                        }
+                        actors[i]->__sub_rC3290();
+                    }
+                }
+            }
+            this->Refresh();
+        }
+        
+    }
+    
+    // Rx9B390
+    void UpdateType1() {
+        this->Refresh();
+        uint32_t update_mask = this->update_mask;
+        if (this->size) {
+            for (size_t i = 0; i != this->size; ++i) {
+                Actor2D* actor = this->actor_vec[i];
+                if (
+                    (actor->active_flags & 1) &&
+                    (actor->group_flags & update_mask)
+                ) {
+                    actor->Update();
+                }
+            }
+        }
+        if (!this->on_move.IsNull()) {
+            this->on_move.Evaluate();
+        }
+        if (this->size) {
+            for (size_t i = 0; i != this->size; ++i) {
+                Actor2D* actor = this->actor_vec[i];
+                if (
+                    (actor->active_flags & 1) &&
+                    (actor->group_flags & update_mask) &&
+                    (actor->active_flags & 2)
+                ) {
+                    actor->hitLeft = 0.0f;
+                    actor->hitTop = 0.0f;
+                    actor->hitRight = 0.0f;
+                    actor->hitBottom = 0.0f;
+                    actor->__sub_rC1330(actor->vx, actor->vy);
+                }
+            }
+        }
+        this->Refresh();
+    }
+    
+    // Rx9B440
+    void UpdateType2() {
+        this->Refresh();
+        
+        // this is pointless
+        Actor2D** actors = this->actor_vec.data();
+        Actor2D** last_actor = actors + this->size;
+        size_t size = last_actor - actors;
+        if (actors > last_actor) {
+            size = 0;
+        }
+        
+        uint32_t update_mask = this->update_mask;
+        
+        if (size) {
+            for (size_t i = 0; i != size; ++i) {
+                if (
+                    (actors[i]->active_flags & 1) &&
+                    (actors[i]->group_flags & update_mask)
+                ) {
+                    actors[i]->Update();
+                }
+            }
+        }
+        if (!this->on_move.IsNull()) {
+            this->on_move.Evaluate();
+        }
+        if (size) {
+            for (size_t i = 0; i != size; ++i) {
+                if (
+                    (actors[i]->active_flags & 1) &&
+                    (actors[i]->group_flags & update_mask) &&
+                    (actors[i]->active_flags & 2)
+                ) {
+                    actors[i]->__sub_rC13F0(actors[i]->vx, actors[i]->vy);
+                }
+            }
+        }
+        
+        // this is even more pointless
+        size = last_actor - actors;
+        if (actors > last_actor) {
+            size = 0;
+        }
+        
+        if (size) {
+            for (size_t i = 0; i != size; ++i) {
+                if (
+                    (actors[i]->active_flags & 1) &&
+                    (actors[i]->group_flags & update_mask)
+                ) {
+                    actors[i]->__sub_rC3290();
+                }
+            }
+        }
+        this->Refresh();
+    }
+    
+    // Rx9B230
+    void SetUpdateType(uint32_t type) {
+        switch (type) {
+            default:
+                this->update_func = &UpdateTypeDefault;
+                break;
+            case 2:
+                this->update_func = &UpdateType2;
+                break;
+            case 1:
+                this->update_func = &UpdateType1;
+                break;
+        }
+    }
+    
+    // Rx9B270
+    void SetUpdateMask(uint32_t mask) {
+        this->update_mask = mask;
+    }
+    
+    // Rx9B550
+    void Move(float X, float Y) {
+        // why do we keep doing this
+        Actor2D** actors = this->actor_vec.data();
+        Actor2D** last_actor = actors + this->size;
+        size_t size = last_actor - actors;
+        if (actors > last_actor) {
+            size = 0;
+        }
+        
+        for (size_t i = 0; i != size; ++i) {
+            actors[i]->pos[0] += X;
+            actors[i]->pos[1] += Y;
+        }
+        Camera2D* camera = this->camera;
+        if (camera) {
+            // move camera
+        }
+    }
+    
+    // Rx9B610
+    void LoopVertical(float A) {
+        Camera2D* camera = this->camera;
+        if (camera) {
+            // more camera stuff
+        }
+    }
+};
+
+// RxC1230
+void Actor2D::Release() {
+    Actor2DGroup* group = this->actor2d_group;
+    this->active_flags = 4;
+    group->pending_release = true;
+    this->__sub_rC2AC0();
+}
+
+}
