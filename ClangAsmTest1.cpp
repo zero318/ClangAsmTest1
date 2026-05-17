@@ -3907,8 +3907,13 @@ no_qpc_tsc:
 	return frequency;
 }
 
+//#include "make_sjis_table.cpp"
+
 int stdcall main(int argc, char* argv[]) {
 	
+	//sort_sjis_table();
+	return 0;
+
 	test_math_floats_int_range<true>(
 		[](float value) -> float {
 			//return truncf(asinf(value) * 1000.0f);

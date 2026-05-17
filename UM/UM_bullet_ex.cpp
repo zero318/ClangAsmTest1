@@ -1,4 +1,4 @@
-#pragma clang diagnostic ignored "-Wc++20-extensions"
+﻿#pragma clang diagnostic ignored "-Wc++20-extensions"
 #pragma clang diagnostic ignored "-Wdeprecated-volatile"
 #pragma clang diagnostic ignored "-Winvalid-source-encoding"
 #pragma clang diagnostic ignored "-Wignored-attributes"
@@ -113,12 +113,14 @@ void APPLY_DEBUG_CONFIG();
 
 #define GAME_VERSION UM_VER
 
-#define ENGLISH_STRINGS
+#define ENGLISH_STRINGS 1
 
-#ifndef ENGLISH_STRINGS
-#define JpEnStr(jstring, estring) jstring
-#else
+#include "../zero/shift_jis.h"
+
+#if ENGLISH_STRINGS
 #define JpEnStr(jstring, estring) estring
+#else
+#define JpEnStr(jstring, estring) jstring
 #endif
 
 #define INCLUDE_PATCH_CODE 0
@@ -9206,7 +9208,10 @@ private:
 		chdir(WINDOW_DATA.appdata_path);
 
 		if (ZUN_FAILED(__zun_open_new_file(filename))) {
-			LOG_BUFFER.write_error(JpEnStr("", "error : cannot write score file\n"));
+			LOG_BUFFER.write_error(JpEnStr(
+			  u8"error : スコアファイルが書き込めない\n"_sjis,
+				"error : cannot write score file\n"
+			));
 			SAFE_FREE(compressed_buffer);
 			free(big_buffer);
 			chdir(WINDOW_DATA.exe_path);
@@ -14751,7 +14756,13 @@ dllexport gnu_noinline DWORD WINAPI SoundManager::load_sound_effect_files(void* 
 		void* sound_effect_file = read_file_to_buffer(SOUND_EFFECT_FILENAMES[i], NULL, false);
 		SOUND_MANAGER.sound_effect_files[i] = sound_effect_file;
 		if (!sound_effect_file) {
-			LOG_BUFFER.write(JpEnStr("", "error : Sound File cannot read Check data %s\r\n"), SOUND_EFFECT_FILENAMES[i]);
+			LOG_BUFFER.write(
+				JpEnStr(
+				  u8"error : Sound ファイルが読み込めない データを確認 %s\r\n"_sjis,
+					"error : Sound File cannot read Check data %s\r\n"
+				),
+				SOUND_EFFECT_FILENAMES[i]
+			);
 			return 1;
 		}
 	} while (++i < countof(SOUND_EFFECT_FILENAMES));
@@ -14786,7 +14797,10 @@ dllexport gnu_noinline ZUNResult thiscall SoundEffectData::initialize(const char
 		const char* error_text;
 		if (WavFile* sound_file = (WavFile*)SOUND_MANAGER.sound_effect_files[this->data->filename_index]) {
 			if (strncmp(sound_file->header.riff_text, "RIFF", sizeof(sound_file->header.riff_text))) {
-				error_text = JpEnStr("Wav �t�@�C������Ȃ� %s\r\n", "Not a Wav file %s\r\n");
+				error_text = JpEnStr(
+				  u8"Wav ファイルじゃない %s\r\n"_sjis,
+					"Not a Wav file %s\r\n"
+				);
 				goto OtherError;
 			}
 			int32_t file_size = sound_file->header.remaining_file_size;
@@ -14829,7 +14843,10 @@ dllexport gnu_noinline ZUNResult thiscall SoundEffectData::initialize(const char
 		}
 		else {
 MalformedWaveError:
-			error_text = JpEnStr("Wav �t�@�C������Ȃ�? %s\r\n", "Isn't it a Wav file? %s\r\n");
+			error_text = JpEnStr(
+			  u8"Wav ファイルじゃない? %s\r\n"_sjis,
+				"Isn't it a Wav file? %s\r\n"
+			);
 OtherError:
 			LOG_BUFFER.write(error_text, filename);
 			SAFE_FREE(SOUND_MANAGER.sound_effect_files[this->data->filename_index]);
@@ -14923,16 +14940,25 @@ dllexport gnu_noinline ZUNResult thiscall SoundManager::initialize(HWND window_h
 			}
 			if (ZUN_FAILED(sound_effect_ptr->initialize(SOUND_EFFECT_FILENAMES[sound_data->filename_index]))) {
 				LOG_BUFFER.write(
-					JpEnStr("error : Sound �t�@�C�����ǂݍ��߂Ȃ� �f�[�^���m�F %s\r\n", "error : Sound File cannot read Check data %s\r\n")
-					, SOUND_EFFECT_FILENAMES[SOUND_DATA[i].filename_index]
+					JpEnStr(
+					  u8"error : Sound ファイルが読み込めない データを確認 %s\r\n"_sjis,
+						"error : Sound File cannot read Check data %s\r\n"
+					),
+					SOUND_EFFECT_FILENAMES[SOUND_DATA[i].filename_index]
 				);
 				return ZUN_ERROR;
 			}
 		}
-		LOG_BUFFER.write(JpEnStr("DirectSound �͐���ɏ���������܂���\r\n", "DirectSound has been successfully initialized\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"DirectSound は正常に初期化されました\r\n"_sjis,
+			"DirectSound has been successfully initialized\r\n"
+		));
 		return ZUN_SUCCESS;
 	} else {
-		LOG_BUFFER.write(JpEnStr("DirectSound �I�u�W�F�N�g�̏����������s������\r\n", "Initialization of DirectSound object failed\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"DirectSound オブジェクトの初期化が失敗したよ\r\n"_sjis,
+			"Initialization of DirectSound object failed\r\n"
+		));
 		SAFE_DELETE(this->csound_manager_ptr);
 		return ZUN_ERROR;
 	}
@@ -18560,11 +18586,17 @@ public:
 		
 		for (int32_t entry_index = 0;;) {
 			if (expect(!current_entry, false)) {
-				LOG_BUFFER.write_error(JpEnStr("", "Can't load animation. data is lost or corrupted\r\n"));
+				LOG_BUFFER.write_error(JpEnStr(
+				  u8"アニメが読み込めません。データが失われてるか壊れています\r\n"_sjis,
+					"Can't load animation. data is lost or corrupted\r\n"
+				));
 				break;
 			}
 			if (expect(current_entry->version != 8, false)) {
-				LOG_BUFFER.write_error(JpEnStr("", "different version of animation\r\n"));
+				LOG_BUFFER.write_error(JpEnStr(
+				  u8"アニメのバージョンが違います\r\n"_sjis,
+					"different version of animation\r\n"
+				));
 				break;
 			}
 			if (!current_entry->has_data) {
@@ -18575,7 +18607,13 @@ public:
 					int32_t image_file_size;
 					void* image_file = read_file_to_buffer(image_path, &image_file_size, true);
 					if (expect(!image_file, false)) {
-						LOG_BUFFER.write_error(JpEnStr("", "Unable to load texture %s. data is lost or corrupted\r\n"), image_filename);
+						LOG_BUFFER.write_error(
+							JpEnStr(
+							  u8"テクスチャ %s が読み込めません。データが失われてるか壊れています\r\n"_sjis,
+								"Unable to load texture %s. data is lost or corrupted\r\n"
+							),
+							image_filename
+						);
 						break;
 					}
 					this->images[entry_index].file_size = image_file_size;
@@ -22197,11 +22235,17 @@ dllexport gnu_noinline ZUNResult UpdateFuncCC Supervisor::on_registration(void* 
 		void* ver_file = read_file_to_buffer(ver_file_name, &ver_file_size, false);
 		SUPERVISOR.ver_file_buffer = ver_file;
 		if (!ver_file) {
-			LOG_BUFFER.write_error(JpEnStr("", "error : Wrong data version\r\n"));
+			LOG_BUFFER.write_error(JpEnStr(
+			  u8"error : データのバージョンが違います\r\n"_sjis,
+				"error : Wrong data version\r\n"
+			));
 		}
 	}
 	else {
-		LOG_BUFFER.write_error(JpEnStr("", "error : data file does not exist\r\n"));
+		LOG_BUFFER.write_error(JpEnStr(
+		  u8"error : データファイルが存在しません\r\n"_sjis,
+			"error : data file does not exist\r\n"
+		));
 	}
 	GAME_SPEED.value = 1.0f;
 	SUPERVISOR.background_color = COLOR_BLACK;
@@ -22883,7 +22927,10 @@ dllexport gnu_noinline ZUNResult TrophyData::initialize() {
 	AnmLoaded* anm_loaded = ANM_MANAGER_PTR->preload_anm(TROPHY_ANM_INDEX, "trophy.anm");
 
 	if (!anm_loaded) {
-		LOG_BUFFER.write(JpEnStr("", "Screen configuration data not found. data is corrupted\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"画面構成データが見つかりません。データが壊れています\r\n"_sjis,
+			"Screen configuration data not found. data is corrupted\r\n"
+		));
 		return ZUN_ERROR;
 	}
 
@@ -23038,14 +23085,20 @@ struct TrophyManager : ZUNTask {
 						vm,
 						COLOR3(128, 192, 192), COLOR3_BLACK,
 						Font9, 0, // 9
-						JpEnStr("", "\"%s\""),
+						JpEnStr(
+						  u8"『%s』"_sjis,
+							"\"%s\""
+						),
 						TROPHY_DATA[trophy_id].lines[0].__decrypt()
 					);
 					ANM_MANAGER_PTR->draw_text_center(
 						this->__anm_id_240.get_vm_ptr(),
 						COLOR3(128, 192, 192), COLOR3_BLACK,
 						Font9, 0, // 9
-						JpEnStr("", "Achievement earned:")
+						JpEnStr(
+						  u8"の実績を手に入れた"_sjis,
+							"Achievement earned:"
+						)
 					);
 
 					SOUND_MANAGER.play_sound(79);
@@ -23079,7 +23132,10 @@ struct TrophyManager : ZUNTask {
 		this->trophy_anm = anm_loaded;
 
 		if (!anm_loaded) {
-			LOG_BUFFER.write(JpEnStr("", "Screen configuration data not found. data is corrupted\r\n"));
+			LOG_BUFFER.write(JpEnStr(
+			  u8"画面構成データが見つかりません。データが壊れています"_sjis,
+				"Screen configuration data not found. data is corrupted\r\n"
+			));
 			return ZUN_ERROR;
 		}
 
@@ -23190,7 +23246,10 @@ struct LoadingThread : ZUNTask {
 	dllexport gnu_noinline static unsigned stdcall thread_func_load_front_anm(void* arg) ASR(0x43A870) {
 		AnmLoaded* front_anm = ANM_MANAGER_PTR->preload_anm(FRONT_ANM_INDEX, "front.anm");
 		if (!front_anm) {
-			LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
+			LOG_BUFFER.write(JpEnStr(
+			  u8"データが壊れています\r\n"_sjis,
+				"data is corrupted\r\n"
+			));
 			return 1;
 		}
 		FRONT_ANM_IS_LOADED = true;
@@ -24031,7 +24090,10 @@ public:
 			this->__done_loading = true;
 		}
 		else {
-			LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
+			LOG_BUFFER.write(JpEnStr(
+			  u8"データが壊れています\r\n"_sjis,
+				"data is corrupted\r\n"
+			));
 			// no return here?
 		}
 
@@ -25195,7 +25257,10 @@ dllexport gnu_noinline ZUNResult thiscall Gui::initialize() {
 	this->spell_timer_hundredths = -1;
 	return ZUN_SUCCESS;
 corrupted_data_error:
-	LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
+	LOG_BUFFER.write(JpEnStr(
+	  u8"データが壊れています\r\n"_sjis,
+		"data is corrupted\r\n"
+	));
 	return ZUN_ERROR;
 }
 
@@ -25215,7 +25280,10 @@ dllexport gnu_noinline Gui* Gui::allocate() {
 		!anm_loaded ||
 		ZUN_FAILED(gui->initialize())
 	) {
-		LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"データが壊れています\r\n"_sjis,
+			"data is corrupted\r\n"
+		));
 		delete gui;
 		return NULL;
 	}
@@ -26019,7 +26087,10 @@ public:
 		AnmLoaded* ascii_anm = ANM_MANAGER_PTR->preload_anm(ASCII_ANM_INDEX, ascii_filename);
 		this->ascii_anm = ascii_anm;
 		if (!ascii_anm) {
-			LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
+			LOG_BUFFER.write(JpEnStr(
+			  u8"データが壊れています\r\n"_sjis,
+				"data is corrupted\r\n"
+			));
 			return ZUN_ERROR;
 		}
 
@@ -26539,7 +26610,10 @@ struct Ending : ZUNTask {
 		void* end_file = read_file_from_dat(ENDING_FILENAMES[this->ending_index]);
 		this->end_file = end_file;
 		if (!end_file) {
-			LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
+			LOG_BUFFER.write(JpEnStr(
+			  u8"データが壊れています\r\n"_sjis,
+				"data is corrupted\r\n"
+			));
 			return ZUN_ERROR;
 		}
 
@@ -30231,7 +30305,10 @@ public:
 			return ZUN_SUCCESS;
 		}
 	error:
-		LOG_BUFFER.write(JpEnStr("", "Machine data not found. data is corrupted\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"自機データが見つかりません。データが壊れています\r\n"_sjis,
+			"Machine data not found. data is corrupted\r\n"
+		));
 		return ZUN_ERROR;
 	}
 
@@ -35748,7 +35825,10 @@ struct AbilityTextData {
 				ability_text_data->__text_line_vms[0].get_vm_ptr(),
 				COLOR3_GREY(128), COLOR3_BLACK,
 				Font10, 0, // 10
-				JpEnStr("", "You haven't unlocked this yet")
+				JpEnStr(
+				  u8"まだ手に入れてない"_sjis,
+					"You haven't unlocked this yet"
+				)
 			);
 		}
 		else {
@@ -36031,7 +36111,12 @@ public:
 			}
 			this->__ability_data_loaded = true;
 		}
-		LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
+		else {
+			LOG_BUFFER.write(JpEnStr(
+			  u8"データが壊れています\r\n"_sjis,
+				"data is corrupted\r\n"
+			));
+		}
 	}
 
 	// 0x408020
@@ -36979,7 +37064,10 @@ dllexport gnu_noinline int AbilityTextData::__sub_4162B0(Float3* position, BOOL 
 			id.get_vm_ptr(),
 			COLOR3_WHITE, COLOR3_BLACK,
 			Font10, 0, // 10
-			JpEnStr("", "I have nothing!")
+			JpEnStr(
+			  u8"何も持っていません！"_sjis,
+				"I have nothing!"
+			)
 		);
 		positionB = *position + Float3(0.0f, 370.0f, 0.0f);
 		ability_text_data->__text_line_vms[0].set_controller_position(&positionB);
@@ -37107,20 +37195,24 @@ struct AbilityTrophyManager : ZUNTask {
 						this->__anm_id_240 = this->trophy_anm->instantiate_vm_to_ui_list_back(10);
 						this->__anm_id_244 = this->trophy_anm->instantiate_vm_to_ui_list_back(11);
 
-						// TODO: trophy text data
-						/*
 						ANM_MANAGER_PTR->draw_text_center(
 							this->__anm_id_240.get_vm_ptr(),
 							COLOR3(128, 192, 192), COLOR3_BLACK,
 							Font9, 0, // 9
-							JpEnStr("", "[%s]"), // TODO
+							JpEnStr(
+							  u8"『%s』"_sjis,
+								"[%s]"
+							),
+							&ABILITY_TEXT_DATA_PTR->description_text[id].lines[0][0]
 						);
-						*/
 						ANM_MANAGER_PTR->draw_text_center(
 							this->__anm_id_244.get_vm_ptr(),
 							COLOR3(128, 192, 192), COLOR3_BLACK,
 							Font9, 0, // 9
-							JpEnStr("", "got!")
+							JpEnStr(
+							  u8"を手に入れた！"_sjis,
+								"got!"
+							)
 						);
 
 						SOUND_MANAGER.play_sound(82);
@@ -37161,7 +37253,10 @@ struct AbilityTrophyManager : ZUNTask {
 		this->trophy_anm = anm_loaded;
 
 		if (!anm_loaded) {
-			LOG_BUFFER.write(JpEnStr("", "Screen configuration data not found. data is corrupted\r\n"));
+			LOG_BUFFER.write(JpEnStr(
+			  u8"画面構成データが見つかりません。データが壊れています\r\n"_sjis,
+				"Screen configuration data not found. data is corrupted\r\n"
+			));
 			return ZUN_ERROR;
 		}
 
@@ -37280,7 +37375,10 @@ dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
 				void* bgm_format = read_file_to_buffer("../../bgm/thbgm.fmt", NULL, false);
 				SOUND_MANAGER.bgm_format_file = bgm_format;
 				if (!bgm_format) {
-					LOG_BUFFER.write(JpEnStr("", "error : BGM initialization failed\r\n"));
+					LOG_BUFFER.write(JpEnStr(
+					  u8"error : BGM の初期化に失敗しました\r\n"_sjis,
+						"error : BGM initialization failed\r\n"
+					));
 				}
 				for (size_t i = 0; i < MAX_ACTIVE_SOUNDS; ++i) {
 					SOUND_MANAGER.active_sound_ids[i] = -1;
@@ -37344,9 +37442,13 @@ dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
 					loading_thread->enable_tick_unsafe();
 					return 0;
 				}
+				goto end;
 			}
 		}
-		LOG_BUFFER.write(JpEnStr("", "error : failed to initialize character\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"error : 文字の初期化に失敗しました\r\n"_sjis,
+			"error : failed to initialize character\r\n"
+		));
 	}
 	SUPERVISOR.gamemode_switch = GameMode::CleanupA; // 3
 end:
@@ -38970,7 +39072,10 @@ dllexport gnu_noinline ZUNResult thiscall EclManager::load_imports(EclIncludes* 
 				clang_forceinline anm_loaded = ANM_MANAGER_PTR->preload_anm(i + ECL_ANM_INDEX_A, anm_names);
 				enemy_manager->enemy_anms[i + ECL_INCLUDE_ANM_INDEX_0] = anm_loaded;
 				if (!anm_loaded) {
-					LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
+					LOG_BUFFER.write(JpEnStr(
+					  u8"データが壊れています\r\n"_sjis,
+						"data is corrupted\r\n"
+					));
 					return ZUN_ERROR;
 				}
 				anm_names += byteloop_strlen(anm_names) + 1;
@@ -40369,9 +40474,15 @@ struct Stage : ZUNTask {
 		AnmLoaded* stage_anm = ANM_MANAGER_PTR->preload_anm(3 + (this->stage_number & 1), this->std_file->anm_name);
 		this->stage_anm = stage_anm;
 		if (!stage_anm) {
-			LOG_BUFFER.write(JpEnStr("", "No stage data found. data is corrupted\r\n"));
+			LOG_BUFFER.write(JpEnStr(
+			  u8"ステージデータが見つかりません。データが壊れています\r\n"_sjis,
+				"No stage data found. data is corrupted\r\n"
+			));
 corrupted_data:
-			LOG_BUFFER.write_error(JpEnStr("", "Unable to read stage data. data is corrupted\r\n"));
+			LOG_BUFFER.write_error(JpEnStr(
+			  u8"ステージデータが読み込めません。データが壊れています"_sjis,
+				"Unable to read stage data. data is corrupted\r\n"
+			));
 			return ZUN_ERROR;
 		}
 
@@ -46829,7 +46940,10 @@ public:
 		AnmLoaded* bullet_anm = ANM_MANAGER_PTR->preload_anm(BULLET_ANM_INDEX, "bullet.anm");
 		this->bullet_anm = bullet_anm;
 		if (!bullet_anm) {
-			LOG_BUFFER.write(JpEnStr("", "Enemy bullet data not found. data is corrupted\r\n"));
+			LOG_BUFFER.write(JpEnStr(
+			  u8"敵弾データが見つかりません。データが壊れています\r\n"_sjis,
+				"Enemy bullet data not found. data is corrupted\r\n"
+			));
 			return ZUN_ERROR;
 		}
 
@@ -47442,7 +47556,10 @@ public:
 		AnmLoaded* bullet_anm = ANM_MANAGER_PTR->preload_anm(BULLET_ANM_INDEX, "bullet.anm");
 		this->bullet_anm = bullet_anm;
 		if (!bullet_anm) {
-			LOG_BUFFER.write(JpEnStr("", "Enemy bullet data not found. Data is corrupted\r\n"));
+			LOG_BUFFER.write(JpEnStr(
+			  u8"敵弾データが見つかりません。データが壊れています\r\n"_sjis,
+				"Enemy bullet data not found. Data is corrupted\r\n"
+			));
 			return ZUN_ERROR;
 		}
 
@@ -50706,7 +50823,13 @@ dllexport gnu_noinline ZUNResult thiscall EclContext::call(EclContext* new_conte
 		this->vm->current_context = new_context;
 		return ZUN_SUCCESS;
 	} else {
-		DebugLogger::__debug_log_stub_5(JpEnStr("", " error : undefined function name %s\n"), sub_name);
+		DebugLogger::__debug_log_stub_5(
+			JpEnStr(
+			  u8" error : 未定義の関数名 %s\n"_sjis,
+				" error : undefined function name %s\n"
+			),
+			sub_name
+		);
 		this->location.reset();
 		return ZUN_ERROR;
 	}
@@ -55271,7 +55394,10 @@ struct HelpMenu : ZUNTask {
 		HelpMenu* help_menu = HELP_MENU_PTR;
 		help_menu->help_anm = anm_loaded;
 		if (!anm_loaded) {
-			LOG_BUFFER.write(JpEnStr("", "Screen configuration data not found. data is corrupted\r\n"));
+			LOG_BUFFER.write(JpEnStr(
+			  u8"画面構成データが見つかりません。データが壊れています\r\n"_sjis,
+				"Screen configuration data not found. data is corrupted\r\n"
+			));
 		}
 		else {
 			SUPERVISOR.__thread_A94.__bool_10 = FALSE;
@@ -57135,7 +57261,10 @@ struct NoticeManager : ZUNTask {
 		NoticeManager* notice_manager = NOTICE_MANAGER_PTR;
 		notice_manager->notice_anm = anm_loaded;
 		if (!anm_loaded) {
-			LOG_BUFFER.write(JpEnStr("", "Screen configuration data not found. data is corrupted\r\n"));
+			LOG_BUFFER.write(JpEnStr(
+			  u8"画面構成データが見つかりません。データが壊れています\r\n"_sjis,
+				"Screen configuration data not found. data is corrupted\r\n"
+			));
 		} else {
 			SUPERVISOR.__thread_A94.__bool_10 = FALSE;
 			SUPERVISOR.__thread_A94.__bool_C = TRUE;
@@ -57350,14 +57479,35 @@ extern "C" {
 
 // 0x4B7A78
 static inline constexpr const char *const MUSIC_ROOM_SPOILER_TEXT_TABLE[] = {
-	JpEnStr("", " "),
-	JpEnStr("", "  **The selected song is not yet playing in the game**"),
+	JpEnStr(
+	  u8"　"_sjis,
+		" "
+	),
+	JpEnStr(
+	  u8"　　＊＊選択した曲はまだゲーム中で再生されていません＊＊"_sjis,
+		"  **The selected song is not yet playing in the game**"
+	),
 	" ",
-	JpEnStr("", "    Song comments may be spoilers."),
-	JpEnStr("", "         still play?"),
-	JpEnStr("", " "),
-	JpEnStr("", "   If you want to play, please press the decision button again."),
-	JpEnStr("", "   If you don't want to play, please move the cursor.")
+	JpEnStr(
+	  u8"　　　　曲のコメントがネタバレになる恐れがあります。"_sjis,
+		"    Song comments may be spoilers."
+	),
+	JpEnStr(
+	  u8"　　　　　　　　　それでも再生しますか？"_sjis,
+		"         still play?"
+	),
+	JpEnStr(
+	  u8"　"_sjis,
+		" "
+	),
+	JpEnStr(
+	  u8"　　　再生したい方は、もう一度決定ボタンを押してください。"_sjis,
+		"   If you want to play, please press the decision button again."
+	),
+	JpEnStr(
+	  u8"　　　再生したくない方は、カーソルを移動してください。"_sjis,
+		"   If you don't want to play, please move the cursor."
+	)
 };
 
 struct MainMenuState { enum : int32_t {
@@ -58614,7 +58764,10 @@ public:
 						if (unlocked) {
 							trophy_title = TrophyData::__get_title_for_trophy(this->__trophy_index);
 						} else {
-							trophy_title = JpEnStr("", "????????????");
+							trophy_title = JpEnStr(
+							  u8"？？？？？？？？？？？？"_sjis,
+								"????????????"
+							);
 						}
 						ANM_MANAGER_PTR->draw_text_center(
 							this->__anm_id_53C.get_vm_ptr(),
@@ -58795,9 +58948,15 @@ public:
 				arg3[index] = spell_id;
 				if (scorefile_manager->primary_file.shottypes[SHOTTYPES_TOTAL].spells[spell_id].never_attempted()) {
 					if (spell_difficulty >= OVERDRIVE) {
-						byteloop_strcpy(buffer, JpEnStr("", "You can challenge overdrive mode!"));
+						byteloop_strcpy(buffer, JpEnStr(
+						  u8"オーバードライブモード挑戦可能！"_sjis,
+							"You can challenge overdrive mode!"
+						));
 					} else {
-						byteloop_strcpy(buffer, JpEnStr("", "Challenge possible!"));
+						byteloop_strcpy(buffer, JpEnStr(
+						  u8"挑戦可能！"_sjis,
+							"Challenge possible!"
+						));
 					}
 				} else {
 					byteloop_strcpy(buffer, scorefile_manager->primary_file.shottypes[SHOTTYPES_TOTAL].spells[spell_id].name);
@@ -60674,7 +60833,10 @@ public:
 			WINDOW_DATA.__int_20D0 = 1;
 		}
 		else {
-			LOG_BUFFER.write(JpEnStr("", "data is corrupted\r\n"));
+			LOG_BUFFER.write(JpEnStr(
+			  u8"データが壊れています\r\n"_sjis,
+				"data is corrupted\r\n"
+			));
 			SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::CleanupA;
 		}
 		return 0;
@@ -61660,11 +61822,17 @@ static inline int32_t stdcall __create_normal_texture(AnmImage* image, uint32_t 
 // 0x486BC0
 dllexport gnu_noinline int32_t thiscall AnmManager::__sub_486BC0(AnmLoaded* anm_loaded, uint32_t entry_index, uint32_t sprite_count, uint32_t script_count, AnmEntry* entry) {
 	if (!entry) {
-		LOG_BUFFER.write_error(JpEnStr("", "Can't load animation. data is lost or corrupted\r\n"));
+		LOG_BUFFER.write_error(JpEnStr(
+		  u8"アニメが読み込めません。データが失われてるか壊れています\r\n"_sjis,
+			"Can't load animation. data is lost or corrupted\r\n"
+		));
 		return -1;
 	}
 	if (entry->version != 8) {
-		LOG_BUFFER.write_error(JpEnStr("", "different version of animation\r\n"));
+		LOG_BUFFER.write_error(JpEnStr(
+		  u8"アニメのバージョンが違います\r\n"_sjis,
+			"different version of animation\r\n"
+		));
 		return -1;
 	}
 	anm_loaded->images[entry_index].entry = entry;
@@ -61682,14 +61850,23 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__sub_486BC0(AnmLoaded* anm_
 		} else {
 			image_size = this->__create_texture_from_file(&anm_loaded->images[entry_index], entry->format, entry_index, entry->width, entry->height, entry->offset_x, entry->offset_y);
 			if (image_size < 0) {
-				LOG_BUFFER.write_error(JpEnStr("", "Unable to create texture %s. data is lost or corrupted\r\n"), image_filename);
+				LOG_BUFFER.write_error(
+					JpEnStr(
+					  u8"テクスチャ %s が作成できません。データが失われてるか壊れています\r\n"_sjis,
+						"Unable to create texture %s. data is lost or corrupted\r\n"
+					),
+					image_filename
+				);
 				return -1;
 			}
 		}
 	} else {
 		image_size = __create_texture_from_anm(&anm_loaded->images[entry_index], based_pointer<AnmTexture>(entry, entry->texture_data_offset), entry->format, entry->width, entry->height);
 		if (image_size < 0) {
-			LOG_BUFFER.write_error(JpEnStr("", "Unable to create texture. data is lost or corrupted\r\n"));
+			LOG_BUFFER.write_error(JpEnStr(
+			  u8"テクスチャが作成できません。データが失われてるか壊れています\r\n"_sjis,
+				"Unable to create texture. data is lost or corrupted\r\n"
+			));
 			return -1;
 		}
 	}
@@ -61998,8 +62175,14 @@ dllexport gnu_noinline ZUNResult thiscall ReplayManager::__write_to_path(const c
 	char* user_write = user_data->text;
 
 	user_write += sprintf(user_write, 
-		JpEnStr("", "%s replay file information\r\n"),
-		JpEnStr("", "Oriental Rainbow Cave")
+		JpEnStr(
+		  u8"%s リプレイファイル情報\r\n"_sjis,
+			"%s replay file information\r\n"
+		),
+		JpEnStr(
+		  u8"東方虹龍洞"_sjis,
+			"Touhou Rainbow Cave"
+		)
 	);
 	user_write += sprintf(user_write, "Version %s\r\n", "1.00a");
 	user_write += sprintf(user_write, "Name %s\r\n", self->info->name);
@@ -62030,7 +62213,13 @@ dllexport gnu_noinline ZUNResult thiscall ReplayManager::__write_to_path(const c
 			}
 		}
 		else {
-			user_write += sprintf(user_write, "Stage %d - %d\r\n", stage_start, stage_end);
+			user_write += sprintf(user_write,
+				JpEnStr(
+				  u8"Stage %d ～ %d\r\n"_sjis,
+					"Stage %d - %d\r\n"
+				),
+				stage_start, stage_end
+			);
 		}
 	}
 
@@ -62056,7 +62245,10 @@ dllexport gnu_noinline ZUNResult thiscall ReplayManager::__write_to_path(const c
 	user_write = user_data->text;
 
 	user_write += sprintf(user_write,
-		JpEnStr("", "can write comments")
+		JpEnStr(
+		  u8"コメントを書けます"_sjis,
+			"can write comments"
+		)
 	);
 
 	++user_write;
@@ -62089,7 +62281,10 @@ dllexport gnu_noinline ZUNResult thiscall Supervisor::load_config_file(int) {
 	void* config_file = read_file_to_buffer("th18.cfg", &file_size, true);
 	chdir(WINDOW_DATA.exe_path);
 	if (!config_file) {
-		LOG_BUFFER.write(JpEnStr("�R���t�B�O�f�[�^��������Ȃ��̂ŏ��������܂���\r\n", "I initialized because the configuration data was not found\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"コンフィグデータが見つからないので初期化しました\r\n"_sjis,
+			"I initialized because the configuration data was not found\r\n"
+		));
 		SUPERVISOR.config.initialize();
 	}
 	else {
@@ -62111,32 +62306,56 @@ dllexport gnu_noinline ZUNResult thiscall Supervisor::load_config_file(int) {
 			INPUT_P1.keyboard_mapping = SUPERVISOR.config.keyboard_mapping;
 		}
 		else {
-			LOG_BUFFER.write(JpEnStr("�R���t�B�O�f�[�^���ُ�ł����̂ōď��������܂���\r\n", "The configuration data was abnormal, so it was reinitialized\r\n"));
+			LOG_BUFFER.write(JpEnStr(
+			  u8"コンフィグデータが異常でしたので再初期化しました\r\n"_sjis,
+				"The configuration data was abnormal, so it was reinitialized\r\n"
+			));
 			SUPERVISOR.config.initialize();
 		}
 	}
 	this->disable_vsync = false;
 	if (this->config.disable_fog) {
-		LOG_BUFFER.write(JpEnStr("�t�H�O�̎g�p��}�����܂�\r\n", "suppress the use of fog\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"フォグの使用を抑制します\r\n"_sjis,
+			"suppress the use of fog\r\n"
+		));
 	}
 	if (this->present_parameters.Windowed) {
-		LOG_BUFFER.write(JpEnStr("�E�B���h�E���[�h�ŋN�����܂�\r\n", "start in windowed mode\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"ウィンドウモードで起動します\r\n"_sjis,
+			"start in windowed mode\r\n"
+		));
 	}
 	if (this->config.reference_rasterizer) {
-		LOG_BUFFER.write(JpEnStr("���t�@�����X���X�^���C�U���������܂�\r\n", "force reference rasterizer\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"リファレンスラスタライザを強制します\r\n"_sjis,
+			"force reference rasterizer\r\n"
+		));
 	}
 	if (this->config.disable_direct_input) {
-		LOG_BUFFER.write(JpEnStr("�p�b�h�A�L�[�{�[�h�̓��͂� DirectInput ���g�p���܂���\r\n", "Does not use DirectInput for pad and keyboard input\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"パッド、キーボードの入力に DirectInput を使用しません\r\n"_sjis,
+			"Does not use DirectInput for pad and keyboard input\r\n"
+		));
 	}
 	if (this->config.preload_bgm) {
-		LOG_BUFFER.write(JpEnStr("�a�f�l���������ɓǂݍ��݂܂�\r\n", "Load BGM into memory\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"ＢＧＭをメモリに読み込みます\r\n"_sjis,
+			"Load BGM into memory\r\n"
+		));
 	}
 	if (this->config.disable_vsync) {
-		LOG_BUFFER.write(JpEnStr("�������������܂���\r\n", "no vertical sync\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"垂直同期を取りません\r\n"_sjis,
+			"no vertical sync\r\n"
+		));
 		SUPERVISOR.disable_vsync = true;
 	}
 	if (this->config.__disable_locale_detection) {
-		LOG_BUFFER.write(JpEnStr("�����`��̊����������o���܂���\r\n", "Do not auto-detect character drawing environment\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"文字描画の環境を自動検出しません\r\n"_sjis,
+			"Do not auto-detect character drawing environment\r\n"
+		));
 	}
 	chdir(WINDOW_DATA.appdata_path);
 #if !PROTECT_ORIGINAL_FILES
@@ -62144,8 +62363,17 @@ dllexport gnu_noinline ZUNResult thiscall Supervisor::load_config_file(int) {
 #else
 	if (false) {
 #endif
-		LOG_BUFFER.write_error(JpEnStr("�t�@�C���������o���܂��� %s\r\n", "Unable to write file %s\r\n"), "th18.cfg");
-		LOG_BUFFER.write_error(JpEnStr("�t�H���_�������݋֎~�����ɂȂ��Ă��邩�A�f�B�X�N�������ς������ς��ɂȂ��Ă܂��񂩁H\r\n", "Is the folder write-protected or is the disk full?\r\n"));
+		LOG_BUFFER.write_error(
+			JpEnStr(
+			  u8"ファイルが書き出せません %s\r\n"_sjis,
+				"Unable to write file %s\r\n"
+			),
+			"th18.cfg"
+		);
+		LOG_BUFFER.write_error(JpEnStr(
+		  u8"フォルダが書込み禁止属性になっているか、ディスクがいっぱいいっぱいになってませんか？\r\n"_sjis,
+			"Is the folder write-protected or is the disk full?\r\n"
+		));
 		chdir(WINDOW_DATA.exe_path);
 		return ZUN_ERROR;
 	}
@@ -63974,7 +64202,7 @@ dllexport gnu_noinline void WindowData::__sub_4734E0(BOOL arg1) {
 	this->__screen_start_x = (int32_t)(width - SCREEN_WIDTH) / 2;
 	this->__screen_start_y = (int32_t)(WINDOW_DATA.scaled_window_height - SCREEN_HEIGHT) / 2;
 }
-
+static_assert(MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN) == 0x411);
 // 0x473890
 dllexport gnu_noinline BOOL WindowData::__create_window(HINSTANCE instance) {
 	WNDCLASSA class_def;
@@ -63988,8 +64216,8 @@ dllexport gnu_noinline BOOL WindowData::__create_window(HINSTANCE instance) {
 	class_def.lpszMenuName = NULL;
 	class_def.cbClsExtra = 0;
 	class_def.cbWndExtra = 0;
-	const char* window_title = user_locale == 0x411
-		? "�����������@�` Unconnected Marketeers ver 1.00a"
+	const char* window_title = user_locale == MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN) // 0x411
+		? u8"東方虹龍洞　～ Unconnected Marketeers ver 1.00a"_sjis
 		: "TH18 - Unconnected Marketeers ver 1.00a";
 	class_def.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
 	class_def.hCursor = LoadCursorA(NULL, IDC_ARROW);
@@ -64128,7 +64356,10 @@ dllexport gnu_noinline ZUNResult __make_mutex_and_test_path() {
 #if !KILL_THE_MUTEX_WITH_FIRE
 	MUTEX_DATA.handle = CreateMutexA(NULL, TRUE, "th18 App");
 	if (GetLastError() == ERROR_ALREADY_EXISTS) {
-		LOG_BUFFER.write_error(JpEnStr("��͋N���ł��܂���\r\n", "Two cannot be started\r\n"));
+		LOG_BUFFER.write_error(JpEnStr(
+		  u8"二つは起動できません\r\n"_sjis,
+			"Two cannot be started\r\n"
+		));
 		return ZUN_ERROR;
 	}
 #endif
@@ -64145,7 +64376,10 @@ dllexport gnu_noinline ZUNResult __make_mutex_and_test_path() {
 			if (!stricmp(file_extension_str, ".lnk")) {
 				do {
 					if (CoInitialize(NULL) != S_OK) {
-						LOG_BUFFER.write_error(JpEnStr("CoInitialize ���������s\r\n", "CoInitialize initialization failure\r\n"));
+						LOG_BUFFER.write_error(JpEnStr(
+						  u8"CoInitialize 初期化失敗\r\n"_sjis,
+							"CoInitialize initialization failure\r\n"
+						));
 					}
 					IShellLinkA* shortcut_interface;
 					if (SUCCEEDED(CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkA, (LPVOID*)&shortcut_interface))) {
@@ -64479,7 +64713,10 @@ reset_success:
 		}
 		if (is_second_iteration) {
 			if (!arg1) {
-				LOG_BUFFER.write_error(JpEnStr("Direct3D �̏������Ɏ��s�A���̉𑜓x�ɂ͑Ή����Ă܂���\r\n", "Direct3D initialization failed, this resolution is not supported\r\n"));
+				LOG_BUFFER.write_error(JpEnStr(
+				  u8"Direct3D の初期化に失敗、この解像度には対応してません\r\n"_sjis,
+					"Direct3D initialization failed, this resolution is not supported\r\n"
+				));
 				SAFE_RELEASE(SUPERVISOR.d3d);
 			}
 			return ZUN_ERROR;
@@ -64496,8 +64733,11 @@ reset_success:
 	SUPERVISOR.present_parameters = present_parameters;
 	if (SUPERVISOR.d3d_device->Reset(&present_parameters) == D3D_OK) {
 		LOG_BUFFER.write(
-			JpEnStr("�𑜓x %d %d�ŋN�����܂�\r\n", "Booting at resolution %d %d\r\n")
-			, present_parameters.BackBufferWidth, present_parameters.BackBufferHeight
+			JpEnStr(
+			  u8"解像度 %d %dで起動します\r\n"_sjis,
+				"Booting at resolution %d %d\r\n"
+			),
+			present_parameters.BackBufferWidth, present_parameters.BackBufferHeight
 		);
 	}
 	return ZUN_SUCCESS;
@@ -64506,7 +64746,7 @@ reset_success:
 // 0x473DF0
 dllexport gnu_noinline int32_t __initialize_d3d() ASR(0x473DF0);
 dllexport gnu_noinline int32_t __initialize_d3d() {
-	D3DPRESENT_PARAMETERS present_parameters;
+	D3DPRESENT_PARAMETERS present_parameters; // Not a memset, only some fields written?
 	present_parameters.BackBufferWidth = 0;
 	present_parameters.BackBufferHeight = 0;
 	present_parameters.BackBufferFormat = D3DFMT_UNKNOWN;
@@ -64531,7 +64771,10 @@ dllexport gnu_noinline int32_t __initialize_d3d() {
 	if (!SUPERVISOR.present_parameters.Windowed) {
 		if (SUPERVISOR.config.__color_mode == 255) {
 			d3d_format = D3DFMT_A8R8G8B8;
-			LOG_BUFFER.write(JpEnStr("����N���A��ʂ� 32Bits �ŏ��������܂���\r\n", "First boot, screen initialized with 32Bits\r\n"));
+			LOG_BUFFER.write(JpEnStr(
+			  u8"初回起動、画面を 32Bits で初期化しました\r\n"_sjis,
+				"First boot, screen initialized with 32Bits\r\n"
+			));
 		} else {
 			d3d_format = !SUPERVISOR.config.__color_mode ? D3DFMT_R5G6B5 : D3DFMT_A8R8G8B8;
 			present_parameters.BackBufferFormat = d3d_format;
@@ -64580,11 +64823,17 @@ dllexport gnu_noinline int32_t __initialize_d3d() {
 	}
 	SUPERVISOR.d3d_device->GetDeviceCaps(&SUPERVISOR.d3dcaps);
 	if (!(SUPERVISOR.d3dcaps.TextureOpCaps & D3DTEXOPCAPS_ADD)) {
-		LOG_BUFFER.write(JpEnStr("D3DTEXOPCAPS_ADD ���T�|�[�g���Ă��܂���A�F���Z�G�~�����[�g���[�h�œ��삵�܂�\r\n", "Does not support D3DTEXOPCAPS_ADD, works in color addition emulation mode\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"D3DTEXOPCAPS_ADD をサポートしていません、色加算エミュレートモードで動作します\r\n"_sjis,
+			"Does not support D3DTEXOPCAPS_ADD, works in color addition emulation mode\r\n"
+		));
 		// no more config flag for this
 	}
 	if (SUPERVISOR.d3dcaps.MaxTextureWidth < 256) { // the number doesn't match the string
-		LOG_BUFFER.write(JpEnStr("512 �ȏ�̃e�N�X�`�����T�|�[�g���Ă��܂���B�w�ǂ̊G���{�P�ĕ\������܂��B\r\n", "Doesn't support larger than 512 textures. Most of the pictures are blurry.\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"512 以上のテクスチャをサポートしていません。殆どの絵がボケて表示されます。\r\n"_sjis,
+			"Doesn't support larger than 512 textures. Most of the pictures are blurry.\r\n"
+		));
 	}
 	if (SUPERVISOR.d3d->CheckDeviceFormat(
 		D3DADAPTER_DEFAULT,
@@ -64600,7 +64849,10 @@ dllexport gnu_noinline int32_t __initialize_d3d() {
 		// Nothing uses any of these flags
 		SUPERVISOR.full_color_mode = false;
 		SUPERVISOR.config.__force_16_bit_color_mode = true;
-		LOG_BUFFER.write(JpEnStr("", "Does not support D3DFMT_A8R8G8B8, works in reduced color mode\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"D3DFMT_A8R8G8B8 をサポートしていません、減色モードで動作します\r\n"_sjis,
+			"Does not support D3DFMT_A8R8G8B8, works in reduced color mode\r\n"
+		));
 	}
 	WINDOW_DATA.__unused_closing = false;
 	__set_default_d3d_states();
@@ -64796,23 +65048,35 @@ dllexport gnu_noinline ZUNResult __initialize_dinput() {
 		SAFE_RELEASE(SUPERVISOR.dinput);
 	}
 	SUPERVISOR.dinput = NULL;
-	LOG_BUFFER.write(JpEnStr("DirectInput ���g�p�ł��܂���\r\n", "DirectInput not available\r\n"));
+	LOG_BUFFER.write(JpEnStr(
+	  u8"DirectInput が使用できません\r\n"_sjis,
+		"DirectInput not available\r\n"
+	));
 	return ZUN_ERROR;
 dinput_init_success:
 	if (FAILED(SUPERVISOR.keyboard_device->SetDataFormat(&c_dfDIKeyboard))) {
 		SAFE_RELEASE(SUPERVISOR.keyboard_device);
 		SAFE_RELEASE(SUPERVISOR.dinput);
-		LOG_BUFFER.write(JpEnStr("DirectInput SetDataFormat ���g�p�ł��܂���\r\n", "DirectInput SetDataFormat not available\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"DirectInput SetDataFormat が使用できません\r\n"_sjis,
+			"DirectInput SetDataFormat not available\r\n"
+		));
 		return ZUN_ERROR;
 	}
 	if (FAILED(SUPERVISOR.keyboard_device->SetCooperativeLevel(WINDOW_DATA.window, DISCL_NONEXCLUSIVE | DISCL_FOREGROUND | DISCL_NOWINKEY))) {
 		SAFE_RELEASE(SUPERVISOR.keyboard_device);
 		SAFE_RELEASE(SUPERVISOR.dinput);
-		LOG_BUFFER.write(JpEnStr("DirectInput SetCooperativeLevel ���g�p�ł��܂���\r\n", "DirectInput SetCooperativeLevel not available\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"DirectInput SetCooperativeLevel が使用できません\r\n"_sjis,
+			"DirectInput SetCooperativeLevel not available\r\n"
+		));
 		return ZUN_ERROR;
 	}
 	SUPERVISOR.keyboard_device->Acquire();
-	LOG_BUFFER.write(JpEnStr("DirectInput �͐���ɏ���������܂���\r\n", "DirectInput successfully initialized\r\n"));
+	LOG_BUFFER.write(JpEnStr(
+	  u8"DirectInput は正常に初期化されました\r\n"_sjis,
+		"DirectInput successfully initialized\r\n"
+	));
 	SUPERVISOR.dinput->EnumDevices(
 		DI8DEVCLASS_GAMECTRL,
 		&EnumDevicesCallback,
@@ -64830,7 +65094,10 @@ dinput_init_success:
 			NULL,
 			DIDFT_ALL
 		);
-		LOG_BUFFER.write(JpEnStr("�L���ȃp�b�h�𔭌����܂���\r\n", "found a valid pad\r\n"));
+		LOG_BUFFER.write(JpEnStr(
+		  u8"有効なパッドを発見しました\r\n"_sjis,
+			"found a valid pad\r\n"
+		));
 	}
 	return ZUN_SUCCESS;
 }
@@ -64868,13 +65135,19 @@ dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevIn
 	CRITICAL_SECTION_MANAGER.initialize();
 	DEBUG_LOG_PTR = new DebugLogger();
 	DEBUG_LOG_PTR->__dword_0 = 0;
-	LOG_BUFFER.write(JpEnStr("��������L�^ --------------------------------------------- \r\n", "Touhou Operation Record --------------------------------------------- \r\n"));
+	LOG_BUFFER.write(JpEnStr(
+	  u8"東方動作記録 --------------------------------------------- \r\n"_sjis,
+		"Touhou Operation Record --------------------------------------------- \r\n"
+	));
 	if (__make_mutex_and_test_path() != ZUN_ERROR) {
 		SUPERVISOR.current_instance = current_instance;
 		if (ZUN_SUCCEEDED(WINDOW_DATA.__save_properties_and_configure_paths())) {
 			goto winmain_load_config;
 		}
-		LOG_BUFFER.write_error(JpEnStr("�Z�[�u�f�[�^���ۑ��ł��܂���\r\n", "Save data cannot be saved\r\n"));
+		LOG_BUFFER.write_error(JpEnStr(
+		  u8"セーブデータが保存できません\r\n"_sjis,
+			"Save data cannot be saved\r\n"
+		));
 	}
 
 winmain_important_label:
@@ -64898,7 +65171,10 @@ winmain_important_label:
 	}
 	LOG_BUFFER.buffer_write = LOG_BUFFER.buffer;
 	LOG_BUFFER.buffer[0] = '\0';
-	LOG_BUFFER.write(JpEnStr("�ċN����v����I�v�V�������ύX���ꂽ�̂ōċN�����܂�\r\n", "An option that requires a reboot has been changed and will be rebooted\r\n"));
+	LOG_BUFFER.write(JpEnStr(
+	  u8"再起動を要するオプションが変更されたので再起動します\r\n"_sjis,
+		"An option that requires a reboot has been changed and will be rebooted\r\n"
+	));
 	if (!SUPERVISOR.present_parameters.Windowed) {
 		WINNLSEnableIME(NULL, true);
 	}
@@ -64918,7 +65194,10 @@ winmain_after_config_loaded:
 	if (d3d_ptr) {
 		goto winmain_d3d_create_success;
 	}
-	LOG_BUFFER.write_error(JpEnStr("Direct3D �I�u�W�F�N�g�͉��̂��쐬�o���Ȃ�����\r\n", "Direct3D object could not be created for some reason\r\n"));
+	LOG_BUFFER.write_error(JpEnStr(
+	  u8"Direct3D オブジェクトは何故か作成出来なかった\r\n"_sjis,
+		"Direct3D object could not be created for some reason\r\n"
+	));
 	goto winmain_important_label;
 
 	// ====================
