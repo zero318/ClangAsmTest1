@@ -48,6 +48,8 @@
 #define ENABLE_THIRD_BOSS_BAR 1
 #define QUICKLOAD 0
 
+#define INCLUDE_PATCH_CODE 0
+
 #define KOISHI_DEBUG_TEST 1
 
 #define USE_THE_DANG_EXE_ICON_PLZ 1
@@ -84,7 +86,6 @@
 #define DEBUG_NO_GAME_OVER 1
 
 #define PROTECT_ORIGINAL_FILES 1
-#define IGNORE_HASH_CHECKS 1
 #define OVERRIDE_PATH_CHECKS 1
 
 #if !REMOVE_LIST_HEAD_PTR
@@ -122,8 +123,6 @@ void APPLY_DEBUG_CONFIG();
 #else
 #define JpEnStr(jstring, estring) jstring
 #endif
-
-#define INCLUDE_PATCH_CODE 0
 
 //#define USE_VOLATILES_AND_BARRIERS_FOR_ORIGINAL_CODEGEN 1
 
@@ -8098,6 +8097,9 @@ static inline constexpr float SCREEN_BOTTOM_EDGE = SCREEN_HEIGHT;
 static inline constexpr float LOGICAL_WINDOW_WIDTH = 640.0f;
 static inline constexpr float LOGICAL_WINDOW_HEIGHT = 480.0f;
 
+static inline constexpr float LOGICAL_WINDOW_HALF_WIDTH = LOGICAL_WINDOW_WIDTH / 2.0f;
+static inline constexpr float LOGICAL_WINDOW_HALF_HEIGHT = LOGICAL_WINDOW_HEIGHT / 2.0f;
+
 // 0x478540
 dllexport gnu_noinline void fastcall __convert_position_to_window_uv(Float2* out, Float2* position) ASR(0x478540);
 dllexport gnu_noinline void fastcall __convert_position_to_window_uv(Float2* out, Float2* position) {
@@ -8442,7 +8444,8 @@ enum CardId : int32_t {
 };
 
 static inline constexpr size_t INTERNAL_CARD_COUNT = ENUM_VALUE_COUNT(CardId);
-static inline constexpr size_t CARD_COUNT = INTERNAL_CARD_COUNT - 1;
+static inline constexpr size_t CARD_COUNT = INTERNAL_CARD_COUNT - 1; // ignore back card
+static inline constexpr size_t USABLE_CARD_COUNT = CARD_COUNT - 1; // ignore null card
 
 enum PriceTier : int32_t {
 	FreeTier = 0,
@@ -8877,14 +8880,14 @@ struct ScorefileSection : ScorefileSectionHeader {
 	}
 };
 
-static inline constexpr uint16_t SCOREFILE_SECTION_B_MAGIC = PackUInt16('C', 'R'); // Character record?
-static inline constexpr uint16_t SCOREFILE_SECTION_B_VERSION_NUMBER = 3;
+static inline constexpr uint16_t SCOREFILE_SHOTTYPE_SECTION_MAGIC = PackUInt16('C', 'R'); // Character record?
+static inline constexpr uint16_t SCOREFILE_SHOTTYPE_SECTION_VERSION_NUMBER = 3;
 static inline constexpr int32_t RECORDS_PER_DIFFICULTY = 10;
 
 static inline constexpr size_t wekjbkrb = sizeof(ScorefileStagePractice[DIFFICULTY_COUNT][STAGE_COUNT + 1]);
 
 // size: 0x130F0
-struct ScorefileSectionB : ScorefileSectionHeader {
+struct ScorefileShottypeSection : ScorefileSectionHeader {
 	// ScorefileSectionHeader base; // 0x0, 0x8
 	int32_t index; // 0xC, 0x14
 	ScorefileRecord records[DIFFICULTY_COUNT][RECORDS_PER_DIFFICULTY]; // 0x10, 0x18
@@ -8910,7 +8913,7 @@ struct ScorefileSectionB : ScorefileSectionHeader {
 	}
 
 	inline uint32_t calculate_checksum() {
-		return ((ScorefileSection*)this)->calculate_checksum(sizeof(ScorefileSectionB));
+		return ((ScorefileSection*)this)->calculate_checksum(sizeof(ScorefileShottypeSection));
 	}
 
 	inline void __add_play_count() {
@@ -8923,9 +8926,9 @@ struct ScorefileSectionB : ScorefileSectionHeader {
 	// 0x463350
 	dllexport gnu_noinline void thiscall initialize() ASR(0x463350) {
 		this->zero_contents();
-		this->magic.as_uint = SCOREFILE_SECTION_B_MAGIC;
-		this->__version_number = SCOREFILE_SECTION_B_VERSION_NUMBER;
-		this->size = sizeof(ScorefileSectionB);
+		this->magic.as_uint = SCOREFILE_SHOTTYPE_SECTION_MAGIC;
+		this->__version_number = SCOREFILE_SHOTTYPE_SECTION_VERSION_NUMBER;
+		this->size = sizeof(ScorefileShottypeSection);
 
 		for (size_t i = 0; i < DIFFICULTY_COUNT; ++i) {
 			for (size_t j = 0; j < RECORDS_PER_DIFFICULTY; ++j) {
@@ -8995,24 +8998,24 @@ struct ScorefileSectionB : ScorefileSectionHeader {
 		return this->spells_captured() >= SPELL_COUNT;
 	}
 };
-#pragma region // ScorefileSectionB Validation
-ValidateFieldOffset(0x0, ScorefileSectionB, magic);
-ValidateFieldOffset(0x2, ScorefileSectionB, __version_number);
-ValidateFieldOffset(0x4, ScorefileSectionB, checksum);
-ValidateFieldOffset(0x8, ScorefileSectionB, size);
-ValidateFieldOffset(0xC, ScorefileSectionB, index);
-ValidateFieldOffset(0x10, ScorefileSectionB, records);
-ValidateFieldOffset(0x8D0, ScorefileSectionB, spells);
-ValidateFieldOffset(0x64C4, ScorefileSectionB, __play_count);
-ValidateFieldOffset(0x64C8, ScorefileSectionB, total_game_time);
-ValidateFieldOffset(0x64D0, ScorefileSectionB, __total_clears);
-ValidateFieldOffset(0x64EC, ScorefileSectionB, __1cc_clears);
-ValidateFieldOffset(0x12EF0, ScorefileSectionB, practice);
-ValidateStructSize(0x130F0, ScorefileSectionB);
+#pragma region // ScorefileShottypeSection Validation
+ValidateFieldOffset(0x0, ScorefileShottypeSection, magic);
+ValidateFieldOffset(0x2, ScorefileShottypeSection, __version_number);
+ValidateFieldOffset(0x4, ScorefileShottypeSection, checksum);
+ValidateFieldOffset(0x8, ScorefileShottypeSection, size);
+ValidateFieldOffset(0xC, ScorefileShottypeSection, index);
+ValidateFieldOffset(0x10, ScorefileShottypeSection, records);
+ValidateFieldOffset(0x8D0, ScorefileShottypeSection, spells);
+ValidateFieldOffset(0x64C4, ScorefileShottypeSection, __play_count);
+ValidateFieldOffset(0x64C8, ScorefileShottypeSection, total_game_time);
+ValidateFieldOffset(0x64D0, ScorefileShottypeSection, __total_clears);
+ValidateFieldOffset(0x64EC, ScorefileShottypeSection, __1cc_clears);
+ValidateFieldOffset(0x12EF0, ScorefileShottypeSection, practice);
+ValidateStructSize(0x130F0, ScorefileShottypeSection);
 #pragma endregion
 
-static inline constexpr uint16_t SCOREFILE_SECTION_A_MAGIC = PackUInt16('S', 'T');
-static inline constexpr uint16_t SCOREFILE_SECTION_A_VERSION_NUMBER = 6;
+static inline constexpr uint16_t SCOREFILE_COMMON_SECTION_MAGIC = PackUInt16('S', 'T');
+static inline constexpr uint16_t SCOREFILE_COMMON_SECTION_VERSION_NUMBER = 6;
 
 static inline constexpr int32_t TROPHY_COUNT = 30;
 
@@ -9020,7 +9023,7 @@ static inline constexpr int32_t TROPHY_COUNT = 30;
 static inline constexpr int32_t MUSIC_COUNT = 32;
 
 // size: 0x3D0
-struct ScorefileSectionA : ScorefileSectionHeader {
+struct ScorefileCommonSection : ScorefileSectionHeader {
 	// ScorefileSectionHeader base; // 0x0, 0x5F4B8
 	char __recent_name[10]; // 0xC, 0x5F4C4
 	uint8_t __endings_seen[12]; // 0x16, 0x5F4CE
@@ -9050,15 +9053,15 @@ struct ScorefileSectionA : ScorefileSectionHeader {
 	}
 
 	inline uint32_t calculate_checksum() {
-		return ((ScorefileSection*)this)->calculate_checksum(sizeof(ScorefileSectionA));
+		return ((ScorefileSection*)this)->calculate_checksum(sizeof(ScorefileCommonSection));
 	}
 
 	// 0x463670
 	dllexport gnu_noinline void thiscall initialize() ASR(0x463670) {
 		this->zero_contents();
-		this->magic.as_uint = SCOREFILE_SECTION_A_MAGIC;
-		this->__version_number = SCOREFILE_SECTION_A_VERSION_NUMBER;
-		this->size = sizeof(ScorefileSectionA);
+		this->magic.as_uint = SCOREFILE_COMMON_SECTION_MAGIC;
+		this->__version_number = SCOREFILE_COMMON_SECTION_VERSION_NUMBER;
+		this->size = sizeof(ScorefileCommonSection);
 
 		memcpy(this->__recent_name, DEFAULT_RECORD_NAME, sizeof(DEFAULT_RECORD_NAME));
 		for (int32_t i = 0; i < CARD_COUNT; ++i) {
@@ -9080,21 +9083,21 @@ struct ScorefileSectionA : ScorefileSectionHeader {
 	}
 };
 #pragma region // ScorefileInnerA Validation
-ValidateFieldOffset(0x0, ScorefileSectionA, magic);
-ValidateFieldOffset(0x2, ScorefileSectionA, __version_number);
-ValidateFieldOffset(0x4, ScorefileSectionA, checksum);
-ValidateFieldOffset(0x8, ScorefileSectionA, size);
-ValidateFieldOffset(0xC, ScorefileSectionA, __recent_name);
-ValidateFieldOffset(0x16, ScorefileSectionA, __endings_seen);
-ValidateFieldOffset(0x22, ScorefileSectionA, __bool_22);
-ValidateFieldOffset(0x26, ScorefileSectionA, unlocked_music);
-ValidateFieldOffset(0x48, ScorefileSectionA, total_game_time);
-ValidateFieldOffset(0x50, ScorefileSectionA, trophies);
-ValidateFieldOffset(0xD0, ScorefileSectionA, unlocked_cards);
-ValidateFieldOffset(0x150, ScorefileSectionA, __card_ids_150);
-ValidateFieldOffset(0x1C0, ScorefileSectionA, __int_array_1C0);
-ValidateFieldOffset(0x1D0, ScorefileSectionA, __short_array_1D0);
-ValidateStructSize(0x3D0, ScorefileSectionA);
+ValidateFieldOffset(0x0, ScorefileCommonSection, magic);
+ValidateFieldOffset(0x2, ScorefileCommonSection, __version_number);
+ValidateFieldOffset(0x4, ScorefileCommonSection, checksum);
+ValidateFieldOffset(0x8, ScorefileCommonSection, size);
+ValidateFieldOffset(0xC, ScorefileCommonSection, __recent_name);
+ValidateFieldOffset(0x16, ScorefileCommonSection, __endings_seen);
+ValidateFieldOffset(0x22, ScorefileCommonSection, __bool_22);
+ValidateFieldOffset(0x26, ScorefileCommonSection, unlocked_music);
+ValidateFieldOffset(0x48, ScorefileCommonSection, total_game_time);
+ValidateFieldOffset(0x50, ScorefileCommonSection, trophies);
+ValidateFieldOffset(0xD0, ScorefileCommonSection, unlocked_cards);
+ValidateFieldOffset(0x150, ScorefileCommonSection, __card_ids_150);
+ValidateFieldOffset(0x1C0, ScorefileCommonSection, __int_array_1C0);
+ValidateFieldOffset(0x1D0, ScorefileCommonSection, __short_array_1D0);
+ValidateStructSize(0x3D0, ScorefileCommonSection);
 #pragma endregion
 
 struct ScorefileBuffer {
@@ -9106,8 +9109,8 @@ struct ScorefileBuffer {
 struct Scorefile {
 	PTR32<ScorefileBuffer> buffer; // 0x0
 	PTR32<void> decompressed_buffer; // 0x4
-	ScorefileSectionB shottypes[SHOTTYPE_COUNT + 1]; // 0x8, 0x130F8, 0x251E8, 0x392D8, 0x4C3C8
-	ScorefileSectionA common; // 0x5F4B8
+	ScorefileShottypeSection shottypes[SHOTTYPE_COUNT + 1]; // 0x8, 0x130F8, 0x251E8, 0x392D8, 0x4C3C8
+	ScorefileCommonSection common; // 0x5F4B8
 	// 0x5F888
 
 	inline ~Scorefile() NO_EH_TERMINATE {
@@ -9184,21 +9187,21 @@ private:
 		*(ScorefileHeader*)big_buffer = scorefile->buffer->header;
 		written_size += sizeof(ScorefileHeader);
 		
-		ScorefileSectionB* sectionB = scorefile->shottypes;
+		ScorefileShottypeSection* shottype_section = scorefile->shottypes;
 		for (size_t i = 0; i < countof(scorefile->shottypes); ++i) {
-			if (sectionB->magic.as_uint == SCOREFILE_SECTION_B_MAGIC) {
-				sectionB->index = i;
-				clang_forceinline sectionB->checksum = sectionB->calculate_checksum();
-				*(ScorefileSectionB*)&big_buffer[written_size] = *sectionB;
-				written_size += sizeof(ScorefileSectionB);
+			if (shottype_section->magic.as_uint == SCOREFILE_SHOTTYPE_SECTION_MAGIC) {
+				shottype_section->index = i;
+				clang_forceinline shottype_section->checksum = shottype_section->calculate_checksum();
+				*(ScorefileShottypeSection*)&big_buffer[written_size] = *shottype_section;
+				written_size += sizeof(ScorefileShottypeSection);
 			}
-			++sectionB;
+			++shottype_section;
 		}
 
-		ScorefileSectionA* sectionA = &scorefile->common;
-		sectionA->checksum = sectionA->calculate_checksum();
-		*(ScorefileSectionA*)&big_buffer[written_size] = *sectionA;
-		written_size += sizeof(ScorefileSectionA) - sizeof(ScorefileHeader); // WTF ZUN
+		ScorefileCommonSection* common_section = &scorefile->common;
+		common_section->checksum = common_section->calculate_checksum();
+		*(ScorefileCommonSection*)&big_buffer[written_size] = *common_section;
+		written_size += sizeof(ScorefileCommonSection) - sizeof(ScorefileHeader); // WTF ZUN
 
 		scorefile->buffer->header.decompressed_size = written_size;
 		void* compressed_buffer = __compress_buffer(&big_buffer[sizeof(ScorefileHeader)], scorefile->buffer->header.decompressed_size, &scorefile->buffer->header.compressed_size);
@@ -9243,35 +9246,31 @@ private:
 				int32_t remaining_size = scorefile->buffer->header.decompressed_size;
 				while (remaining_size > 0) {
 					switch (section->magic.as_uint) {
-						case SCOREFILE_SECTION_B_MAGIC: {
-							ScorefileSectionB* sectionB = (ScorefileSectionB*)section;
+						case SCOREFILE_SHOTTYPE_SECTION_MAGIC: {
+							ScorefileShottypeSection* shottype_section = (ScorefileShottypeSection*)section;
 							if (
-								sectionB->__version_number == SCOREFILE_SECTION_B_VERSION_NUMBER &&
-//#if !IGNORE_HASH_CHECKS
-								sectionB->checksum == sectionB->calculate_checksum() &&
-//#endif
-								sectionB->size == sizeof(ScorefileSectionB)
+								shottype_section->__version_number == SCOREFILE_SHOTTYPE_SECTION_VERSION_NUMBER &&
+								shottype_section->checksum == shottype_section->calculate_checksum() &&
+								shottype_section->size == sizeof(ScorefileShottypeSection)
 							) {
-								scorefile->shottypes[sectionB->index] = *sectionB;
-								remaining_size -= sectionB->size;
+								scorefile->shottypes[shottype_section->index] = *shottype_section;
+								remaining_size -= shottype_section->size;
 								if (remaining_size < 0) break;
-								section = sectionB->next_section();
+								section = shottype_section->next_section();
 							}
 							break;
 						}
-						case SCOREFILE_SECTION_A_MAGIC: {
-							ScorefileSectionA* sectionA = (ScorefileSectionA*)section;
+						case SCOREFILE_COMMON_SECTION_MAGIC: {
+							ScorefileCommonSection* common_section = (ScorefileCommonSection*)section;
 							if (
-								sectionA->__version_number == SCOREFILE_SECTION_A_VERSION_NUMBER &&
-//#if !IGNORE_HASH_CHECKS
-								sectionA->checksum == sectionA->calculate_checksum() &&
-//#endif
-								sectionA->size == sizeof(ScorefileSectionA)
+								common_section->__version_number == SCOREFILE_COMMON_SECTION_VERSION_NUMBER &&
+								common_section->checksum == common_section->calculate_checksum() &&
+								common_section->size == sizeof(ScorefileCommonSection)
 							) {
-								scorefile->common = *sectionA;
-								remaining_size -= sectionA->size;
+								scorefile->common = *common_section;
+								remaining_size -= common_section->size;
 								if (remaining_size < 0) break;
-								section = sectionA->next_section();
+								section = common_section->next_section();
 							}
 							break;
 						}
@@ -9306,11 +9305,11 @@ public:
 		this->common.initialize();
 
 		for (
-			ScorefileSectionB* sectionB = this->shottypes;
-			(int32_t)(sectionB - this->shottypes) < SHOTTYPE_COUNT + 1;
-			++sectionB
+			ScorefileShottypeSection* shottype_section = this->shottypes;
+			(int32_t)(shottype_section - this->shottypes) < SHOTTYPE_COUNT + 1;
+			++shottype_section
 		) {
-			sectionB->initialize();
+			shottype_section->initialize();
 		}
 	}
 };
@@ -9445,7 +9444,7 @@ struct ScorefileManager {
 			}
 		}
 
-		for (size_t i = 0; i != CARD_COUNT - 1; ++i) {
+		for (size_t i = 0; i != USABLE_CARD_COUNT; ++i) {
 			scorefile_manager->primary_file.common.unlocked_cards[i] = true;
 		}
 	}
@@ -15552,9 +15551,9 @@ dllexport gnu_noinline bool stdcall GdiManager::__sub_46FE80(UNUSED_ARG(int32_t 
 	return false;
 }
 
-#define SJIS_MEIRYO "\x83\x81\x83\x43\x83\x8A\x83\x49"
-#define SJIS_MS_GOTHIC "\x82\x6C\x82\x72 \x83\x53\x83\x56\x83\x62\x83\x4E"
-#define JSIS_MS_MINCHO "\x82\x6C\x82\x72 \x96\xBE\x92\xA9"
+#define SJIS_MEIRYO u8"メイリオ"_sjis
+#define SJIS_MS_GOTHIC u8"ＭＳ ゴシック"_sjis
+#define JSIS_MS_MINCHO u8"ＭＳ 明朝"_sjis
 
 // 0x470470
 dllexport gnu_noinline int CALLBACK EnumFontFamiliesExACallback(const LOGFONTA* lpelfe, const TEXTMETRICA* lpntme, DWORD font_type, LPARAM lparam) ASR(0x470470);
@@ -15738,7 +15737,7 @@ struct UnknownVertexB {
 // size: 0x44
 struct AnmSprite {
 	int32_t slot; // 0x0
-	int32_t __index_4; // 0x4
+	int32_t entry_index; // 0x4
 	int32_t __index_8; // 0x8
 	FloatRect bounds; // 0xC
 	float __surface_height; // 0x1C
@@ -15752,7 +15751,7 @@ struct AnmSprite {
 };
 #pragma region // AnmSprite Validation
 ValidateFieldOffset32(0x0, AnmSprite, slot);
-ValidateFieldOffset32(0x4, AnmSprite, __index_4);
+ValidateFieldOffset32(0x4, AnmSprite, entry_index);
 ValidateFieldOffset32(0x8, AnmSprite, __index_8);
 ValidateFieldOffset32(0xC, AnmSprite, bounds);
 ValidateFieldOffset32(0x1C, AnmSprite, __surface_height);
@@ -16475,6 +16474,12 @@ struct AnmVM {
 		return out;
 	}
 
+	forceinline Float3 get_render_position() {
+		Float3 position;
+		clang_forceinline this->get_render_position(&position);
+		return position;
+	}
+
 	// 0x4097D0
 	dllexport gnu_noinline Float3* thiscall get_controller_rotation() ASR(0x4097D0) {
 		Float3* controller_rotation = &this->controller.rotation;
@@ -16801,8 +16806,7 @@ struct AnmVM {
 		// offset_x // ESP+30
 		// offset_y // ESP+20
 
-		Float3 position; // ESP+40
-		clang_forceinline this->get_render_position(&position);
+		Float3 position = this->get_render_position(); // ESP+40
 
 		Float2 scale = this->get_render_scale();
 
@@ -17179,8 +17183,7 @@ struct AnmVM {
 		MsgVM* msg_vm = GUI_PTR->msg_vm;
 		AnmVM* vm2 = msg_vm->__callout_related.__find_child_vm_with_script(msg_vm->__int_1D4 + 170);
 		if (vm2) {
-			Float3 position = vm2->data.position + vm2->controller.position + vm2->data.__position_2;
-			vm2->__adjust_position_for_resolution_and_origin_modes(&position);
+			Float3 position = vm2->get_render_position();
 			position.as2() *= 2.0f / WINDOW_DATA.game_scale;
 			switch (msg_vm->active_portait) {
 				case 1: {
@@ -17624,8 +17627,7 @@ public:
 				float points_f = points;
 				float angle_add = TWO_PI_f / points_f;
 				float texture_v_add = this->data.current_context.int_vars[1] / points_f;
-				Float3 position = this->data.position + this->controller.position + this->data.__position_2;
-				this->__adjust_position_for_resolution_and_origin_modes(&position);
+				Float3 position = this->get_render_position();
 
 				// No color modes 2, 3, 4
 				D3DCOLOR color1 = this->data.color1;
@@ -17704,8 +17706,7 @@ public:
 				float texture_v_add = this->data.current_context.int_vars[1] / points_f;
 				float angle_add = arc_length / points_f;
 				SpriteVertex* vertices = (SpriteVertex*)this->controller.special_data;
-				Float3 position = this->data.position + this->controller.position + this->data.__position_2;
-				this->__adjust_position_for_resolution_and_origin_modes(&position);
+				Float3 position = this->get_render_position();
 
 				if (this->data.render_mode == ModeTexturedArcB) {
 					clang_noinline angle = reduce_angle(this->data.rotation.z);
@@ -20334,6 +20335,43 @@ public:
 		);
 	}
 
+	forceinline ZUNResult draw_polygon_segmented_line(
+		float position_x, float position_y,
+		int32_t length,
+		Float2* offsets, D3DCOLOR* colors
+	) {
+		if (this->primitive_write_cursor + 1 + length < array_end_addr(this->primitive_vertex_data)) {
+			this->flush_sprites();
+
+			PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+			for (int32_t i = 0; i < length; ++i) {
+				primitive_write_cursor[i].position.x = position_x + offsets[i].x;
+				primitive_write_cursor[i].position.y = position_y + offsets[i].y;
+				primitive_write_cursor[i].position.z = 0.0f;
+				primitive_write_cursor[i].position.w = 1.0f;
+				primitive_write_cursor[i].diffuse = colors[i];
+				primitive_write_cursor[i].position.as2() += this->__vertex_offsetB;
+			}
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_LINESTRIP, length - 1, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += 1 + length;
+			++this->__counter_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+
 private:
 	forceinline ZUNResult draw_polygon_line_impl(
 		float position_x, float position_y,
@@ -20867,8 +20905,7 @@ public:
 			{
 				float angle = vm->data.rotation.z;
 				Float2 size = vm->data.sprite_size * vm->data.scale;
-				Float3 position = vm->data.position + vm->controller.position + vm->data.__position_2;
-				vm->__adjust_position_for_resolution_and_origin_modes(&position);
+				Float3 position = vm->get_render_position();
 
 				AnmVM* parent = vm->controller.parent;
 				if (
@@ -20986,8 +21023,7 @@ public:
 			{
 				float angle = vm->data.rotation.z;
 				Float2 size = vm->data.sprite_size * vm->data.scale;
-				Float3 position = vm->data.position + vm->controller.position + vm->data.__position_2;
-				vm->__adjust_position_for_resolution_and_origin_modes(&position);
+				Float3 position = vm->get_render_position();
 
 				AnmVM* parent = vm->controller.parent;
 				if (
@@ -24325,8 +24361,8 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm(AnmID& out, int32_t script_i
 		}
 		else if (position) {
 			if (flags.__unknown_flag_A) {
-				// Offset to fixed res ECL (0,0)?
-				vm->controller.position = *position + Float2(LOGICAL_WINDOW_WIDTH / 2.0f, SCREEN_TOP_BORDER); // 320.0f, 16.0f
+				// Offset to fixed res ECL (0,0)
+				vm->controller.position = *position + Float2(LOGICAL_WINDOW_HALF_WIDTH, SCREEN_TOP_BORDER); // 320.0f, 16.0f
 			} else {
 				vm->controller.position = *position;
 			}
@@ -31685,10 +31721,8 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 	}
 	this->script_time++;
 break_skip_time:
-	if (AnmVM* vm = this->__callout_related.__find_child_vm_with_script(this->__int_1D4 + 170)) {
-		// TODO
-		Float3 position;
-		vm->get_render_position(&position);
+	if (AnmVM* vm = this->__callout_related.__find_child_vm_with_script(170 + this->__int_1D4)) {
+		Float3 position = vm->get_render_position();
 		position.as2() *= 2.0f / WINDOW_DATA.game_scale;
 		switch (this->active_portait) {
 			case 0:
@@ -36036,7 +36070,7 @@ struct AbilityManager : ZUNTask {
 	BOOL __ability_data_loaded; // 0xC60
 	BOOL __created_ability_data; // 0xC64
 	ZUNThread __thread_C68; // 0xC68
-	BOOL purchased_cards[CARD_COUNT - 1]; // 0xC84
+	BOOL purchased_cards[USABLE_CARD_COUNT]; // 0xC84
 	unknown_fields(0xC); // 0xD64
 	// 0xD70
 
@@ -37307,8 +37341,7 @@ dllexport gnu_noinline AbilityTrophyManager* fastcall __unlock_card(int32_t card
 	if (!scorefile_manager->primary_file.common.unlocked_cards[card_id]) {
 		scorefile_manager->primary_file.common.unlocked_cards[card_id] = true;
 
-		// -1 to exclude null card
-		for (int32_t i = 0; i < CARD_COUNT - 1; ++i) {
+		for (int32_t i = 0; i < USABLE_CARD_COUNT; ++i) {
 			if (!scorefile_manager->primary_file.common.unlocked_cards[CARD_DATA_TABLE[i].id]) {
 				goto skip_all_cards_trophy;
 			}
@@ -38237,10 +38270,10 @@ struct AbilityMenu : ZUNTask {
 	// 0x413650
 	dllexport gnu_noinline ZUNResult thiscall initialize(Float3* arg1, int arg2) ASR(0x413650) {
 		UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
-		UpdateFuncRegistry::register_on_tick(update_func, TickPriority::AbilityShop); // 7
+		UpdateFuncRegistry::register_on_tick(update_func, TickPriority::AbilityMenu); // 7
 		this->on_tick_func = update_func;
 		update_func = new UpdateFunc(&on_draw, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AbilityShop); // 80
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AbilityMenu); // 80
 		this->on_draw_func = update_func;
 
 		this->enable_funcs_unsafe();
@@ -38252,7 +38285,10 @@ struct AbilityMenu : ZUNTask {
 		this->__float3_2A8 = *arg1;
 
 		this->__int_13EC = arg2;
-		// TODO
+		
+		this->__menu_select_C.initialize(MenuLength3, MenuChoice0, MenuWrapEnable);
+		this->__menu_select_E4.initialize((MenuLength)ABILITY_MANAGER_PTR->card_count, MenuChoice0, MenuWrapDisable);
+		this->__menu_select_1BC.initialize((MenuLength)USABLE_CARD_COUNT, MenuChoice0, MenuWrapDisable);
 
 		arg2 = this->__int_13EC;
 
@@ -39245,7 +39281,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataA(AnmVM* vm, vo
 	vm->data.origin_mode = OriginWindow; // 0
 	vm->data.layer = 0;
 
-	Float3 position = { 320.0f, 240.0f, 0.0f };
+	Float3 position = { LOGICAL_WINDOW_HALF_WIDTH, LOGICAL_WINDOW_HALF_HEIGHT, 0.0f }; // 320, 240
 
 	nounroll for (int32_t i = 0; i < countof(special_data->__vm_array_0); ++i) {
 		AnmVM* vm = &special_data->__vm_array_0[i];
@@ -39260,7 +39296,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataA(AnmVM* vm, vo
 	vm->data.resolution_mode = ResolutionScaledA; // 1
 
 	for (size_t i = 0; i < countof(special_data->__vm_array_0); ++i) {
-		special_data->__vm_array_0[i].controller.position = { 320.0f, 240.0f, 0.0f };
+		special_data->__vm_array_0[i].controller.position = { LOGICAL_WINDOW_HALF_WIDTH, LOGICAL_WINDOW_HALF_HEIGHT, 0.0f }; // 320, 240
 	}
 
 	clang_forceinline EFFECT_MANAGER_PTR->effect_anm->__copy_data_to_vm_and_run(&special_data->__anm_vm_1830, 194);
@@ -39279,7 +39315,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_tick_special_dataA(AnmVM* vm) {
 		}
 	}
 
-	if (total < 4) {
+	if (total < countof(special_data->__vm_array_0)) {
 		special_data->__anm_vm_1830.run_anm();
 		int32_t A = special_data->__int_1E40++;
 		if (
@@ -39294,7 +39330,119 @@ dllexport gnu_noinline int fastcall AnmVM::on_tick_special_dataA(AnmVM* vm) {
 
 // 0x406D00
 dllexport gnu_noinline int fastcall AnmVM::on_draw_special_dataA(AnmVM* vm) {
-	// TODO
+	AnmVMSpecialDataA* special_data = (AnmVMSpecialDataA*)vm->controller.special_data;
+
+	// yes these are separate and I hate it
+	PrimitiveVertex verticesA[4];
+	PrimitiveVertex verticesB[4];
+
+	PrimitiveVertex* vertices;
+
+	switch (special_data->__int_1E3C) {
+		case 2: {
+			ANM_MANAGER_PTR->flush_sprites();
+			SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+			SUPERVISOR.d3d_device->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, TRUE);
+			SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ZERO);
+			SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+			SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+			SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_ONE);
+			SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ZERO);
+			SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
+
+			verticesA[0].position.as3() = Float2(128.0f, SCREEN_TOP_BORDER);
+			verticesA[1].position.as3() = Float2(128.0f, SCREEN_TOP_BORDER);
+			verticesA[2].position.as3() = Float2(128.0f, SCREEN_TOP_BORDER + SCREEN_HEIGHT);
+			verticesA[3].position.as3() = Float2(128.0f, SCREEN_TOP_BORDER + SCREEN_HEIGHT);
+			
+			verticesA[3].position.w = 1.0f;
+			verticesA[2].position.w = 1.0f;
+			verticesA[1].position.w = 1.0f;
+			verticesA[0].position.w = 1.0f;
+
+			verticesA[0].diffuse = COLOR_BLACK;
+			verticesA[1].diffuse = COLOR_BLACK;
+			verticesA[2].diffuse = COLOR_BLACK;
+			verticesA[3].diffuse = COLOR_BLACK;
+
+			SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+			SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+			SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
+			SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			vertices = verticesA;
+			goto render_vertices;
+		}
+		case 0: {
+			if (SUPERVISOR.present_parameters.BackBufferFormat == D3DFMT_A8R8G8B8) {
+				ANM_MANAGER_PTR->flush_sprites();
+				SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+				SUPERVISOR.d3d_device->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, TRUE);
+				SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ZERO);
+				SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+				SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+				SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_ONE);
+				SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ZERO);
+				SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLEND_ZERO);
+
+				AnmManager* anm_manager_ptr = ANM_MANAGER_PTR;
+
+				Float2 window_size = { WINDOW_DATA.window_width, WINDOW_DATA.window_height };
+
+				verticesB[0].position.as3() = anm_manager_ptr->__vertex_offsetB;
+				verticesB[1].position.as3() = anm_manager_ptr->__vertex_offsetB;
+				verticesB[2].position.as3() = anm_manager_ptr->__vertex_offsetB + window_size;
+				verticesB[3].position.as3() = anm_manager_ptr->__vertex_offsetB + window_size;
+
+				verticesB[3].position.w = 1.0f;
+				verticesB[2].position.w = 1.0f;
+				verticesB[1].position.w = 1.0f;
+				verticesB[0].position.w = 1.0f;
+
+				verticesB[0].diffuse = COLOR_BLACK;
+				verticesB[1].diffuse = COLOR_BLACK;
+				verticesB[2].diffuse = COLOR_BLACK;
+				verticesB[3].diffuse = COLOR_BLACK;
+
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+				vertices = verticesB;
+		render_vertices:
+				SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(PrimitiveVertex));
+
+				SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+
+				ANM_MANAGER_PTR->current_blend_mode = BlendHardcoded; // 11
+				SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_ONE);
+				SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_SRCALPHA);
+				SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
+			}
+			break;
+		}
+	}
+
+	for (size_t i = 0; i != countof(special_data->__vm_array_0); ++i) {
+		ANM_MANAGER_PTR->draw_vm(&special_data->__vm_array_0[i]);
+	}
+
+	switch (special_data->__int_1E3C) {
+		case 0:
+			if (SUPERVISOR.present_parameters.BackBufferFormat == D3DFMT_A8R8G8B8) {
+		case 2:
+				SUPERVISOR.d3d_device->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, TRUE);
+				ANM_MANAGER_PTR->draw_vm(&special_data->__anm_vm_1830);
+				ANM_MANAGER_PTR->flush_sprites();
+			}
+	}
+
 	return 0;
 }
 
@@ -39335,7 +39483,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_interrupt_special_dataA(AnmVM* vm,
 			break;
 	}
 	for (size_t i = 0; i < countof(special_data->__vm_array_0); ++i) {
-		special_data->__vm_array_0[i].controller.position = { 320.0f, 240.0f, 0.0f };
+		special_data->__vm_array_0[i].controller.position = { LOGICAL_WINDOW_HALF_WIDTH, LOGICAL_WINDOW_HALF_HEIGHT, 0.0f }; // 320, 240
 	}
 	return 0;
 }
@@ -39403,14 +39551,14 @@ dllexport gnu_noinline int fastcall AnmVM::on_interrupt_special_dataB(AnmVM* vm,
 // size: 0x318
 struct AnmVMSpecialDataC {
 	Float2 position_array[64]; // 0x0
-	D3DCOLOR __color_array_200[64]; // 0x200
+	D3DCOLOR color_array[64]; // 0x200
 	float __angle_300; // 0x300
 	Timer __timer_304; // 0x304
 	// 0x318
 };
 #pragma region // AnmVMSpecialDataC Validation
 ValidateFieldOffset32(0x0, AnmVMSpecialDataC, position_array);
-ValidateFieldOffset32(0x200, AnmVMSpecialDataC, __color_array_200);
+ValidateFieldOffset32(0x200, AnmVMSpecialDataC, color_array);
 ValidateFieldOffset32(0x300, AnmVMSpecialDataC, __angle_300);
 ValidateFieldOffset32(0x304, AnmVMSpecialDataC, __timer_304);
 ValidateStructSize32(0x318, AnmVMSpecialDataC);
@@ -39428,8 +39576,8 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC1(AnmVM* vm, v
 	float X = position->x;
 	special_data->position_array[0].x = X;
 	float Y = position->y;
-	X += 320.0f;
-	Y += 16.0f;
+	X += LOGICAL_WINDOW_HALF_WIDTH; // 320.0f
+	Y += SCREEN_TOP_BORDER; // 16.0f
 	special_data->position_array[0].x = X;
 	special_data->position_array[0].y = Y;
 
@@ -39437,13 +39585,13 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC1(AnmVM* vm, v
 	special_data->__timer_304.set(1);
 
 	uint32_t j = 0;
-	for (int32_t i = 0; i < countof(special_data->__color_array_200); ++i) {
-		special_data->__color_array_200[i] = COLOR(255, 0, 128, 255);
+	for (int32_t i = 0; i < countof(special_data->color_array); ++i) {
+		special_data->color_array[i] = COLOR(255, 0, 128, 255);
 		if (i < 8u) {
-			RED(special_data->__color_array_200[i]) = ~(i << 5);
+			RED(special_data->color_array[i]) = ~(i << 5);
 		}
 		else if (i >= 32u) {
-			ALPHA(special_data->__color_array_200[i]) = ~(j++ << 4);
+			ALPHA(special_data->color_array[i]) = ~(j++ << 4);
 		}
 	}
 
@@ -39452,7 +39600,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC1(AnmVM* vm, v
 	vm->data.origin_mode = OriginFixedResolution; // 1
 	vm->data.blend_mode = BlendAdditive; // 1
 
-	vm->initialize_alpha_interp(64, 0, 255, 0);
+	vm->initialize_alpha_interp(64, Linear, 255, 0);
 
 	return 0;
 }
@@ -39465,8 +39613,8 @@ dllexport gnu_noinline int fastcall AnmVM::on_tick_special_dataC(AnmVM* vm) {
 	if (time < 64) {
 		if (time != special_data->__timer_304.previous) {
 			for (int32_t i = time; i > 0; --i) {
-				uint8_t alpha = ALPHA(special_data->__color_array_200[i]);
-				ALPHA(special_data->__color_array_200[i]) = alpha >= 16 ? alpha - 16 : 0;
+				uint8_t alpha = ALPHA(special_data->color_array[i]);
+				ALPHA(special_data->color_array[i]) = alpha >= 16 ? alpha - 16 : 0;
 			}
 
 			Float2* position = &special_data->position_array[time];
@@ -39485,13 +39633,18 @@ dllexport gnu_noinline int fastcall AnmVM::on_tick_special_dataC(AnmVM* vm) {
 
 // 0x406090
 dllexport gnu_noinline int fastcall AnmVM::on_draw_special_dataC(AnmVM* vm) {
+	AnmVMSpecialDataC* special_data = (AnmVMSpecialDataC*)vm->controller.special_data;
 
 	ANM_MANAGER_PTR->setup_render_state_for_vm(vm);
 	
-	Float3 position;
-	clang_forceinline vm->get_render_position(&position);
-	
-	// TODO
+	Float3 position = vm->get_render_position();
+
+	ANM_MANAGER_PTR->draw_polygon_segmented_line(
+		position.x, position.y,
+		special_data->__timer_304,
+		special_data->position_array,
+		special_data->color_array
+	);
 
 	return 0;
 }
@@ -39517,12 +39670,12 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC2(AnmVM* vm, v
 	special_data->__timer_304.set(1);
 
 	uint32_t j = 0;
-	for (int32_t i = 0; i < countof(special_data->__color_array_200); ++i) {
-		special_data->__color_array_200[i] = COLOR_GREY(255, 80);
+	for (int32_t i = 0; i < countof(special_data->color_array); ++i) {
+		special_data->color_array[i] = COLOR_GREY(255, 80);
 		if (i < 8u) {
-			RED(special_data->__color_array_200[i]) = ~(i << 5);
+			RED(special_data->color_array[i]) = ~(i << 5);
 		} else if (i >= 32u) {
-			ALPHA(special_data->__color_array_200[i]) = ~(j++ << 4);
+			ALPHA(special_data->color_array[i]) = ~(j++ << 4);
 		}
 	}
 
@@ -44189,6 +44342,7 @@ enum LaserType {
 };
 
 enum class LaserState : int32_t {
+	// why no state 0?
 	State1 = 1,
 	State2 = 2,
 	State3 = 3,
@@ -45840,7 +45994,7 @@ struct LaserCurve : LaserData {
 					angle = reduce_angle(angle + cur_angle);
 				}
 
-				current_vertex[0].position.as2().make_from_vector(angle, this->width * 0.5f);
+				current_vertex[0].position.as2().make_from_vector(angle, this->params.width * 0.5f);
 				current_vertex[0].position.as3() += node->position;
 				current_vertex[0].position.x += WINDOW_DATA.screen_origin_fixed_res.x;
 				current_vertex[0].position.y += WINDOW_DATA.__screen_start_y;
@@ -45862,7 +46016,7 @@ struct LaserCurve : LaserData {
 					angle = reduce_angle(angle + cur_angle);
 				}
 
-				current_vertex[1].position.as2().make_from_vector(angle, this->width * 0.5f);
+				current_vertex[1].position.as2().make_from_vector(angle, this->params.width * 0.5f);
 				current_vertex[1].position.as3() += node->position;
 				current_vertex[1].position.x += WINDOW_DATA.screen_origin_fixed_res.x;
 				current_vertex[1].position.y += WINDOW_DATA.__screen_start_y;
@@ -61882,7 +62036,7 @@ skip_adding_image_size:
 		sprite.slot = slot_index;
 		AnmSpriteData* sprite_data = based_pointer<AnmSpriteData>(entry, *sprite_offsets_ptr);
 		sprite.__index_8 = slot_index << 8 | entry_index;
-		sprite.__index_4 = entry_index;
+		sprite.entry_index = entry_index;
 		float surface_width = desc.Width;
 		sprite.__surface_width = surface_width;
 		float entry_width_frac = surface_width / (float)entry->width;
