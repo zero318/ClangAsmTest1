@@ -137,9 +137,11 @@ void APPLY_DEBUG_CONFIG();
 #if USE_EXTERN_FOR_CODEGEN
 #define externcg extern
 #define cgasm(...) asm(__VA_ARGS__)
+#define ecginit(...)
 #else
 #define externcg
 #define cgasm(...)
+#define ecginit(...) __VA_ARGS__
 #endif
 
 #undef WIN32_LEAN_AND_MEAN
@@ -437,8 +439,6 @@ static inline constexpr std::array<int, N - 1> ASCII_TO_DIK_ARRAY(const char(&ar
 }
 
 struct D3DMATRIXZ : D3DMATRIX {
-
-
 	forceinline D3DXMATRIX& D3DX() {
 		return *(D3DXMATRIX*)this;
 	}
@@ -526,23 +526,23 @@ dllexport gnu_noinline void fastcall circle_pos(float* x, float* y, float angle,
 dllexport gnu_noinline void fastcall circle_pos(float* x, float* y, float angle, float magnitude) {
 #ifndef __x86_64__
 	__asm {
-		MOV EAX, x;
-		FLD angle;
-		FSINCOS;
-		FMUL magnitude;
+		MOV EAX, x
+		FLD angle
+		FSINCOS
+		FMUL magnitude
 		FSTP DWORD PTR [EAX]
-		FMUL magnitude;
+		FMUL magnitude
 		MOV EAX, y
 		FSTP DWORD PTR [EAX]
 	};
 #else
 	__asm {
-		MOV RAX, x;
-		FLD angle;
-		FSINCOS;
-		FMUL magnitude;
+		MOV RAX, x
+		FLD angle
+		FSINCOS
+		FMUL magnitude
 		FSTP DWORD PTR [RAX]
-		FMUL magnitude;
+		FMUL magnitude
 		MOV RAX, y
 		FSTP DWORD PTR [RAX]
 	};
@@ -588,12 +588,10 @@ public:
 		return this->set(UNUSED_FLOAT, value);
 	}
 
-	/*
-	inline ZUNAngle& operator=(const ZUNAngle& value) {
+	/*inline ZUNAngle& operator=(const ZUNAngle& value) {
 		this->value = value.value;
 		return *this;
-	}
-	*/
+	}*/
 
 	// 0x404DC0
 	dllexport operator float() const vectorcall ASR(0x404DC0) {
@@ -638,11 +636,9 @@ public:
 		return *this = this->value + angle.value;
 	}
 
-	/*
-	inline ZUNAngle operator-(const float value) const {
+	/*inline ZUNAngle operator-(const float value) const {
 		return this->value - value;
-	}
-	*/
+	}*/
 
 private:
 	// 0x404C70
@@ -655,18 +651,14 @@ public:
 		return this->sub(dummy, angle);
 	}
 	
-	/*
-	inline ZUNAngle& diff(float value) const {
+	/*inline ZUNAngle& diff(float value) const {
 		ZUNAngle temp;
 		temp.value = value;
 		return *this - temp;
-	}
-	*/
-	/*
-	inline ZUNAngle& operator-=(const float value) {
+	}*/
+	/*inline ZUNAngle& operator-=(const float value) {
 		return *this = *this - value;
-	}
-	*/
+	}*/
 
 private:
 	// 0x461540
@@ -1237,9 +1229,9 @@ struct ArcFileInner {
 };
 
 // size: 0xC
-struct UnknownP {
+struct CryptParams {
 	uint8_t xor_mask; // 0x0
-	uint8_t xor_accel; // 0x1
+	uint8_t xor_vel; // 0x1
 	uint8_t __ubyte_2; // 0x2
 	probably_padding_bytes(0x1); // 0x3
 	int32_t __int_4; // 0x4
@@ -1248,59 +1240,59 @@ struct UnknownP {
 };
 
 // 0x4C5360
-static UnknownP UNKNOWN_P[] = {
-	[0] = {
+static CryptParams CRYPT_PARAMS[] = {
+	{ // 0
 		.xor_mask = 0x1B,
-		.xor_accel = 0x73,
+		.xor_vel = 0x73,
 		.__ubyte_2 = 0xAA,
 		.__int_4 = 256,
 		.__int_8 = 0x3800
 	},
-	[1] = {
+	{ // 1
 		.xor_mask = 0x12,
-		.xor_accel = 0x43,
+		.xor_vel = 0x43,
 		.__ubyte_2 = 0xFF,
 		.__int_4 = 512,
 		.__int_8 = 0x3E00
 	},
-	[2] = {
+	{ // 2
 		.xor_mask = 0x35,
-		.xor_accel = 0x79,
+		.xor_vel = 0x79,
 		.__ubyte_2 = 0x11,
 		.__int_4 = 1024,
 		.__int_8 = 0x3C00
 	},
-	[3] = {
+	{ // 3
 		.xor_mask = 0x03,
-		.xor_accel = 0x91,
+		.xor_vel = 0x91,
 		.__ubyte_2 = 0xDD,
 		.__int_4 = 128,
 		.__int_8 = 0x6400
 	},
-	[4] = {
+	{ // 4
 		.xor_mask = 0xAB,
-		.xor_accel = 0xDC,
+		.xor_vel = 0xDC,
 		.__ubyte_2 = 0xEE,
 		.__int_4 = 128,
 		.__int_8 = 0x7000
 	},
-	[5] = {
+	{ // 5
 		.xor_mask = 0x51,
-		.xor_accel = 0x9E,
+		.xor_vel = 0x9E,
 		.__ubyte_2 = 0xBB,
 		.__int_4 = 256,
 		.__int_8 = 0x4000
 	},
-	[6] = {
+	{ // 6
 		.xor_mask = 0xC1,
-		.xor_accel = 0x15,
+		.xor_vel = 0x15,
 		.__ubyte_2 = 0xCC,
 		.__int_4 = 1024,
 		.__int_8 = 0x2C00
 	},
-	[7] = {
+	{ // 7
 		.xor_mask = 0x99,
-		.xor_accel = 0x7D,
+		.xor_vel = 0x7D,
 		.__ubyte_2 = 0x77,
 		.__int_4 = 128,
 		.__int_8 = 0x4400
@@ -1308,25 +1300,64 @@ static UnknownP UNKNOWN_P[] = {
 };
 
 // 0x401F50
-dllexport gnu_noinline void* fastcall __crypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_accel, int32_t arg3, int32_t arg4) ASR(0x401F50);
-dllexport gnu_noinline void* fastcall __crypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_accel, int32_t arg3, int32_t arg4) {
-	use_var(buffer);
-	use_var(buffer_size);
-	use_var(xor_mask);
-	use_var(xor_accel);
-	use_var(arg3);
-	use_var(arg4);
-	return (void*)rand();
+dllexport gnu_noinline void* fastcall __crypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_vel, int32_t arg3, int32_t arg4) ASR(0x401F50);
+dllexport gnu_noinline void* fastcall __crypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_vel, int32_t arg3, int32_t arg4) {
+	uint8_t* input_buffer = (uint8_t*)buffer; // ESI
+	int32_t intA = buffer_size % arg3; // EBX
+	int32_t intB = arg3 / 4; // EBP-C
+	int32_t temp_size = arg4 > buffer_size ? buffer_size : arg4; // EBP-10
+	void* temp_buffer = malloc(temp_size);
+	uint8_t* buffer_write_offset = (uint8_t*)temp_buffer; // EBP-4
+	if (temp_buffer) {
+		buffer_size = (buffer_size & ~1) - (intA >= intB ? 0 : intA);
+		memcpy(temp_buffer, buffer, temp_size);
+		while (buffer_size > 0) {
+			if (arg4 <= 0) {
+				break;
+			}
+			arg3 = buffer_size >= arg3 ? arg3 : buffer_size;
+			buffer_write_offset += arg3;
+			uint8_t* buffer_write = buffer_write_offset - 1;
+			for (
+				int32_t i = (arg3 + 1) / 2;
+				i > 0;
+			) {
+				uint8_t val = *input_buffer;
+				input_buffer -= 2;
+				val ^= xor_mask;
+				--i;
+				xor_mask += xor_vel;
+				buffer_write[2] = val;
+				++buffer_write;
+			}
+			buffer_write = buffer_write_offset - 2;
+			for (
+				int32_t i = arg3 / 2;
+				i > 0;
+			) {
+				uint8_t val = *input_buffer;
+				input_buffer -= 2;
+				val ^= xor_mask;
+				--i;
+				xor_mask += xor_vel;
+				buffer_write[2] = val;
+				++buffer_write;
+			}
+			buffer_size -= arg3;
+			arg4 -= arg3;
+		}
+		free(temp_buffer);
+	}
+	return buffer;
 }
 
 // 0x401E40
-dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_accel, int32_t arg3, int32_t arg4) ASR(0x401E40);
-dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_accel, int32_t arg3, int32_t arg4) {
+dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_vel, int32_t arg3, int32_t arg4) ASR(0x401E40);
+dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_vel, int32_t arg3, int32_t arg4) {
 	int32_t intA = buffer_size % arg3; // EBX
 	uint8_t* input_buffer = (uint8_t*)buffer; // ESI
 	uint8_t* buffer_write_offset = input_buffer; // EBP-4
 	int32_t intB = arg3 / 4; // EBP-C
-	// Definitely not a min func since those use <
 	int32_t temp_size = arg4 > buffer_size ? buffer_size : arg4; // EBP-10
 	void* temp_buffer = malloc(temp_size);
 	input_buffer = (uint8_t*)temp_buffer;
@@ -1349,7 +1380,7 @@ dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buf
 				buffer_write -= 2;
 				val ^= xor_mask;
 				--i;
-				xor_mask += xor_accel;
+				xor_mask += xor_vel;
 				buffer_write[2] = val;
 				++input_buffer;
 			}
@@ -1363,7 +1394,7 @@ dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buf
 				buffer_write -= 2;
 				val ^= xor_mask;
 				--i;
-				xor_mask += xor_accel;
+				xor_mask += xor_vel;
 				buffer_write[2] = val;
 				++input_buffer;
 			}
@@ -1614,8 +1645,8 @@ found_in_cache:
 		) {
 			string_sum += *strA++;
 		}
-		UnknownP& xor_data = UNKNOWN_P[string_sum % countof(UNKNOWN_P)];
-		__decrypt_buffer(cached_file_buffer, new_file_size, xor_data.xor_mask, xor_data.xor_accel, xor_data.__int_4, xor_data.__int_8);
+		CryptParams& crypt = CRYPT_PARAMS[string_sum % countof(CRYPT_PARAMS)];
+		__decrypt_buffer(cached_file_buffer, new_file_size, crypt.xor_mask, crypt.xor_vel, crypt.__int_4, crypt.__int_8);
 		void* ret;
 		if (cached_file_size != new_file_size) {
 			ret = __decompress_buffer(cached_file_buffer, new_file_size, file_buffer, cached_file_size);
@@ -1942,7 +1973,7 @@ extern "C" {
 	// 0x570EA0
 	externcg char PATH_BUFFER[MAX_PATH] cgasm("_PATH_BUFFER");
 }
-inline void* read_file_from_dat(const char* path, int32_t* size_out = NULL) {
+forceinline void* read_file_from_dat(const char* path, int32_t* size_out = NULL) {
 	PATH_BUFFER[0] = '\0';
 	byteloop_strcat(PATH_BUFFER, path);
 #if !TESTING_FEATURES
@@ -2700,13 +2731,13 @@ struct Rng {
 	
 	// 0x4027D0
 	dllexport gnu_noinline float thiscall rand_float() ASR(0x4027D0) {
-		__asm FINIT;
+		__asm FINIT
 		float temp = this->rand_uint();
 		return temp / (float)UINT32_MAX; // float jank rounds this to UINT32_MAX+1
 	}
 	// 0x402810
 	dllexport gnu_noinline float thiscall rand_float_signed() ASR(0x402810) {
-		__asm FINIT;
+		__asm FINIT
 		float temp = this->rand_uint();
 		return temp / (float)INT32_MAX - 1.0f; // float jank rounds this to INT32_MAX+1
 	}
@@ -2716,7 +2747,7 @@ struct Rng {
 	}
 	// 0x402850
 	dllexport gnu_noinline float thiscall rand_angle_2() ASR(0x402850) {
-		__asm FINIT;
+		__asm FINIT
 		float temp = this->rand_uint();
 		return temp / ((float)INT32_MAX / PI_f) - PI_f;
 	}
@@ -3941,7 +3972,7 @@ enum CameraID : int32_t {
 };
 
 // size: 0x164
-struct StageCamera {
+struct Camera {
 	Float3 position; // 0x0
 	Float3 facing; // 0xC
 	Float3 rotation; // 0x18
@@ -3990,27 +4021,27 @@ struct StageCamera {
 		};
 	}
 };
-#pragma region // StageCamera Validation
-VFO32(0x0, StageCamera, position);
-VFO32(0xC, StageCamera, facing);
-VFO32(0x18, StageCamera, rotation);
-VFO32(0x24, StageCamera, facing_normalized);
-VFO32(0x30, StageCamera, __side_vector);
-VFO32(0x3C, StageCamera, __shaking_position);
-VFO32(0x48, StageCamera, __shaking_facing);
-VFO32(0x54, StageCamera, fov);
-VFO32(0x58, StageCamera, window_resolution);
-VFO32(0x60, StageCamera, view_matrix);
-VFO32(0xA0, StageCamera, projection_matrix);
-VFO32(0xE0, StageCamera, viewport);
-VFO32(0xF8, StageCamera, camera_index);
-VFO32(0xFC, StageCamera, __vertex_offsetA);
-VFO32(0x104, StageCamera, __vertex_offsetB);
-VFO32(0x10C, StageCamera, __viewport_10C);
-VFO32(0x124, StageCamera, __viewport_124);
-VFO32(0x13C, StageCamera, __last_position_delta);
-VFO32(0x148, StageCamera, sky);
-VSS32(0x164, StageCamera);
+#pragma region // Camera Validation
+VFO32(0x0, Camera, position);
+VFO32(0xC, Camera, facing);
+VFO32(0x18, Camera, rotation);
+VFO32(0x24, Camera, facing_normalized);
+VFO32(0x30, Camera, __side_vector);
+VFO32(0x3C, Camera, __shaking_position);
+VFO32(0x48, Camera, __shaking_facing);
+VFO32(0x54, Camera, fov);
+VFO32(0x58, Camera, window_resolution);
+VFO32(0x60, Camera, view_matrix);
+VFO32(0xA0, Camera, projection_matrix);
+VFO32(0xE0, Camera, viewport);
+VFO32(0xF8, Camera, camera_index);
+VFO32(0xFC, Camera, __vertex_offsetA);
+VFO32(0x104, Camera, __vertex_offsetB);
+VFO32(0x10C, Camera, __viewport_10C);
+VFO32(0x124, Camera, __viewport_124);
+VFO32(0x13C, Camera, __last_position_delta);
+VFO32(0x148, Camera, sky);
+VSS32(0x164, Camera);
 #pragma endregion
 
 // size: 0x124
@@ -4877,7 +4908,8 @@ VSS32(0x4, AnmID);
 
 extern "C" {
 	// 0x4C5F90
-	externcg int32_t ACHIEVEMENT_MODE_STATE cgasm("_ACHIEVEMENT_MODE_STATE");
+	externcg int32_t ACHIEVEMENT_MODE_STATE cgasm("_ACHIEVEMENT_MODE_STATE") ecginit(= -1);
+
 	// 0x4CF3FC
 	externcg void (*UNKNOWN_FUNC_PTR_B)() cgasm("_UNKNOWN_FUNC_PTR_B");
 	// 0x4CF400
@@ -4949,8 +4981,8 @@ struct Supervisor {
 	unknown_fields(0x4); // 0x1CC
 	AnmID __vm_id_1D0; // 0x1D0
 	Config config; // 0x1D4
-	StageCamera cameras[4]; // 0x25C
-	StageCamera* current_camera_ptr; // 0x7EC
+	Camera cameras[4]; // 0x25C
+	Camera* current_camera_ptr; // 0x7EC
 	int32_t current_camera_index; // 0x7F0
 	GameMode gamemode_current; // 0x7F4
 	GameMode gamemode_switch; // 0x7F8
@@ -5102,10 +5134,10 @@ public:
 	dllexport gnu_noinline void thiscall __sub_453A70() ASR(0x453A70);
 
 	// 0x4548E0
-	dllexport gnu_noinline static void stdcall __sub_4548E0(StageCamera* camera) ASR(0x4548E0);
+	dllexport gnu_noinline static void stdcall __sub_4548E0(Camera* camera) ASR(0x4548E0);
 
 	// 0x454950
-	dllexport gnu_noinline static void stdcall __setup_camera(StageCamera* camera) ASR(0x454950) {
+	dllexport gnu_noinline static void stdcall __setup_camera(Camera* camera) ASR(0x454950) {
 		uint32_t height = camera->viewport.Height;
 		float x = (float)camera->viewport.X + (float)camera->viewport.Width * 0.5f;
 		float viewport_height = (float)height;
@@ -5121,7 +5153,7 @@ public:
 	}
 
 	// 0x41F950
-	dllexport gnu_noinline void thiscall __setup_stage_camera(UNUSED_ARG(StageCamera* _camera) = GARBAGE_ARG(StageCamera*)) ASR(0x41F950);
+	dllexport gnu_noinline void thiscall __setup_stage_camera(UNUSED_ARG(Camera* _camera) = GARBAGE_ARG(Camera*)) ASR(0x41F950);
 
 	// 0x454B20
 	dllexport gnu_noinline void thiscall __initialize_cameras() ASR(0x454B20);
@@ -7527,8 +7559,11 @@ dllexport gnu_noinline void SoundManager::update_volume() {
 	int32_t sound_volume = SUPERVISOR.config.sound_volume;
 	SOUND_MANAGER.sound_volume = sound_volume;
 	if (sound_volume) {
-		float volume = 1.0f - (float)SOUND_MANAGER.bgm_volume / 100.f;
-		SOUND_MANAGER.__csound_volume = MAX_VOLUME - (int32_t)((float)VOLUME_RANGE * (1.0f - volume * volume));
+		float volume = SOUND_MANAGER.bgm_volume / 100.f;
+		volume = 1.0f - volume;
+		volume *= volume;
+		volume = 1.0f - volume;
+		SOUND_MANAGER.__csound_volume = MAX_VOLUME - (int32_t)(VOLUME_RANGE * volume);
 	} else {
 		SOUND_MANAGER.__csound_volume = SILENT_VOLUME;
 	}
@@ -8035,7 +8070,7 @@ struct GameManager {
 	int32_t __demo_timer; // 0x14
 	int32_t __demo_index; // 0x18
 	Globals globals; // 0x1C
-	int32_t __int_118; // 0x118
+	int32_t __saved_difficulty; // 0x118
 	probably_padding_bytes(0x4); // 0x11C
 	double game_time_double; // 0x120
 	int __ending_type; // 0x128
@@ -15635,22 +15670,8 @@ dllexport gnu_noinline void __initialize_fonts() {
 typedef int32_t (*fastcall AnmOnFunc)(AnmVM*);
 typedef int32_t (*fastcall AnmOnFuncArg)(AnmVM*, int32_t);
 
-//extern inline const AnmOnFunc ANM_ON_TICK_FUNCS[];
-//extern inline const AnmOnFunc ANM_ON_DRAW_FUNCS[];
-//extern inline const AnmOnFunc ANM_ON_DESTROY_FUNCS[];
-//extern inline const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[];
 extern inline const AnmOnFunc ANM_ON_COPY_A_FUNCS[];
 extern inline const AnmOnFunc ANM_ON_COPY_B_FUNCS[];
-//extern inline const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[];
-extern "C" {
-	// the wait func table isn't const
-	//externcg AnmOnFunc ANM_ON_WAIT_FUNCS[1] cgasm("_ANM_ON_WAIT_FUNCS");
-	//externcg AnmOnFunc ANM_ON_TICK_FUNCS[] cgasm("_ANM_ON_TICK_FUNCS");
-	//externcg AnmOnFunc ANM_ON_DRAW_FUNCS[8] cgasm("_ANM_ON_DRAW_FUNCS");
-	//externcg AnmOnFunc ANM_ON_DESTROY_FUNCS[] cgasm("_ANM_ON_DESTROY_FUNCS");
-	//externcg AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[] cgasm("_ANM_ON_INTERRUPT_FUNCS");
-	//externcg AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[4] cgasm("_ANM_ON_SPRITE_LOOKUP_FUNCS");
-}
 
 extern inline AnmOnFunc ANM_ON_WAIT_FUNCS[]; // 1
 extern inline const AnmOnFunc ANM_ON_TICK_FUNCS[]; // 7
@@ -16612,6 +16633,12 @@ struct AnmVM {
 		this->data.scale_interp.time.reset();
 	}
 
+	forceinline void initialize_scale_interp(int32_t end_time, int32_t mode, float initial_scale, float final_scale) {
+		Float2 initial2 = { initial_scale, initial_scale };
+		Float2 final2 = { final_scale, final_scale };
+		this->initialize_scale_interp(end_time, mode, initial2, final2);
+	}
+
 	// 0x47D580
 	dllexport gnu_noinline void thiscall initialize_scale2_interp(int32_t end_time, int32_t mode, Float2& initial_scale, Float2& final_scale) ASR(0x47D580) {
 		this->data.scale2_interp.end_time = end_time;
@@ -16621,6 +16648,12 @@ struct AnmVM {
 		//this->data.scale2_interp.bezier1 = ZERO_FLOAT2;
 		//this->data.scale2_interp.bezier2 = ZERO_FLOAT2;
 		this->data.scale2_interp.time.reset();
+	}
+
+	forceinline void initialize_scale2_interp(int32_t end_time, int32_t mode, float initial_scale, float final_scale) {
+		Float2 initial2 = { initial_scale, initial_scale };
+		Float2 final2 = { final_scale, final_scale };
+		this->initialize_scale2_interp(end_time, mode, initial2, final2);
 	}
 
 	// 0x47D500
@@ -16850,7 +16883,7 @@ struct AnmVM {
 		float unit_x = __temp[0]; // ESP+20
 		float unit_y = __temp[1]; // ESP+4
 
-		StageCamera* camera = SUPERVISOR.current_camera_ptr;
+		Camera* camera = SUPERVISOR.current_camera_ptr;
 
 		Float3 projectedA; // ESP+24
 		Float3 pV = { 0.0f, 0.0f, 0.0f };
@@ -18983,7 +19016,7 @@ struct AnmManager {
 						if (D3DXLoadSurfaceFromSurface(
 							surface, NULL, &dst,
 							SUPERVISOR.back_buffer, NULL, &src,
-							D3DX_FILTER_POINT, 0
+							D3DX_FILTER_POINT, COLOR_NONE
 						) == D3D_OK) {
 							this->loaded_anm_files[backbuffer_texture->anm_loaded_index]->images[backbuffer_texture->anm_image_index].d3d_texture->AddDirtyRect(NULL);
 						}
@@ -19369,7 +19402,7 @@ struct AnmManager {
 		SPRITE_VERTEX_BUFFER_A[3].texture_uv.x = vm->data.sprite_uv_quad[2].x + vm->data.uv_scroll.x + (vm->data.sprite_uv_quad[3].x - vm->data.sprite_uv_quad[2].x) * vm->data.uv_scale.x;
 		SPRITE_VERTEX_BUFFER_A[3].texture_uv.y = vm->data.sprite_uv_quad[1].y + vm->data.uv_scroll.y + (vm->data.sprite_uv_quad[3].y - vm->data.sprite_uv_quad[1].y) * vm->data.uv_scale.y;
 
-		StageCamera* camera = SUPERVISOR.current_camera_ptr;
+		Camera* camera = SUPERVISOR.current_camera_ptr;
 
 		float max_x = __max(__max(__max(SPRITE_VERTEX_BUFFER_A[0].position.x, SPRITE_VERTEX_BUFFER_A[1].position.x), SPRITE_VERTEX_BUFFER_A[2].position.x), SPRITE_VERTEX_BUFFER_A[3].position.x);
 		if (
@@ -19516,7 +19549,7 @@ struct AnmManager {
 
 			Float3 position = vm->data.position + vm->controller.position + vm->data.__position_2;
 
-			StageCamera* camera = SUPERVISOR.current_camera_ptr;
+			Camera* camera = SUPERVISOR.current_camera_ptr;
 
 			position.as2() -= camera->position.as2();
 
@@ -20825,7 +20858,7 @@ public:
 				}
 				this->__draw_vm_type_5_7(vm);
 
-				StageCamera* camera = SUPERVISOR.current_camera_ptr;
+				Camera* camera = SUPERVISOR.current_camera_ptr;
 				float draw_diff = camera->sky.begin_distance - camera->sky.end_distance;
 
 				// No color modes 2, 3, 4
@@ -21624,11 +21657,35 @@ public:
 		image->file_size = image_size;
 		LPDIRECT3DSURFACE9 surface = NULL;
 		image->d3d_texture->GetSurfaceLevel(0, &surface);
-		D3DXLoadSurfaceFromFileInMemory(surface, NULL, NULL, image_data, image_size, NULL, D3DX_FILTER_NONE, 0, NULL);
+		D3DXLoadSurfaceFromFileInMemory(surface, NULL, NULL, image_data, image_size, NULL, D3DX_FILTER_NONE, COLOR_NONE, NULL);
 		surface->Release();
 		anm_manager->__screw_with_texture_bits(image->d3d_texture);
 		image->bytes_per_pixel = 4;
 		return 0;
+	}
+
+	// 0x487580
+	dllexport gnu_noinline static void stdcall __sub_487580(int32_t slot_index, int32_t image_index, LPDIRECT3DSURFACE9 src, RECT* dst_rect, RECT* src_rect, int = UNUSED_DWORD) ASR(0x487580) {
+		AnmManager* anm_manager = ANM_MANAGER_PTR;
+		if (anm_manager->loaded_anm_files[slot_index]->images[image_index].d3d_texture) {
+			anm_manager->flush_sprites();
+			LPDIRECT3DSURFACE9 surface;
+			if (anm_manager->loaded_anm_files[slot_index]->images[image_index].d3d_texture->GetSurfaceLevel(0, &surface) == D3D_OK) {
+				if (D3DXLoadSurfaceFromSurface(surface, NULL, dst_rect, src, NULL, src_rect, D3DX_FILTER_POINT, COLOR_NONE) == D3D_OK) {
+					D3DLOCKED_RECT rect;
+					surface->LockRect(&rect, dst_rect, 0);
+					PixelA8R8G8B8* pixels = (PixelA8R8G8B8*)rect.pBits;
+					for (int32_t x = 0; x < dst_rect->right - dst_rect->left; ++x) {
+						for (int32_t y = 0; y < dst_rect->bottom - dst_rect->top; ++y) {
+							pixels[y].a = 255;
+						}
+						pixels += rect.Pitch / sizeof(PixelA8R8G8B8);
+					}
+					surface->UnlockRect();
+				}
+				surface->Release();
+			}
+		}
 	}
 
 	// 0x486140
@@ -22426,8 +22483,8 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_455EC0() {
 }
 
 // 0x41F950
-dllexport gnu_noinline void thiscall Supervisor::__setup_stage_camera(UNUSED_ARG(StageCamera* _camera)) {
-	StageCamera* camera = &this->cameras[StdCamera];
+dllexport gnu_noinline void thiscall Supervisor::__setup_stage_camera(UNUSED_ARG(Camera* _camera)) {
+	Camera* camera = &this->cameras[StdCamera];
 	this->current_camera_ptr = camera;
 	if (AnmManager* anm_manager = ANM_MANAGER_PTR) {
 		anm_manager->flush_sprites();
@@ -24179,7 +24236,7 @@ VFO32(0x203C, EffectManager, __done_loading);
 VSS32(0x2040, EffectManager);
 #pragma endregion
 
-inline void StageCamera::__copy_vertex_offsetA_to_anm_manager() {
+inline void Camera::__copy_vertex_offsetA_to_anm_manager() {
 	if (AnmManager* anm_manager = ANM_MANAGER_PTR) {
 		anm_manager->__vertex_offsetA = this->__vertex_offsetA;
 	}
@@ -24252,7 +24309,7 @@ inline HRESULT Supervisor::d3d_fog_end(float end) {
 
 // 0x41B330
 dllexport void thiscall Supervisor::set_camera_by_index(uint32_t index) {
-	StageCamera* camera = &this->cameras[index];
+	Camera* camera = &this->cameras[index];
 	this->current_camera_ptr = camera;
 	this->__sub_4548E0(camera);
 	this->d3d_device->SetViewport(&this->current_camera_ptr->__viewport_10C);
@@ -24262,7 +24319,7 @@ dllexport void thiscall Supervisor::set_camera_by_index(uint32_t index) {
 }
 // 0x41B3B0
 dllexport gnu_noinline void stdcall Supervisor::set_camera2_alt(uint32_t) {
-	StageCamera* camera = &SUPERVISOR.cameras[2];
+	Camera* camera = &SUPERVISOR.cameras[2];
 	SUPERVISOR.current_camera_ptr = camera;
 	SUPERVISOR.__sub_4548E0(camera);
 	SUPERVISOR.d3d_device->SetViewport(&SUPERVISOR.current_camera_ptr->__viewport_124);
@@ -24272,7 +24329,7 @@ dllexport gnu_noinline void stdcall Supervisor::set_camera2_alt(uint32_t) {
 }
 
 inline void thiscall Supervisor::set_camera_by_index_disable_fog(uint32_t index) {
-	StageCamera* camera = &this->cameras[index];
+	Camera* camera = &this->cameras[index];
 	this->current_camera_ptr = camera;
 	this->__sub_4548E0(camera);
 	this->d3d_device->SetViewport(&this->current_camera_ptr->__viewport_10C);
@@ -24338,7 +24395,7 @@ forceinline void AnmManager::set_texture_matrix(AnmVM* vm, AnmSprite* sprite) {
 }
 
 // 0x4548E0
-dllexport gnu_noinline void stdcall Supervisor::__sub_4548E0(StageCamera* camera) {
+dllexport gnu_noinline void stdcall Supervisor::__sub_4548E0(Camera* camera) {
 	if (AnmManager* anm_manager = ANM_MANAGER_PTR) {
 		anm_manager->flush_sprites();
 	}
@@ -26365,7 +26422,7 @@ extern "C" {
 	// 0x4CF2CC
 	externcg Ending* ENDING_PTR cgasm("_ENDING_PTR");
 	// 0x4C5F88
-	externcg int32_t UNKNOWN_INT32_I cgasm("_UNKNOWN_INT32_I");
+	externcg int32_t UNKNOWN_INT32_I cgasm("_UNKNOWN_INT32_I") ecginit(= -1);
 }
 
 // 0x4B3Fa0
@@ -31221,10 +31278,8 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_2(PlayerBull
 
 			AnmID id = self->bullet_anm->instantiate_vm_to_world_list_back(entry_ptr->__anm_scriptB, &G);
 			EFFECT_MANAGER_PTR->fill_available_slot(id);
-			float angle = self->motion.angle;
-			id.set_z_rotation(angle);
-			AnmVM* vm = id.get_vm_ptr();
-			vm->initialize_position_interp(20, DecelerateSlow, ZERO_FLOAT3, E);
+			id.set_z_rotation(self->motion.angle);
+			id.get_vm_ptr()->initialize_position_interp(20, DecelerateSlow, ZERO_FLOAT3, E);
 			player = PLAYER_PTR;
 		}
 		if (!self->__timer_C.__is_multiple_of_not_paused(4)) {
@@ -31265,8 +31320,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_4(PlayerBull
 	self->state = PlayerBulletState::State2; // 2
 	self->motion.speed = 2.0f;
 	new_damage_source->motion = self->motion;
-	PlayerDamageSource* damage_source = get_damage_source_by_index(self->damage_source_index);
-	damage_source->active = false;
+	get_damage_source_by_index(self->damage_source_index)->active = false;
 	self->damage_source_index = 0;
 	SOUND_MANAGER.play_sound_positioned(65, self->motion.position.x);
 	return self->damage;
@@ -31285,12 +31339,10 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_6(PlayerBull
 	float angle = self->motion.angle + RNG.rand_float_signed_range(PI_f / 9.0f) + PI_f;
 	// Splash effect
 	AnmVM* vm = EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(149, &self->motion.position, angle).get_vm_ptr();
-	Float2 initial_scale = { 1.0f, 1.0f };
-	Float2 final_scale = { 3.0f, 3.0f };
-	vm->initialize_scale_interp(20, Linear, initial_scale, final_scale);
-	RED(vm->data.color1) = 0x7F + RNG.rand_uint_range(0x80);
-	GREEN(vm->data.color1) = 0x40 + RNG.rand_uint_range(0x80);
-	BLUE(vm->data.color1) = 0x40 + RNG.rand_uint_range(0x40);
+	vm->initialize_scale_interp(20, Linear, 1.0f, 3.0f);
+	RED(vm->data.color1) = 127 + RNG.rand_uint_range(128);
+	GREEN(vm->data.color1) = 64 + RNG.rand_uint_range(128);
+	BLUE(vm->data.color1) = 64 + RNG.rand_uint_range(64);
 	return self->__sub_45F6F0();
 }
 
@@ -31304,8 +31356,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::create_explosion_suwako_ca
 	self->state = PlayerBulletState::State2; // 2
 	self->motion.speed = 2.0f;
 	new_damage_source->motion = self->motion;
-	PlayerDamageSource* damage_source = get_damage_source_by_index(self->damage_source_index);
-	damage_source->active = false;
+	get_damage_source_by_index(self->damage_source_index)->active = false;
 	SOUND_MANAGER.play_sound_positioned(65, self->motion.position.x);
 	self->__vm_id_8.mark_tree_for_delete();
 	AnmID id = ability_manager_get_ability_anm()->instantiate_vm_to_world_list_back(26);
@@ -31413,16 +31464,15 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 					if (text[0] == '|') {
 						++text;
 						int32_t x = atol(text);
-						text = strchr(text, ',');
-						++text;
+						text = strchr(text, ',') + 1;
 						int32_t spacing = atol(text);
-						text = strchr(text, ',');
+						text = strchr(text, ',') + 1;
 						this->furigana_lines[0].get_vm_ptr()->data.text_outline_disable = true;
 						ANM_MANAGER_PTR->draw_text_left(
 							this->furigana_lines[0].get_vm_ptr(),
 							COLOR3_BLACK, COLOR3_GREY(160),
 							Font2, x, spacing, // 2
-							text + 1
+							text
 						);
 						this->furigana_lines[0].interrupt_and_run_tree(2);
 					}
@@ -31459,16 +31509,15 @@ dllexport gnu_noinline ZUNResult thiscall MsgVM::run_msg() {
 					if (text[0] == '|') {
 						++text;
 						int32_t x = atol(text);
-						text = strchr(text, ',');
-						++text;
+						text = strchr(text, ',') + 1;
 						int32_t spacing = atol(text);
-						text = strchr(text, ',');
+						text = strchr(text, ',') + 1;
 						this->furigana_lines[1].get_vm_ptr()->data.text_outline_disable = true;
 						ANM_MANAGER_PTR->draw_text_left(
 							this->furigana_lines[1].get_vm_ptr(),
 							COLOR3_BLACK, COLOR3_GREY(160),
 							Font2, x, spacing, // 2
-							text + 1
+							text
 						);
 						this->furigana_lines[1].interrupt_and_run_tree(2);
 					}
@@ -37628,16 +37677,12 @@ normal_angle:
 extern "C" {
 	// 0x4CDB60
 	// For all characters: 0, 1, 3, 6, 10, 11, 13, 16
-	externcg int32_t UNKNOWN_W[SHOTTYPE_COUNT][MAX_ALLOWED_POWER_LEVEL] cgasm("_UNKNOWN_W")
-#if !USE_EXTERN_FOR_CODEGEN
-	= {
+	externcg int32_t UNKNOWN_W[SHOTTYPE_COUNT][MAX_ALLOWED_POWER_LEVEL] cgasm("_UNKNOWN_W") ecginit(= {
 		{ 0, 1, 3, 6, 10, 11, 13, 16 },
 		{ 0, 1, 3, 6, 10, 11, 13, 16 },
 		{ 0, 1, 3, 6, 10, 11, 13, 16 },
 		{ 0, 1, 3, 6, 10, 11, 13, 16 }
-	}
-#endif
-	;
+	});
 }
 
 // 0x4B7020
@@ -38881,7 +38926,7 @@ dllexport gnu_noinline void thiscall PlayerOption::__position_func_card_alice_im
 					this->__focused_offset.y = this->__unfocused_offset.y;
 				}
 				else if (distance >= 48.0f) {
-					float angle = (float)position_diff.direction();
+					float angle = position_diff.direction();
 					float magnitude = -2.0f;
 					offset.make_from_vector(angle, magnitude);
 					Int2 A = (Int2)((offset + position) * INTERNAL_POSITION_RATIO);
@@ -39932,7 +39977,7 @@ struct StdObject {
 
 private:
 	// 0x41CA90
-	dllexport gnu_noinline BOOL vectorcall __test_culling(int, Float3* offset, float, float, float draw_distance_squared, StageCamera* camera) ASR(0x41CA90) {
+	dllexport gnu_noinline BOOL vectorcall __test_culling(int, Float3* offset, float, float, float draw_distance_squared, Camera* camera) ASR(0x41CA90) {
 		Float3 position = this->position;
 		Float3 position_diff = (position + *offset) - (camera->position + camera->__shaking_position);
 		if (
@@ -40036,7 +40081,7 @@ private:
 
 public:
 	// 0x41CA90
-	inline BOOL __test_culling(Float3* offset, float draw_distance_squared, StageCamera* camera) {
+	inline BOOL __test_culling(Float3* offset, float draw_distance_squared, Camera* camera) {
 		return this->__test_culling(UNUSED_DWORD, offset, UNUSED_FLOAT, UNUSED_FLOAT, draw_distance_squared, camera);
 	}
 };
@@ -40129,7 +40174,7 @@ struct StdVM {
 	ZUNInterp<Float3> camera_rotation_interp; // 0xF4, 0x100
 	ZUNInterp<StageSky> sky_data_interp; // 0x14C, 0x158
 	ZUNInterp<float> camera_fov_interp; // 0x1F4, 0x200
-	StageCamera camera; // 0x224, 0x230
+	Camera camera; // 0x224, 0x230
 	Stage* full_stage; // 0x388, 0x394
 	AnmVM slot_vms[8]; // 0x38C, 0x398
 	int32_t slot_layers[8]; // 0x33EC, 0x33F8
@@ -41618,6 +41663,8 @@ dllexport gnu_noinline BOOL BombBase::bomb_allowed() {
 	return FALSE;
 }
 
+// 0x4588F0
+dllexport gnu_noinline void __pause_menu_end_game_screen() ASR(0x4588F0);
 // 0x458A30
 dllexport gnu_noinline void __pause_menu_game_over_screen() ASR(0x458A30);
 
@@ -51620,7 +51667,7 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
 		return ZUN_ERROR;
 	}
 	float& current_time = this->time;
-	while (expect(current_time >= (float)current_instruction->time, true)) {
+	while (expect(current_time >= current_instruction->time, true)) {
 		if (current_instruction->difficulty_mask & this->difficulty_mask) {
 			int32_t opcode = current_instruction->opcode;
 			switch (opcode) {
@@ -54459,7 +54506,7 @@ static inline constexpr ReplayFrameInput REPLAY_INPUT_END = { 0xFFFF, 0xFFFF, 0x
 struct ReplayGamestate {
 	int16_t stage_number; // 0x0
 	uint16_t rng; // 0x2
-	uint32_t input_count; // 0x4
+	int32_t input_count; // 0x4
 	uint32_t extra_size; // 0x8
 	Int2 player_position; // 0xC
 	BOOL player_focused; // 0x14
@@ -54732,9 +54779,9 @@ struct ReplayManager : ZUNTask {
 	int __chunk_count; // 0xC0
 	ReplayStageData stage_data[STAGE_COUNT]; // 0xC4
 	void* file_buffer; // 0x204
-	uint8_t __byte_208; // 0x208
+	uint8_t __fps; // 0x208
 	probably_padding_bytes(3); // 0x209
-	int32_t __int_20C; // 0x20C
+	int32_t __tick_count; // 0x20C
 	UpdateFunc* on_tick_func_B; // 0x210
 	int32_t stage_number; // 0x214
 	union {
@@ -54824,8 +54871,8 @@ struct ReplayManager : ZUNTask {
 			) {
 				INPUT_P1.inputs_current |= BUTTON_FOCUS;
 			}
-			if (self->__int_20C >= 0 && !ABILITY_SHOP_PTR) {
-				if (!(self->__int_20C % 30)) {
+			if (self->__tick_count >= 0 && !ABILITY_SHOP_PTR) {
+				if (!(self->__tick_count % 30)) {
 					float fps_count_f = FPS_COUNTER_PTR->fps + 0.5f;
 					int32_t fps_count = fps_count_f < 256.0f ? fps_count_f : 255;
 					ReplayChunk* cur_chunk = self->current_chunk_node->data;
@@ -54834,7 +54881,7 @@ struct ReplayManager : ZUNTask {
 				if (self->current_chunk_node->data->write_input(INPUT_P1.inputs_current, INPUT_P1.inputs_rising_edge, INPUT_P1.inputs_falling_edge)) {
 					self->current_chunk_node = self->allocate_chunk(self->stage_number);
 				}
-				++self->__int_20C;
+				++self->__tick_count;
 			}
 		}
 		return UpdateFuncNext;
@@ -54844,32 +54891,33 @@ struct ReplayManager : ZUNTask {
 	dllexport static UpdateFuncRet UpdateFuncCC on_tick_A2(void* ptr) ASR(0x462A50) {
 		ReplayManager* self = (ReplayManager*)ptr;
 		if (GAME_THREAD_PTR && !self->__unknown_flag_rm_A) {
-			if (self->stage_data[self->stage_number].current_frame < 0) {
+			int32_t stage_number = self->stage_number;
+			if (self->stage_data[stage_number].current_frame < 0) {
 				INPUT_P1.inputs_current = 0;
 				INPUT_P1.inputs_rising_edge = 0;
 				INPUT_P1.inputs_falling_edge = 0;
 			}
 			else if (!ABILITY_SHOP_PTR) {
-				if (self->stage_number >= 0) {
+				if (stage_number >= 0) {
 					INPUT_P1.inputs_previous = INPUT_P1.inputs_current;
-					if (self->stage_data[self->stage_number].current_frame < self->stage_data[self->stage_number].gamestate_start->input_count) {
-						if (self->stage_data[self->stage_number].inputs_current->is_end()) {
+					stage_number = self->stage_number;
+					if (self->stage_data[stage_number].current_frame < self->stage_data[stage_number].gamestate_start->input_count) {
+						if (self->stage_data[stage_number].inputs_current->is_end()) {
 							INPUT_P1.inputs_current = 0;
 							INPUT_P1.inputs_rising_edge = 0;
 							INPUT_P1.inputs_falling_edge = 0;
-							//PAUSE_MENU_PTR->__sub_4588F0();
+							__pause_menu_end_game_screen();
 							self->stage_number = -1;
+							return UpdateFuncNext;
 						}
-						else {
-							INPUT_P1.inputs_current = self->stage_data[self->stage_number].inputs_current->current;
-							INPUT_P1.inputs_rising_edge = self->stage_data[self->stage_number].inputs_current->rising_edge;
-							INPUT_P1.inputs_falling_edge = self->stage_data[self->stage_number].inputs_current->falling_edge;
-							__update_input0();
-							self->__byte_208 = *self->stage_data[self->stage_number].fps_counts_current;
-							++self->stage_data[self->stage_number].inputs_current;
-							if (!(self->__int_20C % 30)) {
-								++self->stage_data[self->stage_number].fps_counts_current;
-							}
+						INPUT_P1.inputs_current = self->stage_data[self->stage_number].inputs_current->current;
+						INPUT_P1.inputs_rising_edge = self->stage_data[self->stage_number].inputs_current->rising_edge;
+						INPUT_P1.inputs_falling_edge = self->stage_data[self->stage_number].inputs_current->falling_edge;
+						__update_input0();
+						self->__fps = *self->stage_data[self->stage_number].fps_counts_current;
+						++self->stage_data[self->stage_number].inputs_current;
+						if (!(self->__tick_count % 30)) {
+							++self->stage_data[self->stage_number].fps_counts_current;
 						}
 					}
 					else {
@@ -54878,13 +54926,13 @@ struct ReplayManager : ZUNTask {
 						INPUT_P1.inputs_falling_edge = 0;
 					}
 					++self->stage_data[self->stage_number].current_frame;
-					++self->__int_20C;
+					++self->__tick_count;
 				}
 				else {
 					INPUT_P1.inputs_current = 0;
 					INPUT_P1.inputs_rising_edge = 0;
 					INPUT_P1.inputs_falling_edge = 0;
-					++self->__int_20C;
+					++self->__tick_count;
 				}
 			}
 		}
@@ -54896,14 +54944,15 @@ struct ReplayManager : ZUNTask {
 		if (
 			GAME_THREAD_PTR && this->mode == ReplayPlayback
 		) {
-			if (!INPUT_P1.check_hardware_inputs(BUTTON_SHOOT | BUTTON_DOWN)) {
-				if (!this->__dword_10) {
-					SOUND_MANAGER.cstreaming_sound_ptr->__sub_48AF10(GAME_MANAGER.globals.__counter_14 / 60.0);
+			if (!INPUT_P1.check_hardware_inputs(BUTTON_SHOOT | BUTTON_SKIP)) {
+				if (this->__dword_10) {
+					SOUND_MANAGER.cstreaming_sound_ptr->__sub_48AF10((GAME_MANAGER.globals.__counter_14 - 8) / 60.0);
 				}
 				this->__dword_10 = 0;
 			}
 			else {
-				if (this->__int_20C % 8) {
+				this->__dword_10 = 1;
+				if (this->__tick_count % 8) {
 					return UpdateFuncRestart;
 				}
 			}
@@ -54933,7 +54982,7 @@ struct ReplayManager : ZUNTask {
 					Float3 position = {
 						383.0f, 450.0f, 0.0f
 					};
-					float A = self->__byte_208;
+					float A = self->__fps;
 					D3DCOLOR color;
 					if (A < 30.0f) { // IDK why these were ever floats
 						color = COLOR(255, 80, 80, 255);
@@ -54944,7 +54993,7 @@ struct ReplayManager : ZUNTask {
 					}
 					AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
 					ascii_manager->color = color;
-					ascii_manager->printf(&position, "%3d", self->__byte_208);
+					ascii_manager->printf(&position, "%3d", self->__fps);
 					ASCII_MANAGER_PTR->color = COLOR_WHITE;
 			}
 		}
@@ -55041,10 +55090,11 @@ struct ReplayManager : ZUNTask {
 				this->on_draw_func = update_func;
 
 				this->stage_number = GAME_MANAGER.globals.current_stage;
-				this->__int_20C = -1;
+				this->__tick_count = -1;
 				return ZUN_SUCCESS;
 			}
 			case ReplayPlayback: {
+				REPLAY_MANAGER_PTR = this;
 				if (ZUN_SUCCEEDED(this->__load_from_path(path))) {
 					GAME_THREAD_PTR->config = this->info->config;
 					ReplayStageData& cur_stage_data = this->stage_data[GAME_MANAGER.globals.current_stage];
@@ -55105,7 +55155,7 @@ struct ReplayManager : ZUNTask {
 	dllexport gnu_noinline ZUNResult thiscall __write_to_path(const char* path, const char* name, bool arg3, bool arg4) ASR(0x461E90);
 
 
-	static inline ReplayManager* allocate(ReplayMode mode, const char* path) {
+	static forceinline ReplayManager* allocate(ReplayMode mode, const char* path) {
 		ReplayManager* replay_manager = new ReplayManager();
 		if (ZUN_FAILED(replay_manager->initialize(mode, path))) {
 			delete replay_manager;
@@ -55117,7 +55167,14 @@ struct ReplayManager : ZUNTask {
 	// 0x461CF0
 	// EH frame (free)
 	dllexport gnu_noinline static ReplayManager* fastcall allocate_mode2(const char* path) ASR(0x461CF0) {
-		return allocate(ReplayMode2, path);
+		ReplayManager* replay_manager = new ReplayManager();
+		ZUNResult res;
+		clang_forceinline res = replay_manager->initialize(ReplayMode2, path);
+		if (ZUN_FAILED(res)) {
+			delete replay_manager;
+			return NULL;
+		}
+		return replay_manager;
 	}
 };
 #pragma region // ReplayManager Verification
@@ -55134,8 +55191,8 @@ VFO32(0xBC, ReplayManager, current_chunk_node);
 VFO32(0xC0, ReplayManager, __chunk_count);
 VFO32(0xC4, ReplayManager, stage_data);
 VFO32(0x204, ReplayManager, file_buffer);
-VFO32(0x208, ReplayManager, __byte_208);
-VFO32(0x20C, ReplayManager, __int_20C);
+VFO32(0x208, ReplayManager, __fps);
+VFO32(0x20C, ReplayManager, __tick_count);
 VFO32(0x210, ReplayManager, on_tick_func_B);
 VFO32(0x214, ReplayManager, stage_number);
 VFO32(0x218, ReplayManager, flags);
@@ -55183,7 +55240,7 @@ dllexport gnu_noinline void __replay_manager_global_sub_462D20() {
 			break;
 		}
 	}
-	replay_manager->__int_20C = 0;
+	replay_manager->__tick_count = 0;
 }
 
 // 0x462EA0
@@ -55221,13 +55278,16 @@ dllexport gnu_noinline void __replay_manager_global_sub_462EA0() {
 			stage_number = GAME_MANAGER.globals.current_stage;
 			replay_manager->stage_data[stage_number].inputs_current = replay_manager->stage_data[stage_number].input_start;
 			replay_manager->stage_data[stage_number].fps_counts_current = replay_manager->stage_data[stage_number].fps_counts_start;
+			replay_manager->stage_data[stage_number].current_frame = 0;
+
+			player->data.__update_option_power_levels();
 
 			GAME_MANAGER.globals = game_state->globals;
 			replay_manager->__unknown_flag_rm_A = false;
 			break;
 		}
 	}
-	replay_manager->__int_20C = 0;
+	replay_manager->__tick_count = 0;
 }
 
 // 0x461E40
@@ -55977,6 +56037,42 @@ struct PauseMenu : ZUNTask {
 		this->state_timer.reset();
 	}
 
+	// 0x458480
+	dllexport gnu_noinline void thiscall __sub_458480() ASR(0x458480) {
+		this->__vm_id_1E8.mark_tree_for_delete();
+		AnmID id = SUPERVISOR.text_anm->instantiate_vm_to_ui_list_back(59);
+		this->__vm_id_1E8 = id;
+		AnmVM* vm = id.get_vm_ptr();
+
+		AnmSprite* sprite = vm->get_sprite();
+
+		RECT dst;
+		dst.left = sprite->bounds.left;
+		dst.top = sprite->bounds.top;
+		dst.right = sprite->bounds.left + sprite->__size_x - 1.0f;
+		dst.bottom = sprite->bounds.top + sprite->__size_y - 1.0f;
+
+		float scale = WINDOW_DATA.game_scale;
+		float half_width = SCREEN_WIDTH * scale * 0.5f;
+		float height = SCREEN_HEIGHT * scale;
+
+		float origin_x = (float)WINDOW_DATA.screen_origin_full_res.x;
+		int32_t origin_y = WINDOW_DATA.screen_origin_full_res.y;
+
+		RECT src;
+		src.left = origin_x - half_width;
+		src.top = origin_y;
+		src.right = origin_x + half_width - 1.0f;
+		src.bottom = (float)origin_y + height - 1.0f;
+
+		sprite = vm->get_sprite();
+
+		ANM_MANAGER_PTR->__sub_487580(
+			sprite->slot, sprite->entry_index,
+			SUPERVISOR.__surface_1B0, &dst, &src
+		);
+	}
+
 	// 0x458680
 	dllexport gnu_noinline void thiscall __sub_458680() ASR(0x458680) {
 		GAME_MANAGER.__update_scorefile_game_time();
@@ -56000,7 +56096,7 @@ struct PauseMenu : ZUNTask {
 		}
 		while (SOUND_MANAGER.__on_tick() != SndCmdEmpty);
 
-		//this->__sub_458480(); // TODO
+		this->__sub_458480();
 		this->__float_2E0 = GAME_SPEED;
 		GAME_SPEED.set(1.0f);
 		this->__int_208 = WINDOW_DATA.__int_20D0;
@@ -56016,40 +56112,6 @@ struct PauseMenu : ZUNTask {
 			ABILITY_TEXT_DATA_PTR->delete_vms();
 		}
 		this->__unknown_flag_pm_B = false;
-	}
-
-	// 0x4588F0
-	dllexport gnu_noinline static void __sub_4588F0() ASR(0x4588F0) {
-		PauseMenu* pause_menu = PAUSE_MENU_PTR;
-		if (!REPLAY_MANAGER_PTR->__unknown_flag_rm_A) {
-			pause_menu->change_primary_state(1);
-			clang_forceinline pause_menu->change_secondary_state(1);
-			GAME_THREAD_PTR->__unknown_flag_gt_I = true;
-			//pause_menu->__sub_458480(); // TODO
-			pause_menu->front_anm = GUI_PTR->front_anm;
-
-			pause_menu->__vm_id_1E4.mark_tree_for_delete();
-			AnmID id = pause_menu->front_anm->instantiate_vm_to_ui_list_back(150);
-			pause_menu->__vm_id_1E4 = id;
-			id.interrupt_tree(3);
-
-			SOUND_MANAGER.__stop_all_sound_effects();
-			SOUND_MANAGER.queue_sound_command(SndPause, 0, "Pause");
-
-			pause_menu->__float_2E0 = GAME_SPEED;
-			GAME_SPEED.set(1.0f);
-			pause_menu->__int_208 = WINDOW_DATA.__int_20D0;
-			WINDOW_DATA.__int_20D0 = 0;
-
-			if (MsgVM* msg_vm = GUI_PTR->msg_vm) {
-				msg_vm->__hide_all_anms();
-			}
-			__hide_gui_vm_id_114();
-			__hide_spell_timer_anms();
-
-			pause_menu->__unknown_flag_pm_B = false;
-			REPLAY_MANAGER_PTR->__unknown_flag_rm_A = true;
-		}
 	}
 
 	// 0x458E40
@@ -56696,6 +56758,40 @@ VFO32(0x3F4, PauseMenu, front_anm);
 VSS32(0x3F8, PauseMenu);
 #pragma endregion
 
+// 0x4588F0
+dllexport gnu_noinline void __pause_menu_end_game_screen() {
+	PauseMenu* pause_menu = PAUSE_MENU_PTR;
+	if (!REPLAY_MANAGER_PTR->__unknown_flag_rm_A) {
+		pause_menu->change_primary_state(1);
+		clang_forceinline pause_menu->change_secondary_state(1);
+		GAME_THREAD_PTR->__unknown_flag_gt_I = true;
+		pause_menu->__sub_458480();
+		pause_menu->front_anm = GUI_PTR->front_anm;
+
+		pause_menu->__vm_id_1E4.mark_tree_for_delete();
+		AnmID id = pause_menu->front_anm->instantiate_vm_to_ui_list_back(150);
+		pause_menu->__vm_id_1E4 = id;
+		id.interrupt_tree(3);
+
+		SOUND_MANAGER.__stop_all_sound_effects();
+		SOUND_MANAGER.queue_sound_command(SndPause, 0, "Pause");
+
+		pause_menu->__float_2E0 = GAME_SPEED;
+		GAME_SPEED.set(1.0f);
+		pause_menu->__int_208 = WINDOW_DATA.__int_20D0;
+		WINDOW_DATA.__int_20D0 = 0;
+
+		if (MsgVM* msg_vm = GUI_PTR->msg_vm) {
+			msg_vm->__hide_all_anms();
+		}
+		__hide_gui_vm_id_114();
+		__hide_spell_timer_anms();
+
+		pause_menu->__unknown_flag_pm_B = false;
+		REPLAY_MANAGER_PTR->__unknown_flag_rm_A = true;
+	}
+}
+
 // 0x458A30
 dllexport gnu_noinline void __pause_menu_game_over_screen() {
 	PauseMenu* pause_menu = PAUSE_MENU_PTR;
@@ -56716,7 +56812,7 @@ dllexport gnu_noinline void __pause_menu_game_over_screen() {
 	}
 	while (SOUND_MANAGER.__on_tick() != SndCmdEmpty);
 
-	//pause_menu->__sub_458480();
+	pause_menu->__sub_458480();
 
 	pause_menu->front_anm = GUI_PTR->front_anm;
 	if (GAME_MANAGER.game_type != SpellPractice) {
@@ -57609,35 +57705,15 @@ extern "C" {
 	// 0x4CF438
 	externcg int32_t UNKNOWN_INT32_C cgasm("_UNKNOWN_INT32_C");
 	// 0x4C9AB0
-	externcg int32_t MENU_DIFFICULTY_SELECTION cgasm("_MENU_DIFFICULTY_SELECTION")
-#if !USE_EXTERN_FOR_CODEGEN
-		= NORMAL
-#endif
-	;
+	externcg int32_t MENU_DIFFICULTY_SELECTION cgasm("_MENU_DIFFICULTY_SELECTION") ecginit(= NORMAL);
 	// 0x4C9AB4
-	externcg int32_t UNKNOWN_INT32_F cgasm("_UNKNOWN_INT32_F")
-#if !USE_EXTERN_FOR_CODEGEN
-		= -1
-#endif
-	;
+	externcg int32_t UNKNOWN_INT32_F cgasm("_UNKNOWN_INT32_F") ecginit(= -1);
 	// 0x4C9AB8
-	externcg int32_t UNKNOWN_INT32_E cgasm("_UNKNOWN_INT32_E")
-#if !USE_EXTERN_FOR_CODEGEN
-		= -1
-#endif
-	;
+	externcg int32_t UNKNOWN_INT32_E cgasm("_UNKNOWN_INT32_E") ecginit(= -1);
 	// 0x4C9ABC
-	externcg int32_t MENU_SPELL_PRACTICE_STAGE_SELECTION cgasm("_MENU_SPELL_PRACTICE_STAGE_SELECTION")
-#if !USE_EXTERN_FOR_CODEGEN
-		= -1
-#endif
-	;
+	externcg int32_t MENU_SPELL_PRACTICE_STAGE_SELECTION cgasm("_MENU_SPELL_PRACTICE_STAGE_SELECTION") ecginit(= -1);
 	// 0x4C9AC0
-	externcg int32_t MENU_STAGE_SELECTION cgasm("_MENU_STAGE_SELECTION")
-#if !USE_EXTERN_FOR_CODEGEN
-		= -1
-#endif
-	;
+	externcg int32_t MENU_STAGE_SELECTION cgasm("_MENU_STAGE_SELECTION") ecginit(= -1);
 }
 
 // 0x4B7A78
@@ -58462,10 +58538,11 @@ public:
 						this->change_secondary_state(4);
 						this->__replay_index = this->__menu_select_24.current_selection + this->__menu_select_2AC.current_selection * REPLAYS_PER_PAGE;
 						this->__menu_select_24.push_state();
-						this->__menu_select_24.menu_length = PLAYABLE_STAGE_COUNT;
+						SOUND_MANAGER.play_sound(7);
+						this->__menu_select_24.initialize((MenuLength)PLAYABLE_STAGE_COUNT, MenuChoice0);
 
-						for (int32_t i = 0; i < PLAYABLE_STAGE_COUNT; ++i) {
-							if (this->replay_manager_array[this->__replay_index]->stage_data[i + Stage1].gamestate_start) {
+						nounroll for (int32_t i = 0; i < PLAYABLE_STAGE_COUNT; ++i) {
+							if (!this->replay_manager_array[this->__replay_index]->stage_data[i + Stage1].gamestate_start) {
 								this->__menu_select_24.disable_selection(i);
 							}
 						}
@@ -58487,7 +58564,7 @@ public:
 					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
 						this->__menu_select_24.pop_state();
 						this->__menu_select_24.menu_length = REPLAYS_PER_PAGE;
-						this->__menu_select_24.enable_wrap = false;
+						this->__menu_select_24.disabled_selections_count = 0;
 						this->change_secondary_state(2);
 						SOUND_MANAGER.play_sound(9);
 					}
@@ -58519,7 +58596,7 @@ public:
 						this->__done_loading_replays
 					) {
 						this->change_primary_state(MainMenuState::State2); // 2
-						int32_t stage_number = this->__menu_select_24.current_selection + Stage1;
+						int32_t stage_number = this->__replay_stage_number + Stage1;
 						SUPERVISOR.gamemode_switch = GameMode::StartDemo; // 13 ...?
 						GAME_MANAGER.globals.current_stage = stage_number;
 						GAME_MANAGER.globals.__starting_stage = stage_number;
@@ -58632,10 +58709,10 @@ public:
 				if (this->state_timer >= 10) {
 					position.x = 220.0f;
 					position.y = 128.0f;
-					for (uint32_t i = Stage1; i < STAGE_COUNT; ++i) {
+					nounroll for (uint32_t i = Stage1; i < STAGE_COUNT; ++i) {
 						D3DCOLOR color;
 						if (this->__menu_select_24.current_selection == i - 1) {
-							color = COLOR_GREY(0, 255);
+							color = COLOR(255, 255, 255, 0);
 						} else {
 							color = COLOR_GREY(255, 128);
 						}
@@ -58653,7 +58730,7 @@ public:
 						}
 						else if (
 							i < Stage6 &&
-							!(replay_gamestate = replay->stage_data[i + 1].gamestate_start)
+							(replay_gamestate = replay->stage_data[i + 1].gamestate_start)
 						) {
 							ascii_manager->printf(
 								&position,
@@ -58694,7 +58771,7 @@ public:
 
 					D3DCOLOR color;
 					if (this->__menu_select_24.current_selection == index_in_page) {
-						color = COLOR_GREY(0, 255);
+						color = COLOR(255, 255, 255, 0);
 					} else {
 						color = COLOR_GREY(255, 128);
 					}
@@ -60655,8 +60732,8 @@ public:
 					GAME_MANAGER.__demo_index = (GAME_MANAGER.__demo_index + 1) % countof(DEMO_REPLAY_FILENAMES);
 
 					int32_t stage_number = 0;
-					do {
-						if (!replay_manager->stage_data[stage_number].gamestate_start) {
+					nounroll do {
+						if (replay_manager->stage_data[stage_number].gamestate_start) {
 							break;
 						}
 					} while (++stage_number < STAGE_COUNT);
@@ -60670,7 +60747,7 @@ public:
 
 					GAME_MANAGER.globals.character = replay_info->character;
 					GAME_MANAGER.globals.shottype = replay_info->shottype;
-					GAME_MANAGER.__int_118 = GAME_MANAGER.globals.difficulty;
+					GAME_MANAGER.__saved_difficulty = GAME_MANAGER.globals.difficulty;
 					GAME_MANAGER.globals.difficulty = replay_info->difficulty;
 
 					delete replay_manager; // Really? We allocated it just to nuke it?
@@ -60721,7 +60798,7 @@ public:
 						this->__unknown_flag_mm_A = false;
 					}
 
-					GAME_MANAGER.globals.difficulty = GAME_MANAGER.__int_118;
+					GAME_MANAGER.globals.difficulty = GAME_MANAGER.__saved_difficulty;
 					GAME_MANAGER.__is_demo = false;
 
 					this->__unknown_flag_mm_B = !A;
@@ -61839,10 +61916,10 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__create_texture_from_file(A
 	D3DSURFACE_DESC surface_desc;
 	surface->GetDesc(&surface_desc);
 	this->__screw_with_texture_bits(texture);
-	float floatA = WINDOW_DATA.game_scale;
+	float scale = WINDOW_DATA.game_scale;
 	if (
 		surface_desc.Width == width && surface_desc.Height == height &&
-		(!image->entry->low_res_scale || !(floatA < 2.0f))
+		(!image->entry->low_res_scale || !(scale < 2.0f))
 	) {
 		image->d3d_texture = texture;
 		SAFE_RELEASE(surface);
@@ -61855,9 +61932,9 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__create_texture_from_file(A
 		if (height + offset_y > surface_desc.Height) {
 			bottom = surface_desc.Height - offset_y;
 		}
-		if (image->entry->low_res_scale && floatA < 2.0f) {
-			width = (float)width * floatA * 0.5f;
-			height = (float)height * floatA * 0.5f;
+		if (image->entry->low_res_scale && scale < 2.0f) {
+			width = (float)width * scale * 0.5f;
+			height = (float)height * scale * 0.5f;
 		}
 		D3DXCreateTexture(
 			SUPERVISOR.d3d_device,
@@ -61876,7 +61953,7 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__create_texture_from_file(A
 		DWORD filter = !image->entry->low_res_scale || !(WINDOW_DATA.game_scale < 2.0f) ? D3DX_FILTER_NONE : D3DX_FILTER_TRIANGLE | D3DX_FILTER_MIRROR_U | D3DX_FILTER_MIRROR_V;
 		D3DXLoadSurfaceFromSurface(
 			surface2, NULL, NULL,
-			surface, NULL, &src_rect, filter, 0
+			surface, NULL, &src_rect, filter, COLOR_NONE
 		);
 		SAFE_RELEASE(surface);
 		SAFE_RELEASE(surface2);
@@ -61946,7 +62023,7 @@ dllexport gnu_noinline int32_t stdcall __create_texture_from_anm(AnmImage* image
 		NULL,
 		&src_rect,
 		filter,
-		0
+		COLOR_NONE
 	);
 
 	image->bytes_per_pixel = D3DFORMAT_SIZES_TABLE[format_index];
@@ -62080,7 +62157,7 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	this->cameras[2].facing.y = 0.0f;
 	this->cameras[2].rotation.x = 0.0f;
 	this->cameras[2].rotation.y = 1.0f;
-	StageCamera* camera2 = &this->cameras[2];
+	Camera* camera2 = &this->cameras[2];
 	camera2->viewport.X = 0;
 	camera2->viewport.Y = 0;
 	camera2->fov = 0.5235988f; // TODO: Make a meaningful value
@@ -62114,7 +62191,7 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	camera2->__viewport_124.Width = (int32_t)(WINDOW_DATA.game_scale * SCREEN_WIDTH);
 	camera2->__viewport_124.Height = (int32_t)(WINDOW_DATA.game_scale * SCREEN_HEIGHT);
 	this->__setup_camera(camera2);
-	StageCamera* camera0 = &this->cameras[0];
+	Camera* camera0 = &this->cameras[0];
 	*camera0 = *camera2;
 	camera0->camera_index = 0;
 	camera0->viewport.X = (int32_t)(WINDOW_DATA.game_scale * SCREEN_LEFT_BORDER);
@@ -62124,7 +62201,7 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	camera0->__vertex_offsetB = { 0, 0 };
 	camera0->__viewport_10C = camera0->viewport;
 	this->__setup_camera(camera0);
-	StageCamera* camera1 = &this->cameras[1];
+	Camera* camera1 = &this->cameras[1];
 	*camera1 = *camera0;
 	camera1->camera_index = 1;
 	camera1->viewport.X = (int32_t)(WINDOW_DATA.game_scale * 128.0f);
@@ -62134,7 +62211,7 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	camera1->__vertex_offsetB = { 0, 0 };
 	camera1->__viewport_10C = camera1->viewport;
 	this->__setup_camera(camera1);
-	StageCamera* camera3 = &this->cameras[StdCamera]; // 3
+	Camera* camera3 = &this->cameras[StdCamera]; // 3
 	*camera3 = *camera0;
 	camera3->camera_index = StdCamera;
 	camera3->viewport.X = (int32_t)((WINDOW_DATA.scaled_window_width - (SCREEN_WIDTH + 24.0f)) * 0.5f);
@@ -62150,18 +62227,18 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 
 // 0x454F50
 dllexport gnu_noinline void Supervisor::__camera2_sub_454F50() {
-	int32_t intA = WINDOW_DATA.scaled_window_width;
-	int32_t intB = (float)(WINDOW_DATA.backbuffer_width - intA) * 0.5f;
+	int32_t scaled_window_width = WINDOW_DATA.scaled_window_width;
+	int32_t start_x = (float)(WINDOW_DATA.backbuffer_width - scaled_window_width) * 0.5f;
 	float scale = WINDOW_DATA.game_scale;
-	SUPERVISOR.cameras[2].__vertex_offsetB.x = intB;
-	int32_t intC = WINDOW_DATA.scaled_window_height;
-	int32_t intD = (float)(WINDOW_DATA.backbuffer_height - intC) * 0.5f;
-	SUPERVISOR.cameras[2].__vertex_offsetB.y = intD;
+	SUPERVISOR.cameras[2].__vertex_offsetB.x = start_x;
+	int32_t scaled_window_height = WINDOW_DATA.scaled_window_height;
+	int32_t start_y = (float)(WINDOW_DATA.backbuffer_height - scaled_window_height) * 0.5f;
+	SUPERVISOR.cameras[2].__vertex_offsetB.y = start_y;
 	SUPERVISOR.cameras[2].__viewport_10C = SUPERVISOR.cameras[2].viewport;
-	SUPERVISOR.cameras[2].__viewport_10C.X = intB;
-	SUPERVISOR.cameras[2].__viewport_10C.Y = intD;
-	SUPERVISOR.cameras[2].__viewport_10C.Width = intA;
-	SUPERVISOR.cameras[2].__viewport_10C.Height = intC;
+	SUPERVISOR.cameras[2].__viewport_10C.X = start_x;
+	SUPERVISOR.cameras[2].__viewport_10C.Y = start_y;
+	SUPERVISOR.cameras[2].__viewport_10C.Width = scaled_window_width;
+	SUPERVISOR.cameras[2].__viewport_10C.Height = scaled_window_height;
 	SUPERVISOR.cameras[2].__viewport_124.X = scale * -SCREEN_LEFT_BORDER;
 	SUPERVISOR.cameras[2].__viewport_124.Y = scale * -SCREEN_TOP_BORDER;
 	SUPERVISOR.cameras[2].__viewport_124.Width = scale * SCREEN_WIDTH;
@@ -62219,7 +62296,8 @@ valid_replay:
 		ReplayFrameInput* inputs = (ReplayFrameInput*)&gamestate_ptr->extra[0];
 		this->stage_data[gamestate_ptr->stage_number].gamestate_start = gamestate_ptr;
 		this->stage_data[gamestate_ptr->stage_number].input_start = inputs;
-		this->stage_data[gamestate_ptr->stage_number].fps_counts_start = (uint8_t*)(gamestate_ptr->input_count * sizeof(ReplayFrameInput));
+		int32_t stage_number = gamestate_ptr->stage_number;
+		this->stage_data[stage_number].fps_counts_start = based_pointer<uint8_t>(this->stage_data[stage_number].input_start, gamestate_ptr->input_count * sizeof(ReplayFrameInput));
 		gamestate_ptr = based_pointer(gamestate_ptr + 1, gamestate_ptr->extra_size);
 	}
 	if (
@@ -63016,7 +63094,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 			}
 		}
 	}
-	PAUSE_MENU_PTR->__sub_4588F0();
+	__pause_menu_end_game_screen();
 	return ZUN_SUCCESS;
 }
 
@@ -63095,35 +63173,37 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 		int A = ++this->__int_D4;
 
 		ReplayMode replay_mode = this->replay_mode;
-		if (replay_mode != ReplayRecording) {
-			if (A == 120) {
-				PAUSE_MENU_PTR->__sub_4588F0();
-				replay_mode = this->replay_mode;
-			}
+		if (
+			replay_mode != ReplayRecording &&
+			A == 120
+		) {
+			__pause_menu_end_game_screen();
+			replay_mode = this->replay_mode;
 		}
-		if (replay_mode == ReplayRecording) {
-			if (this->__int_D4 == 180) {
-				ScreenEffect::allocate(ScreenEffect5, 0xC8, 0, 0, 0, 89);
-				replay_mode = this->replay_mode;
-			}
+		if (
+			replay_mode == ReplayRecording &&
+			this->__int_D4 == 180
+		) {
+			ScreenEffect::allocate(ScreenEffect5, 0xC8, 0, 0, 0, 89);
+			replay_mode = this->replay_mode;
 		}
-		if (replay_mode == ReplayRecording) {
-			if (this->__int_D4 > 380) {
-				ABILITY_MANAGER_PTR->__hide_card_anms();
-				ABILITY_MANAGER_PTR->__sub_407DA0(true);
+		if (
+			replay_mode == ReplayRecording &&
+			this->__int_D4 > 380
+		) {
+			ABILITY_MANAGER_PTR->__hide_card_anms();
+			ABILITY_MANAGER_PTR->__sub_407DA0(true);
 
-				GameMode mode;
-				if (GAME_MANAGER.globals.difficulty != EXTRA) {
-					mode = SUPERVISOR.__unknown_flag_su_G  ? GameMode::GameMode2 : GameMode::Ending;
-				} else {
-					mode = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::GameMode16;
-				}
-				SUPERVISOR.gamemode_switch = mode;
+			GameMode mode;
+			if (GAME_MANAGER.globals.difficulty != EXTRA) {
+				mode = SUPERVISOR.__unknown_flag_su_G  ? GameMode::GameMode2 : GameMode::Ending;
+			} else {
+				mode = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::GameMode16;
 			}
+			SUPERVISOR.gamemode_switch = mode;
 		}
 	}
 
-	// Non-ZUN BUG: Stage transitions break because of this, figure out why
 	Gui* gui = GUI_PTR;
 	if (
 		gui->__unknown_flag_gu_A &&
@@ -63418,6 +63498,7 @@ dllexport gnu_noinline GameThread::~GameThread() {
 	SUPERVISOR.background_color = GAME_MANAGER.__stage_restart ? COLOR_TRANSPARENT : COLOR_BLACK;
 }
 
+// inlined at 0x4424E0
 inline unsigned GameThread::thread_start_impl() {
 	//ScrollLock::wait_for_press();
 	GameThread* game_thread = GAME_THREAD_PTR;
