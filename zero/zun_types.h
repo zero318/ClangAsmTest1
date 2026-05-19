@@ -441,6 +441,31 @@ struct Float2 : Float1 {
         // Despite being stupid this behavior is well defined.
         // return *this;
     }
+
+    zun_make_from_vector_inline Float2& thiscall make_unit_vector(float angle) {
+#ifndef __x86_64__
+        __asm {
+            MOV EAX, this
+            FLD angle
+            FSINCOS
+            FSTP DWORD PTR[EAX]
+            FSTP DWORD PTR[EAX + 4]
+        };
+#else
+        __asm {
+            MOV RAX, this
+            FLD angle
+            FSINCOS
+            FSTP DWORD PTR[RAX]
+            FSTP DWORD PTR[RAX + 4]
+        };
+#endif
+        // Note: Functions containing an MSVC style ASM block
+        // without an explicit return are assumed to have set
+        // the return value within the ASM block. 
+        // Despite being stupid this behavior is well defined.
+        // return *this;
+    }
     
     inline float angle_to(const Float2& coord) {
         clang_noinline return zatan2f(this->y - coord.y, this->x - coord.x);
@@ -667,6 +692,12 @@ struct Float3 : Float2 {
 
     inline Float3& thiscall make_from_vector_components3(float angle, float x_magnitude, float y_magnitude) {
         this->make_from_vector_components(angle, x_magnitude, y_magnitude);
+        this->z = 0.0f;
+        return *this;
+    }
+
+    inline Float3& thiscall make_unit_vector3(float angle) {
+        this->make_unit_vector(angle);
         this->z = 0.0f;
         return *this;
     }

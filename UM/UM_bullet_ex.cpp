@@ -15667,14 +15667,20 @@ dllexport gnu_noinline void __initialize_fonts() {
 	}
 }
 
+enum AnmRunRet : int32_t {
+	ANM_SUCCESS = 0,
+	ANM_DELETE = 1
+};
+
 typedef int32_t (*fastcall AnmOnFunc)(AnmVM*);
 typedef int32_t (*fastcall AnmOnFuncArg)(AnmVM*, int32_t);
+typedef AnmRunRet (*fastcall AnmOnTickFunc)(AnmVM*);
 
 extern inline const AnmOnFunc ANM_ON_COPY_A_FUNCS[];
 extern inline const AnmOnFunc ANM_ON_COPY_B_FUNCS[];
 
 extern inline AnmOnFunc ANM_ON_WAIT_FUNCS[]; // 1
-extern inline const AnmOnFunc ANM_ON_TICK_FUNCS[]; // 7
+extern inline const AnmOnTickFunc ANM_ON_TICK_FUNCS[]; // 7
 extern inline const AnmOnFunc ANM_ON_DRAW_FUNCS[]; // 8
 extern inline const AnmOnFunc ANM_ON_DESTROY_FUNCS[]; // 6
 extern inline const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[]; // 6
@@ -16007,24 +16013,24 @@ enum Opcode : int16_t {
 	polygon_line, // 613
 	polygon_triangle, // 614
 #if INCLUDE_FUTURE_INSTRUCTIONS
-	__polygon_ring_unknown_A, // 615 (th19)
-	__polygon_ring_unknown_B, // 616 (th19)
-	__polygon_unknown_C, // 617 (th19)
-	__polygon_unknown_D, // 618 (th19)
-	__polygon_unknown_E, // 619 (th19)
-	__polygon_unknown_F1, // 620 (th19)
-	__polygon_unknown_F2, // 621 (th19)
-	__polygon_unknown_F3, // 622 (th19)
-	__polygon_unknown_G, // 623 (th19)
-	__polygon_unknown_H, // 624 (th19)
-	__polygon_unknown_I1, // 625 (th19)
-	__polygon_unknown_I2, // 626 (th19)
-	__polygon_unknown_I3, // 627 (th19)
-	__polygon_unknown_J, // 628 (th19)
-	__polygon_unknown_K, // 629 (th19)
-	__polygon_unknown_L1, // 630 (th19)
-	__polygon_unknown_L2, // 631 (th19)
-	__polygon_unknown_L3, // 632 (th19)
+	__polygon_ring_2, // 615 (th19)
+	__polygon_ring_3, // 616 (th19)
+	__polygon_stretch, // 617 (th19)
+	__polygon_point, // 618 (th19)
+	__polygon_stretch_hollow, // 619 (th19)
+	__polygon_stretch_strip, // 620 (th19)
+	__polygon_stretch_strip_2, // 621 (th19)
+	__polygon_stretch_strip_3, // 622 (th19)
+	__polygon_rectangle_rounded, // 623 (th19)
+	__polygon_rectangle_rounded_hollow, // 624 (th19)
+	__polygon_rectangle_rounded_strip, // 625 (th19)
+	__polygon_rectangle_rounded_strip_2, // 626 (th19)
+	__polygon_rectangle_rounded_strip_3, // 627 (th19)
+	polygon_star, // 628 (th19)
+	polygon_star_hollow, // 629 (th19)
+	__polygon_star_strip, // 630 (th19)
+	__polygon_star_strip_2, // 631 (th19)
+	__polygon_star_strip_3, // 632 (th19)
 	__polygon_unknown_M, // 633 (th20)
 	__polygon_unknown_N, // 634 (th20)
 #endif
@@ -16093,8 +16099,8 @@ enum AnmRunType : uint8_t {
 enum AnmRenderMode : uint8_t {
 	Mode2DSprite = 0,
 	Mode2DSpriteRotated = 1,
-	Mode2DSpriteBlurry = 2,
-	Mode2DSpriteRotatedB = 3,
+	Mode2DSpriteSmooth = 2,
+	Mode2DSpriteRotatedSmooth = 3, // Semi-bugged, do not use
 	Mode3DSpriteBillboard = 4,
 	Mode3DSprite = 5,
 	Mode3DSpriteBillboardSpecial = 6,
@@ -16106,7 +16112,7 @@ enum AnmRenderMode : uint8_t {
 	Mode12 = 12,
 	ModeTexturedArcA = 13,
 	ModeTexturedArcB = 14,
-	Mode3DObjectB = 15,
+	Mode3DObjectSpecial = 15,
 	ModePolygonRectangle = 16,
 	ModePolygon = 17,
 	ModePolygonHollow = 18,
@@ -16119,8 +16125,37 @@ enum AnmRenderMode : uint8_t {
 	ModeTexturedRing3D = 25,
 	ModePolygonLine = 26,
 	ModePolygonRectangleHollow = 27,
-	ModePolygonTriangle = 28
+	ModePolygonTriangle = 28,
+#if INCLUDE_FUTURE_INSTRUCTIONS
+	ModePolygonRing2 = 29, // th19
+	ModePolygonRing3 = 30, // th19
+	ModePolygonStretch = 31, // th19
+	ModePolygonPoint = 32, // th19
+	ModePolygonStretchHollow = 33, // th19
+	ModePolygonStretchStrip = 34, // th19
+	ModePolygonStretchStrip2 = 35, // th19
+	ModePolygonStretchStrip3 = 36, // th19
+	ModePolygonRectangleRounded = 37, // th19
+	ModePolygonRectangleRoundedHollow = 38, // th19
+	ModePolygonRectangleRoundedStrip = 39, // th19
+	ModePolygonRectangleRoundedStrip2 = 40, // th19
+	ModePolygonRectangleRoundedStrip3 = 41, // th19
+	ModePolygonStar = 42, // th19
+	ModePolygonStarHollow = 43, // th19
+	ModePolygonStarStrip = 44, // th19
+	ModePolygonStarStrip2 = 45, // th19
+	ModePolygonStarStrip3 = 46, // th19
+	ModePolygonUnknownM = 47, // th20
+	ModePolygonUnknownN = 48, // th20
+#endif
+	ENUM_MAX_VALUE_DECLARE(AnmRenderMode)
 };
+static inline constexpr size_t ANM_RENDER_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmRenderMode));
+#if !INCLUDE_FUTURE_INSTRUCTIONS
+static_assert(ANM_RENDER_MODE_BIT_WIDTH == 5);
+#else
+static_assert(ANM_RENDER_MODE_BIT_WIDTH == 6);
+#endif
 
 enum AnmTextureOp : int8_t {
 	NoPreviousTextureOp = -1,
@@ -16141,64 +16176,98 @@ enum AnmBlendMode : uint8_t {
 	BlendDarken = 8,
 	BlendLighten = 9,
 	BlendMode10 = 10,
-	BlendHardcoded = 11
+	BlendHardcoded = 11,
+	ENUM_MAX_VALUE_DECLARE(AnmBlendMode)
 };
+static inline constexpr size_t ANM_BLEND_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmBlendMode));
+static_assert(ANM_BLEND_MODE_BIT_WIDTH == 4);
 
 enum AnmResampleMode : int8_t {
 	NoPreviousResampleMode = -1,
 	ResampleLinearInterp = 0,
-	ResampleNearestPoint = 1
+	ResampleNearestPoint = 1,
+	ENUM_MAX_VALUE_DECLARE(AnmResampleMode)
 };
+static inline constexpr size_t ANM_RESAMPLE_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmResampleMode));
+static_assert(ANM_RESAMPLE_MODE_BIT_WIDTH == 1);
 
 enum AnmOriginMode : uint8_t {
 	OriginWindow = 0,
 	OriginFixedResolution = 1,
-	OriginFullResolution = 2
+	OriginFullResolution = 2,
+	ENUM_MAX_VALUE_DECLARE(AnmOriginMode)
 };
+static inline constexpr size_t ANM_ORIGIN_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmOriginMode));
+static_assert(ANM_ORIGIN_MODE_BIT_WIDTH == 2);
 
 enum AnmResolutionMode : uint8_t {
 	ResolutionNoScaling = 0,
-	ResolutionScaledA = 1,
-	ResolutionHalfScaledA = 2,
+	ResolutionScaled = 1,
+	ResolutionHalfScaled = 2,
 	ResolutionScaledB = 3,
-	ResolutionHalfScaledB = 4
+	ResolutionHalfScaledB = 4,
+#if INCLUDE_FUTURE_INSTRUCTIONS
+	ResolutionScaledC = 5, // th19
+	ResolutionHalfScaledC = 6, // th19
+#endif
+	ENUM_MAX_VALUE_DECLARE(AnmResolutionMode)
 };
+static inline constexpr size_t ANM_RESOLUTION_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmResolutionMode));
+static_assert(ANM_RESOLUTION_MODE_BIT_WIDTH == 3);
 
 enum AnmXAnchorMode : uint8_t {
 	AnchorXCenter = 0,
 	AnchorXLeft = 1,
-	AnchorXRight = 2
+	AnchorXRight = 2,
+	ENUM_MAX_VALUE_DECLARE(AnmXAnchorMode)
 };
+static inline constexpr size_t ANM_X_ANCHOR_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmXAnchorMode));
+static_assert(ANM_X_ANCHOR_MODE_BIT_WIDTH == 2);
 
 enum AnmYAnchorMode : uint8_t {
 	AnchorYCenter = 0,
 	AnchorYTop = 1,
-	AnchorYBottom = 2
+	AnchorYBottom = 2,
+	ENUM_MAX_VALUE_DECLARE(AnmYAnchorMode)
 };
+static inline constexpr size_t ANM_Y_ANCHOR_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmYAnchorMode));
+static_assert(ANM_Y_ANCHOR_MODE_BIT_WIDTH == 2);
 
 enum AnmColorMode : uint8_t {
 	UseColor1 = 0,
 	UseColor2 = 1,
 	ColorGradientHorizontal = 2,
 	ColorGradientVertical = 3,
-	ColorBlend = 4
+	ColorBlend = 4,
+	ENUM_MAX_VALUE_DECLARE(AnmColorMode)
 };
+static inline constexpr size_t ANM_COLOR_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmColorMode));
+static_assert(ANM_COLOR_MODE_BIT_WIDTH == 3);
 
 enum AnmPositionMode : uint8_t {
 	UsePosition1 = 0,
-	UsePosition2 = 1
+	UsePosition2 = 1,
+	ENUM_MAX_VALUE_DECLARE(AnmPositionMode)
 };
+static inline constexpr size_t ANM_POSITION_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmPositionMode));
+static_assert(ANM_POSITION_MODE_BIT_WIDTH == 1);
 
 enum AnmUVMode : uint8_t {
 	Wrap = 0,
 	Clamp = 1,
-	Mirror = 2
+	Mirror = 2,
+	ENUM_MAX_VALUE_DECLARE(AnmUVMode)
 };
+static inline constexpr size_t ANM_UV_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmUVMode));
+static_assert(ANM_UV_MODE_BIT_WIDTH == 2);
 
 enum AnmRNGMode : uint8_t {
 	ReplayRNG = 0,
-	NormalRNG = 1
+	NormalRNG = 1,
+	ENUM_MAX_VALUE_DECLARE(AnmRNGMode)
 };
+static inline constexpr size_t ANM_RNG_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmRNGMode));
+static_assert(ANM_RNG_MODE_BIT_WIDTH == 1);
 
 enum AnmRotationMode : uint8_t {
 	RotationXYZ = 0,
@@ -16207,8 +16276,11 @@ enum AnmRotationMode : uint8_t {
 	RotationYZX = 3,
 	RotationZXY = 4,
 	RotationZYX = 5,
-	RotationNone = 6
+	RotationNone = 6,
+	ENUM_MAX_VALUE_DECLARE(AnmRotationMode)
 };
+static inline constexpr size_t ANM_ROTATION_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmRotationMode));
+static_assert(ANM_ROTATION_MODE_BIT_WIDTH == 3);
 
 // size: 0x60C
 struct AnmVM {
@@ -16275,49 +16347,50 @@ struct AnmVM {
 		// next unused flag letter: Z
 		union {
 			uint32_t flags_low; // 0x534
+			uint16_t flags_low_word; // ancient eosd leftover
 			struct {
 				uint32_t visible : 1; // 1
 				uint32_t __visible2 : 1; // 2
 				uint32_t rotation_enabled : 1; // 3
 				uint32_t scale_enabled : 1; // 4
 				uint32_t uv_scale_enabled : 1; // 5
-				uint32_t blend_mode : 4; // 6-9
+				uint32_t blend_mode : ANM_BLEND_MODE_BIT_WIDTH; // 6-9 (4 bit)
 				uint32_t : 1; // 10
-				uint32_t position_mode : 1; // 11
+				uint32_t position_mode : ANM_POSITION_MODE_BIT_WIDTH; // 11 (1 bit)
 				uint32_t mirror_x : 1; // 12
 				uint32_t mirror_y : 1; // 13
 				uint32_t disable_z_write : 1; // 14
 				uint32_t __visible3 : 1; // 15
 				uint32_t __unknown_flag_av_W : 1; // 16
 				uint32_t __preserve_world_matrix : 1; // 17
-				uint32_t color_mode : 3; // 18-20
+				uint32_t color_mode : ANM_COLOR_MODE_BIT_WIDTH; // 18-20 (3 bit)
 				uint32_t : 1; // 21
 				uint32_t __stop_script : 1; // 22
-				uint32_t x_anchor_mode : 2; // 23-24
-				uint32_t y_anchor_mode : 2; // 25-26
-				uint32_t render_mode : 5; // 27-31
-				uint32_t : 1; // 32
+				uint32_t x_anchor_mode : ANM_X_ANCHOR_MODE_BIT_WIDTH; // 23-24 (2 bit)
+				uint32_t y_anchor_mode : ANM_Y_ANCHOR_MODE_BIT_WIDTH; // 25-26 (2 bit)
+				uint32_t render_mode : ANM_RENDER_MODE_BIT_WIDTH; // 27-31 (5 bit)
+				//uint32_t : 1; // 32
 			};
 		};
 		union {
 			uint32_t flags_high; // 0x538
 			struct {
-				uint32_t v_scroll_mode : 2; // 1-2
-				uint32_t u_scroll_mode : 2; // 3-4
-				uint32_t rotation_mode : 3; // 5-7
+				uint32_t v_scroll_mode : ANM_UV_MODE_BIT_WIDTH; // 1-2 (2 bit)
+				uint32_t u_scroll_mode : ANM_UV_MODE_BIT_WIDTH; // 3-4 (2 bit)
+				uint32_t rotation_mode : ANM_ROTATION_MODE_BIT_WIDTH; // 5-7 (3 bit)
 				uint32_t state : 2; // 8-9
 				uint32_t auto_rotate : 1; // 10
 				uint32_t __unknown_flag_av_T : 1; // 11
 				uint32_t slowdown_immune : 1; // 12
-				uint32_t rand_mode : 1; // 13
-				uint32_t resample_mode : 1; // 14
+				uint32_t rand_mode : ANM_RNG_MODE_BIT_WIDTH; // 13 (1 bit)
+				uint32_t resample_mode : ANM_RESAMPLE_MODE_BIT_WIDTH; // 14 (1 bit)
 				uint32_t text_outline_disable : 1; // 15
 				uint32_t __continual_sprite_window : 1; // 16
 				uint32_t __run_type : 2; // 17-18
 				uint32_t __treat_as_root : 1; // 19
 				uint32_t : 1; // 20
-				uint32_t origin_mode : 2; // 21-22
-				uint32_t resolution_mode : 3; // 23-25
+				uint32_t origin_mode : ANM_ORIGIN_MODE_BIT_WIDTH; // 21-22 (2 bit)
+				uint32_t resolution_mode : ANM_RESOLUTION_MODE_BIT_WIDTH; // 23-25 (3 bit)
 				uint32_t inherit_rotation : 1; // 26
 				uint32_t deltas_enabled : 1; // 27
 				uint32_t colorize_children : 1; // 28
@@ -16425,7 +16498,7 @@ struct AnmVM {
 		}
 		switch (layer) {
 			case 20 ... 32: case 37 ... 45:
-				this->data.resolution_mode = ResolutionScaledA; // 1
+				this->data.resolution_mode = ResolutionScaled; // 1
 				break;
 		}
 	}
@@ -16458,11 +16531,11 @@ struct AnmVM {
 	dllexport gnu_noinline Float3* thiscall __adjust_position_for_resolution_and_origin_modes(Float3* out) ASR(0x4063D0) {
 		
 		switch (this->data.resolution_mode) {
-			case ResolutionScaledA: // 1
+			case ResolutionScaled: // 1
 			case ResolutionScaledB: // 3
 				*out *= WINDOW_DATA.game_scale;
 				break;
-			case ResolutionHalfScaledA: // 2
+			case ResolutionHalfScaled: // 2
 			case ResolutionHalfScaledB: // 4
 				*out *= WINDOW_DATA.game_scale * 0.5f;
 				break;
@@ -16772,13 +16845,13 @@ struct AnmVM {
 
 		switch (this->data.resolution_mode) {
 			// Note: No 3 or 4
-			case ResolutionScaledA: // 1
+			case ResolutionScaled: // 1
 				vert0->as2() *= WINDOW_DATA.game_scale;
 				vert1->as2() *= WINDOW_DATA.game_scale;
 				vert2->as2() *= WINDOW_DATA.game_scale;
 				vert3->as2() *= WINDOW_DATA.game_scale;
 				break;
-			case ResolutionHalfScaledA: // 2
+			case ResolutionHalfScaled: // 2
 				vert0->as2() *= WINDOW_DATA.game_scale * 0.5f;
 				vert1->as2() *= WINDOW_DATA.game_scale * 0.5f;
 				vert2->as2() *= WINDOW_DATA.game_scale * 0.5f;
@@ -16831,13 +16904,13 @@ struct AnmVM {
 
 		switch (this->data.resolution_mode) {
 			// Note: No 3 or 4
-			case ResolutionScaledA: { // 1
+			case ResolutionScaled: { // 1
 				float scale = WINDOW_DATA.game_scale;
 				offset_x *= scale;
 				offset_y *= scale;
 				break;
 			}
-			case ResolutionHalfScaledA: { // 2
+			case ResolutionHalfScaled: { // 2
 				float scale = WINDOW_DATA.game_scale * 0.5f;
 				offset_x *= scale;
 				offset_y *= scale;
@@ -16992,8 +17065,8 @@ struct AnmVM {
 				this->__get_rotated_vertex_positions(&out[0], &out[1], &out[2], &out[3]);
 				break;
 			case Mode2DSprite: // 0
-			case Mode2DSpriteBlurry: // 2
-			case Mode2DSpriteRotatedB: // 3
+			case Mode2DSpriteSmooth: // 2
+			case Mode2DSpriteRotatedSmooth: // 3
 				this->__get_vertex_positions(&out[0], &out[1], &out[2], &out[3]);
 				break;
 		}
@@ -17002,9 +17075,8 @@ struct AnmVM {
 	// 0x41B430
 	dllexport gnu_noinline void reset() ASR(0x41B430) {
 		this->clear_all();
-		this->data.visible = true;
-		this->data.__visible2 = true;
-		this->data.rotation_enabled = true;
+		// Ancient EoSD leftover. Sets visible/__visible2/rotation_enabled
+		this->data.flags_low_word = 7;
 		this->data.scale = { 1.0f, 1.0f };
 		this->data.scale2 = { 1.0f, 1.0f };
 		this->data.uv_scale = { 1.0f, 1.0f };
@@ -17078,11 +17150,11 @@ struct AnmVM {
 		}
 		return 0;
 	}
-	forceinline int32_t run_on_tick() {
+	forceinline AnmRunRet run_on_tick() {
 		if (uint32_t index = this->controller.on_tick_index) {
 			return ANM_ON_TICK_FUNCS[index](this);
 		}
-		return 0;
+		return ANM_SUCCESS;
 	}
 	forceinline int32_t run_on_draw() {
 		if (uint32_t index = this->controller.on_draw_index) {
@@ -17121,7 +17193,7 @@ struct AnmVM {
 		return 0;
 	}
 
-	forceinline int32_t interrupt_and_run(int32_t interrupt) {
+	forceinline AnmRunRet interrupt_and_run(int32_t interrupt) {
 		this->interrupt(interrupt);
 		return this->run_anm();
 	}
@@ -17136,7 +17208,7 @@ struct AnmVM {
 	dllexport gnu_noinline static int fastcall on_create_special_dataA(AnmVM* vm, void* arg) ASR(0x406AD0);
 
 	// 0x406C80
-	dllexport gnu_noinline static int fastcall on_tick_special_dataA(AnmVM* vm) ASR(0x406C80);
+	dllexport gnu_noinline static AnmRunRet fastcall on_tick_special_dataA(AnmVM* vm) ASR(0x406C80);
 
 	// 0x406D00
 	dllexport gnu_noinline static int fastcall on_draw_special_dataA(AnmVM* vm) ASR(0x406D00);
@@ -17151,7 +17223,7 @@ struct AnmVM {
 	dllexport gnu_noinline static int fastcall on_create_special_dataB(AnmVM* vm, void* arg) ASR(0x404FC0);
 
 	// 0x405030
-	dllexport gnu_noinline static int fastcall on_tick_special_dataB(AnmVM* vm) ASR(0x405030);
+	dllexport gnu_noinline static AnmRunRet fastcall on_tick_special_dataB(AnmVM* vm) ASR(0x405030);
 
 	// 0x4058B0
 	dllexport gnu_noinline static int fastcall on_draw_special_dataB(AnmVM* vm) ASR(0x4058B0);
@@ -17166,7 +17238,7 @@ struct AnmVM {
 	dllexport gnu_noinline static int fastcall on_create_special_dataC1(AnmVM* vm, void* arg) ASR(0x405D70);
 
 	// 0x405ED0
-	dllexport gnu_noinline static int fastcall on_tick_special_dataC(AnmVM* vm) ASR(0x405ED0);
+	dllexport gnu_noinline static AnmRunRet fastcall on_tick_special_dataC(AnmVM* vm) ASR(0x405ED0);
 
 	// 0x406090
 	dllexport gnu_noinline static int fastcall on_draw_special_dataC(AnmVM* vm) ASR(0x406090);
@@ -17184,7 +17256,7 @@ struct AnmVM {
 	dllexport gnu_noinline static int fastcall on_create_special_dataD(AnmVM* vm, void* arg) ASR(0x407590);
 
 	// 0x4078D0
-	dllexport gnu_noinline static int fastcall on_tick_special_dataD(AnmVM* vm) ASR(0x4078D0);
+	dllexport gnu_noinline static AnmRunRet fastcall on_tick_special_dataD(AnmVM* vm) ASR(0x4078D0);
 
 	// 0x407C90
 	dllexport gnu_noinline static int fastcall on_draw_special_dataD(AnmVM* vm) ASR(0x407C90);
@@ -17199,7 +17271,7 @@ struct AnmVM {
 	dllexport gnu_noinline int thiscall create_special_dataE() ASR(0x4832F0);
 
 	// 0x483560
-	dllexport gnu_noinline static int fastcall on_tick_special_dataE(AnmVM* vm) ASR(0x483560);
+	dllexport gnu_noinline static AnmRunRet fastcall on_tick_special_dataE(AnmVM* vm) ASR(0x483560);
 
 	// 0x4837E0
 	dllexport gnu_noinline static int fastcall on_draw_special_dataE(AnmVM* vm) ASR(0x4837E0);
@@ -17606,7 +17678,7 @@ public:
 	}
 
 	// 0x478580
-	dllexport gnu_noinline int32_t thiscall run_anm() ASR(0x478580);
+	dllexport gnu_noinline AnmRunRet thiscall run_anm() ASR(0x478580);
 
 	// 0x47C750
 	dllexport gnu_noinline void thiscall step_interps() ASR(0x47C750) {
@@ -17692,11 +17764,11 @@ public:
 
 				switch (this->data.resolution_mode) {
 					// Note: No 3 or 4
-					case ResolutionScaledA: // 1
+					case ResolutionScaled: // 1
 						radius_outer *= WINDOW_DATA.game_scale;
 						radius_inner *= WINDOW_DATA.game_scale;
 						break;
-					case ResolutionHalfScaledA: { // 2
+					case ResolutionHalfScaled: { // 2
 						float scale = WINDOW_DATA.game_scale * 0.5f;
 						radius_outer *= scale;
 						radius_inner *= scale;
@@ -17774,11 +17846,11 @@ public:
 
 				switch (this->data.resolution_mode) {
 					// Note: No 3 or 4
-					case ResolutionScaledA: // 1
+					case ResolutionScaled: // 1
 						radius_outer *= WINDOW_DATA.game_scale;
 						radius_inner *= WINDOW_DATA.game_scale;
 						break;
-					case ResolutionHalfScaledA: { // 2
+					case ResolutionHalfScaled: { // 2
 						float scale = WINDOW_DATA.game_scale * 0.5f;
 						radius_outer *= scale;
 						radius_inner *= scale;
@@ -18256,7 +18328,7 @@ VSS(0x8, AnmScriptHeader);
 inline AnmOnFunc ANM_ON_WAIT_FUNCS[] = {
 	NULL
 };
-inline const AnmOnFunc ANM_ON_TICK_FUNCS[] = {
+inline const AnmOnTickFunc ANM_ON_TICK_FUNCS[] = {
 	NULL,
 	&AnmVM::on_tick_special_dataA,
 	&AnmVM::on_tick_special_dataB,
@@ -18400,7 +18472,7 @@ struct AnmLoaded {
 	}
 
 	// 0x41F920
-	dllexport gnu_noinline int32_t __copy_data_to_vm_and_run(AnmVM* vm, int32_t index) ASR(0x41F920) {
+	dllexport gnu_noinline AnmRunRet __copy_data_to_vm_and_run(AnmVM* vm, int32_t index) ASR(0x41F920) {
 		this->__copy_data_to_vm(vm, index);
 		vm->controller.parent = NULL;
 		vm->controller.__root_vm = NULL;
@@ -19725,11 +19797,11 @@ struct AnmManager {
 
 				switch (vm->data.resolution_mode) {
 					// Note: No 3 or 4
-					case ResolutionScaledA: // 1
+					case ResolutionScaled: // 1
 						vm->data.__world_matrix.m[0][0] *= WINDOW_DATA.game_scale;
 						vm->data.__world_matrix.m[1][1] *= WINDOW_DATA.game_scale;
 						break;
-					case ResolutionHalfScaledA: // 2
+					case ResolutionHalfScaled: // 2
 						vm->data.__world_matrix.m[0][0] *= WINDOW_DATA.game_scale * 0.5f;
 						vm->data.__world_matrix.m[1][1] *= WINDOW_DATA.game_scale * 0.5f;
 						break;
@@ -19853,7 +19925,7 @@ struct AnmManager {
 	}
 
 	// 0x4810D0
-	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_B(AnmVM* vm, void* special_data, int32_t arg3) ASR(0x4810D0) {
+	dllexport gnu_noinline ZUNResult thiscall __draw_vm_type_B(AnmVM* vm, void* special_data, int32_t points) ASR(0x4810D0) {
 		if (this->unrendered_sprite_count) {
 			this->flush_sprites();
 		}
@@ -19871,7 +19943,7 @@ struct AnmManager {
 
 		this->set_texture_op<Modulate>();
 
-		SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, arg3 - 2, special_data, sizeof(SpriteVertex));
+		SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, points - 2, special_data, sizeof(SpriteVertex));
 		return ZUN_SUCCESS;
 	}
 
@@ -20104,7 +20176,7 @@ private:
 		float radius, float width, float angle,
 		int32_t sides, D3DCOLOR color
 	) {
-		if (this->primitive_write_cursor + 2 + sides < array_end_addr(this->primitive_vertex_data)) {
+		if (this->primitive_write_cursor + 2 + (sides * 2) < array_end_addr(this->primitive_vertex_data)) {
 			this->flush_sprites();
 
 			PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
@@ -20153,7 +20225,7 @@ private:
 
 			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, sides * 2, this->primitive_write_cursor, sizeof(PrimitiveVertex));
 
-			this->primitive_write_cursor += 2 + sides;
+			this->primitive_write_cursor += 2 + (sides * 2);
 			++this->__counter_CC;
 		}
 		return ZUN_SUCCESS;
@@ -20800,6 +20872,670 @@ public:
 		);
 	}
 
+#if INCLUDE_FUTURE_INSTRUCTIONS
+	ZUNResult __draw_polygon_point(
+		float position_x, float position_y,
+		D3DCOLOR color
+	) {
+		PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+		if (primitive_write_cursor < array_end_addr(this->primitive_vertex_data)) {
+			this->flush_sprites();
+
+			primitive_write_cursor->diffuse = color;
+			primitive_write_cursor->position.x = position_x + this->__vertex_offsetB.x;
+			primitive_write_cursor->position.y = position_y + this->__vertex_offsetB.y;
+			primitive_write_cursor->position.z = 0.0f;
+			primitive_write_cursor->position.w = 1.0f;
+
+			SUPERVISOR.d3d_disable_zwrite();
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_POINTLIST, 1, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += 1;
+			++this->__counter_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+
+	ZUNResult draw_polygon_star(
+		float position_x, float position_y,
+		float radius_even, float radius_odd, float angle,
+		int32_t sides, D3DCOLOR color1, D3DCOLOR color2
+	) {
+		PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+		if (primitive_write_cursor + (sides + 2) < array_end_addr(this->primitive_vertex_data)) {
+			this->flush_sprites();
+
+			primitive_write_cursor->diffuse = color1;
+			primitive_write_cursor->position.x = position_x;
+			primitive_write_cursor->position.y = position_y;
+			primitive_write_cursor->position.z = 0.0f;
+			primitive_write_cursor->position.w = 1.0f;
+
+			int32_t i = sides + 1;
+
+			float angle_add = TWO_PI_f / i;
+
+			++primitive_write_cursor;
+
+			if (i) {
+				int32_t j = 0;
+				do {
+					primitive_write_cursor->position.make_from_vector(angle, j & 1 ? radius_odd : radius_even);
+					angle += angle_add;
+					primitive_write_cursor->position.x += position_x;
+					primitive_write_cursor->position.y += position_y;
+					primitive_write_cursor->position.z = 0.0f;
+					primitive_write_cursor->position.w = 1.0f;
+					primitive_write_cursor->diffuse = color2;
+					primitive_write_cursor->position.as2() += this->__vertex_offsetB;
+					++primitive_write_cursor;
+					angle = reduce_angle(angle);
+					++j;
+				} while (--i);
+			}
+
+			SUPERVISOR.d3d_disable_zwrite();
+			SUPERVISOR.d3d_zfunc_always();
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, sides, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += (sides + 2);
+			++this->__counter_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+
+	ZUNResult draw_polygon_star_hollow(
+		float position_x, float position_y,
+		float radius_even, float radius_odd, float angle,
+		int32_t sides, D3DCOLOR color
+	) {
+		if (this->primitive_write_cursor + 1 + sides < array_end_addr(this->primitive_vertex_data)) {
+			this->flush_sprites();
+
+			PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+			int32_t i = sides + 1;
+
+			float angle_add = TWO_PI_f / i;
+
+			if (i) {
+				int32_t j = 0;
+				do {
+					primitive_write_cursor->position.make_from_vector(angle, j & 1 ? radius_odd : radius_even);
+					angle += angle_add;
+					primitive_write_cursor->position.x += position_x;
+					primitive_write_cursor->position.y += position_y;
+					primitive_write_cursor->position.z = 0.0f;
+					primitive_write_cursor->position.w = 1.0f;
+					primitive_write_cursor->diffuse = color;
+					primitive_write_cursor->position.as2() += this->__vertex_offsetB;
+					++primitive_write_cursor;
+					angle = reduce_angle(angle);
+					++j;
+				} while (--i);
+			}
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_LINESTRIP, sides, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += 1 + sides;
+			++this->__counter_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+
+	ZUNResult __draw_polygon_star_strip(
+		float position_x, float position_y,
+		float radius_even, float radius_odd, float width, float angle,
+		int32_t sides, D3DCOLOR color1, D3DCOLOR color2
+	) {
+		if (this->primitive_write_cursor + 2 + sides * 2 < array_end_addr(this->primitive_vertex_data)) {
+			this->flush_sprites();
+
+			PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+			int32_t i = sides + 1;
+
+			float angle_add = TWO_PI_f / i;
+
+			float half_width = width * 0.5f;
+
+			if (i) {
+				int32_t j = 0;
+				do {
+					primitive_write_cursor[0].position.make_from_vector(angle, (j & 1 ? radius_odd : radius_even) - half_width);
+					primitive_write_cursor[0].position.x += position_x;
+					primitive_write_cursor[0].position.y += position_y;
+					primitive_write_cursor[0].position.z = 0.0f;
+					primitive_write_cursor[0].position.w = 1.0f;
+					primitive_write_cursor[0].diffuse = color1;
+					primitive_write_cursor[0].position.as2() += this->__vertex_offsetB;
+
+					primitive_write_cursor[1].position.make_from_vector(angle, (j & 1 ? radius_odd : radius_even) + half_width);
+					angle += angle_add;
+					primitive_write_cursor[1].position.x += position_x;
+					primitive_write_cursor[1].position.y += position_y;
+					primitive_write_cursor[1].position.z = 0.0f;
+					primitive_write_cursor[1].position.w = 1.0f;
+					primitive_write_cursor[1].diffuse = color2;
+					primitive_write_cursor[1].position.as2() += this->__vertex_offsetB;
+					++primitive_write_cursor;
+					angle = reduce_angle(angle);
+					++j;
+				} while (--i);
+			}
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, sides * 2, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += 2 + sides * 2;
+			++this->__counter_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+
+	ZUNResult __draw_polygon_stretch(
+		float position_x, float position_y,
+		float size_x, float size_y, float angle,
+		int32_t sides, D3DCOLOR color1, D3DCOLOR color2
+	) {
+		PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+		if (primitive_write_cursor + (sides + 2) < array_end_addr(this->primitive_vertex_data)) {
+			this->flush_sprites();
+
+			primitive_write_cursor->diffuse = color1;
+			primitive_write_cursor->position.x = position_x;
+			primitive_write_cursor->position.y = position_y;
+			primitive_write_cursor->position.z = 0.0f;
+			primitive_write_cursor->position.w = 1.0f;
+
+			int32_t i = sides + 1;
+
+			float angle_add = TWO_PI_f / i;
+
+			++primitive_write_cursor;
+
+			if (i) {
+				Float2 unit;
+				unit.make_unit_vector(angle);
+				do {
+					Float2 offset;
+					offset.make_from_vector_components(angle, size_x, size_y);
+					primitive_write_cursor->position.as2() = offset.rotate_around_origin_unit(unit);
+					angle += angle_add;
+					primitive_write_cursor->position.x += position_x;
+					primitive_write_cursor->position.y += position_y;
+					primitive_write_cursor->position.z = 0.0f;
+					primitive_write_cursor->position.w = 1.0f;
+					primitive_write_cursor->diffuse = color2;
+					primitive_write_cursor->position.as2() += this->__vertex_offsetB;
+					++primitive_write_cursor;
+					angle = reduce_angle(angle);
+				} while (--i);
+			}
+
+			SUPERVISOR.d3d_disable_zwrite();
+			SUPERVISOR.d3d_zfunc_always();
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, sides, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += (sides + 2);
+			++this->__counter_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+
+	ZUNResult __draw_polygon_stretch_hollow(
+		float position_x, float position_y,
+		float size_x, float size_y, float angle,
+		int32_t sides, D3DCOLOR color
+	) {
+		// Checks 1 extra vertex than needed
+		if (this->primitive_write_cursor + (sides + 2) < array_end_addr(this->primitive_vertex_data)) {
+			this->flush_sprites();
+
+			PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+			int32_t i = sides + 1;
+
+			float angle_add = TWO_PI_f / i;
+
+			if (i) {
+				Float2 unit;
+				unit.make_unit_vector(angle);
+				do {
+					Float2 offset;
+					offset.make_from_vector_components(angle, size_x, size_y);
+					primitive_write_cursor->position.as2() = offset.rotate_around_origin_unit(unit);
+					angle += angle_add;
+					primitive_write_cursor->position.x += position_x;
+					primitive_write_cursor->position.y += position_y;
+					primitive_write_cursor->position.z = 0.0f;
+					primitive_write_cursor->position.w = 1.0f;
+					primitive_write_cursor->diffuse = color;
+					primitive_write_cursor->position.as2() += this->__vertex_offsetB;
+					++primitive_write_cursor;
+					angle = reduce_angle(angle);
+				} while (--i);
+			}
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_LINESTRIP, sides, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += 1 + sides;
+			++this->__counter_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+
+	ZUNResult __draw_polygon_stretch_strip(
+		float position_x, float position_y,
+		float size_x, float size_y, float width, float angle,
+		int32_t sides, D3DCOLOR color1, D3DCOLOR color2
+	) {
+		// Checks completely wrong vertex count
+		if (this->primitive_write_cursor + 2 + sides < array_end_addr(this->primitive_vertex_data)) {
+			this->flush_sprites();
+
+			PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+			int32_t i = sides + 1;
+
+			float half_width = width * 0.5f;
+
+			float angle_add = TWO_PI_f / i;
+
+			if (i) {
+				Float2 unit;
+				unit.make_unit_vector(angle);
+				do {
+					Float2 offset;
+					offset.make_from_vector_components(angle, size_x - half_width, size_y - half_width);
+					primitive_write_cursor[0].position.as2() = offset.rotate_around_origin_unit(unit);
+					primitive_write_cursor[0].position.x += position_x;
+					primitive_write_cursor[0].position.y += position_y;
+					primitive_write_cursor[0].position.z = 0.0f;
+					primitive_write_cursor[0].position.w = 1.0f;
+					primitive_write_cursor[0].diffuse = color1;
+					primitive_write_cursor[0].position.as2() += this->__vertex_offsetB;
+
+					offset.make_from_vector_components(angle, size_x + half_width, size_y + half_width);
+					primitive_write_cursor[1].position.as2() = offset.rotate_around_origin_unit(unit);
+					angle += angle_add;
+					primitive_write_cursor[1].position.x += position_x;
+					primitive_write_cursor[1].position.y += position_y;
+					primitive_write_cursor[1].position.z = 0.0f;
+					primitive_write_cursor[1].position.w = 1.0f;
+					primitive_write_cursor[1].diffuse = color2;
+					primitive_write_cursor[1].position.as2() += this->__vertex_offsetB;
+
+					primitive_write_cursor += 2;
+					angle = reduce_angle(angle);
+				} while (--i);
+			}
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, sides * 2, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += 2 + sides * 2;
+			++this->__counter_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+
+	ZUNResult __draw_polygon_rectangle_rounded(
+		float position_x, float position_y,
+		float size_x, float size_y, float radius, float rotation,
+		int32_t sides, D3DCOLOR color1, D3DCOLOR color2
+	) {
+		PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+		if (primitive_write_cursor + (sides + 2) < array_end_addr(this->primitive_vertex_data)) {
+			float angle = -PI_f;
+
+			this->flush_sprites();
+
+			primitive_write_cursor->diffuse = color1;
+			primitive_write_cursor->position.x = position_x;
+			primitive_write_cursor->position.y = position_y;
+			primitive_write_cursor->position.z = 0.0f;
+			primitive_write_cursor->position.w = 1.0f;
+
+			int32_t i = sides + 1;
+
+			float angle_add = TWO_PI_f / i;
+
+			++primitive_write_cursor;
+
+			float half_width = (size_x - (radius + radius)) * 0.5f;
+			float half_height = (size_y - (radius + radius)) * 0.5f;
+
+			if (i) {
+				int32_t j = 0;
+				Float2 unit;
+				unit.make_unit_vector(rotation);
+				do {
+					primitive_write_cursor->position.make_from_vector(angle, radius);
+
+					if (j < sides / 4 || j == sides) {
+						primitive_write_cursor->position.x -= half_width;
+						primitive_write_cursor->position.y -= half_height;
+					}
+					else if (j < sides * 2 / 4) {
+						primitive_write_cursor->position.x += half_width;
+						primitive_write_cursor->position.y -= half_height;
+					}
+					else if (j < sides * 3 / 4) {
+						primitive_write_cursor->position.x += half_width;
+						primitive_write_cursor->position.y += half_height;
+					}
+					else {
+						primitive_write_cursor->position.x -= half_width;
+						primitive_write_cursor->position.y += half_height;
+					}
+
+					primitive_write_cursor->position.as2() = primitive_write_cursor->position.rotate_around_origin_unit(unit);
+
+					primitive_write_cursor->position.x += position_x;
+					primitive_write_cursor->position.y += position_y;
+
+					angle += angle_add;
+					primitive_write_cursor->position.z = 0.0f;
+					primitive_write_cursor->position.w = 1.0f;
+					primitive_write_cursor->diffuse = color2;
+					primitive_write_cursor->position.as2() += this->__vertex_offsetB;
+					++primitive_write_cursor;
+					angle = reduce_angle(angle);
+					++j;
+				} while (--i);
+			}
+
+			SUPERVISOR.d3d_disable_zwrite();
+			SUPERVISOR.d3d_zfunc_always();
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, sides, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += (sides + 2);
+			++this->__counter_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+
+	ZUNResult __draw_polygon_rectangle_rounded_hollow(
+		float position_x, float position_y,
+		float size_x, float size_y, float radius, float rotation,
+		int32_t sides, D3DCOLOR color
+	) {
+		PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+		if (primitive_write_cursor + (sides + 2) < array_end_addr(this->primitive_vertex_data)) {
+			float angle = -PI_f;
+
+			this->flush_sprites();
+
+			int32_t i = sides + 1;
+
+			float angle_add = TWO_PI_f / i;
+
+			float half_width = (size_x - (radius + radius)) * 0.5f;
+			float half_height = (size_y - (radius + radius)) * 0.5f;
+
+			if (i) {
+				int32_t j = 0;
+				Float2 unit;
+				unit.make_unit_vector(rotation);
+				do {
+					primitive_write_cursor->position.make_from_vector(angle, radius);
+
+					if (j < sides / 4 || j == sides) {
+						primitive_write_cursor->position.x -= half_width;
+						primitive_write_cursor->position.y -= half_height;
+					}
+					else if (j < sides * 2 / 4) {
+						primitive_write_cursor->position.x += half_width;
+						primitive_write_cursor->position.y -= half_height;
+					}
+					else if (j < sides * 3 / 4) {
+						primitive_write_cursor->position.x += half_width;
+						primitive_write_cursor->position.y += half_height;
+					}
+					else {
+						primitive_write_cursor->position.x -= half_width;
+						primitive_write_cursor->position.y += half_height;
+					}
+
+					primitive_write_cursor->position.as2() = primitive_write_cursor->position.rotate_around_origin_unit(unit);
+
+					primitive_write_cursor->position.x += position_x;
+					primitive_write_cursor->position.y += position_y;
+
+					angle += angle_add;
+					primitive_write_cursor->position.z = 0.0f;
+					primitive_write_cursor->position.w = 1.0f;
+					primitive_write_cursor->diffuse = color;
+					primitive_write_cursor->position.as2() += this->__vertex_offsetB;
+					++primitive_write_cursor;
+					angle = reduce_angle(angle);
+					++j;
+				} while (--i);
+			}
+
+			SUPERVISOR.d3d_disable_zwrite();
+			SUPERVISOR.d3d_zfunc_always();
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_LINESTRIP, sides, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += (sides + 1);
+			++this->__counter_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+
+	ZUNResult __draw_polygon_rectangle_rounded_strip(
+		float position_x, float position_y,
+		float size_x, float size_y, float radius, float width, float rotation,
+		int32_t sides, D3DCOLOR color1, D3DCOLOR color2
+	) {
+		PrimitiveVertex* primitive_write_cursor = this->primitive_write_cursor;
+
+		if (primitive_write_cursor + (sides + 2) < array_end_addr(this->primitive_vertex_data)) {
+			float angle = -PI_f;
+
+			this->flush_sprites();
+
+			int32_t i = sides + 1;
+
+			float half_width = width * 0.5f;
+
+			float radius_inner = radius - half_width;
+			float angle_add = TWO_PI_f / i;
+			float radius_outer = radius + half_width;
+
+			half_width = size_x * 0.5f;
+			float half_height = size_y * 0.5f;
+
+			if (i) {
+				int32_t j = 0;
+				Float2 unit;
+				unit.make_unit_vector(rotation);
+				do {
+					primitive_write_cursor[0].position.make_from_vector(angle, radius_inner);
+
+					if (j < sides / 4 || j == sides) {
+						primitive_write_cursor[0].position.x -= half_width;
+						primitive_write_cursor[0].position.y -= half_height;
+					}
+					else if (j < sides * 2 / 4) {
+						primitive_write_cursor[0].position.x += half_width;
+						primitive_write_cursor[0].position.y -= half_height;
+					}
+					else if (j < sides * 3 / 4) {
+						primitive_write_cursor[0].position.x += half_width;
+						primitive_write_cursor[0].position.y += half_height;
+					}
+					else {
+						primitive_write_cursor[0].position.x -= half_width;
+						primitive_write_cursor[0].position.y += half_height;
+					}
+
+					primitive_write_cursor[0].position.as2() = primitive_write_cursor[0].position.rotate_around_origin_unit(unit);
+
+					primitive_write_cursor[0].position.x += position_x;
+					primitive_write_cursor[0].position.y += position_y;
+
+					angle += angle_add;
+					primitive_write_cursor[0].position.z = 0.0f;
+					primitive_write_cursor[0].position.w = 1.0f;
+					primitive_write_cursor[0].diffuse = color2;
+					primitive_write_cursor[0].position.as2() += this->__vertex_offsetB;
+
+
+					primitive_write_cursor[1].position.make_from_vector(angle, radius_outer);
+
+					if (j < sides / 4 || j == sides) {
+						primitive_write_cursor[1].position.x -= half_width;
+						primitive_write_cursor[1].position.y -= half_height;
+					} else if (j < sides * 2 / 4) {
+						primitive_write_cursor[1].position.x += half_width;
+						primitive_write_cursor[1].position.y -= half_height;
+					} else if (j < sides * 3 / 4) {
+						primitive_write_cursor[1].position.x += half_width;
+						primitive_write_cursor[1].position.y += half_height;
+					} else {
+						primitive_write_cursor[1].position.x -= half_width;
+						primitive_write_cursor[1].position.y += half_height;
+					}
+
+					primitive_write_cursor[1].position.as2() = primitive_write_cursor[1].position.rotate_around_origin_unit(unit);
+
+					primitive_write_cursor[1].position.x += position_x;
+					primitive_write_cursor[1].position.y += position_y;
+
+					angle += angle_add;
+					primitive_write_cursor[1].position.z = 0.0f;
+					primitive_write_cursor[1].position.w = 1.0f;
+					primitive_write_cursor[1].diffuse = color2;
+					primitive_write_cursor[1].position.as2() += this->__vertex_offsetB;
+
+					primitive_write_cursor += 2;
+					angle = reduce_angle(angle);
+					++j;
+				} while (--i);
+			}
+
+			SUPERVISOR.d3d_disable_zwrite();
+			SUPERVISOR.d3d_zfunc_always();
+
+			this->set_texture_op<SelectArg2>();
+
+			if (this->__current_vertex_type != 1) {
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				this->__current_vertex_type = 1;
+			}
+
+			SUPERVISOR.d3d_device->SetFVF(PrimitiveVertex::FVF_TYPE);
+
+			SUPERVISOR.d3d_device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, sides * 2, this->primitive_write_cursor, sizeof(PrimitiveVertex));
+
+			this->primitive_write_cursor += 2 + sides * 2;
+			++this->__counter_CC;
+		}
+		return ZUN_SUCCESS;
+	}
+#endif
+
 	// 0x481210
 	dllexport gnu_noinline ZUNResult thiscall draw_vm(AnmVM* vm) ASR(0x481210) {
 		vm->run_on_draw();
@@ -20821,7 +21557,7 @@ public:
 				vm->__get_vertex_positions(&SPRITE_VERTEX_BUFFER_A[0].position, &SPRITE_VERTEX_BUFFER_A[1].position, &SPRITE_VERTEX_BUFFER_A[2].position, &SPRITE_VERTEX_BUFFER_A[3].position);
 				return this->__render_vertices(vm, RENDER_VERTICES_ROUND_INPUTS);
 			case Mode2DSpriteRotated: // 1
-			case Mode2DSpriteRotatedB: // 3
+			case Mode2DSpriteRotatedSmooth: // 3
 				if (!vm->get_alpha() && !vm->get_alpha2()) {
 					return ZUN_ERROR;
 				}
@@ -20912,7 +21648,7 @@ public:
 					return ZUN_ERROR;
 				}
 				return this->__draw_vm_type_8_F(vm);
-			case Mode3DObjectB: { // 15
+			case Mode3DObjectSpecial: { // 15
 				if (!vm->get_alpha() && !vm->get_alpha2()) {
 					return ZUN_ERROR;
 				}
@@ -20931,7 +21667,7 @@ public:
 			case ModeTexturedCylinder: // 24
 			case ModeTexturedRing3D: // 25
 				return this->__draw_vm_type_18_19(vm, vm->controller.special_data, vm->data.current_context.int_vars[0] * 2);
-			case Mode2DSpriteBlurry: // 2
+			case Mode2DSpriteSmooth: // 2
 				if (!vm->get_alpha() && !vm->get_alpha2()) {
 					return ZUN_ERROR;
 				}
@@ -20944,6 +21680,14 @@ public:
 			case ModePolygonLine: // 26
 			case ModePolygonRectangleHollow: // 27
 			case ModePolygonTriangle: // 28
+#if INCLUDE_FUTURE_INSTRUCTIONS
+			case ModePolygonPoint: // 32
+			case ModePolygonRectangleRounded: // 37
+			case ModePolygonRectangleRoundedHollow: // 38
+			case ModePolygonRectangleRoundedStrip: // 39
+			case ModePolygonRectangleRoundedStrip2: // 40
+			case ModePolygonRectangleRoundedStrip3: // 41
+#endif
 			{
 				float angle = vm->data.rotation.z;
 				Float2 size = vm->data.sprite_size * vm->data.scale;
@@ -20962,10 +21706,10 @@ public:
 
 				switch (vm->data.resolution_mode) {
 					// Note: No 3 or 4
-					case ResolutionScaledA: // 1
+					case ResolutionScaled: // 1
 						size *= WINDOW_DATA.game_scale;
 						break;
-					case ResolutionHalfScaledA: // 2
+					case ResolutionHalfScaled: // 2
 						size *= WINDOW_DATA.game_scale * 0.5f;
 						break;
 				}
@@ -21056,12 +21800,93 @@ public:
 						);
 						break;
 					}
+#if INCLUDE_FUTURE_INSTRUCTIONS
+					case ModePolygonPoint: { // 32
+						this->__draw_polygon_point(
+							position.x, position.y,
+							vm->data.color1
+						);
+						break;
+					}
+					case ModePolygonRectangleRounded: { // 37
+						this->__draw_polygon_rectangle_rounded(
+							position.x, position.y,
+							size.x, size.y, vm->data.current_context.float_vars[0], angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1, vm->data.color2
+						);
+						break;
+					}
+					case ModePolygonRectangleRoundedHollow: { // 38
+						this->__draw_polygon_rectangle_rounded_hollow(
+							position.x, position.y,
+							size.x, size.y, vm->data.current_context.float_vars[0], angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1
+						);
+						break;
+					}
+					case ModePolygonRectangleRoundedStrip: { // 39
+						float inner_radius = vm->data.current_context.float_vars[0];
+						float inner_diameter = inner_radius * 2.0f;
+						float width = vm->data.current_context.float_vars[1];
+						this->__draw_polygon_rectangle_rounded_strip(
+							position.x, position.y,
+							size.x - inner_diameter, size.y - inner_diameter, inner_radius, width, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1, vm->data.color2
+						);
+						break;
+					}
+					case ModePolygonRectangleRoundedStrip2: { // 40
+						float inner_radius = vm->data.current_context.float_vars[0];
+						float inner_diameter = inner_radius * 2.0f;
+						float width = vm->data.current_context.float_vars[1];
+
+						inner_radius += width * 0.5f;
+						this->__draw_polygon_rectangle_rounded_strip(
+							position.x, position.y,
+							size.x - inner_diameter, size.y - inner_diameter, inner_radius, width, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1, vm->data.color2
+						);
+						break;
+					}
+					case ModePolygonRectangleRoundedStrip3: { // 41
+						float inner_radius = vm->data.current_context.float_vars[0];
+						float inner_diameter = inner_radius * 2.0f;
+						float width = vm->data.current_context.float_vars[1];
+
+						inner_radius -= width * 0.5f;
+						this->__draw_polygon_rectangle_rounded_strip(
+							position.x, position.y,
+							size.x - inner_diameter, size.y - inner_diameter, inner_radius, width, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1, vm->data.color2
+						);
+						break;
+					}
+#endif
 				}
 				break;
 			}
 			case ModePolygon: // 17
 			case ModePolygonHollow: // 18
 			case ModePolygonRing: // 19
+#if INCLUDE_FUTURE_INSTRUCTIONS
+			case ModePolygonRing2: // 29
+			case ModePolygonRing3: // 30
+			case ModePolygonStretch: // 31
+			case ModePolygonStretchHollow: // 33
+			case ModePolygonStretchStrip: // 34
+			case ModePolygonStretchStrip2: // 35
+			case ModePolygonStretchStrip3: // 36
+			case ModePolygonStar: // 42
+			case ModePolygonStarHollow: // 43
+			case ModePolygonStarStrip: // 44
+			case ModePolygonStarStrip2: // 45
+			case ModePolygonStarStrip3: // 46
+#endif
 			{
 				float angle = vm->data.rotation.z;
 				Float2 size = vm->data.sprite_size * vm->data.scale;
@@ -21078,10 +21903,10 @@ public:
 
 				switch (vm->data.resolution_mode) {
 					// Note: No 3 or 4
-					case ResolutionScaledA: // 1
+					case ResolutionScaled: // 1
 						size *= WINDOW_DATA.game_scale;
 						break;
-					case ResolutionHalfScaledA: // 2
+					case ResolutionHalfScaled: // 2
 						size *= WINDOW_DATA.game_scale * 0.5f;
 						break;
 				}
@@ -21116,6 +21941,138 @@ public:
 						);
 						break;
 					}
+#if INCLUDE_FUTURE_INSTRUCTIONS
+					case ModePolygonRing2: { // 29
+						size.x += size.y * 0.5f;
+						this->draw_polygon_ring(
+							position.x, position.y,
+							size.x, size.y, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1
+						);
+						break;
+					}
+					case ModePolygonRing3: { // 30
+						size.x -= size.y * 0.5f;
+						this->draw_polygon_ring(
+							position.x, position.y,
+							size.x, size.y, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1
+						);
+						break;
+					}
+					case ModePolygonStretch: { // 31
+						this->__draw_polygon_stretch(
+							position.x, position.y,
+							size.x, size.y, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1, vm->data.color2
+						);
+						break;
+					}
+					case ModePolygonStretchHollow: { // 33
+						this->__draw_polygon_stretch_hollow(
+							position.x, position.y,
+							size.x, size.y, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1
+						);
+						break;
+					}
+					case ModePolygonStretchStrip: { // 34
+						float size2_x = vm->data.sprite_size.x * vm->data.scale2.x;
+						this->__draw_polygon_stretch_strip(
+							position.x, position.y,
+							size2_x, size.x, size.y, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1, vm->data.color2
+						);
+						break;
+					}
+					case ModePolygonStretchStrip2: { // 35
+						float size2_x = vm->data.sprite_size.x * vm->data.scale2.x;
+						float half_width = size.y * 0.5f;
+						size.x += half_width;
+						size2_x += half_width;
+						this->__draw_polygon_stretch_strip(
+							position.x, position.y,
+							size2_x, size.x, size.y, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1, vm->data.color2
+						);
+						break;
+					}
+					case ModePolygonStretchStrip3: { // 36
+						float size2_x = vm->data.sprite_size.x * vm->data.scale2.x;
+						float half_width = size.y * 0.5f;
+						size.x -= half_width;
+						size2_x -= half_width;
+						this->__draw_polygon_stretch_strip(
+							position.x, position.y,
+							size2_x, size.x, size.y, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1, vm->data.color2
+						);
+						break;
+					}
+					case ModePolygonStar: { // 42
+						float size2_x = vm->data.sprite_size.x * vm->data.scale2.x;
+						this->draw_polygon_star(
+							position.x, position.y,
+							size.x, size2_x, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1, vm->data.color2
+						);
+						break;
+					}
+					case ModePolygonStarHollow: { // 43
+						float size2_x = vm->data.sprite_size.x * vm->data.scale2.x;
+						this->draw_polygon_star_hollow(
+							position.x, position.y,
+							size.x, size2_x, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1
+						);
+						break;
+					}
+					case ModePolygonStarStrip: { // 44
+						float size2_x = vm->data.sprite_size.x * vm->data.scale2.x;
+						this->__draw_polygon_star_strip(
+							position.x, position.y,
+							size.x, size.y, size2_x, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1, vm->data.color2
+						);
+						break;
+					}
+					case ModePolygonStarStrip2: { // 45
+						float size2_x = vm->data.sprite_size.x * vm->data.scale2.x;
+						float half_width = size.y * 0.5f;
+						size.x += half_width;
+						size2_x += half_width;
+						this->__draw_polygon_star_strip(
+							position.x, position.y,
+							size.x, size.y, size2_x, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1, vm->data.color2
+						);
+						break;
+					}
+					case ModePolygonStarStrip3: { // 46
+						float size2_x = vm->data.sprite_size.x * vm->data.scale2.x;
+						float half_width = size.y * 0.5f;
+						size.x -= half_width;
+						size2_x -= half_width;
+						this->__draw_polygon_star_strip(
+							position.x, position.y,
+							size.x, size.y, size2_x, angle,
+							vm->data.current_context.int_vars[0],
+							vm->data.color1, vm->data.color2
+						);
+						break;
+					}
+#endif
 				}
 				break;
 			}
@@ -26985,7 +27942,7 @@ this->get_float_ptr_arg(&FloatArgOf(instr, number), (instr)->param_mask, number)
 ParseFloatPtrArgOf(current_instruction, number)
 
 // 0x478580
-dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
+dllexport gnu_noinline AnmRunRet thiscall AnmVM::run_anm() {
 	using namespace Anm;
 
 	float previous_gamespeed = GAME_SPEED; // ESP+1C
@@ -26999,7 +27956,7 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 			GAME_SPEED.value = 0.0f;
 		}
 	}
-	if (ZUN_FAILED(this->run_on_tick())) {
+	if (this->run_on_tick() != ANM_SUCCESS) {
 		goto return_delete;
 	}
 	if (
@@ -27981,6 +28938,46 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 				this->data.sprite_size.x = ParseFloatArg(0);
 				this->data.current_context.int_vars[0] = ParseIntArg(1);
 				break;
+#if INCLUDE_FUTURE_INSTRUCTIONS
+			case __polygon_rectangle_rounded: // 623
+				this->data.render_mode = ModePolygonRectangleRounded; // 37
+				this->data.sprite_size.x = ParseFloatArg(0);
+				this->data.sprite_size.y = ParseFloatArg(1);
+				this->data.current_context.float_vars[0] = ParseIntArg(2);
+				this->data.current_context.int_vars[0] = ParseIntArg(3);
+				break;
+			case __polygon_rectangle_rounded_hollow: // 624
+				this->data.render_mode = ModePolygonRectangleRoundedHollow; // 38
+				this->data.sprite_size.x = ParseFloatArg(0);
+				this->data.sprite_size.y = ParseFloatArg(1);
+				this->data.current_context.float_vars[0] = ParseIntArg(2);
+				this->data.current_context.int_vars[0] = ParseIntArg(3);
+				break;
+			case __polygon_rectangle_rounded_strip: // 625
+				this->data.render_mode = ModePolygonRectangleRoundedStrip; // 39
+				this->data.sprite_size.x = ParseFloatArg(0);
+				this->data.sprite_size.y = ParseFloatArg(1);
+				this->data.current_context.float_vars[0] = ParseIntArg(2);
+				this->data.current_context.float_vars[1] = ParseIntArg(3);
+				this->data.current_context.int_vars[0] = ParseIntArg(4);
+				break;
+			case __polygon_rectangle_rounded_strip_2: // 626
+				this->data.render_mode = ModePolygonRectangleRoundedStrip; // 40
+				this->data.sprite_size.x = ParseFloatArg(0);
+				this->data.sprite_size.y = ParseFloatArg(1);
+				this->data.current_context.float_vars[0] = ParseIntArg(2);
+				this->data.current_context.float_vars[1] = ParseIntArg(3);
+				this->data.current_context.int_vars[0] = ParseIntArg(4);
+				break;
+			case __polygon_rectangle_rounded_strip_3: // 627
+				this->data.render_mode = ModePolygonRectangleRoundedStrip; // 41
+				this->data.sprite_size.x = ParseFloatArg(0);
+				this->data.sprite_size.y = ParseFloatArg(1);
+				this->data.current_context.float_vars[0] = ParseIntArg(2);
+				this->data.current_context.float_vars[1] = ParseIntArg(3);
+				this->data.current_context.int_vars[0] = ParseIntArg(4);
+				break;
+#endif
 			case polygon_hollow: // 605
 				this->data.render_mode = ModePolygonHollow; // 18
 				this->data.sprite_size.x = ParseFloatArg(0);
@@ -27992,11 +28989,86 @@ dllexport gnu_noinline int32_t thiscall AnmVM::run_anm() {
 				this->data.sprite_size.y = ParseFloatArg(1);
 				this->data.current_context.int_vars[0] = ParseIntArg(2);
 				break;
+#if INCLUDE_FUTURE_INSTRUCTIONS
+			case __polygon_ring_2: // 615
+				this->data.render_mode = ModePolygonRing2; // 29
+				this->data.sprite_size.x = ParseFloatArg(0);
+				this->data.sprite_size.y = ParseFloatArg(1);
+				this->data.current_context.int_vars[0] = ParseIntArg(2);
+				break;
+			case __polygon_ring_3: // 616
+				this->data.render_mode = ModePolygonRing3; // 30
+				this->data.sprite_size.x = ParseFloatArg(0);
+				this->data.sprite_size.y = ParseFloatArg(1);
+				this->data.current_context.int_vars[0] = ParseIntArg(2);
+				break;
+			case __polygon_stretch: // 617
+				this->data.render_mode = ModePolygonStretch; // 31
+				this->data.sprite_size.x = ParseFloatArg(0);
+				this->data.current_context.int_vars[0] = ParseIntArg(1);
+				break;
+			case __polygon_stretch_hollow: // 618
+				this->data.render_mode = ModePolygonStretchHollow; // 32
+				this->data.sprite_size.x = ParseFloatArg(0);
+				this->data.current_context.int_vars[0] = ParseIntArg(1);
+				break;
+			case __polygon_stretch_strip: // 619
+				this->data.render_mode = ModePolygonStretchStrip; // 33
+				this->data.sprite_size.x = ParseFloatArg(0);
+				this->data.sprite_size.y = ParseFloatArg(1);
+				this->data.current_context.int_vars[0] = ParseIntArg(2);
+				break;
+			case __polygon_stretch_strip_2: // 621
+				this->data.render_mode = ModePolygonStretchStrip2; // 34
+				this->data.sprite_size.x = ParseFloatArg(0);
+				this->data.sprite_size.y = ParseFloatArg(1);
+				this->data.current_context.int_vars[0] = ParseIntArg(2);
+				break;
+			case __polygon_stretch_strip_3: // 622
+				this->data.render_mode = ModePolygonStretchStrip3; // 35
+				this->data.sprite_size.x = ParseFloatArg(0);
+				this->data.sprite_size.y = ParseFloatArg(1);
+				this->data.current_context.int_vars[0] = ParseIntArg(2);
+				break;
+			case polygon_star: // 628
+				this->data.render_mode = ModePolygonStar; // 42
+				this->data.sprite_size.x = ParseFloatArg(0);
+				this->data.current_context.int_vars[0] = ParseIntArg(1);
+				break;
+			case polygon_star_hollow: // 629
+				this->data.render_mode = ModePolygonStarHollow; // 43
+				this->data.sprite_size.x = ParseFloatArg(0);
+				this->data.current_context.int_vars[0] = ParseIntArg(1);
+				break;
+			case __polygon_star_strip: // 630
+				this->data.render_mode = ModePolygonStarStrip; // 44
+				this->data.sprite_size.x = ParseFloatArg(0);
+				this->data.sprite_size.y = ParseFloatArg(1);
+				this->data.current_context.int_vars[0] = ParseIntArg(2);
+				break;
+			case __polygon_star_strip_2: // 631
+				this->data.render_mode = ModePolygonStarStrip2; // 45
+				this->data.sprite_size.x = ParseFloatArg(0);
+				this->data.sprite_size.y = ParseFloatArg(1);
+				this->data.current_context.int_vars[0] = ParseIntArg(2);
+				break;
+			case __polygon_star_strip_3: // 632
+				this->data.render_mode = ModePolygonStarStrip3; // 46
+				this->data.sprite_size.x = ParseFloatArg(0);
+				this->data.sprite_size.y = ParseFloatArg(1);
+				this->data.current_context.int_vars[0] = ParseIntArg(2);
+				break;
+#endif
 			case polygon_triangle: // 614
 				this->data.render_mode = ModePolygonTriangle; // 28
 				this->data.sprite_size.x = ParseFloatArg(0);
 				this->data.sprite_size.y = ParseFloatArg(1);
 				break;
+#if INCLUDE_FUTURE_INSTRUCTIONS
+			case __polygon_point: // 618
+				this->data.render_mode = ModePolygonPoint; // 32
+				break;
+#endif
 			case __anm_flag_treat_as_root: // 507
 				this->data.__treat_as_root = ParseIntArg(0);
 				break;
@@ -28058,13 +29130,13 @@ anm_break:
 	if (ZUN_FAILED(this->run_on_wait())) {
 return_delete:
 		GAME_SPEED.set(previous_gamespeed);
-		return 1;
+		return ANM_DELETE; // 1
 	}
 	else {
 		this->controller.script_time++;
 return_static:
 		GAME_SPEED.set(previous_gamespeed);
-		return 0;
+		return ANM_SUCCESS; // 0
 	}
 }
 
@@ -39347,7 +40419,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataA(AnmVM* vm, vo
 	special_data->__int_1E3C = 0;
 	vm->data.layer = 43;
 	vm->data.origin_mode = OriginWindow; // 0
-	vm->data.resolution_mode = ResolutionScaledA; // 1
+	vm->data.resolution_mode = ResolutionScaled; // 1
 
 	for (size_t i = 0; i < countof(special_data->__vm_array_0); ++i) {
 		special_data->__vm_array_0[i].controller.position = { LOGICAL_WINDOW_HALF_WIDTH, LOGICAL_WINDOW_HALF_HEIGHT, 0.0f }; // 320, 240
@@ -39359,27 +40431,27 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataA(AnmVM* vm, vo
 }
 
 // 0x406C80
-dllexport gnu_noinline int fastcall AnmVM::on_tick_special_dataA(AnmVM* vm) {
+dllexport gnu_noinline AnmRunRet fastcall AnmVM::on_tick_special_dataA(AnmVM* vm) {
 	AnmVMSpecialDataA* special_data = (AnmVMSpecialDataA*)vm->controller.special_data;
 
 	int32_t total = 0;
 	for (size_t i = 0; i < countof(special_data->__vm_array_0); ++i) {
-		if (special_data->__vm_array_0[i].run_anm()) {
+		if (special_data->__vm_array_0[i].run_anm() != ANM_SUCCESS) {
 			++total;
 		}
 	}
 
 	if (total < countof(special_data->__vm_array_0)) {
 		special_data->__anm_vm_1830.run_anm();
-		int32_t A = special_data->__int_1E40++;
+		int32_t A = ++special_data->__int_1E40;
 		if (
 			!special_data->__int_1E44 ||
 			A < 60
 		) {
-			return 0;
+			return ANM_SUCCESS; // 0
 		}
 	}
-	return 1;
+	return ANM_DELETE; // 1
 }
 
 // 0x406D00
@@ -39523,7 +40595,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_interrupt_special_dataA(AnmVM* vm,
 		case 8:
 			special_data->__int_1E3C = 1;
 			vm->data.origin_mode = OriginFixedResolution; // 1
-			vm->data.resolution_mode = ResolutionScaledA; // 1
+			vm->data.resolution_mode = ResolutionScaled; // 1
 			break;
 		case 9:
 			special_data->__int_1E3C = 0;
@@ -39533,7 +40605,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_interrupt_special_dataA(AnmVM* vm,
 			special_data->__int_1E3C = 3;
 			vm->data.layer = 31;
 			vm->data.origin_mode = OriginWindow; // 0
-			vm->data.resolution_mode = ResolutionScaledA; // 1
+			vm->data.resolution_mode = ResolutionScaled; // 1
 			break;
 	}
 	for (size_t i = 0; i < countof(special_data->__vm_array_0); ++i) {
@@ -39568,12 +40640,12 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataB(AnmVM* vm, vo
 }
 
 // 0x405030
-dllexport gnu_noinline int fastcall AnmVM::on_tick_special_dataB(AnmVM* vm) {
+dllexport gnu_noinline AnmRunRet fastcall AnmVM::on_tick_special_dataB(AnmVM* vm) {
 	AnmVMSpecialDataB* special_data = (AnmVMSpecialDataB*)vm->controller.special_data;
 
 	// TODO
 
-	return 0;
+	return ANM_SUCCESS; // 0
 }
 
 // 0x4058B0
@@ -39660,7 +40732,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC1(AnmVM* vm, v
 }
 
 // 0x405ED0
-dllexport gnu_noinline int fastcall AnmVM::on_tick_special_dataC(AnmVM* vm) {
+dllexport gnu_noinline AnmRunRet fastcall AnmVM::on_tick_special_dataC(AnmVM* vm) {
 	AnmVMSpecialDataC* special_data = (AnmVMSpecialDataC*)vm->controller.special_data;
 
 	int32_t time = special_data->__timer_304;
@@ -39680,9 +40752,9 @@ dllexport gnu_noinline int fastcall AnmVM::on_tick_special_dataC(AnmVM* vm) {
 			special_data->__angle_300 = reduce_angle(angle);
 		}
 		special_data->__timer_304++;
-		return 0;
+		return ANM_SUCCESS; // 0
 	}
-	return 1;
+	return ANM_DELETE; // 1
 }
 
 // 0x406090
@@ -39743,13 +40815,15 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC2(AnmVM* vm, v
 
 // size: 0x97C
 struct AnmVMSpecialDataD {
-	unknown_fields(0x900); // 0x0
+	SpriteVertexC __vertices_0[64]; // 0x0
+	Float3 __float3_array_600[64]; // 0x600
 	ZUNInterp<Float3> __float3_interp_900; // 0x900
 	unknown_fields(0x10); // 0x10
 	Timer __timer_968; // 0x968
 	// 0x97C
 };
 #pragma region // AnmVMSpecialDataD Validation
+VFO32(0x0, AnmVMSpecialDataD, __vertices_0);
 VFO32(0x900, AnmVMSpecialDataD, __float3_interp_900);
 VFO32(0x968, AnmVMSpecialDataD, __timer_968);
 VSS32(0x97C, AnmVMSpecialDataD);
@@ -39772,23 +40846,33 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataD(AnmVM* vm, vo
 
 	special_data->__timer_968.set(1);
 
-	// TODO
+	Float3 A = { 0.0f, 1.0f, 0.0f };
+	// EBP-28, EBP-24, EBP-20
+	// EBP-8, EBP-C, EBP-10
+	Float3 B = SUPERVISOR.cameras[StdCamera].position + SUPERVISOR.cameras[StdCamera].facing_normalized * 260.0f;
+
+	for (size_t i = 0; i != 32; ++i) {
+		special_data->__float3_array_600[i * 2 + 1] = B;
+		special_data->__float3_array_600[i * 2] = A;
+		special_data->__vertices_0[i * 2].diffuse = COLOR_GREY(128, 255);
+		special_data->__vertices_0[i * 2 + 1].diffuse = COLOR_GREY(128, 255);
+	}
 
 	return 0;
 }
 
 // 0x4078D0
-dllexport gnu_noinline int fastcall AnmVM::on_tick_special_dataD(AnmVM* vm) {
+dllexport gnu_noinline AnmRunRet fastcall AnmVM::on_tick_special_dataD(AnmVM* vm) {
 	// TODO
 }
 
 // 0x407C90
 dllexport gnu_noinline int fastcall AnmVM::on_draw_special_dataD(AnmVM* vm) {
-	void* special_data = vm->controller.special_data;
+	AnmVMSpecialDataD* special_data = (AnmVMSpecialDataD*)vm->controller.special_data;
 	SUPERVISOR.d3d_enable_fog();
 	SUPERVISOR.d3d_disable_zwrite();
 	SUPERVISOR.d3d_zfunc_always();
-	ANM_MANAGER_PTR->__draw_vm_type_18_19(vm, special_data, 64);
+	ANM_MANAGER_PTR->__draw_vm_type_18_19(vm, special_data->__vertices_0, countof(special_data->__vertices_0));
 	return 0;
 }
 
@@ -39876,7 +40960,7 @@ dllexport gnu_noinline int thiscall AnmVM::create_special_dataE() {
 }
 
 // 0x483560
-dllexport gnu_noinline int fastcall AnmVM::on_tick_special_dataE(AnmVM* vm) {
+dllexport gnu_noinline AnmRunRet fastcall AnmVM::on_tick_special_dataE(AnmVM* vm) {
 
 	float angle = -PI_f;
 
@@ -39924,7 +41008,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_tick_special_dataE(AnmVM* vm) {
 		angle += TWO_PI_f / 31.0f;
 	}
 
-	return 0;
+	return ANM_SUCCESS; // 0
 }
 
 // 0x4837E0
@@ -40439,8 +41523,8 @@ struct Stage : ZUNTask {
 										}
 									case Mode2DSprite: // 0
 									case Mode2DSpriteRotated: // 1
-									case Mode2DSpriteBlurry: // 2
-									case Mode2DSpriteRotatedB: // 3
+									case Mode2DSpriteSmooth: // 2
+									case Mode2DSpriteRotatedSmooth: // 3
 										break;
 								}
 								switch (vm->data.render_mode) {
@@ -44313,7 +45397,7 @@ struct Bullet {
 				this->offscreen_time--;
 			}
 			if (!this->__delay_flag) {
-				if (ZUN_FAILED(this->vm.run_anm())) {
+				if (this->vm.run_anm() != ANM_SUCCESS) {
 					goto cleanup_bullet;
 				}
 			}
