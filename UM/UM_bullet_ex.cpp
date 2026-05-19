@@ -15112,7 +15112,7 @@ forceinline void SoundManager::__stop_sound_effect(int32_t index) {
 
 // size: 0x34
 struct FontBlock {
-	HANDLE handles[12]; // 0x0
+	HFONT handles[12]; // 0x0
 	BOOL found_meiryo; // 0x30
 	// 0x34
 };
@@ -15178,7 +15178,6 @@ struct GdiManager {
 	// 0x46FE00
 	dllexport gnu_noinline bool thiscall cleanup() ASR(0x46FE000) {
 		if (HDC device_context = this->device_context) {
-
 			SelectObject(device_context, this->screen_bitmap_object);
 			DeleteDC(this->device_context);
 			DeleteObject(this->bitmap_handle);
@@ -15222,8 +15221,6 @@ public:
 };
 
 extern "C" {
-	// 0x4C9AD0
-	//externcg D3DFormatData D3DFORMAT_DATA_TABLE[7] cgasm("_FONT_DATA");
 	// 0x570928
 	externcg FontBlock FONT_BLOCK cgasm("_FONT_BLOCK");
 	// 0x4CD9B0
@@ -16107,7 +16104,7 @@ enum AnmRenderMode : uint8_t {
 	Mode3DSpriteSpecial = 7,
 	Mode3DObject = 8,
 	ModeTexturedRing = 9,
-	Mode10 = 10,
+	ModeTexturedCloud = 10,
 	Mode11 = 11,
 	Mode12 = 12,
 	ModeTexturedArcA = 13,
@@ -16150,11 +16147,15 @@ enum AnmRenderMode : uint8_t {
 #endif
 	ENUM_MAX_VALUE_DECLARE(AnmRenderMode)
 };
+#if !__INTELLISENSE__
 static inline constexpr size_t ANM_RENDER_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmRenderMode));
 #if !INCLUDE_FUTURE_INSTRUCTIONS
 static_assert(ANM_RENDER_MODE_BIT_WIDTH == 5);
 #else
 static_assert(ANM_RENDER_MODE_BIT_WIDTH == 6);
+#endif
+#else
+static inline constexpr size_t ANM_RENDER_MODE_BIT_WIDTH = 5;
 #endif
 
 enum AnmTextureOp : int8_t {
@@ -16179,8 +16180,12 @@ enum AnmBlendMode : uint8_t {
 	BlendHardcoded = 11,
 	ENUM_MAX_VALUE_DECLARE(AnmBlendMode)
 };
+#if !__INTELLISENSE__
 static inline constexpr size_t ANM_BLEND_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmBlendMode));
 static_assert(ANM_BLEND_MODE_BIT_WIDTH == 4);
+#else
+static inline constexpr size_t ANM_BLEND_MODE_BIT_WIDTH = 4;
+#endif
 
 enum AnmResampleMode : int8_t {
 	NoPreviousResampleMode = -1,
@@ -16188,8 +16193,12 @@ enum AnmResampleMode : int8_t {
 	ResampleNearestPoint = 1,
 	ENUM_MAX_VALUE_DECLARE(AnmResampleMode)
 };
+#if !__INTELLISENSE__
 static inline constexpr size_t ANM_RESAMPLE_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmResampleMode));
 static_assert(ANM_RESAMPLE_MODE_BIT_WIDTH == 1);
+#else
+static inline constexpr size_t ANM_RESAMPLE_MODE_BIT_WIDTH = 1;
+#endif
 
 enum AnmOriginMode : uint8_t {
 	OriginWindow = 0,
@@ -16197,8 +16206,12 @@ enum AnmOriginMode : uint8_t {
 	OriginFullResolution = 2,
 	ENUM_MAX_VALUE_DECLARE(AnmOriginMode)
 };
+#if !__INTELLISENSE__
 static inline constexpr size_t ANM_ORIGIN_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmOriginMode));
 static_assert(ANM_ORIGIN_MODE_BIT_WIDTH == 2);
+#else
+static inline constexpr size_t ANM_ORIGIN_MODE_BIT_WIDTH = 2;
+#endif
 
 enum AnmResolutionMode : uint8_t {
 	ResolutionNoScaling = 0,
@@ -16212,8 +16225,12 @@ enum AnmResolutionMode : uint8_t {
 #endif
 	ENUM_MAX_VALUE_DECLARE(AnmResolutionMode)
 };
+#if !__INTELLISENSE__
 static inline constexpr size_t ANM_RESOLUTION_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmResolutionMode));
 static_assert(ANM_RESOLUTION_MODE_BIT_WIDTH == 3);
+#else
+static inline constexpr size_t ANM_RESOLUTION_MODE_BIT_WIDTH = 3;
+#endif
 
 enum AnmXAnchorMode : uint8_t {
 	AnchorXCenter = 0,
@@ -16221,8 +16238,12 @@ enum AnmXAnchorMode : uint8_t {
 	AnchorXRight = 2,
 	ENUM_MAX_VALUE_DECLARE(AnmXAnchorMode)
 };
+#if !__INTELLISENSE__
 static inline constexpr size_t ANM_X_ANCHOR_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmXAnchorMode));
 static_assert(ANM_X_ANCHOR_MODE_BIT_WIDTH == 2);
+#else
+static inline constexpr size_t ANM_X_ANCHOR_MODE_BIT_WIDTH = 2;
+#endif
 
 enum AnmYAnchorMode : uint8_t {
 	AnchorYCenter = 0,
@@ -16230,8 +16251,12 @@ enum AnmYAnchorMode : uint8_t {
 	AnchorYBottom = 2,
 	ENUM_MAX_VALUE_DECLARE(AnmYAnchorMode)
 };
+#if !__INTELLISENSE__
 static inline constexpr size_t ANM_Y_ANCHOR_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmYAnchorMode));
 static_assert(ANM_Y_ANCHOR_MODE_BIT_WIDTH == 2);
+#else
+static inline constexpr size_t ANM_Y_ANCHOR_MODE_BIT_WIDTH = 2;
+#endif
 
 enum AnmColorMode : uint8_t {
 	UseColor1 = 0,
@@ -16241,16 +16266,24 @@ enum AnmColorMode : uint8_t {
 	ColorBlend = 4,
 	ENUM_MAX_VALUE_DECLARE(AnmColorMode)
 };
+#if !__INTELLISENSE__
 static inline constexpr size_t ANM_COLOR_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmColorMode));
 static_assert(ANM_COLOR_MODE_BIT_WIDTH == 3);
+#else
+static inline constexpr size_t ANM_COLOR_MODE_BIT_WIDTH = 3;
+#endif
 
 enum AnmPositionMode : uint8_t {
 	UsePosition1 = 0,
 	UsePosition2 = 1,
 	ENUM_MAX_VALUE_DECLARE(AnmPositionMode)
 };
+#if !__INTELLISENSE__
 static inline constexpr size_t ANM_POSITION_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmPositionMode));
 static_assert(ANM_POSITION_MODE_BIT_WIDTH == 1);
+#else
+static inline constexpr size_t ANM_POSITION_MODE_BIT_WIDTH = 1;
+#endif
 
 enum AnmUVMode : uint8_t {
 	Wrap = 0,
@@ -16258,16 +16291,24 @@ enum AnmUVMode : uint8_t {
 	Mirror = 2,
 	ENUM_MAX_VALUE_DECLARE(AnmUVMode)
 };
+#if !__INTELLISENSE__
 static inline constexpr size_t ANM_UV_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmUVMode));
 static_assert(ANM_UV_MODE_BIT_WIDTH == 2);
+#else
+static inline constexpr size_t ANM_UV_MODE_BIT_WIDTH = 2;
+#endif
 
 enum AnmRNGMode : uint8_t {
 	ReplayRNG = 0,
 	NormalRNG = 1,
 	ENUM_MAX_VALUE_DECLARE(AnmRNGMode)
 };
+#if !__INTELLISENSE__
 static inline constexpr size_t ANM_RNG_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmRNGMode));
 static_assert(ANM_RNG_MODE_BIT_WIDTH == 1);
+#else
+static inline constexpr size_t ANM_RNG_MODE_BIT_WIDTH = 1;
+#endif
 
 enum AnmRotationMode : uint8_t {
 	RotationXYZ = 0,
@@ -19350,6 +19391,50 @@ struct AnmManager {
 			matrix.m[0][1] += parent->data.position.y + parent->controller.position.y + parent->data.__position_2.y;
 			matrix.m[0][2] += parent->data.position.z + parent->controller.position.z + parent->data.__position_2.z;
 		}
+
+		// Setting the cornders is dead code, but still exists in FW
+		Float3 corners[4];
+		switch (vm->data.x_anchor_mode) {
+			case AnchorXLeft: // 1
+				corners[0].x = corners[2].x = 0.0f;
+				corners[1].x = corners[3].x = 256.0f;
+				break;
+			case AnchorXCenter: // 0
+				corners[0].x = corners[2].x = -128.0f;
+				corners[1].x = corners[3].x = 128.0f;
+				break;
+			case AnchorXRight: // 2
+				corners[0].x = corners[2].x = -256.0f;
+				corners[1].x = corners[3].x = 0.0f;
+				break;
+		}
+		switch (vm->data.y_anchor_mode) {
+			case AnchorYTop: // 1
+				corners[0].y = corners[1].y = 0.0f;
+				corners[2].y = corners[3].y = 256.0f;
+				break;
+			case AnchorYCenter: // 0
+				corners[0].y = corners[1].y = -128.0f;
+				corners[2].y = corners[3].y = 128.0f;
+				break;
+			case AnchorYBottom: // 2
+				corners[0].y = corners[1].y = -256.0f;
+				corners[2].y = corners[3].y = 0.0f;
+				break;
+		}
+		corners[0].z = corners[1].z = corners[2].z = corners[3].z = 0.0f;
+
+		// The camera project calls have been missing since UFO
+		/*
+		Camera* camera = SUPERVISOR.current_camera_ptr;
+		D3DXVec3Project(&SPRITE_VERTEX_BUFFER_A[0].position, &corners[0], &camera->viewport, &camera->projection_matrix, &camera->view_matrix, &matrix);
+		camera = SUPERVISOR.current_camera_ptr;
+		D3DXVec3Project(&SPRITE_VERTEX_BUFFER_A[1].position, &corners[1], &camera->viewport, &camera->projection_matrix, &camera->view_matrix, &matrix);
+		camera = SUPERVISOR.current_camera_ptr;
+		D3DXVec3Project(&SPRITE_VERTEX_BUFFER_A[2].position, &corners[2], &camera->viewport, &camera->projection_matrix, &camera->view_matrix, &matrix);
+		camera = SUPERVISOR.current_camera_ptr;
+		D3DXVec3Project(&SPRITE_VERTEX_BUFFER_A[3].position, &corners[3], &camera->viewport, &camera->projection_matrix, &camera->view_matrix, &matrix);
+		*/
 
 		this->__matrix_31207B0 = matrix;
 
@@ -28853,7 +28938,7 @@ dllexport gnu_noinline AnmRunRet thiscall AnmVM::run_anm() {
 			}
 			case render_mode: // 302
 				this->data.render_mode = IntArg(0); // IMMEDIATE ARGUMENT
-				if (this->data.render_mode == Mode10) { // 10
+				if (this->data.render_mode == ModeTexturedCloud) { // 10
 					this->create_special_dataE();
 				}
 				break;
@@ -56435,9 +56520,11 @@ inline void Spellcard::__update_realtime() {
 
 // 0x417880
 dllexport gnu_noinline void thiscall AbilityShop::cleanup() {
-	// how did you do this zun
+
+	// Without this clang assumes this can never be null
 	AbilityShop* ability_shop = this;
 	__asm__ volatile ("":"+c"(ability_shop));
+
 	if (ability_shop) {
 		INPUT_P1.__reset_inputs();
 		INPUT_P2.__reset_inputs();
