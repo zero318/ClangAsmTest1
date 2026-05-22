@@ -11913,7 +11913,7 @@ struct EnemyData {
 			uint32_t __damaged_this_frame : 1; // 22
 			uint32_t __delete_related : 1; // 23 like is_boss, but skips something in the GUI code
 			uint32_t is_boss : 1; // 24
-			uint32_t __unknown_flag_ed_L : 1; // 25
+			uint32_t __timeout_triggered : 1; // 25
 			uint32_t marked_for_delete : 1; // 26
 			uint32_t __basic_anm_update : 1; // 27
 			uint32_t homing_disable : 1; // 28
@@ -12933,7 +12933,7 @@ enum Var : int32_t {
 	PLAYER_ANGLE = -9989,
 	PHASE_TIMER = -9988,
 	RAND_FLOAT_SIGNED = -9987,
-	SPELL_TIMEOUT = -9986,
+	PHASE_TIMEOUT = -9986,
 	EI0 = -9985,
 	EI1 = -9984,
 	EI2 = -9983,
@@ -30229,24 +30229,24 @@ namespace Impl {
 	// 0x45F0F0
 	dllexport gnu_noinline int32_t vectorcall enm_compute_damage_sources(
 		int, int, float, float, float,
-		Float3* position, Float2* size,         // EBX+0x8, EBX+0xC
-		float rotation, uint32_t radius,        // XMM3, EBX+0x10
-		BOOL* arg5, Float3* hit_position_out,   // EBX+0x14, EBX+0x18
-		BOOL arg7, int32_t enemy_id             // EBX+0x1C, EBX+0x20
+		Float3* position, Float2* size,           // EBX+0x8, EBX+0xC
+		float rotation, uint32_t radius,          // XMM3, EBX+0x10
+		BOOL* hit_bomb, Float3* hit_position_out, // EBX+0x14, EBX+0x18
+		BOOL treat_as_bullet, int32_t enemy_id    // EBX+0x1C, EBX+0x20
 	) ASR(0x45F0F0);
 }
 	forceinline int32_t enm_compute_damage_sources(
 		Float3* position, Float2* size,
 		float rotation, float radius,
-		BOOL* arg5, Float3* hit_position_out,
-		BOOL arg7, int32_t enemy_id
+		BOOL* hit_bomb, Float3* hit_position_out,
+		BOOL treat_as_bullet, int32_t enemy_id
 	) {
 		return Impl::enm_compute_damage_sources(
 			UNUSED_DWORD, UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, UNUSED_FLOAT,
 			position, size,
 			rotation, bitcast<uint32_t>(radius),
-			arg5, hit_position_out,
-			arg7, enemy_id
+			hit_bomb, hit_position_out,
+			treat_as_bullet, enemy_id
 		);
 	}
 
@@ -30266,7 +30266,7 @@ struct PlayerDamageSource {
 		struct {
 			uint32_t active : 1; // 1
 			uint32_t hitbox_type : 1; // 2
-			uint32_t __unknown_flag_pd_A : 1; // 3
+			uint32_t __from_bomb : 1; // 3
 		};
 	};
 	float radius; // 0x4
@@ -31859,7 +31859,7 @@ private:
 			if (!damage_source->active) {
 				damage_source->active = true;
 				damage_source->hitbox_type = CircleHitbox;
-				damage_source->__unknown_flag_pd_A = false;
+				damage_source->__from_bomb = false;
 
 				damage_source->motion.zero_contents();
 				damage_source->motion.position = *position;
@@ -31905,7 +31905,7 @@ private:
 			if (!damage_source->active) {
 				damage_source->active = true;
 				damage_source->hitbox_type = RectangleHitbox;
-				damage_source->__unknown_flag_pd_A = false;
+				damage_source->__from_bomb = false;
 
 				damage_source->motion.zero_contents();
 				damage_source->motion.position = *position;
@@ -31961,10 +31961,10 @@ public:
 	}
 
 	forceinline int32_t compute_damage_sources(
-		Float3* position, Float2* size,         // EBX+0x8, EBX+0xC
-		float rotation, float radius,           // XMM3, EBX+0x10
-		BOOL* arg5, Float3* hit_position_out,   // EBX+0x14, EBX+0x18
-		BOOL arg7, int32_t enemy_id             // EBX+0x1C, EBX+0x20
+		Float3* position, Float2* size,           // EBX+0x8, EBX+0xC
+		float rotation, float radius,             // XMM3, EBX+0x10
+		BOOL* hit_bomb, Float3* hit_position_out, // EBX+0x14, EBX+0x18
+		BOOL treat_as_bullet, int32_t enemy_id    // EBX+0x1C, EBX+0x20
 	) {
 		if (this->data.state_timer.__is_paused()) {
 			return 0;
@@ -31980,8 +31980,8 @@ public:
 			damage = bomb->__damage(position, size);
 		}
 
-		if (arg5) {
-			*arg5 = damage >= 0 ? true : false;
+		if (hit_bomb) {
+			*hit_bomb = damage >= 0 ? true : false;
 		}
 
 		BOOL taken_damage_of_type[4] = {};
@@ -32021,12 +32021,12 @@ public:
 						damage_source_ptr->__last_hit_enemy = enemy_id;
 					}
 
-					if (arg5 && damage_source_ptr->__unknown_flag_pd_A) {
-						*arg5 = true;
+					if (hit_bomb && damage_source_ptr->__from_bomb) {
+						*hit_bomb = true;
 					}
 
 					int32_t damage_from_source = damage_source_ptr->damage;
-					if (!arg7) {
+					if (!treat_as_bullet) {
 						if (damage_source_ptr->__unknown_func_index) {
 							damage_source_ptr->__enemy_id_94 = enemy_id;
 							int32_t new_damage = PLAYER_DAMAGE_SOURCE_UNKNOWN_FUNCS[damage_source_ptr->__unknown_func_index](damage_source_ptr, position, size, rotation, radius);
@@ -32063,7 +32063,7 @@ public:
 		damage = __min(damage, this->damage_cap);
 
 		if (
-			!arg7 &&
+			!treat_as_bullet &&
 			damage != 0
 		) {
 			GAME_MANAGER.add_to_score(damage / 10 + 10);
@@ -32111,16 +32111,16 @@ VSS32(0x479D0, Player);
 // 0x45F0F0
 dllexport gnu_noinline int32_t vectorcall HitboxManager::Impl::enm_compute_damage_sources(
 	int, int, float, float, float,
-	Float3* position, Float2* size,         // EBX+0x8, EBX+0xC
-	float rotation, uint32_t radius,        // XMM3, EBX+0x10
-	BOOL* arg5, Float3* hit_position_out,   // EBX+0x14, EBX+0x18
-	BOOL arg7, int32_t enemy_id             // EBX+0x1C, EBX+0x20
+	Float3* position, Float2* size,           // EBX+0x8, EBX+0xC
+	float rotation, uint32_t radius,          // XMM3, EBX+0x10
+	BOOL* hit_bomb, Float3* hit_position_out, // EBX+0x14, EBX+0x18
+	BOOL treat_as_bullet, int32_t enemy_id    // EBX+0x1C, EBX+0x20
 ) {
 	clang_forceinline return PLAYER_PTR->compute_damage_sources(
 		position, size,
 		rotation, bitcast<float>(radius),
-		arg5, hit_position_out, 
-		arg7, enemy_id
+		hit_bomb, hit_position_out,
+		treat_as_bullet, enemy_id
 	);
 }
 
@@ -39620,8 +39620,8 @@ struct EnemyManager : ZUNTask {
 	int32_t next_enemy_id; // 0x90
 	uint32_t prev_enemy_id; // 0x94
 	Timer __timer_98; // 0x98
-	int32_t __int_AC; // 0xAC
-	int32_t __int_B0; // 0xB0
+	int32_t __damage_dealt_by_bomb; // 0xAC
+	int32_t __damage_dealt; // 0xB0
 	unknown_fields(0xA8); // 0xB4
 	ZUNList<Enemy>* __enemy_list_iter; // 0x15C
 	unknown_fields(0x4); // 0x160
@@ -39880,8 +39880,8 @@ public:
 	}
 
 	forceinline UpdateFuncRet thiscall on_tick() {
-		this->__int_AC = 0;
-		this->__int_B0 = 0;
+		this->__damage_dealt_by_bomb = 0;
+		this->__damage_dealt = 0;
 
 		this->enemy_list.for_each_safeB([](Enemy* enemy, ZUNList<Enemy>* node) {
 			if (
@@ -39966,8 +39966,8 @@ VFO32(0x8C, EnemyManager, enemy_limit);
 VFO32(0x90, EnemyManager, next_enemy_id);
 VFO32(0x94, EnemyManager, prev_enemy_id);
 VFO32(0x98, EnemyManager, __timer_98);
-VFO32(0xAC, EnemyManager, __int_AC);
-VFO32(0xB0, EnemyManager, __int_B0);
+VFO32(0xAC, EnemyManager, __damage_dealt_by_bomb);
+VFO32(0xB0, EnemyManager, __damage_dealt);
 VFO32(0x15C, EnemyManager, __enemy_list_iter);
 VFO32(0x164, EnemyManager, disable_enemy_collision);
 VFO32(0x168, EnemyManager, enemy_anms);
@@ -50631,7 +50631,7 @@ struct BombReimuAInner {
 		int32_t damage_source_index = player->create_damage_source_circle(&this->motion.position, 56.0f, 0.0f, 9999, damage);
 		this->damage_source_index = damage_source_index;
 		PlayerDamageSource* new_damage_source = player->get_damage_source_by_index(damage_source_index);
-		new_damage_source->__unknown_flag_pd_A = true;
+		new_damage_source->__from_bomb = true;
 		new_damage_source->__hit_frequency = 3;
 	}
 };
@@ -50655,8 +50655,7 @@ struct BombReimuAData {
 					LASER_MANAGER_PTR->cancel_in_radius(&this->orbs[i].motion.position, 128.0f, CancelType1, 1);
 					Player* player = PLAYER_PTR;
 					int32_t damage_source_index = player->create_damage_source_circle(&this->orbs[i].motion.position, 64.0f, 8.0f, 11, 100);
-					PlayerDamageSource* new_damage_source = player->get_damage_source_by_index(damage_source_index);
-					new_damage_source->__unknown_flag_pd_A = true;
+					player->get_damage_source_by_index(damage_source_index)->__from_bomb = true;
 				}
 				this->orbs[i].vm.interrupt_tree(1);
 				if (int32_t damage_source_index = this->orbs[i].damage_source_index) {
@@ -50731,7 +50730,7 @@ struct BombReimuA : BombBase {
 						player = PLAYER_PTR;
 						data->orbs[i].damage_source_index = damage_source_index;
 						PlayerDamageSource* new_damage_source = player->get_damage_source_by_index(damage_source_index);
-						new_damage_source->__unknown_flag_pd_A = true;
+						new_damage_source->__from_bomb = true;
 						new_damage_source->__hit_frequency = 3;
 						data->orbs[i].motion.radius = 0.0f;
 						data->orbs[i].motion.mode = OrbitMovement; // 2
@@ -50840,8 +50839,7 @@ struct BombReimuA : BombBase {
 								SOUND_MANAGER.play_sound_positioned(27, data->orbs[i].motion.position.x);
 								BULLET_MANAGER_PTR->cancel_radius_as_bomb(&data->orbs[i].motion.position, 128.0f, CancelType0, 99999, 0);
 								LASER_MANAGER_PTR->cancel_in_radius(&data->orbs[i].motion.position, 64.0f, CancelType1, 1);
-								PlayerDamageSource* new_damage_source = get_damage_source_by_index(PLAYER_PTR->create_damage_source_circle(&data->orbs[i].motion.position, 64.0f, 8.0f, 11, 100));
-								new_damage_source->__unknown_flag_pd_A = true;
+								get_damage_source_by_index(PLAYER_PTR->create_damage_source_circle(&data->orbs[i].motion.position, 64.0f, 8.0f, 11, 100))->__from_bomb = true;
 							}
 							data->orbs[i].vm.interrupt_tree(1);
 							data->orbs[i].active = false;
@@ -50966,21 +50964,19 @@ struct BombMarisaA : BombBase {
 				position.make_from_vector(this->rotation.z, 208.0f);
 				position += this->position;
 				int32_t damage_source_index = player->create_damage_source_rotated_rectangle(&position, 512.0f, 23.0f, this->rotation.z, 0, 50);
-				PlayerDamageSource* new_damage_source = get_damage_source_by_index(damage_source_index);
-				new_damage_source->__unknown_flag_pd_A = true;
+				get_damage_source_by_index(damage_source_index)->__from_bomb = true;
 
 				position.make_from_vector(this->rotation.z, 240.0f);
 				position += this->position;
 				damage_source_index = player->create_damage_source_rotated_rectangle(&position, 512.0f, 128.0f, this->rotation.z, 0, 50);
-				new_damage_source = get_damage_source_by_index(damage_source_index);
-				new_damage_source->__unknown_flag_pd_A = true;
+				get_damage_source_by_index(damage_source_index)->__from_bomb = true;
 
 				position.make_from_vector(this->rotation.z, 304.0f);
 				BombBase* bomb_ptr = BOMB_PTR;
 				position += this->position;
 				damage_source_index = player->create_damage_source_rotated_rectangle(&position, 512.0f, 128.0f, this->rotation.z, 0, (bomb_ptr->stronger_effects ? 40 : 15));
-				new_damage_source = get_damage_source_by_index(damage_source_index);
-				new_damage_source->__unknown_flag_pd_A = true;
+				PlayerDamageSource* new_damage_source = get_damage_source_by_index(damage_source_index);
+				new_damage_source->__from_bomb = true;
 				if (bomb_ptr->stronger_effects) {
 					new_damage_source->__unknown_func_index = 3;
 				}
@@ -51325,7 +51321,7 @@ forceinline const char* Enemy::check_timer_callbacks() {
 					this->data.life.current = this->data.callbacks[i].life;
 					this->data.callbacks[i].life = -1;
 					this->data.phase_timer.reset();
-					this->data.__unknown_flag_ed_L = true;
+					this->data.__timeout_triggered = true;
 
 					Spellcard* spellcard = SPELLCARD_PTR;
 					if (!spellcard->__timeout_spell) {
@@ -51333,7 +51329,7 @@ forceinline const char* Enemy::check_timer_callbacks() {
 						ENEMY_MANAGER_PTR->can_capture_spell = false;
 					}
 					else if (spellcard->__is_timeout_spell_active()) {
-						this->data.__unknown_flag_ed_L = false;
+						this->data.__timeout_triggered = false;
 						GAME_MANAGER.globals.__int_90 += this->data.chapter_spawn_weight;
 					}
 					this->data.chapter_spawn_weight = 0;
@@ -51359,7 +51355,7 @@ forceinline const char* Enemy::check_life_callbacks() {
 				this->data.add_spawn_weight_to_chapter_destroy();
 				this->data.callbacks[i].life = -1;
 				this->data.phase_timer.reset();
-				this->data.__unknown_flag_ed_L = false;
+				this->data.__timeout_triggered = false;
 				return this->data.callbacks[i].life_sub;
 			}
 			break;
@@ -51520,7 +51516,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
 	}
 	if (this->delete_as_bullet) {
 		Float3* damage_pos = &this->position_of_last_damage_source_to_hit;
-		BOOL A = false;
+		BOOL hit_bomb = false;
 		Float2* hitbox_size = &this->hitbox_size;
 		Float3* position = &this->current_motion.position;
 		EnemyID id = this->enemy()->id;
@@ -51534,8 +51530,8 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
 			radius = 0.0f;
 		}
 		if (
-			HitboxManager::enm_compute_damage_sources(position, hitbox_size, rotation, radius, &A, damage_pos, true, id) != 0 &&
-			A
+			HitboxManager::enm_compute_damage_sources(position, hitbox_size, rotation, radius, &hit_bomb, damage_pos, true, id) != 0 &&
+			hit_bomb
 		) {
 			// Kill always returns 1
 			if (this->enemy()->kill()) {
@@ -51551,7 +51547,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
 		}
 	}
 
-	BOOL B = false;
+	BOOL hit_bomb = false;
 	this->__damaged_this_frame = false;
 	if (this->has_active_hitbox()) {
 		float radius = this->hitbox_size.x;
@@ -51569,7 +51565,7 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
 				rotation = this->hitbox_rotation;
 				radius = 0.0f;
 			}
-			damage = HitboxManager::enm_compute_damage_sources(position, hitbox_size, rotation, radius, &B, damage_pos, false, id);
+			damage = HitboxManager::enm_compute_damage_sources(position, hitbox_size, rotation, radius, &hit_bomb, damage_pos, false, id);
 			damage *= PLAYER_PTR->damage_multiplier;
 		}
 		if (auto* extra_damage_func = this->extra_damage_func) {
@@ -51589,17 +51585,17 @@ dllexport gnu_noinline ZUNResult thiscall EnemyData::__update_state() {
 			damage = 0;
 		}
 		if (damage > 0) {
-			if (B) {
+			if (hit_bomb) {
 				int32_t life = this->life.current;
 				if (damage >= life) {
-					ENEMY_MANAGER_PTR->__int_AC += (damage - life) / 4 + life;
+					ENEMY_MANAGER_PTR->__damage_dealt_by_bomb += (damage - life) / 4 + life;
 				}
 				else {
-					ENEMY_MANAGER_PTR->__int_AC += damage;
+					ENEMY_MANAGER_PTR->__damage_dealt_by_bomb += damage;
 				}
 			}
 			else {
-				ENEMY_MANAGER_PTR->__int_B0 += damage;
+				ENEMY_MANAGER_PTR->__damage_dealt += damage;
 			}
 		}
 		if (BOMB_PTR->is_active()) {
@@ -52258,8 +52254,8 @@ dllexport gnu_noinline int32_t Enemy::get_int_var(int32_t index) {
 			*/
 		case PHASE_TIMER: // -9988
 			return this->data.phase_timer;
-		case SPELL_TIMEOUT: // -9986
-			return SPELLCARD_PTR->__timeout_spell;
+		case PHASE_TIMEOUT: // -9986
+			return this->data.__timeout_triggered;
 		case SELF_X: // -9997
 		case SELF_X2: // -9977
 			return this->data.current_motion.position.x;
@@ -52539,8 +52535,8 @@ dllexport gnu_noinline float Enemy::get_float_var(int32_t index) {
 			return angle_to_player_from_point(&this->data.current_motion.position);
 		case PHASE_TIMER: // -9988
 			return this->data.phase_timer;
-		case SPELL_TIMEOUT: // -9986
-			return SPELLCARD_PTR->__timeout_spell;
+		case PHASE_TIMEOUT: // -9986
+			return this->data.__timeout_triggered;
 		case EI0: // -9985
 			return this->data.int_vars[0];
 		case EI1: // -9984

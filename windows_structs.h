@@ -742,6 +742,7 @@ __if_not_exists(ProcessDebugObjectHandle) {
 __if_not_exists(ProcessDebugFlags) {
     static constexpr auto ProcessDebugFlags = (PROCESSINFOCLASS)ProcessDebugFlagsX;
 }
+#ifndef _WINTERNL_
 __if_not_exists(ProcessHandleTracing) {
     static constexpr auto ProcessHandleTracing = (PROCESSINFOCLASS)ProcessHandleTracingX;
 }
@@ -757,6 +758,7 @@ __if_not_exists(ProcessTelemetryIdInformation) {
 __if_not_exists(ProcessSubsystemInformation) {
     static constexpr auto ProcessSubsystemInformation = (PROCESSINFOCLASS)ProcessSubsystemInformationX;
 }
+#endif
 
 template<size_t bits = native_bits>
 struct PROCESS_EXECUTE_FLAGSX {

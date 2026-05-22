@@ -3912,6 +3912,7 @@ no_qpc_tsc:
 int stdcall main(int argc, char* argv[]) {
 	
 	//sort_sjis_table();
+
 	return 0;
 
 	test_math_floats_int_range<true>(

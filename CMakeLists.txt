@@ -850,6 +850,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 	#"zero/vec_lib.cpp"
 	"dns_test.cpp"
 	"windows_kernel_re.cpp"
+	"fork_test.cpp"
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE
 	USE_AMD_FEATURES

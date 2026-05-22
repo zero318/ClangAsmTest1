@@ -1,0 +1,131 @@
+__enemy_type_A
+- 0: Normal enemy
+- 1: Pure spirits
+- 2: Wolves
+- 3: Otters
+- 4: Eagles
+- 5: Ex attack enemies
+- 6: ???
+
+__enemy_type_B
+- 0: Normal enemy
+- 1: Pure spirits
+- 2: Wolves
+- 3: Otters
+- 4: Eagles
+- 5: Ex attack enemies
+- 6: ???
+- 7: 
+
+- 0: Normal enemy = 0, 0
+- 1: Pure spirits = 1, EI2
+- 2: Wolves = 1, EI2
+- 3: Otters = 1, EI2
+- 4: Eagles = 1, EI2
+- 5: Ex attack enemies = 3, 0
+- 6: ??? = 4, 0
+- 7: Skip
+
+Normal enemy: 0, 0
+Pure spirits = 1, EI2
+Wolves = 1, EI2
+Otters = 1, EI2
+Eagles = 1, EI2
+Ex Tsukasa = 2, 1
+Ex attack enemies = 3, 0
+??? = 4, 0
+
+0 = ???
+1 = Beast spirit
+2 = Ex Tsukasa
+3 = ???
+4 = Beast spirit effects without spawning the spirit?
+
+Spirit spawns:
+
+GhostPure:
+EI0 = inherit + 1
+EI1 = 0
+EI2 = inherit + 1
+
+GhostWolf:
+EI0 = max(inherit + 1 + Saki1 - OpponentSaki2, 0)
+EI1 = OpponentSaki2 ? 2 : Saki1
+EI2 = inherit + 1
+
+GhostOtterL/GhostOtterR:
+EI0 = max(inherit + 1 + Yachie1 - OpponentYachie2, 0)
+EI1 = OpponentYachie2 ? 2 : Yachie1
+EI2 = inherit + 1
+
+GhostEagle:
+EI0 = max(inherit + 1 + Yuuma1 - OpponentYuuma2, 0)
+EI1 = OpponentYuuma2 ? 2 : Yuuma1
+EI2 = inherit + 1
+
+LOW
+00000001 = disable_hitbox
+00000002 = disable_collision
+00000004 = offscreen_immune_horizontal
+00000008 = offscreen_immune_vertical
+00000010 = invincible
+00000020 = intangible
+00000040 = __is_midboss
+00000080 = no_delete
+00000100 = always_delete
+00000200 = grazable
+00000400 = only_dialogue_delete
+00000800 = delete_as_bullet
+00001000 = rectangular_hitbox
+00002000 = slowdown_immune
+
+HIGH
+00000001 = __has_been_onscreen
+00000002 = move_bounds_enable
+00000004 = __is_being_ticked
+00000008 = mirrored
+00000010 = __enable_anm_poses
+00000020 = __damaged_this_frame
+00000040 = __delete_related
+00000080 = is_boss
+00000100 = __timeout_triggered
+00000200 = marked_for_delete
+00000400 = __basic_anm_update
+00000800 = homing_disable
+ - Nazrin ex ignore
+ - Nazrin bomb ignore
+00001000 = bomb_shield
+00002000 = bomb_shield_active
+00004000 = __is_chonky
+00008000 = __anm_related_flag_A
+00010000 = __anm_slowdown_immune
+00040000 = __unknown_flag_ed_P
+00080000 = is_enemy_type_B
+ - Nazrin ex ignore
+ - Nazrin bomb ignore
+ - Cannot be converted by Orin
+ - Cannot be affected by aura/scope
+ - No collision when using Orin2 card
+00700000 = enemy_type
+00800000 = ???
+ - Set by __ghost_flags_unknown_C
+ - Zanmu ex ignore (overrides force)
+01000000 = __is_ghost
+02000000 = ???
+ - Set inside compute_damage_sources
+ - Cleared before an enemy checks damage sources as a bullet
+04000000 = __is_updating
+ - Cleared at the end of EnemyData::on_tick
+08000000 = ???
+ - Set by __enemy_flag_unknown_C
+ - Changes some item manager code when an enemy dies
+ - Skips running function pointer 68D4 when an enemy dies
+ - Cannot be converted by Orin
+10000000 = ???
+ - Set by __enemy_flag_unknown_D
+ - Runs Zanmu ex even on normal enemies
+ - Zanmu ex uses GhostPure2/GhostPure2b instead of GhostPure2G
+ - Counted by __ENEMY_COUNT_UNKNOWN_FLAG_D
+20000000 = ???
+ - Set by __enemy_flag_unknown_E
+ - Skips running ghost code when enemy dies
