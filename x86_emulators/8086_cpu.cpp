@@ -1851,10 +1851,10 @@ void z86_execute_impl() {
                 GP_WITHOUT_IOPL();
                 ctx.port_out(pc.execute_advance<uint8_t>());
                 break;
-            case 0xE8: // CALL Jz
+            case 0xE8: // CALL Js
                 FAULT_CHECK(ctx.CALL(pc));
                 goto next_instr;
-            case 0xE9: // JMP Jz
+            case 0xE9: // JMP Js
                 FAULT_CHECK(ctx.JMP(pc));
                 goto next_instr;
             case 0xEA: // JMPF Iv, Iw
@@ -1995,8 +1995,8 @@ void z86_execute_impl() {
                 FAULT_CHECK(ctx.unopMW(pc, [](auto& dst, uint8_t r) fastcall { // 0x0F00
                     switch (r) {
                         default: unreachable;
-                        case 0: // SLDT Mw
-                        case 1: // STR Mw
+                        case 0: // SLDT Mw TODO: (Mv)
+                        case 1: // STR Mw TODO: (Mv)
                             THROW_UD_WITHOUT_FLAG_GRP(ctx.PROTECTED_MODE);
                             dst = ctx.get_control_seg(r & 1);
                             return OP_WRITE;
@@ -3772,43 +3772,43 @@ void z86_execute_impl() {
                         goto movups_mr;
                 }
                 break;
-            case 0x180: // JO Jz
-            case 0x181: // JNO Jz
+            case 0x180: // JO Js
+            case 0x181: // JNO Js
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.JCC<CondNO>(pc, opcode_byte & 1));
                 goto next_instr;
-            case 0x182: // JC Jz
-            case 0x183: // JNC Jz
+            case 0x182: // JC Js
+            case 0x183: // JNC Js
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.JCC<CondNC>(pc, opcode_byte & 1));
                 goto next_instr;
-            case 0x184: // JZ Jz
-            case 0x185: // JNZ Jz
+            case 0x184: // JZ Js
+            case 0x185: // JNZ Js
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.JCC<CondNZ>(pc, opcode_byte & 1));
                 goto next_instr;
-            case 0x186: // JBE Jz
-            case 0x187: // JA Jz
+            case 0x186: // JBE Js
+            case 0x187: // JA Js
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.JCC<CondA>(pc, opcode_byte & 1));
                 goto next_instr;
-            case 0x188: // JS Jz
-            case 0x189: // JNS Jz
+            case 0x188: // JS Js
+            case 0x189: // JNS Js
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.JCC<CondNS>(pc, opcode_byte & 1));
                 goto next_instr;
-            case 0x18A: // JP Jz
-            case 0x18B: // JNP Jz
+            case 0x18A: // JP Js
+            case 0x18B: // JNP Js
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.JCC<CondNP>(pc, opcode_byte & 1));
                 goto next_instr;
-            case 0x18C: // JL Jz
-            case 0x18D: // JGE Jz
+            case 0x18C: // JL Js
+            case 0x18D: // JGE Js
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.JCC<CondGE>(pc, opcode_byte & 1));
                 goto next_instr;
-            case 0x18E: // JLE Jz
-            case 0x18F: // JG Jz
+            case 0x18E: // JLE Js
+            case 0x18F: // JG Js
                 THROW_UD_WITHOUT_FLAG(ctx.OPCODES_80386);
                 FAULT_CHECK(ctx.JCC<CondG>(pc, opcode_byte & 1));
                 goto next_instr;

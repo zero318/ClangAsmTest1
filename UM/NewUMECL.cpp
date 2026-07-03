@@ -215,11 +215,6 @@ struct EclContext {
 	}
 
 	forceinline int32_t stack_pop_int() {
-		//int32_t temp = this->stack_pop<int32_t>();
-		//if (this->stack_pop<char>() == 'f') {
-		//	temp = reinterpret_cast<float>(temp);
-		//	//temp = reinterpret_cast<float>(temp);
-		//}
 		EclStackItem stack_val = this->stack_pop<EclStackItem>();
 		if (this->stack_pop<char>() == 'f') {
 			stack_val.integer = stack_val.real;

@@ -4,8 +4,43 @@
 cmake_minimum_required (VERSION 3.8)
 
 #set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_IS_BROKEN TRUE)
+
+#set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
+
+#if(CMAKE_IS_BROKEN)
+#set(MY_CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND};--extra-arg-before=--driver-mode=cl;--extra-arg=/clang:-std=c++2b;--format-style=none;"
+#"--extra-arg=-IF:\\MyCodeLibs\\asmlib -imsvc ..\\..\\..\\zero_include;"
+#"--extra-arg=-imsvc \"F:\\Program Files\\LLVM\\lib\\clang\\17\\include\";"
+#"--extra-arg=-imsvc C:\\WinDDK\\7600.16385.1\\inc\\ddk;"
+#"--extra-arg=-imsvc F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT;"
+#"--extra-arg=-imsvc \"F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Include\";"
+#"--extra-arg=-imsvc \"F:\\My Programs Expansion\\DirectX_SDKs\\8.0a\\include\";"
+#"--extra-arg=-imsvc \"C:\\Program Files (x86)\\Microsoft Speech SDK\\Include\";"
+#"--extra-arg=-imsvc F:\\MyCodeLibs\\boost\\install\\boost_1_82_0\\boost_1_82_0;"
+#"--extra-arg=-imsvc \"F:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.29.30133\\ATLMFC\\include\";"
+#"--extra-arg=-imsvc \"F:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.29.30133\\include\";"
+#"--extra-arg=-imsvc \"C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.8\\include\\um\";"
+#"--extra-arg=-imsvc \"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.20262.0\\ucrt\";"
+#"--extra-arg=-imsvc \"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.20262.0\\shared\";"
+#"--extra-arg=-imsvc \"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.20262.0\\um\";"
+#"--extra-arg=-imsvc \"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.20262.0\\winrt\";"
+#"--extra-arg=-imsvc \"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.20262.0\\cppwinrt\";"
+#"--extra-arg=-imsvc F:\\Users\\zero318\\Source\\Repos\\thcrap\\libs\\external_deps\\include;"
+#"--extra-arg=-imsvc F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Core;"
+#"--extra-arg=-imsvc F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT\\Optional;"
+#CACHE INTERNAL "")
+#else()
+#find_program(
+#      CLANG_TIDY_COMMAND
+#      NAMES
+#         clang-tidy
+#      NO_CACHE
+#)
+#set(MY_CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND};--extra-arg-before=--driver-mode=cl;--extra-arg=/clang:-std=c++2b;--format-style=none" CACHE INTERNAL "")
+#endif()
 
 project ("ClangAsmTest1")
 
@@ -27,6 +62,7 @@ add_executable(ghidra_launch)
 add_executable(crappy_launcher)
 add_executable(udoalg_test)
 add_executable(3d_flying_objects)
+#add_executable(3DMazeBucket)
 add_executable(discord_test)
 add_executable(AoCFTest1)
 add_executable(loaddll)
@@ -52,6 +88,7 @@ add_executable(last_branch_test)
 add_executable(zenc)
 add_executable(jank_test)
 add_executable(shared_section_test)
+add_executable(zasm1)
 add_library(z8086 SHARED)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
@@ -106,6 +143,7 @@ python_test
 glaux
 glcommon
 3d_flying_objects
+#3DMazeBucket
 discord_test
 twitch_irc_test
 youtube_chat_test
@@ -142,6 +180,7 @@ zenc
 jank_test
 shared_section_test
 DSOUND_hijack
+zasm1
 )
 
 enable_language(ASM-ATT)
@@ -177,6 +216,11 @@ set(NOSTDLIB_LINK "")
 endif()
 
 foreach(EXE ${programs})
+
+#set_target_properties(${EXE} PROPERTIES 
+#	CXX_CLANG_TIDY "${MY_CXX_CLANG_TIDY}"
+#)
+#set_target_properties(${EXE} PROPERTIES CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}")
 
 #set_target_properties(${EXE} PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
 
@@ -273,7 +317,7 @@ endif()
 target_compile_options(${EXE} PRIVATE
 	# Enable C23 Features
 	#/std:c++latest
-	"SHELL:-Xclang -std=c2x"
+	#"SHELL:-Xclang -std=c2x"
 	# Enable C++20 Features
 	"SHELL:-Xclang -std=c++2b"
 
@@ -649,12 +693,7 @@ target_compile_options(${EXE} PRIVATE
 #set(CMAKE_LINKER "F:\\Program Files (x86)\\LLVM\\bin\\ld.lld.exe")
 
 if(CMAKE_IS_BROKEN)
-#include_directories("F:\\Program Files (x86)\\LLVM\\lib\\clang\\12.0.0\\include")
-#include_directories("F:\\Program Files\\LLVM\\lib\\clang\\13.0.0\\include")
-#include_directories("F:\\Program Files\\LLVM\\lib\\clang\\14.0.0\\include")
-#include_directories(SYSTEM "F:\\Program Files\\LLVM\\lib\\clang\\15.0.2\\include")
 include_directories(BEFORE SYSTEM "F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\zero_include")
-#include_directories(SYSTEM "F:\\Program Files\\LLVM\\lib\\clang\\16\\include")
 include_directories(SYSTEM "F:\\Program Files\\LLVM\\lib\\clang\\17\\include")
 include_directories(SYSTEM "C:\\WinDDK\\7600.16385.1\\inc\\ddk")
 include_directories(SYSTEM "F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT")
@@ -1460,7 +1499,6 @@ target_include_directories(glcommon PRIVATE
 	"F:\\My Programming Stuff Expansion\\nt40_win95_sdk1996\\MSTOOLS\\INCLUDE"
 )
 
-
 target_sources(3d_flying_objects PRIVATE
 	#$<TARGET_OBJECTS:glaux>
 	#$<TARGET_OBJECTS:glcommon>
@@ -1535,6 +1573,42 @@ target_link_libraries(3d_flying_objects
 	comctl32.lib
 	scrnsave.lib
 )
+
+#set_target_properties(3DMazeBucket PROPERTIES LINKER_LANGUAGE CXX)
+#target_sources(3DMazeBucket PRIVATE
+#	$<TARGET_OBJECTS:glaux>
+#	"screensavers/MAZE2/COLOR.CPP"
+#	"screensavers/MAZE2/DIALOGC.CPP"
+#	"screensavers/MAZE2/FASTDIB.CPP"
+#	"screensavers/MAZE2/GENMAZE.CPP"
+#	"screensavers/MAZE2/GLMAZE.CPP"
+#	"screensavers\\MAZE2\\MATERIAL.CPP"
+#	"screensavers/MAZE2/MATH.CPP"
+#	"screensavers\\MAZE2\\PCH.CPP"
+#	"screensavers\\MAZE2\\SLVMAZE.CPP"
+#	"screensavers\\MAZE2\\SSA8.CPP"
+#	"screensavers\\MAZE2\\SSIMAGE.CPP"
+#	"screensavers\\MAZE2\\SSMAZE.CPP"
+#	"screensavers\\MAZE2\\TEXTURE.CPP"
+#	"screensavers\\MAZE2\\MAZE.RC"
+#)
+#target_compile_definitions(3DMazeBucket PRIVATE
+#	_WINSVC_=1
+#	FX_SINGLE=1
+#	_M_IX86=600
+#	COLOR_KEY_ENABLE
+#)
+#target_include_directories(3DMazeBucket AFTER PRIVATE
+#	"screensavers\\COMMON"
+#	"F:\\My Programming Stuff Expansion\\nt40_win95_sdk1996\\MSTOOLS\\INCLUDE"
+#)
+#target_link_libraries(3DMazeBucket 
+#	opengl32.lib
+#	glu32.lib
+#	comdlg32.lib
+#	comctl32.lib
+#	scrnsave.lib
+#)
 
 target_sources(discord_test PRIVATE
 	"winhttp_websocket/websocket_impl.cpp"
@@ -2073,6 +2147,19 @@ target_link_options(DSOUND_hijack PRIVATE
 	${NOSTDLIB_LINK}
 	#-nodefaultlibs
 	#-nostdlib
+)
+
+target_compile_options(zasm1 PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_sources(zasm1 PRIVATE
+	"zasm1.cpp"
 )
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")

@@ -267,7 +267,7 @@ static forceinline long double vectorcall atanl_asm(long double value) {
     __asm__ volatile ("fpatan" : asm_arg("=t", ret) : asm_arg("0", one), asm_arg("u", value) : clobber_list("st(1)"));
     return ret;
 }
-static forceinline long double vectorcall atan2f_asm(float Y, float X) {
+static forceinline float vectorcall atan2f_asm(float Y, float X) {
     float ret;
     __asm__ volatile ("fpatan" : asm_arg("=t", ret) : asm_arg("0", X), asm_arg("u", Y) : clobber_list("st(1)"));
     return ret;

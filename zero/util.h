@@ -235,6 +235,7 @@ static inline constexpr SseTier_t SSE_TIER = IA32;
 #include <intrin.h>
 
 #define MACRO_VOID(...)
+#define MACRO_EVAL(...) __VA_ARGS__
 
 #if __INTELLISENSE__
 // Attempt to make intellisense shut up about C++ features it doesn't understand...
@@ -250,6 +251,8 @@ static inline constexpr SseTier_t SSE_TIER = IA32;
 #define ethis_arg(...) __VA_ARGS__
 #define ethis_type std::remove_cvref_t<std::remove_pointer_t<decltype(this)>>
 #define ethis (*this)
+//#define typeof(...) std::remove_reference_t<decltype(__VA_ARGS__)>
+#define typeof(...) typename decltype(typeof_helper<void,__VA_ARGS__>())::type
 #else
 #define INTELLISENSE_TYPENAME
 #define requires(...) requires (__VA_ARGS__)
@@ -262,8 +265,8 @@ static inline constexpr SseTier_t SSE_TIER = IA32;
 #define ethis_arg(...) this const auto& self __VA_OPT__(,) __VA_ARGS__
 #define ethis_type Self
 #define ethis self
+#define typeof(...) __typeof__(__VA_ARGS__)
 #endif
-#define typeof(type) std::remove_reference_t<decltype(type)>
 
 //#pragma clang diagnostic error "-Winvalid-token-paste"
 
@@ -275,7 +278,6 @@ static inline constexpr SseTier_t SSE_TIER = IA32;
 #define _MACRO_STR(arg) #arg
 #define MACRO_STR(arg) _MACRO_STR(arg)
 #define MACRO_STRV(...) #__VA_ARGS__
-#define MACRO_EVAL(...) __VA_ARGS__
 
 // EoSD
 #define MACRO_FIRST(arg1, ...) arg1
@@ -411,6 +413,11 @@ struct remove_cvref {
 };
 template <class _Callable, class... _Args>
 inline constexpr bool is_invocable_v = _Select_invoke_traits<_Callable, _Args...>::_Is_invocable::value;
+
+template<typename T>
+struct type_identity { using type = T; };
+template<typename T>
+using type_identity_t = typename type_identity<T>::type;
 }
 #endif // _HAS_CXX20
 
@@ -724,6 +731,18 @@ struct $vec_impl<T, count, true> {
     using type gnu_attr(__vector_size__(count * sizeof(T))) = T;
 };
 
+/*
+template<size_t count, bool is_aligned>
+struct $vec_impl<bool, count, is_aligned> {
+    using type __attribute__((ext_vector_type(count), __aligned__(alignof(bool)))) = bool;
+};
+
+template<size_t count>
+struct $vec_impl<bool, count, true> {
+    using type __attribute__((ext_vector_type(count))) = bool;
+};
+*/
+
 template <typename T, size_t count, bool is_aligned = false>
 using vec = $vec_impl<T, count, is_aligned>::type;
 
@@ -790,7 +809,7 @@ enum InlineState {
 #pragma message("consteval not supported, using constexpr instead")
 #endif
 #if !CPP20 && !(defined(__cpp_constinit) && __cpp_constinit >= 201907L)
-#define constinit static
+#define constinit
 #pragma message("constinit not supported")
 #endif
 #if __INTELLISENSE__
@@ -798,7 +817,7 @@ enum InlineState {
 #define consteval constexpr
 #endif
 #ifndef constinit
-#define constinit static
+#define constinit
 #endif
 #endif
 
@@ -2409,6 +2428,13 @@ using DSPTR = T DS_RELATIVE*;
 template<typename T = void>
 using ESPTR = T ES_RELATIVE*;
 #endif
+
+template <typename T>
+struct remove_addrspace { using type = T; };
+template <typename T, int N>
+struct remove_addrspace<T [[clang::address_space(N)]] > { using type = T; };
+template <typename T>
+using remove_addrspace_t = typename remove_addrspace<T>::type;
 
 template <typename T> struct remove_pointer { using type = T; };
 template <typename T> struct remove_pointer<T*> { using type = T; };

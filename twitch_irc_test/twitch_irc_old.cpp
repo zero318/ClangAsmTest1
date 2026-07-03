@@ -3,7 +3,7 @@
 
 #define _CRT_RAND_S 1
 
-#define _HAS_CXX17 1
+//#define _HAS_CXX17 1
 #define _HAS_CXX20 0
 
 #include <stdlib.h>

@@ -7,8 +7,8 @@
 
 #include "../zero/util.h"
 
-#undef _HAS_CXX17
-#define _HAS_CXX17 1
+//#undef _HAS_CXX17
+//#define _HAS_CXX17 1
 
 #include <array>
 #include <vector>

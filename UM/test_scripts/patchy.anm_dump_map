@@ -305,7 +305,7 @@ interrupt[1]:
 
 script 17 script17 {
 -1:
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite46);
     blend_mode(Additive);
     alpha(0x0);

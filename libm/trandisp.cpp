@@ -1,14 +1,14 @@
 #include <Windows.h>
 
 #if __INTELLISENSE__
-#define _HAS_CXX17 1
+//#define _HAS_CXX17 1
 #define _HAS_CXX20 0
 #endif
 
 #include <type_traits>
 
 #if __INTELLISENSE__
-#define _HAS_CXX17 1
+//#define _HAS_CXX17 1
 #define _HAS_CXX20 1
 #endif
 
@@ -16,7 +16,7 @@
 #include <thread>
 
 #if __INTELLISENSE__
-#define _HAS_CXX17 1
+//#define _HAS_CXX17 1
 #define _HAS_CXX20 0
 #endif
 

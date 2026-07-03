@@ -1,7 +1,7 @@
-#if !_HAS_CXX17
-#undef _HAS_CXX17
-#define _HAS_CXX17 1
-#endif
+//#if !_HAS_CXX17
+//#undef _HAS_CXX17
+//#define _HAS_CXX17 1
+//#endif
 #if !_HAS_CXX20
 #undef _HAS_CXX20
 #define _HAS_CXX20 1

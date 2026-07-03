@@ -337,6 +337,14 @@ struct bit_count : std::integral_constant<size_t, sizeof(T) * CHAR_BIT> {};
 template <typename T>
 inline constexpr size_t bit_count_v = sizeof(T) * CHAR_BIT;
 
+template<typename ... Types>
+static inline constexpr std::type_identity<std::tuple_element_t<1, std::tuple<Types...>>> typeof_helper();
+
+template<typename Types, auto val>
+static inline constexpr std::type_identity<decltype(val)> typeof_helper();
+
+//#define typeof(...) typename decltype(typeof_helper<void,__VA_ARGS__>())::type
+
 template <typename Find, typename Tuple>
 struct find_type_in_tuple;
 template <typename Find, typename... TupleTypes>

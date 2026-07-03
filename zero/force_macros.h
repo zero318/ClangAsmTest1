@@ -1,8 +1,8 @@
 #pragma once
 #if __INTELLISENSE__
 #if __clang_major__
-#undef __clang_major__
-#define __clang_major__ 15
+//#undef __clang_major__
+//#define __clang_major__ 15
 #endif
 #ifndef IS_X64
 #ifdef _WIN64

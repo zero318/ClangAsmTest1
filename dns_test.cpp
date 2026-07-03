@@ -2,7 +2,7 @@
 #pragma clang diagnostic ignored "-Wc++20-extensions"
 
 #if __INTELLISENSE__
-#define _HAS_CXX17 1
+//#define _HAS_CXX17 1
 #define _HAS_CXX20 0
 #endif
 

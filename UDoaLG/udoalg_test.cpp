@@ -15,14 +15,14 @@
 #include <math.h>
 
 #if __INTELLISENSE__
-#undef _HAS_CXX17
+//#undef _HAS_CXX17
 #define _HAS_CXX20 1
 #endif
 #include <bit>
 
 #if __INTELLISENSE__
-#undef _HAS_CXX17
-#define _HAS_CXX17 1
+//#undef _HAS_CXX17
+//#define _HAS_CXX17 1
 #undef _HAS_CXX20
 #define _HAS_CXX20 0
 #endif

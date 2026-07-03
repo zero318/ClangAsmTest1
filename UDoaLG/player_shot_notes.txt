@@ -1,0 +1,186 @@
+Reimu Ex:
+On tick C1/C2:
+- Shoot entry 10 while timer >= 0
+- Timer count up until >20, then disable
+On C1/C2:
+- Timer = 0
+
+Marisa Ex:
+On tick C1:
+- Shoot entry 10 while timer > 0
+- Timer count up until >20, then disable
+On tick C2
+- Shoot entry 10 while timer > 0
+- Shoot entry 11 while timer > 0
+- Timer count up until >20, then disable
+On C1/C2:
+- Timer = 0
+
+Sanae Ex:
+On tick C1: 
+- Shoot entry 10 while timer < 30
+- Timer count up until >40, then disable
+On tick C2:
+- Shoot entry 11 while timer < 60
+- Timer count up until >70, then disable
+On C1/C2:
+- Timer = 0
+
+Ran Ex:
+On tick C1/C2:
+- If C2 effect not active, shoot entry 10 while timer < 50
+- If C2 effect active, shoot entry 11 while timer < 50
+- Timer count up until >60, then disable
+On C1/C2:
+- Timer = 0
+
+Aun Ex:
+On tick C1: 
+- Shoot entry 10 while timer < 30
+- Timer count up until >40, then disable
+On tick C2:
+- Shoot entry 11 while timer < 90
+- Timer count up until >100, then disable
+On C1/C2:
+- Timer = 0
+
+Nazrin Ex:
+On tick C1/C2:
+- Shoot entry 10 while timer < 120
+- Timer count up until >120, then disable
+On C1:
+- Timer = 0
+
+Seiran Ex:
+On tick C1: 
+- Shoot entry 10 while timer < 30
+- Timer count up until >40, then disable
+On tick C2:
+- Shoot entry 11 while timer < 200
+- Timer count up until >210, then disable
+On C1/C2:
+- Timer = 0
+
+Orin Ex:
+On tick C1/C2:
+- If C2 effect not active, shoot entry 10 while timer < 10
+- If C2 effect active, shoot entry 11 while timer < 10
+- Timer count up until >10, then disable
+On C1/C2:
+- Timer = 0
+
+Tsukasa Ex:
+On tick C1/C2:
+- Shoot entry 10 while timer < 50
+- Timer count up until >60, then disable
+On C1/C2:
+- Timer = 0
+
+Mamizou Ex:
+On tick C1/C2:
+- Shoot entry 10 while timer < 50
+- Timer count up until >60, then disable
+On C1/C2: timer = 0
+
+Saki Ex:
+On tick C1:
+- Shoot entry 10 while timer < 50
+- Timer count up until >60, then disable
+On tick C2:
+- Shoot entry 11 while timer < 60
+- Timer count up until >70, then disable
+On C1/C2:
+- If disabled, timer = 0
+
+Suika Ex:
+On tick C1:
+- Shoot entry 10 while timer < 80
+- Timer count up until >90, then disable
+On tick C2:
+- Shoot entry 11 while timer < 180
+- Timer count up until >190, then disable
+On C1/C2:
+- If disabled, timer = 0
+
+Biten Ex:
+On tick C1:
+- Shoot entry 10 while timer < 50
+- Timer count up until >60, then disable
+On tick C2:
+- Shoot entry 11 while timer < 80
+- Timer count up until >90, then disable
+On C1/C2:
+- If disabled, timer = 0
+
+Enoko Ex:
+On tick C1:
+- Shoot entry 10 while timer < 10
+- Timer count up until >15, then disable
+On tick C2:
+- Shoot entry 11 while timer < 60
+- Timer count up until >70, then disable
+On C1/C2:
+- If disabled, timer = 0
+
+Chiyari Ex:
+On tick C1/C2:
+- Shoot entry 10 while timer < 50
+- Timer count up until >60, then disable
+On C1/C2:
+- If disabled, timer = 0
+
+Hisami Ex:
+On tick C1:
+- Shoot entry 10 while timer < 100
+- Timer count up until >110, then disable
+On tick C2:
+- Shoot entry 11 while timer < 200
+- Timer count up until >210, then disable
+On C1/C2:
+- If disabled, timer = 0
+
+Zanmu Ex:
+On tick C1:
+- Shoot entry 10 while timer < 90
+- Timer count up until >100, then disable
+On tick C2:
+- Timer count up until >90, then disable
+On C1/C2:
+- If disabled, timer = 0
+
+Card Reimu1:
+- Shoot entry 20
+Card Marisa1:
+- Shoot entry 21
+Card Seiran1:
+- Shoot entry 22
+Card Seiran2:
+- Shoot entry 23
+Card Sanae1:
+- Shoot entry 24
+Card Sanae2:
+- Shoot entry 25
+Card Ran1:
+- Shoot entry 26
+Card Ran2:
+- Shoot entry 27
+Card Orin1:
+- Shoot entry 28
+Card Tsukasa1:
+- Shoot entry 29
+Card Tsukasa2:
+- Shoot entry 30
+Card Mamizou1:
+- Shoot entry 31
+Card Suika1:
+- Shoot entry 32
+Card Biten1:
+- Shoot entry 33
+Card Enoko1:
+- Shoot entry 34
+Card Chiyari1:
+- Shoot entry 35
+Card Hisami1:
+- Shoot entry 36
+Card Zanmu1:
+- Shoot entry 37

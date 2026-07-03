@@ -13,7 +13,7 @@ const float WINDOW_SCALE_Y = 480.0 / 128.0; // 480 / sprite_height
 script 0 script0 {
 	sprite_set(sprite0);
 	layer(Layer8);
-	render_mode(RenderMode1);
+	render_mode(Sprite2DRotated);
 	
 	// Center of screen
 	move_position(0.0, 224.0, 0.0);
@@ -23,7 +23,7 @@ script 0 script0 {
 	
 	loop {
 		// Set BS values to manipulate UV
-		origin_mode(OriginMode0);
+		origin_mode(Window);
 		scale(WINDOW_SCALE_X, WINDOW_SCALE_Y);
 		// backup original position/rotation
 		__UNKNOWN_X = SELF_X;
@@ -37,7 +37,7 @@ script 0 script0 {
 		rotation(0.0, 0.0, F0);
 		sprite_window();
 		// Restore sane/original values
-		origin_mode(OriginMode1);
+		origin_mode(FixedResolution);
 		scale(1.0, 1.0);
 		move_position(__UNKNOWN_X, __UNKNOWN_Y, 0.0);
 		rotation(0.0, 0.0, __UNKNOWN_Z);
@@ -51,7 +51,7 @@ script 0 script0 {
 script 1 script1 {
 	sprite_set(sprite0);
 	layer(Layer8);
-	render_mode(RenderMode1);
+	render_mode(Sprite2DRotated);
 	
 	// Center of screen
 	move_position(0.0, 224.0, 0.0);
@@ -62,7 +62,7 @@ script 1 script1 {
 	
 	loop {
 		// Set BS values to manipulate UV
-		origin_mode(OriginMode0);
+		origin_mode(Window);
 		scale(WINDOW_SCALE_X, WINDOW_SCALE_Y);
 		// backup original position/rotation
 		__UNKNOWN_X = SELF_X;
@@ -76,7 +76,7 @@ script 1 script1 {
 		rotation(0.0, 0.0, F0);
 		sprite_window();
 		// Restore sane/original values
-		origin_mode(OriginMode1);
+		origin_mode(FixedResolution);
 		scale(1.0, 1.0);
 		move_position(__UNKNOWN_X, __UNKNOWN_Y, 0.0);
 		rotation(0.0, 0.0, __UNKNOWN_Z);
@@ -90,18 +90,18 @@ script 1 script1 {
 script 2 script2 {
 	sprite_set(sprite0);
 	layer(Layer8);
-	render_mode(RenderMode1);
+	render_mode(Sprite2DRotated);
 	
 	
 	// Set BS values to manipulate UV
-	origin_mode(OriginMode0);
+	origin_mode(Window);
 	scale(WINDOW_SCALE_X, WINDOW_SCALE_Y);
 	
 	rotation(0.0, 0.0, -0.785398);
 	
 	sprite_window();
 	
-	origin_mode(OriginMode1);
+	origin_mode(FixedResolution);
 	scale(1.0, 1.0);
 	
 	// Center of screen
@@ -113,7 +113,7 @@ script 2 script2 {
 script 3 script3 {
 	sprite_set(sprite0);
 	layer(Layer8);
-	render_mode(RenderMode1);
+	render_mode(Sprite2DRotated);
 	
 	// Center of screen
 	move_position(0.0, 224.0, 0.0);

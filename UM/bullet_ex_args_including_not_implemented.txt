@@ -1,0 +1,478 @@
+====================
+BULLET EFFECTS
+====================
+
+EX_SPEEDUP: [UM = 0x1, UDoALG = 0x1, FW = 0 (broken)]
+    No args. Broken in FW.
+
+EX_ANIM: [UM = 0x2, UDoALG = 0x2, FW = 1]
+    Runs interrupt 7 + A on the bullet ANM script
+
+EX_ACCEL: [UM = 0x4, UDoALG = 0x4, FW = 2]
+    duration = A
+    acceleration = R
+
+    S <= -999990.0                          : angle = current_angle
+    S > -999990.0 && S < 999990.0           : angle = S
+    S >= 999990.0 && S < 1999990.0          : angle = angle_to_player_from_current_position + M
+    S >= 1999990.0 && S < 2999990.0         : angle = S
+    S >= 2999990.0 && S < 3999990.0         : angle = angle_to_player_from_current_position + M * RAND_FLOAT_SIGNED
+    S >= 3999990.0 && S < 4999990.0         : angle = current_angle + M * RAND_FLOAT_SIGNED
+    S >= 4999990.0                          : angle = angle_from_boss0_to_current_position
+
+EX_ANGLE_ACCEL: [UM = 0x8, UDoALG = 0x8, FW = 3]
+    duration = A
+    acceleration = R
+    angle = S
+
+EX_ANGLE: [UM = 0x10, UDoALG = 0x10, FW = 4]
+    duration = a
+    max_count = B
+    type = C
+    __int_44 = D
+
+    S <= -999990.0  : effect_speed = current_speed
+    S > -999990.0   : effect_speed = S
+    C == 7          : effect_speed = current_speed + S * RAND_FLOAT_SIGNED
+
+    R <= -999990.0                          : angle_arg = current_angle
+    R > -999990.0 && R < 999990.0           : angle_arg = R
+    R >= 999990.0 && R < 1999990.0          : angle_arg = angle_to_player_from_current_position + M
+    R >= 1999990.0 && R < 2999990.0         : angle_arg = R
+    R >= 2999990.0 && R < 3999990.0         : angle_arg = angle_to_player_from_current_position + M * RAND_FLOAT_SIGNED
+    R >= 3999990.0 && R < 4999990.0         : angle_arg = current_angle + M * RAND_FLOAT_SIGNED
+    R >= 4999990.0                          : angle_arg = angle_from_boss0_to_current_position
+
+    C == 0 || C == 1 || C == 4              : effect_angle = angle_arg
+    C == 2                                  : effect_angle = angle_to_player_from_saved_position + angle_arg
+    C == 3                                  : effect_angle = saved_angle + angle_arg
+    C == 5 || C == 6                        : effect_angle = R * RAND_FLOAT_SIGNED
+    C == 7 && R <= -999990.0                : effect_angle = current_angle
+    C == 7 && R > -999990.0 && R < 990.0    : effect_angle = R
+    C == 7 && R >= 999.0                    : effect_angle = angle_to_player_from_current_position
+    
+When duration runs out:
+    speed = effect_speed
+
+    C == 0 || C == 5            : angle += effect_angle
+    C == 1 || C == 6            : angle += effect_angle + angle_to_player_from_current_position
+    C == 2 || C == 3 || C == 4  : angle = effect_angle
+
+EX_BOUNCE: [UM = 0x40, UDoALG = 0x40, FW = 6]
+    max_count = A
+    type = B
+    speed = R
+    
+    B & 0x10    : Don't actually bounce, only detect when the bullet leaves the range
+    
+    B & 0x20    : size_x = S, size_y = M
+    !(B & 0x20) : size_x = 384.0, size_y = 448.0
+
+EX_INVULN: [UM = 0x80, UDoALG = 0x80, FW = 7]
+    duration = A
+
+EX_OFFSCREEN: [UM = 0x100, UDoALG = 0x100, FW = 8]
+    max_time = A
+    
+    B == 0      : Bullet cannot despawn offscreen
+    B != 0      : Bullet will still despawn offscreen if it's not moving towards the screen
+
+EX_SETSPRITE: [UM = 0x200, UDoALG = 0x200, FW = 9]
+    sprite = A
+    color = B & 0x7FFF
+
+    B & 0x8000 : runs interrupt 2 on the bullet vm
+
+EX_DELETE: [UM = 0x400, UDoALG = 0x400, FW = 10]
+    A == 1 : Disable cancel ANM script
+
+EX_PLAYSOUND: [UM = 0x800, UDoALG = 0x800, FW = 11]
+    sound_id = A
+
+EX_WRAP: [UM = 0x1000, UDoALG = 0x1000, FW = 12]
+    max_count = A
+    walls = B
+
+EX_SHOOT: [UM = 0x2000, UDoALG = 0x2000, FW = 13]
+    aim_mode = A
+    effect_index = B
+    count1 = C
+    count2 = D
+    sprite = A2
+    color = B2
+    delete_current_bullet = C2
+
+    R <= -999990.0                          : angle = current_angle
+    R > -999990.0 && R <= 999990.0          : angle = R
+    R > 999990.0 && R < 1999990.0           : angle = angle_to_player_from_current_position
+    R >= 1999990.0                          : angle = R
+
+    angle2 = S
+
+    M <= -999990.0  : speed1 = current_speed
+    M > -999990.0   : speed1 = M
+    
+    speed2 = N
+
+EX_SHOOT_DATA: [UM = 0x4000, UDoALG = 0x4000, FW = 14]
+    Doesn't do anything on its own, but provides more args for EX_SHOOT
+
+EX_REACT: [UM = 0x8000, UDoALG = 0x8000, FW = 15]
+    __ex_react_val = A
+
+EX_LOOP: [UM = 0x10000, UDoALG = 0x10000, FW = 16]
+    effect_index = A
+    
+    B <= 0 : loop_count ignored, acts as EX_GOTO
+    B > 0  : loop_count = B
+
+EX_MOVE: [UM = 0x20000, UDoALG = 0x20000, FW = 17]
+    duration = A
+    interp_mode = B & 0xFF
+    target_x = R
+    target_y = S
+    
+    B & 0x100    : Target is absolute
+    !(B & 0x100) : Target is relative to current position
+    
+EX_VEL: [UM = 0x40000, UDoALG = 0x40000, FW = 18]
+    R >= 990.0                  : angle = angle_to_player_from_current_position + (R - 999.0)
+    R >= -990.0 && R < 990.0    : angle = R
+    R < -990.0                  : angle = current_angle
+    
+    S < -990.0  : speed = current_speed
+    S >= -990.0 : speed = S
+
+EX_POSADD: [UM = 0x80000, UDoALG = 0x80000, FW = 19]
+    duration = A
+    angle = R
+    speed = S
+
+EX_BLEND: [UM = 0x100000, UDoALG = 0x100000, FW = 20]
+    A == 1              : blend_mode = BlendAdditive
+    A == 2              : blend_mode = BlendSubtractive
+    A != 1 && A != 2    : blend_mode = BlendNormal
+
+EX_VELTIME: [UM = 0x200000, UDoALG = 0x200000, FW = 21]
+    duration = A
+    speed = (R - current_speed) / A
+
+    S <= -999990.0                          : angle = current_angle
+    S > -999990.0 && S < 999990.0           : angle = S
+    S >= 999990.0 && S < 1999990.0          : angle = angle_to_player_from_current_position + M
+    S >= 1999990.0 && S < 2999990.0         : angle = S
+    S >= 2999990.0 && S < 3999990.0         : angle = angle_to_player_from_current_position + M * RAND_FLOAT_SIGNED
+    S >= 3999990.0 && S < 4999990.0         : angle = current_angle + M * RAND_FLOAT_SIGNED
+    S >= 4999990.0                          : angle = angle_from_boss0_to_current_position
+
+EX_SIZE: [UM = 0x400000, UDoALG = 0x400000, FW = 22]
+    end_time = A
+    interp_mode = B
+    initial_size = R
+    final_size = S
+
+EX_SAVEANGLE: [UM = 0x800000, UDoALG = 0x800000, FW = 23]
+    this saves position, angle, and speed
+
+EX_ENEMY: [UM = 0x1000000, UDoALG = 0x1000000, FW = 24]
+    EI0 = A
+    EI1 = B
+    EI2 = C
+    EI3 = D
+    EF0 = R
+    EF1 = S
+    EF2 = M
+    EF3 = N
+
+EX_LAYER: [UM = 0x2000000, UDoALG = 0x2000000, FW = 25]
+    layer = A
+
+EX_DELAY: [UM = 0x4000000, UDoALG = 0x4000000, FW = 26]
+    A <= 0 : Does nothing
+    A > 0  : duration = A
+
+EX_LASER: [UM = 0x8000000, UDoALG = 0x8000000, FW = 27]
+    a == 0 : line laser
+
+    sprite = B
+    color = C
+    delete_current_bullet = D
+    shoot_sound = A2
+    transform_sound = B2
+    effect_index = C2
+
+    R <= -999990.0                          : angle = current_angle
+    R > -999990.0 && R <= 999990.0          : angle = R
+    R > 999990.0 && R < 1999990.0           : angle = angle_to_player_from_current_position
+    R >= 1999990.0                          : angle = R
+
+    S <= -999990.0  : speed = current_speed
+    S > -999990.0   : speed = S
+
+    length = M
+    max_length = N
+    despawn_distance = R2
+    width = S2
+    spawn_distance = M2
+
+    A == 1 : Infinite laser
+
+    sprite = B
+    color = C
+    flags = (D & 0xFD) | 0x02
+    effect_index = (D & 0xFF00) >> 8
+    delete_current_bullet = (D & 0x10000) >> 16
+    start_time = A2
+    expand_time = B2
+    duration = C2
+    stop_time = D2
+    shoot_sound = 18
+    transform_sound = -1
+
+    R <= -999990.0                          : angle = current_angle
+    R > -999990.0 && R <= 999990.0          : angle = R
+    R > 999990.0 && R < 1999990.0           : angle = angle_to_player_from_current_position
+    R >= 1999990.0                          : angle = R
+
+    S <= -999990.0  : speed = current_speed
+    S > -999990.0   : speed = S
+
+    length = M
+    max_length = N
+    width = R2
+    distance = S2
+
+EX_LASER_DATA: [UM = 0x10000000, UDoALG = 0x10000000, FW = 28]
+    Doesn't do anything on its own, but provides more args for EX_LASER
+
+EX_HITBOX: [UM = 0x20000000, UDoALG = 0x20000000, FW = 29]
+    R < 0.0    : hitbox_radius = Default hitbox of current sprite
+    R >= 0.0   : hitbox_radius = R
+
+EX_HOMING: [UM = 0x40000000, UDoALG = 0x40000002, FW = 31]
+    duration = A
+    speed = R
+    angle = S
+    homing_strength = M
+
+EX_WAIT: [UM = 0x80000000, UDoALG = 0x40000001, FW = 30]
+    A <= 0 : Does nothing
+    A > 0  : duration = A
+
+====================
+LINE LASER EFFECTS
+====================
+
+EX_SPEEDUP: [UM = 0x1, UDoALG = 0x1, FW = 0 (broken)]
+    No args. Broken in FW.
+
+EX_ACCEL: [UM = 0x4, UDoALG = 0x4, FW = 2]
+    duration = A
+    acceleration = R
+
+    S <= -990.0             : angle = current_angle
+    S > -990.0 && S < 990.0 : angle = S
+    S >= 990.0              : angle = angle_to_player_from_current_position
+
+EX_ANGLE_ACCEL: [UM = 0x8, UDoALG = 0x8, FW = 3]
+    duration = A
+    acceleration = R
+    angle = S
+
+EX_ANGLE: [UM = 0x10, UDoALG = 0x10, FW = 4]
+    duration = a
+    max_count = B
+    type = C
+    
+    effect_angle = R
+
+    S <= -999.0  : effect_speed = current_speed
+    
+When duration runs out:
+    speed = effect_speed
+
+    C == 0  : angle += effect_angle
+    C == 1  : Not implemented for line lasers
+    C == 4  : Not implemented for line lasers
+
+EX_BOUNCE: [UM = 0x40, UDoALG = 0x40, FW = 6]
+    max_count = A
+    type = B
+    
+    R < 0.0     : speed = current_speed
+    R >= 0.0    : speed = R
+    
+    B & 0x10    : Don't actually bounce, only detect when the bullet leaves the range
+
+EX_INVULN: [UM = 0x80, UDoALG = 0x80, FW = 7]
+    duration = A
+
+EX_OFFSCREEN: [UM = 0x100, UDoALG = 0x100, FW = 8]
+    max_time = A
+
+EX_SETSPRITE: [UM = 0x200, UDoALG = 0x200, FW = 9]
+    sprite = A
+    color = B
+
+EX_DELETE: [UM = 0x400, UDoALG = 0x400, FW = 10]
+    No args
+
+EX_PLAYSOUND: [UM = 0x800, UDoALG = 0x800, FW = 11]
+    sound_id = A
+
+EX_WRAP: [UM = 0x1000, UDoALG = 0x1000, FW = 12]
+    max_count = A
+
+EX_SHOOT: [UM = 0x2000, UDoALG = 0x2000, FW = 13]
+    aim_mode = A
+    effect_index = B
+    count1 = C
+    count2 = D
+    sprite = A2
+    color = B2
+    delete_current_laser = C2
+
+    R <= -999990.0                          : angle = current_angle
+    R > -999990.0 && R <= 999990.0          : angle = R
+    R > 999990.0                            : angle = angle_to_player_from_current_position
+
+    angle2 = S
+
+    M <= -999990.0  : speed1 = current_speed
+    M > -999990.0   : speed1 = M
+    
+    speed2 = N
+
+EX_SHOOT_DATA: [UM = 0x4000, UDoALG = 0x4000, FW = 14]
+    Doesn't do anything on its own, but provides more args for EX_SHOOT
+
+EX_SETID: [UM = 0x8000, UDoALG = 0x8000, FW = 15]
+    laser_id = A
+
+EX_LOOP: [UM = 0x10000, UDoALG = 0x10000, FW = 16]
+    effect_index = A
+    
+    B <= 0 : loop_count ignored, acts as EX_GOTO
+    B > 0  : loop_count = B
+
+EX_BLEND: [UM = 0x100000, UDoALG = 0x100000, FW = 20]
+    A != 0              : blend_mode = BlendAdditive
+    A == 0              : blend_mode = BlendNormal
+
+EX_WAIT: [UM = 0x80000000, UDoALG = 0x40000001, FW = 30]
+    A <= 0 : Does nothing
+    A > 0  : duration = A
+
+====================
+INFINITE LASER EFFECTS
+====================
+
+EX_INVULN: [UM = 0x80, UDoALG = 0x80, FW = 7]
+    duration = A
+
+EX_DELETE: [UM = 0x400, UDoALG = 0x400, FW = 10]
+    No args
+
+EX_BLEND: [UM = 0x100000, UDoALG = 0x100000, FW = 20]
+    A != 0              : blend_mode = BlendAdditive
+    A == 0              : blend_mode = BlendNormal
+
+====================
+CURVY LASER EFFECTS
+====================
+
+EX_SPEEDUP: [UM = 0x1, UDoALG = 0x1, FW = 0 (broken)]
+    No args. Broken in FW.
+
+EX_ACCEL: [UM = 0x4, UDoALG = 0x4, FW = 2]
+    Args currently unknown
+
+EX_ANGLE_ACCEL: [UM = 0x8, UDoALG = 0x8, FW = 3]
+    Args currently unknown
+
+EX_ANGLE: [UM = 0x10, UDoALG = 0x10, FW = 4]
+    duration = a
+    max_count = B
+    type = C
+    
+    effect_angle = R
+
+    S <= -999.0  : effect_speed = current_speed
+    
+When duration runs out:
+    speed = effect_speed
+
+    C == 0  : angle += effect_angle
+    C == 1  : Not implemented for line lasers
+    C == 4  : Not implemented for line lasers
+
+EX_BOUNCE: [UM = 0x40, UDoALG = 0x40, FW = 6]
+    max_count = A
+    type = B
+    
+    R < 0.0     : speed = current_speed
+    R >= 0.0    : speed = R
+    
+    B & 0x10    : Don't actually bounce, only detect when the bullet leaves the range
+
+EX_INVULN: [UM = 0x80, UDoALG = 0x80, FW = 7]
+    duration = A
+
+EX_OFFSCREEN: [UM = 0x100, UDoALG = 0x100, FW = 8]
+    max_time = A
+    
+    B == 0      : Curvy laser cannot despawn offscreen
+    B != 0      : Curvy laser will still despawn offscreen if it's not moving towards the screen
+
+EX_SETSPRITE: [UM = 0x200, UDoALG = 0x200, FW = 9]
+    sprite = A
+    color = B
+
+EX_DELETE: [UM = 0x400, UDoALG = 0x400, FW = 10]
+    No args
+
+EX_PLAYSOUND: [UM = 0x800, UDoALG = 0x800, FW = 11]
+    sound_id = A
+
+EX_WRAP: [UM = 0x1000, UDoALG = 0x1000, FW = 12]
+    max_count = A
+
+EX_SHOOT: [UM = 0x2000, UDoALG = 0x2000, FW = 13]
+    aim_mode = A
+    effect_index = B
+    count1 = C
+    count2 = D
+    sprite = A2
+    color = B2
+    delete_current_laser = C2
+
+    R <= -999990.0                          : angle = current_angle
+    R > -999990.0 && R <= 999990.0          : angle = R
+    R > 999990.0                            : angle = angle_to_player_from_current_position
+
+    angle2 = S
+
+    M <= -999990.0  : speed1 = current_speed
+    M > -999990.0   : speed1 = M
+    
+    speed2 = N
+
+EX_SHOOT_DATA: [UM = 0x4000, UDoALG = 0x4000, FW = 14]
+    Doesn't do anything on its own, but provides more args for EX_SHOOT
+
+EX_SETID: [UM = 0x8000, UDoALG = 0x8000, FW = 15]
+    laser_id = A
+
+EX_GOTO: [UM = 0x10000, UDoALG = 0x10000, FW = 16]
+    effect_index = A
+
+EX_BLEND: [UM = 0x100000, UDoALG = 0x100000, FW = 20]
+    A != 0              : blend_mode = BlendAdditive
+    A == 0              : blend_mode = BlendNormal
+    
+EX_FREEZE: [UM = 0x10000000, UDoALG = 0x10000000, FW = 28]
+    disable_movement = A
+
+EX_WAIT: [UM = 0x80000000, UDoALG = 0x40000001, FW = 30]
+    A <= 0 : Does nothing
+    A > 0  : duration = A

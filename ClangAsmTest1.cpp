@@ -3,6 +3,9 @@
 #pragma clang diagnostic ignored "-Wshift-op-parentheses"
 #include "ClangAsmTest1.h"
 
+#include <float.h>
+#include <fenv.h>
+
 
 #define POINTER_64 __ptr64
 
@@ -213,6 +216,7 @@ dllexport int32_t cdecl evil_x64_hook(int32_t(*function)(int32_t, int32_t, ...),
 		:
 		: [function_addr]"m"(function), [x64_segment]"r"(x64_code_segment), [stack_segment]"m"(dummy_segment)
 	);
+	__asm {}
 }
 
 #define BoolStr(val) \
@@ -3153,10 +3157,6 @@ gnu_noinline void test_sqrt_thing() {
 
 //static inline constexpr size_t kjwebkwrb = sizeof_template_impl<std::wstring>();
 
-bool dumb_x64_hack() {
-	//std::string
-}
-
 #if !IS_X64
 #pragma comment (lib, "onecore.lib")
 #endif
@@ -3907,11 +3907,47 @@ no_qpc_tsc:
 	return frequency;
 }
 
+template<typename T>
+bool horrible_is_even(T val) {
+#pragma float_control(precise, on)
+#pragma STDC FENV_ACCESS ON
+	static_assert(std::numeric_limits<T>::digits <= LDBL_MANT_DIG);
+	fenv_t env;
+	feholdexcept(&env);
+	volatile long double temp = __builtin_fabsl(val) + MACRO_CATW(0x1p, LDBL_MANT_DIG, L);
+	bool ret = fetestexcept(FE_INEXACT) & FE_INEXACT;
+	fesetenv(&env);
+	return !ret;
+}
+
 //#include "make_sjis_table.cpp"
+//#include "zero_private/pretty_microcode.cpp"
+
+
+#define DELAY_LOAD_FUNC(func, dll) \
+using MACRO_CAT(func,_t) = decltype(func); \
+MACRO_CAT(func,_t)* MACRO_CAT(func,_ptr) = NULL;
 
 int stdcall main(int argc, char* argv[]) {
 	
 	//sort_sjis_table();
+
+	//format_386();
+
+	/*
+	auto fcw = current_fcw();
+	fcw.precision = ExtendedPrecision;
+	load_fcw(fcw);
+
+	{
+		int32_t i = 0x7FFFFFFF;
+		do {
+			bool horrible = horrible_is_even(i);
+			bool even = !(i & 1);
+			if (even != horrible) __asm int 3
+		} while (++i);
+	}
+	*/
 
 	return 0;
 
@@ -7387,8 +7423,8 @@ void x64_inject_test() {
 
 #include <atomic>
 
-//#define _HAS_CXX20 1
-//#include <bit>
+#define _HAS_CXX20 1
+#include <bit>
 
 // C++ Concurrency Named Requirements:
 // BasicLockable
@@ -11137,7 +11173,7 @@ dllexport int64_t alldiv_msvc(int64_t paramA, int64_t paramB) {
 		);
 		ret = shiftedA.low;
 
-		B * ret.low;
+		//B * ret.low;
 
 
 		uint32_t C = B.high * ret.low;

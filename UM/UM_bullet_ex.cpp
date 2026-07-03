@@ -8,8 +8,13 @@
 #pragma clang diagnostic ignored "-Wswitch"
 
 #if !CLANG_CL && __INTELLISENSE__
-#define _HAS_CXX17 1
-#define _HAS_CXX20 0
+//#define _HAS_CXX17 1
+#define _HAS_CXX20 1
+#endif
+#if __INTELLISENSE__
+#define ISENSE_JANK(real, fake) fake
+#else
+#define ISENSE_JANK(real, fake) real
 #endif
 
 #define SHARD WINAPI_SHARD
@@ -47,6 +52,8 @@
 #define INCLUDE_PATCH_INSTRUCTIONS 0
 #define ENABLE_THIRD_BOSS_BAR 1
 #define QUICKLOAD 0
+
+#define HITBOX_VIEW 1
 
 #define INCLUDE_PATCH_CODE 0
 
@@ -534,7 +541,7 @@ dllexport gnu_noinline void fastcall circle_pos(float* x, float* y, float angle,
 		FMUL magnitude
 		MOV EAX, y
 		FSTP DWORD PTR [EAX]
-	};
+	}
 #else
 	__asm {
 		MOV RAX, x
@@ -545,7 +552,7 @@ dllexport gnu_noinline void fastcall circle_pos(float* x, float* y, float angle,
 		FMUL magnitude
 		MOV RAX, y
 		FSTP DWORD PTR [RAX]
-	};
+	}
 #endif
 }
 
@@ -16180,12 +16187,8 @@ enum AnmBlendMode : uint8_t {
 	BlendHardcoded = 11,
 	ENUM_MAX_VALUE_DECLARE(AnmBlendMode)
 };
-#if !__INTELLISENSE__
-static inline constexpr size_t ANM_BLEND_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmBlendMode));
+static inline constexpr size_t ANM_BLEND_MODE_BIT_WIDTH = ISENSE_JANK(std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmBlendMode)), 4);
 static_assert(ANM_BLEND_MODE_BIT_WIDTH == 4);
-#else
-static inline constexpr size_t ANM_BLEND_MODE_BIT_WIDTH = 4;
-#endif
 
 enum AnmResampleMode : int8_t {
 	NoPreviousResampleMode = -1,
@@ -16193,12 +16196,8 @@ enum AnmResampleMode : int8_t {
 	ResampleNearestPoint = 1,
 	ENUM_MAX_VALUE_DECLARE(AnmResampleMode)
 };
-#if !__INTELLISENSE__
-static inline constexpr size_t ANM_RESAMPLE_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmResampleMode));
+static inline constexpr size_t ANM_RESAMPLE_MODE_BIT_WIDTH = ISENSE_JANK(std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmResampleMode)), 1);
 static_assert(ANM_RESAMPLE_MODE_BIT_WIDTH == 1);
-#else
-static inline constexpr size_t ANM_RESAMPLE_MODE_BIT_WIDTH = 1;
-#endif
 
 enum AnmOriginMode : uint8_t {
 	OriginWindow = 0,
@@ -16206,12 +16205,8 @@ enum AnmOriginMode : uint8_t {
 	OriginFullResolution = 2,
 	ENUM_MAX_VALUE_DECLARE(AnmOriginMode)
 };
-#if !__INTELLISENSE__
-static inline constexpr size_t ANM_ORIGIN_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmOriginMode));
+static inline constexpr size_t ANM_ORIGIN_MODE_BIT_WIDTH = ISENSE_JANK(std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmOriginMode)), 2);
 static_assert(ANM_ORIGIN_MODE_BIT_WIDTH == 2);
-#else
-static inline constexpr size_t ANM_ORIGIN_MODE_BIT_WIDTH = 2;
-#endif
 
 enum AnmResolutionMode : uint8_t {
 	ResolutionNoScaling = 0,
@@ -16225,12 +16220,8 @@ enum AnmResolutionMode : uint8_t {
 #endif
 	ENUM_MAX_VALUE_DECLARE(AnmResolutionMode)
 };
-#if !__INTELLISENSE__
-static inline constexpr size_t ANM_RESOLUTION_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmResolutionMode));
+static inline constexpr size_t ANM_RESOLUTION_MODE_BIT_WIDTH = ISENSE_JANK(std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmResolutionMode)), 3);
 static_assert(ANM_RESOLUTION_MODE_BIT_WIDTH == 3);
-#else
-static inline constexpr size_t ANM_RESOLUTION_MODE_BIT_WIDTH = 3;
-#endif
 
 enum AnmXAnchorMode : uint8_t {
 	AnchorXCenter = 0,
@@ -16238,12 +16229,8 @@ enum AnmXAnchorMode : uint8_t {
 	AnchorXRight = 2,
 	ENUM_MAX_VALUE_DECLARE(AnmXAnchorMode)
 };
-#if !__INTELLISENSE__
-static inline constexpr size_t ANM_X_ANCHOR_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmXAnchorMode));
+static inline constexpr size_t ANM_X_ANCHOR_MODE_BIT_WIDTH = ISENSE_JANK(std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmXAnchorMode)), 2);
 static_assert(ANM_X_ANCHOR_MODE_BIT_WIDTH == 2);
-#else
-static inline constexpr size_t ANM_X_ANCHOR_MODE_BIT_WIDTH = 2;
-#endif
 
 enum AnmYAnchorMode : uint8_t {
 	AnchorYCenter = 0,
@@ -16251,12 +16238,8 @@ enum AnmYAnchorMode : uint8_t {
 	AnchorYBottom = 2,
 	ENUM_MAX_VALUE_DECLARE(AnmYAnchorMode)
 };
-#if !__INTELLISENSE__
-static inline constexpr size_t ANM_Y_ANCHOR_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmYAnchorMode));
+static inline constexpr size_t ANM_Y_ANCHOR_MODE_BIT_WIDTH = ISENSE_JANK(std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmYAnchorMode)), 2);
 static_assert(ANM_Y_ANCHOR_MODE_BIT_WIDTH == 2);
-#else
-static inline constexpr size_t ANM_Y_ANCHOR_MODE_BIT_WIDTH = 2;
-#endif
 
 enum AnmColorMode : uint8_t {
 	UseColor1 = 0,
@@ -16266,24 +16249,16 @@ enum AnmColorMode : uint8_t {
 	ColorBlend = 4,
 	ENUM_MAX_VALUE_DECLARE(AnmColorMode)
 };
-#if !__INTELLISENSE__
-static inline constexpr size_t ANM_COLOR_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmColorMode));
+static inline constexpr size_t ANM_COLOR_MODE_BIT_WIDTH = ISENSE_JANK(std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmColorMode)), 3);
 static_assert(ANM_COLOR_MODE_BIT_WIDTH == 3);
-#else
-static inline constexpr size_t ANM_COLOR_MODE_BIT_WIDTH = 3;
-#endif
 
 enum AnmPositionMode : uint8_t {
 	UsePosition1 = 0,
 	UsePosition2 = 1,
 	ENUM_MAX_VALUE_DECLARE(AnmPositionMode)
 };
-#if !__INTELLISENSE__
-static inline constexpr size_t ANM_POSITION_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmPositionMode));
+static inline constexpr size_t ANM_POSITION_MODE_BIT_WIDTH = ISENSE_JANK(std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmPositionMode)), 1);
 static_assert(ANM_POSITION_MODE_BIT_WIDTH == 1);
-#else
-static inline constexpr size_t ANM_POSITION_MODE_BIT_WIDTH = 1;
-#endif
 
 enum AnmUVMode : uint8_t {
 	Wrap = 0,
@@ -16291,24 +16266,16 @@ enum AnmUVMode : uint8_t {
 	Mirror = 2,
 	ENUM_MAX_VALUE_DECLARE(AnmUVMode)
 };
-#if !__INTELLISENSE__
-static inline constexpr size_t ANM_UV_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmUVMode));
+static inline constexpr size_t ANM_UV_MODE_BIT_WIDTH = ISENSE_JANK(std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmUVMode)), 2);
 static_assert(ANM_UV_MODE_BIT_WIDTH == 2);
-#else
-static inline constexpr size_t ANM_UV_MODE_BIT_WIDTH = 2;
-#endif
 
 enum AnmRNGMode : uint8_t {
 	ReplayRNG = 0,
 	NormalRNG = 1,
 	ENUM_MAX_VALUE_DECLARE(AnmRNGMode)
 };
-#if !__INTELLISENSE__
-static inline constexpr size_t ANM_RNG_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmRNGMode));
+static inline constexpr size_t ANM_RNG_MODE_BIT_WIDTH = ISENSE_JANK(std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmRNGMode)), 1);
 static_assert(ANM_RNG_MODE_BIT_WIDTH == 1);
-#else
-static inline constexpr size_t ANM_RNG_MODE_BIT_WIDTH = 1;
-#endif
 
 enum AnmRotationMode : uint8_t {
 	RotationXYZ = 0,
@@ -16320,7 +16287,7 @@ enum AnmRotationMode : uint8_t {
 	RotationNone = 6,
 	ENUM_MAX_VALUE_DECLARE(AnmRotationMode)
 };
-static inline constexpr size_t ANM_ROTATION_MODE_BIT_WIDTH = std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmRotationMode));
+static inline constexpr size_t ANM_ROTATION_MODE_BIT_WIDTH = ISENSE_JANK(std::bit_width<uint32_t>(ENUM_MAX_VALUE(AnmRotationMode)), 3);
 static_assert(ANM_ROTATION_MODE_BIT_WIDTH == 3);
 
 // size: 0x60C
@@ -16395,43 +16362,43 @@ struct AnmVM {
 				uint32_t rotation_enabled : 1; // 3
 				uint32_t scale_enabled : 1; // 4
 				uint32_t uv_scale_enabled : 1; // 5
-				uint32_t blend_mode : ANM_BLEND_MODE_BIT_WIDTH; // 6-9 (4 bit)
+				uint32_t blend_mode : ISENSE_JANK(ANM_BLEND_MODE_BIT_WIDTH, 4); // 6-9 (4 bit)
 				uint32_t : 1; // 10
-				uint32_t position_mode : ANM_POSITION_MODE_BIT_WIDTH; // 11 (1 bit)
+				uint32_t position_mode : ISENSE_JANK(ANM_POSITION_MODE_BIT_WIDTH, 1); // 11 (1 bit)
 				uint32_t mirror_x : 1; // 12
 				uint32_t mirror_y : 1; // 13
 				uint32_t disable_z_write : 1; // 14
 				uint32_t __visible3 : 1; // 15
 				uint32_t __unknown_flag_av_W : 1; // 16
 				uint32_t __preserve_world_matrix : 1; // 17
-				uint32_t color_mode : ANM_COLOR_MODE_BIT_WIDTH; // 18-20 (3 bit)
+				uint32_t color_mode : ISENSE_JANK(ANM_COLOR_MODE_BIT_WIDTH, 3); // 18-20 (3 bit)
 				uint32_t : 1; // 21
 				uint32_t __stop_script : 1; // 22
-				uint32_t x_anchor_mode : ANM_X_ANCHOR_MODE_BIT_WIDTH; // 23-24 (2 bit)
-				uint32_t y_anchor_mode : ANM_Y_ANCHOR_MODE_BIT_WIDTH; // 25-26 (2 bit)
-				uint32_t render_mode : ANM_RENDER_MODE_BIT_WIDTH; // 27-31 (5 bit)
+				uint32_t x_anchor_mode : ISENSE_JANK(ANM_X_ANCHOR_MODE_BIT_WIDTH, 2); // 23-24 (2 bit)
+				uint32_t y_anchor_mode : ISENSE_JANK(ANM_Y_ANCHOR_MODE_BIT_WIDTH, 2); // 25-26 (2 bit)
+				uint32_t render_mode : ISENSE_JANK(ANM_RENDER_MODE_BIT_WIDTH, 5); // 27-31 (5 bit)
 				//uint32_t : 1; // 32
 			};
 		};
 		union {
 			uint32_t flags_high; // 0x538
 			struct {
-				uint32_t v_scroll_mode : ANM_UV_MODE_BIT_WIDTH; // 1-2 (2 bit)
-				uint32_t u_scroll_mode : ANM_UV_MODE_BIT_WIDTH; // 3-4 (2 bit)
-				uint32_t rotation_mode : ANM_ROTATION_MODE_BIT_WIDTH; // 5-7 (3 bit)
+				uint32_t v_scroll_mode : ISENSE_JANK(ANM_UV_MODE_BIT_WIDTH, 2); // 1-2 (2 bit)
+				uint32_t u_scroll_mode : ISENSE_JANK(ANM_UV_MODE_BIT_WIDTH, 2); // 3-4 (2 bit)
+				uint32_t rotation_mode : ISENSE_JANK(ANM_ROTATION_MODE_BIT_WIDTH, 3); // 5-7 (3 bit)
 				uint32_t state : 2; // 8-9
 				uint32_t auto_rotate : 1; // 10
 				uint32_t __unknown_flag_av_T : 1; // 11
 				uint32_t slowdown_immune : 1; // 12
-				uint32_t rand_mode : ANM_RNG_MODE_BIT_WIDTH; // 13 (1 bit)
-				uint32_t resample_mode : ANM_RESAMPLE_MODE_BIT_WIDTH; // 14 (1 bit)
+				uint32_t rand_mode : ISENSE_JANK(ANM_RNG_MODE_BIT_WIDTH, 1); // 13 (1 bit)
+				uint32_t resample_mode : ISENSE_JANK(ANM_RESAMPLE_MODE_BIT_WIDTH, 1); // 14 (1 bit)
 				uint32_t text_outline_disable : 1; // 15
 				uint32_t __continual_sprite_window : 1; // 16
 				uint32_t __run_type : 2; // 17-18
 				uint32_t __treat_as_root : 1; // 19
 				uint32_t : 1; // 20
-				uint32_t origin_mode : ANM_ORIGIN_MODE_BIT_WIDTH; // 21-22 (2 bit)
-				uint32_t resolution_mode : ANM_RESOLUTION_MODE_BIT_WIDTH; // 23-25 (3 bit)
+				uint32_t origin_mode : ISENSE_JANK(ANM_ORIGIN_MODE_BIT_WIDTH, 2); // 21-22 (2 bit)
+				uint32_t resolution_mode : ISENSE_JANK(ANM_RESOLUTION_MODE_BIT_WIDTH, 3); // 23-25 (3 bit)
 				uint32_t inherit_rotation : 1; // 26
 				uint32_t deltas_enabled : 1; // 27
 				uint32_t colorize_children : 1; // 28
@@ -22048,18 +22015,20 @@ public:
 						break;
 					}
 					case ModePolygonStretch: { // 31
+						float size2_x = vm->data.sprite_size.x * vm->data.scale2.x;
 						this->__draw_polygon_stretch(
 							position.x, position.y,
-							size.x, size.y, angle,
+							size2_x, size.x, angle,
 							vm->data.current_context.int_vars[0],
 							vm->data.color1, vm->data.color2
 						);
 						break;
 					}
 					case ModePolygonStretchHollow: { // 33
+						float size2_x = vm->data.sprite_size.x * vm->data.scale2.x;
 						this->__draw_polygon_stretch_hollow(
 							position.x, position.y,
-							size.x, size.y, angle,
+							size2_x, size.x, angle,
 							vm->data.current_context.int_vars[0],
 							vm->data.color1
 						);
@@ -29330,20 +29299,20 @@ struct ShtEntry {
 	int8_t __long_timer_modulo; // 0x2A
 	int8_t __long_timer_value; // 0x2B
 	union {
-		PTR32Z<BulletInitFunc> __init_func; // 0x2C
-		uint32_t __init_func_index; // 0x2C
+		PTR32Z<BulletInitFunc> init_func; // 0x2C
+		uint32_t init_func_index; // 0x2C
 	};
 	union {
-		PTR32Z<BulletTickFunc> __on_tick_func; // 0x30
-		uint32_t __on_tick_func_index; // 0x30
+		PTR32Z<BulletTickFunc> on_tick_func; // 0x30
+		uint32_t on_tick_func_index; // 0x30
 	};
 	union {
 		PTR32Z<void> __unknown_func_C; // 0x34
 		uint32_t __unknown_func_C_index; // 0x34
 	};
 	union {
-		PTR32Z<BulletDamageFunc> __damage_func; // 0x38
-		uint32_t __damage_func_index; // 0x38
+		PTR32Z<BulletDamageFunc> damage_func; // 0x38
+		uint32_t damage_func_index; // 0x38
 	};
 	unknown_fields(0x10); // 0x3C
 	float __float_4C; // 0x4C
@@ -29367,10 +29336,10 @@ VFO(0x28, ShtEntry, __card_long_timer_modulo);
 VFO(0x29, ShtEntry, __card_long_timer_value);
 VFO(0x2A, ShtEntry, __long_timer_modulo);
 VFO(0x2B, ShtEntry, __long_timer_value);
-VFO(0x2C, ShtEntry, __init_func);
-VFO(0x30, ShtEntry, __on_tick_func);
+VFO(0x2C, ShtEntry, init_func);
+VFO(0x30, ShtEntry, on_tick_func);
 VFO(0x34, ShtEntry, __unknown_func_C);
-VFO(0x38, ShtEntry, __damage_func);
+VFO(0x38, ShtEntry, damage_func);
 VFO(0x4C, ShtEntry, __float_4C);
 VSS(0x5C, ShtEntry);
 #pragma endregion
@@ -29397,8 +29366,8 @@ struct ShtFile {
 	unknown_fields(0x14); // 0x2C
 	Float2 __float2_array_40[10]; // 0x40
 	Float2 __float2_array_90[10]; // 0x90
-	PTR32Z<ShtEntry> __entry_ptr_array_E0[MAX_SHT_ENTRY_COUNT]; // 0xE0
-	ShtEntry __entry_array_180[]; // 0x180
+	PTR32Z<ShtEntry> entry_ptrs[MAX_SHT_ENTRY_COUNT]; // 0xE0
+	ShtEntry entry_array[]; // 0x180
 };
 #pragma region // ShtFile Validation
 VFO(0x2, ShtFile, __entry_count);
@@ -29411,8 +29380,8 @@ VFO(0x24, ShtFile, power_per_level);
 VFO(0x28, ShtFile, damage_cap);
 VFO(0x40, ShtFile, __float2_array_40);
 VFO(0x90, ShtFile, __float2_array_90);
-VFO(0xE0, ShtFile, __entry_ptr_array_E0);
-VFO(0x180, ShtFile, __entry_array_180);
+VFO(0xE0, ShtFile, entry_ptrs);
+VFO(0x180, ShtFile, entry_array);
 #pragma endregion
 
 typedef struct Player Player;
@@ -30519,10 +30488,10 @@ struct PlayerBullet {
 	Float3 __float3_D4; // 0xD4
 	AnmLoaded* bullet_anm; // 0xE0
 	PlayerOption* option; // 0xE4
-	BulletInitFunc* __init_func; // 0xE8
-	BulletTickFunc* __on_tick_func; // 0xEC
-	void* __func_ptr_F0; // 0xF0
-	BulletDamageFunc* __damage_func; // 0xF4
+	BulletInitFunc* init_func; // 0xE8
+	BulletTickFunc* on_tick_func; // 0xEC
+	void* __unknown_func_C; // 0xF0
+	BulletDamageFunc* damage_func; // 0xF4
 	// 0xF8
 
 	forceinline void on_tick();
@@ -30631,10 +30600,10 @@ VFO32(0xB0, PlayerBullet, damage_source_index);
 VFO32(0xD4, PlayerBullet, __float3_D4);
 VFO32(0xE0, PlayerBullet, bullet_anm);
 VFO32(0xE4, PlayerBullet, option);
-VFO32(0xE8, PlayerBullet, __init_func);
-VFO32(0xEC, PlayerBullet, __on_tick_func);
-VFO32(0xF0, PlayerBullet, __func_ptr_F0);
-VFO32(0xF4, PlayerBullet, __damage_func);
+VFO32(0xE8, PlayerBullet, init_func);
+VFO32(0xEC, PlayerBullet, on_tick_func);
+VFO32(0xF0, PlayerBullet, __unknown_func_C);
+VFO32(0xF4, PlayerBullet, damage_func);
 VSS32(0xF8, PlayerBullet);
 #pragma endregion
 
@@ -30679,7 +30648,7 @@ static inline constexpr size_t PLAYER_OPTION_COUNT = 4;
 static inline constexpr size_t PLAYER_EQUIPMENT_OPTION_COUNT = 12;
 
 static inline constexpr size_t PLAYER_TOTAL_OPTION_COUNT = PLAYER_OPTION_COUNT + PLAYER_EQUIPMENT_OPTION_COUNT;
-static inline constexpr size_t PLAYER_TOTAL_OPTION_COUNT_BIT_WIDTH = std::bit_width(PLAYER_TOTAL_OPTION_COUNT - 1);
+static inline constexpr size_t PLAYER_TOTAL_OPTION_COUNT_BIT_WIDTH = ISENSE_JANK(std::bit_width(PLAYER_TOTAL_OPTION_COUNT - 1), 4);
 
 static inline constexpr size_t PLAYER_BULLET_COUNT = 0x200;
 static inline constexpr size_t PLAYER_DAMAGE_SOURCE_COUNT = 0x400;
@@ -31354,7 +31323,7 @@ public:
 	dllexport gnu_noinline ZUNResult thiscall shoot_one_bullet(int32_t sht_entry_index, int32_t time, Float3* position, PlayerOption* option) ASR(0x45E930) {
 		uint8_t index2 = sht_entry_index;
 		int32_t index1 = sht_entry_index >> 8;
-		ShtEntry* entry_ptr = &this->sht_file->__entry_ptr_array_E0[index1][index2];
+		ShtEntry* entry_ptr = &this->sht_file->entry_ptrs[index1][index2];
 
 		if (entry_ptr->__byte_21 == 2) {
 			int32_t option_index = entry_ptr->__option_index;
@@ -31391,7 +31360,7 @@ public:
 
 			int32_t sht_index = sht_entry_index1 << 8;
 			int32_t index1 = sht_index >> 8;
-			ShtEntry* entry_ptr = &player->sht_file->__entry_ptr_array_E0[index1][0];
+			ShtEntry* entry_ptr = &player->sht_file->entry_ptrs[index1][0];
 
 			player->bullet_anm = ability_manager_get_ability_anm();
 			Float3 position = card_option->get_position();
@@ -31490,17 +31459,17 @@ public:
 					do {
 						sht_file = this->sht_file;
 
-						sht_file->__entry_ptr_array_E0[i] = pointer_raw_offset(sht_file->__entry_ptr_array_E0[i], &sht_file->__entry_array_180[0]);
+						sht_file->entry_ptrs[i] = pointer_raw_offset(sht_file->entry_ptrs[i], &sht_file->entry_array[0]);
 						
 						for (
-							ShtEntry* entry_ptr = sht_file->__entry_ptr_array_E0[i];
+							ShtEntry* entry_ptr = sht_file->entry_ptrs[i];
 							entry_ptr->__short_timer_modulo >= 0;
 							++entry_ptr
 						) {
-							entry_ptr->__init_func = PLAYER_BULLET_INIT_FUNCS[entry_ptr->__init_func_index];
-							entry_ptr->__on_tick_func = PLAYER_BULLET_TICK_FUNCS[entry_ptr->__on_tick_func_index];
+							entry_ptr->init_func = PLAYER_BULLET_INIT_FUNCS[entry_ptr->init_func_index];
+							entry_ptr->on_tick_func = PLAYER_BULLET_TICK_FUNCS[entry_ptr->on_tick_func_index];
 							entry_ptr->__unknown_func_C = PLAYER_FUNC_TABLE_C[entry_ptr->__unknown_func_C_index];
-							entry_ptr->__damage_func = PLAYER_BULLET_DAMAGE_FUNCS[entry_ptr->__damage_func_index];
+							entry_ptr->damage_func = PLAYER_BULLET_DAMAGE_FUNCS[entry_ptr->damage_func_index];
 						}
 						
 						sht_file = this->sht_file;
@@ -31806,8 +31775,8 @@ private:
 		float radius_squared = radius * radius;
 		if (player_radius * player_radius + radius_squared <= distance_squared) {
 			radius /= 2.5f;
-			float A = __max(radius, 40.0f) + player_radius;
-			if (A * A + radius_squared <= distance_squared) {
+			player_radius += __max(radius, 40.0f);
+			if (player_radius * player_radius + radius_squared <= distance_squared) {
 				return NoCollision;
 			}
 			return GrazeCollision;
@@ -32195,7 +32164,7 @@ dllexport gnu_noinline int32_t fastcall PlayerOption::__position_func_card_misum
 // 0x45F6A0
 dllexport gnu_noinline int32_t fastcall PlayerDamageSource::__unknown_func_1(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius) {
 	PlayerBullet* bullet = get_player_bullet_by_index(self->__player_bullet_index);
-	if (auto* damage_func = bullet->__damage_func) {
+	if (auto* damage_func = bullet->damage_func) {
 		return damage_func(bullet, position, size, rotation, radius);
 	} else {
 		return bullet->__sub_45F6F0();
@@ -32227,9 +32196,9 @@ dllexport gnu_noinline int32_t fastcall PlayerDamageSource::__unknown_func_3(Pla
 forceinline void PlayerBullet::on_tick() {
 	if (this->state != PlayerBulletState::Inactive) { // 0
 
-		ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->__entry_ptr_array_E0[this->__sht_entry_index1][this->__sht_entry_index2];
+		ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->entry_ptrs[this->__sht_entry_index1][this->__sht_entry_index2];
 
-		if (auto func_ptr = this->__on_tick_func) {
+		if (auto func_ptr = this->on_tick_func) {
 			if (ZUN_FAILED(func_ptr(this))) {
 				return;
 			}
@@ -32327,7 +32296,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__init_func_2(PlayerBullet
 dllexport gnu_noinline int32_t fastcall PlayerBullet::__init_func_3(PlayerBullet* self, PlayerDamageSource* damage_source) {
 	Player* player = PLAYER_PTR;
 
-	ShtEntry* entry_ptr = &player->sht_file->__entry_ptr_array_E0[self->__sht_entry_index1][self->__sht_entry_index2];
+	ShtEntry* entry_ptr = &player->sht_file->entry_ptrs[self->__sht_entry_index1][self->__sht_entry_index2];
 
 	self->motion.position = self->option->get_position();
 
@@ -32367,7 +32336,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_1(PlayerBull
 // 0x460320
 dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_2(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
 	Player* player = PLAYER_PTR;
-	ShtEntry* entry_ptr = &player->sht_file->__entry_ptr_array_E0[self->__sht_entry_index1][self->__sht_entry_index2];
+	ShtEntry* entry_ptr = &player->sht_file->entry_ptrs[self->__sht_entry_index1][self->__sht_entry_index2];
 	self->__bool_94 = true;
 	if (!self->__bool_98) {
 		self->__vm_id_8.interrupt_tree(2);
@@ -32449,7 +32418,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_2(PlayerBull
 // 0x4609C0
 dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_3(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
 	Player* player = PLAYER_PTR;
-	ShtEntry* entry_ptr = &player->sht_file->__entry_ptr_array_E0[self->__sht_entry_index1][self->__sht_entry_index2];
+	ShtEntry* entry_ptr = &player->sht_file->entry_ptrs[self->__sht_entry_index1][self->__sht_entry_index2];
 	int32_t index = player->create_damage_source_circle(&self->motion.position, 24.0f, 1.0f, 10, entry_ptr->damage);
 	PlayerDamageSource* new_damage_source = player->get_damage_source_by_index(index);
 	new_damage_source->__hit_frequency = 4;
@@ -32468,7 +32437,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_3(PlayerBull
 
 // 0x460CB0
 dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_4(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
-	ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->__entry_ptr_array_E0[self->__sht_entry_index1][self->__sht_entry_index2];
+	ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->entry_ptrs[self->__sht_entry_index1][self->__sht_entry_index2];
 	Player* player = PLAYER_PTR;
 	int32_t index = player->create_damage_source_circle(&self->motion.position, 24.0f, entry_ptr->__float_4C, 20, entry_ptr->damage);
 	PlayerDamageSource* new_damage_source = player->get_damage_source_by_index(index);
@@ -34773,7 +34742,7 @@ struct CardSaki : CardBase {
 		int32_t sht_entry_index = bullet->__sht_entry_index;
 		uint8_t index2 = sht_entry_index;
 		int32_t index1 = sht_entry_index >> 8;
-		ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->__entry_ptr_array_E0[index1][index2];
+		ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->entry_ptrs[index1][index2];
 		if (entry_ptr->__byte_21 == 7) {
 			bullet->__vm_id_8.set_scale(1.5f);
 			bullet->damage = entry_ptr->damage * 1.4f;
@@ -34917,10 +34886,10 @@ struct CardSuwako : CardBase {
 		int32_t sht_entry_index = bullet->__sht_entry_index;
 		uint8_t index2 = sht_entry_index;
 		int32_t index1 = sht_entry_index >> 8;
-		ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->__entry_ptr_array_E0[index1][index2];
+		ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->entry_ptrs[index1][index2];
 		if (entry_ptr->__byte_21 == 7) {
 			if (!(REPLAY_RNG.rand_uint() % 8)) {
-				bullet->__damage_func = &PlayerBullet::create_explosion_suwako_card;
+				bullet->damage_func = &PlayerBullet::create_explosion_suwako_card;
 			}
 		}
 		return 0;
@@ -36881,7 +36850,7 @@ struct CardMomoyo : CardBase {
 		int32_t sht_entry_index = bullet->__sht_entry_index;
 		uint8_t index2 = sht_entry_index;
 		int32_t index1 = sht_entry_index >> 8;
-		ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->__entry_ptr_array_E0[index1][index2];
+		ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->entry_ptrs[index1][index2];
 
 		this->prev_counter_value = MOMOYO_CARD_COUNTER;
 
@@ -38708,7 +38677,7 @@ end:
 dllexport gnu_noinline ZUNResult thiscall PlayerBullet::shoot(int32_t sht_entry_index, int32_t time, Float3* position, PlayerOption* option) {
 	uint8_t index2 = sht_entry_index;
 	int32_t index1 = sht_entry_index >> 8;
-	ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->__entry_ptr_array_E0[index1][index2];
+	ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->entry_ptrs[index1][index2];
 
 	this->state = PlayerBulletState::State1; // 1
 	this->__sht_entry_index = sht_entry_index;
@@ -38717,10 +38686,10 @@ dllexport gnu_noinline ZUNResult thiscall PlayerBullet::shoot(int32_t sht_entry_
 	this->size = entry_ptr->size;
 	this->option = option;
 	this->__focused = PLAYER_PTR->data.focused;
-	this->__init_func = entry_ptr->__init_func;
-	this->__on_tick_func = entry_ptr->__on_tick_func;
-	this->__func_ptr_F0 = entry_ptr->__unknown_func_C;
-	this->__damage_func = entry_ptr->__damage_func;
+	this->init_func = entry_ptr->init_func;
+	this->on_tick_func = entry_ptr->on_tick_func;
+	this->__unknown_func_C = entry_ptr->__unknown_func_C;
+	this->damage_func = entry_ptr->damage_func;
 	this->motion.zero_contents();
 
 	int8_t option_index = entry_ptr->__option_index % PLAYER_TOTAL_OPTION_COUNT;
@@ -38813,7 +38782,7 @@ normal_angle:
 
 	this->__unknown_flag_pb_A = true;
 
-	auto* init_func = this->__init_func;
+	auto* init_func = this->init_func;
 	if (
 		init_func &&
 		ZUN_FAILED(init_func(this, damage_source))
@@ -39089,7 +39058,7 @@ dllexport gnu_noinline int thiscall Player::tick_shooting_state() {
 				sht_index += sht_file->max_level + 1;
 			}
 
-			ShtEntry* entry_ptr = sht_file->__entry_ptr_array_E0[sht_index];
+			ShtEntry* entry_ptr = sht_file->entry_ptrs[sht_index];
 
 			int8_t short_modulo = entry_ptr->__short_timer_modulo;
 			if (short_modulo >= 0) {
@@ -40147,7 +40116,7 @@ fail:
 // 0x45FC80
 dllexport gnu_noinline ZUNResult fastcall PlayerBullet::__on_tick_2(PlayerBullet* self) {
 	Player* player = PLAYER_PTR;
-	ShtEntry* entry_ptr = &player->sht_file->__entry_ptr_array_E0[self->__sht_entry_index1][self->__sht_entry_index2];
+	ShtEntry* entry_ptr = &player->sht_file->entry_ptrs[self->__sht_entry_index1][self->__sht_entry_index2];
 	Float3 position = self->option->get_position();
 	self->motion.position = position;
 
@@ -45501,6 +45470,13 @@ struct Bullet {
 		if (this->scale_enabled) {
 			this->vm.set_scale2(this->scale);
 		}
+#if HITBOX_VIEW
+		this->vm.data.render_mode = ModePolygonHollow;
+		this->vm.data.sprite_size = this->hitbox_size;
+		this->vm.data.scale = { 1.0f, 1.0f };
+		this->vm.data.current_context.int_vars[0] = 32;
+		this->vm.data.color1 = COLOR(255, 255, 0, 0);
+#endif
 		ANM_MANAGER_PTR->draw_vm(&this->vm);
 	}
 };
@@ -49555,16 +49531,19 @@ dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_set_4_ex(EnemyData* 
 	return ZUN_SUCCESS;
 }
 
+#pragma push_macro("ByteArg")
 #pragma push_macro("IntArg")
 #pragma push_macro("ShortArg")
 #pragma push_macro("WordArg")
 #pragma push_macro("FloatArg")
 
+#undef ByteArg
 #undef IntArg
 #undef ShortArg
 #undef WordArg
 #undef FloatArg
 #define IntArg(index) (current_effect.int_values[index])
+#define ByteArg(index) (*(uint8_t*)&IntArg(index))
 #define ShortArg(index) (*(int16_t*)&IntArg(index))
 #define WordArg(index) (*(uint16_t*)&IntArg(index))
 #define FloatArg(index) (current_effect.float_values[index])
@@ -49598,7 +49577,7 @@ dllexport gnu_noinline void thiscall LaserLine::run_effects() {
 				BulletEffectData& effect_data = this->effect_accel;
 				effect_data.acceleration = FloatArg(0);
 				float angle_arg = FloatArg(1);
-				if (angle_arg <= -999.0f) {
+				if (angle_arg <= -990.0f) {
 					angle_arg = this->angle;
 				}
 				else if (angle_arg >= 990.0f) {
@@ -49630,7 +49609,7 @@ dllexport gnu_noinline void thiscall LaserLine::run_effects() {
 				BulletEffectData& effect_data = this->effect_angle;
 				effect_data.angle = FloatArg(0);
 				float speed_arg = FloatArg(1);
-				if (!(speed_arg > -999990.0f)) {
+				if (!(speed_arg > -999.0f)) {
 					speed_arg = this->speed;
 				}
 				effect_data.speed = speed_arg;
@@ -50311,14 +50290,14 @@ dllexport void Bullet::run_effects() {
 				effect_data.speed = this->speed;
 				effect_data.target.z = 0.0f;
 				effect_data.duration = IntArg(0);
-				effect_data.mode = IntArg(1);
+				effect_data.mode = ByteArg(1);
 				effect_data.timer.reset();
 				this->effect_move_interp.initial_value = this->position;
 				this->effect_move_interp.final_value = effect_data.target;
 				this->effect_move_interp.bezier1 = ZERO_FLOAT3;
 				this->effect_move_interp.bezier2 = ZERO_FLOAT3;
 				this->effect_move_interp.end_time = IntArg(0);
-				this->effect_move_interp.mode = IntArg(1);
+				this->effect_move_interp.mode = ByteArg(1);
 				this->effect_move_interp.time.reset();
 				break;
 			}
@@ -50370,10 +50349,10 @@ dllexport void Bullet::run_effects() {
 			case EX_ENEMY: {
 				EnemyInitData enemy_data;
 				enemy_data.position = this->position;
-				enemy_data.int_vars[0] = IntArg(0); // I0 = etEx a
-				enemy_data.int_vars[1] = IntArg(1); // I1 = etEx b
-				enemy_data.int_vars[2] = IntArg(2); // I2 = etEx c
-				enemy_data.int_vars[3] = IntArg(3); // I3 = etEx d
+				enemy_data.int_vars[0] = IntArg(0); // EI0 = A
+				enemy_data.int_vars[1] = IntArg(1); // EI1 = B
+				enemy_data.int_vars[2] = IntArg(2); // EI2 = C
+				enemy_data.int_vars[3] = IntArg(3); // EI3 = D
 				enemy_data.mirrored = false;
 				enemy_data.__basic_anm_update = false;
 				enemy_data.float_vars[4] = 0.0f;
@@ -50384,10 +50363,10 @@ dllexport void Bullet::run_effects() {
 				enemy_data.life = 10000;
 				enemy_data.score = 0;
 				enemy_data.item_drop = 0;
-				enemy_data.float_vars[0] = FloatArg(0); // F0 = etEx r
-				enemy_data.float_vars[1] = FloatArg(1); // F1 = etEx s
-				enemy_data.float_vars[2] = FloatArg(2); // F2 = etEx m
-				enemy_data.float_vars[3] = FloatArg(3); // F3 = etEx n
+				enemy_data.float_vars[0] = FloatArg(0); // EF0 = R
+				enemy_data.float_vars[1] = FloatArg(1); // EF1 = S
+				enemy_data.float_vars[2] = FloatArg(2); // eF2 = M
+				enemy_data.float_vars[3] = FloatArg(3); // EF3 = N
 				ENEMY_MANAGER_PTR->allocate_new_enemy(current_effect.string, &enemy_data, UNUSED_DWORD);
 				break;
 			}
@@ -50551,6 +50530,7 @@ dllexport void Bullet::run_effects() {
 	}
 }
 
+#pragma pop_macro("ByteArg")
 #pragma pop_macro("IntArg")
 #pragma pop_macro("ShortArg")
 #pragma pop_macro("WordArg")
@@ -53088,7 +53068,7 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
 					goto skip_stack_adjust;
 				case cmp_float_not: // 72
 					this->stack.unary_op([](float value) {
-						return value != 0.0f;
+						return value == 0.0f;
 					});
 					goto skip_stack_adjust;
 				case cmp_or: // 73
@@ -53468,7 +53448,7 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
 						case 0:
 							break;
 						case 1:
-							goto skip_stack_adjust;
+							continue;
 					}
 					break;
 			}
@@ -55923,7 +55903,7 @@ extern "C" {
 static inline constexpr int32_t REPLAYS_PER_PAGE = 25;
 
 // NOTE: Normally I would just use member access to call static
-// function in an attempt to mask over ZUN's janky code layout
+// functions in an attempt to mask over ZUN's janky code layout
 // and make everything more readable. Since most types only have
 // a single instance there's no problem with doing this.
 // 

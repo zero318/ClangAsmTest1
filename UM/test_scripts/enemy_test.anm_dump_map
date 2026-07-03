@@ -1078,7 +1078,7 @@ script 45 script45 {
     layer(Layer7);
     sprite_set(sprite110);
     alpha(0x80);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     rotation_speed(0.0, 0.0, 0.31415927);
     scale(0.0, 0.0);
     loop {
@@ -1095,7 +1095,7 @@ script 46 script46 {
     layer(Layer7);
     sprite_set(sprite108);
     alpha(0x80);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     rotation_speed(0.0, 0.0, 0.31415927);
     scale(0.0, 0.0);
     loop {
@@ -1112,7 +1112,7 @@ script 47 script47 {
     layer(Layer7);
     sprite_set(sprite109);
     alpha(0x80);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     rotation_speed(0.0, 0.0, 0.31415927);
     scale(0.0, 0.0);
     loop {
@@ -1129,7 +1129,7 @@ script 48 script48 {
     layer(Layer7);
     sprite_set(sprite111);
     alpha(0x80);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     rotation_speed(0.0, 0.0, 0.31415927);
     scale(0.0, 0.0);
     loop {
@@ -1142,7 +1142,7 @@ script 48 script48 {
 
 
 script 49 script49 {
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     rotation_speed(0.0, 0.0, 0.31415927);
     blend_mode(Additive);
     layer(Layer7);
@@ -1163,7 +1163,7 @@ script 49 script49 {
 
 
 script 50 script50 {
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     rotation_speed(0.0, 0.0, 0.31415927);
     blend_mode(Additive);
     layer(Layer7);
@@ -1184,7 +1184,7 @@ script 50 script50 {
 
 
 script 51 script51 {
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     rotation_speed(0.0, 0.0, 0.31415927);
     blend_mode(Additive);
     layer(Layer7);
@@ -1205,7 +1205,7 @@ script 51 script51 {
 
 
 script 52 script52 {
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     rotation_speed(0.0, 0.0, 0.31415927);
     blend_mode(Additive);
     layer(Layer7);
@@ -1228,7 +1228,7 @@ script 52 script52 {
 script 53 script53 {
 -1:
     layer(Layer8);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     anm_flag_color_children(true);
 0:
     sprite_set(sprite112);
@@ -1241,7 +1241,7 @@ script 53 script53 {
 script 54 script54 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite116);
     rotation_interp(-1, ConstantVelocity, 0.0, 0.0, 0.19634955);
 0:
@@ -1252,7 +1252,7 @@ script 54 script54 {
 script 55 script55 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite116);
     rotation_interp(-1, ConstantVelocity, 0.0, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -1265,7 +1265,7 @@ script 55 script55 {
 script 56 script56 {
 -1:
     layer(Layer8);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     anm_flag_color_children(true);
 0:
     sprite_set(sprite113);
@@ -1278,7 +1278,7 @@ script 56 script56 {
 script 57 script57 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite117);
     rotation_interp(-1, ConstantVelocity, 0.0, 0.0, 0.19634955);
 0:
@@ -1289,7 +1289,7 @@ script 57 script57 {
 script 58 script58 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite117);
     rotation_interp(-1, ConstantVelocity, 0.0, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -1302,7 +1302,7 @@ script 58 script58 {
 script 59 script59 {
 -1:
     layer(Layer8);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     anm_flag_color_children(true);
 0:
     sprite_set(sprite114);
@@ -1315,7 +1315,7 @@ script 59 script59 {
 script 60 script60 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite118);
     rotation_interp(-1, ConstantVelocity, 0.0, 0.0, 0.19634955);
 0:
@@ -1326,7 +1326,7 @@ script 60 script60 {
 script 61 script61 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite118);
     rotation_interp(-1, ConstantVelocity, 0.0, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -1339,7 +1339,7 @@ script 61 script61 {
 script 62 script62 {
 -1:
     layer(Layer8);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     anm_flag_color_children(true);
 0:
     sprite_set(sprite115);
@@ -1352,7 +1352,7 @@ script 62 script62 {
 script 63 script63 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite119);
     rotation_interp(-1, ConstantVelocity, 0.0, 0.0, 0.19634955);
 0:
@@ -1363,7 +1363,7 @@ script 63 script63 {
 script 64 script64 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite119);
     rotation_interp(-1, ConstantVelocity, 0.0, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -1376,7 +1376,7 @@ script 64 script64 {
 script 65 script65 {
 -1:
     layer(Layer8);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite112);
     //color(0x20, 0x20, 0x20);
     //color_interp(90, Linear, 0x80, 0x80, 0x80);
@@ -1397,7 +1397,7 @@ script 65 script65 {
 script 66 script66 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite116);
     rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
     color(0x20, 0x20, 0x20);
@@ -1412,7 +1412,7 @@ script 66 script66 {
 script 67 script67 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite116);
     rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -1429,7 +1429,7 @@ script 67 script67 {
 script 68 script68 {
 -1:
     layer(Layer8);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite113);
     color(0x20, 0x20, 0x20);
     color_interp(90, Linear, 0x80, 0x80, 0x80);
@@ -1448,7 +1448,7 @@ script 68 script68 {
 script 69 script69 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite117);
     rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
     color(0x20, 0x20, 0x20);
@@ -1463,7 +1463,7 @@ script 69 script69 {
 script 70 script70 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite117);
     rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -1480,7 +1480,7 @@ script 70 script70 {
 script 71 script71 {
 -1:
     layer(Layer8);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite114);
     color(0x20, 0x20, 0x20);
     color_interp(90, Linear, 0x80, 0x80, 0x80);
@@ -1499,7 +1499,7 @@ script 71 script71 {
 script 72 script72 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite118);
     rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
     color(0x20, 0x20, 0x20);
@@ -1514,7 +1514,7 @@ script 72 script72 {
 script 73 script73 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite118);
     rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -1531,7 +1531,7 @@ script 73 script73 {
 script 74 script74 {
 -1:
     layer(Layer8);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite115);
     color(0x20, 0x20, 0x20);
     color_interp(90, Linear, 0x80, 0x80, 0x80);
@@ -1550,7 +1550,7 @@ script 74 script74 {
 script 75 script75 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite119);
     rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
     color(0x20, 0x20, 0x20);
@@ -1565,7 +1565,7 @@ script 75 script75 {
 script 76 script76 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite119);
     rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -1582,7 +1582,7 @@ script 76 script76 {
 script 77 script77 {
 -1:
     layer(Layer8);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite112);
     color(0x20, 0x20, 0x20);
     color_interp(90, Linear, 0x80, 0x80, 0x80);
@@ -1604,7 +1604,7 @@ script 77 script77 {
 script 78 script78 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite116);
     rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
     color(0x20, 0x20, 0x20);
@@ -1622,7 +1622,7 @@ script 78 script78 {
 script 79 script79 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite116);
     rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -1642,7 +1642,7 @@ script 79 script79 {
 script 80 script80 {
 -1:
     layer(Layer8);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite113);
     color(0x20, 0x20, 0x20);
     color_interp(90, Linear, 0x80, 0x80, 0x80);
@@ -1664,7 +1664,7 @@ script 80 script80 {
 script 81 script81 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite117);
     rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
     color(0x20, 0x20, 0x20);
@@ -1682,7 +1682,7 @@ script 81 script81 {
 script 82 script82 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite117);
     rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -1702,7 +1702,7 @@ script 82 script82 {
 script 83 script83 {
 -1:
     layer(Layer8);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite114);
     color(0x20, 0x20, 0x20);
     color_interp(90, Linear, 0x80, 0x80, 0x80);
@@ -1724,7 +1724,7 @@ script 83 script83 {
 script 84 script84 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite118);
     rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
     color(0x20, 0x20, 0x20);
@@ -1742,7 +1742,7 @@ script 84 script84 {
 script 85 script85 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite118);
     rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -1762,7 +1762,7 @@ script 85 script85 {
 script 86 script86 {
 -1:
     layer(Layer8);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite115);
     color(0x20, 0x20, 0x20);
     color_interp(90, Linear, 0x80, 0x80, 0x80);
@@ -1784,7 +1784,7 @@ script 86 script86 {
 script 87 script87 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite119);
     rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
     color(0x20, 0x20, 0x20);
@@ -1802,7 +1802,7 @@ script 87 script87 {
 script 88 script88 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite119);
     rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -1864,7 +1864,7 @@ entry {
 
 script 89 script89 {
     layer(Layer9);
-    render_mode(RenderMode0);
+    render_mode(Sprite2D);
     blend_mode(Additive);
     sprite_set_rand_bound(sprite120, 8);
     F0 = RAND_FLOAT_SIGNED * 8.0;
@@ -1884,7 +1884,7 @@ script 89 script89 {
 
 script 90 script90 {
     layer(Layer9);
-    render_mode(RenderMode0);
+    render_mode(Sprite2D);
     blend_mode(Additive);
     sprite_set_rand_bound(sprite120, 8);
     F0 = RAND_FLOAT_SIGNED * 8.0;
@@ -1904,7 +1904,7 @@ script 90 script90 {
 
 script 91 script91 {
     layer(Layer9);
-    render_mode(RenderMode0);
+    render_mode(Sprite2D);
     scale(0.0, 0.0);
     scale_interp(6, DecelerateSlow, 3.0, 3.0);
     sprite_set(sprite120);
@@ -1981,7 +1981,7 @@ script 91 script91 {
 
 script 92 script92 {
     layer(Layer9);
-    render_mode(RenderMode0);
+    render_mode(Sprite2D);
     scale(0.0, 0.0);
     scale_interp(6, DecelerateSlow, 2.0, 2.0);
     sprite_set(sprite120);
@@ -2058,7 +2058,7 @@ script 92 script92 {
 
 script 93 script93 {
     layer(Layer9);
-    render_mode(RenderMode0);
+    render_mode(Sprite2D);
     blend_mode(Additive);
     sprite_set_rand_bound(sprite128, 8);
     F0 = RAND_FLOAT_SIGNED * 8.0;
@@ -2078,7 +2078,7 @@ script 93 script93 {
 
 script 94 script94 {
     layer(Layer9);
-    render_mode(RenderMode0);
+    render_mode(Sprite2D);
     blend_mode(Additive);
     sprite_set_rand_bound(sprite128, 8);
     F0 = RAND_FLOAT_SIGNED * 8.0;
@@ -2098,7 +2098,7 @@ script 94 script94 {
 
 script 95 script95 {
     layer(Layer9);
-    render_mode(RenderMode0);
+    render_mode(Sprite2D);
     scale(0.0, 0.0);
     scale_interp(6, DecelerateSlow, 3.0, 3.0);
     sprite_set(sprite128);
@@ -2175,7 +2175,7 @@ script 95 script95 {
 
 script 96 script96 {
     layer(Layer9);
-    render_mode(RenderMode0);
+    render_mode(Sprite2D);
     scale(0.0, 0.0);
     scale_interp(6, DecelerateSlow, 2.0, 2.0);
     sprite_set(sprite128);
@@ -2252,7 +2252,7 @@ script 96 script96 {
 
 script 97 script97 {
     layer(Layer9);
-    render_mode(RenderMode0);
+    render_mode(Sprite2D);
     blend_mode(Additive);
     sprite_set_rand_bound(sprite136, 8);
     F0 = RAND_FLOAT_SIGNED * 8.0;
@@ -2272,7 +2272,7 @@ script 97 script97 {
 
 script 98 script98 {
     layer(Layer9);
-    render_mode(RenderMode0);
+    render_mode(Sprite2D);
     blend_mode(Additive);
     sprite_set_rand_bound(sprite136, 8);
     F0 = RAND_FLOAT_SIGNED * 8.0;
@@ -2292,7 +2292,7 @@ script 98 script98 {
 
 script 99 script99 {
     layer(Layer9);
-    render_mode(RenderMode0);
+    render_mode(Sprite2D);
     scale(0.0, 0.0);
     scale_interp(6, DecelerateSlow, 3.0, 3.0);
     sprite_set(sprite136);
@@ -2369,7 +2369,7 @@ script 99 script99 {
 
 script 100 script100 {
     layer(Layer9);
-    render_mode(RenderMode0);
+    render_mode(Sprite2D);
     scale(0.0, 0.0);
     scale_interp(6, DecelerateSlow, 2.0, 2.0);
     sprite_set(sprite136);
@@ -2446,7 +2446,7 @@ script 100 script100 {
 
 script 101 script101 {
     layer(Layer9);
-    render_mode(RenderMode0);
+    render_mode(Sprite2D);
     blend_mode(Additive);
     sprite_set_rand_bound(sprite144, 8);
     F0 = RAND_FLOAT_SIGNED * 8.0;
@@ -2466,7 +2466,7 @@ script 101 script101 {
 
 script 102 script102 {
     layer(Layer9);
-    render_mode(RenderMode0);
+    render_mode(Sprite2D);
     blend_mode(Additive);
     sprite_set_rand_bound(sprite144, 8);
     F0 = RAND_FLOAT_SIGNED * 8.0;
@@ -2486,7 +2486,7 @@ script 102 script102 {
 
 script 103 script103 {
     layer(Layer9);
-    render_mode(RenderMode0);
+    render_mode(Sprite2D);
     scale(0.0, 0.0);
     scale_interp(6, DecelerateSlow, 3.0, 3.0);
     sprite_set(sprite144);
@@ -2563,7 +2563,7 @@ script 103 script103 {
 
 script 104 script104 {
     layer(Layer9);
-    render_mode(RenderMode0);
+    render_mode(Sprite2D);
     scale(0.0, 0.0);
     scale_interp(6, DecelerateSlow, 2.0, 2.0);
     sprite_set(sprite144);
@@ -2659,7 +2659,7 @@ entry {
 script 105 script105 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script106);
     anm_create_child_back(script107);
@@ -2673,7 +2673,7 @@ script 106 script106 {
     color(0x0, 0xbf, 0xbf);
     blend_mode(BlendMode2);
     scale(1.1, 1.1);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -2702,7 +2702,7 @@ script 107 script107 {
     color(0xff, 0x40, 0x40);
     blend_mode(Additive);
     scale(1.0, 1.0);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -2728,7 +2728,7 @@ script 107 script107 {
 script 108 script108 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script109);
     anm_create_child_back(script110);
@@ -2742,7 +2742,7 @@ script 109 script109 {
     color(0x0, 0xff, 0x0);
     blend_mode(BlendMode2);
     scale(1.1, 1.1);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -2771,7 +2771,7 @@ script 110 script110 {
     color(0xff, 0x0, 0xff);
     blend_mode(Additive);
     scale(1.0, 1.0);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -2797,7 +2797,7 @@ script 110 script110 {
 script 111 script111 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script112);
     anm_create_child_back(script113);
@@ -2811,7 +2811,7 @@ script 112 script112 {
     color(0xff, 0xff, 0x0);
     blend_mode(BlendMode2);
     scale(1.1, 1.1);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -2840,7 +2840,7 @@ script 113 script113 {
     color(0x0, 0x0, 0xff);
     blend_mode(Additive);
     scale(1.0, 1.0);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -2866,7 +2866,7 @@ script 113 script113 {
 script 114 script114 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script115);
     anm_create_child_back(script116);
@@ -2880,7 +2880,7 @@ script 115 script115 {
     color(0xff, 0x0, 0xff);
     blend_mode(BlendMode2);
     scale(1.1, 1.1);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -2909,7 +2909,7 @@ script 116 script116 {
     color(0x0, 0xff, 0x0);
     blend_mode(Additive);
     scale(1.0, 1.0);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -2935,7 +2935,7 @@ script 116 script116 {
 script 117 script117 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script118);
     anm_create_child_back(script119);
@@ -2949,7 +2949,7 @@ script 118 script118 {
     color(0x0, 0x0, 0xff);
     blend_mode(BlendMode2);
     scale(1.1, 1.1);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -2978,7 +2978,7 @@ script 119 script119 {
     color(0xff, 0xff, 0x0);
     blend_mode(Additive);
     scale(1.0, 1.0);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3004,7 +3004,7 @@ script 119 script119 {
 script 120 script120 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script121);
     anm_create_child_back(script122);
@@ -3018,7 +3018,7 @@ script 121 script121 {
     color(0xff, 0x0, 0x0);
     blend_mode(BlendMode2);
     scale(1.1, 1.1);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3047,7 +3047,7 @@ script 122 script122 {
     color(0x0, 0xff, 0xff);
     blend_mode(Additive);
     scale(1.0, 1.0);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3073,7 +3073,7 @@ script 122 script122 {
 script 123 script123 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script124);
     anm_create_child_back(script125);
@@ -3087,7 +3087,7 @@ script 124 script124 {
     color(0x0, 0xbf, 0xbf);
     blend_mode(BlendMode2);
     scale(1.32, 1.32);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3116,7 +3116,7 @@ script 125 script125 {
     color(0xff, 0x40, 0x40);
     blend_mode(Additive);
     scale(1.2, 1.2);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3142,7 +3142,7 @@ script 125 script125 {
 script 126 script126 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script127);
     anm_create_child_back(script128);
@@ -3156,7 +3156,7 @@ script 127 script127 {
     color(0x0, 0xff, 0x0);
     blend_mode(BlendMode2);
     scale(1.32, 1.32);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3185,7 +3185,7 @@ script 128 script128 {
     color(0xff, 0x0, 0xff);
     blend_mode(Additive);
     scale(1.2, 1.2);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3211,7 +3211,7 @@ script 128 script128 {
 script 129 script129 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script130);
     anm_create_child_back(script131);
@@ -3225,7 +3225,7 @@ script 130 script130 {
     color(0xff, 0xff, 0x0);
     blend_mode(BlendMode2);
     scale(1.32, 1.32);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3254,7 +3254,7 @@ script 131 script131 {
     color(0x0, 0x0, 0xff);
     blend_mode(Additive);
     scale(1.2, 1.2);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3280,7 +3280,7 @@ script 131 script131 {
 script 132 script132 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script133);
     anm_create_child_back(script134);
@@ -3294,7 +3294,7 @@ script 133 script133 {
     color(0xff, 0x0, 0xff);
     blend_mode(BlendMode2);
     scale(1.32, 1.32);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3323,7 +3323,7 @@ script 134 script134 {
     color(0x0, 0xff, 0x0);
     blend_mode(Additive);
     scale(1.2, 1.2);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3349,7 +3349,7 @@ script 134 script134 {
 script 135 script135 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script136);
     anm_create_child_back(script137);
@@ -3363,7 +3363,7 @@ script 136 script136 {
     color(0x0, 0x0, 0xff);
     blend_mode(BlendMode2);
     scale(1.32, 1.32);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3392,7 +3392,7 @@ script 137 script137 {
     color(0xff, 0xff, 0x0);
     blend_mode(Additive);
     scale(1.2, 1.2);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3418,7 +3418,7 @@ script 137 script137 {
 script 138 script138 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script139);
     anm_create_child_back(script140);
@@ -3432,7 +3432,7 @@ script 139 script139 {
     color(0xff, 0x0, 0x0);
     blend_mode(BlendMode2);
     scale(1.32, 1.32);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3461,7 +3461,7 @@ script 140 script140 {
     color(0x0, 0xff, 0xff);
     blend_mode(Additive);
     scale(1.2, 1.2);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3487,7 +3487,7 @@ script 140 script140 {
 script 141 script141 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script142);
     anm_create_child_back(script143);
@@ -3501,7 +3501,7 @@ script 142 script142 {
     color(0x0, 0xbf, 0xbf);
     blend_mode(BlendMode2);
     scale(1.65, 1.65);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3530,7 +3530,7 @@ script 143 script143 {
     color(0xff, 0x40, 0x40);
     blend_mode(Additive);
     scale(1.5, 1.5);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3556,7 +3556,7 @@ script 143 script143 {
 script 144 script144 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script145);
     anm_create_child_back(script146);
@@ -3570,7 +3570,7 @@ script 145 script145 {
     color(0x0, 0xff, 0x0);
     blend_mode(BlendMode2);
     scale(1.65, 1.65);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3599,7 +3599,7 @@ script 146 script146 {
     color(0xff, 0x0, 0xff);
     blend_mode(Additive);
     scale(1.5, 1.5);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3625,7 +3625,7 @@ script 146 script146 {
 script 147 script147 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script148);
     anm_create_child_back(script149);
@@ -3639,7 +3639,7 @@ script 148 script148 {
     color(0xff, 0xff, 0x0);
     blend_mode(BlendMode2);
     scale(1.65, 1.65);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3668,7 +3668,7 @@ script 149 script149 {
     color(0x0, 0x0, 0xff);
     blend_mode(Additive);
     scale(1.5, 1.5);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3694,7 +3694,7 @@ script 149 script149 {
 script 150 script150 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script151);
     anm_create_child_back(script152);
@@ -3708,7 +3708,7 @@ script 151 script151 {
     color(0xff, 0x0, 0xff);
     blend_mode(BlendMode2);
     scale(1.65, 1.65);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3737,7 +3737,7 @@ script 152 script152 {
     color(0x0, 0xff, 0x0);
     blend_mode(Additive);
     scale(1.5, 1.5);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3763,7 +3763,7 @@ script 152 script152 {
 script 153 script153 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script154);
     anm_create_child_back(script155);
@@ -3777,7 +3777,7 @@ script 154 script154 {
     color(0x0, 0x0, 0xff);
     blend_mode(BlendMode2);
     scale(1.65, 1.65);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3806,7 +3806,7 @@ script 155 script155 {
     color(0xff, 0xff, 0x0);
     blend_mode(Additive);
     scale(1.5, 1.5);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3832,7 +3832,7 @@ script 155 script155 {
 script 156 script156 {
     alpha(0x0);
     layer(Layer11);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     move_position(0.0, -8.0, 0.0);
     anm_create_child_back(script157);
     anm_create_child_back(script158);
@@ -3846,7 +3846,7 @@ script 157 script157 {
     color(0xff, 0x0, 0x0);
     blend_mode(BlendMode2);
     scale(1.65, 1.65);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -3875,7 +3875,7 @@ script 158 script158 {
     color(0x0, 0xff, 0xff);
     blend_mode(Additive);
     scale(1.5, 1.5);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
 0:
     loop {
         sprite_set(sprite152);
@@ -5752,7 +5752,7 @@ script 240 script240 {
 script 241 script241 {
 -1:
     layer(Layer8);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite112);
     blend_mode(Additive);
     color(0x20, 0x20, 0x20);
@@ -5775,7 +5775,7 @@ script 241 script241 {
 script 242 script242 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite116);
     rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
     blend_mode(Additive);
@@ -5794,7 +5794,7 @@ script 242 script242 {
 script 243 script243 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite116);
     rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -5814,7 +5814,7 @@ script 243 script243 {
 script 244 script244 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite116);
     rotation_interp(-1, ConstantVelocity, 0.09817477, 0.0, 0.09817477);
     color(0x20, 0x20, 0x20);
@@ -5833,7 +5833,7 @@ script 244 script244 {
 script 245 script245 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite116);
     rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -5853,7 +5853,7 @@ script 245 script245 {
 script 246 script246 {
 -1:
     layer(Layer8);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite113);
     blend_mode(Additive);
     color(0x20, 0x20, 0x20);
@@ -5876,7 +5876,7 @@ script 246 script246 {
 script 247 script247 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite117);
     rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
     blend_mode(Additive);
@@ -5895,7 +5895,7 @@ script 247 script247 {
 script 248 script248 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite117);
     rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -5915,7 +5915,7 @@ script 248 script248 {
 script 249 script249 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite117);
     rotation_interp(-1, ConstantVelocity, 0.09817477, 0.0, 0.09817477);
     color(0x20, 0x20, 0x20);
@@ -5934,7 +5934,7 @@ script 249 script249 {
 script 250 script250 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite117);
     rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -5954,7 +5954,7 @@ script 250 script250 {
 script 251 script251 {
 -1:
     layer(Layer8);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite114);
     blend_mode(Additive);
     color(0x20, 0x20, 0x20);
@@ -5977,7 +5977,7 @@ script 251 script251 {
 script 252 script252 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite118);
     rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
     blend_mode(Additive);
@@ -5996,7 +5996,7 @@ script 252 script252 {
 script 253 script253 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite118);
     rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -6016,7 +6016,7 @@ script 253 script253 {
 script 254 script254 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite118);
     rotation_interp(-1, ConstantVelocity, 0.09817477, 0.0, 0.09817477);
     color(0x20, 0x20, 0x20);
@@ -6035,7 +6035,7 @@ script 254 script254 {
 script 255 script255 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite118);
     rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -6055,7 +6055,7 @@ script 255 script255 {
 script 256 script256 {
 -1:
     layer(Layer8);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite115);
     blend_mode(Additive);
     color(0x20, 0x20, 0x20);
@@ -6078,7 +6078,7 @@ script 256 script256 {
 script 257 script257 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite119);
     rotation_interp(-1, ConstantVelocity, 0.19634955, 0.0, 0.19634955);
     blend_mode(Additive);
@@ -6097,7 +6097,7 @@ script 257 script257 {
 script 258 script258 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite119);
     rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
     blend_mode(Additive);
@@ -6117,7 +6117,7 @@ script 258 script258 {
 script 259 script259 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite119);
     rotation_interp(-1, ConstantVelocity, 0.09817477, 0.0, 0.09817477);
     color(0x20, 0x20, 0x20);
@@ -6136,7 +6136,7 @@ script 259 script259 {
 script 260 script260 {
 -1:
     layer(Layer9);
-    render_mode(RenderMode1);
+    render_mode(Sprite2DRotated);
     sprite_set(sprite119);
     rotation_interp(-1, ConstantVelocity, -0.09817477, 0.0, -0.09817477);
     blend_mode(Additive);
