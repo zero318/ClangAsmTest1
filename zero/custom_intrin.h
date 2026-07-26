@@ -1535,8 +1535,8 @@ static inline bool repe_cmpsd(T *restrict dst, T2 *restrict src, size_t dword_le
     bool ret;
     __asm__ volatile (
         "repe cmpsl"
-        : "=c"(byte_len), "+D"(dst), "+S"(src), asm_flags(z, ret)
-        : "0"(byte_len)
+        : "=c"(dword_len), "+D"(dst), "+S"(src), asm_flags(z, ret)
+        : "0"(dword_len)
         : "memory"
     );
     return ret;
@@ -1546,8 +1546,8 @@ static inline bool repne_cmpsd(T *restrict dst, T2 *restrict src, size_t dword_l
     bool ret;
     __asm__ volatile (
         "repne cmpsl"
-        : "=c"(byte_len), "+D"(dst), "+S"(src), asm_flags(nz, ret)
-        : "0"(byte_len)
+        : "=c"(dword_len), "+D"(dst), "+S"(src), asm_flags(nz, ret)
+        : "0"(dword_len)
         : "memory"
     );
     return ret;
@@ -1558,8 +1558,8 @@ static inline bool repe_cmpsw(T *restrict dst, T2 *restrict src, size_t word_len
     bool ret;
     __asm__ volatile (
         "repe cmpsw"
-        : "=c"(byte_len), "+D"(dst), "+S"(src), asm_flags(z, ret)
-        : "0"(byte_len)
+        : "=c"(word_len), "+D"(dst), "+S"(src), asm_flags(z, ret)
+        : "0"(word_len)
         : "memory"
     );
     return ret;
@@ -1569,8 +1569,8 @@ static inline bool repne_cmpsw(T *restrict dst, T2 *restrict src, size_t word_le
     bool ret;
     __asm__ volatile (
         "repne cmpsw"
-        : "=c"(byte_len), "+D"(dst), "+S"(src), asm_flags(nz, ret)
-        : "0"(byte_len)
+        : "=c"(word_len), "+D"(dst), "+S"(src), asm_flags(nz, ret)
+        : "0"(word_len)
         : "memory"
     );
     return ret;
