@@ -808,7 +808,7 @@ __attribute__((naked)) static void hook_prepare_pointer() {
         REX_R "mov" B(MOB(0x2C,rsp), R(r9d))
         "lea" B(MOB(0x2C,rsp), R(eax))
         REX_W "mov" B(R(rax), MOB(0x20,rsp))
-        "lea" B(MOB(0x30,rsp), R(edx))
+        "lea" B(MOB(0x38,rsp), R(edx))
         REX_R "lea" B(MOB(0x30,rsp), R(r8d))
         mov_neg1_rcx
         "call{ *%%|} " rsi "\n"

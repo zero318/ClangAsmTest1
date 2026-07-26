@@ -939,14 +939,11 @@ void main()
 +1: //1
     chapter_set(0);
     enemy_create_abs("full_power_dummy", %PLAYER_X, %PLAYER_Y, 1, 0, 0);
-    anm_create_zero_front(5, 1);
-main_160:
-+10120: //10121
-    jump(main_160, 121);
-    enemy_create_abs("koishi_test", -216.0f, 64.0f, 40, 1000, 1);
-main_236:
-+10000: //20121
-    jump(main_236, 10121);
++120: //121
+    enemy_create_abs("BossPatchouliPhase1", 64.0f, -32.0f, 10000, 0, 0);
+main_196:
++10000: //10121
+    jump(main_196, 121);
     ret();
 }
 

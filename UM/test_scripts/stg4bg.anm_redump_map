@@ -14,7 +14,7 @@ entry {
 
 
 script 0 script0 {
-    render_mode(RenderMode8);
+    render_mode(Object3D);
     sprite_set(sprite0);
     anchor_offset(-16.0, -48.0);
     anm_static();
@@ -22,7 +22,7 @@ script 0 script0 {
 
 
 script 1 script1 {
-    render_mode(RenderMode8);
+    render_mode(Object3D);
     sprite_set(sprite0);
     color(0x80, 0x80, 0x80);
     anchor_offset(-16.0, -16.0);
@@ -31,7 +31,7 @@ script 1 script1 {
 
 
 script 2 script2 {
-    render_mode(RenderMode8);
+    render_mode(Object3D);
     sprite_set(sprite1);
     anchor_offset(-40.0, -80.0);
     rotation(-1.5707964, 0.0, 0.0);
@@ -40,7 +40,7 @@ script 2 script2 {
 
 
 script 3 script3 {
-    render_mode(RenderMode8);
+    render_mode(Object3D);
     sprite_set(sprite1);
     anchor_offset(-40.0, -80.0);
     rotation(-1.5707964, 0.0, 3.1415927);
@@ -50,7 +50,7 @@ script 3 script3 {
 
 
 script 4 script4 {
-    render_mode(RenderMode8);
+    render_mode(Object3D);
     sprite_set(sprite2);
     anchor_offset(-8.0, -80.0);
     rotation(-1.5707964, 0.0, 0.0);
@@ -59,7 +59,7 @@ script 4 script4 {
 
 
 script 5 script5 {
-    render_mode(RenderMode8);
+    render_mode(Object3D);
     sprite_set(sprite2);
     anchor_offset(-8.0, -80.0);
     rotation(-1.5707964, 0.0, 3.1415927);
@@ -68,7 +68,7 @@ script 5 script5 {
 
 
 script 6 script6 {
-    render_mode(RenderMode8);
+    render_mode(Object3D);
     sprite_set(sprite0);
     color(0x28, 0x28, 0x28);
     anchor_offset(-16.0, -16.0);

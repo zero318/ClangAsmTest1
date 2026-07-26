@@ -98,12 +98,27 @@ __VA_ARGS__(F2) \
 __VA_ARGS__(G1) \
 __VA_ARGS__(H1)
 
+#define for_each_vec_type_sse41(...) \
+__VA_ARGS__(I1) \
+__VA_ARGS__(I2) \
+__VA_ARGS__(I3) \
+__VA_ARGS__(I4)
+
+#define for_each_vec_type_avx(...) \
+__VA_ARGS__(J1) \
+__VA_ARGS__(J2) \
+__VA_ARGS__(J3) \
+__VA_ARGS__(J4) \
+__VA_ARGS__(J5)
+
 #define for_each_vec_type_avx512(...) \
 __VA_ARGS__(R1) \
 __VA_ARGS__(R2)
 
 #define for_each_vec_type(...) \
 for_each_vec_type_no_avx512(__VA_ARGS__) \
+for_each_vec_type_sse41(__VA_ARGS__) \
+for_each_vec_type_avx(__VA_ARGS__) \
 for_each_vec_type_avx512(__VA_ARGS__)
 
 #define for_each_vec_type_control(...) \
@@ -118,7 +133,7 @@ do { \
 } while (0)
 
 // Variant A1: Scalar
-test_export test_inline uint128_t regcall test_vec3_A1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_A1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSS %[lhsX], %%XMM0 \n"
@@ -146,9 +161,12 @@ test_export test_inline uint128_t regcall test_vec3_A1(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_A1
+#define setup_A1
+#define cleanup_A1
 
 // Variant A2: Scalar [load then store]
-test_export test_inline uint128_t regcall test_vec3_A2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_A2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSS %[lhsX], %%XMM0 \n"
@@ -188,9 +206,12 @@ test_export test_inline uint128_t regcall test_vec3_A2(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_A2
+#define setup_A2
+#define cleanup_A2
 
 // Variant B1: Split vector PS (low2 + high)
-test_export test_inline uint128_t regcall test_vec3_B1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_B1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSD %[lhsXY], %%XMM0 \n"
@@ -214,9 +235,12 @@ test_export test_inline uint128_t regcall test_vec3_B1(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_B1
+#define setup_B1
+#define cleanup_B1
 
 // Variant B2: Split vector PS (low2 + high) [load then store]
-test_export test_inline uint128_t regcall test_vec3_B2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_B2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSD %[lhsXY], %%XMM0 \n"
@@ -248,9 +272,12 @@ test_export test_inline uint128_t regcall test_vec3_B2(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_B2
+#define setup_B2
+#define cleanup_B2
 
 // Variant B3: Split vector SD (low2 + high)
-test_export test_inline uint128_t regcall test_vec3_B3(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_B3(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSD %[lhsXY], %%XMM0 \n"
@@ -274,9 +301,12 @@ test_export test_inline uint128_t regcall test_vec3_B3(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_B3
+#define setup_B3
+#define cleanup_B3
 
 // Variant B4: Split vector SD (low2 + high) [load then store]
-test_export test_inline uint128_t regcall test_vec3_B4(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_B4(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSD %[lhsXY], %%XMM0 \n"
@@ -308,9 +338,12 @@ test_export test_inline uint128_t regcall test_vec3_B4(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_B4
+#define setup_B4
+#define cleanup_B4
 
 // Variant C1: Split vector PS (low + high2)
-test_export test_inline uint128_t regcall test_vec3_C1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_C1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSS %[lhsX], %%XMM0 \n"
@@ -334,9 +367,12 @@ test_export test_inline uint128_t regcall test_vec3_C1(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_C1
+#define setup_C1
+#define cleanup_C1
 
 // Variant C2: Split vector PS (low + high2) [load then store]
-test_export test_inline uint128_t regcall test_vec3_C2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_C2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSS %[lhsX], %%XMM0 \n"
@@ -368,9 +404,12 @@ test_export test_inline uint128_t regcall test_vec3_C2(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_C2
+#define setup_C2
+#define cleanup_C2
 
 // Variant C3: Split vector SD (low + high2)
-test_export test_inline uint128_t regcall test_vec3_C3(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_C3(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSS %[lhsX], %%XMM0 \n"
@@ -394,9 +433,12 @@ test_export test_inline uint128_t regcall test_vec3_C3(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_C3
+#define setup_C3
+#define cleanup_C3
 
 // Variant C4: Split vector SD (low + high2) [load then store]
-test_export test_inline uint128_t regcall test_vec3_C4(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_C4(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSS %[lhsX], %%XMM0 \n"
@@ -428,9 +470,12 @@ test_export test_inline uint128_t regcall test_vec3_C4(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_C4
+#define setup_C4
+#define cleanup_C4
 
 // Variant D1: Shuffle vector PS (low2 + high)
-test_export test_inline uint128_t regcall test_vec3_D1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_D1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSD %[lhsXY], %%XMM0 \n"
@@ -472,9 +517,12 @@ test_export test_inline uint128_t regcall test_vec3_D1(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_D1
+#define setup_D1
+#define cleanup_D1
 
 // Variant D2: Shuffle vector SD (low2 + high)
-test_export test_inline uint128_t regcall test_vec3_D2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_D2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSD %[lhsXY], %%XMM0 \n"
@@ -515,9 +563,12 @@ test_export test_inline uint128_t regcall test_vec3_D2(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_D2
+#define setup_D2
+#define cleanup_D2
 
 // Variant E1: Shuffle vector PS (low + high2)
-test_export test_inline uint128_t regcall test_vec3_E1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_E1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSS %[lhsX], %%XMM0 \n"
@@ -558,9 +609,12 @@ test_export test_inline uint128_t regcall test_vec3_E1(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_E1
+#define setup_E1
+#define cleanup_E1
 
 // Variant F1: Half vector PS (low2 + high)
-test_export test_inline uint128_t regcall test_vec3_F1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_F1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSD %[lhsXY], %%XMM0 \n"
@@ -602,9 +656,12 @@ test_export test_inline uint128_t regcall test_vec3_F1(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_F1
+#define setup_F1
+#define cleanup_F1
 
 // Variant F2: Half vector SD (low2 + high)
-test_export test_inline uint128_t regcall test_vec3_F2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_F2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSD %[lhsXY], %%XMM0 \n"
@@ -645,9 +702,12 @@ test_export test_inline uint128_t regcall test_vec3_F2(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_F2
+#define setup_F2
+#define cleanup_F2
 
 // Variant G1: Half vector PS (low + high2)
-test_export test_inline uint128_t regcall test_vec3_G1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_G1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSS %[lhsX], %%XMM0 \n"
@@ -688,9 +748,12 @@ test_export test_inline uint128_t regcall test_vec3_G1(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_G1
+#define setup_G1
+#define cleanup_G1
 
 // Variant H1: Direct vector PS (low + high2)
-test_export test_inline uint128_t regcall test_vec3_H1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_H1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSS %[lhsX], %%XMM0 \n"
@@ -729,9 +792,99 @@ test_export test_inline uint128_t regcall test_vec3_H1(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_H1
+#define setup_H1
+#define cleanup_H1
 
+// Variant I1: Insert PS L2H
+test_export test_inline uint128_t regcall test_vec3_I1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
+    __asm__(
+        "MOVSD %[lhs], %%XMM0 \n"
+        "INSERTPS $0x28, %[lhs], %%XMM0 \n"
+        "MOVSD %[rhs], %%XMM1 \n"
+        "INSERTPS $0x28, %[rhs], %%XMM1 \n"
+        "ADDPS %%XMM0, %%XMM1 \n"
+        "MOVLPS %%XMM1, %[outXY] \n"
+        "MOVHLPS %%XMM1, %%XMM1 \n"
+        "MOVSS %%XMM1, %[outZ] \n"
+        : [outXY]"=m"(*(double*)&out->x), [outZ]"=m"(out->z)
+        : [lhs]"m"(*lhs),
+          [rhs]"m"(*rhs)
+        : clobber_list("xmm0", "xmm1")
+    );
+    PACK_RETURNS;
+}
+#define args_I1
+#define setup_I1
+#define cleanup_I1
+
+// Variant I2: Insert SD L2H
+test_export test_inline uint128_t regcall test_vec3_I2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
+    __asm__(
+        "MOVSD %[lhs], %%XMM0 \n"
+        "INSERTPS $0x28, %[lhs], %%XMM0 \n"
+        "MOVSD %[rhs], %%XMM1 \n"
+        "INSERTPS $0x28, %[rhs], %%XMM1 \n"
+        "ADDPS %%XMM0, %%XMM1 \n"
+        "MOVSD %%XMM1, %[outXY] \n"
+        "MOVHLPS %%XMM1, %%XMM1 \n"
+        "MOVSS %%XMM1, %[outZ] \n"
+        : [outXY]"=m"(*(double*)&out->x), [outZ]"=m"(out->z)
+        : [lhs] "m"(*lhs),
+          [rhs]"m"(*rhs)
+        : clobber_list("xmm0", "xmm1")
+    );
+    PACK_RETURNS;
+}
+#define args_I2
+#define setup_I2
+#define cleanup_I2
+
+// Variant I3: Insert Extract PS
+test_export test_inline uint128_t regcall test_vec3_I3(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
+    __asm__(
+        "MOVSD %[lhs], %%XMM0 \n"
+        "INSERTPS $0x28, %[lhs], %%XMM0 \n"
+        "MOVSD %[rhs], %%XMM1 \n"
+        "INSERTPS $0x28, %[rhs], %%XMM1 \n"
+        "ADDPS %%XMM0, %%XMM1 \n"
+        "MOVLPS %%XMM1, %[outXY] \n"
+        "EXTRACTPS $2, %%XMM1, %[outZ] \n"
+        : [outXY]"=m"(*(double*)&out->x), [outZ]"=m"(out->z)
+        : [lhs] "m"(*lhs),
+          [rhs]"m"(*rhs)
+        : clobber_list("xmm0", "xmm1")
+    );
+    PACK_RETURNS;
+}
+#define args_I3
+#define setup_I3
+#define cleanup_I3
+
+// Variant I4: Insert Extract SD
+test_export test_inline uint128_t regcall test_vec3_I4(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
+    __asm__(
+        "MOVSD %[lhs], %%XMM0 \n"
+        "INSERTPS $0x28, %[lhs], %%XMM0 \n"
+        "MOVSD %[rhs], %%XMM1 \n"
+        "INSERTPS $0x28, %[rhs], %%XMM1 \n"
+        "ADDPS %%XMM0, %%XMM1 \n"
+        "MOVSD %%XMM1, %[outXY] \n"
+        "EXTRACTPS $2, %%XMM1, %[outZ] \n"
+        : [outXY]"=m"(*(double*)&out->x), [outZ]"=m"(out->z)
+        : [lhs] "m"(*lhs),
+          [rhs]"m"(*rhs)
+        : clobber_list("xmm0", "xmm1")
+    );
+    PACK_RETURNS;
+}
+#define args_I4
+#define setup_I4
+#define cleanup_I4
+
+/*
 // Variant I1: Overread RW SS shuffle
-dllexport test_inline uint128_t regcall test_vec3_I1(Float4* out, const Float4* lhs, const Float4* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_I1(Float4* out, const Float4* lhs, const Float4* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVUPS %[lhs], %%XMM0 \n"
@@ -754,9 +907,12 @@ dllexport test_inline uint128_t regcall test_vec3_I1(Float4* out, const Float4* 
 #endif
     PACK_RETURNS;
 }
+#define args_I1
+#define setup_I1
+#define cleanup_I1
 
 // Variant I2: Overread RW PS shuffle
-dllexport test_inline uint128_t regcall test_vec3_I2(Float4* out, const Float4* lhs, const Float4* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_I2(Float4* out, const Float4* lhs, const Float4* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVUPS %[lhs], %%XMM0 \n"
@@ -778,9 +934,12 @@ dllexport test_inline uint128_t regcall test_vec3_I2(Float4* out, const Float4* 
 #endif
     PACK_RETURNS;
 }
+#define args_I2
+#define setup_I2
+#define cleanup_I2
 
 // Variant I3: Overread RW PS bitmask
-dllexport test_inline uint128_t regcall test_vec3_I3(Float4* out, const Float4* lhs, const Float4* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_I3(Float4* out, const Float4* lhs, const Float4* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
     static constexpr vec<uint32_t, 4, true> mask_raw = { 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0 };
 #if TEST_USE_ASM
     __asm__(
@@ -807,9 +966,114 @@ dllexport test_inline uint128_t regcall test_vec3_I3(Float4* out, const Float4* 
 #endif
     PACK_RETURNS;
 }
+#define args_I3
+#define setup_I3
+#define cleanup_I3
+*/
+
+alignas(16) static constexpr vec<int32_t, 4> FLOAT3_MASK_VEC = { -1, -1, -1, 0 };
+
+//#define LOAD_MASK_VEC "VMOVAPS %[mask_vec], %%XMM2 \n"
+#define LOAD_MASK_VEC "VPCMPEQD %%XMM2, %%XMM2, %%XMM2 \n VPSRLDQ $4, %%XMM2, %%XMM2 \n"
+
+// Variant J1: Masked load PS
+test_export test_inline uint128_t regcall test_vec3_J1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
+    __asm__(
+        LOAD_MASK_VEC
+        "VMASKMOVPS %[lhs], %%XMM2, %%XMM0 \n"
+        "VMASKMOVPS %[rhs], %%XMM2, %%XMM1 \n"
+        "VADDPS %%XMM1, %%XMM0, %%XMM0 \n"
+        "VMOVLPS %%XMM0, %[outXY] \n"
+        "VMOVHLPS %%XMM0, %%XMM0, %%XMM0 \n"
+        "VMOVSS %%XMM0, %[outZ] \n"
+        : [outXY]"=m"(*(double*)&out->x), [outZ]"=m"(out->z)
+        : [lhs]"m"(*lhs), [rhs]"m"(*rhs), [mask_vec]"m"(FLOAT3_MASK_VEC)
+        : clobber_list("xmm0", "xmm1")
+    );
+    PACK_RETURNS;
+}
+#define args_J1
+#define setup_J1 register vec<int32_t, 4> mask_vec asm("xmm2") = { -1, -1, -1, 0 }; __asm__ volatile("":"+x"(mask_vec));
+#define cleanup_J1
+
+// Variant J2: Masked load SD
+test_export test_inline uint128_t regcall test_vec3_J2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
+    __asm__(
+        LOAD_MASK_VEC
+        "VMASKMOVPS %[lhs], %%XMM2, %%XMM0 \n"
+        "VMASKMOVPS %[rhs], %%XMM2, %%XMM1 \n"
+        "VADDPS %%XMM1, %%XMM0, %%XMM0 \n"
+        "VMOVSD %%XMM0, %[outXY] \n"
+        "VMOVHLPS %%XMM0, %%XMM0, %%XMM0 \n"
+        "VMOVSS %%XMM0, %[outZ] \n"
+        : [outXY]"=m"(*(double*)&out->x), [outZ]"=m"(out->z)
+        : [lhs]"m"(*lhs), [rhs]"m"(*rhs), [mask_vec]"m"(FLOAT3_MASK_VEC)
+        : clobber_list("xmm0", "xmm1")
+    );
+    PACK_RETURNS;
+}
+#define args_J2
+#define setup_J2
+#define cleanup_J2
+
+// Variant J3: Masked load extract PS
+test_export test_inline uint128_t regcall test_vec3_J3(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
+    __asm__(
+        LOAD_MASK_VEC
+        "VMASKMOVPS %[lhs], %%XMM2, %%XMM0 \n"
+        "VMASKMOVPS %[rhs], %%XMM2, %%XMM1 \n"
+        "VADDPS %%XMM1, %%XMM0, %%XMM0 \n"
+        "VMOVLPS %%XMM0, %[outXY] \n"
+        "VEXTRACTPS $2, %%XMM0, %[outZ] \n"
+        : [outXY]"=m"(*(double*)&out->x), [outZ]"=m"(out->z)
+        : [lhs]"m"(*lhs), [rhs]"m"(*rhs), [mask_vec]"m"(FLOAT3_MASK_VEC)
+        : clobber_list("xmm0", "xmm1")
+    );
+    PACK_RETURNS;
+}
+#define args_J3
+#define setup_J3
+#define cleanup_J3
+
+// Variant J4: Masked load extract SD
+test_export test_inline uint128_t regcall test_vec3_J4(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
+    __asm__(
+        LOAD_MASK_VEC
+        "VMASKMOVPS %[lhs], %%XMM2, %%XMM0 \n"
+        "VMASKMOVPS %[rhs], %%XMM2, %%XMM1 \n"
+        "VADDPS %%XMM1, %%XMM0, %%XMM0 \n"
+        "VMOVSD %%XMM0, %[outXY] \n"
+        "VEXTRACTPS $2, %%XMM0, %[outZ] \n"
+        : [outXY]"=m"(*(double*)&out->x), [outZ]"=m"(out->z)
+        : [lhs]"m"(*lhs), [rhs]"m"(*rhs), [mask_vec]"m"(FLOAT3_MASK_VEC)
+        : clobber_list("xmm0", "xmm1")
+    );
+    PACK_RETURNS;
+}
+#define args_J4
+#define setup_J4
+#define cleanup_J4
+
+// Variant J5: Masked load extract SD
+test_export test_inline uint128_t regcall test_vec3_J5(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
+    __asm__(
+        LOAD_MASK_VEC
+        "VMASKMOVPS %[lhs], %%XMM2, %%XMM0 \n"
+        "VMASKMOVPS %[rhs], %%XMM2, %%XMM1 \n"
+        "VADDPS %%XMM1, %%XMM0, %%XMM0 \n"
+        "VMASKMOVPS %%XMM0, %%XMM2, %[out] \n"
+        : [out]"=m"(*out)
+        : [lhs]"m"(*lhs), [rhs]"m"(*rhs), [mask_vec]"m"(FLOAT3_MASK_VEC)
+        : clobber_list("xmm0", "xmm1")
+    );
+    PACK_RETURNS;
+}
+#define args_J5
+#define setup_J5
+#define cleanup_J5
 
 // Variant R1: Masked vector MMA
-test_export test_inline uint128_t regcall test_vec3_R1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_R1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
     __asm__(
         "VMOVUPS %[lhs], %%XMM0%{%%k1%} \n"
         "VMOVUPS %[rhs], %%XMM1%{%%k1%} \n"
@@ -821,9 +1085,12 @@ test_export test_inline uint128_t regcall test_vec3_R1(Float3* out, const Float3
     );
     PACK_RETURNS;
 }
+#define args_R1
+#define setup_R1
+#define cleanup_R1
 
 // Variant R2: Masked vector MA
-test_export test_inline uint128_t regcall test_vec3_R2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_R2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
     __asm__(
         "VMOVUPS %[lhs], %%XMM0%{%%k1%} \n"
         "VADDPS %[rhs], %%XMM0, %%XMM0%{%%k1%}%{z%} \n"
@@ -834,9 +1101,12 @@ test_export test_inline uint128_t regcall test_vec3_R2(Float3* out, const Float3
     );
     PACK_RETURNS;
 }
+#define args_R2
+#define setup_R2
+#define cleanup_R2
 
 // Variant V1: Vec1 baseline
-test_export test_inline uint128_t regcall test_vec3_V1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_V1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSS %[lhs], %%XMM0 \n"
@@ -863,9 +1133,12 @@ test_export test_inline uint128_t regcall test_vec3_V1(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_V1
+#define setup_V1
+#define cleanup_V1
 
 // Variant V2: Vec2 baseline
-test_export test_inline uint128_t regcall test_vec3_V2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_V2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVSD %[lhs], %%XMM0 \n"
@@ -889,9 +1162,12 @@ test_export test_inline uint128_t regcall test_vec3_V2(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
+#define args_V2
+#define setup_V2
+#define cleanup_V2
 
 // Variant V4: Vec4 baseline
-test_export test_inline uint128_t regcall test_vec3_V4(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(int32_t)) {
+test_export test_inline uint128_t regcall test_vec3_V4(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
 #if TEST_USE_ASM
     __asm__(
         "MOVUPS %[lhs], %%XMM0 \n"
@@ -914,21 +1190,9 @@ test_export test_inline uint128_t regcall test_vec3_V4(Float3* out, const Float3
 #endif
     PACK_RETURNS;
 }
-
-#define TEST_CONTROLS_FIRST 1
-
-#define make_test_timers(variant) \
-static volatile uint64_t MACRO_CAT(start_,variant); \
-static volatile uint64_t MACRO_CAT(end_,variant); \
-static uint64_t MACRO_CAT(time_,variant);
-
-#if TEST_CONTROLS_FIRST
-for_each_vec_type_control(make_test_timers);
-#endif
-for_each_vec_type(make_test_timers);
-#if !TEST_CONTROLS_FIRST
-for_each_vec_type_control(make_test_timers);
-#endif
+#define args_V4
+#define setup_V4
+#define cleanup_V4
 
 #define cache_touch_arrays \
 nounroll for (size_t i = 0; i < element_count; ++i) { \
@@ -1016,11 +1280,14 @@ static forceinline uint64_t rdtsc_max_serialize(void) {
 
 #if TEST_COUNT > 1
 #define force_reg_pattern "+r"(count), "+S"(lhs), "+D"(rhs), "+b"(out)
-#define test_vec3(variant) test_vec3_repeat(variant)
+#define test_vec3(variant) test_vec3_repeat(variant,MACRO_CAT(args_,variant))
 #else
 #define force_reg_pattern "+r"(offset), "+r"(lhs), "+r"(rhs), "+r"(out)
-#define test_vec3(variant) test_vec3_no_repeat(variant)
+#define test_vec3(variant) test_vec3_no_repeat(variant,MACRO_CAT(args_,variant))
 #endif
+
+#define test_setup(variant) MACRO_CAT(setup_,variant)
+#define test_cleanup(variant) MACRO_CAT(cleanup_,variant)
 
 #define FENCE_SPECULATION 1
 
@@ -1048,7 +1315,7 @@ static forceinline uint64_t rdtsc_max_serialize(void) {
 #define TIMESTAMP_MEM_AFTER 1
 #define TIMESTAMP_MEM_AFTER_NTI 2
 
-#define TIMESTAMP_TYPE TIMESTAMP_MEM_AFTER
+#define TIMESTAMP_TYPE TIMESTAMP_MEM_BEFORE
 
 #if TIMESTAMP_TYPE == TIMESTAMP_MEM_BEFORE
 
@@ -1058,24 +1325,64 @@ __asm__ volatile ( \
     wait_for_cache_touch \
     "LFENCE \n" \
     "RDTSC \n" \
+    "MOV %%EAX, %[L1] \n" \
+    "MOV %%EDX, %[H1] \n" \
     "LFENCE \n" \
-    : "=A"(time), force_reg_pattern \
+    : "=A"(time), [L1]"=m"(MACRO_CAT(time_,variant)), [H1]"=m"(((uint32_t*)&MACRO_CAT(time_,variant))[1]), force_reg_pattern \
 )
 
 #define write_timestamps(variant) \
 __asm__ volatile ( \
     speculative_fence \
-    : "+A"(time) \
-); \
-MACRO_CAT(start_,variant) = time; \
-__asm__ volatile ( \
-    "LFENCE \n" \
     "MFENCE \n" \
-    "RDTSC \n" \
     "LFENCE \n" \
-    : "=A"(time) \
-); \
-MACRO_CAT(end_,variant) = time
+    "RDTSC \n" \
+    "SUB %[L1], %%EAX \n" \
+    "SBB %[H1], %%EDX \n" \
+    "MOV %%EAX, %[L1] \n" \
+    "MOV %%EDX, %[H1] \n" \
+    "LFENCE \n" \
+    : "=A"(time), [L1]"+m"(MACRO_CAT(time_,variant)), [H1]"+m"(((uint32_t*)&MACRO_CAT(time_,variant))[1]) \
+)
+
+#define make_test_timers(variant) \
+static uint64_t MACRO_CAT(time_,variant);
+
+#define test_vec3_repeat(variant,...) \
+{ \
+    __asm__ volatile ("" : "+r"(lhs), "+r"(rhs), "+r"(out)); \
+    test_sleep(); \
+    test_cache_touch(); \
+    size_t count = TEST_COUNT; \
+    test_setup(variant); \
+    start_timestamps(variant); \
+    nounroll do { \
+        size_t offset = 0; \
+        nounroll do { \
+            __asm__(""::"r"(offset)); \
+            MACRO_CAT(test_vec3_,variant)(based_pointer(out, offset), based_pointer(lhs, offset), based_pointer(rhs, offset) __VA_OPT__(, GARBAGE_ARG(uint32_t),) __VA_ARGS__); \
+            offset += sizeof(FloatT); \
+        } while (offset != allocation_size); \
+    } while (--count); \
+    write_timestamps(variant); \
+    test_cleanup(variant); \
+}
+
+#define test_vec3_no_repeat(variant,...) \
+{ \
+    __asm__ volatile ("" : "+r"(lhs), "+r"(rhs), "+r"(out)); \
+    test_sleep(); \
+    test_cache_touch(); \
+    size_t offset = 0; \
+    test_setup(variant); \
+    start_timestamps(variant); \
+    nounroll do { \
+        __asm__(""::"r"(offset)); \
+        MACRO_CAT(test_vec3_,variant)(based_pointer(out, offset), based_pointer(lhs, offset), based_pointer(rhs, offset) __VA_OPT__(, GARBAGE_ARG(uint32_t),) __VA_ARGS__); \
+        offset += sizeof(FloatT); \
+    } while (offset != allocation_size); \
+    write_timestamps(variant); \
+}
 
 #elif TIMESTAMP_TYPE == TIMESTAMP_MEM_AFTER
 
@@ -1107,6 +1414,48 @@ __asm__ volatile ( \
     : "+A"(time), asm_arg("=r", low), asm_arg("=r", high), [L1]"=m"(MACRO_CAT(start_,variant)), [H1]"=m"(((uint32_t*)&MACRO_CAT(start_,variant))[1]), [L2]"=m"(MACRO_CAT(end_,variant)), [H2]"=m"(((uint32_t*)&MACRO_CAT(end_,variant))[1]) \
 )
 
+#define make_test_timers(variant) \
+static volatile uint64_t MACRO_CAT(start_,variant); \
+static volatile uint64_t MACRO_CAT(end_,variant); \
+static uint64_t MACRO_CAT(time_,variant);
+
+#define test_vec3_repeat(variant,...) \
+{ \
+    __asm__ volatile ("" : "+r"(lhs), "+r"(rhs), "+r"(out)); \
+    test_sleep(); \
+    test_cache_touch(); \
+    size_t count = TEST_COUNT; \
+    test_setup(variant); \
+    start_timestamps(variant); \
+    nounroll do { \
+        register size_t offset asm("ebp") = 0; \
+        nounroll do { \
+            __asm__(""::"r"(offset),"A"(time)); \
+            MACRO_CAT(test_vec3_,variant)(based_pointer(out, offset), based_pointer(lhs, offset), based_pointer(rhs, offset) __VA_OPT__(, GARBAGE_ARG(uint32_t),) __VA_ARGS__); \
+            offset += sizeof(FloatT); \
+        } while (offset != allocation_size); \
+    } while (--count); \
+    write_timestamps(variant); \
+    test_cleanup(variant); \
+}
+
+#define test_vec3_no_repeat(variant,...) \
+{ \
+    __asm__ volatile ("" : "+r"(lhs), "+r"(rhs), "+r"(out)); \
+    test_sleep(); \    
+    test_cache_touch(); \
+    register size_t offset asm("ebp") = 0; \
+    test_setup(variant); \
+    start_timestamps(variant); \
+    nounroll do { \
+        __asm__(""::"r"(offset),"A"(time)); \
+        MACRO_CAT(test_vec3_,variant)(based_pointer(out, offset), based_pointer(lhs, offset), based_pointer(rhs, offset) __VA_OPT__(, GARBAGE_ARG(uint32_t),) __VA_ARGS__); \
+        offset += sizeof(FloatT); \
+    } while (offset != allocation_size); \
+    write_timestamps(variant); \
+    test_cleanup(variant); \
+}
+
 #elif TIMESTAMP_TYPE == TIMESTAMP_MEM_AFTER_NTI
 
 #define start_timestamps(variant) \
@@ -1137,40 +1486,59 @@ __asm__ volatile ( \
     : "+A"(time), asm_arg("=r", low), asm_arg("=r", high), [L1]"=m"(MACRO_CAT(start_,variant)), [H1]"=m"(((uint32_t*)&MACRO_CAT(start_,variant))[1]), [L2]"=m"(MACRO_CAT(end_,variant)), [H2]"=m"(((uint32_t*)&MACRO_CAT(end_,variant))[1]) \
 )
 
-#endif
+#define make_test_timers(variant) \
+static volatile uint64_t MACRO_CAT(start_,variant); \
+static volatile uint64_t MACRO_CAT(end_,variant); \
+static uint64_t MACRO_CAT(time_,variant);
 
-#define test_vec3_repeat(variant) \
+#define test_vec3_repeat(variant,...) \
 { \
     __asm__ volatile ("" : "+r"(lhs), "+r"(rhs), "+r"(out)); \
     test_sleep(); \
     test_cache_touch(); \
     size_t count = TEST_COUNT; \
+    test_setup(variant); \
     start_timestamps(variant); \
     nounroll do { \
         register size_t offset asm("ebp") = 0; \
         nounroll do { \
             __asm__(""::"r"(offset),"A"(time)); \
-            MACRO_CAT(test_vec3_,variant)(based_pointer(out, offset), based_pointer(lhs, offset), based_pointer(rhs, offset)); \
+            MACRO_CAT(test_vec3_,variant)(based_pointer(out, offset), based_pointer(lhs, offset), based_pointer(rhs, offset) __VA_OPT__(, GARBAGE_ARG(uint32_t),) __VA_ARGS__); \
             offset += sizeof(FloatT); \
         } while (offset != allocation_size); \
     } while (--count); \
     write_timestamps(variant); \
+    test_cleanup(variant); \
 }
 
-#define test_vec3_no_repeat(variant) \
+#define test_vec3_no_repeat(variant,...) \
 { \
     __asm__ volatile ("" : "+r"(lhs), "+r"(rhs), "+r"(out)); \
     test_sleep(); \    
     test_cache_touch(); \
     register size_t offset asm("ebp") = 0; \
+    test_setup(variant); \
     start_timestamps(variant); \
     nounroll do { \
         __asm__(""::"r"(offset),"A"(time)); \
-        MACRO_CAT(test_vec3_,variant)(based_pointer(out, offset), based_pointer(lhs, offset), based_pointer(rhs, offset)); \
+        MACRO_CAT(test_vec3_,variant)(based_pointer(out, offset), based_pointer(lhs, offset), based_pointer(rhs, offset) __VA_OPT__(, GARBAGE_ARG(uint32_t),) __VA_ARGS__); \
         offset += sizeof(FloatT); \
     } while (offset != allocation_size); \
     write_timestamps(variant); \
+    test_cleanup(variant); \
 }
+
+#endif
+
+#define TEST_CONTROLS_FIRST 1
+
+#if TEST_CONTROLS_FIRST
+for_each_vec_type_control(make_test_timers);
+#endif
+for_each_vec_type(make_test_timers);
+#if !TEST_CONTROLS_FIRST
+for_each_vec_type_control(make_test_timers);
+#endif
 
 
 /*
@@ -1195,7 +1563,7 @@ do { \
             based_pointer(array_out, offset), \
             based_pointer(array_lhs, offset), \
             based_pointer(array_rhs, offset), \
-            GARBAGE_ARG(int32_t) \
+            GARBAGE_ARG(uint32_t) \
         ); \
         offset += sizeof(Float3); \
     } while (offset != allocation_size); \
@@ -1275,7 +1643,9 @@ MACRO_CAT(start_,variant) = rdtsc_serialize(); \
 MACRO_CAT(end_,variant) = rdtsc_serialize()
 */
 
-gnu_noinline void fastcall deal_with_64_bit_stuff(bool has_avx512) {
+gnu_noinline void fastcall deal_with_64_bit_stuff(
+    bool has_avx512
+) {
     __asm__ volatile (
         INTEL_64_DIRECTIVE
         "TEST ECX, ECX \n"
@@ -1298,6 +1668,18 @@ gnu_noinline void fastcall deal_with_64_bit_stuff(bool has_avx512) {
 
 #define FREE_ALLOCATIONS 0
 
+#if RECORD_OVERALL_TEST_TIME
+static union {
+    struct {
+        uint64_t test_start packed_field;
+        uint64_t test_end packed_field;
+        uint64_t qpc_freq packed_field;
+        uint64_t qpc_start packed_field;
+        uint64_t qpc_end packed_field;
+    };
+};
+#endif
+
 int main(int argc, char* argv[]) {
 
     // Half MB of data
@@ -1310,15 +1692,16 @@ int main(int argc, char* argv[]) {
     *(uint32_t*)&manufacturer[4] = edx;
     *(uint32_t*)&manufacturer[8] = ecx;
 
-    bool can_test_masks = false;
+    bool can_test_avx512 = false;
     if (eax >= 7) {
         get_cpuid_ex(7, 0, eax, ebx, ecx, edx);
-        can_test_masks = (ebx & 1 << 16) && (ebx & 1 << 31);
+        can_test_avx512 = (ebx & 1 << 16) && (ebx & 1 << 31);
     }
 
     get_cpuid(1, eax, ebx, ecx, edx);
 
-    bool run_zeroall = edx & 1 << 28;
+    bool can_test_sse41 = edx & 1 << 19;
+    bool can_test_avx = edx & 1 << 28;
 
     uint8_t stepping = eax & 0xF;
     uint8_t model = eax >> 4 & 0xF;
@@ -1350,10 +1733,14 @@ int main(int argc, char* argv[]) {
             "Brand:      Intel\n"
             "Model:      %u.0x%X.0x%X.0x%X\n"
             "CacheLine:  %u\n"
+            "SSE4.1:     %s\n"
+            "AVX:        %s\n"
             "AVX512:     %s\n"
             , family, extended_model, model, stepping
             , cache_line_size
-            , bool_str(can_test_masks)
+            , bool_str(can_test_sse41)
+            , bool_str(can_test_avx)
+            , bool_str(can_test_avx512)
         );
     } else if (
         *(uint32_t*)&manufacturer[0] == PackUInt32('A', 'u', 't', 'h') &&
@@ -1365,10 +1752,14 @@ int main(int argc, char* argv[]) {
             "Brand:      AMD\n"
             "Model:      0x%X.0x%X.0x%X.0x%X\n"
             "CacheLine:  %u\n"
+            "SSE4.1:     %s\n"
+            "AVX:        %s\n"
             "AVX512:     %s\n"
             , family, extended_model, model, stepping
             , cache_line_size
-            , bool_str(can_test_masks)
+            , bool_str(can_test_sse41)
+            , bool_str(can_test_avx)
+            , bool_str(can_test_avx512)
         );
     } else {
         printf(
@@ -1376,11 +1767,15 @@ int main(int argc, char* argv[]) {
             "Brand:      %.12s\n"
             "Model:      0x%X.0x%X.0x%X.0x%X\n"
             "CacheLine:  %u\n"
+            "SSE4.1:     %s\n"
+            "AVX:        %s\n"
             "AVX512:     %s\n"
             , manufacturer
             , family, extended_model, model, stepping
             , cache_line_size
-            , bool_str(can_test_masks)
+            , bool_str(can_test_sse41)
+            , bool_str(can_test_avx)
+            , bool_str(can_test_avx512)
         );
     }
 
@@ -1391,7 +1786,7 @@ int main(int argc, char* argv[]) {
 
     SwitchToThread();
 
-    if (run_zeroall) {
+    if (can_test_avx) {
         decltype(&IsWow64Process) IsWow64ProcessVar;
         BOOL IsX64;
         if (
@@ -1401,7 +1796,7 @@ int main(int argc, char* argv[]) {
         ) {
             FAR_CALL_IMM(0x33, deal_with_64_bit_stuff,
                          ,
-                         "c"((int)can_test_masks)
+                         "c"((int)can_test_avx512)
                          : clobber_list("xmm0")
             );
         }
@@ -1424,7 +1819,7 @@ int main(int argc, char* argv[]) {
         out[i] = { 0.0f, 0.0f, 0.0f, 0.0f };
     }
 
-    if (run_zeroall) {
+    if (can_test_avx) {
         __asm__ volatile (
             "VZEROALL"
             :
@@ -1432,15 +1827,6 @@ int main(int argc, char* argv[]) {
     }
 
 #if RECORD_OVERALL_TEST_TIME
-    union {
-        struct {
-            uint64_t test_start packed_field;
-            uint64_t test_end packed_field;
-            uint64_t qpc_freq packed_field;
-            uint64_t qpc_start packed_field;
-            uint64_t qpc_end packed_field;
-        };
-    };
     QueryPerformanceCounter((LARGE_INTEGER*)&qpc_start);
     test_start = rdtsc_max_serialize();
 #endif
@@ -1452,6 +1838,14 @@ int main(int argc, char* argv[]) {
 #endif
     for_each_vec_type_no_avx512(test_vec3);
 
+    if (expect(can_test_sse41, true)) {
+        for_each_vec_type_sse41(test_vec3);
+    }
+
+    if (expect(can_test_avx, true)) {
+        for_each_vec_type_avx(test_vec3);
+    }
+
 #if USE_ASM_JUMP
     __asm__ (
         "CMPB $0, %[can_test_masks] \n"
@@ -1460,7 +1854,7 @@ int main(int argc, char* argv[]) {
         : asm_arg("m", can_test_masks)
     );
 #else
-    if (expect(can_test_masks, true))
+    if (expect(can_test_avx512, true))
 #endif
     {
         register uint32_t mask asm("ebp") = 0b111;
@@ -1497,10 +1891,18 @@ int main(int argc, char* argv[]) {
 
     uint64_t total = 0;
 
+
+
+#if TIMESTAMP_TYPE != TIMESTAMP_MEM_BEFORE
 #define calculate_vec3_time(variant) \
     total += (MACRO_CAT(time_,variant) = (MACRO_CAT(end_,variant) - MACRO_CAT(start_,variant)));
 #define calculate_vec3_time_no_total(variant) \
     MACRO_CAT(time_,variant) = (MACRO_CAT(end_,variant) - MACRO_CAT(start_,variant));
+#else
+#define calculate_vec3_time(variant) \
+    total += MACRO_CAT(time_,variant);
+#define calculate_vec3_time_no_total(variant)
+#endif
 
 #if TEST_CONTROLS_FIRST
     for_each_vec_type_control(calculate_vec3_time);
@@ -1516,7 +1918,7 @@ int main(int argc, char* argv[]) {
 #define print_vec3_time(variant) \
         , max_width, MACRO_CAT(time_,variant) \
         , time_width, qpc_us * ((double)MACRO_CAT(time_,variant) * total_double), (double)MACRO_CAT(time_,variant) * (100.0 * total_double) \
-        , -100.0 * (1.0 - ((double)MACRO_CAT(time_, variant) / float3_estimate))
+        , -100.0 * (1.0 - ((double)MACRO_CAT(time_,variant) / float3_estimate))
 #define print_time_estimate \
         , max_width, float3_estimate \
         , time_width, qpc_us * float3_estimate * total_double
@@ -1530,7 +1932,7 @@ int main(int argc, char* argv[]) {
 #define print_vec3_time(variant) \
         , max_width, MACRO_CAT(time_,variant) \
         , (double)MACRO_CAT(time_,variant) * (100.0 * total_double) \
-        , -100.0 * (1.0 - ((double)MACRO_CAT(time_, variant) / float3_estimate))
+        , -100.0 * (1.0 - ((double)MACRO_CAT(time_,variant) / float3_estimate))
 #define print_time_estimate \
         , max_width, float3_estimate
 
@@ -1562,8 +1964,21 @@ int main(int argc, char* argv[]) {
 #define desc_F2 "Half vector SD L2H:      "
 #define desc_G1 "Half vector PS LH2:      "
 #define desc_H1 "Direct vector PS LH2:    "
+
+#define desc_I1 "Insert half PS:          "
+#define desc_I2 "Insert half SD:          "
+#define desc_I3 "Insert extract PS:       "
+#define desc_I4 "Insert extarct SD:       "
+
+#define desc_J1 "Maskmove half PS:        "
+#define desc_J2 "Maskmove half SD:        "
+#define desc_J3 "Maskmove extract LS:     "
+#define desc_J4 "Maskmove extract SD:     "
+#define desc_J5 "Maskmove LS:             "
+
 #define desc_R1 "Masked vector MMA:       "
 #define desc_R2 "Masked vector MA:        "
+
 #define desc_V1 "Float1 reference:        "
 #define desc_V2 "Float2 reference:        "
 #define desc_V4 "Float4 reference:        "
@@ -1593,8 +2008,23 @@ int main(int argc, char* argv[]) {
         for_each_vec_type_no_avx512(print_vec3_time)
     );
 
-    if (can_test_masks)
+    if (can_test_sse41)
     printf(
+        ""
+        for_each_vec_type_sse41(vec3_format_str)
+        for_each_vec_type_sse41(print_vec3_time)
+    );
+
+    if (can_test_avx)
+    printf(
+        ""
+        for_each_vec_type_avx(vec3_format_str)
+        for_each_vec_type_avx(print_vec3_time)
+    );
+
+    if (can_test_avx512)
+    printf(
+        ""
         for_each_vec_type_avx512(vec3_format_str)
         for_each_vec_type_avx512(print_vec3_time)
     );

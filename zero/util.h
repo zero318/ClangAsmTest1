@@ -722,6 +722,24 @@ using vec = std::conditional_t<is_aligned, \
 //using vec = T gnu_attr(__vector_size__(count * sizeof(T)), __aligned__(count * sizeof(T)));
 
 template <typename T, size_t count, bool is_aligned>
+struct $evec_impl {
+    using type gnu_attr(ext_vector_type(count), __aligned__(alignof(T))) = T;
+};
+
+template <typename T, size_t count>
+struct $evec_impl<T, count, true> {
+    using type gnu_attr(ext_vector_type(count)) = T;
+};
+
+template <size_t count, bool is_aligned>
+struct $evec_impl<bool, count, is_aligned> {
+    using type gnu_attr(ext_vector_type(count)) = bool;
+};
+
+template <typename T, size_t count, bool is_aligned = false>
+using evec = $evec_impl<T, count, is_aligned>::type;
+
+template <typename T, size_t count, bool is_aligned>
 struct $vec_impl {
     using type gnu_attr(__vector_size__(count * sizeof(T)), __aligned__(alignof(T))) = T;
 };
@@ -731,17 +749,10 @@ struct $vec_impl<T, count, true> {
     using type gnu_attr(__vector_size__(count * sizeof(T))) = T;
 };
 
-/*
-template<size_t count, bool is_aligned>
+template <size_t count, bool is_aligned>
 struct $vec_impl<bool, count, is_aligned> {
-    using type __attribute__((ext_vector_type(count), __aligned__(alignof(bool)))) = bool;
+    using type gnu_attr(ext_vector_type(count)) = bool;
 };
-
-template<size_t count>
-struct $vec_impl<bool, count, true> {
-    using type __attribute__((ext_vector_type(count))) = bool;
-};
-*/
 
 template <typename T, size_t count, bool is_aligned = false>
 using vec = $vec_impl<T, count, is_aligned>::type;
@@ -2875,6 +2886,15 @@ using ByteFloatType = BitFloatType<byte_count * CHAR_BIT>;
 #define fullunroll FullUnroll
 
 #include "custom_intrin.h"
+
+template <typename T>
+static inline constexpr auto vec_bool_mask(T vals) {
+    return convertvec(vals, vec<bool, vector_length_v<T>>);
+}
+template <typename T>
+static inline constexpr auto vec_int_mask(T vals) {
+    return bit_cast_from_size(convertvec(vals, vec<bool, vector_length_v<T>>));
+}
 
 template <typename T>
 static inline constexpr auto vec_as_int(T vector) {

@@ -53,7 +53,7 @@
 #define ENABLE_THIRD_BOSS_BAR 1
 #define QUICKLOAD 0
 
-#define HITBOX_VIEW 1
+#define HITBOX_VIEW 0
 
 #define INCLUDE_PATCH_CODE 0
 
@@ -14465,7 +14465,7 @@ struct Lifebar {
 	AnmID glowB_vm; // 0x38, 0x1FC
 	AnmID marker_vms[MAX_LIFEBAR_MARKERS]; // 0x3C, 0x200
 	BOOL vms_initialized; // 0x4C, 0x210
-	int __dword_50; // 0x50, 0x214
+	BOOL player_is_close; // 0x50, 0x214
 	// 0x54
 
 	inline void zero_contents() {
@@ -15678,6 +15678,7 @@ enum AnmRunRet : int32_t {
 
 typedef int32_t (*fastcall AnmOnFunc)(AnmVM*);
 typedef int32_t (*fastcall AnmOnFuncArg)(AnmVM*, int32_t);
+typedef int32_t (*cdecl AnmOnFuncArg19)(AnmVM*, int32_t);
 typedef AnmRunRet (*fastcall AnmOnTickFunc)(AnmVM*);
 
 extern inline const AnmOnFunc ANM_ON_COPY_A_FUNCS[];
@@ -18500,6 +18501,8 @@ public:
 	inline void __copy_data_to_vm_unknown_A(AnmVM* vm) {
 		return this->__copy_data_to_vm_unknown_A(vm, UNUSED_DWORD);
 	}
+
+//#include "udoalg_instantiate_vm.cpp"
 
 private:
 	// 0x488770
@@ -44778,7 +44781,7 @@ enum BulletEffectType : uint32_t {
 	EX_BLEND        = 0x00100000, // 21     1048576
 	EX_VELTIME      = 0x00200000, // 22     2097152
 	EX_SIZE         = 0x00400000, // 23     4194304
-	EX_SAVEANGLE    = 0x00800000, // 24     8388608
+	EX_SAVE         = 0x00800000, // 24     8388608
 	EX_ENEMY        = 0x01000000, // 25     16777216
 	EX_LAYER        = 0x02000000, // 26     33554432
 	EX_DELAY        = 0x04000000, // 27     67108864
@@ -44909,7 +44912,7 @@ struct Bullet {
 	BulletEffectData effect_posadd; // 0xD44
 	BulletEffectData effect_veltime; // 0xD8C
 	BulletEffectData effect_offscreen; // 0xDD4
-	BulletEffectData effect_saveangle; // 0xE1C
+	BulletEffectData effect_save; // 0xE1C
 	BulletEffectData effect_delay; // 0xE64
 	unknown_fields(0x4); // 0xEAC
 	ZUNInterp<Float3> effect_move_interp; // 0xEB0
@@ -45518,7 +45521,7 @@ VFO32(0xCFC, Bullet, effect_move);
 VFO32(0xD44, Bullet, effect_posadd);
 VFO32(0xD8C, Bullet, effect_veltime);
 VFO32(0xDD4, Bullet, effect_offscreen);
-VFO32(0xE1C, Bullet, effect_saveangle);
+VFO32(0xE1C, Bullet, effect_save);
 VFO32(0xE64, Bullet, effect_delay);
 VFO32(0xEB0, Bullet, effect_move_interp);
 VFO32(0xF08, Bullet, scale_interp);
@@ -50046,10 +50049,10 @@ dllexport void Bullet::run_effects() {
 				float angle_arg = this->position.__bullet_effect_angle_jank(this->angle, FloatArg(0), FloatArg(2));
 				switch (IntArg(2)) {
 					case 2:
-						effect_data.angle = reduce_angle(angle_arg + angle_to_player_from_point(&this->effect_saveangle.position));
+						effect_data.angle = reduce_angle(angle_arg + angle_to_player_from_point(&this->effect_save.position));
 						break;
 					case 3:
-						effect_data.angle = reduce_angle(this->effect_saveangle.angle + angle_arg);
+						effect_data.angle = reduce_angle(this->effect_save.angle + angle_arg);
 						break;
 					case 0: case 1: case 4:
 						effect_data.angle = angle_arg;
@@ -50314,11 +50317,11 @@ dllexport void Bullet::run_effects() {
 						break;
 				}
 				break;
-			case EX_SAVEANGLE:
-				this->effect_saveangle.position = this->position;
-				//this->effect_saveangle.position.copy(this->position);
-				this->effect_saveangle.angle = this->angle;
-				this->effect_saveangle.speed = this->speed;
+			case EX_SAVE:
+				this->effect_save.position = this->position;
+				//this->effect_save.position.copy(this->position);
+				this->effect_save.angle = this->angle;
+				this->effect_save.speed = this->speed;
 				++effect_index;
 				continue;
 			case EX_SIZE: {
@@ -62344,6 +62347,8 @@ dllexport gnu_noinline void Gui::__allocate_hud() {
 	}
 }
 
+//#include "udoalg_lifebars.cpp"
+
 // 0x43BB70
 dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 	if (this->__unknown_flag_gu_A) {
@@ -62550,16 +62555,18 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 						}
 					}
 
-					if (lifebar.__dword_50) {
+					if (lifebar.player_is_close) {
 						float distance_squared = get_boss_by_index(i)->data.current_motion.position.distance_squared(&PLAYER_PTR->data.position);
 						if (distance_squared >= 9216.0f) { // 96 squared
 							lifebar.interrupt_vms(2);
+							lifebar.player_is_close = false;
 						}
 					}
 					else {
 						float distance_squared = get_boss_by_index(i)->data.current_motion.position.distance_squared(&PLAYER_PTR->data.position);
 						if (distance_squared < 6400.0f) { // 80 squared
 							lifebar.interrupt_vms(3);
+							lifebar.player_is_close = true;
 						}
 					}
 				}

@@ -169,7 +169,7 @@ global NoteYellow = 41;
 global NotePurple = 42;
 
 /// Bullet effects
-global EX_DIST = 1;
+global EX_SPEEDUP = 1;
 global EX_ANIM = 2;
 global EX_ACCEL = 4;
 global EX_ANGLE_ACCEL = 8;
@@ -188,11 +188,11 @@ global EX_REACT = 32768;
 global EX_LOOP = 65536;
 global EX_MOVE = 131072;
 global EX_VEL = 262144;
-global EX_VELADD = 524288;
+global EX_POSADD = 524288;
 global EX_BLEND = 1048576;
 global EX_VELTIME = 2097152;
 global EX_SIZE = 4194304;
-global EX_SAVEANGLE = 8388608;
+global EX_SAVE = 8388608;
 global EX_ENEMY = 16777216;
 global EX_LAYER = 33554432;
 global EX_DELAY = 67108864;
@@ -225,6 +225,25 @@ global ExAngleFromBoss0         =  5000000.0f;
 
 // EX_ANGLE
 global ExCurrentSpeed           = -1000000.0f;
+global ExAngleOffset = 0;
+global ExAngleAim = 1;
+global ExAngleAimFromSavedPos= 2;
+global ExAngleSetToSavedAngle= 3;
+global ExAngleSet = 4;
+global ExAngleOffsetRand = 5;
+global ExAngleAimRand= 6;
+
+// EX_BOUNCE flags
+global ExBounceTop = 0x1;
+global ExBounceBottom = 0x2;
+global ExBounceLeft = 0x4;
+global ExBounceRight = 0x8;
+global ExBounceBoundsOnly = 0x10;
+global ExBounceCustomBounds = 0x20;
+
+// EX_MOVE flags
+global ExMoveAbs = 0x100;
+global ExMoveRel = 0;
 
 /// Enemy flags
 

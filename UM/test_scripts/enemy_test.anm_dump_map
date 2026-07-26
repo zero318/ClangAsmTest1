@@ -2671,7 +2671,7 @@ script 106 script106 {
 -1:
     layer(Layer6);
     color(0x0, 0xbf, 0xbf);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.1, 1.1);
     render_mode(Sprite2DRotated);
 0:
@@ -2740,7 +2740,7 @@ script 109 script109 {
 -1:
     layer(Layer6);
     color(0x0, 0xff, 0x0);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.1, 1.1);
     render_mode(Sprite2DRotated);
 0:
@@ -2809,7 +2809,7 @@ script 112 script112 {
 -1:
     layer(Layer6);
     color(0xff, 0xff, 0x0);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.1, 1.1);
     render_mode(Sprite2DRotated);
 0:
@@ -2878,7 +2878,7 @@ script 115 script115 {
 -1:
     layer(Layer6);
     color(0xff, 0x0, 0xff);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.1, 1.1);
     render_mode(Sprite2DRotated);
 0:
@@ -2947,7 +2947,7 @@ script 118 script118 {
 -1:
     layer(Layer6);
     color(0x0, 0x0, 0xff);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.1, 1.1);
     render_mode(Sprite2DRotated);
 0:
@@ -3016,7 +3016,7 @@ script 121 script121 {
 -1:
     layer(Layer6);
     color(0xff, 0x0, 0x0);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.1, 1.1);
     render_mode(Sprite2DRotated);
 0:
@@ -3085,7 +3085,7 @@ script 124 script124 {
 -1:
     layer(Layer6);
     color(0x0, 0xbf, 0xbf);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.32, 1.32);
     render_mode(Sprite2DRotated);
 0:
@@ -3154,7 +3154,7 @@ script 127 script127 {
 -1:
     layer(Layer6);
     color(0x0, 0xff, 0x0);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.32, 1.32);
     render_mode(Sprite2DRotated);
 0:
@@ -3223,7 +3223,7 @@ script 130 script130 {
 -1:
     layer(Layer6);
     color(0xff, 0xff, 0x0);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.32, 1.32);
     render_mode(Sprite2DRotated);
 0:
@@ -3292,7 +3292,7 @@ script 133 script133 {
 -1:
     layer(Layer6);
     color(0xff, 0x0, 0xff);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.32, 1.32);
     render_mode(Sprite2DRotated);
 0:
@@ -3361,7 +3361,7 @@ script 136 script136 {
 -1:
     layer(Layer6);
     color(0x0, 0x0, 0xff);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.32, 1.32);
     render_mode(Sprite2DRotated);
 0:
@@ -3430,7 +3430,7 @@ script 139 script139 {
 -1:
     layer(Layer6);
     color(0xff, 0x0, 0x0);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.32, 1.32);
     render_mode(Sprite2DRotated);
 0:
@@ -3499,7 +3499,7 @@ script 142 script142 {
 -1:
     layer(Layer6);
     color(0x0, 0xbf, 0xbf);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.65, 1.65);
     render_mode(Sprite2DRotated);
 0:
@@ -3568,7 +3568,7 @@ script 145 script145 {
 -1:
     layer(Layer6);
     color(0x0, 0xff, 0x0);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.65, 1.65);
     render_mode(Sprite2DRotated);
 0:
@@ -3637,7 +3637,7 @@ script 148 script148 {
 -1:
     layer(Layer6);
     color(0xff, 0xff, 0x0);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.65, 1.65);
     render_mode(Sprite2DRotated);
 0:
@@ -3706,7 +3706,7 @@ script 151 script151 {
 -1:
     layer(Layer6);
     color(0xff, 0x0, 0xff);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.65, 1.65);
     render_mode(Sprite2DRotated);
 0:
@@ -3775,7 +3775,7 @@ script 154 script154 {
 -1:
     layer(Layer6);
     color(0x0, 0x0, 0xff);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.65, 1.65);
     render_mode(Sprite2DRotated);
 0:
@@ -3844,7 +3844,7 @@ script 157 script157 {
 -1:
     layer(Layer6);
     color(0xff, 0x0, 0x0);
-    blend_mode(BlendMode2);
+    blend_mode(Subtractive);
     scale(1.65, 1.65);
     render_mode(Sprite2DRotated);
 0:

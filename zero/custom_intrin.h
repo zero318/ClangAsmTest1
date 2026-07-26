@@ -124,6 +124,74 @@ struct AbsFarOpcode32 {
 #define REPNZ REPNE
 #define BND REPNE
 
+#define JMP_SHORT(label) ".byte 0xEB, (" MACRO_STR(label) " - (. + 1)) \n"
+
+#define JO_SHORT(label) ".byte 0x70, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JNO_SHORT(label) ".byte 0x71, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JC_SHORT(label) ".byte 0x72, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JNC_SHORT(label) ".byte 0x73, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JB_SHORT(label) ".byte 0x72, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JNB_SHORT(label) ".byte 0x73, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JNAE_SHORT(label) ".byte 0x72, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JAE_SHORT(label) ".byte 0x73, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JZ_SHORT(label) ".byte 0x74, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JNZ_SHORT(label) ".byte 0x75, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JE_SHORT(label) ".byte 0x74, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JNE_SHORT(label) ".byte 0x75, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JBE_SHORT(label) ".byte 0x76, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JNBE_SHORT(label) ".byte 0x77, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JNA_SHORT(label) ".byte 0x76, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JA_SHORT(label) ".byte 0x77, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JS_SHORT(label) ".byte 0x78, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JNS_SHORT(label) ".byte 0x79, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JP_SHORT(label) ".byte 0x7A, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JNP_SHORT(label) ".byte 0x7B, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JPE_SHORT(label) ".byte 0x7A, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JPO_SHORT(label) ".byte 0x7B, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JL_SHORT(label) ".byte 0x7C, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JNL_SHORT(label) ".byte 0x7D, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JNGE_SHORT(label) ".byte 0x7C, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JGE_SHORT(label) ".byte 0x7D, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JLE_SHORT(label) ".byte 0x7E, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JNLE_SHORT(label) ".byte 0x7F, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JNG_SHORT(label) ".byte 0x7E, (" MACRO_STR(label) " - (. + 1)) \n"
+#define JG_SHORT(label) ".byte 0x7F, (" MACRO_STR(label) " - (. + 1)) \n"
+
+#define JMP_LONG(label) ".byte 0xE9 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+
+#define JO_LONG(label) ".byte 0x0F, 0x80 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JNO_LONG(label) ".byte 0x0F, 0x81 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JC_LONG(label) ".byte 0x0F, 0x82 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JNC_LONG(label) ".byte 0x0F, 0x83 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JB_LONG(label) ".byte 0x0F, 0x82 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JNB_LONG(label) ".byte 0x0F, 0x83 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JNAE_LONG(label) ".byte 0x0F, 0x82 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JAE_LONG(label) ".byte 0x0F, 0x83 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JZ_LONG(label) ".byte 0x0F, 0x84 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JNZ_LONG(label) ".byte 0x0F, 0x85 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JE_LONG(label) ".byte 0x0F, 0x84 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JNE_LONG(label) ".byte 0x0F, 0x85 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JBE_LONG(label) ".byte 0x0F, 0x86 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JNBE_LONG(label) ".byte 0x0F, 0x87 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JNA_LONG(label) ".byte 0x0F, 0x86 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JA_LONG(label) ".byte 0x0F, 0x87 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JS_LONG(label) ".byte 0x0F, 0x88 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JNS_LONG(label) ".byte 0x0F, 0x89 \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JP_LONG(label) ".byte 0x0F, 0x8A \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JNP_LONG(label) ".byte 0x0F, 0x8B \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JPE_LONG(label) ".byte 0x0F, 0x8A \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JPO_LONG(label) ".byte 0x0F, 0x8B \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JL_LONG(label) ".byte 0x0F, 0x8C \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JNL_LONG(label) ".byte 0x0F, 0x8D \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JNGE_LONG(label) ".byte 0x0F, 0x8C \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JGE_LONG(label) ".byte 0x0F, 0x8D \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JLE_LONG(label) ".byte 0x0F, 0x8E \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JNLE_LONG(label) ".byte 0x0F, 0x8F \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JNG_LONG(label) ".byte 0x0F, 0x8E \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+#define JG_LONG(label) ".byte 0x0F, 0x8F \n .int (" MACRO_STR(label) " - (. + 4)) \n"
+
+
+
 typedef __int128_t int128_t;
 typedef __uint128_t uint128_t;
 //register int16_t sp_reg asm("sp");
@@ -301,6 +369,12 @@ template <size_t byte_count>
 using UByteIntTypeEx = UBitIntTypeEx<byte_count * CHAR_BIT>;
 
 template <typename T>
+using SIForSize = SByteIntTypeEx<sizeof(T)>;
+
+template <typename T>
+using UIForSize = UByteIntTypeEx<sizeof(T)>;
+
+template <typename T>
 struct make_unsigned_ex : std::make_unsigned<T> {};
 
 template <>
@@ -396,6 +470,16 @@ using hlf_uint_t = std::tuple_element_t<find_type_in_tuple_v<T, uint_types_ex>, 
 
 template <typename T>
 using hlf_int_t = std::conditional_t<std::is_unsigned_v<T>, hlf_uint_t<make_unsigned_ex_t<T>>, hlf_sint_t<make_signed_ex_t<T>>>;
+
+template <typename T>
+static inline constexpr UIForSize<T> bit_cast_from_size(T value) {
+    return bitcast<UIForSize<T>>(value);
+}
+
+template <typename T>
+static inline constexpr T bit_cast_to_size(UIForSize<T> value) {
+    return bitcast<T>(value);
+}
 
 template <typename T = void, typename ... Args>
 constexpr size_t sizeof_pack() {
@@ -1538,7 +1622,8 @@ static inline int8_t strcmpsb(const char* lhs, const char* rhs) {
     return less ? -1 : 1;
 }
 
-static inline dreg_t pack_dreg(const sreg_t low, const sreg_t high) {
+template<typename T1 = sreg_t, typename T2 = sreg_t>
+static inline dreg_t pack_dreg(const T1 low, const T2 high) {
     dreg_t ret;
     __asm__(
         ""
@@ -1548,7 +1633,8 @@ static inline dreg_t pack_dreg(const sreg_t low, const sreg_t high) {
     return ret;
 }
 
-static inline udreg_t pack_udreg(const usreg_t low, const usreg_t high) {
+template<typename T1 = usreg_t, typename T2 = usreg_t>
+static inline udreg_t pack_udreg(const T1 low, const T2 high) {
     udreg_t ret;
     __asm__(
         ""
@@ -1558,7 +1644,8 @@ static inline udreg_t pack_udreg(const usreg_t low, const usreg_t high) {
     return ret;
 }
 
-static inline void unpack_dreg(const dreg_t input, sreg_t& low, sreg_t& high) {
+template<typename T1 = sreg_t, typename T2 = sreg_t>
+static inline void unpack_dreg(const dreg_t input, T1& low, T2& high) {
     __asm__(
         ""
         : asm_arg("=a", low), asm_arg("=d", high)
@@ -1566,7 +1653,8 @@ static inline void unpack_dreg(const dreg_t input, sreg_t& low, sreg_t& high) {
     );
 }
 
-static inline void unpack_udreg(const udreg_t input, usreg_t& low, usreg_t& high) {
+template<typename T1 = usreg_t, typename T2 = usreg_t>
+static inline void unpack_udreg(const udreg_t input, T1& low, T2& high) {
     __asm__(
         ""
         : asm_arg("=a", low), asm_arg("=d", high)

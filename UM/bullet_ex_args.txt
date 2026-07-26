@@ -171,7 +171,7 @@ EX_SIZE: [UM = 0x400000, UDoALG = 0x400000, FW = 22]
     initial_size = R
     final_size = S
 
-EX_SAVEANGLE: [UM = 0x800000, UDoALG = 0x800000, FW = 23]
+EX_SAVE: [UM = 0x800000, UDoALG = 0x800000, FW = 23]
     this saves position, angle, and speed
 
 EX_ENEMY: [UM = 0x1000000, UDoALG = 0x1000000, FW = 24]
@@ -192,7 +192,7 @@ EX_DELAY: [UM = 0x4000000, UDoALG = 0x4000000, FW = 26]
     A > 0  : duration = A
 
 EX_LASER: [UM = 0x8000000, UDoALG = 0x8000000, FW = 27]
-    a == 0 : line laser
+    A == 0 : line laser
 
     sprite = B
     color = C
@@ -272,7 +272,7 @@ EX_ACCEL: [UM = 0x4, UDoALG = 0x4, FW = 2]
     S >= 990.0              : angle = angle_to_player_from_current_position
 
 EX_ANGLE: [UM = 0x10, UDoALG = 0x10, FW = 4]
-    duration = a
+    duration = A
     max_count = B
     type = C
     
@@ -376,7 +376,7 @@ EX_ANGLE_ACCEL: [UM = 0x8, UDoALG = 0x8, FW = 3]
     Args currently unknown
 
 EX_ANGLE: [UM = 0x10, UDoALG = 0x10, FW = 4]
-    duration = a
+    duration = A
     max_count = B
     type = C
     

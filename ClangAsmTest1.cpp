@@ -3149,6 +3149,131 @@ gnu_noinline void test_sqrt_thing() {
 	);
 }
 
+naked void far_ret() {
+	__asm RETF
+}
+
+gnu_noinline void slow_instruction_test() {
+	constexpr uint32_t test_count = 0;
+
+	uint64_t start_time_A = rdtsc_serialize();
+	{
+		uint32_t counter = test_count;
+		do {
+			uint32_t temp = 0;
+			__asm__ volatile (
+				"cpuid"
+				: "+a"(temp)
+				:
+				: clobber_list("ecx", "edx", "ebx")
+			);
+		} while (--counter);
+	}
+	uint64_t end_time_A = rdtsc_serialize();
+
+	uint32_t tempA = 0;
+	uint32_t tempB = 0;
+
+	uint64_t start_time_B = rdtsc_serialize();
+	{
+		uint32_t counter = test_count;
+		do {
+			uint32_t temp = 0;
+			__asm__ volatile (
+				"xchg %[tempB], %[tempA]"
+				: asm_arg("+r", tempA), asm_arg("+m", tempB)
+			);
+		} while (--counter);
+	}
+	uint64_t end_time_B = rdtsc_serialize();
+
+	long double float_val = rand() * TWO_PI_f;
+
+	uint64_t start_time_C = rdtsc_serialize();
+	{
+		uint32_t counter = test_count;
+		long double buffer;
+		do {
+			__asm__ volatile (
+				"FLD %%ST \n"
+				"FBSTP %[buffer] \n"
+				: asm_arg("=m", buffer)
+				: "t"(float_val)
+			);
+		} while (--counter);
+	}
+	uint64_t end_time_C = rdtsc_serialize();
+
+	uint64_t start_time_D = rdtsc_serialize();
+	{
+		uint32_t counter = test_count;
+		do {
+			__asm__ volatile (
+				"FLD %%ST \n"
+				"FSINCOS \n"
+				"FFREEP %%ST(1) \n"
+				:
+				: "t"(float_val)
+			);
+		} while (--counter);
+	}
+	uint64_t end_time_D = rdtsc_serialize();
+
+	uint64_t start_time_E = rdtsc_serialize();
+	{
+		uint32_t counter = test_count;
+		do {
+			FAR_CALL_IMM(0x33, far_ret,);
+		} while (--counter);
+	}
+	uint64_t end_time_E = rdtsc_serialize();
+
+	uint64_t start_time_F = rdtsc_serialize();
+	{
+		uint32_t counter = test_count;
+		do {
+			__asm__ volatile (
+			"1: \n"
+				"LOOP 1b \n"
+				:
+				: "c"(0)
+			);
+		} while (--counter);
+	}
+	uint64_t end_time_F = rdtsc_serialize();
+
+	vec<uint8_t, 16> mask = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+
+	uint64_t start_time_G = rdtsc_serialize();
+	{
+		uint32_t counter = test_count;
+		volatile char buffer[16];
+		do {
+			_mm_maskmoveu_si128((__m128i)mask, (__m128i)mask, &buffer)
+		} while (--counter);
+	}
+	uint64_t end_time_G = rdtsc_serialize();
+
+
+
+	printf(
+		"Test Count: %llu\n"
+		"CPUID:            %llu\n"
+		"XCHG mem:         %llu\n"
+		"FBSTP:            %llu\n"
+		"FSINCOS:          %llu\n"
+		"CALL FAR/RETF:    %llu\n"
+		"XOR ECX,ECX LOOP: %llu\n"
+		, 0x100000000u - test_count
+		, end_time_A - start_time_A
+		, end_time_B - start_time_B
+		, end_time_C - start_time_C
+		, end_time_D - start_time_D
+		, end_time_E - start_time_E
+		, end_time_F - start_time_F
+	);
+}
+
 #define _HAS_CXX17 1
 //#include <filesystem>
 #include <string>
@@ -3929,7 +4054,8 @@ using MACRO_CAT(func,_t) = decltype(func); \
 MACRO_CAT(func,_t)* MACRO_CAT(func,_ptr) = NULL;
 
 int stdcall main(int argc, char* argv[]) {
-	
+	slow_instruction_test();
+	return 0;
 	//sort_sjis_table();
 
 	//format_386();

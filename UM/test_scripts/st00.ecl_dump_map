@@ -3,8 +3,8 @@ anim {
 	"st01enm.anm";
 	"patchy.anm";
 	//"enemy_test.anm";
-	"sprite_window_test.anm";
-	"koishi.anm";
+	//"sprite_window_test.anm";
+	//"koishi.anm";
 }
 //ecli { "default.ecl"; "st01bs.ecl"; "st01mbs.ecl"; }
 ecli { "default.ecl"; }
@@ -878,16 +878,18 @@ void main() {
     
     enemy_create_abs("full_power_dummy", PLAYER_X, PLAYER_Y, 1, 0, 0);
 	
-	anm_create_zero_front(5, 1);
+	//anm_create_zero_front(5, 1);
+    
 	
 +120:
+    debug_print("Player X:%f Y:%f\n", _ff PLAYER_X, _ff PLAYER_Y);
 	
 
-	halt();
+	//halt();
 	//enemy_create_rel("Cir00p", 0.0f, 144.0f, 120, 1000, 1);
-	enemy_create_abs("koishi_test", -216.0f, 64.0f, 40, 1000, 1);
+	//enemy_create_abs("koishi_test", -216.0f, 64.0f, 40, 1000, 1);
     
-    //enemy_create_abs("BossPatchouliPhase1", 64.0, -32.0, 10000, 0, 0);
+    enemy_create_abs("BossPatchouliPhase1", 64.0, -32.0, 10000, 0, 0);
     //enemy_create_abs("enemy_test", 64.0, -32.0, 10000, 0, 0);
     
     halt();

@@ -82,6 +82,7 @@ add_executable(libm_testing)
 add_executable(vpatch)
 add_executable(heroes_calculator)
 add_executable(vec3_testing)
+add_executable(speed_testing)
 add_executable(create_process_test)
 add_executable(totallylegit2husourceleak)
 add_executable(last_branch_test)
@@ -173,6 +174,7 @@ vpatch
 vpatch_dll
 heroes_calculator
 vec3_testing
+speed_testing
 create_process_test
 totallylegit2husourceleak
 last_branch_test
@@ -678,6 +680,8 @@ target_compile_options(${EXE} PRIVATE
 	#"SHELL:-Xclang -mno-ms-bitfields"
 
 	#"-fno-exceptions"
+	
+	"SHELL:-mllvm -force-loop-cold-block=true"
 )
 
 target_link_options(${EXE} PRIVATE
@@ -1995,6 +1999,28 @@ target_compile_options(vec3_testing PRIVATE
 target_link_options(vec3_testing PRIVATE
 	/DYNAMICBASE:NO
 	/LARGEADDRESSAWARE
+)
+
+target_sources(speed_testing PRIVATE
+	"speed_testing.cpp"
+)
+target_compile_options(speed_testing PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-sse3"
+	"-mno-ssse3"
+	"-mno-sse4.1"
+	"-mno-sse4.2"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	${SLASH_CLANG_ARG}-fno-pic
+)
+target_link_options(speed_testing PRIVATE
+	/DYNAMICBASE:NO
+	/LARGEADDRESSAWARE
+	/SUBSYSTEM:CONSOLE,5.1
 )
 
 target_sources(create_process_test PRIVATE
