@@ -869,13 +869,13 @@ template<typename T>
 static forceinline void write_gdtr(const DescriptorTableData<T>& value) {
     if constexpr (sizeof(T) == sizeof(uint16_t)) {
         __asm__ volatile(
-            DATASIZE "LGDT %[out]"
+            DATASIZE "LGDT %[value]"
             : [value]"=m"(value)
         );
     }
     else {
         __asm__ volatile(
-            "LGDT %[out]"
+            "LGDT %[value]"
             : [value]"=m"(value)
         );
     }
@@ -914,13 +914,13 @@ template<typename T>
 static forceinline void write_idtr(const DescriptorTableData<T>& value) {
     if constexpr (sizeof(T) == sizeof(uint16_t)) {
         __asm__ volatile(
-            DATASIZE "LIDT %[out]"
+            DATASIZE "LIDT %[value]"
             : [value]"=m"(value)
         );
     }
     else {
         __asm__ volatile(
-            "LIDT %[out]"
+            "LIDT %[value]"
             : [value]"=m"(value)
         );
     }
@@ -1430,7 +1430,7 @@ struct FarCall32To64 {
 static inline bool repne_scasd(const uint32_t value, const uint32_t*& array_ptr, size_t& array_len) {
     bool ret;
     __asm__ volatile (
-        "REPNE SCASD"
+        "repne scasd"
         : asm_arg("+c", array_len), asm_arg("+D", array_ptr), asm_flags(z, ret)
         : asm_arg("a", value)
     );
