@@ -57,7 +57,7 @@
 
 #define INCLUDE_PATCH_CODE 0
 
-#define KOISHI_DEBUG_TEST 1
+#define KOISHI_DEBUG_TEST 0
 
 #define USE_THE_DANG_EXE_ICON_PLZ 1
 
@@ -6162,43 +6162,51 @@ struct CSound {
 	}
 
 	forceinline void HandleFadeOut() {
-		--this->__fade_progress;
-		int32_t fade_progress = this->__fade_progress;
-		if (fade_progress <= 0) {
-			this->__fade_type = FadeNone;
-			this->sound_buffer_array[0]->Stop();
-		} else {
-			this->SetVolume(fade_progress * VOLUME_RANGE_ABS / this->__fade_length + MAX_VOLUME);
+		if (this->__fade_type == FadeOut) {
+			--this->__fade_progress;
+			int32_t fade_progress = this->__fade_progress;
+			if (fade_progress <= 0) {
+				this->__fade_type = FadeNone;
+				this->sound_buffer_array[0]->Stop();
+			} else {
+				this->SetVolume(fade_progress * VOLUME_RANGE_ABS / this->__fade_length + MAX_VOLUME);
+			}
 		}
 	}
 
 	forceinline void HandleFadeIn() {
-		--this->__fade_progress;
-		int32_t fade_progress = this->__fade_progress;
-		if (fade_progress <= 0) {
-			this->__fade_type = FadeNone;
-		} else {
-			this->SetVolume(fade_progress * VOLUME_RANGE / this->__fade_length);
+		if (this->__fade_type == FadeIn) {
+			--this->__fade_progress;
+			int32_t fade_progress = this->__fade_progress;
+			if (fade_progress <= 0) {
+				this->__fade_type = FadeNone;
+			} else {
+				this->SetVolume(fade_progress * VOLUME_RANGE / this->__fade_length);
+			}
 		}
 	}
 
 	forceinline void HandleFadeOutShort() {
-		--this->__fade_progress;
-		int32_t fade_progress = this->__fade_progress;
-		if (fade_progress <= 0) {
-			this->__fade_type = FadeNone;
-		} else {
-			this->SetVolume(fade_progress * (VOLUME_RANGE_ABS / 5) / this->__fade_length + (MAX_VOLUME / 5));
+		if (this->__fade_type == FadeOutShort) {
+			--this->__fade_progress;
+			int32_t fade_progress = this->__fade_progress;
+			if (fade_progress <= 0) {
+				this->__fade_type = FadeNone;
+			} else {
+				this->SetVolume(fade_progress * (VOLUME_RANGE_ABS / 5) / this->__fade_length + (MAX_VOLUME / 5));
+			}
 		}
 	}
 
 	forceinline void HandleFadeInShort() {
-		--this->__fade_progress;
-		int32_t fade_progress = this->__fade_progress;
-		if (fade_progress <= 0) {
-			this->__fade_type = FadeNone;
-		} else {
-			this->SetVolume(fade_progress * (VOLUME_RANGE / 5) / this->__fade_length);
+		if (this->__fade_type == FadeInShort) {
+			--this->__fade_progress;
+			int32_t fade_progress = this->__fade_progress;
+			if (fade_progress <= 0) {
+				this->__fade_type = FadeNone;
+			} else {
+				this->SetVolume(fade_progress * (VOLUME_RANGE / 5) / this->__fade_length);
+			}
 		}
 	}
 
