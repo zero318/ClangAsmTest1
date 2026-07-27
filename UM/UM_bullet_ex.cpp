@@ -6368,8 +6368,8 @@ struct CStreamingSound : CSound {
 			DWORD write_cursor_min = write_cursor - notify_size;
 
 			if (
-				(next_write_offset >= write_cursor && next_write_offset < write_cursor_min) ||
-				((int32_t)write_cursor >= 0 && next_write_offset >= this->__dsound_buffer_size - notify_size)
+				(next_write_offset >= write_cursor_min && next_write_offset < write_cursor) ||
+				((int32_t)write_cursor_min >= 0 && next_write_offset >= this->__dsound_buffer_size - notify_size)
 			) {
 				SDEBUG_PRINT("Stream Skip\n");
 				ret = CO_E_NOTINITIALIZED;
@@ -7189,10 +7189,8 @@ dllexport gnu_noinline DWORD WINAPI sound_thread_func(LPVOID) {
 			}
 			case WAIT_OBJECT_0:
 				if (streaming_sound && streaming_sound->__playing) {
-					ZDEBUG_PRINT("Locking sound buffer\r\n");
 					streaming_sound->__locked = true;
 					SOUND_MANAGER.cstreaming_sound_ptr->HandleWaveStreamNotification();
-					ZDEBUG_PRINT("Unlocking sound buffer\r\n");
 					SOUND_MANAGER.cstreaming_sound_ptr->__locked = false;
 				}
 		}
