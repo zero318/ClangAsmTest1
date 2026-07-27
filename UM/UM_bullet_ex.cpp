@@ -61125,7 +61125,7 @@ public:
 						vm->interrupt(i == current_selection ? 2 : 3);
 
 						A = this->state_timer * 2;
-					} while (i < A);
+					} while (++i < A);
 				}
 				if (time >= 10) {
 					clang_forceinline this->change_secondary_state(1);
