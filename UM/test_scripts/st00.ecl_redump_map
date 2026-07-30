@@ -1,4 +1,4 @@
-anim { "enemy.anm"; "st01enm.anm"; "patchy.anm"; "sprite_window_test.anm"; "koishi.anm"; }
+anim { "enemy.anm"; "st01enm.anm"; "patchy.anm"; }
 ecli { "default.ecl"; }
 
 void BossPatchouliEnd()
@@ -715,6 +715,14 @@ enemy_test_968:
 enemy_test_1016:
 +10000: //10240
     goto enemy_test_1016 @ 240;
+    return;
+}
+
+void example()
+{
+    var A, B;
+    $A = _S(%EF0);
+    $B = $EF1;
     return;
 }
 

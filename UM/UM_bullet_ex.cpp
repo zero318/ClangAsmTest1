@@ -4431,6 +4431,7 @@ struct StageData {
 static inline constexpr int32_t STAGE_COUNT = 8;
 static inline constexpr int32_t IGNORED_STAGES = 1; // ignore the debug stage
 static inline constexpr int32_t PLAYABLE_STAGE_COUNT = STAGE_COUNT - IGNORED_STAGES;
+static inline constexpr int32_t MAIN_GAME_STAGE_COUNT = PLAYABLE_STAGE_COUNT - 1; // don't count extra
 
 enum StageID : int32_t {
 	DebugStage = 0,
@@ -14016,7 +14017,7 @@ struct MenuSelect {
 			this->__deselect_disabled_selections();
 		}
 		else {
-			this->current_selection = 0;
+			this->current_selection = index;
 		}
 	}
 
@@ -48489,7 +48490,7 @@ dllexport gnu_noinline int thiscall Bullet::run_effect_bounce() {
 			if (bounce_bound_x <= 0.0f) {
 				bounce_bound_x = this->effect_bounce.size.x;
 			}
-			if (this->position.x > SCREEN_CENTER_X + -bounce_bound_x * 0.5f) {
+			if (this->position.x < SCREEN_CENTER_X + -bounce_bound_x * 0.5f) {
 				if (!(bounce_flags & BOUNCE_BOUNDS_ONLY)) {
 					this->angle = reduce_angle(reduce_angle(-this->angle - PI_f) + 0.0f);
 					this->position.x = SCREEN_CENTER_X - bounce_bound_x - this->position.x;
@@ -60066,6 +60067,7 @@ public:
 					this->__anm_id_540.interrupt_and_orphan_tree(1);
 					this->__anm_id_544.interrupt_and_orphan_tree(1);
 					this->__anm_id_548.interrupt_and_orphan_tree(1);
+					this->__anm_id_458.interrupt_and_orphan_tree(1);
 				}
 				if (this->__menu_select_24.current_selection == 12) {
 					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT | BUTTON_CANCEL)) {
@@ -60478,6 +60480,7 @@ public:
 					this->__anm_id_650 = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(19);
 				}
 				AnmManager* anm_manager = ANM_MANAGER_PTR;
+				this->__menu_select_24.menu_length = PLAYABLE_STAGE_COUNT;
 				if (!anm_manager->get_vm_with_id(this->__anm_id_644)) {
 					this->__anm_id_644 = this->title_anm->instantiate_vm_to_world_list_back(171);
 					anm_manager = ANM_MANAGER_PTR;
@@ -60499,7 +60502,7 @@ public:
 					this->__anm_id_570.interrupt_and_run_tree_word_offset(this->__menu_select_24.current_selection, 7);
 					this->__anm_id_570.interrupt_and_run_tree(6);
 					this->__anm_id_644.interrupt_and_run_tree(3);
-					this->__anm_id_644.interrupt_and_run_tree_word_offset(this->__menu_select_5C50.current_selection, 7);
+					this->__anm_id_644.interrupt_tree_word_offset(this->__menu_select_5C50.current_selection, 7);
 					goto label_A;
 				}
 				this->__anm_id_44C = this->title_anm->instantiate_vm_to_world_list_back(45);
@@ -60509,16 +60512,16 @@ public:
 				if (this->state_timer > 10) {
 					this->change_secondary_state(2);
 					this->__anm_id_570.interrupt_and_run_tree(3);
-					this->__anm_id_570.interrupt_and_run_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					this->__anm_id_570.interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
 					this->__anm_id_644.interrupt_and_run_tree(3);
-					this->__anm_id_644.interrupt_and_run_tree_word_offset(this->__menu_select_5C50.current_selection, 7);
+					this->__anm_id_644.interrupt_tree_word_offset(this->__menu_select_5C50.current_selection, 7);
 				}
 				break;
 			case 2:
 				if (this->__menu_select_24.update(&MenuSelect::scroll_up_and_down_inline)) {
 					SOUND_MANAGER.play_sound(10);
 					this->__anm_id_570.interrupt_and_run_tree(3);
-					this->__anm_id_570.interrupt_and_run_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					this->__anm_id_570.interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
 				}
 				this->__sub_46C070();
 				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
@@ -60548,6 +60551,7 @@ public:
 					this->__anm_id_44C.interrupt_and_orphan_tree(1);
 					this->__anm_id_570.interrupt_and_orphan_tree(1);
 					this->__anm_id_644.interrupt_and_orphan_tree(1);
+					this->change_primary_state(MainMenuState::TitleScreen); // 1
 					this->__menu_select_24.pop_state();
 					this->__anm_id_650.interrupt_and_orphan_tree(1);
 				}
@@ -60618,7 +60622,7 @@ public:
 				if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_CANCEL)) {
 					this->change_secondary_state(4);
 					SOUND_MANAGER.play_sound(9);
-					this->anms[i].interrupt_and_orphan_tree(3);
+					this->anms[i].interrupt_and_orphan_tree(1);
 				}
 				else if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_SELECT)) {
 					this->anms[i].interrupt_tree(6);
@@ -60896,7 +60900,7 @@ public:
 	dllexport gnu_noinline int thiscall __practice_stage_select_handler() ASR(0x467320) {
 		switch (this->secondary_state) {
 			case 0: {
-				this->__menu_select_24.menu_length = 6;
+				this->__menu_select_24.menu_length = MAIN_GAME_STAGE_COUNT;
 				this->__menu_select_24.set_selection(MENU_STAGE_SELECTION);
 				this->__anm_id_44C = this->title_anm->instantiate_vm_to_world_list_back(45);
 				ABILITY_MENU_PTR->__anm_id_3E8.interrupt_tree(1);
@@ -61310,7 +61314,7 @@ public:
 				this->change_secondary_state(1);
 				int32_t stage = this->__spell_practice_stage;
 				for (int32_t i = 0; i < MAX_SPELLS_PER_STAGE - SPELLS_PER_STAGE[stage]; ++i) {
-					this->__anm_id_574.interrupt_and_run_tree_word_offset(i, 39);
+					this->__anm_id_574.interrupt_and_run_tree_word_offset(39, -i);
 					stage = this->__spell_practice_stage;
 				}
 				int32_t A = UNKNOWN_INT32_E;
@@ -61386,6 +61390,7 @@ public:
 					}
 					this->__anm_id_434.interrupt_and_orphan_tree(1);
 					this->__anm_id_574.interrupt_and_orphan_tree(1);
+					this->__anm_id_570.interrupt_and_orphan_tree(1);
 					clang_forceinline this->change_primary_state(MainMenuState::SpellPractice); // 18
 					clang_forceinline this->__menu_select_24.pop_state();
 				}
@@ -61398,8 +61403,8 @@ public:
 	dllexport gnu_noinline int thiscall __state_20_handler() ASR(0x46CD50) {
 		switch (this->secondary_state) {
 			case 0: {
-				this->__menu_select_24.menu_length = 5;
-				for (int32_t i = 0; i < SPELL_DIFFICULTY_VARIANTS; ++i) {
+				this->__menu_select_24.menu_length = SPELL_DIFFICULTY_VARIANTS;
+				nounroll for (int32_t i = 0; i < SPELL_DIFFICULTY_VARIANTS; ++i) {
 					if (this->__spell_id_array[i] < 0) {
 						this->__menu_select_24.disable_selection(i);
 					}
@@ -61472,7 +61477,7 @@ public:
 			case 4:
 				if (this->state_timer >= 6) {
 					this->__anm_id_574.interrupt_and_orphan_tree(1);
-					this->change_primary_state(MainMenuState::SpellPractice); // 18
+					this->change_primary_state(MainMenuState::State19); // 19
 					this->__menu_select_24.pop_state();
 				}
 				break;
@@ -61482,7 +61487,84 @@ public:
 
 	// 0x46D0C0
 	dllexport gnu_noinline int thiscall __draw_state_19_20() ASR(0x46D0C0) {
-		// TODO
+		switch (this->secondary_state) {
+			case 3:
+				if (this->primary_state == MainMenuState::State20) { // 20
+			case 1: case 2:
+					AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
+
+					ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
+
+					ascii_manager->font_id = Font2;
+					ascii_manager->enable_shadows = true;
+
+					Float3 position = { 330.0f, 191.0f, 0.0f };
+
+					nounroll for (int32_t i = 0; i < SPELL_DIFFICULTY_VARIANTS; ++i) {
+						int32_t spell_id = this->__spell_id_array[i];
+						if (spell_id >= -1) { // not > for some reason...?
+
+							D3DCOLOR color;
+							if (this->primary_state == MainMenuState::State20) { // 20
+								if (scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].captured_in_spell_practice()) {
+									color = COLOR(255, 144, 208, 255);
+								} else {
+									color = COLOR(255, 176, 176, 176);
+								}
+							} else {
+								if (scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].captured_in_spell_practice()) {
+									color = COLOR(255, 96, 160, 192);
+								} else {
+									color = COLOR(255, 64, 64, 64);
+								}
+							}
+							ascii_manager->color = color;
+
+							if (scorefile_manager->primary_file.shottypes[SHOTTYPES_TOTAL].spells[spell_id].never_attempted()) {
+								ascii_manager->printf(&position, "SCORE        00  ----/----");
+								ascii_manager = ASCII_MANAGER_PTR;
+								scorefile_manager = SCOREFILE_MANAGER_PTR;
+							} else {
+								ascii_manager->printf(
+									&position,
+									"SCORE %8d0  %4d/%4d",
+									scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].spell_practice_score,
+									scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].captures[1],
+									scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].attempts[1]
+								);
+								ascii_manager = ASCII_MANAGER_PTR;
+								scorefile_manager = SCOREFILE_MANAGER_PTR;
+
+								position.y += 10.0f;
+
+								if (scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].unlocked_in_spell_practice()) {
+									color = COLOR(255, 32, 96, 96);
+								} else {
+									color = COLOR(255, 64, 64, 64);
+								}
+								ascii_manager->color = color;
+
+								if (SPELL_DIFFICULTY_TABLE[spell_id] <= EXTRA) {
+									ascii_manager->printf(
+										&position,
+										"GAME MODE        %4d/%4d",
+										scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].captures[0],
+										scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].attempts[0]
+									);
+									ascii_manager = ASCII_MANAGER_PTR;
+									scorefile_manager = SCOREFILE_MANAGER_PTR;
+								}
+								position.y -= 10.0f;
+							}
+						}
+						position.y += 44.0f;
+					}
+
+					ascii_manager->font_id = Font0;
+					ascii_manager->enable_shadows = false;
+					ascii_manager->color = COLOR_WHITE;
+				}
+		}
 		return 1;
 	}
 

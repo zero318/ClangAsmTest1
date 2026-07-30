@@ -140,6 +140,8 @@ extern "C" {
     static forceinline double fabs(double value) { return ::fabs(value); }
     static forceinline double floor(double value) { return ::floor(value); }
 #endif
+    static vec<float, 2> vectorcall libm_sse2_sincosf(float value) asm("__libm_sse2_sincosf_");
+    static vec<double, 2> vectorcall libm_sse2_sincos(double value) asm("__libm_sse2_sincos_");
 }
 
 static forceinline long double acosl(long double value) {

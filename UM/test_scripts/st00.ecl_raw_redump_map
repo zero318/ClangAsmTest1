@@ -1,4 +1,4 @@
-anim { "enemy.anm"; "st01enm.anm"; "patchy.anm"; "sprite_window_test.anm"; "koishi.anm"; }
+anim { "enemy.anm"; "st01enm.anm"; "patchy.anm"; }
 ecli { "default.ecl"; }
 
 void BossPatchouliEnd()
@@ -866,6 +866,16 @@ enemy_test_968:
 enemy_test_1016:
 +10000: //10240
     jump(enemy_test_1016, 240);
+    ret();
+}
+
+void example()
+{
+    frame_enter(8);
+    push_float(%EF0);
+    pop_int([0]);
+    push_int($EF1);
+    pop_int([4]);
     ret();
 }
 

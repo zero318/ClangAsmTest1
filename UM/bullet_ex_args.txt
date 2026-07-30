@@ -63,6 +63,10 @@ EX_BOUNCE: [UM = 0x40, UDoALG = 0x40, FW = 6]
     type = B
     speed = R
     
+    B & 0x01    : Bounce off top edge
+    B & 0x02    : Bounce off bottom edge
+    B & 0x04    : Bounce off left edge
+    B & 0x08    : Bounce off right edge
     B & 0x10    : Don't actually bounce, only detect when the bullet leaves the range
     
     B & 0x20    : size_x = S, size_y = M
@@ -293,7 +297,11 @@ EX_BOUNCE: [UM = 0x40, UDoALG = 0x40, FW = 6]
     R < 0.0     : speed = current_speed
     R >= 0.0    : speed = R
     
-    B & 0x10    : Don't actually bounce, only detect when the bullet leaves the range
+    B & 0x01    : Bounce off top edge
+    B & 0x02    : Bounce off bottom edge
+    B & 0x04    : Bounce off left edge
+    B & 0x08    : Bounce off right edge
+    B & 0x10    : Don't actually bounce, only detect when the laser leaves the range
 
 EX_INVULN: [UM = 0x80, UDoALG = 0x80, FW = 7]
     duration = A

@@ -882,8 +882,6 @@ void main() {
     
 	
 +120:
-    debug_print("Player X:%f Y:%f\n", _ff PLAYER_X, _ff PLAYER_Y);
-	
 
 	//halt();
 	//enemy_create_rel("Cir00p", 0.0f, 144.0f, 120, 1000, 1);
@@ -895,3 +893,8 @@ void main() {
     halt();
 }
 
+
+void example() {
+  int A = _S(%EF0);
+  int B = $EF1;
+}
