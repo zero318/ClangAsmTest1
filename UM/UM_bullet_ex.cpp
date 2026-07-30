@@ -57135,9 +57135,6 @@ struct PauseMenu : ZUNTask {
 		switch (this->primary_state) {
 			case 1: case 2: case 3:
 				this->on_tick_active();
-			default:
-				++this->state_timer;
-				++this->__state_timer_20;
 				break;
 			case 0:
 				if (
@@ -57156,9 +57153,12 @@ struct PauseMenu : ZUNTask {
 				) {
 					ACHIEVEMENT_MODE_STATE = -1;
 					SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::MainMenu;
+					return UpdateFuncNext;
 				}
 				break;
 		}
+		++this->state_timer;
+		++this->__state_timer_20;
 		return UpdateFuncNext;
 	}
 
