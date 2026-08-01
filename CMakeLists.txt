@@ -305,6 +305,8 @@ target_compile_definitions(${EXE} PRIVATE
 
 if(CMAKE_IS_BROKEN)
 target_compile_definitions(${EXE} PRIVATE
+	# VS2019 intellisense doesn't recognize _Float16/__bf16
+	# as types so purge all the headers related to them.
 	_Float16=float
 	__bf16=float
 	__AVX512FP16INTRIN_H
@@ -312,6 +314,11 @@ target_compile_definitions(${EXE} PRIVATE
 	__AVX512BF16INTRIN_H
 	__AVX512VLBF16INTRIN_H
 	__AVXNECONVERTINTRIN_H
+	__AVX10_2BF16INTRIN_H
+	__AVX10_2CONVERTINTRIN_H
+	__AVX10_2_512BF16INTRIN_H
+	__AVX10_2_512CONVERTINTRIN_H
+	__AVX10_2_512NIINTRIN_H
 )
 endif()
 
@@ -382,6 +389,9 @@ target_compile_options(${EXE} PRIVATE
 	-Wno-invalid-offsetof
 	-Wno-switch-bool
 	-Wno-delete-non-abstract-non-virtual-dtor
+	-Wno-vla-cxx-extension
+	-Wno-nontrivial-memcall
+	-Wno-unused-template
 )
 
 # Output Flags
@@ -512,6 +522,9 @@ if(MSVC)
 
 		# Don't use TLS for function scope statics
 		/Zc:threadSafeInit-
+
+		# Don't use C++14 sized delete functions
+		/Zc:sizedDealloc-
 	)
 endif()
 
@@ -655,6 +668,7 @@ target_compile_options(${EXE} PRIVATE
 	"SHELL:-Xclang -ffunction-sections"
 	
 	"SHELL:-Xclang -ffp-contract=fast"
+	/fp:fast
 	"SHELL:-Xclang -ffast-math"
 	${SLASH_CLANG_ARG}-fno-math-errno
 
@@ -676,13 +690,39 @@ target_compile_options(${EXE} PRIVATE
 
 	#${SLASH_CLANG_ARG}-fthreadsafe-statics
 
-	${SLASH_CLANG_ARG}-mno-ms-bitfields
-	#"SHELL:-Xclang -mno-ms-bitfields"
-
 	#"-fno-exceptions"
 	
 	"SHELL:-mllvm -force-loop-cold-block=true"
+
+	${SLASH_CLANG_ARG}-fno-sized-deallocation
 )
+if(!CUSTOM_CLANG)
+target_compile_options(${EXE} PRIVATE
+	# Clang 24 starts complaining about Itanium ABI with this enabled???
+	${SLASH_CLANG_ARG}-mno-ms-bitfields
+	#"SHELL:-Xclang -mno-ms-bitfields"
+)
+else()
+target_compile_options(${EXE} PRIVATE
+	${SLASH_CLANG_ARG}-fassociative-math
+	#${SLASH_CLANG_ARG}-fno-assume-nothrow-exception-dtor
+	#${SLASH_CLANG_ARG}-fdevirtualize-speculatively
+	${SLASH_CLANG_ARG}-fexcess-precision=fast
+	"SHELL:-Xclang -fexperimental-loop-fusion"
+	${SLASH_CLANG_ARG}-fno-keep-persistent-storage-variables
+	${SLASH_CLANG_ARG}-fno-keep-static-consts
+	#${SLASH_CLANG_ARG}-fno-signaling-math
+	"SHELL:-Xclang -mrecip=none"
+	${SLASH_CLANG_ARG}-mno-seses
+	${SLASH_CLANG_ARG}-mno-speculative-load-hardening
+	#${SLASH_CLANG_ARG}-ffinite-math-only
+	#${SLASH_CLANG_ARG}-fno-honor-nans
+	#${SLASH_CLANG_ARG}-fno-honor-infinities
+	#${SLASH_CLANG_ARG}-fno-signed-zeros
+	"SHELL:-Xclang -mconstructor-aliases"
+	"SHELL:-Xclang -fno-lifetime-dse"
+)
+endif()
 
 target_link_options(${EXE} PRIVATE
 	#"LINKER:--allow-multiple-definition"
@@ -698,7 +738,11 @@ target_compile_options(${EXE} PRIVATE
 
 if(CMAKE_IS_BROKEN)
 include_directories(BEFORE SYSTEM "F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\zero_include")
+if(CUSTOM_CLANG)
+include_directories(SYSTEM "F:\\Users\\zero318\\Source\\Repos\\LLVM_new\\BUILD_DEBUG_REL\\lib\\clang\\24\\include")
+else()
 include_directories(SYSTEM "F:\\Program Files\\LLVM\\lib\\clang\\17\\include")
+endif()
 include_directories(SYSTEM "C:\\WinDDK\\7600.16385.1\\inc\\ddk")
 include_directories(SYSTEM "F:\\MyCodeLibs\\SoundSample\\Sample\\DXUT")
 include_directories(SYSTEM "F:\\My Programs Expansion\\DirectX_SDKs\\Hopefully_Current\\Include")

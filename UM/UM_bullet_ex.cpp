@@ -2816,7 +2816,7 @@ struct GameSpeed {
 	// 0x8
 
 	// 0x43A200
-	dllexport gnu_noinline void vectorcall set(float new_speed) ASR(0x43A200);
+	dllexport inline void vectorcall set(float new_speed) ASR(0x43A200);
 
 	inline operator float() const {
 		return this->value;
@@ -2833,7 +2833,7 @@ extern "C" {
 	externcg GameSpeed GAME_SPEED cgasm("_GAME_SPEED");
 }
 // 0x43A200
-dllexport gnu_noinline void vectorcall GameSpeed::set(float new_speed) {
+dllexport inline void vectorcall GameSpeed::set(float new_speed) {
 	GAME_SPEED.value = new_speed;
 }
 
@@ -14858,7 +14858,7 @@ dllexport gnu_noinline ZUNResult thiscall SoundEffectData::initialize(const char
 				  u8"Wav ファイルじゃない %s\r\n"_sjis,
 					"Not a Wav file %s\r\n"
 				);
-				goto OtherError;
+				goto NotAWavFileError;
 			}
 			int32_t file_size = sound_file->header.remaining_file_size;
 			if (strncmp(sound_file->header.wave_text, "WAVE", sizeof(sound_file->header.wave_text))) {
@@ -14904,8 +14904,9 @@ MalformedWaveError:
 			  u8"Wav ファイルじゃない? %s\r\n"_sjis,
 				"Isn't it a Wav file? %s\r\n"
 			);
-OtherError:
+NotAWavFileError:
 			LOG_BUFFER.write(error_text, filename);
+OtherError:
 			SAFE_FREE(SOUND_MANAGER.sound_effect_files[this->data->filename_index]);
 			return ZUN_ERROR;
 		}
@@ -29193,13 +29194,13 @@ anm_break:
 
 	if (ZUN_FAILED(this->run_on_wait())) {
 return_delete:
-		GAME_SPEED.set(previous_gamespeed);
+		clang_noinline GAME_SPEED.set(previous_gamespeed);
 		return ANM_DELETE; // 1
 	}
 	else {
 		this->controller.script_time++;
 return_static:
-		GAME_SPEED.set(previous_gamespeed);
+		clang_noinline GAME_SPEED.set(previous_gamespeed);
 		return ANM_SUCCESS; // 0
 	}
 }
@@ -55379,7 +55380,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 		}
 		case game_speed_set: { // 547
 			float speed = this->get_float_arg(0);
-			GAME_SPEED.set(speed);
+			clang_noinline GAME_SPEED.set(speed);
 			break;
 		}
 		case set_float_angle_to_player_from_point: { // 623
