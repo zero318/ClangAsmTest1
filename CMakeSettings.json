@@ -991,11 +991,6 @@
           "name": "CMAKE_SYSTEM_VERSION",
           "value": "10.0.20262.0",
           "type": "STRING"
-        },
-        {
-          "name": "CUSTOM_CLANG",
-          "value": "true",
-          "type": "BOOL"
         }
       ]
     },

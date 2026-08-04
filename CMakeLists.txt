@@ -319,6 +319,7 @@ target_compile_definitions(${EXE} PRIVATE
 	__AVX10_2_512BF16INTRIN_H
 	__AVX10_2_512CONVERTINTRIN_H
 	__AVX10_2_512NIINTRIN_H
+	__AMX_AVX512INTRIN_H
 )
 endif()
 
@@ -389,10 +390,14 @@ target_compile_options(${EXE} PRIVATE
 	-Wno-invalid-offsetof
 	-Wno-switch-bool
 	-Wno-delete-non-abstract-non-virtual-dtor
-	-Wno-vla-cxx-extension
-	-Wno-nontrivial-memcall
 	-Wno-unused-template
 )
+if(CUSTOM_CLANG)
+target_compile_options(${EXE} PRIVATE
+	-Wno-vla-cxx-extension
+	-Wno-nontrivial-memcall
+)
+endif()
 
 # Output Flags
 target_compile_options(${EXE} PRIVATE
@@ -696,7 +701,7 @@ target_compile_options(${EXE} PRIVATE
 
 	${SLASH_CLANG_ARG}-fno-sized-deallocation
 )
-if(!CUSTOM_CLANG)
+if(NOT CUSTOM_CLANG)
 target_compile_options(${EXE} PRIVATE
 	# Clang 24 starts complaining about Itanium ABI with this enabled???
 	${SLASH_CLANG_ARG}-mno-ms-bitfields

@@ -3037,7 +3037,7 @@ public:
 		clang_forceinline return this->decrement();
 	}
 
-	dllexport int32_t thiscall operator--() {
+	inline int32_t thiscall operator--() {
 		clang_forceinline return this->decrement();
 	}
 
@@ -5016,7 +5016,7 @@ struct Supervisor {
 			uint32_t __unknown_flag_su_C : 1; // 2
 			uint32_t full_color_mode : 1; // 3
 			uint32_t : 1; // 4
-			uint32_t __unknown_flag_su_F : 1; // 5
+			uint32_t __force_pause : 1; // 5
 			uint32_t : 1; // 6
 			uint32_t __unknown_flag_su_A : 1; // 7
 			uint32_t quitting : 2; // 8-9 why is this two bits???
@@ -55912,6 +55912,7 @@ extern "C" {
 }
 
 static inline constexpr int32_t REPLAYS_PER_PAGE = 25;
+static inline constexpr int32_t RECORDS_PER_PAGE = 10;
 
 // NOTE: Normally I would just use member access to call static
 // functions in an attempt to mask over ZUN's janky code layout
@@ -57074,6 +57075,7 @@ static inline constexpr int32_t KEYBOARD_STRING_NORMAL_KEY_COUNT = KEYBOARD_STRI
 static inline constexpr int32_t KEYBOARD_STRING_SPACE = KEYBOARD_STRING_NORMAL_KEY_COUNT;
 static inline constexpr int32_t KEYBOARD_STRING_BACK = KEYBOARD_STRING_NORMAL_KEY_COUNT + 1;
 static inline constexpr int32_t KEYBOARD_STRING_CONFIRM = KEYBOARD_STRING_NORMAL_KEY_COUNT + 2;
+static inline constexpr uint32_t KEYBOARD_KEYS_PER_ROW = 13;
 
 // size: 0x3F8
 struct PauseMenu : ZUNTask {
@@ -57142,7 +57144,7 @@ struct PauseMenu : ZUNTask {
 					!GAME_MANAGER.__is_demo &&
 					!GAME_THREAD_PTR->__unknown_flag_gt_F &&
 					ACHIEVEMENT_MODE_STATE < 0 &&
-					(INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE) || SUPERVISOR.__unknown_flag_su_F) &&
+					(INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE) || SUPERVISOR.__force_pause) &&
 					GAME_THREAD_PTR->on_tick_enabled() &&
 					this->state_timer >= 30
 				) {
@@ -57165,7 +57167,114 @@ struct PauseMenu : ZUNTask {
 
 	// 0x458090
 	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() ASR(0x458090) {
-		// TODO
+
+		AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
+		ascii_manager->enable_shadows = false;
+
+		if (this->__vm_id_1E8.has_live_vm()) {
+			AnmVM* vm = this->__vm_id_1E8.__find_child_vm_with_script(64);
+			if (vm) {
+				D3DCOLOR color = vm->data.color1;
+				ALPHA(color) = 255;
+				SUPERVISOR.__arcade_vm_ptr_C->data.color1 = color;
+			}
+		}
+
+		switch (this->primary_state) {
+			case 1: case 3:
+				switch (this->__unknown_field_pm_A) {
+					case 1:
+						this->__draw_replay_list();
+						ascii_manager = ASCII_MANAGER_PTR;
+						break;
+					case 2:
+						this->__sub_457FD0();
+						ascii_manager = ASCII_MANAGER_PTR;
+						break;
+				}
+				break;
+			case 2: {
+				Float3 position;
+				if (this->secondary_state == 15) {
+					int32_t current_selection = this->__menu_select_34.current_selection;
+					position = { 48.0f, 64.0f, 0.0f };
+					ascii_manager->printf(&position, "            Score Ranking!!");
+					position.x = 75.0f;
+					position.y = 96.0f + current_selection * 18.0f;
+					if (!this->__int_200) {
+						this->__print_name_entry_and_keyboard(position);
+					} else {
+						current_selection = -1;
+					}
+					position.x = 48.0f;
+					position.y = 96.0f;
+
+					int32_t i = 0;
+					do {
+						ascii_manager = ASCII_MANAGER_PTR;
+						D3DCOLOR color;
+						if (current_selection == i) {
+							color = COLOR3_WHITE;
+						} else {
+							color = COLOR_GREY(255, 128);
+						}
+						ascii_manager->color = color;
+						ScorefileRecord& record = SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
+																	.records[GAME_MANAGER.globals.difficulty][current_selection]; // -1?
+						if (record.time) {
+							const tm* record_time = localtime(&record.time);
+							ASCII_MANAGER_PTR->printf(
+								&position,
+								"%2d %s %9ld%d %.2d/%.2d/%.2d %s",
+								++i,
+								record.name,
+								record.score, record.continues,
+								record_time->tm_year % 100, record_time->tm_mon, record_time->tm_mday,
+								SEVEN_LETTER_STAGE_NAMES[(int32_t)record.__stage_reached]
+							);
+						} else {
+							ascii_manager->printf(
+								&position,
+								"%2d %s %9ld%d --/--/-- Stage -",
+								++i,
+								record.name,
+								record.score, record.continues
+							);
+						}
+						position.y += 18.0f;
+					} while (i < RECORDS_PER_PAGE);
+					ASCII_MANAGER_PTR->color = COLOR_WHITE;
+				}
+				switch (this->__unknown_field_pm_A) {
+					case 1:
+						this->__draw_replay_list();
+						ascii_manager = ASCII_MANAGER_PTR;
+						break;
+					case 2:
+						this->__sub_457FD0();
+						ascii_manager = ASCII_MANAGER_PTR;
+						break;
+					default:
+						switch (this->secondary_state) {
+							default:
+								if (!GAME_MANAGER.is_spell_practice()) {
+									position = { 184.0f, 448.0f, 0.0f };
+									ascii_manager->printf(
+										&position,
+										"Credit %d",
+										GAME_MANAGER.continue_credits
+									);
+									ascii_manager = ASCII_MANAGER_PTR;
+								}
+							case 15: case 16:
+								break;
+						}
+				}
+				break;
+			}
+		}
+		ascii_manager->enable_shadows = false;
+
 		return UpdateFuncNext;
 	}
 
@@ -57193,6 +57302,123 @@ struct PauseMenu : ZUNTask {
 	dllexport gnu_noinline void thiscall change_secondary_state(int32_t new_state) ASR(0x4577D0) {
 		this->secondary_state = new_state;
 		this->state_timer.reset();
+	}
+
+	// 0x457E50
+	dllexport gnu_noinline void thiscall __draw_replay_list() ASR(0x457E50) {
+		
+		Float3 position = { 48.0f, 64.0f, 0.0f };
+
+		for (int32_t i = 0; i < REPLAYS_PER_PAGE; ++i) {
+			D3DCOLOR color;
+			if (this->__menu_select_34.current_selection == i) {
+				color = COLOR3_WHITE;
+			} else {
+				color = COLOR_GREY(255, 128);
+			}
+			AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
+			ascii_manager->color = color;
+
+			ReplayManager* replay = this->replay_manager_array[i];
+			if (replay) {
+				clang_forceinline replay->info->__print_in_menuA(i, &position);
+			} else {
+				ascii_manager->printf(
+					&position,
+					"No.%.2d -------- --/--/-- ------ -- St-",
+					i + 1
+				);
+			}
+			position.y += 15.0f;
+		}
+		ASCII_MANAGER_PTR->color = COLOR_WHITE;
+	}
+
+	// 0x457BF0
+	dllexport gnu_noinline void thiscall __print_name_entry_and_keyboard(Float3 name_position) ASR(0x457BF0) {
+		ASCII_MANAGER_PTR->printf(
+			&name_position,
+			"%s",
+			this->__name_buffer
+		);
+		int32_t name_length = this->__name_length;
+		name_position.x += name_length * 9;
+		if (name_length == MAX_RECORD_NAME_LENGTH) {
+			name_position.x -= 9.0f;
+		}
+
+		AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
+		ascii_manager->color = COLOR3_WHITE;
+		ascii_manager->printf(
+			&name_position,
+			"_"
+		);
+
+		ascii_manager = ASCII_MANAGER_PTR;
+		ascii_manager->color = COLOR_WHITE;
+
+		Float3 position = { 112.0f, 320.0f, 0.0f };
+
+		int32_t i = 0;
+
+		for (;;) {
+			D3DCOLOR color;
+			if (this->__menu_select_10C.current_selection == i) {
+				color = COLOR3_WHITE;
+			} else {
+				color = COLOR_GREY(255, 128);
+			}
+			int32_t c;
+			switch (i) {
+				default:
+					c = KEYBOARD_STRING[i];
+					break;
+				case KEYBOARD_STRING_SPACE:
+					c = 129;
+					break;
+				case KEYBOARD_STRING_BACK:
+					c = 127;
+					break;
+				case KEYBOARD_STRING_CONFIRM:
+					c = 128;
+					break;
+			}
+			ascii_manager->printf(
+				&position,
+				"%c",
+				c
+			);
+			if (i % KEYBOARD_KEYS_PER_ROW == KEYBOARD_KEYS_PER_ROW - 1) {
+				position.x = 112.0f;
+				position.y += 16.0f;
+			} else {
+				position.x += 18.0f;
+			}
+			if (i >= KEYBOARD_STRING_TOTAL_KEY_COUNT) break;
+			ascii_manager = ASCII_MANAGER_PTR;
+		}
+
+		ASCII_MANAGER_PTR->color = COLOR_WHITE;
+	}
+
+	// 0x457FD0
+	dllexport gnu_noinline void thiscall __sub_457FD0() ASR(0x457FD0) {
+		Float3 position;
+		position.z = 0.0f;
+		int32_t current_selection = this->__menu_select_34.current_selection;
+		int32_t state_time = this->state_timer;
+		if (state_time < 10) {
+			float A = current_selection * 15.0f + 64.0f;
+			position.y = (224.0f - A) * state_time / 10.0f + A;
+		} else {
+			position.y = 224.0f;
+		}
+		position.x = 102.0f;
+		this->__print_name_entry_and_keyboard(position);
+		position.x = 48.0f;
+		ReplayManager* replay_manager = REPLAY_MANAGER_PTR;
+		memcpy(replay_manager->info->name, DEFAULT_RECORD_NAME, sizeof(DEFAULT_RECORD_NAME));
+		replay_manager->info->__print_in_menuA(current_selection, &position);
 	}
 
 	// 0x458480
@@ -57556,7 +57782,7 @@ struct PauseMenu : ZUNTask {
 				break;
 			case 12: case 15:
 				if (this->state_timer >= 10) {
-					if (this->__menu_select_10C.update(&MenuSelect::scroll_grid, 13)) {
+					if (this->__menu_select_10C.update(&MenuSelect::scroll_grid, KEYBOARD_KEYS_PER_ROW)) {
 						SOUND_MANAGER.play_sound(10);
 					}
 					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
@@ -58964,8 +59190,6 @@ static inline constexpr int32_t SONGS_PER_PAGE = 10;
 static inline constexpr int32_t MUSICCMT_TEXT_LINES = 8;
 static inline constexpr int32_t USER_REPLAY_PAGES = 3;
 static inline constexpr int32_t USER_REPLAY_COUNT = USER_REPLAY_PAGES * REPLAYS_PER_PAGE;
-
-static inline constexpr int32_t RECORDS_PER_PAGE = 10;
 
 // 0x4B6208
 static const float MENU_TEXT_OFFSET_TABLE[][2] = {
@@ -66827,7 +67051,7 @@ winmain_d3d_create_success:
 							if (local_int_18 != 0) {
 								goto loop_break;
 							}
-							SUPERVISOR.__unknown_flag_su_F = false;
+							SUPERVISOR.__force_pause = false;
 							break;
 						}
 					case D3DERR_DEVICENOTRESET:
@@ -66854,7 +67078,7 @@ winmain_d3d_create_success:
 						}
 						__set_default_d3d_states();
 						ANM_MANAGER_PTR->__create_render_targets();
-						SUPERVISOR.__unknown_flag_su_F = true;
+						SUPERVISOR.__force_pause = true;
 						SUPERVISOR.__counter_818 = 3;
 						if (WINDOW_DATA.__unknown_flag_wd_B) {
 							SUPERVISOR.__camera2_sub_454F50();
